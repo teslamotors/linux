@@ -1059,7 +1059,7 @@ static const struct sst_acpi_mach sst_cnl_devdata[] = {
 };
 
 static struct sst_acpi_mach sst_icl_devdata[] = {
-	{ "dummy", "icl_wm8281", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
+	{ "dummy", "icl_rt274", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
 	{}
 };
 
