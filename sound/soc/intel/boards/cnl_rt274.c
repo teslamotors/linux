@@ -370,12 +370,19 @@ static int snd_cnl_rt274_mc_probe(struct platform_device *pdev)
 	return devm_snd_soc_register_card(&pdev->dev, &snd_soc_card_cnl);
 }
 
+static const struct platform_device_id cnl_board_ids[] = {
+	{ .name = "cnl_rt274" },
+	{ .name = "icl_rt274" },
+	{ }
+};
+
 static struct platform_driver snd_cnl_rt274_driver = {
 	.driver = {
 		.name = "cnl_rt274",
 		.pm = &snd_soc_pm_ops,
 	},
 	.probe = snd_cnl_rt274_mc_probe,
+	.id_table = cnl_board_ids,
 };
 
 module_platform_driver(snd_cnl_rt274_driver);
@@ -383,3 +390,4 @@ module_platform_driver(snd_cnl_rt274_driver);
 MODULE_AUTHOR("Guneshwor Singh <guneshwor.o.singh@intel.com>");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:cnl_rt274");
+MODULE_ALIAS("platform:icl_rt274");
