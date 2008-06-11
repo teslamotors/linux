@@ -257,6 +257,9 @@ relocs_check: arch/powerpc/relocs_check.sh vmlinux
 zImage: relocs_check
 endif
 
+# These targets cannot be built in parallel
+.NOTPARALLEL: $(BOOT_TARGETS)
+
 $(BOOT_TARGETS1): vmlinux
 	$(Q)$(MAKE) ARCH=ppc64 $(build)=$(boot) $(patsubst %,$(boot)/%,$@)
 $(BOOT_TARGETS2): vmlinux
