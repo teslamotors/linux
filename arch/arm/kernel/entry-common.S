@@ -264,7 +264,8 @@ __cr_alignment:
  * With EABI a couple syscalls are obsolete and defined as sys_ni_syscall.
  */
 #define ABI(native, compat) native
-#ifdef CONFIG_AEABI
+
+#if defined(CONFIG_AEABI) && !defined(CONFIG_OABI_COMPAT)
 #define OBSOLETE(syscall) sys_ni_syscall
 #else
 #define OBSOLETE(syscall) syscall
