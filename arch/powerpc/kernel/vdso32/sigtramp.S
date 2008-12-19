@@ -251,6 +251,40 @@ V_FUNCTION_END(__kernel_sigtramp_rt32)
   vsave_msr1 (31);							\
   vsave_msr2 (33, 32*16+12);						\
   vsave      (32, 32*16)
+#elif defined(CONFIG_SPE)
+#define EH_FRAME_VMX \
+  rsave (113, VREGS);							\
+  rsave (114, VREGS + 1*4);						\
+  rsave (115, VREGS + 2*4);						\
+  rsave (116, VREGS + 3*4);						\
+  rsave (117, VREGS + 4*4);						\
+  rsave (118, VREGS + 5*4);						\
+  rsave (119, VREGS + 6*4);						\
+  rsave (120, VREGS + 7*4);						\
+  rsave (121, VREGS + 8*4);						\
+  rsave (122, VREGS + 9*4);						\
+  rsave (123, VREGS + 10*4);						\
+  rsave (124, VREGS + 11*4);						\
+  rsave (125, VREGS + 12*4);						\
+  rsave (126, VREGS + 13*4);						\
+  rsave (127, VREGS + 14*4);						\
+  rsave (128, VREGS + 15*4);						\
+  rsave (129, VREGS + 16*4);						\
+  rsave (130, VREGS + 17*4);						\
+  rsave (131, VREGS + 18*4);						\
+  rsave (132, VREGS + 19*4);						\
+  rsave (133, VREGS + 20*4);						\
+  rsave (134, VREGS + 21*4);						\
+  rsave (135, VREGS + 22*4);						\
+  rsave (136, VREGS + 23*4);						\
+  rsave (137, VREGS + 24*4);						\
+  rsave (138, VREGS + 25*4);						\
+  rsave (139, VREGS + 26*4);						\
+  rsave (140, VREGS + 27*4);						\
+  rsave (141, VREGS + 28*4);						\
+  rsave (142, VREGS + 29*4);						\
+  rsave (143, VREGS + 30*4);						\
+  rsave (144, VREGS + 31*4);
 #else
 #define EH_FRAME_VMX
 #endif
