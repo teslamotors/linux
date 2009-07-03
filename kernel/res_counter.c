@@ -59,7 +59,7 @@ static int __res_counter_charge(struct res_counter *counter, unsigned long val,
 
 	r = ret = 0;
 	*limit_fail_at = NULL;
-	local_irq_save(flags);
+	local_irq_save_nort(flags);
 	for (c = counter; c != NULL; c = c->parent) {
 		spin_lock(&c->lock);
 		r = res_counter_charge_locked(c, val, force);
@@ -79,7 +79,7 @@ static int __res_counter_charge(struct res_counter *counter, unsigned long val,
 			spin_unlock(&u->lock);
 		}
 	}
-	local_irq_restore(flags);
+	local_irq_restore_nort(flags);
 
 	return ret;
 }
@@ -104,7 +104,7 @@ u64 res_counter_uncharge_until(struct res_counter *counter,
 	struct res_counter *c;
 	u64 ret = 0;
 
-	local_irq_save(flags);
+	local_irq_save_nort(flags);
 	for (c = counter; c != top; c = c->parent) {
 		u64 r;
 		spin_lock(&c->lock);
@@ -113,7 +113,7 @@ u64 res_counter_uncharge_until(struct res_counter *counter,
 			ret = r;
 		spin_unlock(&c->lock);
 	}
-	local_irq_restore(flags);
+	local_irq_restore_nort(flags);
 	return ret;
 }
 
