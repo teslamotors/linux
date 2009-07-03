@@ -1383,7 +1383,17 @@ unsigned long get_next_timer_interrupt(unsigned long now)
 	if (cpu_is_offline(smp_processor_id()))
 		return expires;
 
+#ifdef CONFIG_PREEMPT_RT_FULL
+	/*
+	 * On PREEMPT_RT we cannot sleep here. If the trylock does not
+	 * succeed then we return the worst-case 'expires in 1 tick'
+	 * value:
+	 */
+	if (!spin_trylock(&base->lock))
+		return  now + 1;
+#else
 	spin_lock(&base->lock);
+#endif
 	if (base->active_timers) {
 		if (time_before_eq(base->next_timer, base->timer_jiffies))
 			base->next_timer = __next_timer_interrupt(base);
@@ -1393,7 +1403,6 @@ unsigned long get_next_timer_interrupt(unsigned long now)
 
 	if (time_before_eq(expires, now))
 		return now;
-
 	return cmp_next_hrtimer_event(now, expires);
 }
 #endif
@@ -1644,7 +1653,7 @@ static void migrate_timers(int cpu)
 
 	BUG_ON(cpu_online(cpu));
 	old_base = per_cpu(tvec_bases, cpu);
-	new_base = get_cpu_var(tvec_bases);
+	new_base = get_local_var(tvec_bases);
 	/*
 	 * The caller is globally serialized and nobody else
 	 * takes two locks at once, deadlock is not possible.
@@ -1665,7 +1674,7 @@ static void migrate_timers(int cpu)
 
 	spin_unlock(&old_base->lock);
 	spin_unlock_irq(&new_base->lock);
-	put_cpu_var(tvec_bases);
+	put_local_var(tvec_bases);
 }
 #endif /* CONFIG_HOTPLUG_CPU */
 
