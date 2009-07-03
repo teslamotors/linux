@@ -650,12 +650,14 @@ void resched_cpu(int cpu)
  */
 int get_nohz_timer_target(int pinned)
 {
-	int cpu = smp_processor_id();
+	int cpu;
 	int i;
 	struct sched_domain *sd;
 
+	preempt_disable_rt();
+	cpu = smp_processor_id();
 	if (pinned || !get_sysctl_timer_migration() || !idle_cpu(cpu))
-		return cpu;
+		goto preempt_en_rt;
 
 	rcu_read_lock();
 	for_each_domain(cpu, sd) {
@@ -668,6 +670,8 @@ int get_nohz_timer_target(int pinned)
 	}
 unlock:
 	rcu_read_unlock();
+preempt_en_rt:
+	preempt_enable_rt();
 	return cpu;
 }
 /*
