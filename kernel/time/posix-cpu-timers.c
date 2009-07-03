@@ -1303,7 +1303,7 @@ static int posix_cpu_thread_call(struct notifier_block *nfb,
 	switch (action) {
 	case CPU_UP_PREPARE:
 		p = kthread_create(posix_cpu_timers_thread, hcpu,
-					"posix_cpu_timers/%d",cpu);
+					"posixcputmr/%d",cpu);
 		if (IS_ERR(p))
 			return NOTIFY_BAD;
 		p->flags |= PF_NOFREEZE;
