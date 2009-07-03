@@ -62,6 +62,69 @@ const char * const softirq_to_name[NR_SOFTIRQS] = {
 	"TASKLET", "SCHED", "HRTIMER", "RCU"
 };
 
+#ifdef CONFIG_NO_HZ_COMMON
+# ifdef CONFIG_PREEMPT_RT_FULL
+/*
+ * On preempt-rt a softirq might be blocked on a lock. There might be
+ * no other runnable task on this CPU because the lock owner runs on
+ * some other CPU. So we have to go into idle with the pending bit
+ * set. Therefor we need to check this otherwise we warn about false
+ * positives which confuses users and defeats the whole purpose of
+ * this test.
+ *
+ * This code is called with interrupts disabled.
+ */
+void softirq_check_pending_idle(void)
+{
+	static int rate_limit;
+	u32 warnpending = 0, pending;
+
+	if (rate_limit >= 10)
+		return;
+
+	pending = local_softirq_pending() & SOFTIRQ_STOP_IDLE_MASK;
+	if (pending) {
+		struct task_struct *tsk;
+
+		tsk = __get_cpu_var(ksoftirqd);
+		/*
+		 * The wakeup code in rtmutex.c wakes up the task
+		 * _before_ it sets pi_blocked_on to NULL under
+		 * tsk->pi_lock. So we need to check for both: state
+		 * and pi_blocked_on.
+		 */
+		raw_spin_lock(&tsk->pi_lock);
+
+		if (!tsk->pi_blocked_on && !(tsk->state == TASK_RUNNING))
+			warnpending = 1;
+
+		raw_spin_unlock(&tsk->pi_lock);
+	}
+
+	if (warnpending) {
+		printk(KERN_ERR "NOHZ: local_softirq_pending %02x\n",
+		       pending);
+		rate_limit++;
+	}
+}
+# else
+/*
+ * On !PREEMPT_RT we just printk rate limited:
+ */
+void softirq_check_pending_idle(void)
+{
+	static int rate_limit;
+
+	if (rate_limit < 10 &&
+			(local_softirq_pending() & SOFTIRQ_STOP_IDLE_MASK)) {
+		printk(KERN_ERR "NOHZ: local_softirq_pending %02x\n",
+		       local_softirq_pending());
+		rate_limit++;
+	}
+}
+# endif
+#endif
+
 /*
  * we cannot loop indefinitely here to avoid userspace starvation,
  * but we also don't want to introduce a worst case 1/HZ latency

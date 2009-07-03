@@ -439,6 +439,7 @@ extern void __raise_softirq_irqoff(unsigned int nr);
 
 extern void raise_softirq_irqoff(unsigned int nr);
 extern void raise_softirq(unsigned int nr);
+extern void softirq_check_pending_idle(void);
 
 DECLARE_PER_CPU(struct task_struct *, ksoftirqd);
 
