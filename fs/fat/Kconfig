@@ -119,3 +119,14 @@ config FAT_DEFAULT_IOCHARSET
 
 	  Enable any character sets you need in File Systems/Native Language
 	  Support.
+
+config VFAT_NO_CREATE_WITH_LONGNAMES
+	bool "Disable creating files with long names"
+	depends on VFAT_FS
+	default n
+	help
+	  Set this to disable support for creating files or directories with
+	  names longer than 8.3 (the original DOS maximum file name length)
+	  e.g. naming a file FILE1234.TXT would be allowed but creating or
+	  renaming a file to FILE12345.TXT or FILE1234.TEXT would not
+	  be permitted.  Reading files with long file names is still permitted.
