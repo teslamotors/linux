@@ -74,6 +74,27 @@ config VFAT_FS
 	  To compile this as a module, choose M here: the module will be called
 	  vfat.
 
+config VFAT_FS_NO_DUALNAMES
+	bool "disable VFAT dual names support (patent workaround)"
+	depends on VFAT_FS
+	help
+	  This option disables support for dual filenames on VFAT filesystems.
+	  If this option is enabled then file creation will either put
+	  a short (8.3) name or a long name on the file, but never both.
+	  The field where a shortname would normally go is filled with
+	  invalid characters such that it cannot be considered a valid
+	  short filename.
+
+	  That means that long filenames created with this option
+	  disabled will not be accessible at all to operating systems
+	  that do not understand the FAT long filename extensions.
+
+	  Users considering disabling this option should consider the
+	  implications of any patents that may exist on dual filenames
+	  in VFAT.
+
+	  If unsure, say N
+
 config FAT_DEFAULT_CODEPAGE
 	int "Default codepage for FAT"
 	depends on MSDOS_FS || VFAT_FS
