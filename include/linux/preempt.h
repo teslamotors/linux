@@ -47,7 +47,11 @@ do { \
 	preempt_count_dec(); \
 } while (0)
 
-#define preempt_enable_no_resched() sched_preempt_enable_no_resched()
+#ifdef CONFIG_PREEMPT_RT_BASE
+# define preempt_enable_no_resched() sched_preempt_enable_no_resched()
+#else
+# define preempt_enable_no_resched() preempt_enable()
+#endif
 
 #ifdef CONFIG_PREEMPT
 #define preempt_enable() \
@@ -143,6 +147,18 @@ do { \
 	if (tif_need_resched()) \
 		set_preempt_need_resched(); \
 } while (0)
+
+#ifdef CONFIG_PREEMPT_RT_FULL
+# define preempt_disable_rt()		preempt_disable()
+# define preempt_enable_rt()		preempt_enable()
+# define preempt_disable_nort()		barrier()
+# define preempt_enable_nort()		barrier()
+#else
+# define preempt_disable_rt()		barrier()
+# define preempt_enable_rt()		barrier()
+# define preempt_disable_nort()		preempt_disable()
+# define preempt_enable_nort()		preempt_enable()
+#endif
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 
