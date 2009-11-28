@@ -108,7 +108,7 @@ test_crypto(int cfd)
 	} else {
 		fprintf(stderr, "HMAC test 1: passed\n");
 	}
-return 0;
+
 	sess.cipher = CRYPTO_AES_CBC;
 	sess.mac = CRYPTO_SHA1_HMAC;
 	sess.keylen = KEY_SIZE;
