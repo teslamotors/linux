@@ -401,10 +401,7 @@ crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 	return ses_ptr;
 }
 
-/* This is the main crypto function - feed it with plaintext 
-   and get a ciphertext (or vice versa :-) */
-static int
-crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
+static int crypto_runv(struct fcrypt *fcr, struct crypt_opv *copv)
 {
 	char *data, ivp[EALG_MAX_BLOCK_LEN];
 	char __user *src, __user *dst;
@@ -414,6 +411,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	size_t nbytes, bufsize;
 	int ret = 0;
 	uint8_t hash_output[HASH_MAX_LEN];
+	int blocksize=1, i;
 	struct blkcipher_desc bdesc = {
         .flags = CRYPTO_TFM_REQ_MAY_SLEEP,
 	};
@@ -422,29 +420,27 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	};
 
 
-	if (unlikely(cop->op != COP_ENCRYPT && cop->op != COP_DECRYPT)) {
-		dprintk(1, KERN_DEBUG, "invalid operation op=%u\n", cop->op);
+	if (unlikely(copv->op != COP_ENCRYPT && copv->op != COP_DECRYPT)) {
+		dprintk(1, KERN_DEBUG, "invalid operation op=%u\n", copv->op);
 		return -EINVAL;
 	}
 
-	ses_ptr = crypto_get_session_by_sid(fcr, cop->ses);
+	ses_ptr = crypto_get_session_by_sid(fcr, copv->ses);
 	if (!ses_ptr) {
-		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", cop->ses);
+		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", copv->ses);
 		return -EINVAL;
 	}
 
-	nbytes = cop->len;
 	data = (char*)__get_free_page(GFP_KERNEL);
 
 	if (unlikely(!data)) {
 		ret = -ENOMEM;
 		goto out_unlock;
 	}
-	bufsize = PAGE_SIZE < nbytes ? PAGE_SIZE : nbytes;
 
-	nbytes = cop->len;
 	bdesc.tfm = ses_ptr->tfm;
 	hdesc.tfm = ses_ptr->hash_tfm;
+
 	if (hdesc.tfm) {
 		ret = crypto_hash_init(&hdesc);
 		if (unlikely(ret)) {
@@ -455,7 +451,21 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	}
 
 	if (ses_ptr->tfm) {
-		if (nbytes % crypto_blkcipher_blocksize(ses_ptr->tfm)) {
+		blocksize = crypto_blkcipher_blocksize(ses_ptr->tfm);
+		ivsize = crypto_blkcipher_ivsize(ses_ptr->tfm);
+
+		if (copv->iv) {
+			copy_from_user(ivp, copv->iv, ivsize);
+			crypto_blkcipher_set_iv(ses_ptr->tfm, ivp, ivsize);
+		}
+	}
+
+	dst = copv->dst;
+
+	for (i=0;i<copv->iovec_cnt;i++) {
+		nbytes = copv->iovec[i].len;
+
+		if (unlikely(bdesc.tfm && (nbytes % blocksize))) {
 			dprintk(1, KERN_ERR,
 				"data size (%zu) isn't a multiple of block size (%u)\n",
 				nbytes, crypto_blkcipher_blocksize(ses_ptr->tfm));
@@ -463,70 +473,74 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 			goto out_unlock;
 		}
 
-		ivsize = crypto_blkcipher_ivsize(ses_ptr->tfm);
+		bufsize = PAGE_SIZE < nbytes ? PAGE_SIZE : nbytes;
 
-		if (cop->iv) {
-			copy_from_user(ivp, cop->iv, ivsize);
-			crypto_blkcipher_set_iv(ses_ptr->tfm, ivp, ivsize);
+		src = copv->iovec[i].src;
+
+		while(nbytes > 0) {
+			size_t current_len = nbytes > bufsize ? bufsize : nbytes;
+
+			copy_from_user(data, src, current_len);
+
+			sg_set_buf(&sg, data, current_len);
+
+			/* Always hash before encryption and after decryption. Maybe
+			 * we should introduce a flag to switch... TBD later on.
+			 */
+			if (copv->op == COP_ENCRYPT) {
+				if (hdesc.tfm && (copv->iovec[i].op_flags & IOP_HASH)) {
+					ret = crypto_hash_update(&hdesc, &sg, current_len);
+					if (unlikely(ret)) {
+						dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
+						goto out;
+					}
+				}
+				if (bdesc.tfm && (copv->iovec[i].op_flags & IOP_CIPHER)) {
+					ret = crypto_blkcipher_encrypt(&bdesc, &sg, &sg, current_len);
+
+					if (unlikely(ret)) {
+						dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
+						goto out;
+					}
+					copy_to_user(dst, data, current_len);
+					dst += current_len;
+				}
+			} else {
+				if (bdesc.tfm && (copv->iovec[i].op_flags & IOP_CIPHER)) {
+					ret = crypto_blkcipher_decrypt(&bdesc, &sg, &sg, current_len);
+
+					if (unlikely(ret)) {
+						dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
+						goto out;
+					}
+					copy_to_user(dst, data, current_len);
+					dst += current_len;
+
+				}
+
+				if (hdesc.tfm && (copv->iovec[i].op_flags & IOP_HASH)) {
+					ret = crypto_hash_update(&hdesc, &sg, current_len);
+					if (unlikely(ret)) {
+						dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
+						goto out;
+					}
+				}
+			}
+
+			nbytes -= current_len;
+			src += current_len;
 		}
+
+#if defined(CRYPTODEV_STATS)
+	if (enable_stats) {
+		/* this is safe - we check cop->op at the function entry */
+		ses_ptr->stat[copv->op] += copv->iovec[i].len;
+		if (ses_ptr->stat_max_size < copv->iovec[i].len)
+			ses_ptr->stat_max_size = copv->iovec[i].len;
+		ses_ptr->stat_count++;
 	}
+#endif
 
-	src = cop->src;
-	dst = cop->dst;
-
-
-	while(nbytes > 0) {
-		size_t current_len = nbytes > bufsize ? bufsize : nbytes;
-
-		copy_from_user(data, src, current_len);
-
-		sg_set_buf(&sg, data, current_len);
-
-		/* Always hash before encryption and after decryption. Maybe
-		 * we should introduce a flag to switch... TBD later on.
-		 */
-		if (cop->op == COP_ENCRYPT) {
-			if (hdesc.tfm) {
-				ret = crypto_hash_update(&hdesc, &sg, current_len);
-				if (unlikely(ret)) {
-					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
-					goto out;
-				}
-			}
-			if (bdesc.tfm) {
-				ret = crypto_blkcipher_encrypt(&bdesc, &sg, &sg, current_len);
-
-				if (unlikely(ret)) {
-					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
-					goto out;
-				}
-				copy_to_user(dst, data, current_len);
-				dst += current_len;
-			}
-		} else {
-			if (bdesc.tfm) {
-				ret = crypto_blkcipher_decrypt(&bdesc, &sg, &sg, current_len);
-
-				if (unlikely(ret)) {
-					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
-					goto out;
-				}
-				copy_to_user(dst, data, current_len);
-				dst += current_len;
-
-			}
-
-			if (hdesc.tfm) {
-				ret = crypto_hash_update(&hdesc, &sg, current_len);
-				if (unlikely(ret)) {
-					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
-					goto out;
-				}
-			}
-		}
-
-		nbytes -= current_len;
-		src += current_len;
 	}
 	
 	if (hdesc.tfm) {
@@ -536,18 +550,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 			goto out;
 		}
 
-		copy_to_user(cop->mac, hash_output, crypto_hash_digestsize(ses_ptr->hash_tfm));
+		copy_to_user(copv->mac, hash_output, crypto_hash_digestsize(ses_ptr->hash_tfm));
 	}
-
-#if defined(CRYPTODEV_STATS)
-	if (enable_stats) {
-		/* this is safe - we check cop->op at the function entry */
-		ses_ptr->stat[cop->op] += cop->len;
-		if (ses_ptr->stat_max_size < cop->len)
-			ses_ptr->stat_max_size = cop->len;
-		ses_ptr->stat_count++;
-	}
-#endif
 
 out:
 	free_page((unsigned long)data);
@@ -557,6 +561,33 @@ out_unlock:
 
 	return ret;
 }
+
+/* This is the main crypto function - feed it with plaintext 
+   and get a ciphertext (or vice versa :-) */
+static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
+{
+	struct crypt_opv copv;
+	struct crypt_iovec iovec;
+	
+	iovec.src = cop->src;
+	iovec.len = cop->len;
+	iovec.op_flags = IOP_CIPHER|IOP_HASH;
+	
+	copv.op = cop->op;
+	copv.ses = cop->ses;
+	copv.flags = cop->flags;
+	copv.iovec = &iovec;
+	copv.iovec_cnt = 1;
+
+	copv.dst = cop->dst;
+	copv.mac = cop->mac;
+	copv.iv = cop->iv;
+	
+	return crypto_runv(fcr, &copv);
+	
+}
+
+
 
 /* ====== /dev/crypto ====== */
 
@@ -613,6 +644,7 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 	int __user *p = (void __user *)arg;
 	struct session_op sop;
 	struct crypt_op cop;
+	struct crypt_opv copv;
 	struct fcrypt *fcr = filp->private_data;
 	uint32_t ses;
 	int ret, fd;
@@ -646,6 +678,12 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 			copy_from_user(&cop, (void*)arg, sizeof(cop));
 			ret = crypto_run(fcr, &cop);
 			copy_to_user((void*)arg, &cop, sizeof(cop));
+			return ret;
+
+		case CIOCCRYPTV:
+			copy_from_user(&cop, (void*)arg, sizeof(copv));
+			ret = crypto_runv(fcr, &copv);
+			copy_to_user((void*)arg, &copv, sizeof(copv));
 			return ret;
 
 		default:

@@ -75,11 +75,35 @@ struct crypt_op {
 	uint32_t	ses;		/* from session_op->ses */
 	#define COP_DECRYPT	0
 	#define COP_ENCRYPT	1
-	uint32_t	op;		/* ie. COP_ENCRYPT */
+	uint16_t	op;		/* ie. COP_ENCRYPT */
 	uint32_t	flags;		/* unused */
 
 	size_t		len;
 	void		*src, *dst;
+	void		*mac;
+	void		*iv;
+};
+
+struct crypt_iovec {
+#define IOP_CIPHER 1
+#define IOP_HASH 2
+	uint16_t	op_flags;		/* ie. IOP_CIPHER|IOP_HASH */
+	void		*src;
+	size_t		len;
+};
+
+/* ioctl parameter to request a crypt/decrypt operation against a session  */
+struct crypt_opv {
+	uint32_t	ses;		/* from session_op->ses */
+	#define COP_DECRYPT	0
+	#define COP_ENCRYPT	1
+	uint16_t	op;		/* ie. COP_ENCRYPT */
+	uint32_t	flags;		/* unused */
+
+	struct crypt_iovec* iovec;
+	uint16_t iovec_cnt;
+	
+	void		*dst;
 	void		*mac;
 	void		*iv;
 };
@@ -99,6 +123,9 @@ struct crypt_op {
 /* ioctl()s for asym-crypto. Not yet supported. */
 #define CIOCKEY         _IOWR('c', 105, void *)
 #define CIOCASYMFEAT    _IOR('c', 106, uint32_t)
+
+/* request encryption/decryptions of a given buffer vector */
+#define CIOCCRYPTV       _IOWR('c', 107, struct crypt_opv)
 
 #endif /* _CRYPTODEV_H */
 
