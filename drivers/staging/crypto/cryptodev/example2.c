@@ -38,6 +38,7 @@ test_crypto(int cfd)
 	uint8_t mac[HASH_MAX_LEN];
 	uint8_t oldmac[HASH_MAX_LEN];
 	uint8_t def_out[] = "\x75\x0c\x78\x3e\x6a\xb0\xb5\x03\xea\xa8\x6e\x31\x0a\x5d\xb7\x38";
+	uint8_t def_out_hash[] = "\x8f\x82\x03\x94\xf9\x53\x35\x18\x20\x45\xda\x24\xf3\x4d\xe5\x2b\xf8\xbc\x34\x32";
 	int i;
 
 	memset(&sess, 0, sizeof(sess));
@@ -46,17 +47,14 @@ test_crypto(int cfd)
 	/* Use the garbage that is on the stack :-) */
 	/* memset(&data, 0, sizeof(data)); */
 
-	/* Get crypto session for AES128 */
+	memset(mac, 0, sizeof(mac));
+
 	sess.cipher = 0;
-	sess.mac = CRYPTO_SHA1_HMAC;
-	sess.mackeylen = 4;
-	sess.mackey = (uint8_t*)"Jefe";
+	sess.mac = CRYPTO_SHA1;
 	if (ioctl(cfd, CIOCGSESSION, &sess)) {
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
-
-	memset(mac, 0, sizeof(mac));
 
 	cryp.ses = sess.ses;
 	cryp.len = sizeof("what do ya want for nothing?")-1;
@@ -68,7 +66,39 @@ test_crypto(int cfd)
 		return 1;
 	}
 
-	if (memcmp(mac, def_out, sizeof(mac))!=0) {
+	if (memcmp(mac, def_out_hash, 20)!=0) {
+		printf("mac: ");
+		for (i=0;i<SHA1_HASH_LEN;i++) {
+			printf("%.2x", (uint8_t)mac[i]);
+		}
+		puts("\n");
+		fprintf(stderr, "HASH test 1: failed\n");
+	} else {
+		fprintf(stderr, "HASH test 1: passed\n");
+	}
+
+	memset(mac, 0, sizeof(mac));
+
+	sess.cipher = 0;
+	sess.mackey = (uint8_t*)"Jefe";
+	sess.mackeylen = 4;
+	sess.mac = CRYPTO_MD5_HMAC;
+	if (ioctl(cfd, CIOCGSESSION, &sess)) {
+		perror("ioctl(CIOCGSESSION)");
+		return 1;
+	}
+
+	cryp.ses = sess.ses;
+	cryp.len = sizeof("what do ya want for nothing?")-1;
+	cryp.src = "what do ya want for nothing?";
+	cryp.mac = mac;
+	cryp.op = COP_ENCRYPT;
+	if (ioctl(cfd, CIOCCRYPT, &cryp)) {
+		perror("ioctl(CIOCCRYPT)");
+		return 1;
+	}
+
+	if (memcmp(mac, def_out, 16)!=0) {
 		printf("mac: ");
 		for (i=0;i<SHA1_HASH_LEN;i++) {
 			printf("%.2x", (uint8_t)mac[i]);
@@ -122,7 +152,7 @@ return 0;
 	} else
 		printf("Crypt Test: passed\n");
 
-	if (memcmp(mac, oldmac, sizeof(mac)) != 0) {
+	if (memcmp(mac, oldmac, 20) != 0) {
 		fprintf(stderr,
 			"FAIL: Hash in decrypted data different than in encrypted.\n");
 		return 1;
