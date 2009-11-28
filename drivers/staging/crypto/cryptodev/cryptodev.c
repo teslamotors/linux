@@ -465,7 +465,7 @@ static int crypto_runv(struct fcrypt *fcr, struct crypt_opv *copv)
 	for (i=0;i<copv->iovec_cnt;i++) {
 		nbytes = copv->iovec[i].len;
 
-		if (unlikely(bdesc.tfm && (nbytes % blocksize))) {
+		if (unlikely(bdesc.tfm && (copv->iovec[i].op_flags & IOP_CIPHER) && (nbytes % blocksize))) {
 			dprintk(1, KERN_ERR,
 				"data size (%zu) isn't a multiple of block size (%u)\n",
 				nbytes, crypto_blkcipher_blocksize(ses_ptr->tfm));

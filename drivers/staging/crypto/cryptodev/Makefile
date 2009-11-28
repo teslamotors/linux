@@ -8,7 +8,7 @@ build:
 install:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules_install
 	@echo "Installing cryptodev.h in /usr/include/crypto ..."
-	@install -D cryptodev.h /usr/include/crypto
+	@install -D cryptodev.h /usr/include/crypto/cryptodev.h
 
 clean:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` clean
