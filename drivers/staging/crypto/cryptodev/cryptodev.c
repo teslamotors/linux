@@ -33,7 +33,7 @@
 
 MODULE_AUTHOR("Michal Ludvig <mludvig@logix.net.nz>");
 MODULE_DESCRIPTION("CryptoDev driver");
-MODULE_LICENSE("Dual BSD/GPL");
+MODULE_LICENSE("GPL");
 
 /* ====== Compile-time config ====== */
 
