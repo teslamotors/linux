@@ -37,8 +37,8 @@ test_crypto(int cfd)
 	struct crypt_op cryp;
 	uint8_t mac[HASH_MAX_LEN];
 	uint8_t oldmac[HASH_MAX_LEN];
-	uint8_t def_out[] = "\x75\x0c\x78\x3e\x6a\xb0\xb5\x03\xea\xa8\x6e\x31\x0a\x5d\xb7\x38";
-	uint8_t def_out_hash[] = "\x8f\x82\x03\x94\xf9\x53\x35\x18\x20\x45\xda\x24\xf3\x4d\xe5\x2b\xf8\xbc\x34\x32";
+	uint8_t md5_hmac_out[] = "\x75\x0c\x78\x3e\x6a\xb0\xb5\x03\xea\xa8\x6e\x31\x0a\x5d\xb7\x38";
+	uint8_t sha1_out[] = "\x8f\x82\x03\x94\xf9\x53\x35\x18\x20\x45\xda\x24\xf3\x4d\xe5\x2b\xf8\xbc\x34\x32";
 	int i;
 
 	memset(&sess, 0, sizeof(sess));
@@ -47,6 +47,7 @@ test_crypto(int cfd)
 	/* Use the garbage that is on the stack :-) */
 	/* memset(&data, 0, sizeof(data)); */
 
+	/* SHA1 plain test */
 	memset(mac, 0, sizeof(mac));
 
 	sess.cipher = 0;
@@ -66,7 +67,7 @@ test_crypto(int cfd)
 		return 1;
 	}
 
-	if (memcmp(mac, def_out_hash, 20)!=0) {
+	if (memcmp(mac, sha1_out, 20)!=0) {
 		printf("mac: ");
 		for (i=0;i<SHA1_HASH_LEN;i++) {
 			printf("%.2x", (uint8_t)mac[i]);
@@ -77,6 +78,7 @@ test_crypto(int cfd)
 		fprintf(stderr, "HASH test 1: passed\n");
 	}
 
+	/* MD5-HMAC test */
 	memset(mac, 0, sizeof(mac));
 
 	sess.cipher = 0;
@@ -98,7 +100,7 @@ test_crypto(int cfd)
 		return 1;
 	}
 
-	if (memcmp(mac, def_out, 16)!=0) {
+	if (memcmp(mac, md5_hmac_out, 16)!=0) {
 		printf("mac: ");
 		for (i=0;i<SHA1_HASH_LEN;i++) {
 			printf("%.2x", (uint8_t)mac[i]);
@@ -109,6 +111,7 @@ test_crypto(int cfd)
 		fprintf(stderr, "HMAC test 1: passed\n");
 	}
 
+	/* Hash and encryption in one step test */
 	sess.cipher = CRYPTO_AES_CBC;
 	sess.mac = CRYPTO_SHA1_HMAC;
 	sess.keylen = KEY_SIZE;
