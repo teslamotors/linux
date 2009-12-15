@@ -824,7 +824,14 @@ static int arp_process(struct sock *sk, struct sk_buff *skb)
 		   agents are active. Taking the first reply prevents
 		   arp trashing and chooses the fastest router.
 		 */
-		override = time_after(jiffies,
+		/*
+		 * If n->updated is after jiffies, then the clock has wrapped and
+		 * we are *well* past the locktime, so set the override flag
+		 */
+		if (time_after(n->updated, jiffies))
+			override = 1;
+		else
+			override = time_after(jiffies,
 				      n->updated +
 				      NEIGH_VAR(n->parms, LOCKTIME)) ||
 			   is_garp;
