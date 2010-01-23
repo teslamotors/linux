@@ -1,8 +1,9 @@
 /*
  * Demo on how to use OpenBSD /dev/crypto device.
  *
- * Author: Michal Ludvig <michal@logix.cz>
- *         http://www.logix.cz/michal
+ * Author: Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ *
+ * Based originally on code by Michal Ludvig <michal@logix.cz>
  *
  * Note: by default OpenBSD doesn't allow using
  *       /dev/crypto if there is no hardware accelerator
