@@ -1,0 +1,4 @@
+This is a /dev/crypto device driver, equivalent to those in OpenBSD or
+FreeBSD. The main idea is to access of existing ciphers in kernel space 
+from userspace, thus enabling re-use of a hardware implementation of a
+cipher.
