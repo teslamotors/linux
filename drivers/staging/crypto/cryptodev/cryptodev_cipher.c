@@ -62,7 +62,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user 
 	}
 
 	if (unlikely(keylen > CRYPTO_CIPHER_MAX_KEY_LEN)) {
-		printk(KERN_DEBUG"Setting key failed for %s-%zu.\n",
+		dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
 			alg_name, keylen*8);
 		return -EINVAL;
 	}
@@ -74,7 +74,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user 
 		
 		out->u.blk.s = crypto_alloc_blkcipher(alg_name, 0, CRYPTO_ALG_ASYNC);
 		if (IS_ERR(out->u.blk.s)) {
-			printk(KERN_DEBUG"%s: Failed to load cipher %s\n", __func__,
+			dprintk(1,KERN_DEBUG,"%s: Failed to load cipher %s\n", __func__,
 				   alg_name);
 			return -EINVAL;
 		}
@@ -85,7 +85,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user 
 			/* Was correct key length supplied? */
 			if ((keylen < alg->min_keysize) ||
 				(keylen > alg->max_keysize)) {
-				printk(KERN_DEBUG"Wrong keylen '%zu' for algorithm '%s'. Use %u to %u.\n",
+				dprintk(1,KERN_DEBUG,"Wrong keylen '%zu' for algorithm '%s'. Use %u to %u.\n",
 					   keylen, alg_name, alg->min_keysize, 
 					   alg->max_keysize);
 				ret = -EINVAL;
@@ -95,7 +95,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user 
 
 		ret = crypto_blkcipher_setkey(out->u.blk.s, keyp, keylen);
 		if (ret) {
-			printk(KERN_DEBUG"Setting key failed for %s-%zu.\n",
+			dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
 				alg_name, keylen*8);
 			ret = -EINVAL;
 			goto error;
@@ -112,7 +112,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user 
 		
 		out->u.ablk.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
 		if (IS_ERR(out->u.ablk.s)) {
-			printk(KERN_DEBUG"%s: Failed to load cipher %s\n", __func__,
+			dprintk(1,KERN_DEBUG,"%s: Failed to load cipher %s\n", __func__,
 				   alg_name);
 			return -EINVAL;
 		}
@@ -123,7 +123,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user 
 			/* Was correct key length supplied? */
 			if ((keylen < alg->min_keysize) ||
 				(keylen > alg->max_keysize)) {
-				printk(KERN_DEBUG"Wrong keylen '%zu' for algorithm '%s'. Use %u to %u.\n",
+				dprintk(1,KERN_DEBUG,"Wrong keylen '%zu' for algorithm '%s'. Use %u to %u.\n",
 					   keylen, alg_name, alg->min_keysize, 
 					   alg->max_keysize);
 				ret = -EINVAL;
@@ -133,7 +133,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user 
 
 		ret = crypto_ablkcipher_setkey(out->u.ablk.s, keyp, keylen);
 		if (ret) {
-			printk(KERN_DEBUG"Setting key failed for %s-%zu.\n",
+			dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
 				alg_name, keylen*8);
 			ret = -EINVAL;
 			goto error;
@@ -153,7 +153,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user 
 
 		out->u.ablk.async_request = ablkcipher_request_alloc(out->u.ablk.s, GFP_KERNEL);
 		if (!out->u.ablk.async_request) {
-			printk(KERN_ERR"error allocating async crypto request\n");
+			dprintk(1,KERN_ERR,"error allocating async crypto request\n");
 			ret = -ENOMEM;
 			goto error;
 		}
@@ -210,9 +210,15 @@ static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
 			&cr->completion);
 		/* no error from wait_for_completion */
 		if (ret) {
-			printk(KERN_ERR"error waiting for async request completion: %zd\n", ret);
+			dprintk(0,KERN_ERR,"error waiting for async request completion: %zd\n", ret);
 			return ret;
 		}
+
+		if (cr->err) {
+			dprintk(0,KERN_ERR,"error from async request: %zd \n", ret);
+                        return cr->err; 
+		}
+
 		break;
 	default:
 		return ret;
@@ -278,7 +284,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 	}
 
 	if (mackeylen > CRYPTO_HMAC_MAX_KEY_LEN) {
-		printk(KERN_DEBUG"Setting hmac key failed for %s-%zu.\n",
+		dprintk(1,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
 			alg_name, mackeylen*8);
 		return -EINVAL;
 	}
@@ -287,7 +293,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 	if (hdata->type == 1) {
 		hdata->u.sync.s = crypto_alloc_hash(alg_name, 0, CRYPTO_ALG_ASYNC);
 		if (IS_ERR(hdata->u.sync.s)) {
-			printk(KERN_DEBUG"%s: Failed to load transform for %s\n", __func__,
+			dprintk(1,KERN_DEBUG,"%s: Failed to load transform for %s\n", __func__,
 					   alg_name);
 			return -EINVAL;
 		}
@@ -297,7 +303,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 
 			ret = crypto_hash_setkey(hdata->u.sync.s, hkeyp, mackeylen);
 			if (ret) {
-				printk(KERN_DEBUG"Setting hmac key failed for %s-%zu.\n",
+				dprintk(1,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
 					alg_name, mackeylen*8);
 				ret = -EINVAL;
 				goto error;
@@ -312,7 +318,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 	} else {
 		hdata->u.async.s = crypto_alloc_ahash(alg_name, 0, 0);
 		if (IS_ERR(hdata->u.async.s)) {
-			printk(KERN_DEBUG"%s: Failed to load transform for %s\n", __func__,
+			dprintk(1,KERN_DEBUG,"%s: Failed to load transform for %s\n", __func__,
 					   alg_name);
 			return -EINVAL;
 		}
@@ -322,7 +328,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 
 			ret = crypto_ahash_setkey(hdata->u.async.s, hkeyp, mackeylen);
 			if (ret) {
-				printk(KERN_DEBUG"Setting hmac key failed for %s-%zu.\n",
+				dprintk(1,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
 					alg_name, mackeylen*8);
 				ret = -EINVAL;
 				goto error;
@@ -342,7 +348,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 
 		hdata->u.async.async_request = ahash_request_alloc(hdata->u.async.s, GFP_KERNEL);
 		if (!hdata->u.async.async_request) {
-			printk(KERN_ERR"error allocating async crypto request\n");
+			dprintk(0,KERN_ERR,"error allocating async crypto request\n");
 			ret = -ENOMEM;
 			goto error;
 		}
@@ -378,14 +384,14 @@ int ret;
 	if (hdata->type == 1) {
 		ret = crypto_hash_init(&hdata->u.sync.desc);
 		if (unlikely(ret)) {
-			printk(KERN_ERR
+			dprintk(0,KERN_ERR,
 				"error in crypto_hash_init()\n");
 			return ret;
 		}
 	} else {
 		ret = crypto_ahash_init(hdata->u.async.async_request);
 		if (unlikely(ret)) {
-			printk(KERN_ERR
+			dprintk(0,KERN_ERR,
 				"error in crypto_hash_init()\n");
 			return ret;
 		}

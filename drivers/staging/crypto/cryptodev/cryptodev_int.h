@@ -1,5 +1,28 @@
 /* cipher stuff */
 
+#ifndef CRYPTODEV_INT_H
+# define CRYPTODEV_INT_H
+
+#include <linux/init.h>
+#include <linux/sched.h>
+#include <linux/fs.h>
+#include <linux/file.h>
+#include <linux/fdtable.h>
+#include <linux/miscdevice.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
+
+#define PFX "cryptodev: "
+#define dprintk(level,severity,format,a...)			\
+	do { 							\
+		if (level <= cryptodev_verbosity)				\
+			printk(severity PFX "%s[%u]: " format,	\
+			       current->comm, current->pid,	\
+			       ##a);				\
+	} while (0)
+
+extern int cryptodev_verbosity;
+
 struct cipher_data
 {
 	int type; /* 1 synchronous, 2 async, 0 uninitialized */
@@ -50,3 +73,4 @@ int cryptodev_hash_reset( struct hash_data* hdata);
 void cryptodev_hash_deinit(struct hash_data* hdata);
 int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, __user void* mackey, size_t mackeylen);
 
+#endif /* CRYPTODEV_INT_H */

@@ -31,14 +31,6 @@
  *
  */
 
-#include <linux/module.h>
-#include <linux/moduleparam.h>
-#include <linux/init.h>
-#include <linux/sched.h>
-#include <linux/fs.h>
-#include <linux/file.h>
-#include <linux/fdtable.h>
-#include <linux/miscdevice.h>
 #include <linux/crypto.h>
 #include <linux/mm.h>
 #include <linux/highmem.h>
@@ -59,26 +51,15 @@ MODULE_LICENSE("GPL");
 
 /* ====== Module parameters ====== */
 
-static int verbosity = 0;
-module_param(verbosity, int, 0644);
-MODULE_PARM_DESC(verbosity, "0: normal, 1: verbose, 2: debug");
+int cryptodev_verbosity = 0;
+module_param(cryptodev_verbosity, int, 0644);
+MODULE_PARM_DESC(cryptodev_verbosity, "0: normal, 1: verbose, 2: debug");
 
 #ifdef CRYPTODEV_STATS
 static int enable_stats = 0;
 module_param(enable_stats, int, 0644);
 MODULE_PARM_DESC(enable_stats, "collect statictics about cryptodev usage");
 #endif
-
-/* ====== Debug helpers ====== */
-
-#define PFX "cryptodev: "
-#define dprintk(level,severity,format,a...)			\
-	do { 							\
-		if (level <= verbosity)				\
-			printk(severity PFX "%s[%u]: " format,	\
-			       current->comm, current->pid,	\
-			       ##a);				\
-	} while (0)
 
 /* ====== CryptoAPI ====== */
 
