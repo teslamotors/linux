@@ -187,12 +187,16 @@ void cryptodev_cipher_deinit(struct cipher_data* cdata)
 	cdata->type = 0;
 }
 
-void cryptodev_cipher_set_iv(struct cipher_data* cdata, void* iv, size_t iv_size)
+void cryptodev_cipher_set_iv(struct cipher_data* cdata, __user void* iv, size_t iv_size)
 {
-	if (cdata->type == 1)
-		crypto_blkcipher_set_iv(cdata->u.blk.s, iv, iv_size);
-	else
-		memcpy(cdata->u.ablk.iv, iv, min(iv_size,sizeof(*cdata->u.ablk.iv)));
+	if (cdata->type == 1) {
+		uint8_t _iv[EALG_MAX_BLOCK_LEN];
+		
+		copy_from_user(_iv, iv, min(iv_size,sizeof(_iv)));
+		crypto_blkcipher_set_iv(cdata->u.blk.s, _iv, iv_size);
+	} else {
+		copy_from_user(cdata->u.ablk.iv, iv, min(iv_size,sizeof(cdata->u.ablk.iv)));
+	}
 }
 
 static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)

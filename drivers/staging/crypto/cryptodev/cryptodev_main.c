@@ -357,7 +357,7 @@ crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 static int
 crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 {
-	char *data, ivp[EALG_MAX_BLOCK_LEN];
+	char *data;
 	char __user *src, __user *dst;
 	struct scatterlist sg;
 	struct csession *ses_ptr;
@@ -411,8 +411,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		ivsize = ses_ptr->cdata.ivsize;
 
 		if (cop->iv) {
-			copy_from_user(ivp, cop->iv, ivsize);
-			cryptodev_cipher_set_iv(&ses_ptr->cdata, ivp, ivsize);
+			cryptodev_cipher_set_iv(&ses_ptr->cdata, cop->iv, ivsize);
 		}
 	}
 
