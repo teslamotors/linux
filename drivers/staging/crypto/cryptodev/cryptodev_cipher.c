@@ -48,7 +48,7 @@ static void cryptodev_complete(struct crypto_async_request *req, int err)
 	complete(&res->completion);
 }
 
-int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user uint8_t * key, size_t keylen)
+int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t __user * key, size_t keylen)
 {
 	uint8_t keyp[CRYPTO_CIPHER_MAX_KEY_LEN];
 	int ret;
@@ -187,7 +187,7 @@ void cryptodev_cipher_deinit(struct cipher_data* cdata)
 	cdata->type = 0;
 }
 
-void cryptodev_cipher_set_iv(struct cipher_data* cdata, __user void* iv, size_t iv_size)
+void cryptodev_cipher_set_iv(struct cipher_data* cdata, void __user* iv, size_t iv_size)
 {
 	if (cdata->type == 1) {
 		uint8_t _iv[EALG_MAX_BLOCK_LEN];
@@ -272,7 +272,7 @@ uint32_t type = 0, mask = 0;
         return crypto_has_alg(alg_name, type, mask);
 }
 
-int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, __user void* mackey, size_t mackeylen)
+int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, void __user* mackey, size_t mackeylen)
 {
 int ret;
 uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
