@@ -54,10 +54,18 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCCRYPT)");
 		return 1;
 	}
+
+	if (ioctl(cfd, CIOCGSESSION, &sess)) {
+		perror("ioctl(CIOCGSESSION)");
+		return 1;
+	}
 	
 	/* Decrypt data.encrypted to data.decrypted */
+	cryp.ses = sess.ses;
+	cryp.len = sizeof(plaintext);
 	cryp.src = ciphertext;
 	cryp.dst = ciphertext;
+	cryp.iv = iv;
 	cryp.op = COP_DECRYPT;
 	if (ioctl(cfd, CIOCCRYPT, &cryp)) {
 		perror("ioctl(CIOCCRYPT)");
