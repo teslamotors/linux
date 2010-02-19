@@ -1,3 +1,5 @@
+/* cipher stuff */
+
 struct cipher_data
 {
 	int type; /* 1 synchronous, 2 async, 0 uninitialized */
@@ -22,3 +24,29 @@ void cryptodev_cipher_deinit(struct cipher_data* cdata);
 ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
 ssize_t cryptodev_cipher_encrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
 void cryptodev_cipher_set_iv(struct cipher_data* cdata, void* iv, size_t iv_size);
+
+/* hash stuff */
+struct hash_data
+{
+	int type; /* 1 synchronous, 2 async, 0 uninitialized */
+	int digestsize;
+	union {
+		struct {
+			struct crypto_hash* s;
+			struct hash_desc desc;
+		} sync;
+		struct {
+			struct crypto_ahash *s;
+			struct cryptodev_result *async_result;
+			struct ahash_request *async_request;
+		} async;
+	} u;
+	
+};
+
+int cryptodev_hash_final( struct hash_data* hdata, void* output);
+ssize_t cryptodev_hash_update( struct hash_data* hdata, struct scatterlist *sg, size_t len);
+int cryptodev_hash_reset( struct hash_data* hdata);
+void cryptodev_hash_deinit(struct hash_data* hdata);
+int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, __user void* mackey, size_t mackeylen);
+

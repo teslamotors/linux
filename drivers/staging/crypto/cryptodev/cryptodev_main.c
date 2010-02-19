@@ -94,7 +94,7 @@ struct csession {
 	struct list_head entry;
 	struct semaphore sem;
 	struct cipher_data cdata;
-	struct crypto_hash *hash_tfm;
+	struct hash_data hdata;
 	uint32_t sid;
 #ifdef CRYPTODEV_STATS
 #if ! ((COP_ENCRYPT < 2) && (COP_DECRYPT < 2))
@@ -115,7 +115,6 @@ static int
 crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 {
 	struct csession	*ses_new, *ses_ptr;
-	struct crypto_hash *hash_tfm=NULL;
 	int ret = 0;
 	const char *alg_name=NULL;
 	const char *hash_name=NULL;
@@ -222,39 +221,16 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	}
 	
 	if (hash_name) {
-		hash_tfm = crypto_alloc_hash(hash_name, 0, CRYPTO_ALG_ASYNC);
-		if (IS_ERR(hash_tfm)) {
+		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode, sop->mackey, sop->mackeylen);
+		if (ret != 0) {
 			dprintk(1,KERN_DEBUG,"%s: Failed to load transform for %s\n", __func__,
 				   hash_name);
 			return -EINVAL;
 		}
-
-		/* Copy the key from user and set to TFM. */
-		if (hmac_mode != 0) {
-			uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
-
-			if (sop->mackeylen > CRYPTO_HMAC_MAX_KEY_LEN) {
-				dprintk(0,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
-					hash_name, sop->mackeylen*8);
-				ret = -EINVAL;
-				goto error;
-			}
-
-			copy_from_user(hkeyp, sop->mackey, sop->mackeylen);
-			ret = crypto_hash_setkey(hash_tfm, hkeyp, sop->mackeylen);
-			if (ret) {
-				dprintk(0,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
-					hash_name, sop->mackeylen*8);
-				ret = -EINVAL;
-				goto error;
-			}
-		}
-
 	}
 
 	/* put the new session to the list */
 	get_random_bytes(&ses_new->sid, sizeof(ses_new->sid));
-	ses_new->hash_tfm = hash_tfm;
 	init_MUTEX(&ses_new->sem);
 
 	down(&fcr->sem);
@@ -279,8 +255,7 @@ restart:
 
 error:
 	cryptodev_cipher_deinit( &ses_new->cdata);
-	if (hash_tfm)
-		crypto_free_hash(hash_tfm);
+	cryptodev_hash_deinit( &ses_new->hdata);
 
 	return ret;
 
@@ -308,10 +283,7 @@ crypto_destroy_session(struct csession *ses_ptr)
 			ses_ptr->stat_count);
 #endif
 	cryptodev_cipher_deinit(&ses_ptr->cdata);
-	if (ses_ptr->hash_tfm) {
-		crypto_free_hash(ses_ptr->hash_tfm);
-		ses_ptr->hash_tfm = NULL;
-	}
+	cryptodev_hash_deinit(&ses_ptr->hdata);
 	up(&ses_ptr->sem);
 	kfree(ses_ptr);
 }
@@ -393,10 +365,6 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	size_t nbytes, bufsize;
 	int ret = 0;
 	uint8_t hash_output[HASH_MAX_LEN];
-	struct hash_desc hdesc = {
-		.flags = CRYPTO_TFM_REQ_MAY_SLEEP,
-	};
-
 
 	if (unlikely(cop->op != COP_ENCRYPT && cop->op != COP_DECRYPT)) {
 		dprintk(1, KERN_DEBUG, "invalid operation op=%u\n", cop->op);
@@ -420,12 +388,11 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 
 	nbytes = cop->len;
 	
-	hdesc.tfm = ses_ptr->hash_tfm;
-	if (hdesc.tfm) {
-		ret = crypto_hash_init(&hdesc);
+	if (ses_ptr->hdata.type != 0) {
+		ret = cryptodev_hash_reset(&ses_ptr->hdata);
 		if (unlikely(ret)) {
 			dprintk(1, KERN_ERR,
-				"error in crypto_hash_init()\n");
+				"error in cryptodev_hash_reset()\n");
 			goto out_unlock;
 		}
 	}
@@ -464,8 +431,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		 * we should introduce a flag to switch... TBD later on.
 		 */
 		if (cop->op == COP_ENCRYPT) {
-			if (hdesc.tfm) {
-				ret = crypto_hash_update(&hdesc, &sg, current_len);
+			if (ses_ptr->hdata.type != 0) {
+				ret = cryptodev_hash_update(&ses_ptr->hdata, &sg, current_len);
 				if (unlikely(ret)) {
 					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
 					goto out;
@@ -494,8 +461,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 
 			}
 
-			if (hdesc.tfm) {
-				ret = crypto_hash_update(&hdesc, &sg, current_len);
+			if (ses_ptr->hdata.type != 0) {
+				ret = cryptodev_hash_update(&ses_ptr->hdata, &sg, current_len);
 				if (unlikely(ret)) {
 					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
 					goto out;
@@ -507,14 +474,14 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		src += current_len;
 	}
 	
-	if (hdesc.tfm) {
-		ret = crypto_hash_final(&hdesc, hash_output);
+	if (ses_ptr->hdata.type != 0) {
+		ret = cryptodev_hash_final(&ses_ptr->hdata, hash_output);
 		if (unlikely(ret)) {
 			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
 			goto out;
 		}
 
-		copy_to_user(cop->mac, hash_output, crypto_hash_digestsize(ses_ptr->hash_tfm));
+		copy_to_user(cop->mac, hash_output, ses_ptr->hdata.digestsize);
 	}
 
 #if defined(CRYPTODEV_STATS)
