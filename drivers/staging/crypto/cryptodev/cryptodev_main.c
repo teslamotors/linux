@@ -47,8 +47,9 @@
 #include <asm/uaccess.h>
 #include <asm/ioctl.h>
 #include <linux/scatterlist.h>
+#include "cryptodev_int.h"
 
-MODULE_AUTHOR("Michal Ludvig <mludvig@logix.net.nz>");
+MODULE_AUTHOR("Nikos Mavrogiannopoulos <nmav@gnutls.org>");
 MODULE_DESCRIPTION("CryptoDev driver");
 MODULE_LICENSE("GPL");
 
@@ -92,7 +93,7 @@ MODULE_PARM_DESC(enable_stats, "collect statictics about cryptodev usage");
 struct csession {
 	struct list_head entry;
 	struct semaphore sem;
-	struct crypto_blkcipher *tfm;
+	struct cipher_data cdata;
 	struct crypto_hash *hash_tfm;
 	uint32_t sid;
 #ifdef CRYPTODEV_STATS
@@ -114,12 +115,10 @@ static int
 crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 {
 	struct csession	*ses_new, *ses_ptr;
-	struct crypto_blkcipher *blk_tfm=NULL;
 	struct crypto_hash *hash_tfm=NULL;
 	int ret = 0;
 	const char *alg_name=NULL;
 	const char *hash_name=NULL;
-	struct blkcipher_alg* blkalg;
 	int hmac_mode = 1;
 
 	/* Does the request make sense? */
@@ -204,47 +203,22 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			return -EINVAL;
 	}
 
+	/* Create a session and put it to the list. */
+	ses_new = kmalloc(sizeof(*ses_new), GFP_KERNEL);
+	if(!ses_new) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	memset(ses_new, 0, sizeof(*ses_new));
+
 	/* Set-up crypto transform. */
 	if (alg_name) {
-		uint8_t keyp[CRYPTO_CIPHER_MAX_KEY_LEN];
-
-		blk_tfm = crypto_alloc_blkcipher(alg_name, 0, CRYPTO_ALG_ASYNC);
-		if (IS_ERR(blk_tfm)) {
-			dprintk(1,KERN_DEBUG,"%s: Failed to load transform for %s\n", __func__,
-				   alg_name);
-			return -EINVAL;
+		
+		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, sop->key, sop->keylen);
+		if (ret < 0) {
+			return ret;
 		}
-
-		blkalg = crypto_blkcipher_alg(blk_tfm);
-		if (blkalg != NULL) {
-			/* Was correct key length supplied? */
-			if ((sop->keylen < blkalg->min_keysize) ||
-				(sop->keylen > blkalg->max_keysize)) {
-				dprintk(0,KERN_DEBUG,"Wrong keylen '%zu' for algorithm '%s'. Use %u to %u.\n",
-					   sop->keylen, alg_name, blkalg->min_keysize, 
-					   blkalg->max_keysize);
-				ret = -EINVAL;
-				goto error;
-			}
-		}
-
-		if (sop->keylen > CRYPTO_CIPHER_MAX_KEY_LEN) {
-			dprintk(0,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
-				alg_name, sop->keylen*8);
-			ret = -EINVAL;
-			goto error;
-		}
-
-		/* Copy the key from user and set to TFM. */
-		copy_from_user(keyp, sop->key, sop->keylen);
-		ret = crypto_blkcipher_setkey(blk_tfm, keyp, sop->keylen);
-		if (ret) {
-			dprintk(0,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
-				alg_name, sop->keylen*8);
-			ret = -EINVAL;
-			goto error;
-		}
-
 	}
 	
 	if (hash_name) {
@@ -278,16 +252,8 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 
 	}
 
-	/* Create a session and put it to the list. */
-	ses_new = kmalloc(sizeof(*ses_new), GFP_KERNEL);
-	if(!ses_new) {
-		ret = -ENOMEM;
-		goto error;
-	}
-
-	memset(ses_new, 0, sizeof(*ses_new));
+	/* put the new session to the list */
 	get_random_bytes(&ses_new->sid, sizeof(ses_new->sid));
-	ses_new->tfm = blk_tfm;
 	ses_new->hash_tfm = hash_tfm;
 	init_MUTEX(&ses_new->sem);
 
@@ -312,11 +278,10 @@ restart:
 	return 0;
 
 error:
-	if (blk_tfm)
-		crypto_free_blkcipher(blk_tfm);
+	cryptodev_cipher_deinit( &ses_new->cdata);
 	if (hash_tfm)
 		crypto_free_hash(hash_tfm);
-	
+
 	return ret;
 
 }
@@ -342,10 +307,7 @@ crypto_destroy_session(struct csession *ses_ptr)
 				   ses_ptr->stat_count) : 0,
 			ses_ptr->stat_count);
 #endif
-	if (ses_ptr->tfm) {
-		crypto_free_blkcipher(ses_ptr->tfm);
-		ses_ptr->tfm = NULL;
-	}
+	cryptodev_cipher_deinit(&ses_ptr->cdata);
 	if (ses_ptr->hash_tfm) {
 		crypto_free_hash(ses_ptr->hash_tfm);
 		ses_ptr->hash_tfm = NULL;
@@ -431,9 +393,6 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	size_t nbytes, bufsize;
 	int ret = 0;
 	uint8_t hash_output[HASH_MAX_LEN];
-	struct blkcipher_desc bdesc = {
-        .flags = CRYPTO_TFM_REQ_MAY_SLEEP,
-	};
 	struct hash_desc hdesc = {
 		.flags = CRYPTO_TFM_REQ_MAY_SLEEP,
 	};
@@ -460,7 +419,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	bufsize = PAGE_SIZE < nbytes ? PAGE_SIZE : nbytes;
 
 	nbytes = cop->len;
-	bdesc.tfm = ses_ptr->tfm;
+	
 	hdesc.tfm = ses_ptr->hash_tfm;
 	if (hdesc.tfm) {
 		ret = crypto_hash_init(&hdesc);
@@ -471,8 +430,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		}
 	}
 
-	if (bdesc.tfm) {
-		int blocksize = crypto_blkcipher_blocksize(bdesc.tfm);
+	if (ses_ptr->cdata.type != 0) {
+		int blocksize = ses_ptr->cdata.blocksize;
 
 		if (unlikely(nbytes % blocksize)) {
 			dprintk(1, KERN_ERR,
@@ -482,11 +441,11 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 			goto out_unlock;
 		}
 
-		ivsize = crypto_blkcipher_ivsize(bdesc.tfm);
+		ivsize = ses_ptr->cdata.ivsize;
 
 		if (cop->iv) {
 			copy_from_user(ivp, cop->iv, ivsize);
-			crypto_blkcipher_set_iv(bdesc.tfm, ivp, ivsize);
+			cryptodev_cipher_set_iv(&ses_ptr->cdata, ivp, ivsize);
 		}
 	}
 
@@ -512,8 +471,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 					goto out;
 				}
 			}
-			if (bdesc.tfm) {
-				ret = crypto_blkcipher_encrypt(&bdesc, &sg, &sg, current_len);
+			if (ses_ptr->cdata.type != 0) {
+				ret = cryptodev_cipher_encrypt( &ses_ptr->cdata, &sg, &sg, current_len);
 
 				if (unlikely(ret)) {
 					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
@@ -523,8 +482,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 				dst += current_len;
 			}
 		} else {
-			if (bdesc.tfm) {
-				ret = crypto_blkcipher_decrypt(&bdesc, &sg, &sg, current_len);
+			if (ses_ptr->cdata.type != 0) {
+				ret = cryptodev_cipher_decrypt( &ses_ptr->cdata, &sg, &sg, current_len);
 
 				if (unlikely(ret)) {
 					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
