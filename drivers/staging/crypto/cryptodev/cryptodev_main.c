@@ -133,7 +133,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			alg_name = "cbc(des)";
 			break;
 		case CRYPTO_3DES_CBC:
-			alg_name = "cbc(3des_ede)";
+			alg_name = "cbc(des3_ede)";
 			break;
 		case CRYPTO_BLF_CBC:
 			alg_name = "cbc(blowfish)";
