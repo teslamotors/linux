@@ -1,15 +1,8 @@
 /*
- * Demo on how to use OpenBSD /dev/crypto device.
+ * Demo on how to use /dev/crypto device for ciphering.
  *
- * Author: Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ * Placed under public domain.
  *
- * Based originally on code by Michal Ludvig <michal@logix.cz>
- *
- * Note: by default OpenBSD doesn't allow using
- *       /dev/crypto if there is no hardware accelerator
- *       for a given algorithm. To change this you'll have to
- *       set cryptodevallowsoft=1 in 
- *       /usr/src/sys/crypto/cryptodev.c and rebuild your kernel.
  */
 #include <stdio.h>
 #include <string.h>
@@ -17,8 +10,7 @@
 #include <fcntl.h>
 
 #include <sys/ioctl.h>
-//#include <crypto/cryptodev.h>
-#include "cryptodev.h"
+#include <crypto/cryptodev.h>
 
 #define	DATA_SIZE	4096
 #define	BLOCK_SIZE	16
@@ -27,26 +19,25 @@
 static int
 test_crypto(int cfd)
 {
-	struct {
-		char	in[DATA_SIZE],
-			encrypted[DATA_SIZE],
-			decrypted[DATA_SIZE],
-			iv[BLOCK_SIZE],
-			key[KEY_SIZE];
-	} data;
+	char plaintext[DATA_SIZE];
+	char ciphertext[DATA_SIZE];
+	char iv[BLOCK_SIZE];
+	char key[KEY_SIZE];
+
 	struct session_op sess;
 	struct crypt_op cryp;
 
 	memset(&sess, 0, sizeof(sess));
 	memset(&cryp, 0, sizeof(cryp));
 
-	/* Use the garbage that is on the stack :-) */
-	/* memset(&data, 0, sizeof(data)); */
+	memset(&plaintext, 0x15,  sizeof(plaintext));
+	memset(&key, 0x33,  sizeof(key));
+	memset(&iv, 0x03,  sizeof(iv));
 
 	/* Get crypto session for AES128 */
 	sess.cipher = CRYPTO_AES_CBC;
 	sess.keylen = KEY_SIZE;
-	sess.key = data.key;
+	sess.key = key;
 	if (ioctl(cfd, CIOCGSESSION, &sess)) {
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
@@ -54,10 +45,10 @@ test_crypto(int cfd)
 
 	/* Encrypt data.in to data.encrypted */
 	cryp.ses = sess.ses;
-	cryp.len = sizeof(data.in);
-	cryp.src = data.in;
-	cryp.dst = data.encrypted;
-	cryp.iv = data.iv;
+	cryp.len = sizeof(plaintext);
+	cryp.src = plaintext;
+	cryp.dst = ciphertext;
+	cryp.iv = iv;
 	cryp.op = COP_ENCRYPT;
 	if (ioctl(cfd, CIOCCRYPT, &cryp)) {
 		perror("ioctl(CIOCCRYPT)");
@@ -65,8 +56,8 @@ test_crypto(int cfd)
 	}
 	
 	/* Decrypt data.encrypted to data.decrypted */
-	cryp.src = data.encrypted;
-	cryp.dst = data.decrypted;
+	cryp.src = ciphertext;
+	cryp.dst = ciphertext;
 	cryp.op = COP_DECRYPT;
 	if (ioctl(cfd, CIOCCRYPT, &cryp)) {
 		perror("ioctl(CIOCCRYPT)");
@@ -74,7 +65,7 @@ test_crypto(int cfd)
 	}
 
 	/* Verify the result */
-	if (memcmp(data.in, data.decrypted, sizeof(data.in)) != 0) {
+	if (memcmp(plaintext, ciphertext, sizeof(plaintext)) != 0) {
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
 		return 1;

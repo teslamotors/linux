@@ -1,15 +1,8 @@
 /*
- * Demo on how to use OpenBSD /dev/crypto device.
+ * Demo on how to use /dev/crypto device for HMAC.
  *
- * Author: Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ * Placed under public domain.
  *
- * Based originally on code by Michal Ludvig <michal@logix.cz>
- *
- * Note: by default OpenBSD doesn't allow using
- *       /dev/crypto if there is no hardware accelerator
- *       for a given algorithm. To change this you'll have to
- *       set cryptodevallowsoft=1 in 
- *       /usr/src/sys/crypto/cryptodev.c and rebuild your kernel.
  */
 #include <stdio.h>
 #include <string.h>
@@ -17,8 +10,7 @@
 #include <fcntl.h>
 
 #include <sys/ioctl.h>
-//#include <crypto/cryptodev.h>
-#include "cryptodev.h"
+#include <crypto/cryptodev.h>
 
 #define	DATA_SIZE	4096
 #define	BLOCK_SIZE	16
