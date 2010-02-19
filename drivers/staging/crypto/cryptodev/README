@@ -2,3 +2,8 @@ This is a /dev/crypto device driver, equivalent to those in OpenBSD or
 FreeBSD. The main idea is to access of existing ciphers in kernel space 
 from userspace, thus enabling re-use of a hardware implementation of a
 cipher.
+
+It was initially written for linux 2.6.8 by Michal Ludvig. Compatibility
+fixes for *BSD cryptodev as well as Was ported to 2.6.27 blkcipher API 
+by Nikos Mavrogiannopoulos. Initial blkcipher async API porting by
+Michael Weiser.
