@@ -147,8 +147,7 @@ static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
 		break;
 	case -EINPROGRESS:
 	case -EBUSY:
-		ret = wait_for_completion_interruptible(
-			&cr->completion);
+		ret = wait_for_completion(&cr->completion);
 		/* no error from wait_for_completion */
 		if (ret) {
 			dprintk(0,KERN_ERR,"error waiting for async request completion: %zd\n", ret);
