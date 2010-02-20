@@ -1,4 +1,4 @@
-KERNEL_DIR := /lib/modules/$(shell uname -r)/build
+KERNEL_DIR = /lib/modules/$(shell uname -r)/build
 
 cryptodev-objs = cryptodev_main.o cryptodev_cipher.o
 
@@ -16,10 +16,5 @@ clean:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` clean
 	rm -f $(hostprogs)
 
-hostprogs := example-cipher example-hmac
-example-cipher-objs := example-cipher.o
-example-hmac-objs := example-hmac.o
-
-check: $(hostprogs)
-	./example-cipher
-	./example-hmac
+check:
+	KERNEL_DIR=$(KERNEL_DIR) make -C examples check
