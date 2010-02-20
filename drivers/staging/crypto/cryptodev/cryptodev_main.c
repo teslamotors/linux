@@ -369,7 +369,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 
 	nbytes = cop->len;
 	
-	if (ses_ptr->hdata.type != 0) {
+	if (ses_ptr->hdata.init != 0) {
 		ret = cryptodev_hash_reset(&ses_ptr->hdata);
 		if (unlikely(ret)) {
 			dprintk(1, KERN_ERR,
@@ -378,7 +378,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		}
 	}
 
-	if (ses_ptr->cdata.type != 0) {
+	if (ses_ptr->cdata.init != 0) {
 		int blocksize = ses_ptr->cdata.blocksize;
 
 		if (unlikely(nbytes % blocksize)) {
@@ -411,14 +411,14 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		 * we should introduce a flag to switch... TBD later on.
 		 */
 		if (cop->op == COP_ENCRYPT) {
-			if (ses_ptr->hdata.type != 0) {
+			if (ses_ptr->hdata.init != 0) {
 				ret = cryptodev_hash_update(&ses_ptr->hdata, &sg, current_len);
 				if (unlikely(ret)) {
 					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
 					goto out;
 				}
 			}
-			if (ses_ptr->cdata.type != 0) {
+			if (ses_ptr->cdata.init != 0) {
 				ret = cryptodev_cipher_encrypt( &ses_ptr->cdata, &sg, &sg, current_len);
 
 				if (unlikely(ret)) {
@@ -429,7 +429,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 				dst += current_len;
 			}
 		} else {
-			if (ses_ptr->cdata.type != 0) {
+			if (ses_ptr->cdata.init != 0) {
 				ret = cryptodev_cipher_decrypt( &ses_ptr->cdata, &sg, &sg, current_len);
 
 				if (unlikely(ret)) {
@@ -441,7 +441,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 
 			}
 
-			if (ses_ptr->hdata.type != 0) {
+			if (ses_ptr->hdata.init != 0) {
 				ret = cryptodev_hash_update(&ses_ptr->hdata, &sg, current_len);
 				if (unlikely(ret)) {
 					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
@@ -454,7 +454,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		src += current_len;
 	}
 	
-	if (ses_ptr->hdata.type != 0) {
+	if (ses_ptr->hdata.init != 0) {
 		ret = cryptodev_hash_final(&ses_ptr->hdata, hash_output);
 		if (unlikely(ret)) {
 			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);

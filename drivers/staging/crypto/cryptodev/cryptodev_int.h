@@ -25,21 +25,15 @@ extern int cryptodev_verbosity;
 
 struct cipher_data
 {
-	int type; /* 1 synchronous, 2 async, 0 uninitialized */
+	int init; /* 0 uninitialized */
 	int blocksize;
 	int ivsize;
-	union {
-		struct {
-			struct crypto_blkcipher* s;
-			struct blkcipher_desc desc;
-		} blk;
-		struct {
-			struct crypto_ablkcipher* s;
-			struct cryptodev_result *async_result;
-			struct ablkcipher_request *async_request;
-			uint8_t iv[EALG_MAX_BLOCK_LEN];
-		} ablk;
-	} u;
+	struct {
+		struct crypto_ablkcipher* s;
+		struct cryptodev_result *result;
+		struct ablkcipher_request *request;
+		uint8_t iv[EALG_MAX_BLOCK_LEN];
+	} async;
 };
 
 int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user uint8_t * key, size_t keylen);
@@ -51,20 +45,13 @@ void cryptodev_cipher_set_iv(struct cipher_data* cdata, void* iv, size_t iv_size
 /* hash stuff */
 struct hash_data
 {
-	int type; /* 1 synchronous, 2 async, 0 uninitialized */
+	int init; /* 0 uninitialized */
 	int digestsize;
-	union {
-		struct {
-			struct crypto_hash* s;
-			struct hash_desc desc;
-		} sync;
-		struct {
-			struct crypto_ahash *s;
-			struct cryptodev_result *async_result;
-			struct ahash_request *async_request;
-		} async;
-	} u;
-	
+	struct {
+		struct crypto_ahash *s;
+		struct cryptodev_result *result;
+		struct ahash_request *request;
+	} async;
 };
 
 int cryptodev_hash_final( struct hash_data* hdata, void* output);
