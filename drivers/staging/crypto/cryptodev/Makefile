@@ -14,3 +14,12 @@ install:
 
 clean:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` clean
+	rm -f $(hostprogs)
+
+hostprogs := example-cipher example-hmac
+example-cipher-objs := example-cipher.o
+example-hmac-objs := example-hmac.o
+
+check: $(hostprogs)
+	./example-cipher
+	./example-hmac
