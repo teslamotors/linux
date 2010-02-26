@@ -345,7 +345,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	unsigned int ivsize=0;
 	size_t nbytes, bufsize;
 	int ret = 0;
-	uint8_t hash_output[HASH_MAX_LEN];
+	uint8_t hash_output[AALG_MAX_RESULT_LEN];
 
 	if (unlikely(cop->op != COP_ENCRYPT && cop->op != COP_DECRYPT)) {
 		dprintk(1, KERN_DEBUG, "invalid operation op=%u\n", cop->op);
@@ -405,7 +405,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 
 		copy_from_user(data, src, current_len);
 
-		sg_set_buf(&sg, data, current_len);
+		sg_init_one(&sg, data, current_len);
 
 		/* Always hash before encryption and after decryption. Maybe
 		 * we should introduce a flag to switch... TBD later on.
@@ -586,7 +586,7 @@ struct file_operations cryptodev_fops = {
 };
 
 struct miscdevice cryptodev = {
-	.minor = CRYPTODEV_MINOR,
+	.minor = MISC_DYNAMIC_MINOR,
 	.name = "crypto",
 	.fops = &cryptodev_fops,
 };

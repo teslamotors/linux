@@ -148,7 +148,11 @@ static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
 	case -EINPROGRESS:
 	case -EBUSY:
 		wait_for_completion(&cr->completion);
-		/* no error from wait_for_completion */
+		/* At this point we known for sure the request has finished,
+		 * because wait_for_completion above was not interruptible.
+		 * This is important because otherwise hardware or driver
+		 * might try to access memory which will be freed or reused for
+		 * another request. */
 
 		if (cr->err) {
 			dprintk(0,KERN_ERR,"error from async request: %zd \n", ret);
