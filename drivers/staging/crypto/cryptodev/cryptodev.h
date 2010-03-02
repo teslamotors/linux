@@ -130,7 +130,7 @@ enum {
 
 /* bignum parameter, in packed bytes, ... */
 struct crparam {
-	void*		crp_p;
+	uint8_t*	crp_p;
 	uint32_t	crp_nbits;
 };
 
