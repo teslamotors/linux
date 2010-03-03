@@ -67,7 +67,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 	copy_from_user(keyp, key, keylen);
 
 	out->async.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
-	if (IS_ERR(out->async.s)) {
+	if (unlikely(IS_ERR(out->async.s))) {
 		dprintk(1,KERN_DEBUG,"%s: Failed to load cipher %s\n", __func__,
 			   alg_name);
 		return -EINVAL;
@@ -77,8 +77,8 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 	
 	if (alg != NULL) {
 		/* Was correct key length supplied? */
-		if ((keylen < alg->min_keysize) ||
-			(keylen > alg->max_keysize)) {
+		if (unlikely((keylen < alg->min_keysize) ||
+			(keylen > alg->max_keysize))) {
 			dprintk(1,KERN_DEBUG,"Wrong keylen '%zu' for algorithm '%s'. Use %u to %u.\n",
 				   keylen, alg_name, alg->min_keysize, 
 				   alg->max_keysize);
@@ -88,7 +88,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 	}
 
 	ret = crypto_ablkcipher_setkey(out->async.s, keyp, keylen);
-	if (ret) {
+	if (unlikely(ret)) {
 		dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
 			alg_name, keylen*8);
 		ret = -EINVAL;
@@ -99,7 +99,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 	out->ivsize = crypto_ablkcipher_ivsize(out->async.s);
 
 	out->async.result = kmalloc(sizeof(*out->async.result), GFP_KERNEL);
-	if (!out->async.result) {
+	if (unlikely(!out->async.result)) {
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -108,7 +108,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 	init_completion(&out->async.result->completion);
 
 	out->async.request = ablkcipher_request_alloc(out->async.s, GFP_KERNEL);
-	if (!out->async.request) {
+	if (unlikely(!out->async.request)) {
 		dprintk(1,KERN_ERR,"error allocating async crypto request\n");
 		ret = -ENOMEM;
 		goto error;
@@ -154,7 +154,7 @@ static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
 		 * might try to access memory which will be freed or reused for
 		 * another request. */
 
-		if (cr->err) {
+		if (unlikely(cr->err)) {
 			dprintk(0,KERN_ERR,"error from async request: %zd \n", ret);
                         return cr->err; 
 		}
@@ -200,7 +200,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 
 	hdata->init = 1;
 
-	if (mackeylen > CRYPTO_HMAC_MAX_KEY_LEN) {
+	if (unlikely(mackeylen > CRYPTO_HMAC_MAX_KEY_LEN)) {
 		dprintk(1,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
 			alg_name, mackeylen*8);
 		return -EINVAL;
@@ -208,7 +208,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 	copy_from_user(hkeyp, mackey, mackeylen);
 	
 	hdata->async.s = crypto_alloc_ahash(alg_name, 0, 0);
-	if (IS_ERR(hdata->async.s)) {
+	if (unlikely(IS_ERR(hdata->async.s))) {
 		dprintk(1,KERN_DEBUG,"%s: Failed to load transform for %s\n", __func__,
 				   alg_name);
 		return -EINVAL;
@@ -218,7 +218,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 	if (hmac_mode != 0) {
 
 		ret = crypto_ahash_setkey(hdata->async.s, hkeyp, mackeylen);
-		if (ret) {
+		if (unlikely(ret)) {
 			dprintk(1,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
 				alg_name, mackeylen*8);
 			ret = -EINVAL;
@@ -229,7 +229,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 	hdata->digestsize = crypto_ahash_digestsize(hdata->async.s);
 
 	hdata->async.result = kmalloc(sizeof(*hdata->async.result), GFP_KERNEL);
-	if (!hdata->async.result) {
+	if (unlikely(!hdata->async.result)) {
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -238,7 +238,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 	init_completion(&hdata->async.result->completion);
 
 	hdata->async.request = ahash_request_alloc(hdata->async.s, GFP_KERNEL);
-	if (!hdata->async.request) {
+	if (unlikely(!hdata->async.request)) {
 		dprintk(0,KERN_ERR,"error allocating async crypto request\n");
 		ret = -ENOMEM;
 		goto error;

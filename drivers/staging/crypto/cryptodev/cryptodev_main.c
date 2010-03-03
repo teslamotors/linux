@@ -26,8 +26,7 @@
  * hashes) from userspace programs.
  *
  * /dev/crypto interface was originally introduced in
- * OpenBSD and this module attempts to keep the API,
- * although a bit extended.
+ * OpenBSD and this module attempts to keep the API.
  *
  */
 
@@ -102,7 +101,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	int hmac_mode = 1;
 
 	/* Does the request make sense? */
-	if (!sop->cipher && !sop->mac) {
+	if (unlikely(!sop->cipher && !sop->mac)) {
 		dprintk(1,KERN_DEBUG,"Both 'cipher' and 'mac' unset.\n");
 		return -EINVAL;
 	}
@@ -287,7 +286,7 @@ crypto_finish_session(struct fcrypt *fcr, uint32_t sid)
 		}
 	}
 
-	if (!ses_ptr) {
+	if (unlikely(!ses_ptr)) {
 		dprintk(1, KERN_ERR, "Session with sid=0x%08X not found!\n", sid);
 		ret = -ENOENT;
 	}
@@ -353,7 +352,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	}
 
 	ses_ptr = crypto_get_session_by_sid(fcr, cop->ses);
-	if (!ses_ptr) {
+	if (unlikely(!ses_ptr)) {
 		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", cop->ses);
 		return -EINVAL;
 	}
@@ -542,7 +541,7 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 	uint32_t ses;
 	int ret, fd;
 
-	if (!fcr)
+	if (unlikely(!fcr))
 		BUG();
 
 	switch (cmd) {
@@ -557,7 +556,7 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 		case CIOCGSESSION:
 			copy_from_user(&sop, (void*)arg, sizeof(sop));
 			ret = crypto_create_session(fcr, &sop);
-			if (ret)
+			if (unlikely(ret))
 				return ret;
 			copy_to_user((void*)arg, &sop, sizeof(sop));
 			return 0;
@@ -570,8 +569,10 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 		case CIOCCRYPT:
 			copy_from_user(&cop, (void*)arg, sizeof(cop));
 			ret = crypto_run(fcr, &cop);
+			if (unlikely(ret))
+				return ret;
 			copy_to_user((void*)arg, &cop, sizeof(cop));
-			return ret;
+			return 0;
 
 		default:
 			return -EINVAL;
@@ -597,7 +598,7 @@ cryptodev_register(void)
 	int rc;
 
 	rc = misc_register (&cryptodev);
-	if (rc) {
+	if (unlikely(rc)) {
 		printk(KERN_ERR PFX "registeration of /dev/crypto failed\n");
 		return rc;
 	}
@@ -618,7 +619,7 @@ int __init init_cryptodev(void)
 	int rc;
 	
 	rc = cryptodev_register();
-	if (rc)
+	if (unlikely(rc))
 		return rc;
 
 	printk(KERN_INFO PFX "driver loaded.\n");
