@@ -7,3 +7,6 @@ example-hmac-objs := hmac.o
 check: $(hostprogs)
 	./cipher
 	./hmac
+
+clean:
+	rm -f *.o *~ hmac cipher

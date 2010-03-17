@@ -15,6 +15,7 @@ install:
 clean:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` clean
 	rm -f $(hostprogs)
+	KERNEL_DIR=$(KERNEL_DIR) make -C examples clean
 
 check:
 	KERNEL_DIR=$(KERNEL_DIR) make -C examples check

@@ -15,6 +15,7 @@
 #define	DATA_SIZE	4096
 #define	BLOCK_SIZE	16
 #define	KEY_SIZE	16
+#define SHA1_HASH_LEN   20
 
 static int
 test_crypto(int cfd)
@@ -28,8 +29,8 @@ test_crypto(int cfd)
 	} data;
 	struct session_op sess;
 	struct crypt_op cryp;
-	uint8_t mac[HASH_MAX_LEN];
-	uint8_t oldmac[HASH_MAX_LEN];
+	uint8_t mac[AALG_MAX_RESULT_LEN];
+	uint8_t oldmac[AALG_MAX_RESULT_LEN];
 	uint8_t md5_hmac_out[] = "\x75\x0c\x78\x3e\x6a\xb0\xb5\x03\xea\xa8\x6e\x31\x0a\x5d\xb7\x38";
 	uint8_t sha1_out[] = "\x8f\x82\x03\x94\xf9\x53\x35\x18\x20\x45\xda\x24\xf3\x4d\xe5\x2b\xf8\xbc\x34\x32";
 	int i;
