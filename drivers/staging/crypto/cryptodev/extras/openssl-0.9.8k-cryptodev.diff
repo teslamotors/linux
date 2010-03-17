@@ -47,33 +47,6 @@ diff -ur openssl-0.9.8k/crypto/engine/eng_cryptodev.c openssl-0.9.8k.new/crypto/
  #ifndef HAVE_CRYPTODEV
  
  void
-@@ -54,7 +55,12 @@
- #else 
-  
- #include <sys/types.h>
--#include <crypto/cryptodev.h>
-+#if defined(__linux__)
-+# include <linux/cryptodev.h>
-+# define HAVE_CRYPTODEV_NAME
-+#else
-+# include <crypto/cryptodev.h>
-+#endif
- #include <sys/ioctl.h>
- #include <errno.h>
- #include <stdio.h>
-@@ -77,7 +83,11 @@
- static int get_dev_crypto(void);
- static int cryptodev_max_iv(int cipher);
- static int cryptodev_key_length_valid(int cipher, int len);
--static int cipher_nid_to_cryptodev(int nid);
-+#ifndef HAVE_CRYPTODEV_NAME
-+ static int cipher_nid_to_cryptodev(int nid);
-+#else
-+ static char *cipher_nid_to_cryptodev_name(int nid);
-+#endif
- static int get_cryptodev_ciphers(const int **cnids);
- static int get_cryptodev_digests(const int **cnids);
- static int cryptodev_usable_ciphers(const int **nids);
 diff -ur openssl-0.9.8k/crypto/engine/engine.h openssl-0.9.8k.new/crypto/engine/engine.h
 --- openssl-0.9.8k/crypto/engine/engine.h	2008-06-04 21:01:40.000000000 +0300
 +++ openssl-0.9.8k.new/crypto/engine/engine.h	2009-11-24 13:41:49.000000000 +0200
