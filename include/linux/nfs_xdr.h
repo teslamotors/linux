@@ -11,7 +11,7 @@
  * reasonable for NFS over UDP.
  */
 #define NFS_MAX_FILE_IO_SIZE	(1048576U)
-#define NFS_DEF_FILE_IO_SIZE	(4096U)
+#define NFS_DEF_FILE_IO_SIZE	CONFIG_NFS_DEF_FILE_IO_SIZE
 #define NFS_MIN_FILE_IO_SIZE	(1024U)
 
 struct nfs4_string {

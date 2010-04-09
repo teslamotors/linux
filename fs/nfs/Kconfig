@@ -39,6 +39,19 @@ config NFS_V2
 
 	  If unsure, say Y.
 
+config NFS_DEF_FILE_IO_SIZE
+	int "Default size for NFS I/O read and write at runtime"
+	depends on NFS_FS
+	default "4096"
+	help
+	  To change the default rsize and wsize supported by the NFS client,
+	  adjust NFS_DEF_FILE_IO_SIZE.  64KB is a typical maximum, but some
+	  servers can support a megabyte or more.  The default is left at 4096
+	  bytes, which is reasonable for NFS over UDP, however, for some
+	  systems, setting a smaller value like 1024 can work around
+	  limitations in the driver or hardware and result in overall
+	  improved performance.
+
 config NFS_V3
 	tristate "NFS client support for NFS version 3"
 	depends on NFS_FS
