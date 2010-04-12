@@ -71,7 +71,9 @@ static void uhci_fsbr_off(struct uhci_hcd *uhci)
 static void uhci_add_fsbr(struct uhci_hcd *uhci, struct urb *urb)
 {
 	struct urb_priv *urbp = urb->hcpriv;
-
+#ifdef CONFIG_MIPS_MALTA
+       return;
+#endif
 	if (!(urb->transfer_flags & URB_NO_FSBR))
 		urbp->fsbr = 1;
 }

@@ -456,6 +456,9 @@ EXPORT_SYMBOL_GPL(usb_amd_dev_put);
  */
 void uhci_reset_hc(struct pci_dev *pdev, unsigned long base)
 {
+#ifdef CONFIG_MIPS_MALTA
+	int timeout = 10;
+#endif
 	/* Turn off PIRQ enable and SMI enable.  (This also turns off the
 	 * BIOS's USB Legacy Support.)  Turn off all the R/WC bits too.
 	 */
@@ -469,9 +472,16 @@ void uhci_reset_hc(struct pci_dev *pdev, unsigned long base)
 	outw(UHCI_USBCMD_HCRESET, base + UHCI_USBCMD);
 	mb();
 	udelay(5);
-	if (inw(base + UHCI_USBCMD) & UHCI_USBCMD_HCRESET)
-		dev_warn(&pdev->dev, "HCRESET not completed yet!\n");
 
+#ifdef CONFIG_MIPS_MALTA
+	while (inw(base + UHCI_USBCMD) & UHCI_USBCMD_HCRESET) {
+	        if (--timeout < 0) {
+			dev_warn(&pdev->dev, "HCRESET timed out!\n");
+			break;
+		}
+		udelay(5);
+	}
+#endif
 	/* Just to be safe, disable interrupt requests and
 	 * make sure the controller is stopped.
 	 */
