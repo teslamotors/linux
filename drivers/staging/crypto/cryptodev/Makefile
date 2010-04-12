@@ -1,4 +1,5 @@
 KERNEL_DIR = /lib/modules/$(shell uname -r)/build
+VERSION = 0.1
 
 cryptodev-objs = cryptodev_main.o cryptodev_cipher.o
 
@@ -19,3 +20,20 @@ clean:
 
 check:
 	KERNEL_DIR=$(KERNEL_DIR) make -C examples check
+
+FILEBASE = cryptodev-linux-$(VERSION)
+TMPDIR ?= /tmp
+OUTPUT = $(FILEBASE).tar.gz
+
+dist: clean
+	@echo Packing
+	@rm -f *.tar.gz
+	@mkdir $(TMPDIR)/$(FILEBASE)
+	@cp -ar . $(TMPDIR)/$(FILEBASE)
+	@rm -rf $(TMPDIR)/$(FILEBASE)/.git* $(TMPDIR)/$(FILEBASE)/releases $(TMPDIR)/$(FILEBASE)/scripts
+	@tar -C /tmp -czf ./$(OUTPUT) $(FILEBASE)
+	@rm -rf $(TMPDIR)/$(FILEBASE)
+	@echo Signing $(OUTPUT)
+	@gpg --output $(OUTPUT).sig -sb $(OUTPUT)
+	@gpg --verify $(OUTPUT).sig $(OUTPUT)
+	@mv $(OUTPUT) $(OUTPUT).sig releases/

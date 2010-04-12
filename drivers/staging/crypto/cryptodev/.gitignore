@@ -9,3 +9,5 @@ Module.symvers
 modules.order
 examples/cipher
 examples/hmac
+releases
+scripts
