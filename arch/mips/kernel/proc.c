@@ -39,7 +39,7 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 	unsigned int version = cpu_data[n].processor_id;
 	unsigned int fp_vers = cpu_data[n].fpu_id;
 	char fmt [64];
-	int i;
+	int cpu,i;
 
 #ifdef CONFIG_SMP
 	if (!cpu_online(n))
@@ -59,9 +59,11 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 	seq_printf(m, "processor\t\t: %ld\n", n);
 	sprintf(fmt, "cpu model\t\t: %%s V%%d.%%d%s\n",
 		      cpu_data[n].options & MIPS_CPU_FPU ? "  FPU V%d.%d" : "");
-	seq_printf(m, fmt, __cpu_name[n],
+	cpu = get_cpu();
+	seq_printf(m, fmt, __cpu_name[cpu],
 		      (version >> 4) & 0x0f, version & 0x0f,
 		      (fp_vers >> 4) & 0x0f, fp_vers & 0x0f);
+	put_cpu();
 	seq_printf(m, "BogoMIPS\t\t: %u.%02u\n",
 		      cpu_data[n].udelay_val / (500000/HZ),
 		      (cpu_data[n].udelay_val / (5000/HZ)) % 100);
