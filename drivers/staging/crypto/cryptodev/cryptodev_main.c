@@ -94,7 +94,7 @@ struct fcrypt {
 static int
 crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 {
-	struct csession	*ses_new, *ses_ptr;
+	struct csession	*ses_new = NULL, *ses_ptr;
 	int ret = 0;
 	const char *alg_name=NULL;
 	const char *hash_name=NULL;
@@ -185,27 +185,29 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	/* Create a session and put it to the list. */
 	ses_new = kmalloc(sizeof(*ses_new), GFP_KERNEL);
 	if(!ses_new) {
-		ret = -ENOMEM;
-		goto error;
+		return -ENOMEM;
 	}
 
 	memset(ses_new, 0, sizeof(*ses_new));
 
 	/* Set-up crypto transform. */
 	if (alg_name) {
-		
 		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, sop->key, sop->keylen);
 		if (ret < 0) {
-			return ret;
+			dprintk(1,KERN_DEBUG,"%s: Failed to load cipher for %s\n", __func__,
+				   alg_name);
+			ret = -EINVAL;
+			goto error;
 		}
 	}
 	
 	if (hash_name) {
 		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode, sop->mackey, sop->mackeylen);
 		if (ret != 0) {
-			dprintk(1,KERN_DEBUG,"%s: Failed to load transform for %s\n", __func__,
+			dprintk(1,KERN_DEBUG,"%s: Failed to load hash for %s\n", __func__,
 				   hash_name);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto error;
 		}
 	}
 
@@ -236,6 +238,7 @@ restart:
 error:
 	cryptodev_cipher_deinit( &ses_new->cdata);
 	cryptodev_hash_deinit( &ses_new->hdata);
+	if (ses_new) kfree(ses_new);
 
 	return ret;
 
