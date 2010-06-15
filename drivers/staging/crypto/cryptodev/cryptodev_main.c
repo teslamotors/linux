@@ -582,11 +582,104 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 	}
 }
 
+static inline void
+compat_to_session_op(struct compat_session_op *compat, struct session_op *sop)
+{
+	memcpy(sop, compat, sizeof(uint32_t) * 3);
+	sop->key       = (uint8_t *)compat->key;
+	sop->mackeylen = compat->mackeylen;
+	sop->mackey    = (uint8_t *)compat->mackey;
+	sop->ses       = compat->ses;
+}
+
+static inline void
+session_op_to_compat(struct session_op *sop, struct compat_session_op *compat)
+{
+	memcpy(compat, sop, sizeof(uint32_t) * 3);
+	compat->key       = (uint32_t)sop->key;
+	compat->mackeylen = sop->mackeylen;
+	compat->mackey    = (uint32_t)sop->mackey;
+	compat->ses       = sop->ses;
+}
+
+static inline void
+compat_to_crypt_op(struct compat_crypt_op *compat, struct crypt_op *cop)
+{
+	memcpy(cop, compat, sizeof(uint32_t) * 2 + sizeof(uint16_t) * 2);
+	cop->src = (uint8_t *)compat->src;
+	cop->dst = (uint8_t *)compat->dst;
+	cop->mac = (uint8_t *)compat->mac;
+	cop->iv  = (uint8_t *)compat->iv;
+}
+
+static inline void
+crypt_op_to_compat(struct crypt_op *cop, struct compat_crypt_op *compat)
+{
+	memcpy(compat, cop, sizeof(uint32_t) * 2 + sizeof(uint16_t) * 2);
+	compat->src = (uint32_t)cop->src;
+	compat->dst = (uint32_t)cop->dst;
+	compat->mac = (uint32_t)cop->mac;
+	compat->iv  = (uint32_t)cop->iv;
+}
+
+static long
+cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	struct fcrypt *fcr = file->private_data;
+	struct session_op sop;
+	struct compat_session_op compat_sop;
+	struct crypt_op cop;
+	struct compat_crypt_op compat_cop;
+	int ret;
+
+	if (unlikely(!fcr))
+		BUG();
+
+	switch (cmd) {
+	case CIOCASYMFEAT:
+	case CRIOGET:
+	case CIOCFSESSION:
+		return cryptodev_ioctl(NULL, file, cmd, arg);
+
+	case COMPAT_CIOCGSESSION:
+		copy_from_user(&compat_sop, (void *)arg,
+				sizeof(compat_sop));
+		compat_to_session_op(&compat_sop, &sop);
+
+		ret = crypto_create_session(fcr, &sop);
+		if (unlikely(ret))
+			return ret;
+
+		session_op_to_compat(&sop, &compat_sop);
+		copy_to_user((void*)arg, &compat_sop,
+				sizeof(compat_sop));
+		return 0;
+
+	case COMPAT_CIOCCRYPT:
+		copy_from_user(&compat_cop, (void*)arg,
+				sizeof(compat_cop));
+		compat_to_crypto_op(&compat_op, &cop);
+
+		ret = crypto_run(fcr, &cop);
+		if (unlikely(ret))
+			return ret;
+
+		crypto_op_to_compat(&cop, &compat_op);
+		copy_to_user((void*)arg, &compat_cop,
+				sizeof(compat_cop));
+		return 0;
+
+	default:
+		return -EINVAL;
+	}
+}
+
 struct file_operations cryptodev_fops = {
 	.owner = THIS_MODULE,
 	.open = cryptodev_open,
 	.release = cryptodev_release,
 	.ioctl = cryptodev_ioctl,
+	.compat_ioctl = cryptodev_compat_ioctl,
 };
 
 struct miscdevice cryptodev = {
