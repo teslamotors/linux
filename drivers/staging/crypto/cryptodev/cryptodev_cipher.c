@@ -77,7 +77,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 	
 	if (alg != NULL) {
 		/* Was correct key length supplied? */
-		if (unlikely((keylen < alg->min_keysize) ||
+		if (alg->max_keysize > 0 && unlikely((keylen < alg->min_keysize) ||
 			(keylen > alg->max_keysize))) {
 			dprintk(1,KERN_DEBUG,"Wrong keylen '%zu' for algorithm '%s'. Use %u to %u.\n",
 				   keylen, alg_name, alg->min_keysize, 
