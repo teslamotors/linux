@@ -200,7 +200,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			goto error;
 		}
 	}
-	
+
 	if (hash_name) {
 		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode, sop->mackey, sop->mackeylen);
 		if (ret != 0) {
@@ -370,7 +370,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	bufsize = PAGE_SIZE < nbytes ? PAGE_SIZE : nbytes;
 
 	nbytes = cop->len;
-	
+
 	if (ses_ptr->hdata.init != 0) {
 		ret = cryptodev_hash_reset(&ses_ptr->hdata);
 		if (unlikely(ret)) {
@@ -455,7 +455,7 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		nbytes -= current_len;
 		src += current_len;
 	}
-	
+
 	if (ses_ptr->hdata.init != 0) {
 		ret = cryptodev_hash_final(&ses_ptr->hdata, hash_output);
 		if (unlikely(ret)) {
@@ -514,7 +514,7 @@ cryptodev_release(struct inode *inode, struct file *filp)
 		kfree(fcr);
 		filp->private_data = NULL;
 	}
-	
+
 	return 0;
 }
 
@@ -555,7 +555,7 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 			fd = clonefd(filp);
 			put_user(fd, p);
 			return 0;
-			
+
 		case CIOCGSESSION:
 			copy_from_user(&sop, (void*)arg, sizeof(sop));
 			ret = crypto_create_session(fcr, &sop);
@@ -713,7 +713,7 @@ cryptodev_deregister(void)
 int __init init_cryptodev(void)
 {
 	int rc;
-	
+
 	rc = cryptodev_register();
 	if (unlikely(rc))
 		return rc;

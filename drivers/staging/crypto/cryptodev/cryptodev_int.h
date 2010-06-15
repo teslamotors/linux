@@ -14,7 +14,7 @@
 
 #define PFX "cryptodev: "
 #define dprintk(level,severity,format,a...)			\
-	do { 							\
+	do {						\
 		if (level <= cryptodev_verbosity)				\
 			printk(severity PFX "%s[%u]: " format,	\
 			       current->comm, current->pid,	\

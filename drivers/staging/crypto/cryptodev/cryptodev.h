@@ -39,7 +39,7 @@ typedef enum {
 	CRYPTO_SHA2_512_HMAC=20,
 	CRYPTO_AES_CTR=21,
 	CRYPTO_AES_XTS=22,
-	
+
 	CRYPTO_CAMELLIA_CBC=101,
 	CRYPTO_RIPEMD160,
 	CRYPTO_SHA2_256,
@@ -53,7 +53,7 @@ typedef enum {
 #define DES_BLOCK_LEN		8
 #define DES3_BLOCK_LEN		8
 #define RIJNDAEL128_BLOCK_LEN	16
-#define AES_BLOCK_LEN 		RIJNDAEL128_BLOCK_LEN
+#define AES_BLOCK_LEN		RIJNDAEL128_BLOCK_LEN
 #define CAMELLIA_BLOCK_LEN
 #define BLOWFISH_BLOCK_LEN	8
 #define SKIPJACK_BLOCK_LEN	8
@@ -141,7 +141,7 @@ typedef enum {
 #define CRF_DH_COMPUTE_KEY	(1 << CRK_DH_COMPUTE_KEY)
 
 
-/* ioctl's. Compatible with old linux cryptodev.h 
+/* ioctl's. Compatible with old linux cryptodev.h
  */
 #define CRIOGET         _IOWR('c', 101, uint32_t)
 #define CIOCGSESSION    _IOWR('c', 102, struct session_op)

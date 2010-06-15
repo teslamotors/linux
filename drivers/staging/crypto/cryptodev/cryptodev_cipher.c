@@ -74,7 +74,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 	}
 
 	alg = crypto_ablkcipher_alg(out->async.s);
-	
+
 	if (alg != NULL) {
 		/* Was correct key length supplied? */
 		if (alg->max_keysize > 0 && unlikely((keylen < alg->min_keysize) ||
@@ -122,7 +122,7 @@ error:
 	crypto_free_ablkcipher(out->async.s);
 	kfree(out->async.result);
 	ablkcipher_request_free(out->async.request);
-	
+
 	return ret;
 }
 
@@ -163,26 +163,26 @@ static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
 	default:
 		return ret;
 	}
-	
+
 	return 0;
 }
 
 ssize_t cryptodev_cipher_encrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len)
 {
 	int ret;
-	
+
 	INIT_COMPLETION(cdata->async.result->completion);
 	ablkcipher_request_set_crypt(cdata->async.request, sg1, sg2,
 			len, cdata->async.iv);
 	ret = crypto_ablkcipher_encrypt(cdata->async.request);
-	
+
 	return waitfor(cdata->async.result,ret);
 }
 
 ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len)
 {
 	int ret;
-	
+
 	INIT_COMPLETION(cdata->async.result->completion);
 	ablkcipher_request_set_crypt(cdata->async.request, sg1, sg2,
 			len, cdata->async.iv);
@@ -206,7 +206,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 		return -EINVAL;
 	}
 	copy_from_user(hkeyp, mackey, mackeylen);
-	
+
 	hdata->async.s = crypto_alloc_ahash(alg_name, 0, 0);
 	if (unlikely(IS_ERR(hdata->async.s))) {
 		dprintk(1,KERN_DEBUG,"%s: Failed to load transform for %s\n", __func__,
@@ -270,7 +270,7 @@ int ret;
 			"error in crypto_hash_init()\n");
 		return ret;
 	}
-	
+
 	return 0;
 
 }
@@ -282,9 +282,9 @@ ssize_t cryptodev_hash_update( struct hash_data* hdata, struct scatterlist *sg, 
 	INIT_COMPLETION(hdata->async.result->completion);
 	ahash_request_set_crypt(hdata->async.request, sg, NULL,
 			len);
-	
+
 	ret = crypto_ahash_update(hdata->async.request);
-	
+
 	return waitfor(hdata->async.result,ret);
 }
 
@@ -292,11 +292,11 @@ ssize_t cryptodev_hash_update( struct hash_data* hdata, struct scatterlist *sg, 
 int cryptodev_hash_final( struct hash_data* hdata, void* output)
 {
 	int ret;
-	
+
 	INIT_COMPLETION(hdata->async.result->completion);
 	ahash_request_set_crypt(hdata->async.request, NULL, output, 0);
-	
+
 	ret = crypto_ahash_final(hdata->async.request);
-	
+
 	return waitfor(hdata->async.result,ret);
 }
