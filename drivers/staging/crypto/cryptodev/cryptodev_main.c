@@ -603,7 +603,7 @@ session_op_to_compat(struct session_op *sop, struct compat_session_op *compat)
 }
 
 static inline void
-compat_to_crypt_op(struct compat_crypt_op *compat, struct crypt_op *cop)
+compat_to_crypto_op(struct compat_crypt_op *compat, struct crypt_op *cop)
 {
 	memcpy(cop, compat, sizeof(uint32_t) * 2 + sizeof(uint16_t) * 2);
 	cop->src = (uint8_t *)compat->src;
@@ -613,7 +613,7 @@ compat_to_crypt_op(struct compat_crypt_op *compat, struct crypt_op *cop)
 }
 
 static inline void
-crypt_op_to_compat(struct crypt_op *cop, struct compat_crypt_op *compat)
+crypto_op_to_compat(struct crypt_op *cop, struct compat_crypt_op *compat)
 {
 	memcpy(compat, cop, sizeof(uint32_t) * 2 + sizeof(uint16_t) * 2);
 	compat->src = (uint32_t)cop->src;
@@ -658,13 +658,13 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case COMPAT_CIOCCRYPT:
 		copy_from_user(&compat_cop, (void*)arg,
 				sizeof(compat_cop));
-		compat_to_crypto_op(&compat_op, &cop);
+		compat_to_crypto_op(&compat_cop, &cop);
 
 		ret = crypto_run(fcr, &cop);
 		if (unlikely(ret))
 			return ret;
 
-		crypto_op_to_compat(&cop, &compat_op);
+		crypto_op_to_compat(&cop, &compat_cop);
 		copy_to_user((void*)arg, &compat_cop,
 				sizeof(compat_cop));
 		return 0;
