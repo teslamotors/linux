@@ -582,6 +582,9 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 	}
 }
 
+/* compatibility code for 32bit userlands */
+#ifdef CONFIG_COMPAT
+
 static inline void
 compat_to_session_op(struct compat_session_op *compat, struct session_op *sop)
 {
@@ -674,12 +677,16 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	}
 }
 
+#endif /* CONFIG_COMPAT */
+
 struct file_operations cryptodev_fops = {
 	.owner = THIS_MODULE,
 	.open = cryptodev_open,
 	.release = cryptodev_release,
 	.ioctl = cryptodev_ioctl,
+#ifdef CONFIG_COMPAT
 	.compat_ioctl = cryptodev_compat_ioctl,
+#endif /* CONFIG_COMPAT */
 };
 
 struct miscdevice cryptodev = {

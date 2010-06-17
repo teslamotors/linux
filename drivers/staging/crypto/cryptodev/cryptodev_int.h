@@ -60,4 +60,40 @@ int cryptodev_hash_reset( struct hash_data* hdata);
 void cryptodev_hash_deinit(struct hash_data* hdata);
 int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, __user void* mackey, size_t mackeylen);
 
+/* compatibility stuff */
+#ifdef CONFIG_COMPAT
+
+/* input of CIOCGSESSION */
+struct compat_session_op {
+	/* Specify either cipher or mac
+	 */
+	uint32_t	cipher;		/* cryptodev_crypto_op_t */
+	uint32_t	mac;		/* cryptodev_crypto_op_t */
+
+	uint32_t	keylen;
+	uint32_t	key;		/* pointer to key data */
+	uint32_t	mackeylen;
+	uint32_t	mackey;		/* pointer to mac key data */
+
+	uint32_t	ses;		/* session identifier */
+} __attribute__((packed));
+
+/* input of CIOCCRYPT */
+ struct compat_crypt_op {
+	uint32_t	ses;		/* session identifier */
+	uint16_t	op;		/* COP_ENCRYPT or COP_DECRYPT */
+	uint16_t	flags;		/* no usage so far, use 0 */
+	uint32_t	len;		/* length of source data */
+	uint32_t	src;		/* source data */
+	uint32_t	dst;		/* pointer to output data */
+	uint32_t	mac;		/* pointer to output data for hash/MAC operations */
+	uint32_t	iv;		/* initialization vector for encryption operations */
+} __attribute__((packed));
+
+/* compat ioctls, defined for the above structs */
+#define COMPAT_CIOCGSESSION    _IOWR('c', 102, struct compat_session_op)
+#define COMPAT_CIOCCRYPT       _IOWR('c', 104, struct compat_crypt_op)
+
+#endif /* CONFIG_COMPAT */
+
 #endif /* CRYPTODEV_INT_H */

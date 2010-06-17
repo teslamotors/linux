@@ -150,42 +150,4 @@ typedef enum {
 #define CIOCKEY         _IOWR('c', 105, struct crypt_kop)
 #define CIOCASYMFEAT    _IOR('c', 106, uint32_t)
 
-/* compatibility code for 32bit userlands */
-
-#ifdef __KERNEL__
-#ifdef CONFIG_COMPAT
-
-/* input of CIOCGSESSION */
-struct compat_session_op {
-	/* Specify either cipher or mac
-	 */
-	uint32_t	cipher;		/* cryptodev_crypto_op_t */
-	uint32_t	mac;		/* cryptodev_crypto_op_t */
-
-	uint32_t	keylen;
-	uint32_t	key;		/* pointer to key data */
-	uint32_t	mackeylen;
-	uint32_t	mackey;		/* pointer to mac key data */
-
-	uint32_t	ses;		/* session identifier */
-};
-
-/* input of CIOCCRYPT */
- struct compat_crypt_op {
-	uint32_t	ses;		/* session identifier */
-	uint16_t	op;		/* COP_ENCRYPT or COP_DECRYPT */
-	uint16_t	flags;		/* no usage so far, use 0 */
-	uint32_t	len;		/* length of source data */
-	uint32_t	src;		/* source data */
-	uint32_t	dst;		/* pointer to output data */
-	uint32_t	mac;		/* pointer to output data for hash/MAC operations */
-	uint32_t	iv;		/* initialization vector for encryption operations */
-};
-
-#define COMPAT_CIOCGSESSION    _IOWR('c', 102, struct compat_session_op)
-#define COMPAT_CIOCCRYPT       _IOWR('c', 104, struct compat_crypt_op)
-
-#endif /* CONFIG_COMPAT */
-#endif /* __KERNEL__ */
-
 #endif /* L_CRYPTODEV_H */
