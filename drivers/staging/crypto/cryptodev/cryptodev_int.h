@@ -1,5 +1,4 @@
 /* cipher stuff */
-
 #ifndef CRYPTODEV_INT_H
 # define CRYPTODEV_INT_H
 
@@ -76,7 +75,7 @@ struct compat_session_op {
 	uint32_t	mackey;		/* pointer to mac key data */
 
 	uint32_t	ses;		/* session identifier */
-} __attribute__((packed));
+};
 
 /* input of CIOCCRYPT */
  struct compat_crypt_op {
@@ -88,7 +87,7 @@ struct compat_session_op {
 	uint32_t	dst;		/* pointer to output data */
 	uint32_t	mac;		/* pointer to output data for hash/MAC operations */
 	uint32_t	iv;		/* initialization vector for encryption operations */
-} __attribute__((packed));
+};
 
 /* compat ioctls, defined for the above structs */
 #define COMPAT_CIOCGSESSION    _IOWR('c', 102, struct compat_session_op)
