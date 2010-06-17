@@ -405,7 +405,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	while(nbytes > 0) {
 		size_t current_len = nbytes > bufsize ? bufsize : nbytes;
 
-		if (unlikely(copy_from_user(data, src, current_len)))
+		ret = copy_from_user(data, src, current_len);
+		if (unlikely(ret))
 			goto out;
 
 		sg_init_one(&sg, data, current_len);
@@ -562,7 +563,10 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 
 		case CIOCGSESSION:
 			ret = copy_from_user(&sop, (void*)arg, sizeof(sop));
-			ret |= crypto_create_session(fcr, &sop);
+			if (unlikely(ret))
+				return ret;
+
+			ret = crypto_create_session(fcr, &sop);
 			if (unlikely(ret))
 				return ret;
 			return copy_to_user((void*)arg, &sop, sizeof(sop));
@@ -574,7 +578,10 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 
 		case CIOCCRYPT:
 			ret = copy_from_user(&cop, (void*)arg, sizeof(cop));
-			ret |= crypto_run(fcr, &cop);
+			if (unlikely(ret))
+				return ret;
+
+			ret = crypto_run(fcr, &cop);
 			if (unlikely(ret))
 				return ret;
 			return copy_to_user((void*)arg, &cop, sizeof(cop));
@@ -663,9 +670,12 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case COMPAT_CIOCGSESSION:
 		ret = copy_from_user(&compat_sop,
 				(void *)arg, sizeof(compat_sop));
+		if (unlikely(ret))
+			return ret;
+
 		compat_to_session_op(&compat_sop, &sop);
 
-		ret |= crypto_create_session(fcr, &sop);
+		ret = crypto_create_session(fcr, &sop);
 		if (unlikely(ret))
 			return ret;
 
@@ -676,9 +686,12 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case COMPAT_CIOCCRYPT:
 		ret = copy_from_user(&compat_cop,
 				(void*)arg, sizeof(compat_cop));
+		if (unlikely(ret))
+			return ret;
+
 		compat_to_crypt_op(&compat_cop, &cop);
 
-		ret |= crypto_run(fcr, &cop);
+		ret = crypto_run(fcr, &cop);
 		if (unlikely(ret))
 			return ret;
 
