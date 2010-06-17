@@ -405,7 +405,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	while(nbytes > 0) {
 		size_t current_len = nbytes > bufsize ? bufsize : nbytes;
 
-		copy_from_user(data, src, current_len);
+		if (unlikely(copy_from_user(data, src, current_len)))
+			goto out;
 
 		sg_init_one(&sg, data, current_len);
 
@@ -427,7 +428,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
 					goto out;
 				}
-				copy_to_user(dst, data, current_len);
+				if (unlikely(copy_to_user(dst, data, current_len)))
+					goto out;
 				dst += current_len;
 			}
 		} else {
@@ -438,7 +440,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 					dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
 					goto out;
 				}
-				copy_to_user(dst, data, current_len);
+				if (unlikely(copy_to_user(dst, data, current_len)))
+					goto out;
 				dst += current_len;
 
 			}
@@ -463,7 +466,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 			goto out;
 		}
 
-		copy_to_user(cop->mac, hash_output, ses_ptr->hdata.digestsize);
+		if (unlikely(copy_to_user(cop->mac, hash_output, ses_ptr->hdata.digestsize)))
+			goto out;
 	}
 
 #if defined(CRYPTODEV_STATS)
@@ -557,12 +561,11 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 			return 0;
 
 		case CIOCGSESSION:
-			copy_from_user(&sop, (void*)arg, sizeof(sop));
-			ret = crypto_create_session(fcr, &sop);
+			ret = copy_from_user(&sop, (void*)arg, sizeof(sop));
+			ret |= crypto_create_session(fcr, &sop);
 			if (unlikely(ret))
 				return ret;
-			copy_to_user((void*)arg, &sop, sizeof(sop));
-			return 0;
+			return copy_to_user((void*)arg, &sop, sizeof(sop));
 
 		case CIOCFSESSION:
 			get_user(ses, (uint32_t*)arg);
@@ -570,12 +573,11 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 			return ret;
 
 		case CIOCCRYPT:
-			copy_from_user(&cop, (void*)arg, sizeof(cop));
-			ret = crypto_run(fcr, &cop);
+			ret = copy_from_user(&cop, (void*)arg, sizeof(cop));
+			ret |= crypto_run(fcr, &cop);
 			if (unlikely(ret))
 				return ret;
-			copy_to_user((void*)arg, &cop, sizeof(cop));
-			return 0;
+			return copy_to_user((void*)arg, &cop, sizeof(cop));
 
 		default:
 			return -EINVAL;
@@ -645,32 +647,30 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return cryptodev_ioctl(NULL, file, cmd, arg);
 
 	case COMPAT_CIOCGSESSION:
-		copy_from_user(&compat_sop, (void *)arg,
-				sizeof(compat_sop));
+		ret = copy_from_user(&compat_sop,
+				(void *)arg, sizeof(compat_sop));
 		compat_to_session_op(&compat_sop, &sop);
 
-		ret = crypto_create_session(fcr, &sop);
+		ret |= crypto_create_session(fcr, &sop);
 		if (unlikely(ret))
 			return ret;
 
 		session_op_to_compat(&sop, &compat_sop);
-		copy_to_user((void*)arg, &compat_sop,
-				sizeof(compat_sop));
-		return 0;
+		return copy_to_user((void*)arg,
+				&compat_sop, sizeof(compat_sop));
 
 	case COMPAT_CIOCCRYPT:
-		copy_from_user(&compat_cop, (void*)arg,
-				sizeof(compat_cop));
+		ret = copy_from_user(&compat_cop,
+				(void*)arg, sizeof(compat_cop));
 		compat_to_crypt_op(&compat_cop, &cop);
 
-		ret = crypto_run(fcr, &cop);
+		ret |= crypto_run(fcr, &cop);
 		if (unlikely(ret))
 			return ret;
 
 		crypt_op_to_compat(&cop, &compat_cop);
-		copy_to_user((void*)arg, &compat_cop,
-				sizeof(compat_cop));
-		return 0;
+		return copy_to_user((void*)arg,
+				&compat_cop, sizeof(compat_cop));
 
 	default:
 		return -EINVAL;

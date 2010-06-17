@@ -64,7 +64,10 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 		return -EINVAL;
 	}
 	/* Copy the key from user and set to TFM. */
-	copy_from_user(keyp, key, keylen);
+	if (unlikely(copy_from_user(keyp, key, keylen))) {
+		dprintk(1, KERN_DEBUG, "copy_from_user() failed for key\n");
+		return -EINVAL;
+	}
 
 	out->async.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
 	if (unlikely(IS_ERR(out->async.s))) {
@@ -135,9 +138,9 @@ void cryptodev_cipher_deinit(struct cipher_data* cdata)
 	cdata->init = 0;
 }
 
-void cryptodev_cipher_set_iv(struct cipher_data* cdata, void __user* iv, size_t iv_size)
+int cryptodev_cipher_set_iv(struct cipher_data* cdata, void __user* iv, size_t iv_size)
 {
-	copy_from_user(cdata->async.iv, iv, min(iv_size,sizeof(cdata->async.iv)));
+	return copy_from_user(cdata->async.iv, iv, min(iv_size,sizeof(cdata->async.iv)));
 }
 
 static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
@@ -205,7 +208,10 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 			alg_name, mackeylen*8);
 		return -EINVAL;
 	}
-	copy_from_user(hkeyp, mackey, mackeylen);
+	if (unlikely(copy_from_user(hkeyp, mackey, mackeylen))) {
+		dprintk(1, KERN_DEBUG, "copy_from_user() failed for mackey\n");
+		return -EINVAL;
+	}
 
 	hdata->async.s = crypto_alloc_ahash(alg_name, 0, 0);
 	if (unlikely(IS_ERR(hdata->async.s))) {
