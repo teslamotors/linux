@@ -586,9 +586,9 @@ static inline void
 compat_to_session_op(struct compat_session_op *compat, struct session_op *sop)
 {
 	memcpy(sop, compat, sizeof(uint32_t) * 3);
-	sop->key       = (uint8_t *)compat->key;
+	sop->key       = (uint8_t *)(unsigned long)compat->key;
 	sop->mackeylen = compat->mackeylen;
-	sop->mackey    = (uint8_t *)compat->mackey;
+	sop->mackey    = (uint8_t *)(unsigned long)compat->mackey;
 	sop->ses       = compat->ses;
 }
 
@@ -596,9 +596,9 @@ static inline void
 session_op_to_compat(struct session_op *sop, struct compat_session_op *compat)
 {
 	memcpy(compat, sop, sizeof(uint32_t) * 3);
-	compat->key       = (uint32_t)sop->key;
+	compat->key       = (unsigned long)sop->key;
 	compat->mackeylen = sop->mackeylen;
-	compat->mackey    = (uint32_t)sop->mackey;
+	compat->mackey    = (unsigned long)sop->mackey;
 	compat->ses       = sop->ses;
 }
 
@@ -606,20 +606,20 @@ static inline void
 compat_to_crypto_op(struct compat_crypt_op *compat, struct crypt_op *cop)
 {
 	memcpy(cop, compat, sizeof(uint32_t) * 2 + sizeof(uint16_t) * 2);
-	cop->src = (uint8_t *)compat->src;
-	cop->dst = (uint8_t *)compat->dst;
-	cop->mac = (uint8_t *)compat->mac;
-	cop->iv  = (uint8_t *)compat->iv;
+	cop->src = (uint8_t *)(unsigned long)compat->src;
+	cop->dst = (uint8_t *)(unsigned long)compat->dst;
+	cop->mac = (uint8_t *)(unsigned long)compat->mac;
+	cop->iv  = (uint8_t *)(unsigned long)compat->iv;
 }
 
 static inline void
 crypto_op_to_compat(struct crypt_op *cop, struct compat_crypt_op *compat)
 {
 	memcpy(compat, cop, sizeof(uint32_t) * 2 + sizeof(uint16_t) * 2);
-	compat->src = (uint32_t)cop->src;
-	compat->dst = (uint32_t)cop->dst;
-	compat->mac = (uint32_t)cop->mac;
-	compat->iv  = (uint32_t)cop->iv;
+	compat->src = (unsigned long)cop->src;
+	compat->dst = (unsigned long)cop->dst;
+	compat->mac = (unsigned long)cop->mac;
+	compat->iv  = (unsigned long)cop->iv;
 }
 
 static long
