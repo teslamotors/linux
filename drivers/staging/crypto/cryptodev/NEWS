@@ -1,4 +1,4 @@
-Version 0.2 (unreleased)
+Version 0.2 (released 2010-06-18)
 
 * Added compat_ioctl() to allow working on systems where userspace is 32bits
 and kernel is operating in 64bit mode (Phil Sutter)
