@@ -39,6 +39,7 @@
 #include <asm/ioctl.h>
 #include <linux/scatterlist.h>
 #include "cryptodev_int.h"
+#include "version.h"
 
 MODULE_AUTHOR("Nikos Mavrogiannopoulos <nmav@gnutls.org>");
 MODULE_DESCRIPTION("CryptoDev driver");
@@ -197,7 +198,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			dprintk(1,KERN_DEBUG,"%s: Failed to load cipher for %s\n", __func__,
 				   alg_name);
 			ret = -EINVAL;
-			goto error;
+			goto error_cipher;
 		}
 	}
 
@@ -207,7 +208,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			dprintk(1,KERN_DEBUG,"%s: Failed to load hash for %s\n", __func__,
 				   hash_name);
 			ret = -EINVAL;
-			goto error;
+			goto error_hash;
 		}
 	}
 
@@ -235,9 +236,9 @@ restart:
 
 	return 0;
 
-error:
+error_hash:
 	cryptodev_cipher_deinit( &ses_new->cdata);
-	cryptodev_hash_deinit( &ses_new->hdata);
+error_cipher:
 	if (ses_new) kfree(ses_new);
 
 	return ret;
@@ -752,7 +753,7 @@ int __init init_cryptodev(void)
 	if (unlikely(rc))
 		return rc;
 
-	printk(KERN_INFO PFX "driver loaded.\n");
+	printk(KERN_INFO PFX "driver %s loaded.\n", VERSION);
 
 	return 0;
 }

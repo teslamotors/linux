@@ -1,12 +1,13 @@
 KERNEL_DIR = /lib/modules/$(shell uname -r)/build
-VERSION = 0.2
+VERSION = 0.3
 
 cryptodev-objs = cryptodev_main.o cryptodev_cipher.o
 
 obj-m += cryptodev.o
 
 build:
-	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules
+	@echo "#define VERSION \"$(VERSION)\"" > version.h
+	make -C $(KERNEL_DIR) VERSION="$VERSION" SUBDIRS=`pwd` modules
 
 install:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules_install
