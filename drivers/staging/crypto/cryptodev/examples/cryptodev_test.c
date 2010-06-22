@@ -23,9 +23,9 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <crypto/cryptodev.h>
+#include "../cryptodev.h"
 
-#if 0
+#if 1
 #define TEST_ALGO	CRYPTO_AES_CBC
 #define TEST_KEYLEN	32
 #else
@@ -112,12 +112,12 @@ int main(void)
 	}
 
 	printf("Standard operation:\n");
-	for (i = 16; i <= (64 * 4096); i *= 2) {
+	for (i = 256; i <= (64 * 4096); i *= 2) {
 		if (encrypt_data(&sess, fdc, TOT_LEN, i, 0))
 			break;
 	}
 	printf("Zero-Copy operation:\n");
-	for (i = 16; i <= (64 * 4096); i *= 2) {
+	for (i = 256; i <= (64 * 4096); i *= 2) {
 		if (encrypt_data(&sess, fdc, TOT_LEN, i, COP_FLAG_ZCOPY))
 			break;
 	}
