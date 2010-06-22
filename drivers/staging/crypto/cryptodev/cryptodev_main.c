@@ -352,6 +352,99 @@ crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 	return ses_ptr;
 }
 
+static int
+hash_n_crypt(struct csession *ses_ptr, struct crypt_op *cop,
+		struct scatterlist *src_sg, struct scatterlist *dst_sg, uint32_t len)
+{
+	int ret;
+
+	/* Always hash before encryption and after decryption. Maybe
+	 * we should introduce a flag to switch... TBD later on.
+	 */
+	if (cop->op == COP_ENCRYPT) {
+		if (ses_ptr->hdata.init != 0) {
+			ret = cryptodev_hash_update(&ses_ptr->hdata, src_sg, len);
+			if (unlikely(ret))
+				goto out_err;
+		}
+		if (ses_ptr->cdata.init != 0) {
+			ret = cryptodev_cipher_encrypt( &ses_ptr->cdata, src_sg, dst_sg, len);
+
+			if (unlikely(ret))
+				goto out_err;
+		}
+	} else {
+		if (ses_ptr->cdata.init != 0) {
+			ret = cryptodev_cipher_decrypt( &ses_ptr->cdata, src_sg, dst_sg, len);
+
+			if (unlikely(ret))
+				goto out_err;
+		}
+
+		if (ses_ptr->hdata.init != 0) {
+			ret = cryptodev_hash_update(&ses_ptr->hdata, dst_sg, len);
+			if (unlikely(ret))
+				goto out_err;
+		}
+	}
+	return 0;
+out_err:
+	dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
+	return ret;
+}
+
+
+/* This is the main crypto function - feed it with plaintext
+   and get a ciphertext (or vice versa :-) */
+static int
+__crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
+{
+	char *data;
+	char __user *src, __user *dst;
+	struct scatterlist sg;
+	size_t nbytes, bufsize;
+	int ret = 0;
+
+	nbytes = cop->len;
+	data = (char*)__get_free_page(GFP_KERNEL);
+
+	if (unlikely(!data)) {
+		return -ENOMEM;
+	}
+	bufsize = PAGE_SIZE < nbytes ? PAGE_SIZE : nbytes;
+
+	src = cop->src;
+	dst = cop->dst;
+
+	while(nbytes > 0) {
+		size_t current_len = nbytes > bufsize ? bufsize : nbytes;
+
+		ret = copy_from_user(data, src, current_len);
+		if (unlikely(ret))
+			break;
+
+		sg_init_one(&sg, data, current_len);
+
+		ret = hash_n_crypt(ses_ptr, cop, &sg, &sg, current_len);
+
+		if (unlikely(ret))
+			break;
+
+		if (ses_ptr->cdata.init != 0) {
+			ret = copy_to_user(dst, data, current_len);
+			if (unlikely(ret))
+				break;
+		}
+
+		dst += current_len;
+		nbytes -= current_len;
+		src += current_len;
+	}
+
+	free_page((unsigned long)data);
+	return ret;
+}
+
 /* last page - first page + 1 */
 #define PAGECOUNT(buf, buflen) \
         ((((unsigned long)(buf + buflen - 1) & PAGE_MASK) >> PAGE_SHIFT) - \
@@ -444,22 +537,43 @@ static void release_user_pages(struct page **pg, int pagecount)
 	}
 }
 
-/* This is the main crypto function - feed it with plaintext 
-   and get a ciphertext (or vice versa :-) */
+/* This is the main crypto function - zero-copy edition */
 static int
-crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
+__crypto_run_zc(struct csession *ses_ptr, struct crypt_op *cop)
 {
 	struct scatterlist *src_sg, *dst_sg;
-	struct csession *ses_ptr;
-	unsigned int ivsize=0;
 	int ret = 0, pagecount;
+
+	ret = get_userbuf(ses_ptr, cop, &src_sg, &dst_sg, &pagecount);
+	if (unlikely(ret)) {
+		dprintk(1, KERN_ERR, "error getting user pages\n");
+		return ret;
+	}
+
+	ret = hash_n_crypt(ses_ptr, cop, src_sg, dst_sg, cop->len);
+
+	release_user_pages(ses_ptr->pages, pagecount);
+	return ret;
+}
+
+typedef int (*crypto_runner)(struct csession *ses_ptr, struct crypt_op *cop);
+
+static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
+{
+	struct csession *ses_ptr;
 	uint8_t hash_output[AALG_MAX_RESULT_LEN];
+	int ret;
+	crypto_runner workers[] = {
+		[0] = __crypto_run_std,
+		[1] = __crypto_run_zc,
+	};
 
 	if (unlikely(cop->op != COP_ENCRYPT && cop->op != COP_DECRYPT)) {
 		dprintk(1, KERN_DEBUG, "invalid operation op=%u\n", cop->op);
 		return -EINVAL;
 	}
 
+	/* this also enters ses_ptr->sem */
 	ses_ptr = crypto_get_session_by_sid(fcr, cop->ses);
 	if (unlikely(!ses_ptr)) {
 		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", cop->ses);
@@ -480,73 +594,31 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 
 		if (unlikely(cop->len % blocksize)) {
 			dprintk(1, KERN_ERR,
-				"data size (%zu) isn't a multiple of block size (%u)\n",
+				"data size (%u) isn't a multiple of block size (%u)\n",
 				cop->len, blocksize);
 			ret = -EINVAL;
 			goto out_unlock;
 		}
 
-		ivsize = ses_ptr->cdata.ivsize;
-
 		if (cop->iv) {
-			cryptodev_cipher_set_iv(&ses_ptr->cdata, cop->iv, ivsize);
+			cryptodev_cipher_set_iv(&ses_ptr->cdata, cop->iv, ses_ptr->cdata.ivsize);
 		}
 	}
 
-	ret = get_userbuf(ses_ptr, cop, &src_sg, &dst_sg, &pagecount);
 
-	if (unlikely(ret)) {
-		dprintk(1, KERN_ERR, "error getting user pages\n");
+	ret = (*workers[!!(cop->flags & COP_FLAG_ZCOPY)])(ses_ptr, cop);
+	if (unlikely(ret))
 		goto out_unlock;
-	}
-
-	/* Always hash before encryption and after decryption. Maybe
-	 * we should introduce a flag to switch... TBD later on.
-	 */
-	if (cop->op == COP_ENCRYPT) {
-		if (ses_ptr->hdata.init != 0) {
-			ret = cryptodev_hash_update(&ses_ptr->hdata, src_sg, cop->len);
-			if (unlikely(ret)) {
-				dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
-				goto out;
-			}
-		}
-		if (ses_ptr->cdata.init != 0) {
-			ret = cryptodev_cipher_encrypt( &ses_ptr->cdata, src_sg, dst_sg, cop->len);
-
-			if (unlikely(ret)) {
-				dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
-				goto out;
-			}
-		}
-	} else {
-		if (ses_ptr->cdata.init != 0) {
-			ret = cryptodev_cipher_decrypt( &ses_ptr->cdata, src_sg, dst_sg, cop->len);
-
-			if (unlikely(ret)) {
-				dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
-				goto out;
-			}
-		}
-
-		if (ses_ptr->hdata.init != 0) {
-			ret = cryptodev_hash_update(&ses_ptr->hdata, dst_sg, cop->len);
-			if (unlikely(ret)) {
-				dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
-				goto out;
-			}
-		}
-	}
 
 	if (ses_ptr->hdata.init != 0) {
 		ret = cryptodev_hash_final(&ses_ptr->hdata, hash_output);
 		if (unlikely(ret)) {
 			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
-			goto out;
+			goto out_unlock;
 		}
 
 		if (unlikely(copy_to_user(cop->mac, hash_output, ses_ptr->hdata.digestsize)))
-			goto out;
+			goto out_unlock;
 	}
 
 #if defined(CRYPTODEV_STATS)
@@ -559,12 +631,8 @@ crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	}
 #endif
 
-out:
-	release_user_pages(ses_ptr->pages, pagecount);
-
 out_unlock:
 	up(&ses_ptr->sem);
-
 	return ret;
 }
 

@@ -87,13 +87,18 @@ struct session_op {
  struct crypt_op {
 	uint32_t	ses;		/* session identifier */
 	uint16_t	op;		/* COP_ENCRYPT or COP_DECRYPT */
-	uint16_t	flags;		/* no usage so far, use 0 */
+	uint16_t	flags;		/* operational switches, use 0 in doubt */
 	uint32_t	len;		/* length of source data */
 	uint8_t *	src;		/* source data */
 	uint8_t *	dst;		/* pointer to output data */
 	uint8_t	*	mac;		/* pointer to output data for hash/MAC operations */
 	uint8_t	*	iv;		/* initialization vector for encryption operations */
 };
+
+/* struct crypt_op flags */
+
+#define COP_FLAG_NONE		(0 << 0) /* totally no flag */
+#define COP_FLAG_ZCOPY		(1 << 0) /* operate directly on the userspace buffer */
 
 /* Stuff for bignum arithmetic and public key
  * cryptography - not supported yet by linux
