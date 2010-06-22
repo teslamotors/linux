@@ -129,6 +129,9 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		case CRYPTO_CAMELLIA_CBC:
 			alg_name = "cbc(camelia)";
 			break;
+		case CRYPTO_NULL:
+			alg_name = "ecb(cipher_null)";
+			break;
 		default:
 			dprintk(1,KERN_DEBUG,"%s: bad cipher: %d\n", __func__, sop->cipher);
 			return -EINVAL;
