@@ -9,5 +9,6 @@ Module.symvers
 modules.order
 examples/cipher
 examples/hmac
+examples/speed
 releases
 scripts
