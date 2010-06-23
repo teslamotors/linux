@@ -6,6 +6,6 @@ cipher.
 It was initially written for linux 2.6.8 by Michal Ludvig. Compatibility
 fixes for *BSD cryptodev as well as porting to 2.6.27 blkcipher API 
 by Nikos Mavrogiannopoulos. Initial blkcipher async API porting by
-Michael Weiser.
+Michael Weiser. Zero copy support was implemented by Phil Sutter.
 
 Maintained by Nikos Mavrogiannopoulos (nmav [at] gnutls [dot] org)
