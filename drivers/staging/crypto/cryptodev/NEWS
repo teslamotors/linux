@@ -1,3 +1,8 @@
+Version 0.4 (released 2010-07-03)
+
+* Internal engine supports operations with zero copy from
+user space. 
+
 Version 0.3 (released 2010-06-19)
 
 * Corrected bug when initializing unsupported algorithms.
