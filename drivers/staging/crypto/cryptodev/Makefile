@@ -7,7 +7,7 @@ obj-m += cryptodev.o
 
 build:
 	@echo "#define VERSION \"$(VERSION)\"" > version.h
-	make -C $(KERNEL_DIR) VERSION="$VERSION" SUBDIRS=`pwd` modules
+	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules
 
 install:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules_install
