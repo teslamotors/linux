@@ -396,6 +396,7 @@ out_err:
 	return ret;
 }
 
+#ifdef DISABLE_ZCOPY
 
 /* This is the main crypto function - feed it with plaintext
    and get a ciphertext (or vice versa :-) */
@@ -447,6 +448,8 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 	free_page((unsigned long)data);
 	return ret;
 }
+
+#else /* Zero - copy */
 
 /* last page - first page + 1 */
 #define PAGECOUNT(buf, buflen) \
@@ -559,17 +562,13 @@ __crypto_run_zc(struct csession *ses_ptr, struct crypt_op *cop)
 	return ret;
 }
 
-typedef int (*crypto_runner)(struct csession *ses_ptr, struct crypt_op *cop);
+#endif /* DISABLE_ZCOPY */
 
 static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 {
 	struct csession *ses_ptr;
 	uint8_t hash_output[AALG_MAX_RESULT_LEN];
 	int ret;
-	crypto_runner workers[] = {
-		[0] = __crypto_run_std,
-		[1] = __crypto_run_zc,
-	};
 
 	if (unlikely(cop->op != COP_ENCRYPT && cop->op != COP_DECRYPT)) {
 		dprintk(1, KERN_DEBUG, "invalid operation op=%u\n", cop->op);
@@ -608,8 +607,11 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		}
 	}
 
-
-	ret = (*workers[!!(cop->flags & COP_FLAG_ZCOPY)])(ses_ptr, cop);
+#ifdef DISABLE_ZCOPY
+	ret = __crypto_run_std(ses_ptr, cop);
+#else /* normal */
+	ret = __crypto_run_zc(ses_ptr, cop);
+#endif
 	if (unlikely(ret))
 		goto out_unlock;
 

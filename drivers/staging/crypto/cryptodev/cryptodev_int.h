@@ -11,6 +11,8 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 
+#undef DISABLE_ZCOPY
+
 #define PFX "cryptodev: "
 #define dprintk(level,severity,format,a...)			\
 	do {						\
