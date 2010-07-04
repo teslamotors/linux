@@ -12,3 +12,4 @@ examples/hmac
 examples/speed
 releases
 scripts
+version.h
