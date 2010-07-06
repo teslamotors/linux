@@ -200,7 +200,22 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 
 	/* Set-up crypto transform. */
 	if (alg_name) {
-		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, sop->key, sop->keylen);
+		uint8_t keyp[CRYPTO_CIPHER_MAX_KEY_LEN];
+
+		if (unlikely(sop->keylen > CRYPTO_CIPHER_MAX_KEY_LEN)) {
+			dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
+				alg_name, (size_t)sop->keylen*8);
+			ret = -EINVAL;
+			goto error_cipher;
+		}
+
+		ret = copy_from_user(keyp, sop->key, sop->keylen);
+		if (unlikely(ret)) {
+			goto error_cipher;
+		}
+
+		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, keyp, sop->keylen);
+
 		if (ret < 0) {
 			dprintk(1,KERN_DEBUG,"%s: Failed to load cipher for %s\n", __func__,
 				   alg_name);
@@ -210,7 +225,21 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	}
 
 	if (hash_name) {
-		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode, sop->mackey, sop->mackeylen);
+		uint8_t keyp[CRYPTO_HMAC_MAX_KEY_LEN];
+
+		if (unlikely(sop->mackeylen > CRYPTO_HMAC_MAX_KEY_LEN)) {
+			dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
+				alg_name, (size_t)sop->mackeylen*8);
+			ret = -EINVAL;
+			goto error_hash;
+		}
+		
+		ret = copy_from_user(keyp, sop->mackey, sop->mackeylen);
+		if (unlikely(ret)) {
+			goto error_hash;
+		}
+
+		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode, keyp, sop->mackeylen);
 		if (ret != 0) {
 			dprintk(1,KERN_DEBUG,"%s: Failed to load hash for %s\n", __func__,
 				   hash_name);
@@ -603,7 +632,15 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		}
 
 		if (cop->iv) {
-			cryptodev_cipher_set_iv(&ses_ptr->cdata, cop->iv, ses_ptr->cdata.ivsize);
+			uint8_t iv[EALG_MAX_BLOCK_LEN];
+			
+			ret = copy_from_user(iv, cop->iv, min( (int)sizeof(iv), (ses_ptr->cdata.ivsize)));
+			dprintk(1, KERN_ERR, "error copying IV\n");
+			if (unlikely(ret)) {
+				goto out_unlock;
+			}
+
+			cryptodev_cipher_set_iv(&ses_ptr->cdata, iv, ses_ptr->cdata.ivsize);
 		}
 	}
 

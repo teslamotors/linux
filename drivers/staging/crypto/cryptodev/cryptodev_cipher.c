@@ -48,26 +48,15 @@ static void cryptodev_complete(struct crypto_async_request *req, int err)
 	complete(&res->completion);
 }
 
-int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t __user * key, size_t keylen)
+int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t * keyp, size_t keylen)
 {
-	uint8_t keyp[CRYPTO_CIPHER_MAX_KEY_LEN];
+	
 	struct ablkcipher_alg* alg;
 	int ret;
 
 	memset(out, 0, sizeof(*out));
 
 	out->init = 1;
-
-	if (unlikely(keylen > CRYPTO_CIPHER_MAX_KEY_LEN)) {
-		dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
-			alg_name, keylen*8);
-		return -EINVAL;
-	}
-	/* Copy the key from user and set to TFM. */
-	if (unlikely(copy_from_user(keyp, key, keylen))) {
-		dprintk(1, KERN_DEBUG, "copy_from_user() failed for key\n");
-		return -EINVAL;
-	}
 
 	out->async.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
 	if (unlikely(IS_ERR(out->async.s))) {
@@ -138,9 +127,9 @@ void cryptodev_cipher_deinit(struct cipher_data* cdata)
 	cdata->init = 0;
 }
 
-int cryptodev_cipher_set_iv(struct cipher_data* cdata, void __user* iv, size_t iv_size)
+void cryptodev_cipher_set_iv(struct cipher_data* cdata, void __user* iv, size_t iv_size)
 {
-	return copy_from_user(cdata->async.iv, iv, min(iv_size,sizeof(cdata->async.iv)));
+	memcpy(cdata->async.iv, iv, min(iv_size,sizeof(cdata->async.iv)) );
 }
 
 static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
@@ -196,22 +185,11 @@ ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, struct scatterlist 
 
 /* Hash functions */
 
-int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, void __user* mackey, size_t mackeylen)
+int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, void * mackey, size_t mackeylen)
 {
 int ret;
-uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 
 	hdata->init = 1;
-
-	if (unlikely(mackeylen > CRYPTO_HMAC_MAX_KEY_LEN)) {
-		dprintk(1,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
-			alg_name, mackeylen*8);
-		return -EINVAL;
-	}
-	if (unlikely(copy_from_user(hkeyp, mackey, mackeylen))) {
-		dprintk(1, KERN_DEBUG, "copy_from_user() failed for mackey\n");
-		return -EINVAL;
-	}
 
 	hdata->async.s = crypto_alloc_ahash(alg_name, 0, 0);
 	if (unlikely(IS_ERR(hdata->async.s))) {
@@ -222,8 +200,7 @@ uint8_t hkeyp[CRYPTO_HMAC_MAX_KEY_LEN];
 
 	/* Copy the key from user and set to TFM. */
 	if (hmac_mode != 0) {
-
-		ret = crypto_ahash_setkey(hdata->async.s, hkeyp, mackeylen);
+		ret = crypto_ahash_setkey(hdata->async.s, mackey, mackeylen);
 		if (unlikely(ret)) {
 			dprintk(1,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
 				alg_name, mackeylen*8);

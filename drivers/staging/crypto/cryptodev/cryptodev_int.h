@@ -37,11 +37,11 @@ struct cipher_data
 	} async;
 };
 
-int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, __user uint8_t * key, size_t keylen);
+int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t * key, size_t keylen);
 void cryptodev_cipher_deinit(struct cipher_data* cdata);
 ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
 ssize_t cryptodev_cipher_encrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
-int cryptodev_cipher_set_iv(struct cipher_data* cdata, void* iv, size_t iv_size);
+void cryptodev_cipher_set_iv(struct cipher_data* cdata, void* iv, size_t iv_size);
 
 /* hash stuff */
 struct hash_data
@@ -59,7 +59,7 @@ int cryptodev_hash_final( struct hash_data* hdata, void* output);
 ssize_t cryptodev_hash_update( struct hash_data* hdata, struct scatterlist *sg, size_t len);
 int cryptodev_hash_reset( struct hash_data* hdata);
 void cryptodev_hash_deinit(struct hash_data* hdata);
-int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, __user void* mackey, size_t mackeylen);
+int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, void* mackey, size_t mackeylen);
 
 /* compatibility stuff */
 #ifdef CONFIG_COMPAT
