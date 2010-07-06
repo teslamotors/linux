@@ -425,7 +425,6 @@ out_err:
 	return ret;
 }
 
-#ifdef DISABLE_ZCOPY
 
 /* This is the main crypto function - feed it with plaintext
    and get a ciphertext (or vice versa :-) */
@@ -478,7 +477,7 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 	return ret;
 }
 
-#else /* Zero - copy */
+#ifndef DISABLE_ZCOPY
 
 /* last page - first page + 1 */
 #define PAGECOUNT(buf, buflen) \
@@ -581,8 +580,8 @@ __crypto_run_zc(struct csession *ses_ptr, struct crypt_op *cop)
 
 	ret = get_userbuf(ses_ptr, cop, &src_sg, &dst_sg, &pagecount);
 	if (unlikely(ret)) {
-		dprintk(1, KERN_ERR, "error getting user pages\n");
-		return ret;
+		dprintk(1, KERN_ERR, "Error getting user pages. Falling back to non zero copy.\n");
+		return __crypto_run_std(ses_ptr, cop);
 	}
 
 	ret = hash_n_crypt(ses_ptr, cop, src_sg, dst_sg, cop->len);
