@@ -491,7 +491,7 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 static int __get_userbuf(uint8_t *addr, uint32_t len,
 		int pgcount, struct page **pg, struct scatterlist *sg)
 {
-	int ret, pglen;
+	int ret, pglen, i = 0;
 	struct scatterlist *sgp;
 
 	down_write(&current->mm->mmap_sem);
@@ -504,12 +504,12 @@ static int __get_userbuf(uint8_t *addr, uint32_t len,
 	sg_init_table(sg, pgcount);
 
 	pglen = MIN(PAGE_SIZE - PAGEOFFSET(addr), len);
-	sg_set_page(sg, pg[0], pglen, PAGEOFFSET(addr));
+	sg_set_page(sg, pg[i++], pglen, PAGEOFFSET(addr));
 
 	len -= pglen;
 	for (sgp = sg_next(sg); len; sgp = sg_next(sgp)) {
 		pglen = MIN(PAGE_SIZE, len);
-		sg_set_page(sgp, *(pg++), pglen, 0);
+		sg_set_page(sgp, pg[i++], pglen, 0);
 		len -= pglen;
 	}
 	sg_mark_end(sg_last(sg, pgcount));
