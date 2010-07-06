@@ -12,7 +12,7 @@
 #include <sys/ioctl.h>
 #include <crypto/cryptodev.h>
 
-#define	DATA_SIZE	4096
+#define	DATA_SIZE	8*1024
 #define	BLOCK_SIZE	16
 #define	KEY_SIZE	16
 
@@ -43,6 +43,7 @@ test_crypto(int cfd)
 		return 1;
 	}
 
+
 	/* Encrypt data.in to data.encrypted */
 	cryp.ses = sess.ses;
 	cryp.len = sizeof(plaintext);
@@ -52,6 +53,11 @@ test_crypto(int cfd)
 	cryp.op = COP_ENCRYPT;
 	if (ioctl(cfd, CIOCCRYPT, &cryp)) {
 		perror("ioctl(CIOCCRYPT)");
+		return 1;
+	}
+
+	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
+		perror("ioctl(CIOCFSESSION)");
 		return 1;
 	}
 

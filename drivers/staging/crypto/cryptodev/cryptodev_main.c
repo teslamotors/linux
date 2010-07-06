@@ -191,12 +191,10 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	}
 
 	/* Create a session and put it to the list. */
-	ses_new = kmalloc(sizeof(*ses_new), GFP_KERNEL);
+	ses_new = kzalloc(sizeof(*ses_new), GFP_KERNEL);
 	if(!ses_new) {
 		return -ENOMEM;
 	}
-
-	memset(ses_new, 0, sizeof(*ses_new));
 
 	/* Set-up crypto transform. */
 	if (alg_name) {
@@ -541,6 +539,10 @@ static int get_userbuf(struct csession *ses,
 				sizeof(struct page *), GFP_KERNEL);
 		ses->sg = krealloc(ses->sg, ses->array_size *
 				sizeof(struct scatterlist), GFP_KERNEL);
+		
+		if (ses->sg == NULL || ses->pages == NULL) {
+			return -ENOMEM;
+		}
 	}
 
 	if (__get_userbuf(cop->src, cop->len,
@@ -634,8 +636,8 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 			uint8_t iv[EALG_MAX_BLOCK_LEN];
 			
 			ret = copy_from_user(iv, cop->iv, min( (int)sizeof(iv), (ses_ptr->cdata.ivsize)));
-			dprintk(1, KERN_ERR, "error copying IV\n");
 			if (unlikely(ret)) {
+				dprintk(1, KERN_ERR, "error copying IV (%d bytes)\n", min( (int)sizeof(iv), (ses_ptr->cdata.ivsize)));
 				goto out_unlock;
 			}
 
@@ -759,9 +761,11 @@ cryptodev_ioctl(struct inode *inode, struct file *filp,
 			return copy_to_user((void*)arg, &sop, sizeof(sop));
 
 		case CIOCFSESSION:
-			get_user(ses, (uint32_t*)arg);
-			ret = crypto_finish_session(fcr, ses);
-			return ret;
+			ret = get_user(ses, (uint32_t*)arg);
+			if (unlikely(ret))
+				return ret;
+
+			return crypto_finish_session(fcr, ses);
 
 		case CIOCCRYPT:
 			ret = copy_from_user(&cop, (void*)arg, sizeof(cop));
