@@ -156,7 +156,7 @@ int main(void)
 		return 1;
 	}
 
-	for (i = 256; i <= (64 * 4096); i *= 2) {
+	for (i = 256; i <= (64 * 1024); i *= 2) {
 		if (encrypt_data(&sess, fdc, i, 0))
 			break;
 	}
