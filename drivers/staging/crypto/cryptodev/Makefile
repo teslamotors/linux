@@ -1,5 +1,5 @@
 KERNEL_DIR = /lib/modules/$(shell uname -r)/build
-VERSION = 0.4
+VERSION = 0.5
 
 cryptodev-objs = cryptodev_main.o cryptodev_cipher.o
 
@@ -30,7 +30,8 @@ dist: clean
 	@echo Packing
 	@rm -f *.tar.gz
 	@mkdir $(TMPDIR)/$(FILEBASE)
-	@cp -ar . $(TMPDIR)/$(FILEBASE)
+	@cp -ar extras examples Makefile *.c *.h README NEWS \
+		AUTHORS COPYING $(TMPDIR)/$(FILEBASE)
 	@rm -rf $(TMPDIR)/$(FILEBASE)/.git* $(TMPDIR)/$(FILEBASE)/releases $(TMPDIR)/$(FILEBASE)/scripts
 	@tar -C /tmp -czf ./$(OUTPUT) $(FILEBASE)
 	@rm -rf $(TMPDIR)/$(FILEBASE)
