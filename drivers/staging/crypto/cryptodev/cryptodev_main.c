@@ -21,7 +21,7 @@
  */
 
 /*
- * Device /dev/crypto provides an interface for 
+ * Device /dev/crypto provides an interface for
  * accessing kernel CryptoAPI algorithms (ciphers,
  * hashes) from userspace programs.
  *
@@ -231,7 +231,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			ret = -EINVAL;
 			goto error_hash;
 		}
-		
+
 		ret = copy_from_user(keyp, sop->mackey, sop->mackeylen);
 		if (unlikely(ret)) {
 			goto error_hash;
@@ -551,7 +551,7 @@ static int get_userbuf(struct csession *ses,
 				sizeof(struct page *), GFP_KERNEL);
 		ses->sg = krealloc(ses->sg, ses->array_size *
 				sizeof(struct scatterlist), GFP_KERNEL);
-		
+
 		if (ses->sg == NULL || ses->pages == NULL) {
 			return -ENOMEM;
 		}
@@ -638,7 +638,7 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 
 		if (cop->iv) {
 			uint8_t iv[EALG_MAX_BLOCK_LEN];
-			
+
 			ret = copy_from_user(iv, cop->iv, min( (int)sizeof(iv), (ses_ptr->cdata.ivsize)));
 			if (unlikely(ret)) {
 				dprintk(1, KERN_ERR, "error copying IV (%d bytes)\n", min( (int)sizeof(iv), (ses_ptr->cdata.ivsize)));
