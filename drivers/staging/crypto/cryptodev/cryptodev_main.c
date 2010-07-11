@@ -556,7 +556,7 @@ static int get_userbuf(struct csession *ses,
 
 	if (__get_userbuf(cop->src, cop->len,
 			src_pagecount, ses->pages, ses->sg)) {
-		printk(KERN_ERR "%s: failed to get user pages\n", __func__);
+		dprintk(1, KERN_ERR, "failed to get user pages for data input\n");
 		return -EINVAL;
 	}
 	(*src_sg) = (*dst_sg) = ses->sg;
@@ -566,7 +566,7 @@ static int get_userbuf(struct csession *ses,
 
 		if (__get_userbuf(cop->dst, cop->len, dst_pagecount,
 					ses->pages + src_pagecount, *dst_sg)) {
-			printk(KERN_ERR "%s: failed to get user pages\n", __func__);
+			dprintk(1, KERN_ERR, "failed to get user pages for data output\n");
 			release_user_pages(ses->pages, src_pagecount);
 			return -EINVAL;
 		}
