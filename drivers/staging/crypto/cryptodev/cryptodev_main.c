@@ -497,7 +497,7 @@ static void release_user_pages(struct page **pg, int pagecount)
 #define MIN(a, b)	((a > b) ? b : a)
 
 /* fetch the pages addr resides in into pg and initialise sg with them */
-static int __get_userbuf(uint8_t *addr, uint32_t len,
+static int __get_userbuf(uint8_t *addr, uint32_t len, int write,
 		int pgcount, struct page **pg, struct scatterlist *sg)
 {
 	int ret, pglen, i = 0;
@@ -505,7 +505,7 @@ static int __get_userbuf(uint8_t *addr, uint32_t len,
 
 	down_write(&current->mm->mmap_sem);
 	ret = get_user_pages(current, current->mm,
-			(unsigned long)addr, pgcount, 1, 0, pg, NULL);
+			(unsigned long)addr, pgcount, write, 0, pg, NULL);
 	up_write(&current->mm->mmap_sem);
 	if (ret != pgcount)
 		return -EINVAL;
@@ -530,11 +530,14 @@ static int get_userbuf(struct csession *ses,
 		struct crypt_op *cop, struct scatterlist **src_sg,
 		struct scatterlist **dst_sg, int *tot_pages)
 {
-	int src_pagecount, dst_pagecount = 0, pagecount;
+	int src_pagecount, dst_pagecount = 0, pagecount, write_src = 1;
 
 	src_pagecount = PAGECOUNT(cop->src, cop->len);
-	if (cop->src != cop->dst) {	/* non-in-situ transformation */
+	if (!ses->cdata.init) {		/* hashing only */
+		write_src = 0;
+	} else if (cop->src != cop->dst) {	/* non-in-situ transformation */
 		dst_pagecount = PAGECOUNT(cop->dst, cop->len);
+		write_src = 0;
 	}
 	(*tot_pages) = pagecount = src_pagecount + dst_pagecount;
 
@@ -554,7 +557,7 @@ static int get_userbuf(struct csession *ses,
 		}
 	}
 
-	if (__get_userbuf(cop->src, cop->len,
+	if (__get_userbuf(cop->src, cop->len, write_src,
 			src_pagecount, ses->pages, ses->sg)) {
 		dprintk(1, KERN_ERR, "failed to get user pages for data input\n");
 		return -EINVAL;
@@ -564,7 +567,7 @@ static int get_userbuf(struct csession *ses,
 	if (dst_pagecount) {
 		(*dst_sg) = ses->sg + src_pagecount;
 
-		if (__get_userbuf(cop->dst, cop->len, dst_pagecount,
+		if (__get_userbuf(cop->dst, cop->len, 1, dst_pagecount,
 					ses->pages + src_pagecount, *dst_sg)) {
 			dprintk(1, KERN_ERR, "failed to get user pages for data output\n");
 			release_user_pages(ses->pages, src_pagecount);
