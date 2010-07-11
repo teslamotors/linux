@@ -477,6 +477,15 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 
 #ifndef DISABLE_ZCOPY
 
+static void release_user_pages(struct page **pg, int pagecount)
+{
+	while (pagecount--) {
+		if (!PageReserved(pg[pagecount]))
+			SetPageDirty(pg[pagecount]);
+		page_cache_release(pg[pagecount]);
+	}
+}
+
 /* last page - first page + 1 */
 #define PAGECOUNT(buf, buflen) \
         ((((unsigned long)(buf + buflen - 1) & PAGE_MASK) >> PAGE_SHIFT) - \
@@ -558,19 +567,11 @@ static int get_userbuf(struct csession *ses,
 		if (__get_userbuf(cop->dst, cop->len, dst_pagecount,
 					ses->pages + src_pagecount, *dst_sg)) {
 			printk(KERN_ERR "%s: failed to get user pages\n", __func__);
+			release_user_pages(ses->pages, src_pagecount);
 			return -EINVAL;
 		}
 	}
 	return 0;
-}
-
-static void release_user_pages(struct page **pg, int pagecount)
-{
-	while (pagecount--) {
-		if (!PageReserved(pg[pagecount]))
-			SetPageDirty(pg[pagecount]);
-		page_cache_release(pg[pagecount]);
-	}
 }
 
 /* This is the main crypto function - zero-copy edition */
