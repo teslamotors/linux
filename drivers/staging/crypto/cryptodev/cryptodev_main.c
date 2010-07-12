@@ -532,10 +532,12 @@ static int get_userbuf(struct csession *ses,
 {
 	int src_pagecount, dst_pagecount = 0, pagecount, write_src = 1;
 
+	BUG_ON(!cop->src);
 	src_pagecount = PAGECOUNT(cop->src, cop->len);
 	if (!ses->cdata.init) {		/* hashing only */
 		write_src = 0;
 	} else if (cop->src != cop->dst) {	/* non-in-situ transformation */
+		BUG_ON(!cop->dst);
 		dst_pagecount = PAGECOUNT(cop->dst, cop->len);
 		write_src = 0;
 	}
