@@ -1,3 +1,8 @@
+Version 0.6 (unreleased)
+
+* Corrected fallback to non-zero copy when referenced
+pages were not writable.
+
 Version 0.5 (released 2010-07-06)
 
 * Corrected issue with zero copy on multiple pages.
