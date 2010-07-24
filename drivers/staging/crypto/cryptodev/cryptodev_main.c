@@ -129,6 +129,9 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		case CRYPTO_CAMELLIA_CBC:
 			alg_name = "cbc(camelia)";
 			break;
+		case CRYPTO_AES_CTR:
+			alg_name = "ctr(aes)";
+			break;
 		case CRYPTO_NULL:
 			alg_name = "ecb(cipher_null)";
 			break;
