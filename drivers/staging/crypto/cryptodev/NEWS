@@ -1,5 +1,7 @@
 Version 0.6 (unreleased)
 
+* Relicensed under GPLv2.
+
 * Added AES-CTR.
 
 * Corrected fallback to non-zero copy when referenced
