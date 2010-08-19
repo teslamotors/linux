@@ -11,6 +11,8 @@ void test_attr__init(void);
 void test_attr__open(struct perf_event_attr *attr, pid_t pid, int cpu,
 		     int fd, int group_fd, unsigned long flags);
 
+#include <stdbool.h>
+
 #define HAVE_ATTR_TEST
 #include "perf-sys.h"
 
