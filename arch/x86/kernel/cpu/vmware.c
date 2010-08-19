@@ -21,6 +21,7 @@
  *
  */
 
+#include <linux/jiffies.h>
 #include <linux/dmi.h>
 #include <linux/module.h>
 #include <asm/div64.h>
