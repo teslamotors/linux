@@ -1,4 +1,4 @@
-/* This is a source compatible implementation with the original API of 
+/* This is a source compatible implementation with the original API of
  * cryptodev by Angelos D. Keromytis, found at openbsd cryptodev.h.
  * Placed under public domain */
 
@@ -16,38 +16,39 @@
 
 /* All the supported algorithms
  */
-typedef enum {
-	CRYPTO_DES_CBC=1,
-	CRYPTO_3DES_CBC=2,
-	CRYPTO_BLF_CBC=3,
-	CRYPTO_CAST_CBC=4,
-	CRYPTO_SKIPJACK_CBC=5,
-	CRYPTO_MD5_HMAC=6,
-	CRYPTO_SHA1_HMAC=7,
-	CRYPTO_RIPEMD160_HMAC=8,
-	CRYPTO_MD5_KPDK=9,
-	CRYPTO_SHA1_KPDK=10,
-	CRYPTO_RIJNDAEL128_CBC=11,
-	CRYPTO_AES_CBC=CRYPTO_RIJNDAEL128_CBC,
-	CRYPTO_ARC4=12,
-	CRYPTO_MD5=13,
-	CRYPTO_SHA1=14,
-	CRYPTO_DEFLATE_COMP=15,
-	CRYPTO_NULL=16,
-	CRYPTO_LZS_COMP=17,
-	CRYPTO_SHA2_256_HMAC=18,
-	CRYPTO_SHA2_384_HMAC=19,
-	CRYPTO_SHA2_512_HMAC=20,
-	CRYPTO_AES_CTR=21,
-	CRYPTO_AES_XTS=22,
+enum cryptodev_crypto_op_t {
+	CRYPTO_DES_CBC = 1,
+	CRYPTO_3DES_CBC = 2,
+	CRYPTO_BLF_CBC = 3,
+	CRYPTO_CAST_CBC = 4,
+	CRYPTO_SKIPJACK_CBC = 5,
+	CRYPTO_MD5_HMAC = 6,
+	CRYPTO_SHA1_HMAC = 7,
+	CRYPTO_RIPEMD160_HMAC = 8,
+	CRYPTO_MD5_KPDK = 9,
+	CRYPTO_SHA1_KPDK = 10,
+	CRYPTO_RIJNDAEL128_CBC = 11,
+	CRYPTO_AES_CBC = CRYPTO_RIJNDAEL128_CBC,
+	CRYPTO_ARC4 = 12,
+	CRYPTO_MD5 = 13,
+	CRYPTO_SHA1 = 14,
+	CRYPTO_DEFLATE_COMP = 15,
+	CRYPTO_NULL = 16,
+	CRYPTO_LZS_COMP = 17,
+	CRYPTO_SHA2_256_HMAC = 18,
+	CRYPTO_SHA2_384_HMAC = 19,
+	CRYPTO_SHA2_512_HMAC = 20,
+	CRYPTO_AES_CTR = 21,
+	CRYPTO_AES_XTS = 22,
 
-	CRYPTO_CAMELLIA_CBC=101,
+	CRYPTO_CAMELLIA_CBC = 101,
 	CRYPTO_RIPEMD160,
 	CRYPTO_SHA2_256,
 	CRYPTO_SHA2_384,
 	CRYPTO_SHA2_512,
 	CRYPTO_ALGORITHM_ALL, /* Keep updated - see below */
-} cryptodev_crypto_op_t;
+};
+
 #define	CRYPTO_ALGORITHM_MAX	(CRYPTO_ALGORITHM_ALL - 1)
 
 /* Values for ciphers */
@@ -90,10 +91,12 @@ struct session_op {
 	__u16	op;		/* COP_ENCRYPT or COP_DECRYPT */
 	__u16	flags;		/* no usage so far, use 0 */
 	__u32	len;		/* length of source data */
-	__u8	__user *src;		/* source data */
-	__u8	__user *dst;		/* pointer to output data */
-	__u8	__user *mac;		/* pointer to output data for hash/MAC operations */
-	__u8	__user *iv;		/* initialization vector for encryption operations */
+	__u8	__user *src;	/* source data */
+	__u8	__user *dst;	/* pointer to output data */
+	/* pointer to output data for hash/MAC operations */
+	__u8	__user *mac;
+	/* initialization vector for encryption operations */
+	__u8	__user *iv;
 };
 
 /* struct crypt_op flags */
@@ -110,7 +113,7 @@ struct session_op {
 #define	CRYPTO_ALG_FLAG_DSA_SHA		4
 
 struct crparam {
-	__u8*	crp_p;
+	__u8	*crp_p;
 	__u32	crp_nbits;
 };
 
@@ -126,16 +129,16 @@ struct crypt_kop {
 	struct crparam	crk_param[CRK_MAXPARAM];
 };
 
-typedef enum {
-	CRK_MOD_EXP=0,
-	CRK_MOD_EXP_CRT=1,
-	CRK_DSA_SIGN=2,
-	CRK_DSA_VERIFY=3,
-	CRK_DH_COMPUTE_KEY=4,
+enum cryptodev_crk_op_t {
+	CRK_MOD_EXP = 0,
+	CRK_MOD_EXP_CRT = 1,
+	CRK_DSA_SIGN = 2,
+	CRK_DSA_VERIFY = 3,
+	CRK_DH_COMPUTE_KEY = 4,
 	CRK_ALGORITHM_ALL
-} cryptodev_crk_op_t;
+};
 
-#define CRK_ALGORITHM_MAX	CRK_ALGORITHM_ALL-1
+#define CRK_ALGORITHM_MAX	(CRK_ALGORITHM_ALL-1)
 
 /* features to be queried with CIOCASYMFEAT ioctl
  */

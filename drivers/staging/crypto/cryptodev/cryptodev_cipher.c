@@ -11,15 +11,16 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 #include <linux/crypto.h>
@@ -51,17 +52,18 @@ static void cryptodev_complete(struct crypto_async_request *req, int err)
 	complete(&res->completion);
 }
 
-int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t * keyp, size_t keylen)
+int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
+				uint8_t *keyp, size_t keylen)
 {
-	struct ablkcipher_alg* alg;
+	struct ablkcipher_alg *alg;
 	int ret;
 
 	memset(out, 0, sizeof(*out));
 
 	out->async.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
 	if (unlikely(IS_ERR(out->async.s))) {
-		dprintk(1,KERN_DEBUG,"%s: Failed to load cipher %s\n", __func__,
-			   alg_name);
+		dprintk(1, KERN_DEBUG, "%s: Failed to load cipher %s\n",
+			__func__, alg_name);
 		return -EINVAL;
 	}
 
@@ -69,10 +71,13 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 
 	if (alg != NULL) {
 		/* Was correct key length supplied? */
-		if (alg->max_keysize > 0 && unlikely((keylen < alg->min_keysize) ||
-			(keylen > alg->max_keysize))) {
-			dprintk(1,KERN_DEBUG,"Wrong keylen '%zu' for algorithm '%s'. Use %u to %u.\n",
-				   keylen, alg_name, alg->min_keysize, 
+		if (alg->max_keysize > 0 &&
+				unlikely((keylen < alg->min_keysize) ||
+					(keylen > alg->max_keysize))) {
+			dprintk(1, KERN_DEBUG,
+				"Wrong keylen '%zu' for algorithm '%s'. \
+				Use %u to %u.\n",
+				   keylen, alg_name, alg->min_keysize,
 				   alg->max_keysize);
 			ret = -EINVAL;
 			goto error;
@@ -81,7 +86,7 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 
 	ret = crypto_ablkcipher_setkey(out->async.s, keyp, keylen);
 	if (unlikely(ret)) {
-		dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
+		dprintk(1, KERN_DEBUG, "Setting key failed for %s-%zu.\n",
 			alg_name, keylen*8);
 		ret = -EINVAL;
 		goto error;
@@ -101,12 +106,13 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 
 	out->async.request = ablkcipher_request_alloc(out->async.s, GFP_KERNEL);
 	if (unlikely(!out->async.request)) {
-		dprintk(1,KERN_ERR,"error allocating async crypto request\n");
+		dprintk(1, KERN_ERR, "error allocating async crypto request\n");
 		ret = -ENOMEM;
 		goto error;
 	}
 
-	ablkcipher_request_set_callback(out->async.request, CRYPTO_TFM_REQ_MAY_BACKLOG,
+	ablkcipher_request_set_callback(out->async.request,
+					CRYPTO_TFM_REQ_MAY_BACKLOG,
 					cryptodev_complete, out->async.result);
 
 	out->init = 1;
@@ -121,7 +127,7 @@ error:
 	return ret;
 }
 
-void cryptodev_cipher_deinit(struct cipher_data* cdata)
+void cryptodev_cipher_deinit(struct cipher_data *cdata)
 {
 	if (cdata->init) {
 		if (cdata->async.request)
@@ -134,12 +140,13 @@ void cryptodev_cipher_deinit(struct cipher_data* cdata)
 	}
 }
 
-void cryptodev_cipher_set_iv(struct cipher_data* cdata, void *iv, size_t iv_size)
+void cryptodev_cipher_set_iv(struct cipher_data *cdata,
+				void *iv, size_t iv_size)
 {
-	memcpy(cdata->async.iv, iv, min(iv_size,sizeof(cdata->async.iv)));
+	memcpy(cdata->async.iv, iv, min(iv_size, sizeof(cdata->async.iv)));
 }
 
-static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
+static inline int waitfor(struct cryptodev_result *cr, ssize_t ret)
 {
 	switch (ret) {
 	case 0:
@@ -154,8 +161,9 @@ static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
 		 * another request. */
 
 		if (unlikely(cr->err)) {
-			dprintk(0,KERN_ERR,"error from async request: %d \n", cr->err);
-                        return cr->err; 
+			dprintk(0, KERN_ERR, "error from async request: %d\n",
+				cr->err);
+			return cr->err;
 		}
 
 		break;
@@ -166,24 +174,30 @@ static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
 	return 0;
 }
 
-ssize_t cryptodev_cipher_encrypt( struct cipher_data* cdata, const struct scatterlist *sg1, struct scatterlist *sg2, size_t len)
+ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
+		const struct scatterlist *sg1, struct scatterlist *sg2,
+		size_t len)
 {
 	int ret;
 
 	INIT_COMPLETION(cdata->async.result->completion);
-	ablkcipher_request_set_crypt(cdata->async.request, (struct scatterlist*)sg1, sg2,
+	ablkcipher_request_set_crypt(cdata->async.request,
+			(struct scatterlist *)sg1, sg2,
 			len, cdata->async.iv);
 	ret = crypto_ablkcipher_encrypt(cdata->async.request);
 
-	return waitfor(cdata->async.result,ret);
+	return waitfor(cdata->async.result, ret);
 }
 
-ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, const struct scatterlist *sg1, struct scatterlist *sg2, size_t len)
+ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
+		const struct scatterlist *sg1, struct scatterlist *sg2,
+		size_t len)
 {
 	int ret;
 
 	INIT_COMPLETION(cdata->async.result->completion);
-	ablkcipher_request_set_crypt(cdata->async.request, (struct scatterlist*)sg1, sg2,
+	ablkcipher_request_set_crypt(cdata->async.request,
+			(struct scatterlist *)sg1, sg2,
 			len, cdata->async.iv);
 	ret = crypto_ablkcipher_decrypt(cdata->async.request);
 
@@ -192,14 +206,15 @@ ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, const struct scatte
 
 /* Hash functions */
 
-int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, void * mackey, size_t mackeylen)
+int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
+			int hmac_mode, void *mackey, size_t mackeylen)
 {
-int ret;
+	int ret;
 
 	hdata->async.s = crypto_alloc_ahash(alg_name, 0, 0);
 	if (unlikely(IS_ERR(hdata->async.s))) {
-		dprintk(1,KERN_DEBUG,"%s: Failed to load transform for %s\n", __func__,
-				   alg_name);
+		dprintk(1, KERN_DEBUG, "%s: Failed to load transform for %s\n",
+			__func__, alg_name);
 		return -EINVAL;
 	}
 
@@ -207,7 +222,8 @@ int ret;
 	if (hmac_mode != 0) {
 		ret = crypto_ahash_setkey(hdata->async.s, mackey, mackeylen);
 		if (unlikely(ret)) {
-			dprintk(1,KERN_DEBUG,"Setting hmac key failed for %s-%zu.\n",
+			dprintk(1, KERN_DEBUG,
+				"Setting hmac key failed for %s-%zu.\n",
 				alg_name, mackeylen*8);
 			ret = -EINVAL;
 			goto error;
@@ -227,18 +243,18 @@ int ret;
 
 	hdata->async.request = ahash_request_alloc(hdata->async.s, GFP_KERNEL);
 	if (unlikely(!hdata->async.request)) {
-		dprintk(0,KERN_ERR,"error allocating async crypto request\n");
+		dprintk(0, KERN_ERR, "error allocating async crypto request\n");
 		ret = -ENOMEM;
 		goto error;
 	}
 
-	ahash_request_set_callback(hdata->async.request, CRYPTO_TFM_REQ_MAY_BACKLOG,
-					cryptodev_complete, hdata->async.result);
+	ahash_request_set_callback(hdata->async.request,
+			CRYPTO_TFM_REQ_MAY_BACKLOG,
+			cryptodev_complete, hdata->async.result);
 
 	ret = crypto_ahash_init(hdata->async.request);
 	if (unlikely(ret)) {
-		dprintk(0,KERN_ERR,
-			"error in crypto_hash_init()\n");
+		dprintk(0, KERN_ERR, "error in crypto_hash_init()\n");
 		goto error_request;
 	}
 
@@ -253,7 +269,7 @@ error:
 	return ret;
 }
 
-void cryptodev_hash_deinit(struct hash_data* hdata)
+void cryptodev_hash_deinit(struct hash_data *hdata)
 {
 	if (hdata->init) {
 		if (hdata->async.request)
@@ -265,13 +281,13 @@ void cryptodev_hash_deinit(struct hash_data* hdata)
 	}
 }
 
-int cryptodev_hash_reset( struct hash_data* hdata)
+int cryptodev_hash_reset(struct hash_data *hdata)
 {
-int ret;
+	int ret;
+
 	ret = crypto_ahash_init(hdata->async.request);
 	if (unlikely(ret)) {
-		dprintk(0,KERN_ERR,
-			"error in crypto_hash_init()\n");
+		dprintk(0, KERN_ERR, "error in crypto_hash_init()\n");
 		return ret;
 	}
 
@@ -279,20 +295,20 @@ int ret;
 
 }
 
-ssize_t cryptodev_hash_update( struct hash_data* hdata, struct scatterlist *sg, size_t len)
+ssize_t cryptodev_hash_update(struct hash_data *hdata,
+				struct scatterlist *sg, size_t len)
 {
 	int ret;
 
 	INIT_COMPLETION(hdata->async.result->completion);
-	ahash_request_set_crypt(hdata->async.request, sg, NULL,
-			len);
+	ahash_request_set_crypt(hdata->async.request, sg, NULL, len);
 
 	ret = crypto_ahash_update(hdata->async.request);
 
-	return waitfor(hdata->async.result,ret);
+	return waitfor(hdata->async.result, ret);
 }
 
-int cryptodev_hash_final( struct hash_data* hdata, void* output)
+int cryptodev_hash_final(struct hash_data *hdata, void* output)
 {
 	int ret;
 
@@ -301,5 +317,6 @@ int cryptodev_hash_final( struct hash_data* hdata, void* output)
 
 	ret = crypto_ahash_final(hdata->async.request);
 
-	return waitfor(hdata->async.result,ret);
+	return waitfor(hdata->async.result, ret);
 }
+

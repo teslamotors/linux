@@ -14,9 +14,9 @@
 #include "cryptodev.h"
 
 #define PFX "cryptodev: "
-#define dprintk(level,severity,format,a...)			\
-	do {						\
-		if (level <= cryptodev_verbosity)				\
+#define dprintk(level, severity, format, a...)			\
+	do {							\
+		if (level <= cryptodev_verbosity)		\
 			printk(severity PFX "%s[%u]: " format,	\
 			       current->comm, current->pid,	\
 			       ##a);				\
@@ -31,34 +31,38 @@ void release_user_pages(struct page **pg, int pagecount);
 
 /* last page - first page + 1 */
 #define PAGECOUNT(buf, buflen) \
-        ((((unsigned long)(buf + buflen - 1) & PAGE_MASK) >> PAGE_SHIFT) - \
-         (((unsigned long) buf               & PAGE_MASK) >> PAGE_SHIFT) + 1)
+	((((unsigned long)(buf + buflen - 1) & PAGE_MASK) >> PAGE_SHIFT) - \
+	(((unsigned long) buf               & PAGE_MASK) >> PAGE_SHIFT) + 1)
 
 #define DEFAULT_PREALLOC_PAGES 32
 
-struct cipher_data
-{
+struct cipher_data {
 	int init; /* 0 uninitialized */
 	int blocksize;
 	int ivsize;
 	struct {
-		struct crypto_ablkcipher* s;
+		struct crypto_ablkcipher *s;
 		struct cryptodev_result *result;
 		struct ablkcipher_request *request;
 		uint8_t iv[EALG_MAX_BLOCK_LEN];
 	} async;
 };
 
-int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t * key, size_t keylen);
-void cryptodev_cipher_deinit(struct cipher_data* cdata);
-ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, const struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
-ssize_t cryptodev_cipher_encrypt( struct cipher_data* cdata, const struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
+int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
+						uint8_t *key, size_t keylen);
+void cryptodev_cipher_deinit(struct cipher_data *cdata);
+ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
+			const struct scatterlist *sg1,
+			struct scatterlist *sg2, size_t len);
+ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
+				const struct scatterlist *sg1,
+				struct scatterlist *sg2, size_t len);
 
-void cryptodev_cipher_set_iv(struct cipher_data* cdata, void* iv, size_t iv_size);
+void cryptodev_cipher_set_iv(struct cipher_data *cdata,
+				void *iv, size_t iv_size);
 
 /* hash stuff */
-struct hash_data
-{
+struct hash_data {
 	int init; /* 0 uninitialized */
 	int digestsize;
 	struct {
@@ -68,11 +72,13 @@ struct hash_data
 	} async;
 };
 
-int cryptodev_hash_final( struct hash_data* hdata, void* output);
-ssize_t cryptodev_hash_update( struct hash_data* hdata, struct scatterlist *sg, size_t len);
-int cryptodev_hash_reset( struct hash_data* hdata);
-void cryptodev_hash_deinit(struct hash_data* hdata);
-int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, void* mackey, size_t mackeylen);
+int cryptodev_hash_final(struct hash_data *hdata, void *output);
+ssize_t cryptodev_hash_update(struct hash_data *hdata,
+			struct scatterlist *sg, size_t len);
+int cryptodev_hash_reset(struct hash_data *hdata);
+void cryptodev_hash_deinit(struct hash_data *hdata);
+int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
+			int hmac_mode, void *mackey, size_t mackeylen);
 
 /* compatibility stuff */
 #ifdef CONFIG_COMPAT
@@ -101,8 +107,8 @@ struct compat_session_op {
 	uint32_t	len;		/* length of source data */
 	compat_uptr_t	src;		/* source data */
 	compat_uptr_t	dst;		/* pointer to output data */
-	compat_uptr_t	mac;		/* pointer to output data for hash/MAC operations */
-	compat_uptr_t	iv;		/* initialization vector for encryption operations */
+	compat_uptr_t	mac;/* pointer to output data for hash/MAC operations */
+	compat_uptr_t	iv;/* initialization vector for encryption operations */
 };
 
 /* compat ioctls, defined for the above structs */

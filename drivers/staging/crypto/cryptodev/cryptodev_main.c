@@ -10,15 +10,16 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 /*
@@ -54,12 +55,12 @@ MODULE_LICENSE("GPL");
 
 /* ====== Module parameters ====== */
 
-int cryptodev_verbosity = 0;
+int cryptodev_verbosity;
 module_param(cryptodev_verbosity, int, 0644);
 MODULE_PARM_DESC(cryptodev_verbosity, "0: normal, 1: verbose, 2: debug");
 
 #ifdef CRYPTODEV_STATS
-static int enable_stats = 0;
+static int enable_stats;
 module_param(enable_stats, int, 0644);
 MODULE_PARM_DESC(enable_stats, "collect statictics about cryptodev usage");
 #endif
@@ -71,11 +72,10 @@ struct fcrypt {
 };
 
 struct crypt_priv {
-	void * ncr;
 	struct fcrypt fcrypt;
 };
 
-#define FILL_SG(sg,ptr,len)					\
+#define FILL_SG(sg, ptr, len)					\
 	do {							\
 		(sg)->page = virt_to_page(ptr);			\
 		(sg)->offset = offset_in_page(ptr);		\
@@ -90,7 +90,7 @@ struct csession {
 	struct hash_data hdata;
 	uint32_t sid;
 #ifdef CRYPTODEV_STATS
-#if ! ((COP_ENCRYPT < 2) && (COP_DECRYPT < 2))
+#if !((COP_ENCRYPT < 2) && (COP_DECRYPT < 2))
 #error Struct csession.stat uses COP_{ENCRYPT,DECRYPT} as indices. Do something!
 #endif
 	unsigned long long stat[2];
@@ -107,110 +107,112 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 {
 	struct csession	*ses_new = NULL, *ses_ptr;
 	int ret = 0;
-	const char *alg_name=NULL;
-	const char *hash_name=NULL;
+	const char *alg_name = NULL;
+	const char *hash_name = NULL;
 	int hmac_mode = 1;
 
 	/* Does the request make sense? */
 	if (unlikely(!sop->cipher && !sop->mac)) {
-		dprintk(1,KERN_DEBUG,"Both 'cipher' and 'mac' unset.\n");
+		dprintk(1, KERN_DEBUG, "Both 'cipher' and 'mac' unset.\n");
 		return -EINVAL;
 	}
 
 	switch (sop->cipher) {
-		case 0:
-			break;
-		case CRYPTO_DES_CBC:
-			alg_name = "cbc(des)";
-			break;
-		case CRYPTO_3DES_CBC:
-			alg_name = "cbc(des3_ede)";
-			break;
-		case CRYPTO_BLF_CBC:
-			alg_name = "cbc(blowfish)";
-			break;
-		case CRYPTO_AES_CBC:
-			alg_name = "cbc(aes)";
-			break;
-		case CRYPTO_CAMELLIA_CBC:
-			alg_name = "cbc(camelia)";
-			break;
-		case CRYPTO_AES_CTR:
-			alg_name = "ctr(aes)";
-			break;
-		case CRYPTO_NULL:
-			alg_name = "ecb(cipher_null)";
-			break;
-		default:
-			dprintk(1,KERN_DEBUG,"%s: bad cipher: %d\n", __func__, sop->cipher);
-			return -EINVAL;
+	case 0:
+		break;
+	case CRYPTO_DES_CBC:
+		alg_name = "cbc(des)";
+		break;
+	case CRYPTO_3DES_CBC:
+		alg_name = "cbc(des3_ede)";
+		break;
+	case CRYPTO_BLF_CBC:
+		alg_name = "cbc(blowfish)";
+		break;
+	case CRYPTO_AES_CBC:
+		alg_name = "cbc(aes)";
+		break;
+	case CRYPTO_CAMELLIA_CBC:
+		alg_name = "cbc(camelia)";
+		break;
+	case CRYPTO_AES_CTR:
+		alg_name = "ctr(aes)";
+		break;
+	case CRYPTO_NULL:
+		alg_name = "ecb(cipher_null)";
+		break;
+	default:
+		dprintk(1, KERN_DEBUG, "%s: bad cipher: %d\n", __func__,
+			sop->cipher);
+		return -EINVAL;
 	}
 
 	switch (sop->mac) {
-		case 0:
-			break;
-		case CRYPTO_MD5_HMAC:
-			hash_name = "hmac(md5)";
-			break;
-		case CRYPTO_RIPEMD160_HMAC:
-			hash_name = "hmac(rmd160)";
-			break;
-		case CRYPTO_SHA1_HMAC:
-			hash_name = "hmac(sha1)";
-			break;
-		case CRYPTO_SHA2_256_HMAC:
-			hash_name = "hmac(sha256)";
-			break;
-		case CRYPTO_SHA2_384_HMAC:
-			hash_name = "hmac(sha384)";
-			break;
-		case CRYPTO_SHA2_512_HMAC:
-			hash_name = "hmac(sha512)";
-			break;
+	case 0:
+		break;
+	case CRYPTO_MD5_HMAC:
+		hash_name = "hmac(md5)";
+		break;
+	case CRYPTO_RIPEMD160_HMAC:
+		hash_name = "hmac(rmd160)";
+		break;
+	case CRYPTO_SHA1_HMAC:
+		hash_name = "hmac(sha1)";
+		break;
+	case CRYPTO_SHA2_256_HMAC:
+		hash_name = "hmac(sha256)";
+		break;
+	case CRYPTO_SHA2_384_HMAC:
+		hash_name = "hmac(sha384)";
+		break;
+	case CRYPTO_SHA2_512_HMAC:
+		hash_name = "hmac(sha512)";
+		break;
 
-		/* non-hmac cases */
-		case CRYPTO_MD5:
-			hash_name = "md5";
-			hmac_mode = 0;
-			break;
-		case CRYPTO_RIPEMD160:
-			hash_name = "rmd160";
-			hmac_mode = 0;
-			break;
-		case CRYPTO_SHA1:
-			hash_name = "sha1";
-			hmac_mode = 0;
-			break;
-		case CRYPTO_SHA2_256:
-			hash_name = "sha256";
-			hmac_mode = 0;
-			break;
-		case CRYPTO_SHA2_384:
-			hash_name = "sha384";
-			hmac_mode = 0;
-			break;
-		case CRYPTO_SHA2_512:
-			hash_name = "sha512";
-			hmac_mode = 0;
-			break;
+	/* non-hmac cases */
+	case CRYPTO_MD5:
+		hash_name = "md5";
+		hmac_mode = 0;
+		break;
+	case CRYPTO_RIPEMD160:
+		hash_name = "rmd160";
+		hmac_mode = 0;
+		break;
+	case CRYPTO_SHA1:
+		hash_name = "sha1";
+		hmac_mode = 0;
+		break;
+	case CRYPTO_SHA2_256:
+		hash_name = "sha256";
+		hmac_mode = 0;
+		break;
+	case CRYPTO_SHA2_384:
+		hash_name = "sha384";
+		hmac_mode = 0;
+		break;
+	case CRYPTO_SHA2_512:
+		hash_name = "sha512";
+		hmac_mode = 0;
+		break;
 
-		default:
-			dprintk(1,KERN_DEBUG,"%s: bad mac: %d\n", __func__, sop->mac);
-			return -EINVAL;
+	default:
+		dprintk(1, KERN_DEBUG, "%s: bad mac: %d\n", __func__,
+			sop->mac);
+		return -EINVAL;
 	}
 
 	/* Create a session and put it to the list. */
 	ses_new = kzalloc(sizeof(*ses_new), GFP_KERNEL);
-	if(!ses_new) {
+	if (!ses_new)
 		return -ENOMEM;
-	}
 
 	/* Set-up crypto transform. */
 	if (alg_name) {
 		uint8_t keyp[CRYPTO_CIPHER_MAX_KEY_LEN];
 
 		if (unlikely(sop->keylen > CRYPTO_CIPHER_MAX_KEY_LEN)) {
-			dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
+			dprintk(1, KERN_DEBUG,
+				"Setting key failed for %s-%zu.\n",
 				alg_name, (size_t)sop->keylen*8);
 			ret = -EINVAL;
 			goto error_cipher;
@@ -221,10 +223,12 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			goto error_cipher;
 		}
 
-		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, keyp, sop->keylen);
+		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, keyp,
+								sop->keylen);
 		if (ret < 0) {
-			dprintk(1,KERN_DEBUG,"%s: Failed to load cipher for %s\n", __func__,
-				   alg_name);
+			dprintk(1, KERN_DEBUG,
+				"%s: Failed to load cipher for %s\n",
+				__func__, alg_name);
 			ret = -EINVAL;
 			goto error_cipher;
 		}
@@ -234,22 +238,25 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		uint8_t keyp[CRYPTO_HMAC_MAX_KEY_LEN];
 
 		if (unlikely(sop->mackeylen > CRYPTO_HMAC_MAX_KEY_LEN)) {
-			dprintk(1,KERN_DEBUG,"Setting key failed for %s-%zu.\n",
+			dprintk(1, KERN_DEBUG,
+				"Setting key failed for %s-%zu.\n",
 				alg_name, (size_t)sop->mackeylen*8);
 			ret = -EINVAL;
 			goto error_hash;
 		}
-		
+
 		if (unlikely(copy_from_user(keyp, sop->mackey,
 					    sop->mackeylen))) {
 			ret = -EFAULT;
 			goto error_hash;
 		}
 
-		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode, keyp, sop->mackeylen);
+		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode,
+							keyp, sop->mackeylen);
 		if (ret != 0) {
-			dprintk(1,KERN_DEBUG,"%s: Failed to load hash for %s\n", __func__,
-				   hash_name);
+			dprintk(1, KERN_DEBUG,
+			"%s: Failed to load hash for %s\n",
+			__func__, hash_name);
 			ret = -EINVAL;
 			goto error_hash;
 		}
@@ -263,7 +270,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	ses_new->sg = kzalloc(ses_new->array_size *
 			sizeof(struct scatterlist), GFP_KERNEL);
 	if (ses_new->sg == NULL || ses_new->pages == NULL) {
-		dprintk(0,KERN_DEBUG,"Memory error\n");
+		dprintk(0, KERN_DEBUG, "Memory error\n");
 		ret = -ENOMEM;
 		goto error_hash;
 	}
@@ -278,7 +285,7 @@ restart:
 		/* Check for duplicate SID */
 		if (unlikely(ses_new->sid == ses_ptr->sid)) {
 			get_random_bytes(&ses_new->sid, sizeof(ses_new->sid));
-			/* Unless we have a broken RNG this 
+			/* Unless we have a broken RNG this
 			   shouldn't loop forever... ;-) */
 			goto restart;
 		}
@@ -293,11 +300,11 @@ restart:
 	return 0;
 
 error_hash:
-	cryptodev_cipher_deinit( &ses_new->cdata);
+	cryptodev_cipher_deinit(&ses_new->cdata);
 	kfree(ses_new->sg);
 	kfree(ses_new->pages);
 error_cipher:
-	if (ses_new) kfree(ses_new);
+	kfree(ses_new);
 
 	return ret;
 
@@ -307,20 +314,21 @@ error_cipher:
 static inline void
 crypto_destroy_session(struct csession *ses_ptr)
 {
-	if(down_trylock(&ses_ptr->sem)) {
+	if (down_trylock(&ses_ptr->sem)) {
 		dprintk(2, KERN_DEBUG, "Waiting for semaphore of sid=0x%08X\n",
 			ses_ptr->sid);
 		down(&ses_ptr->sem);
 	}
 	dprintk(2, KERN_DEBUG, "Removed session 0x%08X\n", ses_ptr->sid);
 #if defined(CRYPTODEV_STATS)
-	if(enable_stats)
+	if (enable_stats)
 		dprintk(2, KERN_DEBUG,
-			"Usage in Bytes: enc=%llu, dec=%llu, max=%zu, avg=%lu, cnt=%zu\n",
+			"Usage in Bytes: enc=%llu, dec=%llu, \
+			max=%zu, avg=%lu, cnt=%zu\n",
 			ses_ptr->stat[COP_ENCRYPT], ses_ptr->stat[COP_DECRYPT],
 			ses_ptr->stat_max_size, ses_ptr->stat_count > 0
 				? ((unsigned long)(ses_ptr->stat[COP_ENCRYPT]+
-						   ses_ptr->stat[COP_DECRYPT]) / 
+						   ses_ptr->stat[COP_DECRYPT]) /
 				   ses_ptr->stat_count) : 0,
 			ses_ptr->stat_count);
 #endif
@@ -345,7 +353,7 @@ crypto_finish_session(struct fcrypt *fcr, uint32_t sid)
 	down(&fcr->sem);
 	head = &fcr->list;
 	list_for_each_entry_safe(ses_ptr, tmp, head, entry) {
-		if(ses_ptr->sid == sid) {
+		if (ses_ptr->sid == sid) {
 			list_del(&ses_ptr->entry);
 			crypto_destroy_session(ses_ptr);
 			break;
@@ -353,7 +361,8 @@ crypto_finish_session(struct fcrypt *fcr, uint32_t sid)
 	}
 
 	if (unlikely(!ses_ptr)) {
-		dprintk(1, KERN_ERR, "Session with sid=0x%08X not found!\n", sid);
+		dprintk(1, KERN_ERR, "Session with sid=0x%08X not found!\n",
+			sid);
 		ret = -ENOENT;
 	}
 	up(&fcr->sem);
@@ -388,7 +397,7 @@ crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 
 	down(&fcr->sem);
 	list_for_each_entry(ses_ptr, &fcr->list, entry) {
-		if(ses_ptr->sid == sid) {
+		if (ses_ptr->sid == sid) {
 			down(&ses_ptr->sem);
 			break;
 		}
@@ -400,7 +409,8 @@ crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 
 static int
 hash_n_crypt(struct csession *ses_ptr, struct crypt_op *cop,
-		struct scatterlist *src_sg, struct scatterlist *dst_sg, uint32_t len)
+		struct scatterlist *src_sg, struct scatterlist *dst_sg,
+		uint32_t len)
 {
 	int ret;
 
@@ -409,33 +419,37 @@ hash_n_crypt(struct csession *ses_ptr, struct crypt_op *cop,
 	 */
 	if (cop->op == COP_ENCRYPT) {
 		if (ses_ptr->hdata.init != 0) {
-			ret = cryptodev_hash_update(&ses_ptr->hdata, src_sg, len);
+			ret = cryptodev_hash_update(&ses_ptr->hdata,
+							src_sg, len);
 			if (unlikely(ret))
 				goto out_err;
 		}
 		if (ses_ptr->cdata.init != 0) {
-			ret = cryptodev_cipher_encrypt( &ses_ptr->cdata, src_sg, dst_sg, len);
+			ret = cryptodev_cipher_encrypt(&ses_ptr->cdata,
+							src_sg, dst_sg, len);
 
 			if (unlikely(ret))
 				goto out_err;
 		}
 	} else {
 		if (ses_ptr->cdata.init != 0) {
-			ret = cryptodev_cipher_decrypt( &ses_ptr->cdata, src_sg, dst_sg, len);
+			ret = cryptodev_cipher_decrypt(&ses_ptr->cdata,
+							src_sg, dst_sg, len);
 
 			if (unlikely(ret))
 				goto out_err;
 		}
 
 		if (ses_ptr->hdata.init != 0) {
-			ret = cryptodev_hash_update(&ses_ptr->hdata, dst_sg, len);
+			ret = cryptodev_hash_update(&ses_ptr->hdata,
+								dst_sg, len);
 			if (unlikely(ret))
 				goto out_err;
 		}
 	}
 	return 0;
 out_err:
-	dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
+	dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n", ret);
 	return ret;
 }
 
@@ -452,17 +466,17 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 	int ret = 0;
 
 	nbytes = cop->len;
-	data = (char*)__get_free_page(GFP_KERNEL);
+	data = (char *)__get_free_page(GFP_KERNEL);
 
-	if (unlikely(!data)) {
+	if (unlikely(!data))
 		return -ENOMEM;
-	}
+
 	bufsize = PAGE_SIZE < nbytes ? PAGE_SIZE : nbytes;
 
 	src = cop->src;
 	dst = cop->dst;
 
-	while(nbytes > 0) {
+	while (nbytes > 0) {
 		size_t current_len = nbytes > bufsize ? bufsize : nbytes;
 
 		if (unlikely(copy_from_user(data, src, current_len))) {
@@ -543,17 +557,16 @@ static int get_userbuf(struct csession *ses,
 {
 	int src_pagecount, dst_pagecount = 0, pagecount, write_src = 1;
 
-	if (cop->src == NULL) {
+	if (cop->src == NULL)
 		return -EINVAL;
-	}
 
 	src_pagecount = PAGECOUNT(cop->src, cop->len);
 	if (!ses->cdata.init) {		/* hashing only */
 		write_src = 0;
 	} else if (cop->src != cop->dst) {	/* non-in-situ transformation */
-		if (cop->dst == NULL) {
+		if (cop->dst == NULL)
 			return -EINVAL;
-		}
+
 		dst_pagecount = PAGECOUNT(cop->dst, cop->len);
 		write_src = 0;
 	}
@@ -585,7 +598,8 @@ static int get_userbuf(struct csession *ses,
 
 	if (__get_userbuf(cop->src, cop->len, write_src,
 			src_pagecount, ses->pages, ses->sg)) {
-		dprintk(1, KERN_ERR, "failed to get user pages for data input\n");
+		dprintk(1, KERN_ERR,
+			"failed to get user pages for data input\n");
 		return -EINVAL;
 	}
 	(*src_sg) = (*dst_sg) = ses->sg;
@@ -595,7 +609,8 @@ static int get_userbuf(struct csession *ses,
 
 		if (__get_userbuf(cop->dst, cop->len, 1, dst_pagecount,
 					ses->pages + src_pagecount, *dst_sg)) {
-			dprintk(1, KERN_ERR, "failed to get user pages for data output\n");
+			dprintk(1, KERN_ERR,
+				"failed to get user pages for data output\n");
 			release_user_pages(ses->pages, src_pagecount);
 			return -EINVAL;
 		}
@@ -612,7 +627,8 @@ __crypto_run_zc(struct csession *ses_ptr, struct crypt_op *cop)
 
 	ret = get_userbuf(ses_ptr, cop, &src_sg, &dst_sg, &pagecount);
 	if (unlikely(ret)) {
-		dprintk(1, KERN_ERR, "Error getting user pages. Falling back to non zero copy.\n");
+		dprintk(1, KERN_ERR, "Error getting user pages. \
+					Falling back to non zero copy.\n");
 		return __crypto_run_std(ses_ptr, cop);
 	}
 
@@ -656,7 +672,8 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 
 		if (unlikely(cop->len % blocksize)) {
 			dprintk(1, KERN_ERR,
-				"data size (%u) isn't a multiple of block size (%u)\n",
+				"data size (%u) isn't a multiple \
+				of block size (%u)\n",
 				cop->len, blocksize);
 			ret = -EINVAL;
 			goto out_unlock;
@@ -665,14 +682,19 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		if (cop->iv) {
 			uint8_t iv[EALG_MAX_BLOCK_LEN];
 
-			ret = copy_from_user(iv, cop->iv, min( (int)sizeof(iv), (ses_ptr->cdata.ivsize)));
+			ret = copy_from_user(iv, cop->iv,
+				min((int)sizeof(iv), (ses_ptr->cdata.ivsize)));
 			if (unlikely(ret)) {
-				dprintk(1, KERN_ERR, "error copying IV (%d bytes)\n", min( (int)sizeof(iv), (ses_ptr->cdata.ivsize)));
+				dprintk(1, KERN_ERR,
+					"error copying IV (%d bytes)\n",
+					min((int)sizeof(iv),
+					(ses_ptr->cdata.ivsize)));
 				ret = -EFAULT;
 				goto out_unlock;
 			}
 
-			cryptodev_cipher_set_iv(&ses_ptr->cdata, iv, ses_ptr->cdata.ivsize);
+			cryptodev_cipher_set_iv(&ses_ptr->cdata, iv,
+						ses_ptr->cdata.ivsize);
 		}
 	}
 
@@ -687,11 +709,12 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	if (ses_ptr->hdata.init != 0) {
 		ret = cryptodev_hash_final(&ses_ptr->hdata, hash_output);
 		if (unlikely(ret)) {
-			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n",ret);
+			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n", ret);
 			goto out_unlock;
 		}
 
-		if (unlikely(copy_to_user(cop->mac, hash_output, ses_ptr->hdata.digestsize))) {
+		if (unlikely(copy_to_user(cop->mac, hash_output,
+					ses_ptr->hdata.digestsize))) {
 			ret = -EFAULT;
 			goto out_unlock;
 		}
@@ -720,13 +743,13 @@ cryptodev_open(struct inode *inode, struct file *filp)
 	struct crypt_priv *pcr;
 
 	pcr = kmalloc(sizeof(*pcr), GFP_KERNEL);
-	if(!pcr)
+	if (!pcr)
 		return -ENOMEM;
 
 	memset(pcr, 0, sizeof(*pcr));
 	init_MUTEX(&pcr->fcrypt.sem);
 	INIT_LIST_HEAD(&pcr->fcrypt.list);
-	
+
 	filp->private_data = pcr;
 	return 0;
 }
@@ -736,7 +759,7 @@ cryptodev_release(struct inode *inode, struct file *filp)
 {
 	struct crypt_priv *pcr = filp->private_data;
 
-	if(pcr) {
+	if (pcr) {
 		crypto_finish_all_sessions(&pcr->fcrypt);
 		kfree(pcr);
 		filp->private_data = NULL;
@@ -766,7 +789,7 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 	struct session_op sop;
 	struct crypt_op cop;
 	struct crypt_priv *pcr = filp->private_data;
-	struct fcrypt * fcr;
+	struct fcrypt *fcr;
 	uint32_t ses;
 	int ret, fd;
 
@@ -776,48 +799,48 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 	fcr = &pcr->fcrypt;
 
 	switch (cmd) {
-		case CIOCASYMFEAT:
-			return put_user(0, p);
-		case CRIOGET:
-			fd = clonefd(filp);
-			ret = put_user(fd, p);
-			if (unlikely(ret)) {
-				sys_close(fd);
-				return ret;
-			}
+	case CIOCASYMFEAT:
+		return put_user(0, p);
+	case CRIOGET:
+		fd = clonefd(filp);
+		ret = put_user(fd, p);
+		if (unlikely(ret)) {
+			sys_close(fd);
 			return ret;
-		case CIOCGSESSION:
-			if (unlikely(copy_from_user(&sop, arg, sizeof(sop))))
-				return -EFAULT;
+		}
+		return ret;
+	case CIOCGSESSION:
+		if (unlikely(copy_from_user(&sop, arg, sizeof(sop))))
+			return -EFAULT;
 
-			ret = crypto_create_session(fcr, &sop);
-			if (unlikely(ret))
-				return ret;
-			ret = copy_to_user(arg, &sop, sizeof(sop));
-			if (unlikely(ret)) {
-				crypto_finish_session(fcr, sop.ses);
-				return -EFAULT;
-			}
+		ret = crypto_create_session(fcr, &sop);
+		if (unlikely(ret))
 			return ret;
-		case CIOCFSESSION:
-			ret = get_user(ses, (uint32_t __user *)arg);
-			if (unlikely(ret))
-				return ret;
-			ret = crypto_finish_session(fcr, ses);
+		ret = copy_to_user(arg, &sop, sizeof(sop));
+		if (unlikely(ret)) {
+			crypto_finish_session(fcr, sop.ses);
+			return -EFAULT;
+		}
+		return ret;
+	case CIOCFSESSION:
+		ret = get_user(ses, (uint32_t __user *)arg);
+		if (unlikely(ret))
 			return ret;
-		case CIOCCRYPT:
-			if (unlikely(copy_from_user(&cop, arg, sizeof(cop))))
-				return -EFAULT;
+		ret = crypto_finish_session(fcr, ses);
+		return ret;
+	case CIOCCRYPT:
+		if (unlikely(copy_from_user(&cop, arg, sizeof(cop))))
+			return -EFAULT;
 
-			ret = crypto_run(fcr, &cop);
-			if (unlikely(ret))
-				return ret;
-			if (unlikely(copy_to_user(arg, &cop, sizeof(cop))))
-				return -EFAULT;
-			return 0;
+		ret = crypto_run(fcr, &cop);
+		if (unlikely(ret))
+			return ret;
+		if (unlikely(copy_to_user(arg, &cop, sizeof(cop))))
+			return -EFAULT;
+		return 0;
 
-		default:
-			return -EINVAL;
+	default:
+		return -EINVAL;
 	}
 }
 
@@ -961,7 +984,7 @@ cryptodev_register(void)
 {
 	int rc;
 
-	rc = misc_register (&cryptodev);
+	rc = misc_register(&cryptodev);
 	if (unlikely(rc)) {
 		printk(KERN_ERR PFX "registration of /dev/crypto failed\n");
 		return rc;
