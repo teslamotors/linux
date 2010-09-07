@@ -2,6 +2,8 @@
  * Driver for /dev/crypto device (aka CryptoDev)
  *
  * Copyright (c) 2010 Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ * Portions Copyright (c) 2010 Michael Weiser
+ * Portions Copyright (c) 2010 Phil Sutter
  *
  * This file is part of linux cryptodev.
  *
@@ -23,10 +25,10 @@
 #include <linux/crypto.h>
 #include <linux/mm.h>
 #include <linux/highmem.h>
+#include <linux/ioctl.h>
 #include <linux/random.h>
-#include <asm/uaccess.h>
-#include <asm/ioctl.h>
 #include <linux/scatterlist.h>
+#include <linux/uaccess.h>
 #include <crypto/algapi.h>
 #include <crypto/hash.h>
 #include "cryptodev.h"
@@ -51,13 +53,10 @@ static void cryptodev_complete(struct crypto_async_request *req, int err)
 
 int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t * keyp, size_t keylen)
 {
-
 	struct ablkcipher_alg* alg;
 	int ret;
 
 	memset(out, 0, sizeof(*out));
-
-	out->init = 1;
 
 	out->async.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
 	if (unlikely(IS_ERR(out->async.s))) {
@@ -110,27 +109,34 @@ int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t
 	ablkcipher_request_set_callback(out->async.request, CRYPTO_TFM_REQ_MAY_BACKLOG,
 					cryptodev_complete, out->async.result);
 
+	out->init = 1;
 	return 0;
 error:
-	crypto_free_ablkcipher(out->async.s);
+	if (out->async.request)
+		ablkcipher_request_free(out->async.request);
 	kfree(out->async.result);
-	ablkcipher_request_free(out->async.request);
+	if (out->async.s)
+		crypto_free_ablkcipher(out->async.s);
 
 	return ret;
 }
 
 void cryptodev_cipher_deinit(struct cipher_data* cdata)
 {
-	crypto_free_ablkcipher(cdata->async.s);
-	kfree(cdata->async.result);
-	ablkcipher_request_free(cdata->async.request);
+	if (cdata->init) {
+		if (cdata->async.request)
+			ablkcipher_request_free(cdata->async.request);
+		kfree(cdata->async.result);
+		if (cdata->async.s)
+			crypto_free_ablkcipher(cdata->async.s);
 
-	cdata->init = 0;
+		cdata->init = 0;
+	}
 }
 
-void cryptodev_cipher_set_iv(struct cipher_data* cdata, void __user* iv, size_t iv_size)
+void cryptodev_cipher_set_iv(struct cipher_data* cdata, void *iv, size_t iv_size)
 {
-	memcpy(cdata->async.iv, iv, min(iv_size,sizeof(cdata->async.iv)) );
+	memcpy(cdata->async.iv, iv, min(iv_size,sizeof(cdata->async.iv)));
 }
 
 static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
@@ -148,7 +154,7 @@ static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
 		 * another request. */
 
 		if (unlikely(cr->err)) {
-			dprintk(0,KERN_ERR,"error from async request: %zd \n", ret);
+			dprintk(0,KERN_ERR,"error from async request: %d \n", cr->err);
                         return cr->err; 
 		}
 
@@ -160,24 +166,24 @@ static inline int waitfor (struct cryptodev_result* cr, ssize_t ret)
 	return 0;
 }
 
-ssize_t cryptodev_cipher_encrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len)
+ssize_t cryptodev_cipher_encrypt( struct cipher_data* cdata, const struct scatterlist *sg1, struct scatterlist *sg2, size_t len)
 {
 	int ret;
 
 	INIT_COMPLETION(cdata->async.result->completion);
-	ablkcipher_request_set_crypt(cdata->async.request, sg1, sg2,
+	ablkcipher_request_set_crypt(cdata->async.request, (struct scatterlist*)sg1, sg2,
 			len, cdata->async.iv);
 	ret = crypto_ablkcipher_encrypt(cdata->async.request);
 
 	return waitfor(cdata->async.result,ret);
 }
 
-ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len)
+ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, const struct scatterlist *sg1, struct scatterlist *sg2, size_t len)
 {
 	int ret;
 
 	INIT_COMPLETION(cdata->async.result->completion);
-	ablkcipher_request_set_crypt(cdata->async.request, sg1, sg2,
+	ablkcipher_request_set_crypt(cdata->async.request, (struct scatterlist*)sg1, sg2,
 			len, cdata->async.iv);
 	ret = crypto_ablkcipher_decrypt(cdata->async.request);
 
@@ -189,8 +195,6 @@ ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, struct scatterlist 
 int cryptodev_hash_init( struct hash_data* hdata, const char* alg_name, int hmac_mode, void * mackey, size_t mackeylen)
 {
 int ret;
-
-	hdata->init = 1;
 
 	hdata->async.s = crypto_alloc_ahash(alg_name, 0, 0);
 	if (unlikely(IS_ERR(hdata->async.s))) {
@@ -231,18 +235,34 @@ int ret;
 	ahash_request_set_callback(hdata->async.request, CRYPTO_TFM_REQ_MAY_BACKLOG,
 					cryptodev_complete, hdata->async.result);
 
+	ret = crypto_ahash_init(hdata->async.request);
+	if (unlikely(ret)) {
+		dprintk(0,KERN_ERR,
+			"error in crypto_hash_init()\n");
+		goto error_request;
+	}
 
+	hdata->init = 1;
 	return 0;
 
+error_request:
+	ahash_request_free(hdata->async.request);
 error:
+	kfree(hdata->async.result);
 	crypto_free_ahash(hdata->async.s);
 	return ret;
 }
 
 void cryptodev_hash_deinit(struct hash_data* hdata)
 {
-	crypto_free_ahash(hdata->async.s);
-	hdata->init = 0;
+	if (hdata->init) {
+		if (hdata->async.request)
+			ahash_request_free(hdata->async.request);
+		kfree(hdata->async.result);
+		if (hdata->async.s)
+			crypto_free_ahash(hdata->async.s);
+		hdata->init = 0;
+	}
 }
 
 int cryptodev_hash_reset( struct hash_data* hdata)
@@ -271,7 +291,6 @@ ssize_t cryptodev_hash_update( struct hash_data* hdata, struct scatterlist *sg, 
 
 	return waitfor(hdata->async.result,ret);
 }
-
 
 int cryptodev_hash_final( struct hash_data* hdata, void* output)
 {

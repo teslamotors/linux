@@ -10,8 +10,8 @@
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
-
-#undef DISABLE_ZCOPY
+#include <linux/scatterlist.h>
+#include "cryptodev.h"
 
 #define PFX "cryptodev: "
 #define dprintk(level,severity,format,a...)			\
@@ -23,6 +23,18 @@
 	} while (0)
 
 extern int cryptodev_verbosity;
+
+/* For zero copy */
+int __get_userbuf(uint8_t __user *addr, uint32_t len, int write,
+		int pgcount, struct page **pg, struct scatterlist *sg);
+void release_user_pages(struct page **pg, int pagecount);
+
+/* last page - first page + 1 */
+#define PAGECOUNT(buf, buflen) \
+        ((((unsigned long)(buf + buflen - 1) & PAGE_MASK) >> PAGE_SHIFT) - \
+         (((unsigned long) buf               & PAGE_MASK) >> PAGE_SHIFT) + 1)
+
+#define DEFAULT_PREALLOC_PAGES 32
 
 struct cipher_data
 {
@@ -39,8 +51,9 @@ struct cipher_data
 
 int cryptodev_cipher_init(struct cipher_data* out, const char* alg_name, uint8_t * key, size_t keylen);
 void cryptodev_cipher_deinit(struct cipher_data* cdata);
-ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
-ssize_t cryptodev_cipher_encrypt( struct cipher_data* cdata, struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
+ssize_t cryptodev_cipher_decrypt( struct cipher_data* cdata, const struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
+ssize_t cryptodev_cipher_encrypt( struct cipher_data* cdata, const struct scatterlist *sg1, struct scatterlist *sg2, size_t len);
+
 void cryptodev_cipher_set_iv(struct cipher_data* cdata, void* iv, size_t iv_size);
 
 /* hash stuff */
