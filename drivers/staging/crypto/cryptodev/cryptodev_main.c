@@ -68,7 +68,7 @@ MODULE_PARM_DESC(enable_stats, "collect statictics about cryptodev usage");
 /* ====== CryptoAPI ====== */
 struct fcrypt {
 	struct list_head list;
-	struct semaphore sem;
+	struct mutex sem;
 };
 
 struct crypt_priv {
@@ -85,7 +85,7 @@ struct crypt_priv {
 
 struct csession {
 	struct list_head entry;
-	struct semaphore sem;
+	struct mutex sem;
 	struct cipher_data cdata;
 	struct hash_data hdata;
 	uint32_t sid;
@@ -277,9 +277,9 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 
 	/* put the new session to the list */
 	get_random_bytes(&ses_new->sid, sizeof(ses_new->sid));
-	init_MUTEX(&ses_new->sem);
+	mutex_init(&ses_new->sem);
 
-	down(&fcr->sem);
+	mutex_lock(&fcr->sem);
 restart:
 	list_for_each_entry(ses_ptr, &fcr->list, entry) {
 		/* Check for duplicate SID */
@@ -292,7 +292,7 @@ restart:
 	}
 
 	list_add(&ses_new->entry, &fcr->list);
-	up(&fcr->sem);
+	mutex_unlock(&fcr->sem);
 
 	/* Fill in some values for the user. */
 	sop->ses = ses_new->sid;
@@ -314,10 +314,10 @@ error_cipher:
 static inline void
 crypto_destroy_session(struct csession *ses_ptr)
 {
-	if (down_trylock(&ses_ptr->sem)) {
+	if (!mutex_trylock(&ses_ptr->sem)) {
 		dprintk(2, KERN_DEBUG, "Waiting for semaphore of sid=0x%08X\n",
 			ses_ptr->sid);
-		down(&ses_ptr->sem);
+		mutex_lock(&ses_ptr->sem);
 	}
 	dprintk(2, KERN_DEBUG, "Removed session 0x%08X\n", ses_ptr->sid);
 #if defined(CRYPTODEV_STATS)
@@ -338,7 +338,7 @@ crypto_destroy_session(struct csession *ses_ptr)
 			__func__, ses_ptr->array_size);
 	kfree(ses_ptr->pages);
 	kfree(ses_ptr->sg);
-	up(&ses_ptr->sem);
+	mutex_unlock(&ses_ptr->sem);
 	kfree(ses_ptr);
 }
 
@@ -350,7 +350,7 @@ crypto_finish_session(struct fcrypt *fcr, uint32_t sid)
 	struct list_head *head;
 	int ret = 0;
 
-	down(&fcr->sem);
+	mutex_lock(&fcr->sem);
 	head = &fcr->list;
 	list_for_each_entry_safe(ses_ptr, tmp, head, entry) {
 		if (ses_ptr->sid == sid) {
@@ -365,7 +365,7 @@ crypto_finish_session(struct fcrypt *fcr, uint32_t sid)
 			sid);
 		ret = -ENOENT;
 	}
-	up(&fcr->sem);
+	mutex_unlock(&fcr->sem);
 
 	return ret;
 }
@@ -377,14 +377,14 @@ crypto_finish_all_sessions(struct fcrypt *fcr)
 	struct csession *tmp, *ses_ptr;
 	struct list_head *head;
 
-	down(&fcr->sem);
+	mutex_lock(&fcr->sem);
 
 	head = &fcr->list;
 	list_for_each_entry_safe(ses_ptr, tmp, head, entry) {
 		list_del(&ses_ptr->entry);
 		crypto_destroy_session(ses_ptr);
 	}
-	up(&fcr->sem);
+	mutex_unlock(&fcr->sem);
 
 	return 0;
 }
@@ -395,14 +395,14 @@ crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 {
 	struct csession *ses_ptr;
 
-	down(&fcr->sem);
+	mutex_lock(&fcr->sem);
 	list_for_each_entry(ses_ptr, &fcr->list, entry) {
 		if (ses_ptr->sid == sid) {
-			down(&ses_ptr->sem);
+			mutex_lock(&ses_ptr->sem);
 			break;
 		}
 	}
-	up(&fcr->sem);
+	mutex_unlock(&fcr->sem);
 
 	return ses_ptr;
 }
@@ -731,7 +731,7 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 #endif
 
 out_unlock:
-	up(&ses_ptr->sem);
+	mutex_unlock(&ses_ptr->sem);
 	return ret;
 }
 
@@ -747,7 +747,7 @@ cryptodev_open(struct inode *inode, struct file *filp)
 		return -ENOMEM;
 
 	memset(pcr, 0, sizeof(*pcr));
-	init_MUTEX(&pcr->fcrypt.sem);
+	mutex_init(&pcr->fcrypt.sem);
 	INIT_LIST_HEAD(&pcr->fcrypt.list);
 
 	filp->private_data = pcr;
@@ -1021,3 +1021,4 @@ static void __exit exit_cryptodev(void)
 
 module_init(init_cryptodev);
 module_exit(exit_cryptodev);
+
