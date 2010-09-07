@@ -102,6 +102,7 @@ struct session_op {
 /* struct crypt_op flags */
 
 #define COP_FLAG_NONE		(0 << 0) /* totally no flag */
+#define COP_FLAG_UPDATE		(1 << 0) /* multi-update hash mode */
 
 /* Stuff for bignum arithmetic and public key
  * cryptography - not supported yet by linux

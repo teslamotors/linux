@@ -658,7 +658,7 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		return -EINVAL;
 	}
 
-	if (ses_ptr->hdata.init != 0) {
+	if (ses_ptr->hdata.init != 0 && !(cop->flags & COP_FLAG_UPDATE)) {
 		ret = cryptodev_hash_reset(&ses_ptr->hdata);
 		if (unlikely(ret)) {
 			dprintk(1, KERN_ERR,
@@ -698,15 +698,18 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		}
 	}
 
+	if (!(cop->flags & COP_FLAG_UPDATE) || cop->len != 0) {
 #ifdef DISABLE_ZCOPY
-	ret = __crypto_run_std(ses_ptr, cop);
+		ret = __crypto_run_std(ses_ptr, cop);
 #else /* normal */
-	ret = __crypto_run_zc(ses_ptr, cop);
+		ret = __crypto_run_zc(ses_ptr, cop);
 #endif
-	if (unlikely(ret))
-		goto out_unlock;
+		if (unlikely(ret))
+			goto out_unlock;
+	}
 
-	if (ses_ptr->hdata.init != 0) {
+	if (ses_ptr->hdata.init != 0 &&
+		(!(cop->flags & COP_FLAG_UPDATE) || cop->len == 0)) {
 		ret = cryptodev_hash_final(&ses_ptr->hdata, hash_output);
 		if (unlikely(ret)) {
 			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n", ret);
