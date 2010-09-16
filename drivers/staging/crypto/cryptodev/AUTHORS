@@ -12,5 +12,8 @@ Michael Weiser:
 Phil Sutter: 
   Implemented a zero copy version of the internal engine.
 
+Dmitry Kasatkin:
+  Multi-update support for hash calculation.
+
 
 Maintained by Nikos Mavrogiannopoulos (nmav [at] gnutls [dot] org)

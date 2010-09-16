@@ -1,5 +1,5 @@
 KERNEL_DIR = /lib/modules/$(shell uname -r)/build
-VERSION = 0.5
+VERSION = 0.6
 
 cryptodev-objs = cryptodev_main.o cryptodev_cipher.o
 

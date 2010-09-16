@@ -1,4 +1,7 @@
-Version 0.6 (unreleased)
+Version 0.6 (released 2010-09-16)
+
+* multi-update support for hash calculation using
+the new flag COP_FLAG_UPDATE.
 
 * Relicensed under GPLv2.
 
