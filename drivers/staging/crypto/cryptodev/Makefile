@@ -5,9 +5,11 @@ cryptodev-objs = cryptodev_main.o cryptodev_cipher.o
 
 obj-m += cryptodev.o
 
-build:
-	@echo "#define VERSION \"$(VERSION)\"" > version.h
+build: version.h
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules
+
+version.h: Makefile
+	@echo "#define VERSION \"$(VERSION)\"" > version.h
 
 install:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules_install
