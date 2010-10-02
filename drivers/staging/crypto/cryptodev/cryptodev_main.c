@@ -654,7 +654,8 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		return -EINVAL;
 	}
 
-	if (ses_ptr->hdata.init != 0 && !(cop->flags & COP_FLAG_UPDATE)) {
+	if (ses_ptr->hdata.init != 0 && !(cop->flags & COP_FLAG_UPDATE) &&
+		!(cop->flags & COP_FLAG_FINAL)) {
 		ret = cryptodev_hash_reset(&ses_ptr->hdata);
 		if (unlikely(ret)) {
 			dprintk(1, KERN_ERR,
@@ -694,7 +695,7 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 		}
 	}
 
-	if (!(cop->flags & COP_FLAG_UPDATE) || cop->len != 0) {
+	if (cop->len != 0) {
 		ret = __crypto_run_zc(ses_ptr, cop);
 		if (unlikely(ret))
 			goto out_unlock;

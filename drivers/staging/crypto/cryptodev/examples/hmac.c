@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdint.h>
 
 #include <sys/ioctl.h>
 #include <crypto/cryptodev.h>
@@ -165,6 +166,78 @@ test_crypto(int cfd)
 	return 0;
 }
 
+static int
+test_extras(int cfd)
+{
+	struct session_op sess;
+	struct crypt_op cryp;
+	uint8_t mac[AALG_MAX_RESULT_LEN];
+	uint8_t oldmac[AALG_MAX_RESULT_LEN];
+	uint8_t md5_hmac_out[] = "\x75\x0c\x78\x3e\x6a\xb0\xb5\x03\xea\xa8\x6e\x31\x0a\x5d\xb7\x38";
+	uint8_t sha1_out[] = "\x8f\x82\x03\x94\xf9\x53\x35\x18\x20\x45\xda\x24\xf3\x4d\xe5\x2b\xf8\xbc\x34\x32";
+	int i;
+
+	memset(&sess, 0, sizeof(sess));
+	memset(&cryp, 0, sizeof(cryp));
+
+	/* Use the garbage that is on the stack :-) */
+	/* memset(&data, 0, sizeof(data)); */
+
+	/* SHA1 plain test */
+	memset(mac, 0, sizeof(mac));
+
+	sess.cipher = 0;
+	sess.mac = CRYPTO_SHA1;
+	if (ioctl(cfd, CIOCGSESSION, &sess)) {
+		perror("ioctl(CIOCGSESSION)");
+		return 1;
+	}
+
+	cryp.ses = sess.ses;
+	cryp.len = sizeof("what do")-1;
+	cryp.src = "what do";
+	cryp.mac = mac;
+	cryp.op = COP_ENCRYPT;
+	cryp.flags = COP_FLAG_UPDATE;
+	if (ioctl(cfd, CIOCCRYPT, &cryp)) {
+		perror("ioctl(CIOCCRYPT)");
+		return 1;
+	}
+
+	cryp.ses = sess.ses;
+	cryp.len = sizeof(" ya want for nothing?")-1;
+	cryp.src = " ya want for nothing?";
+	cryp.mac = mac;
+	cryp.op = COP_ENCRYPT;
+	cryp.flags = COP_FLAG_FINAL;
+	if (ioctl(cfd, CIOCCRYPT, &cryp)) {
+		perror("ioctl(CIOCCRYPT)");
+		return 1;
+	}
+
+	if (memcmp(mac, sha1_out, 20)!=0) {
+		printf("mac: ");
+		for (i=0;i<SHA1_HASH_LEN;i++) {
+			printf("%.2x", (uint8_t)mac[i]);
+		}
+		puts("\n");
+		fprintf(stderr, "HASH test [update]: failed\n");
+	} else {
+		fprintf(stderr, "HASH test [update]: passed\n");
+	}
+
+	memset(mac, 0, sizeof(mac));
+
+	/* Finish crypto session */
+	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
+		perror("ioctl(CIOCFSESSION)");
+		return 1;
+	}
+
+	return 0;
+}
+
+
 int
 main()
 {
@@ -191,6 +264,9 @@ main()
 
 	/* Run the test itself */
 	if (test_crypto(cfd))
+		return 1;
+
+	if (test_extras(cfd))
 		return 1;
 
 	/* Close cloned descriptor */
