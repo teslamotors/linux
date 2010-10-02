@@ -159,4 +159,8 @@ enum cryptodev_crk_op_t {
 #define CIOCKEY         _IOWR('c', 105, struct crypt_kop)
 #define CIOCASYMFEAT    _IOR('c', 106, __u32)
 
+/* to indicate that CRIOGET is not required in linux
+ */
+#define CRIOGET_NOT_NEEDED 1
+
 #endif /* L_CRYPTODEV_H */
