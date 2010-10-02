@@ -507,8 +507,6 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 	return ret;
 }
 
-#ifndef DISABLE_ZCOPY
-
 void release_user_pages(struct page **pg, int pagecount)
 {
 	while (pagecount--) {
@@ -638,8 +636,6 @@ __crypto_run_zc(struct csession *ses_ptr, struct crypt_op *cop)
 	return ret;
 }
 
-#endif /* DISABLE_ZCOPY */
-
 static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 {
 	struct csession *ses_ptr;
@@ -699,11 +695,7 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	}
 
 	if (!(cop->flags & COP_FLAG_UPDATE) || cop->len != 0) {
-#ifdef DISABLE_ZCOPY
-		ret = __crypto_run_std(ses_ptr, cop);
-#else /* normal */
 		ret = __crypto_run_zc(ses_ptr, cop);
-#endif
 		if (unlikely(ret))
 			goto out_unlock;
 	}
