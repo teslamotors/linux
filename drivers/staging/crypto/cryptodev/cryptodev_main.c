@@ -702,7 +702,8 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	}
 
 	if (ses_ptr->hdata.init != 0 &&
-		(!(cop->flags & COP_FLAG_UPDATE) || cop->len == 0)) {
+		((cop->flags & COP_FLAG_FINAL) ||
+		   (!(cop->flags & COP_FLAG_UPDATE) || cop->len == 0))) {
 		ret = cryptodev_hash_final(&ses_ptr->hdata, hash_output);
 		if (unlikely(ret)) {
 			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n", ret);
