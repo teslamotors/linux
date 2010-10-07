@@ -1,4 +1,4 @@
-Version 0.6 (released 2010-10-08)
+Version 0.7 (released 2010-10-08)
 
 * Added COP_FLAG_FINAL to make multi-update
 more efficient.
