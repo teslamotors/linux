@@ -549,11 +549,12 @@ int __get_userbuf(uint8_t __user *addr, uint32_t len, int write,
 }
 
 /* make cop->src and cop->dst available in scatterlists */
-static int get_userbuf(struct csession *ses,
-		struct crypt_op *cop, struct scatterlist **src_sg,
-		struct scatterlist **dst_sg, int *tot_pages)
+static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
+                       struct scatterlist **src_sg, struct scatterlist **dst_sg,
+                       int *tot_pages)
 {
 	int src_pagecount, dst_pagecount = 0, pagecount, write_src = 1;
+	struct crypt_op *cop = &kcop->cop;
 
 	if (cop->src == NULL)
 		return -EINVAL;
@@ -618,12 +619,13 @@ static int get_userbuf(struct csession *ses,
 
 /* This is the main crypto function - zero-copy edition */
 static int
-__crypto_run_zc(struct csession *ses_ptr, struct crypt_op *cop)
+__crypto_run_zc(struct csession *ses_ptr, struct kernel_crypt_op *kcop)
 {
 	struct scatterlist *src_sg, *dst_sg;
+	struct crypt_op *cop = &kcop->cop;
 	int ret = 0, pagecount;
 
-	ret = get_userbuf(ses_ptr, cop, &src_sg, &dst_sg, &pagecount);
+	ret = get_userbuf(ses_ptr, kcop, &src_sg, &dst_sg, &pagecount);
 	if (unlikely(ret)) {
 		dprintk(1, KERN_ERR, "Error getting user pages. \
 					Falling back to non zero copy.\n");
@@ -636,10 +638,11 @@ __crypto_run_zc(struct csession *ses_ptr, struct crypt_op *cop)
 	return ret;
 }
 
-static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
+static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 {
 	struct csession *ses_ptr;
 	uint8_t hash_output[AALG_MAX_RESULT_LEN];
+	struct crypt_op *cop = &kcop->cop;
 	int ret;
 
 	if (unlikely(cop->op != COP_ENCRYPT && cop->op != COP_DECRYPT)) {
@@ -696,7 +699,7 @@ static int crypto_run(struct fcrypt *fcr, struct crypt_op *cop)
 	}
 
 	if (cop->len != 0) {
-		ret = __crypto_run_zc(ses_ptr, cop);
+		ret = __crypto_run_zc(ses_ptr, kcop);
 		if (unlikely(ret))
 			goto out_unlock;
 	}
@@ -778,13 +781,39 @@ clonefd(struct file *filp)
 	return ret;
 }
 
+/* this function has to be called from process context */
+static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
+{
+	struct crypt_op *cop = &kcop->cop;
+	struct csession *ses_ptr;
+
+	/* this also enters ses_ptr->sem */
+	ses_ptr = crypto_get_session_by_sid(fcr, cop->ses);
+	if (unlikely(!ses_ptr)) {
+		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", cop->ses);
+		return -EINVAL;
+	}
+	mutex_unlock(&ses_ptr->sem);
+
+	return 0;
+}
+
+static int kcop_from_user(struct kernel_crypt_op *kcop,
+                          struct fcrypt *fcr, void __user *arg)
+{
+	if (unlikely(copy_from_user(&kcop->cop, arg, sizeof(kcop->cop))))
+		return -EFAULT;
+
+	return fill_kcop_from_cop(kcop, fcr);
+}
+
 static long
 cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 {
 	void __user *arg = (void __user *)arg_;
 	int __user *p = arg;
 	struct session_op sop;
-	struct crypt_op cop;
+	struct kernel_crypt_op kcop;
 	struct crypt_priv *pcr = filp->private_data;
 	struct fcrypt *fcr;
 	uint32_t ses;
@@ -826,13 +855,13 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 		ret = crypto_finish_session(fcr, ses);
 		return ret;
 	case CIOCCRYPT:
-		if (unlikely(copy_from_user(&cop, arg, sizeof(cop))))
-			return -EFAULT;
+		if (unlikely(ret = kcop_from_user(&kcop, fcr, arg)))
+			return ret;
 
-		ret = crypto_run(fcr, &cop);
+		ret = crypto_run(fcr, &kcop);
 		if (unlikely(ret))
 			return ret;
-		if (unlikely(copy_to_user(arg, &cop, sizeof(cop))))
+		if (unlikely(copy_to_user(arg, &kcop.cop, sizeof(kcop.cop))))
 			return -EFAULT;
 		return 0;
 
@@ -898,6 +927,18 @@ crypt_op_to_compat(struct crypt_op *cop, struct compat_crypt_op *compat)
 	compat->iv  = ptr_to_compat(cop->iv);
 }
 
+static int compat_kcop_from_user(struct kernel_crypt_op *kcop,
+                                 struct fcrypt *fcr, void __user *arg)
+{
+	struct compat_crypt_op compat_cop;
+
+	if (unlikely(copy_from_user(&compat_cop, arg, sizeof(compat_cop))))
+		return -EFAULT;
+	compat_to_crypt_op(&compat_cop, &kcop->cop);
+
+	return fill_kcop_from_cop(kcop, fcr);
+}
+
 static long
 cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 {
@@ -905,7 +946,7 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 	struct fcrypt *fcr = file->private_data;
 	struct session_op sop;
 	struct compat_session_op compat_sop;
-	struct crypt_op cop;
+	struct kernel_crypt_op kcop;
 	struct compat_crypt_op compat_cop;
 	int ret;
 
@@ -937,17 +978,15 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 		return ret;
 
 	case COMPAT_CIOCCRYPT:
-		if (unlikely(copy_from_user(&compat_cop, arg,
-					    sizeof(compat_cop))))
-			return -EFAULT;
-
-		compat_to_crypt_op(&compat_cop, &cop);
-
-		ret = crypto_run(fcr, &cop);
+		ret = compat_kcop_from_user(&kcop, fcr, arg);
 		if (unlikely(ret))
 			return ret;
 
-		crypt_op_to_compat(&cop, &compat_cop);
+		ret = crypto_run(fcr, &kcop);
+		if (unlikely(ret))
+			return ret;
+
+		crypt_op_to_compat(&kcop.cop, &compat_cop);
 		if (unlikely(copy_to_user(arg, &compat_cop,
 					  sizeof(compat_cop))))
 			return -EFAULT;

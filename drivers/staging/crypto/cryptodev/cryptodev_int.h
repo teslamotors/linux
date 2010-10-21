@@ -117,4 +117,9 @@ struct compat_session_op {
 
 #endif /* CONFIG_COMPAT */
 
+/* kernel-internal extension to struct crypt_op */
+struct kernel_crypt_op {
+	struct crypt_op cop;
+};
+
 #endif /* CRYPTODEV_INT_H */
