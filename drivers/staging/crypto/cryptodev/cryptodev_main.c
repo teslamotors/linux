@@ -679,23 +679,8 @@ static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 			goto out_unlock;
 		}
 
-		if (cop->iv) {
-			uint8_t iv[EALG_MAX_BLOCK_LEN];
-
-			ret = copy_from_user(iv, cop->iv,
-				min((int)sizeof(iv), (ses_ptr->cdata.ivsize)));
-			if (unlikely(ret)) {
-				dprintk(1, KERN_ERR,
-					"error copying IV (%d bytes)\n",
-					min((int)sizeof(iv),
-					(ses_ptr->cdata.ivsize)));
-				ret = -EFAULT;
-				goto out_unlock;
-			}
-
-			cryptodev_cipher_set_iv(&ses_ptr->cdata, iv,
-						ses_ptr->cdata.ivsize);
-		}
+		cryptodev_cipher_set_iv(&ses_ptr->cdata, kcop->iv,
+				min(ses_ptr->cdata.ivsize, kcop->ivlen));
 	}
 
 	if (cop->len != 0) {
@@ -786,6 +771,7 @@ static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
 {
 	struct crypt_op *cop = &kcop->cop;
 	struct csession *ses_ptr;
+	int rc;
 
 	/* this also enters ses_ptr->sem */
 	ses_ptr = crypto_get_session_by_sid(fcr, cop->ses);
@@ -793,7 +779,15 @@ static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
 		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", cop->ses);
 		return -EINVAL;
 	}
+	kcop->ivlen = cop->iv ? ses_ptr->cdata.ivsize : 0;
 	mutex_unlock(&ses_ptr->sem);
+
+	if (unlikely(rc = copy_from_user(kcop->iv, cop->iv, kcop->ivlen))) {
+		dprintk(1, KERN_ERR,
+		        "error copying IV (%d bytes), copy_from_user returned %d for address %lx\n",
+		        kcop->ivlen, rc, (unsigned long)cop->iv);
+		return -EFAULT;
+	}
 
 	return 0;
 }

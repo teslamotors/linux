@@ -120,6 +120,9 @@ struct compat_session_op {
 /* kernel-internal extension to struct crypt_op */
 struct kernel_crypt_op {
 	struct crypt_op cop;
+
+	int ivlen;
+	__u8 iv[EALG_MAX_BLOCK_LEN];
 };
 
 #endif /* CRYPTODEV_INT_H */
