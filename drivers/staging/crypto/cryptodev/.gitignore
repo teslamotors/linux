@@ -7,6 +7,9 @@ Module.symvers
 *.o
 *.mod.c
 modules.order
+examples/async_cipher
+examples/async_hmac
+examples/async_speed
 examples/cipher
 examples/hmac
 examples/speed
