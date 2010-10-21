@@ -53,9 +53,10 @@ MODULE_LICENSE("GPL");
 
 #define CRYPTODEV_STATS
 
-/* Default (pre-allocated) size of the job queue.
+/* Default (pre-allocated) and maximum size of the job queue.
  * These are free, pending and done items all together. */
 #define DEF_COP_RINGSIZE 16
+#define MAX_COP_RINGSIZE 64
 
 /* ====== Module parameters ====== */
 
@@ -866,21 +867,32 @@ clonefd(struct file *filp)
  *
  * returns:
  * -EBUSY when there are no free queue slots left
+ *        (and the number of slots has reached it MAX_COP_RINGSIZE)
+ * -EFAULT when there was a memory allocation error
  * 0 on success */
 static int crypto_async_run(struct crypt_priv *pcr, struct kernel_crypt_op *kcop)
 {
 	struct todo_list_item *item = NULL;
 
 	mutex_lock(&pcr->free.lock);
-	if (!list_empty(&pcr->free.list)) {
+	if (likely(!list_empty(&pcr->free.list))) {
 		item = list_first_entry(&pcr->free.list,
 				struct todo_list_item, __hook);
 		list_del(&item->__hook);
+	} else if (pcr->itemcount < MAX_COP_RINGSIZE) {
+		pcr->itemcount++;
+	} else {
+		mutex_unlock(&pcr->free.lock);
+		return -EBUSY;
 	}
 	mutex_unlock(&pcr->free.lock);
 
-	if (!item) {
-		return -EBUSY;
+	if (unlikely(!item)) {
+		item = kzalloc(sizeof(struct todo_list_item), GFP_KERNEL);
+		if (unlikely(!item))
+			return -EFAULT;
+		dprintk(1, KERN_INFO, "%s: increased item count to %d\n",
+				__func__, pcr->itemcount);
 	}
 
 	memcpy(&item->kcop, kcop, sizeof(struct kernel_crypt_op));
