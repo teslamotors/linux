@@ -641,7 +641,6 @@ __crypto_run_zc(struct csession *ses_ptr, struct kernel_crypt_op *kcop)
 static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 {
 	struct csession *ses_ptr;
-	uint8_t hash_output[AALG_MAX_RESULT_LEN];
 	struct crypt_op *cop = &kcop->cop;
 	int ret;
 
@@ -692,15 +691,10 @@ static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 	if (ses_ptr->hdata.init != 0 &&
 		((cop->flags & COP_FLAG_FINAL) ||
 		   (!(cop->flags & COP_FLAG_UPDATE) || cop->len == 0))) {
-		ret = cryptodev_hash_final(&ses_ptr->hdata, hash_output);
+
+		ret = cryptodev_hash_final(&ses_ptr->hdata, kcop->hash_output);
 		if (unlikely(ret)) {
 			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n", ret);
-			goto out_unlock;
-		}
-
-		if (unlikely(copy_to_user(cop->mac, hash_output,
-					ses_ptr->hdata.digestsize))) {
-			ret = -EFAULT;
 			goto out_unlock;
 		}
 	}
@@ -780,6 +774,7 @@ static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
 		return -EINVAL;
 	}
 	kcop->ivlen = cop->iv ? ses_ptr->cdata.ivsize : 0;
+	kcop->digestsize = ses_ptr->hdata.digestsize;
 	mutex_unlock(&ses_ptr->sem);
 
 	if (unlikely(rc = copy_from_user(kcop->iv, cop->iv, kcop->ivlen))) {
@@ -853,6 +848,9 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 			return ret;
 
 		ret = crypto_run(fcr, &kcop);
+		if (unlikely(ret))
+			return ret;
+		ret = copy_to_user(kcop.cop.mac, kcop.hash_output, kcop.digestsize);
 		if (unlikely(ret))
 			return ret;
 		if (unlikely(copy_to_user(arg, &kcop.cop, sizeof(kcop.cop))))
@@ -977,6 +975,11 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 			return ret;
 
 		ret = crypto_run(fcr, &kcop);
+		if (unlikely(ret))
+			return ret;
+
+		ret = copy_to_user(kcop.cop.mac,
+				kcop.hash_output, kcop.digestsize);
 		if (unlikely(ret))
 			return ret;
 

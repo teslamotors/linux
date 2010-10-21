@@ -123,6 +123,9 @@ struct kernel_crypt_op {
 
 	int ivlen;
 	__u8 iv[EALG_MAX_BLOCK_LEN];
+
+	int digestsize;
+	uint8_t hash_output[AALG_MAX_RESULT_LEN];
 };
 
 #endif /* CRYPTODEV_INT_H */
