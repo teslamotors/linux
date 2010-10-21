@@ -39,6 +39,7 @@
 #include <linux/random.h>
 #include <linux/syscalls.h>
 #include <linux/pagemap.h>
+#include <linux/poll.h>
 #include <linux/uaccess.h>
 #include "cryptodev.h"
 #include <linux/scatterlist.h>
@@ -92,6 +93,7 @@ struct crypt_priv {
 	struct locked_list free, todo, done;
 	int itemcount;
 	struct work_struct cryptask;
+	wait_queue_head_t user_waiter;
 };
 
 #define FILL_SG(sg, ptr, len)					\
@@ -765,6 +767,9 @@ static void cryptask_routine(struct work_struct *work)
 	mutex_lock(&pcr->done.lock);
 	list_splice_tail(&tmp, &pcr->done.list);
 	mutex_unlock(&pcr->done.lock);
+
+	/* wake for POLLIN */
+	wake_up_interruptible(&pcr->user_waiter);
 }
 
 /* ====== /dev/crypto ====== */
@@ -791,6 +796,7 @@ cryptodev_open(struct inode *inode, struct file *filp)
 	mutex_init(&pcr->free.lock);
 	mutex_init(&pcr->todo.lock);
 	mutex_init(&pcr->done.lock);
+	init_waitqueue_head(&pcr->user_waiter);
 
 	for (i = 0; i < DEF_COP_RINGSIZE; i++) {
 		tmp = kzalloc(sizeof(struct todo_list_item), GFP_KERNEL);
@@ -931,6 +937,9 @@ static int crypto_async_fetch(struct crypt_priv *pcr,
 	mutex_lock(&pcr->free.lock);
 	list_add_tail(&item->__hook, &pcr->free.list);
 	mutex_unlock(&pcr->free.lock);
+
+	/* wake for POLLOUT */
+	wake_up_interruptible(&pcr->user_waiter);
 
 	return retval;
 }
@@ -1211,6 +1220,21 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 
 #endif /* CONFIG_COMPAT */
 
+static unsigned int cryptodev_poll(struct file *file, poll_table *wait)
+{
+	struct crypt_priv *pcr = file->private_data;
+	int ret = 0;
+
+	poll_wait(file, &pcr->user_waiter, wait);
+
+	if (!list_empty_careful(&pcr->done.list))
+		ret |= POLLIN | POLLRDNORM;
+	if (!list_empty_careful(&pcr->free.list) || pcr->itemcount < MAX_COP_RINGSIZE)
+		ret |= POLLOUT | POLLWRNORM;
+
+	return ret;
+}
+
 static const struct file_operations cryptodev_fops = {
 	.owner = THIS_MODULE,
 	.open = cryptodev_open,
@@ -1219,6 +1243,7 @@ static const struct file_operations cryptodev_fops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = cryptodev_compat_ioctl,
 #endif /* CONFIG_COMPAT */
+	.poll = cryptodev_poll,
 };
 
 static struct miscdevice cryptodev = {
