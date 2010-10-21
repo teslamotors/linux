@@ -584,12 +584,12 @@ static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
 				__func__, array_size);
 		pages = krealloc(ses->pages, array_size * sizeof(struct page *),
 				 GFP_KERNEL);
-		if (pages == NULL)
+		if (unlikely(!pages))
 			return -ENOMEM;
 		ses->pages = pages;
 		sg = krealloc(ses->sg, array_size * sizeof(struct scatterlist),
 			      GFP_KERNEL);
-		if (sg == NULL)
+		if (unlikely(!sg))
 			return -ENOMEM;
 		ses->sg = sg;
 		ses->array_size = array_size;
