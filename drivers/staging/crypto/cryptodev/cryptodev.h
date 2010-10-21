@@ -164,4 +164,8 @@ enum cryptodev_crk_op_t {
  */
 #define CRIOGET_NOT_NEEDED 1
 
+/* additional ioctls for asynchronous  operation */
+#define CIOCASYNCCRYPT    _IOW('c', 107, struct crypt_op)
+#define CIOCASYNCFETCH    _IOR('c', 108, struct crypt_op)
+
 #endif /* L_CRYPTODEV_H */

@@ -53,6 +53,10 @@ MODULE_LICENSE("GPL");
 
 #define CRYPTODEV_STATS
 
+/* Default (pre-allocated) size of the job queue.
+ * These are free, pending and done items all together. */
+#define DEF_COP_RINGSIZE 16
+
 /* ====== Module parameters ====== */
 
 int cryptodev_verbosity;
@@ -71,8 +75,22 @@ struct fcrypt {
 	struct mutex sem;
 };
 
+struct todo_list_item {
+	struct list_head __hook;
+	struct kernel_crypt_op kcop;
+	int result;
+};
+
+struct locked_list {
+	struct list_head list;
+	struct mutex lock;
+};
+
 struct crypt_priv {
 	struct fcrypt fcrypt;
+	struct locked_list free, todo, done;
+	int itemcount;
+	struct work_struct cryptask;
 };
 
 #define FILL_SG(sg, ptr, len)					\
@@ -100,6 +118,9 @@ struct csession {
 	struct page **pages;
 	struct scatterlist *sg;
 };
+
+/* cryptodev's own workqueue, keeps crypto tasks from disturbing the force */
+static struct workqueue_struct *cryptodev_wq;
 
 /* Prepare session for future use. */
 static int
@@ -521,15 +542,16 @@ void release_user_pages(struct page **pg, int pagecount)
 
 /* fetch the pages addr resides in into pg and initialise sg with them */
 int __get_userbuf(uint8_t __user *addr, uint32_t len, int write,
-		int pgcount, struct page **pg, struct scatterlist *sg)
+		int pgcount, struct page **pg, struct scatterlist *sg,
+		struct task_struct *task, struct mm_struct *mm)
 {
 	int ret, pglen, i = 0;
 	struct scatterlist *sgp;
 
-	down_write(&current->mm->mmap_sem);
-	ret = get_user_pages(current, current->mm,
+	down_write(&mm->mmap_sem);
+	ret = get_user_pages(task, mm,
 			(unsigned long)addr, pgcount, write, 0, pg, NULL);
-	up_write(&current->mm->mmap_sem);
+	up_write(&mm->mmap_sem);
 	if (ret != pgcount)
 		return -EINVAL;
 
@@ -555,6 +577,7 @@ static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
 {
 	int src_pagecount, dst_pagecount = 0, pagecount, write_src = 1;
 	struct crypt_op *cop = &kcop->cop;
+	int rc;
 
 	if (cop->src == NULL)
 		return -EINVAL;
@@ -595,24 +618,28 @@ static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
 		ses->array_size = array_size;
 	}
 
-	if (__get_userbuf(cop->src, cop->len, write_src,
-			src_pagecount, ses->pages, ses->sg)) {
+	rc = __get_userbuf(cop->src, cop->len, write_src, src_pagecount,
+	                   ses->pages, ses->sg, kcop->task, kcop->mm);
+	if (unlikely(rc)) {
 		dprintk(1, KERN_ERR,
 			"failed to get user pages for data input\n");
 		return -EINVAL;
 	}
 	(*src_sg) = (*dst_sg) = ses->sg;
 
-	if (dst_pagecount) {
-		(*dst_sg) = ses->sg + src_pagecount;
+	if (!dst_pagecount)
+		return 0;
 
-		if (__get_userbuf(cop->dst, cop->len, 1, dst_pagecount,
-					ses->pages + src_pagecount, *dst_sg)) {
-			dprintk(1, KERN_ERR,
-				"failed to get user pages for data output\n");
-			release_user_pages(ses->pages, src_pagecount);
-			return -EINVAL;
-		}
+	(*dst_sg) = ses->sg + src_pagecount;
+
+	rc = __get_userbuf(cop->dst, cop->len, 1, dst_pagecount,
+	                   ses->pages + src_pagecount, *dst_sg,
+			   kcop->task, kcop->mm);
+	if (unlikely(rc)) {
+		dprintk(1, KERN_ERR,
+		        "failed to get user pages for data output\n");
+		release_user_pages(ses->pages, src_pagecount);
+		return -EINVAL;
 	}
 	return 0;
 }
@@ -714,12 +741,39 @@ out_unlock:
 	return ret;
 }
 
+static void cryptask_routine(struct work_struct *work)
+{
+	struct crypt_priv *pcr = container_of(work, struct crypt_priv, cryptask);
+	struct todo_list_item *item;
+	LIST_HEAD(tmp);
+
+	/* fetch all pending jobs into the temporary list */
+	mutex_lock(&pcr->todo.lock);
+	list_cut_position(&tmp, &pcr->todo.list, pcr->todo.list.prev);
+	mutex_unlock(&pcr->todo.lock);
+
+	/* handle each job locklessly */
+	list_for_each_entry(item, &tmp, __hook) {
+		item->result = crypto_run(&pcr->fcrypt, &item->kcop);
+		if (unlikely(item->result))
+			dprintk(0, KERN_ERR, "%s: crypto_run() failed: %d\n",
+					__func__, item->result);
+	}
+
+	/* push all handled jobs to the done list at once */
+	mutex_lock(&pcr->done.lock);
+	list_splice_tail(&tmp, &pcr->done.list);
+	mutex_unlock(&pcr->done.lock);
+}
+
 /* ====== /dev/crypto ====== */
 
 static int
 cryptodev_open(struct inode *inode, struct file *filp)
 {
+	struct todo_list_item *tmp;
 	struct crypt_priv *pcr;
+	int i;
 
 	pcr = kmalloc(sizeof(*pcr), GFP_KERNEL);
 	if (!pcr)
@@ -729,7 +783,26 @@ cryptodev_open(struct inode *inode, struct file *filp)
 	mutex_init(&pcr->fcrypt.sem);
 	INIT_LIST_HEAD(&pcr->fcrypt.list);
 
+	INIT_LIST_HEAD(&pcr->free.list);
+	INIT_LIST_HEAD(&pcr->todo.list);
+	INIT_LIST_HEAD(&pcr->done.list);
+	INIT_WORK(&pcr->cryptask, cryptask_routine);
+	mutex_init(&pcr->free.lock);
+	mutex_init(&pcr->todo.lock);
+	mutex_init(&pcr->done.lock);
+
+	for (i = 0; i < DEF_COP_RINGSIZE; i++) {
+		tmp = kzalloc(sizeof(struct todo_list_item), GFP_KERNEL);
+		pcr->itemcount++;
+		dprintk(2, KERN_DEBUG, "%s: allocated new item at %lx\n",
+				__func__, (unsigned long)tmp);
+		list_add(&tmp->__hook, &pcr->free.list);
+	}
+
 	filp->private_data = pcr;
+	dprintk(2, KERN_DEBUG,
+	        "Cryptodev handle initialised, %d elements in queue\n",
+		DEF_COP_RINGSIZE);
 	return 0;
 }
 
@@ -737,13 +810,42 @@ static int
 cryptodev_release(struct inode *inode, struct file *filp)
 {
 	struct crypt_priv *pcr = filp->private_data;
+	struct todo_list_item *item, *item_safe;
+	int items_freed = 0;
 
-	if (pcr) {
-		crypto_finish_all_sessions(&pcr->fcrypt);
-		kfree(pcr);
-		filp->private_data = NULL;
+	if (!pcr)
+		return 0;
+
+	cancel_work_sync(&pcr->cryptask);
+
+	mutex_destroy(&pcr->todo.lock);
+	mutex_destroy(&pcr->done.lock);
+	mutex_destroy(&pcr->free.lock);
+
+	list_splice_tail(&pcr->todo.list, &pcr->free.list);
+	list_splice_tail(&pcr->done.list, &pcr->free.list);
+
+	list_for_each_entry_safe(item, item_safe, &pcr->free.list, __hook) {
+		dprintk(2, KERN_DEBUG, "%s: freeing item at %lx\n",
+				__func__, (unsigned long)item);
+		list_del(&item->__hook);
+		kfree(item);
+		items_freed++;
+
+	}
+	if (items_freed != pcr->itemcount) {
+		dprintk(0, KERN_ERR,
+		        "%s: freed %d items, but %d should exist!\n",
+		        __func__, items_freed, pcr->itemcount);
 	}
 
+	crypto_finish_all_sessions(&pcr->fcrypt);
+	kfree(pcr);
+	filp->private_data = NULL;
+
+	dprintk(2, KERN_DEBUG,
+	        "Cryptodev handle deinitialised, %d elements freed\n",
+	        items_freed);
 	return 0;
 }
 
@@ -758,6 +860,67 @@ clonefd(struct file *filp)
 	}
 
 	return ret;
+}
+
+/* enqueue a job for asynchronous completion
+ *
+ * returns:
+ * -EBUSY when there are no free queue slots left
+ * 0 on success */
+static int crypto_async_run(struct crypt_priv *pcr, struct kernel_crypt_op *kcop)
+{
+	struct todo_list_item *item = NULL;
+
+	mutex_lock(&pcr->free.lock);
+	if (!list_empty(&pcr->free.list)) {
+		item = list_first_entry(&pcr->free.list,
+				struct todo_list_item, __hook);
+		list_del(&item->__hook);
+	}
+	mutex_unlock(&pcr->free.lock);
+
+	if (!item) {
+		return -EBUSY;
+	}
+
+	memcpy(&item->kcop, kcop, sizeof(struct kernel_crypt_op));
+
+	mutex_lock(&pcr->todo.lock);
+	list_add_tail(&item->__hook, &pcr->todo.list);
+	mutex_unlock(&pcr->todo.lock);
+
+	queue_work(cryptodev_wq, &pcr->cryptask);
+	return 0;
+}
+
+/* get the first completed job from the "done" queue
+ *
+ * returns:
+ * -EBUSY if no completed jobs are ready (yet)
+ * the return value of crypto_run() otherwise */
+static int crypto_async_fetch(struct crypt_priv *pcr,
+		struct kernel_crypt_op *kcop)
+{
+	struct todo_list_item *item;
+	int retval;
+
+	mutex_lock(&pcr->done.lock);
+	if (list_empty(&pcr->done.list)) {
+		mutex_unlock(&pcr->done.lock);
+		return -EBUSY;
+	}
+	item = list_first_entry(&pcr->done.list, struct todo_list_item, __hook);
+	list_del(&item->__hook);
+	mutex_unlock(&pcr->done.lock);
+
+	memcpy(kcop, &item->kcop, sizeof(struct kernel_crypt_op));
+	retval = item->result;
+
+	mutex_lock(&pcr->free.lock);
+	list_add_tail(&item->__hook, &pcr->free.list);
+	mutex_unlock(&pcr->free.lock);
+
+	return retval;
 }
 
 /* this function has to be called from process context */
@@ -777,14 +940,17 @@ static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
 	kcop->digestsize = ses_ptr->hdata.digestsize;
 	mutex_unlock(&ses_ptr->sem);
 
-	if (unlikely(rc = copy_from_user(kcop->iv, cop->iv, kcop->ivlen))) {
-		dprintk(1, KERN_ERR,
-		        "error copying IV (%d bytes), copy_from_user returned %d for address %lx\n",
-		        kcop->ivlen, rc, (unsigned long)cop->iv);
-		return -EFAULT;
-	}
+	kcop->task = current;
+	kcop->mm = current->mm;
 
-	return 0;
+	rc = copy_from_user(kcop->iv, cop->iv, kcop->ivlen);
+	if (likely(!rc))
+		return 0;
+
+	dprintk(1, KERN_ERR,
+	        "error copying IV (%d bytes), copy_from_user returned %d for address %lx\n",
+	        kcop->ivlen, rc, (unsigned long)cop->iv);
+	return -EFAULT;
 }
 
 static int kcop_from_user(struct kernel_crypt_op *kcop,
@@ -850,12 +1016,29 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 		ret = crypto_run(fcr, &kcop);
 		if (unlikely(ret))
 			return ret;
-		ret = copy_to_user(kcop.cop.mac, kcop.hash_output, kcop.digestsize);
+		ret = copy_to_user(kcop.cop.mac,
+				kcop.hash_output, kcop.digestsize);
 		if (unlikely(ret))
 			return ret;
 		if (unlikely(copy_to_user(arg, &kcop.cop, sizeof(kcop.cop))))
 			return -EFAULT;
 		return 0;
+	case CIOCASYNCCRYPT:
+		if (unlikely(ret = kcop_from_user(&kcop, fcr, arg)))
+			return ret;
+
+		return crypto_async_run(pcr, &kcop);
+	case CIOCASYNCFETCH:
+		ret = crypto_async_fetch(pcr, &kcop);
+		if (unlikely(ret))
+			return ret;
+
+		ret = copy_to_user(kcop.cop.mac,
+				kcop.hash_output, kcop.digestsize);
+		if (unlikely(ret))
+			return ret;
+
+		return copy_to_user(arg, &kcop.cop, sizeof(kcop.cop));
 
 	default:
 		return -EINVAL;
@@ -935,15 +1118,18 @@ static long
 cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 {
 	void __user *arg = (void __user *)arg_;
-	struct fcrypt *fcr = file->private_data;
+	struct crypt_priv *pcr = file->private_data;
+	struct fcrypt *fcr;
 	struct session_op sop;
 	struct compat_session_op compat_sop;
 	struct kernel_crypt_op kcop;
 	struct compat_crypt_op compat_cop;
 	int ret;
 
-	if (unlikely(!fcr))
+	if (unlikely(!pcr))
 		BUG();
+
+	fcr = &pcr->fcrypt;
 
 	switch (cmd) {
 	case CIOCASYMFEAT:
@@ -988,6 +1174,23 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 					  sizeof(compat_cop))))
 			return -EFAULT;
 		return 0;
+	case COMPAT_CIOCASYNCCRYPT:
+		if (unlikely(ret = compat_kcop_from_user(&kcop, fcr, arg)))
+			return ret;
+
+		return crypto_async_run(pcr, &kcop);
+	case COMPAT_CIOCASYNCFETCH:
+		ret = crypto_async_fetch(pcr, &kcop);
+		if (unlikely(ret))
+			return ret;
+
+		ret = copy_to_user(kcop.cop.mac,
+				kcop.hash_output, kcop.digestsize);
+		if (unlikely(ret))
+			return ret;
+
+		crypt_op_to_compat(&kcop.cop, &compat_cop);
+		return copy_to_user(arg, &compat_cop, sizeof(compat_cop));
 
 	default:
 		return -EINVAL;
@@ -1037,9 +1240,17 @@ static int __init init_cryptodev(void)
 {
 	int rc;
 
+	cryptodev_wq = create_workqueue("cryptodev_queue");
+	if (unlikely(!cryptodev_wq)) {
+		printk(KERN_ERR PFX "failed to allocate the cryptodev workqueue\n");
+		return -EFAULT;
+	}
+
 	rc = cryptodev_register();
-	if (unlikely(rc))
+	if (unlikely(rc)) {
+		destroy_workqueue(cryptodev_wq);
 		return rc;
+	}
 
 	printk(KERN_INFO PFX "driver %s loaded.\n", VERSION);
 
@@ -1048,6 +1259,9 @@ static int __init init_cryptodev(void)
 
 static void __exit exit_cryptodev(void)
 {
+	flush_workqueue(cryptodev_wq);
+	destroy_workqueue(cryptodev_wq);
+
 	cryptodev_deregister();
 	printk(KERN_INFO PFX "driver unloaded.\n");
 }

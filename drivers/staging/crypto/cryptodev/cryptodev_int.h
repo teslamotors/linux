@@ -26,7 +26,8 @@ extern int cryptodev_verbosity;
 
 /* For zero copy */
 int __get_userbuf(uint8_t __user *addr, uint32_t len, int write,
-		int pgcount, struct page **pg, struct scatterlist *sg);
+		int pgcount, struct page **pg, struct scatterlist *sg,
+		struct task_struct *task, struct mm_struct *mm);
 void release_user_pages(struct page **pg, int pagecount);
 
 /* last page - first page + 1 */
@@ -114,6 +115,8 @@ struct compat_session_op {
 /* compat ioctls, defined for the above structs */
 #define COMPAT_CIOCGSESSION    _IOWR('c', 102, struct compat_session_op)
 #define COMPAT_CIOCCRYPT       _IOWR('c', 104, struct compat_crypt_op)
+#define COMPAT_CIOCASYNCCRYPT  _IOW('c', 107, struct compat_crypt_op)
+#define COMPAT_CIOCASYNCFETCH  _IOR('c', 108, struct compat_crypt_op)
 
 #endif /* CONFIG_COMPAT */
 
@@ -126,6 +129,9 @@ struct kernel_crypt_op {
 
 	int digestsize;
 	uint8_t hash_output[AALG_MAX_RESULT_LEN];
+
+	struct task_struct *task;
+	struct mm_struct *mm;
 };
 
 #endif /* CRYPTODEV_INT_H */
