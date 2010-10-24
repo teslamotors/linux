@@ -140,12 +140,6 @@ void cryptodev_cipher_deinit(struct cipher_data *cdata)
 	}
 }
 
-void cryptodev_cipher_set_iv(struct cipher_data *cdata,
-				void *iv, size_t iv_size)
-{
-	memcpy(cdata->async.iv, iv, min(iv_size, sizeof(cdata->async.iv)));
-}
-
 static inline int waitfor(struct cryptodev_result *cr, ssize_t ret)
 {
 	switch (ret) {

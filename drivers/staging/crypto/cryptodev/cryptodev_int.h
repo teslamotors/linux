@@ -59,8 +59,11 @@ ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
 				const struct scatterlist *sg1,
 				struct scatterlist *sg2, size_t len);
 
-void cryptodev_cipher_set_iv(struct cipher_data *cdata,
-				void *iv, size_t iv_size);
+inline static void cryptodev_cipher_set_iv(struct cipher_data *cdata,
+				void *iv, size_t iv_size)
+{
+	memcpy(cdata->async.iv, iv, min(iv_size, sizeof(cdata->async.iv)));
+}
 
 /* hash stuff */
 struct hash_data {
