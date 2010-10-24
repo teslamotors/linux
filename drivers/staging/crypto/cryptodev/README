@@ -3,10 +3,5 @@ FreeBSD. The main idea is to access of existing ciphers in kernel space
 from userspace, thus enabling re-use of a hardware implementation of a
 cipher.
 
-Since version 0.4 /dev/crypto uses zero copy for operations between user-space
-and kernel space. We are not aware of any accelerators that this might cause
-a problem. If it does define DISABLE_ZCOPY in cryptodev_int.h recompile
-and let us know.
-
 For questions and suggestions please use the mailing lists at:
 http://home.gna.org/cryptodev-linux/lists.html
