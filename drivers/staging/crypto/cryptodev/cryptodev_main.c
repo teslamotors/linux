@@ -727,6 +727,7 @@ static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n", ret);
 			goto out_unlock;
 		}
+		kcop->digestsize = ses_ptr->hdata.digestsize;
 	}
 
 #if defined(CRYPTODEV_STATS)
@@ -958,24 +959,28 @@ static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
 		return -EINVAL;
 	}
 	kcop->ivlen = cop->iv ? ses_ptr->cdata.ivsize : 0;
-	kcop->digestsize = ses_ptr->hdata.digestsize;
+	kcop->digestsize = 0; /* will be updated during operation */
+
 	mutex_unlock(&ses_ptr->sem);
 
 	kcop->task = current;
 	kcop->mm = current->mm;
 
-	rc = copy_from_user(kcop->iv, cop->iv, kcop->ivlen);
-	if (likely(!rc))
-		return 0;
-
-	dprintk(1, KERN_ERR,
-	        "error copying IV (%d bytes), copy_from_user returned %d for address %lx\n",
-	        kcop->ivlen, rc, (unsigned long)cop->iv);
-	return -EFAULT;
+	if (cop->iv) {
+		rc = copy_from_user(kcop->iv, cop->iv, kcop->ivlen);
+		if (unlikely(rc)) {
+			dprintk(1, KERN_ERR,
+				"error copying IV (%d bytes), copy_from_user returned %d for address %lx\n",
+				kcop->ivlen, rc, (unsigned long)cop->iv);
+			return -EFAULT;
+		}
+	}
+	
+	return 0;
 }
 
 static int kcop_from_user(struct kernel_crypt_op *kcop,
-                          struct fcrypt *fcr, void __user *arg)
+			struct fcrypt *fcr, void __user *arg)
 {
 	if (unlikely(copy_from_user(&kcop->cop, arg, sizeof(kcop->cop))))
 		return -EFAULT;
@@ -1037,10 +1042,13 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 		ret = crypto_run(fcr, &kcop);
 		if (unlikely(ret))
 			return ret;
-		ret = copy_to_user(kcop.cop.mac,
-				kcop.hash_output, kcop.digestsize);
-		if (unlikely(ret))
-			return ret;
+		
+		if (kcop.digestsize) {
+			ret = copy_to_user(kcop.cop.mac,
+					kcop.hash_output, kcop.digestsize);
+			if (unlikely(ret))
+				return -EFAULT;
+		}
 		if (unlikely(copy_to_user(arg, &kcop.cop, sizeof(kcop.cop))))
 			return -EFAULT;
 		return 0;
@@ -1054,10 +1062,12 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 		if (unlikely(ret))
 			return ret;
 
-		ret = copy_to_user(kcop.cop.mac,
-				kcop.hash_output, kcop.digestsize);
-		if (unlikely(ret))
-			return ret;
+		if (kcop.digestsize) {
+			ret = copy_to_user(kcop.cop.mac,
+					kcop.hash_output, kcop.digestsize);
+			if (unlikely(ret))
+				return -EFAULT;
+		}
 
 		return copy_to_user(arg, &kcop.cop, sizeof(kcop.cop));
 
@@ -1185,10 +1195,12 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 		if (unlikely(ret))
 			return ret;
 
-		ret = copy_to_user(kcop.cop.mac,
-				kcop.hash_output, kcop.digestsize);
-		if (unlikely(ret))
-			return ret;
+		if (kcop.digestsize) {
+			ret = copy_to_user(kcop.cop.mac,
+					kcop.hash_output, kcop.digestsize);
+			if (unlikely(ret))
+				return -EFAULT;
+		}
 
 		crypt_op_to_compat(&kcop.cop, &compat_cop);
 		if (unlikely(copy_to_user(arg, &compat_cop,
@@ -1205,10 +1217,12 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 		if (unlikely(ret))
 			return ret;
 
-		ret = copy_to_user(kcop.cop.mac,
-				kcop.hash_output, kcop.digestsize);
-		if (unlikely(ret))
-			return ret;
+		if (kcop.digestsize) {
+			ret = copy_to_user(kcop.cop.mac,
+					kcop.hash_output, kcop.digestsize);
+			if (unlikely(ret))
+				return -EFAULT;
+		}
 
 		crypt_op_to_compat(&kcop.cop, &compat_cop);
 		return copy_to_user(arg, &compat_cop, sizeof(compat_cop));
