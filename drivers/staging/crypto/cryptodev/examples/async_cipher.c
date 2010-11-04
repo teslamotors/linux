@@ -189,13 +189,17 @@ static int test_aes(int cfd)
 		int i;
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
-		printf("cipher text should be:\t");
+		printf("plaintext:");
 		for (i = 0; i < BLOCK_SIZE; i++) {
-			printf("%02x ", (unsigned char)ciphertext1[i]);
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", plaintext1[i]);
 		}
-		printf("\nbut really is:\t\t");
+		printf("ciphertext:");
 		for (i = 0; i < BLOCK_SIZE; i++) {
-			printf("%02x ", (unsigned char)plaintext1[i]);
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", ciphertext1[i]);
 		}
 		printf("\n");
 		return 1;
@@ -210,13 +214,17 @@ static int test_aes(int cfd)
 		int i;
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
-		printf("cipher text should be:\t");
+		printf("plaintext:");
 		for (i = 0; i < BLOCK_SIZE; i++) {
-			printf("%02x ", (unsigned char)ciphertext2[i]);
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", plaintext2[i]);
 		}
-		printf("\nbut really is:\t\t");
+		printf("ciphertext:");
 		for (i = 0; i < BLOCK_SIZE; i++) {
-			printf("%02x ", (unsigned char)plaintext2[i]);
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", ciphertext2[i]);
 		}
 		printf("\n");
 		return 1;

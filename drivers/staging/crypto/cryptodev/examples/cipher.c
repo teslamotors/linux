@@ -82,8 +82,22 @@ test_crypto(int cfd)
 
 	/* Verify the result */
 	if (memcmp(plaintext, ciphertext, DATA_SIZE) != 0) {
+		int i;
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
+		printf("plaintext:");
+		for (i = 0; i < DATA_SIZE; i++) {
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", plaintext[i]);
+		}
+		printf("ciphertext:");
+		for (i = 0; i < DATA_SIZE; i++) {
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", ciphertext[i]);
+		}
+		printf("\n");
 		return 1;
 	} else
 		printf("Test passed\n");
@@ -179,8 +193,22 @@ static int test_aes(int cfd)
 
 	/* Verify the result */
 	if (memcmp(plaintext2, ciphertext2, BLOCK_SIZE) != 0) {
+		int i;
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
+		printf("plaintext:");
+		for (i = 0; i < BLOCK_SIZE; i++) {
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", plaintext2[i]);
+		}
+		printf("ciphertext:");
+		for (i = 0; i < BLOCK_SIZE; i++) {
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", ciphertext2[i]);
+		}
+		printf("\n");
 		return 1;
 	}
 
