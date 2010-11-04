@@ -355,8 +355,8 @@ crypto_destroy_session(struct csession *ses_ptr)
 #if defined(CRYPTODEV_STATS)
 	if (enable_stats)
 		dprintk(2, KERN_DEBUG,
-			"Usage in Bytes: enc=%llu, dec=%llu, \
-			max=%zu, avg=%lu, cnt=%zu\n",
+			"Usage in Bytes: enc=%llu, dec=%llu, "
+			"max=%zu, avg=%lu, cnt=%zu\n",
 			ses_ptr->stat[COP_ENCRYPT], ses_ptr->stat[COP_DECRYPT],
 			ses_ptr->stat_max_size, ses_ptr->stat_count > 0
 				? ((unsigned long)(ses_ptr->stat[COP_ENCRYPT]+
@@ -676,8 +676,8 @@ __crypto_run_zc(struct csession *ses_ptr, struct kernel_crypt_op *kcop)
 
 	ret = get_userbuf(ses_ptr, kcop, &src_sg, &dst_sg, &pagecount);
 	if (unlikely(ret)) {
-		dprintk(1, KERN_ERR, "Error getting user pages. \
-					Falling back to non zero copy.\n");
+		dprintk(1, KERN_ERR, "Error getting user pages. "
+					"Falling back to non zero copy.\n");
 		return __crypto_run_std(ses_ptr, cop);
 	}
 
@@ -720,8 +720,8 @@ static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 
 		if (unlikely(cop->len % blocksize)) {
 			dprintk(1, KERN_ERR,
-				"data size (%u) isn't a multiple \
-				of block size (%u)\n",
+				"data size (%u) isn't a multiple "
+				"of block size (%u)\n",
 				cop->len, blocksize);
 			ret = -EINVAL;
 			goto out_unlock;
