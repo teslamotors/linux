@@ -72,7 +72,7 @@ static void value2human(double bytes, double time, double* data, double* speed,c
 int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
 {
 	struct crypt_op cop;
-	char *buffer[256], iv[32];
+	char *buffer[64], iv[32];
 	static int val = 23;
 	struct timeval start, end;
 	double total = 0;
@@ -85,7 +85,7 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
 	printf("\tEncrypting in chunks of %d bytes: ", chunksize);
 	fflush(stdout);
 
-	for (rc = 0; rc < 256; rc++) {
+	for (rc = 0; rc < 64; rc++) {
 		buffer[rc] = malloc(chunksize);
 		memset(buffer[rc], val++, chunksize);
 	}
@@ -113,7 +113,7 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
 			cop.op = COP_ENCRYPT;
 			cop.flags = flags;
 			cop.src = cop.dst = (unsigned char *)buffer[bufidx];
-			bufidx = (bufidx + 1) % 256;
+			bufidx = (bufidx + 1) % 64;
 
 			if (ioctl(fdc, CIOCASYNCCRYPT, &cop)) {
 				perror("ioctl(CIOCASYNCCRYPT)");
@@ -138,7 +138,7 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
 	printf ("done. %.2f %s in %.2f secs: ", ddata, metric, secs);
 	printf ("%.2f %s/sec\n", dspeed, metric);
 
-	for (rc = 0; rc < 256; rc++)
+	for (rc = 0; rc < 64; rc++)
 		free(buffer[rc]);
 	return 0;
 }
