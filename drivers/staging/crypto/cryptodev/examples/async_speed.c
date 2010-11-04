@@ -69,7 +69,7 @@ static void value2human(double bytes, double time, double* data, double* speed,c
 }
 
 
-int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
+int encrypt_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 {
 	struct crypt_op cop;
 	char *buffer[64], iv[32];
@@ -86,7 +86,17 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
 	fflush(stdout);
 
 	for (rc = 0; rc < 64; rc++) {
-		buffer[rc] = malloc(chunksize);
+		if (alignmask) {
+			if (posix_memalign((void **)(buffer + rc), alignmask + 1, chunksize)) {
+				printf("posix_memalign() failed!\n");
+				return 1;
+			}
+		} else {
+			if (!(buffer[rc] = malloc(chunksize))) {
+				perror("malloc()");
+				return 1;
+			}
+		}
 		memset(buffer[rc], val++, chunksize);
 	}
 	pfd.fd = fdc;
@@ -111,7 +121,6 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
 			cop.len = chunksize;
 			cop.iv = (unsigned char *)iv;
 			cop.op = COP_ENCRYPT;
-			cop.flags = flags;
 			cop.src = cop.dst = (unsigned char *)buffer[bufidx];
 			bufidx = (bufidx + 1) % 64;
 
@@ -171,7 +180,7 @@ int main(void)
 	}
 
 	for (i = 256; i <= (64 * 4096); i *= 2) {
-		if (encrypt_data(&sess, fdc, i, 0))
+		if (encrypt_data(&sess, fdc, i, sess.alignmask))
 			break;
 	}
 
@@ -187,7 +196,7 @@ int main(void)
 	}
 
 	for (i = 256; i <= (64 * 1024); i *= 2) {
-		if (encrypt_data(&sess, fdc, i, 0))
+		if (encrypt_data(&sess, fdc, i, sess.alignmask))
 			break;
 	}
 

@@ -65,7 +65,7 @@ static void value2human(double bytes, double time, double* data, double* speed,c
 }
 
 
-int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
+int encrypt_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 {
 	struct crypt_op cop;
 	char *buffer, iv[32];
@@ -75,7 +75,18 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
 	double secs, ddata, dspeed;
 	char metric[16];
 
-	buffer = malloc(chunksize);
+	if (alignmask) {
+		if (posix_memalign((void **)&buffer, alignmask, chunksize)) {
+			printf("posix_memalign() failed!\n");
+			return 1;
+		}
+	} else {
+		if (!(buffer = malloc(chunksize))) {
+			perror("malloc()");
+			return 1;
+		}
+	}
+
 	memset(iv, 0x23, 32);
 
 	printf("\tEncrypting in chunks of %d bytes: ", chunksize);
@@ -93,7 +104,6 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
 		cop.len = chunksize;
 		cop.iv = (unsigned char *)iv;
 		cop.op = COP_ENCRYPT;
-		cop.flags = flags;
 		cop.src = cop.dst = (unsigned char *)buffer;
 
 		if (ioctl(fdc, CIOCCRYPT, &cop)) {
@@ -105,11 +115,12 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int flags)
 	gettimeofday(&end, NULL);
 
 	secs = udifftimeval(start, end)/ 1000000.0;
-	
+
 	value2human(total, secs, &ddata, &dspeed, metric);
 	printf ("done. %.2f %s in %.2f secs: ", ddata, metric, secs);
 	printf ("%.2f %s/sec\n", dspeed, metric);
 
+	free(buffer);
 	return 0;
 }
 
@@ -129,7 +140,7 @@ int main(void)
 		perror("ioctl(CRIOGET)");
 		return 1;
 	}
-	
+
 	fprintf(stderr, "Testing NULL cipher: \n");
 	memset(&sess, 0, sizeof(sess));
 	sess.cipher = CRYPTO_NULL;
@@ -141,7 +152,7 @@ int main(void)
 	}
 
 	for (i = 256; i <= (64 * 4096); i *= 2) {
-		if (encrypt_data(&sess, fdc, i, 0))
+		if (encrypt_data(&sess, fdc, i, sess.alignmask))
 			break;
 	}
 

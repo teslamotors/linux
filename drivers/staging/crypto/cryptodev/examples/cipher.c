@@ -19,8 +19,8 @@
 static int
 test_crypto(int cfd)
 {
-	char plaintext[DATA_SIZE];
-	char ciphertext[DATA_SIZE];
+	char plaintext_raw[DATA_SIZE + 63], *plaintext;
+	char ciphertext_raw[DATA_SIZE + 63], *ciphertext;
 	char iv[BLOCK_SIZE];
 	char key[KEY_SIZE];
 
@@ -30,7 +30,6 @@ test_crypto(int cfd)
 	memset(&sess, 0, sizeof(sess));
 	memset(&cryp, 0, sizeof(cryp));
 
-	memset(plaintext, 0x15,  sizeof(plaintext));
 	memset(key, 0x33,  sizeof(key));
 	memset(iv, 0x03,  sizeof(iv));
 
@@ -43,10 +42,13 @@ test_crypto(int cfd)
 		return 1;
 	}
 
+	plaintext = (char *)(((unsigned long)plaintext_raw + sess.alignmask) & ~sess.alignmask);
+	ciphertext = (char *)(((unsigned long)ciphertext_raw + sess.alignmask) & ~sess.alignmask);
+	memset(plaintext, 0x15, DATA_SIZE);
 
 	/* Encrypt data.in to data.encrypted */
 	cryp.ses = sess.ses;
-	cryp.len = sizeof(plaintext);
+	cryp.len = DATA_SIZE;
 	cryp.src = plaintext;
 	cryp.dst = ciphertext;
 	cryp.iv = iv;
@@ -65,10 +67,10 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
-	
+
 	/* Decrypt data.encrypted to data.decrypted */
 	cryp.ses = sess.ses;
-	cryp.len = sizeof(plaintext);
+	cryp.len = DATA_SIZE;
 	cryp.src = ciphertext;
 	cryp.dst = ciphertext;
 	cryp.iv = iv;
@@ -79,7 +81,7 @@ test_crypto(int cfd)
 	}
 
 	/* Verify the result */
-	if (memcmp(plaintext, ciphertext, sizeof(plaintext)) != 0) {
+	if (memcmp(plaintext, ciphertext, DATA_SIZE) != 0) {
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
 		return 1;
@@ -97,11 +99,12 @@ test_crypto(int cfd)
 
 static int test_aes(int cfd)
 {
-	char plaintext1[BLOCK_SIZE];
+	char plaintext1_raw[BLOCK_SIZE + 63], *plaintext1;
 	char ciphertext1[BLOCK_SIZE] = { 0xdf, 0x55, 0x6a, 0x33, 0x43, 0x8d, 0xb8, 0x7b, 0xc4, 0x1b, 0x17, 0x52, 0xc5, 0x5e, 0x5e, 0x49 };
 	char iv1[BLOCK_SIZE];
 	char key1[KEY_SIZE] = { 0xff, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-	char plaintext2[BLOCK_SIZE] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc0, 0x00 };
+	char plaintext2_data[BLOCK_SIZE] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc0, 0x00 };
+	char plaintext2_raw[BLOCK_SIZE + 63], *plaintext2;
 	char ciphertext2[BLOCK_SIZE] = { 0xb7, 0x97, 0x2b, 0x39, 0x41, 0xc4, 0x4b, 0x90, 0xaf, 0xa7, 0xb2, 0x64, 0xbf, 0xba, 0x73, 0x87 };
 	char iv2[BLOCK_SIZE];
 	char key2[KEY_SIZE];
@@ -112,9 +115,6 @@ static int test_aes(int cfd)
 	memset(&sess, 0, sizeof(sess));
 	memset(&cryp, 0, sizeof(cryp));
 
-	memset(plaintext1, 0x0, sizeof(plaintext1));
-	memset(iv1, 0x0, sizeof(iv1));
-	
 	/* Get crypto session for AES128 */
 	sess.cipher = CRYPTO_AES_CBC;
 	sess.keylen = KEY_SIZE;
@@ -124,9 +124,14 @@ static int test_aes(int cfd)
 		return 1;
 	}
 
+	plaintext1 = (char *)(((unsigned long)plaintext1_raw + sess.alignmask) & ~sess.alignmask);
+
+	memset(plaintext1, 0x0, BLOCK_SIZE);
+	memset(iv1, 0x0, sizeof(iv1));
+
 	/* Encrypt data.in to data.encrypted */
 	cryp.ses = sess.ses;
-	cryp.len = sizeof(plaintext1);
+	cryp.len = BLOCK_SIZE;
 	cryp.src = plaintext1;
 	cryp.dst = plaintext1;
 	cryp.iv = iv1;
@@ -137,7 +142,7 @@ static int test_aes(int cfd)
 	}
 
 	/* Verify the result */
-	if (memcmp(plaintext1, ciphertext1, sizeof(plaintext1)) != 0) {
+	if (memcmp(plaintext1, ciphertext1, BLOCK_SIZE) != 0) {
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
 		return 1;
@@ -147,7 +152,7 @@ static int test_aes(int cfd)
 
 	memset(key2, 0x0, sizeof(key2));
 	memset(iv2, 0x0, sizeof(iv2));
-	
+
 	/* Get crypto session for AES128 */
 	sess.cipher = CRYPTO_AES_CBC;
 	sess.keylen = KEY_SIZE;
@@ -157,9 +162,12 @@ static int test_aes(int cfd)
 		return 1;
 	}
 
+	plaintext2 = (char *)(((unsigned long)plaintext2_raw + sess.alignmask) & ~sess.alignmask);
+	memcpy(plaintext2, plaintext2_data, BLOCK_SIZE);
+
 	/* Encrypt data.in to data.encrypted */
 	cryp.ses = sess.ses;
-	cryp.len = sizeof(plaintext2);
+	cryp.len = BLOCK_SIZE;
 	cryp.src = plaintext2;
 	cryp.dst = plaintext2;
 	cryp.iv = iv2;
@@ -170,7 +178,7 @@ static int test_aes(int cfd)
 	}
 
 	/* Verify the result */
-	if (memcmp(plaintext2, ciphertext2, sizeof(plaintext2)) != 0) {
+	if (memcmp(plaintext2, ciphertext2, BLOCK_SIZE) != 0) {
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
 		return 1;
