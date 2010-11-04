@@ -41,6 +41,7 @@ struct cipher_data {
 	int init; /* 0 uninitialized */
 	int blocksize;
 	int ivsize;
+	int alignmask;
 	struct {
 		struct crypto_ablkcipher *s;
 		struct cryptodev_result *result;
@@ -69,6 +70,7 @@ inline static void cryptodev_cipher_set_iv(struct cipher_data *cdata,
 struct hash_data {
 	int init; /* 0 uninitialized */
 	int digestsize;
+	int alignmask;
 	struct {
 		struct crypto_ahash *s;
 		struct cryptodev_result *result;
@@ -101,6 +103,8 @@ struct compat_session_op {
 	compat_uptr_t	mackey;		/* pointer to mac key data */
 
 	uint32_t	ses;		/* session identifier */
+
+	uint16_t	alignmask;	/* alignment constraints */
 };
 
 /* input of CIOCCRYPT */

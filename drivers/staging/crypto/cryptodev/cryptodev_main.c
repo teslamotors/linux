@@ -110,6 +110,7 @@ struct csession {
 	struct cipher_data cdata;
 	struct hash_data hdata;
 	uint32_t sid;
+	uint32_t alignmask;
 #ifdef CRYPTODEV_STATS
 #if !((COP_ENCRYPT < 2) && (COP_DECRYPT < 2))
 #error Struct csession.stat uses COP_{ENCRYPT,DECRYPT} as indices. Do something!
@@ -272,7 +273,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			goto error_hash;
 		}
 
-		if (unlikely(copy_from_user(keyp, sop->mackey,
+		if (sop->mackey && unlikely(copy_from_user(keyp, sop->mackey,
 					    sop->mackeylen))) {
 			ret = -EFAULT;
 			goto error_hash;
@@ -288,6 +289,10 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			goto error_hash;
 		}
 	}
+
+	sop->alignmask = ses_new->alignmask = max(ses_new->cdata.alignmask,
+	                                          ses_new->hdata.alignmask);
+	dprintk(2, KERN_DEBUG, "%s: got alignmask %d\n", __func__, ses_new->alignmask);
 
 	ses_new->array_size = DEFAULT_PREALLOC_PAGES;
 	dprintk(2, KERN_DEBUG, "%s: preallocating for %d user pages\n",
@@ -588,6 +593,11 @@ static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
 	if (cop->src == NULL)
 		return -EINVAL;
 
+	if (!IS_ALIGNED((unsigned long)cop->src, ses->alignmask)) {
+		dprintk(2, KERN_WARNING, "%s: careful - source address %lx is not %d byte aligned\n",
+				__func__, (unsigned long)cop->src, ses->alignmask + 1);
+	}
+
 	src_pagecount = PAGECOUNT(cop->src, cop->len);
 	if (!ses->cdata.init) {		/* hashing only */
 		write_src = 0;
@@ -597,6 +607,12 @@ static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
 
 		dst_pagecount = PAGECOUNT(cop->dst, cop->len);
 		write_src = 0;
+
+		if (!IS_ALIGNED((unsigned long)cop->dst, ses->alignmask)) {
+			dprintk(2, KERN_WARNING, "%s: careful - destination address %lx is not %d byte aligned\n",
+					__func__, (unsigned long)cop->dst, ses->alignmask + 1);
+		}
+
 	}
 	(*tot_pages) = pagecount = src_pagecount + dst_pagecount;
 

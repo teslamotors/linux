@@ -94,6 +94,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 
 	out->blocksize = crypto_ablkcipher_blocksize(out->async.s);
 	out->ivsize = crypto_ablkcipher_ivsize(out->async.s);
+	out->alignmask = crypto_ablkcipher_alignmask(out->async.s);
 
 	out->async.result = kmalloc(sizeof(*out->async.result), GFP_KERNEL);
 	if (unlikely(!out->async.result)) {
@@ -225,6 +226,7 @@ int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
 	}
 
 	hdata->digestsize = crypto_ahash_digestsize(hdata->async.s);
+	hdata->alignmask = crypto_ahash_alignmask(hdata->async.s);
 
 	hdata->async.result = kmalloc(sizeof(*hdata->async.result), GFP_KERNEL);
 	if (unlikely(!hdata->async.result)) {

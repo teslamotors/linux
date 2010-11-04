@@ -81,6 +81,8 @@ struct session_op {
 	__u8	__user *mackey;
 
 	__u32	ses;		/* session identifier */
+
+	__u16	alignmask;	/* alignment constraints */
 };
 
 #define	COP_ENCRYPT	0
