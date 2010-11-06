@@ -1,3 +1,12 @@
+Version 0.8 (released 2010-11-06)
+
+* Made cryptodev aware of alignment constraints.
+
+* Added support for CRYPTO_AES_ECB.
+
+* Added asynchronous operation support using
+  CIOCASYNCCRYPT, CIOCASYNCFETCH ioctls and poll().
+
 Version 0.7 (released 2010-10-08)
 
 * Added COP_FLAG_FINAL to make multi-update
