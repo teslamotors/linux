@@ -730,7 +730,7 @@ static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 				min(ses_ptr->cdata.ivsize, kcop->ivlen));
 	}
 
-	if (cop->len != 0) {
+	if (likely(cop->len)) {
 		ret = __crypto_run_zc(ses_ptr, kcop);
 		if (unlikely(ret))
 			goto out_unlock;
