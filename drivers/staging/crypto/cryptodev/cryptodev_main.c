@@ -993,7 +993,7 @@ static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
 			return -EFAULT;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -1060,7 +1060,7 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 		ret = crypto_run(fcr, &kcop);
 		if (unlikely(ret))
 			return ret;
-		
+
 		if (kcop.digestsize) {
 			ret = copy_to_user(kcop.cop.mac,
 					kcop.hash_output, kcop.digestsize);

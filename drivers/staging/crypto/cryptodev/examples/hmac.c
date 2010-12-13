@@ -130,9 +130,9 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCCRYPT)");
 		return 1;
 	}
-	
+
 	memcpy(oldmac, mac, sizeof(mac));
-	
+
 	/* Decrypt data.encrypted to data.decrypted */
 	cryp.src = data.encrypted;
 	cryp.dst = data.decrypted;
