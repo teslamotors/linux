@@ -39,29 +39,19 @@ static void alarm_handler(int signo)
         must_finish = 1;
 }
 
+static char *units[] = { "", "Ki", "Mi", "Gi", "Ti", 0};
+
 static void value2human(double bytes, double time, double* data, double* speed,char* metric)
 {
-        if (bytes > 1000 && bytes < 1000*1000) {
-                *data = ((double)bytes)/1000;
-                *speed = *data/time;
-                strcpy(metric, "Kb");
-                return;
-        } else if (bytes >= 1000*1000 && bytes < 1000*1000*1000) {
-                *data = ((double)bytes)/(1000*1000);
-                *speed = *data/time;
-                strcpy(metric, "Mb");
-                return;
-        } else if (bytes >= 1000*1000*1000) {
-                *data = ((double)bytes)/(1000*1000*1000);
-                *speed = *data/time;
-                strcpy(metric, "Gb");
-                return;
-        } else {
-                *data = (double)bytes;
-                *speed = *data/time;
-                strcpy(metric, "bytes");
-                return;
-        }
+	int unit = 0;
+
+	*data = bytes;
+	while (*data > 1024 && units[unit + 1]) {
+		*data /= 1024;
+		unit++;
+	}
+	*speed = *data / time;
+	sprintf(metric, "%sB", units[unit]);
 }
 
 
