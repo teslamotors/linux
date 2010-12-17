@@ -32,6 +32,7 @@
  *
  */
 
+#include <crypto/hash.h>
 #include <linux/crypto.h>
 #include <linux/mm.h>
 #include <linux/highmem.h>
@@ -1006,6 +1007,38 @@ static int kcop_from_user(struct kernel_crypt_op *kcop,
 	return fill_kcop_from_cop(kcop, fcr);
 }
 
+static inline void tfm_info_to_alg_info(struct alg_info *dst, struct crypto_tfm *tfm)
+{
+	snprintf(dst->cra_name, CRYPTODEV_MAX_ALG_NAME,
+			"%s", crypto_tfm_alg_name(tfm));
+	snprintf(dst->cra_driver_name, CRYPTODEV_MAX_ALG_NAME,
+			"%s", crypto_tfm_alg_driver_name(tfm));
+}
+
+static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
+{
+	struct csession *ses_ptr;
+
+	/* this also enters ses_ptr->sem */
+	ses_ptr = crypto_get_session_by_sid(fcr, siop->ses);
+	if (unlikely(!ses_ptr)) {
+		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", siop->ses);
+		return -EINVAL;
+	}
+
+	if (ses_ptr->cdata.init) {
+		tfm_info_to_alg_info(&siop->cipher_info,
+				crypto_ablkcipher_tfm(ses_ptr->cdata.async.s));
+	}
+	if (ses_ptr->hdata.init) {
+		tfm_info_to_alg_info(&siop->hash_info,
+				crypto_ahash_tfm(ses_ptr->hdata.async.s));
+	}
+
+	mutex_unlock(&ses_ptr->sem);
+	return 0;
+}
+
 static long
 cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 {
@@ -1015,6 +1048,7 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 	struct kernel_crypt_op kcop;
 	struct crypt_priv *pcr = filp->private_data;
 	struct fcrypt *fcr;
+	struct session_info_op siop;
 	uint32_t ses;
 	int ret, fd;
 
@@ -1053,6 +1087,14 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 			return ret;
 		ret = crypto_finish_session(fcr, ses);
 		return ret;
+	case CIOCGSESSINFO:
+		if (unlikely(copy_from_user(&siop, arg, sizeof(siop))))
+			return -EFAULT;
+
+		ret = get_session_info(fcr, &siop);
+		if (unlikely(ret))
+			return ret;
+		return copy_to_user(arg, &siop, sizeof(siop));
 	case CIOCCRYPT:
 		if (unlikely(ret = kcop_from_user(&kcop, fcr, arg)))
 			return ret;

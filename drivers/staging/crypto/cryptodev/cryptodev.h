@@ -68,6 +68,9 @@ enum cryptodev_crypto_op_t {
 /* Values for hashes/MAC */
 #define AALG_MAX_RESULT_LEN		64
 
+/* maximum length of verbose alg names (depends on CRYPTO_MAX_ALG_NAME) */
+#define CRYPTODEV_MAX_ALG_NAME		64
+
 /* input of CIOCGSESSION */
 struct session_op {
 	/* Specify either cipher or mac
@@ -83,6 +86,16 @@ struct session_op {
 	__u32	ses;		/* session identifier */
 
 	__u16	alignmask;	/* alignment constraints */
+};
+
+struct session_info_op {
+	__u32 ses;		/* session identifier */
+
+	/* verbose names for the requested ciphers */
+	struct alg_info {
+		char cra_name[CRYPTODEV_MAX_ALG_NAME];
+		char cra_driver_name[CRYPTODEV_MAX_ALG_NAME];
+	} cipher_info, hash_info;
 };
 
 #define	COP_ENCRYPT	0
@@ -162,6 +175,7 @@ enum cryptodev_crk_op_t {
 #define CIOCCRYPT       _IOWR('c', 104, struct crypt_op)
 #define CIOCKEY         _IOWR('c', 105, struct crypt_kop)
 #define CIOCASYMFEAT    _IOR('c', 106, __u32)
+#define CIOCGSESSINFO	_IOWR('c', 107, struct session_info_op)
 
 /* to indicate that CRIOGET is not required in linux
  */
