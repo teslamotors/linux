@@ -29,6 +29,9 @@ test_crypto(int cfd)
 			key[KEY_SIZE];
 	} data;
 	struct session_op sess;
+#ifdef CIOCGSESSINFO
+	struct session_info_op siop;
+#endif
 	struct crypt_op cryp;
 	uint8_t mac[AALG_MAX_RESULT_LEN];
 	uint8_t oldmac[AALG_MAX_RESULT_LEN];
@@ -51,6 +54,16 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
+
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	printf("requested mac CRYPTO_SHA1, got %s with driver %s\n",
+			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
+#endif
 
 	cryp.ses = sess.ses;
 	cryp.len = sizeof("what do ya want for nothing?")-1;
@@ -85,6 +98,16 @@ test_crypto(int cfd)
 		return 1;
 	}
 
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	printf("requested mac CRYPTO_MD5_HMAC, got %s with driver %s\n",
+			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
+#endif
+
 	cryp.ses = sess.ses;
 	cryp.len = sizeof("what do ya want for nothing?")-1;
 	cryp.src = "what do ya want for nothing?";
@@ -117,6 +140,18 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
+
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	printf("requested cipher CRYPTO_AES_CBC and mac CRYPTO_SHA1_HMAC,"
+	       " got cipher %s with driver %s and hash %s with driver %s\n",
+			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name,
+			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
+#endif
 
 	/* Encrypt data.in to data.encrypted */
 	cryp.ses = sess.ses;
@@ -170,6 +205,9 @@ static int
 test_extras(int cfd)
 {
 	struct session_op sess;
+#ifdef CIOCGSESSINFO
+	struct session_info_op siop;
+#endif
 	struct crypt_op cryp;
 	uint8_t mac[AALG_MAX_RESULT_LEN];
 	uint8_t oldmac[AALG_MAX_RESULT_LEN];
@@ -192,6 +230,16 @@ test_extras(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
+
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	printf("requested mac CRYPTO_SHA1, got %s with driver %s\n",
+			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
+#endif
 
 	cryp.ses = sess.ses;
 	cryp.len = sizeof("what do")-1;

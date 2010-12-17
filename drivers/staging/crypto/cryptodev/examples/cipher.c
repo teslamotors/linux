@@ -25,6 +25,9 @@ test_crypto(int cfd)
 	char key[KEY_SIZE];
 
 	struct session_op sess;
+#ifdef CIOCGSESSINFO
+	struct session_info_op siop;
+#endif
 	struct crypt_op cryp;
 
 	memset(&sess, 0, sizeof(sess));
@@ -41,6 +44,16 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
+
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
+			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
+#endif
 
 	plaintext = (char *)(((unsigned long)plaintext_raw + sess.alignmask) & ~sess.alignmask);
 	ciphertext = (char *)(((unsigned long)ciphertext_raw + sess.alignmask) & ~sess.alignmask);
@@ -67,6 +80,16 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
+
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
+			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
+#endif
 
 	/* Decrypt data.encrypted to data.decrypted */
 	cryp.ses = sess.ses;
@@ -124,6 +147,9 @@ static int test_aes(int cfd)
 	char key2[KEY_SIZE];
 
 	struct session_op sess;
+#ifdef CIOCGSESSINFO
+	struct session_info_op siop;
+#endif
 	struct crypt_op cryp;
 
 	memset(&sess, 0, sizeof(sess));
@@ -175,6 +201,16 @@ static int test_aes(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
+
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
+			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
+#endif
 
 	plaintext2 = (char *)(((unsigned long)plaintext2_raw + sess.alignmask) & ~sess.alignmask);
 	memcpy(plaintext2, plaintext2_data, BLOCK_SIZE);
