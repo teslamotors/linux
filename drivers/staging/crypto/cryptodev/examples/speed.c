@@ -40,18 +40,29 @@ static void alarm_handler(int signo)
 }
 
 static char *units[] = { "", "Ki", "Mi", "Gi", "Ti", 0};
+static char *si_units[] = { "", "K", "M", "G", "T", 0};
 
-static void value2human(double bytes, double time, double* data, double* speed,char* metric)
+static void value2human(int si, double bytes, double time, double* data, double* speed,char* metric)
 {
 	int unit = 0;
 
 	*data = bytes;
-	while (*data > 1024 && units[unit + 1]) {
-		*data /= 1024;
-		unit++;
+	
+	if (si) {
+		while (*data > 1000 && si_units[unit + 1]) {
+			*data /= 1000;
+			unit++;
+		}
+		*speed = *data / time;
+		sprintf(metric, "%sB", si_units[unit]);
+	} else {
+		while (*data > 1024 && units[unit + 1]) {
+			*data /= 1024;
+			unit++;
+		}
+		*speed = *data / time;
+		sprintf(metric, "%sB", units[unit]);
 	}
-	*speed = *data / time;
-	sprintf(metric, "%sB", units[unit]);
 }
 
 
@@ -106,7 +117,7 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 
 	secs = udifftimeval(start, end)/ 1000000.0;
 
-	value2human(total, secs, &ddata, &dspeed, metric);
+	value2human(1, total, secs, &ddata, &dspeed, metric);
 	printf ("done. %.2f %s in %.2f secs: ", ddata, metric, secs);
 	printf ("%.2f %s/sec\n", dspeed, metric);
 
