@@ -26,6 +26,8 @@
 #include <signal.h>
 #include "../cryptodev.h"
 
+static int si = 1; /* SI by default */
+
 static double udifftimeval(struct timeval start, struct timeval end)
 {
 	return (double)(end.tv_usec - start.tv_usec) +
@@ -117,7 +119,7 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 
 	secs = udifftimeval(start, end)/ 1000000.0;
 
-	value2human(1, total, secs, &ddata, &dspeed, metric);
+	value2human(si, total, secs, &ddata, &dspeed, metric);
 	printf ("done. %.2f %s in %.2f secs: ", ddata, metric, secs);
 	printf ("%.2f %s/sec\n", dspeed, metric);
 
@@ -125,13 +127,23 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 	return 0;
 }
 
-int main(void)
+int main(int argc, char** argv)
 {
 	int fd, i, fdc = -1;
 	struct session_op sess;
 	char keybuf[32];
 
 	signal(SIGALRM, alarm_handler);
+	
+	if (argc > 1) {
+		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
+			printf("Usage: speed [--kib]\n");
+			exit(0);
+		}
+		if (strcmp(argv[1], "--kib") == 0) {
+			si = 0;
+		}
+	}
 
 	if ((fd = open("/dev/crypto", O_RDWR, 0)) < 0) {
 		perror("open()");
