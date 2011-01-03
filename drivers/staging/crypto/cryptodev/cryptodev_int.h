@@ -111,7 +111,7 @@ struct compat_session_op {
  struct compat_crypt_op {
 	uint32_t	ses;		/* session identifier */
 	uint16_t	op;		/* COP_ENCRYPT or COP_DECRYPT */
-	uint16_t	flags;		/* no usage so far, use 0 */
+	uint16_t	flags;		/* see COP_FLAG_* */
 	uint32_t	len;		/* length of source data */
 	compat_uptr_t	src;		/* source data */
 	compat_uptr_t	dst;		/* pointer to output data */

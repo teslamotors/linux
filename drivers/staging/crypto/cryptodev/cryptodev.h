@@ -105,7 +105,7 @@ struct session_info_op {
  struct crypt_op {
 	__u32	ses;		/* session identifier */
 	__u16	op;		/* COP_ENCRYPT or COP_DECRYPT */
-	__u16	flags;		/* no usage so far, use 0 */
+	__u16	flags;		/* see COP_FLAG_* */
 	__u32	len;		/* length of source data */
 	__u8	__user *src;	/* source data */
 	__u8	__user *dst;	/* pointer to output data */
