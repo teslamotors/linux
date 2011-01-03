@@ -426,18 +426,19 @@ crypto_finish_all_sessions(struct fcrypt *fcr)
 static struct csession *
 crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 {
-	struct csession *ses_ptr;
+	struct csession *ses_ptr, *retval = 0;
 
 	mutex_lock(&fcr->sem);
 	list_for_each_entry(ses_ptr, &fcr->list, entry) {
 		if (ses_ptr->sid == sid) {
 			mutex_lock(&ses_ptr->sem);
+			retval = ses_ptr;
 			break;
 		}
 	}
 	mutex_unlock(&fcr->sem);
 
-	return ses_ptr;
+	return retval;
 }
 
 static int
