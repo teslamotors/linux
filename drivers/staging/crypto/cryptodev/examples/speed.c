@@ -129,8 +129,11 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 
 int main(int argc, char** argv)
 {
-	int fd, i, fdc = -1;
+	int fd, i, fdc = -1, alignmask = 0;
 	struct session_op sess;
+#ifdef CIOCGSESSINFO
+	struct session_info_op siop;
+#endif
 	char keybuf[32];
 
 	signal(SIGALRM, alarm_handler);
@@ -163,9 +166,17 @@ int main(int argc, char** argv)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(fdc, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	alignmask = siop.alignmask;
+#endif
 
 	for (i = 256; i <= (64 * 4096); i *= 2) {
-		if (encrypt_data(&sess, fdc, i, sess.alignmask))
+		if (encrypt_data(&sess, fdc, i, alignmask))
 			break;
 	}
 

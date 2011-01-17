@@ -291,7 +291,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		}
 	}
 
-	sop->alignmask = ses_new->alignmask = max(ses_new->cdata.alignmask,
+	ses_new->alignmask = max(ses_new->cdata.alignmask,
 	                                          ses_new->hdata.alignmask);
 	dprintk(2, KERN_DEBUG, "%s: got alignmask %d\n", __func__, ses_new->alignmask);
 
@@ -1035,6 +1035,8 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 		tfm_info_to_alg_info(&siop->hash_info,
 				crypto_ahash_tfm(ses_ptr->hdata.async.s));
 	}
+
+	siop->alignmask = ses_ptr->alignmask;
 
 	mutex_unlock(&ses_ptr->sem);
 	return 0;

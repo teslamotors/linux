@@ -28,6 +28,9 @@ test_crypto(int cfd)
 	char key[KEY_SIZE];
 
 	struct session_op sess;
+#ifdef CIOCGSESSINFO
+	struct session_info_op siop;
+#endif
 	struct crypt_op cryp;
 
 	printf("running %s\n", __func__);
@@ -49,9 +52,18 @@ test_crypto(int cfd)
 
 	printf("%s: got the session\n", __func__);
 
-
-	plaintext = (char *)(((unsigned long)plaintext_raw + sess.alignmask) & ~sess.alignmask);
-	ciphertext = (char *)(((unsigned long)ciphertext_raw + sess.alignmask) & ~sess.alignmask);
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
+	ciphertext = (char *)(((unsigned long)ciphertext_raw + siop.alignmask) & ~siop.alignmask);
+#else
+	plaintext = plaintext_raw;
+	ciphertext = ciphertext_raw;
+#endif
 	memset(plaintext, 0x15, DATA_SIZE);
 
 	/* Encrypt data.in to data.encrypted */
@@ -122,6 +134,9 @@ static int test_aes(int cfd)
 	char key2[KEY_SIZE];
 
 	struct session_op sess1, sess2;
+#ifdef CIOCGSESSINFO
+	struct session_info_op siop1, siop2;
+#endif
 	struct crypt_op cryp1, cryp2;
 
 	memset(&sess1, 0, sizeof(sess1));
@@ -137,8 +152,16 @@ static int test_aes(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
-
-	plaintext1 = (char *)(((unsigned long)plaintext1_raw + sess1.alignmask) & ~sess1.alignmask);
+#ifdef CIOCGSESSINFO
+	siop1.ses = sess1.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop1)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	plaintext1 = (char *)(((unsigned long)plaintext1_raw + siop1.alignmask) & ~siop1.alignmask);
+#else
+	plaintext1 = plaintext1_raw;
+#endif
 	memset(plaintext1, 0x0, BLOCK_SIZE);
 
 	memset(iv1, 0x0, sizeof(iv1));
@@ -152,8 +175,16 @@ static int test_aes(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
-
-	plaintext2 = (char *)(((unsigned long)plaintext2_raw + sess2.alignmask) & ~sess2.alignmask);
+#ifdef CIOCGSESSINFO
+	siop2.ses = sess2.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop2)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	plaintext2 = (char *)(((unsigned long)plaintext2_raw + siop2.alignmask) & ~siop2.alignmask);
+#else
+	plaintext2 = plaintext2_raw;
+#endif
 	memcpy(plaintext2, plaintext2_data, BLOCK_SIZE);
 
 	/* Encrypt data.in to data.encrypted */

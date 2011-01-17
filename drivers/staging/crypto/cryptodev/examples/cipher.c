@@ -53,10 +53,13 @@ test_crypto(int cfd)
 	}
 	printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
 			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
-#endif
 
-	plaintext = (char *)(((unsigned long)plaintext_raw + sess.alignmask) & ~sess.alignmask);
-	ciphertext = (char *)(((unsigned long)ciphertext_raw + sess.alignmask) & ~sess.alignmask);
+	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
+	ciphertext = (char *)(((unsigned long)ciphertext_raw + siop.alignmask) & ~siop.alignmask);
+#else
+	plaintext = plaintext_raw;
+	ciphertext = ciphertext_raw;
+#endif
 	memset(plaintext, 0x15, DATA_SIZE);
 
 	/* Encrypt data.in to data.encrypted */
@@ -163,9 +166,16 @@ static int test_aes(int cfd)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
-
-	plaintext1 = (char *)(((unsigned long)plaintext1_raw + sess.alignmask) & ~sess.alignmask);
-
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	plaintext1 = (char *)(((unsigned long)plaintext1_raw + siop.alignmask) & ~siop.alignmask);
+#else
+	plaintext1 = plaintext1_raw;
+#endif
 	memset(plaintext1, 0x0, BLOCK_SIZE);
 	memset(iv1, 0x0, sizeof(iv1));
 
@@ -210,9 +220,11 @@ static int test_aes(int cfd)
 	}
 	printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
 			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
-#endif
 
-	plaintext2 = (char *)(((unsigned long)plaintext2_raw + sess.alignmask) & ~sess.alignmask);
+	plaintext2 = (char *)(((unsigned long)plaintext2_raw + siop.alignmask) & ~siop.alignmask);
+#else
+	plaintext2 = plaintext2_raw;
+#endif
 	memcpy(plaintext2, plaintext2_data, BLOCK_SIZE);
 
 	/* Encrypt data.in to data.encrypted */

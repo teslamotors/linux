@@ -103,8 +103,6 @@ struct compat_session_op {
 	compat_uptr_t	mackey;		/* pointer to mac key data */
 
 	uint32_t	ses;		/* session identifier */
-
-	uint16_t	alignmask;	/* alignment constraints */
 };
 
 /* input of CIOCCRYPT */

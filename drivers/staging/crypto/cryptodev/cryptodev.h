@@ -84,8 +84,6 @@ struct session_op {
 	__u8	__user *mackey;
 
 	__u32	ses;		/* session identifier */
-
-	__u16	alignmask;	/* alignment constraints */
 };
 
 struct session_info_op {
@@ -96,6 +94,8 @@ struct session_info_op {
 		char cra_name[CRYPTODEV_MAX_ALG_NAME];
 		char cra_driver_name[CRYPTODEV_MAX_ALG_NAME];
 	} cipher_info, hash_info;
+
+	__u16	alignmask;	/* alignment constraints */
 };
 
 #define	COP_ENCRYPT	0
