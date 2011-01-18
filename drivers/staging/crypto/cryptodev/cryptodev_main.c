@@ -595,7 +595,7 @@ static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
 	if (cop->src == NULL)
 		return -EINVAL;
 
-	if (!IS_ALIGNED((unsigned long)cop->src, ses->alignmask)) {
+	if (ses->alignmask && !IS_ALIGNED((unsigned long)cop->src, ses->alignmask)) {
 		dprintk(2, KERN_WARNING, "%s: careful - source address %lx is not %d byte aligned\n",
 				__func__, (unsigned long)cop->src, ses->alignmask + 1);
 	}
@@ -610,7 +610,7 @@ static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
 		dst_pagecount = PAGECOUNT(cop->dst, cop->len);
 		write_src = 0;
 
-		if (!IS_ALIGNED((unsigned long)cop->dst, ses->alignmask)) {
+		if (ses->alignmask && !IS_ALIGNED((unsigned long)cop->dst, ses->alignmask)) {
 			dprintk(2, KERN_WARNING, "%s: careful - destination address %lx is not %d byte aligned\n",
 					__func__, (unsigned long)cop->dst, ses->alignmask + 1);
 		}
