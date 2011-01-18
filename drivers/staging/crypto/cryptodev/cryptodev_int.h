@@ -66,6 +66,12 @@ inline static void cryptodev_cipher_set_iv(struct cipher_data *cdata,
 	memcpy(cdata->async.iv, iv, min(iv_size, sizeof(cdata->async.iv)));
 }
 
+inline static void cryptodev_cipher_get_iv(struct cipher_data *cdata,
+				void *iv, size_t iv_size)
+{
+	memcpy(iv, cdata->async.iv, min(iv_size, sizeof(cdata->async.iv)));
+}
+
 /* hash stuff */
 struct hash_data {
 	int init; /* 0 uninitialized */

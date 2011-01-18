@@ -738,6 +738,11 @@ static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 			goto out_unlock;
 	}
 
+	if (ses_ptr->cdata.init != 0) {
+		cryptodev_cipher_get_iv(&ses_ptr->cdata, kcop->iv,
+				min(ses_ptr->cdata.ivsize, kcop->ivlen));
+	}
+
 	if (ses_ptr->hdata.init != 0 &&
 		((cop->flags & COP_FLAG_FINAL) ||
 		   (!(cop->flags & COP_FLAG_UPDATE) || cop->len == 0))) {
@@ -999,6 +1004,26 @@ static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
 	return 0;
 }
 
+/* this function has to be called from process context */
+static int fill_cop_from_kcop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
+{
+	int ret;
+
+	if (kcop->digestsize) {
+		ret = copy_to_user(kcop->cop.mac,
+				kcop->hash_output, kcop->digestsize);
+		if (unlikely(ret))
+			return -EFAULT;
+	}
+	if (kcop->ivlen && kcop->cop.flags & COP_FLAG_WRITE_IV) {
+		ret = copy_to_user(kcop->cop.iv,
+				kcop->iv, kcop->ivlen);
+		if (unlikely(ret))
+			return -EFAULT;
+	}
+	return 0;
+}
+
 static int kcop_from_user(struct kernel_crypt_op *kcop,
 			struct fcrypt *fcr, void __user *arg)
 {
@@ -1006,6 +1031,20 @@ static int kcop_from_user(struct kernel_crypt_op *kcop,
 		return -EFAULT;
 
 	return fill_kcop_from_cop(kcop, fcr);
+}
+
+static int kcop_to_user(struct kernel_crypt_op *kcop,
+			struct fcrypt *fcr, void __user *arg)
+{
+	int ret;
+
+	ret = fill_cop_from_kcop(kcop, fcr);
+	if (unlikely(ret))
+		return ret;
+
+	if (unlikely(copy_to_user(arg, &kcop->cop, sizeof(kcop->cop))))
+		return -EFAULT;
+	return 0;
 }
 
 static inline void tfm_info_to_alg_info(struct alg_info *dst, struct crypto_tfm *tfm)
@@ -1106,15 +1145,7 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 		if (unlikely(ret))
 			return ret;
 
-		if (kcop.digestsize) {
-			ret = copy_to_user(kcop.cop.mac,
-					kcop.hash_output, kcop.digestsize);
-			if (unlikely(ret))
-				return -EFAULT;
-		}
-		if (unlikely(copy_to_user(arg, &kcop.cop, sizeof(kcop.cop))))
-			return -EFAULT;
-		return 0;
+		return kcop_to_user(&kcop, fcr, arg);
 	case CIOCASYNCCRYPT:
 		if (unlikely(ret = kcop_from_user(&kcop, fcr, arg)))
 			return ret;
@@ -1125,15 +1156,7 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 		if (unlikely(ret))
 			return ret;
 
-		if (kcop.digestsize) {
-			ret = copy_to_user(kcop.cop.mac,
-					kcop.hash_output, kcop.digestsize);
-			if (unlikely(ret))
-				return -EFAULT;
-		}
-
-		return copy_to_user(arg, &kcop.cop, sizeof(kcop.cop));
-
+		return kcop_to_user(&kcop, fcr, arg);
 	default:
 		return -EINVAL;
 	}
@@ -1208,6 +1231,22 @@ static int compat_kcop_from_user(struct kernel_crypt_op *kcop,
 	return fill_kcop_from_cop(kcop, fcr);
 }
 
+static int compat_kcop_to_user(struct kernel_crypt_op *kcop,
+                                 struct fcrypt *fcr, void __user *arg)
+{
+	int ret;
+	struct compat_crypt_op compat_cop;
+
+	ret = fill_cop_from_kcop(kcop, fcr);
+	if (unlikely(ret))
+		return ret;
+	crypt_op_to_compat(&kcop->cop, &compat_cop);
+
+	if (unlikely(copy_to_user(arg, &compat_cop, sizeof(compat_cop))))
+		return -EFAULT;
+	return 0;
+}
+
 static long
 cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 {
@@ -1217,7 +1256,6 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 	struct session_op sop;
 	struct compat_session_op compat_sop;
 	struct kernel_crypt_op kcop;
-	struct compat_crypt_op compat_cop;
 	int ret;
 
 	if (unlikely(!pcr))
@@ -1258,18 +1296,7 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 		if (unlikely(ret))
 			return ret;
 
-		if (kcop.digestsize) {
-			ret = copy_to_user(kcop.cop.mac,
-					kcop.hash_output, kcop.digestsize);
-			if (unlikely(ret))
-				return -EFAULT;
-		}
-
-		crypt_op_to_compat(&kcop.cop, &compat_cop);
-		if (unlikely(copy_to_user(arg, &compat_cop,
-					  sizeof(compat_cop))))
-			return -EFAULT;
-		return 0;
+		return compat_kcop_to_user(&kcop, fcr, arg);
 	case COMPAT_CIOCASYNCCRYPT:
 		if (unlikely(ret = compat_kcop_from_user(&kcop, fcr, arg)))
 			return ret;
@@ -1280,15 +1307,7 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 		if (unlikely(ret))
 			return ret;
 
-		if (kcop.digestsize) {
-			ret = copy_to_user(kcop.cop.mac,
-					kcop.hash_output, kcop.digestsize);
-			if (unlikely(ret))
-				return -EFAULT;
-		}
-
-		crypt_op_to_compat(&kcop.cop, &compat_cop);
-		return copy_to_user(arg, &compat_cop, sizeof(compat_cop));
+		return compat_kcop_to_user(&kcop, fcr, arg);
 
 	default:
 		return -EINVAL;
