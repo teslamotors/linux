@@ -1267,6 +1267,7 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 	case CIOCASYMFEAT:
 	case CRIOGET:
 	case CIOCFSESSION:
+	case CIOCGSESSINFO:
 		return cryptodev_ioctl(file, cmd, arg_);
 
 	case COMPAT_CIOCGSESSION:
