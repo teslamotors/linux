@@ -13,6 +13,8 @@ examples/async_speed
 examples/cipher
 examples/hmac
 examples/speed
+examples/sha_speed
+examples/hashcrypt_speed
 releases
 scripts
 version.h
