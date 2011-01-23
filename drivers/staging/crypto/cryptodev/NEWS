@@ -1,3 +1,19 @@
+Version 0.9 (unreleased)
+
+* Added additional test tools:
+  - sha_speed does performance testing of SHA1 and SHA256
+  - hashcrypt_speed additionally encrypts with AES128 and AES256
+
+* Allow updating the IV in userspace via the COP_FLAG_WRITE_IV
+flag.
+
+* Export the alignmask in an OCF compatible way.
+
+* Fix for kernel crash on passing incorrect session ID.
+
+* Added CIOCGSESSINFO to export additional information
+for each session.
+
 Version 0.8 (released 2010-11-06)
 
 * Made cryptodev aware of alignment constraints.
