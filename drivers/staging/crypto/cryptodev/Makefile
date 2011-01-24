@@ -13,8 +13,16 @@ cryptodev-objs = ioctl.o main.o cryptlib.o authenc.o zc.o util.o
 
 obj-m += cryptodev.o
 
+KERNEL_MAKE_OPTS := -C ${KERNEL_DIR} SUBDIRS=`pwd`
+ifneq (${ARCH},)
+KERNEL_MAKE_OPTS += ARCH=${ARCH}
+endif
+ifneq (${CROSS_COMPILE},)
+KERNEL_MAKE_OPTS += CROSS_COMPILE=${CROSS_COMPILE}
+endif
+
 build: version.h
-	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules
+	make ${KERNEL_MAKE_OPTS} modules
 
 version.h: Makefile
 	@echo "#define VERSION \"$(VERSION)\"" > version.h
