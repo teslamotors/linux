@@ -1,4 +1,4 @@
-Version 0.9 (unreleased)
+Version 0.9 (released 2011-02-11)
 
 * Added additional test tools:
   - sha_speed does performance testing of SHA1 and SHA256

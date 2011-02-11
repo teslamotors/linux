@@ -167,7 +167,7 @@ int main(void)
 #endif
 
 	for (i = 256; i <= (64 * 4096); i *= 2) {
-		if (hash_data(&sess, fdc, i, sess.alignmask))
+		if (hash_data(&sess, fdc, i, siop.alignmask))
 			break;
 	}
 
