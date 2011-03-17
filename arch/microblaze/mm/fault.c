@@ -107,7 +107,7 @@ void do_page_fault(struct pt_regs *regs, unsigned long address,
 	if ((error_code & 0x13) == 0x13 || (error_code & 0x11) == 0x11)
 		is_write = 0;
 
-	if (unlikely(in_atomic() || !mm)) {
+	if (unlikely(in_atomic() || !mm || current->pagefault_disabled)) {
 		if (kernel_mode(regs))
 			goto bad_area_nosemaphore;
 

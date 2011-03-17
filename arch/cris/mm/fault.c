@@ -113,7 +113,7 @@ do_page_fault(unsigned long address, struct pt_regs *regs,
 	 * user context, we must not take the fault.
 	 */
 
-	if (in_atomic() || !mm)
+	if (in_atomic() || !mm || current->pagefault_disabled)
 		goto no_context;
 
 	if (user_mode(regs))

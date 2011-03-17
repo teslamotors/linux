@@ -357,7 +357,7 @@ static int handle_page_fault(struct pt_regs *regs,
 	 * If we're in an interrupt, have no user context or are running in an
 	 * atomic region then we must not take the fault.
 	 */
-	if (in_atomic() || !mm) {
+	if (in_atomic() || !mm || current->pagefault_disabled) {
 		vma = NULL;  /* happy compiler */
 		goto bad_area_nosemaphore;
 	}

@@ -273,7 +273,7 @@ int __kprobes do_page_fault(struct pt_regs *regs, unsigned long address,
 	if (!arch_irq_disabled_regs(regs))
 		local_irq_enable();
 
-	if (in_atomic() || mm == NULL) {
+	if (in_atomic() || mm == NULL || current->pagefault_disabled) {
 		if (!user_mode(regs)) {
 			rc = SIGSEGV;
 			goto bail;

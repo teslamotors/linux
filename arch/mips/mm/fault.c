@@ -89,7 +89,7 @@ static void __kprobes __do_page_fault(struct pt_regs *regs, unsigned long write,
 	 * If we're in an interrupt or have no user
 	 * context, we must not take the fault..
 	 */
-	if (in_atomic() || !mm)
+	if (in_atomic() || !mm || current->pagefault_disabled)
 		goto bad_area_nosemaphore;
 
 	if (user_mode(regs))

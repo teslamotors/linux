@@ -435,7 +435,8 @@ static inline int do_exception(struct pt_regs *regs, int access)
 	 * user context.
 	 */
 	fault = VM_FAULT_BADCONTEXT;
-	if (unlikely(!user_space_fault(regs) || in_atomic() || !mm))
+	if (unlikely(!user_space_fault(regs) || in_atomic() || !mm ||
+		     tsk->pagefault_disabled))
 		goto out;
 
 	address = trans_exc_code & __FAIL_ADDR_MASK;
