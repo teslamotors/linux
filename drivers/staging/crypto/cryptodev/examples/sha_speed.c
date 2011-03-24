@@ -25,7 +25,8 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <signal.h>
-#include "../cryptodev.h"
+
+#include <crypto/cryptodev.h>
 
 static double udifftimeval(struct timeval start, struct timeval end)
 {

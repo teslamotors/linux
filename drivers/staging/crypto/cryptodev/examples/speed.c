@@ -24,7 +24,8 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <signal.h>
-#include "../cryptodev.h"
+
+#include <crypto/cryptodev.h>
 
 static int si = 1; /* SI by default */
 
