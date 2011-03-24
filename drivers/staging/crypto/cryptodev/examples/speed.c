@@ -80,7 +80,7 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 	char metric[16];
 
 	if (alignmask) {
-		if (posix_memalign((void **)&buffer, alignmask, chunksize)) {
+		if (posix_memalign((void **)&buffer, alignmask + 1, chunksize)) {
 			printf("posix_memalign() failed!\n");
 			return 1;
 		}
@@ -191,9 +191,17 @@ int main(int argc, char** argv)
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(fdc, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+	alignmask = siop.alignmask;
+#endif
 
 	for (i = 256; i <= (64 * 1024); i *= 2) {
-		if (encrypt_data(&sess, fdc, i, 0))
+		if (encrypt_data(&sess, fdc, i, alignmask))
 			break;
 	}
 

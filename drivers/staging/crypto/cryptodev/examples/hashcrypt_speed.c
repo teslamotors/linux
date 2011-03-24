@@ -80,7 +80,7 @@ int hash_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 	uint8_t mac[AALG_MAX_RESULT_LEN];
 
 	if (alignmask) {
-		if (posix_memalign((void **)&buffer, alignmask, chunksize)) {
+		if (posix_memalign((void **)&buffer, alignmask + 1, chunksize)) {
 			printf("posix_memalign() failed!\n");
 			return 1;
 		}
@@ -128,7 +128,7 @@ int hash_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 
 int main(void)
 {
-	int fd, i, fdc = -1;
+	int fd, i, fdc = -1, alignmask = 0;
 	struct session_op sess;
 	char keybuf[32];
 #ifdef CIOCGSESSINFO
@@ -165,10 +165,11 @@ int main(void)
 	}
 	printf("requested hash CRYPTO_SHA1, got %s with driver %s\n",
 			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
+	alignmask = siop.alignmask;
 #endif
 
 	for (i = 256; i <= (64 * 4096); i *= 2) {
-		if (hash_data(&sess, fdc, i, siop.alignmask))
+		if (hash_data(&sess, fdc, i, alignmask))
 			break;
 	}
 
@@ -189,10 +190,11 @@ int main(void)
 	}
 	printf("requested hash CRYPTO_SHA2_256, got %s with driver %s\n",
 			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
+	alignmask = siop.alignmask;
 #endif
 
 	for (i = 256; i <= (64 * 1024); i *= 2) {
-		if (hash_data(&sess, fdc, i, 0))
+		if (hash_data(&sess, fdc, i, alignmask))
 			break;
 	}
 
