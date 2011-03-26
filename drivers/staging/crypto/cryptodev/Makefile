@@ -14,7 +14,7 @@ version.h: Makefile
 install:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules_install
 	@echo "Installing cryptodev.h in /usr/include/crypto ..."
-	@install -D cryptodev.h /usr/include/crypto/cryptodev.h
+	@install -D crypto/cryptodev.h /usr/include/crypto/cryptodev.h
 
 clean:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` clean
@@ -32,7 +32,7 @@ dist: clean
 	@echo Packing
 	@rm -f *.tar.gz
 	@mkdir $(TMPDIR)/$(FILEBASE)
-	@cp -ar extras examples Makefile *.c *.h README NEWS \
+	@cp -ar crypto extras examples Makefile *.c *.h README NEWS \
 		AUTHORS COPYING $(TMPDIR)/$(FILEBASE)
 	@rm -rf $(TMPDIR)/$(FILEBASE)/.git* $(TMPDIR)/$(FILEBASE)/releases $(TMPDIR)/$(FILEBASE)/scripts
 	@tar -C /tmp -czf ./$(OUTPUT) $(FILEBASE)

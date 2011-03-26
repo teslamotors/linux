@@ -1,4 +1,5 @@
 KERNEL_DIR ?= /lib/modules/$(shell uname -r)/build
+KBUILD_CFLAGS += -I..
 
 hostprogs := cipher hmac speed async_cipher async_hmac async_speed sha_speed hashcrypt_speed
 example-cipher-objs := cipher.o
