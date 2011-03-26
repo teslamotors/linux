@@ -1,3 +1,4 @@
+KBUILD_CFLAGS += -I$(src)
 KERNEL_DIR = /lib/modules/$(shell uname -r)/build
 VERSION = 0.9
 

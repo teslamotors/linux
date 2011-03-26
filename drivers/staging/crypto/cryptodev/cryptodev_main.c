@@ -42,7 +42,7 @@
 #include <linux/pagemap.h>
 #include <linux/poll.h>
 #include <linux/uaccess.h>
-#include "cryptodev.h"
+#include <crypto/cryptodev.h>
 #include <linux/scatterlist.h>
 #include "cryptodev_int.h"
 #include "version.h"
