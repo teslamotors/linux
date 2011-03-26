@@ -164,7 +164,7 @@ int main(void)
 	alignmask = siop.alignmask;
 #endif
 
-	for (i = 256; i <= (64 * 4096); i *= 2) {
+	for (i = 256; i <= (64 * 1024); i *= 4) {
 		if (hash_data(&sess, fdc, i, alignmask))
 			break;
 	}
@@ -187,7 +187,7 @@ int main(void)
 	alignmask = siop.alignmask;
 #endif
 
-	for (i = 256; i <= (64 * 1024); i *= 2) {
+	for (i = 256; i <= (64 * 1024); i *= 4) {
 		if (hash_data(&sess, fdc, i, alignmask))
 			break;
 	}
