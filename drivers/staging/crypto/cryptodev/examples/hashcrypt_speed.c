@@ -25,8 +25,9 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <signal.h>
-
 #include <crypto/cryptodev.h>
+
+#define MAX(x,y) ((x)>(y)?(x):(y))
 
 static double udifftimeval(struct timeval start, struct timeval end)
 {
@@ -68,7 +69,7 @@ static void value2human(int si, double bytes, double time, double* data, double*
 }
 
 
-int hash_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
+int hash_data(struct session_op *sess, int fdc, int chunksize, int align)
 {
 	struct crypt_op cop;
 	char *buffer;
@@ -79,9 +80,9 @@ int hash_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 	char metric[16];
 	uint8_t mac[AALG_MAX_RESULT_LEN];
 
-	if (alignmask) {
-		if (posix_memalign((void **)&buffer, alignmask + 1, chunksize)) {
-			printf("posix_memalign() failed!\n");
+	if (align) {
+		if (posix_memalign((void **)&buffer, align, chunksize)) {
+			printf("posix_memalign() failed, align: %d, size: %d!\n", align, chunksize);
 			return 1;
 		}
 	} else {
@@ -128,7 +129,7 @@ int hash_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 
 int main(void)
 {
-	int fd, i, fdc = -1, alignmask = 0;
+	int fd, i, fdc = -1, align = 0;
 	struct session_op sess;
 	char keybuf[32];
 #ifdef CIOCGSESSINFO
@@ -165,11 +166,11 @@ int main(void)
 	}
 	printf("requested hash CRYPTO_SHA1, got %s with driver %s\n",
 			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
-	alignmask = siop.alignmask;
+	align = MAX(sizeof(void*), siop.alignmask+1);
 #endif
 
-	for (i = 256; i <= (64 * 4096); i *= 4) {
-		if (hash_data(&sess, fdc, i, alignmask))
+	for (i = 256; i <= (64 * 1024); i *= 4) {
+		if (hash_data(&sess, fdc, i, align))
 			break;
 	}
 
@@ -177,6 +178,7 @@ int main(void)
 	memset(&sess, 0, sizeof(sess));
 	sess.cipher = CRYPTO_AES_CBC;
 	sess.keylen = 32;
+	sess.key = (unsigned char *)keybuf;
 	sess.mac = CRYPTO_SHA2_256;
 	if (ioctl(fdc, CIOCGSESSION, &sess)) {
 		perror("ioctl(CIOCGSESSION)");
@@ -190,11 +192,11 @@ int main(void)
 	}
 	printf("requested hash CRYPTO_SHA2_256, got %s with driver %s\n",
 			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
-	alignmask = siop.alignmask;
+	align = MAX(sizeof(void*), siop.alignmask+1);
 #endif
 
 	for (i = 256; i <= (64 * 1024); i *= 4) {
-		if (hash_data(&sess, fdc, i, alignmask))
+		if (hash_data(&sess, fdc, i, align))
 			break;
 	}
 
