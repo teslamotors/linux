@@ -1,3 +1,8 @@
+Version 1.0 (released 201-04-12)
+
+* Several fixes in the included examples. Based on
+patches by Vladimir Zapolskiy.
+
 Version 0.9 (released 2011-02-11)
 
 * Added additional test tools:
