@@ -4300,9 +4300,16 @@ SYSCALL_DEFINE0(sched_yield)
 
 static void __cond_resched(void)
 {
-	__preempt_count_add(PREEMPT_ACTIVE);
-	__schedule();
-	__preempt_count_sub(PREEMPT_ACTIVE);
+	do {
+		__preempt_count_add(PREEMPT_ACTIVE);
+		__schedule();
+		__preempt_count_sub(PREEMPT_ACTIVE);
+		/*
+		 * Check again in case we missed a preemption
+		 * opportunity between schedule and now.
+		 */
+		barrier();
+	} while (need_resched());
 }
 
 int __sched _cond_resched(void)
