@@ -1436,6 +1436,25 @@ int rt_mutex_timed_futex_lock(struct rt_mutex *lock,
 }
 
 /**
+ * rt_mutex_lock_killable - lock a rt_mutex killable
+ *
+ * @lock:              the rt_mutex to be locked
+ * @detect_deadlock:   deadlock detection on/off
+ *
+ * Returns:
+ *  0          on success
+ * -EINTR      when interrupted by a signal
+ * -EDEADLK    when the lock would deadlock (when deadlock detection is on)
+ */
+int __sched rt_mutex_lock_killable(struct rt_mutex *lock)
+{
+	might_sleep();
+
+	return rt_mutex_fastlock(lock, TASK_KILLABLE, rt_mutex_slowlock);
+}
+EXPORT_SYMBOL_GPL(rt_mutex_lock_killable);
+
+/**
  * rt_mutex_timed_lock - lock a rt_mutex interruptible
  *			the timeout structure is provided
  *			by the caller
