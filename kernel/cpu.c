@@ -86,6 +86,101 @@ static struct {
 #define cpuhp_lock_acquire()      lock_map_acquire(&cpu_hotplug.dep_map)
 #define cpuhp_lock_release()      lock_map_release(&cpu_hotplug.dep_map)
 
+struct hotplug_pcp {
+	struct task_struct *unplug;
+	int refcount;
+	struct completion synced;
+};
+
+static DEFINE_PER_CPU(struct hotplug_pcp, hotplug_pcp);
+
+/**
+ * pin_current_cpu - Prevent the current cpu from being unplugged
+ *
+ * Lightweight version of get_online_cpus() to prevent cpu from being
+ * unplugged when code runs in a migration disabled region.
+ *
+ * Must be called with preemption disabled (preempt_count = 1)!
+ */
+void pin_current_cpu(void)
+{
+	struct hotplug_pcp *hp = &__get_cpu_var(hotplug_pcp);
+
+retry:
+	if (!hp->unplug || hp->refcount || preempt_count() > 1 ||
+	    hp->unplug == current) {
+		hp->refcount++;
+		return;
+	}
+	preempt_enable();
+	mutex_lock(&cpu_hotplug.lock);
+	mutex_unlock(&cpu_hotplug.lock);
+	preempt_disable();
+	goto retry;
+}
+
+/**
+ * unpin_current_cpu - Allow unplug of current cpu
+ *
+ * Must be called with preemption or interrupts disabled!
+ */
+void unpin_current_cpu(void)
+{
+	struct hotplug_pcp *hp = &__get_cpu_var(hotplug_pcp);
+
+	WARN_ON(hp->refcount <= 0);
+
+	/* This is safe. sync_unplug_thread is pinned to this cpu */
+	if (!--hp->refcount && hp->unplug && hp->unplug != current)
+		wake_up_process(hp->unplug);
+}
+
+/*
+ * FIXME: Is this really correct under all circumstances ?
+ */
+static int sync_unplug_thread(void *data)
+{
+	struct hotplug_pcp *hp = data;
+
+	preempt_disable();
+	hp->unplug = current;
+	set_current_state(TASK_UNINTERRUPTIBLE);
+	while (hp->refcount) {
+		schedule_preempt_disabled();
+		set_current_state(TASK_UNINTERRUPTIBLE);
+	}
+	set_current_state(TASK_RUNNING);
+	preempt_enable();
+	complete(&hp->synced);
+	return 0;
+}
+
+/*
+ * Start the sync_unplug_thread on the target cpu and wait for it to
+ * complete.
+ */
+static int cpu_unplug_begin(unsigned int cpu)
+{
+	struct hotplug_pcp *hp = &per_cpu(hotplug_pcp, cpu);
+	struct task_struct *tsk;
+
+	init_completion(&hp->synced);
+	tsk = kthread_create(sync_unplug_thread, hp, "sync_unplug/%d\n", cpu);
+	if (IS_ERR(tsk))
+		return (PTR_ERR(tsk));
+	kthread_bind(tsk, cpu);
+	wake_up_process(tsk);
+	wait_for_completion(&hp->synced);
+	return 0;
+}
+
+static void cpu_unplug_done(unsigned int cpu)
+{
+	struct hotplug_pcp *hp = &per_cpu(hotplug_pcp, cpu);
+
+	hp->unplug = NULL;
+}
+
 void get_online_cpus(void)
 {
 	might_sleep();
@@ -349,13 +444,14 @@ static int __ref take_cpu_down(void *_param)
 /* Requires cpu_add_remove_lock to be held */
 static int __ref _cpu_down(unsigned int cpu, int tasks_frozen)
 {
-	int err, nr_calls = 0;
+	int mycpu, err, nr_calls = 0;
 	void *hcpu = (void *)(long)cpu;
 	unsigned long mod = tasks_frozen ? CPU_TASKS_FROZEN : 0;
 	struct take_cpu_down_param tcd_param = {
 		.mod = mod,
 		.hcpu = hcpu,
 	};
+	cpumask_var_t cpumask;
 
 	if (num_online_cpus() == 1)
 		return -EBUSY;
@@ -363,7 +459,27 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen)
 	if (!cpu_online(cpu))
 		return -EINVAL;
 
+	/* Move the downtaker off the unplug cpu */
+	if (!alloc_cpumask_var(&cpumask, GFP_KERNEL))
+		return -ENOMEM;
+	cpumask_andnot(cpumask, cpu_online_mask, cpumask_of(cpu));
+	set_cpus_allowed_ptr(current, cpumask);
+	free_cpumask_var(cpumask);
+	preempt_disable();
+	mycpu = smp_processor_id();
+	if (mycpu == cpu) {
+		printk(KERN_ERR "Yuck! Still on unplug CPU\n!");
+		preempt_enable();
+		return -EBUSY;
+	}
+	preempt_enable();
+
 	cpu_hotplug_begin();
+	err = cpu_unplug_begin(cpu);
+	if (err) {
+		printk("cpu_unplug_begin(%d) failed\n", cpu);
+		goto out_cancel;
+	}
 
 	err = __cpu_notify(CPU_DOWN_PREPARE | mod, hcpu, -1, &nr_calls);
 	if (err) {
@@ -423,6 +539,8 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen)
 	check_for_tasks(cpu);
 
 out_release:
+	cpu_unplug_done(cpu);
+out_cancel:
 	cpu_hotplug_done();
 	if (!err)
 		cpu_notify_nofail(CPU_POST_DEAD | mod, hcpu);
