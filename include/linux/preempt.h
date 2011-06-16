@@ -148,6 +148,14 @@ do { \
 		set_preempt_need_resched(); \
 } while (0)
 
+#ifdef CONFIG_SMP
+extern void migrate_disable(void);
+extern void migrate_enable(void);
+#else
+# define migrate_disable()		barrier()
+# define migrate_enable()		barrier()
+#endif
+
 #ifdef CONFIG_PREEMPT_RT_FULL
 # define preempt_disable_rt()		preempt_disable()
 # define preempt_enable_rt()		preempt_enable()
