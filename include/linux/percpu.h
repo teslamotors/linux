@@ -23,6 +23,11 @@
 	 PERCPU_MODULE_RESERVE)
 #endif
 
+#define get_local_var(var)	get_cpu_var(var)
+#define put_local_var(var)	put_cpu_var(var)
+#define get_local_ptr(var)	get_cpu_ptr(var)
+#define put_local_ptr(var)	put_cpu_ptr(var)
+
 /* minimum unit size, also is the maximum supported allocation size */
 #define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(32 << 10)
 
