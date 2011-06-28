@@ -423,7 +423,11 @@ struct softirq_action
 
 asmlinkage void do_softirq(void);
 asmlinkage void __do_softirq(void);
+#ifndef CONFIG_PREEMPT_RT_FULL
 static inline void thread_do_softirq(void) { do_softirq(); }
+#else
+extern void thread_do_softirq(void);
+#endif
 #ifdef __ARCH_HAS_DO_SOFTIRQ
 void do_softirq_own_stack(void);
 #else
@@ -597,6 +601,12 @@ void tasklet_hrtimer_cancel(struct tasklet_hrtimer *ttimer)
 	hrtimer_cancel(&ttimer->timer);
 	tasklet_kill(&ttimer->tasklet);
 }
+
+#ifdef CONFIG_PREEMPT_RT_FULL
+extern void softirq_early_init(void);
+#else
+static inline void softirq_early_init(void) { }
+#endif
 
 /*
  * Autoprobing for irqs:
