@@ -3405,7 +3405,7 @@ int netif_rx_ni(struct sk_buff *skb)
 	preempt_disable();
 	err = netif_rx_internal(skb);
 	if (local_softirq_pending())
-		do_softirq();
+		thread_do_softirq();
 	preempt_enable();
 
 	return err;
