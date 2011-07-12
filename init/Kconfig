@@ -1351,6 +1351,31 @@ menuconfig EXPERT
           environments which can tolerate a "non-standard" kernel.
           Only use this if you really know what you are doing.
 
+config UPTIME_LIMITED_KERNEL
+	bool "Create a kernel with uptime limitations"
+	default n
+	help
+	  Limit the amount of time a kernel can run. The associated UPTIME_LIMIT*
+	  kernel config options should be used to tune the behaviour.
+
+config UPTIME_LIMIT_DURATION
+	int "Kernel uptime limit in minutes"
+	depends on UPTIME_LIMITED_KERNEL
+	range 0 14400
+	default 0
+	help
+	  Define the uptime limitation on a kernel in minutes. Once
+	  the defined time expires the kernel will emit a warning, cease
+	  to be usable and eventually restart. The valid range is 0 (disable)
+	  to 14400 (10 days)
+
+config UPTIME_LIMIT_KERNEL_REBOOT
+	bool "Reboot a time limited kernel at expiration"
+	depends on UPTIME_LIMITED_KERNEL
+	default y
+	help
+	  Reboot an uptime limited kernel at expiration.
+
 config UID16
 	bool "Enable 16-bit UID system calls" if EXPERT
 	depends on HAVE_UID16 && MULTIUSER
