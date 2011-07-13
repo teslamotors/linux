@@ -132,7 +132,9 @@ static void irq_work_run_list(struct llist_head *list)
 	struct irq_work *work;
 	struct llist_node *llnode;
 
+#ifndef CONFIG_PREEMPT_RT_FULL
 	BUG_ON(!irqs_disabled());
+#endif
 
 	if (llist_empty(list))
 		return;
