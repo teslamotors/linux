@@ -467,14 +467,13 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen)
 	cpumask_andnot(cpumask, cpu_online_mask, cpumask_of(cpu));
 	set_cpus_allowed_ptr(current, cpumask);
 	free_cpumask_var(cpumask);
-	preempt_disable();
+	migrate_disable();
 	mycpu = smp_processor_id();
 	if (mycpu == cpu) {
 		printk(KERN_ERR "Yuck! Still on unplug CPU\n!");
-		preempt_enable();
+		migrate_enable();
 		return -EBUSY;
 	}
-	preempt_enable();
 
 	cpu_hotplug_begin();
 	err = cpu_unplug_begin(cpu);
@@ -543,6 +542,7 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen)
 out_release:
 	cpu_unplug_done(cpu);
 out_cancel:
+	migrate_enable();
 	cpu_hotplug_done();
 	if (!err)
 		cpu_notify_nofail(CPU_POST_DEAD | mod, hcpu);
