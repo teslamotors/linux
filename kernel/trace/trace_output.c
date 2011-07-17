@@ -454,6 +454,11 @@ int trace_print_lat_fmt(struct trace_seq *s, struct trace_entry *entry)
 	else
 		ret = trace_seq_putc(s, '.');
 
+	if (entry->migrate_disable)
+		ret = trace_seq_printf(s, "%x", entry->migrate_disable);
+	else
+		ret = trace_seq_putc(s, '.');
+
 	return ret;
 }
 
