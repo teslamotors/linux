@@ -1133,15 +1133,10 @@ EXPORT_SYMBOL(rt_spin_unlock_wait);
 
 int __lockfunc rt_spin_trylock(spinlock_t *lock)
 {
-	int ret;
+	int ret = rt_mutex_trylock(&lock->lock);
 
-	migrate_disable();
-	ret = rt_mutex_trylock(&lock->lock);
 	if (ret)
 		spin_acquire(&lock->dep_map, 0, 1, _RET_IP_);
-	else
-		migrate_enable();
-
 	return ret;
 }
 EXPORT_SYMBOL(rt_spin_trylock);

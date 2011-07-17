@@ -50,7 +50,17 @@ extern void __lockfunc __rt_spin_unlock(struct rt_mutex *lock);
 
 #define spin_lock_irq(lock)		spin_lock(lock)
 
-#define spin_trylock(lock)		__cond_lock(lock, rt_spin_trylock(lock))
+#define spin_do_trylock(lock)		__cond_lock(lock, rt_spin_trylock(lock))
+
+#define spin_trylock(lock)			\
+({						\
+	int __locked;				\
+	migrate_disable();			\
+	__locked = spin_do_trylock(lock);	\
+	if (!__locked)				\
+		migrate_enable();		\
+	__locked;				\
+})
 
 #ifdef CONFIG_LOCKDEP
 # define spin_lock_nested(lock, subclass)		\
