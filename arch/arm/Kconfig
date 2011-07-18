@@ -1667,7 +1667,7 @@ config HAVE_GENERIC_RCU_GUP
 
 config HIGHMEM
 	bool "High Memory Support"
-	depends on MMU
+	depends on MMU && !PREEMPT_RT_FULL
 	help
 	  The address space of ARM processors is only 4 Gigabytes large
 	  and it has to accommodate user address space, kernel address
