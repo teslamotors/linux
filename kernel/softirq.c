@@ -388,6 +388,8 @@ asmlinkage __visible void do_softirq(void)
 
 static inline void local_bh_disable_nort(void) { local_bh_disable(); }
 static inline void _local_bh_enable_nort(void) { _local_bh_enable(); }
+static void ksoftirqd_set_sched_params(unsigned int cpu) { }
+static void ksoftirqd_clr_sched_params(unsigned int cpu, bool online) { }
 
 #else /* !PREEMPT_RT_FULL */
 
@@ -560,6 +562,20 @@ void thread_do_softirq(void)
 
 static inline void local_bh_disable_nort(void) { }
 static inline void _local_bh_enable_nort(void) { }
+
+static inline void ksoftirqd_set_sched_params(unsigned int cpu)
+{
+	struct sched_param param = { .sched_priority = 1 };
+
+	sched_setscheduler(current, SCHED_FIFO, &param);
+}
+
+static inline void ksoftirqd_clr_sched_params(unsigned int cpu, bool online)
+{
+	struct sched_param param = { .sched_priority = 0 };
+
+	sched_setscheduler(current, SCHED_NORMAL, &param);
+}
 
 #endif /* PREEMPT_RT_FULL */
 /*
@@ -994,6 +1010,8 @@ static struct notifier_block cpu_nfb = {
 
 static struct smp_hotplug_thread softirq_threads = {
 	.store			= &ksoftirqd,
+	.setup			= ksoftirqd_set_sched_params,
+	.cleanup		= ksoftirqd_clr_sched_params,
 	.thread_should_run	= ksoftirqd_should_run,
 	.thread_fn		= run_ksoftirqd,
 	.thread_comm		= "ksoftirqd/%u",
