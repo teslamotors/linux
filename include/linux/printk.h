@@ -119,9 +119,11 @@ int no_printk(const char *fmt, ...)
 extern asmlinkage __printf(1, 2)
 void early_printk(const char *fmt, ...);
 void early_vprintk(const char *fmt, va_list ap);
+extern void printk_kill(void);
 #else
 static inline __printf(1, 2) __cold
 void early_printk(const char *s, ...) { }
+static inline void printk_kill(void) { }
 #endif
 
 #ifdef CONFIG_PRINTK
@@ -155,7 +157,6 @@ extern int __printk_ratelimit(const char *func);
 #define printk_ratelimit() __printk_ratelimit(__func__)
 extern bool printk_timed_ratelimit(unsigned long *caller_jiffies,
 				   unsigned int interval_msec);
-
 extern int printk_delay_msec;
 extern int dmesg_restrict;
 extern int kptr_restrict;
