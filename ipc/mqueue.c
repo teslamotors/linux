@@ -947,13 +947,18 @@ static inline void pipelined_receive(struct mqueue_inode_info *info)
 		wake_up_interruptible(&info->wait_q);
 		return;
 	}
-	if (msg_insert(sender->msg, info))
-		return;
-	list_del(&sender->list);
-	sender->state = STATE_PENDING;
-	wake_up_process(sender->task);
-	smp_wmb();
-	sender->state = STATE_READY;
+	/*
+	 * Keep them in one critical section for PREEMPT_RT:
+	 */
+	preempt_disable_rt();
+	if (!msg_insert(sender->msg, info)) {
+		list_del(&sender->list);
+		sender->state = STATE_PENDING;
+		wake_up_process(sender->task);
+		smp_wmb();
+		sender->state = STATE_READY;
+	}
+	preempt_enable_rt();
 }
 
 SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
