@@ -71,6 +71,8 @@ enum cryptodev_crypto_op_t {
 /* maximum length of verbose alg names (depends on CRYPTO_MAX_ALG_NAME) */
 #define CRYPTODEV_MAX_ALG_NAME		64
 
+#define HASH_MAX_LEN 64
+
 /* input of CIOCGSESSION */
 struct session_op {
 	/* Specify either cipher or mac
