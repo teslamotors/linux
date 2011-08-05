@@ -8,8 +8,44 @@
  * These routines enable/disable the pagefault handler in that
  * it will not take any MM locks and go straight to the fixup table.
  */
+static inline void raw_pagefault_disable(void)
+{
+	preempt_count_inc();
+	/*
+	 * make sure to have issued the store before a pagefault
+	 * can hit.
+	 */
+	barrier();
+}
+
+static inline void raw_pagefault_enable(void)
+{
+#ifndef CONFIG_PREEMPT
+	/*
+	 * make sure to issue those last loads/stores before enabling
+	 * the pagefault handler again.
+	 */
+	barrier();
+	preempt_count_dec();
+#else
+	preempt_enable();
+#endif
+}
+
+#ifndef CONFIG_PREEMPT_RT_FULL
+static inline void pagefault_disable(void)
+{
+	raw_pagefault_disable();
+}
+
+static inline void pagefault_enable(void)
+{
+	raw_pagefault_enable();
+}
+#else
 extern void pagefault_disable(void);
 extern void pagefault_enable(void);
+#endif
 
 #ifndef ARCH_HAS_NOCACHE_UACCESS
 
@@ -50,9 +86,9 @@ static inline unsigned long __copy_from_user_nocache(void *to,
 		mm_segment_t old_fs = get_fs();		\
 							\
 		set_fs(KERNEL_DS);			\
-		pagefault_disable();			\
+		raw_pagefault_disable();		\
 		ret = __copy_from_user_inatomic(&(retval), (__force typeof(retval) __user *)(addr), sizeof(retval));		\
-		pagefault_enable();			\
+		raw_pagefault_enable();			\
 		set_fs(old_fs);				\
 		ret;					\
 	})
