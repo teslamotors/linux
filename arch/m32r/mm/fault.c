@@ -114,7 +114,7 @@ asmlinkage void do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 * If we're in an interrupt or have no user context or are running in an
 	 * atomic region then we must not take the fault..
 	 */
-	if (in_atomic() || !mm || current->pagefault_disabled
+	if (!mm || pagefault_disabled())
 		goto bad_area_nosemaphore;
 
 	if (error_code & ACE_USERMODE)

@@ -1128,7 +1128,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 * If we're in an interrupt, have no user context or are running
 	 * in an atomic region then we must not take the fault:
 	 */
-	if (unlikely(in_atomic() || !mm || current->pagefault_disabled)) {
+	if (unlikely(!mm || pagefault_disabled())) {
 		bad_area_nosemaphore(regs, error_code, address);
 		return;
 	}
