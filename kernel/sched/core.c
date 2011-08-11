@@ -4772,7 +4772,7 @@ static struct rq *move_queued_task(struct task_struct *p, int new_cpu)
 
 void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
 {
-	if (!p->migrate_disable) {
+	if (!__migrate_disabled(p)) {
 		if (p->sched_class && p->sched_class->set_cpus_allowed)
 			p->sched_class->set_cpus_allowed(p, new_mask);
 		p->nr_cpus_allowed = cpumask_weight(new_mask);
@@ -4824,7 +4824,7 @@ int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask)
 	do_set_cpus_allowed(p, new_mask);
 
 	/* Can the task run on the task's current CPU? If so, we're done */
-	if (cpumask_test_cpu(task_cpu(p), new_mask) || p->migrate_disable)
+	if (cpumask_test_cpu(task_cpu(p), new_mask) || __migrate_disabled(p))
 		goto out;
 
 	dest_cpu = cpumask_any_and(cpu_active_mask, new_mask);
@@ -4844,6 +4844,7 @@ out:
 }
 EXPORT_SYMBOL_GPL(set_cpus_allowed_ptr);
 
+#ifdef CONFIG_PREEMPT_RT_FULL
 void migrate_disable(void)
 {
 	struct task_struct *p = current;
@@ -4936,6 +4937,7 @@ void migrate_enable(void)
 	preempt_enable();
 }
 EXPORT_SYMBOL(migrate_enable);
+#endif /* CONFIG_PREEMPT_RT_FULL */
 
 /*
  * Move (not current) task off this cpu, onto dest cpu. We're doing
