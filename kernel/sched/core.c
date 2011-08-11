@@ -4864,7 +4864,19 @@ void migrate_disable(void)
 		preempt_enable();
 		return;
 	}
-	rq = task_rq_lock(p, &flags);
+
+	/*
+	 * Since this is always current we can get away with only locking
+	 * rq->lock, the ->cpus_allowed value can normally only be changed
+	 * while holding both p->pi_lock and rq->lock, but seeing that this
+	 * it current, we cannot actually be waking up, so all code that
+	 * relies on serialization against p->pi_lock is out of scope.
+	 *
+	 * Taking rq->lock serializes us against things like
+	 * set_cpus_allowed_ptr() that can still happen concurrently.
+	 */
+	rq = this_rq();
+	raw_spin_lock_irqsave(&rq->lock, flags);
 	p->migrate_disable = 1;
 	mask = tsk_cpus_allowed(p);
 
@@ -4875,7 +4887,7 @@ void migrate_disable(void)
 			p->sched_class->set_cpus_allowed(p, mask);
 		p->nr_cpus_allowed = cpumask_weight(mask);
 	}
-	task_rq_unlock(rq, p, &flags);
+	raw_spin_unlock_irqrestore(&rq->lock, flags);
 	preempt_enable();
 }
 EXPORT_SYMBOL(migrate_disable);
@@ -4903,7 +4915,11 @@ void migrate_enable(void)
 		return;
 	}
 
-	rq = task_rq_lock(p, &flags);
+	/*
+	 * See comment in migrate_disable().
+	 */
+	rq = this_rq();
+	raw_spin_lock_irqsave(&rq->lock, flags);
 	p->migrate_disable = 0;
 	mask = tsk_cpus_allowed(p);
 
@@ -4915,7 +4931,7 @@ void migrate_enable(void)
 		p->nr_cpus_allowed = cpumask_weight(mask);
 	}
 
-	task_rq_unlock(rq, p, &flags);
+	raw_spin_unlock_irqrestore(&rq->lock, flags);
 	unpin_current_cpu();
 	preempt_enable();
 }
