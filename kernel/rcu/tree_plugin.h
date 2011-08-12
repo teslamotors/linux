@@ -335,7 +335,7 @@ void rcu_read_unlock_special(struct task_struct *t)
 	}
 
 	/* Hardware IRQ handlers cannot block, complain if they get here. */
-	if (WARN_ON_ONCE(in_irq() || in_serving_softirq())) {
+	if (WARN_ON_ONCE(preempt_count() & (HARDIRQ_MASK | SOFTIRQ_OFFSET))) {
 		local_irq_restore(flags);
 		return;
 	}
