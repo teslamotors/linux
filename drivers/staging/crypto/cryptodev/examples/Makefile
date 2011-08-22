@@ -1,10 +1,11 @@
 KERNEL_DIR ?= /lib/modules/$(shell uname -r)/build
 KBUILD_CFLAGS += -I..
 
-hostprogs := cipher hmac speed async_cipher async_hmac async_speed sha_speed hashcrypt_speed
+hostprogs := cipher hmac speed async_cipher async_hmac async_speed sha_speed hashcrypt_speed fullspeed
 example-cipher-objs := cipher.o
 example-hmac-objs := hmac.o
 example-speed-objs := speed.c
+example-fullspeed-objs := fullspeed.c
 example-sha-speed-objs := sha_speed.c
 example-async-cipher-objs := async_cipher.o
 example-async-hmac-objs := async_hmac.o
