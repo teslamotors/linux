@@ -68,6 +68,7 @@ static void value2human(int si, double bytes, double time, double* data, double*
 	}
 }
 
+#define MAX(x,y) ((x)>(y)?(x):(y))
 
 int encrypt_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 {
@@ -80,8 +81,8 @@ int encrypt_data(struct session_op *sess, int fdc, int chunksize, int alignmask)
 	char metric[16];
 
 	if (alignmask) {
-		if (posix_memalign((void **)&buffer, alignmask + 1, chunksize)) {
-			printf("posix_memalign() failed!\n");
+		if (posix_memalign((void **)&buffer, MAX(alignmask + 1, sizeof(void*)), chunksize)) {
+			printf("posix_memalign() failed! (mask %x, size: %d)\n", alignmask+1, chunksize);
 			return 1;
 		}
 	} else {
@@ -176,7 +177,7 @@ int main(int argc, char** argv)
 	alignmask = siop.alignmask;
 #endif
 
-	for (i = 256; i <= (64 * 4096); i *= 2) {
+	for (i = 512; i <= (64 * 1024); i *= 2) {
 		if (encrypt_data(&sess, fdc, i, alignmask))
 			break;
 	}
@@ -200,7 +201,7 @@ int main(int argc, char** argv)
 	alignmask = siop.alignmask;
 #endif
 
-	for (i = 256; i <= (64 * 1024); i *= 2) {
+	for (i = 512; i <= (64 * 1024); i *= 2) {
 		if (encrypt_data(&sess, fdc, i, alignmask))
 			break;
 	}
