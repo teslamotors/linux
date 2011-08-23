@@ -4921,12 +4921,14 @@ void migrate_enable(void)
 	 */
 	rq = this_rq();
 	raw_spin_lock_irqsave(&rq->lock, flags);
-	p->migrate_disable = 0;
 	mask = tsk_cpus_allowed(p);
+	p->migrate_disable = 0;
 
 	WARN_ON(!cpumask_test_cpu(smp_processor_id(), mask));
 
 	if (!cpumask_equal(&p->cpus_allowed, mask)) {
+		/* Get the mask now that migration is enabled */
+		mask = tsk_cpus_allowed(p);
 		if (p->sched_class->set_cpus_allowed)
 			p->sched_class->set_cpus_allowed(p, mask);
 		p->nr_cpus_allowed = cpumask_weight(mask);
