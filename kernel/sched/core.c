@@ -2753,6 +2753,135 @@ static inline void schedule_debug(struct task_struct *prev)
 	schedstat_inc(this_rq(), sched_count);
 }
 
+#if defined(CONFIG_PREEMPT_RT_FULL) && defined(CONFIG_SMP)
+#define MIGRATE_DISABLE_SET_AFFIN	(1<<30) /* Can't make a negative */
+#define migrate_disabled_updated(p)	((p)->migrate_disable & MIGRATE_DISABLE_SET_AFFIN)
+#define migrate_disable_count(p)	((p)->migrate_disable & ~MIGRATE_DISABLE_SET_AFFIN)
+
+static inline void update_migrate_disable(struct task_struct *p)
+{
+	const struct cpumask *mask;
+
+	if (likely(!p->migrate_disable))
+		return;
+
+	/* Did we already update affinity? */
+	if (unlikely(migrate_disabled_updated(p)))
+		return;
+
+	/*
+	 * Since this is always current we can get away with only locking
+	 * rq->lock, the ->cpus_allowed value can normally only be changed
+	 * while holding both p->pi_lock and rq->lock, but seeing that this
+	 * is current, we cannot actually be waking up, so all code that
+	 * relies on serialization against p->pi_lock is out of scope.
+	 *
+	 * Having rq->lock serializes us against things like
+	 * set_cpus_allowed_ptr() that can still happen concurrently.
+	 */
+	mask = tsk_cpus_allowed(p);
+
+	WARN_ON(!cpumask_test_cpu(smp_processor_id(), mask));
+
+	if (!cpumask_equal(&p->cpus_allowed, mask)) {
+		if (p->sched_class->set_cpus_allowed)
+			p->sched_class->set_cpus_allowed(p, mask);
+		p->nr_cpus_allowed = cpumask_weight(mask);
+
+		/* Let migrate_enable know to fix things back up */
+		p->migrate_disable |= MIGRATE_DISABLE_SET_AFFIN;
+	}
+}
+
+void migrate_disable(void)
+{
+	struct task_struct *p = current;
+
+	if (in_atomic()) {
+#ifdef CONFIG_SCHED_DEBUG
+		p->migrate_disable_atomic++;
+#endif
+		return;
+	}
+
+#ifdef CONFIG_SCHED_DEBUG
+	WARN_ON_ONCE(p->migrate_disable_atomic);
+#endif
+
+	preempt_disable();
+	if (p->migrate_disable) {
+		p->migrate_disable++;
+		preempt_enable();
+		return;
+	}
+
+	pin_current_cpu();
+	p->migrate_disable = 1;
+	preempt_enable();
+}
+EXPORT_SYMBOL(migrate_disable);
+
+void migrate_enable(void)
+{
+	struct task_struct *p = current;
+	const struct cpumask *mask;
+	unsigned long flags;
+	struct rq *rq;
+
+	if (in_atomic()) {
+#ifdef CONFIG_SCHED_DEBUG
+		p->migrate_disable_atomic--;
+#endif
+		return;
+	}
+
+#ifdef CONFIG_SCHED_DEBUG
+	WARN_ON_ONCE(p->migrate_disable_atomic);
+#endif
+	WARN_ON_ONCE(p->migrate_disable <= 0);
+
+	preempt_disable();
+	if (migrate_disable_count(p) > 1) {
+		p->migrate_disable--;
+		preempt_enable();
+		return;
+	}
+
+	if (unlikely(migrate_disabled_updated(p))) {
+		/*
+		 * See comment in update_migrate_disable() about locking.
+		 */
+		rq = this_rq();
+		raw_spin_lock_irqsave(&rq->lock, flags);
+		mask = tsk_cpus_allowed(p);
+		/*
+		 * Clearing migrate_disable causes tsk_cpus_allowed to
+		 * show the tasks original cpu affinity.
+		 */
+		p->migrate_disable = 0;
+
+		WARN_ON(!cpumask_test_cpu(smp_processor_id(), mask));
+
+		if (unlikely(!cpumask_equal(&p->cpus_allowed, mask))) {
+			/* Get the mask now that migration is enabled */
+			mask = tsk_cpus_allowed(p);
+			if (p->sched_class->set_cpus_allowed)
+				p->sched_class->set_cpus_allowed(p, mask);
+			p->nr_cpus_allowed = cpumask_weight(mask);
+		}
+		raw_spin_unlock_irqrestore(&rq->lock, flags);
+	} else
+		p->migrate_disable = 0;
+
+	unpin_current_cpu();
+	preempt_enable();
+}
+EXPORT_SYMBOL(migrate_enable);
+#else
+static inline void update_migrate_disable(struct task_struct *p) { }
+#define migrate_disabled_updated(p)		0
+#endif
+
 /*
  * Pick up the highest-prio task:
  */
@@ -2855,6 +2984,8 @@ need_resched:
 	 */
 	smp_mb__before_spinlock();
 	raw_spin_lock_irq(&rq->lock);
+
+	update_migrate_disable(prev);
 
 	switch_count = &prev->nivcsw;
 	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) {
@@ -4772,7 +4903,7 @@ static struct rq *move_queued_task(struct task_struct *p, int new_cpu)
 
 void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
 {
-	if (!__migrate_disabled(p)) {
+	if (!migrate_disabled_updated(p)) {
 		if (p->sched_class && p->sched_class->set_cpus_allowed)
 			p->sched_class->set_cpus_allowed(p, new_mask);
 		p->nr_cpus_allowed = cpumask_weight(new_mask);
@@ -4843,124 +4974,6 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(set_cpus_allowed_ptr);
-
-#ifdef CONFIG_PREEMPT_RT_FULL
-void migrate_disable(void)
-{
-	struct task_struct *p = current;
-	const struct cpumask *mask;
-	unsigned long flags;
-	struct rq *rq;
-
-	if (in_atomic()) {
-#ifdef CONFIG_SCHED_DEBUG
-		p->migrate_disable_atomic++;
-#endif
-		return;
-	}
-
-#ifdef CONFIG_SCHED_DEBUG
-	WARN_ON_ONCE(p->migrate_disable_atomic);
-#endif
-
-	preempt_disable();
-	if (p->migrate_disable) {
-		p->migrate_disable++;
-		preempt_enable();
-		return;
-	}
-
-	pin_current_cpu();
-	if (unlikely(!scheduler_running)) {
-		p->migrate_disable = 1;
-		preempt_enable();
-		return;
-	}
-
-	/*
-	 * Since this is always current we can get away with only locking
-	 * rq->lock, the ->cpus_allowed value can normally only be changed
-	 * while holding both p->pi_lock and rq->lock, but seeing that this
-	 * it current, we cannot actually be waking up, so all code that
-	 * relies on serialization against p->pi_lock is out of scope.
-	 *
-	 * Taking rq->lock serializes us against things like
-	 * set_cpus_allowed_ptr() that can still happen concurrently.
-	 */
-	rq = this_rq();
-	raw_spin_lock_irqsave(&rq->lock, flags);
-	p->migrate_disable = 1;
-	mask = tsk_cpus_allowed(p);
-
-	WARN_ON(!cpumask_test_cpu(smp_processor_id(), mask));
-
-	if (!cpumask_equal(&p->cpus_allowed, mask)) {
-		if (p->sched_class->set_cpus_allowed)
-			p->sched_class->set_cpus_allowed(p, mask);
-		p->nr_cpus_allowed = cpumask_weight(mask);
-	}
-	raw_spin_unlock_irqrestore(&rq->lock, flags);
-	preempt_enable();
-}
-EXPORT_SYMBOL(migrate_disable);
-
-void migrate_enable(void)
-{
-	struct task_struct *p = current;
-	const struct cpumask *mask;
-	unsigned long flags;
-	struct rq *rq;
-
-	if (in_atomic()) {
-#ifdef CONFIG_SCHED_DEBUG
-		p->migrate_disable_atomic--;
-#endif
-		return;
-	}
-
-#ifdef CONFIG_SCHED_DEBUG
-	WARN_ON_ONCE(p->migrate_disable_atomic);
-#endif
-	WARN_ON_ONCE(p->migrate_disable <= 0);
-
-	preempt_disable();
-	if (p->migrate_disable > 1) {
-		p->migrate_disable--;
-		preempt_enable();
-		return;
-	}
-
-	if (unlikely(!scheduler_running)) {
-		p->migrate_disable = 0;
-		unpin_current_cpu();
-		preempt_enable();
-		return;
-	}
-
-	/*
-	 * See comment in migrate_disable().
-	 */
-	rq = this_rq();
-	raw_spin_lock_irqsave(&rq->lock, flags);
-	mask = tsk_cpus_allowed(p);
-	p->migrate_disable = 0;
-
-	WARN_ON(!cpumask_test_cpu(smp_processor_id(), mask));
-
-	if (!cpumask_equal(&p->cpus_allowed, mask)) {
-		/* Get the mask now that migration is enabled */
-		mask = tsk_cpus_allowed(p);
-		if (p->sched_class->set_cpus_allowed)
-			p->sched_class->set_cpus_allowed(p, mask);
-		p->nr_cpus_allowed = cpumask_weight(mask);
-	}
-
-	raw_spin_unlock_irqrestore(&rq->lock, flags);
-	unpin_current_cpu();
-	preempt_enable();
-}
-EXPORT_SYMBOL(migrate_enable);
-#endif /* CONFIG_PREEMPT_RT_FULL */
 
 /*
  * Move (not current) task off this cpu, onto dest cpu. We're doing
