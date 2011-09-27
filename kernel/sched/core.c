@@ -2781,16 +2781,12 @@ static inline void update_migrate_disable(struct task_struct *p)
 	 */
 	mask = tsk_cpus_allowed(p);
 
-	WARN_ON(!cpumask_test_cpu(smp_processor_id(), mask));
+	if (p->sched_class->set_cpus_allowed)
+		p->sched_class->set_cpus_allowed(p, mask);
+	p->nr_cpus_allowed = cpumask_weight(mask);
 
-	if (!cpumask_equal(&p->cpus_allowed, mask)) {
-		if (p->sched_class->set_cpus_allowed)
-			p->sched_class->set_cpus_allowed(p, mask);
-		p->nr_cpus_allowed = cpumask_weight(mask);
-
-		/* Let migrate_enable know to fix things back up */
-		p->migrate_disable |= MIGRATE_DISABLE_SET_AFFIN;
-	}
+	/* Let migrate_enable know to fix things back up */
+	p->migrate_disable |= MIGRATE_DISABLE_SET_AFFIN;
 }
 
 void migrate_disable(void)
