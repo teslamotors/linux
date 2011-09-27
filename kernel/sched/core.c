@@ -2793,7 +2793,7 @@ void migrate_disable(void)
 {
 	struct task_struct *p = current;
 
-	if (in_atomic()) {
+	if (in_atomic() || p->flags & PF_NO_SETAFFINITY) {
 #ifdef CONFIG_SCHED_DEBUG
 		p->migrate_disable_atomic++;
 #endif
@@ -2823,7 +2823,7 @@ void migrate_enable(void)
 	unsigned long flags;
 	struct rq *rq;
 
-	if (in_atomic()) {
+	if (in_atomic() || p->flags & PF_NO_SETAFFINITY) {
 #ifdef CONFIG_SCHED_DEBUG
 		p->migrate_disable_atomic--;
 #endif
@@ -2843,26 +2843,21 @@ void migrate_enable(void)
 	preempt_disable();
 	if (unlikely(migrate_disabled_updated(p))) {
 		/*
-		 * See comment in update_migrate_disable() about locking.
+		 * Undo whatever update_migrate_disable() did, also see there
+		 * about locking.
 		 */
 		rq = this_rq();
 		raw_spin_lock_irqsave(&rq->lock, flags);
-		mask = tsk_cpus_allowed(p);
+
 		/*
 		 * Clearing migrate_disable causes tsk_cpus_allowed to
 		 * show the tasks original cpu affinity.
 		 */
 		p->migrate_disable = 0;
-
-		WARN_ON(!cpumask_test_cpu(smp_processor_id(), mask));
-
-		if (unlikely(!cpumask_equal(&p->cpus_allowed, mask))) {
-			/* Get the mask now that migration is enabled */
-			mask = tsk_cpus_allowed(p);
-			if (p->sched_class->set_cpus_allowed)
-				p->sched_class->set_cpus_allowed(p, mask);
-			p->nr_cpus_allowed = cpumask_weight(mask);
-		}
+		mask = tsk_cpus_allowed(p);
+		if (p->sched_class->set_cpus_allowed)
+			p->sched_class->set_cpus_allowed(p, mask);
+		p->nr_cpus_allowed = cpumask_weight(mask);
 		raw_spin_unlock_irqrestore(&rq->lock, flags);
 	} else
 		p->migrate_disable = 0;
