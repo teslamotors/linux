@@ -165,7 +165,7 @@ static int cpu_unplug_begin(unsigned int cpu)
 	struct task_struct *tsk;
 
 	init_completion(&hp->synced);
-	tsk = kthread_create(sync_unplug_thread, hp, "sync_unplug/%d\n", cpu);
+	tsk = kthread_create(sync_unplug_thread, hp, "sync_unplug/%d", cpu);
 	if (IS_ERR(tsk))
 		return (PTR_ERR(tsk));
 	kthread_bind(tsk, cpu);
