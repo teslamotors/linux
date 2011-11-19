@@ -733,7 +733,10 @@ static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 	}
 
 	if (likely(cop->len)) {
-		ret = __crypto_run_zc(ses_ptr, kcop);
+		if (cop->flags & COP_FLAG_NO_ZC)
+			ret = __crypto_run_std(ses_ptr, &kcop->cop);
+		else
+			ret = __crypto_run_zc(ses_ptr, kcop);
 		if (unlikely(ret))
 			goto out_unlock;
 	}
