@@ -109,7 +109,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	int ret = 0;
 	const char *alg_name = NULL;
 	const char *hash_name = NULL;
-	int hmac_mode = 1;
+	int hmac_mode = 1, stream = 0;
 
 	/* Does the request make sense? */
 	if (unlikely(!sop->cipher && !sop->mac)) {
@@ -140,9 +140,11 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		break;
 	case CRYPTO_AES_CTR:
 		alg_name = "ctr(aes)";
+		stream = 1;
 		break;
 	case CRYPTO_NULL:
 		alg_name = "ecb(cipher_null)";
+		stream = 1;
 		break;
 	default:
 		dprintk(1, KERN_DEBUG, "%s: bad cipher: %d\n", __func__,
@@ -227,7 +229,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		}
 
 		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, keyp,
-								sop->keylen);
+						sop->keylen, stream);
 		if (ret < 0) {
 			dprintk(1, KERN_DEBUG,
 				"%s: Failed to load cipher for %s\n",

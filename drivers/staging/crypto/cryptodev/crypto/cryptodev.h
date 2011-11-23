@@ -121,19 +121,55 @@ struct crypt_op {
 struct crypt_auth_op {
 	__u32	ses;		/* session identifier */
 	__u16	op;		/* COP_ENCRYPT or COP_DECRYPT */
-	__u16	flags;		/* see COP_FLAG_* */
+	__u16	flags;		/* see COP_FLAG_AEAD_* */
 	__u32	len;		/* length of source data */
-	__u32	auth_len;		/* length of auth data */
-	__u32	tag_len;		/* the length of the tag */
+	__u32	auth_len;	/* length of auth data */
+	__u32	tag_len;	/* the length of the tag. Use zero for digest size. */
 	__u8	__user *auth_src;	/* authenticated-only data */
+
+	/* The current implementation is more efficient if data are
+	 * encrypted in-place (src==dst). */
 	__u8	__user *src;	/* data to be encrypted and authenticated */
 	__u8	__user *dst;	/* pointer to output data. Must have
-	                         * space for tag. This should be at least 
-	                         * src_len + tag_size + block_size for padding */
+	                         * space for tag. For TLS this should be at least 
+	                         * len + tag_size + block_size for padding */
+
+	__u8    __user *tag;    /* where the tag will be copied to. TLS mode
+                                 * doesn't use that as tag is copied to dst.
+                                 * SRTP mode copies tag there. */
 
 	/* initialization vector for encryption operations */
 	__u8	__user *iv;
 };
+
+/* In TLS mode the following are required:
+ *  flags   : COP_FLAG_AEAD_TLS_TYPE
+ *  iv      : the initialization vector
+ *  auth_len: the length of the data to be authenticated only
+ *  len     : length of data to be encrypted
+ *  auth_src: the data to be authenticated
+ *  src     : the data to be encrypted
+ *  dst     : space to hold encrypted data (preferably in-place). It must have
+ *            at least a size of len + tag_size + blocksize.
+ *  tag_size: the size of the desired authentication tag or zero to use
+ *            the default mac output.
+ */
+
+/* In SRTP mode the following are required:
+ *  flags   : COP_FLAG_AEAD_SRTP_TYPE
+ *  iv      : the initialization vector
+ *  auth_len: the length of the data to be authenticated. This must
+ *            include the SRTP header + SRTP payload (data to be encrypted) + rest
+ *            
+ *  len     : length of data to be encrypted
+ *  auth_src: pointer the data to be authenticated. Should point at the same buffer as src.
+ *  src     : pointer to the data to be encrypted.
+ *  dst     : This is mandatory to be the same as src (in-place only).
+ *  tag_size: the size of the desired authentication tag or zero to use
+ *            the default mac output.
+ *  tag     : Pointer to an address where the authentication tag will be copied.
+ */
+
 
 /* struct crypt_op flags */
 
@@ -143,7 +179,9 @@ struct crypt_auth_op {
 #define COP_FLAG_WRITE_IV	(1 << 2) /* update the IV during operation */
 #define COP_FLAG_NO_ZC		(1 << 3) /* do not zero-copy */
 #define COP_FLAG_AEAD_TLS_TYPE  (1 << 4) /* authenticate and encrypt using the 
-                                          * protocol TLS rules */
+                                          * TLS protocol rules */
+#define COP_FLAG_AEAD_SRTP_TYPE  (1 << 5) /* authenticate and encrypt using the 
+                                           * SRTP protocol rules */
 
 
 /* Stuff for bignum arithmetic and public key

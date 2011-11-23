@@ -53,7 +53,7 @@ static void cryptodev_complete(struct crypto_async_request *req, int err)
 }
 
 int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
-				uint8_t *keyp, size_t keylen)
+				uint8_t *keyp, size_t keylen, int stream)
 {
 	struct ablkcipher_alg *alg;
 	int ret;
@@ -92,6 +92,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 		goto error;
 	}
 
+	out->stream = stream;
 	out->blocksize = crypto_ablkcipher_blocksize(out->async.s);
 	out->ivsize = crypto_ablkcipher_ivsize(out->async.s);
 	out->alignmask = crypto_ablkcipher_alignmask(out->async.s);

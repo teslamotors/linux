@@ -42,6 +42,7 @@ void release_user_pages(struct page **pg, int pagecount);
 struct cipher_data {
 	int init; /* 0 uninitialized */
 	int blocksize;
+	int stream;
 	int ivsize;
 	int alignmask;
 	struct {
@@ -58,7 +59,7 @@ struct fcrypt {
 };
 
 int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
-						uint8_t *key, size_t keylen);
+			  uint8_t *key, size_t keylen, int stream);
 void cryptodev_cipher_deinit(struct cipher_data *cdata);
 ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
 			const struct scatterlist *sg1,
@@ -189,6 +190,8 @@ struct csession {
 	int array_size;
 	struct page **pages;
 	struct scatterlist *sg;
+	struct scatterlist sg2; /* temporal sg */
+	uint8_t buffer[16*1024]; /* temporal buffer */
 };
 
 struct csession *crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid);

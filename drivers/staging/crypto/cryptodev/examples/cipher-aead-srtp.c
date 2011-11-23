@@ -14,6 +14,9 @@
 #include <crypto/cryptodev.h>
 
 #define	DATA_SIZE	(8*1024+11)
+#define HEADER_SIZE 256
+#define PLAINTEXT_SIZE 1021
+#define FOOTER_SIZE 15
 #define	BLOCK_SIZE	16
 #define	KEY_SIZE	16
 
@@ -78,6 +81,9 @@ test_crypto(int cfd)
 	char iv[BLOCK_SIZE];
 	char key[KEY_SIZE];
 	unsigned char sha1mac[20];
+	unsigned char tag[20];
+	unsigned char mackey[] = "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b";
+	int mackey_len = 16;
 	int pad, i;
 
 	struct session_op sess;
@@ -95,13 +101,13 @@ test_crypto(int cfd)
 	memset(iv, 0x03,  sizeof(iv));
 
 	/* Get crypto session for AES128 */
-	sess.cipher = CRYPTO_AES_CBC;
+	sess.cipher = CRYPTO_AES_CTR;
 	sess.keylen = KEY_SIZE;
 	sess.key = key;
 
 	sess.mac = CRYPTO_SHA1_HMAC;
-	sess.mackeylen = 16;
-	sess.mackey = (uint8_t*)"\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b";
+	sess.mackeylen = mackey_len;
+	sess.mackey = mackey;
 
 	if (ioctl(cfd, CIOCGSESSION, &sess)) {
 		perror("ioctl(CIOCGSESSION)");
@@ -123,30 +129,30 @@ test_crypto(int cfd)
 	plaintext = plaintext_raw;
 	ciphertext = ciphertext_raw;
 #endif
-	memset(plaintext, 0x15, DATA_SIZE);
+	memset(plaintext, 0x15, HEADER_SIZE); /* header */
+	memset(&plaintext[HEADER_SIZE], 0x17, PLAINTEXT_SIZE); /* payload */
+	memset(&plaintext[HEADER_SIZE+PLAINTEXT_SIZE], 0x22, FOOTER_SIZE);
 
-	if (get_sha1_hmac(cfd, sess.mackey, sess.mackeylen, plaintext, DATA_SIZE, sha1mac) != 0) {
-		fprintf(stderr, "SHA1 MAC failed\n");
-		return 1;
-	}
-
-	//memcpy(ciphertext, plaintext, DATA_SIZE);
+	memcpy(ciphertext, plaintext, DATA_SIZE);
 
 	/* Encrypt data.in to data.encrypted */
 	cao.ses = sess.ses;
-	cao.len = DATA_SIZE;
-	cao.src = plaintext;
-	cao.dst = ciphertext;
+	cao.len = PLAINTEXT_SIZE;
+	cao.auth_len = HEADER_SIZE+PLAINTEXT_SIZE+FOOTER_SIZE;
+	cao.auth_src = ciphertext;
+	cao.src = ciphertext+HEADER_SIZE;
+	cao.dst = cao.src;
 	cao.iv = iv;
 	cao.op = COP_ENCRYPT;
-	cao.flags = COP_FLAG_AEAD_TLS_TYPE;
+	cao.flags = COP_FLAG_AEAD_SRTP_TYPE;
+	cao.tag = tag;
+	cao.tag_len = 20;
 
 	if (ioctl(cfd, CIOCAUTHCRYPT, &cao)) {
 		perror("ioctl(CIOCAUTHCRYPT)");
 		return 1;
 	}
 
-	printf("Original plaintext size: %d, ciphertext: %d\n", DATA_SIZE, cao.len);
 
 	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
 		perror("ioctl(CIOCFSESSION)");
@@ -155,7 +161,7 @@ test_crypto(int cfd)
 
 	/* Get crypto session for AES128 */
 	memset(&sess, 0, sizeof(sess));
-	sess.cipher = CRYPTO_AES_CBC;
+	sess.cipher = CRYPTO_AES_CTR;
 	sess.keylen = KEY_SIZE;
 	sess.key = key;
 
@@ -164,11 +170,23 @@ test_crypto(int cfd)
 		return 1;
 	}
 
+	if (get_sha1_hmac(cfd, mackey, mackey_len, ciphertext, HEADER_SIZE + PLAINTEXT_SIZE + FOOTER_SIZE, sha1mac) != 0) {
+		fprintf(stderr, "SHA1 MAC failed\n");
+		return 1;
+	}
+
+	if (memcmp(tag, sha1mac, 20) != 0) {
+		fprintf(stderr, "AEAD SHA1 MAC does not match plain MAC\n");
+		print_buf("SHA1: ", sha1mac, 20);
+		print_buf("SHA1-SRTP: ", tag, 20);
+		return 1;
+	}
+
 	/* Decrypt data.encrypted to data.decrypted */
 	co.ses = sess.ses;
-	co.len = cao.len;
-	co.src = ciphertext;
-	co.dst = ciphertext;
+	co.len = PLAINTEXT_SIZE;
+	co.src = ciphertext+HEADER_SIZE;
+	co.dst = ciphertext+HEADER_SIZE;
 	co.iv = iv;
 	co.op = COP_DECRYPT;
 	if (ioctl(cfd, CIOCCRYPT, &co)) {
@@ -177,7 +195,7 @@ test_crypto(int cfd)
 	}
 
 	/* Verify the result */
-	if (memcmp(plaintext, ciphertext, DATA_SIZE) != 0) {
+	if (memcmp(plaintext+HEADER_SIZE, ciphertext+HEADER_SIZE, PLAINTEXT_SIZE) != 0) {
 		int i;
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
@@ -196,22 +214,6 @@ test_crypto(int cfd)
 		printf("\n");
 		return 1;
 	}
-
-	if (memcmp(&ciphertext[cao.len-MAC_SIZE-1], sha1mac, 20) != 0) {
-		fprintf(stderr, "AEAD SHA1 MAC does not match plain MAC\n");
-		print_buf("SHA1: ", sha1mac, 20);
-		print_buf("SHA1-TLS: ", &ciphertext[cao.len-MAC_SIZE-1], 20);
-		return 1;
-	}
-
-	pad = ciphertext[cao.len-1];
-
-	for (i=0;i<pad;i++)
-		if (ciphertext[cao.len-MAC_SIZE-1-i] != pad) {
-			fprintf(stderr, "Pad does not match (expected %d)\n", pad);
-			print_buf("PAD", &ciphertext[cao.len-MAC_SIZE-1-pad], pad);
-			return 1;
-		}
 
 	printf("Test passed\n");
 
