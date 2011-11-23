@@ -57,7 +57,7 @@ enum cryptodev_crypto_op_t {
 #define DES3_BLOCK_LEN		8
 #define RIJNDAEL128_BLOCK_LEN	16
 #define AES_BLOCK_LEN		RIJNDAEL128_BLOCK_LEN
-#define CAMELLIA_BLOCK_LEN
+#define CAMELLIA_BLOCK_LEN      16
 #define BLOWFISH_BLOCK_LEN	8
 #define SKIPJACK_BLOCK_LEN	8
 #define CAST128_BLOCK_LEN	8
@@ -104,7 +104,7 @@ struct session_info_op {
 #define COP_DECRYPT	1
 
 /* input of CIOCCRYPT */
- struct crypt_op {
+struct crypt_op {
 	__u32	ses;		/* session identifier */
 	__u16	op;		/* COP_ENCRYPT or COP_DECRYPT */
 	__u16	flags;		/* see COP_FLAG_* */
@@ -117,6 +117,24 @@ struct session_info_op {
 	__u8	__user *iv;
 };
 
+/* input of CIOCAUTHCRYPT */
+struct crypt_auth_op {
+	__u32	ses;		/* session identifier */
+	__u16	op;		/* COP_ENCRYPT or COP_DECRYPT */
+	__u16	flags;		/* see COP_FLAG_* */
+	__u32	len;		/* length of source data */
+	__u32	auth_len;		/* length of auth data */
+	__u32	tag_len;		/* the length of the tag */
+	__u8	__user *auth_src;	/* authenticated-only data */
+	__u8	__user *src;	/* data to be encrypted and authenticated */
+	__u8	__user *dst;	/* pointer to output data. Must have
+	                         * space for tag. This should be at least 
+	                         * src_len + tag_size + block_size for padding */
+
+	/* initialization vector for encryption operations */
+	__u8	__user *iv;
+};
+
 /* struct crypt_op flags */
 
 #define COP_FLAG_NONE		(0 << 0) /* totally no flag */
@@ -124,6 +142,9 @@ struct session_info_op {
 #define COP_FLAG_FINAL		(1 << 1) /* multi-update final hash mode */
 #define COP_FLAG_WRITE_IV	(1 << 2) /* update the IV during operation */
 #define COP_FLAG_NO_ZC		(1 << 3) /* do not zero-copy */
+#define COP_FLAG_AEAD_TLS_TYPE  (1 << 4) /* authenticate and encrypt using the 
+                                          * protocol TLS rules */
+
 
 /* Stuff for bignum arithmetic and public key
  * cryptography - not supported yet by linux
@@ -188,5 +209,8 @@ enum cryptodev_crk_op_t {
 /* additional ioctls for asynchronous  operation */
 #define CIOCASYNCCRYPT    _IOW('c', 107, struct crypt_op)
 #define CIOCASYNCFETCH    _IOR('c', 108, struct crypt_op)
+
+/* additional ioctls for AEAD */
+#define CIOCAUTHCRYPT   _IOWR('c', 109, struct crypt_auth_op)
 
 #endif /* L_CRYPTODEV_H */

@@ -2,6 +2,8 @@
 #ifndef CRYPTODEV_INT_H
 # define CRYPTODEV_INT_H
 
+#define CRYPTODEV_STATS
+
 #include <linux/init.h>
 #include <linux/sched.h>
 #include <linux/fs.h>
@@ -48,6 +50,11 @@ struct cipher_data {
 		struct ablkcipher_request *request;
 		uint8_t iv[EALG_MAX_BLOCK_LEN];
 	} async;
+};
+
+struct fcrypt {
+	struct list_head list;
+	struct mutex sem;
 };
 
 int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
@@ -144,5 +151,52 @@ struct kernel_crypt_op {
 	struct task_struct *task;
 	struct mm_struct *mm;
 };
+
+struct kernel_crypt_auth_op {
+	struct crypt_auth_op caop;
+
+	int dst_len; /* based on src_len + pad + tag */
+	int ivlen;
+	__u8 iv[EALG_MAX_BLOCK_LEN];
+
+	struct task_struct *task;
+	struct mm_struct *mm;
+};
+
+/* auth */
+
+int kcaop_from_user(struct kernel_crypt_auth_op *kcop,
+			struct fcrypt *fcr, void __user *arg);
+int kcaop_to_user(struct kernel_crypt_auth_op *kcaop,
+		struct fcrypt *fcr, void __user *arg);
+int crypto_auth_run(struct fcrypt *fcr, struct kernel_crypt_auth_op *kcaop);
+
+/* other internal structs */
+struct csession {
+	struct list_head entry;
+	struct mutex sem;
+	struct cipher_data cdata;
+	struct hash_data hdata;
+	uint32_t sid;
+	uint32_t alignmask;
+#ifdef CRYPTODEV_STATS
+#if !((COP_ENCRYPT < 2) && (COP_DECRYPT < 2))
+#error Struct csession.stat uses COP_{ENCRYPT,DECRYPT} as indices. Do something!
+#endif
+	unsigned long long stat[2];
+	size_t stat_max_size, stat_count;
+#endif
+	int array_size;
+	struct page **pages;
+	struct scatterlist *sg;
+};
+
+struct csession *crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid);
+
+inline static void crypto_put_session(struct csession * ses_ptr)
+{
+	mutex_unlock(&ses_ptr->sem);
+}
+int adjust_sg_array(struct csession * ses, int pagecount);
 
 #endif /* CRYPTODEV_INT_H */

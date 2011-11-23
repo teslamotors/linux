@@ -18,3 +18,5 @@ examples/hashcrypt_speed
 releases
 scripts
 version.h
+examples/cipher-aead
+examples/fullspeed

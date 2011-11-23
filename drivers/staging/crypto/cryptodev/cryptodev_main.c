@@ -53,8 +53,6 @@ MODULE_LICENSE("GPL");
 
 /* ====== Compile-time config ====== */
 
-#define CRYPTODEV_STATS
-
 /* Default (pre-allocated) and maximum size of the job queue.
  * These are free, pending and done items all together. */
 #define DEF_COP_RINGSIZE 16
@@ -73,11 +71,6 @@ MODULE_PARM_DESC(enable_stats, "collect statictics about cryptodev usage");
 #endif
 
 /* ====== CryptoAPI ====== */
-struct fcrypt {
-	struct list_head list;
-	struct mutex sem;
-};
-
 struct todo_list_item {
 	struct list_head __hook;
 	struct kernel_crypt_op kcop;
@@ -104,25 +97,6 @@ struct crypt_priv {
 		(sg)->length = len;				\
 		(sg)->dma_address = 0;				\
 	} while (0)
-
-struct csession {
-	struct list_head entry;
-	struct mutex sem;
-	struct cipher_data cdata;
-	struct hash_data hdata;
-	uint32_t sid;
-	uint32_t alignmask;
-#ifdef CRYPTODEV_STATS
-#if !((COP_ENCRYPT < 2) && (COP_DECRYPT < 2))
-#error Struct csession.stat uses COP_{ENCRYPT,DECRYPT} as indices. Do something!
-#endif
-	unsigned long long stat[2];
-	size_t stat_max_size, stat_count;
-#endif
-	int array_size;
-	struct page **pages;
-	struct scatterlist *sg;
-};
 
 /* cryptodev's own workqueue, keeps crypto tasks from disturbing the force */
 static struct workqueue_struct *cryptodev_wq;
@@ -423,7 +397,7 @@ crypto_finish_all_sessions(struct fcrypt *fcr)
 }
 
 /* Look up session by session ID. The returned session is locked. */
-static struct csession *
+struct csession *
 crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 {
 	struct csession *ses_ptr, *retval = 0;
@@ -583,6 +557,33 @@ int __get_userbuf(uint8_t __user *addr, uint32_t len, int write,
 	return 0;
 }
 
+int adjust_sg_array(struct csession * ses, int pagecount)
+{
+struct scatterlist *sg;
+struct page **pages;
+int array_size;
+
+	for (array_size = ses->array_size; array_size < pagecount;
+	     array_size *= 2)
+		;
+
+	dprintk(2, KERN_DEBUG, "%s: reallocating to %d elements\n",
+			__func__, array_size);
+	pages = krealloc(ses->pages, array_size * sizeof(struct page *),
+			 GFP_KERNEL);
+	if (unlikely(!pages))
+		return -ENOMEM;
+	ses->pages = pages;
+	sg = krealloc(ses->sg, array_size * sizeof(struct scatterlist),
+		      GFP_KERNEL);
+	if (unlikely(!sg))
+		return -ENOMEM;
+	ses->sg = sg;
+	ses->array_size = array_size;
+
+	return 0;
+}
+
 /* make cop->src and cop->dst available in scatterlists */
 static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
                        struct scatterlist **src_sg, struct scatterlist **dst_sg,
@@ -619,27 +620,9 @@ static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
 	(*tot_pages) = pagecount = src_pagecount + dst_pagecount;
 
 	if (pagecount > ses->array_size) {
-		struct scatterlist *sg;
-		struct page **pages;
-		int array_size;
-
-		for (array_size = ses->array_size; array_size < pagecount;
-		     array_size *= 2)
-			;
-
-		dprintk(2, KERN_DEBUG, "%s: reallocating to %d elements\n",
-				__func__, array_size);
-		pages = krealloc(ses->pages, array_size * sizeof(struct page *),
-				 GFP_KERNEL);
-		if (unlikely(!pages))
-			return -ENOMEM;
-		ses->pages = pages;
-		sg = krealloc(ses->sg, array_size * sizeof(struct scatterlist),
-			      GFP_KERNEL);
-		if (unlikely(!sg))
-			return -ENOMEM;
-		ses->sg = sg;
-		ses->array_size = array_size;
+		rc = adjust_sg_array(ses, pagecount);
+		if (rc)
+			return rc;
 	}
 
 	rc = __get_userbuf(cop->src, cop->len, write_src, src_pagecount,
@@ -769,7 +752,7 @@ static int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 #endif
 
 out_unlock:
-	mutex_unlock(&ses_ptr->sem);
+	crypto_put_session(ses_ptr);
 	return ret;
 }
 
@@ -989,7 +972,7 @@ static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
 	kcop->ivlen = cop->iv ? ses_ptr->cdata.ivsize : 0;
 	kcop->digestsize = 0; /* will be updated during operation */
 
-	mutex_unlock(&ses_ptr->sem);
+	crypto_put_session(ses_ptr);
 
 	kcop->task = current;
 	kcop->mm = current->mm;
@@ -1080,7 +1063,7 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 
 	siop->alignmask = ses_ptr->alignmask;
 
-	mutex_unlock(&ses_ptr->sem);
+	crypto_put_session(ses_ptr);
 	return 0;
 }
 
@@ -1091,6 +1074,7 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 	int __user *p = arg;
 	struct session_op sop;
 	struct kernel_crypt_op kcop;
+	struct kernel_crypt_auth_op kcaop;
 	struct crypt_priv *pcr = filp->private_data;
 	struct fcrypt *fcr;
 	struct session_info_op siop;
@@ -1141,14 +1125,30 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 			return ret;
 		return copy_to_user(arg, &siop, sizeof(siop));
 	case CIOCCRYPT:
-		if (unlikely(ret = kcop_from_user(&kcop, fcr, arg)))
+		if (unlikely(ret = kcop_from_user(&kcop, fcr, arg))) {
+			dprintk(1, KERN_WARNING, "Error copying from user");
 			return ret;
+		}
 
 		ret = crypto_run(fcr, &kcop);
-		if (unlikely(ret))
+		if (unlikely(ret)) {
+			dprintk(1, KERN_WARNING, "Error in crypto_run");
 			return ret;
+		}
 
 		return kcop_to_user(&kcop, fcr, arg);
+	case CIOCAUTHCRYPT:
+		if (unlikely(ret = kcaop_from_user(&kcaop, fcr, arg))) {
+			dprintk(1, KERN_WARNING, "Error copying from user");
+			return ret;
+		}
+
+		ret = crypto_auth_run(fcr, &kcaop);
+		if (unlikely(ret)) {
+			dprintk(1, KERN_WARNING, "Error in crypto_auth_run");
+			return ret;
+		}
+		return kcaop_to_user(&kcaop, fcr, arg);
 	case CIOCASYNCCRYPT:
 		if (unlikely(ret = kcop_from_user(&kcop, fcr, arg)))
 			return ret;
@@ -1241,12 +1241,16 @@ static int compat_kcop_to_user(struct kernel_crypt_op *kcop,
 	struct compat_crypt_op compat_cop;
 
 	ret = fill_cop_from_kcop(kcop, fcr);
-	if (unlikely(ret))
+	if (unlikely(ret)) {
+		dprintk(1, KERN_WARNING, "Error in fill_cop_from_kcop");
 		return ret;
+	}
 	crypt_op_to_compat(&kcop->cop, &compat_cop);
 
-	if (unlikely(copy_to_user(arg, &compat_cop, sizeof(compat_cop))))
+	if (unlikely(copy_to_user(arg, &compat_cop, sizeof(compat_cop)))) {
+		dprintk(1, KERN_WARNING, "Error copying to user");
 		return -EFAULT;
+	}
 	return 0;
 }
 
