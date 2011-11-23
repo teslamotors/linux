@@ -70,7 +70,7 @@ static int get_userbuf_aead(struct csession *ses, struct kernel_crypt_auth_op *k
 		return -EINVAL;
 	}
 
-	if (caop->auth_len != 0)
+	if (caop->auth_len > 0)
 		auth_pagecount = PAGECOUNT(caop->auth_src, caop->auth_len);
 
 	dst_pagecount = PAGECOUNT(caop->dst, kcaop->dst_len);
@@ -90,20 +90,20 @@ static int get_userbuf_aead(struct csession *ses, struct kernel_crypt_auth_op *k
 			return -EINVAL;
 		}
 		(*auth_sg) = ses->sg;
+		(*dst_sg) = ses->sg + auth_pagecount;
 	} else {
 		(*auth_sg) = NULL;
+		(*dst_sg) = ses->sg;
 	}
 
 	rc = __get_userbuf(caop->dst, kcaop->dst_len, 1, dst_pagecount,
-	                   ses->pages + auth_pagecount, ses->sg, kcaop->task, kcaop->mm);
+	                   ses->pages + auth_pagecount, *dst_sg, kcaop->task, kcaop->mm);
 	if (unlikely(rc)) {
 		release_user_pages(ses->pages, auth_pagecount);
 		dprintk(1, KERN_ERR,
 			"failed to get user pages for data input\n");
 		return -EINVAL;
 	}
-	
-	(*dst_sg) = ses->sg + auth_pagecount;
 
 	return 0;
 }

@@ -14,13 +14,14 @@
 #include <crypto/cryptodev.h>
 
 #define	DATA_SIZE	(8*1024+11)
+#define AUTH_SIZE       31
 #define	BLOCK_SIZE	16
 #define	KEY_SIZE	16
 
 #define MAC_SIZE 20 /* SHA1 */
 
 static int
-get_sha1_hmac(int cfd, void* key, int key_size, void* data, int data_size, void* mac)
+get_sha1_hmac(int cfd, void* key, int key_size, void* data1, int data1_size, void* data2, int data2_size, void* mac)
 {
 	struct session_op sess;
 	struct crypt_op cryp;
@@ -40,12 +41,26 @@ get_sha1_hmac(int cfd, void* key, int key_size, void* data, int data_size, void*
 
 	/* Encrypt data.in to data.encrypted */
 	cryp.ses = sess.ses;
-	cryp.len = data_size;
-	cryp.src = data;
+	cryp.len = data1_size;
+	cryp.src = data1;
 	cryp.dst = NULL;
 	cryp.iv = NULL;
 	cryp.mac = mac;
 	cryp.op = COP_ENCRYPT;
+	cryp.flags = COP_FLAG_UPDATE;
+	if (ioctl(cfd, CIOCCRYPT, &cryp)) {
+		perror("ioctl(CIOCCRYPT)");
+		return 1;
+	}
+
+	cryp.ses = sess.ses;
+	cryp.len = data2_size;
+	cryp.src = data2;
+	cryp.dst = NULL;
+	cryp.iv = NULL;
+	cryp.mac = mac;
+	cryp.op = COP_ENCRYPT;
+	cryp.flags = COP_FLAG_FINAL;
 	if (ioctl(cfd, CIOCCRYPT, &cryp)) {
 		perror("ioctl(CIOCCRYPT)");
 		return 1;
@@ -77,6 +92,7 @@ test_crypto(int cfd)
 	char ciphertext_raw[DATA_SIZE + 63], *ciphertext;
 	char iv[BLOCK_SIZE];
 	char key[KEY_SIZE];
+	char auth[AUTH_SIZE];
 	unsigned char sha1mac[20];
 	int pad, i;
 
@@ -93,6 +109,7 @@ test_crypto(int cfd)
 
 	memset(key,0x33,  sizeof(key));
 	memset(iv, 0x03,  sizeof(iv));
+	memset(auth, 0xf1,  sizeof(auth));
 
 	/* Get crypto session for AES128 */
 	sess.cipher = CRYPTO_AES_CBC;
@@ -125,7 +142,7 @@ test_crypto(int cfd)
 #endif
 	memset(plaintext, 0x15, DATA_SIZE);
 
-	if (get_sha1_hmac(cfd, sess.mackey, sess.mackeylen, plaintext, DATA_SIZE, sha1mac) != 0) {
+	if (get_sha1_hmac(cfd, sess.mackey, sess.mackeylen, auth, sizeof(auth), plaintext, DATA_SIZE, sha1mac) != 0) {
 		fprintf(stderr, "SHA1 MAC failed\n");
 		return 1;
 	}
@@ -134,6 +151,8 @@ test_crypto(int cfd)
 
 	/* Encrypt data.in to data.encrypted */
 	cao.ses = sess.ses;
+	cao.auth_src = auth;
+	cao.auth_len = sizeof(auth);
 	cao.len = DATA_SIZE;
 	cao.src = plaintext;
 	cao.dst = ciphertext;
