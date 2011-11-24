@@ -227,6 +227,315 @@ test_crypto(int cfd)
 	return 0;
 }
 
+static int
+test_encrypt_decrypt(int cfd)
+{
+	char plaintext_raw[DATA_SIZE + 63], *plaintext;
+	char ciphertext_raw[DATA_SIZE + 63], *ciphertext;
+	char iv[BLOCK_SIZE];
+	char key[KEY_SIZE];
+	unsigned char sha1mac[20];
+	unsigned char tag[20];
+	unsigned char mackey[] = "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b";
+	int mackey_len = 16;
+	int pad, i;
+
+	struct session_op sess;
+	struct crypt_auth_op cao;
+#ifdef CIOCGSESSINFO
+	struct session_info_op siop;
+#endif
+
+	memset(&sess, 0, sizeof(sess));
+	memset(&cao, 0, sizeof(cao));
+
+	memset(key,0x33,  sizeof(key));
+	memset(iv, 0x03,  sizeof(iv));
+
+	/* Get crypto session for AES128 */
+	sess.cipher = CRYPTO_AES_CTR;
+	sess.keylen = KEY_SIZE;
+	sess.key = key;
+
+	sess.mac = CRYPTO_SHA1_HMAC;
+	sess.mackeylen = mackey_len;
+	sess.mackey = mackey;
+
+	if (ioctl(cfd, CIOCGSESSION, &sess)) {
+		perror("ioctl(CIOCGSESSION)");
+		return 1;
+	}
+
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+//	printf("requested cipher CRYPTO_AES_CBC/HMAC-SHA1, got %s with driver %s\n",
+//			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
+
+	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
+	ciphertext = (char *)(((unsigned long)ciphertext_raw + siop.alignmask) & ~siop.alignmask);
+#else
+	plaintext = plaintext_raw;
+	ciphertext = ciphertext_raw;
+#endif
+	memset(plaintext, 0x15, HEADER_SIZE); /* header */
+	memset(&plaintext[HEADER_SIZE], 0x17, PLAINTEXT_SIZE); /* payload */
+	memset(&plaintext[HEADER_SIZE+PLAINTEXT_SIZE], 0x22, FOOTER_SIZE);
+
+	memcpy(ciphertext, plaintext, DATA_SIZE);
+
+	/* Encrypt data.in to data.encrypted */
+	cao.ses = sess.ses;
+	cao.len = PLAINTEXT_SIZE;
+	cao.auth_len = HEADER_SIZE+PLAINTEXT_SIZE+FOOTER_SIZE;
+	cao.auth_src = ciphertext;
+	cao.src = ciphertext+HEADER_SIZE;
+	cao.dst = cao.src;
+	cao.iv = iv;
+	cao.op = COP_ENCRYPT;
+	cao.flags = COP_FLAG_AEAD_SRTP_TYPE;
+	cao.tag = tag;
+	cao.tag_len = 20;
+
+	if (ioctl(cfd, CIOCAUTHCRYPT, &cao)) {
+		perror("ioctl(CIOCAUTHCRYPT)");
+		return 1;
+	}
+
+
+	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
+		perror("ioctl(CIOCFSESSION)");
+		return 1;
+	}
+
+	/* Get crypto session for AES128 */
+	memset(&sess, 0, sizeof(sess));
+	sess.cipher = CRYPTO_AES_CTR;
+	sess.keylen = KEY_SIZE;
+	sess.key = key;
+
+	sess.mac = CRYPTO_SHA1_HMAC;
+	sess.mackeylen = mackey_len;
+	sess.mackey = mackey;
+
+	if (ioctl(cfd, CIOCGSESSION, &sess)) {
+		perror("ioctl(CIOCGSESSION)");
+		return 1;
+	}
+
+	/* Decrypt data.encrypted to data.decrypted */
+	/* Encrypt data.in to data.encrypted */
+	cao.ses = sess.ses;
+	cao.len = PLAINTEXT_SIZE;
+	cao.auth_len = HEADER_SIZE+PLAINTEXT_SIZE+FOOTER_SIZE;
+	cao.auth_src = ciphertext;
+	cao.src = ciphertext+HEADER_SIZE;
+	cao.dst = cao.src;
+	cao.iv = iv;
+	cao.op = COP_DECRYPT;
+	cao.flags = COP_FLAG_AEAD_SRTP_TYPE;
+	cao.tag = tag;
+	cao.tag_len = 20;
+	if (ioctl(cfd, CIOCAUTHCRYPT, &cao)) {
+		perror("ioctl(CIOCCRYPT)");
+		return 1;
+	}
+
+	/* Verify the result */
+	if (memcmp(plaintext+HEADER_SIZE, ciphertext+HEADER_SIZE, PLAINTEXT_SIZE) != 0) {
+		int i;
+		fprintf(stderr,
+			"FAIL: Decrypted data are different from the input data.\n");
+		printf("plaintext:");
+		for (i = 0; i < DATA_SIZE; i++) {
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", (unsigned int)plaintext[i]);
+		}
+		printf("ciphertext:");
+		for (i = 0; i < DATA_SIZE; i++) {
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", (unsigned int)ciphertext[i]);
+		}
+		printf("\n");
+		return 1;
+	}
+
+	printf("Test passed\n");
+
+
+	/* Finish crypto session */
+	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
+		perror("ioctl(CIOCFSESSION)");
+		return 1;
+	}
+
+	return 0;
+}
+
+static int
+test_encrypt_decrypt_error(int cfd, int err)
+{
+	char plaintext_raw[DATA_SIZE + 63], *plaintext;
+	char ciphertext_raw[DATA_SIZE + 63], *ciphertext;
+	char iv[BLOCK_SIZE];
+	char key[KEY_SIZE];
+	unsigned char sha1mac[20];
+	unsigned char tag[20];
+	unsigned char mackey[] = "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b";
+	int mackey_len = 16;
+	int pad, i;
+
+	struct session_op sess;
+	struct crypt_auth_op cao;
+#ifdef CIOCGSESSINFO
+	struct session_info_op siop;
+#endif
+
+	memset(&sess, 0, sizeof(sess));
+	memset(&cao, 0, sizeof(cao));
+
+	memset(key,0x33,  sizeof(key));
+	memset(iv, 0x03,  sizeof(iv));
+
+	/* Get crypto session for AES128 */
+	sess.cipher = CRYPTO_AES_CTR;
+	sess.keylen = KEY_SIZE;
+	sess.key = key;
+
+	sess.mac = CRYPTO_SHA1_HMAC;
+	sess.mackeylen = mackey_len;
+	sess.mackey = mackey;
+
+	if (ioctl(cfd, CIOCGSESSION, &sess)) {
+		perror("ioctl(CIOCGSESSION)");
+		return 1;
+	}
+
+#ifdef CIOCGSESSINFO
+	siop.ses = sess.ses;
+	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
+		perror("ioctl(CIOCGSESSINFO)");
+		return 1;
+	}
+//	printf("requested cipher CRYPTO_AES_CBC/HMAC-SHA1, got %s with driver %s\n",
+//			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
+
+	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
+	ciphertext = (char *)(((unsigned long)ciphertext_raw + siop.alignmask) & ~siop.alignmask);
+#else
+	plaintext = plaintext_raw;
+	ciphertext = ciphertext_raw;
+#endif
+	memset(plaintext, 0x15, HEADER_SIZE); /* header */
+	memset(&plaintext[HEADER_SIZE], 0x17, PLAINTEXT_SIZE); /* payload */
+	memset(&plaintext[HEADER_SIZE+PLAINTEXT_SIZE], 0x22, FOOTER_SIZE);
+
+	memcpy(ciphertext, plaintext, DATA_SIZE);
+
+	/* Encrypt data.in to data.encrypted */
+	cao.ses = sess.ses;
+	cao.len = PLAINTEXT_SIZE;
+	cao.auth_len = HEADER_SIZE+PLAINTEXT_SIZE+FOOTER_SIZE;
+	cao.auth_src = ciphertext;
+	cao.src = ciphertext+HEADER_SIZE;
+	cao.dst = cao.src;
+	cao.iv = iv;
+	cao.op = COP_ENCRYPT;
+	cao.flags = COP_FLAG_AEAD_SRTP_TYPE;
+	cao.tag = tag;
+	cao.tag_len = 20;
+
+	if (ioctl(cfd, CIOCAUTHCRYPT, &cao)) {
+		perror("ioctl(CIOCAUTHCRYPT)");
+		return 1;
+	}
+
+
+	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
+		perror("ioctl(CIOCFSESSION)");
+		return 1;
+	}
+
+	/* Get crypto session for AES128 */
+	memset(&sess, 0, sizeof(sess));
+	sess.cipher = CRYPTO_AES_CTR;
+	sess.keylen = KEY_SIZE;
+	sess.key = key;
+
+	sess.mac = CRYPTO_SHA1_HMAC;
+	sess.mackeylen = mackey_len;
+	sess.mackey = mackey;
+
+	if (ioctl(cfd, CIOCGSESSION, &sess)) {
+		perror("ioctl(CIOCGSESSION)");
+		return 1;
+	}
+
+	/* Decrypt data.encrypted to data.decrypted */
+	/* Encrypt data.in to data.encrypted */
+	if (err == 0)
+		ciphertext[1]++;
+	else
+		ciphertext[HEADER_SIZE+3]++;
+	cao.ses = sess.ses;
+	cao.len = PLAINTEXT_SIZE;
+	cao.auth_len = HEADER_SIZE+PLAINTEXT_SIZE+FOOTER_SIZE;
+	cao.auth_src = ciphertext;
+	cao.src = ciphertext+HEADER_SIZE;
+	cao.dst = cao.src;
+	cao.iv = iv;
+	cao.op = COP_DECRYPT;
+	cao.flags = COP_FLAG_AEAD_SRTP_TYPE;
+	cao.tag = tag;
+	cao.tag_len = 20;
+	if (ioctl(cfd, CIOCAUTHCRYPT, &cao)) {
+		if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
+			perror("ioctl(CIOCFSESSION)");
+			return 1;
+		}
+
+		printf("Test passed\n");
+		return 0;
+	}
+
+	/* Verify the result */
+	if (memcmp(plaintext+HEADER_SIZE, ciphertext+HEADER_SIZE, PLAINTEXT_SIZE) != 0) {
+		int i;
+		fprintf(stderr,
+			"FAIL: Decrypted data are different from the input data.\n");
+		printf("plaintext:");
+		for (i = 0; i < DATA_SIZE; i++) {
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", (unsigned int)plaintext[i]);
+		}
+		printf("ciphertext:");
+		for (i = 0; i < DATA_SIZE; i++) {
+			if ((i % 30) == 0)
+				printf("\n");
+			printf("%02x ", (unsigned int)ciphertext[i]);
+		}
+		printf("\n");
+		return 1;
+	}
+
+	printf("Test failed\n");
+
+
+	/* Finish crypto session */
+	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
+		perror("ioctl(CIOCFSESSION)");
+		return 1;
+	}
+
+	return 1;
+}
+
 int
 main()
 {
@@ -254,6 +563,15 @@ main()
 	/* Run the test itself */
 
 	if (test_crypto(cfd))
+		return 1;
+
+	if (test_encrypt_decrypt(cfd))
+		return 1;
+
+	if (test_encrypt_decrypt_error(cfd,0))
+		return 1;
+
+	if (test_encrypt_decrypt_error(cfd,1))
 		return 1;
 
 	/* Close cloned descriptor */

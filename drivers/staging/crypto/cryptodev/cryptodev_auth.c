@@ -363,12 +363,12 @@ int kcaop_to_user(struct kernel_crypt_auth_op *kcaop,
 	return 0;
 }
 
-static void copy_hash( struct scatterlist *dst_sg, int len, void* hash, int hash_len)
+static void copy_tls_hash( struct scatterlist *dst_sg, int len, void* hash, int hash_len)
 {
 	scatterwalk_map_and_copy(hash, dst_sg, len, hash_len, 1);
 }
 
-static void read_hash( struct scatterlist *dst_sg, int len, void* hash, int hash_len)
+static void read_tls_hash( struct scatterlist *dst_sg, int len, void* hash, int hash_len)
 {
 	scatterwalk_map_and_copy(hash, dst_sg, len-hash_len, hash_len, 0);
 }
@@ -385,25 +385,28 @@ static int pad_record( struct scatterlist *dst_sg, int len, int block_size)
 	return pad_size;
 }
 
-static int verify_record_pad( struct scatterlist *dst_sg, int len, int block_size)
+static int verify_tls_record_pad( struct scatterlist *dst_sg, int len, int block_size)
 {
 	uint8_t pad[256]; /* the maximum allowed */
 	uint8_t pad_size;
 	int i;
 
 	scatterwalk_map_and_copy(&pad_size, dst_sg, len-1, 1, 0);
-	pad_size++;
 
-	if (pad_size > len)
+	if (pad_size+1 > len) {
+		dprintk(1, KERN_ERR, "Pad size: %d\n", pad_size);
 		return -ECANCELED;
+	}
 
-	scatterwalk_map_and_copy(pad, dst_sg, len-pad_size, pad_size, 0);
+	scatterwalk_map_and_copy(pad, dst_sg, len-pad_size-1, pad_size+1, 0);
 
 	for (i=0;i<pad_size;i++)
-		if (pad[i] != pad_size)
+		if (pad[i] != pad_size) {
+			dprintk(1, KERN_ERR, "Pad size: %d, pad: %d\n", pad_size, (int)pad[i]);
 			return -ECANCELED;
+		}
 
-	return 0;
+	return pad_size+1;
 }
 
 static int
@@ -444,7 +447,7 @@ tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 				goto out_err;
 			}
 
-			copy_hash( dst_sg, len, hash_output, caop->tag_len);
+			copy_tls_hash( dst_sg, len, hash_output, caop->tag_len);
 			len += caop->tag_len;
 		}
 
@@ -472,12 +475,13 @@ tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 			}
 
 			if (ses_ptr->cdata.blocksize > 1) {
-				ret = verify_record_pad(dst_sg, len, ses_ptr->cdata.blocksize);
-				if (unlikely(ret)) {
+				ret = verify_tls_record_pad(dst_sg, len, ses_ptr->cdata.blocksize);
+				if (unlikely(ret < 0)) {
 					dprintk(0, KERN_ERR, "verify_record_pad: %d\n", ret);
 					fail = 1;
-				} else
+				} else {
 					len -= ret;
+				}
 			}
 		}
 
@@ -488,7 +492,7 @@ tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 				goto out_err;
 			}
 
-			read_hash( dst_sg, len, vhash, caop->tag_len);
+			read_tls_hash( dst_sg, len, vhash, caop->tag_len);
 			len -= caop->tag_len;
 
 			if (auth_len > 0) {
@@ -516,7 +520,7 @@ tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 			}
 
 			if (memcmp(vhash, hash_output, caop->tag_len) != 0 || fail != 0) {
-				dprintk(1, KERN_ERR, "MAC verification failed\n");
+				dprintk(1, KERN_ERR, "MAC verification failed (tag_len: %d)\n", caop->tag_len);
 				ret = -ECANCELED;
 				goto out_err;
 			}
