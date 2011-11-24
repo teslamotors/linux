@@ -13,8 +13,8 @@
 #include <sys/ioctl.h>
 #include <crypto/cryptodev.h>
 
-#define	DATA_SIZE	(8*1024+11)
-#define HEADER_SIZE 256
+#define	DATA_SIZE	(8*1024)
+#define HEADER_SIZE 1020
 #define PLAINTEXT_SIZE 1021
 #define FOOTER_SIZE 15
 #define	BLOCK_SIZE	16
@@ -203,13 +203,13 @@ test_crypto(int cfd)
 		for (i = 0; i < DATA_SIZE; i++) {
 			if ((i % 30) == 0)
 				printf("\n");
-			printf("%02x ", plaintext[i]);
+			printf("%02x ", (unsigned int)plaintext[i]);
 		}
 		printf("ciphertext:");
 		for (i = 0; i < DATA_SIZE; i++) {
 			if ((i % 30) == 0)
 				printf("\n");
-			printf("%02x ", ciphertext[i]);
+			printf("%02x ", (unsigned int)ciphertext[i]);
 		}
 		printf("\n");
 		return 1;

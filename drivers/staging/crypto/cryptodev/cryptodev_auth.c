@@ -108,6 +108,61 @@ static int get_userbuf_aead(struct csession *ses, struct kernel_crypt_auth_op *k
 	return 0;
 }
 
+/* Taken from Maxim Levitsky's patch
+ */
+static struct scatterlist *sg_advance(struct scatterlist *sg, int consumed)
+{
+	while (consumed >= sg->length) {
+		consumed -= sg->length;
+
+		sg = sg_next(sg);
+		if (!sg)
+			break;
+	}
+
+	WARN_ON(!sg && consumed);
+
+	if (!sg)
+		return NULL;
+
+	sg->offset += consumed;
+	sg->length -= consumed;
+
+	if (sg->offset >= PAGE_SIZE) {
+		struct page *page =
+			nth_page(sg_page(sg), sg->offset / PAGE_SIZE);
+		sg_set_page(sg, page, sg->length, sg->offset % PAGE_SIZE);
+	}
+
+	return sg;
+}
+
+/**
+ * sg_copy - copies sg entries from sg_from to sg_to, such
+ * as sg_to covers first 'len' bytes from sg_from.
+ */
+static int sg_copy(struct scatterlist *sg_from, struct scatterlist *sg_to, int len)
+{
+	while (len > sg_from->length) {
+		len -= sg_from->length;
+
+		sg_set_page(sg_to, sg_page(sg_from),
+				sg_from->length, sg_from->offset);
+
+		sg_to = sg_next(sg_to);
+		sg_from = sg_next(sg_from);
+
+		if (len && (!sg_from || !sg_to))
+			return -ENOMEM;
+	}
+
+	if (len)
+		sg_set_page(sg_to, sg_page(sg_from),
+				len, sg_from->offset);
+	sg_mark_end(sg_to);
+	return 0;
+}
+
 static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *kcaop,
 			struct scatterlist **auth_sg, struct scatterlist **dst_sg, 
 			int *tot_pages)
@@ -139,14 +194,14 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 
 	auth_pagecount = PAGECOUNT(caop->auth_src, caop->auth_len);
 	diff = (int)(caop->src - caop->auth_src);
-	if (diff > 256 || diff < 0) {
+	if (diff > PAGE_SIZE || diff < 0) {
 		dprintk(1, KERN_WARNING, "auth_src must overlap with src (diff: %d).\n", diff);
 		return -EINVAL;
 	}
 
 	(*tot_pages) = pagecount = auth_pagecount;
 
-	rc = adjust_sg_array(ses, pagecount);
+	rc = adjust_sg_array(ses, pagecount*2); /* double pages to have pages for dst(=auth_src) */
 	if (rc)
 		return rc;
 
@@ -159,13 +214,51 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 	}
 	(*auth_sg) = ses->sg;
 
-	memcpy(&ses->sg2, ses->sg, sizeof(ses->sg[0]));
-	ses->sg2.offset += diff;
-	(*dst_sg) = &ses->sg2;
+	(*dst_sg) = ses->sg + auth_pagecount;
+	sg_init_table(*dst_sg, auth_pagecount);
+	sg_copy(ses->sg, (*dst_sg), caop->auth_len);
+	(*dst_sg) = sg_advance(*dst_sg, diff);
+	if (*dst_sg == NULL) {
+		release_user_pages(ses->pages, pagecount);
+		dprintk(1, KERN_ERR,
+			"failed to get enough pages for auth data\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }
 
+int copy_from_user_to_user( void* __user dst, void* __user src, int len)
+{
+uint8_t *buffer;
+int buffer_size = min(len, 16*1024);
+int rc;
+
+	if (len > buffer_size) {
+		dprintk(1, KERN_ERR,
+			"The provided buffer is too large\n");
+		return -EINVAL;
+	}
+
+	buffer = kmalloc(buffer_size, GFP_KERNEL);
+	if (buffer == NULL)
+		return -ENOMEM;
+
+	if (unlikely(copy_from_user(buffer, src, len))) {
+		rc = -EFAULT;
+		goto out;
+	}
+
+	if (unlikely(copy_to_user(dst, buffer, len))) {
+		rc = -EFAULT;
+		goto out;
+	}
+
+	rc = 0;
+out:
+	kfree(buffer);
+	return rc;
+}
 
 static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcrypt *fcr)
 {
@@ -183,22 +276,11 @@ static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcryp
 	if (caop->src != caop->dst) {
 		dprintk(2, KERN_ERR,
 			"Non-inplace encryption and decryption is not efficient\n");
-		if (caop->len > sizeof(ses_ptr->buffer)) {
-			dprintk(1, KERN_ERR,
-				"The provided buffer is too large\n");
-			rc = -EINVAL;
+		
+		rc = copy_from_user_to_user( caop->dst, caop->src, caop->len);
+		if (rc < 0)
 			goto out_unlock;
-		}
 
-		if (unlikely(copy_from_user(ses_ptr->buffer, caop->src, caop->len))) {
-			rc = -EFAULT;
-			goto out_unlock;
-		}
-
-		if (unlikely(copy_to_user(caop->dst, ses_ptr->buffer, caop->len))) {
-			rc = -EFAULT;
-			goto out_unlock;
-		}
 
 	}
 

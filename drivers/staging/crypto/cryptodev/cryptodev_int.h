@@ -190,8 +190,6 @@ struct csession {
 	int array_size;
 	struct page **pages;
 	struct scatterlist *sg;
-	struct scatterlist sg2; /* temporal sg */
-	uint8_t buffer[16*1024]; /* temporal buffer */
 };
 
 struct csession *crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid);
