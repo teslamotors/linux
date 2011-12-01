@@ -40,29 +40,28 @@
 #include <crypto/scatterwalk.h>
 #include <linux/scatterlist.h>
 #include "cryptodev_int.h"
+#include "zc.h"
 #include "version.h"
 
 
-/* make cop->src and cop->dst available in scatterlists */
-static int get_userbuf_aead(struct csession *ses, struct kernel_crypt_auth_op *kcaop,
-			struct scatterlist **auth_sg, struct scatterlist **dst_sg, 
+/* make caop->dst available in scatterlist.
+ * (caop->src is assumed to be equal to caop->dst)
+ */
+static int get_userbuf_tls(struct csession *ses, struct kernel_crypt_auth_op *kcaop,
+			struct scatterlist **dst_sg, 
 			int *tot_pages)
 {
-	int dst_pagecount = 0, pagecount;
-	int auth_pagecount = 0;
+	int pagecount = 0;
 	struct crypt_auth_op *caop = &kcaop->caop;
 	int rc;
 
-	if (caop->dst == NULL && caop->auth_src == NULL)
+	if (caop->dst == NULL)
 		return -EINVAL;
 
 	if (ses->alignmask) {
 		if (!IS_ALIGNED((unsigned long)caop->dst, ses->alignmask))
 			dprintk(2, KERN_WARNING, "%s: careful - source address %lx is not %d byte aligned\n",
 				__func__, (unsigned long)caop->dst, ses->alignmask + 1);
-		if (!IS_ALIGNED((unsigned long)caop->auth_src, ses->alignmask))
-			dprintk(2, KERN_WARNING, "%s: careful - source address %lx is not %d byte aligned\n",
-				__func__, (unsigned long)caop->auth_src, ses->alignmask + 1);
 	}
 
 	if (kcaop->dst_len == 0) {
@@ -70,40 +69,23 @@ static int get_userbuf_aead(struct csession *ses, struct kernel_crypt_auth_op *k
 		return -EINVAL;
 	}
 
-	if (caop->auth_len > 0)
-		auth_pagecount = PAGECOUNT(caop->auth_src, caop->auth_len);
+	pagecount = PAGECOUNT(caop->dst, kcaop->dst_len);
 
-	dst_pagecount = PAGECOUNT(caop->dst, kcaop->dst_len);
-
-	(*tot_pages) = pagecount = auth_pagecount + dst_pagecount;
+	(*tot_pages) = pagecount;
 
 	rc = adjust_sg_array(ses, pagecount);
 	if (rc)
 		return rc;
 
-	if (auth_pagecount > 0) {
-		rc = __get_userbuf(caop->auth_src, caop->auth_len, 0, auth_pagecount,
-				   ses->pages, ses->sg, kcaop->task, kcaop->mm);
-		if (unlikely(rc)) {
-			dprintk(1, KERN_ERR,
-				"failed to get user pages for data input\n");
-			return -EINVAL;
-		}
-		(*auth_sg) = ses->sg;
-		(*dst_sg) = ses->sg + auth_pagecount;
-	} else {
-		(*auth_sg) = NULL;
-		(*dst_sg) = ses->sg;
-	}
-
-	rc = __get_userbuf(caop->dst, kcaop->dst_len, 1, dst_pagecount,
-	                   ses->pages + auth_pagecount, *dst_sg, kcaop->task, kcaop->mm);
+	rc = __get_userbuf(caop->dst, kcaop->dst_len, 1, pagecount,
+	                   ses->pages, ses->sg, kcaop->task, kcaop->mm);
 	if (unlikely(rc)) {
-		release_user_pages(ses->pages, auth_pagecount);
 		dprintk(1, KERN_ERR,
 			"failed to get user pages for data input\n");
 		return -EINVAL;
 	}
+	
+	(*dst_sg) = ses->sg;
 
 	return 0;
 }
@@ -163,6 +145,14 @@ static int sg_copy(struct scatterlist *sg_from, struct scatterlist *sg_to, int l
 	return 0;
 }
 
+#define MAX_SRTP_AUTH_DATA_DIFF 256
+
+/* Makes caop->auth_src available as scatterlist.
+ * It also provides a pointer to caop->dst, which however,
+ * is assumed to be within the caop->auth_src buffer. If not
+ * (if their difference exceeds MAX_SRTP_AUTH_DATA_DIFF) it
+ * returns error.
+ */
 static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *kcaop,
 			struct scatterlist **auth_sg, struct scatterlist **dst_sg, 
 			int *tot_pages)
@@ -194,7 +184,7 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 
 	auth_pagecount = PAGECOUNT(caop->auth_src, caop->auth_len);
 	diff = (int)(caop->src - caop->auth_src);
-	if (diff > PAGE_SIZE || diff < 0) {
+	if (diff > MAX_SRTP_AUTH_DATA_DIFF || diff < 0) {
 		dprintk(1, KERN_WARNING, "auth_src must overlap with src (diff: %d).\n", diff);
 		return -EINVAL;
 	}
@@ -273,15 +263,15 @@ static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcryp
 		return -EINVAL;
 	}
 
-	if (caop->src != caop->dst) {
-		dprintk(2, KERN_ERR,
-			"Non-inplace encryption and decryption is not efficient\n");
+	if (caop->flags & COP_FLAG_AEAD_TLS_TYPE || caop->flags & COP_FLAG_AEAD_SRTP_TYPE) {
+		if (caop->src != caop->dst) {
+			dprintk(2, KERN_ERR,
+				"Non-inplace encryption and decryption is not efficient\n");
 		
-		rc = copy_from_user_to_user( caop->dst, caop->src, caop->len);
-		if (rc < 0)
-			goto out_unlock;
-
-
+			rc = copy_from_user_to_user( caop->dst, caop->src, caop->len);
+			if (rc < 0)
+				goto out_unlock;
+		}
 	}
 
 	if (caop->tag_len == 0)
@@ -644,18 +634,9 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 {
 	struct scatterlist *dst_sg, *auth_sg;
 	struct crypt_auth_op *caop = &kcaop->caop;
-	int ret = 0, pagecount;
+	int ret = 0, pagecount = 0;
 
-	if (caop->flags & COP_FLAG_AEAD_TLS_TYPE) {
-		ret = get_userbuf_aead(ses_ptr, kcaop, &auth_sg, &dst_sg, &pagecount);
-		if (unlikely(ret)) {
-			dprintk(1, KERN_ERR, "Error getting user pages.\n");
-			return ret;
-		}
-
-		ret = tls_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len, 
-			   dst_sg, caop->len);
-	} else if (caop->flags & COP_FLAG_AEAD_SRTP_TYPE) {
+	if (caop->flags & COP_FLAG_AEAD_SRTP_TYPE) {
 		ret = get_userbuf_srtp(ses_ptr, kcaop, &auth_sg, &dst_sg, &pagecount);
 		if (unlikely(ret)) {
 			dprintk(1, KERN_ERR, "Error getting user pages.\n");
@@ -665,8 +646,45 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 		ret = srtp_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len, 
 			   dst_sg, caop->len);
 	} else {
-		dprintk(1, KERN_ERR, "Unsupported flag for authenc\n");
-		return -EINVAL;
+		unsigned char* buf;
+		struct scatterlist tmp;
+		
+		if (unlikely(caop->auth_len > PAGE_SIZE))
+			return -EINVAL;
+
+		buf = (char *)__get_free_page(GFP_KERNEL);
+
+		if (unlikely(!buf))
+			return -ENOMEM;
+
+		if (caop->auth_len > 0) {
+			if (unlikely(copy_from_user(buf, caop->auth_src, caop->auth_len))) {
+				ret = -EFAULT;
+				goto fail;
+			}
+
+			sg_init_one(&tmp, buf, caop->auth_len);
+			auth_sg = &tmp;
+		} else {
+			auth_sg = NULL;
+		}
+
+		if (caop->flags & COP_FLAG_AEAD_TLS_TYPE) {
+			ret = get_userbuf_tls(ses_ptr, kcaop, &dst_sg, &pagecount);
+			if (unlikely(ret)) {
+				dprintk(1, KERN_ERR, "Error getting user pages.\n");
+				goto fail;
+			}
+
+			ret = tls_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len, 
+				   dst_sg, caop->len);
+		} else {
+			dprintk(1, KERN_ERR, "Unsupported flag for authenc\n");
+			return -EINVAL;
+		}
+
+fail:
+		free_page((unsigned long)buf);
 	}
 
 	release_user_pages(ses_ptr->pages, pagecount);
