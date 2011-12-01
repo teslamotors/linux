@@ -41,6 +41,7 @@ enum cryptodev_crypto_op_t {
 	CRYPTO_AES_CTR = 21,
 	CRYPTO_AES_XTS = 22,
 	CRYPTO_AES_ECB = 23,
+	CRYPTO_AES_GCM = 50,
 
 	CRYPTO_CAMELLIA_CBC = 101,
 	CRYPTO_RIPEMD160,
@@ -140,6 +141,7 @@ struct crypt_auth_op {
 
 	/* initialization vector for encryption operations */
 	__u8	__user *iv;
+	__u32   iv_len;
 };
 
 /* In TLS mode the following are required:

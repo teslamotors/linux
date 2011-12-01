@@ -12,6 +12,7 @@
 #include <linux/moduleparam.h>
 #include <linux/scatterlist.h>
 #include <crypto/cryptodev.h>
+#include <crypto/aead.h>
 
 #define PFX "cryptodev: "
 #define dprintk(level, severity, format, a...)			\
@@ -40,13 +41,18 @@ void release_user_pages(struct page **pg, int pagecount);
 struct cipher_data {
 	int init; /* 0 uninitialized */
 	int blocksize;
+	int aead;
 	int stream;
 	int ivsize;
 	int alignmask;
 	struct {
 		struct crypto_ablkcipher *s;
-		struct cryptodev_result *result;
 		struct ablkcipher_request *request;
+
+		struct crypto_aead *as;
+		struct aead_request *arequest;
+
+		struct cryptodev_result *result;
 		uint8_t iv[EALG_MAX_BLOCK_LEN];
 	} async;
 };
@@ -57,7 +63,7 @@ struct fcrypt {
 };
 
 int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
-			  uint8_t *key, size_t keylen, int stream);
+			  uint8_t *key, size_t keylen, int stream, int aead);
 void cryptodev_cipher_deinit(struct cipher_data *cdata);
 ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
 			const struct scatterlist *sg1,
@@ -65,6 +71,20 @@ ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
 ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
 				const struct scatterlist *sg1,
 				struct scatterlist *sg2, size_t len);
+
+/* AEAD */
+inline static void cryptodev_cipher_auth(struct cipher_data *cdata,
+	  				 const struct scatterlist *sg1, size_t len)
+{
+	aead_request_set_assoc(cdata->async.arequest,
+			(struct scatterlist *)sg1, len);
+}
+
+inline static void cryptodev_cipher_set_tag_size(struct cipher_data *cdata, int size)
+{
+	if (cdata->aead != 0)
+		crypto_aead_setauthsize(cdata->async.as, size);
+}
 
 inline static void cryptodev_cipher_set_iv(struct cipher_data *cdata,
 				void *iv, size_t iv_size)

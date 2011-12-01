@@ -1,7 +1,7 @@
 /*
  * Driver for /dev/crypto device (aka CryptoDev)
  *
- * Copyright (c) 2010 Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ * Copyright (c) 2010,2011 Nikos Mavrogiannopoulos <nmav@gnutls.org>
  * Portions Copyright (c) 2010 Michael Weiser
  * Portions Copyright (c) 2010 Phil Sutter
  *
@@ -33,6 +33,7 @@
 #include <crypto/algapi.h>
 #include <crypto/hash.h>
 #include <crypto/cryptodev.h>
+#include <crypto/aead.h>
 #include "cryptodev_int.h"
 
 
@@ -53,38 +54,58 @@ static void cryptodev_complete(struct crypto_async_request *req, int err)
 }
 
 int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
-				uint8_t *keyp, size_t keylen, int stream)
+				uint8_t *keyp, size_t keylen, int stream, int aead)
 {
-	struct ablkcipher_alg *alg;
 	int ret;
 
 	memset(out, 0, sizeof(*out));
 
-	out->async.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
-	if (unlikely(IS_ERR(out->async.s))) {
-		dprintk(1, KERN_DEBUG, "%s: Failed to load cipher %s\n",
-			__func__, alg_name);
-		return -EINVAL;
-	}
+	if (aead == 0) {
+		struct ablkcipher_alg *alg;
 
-	alg = crypto_ablkcipher_alg(out->async.s);
-
-	if (alg != NULL) {
-		/* Was correct key length supplied? */
-		if (alg->max_keysize > 0 &&
-				unlikely((keylen < alg->min_keysize) ||
-					(keylen > alg->max_keysize))) {
-			dprintk(1, KERN_DEBUG,
-				"Wrong keylen '%zu' for algorithm '%s'. \
-				Use %u to %u.\n",
-				   keylen, alg_name, alg->min_keysize,
-				   alg->max_keysize);
-			ret = -EINVAL;
-			goto error;
+		out->async.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
+		if (unlikely(IS_ERR(out->async.s))) {
+			dprintk(1, KERN_DEBUG, "%s: Failed to load cipher %s\n",
+				__func__, alg_name);
+				return -EINVAL;
 		}
+
+		alg = crypto_ablkcipher_alg(out->async.s);
+		if (alg != NULL) {
+			/* Was correct key length supplied? */
+			if (alg->max_keysize > 0 &&
+					unlikely((keylen < alg->min_keysize) ||
+					(keylen > alg->max_keysize))) {
+				dprintk(1, KERN_DEBUG,
+					"Wrong keylen '%zu' for algorithm '%s'. \
+					Use %u to %u.\n",
+					   keylen, alg_name, alg->min_keysize,
+					   alg->max_keysize);
+				ret = -EINVAL;
+				goto error;
+			}
+		}
+
+		out->blocksize = crypto_ablkcipher_blocksize(out->async.s);
+		out->ivsize = crypto_ablkcipher_ivsize(out->async.s);
+		out->alignmask = crypto_ablkcipher_alignmask(out->async.s);
+
+		ret = crypto_ablkcipher_setkey(out->async.s, keyp, keylen);
+	} else {
+		out->async.as = crypto_alloc_aead(alg_name, 0, 0);
+		if (unlikely(IS_ERR(out->async.s))) {
+			dprintk(1, KERN_DEBUG, "%s: Failed to load cipher %s\n",
+				__func__, alg_name);
+			return -EINVAL;
+		}
+
+		out->blocksize = crypto_aead_blocksize(out->async.as);
+		out->ivsize = crypto_aead_ivsize(out->async.as);
+		out->alignmask = crypto_aead_alignmask(out->async.as);
+
+		ret = crypto_aead_setkey(out->async.as, keyp, keylen);
 	}
 
-	ret = crypto_ablkcipher_setkey(out->async.s, keyp, keylen);
 	if (unlikely(ret)) {
 		dprintk(1, KERN_DEBUG, "Setting key failed for %s-%zu.\n",
 			alg_name, keylen*8);
@@ -93,9 +114,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 	}
 
 	out->stream = stream;
-	out->blocksize = crypto_ablkcipher_blocksize(out->async.s);
-	out->ivsize = crypto_ablkcipher_ivsize(out->async.s);
-	out->alignmask = crypto_ablkcipher_alignmask(out->async.s);
+	out->aead = aead;
 
 	out->async.result = kmalloc(sizeof(*out->async.result), GFP_KERNEL);
 	if (unlikely(!out->async.result)) {
@@ -106,25 +125,45 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 	memset(out->async.result, 0, sizeof(*out->async.result));
 	init_completion(&out->async.result->completion);
 
-	out->async.request = ablkcipher_request_alloc(out->async.s, GFP_KERNEL);
-	if (unlikely(!out->async.request)) {
-		dprintk(1, KERN_ERR, "error allocating async crypto request\n");
-		ret = -ENOMEM;
-		goto error;
-	}
+	if (aead == 0) {
+		out->async.request = ablkcipher_request_alloc(out->async.s, GFP_KERNEL);
+		if (unlikely(!out->async.request)) {
+			dprintk(1, KERN_ERR, "error allocating async crypto request\n");
+			ret = -ENOMEM;
+			goto error;
+		}
 
-	ablkcipher_request_set_callback(out->async.request,
+		ablkcipher_request_set_callback(out->async.request,
 					CRYPTO_TFM_REQ_MAY_BACKLOG,
 					cryptodev_complete, out->async.result);
+	} else {
+		out->async.arequest = aead_request_alloc(out->async.as, GFP_KERNEL);
+		if (unlikely(!out->async.arequest)) {
+			dprintk(1, KERN_ERR, "error allocating async crypto request\n");
+			ret = -ENOMEM;
+			goto error;
+		}
+
+		aead_request_set_callback(out->async.arequest,
+					CRYPTO_TFM_REQ_MAY_BACKLOG,
+					cryptodev_complete, out->async.result);
+	}
 
 	out->init = 1;
 	return 0;
 error:
-	if (out->async.request)
-		ablkcipher_request_free(out->async.request);
+	if (aead == 0) {
+		if (out->async.request)
+			ablkcipher_request_free(out->async.request);
+		if (out->async.s)
+			crypto_free_ablkcipher(out->async.s);
+	} else {
+		if (out->async.arequest)
+			aead_request_free(out->async.arequest);
+		if (out->async.s)
+			crypto_free_aead(out->async.as);
+	}
 	kfree(out->async.result);
-	if (out->async.s)
-		crypto_free_ablkcipher(out->async.s);
 
 	return ret;
 }
@@ -132,12 +171,19 @@ error:
 void cryptodev_cipher_deinit(struct cipher_data *cdata)
 {
 	if (cdata->init) {
-		if (cdata->async.request)
-			ablkcipher_request_free(cdata->async.request);
-		kfree(cdata->async.result);
-		if (cdata->async.s)
-			crypto_free_ablkcipher(cdata->async.s);
+		if (cdata->aead == 0) {
+			if (cdata->async.request)
+				ablkcipher_request_free(cdata->async.request);
+			if (cdata->async.s)
+				crypto_free_ablkcipher(cdata->async.s);
+		} else {
+			if (cdata->async.arequest)
+				aead_request_free(cdata->async.arequest);
+			if (cdata->async.s)
+				crypto_free_aead(cdata->async.as);
+		}
 
+		kfree(cdata->async.result);
 		cdata->init = 0;
 	}
 }
@@ -177,10 +223,18 @@ ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
 	int ret;
 
 	INIT_COMPLETION(cdata->async.result->completion);
-	ablkcipher_request_set_crypt(cdata->async.request,
+	
+	if (cdata->aead == 0) {
+		ablkcipher_request_set_crypt(cdata->async.request,
 			(struct scatterlist *)sg1, sg2,
 			len, cdata->async.iv);
-	ret = crypto_ablkcipher_encrypt(cdata->async.request);
+		ret = crypto_ablkcipher_encrypt(cdata->async.request);
+	} else {
+		aead_request_set_crypt(cdata->async.arequest,
+			(struct scatterlist *)sg1, sg2,
+			len, cdata->async.iv);
+		ret = crypto_aead_encrypt(cdata->async.arequest);
+	}
 
 	return waitfor(cdata->async.result, ret);
 }
@@ -192,10 +246,17 @@ ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
 	int ret;
 
 	INIT_COMPLETION(cdata->async.result->completion);
-	ablkcipher_request_set_crypt(cdata->async.request,
+	if (cdata->aead == 0) {
+		ablkcipher_request_set_crypt(cdata->async.request,
 			(struct scatterlist *)sg1, sg2,
 			len, cdata->async.iv);
-	ret = crypto_ablkcipher_decrypt(cdata->async.request);
+		ret = crypto_ablkcipher_decrypt(cdata->async.request);
+	} else {
+		aead_request_set_crypt(cdata->async.arequest,
+			(struct scatterlist *)sg1, sg2,
+			len, cdata->async.iv);
+		ret = crypto_aead_decrypt(cdata->async.arequest);
+	}
 
 	return waitfor(cdata->async.result, ret);
 }
