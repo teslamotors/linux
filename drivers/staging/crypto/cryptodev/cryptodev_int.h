@@ -2,8 +2,6 @@
 #ifndef CRYPTODEV_INT_H
 # define CRYPTODEV_INT_H
 
-#define CRYPTODEV_STATS
-
 #include <linux/init.h>
 #include <linux/sched.h>
 #include <linux/fs.h>
@@ -171,6 +169,7 @@ int kcaop_from_user(struct kernel_crypt_auth_op *kcop,
 int kcaop_to_user(struct kernel_crypt_auth_op *kcaop,
 		struct fcrypt *fcr, void __user *arg);
 int crypto_auth_run(struct fcrypt *fcr, struct kernel_crypt_auth_op *kcaop);
+int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop);
 
 /* other internal structs */
 struct csession {
@@ -180,13 +179,6 @@ struct csession {
 	struct hash_data hdata;
 	uint32_t sid;
 	uint32_t alignmask;
-#ifdef CRYPTODEV_STATS
-#if !((COP_ENCRYPT < 2) && (COP_DECRYPT < 2))
-#error Struct csession.stat uses COP_{ENCRYPT,DECRYPT} as indices. Do something!
-#endif
-	unsigned long long stat[2];
-	size_t stat_max_size, stat_count;
-#endif
 	int array_size;
 	struct page **pages;
 	struct scatterlist *sg;

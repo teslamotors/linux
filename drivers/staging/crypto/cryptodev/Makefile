@@ -2,7 +2,7 @@ KBUILD_CFLAGS += -I$(src)
 KERNEL_DIR = /lib/modules/$(shell uname -r)/build
 VERSION = 1.0
 
-cryptodev-objs = cryptodev_main.o cryptodev_cipher.o cryptodev_auth.o
+cryptodev-objs = ioctl.o main.o cryptlib.o authenc.o
 
 obj-m += cryptodev.o
 
