@@ -144,6 +144,22 @@ struct crypt_auth_op {
 	__u32   iv_len;
 };
 
+/* In plain AEAD mode the following are required:
+ *  flags   : 0
+ *  iv      : the initialization vector (12 bytes)
+ *  auth_len: the length of the data to be authenticated
+ *  auth_src: the data to be authenticated
+ *  len     : length of data to be encrypted
+ *  src     : the data to be encrypted
+ *  dst     : space to hold encrypted data. It must have
+ *            at least a size of len + tag_size.
+ *  tag_size: the size of the desired authentication tag or zero to use
+ *            the maximum tag output.
+ *
+ * Note tag isn't being used because the Linux AEAD interface
+ * copies the tag just after data.
+ */
+
 /* In TLS mode the following are required:
  *  flags   : COP_FLAG_AEAD_TLS_TYPE
  *  iv      : the initialization vector
