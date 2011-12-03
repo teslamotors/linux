@@ -34,6 +34,7 @@
 #include <crypto/scatterwalk.h>
 #include <linux/scatterlist.h>
 #include "cryptodev_int.h"
+#include "zc.h"
 #include "version.h"
 
 /* Helper functions to assist zero copy. 
@@ -107,4 +108,80 @@ void release_user_pages(struct page **pg, int pagecount)
 			SetPageDirty(pg[pagecount]);
 		page_cache_release(pg[pagecount]);
 	}
+}
+
+/* make src and dst available in scatterlists.
+ * dst might be the same as src.
+ */
+int get_userbuf(struct csession *ses, void* __user src, int src_len,
+                void* __user dst, int dst_len,
+		struct task_struct *task, struct mm_struct *mm,
+                struct scatterlist **src_sg, 
+                struct scatterlist **dst_sg,
+                int *tot_pages)
+{
+	int src_pagecount, dst_pagecount = 0, pagecount, write_src = 1;
+	int rc;
+
+	if (src == NULL)
+		return -EINVAL;
+
+	if (ses->alignmask && !IS_ALIGNED((unsigned long)src, ses->alignmask)) {
+		dprintk(2, KERN_WARNING, "%s: careful - source address %lx is not %d byte aligned\n",
+				__func__, (unsigned long)src, ses->alignmask + 1);
+	}
+
+	if (src == dst) {
+                /* dst == src */
+	        src_len = max(src_len, dst_len);
+	        dst_len = src_len;
+        }
+
+	src_pagecount = PAGECOUNT(src, src_len);
+	if (!ses->cdata.init) {		/* hashing only */
+		write_src = 0;
+	} else if (src != dst) {	/* non-in-situ transformation */
+		if (dst == NULL)
+			return -EINVAL;
+
+		dst_pagecount = PAGECOUNT(dst, dst_len);
+		write_src = 0;
+
+		if (ses->alignmask && !IS_ALIGNED((unsigned long)dst, ses->alignmask)) {
+			dprintk(2, KERN_WARNING, "%s: careful - destination address %lx is not %d byte aligned\n",
+					__func__, (unsigned long)dst, ses->alignmask + 1);
+		}
+        }
+	(*tot_pages) = pagecount = src_pagecount + dst_pagecount;
+
+	if (pagecount > ses->array_size) {
+		rc = adjust_sg_array(ses, pagecount);
+		if (rc)
+			return rc;
+	}
+
+	rc = __get_userbuf(src, src_len, write_src, src_pagecount,
+	                   ses->pages, ses->sg, task, mm);
+	if (unlikely(rc)) {
+		dprintk(1, KERN_ERR,
+			"failed to get user pages for data input\n");
+		return -EINVAL;
+	}
+	(*src_sg) = (*dst_sg) = ses->sg;
+
+	if (!dst_pagecount)
+		return 0;
+
+	(*dst_sg) = ses->sg + src_pagecount;
+
+	rc = __get_userbuf(dst, dst_len, 1, dst_pagecount,
+	                   ses->pages + src_pagecount, *dst_sg,
+			   task, mm);
+	if (unlikely(rc)) {
+		dprintk(1, KERN_ERR,
+		        "failed to get user pages for data output\n");
+		release_user_pages(ses->pages, src_pagecount);
+		return -EINVAL;
+	}
+	return 0;
 }

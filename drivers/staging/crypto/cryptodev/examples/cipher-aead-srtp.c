@@ -14,7 +14,7 @@
 #include <crypto/cryptodev.h>
 
 #define	DATA_SIZE	(8*1024)
-#define HEADER_SIZE 1020
+#define HEADER_SIZE 193
 #define PLAINTEXT_SIZE 1021
 #define FOOTER_SIZE 15
 #define	BLOCK_SIZE	16

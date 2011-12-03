@@ -2,7 +2,8 @@
  * Driver for /dev/crypto device (aka CryptoDev)
  *
  * Copyright (c) 2004 Michal Ludvig <mludvig@logix.net.nz>, SuSE Labs
- * Copyright (c) 2009,2010 Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ * Copyright (c) 2009,2010,2011 Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ * Copyright (c) 2010 Phil Sutter
  *
  * This file is part of linux cryptodev.
  *
@@ -389,7 +390,10 @@ crypto_finish_all_sessions(struct fcrypt *fcr)
 struct csession *
 crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 {
-	struct csession *ses_ptr, *retval = 0;
+	struct csession *ses_ptr, *retval = NULL;
+	
+	if (unlikely(fcr == NULL))
+		return NULL;
 
 	mutex_lock(&fcr->sem);
 	list_for_each_entry(ses_ptr, &fcr->list, entry) {
@@ -701,8 +705,12 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 	}
 
 	if (ses_ptr->cdata.init) {
-		tfm_info_to_alg_info(&siop->cipher_info,
+		if (ses_ptr->cdata.aead == 0) 
+			tfm_info_to_alg_info(&siop->cipher_info,
 				crypto_ablkcipher_tfm(ses_ptr->cdata.async.s));
+		else
+			tfm_info_to_alg_info(&siop->cipher_info,
+				crypto_aead_tfm(ses_ptr->cdata.async.as));
 	}
 	if (ses_ptr->hdata.init) {
 		tfm_info_to_alg_info(&siop->hash_info,

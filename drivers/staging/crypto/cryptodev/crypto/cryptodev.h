@@ -125,7 +125,6 @@ struct crypt_auth_op {
 	__u16	flags;		/* see COP_FLAG_AEAD_* */
 	__u32	len;		/* length of source data */
 	__u32	auth_len;	/* length of auth data */
-	__u32	tag_len;	/* the length of the tag. Use zero for digest size. */
 	__u8	__user *auth_src;	/* authenticated-only data */
 
 	/* The current implementation is more efficient if data are
@@ -138,6 +137,7 @@ struct crypt_auth_op {
 	__u8    __user *tag;    /* where the tag will be copied to. TLS mode
                                  * doesn't use that as tag is copied to dst.
                                  * SRTP mode copies tag there. */
+	__u32	tag_len;	/* the length of the tag. Use zero for digest size or max tag. */
 
 	/* initialization vector for encryption operations */
 	__u8	__user *iv;

@@ -179,7 +179,7 @@ void cryptodev_cipher_deinit(struct cipher_data *cdata)
 		} else {
 			if (cdata->async.arequest)
 				aead_request_free(cdata->async.arequest);
-			if (cdata->async.s)
+			if (cdata->async.as)
 				crypto_free_aead(cdata->async.as);
 		}
 
@@ -217,7 +217,7 @@ static inline int waitfor(struct cryptodev_result *cr, ssize_t ret)
 }
 
 ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
-		const struct scatterlist *sg1, struct scatterlist *sg2,
+		const struct scatterlist *src, struct scatterlist *dst,
 		size_t len)
 {
 	int ret;
@@ -226,12 +226,12 @@ ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
 	
 	if (cdata->aead == 0) {
 		ablkcipher_request_set_crypt(cdata->async.request,
-			(struct scatterlist *)sg1, sg2,
+			(struct scatterlist *)src, dst,
 			len, cdata->async.iv);
 		ret = crypto_ablkcipher_encrypt(cdata->async.request);
 	} else {
 		aead_request_set_crypt(cdata->async.arequest,
-			(struct scatterlist *)sg1, sg2,
+			(struct scatterlist *)src, dst,
 			len, cdata->async.iv);
 		ret = crypto_aead_encrypt(cdata->async.arequest);
 	}
@@ -240,7 +240,7 @@ ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
 }
 
 ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
-		const struct scatterlist *sg1, struct scatterlist *sg2,
+		const struct scatterlist *src, struct scatterlist *dst,
 		size_t len)
 {
 	int ret;
@@ -248,12 +248,12 @@ ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
 	INIT_COMPLETION(cdata->async.result->completion);
 	if (cdata->aead == 0) {
 		ablkcipher_request_set_crypt(cdata->async.request,
-			(struct scatterlist *)sg1, sg2,
+			(struct scatterlist *)src, dst,
 			len, cdata->async.iv);
 		ret = crypto_ablkcipher_decrypt(cdata->async.request);
 	} else {
 		aead_request_set_crypt(cdata->async.arequest,
-			(struct scatterlist *)sg1, sg2,
+			(struct scatterlist *)src, dst,
 			len, cdata->async.iv);
 		ret = crypto_aead_decrypt(cdata->async.arequest);
 	}

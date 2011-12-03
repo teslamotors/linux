@@ -46,6 +46,7 @@
 #include <linux/scatterlist.h>
 #include "cryptodev_int.h"
 #include "zc.h"
+#include "cryptlib.h"
 #include "version.h"
 
 /* This file contains the traditional operations of encryption
@@ -151,72 +152,6 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 	return ret;
 }
 
-/* make cop->src and cop->dst available in scatterlists */
-static int get_userbuf(struct csession *ses, struct kernel_crypt_op *kcop,
-                       struct scatterlist **src_sg, struct scatterlist **dst_sg,
-                       int *tot_pages)
-{
-	int src_pagecount, dst_pagecount = 0, pagecount, write_src = 1;
-	struct crypt_op *cop = &kcop->cop;
-	int rc;
-
-	if (cop->src == NULL)
-		return -EINVAL;
-
-	if (ses->alignmask && !IS_ALIGNED((unsigned long)cop->src, ses->alignmask)) {
-		dprintk(2, KERN_WARNING, "%s: careful - source address %lx is not %d byte aligned\n",
-				__func__, (unsigned long)cop->src, ses->alignmask + 1);
-	}
-
-	src_pagecount = PAGECOUNT(cop->src, cop->len);
-	if (!ses->cdata.init) {		/* hashing only */
-		write_src = 0;
-	} else if (cop->src != cop->dst) {	/* non-in-situ transformation */
-		if (cop->dst == NULL)
-			return -EINVAL;
-
-		dst_pagecount = PAGECOUNT(cop->dst, cop->len);
-		write_src = 0;
-
-		if (ses->alignmask && !IS_ALIGNED((unsigned long)cop->dst, ses->alignmask)) {
-			dprintk(2, KERN_WARNING, "%s: careful - destination address %lx is not %d byte aligned\n",
-					__func__, (unsigned long)cop->dst, ses->alignmask + 1);
-		}
-
-	}
-	(*tot_pages) = pagecount = src_pagecount + dst_pagecount;
-
-	if (pagecount > ses->array_size) {
-		rc = adjust_sg_array(ses, pagecount);
-		if (rc)
-			return rc;
-	}
-
-	rc = __get_userbuf(cop->src, cop->len, write_src, src_pagecount,
-	                   ses->pages, ses->sg, kcop->task, kcop->mm);
-	if (unlikely(rc)) {
-		dprintk(1, KERN_ERR,
-			"failed to get user pages for data input\n");
-		return -EINVAL;
-	}
-	(*src_sg) = (*dst_sg) = ses->sg;
-
-	if (!dst_pagecount)
-		return 0;
-
-	(*dst_sg) = ses->sg + src_pagecount;
-
-	rc = __get_userbuf(cop->dst, cop->len, 1, dst_pagecount,
-	                   ses->pages + src_pagecount, *dst_sg,
-			   kcop->task, kcop->mm);
-	if (unlikely(rc)) {
-		dprintk(1, KERN_ERR,
-		        "failed to get user pages for data output\n");
-		release_user_pages(ses->pages, src_pagecount);
-		return -EINVAL;
-	}
-	return 0;
-}
 
 
 /* This is the main crypto function - zero-copy edition */
@@ -227,7 +162,8 @@ __crypto_run_zc(struct csession *ses_ptr, struct kernel_crypt_op *kcop)
 	struct crypt_op *cop = &kcop->cop;
 	int ret = 0, pagecount;
 
-	ret = get_userbuf(ses_ptr, kcop, &src_sg, &dst_sg, &pagecount);
+	ret = get_userbuf(ses_ptr, cop->src, cop->len, cop->dst, cop->len, 
+	                  kcop->task, kcop->mm, &src_sg, &dst_sg, &pagecount);
 	if (unlikely(ret)) {
 		dprintk(1, KERN_ERR, "Error getting user pages. "
 					"Falling back to non zero copy.\n");
