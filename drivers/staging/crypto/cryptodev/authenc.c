@@ -738,7 +738,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			auth_sg = NULL;
 		}
 
-		if (caop->flags & COP_FLAG_AEAD_TLS_TYPE) {
+		if (caop->flags & COP_FLAG_AEAD_TLS_TYPE && ses_ptr->cdata.aead == 0) {
 			ret = get_userbuf_tls(ses_ptr, kcaop, &dst_sg, &pagecount);
 			if (unlikely(ret)) {
 				dprintk(1, KERN_ERR, "get_userbuf_tls(): Error getting user pages.\n");

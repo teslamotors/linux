@@ -160,7 +160,8 @@ struct crypt_auth_op {
  * copies the tag just after data.
  */
 
-/* In TLS mode the following are required:
+/* In TLS mode (used for CBC ciphers that required padding) 
+ * the following are required:
  *  flags   : COP_FLAG_AEAD_TLS_TYPE
  *  iv      : the initialization vector
  *  auth_len: the length of the data to be authenticated only
