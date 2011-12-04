@@ -21,3 +21,4 @@ version.h
 tests/cipher-aead
 tests/fullspeed
 examples/aes
+lib/benchmark
