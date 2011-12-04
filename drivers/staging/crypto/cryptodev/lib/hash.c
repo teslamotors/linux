@@ -111,18 +111,16 @@ int hash_test(int algo, void (*user_hash)(void* text, int size, void* res))
 			ret = -1;
 			goto finish;
 		}
-printf("counted: %ld\n", counted);
-printf("elapsed: %ld\n", elapsed);
 		t1 = (double)counted/(double)elapsed;
 
 		/* now check the user function */
+		counted = 0;
 		ret = start_benchmark(&bst);
 		if (ret < 0) {
 			ret = -1;
 			goto finish;
 		}
 
-		counted = 0;
 
 		do {
 			user_hash(text, sizes[i], digest);
