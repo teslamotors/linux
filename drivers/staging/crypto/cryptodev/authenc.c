@@ -509,11 +509,6 @@ srtp_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 	 */
 	if (caop->op == COP_ENCRYPT) {
 		if (ses_ptr->cdata.init != 0) {
-			if (ses_ptr->cdata.stream == 0) {
-				dprintk(0, KERN_ERR, "Only stream modes are allowed in SRTP mode\n");
-				return -EINVAL;
-			}
-
 			ret = cryptodev_cipher_encrypt(&ses_ptr->cdata,
 							dst_sg, dst_sg, len);
 			if (unlikely(ret)) {
@@ -574,11 +569,6 @@ srtp_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 		}
 
 		if (ses_ptr->cdata.init != 0) {
-			if (ses_ptr->cdata.stream == 0) {
-				dprintk(0, KERN_ERR, "Only stream modes are allowed in SRTP mode\n");
-				return -EINVAL;
-			}
-
 			ret = cryptodev_cipher_decrypt(&ses_ptr->cdata,
 							dst_sg, dst_sg, len);
 
@@ -605,15 +595,6 @@ auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 	int ret;
 	struct crypt_auth_op *caop = &kcaop->caop;
 	int max_tag_len;
-
-
-	if (unlikely(ses_ptr->cdata.init == 0))
-		return -EINVAL;
-
-	if (unlikely(ses_ptr->cdata.stream == 0 || ses_ptr->cdata.aead == 0)) {
-		dprintk(0, KERN_ERR, "Only stream and AEAD ciphers are allowed for authenc\n");
-		return -EINVAL;
-	}
 
 	max_tag_len = cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
 	if (unlikely(caop->tag_len > max_tag_len)) {
@@ -667,6 +648,13 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 	int ret = 0, pagecount = 0;
 
 	if (caop->flags & COP_FLAG_AEAD_SRTP_TYPE) {
+		if (unlikely(ses_ptr->cdata.init != 0 && 
+			(ses_ptr->cdata.stream == 0 || ses_ptr->cdata.aead != 0))) 
+		{
+			dprintk(0, KERN_ERR, "Only stream modes are allowed in SRTP mode (but not AEAD)\n");
+			return -EINVAL;
+		}
+
 		ret = get_userbuf_srtp(ses_ptr, kcaop, &auth_sg, &dst_sg, &pagecount);
 		if (unlikely(ret)) {
 			dprintk(1, KERN_ERR, "get_userbuf_srtp(): Error getting user pages.\n");
@@ -712,7 +700,15 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 				   dst_sg, caop->len);
 		} else {
 			int dst_len;
-			
+
+			if (unlikely(ses_ptr->cdata.init == 0 || 
+					ses_ptr->cdata.stream == 0 || 
+					ses_ptr->cdata.aead == 0)) 
+			{
+				dprintk(0, KERN_ERR, "Only stream and AEAD ciphers are allowed for authenc\n");
+				return -EINVAL;
+			}
+
 			if (caop->op == COP_ENCRYPT) dst_len = caop->len + cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
 			else dst_len = caop->len - cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
 			
