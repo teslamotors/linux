@@ -10,10 +10,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <crypto/cryptodev.h>
-#include "aes.h"
-
-#define	KEY_SIZE	16
-
+#include "sha.h"
 
 int sha_ctx_init(struct cryptodev_ctx* ctx, int cfd, const uint8_t *key, unsigned int key_size)
 {
