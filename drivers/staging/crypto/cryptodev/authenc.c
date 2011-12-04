@@ -223,46 +223,11 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 	return 0;
 }
 
-/* XXX: inefficient. We could use the getuserbuf, but don't bother
- * for now.
- */
-int copy_from_user_to_user( void* __user dst, void* __user src, int len)
-{
-uint8_t *buffer;
-int buffer_size = min(len, 16*1024);
-int rc;
-
-	if (len > buffer_size) {
-		dprintk(1, KERN_ERR,
-			"The provided buffer is too large\n");
-		return -EINVAL;
-	}
-
-	buffer = kmalloc(buffer_size, GFP_KERNEL);
-	if (buffer == NULL)
-		return -ENOMEM;
-
-	if (unlikely(copy_from_user(buffer, src, len))) {
-		rc = -EFAULT;
-		goto out;
-	}
-
-	if (unlikely(copy_to_user(dst, buffer, len))) {
-		rc = -EFAULT;
-		goto out;
-	}
-
-	rc = 0;
-out:
-	kfree(buffer);
-	return rc;
-}
-
 static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcrypt *fcr)
 {
 	struct crypt_auth_op *caop = &kcaop->caop;
 	struct csession *ses_ptr;
-	int rc;
+	int ret;
 
 	/* this also enters ses_ptr->sem */
 	ses_ptr = crypto_get_session_by_sid(fcr, caop->ses);
@@ -273,12 +238,10 @@ static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcryp
 
 	if (caop->flags & COP_FLAG_AEAD_TLS_TYPE || caop->flags & COP_FLAG_AEAD_SRTP_TYPE) {
 		if (caop->src != caop->dst) {
-			dprintk(2, KERN_ERR,
-				"Non-inplace encryption and decryption is not efficient\n");
-		
-			rc = copy_from_user_to_user( caop->dst, caop->src, caop->len);
-			if (rc < 0)
-				goto out_unlock;
+			dprintk(1, KERN_ERR,
+				"Non-inplace encryption and decryption is not efficient and not implemented\n");
+			ret = -EINVAL;
+			goto out_unlock;
 		}
 	}
 
@@ -296,21 +259,21 @@ static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcryp
 	kcaop->mm = current->mm;
 
 	if (caop->iv) {
-		rc = copy_from_user(kcaop->iv, caop->iv, kcaop->ivlen);
-		if (unlikely(rc)) {
+		ret = copy_from_user(kcaop->iv, caop->iv, kcaop->ivlen);
+		if (unlikely(ret)) {
 			dprintk(1, KERN_ERR,
 				"error copying IV (%d bytes), copy_from_user returned %d for address %lx\n",
-				kcaop->ivlen, rc, (unsigned long)caop->iv);
-			rc = -EFAULT;
+				kcaop->ivlen, ret, (unsigned long)caop->iv);
+			ret = -EFAULT;
 			goto out_unlock;
 		}
 	}
 	
-	rc = 0;
+	ret = 0;
 
 out_unlock:
 	crypto_put_session(ses_ptr);
-	return rc;
+	return ret;
 
 }
 

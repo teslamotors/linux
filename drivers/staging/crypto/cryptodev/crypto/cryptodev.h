@@ -172,6 +172,8 @@ struct crypt_auth_op {
  *            at least a size of len + tag_size + blocksize.
  *  tag_size: the size of the desired authentication tag or zero to use
  *            the default mac output.
+ *
+ * Note that the padding used is the minimum padding.
  */
 
 /* In SRTP mode the following are required:
