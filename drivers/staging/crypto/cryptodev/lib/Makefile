@@ -1,9 +1,15 @@
-CFLAGS=-g -O2 -Wall -DDEBUG
+CFLAGS=-g -O2 -Wall
 
 all: benchmark
 
-benchmark: benchmark.c hash.c main.c combo.c
-	gcc $(CFLAGS) -o $@ $^ -lssl
+benchmark: main.c libthreshold.a
+	gcc $(CFLAGS) -DDEBUG -o $@ $^ -lssl libthreshold.a
+
+.o:
+	gcc $(CCFLAGS) -c $< -o $@
+
+libthreshold.a: benchmark.o hash.o threshold.o combo.o
+	ar  rcs $@ $^
 
 clean:
-	rm -f *.o *~ benchmark
+	rm -f *.o *~ benchmark libthreshold.a

@@ -39,9 +39,11 @@ int aead_ctx_init(struct cryptodev_ctx* ctx, int cipher, int hash, void* key, in
 		perror("ioctl(CIOCGSESSINFO)");
 		return -1;
 	}
+#ifdef DEBUG
 	printf("Got %s-%s with drivers %s and %s\n",
 			siop.cipher_info.cra_name, siop.hash_info.cra_name, 
 			siop.cipher_info.cra_driver_name, siop.hash_info.cra_driver_name);
+#endif
 	/*printf("Alignmask is %x\n", (unsigned int)siop.alignmask);*/
 	ctx->alignmask = siop.alignmask;
 #endif
@@ -147,13 +149,13 @@ int aead_test(int cipher, int mac, void* ukey, int ukey_size,
 	
 		t2 = (double)counted/(double)elapsed;
 		
+#ifdef DEBUG
+		printf("%d: kernel: %.4f bytes/msec, user: %.4f bytes/msec\n", sizes[i], t1, t2);
+#endif
 		if (t1 > t2) {
 			ret = sizes[i];
 			goto finish;
 		}
-#ifdef DEBUG
-		printf("%d: kernel: %.4f bytes/msec, user: %.4f bytes/msec\n", sizes[i], t1, t2);
-#endif
 	}
 	
 	ret = -1;

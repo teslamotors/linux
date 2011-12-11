@@ -30,13 +30,16 @@ int hash_ctx_init(struct cryptodev_ctx* ctx, int hash, int cfd)
 	}
 
 #ifdef CIOCGSESSINFO
+	memset(&siop, 0, sizeof(siop));
 	siop.ses = ctx->sess.ses;
 	if (ioctl(ctx->cfd, CIOCGSESSINFO, &siop)) {
 		perror("ioctl(CIOCGSESSINFO)");
 		return -1;
 	}
+#ifdef DEBUG
 	printf("Got %s with driver %s\n",
 			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
+#endif
 	/*printf("Alignmask is %x\n", (unsigned int)siop.alignmask);*/
 	ctx->alignmask = siop.alignmask;
 #endif
