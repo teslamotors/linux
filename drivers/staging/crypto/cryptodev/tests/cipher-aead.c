@@ -25,7 +25,6 @@ get_sha1_hmac(int cfd, void* key, int key_size, void* data1, int data1_size, voi
 {
 	struct session_op sess;
 	struct crypt_op cryp;
-	int i;
 
 	memset(&sess, 0, sizeof(sess));
 	memset(&cryp, 0, sizeof(cryp));
@@ -114,7 +113,7 @@ test_crypto(int cfd)
 	/* Get crypto session for AES128 */
 	sess.cipher = CRYPTO_AES_CBC;
 	sess.keylen = KEY_SIZE;
-	sess.key = key;
+	sess.key = (void*)key;
 
 	sess.mac = CRYPTO_SHA1_HMAC;
 	sess.mackeylen = 16;
@@ -147,14 +146,14 @@ test_crypto(int cfd)
 		return 1;
 	}
 
-	//memcpy(ciphertext, plaintext, DATA_SIZE);
+	memcpy(ciphertext, plaintext, DATA_SIZE);
 
 	/* Encrypt data.in to data.encrypted */
 	cao.ses = sess.ses;
 	cao.auth_src = auth;
 	cao.auth_len = sizeof(auth);
 	cao.len = DATA_SIZE;
-	cao.src = plaintext;
+	cao.src = ciphertext;
 	cao.dst = ciphertext;
 	cao.iv = iv;
 	cao.op = COP_ENCRYPT;
@@ -253,7 +252,7 @@ test_encrypt_decrypt(int cfd)
 	char key[KEY_SIZE];
 	char auth[AUTH_SIZE];
 	unsigned char sha1mac[20];
-	int pad, i, enc_len;
+	int enc_len;
 
 	struct session_op sess;
 	struct crypt_op co;
@@ -306,13 +305,15 @@ test_encrypt_decrypt(int cfd)
 		return 1;
 	}
 
+	memcpy(ciphertext, plaintext, DATA_SIZE);
+
 	/* Encrypt data.in to data.encrypted */
 	cao.ses = sess.ses;
-	cao.auth_src = auth;
+	cao.auth_src = (void*)auth;
 	cao.auth_len = sizeof(auth);
 	cao.len = DATA_SIZE;
-	cao.src = plaintext;
-	cao.dst = ciphertext;
+	cao.src = (void*)ciphertext;
+	cao.dst = (void*)ciphertext;
 	cao.iv = iv;
 	cao.op = COP_ENCRYPT;
 	cao.flags = COP_FLAG_AEAD_TLS_TYPE;
@@ -406,7 +407,7 @@ test_encrypt_decrypt_error(int cfd, int err)
 	char key[KEY_SIZE];
 	char auth[AUTH_SIZE];
 	unsigned char sha1mac[20];
-	int pad, i, enc_len;
+	int enc_len;
 
 	struct session_op sess;
 	struct crypt_op co;
@@ -458,13 +459,15 @@ test_encrypt_decrypt_error(int cfd, int err)
 		fprintf(stderr, "SHA1 MAC failed\n");
 		return 1;
 	}
+	
+	memcpy(ciphertext, plaintext, DATA_SIZE);
 
 	/* Encrypt data.in to data.encrypted */
 	cao.ses = sess.ses;
 	cao.auth_src = auth;
 	cao.auth_len = sizeof(auth);
 	cao.len = DATA_SIZE;
-	cao.src = plaintext;
+	cao.src = ciphertext;
 	cao.dst = ciphertext;
 	cao.iv = iv;
 	cao.op = COP_ENCRYPT;

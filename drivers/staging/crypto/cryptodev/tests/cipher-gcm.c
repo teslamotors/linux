@@ -91,16 +91,11 @@ struct aes_gcm_vectors_st aes_gcm_vectors[] = {
  */
 static int test_crypto(int cfd)
 {
-	char iv[BLOCK_SIZE];
-	unsigned char tag[16];
-	int pad, i;
+	int i;
 	int8_t tmp[128];
 
 	struct session_op sess;
 	struct crypt_auth_op cao;
-#ifdef CIOCGSESSINFO
-	struct session_info_op siop;
-#endif
 
 	/* Get crypto session for AES128 */
 
@@ -194,8 +189,7 @@ static int test_encrypt_decrypt(int cfd)
 	char iv[BLOCK_SIZE];
 	char key[KEY_SIZE];
 	char auth[AUTH_SIZE];
-	unsigned char sha1mac[20];
-	int pad, i, enc_len;
+	int enc_len;
 
 	struct session_op sess;
 	struct crypt_auth_op cao;
@@ -342,7 +336,7 @@ static int test_encrypt_decrypt_error(int cfd, int err)
 	char iv[BLOCK_SIZE];
 	char key[KEY_SIZE];
 	char auth[AUTH_SIZE];
-	int pad, i, enc_len;
+	int enc_len;
 
 	struct session_op sess;
 	struct crypt_op co;
@@ -397,13 +391,14 @@ static int test_encrypt_decrypt_error(int cfd, int err)
 	ciphertext = ciphertext_raw;
 #endif
 	memset(plaintext, 0x15, DATA_SIZE);
+	memcpy(ciphertext, plaintext, DATA_SIZE);
 
 	/* Encrypt data.in to data.encrypted */
 	cao.ses = sess.ses;
 	cao.auth_src = auth;
 	cao.auth_len = sizeof(auth);
 	cao.len = DATA_SIZE;
-	cao.src = plaintext;
+	cao.src = ciphertext;
 	cao.dst = ciphertext;
 	cao.iv = iv;
 	cao.op = COP_ENCRYPT;

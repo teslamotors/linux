@@ -27,7 +27,6 @@ get_sha1_hmac(int cfd, void* key, int key_size, void* data, int data_size, void*
 {
 	struct session_op sess;
 	struct crypt_op cryp;
-	int i;
 
 	memset(&sess, 0, sizeof(sess));
 	memset(&cryp, 0, sizeof(cryp));
@@ -84,7 +83,6 @@ test_crypto(int cfd)
 	unsigned char tag[20];
 	unsigned char mackey[] = "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b";
 	int mackey_len = 16;
-	int pad, i;
 
 	struct session_op sess;
 	struct crypt_op co;
@@ -234,11 +232,9 @@ test_encrypt_decrypt(int cfd)
 	char ciphertext_raw[DATA_SIZE + 63], *ciphertext;
 	char iv[BLOCK_SIZE];
 	char key[KEY_SIZE];
-	unsigned char sha1mac[20];
 	unsigned char tag[20];
 	unsigned char mackey[] = "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b";
 	int mackey_len = 16;
-	int pad, i;
 
 	struct session_op sess;
 	struct crypt_auth_op cao;
@@ -384,11 +380,9 @@ test_encrypt_decrypt_error(int cfd, int err)
 	char ciphertext_raw[DATA_SIZE + 63], *ciphertext;
 	char iv[BLOCK_SIZE];
 	char key[KEY_SIZE];
-	unsigned char sha1mac[20];
 	unsigned char tag[20];
 	unsigned char mackey[] = "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b";
 	int mackey_len = 16;
-	int pad, i;
 
 	struct session_op sess;
 	struct crypt_auth_op cao;
