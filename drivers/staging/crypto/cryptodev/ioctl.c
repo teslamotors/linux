@@ -696,6 +696,7 @@ static inline void tfm_info_to_alg_info(struct alg_info *dst, struct crypto_tfm 
 static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 {
 	struct csession *ses_ptr;
+	struct crypto_tfm *tfm;
 
 	/* this also enters ses_ptr->sem */
 	ses_ptr = crypto_get_session_by_sid(fcr, siop->ses);
@@ -703,18 +704,28 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", siop->ses);
 		return -EINVAL;
 	}
+	
+	siop->flags = 0;
 
 	if (ses_ptr->cdata.init) {
-		if (ses_ptr->cdata.aead == 0) 
-			tfm_info_to_alg_info(&siop->cipher_info,
-				crypto_ablkcipher_tfm(ses_ptr->cdata.async.s));
-		else
-			tfm_info_to_alg_info(&siop->cipher_info,
-				crypto_aead_tfm(ses_ptr->cdata.async.as));
+		if (ses_ptr->cdata.aead == 0) {
+			tfm = crypto_ablkcipher_tfm(ses_ptr->cdata.async.s);
+		} else {
+			tfm = crypto_aead_tfm(ses_ptr->cdata.async.as);
+		}
+		tfm_info_to_alg_info(&siop->cipher_info, tfm);
+#ifdef CRYPTO_ALG_KERN_DRIVER_ONLY
+		if (tfm->__crt_alg->cra_flags & CRYPTO_ALG_KERN_DRIVER_ONLY)
+			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
+#endif
 	}
 	if (ses_ptr->hdata.init) {
-		tfm_info_to_alg_info(&siop->hash_info,
-				crypto_ahash_tfm(ses_ptr->hdata.async.s));
+		tfm = crypto_ahash_tfm(ses_ptr->hdata.async.s);
+		tfm_info_to_alg_info(&siop->hash_info, tfm);
+#ifdef CRYPTO_ALG_KERN_DRIVER_ONLY
+		if (tfm->__crt_alg->cra_flags & CRYPTO_ALG_KERN_DRIVER_ONLY)
+			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
+#endif
 	}
 
 	siop->alignmask = ses_ptr->alignmask;

@@ -35,8 +35,11 @@ int aes_gcm_ctx_init(struct cryptodev_ctx* ctx, int cfd, const uint8_t *key, uns
 		perror("ioctl(CIOCGSESSINFO)");
 		return -1;
 	}
-	printf("requested cipher CRYPTO_AES_GCM, got %s with driver %s\n",
+	printf("Got %s with driver %s\n",
 			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
+	if (!(siop.flags & SIOP_FLAG_KERNEL_DRIVER_ONLY)) {
+		printf("Note: This is not an accelerated cipher\n");
+	}
 	/*printf("Alignmask is %x\n", (unsigned int)siop.alignmask); */
 	ctx->alignmask = siop.alignmask;
 #endif

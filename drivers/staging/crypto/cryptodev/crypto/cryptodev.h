@@ -99,7 +99,17 @@ struct session_info_op {
 	} cipher_info, hash_info;
 
 	__u16	alignmask;	/* alignment constraints */
+	__u32   flags;          /* SIOP_FLAGS_* */
 };
+
+/* If this flag is set then this algorithm uses
+ * a driver only available in kernel (software drivers,
+ * or drivers based on instruction sets do not set this flag).
+ *
+ * If multiple algorithms are involved (as in AEAD case), then
+ * if one of them is kernel-driver-only this flag will be set.
+ */
+#define SIOP_FLAG_KERNEL_DRIVER_ONLY 1
 
 #define	COP_ENCRYPT	0
 #define COP_DECRYPT	1
