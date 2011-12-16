@@ -193,9 +193,7 @@ static int test_encrypt_decrypt(int cfd)
 
 	struct session_op sess;
 	struct crypt_auth_op cao;
-#ifdef CIOCGSESSINFO
 	struct session_info_op siop;
-#endif
 
 	fprintf(stdout, "Tests on AES-GCM encryption/decryption: ");
 	fflush(stdout);
@@ -217,7 +215,6 @@ static int test_encrypt_decrypt(int cfd)
 		return 1;
 	}
 
-#ifdef CIOCGSESSINFO
 	siop.ses = sess.ses;
 	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
 		my_perror("ioctl(CIOCGSESSINFO)");
@@ -232,10 +229,7 @@ static int test_encrypt_decrypt(int cfd)
 	ciphertext =
 	    (char *) (((unsigned long) ciphertext_raw + siop.alignmask) &
 		      ~siop.alignmask);
-#else
-	plaintext = plaintext_raw;
-	ciphertext = ciphertext_raw;
-#endif
+
 	memset(plaintext, 0x15, DATA_SIZE);
 
 	/* Encrypt data.in to data.encrypted */
@@ -341,9 +335,7 @@ static int test_encrypt_decrypt_error(int cfd, int err)
 	struct session_op sess;
 	struct crypt_op co;
 	struct crypt_auth_op cao;
-#ifdef CIOCGSESSINFO
 	struct session_info_op siop;
-#endif
 
 	fprintf(stdout, "Tests on AES-GCM tag verification: ");
 	fflush(stdout);
@@ -371,7 +363,7 @@ static int test_encrypt_decrypt_error(int cfd, int err)
 		my_perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
-#ifdef CIOCGSESSINFO
+
 	siop.ses = sess.ses;
 	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
 		my_perror("ioctl(CIOCGSESSINFO)");
@@ -386,10 +378,7 @@ static int test_encrypt_decrypt_error(int cfd, int err)
 	ciphertext =
 	    (char *) (((unsigned long) ciphertext_raw + siop.alignmask) &
 		      ~siop.alignmask);
-#else
-	plaintext = plaintext_raw;
-	ciphertext = ciphertext_raw;
-#endif
+
 	memset(plaintext, 0x15, DATA_SIZE);
 	memcpy(ciphertext, plaintext, DATA_SIZE);
 

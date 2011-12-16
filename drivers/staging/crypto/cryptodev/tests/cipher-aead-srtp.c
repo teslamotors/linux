@@ -87,9 +87,7 @@ test_crypto(int cfd)
 	struct session_op sess;
 	struct crypt_op co;
 	struct crypt_auth_op cao;
-#ifdef CIOCGSESSINFO
 	struct session_info_op siop;
-#endif
 
 	memset(&sess, 0, sizeof(sess));
 	memset(&cao, 0, sizeof(cao));
@@ -112,7 +110,6 @@ test_crypto(int cfd)
 		return 1;
 	}
 
-#ifdef CIOCGSESSINFO
 	siop.ses = sess.ses;
 	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
 		perror("ioctl(CIOCGSESSINFO)");
@@ -123,10 +120,7 @@ test_crypto(int cfd)
 
 	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
 	ciphertext = (char *)(((unsigned long)ciphertext_raw + siop.alignmask) & ~siop.alignmask);
-#else
-	plaintext = plaintext_raw;
-	ciphertext = ciphertext_raw;
-#endif
+
 	memset(plaintext, 0x15, HEADER_SIZE); /* header */
 	memset(&plaintext[HEADER_SIZE], 0x17, PLAINTEXT_SIZE); /* payload */
 	memset(&plaintext[HEADER_SIZE+PLAINTEXT_SIZE], 0x22, FOOTER_SIZE);
@@ -238,9 +232,7 @@ test_encrypt_decrypt(int cfd)
 
 	struct session_op sess;
 	struct crypt_auth_op cao;
-#ifdef CIOCGSESSINFO
 	struct session_info_op siop;
-#endif
 
 	memset(&sess, 0, sizeof(sess));
 	memset(&cao, 0, sizeof(cao));
@@ -262,7 +254,6 @@ test_encrypt_decrypt(int cfd)
 		return 1;
 	}
 
-#ifdef CIOCGSESSINFO
 	siop.ses = sess.ses;
 	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
 		perror("ioctl(CIOCGSESSINFO)");
@@ -273,10 +264,7 @@ test_encrypt_decrypt(int cfd)
 
 	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
 	ciphertext = (char *)(((unsigned long)ciphertext_raw + siop.alignmask) & ~siop.alignmask);
-#else
-	plaintext = plaintext_raw;
-	ciphertext = ciphertext_raw;
-#endif
+
 	memset(plaintext, 0x15, HEADER_SIZE); /* header */
 	memset(&plaintext[HEADER_SIZE], 0x17, PLAINTEXT_SIZE); /* payload */
 	memset(&plaintext[HEADER_SIZE+PLAINTEXT_SIZE], 0x22, FOOTER_SIZE);
@@ -386,9 +374,7 @@ test_encrypt_decrypt_error(int cfd, int err)
 
 	struct session_op sess;
 	struct crypt_auth_op cao;
-#ifdef CIOCGSESSINFO
 	struct session_info_op siop;
-#endif
 
 	memset(&sess, 0, sizeof(sess));
 	memset(&cao, 0, sizeof(cao));
@@ -410,7 +396,6 @@ test_encrypt_decrypt_error(int cfd, int err)
 		return 1;
 	}
 
-#ifdef CIOCGSESSINFO
 	siop.ses = sess.ses;
 	if (ioctl(cfd, CIOCGSESSINFO, &siop)) {
 		perror("ioctl(CIOCGSESSINFO)");
@@ -421,10 +406,7 @@ test_encrypt_decrypt_error(int cfd, int err)
 
 	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
 	ciphertext = (char *)(((unsigned long)ciphertext_raw + siop.alignmask) & ~siop.alignmask);
-#else
-	plaintext = plaintext_raw;
-	ciphertext = ciphertext_raw;
-#endif
+
 	memset(plaintext, 0x15, HEADER_SIZE); /* header */
 	memset(&plaintext[HEADER_SIZE], 0x17, PLAINTEXT_SIZE); /* payload */
 	memset(&plaintext[HEADER_SIZE+PLAINTEXT_SIZE], 0x22, FOOTER_SIZE);
