@@ -5,6 +5,7 @@
 # define __always_inline	inline __attribute__((always_inline))
 #endif
 
+#undef __user
 #define __user
 
 #ifndef __attribute_const__
