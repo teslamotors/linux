@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2009-2011 Nikos Mavrogiannopoulos <nmav@gnutls.org>
  * Copyright (c) 2010 Phil Sutter
+ * Copyright (c) 2011, 2012 OpenSSL Software Foundation, Inc.
  *
  * This file is part of linux cryptodev.
  *

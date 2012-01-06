@@ -1,7 +1,9 @@
 /*
  * Driver for /dev/crypto device (aka CryptoDev)
  *
- * Copyright (c) 2011 Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ * Copyright (c) 2011, 2012 OpenSSL Software Foundation, Inc.
+ *
+ * Author: Nikos Mavrogiannopoulos
  *
  * This file is part of linux cryptodev.
  *
@@ -41,6 +43,7 @@
 #include <linux/scatterlist.h>
 #include "cryptodev_int.h"
 #include "zc.h"
+#include "util.h"
 #include "cryptlib.h"
 #include "version.h"
 
@@ -91,60 +94,6 @@ static int get_userbuf_tls(struct csession *ses, struct kernel_crypt_auth_op *kc
 	return 0;
 }
 
-/* Taken from Maxim Levitsky's patch
- */
-static struct scatterlist *sg_advance(struct scatterlist *sg, int consumed)
-{
-	while (consumed >= sg->length) {
-		consumed -= sg->length;
-
-		sg = sg_next(sg);
-		if (!sg)
-			break;
-	}
-
-	WARN_ON(!sg && consumed);
-
-	if (!sg)
-		return NULL;
-
-	sg->offset += consumed;
-	sg->length -= consumed;
-
-	if (sg->offset >= PAGE_SIZE) {
-		struct page *page =
-			nth_page(sg_page(sg), sg->offset / PAGE_SIZE);
-		sg_set_page(sg, page, sg->length, sg->offset % PAGE_SIZE);
-	}
-
-	return sg;
-}
-
-/**
- * sg_copy - copies sg entries from sg_from to sg_to, such
- * as sg_to covers first 'len' bytes from sg_from.
- */
-static int sg_copy(struct scatterlist *sg_from, struct scatterlist *sg_to, int len)
-{
-	while (len > sg_from->length) {
-		len -= sg_from->length;
-
-		sg_set_page(sg_to, sg_page(sg_from),
-				sg_from->length, sg_from->offset);
-
-		sg_to = sg_next(sg_to);
-		sg_from = sg_next(sg_from);
-
-		if (len && (!sg_from || !sg_to))
-			return -ENOMEM;
-	}
-
-	if (len)
-		sg_set_page(sg_to, sg_page(sg_from),
-				len, sg_from->offset);
-	sg_mark_end(sg_to);
-	return 0;
-}
 
 #define MAX_SRTP_AUTH_DATA_DIFF 256
 
