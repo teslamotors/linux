@@ -465,6 +465,13 @@ void local_bh_enable_ip(unsigned long ip)
 }
 EXPORT_SYMBOL(local_bh_enable_ip);
 
+void _local_bh_enable(void)
+{
+	current->softirq_nestcnt--;
+	migrate_enable();
+}
+EXPORT_SYMBOL(_local_bh_enable);
+
 /* For tracing */
 int notrace __in_softirq(void)
 {
