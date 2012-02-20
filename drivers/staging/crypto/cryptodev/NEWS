@@ -4,6 +4,16 @@ Version 1.1 (unreleased)
 
 * Defined HASH_MAX_LEN is cryptodev.h
 
+* CIOCGSESSINFO ioctl() sets the SIOP_FLAG_KERNEL_DRIVER_ONLY 
+flag if the driver is only available through kernel
+driver (and is not just software cipher).
+
+* Added new encryption ioctl, CIOCAUTHCRYPT, which
+combines authentication and encryption. Operates
+in AEAD, TLS and SRTP modes (the API might change
+in later versions).
+
+
 Version 1.0 (released 201-04-12)
 
 * Several fixes in the included examples. Based on
