@@ -1,4 +1,4 @@
-Version 1.1 (unreleased)
+Version 1.1 (released 2012-02-20)
 
 * Fixed alignment issue in speed.c
 
@@ -14,7 +14,7 @@ in AEAD, TLS and SRTP modes (the API might change
 in later versions).
 
 
-Version 1.0 (released 201-04-12)
+Version 1.0 (released 2011-04-12)
 
 * Several fixes in the included examples. Based on
 patches by Vladimir Zapolskiy.
