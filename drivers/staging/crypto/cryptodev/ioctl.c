@@ -132,7 +132,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		alg_name = "ecb(aes)";
 		break;
 	case CRYPTO_CAMELLIA_CBC:
-		alg_name = "cbc(camelia)";
+		alg_name = "cbc(camellia)";
 		break;
 	case CRYPTO_AES_CTR:
 		alg_name = "ctr(aes)";
