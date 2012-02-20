@@ -1,3 +1,10 @@
+Version 1.2 (unreleased)
+
+* In kernels that do not distinguish between hw 
+accelerated ciphers or not set the SIOP_FLAG_KERNEL_DRIVER_ONLY
+flag unconditionally.
+
+
 Version 1.1 (released 2012-02-20)
 
 * Fixed alignment issue in speed.c
