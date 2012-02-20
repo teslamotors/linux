@@ -33,7 +33,7 @@ dist: clean
 	@echo Packing
 	@rm -f *.tar.gz
 	@mkdir $(TMPDIR)/$(FILEBASE)
-	@cp -ar crypto extras examples Makefile *.c *.h README NEWS \
+	@cp -ar crypto extras tests examples Makefile *.c *.h README NEWS \
 		AUTHORS COPYING $(TMPDIR)/$(FILEBASE)
 	@rm -rf $(TMPDIR)/$(FILEBASE)/.git* $(TMPDIR)/$(FILEBASE)/releases $(TMPDIR)/$(FILEBASE)/scripts
 	@tar -C /tmp -czf ./$(OUTPUT) $(FILEBASE)
