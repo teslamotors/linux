@@ -717,6 +717,8 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 #ifdef CRYPTO_ALG_KERN_DRIVER_ONLY
 		if (tfm->__crt_alg->cra_flags & CRYPTO_ALG_KERN_DRIVER_ONLY)
 			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
+#else
+		siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY; /* set it by default */
 #endif
 	}
 	if (ses_ptr->hdata.init) {
@@ -725,6 +727,8 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 #ifdef CRYPTO_ALG_KERN_DRIVER_ONLY
 		if (tfm->__crt_alg->cra_flags & CRYPTO_ALG_KERN_DRIVER_ONLY)
 			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
+#else
+		siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY; /* set it by default */
 #endif
 	}
 
