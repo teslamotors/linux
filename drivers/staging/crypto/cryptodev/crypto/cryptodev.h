@@ -213,6 +213,7 @@ struct crypt_auth_op {
                                           * TLS protocol rules */
 #define COP_FLAG_AEAD_SRTP_TYPE  (1 << 5) /* authenticate and encrypt using the 
                                            * SRTP protocol rules */
+#define COP_FLAG_RESET		(1 << 6) /* multi-update reset the state */
 
 
 /* Stuff for bignum arithmetic and public key

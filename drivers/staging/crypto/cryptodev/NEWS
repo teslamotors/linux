@@ -6,6 +6,9 @@ flag unconditionally.
 
 * camelia was renamed to camellia.
 
+* Added COP_FLAG_RESET to allow resetting the state
+in multi-update.
+
 
 Version 1.1 (released 2012-02-20)
 

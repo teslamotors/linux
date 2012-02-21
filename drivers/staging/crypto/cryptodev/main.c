@@ -113,8 +113,10 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 	nbytes = cop->len;
 	data = (char *)__get_free_page(GFP_KERNEL);
 
-	if (unlikely(!data))
+	if (unlikely(!data)) {
+		dprintk(1, KERN_ERR, "Error getting free page.\n");
 		return -ENOMEM;
+        }
 
 	bufsize = PAGE_SIZE < nbytes ? PAGE_SIZE : nbytes;
 
@@ -125,6 +127,7 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 		size_t current_len = nbytes > bufsize ? bufsize : nbytes;
 
 		if (unlikely(copy_from_user(data, src, current_len))) {
+ 		        dprintk(1, KERN_ERR, "Error copying %d bytes from user address %p.\n", (int)current_len, src);
 			ret = -EFAULT;
 			break;
 		}
@@ -133,11 +136,14 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 
 		ret = hash_n_crypt(ses_ptr, cop, &sg, &sg, current_len);
 
-		if (unlikely(ret))
+		if (unlikely(ret)) {
+ 		        dprintk(1, KERN_ERR, "hash_n_crypt failed.\n");
 			break;
+                }
 
 		if (ses_ptr->cdata.init != 0) {
 			if (unlikely(copy_to_user(dst, data, current_len))) {
+         		        dprintk(1, KERN_ERR, "could not copy to user.\n");
 				ret = -EFAULT;
 				break;
 			}
@@ -201,6 +207,11 @@ int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 				"error in cryptodev_hash_reset()\n");
 			goto out_unlock;
 		}
+		
+		if (cop->flags & COP_FLAG_RESET) {
+		        ret = 0;
+                        goto out_unlock;
+                }
 	}
 
 	if (ses_ptr->cdata.init != 0) {
