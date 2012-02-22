@@ -30,6 +30,7 @@
 #include <linux/random.h>
 #include <linux/scatterlist.h>
 #include <linux/uaccess.h>
+#include <linux/delay.h>
 #include <crypto/algapi.h>
 #include <crypto/hash.h>
 #include <crypto/cryptodev.h>
@@ -39,6 +40,7 @@
 
 struct cryptodev_result {
 	struct completion completion;
+	int wait; /* for buggy drivers, the wait time in ms after completion */
 	int err;
 };
 
@@ -54,9 +56,10 @@ static void cryptodev_complete(struct crypto_async_request *req, int err)
 }
 
 int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
-				uint8_t *keyp, size_t keylen, int stream, int aead)
+			  uint8_t *keyp, size_t keylen, int stream, int aead)
 {
 	int ret;
+	struct crypto_tfm *tfm;
 
 	memset(out, 0, sizeof(*out));
 
@@ -89,6 +92,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 		out->blocksize = crypto_ablkcipher_blocksize(out->async.s);
 		out->ivsize = crypto_ablkcipher_ivsize(out->async.s);
 		out->alignmask = crypto_ablkcipher_alignmask(out->async.s);
+		tfm = crypto_ablkcipher_tfm(out->async.s);
 
 		ret = crypto_ablkcipher_setkey(out->async.s, keyp, keylen);
 	} else {
@@ -102,6 +106,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 		out->blocksize = crypto_aead_blocksize(out->async.as);
 		out->ivsize = crypto_aead_ivsize(out->async.as);
 		out->alignmask = crypto_aead_alignmask(out->async.as);
+		tfm = crypto_aead_tfm(out->async.as);
 
 		ret = crypto_aead_setkey(out->async.as, keyp, keylen);
 	}
@@ -113,6 +118,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 		goto error;
 	}
 
+
 	out->stream = stream;
 	out->aead = aead;
 
@@ -123,6 +129,12 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 	}
 
 	memset(out->async.result, 0, sizeof(*out->async.result));
+
+	if (tfm != NULL && 
+		(strcmp(crypto_tfm_alg_driver_name(tfm), "mv-ecb-aes") == 0 ||
+		    strcmp(crypto_tfm_alg_driver_name(tfm), "mv-cbc-aes") == 0))
+		out->async.result->wait = 50;
+
 	init_completion(&out->async.result->completion);
 
 	if (aead == 0) {
@@ -201,13 +213,12 @@ static inline int waitfor(struct cryptodev_result *cr, ssize_t ret)
 		 * This is important because otherwise hardware or driver
 		 * might try to access memory which will be freed or reused for
 		 * another request. */
-
 		if (unlikely(cr->err)) {
 			dprintk(0, KERN_ERR, "error from async request: %d\n",
 				cr->err);
 			return cr->err;
 		}
-
+		msleep(cr->wait);
 		break;
 	default:
 		return ret;
@@ -267,6 +278,7 @@ int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
 			int hmac_mode, void *mackey, size_t mackeylen)
 {
 	int ret;
+	struct crypto_tfm *tfm;
 
 	hdata->async.s = crypto_alloc_ahash(alg_name, 0, 0);
 	if (unlikely(IS_ERR(hdata->async.s))) {
@@ -286,6 +298,8 @@ int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
 			goto error;
 		}
 	}
+	tfm = crypto_ahash_tfm(hdata->async.s);
+
 
 	hdata->digestsize = crypto_ahash_digestsize(hdata->async.s);
 	hdata->alignmask = crypto_ahash_alignmask(hdata->async.s);
@@ -297,6 +311,12 @@ int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
 	}
 
 	memset(hdata->async.result, 0, sizeof(*hdata->async.result));
+
+	if (tfm != NULL && 
+		    (strcmp(crypto_tfm_alg_driver_name(tfm), "mv-sha1") == 0 ||
+		    strcmp(crypto_tfm_alg_driver_name(tfm), "mv-hmac-sha1") == 0))
+		hdata->async.result->wait = 50;
+
 	init_completion(&hdata->async.result->completion);
 
 	hdata->async.request = ahash_request_alloc(hdata->async.s, GFP_KERNEL);
