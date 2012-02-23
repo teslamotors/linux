@@ -9,8 +9,6 @@ flag unconditionally.
 * Added COP_FLAG_RESET to allow resetting the state
 in multi-update.
 
-* Added mv_cesa driver hack.
-
 
 Version 1.1 (released 2012-02-20)
 
