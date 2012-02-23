@@ -18,8 +18,9 @@
 #define dprintk(level, severity, format, a...)			\
 	do {							\
 		if (level <= cryptodev_verbosity)		\
-			printk(severity PFX "%s[%u]: " format,	\
+			printk(severity PFX "%s[%u] (%s:%u): " format,	\
 			       current->comm, current->pid,	\
+			       __func__, __LINE__,		\
 			       ##a);				\
 	} while (0)
 

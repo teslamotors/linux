@@ -324,10 +324,10 @@ static int verify_tls_record_pad( struct scatterlist *dst_sg, int len, int block
  */
 static int
 tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
-		struct scatterlist *auth_sg, uint32_t auth_len,
-		struct scatterlist *dst_sg, uint32_t len)
+		 struct scatterlist *auth_sg, uint32_t auth_len,
+		 struct scatterlist *dst_sg, uint32_t len)
 {
-	int ret, fail = 0;
+ 	int ret, fail = 0;
 	struct crypt_auth_op *caop = &kcaop->caop;
 	uint8_t vhash[AALG_MAX_RESULT_LEN];
 	uint8_t hash_output[AALG_MAX_RESULT_LEN];
@@ -619,15 +619,20 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 		unsigned char* auth_buf = NULL;
 		struct scatterlist tmp;
 
-		if (unlikely(caop->auth_len > PAGE_SIZE))
+		if (unlikely(caop->auth_len > PAGE_SIZE)) {
+			dprintk(1, KERN_ERR, "auth data len is excessive.\n");
 			return -EINVAL;
+		}
 
 		auth_buf = (char *)__get_free_page(GFP_KERNEL);
-		if (unlikely(!auth_buf))
+		if (unlikely(!auth_buf)) {
+			dprintk(1, KERN_ERR, "unable to get a free page.\n");
 			return -ENOMEM;
+		}
 
 		if (caop->auth_len > 0) {
 			if (unlikely(copy_from_user(auth_buf, caop->auth_src, caop->auth_len))) {
+				dprintk(1, KERN_ERR, "unable to copy auth data from userspace.\n");
 				ret = -EFAULT;
 				goto fail;
 			}
@@ -720,9 +725,14 @@ int crypto_auth_run(struct fcrypt *fcr, struct kernel_crypt_auth_op *kcaop)
 
 	if (likely(caop->len || caop->auth_len)) {
 		ret = __crypto_auth_run_zc(ses_ptr, kcaop);
-		if (unlikely(ret))
+		if (unlikely(ret)) {
+			dprintk(1, KERN_ERR,
+				"error in __crypto_auth_run_zc()\n");
 			goto out_unlock;
+		}
 	} else {
+		dprintk(1, KERN_ERR,
+			"Do not have auth data nor other data.\n");
 		ret = -EINVAL;
 		goto out_unlock;
 	}
