@@ -52,8 +52,7 @@
  * (caop->src is assumed to be equal to caop->dst)
  */
 static int get_userbuf_tls(struct csession *ses, struct kernel_crypt_auth_op *kcaop,
-			struct scatterlist **dst_sg, 
-			int *tot_pages)
+			struct scatterlist **dst_sg)
 {
 	int pagecount = 0;
 	struct crypt_auth_op *caop = &kcaop->caop;
@@ -75,7 +74,8 @@ static int get_userbuf_tls(struct csession *ses, struct kernel_crypt_auth_op *kc
 
 	pagecount = PAGECOUNT(caop->dst, kcaop->dst_len);
 
-	(*tot_pages) = pagecount;
+	ses->used_pages = pagecount;
+	ses->readable_pages = 0;
 
 	rc = adjust_sg_array(ses, pagecount);
 	if (rc)
@@ -104,8 +104,7 @@ static int get_userbuf_tls(struct csession *ses, struct kernel_crypt_auth_op *kc
  * returns error.
  */
 static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *kcaop,
-			struct scatterlist **auth_sg, struct scatterlist **dst_sg, 
-			int *tot_pages)
+			struct scatterlist **auth_sg, struct scatterlist **dst_sg)
 {
 	int pagecount, diff;
 	int auth_pagecount = 0;
@@ -141,7 +140,7 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 		return -EINVAL;
 	}
 
-	(*tot_pages) = pagecount = auth_pagecount;
+	pagecount = auth_pagecount;
 
 	rc = adjust_sg_array(ses, pagecount*2); /* double pages to have pages for dst(=auth_src) */
 	if (rc) {
@@ -156,6 +155,10 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 			"failed to get user pages for data input\n");
 		return -EINVAL;
 	}
+
+	ses->used_pages = pagecount;
+	ses->readable_pages = 0;
+
 	(*auth_sg) = ses->sg;
 
 	(*dst_sg) = ses->sg + auth_pagecount;
@@ -163,7 +166,7 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 	sg_copy(ses->sg, (*dst_sg), caop->auth_len);
 	(*dst_sg) = sg_advance(*dst_sg, diff);
 	if (*dst_sg == NULL) {
-		release_user_pages(ses->pages, pagecount);
+		release_user_pages(ses);
 		dprintk(1, KERN_ERR,
 			"failed to get enough pages for auth data\n");
 		return -EINVAL;
@@ -594,7 +597,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 {
 	struct scatterlist *dst_sg, *auth_sg, *src_sg;
 	struct crypt_auth_op *caop = &kcaop->caop;
-	int ret = 0, pagecount = 0;
+	int ret = 0;
 
 	if (caop->flags & COP_FLAG_AEAD_SRTP_TYPE) {
 		if (unlikely(ses_ptr->cdata.init != 0 && 
@@ -604,7 +607,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			return -EINVAL;
 		}
 
-		ret = get_userbuf_srtp(ses_ptr, kcaop, &auth_sg, &dst_sg, &pagecount);
+		ret = get_userbuf_srtp(ses_ptr, kcaop, &auth_sg, &dst_sg);
 		if (unlikely(ret)) {
 			dprintk(1, KERN_ERR, "get_userbuf_srtp(): Error getting user pages.\n");
 			return ret;
@@ -644,7 +647,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 		}
 
 		if (caop->flags & COP_FLAG_AEAD_TLS_TYPE && ses_ptr->cdata.aead == 0) {
-			ret = get_userbuf_tls(ses_ptr, kcaop, &dst_sg, &pagecount);
+			ret = get_userbuf_tls(ses_ptr, kcaop, &dst_sg);
 			if (unlikely(ret)) {
 				dprintk(1, KERN_ERR, "get_userbuf_tls(): Error getting user pages.\n");
 				goto fail;
@@ -667,7 +670,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			else dst_len = caop->len - cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
 			
 			ret = get_userbuf(ses_ptr, caop->src, caop->len, caop->dst, dst_len,
-					  kcaop->task, kcaop->mm, &src_sg, &dst_sg, &pagecount);
+					  kcaop->task, kcaop->mm, &src_sg, &dst_sg);
 			if (unlikely(ret)) {
 				dprintk(1, KERN_ERR, "get_userbuf(): Error getting user pages.\n");
 				goto fail;
@@ -681,7 +684,7 @@ fail:
 		free_page((unsigned long)auth_buf);
 	}
 
-	release_user_pages(ses_ptr->pages, pagecount);
+	release_user_pages(ses_ptr);
 	return ret;
 }
 

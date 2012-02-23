@@ -26,7 +26,6 @@
 
 extern int cryptodev_verbosity;
 
-
 struct fcrypt {
 	struct list_head list;
 	struct mutex sem;
@@ -115,7 +114,11 @@ struct csession {
 	struct hash_data hdata;
 	uint32_t sid;
 	uint32_t alignmask;
-	int array_size;
+
+	unsigned int array_size;
+	unsigned int used_pages; /* the number of pages that are used */
+	/* the number of pages marked as writable (first are the readable) */
+	unsigned int readable_pages; 
 	struct page **pages;
 	struct scatterlist *sg;
 };

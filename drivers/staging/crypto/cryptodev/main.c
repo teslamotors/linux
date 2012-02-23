@@ -166,10 +166,10 @@ __crypto_run_zc(struct csession *ses_ptr, struct kernel_crypt_op *kcop)
 {
 	struct scatterlist *src_sg, *dst_sg;
 	struct crypt_op *cop = &kcop->cop;
-	int ret = 0, pagecount;
+	int ret = 0;
 
 	ret = get_userbuf(ses_ptr, cop->src, cop->len, cop->dst, cop->len, 
-	                  kcop->task, kcop->mm, &src_sg, &dst_sg, &pagecount);
+	                  kcop->task, kcop->mm, &src_sg, &dst_sg);
 	if (unlikely(ret)) {
 		dprintk(1, KERN_ERR, "Error getting user pages. "
 					"Falling back to non zero copy.\n");
@@ -178,7 +178,7 @@ __crypto_run_zc(struct csession *ses_ptr, struct kernel_crypt_op *kcop)
 
 	ret = hash_n_crypt(ses_ptr, cop, src_sg, dst_sg, cop->len);
 
-	release_user_pages(ses_ptr->pages, pagecount);
+	release_user_pages(ses_ptr);
 	return ret;
 }
 

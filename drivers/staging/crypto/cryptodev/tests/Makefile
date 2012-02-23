@@ -21,6 +21,9 @@ check: $(hostprogs)
 	./hmac
 	./async_cipher
 	./async_hmac
+	./cipher-aead-srtp
+	./cipher-gcm
+	./cipher-aead
 
 clean:
 	rm -f *.o *~ $(hostprogs)

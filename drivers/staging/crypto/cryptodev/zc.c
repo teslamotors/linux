@@ -102,13 +102,22 @@ int array_size;
 	return 0;
 }
 
-void release_user_pages(struct page **pg, int pagecount)
+void release_user_pages(struct csession *ses)
 {
-	while (pagecount--) {
-		if (!PageReserved(pg[pagecount]))
-			SetPageDirty(pg[pagecount]);
-		page_cache_release(pg[pagecount]);
+unsigned int i;
+
+	for (i=0;i<ses->used_pages;i++) {
+		if (!PageReserved(ses->pages[i]))
+			SetPageDirty(ses->pages[i]);
+                
+                if (ses->readable_pages == 0)
+                        flush_dcache_page(ses->pages[i]);
+                else
+                        ses->readable_pages--;
+                
+		page_cache_release(ses->pages[i]);
 	}
+	ses->used_pages = 0;
 }
 
 /* make src and dst available in scatterlists.
@@ -118,8 +127,7 @@ int get_userbuf(struct csession *ses, void* __user src, int src_len,
                 void* __user dst, int dst_len,
 		struct task_struct *task, struct mm_struct *mm,
                 struct scatterlist **src_sg, 
-                struct scatterlist **dst_sg,
-                int *tot_pages)
+                struct scatterlist **dst_sg)
 {
 	int src_pagecount, dst_pagecount = 0, pagecount, write_src = 1;
 	int rc;
@@ -153,7 +161,10 @@ int get_userbuf(struct csession *ses, void* __user src, int src_len,
 					__func__, (unsigned long)dst, ses->alignmask + 1);
 		}
         }
-	(*tot_pages) = pagecount = src_pagecount + dst_pagecount;
+	ses->used_pages = pagecount = src_pagecount + dst_pagecount;
+
+	if (write_src) ses->readable_pages = 0;
+	else ses->readable_pages = src_pagecount;
 
 	if (pagecount > ses->array_size) {
 		rc = adjust_sg_array(ses, pagecount);
@@ -181,7 +192,7 @@ int get_userbuf(struct csession *ses, void* __user src, int src_len,
 	if (unlikely(rc)) {
 		dprintk(1, KERN_ERR,
 		        "failed to get user pages for data output\n");
-		release_user_pages(ses->pages, src_pagecount);
+		release_user_pages(ses);
 		return -EINVAL;
 	}
 	return 0;
