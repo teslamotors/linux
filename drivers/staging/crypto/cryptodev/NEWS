@@ -33,6 +33,7 @@ Version 1.0 (released 2011-04-12)
 * Several fixes in the included examples. Based on
 patches by Vladimir Zapolskiy.
 
+
 Version 0.9 (released 2011-02-11)
 
 * Added additional test tools:
@@ -49,6 +50,7 @@ flag.
 * Added CIOCGSESSINFO to export additional information
 for each session.
 
+
 Version 0.8 (released 2010-11-06)
 
 * Made cryptodev aware of alignment constraints.
@@ -58,6 +60,7 @@ Version 0.8 (released 2010-11-06)
 * Added asynchronous operation support using
   CIOCASYNCCRYPT, CIOCASYNCFETCH ioctls and poll().
 
+
 Version 0.7 (released 2010-10-08)
 
 * Added COP_FLAG_FINAL to make multi-update
@@ -66,6 +69,7 @@ more efficient.
 * Added CRIOGET_NOT_NEEDED definition to allow
 users of the API to distinguish from the bare
 OpenBSD API that requires the CRIOGET.
+
 
 Version 0.6 (released 2010-09-16)
 
@@ -79,6 +83,7 @@ the new flag COP_FLAG_UPDATE.
 * Corrected fallback to non-zero copy when referenced
 pages were not writable.
 
+
 Version 0.5 (released 2010-07-06)
 
 * Corrected issue with zero copy on multiple pages.
@@ -86,14 +91,17 @@ Version 0.5 (released 2010-07-06)
 * Fallback to normal operation if user pages cannot be
 mapped.
 
+
 Version 0.4 (released 2010-07-03)
 
 * Internal engine supports operations with zero copy from
 user space. 
 
+
 Version 0.3 (released 2010-06-19)
 
 * Corrected bug when initializing unsupported algorithms.
+
 
 Version 0.2 (released 2010-06-18)
 
