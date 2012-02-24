@@ -308,7 +308,7 @@ static int verify_tls_record_pad( struct scatterlist *dst_sg, int len, int block
 
 	if (pad_size+1 > len) {
 		dprintk(1, KERN_ERR, "Pad size: %d\n", pad_size);
-		return -ECANCELED;
+		return -EBADMSG;
 	}
 
 	scatterwalk_map_and_copy(pad, dst_sg, len-pad_size-1, pad_size+1, 0);
@@ -316,14 +316,14 @@ static int verify_tls_record_pad( struct scatterlist *dst_sg, int len, int block
 	for (i=0;i<pad_size;i++)
 		if (pad[i] != pad_size) {
 			dprintk(1, KERN_ERR, "Pad size: %d, pad: %d\n", pad_size, (int)pad[i]);
-			return -ECANCELED;
+			return -EBADMSG;
 		}
 
 	return pad_size+1;
 }
 
 /* Authenticate and encrypt the TLS way (also perform padding). 
- * During decryption it verifies the pad and tag and returns -ECANCELED on error.
+ * During decryption it verifies the pad and tag and returns -EBADMSG on error.
  */
 static int
 tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
@@ -436,7 +436,7 @@ tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 
 			if (memcmp(vhash, hash_output, caop->tag_len) != 0 || fail != 0) {
 				dprintk(2, KERN_ERR, "MAC verification failed (tag_len: %d)\n", caop->tag_len);
-				return -ECANCELED;
+				return -EBADMSG;
 			}
 		}
 	}
@@ -445,7 +445,7 @@ tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 }
 
 /* Authenticate and encrypt the SRTP way. During decryption
- * it verifies the tag and returns -ECANCELED on error.
+ * it verifies the tag and returns -EBADMSG on error.
  */
 static int
 srtp_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
@@ -516,7 +516,7 @@ srtp_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 
 			if (memcmp(vhash, hash_output, caop->tag_len) != 0 || fail != 0) {
 				dprintk(2, KERN_ERR, "MAC verification failed\n");
-				return -ECANCELED;
+				return -EBADMSG;
 			}
 		}
 
