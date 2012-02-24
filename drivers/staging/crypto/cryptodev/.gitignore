@@ -22,3 +22,5 @@ tests/cipher-aead
 tests/fullspeed
 examples/aes
 lib/benchmark
+tests/cipher-aead-srtp
+tests/cipher-gcm
