@@ -16,7 +16,7 @@ Version 1.1 (released 2012-02-20)
 
 * Fixed alignment issue in speed.c
 
-* Defined HASH_MAX_LEN is cryptodev.h
+* Defined HASH_MAX_LEN in cryptodev.h
 
 * CIOCGSESSINFO ioctl() sets the SIOP_FLAG_KERNEL_DRIVER_ONLY 
 flag if the driver is only available through kernel
