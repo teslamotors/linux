@@ -693,6 +693,39 @@ static inline void tfm_info_to_alg_info(struct alg_info *dst, struct crypto_tfm 
 			"%s", crypto_tfm_alg_driver_name(tfm));
 }
 
+static unsigned int is_known_accelerated(struct crypto_tfm *tfm)
+{
+const char* name = crypto_tfm_alg_driver_name(tfm);
+
+	if (name == NULL)
+	  return 1; /* assume accelerated */
+
+	if (strstr(name, "-talitos"))
+	  return 1;
+	else if (strncmp(name, "mv-", 3))
+	  return 1;
+	else if (strstr(name, "geode"))
+	  return 1;
+	else if (strstr(name, "hifn"))
+	  return 1;
+	else if (strstr(name, "-ixp4xx"))
+	  return 1;
+	else if (strstr(name, "-omap"))
+	  return 1;
+	else if (strstr(name, "-picoxcell"))
+	  return 1;
+	else if (strstr(name, "-s5p"))
+	  return 1;
+	else if (strstr(name, "-ppc4xx"))
+	  return 1;
+	else if (strstr(name, "-caam"))
+	  return 1;
+	else if (strstr(name, "-n2"))
+	  return 1;
+
+	return 0;
+}
+
 static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 {
 	struct csession *ses_ptr;
@@ -718,7 +751,8 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 		if (tfm->__crt_alg->cra_flags & CRYPTO_ALG_KERN_DRIVER_ONLY)
 			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
 #else
-		siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY; /* set it by default */
+		if (is_known_accelerated(tfm))
+			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
 #endif
 	}
 	if (ses_ptr->hdata.init) {
@@ -728,7 +762,8 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 		if (tfm->__crt_alg->cra_flags & CRYPTO_ALG_KERN_DRIVER_ONLY)
 			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
 #else
-		siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY; /* set it by default */
+		if (is_known_accelerated(tfm))
+			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
 #endif
 	}
 
