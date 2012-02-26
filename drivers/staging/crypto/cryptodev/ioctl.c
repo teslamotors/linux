@@ -677,11 +677,15 @@ static int kcop_to_user(struct kernel_crypt_op *kcop,
 	int ret;
 
 	ret = fill_cop_from_kcop(kcop, fcr);
-	if (unlikely(ret))
+	if (unlikely(ret)) {
+		dprintk(1, KERN_ERR, "Error in fill_cop_from_kcop\n");
 		return ret;
+	}
 
-	if (unlikely(copy_to_user(arg, &kcop->cop, sizeof(kcop->cop))))
+	if (unlikely(copy_to_user(arg, &kcop->cop, sizeof(kcop->cop)))) {
+		dprintk(1, KERN_ERR, "Cannot copy to userspace\n");
 		return -EFAULT;
+	}
 	return 0;
 }
 

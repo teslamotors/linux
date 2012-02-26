@@ -200,18 +200,13 @@ int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 		return -EINVAL;
 	}
 
-	if (ses_ptr->hdata.init != 0 && !(cop->flags & (COP_FLAG_UPDATE | COP_FLAG_FINAL))) {
+	if (ses_ptr->hdata.init != 0 && (cop->flags == 0 || cop->flags & COP_FLAG_RESET)) {
 		ret = cryptodev_hash_reset(&ses_ptr->hdata);
 		if (unlikely(ret)) {
 			dprintk(1, KERN_ERR,
 				"error in cryptodev_hash_reset()\n");
 			goto out_unlock;
 		}
-		
-		if (cop->flags & COP_FLAG_RESET) {
-		        ret = 0;
-                        goto out_unlock;
-                }
 	}
 
 	if (ses_ptr->cdata.init != 0) {
