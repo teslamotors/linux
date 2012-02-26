@@ -3,6 +3,9 @@ Version 1.3 (unreleased)
 * Return EBADMSG instead of ECANCELED on tag verification
 failure in authenc modes.
 
+* COP_FLAG_RESET can be combined with COP_FLAG_UPDATE for
+efficiency.
+
 
 Version 1.2 (released 2012-02-24)
 
