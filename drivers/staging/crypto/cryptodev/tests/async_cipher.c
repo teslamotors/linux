@@ -15,6 +15,8 @@
 
 #include "testhelper.h"
 
+static int debug = 0;
+
 #define	DATA_SIZE	8*1024
 #define	BLOCK_SIZE	16
 #define	KEY_SIZE	16
@@ -33,7 +35,7 @@ test_crypto(int cfd)
 #endif
 	struct crypt_op cryp;
 
-	printf("running %s\n", __func__);
+	if (debug) printf("running %s\n", __func__);
 
 	memset(&sess, 0, sizeof(sess));
 	memset(&cryp, 0, sizeof(cryp));
@@ -50,7 +52,7 @@ test_crypto(int cfd)
 		return 1;
 	}
 
-	printf("%s: got the session\n", __func__);
+	if (debug) printf("%s: got the session\n", __func__);
 
 #ifdef CIOCGSESSINFO
 	siop.ses = sess.ses;
@@ -77,19 +79,19 @@ test_crypto(int cfd)
 	DO_OR_DIE(do_async_crypt(cfd, &cryp), 0);
 	DO_OR_DIE(do_async_fetch(cfd, &cryp), 0);
 
-	printf("%s: data encrypted\n", __func__);
+	if (debug) printf("%s: data encrypted\n", __func__);
 
 	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
 		perror("ioctl(CIOCFSESSION)");
 		return 1;
 	}
-	printf("%s: session finished\n", __func__);
+	if (debug) printf("%s: session finished\n", __func__);
 
 	if (ioctl(cfd, CIOCGSESSION, &sess)) {
 		perror("ioctl(CIOCGSESSION)");
 		return 1;
 	}
-	printf("%s: got new session\n", __func__);
+	if (debug) printf("%s: got new session\n", __func__);
 
 	/* Decrypt data.encrypted to data.decrypted */
 	cryp.ses = sess.ses;
@@ -102,14 +104,14 @@ test_crypto(int cfd)
 	DO_OR_DIE(do_async_crypt(cfd, &cryp), 0);
 	DO_OR_DIE(do_async_fetch(cfd, &cryp), 0);
 
-	printf("%s: data encrypted\n", __func__);
+	if (debug) printf("%s: data encrypted\n", __func__);
 
 	/* Verify the result */
 	if (memcmp(plaintext, ciphertext, DATA_SIZE) != 0) {
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
 		return 1;
-	} else
+	} else if (debug)
 		printf("Test passed\n");
 
 	/* Finish crypto session */
@@ -196,7 +198,7 @@ static int test_aes(int cfd)
 	cryp1.op = COP_ENCRYPT;
 
 	DO_OR_DIE(do_async_crypt(cfd, &cryp1), 0);
-	printf("cryp1 written out\n");
+	if (debug) printf("cryp1 written out\n");
 
 	memset(iv2, 0x0, sizeof(iv2));
 
@@ -209,11 +211,11 @@ static int test_aes(int cfd)
 	cryp2.op = COP_ENCRYPT;
 
 	DO_OR_DIE(do_async_crypt(cfd, &cryp2), 0);
-	printf("cryp2 written out\n");
+	if (debug) printf("cryp2 written out\n");
 
 	DO_OR_DIE(do_async_fetch(cfd, &cryp1), 0);
 	DO_OR_DIE(do_async_fetch(cfd, &cryp2), 0);
-	printf("cryp1 + cryp2 successfully read\n");
+	if (debug) printf("cryp1 + cryp2 successfully read\n");
 
 	/* Verify the result */
 	if (memcmp(plaintext1, ciphertext1, BLOCK_SIZE) != 0) {
@@ -235,7 +237,7 @@ static int test_aes(int cfd)
 		printf("\n");
 		return 1;
 	} else {
-		printf("result 1 passed\n");
+		if (debug) printf("result 1 passed\n");
 	}
 
 	/* Test 2 */
@@ -260,10 +262,10 @@ static int test_aes(int cfd)
 		printf("\n");
 		return 1;
 	} else {
-		printf("result 2 passed\n");
+		if (debug) printf("result 2 passed\n");
 	}
 
-	printf("AES Test passed\n");
+	if (debug) printf("AES Test passed\n");
 
 	/* Finish crypto session */
 	if (ioctl(cfd, CIOCFSESSION, &sess1.ses)) {
@@ -279,9 +281,11 @@ static int test_aes(int cfd)
 }
 
 int
-main()
+main(int argc, char** argv)
 {
 	int fd = -1, cfd = -1;
+	
+	if (argc > 1) debug = 1;
 
 	/* Open the crypto device */
 	fd = open("/dev/crypto", O_RDWR, 0);

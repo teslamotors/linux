@@ -16,6 +16,8 @@
 
 #include "testhelper.h"
 
+static int debug = 0;
+
 #define	DATA_SIZE	4096
 #define	BLOCK_SIZE	16
 #define	KEY_SIZE	16
@@ -72,7 +74,7 @@ test_crypto(int cfd)
 		puts("\n");
 		fprintf(stderr, "HASH test 1: failed\n");
 	} else {
-		fprintf(stderr, "HASH test 1: passed\n");
+		if (debug) fprintf(stderr, "HASH test 1: passed\n");
 	}
 
 	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
@@ -109,7 +111,7 @@ test_crypto(int cfd)
 		puts("\n");
 		fprintf(stderr, "HMAC test 1: failed\n");
 	} else {
-		fprintf(stderr, "HMAC test 1: passed\n");
+		if (debug) fprintf(stderr, "HMAC test 1: passed\n");
 	}
 
 	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
@@ -156,14 +158,14 @@ test_crypto(int cfd)
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
 		return 1;
-	} else
+	} else if (debug) 
 		printf("Crypt Test: passed\n");
 
 	if (memcmp(mac, oldmac, 20) != 0) {
 		fprintf(stderr,
 			"FAIL: Hash in decrypted data different than in encrypted.\n");
 		return 1;
-	} else
+	} else if (debug)
 		printf("HMAC Test 2: passed\n");
 
 	/* Finish crypto session */
@@ -230,7 +232,7 @@ test_extras(int cfd)
 		puts("\n");
 		fprintf(stderr, "HASH test [update]: failed\n");
 	} else {
-		fprintf(stderr, "HASH test [update]: passed\n");
+		if (debug) fprintf(stderr, "HASH test [update]: passed\n");
 	}
 
 	memset(mac, 0, sizeof(mac));

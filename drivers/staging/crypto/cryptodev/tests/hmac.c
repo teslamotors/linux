@@ -13,6 +13,8 @@
 #include <sys/ioctl.h>
 #include <crypto/cryptodev.h>
 
+static int debug = 0;
+
 #define	DATA_SIZE	4096
 #define	BLOCK_SIZE	16
 #define	KEY_SIZE	16
@@ -61,7 +63,7 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSINFO)");
 		return 1;
 	}
-	printf("requested mac CRYPTO_SHA1, got %s with driver %s\n",
+	if (debug) printf("requested mac CRYPTO_SHA1, got %s with driver %s\n",
 			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
 #endif
 
@@ -83,7 +85,7 @@ test_crypto(int cfd)
 		puts("\n");
 		fprintf(stderr, "HASH test 1: failed\n");
 	} else {
-		fprintf(stderr, "HASH test 1: passed\n");
+		if (debug) fprintf(stderr, "HASH test 1: passed\n");
 	}
 
 	/* MD5-HMAC test */
@@ -104,7 +106,8 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSINFO)");
 		return 1;
 	}
-	printf("requested mac CRYPTO_MD5_HMAC, got %s with driver %s\n",
+	if (debug)
+		printf("requested mac CRYPTO_MD5_HMAC, got %s with driver %s\n",
 			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
 #endif
 
@@ -126,7 +129,7 @@ test_crypto(int cfd)
 		puts("\n");
 		fprintf(stderr, "HMAC test 1: failed\n");
 	} else {
-		fprintf(stderr, "HMAC test 1: passed\n");
+		if (debug) fprintf(stderr, "HMAC test 1: passed\n");
 	}
 
 	/* Hash and encryption in one step test */
@@ -147,7 +150,8 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSINFO)");
 		return 1;
 	}
-	printf("requested cipher CRYPTO_AES_CBC and mac CRYPTO_SHA1_HMAC,"
+	if (debug)
+		printf("requested cipher CRYPTO_AES_CBC and mac CRYPTO_SHA1_HMAC,"
 	       " got cipher %s with driver %s and hash %s with driver %s\n",
 			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name,
 			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
@@ -182,15 +186,13 @@ test_crypto(int cfd)
 		fprintf(stderr,
 			"FAIL: Decrypted data are different from the input data.\n");
 		return 1;
-	} else
-		printf("Crypt Test: passed\n");
+	} else if (debug) printf("Crypt Test: passed\n");
 
 	if (memcmp(mac, oldmac, 20) != 0) {
 		fprintf(stderr,
 			"FAIL: Hash in decrypted data different than in encrypted.\n");
 		return 1;
-	} else
-		printf("HMAC Test 2: passed\n");
+	} else if (debug) printf("HMAC Test 2: passed\n");
 
 	/* Finish crypto session */
 	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
@@ -237,7 +239,8 @@ test_extras(int cfd)
 		perror("ioctl(CIOCGSESSINFO)");
 		return 1;
 	}
-	printf("requested mac CRYPTO_SHA1, got %s with driver %s\n",
+	if (debug)
+		printf("requested mac CRYPTO_SHA1, got %s with driver %s\n",
 			siop.hash_info.cra_name, siop.hash_info.cra_driver_name);
 #endif
 
@@ -271,7 +274,7 @@ test_extras(int cfd)
 		puts("\n");
 		fprintf(stderr, "HASH test [update]: failed\n");
 	} else {
-		fprintf(stderr, "HASH test [update]: passed\n");
+		if (debug) fprintf(stderr, "HASH test [update]: passed\n");
 	}
 
 	memset(mac, 0, sizeof(mac));
@@ -287,9 +290,11 @@ test_extras(int cfd)
 
 
 int
-main()
+main(int argc, char** argv)
 {
 	int fd = -1, cfd = -1;
+	
+	if (argc > 1) debug = 1;
 
 	/* Open the crypto device */
 	fd = open("/dev/crypto", O_RDWR, 0);

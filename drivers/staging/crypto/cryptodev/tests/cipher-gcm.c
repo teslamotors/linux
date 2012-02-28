@@ -20,6 +20,8 @@
 
 #define my_perror(x) {fprintf(stderr, "%s: %d\n", __func__, __LINE__); perror(x); }
 
+static int debug = 0;
+
 static void print_buf(char *desc, const unsigned char *buf, int size)
 {
 	int i;
@@ -99,8 +101,10 @@ static int test_crypto(int cfd)
 
 	/* Get crypto session for AES128 */
 
-	fprintf(stdout, "Tests on AES-GCM vectors: ");
-	fflush(stdout);
+	if (debug) {
+		fprintf(stdout, "Tests on AES-GCM vectors: ");
+		fflush(stdout);
+	}
 	for (i = 0;
 	     i < sizeof(aes_gcm_vectors) / sizeof(aes_gcm_vectors[0]);
 	     i++) {
@@ -167,8 +171,11 @@ static int test_crypto(int cfd)
 		}
 
 	}
-	fprintf(stdout, "ok\n");
-	fprintf(stdout, "\n");
+	
+	if (debug) {
+		fprintf(stdout, "ok\n");
+		fprintf(stdout, "\n");
+	}
 
 	/* Finish crypto session */
 	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
@@ -195,8 +202,10 @@ static int test_encrypt_decrypt(int cfd)
 	struct crypt_auth_op cao;
 	struct session_info_op siop;
 
-	fprintf(stdout, "Tests on AES-GCM encryption/decryption: ");
-	fflush(stdout);
+	if (debug) {
+		fprintf(stdout, "Tests on AES-GCM encryption/decryption: ");
+		fflush(stdout);
+	}
 
 	memset(&sess, 0, sizeof(sess));
 	memset(&cao, 0, sizeof(cao));
@@ -317,8 +326,10 @@ static int test_encrypt_decrypt(int cfd)
 		return 1;
 	}
 
-	fprintf(stdout, "ok\n");
-	fprintf(stdout, "\n");
+	if (debug) {
+		fprintf(stdout, "ok\n");
+		fprintf(stdout, "\n");
+	}
 
 	return 0;
 }
@@ -337,8 +348,10 @@ static int test_encrypt_decrypt_error(int cfd, int err)
 	struct crypt_auth_op cao;
 	struct session_info_op siop;
 
-	fprintf(stdout, "Tests on AES-GCM tag verification: ");
-	fflush(stdout);
+	if (debug) {
+		fprintf(stdout, "Tests on AES-GCM tag verification: ");
+		fflush(stdout);
+	}
 
 	memset(&sess, 0, sizeof(sess));
 	memset(&cao, 0, sizeof(cao));
@@ -443,8 +456,10 @@ static int test_encrypt_decrypt_error(int cfd, int err)
 			return 1;
 		}
 
-		fprintf(stdout, "ok\n");
-		fprintf(stdout, "\n");
+		if (debug) {
+			fprintf(stdout, "ok\n");
+			fprintf(stdout, "\n");
+		}
 		return 0;
 	}
 
@@ -459,9 +474,11 @@ static int test_encrypt_decrypt_error(int cfd, int err)
 	return 1;
 }
 
-int main()
+int main(int argc, char** argv)
 {
 	int fd = -1, cfd = -1;
+
+	if (argc > 1) debug = 1;
 
 	/* Open the crypto device */
 	fd = open("/dev/crypto", O_RDWR, 0);

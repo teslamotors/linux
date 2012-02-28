@@ -12,6 +12,8 @@
 #include <sys/ioctl.h>
 #include <crypto/cryptodev.h>
 
+static int debug = 0;
+
 #define	DATA_SIZE	8*1024
 #define	BLOCK_SIZE	16
 #define	KEY_SIZE	16
@@ -51,7 +53,8 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSINFO)");
 		return 1;
 	}
-	printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
+	if (debug)
+		printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
 			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
 
 	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
@@ -90,7 +93,8 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSINFO)");
 		return 1;
 	}
-	printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
+	if (debug)
+		printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
 			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
 #endif
 
@@ -125,7 +129,7 @@ test_crypto(int cfd)
 		}
 		printf("\n");
 		return 1;
-	} else
+	} else if (debug)
 		printf("Test passed\n");
 
 	/* Finish crypto session */
@@ -218,7 +222,8 @@ static int test_aes(int cfd)
 		perror("ioctl(CIOCGSESSINFO)");
 		return 1;
 	}
-	printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
+	if (debug)
+		printf("requested cipher CRYPTO_AES_CBC, got %s with driver %s\n",
 			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
 
 	plaintext2 = (char *)(((unsigned long)plaintext2_raw + siop.alignmask) & ~siop.alignmask);
@@ -260,7 +265,7 @@ static int test_aes(int cfd)
 		return 1;
 	}
 
-	printf("AES Test passed\n");
+	if (debug) printf("AES Test passed\n");
 
 	/* Finish crypto session */
 	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
@@ -272,9 +277,11 @@ static int test_aes(int cfd)
 }
 
 int
-main()
+main(int argc, char** argv)
 {
 	int fd = -1, cfd = -1;
+
+	if (argc > 1) debug = 1;
 
 	/* Open the crypto device */
 	fd = open("/dev/crypto", O_RDWR, 0);

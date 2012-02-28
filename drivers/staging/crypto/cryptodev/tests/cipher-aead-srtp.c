@@ -22,6 +22,8 @@
 
 #define MAC_SIZE 20 /* SHA1 */
 
+static int debug = 0;
+
 static int
 get_sha1_hmac(int cfd, void* key, int key_size, void* data, int data_size, void* mac)
 {
@@ -65,11 +67,11 @@ get_sha1_hmac(int cfd, void* key, int key_size, void* data, int data_size, void*
 static void print_buf(char* desc, unsigned char* buf, int size)
 {
 int i;
-	fputs(desc, stdout);
+	fputs(desc, stderr);
 	for (i=0;i<size;i++) {
-		printf("%.2x", (uint8_t)buf[i]);
+		fprintf(stderr, "%.2x", (uint8_t)buf[i]);
 	}
-	fputs("\n", stdout);
+	fputs("\n", stderr);
 }
 
 static int
@@ -115,7 +117,9 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSINFO)");
 		return 1;
 	}
-	printf("requested cipher CRYPTO_AES_CBC/HMAC-SHA1, got %s with driver %s\n",
+	
+	if (debug)
+		printf("requested cipher CRYPTO_AES_CBC/HMAC-SHA1, got %s with driver %s\n",
 			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
 
 	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
@@ -207,8 +211,7 @@ test_crypto(int cfd)
 		return 1;
 	}
 
-	printf("Test passed\n");
-
+	if (debug) printf("Test passed\n");
 
 	/* Finish crypto session */
 	if (ioctl(cfd, CIOCFSESSION, &sess.ses)) {
@@ -349,7 +352,7 @@ test_encrypt_decrypt(int cfd)
 		return 1;
 	}
 
-	printf("Test passed\n");
+	if (debug) printf("Test passed\n");
 
 
 	/* Finish crypto session */
@@ -475,7 +478,7 @@ test_encrypt_decrypt_error(int cfd, int err)
 			return 1;
 		}
 
-		printf("Test passed\n");
+		if (debug) printf("Test passed\n");
 		return 0;
 	}
 
@@ -513,9 +516,11 @@ test_encrypt_decrypt_error(int cfd, int err)
 }
 
 int
-main()
+main(int argc, char** argv)
 {
 	int fd = -1, cfd = -1;
+	
+	if (argc > 1) debug = 1;
 
 	/* Open the crypto device */
 	fd = open("/dev/crypto", O_RDWR, 0);

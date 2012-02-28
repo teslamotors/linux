@@ -20,6 +20,8 @@
 
 #define MAC_SIZE 20 /* SHA1 */
 
+static int debug = 0;
+
 static int
 get_sha1_hmac(int cfd, void* key, int key_size, void* data1, int data1_size, void* data2, int data2_size, void* mac)
 {
@@ -127,7 +129,8 @@ test_crypto(int cfd)
 		perror("ioctl(CIOCGSESSINFO)");
 		return 1;
 	}
-	printf("requested cipher CRYPTO_AES_CBC/HMAC-SHA1, got %s with driver %s\n",
+	if (debug)
+		printf("requested cipher CRYPTO_AES_CBC/HMAC-SHA1, got %s with driver %s\n",
 			siop.cipher_info.cra_name, siop.cipher_info.cra_driver_name);
 
 	plaintext = (char *)(((unsigned long)plaintext_raw + siop.alignmask) & ~siop.alignmask);
@@ -224,7 +227,7 @@ test_crypto(int cfd)
 			return 1;
 		}
 
-	printf("Test passed\n");
+	if (debug) printf("Test passed\n");
 
 
 	/* Finish crypto session */
@@ -373,7 +376,7 @@ test_encrypt_decrypt(int cfd)
 		return 1;
 	}
 
-	printf("Test passed\n");
+	if (debug) printf("Test passed\n");
 
 
 	/* Finish crypto session */
@@ -501,7 +504,7 @@ test_encrypt_decrypt_error(int cfd, int err)
 			return 1;
 		}
 
-		printf("Test passed\n");
+		if (debug) printf("Test passed\n");
 		return 0;
 	}
 
