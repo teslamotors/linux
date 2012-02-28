@@ -1064,6 +1064,7 @@ static struct miscdevice cryptodev = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = "crypto",
 	.fops = &cryptodev_fops,
+	.mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH,
 };
 
 static int __init
