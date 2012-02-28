@@ -1,9 +1,12 @@
 KERNEL_DIR ?= /lib/modules/$(shell uname -r)/build
 KBUILD_CFLAGS += -I..
+CFLAGS += -I..
+
+comp_progs := cipher_comp hash_comp hmac_comp
 
 hostprogs := cipher cipher-aead hmac speed async_cipher async_hmac \
 	async_speed sha_speed hashcrypt_speed fullspeed cipher-gcm \
-	cipher-aead-srtp
+	cipher-aead-srtp ${comp_progs}
 
 example-cipher-objs := cipher.o
 example-cipher-aead-objs := cipher-aead.o
@@ -27,3 +30,6 @@ check: $(hostprogs)
 
 clean:
 	rm -f *.o *~ $(hostprogs)
+
+${comp_progs}: LDFLAGS += -lssl -lcrypto
+${comp_progs}: %: %.o openssl_wrapper.o

@@ -11,9 +11,12 @@ tests/async_cipher
 tests/async_hmac
 tests/async_speed
 tests/cipher
+tests/cipher_comp
 tests/hmac
+tests/hmac_comp
 tests/speed
 tests/sha_speed
+tests/hash_comp
 tests/hashcrypt_speed
 releases
 scripts
