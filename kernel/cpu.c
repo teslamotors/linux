@@ -58,7 +58,12 @@ static int cpu_hotplug_disabled;
 
 static struct {
 	struct task_struct *active_writer;
+#ifdef CONFIG_PREEMPT_RT_FULL
+	/* Makes the lock keep the task's state */
+	spinlock_t lock;
+#else
 	struct mutex lock; /* Synchronizes accesses to refcount, */
+#endif
 	/*
 	 * Also blocks the new readers during
 	 * an ongoing cpu hotplug operation.
@@ -72,12 +77,26 @@ static struct {
 #endif
 } cpu_hotplug = {
 	.active_writer = NULL,
+#ifdef CONFIG_PREEMPT_RT_FULL
+	.lock = __SPIN_LOCK_UNLOCKED(cpu_hotplug.lock),
+#else
 	.lock = __MUTEX_INITIALIZER(cpu_hotplug.lock),
+#endif
 	.refcount = 0,
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 	.dep_map = {.name = "cpu_hotplug.lock" },
 #endif
 };
+
+#ifdef CONFIG_PREEMPT_RT_FULL
+# define hotplug_lock() rt_spin_lock(&cpu_hotplug.lock)
+# define hotplug_trylock() rt_spin_trylock(&cpu_hotplug.lock)
+# define hotplug_unlock() rt_spin_unlock(&cpu_hotplug.lock)
+#else
+# define hotplug_lock() mutex_lock(&cpu_hotplug.lock)
+# define hotplug_trylock() mutex_trylock(&cpu_hotplug.lock)
+# define hotplug_unlock() mutex_unlock(&cpu_hotplug.lock)
+#endif
 
 /* Lockdep annotations for get/put_online_cpus() and cpu_hotplug_begin/end() */
 #define cpuhp_lock_acquire_read() lock_map_acquire_read(&cpu_hotplug.dep_map)
@@ -115,8 +134,8 @@ retry:
 		return;
 	}
 	preempt_enable();
-	mutex_lock(&cpu_hotplug.lock);
-	mutex_unlock(&cpu_hotplug.lock);
+	hotplug_lock();
+	hotplug_unlock();
 	preempt_disable();
 	goto retry;
 }
@@ -189,9 +208,9 @@ void get_online_cpus(void)
 	if (cpu_hotplug.active_writer == current)
 		return;
 	cpuhp_lock_acquire_read();
-	mutex_lock(&cpu_hotplug.lock);
+	hotplug_lock();
 	cpu_hotplug.refcount++;
-	mutex_unlock(&cpu_hotplug.lock);
+	hotplug_unlock();
 }
 EXPORT_SYMBOL_GPL(get_online_cpus);
 
@@ -199,11 +218,12 @@ bool try_get_online_cpus(void)
 {
 	if (cpu_hotplug.active_writer == current)
 		return true;
-	if (!mutex_trylock(&cpu_hotplug.lock))
+
+	if (!hotplug_trylock()) {
 		return false;
 	cpuhp_lock_acquire_tryread();
 	cpu_hotplug.refcount++;
-	mutex_unlock(&cpu_hotplug.lock);
+	hotplug_unlock();
 	return true;
 }
 EXPORT_SYMBOL_GPL(try_get_online_cpus);
@@ -212,7 +232,7 @@ void put_online_cpus(void)
 {
 	if (cpu_hotplug.active_writer == current)
 		return;
-	if (!mutex_trylock(&cpu_hotplug.lock)) {
+	if (!hotplug_trylock()) {
 		atomic_inc(&cpu_hotplug.puts_pending);
 		cpuhp_lock_release();
 		return;
@@ -223,7 +243,7 @@ void put_online_cpus(void)
 
 	if (!--cpu_hotplug.refcount && unlikely(cpu_hotplug.active_writer))
 		wake_up_process(cpu_hotplug.active_writer);
-	mutex_unlock(&cpu_hotplug.lock);
+	hotplug_unlock();
 	cpuhp_lock_release();
 
 }
@@ -257,7 +277,7 @@ void cpu_hotplug_begin(void)
 
 	cpuhp_lock_acquire();
 	for (;;) {
-		mutex_lock(&cpu_hotplug.lock);
+		hotplug_lock();
 		if (atomic_read(&cpu_hotplug.puts_pending)) {
 			int delta;
 
@@ -267,7 +287,7 @@ void cpu_hotplug_begin(void)
 		if (likely(!cpu_hotplug.refcount))
 			break;
 		__set_current_state(TASK_UNINTERRUPTIBLE);
-		mutex_unlock(&cpu_hotplug.lock);
+		hotplug_unlock();
 		schedule();
 	}
 }
@@ -275,7 +295,7 @@ void cpu_hotplug_begin(void)
 void cpu_hotplug_done(void)
 {
 	cpu_hotplug.active_writer = NULL;
-	mutex_unlock(&cpu_hotplug.lock);
+	hotplug_unlock();
 	cpuhp_lock_release();
 }
 
