@@ -14,6 +14,7 @@
 #include <linux/mnt_namespace.h>
 #include <linux/user_namespace.h>
 #include <linux/namei.h>
+#include <linux/delay.h>
 #include <linux/security.h>
 #include <linux/idr.h>
 #include <linux/init.h>		/* init_rootfs */
@@ -346,7 +347,7 @@ int __mnt_want_write(struct vfsmount *m)
 	smp_mb();
 	while (ACCESS_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD) {
 		preempt_enable();
-		cpu_relax();
+		cpu_chill();
 		preempt_disable();
 	}
 	/*
