@@ -706,7 +706,7 @@ const char* name = crypto_tfm_alg_driver_name(tfm);
 
 	if (strstr(name, "-talitos"))
 	  return 1;
-	else if (strncmp(name, "mv-", 3))
+	else if (strncmp(name, "mv-", 3) == 0)
 	  return 1;
 	else if (strstr(name, "geode"))
 	  return 1;
