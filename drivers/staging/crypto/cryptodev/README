@@ -16,6 +16,6 @@ advantage of /dev/crypto. GnuTLS 3.0.14 or later is recommended.
 
 * OpenSSL:
 
-The current releases of openssl support /dev/crypto by applying the
-patches available in the extras subdirectory. In order to compile
-use the -DHAVE_CRYPTODEV -DUSE_CRYPTODEV_DIGESTS flags.
+The current releases of openssl support /dev/crypto by replacing
+eng_cryptodev.c with the version available in the extras subdirectory. 
+In order to compile use the -DHAVE_CRYPTODEV -DUSE_CRYPTODEV_DIGESTS flags.
