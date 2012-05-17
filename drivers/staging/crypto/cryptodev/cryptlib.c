@@ -93,7 +93,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 		ret = crypto_ablkcipher_setkey(out->async.s, keyp, keylen);
 	} else {
 		out->async.as = crypto_alloc_aead(alg_name, 0, 0);
-		if (unlikely(IS_ERR(out->async.s))) {
+		if (unlikely(IS_ERR(out->async.as))) {
 			dprintk(1, KERN_DEBUG, "%s: Failed to load cipher %s\n",
 				__func__, alg_name);
 			return -EINVAL;

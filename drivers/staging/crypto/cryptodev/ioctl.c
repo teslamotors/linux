@@ -464,6 +464,8 @@ cryptodev_open(struct inode *inode, struct file *filp)
 
 	for (i = 0; i < DEF_COP_RINGSIZE; i++) {
 		tmp = kzalloc(sizeof(struct todo_list_item), GFP_KERNEL);
+		if (!tmp)
+			return -ENOMEM;
 		pcr->itemcount++;
 		dprintk(2, KERN_DEBUG, "%s: allocated new item at %lx\n",
 				__func__, (unsigned long)tmp);
