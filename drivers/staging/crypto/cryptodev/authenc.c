@@ -633,7 +633,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			return -ENOMEM;
 		}
 
-		if (caop->auth_len > 0) {
+		if (caop->auth_src && caop->auth_len > 0) {
 			if (unlikely(copy_from_user(auth_buf, caop->auth_src, caop->auth_len))) {
 				dprintk(1, KERN_ERR, "unable to copy auth data from userspace.\n");
 				ret = -EFAULT;
@@ -663,7 +663,8 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 					ses_ptr->cdata.aead == 0)) 
 			{
 				dprintk(0, KERN_ERR, "Only stream and AEAD ciphers are allowed for authenc\n");
-				return -EINVAL;
+				ret = -EINVAL;
+				goto fail;
 			}
 
 			if (caop->op == COP_ENCRYPT) dst_len = caop->len + cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
