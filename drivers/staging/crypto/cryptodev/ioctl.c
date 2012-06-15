@@ -838,26 +838,26 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 		return copy_to_user(arg, &siop, sizeof(siop));
 	case CIOCCRYPT:
 		if (unlikely(ret = kcop_from_user(&kcop, fcr, arg))) {
-			dprintk(1, KERN_WARNING, "Error copying from user");
+			dprintk(1, KERN_WARNING, "Error copying from user\n");
 			return ret;
 		}
 
 		ret = crypto_run(fcr, &kcop);
 		if (unlikely(ret)) {
-			dprintk(1, KERN_WARNING, "Error in crypto_run");
+			dprintk(1, KERN_WARNING, "Error in crypto_run\n");
 			return ret;
 		}
 
 		return kcop_to_user(&kcop, fcr, arg);
 	case CIOCAUTHCRYPT:
 		if (unlikely(ret = kcaop_from_user(&kcaop, fcr, arg))) {
-			dprintk(1, KERN_WARNING, "Error copying from user");
+			dprintk(1, KERN_WARNING, "Error copying from user\n");
 			return ret;
 		}
 
 		ret = crypto_auth_run(fcr, &kcaop);
 		if (unlikely(ret)) {
-			dprintk(1, KERN_WARNING, "Error in crypto_auth_run");
+			dprintk(1, KERN_WARNING, "Error in crypto_auth_run\n");
 			return ret;
 		}
 		return kcaop_to_user(&kcaop, fcr, arg);
@@ -954,13 +954,13 @@ static int compat_kcop_to_user(struct kernel_crypt_op *kcop,
 
 	ret = fill_cop_from_kcop(kcop, fcr);
 	if (unlikely(ret)) {
-		dprintk(1, KERN_WARNING, "Error in fill_cop_from_kcop");
+		dprintk(1, KERN_WARNING, "Error in fill_cop_from_kcop\n");
 		return ret;
 	}
 	crypt_op_to_compat(&kcop->cop, &compat_cop);
 
 	if (unlikely(copy_to_user(arg, &compat_cop, sizeof(compat_cop)))) {
-		dprintk(1, KERN_WARNING, "Error copying to user");
+		dprintk(1, KERN_WARNING, "Error copying to user\n");
 		return -EFAULT;
 	}
 	return 0;
