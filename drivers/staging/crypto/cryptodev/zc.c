@@ -82,16 +82,15 @@ int __get_userbuf(uint8_t __user *addr, uint32_t len, int write,
 
 int adjust_sg_array(struct csession * ses, int pagecount)
 {
-struct scatterlist *sg;
-struct page **pages;
-int array_size;
+	struct scatterlist *sg;
+	struct page **pages;
+	int array_size;
 
 	for (array_size = ses->array_size; array_size < pagecount;
 	     array_size *= 2)
 		;
-
-	dprintk(2, KERN_DEBUG, "%s: reallocating to %d elements\n",
-			__func__, array_size);
+	dprintk(0, KERN_DEBUG, "reallocating from %d to %d pages\n",
+			ses->array_size, array_size);
 	pages = krealloc(ses->pages, array_size * sizeof(struct page *),
 			 GFP_KERNEL);
 	if (unlikely(!pages))
