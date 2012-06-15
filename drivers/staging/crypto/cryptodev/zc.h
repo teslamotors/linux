@@ -16,10 +16,11 @@ int get_userbuf(struct csession *ses,
                 struct scatterlist **src_sg, 
                 struct scatterlist **dst_sg);
 
-/* last page - first page + 1 */
-#define PAGECOUNT(buf, buflen) \
-	((((unsigned long)(buf + buflen - 1) & PAGE_MASK) >> PAGE_SHIFT) - \
-	(((unsigned long) buf               & PAGE_MASK) >> PAGE_SHIFT) + 1)
+/* buflen ? (last page - first page + 1) : 0 */
+#define PAGECOUNT(buf, buflen) ((buflen) \
+	? ((((unsigned long)(buf + buflen - 1)) >> PAGE_SHIFT) - \
+	   (((unsigned long)(buf             )) >> PAGE_SHIFT) + 1) \
+	: 0)
 
 #define DEFAULT_PREALLOC_PAGES 32
 
