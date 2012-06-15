@@ -135,71 +135,86 @@ int get_userbuf(struct csession *ses,
                 struct scatterlist **src_sg, 
                 struct scatterlist **dst_sg)
 {
-	int src_pagecount, dst_pagecount = 0, pagecount, write_src = 1;
+	int src_pagecount, dst_pagecount;
 	int rc;
 
-	if (src == NULL)
-		return -EINVAL;
+	/* Empty input is a valid option to many algorithms & is tested by NIST/FIPS */
+	/* Make sure NULL input has 0 length */
+	if (!src && src_len) { src_len = 0; }
+
+	/* I don't know that null output is ever useful, but we can handle it gracefully */
+	/* Make sure NULL output has 0 length */
+	if (!dst && dst_len) { dst_len = 0; }
 
 	if (ses->alignmask && !IS_ALIGNED((unsigned long)src, ses->alignmask)) {
 		dprintk(2, KERN_WARNING, "%s: careful - source address %lx is not %d byte aligned\n",
 				__func__, (unsigned long)src, ses->alignmask + 1);
 	}
 
-	if (src == dst) {
-                /* dst == src */
-	        src_len = max(src_len, dst_len);
-	        dst_len = src_len;
-        }
+	if (ses->alignmask && !IS_ALIGNED((unsigned long)dst, ses->alignmask)) {
+		dprintk(2, KERN_WARNING, "%s: careful - destination address %lx is not %d byte aligned\n",
+				__func__, (unsigned long)dst, ses->alignmask + 1);
+	}
 
 	src_pagecount = PAGECOUNT(src, src_len);
-	if (!ses->cdata.init) {		/* hashing only */
-		write_src = 0;
-	} else if (src != dst) {	/* non-in-situ transformation */
-		if (dst == NULL)
-			return -EINVAL;
+	dst_pagecount = PAGECOUNT(dst, dst_len);
 
-		dst_pagecount = PAGECOUNT(dst, dst_len);
-		write_src = 0;
+	ses->used_pages = (src == dst) ? max(src_pagecount, dst_pagecount)
+	                               : src_pagecount + dst_pagecount;
 
-		if (ses->alignmask && !IS_ALIGNED((unsigned long)dst, ses->alignmask)) {
-			dprintk(2, KERN_WARNING, "%s: careful - destination address %lx is not %d byte aligned\n",
-					__func__, (unsigned long)dst, ses->alignmask + 1);
-		}
-        }
-	ses->used_pages = pagecount = src_pagecount + dst_pagecount;
+	ses->readonly_pages = (src == dst) ? 0 : src_pagecount;
 
-	if (write_src) ses->readonly_pages = 0;
-	else ses->readonly_pages = src_pagecount;
-
-	if (pagecount > ses->array_size) {
-		rc = adjust_sg_array(ses, pagecount);
+	if (ses->used_pages > ses->array_size) {
+		rc = adjust_sg_array(ses, ses->used_pages);
 		if (rc)
 			return rc;
 	}
 
-	rc = __get_userbuf(src, src_len, write_src, src_pagecount,
-	                   ses->pages, ses->sg, task, mm);
-	if (unlikely(rc)) {
-		dprintk(1, KERN_ERR,
-			"failed to get user pages for data input\n");
-		return -EINVAL;
+	if (src == dst) {
+		rc = __get_userbuf(src, src_len, 1, ses->used_pages,
+			               ses->pages, ses->sg, task, mm);
+		if (unlikely(rc)) {
+			dprintk(1, KERN_ERR,
+				"failed to get user pages for data IO\n");
+			return rc;
+		}
+		(*src_sg) = (*dst_sg) = ses->sg;
 	}
-	(*src_sg) = (*dst_sg) = ses->sg;
+	else {
+		const unsigned int readonly_pages = ses->readonly_pages;
+		const unsigned int writable_pages = ses->used_pages - readonly_pages;
+		
+		if(likely(src)) {
+			rc = __get_userbuf(src, src_len, 0, readonly_pages,
+					           ses->pages, ses->sg, task, mm);
+			if (unlikely(rc)) {
+				dprintk(1, KERN_ERR,
+					"failed to get user pages for data input\n");
+				return rc;
+			}
+			*src_sg = ses->sg;
+		}
+		else {
+			*src_sg = NULL; // no input
+		}
+	
+		if(likely(dst)) {	
+			struct page **dst_pages = ses->pages + readonly_pages;
+			*dst_sg = ses->sg + readonly_pages;
 
-	if (!dst_pagecount)
-		return 0;
-
-	(*dst_sg) = ses->sg + src_pagecount;
-
-	rc = __get_userbuf(dst, dst_len, 1, dst_pagecount,
-	                   ses->pages + src_pagecount, *dst_sg,
-			   task, mm);
-	if (unlikely(rc)) {
-		dprintk(1, KERN_ERR,
-		        "failed to get user pages for data output\n");
-		release_user_pages(ses);
-		return -EINVAL;
+			rc = __get_userbuf(dst, dst_len, 1, writable_pages,
+					           dst_pages, *dst_sg, task, mm);
+			if (unlikely(rc)) {
+				dprintk(1, KERN_ERR,
+						"failed to get user pages for data output\n");
+				release_user_pages(ses);  /* FIXME: use __release_userbuf(src, ...) */
+				return rc;
+			}
+		}
+		else {
+			*dst_sg = NULL; // ignore output
+		}
 	}
 	return 0;
 }
+
