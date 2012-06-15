@@ -1,3 +1,9 @@
+Version 1.5 (unreleased)
+
+* Allow empty plaintext and authenticated data in AEAD 
+ciphers. Patch by Jaren Johnston.
+
+
 Version 1.4 (released 2012-03-15)
 
 * Correctly report hw accelerated ciphers.
