@@ -730,17 +730,10 @@ int crypto_auth_run(struct fcrypt *fcr, struct kernel_crypt_auth_op *kcaop)
 	cryptodev_cipher_set_iv(&ses_ptr->cdata, kcaop->iv,
 				min(ses_ptr->cdata.ivsize, kcaop->ivlen));
 
-	if (likely(caop->len || caop->auth_len)) {
-		ret = __crypto_auth_run_zc(ses_ptr, kcaop);
-		if (unlikely(ret)) {
-			dprintk(1, KERN_ERR,
-				"error in __crypto_auth_run_zc()\n");
-			goto out_unlock;
-		}
-	} else {
+	ret = __crypto_auth_run_zc(ses_ptr, kcaop);
+	if (unlikely(ret)) {
 		dprintk(1, KERN_ERR,
-			"Do not have auth data nor other data.\n");
-		ret = -EINVAL;
+			"error in __crypto_auth_run_zc()\n");
 		goto out_unlock;
 	}
 
