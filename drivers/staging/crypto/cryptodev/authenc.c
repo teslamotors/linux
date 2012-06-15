@@ -615,6 +615,8 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 
 		ret = srtp_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len, 
 			   dst_sg, caop->len);
+
+		release_user_pages(ses_ptr);
 	} else { /* TLS and normal cases. Here auth data are usually small
 	          * so we just copy them to a free page, instead of trying
 	          * to map them.
@@ -637,7 +639,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			if (unlikely(copy_from_user(auth_buf, caop->auth_src, caop->auth_len))) {
 				dprintk(1, KERN_ERR, "unable to copy auth data from userspace.\n");
 				ret = -EFAULT;
-				goto fail;
+				goto free_auth_buf;
 			}
 
 			sg_init_one(&tmp, auth_buf, caop->auth_len);
@@ -650,7 +652,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			ret = get_userbuf_tls(ses_ptr, kcaop, &dst_sg);
 			if (unlikely(ret)) {
 				dprintk(1, KERN_ERR, "get_userbuf_tls(): Error getting user pages.\n");
-				goto fail;
+				goto free_auth_buf;
 			}
 
 			ret = tls_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len, 
@@ -664,7 +666,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			{
 				dprintk(0, KERN_ERR, "Only stream and AEAD ciphers are allowed for authenc\n");
 				ret = -EINVAL;
-				goto fail;
+				goto free_auth_buf;
 			}
 
 			if (caop->op == COP_ENCRYPT) dst_len = caop->len + cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
@@ -674,18 +676,19 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 					  kcaop->task, kcaop->mm, &src_sg, &dst_sg);
 			if (unlikely(ret)) {
 				dprintk(1, KERN_ERR, "get_userbuf(): Error getting user pages.\n");
-				goto fail;
+				goto free_auth_buf;
 			}
 
 			ret = auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len, 
 					   src_sg, dst_sg, caop->len);
 		}
 
-fail:
+		release_user_pages(ses_ptr);
+
+free_auth_buf:
 		free_page((unsigned long)auth_buf);
 	}
 
-	release_user_pages(ses_ptr);
 	return ret;
 }
 
