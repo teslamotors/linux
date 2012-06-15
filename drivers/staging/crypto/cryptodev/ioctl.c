@@ -148,8 +148,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		stream = 1;
 		break;
 	default:
-		dprintk(1, KERN_DEBUG, "%s: bad cipher: %d\n", __func__,
-			sop->cipher);
+		dprintk(1, KERN_DEBUG, "bad cipher: %d\n", sop->cipher);
 		return -EINVAL;
 	}
 
@@ -201,8 +200,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		hmac_mode = 0;
 		break;
 	default:
-		dprintk(1, KERN_DEBUG, "%s: bad mac: %d\n", __func__,
-			sop->mac);
+		dprintk(1, KERN_DEBUG, "bad mac: %d\n", sop->mac);
 		return -EINVAL;
 	}
 
@@ -232,8 +230,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 						sop->keylen, stream, aead);
 		if (ret < 0) {
 			dprintk(1, KERN_DEBUG,
-				"%s: Failed to load cipher for %s\n",
-				__func__, alg_name);
+				"Failed to load cipher for %s\n", alg_name);
 			ret = -EINVAL;
 			goto error_cipher;
 		}
@@ -259,9 +256,7 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode,
 							keyp, sop->mackeylen);
 		if (ret != 0) {
-			dprintk(1, KERN_DEBUG,
-			"%s: Failed to load hash for %s\n",
-			__func__, hash_name);
+			dprintk(1, KERN_DEBUG, "Failed to load hash for %s\n", hash_name);
 			ret = -EINVAL;
 			goto error_hash;
 		}
@@ -269,11 +264,11 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 
 	ses_new->alignmask = max(ses_new->cdata.alignmask,
 	                                          ses_new->hdata.alignmask);
-	dprintk(2, KERN_DEBUG, "%s: got alignmask %d\n", __func__, ses_new->alignmask);
+	dprintk(2, KERN_DEBUG, "got alignmask %d\n", ses_new->alignmask);
 
 	ses_new->array_size = DEFAULT_PREALLOC_PAGES;
-	dprintk(2, KERN_DEBUG, "%s: preallocating for %d user pages\n",
-			__func__, ses_new->array_size);
+	dprintk(2, KERN_DEBUG, "preallocating for %d user pages\n",
+			ses_new->array_size);
 	ses_new->pages = kzalloc(ses_new->array_size *
 			sizeof(struct page *), GFP_KERNEL);
 	ses_new->sg = kzalloc(ses_new->array_size *
@@ -331,8 +326,8 @@ crypto_destroy_session(struct csession *ses_ptr)
 	dprintk(2, KERN_DEBUG, "Removed session 0x%08X\n", ses_ptr->sid);
 	cryptodev_cipher_deinit(&ses_ptr->cdata);
 	cryptodev_hash_deinit(&ses_ptr->hdata);
-	dprintk(2, KERN_DEBUG, "%s: freeing space for %d user pages\n",
-			__func__, ses_ptr->array_size);
+	dprintk(2, KERN_DEBUG, "freeing space for %d user pages\n",
+			ses_ptr->array_size);
 	kfree(ses_ptr->pages);
 	kfree(ses_ptr->sg);
 	mutex_unlock(&ses_ptr->sem);
@@ -423,8 +418,8 @@ static void cryptask_routine(struct work_struct *work)
 	list_for_each_entry(item, &tmp, __hook) {
 		item->result = crypto_run(&pcr->fcrypt, &item->kcop);
 		if (unlikely(item->result))
-			dprintk(0, KERN_ERR, "%s: crypto_run() failed: %d\n",
-					__func__, item->result);
+			dprintk(0, KERN_ERR, "crypto_run() failed: %d\n",
+					item->result);
 	}
 
 	/* push all handled jobs to the done list at once */
@@ -467,8 +462,8 @@ cryptodev_open(struct inode *inode, struct file *filp)
 		if (!tmp)
 			return -ENOMEM;
 		pcr->itemcount++;
-		dprintk(2, KERN_DEBUG, "%s: allocated new item at %lx\n",
-				__func__, (unsigned long)tmp);
+		dprintk(2, KERN_DEBUG, "allocated new item at %lx\n",
+				(unsigned long)tmp);
 		list_add(&tmp->__hook, &pcr->free.list);
 	}
 
@@ -499,8 +494,8 @@ cryptodev_release(struct inode *inode, struct file *filp)
 	list_splice_tail(&pcr->done.list, &pcr->free.list);
 
 	list_for_each_entry_safe(item, item_safe, &pcr->free.list, __hook) {
-		dprintk(2, KERN_DEBUG, "%s: freeing item at %lx\n",
-				__func__, (unsigned long)item);
+		dprintk(2, KERN_DEBUG, "freeing item at %lx\n",
+				(unsigned long)item);
 		list_del(&item->__hook);
 		kfree(item);
 		items_freed++;
@@ -508,8 +503,8 @@ cryptodev_release(struct inode *inode, struct file *filp)
 	}
 	if (items_freed != pcr->itemcount) {
 		dprintk(0, KERN_ERR,
-		        "%s: freed %d items, but %d should exist!\n",
-		        __func__, items_freed, pcr->itemcount);
+		        "freed %d items, but %d should exist!\n",
+		        items_freed, pcr->itemcount);
 	}
 
 	crypto_finish_all_sessions(&pcr->fcrypt);
@@ -563,8 +558,8 @@ static int crypto_async_run(struct crypt_priv *pcr, struct kernel_crypt_op *kcop
 		item = kzalloc(sizeof(struct todo_list_item), GFP_KERNEL);
 		if (unlikely(!item))
 			return -EFAULT;
-		dprintk(1, KERN_INFO, "%s: increased item count to %d\n",
-				__func__, pcr->itemcount);
+		dprintk(1, KERN_INFO, "increased item count to %d\n",
+				pcr->itemcount);
 	}
 
 	memcpy(&item->kcop, kcop, sizeof(struct kernel_crypt_op));

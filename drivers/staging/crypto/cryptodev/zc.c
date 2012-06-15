@@ -146,13 +146,13 @@ int get_userbuf(struct csession *ses,
 	if (!dst && dst_len) { dst_len = 0; }
 
 	if (ses->alignmask && !IS_ALIGNED((unsigned long)src, ses->alignmask)) {
-		dprintk(2, KERN_WARNING, "%s: careful - source address %lx is not %d byte aligned\n",
-				__func__, (unsigned long)src, ses->alignmask + 1);
+		dprintk(2, KERN_WARNING, "careful - source address %lx is not %d byte aligned\n",
+				(unsigned long)src, ses->alignmask + 1);
 	}
 
 	if (ses->alignmask && !IS_ALIGNED((unsigned long)dst, ses->alignmask)) {
-		dprintk(2, KERN_WARNING, "%s: careful - destination address %lx is not %d byte aligned\n",
-				__func__, (unsigned long)dst, ses->alignmask + 1);
+		dprintk(2, KERN_WARNING, "careful - destination address %lx is not %d byte aligned\n",
+				(unsigned long)dst, ses->alignmask + 1);
 	}
 
 	src_pagecount = PAGECOUNT(src, src_len);
