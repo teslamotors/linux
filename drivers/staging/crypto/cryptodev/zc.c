@@ -110,10 +110,10 @@ unsigned int i;
 		if (!PageReserved(ses->pages[i]))
 			SetPageDirty(ses->pages[i]);
                 
-                if (ses->readable_pages == 0)
+                if (ses->readonly_pages == 0)
                         flush_dcache_page(ses->pages[i]);
                 else
-                        ses->readable_pages--;
+                        ses->readonly_pages--;
                 
 		page_cache_release(ses->pages[i]);
 	}
@@ -163,8 +163,8 @@ int get_userbuf(struct csession *ses, void* __user src, int src_len,
         }
 	ses->used_pages = pagecount = src_pagecount + dst_pagecount;
 
-	if (write_src) ses->readable_pages = 0;
-	else ses->readable_pages = src_pagecount;
+	if (write_src) ses->readonly_pages = 0;
+	else ses->readonly_pages = src_pagecount;
 
 	if (pagecount > ses->array_size) {
 		rc = adjust_sg_array(ses, pagecount);

@@ -75,7 +75,7 @@ static int get_userbuf_tls(struct csession *ses, struct kernel_crypt_auth_op *kc
 	pagecount = PAGECOUNT(caop->dst, kcaop->dst_len);
 
 	ses->used_pages = pagecount;
-	ses->readable_pages = 0;
+	ses->readonly_pages = 0;
 
 	rc = adjust_sg_array(ses, pagecount);
 	if (rc)
@@ -157,7 +157,7 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 	}
 
 	ses->used_pages = pagecount;
-	ses->readable_pages = 0;
+	ses->readonly_pages = 0;
 
 	(*auth_sg) = ses->sg;
 
