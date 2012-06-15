@@ -53,25 +53,30 @@ int __get_userbuf(uint8_t __user *addr, uint32_t len, int write,
 	int ret, pglen, i = 0;
 	struct scatterlist *sgp;
 
-	down_write(&mm->mmap_sem);
-	ret = get_user_pages(task, mm,
-			(unsigned long)addr, pgcount, write, 0, pg, NULL);
-	up_write(&mm->mmap_sem);
-	if (ret != pgcount)
-		return -EINVAL;
-
-	sg_init_table(sg, pgcount);
-
-	pglen = min((ptrdiff_t)(PAGE_SIZE - PAGEOFFSET(addr)), (ptrdiff_t)len);
-	sg_set_page(sg, pg[i++], pglen, PAGEOFFSET(addr));
-
-	len -= pglen;
-	for (sgp = sg_next(sg); len; sgp = sg_next(sgp)) {
-		pglen = min((uint32_t)PAGE_SIZE, len);
-		sg_set_page(sgp, pg[i++], pglen, 0);
-		len -= pglen;
+	if (unlikely(!pgcount || !len || !addr)) {
+		sg_mark_end(sg);
 	}
-	sg_mark_end(sg_last(sg, pgcount));
+	else {
+		down_write(&mm->mmap_sem);
+		ret = get_user_pages(task, mm,
+				(unsigned long)addr, pgcount, write, 0, pg, NULL);
+		up_write(&mm->mmap_sem);
+		if (ret != pgcount)
+			return -EINVAL;
+
+		sg_init_table(sg, pgcount);
+
+		pglen = min((ptrdiff_t)(PAGE_SIZE - PAGEOFFSET(addr)), (ptrdiff_t)len);
+		sg_set_page(sg, pg[i++], pglen, PAGEOFFSET(addr));
+
+		len -= pglen;
+		for (sgp = sg_next(sg); len; sgp = sg_next(sgp)) {
+			pglen = min((uint32_t)PAGE_SIZE, len);
+			sg_set_page(sgp, pg[i++], pglen, 0);
+			len -= pglen;
+		}
+		sg_mark_end(sg_last(sg, pgcount));
+	}
 	return 0;
 }
 
