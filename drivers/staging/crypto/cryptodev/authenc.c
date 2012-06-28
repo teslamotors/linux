@@ -559,12 +559,9 @@ auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 	else
 		caop->tag_len = max_tag_len;
 
-	if (caop->op == COP_ENCRYPT) {
-		if (auth_len > 0)
-			cryptodev_cipher_auth(&ses_ptr->cdata, auth_sg, auth_len);
-		else /* for some reason we _have_ to call that */
-			cryptodev_cipher_auth(&ses_ptr->cdata, NULL, 0);
+	cryptodev_cipher_auth(&ses_ptr->cdata, auth_sg, auth_len);
 
+	if (caop->op == COP_ENCRYPT) {
 		ret = cryptodev_cipher_encrypt(&ses_ptr->cdata,
 						src_sg, dst_sg, len);
 		if (unlikely(ret)) {
@@ -574,9 +571,6 @@ auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 		kcaop->dst_len = len + caop->tag_len;
 		caop->tag = caop->dst + len;
 	} else {
-		if (auth_len > 0)
-			cryptodev_cipher_auth(&ses_ptr->cdata, auth_sg, auth_len);
-
 		ret = cryptodev_cipher_decrypt(&ses_ptr->cdata,
 						src_sg, dst_sg, len);
 
