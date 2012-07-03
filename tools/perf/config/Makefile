@@ -412,6 +412,7 @@ else
   FLAGS_PERL_EMBED=$(PERL_EMBED_CCOPTS) $(PERL_EMBED_LDOPTS)
 
   ifneq ($(feature-libperl), 1)
+    msg := $(warning libperl not found, disables Perl scripting support. Please install libperl-dev or perl-devel);
     CFLAGS += -DNO_LIBPERL
     NO_LIBPERL := 1
     msg := $(warning Missing perl devel files. Disabling perl scripting support, please install perl-ExtUtils-Embed/libperl-dev);
