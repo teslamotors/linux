@@ -19,6 +19,10 @@
  *
  */
 
+#ifdef __mips__
+#include <sgidefs.h>
+#endif
+
 #include <Python.h>
 #include "../../../perf.h"
 #include "../../../util/trace-event.h"
