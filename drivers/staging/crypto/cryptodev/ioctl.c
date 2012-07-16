@@ -386,7 +386,7 @@ struct csession *
 crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid)
 {
 	struct csession *ses_ptr, *retval = NULL;
-	
+
 	if (unlikely(fcr == NULL))
 		return NULL;
 
@@ -738,7 +738,7 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", siop->ses);
 		return -EINVAL;
 	}
-	
+
 	siop->flags = 0;
 
 	if (ses_ptr->cdata.init) {

@@ -19,10 +19,10 @@ int ret;
 	ret = get_sha1_threshold();
 	if (ret > 0)
 		printf("SHA1 in kernel outperforms user-space after %d input bytes\n", ret);
-	
+
 	ret = get_aes_sha1_threshold();
 	if (ret > 0)
 		printf("AES-SHA1 in kernel outperforms user-space after %d input bytes\n", ret);
-	
+
 	return 0;
 }

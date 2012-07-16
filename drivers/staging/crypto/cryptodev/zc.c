@@ -19,7 +19,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301, USA.
  */
 
@@ -38,7 +38,7 @@
 #include "zc.h"
 #include "version.h"
 
-/* Helper functions to assist zero copy. 
+/* Helper functions to assist zero copy.
  * This needs to be redesigned and moved out of the session. --nmav
  */
 
@@ -108,17 +108,17 @@ int adjust_sg_array(struct csession * ses, int pagecount)
 
 void release_user_pages(struct csession *ses)
 {
-unsigned int i;
+	unsigned int i;
 
 	for (i=0;i<ses->used_pages;i++) {
 		if (!PageReserved(ses->pages[i]))
 			SetPageDirty(ses->pages[i]);
-                
-                if (ses->readonly_pages == 0)
-                        flush_dcache_page(ses->pages[i]);
-                else
-                        ses->readonly_pages--;
-                
+
+		if (ses->readonly_pages == 0)
+			flush_dcache_page(ses->pages[i]);
+		else
+			ses->readonly_pages--;
+
 		page_cache_release(ses->pages[i]);
 	}
 	ses->used_pages = 0;
@@ -131,7 +131,7 @@ int get_userbuf(struct csession *ses,
                 void* __user src, unsigned int src_len,
                 void* __user dst, unsigned int dst_len,
                 struct task_struct *task, struct mm_struct *mm,
-                struct scatterlist **src_sg, 
+                struct scatterlist **src_sg,
                 struct scatterlist **dst_sg)
 {
 	int src_pagecount, dst_pagecount;
@@ -182,7 +182,7 @@ int get_userbuf(struct csession *ses,
 	else {
 		const unsigned int readonly_pages = ses->readonly_pages;
 		const unsigned int writable_pages = ses->used_pages - readonly_pages;
-		
+
 		if(likely(src)) {
 			rc = __get_userbuf(src, src_len, 0, readonly_pages,
 					           ses->pages, ses->sg, task, mm);
@@ -196,8 +196,8 @@ int get_userbuf(struct csession *ses,
 		else {
 			*src_sg = NULL; // no input
 		}
-	
-		if(likely(dst)) {	
+
+		if(likely(dst)) {
 			struct page **dst_pages = ses->pages + readonly_pages;
 			*dst_sg = ses->sg + readonly_pages;
 

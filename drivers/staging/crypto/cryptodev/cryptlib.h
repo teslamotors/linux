@@ -34,7 +34,7 @@ ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
 
 /* AEAD */
 inline static void cryptodev_cipher_auth(struct cipher_data *cdata,
-	  				 struct scatterlist *sg1, size_t len)
+					 struct scatterlist *sg1, size_t len)
 {
 	if( len )
 		aead_request_set_assoc(cdata->async.arequest, sg1, len);

@@ -118,7 +118,7 @@ struct csession {
 	unsigned int array_size;
 	unsigned int used_pages; /* the number of pages that are used */
 	/* the number of pages marked as NOT-writable; they preceed writeables */
-	unsigned int readonly_pages; 
+	unsigned int readonly_pages;
 	struct page **pages;
 	struct scatterlist *sg;
 };

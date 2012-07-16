@@ -46,7 +46,7 @@ int hash_ctx_init(struct cryptodev_ctx* ctx, int hash, int cfd)
 	return 0;
 }
 
-void hash_ctx_deinit(struct cryptodev_ctx* ctx) 
+void hash_ctx_deinit(struct cryptodev_ctx* ctx)
 {
 	if (ioctl(ctx->cfd, CIOCFSESSION, &ctx->sess.ses)) {
 		perror("ioctl(CIOCFSESSION)");
@@ -57,7 +57,7 @@ int
 hash(struct cryptodev_ctx* ctx, const void* text, size_t size, void* digest)
 {
 	struct crypt_op cryp;
-	
+
 	memset(&cryp, 0, sizeof(cryp));
 
 	/* Encrypt data.in to data.encrypted */
@@ -95,7 +95,7 @@ int hash_test(int algo, void (*user_hash)(void* text, int size, void* res))
 	}
 
 	hash_ctx_init(&ctx, algo, cfd);
-	
+
 	for (i=0;i<sizeof(sizes)/sizeof(sizes[0]);i++) {
 		counted = 0;
 		ret = start_benchmark(&bst);
@@ -108,7 +108,7 @@ int hash_test(int algo, void (*user_hash)(void* text, int size, void* res))
 			hash(&ctx, text, sizes[i], digest);
 			counted += sizes[i];
 		} while(benchmark_must_finish==0);
-		
+
 		ret = stop_benchmark(&bst, &elapsed);
 		if (ret < 0) {
 			ret = -1;
@@ -129,15 +129,15 @@ int hash_test(int algo, void (*user_hash)(void* text, int size, void* res))
 			user_hash(text, sizes[i], digest);
 			counted += sizes[i];
 		} while(benchmark_must_finish==0);
-		
+
 		ret = stop_benchmark(&bst, &elapsed);
 		if (ret < 0) {
 			ret = -1;
 			goto finish;
 		}
-	
+
 		t2 = (double)counted/(double)elapsed;
-		
+
 		if (t1 > t2) {
 			ret = sizes[i];
 			goto finish;
@@ -146,7 +146,7 @@ int hash_test(int algo, void (*user_hash)(void* text, int size, void* res))
 		printf("%d: kernel: %.4f bytes/msec, user: %.4f bytes/msec\n", sizes[i], t1, t2);
 #endif
 	}
-	
+
 	ret = -1;
 finish:
 	hash_ctx_deinit(&ctx);

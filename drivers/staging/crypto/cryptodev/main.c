@@ -127,7 +127,7 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 		size_t current_len = nbytes > bufsize ? bufsize : nbytes;
 
 		if (unlikely(copy_from_user(data, src, current_len))) {
- 		        dprintk(1, KERN_ERR, "Error copying %d bytes from user address %p.\n", (int)current_len, src);
+		        dprintk(1, KERN_ERR, "Error copying %d bytes from user address %p.\n", (int)current_len, src);
 			ret = -EFAULT;
 			break;
 		}
@@ -137,13 +137,13 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 		ret = hash_n_crypt(ses_ptr, cop, &sg, &sg, current_len);
 
 		if (unlikely(ret)) {
- 		        dprintk(1, KERN_ERR, "hash_n_crypt failed.\n");
+		        dprintk(1, KERN_ERR, "hash_n_crypt failed.\n");
 			break;
                 }
 
 		if (ses_ptr->cdata.init != 0) {
 			if (unlikely(copy_to_user(dst, data, current_len))) {
-         		        dprintk(1, KERN_ERR, "could not copy to user.\n");
+			        dprintk(1, KERN_ERR, "could not copy to user.\n");
 				ret = -EFAULT;
 				break;
 			}
@@ -168,7 +168,7 @@ __crypto_run_zc(struct csession *ses_ptr, struct kernel_crypt_op *kcop)
 	struct crypt_op *cop = &kcop->cop;
 	int ret = 0;
 
-	ret = get_userbuf(ses_ptr, cop->src, cop->len, cop->dst, cop->len, 
+	ret = get_userbuf(ses_ptr, cop->src, cop->len, cop->dst, cop->len,
 	                  kcop->task, kcop->mm, &src_sg, &dst_sg);
 	if (unlikely(ret)) {
 		dprintk(1, KERN_ERR, "Error getting user pages. "

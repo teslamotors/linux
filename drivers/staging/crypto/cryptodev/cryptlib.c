@@ -221,7 +221,7 @@ ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
 	int ret;
 
 	INIT_COMPLETION(cdata->async.result->completion);
-	
+
 	if (cdata->aead == 0) {
 		ablkcipher_request_set_crypt(cdata->async.request,
 			(struct scatterlist *)src, dst,

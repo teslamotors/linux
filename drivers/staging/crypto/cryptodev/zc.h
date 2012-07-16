@@ -13,7 +13,7 @@ int get_userbuf(struct csession *ses,
                 void* __user src, unsigned int src_len,
                 void* __user dst, unsigned int dst_len,
                 struct task_struct *task, struct mm_struct *mm,
-                struct scatterlist **src_sg, 
+                struct scatterlist **src_sg,
                 struct scatterlist **dst_sg);
 
 /* buflen ? (last page - first page + 1) : 0 */

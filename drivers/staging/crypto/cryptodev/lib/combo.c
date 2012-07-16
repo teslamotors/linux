@@ -41,7 +41,7 @@ int aead_ctx_init(struct cryptodev_ctx* ctx, int cipher, int hash, void* key, in
 	}
 #ifdef DEBUG
 	printf("Got %s-%s with drivers %s and %s\n",
-			siop.cipher_info.cra_name, siop.hash_info.cra_name, 
+			siop.cipher_info.cra_name, siop.hash_info.cra_name,
 			siop.cipher_info.cra_driver_name, siop.hash_info.cra_driver_name);
 #endif
 	/*printf("Alignmask is %x\n", (unsigned int)siop.alignmask);*/
@@ -50,7 +50,7 @@ int aead_ctx_init(struct cryptodev_ctx* ctx, int cipher, int hash, void* key, in
 	return 0;
 }
 
-void aead_ctx_deinit(struct cryptodev_ctx* ctx) 
+void aead_ctx_deinit(struct cryptodev_ctx* ctx)
 {
 	if (ioctl(ctx->cfd, CIOCFSESSION, &ctx->sess.ses)) {
 		perror("ioctl(CIOCFSESSION)");
@@ -61,7 +61,7 @@ int
 aead_encrypt(struct cryptodev_ctx* ctx, const void* iv, const void* plaintext, void* ciphertext, size_t size, void* digest)
 {
 	struct crypt_auth_op cryp;
-	
+
 	memset(&cryp, 0, sizeof(cryp));
 
 	/* Encrypt data.in to data.encrypted */
@@ -84,7 +84,7 @@ aead_encrypt(struct cryptodev_ctx* ctx, const void* iv, const void* plaintext, v
 static const int sizes[] = {64, 256, 512, 1024, 4096, 16*1024};
 
 
-int aead_test(int cipher, int mac, void* ukey, int ukey_size, 
+int aead_test(int cipher, int mac, void* ukey, int ukey_size,
 		void* user_ctx, void (*user_combo)(void* user_ctx, void* plaintext, void* ciphertext, int size, void* res))
 {
 	int cfd = -1, i, ret;
@@ -105,7 +105,7 @@ int aead_test(int cipher, int mac, void* ukey, int ukey_size,
 	}
 
 	aead_ctx_init(&ctx, cipher, mac, ukey, ukey_size, cfd);
-	
+
 	for (i=0;i<sizeof(sizes)/sizeof(sizes[0]);i++) {
 		counted = 0;
 		ret = start_benchmark(&bst);
@@ -119,13 +119,13 @@ int aead_test(int cipher, int mac, void* ukey, int ukey_size,
 				return -2;
 			counted += sizes[i];
 		} while(benchmark_must_finish==0);
-		
+
 		ret = stop_benchmark(&bst, &elapsed);
 		if (ret < 0) {
 			ret = -1;
 			goto finish;
 		}
-	
+
 		t1 = (double)counted/(double)elapsed;
 
 		/* now check the user function */
@@ -140,15 +140,15 @@ int aead_test(int cipher, int mac, void* ukey, int ukey_size,
 			user_combo(user_ctx, text, ctext, sizes[i], digest);
 			counted += sizes[i];
 		} while(benchmark_must_finish==0);
-		
+
 		ret = stop_benchmark(&bst, &elapsed);
 		if (ret < 0) {
 			ret = -1;
 			goto finish;
 		}
-	
+
 		t2 = (double)counted/(double)elapsed;
-		
+
 #ifdef DEBUG
 		printf("%d: kernel: %.4f bytes/msec, user: %.4f bytes/msec\n", sizes[i], t1, t2);
 #endif
@@ -157,7 +157,7 @@ int aead_test(int cipher, int mac, void* ukey, int ukey_size,
 			goto finish;
 		}
 	}
-	
+
 	ret = -1;
 finish:
 	aead_ctx_deinit(&ctx);

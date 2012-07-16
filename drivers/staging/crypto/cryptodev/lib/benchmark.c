@@ -37,7 +37,7 @@ int start_benchmark(struct benchmark_st * st)
 {
   int ret;
   struct itimerval timer;
-  
+
   memset(st, 0, sizeof(*st));
 
   st->old_handler = signal (SIGPROF, alarm_handler);
@@ -59,12 +59,12 @@ int start_benchmark(struct benchmark_st * st)
     perror("setitimer");
     return -1;
   }
-  
+
   return 0;
 }
 
 /* Returns -1 on error or 0 on success.
- * elapsed: the elapsed time in milliseconds 
+ * elapsed: the elapsed time in milliseconds
  */
 int stop_benchmark(struct benchmark_st * st, unsigned long * elapsed)
 {
@@ -80,7 +80,7 @@ int stop_benchmark(struct benchmark_st * st, unsigned long * elapsed)
 
   msecs = (stop.tv_sec * 1000 + stop.tv_usec / 1000 -
           (st->start.tv_sec * 1000 + st->start.tv_usec / (1000)));
-          
+
   if (elapsed) *elapsed = msecs;
 
   return 0;

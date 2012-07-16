@@ -88,7 +88,7 @@ static int get_userbuf_tls(struct csession *ses, struct kernel_crypt_auth_op *kc
 			"failed to get user pages for data input\n");
 		return -EINVAL;
 	}
-	
+
 	(*dst_sg) = ses->sg;
 
 	return 0;
@@ -220,7 +220,7 @@ static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcryp
 			goto out_unlock;
 		}
 	}
-	
+
 	ret = 0;
 
 out_unlock:
@@ -322,7 +322,7 @@ static int verify_tls_record_pad( struct scatterlist *dst_sg, int len, int block
 	return pad_size+1;
 }
 
-/* Authenticate and encrypt the TLS way (also perform padding). 
+/* Authenticate and encrypt the TLS way (also perform padding).
  * During decryption it verifies the pad and tag and returns -EBADMSG on error.
  */
 static int
@@ -330,7 +330,7 @@ tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 		 struct scatterlist *auth_sg, uint32_t auth_len,
 		 struct scatterlist *dst_sg, uint32_t len)
 {
- 	int ret, fail = 0;
+	int ret, fail = 0;
 	struct crypt_auth_op *caop = &kcaop->caop;
 	uint8_t vhash[AALG_MAX_RESULT_LEN];
 	uint8_t hash_output[AALG_MAX_RESULT_LEN];
@@ -553,7 +553,7 @@ auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 		dprintk(0, KERN_ERR, "Illegal tag length: %d\n", caop->tag_len);
 		return -EINVAL;
 	}
-	
+
 	if (caop->tag_len)
 		cryptodev_cipher_set_tag_size(&ses_ptr->cdata, caop->tag_len);
 	else
@@ -594,8 +594,8 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 	int ret = 0;
 
 	if (caop->flags & COP_FLAG_AEAD_SRTP_TYPE) {
-		if (unlikely(ses_ptr->cdata.init != 0 && 
-			(ses_ptr->cdata.stream == 0 || ses_ptr->cdata.aead != 0))) 
+		if (unlikely(ses_ptr->cdata.init != 0 &&
+			(ses_ptr->cdata.stream == 0 || ses_ptr->cdata.aead != 0)))
 		{
 			dprintk(0, KERN_ERR, "Only stream modes are allowed in SRTP mode (but not AEAD)\n");
 			return -EINVAL;
@@ -607,7 +607,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			return ret;
 		}
 
-		ret = srtp_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len, 
+		ret = srtp_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len,
 			   dst_sg, caop->len);
 
 		release_user_pages(ses_ptr);
@@ -649,14 +649,14 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 				goto free_auth_buf;
 			}
 
-			ret = tls_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len, 
+			ret = tls_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len,
 				   dst_sg, caop->len);
 		} else {
 			int dst_len;
 
-			if (unlikely(ses_ptr->cdata.init == 0 || 
-					ses_ptr->cdata.stream == 0 || 
-					ses_ptr->cdata.aead == 0)) 
+			if (unlikely(ses_ptr->cdata.init == 0 ||
+					ses_ptr->cdata.stream == 0 ||
+					ses_ptr->cdata.aead == 0))
 			{
 				dprintk(0, KERN_ERR, "Only stream and AEAD ciphers are allowed for authenc\n");
 				ret = -EINVAL;
@@ -665,7 +665,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 
 			if (caop->op == COP_ENCRYPT) dst_len = caop->len + cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
 			else dst_len = caop->len - cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
-			
+
 			ret = get_userbuf(ses_ptr, caop->src, caop->len, caop->dst, dst_len,
 					  kcaop->task, kcaop->mm, &src_sg, &dst_sg);
 			if (unlikely(ret)) {
@@ -673,7 +673,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 				goto free_auth_buf;
 			}
 
-			ret = auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len, 
+			ret = auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len,
 					   src_sg, dst_sg, caop->len);
 		}
 
