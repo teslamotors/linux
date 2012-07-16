@@ -58,10 +58,10 @@ int __get_userbuf(uint8_t __user *addr, uint32_t len, int write,
 		return 0;
 	}
 
-	down_write(&mm->mmap_sem);
+	down_read(&mm->mmap_sem);
 	ret = get_user_pages(task, mm,
 			(unsigned long)addr, pgcount, write, 0, pg, NULL);
-	up_write(&mm->mmap_sem);
+	up_read(&mm->mmap_sem);
 	if (ret != pgcount)
 		return -EINVAL;
 
