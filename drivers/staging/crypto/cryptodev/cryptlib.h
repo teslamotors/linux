@@ -36,10 +36,8 @@ ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
 inline static void cryptodev_cipher_auth(struct cipher_data *cdata,
 					 struct scatterlist *sg1, size_t len)
 {
-	if( len )
-		aead_request_set_assoc(cdata->async.arequest, sg1, len);
-	else /* for some reason we _have_ to call that */
-		aead_request_set_assoc(cdata->async.arequest, NULL, 0);
+	/* for some reason we _have_ to call that even for zero length sgs */
+	aead_request_set_assoc(cdata->async.arequest, len ? sg1 : NULL, len);
 }
 
 inline static void cryptodev_cipher_set_tag_size(struct cipher_data *cdata, int size)
