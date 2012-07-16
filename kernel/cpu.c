@@ -58,12 +58,7 @@ static int cpu_hotplug_disabled;
 
 static struct {
 	struct task_struct *active_writer;
-#ifdef CONFIG_PREEMPT_RT_FULL
-	/* Makes the lock keep the task's state */
-	spinlock_t lock;
-#else
 	struct mutex lock; /* Synchronizes accesses to refcount, */
-#endif
 	/*
 	 * Also blocks the new readers during
 	 * an ongoing cpu hotplug operation.
@@ -77,26 +72,12 @@ static struct {
 #endif
 } cpu_hotplug = {
 	.active_writer = NULL,
-#ifdef CONFIG_PREEMPT_RT_FULL
-	.lock = __SPIN_LOCK_UNLOCKED(cpu_hotplug.lock),
-#else
 	.lock = __MUTEX_INITIALIZER(cpu_hotplug.lock),
-#endif
 	.refcount = 0,
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 	.dep_map = {.name = "cpu_hotplug.lock" },
 #endif
 };
-
-#ifdef CONFIG_PREEMPT_RT_FULL
-# define hotplug_lock() rt_spin_lock(&cpu_hotplug.lock)
-# define hotplug_trylock() rt_spin_trylock(&cpu_hotplug.lock)
-# define hotplug_unlock() rt_spin_unlock(&cpu_hotplug.lock)
-#else
-# define hotplug_lock() mutex_lock(&cpu_hotplug.lock)
-# define hotplug_trylock() mutex_trylock(&cpu_hotplug.lock)
-# define hotplug_unlock() mutex_unlock(&cpu_hotplug.lock)
-#endif
 
 /* Lockdep annotations for get/put_online_cpus() and cpu_hotplug_begin/end() */
 #define cpuhp_lock_acquire_read() lock_map_acquire_read(&cpu_hotplug.dep_map)
@@ -105,11 +86,41 @@ static struct {
 #define cpuhp_lock_acquire()      lock_map_acquire(&cpu_hotplug.dep_map)
 #define cpuhp_lock_release()      lock_map_release(&cpu_hotplug.dep_map)
 
+/**
+ * hotplug_pcp	- per cpu hotplug descriptor
+ * @unplug:	set when pin_current_cpu() needs to sync tasks
+ * @sync_tsk:	the task that waits for tasks to finish pinned sections
+ * @refcount:	counter of tasks in pinned sections
+ * @grab_lock:	set when the tasks entering pinned sections should wait
+ * @synced:	notifier for @sync_tsk to tell cpu_down it's finished
+ * @mutex:	the mutex to make tasks wait (used when @grab_lock is true)
+ * @mutex_init:	zero if the mutex hasn't been initialized yet.
+ *
+ * Although @unplug and @sync_tsk may point to the same task, the @unplug
+ * is used as a flag and still exists after @sync_tsk has exited and
+ * @sync_tsk set to NULL.
+ */
 struct hotplug_pcp {
 	struct task_struct *unplug;
+	struct task_struct *sync_tsk;
 	int refcount;
+	int grab_lock;
 	struct completion synced;
+#ifdef CONFIG_PREEMPT_RT_FULL
+	spinlock_t lock;
+#else
+	struct mutex mutex;
+#endif
+	int mutex_init;
 };
+
+#ifdef CONFIG_PREEMPT_RT_FULL
+# define hotplug_lock(hp) rt_spin_lock(&(hp)->lock)
+# define hotplug_unlock(hp) rt_spin_unlock(&(hp)->lock)
+#else
+# define hotplug_lock(hp) mutex_lock(&(hp)->mutex)
+# define hotplug_unlock(hp) mutex_unlock(&(hp)->mutex)
+#endif
 
 static DEFINE_PER_CPU(struct hotplug_pcp, hotplug_pcp);
 
@@ -124,18 +135,39 @@ static DEFINE_PER_CPU(struct hotplug_pcp, hotplug_pcp);
 void pin_current_cpu(void)
 {
 	struct hotplug_pcp *hp;
+	int force = 0;
 
 retry:
 	hp = &__get_cpu_var(hotplug_pcp);
 
-	if (!hp->unplug || hp->refcount || preempt_count() > 1 ||
+	if (!hp->unplug || hp->refcount || force || preempt_count() > 1 ||
 	    hp->unplug == current) {
 		hp->refcount++;
 		return;
 	}
-	preempt_enable();
-	hotplug_lock();
-	hotplug_unlock();
+	if (hp->grab_lock) {
+		preempt_enable();
+		hotplug_lock(hp);
+		hotplug_unlock(hp);
+	} else {
+		preempt_enable();
+		/*
+		 * Try to push this task off of this CPU.
+		 */
+		if (!migrate_me()) {
+			preempt_disable();
+			hp = &__get_cpu_var(hotplug_pcp);
+			if (!hp->grab_lock) {
+				/*
+				 * Just let it continue it's already pinned
+				 * or about to sleep.
+				 */
+				force = 1;
+				goto retry;
+			}
+			preempt_enable();
+		}
+	}
 	preempt_disable();
 	goto retry;
 }
@@ -156,24 +188,82 @@ void unpin_current_cpu(void)
 		wake_up_process(hp->unplug);
 }
 
-/*
- * FIXME: Is this really correct under all circumstances ?
- */
+static void wait_for_pinned_cpus(struct hotplug_pcp *hp)
+{
+	set_current_state(TASK_UNINTERRUPTIBLE);
+	while (hp->refcount) {
+		schedule_preempt_disabled();
+		set_current_state(TASK_UNINTERRUPTIBLE);
+	}
+}
+
 static int sync_unplug_thread(void *data)
 {
 	struct hotplug_pcp *hp = data;
 
 	preempt_disable();
 	hp->unplug = current;
+	wait_for_pinned_cpus(hp);
+
+	/*
+	 * This thread will synchronize the cpu_down() with threads
+	 * that have pinned the CPU. When the pinned CPU count reaches
+	 * zero, we inform the cpu_down code to continue to the next step.
+	 */
 	set_current_state(TASK_UNINTERRUPTIBLE);
-	while (hp->refcount) {
-		schedule_preempt_disabled();
+	preempt_enable();
+	complete(&hp->synced);
+
+	/*
+	 * If all succeeds, the next step will need tasks to wait till
+	 * the CPU is offline before continuing. To do this, the grab_lock
+	 * is set and tasks going into pin_current_cpu() will block on the
+	 * mutex. But we still need to wait for those that are already in
+	 * pinned CPU sections. If the cpu_down() failed, the kthread_should_stop()
+	 * will kick this thread out.
+	 */
+	while (!hp->grab_lock && !kthread_should_stop()) {
+		schedule();
+		set_current_state(TASK_UNINTERRUPTIBLE);
+	}
+
+	/* Make sure grab_lock is seen before we see a stale completion */
+	smp_mb();
+
+	/*
+	 * Now just before cpu_down() enters stop machine, we need to make
+	 * sure all tasks that are in pinned CPU sections are out, and new
+	 * tasks will now grab the lock, keeping them from entering pinned
+	 * CPU sections.
+	 */
+	if (!kthread_should_stop()) {
+		preempt_disable();
+		wait_for_pinned_cpus(hp);
+		preempt_enable();
+		complete(&hp->synced);
+	}
+
+	set_current_state(TASK_UNINTERRUPTIBLE);
+	while (!kthread_should_stop()) {
+		schedule();
 		set_current_state(TASK_UNINTERRUPTIBLE);
 	}
 	set_current_state(TASK_RUNNING);
-	preempt_enable();
-	complete(&hp->synced);
+
+	/*
+	 * Force this thread off this CPU as it's going down and
+	 * we don't want any more work on this CPU.
+	 */
+	current->flags &= ~PF_NO_SETAFFINITY;
+	do_set_cpus_allowed(current, cpu_present_mask);
+	migrate_me();
 	return 0;
+}
+
+static void __cpu_unplug_sync(struct hotplug_pcp *hp)
+{
+	wake_up_process(hp->sync_tsk);
+	wait_for_completion(&hp->synced);
 }
 
 /*
@@ -183,16 +273,64 @@ static int sync_unplug_thread(void *data)
 static int cpu_unplug_begin(unsigned int cpu)
 {
 	struct hotplug_pcp *hp = &per_cpu(hotplug_pcp, cpu);
-	struct task_struct *tsk;
+	int err;
+
+	/* Protected by cpu_hotplug.lock */
+	if (!hp->mutex_init) {
+#ifdef CONFIG_PREEMPT_RT_FULL
+		spin_lock_init(&hp->lock);
+#else
+		mutex_init(&hp->mutex);
+#endif
+		hp->mutex_init = 1;
+	}
+
+	/* Inform the scheduler to migrate tasks off this CPU */
+	tell_sched_cpu_down_begin(cpu);
 
 	init_completion(&hp->synced);
-	tsk = kthread_create(sync_unplug_thread, hp, "sync_unplug/%d", cpu);
-	if (IS_ERR(tsk))
-		return (PTR_ERR(tsk));
-	kthread_bind(tsk, cpu);
-	wake_up_process(tsk);
-	wait_for_completion(&hp->synced);
+
+	hp->sync_tsk = kthread_create(sync_unplug_thread, hp, "sync_unplug/%d", cpu);
+	if (IS_ERR(hp->sync_tsk)) {
+		err = PTR_ERR(hp->sync_tsk);
+		hp->sync_tsk = NULL;
+		return err;
+	}
+	kthread_bind(hp->sync_tsk, cpu);
+
+	/*
+	 * Wait for tasks to get out of the pinned sections,
+	 * it's still OK if new tasks enter. Some CPU notifiers will
+	 * wait for tasks that are going to enter these sections and
+	 * we must not have them block.
+	 */
+	__cpu_unplug_sync(hp);
+
 	return 0;
+}
+
+static void cpu_unplug_sync(unsigned int cpu)
+{
+	struct hotplug_pcp *hp = &per_cpu(hotplug_pcp, cpu);
+
+	init_completion(&hp->synced);
+	/* The completion needs to be initialzied before setting grab_lock */
+	smp_wmb();
+
+	/* Grab the mutex before setting grab_lock */
+	hotplug_lock(hp);
+	hp->grab_lock = 1;
+
+	/*
+	 * The CPU notifiers have been completed.
+	 * Wait for tasks to get out of pinned CPU sections and have new
+	 * tasks block until the CPU is completely down.
+	 */
+	__cpu_unplug_sync(hp);
+
+	/* All done with the sync thread */
+	kthread_stop(hp->sync_tsk);
+	hp->sync_tsk = NULL;
 }
 
 static void cpu_unplug_done(unsigned int cpu)
@@ -200,6 +338,18 @@ static void cpu_unplug_done(unsigned int cpu)
 	struct hotplug_pcp *hp = &per_cpu(hotplug_pcp, cpu);
 
 	hp->unplug = NULL;
+	/* Let all tasks know cpu unplug is finished before cleaning up */
+	smp_wmb();
+
+	if (hp->sync_tsk)
+		kthread_stop(hp->sync_tsk);
+
+	if (hp->grab_lock) {
+		hotplug_unlock(hp);
+		/* protected by cpu_hotplug.lock */
+		hp->grab_lock = 0;
+	}
+	tell_sched_cpu_down_done(cpu);
 }
 
 void get_online_cpus(void)
@@ -208,9 +358,9 @@ void get_online_cpus(void)
 	if (cpu_hotplug.active_writer == current)
 		return;
 	cpuhp_lock_acquire_read();
-	hotplug_lock();
+	mutex_lock(&cpu_hotplug.lock);
 	cpu_hotplug.refcount++;
-	hotplug_unlock();
+	mutex_unlock(&cpu_hotplug.lock);
 }
 EXPORT_SYMBOL_GPL(get_online_cpus);
 
@@ -219,11 +369,11 @@ bool try_get_online_cpus(void)
 	if (cpu_hotplug.active_writer == current)
 		return true;
 
-	if (!hotplug_trylock()) {
+	if (!mutex_trylock(&cpu_hotplug.lock))
 		return false;
 	cpuhp_lock_acquire_tryread();
 	cpu_hotplug.refcount++;
-	hotplug_unlock();
+	mutex_unlock(&cpu_hotplug.lock);
 	return true;
 }
 EXPORT_SYMBOL_GPL(try_get_online_cpus);
@@ -232,7 +382,7 @@ void put_online_cpus(void)
 {
 	if (cpu_hotplug.active_writer == current)
 		return;
-	if (!hotplug_trylock()) {
+	if (!mutex_trylock(&cpu_hotplug.lock)) {
 		atomic_inc(&cpu_hotplug.puts_pending);
 		cpuhp_lock_release();
 		return;
@@ -243,7 +393,7 @@ void put_online_cpus(void)
 
 	if (!--cpu_hotplug.refcount && unlikely(cpu_hotplug.active_writer))
 		wake_up_process(cpu_hotplug.active_writer);
-	hotplug_unlock();
+	mutex_unlock(&cpu_hotplug.lock);
 	cpuhp_lock_release();
 
 }
@@ -277,7 +427,7 @@ void cpu_hotplug_begin(void)
 
 	cpuhp_lock_acquire();
 	for (;;) {
-		hotplug_lock();
+		mutex_lock(&cpu_hotplug.lock);
 		if (atomic_read(&cpu_hotplug.puts_pending)) {
 			int delta;
 
@@ -287,7 +437,7 @@ void cpu_hotplug_begin(void)
 		if (likely(!cpu_hotplug.refcount))
 			break;
 		__set_current_state(TASK_UNINTERRUPTIBLE);
-		hotplug_unlock();
+		mutex_unlock(&cpu_hotplug.lock);
 		schedule();
 	}
 }
@@ -295,7 +445,7 @@ void cpu_hotplug_begin(void)
 void cpu_hotplug_done(void)
 {
 	cpu_hotplug.active_writer = NULL;
-	hotplug_unlock();
+	mutex_unlock(&cpu_hotplug.lock);
 	cpuhp_lock_release();
 }
 
@@ -527,6 +677,9 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen)
 	synchronize_rcu();
 
 	smpboot_park_threads(cpu);
+
+	/* Notifiers are done. Don't let any more tasks pin this CPU. */
+	cpu_unplug_sync(cpu);
 
 	/*
 	 * So now all preempt/rcu users must observe !cpu_active().
