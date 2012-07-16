@@ -55,28 +55,28 @@ int __get_userbuf(uint8_t __user *addr, uint32_t len, int write,
 
 	if (unlikely(!pgcount || !len || !addr)) {
 		sg_mark_end(sg);
+		return 0;
 	}
-	else {
-		down_write(&mm->mmap_sem);
-		ret = get_user_pages(task, mm,
-				(unsigned long)addr, pgcount, write, 0, pg, NULL);
-		up_write(&mm->mmap_sem);
-		if (ret != pgcount)
-			return -EINVAL;
 
-		sg_init_table(sg, pgcount);
+	down_write(&mm->mmap_sem);
+	ret = get_user_pages(task, mm,
+			(unsigned long)addr, pgcount, write, 0, pg, NULL);
+	up_write(&mm->mmap_sem);
+	if (ret != pgcount)
+		return -EINVAL;
 
-		pglen = min((ptrdiff_t)(PAGE_SIZE - PAGEOFFSET(addr)), (ptrdiff_t)len);
-		sg_set_page(sg, pg[i++], pglen, PAGEOFFSET(addr));
+	sg_init_table(sg, pgcount);
 
+	pglen = min((ptrdiff_t)(PAGE_SIZE - PAGEOFFSET(addr)), (ptrdiff_t)len);
+	sg_set_page(sg, pg[i++], pglen, PAGEOFFSET(addr));
+
+	len -= pglen;
+	for (sgp = sg_next(sg); len; sgp = sg_next(sgp)) {
+		pglen = min((uint32_t)PAGE_SIZE, len);
+		sg_set_page(sgp, pg[i++], pglen, 0);
 		len -= pglen;
-		for (sgp = sg_next(sg); len; sgp = sg_next(sgp)) {
-			pglen = min((uint32_t)PAGE_SIZE, len);
-			sg_set_page(sgp, pg[i++], pglen, 0);
-			len -= pglen;
-		}
-		sg_mark_end(sg_last(sg, pgcount));
 	}
+	sg_mark_end(sg_last(sg, pgcount));
 	return 0;
 }
 
@@ -139,11 +139,13 @@ int get_userbuf(struct csession *ses,
 
 	/* Empty input is a valid option to many algorithms & is tested by NIST/FIPS */
 	/* Make sure NULL input has 0 length */
-	if (!src && src_len) { src_len = 0; }
+	if (!src && src_len)
+		src_len = 0;
 
 	/* I don't know that null output is ever useful, but we can handle it gracefully */
 	/* Make sure NULL output has 0 length */
-	if (!dst && dst_len) { dst_len = 0; }
+	if (!dst && dst_len)
+		dst_len = 0;
 
 	if (ses->alignmask && !IS_ALIGNED((unsigned long)src, ses->alignmask)) {
 		dprintk(2, KERN_WARNING, "careful - source address %lx is not %d byte aligned\n",
@@ -169,7 +171,7 @@ int get_userbuf(struct csession *ses,
 			return rc;
 	}
 
-	if (src == dst) {
+	if (src == dst) {	/* inplace operation */
 		rc = __get_userbuf(src, src_len, 1, ses->used_pages,
 			               ses->pages, ses->sg, task, mm);
 		if (unlikely(rc)) {
@@ -178,40 +180,36 @@ int get_userbuf(struct csession *ses,
 			return rc;
 		}
 		(*src_sg) = (*dst_sg) = ses->sg;
+		return 0;
 	}
-	else {
-		const unsigned int readonly_pages = ses->readonly_pages;
-		const unsigned int writable_pages = ses->used_pages - readonly_pages;
 
-		if(likely(src)) {
-			rc = __get_userbuf(src, src_len, 0, readonly_pages,
-					           ses->pages, ses->sg, task, mm);
-			if (unlikely(rc)) {
-				dprintk(1, KERN_ERR,
-					"failed to get user pages for data input\n");
-				return rc;
-			}
-			*src_sg = ses->sg;
-		}
-		else {
-			*src_sg = NULL; // no input
-		}
+	*src_sg = NULL; // default to no input
+	*dst_sg = NULL; // default to ignore output
 
-		if(likely(dst)) {
-			struct page **dst_pages = ses->pages + readonly_pages;
-			*dst_sg = ses->sg + readonly_pages;
-
-			rc = __get_userbuf(dst, dst_len, 1, writable_pages,
-					           dst_pages, *dst_sg, task, mm);
-			if (unlikely(rc)) {
-				dprintk(1, KERN_ERR,
-						"failed to get user pages for data output\n");
-				release_user_pages(ses);  /* FIXME: use __release_userbuf(src, ...) */
-				return rc;
-			}
+	if(likely(src)) {
+		rc = __get_userbuf(src, src_len, 0, ses->readonly_pages,
+					   ses->pages, ses->sg, task, mm);
+		if (unlikely(rc)) {
+			dprintk(1, KERN_ERR,
+				"failed to get user pages for data input\n");
+			return rc;
 		}
-		else {
-			*dst_sg = NULL; // ignore output
+		*src_sg = ses->sg;
+	}
+
+	if(likely(dst)) {
+		const unsigned int writable_pages =
+			ses->used_pages - ses->readonly_pages;
+		struct page **dst_pages = ses->pages + ses->readonly_pages;
+		*dst_sg = ses->sg + ses->readonly_pages;
+
+		rc = __get_userbuf(dst, dst_len, 1, writable_pages,
+					   dst_pages, *dst_sg, task, mm);
+		if (unlikely(rc)) {
+			dprintk(1, KERN_ERR,
+					"failed to get user pages for data output\n");
+			release_user_pages(ses);  /* FIXME: use __release_userbuf(src, ...) */
+			return rc;
 		}
 	}
 	return 0;
