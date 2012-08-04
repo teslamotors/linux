@@ -1,4 +1,8 @@
-Version 1.5 (unreleased)
+Version 1.5 (released 2012-08-04)
+
+* Fixes in AEAD support. Patches by Jaren Johnston.
+
+* Simplifications in memory locking. Patch by Phil Sutter.
 
 * Allow empty plaintext and authenticated data in AEAD 
 ciphers. Patch by Jaren Johnston.
