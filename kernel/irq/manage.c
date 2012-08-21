@@ -954,6 +954,12 @@ static int irq_thread(void *data)
 		if (action_ret == IRQ_HANDLED)
 			atomic_inc(&desc->threads_handled);
 
+#ifdef CONFIG_PREEMPT_RT_FULL
+		migrate_disable();
+		add_interrupt_randomness(action->irq, 0,
+				 desc->random_ip ^ (unsigned long) action);
+		migrate_enable();
+#endif
 		wake_threads_waitq(desc);
 	}
 
