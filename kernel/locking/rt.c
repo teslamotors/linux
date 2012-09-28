@@ -216,17 +216,17 @@ int __lockfunc rt_read_trylock(rwlock_t *rwlock)
 	if (rt_mutex_owner(lock) != current) {
 		migrate_disable();
 		ret = rt_mutex_trylock(lock);
-		if (!ret)
+		if (ret)
+			rwlock_acquire(&rwlock->dep_map, 0, 1, _RET_IP_);
+		else
 			migrate_enable();
 
 	} else if (!rwlock->read_depth) {
 		ret = 0;
 	}
 
-	if (ret) {
+	if (ret)
 		rwlock->read_depth++;
-		rwlock_acquire(&rwlock->dep_map, 0, 1, _RET_IP_);
-	}
 
 	return ret;
 }
@@ -244,13 +244,13 @@ void __lockfunc rt_read_lock(rwlock_t *rwlock)
 {
 	struct rt_mutex *lock = &rwlock->lock;
 
-	rwlock_acquire(&rwlock->dep_map, 0, 0, _RET_IP_);
 
 	/*
 	 * recursive read locks succeed when current owns the lock
 	 */
 	if (rt_mutex_owner(lock) != current) {
 		migrate_disable();
+		rwlock_acquire(&rwlock->dep_map, 0, 0, _RET_IP_);
 		__rt_spin_lock(lock);
 	}
 	rwlock->read_depth++;
@@ -269,10 +269,9 @@ EXPORT_SYMBOL(rt_write_unlock);
 
 void __lockfunc rt_read_unlock(rwlock_t *rwlock)
 {
-	rwlock_release(&rwlock->dep_map, 1, _RET_IP_);
-
 	/* Release the lock only when read_depth is down to 0 */
 	if (--rwlock->read_depth == 0) {
+		rwlock_release(&rwlock->dep_map, 1, _RET_IP_);
 		__rt_spin_unlock(&rwlock->lock);
 		migrate_enable();
 	}
@@ -362,6 +361,14 @@ void  rt_down_write_nested(struct rw_semaphore *rwsem, int subclass)
 	rt_mutex_lock(&rwsem->lock);
 }
 EXPORT_SYMBOL(rt_down_write_nested);
+
+void rt_down_write_nested_lock(struct rw_semaphore *rwsem,
+			       struct lockdep_map *nest)
+{
+	rwsem_acquire_nest(&rwsem->dep_map, 0, 0, nest, _RET_IP_);
+	rt_mutex_lock(&rwsem->lock);
+}
+EXPORT_SYMBOL(rt_down_write_nested_lock);
 
 int  rt_down_read_trylock(struct rw_semaphore *rwsem)
 {
