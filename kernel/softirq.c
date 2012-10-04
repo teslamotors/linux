@@ -142,6 +142,26 @@ static void wakeup_softirqd(void)
 		wake_up_process(tsk);
 }
 
+static void handle_softirq(unsigned int vec_nr)
+{
+	struct softirq_action *h = softirq_vec + vec_nr;
+	int prev_count;
+
+	prev_count = preempt_count();
+
+	kstat_incr_softirqs_this_cpu(vec_nr);
+
+	trace_softirq_entry(vec_nr);
+	h->action(h);
+	trace_softirq_exit(vec_nr);
+	if (unlikely(prev_count != preempt_count())) {
+		pr_err("huh, entered softirq %u %s %p with preempt_count %08x, exited with %08x?\n",
+		       vec_nr, softirq_to_name[vec_nr], h->action,
+		       prev_count, preempt_count());
+		preempt_count_set(prev_count);
+	}
+}
+
 static void handle_pending_softirqs(u32 pending, int need_rcu_bh_qs)
 {
 	struct softirq_action *h = softirq_vec;
@@ -153,24 +173,11 @@ static void handle_pending_softirqs(u32 pending, int need_rcu_bh_qs)
 
 	while ((softirq_bit = ffs(pending))) {
 		unsigned int vec_nr;
-		int prev_count;
 
 		h += softirq_bit - 1;
-
 		vec_nr = h - softirq_vec;
-		prev_count = preempt_count();
+		handle_softirq(vec_nr);
 
-		kstat_incr_softirqs_this_cpu(vec_nr);
-
-		trace_softirq_entry(vec_nr);
-		h->action(h);
-		trace_softirq_exit(vec_nr);
-		if (unlikely(prev_count != preempt_count())) {
-			pr_err("huh, entered softirq %u %s %p with preempt_count %08x, exited with %08x?\n",
-			       vec_nr, softirq_to_name[vec_nr], h->action,
-			       prev_count, preempt_count());
-			preempt_count_set(prev_count);
-		}
 		h++;
 		pending >>= softirq_bit;
 	}
