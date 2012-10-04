@@ -1688,6 +1688,7 @@ struct task_struct {
 #ifdef CONFIG_PREEMPT_RT_BASE
 	struct rcu_head put_rcu;
 	int softirq_nestcnt;
+	unsigned int softirqs_raised;
 #endif
 #ifdef CONFIG_PREEMPT_RT_FULL
 # if defined CONFIG_HIGHMEM || defined CONFIG_X86_32
