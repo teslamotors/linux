@@ -410,6 +410,7 @@ int trace_print_lat_fmt(struct trace_seq *s, struct trace_entry *entry)
 {
 	char hardsoft_irq;
 	char need_resched;
+	char need_resched_lazy;
 	char irqs_off;
 	int hardirq;
 	int softirq;
@@ -438,6 +439,8 @@ int trace_print_lat_fmt(struct trace_seq *s, struct trace_entry *entry)
 		need_resched = '.';
 		break;
 	}
+	need_resched_lazy =
+		(entry->flags & TRACE_FLAG_NEED_RESCHED_LAZY) ? 'L' : '.';
 
 	hardsoft_irq =
 		(hardirq && softirq) ? 'H' :
@@ -445,12 +448,18 @@ int trace_print_lat_fmt(struct trace_seq *s, struct trace_entry *entry)
 		softirq ? 's' :
 		'.';
 
-	if (!trace_seq_printf(s, "%c%c%c",
-			      irqs_off, need_resched, hardsoft_irq))
+	if (!trace_seq_printf(s, "%c%c%c%c",
+			      irqs_off, need_resched, need_resched_lazy,
+			      hardsoft_irq))
 		return 0;
 
 	if (entry->preempt_count)
 		ret = trace_seq_printf(s, "%x", entry->preempt_count);
+	else
+		ret = trace_seq_putc(s, '.');
+
+	if (entry->preempt_lazy_count)
+		ret = trace_seq_printf(s, "%x", entry->preempt_lazy_count);
 	else
 		ret = trace_seq_putc(s, '.');
 
