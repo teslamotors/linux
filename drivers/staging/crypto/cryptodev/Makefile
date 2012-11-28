@@ -1,6 +1,7 @@
 KBUILD_CFLAGS += -I$(src)
 KERNEL_DIR = /lib/modules/$(shell uname -r)/build
 VERSION = 1.5
+PREFIX =
 
 cryptodev-objs = ioctl.o main.o cryptlib.o authenc.o zc.o util.o
 
@@ -12,10 +13,10 @@ build: version.h
 version.h: Makefile
 	@echo "#define VERSION \"$(VERSION)\"" > version.h
 
-install:
+modules_install:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules_install
-	@echo "Installing cryptodev.h in /usr/include/crypto ..."
-	@install -D crypto/cryptodev.h /usr/include/crypto/cryptodev.h
+	@echo "Installing cryptodev.h in $(PREFIX)/usr/include/crypto ..."
+	@install -D crypto/cryptodev.h $(PREFIX)/usr/include/crypto/cryptodev.h
 
 clean:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` clean
