@@ -13,6 +13,8 @@ build: version.h
 version.h: Makefile
 	@echo "#define VERSION \"$(VERSION)\"" > version.h
 
+install: modules_install
+
 modules_install:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` modules_install
 	@echo "Installing cryptodev.h in $(PREFIX)/usr/include/crypto ..."
