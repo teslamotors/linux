@@ -1309,14 +1309,15 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
 	struct page *page;
 	struct kmem_cache_order_objects oo = s->oo;
 	gfp_t alloc_gfp;
+	bool enableirqs;
 
 	flags &= gfp_allowed_mask;
 
+	enableirqs = (flags & __GFP_WAIT) != 0;
 #ifdef CONFIG_PREEMPT_RT_FULL
-	if (system_state == SYSTEM_RUNNING)
-#else
-	if (flags & __GFP_WAIT)
+	enableirqs |= system_state == SYSTEM_RUNNING;
 #endif
+	if (enableirqs)
 		local_irq_enable();
 
 	flags |= s->allocflags;
@@ -1357,11 +1358,7 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
 			kmemcheck_mark_unallocated_pages(page, pages);
 	}
 
-#ifdef CONFIG_PREEMPT_RT_FULL
-	if (system_state == SYSTEM_RUNNING)
-#else
-	if (flags & __GFP_WAIT)
-#endif
+	if (enableirqs)
 		local_irq_disable();
 	if (!page)
 		return NULL;
