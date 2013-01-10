@@ -22,11 +22,13 @@ struct swait_head {
 	struct list_head	list;
 };
 
-#define DEFINE_SWAIT_HEAD(name)					\
-	struct swait_head name = {				\
+#define SWAIT_HEAD_INITIALIZER(name) {				\
 		.lock	= __RAW_SPIN_LOCK_UNLOCKED(name.lock),	\
 		.list	= LIST_HEAD_INIT((name).list),		\
 	}
+
+#define DEFINE_SWAIT_HEAD(name)					\
+	struct swait_head name = SWAIT_HEAD_INITIALIZER(name)
 
 extern void __init_swait_head(struct swait_head *h, struct lock_class_key *key);
 
@@ -40,63 +42,25 @@ extern void __init_swait_head(struct swait_head *h, struct lock_class_key *key);
 /*
  * Waiter functions
  */
-static inline bool swaiter_enqueued(struct swaiter *w)
-{
-	return w->task != NULL;
-}
-
+extern void swait_prepare_locked(struct swait_head *head, struct swaiter *w);
 extern void swait_prepare(struct swait_head *head, struct swaiter *w, int state);
+extern void swait_finish_locked(struct swait_head *head, struct swaiter *w);
 extern void swait_finish(struct swait_head *head, struct swaiter *w);
-
-/*
- * Adds w to head->list. Must be called with head->lock locked.
- */
-static inline void __swait_enqueue(struct swait_head *head, struct swaiter *w)
-{
-	list_add(&w->node, &head->list);
-	/* We can't let the condition leak before the setting of head */
-	smp_mb();
-}
-
-/*
- * Removes w from head->list. Must be called with head->lock locked.
- */
-static inline void __swait_dequeue(struct swaiter *w)
-{
-	list_del_init(&w->node);
-}
-
-/*
- * Check whether a head has waiters enqueued
- */
-static inline bool swait_head_has_waiters(struct swait_head *h)
-{
-	/* Make sure the condition is visible before checking list_empty() */
-	smp_mb();
-	return !list_empty(&h->list);
-}
 
 /*
  * Wakeup functions
  */
-extern int __swait_wake(struct swait_head *head, unsigned int state);
+extern unsigned int __swait_wake(struct swait_head *head, unsigned int state, unsigned int num);
+extern unsigned int __swait_wake_locked(struct swait_head *head, unsigned int state, unsigned int num);
 
-static inline int swait_wake(struct swait_head *head)
-{
-	return swait_head_has_waiters(head) ?
-		__swait_wake(head, TASK_NORMAL) : 0;
-}
-
-static inline int swait_wake_interruptible(struct swait_head *head)
-{
-	return swait_head_has_waiters(head) ?
-		__swait_wake(head, TASK_INTERRUPTIBLE) : 0;
-}
+#define swait_wake(head)			__swait_wake(head, TASK_NORMAL, 1)
+#define swait_wake_interruptible(head)		__swait_wake(head, TASK_INTERRUPTIBLE, 1)
+#define swait_wake_all(head)			__swait_wake(head, TASK_NORMAL, 0)
+#define swait_wake_all_interruptible(head)	__swait_wake(head, TASK_INTERRUPTIBLE, 0)
 
 /*
  * Event API
  */
-
 #define __swait_event(wq, condition)					\
 do {									\
 	DEFINE_SWAITER(__wait);						\
