@@ -1421,8 +1421,9 @@ cryptodev_dh_compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh)
 	kop.crk_iparams = 3;
 
 	kop.crk_param[3].crp_p = (void*) key;
-	kop.crk_param[3].crp_nbits = keylen * 8;
+	kop.crk_param[3].crp_nbits = keylen;
 	kop.crk_oparams = 1;
+	dhret = keylen/8;
 
 	if (ioctl(fd, CIOCKEY, &kop) == -1) {
 		const DH_METHOD *meth = DH_OpenSSL();
