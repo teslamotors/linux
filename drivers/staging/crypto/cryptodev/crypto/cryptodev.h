@@ -45,9 +45,11 @@ enum cryptodev_crypto_op_t {
 
 	CRYPTO_CAMELLIA_CBC = 101,
 	CRYPTO_RIPEMD160,
+	CRYPTO_SHA2_224,
 	CRYPTO_SHA2_256,
 	CRYPTO_SHA2_384,
 	CRYPTO_SHA2_512,
+	CRYPTO_SHA2_224_HMAC,
 	CRYPTO_ALGORITHM_ALL, /* Keep updated - see below */
 };
 

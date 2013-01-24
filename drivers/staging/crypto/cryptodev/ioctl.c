@@ -164,6 +164,10 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	case CRYPTO_SHA1_HMAC:
 		hash_name = "hmac(sha1)";
 		break;
+	case CRYPTO_SHA2_224_HMAC:
+		hash_name = "hmac(sha224)";
+		break;
+
 	case CRYPTO_SHA2_256_HMAC:
 		hash_name = "hmac(sha256)";
 		break;
@@ -185,6 +189,10 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 		break;
 	case CRYPTO_SHA1:
 		hash_name = "sha1";
+		hmac_mode = 0;
+		break;
+	case CRYPTO_SHA2_224:
+		hash_name = "sha224";
 		hmac_mode = 0;
 		break;
 	case CRYPTO_SHA2_256:

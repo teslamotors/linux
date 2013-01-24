@@ -912,6 +912,24 @@ static const EVP_MD cryptodev_sha256 = {
 	SHA256_CBLOCK,
 	sizeof(EVP_MD *)+sizeof(struct dev_crypto_state),
 };
+static const EVP_MD cryptodev_sha224 = {
+	NID_sha224,
+	NID_sha224WithRSAEncryption, 
+	SHA224_DIGEST_LENGTH, 
+#if defined(EVP_MD_FLAG_PKEY_METHOD_SIGNATURE) && defined(EVP_MD_FLAG_DIGALGID_ABSENT)
+	EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|
+	EVP_MD_FLAG_DIGALGID_ABSENT|
+#endif
+	EVP_MD_FLAG_ONESHOT,
+	cryptodev_digest_init,
+	cryptodev_digest_update,
+	cryptodev_digest_final,
+	cryptodev_digest_copy,
+	cryptodev_digest_cleanup,
+	EVP_PKEY_RSA_method,
+	SHA256_CBLOCK,
+	sizeof(EVP_MD *)+sizeof(struct dev_crypto_state),
+};
 
 static const EVP_MD cryptodev_sha384 = {
 	NID_sha384,
@@ -987,6 +1005,9 @@ cryptodev_engine_digests(ENGINE *e, const EVP_MD **digest,
 		break;
 	case NID_sha1:
 		*digest = &cryptodev_sha1;
+ 		break;
+	case NID_sha224:
+		*digest = &cryptodev_sha224;
  		break;
 	case NID_sha256:
 		*digest = &cryptodev_sha256;
