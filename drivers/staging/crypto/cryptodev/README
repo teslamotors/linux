@@ -4,7 +4,7 @@ from userspace, thus enabling re-use of a hardware implementation of a
 cipher.
 
 For questions and suggestions please use the mailing lists at:
-http://home.gna.org/cryptodev-linux/lists.html
+http://cryptodev-linux.org/lists.html
 
 
 === How to combine with cryptographic libraries ===
