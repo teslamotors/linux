@@ -2,6 +2,9 @@ Version 1.6 (unreleased)
 
 * Added modules_install target in Makefile
 
+* Asynchronous operations will not be scheduled if zero
+copy is disabled.
+
 * The included eng_cryptodev.c was modified to compile
 in OpenSSL 0.9.8, as well as, support the partial update
 in digests. Based on patch by Glenn Schmottlach.

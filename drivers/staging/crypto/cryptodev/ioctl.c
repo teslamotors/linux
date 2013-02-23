@@ -548,6 +548,9 @@ clonefd(struct file *filp)
 static int crypto_async_run(struct crypt_priv *pcr, struct kernel_crypt_op *kcop)
 {
 	struct todo_list_item *item = NULL;
+	
+	if (unlikely(kcop->cop.flags & COP_FLAG_NO_ZC))
+		return -EINVAL;
 
 	mutex_lock(&pcr->free.lock);
 	if (likely(!list_empty(&pcr->free.list))) {
