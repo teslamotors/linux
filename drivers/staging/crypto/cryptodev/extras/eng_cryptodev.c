@@ -714,9 +714,10 @@ static int cryptodev_digest_update(EVP_MD_CTX *ctx, const void *data,
 		return (1);
 	}
 
-#ifndef COP_FLAG_UPDATE
-	if (!(ctx->flags & EVP_MD_CTX_FLAG_ONESHOT)) {
-		/* if application doesn't support one buffer */
+        /* If an application wants to compute the hash in one big chunk (one-shot mode)
+         * then tack the data onto the end of the buffer (and grow as necessary).
+         */
+	if ( ctx->flags & EVP_MD_CTX_FLAG_ONESHOT ) {
 		state->mac_data = OPENSSL_realloc(state->mac_data, state->mac_len + count);
 
 		if (!state->mac_data) {
@@ -732,23 +733,18 @@ static int cryptodev_digest_update(EVP_MD_CTX *ctx, const void *data,
 
 	memset(&cryp, 0, sizeof(cryp));
 
-	cryp.flags = 0;
-#else
-	memset(&cryp, 0, sizeof(cryp));
-
-	cryp.flags = COP_FLAG_UPDATe;
-#endif
 	cryp.ses = sess->ses;
+#ifdef COP_FLAG_UPDATE
+	cryp.flags = COP_FLAG_UPDATE;
+#endif
 	cryp.len = count;
 	cryp.src = (void*) data;
 	cryp.dst = NULL;
 	cryp.mac = (void*) state->digest_res;
-
 	if (ioctl(state->d_fd, CIOCCRYPT, &cryp) < 0) {
 		printf("cryptodev_digest_update: digest failed\n");
 		return (0);
 	}
-
 	return (1);
 }
 
@@ -764,29 +760,11 @@ static int cryptodev_digest_final(EVP_MD_CTX *ctx, unsigned char *md)
 		return(0);
 	}
 
-#ifndef COP_FLAG_UPDATE
-	if (! (ctx->flags & EVP_MD_CTX_FLAG_ONESHOT) ) {
-		/* if application doesn't support one buffer */
-		memset(&cryp, 0, sizeof(cryp));
-		cryp.ses = sess->ses;
-		cryp.flags = 0;
-		cryp.len = state->mac_len;
-		cryp.src = state->mac_data;
-		cryp.dst = NULL;
-		cryp.mac = (void*)md;
-		if (ioctl(state->d_fd, CIOCCRYPT, &cryp) < 0) {
-			printf("cryptodev_digest_final: digest failed\n");
-			return (0);
-		}
-
-		return 1;
-	}
-
-	memcpy(md, state->digest_res, ctx->digest->md_size);
-#else
 	memset(&cryp, 0, sizeof(cryp));
 	cryp.ses = sess->ses;
+#ifdef COP_FLAG_FINAL
 	cryp.flags = COP_FLAG_FINAL;
+#endif
 	cryp.len = state->mac_len;
 	cryp.src = state->mac_data;
 	cryp.dst = NULL;
@@ -794,8 +772,7 @@ static int cryptodev_digest_final(EVP_MD_CTX *ctx, unsigned char *md)
 	if (ioctl(state->d_fd, CIOCCRYPT, &cryp) < 0) {
 		printf("cryptodev_digest_final: digest failed\n");
 		return (0);
- 	}
-#endif
+	}
 
 	return 1;
 }
