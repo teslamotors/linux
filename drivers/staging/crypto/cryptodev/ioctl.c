@@ -538,6 +538,7 @@ clonefd(struct file *filp)
 	return ret;
 }
 
+#ifdef ENABLE_ASYNC
 /* enqueue a job for asynchronous completion
  *
  * returns:
@@ -615,6 +616,7 @@ static int crypto_async_fetch(struct crypt_priv *pcr,
 
 	return retval;
 }
+#endif
 
 /* this function has to be called from process context */
 static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
@@ -867,6 +869,7 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 			return ret;
 		}
 		return kcaop_to_user(&kcaop, fcr, arg);
+#ifdef ENABLE_ASYNC
 	case CIOCASYNCCRYPT:
 		if (unlikely(ret = kcop_from_user(&kcop, fcr, arg)))
 			return ret;
@@ -878,6 +881,7 @@ cryptodev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg_)
 			return ret;
 
 		return kcop_to_user(&kcop, fcr, arg);
+#endif
 	default:
 		return -EINVAL;
 	}
@@ -1023,6 +1027,7 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 			return ret;
 
 		return compat_kcop_to_user(&kcop, fcr, arg);
+#ifdef ENABLE_ASYNC
 	case COMPAT_CIOCASYNCCRYPT:
 		if (unlikely(ret = compat_kcop_from_user(&kcop, fcr, arg)))
 			return ret;
@@ -1034,7 +1039,7 @@ cryptodev_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg_)
 			return ret;
 
 		return compat_kcop_to_user(&kcop, fcr, arg);
-
+#endif
 	default:
 		return -EINVAL;
 	}

@@ -28,6 +28,8 @@
 #include <signal.h>
 #include <crypto/cryptodev.h>
 
+#ifdef ENABLE_ASYNC
+
 static double udifftimeval(struct timeval start, struct timeval end)
 {
 	return (double)(end.tv_usec - start.tv_usec) +
@@ -213,3 +215,11 @@ int main(void)
 	close(fd);
 	return 0;
 }
+
+#else
+int
+main(int argc, char** argv)
+{
+	return (0);
+}
+#endif

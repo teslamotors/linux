@@ -2,10 +2,13 @@ Version 1.6 (unreleased)
 
 * Added modules_install target in Makefile
 
+* Added SHA224. Patch by Yashpal Dutta.
+
 * Asynchronous operations will not be scheduled if zero
 copy is disabled.
 
-* Added SHA224. Patch by Yashpal Dutta.
+* Asynchronous operations are disabled by default, unless
+-DENABLE_ASYNC is enabled on Makefile.
 
 
 Version 1.5 (released 2012-08-04)

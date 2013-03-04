@@ -1,6 +1,6 @@
 KERNEL_DIR ?= /lib/modules/$(shell uname -r)/build
-KBUILD_CFLAGS += -I..
-CFLAGS += -I..
+KBUILD_CFLAGS += -I.. $(CRYPTODEV_CFLAGS)
+CFLAGS += -I.. $(CRYPTODEV_CFLAGS)
 
 comp_progs := cipher_comp hash_comp hmac_comp
 

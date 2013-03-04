@@ -1,4 +1,10 @@
-KBUILD_CFLAGS += -I$(src)
+#
+# Since version 1.6 the asynchronous mode has been
+# disabled by default. To re-enable it uncomment the
+# corresponding CFLAG.
+#
+CRYPTODEV_CFLAGS ?= #-DENABLE_ASYNC
+KBUILD_CFLAGS += -I$(src) $(CRYPTODEV_CFLAGS)
 KERNEL_DIR = /lib/modules/$(shell uname -r)/build
 VERSION = 1.6
 PREFIX =
@@ -23,10 +29,10 @@ modules_install:
 clean:
 	make -C $(KERNEL_DIR) SUBDIRS=`pwd` clean
 	rm -f $(hostprogs) *~
-	KERNEL_DIR=$(KERNEL_DIR) make -C tests clean
+	CFLAGS=$(CRYPTODEV_CFLAGS) KERNEL_DIR=$(KERNEL_DIR) make -C tests clean
 
 check:
-	KERNEL_DIR=$(KERNEL_DIR) make -C tests check
+	CFLAGS=$(CRYPTODEV_CFLAGS) KERNEL_DIR=$(KERNEL_DIR) make -C tests check
 
 FILEBASE = cryptodev-linux-$(VERSION)
 TMPDIR ?= /tmp

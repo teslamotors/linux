@@ -15,6 +15,8 @@
 
 #include "testhelper.h"
 
+#ifdef ENABLE_ASYNC
+
 static int debug = 0;
 
 #define	DATA_SIZE	8*1024
@@ -327,4 +329,10 @@ main(int argc, char** argv)
 
 	return 0;
 }
-
+#else
+int
+main(int argc, char** argv)
+{
+	return (0);
+}
+#endif
