@@ -84,10 +84,10 @@ int init_srcu_struct(struct srcu_struct *sp);
 
 void process_srcu(struct work_struct *work);
 
-#define __SRCU_STRUCT_INIT(name)					\
+#define __SRCU_STRUCT_INIT(name, pcpu_name)				\
 	{								\
 		.completed = -300,					\
-		.per_cpu_ref = &name##_srcu_array,			\
+		.per_cpu_ref = &pcpu_name,				\
 		.queue_lock = __SPIN_LOCK_UNLOCKED(name.queue_lock),	\
 		.running = false,					\
 		.batch_queue = RCU_BATCH_INIT(name.batch_queue),	\
@@ -104,11 +104,12 @@ void process_srcu(struct work_struct *work);
  */
 #define DEFINE_SRCU(name)						\
 	static DEFINE_PER_CPU(struct srcu_struct_array, name##_srcu_array);\
-	struct srcu_struct name = __SRCU_STRUCT_INIT(name);
+	struct srcu_struct name = __SRCU_STRUCT_INIT(name, name##_srcu_array);
 
 #define DEFINE_STATIC_SRCU(name)					\
 	static DEFINE_PER_CPU(struct srcu_struct_array, name##_srcu_array);\
-	static struct srcu_struct name = __SRCU_STRUCT_INIT(name);
+	static struct srcu_struct name = __SRCU_STRUCT_INIT(\
+		name, name##_srcu_array);
 
 /**
  * call_srcu() - Queue a callback for invocation after an SRCU grace period
