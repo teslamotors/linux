@@ -1,4 +1,4 @@
-Version 1.6 (unreleased)
+Version 1.6 (released 2013-03-20)
 
 * Added modules_install target in Makefile
 
