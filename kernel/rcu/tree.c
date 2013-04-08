@@ -1434,7 +1434,7 @@ static void rcu_gp_kthread_wake(struct rcu_state *rsp)
 	    !ACCESS_ONCE(rsp->gp_flags) ||
 	    !rsp->gp_kthread)
 		return;
-	wake_up(&rsp->gp_wq);
+	swait_wake(&rsp->gp_wq);
 }
 
 /*
@@ -1816,7 +1816,7 @@ static int __noreturn rcu_gp_kthread(void *arg)
 					       ACCESS_ONCE(rsp->gpnum),
 					       TPS("reqwait"));
 			rsp->gp_state = RCU_GP_WAIT_GPS;
-			wait_event_interruptible(rsp->gp_wq,
+			swait_event_interruptible(rsp->gp_wq,
 						 ACCESS_ONCE(rsp->gp_flags) &
 						 RCU_GP_FLAG_INIT);
 			/* Locking provides needed memory barrier. */
@@ -1844,7 +1844,7 @@ static int __noreturn rcu_gp_kthread(void *arg)
 					       ACCESS_ONCE(rsp->gpnum),
 					       TPS("fqswait"));
 			rsp->gp_state = RCU_GP_WAIT_FQS;
-			ret = wait_event_interruptible_timeout(rsp->gp_wq,
+			ret = swait_event_interruptible_timeout(rsp->gp_wq,
 					((gf = ACCESS_ONCE(rsp->gp_flags)) &
 					 RCU_GP_FLAG_FQS) ||
 					(!ACCESS_ONCE(rnp->qsmask) &&
@@ -3772,7 +3772,7 @@ static void __init rcu_init_one(struct rcu_state *rsp,
 	}
 
 	rsp->rda = rda;
-	init_waitqueue_head(&rsp->gp_wq);
+	init_swait_head(&rsp->gp_wq);
 	rnp = rsp->level[rcu_num_lvls - 1];
 	for_each_possible_cpu(i) {
 		while (i > rnp->grphi)
