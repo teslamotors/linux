@@ -84,8 +84,12 @@ void percpu_down_read(struct percpu_rw_semaphore *brw)
 
 	down_read(&brw->rw_sem);
 	atomic_inc(&brw->slow_read_ctr);
+#ifdef CONFIG_PREEMPT_RT_FULL
+	up_read(&brw->rw_sem);
+#else
 	/* avoid up_read()->rwsem_release() */
 	__up_read(&brw->rw_sem);
+#endif
 }
 
 void percpu_up_read(struct percpu_rw_semaphore *brw)
