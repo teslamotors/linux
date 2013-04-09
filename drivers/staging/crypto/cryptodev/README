@@ -1,6 +1,6 @@
 This is a /dev/crypto device driver, equivalent to those in OpenBSD or
 FreeBSD. The main idea is to access of existing ciphers in kernel space 
-from userspace, thus enabling re-use of a hardware implementation of a
+from userspace, thus enabling the re-use of a hardware implementation of a
 cipher.
 
 For questions and suggestions please use the mailing lists at:
@@ -16,6 +16,9 @@ advantage of /dev/crypto. GnuTLS 3.0.14 or later is recommended.
 
 * OpenSSL:
 
-The current releases of openssl support /dev/crypto by replacing
-eng_cryptodev.c with the version available in the extras subdirectory. 
-In order to compile use the -DHAVE_CRYPTODEV -DUSE_CRYPTODEV_DIGESTS flags.
+The current releases of openssl support /dev/crypto by using the
+-DHAVE_CRYPTODEV and -DUSE_CRYPTODEV_DIGESTS flags during compilation.
+Note that the latter flag (digests) may induce a performance penalty
+in some systems. The file eng_cryptodev.c found in the extras directory
+of this release is an improved version of one present in openssl releases.
+Depending on your needs you may use either.
