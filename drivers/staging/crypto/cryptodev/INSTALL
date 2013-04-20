@@ -1,0 +1,13 @@
+=== Installation instructions ===
+
+Simply run:
+$ make
+# make install
+
+The first command compiles the code and generates the kernel module
+and the latter installs the header files and the kernel module.
+
+After that you should set your system to load the kernel module on system
+load. In most systems this can be done as:
+# echo cryptodev >>/etc/modules
+
