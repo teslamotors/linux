@@ -11,3 +11,17 @@ After that you should set your system to load the kernel module on system
 load. In most systems this can be done as:
 # echo cryptodev >>/etc/modules
 
+
+=== Testing installation ===
+
+* OpenSSL:
+run the following commands prior and after installation and compare.
+$ openssl speed -evp aes-128-cbc
+$ openssl speed -evp sha1
+
+* GnuTLS 3.x:
+run the following commands and compare the outputs:
+$ gnutls-cli --benchmark-ciphers
+$ gnutls-cli --benchmark-soft-ciphers
+
+The former uses cryptodev while the latter not.
