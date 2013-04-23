@@ -16,6 +16,11 @@ or in systemd-enabled systems:
 
 === Testing installation ===
 
+* cryptodev-linux:
+Check whether cryptodev-linux is operating as expected using the following
+command.
+$ make check
+
 * OpenSSL:
 run the following commands prior and after installation and compare.
 $ openssl speed -evp aes-128-cbc
