@@ -5,9 +5,9 @@
 #
 CRYPTODEV_CFLAGS ?= #-DENABLE_ASYNC
 KBUILD_CFLAGS += -I$(src) $(CRYPTODEV_CFLAGS)
-KERNEL_DIR = /lib/modules/$(shell uname -r)/build
+KERNEL_DIR ?= /lib/modules/$(shell uname -r)/build
 VERSION = 1.6
-PREFIX =
+PREFIX ?=
 
 cryptodev-objs = ioctl.o main.o cryptlib.o authenc.o zc.o util.o
 
