@@ -238,7 +238,7 @@ struct crparam {
 
 /* input of CIOCKEY */
 struct crypt_kop {
-	__u32	crk_op;		/* cryptodev_crk_ot_t */
+	__u32	crk_op;		/* cryptodev_crk_op_t */
 	__u32	crk_status;
 	__u16	crk_iparams;
 	__u16	crk_oparams;
