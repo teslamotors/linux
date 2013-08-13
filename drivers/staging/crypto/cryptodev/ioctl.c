@@ -45,6 +45,9 @@
 #include <linux/uaccess.h>
 #include <crypto/cryptodev.h>
 #include <linux/scatterlist.h>
+
+#include <linux/sysctl.h>
+
 #include "cryptodev_int.h"
 #include "zc.h"
 #include "version.h"
@@ -1101,6 +1104,26 @@ cryptodev_deregister(void)
 }
 
 /* ====== Module init/exit ====== */
+static struct ctl_table verbosity_ctl_dir[] = {
+        {
+                .procname       = "cryptodev_verbosity",
+                .data           = &cryptodev_verbosity,
+                .maxlen         = sizeof(int),
+                .mode           = 0644,
+                .proc_handler   = proc_dointvec,
+        },
+        {0, },
+};
+
+static struct ctl_table verbosity_ctl_root[] = {
+       {
+                .procname       = "ioctl",
+                .mode           = 0555,
+                .child          = verbosity_ctl_dir,
+       },
+       {0, },
+};
+static struct ctl_table_header *verbosity_sysctl_header;
 static int __init init_cryptodev(void)
 {
 	int rc;
@@ -1117,6 +1140,8 @@ static int __init init_cryptodev(void)
 		return rc;
 	}
 
+	verbosity_sysctl_header = register_sysctl_table(verbosity_ctl_root);
+
 	printk(KERN_INFO PFX "driver %s loaded.\n", VERSION);
 
 	return 0;
@@ -1126,6 +1151,9 @@ static void __exit exit_cryptodev(void)
 {
 	flush_workqueue(cryptodev_wq);
 	destroy_workqueue(cryptodev_wq);
+
+	if (verbosity_sysctl_header)
+        unregister_sysctl_table(verbosity_sysctl_header);
 
 	cryptodev_deregister();
 	printk(KERN_INFO PFX "driver unloaded.\n");
