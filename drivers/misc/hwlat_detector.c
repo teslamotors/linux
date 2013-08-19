@@ -51,6 +51,7 @@
 #include <linux/version.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <linux/trace_clock.h>
 
 #define BUF_SIZE_DEFAULT	262144UL		/* 8K*(sizeof(entry)) */
 #define BUF_FLAGS		(RB_FL_OVERWRITE)	/* no block on full */
@@ -211,6 +212,21 @@ static struct sample *buffer_get_sample(struct sample *sample)
 	return sample;
 }
 
+#ifndef CONFIG_TRACING
+#define time_type	ktime_t
+#define time_get()	ktime_get()
+#define time_to_us(x)	ktime_to_us(x)
+#define time_sub(a, b)	ktime_sub(a, b)
+#define init_time(a, b)	(a).tv64 = b
+#define time_u64(a)	((a).tv64)
+#else
+#define time_type	u64
+#define time_get()	trace_clock_local()
+#define time_to_us(x)	div_u64(x, 1000)
+#define time_sub(a, b)	((a) - (b))
+#define init_time(a, b)	(a = b)
+#define time_u64(a)	a
+#endif
 /**
  * get_sample - sample the CPU TSC and look for likely hardware latencies
  * @unused: This is not used but is a part of the stop_machine API
@@ -220,23 +236,23 @@ static struct sample *buffer_get_sample(struct sample *sample)
  */
 static int get_sample(void *unused)
 {
-	ktime_t start, t1, t2, last_t2;
+	time_type start, t1, t2, last_t2;
 	s64 diff, total = 0;
 	u64 sample = 0;
 	u64 outer_sample = 0;
 	int ret = 1;
 
-	last_t2.tv64 = 0;
-	start = ktime_get(); /* start timestamp */
+	init_time(last_t2, 0);
+	start = time_get(); /* start timestamp */
 
 	do {
 
-		t1 = ktime_get();	/* we'll look for a discontinuity */
-		t2 = ktime_get();
+		t1 = time_get();	/* we'll look for a discontinuity */
+		t2 = time_get();
 
-		if (last_t2.tv64) {
+		if (time_u64(last_t2)) {
 			/* Check the delta from outer loop (t2 to next t1) */
-			diff = ktime_to_us(ktime_sub(t1, last_t2));
+			diff = time_to_us(time_sub(t1, last_t2));
 			/* This shouldn't happen */
 			if (diff < 0) {
 				pr_err(BANNER "time running backwards\n");
@@ -247,10 +263,10 @@ static int get_sample(void *unused)
 		}
 		last_t2 = t2;
 
-		total = ktime_to_us(ktime_sub(t2, start)); /* sample width */
+		total = time_to_us(time_sub(t2, start)); /* sample width */
 
 		/* This checks the inner loop (t1 to t2) */
-		diff = ktime_to_us(ktime_sub(t2, t1));     /* current diff */
+		diff = time_to_us(time_sub(t2, t1));     /* current diff */
 
 		/* This shouldn't happen */
 		if (diff < 0) {
