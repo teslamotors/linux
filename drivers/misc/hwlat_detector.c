@@ -41,7 +41,6 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/ring_buffer.h>
-#include <linux/stop_machine.h>
 #include <linux/time.h>
 #include <linux/hrtimer.h>
 #include <linux/kthread.h>
@@ -107,7 +106,6 @@ struct data;					/* Global state */
 /* Sampling functions */
 static int __buffer_add_sample(struct sample *sample);
 static struct sample *buffer_get_sample(struct sample *sample);
-static int get_sample(void *unused);
 
 /* Threading and state */
 static int kthread_fn(void *unused);
@@ -149,7 +147,7 @@ struct sample {
 	unsigned long   lost;
 };
 
-/* keep the global state somewhere. Mostly used under stop_machine. */
+/* keep the global state somewhere. */
 static struct data {
 
 	struct mutex lock;		/* protect changes */
@@ -172,7 +170,7 @@ static struct data {
  * @sample: The new latency sample value
  *
  * This receives a new latency sample and records it in a global ring buffer.
- * No additional locking is used in this case - suited for stop_machine use.
+ * No additional locking is used in this case.
  */
 static int __buffer_add_sample(struct sample *sample)
 {
@@ -229,18 +227,18 @@ static struct sample *buffer_get_sample(struct sample *sample)
 #endif
 /**
  * get_sample - sample the CPU TSC and look for likely hardware latencies
- * @unused: This is not used but is a part of the stop_machine API
  *
  * Used to repeatedly capture the CPU TSC (or similar), looking for potential
- * hardware-induced latency. Called under stop_machine, with data.lock held.
+ * hardware-induced latency. Called with interrupts disabled and with
+ * data.lock held.
  */
-static int get_sample(void *unused)
+static int get_sample(void)
 {
 	time_type start, t1, t2, last_t2;
 	s64 diff, total = 0;
 	u64 sample = 0;
 	u64 outer_sample = 0;
-	int ret = 1;
+	int ret = -1;
 
 	init_time(last_t2, 0);
 	start = time_get(); /* start timestamp */
@@ -279,9 +277,13 @@ static int get_sample(void *unused)
 
 	} while (total <= data.sample_width);
 
+	ret = 0;
+
 	/* If we exceed the threshold value, we have found a hardware latency */
 	if (sample > data.threshold || outer_sample > data.threshold) {
 		struct sample s;
+
+		ret = 1;
 
 		data.count++;
 		s.seqnum = data.count;
@@ -295,7 +297,6 @@ static int get_sample(void *unused)
 			data.max_sample = sample;
 	}
 
-	ret = 0;
 out:
 	return ret;
 }
@@ -305,32 +306,30 @@ out:
  * @unused: A required part of the kthread API.
  *
  * Used to periodically sample the CPU TSC via a call to get_sample. We
- * use stop_machine, whith does (intentionally) introduce latency since we
+ * disable interrupts, which does (intentionally) introduce latency since we
  * need to ensure nothing else might be running (and thus pre-empting).
  * Obviously this should never be used in production environments.
  *
- * stop_machine will schedule us typically only on CPU0 which is fine for
- * almost every real-world hardware latency situation - but we might later
- * generalize this if we find there are any actualy systems with alternate
- * SMI delivery or other non CPU0 hardware latencies.
+ * Currently this runs on which ever CPU it was scheduled on, but most
+ * real-worald hardware latency situations occur across several CPUs,
+ * but we might later generalize this if we find there are any actualy
+ * systems with alternate SMI delivery or other hardware latencies.
  */
 static int kthread_fn(void *unused)
 {
-	int err = 0;
-	u64 interval = 0;
+	int ret;
+	u64 interval;
 
 	while (!kthread_should_stop()) {
 
 		mutex_lock(&data.lock);
 
-		err = stop_machine(get_sample, unused, 0);
-		if (err) {
-			/* Houston, we have a problem */
-			mutex_unlock(&data.lock);
-			goto err_out;
-		}
+		local_irq_disable();
+		ret = get_sample();
+		local_irq_enable();
 
-		wake_up(&data.wq); /* wake up reader(s) */
+		if (ret > 0)
+			wake_up(&data.wq); /* wake up reader(s) */
 
 		interval = data.sample_window - data.sample_width;
 		do_div(interval, USEC_PER_MSEC); /* modifies interval value */
@@ -338,15 +337,10 @@ static int kthread_fn(void *unused)
 		mutex_unlock(&data.lock);
 
 		if (msleep_interruptible(interval))
-			goto out;
+			break;
 	}
-		goto out;
-err_out:
-	pr_err(BANNER "could not call stop_machine, disabling\n");
-	enabled = 0;
-out:
-	return err;
 
+	return 0;
 }
 
 /**
@@ -442,8 +436,7 @@ out:
  * This function provides a generic read implementation for the global state
  * "data" structure debugfs filesystem entries. It would be nice to use
  * simple_attr_read directly, but we need to make sure that the data.lock
- * spinlock is held during the actual read (even though we likely won't ever
- * actually race here as the updater runs under a stop_machine context).
+ * is held during the actual read.
  */
 static ssize_t simple_data_read(struct file *filp, char __user *ubuf,
 				size_t cnt, loff_t *ppos, const u64 *entry)
@@ -478,8 +471,7 @@ static ssize_t simple_data_read(struct file *filp, char __user *ubuf,
  * This function provides a generic write implementation for the global state
  * "data" structure debugfs filesystem entries. It would be nice to use
  * simple_attr_write directly, but we need to make sure that the data.lock
- * spinlock is held during the actual write (even though we likely won't ever
- * actually race here as the updater runs under a stop_machine context).
+ * is held during the actual write.
  */
 static ssize_t simple_data_write(struct file *filp, const char __user *ubuf,
 				 size_t cnt, loff_t *ppos, u64 *entry)
