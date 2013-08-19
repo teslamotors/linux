@@ -143,6 +143,7 @@ static void detector_exit(void);
 struct sample {
 	u64		seqnum;		/* unique sequence */
 	u64		duration;	/* ktime delta */
+	u64		outer_duration;	/* ktime delta (outer loop) */
 	struct timespec	timestamp;	/* wall time */
 	unsigned long   lost;
 };
@@ -219,11 +220,13 @@ static struct sample *buffer_get_sample(struct sample *sample)
  */
 static int get_sample(void *unused)
 {
-	ktime_t start, t1, t2;
+	ktime_t start, t1, t2, last_t2;
 	s64 diff, total = 0;
 	u64 sample = 0;
+	u64 outer_sample = 0;
 	int ret = 1;
 
+	last_t2.tv64 = 0;
 	start = ktime_get(); /* start timestamp */
 
 	do {
@@ -231,7 +234,22 @@ static int get_sample(void *unused)
 		t1 = ktime_get();	/* we'll look for a discontinuity */
 		t2 = ktime_get();
 
+		if (last_t2.tv64) {
+			/* Check the delta from outer loop (t2 to next t1) */
+			diff = ktime_to_us(ktime_sub(t1, last_t2));
+			/* This shouldn't happen */
+			if (diff < 0) {
+				pr_err(BANNER "time running backwards\n");
+				goto out;
+			}
+			if (diff > outer_sample)
+				outer_sample = diff;
+		}
+		last_t2 = t2;
+
 		total = ktime_to_us(ktime_sub(t2, start)); /* sample width */
+
+		/* This checks the inner loop (t1 to t2) */
 		diff = ktime_to_us(ktime_sub(t2, t1));     /* current diff */
 
 		/* This shouldn't happen */
@@ -246,12 +264,13 @@ static int get_sample(void *unused)
 	} while (total <= data.sample_width);
 
 	/* If we exceed the threshold value, we have found a hardware latency */
-	if (sample > data.threshold) {
+	if (sample > data.threshold || outer_sample > data.threshold) {
 		struct sample s;
 
 		data.count++;
 		s.seqnum = data.count;
 		s.duration = sample;
+		s.outer_duration = outer_sample;
 		s.timestamp = CURRENT_TIME;
 		__buffer_add_sample(&s);
 
@@ -738,10 +757,11 @@ static ssize_t debug_sample_fread(struct file *filp, char __user *ubuf,
 		}
 	}
 
-	len = snprintf(buf, sizeof(buf), "%010lu.%010lu\t%llu\n",
-		      sample->timestamp.tv_sec,
-		      sample->timestamp.tv_nsec,
-		      sample->duration);
+	len = snprintf(buf, sizeof(buf), "%010lu.%010lu\t%llu\t%llu\n",
+		       sample->timestamp.tv_sec,
+		       sample->timestamp.tv_nsec,
+		       sample->duration,
+		       sample->outer_duration);
 
 
 	/* handling partial reads is more trouble than it's worth */
