@@ -47,6 +47,14 @@ extern void swait_prepare(struct swait_head *head, struct swaiter *w, int state)
 extern void swait_finish_locked(struct swait_head *head, struct swaiter *w);
 extern void swait_finish(struct swait_head *head, struct swaiter *w);
 
+/* Check whether a head has waiters enqueued */
+static inline bool swaitqueue_active(struct swait_head *h)
+{
+	/* Make sure the condition is visible before checking list_empty() */
+	smp_mb();
+	return !list_empty(&h->list);
+}
+
 /*
  * Wakeup functions
  */

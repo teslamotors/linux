@@ -26,14 +26,6 @@ static inline void __swait_dequeue(struct swaiter *w)
 	list_del_init(&w->node);
 }
 
-/* Check whether a head has waiters enqueued */
-static inline bool swait_head_has_waiters(struct swait_head *h)
-{
-	/* Make sure the condition is visible before checking list_empty() */
-	smp_mb();
-	return !list_empty(&h->list);
-}
-
 void __init_swait_head(struct swait_head *head, struct lock_class_key *key)
 {
 	raw_spin_lock_init(&head->lock);
@@ -112,7 +104,7 @@ __swait_wake(struct swait_head *head, unsigned int state, unsigned int num)
 	unsigned long flags;
 	int woken;
 
-	if (!swait_head_has_waiters(head))
+	if (!swaitqueue_active(head))
 		return 0;
 
 	raw_spin_lock_irqsave(&head->lock, flags);
