@@ -711,6 +711,33 @@ static struct address_space_operations yaffs_file_address_operations = {
 #endif
 };
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
+#define YCRED_FSUID()	from_kuid(&init_user_ns, current_fsuid())
+#define YCRED_FSGID()	from_kgid(&init_user_ns, current_fsgid())
+#else
+#define YCRED_FSUID()	YCRED(current)->fsuid
+#define YCRED_FSGID()	YCRED(current)->fsgid
+
+static inline uid_t i_uid_read(const struct inode *inode)
+{
+	return inode->i_uid;
+}
+
+static inline gid_t i_gid_read(const struct inode *inode)
+{
+	return inode->i_gid;
+}
+
+static inline void i_uid_write(struct inode *inode, uid_t uid)
+{
+	inode->i_uid = uid;
+}
+
+static inline void i_gid_write(struct inode *inode, gid_t gid)
+{
+	inode->i_gid = gid;
+}
+#endif
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 17))
 static int yaffs_file_flush(struct file *file, fl_owner_t id)
@@ -1225,9 +1252,9 @@ static int yaffs_mknod(struct inode *dir, struct dentry *dentry, int mode,
 	struct yaffs_obj *parent = yaffs_inode_to_obj(dir);
 
 	int error = -ENOSPC;
-	uid_t uid = YCRED(current)->fsuid;
-	gid_t gid =
-	    (dir->i_mode & S_ISGID) ? dir->i_gid : YCRED(current)->fsgid;
+
+	uid_t uid = YCRED_FSUID();
+	gid_t gid = (dir->i_mode & S_ISGID) ? i_gid_read(dir) : YCRED_FSGID();
 
 	if ((dir->i_mode & S_ISGID) && S_ISDIR(mode))
 		mode |= S_ISGID;
@@ -1424,9 +1451,8 @@ static int yaffs_symlink(struct inode *dir, struct dentry *dentry,
 {
 	struct yaffs_obj *obj;
 	struct yaffs_dev *dev;
-	uid_t uid = YCRED(current)->fsuid;
-	gid_t gid =
-	    (dir->i_mode & S_ISGID) ? dir->i_gid : YCRED(current)->fsgid;
+	uid_t uid = YCRED_FSUID();
+	gid_t gid = (dir->i_mode & S_ISGID) ? i_gid_read(dir) : YCRED_FSGID();
 
 	yaffs_trace(YAFFS_TRACE_OS, "yaffs_symlink");
 
@@ -1829,8 +1855,8 @@ static void yaffs_fill_inode_from_obj(struct inode *inode,
 
 		inode->i_ino = obj->obj_id;
 		inode->i_mode = obj->yst_mode;
-		inode->i_uid = obj->yst_uid;
-		inode->i_gid = obj->yst_gid;
+		i_uid_write(inode, obj->yst_uid);
+		i_gid_write(inode, obj->yst_gid);
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 19))
 		inode->i_blksize = inode->i_sb->s_blocksize;
 #endif
@@ -1856,7 +1882,7 @@ static void yaffs_fill_inode_from_obj(struct inode *inode,
 
 		yaffs_trace(YAFFS_TRACE_OS,
 			"yaffs_fill_inode mode %x uid %d gid %d size %lld count %d",
-			inode->i_mode, inode->i_uid, inode->i_gid,
+			inode->i_mode, i_uid_read(inode), i_gid_read(inode),
 			inode->i_size, atomic_read(&inode->i_count));
 
 		switch (obj->yst_mode & S_IFMT) {

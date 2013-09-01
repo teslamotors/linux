@@ -25,4 +25,47 @@ void yaffs_load_current_time(struct yaffs_obj *obj, int do_a, int do_c);
 int yaffs_set_attribs(struct yaffs_obj *obj, struct iattr *attr);
 int yaffs_get_attribs(struct yaffs_obj *obj, struct iattr *attr);
 
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
+static inline uid_t ia_uid_read(const struct iattr *iattr)
+{
+	return from_kuid(&init_user_ns, iattr->ia_uid);
+}
+
+static inline gid_t ia_gid_read(const struct iattr *iattr)
+{
+	return from_kgid(&init_user_ns, iattr->ia_gid);
+}
+
+static inline void ia_uid_write(struct iattr *iattr, uid_t uid)
+{
+	iattr->ia_uid = make_kuid(&init_user_ns, uid);
+}
+
+static inline void ia_gid_write(struct iattr *iattr, gid_t gid)
+{
+	iattr->ia_gid = make_kgid(&init_user_ns, gid);
+}
+#else
+static inline uid_t ia_uid_read(const struct iattr *iattr)
+{
+	return iattr->ia_uid;
+}
+
+static inline gid_t ia_gid_read(const struct iattr *inode)
+{
+	return iattr->ia_gid;
+}
+
+static inline void ia_uid_write(struct iattr *iattr, uid_t uid)
+{
+	iattr->ia_uid = uid;
+}
+
+static inline void ia_gid_write(struct iattr *iattr, gid_t gid)
+{
+	iattr->ia_gid = gid;
+}
+#endif
+
 #endif

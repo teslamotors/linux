@@ -77,9 +77,9 @@ int yaffs_set_attribs(struct yaffs_obj *obj, struct iattr *attr)
 	if (valid & ATTR_MODE)
 		obj->yst_mode = attr->ia_mode;
 	if (valid & ATTR_UID)
-		obj->yst_uid = attr->ia_uid;
+		obj->yst_uid = ia_uid_read(attr);
 	if (valid & ATTR_GID)
-		obj->yst_gid = attr->ia_gid;
+		obj->yst_gid = ia_gid_read(attr);
 
 	if (valid & ATTR_ATIME)
 		obj->yst_atime = Y_TIME_CONVERT(attr->ia_atime);
@@ -103,9 +103,9 @@ int yaffs_get_attribs(struct yaffs_obj *obj, struct iattr *attr)
 
 	attr->ia_mode = obj->yst_mode;
 	valid |= ATTR_MODE;
-	attr->ia_uid = obj->yst_uid;
+	ia_uid_write( attr, obj->yst_uid );
 	valid |= ATTR_UID;
-	attr->ia_gid = obj->yst_gid;
+	ia_gid_write( attr, obj->yst_gid );
 	valid |= ATTR_GID;
 
 	Y_TIME_CONVERT(attr->ia_atime) = obj->yst_atime;
