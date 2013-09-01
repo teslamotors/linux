@@ -3023,8 +3023,9 @@ static DECLARE_FSTYPE(yaffs2_fs_type, "yaffs2", yaffs2_read_super,
 		      FS_REQUIRES_DEV);
 #endif
 
-
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 static struct proc_dir_entry *my_proc_entry;
+#endif
 
 static char *yaffs_dump_dev_part0(char *buf, struct yaffs_dev *dev)
 {
@@ -3113,6 +3114,7 @@ static char *yaffs_dump_dev_part1(char *buf, struct yaffs_dev *dev)
 	return buf;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 static int yaffs_proc_read(char *page,
 			   char **start,
 			   off_t offset, int count, int *eof, void *data)
@@ -3170,6 +3172,7 @@ static int yaffs_proc_read(char *page,
 
 	return buf - page < count ? buf - page : count;
 }
+#endif
 
 /**
  * Set the verbosity of the warnings and error messages.
@@ -3212,6 +3215,7 @@ static struct {
 	{NULL, 0},
 };
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 #define MAX_MASK_NAME_LENGTH 40
 static int yaffs_proc_write_trace_options(struct file *file, const char *buf,
 					  unsigned long count, void *data)
@@ -3397,6 +3401,7 @@ static int yaffs_proc_write(struct file *file, const char *buf,
 		return yaffs_proc_debug_write(file, buf, count, data);
 	return yaffs_proc_write_trace_options(file, buf, count, data);
 }
+#endif
 
 /* Stuff to handle installation of file systems */
 struct file_system_to_install {
@@ -3420,6 +3425,7 @@ static int __init init_yaffs_fs(void)
 
 	mutex_init(&yaffs_context_lock);
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 	/* Install the proc_fs entries */
 	my_proc_entry = create_proc_entry("yaffs",
 					  S_IRUGO | S_IFREG, YPROC_ROOT);
@@ -3431,6 +3437,7 @@ static int __init init_yaffs_fs(void)
 	} else {
 		return -ENOMEM;
         }
+#endif
 
 	/* Now add the file system entries */
 
@@ -3467,7 +3474,9 @@ static void __exit exit_yaffs_fs(void)
 	yaffs_trace(YAFFS_TRACE_ALWAYS,
 		"yaffs built " __DATE__ " " __TIME__ " removing.");
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 	remove_proc_entry("yaffs", YPROC_ROOT);
+#endif
 
 	fsinst = fs_to_install;
 
