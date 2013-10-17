@@ -21,6 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <inttypes.h>
 #include <sys/mman.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -1128,7 +1129,7 @@ static void *worker_thread(void *__tdata)
 		/* Check whether our max runtime timed out: */
 		if (g->p.nr_secs) {
 			timersub(&stop, &start0, &diff);
-			if ((u32)diff.tv_sec >= g->p.nr_secs) {
+			if ((u32)diff.tv_sec >= (long int)g->p.nr_secs) {
 				g->stop_work = true;
 				break;
 			}
