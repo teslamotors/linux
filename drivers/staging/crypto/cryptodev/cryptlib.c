@@ -58,8 +58,6 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 {
 	int ret;
 
-	memset(out, 0, sizeof(*out));
-
 	if (aead == 0) {
 		struct ablkcipher_alg *alg;
 
