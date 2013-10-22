@@ -112,13 +112,12 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 	out->stream = stream;
 	out->aead = aead;
 
-	out->async.result = kmalloc(sizeof(*out->async.result), GFP_KERNEL);
+	out->async.result = kzalloc(sizeof(*out->async.result), GFP_KERNEL);
 	if (unlikely(!out->async.result)) {
 		ret = -ENOMEM;
 		goto error;
 	}
 
-	memset(out->async.result, 0, sizeof(*out->async.result));
 	init_completion(&out->async.result->completion);
 
 	if (aead == 0) {
@@ -285,13 +284,12 @@ int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
 	hdata->digestsize = crypto_ahash_digestsize(hdata->async.s);
 	hdata->alignmask = crypto_ahash_alignmask(hdata->async.s);
 
-	hdata->async.result = kmalloc(sizeof(*hdata->async.result), GFP_KERNEL);
+	hdata->async.result = kzalloc(sizeof(*hdata->async.result), GFP_KERNEL);
 	if (unlikely(!hdata->async.result)) {
 		ret = -ENOMEM;
 		goto error;
 	}
 
-	memset(hdata->async.result, 0, sizeof(*hdata->async.result));
 	init_completion(&hdata->async.result->completion);
 
 	hdata->async.request = ahash_request_alloc(hdata->async.s, GFP_KERNEL);
