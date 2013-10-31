@@ -655,8 +655,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			int dst_len;
 
 			if (unlikely(ses_ptr->cdata.init == 0 ||
-					ses_ptr->cdata.stream == 0 ||
-					ses_ptr->cdata.aead == 0))
+					(ses_ptr->cdata.stream == 0 && ses_ptr->cdata.aead == 0)))
 			{
 				dprintk(0, KERN_ERR, "Only stream and AEAD ciphers are allowed for authenc\n");
 				ret = -EINVAL;
