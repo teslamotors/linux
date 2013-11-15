@@ -1425,7 +1425,7 @@ unsigned long get_next_timer_interrupt(unsigned long now)
 		expires = base->next_timer;
 	}
 #ifdef CONFIG_PREEMPT_RT_FULL
-	rt_spin_unlock(&base->lock);
+	rt_spin_unlock_after_trylock_in_irq(&base->lock);
 #else
 	spin_unlock(&base->lock);
 #endif

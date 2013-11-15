@@ -1061,10 +1061,8 @@ static void wakeup_next_waiter(struct rt_mutex *lock);
 /*
  * Slow path to release a rt_mutex spin_lock style
  */
-static void  noinline __sched rt_spin_lock_slowunlock(struct rt_mutex *lock)
+static void __sched __rt_spin_lock_slowunlock(struct rt_mutex *lock)
 {
-	raw_spin_lock(&lock->wait_lock);
-
 	debug_rt_mutex_unlock(lock);
 
 	rt_mutex_deadlock_account_unlock(current);
@@ -1081,6 +1079,23 @@ static void  noinline __sched rt_spin_lock_slowunlock(struct rt_mutex *lock)
 
 	/* Undo pi boosting.when necessary */
 	rt_mutex_adjust_prio(current);
+}
+
+static void  noinline __sched rt_spin_lock_slowunlock(struct rt_mutex *lock)
+{
+	raw_spin_lock(&lock->wait_lock);
+	__rt_spin_lock_slowunlock(lock);
+}
+
+static void  noinline __sched rt_spin_lock_slowunlock_hirq(struct rt_mutex *lock)
+{
+	int ret;
+
+	do {
+		ret = raw_spin_trylock(&lock->wait_lock);
+	} while (!ret);
+
+	__rt_spin_lock_slowunlock(lock);
 }
 
 void __lockfunc rt_spin_lock(spinlock_t *lock)
@@ -1112,6 +1127,13 @@ void __lockfunc rt_spin_unlock(spinlock_t *lock)
 	rt_spin_lock_fastunlock(&lock->lock, rt_spin_lock_slowunlock);
 }
 EXPORT_SYMBOL(rt_spin_unlock);
+
+void __lockfunc rt_spin_unlock_after_trylock_in_irq(spinlock_t *lock)
+{
+	/* NOTE: we always pass in '1' for nested, for simplicity */
+	spin_release(&lock->dep_map, 1, _RET_IP_);
+	rt_spin_lock_fastunlock(&lock->lock, rt_spin_lock_slowunlock_hirq);
+}
 
 void __lockfunc __rt_spin_unlock(struct rt_mutex *lock)
 {
@@ -1723,7 +1745,8 @@ static inline int rt_mutex_slowtrylock(struct rt_mutex *lock)
 	 * The mutex has currently no owner. Lock the wait lock and
 	 * try to acquire the lock.
 	 */
-	raw_spin_lock(&lock->wait_lock);
+	if (!raw_spin_trylock(&lock->wait_lock))
+		return 0;
 
 	ret = try_to_take_rt_mutex(lock, current, NULL);
 
