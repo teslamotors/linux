@@ -1,0 +1,11 @@
+#
+# Trusty
+#
+
+menu "Trusty"
+
+config TRUSTY
+	tristate "Trusty"
+	default n
+
+endmenu
