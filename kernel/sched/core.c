@@ -2808,13 +2808,12 @@ void migrate_disable(void)
 	WARN_ON_ONCE(p->migrate_disable_atomic);
 #endif
 
-	preempt_disable();
 	if (p->migrate_disable) {
 		p->migrate_disable++;
-		preempt_enable();
 		return;
 	}
 
+	preempt_disable();
 	pin_current_cpu();
 	p->migrate_disable = 1;
 	preempt_enable();
@@ -2840,13 +2839,12 @@ void migrate_enable(void)
 #endif
 	WARN_ON_ONCE(p->migrate_disable <= 0);
 
-	preempt_disable();
 	if (migrate_disable_count(p) > 1) {
 		p->migrate_disable--;
-		preempt_enable();
 		return;
 	}
 
+	preempt_disable();
 	if (unlikely(migrate_disabled_updated(p))) {
 		/*
 		 * See comment in update_migrate_disable() about locking.
