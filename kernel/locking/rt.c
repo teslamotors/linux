@@ -182,11 +182,10 @@ int __lockfunc rt_write_trylock(rwlock_t *rwlock)
 {
 	int ret = rt_mutex_trylock(&rwlock->lock);
 
-	migrate_disable();
-	if (ret)
+	if (ret) {
 		rwlock_acquire(&rwlock->dep_map, 0, 1, _RET_IP_);
-	else
-		migrate_enable();
+		migrate_disable();
+	}
 
 	return ret;
 }
