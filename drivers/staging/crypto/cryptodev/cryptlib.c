@@ -155,7 +155,7 @@ error:
 	} else {
 		if (out->async.arequest)
 			aead_request_free(out->async.arequest);
-		if (out->async.s)
+		if (out->async.as)
 			crypto_free_aead(out->async.as);
 	}
 	kfree(out->async.result);
