@@ -454,6 +454,7 @@ cryptodev_open(struct inode *inode, struct file *filp)
 	pcr = kzalloc(sizeof(*pcr), GFP_KERNEL);
 	if (!pcr)
 		return -ENOMEM;
+	filp->private_data = pcr;
 
 	mutex_init(&pcr->fcrypt.sem);
 	INIT_LIST_HEAD(&pcr->fcrypt.list);
@@ -477,7 +478,6 @@ cryptodev_open(struct inode *inode, struct file *filp)
 		list_add(&tmp->__hook, &pcr->free.list);
 	}
 
-	filp->private_data = pcr;
 	dprintk(2, KERN_DEBUG,
 	        "Cryptodev handle initialised, %d elements in queue\n",
 		DEF_COP_RINGSIZE);
