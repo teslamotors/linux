@@ -451,11 +451,10 @@ cryptodev_open(struct inode *inode, struct file *filp)
 	struct crypt_priv *pcr;
 	int i;
 
-	pcr = kmalloc(sizeof(*pcr), GFP_KERNEL);
+	pcr = kzalloc(sizeof(*pcr), GFP_KERNEL);
 	if (!pcr)
 		return -ENOMEM;
 
-	memset(pcr, 0, sizeof(*pcr));
 	mutex_init(&pcr->fcrypt.sem);
 	INIT_LIST_HEAD(&pcr->fcrypt.list);
 
