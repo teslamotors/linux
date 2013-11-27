@@ -342,6 +342,7 @@ crypto_destroy_session(struct csession *ses_ptr)
 	kfree(ses_ptr->pages);
 	kfree(ses_ptr->sg);
 	mutex_unlock(&ses_ptr->sem);
+	mutex_destroy(&ses_ptr->sem);
 	kfree(ses_ptr);
 }
 
@@ -457,15 +458,17 @@ cryptodev_open(struct inode *inode, struct file *filp)
 	filp->private_data = pcr;
 
 	mutex_init(&pcr->fcrypt.sem);
-	INIT_LIST_HEAD(&pcr->fcrypt.list);
-
-	INIT_LIST_HEAD(&pcr->free.list);
-	INIT_LIST_HEAD(&pcr->todo.list);
-	INIT_LIST_HEAD(&pcr->done.list);
-	INIT_WORK(&pcr->cryptask, cryptask_routine);
 	mutex_init(&pcr->free.lock);
 	mutex_init(&pcr->todo.lock);
 	mutex_init(&pcr->done.lock);
+
+	INIT_LIST_HEAD(&pcr->fcrypt.list);
+	INIT_LIST_HEAD(&pcr->free.list);
+	INIT_LIST_HEAD(&pcr->todo.list);
+	INIT_LIST_HEAD(&pcr->done.list);
+
+	INIT_WORK(&pcr->cryptask, cryptask_routine);
+
 	init_waitqueue_head(&pcr->user_waiter);
 
 	for (i = 0; i < DEF_COP_RINGSIZE; i++) {
@@ -496,10 +499,6 @@ cryptodev_release(struct inode *inode, struct file *filp)
 
 	cancel_work_sync(&pcr->cryptask);
 
-	mutex_destroy(&pcr->todo.lock);
-	mutex_destroy(&pcr->done.lock);
-	mutex_destroy(&pcr->free.lock);
-
 	list_splice_tail(&pcr->todo.list, &pcr->free.list);
 	list_splice_tail(&pcr->done.list, &pcr->free.list);
 
@@ -509,8 +508,8 @@ cryptodev_release(struct inode *inode, struct file *filp)
 		list_del(&item->__hook);
 		kfree(item);
 		items_freed++;
-
 	}
+
 	if (items_freed != pcr->itemcount) {
 		dprintk(0, KERN_ERR,
 		        "freed %d items, but %d should exist!\n",
@@ -518,6 +517,12 @@ cryptodev_release(struct inode *inode, struct file *filp)
 	}
 
 	crypto_finish_all_sessions(&pcr->fcrypt);
+
+	mutex_destroy(&pcr->done.lock);
+	mutex_destroy(&pcr->todo.lock);
+	mutex_destroy(&pcr->free.lock);
+	mutex_destroy(&pcr->fcrypt.sem);
+
 	kfree(pcr);
 	filp->private_data = NULL;
 
