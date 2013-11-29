@@ -1164,12 +1164,11 @@ int __lockfunc rt_spin_trylock_irqsave(spinlock_t *lock, unsigned long *flags)
 	int ret;
 
 	*flags = 0;
-	migrate_disable();
 	ret = rt_mutex_trylock(&lock->lock);
-	if (ret)
+	if (ret) {
+		migrate_disable();
 		spin_acquire(&lock->dep_map, 0, 1, _RET_IP_);
-	else
-		migrate_enable();
+	}
 	return ret;
 }
 EXPORT_SYMBOL(rt_spin_trylock_irqsave);
