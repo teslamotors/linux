@@ -196,10 +196,9 @@ int __lockfunc rt_write_trylock_irqsave(rwlock_t *rwlock, unsigned long *flags)
 	int ret;
 
 	*flags = 0;
-	migrate_disable();
 	ret = rt_write_trylock(rwlock);
-	if (!ret)
-		migrate_enable();
+	if (ret)
+		migrate_disable();
 	return ret;
 }
 EXPORT_SYMBOL(rt_write_trylock_irqsave);
