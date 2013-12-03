@@ -714,9 +714,10 @@ static inline void tfm_info_to_alg_info(struct alg_info *dst, struct crypto_tfm 
 			"%s", crypto_tfm_alg_driver_name(tfm));
 }
 
+#ifndef CRYPTO_ALG_KERN_DRIVER_ONLY
 static unsigned int is_known_accelerated(struct crypto_tfm *tfm)
 {
-const char* name = crypto_tfm_alg_driver_name(tfm);
+	const char* name = crypto_tfm_alg_driver_name(tfm);
 
 	if (name == NULL)
 	  return 1; /* assume accelerated */
@@ -725,6 +726,8 @@ const char* name = crypto_tfm_alg_driver_name(tfm);
 	  return 1;
 	else if (strncmp(name, "mv-", 3) == 0)
 	  return 1;
+	else if (strncmp(name, "atmel-", 6) == 0)
+		return 1;
 	else if (strstr(name, "geode"))
 	  return 1;
 	else if (strstr(name, "hifn"))
@@ -746,6 +749,7 @@ const char* name = crypto_tfm_alg_driver_name(tfm);
 
 	return 0;
 }
+#endif
 
 static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 {
