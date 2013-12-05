@@ -1,7 +1,7 @@
 /*
  * Driver for /dev/crypto device (aka CryptoDev)
  *
- * Copyright (c) 2009-2011 Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ * Copyright (c) 2009-2013 Nikos Mavrogiannopoulos <nmav@gnutls.org>
  * Copyright (c) 2010 Phil Sutter
  * Copyright (c) 2011, 2012 OpenSSL Software Foundation, Inc.
  *
@@ -146,16 +146,6 @@ int get_userbuf(struct csession *ses,
 	/* Make sure NULL output has 0 length */
 	if (!dst && dst_len)
 		dst_len = 0;
-
-	if (ses->alignmask && !IS_ALIGNED((unsigned long)src, ses->alignmask)) {
-		dprintk(2, KERN_WARNING, "careful - source address %lx is not %d byte aligned\n",
-				(unsigned long)src, ses->alignmask + 1);
-	}
-
-	if (ses->alignmask && !IS_ALIGNED((unsigned long)dst, ses->alignmask)) {
-		dprintk(2, KERN_WARNING, "careful - destination address %lx is not %d byte aligned\n",
-				(unsigned long)dst, ses->alignmask + 1);
-	}
 
 	src_pagecount = PAGECOUNT(src, src_len);
 	dst_pagecount = PAGECOUNT(dst, dst_len);

@@ -2,7 +2,7 @@
  * Driver for /dev/crypto device (aka CryptoDev)
  *
  * Copyright (c) 2004 Michal Ludvig <mludvig@logix.net.nz>, SuSE Labs
- * Copyright (c) 2009,2010 Nikos Mavrogiannopoulos <nmav@gnutls.org>
+ * Copyright (c) 2009-2013 Nikos Mavrogiannopoulos <nmav@gnutls.org>
  *
  * This file is part of linux cryptodev.
  *
@@ -192,7 +192,7 @@ int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 		dprintk(1, KERN_DEBUG, "invalid operation op=%u\n", cop->op);
 		return -EINVAL;
 	}
-
+	
 	/* this also enters ses_ptr->sem */
 	ses_ptr = crypto_get_session_by_sid(fcr, cop->ses);
 	if (unlikely(!ses_ptr)) {
@@ -226,6 +226,20 @@ int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 	}
 
 	if (likely(cop->len)) {
+		if (cop->flags & COP_FLAG_NO_ZC) {
+			if (unlikely(ses_ptr->alignmask && !IS_ALIGNED((unsigned long)cop->src, ses_ptr->alignmask))) {
+				dprintk(2, KERN_WARNING, "source address %lx is not %d byte aligned - disabling zero copy\n",
+						(unsigned long)cop->src, ses_ptr->alignmask + 1);
+				cop->flags &= ~COP_FLAG_NO_ZC;
+			}
+
+			if (unlikely(ses_ptr->alignmask && !IS_ALIGNED((unsigned long)cop->dst, ses_ptr->alignmask))) {
+				dprintk(2, KERN_WARNING, "destination address %lx is not %d byte aligned - disabling zero copy\n",
+						(unsigned long)cop->dst, ses_ptr->alignmask + 1);
+				cop->flags &= ~COP_FLAG_NO_ZC;
+			}
+		}
+
 		if (cop->flags & COP_FLAG_NO_ZC)
 			ret = __crypto_run_std(ses_ptr, &kcop->cop);
 		else
