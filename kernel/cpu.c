@@ -107,6 +107,14 @@ struct hotplug_pcp {
 	int grab_lock;
 	struct completion synced;
 #ifdef CONFIG_PREEMPT_RT_FULL
+	/*
+	 * Note, on PREEMPT_RT, the hotplug lock must save the state of
+	 * the task, otherwise the mutex will cause the task to fail
+	 * to sleep when required. (Because it's called from migrate_disable())
+	 *
+	 * The spinlock_t on PREEMPT_RT is a mutex that saves the task's
+	 * state.
+	 */
 	spinlock_t lock;
 #else
 	struct mutex mutex;
