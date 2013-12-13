@@ -2708,16 +2708,16 @@ static struct super_block *yaffs_internal_read_super(int yaffs_version,
 		yaffs_version = 2;
 	}
 
+	if (mtd->oobavail < sizeof(struct yaffs_packed_tags2) ||
+	    options.inband_tags)
+		inband_tags = 1;
+
 	/* Added NCB 26/5/2006 for completeness */
-	if (yaffs_version == 2 && !options.inband_tags
+	if (yaffs_version == 2 && !inband_tags
 	    && WRITE_SIZE(mtd) == 512) {
 		yaffs_trace(YAFFS_TRACE_ALWAYS, "auto selecting yaffs1");
 		yaffs_version = 1;
 	}
-
-	if (mtd->oobavail < sizeof(struct yaffs_packed_tags2) ||
-	    options.inband_tags)
-		inband_tags = 1;
 
 	if(yaffs_verify_mtd(mtd, yaffs_version, inband_tags) < 0)
 		return NULL;
