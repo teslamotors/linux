@@ -626,6 +626,8 @@ struct v4l2_subdev_internal_ops {
 #define V4L2_SUBDEV_FL_HAS_DEVNODE		(1U << 2)
 /* Set this flag if this subdev generates events. */
 #define V4L2_SUBDEV_FL_HAS_EVENTS		(1U << 3)
+/* Set this flag if this sub-device supports substreams. */
+#define V4L2_SUBDEV_FL_HAS_SUBSTREAMS		(1U << 4)
 
 struct regulator_bulk_data;
 

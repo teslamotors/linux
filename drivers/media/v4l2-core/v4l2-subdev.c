@@ -136,6 +136,9 @@ static int check_format(struct v4l2_subdev *sd,
 	if (format->pad >= sd->entity.num_pads)
 		return -EINVAL;
 
+	if (!(sd->flags & V4L2_SUBDEV_FL_HAS_SUBSTREAMS) && format->stream)
+		return -EINVAL;
+
 	return 0;
 }
 
@@ -159,6 +162,9 @@ static int check_selection(struct v4l2_subdev *sd,
 		return -EINVAL;
 
 	if (sel->pad >= sd->entity.num_pads)
+		return -EINVAL;
+
+	if (!(sd->flags & V4L2_SUBDEV_FL_HAS_SUBSTREAMS) && sel->stream)
 		return -EINVAL;
 
 	return 0;
