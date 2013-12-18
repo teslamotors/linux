@@ -571,6 +571,11 @@ struct v4l2_subdev_pad_ops {
 #endif /* CONFIG_MEDIA_CONTROLLER */
 	int (*get_frame_desc)(struct v4l2_subdev *sd, unsigned int pad,
 			      struct v4l2_mbus_frame_desc *fd);
+	/*
+	 * DEPRECATED --- frame descriptors should not be settable
+	 * since they're rather complex. Changing them should be done
+	 * through other interfaces.
+	 */
 	int (*set_frame_desc)(struct v4l2_subdev *sd, unsigned int pad,
 			      struct v4l2_mbus_frame_desc *fd);
 };
