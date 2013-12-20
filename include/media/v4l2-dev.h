@@ -44,6 +44,8 @@ struct v4l2_ctrl_handler;
 #define V4L2_FL_REGISTERED	(0)
 /* file->private_data points to struct v4l2_fh */
 #define V4L2_FL_USES_V4L2_FH	(1)
+/* Does the device support sub-streams? */
+#define V4L2_FL_HAS_SUB_STREAMS	(2)
 
 /* Priority helper functions */
 
