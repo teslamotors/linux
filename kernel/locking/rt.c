@@ -197,8 +197,6 @@ int __lockfunc rt_write_trylock_irqsave(rwlock_t *rwlock, unsigned long *flags)
 
 	*flags = 0;
 	ret = rt_write_trylock(rwlock);
-	if (ret)
-		migrate_disable();
 	return ret;
 }
 EXPORT_SYMBOL(rt_write_trylock_irqsave);
@@ -232,6 +230,7 @@ EXPORT_SYMBOL(rt_read_trylock);
 void __lockfunc rt_write_lock(rwlock_t *rwlock)
 {
 	rwlock_acquire(&rwlock->dep_map, 0, 0, _RET_IP_);
+	migrate_disable();
 	__rt_spin_lock(&rwlock->lock);
 }
 EXPORT_SYMBOL(rt_write_lock);
@@ -257,6 +256,7 @@ void __lockfunc rt_write_unlock(rwlock_t *rwlock)
 	/* NOTE: we always pass in '1' for nested, for simplicity */
 	rwlock_release(&rwlock->dep_map, 1, _RET_IP_);
 	__rt_spin_unlock(&rwlock->lock);
+	migrate_enable();
 }
 EXPORT_SYMBOL(rt_write_unlock);
 
