@@ -33,7 +33,6 @@ extern void __rt_rwlock_init(rwlock_t *rwlock, char *name, struct lock_class_key
 #define read_lock_irqsave(lock, flags)			\
 	do {						\
 		typecheck(unsigned long, flags);	\
-		migrate_disable();			\
 		flags = rt_read_lock_irqsave(lock);	\
 	} while (0)
 
@@ -45,14 +44,12 @@ extern void __rt_rwlock_init(rwlock_t *rwlock, char *name, struct lock_class_key
 
 #define read_lock(lock)					\
 	do {						\
-		migrate_disable();			\
 		rt_read_lock(lock);			\
 	} while (0)
 
 #define read_lock_bh(lock)				\
 	do {						\
 		local_bh_disable();			\
-		migrate_disable();			\
 		rt_read_lock(lock);			\
 	} while (0)
 
@@ -74,13 +71,11 @@ extern void __rt_rwlock_init(rwlock_t *rwlock, char *name, struct lock_class_key
 #define read_unlock(lock)				\
 	do {						\
 		rt_read_unlock(lock);			\
-		migrate_enable();			\
 	} while (0)
 
 #define read_unlock_bh(lock)				\
 	do {						\
 		rt_read_unlock(lock);			\
-		migrate_enable();			\
 		local_bh_enable();			\
 	} while (0)
 
@@ -104,7 +99,6 @@ extern void __rt_rwlock_init(rwlock_t *rwlock, char *name, struct lock_class_key
 		typecheck(unsigned long, flags);	\
 		(void) flags;				\
 		rt_read_unlock(lock);			\
-		migrate_enable();			\
 	} while (0)
 
 #define write_unlock_irqrestore(lock, flags) \
