@@ -23,6 +23,8 @@
 #include "linux/version.h"
 #include "linux/types.h"
 
+#include "uapi/linux/major.h"
+
 #include "yaffs_trace.h"
 #include "yaffs_guts.h"
 #include "yaffs_linux.h"
