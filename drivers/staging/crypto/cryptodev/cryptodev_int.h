@@ -2,6 +2,12 @@
 #ifndef CRYPTODEV_INT_H
 # define CRYPTODEV_INT_H
 
+#include <linux/version.h>
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0))
+#  define reinit_completion(x) INIT_COMPLETION(*(x))
+#endif
+
 #include <linux/init.h>
 #include <linux/sched.h>
 #include <linux/fs.h>

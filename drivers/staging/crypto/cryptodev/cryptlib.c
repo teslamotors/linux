@@ -217,7 +217,7 @@ ssize_t cryptodev_cipher_encrypt(struct cipher_data *cdata,
 {
 	int ret;
 
-	INIT_COMPLETION(cdata->async.result->completion);
+	reinit_completion(&cdata->async.result->completion);
 
 	if (cdata->aead == 0) {
 		ablkcipher_request_set_crypt(cdata->async.request,
@@ -240,7 +240,7 @@ ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
 {
 	int ret;
 
-	INIT_COMPLETION(cdata->async.result->completion);
+	reinit_completion(&cdata->async.result->completion);
 	if (cdata->aead == 0) {
 		ablkcipher_request_set_crypt(cdata->async.request,
 			(struct scatterlist *)src, dst,
@@ -351,7 +351,7 @@ ssize_t cryptodev_hash_update(struct hash_data *hdata,
 {
 	int ret;
 
-	INIT_COMPLETION(hdata->async.result->completion);
+	reinit_completion(&hdata->async.result->completion);
 	ahash_request_set_crypt(hdata->async.request, sg, NULL, len);
 
 	ret = crypto_ahash_update(hdata->async.request);
@@ -363,7 +363,7 @@ int cryptodev_hash_final(struct hash_data *hdata, void* output)
 {
 	int ret;
 
-	INIT_COMPLETION(hdata->async.result->completion);
+	reinit_completion(&hdata->async.result->completion);
 	ahash_request_set_crypt(hdata->async.request, NULL, output, 0);
 
 	ret = crypto_ahash_final(hdata->async.request);
