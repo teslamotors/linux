@@ -34,6 +34,9 @@ clean:
 check:
 	CFLAGS=$(CRYPTODEV_CFLAGS) KERNEL_DIR=$(KERNEL_DIR) make -C tests check
 
+checkpatch:
+	$(KERNEL_DIR)/scripts/checkpatch.pl --file *.c *.h
+
 FILEBASE = cryptodev-linux-$(VERSION)
 TMPDIR ?= /tmp
 OUTPUT = $(FILEBASE).tar.gz
