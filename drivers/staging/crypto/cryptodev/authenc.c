@@ -662,8 +662,10 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 				goto free_auth_buf;
 			}
 
-			if (caop->op == COP_ENCRYPT) dst_len = caop->len + cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
-			else dst_len = caop->len;
+			if (caop->op == COP_ENCRYPT)
+				dst_len = caop->len + cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
+			else
+				dst_len = caop->len;
 
 			ret = get_userbuf(ses_ptr, caop->src, caop->len, caop->dst, dst_len,
 					  kcaop->task, kcaop->mm, &src_sg, &dst_sg);
