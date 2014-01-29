@@ -485,9 +485,8 @@ srtp_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 				return ret;
 			}
 
-			if (unlikely(copy_to_user(caop->tag, hash_output, caop->tag_len))) {
+			if (unlikely(copy_to_user(caop->tag, hash_output, caop->tag_len)))
 				return -EFAULT;
-			}
 		}
 
 	} else {
@@ -497,9 +496,8 @@ srtp_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 				return -EINVAL;
 			}
 
-			if (unlikely(copy_from_user(vhash, caop->tag, caop->tag_len))) {
+			if (unlikely(copy_from_user(vhash, caop->tag, caop->tag_len)))
 				return -EFAULT;
-			}
 
 			ret = cryptodev_hash_update(&ses_ptr->hdata,
 							auth_sg, auth_len);

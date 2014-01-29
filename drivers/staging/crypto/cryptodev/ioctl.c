@@ -756,11 +756,10 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 	siop->flags = 0;
 
 	if (ses_ptr->cdata.init) {
-		if (ses_ptr->cdata.aead == 0) {
+		if (ses_ptr->cdata.aead == 0)
 			tfm = crypto_ablkcipher_tfm(ses_ptr->cdata.async.s);
-		} else {
+		else
 			tfm = crypto_aead_tfm(ses_ptr->cdata.async.as);
-		}
 		tfm_info_to_alg_info(&siop->cipher_info, tfm);
 #ifdef CRYPTO_ALG_KERN_DRIVER_ONLY
 		if (tfm->__crt_alg->cra_flags & CRYPTO_ALG_KERN_DRIVER_ONLY)
