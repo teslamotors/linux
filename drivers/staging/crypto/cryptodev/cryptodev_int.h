@@ -131,7 +131,7 @@ struct csession {
 
 struct csession *crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid);
 
-inline static void crypto_put_session(struct csession *ses_ptr)
+static inline void crypto_put_session(struct csession *ses_ptr)
 {
 	mutex_unlock(&ses_ptr->sem);
 }
