@@ -276,17 +276,17 @@ int kcaop_to_user(struct kernel_crypt_auth_op *kcaop,
 	return 0;
 }
 
-static void copy_tls_hash( struct scatterlist *dst_sg, int len, void *hash, int hash_len)
+static void copy_tls_hash(struct scatterlist *dst_sg, int len, void *hash, int hash_len)
 {
 	scatterwalk_map_and_copy(hash, dst_sg, len, hash_len, 1);
 }
 
-static void read_tls_hash( struct scatterlist *dst_sg, int len, void *hash, int hash_len)
+static void read_tls_hash(struct scatterlist *dst_sg, int len, void *hash, int hash_len)
 {
 	scatterwalk_map_and_copy(hash, dst_sg, len-hash_len, hash_len, 0);
 }
 
-static int pad_record( struct scatterlist *dst_sg, int len, int block_size)
+static int pad_record(struct scatterlist *dst_sg, int len, int block_size)
 {
 	uint8_t pad[block_size];
 	int pad_size = block_size - (len % block_size);
@@ -298,7 +298,7 @@ static int pad_record( struct scatterlist *dst_sg, int len, int block_size)
 	return pad_size;
 }
 
-static int verify_tls_record_pad( struct scatterlist *dst_sg, int len, int block_size)
+static int verify_tls_record_pad(struct scatterlist *dst_sg, int len, int block_size)
 {
 	uint8_t pad[256]; /* the maximum allowed */
 	uint8_t pad_size;
@@ -363,7 +363,7 @@ tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 				return ret;
 			}
 
-			copy_tls_hash( dst_sg, len, hash_output, caop->tag_len);
+			copy_tls_hash(dst_sg, len, hash_output, caop->tag_len);
 			len += caop->tag_len;
 		}
 
@@ -407,7 +407,7 @@ tls_auth_n_crypt(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop,
 				return -EINVAL;
 			}
 
-			read_tls_hash( dst_sg, len, vhash, caop->tag_len);
+			read_tls_hash(dst_sg, len, vhash, caop->tag_len);
 			len -= caop->tag_len;
 
 			if (auth_len > 0) {
