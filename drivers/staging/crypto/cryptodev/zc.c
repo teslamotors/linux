@@ -110,7 +110,7 @@ void release_user_pages(struct csession *ses)
 {
 	unsigned int i;
 
-	for (i=0;i<ses->used_pages;i++) {
+	for (i = 0; i < ses->used_pages; i++) {
 		if (!PageReserved(ses->pages[i]))
 			SetPageDirty(ses->pages[i]);
 
@@ -176,7 +176,7 @@ int get_userbuf(struct csession *ses,
 	*src_sg = NULL; // default to no input
 	*dst_sg = NULL; // default to ignore output
 
-	if(likely(src)) {
+	if (likely(src)) {
 		rc = __get_userbuf(src, src_len, 0, ses->readonly_pages,
 					   ses->pages, ses->sg, task, mm);
 		if (unlikely(rc)) {
@@ -187,7 +187,7 @@ int get_userbuf(struct csession *ses,
 		*src_sg = ses->sg;
 	}
 
-	if(likely(dst)) {
+	if (likely(dst)) {
 		const unsigned int writable_pages =
 			ses->used_pages - ses->readonly_pages;
 		struct page **dst_pages = ses->pages + ses->readonly_pages;

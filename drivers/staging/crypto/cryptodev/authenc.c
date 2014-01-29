@@ -283,7 +283,7 @@ static void copy_tls_hash(struct scatterlist *dst_sg, int len, void *hash, int h
 
 static void read_tls_hash(struct scatterlist *dst_sg, int len, void *hash, int hash_len)
 {
-	scatterwalk_map_and_copy(hash, dst_sg, len-hash_len, hash_len, 0);
+	scatterwalk_map_and_copy(hash, dst_sg, len - hash_len, hash_len, 0);
 }
 
 static int pad_record(struct scatterlist *dst_sg, int len, int block_size)
@@ -291,7 +291,7 @@ static int pad_record(struct scatterlist *dst_sg, int len, int block_size)
 	uint8_t pad[block_size];
 	int pad_size = block_size - (len % block_size);
 
-	memset(pad, pad_size-1, pad_size);
+	memset(pad, pad_size - 1, pad_size);
 
 	scatterwalk_map_and_copy(pad, dst_sg, len, pad_size, 1);
 
@@ -304,22 +304,22 @@ static int verify_tls_record_pad(struct scatterlist *dst_sg, int len, int block_
 	uint8_t pad_size;
 	int i;
 
-	scatterwalk_map_and_copy(&pad_size, dst_sg, len-1, 1, 0);
+	scatterwalk_map_and_copy(&pad_size, dst_sg, len - 1, 1, 0);
 
-	if (pad_size+1 > len) {
+	if (pad_size + 1 > len) {
 		dprintk(1, KERN_ERR, "Pad size: %d\n", pad_size);
 		return -EBADMSG;
 	}
 
-	scatterwalk_map_and_copy(pad, dst_sg, len-pad_size-1, pad_size+1, 0);
+	scatterwalk_map_and_copy(pad, dst_sg, len - pad_size - 1, pad_size + 1, 0);
 
-	for (i=0;i<pad_size;i++)
+	for (i = 0; i < pad_size; i++)
 		if (pad[i] != pad_size) {
 			dprintk(1, KERN_ERR, "Pad size: %d, pad: %d\n", pad_size, (int)pad[i]);
 			return -EBADMSG;
 		}
 
-	return pad_size+1;
+	return pad_size + 1;
 }
 
 /* Authenticate and encrypt the TLS way (also perform padding).
