@@ -173,8 +173,8 @@ int get_userbuf(struct csession *ses,
 		return 0;
 	}
 
-	*src_sg = NULL; // default to no input
-	*dst_sg = NULL; // default to ignore output
+	*src_sg = NULL; /* default to no input */
+	*dst_sg = NULL; /* default to ignore output */
 
 	if (likely(src)) {
 		rc = __get_userbuf(src, src_len, 0, ses->readonly_pages,
