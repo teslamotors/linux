@@ -1087,7 +1087,7 @@ cryptodev_register(void)
 
 	rc = misc_register(&cryptodev);
 	if (unlikely(rc)) {
-		printk(KERN_ERR PFX "registration of /dev/crypto failed\n");
+		pr_err(PFX "registration of /dev/crypto failed\n");
 		return rc;
 	}
 
@@ -1127,7 +1127,7 @@ static int __init init_cryptodev(void)
 
 	cryptodev_wq = create_workqueue("cryptodev_queue");
 	if (unlikely(!cryptodev_wq)) {
-		printk(KERN_ERR PFX "failed to allocate the cryptodev workqueue\n");
+		pr_err(PFX "failed to allocate the cryptodev workqueue\n");
 		return -EFAULT;
 	}
 
@@ -1139,7 +1139,7 @@ static int __init init_cryptodev(void)
 
 	verbosity_sysctl_header = register_sysctl_table(verbosity_ctl_root);
 
-	printk(KERN_INFO PFX "driver %s loaded.\n", VERSION);
+	pr_info(PFX "driver %s loaded.\n", VERSION);
 
 	return 0;
 }
@@ -1153,7 +1153,7 @@ static void __exit exit_cryptodev(void)
 		unregister_sysctl_table(verbosity_sysctl_header);
 
 	cryptodev_deregister();
-	printk(KERN_INFO PFX "driver unloaded.\n");
+	pr_info(PFX "driver unloaded.\n");
 }
 
 module_init(init_cryptodev);
