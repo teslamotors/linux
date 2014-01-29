@@ -192,7 +192,7 @@ int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 		dprintk(1, KERN_DEBUG, "invalid operation op=%u\n", cop->op);
 		return -EINVAL;
 	}
-	
+
 	/* this also enters ses_ptr->sem */
 	ses_ptr = crypto_get_session_by_sid(fcr, cop->ses);
 	if (unlikely(!ses_ptr)) {
