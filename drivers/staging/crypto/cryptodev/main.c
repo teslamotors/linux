@@ -116,7 +116,7 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 	if (unlikely(!data)) {
 		dprintk(1, KERN_ERR, "Error getting free page.\n");
 		return -ENOMEM;
-        }
+	}
 
 	bufsize = PAGE_SIZE < nbytes ? PAGE_SIZE : nbytes;
 
@@ -139,7 +139,7 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 		if (unlikely(ret)) {
 		        dprintk(1, KERN_ERR, "hash_n_crypt failed.\n");
 			break;
-                }
+		}
 
 		if (ses_ptr->cdata.init != 0) {
 			if (unlikely(copy_to_user(dst, data, current_len))) {

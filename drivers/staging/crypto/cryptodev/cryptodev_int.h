@@ -57,7 +57,7 @@ struct compat_session_op {
 };
 
 /* input of CIOCCRYPT */
- struct compat_crypt_op {
+struct compat_crypt_op {
 	uint32_t	ses;		/* session identifier */
 	uint16_t	op;		/* COP_ENCRYPT or COP_DECRYPT */
 	uint16_t	flags;		/* see COP_FLAG_* */

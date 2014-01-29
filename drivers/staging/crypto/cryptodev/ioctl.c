@@ -957,7 +957,7 @@ static int compat_kcop_from_user(struct kernel_crypt_op *kcop,
 }
 
 static int compat_kcop_to_user(struct kernel_crypt_op *kcop,
-                                 struct fcrypt *fcr, void __user *arg)
+                               struct fcrypt *fcr, void __user *arg)
 {
 	int ret;
 	struct compat_crypt_op compat_cop;
@@ -1102,23 +1102,23 @@ cryptodev_deregister(void)
 
 /* ====== Module init/exit ====== */
 static struct ctl_table verbosity_ctl_dir[] = {
-        {
-                .procname       = "cryptodev_verbosity",
-                .data           = &cryptodev_verbosity,
-                .maxlen         = sizeof(int),
-                .mode           = 0644,
-                .proc_handler   = proc_dointvec,
-        },
-        {0, },
+	{
+		.procname       = "cryptodev_verbosity",
+		.data           = &cryptodev_verbosity,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec,
+	},
+	{0, },
 };
 
 static struct ctl_table verbosity_ctl_root[] = {
-       {
-                .procname       = "ioctl",
-                .mode           = 0555,
-                .child          = verbosity_ctl_dir,
-       },
-       {0, },
+	{
+		.procname       = "ioctl",
+		.mode           = 0555,
+		.child          = verbosity_ctl_dir,
+	},
+	{0, },
 };
 static struct ctl_table_header *verbosity_sysctl_header;
 static int __init init_cryptodev(void)
@@ -1150,7 +1150,7 @@ static void __exit exit_cryptodev(void)
 	destroy_workqueue(cryptodev_wq);
 
 	if (verbosity_sysctl_header)
-        unregister_sysctl_table(verbosity_sysctl_header);
+		unregister_sysctl_table(verbosity_sysctl_header);
 
 	cryptodev_deregister();
 	printk(KERN_INFO PFX "driver unloaded.\n");
