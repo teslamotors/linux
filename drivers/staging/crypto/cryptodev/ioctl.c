@@ -720,32 +720,22 @@ static unsigned int is_known_accelerated(struct crypto_tfm *tfm)
 	const char *name = crypto_tfm_alg_driver_name(tfm);
 
 	if (name == NULL)
-	  return 1; /* assume accelerated */
+		return 1; /* assume accelerated */
 
-	if (strstr(name, "-talitos"))
-	  return 1;
-	else if (strncmp(name, "mv-", 3) == 0)
-	  return 1;
-	else if (strncmp(name, "atmel-", 6) == 0)
+	/* look for known crypto engine names */
+	if (strstr(name, "-talitos")	||
+	    !strncmp(name, "mv-", 3)	||
+	    !strncmp(name, "atmel-", 6)	||
+	    strstr(name, "geode")	||
+	    strstr(name, "hifn")	||
+	    strstr(name, "-ixp4xx")	||
+	    strstr(name, "-omap")	||
+	    strstr(name, "-picoxcell")	||
+	    strstr(name, "-s5p")	||
+	    strstr(name, "-ppc4xx")	||
+	    strstr(name, "-caam")	||
+	    strstr(name, "-n2"))
 		return 1;
-	else if (strstr(name, "geode"))
-	  return 1;
-	else if (strstr(name, "hifn"))
-	  return 1;
-	else if (strstr(name, "-ixp4xx"))
-	  return 1;
-	else if (strstr(name, "-omap"))
-	  return 1;
-	else if (strstr(name, "-picoxcell"))
-	  return 1;
-	else if (strstr(name, "-s5p"))
-	  return 1;
-	else if (strstr(name, "-ppc4xx"))
-	  return 1;
-	else if (strstr(name, "-caam"))
-	  return 1;
-	else if (strstr(name, "-n2"))
-	  return 1;
 
 	return 0;
 }
