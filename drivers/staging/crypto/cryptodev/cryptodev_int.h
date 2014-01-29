@@ -131,10 +131,10 @@ struct csession {
 
 struct csession *crypto_get_session_by_sid(struct fcrypt *fcr, uint32_t sid);
 
-inline static void crypto_put_session(struct csession * ses_ptr)
+inline static void crypto_put_session(struct csession *ses_ptr)
 {
 	mutex_unlock(&ses_ptr->sem);
 }
-int adjust_sg_array(struct csession * ses, int pagecount);
+int adjust_sg_array(struct csession *ses, int pagecount);
 
 #endif /* CRYPTODEV_INT_H */

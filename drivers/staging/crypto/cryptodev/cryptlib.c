@@ -359,7 +359,7 @@ ssize_t cryptodev_hash_update(struct hash_data *hdata,
 	return waitfor(hdata->async.result, ret);
 }
 
-int cryptodev_hash_final(struct hash_data *hdata, void* output)
+int cryptodev_hash_final(struct hash_data *hdata, void *output)
 {
 	int ret;
 

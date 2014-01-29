@@ -276,12 +276,12 @@ int kcaop_to_user(struct kernel_crypt_auth_op *kcaop,
 	return 0;
 }
 
-static void copy_tls_hash( struct scatterlist *dst_sg, int len, void* hash, int hash_len)
+static void copy_tls_hash( struct scatterlist *dst_sg, int len, void *hash, int hash_len)
 {
 	scatterwalk_map_and_copy(hash, dst_sg, len, hash_len, 1);
 }
 
-static void read_tls_hash( struct scatterlist *dst_sg, int len, void* hash, int hash_len)
+static void read_tls_hash( struct scatterlist *dst_sg, int len, void *hash, int hash_len)
 {
 	scatterwalk_map_and_copy(hash, dst_sg, len-hash_len, hash_len, 0);
 }
@@ -615,7 +615,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 	          * so we just copy them to a free page, instead of trying
 	          * to map them.
 	          */
-		unsigned char* auth_buf = NULL;
+		unsigned char *auth_buf = NULL;
 		struct scatterlist tmp;
 
 		if (unlikely(caop->auth_len > PAGE_SIZE)) {

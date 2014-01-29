@@ -717,7 +717,7 @@ static inline void tfm_info_to_alg_info(struct alg_info *dst, struct crypto_tfm 
 #ifndef CRYPTO_ALG_KERN_DRIVER_ONLY
 static unsigned int is_known_accelerated(struct crypto_tfm *tfm)
 {
-	const char* name = crypto_tfm_alg_driver_name(tfm);
+	const char *name = crypto_tfm_alg_driver_name(tfm);
 
 	if (name == NULL)
 	  return 1; /* assume accelerated */
