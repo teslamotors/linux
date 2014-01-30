@@ -468,7 +468,7 @@ cryptodev_open(struct inode *inode, struct file *filp)
 		if (!tmp)
 			return -ENOMEM;
 		pcr->itemcount++;
-		ddebug(2, "allocated new item at %lx", (unsigned long)tmp);
+		ddebug(2, "allocated new item at %p", tmp);
 		list_add(&tmp->__hook, &pcr->free.list);
 	}
 
@@ -493,7 +493,7 @@ cryptodev_release(struct inode *inode, struct file *filp)
 	list_splice_tail(&pcr->done.list, &pcr->free.list);
 
 	list_for_each_entry_safe(item, item_safe, &pcr->free.list, __hook) {
-		ddebug(2, "freeing item at %lx", (unsigned long)item);
+		ddebug(2, "freeing item at %p", item);
 		list_del(&item->__hook);
 		kfree(item);
 		items_freed++;
@@ -635,8 +635,8 @@ static int fill_kcop_from_cop(struct kernel_crypt_op *kcop, struct fcrypt *fcr)
 	if (cop->iv) {
 		rc = copy_from_user(kcop->iv, cop->iv, kcop->ivlen);
 		if (unlikely(rc)) {
-			derr(1, "error copying IV (%d bytes), copy_from_user returned %d for address %lx",
-					kcop->ivlen, rc, (unsigned long)cop->iv);
+			derr(1, "error copying IV (%d bytes), copy_from_user returned %d for address %p",
+					kcop->ivlen, rc, cop->iv);
 			return -EFAULT;
 		}
 	}

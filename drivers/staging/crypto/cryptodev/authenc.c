@@ -63,8 +63,8 @@ static int get_userbuf_tls(struct csession *ses, struct kernel_crypt_auth_op *kc
 
 	if (ses->alignmask) {
 		if (!IS_ALIGNED((unsigned long)caop->dst, ses->alignmask))
-			dwarning(2, "careful - source address %lx is not %d byte aligned",
-					(unsigned long)caop->dst, ses->alignmask + 1);
+			dwarning(2, "careful - source address %p is not %d byte aligned",
+					caop->dst, ses->alignmask + 1);
 	}
 
 	if (kcaop->dst_len == 0) {
@@ -117,11 +117,11 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 
 	if (ses->alignmask) {
 		if (!IS_ALIGNED((unsigned long)caop->dst, ses->alignmask))
-			dwarning(2, "careful - source address %lx is not %d byte aligned",
-					(unsigned long)caop->dst, ses->alignmask + 1);
+			dwarning(2, "careful - source address %p is not %d byte aligned",
+					caop->dst, ses->alignmask + 1);
 		if (!IS_ALIGNED((unsigned long)caop->auth_src, ses->alignmask))
-			dwarning(2, "careful - source address %lx is not %d byte aligned",
-					(unsigned long)caop->auth_src, ses->alignmask + 1);
+			dwarning(2, "careful - source address %p is not %d byte aligned",
+					caop->auth_src, ses->alignmask + 1);
 	}
 
 	if (unlikely(kcaop->dst_len == 0 || caop->auth_len == 0)) {
@@ -209,8 +209,8 @@ static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcryp
 	if (caop->iv) {
 		ret = copy_from_user(kcaop->iv, caop->iv, kcaop->ivlen);
 		if (unlikely(ret)) {
-			derr(1, "error copying IV (%d bytes), copy_from_user returned %d for address %lx",
-					kcaop->ivlen, ret, (unsigned long)caop->iv);
+			derr(1, "error copying IV (%d bytes), copy_from_user returned %d for address %p",
+					kcaop->ivlen, ret, caop->iv);
 			ret = -EFAULT;
 			goto out_unlock;
 		}
@@ -310,7 +310,7 @@ static int verify_tls_record_pad(struct scatterlist *dst_sg, int len, int block_
 
 	for (i = 0; i < pad_size; i++)
 		if (pad[i] != pad_size) {
-			derr(1, "Pad size: %d, pad: %d", pad_size, (int)pad[i]);
+			derr(1, "Pad size: %u, pad: %d", pad_size, pad[i]);
 			return -EBADMSG;
 		}
 
