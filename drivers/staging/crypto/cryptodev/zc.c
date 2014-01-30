@@ -89,7 +89,7 @@ int adjust_sg_array(struct csession *ses, int pagecount)
 	for (array_size = ses->array_size; array_size < pagecount;
 	     array_size *= 2)
 		;
-	dprintk(0, KERN_DEBUG, "reallocating from %d to %d pages\n",
+	ddebug(0, "reallocating from %d to %d pages",
 			ses->array_size, array_size);
 	pages = krealloc(ses->pages, array_size * sizeof(struct page *),
 			 GFP_KERNEL);
@@ -165,8 +165,7 @@ int get_userbuf(struct csession *ses,
 		rc = __get_userbuf(src, src_len, 1, ses->used_pages,
 			               ses->pages, ses->sg, task, mm);
 		if (unlikely(rc)) {
-			dprintk(1, KERN_ERR,
-				"failed to get user pages for data IO\n");
+			derr(1, "failed to get user pages for data IO");
 			return rc;
 		}
 		(*src_sg) = (*dst_sg) = ses->sg;
@@ -180,8 +179,7 @@ int get_userbuf(struct csession *ses,
 		rc = __get_userbuf(src, src_len, 0, ses->readonly_pages,
 					   ses->pages, ses->sg, task, mm);
 		if (unlikely(rc)) {
-			dprintk(1, KERN_ERR,
-				"failed to get user pages for data input\n");
+			derr(1, "failed to get user pages for data input");
 			return rc;
 		}
 		*src_sg = ses->sg;
@@ -196,8 +194,7 @@ int get_userbuf(struct csession *ses,
 		rc = __get_userbuf(dst, dst_len, 1, writable_pages,
 					   dst_pages, *dst_sg, task, mm);
 		if (unlikely(rc)) {
-			dprintk(1, KERN_ERR,
-					"failed to get user pages for data output\n");
+			derr(1, "failed to get user pages for data output");
 			release_user_pages(ses);  /* FIXME: use __release_userbuf(src, ...) */
 			return rc;
 		}

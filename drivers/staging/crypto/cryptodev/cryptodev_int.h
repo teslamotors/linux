@@ -24,11 +24,16 @@
 #define dprintk(level, severity, format, a...)			\
 	do {							\
 		if (level <= cryptodev_verbosity)		\
-			printk(severity PFX "%s[%u] (%s:%u): " format,	\
+			printk(severity PFX "%s[%u] (%s:%u): " format "\n",	\
 			       current->comm, current->pid,	\
 			       __func__, __LINE__,		\
 			       ##a);				\
 	} while (0)
+#define derr(level, format, a...) dprintk(level, KERN_ERR, format, ##a)
+#define dwarning(level, format, a...) dprintk(level, KERN_WARNING, format, ##a)
+#define dinfo(level, format, a...) dprintk(level, KERN_INFO, format, ##a)
+#define ddebug(level, format, a...) dprintk(level, KERN_DEBUG, format, ##a)
+
 
 extern int cryptodev_verbosity;
 

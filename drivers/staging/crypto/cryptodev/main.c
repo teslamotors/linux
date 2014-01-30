@@ -95,7 +95,7 @@ hash_n_crypt(struct csession *ses_ptr, struct crypt_op *cop,
 	}
 	return 0;
 out_err:
-	dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n", ret);
+	derr(0, "CryptoAPI failure: %d", ret);
 	return ret;
 }
 
@@ -114,7 +114,7 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 	data = (char *)__get_free_page(GFP_KERNEL);
 
 	if (unlikely(!data)) {
-		dprintk(1, KERN_ERR, "Error getting free page.\n");
+		derr(1, "Error getting free page.");
 		return -ENOMEM;
 	}
 
@@ -127,7 +127,7 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 		size_t current_len = nbytes > bufsize ? bufsize : nbytes;
 
 		if (unlikely(copy_from_user(data, src, current_len))) {
-		        dprintk(1, KERN_ERR, "Error copying %d bytes from user address %p.\n", (int)current_len, src);
+		        derr(1, "Error copying %d bytes from user address %p.", (int)current_len, src);
 			ret = -EFAULT;
 			break;
 		}
@@ -137,13 +137,13 @@ __crypto_run_std(struct csession *ses_ptr, struct crypt_op *cop)
 		ret = hash_n_crypt(ses_ptr, cop, &sg, &sg, current_len);
 
 		if (unlikely(ret)) {
-		        dprintk(1, KERN_ERR, "hash_n_crypt failed.\n");
+		        derr(1, "hash_n_crypt failed.");
 			break;
 		}
 
 		if (ses_ptr->cdata.init != 0) {
 			if (unlikely(copy_to_user(dst, data, current_len))) {
-			        dprintk(1, KERN_ERR, "could not copy to user.\n");
+			        derr(1, "could not copy to user.");
 				ret = -EFAULT;
 				break;
 			}
@@ -171,8 +171,7 @@ __crypto_run_zc(struct csession *ses_ptr, struct kernel_crypt_op *kcop)
 	ret = get_userbuf(ses_ptr, cop->src, cop->len, cop->dst, cop->len,
 	                  kcop->task, kcop->mm, &src_sg, &dst_sg);
 	if (unlikely(ret)) {
-		dprintk(1, KERN_ERR, "Error getting user pages. "
-					"Falling back to non zero copy.\n");
+		derr(1, "Error getting user pages. Falling back to non zero copy.");
 		return __crypto_run_std(ses_ptr, cop);
 	}
 
@@ -189,22 +188,21 @@ int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 	int ret;
 
 	if (unlikely(cop->op != COP_ENCRYPT && cop->op != COP_DECRYPT)) {
-		dprintk(1, KERN_DEBUG, "invalid operation op=%u\n", cop->op);
+		ddebug(1, "invalid operation op=%u", cop->op);
 		return -EINVAL;
 	}
 
 	/* this also enters ses_ptr->sem */
 	ses_ptr = crypto_get_session_by_sid(fcr, cop->ses);
 	if (unlikely(!ses_ptr)) {
-		dprintk(1, KERN_ERR, "invalid session ID=0x%08X\n", cop->ses);
+		derr(1, "invalid session ID=0x%08X", cop->ses);
 		return -EINVAL;
 	}
 
 	if (ses_ptr->hdata.init != 0 && (cop->flags == 0 || cop->flags & COP_FLAG_RESET)) {
 		ret = cryptodev_hash_reset(&ses_ptr->hdata);
 		if (unlikely(ret)) {
-			dprintk(1, KERN_ERR,
-				"error in cryptodev_hash_reset()\n");
+			derr(1, "error in cryptodev_hash_reset()");
 			goto out_unlock;
 		}
 	}
@@ -213,9 +211,7 @@ int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 		int blocksize = ses_ptr->cdata.blocksize;
 
 		if (unlikely(cop->len % blocksize)) {
-			dprintk(1, KERN_ERR,
-				"data size (%u) isn't a multiple "
-				"of block size (%u)\n",
+			derr(1, "data size (%u) isn't a multiple of block size (%u)",
 				cop->len, blocksize);
 			ret = -EINVAL;
 			goto out_unlock;
@@ -228,13 +224,13 @@ int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 	if (likely(cop->len)) {
 		if (cop->flags & COP_FLAG_NO_ZC) {
 			if (unlikely(ses_ptr->alignmask && !IS_ALIGNED((unsigned long)cop->src, ses_ptr->alignmask))) {
-				dprintk(2, KERN_WARNING, "source address %lx is not %d byte aligned - disabling zero copy\n",
+				dwarning(2, "source address %lx is not %d byte aligned - disabling zero copy",
 						(unsigned long)cop->src, ses_ptr->alignmask + 1);
 				cop->flags &= ~COP_FLAG_NO_ZC;
 			}
 
 			if (unlikely(ses_ptr->alignmask && !IS_ALIGNED((unsigned long)cop->dst, ses_ptr->alignmask))) {
-				dprintk(2, KERN_WARNING, "destination address %lx is not %d byte aligned - disabling zero copy\n",
+				dwarning(2, "destination address %lx is not %d byte aligned - disabling zero copy",
 						(unsigned long)cop->dst, ses_ptr->alignmask + 1);
 				cop->flags &= ~COP_FLAG_NO_ZC;
 			}
@@ -259,7 +255,7 @@ int crypto_run(struct fcrypt *fcr, struct kernel_crypt_op *kcop)
 
 		ret = cryptodev_hash_final(&ses_ptr->hdata, kcop->hash_output);
 		if (unlikely(ret)) {
-			dprintk(0, KERN_ERR, "CryptoAPI failure: %d\n", ret);
+			derr(0, "CryptoAPI failure: %d", ret);
 			goto out_unlock;
 		}
 		kcop->digestsize = ses_ptr->hdata.digestsize;

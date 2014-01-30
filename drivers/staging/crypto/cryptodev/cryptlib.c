@@ -63,7 +63,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 
 		out->async.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
 		if (unlikely(IS_ERR(out->async.s))) {
-			dprintk(1, KERN_DEBUG, "Failed to load cipher %s\n", alg_name);
+			ddebug(1, "Failed to load cipher %s", alg_name);
 				return -EINVAL;
 		}
 
@@ -73,11 +73,8 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 			if (alg->max_keysize > 0 &&
 					unlikely((keylen < alg->min_keysize) ||
 					(keylen > alg->max_keysize))) {
-				dprintk(1, KERN_DEBUG,
-					"Wrong keylen '%zu' for algorithm '%s'. \
-					Use %u to %u.\n",
-					   keylen, alg_name, alg->min_keysize,
-					   alg->max_keysize);
+				ddebug(1, "Wrong keylen '%zu' for algorithm '%s'. Use %u to %u.",
+						keylen, alg_name, alg->min_keysize, alg->max_keysize);
 				ret = -EINVAL;
 				goto error;
 			}
@@ -91,7 +88,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 	} else {
 		out->async.as = crypto_alloc_aead(alg_name, 0, 0);
 		if (unlikely(IS_ERR(out->async.as))) {
-			dprintk(1, KERN_DEBUG, "Failed to load cipher %s\n", alg_name);
+			ddebug(1, "Failed to load cipher %s", alg_name);
 			return -EINVAL;
 		}
 
@@ -103,8 +100,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 	}
 
 	if (unlikely(ret)) {
-		dprintk(1, KERN_DEBUG, "Setting key failed for %s-%zu.\n",
-			alg_name, keylen*8);
+		ddebug(1, "Setting key failed for %s-%zu.", alg_name, keylen*8);
 		ret = -EINVAL;
 		goto error;
 	}
@@ -123,7 +119,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 	if (aead == 0) {
 		out->async.request = ablkcipher_request_alloc(out->async.s, GFP_KERNEL);
 		if (unlikely(!out->async.request)) {
-			dprintk(1, KERN_ERR, "error allocating async crypto request\n");
+			derr(1, "error allocating async crypto request");
 			ret = -ENOMEM;
 			goto error;
 		}
@@ -134,7 +130,7 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 	} else {
 		out->async.arequest = aead_request_alloc(out->async.as, GFP_KERNEL);
 		if (unlikely(!out->async.arequest)) {
-			dprintk(1, KERN_ERR, "error allocating async crypto request\n");
+			derr(1, "error allocating async crypto request");
 			ret = -ENOMEM;
 			goto error;
 		}
@@ -198,8 +194,7 @@ static inline int waitfor(struct cryptodev_result *cr, ssize_t ret)
 		 * another request. */
 
 		if (unlikely(cr->err)) {
-			dprintk(0, KERN_ERR, "error from async request: %d\n",
-				cr->err);
+			derr(0, "error from async request: %d", cr->err);
 			return cr->err;
 		}
 
@@ -265,7 +260,7 @@ int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
 
 	hdata->async.s = crypto_alloc_ahash(alg_name, 0, 0);
 	if (unlikely(IS_ERR(hdata->async.s))) {
-		dprintk(1, KERN_DEBUG, "Failed to load transform for %s\n", alg_name);
+		ddebug(1, "Failed to load transform for %s", alg_name);
 		return -EINVAL;
 	}
 
@@ -273,9 +268,8 @@ int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
 	if (hmac_mode != 0) {
 		ret = crypto_ahash_setkey(hdata->async.s, mackey, mackeylen);
 		if (unlikely(ret)) {
-			dprintk(1, KERN_DEBUG,
-				"Setting hmac key failed for %s-%zu.\n",
-				alg_name, mackeylen*8);
+			ddebug(1, "Setting hmac key failed for %s-%zu.",
+					alg_name, mackeylen*8);
 			ret = -EINVAL;
 			goto error;
 		}
@@ -294,7 +288,7 @@ int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
 
 	hdata->async.request = ahash_request_alloc(hdata->async.s, GFP_KERNEL);
 	if (unlikely(!hdata->async.request)) {
-		dprintk(0, KERN_ERR, "error allocating async crypto request\n");
+		derr(0, "error allocating async crypto request");
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -305,7 +299,7 @@ int cryptodev_hash_init(struct hash_data *hdata, const char *alg_name,
 
 	ret = crypto_ahash_init(hdata->async.request);
 	if (unlikely(ret)) {
-		dprintk(0, KERN_ERR, "error in crypto_hash_init()\n");
+		derr(0, "error in crypto_hash_init()");
 		goto error_request;
 	}
 
@@ -338,7 +332,7 @@ int cryptodev_hash_reset(struct hash_data *hdata)
 
 	ret = crypto_ahash_init(hdata->async.request);
 	if (unlikely(ret)) {
-		dprintk(0, KERN_ERR, "error in crypto_hash_init()\n");
+		derr(0, "error in crypto_hash_init()");
 		return ret;
 	}
 
