@@ -34,8 +34,16 @@ clean:
 check:
 	CFLAGS=$(CRYPTODEV_CFLAGS) KERNEL_DIR=$(KERNEL_DIR) make -C tests check
 
+CPOPTS =
+ifneq (${SHOW_TYPES},)
+CPOPTS += --show-types
+endif
+ifneq (${IGNORE_TYPES},)
+CPOPTS += --ignore ${IGNORE_TYPES}
+endif
+
 checkpatch:
-	$(KERNEL_DIR)/scripts/checkpatch.pl --file *.c *.h
+	$(KERNEL_DIR)/scripts/checkpatch.pl ${CPOPTS} --file *.c *.h
 
 FILEBASE = cryptodev-linux-$(VERSION)
 TMPDIR ?= /tmp
