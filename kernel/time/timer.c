@@ -1482,18 +1482,20 @@ void run_local_timers(void)
 	 * the timer softirq.
 	 */
 #ifdef CONFIG_PREEMPT_RT_FULL
+	/* On RT, irq work runs from softirq */
+	if (irq_work_needs_cpu()) {
+		raise_softirq(TIMER_SOFTIRQ);
+		return;
+	}
+
 	if (!spin_do_trylock(&base->lock)) {
 		raise_softirq(TIMER_SOFTIRQ);
 		return;
 	}
 #endif
-	if (!base->active_timers) {
-#ifdef CONFIG_PREEMPT_RT_FULL
-		/* On RT, irq work runs from softirq */
-		if (!irq_work_needs_cpu())
-#endif
-			goto out;
-	}
+
+	if (!base->active_timers)
+		goto out;
 
 	/* Check whether the next pending timer has expired */
 	if (time_before_eq(base->next_timer, jiffies))
