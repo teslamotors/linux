@@ -50,12 +50,12 @@ test_crypto(int cfd, struct session_op *sess, int datalen)
 	encrypted_comp = malloc(datalen);
 	memset(data, datalen & 0xff, datalen);
 	memset(encrypted, 0x27, datalen);
-	memset(encrypted_comp, 0x27, datalen);
+	memset(encrypted_comp, 0x28, datalen);
 
 	memset(iv, 0x23, sizeof(iv));
 	memset(iv_comp, 0x23, sizeof(iv));
 	memset(mac, 0, sizeof(mac));
-	memset(mac_comp, 0, sizeof(mac_comp));
+	memset(mac_comp, 1, sizeof(mac_comp));
 
 	memset(&cryp, 0, sizeof(cryp));
 
