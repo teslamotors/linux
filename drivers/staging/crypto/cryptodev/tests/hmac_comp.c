@@ -38,6 +38,7 @@ test_crypto(int cfd, struct session_op *sess, int datalen)
 	unsigned char iv[BLOCK_SIZE];
 	unsigned char mac[AALG_MAX_RESULT_LEN];
 
+	unsigned char iv_comp[BLOCK_SIZE];
 	unsigned char mac_comp[AALG_MAX_RESULT_LEN];
 
 	struct crypt_op cryp;
@@ -52,6 +53,7 @@ test_crypto(int cfd, struct session_op *sess, int datalen)
 	memset(encrypted_comp, 0x27, datalen);
 
 	memset(iv, 0x23, sizeof(iv));
+	memset(iv_comp, 0x23, sizeof(iv));
 	memset(mac, 0, sizeof(mac));
 	memset(mac_comp, 0, sizeof(mac_comp));
 
@@ -65,6 +67,7 @@ test_crypto(int cfd, struct session_op *sess, int datalen)
 	cryp.iv = iv;
 	cryp.mac = mac;
 	cryp.op = COP_ENCRYPT;
+	cryp.flags = COP_FLAG_WRITE_IV;
 	if ((ret = ioctl(cfd, CIOCCRYPT, &cryp))) {
 		perror("ioctl(CIOCCRYPT)");
 		goto out;
@@ -72,6 +75,7 @@ test_crypto(int cfd, struct session_op *sess, int datalen)
 
 	cryp.dst = encrypted_comp;
 	cryp.mac = mac_comp;
+	cryp.iv = iv_comp;
 
 	if ((ret = openssl_cioccrypt(sess, &cryp))) {
 		fprintf(stderr, "openssl_cioccrypt() failed!\n");
@@ -80,6 +84,9 @@ test_crypto(int cfd, struct session_op *sess, int datalen)
 
 	if ((ret = memcmp(encrypted, encrypted_comp, cryp.len))) {
 		printf("fail for datalen %d, cipher texts do not match!\n", datalen);
+	}
+	if ((ret = memcmp(iv, iv_comp, BLOCK_SIZE))) {
+		printf("fail for datalen %d, updated IVs do not match!\n", datalen);
 	}
 	if ((ret = memcmp(mac, mac_comp, AALG_MAX_RESULT_LEN))) {
 		printf("fail for datalen 0x%x, MACs do not match!\n", datalen);
