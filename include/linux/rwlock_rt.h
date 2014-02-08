@@ -42,10 +42,7 @@ extern void __rt_rwlock_init(rwlock_t *rwlock, char *name, struct lock_class_key
 		flags = rt_write_lock_irqsave(lock);	\
 	} while (0)
 
-#define read_lock(lock)					\
-	do {						\
-		rt_read_lock(lock);			\
-	} while (0)
+#define read_lock(lock)		rt_read_lock(lock)
 
 #define read_lock_bh(lock)				\
 	do {						\
@@ -55,10 +52,7 @@ extern void __rt_rwlock_init(rwlock_t *rwlock, char *name, struct lock_class_key
 
 #define read_lock_irq(lock)	read_lock(lock)
 
-#define write_lock(lock)				\
-	do {						\
-		rt_write_lock(lock);			\
-	} while (0)
+#define write_lock(lock)	rt_write_lock(lock)
 
 #define write_lock_bh(lock)				\
 	do {						\
@@ -68,10 +62,7 @@ extern void __rt_rwlock_init(rwlock_t *rwlock, char *name, struct lock_class_key
 
 #define write_lock_irq(lock)	write_lock(lock)
 
-#define read_unlock(lock)				\
-	do {						\
-		rt_read_unlock(lock);			\
-	} while (0)
+#define read_unlock(lock)	rt_read_unlock(lock)
 
 #define read_unlock_bh(lock)				\
 	do {						\
@@ -81,10 +72,7 @@ extern void __rt_rwlock_init(rwlock_t *rwlock, char *name, struct lock_class_key
 
 #define read_unlock_irq(lock)	read_unlock(lock)
 
-#define write_unlock(lock)				\
-	do {						\
-		rt_write_unlock(lock);			\
-	} while (0)
+#define write_unlock(lock)	rt_write_unlock(lock)
 
 #define write_unlock_bh(lock)				\
 	do {						\
