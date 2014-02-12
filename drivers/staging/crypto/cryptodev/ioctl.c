@@ -440,7 +440,7 @@ static void cryptask_routine(struct work_struct *work)
 static int
 cryptodev_open(struct inode *inode, struct file *filp)
 {
-	struct todo_list_item *tmp;
+	struct todo_list_item *tmp, *tmp_next;
 	struct crypt_priv *pcr;
 	int i;
 
@@ -466,7 +466,7 @@ cryptodev_open(struct inode *inode, struct file *filp)
 	for (i = 0; i < DEF_COP_RINGSIZE; i++) {
 		tmp = kzalloc(sizeof(struct todo_list_item), GFP_KERNEL);
 		if (!tmp)
-			return -ENOMEM;
+			goto err_ringalloc;
 		pcr->itemcount++;
 		ddebug(2, "allocated new item at %p", tmp);
 		list_add(&tmp->__hook, &pcr->free.list);
@@ -475,6 +475,20 @@ cryptodev_open(struct inode *inode, struct file *filp)
 	ddebug(2, "Cryptodev handle initialised, %d elements in queue",
 			DEF_COP_RINGSIZE);
 	return 0;
+
+/* In case of errors, free any memory allocated so far */
+err_ringalloc:
+	list_for_each_entry_safe(tmp, tmp_next, &pcr->free.list, __hook) {
+		list_del(&tmp->__hook);
+		kfree(tmp);
+	}
+	mutex_destroy(&pcr->done.lock);
+	mutex_destroy(&pcr->todo.lock);
+	mutex_destroy(&pcr->free.lock);
+	mutex_destroy(&pcr->fcrypt.sem);
+	kfree(pcr);
+	filp->private_data = NULL;
+	return -ENOMEM;
 }
 
 static int
