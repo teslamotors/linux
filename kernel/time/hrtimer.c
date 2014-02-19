@@ -1882,8 +1882,12 @@ void cpu_chill(void)
 	struct timespec tu = {
 		.tv_nsec = NSEC_PER_MSEC,
 	};
+	unsigned int freeze_flag = current->flags & PF_NOFREEZE;
 
+	current->flags |= PF_NOFREEZE;
 	hrtimer_nanosleep(&tu, NULL, HRTIMER_MODE_REL, CLOCK_MONOTONIC);
+	if (!freeze_flag)
+		current->flags &= ~PF_NOFREEZE;
 }
 EXPORT_SYMBOL(cpu_chill);
 #endif
