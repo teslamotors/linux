@@ -322,7 +322,7 @@ endif
 __build-dir = $(subst $(OUTPUT),,$(dir $@))
 build-dir   = $(if $(__build-dir),$(__build-dir),.)
 
-single_dep: $(OUTPUT)PERF-VERSION-FILE $(OUTPUT)common-cmds.h
+single_dep: $(OUTPUT)PERF-VERSION-FILE $(OUTPUT)common-cmds.h $(OUTPUT)util/parse-events-flex.c $(OUTPUT)util/parse-events-bison.c $(OUTPUT)util/pmu-flex.c $(OUTPUT)util/pmu-bison.c
 
 $(OUTPUT)%.o: %.c single_dep FORCE
 	$(Q)$(MAKE) -f $(srctree)/tools/build/Makefile.build dir=$(build-dir) $@
