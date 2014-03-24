@@ -2783,7 +2783,8 @@ static inline void update_migrate_disable(struct task_struct *p)
 
 	if (p->sched_class->set_cpus_allowed)
 		p->sched_class->set_cpus_allowed(p, mask);
-	p->nr_cpus_allowed = cpumask_weight(mask);
+	/* mask==cpumask_of(task_cpu(p)) which has a cpumask_weight==1 */
+	p->nr_cpus_allowed = 1;
 
 	/* Let migrate_enable know to fix things back up */
 	p->migrate_disable |= MIGRATE_DISABLE_SET_AFFIN;
