@@ -95,6 +95,7 @@ struct media_graph {
 	struct {
 		struct media_entity *entity;
 		struct list_head *link;
+		int pad;
 	} stack[MEDIA_ENTITY_ENUM_MAX_DEPTH];
 
 	struct media_entity_enum ent_enum;
