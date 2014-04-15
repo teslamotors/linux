@@ -20,4 +20,12 @@ config TRUSTY_FIQ_ARM
 	select TRUSTY_FIQ
 	default y
 
+config TRUSTY_FIQ_ARM64
+	tristate
+	depends on TRUSTY
+	depends on ARM64
+	select FIQ_GLUE
+	select TRUSTY_FIQ
+	default y
+
 endmenu
