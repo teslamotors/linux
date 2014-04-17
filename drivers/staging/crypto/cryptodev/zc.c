@@ -162,6 +162,10 @@ int get_userbuf(struct csession *ses,
 	}
 
 	if (src == dst) {	/* inplace operation */
+		/* When we encrypt for authenc modes we need to write
+		 * more data than the ones we read. */
+		if (src_len < dst_len)
+			src_len = dst_len;
 		rc = __get_userbuf(src, src_len, 1, ses->used_pages,
 			               ses->pages, ses->sg, task, mm);
 		if (unlikely(rc)) {
