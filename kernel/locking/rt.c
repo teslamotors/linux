@@ -180,12 +180,14 @@ EXPORT_SYMBOL(_mutex_unlock);
  */
 int __lockfunc rt_write_trylock(rwlock_t *rwlock)
 {
-	int ret = rt_mutex_trylock(&rwlock->lock);
+	int ret;
 
-	if (ret) {
+	migrate_disable();
+	ret = rt_mutex_trylock(&rwlock->lock);
+	if (ret)
 		rwlock_acquire(&rwlock->dep_map, 0, 1, _RET_IP_);
-		migrate_disable();
-	}
+	else
+		migrate_enable();
 
 	return ret;
 }
@@ -212,9 +214,10 @@ int __lockfunc rt_read_trylock(rwlock_t *rwlock)
 	 * write locked.
 	 */
 	if (rt_mutex_owner(lock) != current) {
+		migrate_disable();
 		ret = rt_mutex_trylock(lock);
-		if (ret)
-			migrate_disable();
+		if (!ret)
+			migrate_enable();
 
 	} else if (!rwlock->read_depth) {
 		ret = 0;
@@ -247,8 +250,8 @@ void __lockfunc rt_read_lock(rwlock_t *rwlock)
 	 * recursive read locks succeed when current owns the lock
 	 */
 	if (rt_mutex_owner(lock) != current) {
-		__rt_spin_lock(lock);
 		migrate_disable();
+		__rt_spin_lock(lock);
 	}
 	rwlock->read_depth++;
 }
