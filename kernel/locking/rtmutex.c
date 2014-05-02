@@ -1153,6 +1153,11 @@ void __lockfunc rt_spin_unlock_wait(spinlock_t *lock)
 }
 EXPORT_SYMBOL(rt_spin_unlock_wait);
 
+int __lockfunc __rt_spin_trylock(struct rt_mutex *lock)
+{
+	return rt_mutex_trylock(lock);
+}
+
 int __lockfunc rt_spin_trylock(spinlock_t *lock)
 {
 	int ret = rt_mutex_trylock(&lock->lock);

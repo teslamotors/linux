@@ -76,6 +76,12 @@ void lg_local_unlock_cpu(struct lglock *lg, int cpu);
 void lg_global_lock(struct lglock *lg);
 void lg_global_unlock(struct lglock *lg);
 
+#ifndef CONFIG_PREEMPT_RT_FULL
+#define lg_global_trylock_relax(name)	lg_global_lock(name)
+#else
+void lg_global_trylock_relax(struct lglock *lg);
+#endif
+
 #else
 /* When !CONFIG_SMP, map lglock to spinlock */
 #define lglock spinlock

@@ -105,3 +105,28 @@ void lg_global_unlock(struct lglock *lg)
 	preempt_enable_nort();
 }
 EXPORT_SYMBOL(lg_global_unlock);
+
+#ifdef CONFIG_PREEMPT_RT_FULL
+/*
+ * HACK: If you use this, you get to keep the pieces.
+ * Used in queue_stop_cpus_work() when stop machinery
+ * is called from inactive CPU, so we can't schedule.
+ */
+# define lg_do_trylock_relax(l)			\
+	do {					\
+		while (!__rt_spin_trylock(l))	\
+			cpu_relax();		\
+	} while (0)
+
+void lg_global_trylock_relax(struct lglock *lg)
+{
+	int i;
+
+	lock_acquire_exclusive(&lg->lock_dep_map, 0, 0, NULL, _RET_IP_);
+	for_each_possible_cpu(i) {
+		lg_lock_ptr *lock;
+		lock = per_cpu_ptr(lg->lock, i);
+		lg_do_trylock_relax(lock);
+	}
+}
+#endif
