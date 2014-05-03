@@ -26,12 +26,19 @@ extern void trusty_fiq_glue_arm64(void);
 
 static struct device *trusty_dev;
 static DEFINE_PER_CPU(void *, fiq_stack);
-static struct fiq_glue_handler *current_handler;
+static struct fiq_glue_handler *fiq_handlers;
 static DEFINE_MUTEX(fiq_glue_lock);
 
 void trusty_fiq_handler(struct pt_regs *regs, void *svc_sp)
 {
-	current_handler->fiq(current_handler, regs, svc_sp);
+	struct fiq_glue_handler *handler;
+
+	for (handler = ACCESS_ONCE(fiq_handlers); handler;
+	     handler = ACCESS_ONCE(handler->next)) {
+		/* Barrier paired with smp_wmb in fiq_glue_register_handler */
+		smp_read_barrier_depends();
+		handler->fiq(handler, regs, svc_sp);
+	}
 }
 
 static void smp_nop_call(void *info)
@@ -64,28 +71,12 @@ static void fiq_glue_clear_handler(void)
 	}
 }
 
-int fiq_glue_register_handler(struct fiq_glue_handler *handler)
+static int fiq_glue_set_handler(void)
 {
 	int ret;
 	int cpu;
 	void *stack;
 	unsigned long irqflags;
-
-	if (!handler || !handler->fiq)
-		return -EINVAL;
-
-	mutex_lock(&fiq_glue_lock);
-
-	if (!trusty_dev) {
-		ret = -ENODEV;
-		goto err_no_trusty;
-	}
-	if (current_handler) {
-		ret = -EBUSY;
-		goto err_busy;
-	}
-
-	current_handler = handler;
 
 	for_each_possible_cpu(cpu) {
 		stack = (void *)__get_free_pages(GFP_KERNEL, THREAD_SIZE_ORDER);
@@ -109,16 +100,57 @@ int fiq_glue_register_handler(struct fiq_glue_handler *handler)
 			goto err_set_fiq_handler;
 		}
 	}
+	return 0;
+
+err_alloc_fiq_stack:
+err_set_fiq_handler:
+	fiq_glue_clear_handler();
+	return ret;
+}
+
+int fiq_glue_register_handler(struct fiq_glue_handler *handler)
+{
+	int ret;
+
+	if (!handler || !handler->fiq) {
+		ret = -EINVAL;
+		goto err_bad_arg;
+	}
+
+	mutex_lock(&fiq_glue_lock);
+
+	if (!trusty_dev) {
+		ret = -ENODEV;
+		goto err_no_trusty;
+	}
+
+	handler->next = fiq_handlers;
+	/*
+	 * Write barrier paired with smp_read_barrier_depends in
+	 * trusty_fiq_handler. Make sure next pointer is updated before
+	 * fiq_handlers so trusty_fiq_handler does not see an uninitialized
+	 * value and terminate early or crash.
+	 */
+	smp_wmb();
+	fiq_handlers = handler;
+
+	smp_call_function(smp_nop_call, NULL, true);
+
+	if (!handler->next) {
+		ret = fiq_glue_set_handler();
+		if (ret)
+			goto err_set_fiq_handler;
+	}
 
 	mutex_unlock(&fiq_glue_lock);
 	return 0;
 
 err_set_fiq_handler:
-err_alloc_fiq_stack:
-	fiq_glue_clear_handler();
-err_busy:
+	fiq_handlers = handler->next;
 err_no_trusty:
 	mutex_unlock(&fiq_glue_lock);
+err_bad_arg:
+	pr_err("%s: failed, %d\n", __func__, ret);
 	return ret;
 }
 
