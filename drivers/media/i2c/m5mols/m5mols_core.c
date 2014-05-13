@@ -607,7 +607,7 @@ static int m5mols_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 	 * .get_frame_desc is only used for compressed formats,
 	 * thus we always return the capture frame parameters here.
 	 */
-	fd->entry[0].length = info->cap.buf_size;
+	fd->entry[0].size.length = info->cap.buf_size;
 	fd->entry[0].pixelcode = info->ffmt[M5MOLS_RESTYPE_CAPTURE].code;
 	mutex_unlock(&info->lock);
 
@@ -628,11 +628,11 @@ static int m5mols_set_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 
 	fd->entry[0].flags = V4L2_MBUS_FRAME_DESC_FL_LEN_MAX;
 	fd->num_entries = 1;
-	fd->entry[0].length = clamp_t(u32, fd->entry[0].length,
-				      mf->width * mf->height,
-				      M5MOLS_MAIN_JPEG_SIZE_MAX);
+	fd->entry[0].size.length = clamp_t(u32, fd->entry[0].size.length,
+					   mf->width * mf->height,
+					   M5MOLS_MAIN_JPEG_SIZE_MAX);
 	mutex_lock(&info->lock);
-	info->cap.buf_size = fd->entry[0].length;
+	info->cap.buf_size = fd->entry[0].size.length;
 	mutex_unlock(&info->lock);
 
 	return 0;

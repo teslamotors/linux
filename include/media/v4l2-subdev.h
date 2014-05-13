@@ -254,6 +254,10 @@ struct v4l2_mbus_frame_desc_entry_csi2 {
  * @flags: V4L2_MBUS_FRAME_DESC_FL_* flags
  * @bpp: bits per pixel
  * @pixelcode: media bus pixel code, valid if FRAME_DESC_FL_BLOB is not set
+ * @start_line: start line of the data for 2D DMA
+ * @start_pixel: start pixel of the data for 2D DMA
+ * @width: image width for 2D DMA
+ * @height: image height for 2D DMA
  * @length: number of octets per frame, valid if V4L2_MBUS_FRAME_DESC_FL_BLOB
  *	    is set
  * @csi2: CSI-2 specific bus configuration
@@ -262,7 +266,15 @@ struct v4l2_mbus_frame_desc_entry {
 	u16 flags;
 	u8 bpp;
 	u32 pixelcode;
-	u32 length;
+	union {
+		struct {
+			u16 start_line;
+			u16 start_pixel;
+			u16 width;
+			u16 height;
+		} two_dim;
+		u32 length;
+	} size;
 	union {
 		struct v4l2_mbus_frame_desc_entry_csi2 csi2;
 	} bus;

@@ -1176,9 +1176,9 @@ static int s5c73m3_oif_set_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 	if (pad != OIF_SOURCE_PAD || fd == NULL)
 		return -EINVAL;
 
-	fd->entry[0].length = 10 * SZ_1M;
-	fd->entry[1].length = max_t(u32, fd->entry[1].length,
-				    S5C73M3_EMBEDDED_DATA_MAXLEN);
+	fd->entry[0].size.length = 10 * SZ_1M;
+	fd->entry[1].size.length = max_t(u32, fd->entry[1].size.length,
+					 S5C73M3_EMBEDDED_DATA_MAXLEN);
 	fd->num_entries = 2;
 
 	mutex_lock(&state->lock);
