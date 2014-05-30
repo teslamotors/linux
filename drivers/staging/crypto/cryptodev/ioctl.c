@@ -109,6 +109,8 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	const char *alg_name = NULL;
 	const char *hash_name = NULL;
 	int hmac_mode = 1, stream = 0, aead = 0;
+	uint8_t ckey[CRYPTO_CIPHER_MAX_KEY_LEN];
+	uint8_t mkey[CRYPTO_HMAC_MAX_KEY_LEN];
 
 	/* Does the request make sense? */
 	if (unlikely(!sop->cipher && !sop->mac)) {
@@ -222,8 +224,6 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 
 	/* Set-up crypto transform. */
 	if (alg_name) {
-		uint8_t keyp[CRYPTO_CIPHER_MAX_KEY_LEN];
-
 		if (unlikely(sop->keylen > CRYPTO_CIPHER_MAX_KEY_LEN)) {
 			ddebug(1, "Setting key failed for %s-%zu.",
 				alg_name, (size_t)sop->keylen*8);
@@ -231,12 +231,12 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			goto error_cipher;
 		}
 
-		if (unlikely(copy_from_user(keyp, sop->key, sop->keylen))) {
+		if (unlikely(copy_from_user(ckey, sop->key, sop->keylen))) {
 			ret = -EFAULT;
 			goto error_cipher;
 		}
 
-		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, keyp,
+		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, ckey,
 						sop->keylen, stream, aead);
 		if (ret < 0) {
 			ddebug(1, "Failed to load cipher for %s", alg_name);
@@ -246,8 +246,6 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	}
 
 	if (hash_name && aead == 0) {
-		uint8_t keyp[CRYPTO_HMAC_MAX_KEY_LEN];
-
 		if (unlikely(sop->mackeylen > CRYPTO_HMAC_MAX_KEY_LEN)) {
 			ddebug(1, "Setting key failed for %s-%zu.",
 				hash_name, (size_t)sop->mackeylen*8);
@@ -255,14 +253,14 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			goto error_hash;
 		}
 
-		if (sop->mackey && unlikely(copy_from_user(keyp, sop->mackey,
+		if (sop->mackey && unlikely(copy_from_user(mkey, sop->mackey,
 					    sop->mackeylen))) {
 			ret = -EFAULT;
 			goto error_hash;
 		}
 
 		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode,
-							keyp, sop->mackeylen);
+							mkey, sop->mackeylen);
 		if (ret != 0) {
 			ddebug(1, "Failed to load hash for %s", hash_name);
 			ret = -EINVAL;
