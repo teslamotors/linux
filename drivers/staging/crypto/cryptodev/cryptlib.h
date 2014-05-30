@@ -25,6 +25,9 @@ struct cipher_data {
 int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 			  uint8_t *key, size_t keylen, int stream, int aead);
 void cryptodev_cipher_deinit(struct cipher_data *cdata);
+int cryptodev_get_cipher_key(uint8_t *key, struct session_op *sop, int aead);
+int cryptodev_get_cipher_keylen(unsigned int *keylen, struct session_op *sop,
+		int aead);
 ssize_t cryptodev_cipher_decrypt(struct cipher_data *cdata,
 			const struct scatterlist *sg1,
 			struct scatterlist *sg2, size_t len);

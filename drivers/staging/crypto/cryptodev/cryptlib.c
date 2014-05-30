@@ -34,6 +34,8 @@
 #include <crypto/hash.h>
 #include <crypto/cryptodev.h>
 #include <crypto/aead.h>
+#include <linux/rtnetlink.h>
+#include <crypto/authenc.h>
 #include "cryptodev_int.h"
 
 
@@ -52,6 +54,78 @@ static void cryptodev_complete(struct crypto_async_request *req, int err)
 	res->err = err;
 	complete(&res->completion);
 }
+
+int cryptodev_get_cipher_keylen(unsigned int *keylen, struct session_op *sop,
+		int aead)
+{
+	/*
+	 * For blockciphers (AES-CBC) or non-composite aead ciphers (like AES-GCM),
+	 * the key length is simply the cipher keylen obtained from userspace. If
+	 * the cipher is composite aead, the keylen is the sum of cipher keylen,
+	 * hmac keylen and a key header length. This key format is the one used in
+	 * Linux kernel for composite aead ciphers (crypto/authenc.c)
+	 */
+	unsigned int klen = sop->keylen;
+
+	if (unlikely(sop->keylen > CRYPTO_CIPHER_MAX_KEY_LEN))
+		return -EINVAL;
+
+	if (aead && sop->mackeylen) {
+		if (unlikely(sop->mackeylen > CRYPTO_HMAC_MAX_KEY_LEN))
+			return -EINVAL;
+		klen += sop->mackeylen;
+		klen += RTA_SPACE(sizeof(struct crypto_authenc_key_param));
+	}
+
+	*keylen = klen;
+	return 0;
+}
+
+int cryptodev_get_cipher_key(uint8_t *key, struct session_op *sop, int aead)
+{
+	/*
+	 * Get cipher key from user-space. For blockciphers just copy it from
+	 * user-space. For composite aead ciphers combine it with the hmac key in
+	 * the format used by Linux kernel in crypto/authenc.c:
+	 *
+	 * [[AUTHENC_KEY_HEADER + CIPHER_KEYLEN] [AUTHENTICATION KEY] [CIPHER KEY]]
+	 */
+	struct crypto_authenc_key_param *param;
+	struct rtattr *rta;
+	int ret = 0;
+
+	if (aead && sop->mackeylen) {
+		/*
+		 * Composite aead ciphers. The first four bytes are the header type and
+		 * header length for aead keys
+		 */
+		rta = (void *)key;
+		rta->rta_type = CRYPTO_AUTHENC_KEYA_PARAM;
+		rta->rta_len = RTA_LENGTH(sizeof(*param));
+
+		/*
+		 * The next four bytes hold the length of the encryption key
+		 */
+		param = RTA_DATA(rta);
+		param->enckeylen = cpu_to_be32(sop->keylen);
+
+		/* Advance key pointer eight bytes and copy the hmac key */
+		key += RTA_SPACE(sizeof(*param));
+		if (unlikely(copy_from_user(key, sop->mackey, sop->mackeylen))) {
+			ret = -EFAULT;
+			goto error;
+		}
+		/* Advance key pointer past the hmac key */
+		key += sop->mackeylen;
+	}
+	/* now copy the blockcipher key */
+	if (unlikely(copy_from_user(key, sop->key, sop->keylen)))
+		ret = -EFAULT;
+
+error:
+	return ret;
+}
+
 
 int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 				uint8_t *keyp, size_t keylen, int stream, int aead)

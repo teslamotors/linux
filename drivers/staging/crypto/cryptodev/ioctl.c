@@ -45,6 +45,8 @@
 #include <linux/uaccess.h>
 #include <crypto/cryptodev.h>
 #include <linux/scatterlist.h>
+#include <linux/rtnetlink.h>
+#include <crypto/authenc.h>
 
 #include <linux/sysctl.h>
 
@@ -109,9 +111,16 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	const char *alg_name = NULL;
 	const char *hash_name = NULL;
 	int hmac_mode = 1, stream = 0, aead = 0;
+	/*
+	 * With composite aead ciphers, only ckey is used and it can cover all the
+	 * structure space; otherwise both keys may be used simultaneously but they
+	 * are confined to their spaces
+	 */
 	struct {
 		uint8_t ckey[CRYPTO_CIPHER_MAX_KEY_LEN];
 		uint8_t mkey[CRYPTO_HMAC_MAX_KEY_LEN];
+		/* padding space for aead keys */
+		uint8_t pad[RTA_SPACE(sizeof(struct crypto_authenc_key_param))];
 	} keys;
 
 	/* Does the request make sense? */
@@ -226,20 +235,20 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 
 	/* Set-up crypto transform. */
 	if (alg_name) {
-		if (unlikely(sop->keylen > CRYPTO_CIPHER_MAX_KEY_LEN)) {
+		unsigned int keylen;
+		ret = cryptodev_get_cipher_keylen(&keylen, sop, aead);
+		if (unlikely(ret < 0)) {
 			ddebug(1, "Setting key failed for %s-%zu.",
 				alg_name, (size_t)sop->keylen*8);
-			ret = -EINVAL;
 			goto error_cipher;
 		}
 
-		if (unlikely(copy_from_user(keys.ckey, sop->key, sop->keylen))) {
-			ret = -EFAULT;
+		ret = cryptodev_get_cipher_key(keys.ckey, sop, aead);
+		if (unlikely(ret < 0))
 			goto error_cipher;
-		}
 
 		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, keys.ckey,
-						sop->keylen, stream, aead);
+						keylen, stream, aead);
 		if (ret < 0) {
 			ddebug(1, "Failed to load cipher for %s", alg_name);
 			ret = -EINVAL;
