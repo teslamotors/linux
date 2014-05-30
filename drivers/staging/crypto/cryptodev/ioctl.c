@@ -109,8 +109,10 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 	const char *alg_name = NULL;
 	const char *hash_name = NULL;
 	int hmac_mode = 1, stream = 0, aead = 0;
-	uint8_t ckey[CRYPTO_CIPHER_MAX_KEY_LEN];
-	uint8_t mkey[CRYPTO_HMAC_MAX_KEY_LEN];
+	struct {
+		uint8_t ckey[CRYPTO_CIPHER_MAX_KEY_LEN];
+		uint8_t mkey[CRYPTO_HMAC_MAX_KEY_LEN];
+	} keys;
 
 	/* Does the request make sense? */
 	if (unlikely(!sop->cipher && !sop->mac)) {
@@ -231,12 +233,12 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			goto error_cipher;
 		}
 
-		if (unlikely(copy_from_user(ckey, sop->key, sop->keylen))) {
+		if (unlikely(copy_from_user(keys.ckey, sop->key, sop->keylen))) {
 			ret = -EFAULT;
 			goto error_cipher;
 		}
 
-		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, ckey,
+		ret = cryptodev_cipher_init(&ses_new->cdata, alg_name, keys.ckey,
 						sop->keylen, stream, aead);
 		if (ret < 0) {
 			ddebug(1, "Failed to load cipher for %s", alg_name);
@@ -253,14 +255,14 @@ crypto_create_session(struct fcrypt *fcr, struct session_op *sop)
 			goto error_hash;
 		}
 
-		if (sop->mackey && unlikely(copy_from_user(mkey, sop->mackey,
+		if (sop->mackey && unlikely(copy_from_user(keys.mkey, sop->mackey,
 					    sop->mackeylen))) {
 			ret = -EFAULT;
 			goto error_hash;
 		}
 
 		ret = cryptodev_hash_init(&ses_new->hdata, hash_name, hmac_mode,
-							mkey, sop->mackeylen);
+							keys.mkey, sop->mackeylen);
 		if (ret != 0) {
 			ddebug(1, "Failed to load hash for %s", hash_name);
 			ret = -EINVAL;
