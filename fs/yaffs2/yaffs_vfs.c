@@ -3244,9 +3244,7 @@ static int yaffs_proc_read(char *page,
 	/* Print header first */
 	if (step == 0)
 		buf +=
-		    sprintf(buf,
-			    "Multi-version YAFFS built:" __DATE__ " " __TIME__
-			    "\n");
+		    sprintf(buf, "Multi-version YAFFS\n");
 	else if (step == 1)
 		buf += sprintf(buf, "\n");
 	else {
@@ -3529,8 +3527,7 @@ static int __init init_yaffs_fs(void)
 	int error = 0;
 	struct file_system_to_install *fsinst;
 
-	yaffs_trace(YAFFS_TRACE_ALWAYS,
-		"yaffs built " __DATE__ " " __TIME__ " Installing.");
+	yaffs_trace(YAFFS_TRACE_ALWAYS, "yaffs Installing.");
 
 	mutex_init(&yaffs_context_lock);
 
@@ -3580,8 +3577,7 @@ static void __exit exit_yaffs_fs(void)
 
 	struct file_system_to_install *fsinst;
 
-	yaffs_trace(YAFFS_TRACE_ALWAYS,
-		"yaffs built " __DATE__ " " __TIME__ " removing.");
+	yaffs_trace(YAFFS_TRACE_ALWAYS, "yaffs removing.");
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 	remove_proc_entry("yaffs", YPROC_ROOT);
