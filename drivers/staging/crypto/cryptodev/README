@@ -16,9 +16,13 @@ advantage of /dev/crypto. GnuTLS 3.0.14 or later is recommended.
 
 * OpenSSL:
 
-The current releases of openssl support /dev/crypto by using the
+Note that OpenSSL's cryptodev implementation is outdated, and there
+are issues with it. For that we recommend to use the patches
+below, that we have provided to the openssl project.
+
+http://rt.openssl.org/Ticket/Display.html?id=2770&user=guest&pass=guest
+
+After applying the patches you can add cryptodev support by using the
 -DHAVE_CRYPTODEV and -DUSE_CRYPTODEV_DIGESTS flags during compilation.
 Note that the latter flag (digests) may induce a performance penalty
-in some systems. The file eng_cryptodev.c found in the extras directory
-of this release is an improved version of one present in openssl releases.
-Depending on your needs you may use either.
+in some systems. 
