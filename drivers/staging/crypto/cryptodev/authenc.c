@@ -172,6 +172,42 @@ static int get_userbuf_srtp(struct csession *ses, struct kernel_crypt_auth_op *k
 	return 0;
 }
 
+/*
+ * Return tag (digest) length for authenticated encryption
+ * If the cipher and digest are separate, hdata.init is set - just return
+ * digest length. Otherwise return digest length for aead ciphers
+ */
+static int cryptodev_get_tag_len(struct csession *ses_ptr)
+{
+	if (ses_ptr->hdata.init)
+		return ses_ptr->hdata.digestsize;
+	else
+		return cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
+}
+
+/*
+ * Calculate destination buffer length for authenticated encryption. The
+ * expectation is that user-space code allocates exactly the same space for
+ * destination buffer before calling cryptodev. The result is cipher-dependent.
+ */
+static int cryptodev_get_dst_len(struct crypt_auth_op *caop, struct csession *ses_ptr)
+{
+	int dst_len = caop->len;
+	if (caop->op == COP_DECRYPT)
+		return dst_len;
+
+	dst_len += caop->tag_len;
+
+	/* for TLS always add some padding so the total length is rounded to
+	 * cipher block size */
+	if (caop->flags & COP_FLAG_AEAD_TLS_TYPE) {
+		int bs = ses_ptr->cdata.blocksize;
+		dst_len += bs - (dst_len % bs);
+	}
+
+	return dst_len;
+}
+
 static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcrypt *fcr)
 {
 	struct crypt_auth_op *caop = &kcaop->caop;
@@ -194,15 +230,10 @@ static int fill_kcaop_from_caop(struct kernel_crypt_auth_op *kcaop, struct fcryp
 	}
 
 	if (caop->tag_len == 0)
-		caop->tag_len = ses_ptr->hdata.digestsize;
+		caop->tag_len = cryptodev_get_tag_len(ses_ptr);
 
 	kcaop->ivlen = caop->iv ? ses_ptr->cdata.ivsize : 0;
-
-	if (caop->flags & COP_FLAG_AEAD_TLS_TYPE)
-		kcaop->dst_len = caop->len + ses_ptr->cdata.blocksize /* pad */ + caop->tag_len;
-	else
-		kcaop->dst_len = caop->len;
-
+	kcaop->dst_len = cryptodev_get_dst_len(caop, ses_ptr);
 	kcaop->task = current;
 	kcaop->mm = current->mm;
 
@@ -645,8 +676,6 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 			ret = tls_auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len,
 				   dst_sg, caop->len);
 		} else {
-			int dst_len;
-
 			if (unlikely(ses_ptr->cdata.init == 0 ||
 			             (ses_ptr->cdata.stream == 0 &&
 				      ses_ptr->cdata.aead == 0))) {
@@ -655,12 +684,7 @@ __crypto_auth_run_zc(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcao
 				goto free_auth_buf;
 			}
 
-			if (caop->op == COP_ENCRYPT)
-				dst_len = caop->len + cryptodev_cipher_get_tag_size(&ses_ptr->cdata);
-			else
-				dst_len = caop->len;
-
-			ret = get_userbuf(ses_ptr, caop->src, caop->len, caop->dst, dst_len,
+			ret = get_userbuf(ses_ptr, caop->src, caop->len, caop->dst, kcaop->dst_len,
 					  kcaop->task, kcaop->mm, &src_sg, &dst_sg);
 			if (unlikely(ret)) {
 				derr(1, "get_userbuf(): Error getting user pages.");
