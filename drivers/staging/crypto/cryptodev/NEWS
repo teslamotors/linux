@@ -1,8 +1,10 @@
 Version 1.7 (unreleased)
 
-* Several bugfixes by Cristian Stoica.
+* Added support for composite AEAD keys by Cristian Stoica.
 
 * Added support for sysctl to modify verbosity by Nikolaos Tsakalakis.
+
+* Several bugfixes by Cristian Stoica.
 
 * When a driver requires aligned data but unaligned are provided, then
   zero copy is disabled to prevent driver failing to encrypt.
