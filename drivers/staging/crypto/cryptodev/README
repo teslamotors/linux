@@ -26,3 +26,15 @@ After applying the patches you can add cryptodev support by using the
 -DHAVE_CRYPTODEV and -DUSE_CRYPTODEV_DIGESTS flags during compilation.
 Note that the latter flag (digests) may induce a performance penalty
 in some systems. 
+
+
+=== Modifying and viewing verbosity at runtime ===
+
+For debugging often the verbosity of the driver needs to be adjusted.
+The sysctl tool can be used for that.
+
+# sysctl ioctl.cryptodev_verbosity
+ioctl.cryptodev_verbosity = 0
+
+# sysctl ioctl.cryptodev_verbosity=3
+ioctl.cryptodev_verbosity = 3
