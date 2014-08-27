@@ -931,6 +931,12 @@ static int yaffs_setxattr(struct dentry *dentry, const char *name,
 
 	yaffs_trace(YAFFS_TRACE_OS, "yaffs_setxattr of object %d", obj->obj_id);
 
+	/* Currently we don't support posix ACL so never accept any settings
+	 * start with "system.posix_acl_".
+	 */
+	if (strncmp(name, "system.posix_acl_", 17))
+		error = -EOPNOTSUPP;
+
 	if (error == 0) {
 		int result;
 		dev = obj->my_dev;
