@@ -3140,7 +3140,6 @@ static DECLARE_FSTYPE(yaffs2_fs_type, "yaffs2", yaffs2_read_super,
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 static struct proc_dir_entry *my_proc_entry;
-#endif
 
 static char *yaffs_dump_dev_part0(char *buf, struct yaffs_dev *dev)
 {
@@ -3229,7 +3228,6 @@ static char *yaffs_dump_dev_part1(char *buf, struct yaffs_dev *dev)
 	return buf;
 }
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 static int yaffs_proc_read(char *page,
 			   char **start,
 			   off_t offset, int count, int *eof, void *data)
@@ -3285,7 +3283,6 @@ static int yaffs_proc_read(char *page,
 
 	return buf - page < count ? buf - page : count;
 }
-#endif
 
 /**
  * Set the verbosity of the warnings and error messages.
@@ -3328,7 +3325,6 @@ static struct {
 	{NULL, 0},
 };
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 #define MAX_MASK_NAME_LENGTH 40
 static int yaffs_proc_write_trace_options(struct file *file, const char *buf,
 					  unsigned long count, void *data)
