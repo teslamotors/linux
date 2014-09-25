@@ -4,6 +4,10 @@
 # What library to link
 ldflags()
 {
+	if [ "$CROSS_CURSES_LIB" != "" ]; then
+		echo "$CROSS_CURSES_LIB"
+		exit
+	fi
 	pkg-config --libs ncursesw 2>/dev/null && exit
 	pkg-config --libs ncurses 2>/dev/null && exit
 	for ext in so a dll.a dylib ; do
@@ -25,6 +29,10 @@ ccflags()
 		echo '-DCURSES_LOC="<ncurses.h>" -DNCURSES_WIDECHAR=1'
 	elif pkg-config --cflags ncurses 2>/dev/null; then
 		echo '-DCURSES_LOC="<ncurses.h>"'
+	if [ x"$CROSS_CURSES_INC" != x ]; then
+		echo "$CROSS_CURSES_INC"
+		exit
+	fi
 	elif [ -f /usr/include/ncursesw/curses.h ]; then
 		echo '-I/usr/include/ncursesw -DCURSES_LOC="<curses.h>"'
 		echo ' -DNCURSES_WIDECHAR=1'
