@@ -615,7 +615,7 @@ static void vfat_build_dummy_83_buffer(struct inode *dir, char *msdos_name,
 				     0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x22, 0x2a,
 				     0x3a, 0x3c, 0x3e, 0x3f, 0x5b, 0x5d, 0x7c };
 	int i, tilde_pos, slash_pos;
-	u32 rand_num = random32();
+	u32 rand_num = prandom_u32();
 
 	/* We need a '~' in the prefix to make Win98 happy. */
 	tilde_pos = rand_num % 8;
@@ -650,7 +650,7 @@ static void vfat_build_dummy_83_buffer(struct inode *dir, char *msdos_name,
 				invalidchar[rand_num % sizeof(invalidchar)];
 			rand_num /= sizeof(invalidchar);
 			if (rand_num < sizeof(invalidchar))
-				rand_num = random32();
+				rand_num = prandom_u32();
 		}
 	}
 }
