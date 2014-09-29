@@ -1056,7 +1056,7 @@ static int yaffs_readlink(struct dentry *dentry, char __user * buffer,
 	if (!alias)
 		return -ENOMEM;
 
-	ret = vfs_readlink(dentry, buffer, buflen, alias);
+	ret = readlink_copy(buffer, buflen, alias);
 	kfree(alias);
 	return ret;
 }
