@@ -795,9 +795,9 @@ static int yaffs_sync_object(struct file *file, struct dentry *dentry,
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 22))
 static const struct file_operations yaffs_file_operations = {
 	.read = new_sync_read,
-	.write = do_sync_write,
+	.write = new_sync_write,
 	.read_iter = generic_file_read_iter,
-	.aio_write = generic_file_aio_write,
+	.write_iter = generic_file_write_iter,
 	.mmap = generic_file_mmap,
 	.flush = yaffs_file_flush,
 	.fsync = yaffs_sync_object,
