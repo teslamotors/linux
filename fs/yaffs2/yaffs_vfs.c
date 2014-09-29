@@ -802,7 +802,7 @@ static const struct file_operations yaffs_file_operations = {
 	.flush = yaffs_file_flush,
 	.fsync = yaffs_sync_object,
 	.splice_read = generic_file_splice_read,
-	.splice_write = generic_file_splice_write,
+	.splice_write = iter_file_splice_write,
 	.llseek = generic_file_llseek,
 };
 
