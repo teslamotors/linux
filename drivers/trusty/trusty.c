@@ -19,6 +19,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/stat.h>
 #include <linux/string.h>
 #include <linux/trusty/smcall.h>
 #include <linux/trusty/sm_err.h>
@@ -27,6 +28,7 @@
 struct trusty_state {
 	struct mutex smc_lock;
 	struct atomic_notifier_head notifier;
+	char *version_str;
 };
 
 #ifdef CONFIG_ARM64
@@ -209,6 +211,60 @@ static int trusty_remove_child(struct device *dev, void *data)
 	return 0;
 }
 
+ssize_t trusty_version_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", s->version_str);
+}
+
+DEVICE_ATTR(trusty_version, S_IRUSR, trusty_version_show, NULL);
+
+const char *trusty_version_str_get(struct device *dev)
+{
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+
+	return s->version_str;
+}
+EXPORT_SYMBOL(trusty_version_str_get);
+
+static void trusty_init_version(struct trusty_state *s, struct device *dev)
+{
+	int ret;
+	int i;
+	int version_str_len;
+
+	ret = trusty_fast_call32(dev, SMC_FC_GET_VERSION_STR, -1, 0, 0);
+	if (ret <= 0)
+		goto err_get_size;
+
+	version_str_len = ret;
+
+	s->version_str = kmalloc(version_str_len + 1, GFP_KERNEL);
+	for (i = 0; i < version_str_len; i++) {
+		ret = trusty_fast_call32(dev, SMC_FC_GET_VERSION_STR, i, 0, 0);
+		if (ret < 0)
+			goto err_get_char;
+		s->version_str[i] = ret;
+	}
+	s->version_str[i] = '\0';
+
+	dev_info(dev, "trusty version: %s\n", s->version_str);
+
+	ret = device_create_file(dev, &dev_attr_trusty_version);
+	if (ret)
+		goto err_create_file;
+	return;
+
+err_create_file:
+err_get_char:
+	kfree(s->version_str);
+	s->version_str = NULL;
+err_get_size:
+	dev_err(dev, "failed to get version: %d\n", ret);
+}
+
 static int trusty_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -229,6 +285,8 @@ static int trusty_probe(struct platform_device *pdev)
 	ATOMIC_INIT_NOTIFIER_HEAD(&s->notifier);
 	platform_set_drvdata(pdev, s);
 
+	trusty_init_version(s, &pdev->dev);
+
 	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to add children: %d\n", ret);
@@ -238,6 +296,10 @@ static int trusty_probe(struct platform_device *pdev)
 	return 0;
 
 err_add_children:
+	if (s->version_str) {
+		device_remove_file(&pdev->dev, &dev_attr_trusty_version);
+		kfree(s->version_str);
+	}
 	device_for_each_child(&pdev->dev, NULL, trusty_remove_child);
 	mutex_destroy(&s->smc_lock);
 	kfree(s);
@@ -251,6 +313,10 @@ static int trusty_remove(struct platform_device *pdev)
 
 	device_for_each_child(&pdev->dev, NULL, trusty_remove_child);
 	mutex_destroy(&s->smc_lock);
+	if (s->version_str) {
+		device_remove_file(&pdev->dev, &dev_attr_trusty_version);
+		kfree(s->version_str);
+	}
 	kfree(s);
 	return 0;
 }
