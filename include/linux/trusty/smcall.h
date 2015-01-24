@@ -56,7 +56,7 @@
 
 /* FC = Fast call, SC = Standard call */
 #define SMC_SC_RESTART_LAST	SMC_STDCALL_NR  (SMC_ENTITY_SECURE_MONITOR, 0)
-#define SMC_SC_NOP		SMC_STDCALL_NR  (SMC_ENTITY_SECURE_MONITOR, 1)
+#define SMC_SC_LOCKED_NOP	SMC_STDCALL_NR  (SMC_ENTITY_SECURE_MONITOR, 1)
 
 /**
  * SMC_SC_RESTART_FIQ - Re-enter trusty after it was interrupted by an fiq
@@ -69,6 +69,18 @@
  * Enable by selecting api version TRUSTY_API_VERSION_RESTART_FIQ (1) or later.
  */
 #define SMC_SC_RESTART_FIQ	SMC_STDCALL_NR  (SMC_ENTITY_SECURE_MONITOR, 2)
+
+/**
+ * SMC_SC_NOP - Enter trusty to run pending work.
+ *
+ * No arguments.
+ *
+ * Returns SM_ERR_NOP_INTERRUPTED or SM_ERR_NOP_DONE.
+ * If SM_ERR_NOP_INTERRUPTED is returned, the call must be repeated.
+ *
+ * Enable by selecting api version TRUSTY_API_VERSION_SMP (2) or later.
+ */
+#define SMC_SC_NOP		SMC_STDCALL_NR  (SMC_ENTITY_SECURE_MONITOR, 3)
 
 /*
  * Return from secure os to non-secure os with return value in r1
@@ -107,7 +119,8 @@
  * This call must be made before any calls that are affected by the api version.
  */
 #define TRUSTY_API_VERSION_RESTART_FIQ	(1)
-#define TRUSTY_API_VERSION_CURRENT	(1)
+#define TRUSTY_API_VERSION_SMP		(2)
+#define TRUSTY_API_VERSION_CURRENT	(2)
 #define SMC_FC_API_VERSION	SMC_FASTCALL_NR (SMC_ENTITY_SECURE_MONITOR, 11)
 
 /* TRUSTED_OS entity calls */

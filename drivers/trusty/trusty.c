@@ -28,6 +28,7 @@
 struct trusty_state {
 	struct mutex smc_lock;
 	struct atomic_notifier_head notifier;
+	struct completion cpu_idle_completion;
 	char *version_str;
 	u32 api_version;
 };
@@ -161,6 +162,17 @@ static ulong trusty_std_call_helper(struct device *dev, ulong smcnr,
 	return ret;
 }
 
+static void trusty_std_call_cpu_idle(struct trusty_state *s)
+{
+	int ret;
+
+	ret = wait_for_completion_timeout(&s->cpu_idle_completion, HZ * 10);
+	if (!ret) {
+		pr_warn("%s: timed out waiting for cpu idle to clear, retry anyway\n",
+			__func__);
+	}
+}
+
 s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
 	int ret;
@@ -169,15 +181,20 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 	BUG_ON(SMC_IS_FASTCALL(smcnr));
 	BUG_ON(SMC_IS_SMC64(smcnr));
 
-	mutex_lock(&s->smc_lock);
+	if (smcnr != SMC_SC_NOP) {
+		mutex_lock(&s->smc_lock);
+		reinit_completion(&s->cpu_idle_completion);
+	}
 
 	dev_dbg(dev, "%s(0x%x 0x%x 0x%x 0x%x) started\n",
 		__func__, smcnr, a0, a1, a2);
 
 	ret = trusty_std_call_helper(dev, smcnr, a0, a1, a2);
-	while (ret == SM_ERR_INTERRUPTED) {
+	while (ret == SM_ERR_INTERRUPTED || ret == SM_ERR_CPU_IDLE) {
 		dev_dbg(dev, "%s(0x%x 0x%x 0x%x 0x%x) interrupted\n",
 			__func__, smcnr, a0, a1, a2);
+		if (ret == SM_ERR_CPU_IDLE)
+			trusty_std_call_cpu_idle(s);
 		ret = trusty_std_call_helper(dev, SMC_SC_RESTART_LAST, 0, 0, 0);
 	}
 	dev_dbg(dev, "%s(0x%x 0x%x 0x%x 0x%x) returned 0x%x\n",
@@ -185,7 +202,10 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 
 	WARN_ONCE(ret == SM_ERR_PANIC, "trusty crashed");
 
-	mutex_unlock(&s->smc_lock);
+	if (smcnr == SMC_SC_NOP)
+		complete(&s->cpu_idle_completion);
+	else
+		mutex_unlock(&s->smc_lock);
 
 	return ret;
 }
@@ -315,6 +335,7 @@ static int trusty_probe(struct platform_device *pdev)
 	}
 	mutex_init(&s->smc_lock);
 	ATOMIC_INIT_NOTIFIER_HEAD(&s->notifier);
+	init_completion(&s->cpu_idle_completion);
 	platform_set_drvdata(pdev, s);
 
 	trusty_init_version(s, &pdev->dev);

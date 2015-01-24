@@ -154,6 +154,22 @@ static int trusty_irq_call_notify(struct notifier_block *nb,
 }
 
 
+static void trusty_irq_work_func_locked_nop(struct work_struct *work)
+{
+	int ret;
+	struct trusty_irq_state *is =
+		container_of(work, struct trusty_irq_work, work)->is;
+
+	dev_dbg(is->dev, "%s\n", __func__);
+
+	ret = trusty_std_call32(is->trusty_dev, SMC_SC_LOCKED_NOP, 0, 0, 0);
+	if (ret != 0)
+		dev_err(is->dev, "%s: SMC_SC_LOCKED_NOP failed %d",
+			__func__, ret);
+
+	dev_dbg(is->dev, "%s: done\n", __func__);
+}
+
 static void trusty_irq_work_func(struct work_struct *work)
 {
 	int ret;
@@ -162,8 +178,11 @@ static void trusty_irq_work_func(struct work_struct *work)
 
 	dev_dbg(is->dev, "%s\n", __func__);
 
-	ret = trusty_std_call32(is->trusty_dev, SMC_SC_NOP, 0, 0, 0);
-	if (ret != 0)
+	do {
+		ret = trusty_std_call32(is->trusty_dev, SMC_SC_NOP, 0, 0, 0);
+	} while (ret == SM_ERR_NOP_INTERRUPTED);
+
+	if (ret != SM_ERR_NOP_DONE)
 		dev_err(is->dev, "%s: SMC_SC_NOP failed %d", __func__, ret);
 
 	dev_dbg(is->dev, "%s: done\n", __func__);
@@ -397,6 +416,7 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	unsigned int cpu;
 	unsigned long irq_flags;
 	struct trusty_irq_state *is;
+	work_func_t work_func;
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
@@ -431,12 +451,17 @@ static int trusty_irq_probe(struct platform_device *pdev)
 		goto err_trusty_call_notifier_register;
 	}
 
+	if (trusty_get_api_version(is->trusty_dev) < TRUSTY_API_VERSION_SMP)
+		work_func = trusty_irq_work_func_locked_nop;
+	else
+		work_func = trusty_irq_work_func;
+
 	for_each_possible_cpu(cpu) {
 		struct trusty_irq_work *trusty_irq_work;
 
 		trusty_irq_work = per_cpu_ptr(is->irq_work, cpu);
 		trusty_irq_work->is = is;
-		INIT_WORK(&trusty_irq_work->work, trusty_irq_work_func);
+		INIT_WORK(&trusty_irq_work->work, work_func);
 	}
 
 	for (irq = 0; irq >= 0;)

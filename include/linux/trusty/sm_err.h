@@ -36,5 +36,8 @@
 #define SM_ERR_END_OF_INPUT		-10
 #define SM_ERR_PANIC			-11	/* Secure OS crashed */
 #define SM_ERR_FIQ_INTERRUPTED		-12	/* Got interrupted by FIQ. Call back with SMC_SC_RESTART_FIQ on same CPU */
+#define SM_ERR_CPU_IDLE			-13	/* SMC call waiting for another CPU */
+#define SM_ERR_NOP_INTERRUPTED		-14	/* Got interrupted. Call back with new SMC_SC_NOP */
+#define SM_ERR_NOP_DONE			-15	/* Cpu idle after SMC_SC_NOP (not an error) */
 
 #endif
