@@ -1660,6 +1660,30 @@ static void run_hrtimer_softirq(struct softirq_action *h)
 }
 
 /*
+ * Called from timer softirq every jiffy, expire hrtimers:
+ *
+ * For HRT its the fall back code to run the softirq in the timer
+ * softirq context in case the hrtimer initialization failed or has
+ * not been done yet.
+ */
+void hrtimer_run_pending(void)
+{
+	if (hrtimer_hres_active())
+		return;
+
+	/*
+	 * This _is_ ugly: We have to check in the softirq context,
+	 * whether we can switch to highres and / or nohz mode. The
+	 * clocksource switch happens in the timer interrupt with
+	 * xtime_lock held. Notification from there only sets the
+	 * check bit in the tick_oneshot code, otherwise we might
+	 * deadlock vs. xtime_lock.
+	 */
+	if (tick_check_oneshot_change(!hrtimer_is_hres_enabled()))
+		hrtimer_switch_to_hres();
+}
+
+/*
  * Called from hardirq context every jiffy
  */
 void hrtimer_run_queues(void)
@@ -1670,13 +1694,6 @@ void hrtimer_run_queues(void)
 	int index, gettime = 1, raise = 0;
 
 	if (hrtimer_hres_active())
-		return;
-
-	/*
-	 * Check whether we can switch to highres mode.
-	 */
-	if (tick_check_oneshot_change(!hrtimer_is_hres_enabled())
-	    && hrtimer_switch_to_hres())
 		return;
 
 	for (index = 0; index < HRTIMER_MAX_CLOCK_BASES; index++) {
