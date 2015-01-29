@@ -11,6 +11,7 @@
 #include <linux/fs.h>
 #include <linux/atomic.h>
 #include <linux/page-flags.h>
+#include <linux/locallock.h>
 #include <asm/page.h>
 
 struct notifier_block;
@@ -260,7 +261,8 @@ struct swap_info_struct {
 void *workingset_eviction(struct address_space *mapping, struct page *page);
 bool workingset_refault(void *shadow);
 void workingset_activation(struct page *page);
-extern struct list_lru workingset_shadow_nodes;
+extern struct list_lru __workingset_shadow_nodes;
+DECLARE_LOCAL_IRQ_LOCK(workingset_shadow_lock);
 
 static inline unsigned int workingset_node_pages(struct radix_tree_node *node)
 {

@@ -264,7 +264,8 @@ void workingset_activation(struct page *page)
  * point where they would still be useful.
  */
 
-struct list_lru workingset_shadow_nodes;
+struct list_lru __workingset_shadow_nodes;
+DEFINE_LOCAL_IRQ_LOCK(workingset_shadow_lock);
 
 static unsigned long count_shadow_nodes(struct shrinker *shrinker,
 					struct shrink_control *sc)
@@ -274,9 +275,9 @@ static unsigned long count_shadow_nodes(struct shrinker *shrinker,
 	unsigned long pages;
 
 	/* list_lru lock nests inside IRQ-safe mapping->tree_lock */
-	local_irq_disable();
-	shadow_nodes = list_lru_count_node(&workingset_shadow_nodes, sc->nid);
-	local_irq_enable();
+	local_lock_irq(workingset_shadow_lock);
+	shadow_nodes = list_lru_count_node(&__workingset_shadow_nodes, sc->nid);
+	local_unlock_irq(workingset_shadow_lock);
 
 	pages = node_present_pages(sc->nid);
 	/*
@@ -362,9 +363,9 @@ static enum lru_status shadow_lru_isolate(struct list_head *item,
 	spin_unlock(&mapping->tree_lock);
 	ret = LRU_REMOVED_RETRY;
 out:
-	local_irq_enable();
+	local_unlock_irq(workingset_shadow_lock);
 	cond_resched();
-	local_irq_disable();
+	local_lock_irq(workingset_shadow_lock);
 	spin_lock(lru_lock);
 	return ret;
 }
@@ -375,10 +376,10 @@ static unsigned long scan_shadow_nodes(struct shrinker *shrinker,
 	unsigned long ret;
 
 	/* list_lru lock nests inside IRQ-safe mapping->tree_lock */
-	local_irq_disable();
-	ret =  list_lru_walk_node(&workingset_shadow_nodes, sc->nid,
+	local_lock_irq(workingset_shadow_lock);
+	ret =  list_lru_walk_node(&__workingset_shadow_nodes, sc->nid,
 				  shadow_lru_isolate, NULL, &sc->nr_to_scan);
-	local_irq_enable();
+	local_unlock_irq(workingset_shadow_lock);
 	return ret;
 }
 
@@ -399,7 +400,7 @@ static int __init workingset_init(void)
 {
 	int ret;
 
-	ret = list_lru_init_key(&workingset_shadow_nodes, &shadow_nodes_key);
+	ret = list_lru_init_key(&__workingset_shadow_nodes, &shadow_nodes_key);
 	if (ret)
 		goto err;
 	ret = register_shrinker(&workingset_shadow_shrinker);
@@ -407,7 +408,7 @@ static int __init workingset_init(void)
 		goto err_list_lru;
 	return 0;
 err_list_lru:
-	list_lru_destroy(&workingset_shadow_nodes);
+	list_lru_destroy(&__workingset_shadow_nodes);
 err:
 	return ret;
 }
