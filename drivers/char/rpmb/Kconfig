@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0
+config RPMB
+	tristate "RPMB partition interface"
+	help
+	  Unified RPMB partition interface for eMMC and UFS.
+	  Provides interface for in kernel security controllers to
+	  access RPMB partition.
+
+	  If unsure, select N.

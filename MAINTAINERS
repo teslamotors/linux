@@ -11564,6 +11564,13 @@ F:	include/net/rose.h
 F:	include/uapi/linux/rose.h
 F:	net/rose/
 
+RPMB SUBSYSTEM
+M:	Tomas Winkler <tomas.winkler@intel.com>
+L:	linux-kernel@vger.kernel.org
+S:	Supported
+F:	drivers/char/rpmb/*
+F:	include/linux/rpmb.h
+
 RTL2830 MEDIA DRIVER
 M:	Antti Palosaari <crope@iki.fi>
 L:	linux-media@vger.kernel.org
