@@ -22,6 +22,9 @@
 #define spd_cmd_size(_cmd) \
 	(sizeof(struct spd_cmd_hdr) + \
 	 sizeof(struct spd_cmd_##_cmd))
+#define spd_cmd_rpmb_size(_cmd) \
+	(spd_cmd_size(_cmd) + SPD_CLIENT_RPMB_DATA_MAX_SIZE)
+
 #define to_spd_hdr(_buf) (struct spd_cmd_hdr *)(_buf)
 #define to_spd_cmd(_cmd, _buf) \
 	(struct spd_cmd_##_cmd *)((_buf) + sizeof(struct spd_cmd_hdr))
@@ -241,7 +244,7 @@ int mei_spd_cmd_storage_status_req(struct mei_spd *spd)
 
 	req = to_spd_cmd(storage_status_req, spd->buf);
 	req->gpp_on = mei_spd_gpp_is_open(spd);
-	req->rpmb_on = 0;
+	req->rpmb_on = mei_spd_rpmb_is_open(spd);
 
 	ret = mei_cldev_send(spd->cldev, spd->buf, req_len);
 	if (ret != req_len) {
@@ -318,6 +321,60 @@ static int mei_spd_cmd_gpp_read(struct mei_spd *spd, struct spd_cmd *cmd,
 	return SPD_STATUS_SUCCESS;
 }
 
+static int mei_spd_cmd_rpmb_read(struct mei_spd *spd,
+				 struct spd_cmd *cmd,
+				 ssize_t out_buf_sz)
+{
+	u8 *frame = cmd->rpmb_read.rpmb_frame;
+
+	if (out_buf_sz != spd_cmd_rpmb_size(rpmb_read)) {
+		spd_err(spd, "Wrong request size\n");
+		return SPD_STATUS_INVALID_COMMAND;
+	}
+
+	if (mei_spd_rpmb_cmd_req(spd, RPMB_READ_DATA, frame))
+		return SPD_STATUS_GENERAL_FAILURE;
+
+	spd_dbg(spd, "read RPMB frame performed\n");
+	return SPD_STATUS_SUCCESS;
+}
+
+static int mei_spd_cmd_rpmb_write(struct mei_spd *spd,
+				  struct spd_cmd *cmd,
+				  ssize_t out_buf_sz)
+{
+	u8 *frame = cmd->rpmb_write.rpmb_frame;
+
+	if (out_buf_sz != spd_cmd_rpmb_size(rpmb_write)) {
+		spd_err(spd, "Wrong request size\n");
+		return SPD_STATUS_INVALID_COMMAND;
+	}
+
+	if (mei_spd_rpmb_cmd_req(spd, RPMB_WRITE_DATA, frame))
+		return SPD_STATUS_GENERAL_FAILURE;
+
+	spd_dbg(spd, "write RPMB frame performed\n");
+	return SPD_STATUS_SUCCESS;
+}
+
+static int mei_spd_cmd_rpmb_get_counter(struct mei_spd *spd,
+					struct spd_cmd *cmd,
+					ssize_t out_buf_sz)
+{
+	u8 *frame = cmd->rpmb_get_counter.rpmb_frame;
+
+	if (out_buf_sz != spd_cmd_rpmb_size(rpmb_get_counter)) {
+		spd_err(spd, "Wrong request size\n");
+		return SPD_STATUS_INVALID_COMMAND;
+	}
+
+	if (mei_spd_rpmb_cmd_req(spd, RPMB_WRITE_DATA, frame))
+		return SPD_STATUS_GENERAL_FAILURE;
+
+	spd_dbg(spd, "get RPMB counter performed\n");
+	return SPD_STATUS_SUCCESS;
+}
+
 static int mei_spd_cmd_response(struct mei_spd *spd, ssize_t out_buf_sz)
 {
 	struct spd_cmd *cmd = (struct spd_cmd *)spd->buf;
@@ -336,6 +393,7 @@ static int mei_spd_cmd_response(struct mei_spd *spd, ssize_t out_buf_sz)
 		if (ret)
 			break;
 		mutex_unlock(&spd->lock);
+		mei_spd_rpmb_init(spd);
 		mei_spd_gpp_init(spd);
 		mutex_lock(&spd->lock);
 		break;
@@ -377,10 +435,13 @@ static int mei_spd_cmd_request(struct mei_spd *spd, ssize_t out_buf_sz)
 
 	switch (spd_cmd) {
 	case SPD_RPMB_WRITE_CMD:
+		ret = mei_spd_cmd_rpmb_write(spd, cmd, out_buf_sz);
+		break;
 	case SPD_RPMB_READ_CMD:
+		ret = mei_spd_cmd_rpmb_read(spd, cmd, out_buf_sz);
+		break;
 	case SPD_RPMB_GET_COUNTER_CMD:
-		spd_err(spd, "Command %d is not supported\n", spd_cmd);
-		ret = SPD_STATUS_NOT_SUPPORTED;
+		ret = mei_spd_cmd_rpmb_get_counter(spd, cmd, out_buf_sz);
 		break;
 	case SPD_GPP_WRITE_CMD:
 		ret = mei_spd_cmd_gpp_write(spd, cmd, out_buf_sz);

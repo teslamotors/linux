@@ -63,6 +63,7 @@ static int mei_spd_probe(struct mei_cl_device *cldev,
 
 	spd_dbg(spd, "protocol version %d\n", ver);
 	mei_spd_gpp_prepare(spd);
+	mei_spd_rpmb_prepare(spd);
 	mutex_lock(&spd->lock);
 	ret = mei_spd_cmd_init_req(spd);
 	mutex_unlock(&spd->lock);
@@ -90,6 +91,7 @@ static int mei_spd_remove(struct mei_cl_device *cldev)
 	if (spd->state == MEI_SPD_STATE_RUNNING) {
 		spd->state = MEI_SPD_STATE_STOPPING;
 		mei_spd_gpp_exit(spd);
+		mei_spd_rpmb_exit(spd);
 		mutex_lock(&spd->lock);
 		mei_spd_cmd_storage_status_req(spd);
 		mutex_unlock(&spd->lock);

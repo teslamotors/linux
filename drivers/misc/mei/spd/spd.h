@@ -60,6 +60,7 @@
 
 #include <linux/fs.h>
 #include <linux/mei_cl_bus.h>
+#include <linux/rpmb.h>
 
 enum mei_spd_state {
 	MEI_SPD_STATE_INIT,
@@ -79,6 +80,8 @@ enum mei_spd_state {
  * @dev_type:  storage device type
  * @dev_id_sz: device id size
  * @dev_id:    device id string
+ * @rdev:      RPMB device
+ * @rpmb_interface: gpp class interface for discovery
  * @lock:      mutex to sync request processing
  * @state:     driver state
  * @status_send_w: workitem for sending status to the FW
@@ -94,6 +97,8 @@ struct mei_spd {
 	u32    dev_type;
 	u32    dev_id_sz;
 	u8     *dev_id;
+	struct rpmb_dev *rdev;
+	struct class_interface rpmb_interface;
 	struct mutex lock;
 	enum mei_spd_state state;
 	struct work_struct status_send_w;
@@ -118,6 +123,12 @@ int mei_spd_gpp_init(struct mei_spd *spd);
 void mei_spd_gpp_exit(struct mei_spd *spd);
 int mei_spd_gpp_read(struct mei_spd *spd, size_t off, u8 *data, size_t size);
 int mei_spd_gpp_write(struct mei_spd *spd, size_t off, u8 *data, size_t size);
+
+void mei_spd_rpmb_prepare(struct mei_spd *spd);
+bool mei_spd_rpmb_is_open(struct mei_spd *spd);
+int mei_spd_rpmb_init(struct mei_spd *spd);
+void mei_spd_rpmb_exit(struct mei_spd *spd);
+int mei_spd_rpmb_cmd_req(struct mei_spd *spd, u16 req_type, void *buf);
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 int mei_spd_dbgfs_register(struct mei_spd *spd, const char *name);
