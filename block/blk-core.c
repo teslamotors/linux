@@ -630,7 +630,7 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
 	q->bypass_depth = 1;
 	__set_bit(QUEUE_FLAG_BYPASS, &q->queue_flags);
 
-	init_waitqueue_head(&q->mq_freeze_wq);
+	init_swait_head(&q->mq_freeze_wq);
 
 	if (blkcg_init_queue(q))
 		goto fail_bdi;
