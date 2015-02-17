@@ -90,7 +90,7 @@ static void *__kmap_pgprot(struct page *page, unsigned long addr, pgprot_t prot)
 
 	BUG_ON(Page_dcache_dirty(page));
 
-	pagefault_disable();
+	raw_pagefault_disable();
 	idx = (addr >> PAGE_SHIFT) & (FIX_N_COLOURS - 1);
 	idx += in_interrupt() ? FIX_N_COLOURS : 0;
 	vaddr = __fix_to_virt(FIX_CMAP_END - idx);
@@ -146,7 +146,7 @@ void kunmap_coherent(void)
 	tlbw_use_hazard();
 	write_c0_entryhi(old_ctx);
 	local_irq_restore(flags);
-	pagefault_enable();
+	raw_pagefault_enable();
 }
 
 void copy_user_highpage(struct page *to, struct page *from,
