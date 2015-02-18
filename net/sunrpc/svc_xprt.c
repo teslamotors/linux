@@ -357,7 +357,7 @@ static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
 		return;
 	}
 
-	cpu = get_cpu();
+	cpu = get_cpu_light();
 	pool = svc_pool_for_cpu(xprt->xpt_server, cpu);
 	spin_lock_bh(&pool->sp_lock);
 
@@ -390,7 +390,7 @@ static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
 	}
 
 	spin_unlock_bh(&pool->sp_lock);
-	put_cpu();
+	put_cpu_light();
 }
 
 /*
