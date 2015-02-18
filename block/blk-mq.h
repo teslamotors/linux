@@ -9,7 +9,6 @@ struct blk_mq_ctx {
 		struct list_head	rq_list;
 	}  ____cacheline_aligned_in_smp;
 
-	spinlock_t		cpu_lock;
 	unsigned int		cpu;
 	unsigned int		index_hw;
 
@@ -77,7 +76,6 @@ static inline struct blk_mq_ctx *__blk_mq_get_ctx(struct request_queue *q,
 	struct blk_mq_ctx *ctx;
 
 	ctx = per_cpu_ptr(q->queue_ctx, cpu);
-	spin_lock(&ctx->cpu_lock);
 	return ctx;
 }
 
@@ -92,14 +90,8 @@ static inline struct blk_mq_ctx *blk_mq_get_ctx(struct request_queue *q)
 	return __blk_mq_get_ctx(q, get_cpu_light());
 }
 
-static void __blk_mq_put_ctx(struct blk_mq_ctx *ctx)
-{
-	spin_unlock(&ctx->cpu_lock);
-}
-
 static inline void blk_mq_put_ctx(struct blk_mq_ctx *ctx)
 {
-	__blk_mq_put_ctx(ctx);
 	put_cpu_light();
 }
 
