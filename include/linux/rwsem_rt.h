@@ -20,6 +20,7 @@
 
 struct rw_semaphore {
 	struct rt_mutex		lock;
+	int			read_depth;
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 	struct lockdep_map	dep_map;
 #endif
