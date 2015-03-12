@@ -147,7 +147,9 @@ bool irq_work_needs_cpu(void)
 
 	if (llist_empty(raised))
 		if (llist_empty(lazy))
+#ifdef CONFIG_PREEMPT_RT_FULL
 			if (llist_empty(this_cpu_ptr(&hirq_work_list)))
+#endif
 				return false;
 
 	/* All work should have been flushed before going offline */
