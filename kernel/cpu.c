@@ -265,7 +265,7 @@ static int sync_unplug_thread(void *data)
 	 * we don't want any more work on this CPU.
 	 */
 	current->flags &= ~PF_NO_SETAFFINITY;
-	do_set_cpus_allowed(current, cpu_present_mask);
+	set_cpus_allowed_ptr(current, cpu_present_mask);
 	migrate_me();
 	return 0;
 }
