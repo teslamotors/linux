@@ -16,6 +16,9 @@
 
 #include <linux/kernel.h>
 #include <linux/trusty/sm_err.h>
+#include <linux/device.h>
+#include <linux/pagemap.h>
+
 
 #ifdef CONFIG_TRUSTY
 s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2);
@@ -53,4 +56,16 @@ int trusty_call_notifier_register(struct device *dev,
 int trusty_call_notifier_unregister(struct device *dev,
 				    struct notifier_block *n);
 const char *trusty_version_str_get(struct device *dev);
+
+struct ns_mem_page_info {
+	uint64_t attr;
+};
+
+int trusty_encode_page_info(struct ns_mem_page_info *inf,
+			    struct page *page, pgprot_t pgprot);
+
+int trusty_call32_mem_buf(struct device *dev, u32 smcnr,
+			  struct page *page,  u32 size,
+			  pgprot_t pgprot);
+
 #endif
