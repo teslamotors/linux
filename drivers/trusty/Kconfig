@@ -33,4 +33,10 @@ config TRUSTY_LOG
 	depends on TRUSTY
 	default y
 
+config TRUSTY_VIRTIO
+	tristate "Trusty virtio support"
+	depends on TRUSTY
+	select VIRTIO
+	default y
+
 endmenu
