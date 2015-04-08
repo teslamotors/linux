@@ -311,7 +311,7 @@ struct kvm_s390_local_interrupt {
 	struct list_head list;
 	atomic_t active;
 	struct kvm_s390_float_interrupt *float_int;
-	wait_queue_head_t *wq;
+	struct swait_head *wq;
 	atomic_t *cpuflags;
 	unsigned int action_bits;
 };
