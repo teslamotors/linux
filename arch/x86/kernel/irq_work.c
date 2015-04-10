@@ -38,7 +38,6 @@ __visible void smp_trace_irq_work_interrupt(struct pt_regs *regs)
 	exiting_irq();
 }
 
-#ifndef CONFIG_PREEMPT_RT_FULL
 void arch_irq_work_raise(void)
 {
 #ifdef CONFIG_X86_LOCAL_APIC
@@ -49,4 +48,3 @@ void arch_irq_work_raise(void)
 	apic_wait_icr_idle();
 #endif
 }
-#endif

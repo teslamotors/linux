@@ -17,6 +17,7 @@
 #include <linux/cpu.h>
 #include <linux/notifier.h>
 #include <linux/smp.h>
+#include <linux/interrupt.h>
 #include <asm/processor.h>
 
 
@@ -51,11 +52,7 @@ static bool irq_work_claim(struct irq_work *work)
 	return true;
 }
 
-#ifdef CONFIG_PREEMPT_RT_FULL
-void arch_irq_work_raise(void)
-#else
 void __weak arch_irq_work_raise(void)
-#endif
 {
 	/*
 	 * Lame architectures will get the timer tick callback
@@ -118,8 +115,9 @@ bool irq_work_queue(struct irq_work *work)
 		if (llist_add(&work->llnode, this_cpu_ptr(&hirq_work_list)))
 			arch_irq_work_raise();
 	} else {
-		if (llist_add(&work->llnode, this_cpu_ptr(&lazy_list)))
-			arch_irq_work_raise();
+		if (llist_add(&work->llnode, this_cpu_ptr(&lazy_list)) &&
+		    tick_nohz_tick_stopped())
+			raise_softirq(TIMER_SOFTIRQ);
 	}
 #else
 	if (work->flags & IRQ_WORK_LAZY) {
@@ -203,30 +201,25 @@ static void irq_work_run_list(struct llist_head *list)
 void irq_work_run(void)
 {
 #ifdef CONFIG_PREEMPT_RT_FULL
-	if (in_irq()) {
-		irq_work_run_list(this_cpu_ptr(&hirq_work_list));
-		return;
-	}
-#endif
+	irq_work_run_list(this_cpu_ptr(&hirq_work_list));
+#else
 	irq_work_run_list(this_cpu_ptr(&raised_list));
 	irq_work_run_list(this_cpu_ptr(&lazy_list));
+#endif
 }
 EXPORT_SYMBOL_GPL(irq_work_run);
 
 void irq_work_tick(void)
 {
-	struct llist_head *raised;
-
 #ifdef CONFIG_PREEMPT_RT_FULL
-	if (in_irq()) {
-		irq_work_run_list(this_cpu_ptr(&hirq_work_list));
-		return;
-	}
-#endif
-	raised = &__get_cpu_var(raised_list);
-	if (!llist_empty(raised))
+	irq_work_run_list(this_cpu_ptr(&lazy_list));
+#else
+	struct llist_head *raised = &__get_cpu_var(raised_list);
+
+	if (!llist_empty(raised) && !arch_irq_work_has_interrupt())
 		irq_work_run_list(raised);
 	irq_work_run_list(&__get_cpu_var(lazy_list));
+#endif
 }
 
 /*
