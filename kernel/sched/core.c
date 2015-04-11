@@ -754,14 +754,29 @@ static inline bool got_nohz_idle_kick(void)
 #endif /* CONFIG_NO_HZ_COMMON */
 
 #ifdef CONFIG_NO_HZ_FULL
+
+static int ksoftirqd_running(void)
+{
+	struct task_struct *softirqd;
+
+	if (!IS_ENABLED(CONFIG_PREEMPT_RT_FULL))
+		return 0;
+	softirqd = this_cpu_ksoftirqd();
+	if (softirqd && softirqd->on_rq)
+		return 1;
+	return 0;
+}
+
 bool sched_can_stop_tick(void)
 {
 	/*
 	 * More than one running task need preemption.
 	 * nr_running update is assumed to be visible
 	 * after IPI is sent from wakers.
+	 *
+	 * NOTE, RT: if ksoftirqd is awake, subtract it.
 	 */
-	if (this_rq()->nr_running > 1)
+	if (this_rq()->nr_running - ksoftirqd_running() > 1)
 		return false;
 
 	return true;
