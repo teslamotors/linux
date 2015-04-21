@@ -456,7 +456,7 @@ static void v4l_print_buffer(const void *arg, bool write_only)
 	const struct v4l2_plane *plane;
 	int i;
 
-	pr_cont("%02ld:%02d:%02d.%08ld index=%d, type=%s, stream=%u, "
+	pr_cont("%02ld:%02d:%02d.%08ld index=%d, type=%s, request %u, stream=%u, "
 		"flags=0x%08x, field=%s, sequence=%d, memory=%s",
 			p->timestamp.tv_sec / 3600,
 			(int)(p->timestamp.tv_sec / 60) % 60,
@@ -464,7 +464,7 @@ static void v4l_print_buffer(const void *arg, bool write_only)
 			(long)p->timestamp.tv_usec,
 			p->index,
 			prt_names(v4l2_buf_type_type(p->type), v4l2_type_names),
-			v4l2_buf_type_substream(p->type),
+			p->request, v4l2_buf_type_substream(p->type),
 			p->flags, prt_names(p->field, v4l2_field_names),
 			p->sequence, prt_names(p->memory, v4l2_memory_names));
 
@@ -516,7 +516,8 @@ static void v4l_print_streamparm(const void *arg, bool write_only)
 	const struct v4l2_streamparm *p = arg;
 	u32 buf_type = v4l2_buf_type_type(p->type);
 
-	pr_cont("type=%s, substream=%u", prt_names(buf_type, v4l2_type_names),
+	pr_cont("type=%s, substream=%u", prt_names(v4l2_buf_type_type(p->type),
+						   v4l2_type_names),
 		v4l2_buf_type_substream(p->type));
 
 	if (buf_type == V4L2_BUF_TYPE_VIDEO_CAPTURE ||

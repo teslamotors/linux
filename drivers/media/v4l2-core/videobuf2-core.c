@@ -677,7 +677,7 @@ static void __fill_v4l2_buffer(struct vb2_buffer *vb, struct v4l2_buffer *b)
 
 	/* Copy back data such as timestamp, flags, etc. */
 	memcpy(b, &vb->v4l2_buf, offsetof(struct v4l2_buffer, m));
-	b->reserved2 = vb->v4l2_buf.reserved2;
+	b->request = vb->v4l2_buf.request;
 	b->reserved = vb->v4l2_buf.reserved;
 
 	if (V4L2_TYPE_IS_MULTIPLANAR(q->type)) {
@@ -1400,6 +1400,7 @@ static void __fill_vb2_buffer(struct vb2_buffer *vb, const struct v4l2_buffer *b
 		/* Zero any output buffer flags as this is a capture buffer */
 		vb->v4l2_buf.flags &= ~V4L2_BUFFER_OUT_FLAGS;
 	}
+	vb->v4l2_buf.request = b->request;
 }
 
 /**

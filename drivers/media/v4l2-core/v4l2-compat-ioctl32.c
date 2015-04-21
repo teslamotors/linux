@@ -327,7 +327,7 @@ struct v4l2_buffer32 {
 		__s32		fd;
 	} m;
 	__u32			length;
-	__u32			reserved2;
+	__u32			request;
 	__u32			reserved;
 };
 
@@ -396,7 +396,8 @@ static int get_v4l2_buffer32(struct v4l2_buffer *kp, struct v4l2_buffer32 __user
 		get_user(kp->type, &up->type) ||
 		get_user(kp->flags, &up->flags) ||
 		get_user(kp->memory, &up->memory) ||
-		get_user(kp->length, &up->length))
+		get_user(kp->length, &up->length) ||
+		get_user(kp->request, &up->request))
 			return -EFAULT;
 
 	if (V4L2_TYPE_IS_OUTPUT(kp->type))
@@ -488,9 +489,9 @@ static int put_v4l2_buffer32(struct v4l2_buffer *kp, struct v4l2_buffer32 __user
 		put_user(kp->timestamp.tv_usec, &up->timestamp.tv_usec) ||
 		copy_to_user(&up->timecode, &kp->timecode, sizeof(struct v4l2_timecode)) ||
 		put_user(kp->sequence, &up->sequence) ||
-		put_user(kp->reserved2, &up->reserved2) ||
-		put_user(kp->reserved, &up->reserved) ||
-		put_user(kp->length, &up->length))
+		put_user(kp->length, &up->length) ||
+		put_user(kp->request, &up->request) ||
+		put_user(kp->reserved, &up->reserved))
 			return -EFAULT;
 
 	if (V4L2_TYPE_IS_MULTIPLANAR(kp->type)) {
