@@ -6,6 +6,9 @@ compatible:
 - "ti,omap4-wdt" for OMAP4
 - ti,hwmods: Name of the hwmod associated to the WDT
 
+Optional properties:
+- timeout-sec : default watchdog timeout in seconds
+
 Examples:
 
 wdt2: wdt@4a314000 {
