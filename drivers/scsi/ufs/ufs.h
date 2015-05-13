@@ -527,6 +527,8 @@ struct ufs_dev_info {
 struct ufs_dev_desc {
 	u16 wmanufacturerid;
 	char *model;
+	char *serial_no;
+	size_t serial_no_len;
 };
 
 #endif /* End of Header */

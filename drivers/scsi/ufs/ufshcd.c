@@ -42,6 +42,7 @@
 #include <linux/devfreq.h>
 #include <linux/nls.h>
 #include <linux/of.h>
+#include <linux/string.h>
 #include <linux/rpmb.h>
 
 #include "ufshcd.h"
@@ -6137,10 +6138,17 @@ static struct rpmb_ops ufshcd_rpmb_dev_ops = {
 	.type = RPMB_TYPE_UFS,
 };
 
-static inline void ufshcd_rpmb_add(struct ufs_hba *hba)
+static inline void ufshcd_rpmb_add(struct ufs_hba *hba,
+				   struct ufs_dev_desc *dev_desc)
 {
 	struct rpmb_dev *rdev;
 	int ret;
+
+	ufshcd_rpmb_dev_ops.dev_id = kmemdup(dev_desc->serial_no,
+					     dev_desc->serial_no_len,
+					     GFP_KERNEL);
+	if (ufshcd_rpmb_dev_ops.dev_id)
+		ufshcd_rpmb_dev_ops.dev_id_len = dev_desc->serial_no_len;
 
 	ret = scsi_device_get(hba->sdev_ufs_rpmb);
 	if (ret)
@@ -6172,6 +6180,9 @@ static inline void ufshcd_rpmb_remove(struct ufs_hba *hba)
 	rpmb_dev_unregister(hba->dev);
 	scsi_device_put(hba->sdev_ufs_rpmb);
 	hba->sdev_ufs_rpmb = NULL;
+
+	kfree(ufshcd_rpmb_dev_ops.dev_id);
+	ufshcd_rpmb_dev_ops.dev_id = NULL;
 
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 }
@@ -6274,6 +6285,15 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 				      &dev_desc->model, SD_ASCII_STD);
 	if (ret < 0) {
 		dev_err(hba->dev, "%s: Failed reading Product Name. err = %d\n",
+			__func__, ret);
+		goto out;
+	}
+
+	ret = ufshcd_read_string_desc(hba,
+				      desc_buf[DEVICE_DESC_PARAM_SN],
+				      &dev_desc->serial_no, SD_RAW);
+	if (ret < 0) {
+		dev_err(hba->dev, "%s: Failed reading Serial No. err = %d\n",
 			__func__, ret);
 		goto out;
 	}
@@ -6573,7 +6593,6 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 	}
 
 	ufs_fixup_device_setup(hba, &card);
-	ufs_put_device_desc(&card);
 
 	ufshcd_tune_unipro_params(hba);
 
@@ -6623,7 +6642,7 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 		if (ufshcd_scsi_add_wlus(hba))
 			goto out;
 
-		ufshcd_rpmb_add(hba);
+		ufshcd_rpmb_add(hba, &card);
 
 		/* Initialize devfreq after UFS device is detected */
 		if (ufshcd_is_clkscaling_supported(hba)) {
@@ -6654,6 +6673,8 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 		hba->is_init_prefetch = true;
 
 out:
+
+	ufs_put_device_desc(&card);
 	/*
 	 * If we failed to initialize the device or the device is not
 	 * present, turn off the power/clocks etc.
