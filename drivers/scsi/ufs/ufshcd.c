@@ -42,6 +42,7 @@
 #include <linux/devfreq.h>
 #include <linux/nls.h>
 #include <linux/of.h>
+#include <linux/string.h>
 #include <linux/rpmb.h>
 
 #include "ufshcd.h"
@@ -6167,6 +6168,12 @@ static inline void ufshcd_rpmb_add(struct ufs_hba *hba,
 	u8 rpmb_rw_size = 1;
 	int ret;
 
+	ufshcd_rpmb_dev_ops.dev_id = kmemdup(dev_desc->serial_no,
+					     dev_desc->serial_no_len,
+					     GFP_KERNEL);
+	if (ufshcd_rpmb_dev_ops.dev_id)
+		ufshcd_rpmb_dev_ops.dev_id_len = dev_desc->serial_no_len;
+
 	ret = scsi_device_get(hba->sdev_ufs_rpmb);
 	if (ret)
 		goto out_put_dev;
@@ -6211,6 +6218,9 @@ static inline void ufshcd_rpmb_remove(struct ufs_hba *hba)
 	rpmb_dev_unregister_by_device(hba->dev, 0);
 	scsi_device_put(hba->sdev_ufs_rpmb);
 	hba->sdev_ufs_rpmb = NULL;
+
+	kfree(ufshcd_rpmb_dev_ops.dev_id);
+	ufshcd_rpmb_dev_ops.dev_id = NULL;
 
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 }
@@ -6289,6 +6299,7 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 {
 	int ret;
 	u8 *desc_buf;
+	u8 index;
 
 	desc_buf = kmalloc(hba->desc_size.dev_desc, GFP_KERNEL);
 	if (!desc_buf)
@@ -6308,11 +6319,20 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 	dev_desc->wmanufacturerid = desc_buf[DEVICE_DESC_PARAM_MANF_ID] << 8 |
 				     desc_buf[DEVICE_DESC_PARAM_MANF_ID + 1];
 
-	ret = ufshcd_read_string_desc(hba,
-				      desc_buf[DEVICE_DESC_PARAM_PRDCT_NAME],
+	index = desc_buf[DEVICE_DESC_PARAM_PRDCT_NAME];
+	ret = ufshcd_read_string_desc(hba, index,
 				      &dev_desc->model, SD_ASCII_STD);
 	if (ret < 0) {
 		dev_err(hba->dev, "%s: Failed reading Product Name. err = %d\n",
+			__func__, ret);
+		goto out;
+	}
+
+	index =  desc_buf[DEVICE_DESC_PARAM_SN];
+	ret = ufshcd_read_string_desc(hba, index,
+				      &dev_desc->serial_no, SD_RAW);
+	if (ret < 0) {
+		dev_err(hba->dev, "%s: Failed reading Serial No. err = %d\n",
 			__func__, ret);
 		goto out;
 	}
@@ -6326,6 +6346,9 @@ static void ufs_put_device_desc(struct ufs_dev_desc *dev_desc)
 {
 	kfree(dev_desc->model);
 	dev_desc->model = NULL;
+
+	kfree(dev_desc->serial_no);
+	dev_desc->serial_no = NULL;
 }
 
 static void ufs_fixup_device_setup(struct ufs_hba *hba,
