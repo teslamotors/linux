@@ -3447,7 +3447,7 @@ static inline int iommu_devinfo_cache_init(void)
 static int __init iommu_init_mempool(void)
 {
 	int ret;
-	ret = iommu_iova_cache_init();
+	ret = iova_cache_get();
 	if (ret)
 		return ret;
 
@@ -3461,7 +3461,7 @@ static int __init iommu_init_mempool(void)
 
 	kmem_cache_destroy(iommu_domain_cache);
 domain_error:
-	iommu_iova_cache_destroy();
+	iova_cache_put();
 
 	return -ENOMEM;
 }
@@ -3470,7 +3470,7 @@ static void __init iommu_exit_mempool(void)
 {
 	kmem_cache_destroy(iommu_devinfo_cache);
 	kmem_cache_destroy(iommu_domain_cache);
-	iommu_iova_cache_destroy();
+	iova_cache_put();
 }
 
 static void quirk_ioat_snb_local_iommu(struct pci_dev *pdev)
