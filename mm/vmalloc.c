@@ -1455,6 +1455,7 @@ struct vm_struct *get_vm_area_caller(unsigned long size, unsigned long flags,
 	return __get_vm_area_node(size, 1, flags, VMALLOC_START, VMALLOC_END,
 				  NUMA_NO_NODE, GFP_KERNEL, caller);
 }
+EXPORT_SYMBOL_GPL(get_vm_area_caller);
 
 /**
  *	find_vm_area  -  find a continuous kernel virtual area
@@ -1474,6 +1475,7 @@ struct vm_struct *find_vm_area(const void *addr)
 
 	return NULL;
 }
+EXPORT_SYMBOL_GPL(find_vm_area);
 
 /**
  *	remove_vm_area  -  find and remove a continuous kernel virtual area
