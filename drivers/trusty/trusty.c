@@ -108,6 +108,8 @@ static ulong trusty_std_call_inner(struct device *dev, ulong smcnr,
 		__func__, smcnr, a0, a1, a2);
 	while (true) {
 		ret = smc(smcnr, a0, a1, a2);
+		while ((s32)ret == SM_ERR_FIQ_INTERRUPTED)
+			ret = smc(SMC_SC_RESTART_FIQ, 0, 0, 0);
 		if ((int)ret != SM_ERR_BUSY || !retry)
 			break;
 

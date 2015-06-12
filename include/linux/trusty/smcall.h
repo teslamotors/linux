@@ -58,6 +58,18 @@
 #define SMC_SC_RESTART_LAST	SMC_STDCALL_NR  (SMC_ENTITY_SECURE_MONITOR, 0)
 #define SMC_SC_NOP		SMC_STDCALL_NR  (SMC_ENTITY_SECURE_MONITOR, 1)
 
+/**
+ * SMC_SC_RESTART_FIQ - Re-enter trusty after it was interrupted by an fiq
+ *
+ * No arguments, no return value.
+ *
+ * Re-enter trusty after returning to ns to process an fiq. Must be called iff
+ * trusty returns SM_ERR_FIQ_INTERRUPTED.
+ *
+ * Enable by selecting api version TRUSTY_API_VERSION_RESTART_FIQ (1) or later.
+ */
+#define SMC_SC_RESTART_FIQ	SMC_STDCALL_NR  (SMC_ENTITY_SECURE_MONITOR, 2)
+
 /*
  * Return from secure os to non-secure os with return value in r1
  */
@@ -94,7 +106,8 @@
  *
  * This call must be made before any calls that are affected by the api version.
  */
-#define TRUSTY_API_VERSION_CURRENT	(0)
+#define TRUSTY_API_VERSION_RESTART_FIQ	(1)
+#define TRUSTY_API_VERSION_CURRENT	(1)
 #define SMC_FC_API_VERSION	SMC_FASTCALL_NR (SMC_ENTITY_SECURE_MONITOR, 11)
 
 /* TRUSTED_OS entity calls */
