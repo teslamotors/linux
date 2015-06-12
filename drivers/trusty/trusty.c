@@ -29,6 +29,7 @@ struct trusty_state {
 	struct mutex smc_lock;
 	struct atomic_notifier_head notifier;
 	char *version_str;
+	u32 api_version;
 };
 
 #ifdef CONFIG_ARM64
@@ -265,6 +266,35 @@ err_get_size:
 	dev_err(dev, "failed to get version: %d\n", ret);
 }
 
+u32 trusty_get_api_version(struct device *dev)
+{
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+
+	return s->api_version;
+}
+EXPORT_SYMBOL(trusty_get_api_version);
+
+static int trusty_init_api_version(struct trusty_state *s, struct device *dev)
+{
+	u32 api_version;
+	api_version = trusty_fast_call32(dev, SMC_FC_API_VERSION,
+					 TRUSTY_API_VERSION_CURRENT, 0, 0);
+	if (api_version == SM_ERR_UNDEFINED_SMC)
+		api_version = 0;
+
+	if (api_version > TRUSTY_API_VERSION_CURRENT) {
+		dev_err(dev, "unsupported api version %u > %u\n",
+			api_version, TRUSTY_API_VERSION_CURRENT);
+		return -EINVAL;
+	}
+
+	dev_info(dev, "selected api version: %u (requested %u)\n",
+		 api_version, TRUSTY_API_VERSION_CURRENT);
+	s->api_version = api_version;
+
+	return 0;
+}
+
 static int trusty_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -287,6 +317,10 @@ static int trusty_probe(struct platform_device *pdev)
 
 	trusty_init_version(s, &pdev->dev);
 
+	ret = trusty_init_api_version(s, &pdev->dev);
+	if (ret < 0)
+		goto err_api_version;
+
 	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to add children: %d\n", ret);
@@ -296,6 +330,7 @@ static int trusty_probe(struct platform_device *pdev)
 	return 0;
 
 err_add_children:
+err_api_version:
 	if (s->version_str) {
 		device_remove_file(&pdev->dev, &dev_attr_trusty_version);
 		kfree(s->version_str);

@@ -78,6 +78,25 @@
 #define SMC_FC_AARCH_SWITCH	SMC_FASTCALL_NR (SMC_ENTITY_SECURE_MONITOR, 9)
 #define SMC_FC_GET_VERSION_STR	SMC_FASTCALL_NR (SMC_ENTITY_SECURE_MONITOR, 10)
 
+/**
+ * SMC_FC_API_VERSION - Find and select supported API version.
+ *
+ * @r1: Version supported by client.
+ *
+ * Returns version supported by trusty.
+ *
+ * If multiple versions are supported, the client should start by calling
+ * SMC_FC_API_VERSION with the largest version it supports. Trusty will then
+ * return a version it supports. If the client does not support the version
+ * returned by trusty and the version returned is less than the version
+ * requested, repeat the call with the largest supported version less than the
+ * last returned version.
+ *
+ * This call must be made before any calls that are affected by the api version.
+ */
+#define TRUSTY_API_VERSION_CURRENT	(0)
+#define SMC_FC_API_VERSION	SMC_FASTCALL_NR (SMC_ENTITY_SECURE_MONITOR, 11)
+
 /* TRUSTED_OS entity calls */
 #define SMC_SC_VIRTIO_GET_DESCR	SMC_STDCALL_NR(SMC_ENTITY_TRUSTED_OS, 20)
 #define SMC_SC_VIRTIO_START	SMC_STDCALL_NR(SMC_ENTITY_TRUSTED_OS, 21)
