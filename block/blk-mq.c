@@ -331,7 +331,7 @@ static void blk_mq_ipi_complete_request(struct request *rq)
 		return;
 	}
 
-	cpu = get_cpu();
+	cpu = get_cpu_light();
 	if (!test_bit(QUEUE_FLAG_SAME_FORCE, &rq->q->queue_flags))
 		shared = cpus_share_cache(cpu, ctx->cpu);
 
@@ -343,7 +343,7 @@ static void blk_mq_ipi_complete_request(struct request *rq)
 	} else {
 		rq->q->softirq_done_fn(rq);
 	}
-	put_cpu();
+	put_cpu_light();
 }
 
 void __blk_mq_complete_request(struct request *rq)
@@ -814,9 +814,9 @@ void blk_mq_run_queues(struct request_queue *q, bool async)
 		    test_bit(BLK_MQ_S_STOPPED, &hctx->state))
 			continue;
 
-		preempt_disable();
+		migrate_disable();
 		blk_mq_run_hw_queue(hctx, async);
-		preempt_enable();
+		migrate_enable();
 	}
 }
 EXPORT_SYMBOL(blk_mq_run_queues);
@@ -843,9 +843,9 @@ void blk_mq_start_hw_queue(struct blk_mq_hw_ctx *hctx)
 {
 	clear_bit(BLK_MQ_S_STOPPED, &hctx->state);
 
-	preempt_disable();
+	migrate_disable();
 	blk_mq_run_hw_queue(hctx, false);
-	preempt_enable();
+	migrate_enable();
 }
 EXPORT_SYMBOL(blk_mq_start_hw_queue);
 
@@ -870,9 +870,9 @@ void blk_mq_start_stopped_hw_queues(struct request_queue *q, bool async)
 			continue;
 
 		clear_bit(BLK_MQ_S_STOPPED, &hctx->state);
-		preempt_disable();
+		migrate_disable();
 		blk_mq_run_hw_queue(hctx, async);
-		preempt_enable();
+		migrate_enable();
 	}
 }
 EXPORT_SYMBOL(blk_mq_start_stopped_hw_queues);
