@@ -15,8 +15,10 @@
 #include <linux/cpu.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/irqdomain.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/string.h>
@@ -266,13 +268,101 @@ static int trusty_irq_cpu_notify(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
-static int trusty_irq_init_normal_irq(struct trusty_irq_state *is, int irq)
+static int trusty_irq_create_irq_mapping(struct trusty_irq_state *is, int irq)
 {
 	int ret;
+	int index;
+	u32 irq_pos;
+	u32 templ_idx;
+	u32 range_base;
+	u32 range_end;
+	struct of_phandle_args oirq;
+
+	/* check if "interrupt-ranges" property is present */
+	if (!of_find_property(is->dev->of_node, "interrupt-ranges", NULL)) {
+		/* fallback to old behavior to be backward compatible with
+		 * systems that do not need IRQ domains.
+		 */
+		return irq;
+	}
+
+	/* find irq range */
+	for (index = 0;; index += 3) {
+		ret = of_property_read_u32_index(is->dev->of_node,
+						 "interrupt-ranges",
+						 index, &range_base);
+		if (ret)
+			return ret;
+
+		ret = of_property_read_u32_index(is->dev->of_node,
+						 "interrupt-ranges",
+						 index + 1, &range_end);
+		if (ret)
+			return ret;
+
+		if (irq >= range_base && irq <= range_end)
+			break;
+	}
+
+	/*  read the rest of range entry: template index and irq_pos */
+	ret = of_property_read_u32_index(is->dev->of_node,
+					 "interrupt-ranges",
+					 index + 2, &templ_idx);
+	if (ret)
+		return ret;
+
+	/* read irq template */
+	ret = of_parse_phandle_with_args(is->dev->of_node,
+					 "interrupt-templates",
+					 "#interrupt-cells",
+					 templ_idx, &oirq);
+	if (ret)
+		return ret;
+
+	WARN_ON(!oirq.np);
+	WARN_ON(!oirq.args_count);
+
+	/*
+	 * An IRQ template is a non empty array of u32 values describing group
+	 * of interrupts having common properties. The u32 entry with index
+	 * zero contains the position of irq_id in interrupt specifier array
+	 * followed by data representing interrupt specifier array with irq id
+	 * field omitted, so to convert irq template to interrupt specifier
+	 * array we have to move down one slot the first irq_pos entries and
+	 * replace the resulting gap with real irq id.
+	 */
+	irq_pos = oirq.args[0];
+
+	if (irq_pos >= oirq.args_count) {
+		dev_err(is->dev, "irq pos is out of range: %d\n", irq_pos);
+		return -EINVAL;
+	}
+
+	for (index = 1; index <= irq_pos; index++)
+		oirq.args[index - 1] = oirq.args[index];
+
+	oirq.args[irq_pos] = irq - range_base;
+
+	ret = irq_create_of_mapping(&oirq);
+
+	return (!ret) ? -EINVAL : ret;
+}
+
+static int trusty_irq_init_normal_irq(struct trusty_irq_state *is, int tirq)
+{
+	int ret;
+	int irq;
 	unsigned long irq_flags;
 	struct trusty_irq *trusty_irq;
 
-	dev_dbg(is->dev, "%s: irq %d\n", __func__, irq);
+	dev_dbg(is->dev, "%s: irq %d\n", __func__, tirq);
+
+	irq = trusty_irq_create_irq_mapping(is, tirq);
+	if (irq < 0) {
+		dev_err(is->dev,
+			"trusty_irq_create_irq_mapping failed (%d)\n", irq);
+		return irq;
+	}
 
 	trusty_irq = kzalloc(sizeof(*trusty_irq), GFP_KERNEL);
 	if (!trusty_irq)
@@ -302,13 +392,21 @@ err_request_irq:
 	return ret;
 }
 
-static int trusty_irq_init_per_cpu_irq(struct trusty_irq_state *is, int irq)
+static int trusty_irq_init_per_cpu_irq(struct trusty_irq_state *is, int tirq)
 {
 	int ret;
+	int irq;
 	unsigned int cpu;
 	struct trusty_irq __percpu *trusty_irq_handler_data;
 
-	dev_dbg(is->dev, "%s: irq %d\n", __func__, irq);
+	dev_dbg(is->dev, "%s: irq %d\n", __func__, tirq);
+
+	irq = trusty_irq_create_irq_mapping(is, tirq);
+	if (irq <= 0) {
+		dev_err(is->dev,
+			"trusty_irq_create_irq_mapping failed (%d)\n", irq);
+		return irq;
+	}
 
 	trusty_irq_handler_data = alloc_percpu(struct trusty_irq);
 	if (!trusty_irq_handler_data)
