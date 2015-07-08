@@ -494,6 +494,28 @@ ssize_t __vfs_write(struct file *file, const char __user *p, size_t count,
 }
 EXPORT_SYMBOL(__vfs_write);
 
+vfs_readf_t vfs_readf(struct file *file)
+{
+	const struct file_operations *fop = file->f_op;
+
+	if (fop->read)
+		return fop->read;
+	if (fop->read_iter)
+		return new_sync_read;
+	return ERR_PTR(-ENOSYS);
+}
+
+vfs_writef_t vfs_writef(struct file *file)
+{
+	const struct file_operations *fop = file->f_op;
+
+	if (fop->write)
+		return fop->write;
+	if (fop->write_iter)
+		return new_sync_write;
+	return ERR_PTR(-ENOSYS);
+}
+
 ssize_t __kernel_write(struct file *file, const char *buf, size_t count, loff_t *pos)
 {
 	mm_segment_t old_fs;
