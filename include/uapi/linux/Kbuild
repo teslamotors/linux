@@ -59,6 +59,7 @@ header-y += atmsvc.h
 header-y += atm_tcp.h
 header-y += atm_zatm.h
 header-y += audit.h
+header-y += aufs_type.h
 header-y += auto_fs4.h
 header-y += auto_fs.h
 header-y += auxvec.h
