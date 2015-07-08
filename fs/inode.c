@@ -58,6 +58,7 @@ static struct hlist_head *inode_hashtable __read_mostly;
 static __cacheline_aligned_in_smp DEFINE_SPINLOCK(inode_hash_lock);
 
 __cacheline_aligned_in_smp DEFINE_SPINLOCK(inode_sb_list_lock);
+EXPORT_SYMBOL(inode_sb_list_lock);
 
 /*
  * Empty aops. Can be used for the cases where the user does not

@@ -62,6 +62,7 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
 	mutex_unlock(&dentry->d_inode->i_mutex);
 	return ret;
 }
+EXPORT_SYMBOL(do_truncate);
 
 long vfs_truncate(struct path *path, loff_t length)
 {
@@ -676,6 +677,7 @@ int open_check_o_direct(struct file *f)
 	}
 	return 0;
 }
+EXPORT_SYMBOL(open_check_o_direct);
 
 static int do_dentry_open(struct file *f,
 			  int (*open)(struct inode *, struct file *),

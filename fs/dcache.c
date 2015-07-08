@@ -1269,6 +1269,7 @@ rename_retry:
 	seq = 1;
 	goto again;
 }
+EXPORT_SYMBOL(d_walk);
 
 /*
  * Search for at least 1 mount point in the dentry's subdirs.
