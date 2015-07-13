@@ -2273,6 +2273,9 @@ static void yaffs_put_super(struct super_block *sb)
 		yaffs_dev_to_lc(dev)->spare_buffer = NULL;
 	}
 
+	if (dev->os_context)
+		kfree(dev->os_context);
+
 	kfree(dev);
 
 	yaffs_put_mtd_device(mtd);
