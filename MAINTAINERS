@@ -11569,6 +11569,7 @@ M:	Tomas Winkler <tomas.winkler@intel.com>
 L:	linux-kernel@vger.kernel.org
 S:	Supported
 F:	drivers/char/rpmb/*
+F:	include/uapi/linux/rpmb.h
 F:	include/linux/rpmb.h
 F:	Documentation/ABI/testing/sysfs-class-rpmb
 
