@@ -184,6 +184,26 @@ module_param(debug, int, 0644);
 static void __vb2_queue_cancel(struct vb2_queue *q);
 
 /**
+ * __sync_buffers_prepare() - sync all buffers at prepare phase
+ */
+static void __sync_buffers_prepare(struct vb2_buffer *vb)
+{
+	unsigned int plane;
+	for (plane = 0; plane < vb->num_planes; ++plane)
+		call_void_memop(vb, prepare, vb->planes[plane].mem_priv);
+}
+
+/**
+ * __sync_buffers_finish() - sync all buffers at finish phase
+ */
+static void __sync_buffers_finish(struct vb2_buffer *vb)
+{
+	unsigned int plane;
+	for (plane = 0; plane < vb->num_planes; ++plane)
+		call_void_memop(vb, finish, vb->planes[plane].mem_priv);
+}
+
+/**
  * __vb2_buf_mem_alloc() - allocate video memory for the given buffer
  */
 static int __vb2_buf_mem_alloc(struct vb2_buffer *vb)
@@ -1173,7 +1193,6 @@ void vb2_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state state)
 {
 	struct vb2_queue *q = vb->vb2_queue;
 	unsigned long flags;
-	unsigned int plane;
 
 	if (WARN_ON(vb->state != VB2_BUF_STATE_ACTIVE))
 		return;
@@ -1194,8 +1213,10 @@ void vb2_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state state)
 			vb->v4l2_buf.index, state);
 
 	/* sync buffers */
-	for (plane = 0; plane < vb->num_planes; ++plane)
-		call_void_memop(vb, finish, vb->planes[plane].mem_priv);
+	if (!(vb->v4l2_buf.flags &
+	      (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
+	       V4L2_BUF_FLAG_NO_CACHE_CLEAN)))
+		__sync_buffers_finish(vb);
 
 	/* Add the buffer to the done buffers list */
 	spin_lock_irqsave(&q->done_lock, flags);
@@ -1461,6 +1482,11 @@ static int __qbuf_userptr(struct vb2_buffer *vb, const struct v4l2_buffer *b)
 		vb->v4l2_planes[plane] = planes[plane];
 
 	if (reacquired) {
+		/* sync buffers once */
+		if (vb->v4l2_buf.flags &
+		    (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
+		     V4L2_BUF_FLAG_NO_CACHE_CLEAN))
+			__sync_buffers_prepare(vb);
 		/*
 		 * One or more planes changed, so we must call buf_init to do
 		 * the driver-specific initialization on the newly acquired
@@ -1587,6 +1613,11 @@ static int __qbuf_dmabuf(struct vb2_buffer *vb, const struct v4l2_buffer *b)
 		vb->v4l2_planes[plane] = planes[plane];
 
 	if (reacquired) {
+		/* sync buffers once */
+		if (vb->v4l2_buf.flags &
+		    (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
+		     V4L2_BUF_FLAG_NO_CACHE_CLEAN))
+			__sync_buffers_prepare(vb);
 		/*
 		 * Call driver-specific initialization on the newly acquired buffer,
 		 * if provided.
@@ -1619,14 +1650,15 @@ err:
 static void __enqueue_in_driver(struct vb2_buffer *vb)
 {
 	struct vb2_queue *q = vb->vb2_queue;
-	unsigned int plane;
 
 	vb->state = VB2_BUF_STATE_ACTIVE;
 	atomic_inc(&q->owned_by_drv_count);
 
 	/* sync buffers */
-	for (plane = 0; plane < vb->num_planes; ++plane)
-		call_void_memop(vb, prepare, vb->planes[plane].mem_priv);
+	if (!(vb->v4l2_buf.flags &
+	      (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
+	       V4L2_BUF_FLAG_NO_CACHE_CLEAN)))
+		__sync_buffers_prepare(vb);
 
 	call_void_vb_qop(vb, buf_queue, vb);
 }
