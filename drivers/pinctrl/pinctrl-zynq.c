@@ -714,12 +714,13 @@ static const char * const gpio0_groups[] = {"gpio0_0_grp",
 		.mux_val = mval,			\
 	}
 
-#define DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(fname, mval, mux, mask, shift)	\
+#define DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(fname, mval, offset, mask, shift)\
 	[ZYNQ_PMUX_##fname] = {				\
 		.name = #fname,				\
 		.groups = fname##_groups,		\
 		.ngroups = ARRAY_SIZE(fname##_groups),	\
 		.mux_val = mval,			\
+		.mux = offset,				\
 		.mux_mask = mask,			\
 		.mux_shift = shift,			\
 	}
@@ -744,15 +745,15 @@ static const struct zynq_pinmux_function zynq_pmux_functions[] = {
 	DEFINE_ZYNQ_PINMUX_FUNCTION(spi1, 0x50),
 	DEFINE_ZYNQ_PINMUX_FUNCTION(sdio0, 0x40),
 	DEFINE_ZYNQ_PINMUX_FUNCTION(sdio0_pc, 0xc),
-	DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(sdio0_wp, 0, 130, ZYNQ_SDIO_WP_MASK,
+	DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(sdio0_wp, 0, 0x130, ZYNQ_SDIO_WP_MASK,
 					ZYNQ_SDIO_WP_SHIFT),
-	DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(sdio0_cd, 0, 130, ZYNQ_SDIO_CD_MASK,
+	DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(sdio0_cd, 0, 0x130, ZYNQ_SDIO_CD_MASK,
 					ZYNQ_SDIO_CD_SHIFT),
 	DEFINE_ZYNQ_PINMUX_FUNCTION(sdio1, 0x40),
 	DEFINE_ZYNQ_PINMUX_FUNCTION(sdio1_pc, 0xc),
-	DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(sdio1_wp, 0, 134, ZYNQ_SDIO_WP_MASK,
+	DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(sdio1_wp, 0, 0x134, ZYNQ_SDIO_WP_MASK,
 					ZYNQ_SDIO_WP_SHIFT),
-	DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(sdio1_cd, 0, 134, ZYNQ_SDIO_CD_MASK,
+	DEFINE_ZYNQ_PINMUX_FUNCTION_MUX(sdio1_cd, 0, 0x134, ZYNQ_SDIO_CD_MASK,
 					ZYNQ_SDIO_CD_SHIFT),
 	DEFINE_ZYNQ_PINMUX_FUNCTION(smc0_nor, 4),
 	DEFINE_ZYNQ_PINMUX_FUNCTION(smc0_nor_cs1, 8),
