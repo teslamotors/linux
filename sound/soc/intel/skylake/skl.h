@@ -132,6 +132,9 @@ struct skl_debug *skl_debugfs_init(struct skl *skl);
 void skl_debug_init_module(struct skl_debug *d,
 			struct snd_soc_dapm_widget *w,
 			struct skl_module_cfg *mconfig);
+struct nhlt_specific_cfg
+*skl_nhlt_get_debugfs_blob(struct skl_debug *d, u8 link_type, u32 instance);
+
 #else
 static inline struct skl_debug *skl_debugfs_init(struct skl *skl)
 {
@@ -141,6 +144,11 @@ static inline void skl_debug_init_module(struct skl_debug *d,
 					 struct snd_soc_dapm_widget *w,
 					 struct skl_module_cfg *mconfig)
 {}
+static inline struct nhlt_specific_cfg
+*skl_nhlt_get_debugfs_blob(struct skl_debug *d, u8 link_type, u32 instance)
+{
+	return NULL;
+}
 #endif
 
 #endif /* __SOUND_SOC_SKL_H */

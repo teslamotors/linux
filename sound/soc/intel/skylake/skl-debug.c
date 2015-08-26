@@ -46,6 +46,27 @@ struct skl_debug {
 	struct nhlt_blob dmic_blob;
 };
 
+struct nhlt_specific_cfg
+*skl_nhlt_get_debugfs_blob(struct skl_debug *d, u8 link_type, u32 instance)
+{
+	switch (link_type) {
+	case NHLT_LINK_DMIC:
+		return d->dmic_blob.cfg;
+
+	case NHLT_LINK_SSP:
+		if (instance >= MAX_SSP)
+			return NULL;
+
+		return d->ssp_blob[instance].cfg;
+
+	default:
+		break;
+	}
+
+	dev_err(d->dev, "NHLT debugfs query failed\n");
+	return NULL;
+}
+
 static ssize_t nhlt_read(struct file *file, char __user *user_buf,
 					   size_t count, loff_t *ppos)
 {

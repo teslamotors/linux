@@ -1800,10 +1800,22 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 		return 0;
 
 	/* update the blob based on virtual bus_id*/
-	cfg = skl_get_ep_blob(skl, mconfig->vbus_id, link_type,
+	if (!skl->nhlt_override) {
+		cfg = skl_get_ep_blob(skl, mconfig->vbus_id, link_type,
 					params->s_fmt, params->ch,
 					params->s_freq, params->stream,
 					dev_type);
+	} else {
+		dev_warn(dai->dev, "Querying NHLT blob from Debugfs!!!!\n");
+		cfg = skl_nhlt_get_debugfs_blob(skl->debugfs,
+					link_type, mconfig->vbus_id);
+		if (cfg->size > HDA_SST_CFG_MAX) {
+			dev_err(dai->dev, "NHLT debugfs blob is vv large\n");
+			dev_err(dai->dev, "First word is size in blob!!!\n");
+			dev_err(dai->dev, "Recieved size %d\n", cfg->size);
+			return -EIO;
+		}
+	}
 	if (cfg) {
 		mconfig->formats_config.caps_size = cfg->size;
 		mconfig->formats_config.caps = (u32 *) &cfg->caps;
