@@ -1650,12 +1650,13 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	isp->pkg_dir_dma_addr = psys->pkg_dir_dma_addr;
 	isp->pkg_dir_size = psys->pkg_dir_size;
 
-	rval = intel_ipu4_buttress_authenticate(isp);
-	if (rval) {
-		dev_err(&adev->dev, "FW authentication failed\n");
-		goto out_remove_shared_buffer;
+	if (isp->secure_mode) {
+		rval = intel_ipu4_buttress_authenticate(isp);
+		if (rval) {
+			dev_err(&adev->dev, "FW authentication failed\n");
+			goto out_remove_shared_buffer;
+		}
 	}
-	isp->auth_done = 1;
 
 	psys->syscom_config = ia_css_psys_specify();
 	psys->syscom_config->specific_addr = psys->server_init;

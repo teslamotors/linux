@@ -28,7 +28,7 @@ struct intel_ipu4_buttress_ctrl {
 };
 
 struct intel_ipu4_buttress {
-	struct mutex mutex;
+	struct mutex power_mutex, auth_mutex;
 	struct clk *clk_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS];
 	struct clk *pll_sensor;
 	struct completion cse_ipc_complete;

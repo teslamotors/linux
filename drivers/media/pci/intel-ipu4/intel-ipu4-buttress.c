@@ -375,7 +375,7 @@ int intel_ipu4_buttress_power(
 	if (!ctrl)
 		return 0;
 
-	mutex_lock(&isp->buttress.mutex);
+	mutex_lock(&isp->buttress.power_mutex);
 
 	if (!on) {
 		val = 0;
@@ -431,7 +431,7 @@ out:
 
 	ctrl->started = !ret && on;
 
-	mutex_unlock(&isp->buttress.mutex);
+	mutex_unlock(&isp->buttress.power_mutex);
 
 	return ret;
 }
@@ -495,7 +495,7 @@ void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
 {
 	struct intel_ipu4_buttress_ctrl *ctrl = isp->psys_iommu->ctrl;
 
-	mutex_lock(&isp->buttress.mutex);
+	mutex_lock(&isp->buttress.power_mutex);
 	ctrl->divisor = psys_divisor;
 	ctrl->qos_floor = psys_qos_floor;
 
@@ -510,7 +510,7 @@ void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
 		       psys_divisor, isp->base + BUTTRESS_REG_PS_FREQ_CTL);
 	}
 
-	mutex_unlock(&isp->buttress.mutex);
+	mutex_unlock(&isp->buttress.power_mutex);
 }
 
 int intel_ipu4_buttress_map_fw_image(struct intel_ipu4_bus_device *sys,
@@ -576,15 +576,23 @@ EXPORT_SYMBOL_GPL(intel_ipu4_buttress_unmap_fw_image);
 int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 {
 	struct intel_ipu4_psys_pdata *psys_pdata = isp->psys->pdata;
+	struct intel_ipu4_buttress *b = &isp->buttress;
 	u32 data;
 	int rval;
 	unsigned long tout_jfs;
 	unsigned tout = 5000;
 
-	rval = pm_runtime_get_sync(&isp->psys->dev);
+	mutex_lock(&b->auth_mutex);
+
+	if (isp->auth_done) {
+		mutex_unlock(&b->auth_mutex);
+		return 0;
+	}
+
+	rval = pm_runtime_get_sync(&isp->psys_iommu->dev);
 	if (rval < 0) {
 		dev_err(&isp->pdev->dev, "Runtime PM failed (%d)\n", rval);
-		return rval;
+		goto unlock_mutex;
 	}
 
 	/*
@@ -688,8 +696,13 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		goto iunit_power_off;
 	}
 
+	isp->auth_done = true;
+
 iunit_power_off:
 	pm_runtime_put(&isp->psys_iommu->dev);
+
+unlock_mutex:
+	mutex_unlock(&b->auth_mutex);
 
 	return rval;
 }
@@ -1199,11 +1212,13 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 	struct intel_ipu4_buttress *b = &isp->buttress;
 	int rval;
 
-	mutex_init(&b->mutex);
+	mutex_init(&b->power_mutex);
+	mutex_init(&b->auth_mutex);
 
 	rval = intel_ipu4_buttress_clk_init(isp);
 	if (rval) {
-		mutex_destroy(&b->mutex);
+		mutex_destroy(&b->power_mutex);
+		mutex_destroy(&b->auth_mutex);
 		return rval;
 	}
 
@@ -1244,5 +1259,6 @@ void intel_ipu4_buttress_exit(struct intel_ipu4_device *isp)
 	if (b->pll_sensor)
 		clk_unregister(b->pll_sensor);
 
-	mutex_destroy(&b->mutex);
+	mutex_destroy(&b->power_mutex);
+	mutex_destroy(&b->auth_mutex);
 }
