@@ -694,9 +694,9 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 		memcpy(ctrl, psys_buttress_ctrl, sizeof(*ctrl));
 
 		isp->psys_iommu = intel_ipu4_mmu_init(
-			pdev, isp->isys ? &isp->isys->dev : &pdev->dev, ctrl,
-			psys_base, &psys_ipdata->hw_variant, 1,
-			INTEL_IPU4_MMU_TYPE_INTEL_IPU4, PSYS_MMID);
+			pdev, isp->isys_iommu ? &isp->isys_iommu->dev :
+			&pdev->dev, ctrl, psys_base, &psys_ipdata->hw_variant,
+			1, INTEL_IPU4_MMU_TYPE_INTEL_IPU4, PSYS_MMID);
 		rval = PTR_ERR(isp->psys_iommu);
 		if (IS_ERR(isp->psys_iommu)) {
 			dev_err(&pdev->dev, "can't create psys iommu device\n");
