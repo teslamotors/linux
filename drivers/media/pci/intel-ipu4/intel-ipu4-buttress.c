@@ -595,6 +595,12 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	unsigned long tout_jfs;
 	unsigned tout = 5000;
 
+	if (!isp->secure_mode) {
+		dev_dbg(&isp->pdev->dev, "Non-secure mode -> skip authentication\n",
+			rval);
+		return 0;
+	}
+
 	mutex_lock(&b->auth_mutex);
 
 	rval = pm_runtime_get_sync(&isp->psys_iommu->dev);

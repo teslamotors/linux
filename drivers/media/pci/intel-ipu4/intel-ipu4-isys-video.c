@@ -154,6 +154,9 @@ static int video_open(struct file *file)
 {
 	struct intel_ipu4_isys_video *av = video_drvdata(file);
 	struct intel_ipu4_isys *isys = av->isys;
+	struct intel_ipu4_bus_device *adev =
+		to_intel_ipu4_bus_device(&isys->adev->dev);
+	struct intel_ipu4_device *isp = adev->isp;
 	int rval;
 
 	mutex_lock(&isys->mutex);
@@ -163,6 +166,12 @@ static int video_open(struct file *file)
 		return -EIO;
 	}
 	mutex_unlock(&isys->mutex);
+
+	rval = intel_ipu4_buttress_authenticate(isp);
+	if (rval) {
+		dev_err(&isys->adev->dev, "FW authentication failed\n");
+		return rval;
+	}
 
 	rval = pm_runtime_get_sync(&isys->adev->dev);
 	if (rval < 0) {

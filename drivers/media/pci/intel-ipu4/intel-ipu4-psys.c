@@ -459,10 +459,17 @@ static struct dma_buf_ops intel_ipu4_dma_buf_ops = {
 static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 {
 	struct intel_ipu4_psys *psys = inode_to_intel_ipu4_psys(inode);
+	struct intel_ipu4_device *isp = psys->adev->isp;
 	struct intel_ipu4_psys_fh *fh;
 	unsigned long flags;
 	bool start_thread;
 	int i, rval;
+
+	rval = intel_ipu4_buttress_authenticate(isp);
+	if (rval) {
+		dev_err(&psys->adev->dev, "FW authentication failed\n");
+		return rval;
+	}
 
 	rval = pm_runtime_get_sync(&psys->adev->dev);
 	if (rval < 0) {
@@ -1642,14 +1649,6 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	isp->pkg_dir = psys->pkg_dir;
 	isp->pkg_dir_dma_addr = psys->pkg_dir_dma_addr;
 	isp->pkg_dir_size = psys->pkg_dir_size;
-
-	if (isp->secure_mode) {
-		rval = intel_ipu4_buttress_authenticate(isp);
-		if (rval) {
-			dev_err(&adev->dev, "FW authentication failed\n");
-			goto out_remove_shared_buffer;
-		}
-	}
 
 	psys->syscom_config = ia_css_psys_specify();
 	psys->syscom_config->specific_addr = psys->server_init;
