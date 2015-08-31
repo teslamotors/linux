@@ -73,6 +73,7 @@ struct skl {
 	struct skl_debug *debugfs;
 	u8 nr_modules;
 	struct skl_module **modules;
+	bool nhlt_override;
 };
 
 #define skl_to_ebus(s)	(&(s)->ebus)
