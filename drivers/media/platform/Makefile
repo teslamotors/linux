@@ -50,4 +50,9 @@ obj-$(CONFIG_VIDEO_AM437X_VPFE)		+= am437x/
 
 obj-$(CONFIG_VIDEO_XILINX)		+= xilinx/
 
+obj-$(CONFIG_INTEL_IPU4_BXT_P_PDATA)	+= intel-ipu4/
+obj-$(CONFIG_VIDEO_SENSOR_STUB) += video-sensor-stub.o
+obj-$(CONFIG_VIDEO_SENSOR_STUB_PDATA) += video-sensor-stub-pdata.o
+obj-$(CONFIG_I2C_ADAPTER_STUB) += i2c-adapter-stub.o
+
 ccflags-y += -I$(srctree)/drivers/media/i2c

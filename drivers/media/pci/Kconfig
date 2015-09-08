@@ -12,6 +12,7 @@ if MEDIA_CAMERA_SUPPORT
 	comment "Media capture support"
 source "drivers/media/pci/meye/Kconfig"
 source "drivers/media/pci/sta2x11/Kconfig"
+source "drivers/media/pci/intel-ipu4/Kconfig"
 endif
 
 if MEDIA_ANALOG_TV_SUPPORT

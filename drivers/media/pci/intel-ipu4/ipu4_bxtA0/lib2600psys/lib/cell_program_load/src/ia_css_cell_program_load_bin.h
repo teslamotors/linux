@@ -1,0 +1,119 @@
+/**
+* Support for Intel Camera Imaging ISP subsystem.
+* Copyright (c) 2010 - 2015, Intel Corporation.
+* 
+* This program is free software; you can redistribute it and/or modify it
+* under the terms and conditions of the GNU General Public License,
+* version 2, as published by the Free Software Foundation.
+* 
+* This program is distributed in the hope it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+* more details.
+*/
+
+#ifndef _IA_CSS_CELL_LOAD_PROGRAM_BIN_H_
+#define _IA_CSS_CELL_LOAD_PROGRAM_BIN_H_
+
+#include "ia_css_cell_program_load_prog.h"
+
+#include "ia_css_cell_program_load_storage_class.h"
+#include "ia_css_cell_program_struct.h"
+#include "ia_css_cell_regs.h"
+#include "misc_support.h"
+#include "ia_css_fw_load.h"
+#include "platform_support.h"
+#include "ipu_device_buttress_properties_struct.h"
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+int
+ia_css_cell_program_load_icache_prog(
+	unsigned int ssid,
+	unsigned int mmid,
+	ia_css_xmem_address_t host_addr,
+	unsigned int vied_addr,
+	const struct ia_css_cell_program_s *prog)
+{
+	unsigned int regs_addr;
+
+	NOT_USED(mmid);
+	NOT_USED(host_addr);
+
+	if (prog->cell_id == IA_CSS_CELL_ID_UNDEFINED)
+		return -1;
+
+	regs_addr = prog->regs_addr;
+
+	/* set start address */
+	ia_css_cell_regs_set_start_pc(ssid, regs_addr, prog->start);
+
+	/* set icache base address */
+	ia_css_cell_regs_set_icache_base_address(ssid, regs_addr,
+		vied_addr + prog->blob_offset + prog->icache_source);
+
+	/* set icache info bits */
+	ia_css_cell_regs_set_icache_info_bits(ssid, regs_addr, IA_CSS_INFO_BITS_M0_DDR);
+
+	/* invalidate icache */
+	ia_css_cell_regs_icache_invalidate(ssid, regs_addr);
+
+	return 0;
+}
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+int
+ia_css_cell_program_load_mem_prog(
+	unsigned int ssid,
+	unsigned int mmid,
+	ia_css_xmem_address_t host_addr,
+	unsigned int vied_addr,
+	const struct ia_css_cell_program_s *prog)
+{
+	unsigned int pending = 0;
+	unsigned int dmem_addr;
+	unsigned int pmem_addr;
+
+	NOT_USED(vied_addr);
+
+#ifdef ENABLE_FW_LOAD_DMA
+	pmem_addr = prog->cell_pmem_data_bus_addres;
+	dmem_addr = prog->cell_dmem_data_bus_addres;
+#else
+	pmem_addr = prog->cell_pmem_control_bus_addres;
+	dmem_addr = prog->cell_dmem_control_bus_addres;
+#endif
+
+	/* Copy text section from ddr to pmem. */
+	if (prog->pmem_size)
+		pending += ia_css_fw_copy_begin(mmid,
+			ssid,
+			host_addr + prog->blob_offset + prog->pmem_source,
+			pmem_addr + prog->pmem_target,
+			prog->pmem_size
+		);
+
+	/* Copy data section from ddr to dmem. */
+	if (prog->data_size)
+		pending += ia_css_fw_copy_begin(mmid,
+			ssid,
+			host_addr + prog->blob_offset + prog->data_source,
+			dmem_addr + prog->data_target,
+			prog->data_size
+		);
+
+	/* Zero bss section in dmem.*/
+	if (prog->bss_size)
+		pending += ia_css_fw_zero_begin(ssid,
+			dmem_addr + prog->bss_target,
+			prog->bss_size
+		);
+
+	/* Wait for all fw load to complete */
+	while (pending) {
+		pending -= ia_css_fw_end(pending);
+		ia_css_sleep();
+	}
+	return 0;
+}
+
+#endif /* IA_CSS_CELL_LOAD_PROGRAM_BIN_H_ */

@@ -1,0 +1,136 @@
+/*
+ * Copyright (c) 2013--2014 Intel Corporation. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License version
+ * 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#ifndef INTEL_IPU4_ISYS_H
+#define INTEL_IPU4_ISYS_H
+
+#include <linux/spinlock.h>
+
+#include <media/v4l2-device.h>
+#include <media/media-device.h>
+
+#include "intel-ipu4.h"
+#include "intel-ipu4-isys-csi2.h"
+#include "intel-ipu4-isys-csi2-be.h"
+#include "intel-ipu4-isys-isa.h"
+#include "intel-ipu4-isys-tpg.h"
+#include "intel-ipu4-isys-video.h"
+#include "intel-ipu4-pdata.h"
+
+#define INTEL_IPU4_ISYS_ENTITY_PREFIX		"Intel IPU4"
+
+#define INTEL_IPU4_ISYS_2600_MEM_LINE_ALIGN	64
+
+#define INTEL_IPU4_ISYS_FREQ_BXT_FPGA		25000000UL
+#define INTEL_IPU4_ISYS_FREQ_BXT_A0		533000000UL
+
+/*
+ * Device close takes some time from last ack message to actual stopping
+ * of the SP processor. As long as the SP processor runs we can't proceed with
+ * clean up of resources.
+ */
+#define INTEL_IPU4_ISYS_TURNOFF_DELAY_US		1000
+#define INTEL_IPU4_ISYS_TURNOFF_TIMEOUT		1000
+#define INTEL_IPU4_LIB_CALL_TIMEOUT_MS		2000
+#define INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES \
+	msecs_to_jiffies(INTEL_IPU4_LIB_CALL_TIMEOUT_MS)
+
+#define INTEL_IPU4_ISYS_CSI2_LONG_PACKET_HEADER_SIZE	32
+#define INTEL_IPU4_ISYS_CSI2_LONG_PACKET_FOOTER_SIZE	32
+
+/*
+ * For A0/1: FW frozen at tag 20151019, so only support max 2 streams
+ * For B0/1: FW support max 6 streams
+ */
+#if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_A0)
+#define INTEL_IPU4_ISYS_MAX_STREAMS 		2
+#else
+#define INTEL_IPU4_ISYS_MAX_STREAMS 		6
+#endif
+
+#define INTEL_IPU4_ISYS_MIN_WIDTH		1U
+#define INTEL_IPU4_ISYS_MIN_HEIGHT		1U
+#define INTEL_IPU4_ISYS_MAX_WIDTH		16384U
+#define INTEL_IPU4_ISYS_MAX_HEIGHT		16384U
+
+struct task_struct;
+
+/*
+ * struct intel_ipu4_isys
+ *
+ * @lock: serialise access to pipes
+ * @pipes: pipelines per stream ID
+ * @ssi: ssi library private pointer
+ * @line_align: line alignment in memory
+ * @isr_thread: for polling for events if interrupt delivery isn't available
+ * @irq_polling_enable: do poll for events?
+ * @reset_needed: Isys requires d0i0->i3 transition
+ * @video_opened: total number of opened file handles on video nodes
+ * @mutex: serialise access isys video open/release related operations
+ * @stream_mutex: serialise stream start and stop
+ */
+struct intel_ipu4_isys {
+	struct media_device media_dev;
+	struct v4l2_device v4l2_dev;
+	struct intel_ipu4_bus_device *adev;
+
+	int power;
+	spinlock_t power_lock;
+	spinlock_t lock;
+	struct intel_ipu4_isys_pipeline *pipes[INTEL_IPU4_ISYS_MAX_STREAMS];
+	void *ssi;
+	unsigned int line_align;
+	u32 legacy_port_cfg;
+	u32 combo_port_cfg;
+	struct task_struct *isr_thread;
+	bool reset_needed;
+	unsigned int video_opened;
+	unsigned int stream_opened;
+	struct mutex mutex;
+	struct mutex stream_mutex;
+
+	struct intel_ipu4_isys_pdata *pdata;
+
+	struct intel_ipu4_isys_csi2 csi2[INTEL_IPU4_ISYS_MAX_CSI2_PORTS];
+	struct intel_ipu4_isys_tpg tpg[INTEL_IPU4_ISYS_MAX_TPGS];
+	struct intel_ipu4_isys_csi2_be csi2_be[INTEL_IPU4_ISYS_MAX_CSI2BE];
+	struct intel_ipu4_isys_isa isa;
+
+	struct sg_table fw_sgt;
+};
+
+extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;
+
+int intel_ipu4_pipeline_pm_use(struct media_entity *entity, int use);
+int intel_ipu4_isys_isr_run(void *ptr);
+
+#define intel_ipu4_lib_call_notrace(func, isys, ...)			\
+	({								\
+		 int rval;						\
+									\
+		 rval = -ia_css_isys_##func((isys)->ssi, ##__VA_ARGS__);\
+									\
+		 rval;							\
+	})
+
+#define intel_ipu4_lib_call(func, isys, ...)				\
+	({								\
+		 int rval;						\
+		 dev_dbg(&(isys)->adev->dev, "Library call %s\n", #func);\
+		 rval = intel_ipu4_lib_call_notrace(func, isys, ##__VA_ARGS__);\
+									\
+		 rval;							\
+	})
+
+#endif /* INTEL_IPU4_ISYS_H */

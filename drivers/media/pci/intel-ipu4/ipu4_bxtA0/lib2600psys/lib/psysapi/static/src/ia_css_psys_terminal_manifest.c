@@ -1,0 +1,500 @@
+/**
+* Support for Intel Camera Imaging ISP subsystem.
+* Copyright (c) 2010 - 2015, Intel Corporation.
+* 
+* This program is free software; you can redistribute it and/or modify it
+* under the terms and conditions of the GNU General Public License,
+* version 2, as published by the Free Software Foundation.
+* 
+* This program is distributed in the hope it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+* more details.
+*/
+
+
+#include <ia_css_psys_terminal_manifest.h>
+
+#include <ia_css_program_group_data.h>			/* Data object types on the terminals */
+#include <ia_css_program_group_param_types.h>	/* Kernel enable bitmap */
+
+#include <ia_css_psys_sim_data.h>				/* ia_css_psys_ran_val() */
+#include "ia_css_psys_program_group_private.h"
+#include "ia_css_terminal_manifest.h"
+#include "ia_css_terminal_manifest_types.h"
+
+#include <type_support.h>
+#include <error_support.h>
+#include <print_support.h>
+#include <math_support.h>						/* MIN() */
+#include <assert_support.h>
+#include <misc_support.h>
+#include "ia_css_psys_static_trace.h"
+
+/* We need to refactor those files in order to build in the firmware only
+   what is needed, switches are put current to workaround compilation problems
+   in the firmware (for example lack of uint64_t support)
+   supported in the firmware
+  */
+#if !defined(__HIVECC)
+static const char *terminal_type_strings[IA_CSS_N_TERMINAL_TYPES + 1] = {
+	"IA_CSS_TERMINAL_TYPE_DATA_IN",
+	"IA_CSS_TERMINAL_TYPE_DATA_OUT",
+	"IA_CSS_TERMINAL_TYPE_PARAM_STREAM",
+	"IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN",		/**< Type 1-5 parameter input */
+	"IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT",	/**< Type 1-5 parameter output */
+	"IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN",	/**< Represent the new type of terminal for the "spatial dependent parameters", when params go in */
+	"IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT",	/**< Represent the new type of terminal for the "spatial dependent parameters", when params go out */
+	"IA_CSS_TERMINAL_TYPE_STATE_IN",
+	"IA_CSS_TERMINAL_TYPE_STATE_OUT",
+	"UNDEFINED_TERMINAL_TYPE"};
+
+#endif
+
+bool ia_css_is_terminal_manifest_spatial_parameter_terminal(
+	const ia_css_terminal_manifest_t		*manifest)
+{
+	ia_css_terminal_type_t	terminal_type;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_is_terminal_manifest_parameter_terminal(): enter:\n");
+
+	terminal_type = ia_css_terminal_manifest_get_type(manifest);
+
+	return ((terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN) ||
+		(terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT));
+}
+
+bool ia_css_is_terminal_manifest_program_terminal(
+	const ia_css_terminal_manifest_t		*manifest)
+{
+	ia_css_terminal_type_t	terminal_type;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_is_terminal_manifest_parameter_terminal(): enter:\n");
+
+	terminal_type = ia_css_terminal_manifest_get_type(manifest);
+
+	return (terminal_type == IA_CSS_TERMINAL_TYPE_PROGRAM);
+}
+
+bool ia_css_is_terminal_manifest_parameter_terminal(
+	const ia_css_terminal_manifest_t		*manifest)
+{
+/* will return an error value on error */
+	ia_css_terminal_type_t	terminal_type;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_is_terminal_manifest_parameter_terminal(): enter:\n");
+
+	terminal_type = ia_css_terminal_manifest_get_type(manifest);
+
+	return (terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN ||
+		terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT);
+}
+
+bool ia_css_is_terminal_manifest_data_terminal(
+	const ia_css_terminal_manifest_t		*manifest)
+{
+/* will return an error value on error */
+	ia_css_terminal_type_t	terminal_type;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_is_terminal_manifest_data_terminal(): enter:\n");
+
+	terminal_type = ia_css_terminal_manifest_get_type(manifest);
+
+	return ((terminal_type == IA_CSS_TERMINAL_TYPE_DATA_IN) ||
+		(terminal_type == IA_CSS_TERMINAL_TYPE_DATA_OUT));
+}
+
+
+
+size_t ia_css_terminal_manifest_get_size(
+	const ia_css_terminal_manifest_t		*manifest)
+{
+	size_t	size = 0;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_terminal_manifest_get_size(): enter:\n");
+
+	if (manifest != NULL) {
+		size = manifest->size;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_terminal_manifest_get_size invalid argument\n");
+	}
+	return size;
+}
+
+ia_css_terminal_type_t ia_css_terminal_manifest_get_type(
+	const ia_css_terminal_manifest_t		*manifest)
+{
+	ia_css_terminal_type_t	terminal_type = IA_CSS_N_TERMINAL_TYPES;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_terminal_manifest_get_type(): enter:\n");
+
+	if (manifest != NULL) {
+		terminal_type = manifest->terminal_type;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_terminal_manifest_get_type invalid argument\n");
+	}
+	return terminal_type;
+}
+
+int ia_css_terminal_manifest_set_type(
+	ia_css_terminal_manifest_t				*manifest,
+	const ia_css_terminal_type_t			terminal_type)
+{
+	int	retval = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_terminal_manifest_set_type(): enter:\n");
+
+	if (manifest != NULL) {
+		manifest->terminal_type = terminal_type;
+		retval = 0;
+	} else {
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR, "ia_css_terminal_manifest_set_type failed (%i)\n", retval);
+	}
+	return retval;
+}
+
+int ia_css_terminal_manifest_set_ID(
+	ia_css_terminal_manifest_t				*manifest,
+	const ia_css_terminal_ID_t				ID)
+{
+	int	retval = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_terminal_manifest_set_ID(): enter:\n");
+
+	if (manifest != NULL) {
+		manifest->ID = ID;
+		retval = 0;
+	} else {
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR, "ia_css_terminal_manifest_set_ID failed (%i)\n", retval);
+	}
+	return retval;
+}
+
+ia_css_terminal_ID_t ia_css_terminal_manifest_get_ID(
+	const ia_css_terminal_manifest_t		*manifest)
+{
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_terminal_manifest_get_ID(): enter:\n");
+
+	if (manifest != NULL) {
+		return manifest->ID;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR, "ia_css_terminal_manifest_get_ID failed\n");
+		return 0;
+	}
+}
+
+
+ia_css_program_group_manifest_t *ia_css_terminal_manifest_get_parent(
+	const ia_css_terminal_manifest_t		*manifest)
+{
+	ia_css_program_group_manifest_t	*parent = NULL;
+	char *base;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_terminal_manifest_get_parent(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	base = (char*)((char*)manifest + manifest->parent_offset);
+
+	parent = (ia_css_program_group_manifest_t * )(base);
+EXIT:
+	return parent;
+}
+
+int ia_css_terminal_manifest_set_parent_offset(
+	ia_css_terminal_manifest_t	*manifest,
+	int32_t terminal_offset)
+{
+	int	retval = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_terminal_manifest_set_parent_offset(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	/* parent is at negative offset away from current terminal offset*/
+	manifest->parent_offset = -terminal_offset;
+
+	retval = 0;
+EXIT:
+	if (retval != 0) {
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR, "ia_css_terminal_manifest_set_parent_offset failed (%i)\n", retval);
+	}
+	return retval;
+}
+
+/* We need to refactor those files in order to build in the firmware only
+   what is needed, switches are put current to workaround compilation problems
+   in the firmware (for example lack of uint64_t support)
+   supported in the firmware
+  */
+#if !defined(__HIVECC)
+ia_css_frame_format_bitmap_t ia_css_data_terminal_manifest_get_frame_format_bitmap(
+	const ia_css_data_terminal_manifest_t	*manifest)
+{
+	ia_css_frame_format_bitmap_t	bitmap = 0;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_get_frame_format_bitmap(): enter:\n");
+
+	if (manifest != NULL) {
+		bitmap = manifest->frame_format_bitmap;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_data_terminal_manifest_get_frame_format_bitmap invalid argument\n");
+	}
+	return bitmap;
+}
+
+int ia_css_data_terminal_manifest_set_frame_format_bitmap(
+	ia_css_data_terminal_manifest_t	*manifest,
+	ia_css_frame_format_bitmap_t bitmap)
+{
+	int ret = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_set_frame_format_bitmap(): enter:\n");
+
+	if (manifest != NULL) {
+		manifest->frame_format_bitmap = bitmap;
+		ret = 0;
+	} else {
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR, "ia_css_data_terminal_manifest_set_frame_format_bitmap failed (%i)\n", ret);
+	}
+
+	return ret;
+}
+#endif
+
+ia_css_connection_bitmap_t ia_css_data_terminal_manifest_get_connection_bitmap(
+	const ia_css_data_terminal_manifest_t	*manifest)
+{
+	ia_css_connection_bitmap_t	connection_bitmap = 0;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_get_connection_bitmap(): enter:\n");
+
+	if (manifest != NULL) {
+		connection_bitmap = manifest->connection_bitmap;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_data_terminal_manifest_get_connection_bitmap invalid argument\n");
+	}
+	return connection_bitmap;
+}
+
+/* We need to refactor those files in order to build in the firmware only
+   what is needed, switches are put current to workaround compilation problems
+   in the firmware (for example lack of uint64_t support)
+   supported in the firmware
+  */
+#if !defined(__HIVECC)
+ia_css_kernel_bitmap_t ia_css_data_terminal_manifest_get_kernel_bitmap(
+	const ia_css_data_terminal_manifest_t	*manifest)
+{
+	ia_css_kernel_bitmap_t	kernel_bitmap = 0;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_get_kernel_bitmap(): enter:\n");
+
+	if (manifest != NULL) {
+		kernel_bitmap = manifest->kernel_bitmap;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_data_terminal_manifest_get_kernel_bitmap invalid argument\n");
+	}
+	return kernel_bitmap;
+}
+
+int ia_css_data_terminal_manifest_set_kernel_bitmap(
+	ia_css_data_terminal_manifest_t			*manifest,
+	const ia_css_kernel_bitmap_t			kernel_bitmap)
+{
+	int	retval = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_set_kernel_bitmap(): enter:\n");
+
+	if (manifest != NULL) {
+		manifest->kernel_bitmap = kernel_bitmap;
+		retval = 0;
+	} else {
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR, "ia_css_data_terminal_manifest_set_kernel_bitmap failed (%i)\n", retval);
+	}
+
+	return retval;
+}
+
+int ia_css_data_terminal_manifest_set_kernel_bitmap_unique(
+	ia_css_data_terminal_manifest_t			*manifest,
+	const unsigned int						index)
+{
+	int	retval = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_set_kernel_bitmap_unique(): enter:\n");
+
+	if (manifest != NULL) {
+		ia_css_kernel_bitmap_t	kernel_bitmap = ia_css_kernel_bitmap_clear();
+		kernel_bitmap = ia_css_kernel_bitmap_set(kernel_bitmap, index);
+		verifexit(kernel_bitmap != 0, EINVAL);
+		verifexit(ia_css_data_terminal_manifest_set_kernel_bitmap(manifest, kernel_bitmap) == 0, EINVAL);
+		retval = 0;
+	}
+
+EXIT:
+	if (retval != 0) {
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR, "ia_css_data_terminal_manifest_set_kernel_bitmap_unique failed (%i)\n", retval);
+	}
+	return retval;
+}
+#endif
+
+void ia_css_data_terminal_manifest_set_min_size(
+	ia_css_data_terminal_manifest_t	*manifest,
+	const uint16_t			min_size[IA_CSS_N_DATA_DIMENSION])
+{
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_set_min_size(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	manifest->min_size[IA_CSS_COL_DIMENSION] = min_size[IA_CSS_COL_DIMENSION];
+	manifest->min_size[IA_CSS_ROW_DIMENSION] = min_size[IA_CSS_ROW_DIMENSION];
+
+EXIT:
+	if (NULL == manifest) {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_data_terminal_manifest_set_min_size invalid argument\n");
+	}
+	return;
+}
+
+void ia_css_data_terminal_manifest_set_max_size(
+	ia_css_data_terminal_manifest_t	*manifest,
+	const uint16_t			max_size[IA_CSS_N_DATA_DIMENSION])
+{
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_set_max_size(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	manifest->max_size[IA_CSS_COL_DIMENSION] = max_size[IA_CSS_COL_DIMENSION];
+	manifest->max_size[IA_CSS_ROW_DIMENSION] = max_size[IA_CSS_ROW_DIMENSION];
+
+EXIT:
+	if (NULL == manifest) {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_data_terminal_manifest_set_max_size invalid argument\n");
+	}
+	return;
+}
+
+void ia_css_data_terminal_manifest_get_min_size(
+	const ia_css_data_terminal_manifest_t	*manifest,
+	uint16_t			min_size[IA_CSS_N_DATA_DIMENSION])
+{
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_get_min_size(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	min_size[IA_CSS_COL_DIMENSION] = manifest->min_size[IA_CSS_COL_DIMENSION];
+	min_size[IA_CSS_ROW_DIMENSION] = manifest->min_size[IA_CSS_ROW_DIMENSION] ;
+
+EXIT:
+	if (NULL == manifest) {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_data_terminal_manifest_get_min_size invalid argument\n");
+	}
+	return;
+}
+
+void ia_css_data_terminal_manifest_get_max_size(
+	const ia_css_data_terminal_manifest_t	*manifest,
+	uint16_t			max_size[IA_CSS_N_DATA_DIMENSION])
+{
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_get_max_size(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	max_size[IA_CSS_COL_DIMENSION] = manifest->max_size[IA_CSS_COL_DIMENSION];
+	max_size[IA_CSS_ROW_DIMENSION] = manifest->max_size[IA_CSS_ROW_DIMENSION] ;
+
+EXIT:
+	if (NULL == manifest) {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_data_terminal_manifest_get_max_size invalid argument\n");
+	}
+	return;
+}
+
+/* We need to refactor those files in order to build in the firmware only
+   what is needed, switches are put current to workaround compilation problems
+   in the firmware (for example lack of uint64_t support)
+   supported in the firmware
+  */
+#if !defined(__HIVECC)
+
+int ia_css_terminal_manifest_print(
+	const ia_css_terminal_manifest_t		*manifest,
+	void									*fid)
+{
+	int	retval = -1;
+	ia_css_terminal_type_t	terminal_type = ia_css_terminal_manifest_get_type(manifest);
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, INFO, "ia_css_terminal_manifest_print(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+	NOT_USED(fid);
+
+	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sizeof(manifest) = %d\n",(int)ia_css_terminal_manifest_get_size(manifest));
+
+	PRINT("typeof(manifest) = %s\n",terminal_type_strings[terminal_type]);
+
+	if (terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN ||
+		terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT) {
+		ia_css_param_terminal_manifest_t	*pterminal_manifest = (ia_css_param_terminal_manifest_t *)manifest;
+		uint16_t				section_count = pterminal_manifest->param_manifest_section_desc_count;
+		int	i;
+
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sections(manifest) = %d\n",(int)section_count);
+		for (i = 0; i < section_count; i++) {
+			const ia_css_param_manifest_section_desc_t *manifest = 
+				ia_css_param_terminal_manifest_get_param_manifest_section_desc(pterminal_manifest, i);
+			verifjmpexit(manifest != NULL);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "kernel_id = %d\n",(int)manifest->kernel_id);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "mem_type_id = %d\n",(int)manifest->mem_type_id);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "max_mem_size = %d\n",(int)manifest->max_mem_size);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "region_id = %d\n",(int)manifest->region_id);
+		}
+	} else if (terminal_type < IA_CSS_N_TERMINAL_TYPES) {
+		ia_css_data_terminal_manifest_t	*dterminal_manifest = (ia_css_data_terminal_manifest_t *)manifest;
+		int	i;
+
+		NOT_USED(dterminal_manifest);
+
+		verifexit(ia_css_kernel_bitmap_print(ia_css_data_terminal_manifest_get_kernel_bitmap(dterminal_manifest), fid) == 0, EINVAL);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "formats(manifest) = %04x\n",(int)ia_css_data_terminal_manifest_get_frame_format_bitmap(dterminal_manifest));
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "connection(manifest) = %04x\n",(int)ia_css_data_terminal_manifest_get_connection_bitmap(dterminal_manifest));
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "dependent(manifest) = %d\n",(int)dterminal_manifest->terminal_dependency);
+
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\tmin_size[%d]   = {\n", IA_CSS_N_DATA_DIMENSION);
+		for (i = 0; i < (int)IA_CSS_N_DATA_DIMENSION - 1; i++) {
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\t\t%4d,\n", dterminal_manifest->min_size[i]);
+		}
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\t\t%4d }\n", dterminal_manifest->min_size[i]);
+
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\tmax_size[%d]   = {\n", IA_CSS_N_DATA_DIMENSION);
+		for (i = 0; i < (int)IA_CSS_N_DATA_DIMENSION - 1; i++) {
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\t\t%4d,\n", dterminal_manifest->max_size[i]);
+		}
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\t\t%4d }\n", dterminal_manifest->max_size[i]);
+
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\tmin_fragment_size[%d]   = {\n", IA_CSS_N_DATA_DIMENSION);
+		for (i = 0; i < (int)IA_CSS_N_DATA_DIMENSION - 1; i++) {
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\t\t%4d,\n", dterminal_manifest->min_fragment_size[i]);
+		}
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\t\t%4d }\n", dterminal_manifest->min_fragment_size[i]);
+
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\tmax_fragment_size[%d]   = {\n", IA_CSS_N_DATA_DIMENSION);
+		for (i = 0; i < (int)IA_CSS_N_DATA_DIMENSION - 1; i++) {
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\t\t%4d,\n", dterminal_manifest->max_fragment_size[i]);
+		}
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\t\t%4d }\n", dterminal_manifest->max_fragment_size[i]);
+	}
+
+	retval = 0;
+EXIT:
+	if (retval != 0) {
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR, "ia_css_terminal_manifest_print failed (%i)\n", retval);
+	}
+	return retval;
+}
+#endif
+

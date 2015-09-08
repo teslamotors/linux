@@ -1,0 +1,28 @@
+==========
+Operations
+==========
+
+Mapping buffers
+---------------
+
+All buffers used for data and parameters need to be premapped to the driver
+before use.
+
+V4L2 ref: VIDIOC_REQBUF for DMABUF/USERPTR buffers
+
+Queue a command
+---------------
+
+Queues a single command to PSYS.
+
+V4L2 ref: VIDIOC_QBUF
+
+Poll for events
+---------------
+
+Poll for any events that client has requested.
+
+Dequeue an event
+----------------
+
+V4L2 ref: VIDIOC_DQEVENT

@@ -1,0 +1,1217 @@
+/*
+ * Copyright (c) 2013--2014 Intel Corporation. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License version
+ * 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#include <linux/delay.h>
+#include <linux/device.h>
+#include <linux/firmware.h>
+#include <linux/kthread.h>
+#include <linux/module.h>
+#include <linux/pm_runtime.h>
+#include <linux/string.h>
+
+#include <media/intel-ipu4-isys.h>
+#include <media/v4l2-subdev.h>
+
+#include "intel-ipu4.h"
+#include "intel-ipu4-bus.h"
+#include "intel-ipu4-mmu.h"
+#include "intel-ipu4-dma.h"
+#include "intel-ipu4-isys.h"
+#include "intel-ipu4-isys-csi2.h"
+#include "intel-ipu4-isys-csi2-reg.h"
+#include "intel-ipu4-isys-tpg.h"
+#include "intel-ipu4-isys-video.h"
+#include "intel-ipu4-regs.h"
+#include "intel-ipu4-buttress.h"
+#include "intel-ipu4-wrapper.h"
+#include "isysapi/interface/ia_css_isysapi.h"
+
+/* Trace block definitions for isys */
+static struct intel_ipu4_trace_block isys_trace_blocks_a0[] = {
+	{
+		.offset = TRACE_REG_IS_TRACE_UNIT_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TUN,
+	},
+	{
+		.offset = TRACE_REG_IS_SP_EVQ_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TM,
+	},
+	{
+		.offset = TRACE_REG_IS_SP_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = TRACE_REG_IS_ISL_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = TRACE_REG_IS_MMU_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.type= INTEL_IPU4_TRACE_BLOCK_END,
+	}
+};
+
+static struct intel_ipu4_trace_block isys_trace_blocks[] = {
+	{
+		.offset = TRACE_REG_IS_TRACE_UNIT_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TUN,
+	},
+	{
+		.offset = TRACE_REG_IS_SP_EVQ_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TM,
+	},
+	{
+		.offset = TRACE_REG_IS_SP_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = TRACE_REG_IS_ISL_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = TRACE_REG_IS_MMU_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = TRACE_REG_CSI2_TM_BASE,
+		.type = INTEL_IPU4_TRACE_CSI2,
+	},
+	{
+		.offset = TRACE_REG_CSI2_3PH_TM_BASE,
+		.type = INTEL_IPU4_TRACE_CSI2_3PH,
+	},
+	{
+		/* Note! this covers all 9 blocks */
+		.offset = TRACE_REG_CSI2_SIG2SIO_GRn_BASE(0),
+		.type = INTEL_IPU4_TRACE_SIG2CIOS,
+	},
+	{
+		/* Note! this covers all 9 blocks */
+		.offset = TRACE_REG_CSI2_PH3_SIG2SIO_GRn_BASE(0),
+		.type = INTEL_IPU4_TRACE_SIG2CIOS,
+	},
+	{
+		.type= INTEL_IPU4_TRACE_BLOCK_END,
+	}
+};
+
+/*
+ * BEGIN adapted code from drivers/media/platform/omap3isp/isp.c.
+ * FIXME: This (in terms of functionality if not code) should be most
+ * likely generalised in the framework, and use made optional for
+ * drivers.
+ */
+/*
+ * intel_ipu4_pipeline_pm_use_count - Count the number of users of a pipeline
+ * @entity: The entity
+ *
+ * Return the total number of users of all video device nodes in the pipeline.
+ */
+static int intel_ipu4_pipeline_pm_use_count(struct media_entity *entity)
+{
+	struct media_entity_graph graph;
+	int use = 0;
+
+	media_entity_graph_walk_start(&graph, entity);
+
+	while ((entity = media_entity_graph_walk_next(&graph))) {
+		if (media_entity_type(entity) == MEDIA_ENT_T_DEVNODE)
+			use += entity->use_count;
+	}
+
+	return use;
+}
+
+/*
+ * intel_ipu4_pipeline_pm_power_one - Apply power change to an entity
+ * @entity: The entity
+ * @change: Use count change
+ *
+ * Change the entity use count by @change. If the entity is a subdev update its
+ * power state by calling the core::s_power operation when the use count goes
+ * from 0 to != 0 or from != 0 to 0.
+ *
+ * Return 0 on success or a negative error code on failure.
+ */
+static int intel_ipu4_pipeline_pm_power_one(struct media_entity *entity,
+					 int change)
+{
+	struct v4l2_subdev *subdev;
+	int ret;
+
+	subdev = media_entity_type(entity) == MEDIA_ENT_T_V4L2_SUBDEV
+	       ? media_entity_to_v4l2_subdev(entity) : NULL;
+
+	if (entity->use_count == 0 && change > 0 && subdev != NULL) {
+		ret = v4l2_subdev_call(subdev, core, s_power, 1);
+		if (ret < 0 && ret != -ENOIOCTLCMD)
+			return ret;
+	}
+
+	entity->use_count += change;
+	WARN_ON(entity->use_count < 0);
+
+	if (entity->use_count == 0 && change < 0 && subdev != NULL)
+		v4l2_subdev_call(subdev, core, s_power, 0);
+
+	return 0;
+}
+
+/*
+ * intel_ipu4_pipeline_pm_power - Apply power change to all entities in a pipeline
+ * @entity: The entity
+ * @change: Use count change
+ *
+ * Walk the pipeline to update the use count and the power state of all non-node
+ * entities.
+ *
+ * Return 0 on success or a negative error code on failure.
+ */
+static int intel_ipu4_pipeline_pm_power(struct media_entity *entity, int change)
+{
+	struct media_entity_graph graph;
+	struct media_entity *first = entity;
+	int ret = 0;
+
+	if (!change)
+		return 0;
+
+	media_entity_graph_walk_start(&graph, entity);
+
+	while (!ret && (entity = media_entity_graph_walk_next(&graph)))
+		if (media_entity_type(entity) != MEDIA_ENT_T_DEVNODE)
+			ret = intel_ipu4_pipeline_pm_power_one(entity, change);
+
+	if (!ret)
+		return 0;
+
+	media_entity_graph_walk_start(&graph, first);
+
+	while ((first = media_entity_graph_walk_next(&graph))
+	       && first != entity)
+		if (media_entity_type(first) != MEDIA_ENT_T_DEVNODE)
+			intel_ipu4_pipeline_pm_power_one(first, -change);
+
+	return ret;
+}
+
+/*
+ * intel_ipu4_pipeline_pm_use - Update the use count of an entity
+ * @entity: The entity
+ * @use: Use (1) or stop using (0) the entity
+ *
+ * Update the use count of all entities in the pipeline and power entities on or
+ * off accordingly.
+ *
+ * Return 0 on success or a negative error code on failure. Powering entities
+ * off is assumed to never fail. No failure can occur when the use parameter is
+ * set to 0.
+ */
+int intel_ipu4_pipeline_pm_use(struct media_entity *entity, int use)
+{
+	int change = use ? 1 : -1;
+	int ret;
+
+	mutex_lock(&entity->parent->graph_mutex);
+
+	/* Apply use count to node. */
+	entity->use_count += change;
+	WARN_ON(entity->use_count < 0);
+
+	/* Apply power change to connected non-nodes. */
+	ret = intel_ipu4_pipeline_pm_power(entity, change);
+	if (ret < 0)
+		entity->use_count -= change;
+
+	mutex_unlock(&entity->parent->graph_mutex);
+
+	return ret;
+}
+
+/*
+ * intel_ipu4_pipeline_link_notify - Link management notification callback
+ * @link: The link
+ * @flags: New link flags that will be applied
+ * @notification: The link's state change notification type (MEDIA_DEV_NOTIFY_*)
+ *
+ * React to link management on powered pipelines by updating the use count of
+ * all entities in the source and sink sides of the link. Entities are powered
+ * on or off accordingly.
+ *
+ * Return 0 on success or a negative error code on failure. Powering entities
+ * off is assumed to never fail. This function will not fail for disconnection
+ * events.
+ */
+static int intel_ipu4_pipeline_link_notify(struct media_link *link, u32 flags,
+					unsigned int notification)
+{
+	struct media_entity *source = link->source->entity;
+	struct media_entity *sink = link->sink->entity;
+	int source_use = intel_ipu4_pipeline_pm_use_count(source);
+	int sink_use = intel_ipu4_pipeline_pm_use_count(sink);
+	int ret;
+
+	if (notification == MEDIA_DEV_NOTIFY_POST_LINK_CH &&
+	    !(flags & MEDIA_LNK_FL_ENABLED)) {
+		/* Powering off entities is assumed to never fail. */
+		intel_ipu4_pipeline_pm_power(source, -sink_use);
+		intel_ipu4_pipeline_pm_power(sink, -source_use);
+		return 0;
+	}
+
+	if (notification == MEDIA_DEV_NOTIFY_PRE_LINK_CH &&
+		(flags & MEDIA_LNK_FL_ENABLED)) {
+
+		ret = intel_ipu4_pipeline_pm_power(source, sink_use);
+		if (ret < 0)
+			return ret;
+
+		ret = intel_ipu4_pipeline_pm_power(sink, source_use);
+		if (ret < 0)
+			intel_ipu4_pipeline_pm_power(source, -sink_use);
+
+		return ret;
+	}
+
+	return 0;
+}
+/* END adapted code from drivers/media/platform/omap3isp/isp.c */
+
+static int isys_determine_legacy_csi_lane_configuration(struct intel_ipu4_isys *isys)
+{
+	const struct csi_lane_cfg {
+		u32 reg_value;
+		int port_lanes[INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS];
+	} csi_lanes_to_cfg[] = {
+		{ 0x0, { 4, 2, 0, 0 } }, /* no sensor defaults here */
+		{ 0x1, { 3, 2, 0, 0 } },
+		{ 0x2, { 2, 2, 0, 0 } },
+		{ 0x3, { 1, 2, 0, 0 } },
+		{ 0x4, { 4, 1, 0, 0 } },
+		{ 0x5, { 3, 1, 0, 0 } },
+		{ 0x6, { 2, 1, 0, 0 } },
+		{ 0x7, { 1, 1, 0, 0 } },
+		{ 0x8, { 4, 1, 0, 1 } },
+		{ 0x9, { 3, 1, 0, 1 } },
+		{ 0xa, { 2, 1, 0, 1 } },
+		{ 0xb, { 1, 1, 0, 1 } },
+		{ 0x10, { 2, 2, 2, 0 } },
+		{ 0x11, { 2, 2, 1, 0 } },
+		{ 0x18, { 2, 1, 2, 1 } },
+		{ 0x19, { 1, 1, 1, 1 } },
+	};
+	int i, j;
+
+	for (i = 0; i < ARRAY_SIZE(csi_lanes_to_cfg); i++) {
+		for (j = 0; j < INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS; j++) {
+			/* Port with no sensor can be handled as don't care */
+			if (!isys->csi2[j].nlanes)
+				continue;
+			if (csi_lanes_to_cfg[i].port_lanes[j] !=
+			    isys->csi2[j].nlanes)
+				break;
+		}
+
+		if (j < INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS)
+			continue;
+
+		isys->legacy_port_cfg = csi_lanes_to_cfg[i].reg_value;
+		dev_dbg(&isys->adev->dev, "Lane configuration value 0x%x\n,",
+			 isys->legacy_port_cfg);
+		return 0;
+	}
+	dev_err(&isys->adev->dev, "Non supported CSI lane configuration\n,");
+	return -EINVAL;
+}
+
+
+static int isys_determine_csi_combo_lane_configuration(struct intel_ipu4_isys *isys)
+{
+	const struct csi_lane_cfg {
+		u32 reg_value;
+		int port_lanes[INTEL_IPU4_ISYS_MAX_CSI2_COMBO_PORTS];
+	} csi_lanes_to_cfg[] = {
+		{ 0x1f, { 0, 0 } }, /* no sensor defaults here - disable all */
+		{ 0x10, { 4, 0 } },
+		{ 0x11, { 3, 0 } },
+		{ 0x12, { 2, 0 } },
+		{ 0x13, { 1, 0 } },
+		{ 0x14, { 3, 1 } },
+		{ 0x15, { 2, 1 } },
+		{ 0x16, { 1, 1 } },
+		{ 0x18, { 2, 2 } },
+		{ 0x19, { 1, 2 } },
+	};
+	int i, j;
+
+	for (i = 0; i < ARRAY_SIZE(csi_lanes_to_cfg); i++) {
+		for (j = 0; j <  INTEL_IPU4_ISYS_MAX_CSI2_COMBO_PORTS; j++) {
+			/* Port with no sensor can be handled as don't care */
+			if (!isys->csi2[j + INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS].nlanes)
+				continue;
+			if (csi_lanes_to_cfg[i].port_lanes[j] !=
+			    isys->csi2[j + INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS].nlanes)
+				break;
+		}
+
+		if (j < INTEL_IPU4_ISYS_MAX_CSI2_COMBO_PORTS)
+			continue;
+
+		isys->combo_port_cfg = csi_lanes_to_cfg[i].reg_value;
+		dev_dbg(&isys->adev->dev,
+			"Combo port lane configuration value 0x%x\n",
+			isys->combo_port_cfg);
+
+		return 0;
+	}
+	dev_err(&isys->adev->dev,
+		"Unsupported CSI2-combo lane configuration\n");
+	return 0;
+}
+
+struct isys_i2c_test {
+	u8 bus_nr;
+	u16 addr;
+	struct i2c_client *client;
+};
+
+static int isys_i2c_test(struct device *dev, void *priv)
+{
+	struct i2c_client *client = i2c_verify_client(dev);
+	struct isys_i2c_test *test = priv;
+
+	if (!client)
+		return 0;
+
+	if (i2c_adapter_id(client->adapter) != test->bus_nr
+	    || client->addr != test->addr)
+		return 0;
+
+	test->client = client;
+
+	return 0;
+}
+
+static struct i2c_client *isys_find_i2c_subdev(struct i2c_adapter *adapter,
+				struct intel_ipu4_isys_subdev_info *sd_info)
+{
+	struct i2c_board_info *info = &sd_info->i2c.board_info;
+	struct isys_i2c_test test = {
+		.bus_nr = i2c_adapter_id(adapter),
+		.addr = info->addr,
+	};
+	int rval;
+
+	request_module(I2C_MODULE_PREFIX "%s", info->type);
+
+	rval = i2c_for_each_dev(&test, isys_i2c_test);
+	if (rval || !test.client)
+		return NULL;
+	return test.client;
+}
+
+static struct v4l2_subdev *register_acpi_i2c_subdev(
+	struct v4l2_device *v4l2_dev,
+	struct intel_ipu4_isys_subdev_info *sd_info, struct i2c_client *client)
+{
+	struct i2c_board_info *info = &sd_info->i2c.board_info;
+	struct v4l2_subdev *sd;
+
+	/*
+	 * ACPI doesn't provide useful data yet. Use data
+	 * from temporary platform data
+	 */
+	client->dev.platform_data = info->platform_data;
+	/* Change I2C client name to one in temporary platform data */
+	strlcpy(client->name, info->type, sizeof(client->name));
+
+	if (device_reprobe(&client->dev) < 0)
+		return NULL;
+
+	sd = i2c_get_clientdata(client);
+
+	if (v4l2_device_register_subdev(v4l2_dev, sd))
+		sd = NULL;
+
+	return sd;
+}
+
+static int isys_register_ext_subdev(struct intel_ipu4_isys *isys,
+				    struct intel_ipu4_isys_subdev_info *sd_info,
+				    bool acpi_only)
+{
+	struct i2c_adapter *adapter =
+		i2c_get_adapter(sd_info->i2c.i2c_adapter_id);
+	struct v4l2_subdev *sd;
+	struct i2c_client *client;
+	unsigned int i;
+	int rval;
+
+	dev_info(&isys->adev->dev,
+		 "creating new i2c subdev for %s (address %2.2x, bus %d)",
+		 sd_info->i2c.board_info.type, sd_info->i2c.board_info.addr,
+		 sd_info->i2c.i2c_adapter_id);
+
+	if (!adapter) {
+		dev_warn(&isys->adev->dev, "can't find adapter\n");
+		return -ENOENT;
+	}
+	if (sd_info->csi2) {
+		dev_info(&isys->adev->dev, "sensor device on CSI port: %d \n",
+			sd_info->csi2->port);
+		if (sd_info->csi2->port >= INTEL_IPU4_ISYS_MAX_CSI2_PORTS ||
+		    !isys->csi2[sd_info->csi2->port].isys) {
+			dev_warn(&isys->adev->dev, "invalid csi2 port %u\n",
+				 sd_info->csi2->port);
+			rval = -EINVAL;
+			goto skip_put_adapter;
+		}
+	} else {
+		dev_info(&isys->adev->dev, "non camera subdevice\n");
+	}
+
+	client = isys_find_i2c_subdev(adapter, sd_info);
+
+	if (acpi_only) {
+		if (!client) {
+			dev_dbg(&isys->adev->dev,
+				 "Matching ACPI device not found - postpone\n");
+			return 0;
+		}
+		if (!sd_info->acpiname) {
+			dev_dbg(&isys->adev->dev,
+				 "No name in platform data\n");
+			return 0;
+		}
+		if (strcmp(dev_name(&client->dev), sd_info->acpiname)) {
+			dev_dbg(&isys->adev->dev, "Names don't match: %s != %s",
+				dev_name(&client->dev), sd_info->acpiname);
+			return 0;
+		}
+		/* Acpi match found. Continue to reprobe */
+	} else if (client) {
+		dev_dbg(&isys->adev->dev, "Device exists\n");
+		return 0;
+	} else if (sd_info->acpiname) {
+		dev_dbg(&isys->adev->dev, "ACPI name don't match: %s\n",
+			sd_info->acpiname);
+		return 0;
+	}
+
+	if (!client) {
+		dev_info(&isys->adev->dev,
+			 "i2c device not found in ACPI table\n");
+		sd = v4l2_i2c_new_subdev_board(&isys->v4l2_dev, adapter,
+					       &sd_info->i2c.board_info, 0);
+	} else {
+		dev_info(&isys->adev->dev, "i2c device found in ACPI table\n");
+		sd = register_acpi_i2c_subdev(&isys->v4l2_dev,
+					      sd_info, client);
+	}
+
+	if (!sd) {
+		dev_warn(&isys->adev->dev, "can't create new i2c subdev\n");
+		rval = -EINVAL;
+		goto skip_put_adapter;
+	}
+	if (!sd_info->csi2)
+		return 0;
+
+	v4l2_set_subdev_hostdata(sd, sd_info->csi2);
+
+	for (i = 0; i < sd->entity.num_pads; i++) {
+		if (sd->entity.pads[i].flags & MEDIA_PAD_FL_SOURCE)
+			break;
+	}
+
+	if (i == sd->entity.num_pads) {
+		dev_warn(&isys->adev->dev,
+			 "no source pad in external entity\n");
+		v4l2_device_unregister_subdev(sd);
+		rval = -ENOENT;
+		goto skip_unregister_subdev;
+	}
+
+	rval = media_entity_create_link(
+		&sd->entity, i,
+		&isys->csi2[sd_info->csi2->port].asd.sd.entity, 0, 0);
+	if (rval) {
+		dev_warn(&isys->adev->dev, "can't create link\n");
+		goto skip_unregister_subdev;
+	}
+
+	isys->csi2[sd_info->csi2->port].nlanes = sd_info->csi2->nlanes;
+
+	return 0;
+
+skip_unregister_subdev:
+	v4l2_device_unregister_subdev(sd);
+
+skip_put_adapter:
+	i2c_put_adapter(adapter);
+
+	return rval;
+}
+
+static void isys_register_ext_subdevs(struct intel_ipu4_isys *isys)
+{
+	struct intel_ipu4_isys_subdev_pdata *spdata = isys->pdata->spdata;
+	struct intel_ipu4_isys_subdev_info **sd_info;
+
+	if (!spdata) {
+		dev_info(&isys->adev->dev, "no external subdevs found\n");
+		return;
+	}
+
+	/* First scan devices which are created by ACPI */
+	for (sd_info = spdata->subdevs; *sd_info; sd_info++)
+		isys_register_ext_subdev(isys, *sd_info, true);
+
+	/* Scan non-acpi devices */
+	for (sd_info = spdata->subdevs; *sd_info; sd_info++)
+		isys_register_ext_subdev(isys, *sd_info, false);
+}
+
+static void isys_unregister_subdevices(struct intel_ipu4_isys *isys)
+{
+	const struct intel_ipu4_isys_internal_tpg_pdata *tpg =
+		&isys->pdata->ipdata->tpg;
+	const struct intel_ipu4_isys_internal_csi2_pdata *csi2 =
+		&isys->pdata->ipdata->csi2;
+	const struct intel_ipu4_isys_internal_csi2_be_pdata *csi2_be =
+		&isys->pdata->ipdata->csi2_be;
+	unsigned int i;
+
+	for (i = 0; i < csi2_be->nbes; i++)
+		intel_ipu4_isys_csi2_be_cleanup(&isys->csi2_be[i]);
+
+	intel_ipu4_isys_isa_cleanup(&isys->isa);
+
+	for (i = 0; i < tpg->ntpgs; i++)
+		intel_ipu4_isys_tpg_cleanup(&isys->tpg[i]);
+
+	for (i = 0; i < csi2->nports; i++)
+		intel_ipu4_isys_csi2_cleanup(&isys->csi2[i]);
+}
+
+static int isys_register_subdevices(struct intel_ipu4_isys *isys)
+{
+	const struct intel_ipu4_isys_internal_tpg_pdata *tpg =
+		&isys->pdata->ipdata->tpg;
+	const struct intel_ipu4_isys_internal_csi2_pdata *csi2 =
+		&isys->pdata->ipdata->csi2;
+	const struct intel_ipu4_isys_internal_csi2_be_pdata *csi2_be =
+		&isys->pdata->ipdata->csi2_be;
+	unsigned int i;
+	int rval;
+
+	BUG_ON(csi2->nports > INTEL_IPU4_ISYS_MAX_CSI2_PORTS);
+	BUG_ON(tpg->ntpgs > INTEL_IPU4_ISYS_MAX_TPGS);
+
+	for (i = 0; i < csi2->nports; i++) {
+		rval = intel_ipu4_isys_csi2_init(
+			&isys->csi2[i], isys,
+			isys->pdata->base + csi2->offsets[i], i);
+		if (rval)
+			goto fail;
+	}
+
+	for (i = 0; i < tpg->ntpgs; i++) {
+		rval = intel_ipu4_isys_tpg_init(
+			&isys->tpg[i], isys,
+			isys->pdata->base + tpg->offsets[i],
+			isys->pdata->base + tpg->sels[i], i);
+		if (rval)
+			goto fail;
+	}
+
+	for (i = 0; i < csi2_be->nbes; i++) {
+		rval = intel_ipu4_isys_csi2_be_init(&isys->csi2_be[i], isys,
+				i);
+		if (rval) {
+			dev_info(&isys->adev->dev,
+				 "can't register csi2_be device\n");
+			goto fail;
+		}
+	}
+
+	rval = intel_ipu4_isys_isa_init(&isys->isa, isys, NULL);
+	if (rval) {
+		dev_info(&isys->adev->dev,
+			 "can't register isa device\n");
+		goto fail;
+	}
+
+	for (i = 0; i < csi2->nports; i++) {
+		rval = media_entity_create_link(
+			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE,
+			&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
+			CSI2_BE_PAD_SINK, 0);
+		if (rval) {
+			dev_info(&isys->adev->dev,
+				 "can't create link between csi2 and csi2_be\n");
+			goto fail;
+		}
+		if (csi2_be->nbes < 2)
+			continue;
+		rval = media_entity_create_link(
+			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE,
+			&isys->csi2_be[INTEL_IPU4_BE_SOC].asd.sd.entity,
+			CSI2_BE_PAD_SINK, 0);
+		if (rval) {
+			dev_info(&isys->adev->dev,
+				 "can't create link between csi2 and csi2_be soc\n");
+			goto fail;
+		}
+	}
+
+	for (i = 0; i < tpg->ntpgs; i++) {
+		rval = media_entity_create_link(
+			&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
+			&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
+			CSI2_BE_PAD_SINK, 0);
+		if (rval) {
+			dev_info(&isys->adev->dev,
+				 "can't create link between tpg and csi2_be\n");
+			goto fail;
+		}
+	}
+
+	rval = media_entity_create_link(
+		&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
+		CSI2_BE_PAD_SOURCE, &isys->isa.asd.sd.entity, ISA_PAD_SINK, 0);
+	if (rval) {
+		dev_info(&isys->adev->dev,
+			 "can't create link between CSI2be and ISA \n");
+		goto fail;
+	}
+
+	return 0;
+
+fail:
+	isys_unregister_subdevices(isys);
+	return rval;
+}
+
+static int isys_register_devices(struct intel_ipu4_isys *isys)
+{
+	int rval;
+
+	isys->media_dev.dev = &isys->adev->dev;
+	isys->media_dev.link_notify = intel_ipu4_pipeline_link_notify;
+	strlcpy(isys->media_dev.model,
+		intel_ipu4_media_ctl_dev_model(isys->adev->isp),
+		sizeof(isys->media_dev.model));
+	isys->media_dev.driver_version = LINUX_VERSION_CODE;
+	snprintf(isys->media_dev.bus_info, sizeof(isys->media_dev.bus_info),
+		 "pci:%s", dev_name(isys->adev->dev.parent->parent));
+	strlcpy(isys->v4l2_dev.name, isys->media_dev.model,
+		sizeof(isys->v4l2_dev.name));
+
+	rval = media_device_register(&isys->media_dev);
+	if (rval < 0) {
+		dev_info(&isys->adev->dev, "can't register media device\n");
+		return rval;
+	}
+
+	isys->v4l2_dev.mdev = &isys->media_dev;
+
+	rval = v4l2_device_register(&isys->adev->dev, &isys->v4l2_dev);
+	if (rval < 0) {
+		dev_info(&isys->adev->dev, "can't register v4l2 device\n");
+		goto out_media_device_unregister;
+	}
+
+	rval = isys_register_subdevices(isys);
+	if (rval)
+		goto out_v4l2_device_unregister;
+
+	isys_register_ext_subdevs(isys);
+
+	rval = isys_determine_legacy_csi_lane_configuration(isys);
+	if (rval)
+		goto out_isys_unregister_subdevices;
+
+	rval = isys_determine_csi_combo_lane_configuration(isys);
+	if (rval)
+		goto out_isys_unregister_subdevices;
+
+#ifndef CONFIG_PM
+	intel_ipu4_buttress_csi_port_config(isys->adev->isp,
+					    isys->legacy_port_cfg,
+					    isys->combo_port_cfg);
+#endif
+
+	rval = v4l2_device_register_subdev_nodes(&isys->v4l2_dev);
+	if (rval)
+		goto out_isys_unregister_subdevices;
+
+	return 0;
+
+out_isys_unregister_subdevices:
+	isys_unregister_subdevices(isys);
+
+out_v4l2_device_unregister:
+	v4l2_device_unregister(&isys->v4l2_dev);
+
+out_media_device_unregister:
+	media_device_unregister(&isys->media_dev);
+
+	return rval;
+}
+
+static void isys_unregister_devices(struct intel_ipu4_isys *isys)
+{
+	isys_unregister_subdevices(isys);
+	v4l2_device_unregister(&isys->v4l2_dev);
+	media_device_unregister(&isys->media_dev);
+}
+
+static void isys_setup_hw(struct intel_ipu4_isys *isys)
+{
+	void __iomem *base = isys->pdata->base;
+	u32 irqs;
+
+	/* Enable irqs for all MIPI busses */
+
+	if (is_intel_ipu4_hw_bxt_a0(isys->adev->isp)) {
+		irqs = INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(0) |
+		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(1) |
+		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(2) |
+		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(3);
+	} else {
+		irqs = INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(0) |
+		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(1) |
+		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(2) |
+		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(3) |
+		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(4) |
+		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(5);
+	}
+
+	irqs |= INTEL_IPU4_ISYS_UNISPART_IRQ_SW;
+
+	writel(irqs, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_EDGE);
+	writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_LEVEL_NOT_PULSE);
+	writel(irqs, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_CLEAR);
+	writel(irqs, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_MASK);
+	writel(irqs, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_ENABLE);
+
+	writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_REG);
+	writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_MUX_REG);
+}
+
+#ifdef CONFIG_PM
+static int isys_runtime_pm_resume(struct device *dev)
+{
+	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
+	struct intel_ipu4_device *isp = adev->isp;
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+	unsigned long flags;
+	int ret;
+
+	intel_ipu4_trace_restore(dev);
+
+	intel_ipu4_buttress_csi_port_config(isp,
+					    isys->legacy_port_cfg,
+					    isys->combo_port_cfg);
+
+	ret = intel_ipu4_buttress_start_tsc_sync(isp);
+	if (ret)
+		return ret;
+
+	spin_lock_irqsave(&isys->power_lock, flags);
+	isys->power = 1;
+	spin_unlock_irqrestore(&isys->power_lock, flags);
+
+	isys_setup_hw(isys);
+
+	return 0;
+}
+
+static int isys_runtime_pm_suspend(struct device *dev)
+{
+	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+	unsigned long flags;
+
+	spin_lock_irqsave(&isys->power_lock, flags);
+	isys->power = 0;
+	spin_unlock_irqrestore(&isys->power_lock, flags);
+
+	intel_ipu4_trace_stop(dev);
+	mutex_lock(&isys->mutex);
+	isys->reset_needed = false;
+	mutex_unlock(&isys->mutex);
+
+	return 0;
+}
+
+static const struct dev_pm_ops isys_pm_ops = {
+	.runtime_suspend = isys_runtime_pm_suspend,
+	.runtime_resume = isys_runtime_pm_resume,
+};
+#define ISYS_PM_OPS (&isys_pm_ops)
+#else
+#define ISYS_PM_OPS NULL
+#endif
+
+static void isys_remove(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+	struct intel_ipu4_device *isp = adev->isp;
+
+	dev_info(&adev->dev, "removed\n");
+	intel_ipu4_trace_uninit(&adev->dev);
+	isys_unregister_devices(isys);
+	if (!isp->secure_mode) {
+		intel_ipu4_wrapper_remove_shared_memory_buffer(
+			ISYS_SSID, (void *)adev->isp->isys_fw->data);
+		intel_ipu4_buttress_unmap_fw_image(adev, &isys->fw_sgt);
+	}
+
+	mutex_destroy(&isys->stream_mutex);
+	mutex_destroy(&isys->mutex);
+}
+
+static int isys_fw_reload(struct intel_ipu4_device *isp)
+{
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(isp->isys);
+	int rval;
+
+	if (isp->isys_fw) {
+		dev_info(&isp->pdev->dev, "Remove old isys FW\n");
+
+		intel_ipu4_wrapper_remove_shared_memory_buffer(
+			ISYS_SSID, (void *) isp->isys_fw->data);
+
+		intel_ipu4_buttress_unmap_fw_image(isp->isys, &isys->fw_sgt);
+
+		release_firmware(isp->isys_fw);
+		isp->isys_fw  = NULL;
+		dev_info(&isp->pdev->dev, "Old FW removed\n");
+	}
+
+	dev_info(&isp->pdev->dev, "Request new isys FW\n");
+	rval = request_firmware(&isp->isys_fw,
+				isys->pdata->ipdata->hw_variant.fw_filename,
+				&isp->isys->dev);
+	if (rval < 0) {
+		dev_err(&isp->pdev->dev, "ERROR: isys FW not found\n");
+		return -EINVAL;
+	}
+
+	dev_info(&isp->pdev->dev, "Map new isys FW\n");
+	rval = intel_ipu4_buttress_map_fw_image(isp->isys,
+						isp->isys_fw,
+						&isys->fw_sgt);
+
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Mapping of new isys FW failed\n");
+		return -EINVAL;
+	}
+
+	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+		ISYS_SSID, (void *)isp->isys_fw->data,
+		sg_dma_address(isys->fw_sgt.sgl),
+		isp->isys_fw->size);
+
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Mapping of isys FW fails\n");
+		return -EINVAL;
+	}
+	dev_info(&isp->pdev->dev, "New isys FW loaded succesfully\n");
+
+	return 0;
+}
+
+static int isys_probe(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
+	struct intel_ipu4_isys *isys;
+	struct intel_ipu4_device *isp = adev->isp;
+	int rval = 0;
+
+	/* Has the domain been attached? */
+	if (!mmu)
+		return -EPROBE_DEFER;
+
+	if (isp->secure_mode && !isp->auth_done)
+		return -EPROBE_DEFER;
+
+	intel_ipu4_wrapper_set_device(&adev->dev, ISYS_MMID);
+
+	isys = devm_kzalloc(&adev->dev, sizeof(*isys), GFP_KERNEL);
+	if (!isys)
+		return -ENOMEM;
+
+	isys->adev = adev;
+	isys->pdata = adev->pdata;
+
+	spin_lock_init(&isys->lock);
+	spin_lock_init(&isys->power_lock);
+	isys->power = 0;
+
+	mutex_init(&isys->mutex);
+	mutex_init(&isys->stream_mutex);
+
+	dev_info(&adev->dev, "isys probe %p %p\n", adev, &adev->dev);
+	intel_ipu4_bus_set_drvdata(adev, isys);
+
+	isys->line_align = INTEL_IPU4_ISYS_2600_MEM_LINE_ALIGN;
+
+#ifndef CONFIG_PM
+	isys_setup_hw(isys);
+#endif
+
+	if (!isp->secure_mode) {
+		rval = intel_ipu4_buttress_map_fw_image(
+			adev, adev->isp->isys_fw, &isys->fw_sgt);
+		if (rval)
+			goto trace_uninit;
+
+		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+			ISYS_SSID, (void *)adev->isp->isys_fw->data,
+			sg_dma_address(isys->fw_sgt.sgl),
+			adev->isp->isys_fw->size);
+		if (rval)
+			goto unmap_fw_image;
+	}
+
+	intel_ipu4_trace_init(adev->isp, isys->pdata->base, &adev->dev,
+			      is_intel_ipu4_hw_bxt_a0(adev->isp) ?
+			      isys_trace_blocks_a0 : isys_trace_blocks);
+
+	rval = isys_register_devices(isys);
+	if (rval)
+		goto remove_shared_buffer;
+
+	adev->isp->isys_fw_reload = &isys_fw_reload;
+
+	return 0;
+
+remove_shared_buffer:
+	intel_ipu4_wrapper_remove_shared_memory_buffer(
+		ISYS_SSID, (void *) adev->isp->isys_fw->data);
+unmap_fw_image:
+	intel_ipu4_buttress_unmap_fw_image(adev, &isys->fw_sgt);
+trace_uninit:
+	intel_ipu4_trace_uninit(&adev->dev);
+
+	return rval;
+}
+
+static int isys_isr_one(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+	struct ia_css_isys_resp_info resp;
+	struct intel_ipu4_isys_pipeline *pipe;
+	int rval;
+	unsigned int i;
+
+	rval = intel_ipu4_lib_call_notrace(stream_handle_response, isys, &resp);
+	if (rval < 0)
+		return rval;
+
+#ifdef IPU_STEP_BXTB0
+	dev_dbg(&adev->dev,
+		"resp type %u, error %d, error details %d, stream %u\n",
+		resp.type, resp.error, resp.error ? resp.error_details : 0,
+		resp.stream_handle);
+#else
+	dev_dbg(&adev->dev, "resp type %u, error %d, stream %u\n",
+		resp.type, resp.error, resp.stream_handle);
+#endif
+
+	if (resp.stream_handle >= INTEL_IPU4_ISYS_MAX_STREAMS) {
+		dev_err(&adev->dev, "bad stream handle %u\n",
+			resp.stream_handle);
+		return 0;
+	}
+
+	pipe = isys->pipes[resp.stream_handle];
+	if (!pipe) {
+		dev_err(&adev->dev, "no pipeline for stream %u\n",
+			resp.stream_handle);
+		return 0;
+	}
+	pipe->error = resp.error;
+
+	switch (resp.type) {
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE\n",
+			resp.stream_handle);
+		complete(&pipe->stream_open_completion);
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK\n",
+			resp.stream_handle);
+		complete(&pipe->stream_close_completion);
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK\n",
+			resp.stream_handle);
+		complete(&pipe->stream_start_completion);
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK\n",
+			resp.stream_handle);
+		complete(&pipe->stream_start_completion);
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK\n",
+			resp.stream_handle);
+		complete(&pipe->stream_stop_completion);
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK\n",
+			resp.stream_handle);
+		complete(&pipe->stream_stop_completion);
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY:
+		dev_dbg(&adev->dev,
+			"%d:IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY at pin %d\n",
+			resp.stream_handle, resp.pin_id);
+		if (resp.pin_id <  INTEL_IPU4_ISYS_OUTPUT_PINS &&
+		    pipe->output_pins[resp.pin_id].pin_ready)
+			pipe->output_pins[resp.pin_id].pin_ready(pipe, &resp);
+		else
+			dev_err(&adev->dev,
+				"%d:No data pin ready handler for pin id %d\n",
+				resp.stream_handle, resp.pin_id);
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK\n",
+			resp.stream_handle);
+		complete(&pipe->capture_ack_completion);
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE\n",
+			resp.stream_handle);
+		for (i = 0; i < INTEL_IPU4_NUM_CAPTURE_DONE; i++)
+			if (pipe->capture_done[i])
+				pipe->capture_done[i](pipe, &resp);
+		/*
+		 * FIXME: Currently FW cannot provide field information.
+		 * This workaround automatically switch the output buffer field.
+		 * Will change to use FW provided information when FW is ready.
+		 */
+		pipe->cur_field = (pipe->cur_field == V4L2_FIELD_TOP) ?
+			V4L2_FIELD_BOTTOM : V4L2_FIELD_TOP;
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_FRAME_SOF:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_FRAME_SOF\n",
+			resp.stream_handle);
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_FRAME_EOF:
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_FRAME_EOF\n",
+			resp.stream_handle);
+		break;
+	default:
+		dev_err(&adev->dev, "%d:unknown response type %u\n",
+			resp.stream_handle, resp.type);
+		break;
+	}
+
+	return 0;
+}
+
+static void isys_isr(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+	void __iomem *base = isys->pdata->base;
+	u32 status;
+	int i;
+
+	if (!isys->ssi) {
+		dev_dbg(&isys->adev->dev,
+			"got interrupt but device not configured yet\n");
+		return;
+	}
+
+	spin_lock(&isys->power_lock);
+	if (!isys->power) {
+		spin_unlock(&isys->power_lock);
+		return;
+	}
+
+	status = readl(isys->pdata->base +
+		       INTEL_IPU4_REG_ISYS_UNISPART_IRQ_STATUS);
+	writel(status, isys->pdata->base +
+	       INTEL_IPU4_REG_ISYS_UNISPART_IRQ_CLEAR);
+
+	for (i = 0; i < INTEL_IPU4_ISYS_MAX_CSI2_PORTS; i++) {
+		if (is_intel_ipu4_hw_bxt_a0(adev->isp) &&
+		    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(i))
+			intel_ipu4_isys_csi2_isr(&isys->csi2[i]);
+		if (is_intel_ipu4_hw_bxt_b0(adev->isp) &&
+		    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i))
+			intel_ipu4_isys_csi2_isr(&isys->csi2[i]);
+	}
+
+	if (status & INTEL_IPU4_ISYS_UNISPART_IRQ_SW) {
+		while(!isys_isr_one(adev));
+		writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_REG);
+	}
+
+	spin_unlock(&isys->power_lock);
+}
+
+static void isys_isr_poll(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+
+	if (!isys->ssi) {
+		dev_dbg(&isys->adev->dev,
+			"got interrupt but device not configured yet\n");
+		return;
+	}
+
+	while (!isys_isr_one(adev));
+}
+
+int intel_ipu4_isys_isr_run(void *ptr)
+{
+	struct intel_ipu4_isys *isys = ptr;
+
+	while (!kthread_should_stop()) {
+		usleep_range(500, 1000);
+		if (isys->stream_opened)
+			isys_isr_poll(isys->adev);
+	}
+
+	return 0;
+}
+
+static struct intel_ipu4_bus_driver isys_driver = {
+	.probe = isys_probe,
+	.remove = isys_remove,
+	.isr = isys_isr,
+	.wanted = INTEL_IPU4_ISYS_NAME,
+	.drv = {
+		.name = INTEL_IPU4_ISYS_NAME,
+		.owner = THIS_MODULE,
+		.pm = ISYS_PM_OPS,
+	},
+};
+
+module_intel_ipu4_bus_driver(isys_driver);
+
+MODULE_AUTHOR("Sakari Ailus <sakari.ailus@linux.intel.com>");
+MODULE_AUTHOR("Samu Onkalo <samu.onkalo@intel.com>");
+MODULE_AUTHOR("Jouni Högander <jouni.hogander@intel.com>");
+MODULE_AUTHOR("Jouni Ukkonen <jouni.ukkonen@intel.com>");
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Intel intel_ipu4 input system driver");

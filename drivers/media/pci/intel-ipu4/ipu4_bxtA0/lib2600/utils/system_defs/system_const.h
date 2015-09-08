@@ -1,0 +1,26 @@
+/**
+* Support for Intel Camera Imaging ISP subsystem.
+* Copyright (c) 2010 - 2015, Intel Corporation.
+* 
+* This program is free software; you can redistribute it and/or modify it
+* under the terms and conditions of the GNU General Public License,
+* version 2, as published by the Free Software Foundation.
+* 
+* This program is distributed in the hope it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+* more details.
+*/
+
+#ifndef __SYSTEM_CONST_H__
+#define __SYSTEM_CONST_H__
+
+/* The values included in this file should have been
+ * taken from system/device properties which
+ * are not currently available in SDK
+ */
+
+#define XMEM_WIDTH 				(512)
+#define MG_PPC					(4)
+
+#endif

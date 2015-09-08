@@ -1,0 +1,653 @@
+/*
+ * Copyright (c) 2013--2014 Intel Corporation. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License version
+ * 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#include <asm/cacheflush.h>
+
+#include <linux/device.h>
+#include <linux/iommu.h>
+#include <linux/iova.h>
+#include <linux/module.h>
+#include <linux/sizes.h>
+
+#include "intel-ipu4.h"
+#include "intel-ipu4-bus.h"
+#include "intel-ipu4-dma.h"
+#include "intel-ipu4-mmu.h"
+#include "intel-ipu4-regs.h"
+
+#define ISP_PAGE_SHIFT		12
+#define ISP_PAGE_SIZE		(1U << ISP_PAGE_SHIFT)
+#define ISP_PAGE_MASK		(~(ISP_PAGE_SIZE - 1))
+
+#define ISP_L1PT_SHIFT		22
+#define ISP_L1PT_MASK		(~((1U << ISP_L1PT_SHIFT) - 1))
+
+#define ISP_L2PT_SHIFT		12
+#define ISP_L2PT_MASK		(~(ISP_L1PT_MASK|(~(ISP_PAGE_MASK))))
+
+#define ISP_L1PT_PTES           1024
+#define ISP_L2PT_PTES           1024
+
+#define ISP_PADDR_SHIFT		12
+
+#define REG_TLB_INVALIDATE	0x0000
+#define MMU0_TLB_INVALIDATE	1
+#define MMU1_TLB_INVALIDATE	0xffff
+
+#define REG_L1_PHYS		0x0004 /* 27-bit pfn */
+#define REG_INFO		0x0008
+
+/* The range of stream ID i in L1 cache is from 0 to 15 */
+#define MMUV2_REG_L1_STREAMID(i)	(0x0c + (i * 4))
+
+/* The range of stream ID i in L2 cache is from 0 to 15 */
+#define MMUV2_REG_L2_STREAMID(i)	(0x4c + (i * 4))
+
+#define MMUV2_AT_REGS_OFFSET			0x100
+
+/* ZLW Enable for each stream in L1 MMU AT */
+#define MMUV2_AT_REG_L1_ZLW_EN_SID(i)		(MMUV2_AT_REGS_OFFSET + \
+						((i) * 0x20) + 0x0000)
+
+/* ZLW 1D mode Enable for each stream in L1 MMU AT */
+#define MMUV2_AT_REG_L1_ZLW_1DMODE_SID(i)	(MMUV2_AT_REGS_OFFSET + \
+						((i) * 0x20) + 0x0004)
+
+/* Set ZLW insertion N pages ahead per stream 1D */
+#define MMUV2_AT_REG_L1_ZLW_INS_N_AHEAD_SID(i)	(MMUV2_AT_REGS_OFFSET + \
+						((i) * 0x20) + 0x0008)
+
+/* ZLW 2D mode Enable for each stream in L1 MMU AT */
+#define MMUV2_AT_REG_L1_ZLW_2DMODE_SID(i)	(MMUV2_AT_REGS_OFFSET + \
+						((i) * 0x20) + 0x0010)
+
+/* ZLW Insertion for each stream in L1 MMU AT */
+#define MMUV2_AT_REG_L1_ZLW_INSERTION(i)	(MMUV2_AT_REGS_OFFSET + \
+						((i) * 0x20) + 0x000c)
+
+#define TBL_PHYS_ADDR(a)	((phys_addr_t)(a) << ISP_PADDR_SHIFT)
+#define TBL_VIRT_ADDR(a)	phys_to_virt(TBL_PHYS_ADDR(a))
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+#define to_intel_ipu4_mmu_domain(dom) (dom)->priv
+#else
+#define to_intel_ipu4_mmu_domain(dom) \
+	container_of(dom, struct intel_ipu4_mmu_domain, domain)
+#endif
+
+static void tlb_invalidate(struct intel_ipu4_mmu *mmu)
+{
+	unsigned int i;
+
+	for (i = 0; i < mmu->nr_mmus; i++) {
+		u32 inv;
+
+		/*
+		 * To avoid the HW bug induced dead lock in some of the IPU4
+		 * MMUs on successive invalidate calls, we need to first do a
+		 * read to the page table base before writing the invalidate
+		 * register. MMUs which need to implement this WA, will have
+		 * the insert_read_before_invalidate flasg set as true.
+		 * Disregard the return value of the read.
+		 */
+		if (mmu->mmu_hw[i].insert_read_before_invalidate)
+			readl(mmu->mmu_hw[i].base+REG_L1_PHYS);
+
+		if (mmu->mmu_hw[i].nr_l1streams == 0)
+			inv = MMU0_TLB_INVALIDATE;
+		else
+			inv = MMU1_TLB_INVALIDATE;
+
+		writel(inv, mmu->mmu_hw[i].base + REG_TLB_INVALIDATE);
+	}
+}
+
+static void set_mapping(struct intel_ipu4_mmu *mmu,
+			struct intel_ipu4_dma_mapping *dmap)
+{
+	WARN_ON(mmu->dmap);
+
+	mmu->dmap = dmap;
+}
+
+#ifdef DEBUG
+static void page_table_dump(struct intel_ipu4_mmu_domain *adom)
+{
+	uint32_t l1_idx;
+
+	pr_debug("begin IOMMU page table dump\n");
+
+	for (l1_idx = 0; l1_idx < ISP_L1PT_PTES; l1_idx++) {
+		uint32_t l2_idx;
+		uint32_t iova = (phys_addr_t)l1_idx << ISP_L1PT_SHIFT;
+
+		if (adom->pgtbl[l1_idx] == adom->dummy_l2_tbl)
+			continue;
+		pr_debug("l1 entry %u; iovas 0x%8.8x--0x%8.8x, at %p\n",
+			 l1_idx, iova, iova + ISP_PAGE_SIZE,
+			 (void *)TBL_PHYS_ADDR(adom->pgtbl[l1_idx]));
+
+		for (l2_idx = 0; l2_idx < ISP_L2PT_PTES; l2_idx++) {
+			uint32_t *l2_pt = TBL_VIRT_ADDR(adom->pgtbl[l1_idx]);
+			uint32_t iova2 = iova + (l2_idx << ISP_L2PT_SHIFT);
+
+			if (l2_pt[l2_idx] == adom->dummy_page)
+				continue;
+
+			pr_debug("\tl2 entry %u; iova 0x%8.8x, phys %p\n",
+				 l2_idx, iova2,
+				 (void *)TBL_PHYS_ADDR(l2_pt[l2_idx]));
+		}
+	}
+
+	pr_debug("end IOMMU page table dump\n");
+}
+#endif /* DEBUG */
+
+static uint32_t *alloc_page_table(struct intel_ipu4_mmu_domain *adom, bool l1)
+{
+	uint32_t *pt = (uint32_t *)__get_free_page(GFP_KERNEL | GFP_DMA32);
+	int i;
+
+	if (!pt)
+		return NULL;
+
+	pr_debug("__get_free_page() == %p\n", pt);
+
+	for (i = 0; i < ISP_L1PT_PTES; i++)
+		pt[i] = l1 ? adom->dummy_l2_tbl : adom->dummy_page;
+
+	return pt;
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+static int intel_ipu4_mmu_domain_init(struct iommu_domain *domain)
+{
+	struct intel_ipu4_mmu_domain *adom;
+	void *ptr;
+
+	adom = kzalloc(sizeof(*adom), GFP_KERNEL);
+	if (!adom)
+		return -ENOMEM;
+
+	domain->priv = adom;
+	adom->domain = domain;
+
+	ptr = (void *)__get_free_page(GFP_KERNEL | GFP_DMA32);
+	if (!ptr)
+		goto err;
+
+	adom->dummy_page = virt_to_phys(ptr) >> ISP_PAGE_SHIFT;
+
+	ptr = alloc_page_table(adom, false);
+	if (!ptr)
+		goto err;
+
+	adom->dummy_l2_tbl = virt_to_phys(ptr) >> ISP_PAGE_SHIFT;
+
+	/*
+	 * We always map the L1 page table (a single page as well as
+	 * the L2 page tables).
+	 */
+	adom->pgtbl = alloc_page_table(adom, true);
+	if (!adom->pgtbl)
+		goto err;
+
+	spin_lock_init(&adom->lock);
+
+	pr_debug("domain initialised\n");
+	pr_debug("ops %p\n", domain->ops);
+
+	return 0;
+
+err:
+	free_page((unsigned long)TBL_VIRT_ADDR(adom->dummy_page));
+	free_page((unsigned long)TBL_VIRT_ADDR(adom->dummy_l2_tbl));
+	kfree(adom);
+
+	return -ENOMEM;
+}
+#else
+static struct iommu_domain *intel_ipu4_mmu_domain_alloc(unsigned int type)
+{
+	struct intel_ipu4_mmu_domain *adom;
+	void *ptr;
+
+	if (type != IOMMU_DOMAIN_UNMANAGED)
+		return NULL;
+
+	adom = kzalloc(sizeof(*adom), GFP_KERNEL);
+	if (!adom)
+		return NULL;
+
+	adom->domain.geometry.aperture_start = 0;
+	adom->domain.geometry.aperture_end   =
+				DMA_BIT_MASK(INTEL_IPU4_MMU_ADDRESS_BITS);
+	adom->domain.geometry.force_aperture = true;
+
+	ptr = (void *)__get_free_page(GFP_KERNEL | GFP_DMA32);
+	if (!ptr)
+		goto err_mem;
+
+	adom->dummy_page = virt_to_phys(ptr) >> ISP_PAGE_SHIFT;
+
+	ptr = alloc_page_table(adom, false);
+	if (!ptr)
+		goto err;
+
+	adom->dummy_l2_tbl = virt_to_phys(ptr) >> ISP_PAGE_SHIFT;
+
+	/*
+	 * We always map the L1 page table (a single page as well as
+	 * the L2 page tables).
+	 */
+	adom->pgtbl = alloc_page_table(adom, true);
+	if (!adom->pgtbl)
+		goto err;
+
+	spin_lock_init(&adom->lock);
+
+	pr_debug("domain initialised\n");
+	pr_debug("ops %p\n", adom->domain.ops);
+
+	return &adom->domain;
+
+err:
+	free_page((unsigned long)TBL_VIRT_ADDR(adom->dummy_page));
+	free_page((unsigned long)TBL_VIRT_ADDR(adom->dummy_l2_tbl));
+err_mem:
+	kfree(adom);
+
+	return NULL;
+}
+#endif
+
+static void intel_ipu4_mmu_domain_destroy(struct iommu_domain *domain)
+{
+	struct intel_ipu4_mmu_domain *adom = to_intel_ipu4_mmu_domain(domain);
+	uint32_t l1_idx;
+
+	for (l1_idx = 0; l1_idx < ISP_L1PT_PTES; l1_idx++)
+		if (adom->pgtbl[l1_idx] != adom->dummy_l2_tbl)
+			free_page((unsigned long)
+				  TBL_VIRT_ADDR(adom->pgtbl[l1_idx]));
+
+	free_page((unsigned long)TBL_VIRT_ADDR(adom->dummy_page));
+	free_page((unsigned long)TBL_VIRT_ADDR(adom->dummy_l2_tbl));
+	free_page((unsigned long)adom->pgtbl);
+	kfree(adom);
+}
+
+static int intel_ipu4_mmu_attach_dev(struct iommu_domain *domain,
+				  struct device *dev)
+{
+	struct intel_ipu4_mmu_domain *adom = to_intel_ipu4_mmu_domain(domain);
+
+	spin_lock(&adom->lock);
+
+	adom->users++;
+
+	dev_dbg(dev, "domain attached\n");
+
+	spin_unlock(&adom->lock);
+
+	return 0;
+}
+
+static void intel_ipu4_mmu_detach_dev(struct iommu_domain *domain,
+				   struct device *dev)
+{
+	struct intel_ipu4_mmu_domain *adom = to_intel_ipu4_mmu_domain(domain);
+
+	spin_lock(&adom->lock);
+
+	adom->users--;
+	dev_dbg(dev, "domain detached\n");
+
+	spin_unlock(&adom->lock);
+}
+
+static int l2_map(struct iommu_domain *domain, unsigned long iova,
+		  phys_addr_t paddr, size_t size)
+{
+	struct intel_ipu4_mmu_domain *adom = to_intel_ipu4_mmu_domain(domain);
+	uint32_t l1_idx = iova >> ISP_L1PT_SHIFT;
+	uint32_t l1_entry = adom->pgtbl[l1_idx];
+	uint32_t *l2_pt;
+	uint32_t iova_start = iova;
+	unsigned int l2_idx;
+	unsigned long flags;
+
+	pr_debug("mapping l2 page table for l1 index %u (iova %8.8x)\n",
+		 l1_idx, (uint32_t)iova);
+
+	if (l1_entry == adom->dummy_l2_tbl) {
+		uint32_t *l2_virt = alloc_page_table(adom, false);
+
+		if (!l2_virt)
+			return -ENOMEM;
+
+		l1_entry = virt_to_phys(l2_virt) >> ISP_PADDR_SHIFT;
+		pr_debug("allocated page for l1_idx %u\n", l1_idx);
+
+		spin_lock_irqsave(&adom->lock, flags);
+		if (adom->pgtbl[l1_idx] == adom->dummy_l2_tbl) {
+			adom->pgtbl[l1_idx] = l1_entry;
+#ifdef CONFIG_X86
+			clflush_cache_range(&adom->pgtbl[l1_idx],
+					    sizeof(adom->pgtbl[l1_idx]));
+#endif /* CONFIG_X86 */
+		} else {
+			spin_unlock_irqrestore(&adom->lock, flags);
+			free_page((unsigned long)TBL_VIRT_ADDR(l1_entry));
+			spin_lock_irqsave(&adom->lock, flags);
+		}
+	} else {
+		spin_lock_irqsave(&adom->lock, flags);
+	}
+
+	l2_pt = TBL_VIRT_ADDR(adom->pgtbl[l1_idx]);
+
+	pr_debug("l2_pt at %p\n", l2_pt);
+
+	paddr = ALIGN(paddr, ISP_PAGE_SIZE);
+
+	l2_idx = (iova_start & ISP_L2PT_MASK) >> ISP_L2PT_SHIFT;
+
+	pr_debug("l2_idx %u, phys 0x%8.8x\n", l2_idx, l2_pt[l2_idx]);
+	if (l2_pt[l2_idx] != adom->dummy_page) {
+		spin_unlock_irqrestore(&adom->lock, flags);
+		return -EBUSY;
+	}
+
+	l2_pt[l2_idx] = paddr >> ISP_PADDR_SHIFT;
+
+	spin_unlock_irqrestore(&adom->lock, flags);
+
+#ifdef CONFIG_X86
+	clflush_cache_range(&l2_pt[l2_idx], sizeof(l2_pt[l2_idx]));
+#endif /* CONFIG_X86 */
+
+	pr_debug("l2 index %u mapped as 0x%8.8x\n", l2_idx,
+		 l2_pt[l2_idx]);
+
+	return 0;
+}
+
+static int intel_ipu4_mmu_map(struct iommu_domain *domain, unsigned long iova,
+			   phys_addr_t paddr, size_t size, int prot)
+{
+	uint32_t iova_start = round_down(iova, ISP_PAGE_SIZE);
+	uint32_t iova_end = ALIGN(iova + size, ISP_PAGE_SIZE);
+
+	pr_debug("mapping iova 0x%8.8x--0x%8.8x, size %zu at paddr 0x%10.10llx\n",
+		 iova_start, iova_end, size, paddr);
+
+	return l2_map(domain, iova_start, paddr, size);
+}
+
+static size_t l2_unmap(struct iommu_domain *domain, unsigned long iova,
+		       phys_addr_t dummy, size_t size)
+{
+	struct intel_ipu4_mmu_domain *adom = to_intel_ipu4_mmu_domain(domain);
+	uint32_t l1_idx = iova >> ISP_L1PT_SHIFT;
+	uint32_t *l2_pt = TBL_VIRT_ADDR(adom->pgtbl[l1_idx]);
+	uint32_t iova_start = iova;
+	unsigned int l2_idx;
+	size_t unmapped = 0;
+
+	pr_debug("unmapping l2 page table for l1 index %u (iova 0x%8.8lx)\n",
+		 l1_idx, iova);
+
+	if (adom->pgtbl[l1_idx] == adom->dummy_l2_tbl)
+		return -EINVAL;
+
+	pr_debug("l2_pt at %p\n", l2_pt);
+
+	for (l2_idx = (iova_start & ISP_L2PT_MASK) >> ISP_L2PT_SHIFT;
+	     (iova_start & ISP_L1PT_MASK) + (l2_idx << ISP_PAGE_SHIFT)
+		     < iova_start + size && l2_idx < ISP_L2PT_PTES;
+	     l2_idx++) {
+		unsigned long flags;
+
+		pr_debug("l2 index %u unmapped, was 0x%10.10llx\n",
+			 l2_idx, TBL_PHYS_ADDR(l2_pt[l2_idx]));
+		spin_lock_irqsave(&adom->lock, flags);
+		l2_pt[l2_idx] = adom->dummy_page;
+		spin_unlock_irqrestore(&adom->lock, flags);
+#ifdef CONFIG_X86
+		clflush_cache_range(&l2_pt[l2_idx], sizeof(l2_pt[l2_idx]));
+#endif /* CONFIG_X86 */
+		unmapped++;
+	}
+
+	return unmapped << ISP_PAGE_SHIFT;
+}
+
+static size_t intel_ipu4_mmu_unmap(struct iommu_domain *domain, unsigned long iova,
+				size_t size)
+{
+	return l2_unmap(domain, iova, 0, size);
+}
+
+static phys_addr_t intel_ipu4_mmu_iova_to_phys(struct iommu_domain *domain,
+					    dma_addr_t iova)
+{
+	struct intel_ipu4_mmu_domain *adom = to_intel_ipu4_mmu_domain(domain);
+	uint32_t *l2_pt = TBL_VIRT_ADDR(adom->pgtbl[iova >> ISP_L1PT_SHIFT]);
+
+	return (phys_addr_t)l2_pt[(iova & ISP_L2PT_MASK) >> ISP_L2PT_SHIFT]
+		<< ISP_PAGE_SHIFT;
+}
+
+static int intel_ipu4_mmu_hw_init(struct device *dev)
+{
+	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
+	struct intel_ipu4_mmu *mmu = intel_ipu4_bus_get_drvdata(adev);
+	struct intel_ipu4_mmu_pdata *pdata = adev->pdata;
+	struct intel_ipu4_mmu_domain *adom;
+	unsigned int i;
+
+	dev_dbg(dev, "mmu hw init\n");
+	/*
+	 * FIXME: following fix for null pointer check is not a complete one.
+	 * if mmu is not powered cycled before being used, the page table
+	 * address will still not be set into HW.
+	 */
+	if (!mmu->dmap) {
+		dev_warn(dev, "mmu is not ready yet. skipping.\n");
+		return 0;
+	}
+	adom = to_intel_ipu4_mmu_domain(mmu->dmap->domain);
+
+	/* Initialise the each MMU HW block*/
+	for (i = 0; i < mmu->nr_mmus; i++) {
+		struct intel_ipu4_mmu_hw *mmu_hw = &mmu->mmu_hw[i];
+		unsigned int j;
+
+		/* Write page table address per MMU */
+		writel((phys_addr_t)virt_to_phys(adom->pgtbl)
+		       >> ISP_PADDR_SHIFT,
+		       mmu->mmu_hw[i].base + REG_L1_PHYS);
+
+		/* Set info bits per MMU */
+		if (pdata->type == INTEL_IPU4_MMU_TYPE_INTEL_IPU4)
+			writel(mmu->mmu_hw[i].info_bits,
+			       mmu->mmu_hw[i].base + REG_INFO);
+
+		/* Configure MMU TLB stream configuration for L1*/
+		for (j = 0; j < mmu_hw->nr_l1streams; j++) {
+			/* Write block start address for each streams */
+			writel(mmu->mmu_hw[i].l1_block_addr[j],
+			       mmu_hw->base + MMUV2_REG_L1_STREAMID(j));
+
+			/* Enable ZLW for streams based on the init table */
+			writel(mmu->mmu_hw[i].l1_zlw_en[j],
+			       mmu_hw->base + MMUV2_AT_REG_L1_ZLW_EN_SID(j));
+
+			/* Enable ZLW 1D mode for streams from the init table */
+			writel(mmu->mmu_hw[i].l1_zlw_1d_mode[j],
+			       mmu_hw->base +
+			       MMUV2_AT_REG_L1_ZLW_1DMODE_SID(j));
+
+			/* Set when the ZLW insertion will happen */
+			writel(mmu->mmu_hw[i].l1_ins_zlw_ahead_pages[j],
+			       mmu_hw->base +
+			       MMUV2_AT_REG_L1_ZLW_INS_N_AHEAD_SID(j));
+
+			/* Set if ZLW 2D mode active for each streams */
+			writel(mmu->mmu_hw[i].l1_zlw_2d_mode[j],
+			       mmu_hw->base +
+			       MMUV2_AT_REG_L1_ZLW_2DMODE_SID(j));
+		}
+
+		/* Configure MMU TLB stream configuration for L2*/
+		for (j = 0; j <  mmu_hw->nr_l2streams; j++)
+			writel(mmu_hw->l2_block_addr[j],
+			       mmu_hw->base + MMUV2_REG_L2_STREAMID(j));
+	}
+
+	return 0;
+}
+
+static int intel_ipu4_mmu_add_device(struct device *dev)
+{
+	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
+	struct intel_ipu4_dma_mapping *dmap;
+	int rval;
+
+	if (!aiommu || !dev->iommu_group)
+		return 0;
+
+	dmap = iommu_group_get_iommudata(dev->iommu_group);
+	if (!dmap)
+		return 0;
+
+	pr_debug("attach dev %s\n", dev_name(dev));
+
+	rval = iommu_attach_device(dmap->domain, dev);
+	if (rval)
+		return rval;
+
+	kref_get(&dmap->ref);
+
+	return 0;
+}
+
+static struct iommu_ops intel_ipu4_iommu_ops = {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+	.domain_init    = intel_ipu4_mmu_domain_init,
+	.domain_destroy = intel_ipu4_mmu_domain_destroy,
+#else
+	.domain_alloc   = intel_ipu4_mmu_domain_alloc,
+	.domain_free    = intel_ipu4_mmu_domain_destroy,
+#endif
+	.attach_dev	= intel_ipu4_mmu_attach_dev,
+	.detach_dev	= intel_ipu4_mmu_detach_dev,
+	.map		= intel_ipu4_mmu_map,
+	.unmap		= intel_ipu4_mmu_unmap,
+	.iova_to_phys	= intel_ipu4_mmu_iova_to_phys,
+	.add_device	= intel_ipu4_mmu_add_device,
+	.pgsize_bitmap	= SZ_4K,
+};
+
+static int intel_ipu4_mmu_probe(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_mmu_pdata *pdata;
+	struct intel_ipu4_mmu *mmu;
+	int rval;
+
+	mmu = devm_kzalloc(&adev->dev, sizeof(*mmu), GFP_KERNEL);
+	if (!mmu)
+		return -ENOMEM;
+
+	dev_dbg(&adev->dev, "mmu probe %p %p\n", adev, &adev->dev);
+	intel_ipu4_bus_set_drvdata(adev, mmu);
+
+	rval = intel_ipu4_bus_set_iommu(&intel_ipu4_iommu_ops);
+	if (rval)
+		return rval;
+
+	pdata = adev->pdata;
+
+	mmu->mmid = pdata->mmid;
+
+	mmu->mmu_hw = pdata->mmu_hw;
+	mmu->nr_mmus = pdata->nr_mmus;
+	mmu->tlb_invalidate = tlb_invalidate;
+	mmu->set_mapping = set_mapping;
+
+	/*
+	 * FIXME: We can't unload this --- bus_set_iommu() will
+	 * register a notifier which must stay until the devices are
+	 * gone.
+	 */
+	__module_get(THIS_MODULE);
+
+	return 0;
+}
+
+/*
+ * Leave iommu ops as they were --- this means we must be called as
+ * the very last.
+ */
+static void intel_ipu4_mmu_remove(struct intel_ipu4_bus_device *adev)
+{
+	dev_dbg(&adev->dev, "removed\n");
+}
+
+static void intel_ipu4_mmu_isr(struct intel_ipu4_bus_device *adev)
+{
+	dev_info(&adev->dev, "Yeah!\n");
+}
+
+#ifdef CONFIG_PM
+static int intel_ipu4_mmu_suspend(struct device *dev)
+{
+	return 0;
+}
+
+const struct dev_pm_ops intel_ipu4_mmu_pm_ops = {
+	.resume = intel_ipu4_mmu_hw_init,
+	.suspend = intel_ipu4_mmu_suspend,
+	.runtime_resume = intel_ipu4_mmu_hw_init,
+	.runtime_suspend = intel_ipu4_mmu_suspend,
+};
+
+#define INTEL_IPU4_MMU_PM_OPS	(&intel_ipu4_mmu_pm_ops)
+
+#else /* !CONFIG_PM */
+
+#define INTEL_IPU4_MMU_PM_OPS	NULL
+
+#endif /* !CONFIG_PM */
+
+static struct intel_ipu4_bus_driver intel_ipu4_mmu_driver = {
+	.probe = intel_ipu4_mmu_probe,
+	.remove = intel_ipu4_mmu_remove,
+	.isr = intel_ipu4_mmu_isr,
+	.wanted = INTEL_IPU4_MMU_NAME,
+	.drv = {
+		.name = INTEL_IPU4_MMU_NAME,
+		.owner = THIS_MODULE,
+		.pm = INTEL_IPU4_MMU_PM_OPS,
+	},
+};
+
+module_intel_ipu4_bus_driver(intel_ipu4_mmu_driver);
+
+MODULE_AUTHOR("Sakari Ailus <sakari.ailus@linux.intel.com>");
+MODULE_AUTHOR("Samu Onkalo <samu.onkalo@intel.com>");
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Intel intel_ipu4 mmu driver");

@@ -1,0 +1,36 @@
+# note: this file only defines INCLUDES paths for lib2600psys
+PSYS2600_LIBRARY = lib2600psys
+ifdef CONFIG_VIDEO_INTEL_IPU4_PSYS
+obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= lib2600psys/
+endif
+
+PROGRAMS = psys_fw
+SYSTEM = process_system_system
+
+PSYS2600_INCLUDES := \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/bxt_pss/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/client_pkg/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/client_pkg/src \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/components/acc_cluster/acc_bc \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/components/acc_cluster/acc_wba \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/fw_abi_common_types \
+        -I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/hrt \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/pkg_dir/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/pkg_dir/src \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/data/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/device/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/dynamic/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/kernel/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/param/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/sim/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/static/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/reg_dump/src \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/support \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/vied_nci_acc/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/vied_parameters/interface
+
+HOST_DEFINES += -DPSYS_SERVER_ON_SPC
+
+ccflags-y += $(PSYS2600_INCLUDES) $(HOST_DEFINES)
+

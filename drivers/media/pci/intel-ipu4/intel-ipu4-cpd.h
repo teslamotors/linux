@@ -1,0 +1,84 @@
+/*
+ * Copyright (c) 2015 Intel Corporation. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License version
+ * 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#ifndef INTEL_IPU4_CPD_H
+#define INTEL_IPU4_CPD_H
+
+#define INTEL_IPU4_CPD_SIZE_OF_FW_ARCH_VERSION		7
+#define INTEL_IPU4_CPD_SIZE_OF_SYSTEM_VERSION		11
+#define INTEL_IPU4_CPD_SIZE_OF_COMPONENT_NAME		12
+
+#define INTEL_IPU4_CPD_METADATA_EXTN_TYPE_IUNIT	0x10
+
+#define INTEL_IPU4_CPD_METADATA_IMAGE_TYPE_RESERVED		0
+#define INTEL_IPU4_CPD_METADATA_IMAGE_TYPE_BOOTLOADER		1
+#define INTEL_IPU4_CPD_METADATA_IMAGE_TYPE_MAIN_FIRMWARE	2
+
+struct __packed intel_ipu4_cpd_module_data_hdr {
+	u32	hdr_len;
+	u32	endian;
+	u32	fw_pkg_date;
+	u32	hive_sdk_date;
+	u32	compiler_date;
+	u32	target_platform_type;
+	u8	sys_ver[INTEL_IPU4_CPD_SIZE_OF_SYSTEM_VERSION];
+	u8	fw_arch_ver[INTEL_IPU4_CPD_SIZE_OF_FW_ARCH_VERSION];
+	u8	rsvd[2];
+};
+
+struct __packed intel_ipu4_cpd_hdr {
+	u32 hdr_mark;
+	u32 ent_cnt;
+	u8 hdr_ver;
+	u8 ent_ver;
+	u8 hdr_len;
+	u8 chksm;
+	u32 name;
+};
+
+struct __packed intel_ipu4_cpd_ent {
+	u8 name[INTEL_IPU4_CPD_SIZE_OF_COMPONENT_NAME];
+	u32 offset;
+	u32 len;
+	u8 rsvd[4];
+};
+
+struct __packed intel_ipu4_cpd_metadata_cmpnt {
+	u32 id;
+	u32 size;
+	u32 ver;
+	u8 sha2_hash[32];
+	u32 entry_point;
+	u32 icache_base_offs;
+	u8 attrs[16];
+};
+
+struct __packed intel_ipu_cpd_metadata_extn {
+	u32 extn_type;
+	u32 len;
+	u32 img_type;
+	u8 rsvd[16];
+};
+
+void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
+						 const void *src,
+						 dma_addr_t dma_addr_src,
+						 dma_addr_t *dma_addr,
+						 unsigned *pkg_dir_size);
+void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_device *isp,
+					      u64 *pkg_dir,
+					      dma_addr_t dma_addr,
+					      unsigned pkg_dir_size);
+
+#endif /* INTEL_IPU4_CPD_H */

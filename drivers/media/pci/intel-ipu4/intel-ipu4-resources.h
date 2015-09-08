@@ -1,0 +1,90 @@
+/*
+ * Copyright (c) 2015 Intel Corporation. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License version
+ * 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#ifndef INTEL_IPU4_RESOURCES_H
+#define INTEL_IPU4_RESOURCES_H
+
+#include "ia_css_psys_process_types.h"
+#include "vied_nci_psys_system_global.h"
+
+/********** Generic resource handling **********/
+
+/* Opaque structure. Do not access fields. */
+struct intel_ipu4_resource {
+	int elements;		/* Number of elements available to allocation */
+	unsigned long *bitmap;	/* Allocation bitmap, a bit for each element */
+};
+
+/* Allocation of resource(s) */
+/* Opaque structure. Do not access fields. */
+struct intel_ipu4_resource_alloc {
+	struct intel_ipu4_resource *resource;
+	int elements;
+	int pos;
+};
+
+int intel_ipu4_resource_init(struct intel_ipu4_resource *res, int elements);
+unsigned long intel_ipu4_resource_alloc(struct intel_ipu4_resource *res, int n,
+				struct intel_ipu4_resource_alloc *alloc);
+void intel_ipu4_resource_free(struct intel_ipu4_resource_alloc *alloc);
+void intel_ipu4_resource_cleanup(struct intel_ipu4_resource *res);
+
+/********** IPU4 PSYS-specific resource handling **********/
+
+#define INTEL_IPU4_MAX_RESOURCES 32
+
+/*
+ * This struct represents all of the currently allocated
+ * resources from IPU model. It is used also for allocating
+ * resources for the next set of PGs to be run on IPU
+ * (ie. those PGs which are not yet being run and which don't
+ * yet reserve real IPU4 resources).
+ */
+struct intel_ipu4_psys_resource_pool {
+	vied_nci_resource_bitmap_t cells;	/* Bitmask of cells allocated */
+	struct intel_ipu4_resource dev_channels[VIED_NCI_N_DEV_CHN_ID];
+};
+
+/*
+ * This struct keeps book of the resources allocated for a specific PG.
+ * It is used for freeing up resources from struct intel_ipu4_psys_resources
+ * when the PG is released from IPU4 (or model of IPU4).
+ */
+struct intel_ipu4_psys_resource_alloc {
+	vied_nci_resource_bitmap_t cells;	/* Bitmask of cells needed */
+	struct intel_ipu4_resource_alloc
+		resource_alloc[INTEL_IPU4_MAX_RESOURCES];
+	int resources;
+};
+
+int intel_ipu4_psys_resource_pool_init(
+				struct intel_ipu4_psys_resource_pool *pool);
+
+void intel_ipu4_psys_resource_pool_cleanup(
+				struct intel_ipu4_psys_resource_pool *pool);
+
+void intel_ipu4_psys_resource_alloc_init(
+				struct intel_ipu4_psys_resource_alloc *alloc);
+
+int intel_ipu4_psys_allocate_resources(const struct device *dev,
+			ia_css_process_group_t *pg,
+			void *pg_manifest,
+			struct intel_ipu4_psys_resource_alloc *alloc,
+			struct intel_ipu4_psys_resource_pool *pool);
+
+void intel_ipu4_psys_free_resources(
+			struct intel_ipu4_psys_resource_alloc *alloc,
+			struct intel_ipu4_psys_resource_pool *pool);
+
+#endif

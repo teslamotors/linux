@@ -1,0 +1,245 @@
+/**
+* Support for Intel Camera Imaging ISP subsystem.
+* Copyright (c) 2010 - 2015, Intel Corporation.
+* 
+* This program is free software; you can redistribute it and/or modify it
+* under the terms and conditions of the GNU General Public License,
+* version 2, as published by the Free Software Foundation.
+* 
+* This program is distributed in the hope it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+* more details.
+*/
+
+#ifndef __IA_CSS_ISYS_FW_BRIDGED_TYPES_H__
+#define __IA_CSS_ISYS_FW_BRIDGED_TYPES_H__
+
+#include "platform_support.h"
+
+#include "ia_css_isysapi_fw_types.h"
+
+
+/**
+ * struct ia_css_isys_buffer_partition_comm - buffer partition information
+ * @block_limit: memory block limits starting from 0 and continuous in memory
+ * block 0 will use addresses: [0, block_limit[0])
+ * block 1 will use addresses: [block_limit[0], block_limit[1])
+ * block 2 will use addresses: [block_limit[1], block_limit[2])
+ * etc..
+ * @nof_blocks: number of memory blocks to allocate
+ */
+struct ia_css_isys_buffer_partition_comm {
+	aligned_uint32(unsigned int, block_limit[NOF_SRAM_BLOCKS_MAX]);
+	aligned_uint32(unsigned int, nof_blocks);
+};
+
+/**
+ * struct ia_css_isys_fw_config - contains the parts from ia_css_isys_device_cfg_data
+ * we need to transfer to the cell
+ */
+struct ia_css_isys_fw_config {
+	aligned_struct(struct ia_css_isys_buffer_partition_comm, mipi);
+	aligned_struct(struct ia_css_isys_buffer_partition_comm, pixel);
+	aligned_uint32(unsigned int, num_send_queues);
+	aligned_uint32(unsigned int, num_recv_queues);
+};
+
+/**
+ * struct ia_css_isys_resolution_comm: Generic resolution structure.
+ * @Width
+ * @Height
+ */
+struct ia_css_isys_resolution_comm {
+	aligned_uint32(unsigned int, width);
+	aligned_uint32(unsigned int, height);
+};
+
+/**
+ * struct ia_css_isys_output_pin_payload_comm
+ * @out_buf_id: Points to ouput pin buffer - buffer identifier
+ * @addr: Points to ouput pin buffer - CSS Virtual Address
+ */
+struct ia_css_isys_output_pin_payload_comm {
+	aligned_uint64(ia_css_return_token, out_buf_id);
+	aligned_uint32(ia_css_output_buffer_css_address, addr);
+};
+
+/**
+ * struct frame_format_info
+ * This is not coming though ISYS API, but it is info extraction from the ft
+ */
+struct frame_format_info {
+	aligned_uint32(unsigned int, bits_per_raw_pix);
+	aligned_uint32(unsigned int, plane_count);
+	aligned_uint32(unsigned int, plane_horz_divider[PIN_PLANES_MAX]);	/* Number to divide with the bits_per_raw_pix to get the plane's bpp */
+	aligned_uint32(unsigned int, plane_vert_divider[PIN_PLANES_MAX]);	/* Number to divice the frame height to get the plane's line count */
+};
+
+/**
+ * struct ia_css_isys_output_pin_info_comm
+ * @input_pin_id: input pin id/index which is source of
+ *	the data for this output pin
+ * @output_res: output pin resolution
+ * @stride: output stride in Bytes (not valid for statistics)
+ * @pt: pin type
+ * @ft: frame format type
+ * @watermark_in_lines: pin watermark level in lines
+ * @send_irq: assert if pin event should trigger irq
+ */
+struct ia_css_isys_output_pin_info_comm {
+	aligned_uint32(unsigned int, input_pin_id);
+	aligned_struct(struct ia_css_isys_resolution_comm, output_res);
+	aligned_uint32(unsigned int, stride);
+	aligned_enum(enum ia_css_isys_pin_type, pt);
+	aligned_enum(enum ia_css_isys_frame_format_type, ft);
+	aligned_uint32(unsigned int, watermark_in_lines);
+	aligned_uint32(unsigned int, send_irq);
+	aligned_struct(struct frame_format_info, ft_info);
+};
+
+/**
+ * struct ia_css_isys_param_pin_comm
+ * @param_buf_id: Points to param port buffer - buffer identifier
+ * @addr: Points to param pin buffer - CSS Virtual Address
+ */
+struct ia_css_isys_param_pin_comm {
+	aligned_uint64(ia_css_return_token, param_buf_id);
+	aligned_uint32(ia_css_input_buffer_css_address, addr);
+};
+
+/**
+ * struct ia_css_isys_input_pin_info_comm
+ * @input_res: input resolution
+ * @dt: mipi data type
+ * @bits_per_pix: native bits per pixel
+ */
+struct ia_css_isys_input_pin_info_comm {
+	aligned_struct(struct ia_css_isys_resolution_comm, input_res);
+	aligned_enum(enum ia_css_isys_mipi_data_type, dt);
+	aligned_uint32(unsigned int, bits_per_pix);
+};
+
+/**
+ * struct ia_css_isys_isa_cfg_comm. Describes the ISA cfg
+ */
+struct ia_css_isys_isa_cfg_comm {
+	aligned_uint32(unsigned int, blc_enabled);		/* acc id 0, set if process required */
+	aligned_uint32(unsigned int, lsc_enabled);		/* acc id 1, set if process required */
+	aligned_uint32(unsigned int, dpc_enabled);		/* acc id 2, set if process required */
+	aligned_uint32(unsigned int, downscaler_enabled);	/* acc id 3, set if process required */
+	aligned_uint32(unsigned int, awb_enabled);		/* acc id 4, set if process required */
+	aligned_uint32(unsigned int, af_enabled);		/* acc id 5, set if process required */
+	aligned_uint32(unsigned int, ae_enabled);		/* acc id 6, set if process required */
+};
+
+ /**
+ * struct ia_css_isys_cropping_comm - cropping coordinates
+ */
+struct ia_css_isys_cropping_comm {
+	aligned_int32(int, top_offset);
+	aligned_int32(int, left_offset);
+	aligned_int32(int, bottom_offset);
+	aligned_int32(int, right_offset);
+};
+
+ /**
+ * struct ia_css_isys_stream_cfg_data_comm
+ * ISYS stream configuration data structure
+ * @src: Stream source index e.g. MIPI_generator_0, CSI2-rx_1
+ * @vc: MIPI Virtual Channel (up to 4 virtual per physical channel)
+ * @isl_use: indicates whether stream requires ISL and how
+ * @isa_cfg: details about what ACCs are active if ISA is used
+ * @crop: defines cropping resolution for the
+ * maximum number of input pins which can be cropped,
+ * it is directly mapped to the HW devices
+ * @the rest: input/output pin descriptors
+ */
+struct ia_css_isys_stream_cfg_data_comm {
+	aligned_enum(enum ia_css_isys_stream_source, src);
+	aligned_enum(enum ia_css_isys_mipi_vc, vc);
+	aligned_enum(enum ia_css_isys_isl_use, isl_use);
+	aligned_struct(struct ia_css_isys_isa_cfg_comm, isa_cfg);
+	aligned_struct(struct ia_css_isys_cropping_comm, crop[MAX_IPINS_IN_ISL]);
+	aligned_uint32(unsigned int, nof_input_pins);
+	aligned_uint32(unsigned int, nof_output_pins);
+	aligned_struct(struct ia_css_isys_input_pin_info_comm, input_pins[MAX_IPINS]);
+	aligned_struct(struct ia_css_isys_output_pin_info_comm, output_pins[MAX_OPINS]);
+};
+
+#ifdef PARAMETER_INTERFACE_V2
+/**
+ * struct ia_css_isys_frame_buff_set - frame buffer set
+ * @output_pins: output pin addresses
+ * @process_group_light: process_group_light buffer address
+ * @send_irq_sof: send irq on frame sof event
+ * @send_irq_eof: send irq on frame eof event
+ */
+struct ia_css_isys_frame_buff_set_comm {
+	aligned_struct(struct ia_css_isys_output_pin_payload_comm, output_pins[MAX_OPINS]);
+	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
+	aligned_uint32(unsigned int, send_irq_sof);
+	aligned_uint32(unsigned int, send_irq_eof);
+};
+#else /*PARAMETER_INTERFACE_V2*/
+/**
+ * struct ia_css_isys_frame_buff_set - frame buffer set
+ * @output_pins: output pin addresses
+ * @*_param: param buffer addresses
+ * @send_irq_sof: send irq on frame sof event
+ * @send_irq_eof: send irq on frame eof event
+ */
+struct ia_css_isys_frame_buff_set_comm {
+	aligned_struct(struct ia_css_isys_output_pin_payload_comm, output_pins[MAX_OPINS]);
+	aligned_struct(struct ia_css_isys_param_pin_comm, blc_param);
+	aligned_struct(struct ia_css_isys_param_pin_comm, lsc_param);
+	aligned_struct(struct ia_css_isys_param_pin_comm, dpc_param);
+	aligned_struct(struct ia_css_isys_param_pin_comm, ids_param);
+	aligned_struct(struct ia_css_isys_param_pin_comm, awb_param);
+	aligned_struct(struct ia_css_isys_param_pin_comm, af_param);
+	aligned_struct(struct ia_css_isys_param_pin_comm, ae_param);
+	aligned_uint32(unsigned int, send_irq_sof);
+	aligned_uint32(unsigned int, send_irq_eof);
+};
+#endif /*PARAMETER_INTERFACE_V2*/
+
+/**
+ * struct ia_css_isys_resp_info_comm
+ * @type: response type
+ * @timestamp: Time information for event if available
+ * @stream_handle: stream id the response correspondes to
+ * @error: error code if something when wrong
+ * @pin: this var is only valid for pin event related responses,
+ *	contains pin addresses
+ * @pin_id: pin id that the pin payload corresponds to
+ */
+struct ia_css_isys_resp_info_comm {
+	aligned_enum(enum ia_css_isys_resp_type, type);
+	aligned_uint32(unsigned int, timestamp[2]);
+	aligned_uint32(unsigned int, stream_handle);
+	aligned_int32(int, error);
+	aligned_struct(struct ia_css_isys_output_pin_payload_comm, pin);
+	aligned_uint32(unsigned int, pin_id);
+	aligned_uint64(ia_css_return_token, buf_id);	/* Used internally only */
+};
+
+/* From here on type defines not coming from the ISYSAPI interface */
+
+/**
+ * struct resp_queue_token
+ */
+struct resp_queue_token {
+	aligned_struct(struct ia_css_isys_resp_info_comm, resp_info);
+};
+
+/**
+ * struct send_queue_token
+ */
+struct send_queue_token {
+	aligned_enum(enum ia_css_isys_send_type, send_type);
+	aligned_uint32(ia_css_input_buffer_css_address, payload);
+	aligned_uint64(ia_css_return_token, buf_handle);
+};
+
+
+#endif /*__IA_CSS_ISYS_FW_BRIDGED_TYPES_H__*/

@@ -1,0 +1,287 @@
+/*
+ * Copyright (c) 2015 Intel Corporation. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License version
+ * 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#include <linux/dma-mapping.h>
+#include <linux/module.h>
+
+#include "intel-ipu4.h"
+#include "intel-ipu4-cpd.h"
+
+/* 15 entries + header*/
+#define MAX_PKG_DIR_ENT_CNT		16
+/* 2 qword per entry/header */
+#define PKG_DIR_ENT_LEN			2
+/* PKG_DIR size in bytes */
+#define PKG_DIR_SIZE			((MAX_PKG_DIR_ENT_CNT) *	\
+					 (PKG_DIR_ENT_LEN) * sizeof(u64))
+#define PKG_DIR_ID_OFFSET		48
+#define PKG_DIR_VERSION_OFFSET		32
+/* _IUPKDR_ */
+#define PKG_DIR_HDR_MARK		0x5f4955504b44525f
+
+/* $CPD */
+#define CPD_HDR_MARK			0x44504324
+
+/* Maximum size is 2K DWORDs */
+#define MAX_MANIFEST_SIZE		(2 * 1024 * sizeof(u32))
+
+/* Maximum size is 64k */
+#define MAX_METADATA_SIZE		(64 * 1024)
+
+#define MAX_COMPONENT_ID		127
+#define MAX_COMPONENT_VERSION		0xffff
+
+static const struct intel_ipu4_cpd_metadata_cmpnt *
+intel_ipu4_cpd_metadata_get_cmpnt(
+	struct intel_ipu4_device *isp, const void *metadata,
+	unsigned metadata_size, u8 idx)
+{
+	const struct intel_ipu_cpd_metadata_extn *extn;
+	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnts;
+	int cmpnt_count;
+
+	if (metadata_size < sizeof(struct intel_ipu_cpd_metadata_extn) +
+	    sizeof(struct intel_ipu4_cpd_metadata_cmpnt)) {
+		dev_err(&isp->pdev->dev, "%s: Invalid metadata\n",
+			__func__);
+		return ERR_PTR(-EINVAL);
+	}
+
+	extn = metadata;
+	cmpnts = metadata + sizeof(*extn);
+	cmpnt_count = (metadata_size - sizeof(*extn)) / sizeof(*cmpnts);
+
+	if (extn->extn_type != INTEL_IPU4_CPD_METADATA_EXTN_TYPE_IUNIT ||
+	    extn->img_type !=
+	    INTEL_IPU4_CPD_METADATA_IMAGE_TYPE_MAIN_FIRMWARE) {
+		dev_err(&isp->pdev->dev, "Invalid metadata descriptor img_type (%d)\n",
+			extn->img_type);
+		return ERR_PTR(-EINVAL);
+	}
+
+	if (idx > MAX_COMPONENT_ID || idx >= cmpnt_count) {
+		dev_err(&isp->pdev->dev, "Component index out of range (%d)\n",
+			idx);
+		return ERR_PTR(-EINVAL);
+	}
+
+	return &cmpnts[idx];
+}
+
+static u32 intel_ipu4_cpd_metadata_cmpnt_version(struct intel_ipu4_device *isp,
+					    const void *metadata,
+					    unsigned metadata_size,
+					    u8 idx)
+{
+	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnt =
+		intel_ipu4_cpd_metadata_get_cmpnt(
+			isp, metadata, metadata_size, idx);
+	int rval;
+
+	if (IS_ERR(cmpnt)) {
+		rval = PTR_ERR(cmpnt);
+		return rval;
+	}
+
+	return cmpnt->ver;
+}
+
+static int intel_ipu4_cpd_metadata_get_cmpnt_id(struct intel_ipu4_device *isp,
+				       const void *metadata,
+				       unsigned metadata_size,
+				       u8 idx)
+{
+	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnt =
+		intel_ipu4_cpd_metadata_get_cmpnt(
+			isp, metadata, metadata_size, idx);
+	int rval;
+
+	if (IS_ERR(cmpnt)) {
+		rval = PTR_ERR(cmpnt);
+		return rval;
+	}
+
+	return cmpnt->id;
+}
+
+static int intel_ipu4_cpd_parse_module_data(struct intel_ipu4_device *isp,
+					    const void *module_data,
+					    unsigned module_data_size,
+					    dma_addr_t dma_addr_module_data,
+					    u64 *pkg_dir,
+					    const void *metadata,
+					    unsigned metadata_size)
+{
+	const struct intel_ipu4_cpd_module_data_hdr *module_data_hdr;
+	const struct intel_ipu4_cpd_hdr *dir_hdr;
+	const struct intel_ipu4_cpd_ent *dir_ent;
+	const void *module_data_end = module_data + module_data_size;
+	int i;
+
+	if (!module_data)
+		return -EINVAL;
+
+	module_data_hdr = module_data;
+
+	if (sizeof(*module_data_hdr) > module_data_size ||
+	    module_data_hdr->hdr_len + sizeof(*dir_hdr) >
+	    module_data_size) {
+		dev_err(&isp->pdev->dev, "Invalid module data\n");
+		return -EINVAL;
+	}
+
+	dir_hdr = module_data + module_data_hdr->hdr_len;
+	dir_ent = (struct intel_ipu4_cpd_ent *) (dir_hdr + 1);
+
+	if (dir_hdr->ent_cnt > MAX_PKG_DIR_ENT_CNT - 1 ||
+	    (void *) (dir_ent + dir_hdr->ent_cnt) > module_data_end) {
+		dev_err(&isp->pdev->dev,
+			"Invalid data in module data header\n");
+		return -EINVAL;
+	}
+
+	pkg_dir[0] = PKG_DIR_HDR_MARK;
+	/* pkg_dir entry count = component count + pkg_dir header */
+	pkg_dir[1] = dir_hdr->ent_cnt + 1;
+
+	for (i = 0; i < dir_hdr->ent_cnt; i++, dir_ent++) {
+		u64 *p = &pkg_dir[PKG_DIR_ENT_LEN + i * PKG_DIR_ENT_LEN];
+		int ver, id;
+
+		if (dir_ent->offset + dir_ent->len > module_data_size) {
+			dev_err(&isp->pdev->dev,
+			"Invalid data in module data directory entry\n");
+			return -EINVAL;
+		}
+
+		*p++ = dma_addr_module_data + dir_ent->offset;
+
+		id = intel_ipu4_cpd_metadata_get_cmpnt_id(isp, metadata,
+							  metadata_size, i);
+		if (id < 0 || id > MAX_COMPONENT_ID) {
+			dev_err(&isp->pdev->dev, "Failed to parse component id\n");
+			return -EINVAL;
+		}
+		ver = intel_ipu4_cpd_metadata_cmpnt_version(isp, metadata,
+						       metadata_size, i);
+		if (ver < 0 || ver > MAX_COMPONENT_VERSION) {
+			dev_err(&isp->pdev->dev, "Failed to parse component version\n");
+			return -EINVAL;
+		}
+
+		/*
+		 * PKG_DIR Entry (type == id)
+		 * 63:56	55	54:48	47:32	31:24	23:0
+		 * Rsvd		Rsvd	Type	Version	Rsvd	Size
+		 */
+		*p = dir_ent->len | (u64) id << PKG_DIR_ID_OFFSET |
+			(u64) ver << PKG_DIR_VERSION_OFFSET;
+	}
+
+	return 0;
+}
+
+void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
+						const void *src,
+						dma_addr_t dma_addr_src,
+						dma_addr_t *dma_addr,
+						unsigned *pkg_dir_size)
+{
+	const struct intel_ipu4_cpd_hdr *hdr = src;
+	const struct intel_ipu4_cpd_ent *ent, *man_ent, *met_ent;
+	u64 *pkg_dir;
+	unsigned man_sz, met_sz, hdr_sz;
+	void *pkg_dir_pos;
+	int ret;
+
+	/* Sanity check for CPD header */
+	if (hdr->hdr_mark != CPD_HDR_MARK ||
+	    hdr->ent_cnt >= MAX_PKG_DIR_ENT_CNT) {
+		dev_err(&isp->pdev->dev, "Invalid CPD header\n");
+		return NULL;
+	}
+
+	hdr_sz = hdr->hdr_len;
+
+	man_ent = (struct intel_ipu4_cpd_ent *) (hdr + 1);
+	man_sz = man_ent->len;
+
+	/* Sanity check for manifest size */
+	if (man_sz > MAX_MANIFEST_SIZE) {
+		dev_err(&isp->pdev->dev, "Invalid manifest size\n");
+		return NULL;
+	}
+
+	met_ent = man_ent + 1;
+	met_sz = met_ent->len;
+
+	/* Sanity check for metadata size */
+	if (met_sz > MAX_METADATA_SIZE) {
+		dev_err(&isp->pdev->dev, "Invalid metadata size\n");
+		return NULL;
+	}
+
+	*pkg_dir_size = PKG_DIR_SIZE + man_sz + met_sz;
+	pkg_dir = dma_alloc_attrs(&isp->psys->dev, *pkg_dir_size, dma_addr,
+				  GFP_KERNEL, NULL);
+	if (!pkg_dir)
+		return pkg_dir;
+
+	/*
+	 * pkg_dir entry/header:
+	 * qword | 63:56 | 55   | 54:48 | 47:32 | 31:24 | 23:0
+	 * N         Address/Offset/"_IUPKDR_"
+	 * N + 1 | rsvd  | rsvd | type  | ver   | rsvd  | size
+	 *
+	 * We can ignore other fields that size in N + 1 qword as they
+	 * are 0 anyway. Just setting size for now.
+	 */
+
+	ent = met_ent + 1;
+
+	ret = intel_ipu4_cpd_parse_module_data(isp, src + ent->offset,
+					       ent->len,
+					       dma_addr_src + ent->offset,
+					       pkg_dir,
+					       src + met_ent->offset,
+					       met_ent->len);
+	if (ret) {
+		dev_err(&isp->pdev->dev,
+			"Unable to parse module data section!\n");
+		dma_free_attrs(&isp->psys->dev, *pkg_dir_size, pkg_dir,
+			       *dma_addr, NULL);
+		return NULL;
+	}
+
+	/* Copy manifest after pkg_dir */
+	pkg_dir_pos = pkg_dir + PKG_DIR_ENT_LEN * MAX_PKG_DIR_ENT_CNT;
+	memcpy(pkg_dir_pos, src + man_ent->offset, man_sz);
+
+	/* Copy metadata after manifest */
+	pkg_dir_pos += man_sz;
+	memcpy(pkg_dir_pos, src + met_ent->offset, met_sz);
+
+	dma_sync_single_range_for_device(&isp->psys->dev, *dma_addr,
+					  0, *pkg_dir_size, DMA_TO_DEVICE);
+
+	return pkg_dir;
+}
+
+void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_device *isp,
+				 u64 *pkg_dir,
+				 dma_addr_t dma_addr,
+				 unsigned pkg_dir_size)
+{
+	dma_free_attrs(&isp->psys->dev, pkg_dir_size, pkg_dir, dma_addr, NULL);
+}
