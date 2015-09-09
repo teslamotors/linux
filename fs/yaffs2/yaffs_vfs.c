@@ -932,7 +932,7 @@ static int yaffs_setxattr(struct dentry *dentry, const char *name,
 	/* Currently we don't support posix ACL so never accept any settings
 	 * start with "system.posix_acl_".
 	 */
-	if (strncmp(name, "system.posix_acl_", 17))
+	if (!strncmp(name, "system.posix_acl_", 17))
 		error = -EOPNOTSUPP;
 
 	if (error == 0) {
