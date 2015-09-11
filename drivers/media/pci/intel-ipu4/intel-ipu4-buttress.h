@@ -98,7 +98,6 @@ u64 intel_ipu4_buttress_tsc_ticks_to_ns(u64 ticks);
 
 irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr);
 irqreturn_t intel_ipu4_buttress_isr_threaded(int irq, void *isp_ptr);
-int intel_ipu4_buttress_ipc_validity_protocol(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_debugfs_init(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_init(struct intel_ipu4_device *isp);
 void intel_ipu4_buttress_exit(struct intel_ipu4_device *isp);

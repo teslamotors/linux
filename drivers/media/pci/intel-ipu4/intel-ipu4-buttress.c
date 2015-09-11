@@ -49,6 +49,7 @@
 #define BUTTRESS_CSE_FWRESET_TIMEOUT		100
 
 #define BUTTRESS_IPC_TX_TIMEOUT			1000
+#define BUTTRESS_IPC_VALIDITY_TIMEOUT		1000
 
 #define BUTTRESS_POWER_TIMEOUT			1000
 
@@ -168,8 +169,8 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 			writel(1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT,
 			       isp->base + DB0_IN(ipc));
 
-			writel(BUTTRESS_IU2CSECSR_IPC_PEER_DEASSERTED_REG_VALID_RE |
-			       BUTTRESS_IU2CSECSR_IPC_PEER_ACKED_REG_VALID |
+			writel(BUTTRESS_IU2CSECSR_IPC_PEER_DEASSERTED_REG_VALID_REQ
+			       | BUTTRESS_IU2CSECSR_IPC_PEER_ACKED_REG_VALID |
 			       BUTTRESS_IU2CSECSR_IPC_PEER_ASSERTED_REG_VALID_REQ |
 			       QUERY, isp->base + CSR_IN(ipc));
 
@@ -199,40 +200,47 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 	return -ETIMEDOUT;
 }
 
-int intel_ipu4_buttress_ipc_validity_protocol(struct intel_ipu4_device *isp)
+static void intel_ipu4_buttress_ipc_validity_close(
+	struct intel_ipu4_device *isp, enum intel_ipu4_buttress_ipc_domain ipc)
+{
+	/* Set bit 5 in CSE CSR */
+	writel(BUTTRESS_IU2CSECSR_IPC_PEER_DEASSERTED_REG_VALID_REQ,
+	       isp->base + CSR_OUT(ipc));
+}
+
+static int intel_ipu4_buttress_ipc_validity_open(
+	struct intel_ipu4_device *isp, enum intel_ipu4_buttress_ipc_domain ipc)
 {
 	unsigned long tout_jfs;
-	unsigned int tout = 1000;
+	unsigned int tout = BUTTRESS_IPC_VALIDITY_TIMEOUT;
 	u32 val;
 
 	/* Set bit 3 in CSE CSR */
 	writel(BUTTRESS_IU2CSECSR_IPC_PEER_ASSERTED_REG_VALID_REQ,
-	       isp->base + BUTTRESS_REG_CSE2IUCSR);
+	       isp->base + CSR_OUT(ipc));
 
 	/*
 	* How long we should wait here?
 	*/
 	tout_jfs = jiffies + msecs_to_jiffies(tout);
 	do {
-		val = readl(isp->base + BUTTRESS_REG_CSE2IUCSR);
-		dev_dbg(&isp->pdev->dev, "%s: CSE2IUCSR = %x\n", __func__, val);
+		val = readl(isp->base + CSR_IN(ipc));
+		dev_dbg(&isp->pdev->dev, "%s: CSE/ISH2IUCSR = %x\n",
+			__func__, val);
 
 		if (val & BUTTRESS_IU2CSECSR_IPC_PEER_ACKED_REG_VALID) {
-			dev_dbg(&isp->pdev->dev, "%s: Validity ack received from CSE\n",
+			dev_dbg(&isp->pdev->dev, "%s: Validity ack received from peer\n",
 				__func__);
-			goto out;
+			return 0;
 		}
 		usleep_range(100, 1000);
 	} while (!time_after(jiffies, tout_jfs));
 
+	dev_err(&isp->pdev->dev, "Timed out while waiting for CSE!\n");
+
+	intel_ipu4_buttress_ipc_validity_close(isp, ipc);
+
 	return -ETIMEDOUT;
-
-out:
-	/* Set bit 5 in CSE CSR */
-	writel(BUTTRESS_IU2CSECSR_IPC_PEER_DEASSERTED_REG_VALID_RE,
-	       isp->base + BUTTRESS_REG_CSE2IUCSR);
-
-	return 0;
 }
 
 static void intel_ipu4_buttress_ipc_recv(
@@ -260,6 +268,12 @@ static int intel_ipu4_buttress_ipc_send(
 
 	init_completion(ipc_complete);
 
+	ret = intel_ipu4_buttress_ipc_validity_open(isp, ipc);
+	if (ret) {
+		dev_err(&isp->pdev->dev, "IPC validity open failed\n");
+		goto out;
+	}
+
 	writel(ipc_msg, isp->base + DATA0(ipc));
 
 	val = 1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT | 1;
@@ -274,12 +288,16 @@ static int intel_ipu4_buttress_ipc_send(
 						  BUTTRESS_IPC_TX_TIMEOUT));
 	if (ret) {
 		dev_dbg(&isp->pdev->dev, "IPC response received\n");
-		return 0;
+		ret = 0;
+		goto out;
 	}
 
 	dev_err(&isp->pdev->dev, "IPC timeout\n");
 
-	return -ETIMEDOUT;
+	ret = -ETIMEDOUT;
+out:
+	intel_ipu4_buttress_ipc_validity_close(isp, ipc);
+	return ret;
 }
 
 static irqreturn_t intel_ipu4_buttress_call_isr(
