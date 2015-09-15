@@ -1808,7 +1808,8 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 	} else {
 		dev_warn(dai->dev, "Querying NHLT blob from Debugfs!!!!\n");
 		cfg = skl_nhlt_get_debugfs_blob(skl->debugfs,
-					link_type, mconfig->vbus_id);
+					link_type, mconfig->vbus_id,
+					params->stream);
 	}
 	if (cfg) {
 		mconfig->formats_config.caps_size = cfg->size;

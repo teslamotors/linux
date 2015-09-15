@@ -42,12 +42,13 @@ struct skl_debug {
 	struct dentry *modules;
 	struct dentry *nhlt;
 	u8 fw_read_buff[FW_REG_BUF];
-	struct nhlt_blob ssp_blob[MAX_SSP];
+	struct nhlt_blob ssp_blob[2*MAX_SSP];
 	struct nhlt_blob dmic_blob;
 };
 
 struct nhlt_specific_cfg
-*skl_nhlt_get_debugfs_blob(struct skl_debug *d, u8 link_type, u32 instance)
+*skl_nhlt_get_debugfs_blob(struct skl_debug *d, u8 link_type, u32 instance,
+		u8 stream)
 {
 	switch (link_type) {
 	case NHLT_LINK_DMIC:
@@ -57,7 +58,10 @@ struct nhlt_specific_cfg
 		if (instance >= MAX_SSP)
 			return NULL;
 
-		return d->ssp_blob[instance].cfg;
+		if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+			return d->ssp_blob[instance].cfg;
+		else
+			return d->ssp_blob[MAX_SSP + instance].cfg;
 
 	default:
 		break;
@@ -315,7 +319,7 @@ static void skl_exit_nhlt(struct skl_debug *d)
 
 	/* free blob memory, if allocated */
 	for (i = 0; i < MAX_SSP; i++)
-		kfree(d->ssp_blob[i].cfg);
+		kfree(d->ssp_blob[MAX_SSP + i].cfg);
 }
 
 static ssize_t nhlt_control_read(struct file *file,
@@ -376,10 +380,15 @@ static int skl_init_nhlt(struct skl_debug *d)
 	}
 
 	for (i = 0; i < MAX_SSP; i++) {
-		snprintf(name, (sizeof(name)-1), "ssp%d", i);
+		snprintf(name, (sizeof(name)-1), "ssp%dp", i);
 		if (!debugfs_create_file(name,
 					0644, d->nhlt,
 					&d->ssp_blob[i], &nhlt_fops))
+			dev_err(d->dev, "%s: debugfs init failed\n", name);
+		snprintf(name, (sizeof(name)-1), "ssp%dc", i);
+		if (!debugfs_create_file(name,
+					0644, d->nhlt,
+					&d->ssp_blob[MAX_SSP + i], &nhlt_fops))
 			dev_err(d->dev, "%s: debugfs init failed\n", name);
 	}
 
