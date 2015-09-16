@@ -904,8 +904,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 
 	isa->asd.pad[ISA_PAD_SINK].flags = MEDIA_PAD_FL_SINK
 		| MEDIA_PAD_FL_MUST_CONNECT;
-	isa->asd.pad[ISA_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE
-		| MEDIA_PAD_FL_MUST_CONNECT;
+	isa->asd.pad[ISA_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 	isa->asd.valid_tgts[ISA_PAD_SOURCE].crop = true;
 	isa->asd.pad[ISA_PAD_CONFIG].flags = MEDIA_PAD_FL_SINK
 		| MEDIA_PAD_FL_MUST_CONNECT;
