@@ -183,6 +183,14 @@ static acpi_status acpi_i2c_add_device(acpi_handle handle, u32 level,
 
 	adev->power.flags.ignore_parent = true;
 	strlcpy(info.type, dev_name(&adev->dev), sizeof(info.type));
+
+	if (i2c_adapter_id(adapter) == 2) {
+		dev_info(&adapter->dev,
+			 "skipping creation of i2c device %d-%4.4x\n",
+			 i2c_adapter_id(adapter), info.addr);
+		return AE_OK;
+	}
+
 	if (!i2c_new_device(adapter, &info)) {
 		adev->power.flags.ignore_parent = false;
 		dev_err(&adapter->dev,
