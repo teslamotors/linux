@@ -486,10 +486,10 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_SBGGR16 v4l2_fourcc('B', 'Y', 'R', '2') /* 16  BGBG.. GRGR.. */
 
 /* Raw bayer vector formats. */
-#define V4L2_PIX_FMT_SBGGR8V32		v4l2_fourcc('b', 'V', '0', 'A')
-#define V4L2_PIX_FMT_SGBRG8V32		v4l2_fourcc('b', 'V', '0', 'B')
-#define V4L2_PIX_FMT_SGRBG8V32		v4l2_fourcc('b', 'V', '0', 'C')
-#define V4L2_PIX_FMT_SRGGB8V32		v4l2_fourcc('b', 'V', '0', 'D')
+#define V4L2_PIX_FMT_SBGGR8_16V32	v4l2_fourcc('b', 'V', '0', 'A')
+#define V4L2_PIX_FMT_SGBRG8_16V32	v4l2_fourcc('b', 'V', '0', 'B')
+#define V4L2_PIX_FMT_SGRBG8_16V32	v4l2_fourcc('b', 'V', '0', 'C')
+#define V4L2_PIX_FMT_SRGGB8_16V32	v4l2_fourcc('b', 'V', '0', 'D')
 #define V4L2_PIX_FMT_SBGGR10V32		v4l2_fourcc('b', 'V', '0', 'E')
 #define V4L2_PIX_FMT_SGBRG10V32		v4l2_fourcc('b', 'V', '0', 'F')
 #define V4L2_PIX_FMT_SGRBG10V32		v4l2_fourcc('b', 'V', '0', 'G')
@@ -498,10 +498,13 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_SGBRG12V32		v4l2_fourcc('b', 'V', '0', 'J')
 #define V4L2_PIX_FMT_SGRBG12V32		v4l2_fourcc('b', 'V', '0', 'K')
 #define V4L2_PIX_FMT_SRGGB12V32		v4l2_fourcc('b', 'V', '0', 'L')
-#define V4L2_PIX_FMT_SBGGR16V32		v4l2_fourcc('b', 'V', '0', 'M')
-#define V4L2_PIX_FMT_SGBRG16V32		v4l2_fourcc('b', 'V', '0', 'N')
-#define V4L2_PIX_FMT_SGRBG16V32		v4l2_fourcc('b', 'V', '0', 'O')
-#define V4L2_PIX_FMT_SRGGB16V32		v4l2_fourcc('b', 'V', '0', 'P')
+
+/* BEGIN remove once the user space has been updated */
+#define V4L2_PIX_FMT_SBGGR8V32	v4l2_fourcc('b', 'V', '0', 'A')
+#define V4L2_PIX_FMT_SGBRG8V32	v4l2_fourcc('b', 'V', '0', 'B')
+#define V4L2_PIX_FMT_SGRBG8V32	v4l2_fourcc('b', 'V', '0', 'C')
+#define V4L2_PIX_FMT_SRGGB8V32	v4l2_fourcc('b', 'V', '0', 'D')
+/* END remove once the user space has been updated */
 
 /* YUV vector formats. */
 #define V4L2_PIX_FMT_UYVY_V32		v4l2_fourcc('y', 'V', '3', '2')
