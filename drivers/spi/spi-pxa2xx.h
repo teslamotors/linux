@@ -88,7 +88,6 @@ struct driver_data {
 struct chip_data {
 	u32 cr1;
 	u32 dds_rate;
-	u32 psp;
 	u32 timeout;
 	u8 n_bytes;
 	u32 dma_burst_size;
