@@ -106,3 +106,6 @@ all.config
 
 # Kdevelop4
 *.kdev4
+
+# Ignore large from ICG
+drivers/media/pci/intel-ipu4/lib2600b0/vied/master_to_slave_hrt.h
