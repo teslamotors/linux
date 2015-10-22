@@ -43,6 +43,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/nand_ecc.h>
 #include <linux/mtd/nand_bch.h>
+#include <linux/mtd/nand_benand.h>
 #include <linux/interrupt.h>
 #include <linux/bitops.h>
 #include <linux/leds.h>
@@ -3526,8 +3527,13 @@ static void nand_decode_ext_id(struct mtd_info *mtd, struct nand_chip *chip,
 		if (id_len >= 6 && id_data[0] == NAND_MFR_TOSHIBA &&
 				nand_is_slc(chip) &&
 				(id_data[5] & 0x7) == 0x6 /* 24nm */ &&
-				!(id_data[4] & 0x80) /* !BENAND */) {
-			mtd->oobsize = 32 * mtd->writesize >> 9;
+				(id_data[4] & 0x80) /* BENAND */) {
+
+			if (IS_ENABLED(CONFIG_MTD_NAND_BENAND))
+				chip->ecc.mode = NAND_ECC_BENAND;
+
+		} else {
+			mtd->oobsize = 32 * mtd->writesize >> 9; /* !BENAND */
 		}
 
 	}
@@ -4073,6 +4079,26 @@ int nand_scan_tail(struct mtd_info *mtd)
 			pr_warn("BCH ECC initialization failed!\n");
 			BUG();
 		}
+		break;
+
+	case NAND_ECC_BENAND:
+		if (!mtd_nand_has_benand()) {
+			pr_warn("CONFIG_MTD_NAND_BENAND not enabled\n");
+			BUG();
+		}
+		ecc->calculate = NULL;
+		ecc->correct = NULL;
+		ecc->read_page = nand_read_page_benand;
+		ecc->read_subpage = nand_read_subpage_benand;
+		ecc->write_page = nand_write_page_raw;
+		ecc->read_page_raw = nand_read_page_raw;
+		ecc->write_page_raw = nand_write_page_raw;
+		ecc->read_oob = nand_read_oob_std;
+		ecc->write_oob = nand_write_oob_std;
+		ecc->size = mtd->writesize;
+		ecc->strength = 8;
+
+		nand_benand_init(mtd);
 		break;
 
 	case NAND_ECC_NONE:
