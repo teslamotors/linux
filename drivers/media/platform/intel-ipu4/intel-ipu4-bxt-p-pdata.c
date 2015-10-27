@@ -28,6 +28,8 @@
 
 #define OV13860_LANES		2
 #define OV13860_I2C_ADDRESS	0x10
+#define BU64295_VCM_ADDR	0x0c
+#define BU64295_NAME		"bu64295"
 
 #define ADV7481_LANES		4
 #define ADV7481_I2C_ADDRESS	0xe0
@@ -84,6 +86,15 @@ static struct intel_ipu4_isys_subdev_info ov13860_crl_sd = {
 		.board_info = {
 			 I2C_BOARD_INFO(CRLMODULE_NAME, OV13860_I2C_ADDRESS),
 			 .platform_data = &ov13860_pdata,
+		},
+		.i2c_adapter_id = 2,
+	}
+};
+
+static struct intel_ipu4_isys_subdev_info bu64295_sd = {
+	.i2c = {
+		.board_info = {
+			I2C_BOARD_INFO(BU64295_NAME,  BU64295_VCM_ADDR),
 		},
 		.i2c_adapter_id = 2,
 	}
@@ -169,6 +180,9 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV13860
 		&ov13860_crl_sd,
+#endif
+#ifdef CONFIG_VIDEO_BU64295
+		&bu64295_sd,
 #endif
 #ifdef CONFIG_INTEL_IPU4_ADV7481
 		&adv7481_crl_sd,
