@@ -1,5 +1,6 @@
 config VIDEO_INTEL_IPU4
 	tristate "Intel intel-ipu4 driver"
+	depends on ACPI
 	select IOMMU_API
 	select IOMMU_IOVA
 	select X86_DEV_DMA_OPS if X86

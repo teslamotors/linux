@@ -1119,6 +1119,7 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 		intel_ipu4_buttress_sensor_clk_data_b0;
 
 	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++) {
+		char buffer[16]; /* max for clk_register_clkdev */
 		struct clk_intel_ipu4_sensor *my_clk =
 			devm_kzalloc(&isp->pdev->dev, sizeof(*my_clk),
 				     GFP_KERNEL);
@@ -1151,8 +1152,13 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 			rval = clk_set_parent(b->clk_sensor[i], b->pll_sensor);
 		if (rval)
 			goto err;
-	}
 
+		/* Register generic clocks for sensor driver */
+		snprintf(buffer, sizeof(buffer), "ipu4_cam_clk%d", i);
+		rval = clk_register_clkdev(b->clk_sensor[i], buffer, NULL);
+		if (rval)
+			goto err;
+	}
 
 	/* Now map sensor clocks */
 	if (!clkmap)

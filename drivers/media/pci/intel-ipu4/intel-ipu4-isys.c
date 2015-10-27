@@ -21,6 +21,7 @@
 #include <linux/string.h>
 
 #include <media/intel-ipu4-isys.h>
+#include <media/intel-ipu4-acpi.h>
 #include <media/v4l2-subdev.h>
 
 #include "intel-ipu4.h"
@@ -431,15 +432,20 @@ static struct v4l2_subdev *register_acpi_i2c_subdev(
 	struct i2c_board_info *info = &sd_info->i2c.board_info;
 	struct v4l2_subdev *sd;
 
-	/*
-	 * ACPI doesn't provide useful data yet. Use data
-	 * from temporary platform data
-	 */
+	request_module(I2C_MODULE_PREFIX "%s", info->type);
+
+	/* ACPI overwrite with platform data */
 	client->dev.platform_data = info->platform_data;
 	/* Change I2C client name to one in temporary platform data */
 	strlcpy(client->name, info->type, sizeof(client->name));
 
-	if (device_reprobe(&client->dev) < 0)
+	if (device_reprobe(&client->dev))
+		return NULL;
+
+	if (!client->dev.driver)
+		return NULL;
+
+	if (!try_module_get(client->dev.driver->owner))
 		return NULL;
 
 	sd = i2c_get_clientdata(client);
@@ -447,7 +453,47 @@ static struct v4l2_subdev *register_acpi_i2c_subdev(
 	if (v4l2_device_register_subdev(v4l2_dev, sd))
 		sd = NULL;
 
+	module_put(client->dev.driver->owner);
+
 	return sd;
+}
+
+static int isys_complete_ext_device_registration(
+	struct intel_ipu4_isys *isys,
+	struct v4l2_subdev *sd,
+	struct intel_ipu4_isys_csi2_config *csi2)
+{
+	unsigned int i;
+	int rval;
+
+	v4l2_set_subdev_hostdata(sd, csi2);
+
+	for (i = 0; i < sd->entity.num_pads; i++) {
+		if (sd->entity.pads[i].flags & MEDIA_PAD_FL_SOURCE)
+			break;
+	}
+
+	if (i == sd->entity.num_pads) {
+		dev_warn(&isys->adev->dev,
+			 "no source pad in external entity\n");
+		rval = -ENOENT;
+		goto skip_unregister_subdev;
+	}
+
+	rval = media_entity_create_link(
+		&sd->entity, i,
+		&isys->csi2[csi2->port].asd.sd.entity, 0, 0);
+	if (rval) {
+		dev_warn(&isys->adev->dev, "can't create link\n");
+		goto skip_unregister_subdev;
+	}
+
+	isys->csi2[csi2->port].nlanes = csi2->nlanes;
+	return 0;
+
+skip_unregister_subdev:
+	v4l2_device_unregister_subdev(sd);
+	return rval;
 }
 
 static int isys_register_ext_subdev(struct intel_ipu4_isys *isys,
@@ -458,7 +504,6 @@ static int isys_register_ext_subdev(struct intel_ipu4_isys *isys,
 		i2c_get_adapter(sd_info->i2c.i2c_adapter_id);
 	struct v4l2_subdev *sd;
 	struct i2c_client *client;
-	unsigned int i;
 	int rval;
 
 	dev_info(&isys->adev->dev,
@@ -536,35 +581,7 @@ static int isys_register_ext_subdev(struct intel_ipu4_isys *isys,
 	if (!sd_info->csi2)
 		return 0;
 
-	v4l2_set_subdev_hostdata(sd, sd_info->csi2);
-
-	for (i = 0; i < sd->entity.num_pads; i++) {
-		if (sd->entity.pads[i].flags & MEDIA_PAD_FL_SOURCE)
-			break;
-	}
-
-	if (i == sd->entity.num_pads) {
-		dev_warn(&isys->adev->dev,
-			 "no source pad in external entity\n");
-		v4l2_device_unregister_subdev(sd);
-		rval = -ENOENT;
-		goto skip_unregister_subdev;
-	}
-
-	rval = media_entity_create_link(
-		&sd->entity, i,
-		&isys->csi2[sd_info->csi2->port].asd.sd.entity, 0, 0);
-	if (rval) {
-		dev_warn(&isys->adev->dev, "can't create link\n");
-		goto skip_unregister_subdev;
-	}
-
-	isys->csi2[sd_info->csi2->port].nlanes = sd_info->csi2->nlanes;
-
-	return 0;
-
-skip_unregister_subdev:
-	v4l2_device_unregister_subdev(sd);
+	return isys_complete_ext_device_registration(isys, sd, sd_info->csi2);
 
 skip_put_adapter:
 	i2c_put_adapter(adapter);
@@ -572,23 +589,68 @@ skip_put_adapter:
 	return rval;
 }
 
+static int isys_acpi_add_device(struct device *dev, void *priv,
+				struct intel_ipu4_isys_csi2_config *csi2,
+				bool reprobe)
+{
+	struct intel_ipu4_isys *isys = priv;
+	struct i2c_client *client = i2c_verify_client(dev);
+	struct v4l2_subdev *sd;
+
+	if (!client)
+		return -ENODEV;
+
+	if (reprobe)
+		if (device_reprobe(&client->dev))
+			return -ENODEV;
+
+	if (!client->dev.driver)
+		return -ENODEV;
+
+	/* Lock the module so we can safely get the v4l2_subdev pointer */
+        if (!try_module_get(client->dev.driver->owner))
+		return -ENODEV;
+
+	sd = i2c_get_clientdata(client);
+
+	if (v4l2_device_register_subdev(&isys->v4l2_dev, sd)) {
+		dev_warn(&isys->adev->dev, "can't create new i2c subdev\n");
+		goto leave_module_put;
+	}
+        module_put(client->dev.driver->owner);
+
+	if (!csi2)
+		return 0;
+
+	return isys_complete_ext_device_registration(isys, sd, csi2);
+
+leave_module_put:
+        module_put(client->dev.driver->owner);
+	return -ENODEV;
+}
+
 static void isys_register_ext_subdevs(struct intel_ipu4_isys *isys)
 {
 	struct intel_ipu4_isys_subdev_pdata *spdata = isys->pdata->spdata;
 	struct intel_ipu4_isys_subdev_info **sd_info;
 
-	if (!spdata) {
-		dev_info(&isys->adev->dev, "no external subdevs found\n");
-		return;
+	if (spdata) {
+		/* Scan spdata first to possibly override ACPI data */
+		/* ACPI created devices */
+		for (sd_info = spdata->subdevs; *sd_info; sd_info++)
+			isys_register_ext_subdev(isys, *sd_info, true);
+
+		/* Scan non-acpi devices */
+		for (sd_info = spdata->subdevs; *sd_info; sd_info++)
+			isys_register_ext_subdev(isys, *sd_info, false);
+	} else {
+		dev_info(&isys->adev->dev, "no subdevice info provided\n");
 	}
 
-	/* First scan devices which are created by ACPI */
-	for (sd_info = spdata->subdevs; *sd_info; sd_info++)
-		isys_register_ext_subdev(isys, *sd_info, true);
-
-	/* Scan non-acpi devices */
-	for (sd_info = spdata->subdevs; *sd_info; sd_info++)
-		isys_register_ext_subdev(isys, *sd_info, false);
+	/* Handle real ACPI stuff */
+	request_module("intel-ipu4-acpi");
+	intel_ipu4_get_acpi_devices(isys, &isys->adev->dev,
+				    isys_acpi_add_device);
 }
 
 static void isys_unregister_subdevices(struct intel_ipu4_isys *isys)
