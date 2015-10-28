@@ -578,6 +578,8 @@ static void put_stream_handle(struct intel_ipu4_isys_video *av)
 
 int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 {
+	u64 firmware_address = 0;
+
 	struct ia_css_isys_device_cfg_data isys_cfg = {
 		.driver_sys = {
 			.ssid = ISYS_SSID,
@@ -587,7 +589,6 @@ int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 			.send_queue_size = 40,
 			.recv_queue_size = 40,
 			.mmio_base_address = isys->pdata->base,
-			.firmware_address = fw,
 		},
 #ifdef IPU_STEP_BXTA0
 		/*
@@ -604,8 +605,24 @@ int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 		},
 #endif
 	};
+	struct intel_ipu4_device *isp = isys->adev->isp;
 	struct device *dev = &isys->adev->dev;
 	int rval;
+
+#ifdef IPU_STEP_BXTB0
+	if (!is_intel_ipu4_hw_bxt_a0(isp) &&
+	    !isp->secure_mode) {
+		isys_cfg.driver_sys.pkg_dir_host_address = *((u64 *)fw);
+		isys_cfg.driver_sys.pkg_dir_vied_address =
+			sg_dma_address(isys->fw_sgt.sgl);
+	}
+#endif
+
+	/* A0 FW is not a pkg_dir */
+	if (is_intel_ipu4_hw_bxt_a0(isp))
+		isys_cfg.driver_sys.firmware_address = fw;
+	else
+		isys_cfg.driver_sys.firmware_address = &firmware_address;
 
 	rval = -ia_css_isys_device_open(&isys->ssi, &isys_cfg);
 	if (rval < 0)

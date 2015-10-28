@@ -30,7 +30,7 @@
 #define INTEL_IPU4_CPD_FIRMWARE_A0	"ipu4_cpd_a0.bin"
 #define INTEL_IPU4_PSYS_FIRMWARE_A0	"ipu4_psys_bxt_fw_a0.bin"
 
-#define INTEL_IPU4_ISYS_FIRMWARE_B0	"ipu4_isys_bxt_fw_b0.bin"
+#define INTEL_IPU4_ISYS_FIRMWARE_B0	"ipu4_isys_bxt_fw_b0_pkg_dir.bin"
 #define INTEL_IPU4_CPD_FIRMWARE_B0	"ipu4_cpd_b0.bin"
 #define INTEL_IPU4_PSYS_FIRMWARE_B0	"ipu4_psys_bxt_fw_b0.bin"
 
