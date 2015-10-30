@@ -480,6 +480,10 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
 /*
  * This is meant only as reference for initialising the buttress control,
  * because the different HW stepping can have different initial values
+ *
+ * There is a HW bug and IS_PWR and PS_PWR fields cannot be used to
+ * detect if power on/off is ready. Using IS_PWR_FSM and PS_PWR_FSM
+ * fields instead.
  */
 static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_a0 = {
 	.divisor = IS_FREQ_CTL_DIVISOR_A0,
@@ -487,14 +491,18 @@ static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_a0 = {
 	.freq_ctl = BUTTRESS_REG_IS_FREQ_CTL,
 	.pwr_sts_shift = BUTTRESS_PWR_STATE_IS_PWR_SHIFT,
 	.pwr_sts_mask = BUTTRESS_PWR_STATE_IS_PWR_MASK,
+	.pwr_sts_on = BUTTRESS_PWR_STATE_PWR_RDY,
+	.pwr_sts_off = BUTTRESS_PWR_STATE_PWR_IDLE,
 };
 
 static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_b0 = {
 	.divisor = IS_FREQ_CTL_DIVISOR_B0,
 	.qos_floor = 0,
 	.freq_ctl = BUTTRESS_REG_IS_FREQ_CTL,
-	.pwr_sts_shift = BUTTRESS_PWR_STATE_IS_PWR_SHIFT,
-	.pwr_sts_mask = BUTTRESS_PWR_STATE_IS_PWR_MASK,
+	.pwr_sts_shift = BUTTRESS_PWR_STATE_IS_PWR_FSM_SHIFT,
+	.pwr_sts_mask = BUTTRESS_PWR_STATE_IS_PWR_FSM_MASK,
+	.pwr_sts_on = BUTTRESS_PWR_STATE_IS_PWR_FSM_IS_RDY,
+	.pwr_sts_off = BUTTRESS_PWR_STATE_IS_PWR_FSM_IDLE,
 };
 
 /*
@@ -507,14 +515,18 @@ static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_a0 = {
 	.freq_ctl = BUTTRESS_REG_PS_FREQ_CTL,
 	.pwr_sts_shift = BUTTRESS_PWR_STATE_PS_PWR_SHIFT,
 	.pwr_sts_mask = BUTTRESS_PWR_STATE_PS_PWR_MASK,
+	.pwr_sts_on = BUTTRESS_PWR_STATE_PWR_RDY,
+	.pwr_sts_off = BUTTRESS_PWR_STATE_PWR_IDLE,
 };
 
 static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_b0 = {
 	.divisor = PS_FREQ_CTL_DEFAULT_RATIO_B0,
 	.qos_floor = PS_FREQ_CTL_DEFAULT_RATIO_B0,
 	.freq_ctl = BUTTRESS_REG_PS_FREQ_CTL,
-	.pwr_sts_shift = BUTTRESS_PWR_STATE_PS_PWR_SHIFT,
-	.pwr_sts_mask = BUTTRESS_PWR_STATE_PS_PWR_MASK,
+	.pwr_sts_shift = BUTTRESS_PWR_STATE_PS_PWR_FSM_SHIFT,
+	.pwr_sts_mask = BUTTRESS_PWR_STATE_PS_PWR_FSM_MASK,
+	.pwr_sts_on = BUTTRESS_PWR_STATE_PS_PWR_FSM_PS_PWR_UP,
+	.pwr_sts_off = BUTTRESS_PWR_STATE_PS_PWR_FSM_IDLE,
 };
 
 static int intel_ipu4_pci_probe(struct pci_dev *pdev,

@@ -21,7 +21,8 @@
 #define INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS	3
 
 struct intel_ipu4_buttress_ctrl {
-	u32 freq_ctl, pwr_sts_shift, pwr_sts_mask;
+	u32 freq_ctl, pwr_sts_shift, pwr_sts_mask, pwr_sts_on,
+		pwr_sts_off;
 	unsigned int divisor;
 	unsigned int qos_floor;
 	bool started;

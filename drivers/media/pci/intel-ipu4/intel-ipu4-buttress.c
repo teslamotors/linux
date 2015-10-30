@@ -382,24 +382,13 @@ int intel_ipu4_buttress_power(
 
 	if (!on) {
 		val = 0;
-		pwr_sts = BUTTRESS_PWR_STATE_PWR_IDLE << ctrl->pwr_sts_shift;
+		pwr_sts = ctrl->pwr_sts_off << ctrl->pwr_sts_shift;
 	} else {
 		val = 1 << BUTTRESS_FREQ_CTL_START_SHIFT
 			| ctrl->divisor
 			| ctrl->qos_floor << BUTTRESS_FREQ_CTL_QOS_FLOOR_SHIFT;
-		/*
-		 * If Iunit is in secure mode pwr_sts field gets
-		 * value PWR_ON_DONE after powering on the rail and
-		 * PWR_RDY only after the FW is authenticated. In non
-		 * secure mode it is PWR_RDY right after powering on
-		 * the rail.
-		 */
-		if (isp->secure_mode)
-			pwr_sts = BUTTRESS_PWR_STATE_PWR_ON_DONE
-				<< ctrl->pwr_sts_shift;
-		else
-			pwr_sts = BUTTRESS_PWR_STATE_PWR_RDY
-				<< ctrl->pwr_sts_shift;
+
+		pwr_sts = ctrl->pwr_sts_on << ctrl->pwr_sts_shift;
 	}
 
 	writel(val, isp->base + ctrl->freq_ctl);
