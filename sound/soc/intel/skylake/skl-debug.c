@@ -91,9 +91,6 @@ static ssize_t nhlt_write(struct file *file,
 	ssize_t written;
 	size_t size = blob->size;
 
-	if (count > 2 * HDA_SST_CFG_MAX)
-		return -EIO;
-
 	if (!blob->cfg) {
 		/* allocate mem for blob */
 		blob->cfg = kzalloc(count, GFP_KERNEL);
