@@ -33,6 +33,16 @@
 struct device;
 
 /**
+ * struct media_device_ops - Media device operations
+ * @link_notify: Link state change notification callback. This callback is
+ *		 called with the graph_mutex held.
+ */
+struct media_device_ops {
+	int (*link_notify)(struct media_link *link, u32 flags,
+			   unsigned int notification);
+};
+
+/**
  * struct media_device - Media device
  * @dev:	Parent device
  * @devnode:	Media device node
@@ -76,8 +86,7 @@ struct media_device {
 	/* Serializes graph operations. */
 	struct mutex graph_mutex;
 
-	int (*link_notify)(struct media_link *link, u32 flags,
-			   unsigned int notification);
+	const struct media_device_ops *ops;
 };
 
 /* Supported link_notify @notification values. */
