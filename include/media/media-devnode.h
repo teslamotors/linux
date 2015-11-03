@@ -52,6 +52,20 @@ struct media_file_operations {
 };
 
 /**
+ * struct media_devnode_fh - Media device node file handle
+ * @devnode:	pointer to the media device node
+ *
+ * This structure serves as a base for per-file-handle data storage. Media
+ * device node users embed media_devnode_fh in their custom file handle data
+ * structures and store the media_devnode_fh in the file private_data in order
+ * to let the media device node core locate the media_devnode corresponding to a
+ * file handle.
+ */
+struct media_devnode_fh {
+	struct media_devnode *devnode;
+};
+
+/**
  * struct media_devnode - Media device node
  * @parent:	parent device
  * @minor:	device node minor number
@@ -88,7 +102,9 @@ void media_devnode_unregister(struct media_devnode *mdev);
 
 static inline struct media_devnode *media_devnode_data(struct file *filp)
 {
-	return filp->private_data;
+	struct media_devnode_fh *fh = filp->private_data;
+
+	return fh->devnode;
 }
 
 static inline int media_devnode_is_registered(struct media_devnode *mdev)

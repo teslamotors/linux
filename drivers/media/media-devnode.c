@@ -154,6 +154,7 @@ static long media_compat_ioctl(struct file *filp, unsigned int cmd,
 /* Override for the open function */
 static int media_open(struct inode *inode, struct file *filp)
 {
+	struct media_devnode_fh *fh;
 	struct media_devnode *mdev;
 	int ret;
 
@@ -175,15 +176,15 @@ static int media_open(struct inode *inode, struct file *filp)
 	get_device(&mdev->dev);
 	mutex_unlock(&media_devnode_lock);
 
-	filp->private_data = mdev;
-
-	if (mdev->fops->open) {
-		ret = mdev->fops->open(filp);
-		if (ret) {
-			put_device(&mdev->dev);
-			return ret;
-		}
+	ret = mdev->fops->open(filp);
+	if (ret) {
+		put_device(&mdev->dev);
+		filp->private_data = NULL;
+		return ret;
 	}
+
+	fh = filp->private_data;
+	fh->devnode = mdev;
 
 	return 0;
 }
@@ -193,8 +194,7 @@ static int media_release(struct inode *inode, struct file *filp)
 {
 	struct media_devnode *mdev = media_devnode_data(filp);
 
-	if (mdev->fops->release)
-		mdev->fops->release(filp);
+	mdev->fops->release(filp);
 
 	/* decrease the refcount unconditionally since the release()
 	   return value is ignored. */
