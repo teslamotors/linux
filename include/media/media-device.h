@@ -19,6 +19,8 @@
 #ifndef _MEDIA_DEVICE_H
 #define _MEDIA_DEVICE_H
 
+#include <linux/kref.h>
+#include <linux/idr.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 
@@ -27,6 +29,24 @@
 
 struct ida;
 struct device;
+struct media_device;
+
+/**
+ * struct media_device_request - Media device request
+ * @id: Request ID
+ * @mdev: Media device this request belongs to
+ * @kref: Reference count
+ * @list: List entry in the media device requests list
+ * @fh_list: List entry in the media file handle requests list
+ */
+struct media_device_request {
+	u32 id;
+	struct media_device *mdev;
+	struct file *filp;
+	struct kref kref;
+	struct list_head list;
+	struct list_head fh_list;
+};
 
 /**
  * struct media_entity_notify - Media Entity Notify
@@ -50,10 +70,21 @@ struct media_entity_notify {
  * struct media_device_ops - Media device operations
  * @link_notify: Link state change notification callback. This callback is
  *		 called with the graph_mutex held.
+ * @req_alloc: Allocate a request
+ * @req_free: Free a request
+ * @req_apply: Apply a request
+ * @req_queue: Queue a request
  */
 struct media_device_ops {
 	int (*link_notify)(struct media_link *link, u32 flags,
 			   unsigned int notification);
+	struct media_device_request *(*req_alloc)(struct media_device *mdev);
+	void (*req_free)(struct media_device *mdev,
+			 struct media_device_request *req);
+	int (*req_apply)(struct media_device *mdev,
+			 struct media_device_request *req);
+	int (*req_queue)(struct media_device *mdev,
+			 struct media_device_request *req);
 };
 
 /**
@@ -88,6 +119,9 @@ struct media_device_ops {
  * @disable_source: Disable Source Handler function pointer
  *
  * @ops:	Operation handler callbacks
+ * @req_ids:	Allocated request IDs
+ * @req_lock:	Serialise access to requests list
+ * @requests:	List of allocated requests
  *
  * This structure represents an abstract high-level media device. It allows easy
  * access to entities and provides basic media device-level support. The
@@ -158,6 +192,10 @@ struct media_device {
 	void (*disable_source)(struct media_entity *entity);
 
 	const struct media_device_ops *ops;
+
+	struct ida req_ids;
+	spinlock_t req_lock;
+	struct list_head requests;
 };
 
 /* We don't need to include pci.h or usb.h here */
@@ -474,5 +512,10 @@ static inline void __media_device_usb_init(struct media_device *mdev,
  */
 #define media_device_usb_init(mdev, udev, name) \
 	__media_device_usb_init(mdev, udev, name, KBUILD_MODNAME)
+
+struct media_device_request *
+media_device_request_find(struct media_device *mdev, u16 reqid);
+void media_device_request_get(struct media_device_request *req);
+void media_device_request_put(struct media_device_request *req);
 
 #endif
