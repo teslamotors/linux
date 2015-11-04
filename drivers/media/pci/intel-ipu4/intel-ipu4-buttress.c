@@ -1258,17 +1258,29 @@ DEFINE_SIMPLE_ATTRIBUTE(intel_ipu4_buttress_start_tsc_sync_fops,
 static int intel_ipu4_buttress_tsc_get(void *data, u64 *val)
 {
 	struct intel_ipu4_device *isp = data;
-	u64 tsc_hi, tsc_chk = 0;
-	short retry = 1;
+	u32 tsc_hi, tsc_lo_1, tsc_lo_2, tsc_lo_3, tsc_chk = 0;
+	short retry = 10;
 
 	do {
 		tsc_hi = readl(isp->base + BUTTRESS_REG_TSC_HI);
-		*val = readl(isp->base + BUTTRESS_REG_TSC_LO);
+
+		/*
+		 * We are occasionally getting broken values from
+		 * HH. Reading 3 times and doing sanity check as a WA
+		 */
+		tsc_lo_1 = readl(isp->base + BUTTRESS_REG_TSC_LO);
+		tsc_lo_2 = readl(isp->base + BUTTRESS_REG_TSC_LO);
+		tsc_lo_3 = readl(isp->base + BUTTRESS_REG_TSC_LO);
 		tsc_chk = readl(isp->base + BUTTRESS_REG_TSC_HI);
-		if (tsc_chk == tsc_hi) {
-			*val |= (tsc_hi << 32);
+		if (tsc_chk == tsc_hi && tsc_lo_2 - tsc_lo_1 <= 1 &&
+		    tsc_lo_3 - tsc_lo_2 <= 1) {
+			*val = (u64)tsc_hi << 32 | tsc_lo_2;
 			return 0;
 		}
+		dev_err(&isp->pdev->dev,
+			"failure: tsc_hi = %lu, tsc_chk %lu, tsc_lo_1 = %lu, "
+			"tsc_lo_2 = %lu, tsc_lo_3 = %lu\n",
+			tsc_hi, tsc_chk, tsc_lo_1, tsc_lo_2, tsc_lo_3);
 	} while (retry--);
 
 	WARN_ON_ONCE(1);
