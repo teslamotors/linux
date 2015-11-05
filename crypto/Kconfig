@@ -21,6 +21,14 @@ if CRYPTO
 
 comment "Crypto core or helper"
 
+config CRYPTODEV
+	tristate "cryptodev module support"
+        help
+          This is a /dev/crypto device driver, equivalent to those in OpenBSD or
+          FreeBSD. The main idea is to access of existing ciphers in kernel space
+          from userspace, thus enabling re-use of a hardware implementation of a
+          cipher.
+
 config CRYPTO_FIPS
 	bool "FIPS 200 compliance"
 	depends on (CRYPTO_ANSI_CPRNG || CRYPTO_DRBG) && !CRYPTO_MANAGER_DISABLE_TESTS
