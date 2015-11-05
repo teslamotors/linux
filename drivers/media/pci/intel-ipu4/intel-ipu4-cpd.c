@@ -319,6 +319,7 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
 
 	return pkg_dir;
 }
+EXPORT_SYMBOL(intel_ipu4_cpd_create_pkg_dir);
 
 void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_device *isp,
 				 u64 *pkg_dir,
@@ -327,6 +328,7 @@ void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_device *isp,
 {
 	dma_free_attrs(&isp->psys->dev, pkg_dir_size, pkg_dir, dma_addr, NULL);
 }
+EXPORT_SYMBOL(intel_ipu4_cpd_free_pkg_dir);
 
 u32 intel_ipu4_cpd_get_pg_icache_base(struct intel_ipu4_device *isp,
 				      u8 idx,

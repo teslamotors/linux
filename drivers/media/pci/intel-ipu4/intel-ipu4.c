@@ -626,16 +626,12 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	if (rval)
 		return rval;
 
-	if (isp->secure_mode) {
-		dev_info(&pdev->dev, "cpd file name: %s\n", cpd_filename);
+	dev_info(&pdev->dev, "cpd file name: %s\n", cpd_filename);
 
-		rval = request_firmware(&isp->cpd_fw, cpd_filename,
-					&pdev->dev);
-		if (rval) {
-			dev_err(&isp->pdev->dev,
-				"Requesting signed firmware failed\n");
-			return rval;
-		}
+	rval = request_firmware(&isp->cpd_fw, cpd_filename, &pdev->dev);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Requesting signed firmware failed\n");
+		return rval;
 	}
 
 	intel_ipu4_wrapper_init(psys_base, isys_base, wrapper_flags);
@@ -732,9 +728,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 out_intel_ipu4_bus_del_devices:
 	intel_ipu4_bus_del_devices(pdev);
 	intel_ipu4_buttress_exit(isp);
-
-	if (isp->secure_mode)
-		release_firmware(isp->cpd_fw);
+	release_firmware(isp->cpd_fw);
 
 	return rval;
 }
@@ -756,8 +750,7 @@ static void intel_ipu4_pci_remove(struct pci_dev *pdev)
 
 	intel_ipu4_buttress_exit(isp);
 
-	if (isp->secure_mode)
-		release_firmware(isp->cpd_fw);
+	release_firmware(isp->cpd_fw);
 }
 
 #ifdef CONFIG_PM

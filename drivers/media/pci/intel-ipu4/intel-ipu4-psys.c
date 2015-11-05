@@ -44,6 +44,7 @@
 
 #include "intel-ipu4.h"
 #include "intel-ipu4-bus.h"
+#include "intel-ipu4-cpd.h"
 #include "intel-ipu4-psys.h"
 #include "intel-ipu4-wrapper.h"
 #include "intel-ipu4-buttress.h"
@@ -1179,11 +1180,21 @@ static long intel_ipu4_get_manifest(struct intel_ipu4_psys_manifest *manifest,
 				    struct intel_ipu4_psys_fh *fh)
 {
 	struct intel_ipu4_psys *psys = fh->psys;
+	struct intel_ipu4_device *isp = psys->adev->isp;
 	const ia_css_pkg_dir_entry_t *entry;
 	const ia_css_pkg_dir_entry_t *pkg_dir =
-		(ia_css_pkg_dir_entry_t *)psys->server_init->host_ddr_pkg_dir;
+		(ia_css_pkg_dir_entry_t *)psys->pkg_dir;
 	struct ia_css_client_pkg_header_s *client_pkg;
 	uint32_t entries, offset;
+	void *host_fw_data;
+	dma_addr_t dma_fw_data;
+	uint32_t client_pkg_offset;
+
+	if (is_intel_ipu4_hw_bxt_a0(isp))
+		host_fw_data = (void *)psys->fw->data;
+	else
+		host_fw_data = (void *)isp->cpd_fw->data;
+	dma_fw_data = sg_dma_address(psys->fw_sgt.sgl);
 
 	if (ia_css_pkg_dir_verify_header(pkg_dir))
 		return -EINVAL;
@@ -1197,11 +1208,18 @@ static long intel_ipu4_get_manifest(struct intel_ipu4_psys_manifest *manifest,
 		return -EIO;
 
 	if (ia_css_pkg_dir_entry_get_size(entry) <= 0 ||
-	    ia_css_pkg_dir_entry_get_type(entry) != IA_CSS_PKG_DIR_CLIENT_PG)
+	    ia_css_pkg_dir_entry_get_type(entry) < IA_CSS_PKG_DIR_CLIENT_PG)
 		return -ENOENT;
 
-	client_pkg = (struct ia_css_client_pkg_header_s *)((uint8_t *)pkg_dir +
-		     ia_css_pkg_dir_entry_get_address_lo(entry));
+	client_pkg_offset = ia_css_pkg_dir_entry_get_address_lo(entry);
+
+#ifdef IPU_STEP_BXTB0
+	/* Check if entried are pointers or offsets in pkg dir */
+	if (ia_css_pkg_dir_get_version(pkg_dir) == IA_CSS_PKG_DIR_POINTER)
+		client_pkg_offset -= dma_fw_data;
+#endif
+
+	client_pkg = host_fw_data + client_pkg_offset;
 
 	if (ia_css_client_pkg_get_pg_manifest_offset_size(client_pkg,
 						&offset, &manifest->size))
@@ -1370,6 +1388,7 @@ static int psys_runtime_pm_resume(struct device *dev)
 	struct ia_css_syscom_config *syscom_config = psys->syscom_config;
 	void *syscom_buffer = psys->syscom_buffer;
 	unsigned long flags;
+	u32 val;
 
 	/*
 	 * Runtime resume before or during authentication -> Powering on
@@ -1387,6 +1406,43 @@ static int psys_runtime_pm_resume(struct device *dev)
 	psys_setup_hw(psys);
 
 	intel_ipu4_trace_restore(&psys->adev->dev);
+
+	if (!is_intel_ipu4_hw_bxt_a0(isp)) {
+		val = readl(psys->pdata->base +
+			    INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
+		val |= INTEL_IPU4_PSYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
+		writel(val, psys->pdata->base +
+		       INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
+
+		if (!isp->secure_mode) {
+			const ia_css_pkg_dir_entry_t *pkg_dir =
+				(ia_css_pkg_dir_entry_t *)psys->pkg_dir;
+			const ia_css_pkg_dir_entry_t *entry;
+			u32 psys_server_addr;
+
+			entry = ia_css_pkg_dir_get_entry(
+				pkg_dir, IA_CSS_PKG_DIR_PSYS_INDEX);
+
+			psys_server_addr =
+				ia_css_pkg_dir_entry_get_address_lo(
+					entry);
+
+			writel(psys_server_addr +
+			       intel_ipu4_cpd_get_pg_icache_base(
+				       isp, 0, isp->cpd_fw->data,
+				       isp->cpd_fw->size),
+			       psys->pdata->base +
+			       INTEL_IPU4_PSYS_REG_SPC_ICACHE_BASE);
+			writel(intel_ipu4_cpd_get_pg_entry_point(
+				       isp, 0, isp->cpd_fw->data,
+				       isp->cpd_fw->size),
+			       psys->pdata->base +
+			       INTEL_IPU4_PSYS_REG_SPC_START_PC);
+			writel(psys->pkg_dir_dma_addr,
+			       psys->pdata->base +
+			       INTEL_IPU4_DMEM_OFFSET);
+		}
+	}
 
 	psys->dev_ctx = ia_css_psys_open(syscom_buffer, syscom_config);
 	if (!psys->dev_ctx)
@@ -1435,6 +1491,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
 	struct intel_ipu4_device *isp = adev->isp;
 	struct intel_ipu4_psys *psys;
+	const struct firmware *fw;
 	unsigned int minor;
 	int rval = -E2BIG;
 
@@ -1528,35 +1585,70 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 			goto out_sysconfig_free;
 		}
 
-		dev_info(&psys->dev, "psys binary file name: %s\n",
-			 psys->pdata->ipdata->hw_variant.fw_filename);
+		if (is_intel_ipu4_hw_bxt_a0(isp)) {
+			dev_info(&psys->dev, "psys binary file name: %s\n",
+				 psys->pdata->ipdata->hw_variant.fw_filename);
 
-		rval = request_firmware(
-			&psys->fw,
-			psys->pdata->ipdata->hw_variant.fw_filename,
-			&adev->dev);
-		if (rval) {
-			dev_err(&psys->dev, "Requesting psys firmware failed\n");
-			goto out_server_init_free;
+			rval = request_firmware(
+				&psys->fw,
+				psys->pdata->ipdata->
+				hw_variant.fw_filename,
+				&adev->dev);
+			if (rval) {
+				dev_err(&psys->dev, "Requesting psys firmware failed\n");
+				goto out_server_init_free;
+			}
+			fw = psys->fw;
+		} else {
+			fw = adev->isp->cpd_fw;
 		}
 
 		rval = intel_ipu4_buttress_map_fw_image(
-			adev, psys->fw, &psys->fw_sgt);
+			adev, fw, &psys->fw_sgt);
 		if (rval)
 			goto out_release_firmware;
 
 		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-			PSYS_SSID, (void *)psys->fw->data,
+			PSYS_SSID, (void *)fw->data,
 			sg_dma_address(psys->fw_sgt.sgl),
-			psys->fw->size);
+			fw->size);
 		if (rval)
 			goto out_unmap_fw_image;
 
-		psys->server_init->ddr_pkg_dir_address =
-			sg_dma_address(psys->fw_sgt.sgl);
-		psys->server_init->host_ddr_pkg_dir = (uint64_t)psys->fw->data;
-		psys->server_init->pkg_dir_size = psys->fw->size;
-		*psys->syscom_config = *ia_css_psys_specify();
+		if (is_intel_ipu4_hw_bxt_a0(isp)) {
+			psys->pkg_dir = (u64 *)fw->data;
+			psys->pkg_dir_dma_addr =
+				sg_dma_address(psys->fw_sgt.sgl);
+			psys->pkg_dir_size = psys->fw->size;
+
+			psys->server_init->ddr_pkg_dir_address =
+				psys->pkg_dir_dma_addr;
+			psys->server_init->host_ddr_pkg_dir =
+				(u64)psys->pkg_dir;
+			psys->server_init->pkg_dir_size =
+				psys->pkg_dir_size;
+		} else {
+			psys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
+				isp, fw->data,
+				sg_dma_address(psys->fw_sgt.sgl),
+				&psys->pkg_dir_dma_addr,
+				&psys->pkg_dir_size);
+			if (psys->pkg_dir == NULL)
+				goto  out_remove_shared_buffer;
+
+			rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+				PSYS_SSID, (void *)psys->pkg_dir,
+				psys->pkg_dir_dma_addr,
+				psys->pkg_dir_size);
+			if (rval)
+				goto out_free_pkg_dir;
+
+			psys->server_init->ddr_pkg_dir_address = 0;
+			psys->server_init->host_ddr_pkg_dir = 0;
+			psys->server_init->pkg_dir_size = 0;
+		}
+
+		psys->syscom_config = ia_css_psys_specify();
 		psys->syscom_config->specific_addr = psys->server_init;
 		psys->syscom_config->specific_size =
 			sizeof(struct ia_css_psys_server_init);
@@ -1568,7 +1660,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 			ipu_device_cell_memory_address(SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM);
 		caps.pg_count = ia_css_pkg_dir_get_num_entries(
 				(const ia_css_pkg_dir_entry_t *)
-				psys->server_init->host_ddr_pkg_dir);
+				psys->pkg_dir);
 		dev_info(&adev->dev, "pkg_dir entry count:%d\n", caps.pg_count);
 	}
 
@@ -1580,7 +1672,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	rval = device_register(&psys->dev);
 	if (rval < 0) {
 		dev_err(&psys->dev, "psys device_register failed\n");
-		goto out_remove_shared_buffer;
+		goto out_remove_pkg_dir_shared_buffer;
 	}
 
 	/* Add the hw stepping information to caps */
@@ -1593,20 +1685,31 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 
 	return 0;
 
+out_remove_pkg_dir_shared_buffer:
+	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
+		intel_ipu4_wrapper_remove_shared_memory_buffer(
+			PSYS_SSID, psys->pkg_dir);
+out_free_pkg_dir:
+	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
+		intel_ipu4_cpd_free_pkg_dir(isp, psys->pkg_dir,
+					    psys->pkg_dir_dma_addr,
+					    psys->pkg_dir_size);
 out_remove_shared_buffer:
 	if (!isp->secure_mode)
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			PSYS_SSID, (void *) psys->fw->data);
+			PSYS_SSID, (void *) fw->data);
 out_unmap_fw_image:
 	if (!isp->secure_mode)
 		intel_ipu4_buttress_unmap_fw_image(adev, &psys->fw_sgt);
 out_release_firmware:
-	if (!isp->secure_mode)
+	if (!isp->secure_mode && is_intel_ipu4_hw_bxt_a0(isp))
 		release_firmware(psys->fw);
 out_server_init_free:
-	kfree(psys->server_init);
+	if (!isp->secure_mode)
+		kfree(psys->server_init);
 out_sysconfig_free:
-	kfree(psys->syscom_config);
+	if (!isp->secure_mode)
+		kfree(psys->syscom_config);
 out_resources_free:
 	intel_ipu4_psys_resource_pool_cleanup(&psys->resource_pool);
 out_syscom_buffer_free:
@@ -1626,22 +1729,33 @@ out_unlock:
 static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
+	struct intel_ipu4_device *isp = adev->isp;
 
 	mutex_lock(&intel_ipu4_psys_mutex);
 
-	if (!adev->isp->secure_mode) {
-		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			PSYS_SSID, (void *)psys->fw->data);
+	if (!isp->secure_mode) {
 		intel_ipu4_buttress_unmap_fw_image(adev, &psys->fw_sgt);
-		release_firmware(psys->fw);
+		if (is_intel_ipu4_hw_bxt_a0(isp)) {
+			intel_ipu4_wrapper_remove_shared_memory_buffer(
+				PSYS_SSID, (void *)psys->fw->data);
+			release_firmware(psys->fw);
+		} else {
+			intel_ipu4_wrapper_remove_shared_memory_buffer(
+				PSYS_SSID, psys->pkg_dir);
+			intel_ipu4_cpd_free_pkg_dir(isp, psys->pkg_dir,
+						    psys->pkg_dir_dma_addr,
+						    psys->pkg_dir_size);
+			intel_ipu4_wrapper_remove_shared_memory_buffer(
+				PSYS_SSID, (void *)isp->cpd_fw->data);
+		}
+		kfree(psys->server_init);
+		kfree(psys->syscom_config);
 	}
 
 	intel_ipu4_trace_uninit(&adev->dev);
 
 	intel_ipu4_psys_resource_pool_cleanup(&psys->resource_pool);
 
-	kfree(psys->server_init);
-	kfree(psys->syscom_config);
 	kfree(psys->syscom_buffer);
 
 	device_unregister(&psys->dev);
