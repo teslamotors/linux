@@ -33,6 +33,7 @@ snd-soc-bxtp_ivi_generic-objs := bxtp_ivi_generic.o
 snd-soc-apli_lhcrb_wm8731-objs := apli_lhcrb_wm8731.o
 snd-soc-apli_lhcrb_aic3107M-objs := apli_lhcrb_aic3107M.o
 snd-soc-apli_lhcrb_aic3107S-objs := apli_lhcrb_aic3107S.o
+snd-soc-bxt_gpmrb-objs := bxt_gpmrb.o
 
 obj-$(CONFIG_SND_SOC_INTEL_HASWELL_MACH) += snd-soc-sst-haswell.o
 obj-$(CONFIG_SND_SOC_INTEL_BYT_RT5640_MACH) += snd-soc-sst-byt-rt5640-mach.o
@@ -68,3 +69,4 @@ obj-$(CONFIG_SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH) += snd-soc-bxtp_ivi_generic.o
 obj-$(CONFIG_SND_SOC_INTEL_APLI_LHCRB_WM8731_MACH) += snd-soc-apli_lhcrb_wm8731.o
 obj-$(CONFIG_SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH) += snd-soc-apli_lhcrb_aic3107M.o
 obj-$(CONFIG_SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH) += snd-soc-apli_lhcrb_aic3107S.o
+obj-$(CONFIG_SND_SOC_INTEL_BXT_GPMRB_MACH) += snd-soc-bxt_gpmrb.o
