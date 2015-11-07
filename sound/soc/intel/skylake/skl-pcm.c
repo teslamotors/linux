@@ -1285,6 +1285,18 @@ static struct snd_soc_dai_driver skl_fe_dai[] = {
 	},
 },
 {
+	.name = "System Pin 2",
+	.ops = &skl_pcm_dai_ops,
+	.playback = {
+		.stream_name = "System Playback 2",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_STEREO,
+		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_16000 |
+			SNDRV_PCM_RATE_8000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+	},
+},
+{
 	.name = "System Pin 3",
 	.ops = &skl_pcm_dai_ops,
 	.capture = {
@@ -1426,7 +1438,7 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	.playback = {
 		.stream_name = "ssp1 Tx",
 		.channels_min = HDA_MONO,
-		.channels_max = HDA_8_CH,
+		.channels_max = HDA_QUAD,
 		.rates = SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE |
 			SNDRV_PCM_FMTBIT_S32_LE,
@@ -1434,7 +1446,7 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	.capture = {
 		.stream_name = "ssp1 Rx",
 		.channels_min = HDA_MONO,
-		.channels_max = HDA_8_CH,
+		.channels_max = HDA_QUAD,
 		.rates = SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE |
 			SNDRV_PCM_FMTBIT_S32_LE,
