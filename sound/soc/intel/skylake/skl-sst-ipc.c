@@ -1002,12 +1002,13 @@ int skl_ipc_set_large_config(struct sst_generic_ipc *ipc,
 EXPORT_SYMBOL_GPL(skl_ipc_set_large_config);
 
 int skl_ipc_get_large_config(struct sst_generic_ipc *ipc,
-		struct skl_ipc_large_config_msg *msg, u32 *param)
+		struct skl_ipc_large_config_msg *msg, u32 *param,
+		u32 *txparam, u32 size)
 {
 	struct skl_ipc_header header = {0};
 	u64 *ipc_header = (u64 *)(&header);
 	int ret = 0;
-	size_t sz_remaining, rx_size, data_offset;
+	size_t sz_remaining, rx_size, data_offset, inbox_sz;
 
 	header.primary = IPC_MSG_TARGET(IPC_MOD_MSG);
 	header.primary |= IPC_MSG_DIR(IPC_MSG_REQUEST);
@@ -1022,16 +1023,25 @@ int skl_ipc_get_large_config(struct sst_generic_ipc *ipc,
 
 	sz_remaining = msg->param_data_size;
 	data_offset = 0;
+	inbox_sz = ipc->dsp->mailbox.in_size;
+
+	if (msg->param_data_size >= inbox_sz)
+		header.extension |= IPC_FINAL_BLOCK(0);
 
 	while (sz_remaining != 0) {
-		rx_size = sz_remaining > SKL_ADSP_W1_SZ
-				? SKL_ADSP_W1_SZ : sz_remaining;
+		rx_size = sz_remaining > inbox_sz
+				? inbox_sz : sz_remaining;
 		if (rx_size == sz_remaining)
 			header.extension |= IPC_FINAL_BLOCK(1);
 
-		ret = sst_ipc_tx_message_wait(ipc, *ipc_header, NULL, 0,
-					      ((char *)param) + data_offset,
-					      msg->param_data_size);
+		dev_dbg(ipc->dev, "In %s primary=%#x ext=%#x\n", __func__,
+			header.primary, header.extension);
+		dev_dbg(ipc->dev, "receiving offset: %#x, size: %#x\n",
+			(unsigned)data_offset, (unsigned)rx_size);
+
+		ret = sst_ipc_tx_message_wait(ipc, *ipc_header,
+			((char *)txparam), size, ((char *)param) + data_offset,
+					      rx_size);
 		if (ret < 0) {
 			dev_err(ipc->dev,
 				"ipc: get large config fail, err: %d\n", ret);
@@ -1044,7 +1054,7 @@ int skl_ipc_get_large_config(struct sst_generic_ipc *ipc,
 		header.extension &= IPC_INITIAL_BLOCK_CLEAR;
 		header.extension &= IPC_DATA_OFFSET_SZ_CLEAR;
 		/* fill the fields */
-		header.extension |= IPC_INITIAL_BLOCK(1);
+		header.extension |= IPC_INITIAL_BLOCK(0);
 		header.extension |= IPC_DATA_OFFSET_SZ(data_offset);
 	}
 
