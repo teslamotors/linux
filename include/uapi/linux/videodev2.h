@@ -505,6 +505,7 @@ struct v4l2_pix_format {
 
 /* YUV vector formats. */
 #define V4L2_PIX_FMT_UYVY_V32		v4l2_fourcc('y', 'V', '3', '2')
+#define V4L2_PIX_FMT_YUYV420_V32	v4l2_fourcc('y', '0', '3', '2')
 
 /* compressed formats */
 #define V4L2_PIX_FMT_MJPEG    v4l2_fourcc('M', 'J', 'P', 'G') /* Motion-JPEG   */
