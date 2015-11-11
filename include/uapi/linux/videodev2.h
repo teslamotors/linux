@@ -634,6 +634,7 @@ struct v4l2_pix_format {
 
 /* YUV vector formats. */
 #define V4L2_PIX_FMT_UYVY_V32          v4l2_fourcc('y', 'V', '3', '2')
+#define V4L2_PIX_FMT_YUYV420_V32       v4l2_fourcc('y', '0', '3', '2')
 
 /* HSV formats */
 #define V4L2_PIX_FMT_HSV24 v4l2_fourcc('H', 'S', 'V', '3')
