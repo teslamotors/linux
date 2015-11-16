@@ -223,6 +223,8 @@ struct hdac_io_ops {
 			       struct snd_dma_buffer *buf);
 	void (*dma_free_pages)(struct hdac_bus *bus,
 			       struct snd_dma_buffer *buf);
+	/* mark memory region as non-cache */
+	void (*mark_pages_uc)(struct snd_dma_buffer *buf, bool enable);
 };
 
 #define HDA_UNSOL_QUEUE_SIZE	64
