@@ -10,3 +10,6 @@ obj-$(CONFIG_SND_SOC_INTEL_SKYLAKE) += skylake/
 
 # Machine support
 obj-$(CONFIG_SND_SOC) += boards/
+
+# FPGA support
+obj-$(CONFIG_SND_SOC_INTEL_CNL_FPGA) += fpga/
