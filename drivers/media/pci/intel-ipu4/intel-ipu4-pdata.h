@@ -161,7 +161,6 @@ struct intel_ipu4_hw_variants {
 	unsigned int nr_mmus;
 	struct intel_ipu4_mmu_hw mmu_hw[INTEL_IPU4_MMU_MAX_DEVICES];
 	char *fw_filename;
-	char *signed_fw_filename;
 };
 
 struct intel_ipu4_isys_internal_pdata {

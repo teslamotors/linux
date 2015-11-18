@@ -169,7 +169,7 @@ static int video_open(struct file *file)
 	if (av->isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA ||
 	    av->isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4) {
 		rval = intel_ipu4_isys_library_init(
-			av->isys, (void *)&av->isys->adev->isp->isys_fw->data);
+			av->isys, (void *)&av->isys->fw->data);
 		if (rval < 0)
 			goto out_lib_init;
 	}

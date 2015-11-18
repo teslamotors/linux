@@ -358,7 +358,6 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_a0 = {
 			},
 		},
 		.fw_filename = INTEL_IPU4_ISYS_FIRMWARE_A0,
-		.signed_fw_filename = INTEL_IPU4_SIGNED_FIRMWARE_A0,
 	},
 };
 
@@ -406,7 +405,6 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_b0 = {
 			},
 		},
 		.fw_filename = INTEL_IPU4_ISYS_FIRMWARE_B0,
-		.signed_fw_filename = INTEL_IPU4_SIGNED_FIRMWARE_B0,
 	},
 };
 
@@ -433,7 +431,6 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_a0 = {
 			},
 		},
 		.fw_filename = INTEL_IPU4_PSYS_FIRMWARE_A0,
-		.signed_fw_filename = NULL,
 	},
 };
 
@@ -478,7 +475,6 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
 			},
 		},
 		.fw_filename = INTEL_IPU4_PSYS_FIRMWARE_B0,
-		.signed_fw_filename = NULL,
 	},
 };
 
@@ -536,6 +532,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	const struct intel_ipu4_psys_internal_pdata *psys_ipdata;
 	unsigned int dma_mask = 39;
 	unsigned int wrapper_flags = 0;
+	const char *cpd_filename;
 	int rval;
 
 	isp = devm_kzalloc(&pdev->dev, sizeof(*isp), GFP_KERNEL);
@@ -584,11 +581,13 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 		psys_ipdata = &psys_ipdata_a0;
 		isys_buttress_ctrl = &isys_buttress_ctrl_a0;
 		psys_buttress_ctrl = &psys_buttress_ctrl_a0;
+		cpd_filename = INTEL_IPU4_CPD_FIRMWARE_A0;
 	} else if (is_intel_ipu4_hw_bxt_b0(isp)) {
 		isys_ipdata = &isys_ipdata_b0;
 		psys_ipdata = &psys_ipdata_b0;
 		isys_buttress_ctrl = &isys_buttress_ctrl_b0;
 		psys_buttress_ctrl = &psys_buttress_ctrl_b0;
+		cpd_filename = INTEL_IPU4_CPD_FIRMWARE_B0;
 	} else {
 		dev_err(&pdev->dev, "Not supported device\n");
 		return -EINVAL;
@@ -599,11 +598,6 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 
 	isys_base = isp->base + isys_ipdata->hw_variant.offset;
 	psys_base = isp->base + psys_ipdata->hw_variant.offset;
-
-	dev_info(&pdev->dev, "isys binary file name: %s\n",
-			      isys_ipdata->hw_variant.fw_filename);
-	dev_info(&pdev->dev, "psys binary file name: %s\n",
-			      psys_ipdata->hw_variant.fw_filename);
 
 	dev_info(&pdev->dev, "CSS library release: %s\n", IA_CSS_FW_RELEASE);
 
@@ -632,35 +626,14 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	if (rval)
 		return rval;
 
-	if (!isp->secure_mode) {
-#if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_ISYS)
-		rval = request_firmware(&isp->isys_fw,
-					isys_ipdata->hw_variant.fw_filename,
+	if (isp->secure_mode) {
+		dev_info(&pdev->dev, "cpd file name: %s\n", cpd_filename);
+
+		rval = request_firmware(&isp->cpd_fw, cpd_filename,
 					&pdev->dev);
 		if (rval) {
-			dev_err(&pdev->dev, "Requesting isys firmware failed\n");
-			return rval;
-		}
-#endif
-
-#if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_PSYS)
-		if (psys_ipdata->hw_variant.fw_filename)
-			rval = request_firmware(
-					    &isp->psys_fw,
-					    psys_ipdata->hw_variant.fw_filename,
-					    &pdev->dev);
-		if (rval) {
-			dev_err(&pdev->dev, "Requesting psys firmware failed\n");
-			goto out_fw_request;
-		}
-#endif
-	} else {
-		rval = request_firmware(
-				     &isp->signed_fw,
-				     isys_ipdata->hw_variant.signed_fw_filename,
-				     &pdev->dev);
-		if (rval) {
-			dev_err(&pdev->dev, "Requesting signed firmware failed\n");
+			dev_err(&isp->pdev->dev,
+				"Requesting signed firmware failed\n");
 			return rval;
 		}
 	}
@@ -759,10 +732,9 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 out_intel_ipu4_bus_del_devices:
 	intel_ipu4_bus_del_devices(pdev);
 	intel_ipu4_buttress_exit(isp);
-out_fw_request:
-	release_firmware(isp->isys_fw);
-	release_firmware(isp->psys_fw);
-	release_firmware(isp->signed_fw);
+
+	if (isp->secure_mode)
+		release_firmware(isp->cpd_fw);
 
 	return rval;
 }
@@ -784,8 +756,8 @@ static void intel_ipu4_pci_remove(struct pci_dev *pdev)
 
 	intel_ipu4_buttress_exit(isp);
 
-	release_firmware(isp->isys_fw);
-	release_firmware(isp->psys_fw);
+	if (isp->secure_mode)
+		release_firmware(isp->cpd_fw);
 }
 
 #ifdef CONFIG_PM

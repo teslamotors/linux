@@ -49,6 +49,7 @@ struct intel_ipu4_psys {
 	/* Resources needed to be managed for process groups */
 	struct intel_ipu4_psys_resource_pool resource_pool;
 
+	const struct firmware *fw;
 	struct sg_table fw_sgt;
 	unsigned long timeout;
 };

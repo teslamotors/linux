@@ -1528,23 +1528,34 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 			goto out_sysconfig_free;
 		}
 
-		rval = intel_ipu4_buttress_map_fw_image(
-			adev, adev->isp->psys_fw, &psys->fw_sgt);
-		if (rval)
+		dev_info(&psys->dev, "psys binary file name: %s\n",
+			 psys->pdata->ipdata->hw_variant.fw_filename);
+
+		rval = request_firmware(
+			&psys->fw,
+			psys->pdata->ipdata->hw_variant.fw_filename,
+			&adev->dev);
+		if (rval) {
+			dev_err(&psys->dev, "Requesting psys firmware failed\n");
 			goto out_server_init_free;
+		}
+
+		rval = intel_ipu4_buttress_map_fw_image(
+			adev, psys->fw, &psys->fw_sgt);
+		if (rval)
+			goto out_release_firmware;
 
 		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-			PSYS_SSID, (void *)adev->isp->psys_fw->data,
+			PSYS_SSID, (void *)psys->fw->data,
 			sg_dma_address(psys->fw_sgt.sgl),
-			adev->isp->psys_fw->size);
+			psys->fw->size);
 		if (rval)
 			goto out_unmap_fw_image;
 
 		psys->server_init->ddr_pkg_dir_address =
 			sg_dma_address(psys->fw_sgt.sgl);
-		psys->server_init->host_ddr_pkg_dir =
-			(uint64_t)adev->isp->psys_fw->data;
-		psys->server_init->pkg_dir_size = adev->isp->psys_fw->size;
+		psys->server_init->host_ddr_pkg_dir = (uint64_t)psys->fw->data;
+		psys->server_init->pkg_dir_size = psys->fw->size;
 		*psys->syscom_config = *ia_css_psys_specify();
 		psys->syscom_config->specific_addr = psys->server_init;
 		psys->syscom_config->specific_size =
@@ -1585,10 +1596,13 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 out_remove_shared_buffer:
 	if (!isp->secure_mode)
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			PSYS_SSID, (void *) adev->isp->psys_fw->data);
+			PSYS_SSID, (void *) psys->fw->data);
 out_unmap_fw_image:
 	if (!isp->secure_mode)
 		intel_ipu4_buttress_unmap_fw_image(adev, &psys->fw_sgt);
+out_release_firmware:
+	if (!isp->secure_mode)
+		release_firmware(psys->fw);
 out_server_init_free:
 	kfree(psys->server_init);
 out_sysconfig_free:
@@ -1617,8 +1631,9 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 
 	if (!adev->isp->secure_mode) {
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			PSYS_SSID, (void *)adev->isp->psys_fw->data);
+			PSYS_SSID, (void *)psys->fw->data);
 		intel_ipu4_buttress_unmap_fw_image(adev, &psys->fw_sgt);
+		release_firmware(psys->fw);
 	}
 
 	intel_ipu4_trace_uninit(&adev->dev);

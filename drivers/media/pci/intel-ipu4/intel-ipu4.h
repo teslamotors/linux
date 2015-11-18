@@ -27,11 +27,11 @@
 #define INTEL_IPU4_NAME			"intel-ipu4"
 
 #define INTEL_IPU4_ISYS_FIRMWARE_A0	"ipu4_isys_bxt_fw_a0.bin"
-#define INTEL_IPU4_SIGNED_FIRMWARE_A0	"ipu4_cpd_a0.bin"
+#define INTEL_IPU4_CPD_FIRMWARE_A0	"ipu4_cpd_a0.bin"
 #define INTEL_IPU4_PSYS_FIRMWARE_A0	"ipu4_psys_bxt_fw_a0.bin"
 
 #define INTEL_IPU4_ISYS_FIRMWARE_B0	"ipu4_isys_bxt_fw_b0.bin"
-#define INTEL_IPU4_SIGNED_FIRMWARE_B0	"ipu4_cpd_b0.bin"
+#define INTEL_IPU4_CPD_FIRMWARE_B0	"ipu4_cpd_b0.bin"
 #define INTEL_IPU4_PSYS_FIRMWARE_B0	"ipu4_psys_bxt_fw_b0.bin"
 
 /*
@@ -79,9 +79,7 @@ struct intel_ipu4_device {
 	struct intel_ipu4_bus_device *isys_iommu, *isys;
 	struct intel_ipu4_bus_device *psys_iommu, *psys;
 	struct intel_ipu4_buttress buttress;
-	const struct firmware *isys_fw;
-	const struct firmware *psys_fw;
-	const struct firmware *signed_fw;
+	const struct firmware *cpd_fw;
 	void __iomem *base;
 	struct dentry *intel_ipu4_dir;
 	struct intel_ipu4_trace *trace;

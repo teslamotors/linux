@@ -590,12 +590,12 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		return rval;
 	}
 
-	rval = intel_ipu4_buttress_map_fw_image(isp->psys, isp->signed_fw,
+	rval = intel_ipu4_buttress_map_fw_image(isp->psys, isp->cpd_fw,
 						&fw_sgt);
 	if (rval)
 		goto iunit_power_off;
 
-	pkg_dir = intel_ipu4_cpd_create_pkg_dir(isp, isp->signed_fw->data,
+	pkg_dir = intel_ipu4_cpd_create_pkg_dir(isp, isp->cpd_fw->data,
 						     sg_dma_address(fw_sgt.sgl),
 						     &dma_addr_pkg_dir,
 						     &pkg_dir_size);
