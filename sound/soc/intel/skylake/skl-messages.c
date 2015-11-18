@@ -720,10 +720,11 @@ static void skl_set_updown_mixer_format(struct skl_sst *ctx,
 
 	/* Select F/W default coefficient */
 	mixer_mconfig->coeff_sel = 0x0;
+	mixer_mconfig->ch_map = fmt->ch_map;
 
 	/* User coeff, don't care since we are selecting F/W defaults */
 	for (i = 0; i < UP_DOWN_MIXER_MAX_COEFF; i++)
-		mixer_mconfig->coeff[i] = 0xDEADBEEF;
+		mixer_mconfig->coeff[i] = 0x0;
 }
 
 /*
