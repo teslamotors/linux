@@ -34,6 +34,8 @@ static const struct pinctrl_map uart2_mappings[] __initconst = {
 			  "uart2_in_gpio_grp", "uart2_gpio"),
 };
 
+#define DRVNAME "apl-board"
+
 static struct pxa2xx_spi_chip chip_data = {
 	.gpio_cs = -EINVAL,
 	.dma_burst_size = 1,
@@ -120,13 +122,12 @@ static int apl_spi_board_setup(void)
 	int ret = -1;
 
 	/* Register the SPI devices */
-	if (!spi_register_board_info
-			(apl_spi_slaves, ARRAY_SIZE(apl_spi_slaves))) {
-		ret = 0;
-		pr_warn("\nfailed to register the SPI slaves...\n");
-	} else {
-		pr_debug("\nsuccessfully registered the SPI slaves...\n");
-	}
+	ret = spi_register_board_info(apl_spi_slaves,
+				ARRAY_SIZE(apl_spi_slaves));
+	if (ret)
+		pr_warn(DRVNAME ": failed to register the SPI slaves...\n");
+	else
+		pr_debug(DRVNAME ": successfully registered the SPI slaves...\n");
 	return ret;
 }
 
@@ -134,7 +135,7 @@ static int __init apl_board_init(void)
 {
 	int ret;
 
-	pr_debug("\nregistering APL SPI devices...\n");
+	pr_debug(DRVNAME ": registering APL SPI devices...\n");
 	ret = apl_spi_board_setup();
 	if (ret)
 		goto exit;
