@@ -45,6 +45,9 @@ int skl_get_nhlt_version(struct device *dev)
 
 struct nhlt_acpi_table *skl_nhlt_init(struct device *dev)
 {
+/* Workaround: Disable ACPI dependencies */
+#if 0
+
 	acpi_handle handle;
 	union acpi_object *obj;
 	struct nhlt_resource_desc  *nhlt_ptr = NULL;
@@ -75,6 +78,7 @@ struct nhlt_acpi_table *skl_nhlt_init(struct device *dev)
 	}
 
 	dev_err(dev, "device specific method to extract NHLT blob failed\n");
+#endif
 	return NULL;
 }
 
