@@ -81,17 +81,25 @@ static int skl_substream_alloc_pages(struct hdac_ext_bus *ebus,
 				 size_t size)
 {
 	struct hdac_ext_stream *stream = get_hdac_ext_stream(substream);
+	int ret;
 
 	hdac_stream(stream)->bufsize = 0;
 	hdac_stream(stream)->period_bytes = 0;
 	hdac_stream(stream)->format_val = 0;
 
-	return snd_pcm_lib_malloc_pages(substream, size);
+	ret = snd_pcm_lib_malloc_pages(substream, size);
+	if (ret < 0)
+		return ret;
+	ebus->bus.io_ops->mark_pages_uc(snd_pcm_get_dma_buf(substream), true);
+
+	return ret;
 }
 
 static int skl_substream_free_pages(struct hdac_bus *bus,
 				struct snd_pcm_substream *substream)
 {
+	bus->io_ops->mark_pages_uc(snd_pcm_get_dma_buf(substream), false);
+
 	return snd_pcm_lib_free_pages(substream);
 }
 
