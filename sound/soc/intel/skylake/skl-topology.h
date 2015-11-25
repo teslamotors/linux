@@ -32,6 +32,7 @@
 #define MAX_TS_GROUPS 8
 #define MAX_DMIC_TS_GROUPS 4
 #define MAX_FIXED_DMIC_PARAMS_SIZE 727
+#define MAX_ADSP_SZ 1024
 
 /* Maximum number of coefficients up down mixer module */
 #define UP_DOWN_MIXER_MAX_COEFF		8
@@ -503,6 +504,31 @@ struct mod_set_get {
 	u32 primary;
 	u32 extension;
 	u32 mailbx[1024];
+};
+
+enum base_fw_run_time_param {
+	ADSP_PROPERTIES = 0,
+	ADSP_RESOURCE_STATE = 1,
+	NOTIFICATION_MASK = 3,
+	ASTATE_TABLE = 4,
+	DMA_CONTROL = 5,
+	ENABLE_LOGS = 6,
+	FIRMWARE_CONFIG = 7,
+	HARDWARE_CONFIG = 8,
+	MODULES_INFO = 9,
+	PIPELINE_LIST_INFO = 10,
+	PIPELINE_PROPS = 11,
+	SCHEDULERS_INFO = 12,
+	GATEWAYS_INFO = 13,
+	MEMORY_STATE_INFO = 14,
+	POWER_STATE_INFO = 15
+};
+
+struct fw_ipc_data {
+	u32 replysz;
+	u32 adsp_id;
+	u32 mailbx[MAX_ADSP_SZ];
+	struct mutex mutex;
 };
 
 int skl_tplg_be_update_params(struct snd_soc_dai *dai,

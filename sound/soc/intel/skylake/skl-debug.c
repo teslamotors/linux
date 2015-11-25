@@ -33,6 +33,19 @@
 #define IPC_MOD_LARGE_CONFIG_SET 4
 #define MOD_BUF1 (3 * PAGE_SIZE)
 
+#define DEFAULT_SZ 100
+#define DEFAULT_ID 0XFF
+#define ADSP_PROPERTIES_SZ	0x64
+#define ADSP_RESOURCE_STATE_SZ	0x18
+#define FIRMWARE_CONFIG_SZ	0x14c
+#define HARDWARE_CONFIG_SZ	0x84
+#define MODULES_INFO_SZ		0xa70
+#define PIPELINE_LIST_INFO_SZ	0xc
+#define SCHEDULERS_INFO_SZ	0x34
+#define GATEWAYS_INFO_SZ	0x4e4
+#define MEMORY_STATE_INFO_SZ	0x1000
+#define POWER_STATE_INFO_SZ	0x1000
+
 struct nhlt_blob {
 	size_t size;
 	struct nhlt_specific_cfg *cfg;
@@ -49,6 +62,7 @@ struct skl_debug {
 	struct nhlt_blob ssp_blob[2*MAX_SSP];
 	struct nhlt_blob dmic_blob;
 	u32 ipc_data[MAX_SZ];
+	struct fw_ipc_data fw_ipc_data;
 };
 
 struct nhlt_specific_cfg
@@ -551,6 +565,196 @@ static int skl_init_nhlt(struct skl_debug *d)
 	return 0;
 }
 
+static ssize_t adsp_control_read(struct file *file,
+			char __user *user_buf, size_t count, loff_t *ppos)
+{
+
+	struct skl_debug *d = file->private_data;
+	char *buf1;
+	ssize_t ret;
+	unsigned int data, ofs = 0;
+	int replysz = 0;
+
+	mutex_lock(&d->fw_ipc_data.mutex);
+	replysz = d->fw_ipc_data.replysz;
+	data = d->fw_ipc_data.adsp_id;
+
+	buf1 = kzalloc(MOD_BUF1, GFP_ATOMIC);
+	if (!buf1) {
+		mutex_unlock(&d->fw_ipc_data.mutex);
+		return -ENOMEM;
+	}
+
+	ret = snprintf(buf1, MOD_BUF1,
+			"\nADSP_PROP ID %x\n", data);
+	for (ofs = 0 ; ofs < replysz ; ofs += 16) {
+		ret += snprintf(buf1 + ret, MOD_BUF1 - ret,
+			"0x%.4x : ", ofs);
+		hex_dump_to_buffer((u8 *)(&(d->fw_ipc_data.mailbx[0])) + ofs,
+					16, 16, 4,
+					buf1 + ret, MOD_BUF1 - ret, 0);
+		ret += strlen(buf1 + ret);
+		if (MOD_BUF1 - ret > 0)
+			buf1[ret++] = '\n';
+	}
+
+	ret = simple_read_from_buffer(user_buf, count, ppos, buf1, ret);
+	mutex_unlock(&d->fw_ipc_data.mutex);
+	kfree(buf1);
+
+	return ret;
+}
+
+static ssize_t adsp_control_write(struct file *file,
+	const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct skl_debug *d = file->private_data;
+	char buf[8];
+	int err, replysz;
+	unsigned int dsp_property;
+	u32 *ipc_data;
+	struct skl_sst *ctx = d->skl->skl_sst;
+	struct skl_ipc_large_config_msg msg;
+	char id[8];
+	u32 tx_data;
+	int j = 0, bufsize, tx_param = 0, tx_param_id;
+	int len = min(count, (sizeof(buf)-1));
+
+	mutex_lock(&d->fw_ipc_data.mutex);
+	if (copy_from_user(buf, user_buf, len)) {
+		mutex_unlock(&d->fw_ipc_data.mutex);
+		return -EFAULT;
+	}
+
+	buf[len] = '\0';
+	bufsize = strlen(buf);
+
+	while (buf[j] != '\0') {
+		if (buf[j] == ',') {
+			strncpy(id, &buf[j+1], (bufsize-j));
+			buf[j] = '\0';
+			tx_param = 1;
+		} else
+			j++;
+	}
+
+	err = kstrtouint(buf, 10, &dsp_property);
+
+	if ((dsp_property == DMA_CONTROL) || (dsp_property == ENABLE_LOGS)) {
+		dev_err(d->dev, "invalid input !! not readable\n");
+		mutex_unlock(&d->fw_ipc_data.mutex);
+		return -EINVAL;
+	}
+
+	if (tx_param == 1) {
+		err = kstrtouint(id, 10, &tx_param_id);
+		tx_data = (tx_param_id << 8) | dsp_property;
+	}
+
+	ipc_data = kzalloc(DSP_BUF, GFP_ATOMIC);
+	if (!ipc_data) {
+		mutex_unlock(&d->fw_ipc_data.mutex);
+		return -ENOMEM;
+	}
+
+	switch (dsp_property) {
+
+	case ADSP_PROPERTIES:
+	replysz = ADSP_PROPERTIES_SZ;
+	break;
+
+	case ADSP_RESOURCE_STATE:
+	replysz = ADSP_RESOURCE_STATE_SZ;
+	break;
+
+	case FIRMWARE_CONFIG:
+	replysz = FIRMWARE_CONFIG_SZ;
+	break;
+
+	case HARDWARE_CONFIG:
+	replysz = HARDWARE_CONFIG_SZ;
+	break;
+
+	case MODULES_INFO:
+	replysz = MODULES_INFO_SZ;
+	break;
+
+	case PIPELINE_LIST_INFO:
+	replysz = PIPELINE_LIST_INFO_SZ;
+	break;
+
+	case SCHEDULERS_INFO:
+	replysz = SCHEDULERS_INFO_SZ;
+	break;
+
+	case GATEWAYS_INFO:
+	replysz = GATEWAYS_INFO_SZ;
+	break;
+
+	case MEMORY_STATE_INFO:
+	replysz = MEMORY_STATE_INFO_SZ;
+	break;
+
+	case POWER_STATE_INFO:
+	replysz = POWER_STATE_INFO_SZ;
+	break;
+
+	default:
+	mutex_unlock(&d->fw_ipc_data.mutex);
+	kfree(ipc_data);
+	return -EINVAL;
+	}
+
+	msg.module_id = 0x0;
+	msg.instance_id = 0x0;
+	msg.large_param_id = dsp_property;
+	msg.param_data_size = replysz;
+
+	if (tx_param == 1)
+		skl_ipc_get_large_config(&ctx->ipc, &msg,
+				ipc_data, &tx_data, sizeof(u32));
+	else
+		skl_ipc_get_large_config(&ctx->ipc, &msg,
+							ipc_data, NULL, 0);
+
+	memset(&d->fw_ipc_data.mailbx[0], 0, DSP_BUF);
+
+	memcpy(&d->fw_ipc_data.mailbx[0], ipc_data, replysz);
+
+	d->fw_ipc_data.adsp_id = dsp_property;
+
+	d->fw_ipc_data.replysz = replysz;
+
+	/* Userspace has been fiddling around behindthe kernel's back*/
+	add_taint(TAINT_USER, LOCKDEP_NOW_UNRELIABLE);
+	mutex_unlock(&d->fw_ipc_data.mutex);
+	kfree(ipc_data);
+
+	return len;
+}
+
+static const struct file_operations ssp_cntrl_adsp_fops = {
+	.open = simple_open,
+	.read = adsp_control_read,
+	.write = adsp_control_write,
+	.llseek = default_llseek,
+};
+
+static int skl_init_adsp(struct skl_debug *d)
+{
+	if (!debugfs_create_file("adsp_prop_ctrl", 0644, d->fs, d,
+				 &ssp_cntrl_adsp_fops)) {
+		dev_err(d->dev, "adsp control debugfs init failed\n");
+		return -EIO;
+	}
+
+	memset(&d->fw_ipc_data.mailbx[0], 0, DSP_BUF);
+	d->fw_ipc_data.replysz = DEFAULT_SZ;
+	d->fw_ipc_data.adsp_id = DEFAULT_ID;
+
+	return 0;
+}
+
 struct skl_debug *skl_debugfs_init(struct skl *skl)
 {
 	struct skl_debug *d;
@@ -559,6 +763,7 @@ struct skl_debug *skl_debugfs_init(struct skl *skl)
 	if (!d)
 		return NULL;
 
+	mutex_init(&d->fw_ipc_data.mutex);
 	/* create the debugfs dir with platform component's debugfs as parent */
 	d->fs = debugfs_create_dir("dsp",
 				   skl->platform->component.debugfs_root);
@@ -591,6 +796,7 @@ struct skl_debug *skl_debugfs_init(struct skl *skl)
 	}
 
 	skl_init_nhlt(d);
+	skl_init_adsp(d);
 	skl_init_mod_set_get(d);
 
 	return d;
