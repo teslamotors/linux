@@ -74,6 +74,7 @@ struct skl {
 	u8 nr_modules;
 	struct skl_module **modules;
 	bool nhlt_override;
+	bool mod_set_get_status;
 };
 
 #define skl_to_ebus(s)	(&(s)->ebus)

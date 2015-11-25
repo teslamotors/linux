@@ -24,10 +24,14 @@
 #include "../common/sst-dsp-priv.h"
 #include "skl-nhlt.h"
 
-#define MOD_BUF		PAGE_SIZE
+#define MOD_BUF (2 * PAGE_SIZE)
 #define FW_REG_BUF	PAGE_SIZE
 #define FW_REG_SIZE	0x60
 #define MAX_SSP 	4
+#define MAX_SZ 1025
+#define IPC_MOD_LARGE_CONFIG_GET 3
+#define IPC_MOD_LARGE_CONFIG_SET 4
+#define MOD_BUF1 (3 * PAGE_SIZE)
 
 struct nhlt_blob {
 	size_t size;
@@ -44,6 +48,7 @@ struct skl_debug {
 	u8 fw_read_buff[FW_REG_BUF];
 	struct nhlt_blob ssp_blob[2*MAX_SSP];
 	struct nhlt_blob dmic_blob;
+	u32 ipc_data[MAX_SZ];
 };
 
 struct nhlt_specific_cfg
@@ -125,6 +130,155 @@ static const struct file_operations nhlt_fops = {
 	.write = nhlt_write,
 	.llseek = default_llseek,
 };
+
+static ssize_t mod_control_read(struct file *file,
+			char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct skl_debug *d = file->private_data;
+	char *state;
+	char *buf1;
+	int ret;
+	unsigned int ofs = 0;
+
+	if (d->ipc_data[0] == 0) {
+		state = d->skl->mod_set_get_status ? "Fail\n" : "success\n";
+		return simple_read_from_buffer(user_buf, count, ppos,
+			state, strlen(state));
+	}
+
+	state = d->skl->mod_set_get_status ? "Fail\n" : "success\n";
+	buf1 = kzalloc(MOD_BUF1, GFP_KERNEL);
+	if (!buf1)
+		return -ENOMEM;
+
+	ret = snprintf(buf1, MOD_BUF1,
+			"%s\nLARGE PARAM DATA\n", state);
+
+	for (ofs = 0 ; ofs < d->ipc_data[0] ; ofs += 16) {
+		ret += snprintf(buf1 + ret, MOD_BUF1 - ret, "0x%.4x : ", ofs);
+		hex_dump_to_buffer(&(d->ipc_data[1]) + ofs, 16, 16, 4,
+					buf1 + ret, MOD_BUF1 - ret, 0);
+		ret += strlen(buf1 + ret);
+		if (MOD_BUF1 - ret > 0)
+			buf1[ret++] = '\n';
+	}
+
+	ret = simple_read_from_buffer(user_buf, count, ppos, buf1, ret);
+	kfree(buf1);
+	return ret;
+
+}
+
+static ssize_t mod_control_write(struct file *file,
+		const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct skl_debug *d = file->private_data;
+	struct mod_set_get *mod_set_get;
+	char *buf;
+	int retval, type;
+	ssize_t written;
+	u32 size, mbsz;
+	u32 *large_data;
+	int large_param_size;
+
+	struct skl_sst *ctx = d->skl->skl_sst;
+	struct skl_ipc_large_config_msg msg;
+	struct skl_ipc_header header = {0};
+	u64 *ipc_header = (u64 *)(&header);
+
+	buf = kzalloc(MOD_BUF, GFP_KERNEL);
+	written = simple_write_to_buffer(buf, MOD_BUF, ppos,
+						user_buf, count);
+	size = written;
+	print_hex_dump(KERN_DEBUG, "buf :", DUMP_PREFIX_OFFSET, 8, 4,
+			buf, size, false);
+
+	mod_set_get = (struct mod_set_get *)buf;
+	header.primary = mod_set_get->primary;
+	header.extension = mod_set_get->extension;
+
+	mbsz = mod_set_get->size - (sizeof(u32)*2);
+	print_hex_dump(KERN_DEBUG, "header mailbox:", DUMP_PREFIX_OFFSET, 8, 4,
+			mod_set_get->mailbx, size-12, false);
+	type =  ((0x1f000000) & (mod_set_get->primary))>>24;
+
+	switch (type) {
+
+	case IPC_MOD_LARGE_CONFIG_GET:
+		msg.module_id = (header.primary) & 0x0000ffff;
+		msg.instance_id = ((header.primary) & 0x00ff0000)>>16;
+		msg.large_param_id = ((header.extension) & 0x0ff00000)>>20;
+		msg.param_data_size = (header.extension) & 0x000fffff;
+		large_param_size = msg.param_data_size;
+
+		large_data = kzalloc(large_param_size, GFP_KERNEL);
+		if (!large_data)
+			return -ENOMEM;
+
+		if (mbsz)
+			retval = skl_ipc_get_large_config(&ctx->ipc, &msg,
+				large_data, &(mod_set_get->mailbx[0]), mbsz);
+		else
+			retval = skl_ipc_get_large_config(&ctx->ipc,
+					&msg, large_data, NULL, 0);
+
+		d->ipc_data[0] = msg.param_data_size;
+		memcpy(&d->ipc_data[1], large_data, msg.param_data_size);
+		kfree(large_data);
+		break;
+
+	case IPC_MOD_LARGE_CONFIG_SET:
+		d->ipc_data[0] = 0;
+		msg.module_id = (header.primary) & 0x0000ffff;
+		msg.instance_id = ((header.primary) & 0x00ff0000)>>16;
+		msg.large_param_id = ((header.extension) & 0x0ff00000)>>20;
+		msg.param_data_size = (header.extension) & 0x000fffff;
+
+		retval = skl_ipc_set_large_config(&ctx->ipc, &msg,
+						(u32 *)(&mod_set_get->mailbx));
+		d->ipc_data[0] = 0;
+		break;
+
+	default:
+		if (mbsz)
+			retval = sst_ipc_tx_message_wait(&ctx->ipc, *ipc_header,
+				mod_set_get->mailbx, mbsz, NULL, 0);
+
+		else
+			retval = sst_ipc_tx_message_wait(&ctx->ipc, *ipc_header,
+				NULL, 0, NULL, 0);
+
+		d->ipc_data[0] = 0;
+		break;
+
+	}
+	if (retval)
+		d->skl->mod_set_get_status = 1;
+	else
+		d->skl->mod_set_get_status = 0;
+
+	/* Userspace has been fiddling around behind the kernel's back */
+	add_taint(TAINT_USER, LOCKDEP_NOW_UNRELIABLE);
+	kfree(buf);
+	return written;
+}
+
+static const struct file_operations set_get_ctrl_fops = {
+	.open = simple_open,
+	.read = mod_control_read,
+	.write = mod_control_write,
+	.llseek = default_llseek,
+};
+
+static int skl_init_mod_set_get(struct skl_debug *d)
+{
+	if (!debugfs_create_file("set_get_ctrl", 0644, d->modules, d,
+				 &set_get_ctrl_fops)) {
+		dev_err(d->dev, "module set get ctrl debugfs init failed\n");
+		return -EIO;
+	}
+	return 0;
+}
 
 static ssize_t skl_print_pins(struct skl_module_pin *m_pin, char *buf,
 				int max_pin, ssize_t size, bool direction)
@@ -437,6 +591,7 @@ struct skl_debug *skl_debugfs_init(struct skl *skl)
 	}
 
 	skl_init_nhlt(d);
+	skl_init_mod_set_get(d);
 
 	return d;
 

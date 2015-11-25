@@ -497,6 +497,14 @@ static inline struct skl *get_skl_ctx(struct device *dev)
 }
 
 struct skl_probe_config;
+
+struct mod_set_get {
+	u32 size;
+	u32 primary;
+	u32 extension;
+	u32 mailbx[1024];
+};
+
 int skl_tplg_be_update_params(struct snd_soc_dai *dai,
 	struct skl_pipe_params *params);
 int skl_dsp_set_dma_control(struct skl_sst *ctx,
