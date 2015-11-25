@@ -74,12 +74,12 @@ struct __packed intel_ipu_cpd_metadata_extn {
 	u8 rsvd[16];
 };
 
-void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
+void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_bus_device *adev,
 						 const void *src,
 						 dma_addr_t dma_addr_src,
 						 dma_addr_t *dma_addr,
 						 unsigned *pkg_dir_size);
-void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_device *isp,
+void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_bus_device *adev,
 					      u64 *pkg_dir,
 					      dma_addr_t dma_addr,
 					      unsigned pkg_dir_size);

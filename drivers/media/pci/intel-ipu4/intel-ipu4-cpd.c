@@ -234,12 +234,13 @@ static int intel_ipu4_cpd_parse_module_data(struct intel_ipu4_device *isp,
 	return 0;
 }
 
-void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
+void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_bus_device *adev,
 						const void *src,
 						dma_addr_t dma_addr_src,
 						dma_addr_t *dma_addr,
 						unsigned *pkg_dir_size)
 {
+	struct intel_ipu4_device *isp = adev->isp;
 	const struct intel_ipu4_cpd_hdr *hdr = src;
 	const struct intel_ipu4_cpd_ent *ent, *man_ent, *met_ent;
 	u64 *pkg_dir;
@@ -275,7 +276,7 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
 	}
 
 	*pkg_dir_size = PKG_DIR_SIZE + man_sz + met_sz;
-	pkg_dir = dma_alloc_attrs(&isp->psys->dev, *pkg_dir_size, dma_addr,
+	pkg_dir = dma_alloc_attrs(&adev->dev, *pkg_dir_size, dma_addr,
 				  GFP_KERNEL, NULL);
 	if (!pkg_dir)
 		return pkg_dir;
@@ -314,19 +315,19 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
 	pkg_dir_pos += man_sz;
 	memcpy(pkg_dir_pos, src + met_ent->offset, met_sz);
 
-	dma_sync_single_range_for_device(&isp->psys->dev, *dma_addr,
+	dma_sync_single_range_for_device(&adev->dev, *dma_addr,
 					  0, *pkg_dir_size, DMA_TO_DEVICE);
 
 	return pkg_dir;
 }
 EXPORT_SYMBOL(intel_ipu4_cpd_create_pkg_dir);
 
-void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_device *isp,
+void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_bus_device *adev,
 				 u64 *pkg_dir,
 				 dma_addr_t dma_addr,
 				 unsigned pkg_dir_size)
 {
-	dma_free_attrs(&isp->psys->dev, pkg_dir_size, pkg_dir, dma_addr, NULL);
+	dma_free_attrs(&adev->dev, pkg_dir_size, pkg_dir, dma_addr, NULL);
 }
 EXPORT_SYMBOL(intel_ipu4_cpd_free_pkg_dir);
 

@@ -1627,7 +1627,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 			psys->pkg_dir_size;
 	} else {
 		psys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
-			isp, fw->data,
+			adev, fw->data,
 			sg_dma_address(psys->fw_sgt.sgl),
 			&psys->pkg_dir_dma_addr,
 			&psys->pkg_dir_size);
@@ -1693,7 +1693,7 @@ out_remove_pkg_dir_shared_buffer:
 			PSYS_SSID, psys->pkg_dir);
 out_free_pkg_dir:
 	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
-		intel_ipu4_cpd_free_pkg_dir(isp, psys->pkg_dir,
+		intel_ipu4_cpd_free_pkg_dir(adev, psys->pkg_dir,
 					    psys->pkg_dir_dma_addr,
 					    psys->pkg_dir_size);
 out_remove_shared_buffer:
@@ -1742,7 +1742,7 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 	} else {
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
 			PSYS_SSID, psys->pkg_dir);
-		intel_ipu4_cpd_free_pkg_dir(isp, psys->pkg_dir,
+		intel_ipu4_cpd_free_pkg_dir(adev, psys->pkg_dir,
 					    psys->pkg_dir_dma_addr,
 					    psys->pkg_dir_size);
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
