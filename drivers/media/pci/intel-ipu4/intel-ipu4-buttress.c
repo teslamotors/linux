@@ -49,6 +49,9 @@
 
 #define BUTTRESS_TSC_SYNC_RESET_TRIAL_MAX	10
 
+#define BUTTRESS_CSE_BOOTLOAD_TIMEOUT		5000
+#define BUTTRESS_CSE_AUTHENTICATE_TIMEOUT	10000
+
 static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 				  enum intel_ipu4_buttress_ipc_domain ipc)
 {
@@ -593,7 +596,6 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	u32 data;
 	int rval;
 	unsigned long tout_jfs;
-	unsigned tout = 5000;
 
 	if (!isp->secure_mode) {
 		dev_dbg(&isp->pdev->dev, "Non-secure mode -> skip authentication\n",
@@ -638,7 +640,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		goto iunit_power_off;
 	}
 
-	tout_jfs = jiffies + msecs_to_jiffies(tout);
+	tout_jfs = jiffies + msecs_to_jiffies(BUTTRESS_CSE_BOOTLOAD_TIMEOUT);
 	do {
 		data = readl(isp->base + BUTTRESS_REG_CSE_ACTION);
 		data &= BUTTRESS_CSE_ACTION_MASK;
@@ -659,7 +661,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		goto iunit_power_off;
 	}
 
-	tout_jfs = jiffies + msecs_to_jiffies(tout);
+	tout_jfs = jiffies + msecs_to_jiffies(BUTTRESS_CSE_BOOTLOAD_TIMEOUT);
 	do {
 		data = readl(psys_pdata->base + BOOTLOADER_STATUS_OFFSET);
 		dev_dbg(&isp->pdev->dev, "%s: BOOTLOADER_STATUS 0x%x",
@@ -694,7 +696,8 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		goto iunit_power_off;
 	}
 
-	tout_jfs = jiffies + msecs_to_jiffies(1000);
+	tout_jfs = jiffies + msecs_to_jiffies(
+		BUTTRESS_CSE_AUTHENTICATE_TIMEOUT);
 	do {
 		data = readl(isp->base + BUTTRESS_REG_CSE_ACTION);
 		data &= BUTTRESS_CSE_ACTION_MASK;
