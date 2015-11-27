@@ -23,12 +23,18 @@
 #include <media/v4l2-ioctl.h>
 
 #include "libintel-ipu4.h"
+#include "intel-ipu4-bus.h"
+#include "intel-ipu4-cpd.h"
 #include "intel-ipu4-isys.h"
 #include "intel-ipu4-isys-video.h"
+#include "intel-ipu4-regs.h"
 #include "intel-ipu4-trace.h"
 #include "intel-ipu4-wrapper.h"
 #include "isysapi/interface/ia_css_isysapi_fw_types.h"
 #include "isysapi/interface/ia_css_isysapi.h"
+#include <ia_css_pkg_dir.h>
+#include <ia_css_pkg_dir_iunit.h>
+#include <ia_css_pkg_dir_types.h>
 
 const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_a0[] = {
 	{ V4L2_PIX_FMT_UYVY, 16, 16, MEDIA_BUS_FMT_UYVY8_1X16, IA_CSS_ISYS_FRAME_FORMAT_UYVY },
@@ -101,24 +107,70 @@ static int intel_ipu4_poll_for_events(struct intel_ipu4_isys_video *av)
 	return !is_intel_ipu4_hw_bxt_b0(av->isys->adev->isp);
 }
 
+static void intel_ipu4_isys_hw_init(struct intel_ipu4_isys *isys)
+{
+	struct intel_ipu4_bus_device *adev =
+		to_intel_ipu4_bus_device(&isys->adev->dev);
+	struct intel_ipu4_device *isp = adev->isp;
+	u32 val;
+
+	if (is_intel_ipu4_hw_bxt_a0(isp))
+		return;
+
+	val = readl(isys->pdata->base +
+		    INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
+	val |= INTEL_IPU4_PSYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
+	writel(val, isys->pdata->base +
+	       INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
+
+	if (!isp->secure_mode) {
+		const ia_css_pkg_dir_entry_t *pkg_dir =
+			(ia_css_pkg_dir_entry_t *)isys->pkg_dir;
+		const ia_css_pkg_dir_entry_t *entry;
+		u32 isys_server_addr;
+
+		entry = ia_css_pkg_dir_get_entry(pkg_dir,
+						 IA_CSS_PKG_DIR_ISYS_INDEX);
+
+		isys_server_addr = ia_css_pkg_dir_entry_get_address_lo(entry);
+
+		writel(isys_server_addr + intel_ipu4_cpd_get_pg_icache_base(
+			       isp, 1, isp->cpd_fw->data, isp->cpd_fw->size),
+		       isys->pdata->base +
+		       INTEL_IPU4_PSYS_REG_SPC_ICACHE_BASE);
+		writel(intel_ipu4_cpd_get_pg_entry_point(isp, 1,
+							 isp->cpd_fw->data,
+							 isp->cpd_fw->size),
+		       isys->pdata->base + INTEL_IPU4_PSYS_REG_SPC_START_PC);
+		writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
+		       isys->pdata->base +
+		       INTEL_IPU4_REG_PSYS_INFO_SEG_0_CONFIG_ICACHE_MASTER);
+		writel(isys->pkg_dir_dma_addr, isys->pdata->base +
+		       INTEL_IPU4_DMEM_OFFSET);
+	}
+}
+
 static int video_open(struct file *file)
 {
 	struct intel_ipu4_isys_video *av = video_drvdata(file);
+	struct intel_ipu4_isys *isys = av->isys;
 	int rval;
 
-	mutex_lock(&av->isys->mutex);
-	if (av->isys->reset_needed) {
-		mutex_unlock(&av->isys->mutex);
-		dev_warn(&av->isys->adev->dev, "isys power cycle required\n");
+	mutex_lock(&isys->mutex);
+	if (isys->reset_needed) {
+		mutex_unlock(&isys->mutex);
+		dev_warn(&isys->adev->dev, "isys power cycle required\n");
 		return -EIO;
 	}
-	mutex_unlock(&av->isys->mutex);
+	mutex_unlock(&isys->mutex);
 
-	rval = pm_runtime_get_sync(&av->isys->adev->dev);
+	rval = pm_runtime_get_sync(&isys->adev->dev);
 	if (rval < 0) {
-		pm_runtime_put_noidle(&av->isys->adev->dev);
+		pm_runtime_put_noidle(&isys->adev->dev);
 		return rval;
 	}
+
+	intel_ipu4_isys_hw_init(isys);
 
 	rval = v4l2_fh_open(file);
 	if (rval)
@@ -128,15 +180,15 @@ static int video_open(struct file *file)
 	if (rval)
 		goto out_v4l2_fh_release;
 
-	mutex_lock(&av->isys->mutex);
+	mutex_lock(&isys->mutex);
 
-	if (av->isys->video_opened++) {
+	if (isys->video_opened++) {
 		/* Already open */
-		mutex_unlock(&av->isys->mutex);
+		mutex_unlock(&isys->mutex);
 		return 0;
 	}
 
-	if (av->isys->ssi) {
+	if (isys->ssi) {
 		/*
 		 * Something went wrong in previous shutdown. As we are now
 		 * restarting isys we can safely delete old context.
@@ -144,9 +196,9 @@ static int video_open(struct file *file)
 		 * will call assert. We can ignore clean up in cost of
 		 * memory leak.
 		 */
-		dev_err(&av->isys->adev->dev, "Old context exists but can't be removed\n");
-		dev_err(&av->isys->adev->dev, "FIXME: memory leak in isys open\n");
-		av->isys->ssi = NULL;
+		dev_err(&isys->adev->dev, "Old context exists but can't be removed\n");
+		dev_err(&isys->adev->dev, "FIXME: memory leak in isys open\n");
+		isys->ssi = NULL;
 	}
 
 	if (intel_ipu4_poll_for_events(av)) {
@@ -154,43 +206,43 @@ static int video_open(struct file *file)
 			.sched_priority = MAX_USER_RT_PRIO/2,
 		};
 
-		av->isys->isr_thread = kthread_run(
+		isys->isr_thread = kthread_run(
 			intel_ipu4_isys_isr_run, av->isys,
 			INTEL_IPU4_ISYS_ENTITY_PREFIX);
 
-		if (IS_ERR(av->isys->isr_thread)) {
-			rval = PTR_ERR(av->isys->isr_thread);
+		if (IS_ERR(isys->isr_thread)) {
+			rval = PTR_ERR(isys->isr_thread);
 			goto out_intel_ipu4_pipeline_pm_use;
 		}
 
-		sched_setscheduler(av->isys->isr_thread, SCHED_FIFO, &param);
+		sched_setscheduler(isys->isr_thread, SCHED_FIFO, &param);
 	}
 
-	if (av->isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA ||
-	    av->isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4) {
+	if (isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA ||
+	    isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4) {
 		rval = intel_ipu4_isys_library_init(
-			av->isys, (void *)&av->isys->fw->data);
+			av->isys, (void *)&isys->fw->data);
 		if (rval < 0)
 			goto out_lib_init;
 	}
 
-	mutex_unlock(&av->isys->mutex);
+	mutex_unlock(&isys->mutex);
 
 	return 0;
 
 out_lib_init:
 	if (intel_ipu4_poll_for_events(av))
-		kthread_stop(av->isys->isr_thread);
+		kthread_stop(isys->isr_thread);
 
 out_intel_ipu4_pipeline_pm_use:
-	av->isys->video_opened--;
-	mutex_unlock(&av->isys->mutex);
+	isys->video_opened--;
+	mutex_unlock(&isys->mutex);
 	intel_ipu4_pipeline_pm_use(&av->vdev.entity, 0);
 
 out_v4l2_fh_release:
 	v4l2_fh_release(file);
 out_power_down:
-	pm_runtime_put(&av->isys->adev->dev);
+	pm_runtime_put(&isys->adev->dev);
 
 	return rval;
 }
@@ -608,15 +660,6 @@ int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 	struct intel_ipu4_device *isp = isys->adev->isp;
 	struct device *dev = &isys->adev->dev;
 	int rval;
-
-#ifdef IPU_STEP_BXTB0
-	if (!is_intel_ipu4_hw_bxt_a0(isp) &&
-	    !isp->secure_mode) {
-		isys_cfg.driver_sys.pkg_dir_host_address = *((u64 *)fw);
-		isys_cfg.driver_sys.pkg_dir_vied_address =
-			sg_dma_address(isys->fw_sgt.sgl);
-	}
-#endif
 
 	/* A0 FW is not a pkg_dir */
 	if (is_intel_ipu4_hw_bxt_a0(isp))

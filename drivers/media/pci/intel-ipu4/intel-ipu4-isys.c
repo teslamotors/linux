@@ -25,6 +25,7 @@
 
 #include "intel-ipu4.h"
 #include "intel-ipu4-bus.h"
+#include "intel-ipu4-cpd.h"
 #include "intel-ipu4-mmu.h"
 #include "intel-ipu4-dma.h"
 #include "intel-ipu4-isys.h"
@@ -878,6 +879,11 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 	isys_unregister_devices(isys);
 	if (!isp->secure_mode) {
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
+			ISYS_SSID, isys->pkg_dir);
+		intel_ipu4_cpd_free_pkg_dir(adev, isys->pkg_dir,
+					    isys->pkg_dir_dma_addr,
+					    isys->pkg_dir_size);
+		intel_ipu4_wrapper_remove_shared_memory_buffer(
 			ISYS_SSID, (void *)isys->fw->data);
 		intel_ipu4_buttress_unmap_fw_image(adev, &isys->fw_sgt);
 		release_firmware(isys->fw);
@@ -891,6 +897,9 @@ static int isys_fw_reload(struct intel_ipu4_device *isp)
 {
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(isp->isys);
 	int rval;
+
+	if (!is_intel_ipu4_hw_bxt_a0(isys->adev->isp))
+		return -EINVAL;
 
 	if (isys->fw) {
 		dev_info(&isp->pdev->dev, "Remove old isys FW\n");
@@ -943,6 +952,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
 	struct intel_ipu4_isys *isys;
 	struct intel_ipu4_device *isp = adev->isp;
+	const struct firmware *fw;
 	int rval = 0;
 
 	/* Has the domain been attached? */
@@ -978,28 +988,51 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 #endif
 
 	if (!isp->secure_mode) {
-		dev_info(&isp->pdev->dev, "isys binary file name: %s\n",
-			 isys->pdata->ipdata->hw_variant.fw_filename);
+		if (is_intel_ipu4_hw_bxt_a0(isp)) {
+			dev_info(&isp->pdev->dev, "isys binary file name: %s\n",
+				 isys->pdata->ipdata->hw_variant.fw_filename);
 
-		rval = request_firmware(
-			&isys->fw,
-			isys->pdata->ipdata->hw_variant.fw_filename,
-			&adev->dev);
-		if (rval) {
-			dev_err(&adev->dev, "Requesting isys firmware failed\n");
-			goto trace_uninit;
+			rval = request_firmware(
+				&isys->fw,
+				isys->pdata->ipdata->hw_variant.fw_filename,
+				&adev->dev);
+			if (rval) {
+				dev_err(&adev->dev, "Requesting isys firmware failed\n");
+				goto trace_uninit;
+			}
+			fw = isys->fw;
+		} else {
+			fw = isp->cpd_fw;
 		}
+
 		rval = intel_ipu4_buttress_map_fw_image(
-			adev, isys->fw, &isys->fw_sgt);
+			adev, fw, &isys->fw_sgt);
 		if (rval)
 			goto release_firmware;
 
 		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-			ISYS_SSID, (void *)isys->fw->data,
+			ISYS_SSID, (void *)fw->data,
 			sg_dma_address(isys->fw_sgt.sgl),
-			isys->fw->size);
+			fw->size);
 		if (rval)
 			goto unmap_fw_image;
+
+		if (!is_intel_ipu4_hw_bxt_a0(isp)) {
+			isys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
+				adev, isp->cpd_fw->data,
+				sg_dma_address(isys->fw_sgt.sgl),
+				&isys->pkg_dir_dma_addr,
+				&isys->pkg_dir_size);
+			if (isys->pkg_dir == NULL)
+				goto  remove_shared_buffer;
+
+			rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+				ISYS_SSID, (void *)isys->pkg_dir,
+				isys->pkg_dir_dma_addr,
+				isys->pkg_dir_size);
+			if (rval)
+				goto out_free_pkg_dir;
+		}
 	}
 
 	intel_ipu4_trace_init(adev->isp, isys->pdata->base, &adev->dev,
@@ -1008,19 +1041,32 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	rval = isys_register_devices(isys);
 	if (rval)
-		goto remove_shared_buffer;
+		goto out_remove_pkg_dir_shared_buffer;
 
 	adev->isp->isys_fw_reload = &isys_fw_reload;
 
 	return 0;
 
+out_remove_pkg_dir_shared_buffer:
+	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
+		intel_ipu4_wrapper_remove_shared_memory_buffer(
+			ISYS_SSID, isys->pkg_dir);
+out_free_pkg_dir:
+	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
+		intel_ipu4_cpd_free_pkg_dir(adev, isys->pkg_dir,
+					    isys->pkg_dir_dma_addr,
+					    isys->pkg_dir_size);
 remove_shared_buffer:
-	intel_ipu4_wrapper_remove_shared_memory_buffer(
-		ISYS_SSID, (void *)isys->fw->data);
+	if (!isp->secure_mode)
+		intel_ipu4_wrapper_remove_shared_memory_buffer(
+			ISYS_SSID, (void *)fw->data);
 unmap_fw_image:
-	intel_ipu4_buttress_unmap_fw_image(adev, &isys->fw_sgt);
+	if (!isp->secure_mode)
+		intel_ipu4_buttress_unmap_fw_image(
+			adev, &isys->fw_sgt);
 release_firmware:
-	release_firmware(isys->fw);
+	if (!isp->secure_mode)
+		release_firmware(isys->fw);
 trace_uninit:
 	intel_ipu4_trace_uninit(&adev->dev);
 

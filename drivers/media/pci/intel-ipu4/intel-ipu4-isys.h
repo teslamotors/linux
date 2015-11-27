@@ -109,6 +109,10 @@ struct intel_ipu4_isys {
 
 	const struct firmware *fw;
 	struct sg_table fw_sgt;
+
+	u64 *pkg_dir;
+	dma_addr_t pkg_dir_dma_addr;
+	unsigned pkg_dir_size;
 };
 
 extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;
