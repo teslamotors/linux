@@ -415,4 +415,24 @@ config FRAME_POINTER
 	depends on !UNWINDER_ORC && !UNWINDER_GUESS
 	bool
 
+config X86_APL_FASTBOOT
+	bool "Fastboot support for Apollo Lake"
+	---help---
+	  Say Y here to get to see options related to fastboot optimization
+	  for Intel Apollo Lake platform.
+	  This will only made the suboptions visible.
+
+	  If you say N, all options in this submenu will be skipped and disabled.
+
+config FASTBOOT_PCI_PROBE
+	bool "Resort PCI device probing"
+	depends on X86_APL_FASTBOOT
+	depends on MMC
+	---help---
+	  This option enable a re-sorted PCI probe routine for Bus #0.
+	  Effect:
+	  - The internal eMMC is probed before the SD-Card.
+
+	  If unsure, say N.
+
 endmenu

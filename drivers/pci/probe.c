@@ -2470,11 +2470,30 @@ unsigned int pci_scan_child_bus(struct pci_bus *bus)
 	unsigned int devfn, pass, max = bus->busn_res.start;
 	struct pci_dev *dev;
 
+#ifdef CONFIG_FASTBOOT_PCI_PROBE
+	unsigned int i;
+
+	/* order of devices to probe on bus #0 */
+	static const unsigned char bus0_devs[32] = {
+		 0,  1,  2,  3,  4,  5,  6,  7,
+		 8,  9, 10, 11, 12, 13, 14, 15,
+		16, 17, 18, 19, 20, 21, 22, 23,
+		/* probe eMMC (#28) before SD Card (#27) */
+		24, 25, 26, 28, 27, 29, 30, 31
+	};
+#endif
 	dev_dbg(&bus->dev, "scanning bus\n");
 
 	/* Go find them, Rover! */
+#ifndef CONFIG_FASTBOOT_PCI_PROBE
 	for (devfn = 0; devfn < 0x100; devfn += 8)
 		pci_scan_slot(bus, devfn);
+#else
+	for (i = 0 ; i < 32 ; i += 1) {
+		devfn = 8 * ((bus->number == 0) ? bus0_devs[i] : i);
+		pci_scan_slot(bus, devfn);
+	}
+#endif
 
 	/* Reserve buses for SR-IOV capability. */
 	max += pci_iov_bus_range(bus);
