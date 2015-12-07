@@ -31,6 +31,14 @@
 #include <media/media-devnode.h>
 #include <media/media-entity.h>
 
+static char *__request_state[] = {
+	"IDLE",
+	"QUEUED",
+};
+
+#define request_state(i)			\
+	((i) < ARRAY_SIZE(__request_state) ? __request_state[i] : "UNKNOWN")
+
 struct media_device_fh {
 	struct media_devnode_fh fh;
 	struct list_head requests;
@@ -133,6 +141,7 @@ static int media_device_request_alloc(struct media_device *mdev,
 	req->mdev = mdev;
 	req->id = id;
 	req->filp = filp;
+	req->state = MEDIA_DEVICE_REQUEST_STATE_IDLE;
 	kref_init(&req->kref);
 
 	spin_lock_irqsave(&mdev->req_lock, flags);

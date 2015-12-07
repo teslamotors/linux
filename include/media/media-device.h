@@ -35,6 +35,11 @@
 struct device;
 struct media_device;
 
+enum media_device_request_state {
+	MEDIA_DEVICE_REQUEST_STATE_IDLE,
+	MEDIA_DEVICE_REQUEST_STATE_QUEUED,
+};
+
 /**
  * struct media_device_request - Media device request
  * @id: Request ID
@@ -42,6 +47,8 @@ struct media_device;
  * @kref: Reference count
  * @list: List entry in the media device requests list
  * @fh_list: List entry in the media file handle requests list
+ * @state: The state of the request, MEDIA_DEVICE_REQUEST_STATE_*,
+ *	   access to state serialised by mdev->req_lock
  */
 struct media_device_request {
 	u32 id;
@@ -50,6 +57,7 @@ struct media_device_request {
 	struct kref kref;
 	struct list_head list;
 	struct list_head fh_list;
+	enum media_device_request_state state;
 };
 
 /**
