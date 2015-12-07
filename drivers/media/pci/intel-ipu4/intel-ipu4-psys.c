@@ -1390,13 +1390,6 @@ static int psys_runtime_pm_resume(struct device *dev)
 	unsigned long flags;
 	u32 val;
 
-	/*
-	 * Runtime resume before or during authentication -> Powering on
-	 * psys is enough. No need to open the library.
-	 */
-	if (isp->secure_mode && !isp->auth_done)
-		return 0;
-
 	if (!syscom_buffer) {
 		dev_err(&psys->adev->dev,
 			"resume called before probing. skipping.\n");

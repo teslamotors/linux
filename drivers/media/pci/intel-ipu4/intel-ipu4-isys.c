@@ -959,9 +959,6 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	if (!mmu)
 		return -EPROBE_DEFER;
 
-	if (isp->secure_mode && !isp->auth_done)
-		return -EPROBE_DEFER;
-
 	intel_ipu4_wrapper_set_device(&adev->dev, ISYS_MMID);
 
 	isys = devm_kzalloc(&adev->dev, sizeof(*isys), GFP_KERNEL);

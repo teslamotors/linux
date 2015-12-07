@@ -489,6 +489,19 @@ static bool intel_ipu4_buttress_get_secure_mode(struct intel_ipu4_device *isp)
 	return val & (1 << BUTTRESS_SECURITY_CTL_FW_SECURE_MODE_SHIFT);
 }
 
+static bool intel_ipu4_buttress_auth_done(struct intel_ipu4_device *isp)
+{
+	u32 val;
+
+	if (is_intel_ipu4_hw_bxt_fpga(isp))
+		return 0;
+
+	val = readl(isp->base + BUTTRESS_REG_SECURITY_CTL);
+
+	return (val & BUTTRESS_SECURITY_CTL_FW_SETUP_MASK) ==
+		BUTTRESS_SECURITY_CTL_AUTH_DONE;
+}
+
 void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
 					unsigned int psys_divisor,
 					unsigned int psys_qos_floor)
@@ -584,15 +597,15 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 
 	mutex_lock(&b->auth_mutex);
 
-	if (isp->auth_done) {
-		mutex_unlock(&b->auth_mutex);
-		return 0;
-	}
-
 	rval = pm_runtime_get_sync(&isp->psys_iommu->dev);
 	if (rval < 0) {
 		dev_err(&isp->pdev->dev, "Runtime PM failed (%d)\n", rval);
 		goto unlock_mutex;
+	}
+
+	if (intel_ipu4_buttress_auth_done(isp)) {
+		rval = 0;
+		goto iunit_power_off;
 	}
 
 	/*
@@ -695,8 +708,6 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		rval = -ETIMEDOUT;
 		goto iunit_power_off;
 	}
-
-	isp->auth_done = true;
 
 iunit_power_off:
 	pm_runtime_put(&isp->psys_iommu->dev);

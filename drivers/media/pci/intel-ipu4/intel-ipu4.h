@@ -89,7 +89,6 @@ struct intel_ipu4_device {
 	struct dentry *intel_ipu4_dir;
 	struct intel_ipu4_trace *trace;
 	bool secure_mode;
-	bool auth_done;
 
 	int (*isys_fw_reload)(struct intel_ipu4_device *isp);
 };

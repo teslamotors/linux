@@ -230,7 +230,6 @@ static int authenticate(void *data, u64 val)
 	if (!isp->secure_mode)
 		return -ENODEV;
 
-	isp->auth_done = 0;
 	return intel_ipu4_buttress_authenticate(isp);
 }
 
