@@ -942,6 +942,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	struct ia_css_isys_frame_buff_set buf = { };
 	struct intel_ipu4_isys_queue *aq;
 	struct intel_ipu4_isys_video *isl_av = NULL;
+	struct intel_ipu4_isys_request *ireq = NULL;
 	struct v4l2_subdev_format source_fmt = {0};
 	int rval, rvalout, tout;
 
@@ -1048,11 +1049,16 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
 		csslib_dump_isys_frame_buff_set(dev, &buf,
 						stream_cfg.nof_output_pins);
+	} else if ((ireq = intel_ipu4_isys_next_queued_request(ip))) {
+		intel_ipu4_isys_req_prepare(&av->isys->media_dev,
+					    ireq, ip, &buf);
+		csslib_dump_isys_frame_buff_set(dev, &buf,
+						stream_cfg.nof_output_pins);
 	}
 
 	reinit_completion(&ip->stream_start_completion);
 	rval = intel_ipu4_lib_call(stream_start, av->isys, ip->stream_handle,
-				   bl ? &buf : NULL);
+				   (bl || ireq) ? &buf : NULL);
 	if (rval < 0) {
 		dev_err(dev, "can't start streaming (%d)\n", rval);
 		goto out_stream_close;
@@ -1248,7 +1254,7 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 		media_entity_enum_set(&ip->entity_enum, entity);
 #else
-		ip->entity_enum |= media_entity_id(entity);
+		ip->entity_enum |= 1 << media_entity_id(entity);
 #endif
 	mutex_unlock(&mdev->graph_mutex);
 
@@ -1421,7 +1427,7 @@ out_media_entity_stop_streaming:
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 		if (!(1 << media_entity_id(entity2) & entities))
 #else
-		if (!media_entity_enum_test(&entities, entity))
+		if (!media_entity_enum_test(&entities, entity2))
 #endif
 			continue;
 

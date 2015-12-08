@@ -84,7 +84,7 @@ struct task_struct;
  * @reset_needed: Isys requires d0i0->i3 transition
  * @video_opened: total number of opened file handles on video nodes
  * @mutex: serialise access isys video open/release related operations
- * @stream_mutex: serialise stream start and stop
+ * @stream_mutex: serialise stream start and stop, queueing requests
  * @pdata: platform data pointer
  * @csi2: CSI-2 receivers
  * @tpg: test pattern generators
@@ -133,6 +133,8 @@ struct intel_ipu4_isys {
 	u64 *pkg_dir;
 	dma_addr_t pkg_dir_dma_addr;
 	unsigned pkg_dir_size;
+
+	struct list_head requests;
 };
 
 extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;

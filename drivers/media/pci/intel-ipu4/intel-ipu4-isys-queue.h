@@ -58,6 +58,8 @@ struct intel_ipu4_isys_queue {
 struct intel_ipu4_isys_buffer {
 	struct list_head head;
 	enum intel_ipu4_isys_buffer_type type;
+	struct list_head req_head;
+	struct media_device_request *req;
 };
 
 struct intel_ipu4_isys_video_buffer {
@@ -114,6 +116,22 @@ struct intel_ipu4_isys_buffer_list {
 #define intel_ipu4_isys_buffer_to_private_buffer(__ib) \
 	container_of(__ib, struct intel_ipu4_isys_private_buffer, ib)
 
+struct intel_ipu4_isys_request {
+	struct media_device_request req;
+	/* serialise access to buffers */
+	spinlock_t lock;
+	struct list_head buffers; /* struct intel_ipu4_isys_buffer.head */
+	bool dispatched;
+	/*
+	 * struct intel_ipu4_isys.requests;
+	 * struct intel_ipu4_isys_pipeline.struct.*
+	 */
+	struct list_head head;
+};
+
+#define to_intel_ipu4_isys_request(__req) \
+	container_of(__req, struct intel_ipu4_isys_request, req)
+
 void intel_ipu4_isys_queue_lock(struct vb2_queue *q);
 void intel_ipu4_isys_queue_unlock(struct vb2_queue *q);
 
@@ -122,6 +140,8 @@ int intel_ipu4_isys_buf_prepare(struct vb2_buffer *vb);
 void intel_ipu4_isys_buffer_list_queue(struct intel_ipu4_isys_buffer_list *bl,
 				    unsigned long op_flags,
 				    enum vb2_buffer_state state);
+struct intel_ipu4_isys_request *
+intel_ipu4_isys_next_queued_request(struct intel_ipu4_isys_pipeline *ip);
 void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin(
 	struct vb2_buffer *vb, struct ia_css_isys_frame_buff_set *set);
 void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
@@ -137,6 +157,17 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 void intel_ipu4_isys_queue_short_packet_ready(
 	struct intel_ipu4_isys_pipeline *ip,
 	struct ia_css_isys_resp_info *info);
+
+void intel_ipu4_isys_req_free(struct media_device *mdev,
+			      struct media_device_request *req);
+struct media_device_request *intel_ipu4_isys_req_alloc(
+	struct media_device *mdev);
+void intel_ipu4_isys_req_prepare(struct media_device *mdev,
+				 struct intel_ipu4_isys_request *ireq,
+				 struct intel_ipu4_isys_pipeline *ip,
+				 struct ia_css_isys_frame_buff_set *set);
+int intel_ipu4_isys_req_queue(struct media_device *mdev,
+			      struct media_device_request *req);
 
 int intel_ipu4_isys_queue_init(struct intel_ipu4_isys_queue *aq);
 void intel_ipu4_isys_queue_cleanup(struct intel_ipu4_isys_queue *aq);

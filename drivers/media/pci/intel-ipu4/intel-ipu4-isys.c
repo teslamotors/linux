@@ -800,16 +800,23 @@ fail:
 	return rval;
 }
 
+struct media_device_ops isys_mdev_ops = {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+	.link_notify = intel_ipu4_pipeline_link_notify,
+#else
+	.link_notify = v4l2_pipeline_link_notify,
+#endif
+	.req_alloc = intel_ipu4_isys_req_alloc,
+	.req_free = intel_ipu4_isys_req_free,
+	.req_queue = intel_ipu4_isys_req_queue,
+};
+
 static int isys_register_devices(struct intel_ipu4_isys *isys)
 {
 	int rval;
 
 	isys->media_dev.dev = &isys->adev->dev;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-	isys->media_dev.link_notify = intel_ipu4_pipeline_link_notify;
-#else
-	isys->media_dev.link_notify = v4l2_pipeline_link_notify;
-#endif
+	isys->media_dev.ops = &isys_mdev_ops;
 	strlcpy(isys->media_dev.model,
 		intel_ipu4_media_ctl_dev_model(isys->adev->isp),
 		sizeof(isys->media_dev.model));
@@ -1075,6 +1082,8 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	isys->adev = adev;
 	isys->pdata = adev->pdata;
 
+	INIT_LIST_HEAD(&isys->requests);
+
 	spin_lock_init(&isys->lock);
 	spin_lock_init(&isys->power_lock);
 	isys->power = 0;
@@ -1319,9 +1328,10 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 					       flags);
 
 			list_for_each_entry_safe(ib, ib_safe, &list, head) {
-				struct vb2_buffer *vb;
+				struct vb2_buffer *vb =
+					intel_ipu4_isys_buffer_to_vb2_buffer(
+						ib);
 
-				vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 				vb->v4l2_buf.field = pipe->cur_field;
 #else
