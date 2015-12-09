@@ -576,13 +576,10 @@ EXPORT_SYMBOL_GPL(intel_ipu4_buttress_unmap_fw_image);
 int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 {
 	struct intel_ipu4_psys_pdata *psys_pdata = isp->psys->pdata;
-	struct sg_table fw_sgt;
-	u64 *pkg_dir;
-	dma_addr_t dma_addr_pkg_dir;
 	u32 data;
 	int rval;
 	unsigned long tout_jfs;
-	unsigned tout = 5000, pkg_dir_size;
+	unsigned tout = 5000;
 
 	rval = pm_runtime_get_sync(&isp->psys->dev);
 	if (rval < 0) {
@@ -590,28 +587,14 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		return rval;
 	}
 
-	rval = intel_ipu4_buttress_map_fw_image(isp->psys, isp->cpd_fw,
-						&fw_sgt);
-	if (rval)
-		goto iunit_power_off;
-
-	pkg_dir = intel_ipu4_cpd_create_pkg_dir(isp, isp->cpd_fw->data,
-						     sg_dma_address(fw_sgt.sgl),
-						     &dma_addr_pkg_dir,
-						     &pkg_dir_size);
-	if (!pkg_dir) {
-		dev_err(&isp->pdev->dev, "Creating pkg_dir failed!\n");
-		goto unmap_fw_image;
-	}
-
 	/*
 	 * Write address of FIT table to FW_SOURCE register
 	 * Let's use fw address. I.e. not using FIT table yet
 	 */
-	data = (u32)dma_addr_pkg_dir;
+	data = (u32)isp->pkg_dir_dma_addr;
 	writel(data, isp->base + BUTTRESS_REG_FW_SOURCE_BASE_LO);
 
-	data = (u32)(dma_addr_pkg_dir >> 32);
+	data = (u32)(isp->pkg_dir_dma_addr >> 32);
 	writel(data, isp->base + BUTTRESS_REG_FW_SOURCE_BASE_HI);
 
 	/*
@@ -625,7 +608,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		BUTTRESS_IU2CSEDATA0_IPC_BOOT_LOAD);
 	if (rval) {
 		dev_err(&isp->pdev->dev, "CSE boot_load failed\n");
-		goto free_pkg_dir;
+		goto iunit_power_off;
 	}
 
 	tout_jfs = jiffies + msecs_to_jiffies(tout);
@@ -638,7 +621,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		} else if (data == BUTTRESS_CSE_ACTION_BASE_AUTH_FAILED) {
 			dev_err(&isp->pdev->dev, "CSE boot_load failed\n");
 			rval = -EINVAL;
-			goto free_pkg_dir;
+			goto iunit_power_off;
 		}
 		usleep_range(500, 1000);
 	} while (!time_after(jiffies, tout_jfs));
@@ -646,7 +629,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	if (data != BUTTRESS_CSE_ACTION_SETUP_DONE) {
 		dev_err(&isp->pdev->dev, "CSE boot_load timed out\n");
 		rval = -ETIMEDOUT;
-		goto free_pkg_dir;
+		goto iunit_power_off;
 	}
 
 	tout_jfs = jiffies + msecs_to_jiffies(tout);
@@ -667,7 +650,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		dev_dbg(&isp->pdev->dev,
 			"%s: CSE boot_load timed out...\n", __func__);
 		rval = -ETIMEDOUT;
-		goto free_pkg_dir;
+		goto iunit_power_off;
 	}
 
 	/*
@@ -681,7 +664,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		BUTTRESS_IU2CSEDATA0_IPC_AUTHENTICATE_RUN);
 	if (rval) {
 		dev_err(&isp->pdev->dev, "CSE authenticate_run failed\n");
-		goto free_pkg_dir;
+		goto iunit_power_off;
 	}
 
 	tout_jfs = jiffies + msecs_to_jiffies(1000);
@@ -694,7 +677,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		} else if (data == BUTTRESS_CSE_ACTION_BASE_AUTH_FAILED) {
 			dev_err(&isp->pdev->dev, "CSE authenticate_run failed\n");
 			rval = -EINVAL;
-			goto free_pkg_dir;
+			goto iunit_power_off;
 		}
 		usleep_range(500, 1000);
 	} while (!time_after(jiffies, tout_jfs));
@@ -702,27 +685,11 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	if (data != BUTTRESS_CSE_ACTION_BASE_AUTH_DONE) {
 		dev_err(&isp->pdev->dev, "CSE authenticate_run timed out\n");
 		rval = -ETIMEDOUT;
-		goto free_pkg_dir;
+		goto iunit_power_off;
 	}
 
-	intel_ipu4_cpd_free_pkg_dir(isp, pkg_dir, dma_addr_pkg_dir,
-					 pkg_dir_size);
-
-	rval = intel_ipu4_buttress_unmap_fw_image(isp->psys, &fw_sgt);
-	if (rval)
-		dev_err(&isp->pdev->dev, "Failed to unmap fw image\n");
-
-	pm_runtime_put(&isp->psys->dev);
-
-	return rval;
-
-free_pkg_dir:
-	intel_ipu4_cpd_free_pkg_dir(isp, pkg_dir, dma_addr_pkg_dir,
-					 pkg_dir_size);
-unmap_fw_image:
-	intel_ipu4_buttress_unmap_fw_image(isp->psys, &fw_sgt);
 iunit_power_off:
-	pm_runtime_put(&isp->psys->dev);
+	pm_runtime_put(&isp->psys_iommu->dev);
 
 	return rval;
 }

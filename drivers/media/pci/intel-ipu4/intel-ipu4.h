@@ -79,7 +79,12 @@ struct intel_ipu4_device {
 	struct intel_ipu4_bus_device *isys_iommu, *isys;
 	struct intel_ipu4_bus_device *psys_iommu, *psys;
 	struct intel_ipu4_buttress buttress;
+
 	const struct firmware *cpd_fw;
+	u64 *pkg_dir;
+	dma_addr_t pkg_dir_dma_addr;
+	unsigned pkg_dir_size;
+
 	void __iomem *base;
 	struct dentry *intel_ipu4_dir;
 	struct intel_ipu4_trace *trace;
