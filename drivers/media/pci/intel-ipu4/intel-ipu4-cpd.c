@@ -42,6 +42,22 @@
 #define MAX_COMPONENT_ID		127
 #define MAX_COMPONENT_VERSION		0xffff
 
+#define CPD_MANIFEST_IDX	0
+#define CPD_METADATA_IDX	1
+#define CPD_MODULEDATA_IDX	2
+
+#define intel_ipu4_cpd_get_entries(cpd)					\
+	((struct intel_ipu4_cpd_ent *)					\
+	 ((struct intel_ipu4_cpd_hdr *)cpd + 1))
+#define intel_ipu4_cpd_get_entry(cpd, idx)	\
+	(&intel_ipu4_cpd_get_entries(cpd)[idx])
+#define intel_ipu4_cpd_get_manifest(cpd)	\
+	intel_ipu4_cpd_get_entry(cpd, CPD_MANIFEST_IDX)
+#define intel_ipu4_cpd_get_metadata(cpd)	\
+	intel_ipu4_cpd_get_entry(cpd, CPD_METADATA_IDX)
+#define intel_ipu4_cpd_get_moduledata(cpd)		\
+	intel_ipu4_cpd_get_entry(cpd, CPD_MODULEDATA_IDX)
+
 static const struct intel_ipu4_cpd_metadata_cmpnt *
 intel_ipu4_cpd_metadata_get_cmpnt(
 	struct intel_ipu4_device *isp, const void *metadata,
@@ -87,12 +103,9 @@ static u32 intel_ipu4_cpd_metadata_cmpnt_version(struct intel_ipu4_device *isp,
 	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnt =
 		intel_ipu4_cpd_metadata_get_cmpnt(
 			isp, metadata, metadata_size, idx);
-	int rval;
 
-	if (IS_ERR(cmpnt)) {
-		rval = PTR_ERR(cmpnt);
-		return rval;
-	}
+	if (IS_ERR(cmpnt))
+		return PTR_ERR(cmpnt);
 
 	return cmpnt->ver;
 }
@@ -105,14 +118,43 @@ static int intel_ipu4_cpd_metadata_get_cmpnt_id(struct intel_ipu4_device *isp,
 	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnt =
 		intel_ipu4_cpd_metadata_get_cmpnt(
 			isp, metadata, metadata_size, idx);
-	int rval;
 
-	if (IS_ERR(cmpnt)) {
-		rval = PTR_ERR(cmpnt);
-		return rval;
-	}
+	if (IS_ERR(cmpnt))
+		return PTR_ERR(cmpnt);
 
 	return cmpnt->id;
+}
+
+static u32 intel_ipu4_cpd_metadata_get_cmpnt_icache_base_offs(
+	struct intel_ipu4_device *isp,
+	const void *metadata,
+	unsigned metadata_size,
+	u8 idx)
+{
+	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnt =
+		intel_ipu4_cpd_metadata_get_cmpnt(
+			isp, metadata, metadata_size, idx);
+
+	if (IS_ERR(cmpnt))
+		return PTR_ERR(cmpnt);
+
+	return cmpnt->icache_base_offs;
+}
+
+static u32 intel_ipu4_cpd_metadata_get_cmpnt_entry_point(
+	struct intel_ipu4_device *isp,
+	const void *metadata,
+	unsigned metadata_size,
+	u8 idx)
+{
+	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnt =
+		intel_ipu4_cpd_metadata_get_cmpnt(
+			isp, metadata, metadata_size, idx);
+
+	if (IS_ERR(cmpnt))
+		return PTR_ERR(cmpnt);
+
+	return cmpnt->entry_point;
 }
 
 static int intel_ipu4_cpd_parse_module_data(struct intel_ipu4_device *isp,
@@ -214,7 +256,7 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
 
 	hdr_sz = hdr->hdr_len;
 
-	man_ent = (struct intel_ipu4_cpd_ent *) (hdr + 1);
+	man_ent = intel_ipu4_cpd_get_manifest(src);
 	man_sz = man_ent->len;
 
 	/* Sanity check for manifest size */
@@ -223,7 +265,7 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
 		return NULL;
 	}
 
-	met_ent = man_ent + 1;
+	met_ent = intel_ipu4_cpd_get_metadata(src);
 	met_sz = met_ent->len;
 
 	/* Sanity check for metadata size */
@@ -248,7 +290,7 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_device *isp,
 	 * are 0 anyway. Just setting size for now.
 	 */
 
-	ent = met_ent + 1;
+	ent = intel_ipu4_cpd_get_moduledata(src);
 
 	ret = intel_ipu4_cpd_parse_module_data(isp, src + ent->offset,
 					       ent->len,
@@ -285,3 +327,29 @@ void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_device *isp,
 {
 	dma_free_attrs(&isp->psys->dev, pkg_dir_size, pkg_dir, dma_addr, NULL);
 }
+
+u32 intel_ipu4_cpd_get_pg_icache_base(struct intel_ipu4_device *isp,
+				      u8 idx,
+				      const void *cpd_file,
+				      unsigned cpd_file_size)
+{
+	const struct intel_ipu4_cpd_ent *metadata =
+		intel_ipu4_cpd_get_metadata(cpd_file);
+
+	return intel_ipu4_cpd_metadata_get_cmpnt_icache_base_offs(
+		isp, cpd_file + metadata->offset, metadata->len, idx);
+}
+EXPORT_SYMBOL(intel_ipu4_cpd_get_pg_icache_base);
+
+u32 intel_ipu4_cpd_get_pg_entry_point(struct intel_ipu4_device *isp,
+				      u8 idx,
+				      const void *cpd_file,
+				      unsigned cpd_file_size)
+{
+	const struct intel_ipu4_cpd_ent *metadata =
+		intel_ipu4_cpd_get_metadata(cpd_file);
+
+	return intel_ipu4_cpd_metadata_get_cmpnt_entry_point(
+		isp, cpd_file + metadata->offset, metadata->len, idx);
+}
+EXPORT_SYMBOL(intel_ipu4_cpd_get_pg_entry_point);

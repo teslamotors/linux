@@ -25,6 +25,9 @@
 #define INTEL_IPU4_CPD_METADATA_IMAGE_TYPE_BOOTLOADER		1
 #define INTEL_IPU4_CPD_METADATA_IMAGE_TYPE_MAIN_FIRMWARE	2
 
+#define INTEL_IPU4_CPD_PKG_DIR_PSYS_SERVER_IDX	0
+#define INTEL_IPU4_CPD_PKG_DIR_ISYS_SERVER_IDX	1
+
 struct __packed intel_ipu4_cpd_module_data_hdr {
 	u32	hdr_len;
 	u32	endian;
@@ -80,5 +83,12 @@ void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_device *isp,
 					      u64 *pkg_dir,
 					      dma_addr_t dma_addr,
 					      unsigned pkg_dir_size);
-
+u32 intel_ipu4_cpd_get_pg_icache_base(struct intel_ipu4_device *isp,
+				      u8 idx,
+				      const void *cpd_file,
+				      unsigned cpd_file_size);
+u32 intel_ipu4_cpd_get_pg_entry_point(struct intel_ipu4_device *isp,
+				      u8 idx,
+				      const void *cpd_file,
+				      unsigned cpd_file_size);
 #endif /* INTEL_IPU4_CPD_H */
