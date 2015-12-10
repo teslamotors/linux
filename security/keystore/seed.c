@@ -22,286 +22,89 @@
 #include <linux/module.h>
 #include <linux/random.h>
 
-#include "keystore_dev.h"
-#include "keystore_cmdline.h"
-#include "keystore_globals.h"
+#include <security/abl_cmdline.h>
+#include <security/keystore_api_user.h>
+#include "keystore_debug.h"
+#include "keystore_seed.h"
 
-#ifndef ARCH_HAS_VALID_PHYS_ADDR_RANGE
-static inline int valid_phys_addr_range(phys_addr_t addr, size_t count)
+/* Device and User seed - derived from platform seed and nonces from PDR */
+uint8_t sec_seed[MAX_SEED_TYPES][SEC_SEED_SIZE];
+
+static int keystore_get_seed(struct seed_offset *offset)
 {
-	return addr + count <= __pa(high_memory);
-}
-#endif
+	int res = 0;
 
-static inline unsigned long size_inside_page(unsigned long start,
-		unsigned long size)
-{
-	unsigned long sz = PAGE_SIZE - (start & (PAGE_SIZE - 1));
-
-	return min(sz, size);
-}
-
-/**
- * Copy block of data from physical memory.
- *
- * @param dest Destination address.
- * @param p Address in physical memory.
- * @param count Number of bytes to copy.
- *
- * @return 0 if OK or negative error code (see errno).
- */
-#ifndef KEYSTORE_HARDCODE_SEED
-static int memcpy_from_ph(unsigned char *dest, phys_addr_t p, size_t count)
-{
-	if (!valid_phys_addr_range(p, count))
+	/* each seed should be atleast SEC_SEED_SIZE */
+	if (!offset) {
+		ks_err(KBUILD_MODNAME ": keystore_get_seed: ksoffset: %p\n",
+				offset);
 		return -EFAULT;
-
-	while (count > 0) {
-		ssize_t sz = size_inside_page(p, count);
-
-		memcpy(dest, __va(p), sz);
-#ifdef DEBUG
-#warning " remove critical debug print"
-		pr_err(KBUILD_MODNAME ": Copying %d bytes from  %#x\n", sz, p);
-		keystore_hexdump("memcpy", __va(p), sz);
-#endif
-		dest += sz;
-		p += sz;
-		count -= sz;
 	}
 
-	return 0;
-}
+	/* First zero the contents */
+	memset(sec_seed, 0, sizeof(sec_seed));
+
+#if !defined(CONFIG_KEYSTORE_DISABLE_DEVICE_SEED)
+	if (!offset->device_seed) {
+		ks_err(KBUILD_MODNAME ": No device SEED address given\n");
+		return -EINVAL;
+	}
+
+	res = memcpy_from_ph(sec_seed[SEED_TYPE_DEVICE],
+			     (phys_addr_t)offset->device_seed,
+			     (size_t)SEC_SEED_SIZE);
+
+	if (res) {
+		ks_err(KBUILD_MODNAME ": Error retrieving Device SEED\n");
+		return res;
+	}
 #endif
 
-/**
- * Get 32-byte Device or USer seed from ABL, it will be copied to global
- * variable sec_seed
- *
- * @param offset  'd/useed' physical address from ABL.seed cmdline tag
- *
- * @return 0 if OK or negative error code (see errno).
- */
-int keystore_get_seed(ksoffset_t *offset)
-{
-	int res = 0, indx = 0;
+	memset_ph((phys_addr_t)offset->device_seed, 0, (size_t)SEC_SEED_SIZE);
 
-#ifdef KEYSTORE_HARDCODE_SEED
+	if (offset->user_seed) {
+#if !defined(CONFIG_KEYSTORE_DISABLE_USER_SEED)
+		res = memcpy_from_ph(sec_seed[SEED_TYPE_USER],
+				     (phys_addr_t)offset->user_seed,
+				     (size_t)SEC_SEED_SIZE);
+		if (res) {
+			ks_err(KBUILD_MODNAME ": Error retrieving Device SEED\n");
+			return res;
+		}
+#endif
+		memset_ph((phys_addr_t)offset->user_seed, 0,
+			  (size_t)SEC_SEED_SIZE);
+	}
+
+	return res;
+}
+
+int keystore_fill_seeds(void)
+{
+	int res = 0;
+	unsigned int indx = 0;
+	struct seed_offset s_off;
+
+#ifdef CONFIG_KEYSTORE_HARD_CODED_SEED
 	/* return constant SEED for testing */
 	for (indx = 0; indx < MAX_SEED_TYPES; indx++) {
 		memset(sec_seed[indx], ((indx + 0xa5) & 0xFF), SEC_SEED_SIZE);
-		keystore_hexdump("Keystore SEED", sec_seed[indx], SEC_SEED_SIZE);
+		keystore_hexdump("Keystore SEED",
+				 sec_seed[indx], SEC_SEED_SIZE);
 	}
 #else
-	/* each seed should be atleast SEC_SEED_SIZE */
-	if (!offset) {
-		pr_err(KBUILD_MODNAME ": keystore_get_seed: ksoffset: %p\n",
-				offset);
-		return -EINVAL;
-	}
-	/*SEED from openssl/http://www.secg.org/collateral/sec2_final.pdf */
-	/* Do not delete please
-	   static const uint8_t data[SEC_SEED_SIZE] = {
-	   0xD0 ,0x9E ,0x88 ,0x00 ,0x29 ,0x1C ,0xB8 ,0x53 ,0x96 ,0xCC ,0x67
-	   ,0x17 ,0x39 ,0x32 ,0x84 ,0xAA, 0xA0 ,0xDA ,0x64 ,0xBA
-	   };
-	   memcpy(sec_seed, data, SEC_SEED_SIZE);*/
-
-	/* copy seed from physical memory,
-	 * seed offset will be '0' if nonce
-	 * do not exist in kpimage
+	/* Get keys and seeds offsets from cmdline
+	 * - ikey, okey, keysize, dseed and useed.
 	 */
-	for (indx = 0; indx < MAX_SEED_TYPES &&
-		     offset->seed[indx]; indx++) {
-#ifdef DEBUG
-#warning " remove critical debug print"
-		pr_info(KBUILD_MODNAME ": Copying seed%d from %x to %x\n",
-			indx, offset->seed[indx],
-			(unsigned char *)((char (*)[SEC_SEED_SIZE])sec_seed
-					  + indx));
-#endif
-#if defined(KEYSTORE_DISABLE_DEVICE_SEED)
-		if (indx == DEVICE_SEED)
-			continue;
-#endif
-#if defined(KEYSTORE_DISABLE_USER_SEED)
-		if (indx == USER_SEED)
-			continue;
-#endif
-		res = memcpy_from_ph(
-			(unsigned char *)((char (*)[SEC_SEED_SIZE])sec_seed
-					  + indx),
-			(phys_addr_t) offset->seed[indx],
-			(size_t) SEC_SEED_SIZE);
-		if (res < 0) {
-			pr_err(KBUILD_MODNAME ": memcpy_from_ph[indx:%d] error %d\n",
-			       indx, res);
-			return -EINVAL;
-		}
+	res = get_seed_offsets(&s_off);
+	if (res) {
+		ks_err(KBUILD_MODNAME
+		       ": d/u-seed info missing in cmdline\n");
+		return res;
 	}
 
-	/* ensure that we atleast got device-seed */
-	if (!indx) {
-		pr_err(KBUILD_MODNAME ": Keystore cannot function, atleast device seed required\n");
-		return -EINVAL;
-	}
-#endif
+	res = keystore_get_seed(&s_off);
 
-	return res;
-}
-
-/**
- * Get Intel public RSA key from ABL.
- *
- * @param pub_key Pointer to the output buffer.
- * @param pub_key_size Size of the output buffer in bytes.
- * @param offset  intel key physical address from ABL.keys
- *
- * @return 0 if OK or negative error code (see errno).
- */
-int keystore_get_intel_public_rsa_key(void *pub_key, unsigned int pub_key_size,
-		unsigned long offset)
-{
-	int res = 0;
-
-	/* return constant Intel key if testing */
-#ifdef KEYSTORE_HARDCODE_SEED
-
-	static const uint8_t data[] = {
-		0xf7, 0xe6, 0x0c, 0x52, 0x51, 0x14, 0x0e, 0x83,
-		0x81, 0xa6, 0x4f, 0x62, 0xbf, 0x45, 0x2d, 0x69,
-		0x9c, 0x02, 0xf4, 0x27, 0x4b, 0x8f, 0x5e, 0x90,
-		0xac, 0x6e, 0xab, 0x1b, 0x57, 0x5e, 0xfb, 0xc5,
-		0x42, 0x76, 0x02, 0xe0, 0x48, 0x9a, 0x5f, 0x94,
-		0x81, 0x6b, 0x42, 0x8c, 0xf0, 0x0d, 0xb6, 0x0c,
-		0x06, 0xe0, 0x40, 0x91, 0x28, 0x4f, 0x04, 0x2b,
-		0x94, 0x8b, 0x9e, 0xd4, 0xd2, 0x48, 0x46, 0x40,
-		0xb3, 0xe5, 0xb9, 0x65, 0xff, 0xb8, 0x3c, 0xb4,
-		0x30, 0x61, 0xa8, 0x63, 0x5e, 0x9d, 0xf6, 0x63,
-		0xef, 0x43, 0xfd, 0x03, 0x0f, 0xe9, 0xc3, 0xc0,
-		0xff, 0x17, 0x7f, 0x3e, 0xbd, 0x57, 0x54, 0xdc,
-		0x4b, 0x28, 0xb7, 0x51, 0xd6, 0x10, 0xe2, 0xdf,
-		0x3b, 0x93, 0x60, 0x41, 0x1b, 0xb2, 0xb9, 0xf8,
-		0x8b, 0xe8, 0xc5, 0x4e, 0x34, 0x3c, 0xd7, 0x26,
-		0xc3, 0x70, 0xb7, 0x02, 0x0c, 0x44, 0x7e, 0xbc,
-		0x79, 0x19, 0xab, 0x3e, 0x60, 0xc6, 0x1c, 0xc3,
-		0x86, 0xf3, 0xc5, 0x0e, 0x09, 0x5c, 0xcf, 0x63,
-		0xe5, 0xbe, 0x47, 0xfa, 0xb0, 0x71, 0x6c, 0x80,
-		0xaf, 0xd0, 0xd2, 0x30, 0xc6, 0x5f, 0xd1, 0xc3,
-		0x19, 0xe6, 0x8a, 0xc8, 0x91, 0x22, 0xfd, 0xd0,
-		0x9c, 0xfd, 0x5f, 0xef, 0x0a, 0xf2, 0xc9, 0x4f,
-		0x29, 0xe4, 0xce, 0x82, 0x6b, 0xaa, 0xd7, 0x1b,
-		0x37, 0x74, 0x2c, 0xd8, 0x81, 0x4c, 0x73, 0xed,
-		0xf7, 0x7a, 0x6a, 0xef, 0xca, 0xfb, 0xe2, 0x2a,
-		0x6b, 0x0a, 0xec, 0x89, 0x56, 0x44, 0xfd, 0xe0,
-		0x01, 0xf9, 0x32, 0x26, 0xb8, 0xee, 0x65, 0x25,
-		0xa0, 0x9c, 0x9a, 0xde, 0xc7, 0x63, 0x2e, 0x37,
-		0x4f, 0x7d, 0x34, 0x1e, 0x03, 0x2a, 0xc8, 0xb9,
-		0x77, 0x35, 0x3d, 0xd1, 0xc9, 0x2f, 0xdc, 0xb3,
-		0x09, 0x6f, 0x66, 0xed, 0x7d, 0x63, 0x52, 0x31,
-		0x93, 0x56, 0x4e, 0x86, 0xc6, 0xa7, 0x72, 0x20,
-		0x3d, 0x4d, 0x4c, 0xb2, 0x01, 0x00, 0x01, 0x00
-	};
-
-	if (pub_key) {
-		memcpy(pub_key, data, GPG_PUBLIC_RSA_KEY_SIZE);
-		res = 0;
-		if (sizeof(data) != GPG_PUBLIC_RSA_KEY_SIZE)
-			res = 1;
-	} else {
-		pr_err(KBUILD_MODNAME ": null pointer in keystore_get_intel_public_rsa_key\n");
-		res = -EINVAL;
-	}
-#else
-	if (pub_key && offset) {
-		/* copy data from physical memory */
-		res = memcpy_from_ph((unsigned char *) pub_key,
-				     (phys_addr_t) offset,
-				     (size_t) pub_key_size);
-		if (res < 0)
-			pr_err(KBUILD_MODNAME ": memcpy_from_ph error %d\n", res);
-	} else {
-		pr_err(KBUILD_MODNAME ": null pointer in keystore_get_intel_public_rsa_key\n");
-		res = -EINVAL;
-	}
-#endif
-	return res;
-}
-
-/**
- * Get OEM public RSA key from ABL.
- *
- * @param pub_key Pointer to the output buffer.
- * @param pub_key_size Size of the output buffer in bytes.
- * @param offset  oem key physical address from ABL.keys
- *
- * @return 0 if OK or negative error code (see errno).
- */
-int keystore_get_oem_public_rsa_key(void *pub_key, unsigned int pub_key_size, unsigned long offset)
-{
-	int res = 0;
-
-#ifdef KEYSTORE_HARDCODE_SEED
-	/* return constant OEM key if testing: */
-	/* Key from from the boot/oemkey package */
-	unsigned char data[] = {
-		0x00, 0x27, 0xe2, 0x50, 0x7d, 0x41, 0x8e, 0x0d,
-		0xc6, 0xd5, 0xfb, 0x19, 0xf8, 0x4f, 0x41, 0x6d,
-		0x93, 0xe7, 0xd0, 0xce, 0x2e, 0x13, 0x5a, 0xd9,
-		0xcc, 0x19, 0xd1, 0x9c, 0x09, 0x59, 0xfc, 0x4f,
-		0x48, 0x84, 0xa8, 0x13, 0xf4, 0xe5, 0x30, 0x1b,
-		0x62, 0x07, 0x90, 0x4e, 0x4a, 0x6c, 0xbd, 0x9f,
-		0x50, 0xb3, 0x0f, 0xde, 0x7c, 0x47, 0xdc, 0x39,
-		0xec, 0x55, 0x49, 0xd1, 0x52, 0x96, 0x3c, 0x79,
-		0x2d, 0xc2, 0x4d, 0x02, 0xe6, 0x0c, 0x83, 0x17,
-		0x8e, 0xa8, 0x3e, 0x4c, 0xfd, 0xd8, 0x23, 0x0a,
-		0x34, 0x91, 0x5b, 0xf4, 0x44, 0xd2, 0x7e, 0xe3,
-		0x81, 0xa6, 0x44, 0x88, 0x69, 0x23, 0x59, 0x6d,
-		0xf0, 0x35, 0xb6, 0x61, 0xae, 0xf8, 0x97, 0xf7,
-		0x6f, 0x28, 0x2f, 0x32, 0x08, 0xca, 0x6e, 0x03,
-		0x08, 0x1f, 0xf0, 0x16, 0x86, 0xbe, 0x7c, 0xf3,
-		0xce, 0x75, 0x3b, 0x12, 0xcf, 0x6c, 0x46, 0xb3,
-		0x0c, 0x30, 0xce, 0xf0,	0x6d, 0xfd, 0xc9, 0xc2,
-		0xb0, 0xab, 0xdf, 0xab, 0x59, 0x2b, 0x9e, 0x08,
-		0xa1, 0xfd, 0x09, 0x91, 0x71, 0x1f, 0x90, 0x51,
-		0x55, 0x04, 0x5c, 0x18,	0x97, 0xd8, 0x9c, 0xa5,
-		0x9a, 0xd5, 0xcf, 0x38, 0x09, 0x19, 0x15, 0xd4,
-		0x10, 0x7b, 0xf0, 0x97, 0xe7, 0xc8, 0xf8, 0x50,
-		0x4f, 0xc2, 0x4d, 0x52, 0x15, 0x06, 0x41, 0x9c,
-		0x93, 0xda, 0x86, 0x98, 0x64, 0x8f, 0x6a, 0x9e,
-		0x69, 0x2a, 0xf9, 0x96, 0x4e, 0x0c, 0x3c, 0x36,
-		0xb7, 0x01, 0x8f, 0xbe,	0xbd, 0xa5, 0x09, 0xec,
-		0xee, 0x0d, 0x43, 0x40, 0xd5, 0x2a, 0x3d, 0x9f,
-		0xd0, 0x12, 0x7d, 0x96, 0x7d, 0x8d, 0x2b, 0xfa,
-		0xa1, 0x9c, 0x5a, 0xde,	0x0b, 0xa3, 0x16, 0xb7,
-		0xdf, 0xf8, 0xc8, 0x0b, 0x17, 0x85, 0x94, 0xa0,
-		0x02, 0xf7, 0x86, 0x94, 0xb4, 0xe6, 0x22, 0xb5,
-		0x1b, 0xfb, 0xaa, 0x2f,	0x23, 0x45, 0x91, 0xd2,
-		0x85, 0x90, 0xfb, 0xe6, 0x01, 0x00, 0x01, 0x00
-	};
-
-
-	if (pub_key) {
-		memcpy(pub_key, data, GPG_PUBLIC_RSA_KEY_SIZE);
-		res = 0;
-		if (sizeof(data) != GPG_PUBLIC_RSA_KEY_SIZE)
-			res = 1;
-	} else {
-		pr_err(KBUILD_MODNAME ": null pointer in keystore_get_oem_public_rsa_key\n");
-		res = -EINVAL;
-	}
-#else
-	if (pub_key && offset) {
-		/* copy data from physical memory */
-		res = memcpy_from_ph((unsigned char *) pub_key,
-				     (phys_addr_t) offset,
-				     (size_t) pub_key_size);
-		if (res < 0)
-			pr_err(KBUILD_MODNAME ": memcpy_from_ph error %d\n", res);
-	} else {
-		pr_err(KBUILD_MODNAME ": null pointer in keystore_get_oem_public_rsa_key\n");
-		res = -EINVAL;
-	}
 #endif
 	return res;
 }

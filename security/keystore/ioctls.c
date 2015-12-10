@@ -24,56 +24,57 @@
 #include <security/keystore_api_kernel.h>
 #include <security/keystore_api_user.h>
 #include "keystore_constants.h"
-#include "keystore_dev.h"
 
-/*FIXME: review this it might be required under DEBUG/SELF_TESTS, however this is required for functionality  */
-/*#if defined(DEBUG) || defined(SELF_TESTS) */
-#include "keystore_globals.h"
-/*#endif */
+#include "keystore_debug.h"
+#include "keystore_tests.h"
 
 /* Universal operation data union */
-typedef union {
-	ias_keystore_register_t register_client_type;
-	ias_keystore_register_client_t register_client;
-	ias_keystore_unregister_client_t unregister_client;
-	ias_keystore_generate_key_t generate_key;
-	ias_keystore_wrap_key_t wrap_key;
-	ias_keystore_load_key_t load_key;
-	ias_keystore_unload_key_t unload_key;
-	ias_keystore_encrypt_t encrypt;
-	ias_keystore_decrypt_t decrypt;
-	ias_keystore_backup_t backup;
-	ias_keystore_ecc_keys_t ecc_keys;
-	ias_keystore_gen_mkey_t gen_mkey;
-	ias_keystore_rewrap_t rewrap;
-#if defined(KEYSTORE_TEST_MIGRATION)
-	ias_keystore_test_backup_t test_backup;
-	ias_keystore_verify_signature_t verify_signature;
-	ias_keystore_test_reencrypt_backup_with_mk_t keystore_test_reencrypt_backup_with_mk;
-#endif
-} keystore_ops_union;
+union keystore_ops_union {
+	struct ias_keystore_version version;
+	struct ias_keystore_register register_client_type;
+	struct ias_keystore_unregister unregister_client;
+	struct ias_keystore_wrapped_key_size wrapped_key_size;
+	struct ias_keystore_generate_key generate_key;
+	struct ias_keystore_wrap_key wrap_key;
+	struct ias_keystore_load_key load_key;
+	struct ias_keystore_unload_key unload_key;
+	struct ias_keystore_crypto_size crypto_size;
+	struct ias_keystore_encrypt_decrypt encrypt_decrypt;
+	struct ias_keystore_backup backup;
+	struct keystore_ecc_public_key ecc_pub_key;
+	struct ias_keystore_ecc_keypair ecc_keys;
+	struct ias_keystore_gen_mkey gen_mkey;
+	struct ias_keystore_rewrap rewrap;
+	struct ias_keystore_verify_signature verify_signature;
+	struct ias_keystore_migrate migrate;
+};
 
 static unsigned int is_cmd_supported(unsigned int cmd)
 {
 	switch (cmd) {
+	case KEYSTORE_IOC_VERSION:
 	case KEYSTORE_IOC_REGISTER:
-	case KEYSTORE_IOC_REGISTER_CLIENT:
-	case KEYSTORE_IOC_UNREGISTER_CLIENT:
+	case KEYSTORE_IOC_UNREGISTER:
+	case KEYSTORE_IOC_WRAPPED_KEYSIZE:
 	case KEYSTORE_IOC_GENERATE_KEY:
 	case KEYSTORE_IOC_WRAP_KEY:
 	case KEYSTORE_IOC_LOAD_KEY:
 	case KEYSTORE_IOC_UNLOAD_KEY:
+	case KEYSTORE_IOC_ENCRYPT_SIZE:
 	case KEYSTORE_IOC_ENCRYPT:
+	case KEYSTORE_IOC_DECRYPT_SIZE:
 	case KEYSTORE_IOC_DECRYPT:
 	case KEYSTORE_IOC_BACKUP:
 	case KEYSTORE_IOC_GET_KSM_KEY:
 	case KEYSTORE_IOC_GEN_MKEY:
 	case KEYSTORE_IOC_REWRAP:
-#if defined(KEYSTORE_TEST_MIGRATION)
+#if defined(CONFIG_KEYSTORE_TEST_MIGRATION)
 	case KEYSTORE_IOC_GEN_ECC_KEYS:
-	case KEYSTORE_IOC_TEST_BACKUP_DECRYPT:
 	case KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE:
-	case KEYSTORE_IOC_TEST_REENCRYPT_BACKUP_WITH_MK:
+	case KEYSTORE_IOC_MIGRATE:
+#endif
+#if defined(CONFIG_KEYSTORE_TESTMODE)
+	case KEYSTORE_IOC_RUN_TESTS:
 #endif
 		return 1;
 
@@ -85,12 +86,14 @@ static unsigned int is_cmd_supported(unsigned int cmd)
 static unsigned char *getcmdstr(unsigned int cmd)
 {
 	switch (cmd) {
+	case KEYSTORE_IOC_VERSION:
+		return "KEYSTORE_IOC_VERSION";
 	case KEYSTORE_IOC_REGISTER:
 		return "KEYSTORE_IOC_REGISTER";
-	case KEYSTORE_IOC_REGISTER_CLIENT:
-		return "KEYSTORE_IOC_REGISTER_CLIENT";
-	case KEYSTORE_IOC_UNREGISTER_CLIENT:
-		return "KEYSTORE_IOC_REGISTER_CLIENT";
+	case KEYSTORE_IOC_UNREGISTER:
+		return "KEYSTORE_IOC_UNREGISTER";
+	case KEYSTORE_IOC_WRAPPED_KEYSIZE:
+		return "KEYSTORE_IOC_WRAPPED_KEYSIZE";
 	case KEYSTORE_IOC_GENERATE_KEY:
 		return "KEYSTORE_IOC_GENERATE_KEY";
 	case KEYSTORE_IOC_WRAP_KEY:
@@ -99,8 +102,12 @@ static unsigned char *getcmdstr(unsigned int cmd)
 		return "KEYSTORE_IOC_LOAD_KEY";
 	case KEYSTORE_IOC_UNLOAD_KEY:
 		return "KEYSTORE_IOC_UNLOAD_KEY";
+	case KEYSTORE_IOC_ENCRYPT_SIZE:
+		return "KEYSTORE_IOC_ENCRYPT_SIZE";
 	case KEYSTORE_IOC_ENCRYPT:
 		return "KEYSTORE_IOC_ENCRYPT";
+	case KEYSTORE_IOC_DECRYPT_SIZE:
+		return "KEYSTORE_IOC_DECRYPT_SIZE";
 	case KEYSTORE_IOC_DECRYPT:
 		return "KEYSTORE_IOC_DECRYPT";
 	case KEYSTORE_IOC_BACKUP:
@@ -111,540 +118,429 @@ static unsigned char *getcmdstr(unsigned int cmd)
 		return "KEYSTORE_IOC_GEN_MKEY";
 	case KEYSTORE_IOC_REWRAP:
 		return "KEYSTORE_IOC_REWRAP";
-#if defined(KEYSTORE_TEST_MIGRATION)
 	case KEYSTORE_IOC_GEN_ECC_KEYS:
 		return "KEYSTORE_IOC_GEN_ECC_KEYS";
-	case KEYSTORE_IOC_TEST_BACKUP_DECRYPT:
-		return "KEYSTORE_IOC_TEST_BACKUP_DECRYPT";
 	case KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE:
 		return "KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE";
-	case KEYSTORE_IOC_TEST_REENCRYPT_BACKUP_WITH_MK:
-		return "KEYSTORE_IOC_TEST_REENCRYPT_BACKUP_WITH_MK";
-#endif
+	case KEYSTORE_IOC_MIGRATE:
+		return "KEYSTORE_IOC_MIGRATE";
+	case KEYSTORE_IOC_RUN_TESTS:
+		return "KEYSTORE_IOC_RUN_TESTS";
 	default:
 		return "not-supported";
 	}
 }
-static int encrypt_op(ias_keystore_encrypt_t *data)
+
+static int version_op(struct ias_keystore_version *user_data)
 {
-	void *input, *output;
-	int res;
+	if (!user_data)
+		return -EFAULT;
 
-	if (!data) {
-		pr_err(KBUILD_MODNAME ": %s - data NULL\n",
-				__func__);
-		return -EINVAL;
-	}
+	user_data->major = KEYSTORE_VERSION_MAJOR;
+	user_data->minor = KEYSTORE_VERSION_MINOR;
+	user_data->patch = KEYSTORE_VERSION_PATCH;
 
-	if (!data->input || !data->input_size) {
-		pr_err(KBUILD_MODNAME ": %s - input NULL\n",
-				__func__);
-		return -EINVAL;
-	}
-
-	if (!data->output || !data->output_size) {
-		pr_err(KBUILD_MODNAME ": %s - input(output) NULL\n",
-				__func__);
-		return -EINVAL;
-	}
-
-	input = kmalloc(data->input_size, GFP_KERNEL);
-	output = kmalloc(data->output_size, GFP_KERNEL);
-
-	if (!input || !output) {
-		pr_err(KBUILD_MODNAME ": %s - out of memory\n",
-				__func__);
-		res = -ENOMEM;
-	} else {
-		if (copy_from_user(input, data->input, data->input_size)) {
-			pr_err(KBUILD_MODNAME ": %s - cannot read data\n", __func__);
-			res = -EFAULT;
-		} else {
-			res = keystore_encrypt(data->client_ticket,
-					data->slot_id,
-					(keystore_algo_spec_t) data->algospec,
-					data->iv, data->iv_size, input,
-					data->input_size, output,
-					data->output_size);
-			if (res > 0) {
-				if (copy_to_user(data->output, output, res)) {
-					pr_err(KBUILD_MODNAME ": %s - cannot write data\n", __func__);
-					res = -EFAULT;
-				}
-			}
-		}
-	}
-
-	kzfree(input);
-	kzfree(output);
-
-	return res;
+	return 0;
 }
 
-static int decrypt_op(ias_keystore_decrypt_t *data)
+static int register_op(struct ias_keystore_register *user_data)
 {
-	void *input, *output;
-	int res;
-
-	if (!data) {
-		pr_err(KBUILD_MODNAME ": %s - data NULL\n",
-				__func__);
-		return -EINVAL;
-	}
-
-	if (!data->input || !data->input_size) {
-		pr_err(KBUILD_MODNAME ": %s - input NULL\n",
-				__func__);
-		return -EINVAL;
-	}
-
-	if (!data->output || !data->output_size) {
-		pr_err(KBUILD_MODNAME ": %s - input(output) NULL\n",
-				__func__);
-		return -EINVAL;
-	}
-
-	input = kmalloc(data->input_size, GFP_KERNEL);
-	output = kmalloc(data->output_size, GFP_KERNEL);
-
-	if (!input || !output) {
-		pr_err(KBUILD_MODNAME ": %s - out of memory\n",
-				__func__);
-		res = -ENOMEM;
-	} else {
-		if (copy_from_user(input, data->input, data->input_size)) {
-			pr_err(KBUILD_MODNAME ": %s - cannot read data\n", __func__);
-			res = -EFAULT;
-		} else {
-			res = keystore_decrypt(data->client_ticket,
-					data->slot_id, input, data->input_size,
-					output, data->output_size);
-			if (res > 0) {
-				if (copy_to_user(data->output, output, res)) {
-					pr_err(KBUILD_MODNAME ": %s - cannot write data\n", __func__);
-					res = -EFAULT;
-				}
-			}
-		}
-	}
-
-	kzfree(input);
-	kzfree(output);
-
-	return res;
-}
-
-static int backup_op(ias_keystore_backup_t *data)
-{
-	void *OEMpub, *sig, *output, *output_sig;
 	int res = 0;
 
-	if ((data->output_size < KEYSTORE_BACKUP_SIZE) ||
-			(data->output_sig_size < ECC_SIGNATURE_SIZE) ||
-			(data->OEMpub_size > sizeof(EccPoint))) {
+	if (!user_data)
+		return -EFAULT;
+
+	return keystore_register(user_data->seed_type,
+				 user_data->client_ticket);
+
+	return res;
+}
+
+static int unregister_op(struct ias_keystore_unregister *user_data)
+{
+	if (!user_data)
+		return -EFAULT;
+
+	return keystore_unregister(user_data->client_ticket);
+}
+
+static int wrapped_keysize_op(struct ias_keystore_wrapped_key_size *user_data)
+{
+	if (!user_data)
+		return -EFAULT;
+
+	return keystore_wrapped_key_size(user_data->key_spec,
+					 &user_data->key_size);
+}
+
+static int generate_key_op(struct ias_keystore_generate_key *user_data)
+{
+	int res = 0;
+	unsigned int wrapped_key_size = 0;
+	uint8_t *wrapped_key = NULL;
+
+	if (!user_data)
+		return -EFAULT;
+
+	res = keystore_wrapped_key_size(user_data->key_spec,
+					&wrapped_key_size);
+	if (res)
 		return -EINVAL;
-	}
 
-	OEMpub = kmalloc(data->OEMpub_size, GFP_KERNEL);
-	sig = kmalloc(data->sig_size, GFP_KERNEL);
-	output = kmalloc(data->output_size, GFP_KERNEL);
-	output_sig = kmalloc(data->output_sig_size, GFP_KERNEL);
+	wrapped_key = kmalloc(wrapped_key_size, GFP_KERNEL);
+	if (!wrapped_key)
+		return -ENOMEM;
 
-	if (!OEMpub || !sig || !output || !output_sig) {
-		pr_err(KBUILD_MODNAME ": %s - out of memory\n",
-				__func__);
-		res = -ENOMEM;
-	} else {
+	res = keystore_generate_key(user_data->client_ticket,
+				    user_data->key_spec,
+				    wrapped_key);
+	if (res)
+		goto free_buf;
 
-		if (res != 0 ||
-			copy_from_user(sig, data->sig, data->sig_size) ||
-			copy_from_user(OEMpub, data->OEMpub, data->OEMpub_size)) {
-			pr_err(KBUILD_MODNAME ": %s - cannot read key\n", __func__);
-			res = -EFAULT;
-		} else {
-			res = keystore_backup(data->client_ticket,
-					OEMpub, data->OEMpub_size,
-					sig, data->sig_size,
-					output, data->output_size,
-					output_sig, data->output_sig_size);
-			if (res > 0 && res == KEYSTORE_BACKUP_SIZE) {
-				if (copy_to_user(data->output, output,
-							KEYSTORE_BACKUP_SIZE) ||
-						copy_to_user(data->output_sig,
-							output_sig,
-							ECC_SIGNATURE_SIZE)) {
-					pr_err(KBUILD_MODNAME ": %s - cannot write data\n", __func__);
-					res = -EFAULT;
-				}
-			} else {
-				if (res > 0) {
-					pr_err(KBUILD_MODNAME ": %s - wrong backup size: %d, expected: %d\n",
-				__func__, res, KEYSTORE_BACKUP_SIZE);
-					res = -EFAULT;
-				}
-			}
-		}
-	}
-	kzfree(OEMpub);
-	kzfree(sig);
-	kzfree(output);
-	kzfree(output_sig);
+	res = copy_to_user(user_data->wrapped_key, wrapped_key,
+			   wrapped_key_size);
 
+free_buf:
+	kzfree(wrapped_key);
 	return res;
 }
 
-static int gen_mkey_op(ias_keystore_gen_mkey_t *data)
+static int wrap_key_op(struct ias_keystore_wrap_key *user_data)
 {
-	void *key, *sig, *output, *output_sig, *output_nonce;
-	int res;
+	int res = 0;
+	unsigned int wrapped_key_size;
+	uint8_t *wrapped_key = NULL;
 
-	if ((data->output_size < KEYSTORE_MKEY_SIZE) ||
-			(data->output_sig_size < ECC_MKEY_SIGNATURE_SIZE) ||
-			(data->output_nonce_size < KEYSTORE_MKEY_NONCE_SIZE)) {
-		pr_err(KBUILD_MODNAME ": %s wrong size, mkeysize:%d, mkey_sig_sz: %d, nonce_size: %d\n",
-		__func__, data->output_size, data->output_sig_size,
-		data->output_nonce_size);
+	if (!user_data)
+		return -EFAULT;
+
+	res = keystore_wrapped_key_size(user_data->key_spec,
+					&wrapped_key_size);
+	if (res)
+		return -EINVAL;
+
+	wrapped_key = kmalloc(wrapped_key_size, GFP_KERNEL);
+	if (!wrapped_key)
+		return -ENOMEM;
+
+	res = keystore_wrap_key(user_data->client_ticket,
+				user_data->app_key,
+				user_data->app_key_size,
+				user_data->key_spec,
+				wrapped_key);
+	if (res)
+		goto free_buf;
+
+	res = copy_to_user(user_data->wrapped_key, wrapped_key,
+			   wrapped_key_size);
+
+free_buf:
+	kzfree(wrapped_key);
+	return res;
+}
+
+static int load_key_op(struct ias_keystore_load_key *user_data)
+{
+	int res = 0;
+	uint8_t *wrapped_key = NULL;
+
+	if (!user_data)
+		return -EFAULT;
+
+	wrapped_key = kmalloc(user_data->wrapped_key_size, GFP_KERNEL);
+	if (!wrapped_key)
+		return -ENOMEM;
+
+	res = copy_from_user(wrapped_key,
+			     user_data->wrapped_key,
+			     user_data->wrapped_key_size);
+	if (res) {
 		res = -EINVAL;
-	} else {
-		key = kmalloc(data->key_size, GFP_KERNEL);
-		sig = kmalloc(data->sig_size, GFP_KERNEL);
-		output = kmalloc(data->output_size, GFP_KERNEL);
-		output_sig = kmalloc(data->output_sig_size, GFP_KERNEL);
-		output_nonce = kmalloc(data->output_nonce_size, GFP_KERNEL);
-
-		if (!key || !sig || !output || !output_sig || !output_nonce) {
-			pr_err(KBUILD_MODNAME ": %s - out of memory\n", __func__);
-			res = -ENOMEM;
-		} else{
-			if (copy_from_user(key, data->key, data->key_size) ||
-			copy_from_user(sig, data->sig, data->sig_size)) {
-				pr_err(KBUILD_MODNAME ": %s - cannot read key\n",
-						__func__);
-				res = -EFAULT;
-			} else {
-				res = keystore_generate_mkey(key,
-						data->key_size,
-						sig, data->sig_size,
-						output, data->output_size,
-						output_sig, data->output_sig_size,
-						output_nonce, data->output_nonce_size);
-#ifdef DEBUG
-				keystore_hexdump("migration - MKEY(ioctl)",
-						output, data->output_size);
-				keystore_hexdump("migration - MKEY-Signed(ioctl)", output_sig, data->output_sig_size);
-				keystore_hexdump("migration - MKEY-NONCE(ioctl)"
-						, output_nonce,
-						data->output_nonce_size);
-#endif
-				if (res == 0) {
-					if (copy_to_user(data->output, output,
-							KEYSTORE_EMKEY_SIZE) ||
-						copy_to_user(data->output_sig,
-							output_sig,
-							SIGNED_MKEY_SIZE) ||
-						copy_to_user(data->output_nonce,
-							output_nonce,
-							KEYSTORE_MKEY_NONCE_SIZE
-							)) {
-						pr_err(KBUILD_MODNAME ": %s - cannot write data\n", __func__);
-						res = -EFAULT;
-					}
-					pr_err(KBUILD_MODNAME ": %s - MK generation - Done\n", __func__);
-				}
-			}
-		}
-		kzfree(key);
-		kzfree(sig);
-		kzfree(output);
-		kzfree(output_sig);
-		kzfree(output_nonce);
+		goto free_buf;
 	}
 
+	res = keystore_load_key(user_data->client_ticket,
+				wrapped_key,
+				user_data->wrapped_key_size,
+				&user_data->slot_id);
+
+free_buf:
+	kzfree(wrapped_key);
 	return res;
 }
 
-
-static int get_ksm_key_op(ias_keystore_ecc_keys_t *data)
+static int unload_key_op(struct ias_keystore_unload_key *user_data)
 {
-	void *pub_key;
 	int res = 0;
 
-	if (!data) {
-		res = -EINVAL;
-		return res;
-	}
+	if (!user_data)
+		return -EFAULT;
 
-	pub_key = kmalloc(data->public_key_size, GFP_KERNEL);
-
-	if (!pub_key) {
-		pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_GET_KSM_KEY out of memory\n", __func__);
-		res = -ENOMEM;
-	} else {
-		res = keystore_get_ksm_key(pub_key, data->public_key_size);
-		if (res == 0) {
-			if (copy_to_user(data->public_key, pub_key,
-						data->public_key_size)) {
-				pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_GET_KSM_KEY cannot read key\n", __func__);
-				res = -EFAULT;
-			}
-		}
-	}
-
-	kzfree(pub_key);
+	res = keystore_unload_key(user_data->client_ticket,
+				  user_data->slot_id);
 
 	return res;
 }
 
-static int keystore_rewrap_op(ias_keystore_rewrap_t *data)
+static int encrypt_size_op(struct ias_keystore_crypto_size *user_data)
+{
+	if (!user_data)
+		return -EFAULT;
+	return keystore_encrypt_size(user_data->algospec, user_data->input_size,
+				     &user_data->output_size);
+}
+
+static int encrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 {
 	int res;
-	void *backup, *nonce, *wrapped_key, *rewrapped_key;
+	unsigned int output_size = 0;
+	uint8_t *iv = NULL;
+	uint8_t *input = NULL;
+	uint8_t *output = NULL;
 
-	if ((data->nonce_size < KEYSTORE_MKEY_NONCE_SIZE) ||
-		(data->wrapped_key_size > KEYSTORE_MAX_WRAPPED_KEY_SIZE)) {
-		pr_err(KBUILD_MODNAME ": %s: error - nonce_size : %d, wrapped_key_size: %d\n",
-		 __func__, data->nonce_size, data->wrapped_key_size);
-		res = -EINVAL;
-	} else {
-		nonce = kmalloc(data->nonce_size, GFP_KERNEL);
-		backup = kmalloc(data->backup_size, GFP_KERNEL);
-		wrapped_key = kmalloc(data->wrapped_key_size, GFP_KERNEL);
-		rewrapped_key = kmalloc(data->rewrapped_key_size, GFP_KERNEL);
+	if (!user_data)
+		return -EFAULT;
 
-		if (!nonce || !backup || !wrapped_key || !rewrapped_key) {
-			pr_err(KBUILD_MODNAME ": %s out of memory\n",
-					__func__);
+	res = keystore_encrypt_size(user_data->algospec, user_data->input_size,
+				    &output_size);
+	if (res)
+		return res;
+
+	input = kmalloc(user_data->input_size, GFP_KERNEL);
+	output = kmalloc(output_size, GFP_KERNEL);
+	if (!input || !output) {
+		ks_err(KBUILD_MODNAME ": Error allocating memory: input: %u @ 0x%x, output: %u @ 0x%x\n",
+		       input, user_data->input_size, output, output_size);
+		res = -ENOMEM;
+		goto free_buf;
+	}
+
+	res = copy_from_user(input, user_data->input, user_data->input_size);
+	if (res)
+		goto free_buf;
+
+	if (user_data->iv && user_data->iv_size > 0) {
+		iv = kmalloc(user_data->iv_size, GFP_KERNEL);
+		if (!iv) {
+			ks_err(KBUILD_MODNAME ": Error allocating memory for IV (%u)\n",
+				user_data->iv_size);
 			res = -ENOMEM;
-		} else {
-			if (copy_from_user(nonce, data->nonce,
-						data->nonce_size) ||
-				copy_from_user(backup, data->backup,
-					data->backup_size) ||
-				copy_from_user(wrapped_key, data->wrapped_key,
-					data->wrapped_key_size)) {
-				pr_err(KBUILD_MODNAME ": %s failed copy_from_user\n", __func__);
-				res = -EFAULT;
-			} else {
-				res = keystore_rewrap_key(data->client_ticket,
-						backup, data->backup_size,
-						nonce, data->nonce_size,
-						wrapped_key,
-						data->wrapped_key_size,
-						rewrapped_key,
-						data->rewrapped_key_size);
-
-				keystore_hexdump("rewrap wrapped_key- (from ioctl)", wrapped_key, data->wrapped_key_size);
-				keystore_hexdump("rewrap rewrapped_key - (from ioctl)", rewrapped_key, data->rewrapped_key_size);
-
-				if (res > 0) /* if rewrapping is ok, api returns rewrapped no of bytes */ {
-					pr_err(KBUILD_MODNAME ": %s rewrapping - Done\n", __func__);
-					if (copy_to_user(data->rewrapped_key,
-								rewrapped_key,
-								res)) {
-						pr_err(KBUILD_MODNAME ": %s cannot write data\n", __func__);
-						res = -EFAULT;
-					}
-				}
-			}
+			goto free_buf;
 		}
 
-		kzfree(backup);
-		kzfree(nonce);
-		kzfree(wrapped_key);
-		kzfree(rewrapped_key);
+		res = copy_from_user(iv, user_data->iv, user_data->iv_size);
+		if (res)
+			goto free_buf;
 	}
 
-	return res;
-}
+	res = keystore_encrypt(user_data->client_ticket, user_data->slot_id,
+			       user_data->algospec, iv,
+			       user_data->iv_size,
+			       input, user_data->input_size,
+			       output);
 
+	if (res)
+		goto free_buf;
 
-#if defined(KEYSTORE_TEST_MIGRATION)
-static int gen_ecc_keys_op(ias_keystore_ecc_keys_t *data)
-{
-	void *priv_key, *pub_key;
-	int res;
+	res = copy_to_user(user_data->output, output, output_size);
 
-	if (!data) {
-		res = -EINVAL;
-		return res;
-	}
-
-	priv_key = kmalloc(data->private_key_size, GFP_KERNEL);
-	pub_key = kmalloc(data->public_key_size, GFP_KERNEL);
-
-	if (!priv_key || !pub_key) {
-		pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_GEN_ECC_KEYS out of memory\n", __func__);
-		res = -ENOMEM;
-	} else {
-		res = keystore_gen_ecc_keys(pub_key,
-			data->public_key_size,
-			priv_key,
-			data->private_key_size);
-		if (res == 0) {
-			if (copy_to_user(data->private_key, priv_key,
-						data->private_key_size)) {
-				pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_GEN_ECC_KEYS cannot read key\n", __func__);
-				res = -EFAULT;
-			}
-
-			if (copy_to_user(data->public_key, pub_key,
-						data->public_key_size)) {
-				pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_GEN_ECC_KEYS cannot read key\n", __func__);
-				res = -EFAULT;
-			}
-		}
-	}
-
-	kzfree(priv_key);
-	kzfree(pub_key);
-
-	return res;
-}
-#endif
-
-
-#if defined(KEYSTORE_TEST_MIGRATION)
-static int keystore_test_decrypt_backup_op(ias_keystore_test_backup_t *data)
-{
-	int res;
-	void *key, *pubkey, *enc_data, *output, *signature;
-
-	if (!data) {
-		res = -EINVAL;
-		return res;
-	}
-
-	key = kmalloc(data->key_size, GFP_KERNEL);
-	pubkey = kmalloc(data->pubkey_size, GFP_KERNEL);
-	enc_data = kmalloc(data->data_size, GFP_KERNEL);
-	signature = kmalloc(data->signature_size, GFP_KERNEL);
-	output = kmalloc(data->output_size, GFP_KERNEL);
-	if (!key || !pubkey || !enc_data || !signature || !output) {
-		pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_TEST_BACKUP_DECRYPT out of memory\n", __func__);
-		res = -ENOMEM;
-	} else {
-		if (copy_from_user(key, data->key, data->key_size) ||
-				copy_from_user(enc_data, data->data,
-					data->data_size) ||
-				copy_from_user(signature, data->signature,
-					data->signature_size) ||
-				copy_from_user(pubkey, data->pubkey,
-					data->pubkey_size)) {
-			pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_TEST_BACKUP_DECRYPT cannot read key\n", __func__);
-			res = -EFAULT;
-		} else {
-			res = keystore_test_decrypt_backup(
-				data->client_ticket,
-				key, data->key_size,
-				pubkey,
-				data->pubkey_size,
-				enc_data,
-				data->data_size,
-				signature,
-				data->signature_size,
-				output,
-				data->output_size);
-			if (res == 0) {
-				if (copy_to_user(data->output, output,
-							data->output_size)) {
-					pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_TEST_BACKUP_DECRYPT cannot read output\n", __func__);
-					res = -EFAULT;
-				}
-			} else {
-				pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_TEST_BACKUP_DECRYPT failed (%d)\n", __func__, res);
-			}
-		}
-	}
-	kzfree(key);
-	kzfree(enc_data);
+free_buf:
+	kzfree(input);
 	kzfree(output);
-
+	kzfree(iv);
 	return res;
 }
-#endif
 
-#if defined(KEYSTORE_TEST_MIGRATION)
-int keystore_test_verify_ecc_signature_op(ias_keystore_verify_signature_t *data)
+static int decrypt_size_op(struct ias_keystore_crypto_size *user_data)
 {
-	int res;
-	void *pub_key, *mdata, *sig;
-
-	pub_key = kmalloc(data->key_size, GFP_KERNEL);
-	mdata = kmalloc(data->data_size, GFP_KERNEL);
-	sig = kmalloc(data->sig_size, GFP_KERNEL);
-
-	if (!pub_key || !mdata || !sig) {
-		pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE out of memory\n", __func__);
-		res = -ENOMEM;
-	} else {
-		if (copy_from_user(pub_key, data->key, data->key_size) ||
-				copy_from_user(mdata, data->data,
-					data->data_size) ||
-				copy_from_user(sig, data->sig, data->sig_size)) {
-			pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE cannot read key\n", __func__);
-			res = -EFAULT;
-		} else {
-			res = keystore_test_verify_ecc_signature(pub_key,
-					data->key_size, mdata, data->data_size,
-					sig, data->sig_size);
-		}
-	}
-	kzfree(pub_key);
-	kzfree(mdata);
-	kzfree(sig);
-
-	return res;
+	if (!user_data)
+		return -EFAULT;
+	return keystore_decrypt_size(user_data->algospec, user_data->input_size,
+				     &user_data->output_size);
 }
-#endif
 
-#if defined(KEYSTORE_TEST_MIGRATION)
-/*FIXME: rename this to proper migration operation i.e - migrate() */
-int keystore_test_reencrypt_backup_with_mk_op(
-		ias_keystore_test_reencrypt_backup_with_mk_t *data)
+static int decrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 {
 	int res;
-	void *OEMpriv, *backup, *OEMpriv2, *mig_key, *output;
+	unsigned int output_size = 0;
+	uint8_t *iv = NULL;
+	uint8_t *input = NULL;
+	uint8_t *output = NULL;
 
-	OEMpriv = kmalloc(data->OEMpriv_size, GFP_KERNEL);
-	backup = kmalloc(data->backup_size, GFP_KERNEL);
-	OEMpriv2 = kmalloc(data->OEMpriv2_size, GFP_KERNEL);
-	mig_key = kmalloc(data->mig_key_size, GFP_KERNEL);
-	output = kmalloc(data->output_size, GFP_KERNEL);
+	if (!user_data)
+		return -EFAULT;
 
-	if (!OEMpriv || !backup || !OEMpriv2 || !mig_key || !output) {
-		pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_TEST_REENCRYPT_BACKUP_WITH_MK out of memory\n", __func__);
+	res = keystore_decrypt_size(user_data->algospec, user_data->input_size,
+				    &output_size);
+	if (res)
+		return res;
+
+	input = kmalloc(user_data->input_size, GFP_KERNEL);
+	output = kmalloc(output_size, GFP_KERNEL);
+	if (!input || !output) {
 		res = -ENOMEM;
-	} else {
-		if (copy_from_user(OEMpriv, data->OEMpriv, data->OEMpriv_size) ||
-			copy_from_user(backup, data->backup, data->backup_size)
-			|| copy_from_user(OEMpriv2, data->OEMpriv2,
-				data->OEMpriv2_size) ||
-			copy_from_user(mig_key, data->mig_key,
-				data->mig_key_size)) {
-			pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_TEST_REENCRYPT_BACKUP_WITH_MK cannot copy data from user space\n", __func__);
-			res = -EFAULT;
-		} else {
-			res = keystore_test_reencrypt_backup_with_mk(OEMpriv,
-					data->OEMpriv_size,
-					backup, data->backup_size,
-					OEMpriv2, data->OEMpriv2_size,
-					mig_key, data->mig_key_size,
-					output, data->output_size);
-			if (res == 0) {
-				if (copy_to_user(data->output, output,
-							data->output_size)) {
-					pr_err(KBUILD_MODNAME ": %s - KEYSTORE_IOC_TEST_REENCRYPT_BACKUP_WITH_MK cannot copy data to user space\n", __func__);
-					res = -EFAULT;
-				}
-			}
-		}
+		goto free_buf;
 	}
 
-	kzfree(OEMpriv);
-	kzfree(backup);
-	kzfree(OEMpriv2);
-	kzfree(mig_key);
+	res = copy_from_user(input, user_data->input, user_data->input_size);
+	if (res)
+		goto free_buf;
+
+	if (user_data->iv && user_data->iv_size > 0) {
+		iv = kmalloc(user_data->iv_size, GFP_KERNEL);
+		if (!iv) {
+			res = -ENOMEM;
+			goto free_buf;
+		}
+
+		res = copy_from_user(iv, user_data->iv, user_data->iv_size);
+		if (res)
+			goto free_buf;
+	}
+
+	res = keystore_decrypt(user_data->client_ticket, user_data->slot_id,
+			       user_data->algospec, iv,
+			       user_data->iv_size,
+			       input, user_data->input_size,
+			       output);
+
+	if (res)
+		goto free_buf;
+
+	res = copy_to_user(user_data->output, output, output_size);
+
+free_buf:
+	kzfree(input);
 	kzfree(output);
+	kzfree(iv);
+	return res;
+}
+
+static int backup_op(struct ias_keystore_backup *user_data)
+{
+	int res = 0;
+
+	if (!user_data)
+		return -EFAULT;
+
+	res = keystore_backup(user_data->client_ticket,
+			      &user_data->backup_key,
+			      user_data->sig,
+			      user_data->backup_encrypted,
+			      &user_data->output_sig);
+
+	return res;
+}
+
+static int gen_mkey_op(struct ias_keystore_gen_mkey *user_data)
+{
+	int res = 0;
+
+	if (!user_data)
+		return -EFAULT;
+
+	res = keystore_generate_mkey(&user_data->backup_key,
+				     user_data->sig,
+				     user_data->mkey_encrypted,
+				     &user_data->mkey_sig,
+				     user_data->output_nonce);
+	return res;
+}
+
+static int get_ksm_key_op(struct keystore_ecc_public_key *user_data)
+{
+	if (!user_data)
+		return -EFAULT;
+
+	return keystore_get_ksm_key(user_data);
+}
+
+static int keystore_rewrap_op(struct ias_keystore_rewrap *user_data)
+{
+	int res = 0;
+	uint8_t *wrapped_key = NULL;
+	uint8_t *rewrapped_key = NULL;
+
+	if (!user_data)
+		return -EFAULT;
+
+	wrapped_key = kmalloc(user_data->wrapped_key_size, GFP_KERNEL);
+	rewrapped_key = kmalloc(user_data->wrapped_key_size, GFP_KERNEL);
+	if (!wrapped_key || !rewrapped_key) {
+		res = -ENOMEM;
+		goto free_buf;
+	}
+
+	res = copy_from_user(wrapped_key, user_data->wrapped_key,
+			     user_data->wrapped_key_size);
+	if (res)
+		goto free_buf;
+
+	res = keystore_rewrap_key(user_data->client_ticket,
+				  user_data->backup,
+				  user_data->nonce,
+				  wrapped_key,
+				  user_data->wrapped_key_size,
+				  rewrapped_key);
+	if (res)
+		goto free_buf;
+
+	res = copy_to_user(user_data->rewrapped_key, rewrapped_key,
+			   user_data->wrapped_key_size);
+
+free_buf:
+	kzfree(wrapped_key);
+	kzfree(rewrapped_key);
+	return res;
+}
+
+#if defined(CONFIG_KEYSTORE_TEST_MIGRATION)
+static int gen_ecc_keys_op(struct ias_keystore_ecc_keypair *data)
+{
+	if (!data)
+		return -EFAULT;
+
+	return keystore_gen_ecc_keys(data);
+}
+
+static int keystore_test_verify_ecc_signature_op(
+	struct ias_keystore_verify_signature *user_data)
+{
+	int res = 0;
+	uint8_t *data = NULL;
+
+	if (!user_data)
+		return -EFAULT;
+
+	data = kmalloc(user_data->data_size, GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
+
+	res = copy_from_user(data, user_data->data, user_data->data_size);
+	if (res)
+		goto free_buf;
+
+	res = keystore_test_verify_ecc_signature(&user_data->public_key,
+						 data,
+						 user_data->data_size,
+						 &user_data->sig);
+free_buf:
+	kzfree(data);
+	return res;
+}
+
+static int migrate_op(struct ias_keystore_migrate *user_data)
+{
+	int res = 0;
+
+	if (!user_data)
+		return -EFAULT;
+
+	res = keystore_migrate(user_data->key_enc_backup,
+			       user_data->backup,
+			       user_data->key_enc_mig_key,
+			       user_data->mig_key,
+			       user_data->output);
 
 	return res;
 }
@@ -661,144 +557,139 @@ int keystore_test_reencrypt_backup_with_mk_op(
  */
 long keystore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	keystore_ops_union op;
+	union keystore_ops_union op;
 	unsigned int size;
-	int res;
+	int res = 0;
 
 	FUNC_BEGIN;
 
-	/*FIXME: move this later under DEBUG flag, now required this for functionality  */
-	/*#ifdef DEBUG_TRACE */
-	pr_info(KBUILD_MODNAME ": %s - cmd = 0x%x - %s\n",
-			__func__, cmd, getcmdstr(cmd));
-	/*#endif */
+	ks_debug(KBUILD_MODNAME ": %s - cmd = 0x%x - %s\n",
+		 __func__, cmd, getcmdstr(cmd));
 
 	/* copy data structure from user space to system */
 	size = _IOC_SIZE(cmd);
-	if (!is_cmd_supported(cmd) || (size > sizeof(keystore_ops_union))) {
-		pr_err(KBUILD_MODNAME ": %s - cmd=%u unknown, size:%d, size(keystore_ops_union): %zu\n",
-		__func__, cmd, size, sizeof(keystore_ops_union));
-		res = -ENOIOCTLCMD;
-	} else if (!access_ok(VERIFY_READ, (void *) arg, size)) {
-		pr_err(KBUILD_MODNAME ": %s - cmd=%u no read access\n",
-			__func__, cmd);
-		res = -EFAULT;
-	} else if ((_IOC_DIR(cmd) & _IOC_READ) && (!access_ok(VERIFY_WRITE,
-					(void *) arg, size))) {
-		pr_err(KBUILD_MODNAME ": %s - cmd=%u no write access\n", __func__, cmd);
-		res = -EFAULT;
-	} else if (copy_from_user(&op, (void *) arg, size)) {
-		pr_err(KBUILD_MODNAME ": %s - cannot copy data\n",
-				__func__);
-		res = -EFAULT;
-	} else {
-		switch (cmd) {
-		case KEYSTORE_IOC_REGISTER:
-			res = keystore_register(
-					op.register_client_type.seed_type,
-					op.register_client_type.client_ticket);
-			break;
 
-		case KEYSTORE_IOC_REGISTER_CLIENT: /* will be deprecated as part of CR: 6376 */
-			res = keystore_register_client(
-					op.register_client.client_id,
-					op.register_client.client_ticket);
-			break;
+	if (!is_cmd_supported(cmd) ||
+	    (size > sizeof(union keystore_ops_union))) {
+		ks_err(KBUILD_MODNAME ": %s - cmd=%u unknown, size:%d, size(keystore_ops_union): %zu\n",
+		       __func__, cmd, size, sizeof(union keystore_ops_union));
+		return -ENOIOCTLCMD;
+	}
+	if (!access_ok(VERIFY_READ, (void *)arg, size)) {
+		ks_err(KBUILD_MODNAME ": %s - cmd=%u no read access\n",
+		       __func__, cmd);
+		return -EFAULT;
+	}
+	if ((_IOC_DIR(cmd) & _IOC_READ) &&
+	    (!access_ok(VERIFY_WRITE, (void *)arg, size))) {
+		ks_err(KBUILD_MODNAME ": %s - cmd=%u no write access\n",
+		       __func__, cmd);
+		return -EFAULT;
+	}
+	if (copy_from_user(&op, (void *)arg, size)) {
+		ks_err(KBUILD_MODNAME ": %s - cannot copy data\n",
+		       __func__);
+		return -EFAULT;
+	}
 
-		case KEYSTORE_IOC_UNREGISTER_CLIENT:
-			res = keystore_unregister_client(
-					op.unregister_client.client_ticket);
-			break;
+	switch (cmd) {
+	case KEYSTORE_IOC_VERSION:
+		res = version_op(&op.version);
+	case KEYSTORE_IOC_REGISTER:
+		res = register_op(&op.register_client_type);
+		break;
 
-		case KEYSTORE_IOC_GENERATE_KEY:
-			res = keystore_generate_key(
-				op.generate_key.client_ticket,
-				(keystore_key_spec_t) op.generate_key.key_spec,
-				op.generate_key.wrapped_key);
-			break;
+	case KEYSTORE_IOC_UNREGISTER:
+		res = unregister_op(&op.unregister_client);
+		break;
 
-		case KEYSTORE_IOC_WRAP_KEY:
-			res = keystore_wrap_key(op.wrap_key.client_ticket,
-				op.wrap_key.app_key, op.wrap_key.app_key_size,
-				(keystore_key_spec_t) op.wrap_key.key_spec,
-				op.wrap_key.wrapped_key);
-			break;
+	case KEYSTORE_IOC_WRAPPED_KEYSIZE:
+		res = wrapped_keysize_op(&op.wrapped_key_size);
+		break;
 
-		case KEYSTORE_IOC_LOAD_KEY:
-			res = keystore_load_key(op.load_key.client_ticket,
-				     op.load_key.wrapped_key,
-				     op.load_key.wrapped_key_size);
-			break;
+	case KEYSTORE_IOC_GENERATE_KEY:
+		res = generate_key_op(&op.generate_key);
+		break;
 
-		case KEYSTORE_IOC_UNLOAD_KEY:
-			res = keystore_unload_key(op.unload_key.client_ticket,
-					op.unload_key.slot_id);
-			break;
+	case KEYSTORE_IOC_WRAP_KEY:
+		res = wrap_key_op(&op.wrap_key);
+		break;
 
-		case KEYSTORE_IOC_ENCRYPT:
-			res = encrypt_op(&op.encrypt);
-			break;
+	case KEYSTORE_IOC_LOAD_KEY:
+		res = load_key_op(&op.load_key);
+		break;
 
-		case KEYSTORE_IOC_DECRYPT:
-			res = decrypt_op(&op.decrypt);
-			break;
+	case KEYSTORE_IOC_UNLOAD_KEY:
+		res = unload_key_op(&op.unload_key);
+		break;
 
-		case KEYSTORE_IOC_BACKUP:
-			res = backup_op(&op.backup);
-			break;
+	case KEYSTORE_IOC_ENCRYPT_SIZE:
+		res = encrypt_size_op(&op.crypto_size);
+		break;
 
-		case KEYSTORE_IOC_GET_KSM_KEY:
-			res = get_ksm_key_op(&op.ecc_keys);
-			break;
+	case KEYSTORE_IOC_ENCRYPT:
+		res = encrypt_op(&op.encrypt_decrypt);
+		break;
 
-		case KEYSTORE_IOC_GEN_MKEY:
-			res = gen_mkey_op(&op.gen_mkey);
-			break;
+	case KEYSTORE_IOC_DECRYPT_SIZE:
+		res = decrypt_size_op(&op.crypto_size);
+		break;
 
-		case KEYSTORE_IOC_REWRAP:
-			res = keystore_rewrap_op(&op.rewrap);
-			break;
+	case KEYSTORE_IOC_DECRYPT:
+		res = decrypt_op(&op.encrypt_decrypt);
+		break;
 
-#if defined(KEYSTORE_TEST_MIGRATION)
-		case KEYSTORE_IOC_GEN_ECC_KEYS:
-			res = gen_ecc_keys_op(&op.ecc_keys);
-			break;
+	case KEYSTORE_IOC_BACKUP:
+		res = backup_op(&op.backup);
+		break;
 
-		case KEYSTORE_IOC_TEST_BACKUP_DECRYPT:
-			res = keystore_test_decrypt_backup_op(&op.test_backup);
-			break;
+	case KEYSTORE_IOC_GET_KSM_KEY:
+		res = get_ksm_key_op(&op.ecc_pub_key);
+		break;
 
-		case KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE:
-			res = keystore_test_verify_ecc_signature_op(
-					&op.verify_signature);
-			break;
+	case KEYSTORE_IOC_GEN_MKEY:
+		res = gen_mkey_op(&op.gen_mkey);
+		break;
 
-		case KEYSTORE_IOC_TEST_REENCRYPT_BACKUP_WITH_MK:
-			res = keystore_test_reencrypt_backup_with_mk_op(
-				&op.keystore_test_reencrypt_backup_with_mk);
-			break;
+	case KEYSTORE_IOC_REWRAP:
+		res = keystore_rewrap_op(&op.rewrap);
+		break;
+	case KEYSTORE_IOC_RUN_TESTS:
+		res = keystore_run_tests();
+		break;
+#if defined(CONFIG_KEYSTORE_TEST_MIGRATION)
+	case KEYSTORE_IOC_GEN_ECC_KEYS:
+		res = gen_ecc_keys_op(&op.ecc_keys);
+		break;
+
+	case KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE:
+		res = keystore_test_verify_ecc_signature_op(
+			&op.verify_signature);
+		break;
+
+	case KEYSTORE_IOC_MIGRATE:
+		res = migrate_op(&op.migrate);
+		break;
 #endif
+	default:
+		res = -ENOIOCTLCMD;
+		ks_err(KBUILD_MODNAME ": %s - cmd=%u not known\n",
+		       __func__, cmd);
+		break;
+	}
 
-		default:
-			res = -ENOIOCTLCMD;
-			pr_err(KBUILD_MODNAME ": %s - cmd=%u not known\n", __func__, cmd);
-			break;
-		}
-
-		/* check if OK and we need to return some data in memory block */
-		if ((res >= 0) && (_IOC_DIR(cmd) & _IOC_READ)) {
-			/* then copy data from system to user space */
-			if (copy_to_user((void *) arg, &op, size)) {
-				pr_err(KBUILD_MODNAME ": %s - cannot copy data\n", __func__);
-				res = -EFAULT;
-			}
+	/* check if OK and we need to return some data in memory block */
+	if ((res >= 0) && (_IOC_DIR(cmd) & _IOC_READ)) {
+		/* then copy data from system to user space */
+		if (copy_to_user((void *)arg, &op, size)) {
+			ks_err(KBUILD_MODNAME ": %s - cannot copy data\n",
+			       __func__);
+			res = -EFAULT;
 		}
 	}
 
 	memset(&op, 0, sizeof(op));
-
 	FUNC_RES(res);
-
 	return res;
 }
 

@@ -35,33 +35,4 @@
 void *alloc_and_init_sg(struct scatterlist *sg, const void *data, size_t buflen,
 		size_t datalen);
 
-/**
- * Compare two blocks of data. Show the first block. Show error message and the second block if different.
- *
- * @param name1 First data block name.
- * @param ptr1 First data block pointer.
- * @param name2 Second data block name.
- * @param ptr2 Second data block pointer.
- * @param size Size of data blocks in bytes.
- */
-int show_and_compare(const char *name1, const void *ptr1, const char *name2, const void *ptr2, unsigned int size);
-
-/**
- * Get the absolute path of current process in the filesystem. This is used
- * for client authentication purpose.
- *
- * Always use the return variable from this function, input variable 'buf'
- * may not contain the start of the path. In case if kernel was executing
- * a kernel thread then this function return NULL.
- *
- * @param input buf place holder for updating the path
- * @param input buflen avaialbe space
- *
- * @return path of current process, or NULL if it was kernel thread.
- */
-
-char *get_current_process_path(char *buf, int buflen);
-
-
-
 #endif /* _KEYSTORE_HELPERS_H_ */

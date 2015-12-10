@@ -1,5 +1,10 @@
 config KEYSTORE
 	bool "Generic Keystore"
+	default n
+	select SECURE_BOOT
+	select ABL_UTILS
+	select OEM_KEY
+        select CRYPTO
 	select CRYPTO_AES
 	select CRYPTO_AES_NI_INTEL
 	select CRYPTO_BLKCIPHER
@@ -15,10 +20,6 @@ config KEYSTORE
 	select CRYPTO_SHA1
 	select CRYPTO_SHA256
 	select CRYPTO_SHA512
-	select ASYMMETRIC_KEY_TYPE
-	select ASYMMETRIC_PUBLIC_KEY_SUBTYPE
-	select PUBLIC_KEY_ALGO_RSA
-	select MPILIB
 	help
 		An IVI system deals with various keys that need to be stored
 		securely on the platform. Some of the keys are stored in
@@ -62,21 +63,37 @@ config KEYSTORE_USER_SEED_ONLY
 
 endchoice
 
-config KEYSTORE_TESTMODE
-	bool "Diagnostic tests run on startup"
-	depends on KEYSTORE
-        default n
-	help
-                Runs self-test diagnostics when keystore is started.
+choice
+        prompt "Keystore SEED size"
+        default KEYSTORE_SEED_SIZE_64
+        depends on KEYSTORE
+
+config KEYSTORE_SEED_SIZE_32
+        bool "32-bytes"
+        help
+                Set the SEED size to 32-bytes. This should
+                match the size of the SEED provided by the
+                bootloader.
 
                 If unsure, select "N".
 
+config KEYSTORE_SEED_SIZE_64
+        bool "64-bytes"
+        help
+                Set the SEED size to 64-bytes. This should
+                match the size of the SEED provided by the
+                bootloader.
+
+                If unsure, select "N".
+
+endchoice
+
 config KEYSTORE_HARD_CODED_SEED
-	bool "Hard-coded SEEDs and Keys (WARNING: not for production!)"
+	bool "Hard-coded SEEDs and Keys (DANGEROUS!)"
 	depends on KEYSTORE
         default n
 	help
-                Sets the keystore SEED and RSA public keys to fixed values instead
+                Sets the keystore SEED a to fixed values instead
                 of using values passed via the kernel command line.
 
                 WARNING: This is only for testing purposes and should not be used
@@ -85,13 +102,28 @@ config KEYSTORE_HARD_CODED_SEED
 
                 If in doubt, select "N".
 
+config KEYSTORE_TESTMODE
+	bool "Enable Diagnostic Tests"
+	depends on KEYSTORE
+        default n
+	help
+		Compiles a set of test functions which run diagnostics
+		such as checking of crypto self-consistency (encrypt/decrypt)
+		and format conversion. Provides an API to run a series of
+		tests triggered from user-space.
+
+                If unsure, select "N".
+
 config KEYSTORE_TEST_MIGRATION
 	bool "Migration Test Functions enabled"
 	depends on KEYSTORE
         default n
 	help
                 Makes additional functions available to keystore for testing
-                the backup and migration functions on a single machine.
+                the backup and migration functions on a single machine. These
+		are not necessary for keystore operation, but allow the
+		migration step iteself to be performed natively instead
+		of on a host machine.
 
                 If unsure, select "N".
 

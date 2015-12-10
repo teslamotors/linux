@@ -30,3 +30,16 @@ obj-$(CONFIG_CGROUP_DEVICE)		+= device_cgroup.o
 # Object integrity file lists
 subdir-$(CONFIG_INTEGRITY)		+= integrity
 obj-$(CONFIG_INTEGRITY)			+= integrity/
+
+# Object keystore file lists
+subdir-$(CONFIG_KEYSTORE)		+= keystore
+obj-$(CONFIG_KEYSTORE)                  += keystore/
+
+subdir-$(CONFIG_OEM_KEY)		+= oemkey
+obj-$(CONFIG_OEM_KEY)			+= oemkey/
+
+subdir-$(CONFIG_SECURE_BOOT)		+= sb
+obj-$(CONFIG_SECURE_BOOT)               += sb/
+
+subdir-$(CONFIG_ABL_UTILS)		+= abl
+obj-$(CONFIG_ABL_UTILS)                 += abl/

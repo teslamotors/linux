@@ -1,0 +1,4 @@
+# UAPI Header export list
+
+header-y += keystore_api_user.h
+header-y += keystore_api_common.h

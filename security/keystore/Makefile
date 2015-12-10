@@ -3,55 +3,61 @@
 # Copyright (c) 2013, Intel Corporation.
 #
 
-ccflags-y += -Isecurity/keystore/include -Isecurity/keystore/ecc -Isecurity/keystore/crypto -Isecurity/keystore
+ccflags-y += -Isecurity/keystore/include -Isecurity/keystore/crypto
 
-ccflags-$(CONFIG_KEYSTORE_DEVICE_SEED_ONLY) += -DKEYSTORE_DISABLE_USER_SEED
-ccflags-$(CONFIG_KEYSTORE_USER_SEED_ONLY) += -DKEYSTORE_DISABLE_DEVICE_SEED
-ccflags-$(CONFIG_KEYSTORE_TEST_MIGRATION) += -DKEYSTORE_TEST_MIGRATION
-ccflags-$(CONFIG_KEYSTORE_HARD_CODED_SEED) += -DKEYSTORE_HARDCODE_SEED -DDEBUG -DDEBUG_TRACE
-ccflags-$(CONFIG_KEYSTORE_TESTMODE) += -DKEYSTORE_TESTMODE
+# Keystore module
+obj-$(CONFIG_KEYSTORE) += keystore.o
 
-#
-# Always enable the mechanisum to retrieve SB status
-#
-obj-y := sb.o
-
-obj-$(CONFIG_KEYSTORE) +=\
-	aes_ccm.o\
-	aes_gcm.o\
-	aes_ctr.o\
-	aes_ecb.o\
-	aes_siv.o\
-	api_kernel.o\
-	check_pub_key.o\
-	cmdline.o\
-	context.o\
-	ecc_encrypt.o\
-	ecc_signature.o\
-	ecc_keys.o\
-	files.o\
-	globals.o\
-	helpers.o\
-	hexdump.o\
-	ioctls.o\
+keystore-y :=\
 	keystore_kmod.o\
-	mac.o\
-	migration.o\
-	seed.o\
-	rdrand.o\
-	parseasn1_ecc_key.o\
-	parse_ecc_keys.o\
-	parse_rsa_keys.o\
-	ecc/ecc.o\
-	ecc/ecies.o\
-	ecc/kdf_x963.o\
-	ecc/utils.o
+	api_kernel.o\
+	api_kernel_migration.o\
+	client.o \
+	context.o\
+	context_safe.o\
+	ioctls.o\
+	operations.o\
+	seed.o
 
-# Only compile tests if TESTMODE config option set
-obj-$(CONFIG_KEYSTORE_TESTMODE) +=\
-	testaes.o\
-	testcmac.o\
-	testhmac.o\
-	testsiv.o\
-	testsivsteps.o\
-	testecc.o
+# ECC library
+keystore-y +=\
+	crypto/ecc/ecc.o\
+	crypto/ecc/ecies.o\
+	crypto/ecc/kdf_x963.o\
+	crypto/ecc/utils.o\
+	crypto/ecc/ecc_encrypt.o\
+	crypto/ecc/ecc_signature.o\
+	crypto/ecc/ecc_keys.o
+
+# Hash functions
+keystore-y +=\
+	crypto/mac/mac.o
+
+# Random numbers
+keystore-y +=\
+	crypto/rand/rdrand.o
+
+# AES library
+keystore-y +=\
+	crypto/aes/aes_utils.o\
+	crypto/aes/aes_ccm.o\
+	crypto/aes/aes_gcm.o\
+	crypto/aes/aes_ctr.o\
+	crypto/aes/aes_ecb.o\
+	crypto/aes/aes_siv.o
+
+keystore-$(CONFIG_KEYSTORE_DEBUG) +=\
+	debug.o
+
+keystore-$(CONFIG_KEYSTORE_TEST_MIGRATION) +=\
+	api_kernel_migration_test.o
+
+keystore-$(CONFIG_KEYSTORE_TESTMODE) +=\
+	test/test_run.o\
+	test/testaes.o\
+	test/testcmac.o\
+	test/testhmac.o\
+	test/testsiv.o\
+	test/testsivsteps.o\
+	test/testecc.o\
+	test/testoperations.o
