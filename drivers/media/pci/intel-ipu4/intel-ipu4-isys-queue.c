@@ -739,6 +739,9 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 	struct intel_ipu4_isys_queue *aq = ip->output_pins[info->pin_id].aq;
 	struct intel_ipu4_isys_buffer *ib = NULL;
 	struct vb2_buffer *vb;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
+	struct vb2_v4l2_buffer *vbuf;
+#endif
 	unsigned long flags;
 
 	dev_dbg(&isys->adev->dev, "received buffer %8.8x\n", info->pin.addr);
@@ -762,10 +765,19 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 		return;
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
 	if (ip->interlaced)
 		vb->v4l2_buf.field = ip->cur_field;
 	else
 		vb->v4l2_buf.field = V4L2_FIELD_NONE;
+#else
+	vbuf = to_vb2_v4l2_buffer(vb);
+
+	if (ip->interlaced)
+		vbuf->field = ip->cur_field;
+	else
+		vbuf->field = V4L2_FIELD_NONE;
+#endif
 
 	list_del(&ib->head);
 	spin_unlock_irqrestore(&aq->lock, flags);
