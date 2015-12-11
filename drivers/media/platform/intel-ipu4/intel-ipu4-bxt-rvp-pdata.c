@@ -70,6 +70,7 @@ lm3643
 #define IMX132_LANES		1
 #define IMX132_I2C_ADDRESS	0x36
 
+#define FABC_AOB
 #ifdef FABC_AOB
 #define IMX230_LANES		4
 #else
