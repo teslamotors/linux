@@ -794,6 +794,28 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 	wake_up_interruptible(&kcmd->fh->wait);
 }
 
+static int intel_ipu4_psys_start_pg(struct intel_ipu4_psys *psys,
+				    struct intel_ipu4_psys_kcmd *kcmd)
+{
+	/*
+	 * Found a runnable PG. Move queue to the list tail for round-robin
+	 * scheduling and run the PG. Start the watchdog timer if the PG was
+	 * started successfully.
+	 */
+	int ret;
+
+	list_move_tail(&kcmd->fh->list, &psys->fhs);
+	list_move(&kcmd->list, &psys->active);
+	clflush_cache_range(kcmd->pg, kcmd->pg_size);
+	kcmd->watchdog.expires = jiffies + msecs_to_jiffies(psys->timeout);
+	ret = -ia_css_process_group_start(kcmd->pg);
+	if (ret)
+		return ret;
+	add_timer(&kcmd->watchdog);
+
+	return 0;
+}
+
 /*
  * Schedule next kcmd by finding a runnable PG from the highest
  * priority queue in a round-robin fashion versus the client
@@ -833,25 +855,10 @@ static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 					continue;
 
 				if (!ret) {
-					/*
-					 * Found a runnable PG. Move queue to
-					 * the list tail for round-robin
-					 * scheduling and run PG.
-					 */
-					list_move_tail(&kcmd->fh->list,
-						       &psys->fhs);
-					list_move(&kcmd->list, &psys->active);
-
-					clflush_cache_range(kcmd->pg,
-							    kcmd->pg_size);
-					kcmd->watchdog.expires = jiffies +
-						msecs_to_jiffies(psys->timeout);
-					ret = -ia_css_process_group_start(
-								kcmd->pg);
-					if (!ret) {
-						add_timer(&kcmd->watchdog);
+					ret = intel_ipu4_psys_start_pg(psys,
+								       kcmd);
+					if (!ret)
 						return;
-					}
 				}
 
 				/* Failed to run; report error and continue */
