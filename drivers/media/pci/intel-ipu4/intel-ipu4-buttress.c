@@ -52,6 +52,10 @@
 #define BUTTRESS_CSE_BOOTLOAD_TIMEOUT		5000
 #define BUTTRESS_CSE_AUTHENTICATE_TIMEOUT	10000
 
+static const u32 intel_ipu4_adev_irq_mask[] = {
+	BUTTRESS_ISR_IS_IRQ, BUTTRESS_ISR_PS_IRQ
+};
+
 static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 				  enum intel_ipu4_buttress_ipc_domain ipc)
 {
@@ -291,35 +295,64 @@ static int intel_ipu4_buttress_ipc_send(
 	return -ETIMEDOUT;
 }
 
-static inline void intel_ipu4_buttress_call_isr(
+static irqreturn_t intel_ipu4_buttress_call_isr(
 					struct intel_ipu4_bus_device *adev)
 {
-	if (!adev || !adev->adrv || !adev->adrv->isr)
-		return;
+	irqreturn_t ret = IRQ_WAKE_THREAD;
 
-	adev->adrv->isr(adev);
+	if (!adev || !adev->adrv)
+		return IRQ_NONE;
+
+	if (adev->adrv->isr)
+		ret = adev->adrv->isr(adev);
+
+	if (ret == IRQ_WAKE_THREAD && !adev->adrv->isr_threaded)
+		ret = IRQ_NONE;
+
+	adev->adrv->wake_isr_thread = (ret == IRQ_WAKE_THREAD);
+
+	return ret;
 }
 
 irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 {
 	struct intel_ipu4_device *isp = isp_ptr;
+	struct intel_ipu4_bus_device *adev[] = { isp->isys, isp->psys };
 	struct intel_ipu4_buttress *b = &isp->buttress;
+	irqreturn_t ret = IRQ_NONE;
+	u32 disable_irqs = 0;
 	u32 irq_status;
+	unsigned int i;
 
 	dev_dbg(&isp->pdev->dev, "Buttress interrupt handler\n");
 
 	irq_status = readl(isp->base + BUTTRESS_REG_ISR_ENABLED_STATUS);
 	if (!irq_status)
-		return IRQ_HANDLED;
+		return IRQ_NONE;
 
 	do {
 		writel(irq_status, isp->base + BUTTRESS_REG_ISR_CLEAR);
 
-		if (irq_status & BUTTRESS_ISR_IS_IRQ)
-			intel_ipu4_buttress_call_isr(isp->isys);
+		for (i = 0; i < ARRAY_SIZE(intel_ipu4_adev_irq_mask); i++) {
+			if (irq_status & intel_ipu4_adev_irq_mask[i]) {
+				irqreturn_t r =
+					intel_ipu4_buttress_call_isr(adev[i]);
+				if (r == IRQ_WAKE_THREAD) {
+					ret = IRQ_WAKE_THREAD;
+					disable_irqs |=
+						intel_ipu4_adev_irq_mask[i];
+				} else if (ret == IRQ_NONE && r == IRQ_HANDLED)
+					ret = IRQ_HANDLED;
+			}
+		}
 
-		if (irq_status & BUTTRESS_ISR_PS_IRQ)
-			intel_ipu4_buttress_call_isr(isp->psys);
+		if (irq_status & (BUTTRESS_ISR_IPC_FROM_CSE_IS_WAITING |
+				  BUTTRESS_ISR_IPC_FROM_ISH_IS_WAITING |
+				  BUTTRESS_ISR_IPC_EXEC_DONE_BY_CSE |
+				  BUTTRESS_ISR_IPC_EXEC_DONE_BY_ISH |
+				  BUTTRESS_ISR_SAI_VIOLATION) &&
+		    ret == IRQ_NONE)
+			ret = IRQ_HANDLED;
 
 		if (irq_status & BUTTRESS_ISR_IPC_FROM_CSE_IS_WAITING) {
 			dev_dbg(&isp->pdev->dev,
@@ -356,7 +389,32 @@ irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 		irq_status = readl(isp->base + BUTTRESS_REG_ISR_ENABLED_STATUS);
 	} while (irq_status);
 
-	return IRQ_HANDLED;
+	if (disable_irqs)
+		writel(BUTTRESS_IRQS & ~disable_irqs,
+		       isp->base + BUTTRESS_REG_ISR_ENABLE);
+
+	return ret;
+}
+
+irqreturn_t intel_ipu4_buttress_isr_threaded(int irq, void *isp_ptr)
+{
+	struct intel_ipu4_device *isp = isp_ptr;
+	struct intel_ipu4_bus_device *adev[] = { isp->isys, isp->psys };
+	irqreturn_t ret = IRQ_NONE;
+	unsigned int i;
+
+	dev_dbg(&isp->pdev->dev, "Buttress threaded interrupt handler\n");
+
+	for (i = 0; i < ARRAY_SIZE(intel_ipu4_adev_irq_mask); i++) {
+		if (adev[i] && adev[i]->adrv &&
+		    adev[i]->adrv->wake_isr_thread &&
+		    adev[i]->adrv->isr_threaded(adev[i]) == IRQ_HANDLED)
+				ret = IRQ_HANDLED;
+	}
+
+	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_ENABLE);
+
+	return ret;
 }
 
 void intel_ipu4_buttress_disable_secure_touch(struct intel_ipu4_device *isp)

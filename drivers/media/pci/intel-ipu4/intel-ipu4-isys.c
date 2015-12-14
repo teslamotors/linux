@@ -1185,7 +1185,7 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 	return 0;
 }
 
-static void isys_isr(struct intel_ipu4_bus_device *adev)
+static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
 	void __iomem *base = isys->pdata->base;
@@ -1195,13 +1195,13 @@ static void isys_isr(struct intel_ipu4_bus_device *adev)
 	if (!isys->ssi) {
 		dev_dbg(&isys->adev->dev,
 			"got interrupt but device not configured yet\n");
-		return;
+		return IRQ_NONE;
 	}
 
 	spin_lock(&isys->power_lock);
 	if (!isys->power) {
 		spin_unlock(&isys->power_lock);
-		return;
+		return IRQ_NONE;
 	}
 
 	status = readl(isys->pdata->base +
@@ -1225,6 +1225,7 @@ static void isys_isr(struct intel_ipu4_bus_device *adev)
 	}
 
 	spin_unlock(&isys->power_lock);
+	return status ? IRQ_HANDLED : IRQ_NONE;
 }
 
 static void isys_isr_poll(struct intel_ipu4_bus_device *adev)

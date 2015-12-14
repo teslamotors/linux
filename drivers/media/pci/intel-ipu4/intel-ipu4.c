@@ -625,8 +625,10 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	if (rval)
 		return rval;
 
-	rval = devm_request_irq(&pdev->dev, pdev->irq, intel_ipu4_buttress_isr,
-				IRQF_SHARED, INTEL_IPU4_NAME, isp);
+	rval = devm_request_threaded_irq(&pdev->dev, pdev->irq,
+					 intel_ipu4_buttress_isr,
+					 intel_ipu4_buttress_isr_threaded,
+					 IRQF_SHARED, INTEL_IPU4_NAME, isp);
 	if (rval) {
 		dev_err(&pdev->dev, "Requesting irq failed(%d)\n",
 			rval);

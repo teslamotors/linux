@@ -59,6 +59,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_start_tsc_sync(struct intel_ipu4_device *isp);
 
 irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr);
+irqreturn_t intel_ipu4_buttress_isr_threaded(int irq, void *isp_ptr);
 int intel_ipu4_buttress_ipc_validity_protocol(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_debugfs_init(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_init(struct intel_ipu4_device *isp);

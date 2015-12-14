@@ -1844,7 +1844,7 @@ static void intel_ipu4_psys_handle_event(struct intel_ipu4_psys *psys)
 	spin_unlock_irqrestore(&psys->lock, flags);
 }
 
-static void psys_isr(struct intel_ipu4_bus_device *adev)
+static irqreturn_t psys_isr(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
 	void __iomem *base = psys->pdata->base;
@@ -1853,7 +1853,7 @@ static void psys_isr(struct intel_ipu4_bus_device *adev)
 	spin_lock(&psys->power_lock);
 	if (!psys->power) {
 		spin_unlock(&psys->power_lock);
-		return;
+		return IRQ_NONE;
 	}
 
 	status = readl(base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_STATUS);
@@ -1865,6 +1865,7 @@ static void psys_isr(struct intel_ipu4_bus_device *adev)
 	}
 
 	spin_unlock(&psys->power_lock);
+	return status ? IRQ_HANDLED : IRQ_NONE;
 }
 
 static int intel_ipu4_psys_isr_run(void *data)

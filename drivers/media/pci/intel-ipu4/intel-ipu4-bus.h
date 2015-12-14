@@ -18,6 +18,7 @@
 #define INTEL_IPU4_BUS_H
 
 #include <linux/device.h>
+#include <linux/irqreturn.h>
 #include <linux/list.h>
 #include <linux/mm.h>
 #include <linux/pci.h>
@@ -46,7 +47,10 @@ struct intel_ipu4_bus_driver {
 	char			wanted[20];
 	int			(*probe)(struct intel_ipu4_bus_device *adev);
 	void			(*remove)(struct intel_ipu4_bus_device *adev);
-	void			(*isr)(struct intel_ipu4_bus_device *adev);
+	irqreturn_t		(*isr)(struct intel_ipu4_bus_device *adev);
+	irqreturn_t		(*isr_threaded)
+					(struct intel_ipu4_bus_device *adev);
+	bool			wake_isr_thread;
 };
 
 #define to_intel_ipu4_bus_driver(_drv) \

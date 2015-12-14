@@ -613,9 +613,10 @@ static void intel_ipu4_mmu_remove(struct intel_ipu4_bus_device *adev)
 	dev_dbg(&adev->dev, "removed\n");
 }
 
-static void intel_ipu4_mmu_isr(struct intel_ipu4_bus_device *adev)
+static irqreturn_t intel_ipu4_mmu_isr(struct intel_ipu4_bus_device *adev)
 {
 	dev_info(&adev->dev, "Yeah!\n");
+	return IRQ_NONE;
 }
 
 #ifdef CONFIG_PM
