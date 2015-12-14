@@ -1414,7 +1414,12 @@ static int psys_runtime_pm_resume(struct device *dev)
 		writel(val, psys->pdata->base +
 		       INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
 
-		if (!isp->secure_mode) {
+		/* Write pkg_dir location in IMR into DMEM offset 0 */
+		if (isp->secure_mode) {
+			writel(INTEL_IPU4_PKG_DIR_IMR_OFFSET,
+			       psys->pdata->base +
+			       INTEL_IPU4_DMEM_OFFSET);
+		} else {
 			const ia_css_pkg_dir_entry_t *pkg_dir =
 				(ia_css_pkg_dir_entry_t *)psys->pkg_dir;
 			const ia_css_pkg_dir_entry_t *entry;

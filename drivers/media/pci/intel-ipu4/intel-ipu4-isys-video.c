@@ -123,7 +123,10 @@ static void intel_ipu4_isys_hw_init(struct intel_ipu4_isys *isys)
 	writel(val, isys->pdata->base +
 	       INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
 
-	if (!isp->secure_mode) {
+	if (isp->secure_mode) {
+		writel(INTEL_IPU4_PKG_DIR_IMR_OFFSET,
+		       isys->pdata->base + INTEL_IPU4_DMEM_OFFSET);
+	} else {
 		const ia_css_pkg_dir_entry_t *pkg_dir =
 			(ia_css_pkg_dir_entry_t *)isys->pkg_dir;
 		const ia_css_pkg_dir_entry_t *entry;
