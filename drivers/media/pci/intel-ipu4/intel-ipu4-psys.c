@@ -1279,44 +1279,48 @@ static long intel_ipu4_psys_ioctl(struct file *file, unsigned int cmd,
 		struct intel_ipu4_psys_capability caps;
 		struct intel_ipu4_psys_manifest m;
 	} karg;
+	struct intel_ipu4_psys_fh *fh = file->private_data;
 	int err = 0;
 	void __user *up = (void __user *)arg;
+	bool copy = (cmd != INTEL_IPU4_IOC_MAPBUF &&
+		     cmd != INTEL_IPU4_IOC_UNMAPBUF);
+
+	if (copy) {
+		if (_IOC_SIZE(cmd) > sizeof(karg))
+			return -ENOTTY;
+
+		if (_IOC_DIR(cmd) & _IOC_WRITE) {
+			err = copy_from_user(&karg, up, _IOC_SIZE(cmd));
+			if (err)
+				return -EFAULT;
+		}
+	}
 
 	switch (cmd) {
 	case INTEL_IPU4_IOC_MAPBUF:
-		return intel_ipu4_psys_mapbuf(arg, file->private_data);
+		err = intel_ipu4_psys_mapbuf(arg, fh);
+		break;
 	case INTEL_IPU4_IOC_UNMAPBUF:
-		return intel_ipu4_psys_unmapbuf(arg, file->private_data);
-	}
-
-	if (_IOC_SIZE(cmd) > sizeof(karg))
-		return -ENOTTY;
-
-	if (_IOC_DIR(cmd) & _IOC_WRITE) {
-		err = copy_from_user(&karg, up, _IOC_SIZE(cmd));
-		if (err)
-			return -EFAULT;
-	}
-
-	switch (cmd) {
+		err = intel_ipu4_psys_unmapbuf(arg, fh);
+		break;
 	case INTEL_IPU4_IOC_QUERYCAP:
 		karg.caps = caps;
 		break;
 	case INTEL_IPU4_IOC_GETBUF:
-		err = intel_ipu4_psys_getbuf(&karg.buf, file->private_data);
+		err = intel_ipu4_psys_getbuf(&karg.buf, fh);
 		break;
 	case INTEL_IPU4_IOC_PUTBUF:
-		err = intel_ipu4_psys_putbuf(&karg.buf, file->private_data);
+		err = intel_ipu4_psys_putbuf(&karg.buf, fh);
 		break;
 	case INTEL_IPU4_IOC_QCMD:
-		err = intel_ipu4_psys_qcmd(&karg.cmd, file->private_data);
+		err = intel_ipu4_psys_qcmd(&karg.cmd, fh);
 		break;
 	case INTEL_IPU4_IOC_DQEVENT:
-		err = intel_ipu4_ioctl_dqevent(&karg.ev, file->private_data,
+		err = intel_ipu4_ioctl_dqevent(&karg.ev, fh,
 					    file->f_flags);
 		break;
 	case INTEL_IPU4_IOC_GET_MANIFEST:
-		err = intel_ipu4_get_manifest(&karg.m, file->private_data);
+		err = intel_ipu4_get_manifest(&karg.m, fh);
 		break;
 	default:
 		err = -ENOTTY;
@@ -1326,11 +1330,11 @@ static long intel_ipu4_psys_ioctl(struct file *file, unsigned int cmd,
 	if (err)
 		return err;
 
-	if (_IOC_DIR(cmd) & _IOC_READ)
+	if (copy && _IOC_DIR(cmd) & _IOC_READ)
 		if (copy_to_user(up, &karg, _IOC_SIZE(cmd)))
 			return -EFAULT;
 
-	return err;
+	return 0;
 }
 
 static const struct file_operations intel_ipu4_psys_fops = {
