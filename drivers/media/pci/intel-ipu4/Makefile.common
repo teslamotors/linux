@@ -20,6 +20,6 @@ intel-ipu4-psys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-psys.$(IPU_STEP).lnk.o .
 ifeq ($(CONFIG_COMPAT),y)
 intel-ipu4-psys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-psys-compat32.$(IPU_STEP).lnk.o
 endif
-ifdef CONFIG_VIDEO_INTEL_IPU4_PSYS
+ifndef CONFIG_VIDEO_INTEL_IPU4_ISYS_FPGA
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= intel-ipu4-psys-mod-$(IPU_STEP).o
 endif

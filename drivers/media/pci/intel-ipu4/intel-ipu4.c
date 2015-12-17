@@ -659,7 +659,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	 * suspend. Registration order is as follows:
 	 * isys_iommu->isys->psys_iommu->psys
 	 */
-	if (IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_ISYS)) {
+	if (!IS_BUILTIN(CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA)) {
 		struct intel_ipu4_buttress_ctrl *ctrl =
 			devm_kzalloc(&pdev->dev, sizeof(*ctrl), GFP_KERNEL);
 		if (!ctrl) {
@@ -693,7 +693,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 			goto out_intel_ipu4_bus_del_devices;
 	}
 
-	if (IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_PSYS)) {
+	if (!IS_BUILTIN(CONFIG_VIDEO_INTEL_IPU4_ISYS_FPGA)) {
 		struct intel_ipu4_buttress_ctrl *ctrl =
 			devm_kzalloc(&pdev->dev, sizeof(*ctrl), GFP_KERNEL);
 		if (!ctrl) {

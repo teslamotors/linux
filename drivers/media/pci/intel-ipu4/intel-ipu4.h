@@ -97,14 +97,16 @@ struct intel_ipu4_device {
  * For FPGA PCI device ID definitions are not followed as per the specification
  * Hence we had to use a kconfig option for FPGA specific usecases.
  */
-#if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_FPGA)
+#if defined CONFIG_VIDEO_INTEL_IPU4_FPGA	\
+	|| defined CONFIG_VIDEO_INTEL_IPU4_ISYS_FPGA	\
+	|| defined CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA
 
 #define is_intel_ipu4_hw_bxt_a0(isp) IS_BUILTIN(IPU_STEP_BXTA0)
 #define is_intel_ipu4_hw_bxt_b0(isp) IS_BUILTIN(IPU_STEP_BXTB0)
 
 #define is_intel_ipu4_hw_bxt_fpga(isp) 1
 
-#else /* IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_FPGA) */
+#else
 
 #define is_intel_ipu4_hw_bxt_a0(isp)				\
 	((isp)->pdev->device == INTEL_IPU4_HW_BXT_A0 ||		\
@@ -115,7 +117,7 @@ struct intel_ipu4_device {
 	 (isp)->pdev->device == INTEL_IPU4_HW_BXT_P_A0)
 
 #define is_intel_ipu4_hw_bxt_fpga(isp) 0
-#endif /* IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_FPGA) */
+#endif
 
 #define intel_ipu4_media_ctl_dev_model(isp)			\
 	(is_intel_ipu4_hw_bxt_b0(isp) ?				\

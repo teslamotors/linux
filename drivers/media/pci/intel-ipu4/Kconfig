@@ -19,23 +19,15 @@ config VIDEO_INTEL_IPU4_SOC
 
 config VIDEO_INTEL_IPU4_FPGA
 	bool "Compile for FPGA"
+
+config VIDEO_INTEL_IPU4_ISYS_FPGA
+	bool "Compile for ISYS-only FPGA"
+
+config VIDEO_INTEL_IPU4_PSYS_FPGA
+	bool "Compile for PSYS-only FPGA"
+
 endchoice
 
 config VIDEO_INTEL_IPU4_DEBUG
 	tristate "User space interface for firmware testing"
 	depends on VIDEO_INTEL_IPU4
-
-config VIDEO_INTEL_IPU4_ISYS
-	bool "Input system"
-	depends on VIDEO_INTEL_IPU4
-	depends on VIDEO_V4L2
-	---help---
-	FPGA based input system. Select if your FPGA based environment
-	contains an input system.
-
-config VIDEO_INTEL_IPU4_PSYS
-	bool "Processing system"
-	depends on VIDEO_INTEL_IPU4
-	---help---
-	FPGA based processing system. Select if your FPGA based
-	environment contains a processing system.
