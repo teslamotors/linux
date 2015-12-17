@@ -1,8 +1,6 @@
 # note: this file only defines INCLUDES paths for lib2600psys
 PSYS2600_LIBRARY = lib2600psys
-ifdef CONFIG_VIDEO_INTEL_IPU4_PSYS
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= lib2600psys/
-endif
 
 PROGRAMS = psys_fw
 SYSTEM = process_system_system
