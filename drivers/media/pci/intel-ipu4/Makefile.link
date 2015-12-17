@@ -1,0 +1,2 @@
+%.$(IPU_STEP).lnk.c: %.c
+	$(hide) cp -f $< $@

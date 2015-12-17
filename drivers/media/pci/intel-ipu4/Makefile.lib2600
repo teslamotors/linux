@@ -4,6 +4,8 @@ PROGRAMS = isys_fw
 SYSTEM = input_system_system
 include $(srctree)/$(src)/../gencfg.mk
 
+include $(srctree)/$(src)/../Makefile.link
+
 lib2600-mod-$(IPU_STEP)-objs := ../libintel-ipu4.$(IPU_STEP).lnk.o \
 	$(LIB2600_LIBRARY)/port/src/send_port.o \
 	$(LIB2600_LIBRARY)/port/src/recv_port.o \

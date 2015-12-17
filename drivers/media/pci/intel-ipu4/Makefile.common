@@ -2,10 +2,6 @@ ifndef IPU_STEP
   $(error No IPU_STEP was defined. Stopping.)
 endif
 
-# Do a link to each common src files to prevent conflict on generated objects
-%.$(IPU_STEP).lnk.c: %.c
-	$(hide) cp -lf $< $@
-
 intel-ipu4-mod-$(IPU_STEP)-objs			+= ../intel-ipu4.$(IPU_STEP).lnk.o ../intel-ipu4-bus.$(IPU_STEP).lnk.o ../intel-ipu4-dma.$(IPU_STEP).lnk.o ../intel-ipu4-buttress.$(IPU_STEP).lnk.o ../intel-ipu4-trace.$(IPU_STEP).lnk.o ../intel-ipu4-cpd.$(IPU_STEP).lnk.o
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= intel-ipu4-mod-$(IPU_STEP).o
 intel-ipu4-mmu-$(IPU_STEP)-objs		+= ../intel-ipu4-mmu.$(IPU_STEP).lnk.o
