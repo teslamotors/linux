@@ -1826,8 +1826,8 @@ static void intel_ipu4_psys_handle_event(struct intel_ipu4_psys *psys)
 		return;
 
 	intel_ipu4_psys_kcmd_complete(psys, kcmd,
-	    event.status == IA_CSS_PSYS_EVENT_TYPE_CMD_COMPLETE ||
-	    event.status == IA_CSS_PSYS_EVENT_TYPE_FRAGMENT_COMPLETE ?
+	    event.status == INTEL_IPU4_PSYS_EVENT_CMD_COMPLETE ||
+	    event.status == INTEL_IPU4_PSYS_EVENT_FRAGMENT_COMPLETE ?
 	    0 : -EIO);
 
 	intel_ipu4_psys_run_next(psys);
