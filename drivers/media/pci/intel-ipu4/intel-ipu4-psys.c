@@ -51,6 +51,7 @@
 #include "intel-ipu4-regs.h"
 
 #define INTEL_IPU4_PSYS_NUM_DEVICES	4
+#define INTEL_IPU4_PSYS_WORK_QUEUE	system_power_efficient_wq
 
 #ifdef CONFIG_PM
 static int psys_runtime_pm_resume(struct device *dev);
@@ -887,24 +888,37 @@ static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 	}
 }
 
-static void intel_ipu4_psys_watchdog(unsigned long data)
+static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
 {
-	struct intel_ipu4_psys_kcmd *kcmd = (struct intel_ipu4_psys_kcmd *)data;
-	struct intel_ipu4_psys *psys = kcmd->fh->psys;
 	unsigned long flags;
-
-	dev_err(&psys->adev->dev, "cmd:%d[0x%llx] taking too long\n",
-		kcmd->id, kcmd->issue_id);
-
-	if (ia_css_process_group_stop(kcmd->pg))
-		dev_err(&psys->adev->dev, "failed to stop cmd\n");
+	struct intel_ipu4_psys *psys = container_of(work,
+					struct intel_ipu4_psys, watchdog_work);
+	struct intel_ipu4_psys_kcmd *kcmd, *kcmd0;
 
 	spin_lock_irqsave(&psys->lock, flags);
-	intel_ipu4_psys_kcmd_complete(psys, kcmd, -EIO);
+	list_for_each_entry_safe(kcmd, kcmd0, &psys->active, list) {
+		if (!timer_pending(&kcmd->watchdog)) {
+			/* Watchdog expired for this kcmd */
+			dev_err(&psys->adev->dev,
+				"cmd:%d[0x%llx] taking too long\n",
+				kcmd->id, kcmd->issue_id);
+			if (ia_css_process_group_stop(kcmd->pg))
+				dev_err(&psys->adev->dev,
+					"failed to stop cmd\n");
+			intel_ipu4_psys_kcmd_complete(psys, kcmd, -EIO);
+		}
+	}
 	intel_ipu4_psys_run_next(psys);
 	spin_unlock_irqrestore(&psys->lock, flags);
 }
 
+static void intel_ipu4_psys_watchdog(unsigned long data)
+{
+	struct intel_ipu4_psys_kcmd *kcmd = (struct intel_ipu4_psys_kcmd *)data;
+	struct intel_ipu4_psys *psys = kcmd->fh->psys;
+
+	queue_work(INTEL_IPU4_PSYS_WORK_QUEUE, &psys->watchdog_work);
+}
 
 static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 			     struct intel_ipu4_psys_fh *fh)
@@ -1564,6 +1578,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	mutex_init(&psys->isr_poll_mutex);
 	INIT_LIST_HEAD(&psys->fhs);
 	INIT_LIST_HEAD(&psys->active);
+	INIT_WORK(&psys->watchdog_work, intel_ipu4_psys_watchdog_work);
 
 	intel_ipu4_bus_set_drvdata(adev, psys);
 
@@ -1746,6 +1761,8 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_device *isp = adev->isp;
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
+
+	flush_workqueue(INTEL_IPU4_PSYS_WORK_QUEUE);
 
 	mutex_lock(&intel_ipu4_psys_mutex);
 

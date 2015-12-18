@@ -16,6 +16,7 @@
 #define INTEL_IPU4_PSYS_H
 
 #include <linux/cdev.h>
+#include <linux/workqueue.h>
 
 #include "intel-ipu4.h"
 #include "intel-ipu4-pdata.h"
@@ -45,6 +46,7 @@ struct intel_ipu4_psys {
 	struct ia_css_psys_server_init *server_init;
 	struct list_head active;
 	struct task_struct *isr_thread;
+	struct work_struct watchdog_work;
 
 	/* Resources needed to be managed for process groups */
 	struct intel_ipu4_psys_resource_pool resource_pool;
