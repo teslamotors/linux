@@ -1058,6 +1058,26 @@ next:
 	}
 }
 
+/*
+ * Move all kcmds in all queues into completed state.
+ */
+static void intel_ipu4_psys_flush_kcmds(struct intel_ipu4_psys *psys, int error)
+{
+	struct intel_ipu4_psys_fh *fh;
+	struct intel_ipu4_psys_kcmd *kcmd;
+	int p;
+
+	dev_err(&psys->dev, "flushing all commands with error: %d\n", error);
+
+	list_for_each_entry(fh, &psys->fhs, list) {
+		for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
+			fh->new_kcmd_tail[p] = NULL;
+			list_for_each_entry(kcmd, &fh->kcmds[p], list)
+				intel_ipu4_psys_kcmd_abort(psys, kcmd, error);
+		}
+	}
+}
+
 static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
 {
 	struct intel_ipu4_psys *psys = container_of(work,
@@ -2233,26 +2253,6 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 
 	dev_info(&adev->dev, "removed\n");
 
-}
-
-/*
- * Move all kcmds in all queues into completed state.
- */
-static void intel_ipu4_psys_flush_kcmds(struct intel_ipu4_psys *psys, int error)
-{
-	struct intel_ipu4_psys_fh *fh;
-	struct intel_ipu4_psys_kcmd *kcmd;
-	int p;
-
-	dev_err(&psys->dev, "flushing all commands with error: %d\n", error);
-
-	list_for_each_entry(fh, &psys->fhs, list) {
-		for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
-			fh->new_kcmd_tail[p] = NULL;
-			list_for_each_entry(kcmd, &fh->kcmds[p], list)
-				intel_ipu4_psys_kcmd_abort(psys, kcmd, error);
-		}
-	}
 }
 
 static void intel_ipu4_psys_handle_events(struct intel_ipu4_psys *psys)
