@@ -10,18 +10,6 @@ config VIDEO_INTEL_IPU4
 	Say Y here!
 
 choice
-       prompt "intel-ipu4 hardware stepping"
-       depends on VIDEO_INTEL_IPU4
-       default VIDEO_INTEL_IPU4_A0
-
-config VIDEO_INTEL_IPU4_A0
-       bool "Compile for ipu4 A0"
-
-config VIDEO_INTEL_IPU4_B0
-       bool "Compile for ipu4 B0"
-endchoice
-
-choice
        prompt "intel-ipu4 hardware type"
        depends on VIDEO_INTEL_IPU4
        default VIDEO_INTEL_IPU4_SOC

@@ -53,7 +53,7 @@
  * For A0/1: FW frozen at tag 20151019, so only support max 2 streams
  * For B0/1: FW support max 6 streams
  */
-#if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_A0)
+#ifdef IPU_STEP_BXTA0
 #define INTEL_IPU4_ISYS_MAX_STREAMS 		2
 #else
 #define INTEL_IPU4_ISYS_MAX_STREAMS 		6

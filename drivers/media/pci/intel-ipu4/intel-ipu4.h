@@ -97,8 +97,13 @@ struct intel_ipu4_device {
  */
 #if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_FPGA)
 
-#define is_intel_ipu4_hw_bxt_a0(isp) IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_A0)
-#define is_intel_ipu4_hw_bxt_b0(isp) IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_B0)
+#ifdef IPU_STEP_BXTA0
+#define is_intel_ipu4_hw_bxt_a0(isp) 1
+#define is_intel_ipu4_hw_bxt_b0(isp) 0
+#else
+#define is_intel_ipu4_hw_bxt_a0(isp) 0
+#define is_intel_ipu4_hw_bxt_b0(isp) 1
+#endif
 #define is_intel_ipu4_hw_bxt_fpga(isp) 1
 
 #else /* IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_FPGA) */

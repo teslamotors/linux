@@ -589,7 +589,7 @@ int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 			.mmio_base_address = isys->pdata->base,
 			.firmware_address = fw,
 		},
-#if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4_A0)
+#ifdef IPU_STEP_BXTA0
 		/*
 		 * For A0/1, SRAM partitions is configured by driver,
 		 * For B0/1, this will be done by FW, so the API is removed.
