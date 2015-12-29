@@ -1227,6 +1227,8 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 
 	mutex_init(&b->power_mutex);
 	mutex_init(&b->auth_mutex);
+	init_completion(&b->ish_ipc_complete);
+	init_completion(&b->cse_ipc_complete);
 
 	rval = intel_ipu4_buttress_clk_init(isp);
 	if (rval) {
