@@ -278,7 +278,6 @@ struct intel_ipu4_bus_device *intel_ipu4_bus_add_device(
 		return ERR_PTR(rval);
 	}
 
-	pm_runtime_put_noidle(&adev->dev);
 	pm_runtime_allow(&adev->dev);
 	pm_runtime_enable(&adev->dev);
 
