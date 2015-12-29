@@ -10,15 +10,15 @@ config VIDEO_INTEL_IPU4
 	Say Y here!
 
 choice
-       prompt "intel-ipu4 hardware type"
-       depends on VIDEO_INTEL_IPU4
-       default VIDEO_INTEL_IPU4_SOC
+	prompt "intel-ipu4 hardware type"
+	depends on VIDEO_INTEL_IPU4
+	default VIDEO_INTEL_IPU4_SOC
 
 config VIDEO_INTEL_IPU4_SOC
-       bool "Compile for SOC"
+	bool "Compile for SOC"
 
 config VIDEO_INTEL_IPU4_FPGA
-       bool "Compile for FPGA"
+	bool "Compile for FPGA"
 endchoice
 
 config VIDEO_INTEL_IPU4_DEBUG
