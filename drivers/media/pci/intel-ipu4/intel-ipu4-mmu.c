@@ -18,6 +18,7 @@
 #include <linux/iommu.h>
 #include <linux/iova.h>
 #include <linux/module.h>
+#include <linux/pm_runtime.h>
 #include <linux/sizes.h>
 
 #include "intel-ipu4.h"
@@ -111,14 +112,6 @@ static void tlb_invalidate(struct intel_ipu4_mmu *mmu)
 
 		writel(inv, mmu->mmu_hw[i].base + REG_TLB_INVALIDATE);
 	}
-}
-
-static void set_mapping(struct intel_ipu4_mmu *mmu,
-			struct intel_ipu4_dma_mapping *dmap)
-{
-	WARN_ON(mmu->dmap);
-
-	mmu->dmap = dmap;
 }
 
 #ifdef DEBUG
@@ -521,6 +514,18 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 	return 0;
 }
 
+static void set_mapping(struct intel_ipu4_mmu *mmu,
+			struct intel_ipu4_dma_mapping *dmap)
+{
+	WARN_ON(mmu->dmap);
+
+	mmu->dmap = dmap;
+
+	pm_runtime_get_sync(mmu->dev);
+	intel_ipu4_mmu_hw_init(mmu->dev);
+	pm_runtime_put(mmu->dev);
+}
+
 static int intel_ipu4_mmu_add_device(struct device *dev)
 {
 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
@@ -587,6 +592,7 @@ static int intel_ipu4_mmu_probe(struct intel_ipu4_bus_device *adev)
 	mmu->nr_mmus = pdata->nr_mmus;
 	mmu->tlb_invalidate = tlb_invalidate;
 	mmu->set_mapping = set_mapping;
+	mmu->dev = &adev->dev;
 
 	/*
 	 * FIXME: We can't unload this --- bus_set_iommu() will
