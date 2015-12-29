@@ -52,8 +52,19 @@
 
 #define INTEL_IPU4_PSYS_NUM_DEVICES	4
 
+#ifdef CONFIG_PM
 static int psys_runtime_pm_resume(struct device *dev);
 static int psys_runtime_pm_suspend(struct device *dev);
+#else
+#define pm_runtime_dont_use_autosuspend(d)
+#define pm_runtime_use_autosuspend(d)
+#define pm_runtime_set_autosuspend_delay(d,f)	0
+#define pm_runtime_get_sync(d)			0
+#define pm_runtime_put(d)			0
+#define pm_runtime_put_sync(d)			0
+#define pm_runtime_put_noidle(d)		0
+#define pm_runtime_put_autosuspend(d)		0
+#endif
 
 static dev_t intel_ipu4_psys_dev_t;
 static DECLARE_BITMAP(intel_ipu4_psys_devices, INTEL_IPU4_PSYS_NUM_DEVICES);
@@ -512,6 +523,7 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 
 		if (IS_ERR(psys->isr_thread)) {
 			mutex_unlock(&psys->isr_poll_mutex);
+			pm_runtime_put(&psys->adev->dev);
 			return PTR_ERR(psys->isr_thread);
 		}
 
@@ -1388,6 +1400,7 @@ static void psys_setup_hw(struct intel_ipu4_psys *psys)
 	writel(irqs, base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_ENABLE);
 }
 
+#ifdef CONFIG_PM
 static int psys_runtime_pm_resume(struct device *dev)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
@@ -1482,7 +1495,6 @@ static int psys_runtime_pm_suspend(struct device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
 static const struct dev_pm_ops psys_pm_ops = {
 	.runtime_suspend = psys_runtime_pm_suspend,
 	.runtime_resume = psys_runtime_pm_resume,
@@ -1849,13 +1861,18 @@ static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
 	void __iomem *base = psys->pdata->base;
 	u32 status;
+	int r;
 
-	spin_lock(&psys->power_lock);
-	if (!psys->power) {
-		spin_unlock(&psys->power_lock);
+#ifdef CONFIG_PM
+	if (!READ_ONCE(psys->power))
+		return IRQ_NONE;
+
+	r = pm_runtime_get_sync(&psys->adev->dev);
+	if (r < 0) {
+		pm_runtime_put(&psys->adev->dev);
 		return IRQ_NONE;
 	}
-
+#endif
 	status = readl(base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_STATUS);
 	writel(status, base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_CLEAR);
 
@@ -1864,17 +1881,28 @@ static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
 		intel_ipu4_psys_handle_event(psys);
 	}
 
-	spin_unlock(&psys->power_lock);
+	pm_runtime_put(&psys->adev->dev);
 	return status ? IRQ_HANDLED : IRQ_NONE;
 }
 
 static int intel_ipu4_psys_isr_run(void *data)
 {
 	struct intel_ipu4_psys *psys = data;
+	int r;
 
 	while (!kthread_should_stop()) {
 		usleep_range(100, 500);
+#ifdef CONFIG_PM
+		if (!READ_ONCE(psys->power))
+			continue;
+		r = pm_runtime_get_sync(&psys->adev->dev);
+		if (r < 0) {
+			pm_runtime_put(&psys->adev->dev);
+			continue;
+		}
+#endif
 		intel_ipu4_psys_handle_event(psys);
+		pm_runtime_put(&psys->adev->dev);
 	}
 
 	return 0;
