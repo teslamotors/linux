@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef __IA_CSS_ISYSAPI_FW_TYPES_H__
@@ -43,7 +43,7 @@
  * enum ia_css_isys_resp_type
  */
 enum ia_css_isys_resp_type {
-	IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE,
+	IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE = 0,
 	IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK,
 	IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK,
 	IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK,
@@ -65,7 +65,7 @@ enum ia_css_isys_resp_type {
  * enum ia_css_isys_send_type
  */
 enum ia_css_isys_send_type {
-	IA_CSS_ISYS_SEND_TYPE_STREAM_OPEN,
+	IA_CSS_ISYS_SEND_TYPE_STREAM_OPEN = 0,
 	IA_CSS_ISYS_SEND_TYPE_STREAM_START,
 	IA_CSS_ISYS_SEND_TYPE_STREAM_START_AND_CAPTURE,
 	IA_CSS_ISYS_SEND_TYPE_STREAM_CAPTURE,
@@ -80,7 +80,7 @@ enum ia_css_isys_send_type {
  */
 
 enum ia_css_isys_stream_source {
-	IA_CSS_ISYS_STREAM_SRC_PORT_0,
+	IA_CSS_ISYS_STREAM_SRC_PORT_0 = 0,
 	IA_CSS_ISYS_STREAM_SRC_PORT_1,
 	IA_CSS_ISYS_STREAM_SRC_PORT_2,
 	IA_CSS_ISYS_STREAM_SRC_PORT_3,
@@ -117,7 +117,7 @@ enum ia_css_isys_stream_source {
  * supports upto 4 virtual per physical channel
  */
 enum ia_css_isys_mipi_vc {
-	IA_CSS_ISYS_MIPI_VC_0,
+	IA_CSS_ISYS_MIPI_VC_0 = 0,
 	IA_CSS_ISYS_MIPI_VC_1,
 	IA_CSS_ISYS_MIPI_VC_2,
 	IA_CSS_ISYS_MIPI_VC_3,
@@ -128,7 +128,7 @@ enum ia_css_isys_mipi_vc {
  *  Supported Pixel Frame formats. TODO: ensure following format list is valid
  */
 enum ia_css_isys_frame_format_type {
-	IA_CSS_ISYS_FRAME_FORMAT_NV11,		/* 12 bit YUV 411, Y, UV plane */
+	IA_CSS_ISYS_FRAME_FORMAT_NV11 = 0,	/* 12 bit YUV 411, Y, UV plane */
 	IA_CSS_ISYS_FRAME_FORMAT_NV12,		/* 12 bit YUV 420, Y, UV plane */
 	IA_CSS_ISYS_FRAME_FORMAT_NV12_16,	/* 16 bit YUV 420, Y, UV plane */
 	IA_CSS_ISYS_FRAME_FORMAT_NV12_TILEY,	/* 12 bit YUV 420, Intel proprietary tiled format, TileY */
@@ -258,7 +258,7 @@ enum ia_css_isys_mipi_data_type {
  * Buffers can be queued and de-queued to hand them over between IA and ISYS
  */
 enum ia_css_isys_pin_type {
-	IA_CSS_ISYS_PIN_TYPE_MIPI,		/* Captured as MIPI packets */
+	IA_CSS_ISYS_PIN_TYPE_MIPI = 0,		/* Captured as MIPI packets */
 	IA_CSS_ISYS_PIN_TYPE_RAW_NS,		/* Captured through the ISApf (with/without ISA) and the non-scaled output path */
 	IA_CSS_ISYS_PIN_TYPE_RAW_S,		/* Captured through the ISApf + ISA and the scaled output path */
 	IA_CSS_ISYS_PIN_TYPE_RAW_SOC,		/* Captured through the SoC path */
@@ -274,7 +274,7 @@ enum ia_css_isys_pin_type {
  * enum ia_css_isys_isl_use. Describes the ISL/ISA use
  */
 enum ia_css_isys_isl_use {
-	IA_CSS_ISYS_USE_NO_ISL_NO_ISA,
+	IA_CSS_ISYS_USE_NO_ISL_NO_ISA = 0,
 	IA_CSS_ISYS_USE_SINGLE_DUAL_ISL,
 	IA_CSS_ISYS_USE_SINGLE_ISA,
 	N_IA_CSS_ISYS_USE
@@ -285,7 +285,7 @@ enum ia_css_isys_isl_use {
  * enum ia_css_isys_error. Describes the error type detected by the FW
  */
 enum ia_css_isys_error {
-	IA_CSS_ISYS_ERROR_NONE,					/* No details */
+	IA_CSS_ISYS_ERROR_NONE = 0,				/* No details */
 	IA_CSS_ISYS_ERROR_FW_INTERNAL_CONSISTENCY,		/* enum */
 	IA_CSS_ISYS_ERROR_HW_CONSISTENCY,			/* enum */
 	IA_CSS_ISYS_ERROR_DRIVER_INVALID_COMMAND_SEQUENCE,	/* enum */
@@ -295,6 +295,7 @@ enum ia_css_isys_error {
 	IA_CSS_ISYS_ERROR_INSUFFICIENT_RESOURCES,		/* enum */
 	IA_CSS_ISYS_ERROR_HW_REPORTED_STR2MMIO,			/* HW code */
 	IA_CSS_ISYS_ERROR_HW_REPORTED_SIG2CIO,			/* HW code */
+	IA_CSS_ISYS_ERROR_SENSOR_FW_SYNC,			/* enum */
 	N_IA_CSS_ISYS_ERROR
 };
 

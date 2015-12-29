@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #include "ia_css_isys_private.h"
@@ -244,6 +244,39 @@ SHARED_BUFF_ALLOC_FAILURE:
 		next_frame_buff_counter);
 
 	return EFAULT;
+}
+
+
+/**
+ * ia_css_isys_force_unmap_comm_buff_queue()
+ */
+int ia_css_isys_force_unmap_comm_buff_queue(
+	struct ia_css_isys_context *ctx
+) {
+	int stream_handle;
+	int buff_slot;
+
+	assert(ctx != NULL);
+
+	IA_CSS_TRACE_0(ISYSAPI, WARNING, "ia_css_isys_force_unmap_comm_buff_queue() called\n");
+	for (stream_handle = 0; stream_handle < (int)ctx->num_send_queues; stream_handle++) {
+		assert((ctx->isys_comm_buffer_queue.stream_cfg_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle]) <= STREAM_CFG_BUFS_PER_MSG_QUEUE);
+		verifret((ctx->isys_comm_buffer_queue.stream_cfg_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle]) <= STREAM_CFG_BUFS_PER_MSG_QUEUE, EFAULT);	/* For some reason queue is more than full */
+		for (; ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle] < ctx->isys_comm_buffer_queue.stream_cfg_queue_head[stream_handle]; ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle]++) {
+			IA_CSS_TRACE_1(ISYSAPI, WARNING, "CSS forced unmapping stream_cfg %d\n", ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle]);
+			buff_slot = get_stream_cfg_buff_slot(ctx, stream_handle, ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle] % STREAM_CFG_BUFS_PER_MSG_QUEUE);
+			ia_css_shared_buffer_css_unmap(ctx->isys_comm_buffer_queue.pstream_cfg_buff_id[buff_slot]);
+		}
+		assert((ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]) <= NEXT_FRAME_BUFS_PER_MSG_QUEUE);
+		verifret((ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]) <= NEXT_FRAME_BUFS_PER_MSG_QUEUE, EFAULT);	/* For some reason queue is more than full */
+		for (; ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle] < ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle]; ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]++) {
+			IA_CSS_TRACE_1(ISYSAPI, WARNING, "CSS forced unmapping next_frame %d\n", ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]);
+			buff_slot = get_next_frame_buff_slot(ctx, stream_handle, ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] % NEXT_FRAME_BUFS_PER_MSG_QUEUE);
+			ia_css_shared_buffer_css_unmap(ctx->isys_comm_buffer_queue.pnext_frame_buff_id[buff_slot]);
+		}
+	}
+
+	return 0;
 }
 
 

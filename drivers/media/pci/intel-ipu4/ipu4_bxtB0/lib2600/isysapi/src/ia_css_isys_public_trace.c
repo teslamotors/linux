@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #include "ia_css_isysapi_trace.h"
@@ -48,10 +48,10 @@ int print_handle_context(struct ia_css_isys_context *ctx)
 		IA_CSS_TRACE_4(ISYSAPI, VERBOSE,
 			"\tia_css_isys_context->stream_state[i = %d] = %d\n"
 			"\t\t\tia_css_isys_context->stream_nof_output_pins[i = %d] = %d\n"
+			, i
 			, ctx->stream_state_array[i]
 			, i
-			, ctx->stream_nof_output_pins[i]
-			, i);
+			, ctx->stream_nof_output_pins[i]);
 	}
 	/* Print ctx->ia_css_syscom_context */
 	IA_CSS_TRACE_1(ISYSAPI, VERBOSE,
@@ -198,14 +198,14 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
 /**
  * print_isys_frame_buff_set - formatted print function for struct ia_css_isys_frame_buff_set *next_frame variable
  */
-int print_isys_frame_buff_set(const struct ia_css_isys_frame_buff_set *next_frame)
+int print_isys_frame_buff_set(const struct ia_css_isys_frame_buff_set *next_frame, const unsigned int nof_output_pins)
 {
 	static unsigned int i;
 	verifret(next_frame != NULL, EFAULT);
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Print ia_css_isys_frame_buff_set *next_frame\n"
 		"-------------------------------------------------------------------------------\n");
-	for (i = 0; i < MAX_OPINS; i++) {
+	for (i = 0; i < nof_output_pins; i++) {
 		IA_CSS_TRACE_4(ISYSAPI, VERBOSE,
 			"\tia_css_isys_frame_buff_set->ia_css_isys_output_pin_payload[i = %d].ia_css_return_token = %016lxu\n"
 			"\t\t\tia_css_isys_frame_buff_set->ia_css_isys_output_pin_payload[i = %d].ia_css_input_buffer_css_address = %08xu\n"
@@ -240,45 +240,77 @@ int print_isys_resp_info(struct ia_css_isys_resp_info *received_response)
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ISYS_RESPONSE_INFO\n"
 		"-------------------------------------------------------------------------------\n");
-	if (received_response->type == IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_PIN_DATA_WATERMARK)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_PIN_DATA_WATERMARK\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_FRAME_SOF)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_FRAME_SOF\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_FRAME_EOF)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_FRAME_EOF\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE\n");
-	else if (received_response->type == IA_CSS_ISYS_RESP_TYPE_PIN_DATA_SKIPPED)
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_PIN_DATA_SKIPPED\n");
-	else {
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_rep_type = IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_SKIPPED\n");
+	switch (received_response->type) {
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_PIN_DATA_WATERMARK:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_PIN_DATA_WATERMARK\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_FRAME_SOF:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_FRAME_SOF\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_FRAME_EOF:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_FRAME_EOF\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_PIN_DATA_SKIPPED:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_PIN_DATA_SKIPPED\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_SKIPPED:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_SKIPPED\n");
+		break;
+	default:
+		IA_CSS_TRACE_0(ISYSAPI, ERROR, "\tia_css_isys_resp_info.ia_css_isys_resp_type = INVALID\n");
+		break;
 	}
 
-	IA_CSS_TRACE_3(ISYSAPI, VERBOSE,
+	IA_CSS_TRACE_4(ISYSAPI, VERBOSE,
 		"\tia_css_isys_resp_info.type = %d\n"
+		"\t\t\tia_css_isys_resp_info.stream_handle = %d\n"
 		"\t\t\tia_css_isys_resp_info.time_stamp[0] = %d\n"
-		"\t\t\tia_css_isys_resp_info.time_stamp[1] = %d\n"
-		, received_response->type
-		, received_response->timestamp[0]
-		, received_response->timestamp[1]);
+		"\t\t\tia_css_isys_resp_info.time_stamp[1] = %d\n",
+		received_response->type,
+		received_response->stream_handle,
+		received_response->timestamp[0],
+		received_response->timestamp[1]);
+	IA_CSS_TRACE_5(ISYSAPI, VERBOSE,
+		"\tia_css_isys_resp_info.error = %d\n"
+		"\t\t\tia_css_isys_resp_info.error_details = %d\n"
+		"\t\t\tia_css_isys_resp_info.pin.out_buf_id = %016llxu\n"
+		"\t\t\tia_css_isys_resp_info.pin.addr = %016llxu\n"
+		"\t\t\tia_css_isys_resp_info.pin_id = %d\n",
+		received_response->error,
+		received_response->error_details,
+		(unsigned long long)received_response->pin.out_buf_id,
+		(unsigned long long)received_response->pin.addr,
+		received_response->pin_id);
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "------------------------------------------------------------\n");
 
 	return 0;

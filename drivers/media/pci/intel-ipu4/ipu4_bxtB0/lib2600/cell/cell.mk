@@ -1,14 +1,5 @@
-# Support for Intel Camera Imaging ISP subsystem.
-# Copyright (c) 2010 - 2015, Intel Corporation.
 # 
-# This program is free software; you can redistribute it and/or modify it
-# under the terms and conditions of the GNU General Public License,
-# version 2, as published by the Free Software Foundation.
-# 
-# This program is distributed in the hope it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
+#
 ifndef _CELL_MK_
 _CELL_MK_ = 1
 
@@ -20,15 +11,13 @@ CELL_SOURCES=$(CELL_DIR)/src
 CELL_HOST_FILES =
 CELL_FW_FILES =
 
-ifndef BXT_INTERFACES_ENABLED
-	CELL_HOST_CPPFLAGS = \
-		-I$(CELL_INTERFACE) \
-		-I$(CELL_SOURCES)
+CELL_HOST_CPPFLAGS = \
+	-I$(CELL_INTERFACE) \
+	-I$(CELL_SOURCES)
 
-	CELL_FW_CPPFLAGS = \
-		-I$(CELL_INTERFACE) \
-		-I$(CELL_SOURCES)
-endif
+CELL_FW_CPPFLAGS = \
+	-I$(CELL_INTERFACE) \
+	-I$(CELL_SOURCES)
 
 ifdef 0
 # Disabled until it is decided to go this way or not

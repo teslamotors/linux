@@ -1,8 +1,4 @@
-##
-#Copyright (C) 2014 - 2015 Intel Corporation.
-#Temporary header; this file will get its actual INTEL-CONFIDENTIAL-header or
-#GPLv2-header when it gets packaged into the Windows or Linux driver package.
-##
+# 
 
 SP_CONTROL_CELL			= sp2601_control
 SP_PROXY_CELL			= sp2601_proxy

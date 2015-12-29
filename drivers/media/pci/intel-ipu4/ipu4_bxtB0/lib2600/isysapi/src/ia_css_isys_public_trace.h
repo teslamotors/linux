@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef IA_CSS_ISYSAPI_PUBLIC_TRACE_H
@@ -38,7 +38,7 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
 /**
  * print_isys_frame_buff_set - formatted print function for struct ia_css_isys_frame_buff_set *next_frame variable
  */
-int print_isys_frame_buff_set(const struct ia_css_isys_frame_buff_set *next_frame);
+int print_isys_frame_buff_set(const struct ia_css_isys_frame_buff_set *next_frame, const unsigned int nof_output_pins);
 /**
  * print_isys_isys_resp_info - formatted print function for struct ia_css_isys_frame_buff_set *next_frame variable
  */

@@ -1,14 +1,5 @@
-# Support for Intel Camera Imaging ISP subsystem.
-# Copyright (c) 2010 - 2015, Intel Corporation.
 # 
-# This program is free software; you can redistribute it and/or modify it
-# under the terms and conditions of the GNU General Public License,
-# version 2, as published by the Free Software Foundation.
-# 
-# This program is distributed in the hope it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
+#
 # MODULE is ISYSAPI
 
 ISYSAPI_DIR=$${MODULES_DIR}/isysapi
@@ -36,17 +27,13 @@ ISYSAPI_FW_CPPFLAGS += -DISYSAPI_TRACE_CONFIG=$(ISYSAPI_TRACE_CONFIG_FW)
 
 ISYSAPI_HOST_FILES += $(ISYSAPI_SOURCES)/ia_css_isys_public_trace.c
 
-ifndef BXT_INTERFACES_ENABLED
-	ISYSAPI_HOST_CPPFLAGS += -I$(ISYSAPI_INTERFACE)
-	ISYSAPI_HOST_CPPFLAGS += -I$(ISYSAPI_EXTINCLUDE)
-	ISYSAPI_HOST_CPPFLAGS += -I$(ISYSAPI_EXTINTERFACE)
-endif
+ISYSAPI_HOST_CPPFLAGS += -I$(ISYSAPI_INTERFACE)
+ISYSAPI_HOST_CPPFLAGS += -I$(ISYSAPI_EXTINCLUDE)
+ISYSAPI_HOST_CPPFLAGS += -I$(ISYSAPI_EXTINTERFACE)
 
 ISYSAPI_FW_FILES += $(ISYSAPI_SOURCES)/isys_fw.c
 ISYSAPI_FW_FILES += $(ISYSAPI_SOURCES)/isys_fw_utils.c
 
-ifndef BXT_INTERFACES_ENABLED
-	ISYSAPI_FW_CPPFLAGS += -I$(ISYSAPI_INTERFACE)
-	ISYSAPI_FW_CPPFLAGS += -I$(ISYSAPI_EXTINCLUDE)
-	ISYSAPI_FW_CPPFLAGS += -I$(ISYSAPI_EXTINTERFACE)
-endif
+ISYSAPI_FW_CPPFLAGS += -I$(ISYSAPI_INTERFACE)
+ISYSAPI_FW_CPPFLAGS += -I$(ISYSAPI_EXTINCLUDE)
+ISYSAPI_FW_CPPFLAGS += -I$(ISYSAPI_EXTINTERFACE)
