@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #include "ia_css_psys_device.h"
@@ -90,6 +90,13 @@ int ia_css_process_group_exec_cmd(
 		/* External resource state checks */
 		verifexit(ia_css_can_process_group_start(process_group), EINVAL);
 
+		process_group->state = IA_CSS_PROCESS_GROUP_STARTED;
+		break;
+	case IA_CSS_PROCESS_GROUP_CMD_DISOWN:
+
+		IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_DISOWN: \n");
+		verifexit(state == IA_CSS_PROCESS_GROUP_STARTED, EINVAL);
+
 		cmd_queue_full = ia_css_is_psys_cmd_queue_full(psys_syscom, IA_CSS_PSYS_CMD_QUEUE_COMMAND_ID);
 		retval = EBUSY;
 		verifexit(cmd_queue_full == false, EBUSY);
@@ -102,9 +109,6 @@ int ia_css_process_group_exec_cmd(
 
 		retval = ia_css_psys_cmd_queue_send(psys_syscom, IA_CSS_PSYS_CMD_QUEUE_COMMAND_ID, &psys_cmd);
 		verifexit(retval > 0, EINVAL);
-
-		/* This write cause issues with the flush of the shared buffer */
-		//process_group->state = IA_CSS_PROCESS_GROUP_STARTED;
 		break;
 	case IA_CSS_PROCESS_GROUP_CMD_ABORT:
 

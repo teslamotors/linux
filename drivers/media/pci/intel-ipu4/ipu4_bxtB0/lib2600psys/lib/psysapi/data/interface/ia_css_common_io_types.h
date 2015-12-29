@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef __IA_CSS_COMMON_IO_TYPES
@@ -167,10 +167,10 @@ struct ia_css_sliced_terminal_descriptor_s {
 
 /* DMA based terminals */
 struct ia_css_common_dma_config {
-	unsigned ddr_elems_per_word;
-	unsigned dma_channel[MAX_IO_DMA_CHANNELS];
-	unsigned here_crop_x; /* horizontal cropping in terms of elements on ISP side */
-	unsigned here_crop_y; /* vertical cropping in terms of elements on ISP side */
+	uint32_t ddr_elems_per_word;
+	uint32_t dma_channel[MAX_IO_DMA_CHANNELS];
+	uint32_t here_crop_x; /* horizontal cropping in terms of elements on ISP side */
+	uint32_t here_crop_y; /* vertical cropping in terms of elements on ISP side */
 };
 
 /*

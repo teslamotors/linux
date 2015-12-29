@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef _IA_CSS_CELL_H_
@@ -56,6 +56,10 @@ ia_css_cell_set_master_info_bits(unsigned int ssid, unsigned int cell_id,
 
 STORAGE_CLASS_INLINE void
 ia_css_cell_set_master_segment_info_bits(unsigned int ssid, unsigned int cell_id,
+	unsigned int master, unsigned int segment, unsigned int value);
+
+STORAGE_CLASS_INLINE void
+ia_css_cell_set_master_segment_info_override_bits(unsigned int ssid, unsigned int cell,
 	unsigned int master, unsigned int segment, unsigned int value);
 
 /* Access memories */

@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 
@@ -274,13 +274,15 @@ bool ia_css_is_psys_cmd_queue_full(
 	ia_css_psys_cmd_queue_ID_t		id)
 {
 	bool			is_full = false;
-	unsigned int	num_tokens;
+	int	num_tokens;
 	int				retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_is_psys_cmd_queue_full(): enter: \n");
 	verifexit(context != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_send_port_available(context, (unsigned int)id, &num_tokens) == 0, EINVAL);
+	num_tokens = ia_css_syscom_send_port_available(context, (unsigned int)id);
+	verifexit(num_tokens >= 0, EINVAL);
+
 	is_full = (num_tokens == 0);
 	retval = 0;
 EXIT:
@@ -296,13 +298,15 @@ bool ia_css_is_psys_cmd_queue_not_full(
 	ia_css_psys_cmd_queue_ID_t		id)
 {
 	bool			is_not_full = false;
-	unsigned int	num_tokens;
+	int	num_tokens;
 	int				retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_is_psys_cmd_queue_not_full(): enter: \n");
 	verifexit(context != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_send_port_available(context, (unsigned int)id, &num_tokens) == 0, EINVAL);
+	num_tokens = ia_css_syscom_send_port_available(context, (unsigned int)id);
+	verifexit(num_tokens >= 0, EINVAL);
+
 	is_not_full = (num_tokens != 0);
 	retval = 0;
 EXIT:
@@ -318,14 +322,16 @@ bool ia_css_has_psys_cmd_queue_N_space(
 	const unsigned int						N)
 {
 	bool			has_N_space = false;
-	unsigned int	num_tokens;
+	int	num_tokens;
 	int				retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_has_psys_cmd_queue_N_space(): enter: \n");
 	verifexit(context != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_send_port_available(context, (unsigned int)id, &num_tokens) == 0, EINVAL);
-	has_N_space = (num_tokens >= N);
+	num_tokens = ia_css_syscom_send_port_available(context, (unsigned int)id);
+	verifexit(num_tokens >= 0, EINVAL);
+
+	has_N_space = ((unsigned int)num_tokens >= N);
 EXIT:
 	if (retval != 0) {
 		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_has_psys_cmd_queue_N_space failed\n");
@@ -338,12 +344,14 @@ int ia_css_psys_cmd_queue_get_available_space(
 	ia_css_psys_cmd_queue_ID_t		id)
 {
 	int				N_space = -1;
-	unsigned int	num_tokens;
+	int	num_tokens;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_cmd_queue_get_available_space(): enter: \n");
 	verifexit(context != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_send_port_available(context, (unsigned int)id, &num_tokens) == 0, EINVAL);
+	num_tokens = ia_css_syscom_send_port_available(context, (unsigned int)id);
+	verifexit(num_tokens >= 0, EINVAL);
+
 	N_space = (int)(num_tokens);
 EXIT:
 	if (N_space < 0) {
@@ -374,13 +382,15 @@ bool ia_css_is_psys_event_queue_empty(
 	ia_css_psys_event_queue_ID_t		id)
 {
 	bool			is_empty = false;
-	unsigned int	num_tokens;
+	int	num_tokens;
 	int				retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_is_psys_event_queue_empty(): enter: \n");
 	verifexit(context != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_recv_port_available(context, (unsigned int)id, &num_tokens) == 0, EINVAL);
+	num_tokens = ia_css_syscom_recv_port_available(context, (unsigned int)id);
+	verifexit(num_tokens >= 0, EINVAL);
+
 	is_empty = (num_tokens == 0);
 	retval = 0;
 EXIT:
@@ -396,13 +406,15 @@ bool ia_css_is_psys_event_queue_not_empty(
 	ia_css_psys_event_queue_ID_t		id)
 {
 	bool			is_not_empty = false;
-	unsigned int	num_tokens;
+	int	num_tokens;
 	int				retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_is_psys_event_queue_not_empty(): enter: \n");
 	verifexit(context != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_recv_port_available(context, (unsigned int)id, &num_tokens) == 0, EINVAL);
+	num_tokens = ia_css_syscom_recv_port_available(context, (unsigned int)id);
+	verifexit(num_tokens >= 0, EINVAL);
+
 	is_not_empty = (num_tokens != 0);
 	retval = 0;
 EXIT:
@@ -418,14 +430,16 @@ bool ia_css_has_psys_event_queue_N_msgs(
 	const unsigned int						N)
 {
 	bool			has_N_msgs = false;
-	unsigned int	num_tokens;
+	int	num_tokens;
 	int				retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_has_psys_event_queue_N_msgs(): enter: \n");
 	verifexit(context != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_recv_port_available(context, (unsigned int)id, &num_tokens) == 0, EINVAL);
-	has_N_msgs = (num_tokens >= N);
+	num_tokens = ia_css_syscom_recv_port_available(context, (unsigned int)id);
+	verifexit(num_tokens >= 0, EINVAL);
+
+	has_N_msgs = ((unsigned int)num_tokens >= N);
 	retval = 0;
 EXIT:
 	if (retval != 0) {
@@ -439,12 +453,14 @@ int ia_css_psys_event_queue_get_available_msgs(
 	ia_css_psys_event_queue_ID_t		id)
 {
 	int				N_msgs = -1;
-	unsigned int	num_tokens;
+	int	num_tokens;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_event_queue_get_available_msgs(): enter: \n");
 	verifexit(context != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_recv_port_available(context, (unsigned int)id, &num_tokens) == 0, EINVAL);
+	num_tokens = ia_css_syscom_recv_port_available(context, (unsigned int)id);
+	verifexit(num_tokens >= 0, EINVAL);
+
 	N_msgs = (int)(num_tokens);
 EXIT:
 	if (N_msgs < 0) {
@@ -468,7 +484,7 @@ int ia_css_psys_cmd_queue_send(
 	verifexit(ia_css_is_psys_cmd_queue_not_full(context, id), EBUSY);
 	verifexit(cmd_msg_buffer != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_send_port_transfer(context, (unsigned int)id, cmd_msg_buffer) == 0, EBUSY);
+	verifexit(ia_css_syscom_send_port_transfer(context, (unsigned int)id, cmd_msg_buffer) >= 0, EBUSY);
 
 	count = 1;
 EXIT:
@@ -516,7 +532,7 @@ int ia_css_psys_event_queue_receive(
 	verifexit(ia_css_is_psys_event_queue_not_empty(context, id), EBUSY);
 	verifexit(event_msg_buffer != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_recv_port_transfer(context, (unsigned int)id, event_msg_buffer) == 0, EBUSY);
+	verifexit(ia_css_syscom_recv_port_transfer(context, (unsigned int)id, event_msg_buffer) >= 0, EBUSY);
 
 	count = 1;
 EXIT:

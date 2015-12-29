@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef _IA_CSS_CELL_PROGRAM_LOAD_PROG_IMPL_H_
@@ -40,12 +40,6 @@ ia_css_cell_program_load_header(
 	/* check magic number */
 	if (prog->magic_number != IA_CSS_CELL_PROGRAM_MAGIC_NUMBER)
 		return -1;
-
-#ifndef __VIED_CELL
-	/* check firmware release, on host only, we do not want strncpy/libc on SPC */
-	if (strncmp(prog->release, IA_CSS_FW_RELEASE, IA_CSS_FW_RELEASE_SIZE) != 0)
-		return -2;
-#endif
 
 	return 0;
 }

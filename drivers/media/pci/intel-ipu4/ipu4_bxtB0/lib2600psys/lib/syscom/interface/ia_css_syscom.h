@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef __IA_CSS_SYSCOM_H__
@@ -25,8 +25,12 @@
 
 #include "ia_css_syscom_config.h"
 
-struct ia_css_syscom_context;
+#define ERROR_INVALID_PARAMETER	-1
+#define ERROR_BAD_ADDRESS		-2
+#define ERROR_BUSY				-3
+#define ERROR_NO_MEMORY			-4
 
+struct ia_css_syscom_context;
 
 /**
  * ia_css_syscom_size() - provide syscom external buffer requirements
@@ -37,23 +41,23 @@ struct ia_css_syscom_context;
  * - Provide external buffer requirements
  * - To be used for external buffer allocation
  *
- * Return: none.
  */
 extern void
 ia_css_syscom_size(
 	const struct ia_css_syscom_config *cfg,
-	struct ia_css_syscom_size *size);
+	struct ia_css_syscom_size *size
+);
 
 /**
  * ia_css_syscom_open() - initialize a subsystem context
  * @config: pointer to the configuration data (read)
  * @buf: pointer to externally allocated buffers (read)
+ * @returns: struct ia_css_syscom_context* on success, 0 otherwise.
  *
  * Purpose:
  * - initialize host side data structures
  * - boot the subsystem?
  *
- * Return: struct ia_css_syscom_context* on success, 0 otherwise.
  */
 extern struct ia_css_syscom_context*
 ia_css_syscom_open(
@@ -64,6 +68,7 @@ ia_css_syscom_open(
 /**
  * ia_css_syscom_close() - signal close to cell
  * @context: pointer to the subsystem context
+ * @returns: 0 on success, -2 (ERROR_BUSY) if SPC is not ready yet.
  *
  * Purpose:
  * Request from the Cell to terminate
@@ -79,6 +84,8 @@ ia_css_syscom_close(
  * @force: flag which specifies whether cell
  * state will be checked before freeing the
  * context.
+ * @returns: 0 on success, -2 (ERROR_BUSY) if cell
+ * is busy and call was not forced.
  *
  * Purpose:
  * 2 modes, with first (force==true) immediately
@@ -96,6 +103,7 @@ ia_css_syscom_release(
  * Open a port for sending tokens to the subsystem
  * @context: pointer to the subsystem context
  * @port: send port index
+ * @returns: 0 on success, -1 (ERROR_INVALID_PARAMETER) otherwise.
  */
 extern int
 ia_css_syscom_send_port_open(
@@ -103,6 +111,12 @@ ia_css_syscom_send_port_open(
 	unsigned int port
 );
 
+/**
+ * Closes a port for sending tokens to the subsystem
+ * @context: pointer to the subsystem context
+ * @port: send port index
+ * @returns: 0 on success, -1 (ERROR_INVALID_PARAMETER) otherwise.
+ */
 extern int
 ia_css_syscom_send_port_close(
 	struct ia_css_syscom_context *context,
@@ -113,27 +127,28 @@ ia_css_syscom_send_port_close(
  * Get the number of tokens that can be sent to a port without error.
  * @context: pointer to the subsystem context
  * @port: send port index
- * @num_tokens (output): number of tokens that can be sent
- */
+ * @returns: number of available tokens on success,
+ * -1 (ERROR_INVALID_PARAMETER) otherwise.
+  */
 extern int
 ia_css_syscom_send_port_available(
 	struct ia_css_syscom_context *context,
-        unsigned int port,
-	unsigned int* num_tokens
+	unsigned int port
 );
 
 /**
  * Send a token to the subsystem port
- * Returns an error when there is no space for the token
  * The token size is determined during initialization
  * @context: pointer to the subsystem context
  * @port: send port index
  * @token: pointer to the token value that is transferred to the subsystem
+ * @returns: number of tokens sent on success,
+ * -1 (ERROR_INVALID_PARAMETER) otherwise.
  */
 extern int
 ia_css_syscom_send_port_transfer(
 	struct ia_css_syscom_context *context,
-        unsigned int port,
+	unsigned int port,
 	const void* token
 );
 
@@ -141,6 +156,7 @@ ia_css_syscom_send_port_transfer(
  * Open a port for receiving tokens to the subsystem
  * @context: pointer to the subsystem context
  * @port: receive port index
+ * @returns: 0 on success, -1 (ERROR_INVALID_PARAMETER) otherwise.
  */
 extern int
 ia_css_syscom_recv_port_open(
@@ -148,6 +164,13 @@ ia_css_syscom_recv_port_open(
 	unsigned int port
 );
 
+/**
+ * Closes a port for receiving tokens to the subsystem
+ * Returns 0 on success, otherwise negative value of error code
+ * @context: pointer to the subsystem context
+ * @port: receive port index
+ * @returns: 0 on success, -1 (ERROR_INVALID_PARAMETER) otherwise.
+ */
 extern int
 ia_css_syscom_recv_port_close(
 	struct ia_css_syscom_context* context,
@@ -158,27 +181,28 @@ ia_css_syscom_recv_port_close(
  * Get the number of tokens that can be received from a port without errors.
  * @context: pointer to the subsystem context
  * @port: receive port index
- * @num_tokens (output): number of tokens that can be received
+ * @returns: number of available tokens on success,
+ * -1 (ERROR_INVALID_PARAMETER) otherwise.
  */
 extern int
 ia_css_syscom_recv_port_available(
 	struct ia_css_syscom_context* context,
-        unsigned int port,
-	unsigned int* num_tokens
+	unsigned int port
 );
 
 /**
  * Receive a token from the subsystem port
- * Returns an error when there are no tokens available
  * The token size is determined during initialization
  * @context: pointer to the subsystem context
  * @port: receive port index
  * @token (output): pointer to (space for) the token to be received
+ * @returns: number of tokens received on success,
+ * -1 (ERROR_INVALID_PARAMETER) otherwise.
  */
 extern int
 ia_css_syscom_recv_port_transfer(
 	struct ia_css_syscom_context* context,
-        unsigned int port,
+	unsigned int port,
 	void* token
 );
 

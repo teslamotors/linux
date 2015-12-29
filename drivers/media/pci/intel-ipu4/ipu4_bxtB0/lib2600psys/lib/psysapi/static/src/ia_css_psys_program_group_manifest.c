@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 
@@ -117,7 +117,6 @@ EXIT:
 	return size;
 }
 
-
 /*
  * Model and/or check refinements
  * - Parallel programs do not yet have mutual exclusive alternatives
@@ -137,8 +136,10 @@ bool ia_css_is_program_group_manifest_valid(
 /* Use a standard bitmap type for the minimum logic to check the DAG, generic functions can be used for the kernel enable bitmaps; Later */
 	vied_nci_resource_bitmap_t	terminal_bitmap;
 	int				terminal_bitmap_weight;
-	bool				has_parameter_terminal = false;
+	bool				has_parameter_terminal_in = false;
+	bool				has_parameter_terminal_out = false;
 	bool				has_program_terminal = false;
+	bool				has_program_terminal_sequencer_info = false;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_is_program_group_manifest_valid(): enter: \n");
 
@@ -161,15 +162,20 @@ bool ia_css_is_program_group_manifest_valid(
 /* Check the kernel bitmaps for terminals */
 	for (i = 0; i < (int)terminal_count; i++) {
 		ia_css_terminal_manifest_t	*terminal_manifest_i = ia_css_program_group_manifest_get_terminal_manifest(manifest, i);
-		bool						is_parameter = ia_css_is_terminal_manifest_parameter_terminal(terminal_manifest_i);
+		bool						is_parameter_in = (IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN == ia_css_terminal_manifest_get_type(terminal_manifest_i));
+		bool						is_parameter_out = (IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT == ia_css_terminal_manifest_get_type(terminal_manifest_i));
 		bool						is_data = ia_css_is_terminal_manifest_data_terminal(terminal_manifest_i);
 		bool						is_program = ia_css_is_terminal_manifest_program_terminal(terminal_manifest_i);
 		bool						is_spatial_param = ia_css_is_terminal_manifest_spatial_parameter_terminal(terminal_manifest_i);
 
-		if (is_parameter) {
-/* There can be only one (cached) parameter terminal it serves kernels, not programs */
-			verifexit(!has_parameter_terminal, EINVAL);
-			has_parameter_terminal = is_parameter;
+		if (is_parameter_in) {
+/* There can be only one cached in parameter terminal it serves kernels, not programs */
+			verifexit(!has_parameter_terminal_in , EINVAL);
+			has_parameter_terminal_in = is_parameter_in;
+		} else if (is_parameter_out) {
+/* There can be only one cached out parameter terminal it serves kernels, not programs */
+			verifexit(!has_parameter_terminal_out , EINVAL);
+			has_parameter_terminal_out = is_parameter_out;
 		} else if (is_data) {
 			ia_css_data_terminal_manifest_t	*dterminal_manifest_i = (ia_css_data_terminal_manifest_t *)terminal_manifest_i;
 			ia_css_kernel_bitmap_t		terminal_bitmap_i = ia_css_data_terminal_manifest_get_kernel_bitmap(dterminal_manifest_i);
@@ -179,7 +185,10 @@ bool ia_css_is_program_group_manifest_valid(
 			verifexit(ia_css_is_kernel_bitmap_onehot(terminal_bitmap_i), EINVAL);
 		} else if (is_program) {
 			verifexit(!has_program_terminal, EINVAL);
+			verifexit(terminal_manifest_i, EINVAL);
 			has_program_terminal = is_program;
+			has_program_terminal_sequencer_info =
+				(((ia_css_program_terminal_manifest_t *)terminal_manifest_i)->kernel_fragment_sequencer_info_manifest_info_count != 0);
 		} else {
 			const ia_css_spatial_param_terminal_manifest_t *spatial_param_man =
 				(const ia_css_spatial_param_terminal_manifest_t *)terminal_manifest_i;
@@ -377,12 +386,21 @@ bool ia_css_is_program_group_manifest_valid(
 
 	terminal_bitmap_weight = vied_nci_bitmap_compute_weight(terminal_bitmap);
 	verifexit(terminal_bitmap_weight >= 0, EINVAL);
-	if (has_parameter_terminal) {
-		if (has_program_terminal) {
-			verifexit((terminal_bitmap_weight == (terminal_count - 2)), EINVAL);
-		} else {
-			verifexit((terminal_bitmap_weight == (terminal_count - 1)), EINVAL);
+	if (has_parameter_terminal_in || has_parameter_terminal_out || has_program_terminal) {
+		int skip_terminal_count = 0;
+		if (has_parameter_terminal_in) {
+			skip_terminal_count++;
 		}
+		if (has_parameter_terminal_out) {
+			skip_terminal_count++;
+		}
+		if (has_program_terminal) {
+			skip_terminal_count++;
+		}
+		if (has_program_terminal_sequencer_info) {
+			skip_terminal_count--;
+		}
+		verifexit((terminal_bitmap_weight == (terminal_count - skip_terminal_count)), EINVAL);
 	} else {
 		verifexit((terminal_bitmap_weight == terminal_count), EINVAL);
 	}

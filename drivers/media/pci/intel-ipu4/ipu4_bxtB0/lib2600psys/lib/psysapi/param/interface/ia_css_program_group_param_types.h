@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef __IA_CSS_PROGRAM_GROUP_PARAM_TYPES_H_INCLUDED__
@@ -43,9 +43,9 @@ struct ia_css_terminal_param_s {
 	uint16_t							index[IA_CSS_N_DATA_DIMENSION]; /**< Mapping to the index field of the terminal descriptor */
 	uint16_t							fragment_dimensions[IA_CSS_N_DATA_DIMENSION];		/**< Logical fragment dimension, TODO: fragment dimensions can be different per fragment */
 	uint32_t							stride; /**< Stride of a frame */
-	uint16_t							offset; /**< Offset in bytes to first fragment */
-	uint8_t								bpp;										/**< Bits per pixel */
-	uint8_t								reserved[1];
+	uint16_t							offset;	/**< Offset in bytes to first fragment */
+	uint8_t								bpp;						/**< Bits per pixel */
+	uint8_t								bpe;						/**< Bits per element */
 };
 
 typedef struct ia_css_program_group_param_s		ia_css_program_group_param_t;

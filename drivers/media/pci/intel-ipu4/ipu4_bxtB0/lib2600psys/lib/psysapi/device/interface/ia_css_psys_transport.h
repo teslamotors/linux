@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef __IA_CSS_PSYS_TRANSPORT_H_INCLUDED__
@@ -23,41 +23,62 @@
  * The ID's of the Psys specific queues.
  */
 typedef enum ia_css_psys_cmd_queues {
-	IA_CSS_PSYS_CMD_QUEUE_COMMAND_ID = 0,		/**< The in-order queue for scheduled proces groups */
-	IA_CSS_PSYS_CMD_QUEUE_DEVICE_ID,		/**< The in-order queue for comamnds changing psys or process group state */
+	IA_CSS_PSYS_CMD_QUEUE_COMMAND_ID = 0,		/**< The in-order queue for scheduled process groups */
+	IA_CSS_PSYS_CMD_QUEUE_DEVICE_ID,		/**< The in-order queue for commands changing psys or process group state */
 	IA_CSS_N_PSYS_CMD_QUEUE_ID
 } ia_css_psys_cmd_queue_ID_t;
 
 typedef enum ia_css_psys_event_queues {
-	IA_CSS_PSYS_EVENT_QUEUE_MAIN_ID,			/**< The in-order queue for event returns */
+	IA_CSS_PSYS_EVENT_QUEUE_MAIN_ID,		/**< The in-order queue for event returns */
 	IA_CSS_N_PSYS_EVENT_QUEUE_ID
 } ia_css_psys_event_queue_ID_t;
 
+/********************************************************
+ * The upper (new) definition of ia_css_psys_event_types should be renamed and used.
+ * The lower (old) one should be removed. It is kept here to avoid compilation errors.
+ ********************************************************/
+typedef enum ia_css_psys_event_typesNEW {
+	IA_CSS_PSYS_EVENT_TYPE_SUCCESS = 0,				/**< No error to report. */
+	IA_CSS_PSYS_EVENT_TYPE_UNKNOWN_ERROR = 1,			/**< Unknown unhandled error */
+	/* Retrieving remote object: */
+	IA_CSS_PSYS_EVENT_TYPE_RET_REM_OBJ_NOT_FOUND = 2,		/**< Object ID not found */
+	IA_CSS_PSYS_EVENT_TYPE_RET_REM_OBJ_TOO_BIG = 3,			/**< Objects too big, or size is zero. */
+	IA_CSS_PSYS_EVENT_TYPE_RET_REM_OBJ_DDR_TRANS_ERR = 4,		/**< Failed to load whole process group from tproxy/dma  */
+	IA_CSS_PSYS_EVENT_TYPE_RET_REM_OBJ_NULL_PKG_DIR_ADDR = 5,	/**< The proper package could not be found */
+	/* Process group: */
+	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_LOAD_FRAME_ERR = 6,		/**< Failed to run, error while loading frame */
+	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_LOAD_FRAGMENT_ERR = 7,		/**< Failed to run, error while loading fragment */
+	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_PROCESS_COUNT_ZERO = 8,		/**< The process count of the process group is zero */
+	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_PROCESS_INIT_ERR = 9,		/**< Process(es) initialization */
+	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_ABORT = 10,			/**< Aborted (after host request) */
+	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_NULL = 11,			/**< NULL pointer in the process group */
+} ia_css_psys_event_typeNEW_t;
+
 typedef enum ia_css_psys_event_types {
-	IA_CSS_PSYS_EVENT_TYPE_CMD_COMPLETE,			/**< Command processed succussfully */
-	IA_CSS_PSYS_EVENT_TYPE_FRAGMENT_COMPLETE,		/**< Fragment processed succussfully */
+	IA_CSS_PSYS_EVENT_TYPE_CMD_COMPLETE,			/**< Command processed successfully */
+	IA_CSS_PSYS_EVENT_TYPE_FRAGMENT_COMPLETE,		/**< Fragment processed successfully */
 	IA_CSS_PSYS_EVENT_TYPE_ERROR				/**< Error */
 } ia_css_psys_event_type_t;
-
+/********************************************************/
 
 #define IA_CSS_PSYS_CMD_BITS					64
 struct ia_css_psys_cmd_s {
-	uint16_t			command;				/**< The command issued to the process group */
-	uint16_t			msg;					/**< Message field of the command */
-	uint32_t			process_group;			/**< The process group reference */
+	uint16_t			command;		/**< The command issued to the process group */
+	uint16_t			msg;			/**< Message field of the command */
+	uint32_t			process_group;		/**< The process group reference */
 };
 
 #define IA_CSS_PSYS_EVENT_BITS					128
 struct ia_css_psys_event_s {
-	uint16_t			status;					/**< The (return) status of the command issued to the process group this event refers to */
-	uint16_t			command;				/**< The command issued to the process group this event refers to */
-	uint32_t			process_group;			/**< The process group reference */
-	uint64_t			token;					/**< This token (size) must match the token registered in a process group */
+	uint16_t			status;			/**< The (return) status of the command issued to the process group this event refers to */
+	uint16_t			command;		/**< The command issued to the process group this event refers to */
+	uint32_t			process_group;		/**< The process group reference */
+	uint64_t			token;			/**< This token (size) must match the token registered in a process group */
 };
 
 struct ia_css_psys_buffer_s {
-	void				*host_buffer;			/**< The in-order queue for scheduled proces groups */
-	vied_vaddress_t		*isp_buffer;
+	void				*host_buffer;		/**< The in-order queue for scheduled process groups */
+	vied_vaddress_t			*isp_buffer;
 };
 
 #endif

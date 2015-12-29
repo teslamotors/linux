@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef _IPU_DEVICE_CELL_PROPERTIES_FUNC_H_
@@ -114,6 +114,15 @@ ipu_device_cell_master_info_reg(const unsigned int cell_id, const unsigned int m
 	assert(master_id < ipu_device_cell_num_masters(cell_id));
 	return
 		ipu_device_cell_properties[cell_id].type_properties->master[master_id].info_bits_register;
+}
+
+STORAGE_CLASS_INLINE unsigned int
+ipu_device_cell_master_info_override_reg(const unsigned int cell_id, const unsigned int master_id)
+{
+	assert(cell_id < NUM_CELLS);
+	assert(master_id < ipu_device_cell_num_masters(cell_id));
+	return
+		ipu_device_cell_properties[cell_id].type_properties->master[master_id].info_override_bits_register;
 }
 
 STORAGE_CLASS_INLINE unsigned int

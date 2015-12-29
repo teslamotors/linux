@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #include "ia_css_syscom.h"
@@ -93,7 +93,7 @@ EXIT3:	shared_memory_free(mmid, buf->ibuf_host);
 EXIT4:	shared_memory_unmap(ssid, mmid, buf->shm_cell);
 EXIT5:	shared_memory_free(mmid, buf->shm_host);
 EXIT6:	ia_css_cpu_mem_free(buf->cpu);
-EXIT7:	return ENOMEM;
+EXIT7:	return ERROR_NO_MEMORY;
 }
 
 static void
@@ -319,7 +319,7 @@ ia_css_syscom_close(
 
 	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_CONFIG_REG, ctx->env.ssid);
 	if (state != SYSCOM_CLOSE_REQ_STATE_READY) {
-		return EBUSY; /* SPC is not ready to handle close request yet */
+		return ERROR_BUSY; /* SPC is not ready to handle close request yet */
 	}
 
 	/* set close request flag */
@@ -348,7 +348,7 @@ ia_css_syscom_release(
 	/* check if release is forced, an verify cell state if it is not */
 	if (!force) {
 		if (!syscom_cell_is_ready(ctx->env.ssid, ctx->cell_regs_addr)) {
-			return EBUSY;
+			return ERROR_BUSY;
 		}
 	}
 
@@ -361,15 +361,14 @@ ia_css_syscom_release(
 	return 0;
 }
 
-
 int ia_css_syscom_send_port_open(
 	struct ia_css_syscom_context* ctx,
 	unsigned int port
 )
 {
 	/* check parameters */
-	verifret(ctx != NULL, EFAULT);
-	verifret(port < ctx->num_input_queues, EINVAL);
+	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
+	verifret(port < ctx->num_input_queues, ERROR_INVALID_PARAMETER);
 
 	/* initialize the port */
 	send_port_open(ctx->send_port + port, ctx->input_queue + port, &(ctx->env));
@@ -383,25 +382,22 @@ int ia_css_syscom_send_port_close(
 )
 {
 	/* check parameters */
-	verifret(ctx != NULL, EFAULT);
-	verifret(port < ctx->num_input_queues, EINVAL);
+	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
+	verifret(port < ctx->num_input_queues, ERROR_INVALID_PARAMETER);
 
 	return 0;
 }
 
 int ia_css_syscom_send_port_available(
 	struct ia_css_syscom_context* ctx,
-	unsigned int port,
-	unsigned int* num_tokens
+	unsigned int port
 )
 {
 	/* check params */
-	verifret(ctx != NULL, EFAULT);
-	verifret(port < ctx->num_input_queues, EINVAL);
+	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
+	verifret(port < ctx->num_input_queues, ERROR_INVALID_PARAMETER);
 
-	*num_tokens = send_port_available(ctx->send_port + port);
-
-	return 0;
+	return send_port_available(ctx->send_port + port);
 }
 
 int ia_css_syscom_send_port_transfer(
@@ -410,17 +406,11 @@ int ia_css_syscom_send_port_transfer(
 	const void* token
 )
 {
-	unsigned int num_tokens;
-
 	/* check params */
-	verifret(ctx != NULL, EFAULT);
-	verifret(port < ctx->num_input_queues, EINVAL);
+	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
+	verifret(port < ctx->num_input_queues, ERROR_INVALID_PARAMETER);
 
-	num_tokens = send_port_transfer(ctx->send_port + port, token);
-
-	if (!num_tokens) return EWOULDBLOCK;
-
-	return 0;
+	return send_port_transfer(ctx->send_port + port, token);
 }
 
 int ia_css_syscom_recv_port_open(
@@ -429,8 +419,8 @@ int ia_css_syscom_recv_port_open(
 )
 {
 	/* check parameters */
-	verifret(ctx != NULL, EFAULT);
-	verifret(port < ctx->num_output_queues, EINVAL);
+	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
+	verifret(port < ctx->num_output_queues, ERROR_INVALID_PARAMETER);
 
 	/* initialize the port */
 	recv_port_open(ctx->recv_port + port, ctx->output_queue + port, &(ctx->env));
@@ -444,8 +434,8 @@ int ia_css_syscom_recv_port_close(
 )
 {
 	/* check parameters */
-	verifret(ctx != NULL, EFAULT);
-	verifret(port < ctx->num_output_queues, EINVAL);
+	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
+	verifret(port < ctx->num_output_queues, ERROR_INVALID_PARAMETER);
 
 	return 0;
 }
@@ -456,17 +446,14 @@ int ia_css_syscom_recv_port_close(
 int
 ia_css_syscom_recv_port_available(
 	struct ia_css_syscom_context* ctx,
-        unsigned int port,
-	unsigned int* num_tokens
+	unsigned int port
 )
 {
 	/* check params */
-	verifret(ctx != NULL, EFAULT);
-	verifret(port < ctx->num_output_queues, EINVAL);
+	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
+	verifret(port < ctx->num_output_queues, ERROR_INVALID_PARAMETER);
 
-	*num_tokens = recv_port_available(ctx->recv_port + port);
-
-	return 0;
+	return recv_port_available(ctx->recv_port + port);
 }
 
 
@@ -477,19 +464,13 @@ ia_css_syscom_recv_port_available(
 int
 ia_css_syscom_recv_port_transfer(
 	struct ia_css_syscom_context* ctx,
-        unsigned int port,
+	unsigned int port,
 	void* token
 )
 {
-	unsigned int num_tokens;
-
 	/* check params */
-	verifret(ctx != NULL, EFAULT);
-	verifret(port < ctx->num_output_queues, EINVAL);
+	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
+	verifret(port < ctx->num_output_queues, ERROR_INVALID_PARAMETER);
 
-	num_tokens = recv_port_transfer(ctx->recv_port + port, token);
-
-	if (!num_tokens) return EWOULDBLOCK;
-
-	return 0;
+	return recv_port_transfer(ctx->recv_port + port, token);
 }

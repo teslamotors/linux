@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 
@@ -389,9 +389,22 @@ int ia_css_process_group_submit(
 int ia_css_process_group_start(
 	ia_css_process_group_t					*process_group)
 {
+#ifndef API_SPLIT_START_STATE_UPDATE
+	/* backwards-compatible implementation implicitly calls the new disown function */
+	int retval;
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_start(): enter: [backwards compatible version] \n");
+
+	retval = ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_START);
+	if (retval != 0) {
+		return retval;
+	}
+
+	return ia_css_process_group_disown(process_group);
+#else
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_start(): enter: \n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_START);
+#endif
 }
 
 int ia_css_process_group_stop(
@@ -440,6 +453,14 @@ int ia_css_process_group_abort(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_abort(): enter: \n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_ABORT);
+}
+
+int ia_css_process_group_disown(
+	ia_css_process_group_t					*process_group)
+{
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_disown(): enter: \n");
+
+	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_DISOWN);
 }
 
 extern uint64_t ia_css_process_group_get_token(
@@ -953,9 +974,10 @@ bool ia_css_can_process_group_start (
 			/* buffer_state is applicable only for data terminals*/
 			ia_css_frame_t	*frame = ia_css_data_terminal_get_frame((ia_css_data_terminal_t *)terminal);
 			bool is_input = ia_css_is_terminal_input(terminal);
+			/* check for NULL here. then invoke next 2 statements.*/
+			verifexit(frame != NULL, EINVAL);
 			IA_CSS_TRACE_5(PSYSAPI_DYNAMIC, VERBOSE, "\tTerminal %d: buffer_state %u, access_type %u, data_bytes %u, data %u\n",
 				i, frame->buffer_state, frame->access_type, frame->data_bytes, frame->data);
-			verifexit(frame != NULL, EINVAL);
 			buffer_state = ia_css_frame_get_buffer_state(frame);
 
 			ok = ((is_input && (buffer_state == IA_CSS_BUFFER_FULL)) || (!is_input && (buffer_state == IA_CSS_BUFFER_EMPTY)));

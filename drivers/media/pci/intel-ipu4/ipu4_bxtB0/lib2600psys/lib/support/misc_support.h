@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef __MISC_SUPPORT_H_INCLUDED__
@@ -35,5 +35,16 @@
 
 #define _CAT3(a, b, c)	a ## b ## c
 #define CAT3(a, b, c)	_CAT3(a, b, c)
+
+/* Derive METHOD */
+#if defined(C_RUN)
+	#define HIVE_METHOD "crun"
+#elif defined(HRT_UNSCHED)
+	#define HIVE_METHOD "unsched"
+#elif defined(HRT_SCHED)
+	#define HIVE_METHOD "sched"
+#else
+	#define HIVE_METHOD "target"
+#endif
 
 #endif /* __MISC_SUPPORT_H_INCLUDED__ */

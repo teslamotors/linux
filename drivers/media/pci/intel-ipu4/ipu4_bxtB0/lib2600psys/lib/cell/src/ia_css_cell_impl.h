@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef _IA_CSS_CELL_IMPL_H_
@@ -138,6 +138,22 @@ ia_css_cell_set_master_segment_info_bits(unsigned int ssid, unsigned int cell,
 
 	addr = ipu_device_cell_memory_address(cell, 0);
 	addr += ipu_device_cell_master_info_reg(cell, master);
+	addr += segment * ipu_device_cell_master_stride(cell, master);
+	ia_css_cmem_store_32(ssid, addr, value);
+}
+
+STORAGE_CLASS_INLINE void
+ia_css_cell_set_master_segment_info_override_bits(unsigned int ssid, unsigned int cell,
+	unsigned int master, unsigned int segment, unsigned int value)
+{
+	unsigned int addr;
+
+	assert(cell < ipu_device_cell_num_devices());
+	assert(master < ipu_device_cell_num_masters(cell));
+	assert(segment < ipu_device_cell_master_num_segments(cell, master));
+
+	addr = ipu_device_cell_memory_address(cell, 0);
+	addr += ipu_device_cell_master_info_override_reg(cell, master);
 	addr += segment * ipu_device_cell_master_stride(cell, master);
 	ia_css_cmem_store_32(ssid, addr, value);
 }

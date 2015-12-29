@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 
@@ -456,12 +456,12 @@ uint8_t ia_css_program_manifest_get_program_dependency_count(
 }
 
 uint8_t ia_css_program_manifest_get_program_dependency(
-	const ia_css_program_manifest_t			*manifest,
-	const unsigned int						index)
+	const ia_css_program_manifest_t *manifest,
+	const unsigned int		index)
 {
-	uint8_t	program_dependency = (uint8_t)~0;
+	uint8_t program_dependency = 0xFF;
 	uint8_t *program_dep_ptr;
-	uint8_t	program_dependency_count;
+	uint8_t program_dependency_count;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_manifest_get_program_dependency(): enter:\n");
 
@@ -524,9 +524,9 @@ uint8_t ia_css_program_manifest_get_terminal_dependency(
 	const ia_css_program_manifest_t	*manifest,
 	const unsigned int	index)
 {
-	uint8_t	terminal_dependency = (uint8_t)~0;
+	uint8_t terminal_dependency = 0xFF;
 	uint8_t *terminal_dep_ptr;
-	uint8_t	terminal_dependency_count = ia_css_program_manifest_get_terminal_dependency_count(manifest);
+	uint8_t terminal_dependency_count = ia_css_program_manifest_get_terminal_dependency_count(manifest);
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_manifest_get_terminal_dependency(): enter:\n");
 
@@ -546,8 +546,9 @@ int ia_css_program_manifest_set_terminal_dependency(
 {
 	int	retval = -1;
 	uint8_t *terminal_dep_ptr;
-	uint8_t	terminal_dependency_count = ia_css_program_manifest_get_terminal_dependency_count(manifest);
-	uint8_t	terminal_count = ia_css_program_group_manifest_get_terminal_count(ia_css_program_manifest_get_parent(manifest));
+	uint8_t terminal_dependency_count = ia_css_program_manifest_get_terminal_dependency_count(manifest);
+	uint8_t terminal_count =
+		ia_css_program_group_manifest_get_terminal_count(ia_css_program_manifest_get_parent(manifest));
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_manifest_set_terminal_dependency(): enter:\n");
 

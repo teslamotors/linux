@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 
@@ -191,6 +191,7 @@ ia_css_terminal_t *ia_css_terminal_create(
 		}
 		dterminal->frame_descriptor.stride[0] = terminal_param->stride;
 		dterminal->frame_descriptor.bpp = terminal_param->bpp;
+		dterminal->frame_descriptor.bpe = terminal_param->bpe;
 		/* initial solution for single fragment initialization */
 		/* TODO: where to get the fragment description params from??? */
 		if (fragment_count > 0) {
@@ -230,12 +231,14 @@ ia_css_terminal_t *ia_css_terminal_create(
 		ia_css_kernel_fragment_sequencer_info_desc_t* sequencer_info_desc_base = NULL;
 		uint16_t section_count = prog_terminal_man->fragment_param_manifest_section_desc_count;
 		uint16_t manifest_info_count = prog_terminal_man->kernel_fragment_sequencer_info_manifest_info_count;
+		uint16_t nof_command_objs = 0; /* information needs to come from user or manifest once the size sizeof function is updated. */
 		size_t curr_offset = 0;
 
-		prog_terminal->fragment_param_section_desc_offset = sizeof(ia_css_program_terminal_t);
-
-		prog_terminal->kernel_fragment_sequencer_info_desc_offset = prog_terminal->fragment_param_section_desc_offset +
-			(fragment_count * section_count * sizeof(ia_css_fragment_param_section_desc_t));
+		prog_terminal->kernel_fragment_sequencer_info_desc_offset = sizeof(ia_css_program_terminal_t);
+		prog_terminal->fragment_param_section_desc_offset =
+			prog_terminal->kernel_fragment_sequencer_info_desc_offset +
+			(fragment_count * manifest_info_count * sizeof(ia_css_kernel_fragment_sequencer_info_desc_t)) +
+			(nof_command_objs * sizeof(ia_css_kernel_fragment_sequencer_command_desc_t));
 
 		NOT_USED(sequencer_info_desc_base);
 		for (i = 0; i < fragment_count; i++) {

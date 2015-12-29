@@ -1,14 +1,5 @@
-# Support for Intel Camera Imaging ISP subsystem.
-# Copyright (c) 2010 - 2015, Intel Corporation.
 # 
-# This program is free software; you can redistribute it and/or modify it
-# under the terms and conditions of the GNU General Public License,
-# version 2, as published by the Free Software Foundation.
-# 
-# This program is distributed in the hope it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
+#
 # MODULE is PSYSAPI
 #
 ifdef _H_PSYSAPI_MK
@@ -45,21 +36,19 @@ PSYSAPI_PROCESS_GROUP_HOST_FILES += $(PSYSAPI_DIR)/sim/src/ia_css_psys_process_g
 # for now disabled, implementation for now provided by bxt psys api impl
 #PSYSAPI_HOST_FILES    += $(PSYSAPI_DIR)/device/src/ia_css_psys_device.c
 
-ifndef BXT_INTERFACES_ENABLED
-	PSYSAPI_HOST_CPPFLAGS  = -I$(PSYSAPI_DIR)/interface
-	PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/device/interface
-	PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/dynamic/interface
-	PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/data/interface
-	PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/static/interface
-	PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/kernel/interface
-	PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/param/interface
-	PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/param/src
-	PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/sim/interface
+PSYSAPI_HOST_CPPFLAGS  = -I$(PSYSAPI_DIR)/interface
+PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/device/interface
+PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/dynamic/interface
+PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/data/interface
+PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/static/interface
+PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/kernel/interface
+PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/param/interface
+PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/param/src
+PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/sim/interface
 
-	PSYSAPI_FW_CPPFLAGS = $(PSYSAPI_HOST_CPPFLAGS)
-	PSYSAPI_FW_CPPFLAGS += -I$(PSYSAPI_DIR)/static/src
-	PSYSAPI_SYSTEM_GLOBAL_CPPFLAGS += -I$(PSYSAPI_DIR)/sim/interface
-endif
+PSYSAPI_FW_CPPFLAGS = $(PSYSAPI_HOST_CPPFLAGS)
+PSYSAPI_FW_CPPFLAGS += -I$(PSYSAPI_DIR)/static/src
+PSYSAPI_SYSTEM_GLOBAL_CPPFLAGS += -I$(PSYSAPI_DIR)/sim/interface
 
 # This one needs fixing. This should not be a PSYS api include!!!
 PSYSAPI_HOST_CPPFLAGS += -I$${MODULES_DIR}/../hive_isp_css_include

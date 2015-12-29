@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
-* 
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-* 
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef __IA_CSS_PSYS_PROCESS_GROUP_HSYS_KERNEL_H_INCLUDED__
@@ -173,6 +173,20 @@ extern int ia_css_process_group_reset(
  @return < 0 on error
  */
 extern int ia_css_process_group_abort(
+	ia_css_process_group_t					*process_group);
+
+/*! Release ownership of the process group
+
+ @param	process_group[in]		process group object
+
+ Note: Release notifies PSYS and hands over ownership of the
+ process group from SW to FW
+
+ Precondition: The process group must be in the started state
+
+ @return < 0 on error
+ */
+extern int ia_css_process_group_disown(
 	ia_css_process_group_t					*process_group);
 
 /*

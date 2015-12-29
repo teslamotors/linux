@@ -11,6 +11,8 @@
 * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 * more details.
 */
+/* Generated file - please do not edit. */
+
 #ifndef _IPU_DEVICE_CELL_PROPERTIES_DEFS_H_
 #define _IPU_DEVICE_CELL_PROPERTIES_DEFS_H_
 #define SPC0_REGS_CBUS_ADDRESS 0x00000000
@@ -23,3 +25,4 @@
 #define SPP1_DMEM_CBUS_ADDRESS 0x00038000
 #define SPP1_DMEM_DBUS_ADDRESS 0x02030000
 #endif /* _IPU_DEVICE_CELL_PROPERTIES_DEFS_H_ */
+
