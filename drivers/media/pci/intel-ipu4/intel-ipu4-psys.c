@@ -1844,7 +1844,7 @@ static void intel_ipu4_psys_handle_event(struct intel_ipu4_psys *psys)
 	spin_unlock_irqrestore(&psys->lock, flags);
 }
 
-static irqreturn_t psys_isr(struct intel_ipu4_bus_device *adev)
+static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
 	void __iomem *base = psys->pdata->base;
@@ -1883,7 +1883,7 @@ static int intel_ipu4_psys_isr_run(void *data)
 static struct intel_ipu4_bus_driver intel_ipu4_psys_driver = {
 	.probe = intel_ipu4_psys_probe,
 	.remove = intel_ipu4_psys_remove,
-	.isr = psys_isr,
+	.isr_threaded = psys_isr_threaded,
 	.wanted = INTEL_IPU4_PSYS_NAME,
 	.drv = {
 		.name = INTEL_IPU4_PSYS_NAME,
