@@ -32,11 +32,9 @@ struct intel_ipu4_psys {
 	struct cdev cdev;
 	struct device dev;
 
+	struct mutex mutex;
 	int power;
 	spinlock_t power_lock;
-	spinlock_t lock; /* for lists and ia_css_process_group_start() */
-	struct mutex mutex; /* to serialize calls to lib2600psys */
-	struct mutex isr_poll_mutex;
 	struct list_head fhs;
 	struct intel_ipu4_psys_pdata *pdata;
 	struct intel_ipu4_bus_device *adev;

@@ -422,16 +422,15 @@ static void *intel_ipu4_dma_buf_kmap_atomic(struct dma_buf *dbuf, unsigned long 
 static void intel_ipu4_dma_buf_release(struct dma_buf *buf)
 {
 	struct intel_ipu4_psys_kbuffer *kbuf = buf->priv;
-	unsigned long flags;
 
 	dev_dbg(&kbuf->psys->adev->dev, "releasing buffer %d\n", kbuf->fd);
-	spin_lock_irqsave(&kbuf->psys->lock, flags);
-	list_del(&kbuf->list);
-	spin_unlock_irqrestore(&kbuf->psys->lock, flags);
 
+	mutex_lock(&kbuf->psys->mutex);
+	list_del(&kbuf->list);
 	dma_buf_put(buf);
 	intel_ipu4_psys_put_userpages(kbuf);
 	kfree(kbuf);
+	mutex_unlock(&kbuf->psys->mutex);
 }
 
 int intel_ipu4_dma_buf_begin_cpu_access(struct dma_buf *dma_buf, size_t start,
@@ -473,7 +472,6 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 	struct intel_ipu4_psys *psys = inode_to_intel_ipu4_psys(inode);
 	struct intel_ipu4_device *isp = psys->adev->isp;
 	struct intel_ipu4_psys_fh *fh;
-	unsigned long flags;
 	bool start_thread;
 	int i, rval;
 
@@ -505,16 +503,14 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 	fh->psys = psys;
 	file->private_data = fh;
 
-	mutex_lock(&psys->isr_poll_mutex);
-	spin_lock_irqsave(&psys->lock, flags);
+	mutex_lock(&psys->mutex);
+
 	start_thread = is_intel_ipu4_hw_bxt_a0(psys->adev->isp) &&
 		       list_empty(&psys->fhs) &&
 		       (psys->pdata->type == INTEL_IPU4_PSYS_TYPE_INTEL_IPU4_FPGA ||
 			psys->pdata->type == INTEL_IPU4_PSYS_TYPE_INTEL_IPU4);
 
 	list_add(&fh->list, &psys->fhs);
-	spin_unlock_irqrestore(&psys->lock, flags);
-
 	if (start_thread) {
 		static const struct sched_param param = {
 			.sched_priority = MAX_USER_RT_PRIO/2,
@@ -523,14 +519,14 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 					       INTEL_IPU4_PSYS_NAME);
 
 		if (IS_ERR(psys->isr_thread)) {
-			mutex_unlock(&psys->isr_poll_mutex);
+			mutex_unlock(&psys->mutex);
 			pm_runtime_put(&psys->adev->dev);
 			return PTR_ERR(psys->isr_thread);
 		}
 
 		sched_setscheduler(psys->isr_thread, SCHED_FIFO, &param);
 	}
-	mutex_unlock(&psys->isr_poll_mutex);
+	mutex_unlock(&psys->mutex);
 
 	return 0;
 }
@@ -570,7 +566,6 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 	struct intel_ipu4_psys_kbuffer *kbuf, *kbuf0;
 	struct intel_ipu4_psys_kcmd *kcmd, *kcmd0;
 	struct list_head flush_kcmd, flush_kbuf;
-	unsigned long flags;
 	bool stop_thread;
 	int i;
 
@@ -578,10 +573,8 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 	INIT_LIST_HEAD(&flush_kbuf);
 
 	mutex_lock(&psys->mutex);
-	mutex_lock(&psys->isr_poll_mutex);
 
 	/* clean up remaining commands */
-	spin_lock_irqsave(&psys->lock, flags);
 	list_del(&fh->list);
 	list_for_each_entry_safe(kcmd, kcmd0, &psys->active, list) {
 		if (kcmd->fh != fh)
@@ -598,12 +591,14 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 	/* clean up buffers */
 	list_for_each_entry_safe(kbuf, kbuf0, &fh->bufmap, list)
 		list_move(&kbuf->list, &flush_kbuf);
-	spin_unlock_irqrestore(&psys->lock, flags);
 
 	list_for_each_entry_safe(kcmd, kcmd0, &flush_kcmd, list) {
 		/* only wait for running commands */
-		if (kcmd->watchdog.expires)
+		if (kcmd->watchdog.expires) {
+			mutex_unlock(&psys->mutex);
 			wait_for_completion(&kcmd->cmd_complete);
+			mutex_lock(&psys->mutex);
+		}
 		list_del(&kcmd->list);
 		intel_ipu4_psys_release_kcmd(kcmd);
 		intel_ipu4_psys_free_kcmd(kcmd);
@@ -615,16 +610,12 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 		kfree(kbuf);
 	}
 
-	spin_lock_irqsave(&psys->lock, flags);
 	stop_thread = list_empty(&psys->fhs) && psys->isr_thread;
-	spin_unlock_irqrestore(&psys->lock, flags);
-
 	if (stop_thread) {
 		kthread_stop(psys->isr_thread);
 		psys->isr_thread = NULL;
 	}
 
-	mutex_unlock(&psys->isr_poll_mutex);
 	mutex_unlock(&psys->mutex);
 
 	kfree(fh);
@@ -640,7 +631,6 @@ static int intel_ipu4_psys_getbuf(struct intel_ipu4_psys_buffer *buf,
 
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
 	struct dma_buf *dbuf;
-	unsigned long flags;
 	int ret;
 
 	if (!buf->userptr) {
@@ -675,9 +665,7 @@ static int intel_ipu4_psys_getbuf(struct intel_ipu4_psys_buffer *buf,
 	kbuf->fd = buf->fd = ret;
 	kbuf->psys = psys;
 
-	spin_lock_irqsave(&psys->lock, flags);
 	list_add_tail(&kbuf->list, &fh->bufmap);
-	spin_unlock_irqrestore(&psys->lock, flags);
 
 	dev_dbg(&psys->adev->dev, "IOC_GETBUF: userptr %p to %d\n",
 		buf->userptr, buf->fd);
@@ -698,7 +686,6 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 	struct intel_ipu4_psys *psys = fh->psys;
 	struct intel_ipu4_psys_kcmd *kcmd;
 	struct intel_ipu4_psys_kbuffer *kpgbuf;
-	unsigned long flags;
 	unsigned int i;
 	int *buffers = NULL;
 	int ret;
@@ -717,9 +704,7 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 
 	intel_ipu4_psys_resource_alloc_init(&kcmd->resource_alloc);
 
-	mutex_lock(&psys->mutex);
 	kpgbuf = intel_ipu4_psys_lookup_kbuffer(fh, cmd->pg);
-	mutex_unlock(&psys->mutex);
 	if (!kpgbuf || !kpgbuf->sgt)
 		goto error;
 
@@ -766,9 +751,7 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 		goto error;
 
 	for (i = 0; i < kcmd->nbuffers; i++) {
-		spin_lock_irqsave(&psys->lock, flags);
 		kcmd->kbufs[i] = intel_ipu4_psys_lookup_kbuffer(fh, buffers[i]);
-		spin_unlock_irqrestore(&psys->lock, flags);
 		if (!kcmd->kbufs[i] || !kcmd->kbufs[i]->sgt)
 			goto error;
 		if (kcmd->kbufs[i]->flags &
@@ -784,9 +767,7 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 
 	return kcmd;
 error:
-	spin_lock_irqsave(&psys->lock, flags);
 	intel_ipu4_psys_release_kcmd(kcmd);
-	spin_unlock_irqrestore(&psys->lock, flags);
 	intel_ipu4_psys_free_kcmd(kcmd);
 
 	kfree(buffers);
@@ -890,12 +871,11 @@ static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 
 static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
 {
-	unsigned long flags;
 	struct intel_ipu4_psys *psys = container_of(work,
 					struct intel_ipu4_psys, watchdog_work);
 	struct intel_ipu4_psys_kcmd *kcmd, *kcmd0;
 
-	spin_lock_irqsave(&psys->lock, flags);
+	mutex_lock(&psys->mutex);
 	list_for_each_entry_safe(kcmd, kcmd0, &psys->active, list) {
 		if (!timer_pending(&kcmd->watchdog)) {
 			/* Watchdog expired for this kcmd */
@@ -909,7 +889,7 @@ static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
 		}
 	}
 	intel_ipu4_psys_run_next(psys);
-	spin_unlock_irqrestore(&psys->lock, flags);
+	mutex_unlock(&psys->mutex);
 }
 
 static void intel_ipu4_psys_watchdog(unsigned long data)
@@ -926,7 +906,6 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 	struct intel_ipu4_psys *psys = fh->psys;
 	struct intel_ipu4_psys_kcmd *kcmd;
 	unsigned int terminal_count;
-	unsigned long flags;
 	unsigned int i;
 	size_t pg_size;
 	int ret = -ENOMEM;
@@ -941,7 +920,6 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 	kcmd->watchdog.data = (unsigned long)kcmd;
 	kcmd->watchdog.function = &intel_ipu4_psys_watchdog;
 
-	mutex_lock(&psys->mutex);
 	pg_size = ia_css_process_group_get_size(kcmd->pg);
 	if (pg_size > kcmd->pg_size) {
 		ret = -EINVAL;
@@ -1035,14 +1013,10 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 		goto error;
 	}
 
-	spin_lock_irqsave(&psys->lock, flags);
 	list_add_tail(&kcmd->list, &fh->kcmds[cmd->priority]);
 	init_completion(&kcmd->cmd_complete);
 	if (list_is_singular(&fh->kcmds[cmd->priority]))
 		intel_ipu4_psys_run_next(psys);
-	spin_unlock_irqrestore(&psys->lock, flags);
-
-	mutex_unlock(&psys->mutex);
 
 	dev_dbg(&psys->adev->dev, "IOC_QCMD: id:%d issue_id:0x%llx pri:%d\n",
 		cmd->id, cmd->issue_id, cmd->priority);
@@ -1050,11 +1024,8 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 	return 0;
 
 error:
-	spin_lock_irqsave(&psys->lock, flags);
 	intel_ipu4_psys_release_kcmd(kcmd);
-	spin_unlock_irqrestore(&psys->lock, flags);
 	intel_ipu4_psys_free_kcmd(kcmd);
-	mutex_unlock(&psys->mutex);
 
 	return ret;
 }
@@ -1065,29 +1036,26 @@ static long intel_ipu4_ioctl_dqevent(struct intel_ipu4_psys_event *event,
 {
 	struct intel_ipu4_psys *psys = fh->psys;
 	struct intel_ipu4_psys_kcmd *kcmd;
-	unsigned long flags;
 	int rval;
 
 	dev_dbg(&psys->adev->dev, "IOC_DQEVENT\n");
 
 	if (!(f_flags & O_NONBLOCK)) {
+		mutex_unlock(&psys->mutex);
 		rval = wait_event_interruptible(fh->wait,
 						!list_empty(&fh->eventq));
+		mutex_lock(&psys->mutex);
 		if (rval == -ERESTARTSYS)
 			return rval;
 	}
 
-	spin_lock_irqsave(&psys->lock, flags);
-	if (list_empty(&fh->eventq)) {
-		spin_unlock_irqrestore(&psys->lock, flags);
+	if (list_empty(&fh->eventq))
 		return -ENODATA;
-	}
 
 	kcmd = list_first_entry(&fh->eventq, struct intel_ipu4_psys_kcmd, list);
 	*event = kcmd->ev;
 
 	list_del(&kcmd->list);
-	spin_unlock_irqrestore(&psys->lock, flags);
 
 	intel_ipu4_psys_free_kcmd(kcmd);
 
@@ -1098,12 +1066,9 @@ static long intel_ipu4_psys_mapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 {
 	struct intel_ipu4_psys *psys = fh->psys;
 	struct intel_ipu4_psys_kbuffer *kbuf;
-	unsigned long flags;
 	int ret;
 
-	spin_lock_irqsave(&psys->lock, flags);
 	kbuf = intel_ipu4_psys_lookup_kbuffer(fh, fd);
-	spin_unlock_irqrestore(&psys->lock, flags);
 
 	if (!kbuf) {
 		kbuf = kzalloc(sizeof(*kbuf), GFP_KERNEL);
@@ -1164,14 +1129,10 @@ static long intel_ipu4_psys_unmapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 {
 	struct intel_ipu4_psys_kbuffer *kbuf;
 	struct intel_ipu4_psys *psys = fh->psys;
-	unsigned long flags;
 
-	spin_lock_irqsave(&psys->lock, flags);
 	kbuf = intel_ipu4_psys_lookup_kbuffer(fh, fd);
-	spin_unlock_irqrestore(&psys->lock, flags);
-	if (!kbuf) {
+	if (!kbuf)
 		return -EINVAL;
-	}
 
 	dma_buf_vunmap(kbuf->dbuf, kbuf->kaddr);
 	dma_buf_unmap_attachment(kbuf->db_attach, kbuf->sgt, DMA_BIDIRECTIONAL);
@@ -1193,17 +1154,16 @@ static unsigned int intel_ipu4_psys_poll(struct file *file,
 {
 	struct intel_ipu4_psys_fh *fh = file->private_data;
 	struct intel_ipu4_psys *psys = fh->psys;
-	unsigned long flags;
 	unsigned int res = 0;
 
 	dev_dbg(&psys->adev->dev, "intel_ipu4 poll\n");
 
 	poll_wait(file, &fh->wait, wait);
 
-	spin_lock_irqsave(&psys->lock, flags);
+	mutex_lock(&psys->mutex);
 	if (!list_empty(&fh->eventq))
 		res = POLLIN;
-	spin_unlock_irqrestore(&psys->lock, flags);
+	mutex_unlock(&psys->mutex);
 
 	dev_dbg(&psys->adev->dev, "intel_ipu4 poll res %u\n", res);
 
@@ -1296,6 +1256,8 @@ static long intel_ipu4_psys_ioctl(struct file *file, unsigned int cmd,
 		}
 	}
 
+	mutex_lock(&fh->psys->mutex);
+
 	switch (cmd) {
 	case INTEL_IPU4_IOC_MAPBUF:
 		err = intel_ipu4_psys_mapbuf(arg, fh);
@@ -1326,6 +1288,8 @@ static long intel_ipu4_psys_ioctl(struct file *file, unsigned int cmd,
 		err = -ENOTTY;
 		break;
 	}
+
+	mutex_unlock(&fh->psys->mutex);
 
 	if (err)
 		return err;
@@ -1577,9 +1541,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		psys->timeout = INTEL_IPU4_PSYS_CMD_TIMEOUT_MS_FPGA;
 	else
 		psys->timeout = INTEL_IPU4_PSYS_CMD_TIMEOUT_MS_SOC;
-	spin_lock_init(&psys->lock);
 	mutex_init(&psys->mutex);
-	mutex_init(&psys->isr_poll_mutex);
 	INIT_LIST_HEAD(&psys->fhs);
 	INIT_LIST_HEAD(&psys->active);
 	INIT_WORK(&psys->watchdog_work, intel_ipu4_psys_watchdog_work);
@@ -1751,7 +1713,6 @@ out_syscom_buffer_free:
 	kfree(psys->syscom_buffer);
 out_mutex_destroy:
 	mutex_destroy(&psys->mutex);
-	mutex_destroy(&psys->isr_poll_mutex);
 	cdev_del(&psys->cdev);
 out_unlock:
 	/* Safe to call even if the init is not called */
@@ -1806,7 +1767,6 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 	mutex_unlock(&intel_ipu4_psys_mutex);
 
 	mutex_destroy(&psys->mutex);
-	mutex_destroy(&psys->isr_poll_mutex);
 
 	dev_info(&adev->dev, "removed\n");
 
@@ -1818,14 +1778,12 @@ static void intel_ipu4_psys_flush_cmds(struct intel_ipu4_psys *psys,
 	struct intel_ipu4_psys_fh *fh, *fh0;
 	struct intel_ipu4_psys_kcmd *kcmd, *kcmd0;
 	struct list_head flush;
-	unsigned long flags;
 	int i;
 
 	dev_err(&psys->dev, "flushing all commands with error: %d\n", error);
 
 	INIT_LIST_HEAD(&flush);
 
-	spin_lock_irqsave(&psys->lock, flags);
 	/* first check active queue */
 	list_for_each_entry_safe(kcmd, kcmd0, &psys->active, list)
 		list_move(&kcmd->list, &flush);
@@ -1839,15 +1797,12 @@ static void intel_ipu4_psys_flush_cmds(struct intel_ipu4_psys *psys,
 
 	list_for_each_entry_safe(kcmd, kcmd0, &flush, list)
 		intel_ipu4_psys_kcmd_complete(psys, kcmd, error);
-
-	spin_unlock_irqrestore(&psys->lock, flags);
 }
 
 static void intel_ipu4_psys_handle_event(struct intel_ipu4_psys *psys)
 {
 	struct intel_ipu4_psys_kcmd *kcmd;
 	struct ia_css_psys_event_s event;
-	unsigned long flags;
 
 	if (!ia_css_psys_event_queue_receive(psys->dev_ctx,
 				IA_CSS_PSYS_EVENT_QUEUE_MAIN_ID, &event))
@@ -1867,14 +1822,12 @@ static void intel_ipu4_psys_handle_event(struct intel_ipu4_psys *psys)
 	if (try_to_del_timer_sync(&kcmd->watchdog) < 0)
 		return;
 
-	spin_lock_irqsave(&psys->lock, flags);
 	intel_ipu4_psys_kcmd_complete(psys, kcmd,
 	    event.status == IA_CSS_PSYS_EVENT_TYPE_CMD_COMPLETE ||
 	    event.status == IA_CSS_PSYS_EVENT_TYPE_FRAGMENT_COMPLETE ?
 	    0 : -EIO);
 
 	intel_ipu4_psys_run_next(psys);
-	spin_unlock_irqrestore(&psys->lock, flags);
 }
 
 static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
@@ -1894,6 +1847,7 @@ static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
 		return IRQ_NONE;
 	}
 #endif
+	mutex_lock(&psys->mutex);
 	status = readl(base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_STATUS);
 	writel(status, base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_CLEAR);
 
@@ -1902,7 +1856,9 @@ static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
 		intel_ipu4_psys_handle_event(psys);
 	}
 
+	mutex_unlock(&psys->mutex);
 	pm_runtime_put(&psys->adev->dev);
+
 	return status ? IRQ_HANDLED : IRQ_NONE;
 }
 
@@ -1916,14 +1872,21 @@ static int intel_ipu4_psys_isr_run(void *data)
 #ifdef CONFIG_PM
 		if (!READ_ONCE(psys->power))
 			continue;
+#endif
+		r = mutex_trylock(&psys->mutex);
+		if (!r)
+			continue;
+#ifdef CONFIG_PM
 		r = pm_runtime_get_sync(&psys->adev->dev);
 		if (r < 0) {
 			pm_runtime_put(&psys->adev->dev);
+			mutex_unlock(&psys->mutex);
 			continue;
 		}
 #endif
 		intel_ipu4_psys_handle_event(psys);
 		pm_runtime_put(&psys->adev->dev);
+		mutex_unlock(&psys->mutex);
 	}
 
 	return 0;
