@@ -722,11 +722,15 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 	if (!kcmd->pg_manifest)
 		goto error;
 
-	buffers = kcalloc(cmd->bufcount, sizeof(buffers[0]), GFP_KERNEL);
+	kcmd->nbuffers = ia_css_process_group_get_terminal_count(kcmd->pg);
+	if (kcmd->nbuffers > cmd->bufcount)
+		goto error;
+
+	buffers = kcalloc(kcmd->nbuffers, sizeof(buffers[0]), GFP_KERNEL);
 	if (!buffers)
 		goto error;
 
-	kcmd->kbufs = kcalloc(cmd->bufcount, sizeof(kcmd->kbufs[0]),
+	kcmd->kbufs = kcalloc(kcmd->nbuffers, sizeof(kcmd->kbufs[0]),
 			      GFP_KERNEL);
 	if (!kcmd->kbufs)
 		goto error;
@@ -739,11 +743,10 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 	kcmd->pg_manifest_size = cmd->pg_manifest_size;
 
 	ret = copy_from_user(buffers, cmd->buffers,
-			     cmd->bufcount * sizeof(buffers[0]));
+			     kcmd->nbuffers * sizeof(buffers[0]));
 	if (ret)
 		goto error;
 
-	kcmd->nbuffers = cmd->bufcount;
 	kcmd->id = cmd->id;
 	kcmd->issue_id = cmd->issue_id;
 	kcmd->priority = cmd->priority;
@@ -912,7 +915,6 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 {
 	struct intel_ipu4_psys *psys = fh->psys;
 	struct intel_ipu4_psys_kcmd *kcmd;
-	unsigned int terminal_count;
 	unsigned int i;
 	size_t pg_size;
 	int ret = -ENOMEM;
@@ -939,13 +941,7 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 		goto error;
 	}
 
-	terminal_count = ia_css_process_group_get_terminal_count(kcmd->pg);
-	if (terminal_count > kcmd->nbuffers) {
-		ret = -EINVAL;
-		goto error;
-	}
-
-	for (i = 0; i < terminal_count; i++) {
+	for (i = 0; i < kcmd->nbuffers; i++) {
 		ia_css_buffer_state_t buffer_state;
 		ia_css_terminal_t *terminal;
 		ia_css_terminal_type_t type;
