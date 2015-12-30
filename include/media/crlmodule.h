@@ -1,7 +1,7 @@
 /*
  * Generic driver for common register list based camera sensor modules
  *
- * Copyright (c) 2014 Intel Corporation. All Rights Reserved.
+ * Copyright (c) 2014--2015 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  *
