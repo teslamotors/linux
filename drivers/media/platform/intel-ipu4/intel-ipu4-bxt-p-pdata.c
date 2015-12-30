@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation. All Rights Reserved.
+ * Copyright (c) 2015 Intel Corporation.
  *
  * Author: Jianxu Zheng <jian.xu.zheng@intel.com>
  *

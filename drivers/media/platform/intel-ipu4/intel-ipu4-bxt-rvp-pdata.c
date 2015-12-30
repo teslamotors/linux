@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Intel Corporation. All Rights Reserved.
+ * Copyright (c) 2014--2015 Intel Corporation.
  *
  * Author: Sakari Ailus <sakari.ailus@linux.intel.com>
  *
