@@ -800,6 +800,11 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 		ia_css_process_group_get_program_group_ID(kcmd->kpg->pg));
 
 	if (kcmd->state == KCMD_STATE_RUNNING) {
+		if (try_to_del_timer_sync(&kcmd->watchdog) < 0) {
+			dev_err(&psys->adev->dev,
+				"could not cancel kcmd timer\n");
+			return;
+		}
 		intel_ipu4_psys_free_resources(
 			&kcmd->resource_alloc,
 			&psys->resource_pool_running);
@@ -843,8 +848,6 @@ static int intel_ipu4_psys_kcmd_abort(struct intel_ipu4_psys *psys,
 				       struct intel_ipu4_psys_kcmd *kcmd,
 				       int error)
 {
-	int ret = 0;
-
 	if (kcmd->state == KCMD_STATE_COMPLETE)
 		return 0;
 
@@ -852,14 +855,11 @@ static int intel_ipu4_psys_kcmd_abort(struct intel_ipu4_psys *psys,
 	     kcmd->state == KCMD_STATE_STARTED) &&
 	    ia_css_process_group_stop(kcmd->kpg->pg)) {
 		dev_err(&psys->adev->dev, "failed to abort kcmd!\n");
-		kcmd->pg_user = NULL;
-		ret = error = -EIO;
-		/* TODO: need to reset PSYS by power cycling it */
+		return -EIO;
 	}
 
 	intel_ipu4_psys_kcmd_complete(psys, kcmd, error);
-
-	return ret;
+	return 0;
 }
 
 /*
@@ -1059,7 +1059,7 @@ next:
 }
 
 /*
- * Move all kcmds in all queues into completed state.
+ * Move all kcmds in all queues forcily into completed state.
  */
 static void intel_ipu4_psys_flush_kcmds(struct intel_ipu4_psys *psys, int error)
 {
@@ -1073,9 +1073,42 @@ static void intel_ipu4_psys_flush_kcmds(struct intel_ipu4_psys *psys, int error)
 		for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
 			fh->new_kcmd_tail[p] = NULL;
 			list_for_each_entry(kcmd, &fh->kcmds[p], list)
-				intel_ipu4_psys_kcmd_abort(psys, kcmd, error);
+				intel_ipu4_psys_kcmd_complete(psys, kcmd,
+							      error);
 		}
 	}
+}
+
+/*
+ * Abort all currently running process groups and reset PSYS
+ * by power cycling it. PSYS power must not be acquired
+ * except by running kcmds when calling this.
+ */
+static void intel_ipu4_psys_reset(struct intel_ipu4_psys *psys)
+{
+#ifdef CONFIG_PM
+	struct device *d = &psys->adev->isp->psys_iommu->dev;
+	int r;
+
+	pm_runtime_dont_use_autosuspend(&psys->adev->dev);
+	r = pm_runtime_get_sync(d);
+	if (r < 0) {
+		dev_err(&psys->adev->dev, "power management failed\n");
+		return;
+	}
+	intel_ipu4_psys_flush_kcmds(psys, -EIO);
+	flush_workqueue(pm_wq);
+	r = pm_runtime_put_sync(d);	/* Turn big red power knob off here */
+	/* Power was successfully turned off if and only if zero was returned */
+	if (r)
+		dev_warn(&psys->adev->dev,
+		    "power management failed, PSYS reset may be incomplete\n");
+	pm_runtime_use_autosuspend(&psys->adev->dev);
+	intel_ipu4_psys_run_next(psys);
+#else
+	dev_err(&psys->adev->dev,
+		"power management disabled, can not reset PSYS\n");
+#endif
 }
 
 static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
@@ -1088,7 +1121,7 @@ static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
 
 	/* Loop over all running kcmds */
 	list_for_each_entry(fh, &psys->fhs, list) {
-		int p;
+		int p, r;
 
 		for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
 			struct intel_ipu4_psys_kcmd *kcmd;
@@ -1104,15 +1137,21 @@ static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
 				dev_err(&psys->adev->dev,
 					"kcmd:%d[0x%llx] taking too long\n",
 					kcmd->id, kcmd->issue_id);
-				intel_ipu4_psys_kcmd_abort(psys, kcmd, -ETIME);
+				r = intel_ipu4_psys_kcmd_abort(psys, kcmd,
+							       -ETIME);
+				if (r)
+					goto stop_failed;
 			}
 		}
 	}
 
 	intel_ipu4_psys_run_next(psys);
 	mutex_unlock(&psys->mutex);
-
 	return;
+
+stop_failed:
+	intel_ipu4_psys_reset(psys);
+	mutex_unlock(&psys->mutex);
 }
 
 static void intel_ipu4_psys_watchdog(unsigned long data)
@@ -2257,14 +2296,10 @@ static void intel_ipu4_psys_handle_events(struct intel_ipu4_psys *psys)
 		if (!kcmd) {
 			dev_err(&psys->adev->dev,
 				"no token received, command unknown\n");
-			intel_ipu4_psys_flush_kcmds(psys, -EIO);
-			return;
-		}
-
-		if (kcmd->state == KCMD_STATE_RUNNING &&
-		    try_to_del_timer_sync(&kcmd->watchdog) < 0) {
-			dev_err(&psys->adev->dev,
-				"could not cancel kcmd timer\n");
+			/* Release power so that reset can power-cycle it */
+			pm_runtime_put(&psys->adev->dev);
+			intel_ipu4_psys_reset(psys);
+			pm_runtime_get(&psys->adev->dev);
 			return;
 		}
 
@@ -2284,17 +2319,20 @@ static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
 	u32 status;
 	int r;
 
+	mutex_lock(&psys->mutex);
 #ifdef CONFIG_PM
-	if (!READ_ONCE(psys->power))
+	if (!READ_ONCE(psys->power)) {
+		mutex_unlock(&psys->mutex);
 		return IRQ_NONE;
+	}
 
 	r = pm_runtime_get_sync(&psys->adev->dev);
 	if (r < 0) {
 		pm_runtime_put(&psys->adev->dev);
+		mutex_unlock(&psys->mutex);
 		return IRQ_NONE;
 	}
 #endif
-	mutex_lock(&psys->mutex);
 	status = readl(base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_STATUS);
 	writel(status, base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_CLEAR);
 
@@ -2303,9 +2341,9 @@ static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
 		intel_ipu4_psys_handle_events(psys);
 	}
 
-	mutex_unlock(&psys->mutex);
 	pm_runtime_mark_last_busy(&psys->adev->dev);
 	pm_runtime_put_autosuspend(&psys->adev->dev);
+	mutex_unlock(&psys->mutex);
 
 	return status ? IRQ_HANDLED : IRQ_NONE;
 }
