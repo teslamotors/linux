@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2015 Intel Corporation.
+ * Copyright (C) ON Semiconductor
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License version
+ * 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ *
+ */
+
 /*Filter Calculator Version 4.02*/
 /*the time and date : 2015/3/25 11:58:50*/
 /*FC filename : LC898122_FIL_20M_V0016*/
