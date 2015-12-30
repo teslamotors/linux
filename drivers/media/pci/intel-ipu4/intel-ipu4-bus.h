@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2014 Intel Corporation. All Rights Reserved.
+ * Copyright (c) 2013--2015 Intel Corporation.
  *
  * Bus implementation based on the bt8xx driver.
  *
