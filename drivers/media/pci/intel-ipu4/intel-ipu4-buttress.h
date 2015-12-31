@@ -50,10 +50,8 @@ int intel_ipu4_buttress_map_fw_image(struct intel_ipu4_bus_device *sys,
 				     struct sg_table *sgt);
 int intel_ipu4_buttress_unmap_fw_image(struct intel_ipu4_bus_device *sys,
 				    struct sg_table *sgt);
-void intel_ipu4_buttress_disable_secure_mode(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_power(struct device *dev,
 			      struct intel_ipu4_buttress_ctrl *ctrl, bool on);
-void intel_ipu4_buttress_disable_secure_mode(struct intel_ipu4_device *isp);
 void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
 					unsigned int psys_divisor,
 					unsigned int psys_qos_floor);
