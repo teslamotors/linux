@@ -263,6 +263,11 @@ void intel_ipu4_isys_subdev_fmt_propagate(
 			.format = {
 				.width = r->width,
 				.height = r->height,
+				/*
+				 * Either use the code from sink pad
+				 * or the current one.
+				 */
+				.code = ffmt ? ffmt->code : ffmts[pad]->code,
 			},
 		};
 
