@@ -57,9 +57,11 @@
 #define INTEL_IPU4_HW_BXT_B0		0x1a88
 #define INTEL_IPU4_HW_BXT_P_A0		0x5a88 /* BXTP A0 Iunit=BXT B0 Iunit */
 
+/* processing system frequency: 25Mhz x ratio, Legal values [8,32] */
 #define PS_FREQ_CTL_DEFAULT_RATIO_A0	0x8
 #define PS_FREQ_CTL_DEFAULT_RATIO_B0	0x12
 
+/* input system frequency: 1600Mhz / divisor. Legal values [2,8] */
 #define IS_FREQ_CTL_DIVISOR_A0		0x8
 #define IS_FREQ_CTL_DIVISOR_B0		0x4
 
