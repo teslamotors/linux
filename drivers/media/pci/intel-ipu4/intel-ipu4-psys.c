@@ -334,6 +334,8 @@ error:
 
 	kfree(sgt);
 
+	dev_dbg(&kbuf->psys->adev->dev, "failed to get userpages:%d\n", ret);
+
 	return ret;
 }
 
@@ -382,6 +384,8 @@ static struct sg_table *intel_ipu4_dma_buf_map(struct dma_buf_attachment *attach
 			 dir);
 	if (ret < kbuf->sgt->orig_nents) {
 		intel_ipu4_psys_put_userpages(kbuf);
+		dev_dbg(&kbuf->psys->adev->dev, "buf map failed\n");
+
 		return ERR_PTR(-EIO);
 	}
 
@@ -695,7 +699,7 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 		return NULL;
 
 	if (!cmd->pg_manifest_size ||
-		cmd->pg_manifest_size > KMALLOC_MAX_CACHE_SIZE)
+	    cmd->pg_manifest_size > KMALLOC_MAX_CACHE_SIZE)
 		return NULL;
 
 	kcmd = kzalloc(sizeof(*kcmd), GFP_KERNEL);
@@ -774,6 +778,8 @@ error:
 	intel_ipu4_psys_free_kcmd(kcmd);
 
 	kfree(buffers);
+
+	dev_dbg(&psys->adev->dev, "failed to copy cmd\n");
 
 	return NULL;
 }
@@ -931,6 +937,8 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 
 	pg_size = ia_css_process_group_get_size(kcmd->pg);
 	if (pg_size > kcmd->pg_size) {
+		dev_dbg(&psys->adev->dev, "pg size mismatch %lu %lu\n",
+			pg_size, kcmd->pg_size);
 		ret = -EINVAL;
 		goto error;
 	}
@@ -1012,6 +1020,7 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 
 	ret = -ia_css_process_group_submit(kcmd->pg);
 	if (ret) {
+		dev_err(&psys->adev->dev, "pg submit failed %d\n", ret);
 		ret = -EIO;
 		goto error;
 	}
@@ -1096,6 +1105,7 @@ static long intel_ipu4_psys_mapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 	if (IS_ERR_OR_NULL(kbuf->sgt)) {
 		ret = -EINVAL;
 		kbuf->sgt = NULL;
+		dev_dbg(&psys->adev->dev, "map attachment failed\n");
 		goto error_detach;
 	}
 
@@ -1125,6 +1135,7 @@ error_put:
 error:
 	if (!kbuf->userptr)
 		kfree(kbuf);
+
 	return ret;
 }
 
@@ -1134,8 +1145,10 @@ static long intel_ipu4_psys_unmapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 	struct intel_ipu4_psys *psys = fh->psys;
 
 	kbuf = intel_ipu4_psys_lookup_kbuffer(fh, fd);
-	if (!kbuf)
+	if (!kbuf) {
+		dev_dbg(&psys->adev->dev, "buffer %d not found\n", fd);
 		return -EINVAL;
+	}
 
 	dma_buf_vunmap(kbuf->dbuf, kbuf->kaddr);
 	dma_buf_unmap_attachment(kbuf->db_attach, kbuf->sgt, DMA_BIDIRECTIONAL);
@@ -1201,12 +1214,17 @@ static long intel_ipu4_get_manifest(struct intel_ipu4_psys_manifest *manifest,
 		return -EINVAL;
 
 	entry = ia_css_pkg_dir_get_entry(pkg_dir, manifest->index);
-	if (!entry)
+	if (!entry) {
+		dev_dbg(&psys->adev->dev, "no entry for index %d\n",
+			manifest->index);
 		return -EIO;
+	}
 
 	if (ia_css_pkg_dir_entry_get_size(entry) <= 0 ||
-	    ia_css_pkg_dir_entry_get_type(entry) < IA_CSS_PKG_DIR_CLIENT_PG)
+	    ia_css_pkg_dir_entry_get_type(entry) < IA_CSS_PKG_DIR_CLIENT_PG) {
+		dev_dbg(&psys->adev->dev, "invalid pkg dir entry\n");
 		return -ENOENT;
+	}
 
 	client_pkg_offset = ia_css_pkg_dir_entry_get_address_lo(entry);
 
@@ -1409,8 +1427,10 @@ static int psys_runtime_pm_resume(struct device *dev)
 				 psys->pkg_dir_dma_addr);
 
 	psys->dev_ctx = ia_css_psys_open(syscom_buffer, syscom_config);
-	if (!psys->dev_ctx)
+	if (!psys->dev_ctx) {
+		dev_err(&psys->adev->dev, "psys library open failed\n");
 		return -ENODEV;
+	}
 
 	psys_syscom = psys->dev_ctx;
 	spin_lock_irqsave(&psys->power_lock, flags);
