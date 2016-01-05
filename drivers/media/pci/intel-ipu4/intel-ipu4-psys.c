@@ -815,11 +815,31 @@ static int intel_ipu4_psys_start_pg(struct intel_ipu4_psys *psys,
 
 	list_move_tail(&kcmd->fh->list, &psys->fhs);
 	list_move(&kcmd->list, &psys->active);
-	clflush_cache_range(kcmd->pg, kcmd->pg_size);
 	kcmd->watchdog.expires = jiffies + msecs_to_jiffies(psys->timeout);
+#ifdef IPU_STEP_BXTA0
+	clflush_cache_range(kcmd->pg, kcmd->pg_size);
+#endif
 	ret = -ia_css_process_group_start(kcmd->pg);
-	if (ret)
+	if (ret) {
+		dev_err(&psys->adev->dev,
+			"failed to start process group\n");
 		return ret;
+	}
+#ifdef IPU_STEP_BXTB0
+	/*
+	 * Starting from scci_master_20151228_1800, pg start api is split into
+	 * two different calls, making driver responsible to flush pg between
+	 * start and disown library calls.
+	 */
+	clflush_cache_range(kcmd->pg, kcmd->pg_size);
+
+	ret = -ia_css_process_group_disown(kcmd->pg);
+	if (ret) {
+		dev_err(&psys->adev->dev,
+			"failed to disown process group\n");
+		return ret;
+	}
+#endif
 	add_timer(&kcmd->watchdog);
 
 	return 0;

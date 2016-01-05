@@ -30,6 +30,7 @@ EXPORT_SYMBOL_GPL(ia_css_process_group_get_size);
 EXPORT_SYMBOL_GPL(ia_css_process_group_reset);
 EXPORT_SYMBOL_GPL(ia_css_process_group_resume);
 EXPORT_SYMBOL_GPL(ia_css_process_group_start);
+EXPORT_SYMBOL_GPL(ia_css_process_group_disown);
 EXPORT_SYMBOL_GPL(ia_css_process_group_submit);
 EXPORT_SYMBOL_GPL(ia_css_process_group_suspend);
 EXPORT_SYMBOL_GPL(ia_css_process_group_set_ipu_vaddress);
