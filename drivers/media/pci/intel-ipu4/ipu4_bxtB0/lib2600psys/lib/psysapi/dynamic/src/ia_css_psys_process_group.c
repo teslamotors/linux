@@ -109,11 +109,15 @@ static bool ia_css_process_group_is_terminal_enabled(
 	const ia_css_terminal_manifest_t *terminal_manifest,
 	ia_css_kernel_bitmap_t			enable_bitmap)
 {
+	ia_css_terminal_type_t terminal_type;
 	verifjmpexit(NULL != terminal_manifest);
+	terminal_type = ia_css_terminal_manifest_get_type(terminal_manifest);
+
 	if (ia_css_is_terminal_manifest_data_terminal(terminal_manifest)) {
 		ia_css_data_terminal_manifest_t	*data_term_manifest = (ia_css_data_terminal_manifest_t *)terminal_manifest;
 		ia_css_kernel_bitmap_t term_bitmap = ia_css_data_terminal_manifest_get_kernel_bitmap(data_term_manifest);
-/* Terminals depend on a kernel, if the kernel is present the program it contains and the terminal the program depends on are active */
+		/* Terminals depend on a kernel,
+		 * if the kernel is present the program it contains and the terminal the program depends on are active */
 		if (!ia_css_is_kernel_bitmap_intersection_empty(enable_bitmap, term_bitmap)) {
 			return true;
 		}
@@ -124,8 +128,29 @@ static bool ia_css_process_group_is_terminal_enabled(
 		if (!ia_css_is_kernel_bitmap_intersection_empty(enable_bitmap, term_kernel_bitmap)) {
 			return true;
 		}
-	} else if (ia_css_is_terminal_manifest_parameter_terminal(terminal_manifest) ||
-		ia_css_is_terminal_manifest_program_terminal(terminal_manifest)) {
+
+	} else if (ia_css_is_terminal_manifest_parameter_terminal(terminal_manifest) && terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN) {
+		return true;
+
+	} else if (ia_css_is_terminal_manifest_parameter_terminal(terminal_manifest) && terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT) {
+		/* For parameter out terminals, we disable the terminals if ALL the corresponding kernels are disabled,
+		 * for parameter in terminals we cannot do this; even if kernels are disabled, it may be required that (HW) parameters
+		 * must be supplied via the parameter in terminal (e.g. bypass bits). */
+		ia_css_kernel_bitmap_t term_kernel_bitmap = 0;
+		ia_css_param_terminal_manifest_t *param_term_man = (ia_css_param_terminal_manifest_t *)terminal_manifest;
+		ia_css_param_manifest_section_desc_t *section_desc;
+		unsigned int section = 0;
+
+		for (section = 0; section < param_term_man->param_manifest_section_desc_count; section++) {
+			section_desc = ia_css_param_terminal_manifest_get_param_manifest_section_desc(param_term_man, section);
+			verifjmpexit(section_desc != NULL);
+			term_kernel_bitmap = ia_css_kernel_bitmap_set(term_kernel_bitmap, section_desc->kernel_id);
+		}
+
+		if (!ia_css_is_kernel_bitmap_intersection_empty(enable_bitmap, term_kernel_bitmap)) {
+			return true;
+		}
+	} else if (ia_css_is_terminal_manifest_program_terminal(terminal_manifest)) {
 		return true;
 	}
 EXIT:
@@ -1285,28 +1310,8 @@ uint8_t ia_css_process_group_compute_terminal_count(
 	for (i = 0; i < (int)ia_css_program_group_manifest_get_terminal_count(manifest); i++) {
 		ia_css_terminal_manifest_t *tmanifest =
 			ia_css_program_group_manifest_get_terminal_manifest(manifest, i);
-		if (ia_css_is_terminal_manifest_data_terminal(tmanifest)) {
-			ia_css_data_terminal_manifest_t	*data_terminal_manifest =
-				(ia_css_data_terminal_manifest_t *)tmanifest;
-			/* Parameter terminals don't contribute */
-			if (data_terminal_manifest != NULL) {
-				ia_css_kernel_bitmap_t terminal_bitmap =
-					ia_css_data_terminal_manifest_get_kernel_bitmap(
-						data_terminal_manifest);
-/* Terminals depend on a kernel, if the kernel is present the program it contains and the terminal the program depends on are active */
-				if (!ia_css_is_kernel_bitmap_intersection_empty(enable_bitmap, terminal_bitmap)) {
-					terminal_count++;
-				}
-			}
-		} else if (ia_css_is_terminal_manifest_spatial_parameter_terminal(tmanifest)) {
-			ia_css_kernel_bitmap_t term_kernel_bitmap = 0;
-			ia_css_spatial_param_terminal_manifest_t *spatial_term_man = (ia_css_spatial_param_terminal_manifest_t *)tmanifest;
-			term_kernel_bitmap = ia_css_kernel_bitmap_set(term_kernel_bitmap, spatial_term_man->kernel_id);
-			if (!ia_css_is_kernel_bitmap_intersection_empty(enable_bitmap, term_kernel_bitmap)) {
-				terminal_count++;
-			}
-		} else if (ia_css_is_terminal_manifest_parameter_terminal(tmanifest) ||
-			ia_css_is_terminal_manifest_program_terminal(tmanifest)) {
+
+		if (ia_css_process_group_is_terminal_enabled(tmanifest, enable_bitmap)) {
 			terminal_count++;
 		}
 	}
