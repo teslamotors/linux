@@ -16,6 +16,6 @@
 #define __IA_CSS_ISYSAPI_FW_VERSION_H__
 
 /* ISYSAPI FW VERSION is taken from Makefile for FW tests */
-#define BXT_FW_RELEASE_VERSION "scci_master_20151228_1800"
+#define BXT_FW_RELEASE_VERSION "scci_master_20160101_0700"
 
 #endif /* __IA_CSS_ISYSAPI_FW_VERSION_H__ */
