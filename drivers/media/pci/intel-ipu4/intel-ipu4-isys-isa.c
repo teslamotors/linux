@@ -243,7 +243,7 @@ void intel_ipu4_isys_isa_cleanup(struct intel_ipu4_isys_isa *isa)
 }
 
 static void isa_set_ffmt(struct v4l2_subdev *sd,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 			 struct v4l2_subdev_fh *cfg,
 #else
 			 struct v4l2_subdev_pad_config *cfg,
@@ -400,7 +400,7 @@ static int isa_config_buf_init(struct vb2_buffer *vb)
 
 	dev_dbg(&av->isys->adev->dev,
 		"buf_init: index %u, cpu addr %p, dma addr %pad\n",
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		vb->v4l2_buf.index,
 #else
 		vb->index,
@@ -426,7 +426,7 @@ static void isa_config_buf_cleanup(struct vb2_buffer *vb)
 
 	dev_dbg(&av->isys->adev->dev,
 		"buf_cleanup: index %u, cpu addr %p, dma addr %pad\n",
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		vb->v4l2_buf.index,
 #else
 		vb->index,
@@ -585,7 +585,7 @@ static int isa_import_pg(struct vb2_buffer *vb)
 		uint32_t *iova;
 		int rval;
 
-		if ((void *)t + sizeof *t - (void *)pg > pg->size) {
+		if ((void *)t + sizeof(*t) - (void *)pg > pg->size) {
 			dev_dbg(&av->isys->adev->dev,
 				"terminal %u does not fit in the buffer\n", i);
 			return -EINVAL;
@@ -639,7 +639,7 @@ static int isa_terminal_buf_prepare(struct vb2_buffer *vb)
 
 	for (i = 0; i < ISA_BUF_PLANES; i++) {
 		vb2_set_plane_payload(vb, i, av->mpix.plane_fmt[i].sizeimage);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		vb->v4l2_planes[i].data_offset = 0;
 #else
 		vb->planes[i].data_offset = 0;
@@ -801,7 +801,7 @@ static void isa_config_fill_frame_buff_set_pin(
 		vb2_buffer_to_intel_ipu4_isys_isa_buffer(vb);
 
 	set->process_group_light.addr = isa_buf->pgl.iova;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	set->process_group_light.param_buf_id = vb->v4l2_buf.index + 1;
 #else
 	set->process_group_light.param_buf_id = vb->index + 1;

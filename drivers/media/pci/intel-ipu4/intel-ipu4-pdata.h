@@ -61,29 +61,29 @@ struct intel_ipu4_isys_subdev_pdata;
  * ZLW(Zero Length Write) is a mechanism to enable VT-d pre-fetching on IOMMU.
  *
  * 1. Sequential Access or 1D mode
- * 	Set ZLW_EN -> 1
- * 	set ZLW_PAGE_CROSS_1D -> 1
- * 	Set ZLW_N to "N" pages so that ZLW will be inserte N pages ahead where
- * 		  N is pre-defined and hardcoded in the platform data
- * 	Set ZLW_2D -> 0
+ *	Set ZLW_EN -> 1
+ *	set ZLW_PAGE_CROSS_1D -> 1
+ *	Set ZLW_N to "N" pages so that ZLW will be inserte N pages ahead where
+ *		  N is pre-defined and hardcoded in the platform data
+ *	Set ZLW_2D -> 0
  *
  * 2. ZLW 2D mode
- * 	Set ZLW_EN -> 1
- * 	set ZLW_PAGE_CROSS_1D -> 1,
- * 	Set ZLW_N -> 0
- * 	Set ZLW_2D -> 1
+ *	Set ZLW_EN -> 1
+ *	set ZLW_PAGE_CROSS_1D -> 1,
+ *	Set ZLW_N -> 0
+ *	Set ZLW_2D -> 1
  *
  * 3. ZLW Enable (no 1D or 2D mode)
- * 	Set ZLW_EN -> 1
- * 	set ZLW_PAGE_CROSS_1D -> 0,
- * 	Set ZLW_N -> 0
- * 	Set ZLW_2D -> 0
+ *	Set ZLW_EN -> 1
+ *	set ZLW_PAGE_CROSS_1D -> 0,
+ *	Set ZLW_N -> 0
+ *	Set ZLW_2D -> 0
  *
  * 4. ZLW disable
- * 	Set ZLW_EN -> 0
- * 	set ZLW_PAGE_CROSS_1D -> 0,
- * 	Set ZLW_N -> 0
- * 	Set ZLW_2D -> 0
+ *	Set ZLW_EN -> 0
+ *	set ZLW_PAGE_CROSS_1D -> 0,
+ *	Set ZLW_N -> 0
+ *	Set ZLW_2D -> 0
  *
  * To configure the ZLW for the above memory access, four registers are
  * available. Hence to track these four settings, we have the following entries
@@ -93,7 +93,7 @@ struct intel_ipu4_isys_subdev_pdata;
  * a. l1_zlw_en -> To track zlw enabled per stream (ZLW_EN)
  * b. l1_zlw_1d_mode -> Track 1D mode per stream. ZLW inserted at page boundary
  * c. l1_ins_zlw_ahead_pages -> to track how advance the ZLW need to be inserted
- * 			Insert ZLW request N pages ahead address.
+ *			Insert ZLW request N pages ahead address.
  * d. l1_zlw_2d_mode -> To track 2D mode per stream (ZLW_2D)
  *
  *

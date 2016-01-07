@@ -214,6 +214,7 @@ static void intel_ipu4_isys_csi2_error(struct intel_ipu4_isys_csi2 *csi2)
 	};
 	unsigned int i;
 	u32 status = csi2->receiver_errors;
+
 	csi2->receiver_errors = 0;
 
 	for (i = 0; i < ARRAY_SIZE(errors); i++)
@@ -665,6 +666,7 @@ static void intel_ipu4_isys_csi2_sof_event(struct intel_ipu4_isys_csi2 *csi2)
 static void intel_ipu4_isys_register_errors(struct intel_ipu4_isys_csi2 *csi2)
 {
 	u32 status = readl(csi2->base + CSI2_REG_CSIRX_IRQ_STATUS);
+
 	writel(status, csi2->base + CSI2_REG_CSIRX_IRQ_CLEAR);
 	csi2->receiver_errors |= status;
 }

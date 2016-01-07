@@ -186,7 +186,7 @@ void vied_subsystem_store(vied_subsystem_t ssid,
 	void *dst = host_addr(ssid, addr);
 
 	dev_dbg(get_sub_system(ssid)->dev, "%s 0x%x size: %d\n",
-		__FUNCTION__, addr, size);
+		__func__, addr, size);
 
 	for (; size >= sizeof(uint32_t); size -= sizeof(uint32_t),
 		     dst += sizeof(uint32_t), data += sizeof(uint32_t)) {
@@ -232,7 +232,7 @@ void vied_subsystem_load(vied_subsystem_t ssid,
 	void *src = host_addr(ssid, addr);
 
 	dev_dbg(get_sub_system(ssid)->dev, "%s 0x%x size: %d\n",
-		__FUNCTION__, addr, size);
+		__func__, addr, size);
 
 	for (; size >= sizeof(uint32_t); size -= sizeof(uint32_t),
 		     src += sizeof(uint32_t), data += sizeof(uint32_t))
@@ -317,7 +317,7 @@ host_virtual_address_t shared_memory_alloc(vied_memory_t mmid, size_t bytes)
 	size_t size;
 	int rval;
 
-	dev_dbg(mine->dev, "%s: in, size: %zu\n", __FUNCTION__, bytes);
+	dev_dbg(mine->dev, "%s: in, size: %zu\n", __func__, bytes);
 
 	if (!bytes)
 		return (unsigned long)&alloc_cookie;
@@ -392,7 +392,7 @@ vied_virtual_address_t shared_memory_map(vied_subsystem_t ssid, vied_memory_t mm
 
 	spin_lock_irqsave(&mine->lock, flags);
 	list_for_each_entry(buf, &mine->buffers, list) {
-		dev_dbg(mine->dev, "%s %8.8lx\n",__FUNCTION__, (long)buf->addr);
+		dev_dbg(mine->dev, "%s %8.8lx\n", __func__, (long)buf->addr);
 		if ((long)buf->addr != addr)
 			continue;
 

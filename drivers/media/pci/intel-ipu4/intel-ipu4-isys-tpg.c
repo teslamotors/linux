@@ -210,7 +210,7 @@ static void intel_ipu4_isys_tpg_init_controls(struct v4l2_subdev *sd)
 }
 
 static void tpg_set_ffmt(struct v4l2_subdev *sd,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 			 struct v4l2_subdev_fh *cfg,
 #else
 			 struct v4l2_subdev_pad_config *cfg,
@@ -223,7 +223,7 @@ static void tpg_set_ffmt(struct v4l2_subdev *sd,
 }
 
 static int intel_ipu4_isys_tpg_set_ffmt(struct v4l2_subdev *sd,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 				     struct v4l2_subdev_fh *cfg,
 #else
 				     struct v4l2_subdev_pad_config *cfg,

@@ -18,7 +18,7 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 #include <media/videobuf2-core.h>
 #else
 #include <media/videobuf2-v4l2.h>
@@ -55,7 +55,7 @@ struct intel_ipu4_isys_buffer {
 };
 
 struct intel_ipu4_isys_video_buffer {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	struct vb2_buffer vb;
 #else
 	struct vb2_v4l2_buffer vb_v4l2;
@@ -78,7 +78,7 @@ struct intel_ipu4_isys_buffer_list {
 #define intel_ipu4_isys_to_isys_video_buffer(__ib) \
 	container_of(__ib, struct intel_ipu4_isys_video_buffer, ib)
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 #define vb2_buffer_to_intel_ipu4_isys_video_buffer(__vb) \
 	container_of(__vb, struct intel_ipu4_isys_video_buffer, vb)
 

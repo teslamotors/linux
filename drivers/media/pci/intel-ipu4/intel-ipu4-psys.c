@@ -61,8 +61,8 @@ static DEFINE_MUTEX(intel_ipu4_psys_mutex);
 
 extern struct ia_css_syscom_context *psys_syscom;
 
-static struct intel_ipu4_trace_block psys_trace_blocks_a0[] =
-{
+static struct intel_ipu4_trace_block psys_trace_blocks_a0[] = {
+
 	{
 		.offset = TRACE_REG_PS_TRACE_UNIT_BASE_A0,
 		.type = INTEL_IPU4_TRACE_BLOCK_TUN,
@@ -136,12 +136,12 @@ static struct intel_ipu4_trace_block psys_trace_blocks_a0[] =
 		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
 	},
 	{
-		.type= INTEL_IPU4_TRACE_BLOCK_END,
+		.type = INTEL_IPU4_TRACE_BLOCK_END,
 	}
 };
 
-static struct intel_ipu4_trace_block psys_trace_blocks[] =
-{
+static struct intel_ipu4_trace_block psys_trace_blocks[] = {
+
 	{
 		.offset = TRACE_REG_PS_TRACE_UNIT_BASE,
 		.type = INTEL_IPU4_TRACE_BLOCK_TUN,
@@ -211,7 +211,7 @@ static struct intel_ipu4_trace_block psys_trace_blocks[] =
 		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
 	},
 	{
-		.type= INTEL_IPU4_TRACE_BLOCK_END,
+		.type = INTEL_IPU4_TRACE_BLOCK_END,
 	}
 };
 
@@ -498,7 +498,7 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 	start_thread = is_intel_ipu4_hw_bxt_a0(psys->adev->isp) &&
 		       list_empty(&psys->fhs) &&
 		       (psys->pdata->type == INTEL_IPU4_PSYS_TYPE_INTEL_IPU4_FPGA ||
-		        psys->pdata->type == INTEL_IPU4_PSYS_TYPE_INTEL_IPU4);
+			psys->pdata->type == INTEL_IPU4_PSYS_TYPE_INTEL_IPU4);
 
 	list_add(&fh->list, &psys->fhs);
 	spin_unlock_irqrestore(&psys->lock, flags);
@@ -624,6 +624,7 @@ static int intel_ipu4_psys_getbuf(struct intel_ipu4_psys_buffer *buf,
 {
 	struct intel_ipu4_psys_kbuffer *kbuf;
 	struct intel_ipu4_psys *psys = fh->psys;
+
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
 	struct dma_buf *dbuf;
 	unsigned long flags;
@@ -723,11 +724,11 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 	if (!kcmd->pg_manifest)
 		goto error;
 
-	buffers = kzalloc(cmd->bufcount * sizeof(buffers[0]), GFP_KERNEL);
+	buffers = kcalloc(cmd->bufcount, sizeof(buffers[0]), GFP_KERNEL);
 	if (!buffers)
 		goto error;
 
-	kcmd->kbufs = kzalloc(cmd->bufcount * sizeof(kcmd->kbufs[0]),
+	kcmd->kbufs = kcalloc(cmd->bufcount, sizeof(kcmd->kbufs[0]),
 			      GFP_KERNEL);
 	if (!kcmd->kbufs)
 		goto error;
@@ -1236,7 +1237,7 @@ static long intel_ipu4_get_manifest(struct intel_ipu4_psys_manifest *manifest,
 		return 0;
 
 	if (copy_to_user(manifest->manifest,
-                     (uint8_t *)client_pkg + offset, manifest->size))
+		     (uint8_t *)client_pkg + offset, manifest->size))
 		return -EFAULT;
 
 	return 0;

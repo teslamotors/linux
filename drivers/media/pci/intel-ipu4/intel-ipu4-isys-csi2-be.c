@@ -152,7 +152,7 @@ static struct media_entity_operations csi2_be_entity_ops = {
 };
 
 static void csi2_be_set_ffmt(struct v4l2_subdev *sd,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 	struct v4l2_subdev_fh *cfg,
 #else
 	struct v4l2_subdev_pad_config *cfg,

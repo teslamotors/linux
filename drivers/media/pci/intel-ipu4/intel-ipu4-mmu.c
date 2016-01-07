@@ -80,8 +80,8 @@
 #define TBL_PHYS_ADDR(a)	((phys_addr_t)(a) << ISP_PADDR_SHIFT)
 #define TBL_VIRT_ADDR(a)	phys_to_virt(TBL_PHYS_ADDR(a))
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
-#define to_intel_ipu4_mmu_domain(dom) (dom)->priv
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
+#define to_intel_ipu4_mmu_domain(dom) ((dom)->priv)
 #else
 #define to_intel_ipu4_mmu_domain(dom) \
 	container_of(dom, struct intel_ipu4_mmu_domain, domain)
@@ -164,7 +164,7 @@ static uint32_t *alloc_page_table(struct intel_ipu4_mmu_domain *adom, bool l1)
 	return pt;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 static int intel_ipu4_mmu_domain_init(struct iommu_domain *domain)
 {
 	struct intel_ipu4_mmu_domain *adom;
@@ -551,7 +551,7 @@ static int intel_ipu4_mmu_add_device(struct device *dev)
 }
 
 static struct iommu_ops intel_ipu4_iommu_ops = {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 	.domain_init    = intel_ipu4_mmu_domain_init,
 	.domain_destroy = intel_ipu4_mmu_domain_destroy,
 #else

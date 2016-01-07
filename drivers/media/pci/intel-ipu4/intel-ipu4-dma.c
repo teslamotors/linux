@@ -38,6 +38,7 @@ static void __dma_clear_buffer(struct page *page, size_t size,
 	if (PageHighMem(page)) {
 		while (size > 0) {
 			void *ptr = kmap_atomic(page);
+
 			memset(ptr, 0, PAGE_SIZE);
 			if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
 				clflush_cache_range(ptr, PAGE_SIZE);
@@ -47,6 +48,7 @@ static void __dma_clear_buffer(struct page *page, size_t size,
 		}
 	} else {
 		void *ptr = page_address(page);
+
 		memset(ptr, 0, size);
 		if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
 			clflush_cache_range(ptr, size);

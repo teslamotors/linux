@@ -326,11 +326,11 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_a0 = {
 	.tpg = {
 		.ntpgs = 2,
 		.offsets = { INTEL_IPU4_BXT_A0_TPG0_ADDR_OFFSET,
-		             INTEL_IPU4_BXT_A0_TPG1_ADDR_OFFSET },
+			     INTEL_IPU4_BXT_A0_TPG1_ADDR_OFFSET },
 		.sels = { INTEL_IPU4_BXT_GPOFFSET +
-		          INTEL_IPU4_GPREG_MIPI_PKT_GEN0_SEL,
-		          INTEL_IPU4_BXT_COMBO_GPOFFSET +
-		          INTEL_IPU4_GPREG_MIPI_PKT_GEN1_SEL },
+			  INTEL_IPU4_GPREG_MIPI_PKT_GEN0_SEL,
+			  INTEL_IPU4_BXT_COMBO_GPOFFSET +
+			  INTEL_IPU4_GPREG_MIPI_PKT_GEN1_SEL },
 	},
 	.csi2_be = {
 		.nbes = 1,
@@ -368,11 +368,11 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_b0 = {
 	.tpg = {
 		.ntpgs = 2,
 		.offsets = { INTEL_IPU4_BXT_B0_TPG0_ADDR_OFFSET,
-		             INTEL_IPU4_BXT_B0_TPG1_ADDR_OFFSET },
+			     INTEL_IPU4_BXT_B0_TPG1_ADDR_OFFSET },
 		.sels = { INTEL_IPU4_BXT_GPOFFSET +
-		          INTEL_IPU4_GPREG_MIPI_PKT_GEN0_SEL,
-		          INTEL_IPU4_BXT_COMBO_GPOFFSET +
-		          INTEL_IPU4_GPREG_MIPI_PKT_GEN1_SEL },
+			  INTEL_IPU4_GPREG_MIPI_PKT_GEN0_SEL,
+			  INTEL_IPU4_BXT_COMBO_GPOFFSET +
+			  INTEL_IPU4_GPREG_MIPI_PKT_GEN1_SEL },
 	},
 	.csi2_be = {
 		.nbes = 2,
@@ -450,7 +450,7 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
 			 .offset = INTEL_IPU4_BXT_B0_PSYS_IOMMU1_OFFSET,
 			 .info_bits = INTEL_IPU4_INFO_STREAM_ID_SET(0),
 			 .nr_l1streams = INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS,
-			 .l1_block_addr= { 0, 0, 0, 0, 0, 10, 18, 28, 36, 36, 40, 44, 56, 56, 56, 56 },
+			 .l1_block_addr = { 0, 0, 0, 0, 0, 10, 18, 28, 36, 36, 40, 44, 56, 56, 56, 56 },
 			 .l1_zlw_en = { 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0 },
 			 .l1_zlw_1d_mode = { 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0 },
 			 .l1_ins_zlw_ahead_pages = { 0, 0, 0, 0, 3, 3, 3, 3, 0, 3, 1, 3, 0, 0, 0, 0 },
@@ -463,7 +463,7 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
 			 .offset = INTEL_IPU4_BXT_B0_PSYS_IOMMU1R_OFFSET,
 			 .info_bits = INTEL_IPU4_INFO_STREAM_ID_SET(0),
 			 .nr_l1streams = INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS,
-			 .l1_block_addr= { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 24, 36, 48 },
+			 .l1_block_addr = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 24, 36, 48 },
 			 .l1_zlw_en = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1 },
 			 .l1_zlw_1d_mode = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1 },
 			 .l1_ins_zlw_ahead_pages = { 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0 },
@@ -789,7 +789,7 @@ static const struct dev_pm_ops intel_ipu4_pm_ops = {
 #define INTEL_IPU4_PM NULL
 #endif
 
-static DEFINE_PCI_DEVICE_TABLE(intel_ipu4_pci_tbl) = {
+static const struct pci_device_id intel_ipu4_pci_tbl[] = {
 #ifdef IPU_STEP_BXTA0
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_A0_OLD)},
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_A0)},
@@ -815,6 +815,7 @@ static struct pci_driver intel_ipu4_pci_driver = {
 static int __init intel_ipu4_init(void)
 {
 	int rval = intel_ipu4_bus_register();
+
 	if (rval) {
 		pr_warn("can't register intel_ipu4 bus (%d)\n", rval);
 		return rval;

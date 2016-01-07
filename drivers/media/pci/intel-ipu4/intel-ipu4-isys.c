@@ -61,7 +61,7 @@ static struct intel_ipu4_trace_block isys_trace_blocks_a0[] = {
 		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
 	},
 	{
-		.type= INTEL_IPU4_TRACE_BLOCK_END,
+		.type = INTEL_IPU4_TRACE_BLOCK_END,
 	}
 };
 
@@ -105,7 +105,7 @@ static struct intel_ipu4_trace_block isys_trace_blocks[] = {
 		.type = INTEL_IPU4_TRACE_SIG2CIOS,
 	},
 	{
-		.type= INTEL_IPU4_TRACE_BLOCK_END,
+		.type = INTEL_IPU4_TRACE_BLOCK_END,
 	}
 };
 
@@ -471,7 +471,7 @@ static int isys_register_ext_subdev(struct intel_ipu4_isys *isys,
 		return -ENOENT;
 	}
 	if (sd_info->csi2) {
-		dev_info(&isys->adev->dev, "sensor device on CSI port: %d \n",
+		dev_info(&isys->adev->dev, "sensor device on CSI port: %d\n",
 			sd_info->csi2->port);
 		if (sd_info->csi2->port >= INTEL_IPU4_ISYS_MAX_CSI2_PORTS ||
 		    !isys->csi2[sd_info->csi2->port].isys) {
@@ -696,7 +696,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		CSI2_BE_PAD_SOURCE, &isys->isa.asd.sd.entity, ISA_PAD_SINK, 0);
 	if (rval) {
 		dev_info(&isys->adev->dev,
-			 "can't create link between CSI2be and ISA \n");
+			 "can't create link between CSI2be and ISA\n");
 		goto fail;
 	}
 
@@ -1219,7 +1219,8 @@ static void isys_isr(struct intel_ipu4_bus_device *adev)
 	}
 
 	if (status & INTEL_IPU4_ISYS_UNISPART_IRQ_SW) {
-		while(!isys_isr_one(adev));
+		while (!isys_isr_one(adev))
+			;
 		writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_REG);
 	}
 
@@ -1236,7 +1237,8 @@ static void isys_isr_poll(struct intel_ipu4_bus_device *adev)
 		return;
 	}
 
-	while (!isys_isr_one(adev));
+	while (!isys_isr_one(adev))
+		;
 }
 
 int intel_ipu4_isys_isr_run(void *ptr)

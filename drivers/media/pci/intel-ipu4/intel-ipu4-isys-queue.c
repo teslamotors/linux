@@ -30,7 +30,7 @@
 #include "isysapi/interface/ia_css_isysapi.h"
 
 static int queue_setup(struct vb2_queue *q,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		       const struct v4l2_format *__fmt,
 #else
 		       const void *__fmt,
@@ -109,7 +109,7 @@ int intel_ipu4_isys_buf_prepare(struct vb2_buffer *vb)
 		return -EINVAL;
 
 	vb2_set_plane_payload(vb, 0, av->mpix.plane_fmt[0].sizeimage);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	vb->v4l2_planes[0].data_offset = av->line_header_length / BITS_PER_BYTE;
 #else
 	vb->planes[0].data_offset = av->line_header_length / BITS_PER_BYTE;
@@ -132,7 +132,7 @@ static void buf_finish(struct vb2_buffer *vb)
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	dev_dbg(&av->isys->adev->dev, "buf_finish %u\n", vb->v4l2_buf.index);
 #else
 	dev_dbg(&av->isys->adev->dev, "buf_finish %u\n", vb->index);
@@ -233,7 +233,7 @@ static void flush_firmware_streamon_fail(struct intel_ipu4_isys_pipeline *ip)
 				dev_dbg(&av->isys->adev->dev,
 					"%s: queue buffer %u back to incoming\n",
 					av->vdev.name,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 					vb->v4l2_buf.index);
 #else
 					vb->index);
@@ -246,7 +246,7 @@ static void flush_firmware_streamon_fail(struct intel_ipu4_isys_pipeline *ip)
 			dev_dbg(&av->isys->adev->dev,
 				"%s: return %u back to videobuf2\n",
 				av->vdev.name,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 				vb->v4l2_buf.index);
 #else
 				vb->index);
@@ -324,7 +324,7 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin(
 	set->output_pins[aq->fw_output].addr =
 		vb2_dma_contig_plane_dma_addr(vb, 0);
 	set->output_pins[aq->fw_output].out_buf_id =
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		vb->v4l2_buf.index + 1;
 #else
 		vb->index + 1;
@@ -374,7 +374,7 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 	int rval;
 
 	dev_dbg(&av->isys->adev->dev, "buf_queue %d/%p\n",
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		vb->v4l2_buf.index, ib);
 #else
 		vb->index, ib);
@@ -515,7 +515,7 @@ static void return_buffers(struct intel_ipu4_isys_queue *aq,
 		vb2_buffer_done(vb, state);
 
 		dev_dbg(&av->isys->adev->dev, "stop_streaming incoming %u/%p\n",
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 			vb->v4l2_buf.index, ib);
 #else
 			vb->index, ib);
@@ -541,7 +541,7 @@ static void return_buffers(struct intel_ipu4_isys_queue *aq,
 		vb2_buffer_done(vb, state);
 
 		dev_warn(&av->isys->adev->dev, "cleaning active queue %u/%p\n",
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 			vb->v4l2_buf.index, ib);
 #else
 			vb->index, ib);
@@ -701,7 +701,7 @@ static void stop_streaming(struct vb2_queue *q)
 void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib)
 {
 	struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 #endif
 	struct intel_ipu4_isys_queue *aq =
@@ -710,7 +710,7 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib)
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	v4l2_get_timestamp(&vb->v4l2_buf.timestamp);
 
 	if (ip->has_sof)

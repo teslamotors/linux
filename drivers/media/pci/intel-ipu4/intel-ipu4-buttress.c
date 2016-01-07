@@ -529,7 +529,7 @@ int intel_ipu4_buttress_map_fw_image(struct intel_ipu4_bus_device *sys,
 
 	n_pages = PAGE_ALIGN(fw->size) >> PAGE_SHIFT;
 
-	pages = kmalloc(n_pages * sizeof(*pages), GFP_KERNEL);
+	pages = kmalloc_array(n_pages, sizeof(*pages), GFP_KERNEL);
 	if (!pages)
 		return -ENOMEM;
 
@@ -727,6 +727,7 @@ static int intel_ipu4_buttress_send_tsc_request(struct intel_ipu4_device *isp)
 	tout_jfs += jiffies;
 	do {
 		u32 val;
+
 		val = readl(isp->base + BUTTRESS_REG_PWR_STATE);
 		val = (val & BUTTRESS_PWR_STATE_HH_STATUS_MASK) >>
 			BUTTRESS_PWR_STATE_HH_STATUS_SHIFT;
@@ -758,6 +759,7 @@ int intel_ipu4_buttress_start_tsc_sync(struct intel_ipu4_device *isp)
 
 	for (i = 0; i < BUTTRESS_TSC_SYNC_RESET_TRIAL_MAX; i++) {
 		int ret;
+
 		ret = intel_ipu4_buttress_send_tsc_request(isp);
 		if (ret == -ETIMEDOUT) {
 			u32 val;
@@ -1045,7 +1047,7 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 		 * Lookup table must be NULL terminated
 		 * CLKDEV_INIT(NULL, NULL, NULL)
 		 */
-		for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++ ) {
+		for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++) {
 			if (!strcmp(clkmap->platform_clock_name,
 				clk_data[i].name)) {
 				clkmap->clkdev_data.clk = b->clk_sensor[i];
@@ -1107,12 +1109,12 @@ static ssize_t intel_ipu4_buttress_reg_write(struct file *file,
 }
 
 static struct debugfs_reg32 buttress_regs[] = {
-	{ "IU2CSEDB0"	, BUTTRESS_REG_IU2CSEDB0 },
-	{ "IU2CSEDATA0"	, BUTTRESS_REG_IU2CSEDATA0 },
-	{ "CSE2IUDB0"	, BUTTRESS_REG_CSE2IUDB0 },
-	{ "CSE2IUDATA0"	, BUTTRESS_REG_CSE2IUDATA0 },
-	{ "CSE2IUCSR"	, BUTTRESS_REG_CSE2IUCSR },
-	{ "IU2CSECSR"	, BUTTRESS_REG_IU2CSECSR },
+	{ "IU2CSEDB0", BUTTRESS_REG_IU2CSEDB0 },
+	{ "IU2CSEDATA0", BUTTRESS_REG_IU2CSEDATA0 },
+	{ "CSE2IUDB0", BUTTRESS_REG_CSE2IUDB0 },
+	{ "CSE2IUDATA0", BUTTRESS_REG_CSE2IUDATA0 },
+	{ "CSE2IUCSR", BUTTRESS_REG_CSE2IUCSR },
+	{ "IU2CSECSR", BUTTRESS_REG_IU2CSECSR },
 };
 
 static const struct file_operations intel_ipu4_buttress_reg_fops = {

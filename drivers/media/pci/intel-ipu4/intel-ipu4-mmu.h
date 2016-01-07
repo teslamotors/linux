@@ -27,7 +27,7 @@ struct pci_dev;
  */
 struct intel_ipu4_mmu_domain {
 	uint32_t __iomem *pgtbl;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 	struct iommu_domain *domain;
 #else
 	struct iommu_domain domain;
