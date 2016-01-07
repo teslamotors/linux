@@ -55,6 +55,42 @@ static struct crl_register_write_rep imx214_pll_8_1080mbps[] = {
 	{ 0x3A05, CRL_REG_LEN_08BIT, 0x01 },
 };
 
+static struct crl_register_write_rep imx214_pll_1200mbps[] = {
+	{ 0x0301, CRL_REG_LEN_08BIT, 0x05 },
+	{ 0x0303, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x0305, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x0306, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0307, CRL_REG_LEN_08BIT, 0x96 },
+	{ 0x0309, CRL_REG_LEN_08BIT, 0x0a },
+	{ 0x030B, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0310, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0820, CRL_REG_LEN_08BIT, 0x12},
+	{ 0x0821, CRL_REG_LEN_08BIT, 0xC0 },
+	{ 0x0822, CRL_REG_LEN_08BIT, 0x66 },
+	{ 0x0823, CRL_REG_LEN_08BIT, 0x66 },
+	{ 0x3A03, CRL_REG_LEN_08BIT, 0x09 },
+	{ 0x3A04, CRL_REG_LEN_08BIT, 0x40 },
+	{ 0x3A05, CRL_REG_LEN_08BIT, 0x01 },
+};
+
+static struct crl_register_write_rep imx214_pll_8_1200mbps[] = {
+	{ 0x0301, CRL_REG_LEN_08BIT, 0x05 },
+	{ 0x0303, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x0305, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x0306, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0307, CRL_REG_LEN_08BIT, 0x96 },
+	{ 0x030B, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0309, CRL_REG_LEN_08BIT, 0x08 },
+	{ 0x0310, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0820, CRL_REG_LEN_08BIT, 0x12},
+	{ 0x0821, CRL_REG_LEN_08BIT, 0xC0 },
+	{ 0x0822, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0823, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3A03, CRL_REG_LEN_08BIT, 0x09 },
+	{ 0x3A04, CRL_REG_LEN_08BIT, 0x40 },
+	{ 0x3A05, CRL_REG_LEN_08BIT, 0x01 },
+};
+
 static struct crl_register_write_rep imx214_powerup_regset[] = {
 	{ 0x0103, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x0100, CRL_REG_LEN_08BIT, 0x00 },
@@ -510,7 +546,7 @@ static struct crl_sensor_detect_config imx214_sensor_detect_regset[] = {
 	},
 };
 
-const s64 imx214_op_sys_clock[] =  { 504000000 };
+const s64 imx214_op_sys_clock[] =  { 504000000, 600000000};
 
 static struct crl_pll_configuration imx214_pll_configurations[] = {
 	{
@@ -536,6 +572,30 @@ static struct crl_pll_configuration imx214_pll_configurations[] = {
 		.ctrl_data = 0,
 		.pll_regs_items = ARRAY_SIZE(imx214_pll_1080mbps),
 		.pll_regs = imx214_pll_1080mbps,
+	},
+	{
+		.input_clk = 24000000,
+		.op_sys_clk = 600000000,
+		.bitsperpixel = 8,
+		.pixel_rate_csi = 480000000,
+		.pixel_rate_pa = 480000000,
+		.csi_lanes = 4,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.pll_regs_items = ARRAY_SIZE(imx214_pll_8_1200mbps),
+		.pll_regs = imx214_pll_8_1200mbps,
+	},
+	{
+		.input_clk = 24000000,
+		.op_sys_clk = 600000000,
+		.bitsperpixel = 10,
+		.pixel_rate_csi = 480000000,
+		.pixel_rate_pa = 480000000,
+		.csi_lanes = 4,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.pll_regs_items = ARRAY_SIZE(imx214_pll_1200mbps),
+		.pll_regs = imx214_pll_1200mbps,
 	},
 
 };

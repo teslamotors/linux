@@ -87,8 +87,8 @@ static struct crlmodule_platform_data imx214_pdata = {
 	.xshutdown = GPIO_BASE + 65,
 	.lanes = IMX214_LANES,
 	.ext_clk = 24000000,
-	.op_sys_clock = (uint64_t []){ 1344000000 / IMX214_LANES,
-				       1296000000 / IMX214_LANES,
+	.op_sys_clock = (uint64_t []){ 2016000000 / IMX214_LANES,
+				       2400000000 / IMX214_LANES,
 				       0 },
 	.module_name = "SONY214A",
 };
