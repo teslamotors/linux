@@ -35,6 +35,9 @@
 #include <ia_css_fw_release.h>
 /* for IA_CSS_ISYS_STREAM_SRC_MIPIGEN_PORT0 */
 #include <ia_css_isysapi_fw_types.h>
+#include <ia_css_pkg_dir_types.h>
+#include <ia_css_pkg_dir.h>
+#include <ia_css_pkg_dir_iunit.h>
 
 #define INTEL_IPU4_PCI_BAR		0
 
@@ -318,6 +321,47 @@ int intel_ipu4_pci_config_setup(struct pci_dev *dev)
 
 	return 0;
 }
+
+void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
+			      int pkg_dir_idx, void __iomem *base, u64 *pkg_dir,
+			      dma_addr_t pkg_dir_dma_addr)
+{
+	u32 val;
+
+	if (is_intel_ipu4_hw_bxt_a0(isp))
+		return;
+
+	val = readl(base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
+	val |= INTEL_IPU4_PSYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
+	writel(val, base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
+
+	if (isp->secure_mode) {
+		writel(INTEL_IPU4_PKG_DIR_IMR_OFFSET,
+		       base + INTEL_IPU4_DMEM_OFFSET);
+	} else {
+		const ia_css_pkg_dir_entry_t *entry;
+		u32 server_addr;
+
+		entry = ia_css_pkg_dir_get_entry(
+			(ia_css_pkg_dir_entry_t *)pkg_dir, pkg_dir_idx);
+
+		server_addr = ia_css_pkg_dir_entry_get_address_lo(entry);
+
+		writel(server_addr + intel_ipu4_cpd_get_pg_icache_base(
+			       isp, pkg_dir_idx, isp->cpd_fw->data,
+			       isp->cpd_fw->size),
+		       base + INTEL_IPU4_PSYS_REG_SPC_ICACHE_BASE);
+		writel(intel_ipu4_cpd_get_pg_entry_point(isp, pkg_dir_idx,
+							 isp->cpd_fw->data,
+							 isp->cpd_fw->size),
+		       base + INTEL_IPU4_PSYS_REG_SPC_START_PC);
+		writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
+		       base +
+		       INTEL_IPU4_REG_PSYS_INFO_SEG_0_CONFIG_ICACHE_MASTER);
+		writel(pkg_dir_dma_addr, base + INTEL_IPU4_DMEM_OFFSET);
+	}
+}
+EXPORT_SYMBOL(intel_ipu4_configure_spc);
 
 static const struct intel_ipu4_isys_internal_pdata isys_ipdata_a0 = {
 	.csi2 = {

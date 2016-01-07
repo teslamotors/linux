@@ -127,4 +127,8 @@ struct intel_ipu4_device {
 	(is_intel_ipu4_hw_bxt_b0(isp) ?				\
 	INTEL_IPU4_MEDIA_DEV_MODEL_IPU4B : INTEL_IPU4_MEDIA_DEV_MODEL_IPU4A)
 
+void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
+			      int pkg_dir_idx, void __iomem *base, u64 *pkg_dir,
+			      dma_addr_t pkg_dir_dma_addr);
+
 #endif

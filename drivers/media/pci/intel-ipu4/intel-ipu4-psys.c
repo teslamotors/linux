@@ -1394,11 +1394,9 @@ static int psys_runtime_pm_resume(struct device *dev)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
-	struct intel_ipu4_device *isp = adev->isp;
 	struct ia_css_syscom_config *syscom_config = psys->syscom_config;
 	void *syscom_buffer = psys->syscom_buffer;
 	unsigned long flags;
-	u32 val;
 
 	if (!syscom_buffer) {
 		dev_err(&psys->adev->dev,
@@ -1410,47 +1408,9 @@ static int psys_runtime_pm_resume(struct device *dev)
 
 	intel_ipu4_trace_restore(&psys->adev->dev);
 
-	if (!is_intel_ipu4_hw_bxt_a0(isp)) {
-		val = readl(psys->pdata->base +
-			    INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
-		val |= INTEL_IPU4_PSYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
-		writel(val, psys->pdata->base +
-		       INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
-
-		/* Write pkg_dir location in IMR into DMEM offset 0 */
-		if (isp->secure_mode) {
-			writel(INTEL_IPU4_PKG_DIR_IMR_OFFSET,
-			       psys->pdata->base +
-			       INTEL_IPU4_DMEM_OFFSET);
-		} else {
-			const ia_css_pkg_dir_entry_t *pkg_dir =
-				(ia_css_pkg_dir_entry_t *)psys->pkg_dir;
-			const ia_css_pkg_dir_entry_t *entry;
-			u32 psys_server_addr;
-
-			entry = ia_css_pkg_dir_get_entry(
-				pkg_dir, IA_CSS_PKG_DIR_PSYS_INDEX);
-
-			psys_server_addr =
-				ia_css_pkg_dir_entry_get_address_lo(
-					entry);
-
-			writel(psys_server_addr +
-			       intel_ipu4_cpd_get_pg_icache_base(
-				       isp, 0, isp->cpd_fw->data,
-				       isp->cpd_fw->size),
-			       psys->pdata->base +
-			       INTEL_IPU4_PSYS_REG_SPC_ICACHE_BASE);
-			writel(intel_ipu4_cpd_get_pg_entry_point(
-				       isp, 0, isp->cpd_fw->data,
-				       isp->cpd_fw->size),
-			       psys->pdata->base +
-			       INTEL_IPU4_PSYS_REG_SPC_START_PC);
-			writel(psys->pkg_dir_dma_addr,
-			       psys->pdata->base +
-			       INTEL_IPU4_DMEM_OFFSET);
-		}
-	}
+	intel_ipu4_configure_spc(adev->isp, IA_CSS_PKG_DIR_PSYS_INDEX,
+				 psys->pdata->base, psys->pkg_dir,
+				 psys->pkg_dir_dma_addr);
 
 	psys->dev_ctx = ia_css_psys_open(syscom_buffer, syscom_config);
 	if (!psys->dev_ctx)

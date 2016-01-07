@@ -111,52 +111,6 @@ static int intel_ipu4_poll_for_events(struct intel_ipu4_isys_video *av)
 	return !is_intel_ipu4_hw_bxt_b0(av->isys->adev->isp);
 }
 
-static void intel_ipu4_isys_hw_init(struct intel_ipu4_isys *isys)
-{
-	struct intel_ipu4_bus_device *adev =
-		to_intel_ipu4_bus_device(&isys->adev->dev);
-	struct intel_ipu4_device *isp = adev->isp;
-	u32 val;
-
-	if (is_intel_ipu4_hw_bxt_a0(isp))
-		return;
-
-	val = readl(isys->pdata->base +
-		    INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
-	val |= INTEL_IPU4_PSYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
-	writel(val, isys->pdata->base +
-	       INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
-
-	if (isp->secure_mode) {
-		writel(INTEL_IPU4_PKG_DIR_IMR_OFFSET,
-		       isys->pdata->base + INTEL_IPU4_DMEM_OFFSET);
-	} else {
-		const ia_css_pkg_dir_entry_t *pkg_dir =
-			(ia_css_pkg_dir_entry_t *)isys->pkg_dir;
-		const ia_css_pkg_dir_entry_t *entry;
-		u32 isys_server_addr;
-
-		entry = ia_css_pkg_dir_get_entry(pkg_dir,
-						 IA_CSS_PKG_DIR_ISYS_INDEX);
-
-		isys_server_addr = ia_css_pkg_dir_entry_get_address_lo(entry);
-
-		writel(isys_server_addr + intel_ipu4_cpd_get_pg_icache_base(
-			       isp, 1, isp->cpd_fw->data, isp->cpd_fw->size),
-		       isys->pdata->base +
-		       INTEL_IPU4_PSYS_REG_SPC_ICACHE_BASE);
-		writel(intel_ipu4_cpd_get_pg_entry_point(isp, 1,
-							 isp->cpd_fw->data,
-							 isp->cpd_fw->size),
-		       isys->pdata->base + INTEL_IPU4_PSYS_REG_SPC_START_PC);
-		writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
-		       isys->pdata->base +
-		       INTEL_IPU4_REG_PSYS_INFO_SEG_0_CONFIG_ICACHE_MASTER);
-		writel(isys->pkg_dir_dma_addr, isys->pdata->base +
-		       INTEL_IPU4_DMEM_OFFSET);
-	}
-}
-
 static int video_open(struct file *file)
 {
 	struct intel_ipu4_isys_video *av = video_drvdata(file);
@@ -186,7 +140,9 @@ static int video_open(struct file *file)
 		return rval;
 	}
 
-	intel_ipu4_isys_hw_init(isys);
+	intel_ipu4_configure_spc(adev->isp, IA_CSS_PKG_DIR_ISYS_INDEX,
+				 isys->pdata->base, isys->pkg_dir,
+				 isys->pkg_dir_dma_addr);
 
 	rval = v4l2_fh_open(file);
 	if (rval)
