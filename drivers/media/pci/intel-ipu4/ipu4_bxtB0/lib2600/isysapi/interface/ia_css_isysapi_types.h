@@ -175,7 +175,7 @@ struct ia_css_isys_stream_cfg_data {
 	enum ia_css_isys_mipi_vc vc;
 	enum ia_css_isys_isl_use isl_use;
 	struct ia_css_isys_isa_cfg isa_cfg;
-	struct ia_css_isys_cropping crop[MAX_IPINS_IN_ISL];
+	struct ia_css_isys_cropping crop[N_IA_CSS_ISYS_CROPPING_LOCATION];
 	unsigned int nof_input_pins;
 	unsigned int nof_output_pins;
 	struct ia_css_isys_input_pin_info input_pins[MAX_IPINS];

@@ -26,4 +26,12 @@ ia_css_server_init_host(int ssid, int mmid,
 	unsigned int secure,
 	unsigned int imr_offset);
 
+int
+ia_css_server_init_host_cpd(unsigned int ssid, unsigned int mmid,
+	ia_css_xmem_address_t pkg_dir_host_address,
+	vied_virtual_address_t pkg_dir_vied_address,
+	enum ia_css_pkg_dir_index server_index,
+	unsigned int secure,
+	unsigned int imr_offset);
+
 #endif /* __IA_CSS_ISYS_FW_INIT_H_INCLUDED__ */

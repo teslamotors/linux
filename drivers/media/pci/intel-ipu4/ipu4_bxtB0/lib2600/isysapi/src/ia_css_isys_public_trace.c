@@ -60,6 +60,7 @@ int print_handle_context(struct ia_css_isys_context *ctx)
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "------------------------------------------------------------\n");
 	return 0;
 }
+
 /**
  * print_device_config_data - formatted print function for struct ia_css_isys_device_cfg_data *config variable
  */
@@ -94,6 +95,7 @@ int print_device_config_data(const struct ia_css_isys_device_cfg_data *config)
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "------------------------------------------------------------\n");
 	return 0;
 }
+
 /**
  * print_stream_config_data - formatted print function for ia_css_isys_stream_cfg_data stream_cfg variable
  */
@@ -127,7 +129,7 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
 			, i
 			, stream_cfg->input_pins[i].input_res.height);
 	}
-	for (i = 0; i < MAX_IPINS_IN_ISL; i++) {
+	for (i = 0; i < N_IA_CSS_ISYS_CROPPING_LOCATION; i++) {
 		IA_CSS_TRACE_4(ISYSAPI, VERBOSE,
 			"\tia_css_isys_stream_cfg_data->ia_css_isys_cropping[i = %d].top_offset = %d\n"
 			"\t\t\tia_css_isys_stream_cfg_data->ia_css_isys_cropping[i = %d].left_offset = %d\n"
@@ -195,6 +197,7 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "------------------------------------------------------------\n");
 	return 0;
 }
+
 /**
  * print_isys_frame_buff_set - formatted print function for struct ia_css_isys_frame_buff_set *next_frame variable
  */
@@ -231,6 +234,7 @@ int print_isys_frame_buff_set(const struct ia_css_isys_frame_buff_set *next_fram
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "------------------------------------------------------------\n");
 	return 0;
 }
+
 /**
  * print_isys_resp_info - formatted print function for struct ia_css_isys_frame_buff_set *next_frame variable
  */

@@ -280,6 +280,16 @@ enum ia_css_isys_isl_use {
 	N_IA_CSS_ISYS_USE
 };
 
+/**
+ * enum ia_css_isys_isl_use. Describes the ISL/ISA use
+ */
+enum ia_css_isys_cropping_location {
+	IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA = 0,		/* Cropping executed in ISAPF (mainly), ISAPF preproc (odd column) and MIPI STR2MMIO (odd row) */
+	IA_CSS_ISYS_CROPPING_LOCATION_RESERVED_1,		/* BXT A0 legacy mode which will never be implemented */
+	IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED,	/* Cropping executed in StreamPifConv in the ISA output for RAW_NS pin */
+	IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED,		/* Cropping executed in StreamScaledPifConv in the ISA output for RAW_S pin */
+	N_IA_CSS_ISYS_CROPPING_LOCATION
+};
 
 /**
  * enum ia_css_isys_error. Describes the error type detected by the FW

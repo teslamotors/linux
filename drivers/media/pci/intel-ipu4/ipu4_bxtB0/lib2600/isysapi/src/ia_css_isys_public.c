@@ -239,11 +239,11 @@ int ia_css_isys_device_open(
 	verifret(stream_cfg->src < N_IA_CSS_ISYS_STREAM_SRC, EINVAL);
 	verifret(stream_cfg->vc < N_IA_CSS_ISYS_MIPI_VC, EINVAL);
 	verifret(stream_cfg->isl_use < N_IA_CSS_ISYS_USE, EINVAL);
-	for (i = 0; i < MAX_IPINS_IN_ISL; i++) {
-		verifret(stream_cfg->crop[i].bottom_offset >= stream_cfg->crop[i].top_offset + OUTPUT_MIN_HEIGHT, EINVAL);
-		verifret(stream_cfg->crop[i].bottom_offset <= stream_cfg->crop[i].top_offset + OUTPUT_MAX_HEIGHT, EINVAL);
-		verifret(stream_cfg->crop[i].right_offset >= stream_cfg->crop[i].left_offset + OUTPUT_MIN_WIDTH, EINVAL);
-		verifret(stream_cfg->crop[i].right_offset <= stream_cfg->crop[i].left_offset + OUTPUT_MAX_WIDTH, EINVAL);
+	if (stream_cfg->isl_use != IA_CSS_ISYS_USE_NO_ISL_NO_ISA) {
+		verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].bottom_offset >= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].top_offset + OUTPUT_MIN_HEIGHT, EINVAL);
+		verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].bottom_offset <= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].top_offset + OUTPUT_MAX_HEIGHT, EINVAL);
+		verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].right_offset >= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].left_offset + OUTPUT_MIN_WIDTH, EINVAL);
+		verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].right_offset <= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].left_offset + OUTPUT_MAX_WIDTH, EINVAL);
 	}
 	verifret(stream_cfg->nof_input_pins < MAX_IPINS, EINVAL);
 	verifret(stream_cfg->nof_output_pins < MAX_OPINS, EINVAL);
@@ -261,21 +261,26 @@ int ia_css_isys_device_open(
 		verifret(stream_cfg->output_pins[i].input_pin_id < stream_cfg->nof_input_pins, EINVAL);
 		verifret(stream_cfg->output_pins[i].pt < N_IA_CSS_ISYS_PIN_TYPE, EINVAL);
 		verifret(stream_cfg->output_pins[i].ft < N_IA_CSS_ISYS_FRAME_FORMAT, EINVAL);
+		verifret(stream_cfg->output_pins[i].stride%(XMEM_WIDTH/8) == 0, EINVAL);  /* Verify that the stride is aligned to 64 bytes: HW spec */
+		verifret(
+			stream_cfg->output_pins[i].output_res.width >= OUTPUT_MIN_WIDTH &&
+			stream_cfg->output_pins[i].output_res.width <= OUTPUT_MAX_WIDTH &&
+			stream_cfg->output_pins[i].output_res.height >= OUTPUT_MIN_HEIGHT &&
+			stream_cfg->output_pins[i].output_res.height <= OUTPUT_MAX_HEIGHT, EINVAL);
+#ifdef DRIVER_SPECIFIES_OUTPUT_CROPPING	/* #ifdef to be removed when driver does what the define says */
 		switch(stream_cfg->output_pins[i].pt) {
-		case IA_CSS_ISYS_PIN_TYPE_MIPI:
 		case IA_CSS_ISYS_PIN_TYPE_RAW_NS:
+			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].top_offset + (int)stream_cfg->output_pins[i].output_res.height, EINVAL);
+			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].left_offset + (int)stream_cfg->output_pins[i].output_res.width, EINVAL);
+			break;
 		case IA_CSS_ISYS_PIN_TYPE_RAW_S:
-		case IA_CSS_ISYS_PIN_TYPE_RAW_SOC:
-			verifret(stream_cfg->output_pins[i].stride%(XMEM_WIDTH/8) == 0, EINVAL);  /* Verify that the stride is aligned to 64 bytes: HW spec */
-			verifret(
-				stream_cfg->output_pins[i].output_res.width >= OUTPUT_MIN_WIDTH &&
-				stream_cfg->output_pins[i].output_res.width <= OUTPUT_MAX_WIDTH &&
-				stream_cfg->output_pins[i].output_res.height >= OUTPUT_MIN_HEIGHT &&
-				stream_cfg->output_pins[i].output_res.height <= OUTPUT_MAX_HEIGHT, EINVAL);
+			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].top_offset + (int)stream_cfg->output_pins[i].output_res.height, EINVAL);
+			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].left_offset + (int)stream_cfg->output_pins[i].output_res.width, EINVAL);
 			break;
 		default:
 			break;
 		}
+#endif /*DRIVER_SPECIFIES_OUTPUT_CROPPING*/
 	}
 
 	/* open 1 send queue/stream and a single receive queue if not existing */

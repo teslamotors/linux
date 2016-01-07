@@ -146,7 +146,7 @@ struct ia_css_isys_stream_cfg_data_comm {
 	aligned_enum(enum ia_css_isys_mipi_vc, vc);
 	aligned_enum(enum ia_css_isys_isl_use, isl_use);
 	aligned_struct(struct ia_css_isys_isa_cfg_comm, isa_cfg);
-	aligned_struct(struct ia_css_isys_cropping_comm, crop[MAX_IPINS_IN_ISL]);
+	aligned_struct(struct ia_css_isys_cropping_comm, crop[N_IA_CSS_ISYS_CROPPING_LOCATION]);
 	aligned_uint32(unsigned int, nof_input_pins);
 	aligned_uint32(unsigned int, nof_output_pins);
 	aligned_struct(struct ia_css_isys_input_pin_info_comm, input_pins[MAX_IPINS]);

@@ -371,7 +371,7 @@ STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(const struct ia_css_isys_st
 		isa_cfg_host_to_css(&stream_cfg_data_host->isa_cfg, &stream_cfg_data_css->isa_cfg);
 		/* deliberate fall-through */
 	case IA_CSS_ISYS_USE_SINGLE_DUAL_ISL:
-		for (i = 0; i < MAX_IPINS_IN_ISL; i++) {
+		for (i = 0; i < N_IA_CSS_ISYS_CROPPING_LOCATION; i++) {
 			cropping_host_to_css(&stream_cfg_data_host->crop[i], &stream_cfg_data_css->crop[i]);
 		}
 		break;
