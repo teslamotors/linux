@@ -2023,6 +2023,21 @@ static int crlmodule_run_power_sequence(struct crl_sensor *sensor,
 		dev_err(&client->dev, "failed to enable sensor rails\n");
 		return rval;
 	}
+
+	rval = clk_set_rate(sensor->xclk,
+			    sensor->platform_data->ext_clk);
+	if (rval < 0) {
+		dev_err(&client->dev,
+			"unable to set clock freq to %u\n",
+			sensor->platform_data->ext_clk);
+		return rval;
+	}
+
+	if (clk_get_rate(sensor->xclk) != sensor->platform_data->ext_clk)
+		dev_warn(&client->dev,
+			"warning: unable to set accurate clock freq %u\n",
+			sensor->platform_data->ext_clk);
+
 	rval = clk_prepare_enable(sensor->xclk);
 	if (rval) {
 		dev_err(&client->dev, "failed to enable sensor clock\n");
