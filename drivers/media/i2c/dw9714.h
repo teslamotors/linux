@@ -21,7 +21,7 @@
 
 
 #define DW9714_VCM_ADDR		0x0c
-#define DW9714_NAME 		"dw9714"
+#define DW9714_NAME		"dw9714"
 
 enum dw9714_vcm_mode {
 	DW9714_DIRECT = 0x1,	/* direct control */

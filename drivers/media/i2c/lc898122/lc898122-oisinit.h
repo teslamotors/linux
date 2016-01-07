@@ -68,27 +68,33 @@ int lc898122_write_word(struct i2c_client *client, u16 reg, u16 val);
 int lc898122_read_byte(struct i2c_client *client, u16 reg, u8 *val);
 int lc898122_write_byte(struct i2c_client *client, u16 reg, u8 val);
 
-static inline int RamRead32A(struct i2c_client *client, u16 addr, u32* data) {
+static inline int RamRead32A(struct i2c_client *client, u16 addr, u32 *data)
+{
 	return lc898122_read_long(client, addr, data);
 }
 
-static inline int RamWrite32A(struct i2c_client *client, u16 addr, u32 data) {
+static inline int RamWrite32A(struct i2c_client *client, u16 addr, u32 data)
+{
 	return lc898122_write_long(client, addr, data);
 }
 
-static inline int RamReadA(struct i2c_client *client, u16 addr, u16* data) {
+static inline int RamReadA(struct i2c_client *client, u16 addr, u16 *data)
+{
 	return lc898122_read_word(client, addr, data);
 }
 
-static inline int RamWriteA(struct i2c_client *client, u16 addr, u16 data) {
+static inline int RamWriteA(struct i2c_client *client, u16 addr, u16 data)
+{
 	return lc898122_write_word(client, addr, data);
 }
 
-static inline int RegReadA(struct i2c_client *client, u16 addr, u8* data) {
+static inline int RegReadA(struct i2c_client *client, u16 addr, u8 *data)
+{
 	return lc898122_read_byte(client, addr, data);
 }
 
-static inline int RegWriteA(struct i2c_client *client, u16 addr, u8 data) {
+static inline int RegWriteA(struct i2c_client *client, u16 addr, u8 data)
+{
 	return lc898122_write_byte(client, addr, data);
 }
 
@@ -322,7 +328,7 @@ struct STFILRAM {
 #define LC898122_PTP_BEFORE 0
 #define LC898122_PTP_AFTER  1
 
-void lc898122_initsettingsaf (struct lc898122_device *lc898122_dev);
+void lc898122_initsettingsaf(struct lc898122_device *lc898122_dev);
 void lc898122_initsettings(struct lc898122_device *lc898122_dev);
 void lc898122_selectmodule(struct lc898122_device *lc898122_dev,
 			   u8 uc_module);
@@ -331,17 +337,17 @@ void lc898122_settregaf(struct lc898122_device *lc898122_dev,
 void lc898122_autogaincontrol(struct lc898122_device *lc898122_dev,
 			      u8 UcModeSw);
 void lc898122_RamAccFixMod(struct lc898122_device *lc898122_dev,
-			   u8 UcAccMod );
+			   u8 UcAccMod);
 void lc898122_cleargyro(struct lc898122_device *lc898122_dev,
-			u16 UsClrFil , u8 UcClrMod);
+			u16 UsClrFil, u8 UcClrMod);
 void lc898122_SetDOFSTDAF(struct lc898122_device *lc898122_dev,
 			  u8 ucSetDat);
 
 u8 lc898122_RtnCen(struct lc898122_device *lc898122_dev,
 			      u8 UcCmdPar);
-void lc898122_RemOff( struct lc898122_device *lc898122_dev,
+void lc898122_RemOff(struct lc898122_device *lc898122_dev,
 		      u8 UcMod);
-void lc898122_BsyWit( struct lc898122_device *lc898122_dev,
+void lc898122_BsyWit(struct lc898122_device *lc898122_dev,
 		      u16 UsTrgAdr, u8 UcTrgDat);
 void lc898122_OisEna(struct lc898122_device *lc898122_dev);
 

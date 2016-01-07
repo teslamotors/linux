@@ -35,7 +35,7 @@ void lc898122_StopSineWave(struct lc898122_device *lc898122_dev);
 void lc898122_SetMeasFil(struct lc898122_device *lc898122_dev, u8);
 void lc898122_ClrMeasFil(struct lc898122_device *lc898122_dev);
 
-u8 lc898122_TstActMov(struct lc898122_device *lc898122_dev,u8);
+u8 lc898122_TstActMov(struct lc898122_device *lc898122_dev, u8);
 
 void lc898122_StbOnn(struct lc898122_device *lc898122_dev);
 void lc898122_StbOnnN(struct lc898122_device *lc898122_dev, u8 UcStbY, u8 UcStbX);
@@ -55,7 +55,7 @@ void lc898122_SetGcf(struct lc898122_device *lc898122_dev, u8	UcSetNum);
 #define		LC898122_CHGCOEF_MOV_13M	0xB92B6DB7
 
 #define		LC898122_ZOOMTBL	16
-const u32	ClGyxZom[ LC898122_ZOOMTBL ]	= {
+const u32	ClGyxZom[LC898122_ZOOMTBL]	= {
 	0x3F800000,
 	0x3F800000,
 	0x3F800000,
@@ -74,7 +74,7 @@ const u32	ClGyxZom[ LC898122_ZOOMTBL ]	= {
 	0x3F800000
 };
 
-const u32	ClGyyZom[ LC898122_ZOOMTBL ]	= {
+const u32	ClGyyZom[LC898122_ZOOMTBL]	= {
 	0x3F800000,
 	0x3F800000,
 	0x3F800000,
@@ -94,7 +94,7 @@ const u32	ClGyyZom[ LC898122_ZOOMTBL ]	= {
 };
 
 #define		LC898122_COEFTBL	7
-const u32	ClDiCof_20M[ LC898122_COEFTBL ]	= {
+const u32	ClDiCof_20M[LC898122_COEFTBL]	= {
 	LC898122_DIFIL_S2_20M,
 	LC898122_DIFIL_S2_20M,
 	LC898122_DIFIL_S2_20M,
@@ -103,7 +103,7 @@ const u32	ClDiCof_20M[ LC898122_COEFTBL ]	= {
 	LC898122_DIFIL_S2_20M,
 	LC898122_DIFIL_S2_20M
 };
-const u32	ClDiCof_13M[ LC898122_COEFTBL ]	= {
+const u32	ClDiCof_13M[LC898122_COEFTBL]	= {
 	LC898122_DIFIL_S2_13M,
 	LC898122_DIFIL_S2_13M,
 	LC898122_DIFIL_S2_13M,
@@ -116,6 +116,7 @@ const u32	ClDiCof_13M[ LC898122_COEFTBL ]	= {
 void lc898122_MesFil(struct lc898122_device *lc898122_dev, u8	UcMesMod)
 {
 	struct i2c_client *client = lc898122_dev->client;
+
 	if (lc898122_dev->state.flags & LC898122_EXTCLK_ALL) {
 		if (!UcMesMod) {
 			RamWrite32A(client, LC898122_mes1aa, 0x3D1E5A40);
@@ -310,6 +311,7 @@ void lc898122_SrvCon(struct lc898122_device *lc898122_dev, u8	UcDirSel,
 	    u8	UcSwcCon)
 {
 	struct i2c_client *client = lc898122_dev->client;
+
 	if (UcSwcCon) {
 		if (!UcDirSel) {
 			RegWriteA(client, LC898122_WH_EQSWX, 0x03);
@@ -346,7 +348,7 @@ u8 lc898122_RtnCen(struct lc898122_device *lc898122_dev,
 		lc898122_SrvCon(lc898122_dev, LC898122_Y_DIR, ON);
 	}
 
-	return(UcCmdSts);
+	return UcCmdSts;
 }
 
 void lc898122_GyrCon(struct lc898122_device *lc898122_dev, u8 UcGyrCon)
@@ -449,7 +451,8 @@ short lc898122_GenMes(struct lc898122_device *lc898122_dev, u16 UsRamAdd,
 	lc898122_RamAccFixMod(lc898122_dev, ON);
 	RamReadA(client, LC898122_MSABS1AV, (u16 *)&SsMesRlt);
 	lc898122_RamAccFixMod(lc898122_dev, OFF);
-	return(SsMesRlt);
+
+	return SsMesRlt;
 }
 
 const u16 CucFreqVal_extclk[17] = {
@@ -645,14 +648,14 @@ void lc898122_SetStandby(struct lc898122_device *lc898122_dev, u8 UcContMode)
 	struct i2c_client *client = lc898122_dev->client;
 	u8	UcStbb0, UcClkon;
 
-	switch(UcContMode) {
+	switch (UcContMode) {
 	case LC898122_STB1_ON:
 		if (!(lc898122_dev->state.flags & LC898122_AF_PWMMODE))
-			RegWriteA(client, LC898122_DRVFCAF	, 0x00);
-		RegWriteA(client, LC898122_STBB0 	, 0x00);
-		RegWriteA(client, LC898122_STBB1 	, 0x00);
-		RegWriteA(client, LC898122_PWMA 	, 0x00);
-		RegWriteA(client, LC898122_PWMAAF 	, 0x00);
+			RegWriteA(client, LC898122_DRVFCAF, 0x00);
+		RegWriteA(client, LC898122_STBB0, 0x00);
+		RegWriteA(client, LC898122_STBB1, 0x00);
+		RegWriteA(client, LC898122_PWMA, 0x00);
+		RegWriteA(client, LC898122_PWMAAF, 0x00);
 		RegWriteA(client, LC898122_CVA,  0x00);
 		lc898122_driversw(lc898122_dev, OFF);
 		lc898122_afdriversw(lc898122_dev, OFF);
@@ -832,11 +835,11 @@ void lc898122_SetStandby(struct lc898122_device *lc898122_dev, u8 UcContMode)
 		UcClkon |= 0x18;
 		RegWriteA(client, LC898122_CLKON,	UcClkon);
 		lc898122_afdriversw(lc898122_dev, ON);
-		RegWriteA(client, LC898122_PWMAAF 	, 0x00);
-		RegWriteA(client, LC898122_STBB1	, 0x05);
-		RegReadA(client, LC898122_STBB0	, &UcStbb0);
+		RegWriteA(client, LC898122_PWMAAF, 0x00);
+		RegWriteA(client, LC898122_STBB1, 0x05);
+		RegReadA(client, LC898122_STBB0, &UcStbb0);
 		UcStbb0 |= 0x80;
-		RegWriteA(client, LC898122_STBB0	, UcStbb0);
+		RegWriteA(client, LC898122_STBB0, UcStbb0);
 
 		break;
 	}
@@ -850,14 +853,14 @@ void lc898122_SetZsp(struct lc898122_device *lc898122_dev,
 
 	/* Zoom Step */
 	if (UcZoomStepDat > (LC898122_ZOOMTBL - 1))
-		UcZoomStepDat = (LC898122_ZOOMTBL -1);
+		UcZoomStepDat = (LC898122_ZOOMTBL - 1);
 
 	if (UcZoomStepDat == 0) {
-		UlGyrZmx	= ClGyxZom[ 0 ];
-		UlGyrZmy	= ClGyyZom[ 0 ];
+		UlGyrZmx	= ClGyxZom[0];
+		UlGyrZmy	= ClGyyZom[0];
 	} else {
-		UlGyrZmx	= ClGyxZom[ UcZoomStepDat ];
-		UlGyrZmy	= ClGyyZom[ UcZoomStepDat ];
+		UlGyrZmx	= ClGyxZom[UcZoomStepDat];
+		UlGyrZmy	= ClGyyZom[UcZoomStepDat];
 	}
 
 	RamWrite32A(client, LC898122_gxlens, UlGyrZmx);
@@ -876,7 +879,7 @@ void lc898122_SetZsp(struct lc898122_device *lc898122_dev,
 void lc898122_StbOnn(struct lc898122_device *lc898122_dev)
 {
 	struct i2c_client *client = lc898122_dev->client;
-	u8	UcRegValx,UcRegValy;
+	u8	UcRegValx, UcRegValy;
 	u8	UcRegIni;
 	u8	UcCnt;
 
@@ -917,8 +920,10 @@ void lc898122_StbOnnN(struct lc898122_device *lc898122_dev, u8 UcStbY, u8 UcStbX
 	u8	UcCnt;
 
 	RegWriteA(client, LC898122_WH_SMTSRVON,	0x01);
-	if (UcStbX == ON)	UcSttMsk |= 0x07;
-	if (UcStbY == ON)	UcSttMsk |= 0x70;
+	if (UcStbX == ON)
+		UcSttMsk |= 0x07;
+	if (UcStbY == ON)
+		UcSttMsk |= 0x70;
 
 	lc898122_SrvCon(lc898122_dev, LC898122_X_DIR, UcStbX);
 	lc898122_SrvCon(lc898122_dev, LC898122_Y_DIR, UcStbY);
@@ -948,17 +953,17 @@ void lc898122_OptCen(struct lc898122_device *lc898122_dev, u8 UcOptmode,
 	lc898122_RamAccFixMod(lc898122_dev, ON);
 
 	switch (UcOptmode) {
-	case LC898122_VAL_SET :
+	case LC898122_VAL_SET:
 		RamWriteA(client, LC898122_SXOFFZ1, UsOptXval);
 		RamWriteA(client, LC898122_SYOFFZ1, UsOptYval);
 		break;
-	case LC898122_VAL_FIX :
+	case LC898122_VAL_FIX:
 		lc898122_dev->state.UsCntXof = UsOptXval;
 		lc898122_dev->state.UsCntYof = UsOptYval;
 		RamWriteA(client, LC898122_SXOFFZ1, lc898122_dev->state.UsCntXof);
 		RamWriteA(client, LC898122_SYOFFZ1, lc898122_dev->state.UsCntYof);
 		break;
-	case LC898122_VAL_SPC :
+	case LC898122_VAL_SPC:
 		RamReadA(client, LC898122_SXOFFZ1, &UsOptXval);
 		RamReadA(client, LC898122_SYOFFZ1, &UsOptYval);
 		lc898122_dev->state.UsCntXof = UsOptXval;
@@ -1025,6 +1030,7 @@ void lc898122_SetSineWave(struct lc898122_device *lc898122_dev, u8 UcJikuSel,
 void lc898122_StartSineWave(struct lc898122_device *lc898122_dev)
 {
 	struct i2c_client *client = lc898122_dev->client;
+
 	RegWriteA(client, LC898122_WC_SINON, 0x01);
 }
 
@@ -1086,7 +1092,8 @@ u8 lc898122_TriSts(struct lc898122_device *lc898122_dev)
 		UcRsltSts = UcVal & 0x11;
 		UcRsltSts |= 0x80;
 	}
-	return(UcRsltSts);
+
+	return UcRsltSts;
 }
 
 u8 lc898122_DrvPwmSw(struct lc898122_device *lc898122_dev, u8 UcSelPwmMod)
@@ -1094,12 +1101,12 @@ u8 lc898122_DrvPwmSw(struct lc898122_device *lc898122_dev, u8 UcSelPwmMod)
 	struct i2c_client *client = lc898122_dev->client;
 
 	switch (UcSelPwmMod) {
-	case LC898122_Mlnp :
+	case LC898122_Mlnp:
 		RegWriteA(client, LC898122_DRVFC, 0xF0);
 		lc898122_dev->state.UcPwmMod = LC898122_PWMMOD_CVL;
 		break;
 
-	case LC898122_Mpwm :
+	case LC898122_Mpwm:
 		if (lc898122_dev->state.flags & LC898122_PWM_BREAK)
 			RegWriteA(client, LC898122_DRVFC, 0x00);
 		else
@@ -1108,7 +1115,7 @@ u8 lc898122_DrvPwmSw(struct lc898122_device *lc898122_dev, u8 UcSelPwmMod)
 		break;
 	}
 
-	return(UcSelPwmMod << 4);
+	return UcSelPwmMod << 4;
 }
 
 void lc898122_SetGcf(struct lc898122_device *lc898122_dev, u8 UcSetNum)
@@ -1116,12 +1123,12 @@ void lc898122_SetGcf(struct lc898122_device *lc898122_dev, u8 UcSetNum)
 	struct i2c_client *client = lc898122_dev->client;
 
 	if (UcSetNum > (LC898122_COEFTBL - 1))
-		UcSetNum = (LC898122_COEFTBL -1);
+		UcSetNum = (LC898122_COEFTBL - 1);
 
 	if (lc898122_dev->state.UcModule == LC898122_MODULE_20M)
-		lc898122_dev->state.UlH1Coefval	= ClDiCof_20M[ UcSetNum ];
+		lc898122_dev->state.UlH1Coefval	= ClDiCof_20M[UcSetNum];
 	else
-		lc898122_dev->state.UlH1Coefval	= ClDiCof_13M[ UcSetNum ];
+		lc898122_dev->state.UlH1Coefval	= ClDiCof_13M[UcSetNum];
 
 	RamWrite32A(client, LC898122_gxh1c, lc898122_dev->state.UlH1Coefval);
 	RamWrite32A(client, LC898122_gyh1c, lc898122_dev->state.UlH1Coefval);
@@ -1140,14 +1147,13 @@ void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
 	u32	MINLMT_MOV;
 	u32	CHGCOEF_MOV;
 
-	if (lc898122_dev->state.UcModule == LC898122_MODULE_20M){
+	if (lc898122_dev->state.UcModule == LC898122_MODULE_20M) {
 		MAXLMT		= LC898122_MAXLMT_20M;
 		MINLMT		= LC898122_MINLMT_20M;
 		CHGCOEF		= LC898122_CHGCOEF_20M;
 		MINLMT_MOV	= LC898122_MINLMT_MOV_20M;
 		CHGCOEF_MOV	= LC898122_CHGCOEF_MOV_20M;
-	}
-	else{
+	} else{
 		MAXLMT		= LC898122_MAXLMT_13M;
 		MINLMT		= LC898122_MINLMT_13M;
 		CHGCOEF		= LC898122_CHGCOEF_13M;
@@ -1155,14 +1161,14 @@ void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
 		CHGCOEF_MOV	= LC898122_CHGCOEF_MOV_13M;
 	}
 
-	switch(UcSetNum){
+	switch (UcSetNum) {
 	case (LC898122_ACTMODE):
 		lc898122_IniPtMovMod(lc898122_dev, OFF);
 
 		if (lc898122_dev->state.UcModule == LC898122_MODULE_20M)
-			lc898122_dev->state.UlH1Coefval	= ClDiCof_20M[ 0 ];
+			lc898122_dev->state.UlH1Coefval	= ClDiCof_20M[0];
 		else
-			lc898122_dev->state.UlH1Coefval	= ClDiCof_13M[ 0 ];
+			lc898122_dev->state.UlH1Coefval	= ClDiCof_13M[0];
 
 		lc898122_dev->state.UcH1LvlMod = 0;
 
@@ -1172,11 +1178,11 @@ void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
 		RamWrite32A(client, LC898122_gylmt6L, MINLMT);
 		RamWrite32A(client, LC898122_gylmt6H, MAXLMT);
 
-		RamWrite32A(client, LC898122_gxhc_tmp, 	lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gxhc_tmp,	lc898122_dev->state.UlH1Coefval);
 		RamWrite32A(client, LC898122_gxmg, CHGCOEF);
 
-		RamWrite32A(client, LC898122_gyhc_tmp, 	lc898122_dev->state.UlH1Coefval);
-		RamWrite32A(client, LC898122_gymg, 		CHGCOEF);
+		RamWrite32A(client, LC898122_gyhc_tmp,	lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gymg,		CHGCOEF);
 
 		RegWriteA(client, LC898122_WG_HCHR, 0x12);
 		break;
@@ -1200,7 +1206,7 @@ void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
 		RegWriteA(client, LC898122_WG_HCHR, 0x12);
 		break;
 
-	default :
+	default:
 		lc898122_IniPtMovMod(lc898122_dev, OFF);
 
 		lc898122_dev->state.UcH1LvlMod = UcSetNum;
@@ -1208,8 +1214,8 @@ void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
 		RamWrite32A(client, LC898122_gxlmt6L, MINLMT);
 		RamWrite32A(client, LC898122_gylmt6L, MINLMT);
 
-		RamWrite32A(client, LC898122_gxmg, 	CHGCOEF);
-		RamWrite32A(client, LC898122_gymg, 	CHGCOEF);
+		RamWrite32A(client, LC898122_gxmg,	CHGCOEF);
+		RamWrite32A(client, LC898122_gymg,	CHGCOEF);
 
 		RamWrite32A(client, LC898122_gxhc_tmp, lc898122_dev->state.UlH1Coefval);
 		RamWrite32A(client, LC898122_gyhc_tmp, lc898122_dev->state.UlH1Coefval);
@@ -1221,7 +1227,7 @@ void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
 
 u16 lc898122_RdFwVr(void)
 {
-	return(LC898122_FW_VER);
+	return LC898122_FW_VER;
 }
 
 u8 lc898122_GetDOFSTDAF(struct lc898122_device *lc898122_dev)
@@ -1239,7 +1245,7 @@ u8 lc898122_GetDOFSTDAF(struct lc898122_device *lc898122_dev)
 		ucRegDat = ucDRVFC4AF >> 3;
 	}
 
-	return(ucRegDat);
+	return ucRegDat;
 }
 
 void lc898122_SetDOFSTDAF(struct lc898122_device *lc898122_dev, u8 ucSetDat)
@@ -1252,7 +1258,7 @@ void lc898122_SetDOFSTDAF(struct lc898122_device *lc898122_dev, u8 ucSetDat)
 		RegReadA(client, LC898122_DRVFC3AF, &ucRegDat);
 		RegWriteA(client, LC898122_DRVFC4AF, (ucSetDat & 0x18) << 3);
 		RegWriteA(client, LC898122_DRVFC3AF, (ucRegDat & 0x70) | (ucSetDat & 0x07));
-	} else{
+	} else {
 		RegWriteA(client, LC898122_DRVFC4AF, ucSetDat << 3);
 	}
 }
@@ -1270,7 +1276,7 @@ u8 lc898122_TstActMov(struct lc898122_device *lc898122_dev, u8 UcDirSel)
 		RamWrite32A(client, LC898122_sxsin, LC898122_ACT_CHK_LVL);
 		RamWrite32A(client, LC898122_sysin, 0x000000);
 		lc898122_SetSinWavePara(lc898122_dev, 0x05, LC898122_XACTTEST);
-	}else{
+	} else {
 		RamWrite32A(client, LC898122_sxsin, 0x000000);
 		RamWrite32A(client, LC898122_sysin, LC898122_ACT_CHK_LVL);
 		lc898122_SetSinWavePara(lc898122_dev, 0x05, LC898122_YACTTEST);
@@ -1287,7 +1293,7 @@ u8 lc898122_TstActMov(struct lc898122_device *lc898122_dev, u8 UcDirSel)
 	RegWriteA(client, LC898122_WC_MESSINMODE, 0x00);
 	RegWriteA(client, LC898122_WC_MESLOOP1, 0x00);
 	RegWriteA(client, LC898122_WC_MESLOOP0, 0x02);
-	RamWrite32A(client, LC898122_msmean	, 0x3F000000);
+	RamWrite32A(client, LC898122_msmean, 0x3F000000);
 	RegWriteA(client, LC898122_WC_MESABS, 0x00);
 	lc898122_BsyWit(lc898122_dev, LC898122_WC_MESMODE, 0x02);
 
@@ -1308,25 +1314,25 @@ u8 lc898122_TstActMov(struct lc898122_device *lc898122_dev, u8 UcDirSel)
 			UcRsltSts = LC898122_EXE_HYMVER;
 	}
 
-	return(UcRsltSts);
+	return UcRsltSts;
 }
 
 u8 lc898122_RunHea(struct lc898122_device *lc898122_dev)
 {
-	u8 	UcRst;
+	u8	UcRst;
 
 	UcRst = LC898122_EXE_END;
 	UcRst |= lc898122_TstActMov(lc898122_dev, LC898122_X_DIR);
 	UcRst |= lc898122_TstActMov(lc898122_dev, LC898122_Y_DIR);
 
-	return(UcRst);
+	return UcRst;
 }
 
 u8 lc898122_RunGea(struct lc898122_device *lc898122_dev)
 {
 	struct i2c_client *client = lc898122_dev->client;
 
-	u8 	UcRst, UcCnt, UcXLowCnt, UcYLowCnt, UcXHigCnt, UcYHigCnt;
+	u8	UcRst, UcCnt, UcXLowCnt, UcYLowCnt, UcXHigCnt, UcYHigCnt;
 	u16	UsGxoVal[10], UsGyoVal[10], UsDif;
 
 	UcRst = LC898122_EXE_END;
@@ -1334,8 +1340,7 @@ u8 lc898122_RunGea(struct lc898122_device *lc898122_dev)
 
 	lc898122_MesFil(lc898122_dev, LC898122_THROUGH);
 
-	for(UcCnt = 0; UcCnt < 10; UcCnt++)
-	{
+	for (UcCnt = 0; UcCnt < 10; UcCnt++) {
 		RegWriteA(client, LC898122_WC_MES1ADD0, 0x00);
 		RegWriteA(client, LC898122_WC_MES1ADD1, 0x00);
 		lc898122_cleargyro(lc898122_dev, 0x1000, LC898122_CLR_FRAM1);
@@ -1350,18 +1355,17 @@ u8 lc898122_RunGea(struct lc898122_device *lc898122_dev)
 			(u16)lc898122_GenMes(lc898122_dev,
 							LC898122_AD3Z, 0);
 
-		if (UcCnt > 0)
-		{
+		if (UcCnt > 0) {
 			if ((short)UsGxoVal[0] > (short)UsGxoVal[UcCnt])
 				UsDif = (u16)((short)UsGxoVal[0] - (short)UsGxoVal[UcCnt]);
 			else
 				UsDif = (u16)((short)UsGxoVal[UcCnt] - (short)UsGxoVal[0]);
 
 			if (UsDif > LC898122_GEA_DIF_HIG)
-				UcXHigCnt ++;
+				UcXHigCnt++;
 
 			if (UsDif < LC898122_GEA_DIF_LOW)
-				UcXLowCnt ++;
+				UcXLowCnt++;
 
 			if ((short)UsGyoVal[0] > (short)UsGyoVal[UcCnt])
 				UsDif = (u16)((short)UsGyoVal[0] - (short)UsGyoVal[UcCnt]);
@@ -1369,10 +1373,10 @@ u8 lc898122_RunGea(struct lc898122_device *lc898122_dev)
 				UsDif = (u16)((short)UsGyoVal[UcCnt] - (short)UsGyoVal[0]);
 
 			if (UsDif > LC898122_GEA_DIF_HIG)
-				UcYHigCnt ++;
+				UcYHigCnt++;
 
 			if (UsDif < LC898122_GEA_DIF_LOW)
-				UcYLowCnt ++;
+				UcYLowCnt++;
 		}
 	}
 
@@ -1388,6 +1392,6 @@ u8 lc898122_RunGea(struct lc898122_device *lc898122_dev)
 	if (UcYLowCnt > 8)
 		UcRst = UcRst | LC898122_EXE_GYBELOW;
 
-	return(UcRst);
+	return UcRst;
 }
 

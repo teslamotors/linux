@@ -138,7 +138,7 @@ static int crlmodule_i2c_write(struct crl_sensor *sensor, u16 dev_i2c_addr,
 	case CRL_REG_LEN_24BIT:
 		data[2] = val >> 16;
 		data[3] = val >> 8;
-		data[4] = val ;
+		data[4] = val;
 		break;
 	case CRL_REG_LEN_32BIT:
 		data[2] = val >> 24;
@@ -158,8 +158,8 @@ static int crlmodule_i2c_write(struct crl_sensor *sensor, u16 dev_i2c_addr,
 		if (r == 1) {
 			if (retries)
 				dev_err(&client->dev,
-					"sensor i2c stall encountered. "
-					"retries: %d\n", retries);
+					"sensor i2c stall encountered. retries: %d\n",
+					retries);
 			return 0;
 		}
 
@@ -192,7 +192,7 @@ int crlmodule_write_regs(struct crl_sensor *sensor,
 		 * Sensor setting sequence may need some delay.
 		 * delay value is specified by reg.val field
 		 */
-		if (regs[i].len == CRL_REG_LEN_DELAY){
+		if (regs[i].len == CRL_REG_LEN_DELAY) {
 			msleep(regs[i].val);
 			continue;
 		}
@@ -238,7 +238,7 @@ int crlmodule_write_reg(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 reg,
 	 * Sensor setting sequence may need some delay.
 	 * delay value is specified by reg.val field
 	 */
-	if (len == CRL_REG_LEN_DELAY){
+	if (len == CRL_REG_LEN_DELAY) {
 		msleep(val);
 		return 0;
 	}
@@ -251,6 +251,7 @@ int crlmodule_write_reg(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 reg,
 	 */
 	if (len & CRL_REG_READ_AND_UPDATE) {
 		u32 tmp;
+
 		ret = crlmodule_i2c_read(sensor, dev_i2c_addr, reg,
 					 len & CRL_REG_LEN_READ_MASK, &val2);
 		if (ret)

@@ -114,7 +114,7 @@ static int __crlmodule_get_ctrl_value(struct crl_sensor *sensor,
 	}
 
 	ctrl = sensor->sensor_ds->v4l2_ctrl_bank[i].ctrl;
-	switch(sensor->sensor_ds->v4l2_ctrl_bank[i].type) {
+	switch (sensor->sensor_ds->v4l2_ctrl_bank[i].type) {
 	case CRL_V4L2_CTRL_TYPE_MENU_INT:
 		*val = ctrl->qmenu_int[ctrl->val];
 		break;
@@ -229,7 +229,7 @@ static int __crlmodule_update_pll_index(struct crl_sensor *sensor)
 
 		/* if pll_config->csi_lanes == 0, lanes do not matter */
 		if (pll_config->csi_lanes)
-			if(sensor->platform_data->lanes != pll_config->csi_lanes)
+			if (sensor->platform_data->lanes != pll_config->csi_lanes)
 				continue;
 
 		/* PLL config must match to bpps*/
@@ -873,7 +873,7 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 			cfg.min =  crl_ctrl->data.std_data.min,
 			cfg.step  = crl_ctrl->data.std_data.step,
 			cfg.def = crl_ctrl->data.std_data.def,
-			crl_ctrl->ctrl = v4l2_ctrl_new_custom(ctrl_handler, &cfg , NULL);
+			crl_ctrl->ctrl = v4l2_ctrl_new_custom(ctrl_handler, &cfg, NULL);
 			break;
 		default:
 			break;
@@ -1520,9 +1520,11 @@ static int crlmodule_set_format(struct v4l2_subdev *subdev,
 	if (fmt->pad == ssd->source_pad) {
 		u32 code = fmt->format.code;
 		int rval = __crlmodule_get_format(subdev, cfg, fmt);
+
 		if (!rval && subdev == &sensor->src->sd) {
 			/* Check if this code is supported, if yes get index */
 			int idx = __crlmodule_get_data_fmt_index(sensor, code);
+
 			if (idx < 0) {
 				dev_err(&client->dev, "%s invalid format\n",
 						       __func__);
@@ -1849,7 +1851,7 @@ static int crlmodule_get_frame_desc(struct v4l2_subdev *subdev,
 					crl_desc[i].width.ops, &val);
 			if (ret)
 				return ret;
-			desc->entry[i].size.two_dim.width = (u16)val;;
+			desc->entry[i].size.two_dim.width = (u16)val;
 		}
 
 		if (desc->type == CRL_V4L2_MBUS_FRAME_DESC_TYPE_CSI2) {
@@ -1974,7 +1976,7 @@ static int crlmodule_rail_up(struct crl_sensor *sensor)
 	for (i = 0; i < sensor->sensor_ds->power_items; i++) {
 		rval = regulator_enable(sensor->crl_rails[i]);
 		if (rval) {
-			dev_err(&client->dev, "Failed to enable regulator: %d \n", rval);
+			dev_err(&client->dev, "Failed to enable regulator: %d\n", rval);
 			devm_regulator_put(sensor->crl_rails[i]);
 			sensor->crl_rails[i] = NULL;
 			crlmodule_undo_poweron_entities(sensor, NULL, i);
@@ -1990,7 +1992,7 @@ static void crlmodule_rail_down(struct crl_sensor *sensor)
 {
 	unsigned i;
 
-	for(i = 0; i < sensor->sensor_ds->power_items; i++)
+	for (i = 0; i < sensor->sensor_ds->power_items; i++)
 		regulator_disable(sensor->crl_rails[i]);
 
 }
@@ -2245,7 +2247,7 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 		return -ENOMEM;
 
 	/* init voltagerails, 0, 1 or 2*/
-	for (i = 0;i < sensor->sensor_ds->power_items;i++) {
+	for (i = 0; i < sensor->sensor_ds->power_items; i++) {
 		sensor->crl_rails[i] = devm_regulator_get(&client->dev,
 			sensor->sensor_ds->power_entities[i].rail_name);
 		if (IS_ERR(sensor->crl_rails[i])) {
@@ -2501,6 +2503,7 @@ cleanup:
 static void crlmodule_free_controls(struct crl_sensor *sensor)
 {
 	unsigned int i;
+
 	for (i = 0; i < sensor->ssds_used; i++)
 		v4l2_ctrl_handler_free(&sensor->ssds[i].ctrl_handler);
 }

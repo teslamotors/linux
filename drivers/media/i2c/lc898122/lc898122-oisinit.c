@@ -59,13 +59,12 @@ static void lc898122_gyoutsignal(struct lc898122_device *lc898122_dev)
 	if (lc898122_dev->state.flags & LC898122_USE_INVENSENSE) {
 		RegWriteA(client, LC898122_GRADR0, LC898122_INVENSENSE_GYROX_INI);
 		RegWriteA(client, LC898122_GRADR1, LC898122_INVENSENSE_GYROY_INI);
-	} else 	if (lc898122_dev->state.flags & LC898122_USE_STMICRO_L3G4IS) {
+	} else if (lc898122_dev->state.flags & LC898122_USE_STMICRO_L3G4IS) {
 		RegWriteA(client, LC898122_GRADR0, LC898122_STMICRO_GYROX_INI);
 		RegWriteA(client, LC898122_GRADR1, LC898122_STMICRO_GYROY_INI);
-	} else 	if (lc898122_dev->state.flags & LC898122_USE_PANASONIC) {
+	} else if (lc898122_dev->state.flags & LC898122_USE_PANASONIC) {
 		RegWriteA(client, LC898122_GRADR0, LC898122_PANASONIC_GYROX_INI);
 		RegWriteA(client, LC898122_GRADR1, LC898122_PANASONIC_GYROY_INI);
-
 	} else {
 		/* ERROR */
 	}
@@ -123,9 +122,7 @@ void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev, u8 UcSelMode
 				RegWriteA(client, LC898122_GRACC,	0x10);
 				lc898122_accwait(lc898122_dev, 0x10);
 			}
-		}
-		else
-		{
+		} else {
 			if (lc898122_dev->state.flags & LC898122_GYROSTANDBY) {
 				RegWriteA(client, LC898122_GRADR0, 0x6C);
 				RegWriteA(client, LC898122_GSETDT, 0x00);
@@ -133,10 +130,10 @@ void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev, u8 UcSelMode
 				lc898122_accwait(lc898122_dev, 0x10);
 			}
 
-			RegWriteA (client, LC898122_GRADR0, 0x6B);
-			RegWriteA (client, LC898122_GRACC, 0x01);
+			RegWriteA(client, LC898122_GRADR0, 0x6B);
+			RegWriteA(client, LC898122_GRACC, 0x01);
 			lc898122_accwait(lc898122_dev, 0x01);
-			RegReadA (client, LC898122_GRDAT0H, &UcRamIni);
+			RegReadA(client, LC898122_GRDAT0H, &UcRamIni);
 
 			UcRamIni &= ~0x40;
 			if (lc898122_dev->state.flags & LC898122_GYROSTANDBY)
@@ -181,20 +178,20 @@ void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev, u8 UcSelMode
 }
 
 void lc898122_cleargyro(struct lc898122_device *lc898122_dev,
-			u16 UsClrFil , u8 UcClrMod)
+			u16 UsClrFil, u8 UcClrMod)
 {
 	struct i2c_client *client = lc898122_dev->client;
 	u8 UcRamClr;
 	int UcCnt;
 
-	/*Select Filter to clear*/
+	/* Select Filter to clear */
 	RegWriteA(client, LC898122_WC_RAMDLYMOD1, (u8)(UsClrFil >> 8));
 	RegWriteA(client, LC898122_WC_RAMDLYMOD0, (u8)UsClrFil);
 
-	/*Enable Clear*/
+	/* Enable Clear */
 	RegWriteA(client, LC898122_WC_RAMINITON, UcClrMod);
 
-	/*Check RAM Clear complete*/
+	/* Check RAM Clear complete */
 	for (UcCnt = 0; UcCnt < 60; UcCnt++) {
 		RegReadA(client, LC898122_WC_RAMINITON, &UcRamClr);
 		UcRamClr &= UcClrMod;
@@ -208,23 +205,19 @@ void lc898122_driversw(struct lc898122_device *lc898122_dev, u8 UcDrvSw)
 {
 	struct i2c_client *client = lc898122_dev->client;
 
-	if ( UcDrvSw == ON) {
+	if (UcDrvSw == ON) {
 		if (lc898122_dev->state.UcPwmMod == LC898122_PWMMOD_CVL) {
 			RegWriteA(client, LC898122_DRVFC, 0xF0);
-		}
-		else {
+		} else {
 			if (lc898122_dev->state.flags & LC898122_PWM_BREAK)
 				RegWriteA(client, LC898122_DRVFC, 0x00);
 			else
 				RegWriteA(client, LC898122_DRVFC, 0xC0);
 		}
-	}
-	else
-	{
+	} else {
 		if (lc898122_dev->state.UcPwmMod == LC898122_PWMMOD_CVL) {
 			RegWriteA(client, LC898122_DRVFC, 0x30);
-		}
-		else {
+		} else {
 			if (lc898122_dev->state.flags & LC898122_PWM_BREAK)
 				RegWriteA(client, LC898122_DRVFC, 0x00);
 			else
@@ -236,11 +229,12 @@ void lc898122_driversw(struct lc898122_device *lc898122_dev, u8 UcDrvSw)
 void lc898122_GyOutSignalCont(struct lc898122_device *lc898122_dev)
 {
 	struct i2c_client *client = lc898122_dev->client;
+
 	RegWriteA(client, LC898122_GRSEL, 0x04);
 }
 
 
-void lc898122_BsyWit( struct lc898122_device *lc898122_dev, u16	UsTrgAdr, u8	UcTrgDat)
+void lc898122_BsyWit(struct lc898122_device *lc898122_dev, u16	UsTrgAdr, u8	UcTrgDat)
 {
 	struct i2c_client *client = lc898122_dev->client;
 	u8 UcFlgVal;
@@ -279,11 +273,12 @@ void lc898122_IniPtAve(struct lc898122_device *lc898122_dev)
 void lc898122_RamAccFixMod(struct lc898122_device *lc898122_dev, u8 UcAccMod)
 {
 	struct i2c_client *client = lc898122_dev->client;
-	switch ( UcAccMod) {
-	case OFF :
+
+	switch (UcAccMod) {
+	case OFF:
 		RegWriteA(client, LC898122_WC_RAMACCMOD, 0x00);
 		break;
-	case ON :
+	case ON:
 		RegWriteA(client, LC898122_WC_RAMACCMOD, 0x31);
 		break;
 	}
@@ -292,16 +287,16 @@ void lc898122_RamAccFixMod(struct lc898122_device *lc898122_dev, u8 UcAccMod)
 void lc898122_IniPtMovMod(struct lc898122_device *lc898122_dev, u8 UcPtMod)
 {
 	struct i2c_client *client = lc898122_dev->client;
-	switch ( UcPtMod) {
-	case OFF :
+
+	switch (UcPtMod) {
+	case OFF:
 		RegWriteA(client, LC898122_WG_PANSTTSETGYRO, 0x00);
 		RegWriteA(client, LC898122_WG_PANSTTSETGAIN, 0x54);
 		RegWriteA(client, LC898122_WG_PANSTTSETISTP, 0x14);
 		RegWriteA(client, LC898122_WG_PANSTTSETIFTR, 0x94);
 		RegWriteA(client, LC898122_WG_PANSTTSETLFTR, 0x00);
-
 		break;
-	case ON :
+	case ON:
 		RegWriteA(client, LC898122_WG_PANSTTSETGYRO, 0x00);
 		RegWriteA(client, LC898122_WG_PANSTTSETGAIN, 0x00);
 		RegWriteA(client, LC898122_WG_PANSTTSETISTP, 0x14);
@@ -311,7 +306,7 @@ void lc898122_IniPtMovMod(struct lc898122_device *lc898122_dev, u8 UcPtMod)
 	}
 }
 
-void lc898122_ChkCvr( struct lc898122_device *lc898122_dev)
+void lc898122_ChkCvr(struct lc898122_device *lc898122_dev)
 {
 	struct i2c_client *client = lc898122_dev->client;
 
@@ -319,10 +314,11 @@ void lc898122_ChkCvr( struct lc898122_device *lc898122_dev)
 	RegWriteA(client, LC898122_VRREG, (u8)LC898122_FW_VER);
 }
 
-void lc898122_RemOff( struct lc898122_device *lc898122_dev, u8 UcMod)
+void lc898122_RemOff(struct lc898122_device *lc898122_dev, u8 UcMod)
 {
 	struct i2c_client *client = lc898122_dev->client;
-	switch (UcMod){
+
+	switch (UcMod) {
 	case OFF:
 		RegWriteA(client, LC898122_WG_PANSTT6, 0x11);
 		RegWriteA(client, LC898122_WC_RAMACCXY, 0x01);
@@ -349,6 +345,7 @@ void lc898122_RemOff( struct lc898122_device *lc898122_dev, u8 UcMod)
 void lc898122_afdriversw(struct lc898122_device *lc898122_dev, u8 UcDrvSw)
 {
 	struct i2c_client *client = lc898122_dev->client;
+
 	if (UcDrvSw == ON) {
 		if (lc898122_dev->state.UcAfType == LC898122_BI_DIR) {
 			RegWriteA(client, LC898122_DRVFCAF, 0x10);
@@ -377,8 +374,9 @@ void lc898122_settregaf(struct lc898122_device *lc898122_dev, u16 UsTregAf)
 void lc898122_autogaincontrol(struct lc898122_device *lc898122_dev, u8 UcModeSw)
 {
 	struct i2c_client *client = lc898122_dev->client;
+
 	if (UcModeSw == OFF) {
-		RegWriteA(client,LC898122_WG_ADJGANGXATO, 0xA0);
+		RegWriteA(client, LC898122_WG_ADJGANGXATO, 0xA0);
 		RegWriteA(client, LC898122_WG_ADJGANGYATO, 0xA0);
 		RamWrite32A(client, LC898122_GANADR, LC898122_XMAXGAIN);
 		RamWrite32A(client, LC898122_GANADR | 0x0100,  LC898122_YMAXGAIN);
@@ -511,12 +509,12 @@ static void lc898122_init_clock(struct lc898122_device *lc898122_dev)
 
 	if (lc898122_dev->state.flags & LC898122_SET_DEFAULTS) {
 		/*OSC ENABLE*/
-		RegWriteA (client, LC898122_OSCSTOP, 0x00);
-		RegWriteA (client, LC898122_OSCSET, 0x90);
-		RegWriteA (client, LC898122_OSCCNTEN, 0x00);
+		RegWriteA(client, LC898122_OSCSTOP, 0x00);
+		RegWriteA(client, LC898122_OSCSET, 0x90);
+		RegWriteA(client, LC898122_OSCCNTEN, 0x00);
 	}
 	/*Clock Enables*/
-	RegWriteA (client, LC898122_CLKON, 0x1F);
+	RegWriteA(client, LC898122_CLKON, 0x1F);
 
 	if (lc898122_dev->state.flags & LC898122_EXTCLK_ALL) {
 		clkregs.clksel = 0x07;
@@ -552,9 +550,9 @@ static void lc898122_init_iop(struct lc898122_device *lc898122_dev)
 	}
 
 	if (lc898122_dev->state.flags & LC898122_USE_3W_DGYRO)
-		RegWriteA (client, LC898122_IOP1SEL, 0x02);
+		RegWriteA(client, LC898122_IOP1SEL, 0x02);
 	else
-		RegWriteA (client, LC898122_IOP1SEL, 0x00);
+		RegWriteA(client, LC898122_IOP1SEL, 0x00);
 
 	if (lc898122_dev->state.flags & LC898122_SET_DEFAULTS) {
 		RegWriteA(client, LC898122_IOP0SEL, 0x02);
@@ -596,7 +594,7 @@ static void lc898122_init_dgyro(struct lc898122_device *lc898122_dev)
 	} else if (lc898122_dev->state.flags & LC898122_USE_INVENSENSE) {
 
 		RegReadA(client, LC898122_GRINI, &UcGrini);
-		RegWriteA(client, LC898122_GRINI, ( UcGrini | LC898122_SLOWMODE));
+		RegWriteA(client, LC898122_GRINI, (UcGrini | LC898122_SLOWMODE));
 		RegWriteA(client, LC898122_GRADR0, 0x6A);
 		RegWriteA(client, LC898122_GSETDT, 0x10);
 		RegWriteA(client, LC898122_GRACC, 0x10);
@@ -710,7 +708,7 @@ static void lc898122_init_servo(struct lc898122_device *lc898122_dev)
 
 	/* Emargency Stop */
 	RegWriteA(client, LC898122_WH_EMGSTPON,	0x00);
-	RegWriteA(client, LC898122_WH_EMGSTPTMR,0xFF);
+	RegWriteA(client, LC898122_WH_EMGSTPTMR, 0xFF);
 	RamWrite32A(client, LC898122_sxemglev, 0x3F800000);
 	RamWrite32A(client, LC898122_syemglev, 0x3F800000);
 
@@ -874,7 +872,7 @@ static void lc898122_init_servo(struct lc898122_device *lc898122_dev)
 	if (lc898122_dev->state.UcCvrCod == LC898122_CVER122)
 		RegWriteA(client, LC898122_CVFC, 0x22);
 
-	RegWriteA(client, LC898122_CVFC2 , 0x80);
+	RegWriteA(client, LC898122_CVFC2, 0x80);
 	if (lc898122_dev->state.UcCvrCod == LC898122_CVER122) {
 		RegWriteA(client, LC898122_CVSMTHX, 0x00);
 		RegWriteA(client, LC898122_CVSMTHY, 0x00);
@@ -1112,7 +1110,7 @@ static void lc898122_init_filters(struct lc898122_device *lc898122_dev)
 		RegWriteA(client, LC898122_WC_RAMACCXY, 0x00);
 }
 
-static void lc898122_init_adjust( struct lc898122_device *lc898122_dev)
+static void lc898122_init_adjust(struct lc898122_device *lc898122_dev)
 {
 	struct i2c_client *client = lc898122_dev->client;
 	u8 BIAS_CUR_OIS;
@@ -1206,10 +1204,10 @@ static void lc898122_init_adjust( struct lc898122_device *lc898122_dev)
 	RegWriteA(client, LC898122_WC_EQON, 0x01);
 }
 
-void lc898122_selectmodule (struct lc898122_device *lc898122_dev,
+void lc898122_selectmodule(struct lc898122_device *lc898122_dev,
 			    u8 uc_module)
 {
-	switch( uc_module) {
+	switch (uc_module) {
 	case LC898122_MODULE_13M:
 		lc898122_dev->state.UcAfType = LC898122_UNI_DIR;
 		lc898122_dev->state.UcModule = LC898122_MODULE_13M;
@@ -1225,7 +1223,7 @@ void lc898122_selectmodule (struct lc898122_device *lc898122_dev,
 	}
 }
 
-void lc898122_initsettings (struct lc898122_device *lc898122_dev)
+void lc898122_initsettings(struct lc898122_device *lc898122_dev)
 {
 	/* Clock Setting */
 	lc898122_init_clock(lc898122_dev);
@@ -1246,12 +1244,12 @@ void lc898122_initsettings (struct lc898122_device *lc898122_dev)
 
 }
 
-void lc898122_initsettingsaf (struct lc898122_device *lc898122_dev)
+void lc898122_initsettingsaf(struct lc898122_device *lc898122_dev)
 {
 	/* Clock Setting */
-	lc898122_init_clock (lc898122_dev);
+	lc898122_init_clock(lc898122_dev);
 	/* AF Initial Setting */
-	lc898122_afinitialsetting (lc898122_dev);
+	lc898122_afinitialsetting(lc898122_dev);
 
 }
 

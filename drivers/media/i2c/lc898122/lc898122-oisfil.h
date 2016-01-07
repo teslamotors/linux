@@ -30,7 +30,7 @@ const struct STFILREG	CsFilReg_20M[]	= {
 		{ 0x01E3,	0x00},		/*00,01E3*/
 		{ 0x01E4,	0x00},		/*00,01E4*/
 		{ 0xFFFF,	0xFF }
-	} ;
+	};
 
 /* 32bit */
 const struct STFILRAM	CsFilRam_20M[]	= {
@@ -397,7 +397,7 @@ const struct STFILRAM	CsFilRam_20M[]	= {
 		{ 0x1237,	0x3F800000},		/*3F800000,1237,0dB,invert=0*/
 		{ 0x1238,	0x3F800000},		/*3F800000,1238,0dB,invert=0*/
 		{ 0xFFFF,	0xFFFFFFFF }
-	} ;
+	};
 
 /* 32bit */
 const struct STFILRAM	CsFilRam_20M_simul_set[]	= {
@@ -601,7 +601,7 @@ const struct STFILRAM	CsFilRam_20M_simul_set[]	= {
 		{ 0x1237,	0x3F800000},		/*3F800000,1237,0dB,invert=0*/
 		{ 0x1238,	0x3F800000},		/*3F800000,1238,0dB,invert=0*/
 		{ 0xFFFF,	0xFFFFFFFF }
-	} ;
+	};
 
 
 /*Filter Calculator Version 4.02*/
@@ -620,7 +620,7 @@ const struct STFILREG	CsFilReg_13M[]	= {
 		{ 0x01E3,	0x00},		/*00,01E3*/
 		{ 0x01E4,	0x00},		/*00,01E4*/
 		{ 0xFFFF,	0xFF }
-	} ;
+	};
 /* 32bit */
 const struct STFILRAM	CsFilRam_13M[]	= {
 		{ 0x1000,	0x3F800000},		/*3F800000,1000,0dB,invert=0*/
@@ -986,7 +986,7 @@ const struct STFILRAM	CsFilRam_13M[]	= {
 		{ 0x1237,	0x3F800000},		/*3F800000,1237,0dB,invert=0*/
 		{ 0x1238,	0x3F800000},		/*3F800000,1238,0dB,invert=0*/
 		{ 0xFFFF,	0xFFFFFFFF }
-	} ;
+	};
 
 /* 32bit */
 const struct STFILRAM	CsFilRam_13M_simul_set[]	= {
@@ -1190,7 +1190,7 @@ const struct STFILRAM	CsFilRam_13M_simul_set[]	= {
 		{ 0x1237,	0x3F800000},		/*3F800000,1237,0dB,invert=0*/
 		{ 0x1238,	0x3F800000},		/*3F800000,1238,0dB,invert=0*/
 		{ 0xFFFF,	0xFFFFFFFF }
-	} ;
+	};
 
 
 

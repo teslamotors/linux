@@ -415,7 +415,7 @@ static int lm3643_init_device(struct lm3643_flash *flash)
 		return rval;
 
 	/* Reset flag registers */
-	dev_dbg(flash->dev, "%s reset flag registers\n" , __func__);
+	dev_dbg(flash->dev, "%s reset flag registers\n", __func__);
 	rval = regmap_read(flash->regmap, FLAGS1_REG, &reg_val);
 	if (rval < 0)
 		return rval;
@@ -459,27 +459,27 @@ static int lm3643_probe(struct i2c_client *client,
 	if (rval < 0) {
 		if (rval == -EBUSY)
 			goto out;
-		dev_err(flash->dev, "%s GPIO req failed\n" , __func__);
+		dev_err(flash->dev, "%s GPIO req failed\n", __func__);
 		goto error;
 	}
 	rval = gpio_direction_output(flash->pdata->gpio_reset, 1);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s GPIO output failed\n" , __func__);
+		dev_err(flash->dev, "%s GPIO output failed\n", __func__);
 		goto error;
 	}
 out:
 	rval = lm3643_init_device(flash);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s initdevice fail\n" , __func__);
+		dev_err(flash->dev, "%s initdevice fail\n", __func__);
 		goto error;
 	}
 	rval = lm3643_subdev_init(flash);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s subdev init fail\n" , __func__);
+		dev_err(flash->dev, "%s subdev init fail\n", __func__);
 		lm3646_subdev_cleanup(flash);
 		goto error;
 	}
-	dev_dbg(flash->dev, "%s Success\n" , __func__);
+	dev_dbg(flash->dev, "%s Success\n", __func__);
 	return 0;
 error:
 	gpio_free(flash->pdata->gpio_reset);

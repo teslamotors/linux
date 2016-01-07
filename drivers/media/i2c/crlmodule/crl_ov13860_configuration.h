@@ -106,8 +106,8 @@ static struct crl_register_write_rep ov13860_powerup_regset[] = {
 	{ 0x3543, CRL_REG_LEN_08BIT, 0x00 },/* Magic */
 
 	/*
-         * HDR related setting
-         */
+	 * HDR related setting
+	 */
 	{ 0x3547, CRL_REG_LEN_08BIT, 0x00 },/* Very short exposure */
 	{ 0x3548, CRL_REG_LEN_08BIT, 0x00 },/* Very short exposure */
 	{ 0x3549, CRL_REG_LEN_08BIT, 0x12 },/* Magic */
@@ -217,7 +217,7 @@ static struct crl_register_write_rep ov13860_powerup_regset[] = {
 
 	/*
 	 * Magic Registers
-         */
+	 */
 	{ 0x400F, CRL_REG_LEN_08BIT, 0x80 },
 	{ 0x4011, CRL_REG_LEN_08BIT, 0xFB },
 	{ 0x4017, CRL_REG_LEN_08BIT, 0x08 },
@@ -295,7 +295,7 @@ static struct crl_register_write_rep ov13860_powerup_regset[] = {
 
 	/*
 	 * Magic Registers
-         */
+	 */
 	{ 0x560F, CRL_REG_LEN_08BIT, 0xFC },
 	{ 0x5610, CRL_REG_LEN_08BIT, 0xF0 },
 	{ 0x5611, CRL_REG_LEN_08BIT, 0x10 },
@@ -1310,34 +1310,34 @@ static struct crl_flip_data ov13860_flip_configurations[] = {
 };
 
 static struct crl_csi_data_fmt ov13860_crl_csi_data_fmt[] = {
-       {
-              .code = MEDIA_BUS_FMT_SGRBG10_1X10,
-              .pixel_order = CRL_PIXEL_ORDER_GRBG,
-              .bits_per_pixel = 10,
-              .regs_items = 0,
-              .regs = 0,
-       },
-      {
-              .code = MEDIA_BUS_FMT_SRGGB10_1X10,
-              .pixel_order = CRL_PIXEL_ORDER_RGGB,
-              .bits_per_pixel = 10,
-              .regs_items = 0,
-              .regs = 0,
-       },
-      {
-              .code = MEDIA_BUS_FMT_SBGGR10_1X10,
-              .pixel_order = CRL_PIXEL_ORDER_BGGR,
-              .bits_per_pixel = 10,
-              .regs_items = 0,
-              .regs = 0,
-       },
-      {
-              .code = MEDIA_BUS_FMT_SGBRG10_1X10,
-              .pixel_order = CRL_PIXEL_ORDER_GBRG,
-              .regs_items = 1,
-              .bits_per_pixel = 10,
-              .regs = 0,
-       },
+	{
+		.code = MEDIA_BUS_FMT_SGRBG10_1X10,
+		.pixel_order = CRL_PIXEL_ORDER_GRBG,
+		.bits_per_pixel = 10,
+		.regs_items = 0,
+		.regs = 0,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SRGGB10_1X10,
+		.pixel_order = CRL_PIXEL_ORDER_RGGB,
+		.bits_per_pixel = 10,
+		.regs_items = 0,
+		.regs = 0,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SBGGR10_1X10,
+		.pixel_order = CRL_PIXEL_ORDER_BGGR,
+		.bits_per_pixel = 10,
+		.regs_items = 0,
+		.regs = 0,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SGBRG10_1X10,
+		.pixel_order = CRL_PIXEL_ORDER_GBRG,
+		.regs_items = 1,
+		.bits_per_pixel = 10,
+		.regs = 0,
+	},
 };
 
 static struct crl_v4l2_ctrl ov13860_v4l2_ctrls[] = {

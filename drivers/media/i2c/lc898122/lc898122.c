@@ -74,7 +74,7 @@ int lc898122_read_byte(struct i2c_client *client, u16 reg, u8 *val)
 	msg[1].buf = data;
 
 	ret = i2c_transfer(client->adapter, msg, 2);
-	if ( ret != 2)
+	if (ret != 2)
 		return -EIO;
 
 	*val = ((u8)data[0]);
@@ -124,7 +124,7 @@ int lc898122_read_word(struct i2c_client *client, u16 reg, u16 *val)
 	msg[1].buf = data;
 
 	ret = i2c_transfer(client->adapter, msg, 2);
-	if ( ret != 2)
+	if (ret != 2)
 		return -EIO;
 
 	*val =  (data[0] << 8) + data[1];
@@ -141,8 +141,8 @@ int lc898122_write_long(struct i2c_client *client, u16 reg, u32 val)
 	buf[1] = reg & 0xff;
 	buf[2] = (val >> 24);
 	buf[3] = (val >> 16);
-	buf[4] = (val >> 8) ;
-	buf[5] = val ;
+	buf[4] = (val >> 8);
+	buf[5] = val;
 
 	msg.addr = client->addr;
 	msg.flags = 0;
@@ -175,7 +175,7 @@ int lc898122_read_long(struct i2c_client *client, u16 reg, u32 *val)
 	msg[1].buf = data;
 
 	ret = i2c_transfer(client->adapter, msg, 2);
-	if ( ret != 2)
+	if (ret != 2)
 		return -EIO;
 
 	*val = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
@@ -201,37 +201,37 @@ static int lc898122_adjust_af_parameters(struct lc898122_device *lc898122_dev)
 {
 	struct i2c_client *client = lc898122_dev->client;
 
-	lc898122_RamAccFixMod(lc898122_dev, ON );
+	lc898122_RamAccFixMod(lc898122_dev, ON);
 
 	RamWriteA(client, LC898122_DAXHLO,
 		(lc898122_dev->buf[HALLOFFSET_X_HIGH]  << 8) |
 		(lc898122_dev->buf[HALLOFFSET_X_LOW]));
 
-	RamWriteA (client, LC898122_DAYHLO,
+	RamWriteA(client, LC898122_DAYHLO,
 		(lc898122_dev->buf[HALLOFFSET_Y_HIGH] << 8) |
 		(lc898122_dev->buf[HALLOFFSET_Y_LOW]));
 
-	RamWriteA (client, LC898122_DAXHLB,
+	RamWriteA(client, LC898122_DAXHLB,
 		(lc898122_dev->buf[HALL_BIAS_X_HIGH] << 8) |
 		(lc898122_dev->buf[HALL_BIAS_X_LOW]));
 
-	RamWriteA (client, LC898122_DAYHLB,
+	RamWriteA(client, LC898122_DAYHLB,
 		(lc898122_dev->buf[HALL_BIAS_Y_HIGH]  << 8) |
 		(lc898122_dev->buf[HALL_BIAS_Y_LOW]));
 
-	RamWriteA (client, LC898122_OFF0Z,
+	RamWriteA(client, LC898122_OFF0Z,
 		(lc898122_dev->buf[HALL_AD_OFFSET_X_HIGH]  << 8) |
 		(lc898122_dev->buf[HALL_AD_OFFSET_X_LOW]));
 
-	RamWriteA (client, LC898122_OFF1Z,
+	RamWriteA(client, LC898122_OFF1Z,
 		(lc898122_dev->buf[HALL_AD_OFFSET_Y_HIGH]  << 8) |
 		(lc898122_dev->buf[HALL_AD_OFFSET_Y_LOW]));
 
-	RamWriteA (client, LC898122_sxg,
+	RamWriteA(client, LC898122_sxg,
 		(lc898122_dev->buf[LOOP_GAIN_X_HIGH]  << 8) |
 		(lc898122_dev->buf[LOOP_GAIN_X_LOW]));
 
-	RamWriteA (client, LC898122_syg,
+	RamWriteA(client, LC898122_syg,
 		(lc898122_dev->buf[LOOP_GAIN_Y_HIGH]  << 8) |
 		(lc898122_dev->buf[LOOP_GAIN_Y_LOW]));
 
@@ -245,12 +245,12 @@ static int lc898122_adjust_af_parameters(struct lc898122_device *lc898122_dev)
 
 	RegWriteA(client, LC898122_OSCSET, lc898122_dev->buf[OSC_VAL]);
 
-	RamWrite32A (client, LC898122_gxzoom,
+	RamWrite32A(client, LC898122_gxzoom,
 		(lc898122_dev->buf[GYRO_GAIN_X3] << 24) |
 		(lc898122_dev->buf[GYRO_GAIN_X2] << 16) |
 		(lc898122_dev->buf[GYRO_GAIN_X1] << 8) | (lc898122_dev->buf[GYRO_GAIN_X0]));
 
-	RamWrite32A (client, LC898122_gyzoom, lc898122_dev->buf[GYRO_GAIN_Y3] << 24 |
+	RamWrite32A(client, LC898122_gyzoom, lc898122_dev->buf[GYRO_GAIN_Y3] << 24 |
 		lc898122_dev->buf[GYRO_GAIN_Y2] << 16 |
 		lc898122_dev->buf[GYRO_GAIN_Y1] << 8 | lc898122_dev->buf[GYRO_GAIN_Y0]);
 
@@ -260,9 +260,9 @@ static int lc898122_adjust_af_parameters(struct lc898122_device *lc898122_dev)
 	/*Remove gyro offset*/
 	lc898122_RemOff(lc898122_dev, ON);
 
-	RegWriteA(client, LC898122_TCODEH, 0x04 );
+	RegWriteA(client, LC898122_TCODEH, 0x04);
 
-	lc898122_settregaf(lc898122_dev, 0x0400 );
+	lc898122_settregaf(lc898122_dev, 0x0400);
 
 	/*clear removing gyro offset */
 	lc898122_RemOff(lc898122_dev, OFF);
@@ -281,10 +281,10 @@ static int lc898122_eeprom_read(struct lc898122_device *lc898122_dev, u8 *buf)
 {
 	struct i2c_msg msg[2];
 	unsigned int eeprom_i2c_addr = 0x54;
- 	struct i2c_client *client = lc898122_dev->client;
- 	unsigned int size = LC898122_EEPROM_SIZE;
- 	static const unsigned int max_read_size = MAX_WRITE_BUF_SIZE;
- 	int addr;
+	struct i2c_client *client = lc898122_dev->client;
+	unsigned int size = LC898122_EEPROM_SIZE;
+	static const unsigned int max_read_size = MAX_WRITE_BUF_SIZE;
+	int addr;
 
 	buf = devm_kzalloc(&client->dev, size, GFP_KERNEL);
 
@@ -333,7 +333,7 @@ static int lc898122_open(struct v4l2_subdev *subdev_vcm, struct v4l2_subdev_fh *
 
 	/* AF calibration data adjustment needed before lens movement */
 	rval = lc898122_adjust_af_parameters(lc898122_dev);
- 	if (rval) {
+	if (rval) {
 		dev_err(&client->dev, "failed to adjust AF tuning data\n");
 		return -EINVAL;
 	}
@@ -350,20 +350,20 @@ static int lc898122_t_focus_vcm(struct lc898122_device *lc898122_dev, u16 val)
 {
 	struct i2c_client *client = lc898122_dev->client;
 
- 	/* Move the lens to target position */
+	/* Move the lens to target position */
 	lc898122_settregaf(lc898122_dev, val);
 
- 	dev_dbg(&client->dev, "Setting new value VCM: %d\n", val);
+	dev_dbg(&client->dev, "Setting new value VCM: %d\n", val);
 
- 	return 0;
+	return 0;
 }
 
 static int lc898122_set_stabilization(struct lc898122_device *lc898122_dev, int val)
 {
-	/* Val is coming from user space, which indicates
-	 * on and off status of OIS control
-	 */
-
+	/*
+	* Val is coming from user space, which indicates
+	* on and off status of OIS control
+	*/
 	if (val) {
 		/* Turn On OIS */
 		lc898122_OisEna(lc898122_dev);
@@ -472,14 +472,15 @@ static int lc898122_probe(struct i2c_client *client,
 		goto err_cleanup;
 	lc898122_dev->subdev_vcm.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_LENS;
 
-	/* Read eeprom contents in driver probe and save them in buffer
-	 * for later use
-	 */
+	/*
+	* Read eeprom contents in driver probe and save them in buffer
+	* for later use
+	*/
 	rval = lc898122_eeprom_read(lc898122_dev, lc898122_dev->buf);
 	if (rval)
 		goto err_cleanup;
 
- 	return 0;
+	return 0;
 
 err_cleanup:
 	lc898122_subdev_cleanup(lc898122_dev);

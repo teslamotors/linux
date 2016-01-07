@@ -27,7 +27,7 @@ struct lc898122_device {
 	u8 *buf;
 };
 #define LC898122_VCM_ADDR	0x24
-#define LC898122_NAME 		"lc898122"
+#define LC898122_NAME		"lc898122"
 
 #define LC898122_EEPROM_SIZE 128
 #define MAX_WRITE_BUF_SIZE 32
@@ -35,7 +35,7 @@ struct lc898122_device {
 #define LC898122_INVALID_CONFIG	0xffffffff
 #define LC898122_MAX_FOCUS_POS	1023
 
-#define HALLOFFSET_X_LOW 		0x11
+#define HALLOFFSET_X_LOW		0x11
 #define HALLOFFSET_X_HIGH		0x12
 #define HALLOFFSET_Y_LOW		0x13
 #define HALLOFFSET_Y_HIGH		0x14
@@ -65,10 +65,10 @@ struct lc898122_device {
 #define GYRO_GAIN_Y2			0x30
 #define GYRO_GAIN_Y3			0x31
 #define VCM_DAC_OFFSET			0x38
-#define AF_5M_L                 	0x0C
-#define AF_5M_H                 	0x0D
-#define AF_10CM_L               	0x0E
-#define AF_10CM_H               	0x0F
+#define AF_5M_L			0x0C
+#define AF_5M_H			0x0D
+#define AF_10CM_L		0x0E
+#define AF_10CM_H		0x0F
 
 
 #endif

@@ -74,8 +74,7 @@ static int crlmodule_get_nvm_data(struct crl_sensor *sensor)
 	for (i = 0; i < sensor->sensor_ds->crl_nvm_info.nvm_blobs_items; i++) {
 
 		dev_dbg(&client->dev,
-			"%s read blob %d "
-			"dev_addr: 0x%x start_addr: 0x%x size: %d",
+			"%s read blob %d dev_addr: 0x%x start_addr: 0x%x size: %d",
 			__func__, i,
 			sensor->sensor_ds->crl_nvm_info.nvm_config->dev_addr,
 			sensor->sensor_ds->crl_nvm_info.nvm_config->start_addr,
