@@ -514,7 +514,11 @@ out:
 	return ret;
 }
 
+#if defined(IPU_STEP_BXTA0) || is_intel_ipu4_hw_bxt_fpga()
 static bool secure_mode_enable;
+#else
+static bool secure_mode_enable = 1;
+#endif
 module_param(secure_mode_enable, bool, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(secure_mode, "IPU4 secure mode enable");
 
