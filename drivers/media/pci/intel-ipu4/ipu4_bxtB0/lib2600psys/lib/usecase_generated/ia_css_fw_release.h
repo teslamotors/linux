@@ -1,6 +1,6 @@
 /*
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2015, Intel Corporation.
+* Copyright (c) 2010 - 2016, Intel Corporation.
 * 
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -11,4 +11,4 @@
 * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 * more details.
 */
-#define IA_CSS_FW_RELEASE  "scci_master_20160101_0700"
+#define IA_CSS_FW_RELEASE  "scci_master_20160106_2243"
