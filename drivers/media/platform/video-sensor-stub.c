@@ -94,6 +94,7 @@ static int sensor_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 {
 	struct stub_sensor *sensor = to_stub_sensor(sd);
 	struct v4l2_mbus_frame_desc_entry *entry = desc->entry;
+
 	desc->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
 	entry->bpp = sensor->csi_format->compressed;
 	entry->pixelcode = sensor->csi_format->code;
@@ -109,6 +110,7 @@ static int sensor_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 static u32 __stub_get_mbus_code(struct v4l2_subdev *subdev, unsigned int pad)
 {
 	struct stub_sensor *sensor = to_stub_sensor(subdev);
+
 	return sensor->csi_format->code;
 }
 
@@ -138,6 +140,7 @@ static int sensor_stub_get_format(struct v4l2_subdev *subdev,
 {
 	struct stub_sensor *sensor = to_stub_sensor(subdev);
 	int rval;
+
 	mutex_lock(&sensor->mutex);
 	rval = __stub_get_format(subdev, cfg, fmt);
 	mutex_unlock(&sensor->mutex);
@@ -146,6 +149,7 @@ static int sensor_stub_get_format(struct v4l2_subdev *subdev,
 static int stub_get_mbus_formats(struct stub_sensor *sensor)
 {
 	const struct sensor_csi_data_format *f = &sensor_csi_data_formats[12];
+
 	sensor->default_pixel_order = PIXEL_ORDER_GRBG;
 	sensor->mbus_frame_fmts = ~0;
 	sensor->csi_format = f;
@@ -190,6 +194,7 @@ static int sensor_stub_set_format(struct v4l2_subdev *subdev,
 	struct stub_sensor *sensor = to_stub_sensor(subdev);
 	u32 code = fmt->format.code;
 	int rval;
+
 	sensor->height = fmt->format.height;
 	sensor->width = fmt->format.width;
 	rval = __stub_get_format(subdev, cfg, fmt);
@@ -262,6 +267,7 @@ static int sensor_stub_probe(struct i2c_client *client,
 {
 	struct stub_sensor *sensor;
 	int rval;
+
 	sensor = devm_kzalloc(&client->dev, sizeof(*sensor), GFP_KERNEL);
 	if (!sensor) {
 		dev_err(&client->dev, "Failed to alloc Sensor structure\n");

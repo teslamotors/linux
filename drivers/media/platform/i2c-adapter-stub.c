@@ -29,7 +29,7 @@
 #include "video-sensor-stub.h"
 #define STUB_ADAPTER_NAME "i2c-adapter-stub"
 
-static struct platform_device * stub_platform_device;
+static struct platform_device *stub_platform_device;
 static const struct i2c_algorithm stub_is_i2c_algorithm;
 
 struct stub_i2c {
@@ -45,7 +45,7 @@ static int intel_ipu4_platform_probe(struct platform_device *pdev)
 	struct i2c_adapter *i2c_adap;
 	int rval = -E2BIG;
 
-	dev_info(&pdev->dev,"Dummy adapter Probe\n");
+	dev_info(&pdev->dev, "Dummy adapter Probe\n");
 
 	isp_i2c = devm_kzalloc(&pdev->dev, sizeof(*isp_i2c), GFP_KERNEL);
 	if (!isp_i2c) {
@@ -64,16 +64,16 @@ static int intel_ipu4_platform_probe(struct platform_device *pdev)
 
 	rval = i2c_add_adapter(i2c_adap);
 
-	dev_info(&pdev->dev,"I2C adapter nr = %d \n ", i2c_adap->nr);
+	dev_info(&pdev->dev, "I2C adapter nr = %d\n ", i2c_adap->nr);
 
 	if (rval < 0)
 		goto out;
 
-	dev_info(&pdev->dev,"Dummy adapter probe ok\n");
+	dev_info(&pdev->dev, "Dummy adapter probe ok\n");
 	return 0;
 
 out:
-	dev_err(&pdev->dev,"Dummy adapter probe exit failed %d\n", rval);
+	dev_err(&pdev->dev, "Dummy adapter probe exit failed %d\n", rval);
 	return rval;
 
 }
@@ -81,6 +81,7 @@ out:
 static int intel_ipu4_platform_remove(struct platform_device *pdev)
 {
 	struct stub_i2c *isp_i2c = platform_get_drvdata(pdev);
+
 	i2c_del_adapter(&isp_i2c->adapter);
 	return 0;
 }
@@ -109,6 +110,7 @@ static struct platform_driver stub_platform_driver = {
 static int __init stub_init(void)
 {
 	int rval;
+
 	stub_platform_device = platform_device_register_simple(STUB_ADAPTER_NAME, -1, NULL, 0);
 
 	rval = platform_driver_register(&stub_platform_driver);

@@ -24,10 +24,10 @@
 #include "../../pci/intel-ipu4/intel-ipu4.h"
 
 #define OV13860_LANES		2
-#define OV13860_I2C_ADDRESS 	0x10
+#define OV13860_I2C_ADDRESS	0x10
 
 #define ADV7481_LANES		4
-#define ADV7481_I2C_ADDRESS 	0xe0
+#define ADV7481_I2C_ADDRESS	0xe0
 
 #define GPIO_BASE		422
 

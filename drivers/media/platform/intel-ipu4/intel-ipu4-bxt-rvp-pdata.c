@@ -64,21 +64,21 @@ lm3643
 #define LC898122_VCM_ADDR         0x24
 #define LC898122_NAME             "lc898122"
 
-#define IMX214_LANES 		4
-#define IMX214_I2C_ADDRESS 	0x1a
+#define IMX214_LANES		4
+#define IMX214_I2C_ADDRESS	0x1a
 
-#define IMX132_LANES 		1
-#define IMX132_I2C_ADDRESS 	0x36
+#define IMX132_LANES		1
+#define IMX132_I2C_ADDRESS	0x36
 
 #ifdef FABC_AOB
-#define IMX230_LANES 		4
+#define IMX230_LANES		4
 #else
-#define IMX230_LANES 		2
+#define IMX230_LANES		2
 #endif
-#define IMX230_I2C_ADDRESS 	0x1a
+#define IMX230_I2C_ADDRESS	0x1a
 
 #define OV8858_LANES		4
-#define OV8858_I2C_ADDRESS 	0x10
+#define OV8858_I2C_ADDRESS	0x10
 
 #define GPIO_BASE		429
 
