@@ -580,7 +580,7 @@ EXPORT_SYMBOL_GPL(intel_ipu4_buttress_unmap_fw_image);
 
 int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 {
-	struct intel_ipu4_psys_pdata *psys_pdata = isp->psys->pdata;
+	struct intel_ipu4_psys_pdata *psys_pdata;
 	struct intel_ipu4_buttress *b = &isp->buttress;
 	u32 data;
 	int rval;
@@ -591,6 +591,8 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 			rval);
 		return 0;
 	}
+
+	psys_pdata = isp->psys->pdata;
 
 	mutex_lock(&b->auth_mutex);
 
