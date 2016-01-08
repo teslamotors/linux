@@ -22,6 +22,8 @@
 #include "ia_css_psys_process.h"
 #include "ia_css_psys_program_manifest.h"
 #include "ia_css_psys_program_group_manifest.h"
+#include "ia_css_psys_process.hsys.kernel.h"
+#include "ia_css_psys_program_manifest.hsys.kernel.h"
 
 #define SANITY_CHECK 1
 
@@ -216,6 +218,7 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 	vied_nci_resource_bitmap_t cells = 0;
 
 	for (i = 0; i < processes; i++) {
+		vied_nci_cell_ID_t cell;
 		ia_css_process_t *process =
 			ia_css_process_group_get_process(pg, i);
 		ia_css_program_manifest_t *pm;
@@ -225,18 +228,35 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 			goto free_out;
 		}
 
-		cells |= 1 << ia_css_process_get_cell(process);
-		if (pool->cells & cells) {
-			dev_dbg(dev, "out of cell resources\n");
-			ret = -ENOSPC;
-			goto free_out;
-		}
-
 		pm = intel_ipu4_psys_get_program_manifest_by_process(
 						pg_manifest, process);
 		if (pm == NULL) {
 			dev_err(dev, "can not get manifest\n");
 			ret = -ENOENT;
+			goto free_out;
+		}
+
+		if (ia_css_has_program_manifest_fixed_cell(pm)) {
+			cell = ia_css_process_get_cell(process);
+		} else {
+			if (ia_css_program_manifest_get_cell_type_ID(pm) !=
+			    VIED_NCI_VP_TYPE_ID) {
+				dev_dbg(dev, "invalid dynamic cell type\n");
+				ret = -EIO;
+				goto free_out;
+			}
+			cell = VIED_NCI_VP0_ID;
+			ret = ia_css_process_set_cell(process, cell);
+			if (ret != 0) {
+				dev_dbg(dev, "could not assign cell\n");
+				ret = -EIO;
+				goto free_out;
+			}
+		}
+		cells |= 1 << cell;
+		if (pool->cells & cells) {
+			dev_dbg(dev, "out of cell resources\n");
+			ret = -ENOSPC;
 			goto free_out;
 		}
 
