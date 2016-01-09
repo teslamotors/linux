@@ -32,19 +32,22 @@
 static int queue_setup(struct vb2_queue *q,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		       const struct v4l2_format *__fmt,
-#else
-		       const void *__fmt,
 #endif
 		       unsigned int *num_buffers, unsigned int *num_planes,
 		       unsigned int sizes[], void *alloc_ctxs[])
 {
 	struct intel_ipu4_isys_queue *aq = vb2_queue_to_intel_ipu4_isys_queue(q);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
 	const struct v4l2_format *fmt = __fmt;
 	const struct intel_ipu4_isys_pixelformat *pfmt;
 	struct v4l2_pix_format_mplane mpix;
+#else
+	bool use_fmt = false;
+#endif
 	unsigned int i;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
 	if (fmt)
 		mpix = fmt->fmt.pix_mp;
 	else
@@ -53,9 +56,21 @@ static int queue_setup(struct vb2_queue *q,
 	pfmt = av->try_fmt_vid_mplane(av, &mpix);
 
 	*num_planes = mpix.num_planes;
+#else
+	/* num_planes == 0: we're being called through VIDIOC_REQBUFS */
+	if (!*num_planes) {
+		use_fmt = true;
+		*num_planes = av->mpix.num_planes;
+	}
+#endif
 
 	for (i = 0; i < *num_planes; i++) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
 		sizes[i] = mpix.plane_fmt[i].sizeimage;
+#else
+		if (use_fmt)
+			sizes[i] = av->mpix.plane_fmt[i].sizeimage;
+#endif
 		alloc_ctxs[i] = aq->ctx;
 		dev_dbg(&av->isys->adev->dev, "queue setup: plane %d size %u\n",
 			i, sizes[i]);
