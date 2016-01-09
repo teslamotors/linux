@@ -739,7 +739,7 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
 		vb->v4l2_buf.sequence =
 			(atomic_inc_return(&ip->sequence) - 1) / ip->nr_queues;
 #else
-	v4l2_get_timestamp(&vbuf->timestamp);
+	vbuf->vb2_buf.timestamp = ktime_get_ns();
 
 	if (ip->has_sof)
 		vbuf->sequence =
