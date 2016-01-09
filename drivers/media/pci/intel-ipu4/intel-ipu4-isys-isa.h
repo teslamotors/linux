@@ -84,9 +84,9 @@ struct intel_ipu4_isys_isa {
 #define to_intel_ipu4_isys_isa(sd)					\
 	container_of(to_intel_ipu4_isys_subdev(sd), struct intel_ipu4_isys_isa, asd)
 
-#define vb2_buffer_to_intel_ipu4_isys_isa_buffer(__vb) \
+#define vb2_buffer_to_intel_ipu4_isys_isa_buffer(__vb)		       \
 	container_of(vb2_buffer_to_intel_ipu4_isys_video_buffer(__vb), \
-		struct intel_ipu4_isys_isa_buffer, ivb);
+		     struct intel_ipu4_isys_isa_buffer, ivb)
 
 int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 			  struct intel_ipu4_isys *isys, void __iomem *base);

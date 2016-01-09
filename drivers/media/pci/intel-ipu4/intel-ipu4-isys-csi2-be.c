@@ -206,7 +206,7 @@ static void csi2_be_set_ffmt(struct v4l2_subdev *sd,
 			if (r->left & 1)
 				crop_info |= CSI2_BE_CROP_HOR;
 			code = csi2_be_supported_codes_pad[
-				(idx & CSI2_BE_CROP_MASK ^ crop_info)
+				((idx & CSI2_BE_CROP_MASK) ^ crop_info)
 				+ (idx & ~CSI2_BE_CROP_MASK)];
 		}
 

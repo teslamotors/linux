@@ -650,12 +650,11 @@ int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 		},
 #endif
 	};
-	struct intel_ipu4_device *isp = isys->adev->isp;
 	struct device *dev = &isys->adev->dev;
 	int rval;
 
 	/* A0 FW is not a pkg_dir */
-	if (is_intel_ipu4_hw_bxt_a0(isp))
+	if (is_intel_ipu4_hw_bxt_a0(isys->adev->isp))
 		isys_cfg.driver_sys.firmware_address = fw;
 	else
 		isys_cfg.driver_sys.firmware_address = &firmware_address;

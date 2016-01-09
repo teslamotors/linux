@@ -1043,7 +1043,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
 	struct intel_ipu4_isys *isys;
 	struct intel_ipu4_device *isp = adev->isp;
-	const struct firmware *fw;
+	const struct firmware *uninitialized_var(fw);
 	int rval = 0;
 
 	/* Has the domain been attached? */
