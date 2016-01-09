@@ -673,7 +673,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	rval = pm_runtime_get_sync(&isp->psys_iommu->dev);
 	if (rval < 0) {
 		dev_err(&isp->pdev->dev, "Runtime PM failed (%d)\n", rval);
-		goto unlock_mutex;
+		goto iunit_power_off;
 	}
 
 	if (intel_ipu4_buttress_auth_done(isp)) {
@@ -786,7 +786,6 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 iunit_power_off:
 	pm_runtime_put(&isp->psys_iommu->dev);
 
-unlock_mutex:
 	mutex_unlock(&b->auth_mutex);
 
 	return rval;
