@@ -103,7 +103,15 @@ int keystore_register(keystore_seed_type_t seed_type, void *client_ticket)
 	if (!client_ticket || seed_type < 0 || seed_type >= MAX_SEED_TYPES) {
 		res = -EFAULT;
 	} else {
+#if defined(KEYSTORE_DISABLE_DEVICE_SEED)
+		if (seed_type == DEVICE_SEED)
+			return -EINVAL;
+#endif
 
+#if defined(KEYSTORE_DISABLE_USER_SEED)
+		if (seed_type == USER_SEED)
+			return -EINVAL;
+#endif
 		/* alloc mem for pwd##app, use linux defined limits */
 		buf = kmalloc(PATH_MAX + NAME_MAX, GFP_KERNEL);
 		if (NULL != buf) {
