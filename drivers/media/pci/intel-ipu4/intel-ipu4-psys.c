@@ -66,8 +66,9 @@ MODULE_PARM_DESC(early_pg_transfer,
 MODULE_PARM_DESC(enable_concurrency,
 			"Enable concurrent execution of program groups");
 
-#define INTEL_IPU4_PSYS_NUM_DEVICES	4
-#define INTEL_IPU4_PSYS_WORK_QUEUE	system_power_efficient_wq
+#define INTEL_IPU4_PSYS_NUM_DEVICES		4
+#define INTEL_IPU4_PSYS_WORK_QUEUE		system_power_efficient_wq
+#define INTEL_IPU4_PSYS_AUTOSUSPEND_DELAY	0
 
 #ifdef CONFIG_PM
 static int psys_runtime_pm_resume(struct device *dev);
@@ -428,17 +429,9 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 		return rval;
 	}
 
-	rval = pm_runtime_get_sync(&psys->adev->dev);
-	if (rval < 0) {
-		pm_runtime_put_noidle(&psys->adev->dev);
-		return rval;
-	}
-
 	fh = kzalloc(sizeof(*fh), GFP_KERNEL);
-	if (!fh) {
-		pm_runtime_put(&psys->adev->dev);
+	if (!fh)
 		return -ENOMEM;
-	}
 
 	INIT_LIST_HEAD(&fh->bufmap);
 	for (i = 0; i < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; i++)
@@ -543,7 +536,7 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 
 	kfree(fh);
 
-	return pm_runtime_put(&psys->adev->dev);
+	return 0;
 }
 
 static int intel_ipu4_psys_getbuf(struct intel_ipu4_psys_buffer *buf,
@@ -835,6 +828,9 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 	if (!early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
 		memcpy(kcmd->pg_user, kcmd->kpg->pg, kcmd->kpg->pg_size);
 
+	pm_runtime_mark_last_busy(&psys->adev->dev);
+	pm_runtime_put_autosuspend(&psys->adev->dev);
+
 	complete(&kcmd->cmd_complete);
 	wake_up_interruptible(&kcmd->fh->wait);
 }
@@ -876,9 +872,16 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	/*
 	 * Found a runnable PG. Move queue to the list tail for round-robin
 	 * scheduling and run the PG. Start the watchdog timer if the PG was
-	 * started successfully.
+	 * started successfully. Enable PSYS power if requested.
 	 */
 	int ret;
+
+	ret = pm_runtime_get_sync(&psys->adev->dev);
+	if (ret < 0) {
+		dev_err(&psys->adev->dev, "failed to power on PSYS\n");
+		pm_runtime_put_noidle(&psys->adev->dev);
+		return ret;
+	}
 
 	if (early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
 		memcpy(kcmd->pg_user, kcmd->kpg->pg, kcmd->kpg->pg_size);
@@ -925,6 +928,7 @@ error:
 	dev_err(&psys->adev->dev,
 		"failed to start process group\n");
 	intel_ipu4_psys_kcmd_complete(psys, kcmd, -EIO);
+	pm_runtime_put_autosuspend(&psys->adev->dev);
 	return ret;
 }
 
@@ -2119,6 +2123,11 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	strlcpy(caps.dev_model, intel_ipu4_media_ctl_dev_model(isp),
 		sizeof(caps.dev_model));
 
+	pm_runtime_set_autosuspend_delay(&psys->adev->dev,
+					 INTEL_IPU4_PSYS_AUTOSUSPEND_DELAY);
+	pm_runtime_use_autosuspend(&psys->adev->dev);
+	pm_runtime_mark_last_busy(&psys->adev->dev);
+
 	mutex_unlock(&intel_ipu4_psys_mutex);
 
 	/* Debug fs failure is not fatal. */
@@ -2308,7 +2317,8 @@ static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
 	}
 
 	mutex_unlock(&psys->mutex);
-	pm_runtime_put(&psys->adev->dev);
+	pm_runtime_mark_last_busy(&psys->adev->dev);
+	pm_runtime_put_autosuspend(&psys->adev->dev);
 
 	return status ? IRQ_HANDLED : IRQ_NONE;
 }
