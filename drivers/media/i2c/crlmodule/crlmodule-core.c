@@ -2288,7 +2288,9 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 	if (rval)
 		goto out;
 
+	mutex_lock(&sensor->mutex);
 	rval = crlmodule_update_current_mode(sensor);
+	mutex_unlock(&sensor->mutex);
 	if (rval)
 		goto out;
 
