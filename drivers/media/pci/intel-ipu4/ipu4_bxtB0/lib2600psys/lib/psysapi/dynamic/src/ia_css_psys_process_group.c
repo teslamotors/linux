@@ -206,11 +206,11 @@ size_t ia_css_sizeof_process_group(
 
 	verifexit(process_num == process_count, EINVAL);
 
-	for (i = 0; i < (int)terminal_count; i++) {
-		ia_css_terminal_manifest_t	*terminal_manifest = ia_css_program_group_manifest_get_terminal_manifest(manifest, i);
-/*		ia_css_terminal_param_t *terminal_param = ia_css_program_group_param_get_terminal_param(param); */
-		size += ia_css_sizeof_terminal(terminal_manifest, param);
-/*		size += ia_css_sizeof_terminal(terminal_manifest, terminal_param); */
+	for (i = 0; i < (int)ia_css_program_group_manifest_get_terminal_count(manifest); i++) {
+		ia_css_terminal_manifest_t *terminal_manifest = ia_css_program_group_manifest_get_terminal_manifest(manifest, i);
+		if (ia_css_process_group_is_terminal_enabled(terminal_manifest, enable_bitmap)) {
+			size += ia_css_sizeof_terminal(terminal_manifest, param);
+		}
 	}
 
 	error_val = 0;

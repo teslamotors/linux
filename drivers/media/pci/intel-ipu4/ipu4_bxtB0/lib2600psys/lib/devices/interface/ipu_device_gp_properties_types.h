@@ -39,6 +39,12 @@ enum ipu_device_gp_isa_value {
 	/* ISA_AWB_MUX_SEL options */
 	IPU_DEVICE_GP_ISA_AWB_MUX_DPC_UNBLOCK = 0, /* UNBLOCK Input Correction input */
 	IPU_DEVICE_GP_ISA_AWB_MUX_DPC_BLOCK = 1, /* BLOCK Input Correction input */
+
+	/* PAF STRM options */
+	IPU_DEVICE_GP_ISA_PAF_DISABLE_STREAM = 0, /* Disable streaming to PAF FF*/
+	IPU_DEVICE_GP_ISA_PAF_ENABLE_STREAM0 = 1, /* Enable stream0 to PAF FF*/
+	IPU_DEVICE_GP_ISA_PAF_ENABLE_STREAM1 = 2, /* Enable stream1 to PAF FF*/
+
 	IPU_DEVICE_GP_ISA_CONF_INVALID = 0xFF
 };
 

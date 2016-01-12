@@ -218,7 +218,15 @@ int ia_css_process_set_cell(
 	state = ia_css_process_get_state(process);
 
 /* Some programs are mapped on a fixed cell, when the process group is created */
-	verifexit(((parent_state == IA_CSS_PROCESS_GROUP_BLOCKED) || (parent_state == IA_CSS_PROCESS_GROUP_STARTED) || (parent_state == IA_CSS_PROCESS_GROUP_CREATED)), EINVAL);
+	verifexit(((parent_state == IA_CSS_PROCESS_GROUP_BLOCKED) ||
+		(parent_state == IA_CSS_PROCESS_GROUP_STARTED) ||
+		(parent_state == IA_CSS_PROCESS_GROUP_CREATED) ||
+		/* If the process group has already been created, but no VP cell
+		 * has been assigned to this process (i.e. not fixed in manifest),
+		 * then we need to set the cell of this process while its parent
+		 * state is READY (the ready state is set at the end of
+		 * ia_css_process_group_create) */
+		(parent_state == IA_CSS_PROCESS_GROUP_READY)), EINVAL);
 	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
 
 /* Some programs are mapped on a fixed cell, thus check is not secure, but it will detect a preset, the process manager will do the secure check */
