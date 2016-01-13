@@ -326,6 +326,125 @@ static struct snd_soc_card broxton_gpmrb = {
 
 static int broxton_audio_probe(struct platform_device *pdev)
 {
+	char *gpio_addr, *mclk_addr;
+
+	/*
+	 *  WORKAROUND
+	 *  Set Pin ownership to SSP 5
+	 */
+	u32 gpio_value = 0x44000800;
+	u32 mclk_value = 0x44000400;
+
+	gpio_addr = (void *)ioremap_nocache(0xd0c70580, 0x30);
+	mclk_addr = (void *)ioremap_nocache(0xd0c40660, 0x30);
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+
+	memcpy_toio(gpio_addr, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x8, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x10, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x18, &gpio_value, sizeof(gpio_value));
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x8, *(u32 *)(gpio_addr + 0x8));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x10, *(u32 *)(gpio_addr + 0x10));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x18, *(u32 *)(gpio_addr + 0x18));
+
+	printk(KERN_DEBUG "MCLK %p has %#x\n", mclk_addr, *(u32 *)mclk_addr);
+	memcpy_toio(mclk_addr, &mclk_value, sizeof(mclk_value));
+	printk(KERN_DEBUG "MCLK after %p has %#x\n", mclk_addr, *(u32 *)mclk_addr);
+
+	iounmap(gpio_addr);
+	iounmap(mclk_addr);
+
+	/*
+	 *  WORKAROUND
+	 *  Set Pin ownership to SSP 5
+	 */
+	gpio_value = 0x44000A00;
+
+	gpio_addr = (void *)ioremap_nocache(0xD0C705A0, 0x30);
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+
+	memcpy_toio(gpio_addr, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x8, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x10, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x18, &gpio_value, sizeof(gpio_value));
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x8, *(u32 *)(gpio_addr + 0x8));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x10, *(u32 *)(gpio_addr + 0x10));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x18, *(u32 *)(gpio_addr + 0x18));
+
+	iounmap(gpio_addr);
+
+	/*
+	 *  WORKAROUND
+	 *  Set Pin ownership to SSP 3
+	 */
+	gpio_value = 0x44000800;
+
+	gpio_addr = (void *)ioremap_nocache(0xD0C40638, 0x30);
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+
+	memcpy_toio(gpio_addr, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x8, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x10, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x18, &gpio_value, sizeof(gpio_value));
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x8, *(u32 *)(gpio_addr + 0x8));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x10, *(u32 *)(gpio_addr + 0x10));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x18, *(u32 *)(gpio_addr + 0x18));
+
+	iounmap(gpio_addr);
+
+	/*
+	 *  WORKAROUND
+	 *  Set Pin ownership to SSP 1
+	 */
+	gpio_value = 0x44000400;
+
+	gpio_addr = (void *)ioremap_nocache(0xD0C40668, 0x30);
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+
+	memcpy_toio(gpio_addr, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x8, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x10, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x18, &gpio_value, sizeof(gpio_value));
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x8, *(u32 *)(gpio_addr + 0x8));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x10, *(u32 *)(gpio_addr + 0x10));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x18, *(u32 *)(gpio_addr + 0x18));
+
+	iounmap(gpio_addr);
+
+	/*
+	 *  WORKAROUND
+	 *  Set Pin ownership to SSP 0
+	 */
+	gpio_value = 0x40900500;
+
+	gpio_addr = (void *)ioremap_nocache(0xD0C40618, 0x30);
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+
+	memcpy_toio(gpio_addr, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x8, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x10, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x18, &gpio_value, sizeof(gpio_value));
+
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x8, *(u32 *)(gpio_addr + 0x8));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x10, *(u32 *)(gpio_addr + 0x10));
+	printk(KERN_DEBUG "%p has %#x\n", gpio_addr + 0x18, *(u32 *)(gpio_addr + 0x18));
+
+	iounmap(gpio_addr);
+
 	broxton_gpmrb.dev = &pdev->dev;
 	return snd_soc_register_card(&broxton_gpmrb);
 }
