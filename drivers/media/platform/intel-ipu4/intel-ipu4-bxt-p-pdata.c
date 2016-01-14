@@ -23,6 +23,9 @@
 #include "../../../../include/media/crlmodule.h"
 #include "../../pci/intel-ipu4/intel-ipu4.h"
 
+#define IMX185_LANES		4
+#define IMX185_I2C_ADDRESS	0x1a
+
 #define OV13860_LANES		2
 #define OV13860_I2C_ADDRESS	0x10
 
@@ -31,8 +34,35 @@
 
 #define GPIO_BASE		422
 
-/* The following OV13860 platform data is for camera AOB
- * used on Leafhill board (based on BXT-P).
+/*
+ * The following imx185 platform data is for Leaf Hill board(BXT-P).
+ */
+static struct crlmodule_platform_data imx185_pdata = {
+	.xshutdown = GPIO_BASE + 71,
+	.lanes = IMX185_LANES,
+	.ext_clk = 27000000,
+	.op_sys_clock = (uint64_t []){ 55687500, 111375000, 111375000, 222750000 },
+	.module_name = "IMX185"
+};
+
+static struct intel_ipu4_isys_csi2_config imx185_csi2_cfg = {
+	.nlanes = IMX185_LANES,
+	.port = 0,
+};
+
+static struct intel_ipu4_isys_subdev_info imx185_crl_sd = {
+	.csi2 = &imx185_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 I2C_BOARD_INFO(CRLMODULE_NAME, IMX185_I2C_ADDRESS),
+			 .platform_data = &imx185_pdata,
+		},
+		.i2c_adapter_id = 2,
+	}
+};
+
+/*
+ * The following ov13860 platform data is for Leaf Hill board(BXT-P).
  */
 static struct crlmodule_platform_data ov13860_pdata = {
 	.xshutdown = GPIO_BASE + 71,
@@ -126,6 +156,7 @@ static struct intel_ipu4_isys_subdev_info adv7481_eval_crl_sd = {
  * this should be coming from ACPI
  */
 struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
+	{ CLKDEV_INIT("2-001a", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("2-0010", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("2-a0e0", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT(NULL, NULL, NULL), NULL }
@@ -133,6 +164,9 @@ struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
 
 static struct intel_ipu4_isys_subdev_pdata pdata = {
 	.subdevs = (struct intel_ipu4_isys_subdev_info *[]) {
+#ifdef CONFIG_INTEL_IPU4_IMX185
+		&imx185_crl_sd,
+#endif
 #ifdef CONFIG_INTEL_IPU4_OV13860
 		&ov13860_crl_sd,
 #endif
