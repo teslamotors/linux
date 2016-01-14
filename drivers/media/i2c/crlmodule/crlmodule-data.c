@@ -23,6 +23,7 @@
 #include "crl_ov13860_configuration.h"
 #include "crl_adv7481_configuration.h"
 #include "crl_adv7481_eval_configuration.h"
+#include "crl_imx185_configuration.h"
 
 static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-SONY214A:00", "imx214", &imx214_crl_configuration },
@@ -30,6 +31,7 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-INT3471:00", "imx135", &imx135_crl_configuration },
 	{ "i2c-SONY230A:00", "imx230", &imx230_crl_configuration },
 	{ "i2c-INT3477:00", "ov8858", &ov8858_crl_configuration },
+	{ "IMX185", "imx185", &imx185_crl_configuration },
 	{ "OV13860", "ov13860", &ov13860_crl_configuration },
 	{ "ADV7481", "adv7481", &adv7481_crl_configuration },
 	{ "ADV7481_EVAL", "adv7481_eval", &adv7481_eval_crl_configuration },
