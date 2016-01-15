@@ -144,14 +144,18 @@ typedef enum {
 /*
  * Storage of the resource and resource type enumerators
  */
-#define VIED_NCI_RESOURCE_ID_BITS			8
-typedef uint8_t								vied_nci_resource_id_t;
 
-#define VIED_NCI_RESOURCE_SIZE_BITS			16
-typedef uint16_t							vied_nci_resource_size_t;
+#define VIED_NCI_RESOURCE_ID_BITS		8
+typedef uint8_t					vied_nci_resource_id_t;
+
+#define VIED_NCI_RESOURCE_SIZE_BITS		16
+typedef uint16_t				vied_nci_resource_size_t;
 
 #define VIED_NCI_RESOURCE_BITMAP_BITS		32
-typedef uint32_t							vied_nci_resource_bitmap_t;
+typedef uint32_t				vied_nci_resource_bitmap_t;
+
+#define IA_CSS_PROCESS_INVALID_DEPENDENCY	((vied_nci_resource_id_t)(-1))
+#define IA_CSS_PROCESS_INVALID_OFFSET		((vied_nci_resource_size_t)(-1))
 
 /*
  * Memory size (previously in vied_nci_psys_system.c)

@@ -47,7 +47,7 @@ typedef enum ia_css_connection_type {
 	IA_CSS_N_CONNECTION_TYPES
 } ia_css_connection_type_t;
 
-#define IA_CSS_PROGRAM_TYPE_BITS				32
+#define IA_CSS_PROGRAM_TYPE_BITS			32
 typedef enum ia_css_program_type {
 	IA_CSS_PROGRAM_TYPE_SINGULAR = 0,
 	IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB,
@@ -68,14 +68,16 @@ typedef enum ia_css_program_type {
 } ia_css_program_type_t;
 
 #define IA_CSS_PROGRAM_GROUP_ID_BITS			32
-typedef uint32_t								ia_css_program_group_ID_t;
-#define IA_CSS_PROGRAM_ID_BITS					32
-typedef uint32_t								ia_css_program_ID_t;
+typedef uint32_t					ia_css_program_group_ID_t;
+#define IA_CSS_PROGRAM_ID_BITS				32
+typedef uint32_t					ia_css_program_ID_t;
 
+#define IA_CSS_PROGRAM_INVALID_ID			((uint32_t)(-1))
+#define IA_CSS_PROGRAM_GROUP_INVALID_ID			((uint32_t)(-1))
 
-typedef struct ia_css_program_group_manifest_s	ia_css_program_group_manifest_t;
+typedef struct ia_css_program_group_manifest_s		ia_css_program_group_manifest_t;
 typedef struct ia_css_program_manifest_s		ia_css_program_manifest_t;
-typedef struct ia_css_data_terminal_manifest_s	ia_css_data_terminal_manifest_t;
+typedef struct ia_css_data_terminal_manifest_s		ia_css_data_terminal_manifest_t;
 
 
 #endif /* __IA_CSS_PSYS_MANIFEST_TYPES_H_INCLUDED__  */

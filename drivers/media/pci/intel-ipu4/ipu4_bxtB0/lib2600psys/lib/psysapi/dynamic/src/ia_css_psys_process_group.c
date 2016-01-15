@@ -75,6 +75,7 @@ static bool ia_css_process_group_is_program_enabled(
 				const ia_css_program_manifest_t	*super_program_manifest =
 					ia_css_program_group_manifest_get_program_manifest(prog_group_manifest, super_prog_idx);
 
+				verifexit(super_program_manifest != NULL, EINVAL);
 				if (((program_type == IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
 						(ia_css_program_manifest_get_type(super_program_manifest) != IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUPER)) ||
 					((program_type == IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB) &&
@@ -280,8 +281,9 @@ ia_css_process_group_t *ia_css_process_group_create(
 
 	/* Set process group terminal dependency list */
 	/* This list is used during creating the process dependency list */
+	uint8_t manifest_terminal_count = ia_css_program_group_manifest_get_terminal_count(manifest);
 	terminal_num = 0;
-	for (i = 0; i < (int)ia_css_program_group_manifest_get_terminal_count(manifest); i++) {
+	for (i = 0; i < (int)manifest_terminal_count; i++) {
 		ia_css_terminal_manifest_t *t_manifest = ia_css_program_group_manifest_get_terminal_manifest(manifest, i);
 		verifexit(NULL != t_manifest, EINVAL);
 		if (ia_css_process_group_is_terminal_enabled(t_manifest, enable_bitmap)) {
@@ -332,6 +334,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 					ia_css_program_group_manifest_get_program_manifest(manifest, dep_prog_idx);
 				ia_css_program_ID_t id = ia_css_program_manifest_get_program_ID(dep_prg_manifest);
 
+				verifexit(id != 0, EINVAL);
 				for (proc_dep_index = 0; proc_dep_index < process_num; proc_dep_index++) {
 					ia_css_process_t *dep_process = ia_css_process_group_get_process(process_group, proc_dep_index);
 					ia_css_process_set_cell_dependency(process, prog_dep_index, 0);
@@ -347,6 +350,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 			for (term_dep_index = 0; term_dep_index < ia_css_program_manifest_get_terminal_dependency_count(program_manifest); term_dep_index++) {
 				uint8_t pm_term_index = ia_css_program_manifest_get_terminal_dependency(program_manifest, term_dep_index);
 
+				verifexit(pm_term_index < manifest_terminal_count, EINVAL);
 				IA_CSS_TRACE_2(PSYSAPI_DYNAMIC, INFO,
 						"ia_css_process_group_create(): term_dep_index: %d, pm_term_index: %d\n", term_dep_index, pm_term_index);
 				for (term_index = 0; term_index < terminal_count; term_index++) {

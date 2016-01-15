@@ -41,18 +41,18 @@
   */
 #if !defined(__HIVECC)
 size_t ia_css_sizeof_program_group_manifest(
-	const uint8_t							program_count,
-	const uint8_t							terminal_count,
-	const uint8_t							*program_dependency_count,
-	const uint8_t							*terminal_dependency_count,
-	const ia_css_terminal_type_t					*terminal_type,
-	const uint16_t							cached_in_param_section_count,
-	const uint16_t							cached_out_param_section_count,
-	const uint16_t							*spatial_param_section_count,
-	const uint16_t							fragment_param_section_count,
-	const uint16_t							*sliced_param_section_count,
-	const uint16_t							*sliced_out_param_section_count,
-	const uint16_t							kernel_fragment_seq_count)
+	const uint8_t				program_count,
+	const uint8_t				terminal_count,
+	const uint8_t				*program_dependency_count,
+	const uint8_t				*terminal_dependency_count,
+	const ia_css_terminal_type_t		*terminal_type,
+	const uint16_t				cached_in_param_section_count,
+	const uint16_t				cached_out_param_section_count,
+	const uint16_t				*spatial_param_section_count,
+	const uint16_t				fragment_param_section_count,
+	const uint16_t				*sliced_param_section_count,
+	const uint16_t				*sliced_out_param_section_count,
+	const uint16_t				kernel_fragment_seq_count)
 {
 	size_t	size = 0;
 	int i = 0;
@@ -276,7 +276,6 @@ bool ia_css_is_program_group_manifest_valid(
 			bool						is_j_subset_i = ia_css_is_kernel_bitmap_subset(program_bitmap_i, program_bitmap_j);
 			bool						is_i_subset_j = ia_css_is_kernel_bitmap_subset(program_bitmap_j, program_bitmap_i);
 
-
 /* Test below would fail for i==j */
 			if (i == j) {
 				continue;
@@ -338,6 +337,8 @@ bool ia_css_is_program_group_manifest_valid(
  */
 			for (k = 0; k < (int)program_dependency_count_j; k++) {
 				uint8_t	program_dependency_k = ia_css_program_manifest_get_program_dependency(program_manifest_j, k);
+
+				verifexit((program_dependency_k < program_count), EINVAL);
 				if (program_dependency_k == i) {
 /* program[j] depends on program[i] */
 					verifexit((i != j), EINVAL);
@@ -432,9 +433,9 @@ size_t ia_css_program_group_manifest_get_size(
 ia_css_program_group_ID_t ia_css_program_group_manifest_get_program_group_ID(
 	const ia_css_program_group_manifest_t	*manifest)
 {
-	ia_css_program_group_ID_t	id = 0;
+	ia_css_program_group_ID_t	id = IA_CSS_PROGRAM_GROUP_INVALID_ID;
 
-	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_group_manifest_get_program_group_ID(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_group_manifest_get_program_group_ID(): enter:\n");
 
 	if (manifest != NULL) {
 		id = manifest->ID;
@@ -445,8 +446,8 @@ ia_css_program_group_ID_t ia_css_program_group_manifest_get_program_group_ID(
 }
 
 int ia_css_program_group_manifest_set_program_group_ID(
-	ia_css_program_group_manifest_t *manifest,
-	ia_css_program_group_ID_t id)
+	ia_css_program_group_manifest_t		*manifest,
+	ia_css_program_group_ID_t		id)
 {
 	int	retval = -1;
 
@@ -462,7 +463,7 @@ int ia_css_program_group_manifest_set_program_group_ID(
 }
 
 int ia_css_program_group_manifest_set_alignment(
-	ia_css_program_group_manifest_t	*manifest,
+	ia_css_program_group_manifest_t		*manifest,
 	const uint8_t alignment)
 {
 	int	retval = -1;
@@ -500,8 +501,8 @@ uint8_t ia_css_program_group_manifest_get_alignment(
   */
 #if !defined(__HIVECC)
 int ia_css_program_group_manifest_set_kernel_bitmap(
-	ia_css_program_group_manifest_t	*manifest,
-	const ia_css_kernel_bitmap_t	bitmap)
+	ia_css_program_group_manifest_t		*manifest,
+	const ia_css_kernel_bitmap_t		bitmap)
 {
 	int retval = -1;
 
@@ -553,7 +554,7 @@ EXIT:
 
 ia_css_program_manifest_t *ia_css_program_group_manifest_get_program_manifest(
 	const ia_css_program_group_manifest_t	*manifest,
-	const unsigned int						program_index)
+	const unsigned int			program_index)
 {
 	ia_css_program_manifest_t	*prg_manifest_base;
 	uint8_t				*program_manifest = NULL;
@@ -586,7 +587,7 @@ EXIT:
 
 ia_css_data_terminal_manifest_t *ia_css_program_group_manifest_get_data_terminal_manifest(
 	const ia_css_program_group_manifest_t	*manifest,
-	const unsigned int						terminal_index)
+	const unsigned int			terminal_index)
 {
 	ia_css_data_terminal_manifest_t	*data_terminal_manifest = NULL;
 	ia_css_terminal_manifest_t	*terminal_manifest;
@@ -605,7 +606,7 @@ EXIT:
 
 ia_css_param_terminal_manifest_t *ia_css_program_group_manifest_get_param_terminal_manifest(
 	const ia_css_program_group_manifest_t	*manifest,
-	const unsigned int		terminal_index)
+	const unsigned int			terminal_index)
 {
 	ia_css_param_terminal_manifest_t	*param_terminal_manifest = NULL;
 	ia_css_terminal_manifest_t		*terminal_manifest;
@@ -623,7 +624,7 @@ EXIT:
 
 ia_css_spatial_param_terminal_manifest_t *ia_css_program_group_manifest_get_spatial_param_terminal_manifest(
 	const ia_css_program_group_manifest_t	*manifest,
-	const unsigned int						terminal_index)
+	const unsigned int			terminal_index)
 {
 	ia_css_spatial_param_terminal_manifest_t	*spatial_param_terminal_manifest = NULL;
 	ia_css_terminal_manifest_t	*terminal_manifest;
@@ -660,8 +661,8 @@ EXIT:
 }
 
 ia_css_program_terminal_manifest_t *ia_css_program_group_manifest_get_program_terminal_manifest(
-	const ia_css_program_group_manifest_t *manifest,
-	const unsigned int terminal_index)
+	const ia_css_program_group_manifest_t	*manifest,
+	const unsigned int			terminal_index)
 {
 	ia_css_program_terminal_manifest_t *program_terminal_manifest = NULL;
 	ia_css_terminal_manifest_t *terminal_manifest;
@@ -680,7 +681,7 @@ ia_css_program_terminal_manifest_t *ia_css_program_group_manifest_get_program_te
 
 ia_css_terminal_manifest_t *ia_css_program_group_manifest_get_terminal_manifest(
 	const ia_css_program_group_manifest_t	*manifest,
-	const unsigned int		terminal_index)
+	const unsigned int			terminal_index)
 {
 	ia_css_terminal_manifest_t *terminal_manifest = NULL;
 	ia_css_terminal_manifest_t *terminal_manifest_base;

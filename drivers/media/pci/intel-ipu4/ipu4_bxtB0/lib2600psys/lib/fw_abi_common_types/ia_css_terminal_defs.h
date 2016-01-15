@@ -18,8 +18,9 @@
 
 #include "type_support.h"
 
-#define IA_CSS_TERMINAL_ID_BITS					8
+#define IA_CSS_TERMINAL_ID_BITS				8
 typedef uint8_t						ia_css_terminal_ID_t;
+#define IA_CSS_TERMINAL_INVALID_ID			((ia_css_terminal_ID_t)(-1))
 
 /*
  * Terminal Base Type

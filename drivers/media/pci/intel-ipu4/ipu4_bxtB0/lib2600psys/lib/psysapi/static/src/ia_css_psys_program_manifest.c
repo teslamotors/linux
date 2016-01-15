@@ -87,7 +87,7 @@ size_t ia_css_program_manifest_get_size(
 ia_css_program_ID_t ia_css_program_manifest_get_program_ID(
 	const ia_css_program_manifest_t			*manifest)
 {
-	ia_css_program_ID_t		program_id = 0;
+	ia_css_program_ID_t		program_id = IA_CSS_PROGRAM_INVALID_ID;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_manifest_get_program_ID(): enter:\n");
 
@@ -211,7 +211,7 @@ ia_css_kernel_bitmap_t ia_css_program_manifest_get_kernel_bitmap(
 }
 
 int ia_css_program_manifest_set_kernel_bitmap(
-	ia_css_program_manifest_t				*manifest,
+	ia_css_program_manifest_t			*manifest,
 	const ia_css_kernel_bitmap_t			kernel_bitmap)
 {
 	int	retval = -1;
@@ -280,7 +280,7 @@ EXIT:
 
 int ia_css_program_manifest_set_cell_type_ID(
 	ia_css_program_manifest_t			*manifest,
-	const vied_nci_cell_type_ID_t		cell_type_id)
+	const vied_nci_cell_type_ID_t			cell_type_id)
 {
 	int	retval = -1;
 
@@ -456,10 +456,10 @@ uint8_t ia_css_program_manifest_get_program_dependency_count(
 }
 
 uint8_t ia_css_program_manifest_get_program_dependency(
-	const ia_css_program_manifest_t *manifest,
-	const unsigned int		index)
+	const ia_css_program_manifest_t			*manifest,
+	const unsigned int				index)
 {
-	uint8_t program_dependency = 0xFF;
+	uint8_t program_dependency = IA_CSS_PROGRAM_INVALID_DEPENDENCY;
 	uint8_t *program_dep_ptr;
 	uint8_t program_dependency_count;
 
@@ -478,9 +478,9 @@ uint8_t ia_css_program_manifest_get_program_dependency(
 }
 
 int ia_css_program_manifest_set_program_dependency(
-	ia_css_program_manifest_t				*manifest,
-	const uint8_t							program_dependency,
-	const unsigned int						index)
+	ia_css_program_manifest_t			*manifest,
+	const uint8_t					program_dependency,
+	const unsigned int				index)
 {
 	int	retval = -1;
 	uint8_t *program_dep_ptr;
@@ -521,10 +521,10 @@ uint8_t ia_css_program_manifest_get_terminal_dependency_count(
 }
 
 uint8_t ia_css_program_manifest_get_terminal_dependency(
-	const ia_css_program_manifest_t	*manifest,
-	const unsigned int	index)
+	const ia_css_program_manifest_t			*manifest,
+	const unsigned int				index)
 {
-	uint8_t terminal_dependency = 0xFF;
+	uint8_t terminal_dependency = IA_CSS_PROGRAM_INVALID_DEPENDENCY;
 	uint8_t *terminal_dep_ptr;
 	uint8_t terminal_dependency_count = ia_css_program_manifest_get_terminal_dependency_count(manifest);
 
@@ -540,9 +540,9 @@ uint8_t ia_css_program_manifest_get_terminal_dependency(
 }
 
 int ia_css_program_manifest_set_terminal_dependency(
-	ia_css_program_manifest_t				*manifest,
-	const uint8_t							terminal_dependency,
-	const unsigned int						index)
+	ia_css_program_manifest_t			*manifest,
+	const uint8_t					terminal_dependency,
+	const unsigned int				index)
 {
 	int	retval = -1;
 	uint8_t *terminal_dep_ptr;
