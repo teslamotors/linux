@@ -18,9 +18,9 @@
 #include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
-#include <linux/slab.h>
+#include <linux/pm_runtime.h>
 #include <linux/regmap.h>
-#include <linux/videodev2.h>
+#include <linux/slab.h>
 #include "../../../include/media/lm3643.h"
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
@@ -104,6 +104,24 @@ enum led_mode {
 #endif
 
 /*
+  struct lm3643_gpio
+  *
+  * @list: list node
+  * @mutex: serialize access
+  * @gpio: gpio number
+  * @num_users: number of lm3643 devices which shares this gpio
+  * @use_count: Number of requests to turn gpio on
+ */
+
+struct lm3643_gpio {
+	struct list_head list;
+	struct mutex mutex;
+	int gpio;
+	int num_users;
+	int use_count;
+};
+
+/*
  * struct lm3643_flash
  *
  * @pdata: platform data
@@ -113,6 +131,7 @@ enum led_mode {
  * @ctrls_led: V4L2 contols
  * @subdev_led: V4L2 subdev
  * @mode_reg : mode register value
+ * @lmgpio: Gpio access struct
  */
 struct lm3643_flash {
 	struct device *dev;
@@ -121,10 +140,113 @@ struct lm3643_flash {
 	struct v4l2_ctrl_handler ctrls_led;
 	struct v4l2_subdev subdev_led;
 	enum v4l2_flash_led_mode led_mode;
+	struct lm3643_gpio *lmgpio;
 };
 
 #define to_lm3643_flash(_ctrl)	\
 	container_of(_ctrl->handler, struct lm3643_flash, ctrls_led)
+
+static LIST_HEAD(lm3643_gpios);
+static DEFINE_MUTEX(lm3643_gpio_mutex);
+
+static int lm3643_suspend(struct device *dev);
+static int lm3643_resume(struct device *dev);
+static int lm3643_init_device(struct lm3643_flash *flash);
+
+/* Call this from probe */
+static struct lm3643_gpio *lm3643_get_gpio(int gpio_num, struct device *dev)
+{
+
+	struct lm3643_gpio *gpio;
+	struct lm3643_gpio *tmp;
+	int rval;
+
+	mutex_lock(&lm3643_gpio_mutex);
+
+	list_for_each_entry_safe(gpio, tmp, &lm3643_gpios, list) {
+		if (gpio_num == gpio->gpio)
+			goto out;
+	}
+	/* New */
+	gpio = kzalloc(sizeof(*gpio), GFP_KERNEL);
+	if (!gpio) {
+		dev_err(dev, "No memory\n");
+		goto error;
+	}
+
+	mutex_init(&gpio->mutex);
+
+	rval = gpio_request(gpio_num, "flash reset");
+	if (rval) {
+		dev_err(dev, "Can't get gpio %d\n", gpio_num);
+		goto freemem;
+	}
+
+	rval = gpio_direction_output(gpio_num, 0);
+	if (rval) {
+		dev_err(dev, "Can't set gpio to output\n");
+		goto freegpio;
+	}
+
+	gpio->gpio = gpio_num;
+	list_add(&gpio->list, &lm3643_gpios);
+
+out:
+	mutex_unlock(&lm3643_gpio_mutex);
+
+	if (gpio) {
+		mutex_lock(&gpio->mutex);
+		gpio->num_users++;
+		mutex_unlock(&gpio->mutex);
+	}
+
+	return gpio;
+freegpio:
+	gpio_free(gpio_num);
+freemem:
+	kfree(gpio);
+error:
+	mutex_unlock(&lm3643_gpio_mutex);
+	return NULL;
+}
+
+static void lm3643_gpio_ctrl(struct lm3643_gpio *gpio, bool state)
+{
+	mutex_lock(&gpio->mutex);
+	if (state) {
+		gpio_set_value(gpio->gpio, 1);
+		gpio->use_count++;
+	} else {
+		gpio->use_count--;
+		if (!gpio->use_count)
+			gpio_set_value(gpio->gpio, 0);
+	}
+	mutex_unlock(&gpio->mutex);
+}
+
+static void lm3643_gpio_remove(struct lm3643_gpio *gpio, int gpio_num)
+{
+	struct lm3643_gpio *tmp;
+
+	mutex_lock(&lm3643_gpio_mutex);
+
+	list_for_each_entry_safe(gpio, tmp, &lm3643_gpios, list) {
+		if (gpio_num != gpio->gpio)
+			continue;
+		mutex_lock(&gpio->mutex);
+		gpio->num_users--;
+		if (!gpio->num_users) {
+			gpio_free(gpio->gpio);
+			list_del(&gpio->list);
+			mutex_unlock(&gpio->mutex);
+			mutex_destroy(&gpio->mutex);
+			kfree(gpio);
+		} else {
+			mutex_unlock(&gpio->mutex);
+		}
+	}
+	mutex_unlock(&lm3643_gpio_mutex);
+}
 
 /* enable mode control */
 static int lm3643_mode_ctrl(struct lm3643_flash *flash)
@@ -193,7 +315,6 @@ static int lm3643_get_ctrl(struct v4l2_ctrl *ctrl)
 		ctrl->val |= V4L2_FLASH_FAULT_LED_OVER_TEMPERATURE;
 	if (reg_val2 & FAULT_OVP)
 		ctrl->val |= V4L2_FLASH_FAULT_OVER_VOLTAGE;
-
 	return 0;
 }
 
@@ -202,8 +323,12 @@ static int lm3643_set_ctrl(struct v4l2_ctrl *ctrl)
 	struct lm3643_flash *flash = to_lm3643_flash(ctrl);
 	int rval = 0;
 
+	dev_dbg(flash->dev, "lm3643 control 0x%x\n", ctrl->id);
+
 	switch (ctrl->id) {
 	case V4L2_CID_FLASH_LED_MODE:
+		if (flash->led_mode == ctrl->val)
+			break;
 		flash->led_mode = ctrl->val;
 		if (flash->led_mode != V4L2_FLASH_LED_MODE_FLASH)
 			rval = lm3643_mode_ctrl(flash);
@@ -254,8 +379,10 @@ static int lm3643_set_ctrl(struct v4l2_ctrl *ctrl)
 					  MASK_TORCH_BR,
 					  LM3643_TORCH_BRT_mA_TO_REG(ctrl->val));
 		break;
+	case V4L2_CID_FLASH_FAULT:
+		break;
 	default:
-		dev_err(flash->dev, "lm3643 invalid control\n");
+		dev_err(flash->dev, "lm3643 invalid control 0x%x\n", ctrl->id);
 		rval = -EINVAL;
 		break;
 	}
@@ -266,7 +393,6 @@ static const struct v4l2_ctrl_ops lm3643_led_ctrl_ops = {
 	.g_volatile_ctrl = lm3643_get_ctrl,
 	.s_ctrl = lm3643_set_ctrl,
 };
-
 static int lm3643_init_controls(struct lm3643_flash *flash)
 {
 	struct v4l2_ctrl *fault;
@@ -331,9 +457,48 @@ static int lm3643_init_controls(struct lm3643_flash *flash)
 	return hdl->error;
 }
 
-/* initialize device */
+static int lm3643_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+{
+	struct lm3643_flash *flash = container_of(sd, struct lm3643_flash,
+						  subdev_led);
+	int rval;
+
+	rval = pm_runtime_get_sync(flash->dev);
+	dev_dbg(flash->dev, "%s rval = %d\n", __func__, rval);
+	return rval;
+}
+
+static int lm3643_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+{
+	struct lm3643_flash *flash = container_of(sd, struct lm3643_flash,
+						  subdev_led);
+	dev_dbg(flash->dev, "%s\n", __func__);
+	pm_runtime_put(flash->dev);
+
+	return 0;
+}
+static int lm3643_s_power(struct v4l2_subdev *sd, int on)
+{
+	struct lm3643_flash *flash = container_of(sd, struct lm3643_flash,
+						  subdev_led);
+	dev_dbg(flash->dev, "%s value = %d\n", __func__, on);
+
+	if (!on)
+		pm_runtime_put(flash->dev);
+	else
+		pm_runtime_get_sync(flash->dev);
+	return 0;
+}
+static const struct v4l2_subdev_core_ops lm3643_core_ops = {
+	.s_power = lm3643_s_power,
+};
+
+static const struct v4l2_subdev_internal_ops lm3643_int_ops = {
+	.open = lm3643_open,
+	.close = lm3643_close,
+};
 static const struct v4l2_subdev_ops lm3643_ops = {
-	.core = NULL,
+	.core = &lm3643_core_ops,
 };
 
 static const struct regmap_config lm3643_regmap = {
@@ -353,7 +518,7 @@ static int lm3643_subdev_init(struct lm3643_flash *flash)
 	snprintf(flash->subdev_led.name, sizeof(flash->subdev_led.name),
 		 LM3643_NAME " %d-%4.4x", i2c_adapter_id(client->adapter),
 		 client->addr);
-
+	flash->subdev_led.internal_ops = &lm3643_int_ops;
 	rval = lm3643_init_controls(flash);
 	if (rval)
 		goto err_out;
@@ -370,6 +535,8 @@ static void lm3646_subdev_cleanup(struct lm3643_flash *flash)
 	v4l2_ctrl_handler_free(&flash->ctrls_led);
 	v4l2_device_unregister_subdev(&flash->subdev_led);
 	media_entity_cleanup(&flash->subdev_led.entity);
+	lm3643_gpio_ctrl(flash->lmgpio, 0);
+	lm3643_gpio_remove(flash->lmgpio, flash->lmgpio->gpio);
 }
 
 static int lm3643_init_device(struct lm3643_flash *flash)
@@ -379,9 +546,7 @@ static int lm3643_init_device(struct lm3643_flash *flash)
 
 	/* output disable */
 	flash->led_mode = V4L2_FLASH_LED_MODE_NONE;
-	rval = lm3643_mode_ctrl(flash);
-	if (rval < 0)
-		return rval;
+	lm3643_mode_ctrl(flash);
 
 	/*Disable TX pin*/
 	rval = regmap_update_bits(flash->regmap,
@@ -452,37 +617,27 @@ static int lm3643_probe(struct i2c_client *client,
 	flash->pdata = pdata;
 	flash->dev = &client->dev;
 
-	/*There can be more than one lm3643 in device. Temporary hack
-	 * to make second probe to work*/
-	rval = gpio_request(flash->pdata->gpio_reset, "flash reset");
-	if (rval < 0) {
-		if (rval == -EBUSY)
-			goto out;
-		dev_err(flash->dev, "%s GPIO req failed\n", __func__);
-		goto error;
-	}
-	rval = gpio_direction_output(flash->pdata->gpio_reset, 1);
-	if (rval < 0) {
-		dev_err(flash->dev, "%s GPIO output failed\n", __func__);
-		goto error;
-	}
-out:
+	flash->lmgpio = lm3643_get_gpio(flash->pdata->gpio_reset, flash->dev);
+	if (!flash->lmgpio)
+		return -ENODEV;
+	lm3643_gpio_ctrl(flash->lmgpio, 1);
 	rval = lm3643_init_device(flash);
 	if (rval < 0) {
 		dev_err(flash->dev, "%s initdevice fail\n", __func__);
-		goto error;
+		lm3643_gpio_ctrl(flash->lmgpio, 0);
+		lm3643_gpio_remove(flash->lmgpio, flash->lmgpio->gpio);
+		return rval;
 	}
 	rval = lm3643_subdev_init(flash);
 	if (rval < 0) {
 		dev_err(flash->dev, "%s subdev init fail\n", __func__);
 		lm3646_subdev_cleanup(flash);
-		goto error;
+		return rval;
 	}
 	dev_dbg(flash->dev, "%s Success\n", __func__);
+	lm3643_gpio_ctrl(flash->lmgpio, 0);
+	pm_runtime_enable(flash->dev);
 	return 0;
-error:
-	gpio_free(flash->pdata->gpio_reset);
-	return rval;
 }
 
 static int lm3643_remove(struct i2c_client *client)
@@ -491,13 +646,63 @@ static int lm3643_remove(struct i2c_client *client)
 	struct lm3643_flash *flash = container_of(sd, struct lm3643_flash,
 						  subdev_led);
 	lm3646_subdev_cleanup(flash);
-	gpio_free(flash->pdata->gpio_reset);
+	pm_runtime_disable(flash->dev);
+	dev_info(flash->dev, "%s\n", __func__);
 	return 0;
 }
+
+#ifdef CONFIG_PM
+
+static int lm3643_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct lm3643_flash *flash = container_of(sd, struct lm3643_flash,
+						  subdev_led);
+	dev_dbg(flash->dev, "%s\n", __func__);
+
+	lm3643_gpio_ctrl(flash->lmgpio, 0);
+
+	return 0;
+}
+
+static int lm3643_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct lm3643_flash *flash = container_of(sd, struct lm3643_flash,
+						  subdev_led);
+	int rval;
+
+	lm3643_gpio_ctrl(flash->lmgpio, 1);
+	rval = lm3643_init_device(flash);
+	if (rval)
+		goto out;
+
+	/* restore v4l2 control values */
+	rval = v4l2_ctrl_handler_setup(&flash->ctrls_led);
+out:
+	dev_dbg(flash->dev, "%s rval = %d\n", __func__, rval);
+	return rval;
+}
+
+#else
+
+#define lm3643_suspend	NULL
+#define lm3643_resume	NULL
+
+#endif /* CONFIG_PM */
 
 static const struct i2c_device_id lm3643_id_table[] = {
 	{LM3643_NAME, 0},
 	{}
+};
+
+static const struct dev_pm_ops lm3643_pm_ops = {
+	.suspend	= lm3643_suspend,
+	.resume		= lm3643_resume,
+	.runtime_suspend = lm3643_suspend,
+	.runtime_resume = lm3643_resume,
 };
 
 MODULE_DEVICE_TABLE(i2c, lm3643_id_table);
@@ -505,6 +710,7 @@ MODULE_DEVICE_TABLE(i2c, lm3643_id_table);
 static struct i2c_driver lm3643_i2c_driver = {
 	.driver = {
 		   .name = LM3643_NAME,
+		   .pm = &lm3643_pm_ops,
 		   },
 	.probe = lm3643_probe,
 	.remove = lm3643_remove,
