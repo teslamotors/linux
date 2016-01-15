@@ -427,10 +427,10 @@ static void intel_ipu4_dma_buf_release(struct dma_buf *buf)
 
 	mutex_lock(&kbuf->psys->mutex);
 	list_del(&kbuf->list);
+	mutex_unlock(&kbuf->psys->mutex);
 	dma_buf_put(buf);
 	intel_ipu4_psys_put_userpages(kbuf);
 	kfree(kbuf);
-	mutex_unlock(&kbuf->psys->mutex);
 }
 
 int intel_ipu4_dma_buf_begin_cpu_access(struct dma_buf *dma_buf, size_t start,
