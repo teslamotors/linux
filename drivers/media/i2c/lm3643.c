@@ -247,8 +247,7 @@ static int lm3643_set_ctrl(struct v4l2_ctrl *ctrl)
 					  LED1_FLASH_BR_REG,
 					  MASK_FLASH_BR,
 					  LM3643_FLASH_BRT_mA_TO_REG(ctrl->val));
-		if (rval)
-			break;
+		break;
 	case V4L2_CID_FLASH_TORCH_INTENSITY:
 		rval = regmap_update_bits(flash->regmap,
 					  LED1_TORCH_BR_REG,
