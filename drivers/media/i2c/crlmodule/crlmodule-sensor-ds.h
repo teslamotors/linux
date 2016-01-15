@@ -513,6 +513,12 @@ struct crl_sensor_configuration {
 	struct crl_frame_desc *frame_desc;
 };
 
+struct crlmodule_sensors {
+	char *pname;
+	char *name;
+	struct crl_sensor_configuration *ds;
+};
+
 /*
  * Function to populate the CRL data structure from the sensor configuration
  * definition file

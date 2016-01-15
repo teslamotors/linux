@@ -24,48 +24,47 @@
 #include "crl_adv7481_configuration.h"
 #include "crl_adv7481_eval_configuration.h"
 
+static const struct crlmodule_sensors supported_sensors[] = {
+	{ "i2c-SONY214A:00", "imx214", &imx214_crl_configuration },
+	{ "i2c-SONY132A:00", "imx132", &imx132_crl_configuration },
+	{ "i2c-INT3471:00", "imx135", &imx135_crl_configuration },
+	{ "i2c-SONY230A:00", "imx230", &imx230_crl_configuration },
+	{ "i2c-INT3477:00", "ov8858", &ov8858_crl_configuration },
+	{ "OV13860", "ov13860", &ov13860_crl_configuration },
+	{ "ADV7481", "adv7481", &adv7481_crl_configuration },
+	{ "ADV7481_EVAL", "adv7481_eval", &adv7481_eval_crl_configuration },
+};
+
 /*
  * Function to populate the CRL data structure from the sensor configuration
  * definition file
  */
 int crlmodule_populate_ds(struct crl_sensor *sensor, struct device *dev)
 {
-	 /* Module name shall be _HID
-	  * Later we use request_firmware to download "module_name.bin" configuration
-	  * file from userspace
-	  * */
-	dev_info(dev, "%s Selecting sensor name: %s\n", __func__, sensor->platform_data->module_name);
+	unsigned int i;
 
-	if (!strcmp(dev_name(dev), "i2c-SONY214A:00")) {
-		dev_info(dev, "%s IMX214 selected\n", __func__);
-		sensor->sensor_ds = &imx214_crl_configuration;
-	} else if (!strcmp(dev_name(dev), "i2c-SONY132A:00")) {
-		dev_info(dev, "%s IMX132 selected\n", __func__);
-		sensor->sensor_ds = &imx132_crl_configuration;
-	} else if (!strcmp(dev_name(dev), "i2c-INT3471:00")) {
-		dev_info(dev, "%s IMX135 selected\n", __func__);
-		sensor->sensor_ds = &imx135_crl_configuration;
-	} else if (!strcmp(dev_name(dev), "i2c-SONY230A:00")) {
-		dev_info(dev, "%s IMX230 selected\n", __func__);
-		sensor->sensor_ds = &imx230_crl_configuration;
-	} else if (!strcmp(dev_name(dev), "i2c-INT3477:00")) {
-		dev_info(dev, "%s OV8858 selected\n", __func__);
-		sensor->sensor_ds = &ov8858_crl_configuration;
-	} else if (!strcmp(sensor->platform_data->module_name, "OV13860")) {
-		dev_info(dev, "%s OV13860 selected\n", __func__);
-		sensor->sensor_ds = &ov13860_crl_configuration;
-	} else if (!strcmp(sensor->platform_data->module_name, "ADV7481")) {
-		dev_info(dev, "%s ADV7481 selected\n", __func__);
-		sensor->sensor_ds = &adv7481_crl_configuration;
-	} else if (!strcmp(sensor->platform_data->module_name,
-			   "ADV7481_EVAL")) {
-		dev_info(dev, "%s ADV7481 eval board selected\n", __func__);
-		sensor->sensor_ds = &adv7481_eval_crl_configuration;
-	} else {
-		dev_err(dev, "%s No suitable configuration\n", __func__);
-		return -EINVAL;
+	for (i = 0; i < ARRAY_SIZE(supported_sensors); i++) {
+		/* Check the ACPI supported modules */
+		if (!strcmp(dev_name(dev), supported_sensors[i].pname)) {
+			sensor->sensor_ds = supported_sensors[i].ds;
+			dev_info(dev, "%s %s selected\n",
+				 __func__, supported_sensors[i].name);
+			return 0;
+		};
+
+		/* Check the non ACPI modules */
+		if (!strcmp(sensor->platform_data->module_name,
+			    supported_sensors[i].pname)) {
+			sensor->sensor_ds = supported_sensors[i].ds;
+			dev_info(dev, "%s %s selected\n",
+				 __func__, supported_sensors[i].name);
+			return 0;
+		};
 	}
-	return 0;
+
+	dev_err(dev, "%s No suitable configuration found for %s\n",
+		     __func__, dev_name(dev));
+	return -EINVAL;
 }
 
 /*
