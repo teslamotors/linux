@@ -1087,8 +1087,34 @@ static struct crl_frame_desc ov8858_frame_desc[] = {
 	},
 };
 
+/* Power items, they are enabled in the order they are listed here */
+static struct crl_power_seq_entity ov8858_power_items[] = {
+	{
+		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+		.ent_name = "VANA",
+		.val = 2800000,
+		.delay = 30000,
+	},
+	{
+		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+		.ent_name = "VDIG",
+		.val = 1200000,
+		.delay = 0,
+	},
+	{
+		.type = CRL_POWER_ETY_CLK_FRAMEWORK,
+		.val = 24000000,
+	},
+	{
+		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
+		.val = 1,
+	},
+};
+
 static struct crl_sensor_configuration ov8858_crl_configuration = {
 
+	.power_items = ARRAY_SIZE(ov8858_power_items),
+	.power_entities = ov8858_power_items,
 
 	.powerup_regs_items = ARRAY_SIZE(ov8858_powerup_regset),
 	.powerup_regs = ov8858_powerup_regset,

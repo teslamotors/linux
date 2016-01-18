@@ -174,6 +174,13 @@ enum crl_frame_desc_type {
 	CRL_V4L2_MBUS_FRAME_DESC_TYPE_CSI2,
 };
 
+enum crl_pwr_ent_type {
+	CRL_POWER_ETY_GPIO_FROM_PDATA = 1,
+	CRL_POWER_ETY_GPIO_CUSTOM,
+	CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+	CRL_POWER_ETY_CLK_FRAMEWORK,
+};
+
 struct crl_dynamic_entity {
 	u8 entity_type;
 	u32 entity_val;
@@ -405,17 +412,14 @@ struct crl_flip_data {
 };
 
 struct crl_power_seq_entity {
-	char rail_name[12];
+	enum crl_pwr_ent_type type;
+	char ent_name[12];
+	int ent_number;
 	u16 address;
-	unsigned int val;    /* voltage in uV */
+	unsigned int val;
 	unsigned int undo_val; /* Undo value if any previous step failed */
 	unsigned int delay; /* delay in micro seconds */
-};
-
-struct crl_clock_entity {
-	char clock_name[12];
-	unsigned int val; /* freq in HZ */
-	unsigned int delay; /* delay in us */
+	struct regulator *regulator_priv; /* R/W */
 };
 
 struct crl_nvm_blob {
@@ -455,7 +459,7 @@ struct crl_sensor_configuration {
 	const struct crl_clock_entity *clock_entity;
 
 	const unsigned int power_items;
-	const struct crl_power_seq_entity *power_entities;
+	struct crl_power_seq_entity *power_entities;
 	unsigned int power_delay; /* in micro seconds */
 
 	const unsigned int powerup_regs_items;

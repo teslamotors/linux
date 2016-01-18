@@ -682,7 +682,22 @@ static struct crl_v4l2_ctrl adv7481_v4l2_ctrls[] = {
 	},
 };
 
+/* Power items, they are enabled in the order they are listed here */
+static struct crl_power_seq_entity adv7481_power_items[] = {
+	{
+		.type = CRL_POWER_ETY_CLK_FRAMEWORK,
+		.val = 24000000,
+	},
+	{
+		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
+		.val = 1,
+	},
+};
+
 static struct crl_sensor_configuration adv7481_crl_configuration = {
+
+	.power_items = ARRAY_SIZE(adv7481_power_items),
+	.power_entities = adv7481_power_items,
 
 	.powerup_regs_items = ARRAY_SIZE(adv7481_powerup_regset),
 	.powerup_regs = adv7481_powerup_regset,

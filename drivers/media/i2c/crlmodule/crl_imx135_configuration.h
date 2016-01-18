@@ -535,19 +535,6 @@ static const char * const imx135_test_patterns[] = {
 	"Eight Vertical Colour Bars",
 };
 
-static struct crl_power_seq_entity imx135_power_items[] = {
-	{
-		.rail_name = "VANA",
-		.val = 2800000,
-		.delay = 30000,
-	},
-	{
-		.rail_name = "VDIG",
-		.val = 1100000,
-		.delay = 0,
-	},
-};
-
 static const s64 imx135_op_sys_clock[] =  { 451200000 };
 
 static struct crl_v4l2_ctrl imx135_v4l2_ctrls[] = {
@@ -749,6 +736,29 @@ static struct crl_v4l2_ctrl imx135_v4l2_ctrls[] = {
 	},
 };
 
+/* Power items, they are enabled in the order they are listed here */
+static struct crl_power_seq_entity imx135_power_items[] = {
+	{
+		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+		.ent_name = "VANA",
+		.val = 2700000,
+		.delay = 30000,
+	},
+	{
+		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+		.ent_name = "VDIG",
+		.val = 1100000,
+		.delay = 0,
+	},
+	{
+		.type = CRL_POWER_ETY_CLK_FRAMEWORK,
+		.val = 24000000,
+	},
+	{
+		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
+		.val = 1,
+	},
+};
 
 
 static struct crl_sensor_configuration imx135_crl_configuration = {

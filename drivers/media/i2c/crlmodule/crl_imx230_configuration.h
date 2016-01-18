@@ -1671,17 +1671,27 @@ static struct crl_v4l2_ctrl imx230_vl42_ctrls[] = {
 	},
 };
 
-
+/* Power items, they are enabled in the order they are listed here */
 static struct crl_power_seq_entity imx230_power_items[] = {
 	{
-		.rail_name = "VANA",
+		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+		.ent_name = "VANA",
 		.val = 2500000,
 		.delay = 30000,
 	},
 	{
-		.rail_name = "VDIG",
+		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+		.ent_name = "VDIG",
 		.val = 1100000,
 		.delay = 0,
+	},
+	{
+		.type = CRL_POWER_ETY_CLK_FRAMEWORK,
+		.val = 24000000,
+	},
+	{
+		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
+		.val = 1,
 	},
 };
 

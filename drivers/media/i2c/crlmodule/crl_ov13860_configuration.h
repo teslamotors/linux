@@ -1519,8 +1519,22 @@ static struct crl_v4l2_ctrl ov13860_v4l2_ctrls[] = {
 	 },
 };
 
+/* Power items, they are enabled in the order they are listed here */
+static struct crl_power_seq_entity ov13860_power_items[] = {
+	{
+		.type = CRL_POWER_ETY_CLK_FRAMEWORK,
+		.val = 24000000,
+	},
+	{
+		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
+		.val = 1,
+	},
+};
+
 struct crl_sensor_configuration ov13860_crl_configuration = {
 
+	.power_items = ARRAY_SIZE(ov13860_power_items),
+	.power_entities = ov13860_power_items,
 
 	.powerup_regs_items = ARRAY_SIZE(ov13860_powerup_regset),
 	.powerup_regs = ov13860_powerup_regset,

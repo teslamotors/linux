@@ -1134,7 +1134,22 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 	},
 };
 
+/* Power items, they are enabled in the order they are listed here */
+static struct crl_power_seq_entity imx185_power_items[] = {
+	{
+		.type = CRL_POWER_ETY_CLK_FRAMEWORK,
+		.val = 27000000,
+	},
+	{
+		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
+		.val = 1,
+	},
+};
+
 struct crl_sensor_configuration imx185_crl_configuration = {
+
+	.power_items = ARRAY_SIZE(imx185_power_items),
+	.power_entities = imx185_power_items,
 
 	.powerup_regs_items = ARRAY_SIZE(imx185_powerup_standby),
 	.powerup_regs = imx185_powerup_standby,
