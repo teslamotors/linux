@@ -879,12 +879,12 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 	isys_unregister_devices(isys);
 	if (!isp->secure_mode) {
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_SSID, isys->pkg_dir);
+			ISYS_MMID, isys->pkg_dir);
 		intel_ipu4_cpd_free_pkg_dir(adev, isys->pkg_dir,
 					    isys->pkg_dir_dma_addr,
 					    isys->pkg_dir_size);
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_SSID, (void *)isys->fw->data);
+			ISYS_MMID, (void *)isys->fw->data);
 		intel_ipu4_buttress_unmap_fw_image(adev, &isys->fw_sgt);
 		release_firmware(isys->fw);
 	}
@@ -905,7 +905,7 @@ static int isys_fw_reload(struct intel_ipu4_device *isp)
 		dev_info(&isp->pdev->dev, "Remove old isys FW\n");
 
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_SSID, (void *) isys->fw->data);
+			ISYS_MMID, (void *) isys->fw->data);
 
 		intel_ipu4_buttress_unmap_fw_image(isp->isys, &isys->fw_sgt);
 
@@ -934,7 +934,7 @@ static int isys_fw_reload(struct intel_ipu4_device *isp)
 	}
 
 	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-		ISYS_SSID, (void *)isys->fw->data,
+		ISYS_MMID, (void *)isys->fw->data,
 		sg_dma_address(isys->fw_sgt.sgl),
 		isys->fw->size);
 
@@ -1008,7 +1008,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 			goto release_firmware;
 
 		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-			ISYS_SSID, (void *)fw->data,
+			ISYS_MMID, (void *)fw->data,
 			sg_dma_address(isys->fw_sgt.sgl),
 			fw->size);
 		if (rval)
@@ -1024,7 +1024,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 				goto  remove_shared_buffer;
 
 			rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-				ISYS_SSID, (void *)isys->pkg_dir,
+				ISYS_MMID, (void *)isys->pkg_dir,
 				isys->pkg_dir_dma_addr,
 				isys->pkg_dir_size);
 			if (rval)
@@ -1047,7 +1047,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 out_remove_pkg_dir_shared_buffer:
 	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_SSID, isys->pkg_dir);
+			ISYS_MMID, isys->pkg_dir);
 out_free_pkg_dir:
 	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
 		intel_ipu4_cpd_free_pkg_dir(adev, isys->pkg_dir,
@@ -1056,7 +1056,7 @@ out_free_pkg_dir:
 remove_shared_buffer:
 	if (!isp->secure_mode)
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_SSID, (void *)fw->data);
+			ISYS_MMID, (void *)fw->data);
 unmap_fw_image:
 	if (!isp->secure_mode)
 		intel_ipu4_buttress_unmap_fw_image(

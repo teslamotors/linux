@@ -1614,7 +1614,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		goto out_release_firmware;
 
 	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-		PSYS_SSID, (void *)fw->data,
+		PSYS_MMID, (void *)fw->data,
 		sg_dma_address(psys->fw_sgt.sgl),
 		fw->size);
 	if (rval)
@@ -1641,7 +1641,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 			goto  out_remove_shared_buffer;
 
 		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-			PSYS_SSID, (void *)psys->pkg_dir,
+			PSYS_MMID, (void *)psys->pkg_dir,
 			psys->pkg_dir_dma_addr,
 			psys->pkg_dir_size);
 		if (rval)
@@ -1696,7 +1696,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 out_remove_pkg_dir_shared_buffer:
 	if (!is_intel_ipu4_hw_bxt_a0(isp))
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			PSYS_SSID, psys->pkg_dir);
+			PSYS_MMID, psys->pkg_dir);
 out_free_pkg_dir:
 	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
 		intel_ipu4_cpd_free_pkg_dir(adev, psys->pkg_dir,
@@ -1704,7 +1704,7 @@ out_free_pkg_dir:
 					    psys->pkg_dir_size);
 out_remove_shared_buffer:
 	intel_ipu4_wrapper_remove_shared_memory_buffer(
-		PSYS_SSID, (void *) fw->data);
+		PSYS_MMID, (void *) fw->data);
 out_unmap_fw_image:
 	intel_ipu4_buttress_unmap_fw_image(adev, &psys->fw_sgt);
 out_release_firmware:
@@ -1744,16 +1744,16 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 
 	if (is_intel_ipu4_hw_bxt_a0(isp)) {
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			PSYS_SSID, (void *)psys->fw->data);
+			PSYS_MMID, (void *)psys->fw->data);
 		release_firmware(psys->fw);
 	} else {
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			PSYS_SSID, psys->pkg_dir);
+			PSYS_MMID, psys->pkg_dir);
 		intel_ipu4_cpd_free_pkg_dir(adev, psys->pkg_dir,
 					    psys->pkg_dir_dma_addr,
 					    psys->pkg_dir_size);
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			PSYS_SSID, (void *)isp->cpd_fw->data);
+			PSYS_MMID, (void *)isp->cpd_fw->data);
 	}
 	intel_ipu4_buttress_unmap_fw_image(adev, &psys->fw_sgt);
 
