@@ -890,7 +890,7 @@ static void isys_setup_hw(struct intel_ipu4_isys *isys)
 	irqs |= INTEL_IPU4_ISYS_UNISPART_IRQ_SW;
 
 	writel(irqs, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_EDGE);
-	writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_LEVEL_NOT_PULSE);
+	writel(irqs, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_LEVEL_NOT_PULSE);
 	writel(irqs, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_CLEAR);
 	writel(irqs, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_MASK);
 	writel(irqs, base + INTEL_IPU4_REG_ISYS_UNISPART_IRQ_ENABLE);
