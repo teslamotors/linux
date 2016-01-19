@@ -2,6 +2,8 @@
 #
 # MODULE is PSYS_SERVER
 
+# TODO: IPU5_SDK Verify that the glvA0 changes are correct when IPU5 SDK has been released.
+
 PSYS_SERVER_DIR=$${MODULES_DIR}/psys_server
 
 PSYS_SERVER_INTERFACE=$(PSYS_SERVER_DIR)/interface
@@ -11,7 +13,7 @@ ifeq ($(IPU_SYSVER), bxtA0)
 	PSYS_SERVER_VERSION=v1
 else ifeq ($(IPU_SYSVER), bxtB0)
 	PSYS_SERVER_VERSION=v2
-else ifeq ($(IPU_SYSVER), $(filter $(IPU_SYSVER), cnlA0 cnlB0))
+else ifeq ($(IPU_SYSVER), $(filter $(IPU_SYSVER), cnlA0 cnlB0 glvA0))
 	PSYS_SERVER_VERSION=v3
 endif
 
@@ -62,6 +64,10 @@ else
 		else
 			ifeq ($(IPU_SYSVER), cnlB0)
 				PSYS_SERVER_FW_CPPFLAGS += -DCNL_B0_HW
+			else
+				ifeq ($(IPU_SYSVER), glvA0)
+					PSYS_SERVER_FW_CPPFLAGS += -DGLV_A0_HW
+				endif
 			endif
 		endif
 	endif

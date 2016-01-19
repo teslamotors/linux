@@ -17,7 +17,7 @@
 
 #define IA_CSS_CELL_ID_UNDEFINED		0xFFFFFFFF
 #define IA_CSS_CELL_PROGRAM_MAGIC_NUMBER	0xF1A30002
-#define IA_CSS_FW_RELEASE_SIZE			32
+#define IA_CSS_FW_RELEASE_SIZE			64
 
 struct ia_css_cell_program_s {
 
