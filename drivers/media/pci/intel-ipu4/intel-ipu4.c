@@ -25,6 +25,7 @@
 #include "intel-ipu4.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-buttress-regs.h"
+#include "intel-ipu4-cpd.h"
 #include "intel-ipu4-pdata.h"
 #include "intel-ipu4-bus.h"
 #include "intel-ipu4-regs.h"
@@ -645,6 +646,13 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	if (rval) {
 		dev_err(&isp->pdev->dev, "Requesting signed firmware failed\n");
 		return rval;
+	}
+
+	rval = intel_ipu4_cpd_validate_cpd_file(isp, isp->cpd_fw->data,
+						isp->cpd_fw->size);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Failed to validate cpd\n");
+		goto out_intel_ipu4_bus_del_devices;
 	}
 
 	intel_ipu4_wrapper_init(psys_base, isys_base, wrapper_flags);

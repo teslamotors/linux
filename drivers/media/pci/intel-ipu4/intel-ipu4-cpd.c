@@ -67,24 +67,9 @@ intel_ipu4_cpd_metadata_get_cmpnt(
 	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnts;
 	int cmpnt_count;
 
-	if (metadata_size < sizeof(struct intel_ipu_cpd_metadata_extn) +
-	    sizeof(struct intel_ipu4_cpd_metadata_cmpnt)) {
-		dev_err(&isp->pdev->dev, "%s: Invalid metadata\n",
-			__func__);
-		return ERR_PTR(-EINVAL);
-	}
-
 	extn = metadata;
 	cmpnts = metadata + sizeof(*extn);
 	cmpnt_count = (metadata_size - sizeof(*extn)) / sizeof(*cmpnts);
-
-	if (extn->extn_type != INTEL_IPU4_CPD_METADATA_EXTN_TYPE_IUNIT ||
-	    extn->img_type !=
-	    INTEL_IPU4_CPD_METADATA_IMAGE_TYPE_MAIN_FIRMWARE) {
-		dev_err(&isp->pdev->dev, "Invalid metadata descriptor img_type (%d)\n",
-			extn->img_type);
-		return ERR_PTR(-EINVAL);
-	}
 
 	if (idx > MAX_COMPONENT_ID || idx >= cmpnt_count) {
 		dev_err(&isp->pdev->dev, "Component index out of range (%d)\n",
@@ -168,30 +153,14 @@ static int intel_ipu4_cpd_parse_module_data(struct intel_ipu4_device *isp,
 	const struct intel_ipu4_cpd_module_data_hdr *module_data_hdr;
 	const struct intel_ipu4_cpd_hdr *dir_hdr;
 	const struct intel_ipu4_cpd_ent *dir_ent;
-	const void *module_data_end = module_data + module_data_size;
 	int i;
 
 	if (!module_data)
 		return -EINVAL;
 
 	module_data_hdr = module_data;
-
-	if (sizeof(*module_data_hdr) > module_data_size ||
-	    module_data_hdr->hdr_len + sizeof(*dir_hdr) >
-	    module_data_size) {
-		dev_err(&isp->pdev->dev, "Invalid module data\n");
-		return -EINVAL;
-	}
-
 	dir_hdr = module_data + module_data_hdr->hdr_len;
 	dir_ent = (struct intel_ipu4_cpd_ent *) (dir_hdr + 1);
-
-	if (dir_hdr->ent_cnt > MAX_PKG_DIR_ENT_CNT - 1 ||
-	    (void *) (dir_ent + dir_hdr->ent_cnt) > module_data_end) {
-		dev_err(&isp->pdev->dev,
-			"Invalid data in module data header\n");
-		return -EINVAL;
-	}
 
 	pkg_dir[0] = PKG_DIR_HDR_MARK;
 	/* pkg_dir entry count = component count + pkg_dir header */
@@ -200,12 +169,6 @@ static int intel_ipu4_cpd_parse_module_data(struct intel_ipu4_device *isp,
 	for (i = 0; i < dir_hdr->ent_cnt; i++, dir_ent++) {
 		u64 *p = &pkg_dir[PKG_DIR_ENT_LEN + i * PKG_DIR_ENT_LEN];
 		int ver, id;
-
-		if (dir_ent->offset + dir_ent->len > module_data_size) {
-			dev_err(&isp->pdev->dev,
-			"Invalid data in module data directory entry\n");
-			return -EINVAL;
-		}
 
 		*p++ = dma_addr_module_data + dir_ent->offset;
 
@@ -248,32 +211,13 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_bus_device *adev,
 	void *pkg_dir_pos;
 	int ret;
 
-	/* Sanity check for CPD header */
-	if (hdr->hdr_mark != CPD_HDR_MARK ||
-	    hdr->ent_cnt >= MAX_PKG_DIR_ENT_CNT) {
-		dev_err(&isp->pdev->dev, "Invalid CPD header\n");
-		return NULL;
-	}
-
 	hdr_sz = hdr->hdr_len;
 
 	man_ent = intel_ipu4_cpd_get_manifest(src);
 	man_sz = man_ent->len;
 
-	/* Sanity check for manifest size */
-	if (man_sz > MAX_MANIFEST_SIZE) {
-		dev_err(&isp->pdev->dev, "Invalid manifest size\n");
-		return NULL;
-	}
-
 	met_ent = intel_ipu4_cpd_get_metadata(src);
 	met_sz = met_ent->len;
-
-	/* Sanity check for metadata size */
-	if (met_sz > MAX_METADATA_SIZE) {
-		dev_err(&isp->pdev->dev, "Invalid metadata size\n");
-		return NULL;
-	}
 
 	*pkg_dir_size = PKG_DIR_SIZE + man_sz + met_sz;
 	pkg_dir = dma_alloc_attrs(&adev->dev, *pkg_dir_size, dma_addr,
@@ -356,3 +300,148 @@ u32 intel_ipu4_cpd_get_pg_entry_point(struct intel_ipu4_device *isp,
 		isp, cpd_file + metadata->offset, metadata->len, idx);
 }
 EXPORT_SYMBOL(intel_ipu4_cpd_get_pg_entry_point);
+
+static int intel_ipu4_cpd_validate_cpd(struct intel_ipu4_device *isp,
+				       const void *cpd,
+				       unsigned long cpd_size,
+				       unsigned long data_size)
+{
+	const struct intel_ipu4_cpd_hdr *cpd_hdr = cpd;
+	struct intel_ipu4_cpd_ent *ent;
+	unsigned int i;
+
+	/* Ensure cpd hdr is within moduledata */
+	if (cpd_size < sizeof(*cpd_hdr)) {
+		dev_err(&isp->pdev->dev, "Invalid CPD moduledata size\n");
+		return -EINVAL;
+	}
+
+	/* Sanity check for CPD header */
+	if ((cpd_size - sizeof(*cpd_hdr)) / sizeof(*ent) < cpd_hdr->ent_cnt) {
+		dev_err(&isp->pdev->dev, "Invalid CPD header\n");
+		return -EINVAL;
+	}
+
+	/* Ensure that all entries are within moduledata */
+	ent = (struct intel_ipu4_cpd_ent *)(cpd_hdr + 1);
+	for (i = 0; i < cpd_hdr->ent_cnt; i++, ent++) {
+		if (data_size < ent->offset ||
+		    data_size - ent->offset < ent->len) {
+			dev_err(&isp->pdev->dev, "Invalid CPD entry (%d)\n", i);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static int intel_ipu4_cpd_validate_moduledata(struct intel_ipu4_device *isp,
+				     const void *moduledata,
+				     u32 moduledata_size)
+{
+	const struct intel_ipu4_cpd_module_data_hdr *mod_hdr = moduledata;
+	int rval;
+
+	/* Ensure moduledata hdr is within moduledata */
+	if (moduledata_size < sizeof(*mod_hdr) ||
+	    moduledata_size < mod_hdr->hdr_len) {
+		dev_err(&isp->pdev->dev, "Invalid moduledata size\n");
+		return -EINVAL;
+	}
+
+	rval = intel_ipu4_cpd_validate_cpd(isp, moduledata +
+					   mod_hdr->hdr_len,
+					   moduledata_size -
+					   mod_hdr->hdr_len,
+					   moduledata_size);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Invalid CPD in moduledata\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int intel_ipu4_cpd_validate_metadata(struct intel_ipu4_device *isp,
+				     const void *metadata,
+				     u32 metadata_size)
+{
+	const struct intel_ipu_cpd_metadata_extn *extn = metadata;
+
+	/* Sanity check for metadata size */
+	if (metadata_size < sizeof(*extn) ||
+	    metadata_size > MAX_METADATA_SIZE) {
+		dev_err(&isp->pdev->dev, "%s: Invalid metadata\n", __func__);
+		return -EINVAL;
+	}
+
+	/* Validate extension and image types */
+	if (extn->extn_type != INTEL_IPU4_CPD_METADATA_EXTN_TYPE_IUNIT ||
+	    extn->img_type !=
+	    INTEL_IPU4_CPD_METADATA_IMAGE_TYPE_MAIN_FIRMWARE) {
+		dev_err(&isp->pdev->dev, "Invalid metadata descriptor img_type (%d)\n",
+			extn->img_type);
+		return -EINVAL;
+	}
+
+	/* Validate metadata size multiple of metadata components */
+	if ((metadata_size - sizeof(*extn)) %
+	    sizeof(struct intel_ipu4_cpd_metadata_cmpnt)) {
+		dev_err(&isp->pdev->dev, "%s: Invalid metadata size\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int intel_ipu4_cpd_validate_cpd_file(struct intel_ipu4_device *isp,
+				     const void *cpd_file,
+				     unsigned long cpd_file_size)
+{
+	const struct intel_ipu4_cpd_hdr *hdr = cpd_file;
+	struct intel_ipu4_cpd_ent *ent;
+	int rval;
+
+	rval = intel_ipu4_cpd_validate_cpd(isp, cpd_file,
+					   cpd_file_size,
+					   cpd_file_size);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Invalid CPD in file\n");
+		return -EINVAL;
+	}
+
+	/* Check for CPD file marker */
+	if (hdr->hdr_mark != CPD_HDR_MARK) {
+		dev_err(&isp->pdev->dev, "Invalid CPD header\n");
+		return -EINVAL;
+	}
+
+	/* Sanity check for manifest size */
+	ent = intel_ipu4_cpd_get_manifest(cpd_file);
+	if (ent->len > MAX_MANIFEST_SIZE) {
+		dev_err(&isp->pdev->dev, "Invalid manifest size\n");
+		return -EINVAL;
+	}
+
+	/* Validate metadata */
+	ent = intel_ipu4_cpd_get_metadata(cpd_file);
+	rval = intel_ipu4_cpd_validate_metadata(isp, cpd_file + ent->offset,
+						ent->len);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Invalid metadata\n");
+		return rval;
+	}
+
+	/* Validate moduledata */
+	ent = intel_ipu4_cpd_get_moduledata(cpd_file);
+	rval = intel_ipu4_cpd_validate_moduledata(isp, cpd_file + ent->offset,
+						ent->len);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Invalid moduledata\n");
+		return rval;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(intel_ipu4_cpd_validate_cpd_file);

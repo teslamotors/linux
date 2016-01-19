@@ -91,4 +91,7 @@ u32 intel_ipu4_cpd_get_pg_entry_point(struct intel_ipu4_device *isp,
 				      u8 idx,
 				      const void *cpd_file,
 				      unsigned cpd_file_size);
+int intel_ipu4_cpd_validate_cpd_file(struct intel_ipu4_device *isp,
+				     const void *cpd_file,
+				     unsigned long cpd_file_size);
 #endif /* INTEL_IPU4_CPD_H */
