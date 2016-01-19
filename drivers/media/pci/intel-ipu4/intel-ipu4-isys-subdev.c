@@ -32,6 +32,7 @@ unsigned int intel_ipu4_isys_mbus_code_to_bpp(u32 code)
 		return 24;
 	case MEDIA_BUS_FMT_RGB565_1X16:
 	case MEDIA_BUS_FMT_UYVY8_1X16:
+	case MEDIA_BUS_FMT_YUYV8_1X16:
 		return 16;
 	case MEDIA_BUS_FMT_SBGGR12_1X12:
 	case MEDIA_BUS_FMT_SGBRG12_1X12:
@@ -62,6 +63,7 @@ unsigned int intel_ipu4_isys_mbus_code_to_mipi(u32 code)
 	case MEDIA_BUS_FMT_RGB888_1X32_PADHI:
 		return INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_RGB888;
 	case MEDIA_BUS_FMT_UYVY8_1X16:
+	case MEDIA_BUS_FMT_YUYV8_1X16:
 		return INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_YUV422_8;
 	case MEDIA_BUS_FMT_SBGGR12_1X12:
 	case MEDIA_BUS_FMT_SGBRG12_1X12:
