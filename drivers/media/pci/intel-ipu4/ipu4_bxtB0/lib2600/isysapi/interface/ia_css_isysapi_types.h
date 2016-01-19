@@ -23,20 +23,6 @@
 
 
 /**
- * struct ia_css_isys_buffer_partition - buffer partition information
- * @block_size: memory block sizes starting from 0 and continuous in memory
- * block 0 will use addresses: [0, block_size[0])
- * block 1 will use addresses: [block_size[0], block_size[0]+block_size[1])
- * block 2 will use addresses: [block_size[0]+block_size[1], block_size[0]+block_size[1]+block_size[2])
- * etc..
- * @nof_blocks: number of memory blocks to allocate
- */
-struct ia_css_isys_buffer_partition {
-	unsigned int block_size[NOF_SRAM_BLOCKS_MAX];
-	unsigned int nof_blocks;
-};
-
-/**
  * This should contain the driver specified info for sys
  */
 struct ia_css_driver_sys_config {
@@ -64,8 +50,6 @@ struct ia_css_driver_sys_config {
  */
 struct ia_css_isys_device_cfg_data {
 	struct ia_css_driver_sys_config driver_sys;
-	struct ia_css_isys_buffer_partition mipi;
-	struct ia_css_isys_buffer_partition pixel;
 };
 
 /**

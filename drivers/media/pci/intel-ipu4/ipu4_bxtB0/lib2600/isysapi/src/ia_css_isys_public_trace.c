@@ -31,7 +31,7 @@
  */
 int print_handle_context(struct ia_css_isys_context *ctx)
 {
-	static unsigned int i;
+	unsigned int i;
 	verifret(ctx != NULL, EFAULT);
 	/* Print ctx->(ssid, mmid, dev_state) */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Print ia_css_isys_context *ctx\n"
@@ -66,8 +66,6 @@ int print_handle_context(struct ia_css_isys_context *ctx)
  */
 int print_device_config_data(const struct ia_css_isys_device_cfg_data *config)
 {
-	static unsigned int i;
-
 	verifret(config != NULL, EFAULT);
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Print ia_css_isys_device_cfg_data *config\n"
 		"-------------------------------------------------------------------------------\n");
@@ -84,14 +82,6 @@ int print_device_config_data(const struct ia_css_isys_device_cfg_data *config)
 		, config->driver_sys.num_recv_queues
 		, config->driver_sys.send_queue_size
 		, config->driver_sys.recv_queue_size);
-	IA_CSS_TRACE_1(ISYSAPI, VERBOSE, "\tia_css_isys_device_cfg_data->mipi.nof_blocks = %d\n", config->mipi.nof_blocks);
-	for (i = 0; i < config->mipi.nof_blocks; i++) {
-		IA_CSS_TRACE_2(ISYSAPI, VERBOSE, "\tia_css_isys_device_cfg_data->mipi.block_size[i = %d] = %d\n", i, config->mipi.block_size[i]);
-	}
-	IA_CSS_TRACE_1(ISYSAPI, VERBOSE, "\tia_css_isys_device_cfg_data->pixel.nof_blocks = %d\n", config->pixel.nof_blocks);
-	for (i = 0; i < config->pixel.nof_blocks; i++) {
-		IA_CSS_TRACE_2(ISYSAPI, VERBOSE, "\tia_css_isys_device_cfg_data->pixel.block_size[i = %d] = %d\n", i, config->pixel.block_size[i]);
-	}
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "------------------------------------------------------------\n");
 	return 0;
 }
@@ -101,9 +91,8 @@ int print_device_config_data(const struct ia_css_isys_device_cfg_data *config)
  */
 int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cfg)
 {
+	unsigned int i;
 	verifret(stream_cfg != NULL, EFAULT);
-
-	static unsigned int i;
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Print ia_css_isys_stream_cfg_data stream_cfg\n"
 		"-------------------------------------------------------------------------------\n");
 	IA_CSS_TRACE_5(ISYSAPI, VERBOSE,
@@ -203,7 +192,7 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
  */
 int print_isys_frame_buff_set(const struct ia_css_isys_frame_buff_set *next_frame, const unsigned int nof_output_pins)
 {
-	static unsigned int i;
+	unsigned int i;
 	verifret(next_frame != NULL, EFAULT);
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Print ia_css_isys_frame_buff_set *next_frame\n"

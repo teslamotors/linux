@@ -267,6 +267,7 @@ enum ia_css_isys_pin_type {
 	IA_CSS_ISYS_PIN_TYPE_AWB_STATS,		/* Legacy (non-PIV2), used for the AWB stats */
 	IA_CSS_ISYS_PIN_TYPE_AF_STATS,		/* Legacy (non-PIV2), used for the AF stats */
 	IA_CSS_ISYS_PIN_TYPE_HIST_STATS,	/* Legacy (non-PIV2), used for the AE stats */
+	IA_CSS_ISYS_PIN_TYPE_PAF_FF,		/* Used for the PAF FF*/
 	N_IA_CSS_ISYS_PIN_TYPE			/* Keep always last and max value */
 };
 

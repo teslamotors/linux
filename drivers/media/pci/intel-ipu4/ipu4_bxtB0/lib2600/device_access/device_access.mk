@@ -1,5 +1,8 @@
 # 
 #
+
+# TODO: IPU5_SDK Verify that the glvA0 changes are correct when IPU5 SDK has been released.
+
 ifndef _DEVICE_ACCESS_MK_
 _DEVICE_ACCESS_MK_ = 1
 
@@ -23,6 +26,9 @@ ifeq "$(IPU_SYSVER)" "cnlA0"
 	DEVICE_ACCESS_VERSION=v2
 endif
 ifeq "$(IPU_SYSVER)" "cnlB0"
+	DEVICE_ACCESS_VERSION=v2
+endif
+ifeq "$(IPU_SYSVER)" "glvA0"
 	DEVICE_ACCESS_VERSION=v2
 endif
 ifeq "$(IPU_SYSVER)" "bxtA0"
