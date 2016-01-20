@@ -19,8 +19,8 @@
 #include "skl.h"
 #include "skl-sst-dsp.h"
 #include "skl-sst-ipc.h"
+#include "skl-fwlog.h"
 #include "sound/hdaudio_ext.h"
-
 
 #define IPC_IXC_STATUS_BITS		24
 
@@ -53,6 +53,10 @@
 #define IPC_MSG_DIR(x)			(((x) & IPC_MSG_DIR_MASK) \
 					<< IPC_MSG_DIR_SHIFT)
 /* Global Notification Message */
+#define IPC_GLB_NOTIFY_CORE_SHIFT	15
+#define IPC_GLB_NOTIFY_CORE_MASK	0x1
+#define IPC_GLB_NOTIFY_CORE_ID(x)	(((x) >> IPC_GLB_NOTIFY_CORE_SHIFT) \
+					& IPC_GLB_NOTIFY_CORE_MASK)
 #define IPC_GLB_NOTIFY_TYPE_SHIFT	16
 #define IPC_GLB_NOTIFY_TYPE_MASK	0xFF
 #define IPC_GLB_NOTIFY_TYPE(x)		(((x) >> IPC_GLB_NOTIFY_TYPE_SHIFT) \
@@ -347,6 +351,31 @@ out:
 
 }
 
+static void
+skl_process_log_buffer(struct sst_dsp *sst, struct skl_ipc_header header)
+{
+	int core, size;
+	u32 *ptr, avail;
+	u8 *base;
+
+	core = IPC_GLB_NOTIFY_CORE_ID(header.primary);
+	if (!(BIT(core) & sst->trace_wind.flags)) {
+		dev_err(sst->dev, "Logging is disabled on dsp %d\n", core);
+		return;
+	}
+	skl_dsp_get_log_buff(sst, core);
+	size = sst->trace_wind.size/sst->trace_wind.nr_dsp;
+	base = (u8 *)sst->trace_wind.addr;
+	/* move to the source dsp tracing window */
+	base += (core * size);
+	ptr = (u32 *)sst->trace_wind.dsp_wps[core];
+	avail = *ptr;
+	if (avail < size/2)
+		base += size/2;
+	skl_dsp_write_log(sst, (void __iomem *)base, core, size/2);
+	skl_dsp_put_log_buff(sst, core);
+}
+
 int skl_ipc_process_notification(struct sst_generic_ipc *ipc,
 		struct skl_ipc_header header)
 {
@@ -367,6 +396,10 @@ int skl_ipc_process_notification(struct sst_generic_ipc *ipc,
 		case IPC_GLB_NOTIFY_FW_READY:
 			skl->boot_complete = true;
 			wake_up(&skl->boot_wait);
+			break;
+
+		case IPC_GLB_NOTIFY_LOG_BUFFER_STATUS:
+			skl_process_log_buffer(skl->dsp, header);
 			break;
 
 		case IPC_GLB_NOTIFY_PHRASE_DETECTED:
