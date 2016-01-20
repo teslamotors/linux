@@ -56,7 +56,7 @@ const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_a0[] = {
 
 const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_b0[] = {
 	/* YUV vector format */
-	{ V4L2_PIX_FMT_YUYV420_V32, 16, 16, MEDIA_BUS_FMT_YUYV12_1X24, IA_CSS_ISYS_FRAME_FORMAT_YUV420_16 },
+	{ V4L2_PIX_FMT_YUYV420_V32, 24, 24, MEDIA_BUS_FMT_YUYV12_1X24, IA_CSS_ISYS_FRAME_FORMAT_YUV420_16 },
 	/* Raw bayer vector formats. */
 	{ V4L2_PIX_FMT_SBGGR12V32, 16, 12, MEDIA_BUS_FMT_SBGGR12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SGBRG12V32, 16, 12, MEDIA_BUS_FMT_SGBRG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
