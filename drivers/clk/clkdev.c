@@ -335,11 +335,17 @@ int clk_add_alias(const char *alias, const char *alias_dev_name,
 
 	l = clkdev_create(r, alias, alias_dev_name ? "%s" : NULL,
 			  alias_dev_name);
-	clk_put(r);
 
 	return l ? 0 : -ENODEV;
 }
 EXPORT_SYMBOL(clk_add_alias);
+
+void clk_drop_alias(struct clk_lookup *cl)
+{
+	clk_put(cl->clk);
+	clkdev_drop(cl);
+}
+EXPORT_SYMBOL(clk_drop_alias);
 
 /*
  * clkdev_drop - remove a clock dynamically allocated
