@@ -246,9 +246,10 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 				goto free_out;
 			}
 			cell = VIED_NCI_VP0_ID;
-			ret = ia_css_process_set_cell(process, cell);
-			if (ret != 0) {
-				dev_dbg(dev, "could not assign cell\n");
+			if (ia_css_process_set_cell(process, cell) &&
+			    (ia_css_process_clear_cell(process) ||
+			     ia_css_process_set_cell(process, cell))) {
+				dev_err(dev, "could not assign cell\n");
 				ret = -EIO;
 				goto free_out;
 			}

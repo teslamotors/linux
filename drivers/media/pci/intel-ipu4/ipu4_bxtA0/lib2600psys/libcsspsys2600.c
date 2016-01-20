@@ -43,6 +43,7 @@ EXPORT_SYMBOL_GPL(ia_css_process_get_program_ID);
 EXPORT_SYMBOL_GPL(ia_css_process_get_cell);
 EXPORT_SYMBOL_GPL(ia_css_process_set_cell);
 EXPORT_SYMBOL_GPL(ia_css_process_set_dev_chn);
+EXPORT_SYMBOL_GPL(ia_css_process_clear_cell);
 EXPORT_SYMBOL_GPL(ia_css_program_manifest_get_cell_type_ID);
 EXPORT_SYMBOL_GPL(ia_css_program_manifest_get_dev_chn_size);
 EXPORT_SYMBOL_GPL(ia_css_has_program_manifest_fixed_cell);
