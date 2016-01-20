@@ -55,6 +55,28 @@ static int skl_free_dma_buf(struct device *dev, struct snd_dma_buffer *dmab)
 	return 0;
 }
 
+#define ENABLE_LOGS		6
+#define DEFAULT_LOG_PRIORITY	5
+
+/* set firmware logging state via IPC */
+int skl_dsp_enable_logging(struct sst_generic_ipc *ipc, int core, int enable)
+{
+	struct skl_log_state_msg log_msg;
+	struct skl_ipc_large_config_msg msg = {0};
+	int ret = 0;
+
+	log_msg.core_mask = (1 << core);
+	log_msg.logs_core[core].enable = enable;
+	log_msg.logs_core[core].priority = DEFAULT_LOG_PRIORITY;
+
+	msg.large_param_id = ENABLE_LOGS;
+	msg.param_data_size = sizeof(log_msg);
+
+	ret = skl_ipc_set_large_config(ipc, &msg, (u32 *)&log_msg);
+
+	return ret;
+}
+
 #define NOTIFICATION_PARAM_ID 3
 #define NOTIFICATION_MASK 0xf
 
