@@ -376,10 +376,38 @@ static struct crl_arithmetic_ops imx185_hflip_ops[] = {
 	}
 };
 
-static struct crl_arithmetic_ops imx185_vflip_ops[] = {
+static struct crl_arithmetic_ops imx185_exposure_msb_ops[] = {
 	{
-		.op = CRL_BITWISE_LSHIFT,
-		.operand.entity_val = 0,
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 8,
+	}
+};
+
+static struct crl_arithmetic_ops imx185_exposure_hsb_ops[] = {
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 16,
+	}
+};
+
+static struct crl_arithmetic_ops imx185_fll_msb_ops[] = {
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 8,
+	}
+};
+
+static struct crl_arithmetic_ops imx185_fll_hsb_ops[] = {
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 16,
+	}
+};
+
+static struct crl_arithmetic_ops imx185_llp_msb_ops[] = {
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 8,
 	}
 };
 
@@ -397,8 +425,8 @@ static struct crl_dynamic_register_access imx185_v_flip_regs[] = {
 	{
 		.address = 0x3007,
 		.len = CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE,
-		.ops_items = ARRAY_SIZE(imx185_vflip_ops),
-		.ops = imx185_vflip_ops,
+		.ops_items = 0,
+		.ops = 0,
 		.mask = 0x1,
 	}
 };
@@ -406,7 +434,7 @@ static struct crl_dynamic_register_access imx185_v_flip_regs[] = {
 static struct crl_dynamic_register_access imx185_ana_gain_global_regs[] = {
 	{
 		.address = 0x3014,
-		.len = CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE,
+		.len = CRL_REG_LEN_08BIT,
 		.ops_items = 0,
 		.ops = 0,
 		.mask = 0xff,
@@ -414,33 +442,71 @@ static struct crl_dynamic_register_access imx185_ana_gain_global_regs[] = {
 };
 
 static struct crl_dynamic_register_access imx185_exposure_regs[] = {
+	/* Use 8bits length since 16bits or 24bits access will fail */
 	{
 		.address = 0x3020,
-		.len = CRL_REG_LEN_24BIT  | CRL_REG_READ_AND_UPDATE,
+		.len = CRL_REG_LEN_08BIT,
 		.ops_items = 0,
 		.ops = 0,
-		.mask = 0x01ffff,
-	}
+		.mask = 0xff,
+	},
+	{
+		.address = 0x3021,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx185_exposure_msb_ops),
+		.ops = imx185_exposure_msb_ops,
+		.mask = 0xff,
+	},
+	{
+		.address = 0x3022,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx185_exposure_hsb_ops),
+		.ops = imx185_exposure_hsb_ops,
+		.mask = 0x1,
+	},
 };
 
-static struct crl_dynamic_register_access imx185_vblank_regs[] = {
+static struct crl_dynamic_register_access imx185_fll_regs[] = {
+	/* Use 8bits length since 16bits or 24bits access will fail */
 	{
 		.address = 0x3018,
-		.len = CRL_REG_LEN_24BIT | CRL_REG_READ_AND_UPDATE,
+		.len = CRL_REG_LEN_08BIT,
 		.ops_items = 0,
 		.ops = 0,
-		.mask = 0x1ffff,
-	}
+		.mask = 0xff,
+	},
+	{
+		.address = 0x3019,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx185_fll_msb_ops),
+		.ops = imx185_fll_msb_ops,
+		.mask = 0xff,
+	},
+	{
+		.address = 0x301a,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx185_fll_hsb_ops),
+		.ops = imx185_fll_hsb_ops,
+		.mask = 0x1,
+	},
 };
 
-static struct crl_dynamic_register_access imx185_hblank_regs[] = {
+static struct crl_dynamic_register_access imx185_llp_regs[] = {
+	/* Use 8bits length since 16bits or 24bits access will fail */
 	{
 		.address = 0x301b,
-		.len = CRL_REG_LEN_16BIT | CRL_REG_READ_AND_UPDATE,
+		.len = CRL_REG_LEN_08BIT,
 		.ops_items = 0,
 		.ops = 0,
-		.mask = 0xffff,
-	}
+		.mask = 0xff,
+	},
+	{
+		.address = 0x301c,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx185_llp_msb_ops),
+		.ops = imx185_llp_msb_ops,
+		.mask = 0xff,
+	},
 };
 
 /* Needed for acpi support for runtime detection */
@@ -543,6 +609,8 @@ static struct crl_mode_rep imx185_modes[] = {
 		.scale_m = 1,
 		.width = 1920,
 		.height = 1080,
+		.min_llp = 2200,
+		.min_fll = 1125,
 		.comp_items = 0,
 		.ctrl_data = 0,
 		.mode_regs_items = ARRAY_SIZE(imx185_1080P_RAW10_30FPS_27MHZ_CROPPING),
@@ -558,6 +626,8 @@ static struct crl_mode_rep imx185_modes[] = {
 		.scale_m = 1,
 		.width = 1280,
 		.height = 720,
+		.min_llp = 1300,
+		.min_fll = 787,
 		.comp_items = 0,
 		.ctrl_data = 0,
 		.mode_regs_items = ARRAY_SIZE(imx185_720P_RAW10_30FPS_27MHZ_CROPPING),
@@ -733,7 +803,89 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 		.regs = imx185_v_flip_regs,
 		.dep_items = 0,
 		.dep_ctrls = 0,
-	}
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_ANALOGUE_GAIN,
+		.name = "V4L2_CID_ANALOGUE_GAIN",
+		.type = CRL_V4L2_CTRL_TYPE_INTEGER,
+		.data.std_data.min = 0,
+		.data.std_data.max = 160,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0,
+		.flags = 0,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.reg_update_mode = CRL_REG_UPDATE_MODE_REPLACE,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx185_ana_gain_global_regs),
+		.regs = imx185_ana_gain_global_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_EXPOSURE,
+		.name = "V4L2_CID_EXPOSURE",
+		.type = CRL_V4L2_CTRL_TYPE_INTEGER,
+		.data.std_data.min = 0,
+		.data.std_data.max = IMX185_MAX_SHS1,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x264,
+		.flags = 0,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.reg_update_mode = CRL_REG_UPDATE_MODE_REPLACE,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx185_exposure_regs),
+		.regs = imx185_exposure_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_FRAME_LENGTH_LINES,
+		.name = "Frame length lines",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 720,
+		.data.std_data.max = IMX185_VMAX,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x465,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.reg_update_mode = CRL_REG_UPDATE_MODE_REPLACE,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx185_fll_regs),
+		.regs = imx185_fll_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_LINE_LENGTH_PIXELS,
+		.name = "Line Length Pixels",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0x898,
+		.data.std_data.max = IMX185_HMAX,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x898,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.reg_update_mode = CRL_REG_UPDATE_MODE_REPLACE,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx185_llp_regs),
+		.regs = imx185_llp_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
 };
 
 struct crl_sensor_configuration imx185_crl_configuration = {
