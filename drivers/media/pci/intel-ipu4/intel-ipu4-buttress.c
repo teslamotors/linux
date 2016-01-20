@@ -52,6 +52,23 @@
 #define BUTTRESS_CSE_BOOTLOAD_TIMEOUT		5000
 #define BUTTRESS_CSE_AUTHENTICATE_TIMEOUT	10000
 
+const struct intel_ipu4_buttress_sensor_clk_freq sensor_clk_freqs[] = {
+	{ 6750000, BUTTRESS_SENSOR_CLK_FREQ_6P75MHZ },
+	{ 8000000, BUTTRESS_SENSOR_CLK_FREQ_8MHZ },
+	{ 9600000, BUTTRESS_SENSOR_CLK_FREQ_9P6MHZ },
+	{ 12000000, BUTTRESS_SENSOR_CLK_FREQ_12MHZ },
+	{ 13600000, BUTTRESS_SENSOR_CLK_FREQ_13P6MHZ },
+	{ 14400000, BUTTRESS_SENSOR_CLK_FREQ_14P4MHZ },
+	{ 15800000, BUTTRESS_SENSOR_CLK_FREQ_15P8MHZ },
+	{ 16200000, BUTTRESS_SENSOR_CLK_FREQ_16P2MHZ },
+	{ 17300000, BUTTRESS_SENSOR_CLK_FREQ_17P3MHZ },
+	{ 18600000, BUTTRESS_SENSOR_CLK_FREQ_18P6MHZ },
+	{ 19200000, BUTTRESS_SENSOR_CLK_FREQ_19P2MHZ },
+	{ 24000000, BUTTRESS_SENSOR_CLK_FREQ_24MHZ },
+	{ 26000000, BUTTRESS_SENSOR_CLK_FREQ_26MHZ },
+	{ 27000000, BUTTRESS_SENSOR_CLK_FREQ_27MHZ }
+};
+
 static const u32 intel_ipu4_adev_irq_mask[] = {
 	BUTTRESS_ISR_IS_IRQ, BUTTRESS_ISR_PS_IRQ
 };
@@ -882,6 +899,22 @@ static int intel_ipu4_buttress_clk_pll_enable(struct clk_hw *hw)
 	 */
 	val = readl(ck->isp->base + BUTTRESS_REG_SENSOR_FREQ_CTL);
 	val |= 1 << BUTTRESS_FREQ_CTL_START_SHIFT;
+
+	if (is_intel_ipu4_hw_bxt_b0(ck->isp)) {
+		unsigned int i;
+
+		val &= ~BUTTRESS_SENSOR_FREQ_CTL_OSC_OUT_FREQ_MASK_B0(ck->id);
+		for (i = 0; i < ARRAY_SIZE(sensor_clk_freqs); i++)
+			if (sensor_clk_freqs[i].rate == ck->rate)
+				break;
+
+		if (i < ARRAY_SIZE(sensor_clk_freqs))
+			val |= sensor_clk_freqs[i].val <<
+			    BUTTRESS_SENSOR_FREQ_CTL_OSC_OUT_FREQ_SHIFT_B0(ck->id);
+		else
+			val |= BUTTRESS_SENSOR_FREQ_CTL_OSC_OUT_FREQ_DEFAULT_B0(ck->id);
+	}
+
 	writel(val, ck->isp->base + BUTTRESS_REG_SENSOR_FREQ_CTL);
 
 	return 0;
@@ -905,6 +938,9 @@ static int intel_ipu4_buttress_clk_enable(struct clk_hw *hw)
 
 	val = readl(ck->isp->base + BUTTRESS_REG_SENSOR_CLK_CTL);
 	val |= 1 << BUTTRESS_SENSOR_CLK_CTL_OSC_CLK_OUT_EN_SHIFT(ck->id);
+
+	/* Enable dynamic sensor clock */
+	val |= 1 << BUTTRESS_SENSOR_CLK_CTL_OSC_CLK_OUT_SEL_SHIFT(ck->id);
 	writel(val, ck->isp->base + BUTTRESS_REG_SENSOR_CLK_CTL);
 
 	return 0;
@@ -923,7 +959,27 @@ static void intel_ipu4_buttress_clk_disable(struct clk_hw *hw)
 static long intel_ipu4_buttress_clk_round_rate(
 	struct clk_hw *hw, unsigned long rate, unsigned long *parent_rate)
 {
-	return 24000000;
+	struct clk_intel_ipu4_sensor *ck = to_clk_intel_ipu4_sensor(hw);
+	unsigned long best = ULONG_MAX;
+	unsigned long round_rate;
+	int i;
+
+	if (is_intel_ipu4_hw_bxt_a0(ck->isp))
+		return 24000000;
+
+	for (i = 0; i < ARRAY_SIZE(sensor_clk_freqs); i++) {
+		long diff = sensor_clk_freqs[i].rate - rate;
+		if (0 == diff)
+			return rate;
+
+		diff = abs(diff);
+		if (diff < best) {
+			best = diff;
+			round_rate = sensor_clk_freqs[i].rate;
+		}
+	}
+
+	return round_rate;
 }
 
 static unsigned long intel_ipu4_buttress_clk_recalc_rate(

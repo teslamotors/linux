@@ -38,6 +38,11 @@ struct intel_ipu4_buttress {
 	bool ps_started;
 };
 
+struct intel_ipu4_buttress_sensor_clk_freq {
+	unsigned int rate;
+	unsigned int val;
+};
+
 struct firmware;
 
 enum intel_ipu4_buttress_ipc_domain {
