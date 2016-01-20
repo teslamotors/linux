@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# This is only a postcommit hook for developers.
+# Buildbot will have a separate step from repo
+
+if [ "x$CI" = "xtrue" ]
+then
+    exit 0
+fi
+
+function execute_command {
+  cmd=$1
+  echo "Running ${cmd} ..."
+  eval ${cmd}
+  if [[ $? -ne 0 ]] ; then
+    echo "error: Please amend your patch until the command"
+    echo "${cmd}"
+    echo "completes with no issues reported"
+    exit 1
+  fi
+}
+MANIFEST_DIR=.git/`readlink .git/config | sed 's/projects\/.*/manifests/'`
+#
+# Run checkpatch after the commit on the git diff with HEAD^
+# This hook looks for various script files in scripts directory
+#
+if [[ -e scripts/checkpatch ]] ; then
+  checkpatch_script=scripts/checkpatch
+elif [[ -e scripts/checkpatch.py ]] ; then
+  checkpatch_script=scripts/checkpatch.py
+fi
+if [[ -n ${checkpatch_script} ]] ; then
+  cmd="git format-patch -1 --stdout | ${checkpatch_script} -"
+  execute_command "${cmd}"
+fi
+
+checkpatch_script=
+if [[ -e $MANIFEST_DIR/scripts/global_checkpatch ]] ; then
+  checkpatch_script=$MANIFEST_DIR/scripts/global_checkpatch
+fi
+if [[ -n ${checkpatch_script} ]] ; then
+  cmd="git format-patch -1 --stdout | ${checkpatch_script} -"
+  execute_command "${cmd}"
+fi
+
+#
+# Run checkfiles after the commit on the files updated by the commit
+# This hook looks for various script files in scripts directory
+#
+if [[ -e scripts/checkfiles ]] ; then
+  checkfiles_script=scripts/checkfiles
+elif [[ -e scripts/checkfiles.py ]] ; then
+  checkfiles_script=scripts/checkfiles.py
+elif [[ -e scripts/checkfiles.pl ]] ; then
+  checkfiles_script=scripts/checkfiles.pl
+elif [[ -e ../scripts/checkfiles.pl ]] ; then
+  checkfiles_script=../scripts/checkfiles.pl
+fi
+if [[ -n ${checkfiles_script} ]] ; then
+  cmd="git diff --name-only HEAD^ | ${checkfiles_script} -"
+  execute_command "${cmd}"
+fi
+checkfiles_script=
+if [[ -e $MANIFEST_DIR/scripts/global_checkfiles ]] ; then
+  checkfiles_script=$MANIFEST_DIR/scripts/global_checkfiles
+fi
+if [[ -n ${checkfiles_script} ]] ; then
+  cmd="git diff --name-only HEAD^ | ${checkfiles_script} -"
+  execute_command "${cmd}"
+fi
+
+#
+# Run basic_unit_tests after the commit
+# This hook looks for various script files in scripts directory
+#
+if [[ -e tests/basic_unit_tests ]] ; then
+  basic_unit_tests_script=tests/basic_unit_tests
+elif [[ -e tests/basic_unit_tests.py ]] ; then
+  basic_unit_tests_script=tests/basic_unit_tests.py
+elif [[ -e tests/basic_unit_tests.pl ]] ; then
+  basic_unit_tests_script=tests/basic_unit_tests.pl
+fi
+if [[ -n ${basic_unit_tests_script} ]] ; then
+  cmd=${basic_unit_tests_script}
+  execute_command "${cmd}"
+fi
+
+basic_unit_tests_script=
+if [[ -e $MANIFEST_DIR/tests/global_basic_unit_tests ]] ; then
+  basic_unit_tests_script=$MANIFEST_DIR/tests/global_basic_unit_tests
+fi
+if [[ -n ${basic_unit_tests_script} ]] ; then
+  cmd=${basic_unit_tests_script}
+  execute_command "${cmd}"
+fi
+
+# Issue a warning for patchsets that don't have an Issue/Bug header specified
+# in the commit message.
+if ! grep -qEi '^(Tracked-On: )' .git/COMMIT_EDITMSG ; then
+  echo
+  echo "!! WARNING: No tracking issue has been found in the commit message"
+  echo "https://wiki.ith.intel.com/display/CACTUS/Patch+requirements+check"
+  echo
+  echo
+fi
+echo "REMINDER: Don't forget to add your CR+1 to your patch to trigger the automatic build"

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Do not run on buildbot
+which buildslave > /dev/null
+if [ $? -ne 0 ]
+then
+    #exec ../../kernel/scripts/checkpatch.pl --no-tree "$@"
+    exec scripts/checkpatch.pl --no-tree "$@"
+fi
