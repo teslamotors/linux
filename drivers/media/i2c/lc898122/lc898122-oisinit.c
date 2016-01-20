@@ -391,7 +391,7 @@ static void lc898122_afinitialsetting(struct lc898122_device *lc898122_dev)
 	struct i2c_client *client = lc898122_dev->client;
 	u8	UcStbb0;
 
-	struct af_cfg {
+	struct af_cfg_t {
 		u16	RWEXD1_L_AF;
 		u16	RWEXD2_L_AF;
 		u16	RWEXD3_L_AF;
@@ -399,9 +399,9 @@ static void lc898122_afinitialsetting(struct lc898122_device *lc898122_dev)
 		u8	FSTMODE_AF;
 	};
 
-	const struct af_cfg *af_cfg = NULL;
+	const struct af_cfg_t *af_cfg = NULL;
 
-	const struct af_cfg af_cfg_20M = {
+	const struct af_cfg_t af_cfg_20M = {
 		.RWEXD1_L_AF = LC898122_RWEXD1_L_AF_20M,
 		.RWEXD2_L_AF = LC898122_RWEXD2_L_AF_20M,
 		.RWEXD3_L_AF = LC898122_RWEXD3_L_AF_20M,
@@ -409,7 +409,7 @@ static void lc898122_afinitialsetting(struct lc898122_device *lc898122_dev)
 		.FSTMODE_AF  = LC898122_FSTMODE_AF_20M,
 	};
 
-	const struct af_cfg af_cfg_13M = {
+	const struct af_cfg_t af_cfg_13M = {
 		.RWEXD1_L_AF = LC898122_RWEXD1_L_AF_13M,
 		.RWEXD2_L_AF = LC898122_RWEXD2_L_AF_13M,
 		.RWEXD3_L_AF = LC898122_RWEXD3_L_AF_13M,
