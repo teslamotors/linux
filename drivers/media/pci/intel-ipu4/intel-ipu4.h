@@ -37,6 +37,10 @@
 /*
  * Details of the PCI device ID and revisions of the BXT HW supported
  *
+ * HAPS FPGA	A0	0x0a88		?
+ * HAPS FPGA	B0	0x1a88		?
+ * HAPS FPGA	C0	0x0a88		?
+ *
  * SXP FPGA	A0	0x9488		0x33
  * SXP FPGA	B0	0x0a88		0x8e
  *
