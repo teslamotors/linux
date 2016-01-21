@@ -271,7 +271,7 @@ int ia_css_isys_force_unmap_comm_buff_queue(
 		verifret((ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]) <= NEXT_FRAME_BUFS_PER_MSG_QUEUE, EFAULT);	/* For some reason queue is more than full */
 		for (; ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle] < ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle]; ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]++) {
 			IA_CSS_TRACE_1(ISYSAPI, WARNING, "CSS forced unmapping next_frame %d\n", ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]);
-			buff_slot = get_next_frame_buff_slot(ctx, stream_handle, ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] % NEXT_FRAME_BUFS_PER_MSG_QUEUE);
+			buff_slot = get_next_frame_buff_slot(ctx, stream_handle, ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle] % NEXT_FRAME_BUFS_PER_MSG_QUEUE);
 			ia_css_shared_buffer_css_unmap(ctx->isys_comm_buffer_queue.pnext_frame_buff_id[buff_slot]);
 		}
 	}

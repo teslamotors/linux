@@ -719,9 +719,7 @@ int ia_css_isys_device_release(
 	retval = ia_css_syscom_release(ctx->sys, force);
 	verifret(retval == 0, EBUSY);
 
-	if (force) {
-		ia_css_isys_force_unmap_comm_buff_queue(ctx);
-	}
+	ia_css_isys_force_unmap_comm_buff_queue(ctx);
 	ia_css_isys_destr_comm_buff_queue(ctx);
 	ia_css_cpu_mem_free(ctx);
 
