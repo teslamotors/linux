@@ -698,7 +698,26 @@ static void stop_streaming(struct vb2_queue *q)
 	return_buffers(aq, VB2_BUF_STATE_ERROR);
 }
 
-void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib)
+static unsigned int get_sof_sequence_by_timestamp(
+	struct intel_ipu4_isys_pipeline *ip,
+	struct ia_css_isys_resp_info *info)
+{
+	struct intel_ipu4_isys *isys =
+		container_of(ip, struct intel_ipu4_isys_video, ip)->isys;
+	u64 time = (u64)info->timestamp[1] << 32 | info->timestamp[0];
+	unsigned int i;
+
+	for (i = 0; i < INTEL_IPU4_ISYS_MAX_PARALLEL_SOF; i++)
+		if (time == ip->seq[i].timestamp)
+			return ip->seq[i].sequence;
+
+	dev_err(&isys->adev->dev, "SOF sequence number not found\n");
+
+	return 0;
+}
+
+void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
+				    struct ia_css_isys_resp_info *info)
 {
 	struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
@@ -714,7 +733,8 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib)
 	v4l2_get_timestamp(&vb->v4l2_buf.timestamp);
 
 	if (ip->has_sof)
-		vb->v4l2_buf.sequence = atomic_read(&ip->sequence) - 1;
+		vb->v4l2_buf.sequence =
+			get_sof_sequence_by_timestamp(ip, info);
 	else
 		vb->v4l2_buf.sequence =
 			(atomic_inc_return(&ip->sequence) - 1) / ip->nr_queues;
@@ -722,7 +742,8 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib)
 	v4l2_get_timestamp(&vbuf->timestamp);
 
 	if (ip->has_sof)
-		vbuf->sequence = atomic_read(&ip->sequence) - 1;
+		vbuf->sequence =
+			get_sof_sequence_by_timestamp(ip, info);
 	else
 		vbuf->sequence = (atomic_inc_return(&ip->sequence) - 1)
 			/ ip->nr_queues;
@@ -783,7 +804,7 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 	spin_unlock_irqrestore(&aq->lock, flags);
 	dev_dbg(&isys->adev->dev, "dequeued buffer %p\n", ib);
 
-	intel_ipu4_isys_queue_buf_done(ib);
+	intel_ipu4_isys_queue_buf_done(ib, info);
 }
 
 struct vb2_ops intel_ipu4_isys_queue_ops = {

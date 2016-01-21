@@ -332,7 +332,7 @@ static void isa_capture_done(struct intel_ipu4_isys_pipeline *ip,
 	dev_dbg(&ip->isys->adev->dev, "isa cfg: dequeued buffer %p", ib);
 	spin_unlock_irqrestore(&aq->lock, flags);
 
-	intel_ipu4_isys_queue_buf_done(ib);
+	intel_ipu4_isys_queue_buf_done(ib, info);
 
 	aq = &isa->av_3a.aq;
 
@@ -350,7 +350,7 @@ static void isa_capture_done(struct intel_ipu4_isys_pipeline *ip,
 	dev_dbg(&ip->isys->adev->dev, "isa 3a: dequeued buffer %p", ib);
 	spin_unlock_irqrestore(&aq->lock, flags);
 
-	intel_ipu4_isys_queue_buf_done(ib);
+	intel_ipu4_isys_queue_buf_done(ib, info);
 }
 
 /* Maximum size of the buffer-specific process group. */

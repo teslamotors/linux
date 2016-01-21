@@ -1171,6 +1171,12 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 	case IA_CSS_ISYS_RESP_TYPE_FRAME_SOF:
 		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_FRAME_SOF\n",
 			resp.stream_handle);
+		pipe->seq[pipe->seq_index].sequence =
+			atomic_read(&pipe->sequence) - 1;
+		pipe->seq[pipe->seq_index].timestamp =
+			(u64)resp.timestamp[1] << 32 | resp.timestamp[0];
+		pipe->seq_index = (pipe->seq_index + 1)
+			% INTEL_IPU4_ISYS_MAX_PARALLEL_SOF;
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_FRAME_EOF:
 		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_FRAME_EOF\n",

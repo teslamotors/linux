@@ -1079,6 +1079,9 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 		av->ip.capture_done[i] = NULL;
 	av->ip.csi2_be = NULL;
 	av->ip.csi2 = NULL;
+	av->ip.seq_index = 0;
+	memset(av->ip.seq, 0, sizeof(av->ip.seq));
+
 	WARN_ON(!list_empty(&av->ip.queues));
 
 	rval = media_entity_pipeline_start(&av->vdev.entity,

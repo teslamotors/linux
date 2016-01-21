@@ -26,6 +26,7 @@
 
 #define INTEL_IPU4_ISYS_OUTPUT_PINS 11
 #define INTEL_IPU4_NUM_CAPTURE_DONE 2
+#define INTEL_IPU4_ISYS_MAX_PARALLEL_SOF 2
 
 struct intel_ipu4_isys;
 struct ia_css_isys_stream_cfg_data;
@@ -38,6 +39,11 @@ struct intel_ipu4_isys_pixelformat {
 	uint32_t css_pixelformat;
 };
 
+struct sequence_info {
+	unsigned int sequence;
+	u64 timestamp;
+};
+
 struct output_pin_data {
 	void (*pin_ready)(struct intel_ipu4_isys_pipeline *ip,
 			  struct ia_css_isys_resp_info *info);
@@ -48,6 +54,8 @@ struct intel_ipu4_isys_pipeline {
 	struct media_pipeline pipe;
 	struct media_pad *external;
 	atomic_t sequence;
+	unsigned int seq_index;
+	struct sequence_info seq[INTEL_IPU4_ISYS_MAX_PARALLEL_SOF];
 	int source; /* SSI stream source */
 	int stream_handle; /* stream handle for CSS API */
 	enum intel_ipu4_isl_mode isl_mode;

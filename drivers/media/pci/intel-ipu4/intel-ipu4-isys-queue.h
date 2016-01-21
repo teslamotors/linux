@@ -111,7 +111,8 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 	struct intel_ipu4_isys_pipeline *ip, struct intel_ipu4_isys_buffer_list *bl);
 int intel_ipu4_isys_link_fmt_validate(struct intel_ipu4_isys_queue *aq);
 
-void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib);
+void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
+				    struct ia_css_isys_resp_info *info);
 void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 				     struct ia_css_isys_resp_info *info);
 
