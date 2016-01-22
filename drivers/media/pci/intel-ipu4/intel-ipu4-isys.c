@@ -1263,7 +1263,7 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
 	void __iomem *base = isys->pdata->base;
 	u32 status;
-	int i;
+	unsigned int i;
 
 	if (!isys->ssi) {
 		dev_dbg(&isys->adev->dev,
@@ -1282,7 +1282,7 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 	writel(status, isys->pdata->base +
 	       INTEL_IPU4_REG_ISYS_UNISPART_IRQ_CLEAR);
 
-	for (i = 0; i < INTEL_IPU4_ISYS_MAX_CSI2_PORTS; i++) {
+	for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
 		if (is_intel_ipu4_hw_bxt_a0(adev->isp) &&
 		    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(i))
 			intel_ipu4_isys_csi2_isr(&isys->csi2[i]);
