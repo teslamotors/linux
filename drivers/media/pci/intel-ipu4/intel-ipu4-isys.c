@@ -1301,11 +1301,10 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 		}
 	}
 
-	if (status & INTEL_IPU4_ISYS_UNISPART_IRQ_SW) {
+	writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_REG);
+	if (status & INTEL_IPU4_ISYS_UNISPART_IRQ_SW)
 		while (!isys_isr_one(adev))
 			;
-		writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_REG);
-	}
 
 	spin_unlock(&isys->power_lock);
 	return status ? IRQ_HANDLED : IRQ_NONE;
