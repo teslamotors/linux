@@ -1285,26 +1285,47 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 
 	status = readl(isys->pdata->base +
 		       INTEL_IPU4_REG_ISYS_UNISPART_IRQ_STATUS);
-	writel(status, isys->pdata->base +
-	       INTEL_IPU4_REG_ISYS_UNISPART_IRQ_CLEAR);
+	do {
+		writel(status, isys->pdata->base +
+		       INTEL_IPU4_REG_ISYS_UNISPART_IRQ_CLEAR);
 
-	if (isys->isr_csi2_bits & status) {
-		unsigned int i;
+		if (isys->isr_csi2_bits & status) {
+			unsigned int i;
 
-		for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
-			if (is_intel_ipu4_hw_bxt_a0(adev->isp) &&
-			    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(i))
-				intel_ipu4_isys_csi2_isr(&isys->csi2[i]);
-			if (is_intel_ipu4_hw_bxt_b0(adev->isp) &&
-			    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i))
-				intel_ipu4_isys_csi2_isr(&isys->csi2[i]);
+			for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
+				if (is_intel_ipu4_hw_bxt_a0(adev->isp) &&
+				    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(i))
+					intel_ipu4_isys_csi2_isr(
+						&isys->csi2[i]);
+				if (is_intel_ipu4_hw_bxt_b0(adev->isp) &&
+				    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i))
+					intel_ipu4_isys_csi2_isr(
+						&isys->csi2[i]);
+			}
 		}
-	}
 
-	writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_REG);
-	if (status & INTEL_IPU4_ISYS_UNISPART_IRQ_SW)
-		while (!isys_isr_one(adev))
-			;
+		writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_REG);
+
+		/*
+		 * Handle a single FW event per checking the CSI-2
+		 * receiver SOF status. This is done in order to avoid
+		 * the case where events arrive to the event queue and
+		 * one of them is a SOF event which then could be
+		 * handled before the SOF interrupt. This would pose
+		 * issues in sequence numbering which is based on SOF
+		 * interrupts, always assumed to arrive before FW SOF
+		 * events.
+		 */
+		if (status & INTEL_IPU4_ISYS_UNISPART_IRQ_SW &&
+		    !isys_isr_one(adev))
+			status = INTEL_IPU4_ISYS_UNISPART_IRQ_SW;
+		else
+			status = 0;
+
+		status |= readl(isys->pdata->base +
+				INTEL_IPU4_REG_ISYS_UNISPART_IRQ_STATUS);
+	} while (status & (isys->isr_csi2_bits
+			   | INTEL_IPU4_ISYS_UNISPART_IRQ_SW));
 
 	spin_unlock(&isys->power_lock);
 	return status ? IRQ_HANDLED : IRQ_NONE;
