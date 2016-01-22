@@ -126,7 +126,7 @@ const struct intel_ipu4_isys_pixelformat *isa_config_try_fmt_vid_out_mplane(
 
 	mpix->plane_fmt[ISA_BUF_PLANE_DATA].bytesperline = 0;
 	mpix->plane_fmt[ISA_BUF_PLANE_DATA].sizeimage = ALIGN(
-		mpix->plane_fmt[ISA_BUF_PLANE_DATA].sizeimage,
+		max(1U, mpix->plane_fmt[ISA_BUF_PLANE_DATA].sizeimage),
 		av->isys->line_align);
 
 	return pfmt;
