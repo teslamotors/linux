@@ -695,6 +695,13 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 			isys->pdata->base + csi2->offsets[i], i);
 		if (rval)
 			goto fail;
+
+		if (is_intel_ipu4_hw_bxt_a0(isys->adev->isp))
+			isys->isr_csi2_bits |=
+				INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(i);
+		if (is_intel_ipu4_hw_bxt_b0(isys->adev->isp))
+			isys->isr_csi2_bits |=
+				INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i);
 	}
 
 	for (i = 0; i < tpg->ntpgs; i++) {
@@ -1263,7 +1270,6 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
 	void __iomem *base = isys->pdata->base;
 	u32 status;
-	unsigned int i;
 
 	if (!isys->ssi) {
 		dev_dbg(&isys->adev->dev,
@@ -1282,13 +1288,17 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 	writel(status, isys->pdata->base +
 	       INTEL_IPU4_REG_ISYS_UNISPART_IRQ_CLEAR);
 
-	for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
-		if (is_intel_ipu4_hw_bxt_a0(adev->isp) &&
-		    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(i))
-			intel_ipu4_isys_csi2_isr(&isys->csi2[i]);
-		if (is_intel_ipu4_hw_bxt_b0(adev->isp) &&
-		    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i))
-			intel_ipu4_isys_csi2_isr(&isys->csi2[i]);
+	if (isys->isr_csi2_bits & status) {
+		unsigned int i;
+
+		for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
+			if (is_intel_ipu4_hw_bxt_a0(adev->isp) &&
+			    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(i))
+				intel_ipu4_isys_csi2_isr(&isys->csi2[i]);
+			if (is_intel_ipu4_hw_bxt_b0(adev->isp) &&
+			    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i))
+				intel_ipu4_isys_csi2_isr(&isys->csi2[i]);
+		}
 	}
 
 	if (status & INTEL_IPU4_ISYS_UNISPART_IRQ_SW) {

@@ -73,6 +73,7 @@ struct task_struct;
  * @v4l2_dev: V4L2 device
  * @adev: ISYS ipu4 bus device
  * @power: Is ISYS powered on or not?
+ * @isr_bits: Which bits does the ISR handle?
  * @power_lock: Serialise access to power (power state in general)
  * @lock: serialise access to pipes
  * @pipes: pipelines per stream ID
@@ -103,6 +104,7 @@ struct intel_ipu4_isys {
 
 	int power;
 	spinlock_t power_lock;
+	u32 isr_csi2_bits;
 	spinlock_t lock;
 	struct intel_ipu4_isys_pipeline *pipes[INTEL_IPU4_ISYS_MAX_STREAMS];
 	void *ssi;
