@@ -69,16 +69,32 @@ struct task_struct;
 /*
  * struct intel_ipu4_isys
  *
+ * @media_dev: Media device
+ * @v4l2_dev: V4L2 device
+ * @adev: ISYS ipu4 bus device
+ * @power: Is ISYS powered on or not?
+ * @power_lock: Serialise access to power (power state in general)
  * @lock: serialise access to pipes
  * @pipes: pipelines per stream ID
  * @ssi: ssi library private pointer
  * @line_align: line alignment in memory
+ * @legacy_port_cfg: lane mappings for legacy CSI-2 ports
+ * @combo_port_cfg: lane mappings for D/C-PHY ports
  * @isr_thread: for polling for events if interrupt delivery isn't available
- * @irq_polling_enable: do poll for events?
  * @reset_needed: Isys requires d0i0->i3 transition
  * @video_opened: total number of opened file handles on video nodes
  * @mutex: serialise access isys video open/release related operations
  * @stream_mutex: serialise stream start and stop
+ * @pdata: platform data pointer
+ * @csi2: CSI-2 receivers
+ * @tpg: test pattern generators
+ * @csi2_be: CSI-2 back-ends
+ * @isa: Input system accelerator
+ * @fw: ISYS firmware binary (unsecure firmware)
+ * @fw_sgt: fw scatterlist
+ * @pkg_dir: host pointer to pkg_dir
+ * @pkg_dir_dma_addr: I/O virtual address for pkg_dir
+ * @pkg_dir_size: size of pkg_dir in bytes
  */
 struct intel_ipu4_isys {
 	struct media_device media_dev;
