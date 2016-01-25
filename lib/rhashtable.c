@@ -506,10 +506,11 @@ int rhashtable_walk_init(struct rhashtable *ht, struct rhashtable_iter *iter)
 	if (!iter->walker)
 		return -ENOMEM;
 
-	mutex_lock(&ht->mutex);
-	iter->walker->tbl = rht_dereference(ht->tbl, ht);
+	spin_lock(&ht->lock);
+	iter->walker->tbl =
+		rcu_dereference_protected(ht->tbl, lockdep_is_held(&ht->lock));
 	list_add(&iter->walker->list, &iter->walker->tbl->walkers);
-	mutex_unlock(&ht->mutex);
+	spin_unlock(&ht->lock);
 
 	return 0;
 }
@@ -523,10 +524,10 @@ EXPORT_SYMBOL_GPL(rhashtable_walk_init);
  */
 void rhashtable_walk_exit(struct rhashtable_iter *iter)
 {
-	mutex_lock(&iter->ht->mutex);
+	spin_lock(&iter->ht->lock);
 	if (iter->walker->tbl)
 		list_del(&iter->walker->list);
-	mutex_unlock(&iter->ht->mutex);
+	spin_unlock(&iter->ht->lock);
 	kfree(iter->walker);
 }
 EXPORT_SYMBOL_GPL(rhashtable_walk_exit);
@@ -550,14 +551,12 @@ int rhashtable_walk_start(struct rhashtable_iter *iter)
 {
 	struct rhashtable *ht = iter->ht;
 
-	mutex_lock(&ht->mutex);
-
-	if (iter->walker->tbl)
-		list_del(&iter->walker->list);
-
 	rcu_read_lock();
 
-	mutex_unlock(&ht->mutex);
+	spin_lock(&ht->lock);
+	if (iter->walker->tbl)
+		list_del(&iter->walker->list);
+	spin_unlock(&ht->lock);
 
 	if (!iter->walker->tbl) {
 		iter->walker->tbl = rht_dereference_rcu(ht->tbl, ht);
@@ -730,9 +729,6 @@ int rhashtable_init(struct rhashtable *ht,
 	if (params->nulls_base && params->nulls_base < (1U << RHT_BASE_SHIFT))
 		return -EINVAL;
 
-	if (params->nelem_hint)
-		size = rounded_hashtable_size(params);
-
 	memset(ht, 0, sizeof(*ht));
 	mutex_init(&ht->mutex);
 	spin_lock_init(&ht->lock);
@@ -751,6 +747,9 @@ int rhashtable_init(struct rhashtable *ht,
 		ht->p.insecure_max_entries = ht->p.max_size * 2;
 
 	ht->p.min_size = max(ht->p.min_size, HASH_MIN_SIZE);
+
+	if (params->nelem_hint)
+		size = rounded_hashtable_size(&ht->p);
 
 	/* The maximum (not average) chain length grows with the
 	 * size of the hash table, at a rate of (log N)/(log log N).
