@@ -490,26 +490,31 @@ static int isys_register_ext_subdev(struct intel_ipu4_isys *isys,
 		if (!client) {
 			dev_dbg(&isys->adev->dev,
 				 "Matching ACPI device not found - postpone\n");
-			return 0;
+			rval = 0;
+			goto skip_put_adapter;
 		}
 		if (!sd_info->acpiname) {
 			dev_dbg(&isys->adev->dev,
 				 "No name in platform data\n");
-			return 0;
+			rval = 0;
+			goto skip_put_adapter;
 		}
 		if (strcmp(dev_name(&client->dev), sd_info->acpiname)) {
 			dev_dbg(&isys->adev->dev, "Names don't match: %s != %s",
 				dev_name(&client->dev), sd_info->acpiname);
-			return 0;
+			rval = 0;
+			goto skip_put_adapter;
 		}
 		/* Acpi match found. Continue to reprobe */
 	} else if (client) {
 		dev_dbg(&isys->adev->dev, "Device exists\n");
-		return 0;
+		rval = 0;
+		goto skip_put_adapter;
 	} else if (sd_info->acpiname) {
 		dev_dbg(&isys->adev->dev, "ACPI name don't match: %s\n",
 			sd_info->acpiname);
-		return 0;
+		rval = 0;
+		goto skip_put_adapter;
 	}
 
 	if (!client) {
