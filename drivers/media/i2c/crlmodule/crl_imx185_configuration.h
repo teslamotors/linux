@@ -27,6 +27,17 @@
 #define IMX185_VMAX			131071
 #define IMX185_MAX_SHS1			(IMX185_VMAX - 2)
 
+struct crl_ctrl_data_pair ctrl_data_modes[] = {
+	{
+		.ctrl_id = V4L2_CID_WDR_MODE,
+		.data = 0,
+	},
+	{
+		.ctrl_id = V4L2_CID_WDR_MODE,
+		.data = 1,
+	},
+};
+
 static struct crl_register_write_rep imx185_pll_111mbps[] = {
 	{0x332C, CRL_REG_LEN_08BIT, 0x28},	/* mipi timing */
 	{0x332D, CRL_REG_LEN_08BIT, 0x20},
@@ -783,10 +794,27 @@ static struct crl_mode_rep imx185_modes[] = {
 		.height = 1080,
 		.min_llp = 2200,
 		.min_fll = 1125,
-		.comp_items = 0,
-		.ctrl_data = 0,
+		.comp_items = 1,
+		.ctrl_data = &ctrl_data_modes[0],
 		.mode_regs_items = ARRAY_SIZE(imx185_1080P_RAW10_30FPS_27MHZ_CROPPING),
 		.mode_regs = imx185_1080P_RAW10_30FPS_27MHZ_CROPPING,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(imx185_1080_rects),
+		.sd_rects = imx185_1080_rects,
+		.binn_hor = 1,
+		.binn_vert = 1,
+		.skipp_even = -1,
+		.skipp_odd = -1,
+		.scale_m = 1,
+		.width = 1920,
+		.height = 1080,
+		.min_llp = 2200,
+		.min_fll = 1125,
+		.comp_items = 1,
+		.ctrl_data = &ctrl_data_modes[1],
+		.mode_regs_items = ARRAY_SIZE(imx185_1080p_RAW12_BUILD_IN_WDR_30FPS_27MHZ),
+		.mode_regs = imx185_1080p_RAW12_BUILD_IN_WDR_30FPS_27MHZ,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(imx185_720_rects),
@@ -800,8 +828,8 @@ static struct crl_mode_rep imx185_modes[] = {
 		.height = 720,
 		.min_llp = 1300,
 		.min_fll = 787,
-		.comp_items = 0,
-		.ctrl_data = 0,
+		.comp_items = 1,
+		.ctrl_data = &ctrl_data_modes[0],
 		.mode_regs_items = ARRAY_SIZE(imx185_720P_RAW10_30FPS_27MHZ_CROPPING),
 		.mode_regs = imx185_720P_RAW10_30FPS_27MHZ_CROPPING,
 	 }
@@ -1082,6 +1110,27 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 		.ctrl = 0,
 		.regs_items = ARRAY_SIZE(imx185_llp_regs),
 		.regs = imx185_llp_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_BINNER,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_WDR_MODE,
+		.name = "V4L2_CID_WDR_MODE",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = 1,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_MODE_SELECTION,
+		.reg_update_mode = CRL_REG_UPDATE_MODE_REPLACE,
+		.ctrl = 0,
+		.regs_items = 0,
+		.regs = 0,
 		.dep_items = 0,
 		.dep_ctrls = 0,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
