@@ -79,6 +79,7 @@ HOST_INCLUDES  = \
 		 -I$(INCLUDE_DIR)/vied \
 		 -I$(INCLUDE_DIR)/vied_nci_acb/interface \
 		 -I$(INCLUDE_DIR)/vied_parameters/interface \
+		 -I$(INCLUDE_DIR)/reg_dump/src/psys/bxtB0_gen_reg_dump \
 
 HOST_SRC = libcsspsys2600.o \
 	   $(MODULES_DIR)/reg_dump/src/reg_dump_generic_bridge.o \
