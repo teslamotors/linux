@@ -39,6 +39,7 @@ struct crl_ctrl_data_pair ctrl_data_modes[] = {
 };
 
 static struct crl_register_write_rep imx185_pll_111mbps[] = {
+	{0x3305, CRL_REG_LEN_08BIT, 0x03},	/* 1: 2lanes, 3: 4lanes */
 	{0x332C, CRL_REG_LEN_08BIT, 0x28},	/* mipi timing */
 	{0x332D, CRL_REG_LEN_08BIT, 0x20},
 	{0x3341, CRL_REG_LEN_08BIT, 0x00},
@@ -54,6 +55,7 @@ static struct crl_register_write_rep imx185_pll_111mbps[] = {
 };
 
 static struct crl_register_write_rep imx185_pll_222mbps[] = {
+	{0x3305, CRL_REG_LEN_08BIT, 0x03},	/* 1: 2lanes, 3: 4lanes */
 	{0x332C, CRL_REG_LEN_08BIT, 0x30},	/* mipi timing */
 	{0x332D, CRL_REG_LEN_08BIT, 0x20},
 	{0x3341, CRL_REG_LEN_08BIT, 0x00},
@@ -78,11 +80,14 @@ static struct crl_register_write_rep imx185_fmt_raw12[] = {
 	{0x333F, CRL_REG_LEN_08BIT, 0x0c},
 };
 
-static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = {
+static struct crl_register_write_rep imx185_powerup_standby[] = {
 	{0x3000, CRL_REG_LEN_08BIT, 0x01},
 	{0x00, CRL_REG_LEN_DELAY, 50, 0x00},
 	{0x3002, CRL_REG_LEN_08BIT, 0x01},
 	{0x00, CRL_REG_LEN_DELAY, 200, 0x00},
+};
+
+static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = {
 	/* 0x02h */
 	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 ADBIT: 10/12 , raw 10 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x60},	/* mode selection */
@@ -215,7 +220,6 @@ static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = 
 	{0x32EC, CRL_REG_LEN_08BIT, 0xF0},
 	/* 0x05h */
 	{0x3303, CRL_REG_LEN_08BIT, 0x20},	/* repetation */
-	{0x3305, CRL_REG_LEN_08BIT, 0x03},	/* 1: 2lanes, 3: 4lanes */
 	{0x3316, CRL_REG_LEN_08BIT, 0x02},
 	{0x3317, CRL_REG_LEN_08BIT, 0x02},
 	{0x3318, CRL_REG_LEN_08BIT, 0xD0},	/* PIC_SIZE = 720 */
@@ -225,10 +229,6 @@ static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = 
 };
 
 static struct crl_register_write_rep imx185_1080P_RAW10_30FPS_27MHZ_CROPPING[] = {
-	{0x3000, CRL_REG_LEN_08BIT, 0x01},
-	{0x00, CRL_REG_LEN_DELAY, 50, 0x00},
-	{0x3002, CRL_REG_LEN_08BIT, 0x01},
-	{0x00, CRL_REG_LEN_DELAY, 200, 0x00},
 	/* 0x02h */
 	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x50},	/* 1080p cropping */
@@ -363,7 +363,6 @@ static struct crl_register_write_rep imx185_1080P_RAW10_30FPS_27MHZ_CROPPING[] =
 	{0x32EC, CRL_REG_LEN_08BIT, 0xF0},
 	/* 0x05h */
 	{0x3303, CRL_REG_LEN_08BIT, 0x10},	/* repetation */
-	{0x3305, CRL_REG_LEN_08BIT, 0x03},	/* 1: 2lanes, 3: 4lanes */
 	{0x3316, CRL_REG_LEN_08BIT, 0x04},
 	{0x3317, CRL_REG_LEN_08BIT, 0x04},
 	{0x3318, CRL_REG_LEN_08BIT, 0x38},	/* PIC_SIZE = 1080 */
@@ -373,10 +372,6 @@ static struct crl_register_write_rep imx185_1080P_RAW10_30FPS_27MHZ_CROPPING[] =
 };
 
 static struct crl_register_write_rep imx185_1080p_RAW12_BUILD_IN_WDR_30FPS_27MHZ[] = {
-	{0x3000, CRL_REG_LEN_08BIT, 0x01},
-	{0x00, CRL_REG_LEN_DELAY, 50, 0x00},
-	{0x3002, CRL_REG_LEN_08BIT, 0x01},
-	{0x00, CRL_REG_LEN_DELAY, 200, 0x00},
 	/* 0x02h */
 	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x50},	/* mode selection */
@@ -517,7 +512,6 @@ static struct crl_register_write_rep imx185_1080p_RAW12_BUILD_IN_WDR_30FPS_27MHZ
 	{0x32EC, CRL_REG_LEN_08BIT, 0xF0},
 	/* 0x05h */
 	{0x3303, CRL_REG_LEN_08BIT, 0x10},	/* repetation wdr */
-	{0x3305, CRL_REG_LEN_08BIT, 0x03},	/* 1: 2lanes, 3: 4lanes */
 	{0x3314, CRL_REG_LEN_08BIT, 0x08},
 	{0x3316, CRL_REG_LEN_08BIT, 0x04},
 	{0x3317, CRL_REG_LEN_08BIT, 0x04},
@@ -702,6 +696,7 @@ static struct crl_pll_configuration imx185_pll_configurations[] = {
 		.bitsperpixel = 10,
 		.pixel_rate_csi = 44550000,
 		.pixel_rate_pa = 44550000, /* pixel_rate = MIPICLK*2 *4/10 */
+		.csi_lanes = 4,
 		.comp_items = 0,
 		.ctrl_data = 0,
 		.pll_regs_items = ARRAY_SIZE(imx185_pll_111mbps),
@@ -713,6 +708,7 @@ static struct crl_pll_configuration imx185_pll_configurations[] = {
 		.bitsperpixel = 10,
 		.pixel_rate_csi = 89100000,
 		.pixel_rate_pa = 89100000,
+		.csi_lanes = 4,
 		.comp_items = 0,
 		.ctrl_data = 0,
 		.pll_regs_items = ARRAY_SIZE(imx185_pll_222mbps),
@@ -724,6 +720,7 @@ static struct crl_pll_configuration imx185_pll_configurations[] = {
 		.bitsperpixel = 12,
 		.pixel_rate_csi = 74250000,
 		.pixel_rate_pa = 74250000,
+		.csi_lanes = 4,
 		.comp_items = 0,
 		.ctrl_data = 0,
 		.pll_regs_items = ARRAY_SIZE(imx185_pll_222mbps),
@@ -1139,8 +1136,8 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 
 struct crl_sensor_configuration imx185_crl_configuration = {
 
-	.powerup_regs_items = 0,
-	.powerup_regs = 0,
+	.powerup_regs_items = ARRAY_SIZE(imx185_powerup_standby),
+	.powerup_regs = imx185_powerup_standby,
 
 	.poweroff_regs_items = 0,
 	.poweroff_regs = 0,
