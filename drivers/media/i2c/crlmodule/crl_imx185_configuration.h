@@ -57,6 +57,16 @@ static struct crl_register_write_rep imx185_pll_222mbps[] = {
 	{0x334A, CRL_REG_LEN_08BIT, 0x28},
 };
 
+static struct crl_register_write_rep imx185_fmt_raw10[] = {
+	{0x333E, CRL_REG_LEN_08BIT, 0x0a},	/* FMT RAW10 */
+	{0x333F, CRL_REG_LEN_08BIT, 0x0a},
+};
+
+static struct crl_register_write_rep imx185_fmt_raw12[] = {
+	{0x333E, CRL_REG_LEN_08BIT, 0x0c},	/* FMT RAW12 */
+	{0x333F, CRL_REG_LEN_08BIT, 0x0c},
+};
+
 static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = {
 	{0x3000, CRL_REG_LEN_08BIT, 0x01},
 	{0x00, CRL_REG_LEN_DELAY, 50, 0x00},
@@ -199,8 +209,6 @@ static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = 
 	{0x3317, CRL_REG_LEN_08BIT, 0x02},
 	{0x3318, CRL_REG_LEN_08BIT, 0xD0},	/* PIC_SIZE = 720 */
 	{0x3319, CRL_REG_LEN_08BIT, 0x02},
-	{0x333E, CRL_REG_LEN_08BIT, 0x0A},	/* FMT RAW10 */
-	{0x333F, CRL_REG_LEN_08BIT, 0x0A},
 	{0x334E, CRL_REG_LEN_08BIT, 0x3D},	/* INCL selection 27MHz */
 	{0x334F, CRL_REG_LEN_08BIT, 0x01},
 };
@@ -349,8 +357,6 @@ static struct crl_register_write_rep imx185_1080P_RAW10_30FPS_27MHZ_CROPPING[] =
 	{0x3317, CRL_REG_LEN_08BIT, 0x04},
 	{0x3318, CRL_REG_LEN_08BIT, 0x38},	/* PIC_SIZE = 1080 */
 	{0x3319, CRL_REG_LEN_08BIT, 0x04},
-	{0x333E, CRL_REG_LEN_08BIT, 0x0A},	/* FMT RAW10 */
-	{0x333F, CRL_REG_LEN_08BIT, 0x0A},
 	{0x334E, CRL_REG_LEN_08BIT, 0x3D},	/* INCL selection 27MHz */
 	{0x334F, CRL_REG_LEN_08BIT, 0x01},
 };
@@ -545,6 +551,17 @@ static struct crl_pll_configuration imx185_pll_configurations[] = {
 		.ctrl_data = 0,
 		.pll_regs_items = ARRAY_SIZE(imx185_pll_222mbps),
 		.pll_regs = imx185_pll_222mbps,
+	},
+	{
+		.input_clk = 27000000,
+		.op_sys_clk = 111375000,
+		.bitsperpixel = 12,
+		.pixel_rate_csi = 74250000,
+		.pixel_rate_pa = 74250000,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.pll_regs_items = ARRAY_SIZE(imx185_pll_222mbps),
+		.pll_regs = imx185_pll_222mbps,
 	}
 };
 
@@ -681,29 +698,57 @@ static struct crl_csi_data_fmt imx185_crl_csi_data_fmt[] = {
 		.code = MEDIA_BUS_FMT_SGRBG10_1X10,
 		.pixel_order = CRL_PIXEL_ORDER_GRBG,
 		.bits_per_pixel = 10,
-		.regs_items = 0,
-		.regs = 0,
+		.regs_items = ARRAY_SIZE(imx185_fmt_raw10),
+		.regs = imx185_fmt_raw10,
 	},
 	{
 		.code = MEDIA_BUS_FMT_SRGGB10_1X10,
 		.pixel_order = CRL_PIXEL_ORDER_RGGB,
 		.bits_per_pixel = 10,
-		.regs_items = 0,
-		.regs = 0,
+		.regs_items = ARRAY_SIZE(imx185_fmt_raw10),
+		.regs = imx185_fmt_raw10,
 	},
 	{
 		.code = MEDIA_BUS_FMT_SBGGR10_1X10,
 		.pixel_order = CRL_PIXEL_ORDER_BGGR,
 		.bits_per_pixel = 10,
-		.regs_items = 0,
-		.regs = 0,
+		.regs_items = ARRAY_SIZE(imx185_fmt_raw10),
+		.regs = imx185_fmt_raw10,
 	},
 	{
 		.code = MEDIA_BUS_FMT_SGBRG10_1X10,
 		.pixel_order = CRL_PIXEL_ORDER_GBRG,
-		.regs_items = 0,
 		.bits_per_pixel = 10,
-		.regs = 0,
+		.regs_items = ARRAY_SIZE(imx185_fmt_raw10),
+		.regs = imx185_fmt_raw10,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SGRBG12_1X12,
+		.pixel_order = CRL_PIXEL_ORDER_GRBG,
+		.bits_per_pixel = 12,
+		.regs_items = ARRAY_SIZE(imx185_fmt_raw12),
+		.regs = imx185_fmt_raw12,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SRGGB12_1X12,
+		.pixel_order = CRL_PIXEL_ORDER_RGGB,
+		.bits_per_pixel = 12,
+		.regs_items = ARRAY_SIZE(imx185_fmt_raw12),
+		.regs = imx185_fmt_raw12,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SBGGR12_1X12,
+		.pixel_order = CRL_PIXEL_ORDER_BGGR,
+		.bits_per_pixel = 12,
+		.regs_items = ARRAY_SIZE(imx185_fmt_raw12),
+		.regs = imx185_fmt_raw12,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SGBRG12_1X12,
+		.pixel_order = CRL_PIXEL_ORDER_GBRG,
+		.bits_per_pixel = 12,
+		.regs_items = ARRAY_SIZE(imx185_fmt_raw12),
+		.regs = imx185_fmt_raw12,
 	}
 };
 
