@@ -449,6 +449,8 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_b0 = {
 			 .insert_read_before_invalidate = true,
 			},
 		},
+		.cdc_fifos = 3,
+		.cdc_fifo_threshold = {6, 8, 2},
 		.fw_filename = INTEL_IPU4_ISYS_FIRMWARE_B0,
 	},
 	.num_parallel_streams = INTEL_IPU4_ISYS_NUM_STREAMS_B0,
