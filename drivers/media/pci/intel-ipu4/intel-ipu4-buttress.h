@@ -62,6 +62,8 @@ void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
 					unsigned int psys_qos_floor);
 int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_start_tsc_sync(struct intel_ipu4_device *isp);
+int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val);
+u64 intel_ipu4_buttress_tsc_ticks_to_ns(u64 ticks);
 
 irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr);
 irqreturn_t intel_ipu4_buttress_isr_threaded(int irq, void *isp_ptr);

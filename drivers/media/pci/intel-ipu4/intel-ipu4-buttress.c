@@ -1255,9 +1255,9 @@ DEFINE_SIMPLE_ATTRIBUTE(intel_ipu4_buttress_start_tsc_sync_fops,
 			NULL, /* intel_ipu4_buttress_start_tsc_sync_get, */
 			intel_ipu4_buttress_start_tsc_sync_set, "%llu\n");
 
-static int intel_ipu4_buttress_tsc_get(void *data, u64 *val)
+
+int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val)
 {
-	struct intel_ipu4_device *isp = data;
 	u32 tsc_hi, tsc_lo_1, tsc_lo_2, tsc_lo_3, tsc_chk = 0;
 	short retry = 10;
 
@@ -1278,14 +1278,33 @@ static int intel_ipu4_buttress_tsc_get(void *data, u64 *val)
 			return 0;
 		}
 		dev_err(&isp->pdev->dev,
-			"failure: tsc_hi = %lu, tsc_chk %lu, tsc_lo_1 = %lu, "
-			"tsc_lo_2 = %lu, tsc_lo_3 = %lu\n",
+			"failure: tsc_hi = %u, tsc_chk %u, tsc_lo_1 = %u, "
+			"tsc_lo_2 = %u, tsc_lo_3 = %u\n",
 			tsc_hi, tsc_chk, tsc_lo_1, tsc_lo_2, tsc_lo_3);
 	} while (retry--);
 
 	WARN_ON_ONCE(1);
 
 	return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_buttress_tsc_read);
+
+u64 intel_ipu4_buttress_tsc_ticks_to_ns(u64 ticks)
+{
+	/*
+	 * TSC clock frequency is 19.2MHz,
+	 * converting TSC tick count to ns is calculated by:
+	 * ns = ticks * 1000 000 000 / 19.2Mhz
+	 *    = ticks * 1000 000 000 / 19200000Hz
+	 *    = ticks * 10000 / 192 ns
+	 */
+	return ticks * 10000 / 192;
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_buttress_tsc_ticks_to_ns);
+
+static int intel_ipu4_buttress_tsc_get(void *data, u64 *val)
+{
+	return intel_ipu4_buttress_tsc_read(data, val);
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(intel_ipu4_buttress_tsc_fops,
