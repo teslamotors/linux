@@ -99,6 +99,8 @@
 #define INTEL_IPU4_REG_ISYS_UNISPART_IRQ_CLEAR		0x7c00c
 #define INTEL_IPU4_REG_ISYS_UNISPART_IRQ_ENABLE		0x7c010
 #define INTEL_IPU4_REG_ISYS_UNISPART_IRQ_LEVEL_NOT_PULSE 0x7c014
+/* CDC Burst collector thresholds for isys - 3 FIFOs i = 0..2 */
+#define INTEL_IPU4_REG_ISYS_CDC_THRESHOLD(i)		(0x7c400 + ((i) * 4))
 #define INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_REG		0x7c414
 #define INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_MUX_REG	0x7c418
 
@@ -142,6 +144,8 @@
 /* There are 8 FW interrupts, n = 0..7 */
 #define INTEL_IPU4_PSYS_GPDEV_IRQ_FWIRQ(n)		(BIT(17) << (n))
 #define INTEL_IPU4_REG_PSYS_GPDEV_FWIRQ(n)		(4 * (n) + 0x60100)
+/* CDC Burst collector thresholds for psys - 4 FIFOs i= 0..3 */
+#define INTEL_IPU4_REG_PSYS_CDC_THRESHOLD(i)           (0x60600 + ((i) * 4))
 
 /*VCO*/
 #define INTEL_IPU4_INFO_ENABLE_SNOOP			BIT(0)

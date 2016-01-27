@@ -39,6 +39,20 @@
 
 #define INTEL_IPU4_ISYS_MAX_CSI2BE		2
 
+/*
+ * To maximize the IOSF utlization, IPU need to send requests in bursts.
+ * At the DMA interface with the buttress, there are CDC FIFOs with burst
+ * collection capability. CDC FIFO burst collectors have a configurable
+ * threshold and is configured based on the outcome of performance measurements.
+ *
+ * isys has 3 ports with IOSF interface for VC0, VC1 and VC2
+ * psys has 4 ports with IOSF interface for VC0, VC1w, VC1r and VC2
+ *
+ * Threshold values are pre-defined and are arrived at after performance
+ * evaluations on a type of IPU4
+ */
+#define INTEL_IPU4_MAX_VC_IOSF_PORTS		4
+
 struct intel_ipu4_isys_subdev_pdata;
 
 
@@ -160,6 +174,8 @@ struct intel_ipu4_hw_variants {
 	unsigned long offset;
 	unsigned int nr_mmus;
 	struct intel_ipu4_mmu_hw mmu_hw[INTEL_IPU4_MMU_MAX_DEVICES];
+	u8 cdc_fifos;
+	u8 cdc_fifo_threshold[INTEL_IPU4_MAX_VC_IOSF_PORTS];
 	char *fw_filename;
 };
 

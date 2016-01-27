@@ -1394,6 +1394,7 @@ static void psys_setup_hw(struct intel_ipu4_psys *psys)
 				 psys->pdata->ipdata->hw_variant.mmu_hw[0].offset +
 				 INTEL_IPU4_BXT_PSYS_MMU0_CTRL_OFFSET;
 	u32 irqs;
+	unsigned int i;
 
 	/* Configure PSYS info bits */
 	writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY, psys_iommu0_ctrl);
@@ -1424,6 +1425,11 @@ static void psys_setup_hw(struct intel_ipu4_psys *psys)
 	writel(irqs, base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_CLEAR);
 	writel(irqs, base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_MASK);
 	writel(irqs, base + INTEL_IPU4_REG_PSYS_GPDEV_IRQ_ENABLE);
+
+	/* Write CDC FIFO threshold values for psys */
+	for (i = 0; i < psys->pdata->ipdata->hw_variant.cdc_fifos; i++)
+		writel(psys->pdata->ipdata->hw_variant.cdc_fifo_threshold[i],
+		       base + INTEL_IPU4_REG_PSYS_CDC_THRESHOLD(i));
 }
 
 #ifdef CONFIG_PM

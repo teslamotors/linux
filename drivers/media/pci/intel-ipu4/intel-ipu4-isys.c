@@ -870,6 +870,7 @@ static void isys_setup_hw(struct intel_ipu4_isys *isys)
 {
 	void __iomem *base = isys->pdata->base;
 	u32 irqs;
+	unsigned int i;
 
 	/* Enable irqs for all MIPI busses */
 
@@ -897,6 +898,11 @@ static void isys_setup_hw(struct intel_ipu4_isys *isys)
 
 	writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_REG);
 	writel(0, base + INTEL_IPU4_REG_ISYS_UNISPART_SW_IRQ_MUX_REG);
+
+	/* Write CDC FIFO threshold values for isys */
+	for (i = 0; i < isys->pdata->ipdata->hw_variant.cdc_fifos; i++)
+		writel(isys->pdata->ipdata->hw_variant.cdc_fifo_threshold[i],
+		       base + INTEL_IPU4_REG_ISYS_CDC_THRESHOLD(i));
 }
 
 #ifdef CONFIG_PM
