@@ -23,6 +23,7 @@
 
 #include "intel-ipu4.h"
 #include "intel-ipu4-bus.h"
+#include "intel-ipu4-buttress.h"
 #include "intel-ipu4-isys.h"
 #include "intel-ipu4-isys-csi2.h"
 #include "intel-ipu4-isys-video.h"
@@ -731,6 +732,23 @@ static unsigned int get_sof_sequence_by_timestamp(
 	return 0;
 }
 
+static u64 get_sof_ns_delta(struct intel_ipu4_isys_video *av,
+			struct ia_css_isys_resp_info *info)
+{
+	struct intel_ipu4_bus_device *adev =
+		to_intel_ipu4_bus_device(&av->isys->adev->dev);
+	struct intel_ipu4_device *isp = adev->isp;
+	u64 delta, tsc_now;
+
+	if (!intel_ipu4_buttress_tsc_read(isp, &tsc_now))
+		delta = tsc_now -
+			((u64)info->timestamp[1] << 32 | info->timestamp[0]);
+	else
+		delta = 0;
+
+	return intel_ipu4_buttress_tsc_ticks_to_ns(delta);
+}
+
 void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
 				    struct ia_css_isys_resp_info *info)
 {
@@ -745,7 +763,11 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
-	v4l2_get_timestamp(&vb->v4l2_buf.timestamp);
+	struct timespec ts_now = ns_to_timespec(
+		ktime_get_ns() - get_sof_ns_delta(av, info));
+
+	vb->v4l2_buf.timestamp.tv_sec = ts_now.tv_sec;
+	vb->v4l2_buf.timestamp.tv_usec = ts_now.tv_nsec / NSEC_PER_USEC;
 
 	if (ip->has_sof)
 		vb->v4l2_buf.sequence =
@@ -754,7 +776,7 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
 		vb->v4l2_buf.sequence =
 			(atomic_inc_return(&ip->sequence) - 1) / ip->nr_queues;
 #else
-	vbuf->vb2_buf.timestamp = ktime_get_ns();
+	vbuf->vb2_buf.timestamp = ktime_get_ns() - get_sof_ns_delta(av, info);
 
 	if (ip->has_sof)
 		vbuf->sequence =
