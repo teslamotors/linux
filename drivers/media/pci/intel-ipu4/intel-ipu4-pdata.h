@@ -53,6 +53,22 @@
  */
 #define INTEL_IPU4_MAX_VC_IOSF_PORTS		4
 
+/*
+ * IPU must configure correct arbitration mechanism related to the IOSF VC
+ * requests. There are two options per VC0 and VC1 - > 0 means rearbitrate on
+ * stall and 1 means stall untill the request is completed.
+ */
+#define INTEL_IPU4_BTRS_ARB_MODE_TYPE_REARB	0
+#define INTEL_IPU4_BTRS_ARB_MODE_TYPE_STALL	1
+
+/* Currently chosen arbitration mechanism for VC0 */
+#define INTEL_IPU4_BTRS_ARB_STALL_MODE_VC0	\
+			INTEL_IPU4_BTRS_ARB_MODE_TYPE_REARB
+
+/* Currently chosen arbitration mechanism for VC1 */
+#define INTEL_IPU4_BTRS_ARB_STALL_MODE_VC1	\
+			INTEL_IPU4_BTRS_ARB_MODE_TYPE_REARB
+
 struct intel_ipu4_isys_subdev_pdata;
 
 

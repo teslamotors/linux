@@ -789,6 +789,25 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 		goto out_intel_ipu4_bus_del_devices;
 	}
 
+	/* Configure the arbitration mechanisms for VC requests */
+	if (is_intel_ipu4_hw_bxt_b0(isp)) {
+		u32 val = readl(isp->base + BUTTRESS_REG_BTRS_CTRL);
+
+		if (INTEL_IPU4_BTRS_ARB_STALL_MODE_VC0 ==
+				INTEL_IPU4_BTRS_ARB_MODE_TYPE_STALL)
+			val |= BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC0;
+		else
+			val &= ~BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC0;
+
+		if (INTEL_IPU4_BTRS_ARB_STALL_MODE_VC1 ==
+				INTEL_IPU4_BTRS_ARB_MODE_TYPE_STALL)
+			val |= BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC1;
+		else
+			val &= ~BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC1;
+
+		writel(val, isp->base + BUTTRESS_REG_BTRS_CTRL);
+	}
+
 	pm_runtime_put_noidle(&pdev->dev);
 	pm_runtime_allow(&pdev->dev);
 
