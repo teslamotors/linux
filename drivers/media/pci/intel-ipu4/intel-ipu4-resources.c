@@ -24,6 +24,7 @@
 #include "ia_css_psys_program_group_manifest.h"
 #include "ia_css_psys_process.hsys.kernel.h"
 #include "ia_css_psys_program_manifest.hsys.kernel.h"
+#include "vied_nci_psys_system_global.h"
 
 #define SANITY_CHECK 1
 
@@ -239,13 +240,18 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 		if (ia_css_has_program_manifest_fixed_cell(pm)) {
 			cell = ia_css_process_get_cell(process);
 		} else {
-			if (ia_css_program_manifest_get_cell_type_ID(pm) !=
-			    VIED_NCI_VP_TYPE_ID) {
-				dev_dbg(dev, "invalid dynamic cell type\n");
-				ret = -EIO;
+			/* Find a free cell of desired type */
+			vied_nci_cell_type_ID_t type =
+				ia_css_program_manifest_get_cell_type_ID(pm);
+			for (cell = 0; cell < VIED_NCI_N_CELL_ID; cell++)
+				if (vied_nci_cell_get_type(cell) == type &&
+				    ((pool->cells | cells) & (1 << cell)) == 0)
+					break;
+			if (cell >= VIED_NCI_N_CELL_ID) {
+				dev_dbg(dev, "no free cells of right type\n");
+				ret = -ENOSPC;
 				goto free_out;
 			}
-			cell = VIED_NCI_VP0_ID;
 			if (ia_css_process_set_cell(process, cell) &&
 			    (ia_css_process_clear_cell(process) ||
 			     ia_css_process_set_cell(process, cell))) {

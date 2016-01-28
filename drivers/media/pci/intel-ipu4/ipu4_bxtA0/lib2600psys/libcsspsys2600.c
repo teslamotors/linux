@@ -63,6 +63,7 @@ EXPORT_SYMBOL_GPL(ia_css_pkg_dir_verify_header);
 EXPORT_SYMBOL_GPL(ia_css_pkg_dir_get_entry);
 EXPORT_SYMBOL_GPL(ia_css_client_pkg_get_pg_manifest_offset_size);
 EXPORT_SYMBOL_GPL(ia_css_psys_specify);
+EXPORT_SYMBOL_GPL(vied_nci_cell_get_type);
 EXPORT_SYMBOL_GPL(psys_syscom);
 /*Implement SMIF/Vied subsystem access here */
 
