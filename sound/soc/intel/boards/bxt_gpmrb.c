@@ -79,11 +79,11 @@ static const struct snd_soc_dapm_route broxton_gpmrb_map[] = {
 	{ "BtHfpUl", NULL, "ssp0 Tx"},
 	{ "ssp0 Tx", NULL, "BtHfp_ssp0_out"},
 
-	{ "Modem_ssp3_in", NULL, "ssp0 Rx"},
-	{ "ssp0 Rx", NULL, "ModemDl"},
+	{ "Modem_ssp3_in", NULL, "ssp3 Rx"},
+	{ "ssp3 Rx", NULL, "ModemDl"},
 
-	{ "ModemUl", NULL, "ssp0 Tx"},
-	{ "ssp0 Tx", NULL, "Modem_ssp3_out"},
+	{ "ModemUl", NULL, "ssp3 Tx"},
+	{ "ssp3 Tx", NULL, "Modem_ssp3_out"},
 };
 
 
