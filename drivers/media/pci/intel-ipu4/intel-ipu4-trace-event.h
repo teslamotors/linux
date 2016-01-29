@@ -28,7 +28,21 @@ TRACE_EVENT(ipu4_sof_seqid,
 		TP_fast_assign(
 			__entry->seqid = seqid;
 		),
-		TP_printk("seqid<%d>", __entry->seqid)
+		TP_printk("seqid<%u>", __entry->seqid)
+);
+
+TRACE_EVENT(ipu4_perf_reg,
+		TP_PROTO(unsigned int addr, unsigned int val),
+		TP_ARGS(addr, val),
+		TP_STRUCT__entry(
+			__field(unsigned int, addr)
+			__field(unsigned int, val)
+		),
+		TP_fast_assign(
+			__entry->addr = addr;
+			__entry->val = val;
+		),
+		TP_printk("addr=%u,val=%u>", __entry->addr, __entry->val)
 );
 
 #endif

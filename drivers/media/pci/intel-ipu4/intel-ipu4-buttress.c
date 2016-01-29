@@ -31,6 +31,8 @@
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-buttress-regs.h"
 #include "intel-ipu4-cpd.h"
+#define CREATE_TRACE_POINTS
+#include "intel-ipu4-trace-event.h"
 
 #define BOOTLOADER_STATUS_OFFSET	0x8000
 #define BOOTLOADER_MAGIC_KEY		0xb00710ad
@@ -343,6 +345,9 @@ irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 
 	dev_dbg(&isp->pdev->dev, "Buttress interrupt handler\n");
 
+	trace_ipu4_perf_reg(BUTTRESS_REG_IS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_IS_FREQ_CTL));
+	trace_ipu4_perf_reg(BUTTRESS_REG_PS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_PS_FREQ_CTL));
+
 	irq_status = readl(isp->base + BUTTRESS_REG_ISR_ENABLED_STATUS);
 	if (!irq_status)
 		return IRQ_NONE;
@@ -497,6 +502,9 @@ out:
 		intel_ipu4_buttress_disable_secure_touch(isp);
 
 	ctrl->started = !ret && on;
+
+	trace_ipu4_perf_reg(BUTTRESS_REG_IS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_IS_FREQ_CTL));
+	trace_ipu4_perf_reg(BUTTRESS_REG_PS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_PS_FREQ_CTL));
 
 	mutex_unlock(&isp->buttress.power_mutex);
 
