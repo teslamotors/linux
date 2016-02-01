@@ -662,8 +662,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	unsigned long tout_jfs;
 
 	if (!isp->secure_mode) {
-		dev_dbg(&isp->pdev->dev, "Non-secure mode -> skip authentication\n",
-			rval);
+		dev_dbg(&isp->pdev->dev, "Non-secure mode -> skip authentication\n");
 		return 0;
 	}
 
