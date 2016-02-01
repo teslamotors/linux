@@ -979,9 +979,14 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	}
 	dev_dbg(dev, "stream open complete\n");
 
-	if (bl)
+	if (bl) {
 		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 			&buf, ip, bl);
+		intel_ipu4_isys_buffer_list_queue(
+			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
+		csslib_dump_isys_frame_buff_set(dev, &buf,
+						stream_cfg.nof_output_pins);
+	}
 
 	reinit_completion(&ip->stream_start_completion);
 	rval = intel_ipu4_lib_call(stream_start, av->isys, ip->stream_handle,

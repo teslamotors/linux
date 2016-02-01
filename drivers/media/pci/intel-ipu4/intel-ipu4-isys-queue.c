@@ -424,6 +424,55 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 	}
 }
 
+/* Start streaming for real. The buffer list must be available. */
+static int intel_ipu4_isys_stream_start(struct intel_ipu4_isys_pipeline *ip,
+					struct intel_ipu4_isys_buffer_list *bl,
+					bool error)
+{
+	struct intel_ipu4_isys_video *pipe_av =
+		container_of(ip, struct intel_ipu4_isys_video, ip);
+	struct intel_ipu4_isys_buffer_list __bl;
+	int rval;
+
+	rval = intel_ipu4_isys_video_set_streaming(pipe_av, 1, bl);
+	if (rval)
+		goto out_requeue;
+
+	ip->streaming = 1;
+	bl = &__bl;
+
+	do {
+		struct ia_css_isys_frame_buff_set buf = { };
+
+		rval = buffer_list_get(ip, bl);
+		if (rval)
+			break;
+
+		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
+			&buf, ip, bl);
+
+		intel_ipu4_isys_buffer_list_queue(
+			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
+
+		rval = intel_ipu4_lib_call(
+			stream_capture_indication, pipe_av->isys,
+			ip->stream_handle, &buf);
+		/* FIXME: return failed capture request buffers */
+	} while (!WARN_ON(rval));
+
+	return 0;
+
+out_requeue:
+	if (bl->nbufs)
+		intel_ipu4_isys_buffer_list_queue(
+			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING |
+			(error ? INTEL_IPU4_ISYS_BUFFER_LIST_FL_SET_STATE : 0),
+			error ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_QUEUED);
+	flush_firmware_streamon_fail(ip);
+
+	return rval;
+}
+
 static void __buf_queue(struct vb2_buffer *vb, bool force)
 {
 	struct intel_ipu4_isys_queue *aq =
@@ -485,6 +534,16 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 
 	intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 		&buf, ip, &bl);
+
+	if (!ip->streaming) {
+		dev_dbg(&av->isys->adev->dev,
+			"Wow! Got a buffer to start streaming!\n");
+		rval = intel_ipu4_isys_stream_start(ip, &bl, true);
+		if (rval)
+			dev_err(&av->isys->adev->dev,
+				"Ouch. Stream start failed.\n");
+		goto out;
+	}
 
 	/*
 	 * We must queue the buffers in the buffer list to the
@@ -681,37 +740,20 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 	if (ip->nr_streaming != ip->nr_queues)
 		goto out;
 
+	/*
+	 * See if a request is available. If not, postpone streaming
+	 * start until there's one.
+	 */
 	rval = buffer_list_get(ip, bl);
 	if (rval) {
-		bl = NULL;
-		goto out_requeue;
+		dev_dbg(&av->isys->adev->dev,
+			"no request available --- postponing streamon\n");
+		goto out;
 	}
 
-	rval = intel_ipu4_isys_video_set_streaming(av, 1, bl);
+	rval = intel_ipu4_isys_stream_start(ip, bl, false);
 	if (rval)
-		goto out_requeue;
-
-	do {
-		struct ia_css_isys_frame_buff_set buf = { };
-
-		bl = &__bl;
-		rval = buffer_list_get(ip, bl);
-		if (rval)
-			break;
-
-		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
-			&buf, ip, bl);
-		csslib_dump_isys_frame_buff_set(dev, &buf,
-						stream_cfg.nof_output_pins);
-
-		intel_ipu4_isys_buffer_list_queue(
-			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
-
-		rval = intel_ipu4_lib_call(
-			stream_capture_indication, av->isys, ip->stream_handle, &buf);
-		if (rval < 0)
-			goto out_requeue;
-	} while (!rval);
+		goto out_stream_start;
 
 out:
 	mutex_unlock(&pipe_av->mutex);
@@ -719,13 +761,7 @@ out:
 
 	return 0;
 
-out_requeue:
-	if (bl && bl->nbufs)
-		intel_ipu4_isys_buffer_list_queue(
-			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING,
-			VB2_BUF_STATE_QUEUED);
-	flush_firmware_streamon_fail(ip);
-
+out_stream_start:
 	list_del(&aq->node);
 	ip->nr_streaming--;
 	mutex_unlock(&pipe_av->mutex);
@@ -766,6 +802,7 @@ static void stop_streaming(struct vb2_queue *q)
 
 	ip->nr_streaming--;
 	list_del(&aq->node);
+	ip->streaming = 0;
 
 	if (pipe_av != av) {
 		mutex_unlock(&pipe_av->mutex);
