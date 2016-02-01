@@ -844,8 +844,13 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	}
 	dev_dbg(dev, "stream open complete\n");
 
+	if (bl)
+		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
+			&buf, ip, bl);
+
 	reinit_completion(&ip->stream_start_completion);
-	rval = intel_ipu4_lib_call(stream_start, av->isys, ip->stream_handle, NULL);
+	rval = intel_ipu4_lib_call(stream_start, av->isys, ip->stream_handle,
+				   bl ? &buf : NULL);
 	if (rval < 0) {
 		dev_dbg(dev, "can't start streaning (%d)\n", rval);
 		goto out_stream_close;
@@ -865,56 +870,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	}
 	dev_dbg(dev, "stream start complete\n");
 
-	if (!bl)
-		return 0;
-
-	intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(&buf, ip, bl);
-	intel_ipu4_isys_buffer_list_queue(bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE,
-				       0);
-	csslib_dump_isys_frame_buff_set(dev, &buf, stream_cfg.nof_output_pins);
-
-	reinit_completion(&ip->capture_ack_completion);
-	rval = intel_ipu4_lib_call(stream_capture_indication, av->isys,
-				   ip->stream_handle, &buf);
-	if (rval < 0) {
-		dev_dbg(dev, "capture indication failed (%d)\n", rval);
-		goto out_stream_stop;
-	}
-
-	tout = wait_for_completion_timeout(&ip->capture_ack_completion,
-					   INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
-	if (!tout) {
-		dev_err(dev, "capture indication time out\n");
-		rval = -ETIMEDOUT;
-		goto out_stream_stop;
-	}
-	if (ip->error) {
-		dev_err(dev, "capture indication error: %d\n", ip->error);
-		rval = -EIO;
-		goto out_stream_stop;
-	}
-	dev_dbg(dev, "capture ack complete\n");
-
 	return 0;
-
-out_stream_stop:
-	/* Don't change rval here. It is telling us the original error code */
-	reinit_completion(&ip->stream_stop_completion);
-
-	rvalout = intel_ipu4_lib_call(stream_flush, av->isys, ip->stream_handle);
-	if (rvalout < 0) {
-		dev_dbg(dev, "can't stop stream (%d)\n",
-			rvalout);
-	} else {
-		tout = wait_for_completion_timeout(&ip->stream_stop_completion,
-				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
-		if (!tout)
-			dev_err(dev, "stream stop time out\n");
-		else if (ip->error)
-			dev_err(dev, "stream stop error: %d\n", ip->error);
-		else
-			dev_dbg(dev, "stream stop complete\n");
-	}
 
 out_stream_close:
 	reinit_completion(&ip->stream_close_completion);
