@@ -2079,16 +2079,16 @@ static int crlmodule_set_power(struct v4l2_subdev *subdev, int on)
 	 * If the power count is modified from 0 to != 0 or from != 0
 	 * to 0, update the power state.
 	 */
-	if (!sensor->power_count == !on)
-		goto out;
-
-	/*
-	 * Power on and perform initialisation. This function guranteed to
-	 * be return 0 when on == 0
-	 */
-	ret = crlmodule_run_power_sequence(sensor, on);
-	if (ret < 0)
-		goto out;
+	if ((on && !sensor->power_count)
+	    || (!on && sensor->power_count == 1)) {
+		/*
+		 * Power on and perform initialisation. This function
+		 * guranteed to be return 0 when on == 0
+		 */
+		ret = crlmodule_run_power_sequence(sensor, on);
+		if (ret < 0)
+			goto out;
+	}
 
 	/* Update the power count. */
 	sensor->power_count += on ? 1 : -1;
