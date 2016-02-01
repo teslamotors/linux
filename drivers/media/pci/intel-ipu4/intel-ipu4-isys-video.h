@@ -67,6 +67,7 @@ struct intel_ipu4_isys_pipeline {
 	 */
 	int nr_queues;
 	int nr_streaming; /* Number of capture queues streaming */
+	int streaming; /* Has streaming been really started? */
 	struct list_head queues;
 	struct completion stream_open_completion;
 	struct completion stream_close_completion;
