@@ -682,8 +682,10 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 		goto out;
 
 	rval = buffer_list_get(ip, bl);
-	if (rval)
+	if (rval) {
 		bl = NULL;
+		goto out_requeue;
+	}
 
 	rval = intel_ipu4_isys_video_set_streaming(av, 1, bl);
 	if (rval)
@@ -699,6 +701,8 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 
 		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 			&buf, ip, bl);
+		csslib_dump_isys_frame_buff_set(dev, &buf,
+						stream_cfg.nof_output_pins);
 
 		intel_ipu4_isys_buffer_list_queue(
 			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
