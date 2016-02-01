@@ -403,6 +403,7 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_a0 = {
 		},
 		.fw_filename = INTEL_IPU4_ISYS_FIRMWARE_A0,
 	},
+	.num_parallel_streams = INTEL_IPU4_ISYS_NUM_STREAMS_A0,
 };
 
 static const struct intel_ipu4_isys_internal_pdata isys_ipdata_b0 = {
@@ -450,6 +451,7 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_b0 = {
 		},
 		.fw_filename = INTEL_IPU4_ISYS_FIRMWARE_B0,
 	},
+	.num_parallel_streams = INTEL_IPU4_ISYS_NUM_STREAMS_B0,
 };
 
 static const struct intel_ipu4_psys_internal_pdata psys_ipdata_a0 = {

@@ -65,6 +65,9 @@
 #define IS_FREQ_CTL_DIVISOR_A0		0x8
 #define IS_FREQ_CTL_DIVISOR_B0		0x4
 
+#define INTEL_IPU4_ISYS_NUM_STREAMS_A0		2 /* Max 2 */
+#define INTEL_IPU4_ISYS_NUM_STREAMS_B0		4 /* Max 6 */
+
 /*
  * The following definitions are encoded to the media_device's model field so
  * that the software components which uses IPU4 driver can get the hw stepping
