@@ -364,8 +364,6 @@ struct crl_mode_rep {
 	const struct crl_subdev_rect_rep *sd_rects;
 	u8 binn_hor;
 	u8 binn_vert;
-	u8 skipp_even;
-	u8 skipp_odd;
 	u8 scale_m;
 	s32 width;
 	s32 height;
