@@ -54,6 +54,8 @@
 #define BUTTRESS_CSE_BOOTLOAD_TIMEOUT		5000
 #define BUTTRESS_CSE_AUTHENTICATE_TIMEOUT	10000
 
+#define BUTTRESS_IPC_TX_TIMEOUT			1000
+
 const struct intel_ipu4_buttress_sensor_clk_freq sensor_clk_freqs[] = {
 	{ 6750000, BUTTRESS_SENSOR_CLK_FREQ_6P75MHZ },
 	{ 8000000, BUTTRESS_SENSOR_CLK_FREQ_8MHZ },
@@ -303,7 +305,8 @@ static int intel_ipu4_buttress_ipc_send(
 	 * TODO: How long we should wait?
 	 */
 	ret = wait_for_completion_timeout(ipc_complete,
-					  msecs_to_jiffies(10));
+					  msecs_to_jiffies(
+						  BUTTRESS_IPC_TX_TIMEOUT));
 	if (ret) {
 		dev_dbg(&isp->pdev->dev, "IPC response received\n");
 		return 0;
