@@ -45,6 +45,7 @@
 
 #define BUTTRESS_CSE_BOOTLOAD_TIMEOUT		5000
 #define BUTTRESS_CSE_AUTHENTICATE_TIMEOUT	10000
+#define BUTTRESS_CSE_FWRESET_TIMEOUT		100
 
 #define BUTTRESS_IPC_TX_TIMEOUT			1000
 
@@ -669,9 +670,45 @@ void intel_ipu4_buttress_remove_psys_constraint(
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_buttress_remove_psys_constraint);
 
+int intel_ipu4_buttress_reset_authentication(struct intel_ipu4_device *isp)
+{
+	unsigned long tout_jfs;
+	u32 val;
+
+	if (!isp->secure_mode) {
+		dev_dbg(&isp->pdev->dev,
+			"Non-secure mode -> skip authentication\n");
+		return 0;
+	}
+
+	writel(1 << BUTTRESS_FW_RESET_CTL_START_SHIFT, isp->base +
+	       BUTTRESS_REG_FW_RESET_CTL);
+
+	tout_jfs = jiffies + msecs_to_jiffies(BUTTRESS_CSE_FWRESET_TIMEOUT);
+	do {
+		val = readl(isp->base + BUTTRESS_REG_FW_RESET_CTL);
+		if (val & 1 << BUTTRESS_FW_RESET_CTL_DONE_SHIFT) {
+			dev_info(&isp->pdev->dev,
+				"FW reset for authentication done!\n");
+			writel(0, isp->base + BUTTRESS_REG_FW_RESET_CTL);
+			/*
+			 * Leave some time for HW restore.
+			 */
+			usleep_range(100, 1000);
+			return 0;
+		}
+		usleep_range(100, 1000);
+	} while (!time_after(jiffies, tout_jfs));
+
+	dev_err(&isp->pdev->dev,
+		"Timed out while resetting authentication state!\n");
+
+	return -ETIMEDOUT;
+}
+
 int intel_ipu4_buttress_map_fw_image(struct intel_ipu4_bus_device *sys,
 				     const struct firmware *fw,
-					 struct sg_table *sgt)
+				     struct sg_table *sgt)
 {
 	struct page **pages;
 	const void *addr;

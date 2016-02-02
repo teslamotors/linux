@@ -84,6 +84,7 @@ void intel_ipu4_buttress_remove_psys_constraint(
 void intel_ipu4_buttress_set_secure_mode(struct intel_ipu4_device *isp);
 bool intel_ipu4_buttress_get_secure_mode(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp);
+int intel_ipu4_buttress_reset_authentication(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_start_tsc_sync(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val);
 u64 intel_ipu4_buttress_tsc_ticks_to_ns(u64 ticks);

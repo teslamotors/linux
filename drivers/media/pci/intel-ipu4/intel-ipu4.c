@@ -209,9 +209,17 @@ DEFINE_SIMPLE_ATTRIBUTE(force_suspend_fops, force_suspend_get,
 static int authenticate(void *data, u64 val)
 {
 	struct intel_ipu4_device *isp = data;
+	int ret;
 
 	if (!isp->secure_mode)
 		return -ENODEV;
+
+	ret = intel_ipu4_buttress_reset_authentication(isp);
+	if (ret) {
+		dev_err(&isp->pdev->dev,
+			"Failed to reset authentication!\n");
+		return ret;
+	}
 
 	return intel_ipu4_buttress_authenticate(isp);
 }
