@@ -1067,7 +1067,7 @@ static struct clk_init_data intel_ipu4_buttress_sensor_clk_data_b0[] = {
 		.name = "OSC_CLK_OUT0",
 		.ops = &intel_ipu4_buttress_clk_sensor_ops,
 		.parent_names = (const char *[]){
-			"intel_ipu4_sensor_pll"
+			"intel_ipu4_sensor_pll0"
 		},
 		.num_parents = 1,
 		.flags = CLK_SET_RATE_PARENT,
@@ -1076,7 +1076,7 @@ static struct clk_init_data intel_ipu4_buttress_sensor_clk_data_b0[] = {
 		.name = "OSC_CLK_OUT1",
 		.ops = &intel_ipu4_buttress_clk_sensor_ops,
 		.parent_names = (const char *[]){
-			"intel_ipu4_sensor_pll"
+			"intel_ipu4_sensor_pll1"
 		},
 		.num_parents = 1,
 		.flags = CLK_SET_RATE_PARENT,
@@ -1085,17 +1085,33 @@ static struct clk_init_data intel_ipu4_buttress_sensor_clk_data_b0[] = {
 		.name = "OSC_CLK_OUT2",
 		.ops = &intel_ipu4_buttress_clk_sensor_ops,
 		.parent_names = (const char *[]){
-			"intel_ipu4_sensor_pll"
+			"intel_ipu4_sensor_pll2"
 		},
 		.num_parents = 1,
 		.flags = CLK_SET_RATE_PARENT,
 	},
 };
 
-static struct clk_init_data intel_ipu4_buttress_sensor_pll_data = {
-	.name = "intel_ipu4_sensor_pll",
-	.ops = &intel_ipu4_buttress_clk_sensor_ops_parent,
+static struct clk_init_data intel_ipu4_buttress_sensor_pll_data_a0[] = {
+	{
+		.name = "intel_ipu4_sensor_pll",
+		.ops = &intel_ipu4_buttress_clk_sensor_ops_parent,
+	}
+};
 
+static struct clk_init_data intel_ipu4_buttress_sensor_pll_data_b0[] = {
+	{
+		.name = "intel_ipu4_sensor_pll0",
+		.ops = &intel_ipu4_buttress_clk_sensor_ops_parent,
+	},
+	{
+		.name = "intel_ipu4_sensor_pll1",
+		.ops = &intel_ipu4_buttress_clk_sensor_ops_parent,
+	},
+	{
+		.name = "intel_ipu4_sensor_pll2",
+		.ops = &intel_ipu4_buttress_clk_sensor_ops_parent,
+	},
 };
 
 static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
@@ -1105,20 +1121,39 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 		isp->pdev->dev.platform_data;
 	struct intel_ipu4_isys_clk_mapping *clkmap =
 		pdata ? pdata->clk_map : NULL;
-	struct clk_intel_ipu4_sensor *parent_clk =
-		devm_kzalloc(&isp->pdev->dev, sizeof(*parent_clk), GFP_KERNEL);
+	struct clk_init_data *clk_data_parent;
 	struct clk_init_data *clk_data;
 	int i, rval;
+	unsigned int num_plls;
 
-	if (!parent_clk)
-		return -ENOMEM;
+	clk_data_parent = is_intel_ipu4_hw_bxt_a0(isp) ?
+		intel_ipu4_buttress_sensor_pll_data_a0 :
+		intel_ipu4_buttress_sensor_pll_data_b0;
 
-	parent_clk->hw.init = &intel_ipu4_buttress_sensor_pll_data;
-	parent_clk->isp = isp;
+	num_plls = is_intel_ipu4_hw_bxt_a0(isp) ?
+		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_a0) :
+		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0);
 
-	b->pll_sensor = clk_register(NULL, &parent_clk->hw);
-	if (IS_ERR(b->pll_sensor))
-		return PTR_ERR(b->pll_sensor);
+	for (i = 0; i < num_plls; i++) {
+		struct clk_intel_ipu4_sensor *parent_clk =
+			devm_kzalloc(&isp->pdev->dev,
+				     sizeof(*parent_clk), GFP_KERNEL);
+
+		if (!parent_clk) {
+			rval = -ENOMEM;
+			goto err;
+		}
+
+		parent_clk->hw.init = &clk_data_parent[i];
+		parent_clk->isp = isp;
+		parent_clk->id = i;
+
+		b->pll_sensor[i] = clk_register(NULL, &parent_clk->hw);
+		if (IS_ERR(b->pll_sensor[i])) {
+			rval = PTR_ERR(b->pll_sensor[i]);
+			goto err;
+		}
+	}
 
 	clk_data = is_intel_ipu4_hw_bxt_a0(isp) ?
 		intel_ipu4_buttress_sensor_clk_data_a0 :
@@ -1126,6 +1161,7 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 
 	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++) {
 		char buffer[16]; /* max for clk_register_clkdev */
+		unsigned int parent_index;
 		struct clk_intel_ipu4_sensor *my_clk =
 			devm_kzalloc(&isp->pdev->dev, sizeof(*my_clk),
 				     GFP_KERNEL);
@@ -1134,6 +1170,9 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 			rval = -ENOMEM;
 			goto err;
 		}
+
+		if (i < num_plls)
+			parent_index = i;
 
 		my_clk->hw.init = &clk_data[i];
 
@@ -1155,7 +1194,8 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 			rval = clk_set_parent(b->clk_sensor[i],
 					      b->clk_sensor[1]);
 		else
-			rval = clk_set_parent(b->clk_sensor[i], b->pll_sensor);
+			rval = clk_set_parent(b->clk_sensor[i],
+					      b->pll_sensor[parent_index]);
 		if (rval)
 			goto err;
 
@@ -1189,10 +1229,12 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 	return 0;
 
 err:
-	for (; i >= 0; i--)
+	/* It is safe to call clk_unregister with null pointer */
+	for (i = INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS - 1; i >= 0; i--)
 		clk_unregister(b->clk_sensor[i]);
 
-	clk_unregister(b->pll_sensor);
+	for (i = num_plls - 1; i >= 0; i--)
+		clk_unregister(b->pll_sensor[i]);
 
 	return rval;
 }
@@ -1422,14 +1464,20 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 void intel_ipu4_buttress_exit(struct intel_ipu4_device *isp)
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
-	int i;
+	int i, num_plls;
+
+	num_plls = is_intel_ipu4_hw_bxt_a0(isp) ?
+		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_a0) :
+		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0);
 
 	writel(0, isp->base + BUTTRESS_REG_ISR_ENABLE);
 
+	/* It is safe to call clk_unregister with null pointer */
 	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++)
 		clk_unregister(b->clk_sensor[i]);
-	if (b->pll_sensor)
-		clk_unregister(b->pll_sensor);
+
+	for (i = 0; i < num_plls; i++)
+		clk_unregister(b->pll_sensor[i]);
 
 	mutex_destroy(&b->power_mutex);
 	mutex_destroy(&b->auth_mutex);

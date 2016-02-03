@@ -19,6 +19,7 @@
 #include "intel-ipu4.h"
 
 #define INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS	3
+#define INTEL_IPU4_BUTTRESS_NUM_OF_PLL_CKS	3
 
 struct intel_ipu4_buttress_ctrl {
 	u32 freq_ctl, pwr_sts_shift, pwr_sts_mask, pwr_sts_on,
@@ -31,7 +32,7 @@ struct intel_ipu4_buttress_ctrl {
 struct intel_ipu4_buttress {
 	struct mutex power_mutex, auth_mutex;
 	struct clk *clk_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS];
-	struct clk *pll_sensor;
+	struct clk *pll_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_PLL_CKS];
 	struct completion cse_ipc_complete;
 	struct completion ish_ipc_complete;
 	bool force_suspend;
