@@ -1329,8 +1329,9 @@ int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val)
 		tsc_lo_2 = readl(isp->base + BUTTRESS_REG_TSC_LO);
 		tsc_lo_3 = readl(isp->base + BUTTRESS_REG_TSC_LO);
 		tsc_chk = readl(isp->base + BUTTRESS_REG_TSC_HI);
-		if (tsc_chk == tsc_hi && tsc_lo_2 - tsc_lo_1 <= 1 &&
-		    tsc_lo_3 - tsc_lo_2 <= 1) {
+		if (tsc_chk == tsc_hi &&
+		    tsc_lo_1 <= tsc_lo_2 &&
+		    tsc_lo_3 >= tsc_lo_2) {
 			*val = (u64)tsc_hi << 32 | tsc_lo_2;
 			return 0;
 		}
