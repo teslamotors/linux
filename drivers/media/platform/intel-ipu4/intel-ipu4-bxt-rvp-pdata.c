@@ -30,6 +30,78 @@
  * Placeholder for possible bxt_rvp platform data for testing different
  * AOB etc. non bios supported configurations
  */
+/* Special camera AOB not yet supported by ACPI */
+/* #define CUSTOM_AOB */
+#ifdef CUSTOM_AOB
+#include "../../../../include/media/crlmodule.h"
+#define OV8856_LANES		4
+#define OV8856_I2C_ADDRESS	0x36
+#define IMX318_LANES		4
+#define IMX318_I2C_ADDRESS	0x1a
+
+static struct crlmodule_platform_data ov8856_pdata = {
+	.xshutdown = GPIO_BASE + 67,
+	.lanes = OV8856_LANES,
+	.ext_clk = 24000000,
+	.module_name = "OV8856"
+};
+static struct intel_ipu4_isys_csi2_config ov8856_csi2_cfg = {
+	.nlanes = OV8856_LANES,
+	.port = 0,
+};
+
+static struct intel_ipu4_isys_subdev_info ov8856_crl_sd = {
+	.csi2 = &ov8856_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 I2C_BOARD_INFO(CRLMODULE_NAME, OV8856_I2C_ADDRESS),
+			 .platform_data = &ov8856_pdata,
+		},
+		.i2c_adapter_id = 2,
+	},
+};
+
+static struct intel_ipu4_isys_csi2_config imx318_csi2_cfg = {
+	.nlanes = IMX318_LANES,
+	.port = 4,
+};
+
+static struct crlmodule_platform_data imx318_crl_pdata = {
+	.xshutdown = GPIO_BASE + 68,
+	.lanes = IMX318_LANES,
+	.ext_clk = 24000000,
+	.module_name = "SONY318A",
+};
+
+static struct intel_ipu4_isys_subdev_info imx318_crl_sd = {
+	.csi2 = &imx318_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 I2C_BOARD_INFO(CRLMODULE_NAME, IMX318_I2C_ADDRESS),
+			 .platform_data = &imx318_crl_pdata,
+		},
+		.i2c_adapter_id = 1,
+	},
+};
+
+
+static struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
+	{ CLKDEV_INIT("1-001a",  NULL, NULL), "OSC_CLK_OUT0" }, /* imx318 */
+	{ CLKDEV_INIT("2-0036",  NULL, NULL), "OSC_CLK_OUT1" }, /* ov8856 */
+	{ CLKDEV_INIT(NULL, NULL, NULL), NULL }
+};
+
+static struct intel_ipu4_isys_subdev_pdata pdata = {
+	.subdevs = (struct intel_ipu4_isys_subdev_info *[]) {
+		&ov8856_crl_sd,
+		&imx318_crl_sd,
+		NULL,
+	},
+	.clk_map = clk_mapping,
+};
+
+
+#else
 
 /*
  * Development time configuration
@@ -83,6 +155,7 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
 	.clk_map = clk_mapping,
 };
 
+#endif
 static void ipu4_quirk(struct pci_dev *pci_dev)
 {
 	pci_dev->dev.platform_data = &pdata;
