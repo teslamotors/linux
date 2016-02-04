@@ -32,7 +32,10 @@
 #include "intel-ipu4-trace.h"
 #include "intel-ipu4-wrapper.h"
 
+#ifdef IPU_STEP_BXTA0
 #include <ia_css_fw_release.h>
+#endif
+
 /* for IA_CSS_ISYS_STREAM_SRC_MIPIGEN_PORT0 */
 #include <ia_css_isysapi_fw_types.h>
 #include <ia_css_pkg_dir_types.h>
@@ -659,7 +662,9 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	isys_base = isp->base + isys_ipdata->hw_variant.offset;
 	psys_base = isp->base + psys_ipdata->hw_variant.offset;
 
+#ifdef IPU_STEP_BXTA0
 	dev_info(&pdev->dev, "CSS library release: %s\n", IA_CSS_FW_RELEASE);
+#endif
 
 	rval = pci_set_dma_mask(pdev, DMA_BIT_MASK(dma_mask));
 	if (!rval)
