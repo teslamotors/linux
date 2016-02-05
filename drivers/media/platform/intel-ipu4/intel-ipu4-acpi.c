@@ -25,7 +25,11 @@
 #include <media/crlmodule.h>
 #include <media/intel-ipu4-acpi.h>
 #include <media/lm3643.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 #include <media/smiapp.h>
+#else
+#include <media/i2c/smiapp.h>
+#endif
 
 #define HID_BUFFER_SIZE 32
 #define VCM_BUFFER_SIZE 32
