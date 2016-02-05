@@ -286,7 +286,7 @@ static int get_sensor_gpio(struct i2c_client *client)
 	struct gpio_desc *gpiod_xshutdown;
 	int gpio;
 
-	gpiod_xshutdown = gpiod_get_index(&client->dev, NULL, 0);
+	gpiod_xshutdown = gpiod_get_index(&client->dev, NULL, 0, GPIOD_ASIS);
 	if (IS_ERR(gpiod_xshutdown)) {
 		dev_err(&client->dev, "No xshutdown for sensor\n");
 		return -ENODEV;
@@ -383,7 +383,7 @@ static int get_lm3643_pdata(struct i2c_client *client,
 	if (!pdata)
 		return -ENOMEM;
 
-	gpiod_reset = gpiod_get_index(&client->dev, NULL, 0);
+	gpiod_reset = gpiod_get_index(&client->dev, NULL, 0, GPIOD_ASIS);
 	if (IS_ERR(gpiod_reset)) {
 		pdata->gpio_reset = -1;
 		dev_info(&client->dev, "No reset for lm3643\n");
