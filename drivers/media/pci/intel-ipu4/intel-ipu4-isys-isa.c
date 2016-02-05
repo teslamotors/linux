@@ -448,6 +448,38 @@ static void isa_prepare_firmware_stream_cfg(
 	struct intel_ipu4_isys_video *av,
 	struct ia_css_isys_stream_cfg_data *cfg)
 {
+#ifdef IPU_STEP_BXTB0
+	struct v4l2_rect *r;
+	unsigned int pad, cropping_location;
+
+	if (av == &av->isys->isa.av) {
+		pad = ISA_PAD_SOURCE;
+		cropping_location =
+			IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED;
+	} else if (av == &av->isys->isa.av_scaled) {
+		pad = ISA_PAD_SOURCE_SCALED;
+		cropping_location =
+			IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED;
+	} else {
+		BUG();
+	}
+
+	r = __intel_ipu4_isys_get_selection(&av->isys->isa.asd.sd, cfg,
+					    V4L2_SEL_TGT_CROP, pad,
+					    V4L2_SUBDEV_FORMAT_ACTIVE);
+
+	cfg->crop[cropping_location].top_offset = r->top;
+	cfg->crop[cropping_location].left_offset = r->left;
+	cfg->crop[cropping_location].bottom_offset = r->height;
+	cfg->crop[cropping_location].right_offset = r->width;
+#endif
+	intel_ipu4_isys_prepare_firmware_stream_cfg_default(av, cfg);
+}
+
+static void isa_prepare_firmware_stream_cfg_param(
+	struct intel_ipu4_isys_video *av,
+	struct ia_css_isys_stream_cfg_data *cfg)
+{
 	struct intel_ipu4_isys_isa *isa = &av->isys->isa;
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
@@ -900,7 +932,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 	isa->av.try_fmt_vid_mplane =
 		intel_ipu4_isys_video_try_fmt_vid_mplane_default;
 	isa->av.prepare_firmware_stream_cfg =
-		intel_ipu4_isys_prepare_firmware_stream_cfg_default;
+		isa_prepare_firmware_stream_cfg;
 	isa->av.aq.buf_prepare = intel_ipu4_isys_buf_prepare;
 	isa->av.aq.fill_frame_buff_set_pin =
 		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin;
@@ -922,7 +954,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 	isa->av_config.pfmts = isa_config_pfmts;
 	isa->av_config.try_fmt_vid_mplane = isa_config_try_fmt_vid_out_mplane;
 	isa->av_config.prepare_firmware_stream_cfg =
-		isa_prepare_firmware_stream_cfg;
+		isa_prepare_firmware_stream_cfg_param;
 	isa->av_config.vdev.ioctl_ops = &isa_config_ioctl_ops;
 	isa->av_config.aq.buf_init = isa_config_buf_init;
 	isa->av_config.aq.buf_cleanup = isa_config_buf_cleanup;
@@ -950,7 +982,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 	isa->av_3a.pfmts = isa_config_pfmts;
 	isa->av_3a.try_fmt_vid_mplane = isa_config_try_fmt_vid_out_mplane;
 	isa->av_3a.prepare_firmware_stream_cfg =
-		isa_prepare_firmware_stream_cfg;
+		isa_prepare_firmware_stream_cfg_param;
 	isa->av_3a.vdev.ioctl_ops = &isa_config_ioctl_ops;
 	isa->av_3a.aq.buf_init = isa_3a_buf_init;
 	isa->av_3a.aq.buf_cleanup = isa_3a_buf_cleanup;
@@ -979,7 +1011,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 	isa->av_scaled.try_fmt_vid_mplane =
 		intel_ipu4_isys_video_try_fmt_vid_mplane_default;
 	isa->av_scaled.prepare_firmware_stream_cfg =
-		intel_ipu4_isys_prepare_firmware_stream_cfg_default;
+		isa_prepare_firmware_stream_cfg;
 	isa->av_scaled.aq.buf_prepare = intel_ipu4_isys_buf_prepare;
 	isa->av_scaled.aq.fill_frame_buff_set_pin =
 		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin;
