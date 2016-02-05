@@ -722,17 +722,6 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 		.src = ip->source,
 		.vc = 0,
 		.isl_use = ip->isl_mode,
-		.crop[1] = {
-			/*
-			 * Library checks that 2nd slot has valid
-			 * data. One is enough for width and
-			 * height.
-			 */
-			.top_offset = 0,
-			.left_offset = 0,
-			.bottom_offset = 1,
-			.right_offset = 1,
-		},
 		.nof_input_pins = 1,
 	};
 	struct ia_css_isys_frame_buff_set buf = { };
