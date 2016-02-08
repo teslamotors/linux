@@ -763,6 +763,17 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 				 "can't create link between tpg and csi2_be\n");
 			goto fail;
 		}
+		if (csi2_be->nbes < 2)
+			continue;
+		rval = media_entity_create_link(
+			&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
+			&isys->csi2_be[INTEL_IPU4_BE_SOC].asd.sd.entity,
+			CSI2_BE_PAD_SINK, 0);
+		if (rval) {
+			dev_info(&isys->adev->dev,
+				 "can't create link between tpg and csi2_be soc\n");
+			goto fail;
+		}
 	}
 
 	rval = media_entity_create_link(
