@@ -982,9 +982,12 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 		type = ia_css_terminal_get_type(terminal);
 
 		switch (type) {
-		case IA_CSS_TERMINAL_TYPE_PARAM_CACHED:
+		case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN:
+		case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT:
 		case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN:
 		case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT:
+		case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_IN:
+		case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT:
 		case IA_CSS_TERMINAL_TYPE_PROGRAM:
 			buffer_state = IA_CSS_BUFFER_UNDEFINED;
 			break;
