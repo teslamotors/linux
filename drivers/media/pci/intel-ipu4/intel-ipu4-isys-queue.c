@@ -836,7 +836,7 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 	struct intel_ipu4_isys *isys =
 		container_of(ip, struct intel_ipu4_isys_video, ip)->isys;
 	struct intel_ipu4_isys_queue *aq = ip->output_pins[info->pin_id].aq;
-	struct intel_ipu4_isys_buffer *ib = NULL;
+	struct intel_ipu4_isys_buffer *ib;
 	struct vb2_buffer *vb;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
 	struct vb2_v4l2_buffer *vbuf;
