@@ -801,6 +801,7 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 	struct vb2_v4l2_buffer *vbuf;
 #endif
 	unsigned long flags;
+	bool first = true;
 
 	dev_dbg(&isys->adev->dev, "received buffer %8.8x\n", info->pin.addr);
 
@@ -811,37 +812,49 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 		return;
 	}
 
-	ib = list_last_entry(&aq->active,
-			     struct intel_ipu4_isys_buffer, head);
-	vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
-	dev_dbg(&isys->adev->dev, "found buffer %p\n",
-		(void *)vb2_dma_contig_plane_dma_addr(vb, 0));
+	list_for_each_entry_reverse(ib, &aq->active, head) {
+		dma_addr_t addr;
 
-	if (info->pin.addr != vb2_dma_contig_plane_dma_addr(vb, 0)) {
+		vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
+		addr = vb2_dma_contig_plane_dma_addr(vb, 0);
+
+		if (info->pin.addr != addr) {
+			if (first)
+				dev_err(&isys->adev->dev,
+					"WARNING: buffer address %pad expected!\n",
+					&addr);
+			first = false;
+			continue;
+		}
+
+		dev_dbg(&isys->adev->dev, "found buffer %pad\n", &addr);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+		if (ip->interlaced)
+			vb->v4l2_buf.field = ip->cur_field;
+		else
+			vb->v4l2_buf.field = V4L2_FIELD_NONE;
+#else
+		vbuf = to_vb2_v4l2_buffer(vb);
+
+		if (ip->interlaced)
+			vbuf->field = ip->cur_field;
+		else
+			vbuf->field = V4L2_FIELD_NONE;
+#endif
+
+		list_del(&ib->head);
 		spin_unlock_irqrestore(&aq->lock, flags);
-		dev_err(&isys->adev->dev, "buffer is not the expected on\n");
+		dev_dbg(&isys->adev->dev, "dequeued buffer %p\n", ib);
+
+		intel_ipu4_isys_queue_buf_done(ib, info);
 		return;
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
-	if (ip->interlaced)
-		vb->v4l2_buf.field = ip->cur_field;
-	else
-		vb->v4l2_buf.field = V4L2_FIELD_NONE;
-#else
-	vbuf = to_vb2_v4l2_buffer(vb);
+	dev_err(&isys->adev->dev,
+		"WARNING: cannot find a matching video buffer!\n");
 
-	if (ip->interlaced)
-		vbuf->field = ip->cur_field;
-	else
-		vbuf->field = V4L2_FIELD_NONE;
-#endif
-
-	list_del(&ib->head);
 	spin_unlock_irqrestore(&aq->lock, flags);
-	dev_dbg(&isys->adev->dev, "dequeued buffer %p\n", ib);
-
-	intel_ipu4_isys_queue_buf_done(ib, info);
 }
 
 struct vb2_ops intel_ipu4_isys_queue_ops = {
