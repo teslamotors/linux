@@ -464,7 +464,7 @@ static void isa_prepare_firmware_stream_cfg(
 		BUG();
 	}
 
-	r = __intel_ipu4_isys_get_selection(&av->isys->isa.asd.sd, cfg,
+	r = __intel_ipu4_isys_get_selection(&av->isys->isa.asd.sd, NULL,
 					    V4L2_SEL_TGT_CROP, pad,
 					    V4L2_SUBDEV_FORMAT_ACTIVE);
 
