@@ -470,8 +470,8 @@ static void isa_prepare_firmware_stream_cfg(
 
 	cfg->crop[cropping_location].top_offset = r->top;
 	cfg->crop[cropping_location].left_offset = r->left;
-	cfg->crop[cropping_location].bottom_offset = r->height;
-	cfg->crop[cropping_location].right_offset = r->width;
+	cfg->crop[cropping_location].bottom_offset = r->top + r->height;
+	cfg->crop[cropping_location].right_offset = r->left + r->width;
 #endif
 	intel_ipu4_isys_prepare_firmware_stream_cfg_default(av, cfg);
 }
