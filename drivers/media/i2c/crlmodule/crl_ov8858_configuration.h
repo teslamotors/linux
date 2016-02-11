@@ -68,9 +68,6 @@ static struct crl_register_write_rep ov8858_powerup_regset[] = {
 	{ 0x330D, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x330E, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x330F, CRL_REG_LEN_08BIT, 0x40 },
-	{ 0x3500, CRL_REG_LEN_08BIT, 0x00 },/* long exposure = 0x9A20 */
-	{ 0x3501, CRL_REG_LEN_08BIT, 0x9A },/* long exposure = 0x9A20 */
-	{ 0x3502, CRL_REG_LEN_08BIT, 0x20 },/* long exposure = 0x9A20 */
 	/*
 	 * Digital fraction gain delay option = Delay 1 frame,
 	 * Gain change delay option = Delay 1 frame,
@@ -79,7 +76,7 @@ static struct crl_register_write_rep ov8858_powerup_regset[] = {
 	 * Exposure delay option (must be 0 = Delay 1 frame,
 	 * Exposure change delay option (must be 0) = Delay 1 frame
 	 */
-	{ 0x3503, CRL_REG_LEN_08BIT, 0x80 },
+	{ 0x3503, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x3505, CRL_REG_LEN_08BIT, 0x80 },/* gain conversation option */
 	/*
 	 * [10:7] are integer gain, [6:0] are fraction gain. For example:
@@ -403,7 +400,6 @@ static struct crl_register_write_rep ov8858_powerup_regset[] = {
 };
 
 static struct crl_register_write_rep ov8858_mode_8m[] = {
-	{ 0x3501, CRL_REG_LEN_08BIT, 0x9a },
 	{ 0x382d, CRL_REG_LEN_08BIT, 0x20 },
 	{ 0x3808, CRL_REG_LEN_08BIT, 0x0C },/* h_output_size high 3280 x 2448 */
 	{ 0x3809, CRL_REG_LEN_08BIT, 0xc0 },/* h_output_size low */
@@ -416,7 +412,6 @@ static struct crl_register_write_rep ov8858_mode_8m[] = {
 };
 
 static struct crl_register_write_rep ov8858_mode_6m[] = {
-	{ 0x3501, CRL_REG_LEN_08BIT, 0x74 },
 	{ 0x382d, CRL_REG_LEN_08BIT, 0x80 },
 	{ 0x3808, CRL_REG_LEN_08BIT, 0x0C },/* h_output_size high 3280 x 1836 */
 	{ 0x3809, CRL_REG_LEN_08BIT, 0xc0 },/* h_output_size low */
@@ -429,7 +424,6 @@ static struct crl_register_write_rep ov8858_mode_6m[] = {
 };
 
 static struct crl_register_write_rep ov8858_mode_1080[] = {
-	{ 0x3501, CRL_REG_LEN_08BIT, 0x44 },
 	{ 0x382d, CRL_REG_LEN_08BIT, 0xa0 },
 	{ 0x3808, CRL_REG_LEN_08BIT, 0x07 },/* h_output_size high*/
 	{ 0x3809, CRL_REG_LEN_08BIT, 0x80 },/* h_output_size low */
