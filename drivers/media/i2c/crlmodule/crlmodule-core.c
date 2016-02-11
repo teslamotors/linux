@@ -779,13 +779,8 @@ static struct v4l2_ctrl_handler *__crlmodule_get_sd_ctrl_handler(
 {
 	switch (sd_type) {
 	case CRL_SUBDEV_TYPE_SCALER:
-		if (sensor->scaler)
-			return &sensor->scaler->ctrl_handler;
-		break;
-
 	case CRL_SUBDEV_TYPE_BINNER:
-		if (sensor->binner)
-			return &sensor->binner->ctrl_handler;
+		return &sensor->src->ctrl_handler;
 		break;
 
 	case CRL_SUBDEV_TYPE_PIXEL_ARRAY:
@@ -800,8 +795,8 @@ static struct v4l2_ctrl_handler *__crlmodule_get_sd_ctrl_handler(
 static int crlmodule_init_controls(struct crl_sensor *sensor)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
-	unsigned int pa_ctrls = CRL_MANDATORY_V4L2_CTRLS_PA; /* PixelRatePA */
-	unsigned int src_ctrls = CRL_MANDATORY_V4L2_CTRLS_SRC; /* linkfreq and PixelRateCSI */
+	unsigned int pa_ctrls = 0;
+	unsigned int src_ctrls = 0;
 	struct crl_v4l2_ctrl *crl_ctrl;
 	struct v4l2_ctrl_handler *ctrl_handler;
 	struct v4l2_ctrl_config cfg = { 0 };

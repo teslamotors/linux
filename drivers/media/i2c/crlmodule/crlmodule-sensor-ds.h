@@ -27,14 +27,6 @@
 #define CRL_SD_SCALER_INDEX			2
 
 /*
- * V4L2_CID_PIXEL_RATE for Pixel array, V4L2_CID_LINK_FREQ, and
- * V4L2_CID_PIXEL_RATE for src subdev are considered as mandatory controls as
- * all the fram calculations are based on these.
- */
-#define CRL_MANDATORY_V4L2_CTRLS_PA 1
-#define CRL_MANDATORY_V4L2_CTRLS_SRC 2
-
-/*
  * Flag denote to register update mode in CRL's v4l2 control handler
  * Denotes either replace register value completely or modify
  */
