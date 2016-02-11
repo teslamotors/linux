@@ -188,16 +188,18 @@ static irqreturn_t skl_interrupt(int irq, void *dev_id)
 	struct hdac_ext_bus *ebus = dev_id;
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	u32 status;
+	u32 mask, int_enable;
+	int ret = IRQ_NONE;
 
 	if (!pm_runtime_active(bus->dev))
-		return IRQ_NONE;
+		return ret;
 
 	spin_lock(&bus->reg_lock);
 
 	status = snd_hdac_chip_readl(bus, INTSTS);
 	if (status == 0 || status == 0xffffffff) {
 		spin_unlock(&bus->reg_lock);
-		return IRQ_NONE;
+		return ret;
 	}
 
 	/* clear rirb int */
@@ -208,9 +210,21 @@ static irqreturn_t skl_interrupt(int irq, void *dev_id)
 		snd_hdac_chip_writeb(bus, RIRBSTS, RIRB_INT_MASK);
 	}
 
-	spin_unlock(&bus->reg_lock);
+	mask = (0x1 << ebus->num_streams) - 1;
 
-	return snd_hdac_chip_readl(bus, INTSTS) ? IRQ_WAKE_THREAD : IRQ_HANDLED;
+	status = snd_hdac_chip_readl(bus, INTSTS);
+	status &= mask;
+	if (status) {
+		/* Disable stream interrupts; Re-enable in bottom half */
+		int_enable = snd_hdac_chip_readl(bus, INTCTL);
+		snd_hdac_chip_writel(bus, INTCTL, (int_enable & (~mask)));
+		ret = IRQ_WAKE_THREAD;
+	} else
+		ret = IRQ_HANDLED;
+
+	spin_unlock(&bus->reg_lock);
+	return ret;
+
 }
 
 static irqreturn_t skl_threaded_handler(int irq, void *dev_id)
@@ -218,11 +232,20 @@ static irqreturn_t skl_threaded_handler(int irq, void *dev_id)
 	struct hdac_ext_bus *ebus = dev_id;
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	u32 status;
+	u32 int_enable;
+	u32 mask;
+	unsigned long flags;
 
 	status = snd_hdac_chip_readl(bus, INTSTS);
 
 	snd_hdac_bus_handle_stream_irq(bus, status, skl_stream_update);
 
+	/* Re-enable stream interrupts */
+	mask = (0x1 << ebus->num_streams) - 1;
+	spin_lock_irqsave(&bus->reg_lock, flags);
+	int_enable = snd_hdac_chip_readl(bus, INTCTL);
+	snd_hdac_chip_writel(bus, INTCTL, (int_enable | mask));
+	spin_unlock_irqrestore(&bus->reg_lock, flags);
 	return IRQ_HANDLED;
 }
 
