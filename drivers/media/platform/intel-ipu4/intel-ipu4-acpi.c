@@ -20,6 +20,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/gpio/consumer.h>
 
 #include <media/crlmodule.h>
 #include <media/intel-ipu4-acpi.h>
