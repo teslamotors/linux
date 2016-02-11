@@ -334,6 +334,8 @@ static int update_crtc_state(struct drm_atomic_state *state,
 			     struct drm_crtc *crtc)
 {
 	struct drm_crtc_state *crtc_state;
+	struct drm_rgba bgcolor;
+	unsigned int bg_color = i915_modparams.bg_color;
 	int ret;
 
 	crtc_state = drm_atomic_get_crtc_state(state, crtc);
@@ -351,6 +353,16 @@ static int update_crtc_state(struct drm_atomic_state *state,
 	if (!IS_GEN9(to_i915(state->dev)))
 	    return 0;
 
+	/* Set the background color based on module parameter */
+	bgcolor =drm_rgba(8,
+			  (bg_color & 0x000000ff),
+			  (bg_color & 0x0000ff00) >> 8,
+			  (bg_color & 0x00ff0000) >> 16,
+			  (bg_color & 0xff000000) >> 24);
+
+	ret = drm_atomic_crtc_set_property(crtc, crtc_state,
+					   state->dev->mode_config.prop_background_color,
+					   bgcolor.v);
 	WARN_ON(ret);
 
 	return 0;

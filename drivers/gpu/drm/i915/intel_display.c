@@ -3866,6 +3866,26 @@ static void intel_update_pipe_config(struct intel_crtc *crtc,
 	}
 }
 
+static void intel_update_background_color(struct intel_crtc *crtc)
+{
+	struct drm_device *dev = crtc->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_crtc_state *pipe_config =
+		to_intel_crtc_state(crtc->base.state);
+	struct drm_rgba background = pipe_config->base.background_color;
+	uint32_t val;
+
+	if (INTEL_GEN(dev_priv) >= 9) {
+		/* BGR 16bpc ==> RGB 10bpc */
+		val = DRM_RGBA_REDBITS(background, 10) << 20
+		    | DRM_RGBA_GREENBITS(background, 10) << 10
+		    | DRM_RGBA_BLUEBITS(background, 10);
+
+
+		I915_WRITE(PIPE_BOTTOM_COLOR(crtc->pipe), val);
+	}
+}
+
 static void intel_fdi_normal_train(struct intel_crtc *crtc)
 {
 	struct drm_device *dev = crtc->base.dev;
@@ -10655,6 +10675,11 @@ static int intel_crtc_atomic_check(struct drm_crtc *crtc,
 							 pipe_config);
 	}
 
+	if (crtc->state->background_color.v != crtc_state->background_color.v) {
+		pipe_config->update_pipe = true;
+		crtc_state->planes_changed = true;
+	}
+
 	return ret;
 }
 
@@ -13002,6 +13027,9 @@ static void intel_begin_crtc_commit(struct drm_crtc *crtc,
 	/* Perform vblank evasion around commit operation */
 	intel_pipe_update_start(intel_crtc);
 
+	if (to_intel_crtc_state(crtc->state)->update_pipe)
+		intel_update_background_color(intel_crtc);
+
 	if (modeset)
 		goto out;
 
@@ -13615,6 +13643,20 @@ static void intel_crtc_init_scalers(struct intel_crtc *crtc,
 	scaler_state->scaler_id = -1;
 }
 
+static void intel_create_background_color_property(struct drm_device *dev,
+						   struct intel_crtc *crtc)
+{
+	if (!dev->mode_config.prop_background_color)
+		dev->mode_config.prop_background_color =
+			drm_mode_create_background_color_property(dev);
+	if (!dev->mode_config.prop_background_color)
+		return;
+
+	drm_object_attach_property(&crtc->base.base,
+				   dev->mode_config.prop_background_color,
+				   crtc->base.state->background_color.v);
+}
+
 static int intel_crtc_init_restrict_planes(struct drm_i915_private *dev_priv,
 					   enum pipe pipe, int planes_mask)
 {
@@ -13757,6 +13799,12 @@ static int intel_crtc_init(struct drm_i915_private *dev_priv, enum pipe pipe)
 	intel_color_init(&intel_crtc->base);
 
 	WARN_ON(drm_crtc_index(&intel_crtc->base) != intel_crtc->pipe);
+
+	if (INTEL_GEN(dev_priv) >= 9) {
+		crtc_state->base.background_color = drm_rgba(16, 0, 0, 0, 0);
+		intel_create_background_color_property(&dev_priv->drm,
+						       intel_crtc);
+	}
 
 	return 0;
 

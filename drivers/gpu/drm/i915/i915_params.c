@@ -81,6 +81,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.splash = NULL,
 	.avail_planes_per_pipe = 0,
 	.domain_plane_owners = 0,
+	.bg_color = 0x00000000,
 };
 
 i915_param_named(modeset, int, 0400,
@@ -313,4 +314,8 @@ MODULE_PARM_DESC(domain_plane_owners, "plane owners for each domain and for each
 		ids can be from 0-F,  eg: domain_plane_owners = 0x022111000010 \
 		  planes owner: 3C:2 2C:2 1C:1 4B:1 3B:1 2B:1 1B:0 4A:0 3A:0 2A:1 1A:0 \
 		  (0x0 - default value)");
+
+module_param_named_unsafe(bg_color, i915_modparams.bg_color, uint, 0400);
+MODULE_PARM_DESC(bg_color, "Set the background (canvas) color");
+
 

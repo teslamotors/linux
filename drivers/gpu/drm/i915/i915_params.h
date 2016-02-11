@@ -57,6 +57,7 @@
 	func(char *, splash); \
 	func(unsigned int, avail_planes_per_pipe); \
 	func(unsigned long long, domain_plane_owners); \
+	func(unsigned int, bg_color); \
 	/* leave bools at the end to not create holes */ \
 	func(bool, alpha_support); \
 	func(bool, enable_cmd_parser); \
