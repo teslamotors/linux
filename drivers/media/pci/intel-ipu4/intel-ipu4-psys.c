@@ -1661,7 +1661,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	isp->pkg_dir_dma_addr = psys->pkg_dir_dma_addr;
 	isp->pkg_dir_size = psys->pkg_dir_size;
 
-	psys->syscom_config = ia_css_psys_specify();
+	*psys->syscom_config = *ia_css_psys_specify();
 	psys->syscom_config->specific_addr = psys->server_init;
 	psys->syscom_config->specific_size =
 		sizeof(struct ia_css_psys_server_init);
