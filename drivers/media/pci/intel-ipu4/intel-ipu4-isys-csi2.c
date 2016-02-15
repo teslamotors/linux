@@ -445,6 +445,7 @@ static int get_metadata_fmt(struct v4l2_subdev *sd,
 			entry.size.two_dim.width * entry.bpp / BITS_PER_BYTE;
 		fmt->format.height = entry.size.two_dim.height;
 		fmt->format.code = entry.pixelcode;
+		fmt->format.field = V4L2_FIELD_NONE;
 	}
 	return rval;
 }
@@ -519,6 +520,7 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 				/ BITS_PER_BYTE;
 			ffmt->height = entry.size.two_dim.height;
 			ffmt->code = entry.pixelcode;
+			ffmt->field = V4L2_FIELD_NONE;
 		}
 	} else {
 		intel_ipu4_isys_subdev_set_ffmt_default(sd, cfg, fmt);
