@@ -161,6 +161,11 @@ static struct lm3643_gpio *lm3643_get_gpio(int gpio_num, struct device *dev)
 	struct lm3643_gpio *tmp;
 	int rval;
 
+	if (gpio_num < 0) {
+		dev_err(dev, "Invalid GPIO\n");
+		return NULL;
+	}
+
 	mutex_lock(&lm3643_gpio_mutex);
 
 	list_for_each_entry_safe(gpio, tmp, &lm3643_gpios, list) {
