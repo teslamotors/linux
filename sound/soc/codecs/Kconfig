@@ -903,7 +903,7 @@ config SND_SOC_TAS5720
 	  Class-D audio power amplifiers.
 
 config SND_SOC_TDF8532
-        tristate
+        tristate "NXP Semiconductors TDF8532 Codec"
         depends on I2C
 
 config SND_SOC_TFA9879
