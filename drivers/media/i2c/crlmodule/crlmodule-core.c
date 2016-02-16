@@ -387,6 +387,9 @@ static int __crlmodule_calc_dynamic_entity_values(
 		case CRL_ADD:
 			*val += operand;
 			break;
+		case CRL_SUBTRACT:
+			*val = *val > operand ? *val - operand : operand - *val;
+			break;
 		case CRL_MULTIPLY:
 			*val *= operand;
 			break;
