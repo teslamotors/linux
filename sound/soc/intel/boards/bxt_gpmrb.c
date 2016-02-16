@@ -328,6 +328,13 @@ static struct snd_soc_card broxton_gpmrb = {
 
 static int broxton_audio_probe(struct platform_device *pdev)
 {
+/*
+ * WORKAROUND
+ * Required to set the proper pin ownership with BIOS
+ * version BXTI_IFWI_X64_R_2015_10_13_1544 or BXTI_IFWI_X64_D_2015_10_13_1544
+ */
+#if CONFIG_SND_SOC_BXT_GPMRB_MACH_BIOS
+
 	char *gpio_addr, *mclk_addr;
 	u32 gpio_value = 0;
 	u32 mclk_value = 0;
@@ -450,7 +457,7 @@ static int broxton_audio_probe(struct platform_device *pdev)
 
 	iounmap(gpio_addr);
 	iounmap(mclk_addr);
-
+#endif /* CONFIG_SND_SOC_BXT_GPMRB_MACH_BIOS*/
 
 	broxton_gpmrb.dev = &pdev->dev;
 	return snd_soc_register_card(&broxton_gpmrb);
