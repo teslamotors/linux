@@ -93,6 +93,7 @@ struct intel_ipu4_psys_kcmd {
 	uint32_t id;
 	uint64_t issue_id;
 	uint32_t priority;
+	struct intel_ipu4_buttress_constraint constraint;
 
 	struct intel_ipu4_psys_resource_alloc resource_alloc;
 	struct intel_ipu4_psys_event ev;

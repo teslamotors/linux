@@ -44,6 +44,7 @@
 
 #include "intel-ipu4.h"
 #include "intel-ipu4-bus.h"
+#include "intel-ipu4-buttress.h"
 #include "intel-ipu4-cpd.h"
 #include "intel-ipu4-psys.h"
 #include "intel-ipu4-wrapper.h"
@@ -800,6 +801,11 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 	kcmd->ev.issue_id = kcmd->issue_id;
 	kcmd->ev.error = error;
 	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority);
+
+	if (kcmd->constraint.min_freq)
+		intel_ipu4_buttress_remove_psys_constraint(psys->adev->isp,
+							   &kcmd->constraint);
+
 	intel_ipu4_psys_release_kcmd(kcmd);
 	list_move(&kcmd->list, &kcmd->fh->eventq);
 	complete(&kcmd->cmd_complete);
@@ -953,6 +959,12 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 	init_timer(&kcmd->watchdog);
 	kcmd->watchdog.data = (unsigned long)kcmd;
 	kcmd->watchdog.function = &intel_ipu4_psys_watchdog;
+
+	if (cmd->min_psys_freq) {
+		kcmd->constraint.min_freq = cmd->min_psys_freq;
+		intel_ipu4_buttress_add_psys_constraint(psys->adev->isp,
+							&kcmd->constraint);
+	}
 
 	pg_size = ia_css_process_group_get_size(kcmd->pg);
 	if (pg_size > kcmd->pg_size) {

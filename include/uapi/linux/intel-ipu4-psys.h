@@ -72,6 +72,7 @@ struct intel_ipu4_psys_buffer {
  * @buffers:		userspace pointers to array of DMA-BUF handles
  * @pg_manifest_size:	size of program group manifest
  * @bufcount:		number of buffers in buffers array
+ * @min_psys_freq:	minimum psys frequency in MHz used for this cmd
  *
  * Specifies a processing command with input and output buffers.
  */
@@ -84,7 +85,8 @@ struct intel_ipu4_psys_command {
 	int __user *buffers;
 	uint32_t pg_manifest_size;
 	uint32_t bufcount;
-	uint32_t reserved[3];
+	uint32_t min_psys_freq;
+	uint32_t reserved[2];
 } __attribute__ ((packed));
 
 struct intel_ipu4_psys_manifest {

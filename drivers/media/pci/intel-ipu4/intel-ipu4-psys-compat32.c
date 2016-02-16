@@ -45,7 +45,8 @@ struct intel_ipu4_psys_command32 {
 	compat_uptr_t buffers;
 	uint32_t pg_manifest_size;
 	uint32_t bufcount;
-	uint32_t reserved[3];
+	uint32_t min_psys_freq;
+	uint32_t reserved[2];
 } __packed;
 
 struct intel_ipu4_psys_manifest32 {
@@ -68,7 +69,8 @@ static int get_intel_ipu4_psys_command32(struct intel_ipu4_psys_command *kp,
 	    get_user(bufs, &up->buffers) ||
 	    get_user(kp->pg, &up->pg) ||
 	    get_user(kp->pg_manifest_size, &up->pg_manifest_size) ||
-	    get_user(kp->bufcount, &up->bufcount))
+	    get_user(kp->bufcount, &up->bufcount) ||
+	    get_user(kp->min_psys_freq, &up->min_psys_freq))
 		return -EFAULT;
 
 	kp->pg_manifest = compat_ptr(pgm);
