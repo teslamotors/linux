@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
+config GPMRB_BRD
+    bool "Support for GP I2C registration"
+
 # Select 32 or 64 bit
 config 64BIT
 	bool "64-bit kernel" if ARCH = "x86"
