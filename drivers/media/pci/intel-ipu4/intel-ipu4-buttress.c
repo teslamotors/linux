@@ -59,6 +59,13 @@
 #define INTEL_IPU4_BUTTRESS_TSC_LIMIT	20
 #define INTEL_IPU4_BUTTRESS_TSC_RETRY	10
 
+#define BUTTRESS_PS_FREQ_STEP		25U
+#define BUTTRESS_MIN_PS_FREQ		(BUTTRESS_PS_FREQ_STEP *	\
+					 PS_FREQ_CTL_DEFAULT_RATIO_B0)
+#define BUTTRESS_MAX_PS_FREQ		600U
+#define BUTTRESS_MIN_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 8)
+#define BUTTRESS_MAX_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 32)
+
 const struct intel_ipu4_buttress_sensor_clk_freq sensor_clk_freqs[] = {
 	{ 6750000, BUTTRESS_SENSOR_CLK_FREQ_6P75MHZ },
 	{ 8000000, BUTTRESS_SENSOR_CLK_FREQ_8MHZ },
@@ -617,6 +624,55 @@ out_mutex_unlock:
 	mutex_unlock(&isp->buttress.power_mutex);
 }
 
+static void intel_ipu4_buttress_set_psys_freq(struct intel_ipu4_device *isp,
+					      unsigned int freq)
+{
+	unsigned int psys_ratio = freq / BUTTRESS_PS_FREQ_STEP;
+
+	intel_ipu4_buttress_set_psys_ratio(isp, psys_ratio, psys_ratio);
+}
+
+void intel_ipu4_buttress_add_psys_constraint(
+	struct intel_ipu4_device *isp,
+	struct intel_ipu4_buttress_constraint *constraint)
+{
+	mutex_lock(&isp->buttress.cons_mutex);
+	list_add(&constraint->list, &isp->buttress.constraints);
+
+	if (constraint->min_freq > isp->buttress.psys_min_freq) {
+		isp->buttress.psys_min_freq = min(constraint->min_freq,
+						  BUTTRESS_MAX_PS_FREQ);
+		intel_ipu4_buttress_set_psys_freq(isp,
+						  isp->buttress.psys_min_freq);
+	}
+	mutex_unlock(&isp->buttress.cons_mutex);
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_buttress_add_psys_constraint);
+
+void intel_ipu4_buttress_remove_psys_constraint(
+	struct intel_ipu4_device *isp,
+	struct intel_ipu4_buttress_constraint *constraint)
+{
+	struct intel_ipu4_buttress_constraint *c;
+	unsigned int min_freq = 0;
+
+	mutex_lock(&isp->buttress.cons_mutex);
+	list_del(&constraint->list);
+
+	if (constraint->min_freq >= isp->buttress.psys_min_freq) {
+		list_for_each_entry(c, &isp->buttress.constraints, list)
+			if (c->min_freq > min_freq)
+				min_freq = c->min_freq;
+		isp->buttress.psys_min_freq =
+			clamp(min_freq, BUTTRESS_MIN_PS_FREQ,
+			      BUTTRESS_MAX_PS_FREQ);
+		intel_ipu4_buttress_set_psys_freq(
+			isp, isp->buttress.psys_min_freq);
+	}
+	mutex_unlock(&isp->buttress.cons_mutex);
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_buttress_remove_psys_constraint);
+
 int intel_ipu4_buttress_map_fw_image(struct intel_ipu4_bus_device *sys,
 				     const struct firmware *fw,
 					 struct sg_table *sgt)
@@ -1142,6 +1198,8 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 	int i, rval;
 	unsigned int num_plls;
 
+	isp->buttress.psys_min_freq = BUTTRESS_MIN_PS_FREQ;
+
 	clk_data_parent = is_intel_ipu4_hw_bxt_a0(isp) ?
 		intel_ipu4_buttress_sensor_pll_data_a0 :
 		intel_ipu4_buttress_sensor_pll_data_b0;
@@ -1472,14 +1530,18 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 
 	mutex_init(&b->power_mutex);
 	mutex_init(&b->auth_mutex);
+	mutex_init(&b->cons_mutex);
 	spin_lock_init(&b->tsc_lock);
 	init_completion(&b->ish_ipc_complete);
 	init_completion(&b->cse_ipc_complete);
+
+	INIT_LIST_HEAD(&b->constraints);
 
 	rval = intel_ipu4_buttress_clk_init(isp);
 	if (rval) {
 		mutex_destroy(&b->power_mutex);
 		mutex_destroy(&b->auth_mutex);
+		mutex_destroy(&b->cons_mutex);
 		return rval;
 	}
 
@@ -1528,4 +1590,5 @@ void intel_ipu4_buttress_exit(struct intel_ipu4_device *isp)
 
 	mutex_destroy(&b->power_mutex);
 	mutex_destroy(&b->auth_mutex);
+	mutex_destroy(&b->cons_mutex);
 }

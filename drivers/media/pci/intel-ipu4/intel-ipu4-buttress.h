@@ -31,12 +31,14 @@ struct intel_ipu4_buttress_ctrl {
 };
 
 struct intel_ipu4_buttress {
-	struct mutex power_mutex, auth_mutex;
+	struct mutex power_mutex, auth_mutex, cons_mutex;
 	spinlock_t tsc_lock;
 	struct clk *clk_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS];
 	struct clk *pll_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_PLL_CKS];
 	struct completion cse_ipc_complete;
 	struct completion ish_ipc_complete;
+	struct list_head constraints;
+	unsigned int psys_min_freq;
 	bool force_suspend;
 	bool ps_started;
 };
@@ -53,6 +55,11 @@ enum intel_ipu4_buttress_ipc_domain {
 	INTEL_IPU4_BUTTRESS_IPC_ISH,
 };
 
+struct intel_ipu4_buttress_constraint {
+	struct list_head list;
+	unsigned int min_freq;
+};
+
 int intel_ipu4_buttress_map_fw_image(struct intel_ipu4_bus_device *sys,
 				     const struct firmware *fw,
 				     struct sg_table *sgt);
@@ -63,6 +70,12 @@ int intel_ipu4_buttress_power(struct device *dev,
 void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
 					unsigned int psys_divisor,
 					unsigned int psys_qos_floor);
+void intel_ipu4_buttress_add_psys_constraint(
+	struct intel_ipu4_device *isp,
+	struct intel_ipu4_buttress_constraint *constraint);
+void intel_ipu4_buttress_remove_psys_constraint(
+	struct intel_ipu4_device *isp,
+	struct intel_ipu4_buttress_constraint *constraint);
 int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_start_tsc_sync(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val);
