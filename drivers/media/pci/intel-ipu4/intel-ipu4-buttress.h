@@ -16,6 +16,7 @@
 #define INTEL_IPU4_BUTTRESS_H
 
 #include <linux/interrupt.h>
+#include <linux/spinlock.h>
 #include "intel-ipu4.h"
 
 #define INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS	3
@@ -31,6 +32,7 @@ struct intel_ipu4_buttress_ctrl {
 
 struct intel_ipu4_buttress {
 	struct mutex power_mutex, auth_mutex;
+	spinlock_t tsc_lock;
 	struct clk *clk_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS];
 	struct clk *pll_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_PLL_CKS];
 	struct completion cse_ipc_complete;

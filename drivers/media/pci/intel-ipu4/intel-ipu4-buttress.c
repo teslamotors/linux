@@ -56,6 +56,9 @@
 
 #define BUTTRESS_IPC_TX_TIMEOUT			1000
 
+#define INTEL_IPU4_BUTTRESS_TSC_LIMIT	20
+#define INTEL_IPU4_BUTTRESS_TSC_RETRY	10
+
 const struct intel_ipu4_buttress_sensor_clk_freq sensor_clk_freqs[] = {
 	{ 6750000, BUTTRESS_SENSOR_CLK_FREQ_6P75MHZ },
 	{ 8000000, BUTTRESS_SENSOR_CLK_FREQ_8MHZ },
@@ -1315,10 +1318,13 @@ DEFINE_SIMPLE_ATTRIBUTE(intel_ipu4_buttress_start_tsc_sync_fops,
 
 int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val)
 {
+	struct intel_ipu4_buttress *b = &isp->buttress;
 	u32 tsc_hi, tsc_lo_1, tsc_lo_2, tsc_lo_3, tsc_chk = 0;
-	short retry = 10;
+	unsigned long flags;
+	short retry = INTEL_IPU4_BUTTRESS_TSC_RETRY;
 
 	do {
+		spin_lock_irqsave(&b->tsc_lock, flags);
 		tsc_hi = readl(isp->base + BUTTRESS_REG_TSC_HI);
 
 		/*
@@ -1329,16 +1335,23 @@ int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val)
 		tsc_lo_2 = readl(isp->base + BUTTRESS_REG_TSC_LO);
 		tsc_lo_3 = readl(isp->base + BUTTRESS_REG_TSC_LO);
 		tsc_chk = readl(isp->base + BUTTRESS_REG_TSC_HI);
+		spin_unlock_irqrestore(&b->tsc_lock, flags);
 		if (tsc_chk == tsc_hi &&
-		    tsc_lo_1 <= tsc_lo_2 &&
-		    tsc_lo_3 >= tsc_lo_2) {
+		    tsc_lo_2 - tsc_lo_1 <= INTEL_IPU4_BUTTRESS_TSC_LIMIT &&
+		    tsc_lo_3 - tsc_lo_2 <= INTEL_IPU4_BUTTRESS_TSC_LIMIT) {
 			*val = (u64)tsc_hi << 32 | tsc_lo_2;
 			return 0;
 		}
-		dev_err(&isp->pdev->dev,
-			"failure: tsc_hi = %u, tsc_chk %u, tsc_lo_1 = %u, "
-			"tsc_lo_2 = %u, tsc_lo_3 = %u\n",
-			tsc_hi, tsc_chk, tsc_lo_1, tsc_lo_2, tsc_lo_3);
+
+		/*
+		 * Trace error only if limit checkings fails at least
+		 *  by two consecutive readings.
+		 */
+		if (retry < INTEL_IPU4_BUTTRESS_TSC_RETRY - 1)
+			dev_err(&isp->pdev->dev,
+				"failure: tsc_hi = %u, tsc_chk %u, tsc_lo_1 = %u"
+				", tsc_lo_2 = %u, tsc_lo_3 = %u",
+				tsc_hi, tsc_chk, tsc_lo_1, tsc_lo_2, tsc_lo_3);
 	} while (retry--);
 
 	WARN_ON_ONCE(1);
@@ -1434,6 +1447,7 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 
 	mutex_init(&b->power_mutex);
 	mutex_init(&b->auth_mutex);
+	spin_lock_init(&b->tsc_lock);
 	init_completion(&b->ish_ipc_complete);
 	init_completion(&b->cse_ipc_complete);
 
