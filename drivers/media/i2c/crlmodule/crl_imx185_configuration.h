@@ -542,16 +542,52 @@ static struct crl_arithmetic_ops imx185_hflip_ops[] = {
 	}
 };
 
+static struct crl_arithmetic_ops imx185_exposure_lsb_ops[] = {
+	/* shutter = fll - exposure -1 */
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 1,
+	}
+};
+
 static struct crl_arithmetic_ops imx185_exposure_msb_ops[] = {
 	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 1,
+	},
+	{
 		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
 		.operand.entity_val = 8,
 	}
 };
 
 static struct crl_arithmetic_ops imx185_exposure_hsb_ops[] = {
 	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 1,
+	},
+	{
 		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
 		.operand.entity_val = 16,
 	}
 };
@@ -567,13 +603,6 @@ static struct crl_arithmetic_ops imx185_fll_hsb_ops[] = {
 	{
 		.op = CRL_BITWISE_RSHIFT,
 		.operand.entity_val = 16,
-	}
-};
-
-static struct crl_arithmetic_ops imx185_llp_msb_ops[] = {
-	{
-		.op = CRL_BITWISE_RSHIFT,
-		.operand.entity_val = 8,
 	}
 };
 
@@ -608,12 +637,15 @@ static struct crl_dynamic_register_access imx185_ana_gain_global_regs[] = {
 };
 
 static struct crl_dynamic_register_access imx185_exposure_regs[] = {
-	/* Use 8bits length since 16bits or 24bits access will fail */
+	/*
+	 * Use 8bits access since 24bits or 32bits access will fail
+	 * TODO: root cause the 24bits and 32bits access issues
+	 */
 	{
 		.address = 0x3020,
 		.len = CRL_REG_LEN_08BIT,
-		.ops_items = 0,
-		.ops = 0,
+		.ops_items = ARRAY_SIZE(imx185_exposure_lsb_ops),
+		.ops = imx185_exposure_lsb_ops,
 		.mask = 0xff,
 	},
 	{
@@ -629,11 +661,14 @@ static struct crl_dynamic_register_access imx185_exposure_regs[] = {
 		.ops_items = ARRAY_SIZE(imx185_exposure_hsb_ops),
 		.ops = imx185_exposure_hsb_ops,
 		.mask = 0x1,
-	},
+	}
 };
 
 static struct crl_dynamic_register_access imx185_fll_regs[] = {
-	/* Use 8bits length since 16bits or 24bits access will fail */
+	/*
+	 * Use 8bits access since 24bits or 32bits access will fail
+	 * TODO: root cause the 24bits and 32bits access issues
+	 */
 	{
 		.address = 0x3018,
 		.len = CRL_REG_LEN_08BIT,
@@ -658,21 +693,13 @@ static struct crl_dynamic_register_access imx185_fll_regs[] = {
 };
 
 static struct crl_dynamic_register_access imx185_llp_regs[] = {
-	/* Use 8bits length since 16bits or 24bits access will fail */
 	{
 		.address = 0x301b,
-		.len = CRL_REG_LEN_08BIT,
+		.len = CRL_REG_LEN_16BIT,
 		.ops_items = 0,
 		.ops = 0,
-		.mask = 0xff,
-	},
-	{
-		.address = 0x301c,
-		.len = CRL_REG_LEN_08BIT,
-		.ops_items = ARRAY_SIZE(imx185_llp_msb_ops),
-		.ops = imx185_llp_msb_ops,
-		.mask = 0xff,
-	},
+		.mask = 0xffff,
+	}
 };
 
 /* Needed for acpi support for runtime detection */
