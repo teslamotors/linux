@@ -594,6 +594,11 @@ void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
 	struct intel_ipu4_buttress_ctrl *ctrl = isp->psys_iommu->ctrl;
 
 	mutex_lock(&isp->buttress.power_mutex);
+
+	if (ctrl->divisor == psys_divisor &&
+	    ctrl->qos_floor == psys_qos_floor)
+		goto out_mutex_unlock;
+
 	ctrl->divisor = psys_divisor;
 	ctrl->qos_floor = psys_qos_floor;
 
@@ -608,6 +613,7 @@ void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
 		       psys_divisor, isp->base + BUTTRESS_REG_PS_FREQ_CTL);
 	}
 
+out_mutex_unlock:
 	mutex_unlock(&isp->buttress.power_mutex);
 }
 
