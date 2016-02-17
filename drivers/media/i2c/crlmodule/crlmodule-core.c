@@ -1282,52 +1282,43 @@ static int crlmodule_get_format(struct v4l2_subdev *subdev,
 	return rval;
 }
 
-/*
- * Function main code replicated from /drivers/media/i2c/smiapp/smiapp-core.c
- * Slightly modified based on the CRL Module changes
- */
-static int crlmodule_get_selection(struct v4l2_subdev *subdev,
-				struct v4l2_subdev_pad_config *cfg,
-				struct v4l2_subdev_selection *sel)
-{
-	/* TODO Handle this */
-	return -EINVAL;
-}
-
-/*
- * Function main code replicated from /drivers/media/i2c/smiapp/smiapp-core.c
- * Slightly modified based on the CRL Module changes
- */
 static int __crlmodule_sel_supported(struct v4l2_subdev *subdev,
 				  struct v4l2_subdev_selection *sel)
 {
 	struct crl_subdev *ssd = to_crlmodule_subdev(subdev);
-	struct crl_sensor *sensor = ssd->sensor;
+	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
 
-	/* We only implement crop in three places. */
-	switch (sel->target) {
-	case V4L2_SEL_TGT_CROP:
-	case V4L2_SEL_TGT_CROP_BOUNDS:
-		if (ssd == sensor->pixel_array
-		    && sel->pad == CRL_PA_PAD_SRC)
+	if (ssd == sensor->pixel_array
+		    && sel->pad == CRL_PA_PAD_SRC) {
+		switch (sel->target) {
+		case V4L2_SEL_TGT_NATIVE_SIZE:
+		case V4L2_SEL_TGT_CROP:
+		case V4L2_SEL_TGT_CROP_BOUNDS:
 			return 0;
-		if (ssd == sensor->src
-		    && sel->pad == CRL_PAD_SRC)
-			return 0;
-		if (ssd == sensor->scaler
-		    && sel->pad == CRL_PAD_SINK)
-			return 0;
-		return -EINVAL;
-	case V4L2_SEL_TGT_COMPOSE:
-	case V4L2_SEL_TGT_COMPOSE_BOUNDS:
-		if (sel->pad == ssd->source_pad)
-			return -EINVAL;
-		if (ssd == sensor->binner || ssd == sensor->scaler)
-			return 0;
-		/* Fall through */
-	default:
-		return -EINVAL;
+		}
 	}
+	if (ssd == sensor->binner) {
+		switch (sel->target) {
+		case V4L2_SEL_TGT_COMPOSE:
+		case V4L2_SEL_TGT_COMPOSE_BOUNDS:
+			if (sel->pad == CRL_PAD_SINK)
+				return 0;
+		}
+	}
+	if (ssd == sensor->scaler) {
+		switch (sel->target) {
+		case V4L2_SEL_TGT_CROP:
+		case V4L2_SEL_TGT_CROP_BOUNDS:
+			if (sel->pad == CRL_PAD_SRC)
+				return 0;
+		break;
+		case V4L2_SEL_TGT_COMPOSE:
+		case V4L2_SEL_TGT_COMPOSE_BOUNDS:
+			if (sel->pad == CRL_PAD_SINK)
+				return 0;
+		}
+	}
+	return -EINVAL;
 }
 
 /*
@@ -1365,6 +1356,63 @@ static void crlmodule_get_crop_compose(struct v4l2_subdev *subdev,
 			BUG_ON(!*comps);
 		}
 	}
+}
+
+/*
+ * Function main code replicated from /drivers/media/i2c/smiapp/smiapp-core.c
+ * Slightly modified based on the CRL Module changes
+ */
+static int crlmodule_get_selection(struct v4l2_subdev *subdev,
+				struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_selection *sel)
+{
+	struct crl_subdev *ssd = to_crlmodule_subdev(subdev);
+	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
+	struct v4l2_rect *comp, *crops[CRL_PADS];
+	struct v4l2_rect sink_fmt;
+	int ret;
+
+	ret = __crlmodule_sel_supported(subdev, sel);
+	if (ret)
+		return ret;
+
+	crlmodule_get_crop_compose(subdev, cfg, crops, &comp, sel->which);
+
+	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
+		sink_fmt = ssd->sink_fmt;
+	} else {
+		struct v4l2_mbus_framefmt *fmt =
+			v4l2_subdev_get_try_format(subdev, cfg, ssd->sink_pad);
+		sink_fmt.left = 0;
+		sink_fmt.top = 0;
+		sink_fmt.width = fmt->width;
+		sink_fmt.height = fmt->height;
+	}
+
+	switch (sel->target) {
+	case V4L2_SEL_TGT_CROP_BOUNDS:
+	case V4L2_SEL_TGT_NATIVE_SIZE:
+		if (ssd == sensor->pixel_array) {
+			sel->r.left = sel->r.top = 0;
+			sel->r.width =
+				sensor->sensor_ds->sensor_limits->x_addr_max;
+			sel->r.height =
+				sensor->sensor_ds->sensor_limits->y_addr_max;
+		} else if (sel->pad == ssd->sink_pad) {
+			sel->r = sink_fmt;
+		} else {
+			sel->r = *comp;
+		}
+		break;
+	case V4L2_SEL_TGT_CROP:
+	case V4L2_SEL_TGT_COMPOSE_BOUNDS:
+		sel->r = *crops[sel->pad];
+		break;
+	case V4L2_SEL_TGT_COMPOSE:
+		sel->r = *comp;
+		break;
+	}
+	return 0;
 }
 
 /*
