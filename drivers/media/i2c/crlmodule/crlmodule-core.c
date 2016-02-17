@@ -1487,8 +1487,8 @@ static int crlmodule_set_crop(struct v4l2_subdev *subdev,
 	sel->r.width = min(sel->r.width, src_size->width);
 	sel->r.height = min(sel->r.height, src_size->height);
 
-	sel->r.left = min(sel->r.left, src_size->width - sel->r.width);
-	sel->r.top = min(sel->r.top, src_size->height - sel->r.height);
+	sel->r.left = min_t(s32, sel->r.left, src_size->width - sel->r.width);
+	sel->r.top = min_t(s32, sel->r.top, src_size->height - sel->r.height);
 
 	*crops[sel->pad] = sel->r;
 
@@ -2057,7 +2057,6 @@ error:
 static int crlmodule_run_power_sequence(struct crl_sensor *sensor,
 					unsigned int on)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	int rval;
 
 	if (!on) {
@@ -2418,9 +2417,6 @@ static int crlmodule_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 static int crlmodule_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
-	struct crl_sensor *sensor = ssd->sensor;
-
 	return crlmodule_set_power(sd, 0);
 }
 
