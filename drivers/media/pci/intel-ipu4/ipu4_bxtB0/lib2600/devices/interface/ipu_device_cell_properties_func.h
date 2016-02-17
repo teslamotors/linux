@@ -132,4 +132,13 @@ ipu_device_cell_icache_align(unsigned int cell_id)
 	return ipu_device_cell_properties[cell_id].type_properties->count->icache_align;
 }
 
+#ifdef C_RUN
+STORAGE_CLASS_INLINE int
+ipu_device_cell_id_crun(int cell_id)
+{
+	assert(cell_id < NUM_CELLS);
+	return ipu_device_map_cell_id_to_crun_proc_id[cell_id];
+}
+#endif
+
 #endif /* _IPU_DEVICE_CELL_PROPERTIES_FUNC_H_ */

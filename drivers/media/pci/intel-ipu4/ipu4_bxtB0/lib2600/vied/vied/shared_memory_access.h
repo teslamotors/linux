@@ -14,8 +14,8 @@
 #ifndef _SHARED_MEMORY_ACCESS_H
 #define _SHARED_MEMORY_ACCESS_H
 
-#include "type_support.h"
-#include "type_support.h"
+#include <type_support.h>
+#include <type_support.h>
 #include <vied/vied_memory_access_types.h>
 
 typedef enum {

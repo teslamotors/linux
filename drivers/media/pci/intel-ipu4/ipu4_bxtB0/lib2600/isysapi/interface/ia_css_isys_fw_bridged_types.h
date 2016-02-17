@@ -109,6 +109,7 @@ struct ia_css_isys_input_pin_info_comm {
  * struct ia_css_isys_isa_cfg_comm. Describes the ISA cfg
  */
 struct ia_css_isys_isa_cfg_comm {
+	aligned_struct(struct ia_css_isys_resolution_comm, isa_res[N_IA_CSS_ISYS_RESOLUTION_INFO]);
 	aligned_uint32(unsigned int, blc_enabled);		/* acc id 0, set if process required */
 	aligned_uint32(unsigned int, lsc_enabled);		/* acc id 1, set if process required */
 	aligned_uint32(unsigned int, dpc_enabled);		/* acc id 2, set if process required */
@@ -139,6 +140,14 @@ struct ia_css_isys_cropping_comm {
  * @crop: defines cropping resolution for the
  * maximum number of input pins which can be cropped,
  * it is directly mapped to the HW devices
+ * @send_irq_sof_discarded: send irq on discarded frame sof response
+ *		- if '1' it will override the send_resp_sof_discarded and send the response
+ *		- if '0' the send_resp_sof_discarded will determine whether to send the response
+ * @send_irq_eof_discarded: send irq on discarded frame eof response
+ *		- if '1' it will override the send_resp_eof_discarded and send the response
+ *		- if '0' the send_resp_eof_discarded will determine whether to send the response
+ * @send_resp_sof_discarded: send response for discarded frame sof detected, used only when send_irq_sof_discarded is '0'
+ * @send_resp_eof_discarded: send response for discarded frame eof detected, used only when send_irq_eof_discarded is '0'
  * @the rest: input/output pin descriptors
  */
 struct ia_css_isys_stream_cfg_data_comm {
@@ -147,6 +156,10 @@ struct ia_css_isys_stream_cfg_data_comm {
 	aligned_enum(enum ia_css_isys_isl_use, isl_use);
 	aligned_struct(struct ia_css_isys_isa_cfg_comm, isa_cfg);
 	aligned_struct(struct ia_css_isys_cropping_comm, crop[N_IA_CSS_ISYS_CROPPING_LOCATION]);
+	aligned_uint32(unsigned int, send_irq_sof_discarded);
+	aligned_uint32(unsigned int, send_irq_eof_discarded);
+	aligned_uint32(unsigned int, send_resp_sof_discarded);
+	aligned_uint32(unsigned int, send_resp_eof_discarded);
 	aligned_uint32(unsigned int, nof_input_pins);
 	aligned_uint32(unsigned int, nof_output_pins);
 	aligned_struct(struct ia_css_isys_input_pin_info_comm, input_pins[MAX_IPINS]);

@@ -16,7 +16,7 @@
 
 /** Types shared by VIED interfaces */
 
-#include "type_support.h"
+#include <type_support.h>
 
 /** \brief An address within a VIED subsystem
  *

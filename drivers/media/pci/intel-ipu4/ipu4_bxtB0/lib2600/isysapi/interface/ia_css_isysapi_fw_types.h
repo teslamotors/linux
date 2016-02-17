@@ -58,6 +58,8 @@ enum ia_css_isys_resp_type {
 	IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE,
 	IA_CSS_ISYS_RESP_TYPE_PIN_DATA_SKIPPED,
 	IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_SKIPPED,
+	IA_CSS_ISYS_RESP_TYPE_FRAME_SOF_DISCARDED,
+	IA_CSS_ISYS_RESP_TYPE_FRAME_EOF_DISCARDED,
 	N_IA_CSS_ISYS_RESP_TYPE
 };
 
@@ -125,7 +127,7 @@ enum ia_css_isys_mipi_vc {
 };
 
 /**
- *  Supported Pixel Frame formats. TODO: ensure following format list is valid
+ *  Supported Pixel Frame formats. Expandable if needed
  */
 enum ia_css_isys_frame_format_type {
 	IA_CSS_ISYS_FRAME_FORMAT_NV11 = 0,	/* 12 bit YUV 411, Y, UV plane */
@@ -163,7 +165,7 @@ enum ia_css_isys_frame_format_type {
 
 
 /**
- *  Supported MIPI data type. TODO: ensure following format list is valid - keep in sync array in ia_css_isys_private.c
+ *  Supported MIPI data type. Keep in sync array in ia_css_isys_private.c
  */
 enum ia_css_isys_mipi_data_type {
 	/** SYNCHRONIZATION SHORT PACKET DATA TYPES */
@@ -272,7 +274,7 @@ enum ia_css_isys_pin_type {
 };
 
 /**
- * enum ia_css_isys_isl_use. Describes the ISL/ISA use
+ * enum ia_css_isys_isl_use. Describes the ISL/ISA use (ISAPF path in after BXT A0)
  */
 enum ia_css_isys_isl_use {
 	IA_CSS_ISYS_USE_NO_ISL_NO_ISA = 0,
@@ -282,7 +284,7 @@ enum ia_css_isys_isl_use {
 };
 
 /**
- * enum ia_css_isys_isl_use. Describes the ISL/ISA use
+ * enum ia_css_isys_cropping_location. Enumerates the cropping locations in ISYS
  */
 enum ia_css_isys_cropping_location {
 	IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA = 0,		/* Cropping executed in ISAPF (mainly), ISAPF preproc (odd column) and MIPI STR2MMIO (odd row) */
@@ -290,6 +292,15 @@ enum ia_css_isys_cropping_location {
 	IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED,	/* Cropping executed in StreamPifConv in the ISA output for RAW_NS pin */
 	IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED,		/* Cropping executed in StreamScaledPifConv in the ISA output for RAW_S pin */
 	N_IA_CSS_ISYS_CROPPING_LOCATION
+};
+
+/**
+ * enum ia_css_isys_resolution_info. Describes the resolution, required to setup the various ISA GP registers.
+ */
+enum ia_css_isys_resolution_info {
+	IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED = 0,	/* Scaled ISA output resolution before the StreamScaledPifConv cropping */
+	IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED,		/* Non-Scaled ISA output resolution before the StreamPifConv cropping */
+	N_IA_CSS_ISYS_RESOLUTION_INFO
 };
 
 /**
@@ -308,6 +319,7 @@ enum ia_css_isys_error {
 	IA_CSS_ISYS_ERROR_HW_REPORTED_SIG2CIO,			/* HW code */
 	IA_CSS_ISYS_ERROR_SENSOR_FW_SYNC,			/* enum */
 	IA_CSS_ISYS_ERROR_STREAM_IN_SUSPENSION,			/* FW code */
+	IA_CSS_ISYS_ERROR_RESPONSE_QUEUE_FULL,			/* FW code */
 	N_IA_CSS_ISYS_ERROR
 };
 

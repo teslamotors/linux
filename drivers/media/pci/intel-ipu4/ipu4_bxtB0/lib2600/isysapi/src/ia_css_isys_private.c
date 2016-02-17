@@ -271,7 +271,7 @@ int ia_css_isys_force_unmap_comm_buff_queue(
 		verifret((ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]) <= NEXT_FRAME_BUFS_PER_MSG_QUEUE, EFAULT);	/* For some reason queue is more than full */
 		for (; ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle] < ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle]; ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]++) {
 			IA_CSS_TRACE_1(ISYSAPI, WARNING, "CSS forced unmapping next_frame %d\n", ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]);
-			buff_slot = get_next_frame_buff_slot(ctx, stream_handle, ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] % NEXT_FRAME_BUFS_PER_MSG_QUEUE);
+			buff_slot = get_next_frame_buff_slot(ctx, stream_handle, ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle] % NEXT_FRAME_BUFS_PER_MSG_QUEUE);
 			ia_css_shared_buffer_css_unmap(ctx->isys_comm_buffer_queue.pnext_frame_buff_id[buff_slot]);
 		}
 	}
@@ -344,6 +344,10 @@ STORAGE_CLASS_INLINE void input_pin_info_host_to_css(const struct ia_css_isys_in
 }
 
 STORAGE_CLASS_INLINE void isa_cfg_host_to_css(const struct ia_css_isys_isa_cfg *isa_cfg_host, struct ia_css_isys_isa_cfg_comm *isa_cfg_css) {
+	unsigned int i;
+	for (i = 0; i < N_IA_CSS_ISYS_RESOLUTION_INFO; i++) {
+		resolution_host_to_css(&isa_cfg_host->isa_res[i], &isa_cfg_css->isa_res[i]);
+	}
 	isa_cfg_css->blc_enabled = isa_cfg_host->blc_enabled;
 	isa_cfg_css->lsc_enabled = isa_cfg_host->lsc_enabled;
 	isa_cfg_css->dpc_enabled = isa_cfg_host->dpc_enabled;
@@ -380,6 +384,10 @@ STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(const struct ia_css_isys_st
 	default:
 		break;
 	}
+	stream_cfg_data_css->send_irq_sof_discarded = stream_cfg_data_host->send_irq_sof_discarded ? 1 : 0;
+	stream_cfg_data_css->send_irq_eof_discarded = stream_cfg_data_host->send_irq_eof_discarded ? 1 : 0;
+	stream_cfg_data_css->send_resp_sof_discarded = stream_cfg_data_host->send_irq_sof_discarded ? 1 : stream_cfg_data_host->send_resp_sof_discarded;
+	stream_cfg_data_css->send_resp_eof_discarded = stream_cfg_data_host->send_irq_eof_discarded ? 1 : stream_cfg_data_host->send_resp_eof_discarded;
 	stream_cfg_data_css->nof_input_pins = stream_cfg_data_host->nof_input_pins;
 	stream_cfg_data_css->nof_output_pins = stream_cfg_data_host->nof_output_pins;
 	for (i = 0; i < stream_cfg_data_host->nof_input_pins; i++) {
@@ -509,8 +517,7 @@ int ia_css_isys_constr_fw_next_frame(
 	assert(next_frame != NULL);
 	assert(pbuf_next_frame_id != NULL);
 
-	assert((ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]) < NEXT_FRAME_BUFS_PER_MSG_QUEUE);
-	verifret((ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]) < NEXT_FRAME_BUFS_PER_MSG_QUEUE, EFAULT);	/* For some reason queue is full */
+	verifret((ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.next_frame_queue_tail[stream_handle]) < NEXT_FRAME_BUFS_PER_MSG_QUEUE, EPERM);	/* For some reason responses are not dequeued in time */
 	buff_slot = get_next_frame_buff_slot(ctx, stream_handle, ctx->isys_comm_buffer_queue.next_frame_queue_head[stream_handle] % NEXT_FRAME_BUFS_PER_MSG_QUEUE);
 	*pbuf_next_frame_id = ctx->isys_comm_buffer_queue.pnext_frame_buff_id[buff_slot];
 	assert(*pbuf_next_frame_id);

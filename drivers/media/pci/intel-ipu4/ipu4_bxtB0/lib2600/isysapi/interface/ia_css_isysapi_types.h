@@ -117,6 +117,10 @@ struct ia_css_isys_input_pin_info {
  * struct ia_css_isys_isa_cfg. Describes the ISA cfg
  */
 struct ia_css_isys_isa_cfg {
+	/* Following sets resolution information neeed by the IS GP registers */
+	/* For index IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED, it is needed when there is RAW_NS pin */
+	/* For index IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED, it is needed when there is RAW_S pin */
+	struct ia_css_isys_resolution isa_res[N_IA_CSS_ISYS_RESOLUTION_INFO];
 	unsigned int blc_enabled;		/* acc id 0, set if process required */
 	unsigned int lsc_enabled;		/* acc id 1, set if process required */
 	unsigned int dpc_enabled;		/* acc id 2, set if process required */
@@ -152,6 +156,14 @@ struct ia_css_isys_cropping {
  * @crop: defines cropping resolution for the
  * maximum number of input pins which can be cropped,
  * it is directly mapped to the HW devices
+ * @send_irq_sof_discarded: send irq on discarded frame sof response
+ *		- if '1' it will override the send_resp_sof_discarded and send the response
+ *		- if '0' the send_resp_sof_discarded will determine whether to send the response
+ * @send_irq_eof_discarded: send irq on discarded frame eof response
+ *		- if '1' it will override the send_resp_eof_discarded and send the response
+ *		- if '0' the send_resp_eof_discarded will determine whether to send the response
+ * @send_resp_sof_discarded: send response for discarded frame sof detected, used only when send_irq_sof_discarded is '0'
+ * @send_resp_eof_discarded: send response for discarded frame eof detected, used only when send_irq_eof_discarded is '0'
  * @the rest: input/output pin descriptors
  */
 struct ia_css_isys_stream_cfg_data {
@@ -160,6 +172,10 @@ struct ia_css_isys_stream_cfg_data {
 	enum ia_css_isys_isl_use isl_use;
 	struct ia_css_isys_isa_cfg isa_cfg;
 	struct ia_css_isys_cropping crop[N_IA_CSS_ISYS_CROPPING_LOCATION];
+	unsigned int send_irq_sof_discarded;
+	unsigned int send_irq_eof_discarded;
+	unsigned int send_resp_sof_discarded;
+	unsigned int send_resp_eof_discarded;
 	unsigned int nof_input_pins;
 	unsigned int nof_output_pins;
 	struct ia_css_isys_input_pin_info input_pins[MAX_IPINS];

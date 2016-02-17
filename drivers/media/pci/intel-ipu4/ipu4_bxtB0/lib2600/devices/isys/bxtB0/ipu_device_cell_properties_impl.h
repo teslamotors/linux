@@ -38,4 +38,13 @@ static const struct ipu_device_cell_properties_s ipu_device_cell_properties[NUM_
 	{&ipu_device_sp2600_control_properties, ipu_device_spc0_mem_address, ipu_device_spc0_databus_mem_address}
 };
 
+#ifdef C_RUN
+
+/* Mapping between hrt_hive_processors enum and cell_id's used in FW */
+static const int ipu_device_map_cell_id_to_crun_proc_id[NUM_CELLS] = {
+	0  /* SPC0 */
+};
+
+#endif
+
 #endif /* _IPU_DEVICE_CELL_PROPERTIES_IMPL_H_ */

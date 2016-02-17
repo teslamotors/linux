@@ -270,12 +270,26 @@ int ia_css_isys_device_open(
 #ifdef DRIVER_SPECIFIES_OUTPUT_CROPPING	/* #ifdef to be removed when driver does what the define says */
 		switch(stream_cfg->output_pins[i].pt) {
 		case IA_CSS_ISYS_PIN_TYPE_RAW_NS:
+			/* Ensure the PIFCONV cropped resolution matches the RAW_NS output pin resolution */
 			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].top_offset + (int)stream_cfg->output_pins[i].output_res.height, EINVAL);
 			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].left_offset + (int)stream_cfg->output_pins[i].output_res.width, EINVAL);
+			/* Ensure the ISAPF cropped resolution matches the Non-scaled ISA output resolution before the PIFCONV cropping, since nothing can modify the resolution in that part of the pipe */
+			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].top_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].height, EINVAL);
+			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].left_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].width, EINVAL);
+			/* Ensure the Non-scaled ISA output resolution before the PIFCONV cropping bounds the RAW_NS pin output resolution since padding is not supported */
+			verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].height >= stream_cfg->output_pins[i].output_res.height, EINVAL);
+			verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].width >= stream_cfg->output_pins[i].output_res.width, EINVAL);
 			break;
 		case IA_CSS_ISYS_PIN_TYPE_RAW_S:
+			/* Ensure the ScaledPIFCONV cropped resolution matches the RAW_S output pin resolution */
 			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].top_offset + (int)stream_cfg->output_pins[i].output_res.height, EINVAL);
 			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].left_offset + (int)stream_cfg->output_pins[i].output_res.width, EINVAL);
+			/* Ensure the ISAPF cropped resolution bounds the Scaled ISA output resolution before the ScaledPIFCONV cropping, since only IDS can modify the resolution, and this only to make it smaller */
+			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].bottom_offset >= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].top_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].height, EINVAL);
+			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].right_offset >= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].left_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].width, EINVAL);
+			/* Ensure the Scaled ISA output resolution before the ScaledPIFCONV cropping bounds the RAW_S pin output resolution since padding is not supported */
+			verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].height >= stream_cfg->output_pins[i].output_res.height, EINVAL);
+			verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].width >= stream_cfg->output_pins[i].output_res.width, EINVAL);
 			break;
 		default:
 			break;
@@ -719,9 +733,9 @@ int ia_css_isys_device_release(
 	retval = ia_css_syscom_release(ctx->sys, force);
 	verifret(retval == 0, EBUSY);
 
-	if (force) {
-		ia_css_isys_force_unmap_comm_buff_queue(ctx);
-	}
+	/* If ia_css_isys_device_release called with force==1, this should happen after timeout, so no active transfers */
+	/* If ia_css_isys_device_release called with force==0, this should happen after SP has gone idle, so no active transfers */
+	ia_css_isys_force_unmap_comm_buff_queue(ctx);
 	ia_css_isys_destr_comm_buff_queue(ctx);
 	ia_css_cpu_mem_free(ctx);
 

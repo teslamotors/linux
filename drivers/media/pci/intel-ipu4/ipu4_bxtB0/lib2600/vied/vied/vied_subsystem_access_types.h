@@ -15,7 +15,7 @@
 #define _HRT_VIED_SUBSYSTEM_ACCESS_TYPES_H
 
 /** Types for the VIED subsystem access interface */
-#include "type_support.h"
+#include <type_support.h>
 
 /** \brief An identifier for a VIED subsystem.
  *

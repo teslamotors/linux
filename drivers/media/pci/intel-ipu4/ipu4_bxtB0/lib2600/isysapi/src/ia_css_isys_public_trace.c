@@ -106,6 +106,15 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
 		, stream_cfg->vc
 		, stream_cfg->nof_input_pins
 		, stream_cfg->nof_output_pins);
+	IA_CSS_TRACE_4(ISYSAPI, VERBOSE,
+		"\tia_css_isys_stream_cfg_data->send_irq_sof_discarded = %d\n"
+		"\t\t\tia_css_isys_stream_cfg_data->send_irq_eof_discarded = %d\n"
+		"\t\t\tia_css_isys_stream_cfg_data->send_resp_sof_discarded = %d\n"
+		"\t\t\tia_css_isys_stream_cfg_data->send_resp_eof_discarded = %d\n"
+		, stream_cfg->send_irq_sof_discarded
+		, stream_cfg->send_irq_eof_discarded
+		, stream_cfg->send_resp_sof_discarded
+		, stream_cfg->send_resp_eof_discarded);
 	for (i = 0; i < stream_cfg->nof_input_pins; i++) {
 		IA_CSS_TRACE_6(ISYSAPI, VERBOSE,
 			"\tia_css_isys_stream_cfg_data->ia_css_isys_input_pin_info[i = %d].ia_css_isys_mipi_data_type = %d\n"
@@ -162,6 +171,15 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
 			, stream_cfg->output_pins[i].output_res.width
 			, i
 			, stream_cfg->output_pins[i].output_res.height);
+	}
+	for (i = 0; i < N_IA_CSS_ISYS_RESOLUTION_INFO; i++) {
+		IA_CSS_TRACE_4(ISYSAPI, VERBOSE,
+			"\tia_css_isys_stream_cfg_data->ia_css_isys_isa_cfg.ia_css_isys_resolution[i = %d].width = %d\n"
+			"\t\t\tia_css_isys_stream_cfg_data->ia_css_isys_isa_cfg.ia_css_isys_resolution[i = %d].height = %d\n"
+			, i
+			, stream_cfg->isa_cfg.isa_res[i].width
+			, i
+			, stream_cfg->isa_cfg.isa_res[i].height);
 	}
 	IA_CSS_TRACE_7(ISYSAPI, VERBOSE,
 		"\tia_css_isys_stream_cfg_data->ia_css_isys_isa_cfg.blc_enabled = %d\n"
@@ -278,6 +296,12 @@ int print_isys_resp_info(struct ia_css_isys_resp_info *received_response)
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_SKIPPED:
 		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_SKIPPED\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_FRAME_SOF_DISCARDED:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_FRAME_SOF_DISCARDED\n");
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_FRAME_EOF_DISCARDED:
+		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "\tia_css_isys_resp_info.ia_css_isys_resp_type = IA_CSS_ISYS_RESP_TYPE_FRAME_EOF_DISCARDED\n");
 		break;
 	default:
 		IA_CSS_TRACE_0(ISYSAPI, ERROR, "\tia_css_isys_resp_info.ia_css_isys_resp_type = INVALID\n");

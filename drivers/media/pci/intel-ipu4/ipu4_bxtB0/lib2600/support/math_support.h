@@ -218,8 +218,18 @@ udiv2_small_i(uint32_t a, uint32_t b)
  * For SP and ISP, SDK provides the definition of OP_std_modadd.
  * We need it only for host
  */
-STORAGE_CLASS_INLINE unsigned int OP_std_modadd(int a, int b, int c) {
+STORAGE_CLASS_INLINE unsigned int OP_std_modadd(int a, int b, int c)
+{
 	return (a+b<0 ? a+b+c : a+b>=c ? a+b-c : a+b);
+}
+
+/*
+ * For SP and ISP, SDK provides the definition of OP_asp_slor.
+ * We need it only for host
+ */
+STORAGE_CLASS_INLINE unsigned int OP_asp_slor(int a, int b, int c)
+{
+	return ((a << c) | b);
 }
 #else
 #include "hive/customops.h"
