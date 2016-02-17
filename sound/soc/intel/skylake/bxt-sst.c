@@ -24,7 +24,7 @@
 #include "skl-fwlog.h"
 #include "skl-sst-ipc.h"
 
-#define BXT_BASEFW_TIMEOUT	3000
+#define BXT_BASEFW_TIMEOUT	6000
 #define BXT_INIT_TIMEOUT	300
 #define BXT_ROM_INIT_TIMEOUT	70
 #define BXT_IPC_PURGE_FW	0x01004000
