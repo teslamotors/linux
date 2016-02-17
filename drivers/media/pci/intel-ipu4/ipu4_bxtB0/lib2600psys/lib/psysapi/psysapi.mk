@@ -53,8 +53,6 @@ PSYSAPI_SYSTEM_GLOBAL_CPPFLAGS += -I$(PSYSAPI_DIR)/sim/interface
 # This one needs fixing. This should not be a PSYS api include!!!
 PSYSAPI_HOST_CPPFLAGS += -I$${MODULES_DIR}/../hive_isp_css_include
 
-PSYSAPI_HOST_CPPFLAGS += -I$${MODULES_DIR}/../isp/kernels/io_ls/common
-
 #PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/../syscom/interface
 
 # Defining the trace level for the PSYSAPI
@@ -77,6 +75,4 @@ PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/sim/src/ia_css_psys_sim_data.c
 PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/static/src/ia_css_psys_program_group_manifest.c
 PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/static/src/ia_css_psys_program_manifest.c
 PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/static/src/ia_css_psys_terminal_manifest.c
-
-PSYSAPI_FW_CPPFLAGS += -I$${MODULES_DIR}/../isp/kernels/io_ls/common
 

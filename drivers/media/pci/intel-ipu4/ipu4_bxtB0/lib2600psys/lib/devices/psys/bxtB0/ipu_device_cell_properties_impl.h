@@ -132,4 +132,19 @@ static const struct ipu_device_cell_properties_s ipu_device_cell_properties[NUM_
 	{ &ipu_device_isp2600_properties, ipu_device_isp3_mem_address, ipu_device_isp3_mem_databus_address }
 };
 
+#ifdef C_RUN
+
+/* Mapping between hrt_hive_processors enum and cell_id's used in FW */
+static const int ipu_device_map_cell_id_to_crun_proc_id[NUM_CELLS] = {
+	4, /* SPC0 */
+	5, /* SPP0 */
+	6, /* SPP1 */
+	0, /* ISP0 */
+	1, /* ISP1 */
+	2, /* ISP2 */
+	3  /* ISP3 */
+};
+
+#endif
+
 #endif /* _IPU_DEVICE_CELL_PROPERTIES_IMPL_H_ */

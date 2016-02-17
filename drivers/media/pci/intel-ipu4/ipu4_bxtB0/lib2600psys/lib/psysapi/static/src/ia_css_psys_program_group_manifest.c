@@ -117,6 +117,14 @@ EXIT:
 	return size;
 }
 
+/* Currently, the design of XNR kernel inside the *_pregdc program group, does not fit the exact model
+ * as is being asserted on in ia_css_is_program_group_manifest_valid. We therefore disable some
+ * checks. Further investigation is needed to determine wether *_pregdc program group can be canged or
+ * that the model must be changed.
+ * #define USE_SIMPLIFIED_GRAPH_MODEL 1 allows multiple programs to be connected to the same terminal,
+ * and it allows a kernel be mapped over multiple programs. */
+#define USE_SIMPLIFIED_GRAPH_MODEL 1
+
 /*
  * Model and/or check refinements
  * - Parallel programs do not yet have mutual exclusive alternatives
@@ -355,10 +363,10 @@ bool ia_css_is_program_group_manifest_valid(
  */
 			if (!ia_css_is_kernel_bitmap_intersection_empty(program_bitmap_i, program_bitmap_j)) {
 /* This test will pass if the program manifest is NULL, but that's no concern here */
-				verifexit(!ia_css_is_program_manifest_singular_program_type(program_manifest_i), EINVAL);
-				verifexit(!ia_css_is_program_manifest_singular_program_type(program_manifest_j), EINVAL);
+				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || !ia_css_is_program_manifest_singular_program_type(program_manifest_i), EINVAL);
+				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || !ia_css_is_program_manifest_singular_program_type(program_manifest_j), EINVAL);
 				if (!is_virtual_sub_j)
-					verifexit((is_j_subset_i || is_i_subset_j), EINVAL);
+					verifexit(USE_SIMPLIFIED_GRAPH_MODEL || (is_j_subset_i || is_i_subset_j), EINVAL);
 				if (is_super_i) {
 					verifexit(is_sub_j, EINVAL);
 					verifexit(program_dependency_j0 == i, EINVAL);
@@ -379,7 +387,7 @@ bool ia_css_is_program_group_manifest_valid(
 				(program_type_i != IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB)) {
 /* If the subnode always came after the supernode we could check for presence */
 				terminal_bitmap = vied_nci_bit_mask_set_unique(terminal_bitmap, terminal_dependency);
-				verifexit(!vied_nci_is_bitmap_empty(terminal_bitmap), EINVAL);
+				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || !vied_nci_is_bitmap_empty(terminal_bitmap), EINVAL);
 			}
 		}
 	}
@@ -401,7 +409,7 @@ bool ia_css_is_program_group_manifest_valid(
 		if (has_program_terminal_sequencer_info) {
 			skip_terminal_count--;
 		}
-		verifexit((terminal_bitmap_weight == (terminal_count - skip_terminal_count)), EINVAL);
+		verifexit(USE_SIMPLIFIED_GRAPH_MODEL || (terminal_bitmap_weight == (terminal_count - skip_terminal_count)), EINVAL);
 	} else {
 		verifexit((terminal_bitmap_weight == terminal_count), EINVAL);
 	}

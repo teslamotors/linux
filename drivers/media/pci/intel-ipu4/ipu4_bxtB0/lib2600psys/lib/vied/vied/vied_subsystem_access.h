@@ -27,7 +27,7 @@
 #ifndef __HIVECC
 #error "Inline implementation of subsystem access not supported for host"
 #endif
-#define _VIED_SUBSYSTEM_ACCESS_INLINE static inline
+#define _VIED_SUBSYSTEM_ACCESS_INLINE static __inline
 #include "vied_subsystem_access_impl.h"
 #else
 #define _VIED_SUBSYSTEM_ACCESS_INLINE

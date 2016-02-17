@@ -57,6 +57,11 @@ ipu_device_cell_master_info_reg(const unsigned int cell_id, const unsigned int m
 STORAGE_CLASS_INLINE unsigned int
 ipu_device_cell_icache_align(unsigned int cell_id);
 
+#ifdef C_RUN
+STORAGE_CLASS_INLINE int
+ipu_device_cell_id_crun(int cell_id);
+#endif
+
 #include "ipu_device_cell_properties_func.h"
 
 #endif /* _IPU_DEVICE_CELL_PROPERTIES_H_ */

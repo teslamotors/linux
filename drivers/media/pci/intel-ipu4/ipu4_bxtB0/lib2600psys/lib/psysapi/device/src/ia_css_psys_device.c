@@ -23,16 +23,7 @@
 
 #include "ia_css_psys_device_trace.h"
 
-#include "ia_css_pkg_dir.h"
-#include "ia_css_pkg_dir_iunit.h"
-#include "ia_css_fw_load.h"
-#include "ia_css_cell_program_load.h"
-#include "ia_css_cell_program_group_load.h"
 #include "ia_css_cell.h"
-#include "regmem_access.h"
-#include "ipu_device_cell_properties.h"
-#include <vied/shared_memory_access.h>
-#include "ipu_device_buttress_properties_struct.h"
 
 #define IA_CSS_PSYS_CMD_QUEUE_SIZE				0x20
 #define IA_CSS_PSYS_EVENT_QUEUE_SIZE			0x40
@@ -123,54 +114,11 @@ size_t ia_css_sizeof_psys(
 	return size;
 }
 
-/* This function will perform the 'intenal' initialization of SPC
- * icache base address and start address, using data from the pkg_dir.
- * The function will be removed when the drivers have switched to external
- * initialization, and all tests have been switched.
- */
-static int
-ia_css_psys_init_icache(unsigned int ssid, unsigned int mmid,
-			host_virtual_address_t host_pkg_dir_address,
-			vied_virtual_address_t vied_pkg_dir_address)
-{
-	ia_css_pkg_dir_entry_t pkg_dir[2];
-	const ia_css_pkg_dir_entry_t *server_entry;
-	unsigned int server_offset;
-
-        /* Load pkg_dir header and entry 0 */
-	ia_css_fw_load_init();
-	ia_css_fw_load(mmid, host_pkg_dir_address, pkg_dir,
-		2 * sizeof(ia_css_pkg_dir_entry_t));
-
-	/* check pkg_dir header */
-	if (ia_css_pkg_dir_verify_header(pkg_dir) != 0)
-		return 1;
-
-	/* Get PSYS server pkg address */
-	server_entry = ia_css_pkg_dir_get_entry(pkg_dir, IA_CSS_PKG_DIR_PSYS_INDEX);
-	/* check entry type */
-
-	server_offset = ia_css_pkg_dir_entry_get_address_lo(server_entry);
-
-	/* intialize SPC icache and start address */
-	if (ia_css_cell_program_load_icache(ssid, mmid,
-			host_pkg_dir_address + server_offset,
-			vied_pkg_dir_address + server_offset) != 0)
-		return 1;
-
-	/* write pkg_dir address in SPC DMEM */
-	regmem_store_32(ipu_device_cell_memory_address(SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM),
-		PKG_DIR_ADDR_REG, vied_pkg_dir_address, SSID);
-
-	return 0;
-}
-
 struct ia_css_syscom_context *ia_css_psys_open(
 	const struct ia_css_psys_buffer_s *buffer,
 	struct ia_css_syscom_config *config)
 {
 	struct ia_css_syscom_context *context;
-	ia_css_psys_server_init_t *server_conf;
 	int i;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_open(): enter:\n");
@@ -181,15 +129,6 @@ struct ia_css_syscom_context *ia_css_psys_open(
 	if (buffer == NULL) {
 		/* Allocate locally */
 		external_alloc = false;
-	}
-
-	/* conditionally initialize icache */
-	server_conf = config->specific_addr;
-	if (server_conf->host_ddr_pkg_dir) {
-		if (ia_css_psys_init_icache(config->ssid, config->mmid,
-			server_conf->host_ddr_pkg_dir, server_conf->ddr_pkg_dir_address)) {
-			goto EXIT;
-		}
 	}
 
 	/*

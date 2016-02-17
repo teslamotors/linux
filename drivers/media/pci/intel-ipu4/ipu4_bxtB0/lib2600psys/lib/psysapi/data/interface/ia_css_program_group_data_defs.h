@@ -12,14 +12,9 @@
  * more details.
 */
 
-#ifndef __IA_CSS_COMMON_IO_TYPES
-#define __IA_CSS_COMMON_IO_TYPES
+#ifndef __IA_CSS_PROGRAM_GROUP_DATA_DEFS__
+#define __IA_CSS_PROGRAM_GROUP_DATA_DEFS__
 
-#include <type_support.h>
-
-#ifndef MAX_IO_DMA_CHANNELS
-#define MAX_IO_DMA_CHANNELS 3
-#endif
 
 /*
  * Pre-defined frame format
@@ -95,120 +90,5 @@ typedef enum ia_css_frame_format_type {
 	IA_CSS_N_FRAME_FORMAT_TYPES
 } ia_css_frame_format_type_t;
 
-#define IA_CSS_MAX_N_FRAME_PLANES			6
 
-struct ia_css_resolution_descriptor_s {
-	uint16_t			width;					/**< Logical dimensions */
-	uint16_t			height;					/**< Logical dimensions */
-};
-
-/*
- * Should comply to enum ia_css_dimension_t in ./fw_abi_common_types/ia_css_terminal_defs.h
- */
-#define COL_DIMENSION 0
-#define ROW_DIMENSION 1
-#define N_DATA_DIMENSION 2
-#define N_MAX_NUM_SLICES_PER_FRAGMENT 32
-#define N_MAX_NUM_SECTIONS_PER_SLICE 4
-#define N_COMMAND_COUNT 4
-
-/*
- * Terminal type
- */
-struct ia_css_terminal_descriptor_s {
-	ia_css_frame_format_type_t	format;			/**< Indicates if this is a generic type or inbuild with variable size descriptor */
-	uint32_t			plane_count;				/**< Number of data planes (pointers) */
-	uint32_t			plane_offsets[IA_CSS_MAX_N_FRAME_PLANES];	/**< Plane offsets */
-	uint32_t			stride;					/**< Physical size aspects */
-	uint16_t			width;					/**< Logical dimensions */
-	uint16_t			height;					/**< Logical dimensions */
-	uint8_t				bpp;					/**< Bits per pixel */
-	uint8_t				bpe;					/**< Bits per element */
-	uint32_t			base_address;				/**< DDR base address */
-	uint32_t			fragment_index[N_DATA_DIMENSION];	/**< Fragment start offset in pixels for each dimension */
-};
-
-/*
- * Sub-struct for Spatial terminal descriptor
- */
-struct frame_grid_param_section_desc_s {
-	uint32_t			mem_offset;		/**< Offset of the parameter allocation in memory */
-	uint32_t			mem_size;		/**< Memory allocation size needs of this parameter */
-	uint32_t			stride;			/**< stride in bytes of each line of compute units for the specified memory space and region */
-};
-
-/*
- * Spatial terminal descriptor
- */
-struct ia_css_spatial_terminal_descriptor_s {
-	uint32_t	base_address;  /**< DDR base address of spatial parameter buffer */
-	uint16_t	frame_grid_dimension[N_DATA_DIMENSION];		/**< Spatial param FRAME width/height, measured in compute units */
-	uint16_t	fragment_grid_index[N_DATA_DIMENSION];		/**< Spatial param FRAGMENT offset of the top-left compute unit, compared to the frame */
-	uint16_t	fragment_grid_dimension[N_DATA_DIMENSION];	/**< Spatial param FRAGMENT width/height, measured in compute units */
-	struct frame_grid_param_section_desc_s param_planes[IA_CSS_MAX_N_FRAME_PLANES]; /**< Section/plane descriptors */
-};
-
-/*
- * Sub-struct for Sliced terminal descriptor
- */
-struct sliced_param_section_desc_s {
-	uint32_t			mem_offset;		/**< Offset of the parameter allocation in memory */
-	uint32_t			mem_size;		/**< Memory allocation size needs of this parameter */
-};
-
-/*
- * Sliced terminal descriptor
- */
-struct ia_css_sliced_terminal_descriptor_s {
-	uint32_t	base_address;  				/**< DDR base address of spatial parameter buffer */
-	uint16_t	slice_count;				/**< Number of slices for the parameters for this fragment */
-	struct sliced_param_section_desc_s section_param[N_MAX_NUM_SLICES_PER_FRAGMENT][N_MAX_NUM_SECTIONS_PER_SLICE]; /**< Section descriptors */
-};
-
-/* DMA based terminals */
-struct ia_css_common_dma_config {
-	uint32_t ddr_elems_per_word;
-	uint32_t dma_channel[MAX_IO_DMA_CHANNELS];
-	uint32_t here_crop_x; /* horizontal cropping in terms of elements on ISP side */
-	uint32_t here_crop_y; /* vertical cropping in terms of elements on ISP side */
-};
-
-/*
- * Sub-struct for Sequencer info descriptor
- */
-struct kernel_fragment_sequencer_info_desc_s {
-	uint16_t fragment_grid_slice_dimension[N_DATA_DIMENSION];				/**< Slice dimensions */
-	uint16_t fragment_grid_slice_count[N_DATA_DIMENSION];					/**< Nof slices */
-	uint16_t fragment_grid_point_decimation_factor[N_DATA_DIMENSION];			/**< Grid point decimation factor */
-	int16_t fragment_grid_overlay_on_fragment_pixel_topleft_index[N_DATA_DIMENSION];	/**< Relative position of grid origin to pixel origin */
-	int16_t fragment_grid_overlay_on_fragment_pixel_dimension[N_DATA_DIMENSION];		/**< Size of active fragment region */
-	uint16_t command_count;									/**< If >0 it overrides the standard fragment sequencer info */
-	uint16_t command_index;									/**< To be used only if command_count>0, index to the array of (ia_css_kernel_fragment_sequencer_command_desc_s) */
-};
-
-/*
- * Sub-struct for Sequencer info descriptor
- */
-struct kernel_fragment_sequencer_command_desc_s {	/**< 4 commands packed together to save memory space */
-	uint16_t line_count[N_COMMAND_COUNT];		/**< Contains the "(command_index%4) == index" command desc */
-};
-
-/*
- * Default limits on the number of sequencer info descriptor and command descriptor.
- */
-#ifndef IA_CSS_MAX_N_SEQUENCER_INFO
-#define IA_CSS_MAX_N_SEQUENCER_INFO 16
-#endif
-#ifndef IA_CSS_MAX_N_COMMAND_DESC
-#define IA_CSS_MAX_N_COMMAND_DESC   32
-#endif
-
-/*
- * Sequencer info descriptor
- */
-struct ia_css_sequencer_info_descriptor_s {
-	struct kernel_fragment_sequencer_info_desc_s kernel_fragment_sequencer_info_desc[IA_CSS_MAX_N_SEQUENCER_INFO];
-	struct kernel_fragment_sequencer_command_desc_s kernel_fragment_sequencer_command_desc[IA_CSS_MAX_N_COMMAND_DESC]; /* This command desc array is shared by all sequencers via command_index */
-};
-
-#endif /* __IA_CSS_COMMON_IO_TYPES */
+#endif /* __IA_CSS_PROGRAM_GROUP_DATA_DEFS__ */

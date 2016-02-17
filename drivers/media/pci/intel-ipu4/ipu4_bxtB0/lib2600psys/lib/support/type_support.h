@@ -38,6 +38,8 @@
 #define HOST_ADDRESS(x) (unsigned long)(x)
 #endif
 
+#elif defined(PARAM_GENERATION)
+/* Nothing */
 #elif defined(__HIVECC)
 #include <stdint.h>
 #include <stdbool.h>

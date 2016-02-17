@@ -33,7 +33,7 @@
 #include <vied_nci_psys_system_global.h>	/* vied_vaddress_t */
 
 #include <type_support.h>
-#include <ia_css_common_io_types.h> /* ia_css_frame_format_type */
+#include "ia_css_program_group_data_defs.h"	/* ia_css_frame_format_type */
 
 #include "ia_css_terminal_defs.h"
 
@@ -91,11 +91,6 @@ typedef enum ia_css_access_scope {
 } ia_css_access_scopes_t;
 
 #define IA_CSS_ACCESS_SCOPES_IN_BITS	32
-
-/* enum ia_css_frame_format_type has been moved to
- * kernels/io_ls/common/ia_css_common_io_types.h
- * since it is shared between IPU 2/3/4/5
- */
 
 #define IA_CSS_N_FRAME_PLANES			6
 
