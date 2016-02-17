@@ -28,12 +28,13 @@
 #include <linux/firmware.h>
 #include <linux/delay.h>
 #include <sound/pcm.h>
+#include <sound/compress_driver.h>
 #include <sound/soc-acpi.h>
 #include <sound/soc-acpi-intel-match.h>
 #include <sound/hda_register.h>
 #include <sound/hdaudio.h>
 #include <sound/hda_i915.h>
-#include <sound/compress_driver.h>
+
 #include "skl.h"
 #include "skl-sst-dsp.h"
 #include "skl-sst-ipc.h"
@@ -853,6 +854,14 @@ static int skl_first_init(struct hdac_ext_bus *ebus)
 
 	skl_dum_set(ebus);
 
+	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI)) {
+		err = skl_i915_init(bus);
+		if (err < 0)
+			return err;
+	}
+
+	skl_init_chip(bus, true);
+
 	return skl_init_chip(bus, true);
 }
 
@@ -982,6 +991,9 @@ static void skl_remove(struct pci_dev *pci)
 {
 	struct hdac_ext_bus *ebus = pci_get_drvdata(pci);
 	struct skl *skl = ebus_to_skl(ebus);
+
+	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI))
+		snd_hdac_i915_exit(&ebus->bus);
 
 	skl_delete_notify_kctl_list(skl->skl_sst);
 	release_firmware(skl->tplg);
