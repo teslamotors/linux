@@ -39,6 +39,7 @@ struct intel_ipu4_buttress {
 	struct completion ish_ipc_complete;
 	struct list_head constraints;
 	unsigned int psys_min_freq;
+	u8 psys_force_ratio;
 	bool force_suspend;
 	bool ps_started;
 };

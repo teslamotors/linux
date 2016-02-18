@@ -629,6 +629,9 @@ static void intel_ipu4_buttress_set_psys_freq(struct intel_ipu4_device *isp,
 {
 	unsigned int psys_ratio = freq / BUTTRESS_PS_FREQ_STEP;
 
+	if (isp->buttress.psys_force_ratio)
+		return;
+
 	intel_ipu4_buttress_set_psys_ratio(isp, psys_ratio, psys_ratio);
 }
 
@@ -1446,6 +1449,97 @@ DEFINE_SIMPLE_ATTRIBUTE(intel_ipu4_buttress_tsc_fops,
 			intel_ipu4_buttress_tsc_get,
 			NULL, /* intel_ipu4_buttress_tsc_set,  */"%llu\n");
 
+static int intel_ipu4_buttress_psys_force_freq_get(void *data, u64 *val)
+{
+	struct intel_ipu4_device *isp = data;
+
+	*val = isp->buttress.psys_force_ratio * BUTTRESS_PS_FREQ_STEP;
+
+	return 0;
+}
+
+static int intel_ipu4_buttress_psys_force_freq_set(void *data, u64 val)
+{
+	struct intel_ipu4_device *isp = data;
+
+	if (val && (val < BUTTRESS_MIN_FORCE_PS_FREQ ||
+		    val > BUTTRESS_MAX_FORCE_PS_FREQ))
+		return -EINVAL;
+
+	isp->buttress.psys_force_ratio = val / BUTTRESS_PS_FREQ_STEP;
+
+	if (isp->buttress.psys_force_ratio)
+		intel_ipu4_buttress_set_psys_ratio(
+			isp, isp->buttress.psys_force_ratio,
+			isp->buttress.psys_force_ratio);
+	else
+		intel_ipu4_buttress_set_psys_freq(
+			isp, isp->buttress.psys_min_freq);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(intel_ipu4_buttress_psys_force_freq_fops,
+			intel_ipu4_buttress_psys_force_freq_get,
+			intel_ipu4_buttress_psys_force_freq_set, "%llu\n");
+
+static int intel_ipu4_buttress_psys_freq_get(void *data, u64 *val)
+{
+	struct intel_ipu4_device *isp = data;
+	u32 reg_val, ratio;
+	int rval;
+
+	rval = pm_runtime_get_sync(&isp->psys->dev);
+	if (rval < 0) {
+		pm_runtime_put(&isp->psys->dev);
+		dev_err(&isp->pdev->dev, "Runtime PM failed (%d)\n", rval);
+		return rval;
+	}
+
+	reg_val = readl(isp->base + BUTTRESS_REG_PS_FREQ_CAPABILITIES);
+
+	pm_runtime_put(&isp->psys->dev);
+
+	ratio = (reg_val &
+		 BUTTRESS_PS_FREQ_CAPABILITIES_LAST_RESOLVED_RATIO_MASK) >>
+		BUTTRESS_PS_FREQ_CAPABILITIES_LAST_RESOLVED_RATIO_SHIFT;
+
+	*val = BUTTRESS_PS_FREQ_STEP * ratio;
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(intel_ipu4_buttress_psys_freq_fops,
+			intel_ipu4_buttress_psys_freq_get,
+			NULL, "%llu\n");
+
+static int intel_ipu4_buttress_isys_freq_get(void *data, u64 *val)
+{
+	struct intel_ipu4_device *isp = data;
+	u32 reg_val;
+	int rval;
+
+	rval = pm_runtime_get_sync(&isp->isys->dev);
+	if (rval < 0) {
+		pm_runtime_put(&isp->isys->dev);
+		dev_err(&isp->pdev->dev, "Runtime PM failed (%d)\n", rval);
+		return rval;
+	}
+
+	reg_val = readl(isp->base + BUTTRESS_REG_IS_FREQ_CTL);
+
+	pm_runtime_put(&isp->isys->dev);
+
+	/* Input system frequency specified as 1600MHz/divisor */
+	*val = 1600 / (reg_val & BUTTRESS_IS_FREQ_CTL_DIVISOR_MASK);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(intel_ipu4_buttress_isys_freq_fops,
+			intel_ipu4_buttress_isys_freq_get,
+			NULL, "%llu\n");
+
 int intel_ipu4_buttress_debugfs_init(struct intel_ipu4_device *isp)
 {
 	struct debugfs_reg32 *reg =
@@ -1480,6 +1574,19 @@ int intel_ipu4_buttress_debugfs_init(struct intel_ipu4_device *isp)
 				   &intel_ipu4_buttress_tsc_fops);
 	if (!file)
 		goto err;
+	file = debugfs_create_file("psys_force_freq", S_IRWXU, dir, isp,
+				   &intel_ipu4_buttress_psys_force_freq_fops);
+	if (!file)
+		goto err;
+	file = debugfs_create_file("psys_freq", S_IRUSR, dir, isp,
+				   &intel_ipu4_buttress_psys_freq_fops);
+	if (!file)
+		goto err;
+	file = debugfs_create_file("isys_freq", S_IRUSR, dir, isp,
+				   &intel_ipu4_buttress_isys_freq_fops);
+	if (!file)
+		goto err;
+
 	return 0;
 err:
 	debugfs_remove_recursive(dir);
