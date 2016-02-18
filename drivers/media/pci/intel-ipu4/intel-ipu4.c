@@ -206,30 +206,6 @@ static int force_suspend_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(force_suspend_fops, force_suspend_get,
 			force_suspend_set, "%llu\n");
 
-static int psys_clock_ratio_get(void *data, u64 *val)
-{
-	struct intel_ipu4_device *isp = data;
-
-	*val = isp->psys_iommu->ctrl->divisor;
-
-	return 0;
-}
-
-static int psys_clock_ratio_set(void *data, u64 val)
-{
-	struct intel_ipu4_device *isp = data;
-
-	if (val < 8 || val > 32)
-		return -EINVAL;
-
-	intel_ipu4_buttress_set_psys_ratio(isp, val, val);
-
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(psys_clock_ratio_fops, psys_clock_ratio_get,
-			psys_clock_ratio_set, "%llu\n");
-
 static int authenticate(void *data, u64 val)
 {
 	struct intel_ipu4_device *isp = data;
@@ -268,10 +244,6 @@ static int intel_ipu4_init_debugfs(struct intel_ipu4_device *isp)
 
 	file = debugfs_create_file("force_suspend", S_IRWXU, dir, isp,
 				   &force_suspend_fops);
-	if (!file)
-		goto err;
-	file = debugfs_create_file("psys_clock_ration", S_IRWXU, dir, isp,
-				   &psys_clock_ratio_fops);
 	if (!file)
 		goto err;
 	file = debugfs_create_file("authenticate", S_IRWXU, dir, isp,

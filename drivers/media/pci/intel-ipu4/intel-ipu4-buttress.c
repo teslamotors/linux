@@ -594,9 +594,9 @@ static bool intel_ipu4_buttress_auth_done(struct intel_ipu4_device *isp)
 		BUTTRESS_SECURITY_CTL_AUTH_DONE;
 }
 
-void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
-					unsigned int psys_divisor,
-					unsigned int psys_qos_floor)
+static void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
+					       unsigned int psys_divisor,
+					       unsigned int psys_qos_floor)
 {
 	struct intel_ipu4_buttress_ctrl *ctrl = isp->psys_iommu->ctrl;
 

@@ -67,9 +67,6 @@ int intel_ipu4_buttress_unmap_fw_image(struct intel_ipu4_bus_device *sys,
 				    struct sg_table *sgt);
 int intel_ipu4_buttress_power(struct device *dev,
 			      struct intel_ipu4_buttress_ctrl *ctrl, bool on);
-void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
-					unsigned int psys_divisor,
-					unsigned int psys_qos_floor);
 void intel_ipu4_buttress_add_psys_constraint(
 	struct intel_ipu4_device *isp,
 	struct intel_ipu4_buttress_constraint *constraint);
