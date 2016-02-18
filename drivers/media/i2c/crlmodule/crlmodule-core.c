@@ -409,7 +409,13 @@ static int __crlmodule_calc_dynamic_entity_values(
 
 /*
  * Dynamic registers' value is not direct but depends on a referrence value.
- * This kind of registers are mainly used in crlmodule's v4l2 ctrl logicnn.
+ * This kind of registers are mainly used in crlmodule's v4l2 ctrl logic.
+ *
+ * This is to handle cases like the below examples, where mutliple registers
+ * need to be modified based on the input value "val"
+ * R3000 = val & 0xff and R3001 = val >> 8 & 0xff and R3002 = val >> 16 & 0xff
+ * R4001 = val and R4002 = val or
+ * R2800 = FLL - val and R2802 = LLP - val
  */
 static int __crlmodule_update_dynamic_regs(struct crl_sensor *sensor,
 					struct crl_v4l2_ctrl *crl_ctrl,
@@ -419,19 +425,25 @@ static int __crlmodule_update_dynamic_regs(struct crl_sensor *sensor,
 
 	for (i = 0; i < crl_ctrl->regs_items; i++) {
 		struct crl_dynamic_register_access *reg = &crl_ctrl->regs[i];
+		/*
+		 * Each register group must start from the initial value, not
+		 * as a continuation of the previous calculations. The sensor
+		 * configurations must take care of this restriction.
+		 */
+		u32 val_t = val;
 		int ret;
 
 		/* Get the value associated with the dynamic entity */
 		ret = __crlmodule_calc_dynamic_entity_values(sensor,
 							     reg->ops_items,
-							     reg->ops, &val);
+							     reg->ops, &val_t);
 		if (ret)
 			return ret;
 
 		/* Now ready to write the value */
 		ret = crlmodule_write_reg(sensor, reg->dev_i2c_addr,
 					reg->address, reg->len,
-					reg->mask, val);
+					reg->mask, val_t);
 		if (ret)
 			return ret;
 	}
