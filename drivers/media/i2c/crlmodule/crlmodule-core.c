@@ -2267,6 +2267,7 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 	dev_dbg(&client->dev, "%s\n", __func__);
 
 	for (idx = 0; idx < sensor->sensor_ds->power_items; idx++) {
+		int rval;
 		entity = &sensor->sensor_ds->power_entities[idx];
 
 		switch (entity->type) {
@@ -2297,6 +2298,14 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 				entity->regulator_priv = NULL;
 				return -ENODEV;
 			}
+			rval = regulator_set_voltage(entity->regulator_priv,
+						     entity->val,
+						     entity->val);
+			/* Not all regulator supports voltage change */
+			if (rval  < 0)
+				dev_info(&client->dev,
+					"Failed to set voltage %s %d\n",
+					entity->ent_name, entity->val);
 		break;
 		case CRL_POWER_ETY_CLK_FRAMEWORK:
 			sensor->xclk = devm_clk_get(&client->dev, NULL);
