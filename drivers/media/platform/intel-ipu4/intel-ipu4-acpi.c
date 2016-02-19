@@ -21,6 +21,8 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/gpio/consumer.h>
+#include <linux/platform_device.h>
+#include <linux/regulator/consumer.h>
 
 #include <media/crlmodule.h>
 #include <media/intel-ipu4-acpi.h>
@@ -58,6 +60,12 @@ struct ipu4_camera_module_data {
 	void *priv; /* Private for specific subdevice */
 };
 
+struct ipu4_regulator {
+	char *src_dev_name;
+	char *src_rail;
+	char *dest_rail;
+};
+
 struct ipu4_i2c_info {
 	unsigned short bus;
 	unsigned short addr;
@@ -72,6 +80,7 @@ struct ipu4_acpi_devices {
 				 void *priv, size_t size);
 	void *priv_data;
 	size_t priv_size;
+	struct ipu4_regulator *regulators;
 };
 
 static uint64_t imx132_op_clocks[] = (uint64_t []){ 312000000, 0 };
@@ -460,10 +469,40 @@ static const struct acpi_device_id ipu4_acpi_match[] = {
 	{},
 };
 
+static int map_power_rails(char *src_dev_name, char *src_regulator,
+			   struct device *dev, char *dest_rail)
+{
+	struct device *src_dev;
+	int rval;
+
+	if (!src_dev_name) {
+		dev_dbg(dev, "Regulator device name missing");
+		return -ENODEV;
+	}
+
+	src_dev = bus_find_device_by_name(&platform_bus_type, NULL,
+					  src_dev_name);
+	if (!src_dev) {
+		dev_dbg(dev, "Regulator device device not found");
+		return -ENODEV;
+	}
+
+	rval = regulator_register_supply_alias(dev, dest_rail, src_dev,
+					       src_regulator);
+	if (rval < 0) {
+		dev_err(dev, "Regulator alias mapping fails %s, %s <-> %s, %s",
+			dev_name(src_dev), src_regulator,
+			dev_name(dev), dest_rail);
+		return -ENODEV;
+	}
+	return 0;
+}
+
 static int intel_ipu4_acpi_pdata(struct i2c_client *client,
 			  struct ipu4_i2c_helper *helper)
 {
 	struct ipu4_camera_module_data *camdata;
+	struct ipu4_regulator *regulators;
 	int index = get_table_index(&client->dev);
 
 	if (index < 0) {
@@ -478,6 +517,15 @@ static int intel_ipu4_acpi_pdata(struct i2c_client *client,
 
 	strlcpy(client->name, supported_devices[index].real_driver,
 		sizeof(client->name));
+
+	regulators = supported_devices[index].regulators;
+	while (regulators && regulators->src_dev_name) {
+		map_power_rails(regulators->src_dev_name,
+				regulators->src_rail,
+				&client->dev,
+				regulators->dest_rail);
+		regulators++;
+	}
 
 	supported_devices[index].get_platform_data(
 		client, camdata, helper,
