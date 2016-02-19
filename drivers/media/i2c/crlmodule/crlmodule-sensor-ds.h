@@ -502,6 +502,7 @@ struct crl_sensor_configuration {
 	unsigned int frame_desc_entries;
 	enum crl_frame_desc_type frame_desc_type;
 	struct crl_frame_desc *frame_desc;
+	char *msr_file_name;
 };
 
 struct crlmodule_sensors {

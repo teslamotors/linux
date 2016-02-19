@@ -20,6 +20,7 @@
 #include <linux/i2c.h>
 #include <linux/mutex.h>
 #include <linux/types.h>
+#include <linux/firmware.h>
 #include "../../../../include/media/crlmodule.h"
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-subdev.h>
@@ -98,6 +99,13 @@ struct crl_sensor {
 
 	u8 *nvm_data;
 	u16 nvm_size;
+
+	/* Pointer to binary file which contains
+	 * tunable IQ parameters like NR, DPC, BLC
+	 * Not all MSR's are moved to the binary
+	 * at the moment.
+	 */
+	const struct firmware *msr_list;
 };
 
 #define to_crlmodule_subdev(_sd)				\

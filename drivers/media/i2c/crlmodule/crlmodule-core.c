@@ -32,6 +32,7 @@
 #include "crlmodule.h"
 #include "crlmodule-nvm.h"
 #include "crlmodule-regs.h"
+#include "crlmodule-msrlist.h"
 
 static int __crlmodule_get_variable_ref(struct crl_sensor *sensor,
 					enum crl_member_data_reference_ids ref,
@@ -1760,6 +1761,7 @@ static int crlmodule_stop_streaming(struct crl_sensor *sensor)
 static int crlmodule_set_stream(struct v4l2_subdev *subdev, int enable)
 {
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	int rval = 0;
 
 	mutex_lock(&sensor->mutex);
@@ -1768,6 +1770,14 @@ static int crlmodule_set_stream(struct v4l2_subdev *subdev, int enable)
 		goto out;
 
 	if (enable) {
+
+		if (sensor->msr_list) {
+			rval = crlmodule_apply_msrlist(client,
+					sensor->msr_list);
+			if (rval)
+				dev_warn(&client->dev, "msrlist write error %d\n",
+						rval);
+		}
 		rval = crlmodule_start_streaming(sensor);
 		if (!rval)
 			sensor->streaming = 1;
@@ -2607,7 +2617,21 @@ static int crlmodule_probe(struct i2c_client *client,
 	ret = v4l2_async_register_subdev(&sensor->src->sd);
 	if (ret < 0)
 		goto cleanup;
+
 	pm_runtime_enable(&client->dev);
+
+	/* Load IQ tuning registers from drvb file*/
+	if (sensor->sensor_ds->msr_file_name) {
+		ret = crlmodule_load_msrlist(client,
+			sensor->sensor_ds->msr_file_name,
+			&sensor->msr_list);
+		if (ret)
+			dev_warn(&client->dev,
+				"msrlist loading failed. Ignore, move on\n");
+	} else {
+		/* sensor will still continue streaming */
+		dev_warn(&client->dev, "No msrlists associated with sensor\n");
+	}
 
 	return 0;
 
@@ -2640,6 +2664,7 @@ static int crlmodule_remove(struct i2c_client *client)
 	crlmodule_nvm_deinit(sensor);
 	crlmodule_release_ds(sensor);
 	crlmodule_free_controls(sensor);
+	crlmodule_release_msrlist(&sensor->msr_list);
 
 	pm_runtime_disable(&client->dev);
 
