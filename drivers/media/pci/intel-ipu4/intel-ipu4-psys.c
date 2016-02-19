@@ -853,18 +853,16 @@ static int intel_ipu4_psys_start_pg(struct intel_ipu4_psys *psys,
  */
 static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 {
-	struct intel_ipu4_psys_fh *fh, *fh0, *fh_last;
+	struct intel_ipu4_psys_fh *fh, *fh0;
 	struct intel_ipu4_psys_kcmd *kcmd;
 	bool ipu_active = !list_empty(&psys->active);
 	int ret, i;
 
 	for (i = 0; i < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; i++) {
-		bool removed = false;
+		bool removed;
 
 		do {
-			fh_last = list_last_entry(&psys->fhs,
-					struct intel_ipu4_psys_fh, list);
-
+			removed = false;
 			list_for_each_entry_safe(fh, fh0, &psys->fhs, list) {
 				if (list_empty(&fh->kcmds[i]))
 					continue;
@@ -897,9 +895,6 @@ static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 				intel_ipu4_psys_kcmd_complete(psys, kcmd, ret);
 
 				removed = true;
-
-				if (fh == fh_last)
-					break;
 			}
 		} while (removed);
 	}
