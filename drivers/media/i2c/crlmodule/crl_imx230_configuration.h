@@ -1982,6 +1982,8 @@ struct crl_sensor_configuration imx230_crl_configuration = {
 	.frame_desc_entries = ARRAY_SIZE(imx230_frame_desc),
 	.frame_desc_type = CRL_V4L2_MBUS_FRAME_DESC_TYPE_CSI2,
 	.frame_desc = imx230_frame_desc,
+
+	.msr_file_name = "00imx230.bxt_rvp.drvb",
 };
 
 #endif  /* __CRLMODULE_imx230_CONFIGURATION_H_ */

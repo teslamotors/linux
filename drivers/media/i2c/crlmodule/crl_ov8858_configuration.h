@@ -1330,6 +1330,8 @@ static struct crl_sensor_configuration ov8858_crl_configuration = {
 	.frame_desc_entries = ARRAY_SIZE(ov8858_frame_desc),
 	.frame_desc_type = CRL_V4L2_MBUS_FRAME_DESC_TYPE_CSI2,
 	.frame_desc = ov8858_frame_desc,
+
+	.msr_file_name = "00ov8858.bxt_rvp.drvb",
 };
 
 #endif  /* __CRLMODULE_OV8858_CONFIGURATION_H_ */
