@@ -651,14 +651,23 @@ fail:
 
 static void intel_ipu4_isys_csi2_sof_event(struct intel_ipu4_isys_csi2 *csi2)
 {
-	struct intel_ipu4_isys_pipeline *ip =
-		to_intel_ipu4_isys_pipeline(csi2->asd.sd.entity.pipe);
+	struct intel_ipu4_isys_pipeline *ip;
 	struct v4l2_event ev = {
 		.type = V4L2_EVENT_FRAME_SYNC,
-		.u.frame_sync.frame_sequence =
-		atomic_inc_return(&ip->sequence) - 1,
 	};
 	struct video_device *vdev = csi2->asd.sd.devnode;
+	unsigned long flags;
+
+	spin_lock_irqsave(&csi2->isys->lock, flags);
+	ip = to_intel_ipu4_isys_pipeline(csi2->asd.sd.entity.pipe);
+	/* Pipe already vanished */
+	if (!ip) {
+		spin_unlock_irqrestore(&csi2->isys->lock, flags);
+		return;
+	}
+	ev.u.frame_sync.frame_sequence =
+		atomic_inc_return(&ip->sequence) - 1;
+	spin_unlock_irqrestore(&csi2->isys->lock, flags);
 
 	trace_ipu4_sof_seqid(ev.u.frame_sync.frame_sequence);
 	dev_dbg(&csi2->isys->adev->dev, "%s sequence %i\n", __func__,
