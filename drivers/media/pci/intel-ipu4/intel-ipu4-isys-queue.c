@@ -728,8 +728,12 @@ static unsigned int get_sof_sequence_by_timestamp(
 	unsigned int i;
 
 	for (i = 0; i < INTEL_IPU4_ISYS_MAX_PARALLEL_SOF; i++)
-		if (time == ip->seq[i].timestamp)
+		if (time == ip->seq[i].timestamp) {
+			dev_dbg(&isys->adev->dev,
+				"using sequence number %u for timestamp 0x%16.16llx\n",
+				ip->seq[i].sequence, time);
 			return ip->seq[i].sequence;
+		}
 
 	dev_err(&isys->adev->dev, "SOF sequence number not found\n");
 

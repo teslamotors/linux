@@ -1166,6 +1166,7 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
 	struct ia_css_isys_resp_info resp;
 	struct intel_ipu4_isys_pipeline *pipe;
+	u64 ts;
 	int rval;
 	unsigned int i;
 
@@ -1175,6 +1176,8 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 	rval = intel_ipu4_lib_call_notrace(stream_handle_response, isys, &resp);
 	if (rval < 0)
 		return rval;
+
+	ts = (u64)resp.timestamp[1] << 32 | resp.timestamp[0];
 
 #ifdef IPU_STEP_BXTB0
 	dev_dbg(&adev->dev,
@@ -1233,8 +1236,8 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY:
 		dev_dbg(&adev->dev,
-			"%d:IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY at pin %d\n",
-			resp.stream_handle, resp.pin_id);
+			"%d:IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY at pin %u, timestamp 0x%16.16llx\n",
+			resp.stream_handle, resp.pin_id, ts);
 		if (resp.pin_id <  INTEL_IPU4_ISYS_OUTPUT_PINS &&
 		    pipe->output_pins[resp.pin_id].pin_ready)
 			pipe->output_pins[resp.pin_id].pin_ready(pipe, &resp);
@@ -1250,8 +1253,9 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE:
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE\n",
-			resp.stream_handle);
+		dev_dbg(&adev->dev,
+			"%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE, timestamp 0x%16.16llx\n",
+			resp.stream_handle, ts);
 		for (i = 0; i < INTEL_IPU4_NUM_CAPTURE_DONE; i++)
 			if (pipe->capture_done[i])
 				pipe->capture_done[i](pipe, &resp);
@@ -1264,20 +1268,19 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			V4L2_FIELD_BOTTOM : V4L2_FIELD_TOP;
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_FRAME_SOF:
-		dev_dbg(&adev->dev,
-			"%d:IA_CSS_ISYS_RESP_TYPE_FRAME_SOF hi %u, lo %u\n",
-			resp.stream_handle,
-			resp.timestamp[1], resp.timestamp[0]);
 		pipe->seq[pipe->seq_index].sequence =
 			atomic_read(&pipe->sequence) - 1;
-		pipe->seq[pipe->seq_index].timestamp =
-			(u64)resp.timestamp[1] << 32 | resp.timestamp[0];
+		pipe->seq[pipe->seq_index].timestamp = ts;
+		dev_dbg(&adev->dev,
+			"%d:IA_CSS_ISYS_RESP_TYPE_FRAME_SOF (index %u), timestamp 0x%16.16llx\n",
+			resp.stream_handle, pipe->seq[pipe->seq_index].sequence,
+			ts);
 		pipe->seq_index = (pipe->seq_index + 1)
 			% INTEL_IPU4_ISYS_MAX_PARALLEL_SOF;
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_FRAME_EOF:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_FRAME_EOF\n",
-			resp.stream_handle);
+		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_FRAME_EOF, timestamp 0x%16.16llx\n",
+			resp.stream_handle, ts);
 		break;
 	default:
 		dev_err(&adev->dev, "%d:unknown response type %u\n",
