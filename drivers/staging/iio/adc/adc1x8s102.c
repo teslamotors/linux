@@ -1,7 +1,7 @@
 /*
  * ADC1x8S102 SPI ADC driver
  *
- * Copyright(c) 2013 Intel Corporation.
+ * Copyright(c) 2013-2015 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -32,6 +32,13 @@
 
 #include <linux/platform_data/adc1x8s102.h>
 #include <linux/regulator/consumer.h>
+
+#include <linux/delay.h>
+#include <linux/acpi.h>
+#include <linux/property.h>
+#include <linux/gpio.h>
+
+#include <linux/spi/pxa2xx_spi.h>
 
 /*
  * Defining the ADC resolution being 12 bits, we can use the same driver for
@@ -259,13 +266,59 @@ static const struct iio_info adc1x8s102_info = {
 	.driver_module		= THIS_MODULE,
 };
 
+struct adc1x8s102_spi_info {
+	kernel_ulong_t driver_data;
+	void (*setup)(struct spi_device *spi);
+};
+
+static void adc1x8s102_setup_int3495(struct spi_device *spi)
+{
+	/* Galileo Gen 2 SPI setup */
+
+#define ADC1x8S102_GALILEO2_CS 8
+
+	struct pxa2xx_spi_chip *chip_data;
+	chip_data = devm_kzalloc(&spi->dev, sizeof(*chip_data), GFP_KERNEL);
+
+	if (chip_data) {
+		chip_data->gpio_cs = ADC1x8S102_GALILEO2_CS;
+		spi->controller_data = chip_data;
+		dev_info(&spi->dev, "setting GPIO CS value to %d\n", chip_data->gpio_cs);
+		spi_setup(spi);
+	}
+}
+
+static const struct adc1x8s102_spi_info adc1x8s102_info_int3495 = {
+	.driver_data = 0,
+	.setup = adc1x8s102_setup_int3495,
+};
+
+static const struct acpi_device_id adc1x8s102_acpi_ids[] = {
+	{ "INT3495",  (kernel_ulong_t)&adc1x8s102_info_int3495 },
+	{ }
+};
+MODULE_DEVICE_TABLE(acpi, adc1x8s102_acpi_ids);
 
 static int adc1x8s102_probe(struct spi_device *spi)
 {
 	struct adc1x8s102_platform_data *pdata = spi->dev.platform_data;
 	struct adc1x8s102_state *st;
 	struct iio_dev *indio_dev = iio_device_alloc(sizeof(*st));
+	const struct acpi_device_id *id;
 	int ret;
+
+	id = acpi_match_device(adc1x8s102_acpi_ids, &spi->dev);
+
+	if (id) {
+		const struct adc1x8s102_spi_info *info =
+				(struct adc1x8s102_spi_info *)id->driver_data;
+
+		if (!info)
+			return -ENODEV;
+
+		if (info->setup)
+			info->setup(spi);
+	}
 
 	if (NULL == indio_dev) {
 		dev_crit(&spi->dev, "Cannot allocate memory for indio_dev\n");
@@ -274,10 +327,13 @@ static int adc1x8s102_probe(struct spi_device *spi)
 
 	st = iio_priv(indio_dev);
 	if (NULL == pdata) {
-		dev_err(&spi->dev, "Cannot get adc1x8s102 platform data\n");
-		return -EFAULT;
+		dev_warn(&spi->dev, "Cannot get adc1x8s102 platform data\n");
+		/* FIXME: make this ACPI-dependent */
+		st->ext_vin = 5000;
 	}
-	st->ext_vin = pdata->ext_vin;
+	else {
+		st->ext_vin = pdata->ext_vin;
+	}
 
 	/* Use regulator, if available. */
 	st->reg = regulator_get(&spi->dev, "vref");
@@ -297,7 +353,7 @@ static int adc1x8s102_probe(struct spi_device *spi)
 	spi_set_drvdata(spi, indio_dev);
 	st->spi = spi;
 
-	indio_dev->name = spi_get_device_id(spi)->name;
+	indio_dev->name = spi->modalias;
 	indio_dev->dev.parent = &spi->dev;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->channels = adc1x8s102_channels;
@@ -365,20 +421,14 @@ static int adc1x8s102_remove(struct spi_device *spi)
 }
 
 
-static const struct spi_device_id adc1x8s102_id[] = {
-	{"adc1x8s102", 0},
-	{}
-};
-MODULE_DEVICE_TABLE(spi, adc1x8s102_id);
-
 static struct spi_driver adc1x8s102_driver = {
 	.driver = {
-		.name	= "adc1x8s102",
+		.name   = "adc1x8s102",
 		.owner	= THIS_MODULE,
+		.acpi_match_table = ACPI_PTR(adc1x8s102_acpi_ids),
 	},
 	.probe		= adc1x8s102_probe,
 	.remove		= adc1x8s102_remove,
-	.id_table	= adc1x8s102_id,
 };
 module_spi_driver(adc1x8s102_driver);
 
