@@ -24,7 +24,7 @@
 
 #define GPIO_BASE		429
 
-/* #define AS3638_DEVEL */
+#define AS3638_DEVEL
 
 /*
  * Placeholder for possible bxt_rvp platform data for testing different
