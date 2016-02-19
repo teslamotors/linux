@@ -1428,15 +1428,34 @@ void intel_ipu4_buttress_csi_port_config(struct intel_ipu4_device *isp,
 					 u32 legacy, u32 combo)
 {
 	int combo_shift;
+	unsigned int retry = 1000;
+	u32 value;
 
 	if (is_intel_ipu4_hw_bxt_a0(isp))
 		combo_shift = BUTTRESS_CSI2_PORT_CONFIG_AB_COMBO_SHIFT_A0;
 	else
 		combo_shift = BUTTRESS_CSI2_PORT_CONFIG_AB_COMBO_SHIFT_B0;
 
-	writel((legacy & BUTTRESS_CSI2_PORT_CONFIG_AB_MUX_MASK) |
-	       ((combo & BUTTRESS_CSI2_PORT_CONFIG_AB_MUX_MASK) << combo_shift),
-	       isp->base + BUTTRESS_REG_CSI2_PORT_CONFIG_AB);
+	value = (legacy & BUTTRESS_CSI2_PORT_CONFIG_AB_MUX_MASK) |
+		((combo & BUTTRESS_CSI2_PORT_CONFIG_AB_MUX_MASK)
+		 << combo_shift);
+
+	/*
+	 * WA for #H1804184522: write twice, read back, compare until
+	 * success. Let's keep 1000 trials as "until success".
+	 * We can't do that for ever
+	 */
+	do {
+		writel(value,
+		       isp->base + BUTTRESS_REG_CSI2_PORT_CONFIG_AB);
+		writel(value,
+		       isp->base + BUTTRESS_REG_CSI2_PORT_CONFIG_AB);
+		retry--;
+	} while ((readl(isp->base + BUTTRESS_REG_CSI2_PORT_CONFIG_AB) != value)
+		 && retry > 0);
+	if (!retry)
+		dev_err(&isp->pdev->dev,
+			"Write to port config register failed");
 }
 EXPORT_SYMBOL(intel_ipu4_buttress_csi_port_config);
 
