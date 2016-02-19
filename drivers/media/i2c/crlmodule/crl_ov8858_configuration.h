@@ -399,9 +399,9 @@ static struct crl_register_write_rep ov8858_powerup_regset[] = {
 	{ 0x400a, CRL_REG_LEN_08BIT, 0x01 },
 };
 
-static struct crl_register_write_rep ov8858_mode_8m[] = {
+static struct crl_register_write_rep ov8858_mode_8m_native[] = {
 	{ 0x382d, CRL_REG_LEN_08BIT, 0x20 },
-	{ 0x3808, CRL_REG_LEN_08BIT, 0x0C },/* h_output_size high 3280 x 2448 */
+	{ 0x3808, CRL_REG_LEN_08BIT, 0x0C },/* h_output_size high 3264 x 2448 */
 	{ 0x3809, CRL_REG_LEN_08BIT, 0xc0 },/* h_output_size low */
 	{ 0x380A, CRL_REG_LEN_08BIT, 0x09 },/* v_output_size high */
 	{ 0x380B, CRL_REG_LEN_08BIT, 0x90 },/* v_output_size low */
@@ -411,12 +411,36 @@ static struct crl_register_write_rep ov8858_mode_8m[] = {
 	{ 0x4601, CRL_REG_LEN_08BIT, 0x97 },
 };
 
-static struct crl_register_write_rep ov8858_mode_6m[] = {
+static struct crl_register_write_rep ov8858_mode_6m_native[] = {
 	{ 0x382d, CRL_REG_LEN_08BIT, 0x80 },
-	{ 0x3808, CRL_REG_LEN_08BIT, 0x0C },/* h_output_size high 3280 x 1836 */
+	{ 0x3808, CRL_REG_LEN_08BIT, 0x0C },/* h_output_size high 3264 x 1836 */
 	{ 0x3809, CRL_REG_LEN_08BIT, 0xc0 },/* h_output_size low */
 	{ 0x380A, CRL_REG_LEN_08BIT, 0x07 },/* v_output_size high */
 	{ 0x380B, CRL_REG_LEN_08BIT, 0x2c },/* v_output_size low */
+	{ 0x4022, CRL_REG_LEN_08BIT, 0x0C },
+	{ 0x4023, CRL_REG_LEN_08BIT, 0x60 },
+	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x4601, CRL_REG_LEN_08BIT, 0x97 },
+};
+
+static struct crl_register_write_rep ov8858_mode_8m_full[] = {
+	{ 0x382d, CRL_REG_LEN_08BIT, 0x20 },
+	{ 0x3808, CRL_REG_LEN_08BIT, 0x0C },/* h_output_size high 3280 x 2464 */
+	{ 0x3809, CRL_REG_LEN_08BIT, 0xD0 },/* h_output_size low */
+	{ 0x380A, CRL_REG_LEN_08BIT, 0x09 },/* v_output_size high */
+	{ 0x380B, CRL_REG_LEN_08BIT, 0xA0 },/* v_output_size low */
+	{ 0x4022, CRL_REG_LEN_08BIT, 0x0C },
+	{ 0x4023, CRL_REG_LEN_08BIT, 0x60 },
+	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x4601, CRL_REG_LEN_08BIT, 0x97 },
+};
+
+static struct crl_register_write_rep ov8858_mode_6m_full[] = {
+	{ 0x382d, CRL_REG_LEN_08BIT, 0x80 },
+	{ 0x3808, CRL_REG_LEN_08BIT, 0x0C },/* h_output_size high 3280 x 1852 */
+	{ 0x3809, CRL_REG_LEN_08BIT, 0xD0 },/* h_output_size low */
+	{ 0x380A, CRL_REG_LEN_08BIT, 0x07 },/* v_output_size high */
+	{ 0x380B, CRL_REG_LEN_08BIT, 0x3c },/* v_output_size low */
 	{ 0x4022, CRL_REG_LEN_08BIT, 0x0C },
 	{ 0x4023, CRL_REG_LEN_08BIT, 0x60 },
 	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
@@ -581,8 +605,7 @@ static struct crl_pll_configuration ov8858_pll_configurations[] = {
 
 };
 
-
-static struct crl_subdev_rect_rep ov8858_8m_rects[] = {
+static struct crl_subdev_rect_rep ov8858_8m_rects_native[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect.left = 0,
@@ -618,7 +641,7 @@ static struct crl_subdev_rect_rep ov8858_8m_rects[] = {
 	 },
 };
 
-static struct crl_subdev_rect_rep ov8858_6m_rects[] = {
+static struct crl_subdev_rect_rep ov8858_6m_rects_native[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect.left = 0,
@@ -654,6 +677,79 @@ static struct crl_subdev_rect_rep ov8858_6m_rects[] = {
 	 },
 };
 
+
+static struct crl_subdev_rect_rep ov8858_8m_rects_full[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 3280,
+		.in_rect.height = 2464,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 3280,
+		.out_rect.height = 2464,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 3280,
+		.in_rect.height = 2464,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 3280,
+		.out_rect.height = 2464,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 3280,
+		.in_rect.height = 2464,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 3280,
+		.out_rect.height = 2464,
+	},
+};
+
+static struct crl_subdev_rect_rep ov8858_6m_rects_full[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 3280,
+		.in_rect.height = 2464,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 3280,
+		.out_rect.height = 2464,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 3280,
+		.in_rect.height = 2464,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 3280,
+		.out_rect.height = 2464,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 3280,
+		.in_rect.height = 2464,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 3280,
+		.out_rect.height = 1852,
+	},
+};
+
 static struct crl_subdev_rect_rep ov8858_1080_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
@@ -665,7 +761,7 @@ static struct crl_subdev_rect_rep ov8858_1080_rects[] = {
 		.out_rect.top = 0,
 		.out_rect.width = 3264,
 		.out_rect.height = 2448,
-	 },
+	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
 		.in_rect.left = 0,
@@ -676,7 +772,7 @@ static struct crl_subdev_rect_rep ov8858_1080_rects[] = {
 		.out_rect.top = 0,
 		.out_rect.width = 3264,
 		.out_rect.height = 2448,
-	 },
+	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
 		.in_rect.left = 0,
@@ -687,14 +783,13 @@ static struct crl_subdev_rect_rep ov8858_1080_rects[] = {
 		.out_rect.top = 0,
 		.out_rect.width = 1920,
 		.out_rect.height = 1080,
-	 },
+	},
 };
-
 
 static struct crl_mode_rep ov8858_modes[] = {
 	{
-		.sd_rects_items = ARRAY_SIZE(ov8858_8m_rects),
-		.sd_rects = ov8858_8m_rects,
+		.sd_rects_items = ARRAY_SIZE(ov8858_8m_rects_native),
+		.sd_rects = ov8858_8m_rects_native,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
@@ -704,12 +799,12 @@ static struct crl_mode_rep ov8858_modes[] = {
 		.min_fll = 2474,
 		.comp_items = 0,
 		.ctrl_data = 0,
-		.mode_regs_items = ARRAY_SIZE(ov8858_mode_8m),
-		.mode_regs = ov8858_mode_8m,
-	 },
+		.mode_regs_items = ARRAY_SIZE(ov8858_mode_8m_native),
+		.mode_regs = ov8858_mode_8m_native,
+	},
 	{
-		.sd_rects_items = ARRAY_SIZE(ov8858_6m_rects),
-		.sd_rects = ov8858_6m_rects,
+		.sd_rects_items = ARRAY_SIZE(ov8858_6m_rects_native),
+		.sd_rects = ov8858_6m_rects_native,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
@@ -719,9 +814,39 @@ static struct crl_mode_rep ov8858_modes[] = {
 		.min_fll = 1872,
 		.comp_items = 0,
 		.ctrl_data = 0,
-		.mode_regs_items = ARRAY_SIZE(ov8858_mode_6m),
-		.mode_regs = ov8858_mode_6m,
-	 },
+		.mode_regs_items = ARRAY_SIZE(ov8858_mode_6m_native),
+		.mode_regs = ov8858_mode_6m_native,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(ov8858_8m_rects_full),
+		.sd_rects = ov8858_8m_rects_full,
+		.binn_hor = 1,
+		.binn_vert = 1,
+		.scale_m = 1,
+		.width = 3280,
+		.height = 2464,
+		.min_llp = 3880,
+		.min_fll = 2474,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = ARRAY_SIZE(ov8858_mode_8m_full),
+		.mode_regs = ov8858_mode_8m_full,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(ov8858_6m_rects_full),
+		.sd_rects = ov8858_6m_rects_full,
+		.binn_hor = 1,
+		.binn_vert = 1,
+		.scale_m = 1,
+		.width = 3280,
+		.height = 1852,
+		.min_llp = 5132,
+		.min_fll = 1872,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = ARRAY_SIZE(ov8858_mode_6m_full),
+		.mode_regs = ov8858_mode_6m_full,
+	},
 	{
 		.sd_rects_items = ARRAY_SIZE(ov8858_1080_rects),
 		.sd_rects = ov8858_1080_rects,
@@ -736,8 +861,7 @@ static struct crl_mode_rep ov8858_modes[] = {
 		.ctrl_data = 0,
 		.mode_regs_items = ARRAY_SIZE(ov8858_mode_1080),
 		.mode_regs = ov8858_mode_1080,
-	 },
-
+	},
 };
 
 static struct crl_sensor_subdev_config ov8858_sensor_subdevs[] = {
@@ -758,8 +882,8 @@ static struct crl_sensor_subdev_config ov8858_sensor_subdevs[] = {
 static struct crl_sensor_limits ov8858_sensor_limits = {
 	.x_addr_min = 0,
 	.y_addr_min = 0,
-	.x_addr_max = 3264,
-	.y_addr_max = 2448,
+	.x_addr_max = 3280,
+	.y_addr_max = 2464,
 	.min_frame_length_lines = 160,
 	.max_frame_length_lines = 65535,
 	.min_line_length_pixels = 3880,
