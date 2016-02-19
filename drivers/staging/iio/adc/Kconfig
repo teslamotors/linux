@@ -115,4 +115,17 @@ config SPEAR_ADC
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called spear_adc.
+
+config ADC1x8S102
+	tristate "Texas Instruments ADC1x8S102 driver"
+	depends on SPI
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	help
+		Say yes here to build support for Texas Instruments ADC1x8S102 ADC.
+		Provides direct access via sysfs.
+
+		To compile this driver as a module, choose M here: the module will
+		be called adc1x8s102
+
 endmenu
