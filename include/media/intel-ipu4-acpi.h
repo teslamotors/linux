@@ -24,4 +24,15 @@ int intel_ipu4_get_acpi_devices(void *driver_data,
 				(struct device *, void *,
 				 struct intel_ipu4_isys_csi2_config *csi2,
 				 bool reprobe));
+
+struct intel_ipu4_regulator {
+	char *src_dev_name;
+	char *src_rail;
+	char *dest_rail;
+};
+
+/* These can be override by plarform data. */
+extern const struct intel_ipu4_regulator imx230regulators[] __weak;
+extern const struct intel_ipu4_regulator ov8858regulators[] __weak;
+
 #endif

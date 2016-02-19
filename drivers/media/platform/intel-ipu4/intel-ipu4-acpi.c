@@ -60,12 +60,6 @@ struct ipu4_camera_module_data {
 	void *priv; /* Private for specific subdevice */
 };
 
-struct ipu4_regulator {
-	char *src_dev_name;
-	char *src_rail;
-	char *dest_rail;
-};
-
 struct ipu4_i2c_info {
 	unsigned short bus;
 	unsigned short addr;
@@ -80,7 +74,7 @@ struct ipu4_acpi_devices {
 				 void *priv, size_t size);
 	void *priv_data;
 	size_t priv_size;
-	struct ipu4_regulator *regulators;
+	struct intel_ipu4_regulator *regulators;
 };
 
 static uint64_t imx132_op_clocks[] = (uint64_t []){ 312000000, 0 };
@@ -430,8 +424,10 @@ static int get_lm3643_pdata(struct i2c_client *client,
 };
 
 static const struct ipu4_acpi_devices supported_devices[] = {
-	{ "SONY230A", CRLMODULE_NAME, get_crlmodule_pdata, "lc898122", 0 },
-	{ "INT3477",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
+	{ "SONY230A", CRLMODULE_NAME, get_crlmodule_pdata, "lc898122", 0,
+	  imx230regulators },
+	{ "INT3477",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0,
+	  ov8858regulators },
 	{ "INT3471",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
 	{ "SONY214A", CRLMODULE_NAME, get_crlmodule_pdata, "dw9714", 0 },
 	{ "SONY132A", SMIAPP_NAME,    get_smiapp_pdata, imx132_op_clocks,
@@ -502,7 +498,7 @@ static int intel_ipu4_acpi_pdata(struct i2c_client *client,
 			  struct ipu4_i2c_helper *helper)
 {
 	struct ipu4_camera_module_data *camdata;
-	struct ipu4_regulator *regulators;
+	struct intel_ipu4_regulator *regulators;
 	int index = get_table_index(&client->dev);
 
 	if (index < 0) {

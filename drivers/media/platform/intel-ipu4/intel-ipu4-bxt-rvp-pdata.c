@@ -19,6 +19,7 @@
 #include <linux/kernel.h>
 #include <linux/pci.h>
 
+#include <media/intel-ipu4-acpi.h>
 #include <media/intel-ipu4-isys.h>
 #include "../../../../include/media/as3638.h"
 
@@ -102,6 +103,25 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
 
 
 #else
+
+/* Move to ACPI asap */
+const struct intel_ipu4_regulator imx230regulators[] = {
+	{ "wcove_regulator", "VPROG5A", "VANA" },
+	{ "wcove_regulator", "VFLEX", "VDIG" },
+	{ "wcove_regulator", "VPROG4C", "VAF" },
+	{ "wcove_regulator", "VPROG1C", "VIO" },
+	{ NULL, NULL, NULL }
+};
+EXPORT_SYMBOL_GPL(imx230regulators);
+
+/* Move to ACPI asap */
+const struct intel_ipu4_regulator ov8858regulators[] = {
+	{ "wcove_regulator", "VPROG4B", "VANA" },
+	{ "wcove_regulator", "VPROG1E", "VDIG" },
+	{ "wcove_regulator", "VPROG1C", "VIO" },
+	{ NULL, NULL, NULL }
+};
+EXPORT_SYMBOL_GPL(ov8858regulators);
 
 /*
  * Development time configuration
