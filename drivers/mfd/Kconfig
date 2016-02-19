@@ -334,6 +334,16 @@ config MFD_INTEL_MSIC
 	  Passage) chip. This chip embeds audio, battery, GPIO, etc.
 	  devices used in Intel Medfield platforms.
 
+config MFD_PCA9685
+	tristate "NPX Semiconductors PCA9685 (PWM/GPIO) driver"
+	depends on GPIOLIB && I2C && PWM
+	select REGMAP_I2C
+	help
+	  NPX PCA9685 I2C-bus PWM controller with GPIO output interface support.
+	  The I2C-bus LED controller provides 16-channel, 12-bit PWM Fm+.
+	  Additionally, the driver allows the channels to be configured as GPIO
+	  interface (output only).
+
 config MFD_IPAQ_MICRO
 	bool "Atmel Micro ASIC (iPAQ h3100/h3600/h3700) Support"
 	depends on SA1100_H3100 || SA1100_H3600
