@@ -91,12 +91,17 @@ struct gpio_desc {
 #define FLAG_USED_AS_IRQ 9	/* GPIO is connected to an IRQ */
 #define FLAG_SYSFS_DIR	10	/* show sysfs direction attribute */
 #define FLAG_IS_HOGGED	11	/* GPIO is hogged */
+#define FLAG_PULLUP	12	/* Gpio drive is resistive pullup */
+#define FLAG_PULLDOWN	13	/* Gpio drive is resistive pulldown */
+#define FLAG_STRONG	14	/* Gpio drive is strong (fast output) */
+#define FLAG_HIZ	15	/* Gpio drive is Hi-Z (input) */
 
 #define ID_SHIFT	16	/* add new flags before this one */
 
 #define GPIO_FLAGS_MASK		((1 << ID_SHIFT) - 1)
 #define GPIO_TRIGGER_MASK	(BIT(FLAG_TRIG_FALL) | BIT(FLAG_TRIG_RISE))
-
+#define GPIO_DRIVE_MASK		(BIT(FLAG_PULLUP) | BIT(FLAG_PULLDOWN)	\
+				| BIT(FLAG_STRONG) | BIT(FLAG_HIZ))
 	const char		*label;
 };
 

@@ -39,6 +39,9 @@
 #define PCA957X_MSK		6
 #define PCA957X_INTS		7
 
+#define PCA953X_PUPD_EN	35
+#define PCA953X_PUPD_SEL	36
+
 #define PCA_GPIO_MASK		0x00FF
 #define PCA_INT			0x0100
 #define PCA953X_TYPE		0x1000
@@ -374,6 +377,43 @@ exit:
 	mutex_unlock(&chip->i2c_lock);
 }
 
+static int pca953x_gpio_set_drive(struct gpio_chip *gc,
+				 unsigned off, unsigned mode)
+{
+	struct pca953x_chip *chip;
+	int ret = 0;
+	int val;
+
+	chip = container_of(gc, struct pca953x_chip, gpio_chip);
+
+	if (chip->chip_type != PCA953X_TYPE)
+		return -EINVAL;
+
+	mutex_lock(&chip->i2c_lock);
+
+	switch (mode) {
+	case GPIOF_DRIVE_PULLUP:
+		ret = pca953x_write_single(chip, PCA953X_PUPD_EN, 1, off) ||
+				pca953x_write_single(chip, PCA953X_PUPD_SEL, 1, off);
+		break;
+	case GPIOF_DRIVE_PULLDOWN:
+		ret = pca953x_write_single(chip, PCA953X_PUPD_EN, 1, off) ||
+				pca953x_write_single(chip, PCA953X_PUPD_SEL, 0, off);
+		break;
+	case GPIOF_DRIVE_STRONG:
+	case GPIOF_DRIVE_HIZ:
+		ret = pca953x_read_single(chip, PCA953X_PUPD_EN, &val, off) ||
+				pca953x_write_single(chip, PCA953X_PUPD_EN, 0, off) ||
+				pca953x_write_single(chip, PCA953X_PUPD_SEL, val, off);
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
+	mutex_unlock(&chip->i2c_lock);
+	return ret;
+}
+
 static void pca953x_setup_gpio(struct pca953x_chip *chip, int gpios)
 {
 	struct gpio_chip *gc;
@@ -392,6 +432,9 @@ static void pca953x_setup_gpio(struct pca953x_chip *chip, int gpios)
 	gc->dev = &chip->client->dev;
 	gc->owner = THIS_MODULE;
 	gc->names = chip->names;
+
+	if (chip->chip_type == PCA953X_TYPE)
+		gc->set_drive = pca953x_gpio_set_drive;
 }
 
 #ifdef CONFIG_GPIO_PCA953X_IRQ
@@ -548,7 +591,7 @@ static irqreturn_t pca953x_irq_handler(int irq, void *devid)
 }
 
 static int pca953x_irq_setup(struct pca953x_chip *chip,
-			     int irq_base)
+				 int irq_base)
 {
 	struct i2c_client *client = chip->client;
 	int ret, i, offset = 0;
@@ -591,10 +634,10 @@ static int pca953x_irq_setup(struct pca953x_chip *chip,
 		}
 
 		ret =  gpiochip_irqchip_add(&chip->gpio_chip,
-					    &pca953x_irq_chip,
-					    irq_base,
-					    handle_simple_irq,
-					    IRQ_TYPE_NONE);
+						&pca953x_irq_chip,
+						irq_base,
+						handle_simple_irq,
+						IRQ_TYPE_NONE);
 		if (ret) {
 			dev_err(&client->dev,
 				"could not connect irqchip to gpiochip\n");
@@ -607,7 +650,7 @@ static int pca953x_irq_setup(struct pca953x_chip *chip,
 
 #else /* CONFIG_GPIO_PCA953X_IRQ */
 static int pca953x_irq_setup(struct pca953x_chip *chip,
-			     int irq_base)
+				 int irq_base)
 {
 	struct i2c_client *client = chip->client;
 
@@ -628,7 +671,7 @@ static int device_pca953x_init(struct pca953x_chip *chip, u32 invert)
 		goto out;
 
 	ret = pca953x_read_regs(chip, PCA953X_DIRECTION,
-			       chip->reg_direction);
+				   chip->reg_direction);
 	if (ret)
 		goto out;
 

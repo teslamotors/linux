@@ -1127,6 +1127,24 @@ int gpiod_is_active_low(const struct gpio_desc *desc)
 }
 EXPORT_SYMBOL_GPL(gpiod_is_active_low);
 
+int gpiod_set_drive(struct gpio_desc *desc, unsigned mode)
+{
+	unsigned long		flags;
+	struct gpio_chip	*chip;
+
+	chip = desc->chip;
+	if (!chip || !chip->set || !chip->set_drive)
+		goto fail;
+
+	might_sleep_if(chip->can_sleep);
+
+	return chip->set_drive(chip, gpio_chip_hwgpio(desc), mode);
+
+fail:
+	return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(gpiod_set_drive);
+
 /* I/O calls are only valid after configuration completed; the relevant
  * "is this a valid GPIO" error checks should already have been done.
  *
