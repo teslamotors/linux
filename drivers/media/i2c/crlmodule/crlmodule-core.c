@@ -843,8 +843,6 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 			continue;
 
 		switch (crl_ctrl->type) {
-		case CRL_V4L2_CTRL_TYPE_BOOLEAN:
-			break;
 		case CRL_V4L2_CTRL_TYPE_MENU_ITEMS:
 			crl_ctrl->ctrl = v4l2_ctrl_new_std_menu_items(
 					 ctrl_handler, &crlmodule_ctrl_ops,
@@ -860,12 +858,7 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 					 crl_ctrl->data.v4l2_int_menu.def,
 					 crl_ctrl->data.v4l2_int_menu.menu);
 			break;
-		case CRL_V4L2_CTRL_TYPE_BUTTON:
-			break;
 		case CRL_V4L2_CTRL_TYPE_INTEGER64:
-			break;
-		case CRL_V4L2_CTRL_TYPE_CTRL_CLASS:
-			break;
 		case CRL_V4L2_CTRL_TYPE_INTEGER:
 			crl_ctrl->ctrl = v4l2_ctrl_new_std(ctrl_handler,
 					 &crlmodule_ctrl_ops, crl_ctrl->ctrl_id,
@@ -875,17 +868,39 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 					 crl_ctrl->data.std_data.def);
 			break;
 		case CRL_V4L2_CTRL_TYPE_CUSTOM:
-			cfg.ops = &crlmodule_ctrl_ops,
-			cfg.id = crl_ctrl->ctrl_id,
-			cfg.name = crl_ctrl->name,
+			cfg.ops = &crlmodule_ctrl_ops;
+			cfg.id = crl_ctrl->ctrl_id;
+			cfg.name = crl_ctrl->name;
 			cfg.type = crl_ctrl->v4l2_type;
-			cfg.max = crl_ctrl->data.std_data.max,
-			cfg.min =  crl_ctrl->data.std_data.min,
-			cfg.step  = crl_ctrl->data.std_data.step,
-			cfg.def = crl_ctrl->data.std_data.def,
+			if ((crl_ctrl->v4l2_type == V4L2_CTRL_TYPE_INTEGER) ||
+				(crl_ctrl->v4l2_type == V4L2_CTRL_TYPE_INTEGER64)) {
+				cfg.max = crl_ctrl->data.std_data.max;
+				cfg.min =  crl_ctrl->data.std_data.min;
+				cfg.step  = crl_ctrl->data.std_data.step;
+				cfg.def = crl_ctrl->data.std_data.def;
+				cfg.qmenu = 0;
+				cfg.elem_size = 0;
+			} else if (crl_ctrl->v4l2_type == V4L2_CTRL_TYPE_MENU) {
+				cfg.max = crl_ctrl->data.v4l2_menu_items.size - 1;
+				cfg.min =  0;
+				cfg.step  = 0;
+				cfg.def = 0;
+				cfg.qmenu = crl_ctrl->data.v4l2_menu_items.menu;
+				cfg.elem_size = 0;
+			} else {
+				dev_dbg(&client->dev, "%s Custom Control: type %d\n",
+								 __func__, crl_ctrl->v4l2_type);
+				continue;
+			}
 			crl_ctrl->ctrl = v4l2_ctrl_new_custom(ctrl_handler, &cfg, NULL);
 			break;
+		case CRL_V4L2_CTRL_TYPE_BOOLEAN:
+		case CRL_V4L2_CTRL_TYPE_BUTTON:
+		case CRL_V4L2_CTRL_TYPE_CTRL_CLASS:
 		default:
+			dev_err(&client->dev,
+				"%s Invalid control type\n", __func__);
+			continue;
 			break;
 		}
 

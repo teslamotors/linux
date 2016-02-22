@@ -281,10 +281,10 @@ struct crl_sensor_limits {
 };
 
 struct crl_v4l2_ctrl_data_std {
-	s32 min;
-	s32 max;
-	u32 step;
-	s32 def;
+	s64 min;
+	s64 max;
+	u64 step;
+	s64 def;
 };
 
 struct crl_v4l2_ctrl_data_menu_items {
@@ -299,8 +299,8 @@ struct crl_v4l2_ctrl_data_std_menu {
 
 struct crl_v4l2_ctrl_data_int_menu {
 	const s64 *menu;
-	s32 max;
-	s32 def;
+	s64 max;
+	s64 def;
 };
 
 union crl_v4l2_ctrl_data_types {
