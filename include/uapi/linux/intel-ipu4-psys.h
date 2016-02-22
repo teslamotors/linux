@@ -38,6 +38,18 @@ struct intel_ipu4_psys_event {
 #define INTEL_IPU4_PSYS_EVENT_TYPE_BUFFER_COMPLETE	2
 
 /**
+ * @fd:		DMA-BUF handle
+ * @data_offset:offset to valid data
+ * @bytes_used:	amount of valid data including offset
+ */
+struct intel_ipu4_psys_dma_buf {
+	int fd;
+	uint32_t data_offset;
+	uint32_t bytes_used;
+	uint32_t reserved[2];
+} __attribute__ ((packed));
+
+/**
  * struct intel_ipu4_psys_buffer - for input/output terminals
  * @len:	buffer size
  * @userptr:	user pointer (NULL if not mapped to user space)
@@ -69,7 +81,7 @@ struct intel_ipu4_psys_buffer {
  * @priority:		priority of the command
  * @pg:			process group DMA-BUF handle
  * @pg_manifest:	userspace pointer to program group manifest
- * @buffers:		userspace pointers to array of DMA-BUF handles
+ * @buffers:		userspace pointers to array of psys dma buf structs
  * @pg_manifest_size:	size of program group manifest
  * @bufcount:		number of buffers in buffers array
  * @min_psys_freq:	minimum psys frequency in MHz used for this cmd
@@ -82,7 +94,7 @@ struct intel_ipu4_psys_command {
 	uint32_t priority;
 	int pg;
 	void __user *pg_manifest;
-	int __user *buffers;
+	struct intel_ipu4_psys_dma_buf __user *buffers;
 	uint32_t pg_manifest_size;
 	uint32_t bufcount;
 	uint32_t min_psys_freq;

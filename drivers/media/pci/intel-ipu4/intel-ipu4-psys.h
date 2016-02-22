@@ -85,6 +85,7 @@ struct intel_ipu4_psys_kcmd {
 	void *pg_manifest;
 	size_t pg_manifest_size;
 	struct intel_ipu4_psys_kbuffer **kbufs;
+	struct intel_ipu4_psys_dma_buf *buffers;
 	size_t nbuffers;
 	ia_css_process_group_t *pg_user;
 	ia_css_process_group_t *pg;

@@ -551,6 +551,7 @@ static void intel_ipu4_psys_free_kcmd(struct intel_ipu4_psys_kcmd *kcmd)
 
 	kfree(kcmd->pg_manifest);
 	kfree(kcmd->kbufs);
+	kfree(kcmd->buffers);
 	kfree(kcmd);
 }
 
@@ -695,8 +696,7 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 	struct intel_ipu4_psys_kcmd *kcmd;
 	struct intel_ipu4_psys_kbuffer *kpgbuf;
 	unsigned int i;
-	int *buffers = NULL;
-	int ret;
+	int ret, prevfd = 0;
 
 	if (!cmd->bufcount ||
 	    cmd->bufcount > INTEL_IPU4_MAX_PSYS_CMD_BUFFERS)
@@ -734,8 +734,9 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 	if (kcmd->nbuffers > cmd->bufcount)
 		goto error;
 
-	buffers = kcalloc(kcmd->nbuffers, sizeof(buffers[0]), GFP_KERNEL);
-	if (!buffers)
+	kcmd->buffers = kcalloc(kcmd->nbuffers, sizeof(*kcmd->buffers),
+				GFP_KERNEL);
+	if (!kcmd->buffers)
 		goto error;
 
 	kcmd->kbufs = kcalloc(kcmd->nbuffers, sizeof(kcmd->kbufs[0]),
@@ -750,8 +751,8 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 
 	kcmd->pg_manifest_size = cmd->pg_manifest_size;
 
-	ret = copy_from_user(buffers, cmd->buffers,
-			     kcmd->nbuffers * sizeof(buffers[0]));
+	ret = copy_from_user(kcmd->buffers, cmd->buffers,
+			     kcmd->nbuffers * sizeof(*kcmd->buffers));
 	if (ret)
 		goto error;
 
@@ -762,26 +763,27 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 		goto error;
 
 	for (i = 0; i < kcmd->nbuffers; i++) {
-		kcmd->kbufs[i] = intel_ipu4_psys_lookup_kbuffer(fh, buffers[i]);
-		if (!kcmd->kbufs[i] || !kcmd->kbufs[i]->sgt)
+		kcmd->kbufs[i] =
+			intel_ipu4_psys_lookup_kbuffer(fh, kcmd->buffers[i].fd);
+		if (!kcmd->kbufs[i] || !kcmd->kbufs[i]->sgt ||
+		    kcmd->kbufs[i]->len < kcmd->buffers[i].bytes_used)
 			goto error;
 		if (kcmd->kbufs[i]->flags &
-		    INTEL_IPU4_BUFFER_FLAG_NO_FLUSH)
+		    INTEL_IPU4_BUFFER_FLAG_NO_FLUSH ||
+		    prevfd == kcmd->buffers[i].fd)
 			continue;
+
+		prevfd = kcmd->buffers[i].fd;
 		dma_sync_sg_for_device(&psys->adev->dev,
 				       kcmd->kbufs[i]->sgt->sgl,
 				       kcmd->kbufs[i]->sgt->orig_nents,
 				       DMA_BIDIRECTIONAL);
 	}
 
-	kfree(buffers);
-
 	return kcmd;
 error:
 	intel_ipu4_psys_release_kcmd(kcmd);
 	intel_ipu4_psys_free_kcmd(kcmd);
-
-	kfree(buffers);
 
 	dev_dbg(&psys->adev->dev, "failed to copy cmd\n");
 
@@ -1040,7 +1042,8 @@ static int intel_ipu4_psys_qcmd(struct intel_ipu4_psys_command *cmd,
 			}
 		}
 
-		buffer = (vied_vaddress_t)kcmd->kbufs[i]->dma_addr;
+		buffer = (vied_vaddress_t)kcmd->kbufs[i]->dma_addr +
+			 kcmd->buffers[i].data_offset;
 
 		ret = -ia_css_process_group_attach_buffer(kcmd->pg, buffer,
 							  buffer_state, i);
