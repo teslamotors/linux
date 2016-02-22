@@ -194,34 +194,46 @@ static void intel_ipu4_isys_csi2_error(struct intel_ipu4_isys_csi2 *csi2)
 	 * Strings corresponding to CSI-2 receiver errors are here.
 	 * Corresponding macros are defined in the header file.
 	 */
-	static const char *errors[] = {
-		"Single packet header error corrected",
-		"Multiple packet header errors detected",
-		"Payload checksum (CRC) error",
-		"FIFO overflow",
-		"Reserved short packet data type detected",
-		"Reserved long packet data type detected",
-		"Incomplete long packet detected",
-		"Frame sync error",
-		"Line sync error",
-		"DPHY recoverable synchronizationerror",
-		"DPHY non-recoverable synchronization error",
-		"Escape mode error",
-		"Escape mode trigger event",
-		"Escape mode ultra-low power state for data lane(s)",
-		"Escape mode ultra-low power state exit for clock lane",
-		"Inter-frame short packet discarded",
-		"Inter-frame long packet discarded"
+	static const struct intel_ipu4_isys_csi2_error {
+		const char *error_string;
+		bool is_info_only;
+	} errors[] = {
+		{ "Single packet header error corrected", true },
+		{ "Multiple packet header errors detected", true },
+		{ "Payload checksum (CRC) error", true },
+		{ "FIFO overflow", false },
+		{ "Reserved short packet data type detected", true },
+		{ "Reserved long packet data type detected", true },
+		{ "Incomplete long packet detected", false },
+		{ "Frame sync error", false },
+		{ "Line sync error", false },
+		{ "DPHY recoverable synchronization error", true },
+		{ "DPHY non-recoverable synchronization error", false },
+		{ "Escape mode error", true },
+		{ "Escape mode trigger event", true },
+		{ "Escape mode ultra-low power state for data lane(s)", true },
+		{ "Escape mode ultra-low power state exit for clock lane",
+									true },
+		{ "Inter-frame short packet discarded", true },
+		{ "Inter-frame long packet discarded", true },
 	};
-	unsigned int i;
 	u32 status = csi2->receiver_errors;
+	unsigned int i;
 
 	csi2->receiver_errors = 0;
 
-	for (i = 0; i < ARRAY_SIZE(errors); i++)
-		if (status & BIT(i))
-			dev_err(&csi2->isys->adev->dev, "csi2-%i error: %s\n",
-				csi2->index, errors[i]);
+	for (i = 0; i < ARRAY_SIZE(errors); i++) {
+		if (status & BIT(i)) {
+			if (errors[i].is_info_only)
+				dev_dbg(&csi2->isys->adev->dev,
+					"csi2-%i info: %s\n",
+					csi2->index, errors[i].error_string);
+			else
+				dev_err_ratelimited(&csi2->isys->adev->dev,
+					"csi2-%i error: %s\n",
+					csi2->index, errors[i].error_string);
+		}
+	}
 }
 
 static uint32_t calc_timing(int32_t a, int32_t b, int64_t link_freq,
