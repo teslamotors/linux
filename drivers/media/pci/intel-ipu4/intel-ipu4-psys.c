@@ -1811,35 +1811,38 @@ static void intel_ipu4_psys_flush_cmds(struct intel_ipu4_psys *psys,
 		intel_ipu4_psys_kcmd_complete(psys, kcmd, error);
 }
 
-static void intel_ipu4_psys_handle_event(struct intel_ipu4_psys *psys)
+static void intel_ipu4_psys_handle_events(struct intel_ipu4_psys *psys)
 {
 	struct intel_ipu4_psys_kcmd *kcmd;
 	struct ia_css_psys_event_s event;
 
-	if (!ia_css_psys_event_queue_receive(psys->dev_ctx,
-				IA_CSS_PSYS_EVENT_QUEUE_MAIN_ID, &event))
-		return;
+	while (ia_css_psys_event_queue_receive(psys->dev_ctx,
+				IA_CSS_PSYS_EVENT_QUEUE_MAIN_ID, &event)) {
 
-	dev_dbg(&psys->adev->dev, "psys received event status:%d\n",
-		event.status);
+		dev_dbg(&psys->adev->dev, "psys received event status:%d\n",
+			event.status);
 
-	kcmd = (struct intel_ipu4_psys_kcmd *)event.token;
-	if (!kcmd) {
-		dev_err(&psys->adev->dev,
-			"no token received, command unknown\n");
-		intel_ipu4_psys_flush_cmds(psys, -EIO);
-		return;
+		kcmd = (struct intel_ipu4_psys_kcmd *)event.token;
+		if (!kcmd) {
+			dev_err(&psys->adev->dev,
+				"no token received, command unknown\n");
+			intel_ipu4_psys_flush_cmds(psys, -EIO);
+			return;
+		}
+
+		if (try_to_del_timer_sync(&kcmd->watchdog) < 0) {
+			dev_err(&psys->adev->dev,
+				"could not cancel kcmd timer\n");
+			return;
+		}
+
+		intel_ipu4_psys_kcmd_complete(psys, kcmd,
+		    event.status == INTEL_IPU4_PSYS_EVENT_CMD_COMPLETE ||
+		    event.status == INTEL_IPU4_PSYS_EVENT_FRAGMENT_COMPLETE ?
+		    0 : -EIO);
+
+		intel_ipu4_psys_run_next(psys);
 	}
-
-	if (try_to_del_timer_sync(&kcmd->watchdog) < 0)
-		return;
-
-	intel_ipu4_psys_kcmd_complete(psys, kcmd,
-	    event.status == INTEL_IPU4_PSYS_EVENT_CMD_COMPLETE ||
-	    event.status == INTEL_IPU4_PSYS_EVENT_FRAGMENT_COMPLETE ?
-	    0 : -EIO);
-
-	intel_ipu4_psys_run_next(psys);
 }
 
 static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
@@ -1865,7 +1868,7 @@ static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
 
 	if (status & INTEL_IPU4_PSYS_GPDEV_IRQ_FWIRQ(0)) {
 		writel(0, base + INTEL_IPU4_REG_PSYS_GPDEV_FWIRQ(0));
-		intel_ipu4_psys_handle_event(psys);
+		intel_ipu4_psys_handle_events(psys);
 	}
 
 	mutex_unlock(&psys->mutex);
@@ -1896,7 +1899,7 @@ static int intel_ipu4_psys_isr_run(void *data)
 			continue;
 		}
 #endif
-		intel_ipu4_psys_handle_event(psys);
+		intel_ipu4_psys_handle_events(psys);
 		pm_runtime_put(&psys->adev->dev);
 		mutex_unlock(&psys->mutex);
 	}
