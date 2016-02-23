@@ -17,6 +17,7 @@
 #include <linux/init_task.h>
 #include <linux/kthread.h>
 #include <linux/pm_runtime.h>
+#include <linux/module.h>
 
 #include <media/media-entity.h>
 #include <media/v4l2-device.h>
@@ -35,6 +36,10 @@
 #include <ia_css_pkg_dir.h>
 #include <ia_css_pkg_dir_iunit.h>
 #include <ia_css_pkg_dir_types.h>
+
+static unsigned int  num_stream_support = INTEL_IPU4_ISYS_NUM_STREAMS_B0;
+module_param(num_stream_support, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(num_stream_support, "IPU4 project support number of stream");
 
 const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_a0[] = {
 	{ V4L2_PIX_FMT_UYVY, 16, 16, MEDIA_BUS_FMT_UYVY8_1X16, IA_CSS_ISYS_FRAME_FORMAT_UYVY },
@@ -623,8 +628,8 @@ int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 		.driver_sys = {
 			.ssid = ISYS_SSID,
 			.mmid = ISYS_MMID,
-			.num_send_queues =
-			isys->pdata->ipdata->num_parallel_streams,
+			.num_send_queues = clamp(num_stream_support, 1,
+				INTEL_IPU4_ISYS_NUM_STREAMS_B0),
 			.num_recv_queues = 1,
 			.send_queue_size = 40,
 			.recv_queue_size = 40,
