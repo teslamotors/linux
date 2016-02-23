@@ -1248,6 +1248,7 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			resp.stream_handle);
 		complete(&pipe->capture_ack_completion);
 		break;
+	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE:
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE:
 		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE\n",
 			resp.stream_handle);
