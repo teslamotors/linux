@@ -1205,12 +1205,18 @@ static struct crl_power_seq_entity ov8858_power_items[] = {
 		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
 		.ent_name = "VANA",
 		.val = 2800000,
-		.delay = 30000,
+		.delay = 0,
 	},
 	{
 		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
 		.ent_name = "VDIG",
 		.val = 1200000,
+		.delay = 0,
+	},
+	{
+		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+		.ent_name = "VIO",
+		.val = 1800000,
 		.delay = 0,
 	},
 	{
@@ -1220,6 +1226,7 @@ static struct crl_power_seq_entity ov8858_power_items[] = {
 	{
 		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
 		.val = 1,
+		.delay = 10000,
 	},
 };
 
