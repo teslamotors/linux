@@ -20,6 +20,8 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/delay.h>
+#include <linux/pm_runtime.h>
+#include <media/lc898122.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
@@ -183,20 +185,6 @@ int lc898122_read_long(struct i2c_client *client, u16 reg, u32 *val)
 	return 0;
 }
 
-static int lc898122_set_power(struct v4l2_subdev *subdev_vcm, int val)
-{
-
-	struct lc898122_device *lc898122_dev = to_lc898122_sensor(subdev_vcm);
-	/* select module 20M*/
-	lc898122_selectmodule(lc898122_dev, 0x02);
-	/* initialize AF */
-	lc898122_initsettingsaf(lc898122_dev);
-	/* initialize OIS */
-	lc898122_initsettings(lc898122_dev);
-
-	return 0;
-}
-
 static int lc898122_adjust_af_parameters(struct lc898122_device *lc898122_dev)
 {
 	struct i2c_client *client = lc898122_dev->client;
@@ -326,23 +314,24 @@ static int lc898122_open(struct v4l2_subdev *subdev_vcm, struct v4l2_subdev_fh *
 	struct i2c_client *client = lc898122_dev->client;
 	int rval;
 
-	/* Power on sequence of ois and af */
-	rval = lc898122_set_power(&lc898122_dev->subdev_vcm, 1);
-	if (rval)
-		return -EINVAL;
-
-	/* AF calibration data adjustment needed before lens movement */
-	rval = lc898122_adjust_af_parameters(lc898122_dev);
-	if (rval) {
-		dev_err(&client->dev, "failed to adjust AF tuning data\n");
-		return -EINVAL;
+	rval = pm_runtime_get_sync(&client->dev);
+	if (rval < 0) {
+		pm_runtime_put(&lc898122_dev->client->dev);
+		return rval;
 	}
+
+	atomic_inc(&lc898122_dev->open);
+
 	return 0;
 }
 
 static int lc898122_close(struct v4l2_subdev *subdev_vcm, struct v4l2_subdev_fh *fh)
 {
-	/* TODO: Fill this function when OIS is enabled */
+	struct lc898122_device *lc898122_dev = to_lc898122_sensor(subdev_vcm);
+
+	atomic_dec(&lc898122_dev->open);
+	pm_runtime_put(&lc898122_dev->client->dev);
+
 	return 0;
 }
 
@@ -396,7 +385,6 @@ static const struct v4l2_ctrl_ops lc898122_vcm_ctrl_ops = {
 };
 
 static const struct v4l2_subdev_core_ops lc898122_vcm_core_ops = {
-	.s_power = lc898122_set_power,
 };
 
 static const struct v4l2_subdev_internal_ops lc898122_internal_ops = {
@@ -446,12 +434,25 @@ static int lc898122_probe(struct i2c_client *client,
 			 const struct i2c_device_id *devid)
 {
 	struct lc898122_device *lc898122_dev;
+	struct lc898122_platform_data *pdata;
 	int rval;
 
 	lc898122_dev = devm_kzalloc(&client->dev, sizeof(*lc898122_dev), GFP_KERNEL);
 
 	if (lc898122_dev == NULL)
 		return -ENOMEM;
+
+	pdata = dev_get_platdata(&client->dev);
+	if (pdata)
+		lc898122_dev->sensor_dev = pdata->sensor_device;
+
+	/*
+	 * If we got sensor device pointer assume that sensor decive owns
+	 * all the shared resources and control of them.
+	 */
+	if (lc898122_dev->sensor_dev)
+		if (!try_module_get(lc898122_dev->sensor_dev->driver->owner))
+			return -ENODEV;
 
 	lc898122_dev->state.flags = LC898122_DEFCONFIG;
 	lc898122_dev->client = client;
@@ -472,11 +473,18 @@ static int lc898122_probe(struct i2c_client *client,
 		goto err_cleanup;
 	lc898122_dev->subdev_vcm.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_LENS;
 
+	atomic_set(&lc898122_dev->open, 0);
+	pm_runtime_enable(&client->dev);
 	/*
 	* Read eeprom contents in driver probe and save them in buffer
 	* for later use
 	*/
-	rval = lc898122_eeprom_read(lc898122_dev, lc898122_dev->buf);
+
+	rval = pm_runtime_get_sync(&client->dev);
+	if (rval >= 0)
+		rval = lc898122_eeprom_read(lc898122_dev, lc898122_dev->buf);
+	pm_runtime_put(&client->dev);
+
 	if (rval)
 		goto err_cleanup;
 
@@ -485,6 +493,8 @@ static int lc898122_probe(struct i2c_client *client,
 err_cleanup:
 	lc898122_subdev_cleanup(lc898122_dev);
 	dev_err(&client->dev, "lc898122 Probe failed: %d\n", rval);
+	if (lc898122_dev->sensor_dev)
+		module_put(lc898122_dev->sensor_dev->driver->owner);
 	return rval;
 }
 
@@ -495,8 +505,102 @@ static int lc898122_remove(struct i2c_client *client)
 							subdev_vcm);
 
 	lc898122_subdev_cleanup(lc898122_dev);
+	if (lc898122_dev->sensor_dev)
+		module_put(lc898122_dev->sensor_dev->driver->owner);
+
 	return 0;
 }
+
+static int lc898122_poweron_init(struct lc898122_device *lc898122_dev)
+{
+	int rval = 0;
+
+	/* when this is called from probe buf is not yet allocated */
+	if (!lc898122_dev->buf)
+		return 0;
+
+	/* select module 20M*/
+	lc898122_selectmodule(lc898122_dev, 0x02);
+	/* initialize AF */
+	lc898122_initsettingsaf(lc898122_dev);
+	/* initialize OIS */
+	lc898122_initsettings(lc898122_dev);
+
+	/* AF calibration data adjustment needed before lens movement */
+	rval = lc898122_adjust_af_parameters(lc898122_dev);
+	if (rval)
+		dev_err(&lc898122_dev->client->dev,
+			"failed to adjust AF tuning data\n");
+
+	return rval;
+}
+
+#ifdef CONFIG_PM
+static void lc898122_complete(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct lc898122_device *lc898122_dev =
+		container_of(sd, struct lc898122_device, subdev_vcm);
+
+	if (!atomic_read(&lc898122_dev->open))
+		return;
+
+	/*
+	 * The lens motor is part of the sensor module and the sensor
+	 * PM flows are in sensor driver (with correct order of regulator
+	 * controls etc.). As I2C device this device is a child of I2C
+	 * controller not the sensor module. At resume phase sensor may still
+	 * be in legacy suspended state but at complete it is sure that
+	 * also the sensor has been restored. Perform re-init here if the
+	 * device was enabled before the suspend.
+	 */
+	lc898122_poweron_init(lc898122_dev);
+}
+
+static int lc898122_runtime_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct lc898122_device *lc898122_dev =
+		container_of(sd, struct lc898122_device, subdev_vcm);
+
+	if (lc898122_dev->sensor_dev)
+		pm_runtime_put(lc898122_dev->sensor_dev);
+
+	return 0;
+}
+
+static int lc898122_runtime_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct lc898122_device *lc898122_dev =
+		container_of(sd, struct lc898122_device, subdev_vcm);
+	int rval = 0;
+
+	if (lc898122_dev->sensor_dev) {
+		rval = pm_runtime_get_sync(lc898122_dev->sensor_dev);
+		if (rval < 0)
+			return rval;
+	}
+
+	lc898122_poweron_init(lc898122_dev);
+
+	return 0;
+}
+
+#else
+#define lc898122_complete		NULL
+#define lc898122_runtime_suspend	NULL
+#define lc898122_runtime_resume		NULL
+#endif
+
+static const struct dev_pm_ops lc898122_pm_ops = {
+	.complete	= lc898122_complete,
+	.runtime_suspend = lc898122_runtime_suspend,
+	.runtime_resume = lc898122_runtime_resume,
+};
 
 static const struct i2c_device_id lc898122_id_table[] = {
 	{ LC898122_NAME, 0 },
@@ -508,6 +612,7 @@ MODULE_DEVICE_TABLE(i2c, lc898122_id_table);
 static struct i2c_driver lc898122_i2c_driver = {
 	.driver		= {
 		.name	= LC898122_NAME,
+		.pm	= &lc898122_pm_ops,
 	},
 	.probe		= lc898122_probe,
 	.remove		= lc898122_remove,

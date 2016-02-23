@@ -24,10 +24,10 @@ struct lc898122_device {
 	struct v4l2_ctrl_handler ctrls_vcm;
 	struct v4l2_subdev subdev_vcm;
 	struct lc898122_ois state;
+	struct device *sensor_dev;
+	atomic_t open;
 	u8 *buf;
 };
-#define LC898122_VCM_ADDR	0x24
-#define LC898122_NAME		"lc898122"
 
 #define LC898122_EEPROM_SIZE 128
 #define MAX_WRITE_BUF_SIZE 32
