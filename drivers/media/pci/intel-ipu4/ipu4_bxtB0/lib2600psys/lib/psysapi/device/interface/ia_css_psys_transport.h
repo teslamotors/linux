@@ -33,11 +33,7 @@ typedef enum ia_css_psys_event_queues {
 	IA_CSS_N_PSYS_EVENT_QUEUE_ID
 } ia_css_psys_event_queue_ID_t;
 
-/********************************************************
- * The upper (new) definition of ia_css_psys_event_types should be renamed and used.
- * The lower (old) one should be removed. It is kept here to avoid compilation errors.
- ********************************************************/
-typedef enum ia_css_psys_event_typesNEW {
+typedef enum ia_css_psys_event_types {
 	IA_CSS_PSYS_EVENT_TYPE_SUCCESS = 0,				/**< No error to report. */
 	IA_CSS_PSYS_EVENT_TYPE_UNKNOWN_ERROR = 1,			/**< Unknown unhandled error */
 	/* Retrieving remote object: */
@@ -52,14 +48,7 @@ typedef enum ia_css_psys_event_typesNEW {
 	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_PROCESS_INIT_ERR = 9,		/**< Process(es) initialization */
 	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_ABORT = 10,			/**< Aborted (after host request) */
 	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_NULL = 11,			/**< NULL pointer in the process group */
-} ia_css_psys_event_typeNEW_t;
-
-typedef enum ia_css_psys_event_types {
-	IA_CSS_PSYS_EVENT_TYPE_CMD_COMPLETE,			/**< Command processed successfully */
-	IA_CSS_PSYS_EVENT_TYPE_FRAGMENT_COMPLETE,		/**< Fragment processed successfully */
-	IA_CSS_PSYS_EVENT_TYPE_ERROR				/**< Error */
 } ia_css_psys_event_type_t;
-/********************************************************/
 
 #define IA_CSS_PSYS_CMD_BITS					64
 struct ia_css_psys_cmd_s {
