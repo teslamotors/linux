@@ -1393,7 +1393,7 @@ int intel_ipu4_buttress_debugfs_init(struct intel_ipu4_device *isp)
 	if (!reg)
 		return -ENOMEM;
 
-	dir = debugfs_create_dir(pci_name(isp->pdev), isp->intel_ipu4_dir);
+	dir = debugfs_create_dir("buttress", isp->intel_ipu4_dir);
 	if (!dir)
 		return -ENOMEM;
 
