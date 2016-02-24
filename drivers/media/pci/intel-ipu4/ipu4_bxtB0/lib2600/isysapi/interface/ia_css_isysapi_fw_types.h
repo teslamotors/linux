@@ -140,6 +140,9 @@ enum ia_css_isys_frame_format_type {
 	IA_CSS_ISYS_FRAME_FORMAT_YV12,		/* 12 bit YUV 420, Y, V, U plane */
 	IA_CSS_ISYS_FRAME_FORMAT_YV16,		/* 16 bit YUV 422, Y, V, U plane */
 	IA_CSS_ISYS_FRAME_FORMAT_YUV420,	/* 12 bit YUV 420, Y, U, V plane */
+	IA_CSS_ISYS_FRAME_FORMAT_YUV420_10,	/* yuv420, 10 bits per subpixel */
+	IA_CSS_ISYS_FRAME_FORMAT_YUV420_12,	/* yuv420, 12 bits per subpixel */
+	IA_CSS_ISYS_FRAME_FORMAT_YUV420_14,	/* yuv420, 14 bits per subpixel */
 	IA_CSS_ISYS_FRAME_FORMAT_YUV420_16,	/* yuv420, 16 bits per subpixel */
 	IA_CSS_ISYS_FRAME_FORMAT_YUV422,	/* 16 bit YUV 422, Y, U, V plane */
 	IA_CSS_ISYS_FRAME_FORMAT_YUV422_16,	/* yuv422, 16 bits per subpixel */

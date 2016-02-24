@@ -112,36 +112,39 @@ static const uint32_t ia_css_isys_extracted_bits_per_pixel_per_mipi_data_type[N_
 /* The array below is used here to make SP FW DMEM lighter usage */
 #define IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE	(0)
 static const struct frame_format_info ft_info_per_frame_format_type[N_IA_CSS_ISYS_FRAME_FORMAT] = {
-	/* bits_per_raw_pixel*/			/* plane_count */	/* plane_horz_divider */	/* plane_vert_divider */	/* bits_per_raw_pixel_component */
-	{8,					2,			{1,2,0,0},			{1,1,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV11,          	12 bit YUV 411, Y, UV plane */
-	{8,					2,			{1,1,0,0},			{1,2,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12,          	12 bit YUV 420, Y, UV plane */
-	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12_16,       	16 bit YUV 420, Y, UV plane */
-	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12_TILEY,    	12 bit YUV 420, Intel proprietary tiled format, TileY */
-	{8,					2,			{1,1,0,0},			{1,1,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV16,          	16 bit YUV 422, Y, UV plane */
-	{8,					2,			{1,1,0,0},			{1,2,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV21,          	12 bit YUV 420, Y, VU plane */
-	{8,					2,			{1,1,0,0},			{1,1,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV61,          	16 bit YUV 422, Y, VU plane */
-	{8,					3,			{1,2,2,0},			{1,2,2,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YV12,          	12 bit YUV 420, Y, V, U plane */
-	{8,					3,			{1,2,2,0},			{1,1,1,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YV16,          	16 bit YUV 422, Y, V, U plane */
-	{8,					3,			{1,2,2,0},			{1,2,2,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420,        	12 bit YUV 420, Y, U, V plane */
-	{24,					1,			{1,0,0,0},			{1,0,0,0},			16},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_16,     	yuv420, 16 bits per subpixel, single plane */
-	{8,					3,			{1,2,2,0},			{1,1,1,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV422,        	12 bit YUV 422, Y, U, V plane */
-	{32,					1,			{1,0,0,0},			{1,0,0,0},			16},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV422_16,     	yuv422, 16 bits per subpixel, single plane */
-	{16,					1,			{1,0,0,0},			{1,0,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_UYVY,          	16 bit YUV 422, UYVY interleaved */
-	{16,					1,			{1,0,0,0},			{1,0,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUYV,          	16 bit YUV 422, YUYV interleaved */
-	{8,					3,			{1,1,1,0},			{1,1,1,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV444,        	24 bit YUV 444, Y, U, V plane */
-	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV_LINE,      	Internal 422 format, 2 y lines followed by a uv interleaved line */
-	{8,					1,			{1,0,0,0},			{1,0,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW8,	        	RAW8, 1 plane */
-	{10,					1,			{1,0,0,0},			{1,0,0,0},			16},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW10,	        	RAW10, 1 plane */
-	{12,					1,			{1,0,0,0},			{1,0,0,0},			16},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW12,	        	RAW12, 1 plane */
-	{14,					1,			{1,0,0,0},			{1,0,0,0},			16},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW14,	        	RAW14, 1 plane */
-	{16,					1,			{1,0,0,0},			{1,0,0,0},			16},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW16,	        	RAW16, 1 plane */
-	{16,					1,			{1,0,0,0},			{1,0,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RGB565,		16 bit RGB, 1 plane. Each 3 sub
-																										pixels are packed into one 16 bit value, 5 bits for R, 6 bits
-																										for G and 5 bits for B. */
-	{8,					3,			{1,1,1,0},			{1,1,1,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_PLANAR_RGB888,		24 bit RGB, 3 planes */
-	{32,					1,			{1,0,0,0},			{1,0,0,0},			8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RGBA888,		32 bit RGBA, 1 plane, A=Alpha (alpha is unused) */
-	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0},	/*	IA_CSS_ISYS_FRAME_FORMAT_QPLANE6,		Internal, for advanced ISP, not used */
-	{8,					1,			{1,0,0,0},			{1,0,0,0},			8}	/*		IA_CSS_ISYS_FRAME_FORMAT_BINARY_8,		byte stream, used for jpeg. */
+	/* bits_per_raw_pixel */		/* bits_per_ddr_raw_pixel */		/* plane_count */	/* plane_horz_divider */	/* plane_vert_divider */	/* bits_per_raw_pixel_component */	/* bits_per_ddr_raw_pixel_component */
+	{8,					8,					2,			{1,2,0,0},			{1,1,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV11,          	12 bit YUV 411, Y, UV plane */
+	{8,					8,					2,			{1,1,0,0},			{1,2,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12,          	12 bit YUV 420, Y, UV plane */
+	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0,					0},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12_16,       	16 bit YUV 420, Y, UV plane */
+	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0,					0},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12_TILEY,    	12 bit YUV 420, Intel proprietary tiled format, TileY */
+	{8,					8,					2,			{1,1,0,0},			{1,1,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV16,          	16 bit YUV 422, Y, UV plane */
+	{8,					8,					2,			{1,1,0,0},			{1,2,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV21,          	12 bit YUV 420, Y, VU plane */
+	{8,					8,					2,			{1,1,0,0},			{1,1,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV61,          	16 bit YUV 422, Y, VU plane */
+	{8,					8,					3,			{1,2,2,0},			{1,2,2,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YV12,          	12 bit YUV 420, Y, V, U plane */
+	{8,					8,					3,			{1,2,2,0},			{1,1,1,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YV16,          	16 bit YUV 422, Y, V, U plane */
+	{8,					8,					3,			{1,2,2,0},			{1,2,2,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420,        	12 bit YUV 420, Y, U, V plane */
+	{24,					15,					1,			{1,0,0,0},			{1,0,0,0},			16,					10},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_10,     	yuv420, 10 bits per subpixel, single plane */
+	{24,					18,					1,			{1,0,0,0},			{1,0,0,0},			16,					12},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_12,     	yuv420, 12 bits per subpixel, single plane */
+	{24,					21,					1,			{1,0,0,0},			{1,0,0,0},			16,					14},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_14,     	yuv420, 14 bits per subpixel, single plane */
+	{24,					24,					1,			{1,0,0,0},			{1,0,0,0},			16,					16},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_16,     	yuv420, 16 bits per subpixel, single plane */
+	{8,					8,					3,			{1,2,2,0},			{1,1,1,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV422,        	12 bit YUV 422, Y, U, V plane */
+	{32,					32,					1,			{1,0,0,0},			{1,0,0,0},			16,					16},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV422_16,     	yuv422, 16 bits per subpixel, single plane */
+	{16,					16,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_UYVY,          	16 bit YUV 422, UYVY interleaved */
+	{16,					16,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUYV,          	16 bit YUV 422, YUYV interleaved */
+	{8,					8,					3,			{1,1,1,0},			{1,1,1,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV444,        	24 bit YUV 444, Y, U, V plane */
+	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0,					0},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV_LINE,      	Internal 422 format, 2 y lines followed by a uv interleaved line */
+	{8,					8,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW8,	        	RAW8, 1 plane */
+	{16,					10,					1,			{1,0,0,0},			{1,0,0,0},			16,					10},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW10,	        	RAW10, 1 plane */
+	{16,					12,					1,			{1,0,0,0},			{1,0,0,0},			16,					12},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW12,	        	RAW12, 1 plane */
+	{16,					14,					1,			{1,0,0,0},			{1,0,0,0},			16,					14},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW14,	        	RAW14, 1 plane */
+	{16,					16,					1,			{1,0,0,0},			{1,0,0,0},			16,					16},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW16,	        	RAW16, 1 plane */
+	{16,					16,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RGB565,		16 bit RGB, 1 plane. Each 3 sub
+																																				pixels are packed into one 16 bit value, 5 bits for R, 6 bits
+																																				for G and 5 bits for B. */
+	{8,					8,					3,			{1,1,1,0},			{1,1,1,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_PLANAR_RGB888,		24 bit RGB, 3 planes */
+	{32,					32,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RGBA888,		32 bit RGBA, 1 plane, A=Alpha (alpha is unused) */
+	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0,					0},	/*	IA_CSS_ISYS_FRAME_FORMAT_QPLANE6,		Internal, for advanced ISP, not used */
+	{8,					8,					1,			{1,0,0,0},			{1,0,0,0},			8,					8}	/*		IA_CSS_ISYS_FRAME_FORMAT_BINARY_8,		byte stream, used for jpeg. */
 };
 
 

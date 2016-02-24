@@ -55,10 +55,12 @@ struct ia_css_isys_output_pin_payload_comm {
  */
 struct frame_format_info {
 	aligned_uint32(unsigned int, bits_per_raw_pix);
+	aligned_uint32(unsigned int, bits_per_ddr_raw_pixel);
 	aligned_uint32(unsigned int, plane_count);
 	aligned_uint32(unsigned int, plane_horz_divider[PIN_PLANES_MAX]);	/* Number to divide with the bits_per_raw_pix to get the plane's bpp */
 	aligned_uint32(unsigned int, plane_vert_divider[PIN_PLANES_MAX]);	/* Number to divice the frame height to get the plane's line count */
 	aligned_uint32(unsigned int, bits_per_raw_pixel_component);		/* Used by STR2MMIO/STR2VEC to know how to handle the data after the PF */
+	aligned_uint32(unsigned int, bits_per_ddr_raw_pixel_component);
 };
 
 /**
