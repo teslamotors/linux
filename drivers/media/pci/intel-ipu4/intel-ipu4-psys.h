@@ -50,7 +50,6 @@ struct intel_ipu4_psys {
 	struct ia_css_syscom_context *dev_ctx;
 	struct ia_css_syscom_config *syscom_config;
 	struct ia_css_psys_server_init *server_init;
-	struct list_head active;
 	struct task_struct *isr_thread;
 	struct work_struct watchdog_work;
 
@@ -63,25 +62,28 @@ struct intel_ipu4_psys {
 	dma_addr_t pkg_dir_dma_addr;
 	unsigned pkg_dir_size;
 	unsigned long timeout;
+
+	int active_kcmds;
 };
 
 struct intel_ipu4_psys_fh {
 	struct intel_ipu4_psys *psys;
 	struct list_head list;
 	struct list_head bufmap;
-	struct list_head eventq;
 	struct list_head kcmds[INTEL_IPU4_PSYS_CMD_PRIORITY_NUM];
+	struct intel_ipu4_psys_kcmd
+			*new_kcmd_tail[INTEL_IPU4_PSYS_CMD_PRIORITY_NUM];
 	wait_queue_head_t wait;
-};
-
-struct intel_ipu4_psys_eventq {
-	struct intel_ipu4_psys_event ev;
-	struct list_head list;
 };
 
 struct intel_ipu4_psys_kcmd {
 	struct intel_ipu4_psys_fh *fh;
 	struct list_head list;
+	enum {
+		KCMD_STATE_NEW,
+		KCMD_STATE_RUNNING,
+		KCMD_STATE_COMPLETE
+	} state;
 	void *pg_manifest;
 	size_t pg_manifest_size;
 	struct intel_ipu4_psys_kbuffer **kbufs;
