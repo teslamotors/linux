@@ -769,11 +769,16 @@ int snd_soc_bytes_info_ext(struct snd_kcontrol *kcontrol,
 }
 EXPORT_SYMBOL_GPL(snd_soc_bytes_info_ext);
 
+/* TLV header size*/
+#define TLV_HEADER_SIZE (2 * sizeof(unsigned int))
+
 int snd_soc_bytes_tlv_callback(struct snd_kcontrol *kcontrol, int op_flag,
 				unsigned int size, unsigned int __user *tlv)
 {
 	struct soc_bytes_ext *params = (void *)kcontrol->private_value;
-	unsigned int count = size < params->max ? size : params->max;
+	/* Data includes includes TLV Header */
+	unsigned int count = size < (params->max + TLV_HEADER_SIZE) ?
+					size : (params->max + TLV_HEADER_SIZE);
 	int ret = -ENXIO;
 
 	switch (op_flag) {
