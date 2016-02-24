@@ -19,6 +19,7 @@
 #include <linux/device.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
+#include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/string.h>
@@ -2113,55 +2114,26 @@ error:
 	return rval;
 }
 
-/*
- * Executes the power on and off sequence.
- * Data provided by platform data or ACPI.
- */
-static int crlmodule_run_power_sequence(struct crl_sensor *sensor,
-					unsigned int on)
-{
-	int rval;
-
-	if (!on) {
-		crlmodule_undo_poweron_entities(sensor,
-						sensor->sensor_ds->power_items - 1);
-		return 0;
-	}
-	rval = __crlmodule_powerup_sequence(sensor);
-	if (rval)
-		goto error;
-	usleep_range(2000, 3000);
-	rval = crlmodule_run_poweron_init(sensor);
-	if (rval)
-		crlmodule_undo_poweron_entities(sensor,
-			sensor->sensor_ds->power_items - 1);
-error:
-	return rval;
-}
-
-/*
- * Function main code replicated from /drivers/media/i2c/smiapp/smiapp-core.c
- * Modified based on the CRL Module changes
- */
 static int crlmodule_set_power(struct v4l2_subdev *subdev, int on)
 {
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	int ret = 0;
 
-	mutex_lock(&sensor->power_mutex);
-	/*
-	 * If the power count is modified from 0 to != 0 or from != 0
-	 * to 0, update the power state.
-	 */
-	if ((on && !sensor->power_count)
-	    || (!on && sensor->power_count == 1)) {
-		/*
-		 * Power on and perform initialisation. This function
-		 * guranteed to be return 0 when on == 0
-		 */
-		ret = crlmodule_run_power_sequence(sensor, on);
+	if (on) {
+		ret = pm_runtime_get_sync(&client->dev);
 		if (ret < 0)
+			return ret;
+	}
+
+	mutex_lock(&sensor->power_mutex);
+	if (on && !sensor->power_count) {
+		usleep_range(2000, 3000);
+		ret = crlmodule_run_poweron_init(sensor);
+		if (ret < 0) {
+			pm_runtime_put(&client->dev);
 			goto out;
+		}
 	}
 
 	/* Update the power count. */
@@ -2170,6 +2142,10 @@ static int crlmodule_set_power(struct v4l2_subdev *subdev, int on)
 
 out:
 	mutex_unlock(&sensor->power_mutex);
+
+	if (!on)
+		pm_runtime_put(&client->dev);
+
 	return ret;
 }
 
@@ -2391,8 +2367,7 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 
 
 	/* Power up the sensor */
-	rval = crlmodule_run_power_sequence(sensor, 1);
-	if (rval)
+	if (pm_runtime_get_sync(&client->dev) < 0)
 		return -ENODEV;
 
 	/* Identify the module */
@@ -2429,7 +2404,7 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 out:
 	dev_dbg(&client->dev, "%s rval: %d\n", __func__, rval);
 	/* crlmodule_power_off(sensor); */
-	crlmodule_run_power_sequence(sensor, 0);
+	pm_runtime_put(&client->dev);
 
 	return rval;
 }
@@ -2475,12 +2450,16 @@ static int crlmodule_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	mutex_unlock(&sensor->mutex);
 
-	return crlmodule_set_power(sd, 1);
+	return pm_runtime_get_sync(&client->dev);
 }
 
 static int crlmodule_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	return crlmodule_set_power(sd, 0);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+
+	pm_runtime_put(&client->dev);
+
+	return 0;
 }
 
 static const struct v4l2_subdev_video_ops crlmodule_video_ops = {
@@ -2529,30 +2508,39 @@ static const struct v4l2_subdev_internal_ops crlmodule_internal_ops = {
 
 #ifdef CONFIG_PM
 
+static int crlmodule_runtime_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct crl_sensor *sensor = to_crlmodule_sensor(sd);
+
+	crlmodule_undo_poweron_entities(sensor,
+					sensor->sensor_ds->power_items - 1);
+	return 0;
+}
+
 static int crlmodule_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
 	struct crl_sensor *sensor = ssd->sensor;
-	bool streaming;
-
-	if (WARN_ON(mutex_is_locked(&sensor->mutex)))
-		return -EBUSY;
-
-	if (sensor->power_count == 0)
-		return 0;
 
 	if (sensor->streaming)
 		crlmodule_stop_streaming(sensor);
 
-	streaming = sensor->streaming;
-
-	crlmodule_run_power_sequence(sensor, 0);
-	/* save state for resume */
-	sensor->streaming = streaming;
-
+	crlmodule_undo_poweron_entities(sensor,
+					sensor->sensor_ds->power_items - 1);
 	return 0;
+}
+
+static int crlmodule_runtime_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct crl_sensor *sensor = to_crlmodule_sensor(sd);
+
+	return __crlmodule_powerup_sequence(sensor);
 }
 
 static int crlmodule_resume(struct device *dev)
@@ -2563,14 +2551,10 @@ static int crlmodule_resume(struct device *dev)
 	struct crl_sensor *sensor = ssd->sensor;
 	int rval;
 
-	if (sensor->power_count == 0)
-		return 0;
-
-	rval = crlmodule_run_power_sequence(sensor, 1);
-	if (rval)
-		return rval;
-
-	if (sensor->streaming)
+	rval = __crlmodule_powerup_sequence(sensor);
+	if (!rval && sensor->power_count)
+		rval = crlmodule_run_poweron_init(sensor);
+	if (!rval && sensor->streaming)
 		rval = crlmodule_start_streaming(sensor);
 
 	return rval;
@@ -2578,6 +2562,8 @@ static int crlmodule_resume(struct device *dev)
 
 #else
 
+#define crlmodule_runtime_suspend	NULL
+#define crlmodule_runtime_resume	NULL
 #define crlmodule_suspend	NULL
 #define crlmodule_resume	NULL
 
@@ -2621,6 +2607,8 @@ static int crlmodule_probe(struct i2c_client *client,
 	ret = v4l2_async_register_subdev(&sensor->src->sd);
 	if (ret < 0)
 		goto cleanup;
+	pm_runtime_enable(&client->dev);
+
 	return 0;
 
 cleanup:
@@ -2653,6 +2641,8 @@ static int crlmodule_remove(struct i2c_client *client)
 	crlmodule_release_ds(sensor);
 	crlmodule_free_controls(sensor);
 
+	pm_runtime_disable(&client->dev);
+
 	return 0;
 }
 
@@ -2664,6 +2654,8 @@ static const struct i2c_device_id crlmodule_id_table[] = {
 MODULE_DEVICE_TABLE(i2c, crlmodule_id_table);
 
 static const struct dev_pm_ops crlmodule_pm_ops = {
+	.runtime_suspend = crlmodule_runtime_suspend,
+	.runtime_resume = crlmodule_runtime_resume,
 	.suspend	= crlmodule_suspend,
 	.resume		= crlmodule_resume,
 };
