@@ -32,6 +32,7 @@
 #else
 #include <media/i2c/smiapp.h>
 #endif
+#include <media/lc898122.h>
 
 #define HID_BUFFER_SIZE 32
 #define VCM_BUFFER_SIZE 32
@@ -180,19 +181,31 @@ static int get_dsdt_hid(struct device *dev, char *hid)
 	return 0;
 }
 
-static int get_dsdt_vcm(struct device *dev, char *vcm)
+static void *get_dsdt_vcm(struct device *dev, char *vcm, char *second)
 {
+	void *pdata = NULL;
 	const u8 dsdt_cam_vcm[] = {
 		0x39, 0xA6, 0xC9, 0x75, 0x8A, 0x5C, 0x00, 0x4A,
 		0x9F, 0x48, 0xA9, 0xC3, 0xB5, 0xDA, 0x78, 0x9F };
 	int ret = get_string_dsdt_data(dev, dsdt_cam_vcm, 0,
 				       vcm, VCM_BUFFER_SIZE);
 	if (ret < 0) {
-		dev_err(dev, "get VCM failed\n");
-		return ret;
+		dev_err(dev, "get vcm failed - using override: %s\n", second);
+		strlcpy(vcm, second, VCM_BUFFER_SIZE);
 	}
-	dev_dbg(dev, "VCM %s\n", vcm);
-	return 0;
+	dev_dbg(dev, "vcm: %s\n", vcm);
+
+	if (!strcasecmp(vcm, LC898122_NAME)) {
+		struct lc898122_platform_data *lc_pdata;
+
+		dev_dbg(dev, "Setting up voice coil motor lc898821");
+		lc_pdata = kzalloc(sizeof(struct lc898122_platform_data),
+				   GFP_KERNEL);
+		if (lc_pdata)
+			lc_pdata->sensor_device = dev;
+		pdata = lc_pdata;
+	}
+	return pdata;
 }
 
 static int get_i2c_info(struct device *dev, struct ipu4_i2c_info *i2c, int size)
@@ -306,6 +319,7 @@ static int get_crlmodule_pdata(struct i2c_client *client,
 {
 	struct crlmodule_platform_data *pdata;
 	struct ipu4_i2c_info i2c[2];
+	void *vcm_pdata;
 	char vcm[VCM_BUFFER_SIZE];
 	int num = get_i2c_info(&client->dev, i2c, ARRAY_SIZE(i2c));
 
@@ -329,13 +343,12 @@ static int get_crlmodule_pdata(struct i2c_client *client,
 	if ((num <= 1) || !priv)
 		return 0;
 
-	/* This is currently informative. Data could be missing */
-	get_dsdt_vcm(&client->dev, vcm);
+	vcm_pdata = get_dsdt_vcm(&client->dev, vcm, priv);
 
 	dev_info(&client->dev, "Creating vcm instance: bus: %d addr 0x%x %s\n",
-		 i2c[1].bus, i2c[1].addr, (char *)priv);
+		 i2c[1].bus, i2c[1].addr, vcm);
 
-	return add_new_i2c(i2c[1].addr, i2c[1].bus, 0, priv, NULL);
+	return add_new_i2c(i2c[1].addr, i2c[1].bus, 0, vcm, vcm_pdata);
 }
 
 static int get_smiapp_pdata(struct i2c_client *client,
@@ -424,7 +437,7 @@ static int get_lm3643_pdata(struct i2c_client *client,
 };
 
 static const struct ipu4_acpi_devices supported_devices[] = {
-	{ "SONY230A", CRLMODULE_NAME, get_crlmodule_pdata, "lc898122", 0,
+	{ "SONY230A", CRLMODULE_NAME, get_crlmodule_pdata, LC898122_NAME, 0,
 	  imx230regulators },
 	{ "INT3477",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0,
 	  ov8858regulators },
