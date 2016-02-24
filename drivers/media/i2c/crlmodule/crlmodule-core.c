@@ -2076,6 +2076,9 @@ static int crlmodule_run_power_sequence(struct crl_sensor *sensor,
 		goto error;
 	usleep_range(2000, 3000);
 	rval = crlmodule_run_poweron_init(sensor);
+	if (rval)
+		crlmodule_undo_poweron_entities(sensor,
+			sensor->sensor_ds->power_items - 1);
 error:
 	return rval;
 }
