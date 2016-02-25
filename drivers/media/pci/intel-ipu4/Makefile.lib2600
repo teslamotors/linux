@@ -14,7 +14,6 @@ lib2600-mod-$(IPU_STEP)-objs := ../libintel-ipu4.$(IPU_STEP).lnk.o \
 	$(LIB2600_LIBRARY)/syscom/src/syscom_cell.o \
 	$(LIB2600_LIBRARY)/fw_load/src/xmem/ia_css_fw_load.o \
 	$(LIB2600_LIBRARY)/cell_program_load/src/ia_css_cell_program_load.o \
-	$(LIB2600_LIBRARY)/isys_infobits/src/isys_infobits.o \
 	$(LIB2600_LIBRARY)/isysapi/src/ia_css_isys_public.o \
 	$(LIB2600_LIBRARY)/isysapi/src/ia_css_isys_public_trace.o \
 	$(LIB2600_LIBRARY)/isysapi/src/ia_css_isys_private.o \
@@ -27,6 +26,10 @@ ifeq ($(IPU_STEP),bxtB0)
 lib2600-mod-$(IPU_STEP)-objs += \
 	$(LIB2600_LIBRARY)/server_init/src/ia_css_server_init_host.o \
 	$(LIB2600_LIBRARY)/server_init/src/ia_css_server_offset.o
+endif
+ifeq ($(IPU_STEP),bxtA0)
+lib2600-mod-$(IPU_STEP)-objs += \
+	$(LIB2600_LIBRARY)/isys_infobits/src/isys_infobits.o
 endif
 
 obj-$(CONFIG_VIDEO_INTEL_IPU4)	+= lib2600-mod-$(IPU_STEP).o

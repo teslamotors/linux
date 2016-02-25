@@ -33,14 +33,10 @@
 /* The following provides the sys layer functions */
 #include "ia_css_syscom.h"
 
-/* program load is outside syscom now */
 #include "ia_css_pkg_dir_iunit.h"
-#include "ia_css_fw_load.h"
-#include "ia_css_cell_program_load.h"
 #include "ia_css_cell.h"
 #include "ipu_device_cell_properties.h"
 #include "ia_css_server_init_host.h"
-#include "regmem_access.h"
 
 /* The following provides the tracing functions */
 #include "ia_css_isysapi_trace.h"
@@ -58,10 +54,6 @@
 #include "misc_support.h"
 #include "system_const.h"
 
-#include "isys_infobits.h"
-
-#define NUM_ENTRIES	(1 + IA_CSS_PKG_DIR_ISYS_INDEX + 1)
-
 /**
  * ia_css_isys_device_open() - open and configure ISYS device
  */
@@ -75,8 +67,6 @@ int ia_css_isys_device_open(
 	struct ia_css_syscom_config sys;
 	struct ia_css_syscom_queue_config input_queue_cfg[STREAM_ID_MAX];
 	struct ia_css_syscom_queue_config output_queue_cfg;
-	unsigned long long program_host_address;
-	unsigned int program_vied_address;
 	struct ia_css_isys_fw_config isys_fw_cfg;
 	unsigned int ssid;
 	unsigned int mmid;
@@ -96,26 +86,8 @@ int ia_css_isys_device_open(
 	mmid = config->driver_sys.mmid;
 
 	/* get firmware address from config */
-	program_host_address = *(unsigned long long *)config->driver_sys.firmware_address;
 
-	if (program_host_address != 0) {
-		/* This code is to be moved once drivers have switched tp PKG_DIR for ISYS */
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Loading program isys_fw\n");
-
-		program_vied_address = shared_memory_map(ssid, mmid, program_host_address);
-
-		/* needed to load SPC DMEM */
-		ia_css_fw_load_init();
-
-		/* load the full firmware from host */
-		if (ia_css_cell_program_load(ssid, mmid, program_host_address, program_vied_address) != 0)
-			return ENOEXEC;
-
-		/* write zero pkg_dir address to SPC, such that SPC will not load   */
-		regmem_store_32(ipu_device_cell_memory_address(SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM),
-			PKG_DIR_ADDR_REG, 0, ssid);
-
-	} else if (config->driver_sys.pkg_dir_host_address) {
+	if (config->driver_sys.pkg_dir_host_address) {
 		/* Internally initialize SPC icache from PKG_DIR */
 		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Loading program from pkg_dir\n");
 
@@ -299,34 +271,34 @@ int ia_css_isys_device_open_ready(
 			stream_cfg->output_pins[i].output_res.width <= OUTPUT_MAX_WIDTH &&
 			stream_cfg->output_pins[i].output_res.height >= OUTPUT_MIN_HEIGHT &&
 			stream_cfg->output_pins[i].output_res.height <= OUTPUT_MAX_HEIGHT, EINVAL);
-#ifdef DRIVER_SPECIFIES_OUTPUT_CROPPING	/* #ifdef to be removed when driver does what the define says */
-		switch(stream_cfg->output_pins[i].pt) {
-		case IA_CSS_ISYS_PIN_TYPE_RAW_NS:
-			/* Ensure the PIFCONV cropped resolution matches the RAW_NS output pin resolution */
-			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].top_offset + (int)stream_cfg->output_pins[i].output_res.height, EINVAL);
-			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].left_offset + (int)stream_cfg->output_pins[i].output_res.width, EINVAL);
-			/* Ensure the ISAPF cropped resolution matches the Non-scaled ISA output resolution before the PIFCONV cropping, since nothing can modify the resolution in that part of the pipe */
-			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].top_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].height, EINVAL);
-			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].left_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].width, EINVAL);
-			/* Ensure the Non-scaled ISA output resolution before the PIFCONV cropping bounds the RAW_NS pin output resolution since padding is not supported */
-			verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].height >= stream_cfg->output_pins[i].output_res.height, EINVAL);
-			verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].width >= stream_cfg->output_pins[i].output_res.width, EINVAL);
-			break;
-		case IA_CSS_ISYS_PIN_TYPE_RAW_S:
-			/* Ensure the ScaledPIFCONV cropped resolution matches the RAW_S output pin resolution */
-			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].top_offset + (int)stream_cfg->output_pins[i].output_res.height, EINVAL);
-			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].left_offset + (int)stream_cfg->output_pins[i].output_res.width, EINVAL);
-			/* Ensure the ISAPF cropped resolution bounds the Scaled ISA output resolution before the ScaledPIFCONV cropping, since only IDS can modify the resolution, and this only to make it smaller */
-			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].bottom_offset >= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].top_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].height, EINVAL);
-			verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].right_offset >= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].left_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].width, EINVAL);
-			/* Ensure the Scaled ISA output resolution before the ScaledPIFCONV cropping bounds the RAW_S pin output resolution since padding is not supported */
-			verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].height >= stream_cfg->output_pins[i].output_res.height, EINVAL);
-			verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].width >= stream_cfg->output_pins[i].output_res.width, EINVAL);
-			break;
-		default:
-			break;
+		if (stream_cfg->isl_use == IA_CSS_ISYS_USE_SINGLE_ISA) {
+			switch(stream_cfg->output_pins[i].pt) {
+			case IA_CSS_ISYS_PIN_TYPE_RAW_NS:
+				/* Ensure the PIFCONV cropped resolution matches the RAW_NS output pin resolution */
+				verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].top_offset + (int)stream_cfg->output_pins[i].output_res.height, EINVAL);
+				verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].left_offset + (int)stream_cfg->output_pins[i].output_res.width, EINVAL);
+				/* Ensure the ISAPF cropped resolution matches the Non-scaled ISA output resolution before the PIFCONV cropping, since nothing can modify the resolution in that part of the pipe */
+				verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].top_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].height, EINVAL);
+				verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].left_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].width, EINVAL);
+				/* Ensure the Non-scaled ISA output resolution before the PIFCONV cropping bounds the RAW_NS pin output resolution since padding is not supported */
+				verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].height >= stream_cfg->output_pins[i].output_res.height, EINVAL);
+				verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED].width >= stream_cfg->output_pins[i].output_res.width, EINVAL);
+				break;
+			case IA_CSS_ISYS_PIN_TYPE_RAW_S:
+				/* Ensure the ScaledPIFCONV cropped resolution matches the RAW_S output pin resolution */
+				verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].top_offset + (int)stream_cfg->output_pins[i].output_res.height, EINVAL);
+				verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].right_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED].left_offset + (int)stream_cfg->output_pins[i].output_res.width, EINVAL);
+				/* Ensure the ISAPF cropped resolution bounds the Scaled ISA output resolution before the ScaledPIFCONV cropping, since only IDS can modify the resolution, and this only to make it smaller */
+				verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].bottom_offset >= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].top_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].height, EINVAL);
+				verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].right_offset >= stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].left_offset + (int)stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].width, EINVAL);
+				/* Ensure the Scaled ISA output resolution before the ScaledPIFCONV cropping bounds the RAW_S pin output resolution since padding is not supported */
+				verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].height >= stream_cfg->output_pins[i].output_res.height, EINVAL);
+				verifret(stream_cfg->isa_cfg.isa_res[IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED].width >= stream_cfg->output_pins[i].output_res.width, EINVAL);
+				break;
+			default:
+				break;
+			}
 		}
-#endif /*DRIVER_SPECIFIES_OUTPUT_CROPPING*/
 	}
 
 	/* open 1 send queue/stream and a single receive queue if not existing */
