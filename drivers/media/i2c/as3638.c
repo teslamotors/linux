@@ -216,11 +216,9 @@ static int as3638_dump_registers(struct as3638_flash *flash)
 	regmap_read(flash->regmap, 0x22, &reg[12]);
 
 	dev_dbg(flash->dev,
-		"%s: Addr: 0x00 0x01 0x02 0x03 0x04 0x05 0x06 0x07 0x08 0x09 0x20 0x21 0x22\n",
-		__func__);
+		"Addr: 0x00 0x01 0x02 0x03 0x04 0x05 0x06 0x07 0x08 0x09 0x20 0x21 0x22\n");
 	dev_dbg(flash->dev,
-		"%s: Val:  0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
-		__func__,
+		"Val:  0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
 		reg[0], reg[1], reg[2], reg[3], reg[4], reg[5], reg[6],
 		reg[7], reg[8], reg[9], reg[10], reg[11], reg[12]);
 	return 0;
@@ -230,12 +228,12 @@ static int as3638_disable_outputs(struct as3638_flash *flash)
 {
 	int rval;
 
-	dev_dbg(flash->dev, "%s:\n", __func__);
+	dev_dbg(flash->dev, "disable outputs\n");
 
 	rval = regmap_update_bits(flash->regmap, REG_CONTROL,
 				  CONTROL_OUT_ON_MASK, 0);
 	if (rval < 0)
-		dev_err(flash->dev, "%s: Register write fail\n", __func__);
+		dev_err(flash->dev, "Register write fail\n");
 
 	return rval;
 }
@@ -247,29 +245,28 @@ static int as3638_mode_ctrl(struct as3638_flash *flash,
 
 	switch (flash->led_mode[led_no]->val) {
 	case V4L2_FLASH_LED_MODE_NONE:
-		dev_dbg(flash->dev, "%s: LED%d: FLASH_LED_MODE_NONE\n",
-			__func__, led_no + 1);
+		dev_dbg(flash->dev, "LED%d: FLASH_LED_MODE_NONE\n", led_no + 1);
 		rval = regmap_update_bits(
 			flash->regmap, REG_CONTROL, CONTROL_MODE_SETTING_MASK,
 			MODE_EXT_TORCH << CONTROL_MODE_SETTING_SHIFT);
 		break;
 	case V4L2_FLASH_LED_MODE_TORCH:
-		dev_dbg(flash->dev, "%s: LED%d: FLASH_LED_MODE_TORCH\n",
-			__func__, led_no + 1);
+		dev_dbg(flash->dev, "LED%d: FLASH_LED_MODE_TORCH\n",
+			led_no + 1);
 		rval = regmap_update_bits(
 			flash->regmap, REG_CONTROL, CONTROL_MODE_SETTING_MASK,
 			MODE_TORCH << CONTROL_MODE_SETTING_SHIFT);
 		break;
 	case V4L2_FLASH_LED_MODE_FLASH:
-		dev_dbg(flash->dev, "%s: LED%d: FLASH_LED_MODE_FLASH\n",
-			__func__, led_no + 1);
+		dev_dbg(flash->dev, "LED%d: FLASH_LED_MODE_FLASH\n",
+			led_no + 1);
 		rval = regmap_update_bits(
 			flash->regmap, REG_CONTROL, CONTROL_MODE_SETTING_MASK,
 			MODE_FLASH << CONTROL_MODE_SETTING_SHIFT);
 		break;
 	default:
-		dev_err(flash->dev, "%s: LED%d: Invalid mode %d\n",
-			__func__, led_no + 1, flash->led_mode[led_no]->val);
+		dev_err(flash->dev, "LED%d: Invalid mode %d\n",
+			led_no + 1, flash->led_mode[led_no]->val);
 		return -EINVAL;
 	}
 	return rval;
@@ -304,19 +301,19 @@ static int as3638_force_reduction_current(struct as3638_flash *flash)
 
 	rval = regmap_read(flash->regmap, REG_CONTROL, &reg_val);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Device read failed\n", __func__);
+		dev_err(flash->dev, "Device read failed\n");
 		return rval;
 	}
-	dev_dbg(flash->dev, "%s: Control register = 0x%X\n", __func__, reg_val);
+	dev_dbg(flash->dev, "Control register = 0x%X\n", reg_val);
 
 	if (!(reg_val & CONTROL_TXMASK_EN_MASK)) {
-		dev_err(flash->dev, "%s: Reduction enable fail\n", __func__);
+		dev_err(flash->dev, "Reduction enable fail\n");
 		return -EINVAL;
 	}
 
 	if ((reg_val & CONTROL_TXMASK_RED_CURR_MASK) !=
 	    (CONTROL_RED_CURR_400_MILLI_AMP << CONTROL_TXMASK_RED_CURR_SHIFT)) {
-		dev_err(flash->dev, "%s: Reduction init fail\n", __func__);
+		dev_err(flash->dev, "Reduction init fail\n");
 		return -EINVAL;
 	}
 
@@ -359,8 +356,8 @@ static int as3638_set_intensity(struct as3638_flash *flash,
 	reg_mask = FLASH_CURRENT_MASK | TORCH_CURRENT_MASK;
 	switch (led_no)	{
 	case AS3638_LED1:
-		dev_dbg(flash->dev, "%s: LED1: flash = %d mA, torch = %d mA\n",
-			__func__, flash->flash_intensity[AS3638_LED1]->val,
+		dev_dbg(flash->dev, "LED1: flash = %d mA, torch = %d mA\n",
+			flash->flash_intensity[AS3638_LED1]->val,
 		       flash->torch_intensity[AS3638_LED1]->val);
 
 		reg_val = as3638_torch_intensity_to_register_led1(
@@ -392,8 +389,8 @@ static int as3638_set_intensity(struct as3638_flash *flash,
 		if (rval < 0)
 			return rval;
 
-		dev_dbg(flash->dev, "%s: LED2: flash = %d mA, torch = %d mA\n",
-			__func__, flash->flash_intensity[AS3638_LED2]->val,
+		dev_dbg(flash->dev, "LED2: flash = %d mA, torch = %d mA\n",
+			flash->flash_intensity[AS3638_LED2]->val,
 		       flash->torch_intensity[AS3638_LED2]->val);
 
 		reg_val = AS3638_TORCH_INT_MILLI_A_TO_REG(
@@ -407,8 +404,8 @@ static int as3638_set_intensity(struct as3638_flash *flash,
 		if (rval < 0)
 			return rval;
 
-		dev_dbg(flash->dev, "%s: LED3: flash = %d mA, torch = %d mA\n",
-			__func__, flash->flash_intensity[AS3638_LED3]->val,
+		dev_dbg(flash->dev, "LED3: flash = %d mA, torch = %d mA\n",
+			flash->flash_intensity[AS3638_LED3]->val,
 		       flash->torch_intensity[AS3638_LED3]->val);
 
 		reg_val = AS3638_TORCH_INT_MILLI_A_TO_REG(
@@ -424,8 +421,7 @@ static int as3638_set_intensity(struct as3638_flash *flash,
 		break;
 
 	default:
-		dev_warn(flash->dev, "%s: Invalid led_no %d\n",
-			 __func__, led_no + 1);
+		dev_warn(flash->dev, "Invalid led_no %d\n", led_no + 1);
 		return -EINVAL;
 	}
 	return rval;
@@ -436,7 +432,7 @@ static int as3638_turn_on_leds(struct as3638_flash *flash,
 {
 	int rval;
 
-	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
+	dev_dbg(flash->dev, "turn on LED%d\n", led_no + 1);
 
 	if (led_no == AS3638_LED1 &&
 	    flash->led_mode[led_no]->val == V4L2_FLASH_LED_MODE_FLASH) {
@@ -446,8 +442,8 @@ static int as3638_turn_on_leds(struct as3638_flash *flash,
 			return rval;
 	}
 
-	dev_dbg(flash->dev, "%s: %s\n",
-		__func__, as3638_dump_registers(flash) ? " " : " ");
+	dev_dbg(flash->dev, "%s\n",
+		as3638_dump_registers(flash) ? " " : " ");
 
 	return regmap_update_bits(flash->regmap, REG_CONTROL,
 				  CONTROL_OUT_ON_MASK,
@@ -466,7 +462,7 @@ static int as3638_init_device(struct as3638_flash *flash,
 	unsigned int reg_val;
 	unsigned int reg_mask;
 
-	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
+	dev_dbg(flash->dev, "LED%d\n", led_no + 1);
 
 	rval = as3638_set_intensity(flash, led_no);
 	if (rval < 0)
@@ -496,7 +492,7 @@ static int as3638_init_device(struct as3638_flash *flash,
 
 	flash->current_led = led_no;
 
-	dev_dbg(flash->dev, "%s: Resetting fault flags\n", __func__);
+	dev_dbg(flash->dev, "Resetting fault flags\n");
 	return regmap_read(flash->regmap, REG_FAULT_AND_INFO, &reg_val);
 }
 
@@ -509,20 +505,19 @@ static int as3638_get_ctrl(struct v4l2_ctrl *ctrl)
 	unsigned int fault_val;
 	int rval = -EINVAL;
 
-	dev_dbg(flash->dev, "%s: LED%d: ctrl->id = 0x%X\n",
-		__func__, led_no + 1, ctrl->id);
+	dev_dbg(flash->dev, "LED%d: ctrl->id = 0x%X\n", led_no + 1, ctrl->id);
 
 	if (ctrl->id != V4L2_CID_FLASH_FAULT) {
-		dev_warn(flash->dev, "%s: Invalid control\n", __func__);
+		dev_warn(flash->dev, "Invalid control\n");
 		return rval;
 	}
 
 	rval = regmap_read(flash->regmap, REG_FAULT_AND_INFO, &fault_val);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Register read fail\n", __func__);
+		dev_err(flash->dev, "Register read fail\n");
 		return rval;
 	}
-	dev_dbg(flash->dev, "%s: fault_and_info = 0x%X\n", __func__, fault_val);
+	dev_dbg(flash->dev, "fault_and_info = 0x%X\n", fault_val);
 
 	ctrl->val = 0;
 	if (fault_val & FAULT_UNDER_VOLTAGE_LO_MASK)
@@ -554,7 +549,7 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 	if (flash->current_led != led_no) {
 		rval = as3638_init_device(flash, led_no);
 		if (rval < 0) {
-			dev_err(flash->dev, "%s: Init device fail\n", __func__);
+			dev_err(flash->dev, "Init device fail\n");
 			goto leave;
 		}
 	}
@@ -562,22 +557,22 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 	switch (ctrl->id) {
 	case V4L2_CID_FLASH_LED_MODE:
 		dev_dbg(flash->dev,
-			"%s: LED%d: V4L2_CID_FLASH_LED_MODE, val = %d\n",
-			__func__, led_no + 1, ctrl->val);
+			"LED%d: V4L2_CID_FLASH_LED_MODE, val = %d\n",
+			led_no + 1, ctrl->val);
 		rval = as3638_mode_ctrl(flash, led_no);
 		break;
 
 	case V4L2_CID_FLASH_STROBE:
 		dev_dbg(flash->dev,
-			"%s: LED%d: V4L2_CID_FLASH_STROBE, val = %d\n",
-			__func__, led_no + 1, ctrl->val);
+			"LED%d: V4L2_CID_FLASH_STROBE, val = %d\n",
+			led_no + 1, ctrl->val);
 		rval = as3638_turn_on_leds(flash, led_no);
 		break;
 
 	case V4L2_CID_FLASH_STROBE_SOURCE:
 		dev_dbg(flash->dev,
-			"%s: LED%d: V4L2_CID_FLASH_STROBE_SOURCE, val = %d\n",
-			__func__, led_no + 1, ctrl->val);
+			"LED%d: V4L2_CID_FLASH_STROBE_SOURCE, val = %d\n",
+			led_no + 1, ctrl->val);
 		rval = regmap_update_bits(
 			flash->regmap, REG_CONFIG, CONFIG_STROBE_ON_MASK,
 			flash->strobe_source[led_no]->val <<
@@ -586,15 +581,15 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	case V4L2_CID_FLASH_STROBE_STOP:
 		dev_dbg(flash->dev,
-			"%s: LED%d: V4L2_CID_FLASH_STROBE_STOP, val = %d\n",
-			__func__, led_no + 1, ctrl->val);
+			"LED%d: V4L2_CID_FLASH_STROBE_STOP, val = %d\n",
+			led_no + 1, ctrl->val);
 		rval = as3638_disable_outputs(flash);
 		break;
 
 	case V4L2_CID_FLASH_TIMEOUT:
 		dev_dbg(flash->dev,
-			"%s: LED%d: V4L2_CID_FLASH_TIMEOUT, val = %d\n",
-			__func__, led_no + 1, ctrl->val);
+			"LED%d: V4L2_CID_FLASH_TIMEOUT, val = %d\n",
+			led_no + 1, ctrl->val);
 		rval = regmap_update_bits(flash->regmap, REG_TIMER,
 					  TIMER_FLASH_TIMEOUT_MASK,
 					  flash->timeout[led_no]->val);
@@ -602,8 +597,8 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	case V4L2_CID_FLASH_INTENSITY:
 		dev_dbg(flash->dev,
-			"%s: LED%d: V4L2_CID_FLASH_INTENSITY, val = %d\n",
-			__func__, led_no + 1, ctrl->val);
+			"LED%d: V4L2_CID_FLASH_INTENSITY, val = %d\n",
+			led_no + 1, ctrl->val);
 		rval = as3638_disable_outputs(flash);
 		if (rval < 0)
 			goto leave;
@@ -614,8 +609,8 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	case V4L2_CID_FLASH_TORCH_INTENSITY:
 		dev_dbg(flash->dev,
-			"%s: LED%d: V4L2_CID_FLASH_TORCH_INTENSITY, val = %d\n",
-			__func__, led_no + 1, ctrl->val);
+			"LED%d: V4L2_CID_FLASH_TORCH_INTENSITY, val = %d\n",
+			led_no + 1, ctrl->val);
 		rval = as3638_set_intensity(flash, led_no);
 		if (rval < 0)
 			goto leave;
@@ -623,14 +618,14 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	case V4L2_CID_FLASH_FAULT:
 		dev_dbg(flash->dev,
-			"%s: LED%d: V4L2_CID_FLASH_FAULT, val = %d\n",
-			__func__, led_no + 1, ctrl->val);
+			"LED%d: V4L2_CID_FLASH_FAULT, val = %d\n",
+			led_no + 1, ctrl->val);
 		rval = 0;
 		break;
 	default:
 		dev_warn(flash->dev,
-			 "%s: LED%d: Invalid control, id = 0x%X, val = %d\n",
-			 __func__, led_no + 1, ctrl->id, ctrl->val);
+			 "LED%d: Invalid control, id = 0x%X, val = %d\n",
+			 led_no + 1, ctrl->id, ctrl->val);
 		rval = -EINVAL;
 		break;
 	}
@@ -653,7 +648,7 @@ static int as3638_init_controls(struct as3638_flash *flash,
 	struct v4l2_ctrl_handler *hdl = &flash->ctrls_led[led_no].handler;
 	const struct v4l2_ctrl_ops *ops = &as3638_led_ctrl_ops;
 
-	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
+	dev_dbg(flash->dev, "Init controls: LED%d\n", led_no + 1);
 
 	flash->ctrls_led[led_no].led = led_no;
 	v4l2_ctrl_handler_init(hdl, 8);
@@ -695,8 +690,7 @@ static int as3638_init_controls(struct as3638_flash *flash,
 		fault->flags |= V4L2_CTRL_FLAG_VOLATILE;
 
 	if (hdl->error) {
-		dev_err(flash->dev, "%s: Fail, LED = %d\n",
-			__func__, led_no + 1);
+		dev_err(flash->dev, "Fail, LED = %d\n", led_no + 1);
 		return hdl->error;
 	}
 	flash->subdev_led[led_no].subdev.ctrl_handler = hdl;
@@ -722,8 +716,7 @@ static int as3638_subdev_init(struct as3638_flash *flash,
 	struct i2c_client *client = to_i2c_client(flash->dev);
 	int rval = -ENODEV;
 
-	dev_dbg(flash->dev, "%s: LED = %d, led_name = %s\n",
-		__func__, led_no + 1, led_name);
+	dev_dbg(flash->dev, "LED = %d, led_name = %s\n", led_no + 1, led_name);
 
 	v4l2_subdev_init(&flash->subdev_led[led_no].subdev, &as3638_ops);
 	flash->subdev_led[led_no].subdev.internal_ops = &as3638_internal_ops;
@@ -741,23 +734,20 @@ static int as3638_subdev_init(struct as3638_flash *flash,
 			flash->subdev_led[AS3638_LED1].subdev.v4l2_dev,
 			&flash->subdev_led[led_no].subdev);
 	if (rval) {
-		dev_err(flash->dev, "%s: Register subdev fail LED%d\n",
-			__func__, led_no + 1);
+		dev_err(flash->dev, "Register subdev fail LED%d\n", led_no + 1);
 		goto err_out;
 	}
 
 	rval = as3638_init_controls(flash, led_no);
 	if (rval) {
-		dev_err(flash->dev, "%s: Init controls fail LED%d\n",
-			__func__, led_no + 1);
+		dev_err(flash->dev, "Init controls fail LED%d\n", led_no + 1);
 		goto err_out;
 	}
 
 	rval = media_entity_init(&flash->subdev_led[led_no].subdev.entity,
 				 0, NULL, 0);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Media init fail LED%d\n",
-			__func__, led_no + 1);
+		dev_err(flash->dev, "Media init fail LED%d\n", led_no + 1);
 		goto err_out;
 	}
 	flash->subdev_led[led_no].subdev.entity.type =
@@ -782,18 +772,18 @@ static int as3638_registered(struct v4l2_subdev *subdev)
 	if (led_no != AS3638_LED1)
 		return 0;
 
-	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
+	dev_dbg(flash->dev, "register LED%d\n", led_no + 1);
 
 	/* The LED1 subdevice was already initialized during the probe call */
 
 	rval = as3638_subdev_init(flash, AS3638_LED2, "as3638-led2");
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Subdev init LED2 fail\n", __func__);
+		dev_err(flash->dev, "Subdev init LED2 fail\n");
 		return rval;
 	}
 	rval = as3638_subdev_init(flash, AS3638_LED3, "as3638-led3");
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Subdev init LED3 fail\n", __func__);
+		dev_err(flash->dev, "Subdev init LED3 fail\n");
 		return rval;
 	}
 	return rval;
@@ -805,7 +795,7 @@ static void as3638_unregistered(struct v4l2_subdev *subdev)
 	enum as3638_led_id led_no = subdev_led->led;
 	struct as3638_flash *flash = subdev_led_to_as3638_flash(subdev_led,
 								led_no);
-	dev_dbg(flash->dev, "%s:\n", __func__);
+	dev_dbg(flash->dev, "Unregistered\n");
 }
 
 static int as3638_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
@@ -815,7 +805,7 @@ static int as3638_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 	struct as3638_flash *flash = subdev_led_to_as3638_flash(subdev_led,
 								led_no);
 	int rval = 0;
-	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
+	dev_dbg(flash->dev, "open LED%d\n", led_no + 1);
 
 	pm_runtime_get_sync(flash->dev);
 
@@ -851,7 +841,7 @@ static int as3638_close(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 	enum as3638_led_id led_no = subdev_led->led;
 	struct as3638_flash *flash = subdev_led_to_as3638_flash(subdev_led,
 								led_no);
-	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
+	dev_dbg(flash->dev, "close LED%d\n", led_no + 1);
 
 	mutex_lock(&flash->lock);
 	flash->open[led_no] = false;
@@ -875,8 +865,8 @@ static int as3638_i2c_subdev_init(struct as3638_flash *flash,
 	struct i2c_client *client = to_i2c_client(flash->dev);
 	int rval;
 
-	dev_dbg(flash->dev, "%s: LED = %d, led_name = %s\n",
-		__func__, led_no + 1, led_name);
+	dev_dbg(flash->dev, "subdev init LED = %d, led_name = %s\n",
+		led_no + 1, led_name);
 
 	v4l2_i2c_subdev_init(&flash->subdev_led[led_no].subdev,
 			     client, &as3638_ops);
@@ -892,14 +882,14 @@ static int as3638_i2c_subdev_init(struct as3638_flash *flash,
 
 	rval = as3638_init_controls(flash, AS3638_LED1);
 	if (rval) {
-		dev_err(flash->dev, "%s: Init controls fail LED1\n", __func__);
+		dev_err(flash->dev, "Init controls fail LED1\n");
 		return rval;
 	}
 
 	rval = media_entity_init(&flash->subdev_led[led_no].subdev.entity,
 				 0, NULL, 0);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Media init fail LED1\n", __func__);
+		dev_err(flash->dev, "Media init fail LED1\n");
 		goto err_out;
 	}
 	flash->subdev_led[led_no].subdev.entity.type =
@@ -927,7 +917,7 @@ static int as3638_probe(struct i2c_client *client,
 		return PTR_ERR(flash->regmap);
 
 	if (!pdata) {
-		dev_err(flash->dev, "%s: Missing platform data\n", __func__);
+		dev_err(flash->dev, "Missing platform data\n");
 		return -ENXIO;
 	}
 	flash->pdata = pdata;
@@ -935,38 +925,38 @@ static int as3638_probe(struct i2c_client *client,
 
 	rval = gpio_request(flash->pdata->gpio_reset, "flash reset");
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Request reset GPIO fail\n", __func__);
+		dev_err(flash->dev, "Request reset GPIO fail\n");
 		goto error;
 	}
 	rval = gpio_direction_output(flash->pdata->gpio_reset, 1);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Setting reset GPIO fail\n", __func__);
+		dev_err(flash->dev, "Setting reset GPIO fail\n");
 		goto error;
 	}
 
 	rval = regmap_read(flash->regmap, REG_DESIGN_INFO, &reg_val);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Device read failed\n", __func__);
+		dev_err(flash->dev, "Device read failed\n");
 		goto error;
 	}
 	if (reg_val != DESIGN_INFO_FIXED_ID) {
 		dev_err(flash->dev,
-			"%s: Wrong ID returned (0x%X). Must be 0x%X\n",
-			__func__, reg_val, DESIGN_INFO_FIXED_ID);
+			"Wrong ID returned (0x%X). Must be 0x%X\n",
+			reg_val, DESIGN_INFO_FIXED_ID);
 		goto error;
 	}
 
 	rval = regmap_read(flash->regmap, REG_VERSION_CONTROL, &reg_val);
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Device read failed\n", __func__);
+		dev_err(flash->dev, "Device read failed\n");
 		goto error;
 	}
-	dev_dbg(flash->dev, "%s: AS3638 chip version 0x%4X\n",
-		__func__, reg_val & VERSION_MASK);
+	dev_dbg(flash->dev, "AS3638 chip version 0x%4X\n",
+		reg_val & VERSION_MASK);
 
 	rval = as3638_i2c_subdev_init(flash, AS3638_LED1, "as3638-led1");
 	if (rval < 0) {
-		dev_err(flash->dev, "%s: Subdev init LED1 fail\n", __func__);
+		dev_err(flash->dev, "Subdev init LED1 fail\n");
 		goto error2;
 	}
 
@@ -975,7 +965,7 @@ static int as3638_probe(struct i2c_client *client,
 	flash->current_led = AS3638_NO_LED;
 	pm_runtime_enable(flash->dev);
 
-	dev_dbg(flash->dev, "%s: Success\n", __func__);
+	dev_dbg(flash->dev, "Success\n");
 	return 0;
 error2:
 	v4l2_device_unregister_subdev(&flash->subdev_led[AS3638_LED1].subdev);
@@ -989,7 +979,7 @@ static void as3638_subdev_cleanup(struct as3638_flash *flash)
 {
 	int i;
 
-	dev_dbg(flash->dev, "%s:\n", __func__);
+	dev_dbg(flash->dev, "Clean up\n");
 
 	for (i = AS3638_LED1; i < AS3638_LED_MAX; i++) {
 		v4l2_device_unregister_subdev(&flash->subdev_led[i].subdev);
@@ -1005,7 +995,7 @@ static int as3638_remove(struct i2c_client *client)
 		container_of(sd, struct as3638_flash,
 			     subdev_led[AS3638_LED1].subdev);
 
-	dev_dbg(flash->dev, "%s:\n", __func__);
+	dev_dbg(flash->dev, "remove\n");
 
 	as3638_subdev_cleanup(flash);
 	gpio_free(flash->pdata->gpio_reset);
