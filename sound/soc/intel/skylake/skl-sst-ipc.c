@@ -1031,7 +1031,11 @@ int skl_ipc_get_large_config(struct sst_generic_ipc *ipc,
 	header.primary |= IPC_MOD_INSTANCE_ID(msg->instance_id);
 	header.primary |= IPC_MOD_ID(msg->module_id);
 
-	header.extension = IPC_DATA_OFFSET_SZ(msg->param_data_size);
+	if (!tx_bytes)
+		header.extension = IPC_DATA_OFFSET_SZ(msg->param_data_size);
+	else
+		header.extension = IPC_DATA_OFFSET_SZ(tx_bytes);
+
 	header.extension |= IPC_LARGE_PARAM_ID(msg->large_param_id);
 	header.extension |= IPC_FINAL_BLOCK(1);
 	header.extension |= IPC_INITIAL_BLOCK(1);
