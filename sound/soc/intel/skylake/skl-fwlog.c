@@ -98,6 +98,13 @@ unsigned long skl_dsp_log_avail(struct sst_dsp *sst, int core)
 }
 EXPORT_SYMBOL(skl_dsp_log_avail);
 
+int skl_dsp_get_buff_users(struct sst_dsp *sst, int core)
+{
+	struct sst_dbg_rbuffer *buff = sst->trace_wind.dbg_buffers[core];
+
+	return refcount_read(&buff->refcount.refcount);
+}
+
 void skl_dsp_write_log(struct sst_dsp *sst, void __iomem *src, int core,
 				int count)
 {

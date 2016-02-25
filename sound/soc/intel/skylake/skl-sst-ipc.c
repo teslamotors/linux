@@ -363,6 +363,12 @@ skl_process_log_buffer(struct sst_dsp *sst, struct skl_ipc_header header)
 		dev_err(sst->dev, "Logging is disabled on dsp %d\n", core);
 		return;
 	}
+	if (skl_dsp_get_buff_users(sst, core) > 2) {
+		dev_err(sst->dev, "Can't handle log buffer notification, \
+			previous writer is not finished yet !\n \
+			dropping log buffer\n");
+		return;
+	}
 	skl_dsp_get_log_buff(sst, core);
 	size = sst->trace_wind.size/sst->trace_wind.nr_dsp;
 	base = (u8 *)sst->trace_wind.addr;
