@@ -16,6 +16,7 @@
 #include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/regmap.h>
+#include <linux/pm_runtime.h>
 #include "../../../include/media/as3638.h"
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
@@ -616,6 +617,12 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 			return rval;
 		break;
 
+	case V4L2_CID_FLASH_FAULT:
+		dev_dbg(flash->dev,
+			"%s: LED%d: V4L2_CID_FLASH_FAULT, val = %d\n",
+			__func__, led_no + 1, ctrl->val);
+		rval = 0;
+		break;
 	default:
 		dev_warn(flash->dev,
 			 "%s: LED%d: Invalid control, id = 0x%X, val = %d\n",
@@ -805,9 +812,7 @@ static int as3638_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 
 	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
 
-	rval = gpio_direction_output(flash->pdata->gpio_reset, 1);
-	if (rval < 0)
-		dev_err(flash->dev, "%s: Setting reset GPIO fail\n", __func__);
+	pm_runtime_get_sync(flash->dev);
 
 	rval = as3638_init_device(flash, led_no);
 	if (rval < 0)
@@ -822,14 +827,11 @@ static int as3638_close(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 	enum as3638_led_id led_no = subdev_led->led;
 	struct as3638_flash *flash = subdev_led_to_as3638_flash(subdev_led,
 								led_no);
-	int rval = 0;
-
 	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
 
-	rval = gpio_direction_output(flash->pdata->gpio_reset, 1);
-	if (rval < 0)
-		dev_err(flash->dev, "%s: Reset GPIO off fail\n", __func__);
-	return rval;
+	pm_runtime_put(flash->dev);
+
+	return 0;
 }
 
 static const struct v4l2_subdev_internal_ops as3638_internal_ops = {
@@ -900,11 +902,7 @@ static int as3638_probe(struct i2c_client *client,
 	}
 	flash->pdata = pdata;
 	flash->dev = &client->dev;
-/*
-Try to use this instead to read from the ACPI table:
-#include <linux/gpio.h>
-	gpio = devm_gpiod_get_index(&client->dev, "as3638_reset", 0);
-*/
+
 	rval = gpio_request(flash->pdata->gpio_reset, "flash reset");
 	if (rval < 0) {
 		dev_err(flash->dev, "%s: Request reset GPIO fail\n", __func__);
@@ -942,11 +940,10 @@ Try to use this instead to read from the ACPI table:
 		goto error2;
 	}
 
-	rval = gpio_direction_output(flash->pdata->gpio_reset, 0);
-	if (rval < 0) {
-		dev_err(flash->dev, "%s: Reset GPIO off fail\n", __func__);
-		goto error;
-	}
+	gpio_set_value(flash->pdata->gpio_reset, 0);
+
+	flash->current_led = AS3638_NO_LED;
+	pm_runtime_enable(flash->dev);
 
 	dev_dbg(flash->dev, "%s: Success\n", __func__);
 	return 0;
@@ -985,9 +982,55 @@ static int as3638_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int as3638_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct as3638_subdev *sd_led = subdev_to_as3638_subdev_led(sd);
+	struct as3638_flash *flash = subdev_led_to_as3638_flash(sd_led,
+								sd_led->led);
+
+	gpio_set_value(flash->pdata->gpio_reset, 0);
+	return 0;
+}
+
+static int as3638_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct as3638_subdev *sd_led = subdev_to_as3638_subdev_led(sd);
+	struct as3638_flash *flash = subdev_led_to_as3638_flash(sd_led,
+								sd_led->led);
+	int rval;
+
+	gpio_set_value(flash->pdata->gpio_reset, 1);
+
+	if (flash->current_led == AS3638_NO_LED)
+		return 0;
+
+	rval = v4l2_ctrl_handler_setup(&flash->ctrls_led[flash->current_led]);
+
+	return rval;
+}
+
+#else
+#define as3638_suspend NULL
+#define as3638_resume  NULL
+#define as3638_suspend NULL
+#define as3638_resume  NULL
+#endif
+
 static const struct i2c_device_id as3638_id_table[] = {
 	{AS3638_NAME, 0},
 	{}
+};
+
+static const struct dev_pm_ops as3638_pm_ops = {
+	.suspend	= as3638_suspend,
+	.resume		= as3638_resume,
+	.runtime_suspend = as3638_suspend,
+	.runtime_resume = as3638_resume,
 };
 
 MODULE_DEVICE_TABLE(i2c, as3638_id_table);
@@ -995,6 +1038,7 @@ MODULE_DEVICE_TABLE(i2c, as3638_id_table);
 static struct i2c_driver as3638_i2c_driver = {
 	.driver = {
 		  .name = AS3638_NAME,
+		  .pm = &as3638_pm_ops,
 		  },
 	.probe = as3638_probe,
 	.remove = as3638_remove,
