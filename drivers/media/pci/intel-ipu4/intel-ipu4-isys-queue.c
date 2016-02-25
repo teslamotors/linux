@@ -755,35 +755,34 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
 	struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+#else
+	struct timespec ts_now;
 #endif
 	struct intel_ipu4_isys_queue *aq =
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
+	u64 ns;
+	u32 sequence;
+
+	if (ip->has_sof) {
+		ns = ktime_get_ns() - get_sof_ns_delta(av, info);
+		sequence = get_sof_sequence_by_timestamp(ip, info);
+	} else {
+		ns = ktime_get_ns();
+		sequence = (atomic_inc_return(&ip->sequence) - 1)
+			/ ip->nr_queues;
+	}
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
-	struct timespec ts_now = ns_to_timespec(
-		ktime_get_ns() - get_sof_ns_delta(av, info));
-
+	vb->v4l2_buf.sequence = sequence;
+	ts_now = ns_to_timespec(ns);
 	vb->v4l2_buf.timestamp.tv_sec = ts_now.tv_sec;
 	vb->v4l2_buf.timestamp.tv_usec = ts_now.tv_nsec / NSEC_PER_USEC;
-
-	if (ip->has_sof)
-		vb->v4l2_buf.sequence =
-			get_sof_sequence_by_timestamp(ip, info);
-	else
-		vb->v4l2_buf.sequence =
-			(atomic_inc_return(&ip->sequence) - 1) / ip->nr_queues;
 #else
-	vbuf->vb2_buf.timestamp = ktime_get_ns() - get_sof_ns_delta(av, info);
-
-	if (ip->has_sof)
-		vbuf->sequence =
-			get_sof_sequence_by_timestamp(ip, info);
-	else
-		vbuf->sequence = (atomic_inc_return(&ip->sequence) - 1)
-			/ ip->nr_queues;
+	vbuf->vb2_buf.timestamp = ns;
+	vbuf->sequence = sequence;
 #endif
 
 	vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
