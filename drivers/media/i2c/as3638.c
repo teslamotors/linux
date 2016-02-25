@@ -177,6 +177,8 @@ struct as3638_flash {
 	struct as3638_subdev subdev_led[AS3638_LED_MAX];
 	struct as3638_platform_data *pdata;
 	struct regmap *regmap;
+	struct mutex lock;
+	bool open[AS3638_LED_MAX];
 
 	enum as3638_led_id current_led;
 
@@ -547,11 +549,13 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 							       led_no);
 	int rval = 0;
 
+	mutex_lock(&flash->lock);
+
 	if (flash->current_led != led_no) {
 		rval = as3638_init_device(flash, led_no);
 		if (rval < 0) {
 			dev_err(flash->dev, "%s: Init device fail\n", __func__);
-			return rval;
+			goto leave;
 		}
 	}
 
@@ -602,10 +606,10 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 			__func__, led_no + 1, ctrl->val);
 		rval = as3638_disable_outputs(flash);
 		if (rval < 0)
-			return rval;
+			goto leave;
 		rval = as3638_set_intensity(flash, led_no);
 		if (rval < 0)
-			return rval;
+			goto leave;
 		break;
 
 	case V4L2_CID_FLASH_TORCH_INTENSITY:
@@ -614,7 +618,7 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 			__func__, led_no + 1, ctrl->val);
 		rval = as3638_set_intensity(flash, led_no);
 		if (rval < 0)
-			return rval;
+			goto leave;
 		break;
 
 	case V4L2_CID_FLASH_FAULT:
@@ -630,6 +634,8 @@ static int as3638_set_ctrl(struct v4l2_ctrl *ctrl)
 		rval = -EINVAL;
 		break;
 	}
+leave:
+	mutex_unlock(&flash->lock);
 	return rval;
 }
 
@@ -809,15 +815,33 @@ static int as3638_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 	struct as3638_flash *flash = subdev_led_to_as3638_flash(subdev_led,
 								led_no);
 	int rval = 0;
-
 	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
 
 	pm_runtime_get_sync(flash->dev);
 
-	rval = as3638_init_device(flash, led_no);
-	if (rval < 0)
-		dev_err(flash->dev, "%s: Init device fail\n", __func__);
+	mutex_lock(&flash->lock);
 
+	if ((led_no == AS3638_LED1 && (flash->open[AS3638_LED2] ||
+				       flash->open[AS3638_LED3])) ||
+	    (led_no != AS3638_LED1 && (flash->open[AS3638_LED1]))) {
+		dev_info(flash->dev,
+			 "led 1 and leds 2&3 can't be controlled in parallel");
+		rval = -EBUSY;
+		goto error;
+	}
+
+	rval = as3638_init_device(flash, led_no);
+	if (rval < 0) {
+		dev_err(flash->dev, "Init device fail\n");
+		goto error;
+	}
+
+	flash->open[led_no] = true;
+	mutex_unlock(&flash->lock);
+	return rval;
+error:
+	mutex_unlock(&flash->lock);
+	pm_runtime_put(flash->dev);
 	return rval;
 }
 
@@ -828,6 +852,10 @@ static int as3638_close(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 	struct as3638_flash *flash = subdev_led_to_as3638_flash(subdev_led,
 								led_no);
 	dev_dbg(flash->dev, "%s: LED%d\n", __func__, led_no + 1);
+
+	mutex_lock(&flash->lock);
+	flash->open[led_no] = false;
+	mutex_unlock(&flash->lock);
 
 	pm_runtime_put(flash->dev);
 
@@ -891,6 +919,8 @@ static int as3638_probe(struct i2c_client *client,
 	flash = devm_kzalloc(&client->dev, sizeof(*flash), GFP_KERNEL);
 	if (!flash)
 		return -ENOMEM;
+
+	mutex_init(&flash->lock);
 
 	flash->regmap = devm_regmap_init_i2c(client, &as3638_regmap);
 	if (IS_ERR(flash->regmap))
