@@ -505,6 +505,13 @@ static struct crl_arithmetic_ops ov8858_hblank_ops[] = {
 	 },
 };
 
+static struct crl_arithmetic_ops ov8858_dgain_ops[] = {
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 6,
+	 },
+};
+
 static struct crl_arithmetic_ops ov8858_exposure_ops[] = {
 	{
 		.op = CRL_BITWISE_LSHIFT,
@@ -520,6 +527,23 @@ static struct crl_dynamic_register_access ov8858_v_flip_regs[] = {
 		.ops = ov8858_vflip_ops,
 		.mask = 0x2,
 	 },
+};
+
+static struct crl_dynamic_register_access ov8858_dig_gain_regs[] = {
+	{
+		.address = 0x350A,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(ov8858_dgain_ops),
+		.ops = ov8858_dgain_ops,
+		.mask = 0xff,
+	},
+	{
+		.address = 0x350B,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0x3f,
+	},
 };
 
 static struct crl_dynamic_register_access ov8858_h_flip_regs[] = {
@@ -1126,6 +1150,26 @@ static struct crl_v4l2_ctrl ov8858_v4l2_ctrls[] = {
 		.dep_items = 0,
 		.dep_ctrls = 0,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_GAIN,
+		.name = "Digital Gain",
+		.type = CRL_V4L2_CTRL_TYPE_INTEGER,
+		.data.std_data.min = 0,
+		.data.std_data.max = 16383,
+		.data.std_data.step = 1,
+		.data.std_data.def = 2048,
+		.flags = 0,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.reg_update_mode = CRL_REG_UPDATE_MODE_REPLACE,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ov8858_dig_gain_regs),
+		.regs = ov8858_dig_gain_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
 	},
 };
 
