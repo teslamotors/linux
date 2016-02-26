@@ -512,7 +512,11 @@ static int skl_pcm_trigger(struct snd_pcm_substream *substream, int cmd,
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_RESUME:
-		if (!w->ignore_suspend) {
+		/*
+		 * DMA resume capablity is not attempted for capture stream
+		 * as it is not supported by HW
+		 */
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			/*
 			 * enable DMA Resume enable bit for the stream, set the
 			 * dpib & lpib position to resume before starting the
