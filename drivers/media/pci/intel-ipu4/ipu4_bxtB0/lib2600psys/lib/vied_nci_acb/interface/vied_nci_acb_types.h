@@ -16,6 +16,7 @@
 #define __VIED_NCI_ISA_ACB_TYPES_H__
 
 #include "type_support.h"
+#include "storage_class.h"
 
 #define IPU_DEVICE_ACB_GA_ACB_CMD_FIFO_TAIL_ADDR (0x00000)
 #define IPU_DEVICE_ACB_GA_ACB_BASE_CTRL_ADDR (0x00004)
@@ -38,7 +39,7 @@ typedef struct {
 	uint32_t ctrl_id;
 } vied_nci_acb_init_cmd_t;
 
-typedef struct {
+typedef __register struct {
 	uint32_t ctrl_id;
 	uint32_t config_set;
 	uint32_t num_lines;

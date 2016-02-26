@@ -418,22 +418,9 @@ int ia_css_process_group_submit(
 int ia_css_process_group_start(
 	ia_css_process_group_t					*process_group)
 {
-#ifndef API_SPLIT_START_STATE_UPDATE
-	/* backwards-compatible implementation implicitly calls the new disown function */
-	int retval;
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_start(): enter: [backwards compatible version] \n");
-
-	retval = ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_START);
-	if (retval != 0) {
-		return retval;
-	}
-
-	return ia_css_process_group_disown(process_group);
-#else
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_start(): enter: \n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_START);
-#endif
 }
 
 int ia_css_process_group_stop(
