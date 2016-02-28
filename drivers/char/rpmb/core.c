@@ -214,6 +214,88 @@ struct rpmb_dev *rpmb_dev_find_by_device(struct device *parent, u8 target)
 }
 EXPORT_SYMBOL_GPL(rpmb_dev_find_by_device);
 
+static ssize_t type_show(struct device *dev,
+			 struct device_attribute *attr, char *buf)
+{
+	struct rpmb_dev *rdev = to_rpmb_dev(dev);
+	const char *sim;
+	ssize_t ret;
+
+	sim = (rdev->ops->type & RPMB_TYPE_SIM) ? ":SIM" : "";
+	switch (RPMB_TYPE_HW(rdev->ops->type)) {
+	case RPMB_TYPE_EMMC:
+		ret = sprintf(buf, "EMMC%s\n", sim);
+		break;
+	case RPMB_TYPE_UFS:
+		ret = sprintf(buf, "UFS%s\n", sim);
+		break;
+	case RPMB_TYPE_NVME:
+		ret = sprintf(buf, "NVMe%s\n", sim);
+		break;
+	default:
+		ret = sprintf(buf, "UNKNOWN\n");
+		break;
+	}
+
+	return ret;
+}
+static DEVICE_ATTR_RO(type);
+
+static ssize_t id_read(struct file *file, struct kobject *kobj,
+		       struct bin_attribute *attr, char *buf,
+		       loff_t off, size_t count)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct rpmb_dev *rdev = to_rpmb_dev(dev);
+	size_t sz = min_t(size_t, rdev->ops->dev_id_len, PAGE_SIZE);
+
+	if (!rdev->ops->dev_id)
+		return 0;
+
+	return memory_read_from_buffer(buf, count, &off, rdev->ops->dev_id, sz);
+}
+static BIN_ATTR_RO(id, 0);
+
+static ssize_t wr_cnt_max_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct rpmb_dev *rdev = to_rpmb_dev(dev);
+
+	return sprintf(buf, "%u\n", rdev->ops->wr_cnt_max);
+}
+static DEVICE_ATTR_RO(wr_cnt_max);
+
+static ssize_t rd_cnt_max_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct rpmb_dev *rdev = to_rpmb_dev(dev);
+
+	return sprintf(buf, "%u\n", rdev->ops->rd_cnt_max);
+}
+static DEVICE_ATTR_RO(rd_cnt_max);
+
+static struct attribute *rpmb_attrs[] = {
+	&dev_attr_type.attr,
+	&dev_attr_wr_cnt_max.attr,
+	&dev_attr_rd_cnt_max.attr,
+	NULL,
+};
+
+static struct bin_attribute *rpmb_bin_attributes[] = {
+	&bin_attr_id,
+	NULL,
+};
+
+static struct attribute_group rpmb_attr_group = {
+	.attrs = rpmb_attrs,
+	.bin_attrs = rpmb_bin_attributes,
+};
+
+static const struct attribute_group *rpmb_attr_groups[] = {
+	&rpmb_attr_group,
+	NULL
+};
+
 /**
  * rpmb_dev_unregister - unregister RPMB partition from the RPMB subsystem
  *
@@ -329,6 +411,8 @@ struct rpmb_dev *rpmb_dev_register(struct device *dev, u8 target,
 	dev_set_name(&rdev->dev, "rpmb%d", id);
 	rdev->dev.class = &rpmb_class;
 	rdev->dev.parent = dev;
+	rdev->dev.groups = rpmb_attr_groups;
+
 	ret = device_register(&rdev->dev);
 	if (ret)
 		goto exit;
