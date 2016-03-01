@@ -492,7 +492,7 @@
 	#include "vied_nci_tunit.h"
 #endif
 	#define IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module) \
-		"[" module "]" format ## " : PID = %x : Timestamp = %d : PC = %x"
+		"[" module "]" format " : PID = %x : Timestamp = %d : PC = %x"
 
 	#define IA_CSS_TRACE_TRACE_0(severity, module, format) \
 		vied_nci_tunit_print(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
@@ -536,7 +536,7 @@
 	#endif
 
 	#define IA_CSS_TRACE_FORMAT_AUG_NATIVE(severity, module, format) \
-			"["module"]:["severity"]: "format
+			"[" module "]:[" severity "]: " format
 
 	#define IA_CSS_TRACE_NATIVE_0(severity, module, format) \
 		IA_CSS_TRACE_NATIVE(severity, module, format)

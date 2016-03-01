@@ -34,8 +34,8 @@
  * @config: device configuration data struct ptr as input parameter,
  * read only by css fw until function return
  * Ownership, ISYS will only access read my_device during fct call
- * Purpose: Partitions shared ISYS resources (mipi and pixel buffer)
- * Initialise Host/ISYS messaging queues
+ * Prepares and Sends to PG server (SP) the syscom and isys context
+ * Executes the host level 0 and 1 boot sequence and starts the PG server (SP)
  * All streams must be stopped when calling ia_css_isys_device_open()
  *
  * Return:  int type error code (errno.h)
@@ -43,6 +43,23 @@
 extern int ia_css_isys_device_open(
 	HANDLE *context,
 	const struct ia_css_isys_device_cfg_data *config
+);
+
+/**
+ * ia_css_isys_device_open_ready() - Complete ISYS device configuration
+ * @ context : device handle output parameter
+ * read only by css fw until function return
+ * Requires the boot failure to be completed before it can return
+ * successfully (includes syscom and isys context)
+ * Initialise Host/ISYS messaging queues
+ * Must be called multiple times until it succeeds or it is determined by
+ * the driver that the boot seuqence has failed.
+ * All streams must be stopped when calling ia_css_isys_device_open()
+ *
+ * Return:  int type error code (errno.h)
+ */
+extern int ia_css_isys_device_open_ready(
+	HANDLE context
 );
 
  /**

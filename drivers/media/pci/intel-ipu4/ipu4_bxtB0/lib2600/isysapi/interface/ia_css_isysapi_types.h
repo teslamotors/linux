@@ -45,8 +45,6 @@ struct ia_css_driver_sys_config {
  * to statically define them here an just map them at stream open. The book
  * keeping is much simplified to check stream cfg for validity, with minor
  * loss of flexibility.
- * @mipi: ISYS MIPI SRAM buffer partition
- * @pixel: ISYS PIXEL SRAM buffer partition
  */
 struct ia_css_isys_device_cfg_data {
 	struct ia_css_driver_sys_config driver_sys;

@@ -203,6 +203,25 @@ int ia_css_isys_device_open(
 }
 
 
+/**
+ * ia_css_isys_device_open_ready() - open and configure ISYS device
+ */
+int ia_css_isys_device_open_ready(
+	HANDLE context
+) {
+	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
+
+	/* Printing "ENTRY IA_CSS_ISYS_DEVICE_OPEN" if tracing level = VERBOSE. */
+	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_DEVICE_OPEN\n");
+
+	verifret(ctx, EFAULT);
+
+	/* Printing "LEAVE IA_CSS_ISYS_DEVICE_OPEN_READY" message if tracing level = VERBOSE. */
+	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "LEAVE IA_CSS_ISYS_DEVICE_OPEN_READY\n");
+	return 0;
+}
+
+
  /**
  * ia_css_isys_stream_open() - open and configure a virtual stream
  */
