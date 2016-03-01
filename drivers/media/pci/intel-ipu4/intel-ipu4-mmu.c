@@ -50,32 +50,25 @@
 #define REG_INFO		0x0008
 
 /* The range of stream ID i in L1 cache is from 0 to 15 */
-#define MMUV2_REG_L1_STREAMID(i)	(0x0c + (i * 4))
+#define MMUV2_REG_L1_STREAMID(i)	(0x0c + ((i) * 4))
 
 /* The range of stream ID i in L2 cache is from 0 to 15 */
-#define MMUV2_REG_L2_STREAMID(i)	(0x4c + (i * 4))
+#define MMUV2_REG_L2_STREAMID(i)	(0x4c + ((i) * 4))
 
-#define MMUV2_AT_REGS_OFFSET			0x100
+/* ZLW Enable for each stream in L1 MMU AT where i : 0..15 */
+#define MMUV2_AT_REG_L1_ZLW_EN_SID(i)		(0x100 + ((i) * 0x20))
 
-/* ZLW Enable for each stream in L1 MMU AT */
-#define MMUV2_AT_REG_L1_ZLW_EN_SID(i)		(MMUV2_AT_REGS_OFFSET + \
-						((i) * 0x20) + 0x0000)
+/* ZLW 1D mode Enable for each stream in L1 MMU AT where i : 0..15 */
+#define MMUV2_AT_REG_L1_ZLW_1DMODE_SID(i)	(0x100 + ((i) * 0x20) + 0x0004)
 
-/* ZLW 1D mode Enable for each stream in L1 MMU AT */
-#define MMUV2_AT_REG_L1_ZLW_1DMODE_SID(i)	(MMUV2_AT_REGS_OFFSET + \
-						((i) * 0x20) + 0x0004)
+/* Set ZLW insertion N pages ahead per stream 1D where i : 0..15 */
+#define MMUV2_AT_REG_L1_ZLW_INS_N_AHEAD_SID(i)	(0x100 + ((i) * 0x20) + 0x0008)
 
-/* Set ZLW insertion N pages ahead per stream 1D */
-#define MMUV2_AT_REG_L1_ZLW_INS_N_AHEAD_SID(i)	(MMUV2_AT_REGS_OFFSET + \
-						((i) * 0x20) + 0x0008)
+/* ZLW 2D mode Enable for each stream in L1 MMU AT where i : 0..15 */
+#define MMUV2_AT_REG_L1_ZLW_2DMODE_SID(i)	(0x100 + ((i) * 0x20) + 0x0010)
 
-/* ZLW 2D mode Enable for each stream in L1 MMU AT */
-#define MMUV2_AT_REG_L1_ZLW_2DMODE_SID(i)	(MMUV2_AT_REGS_OFFSET + \
-						((i) * 0x20) + 0x0010)
-
-/* ZLW Insertion for each stream in L1 MMU AT */
-#define MMUV2_AT_REG_L1_ZLW_INSERTION(i)	(MMUV2_AT_REGS_OFFSET + \
-						((i) * 0x20) + 0x000c)
+/* ZLW Insertion for each stream in L1 MMU AT where i : 0..15 */
+#define MMUV2_AT_REG_L1_ZLW_INSERTION(i)	(0x100 + ((i) * 0x20) + 0x000c)
 
 #define TBL_PHYS_ADDR(a)	((phys_addr_t)(a) << ISP_PADDR_SHIFT)
 #define TBL_VIRT_ADDR(a)	phys_to_virt(TBL_PHYS_ADDR(a))
