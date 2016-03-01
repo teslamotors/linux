@@ -269,7 +269,24 @@ err_mem:
 static void intel_ipu4_mmu_domain_destroy(struct iommu_domain *domain)
 {
 	struct intel_ipu4_mmu_domain *adom = to_intel_ipu4_mmu_domain(domain);
+	struct iova *iova;
 	uint32_t l1_idx;
+
+	if (adom->iova_addr_trash) {
+		iova = find_iova(&adom->dmap->iovad, *adom->iova_addr_trash);
+		/* unmap and free the corresponding trash buffer iova */
+		iommu_unmap(domain, iova->pfn_lo << PAGE_SHIFT,
+			    (iova->pfn_hi - iova->pfn_lo + 1) << PAGE_SHIFT);
+		__free_iova(&adom->dmap->iovad, iova);
+
+		/*
+		 * Set iova_addr_trash in mmu to 0, so that on next HW init
+		 * this will be mapped again. Set the reference to trash
+		 * buffer iova in domain also to NULL
+		 */
+		*adom->iova_addr_trash = 0;
+		adom->iova_addr_trash = NULL;
+	}
 
 	for (l1_idx = 0; l1_idx < ISP_L1PT_PTES; l1_idx++)
 		if (adom->pgtbl[l1_idx] != adom->dummy_l2_tbl)
@@ -444,6 +461,54 @@ static phys_addr_t intel_ipu4_mmu_iova_to_phys(struct iommu_domain *domain,
 		<< ISP_PAGE_SHIFT;
 }
 
+static int allocate_trash_buffer(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_mmu *mmu = intel_ipu4_bus_get_drvdata(adev);
+	unsigned int n_pages =
+			 PAGE_ALIGN(INTEL_IPU4_MMUV2_TRASH_RANGE) >> PAGE_SHIFT;
+	struct iova *iova;
+	uint32_t iova_addr;
+	unsigned int i;
+	int ret;
+
+	/* Allocate 8MB in iova range */
+	iova = alloc_iova(&mmu->dmap->iovad, n_pages,
+		  DMA_BIT_MASK(INTEL_IPU4_MMU_ADDRESS_BITS) >> PAGE_SHIFT, 0);
+	if (!iova) {
+		dev_err(&adev->dev, "cannot allocate iova range for trash\n");
+		return -ENOMEM;
+	}
+
+	/*
+	 * Map the 8MB iova address range to the same physical trash page
+	 * mmu->trash_page which is already reserved at the probe
+	 */
+	iova_addr = iova->pfn_lo;
+	for (i = 0; i < n_pages; i++) {
+		ret = iommu_map(mmu->dmap->domain, iova_addr << PAGE_SHIFT,
+				page_to_phys(mmu->trash_page), PAGE_SIZE, 0);
+		if (ret) {
+			dev_err(&adev->dev,
+				"mapping trash buffer range failed\n");
+			goto out_unmap;
+		}
+
+		iova_addr++;
+	}
+
+	/* save the address for the ZLW invalidation */
+	mmu->iova_addr_trash = iova->pfn_lo << PAGE_SHIFT;
+	dev_info(&adev->dev, "iova trash buffer for MMUID: %d is 0x%u\n",
+			     mmu->mmid, (unsigned int)mmu->iova_addr_trash);
+	return 0;
+
+out_unmap:
+	iommu_unmap(mmu->dmap->domain, iova->pfn_lo << PAGE_SHIFT,
+		    (iova->pfn_hi - iova->pfn_lo + 1) << PAGE_SHIFT);
+	__free_iova(&mmu->dmap->iovad, iova);
+	return ret;
+}
+
 static int intel_ipu4_mmu_hw_init(struct device *dev)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
@@ -509,6 +574,23 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 		for (j = 0; j <  mmu_hw->nr_l2streams; j++)
 			writel(mmu_hw->l2_block_addr[j],
 			       mmu_hw->base + MMUV2_REG_L2_STREAMID(j));
+	}
+
+	/* Allocate trash buffer, if not allocated. Only once per MMU */
+	if (!mmu->iova_addr_trash) {
+		int ret;
+
+		ret = allocate_trash_buffer(adev);
+		if (ret) {
+			dev_err(dev, "trash buffer allocation failed\n");
+			return ret;
+		}
+
+		/*
+		 * Update the domain pointer to trash buffer to release it on
+		 * domain destroy
+		 */
+		adom->iova_addr_trash = &mmu->iova_addr_trash;
 	}
 
 	return 0;
@@ -595,6 +677,20 @@ static int intel_ipu4_mmu_probe(struct intel_ipu4_bus_device *adev)
 	mmu->dev = &adev->dev;
 
 	/*
+	 * Allocate 1 page of physical memory for the trash buffer
+	 *
+	 * TODO! Could be further optimized by allocating only one page per ipu
+	 * instance instead of per mmu
+	 */
+	mmu->trash_page = alloc_page(GFP_KERNEL);
+	if (!mmu->trash_page) {
+		dev_err(&adev->dev, "insufficient memory for trash buffer\n");
+		return -ENOMEM;
+	}
+	dev_info(&adev->dev, "MMU: %d, allocated page for trash: 0x%p\n",
+			     mmu->mmid, mmu->trash_page);
+
+	/*
 	 * FIXME: We can't unload this --- bus_set_iommu() will
 	 * register a notifier which must stay until the devices are
 	 * gone.
@@ -610,6 +706,9 @@ static int intel_ipu4_mmu_probe(struct intel_ipu4_bus_device *adev)
  */
 static void intel_ipu4_mmu_remove(struct intel_ipu4_bus_device *adev)
 {
+	struct intel_ipu4_mmu *mmu = intel_ipu4_bus_get_drvdata(adev);
+
+	__free_page(mmu->trash_page);
 	dev_dbg(&adev->dev, "removed\n");
 }
 

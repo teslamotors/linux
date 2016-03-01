@@ -37,6 +37,9 @@ struct intel_ipu4_mmu_domain {
 	struct intel_ipu4_dma_mapping *dmap;
 	uint32_t dummy_l2_tbl;
 	uint32_t dummy_page;
+
+	/* Reference to the trash address to unmap on domain destroy */
+	dma_addr_t *iova_addr_trash;
 };
 
 /*
@@ -54,6 +57,9 @@ struct intel_ipu4_mmu {
 	struct device *dev;
 
 	struct intel_ipu4_dma_mapping *dmap;
+
+	struct page *trash_page;
+	dma_addr_t iova_addr_trash;
 
 	void (*tlb_invalidate)(struct intel_ipu4_mmu *mmu);
 	void (*set_mapping)(struct intel_ipu4_mmu *mmu,

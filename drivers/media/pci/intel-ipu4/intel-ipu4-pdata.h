@@ -71,6 +71,38 @@
 
 struct intel_ipu4_isys_subdev_pdata;
 
+/*
+ * MMU Invalidation HW bug workaround by ZLW mechanism
+ *
+ * IPU4 MMUV2 has a bug in the invalidation mechanism which might result in
+ * wrong translation or replication of the translation. This will cause data
+ * corruption. So we cannot directly use the MMU V2 invalidation registers
+ * to invalidate the MMU. Instead, whenever an invalidate is called, we need to
+ * clear the TLB by evicting all the valid translations by filling it with trash
+ * buffer (which is guaranteed not to be used by any other processes). ZLW is
+ * used to fill the L1 and L2 caches with the trash buffer translations. ZLW
+ * or Zero length write, is pre-fetch mechanism to pre-fetch the pages in
+ * advance to the L1 and L2 caches without triggering any memory operations.
+ *
+ * In MMU V2, L1 -> 16 streams and 64 blocks, maximum 16 blocks per stream
+ * One L1 block has 16 entries, hence points to 16 * 4K pages
+ * L2 -> 16 streams and 32 blocks. 2 blocks per streams
+ * One L2 block maps to 1024 L1 entries, hence points to 4MB address range
+ * 2 blocks per L2 stream means, 1 stream points to 8MB range
+ *
+ * As we need to clear the caches and 8MB being the biggest cache size, we need
+ * to have trash buffer which points to 8MB address range. As these trash
+ * buffers are not used for any memory transactions, we need only the least
+ * amount of physical memory. So we reserve 8MB IOVA address range but only
+ * one page is reserved from physical memory. Each of this 8MB IOVA address
+ * range is then mapped to the same physical memory page.
+ */
+/* One L2 entry maps 1024 L1 entries and one L1 entry per page */
+#define INTEL_IPU4_MMUV2_L2_RANGE		(1024 * PAGE_SIZE)
+/* Max L2 blocks per stream */
+#define INTEL_IPU4_MMUV2_L2_BLOCKS		2
+#define INTEL_IPU4_MMUV2_TRASH_RANGE		(INTEL_IPU4_MMUV2_L2_RANGE * \
+						INTEL_IPU4_MMUV2_L2_BLOCKS)
 
 /*
  * In some of the IPU4 MMUs, there is provision to configure L1 and L2 page
