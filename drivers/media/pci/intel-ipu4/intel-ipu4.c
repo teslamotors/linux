@@ -511,6 +511,7 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
 			 .nr_l2streams = INTEL_IPU4_MMU_MAX_TLB_L2_STREAMS,
 			 .l2_block_addr = { 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30 },
 			 .insert_read_before_invalidate = true,
+			 .zlw_invalidate = true,
 			},
 			{
 			 .offset = INTEL_IPU4_BXT_B0_PSYS_IOMMU1R_OFFSET,
@@ -524,6 +525,7 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
 			 .nr_l2streams = INTEL_IPU4_MMU_MAX_TLB_L2_STREAMS,
 			 .l2_block_addr = { 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30 },
 			 .insert_read_before_invalidate = true,
+			 .zlw_invalidate = true,
 			},
 		},
 		.fw_filename = INTEL_IPU4_PSYS_FIRMWARE_B0,
