@@ -131,7 +131,17 @@ extern size_t ia_css_sizeof_psys(
  */
 extern struct ia_css_syscom_context *ia_css_psys_open(
 	const struct ia_css_psys_buffer_s		*buffer,
-	struct ia_css_syscom_config				*config);
+	struct ia_css_syscom_config			*config);
+
+/*! completes the psys open procedure. Must be called multiple times
+    until it succeeds or driver determines the boot sequence has failed.
+
+ @param	context[in]				Psys syscom object
+
+ @return false if psys open has not completed successfully
+ */
+extern bool ia_css_psys_open_is_ready(
+	struct ia_css_syscom_context			*context);
 
 /*! close (and unmap the storage of) the Psys syscom object
 

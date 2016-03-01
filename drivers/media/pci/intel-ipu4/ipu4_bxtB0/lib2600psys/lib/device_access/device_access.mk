@@ -1,8 +1,6 @@
 # 
 #
 
-# TODO: IPU5_SDK Verify that the glvA0 changes are correct when IPU5 SDK has been released.
-
 ifndef _DEVICE_ACCESS_MK_
 _DEVICE_ACCESS_MK_ = 1
 

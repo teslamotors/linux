@@ -11,4 +11,4 @@
 * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 * more details.
 */
-#define IA_CSS_FW_RELEASE  "scci_master_20160226_0701"
+#define IA_CSS_FW_RELEASE  "scci_master_20160301_0439"

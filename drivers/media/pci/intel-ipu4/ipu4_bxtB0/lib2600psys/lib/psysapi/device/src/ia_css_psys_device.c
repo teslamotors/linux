@@ -160,6 +160,24 @@ EXIT:
 	return NULL;
 }
 
+bool ia_css_psys_open_is_ready(
+	struct ia_css_syscom_context			*context)
+{
+	int retval = -1;
+	bool ready = 0;
+
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_open_is_ready(): enter:\n");
+	verifexit(context != NULL, EINVAL);
+
+	retval = 0;
+	ready = 1;
+EXIT:
+	if (retval != 0) {
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_open_is_ready failed\n");
+	}
+	return ready;
+}
+
 struct ia_css_syscom_context* ia_css_psys_close(
 	struct ia_css_syscom_context			*context)
 {

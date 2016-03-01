@@ -50,11 +50,6 @@ PSYSAPI_FW_CPPFLAGS = $(PSYSAPI_HOST_CPPFLAGS)
 PSYSAPI_FW_CPPFLAGS += -I$(PSYSAPI_DIR)/static/src
 PSYSAPI_SYSTEM_GLOBAL_CPPFLAGS += -I$(PSYSAPI_DIR)/sim/interface
 
-# This one needs fixing. This should not be a PSYS api include!!!
-PSYSAPI_HOST_CPPFLAGS += -I$${MODULES_DIR}/../hive_isp_css_include
-
-#PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/../syscom/interface
-
 # Defining the trace level for the PSYSAPI
 PSYSAPI_HOST_CPPFLAGS += -DPSYSAPI_TRACE_CONFIG=PSYSAPI_TRACE_LOG_LEVEL_NORMAL
 
