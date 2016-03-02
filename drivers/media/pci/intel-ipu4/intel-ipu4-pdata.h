@@ -100,9 +100,16 @@ struct intel_ipu4_isys_subdev_pdata;
 /* One L2 entry maps 1024 L1 entries and one L1 entry per page */
 #define INTEL_IPU4_MMUV2_L2_RANGE		(1024 * PAGE_SIZE)
 /* Max L2 blocks per stream */
-#define INTEL_IPU4_MMUV2_L2_BLOCKS		2
+#define INTEL_IPU4_MMUV2_MAX_L2_BLOCKS		2
+/* Max L1 blocks per stream */
+#define INTEL_IPU4_MMUV2_MAX_L1_BLOCKS		16
 #define INTEL_IPU4_MMUV2_TRASH_RANGE		(INTEL_IPU4_MMUV2_L2_RANGE * \
-						INTEL_IPU4_MMUV2_L2_BLOCKS)
+						 INTEL_IPU4_MMUV2_MAX_L2_BLOCKS)
+/* Entries per L1 block */
+#define MMUV2_ENTRIES_PER_L1_BLOCK		16
+#define MMUV2_TRASH_L1_BLOCK_OFFSET		(MMUV2_ENTRIES_PER_L1_BLOCK * \
+						 PAGE_SIZE)
+#define MMUV2_TRASH_L2_BLOCK_OFFSET		INTEL_IPU4_MMUV2_L2_RANGE
 
 /*
  * In some of the IPU4 MMUs, there is provision to configure L1 and L2 page
@@ -181,6 +188,8 @@ struct intel_ipu4_mmu_hw {
 	u8 l2_block_addr[INTEL_IPU4_MMU_MAX_TLB_L2_STREAMS];
 	/* flag to track if WA is needed for successive invalidate HW bug */
 	bool insert_read_before_invalidate;
+	/* flag to track if zlw based mmu invalidation is needed */
+	bool zlw_invalidate;
 };
 
 struct intel_ipu4_mmu_pdata {

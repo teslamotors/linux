@@ -70,6 +70,9 @@
 /* ZLW Insertion for each stream in L1 MMU AT where i : 0..15 */
 #define MMUV2_AT_REG_L1_ZLW_INSERTION(i)	(0x100 + ((i) * 0x20) + 0x000c)
 
+#define MMUV2_AT_REG_L1_FW_ZLW_FIFO		(0x100 + \
+			((INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS) * 0x20) + 0x003c)
+
 #define TBL_PHYS_ADDR(a)	((phys_addr_t)(a) << ISP_PADDR_SHIFT)
 #define TBL_VIRT_ADDR(a)	phys_to_virt(TBL_PHYS_ADDR(a))
 
@@ -79,6 +82,65 @@
 #define to_intel_ipu4_mmu_domain(dom) \
 	container_of(dom, struct intel_ipu4_mmu_domain, domain)
 #endif
+
+static void zlw_invalidate(struct intel_ipu4_mmu *mmu,
+			   struct intel_ipu4_mmu_hw *mmu_hw)
+{
+	unsigned int retry = 0;
+	unsigned int i, j;
+	int ret;
+
+	for (i = 0; i < mmu_hw->nr_l1streams; i++) {
+		/* We need to invalidate only the zlw enabled stream IDs */
+		if (mmu_hw->l1_zlw_en[i]) {
+			/*
+			 * Maximum 16 blocks per L1 stream
+			 * Write trash buffer iova offset to the FW_ZLW
+			 * register. This will trigger pre-fetching of next 16
+			 * pages from the page table. So we need to increment
+			 * iova address by 16 * 4K to trigger the next 16 pages.
+			 * Once this loop is completed, the L1 cache will be
+			 * filled with trash buffer translation.
+			 *
+			 * TODO: Instead of maximum 16 blocks, use the allocated
+			 * block size
+			 */
+			for (j = 0; j < INTEL_IPU4_MMUV2_MAX_L1_BLOCKS; j++)
+				writel(mmu->iova_addr_trash +
+				       j * MMUV2_TRASH_L1_BLOCK_OFFSET,
+				       mmu_hw->base +
+				       MMUV2_AT_REG_L1_ZLW_INSERTION(j));
+
+			/*
+			 * Now we need to fill the L2 cache entry. L2 cache
+			 * entries will be automatically updated, based on the
+			 * L1 entry. The above loop for L1 will update only one
+			 * of the two entries in L2 as the L1 is under 4MB
+			 * range. To force the other entry in L2 to update, we
+			 * just need to trigger another pre-fetch which is
+			 * outside the above 4MB range.
+			 */
+			writel(mmu->iova_addr_trash +
+			       MMUV2_TRASH_L2_BLOCK_OFFSET,
+			       mmu_hw->base + MMUV2_AT_REG_L1_ZLW_INSERTION(0));
+		}
+	}
+
+	/*
+	 * Wait until AT is ready. FIFO read should return 2 when AT is ready
+	 * In some rare cases, observed that the read is failed, though the
+	 * MMU works fine. Hence -1 return also considered as a success. Retry
+	 * value of 50 is just by guess work to avoid the forever loop.
+	 */
+	do {
+		if (retry > 50) {
+			dev_err(mmu->dev, "zlw invalidation failed\n");
+			return;
+		}
+		ret = readl(mmu_hw->base + MMUV2_AT_REG_L1_FW_ZLW_FIFO);
+		retry++;
+	} while (ret != 2 && ret != -1);
+}
 
 static void tlb_invalidate(struct intel_ipu4_mmu *mmu)
 {
@@ -98,12 +160,19 @@ static void tlb_invalidate(struct intel_ipu4_mmu *mmu)
 		if (mmu->mmu_hw[i].insert_read_before_invalidate)
 			readl(mmu->mmu_hw[i].base+REG_L1_PHYS);
 
-		if (mmu->mmu_hw[i].nr_l1streams == 0)
-			inv = MMU0_TLB_INVALIDATE;
-		else
-			inv = MMU1_TLB_INVALIDATE;
+		/* Normal invalidate or zlw invalidate */
+		if (mmu->mmu_hw[i].zlw_invalidate) {
+			/* trash buffer must be mapped by now, just in case! */
+			BUG_ON(!mmu->iova_addr_trash);
 
-		writel(inv, mmu->mmu_hw[i].base + REG_TLB_INVALIDATE);
+			zlw_invalidate(mmu, &mmu->mmu_hw[i]);
+		} else {
+			if (mmu->mmu_hw[i].nr_l1streams == 0)
+				inv = MMU0_TLB_INVALIDATE;
+			else
+				inv = MMU1_TLB_INVALIDATE;
+			writel(inv, mmu->mmu_hw[i].base + REG_TLB_INVALIDATE);
+		}
 	}
 }
 
