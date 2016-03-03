@@ -42,7 +42,28 @@ TRACE_EVENT(ipu4_perf_reg,
 			__entry->addr = addr;
 			__entry->val = val;
 		),
-		TP_printk("addr=%u,val=%u>", __entry->addr, __entry->val)
+		TP_printk("addr=%u,val=%u", __entry->addr, __entry->val)
+);
+
+TRACE_EVENT(ipu4_pg_kcmd,
+		TP_PROTO(char *func, unsigned int id,
+			unsigned long long issue_id, unsigned int pri),
+		TP_ARGS(func, id, issue_id, pri),
+		TP_STRUCT__entry(
+			__field(char *, func)
+			__field(unsigned int, id)
+			__field(unsigned long long, issue_id)
+			__field(unsigned int, pri)
+		),
+		TP_fast_assign(
+			__entry->func = func;
+			__entry->id = id;
+			__entry->issue_id = issue_id;
+			__entry->pri = pri;
+		),
+		TP_printk("pg-kcmd: func=%s,id=%u,issue_id=0x%llx,pri=%u",
+			__entry->func, __entry->id,
+			__entry->issue_id, __entry->pri)
 );
 
 #endif

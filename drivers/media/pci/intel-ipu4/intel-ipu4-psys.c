@@ -49,6 +49,8 @@
 #include "intel-ipu4-wrapper.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-regs.h"
+#define CREATE_TRACE_POINTS
+#include "intel-ipu4-trace-event.h"
 
 #define INTEL_IPU4_PSYS_NUM_DEVICES	4
 #define INTEL_IPU4_PSYS_WORK_QUEUE	system_power_efficient_wq
@@ -796,7 +798,7 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 	kcmd->ev.id = kcmd->id;
 	kcmd->ev.issue_id = kcmd->issue_id;
 	kcmd->ev.error = error;
-
+	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority);
 	intel_ipu4_psys_release_kcmd(kcmd);
 	list_move(&kcmd->list, &kcmd->fh->eventq);
 	complete(&kcmd->cmd_complete);
@@ -813,6 +815,7 @@ static int intel_ipu4_psys_start_pg(struct intel_ipu4_psys *psys,
 	 */
 	int ret;
 
+	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority);
 	list_move_tail(&kcmd->fh->list, &psys->fhs);
 	list_move(&kcmd->list, &psys->active);
 	kcmd->watchdog.expires = jiffies + msecs_to_jiffies(psys->timeout);
