@@ -561,7 +561,8 @@ static void intel_ipu4_psys_release_kcmd(struct intel_ipu4_psys_kcmd *kcmd)
 	if (kcmd->pg_user && kcmd->pg)
 		memcpy(kcmd->pg_user, kcmd->pg, kcmd->pg_size);
 
-	intel_ipu4_psys_free_resources(&kcmd->resource_alloc,
+	if (kcmd->fh)
+		intel_ipu4_psys_free_resources(&kcmd->resource_alloc,
 				       &kcmd->fh->psys->resource_pool);
 }
 
