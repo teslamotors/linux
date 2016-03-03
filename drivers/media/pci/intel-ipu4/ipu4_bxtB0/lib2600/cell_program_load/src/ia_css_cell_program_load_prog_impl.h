@@ -18,11 +18,6 @@
 #include "ia_css_cell_program_load_prog.h"
 #include "ia_css_fw_load.h"
 
-#ifndef __VIED_CELL
-#include "ia_css_fw_release.h"
-#include "platform_support.h" /* for strncmp */
-#endif
-
 IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
 int
 ia_css_cell_program_load_header(
