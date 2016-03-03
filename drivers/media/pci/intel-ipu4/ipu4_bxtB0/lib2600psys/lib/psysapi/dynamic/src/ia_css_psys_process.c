@@ -410,14 +410,14 @@ EXIT:
 	return retval;
 }
 
-vied_nci_resource_size_t ia_css_process_get_ext_mem(
+vied_nci_mem_ID_t ia_css_process_get_ext_mem_id(
 	const ia_css_process_t		*process,
 	const vied_nci_mem_type_ID_t	mem_type)
 {
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_get_ext_mem(): enter:\n");
 
 	if(process != NULL && mem_type < VIED_NCI_N_MEM_TYPE_ID) {
-		return process->ext_mem_offset[mem_type];
+		return process->ext_mem_id[mem_type];
 	} else {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR, "ia_css_process_get_ext_mem invalid argument\n");
 		return IA_CSS_PROCESS_INVALID_OFFSET;
@@ -849,16 +849,16 @@ vied_nci_resource_size_t ia_css_process_get_int_mem_offset(
 
 vied_nci_resource_size_t ia_css_process_get_ext_mem_offset(
 	const ia_css_process_t				*process,
-	const vied_nci_mem_type_ID_t			mem_id)
+	const vied_nci_mem_type_ID_t			mem_type_id)
 {
 	vied_nci_resource_size_t	ext_mem_offset = IA_CSS_PROCESS_INVALID_OFFSET;
 
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_get_ext_mem_offset(): enter:\n");
 
-	if (process == NULL || mem_id >= VIED_NCI_N_MEM_TYPE_ID) {
+	if (process == NULL || mem_type_id >= VIED_NCI_N_MEM_TYPE_ID) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR, "ia_css_process_get_ext_mem_offset invalid argument\n");
 	} else {
-		ext_mem_offset = process->ext_mem_offset[mem_id];
+		ext_mem_offset = process->ext_mem_offset[mem_type_id];
 	}
 
 	return ext_mem_offset;

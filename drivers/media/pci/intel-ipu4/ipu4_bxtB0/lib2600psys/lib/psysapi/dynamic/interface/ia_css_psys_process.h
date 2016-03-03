@@ -79,7 +79,7 @@ extern vied_nci_resource_size_t ia_css_process_get_int_mem_offset(
  */
 extern vied_nci_resource_size_t ia_css_process_get_ext_mem_offset(
 	const ia_css_process_t				*process,
-	const vied_nci_mem_type_ID_t			mem_id);
+	const vied_nci_mem_type_ID_t			mem_type_id);
 
 
 /*! Get the stored size of the process object
@@ -235,14 +235,14 @@ vied_nci_resource_size_t ia_css_process_get_dev_chn(
 	const ia_css_process_t		   *process,
 	const vied_nci_dev_chn_ID_t	   dev_chn_id);
 
-/*! Get the ext mem type-n resource allocation offset of the the process object
+/*! Get the ext mem type-n resource id of the the process object
 
  @param	process[in]			process object
  @param	mem_type[in]			mem type
 
  @return resource offset, IA_CSS_PROCESS_INVALID_OFFSET on invalid argument(s)
  */
-vied_nci_resource_size_t ia_css_process_get_ext_mem(
+vied_nci_mem_ID_t ia_css_process_get_ext_mem_id(
 	const ia_css_process_t          *process,
 	const vied_nci_mem_type_ID_t    mem_type);
 
