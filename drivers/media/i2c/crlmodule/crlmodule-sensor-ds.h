@@ -70,10 +70,6 @@
 #define CRL_IMPACTS_PLL_SELECTION		(1 << 1)
 #define CRL_IMPACTS_MODE_SELECTION		(1 << 2)
 
-#define CRL_SCALING_MODE_NONE			0
-/*#define CRL_SCALING_MODE_HORIZONTAL 1
-#define CRL_SCALING_MODE_BOTH 2*/
-
 /*
  * In crl_dynamic_value::operand_type is denoted by bits 6 and 7
  * 00 -> crl_dynamic_value:operand_value is a constant

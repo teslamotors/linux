@@ -1393,7 +1393,6 @@ static void crlmodule_propagate(struct v4l2_subdev *subdev,
 		if (which == V4L2_SUBDEV_FORMAT_ACTIVE) {
 			if (ssd == sensor->scaler) {
 				sensor->scale_m = 1;
-				sensor->scaling_mode = CRL_SCALING_MODE_NONE;
 			} else if (ssd == sensor->binner) {
 				sensor->binning_horizontal = 1;
 				sensor->binning_vertical = 1;

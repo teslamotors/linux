@@ -76,7 +76,6 @@ struct crl_sensor {
 	u8 binning_vertical;
 
 	u8 scale_m;
-	u8 scaling_mode;
 
 	int power_count;
 
