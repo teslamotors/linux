@@ -753,6 +753,7 @@ static int skl_trace_compr_set_params(struct snd_compr_stream *stream,
 	if (!skl_is_core_valid(core))
 		return -EINVAL;
 
+	size = size / sizeof(u32);
 	if (size & (size - 1)) {
 		dev_err(sst->dev, "Buffer size must be a power of 2\n");
 		return -EINVAL;
