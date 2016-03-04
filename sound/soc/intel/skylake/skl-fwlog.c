@@ -125,6 +125,7 @@ void skl_dsp_write_log(struct sst_dsp *sst, void __iomem *src, int core,
 		data++;
 	}
 	buff->total_avail += count;
+	wake_up(&buff->stream->runtime->sleep);
 }
 
 int skl_dsp_copy_log_user(struct sst_dsp *sst, int core,
