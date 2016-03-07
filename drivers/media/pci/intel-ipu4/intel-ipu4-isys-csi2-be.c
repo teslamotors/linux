@@ -51,7 +51,6 @@ static const uint32_t csi2_be_supported_codes_pad[] = {
 static const uint32_t csi2_be_soc_supported_codes_pad[] = {
 	MEDIA_BUS_FMT_RGB565_1X16,
 	MEDIA_BUS_FMT_RGB888_1X24,
-	MEDIA_BUS_FMT_RGB888_1X32_PADHI,
 	MEDIA_BUS_FMT_UYVY8_1X16,
 	MEDIA_BUS_FMT_YUYV8_1X16,
 	MEDIA_BUS_FMT_SBGGR12_1X12,
