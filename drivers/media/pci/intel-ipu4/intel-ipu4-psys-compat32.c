@@ -40,9 +40,9 @@ struct intel_ipu4_psys_command32 {
 	uint64_t issue_id;
 	uint32_t id;
 	uint32_t priority;
-	int pg;
 	compat_uptr_t pg_manifest;
 	compat_uptr_t buffers;
+	int pg;
 	uint32_t pg_manifest_size;
 	uint32_t bufcount;
 	uint32_t min_psys_freq;

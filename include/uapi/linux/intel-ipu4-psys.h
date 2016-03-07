@@ -79,9 +79,9 @@ struct intel_ipu4_psys_buffer {
  * @issue_id:		unique id for the command set by user
  * @id:			id of the command
  * @priority:		priority of the command
- * @pg:			process group DMA-BUF handle
  * @pg_manifest:	userspace pointer to program group manifest
  * @buffers:		userspace pointers to array of psys dma buf structs
+ * @pg:			process group DMA-BUF handle
  * @pg_manifest_size:	size of program group manifest
  * @bufcount:		number of buffers in buffers array
  * @min_psys_freq:	minimum psys frequency in MHz used for this cmd
@@ -92,9 +92,9 @@ struct intel_ipu4_psys_command {
 	uint64_t issue_id;
 	uint32_t id;
 	uint32_t priority;
-	int pg;
 	void __user *pg_manifest;
 	struct intel_ipu4_psys_dma_buf __user *buffers;
+	int pg;
 	uint32_t pg_manifest_size;
 	uint32_t bufcount;
 	uint32_t min_psys_freq;
