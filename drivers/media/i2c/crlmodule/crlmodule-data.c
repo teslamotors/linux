@@ -19,6 +19,7 @@
 #include "crl_imx214_configuration.h"
 #include "crl_imx135_configuration.h"
 #include "crl_imx230_configuration.h"
+#include "crl_imx318_configuration.h"
 #include "crl_ov8858_configuration.h"
 #include "crl_ov13860_configuration.h"
 #include "crl_adv7481_configuration.h"
@@ -35,6 +36,7 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "OV13860", "ov13860", &ov13860_crl_configuration },
 	{ "ADV7481", "adv7481", &adv7481_crl_configuration },
 	{ "ADV7481_EVAL", "adv7481_eval", &adv7481_eval_crl_configuration },
+	{ "SONY318A", "imx318", &imx318_crl_configuration },
 };
 
 /*
