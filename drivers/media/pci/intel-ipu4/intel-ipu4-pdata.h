@@ -26,6 +26,8 @@
 #define INTEL_IPU4_MMU_TYPE_INTEL_IPU4	KERNEL_VERSION(4, 0, 0)
 #define INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS	16
 #define INTEL_IPU4_MMU_MAX_TLB_L2_STREAMS	16
+#define INTEL_IPU4_MAX_LI_BLOCK_ADDR		64
+#define INTEL_IPU4_MAX_L2_BLOCK_ADDR		32
 
 #define INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS	4
 #define INTEL_IPU4_ISYS_MAX_CSI2_COMBO_PORTS	2
@@ -177,15 +179,23 @@ struct intel_ipu4_mmu_hw {
 	};
 	unsigned int info_bits;
 	u8 nr_l1streams;
-	/* l1_cfg represent the block start address for each L1 stream */
-	u8 l1_block_addr[INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS];
+	/*
+	 * L1 has variable blocks per stream - total of 64 blocks and maximum of
+	 * 16 blocks per stream. Configurable by using the block start address
+	 * per stream. Block start address is calculated from the block size
+	 */
+	u8 l1_block_sz[INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS];
+	/* Is ZLW is enabled in each stream */
 	bool l1_zlw_en[INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS];
 	bool l1_zlw_1d_mode[INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS];
 	u8 l1_ins_zlw_ahead_pages[INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS];
 	bool l1_zlw_2d_mode[INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS];
 	u8 nr_l2streams;
-	/* l2_cfg represent the block start address for each L2 stream */
-	u8 l2_block_addr[INTEL_IPU4_MMU_MAX_TLB_L2_STREAMS];
+	/*
+	 * L2 has fixed 2 blocks per stream. Block address is calculated
+	 * from the block size
+	 */
+	u8 l2_block_sz[INTEL_IPU4_MMU_MAX_TLB_L2_STREAMS];
 	/* flag to track if WA is needed for successive invalidate HW bug */
 	bool insert_read_before_invalidate;
 	/* flag to track if zlw based mmu invalidation is needed */

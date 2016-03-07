@@ -593,6 +593,7 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 	for (i = 0; i < mmu->nr_mmus; i++) {
 		struct intel_ipu4_mmu_hw *mmu_hw = &mmu->mmu_hw[i];
 		unsigned int j;
+		u16 block_addr;
 
 		/* Write page table address per MMU */
 		writel((phys_addr_t)virt_to_phys(adom->pgtbl)
@@ -605,9 +606,16 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 			       mmu->mmu_hw[i].base + REG_INFO);
 
 		/* Configure MMU TLB stream configuration for L1*/
-		for (j = 0; j < mmu_hw->nr_l1streams; j++) {
+		for (j = 0, block_addr = 0; j < mmu_hw->nr_l1streams;
+			    block_addr += mmu->mmu_hw[i].l1_block_sz[j], j++) {
+
+			if (block_addr > INTEL_IPU4_MAX_LI_BLOCK_ADDR) {
+				dev_err(dev, "invalid L1 configuration\n");
+				return -EINVAL;
+			}
+
 			/* Write block start address for each streams */
-			writel(mmu->mmu_hw[i].l1_block_addr[j],
+			writel(block_addr,
 			       mmu_hw->base + MMUV2_REG_L1_STREAMID(j));
 
 			/* Enable ZLW for streams based on the init table */
@@ -631,9 +639,16 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 		}
 
 		/* Configure MMU TLB stream configuration for L2*/
-		for (j = 0; j <  mmu_hw->nr_l2streams; j++)
-			writel(mmu_hw->l2_block_addr[j],
+		for (j = 0, block_addr = 0; j <  mmu_hw->nr_l2streams;
+			    block_addr += mmu->mmu_hw[i].l2_block_sz[j], j++) {
+			if (block_addr > INTEL_IPU4_MAX_L2_BLOCK_ADDR) {
+				dev_err(dev, "invalid L2 configuration\n");
+				return -EINVAL;
+			}
+
+			writel(block_addr,
 			       mmu_hw->base + MMUV2_REG_L2_STREAMID(j));
+		}
 	}
 
 	/* Allocate trash buffer, if not allocated. Only once per MMU */
