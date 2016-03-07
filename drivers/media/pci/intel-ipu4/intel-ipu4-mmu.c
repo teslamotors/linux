@@ -109,7 +109,7 @@ static void zlw_invalidate(struct intel_ipu4_mmu *mmu,
 				writel(mmu->iova_addr_trash +
 				       j * MMUV2_TRASH_L1_BLOCK_OFFSET,
 				       mmu_hw->base +
-				       MMUV2_AT_REG_L1_ZLW_INSERTION(j));
+				       MMUV2_AT_REG_L1_ZLW_INSERTION(i));
 
 			/*
 			 * Now we need to fill the L2 cache entry. L2 cache
@@ -127,19 +127,17 @@ static void zlw_invalidate(struct intel_ipu4_mmu *mmu,
 	}
 
 	/*
-	 * Wait until AT is ready. FIFO read should return 2 when AT is ready
-	 * In some rare cases, observed that the read is failed, though the
-	 * MMU works fine. Hence -1 return also considered as a success. Retry
-	 * value of 50 is just by guess work to avoid the forever loop.
+	 * Wait until AT is ready. FIFO read should return 2 when AT is ready.
+	 * Retry value of 1000 is just by guess work to avoid the forever loop.
 	 */
 	do {
-		if (retry > 50) {
+		if (retry > 1000) {
 			dev_err(mmu->dev, "zlw invalidation failed\n");
 			return;
 		}
 		ret = readl(mmu_hw->base + MMUV2_AT_REG_L1_FW_ZLW_FIFO);
 		retry++;
-	} while (ret != 2 && ret != -1);
+	} while (ret != 2);
 }
 
 static void tlb_invalidate(struct intel_ipu4_mmu *mmu)
