@@ -105,7 +105,7 @@ static void zlw_invalidate(struct intel_ipu4_mmu *mmu,
 			 * TODO: Instead of maximum 16 blocks, use the allocated
 			 * block size
 			 */
-			for (j = 0; j < INTEL_IPU4_MMUV2_MAX_L1_BLOCKS; j++)
+			for (j = 0; j < mmu_hw->l1_block_sz[i]; j++)
 				writel(mmu->iova_addr_trash +
 				       j * MMUV2_TRASH_L1_BLOCK_OFFSET,
 				       mmu_hw->base +
