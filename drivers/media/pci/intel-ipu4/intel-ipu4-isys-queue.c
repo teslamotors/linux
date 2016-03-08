@@ -73,8 +73,9 @@ static int queue_setup(struct vb2_queue *q,
 			sizes[i] = av->mpix.plane_fmt[i].sizeimage;
 #endif
 		alloc_ctxs[i] = aq->ctx;
-		dev_dbg(&av->isys->adev->dev, "queue setup: plane %d size %u\n",
-			i, sizes[i]);
+		dev_dbg(&av->isys->adev->dev,
+			"%s: queue setup: plane %d size %u\n",
+			av->vdev.name, i, sizes[i]);
 	}
 
 	return 0;
@@ -85,7 +86,7 @@ void intel_ipu4_isys_queue_lock(struct vb2_queue *q)
 	struct intel_ipu4_isys_queue *aq = vb2_queue_to_intel_ipu4_isys_queue(q);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
-	dev_dbg(&av->isys->adev->dev, "queue lock\n");
+	dev_dbg(&av->isys->adev->dev, "%s: queue lock\n", av->vdev.name);
 	mutex_lock(&av->mutex);
 }
 
@@ -94,7 +95,7 @@ void intel_ipu4_isys_queue_unlock(struct vb2_queue *q)
 	struct intel_ipu4_isys_queue *aq = vb2_queue_to_intel_ipu4_isys_queue(q);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
-	dev_dbg(&av->isys->adev->dev, "queue unlock\n");
+	dev_dbg(&av->isys->adev->dev, "%s: queue unlock\n", av->vdev.name);
 	mutex_unlock(&av->mutex);
 }
 
@@ -104,7 +105,7 @@ static int buf_init(struct vb2_buffer *vb)
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
-	dev_dbg(&av->isys->adev->dev, "buf_init\n");
+	dev_dbg(&av->isys->adev->dev, "%s: buf_init\n", av->vdev.name);
 
 	if (aq->buf_init)
 		return aq->buf_init(vb);
@@ -118,7 +119,8 @@ int intel_ipu4_isys_buf_prepare(struct vb2_buffer *vb)
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
-	dev_dbg(&av->isys->adev->dev, "configured size %u, buffer size %lu\n",
+	dev_dbg(&av->isys->adev->dev,
+		"%s: configured size %u, buffer size %lu\n", av->vdev.name,
 		av->mpix.plane_fmt[0].sizeimage, vb2_plane_size(vb, 0));
 
 	if (av->mpix.plane_fmt[0].sizeimage > vb2_plane_size(vb, 0))
@@ -144,15 +146,6 @@ static int buf_prepare(struct vb2_buffer *vb)
 
 static void buf_finish(struct vb2_buffer *vb)
 {
-	struct intel_ipu4_isys_queue *aq =
-		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
-	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
-	dev_dbg(&av->isys->adev->dev, "buf_finish %u\n", vb->v4l2_buf.index);
-#else
-	dev_dbg(&av->isys->adev->dev, "buf_finish %u\n", vb->index);
-#endif
 }
 
 static void buf_cleanup(struct vb2_buffer *vb)
@@ -161,7 +154,7 @@ static void buf_cleanup(struct vb2_buffer *vb)
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
-	dev_dbg(&av->isys->adev->dev, "buf_cleanup\n");
+	dev_dbg(&av->isys->adev->dev, "%s: buf_cleanup\n", av->vdev.name);
 
 	if (aq->buf_cleanup)
 		return aq->buf_cleanup(vb);
@@ -199,9 +192,6 @@ void intel_ipu4_isys_buffer_list_queue(struct intel_ipu4_isys_buffer_list *bl,
 				bl, op_flags, state, bl->nbufs);
 			first = false;
 		}
-
-		dev_dbg(&av->isys->adev->dev, "buffer list %p buffer %p\n",
-			bl, vb2_buffer_to_intel_ipu4_isys_buffer(vb));
 
 		spin_lock_irqsave(&aq->lock, flags);
 		list_del(&ib->head);
@@ -288,8 +278,6 @@ static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
 	struct intel_ipu4_isys_buffer *ib;
 	unsigned long flags;
 
-	dev_dbg(&ip->isys->adev->dev, "get buffer list %p\n", bl);
-
 	bl->nbufs = 0;
 	INIT_LIST_HEAD(&bl->head);
 
@@ -310,7 +298,15 @@ static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
 		ib = list_last_entry(&aq->incoming,
 				     struct intel_ipu4_isys_buffer, head);
 
-		dev_dbg(&ip->isys->adev->dev, "buffer %p\n", ib);
+		dev_dbg(&ip->isys->adev->dev, "%s: buffer %u\n",
+			intel_ipu4_isys_queue_to_video(aq)->vdev.name,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+			intel_ipu4_isys_buffer_to_vb2_buffer(ib)->v4l2_buf.index
+
+#else
+			intel_ipu4_isys_buffer_to_vb2_buffer(ib)->index
+#endif
+			);
 		list_del(&ib->head);
 		list_add(&ib->head, &bl->head);
 		spin_unlock_irqrestore(&aq->lock, flags);
@@ -327,7 +323,9 @@ static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
 			aq->prepare_frame_buff_set(vb);
 	}
 
-	dev_dbg(&ip->isys->adev->dev, "%d buffers\n", bl->nbufs);
+	dev_dbg(&ip->isys->adev->dev, "get buffer list %p, %u buffers\n", bl,
+		bl->nbufs);
+
 	return 0;
 }
 
@@ -389,11 +387,11 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 	unsigned int i;
 	int rval;
 
-	dev_dbg(&av->isys->adev->dev, "buf_queue %d/%p\n",
+	dev_dbg(&av->isys->adev->dev, "%s: buf_queue %u\n", av->vdev.name,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
-		vb->v4l2_buf.index, ib);
+		vb->v4l2_buf.index);
 #else
-		vb->index, ib);
+		vb->index);
 #endif
 
 	for (i = 0; i < vb->num_planes; i++)
@@ -530,11 +528,14 @@ static void return_buffers(struct intel_ipu4_isys_queue *aq,
 
 		vb2_buffer_done(vb, state);
 
-		dev_dbg(&av->isys->adev->dev, "stop_streaming incoming %u/%p\n",
+		dev_dbg(&av->isys->adev->dev, "%s: stop_streaming incoming %u\n",
+			intel_ipu4_isys_queue_to_video(
+				vb2_queue_to_intel_ipu4_isys_queue(
+					vb->vb2_queue))->vdev.name,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
-			vb->v4l2_buf.index, ib);
+			vb->v4l2_buf.index);
 #else
-			vb->index, ib);
+			vb->index);
 #endif
 
 		spin_lock_irqsave(&aq->lock, flags);
@@ -556,11 +557,14 @@ static void return_buffers(struct intel_ipu4_isys_queue *aq,
 
 		vb2_buffer_done(vb, state);
 
-		dev_warn(&av->isys->adev->dev, "cleaning active queue %u/%p\n",
+		dev_warn(&av->isys->adev->dev, "%s: cleaning active queue %u\n",
+			intel_ipu4_isys_queue_to_video(
+				vb2_queue_to_intel_ipu4_isys_queue(
+					vb->vb2_queue))->vdev.name,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
-			vb->v4l2_buf.index, ib);
+			vb->v4l2_buf.index);
 #else
-			vb->index, ib);
+			vb->index);
 #endif
 
 		spin_lock_irqsave(&aq->lock, flags);
@@ -586,9 +590,9 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 	bool first;
 	int rval;
 
-	dev_dbg(&av->isys->adev->dev, "width %u, height %u\n",
-		av->mpix.width, av->mpix.height);
-	dev_dbg(&av->isys->adev->dev, "css pixelformat %u\n",
+	dev_dbg(&av->isys->adev->dev,
+		"%s: width %u, height %u, css pixelformat %u\n",
+		av->vdev.name, av->mpix.width, av->mpix.height,
 		av->pfmt->css_pixelformat);
 
 	mutex_lock(&av->isys->stream_mutex);
@@ -780,9 +784,15 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
 	ts_now = ns_to_timespec(ns);
 	vb->v4l2_buf.timestamp.tv_sec = ts_now.tv_sec;
 	vb->v4l2_buf.timestamp.tv_usec = ts_now.tv_nsec / NSEC_PER_USEC;
+
+	dev_dbg(&av->isys->adev->dev, "%s: buffer done %u\n", av->vdev.name,
+		vb->v4l2_buf.index);
 #else
 	vbuf->vb2_buf.timestamp = ns;
 	vbuf->sequence = sequence;
+
+	dev_dbg(&av->isys->adev->dev, "%s: buffer done %u\n", av->vdev.name,
+		vb->index);
 #endif
 
 	vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
@@ -802,7 +812,8 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 	unsigned long flags;
 	bool first = true;
 
-	dev_dbg(&isys->adev->dev, "received buffer %8.8x\n", info->pin.addr);
+	dev_dbg(&isys->adev->dev, "%s: received buffer %8.8x\n",
+		intel_ipu4_isys_queue_to_video(aq)->vdev.name, info->pin.addr);
 
 	spin_lock_irqsave(&aq->lock, flags);
 	if (list_empty(&aq->active)) {
@@ -844,7 +855,6 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 
 		list_del(&ib->head);
 		spin_unlock_irqrestore(&aq->lock, flags);
-		dev_dbg(&isys->adev->dev, "dequeued buffer %p\n", ib);
 
 		intel_ipu4_isys_queue_buf_done(ib, info);
 		return;
