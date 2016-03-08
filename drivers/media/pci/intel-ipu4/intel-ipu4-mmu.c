@@ -71,7 +71,11 @@
 #define MMUV2_AT_REG_L1_ZLW_INSERTION(i)	(0x100 + ((i) * 0x20) + 0x000c)
 
 #define MMUV2_AT_REG_L1_FW_ZLW_FIFO		(0x100 + \
-			((INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS) * 0x20) + 0x003c)
+			(INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS * 0x20) + 0x003c)
+
+/* FW ZLW has prioty - needed for ZLW invalidations */
+#define MMUV2_AT_REG_L1_FW_ZLW_PRIO		(0x100 + \
+			(INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS * 0x20))
 
 #define TBL_PHYS_ADDR(a)	((phys_addr_t)(a) << ISP_PADDR_SHIFT)
 #define TBL_VIRT_ADDR(a)	phys_to_virt(TBL_PHYS_ADDR(a))
@@ -592,6 +596,7 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 	/* Initialise the each MMU HW block*/
 	for (i = 0; i < mmu->nr_mmus; i++) {
 		struct intel_ipu4_mmu_hw *mmu_hw = &mmu->mmu_hw[i];
+		bool zlw_invalidate = false;
 		unsigned int j;
 		u16 block_addr;
 
@@ -622,6 +627,9 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 			writel(mmu->mmu_hw[i].l1_zlw_en[j],
 			       mmu_hw->base + MMUV2_AT_REG_L1_ZLW_EN_SID(j));
 
+			/* To track if zlw is enabled in any streams */
+			zlw_invalidate |= mmu->mmu_hw[i].l1_zlw_en[j];
+
 			/* Enable ZLW 1D mode for streams from the init table */
 			writel(mmu->mmu_hw[i].l1_zlw_1d_mode[j],
 			       mmu_hw->base +
@@ -637,6 +645,14 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 			       mmu_hw->base +
 			       MMUV2_AT_REG_L1_ZLW_2DMODE_SID(j));
 		}
+
+		/*
+		 * If ZLW invalidate is enabled even for one stream in a MMU1,
+		 * we need to set the FW ZLW operations have higher priority
+		 * on that MMU1
+		 */
+		if (zlw_invalidate)
+			writel(1, mmu_hw->base + MMUV2_AT_REG_L1_FW_ZLW_PRIO);
 
 		/* Configure MMU TLB stream configuration for L2*/
 		for (j = 0, block_addr = 0; j <  mmu_hw->nr_l2streams;
