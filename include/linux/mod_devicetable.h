@@ -687,5 +687,17 @@ struct fsl_mc_device_id {
 	const char obj_type[16];
 };
 
+#define SOUNDWIRE_NAME_SIZE       64
+#define SOUNDWIRE_MODULE_PREFIX "sdw:"
+
+struct sdw_slave_id {
+	char name[SOUNDWIRE_NAME_SIZE];
+	kernel_ulong_t driver_data;      /* Data private to the driver */
+};
+
+struct sdw_master_id {
+	char name[SOUNDWIRE_NAME_SIZE];
+	kernel_ulong_t driver_data;     /* Data private to the driver */
+};
 
 #endif /* LINUX_MOD_DEVICETABLE_H */
