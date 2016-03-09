@@ -94,6 +94,7 @@ struct intel_ipu4_trace_buffer {
 struct intel_ipu4_subsystem_trace_config {
 	u32 offset;
 	void __iomem *base;
+	u32 timer_reg;
 	struct intel_ipu4_trace_buffer memory; /* ring buffer */
 	struct device *dev;
 	struct intel_ipu4_trace_block *blocks;
@@ -187,6 +188,9 @@ void __intel_ipu4_trace_restore(struct device *dev)
 	/* Infobits for ddr trace */
 	writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
 	       addr + TRACE_REG_TUN_DDR_INFO_VAL);
+
+	/* Remove reset from trace timers */
+	writel(TRACE_REG_GPREG_TRACE_TIMER_RST_OFF, sys->base + sys->timer_reg);
 
 	/* Register config received from userspace */
 	for (i = 0; i < sys->fill_level; i++) {
@@ -747,6 +751,7 @@ int intel_ipu4_trace_init(struct intel_ipu4_device *isp, void __iomem *base,
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_trace *trace = isp->trace;
 	struct intel_ipu4_subsystem_trace_config *sys;
+	u32 timer_reg;
 	int ret = 0;
 
 	if (!isp->trace)
@@ -756,8 +761,10 @@ int intel_ipu4_trace_init(struct intel_ipu4_device *isp, void __iomem *base,
 
 	if (dev == &isp->isys->dev) {
 		sys = &trace->isys;
+		timer_reg = TRACE_REG_IS_GPREG_TRACE_TIMER_RST_N;
 	} else if (dev == &isp->psys->dev) {
 		sys = &trace->psys;
+		timer_reg = TRACE_REG_PS_GPREG_TRACE_TIMER_RST_N;
 	} else {
 		ret = -EINVAL;
 		goto leave;
@@ -767,6 +774,7 @@ int intel_ipu4_trace_init(struct intel_ipu4_device *isp, void __iomem *base,
 	sys->dev = dev;
 	sys->offset = base - isp->base; /* sub system offset */
 	sys->base = base;
+	sys->timer_reg = timer_reg;
 	sys->blocks = blocks;
 
 leave:
