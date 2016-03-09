@@ -1264,8 +1264,10 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			V4L2_FIELD_BOTTOM : V4L2_FIELD_TOP;
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_FRAME_SOF:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_FRAME_SOF\n",
-			resp.stream_handle);
+		dev_dbg(&adev->dev,
+			"%d:IA_CSS_ISYS_RESP_TYPE_FRAME_SOF hi %u, lo %u\n",
+			resp.stream_handle,
+			resp.timestamp[1], resp.timestamp[0]);
 		pipe->seq[pipe->seq_index].sequence =
 			atomic_read(&pipe->sequence) - 1;
 		pipe->seq[pipe->seq_index].timestamp =
