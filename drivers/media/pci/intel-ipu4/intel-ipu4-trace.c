@@ -70,7 +70,7 @@ static struct trace_register_range trace_sig2cio_range_template[] = {
 };
 
 #define LINE_MAX_LEN			128
-#define MEMORY_RING_BUFFER_SIZE		(SZ_1M)
+#define MEMORY_RING_BUFFER_SIZE		(SZ_1M * 10)
 /*
  * It looks that the trace unit sometimes writes outside the given buffer.
  * To avoid memory corruption one extra page is reserved at the end
