@@ -40,8 +40,12 @@ struct keystore_test tests[] = {
 		.run  = keystore_test_wrap_unwrap
 	},
 	{
-		.name = "Encrypt/Decrypt",
-		.run  = keystore_test_encrypt_decrypt
+		.name = "Encrypt/Decrypt CCM",
+		.run  = keystore_test_encrypt_decrypt_ccm
+	},
+	{
+		.name = "Encrypt/Decrypt GCM",
+		.run  = keystore_test_encrypt_decrypt_gcm
 	},
 	{
 		.name = "Encrypt/Decrypt for host",

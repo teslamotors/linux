@@ -250,8 +250,11 @@ int encrypt_output_size(enum keystore_algo_spec algo_spec,
 	*output_size = 0;
 
 	switch (algo_spec) {
-	case ALGOSPEC_AES:
+	case ALGOSPEC_AES_CCM:
 		*output_size = input_size + KEYSTORE_CCM_AUTH_SIZE;
+		break;
+	case ALGOSPEC_AES_GCM:
+		*output_size = input_size + KEYSTORE_GCM_AUTH_SIZE;
 		break;
 	default:
 		ks_err(KBUILD_MODNAME "Unknown algo_spec: %u\n", algo_spec);
@@ -271,10 +274,15 @@ int decrypt_output_size(enum keystore_algo_spec algo_spec,
 	*output_size = 0;
 
 	switch (algo_spec) {
-	case ALGOSPEC_AES:
+	case ALGOSPEC_AES_CCM:
 		if (input_size < KEYSTORE_CCM_AUTH_SIZE)
 			return -EINVAL;
 		*output_size = input_size - KEYSTORE_CCM_AUTH_SIZE;
+		break;
+	case ALGOSPEC_AES_GCM:
+		if (input_size < KEYSTORE_GCM_AUTH_SIZE)
+			return -EINVAL;
+		*output_size = input_size - KEYSTORE_GCM_AUTH_SIZE;
 		break;
 	default:
 		return -EINVAL;
@@ -296,8 +304,8 @@ int do_encrypt(enum keystore_algo_spec algo_spec,
 	if (!app_key || !iv || !input || !output)
 		return -EFAULT;
 
-	if (!input_size || (algo_spec != ALGOSPEC_AES) ||
-	    (iv_size != KEYSTORE_AES_IV_SIZE)) {
+	if (!input_size || (iv_size != KEYSTORE_AES_IV_SIZE) ||
+	    (algo_spec != ALGOSPEC_AES_CCM && algo_spec != ALGOSPEC_AES_GCM)) {
 		ks_err(KBUILD_MODNAME ": Incorrect input values to %s\n",
 		       __func__);
 		return -EINVAL;
@@ -308,9 +316,22 @@ int do_encrypt(enum keystore_algo_spec algo_spec,
 		return res;
 
 	/* Cipher = AENC(AppKey, AlgoSpec, IV, Plaintext) */
-	res = keystore_aes_ccm_crypt(1, app_key, app_key_size, iv, iv_size,
-				     input, input_size, NULL, 0,
-				     output, output_size);
+	switch (algo_spec) {
+	case ALGOSPEC_AES_CCM:
+		res = keystore_aes_ccm_crypt(1, app_key, app_key_size,
+					     iv, iv_size,
+					     input, input_size,
+					     NULL, 0,
+					     output, output_size);
+		break;
+	case ALGOSPEC_AES_GCM:
+		res = keystore_aes_gcm_crypt(1, app_key, app_key_size,
+					     iv, iv_size,
+					     input, input_size,
+					     NULL, 0,
+					     output, output_size);
+		break;
+	}
 	return res;
 }
 
@@ -327,8 +348,8 @@ int do_decrypt(enum keystore_algo_spec algo_spec,
 	if (!app_key || !input || !output || !iv)
 		return -EFAULT;
 
-	if (!input_size || (algo_spec != ALGOSPEC_AES) ||
-	    (iv_size != KEYSTORE_AES_IV_SIZE)) {
+	if (!input_size || (iv_size != KEYSTORE_AES_IV_SIZE) ||
+	    (algo_spec != ALGOSPEC_AES_CCM && algo_spec != ALGOSPEC_AES_GCM)) {
 		ks_err(KBUILD_MODNAME ": Incorrect input values to %s\n",
 		       __func__);
 		return -EINVAL;
@@ -340,9 +361,22 @@ int do_decrypt(enum keystore_algo_spec algo_spec,
 
 	/* decrypt Cipher using AppKey and AlgoSpec/IV */
 	/* Plaintext = ADEC(AppKey, AlgoSpec, IV, Cipher) */
-	res = keystore_aes_ccm_crypt(0, app_key, app_key_size, iv, iv_size,
-				     input, input_size,
-				     NULL, 0, output, output_size);
+	switch (algo_spec) {
+	case ALGOSPEC_AES_CCM:
+		res = keystore_aes_ccm_crypt(0, app_key, app_key_size,
+					     iv, iv_size,
+					     input, input_size,
+					     NULL, 0,
+					     output, output_size);
+		break;
+	case ALGOSPEC_AES_GCM:
+		res = keystore_aes_gcm_crypt(0, app_key, app_key_size,
+					     iv, iv_size,
+					     input, input_size,
+					     NULL, 0,
+					     output, output_size);
+		break;
+	}
 
 	return res;
 }
@@ -537,7 +571,7 @@ int wrap_backup(const uint8_t *mkey,
 	/* prepare block to be returned */
 	/* AlgoSpec || IV || Cipher */
 	/* and algo spec at 0 possition */
-	*p_reencrypted++ = (uint8_t)ALGOSPEC_AES;
+	*p_reencrypted++ = (uint8_t)ALGOSPEC_AES_GCM;
 	/* copy iv to 1...iv_size */
 	memcpy(p_reencrypted, iv, sizeof(iv));
 	p_reencrypted += sizeof(iv);

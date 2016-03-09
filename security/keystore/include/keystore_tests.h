@@ -83,7 +83,9 @@ int keystore_test_genkey(void);
 
 int keystore_test_wrap_unwrap(void);
 
-int keystore_test_encrypt_decrypt(void);
+int keystore_test_encrypt_decrypt_ccm(void);
+
+int keystore_test_encrypt_decrypt_gcm(void);
 
 int keystore_test_encrypt_for_host(void);
 

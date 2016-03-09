@@ -162,11 +162,13 @@ enum keystore_key_spec {
 /**
  * enum keystore_algo_spec - The encryption algorithm specification
  * @ALGOSPEC_INVALID: Invalid Algospec
- * @ALGOSPEC_AES: AES Algorithm (128/256 bit depending on key length)
+ * @ALGOSPEC_AES_CCM: AES_CCM Algorithm (128/256 bit depending on key length)
+ * @ALGOSPEC_AES_GCM: AES_GCM Algorithm (128/256 bit depending on key length)
  */
 enum keystore_algo_spec {
 	ALGOSPEC_INVALID = 0,
-	ALGOSPEC_AES
+	ALGOSPEC_AES_CCM = 1,
+	ALGOSPEC_AES_GCM = 2
 };
 
 #endif /* _KEYSTORE_API_COMMON_H_ */

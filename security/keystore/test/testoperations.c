@@ -98,10 +98,9 @@ exit:
 	return res;
 }
 
-int keystore_test_encrypt_decrypt(void)
+static int keystore_test_encrypt_decrypt_algo(enum keystore_algo_spec algo_spec)
 {
 	int res = 0;
-	enum keystore_algo_spec algo_spec = ALGOSPEC_AES;
 	size_t m_len = 32;
 	uint8_t m[m_len];
 	uint8_t key[AES128_KEY_SIZE];
@@ -111,18 +110,23 @@ int keystore_test_encrypt_decrypt(void)
 	uint8_t *m2 = NULL;
 	unsigned int m2_len = 0;
 
+	ks_info(KBUILD_MODNAME ": keystore_test_encrypt_decrypt_algo(%d)\n", algo_spec);
+
 	res = keystore_get_rdrand(iv, sizeof(iv));
 	keystore_hexdump("IV", iv, sizeof(iv));
 	if (keystore_assert(res == 0))
 		return res;
-	/* In CCM mode, the first byte of the IV has special meaning         */
-	/* In rfc3610 the IV is called the nonce                             */
-	/* Flags = 64 * Adata + 8 * M' + L'                                  */
-	/* Adata = 0 if l(a) = 0, 1 otherwise (length of authentication data)*/
-	/* M' = (M-2)/2 (M is authentication length in bytes)                */
-	/* L' = L - 1   (nonce length in bytes)                              */
-	/* No additional data, 2 byte authentication field, 2 byte nonce     */
-	iv[0] = 1;
+
+	if (algo_spec == ALGOSPEC_AES_CCM) {
+		/* In CCM mode, the first byte of the IV has special meaning  */
+		/* In rfc3610 the IV is called the nonce                      */
+		/* Flags = 64 * Adata + 8 * M' + L'                           */
+		/* Adata = 0 if l(a) = 0, 1 otherwise (length of auth data)   */
+		/* M' = (M-2)/2 (M is authentication length in bytes)         */
+		/* L' = L - 1   (nonce length in bytes)                       */
+		/* No additional data, 2 byte auth field, 2 byte nonce        */
+		iv[0] = 1;
+	}
 
 	res = keystore_get_rdrand(m, sizeof(m));
 	keystore_hexdump("Plain data", m, m_len);
@@ -172,6 +176,16 @@ free_mem:
 	kzfree(c);
 	kzfree(m2);
 	return res;
+}
+
+int keystore_test_encrypt_decrypt_ccm(void)
+{
+	return keystore_test_encrypt_decrypt_algo(ALGOSPEC_AES_CCM);
+}
+
+int keystore_test_encrypt_decrypt_gcm(void)
+{
+	return keystore_test_encrypt_decrypt_algo(ALGOSPEC_AES_GCM);
 }
 
 int keystore_test_encrypt_for_host(void)

@@ -125,10 +125,6 @@ int keystore_unwrap_with_backup(const uint32_t *key_enc_backup,
 			 wrapped_key, wrapped_key_size,
 			 keyspec, unwrapped_key);
 
-	keystore_hexdump("Unwrapped key:",
-			 unwrapped_key,
-			 unwrapped_key_size);
-
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Cannot unwrap appkey\n", __func__);
 		goto exit;
