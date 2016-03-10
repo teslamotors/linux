@@ -2878,6 +2878,60 @@ int snd_soc_dai_set_tdm_slot(struct snd_soc_dai *dai,
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_tdm_slot);
 
 /**
+ *  snd_soc_dai_program_stream_tag - Program the stream tag allocated by
+ *				CPU DAI to codec DAI. This will be
+ *				used in HDA and soundwire, wherex
+ *				audio stream between codec and
+ *				SoC need to have same stream tag.
+ *  substream: Substream
+ *  cpu_dai: CPU DAI
+ *  stream_tag: Stream tag to be programmed.
+ */
+int snd_soc_dai_program_stream_tag(struct snd_pcm_substream *substream,
+			struct snd_soc_dai *cpu_dai, int stream_tag)
+{
+	int i;
+	struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
+	const struct snd_soc_dai_ops *codec_dai_ops;
+	struct snd_soc_dai *codec_dai;
+	int ret = 0;
+
+	for (i = 0; i < rtd->num_codecs; i++) {
+		codec_dai = rtd->codec_dais[i];
+		codec_dai_ops = codec_dai->driver->ops;
+		if (codec_dai_ops->program_stream_tag)
+			ret = codec_dai_ops->program_stream_tag(substream,
+				codec_dai, stream_tag);
+			if (ret)
+				return ret;
+	}
+	return ret;
+
+}
+EXPORT_SYMBOL_GPL(snd_soc_dai_program_stream_tag);
+/**
+ *  snd_soc_dai_remove_stream_tag - Reverse the programmed stream tag
+ *  substream: Substream
+ *  cpu_dai: CPU DAI
+ */
+void snd_soc_dai_remove_stream_tag(struct snd_pcm_substream *substream,
+			struct snd_soc_dai *cpu_dai)
+{
+	int i;
+	struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
+	const struct snd_soc_dai_ops *codec_dai_ops;
+	struct snd_soc_dai *codec_dai;
+
+	for (i = 0; i < rtd->num_codecs; i++) {
+		codec_dai = rtd->codec_dais[i];
+		codec_dai_ops = codec_dai->driver->ops;
+		if (codec_dai_ops->program_stream_tag)
+			codec_dai_ops->remove_stream_tag(substream, codec_dai);
+	}
+}
+EXPORT_SYMBOL_GPL(snd_soc_dai_remove_stream_tag);
+
+/**
  * snd_soc_dai_set_channel_map - configure DAI audio channel map
  * @dai: DAI
  * @tx_num: how many TX channels
