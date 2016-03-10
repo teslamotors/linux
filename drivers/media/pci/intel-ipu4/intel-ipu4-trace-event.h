@@ -46,11 +46,11 @@ TRACE_EVENT(ipu4_perf_reg,
 );
 
 TRACE_EVENT(ipu4_pg_kcmd,
-		TP_PROTO(char *func, unsigned int id,
+		TP_PROTO(const char *func, unsigned int id,
 			unsigned long long issue_id, unsigned int pri),
 		TP_ARGS(func, id, issue_id, pri),
 		TP_STRUCT__entry(
-			__field(char *, func)
+			__field(const char *, func)
 			__field(unsigned int, id)
 			__field(unsigned long long, issue_id)
 			__field(unsigned int, pri)

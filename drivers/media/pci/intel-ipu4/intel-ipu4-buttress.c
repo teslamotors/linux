@@ -1043,7 +1043,7 @@ static long intel_ipu4_buttress_clk_round_rate(
 {
 	struct clk_intel_ipu4_sensor *ck = to_clk_intel_ipu4_sensor(hw);
 	unsigned long best = ULONG_MAX;
-	unsigned long round_rate;
+	unsigned long round_rate = 0;
 	int i;
 
 	if (is_intel_ipu4_hw_bxt_a0(ck->isp))

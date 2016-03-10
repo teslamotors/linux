@@ -628,7 +628,8 @@ int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 		.driver_sys = {
 			.ssid = ISYS_SSID,
 			.mmid = ISYS_MMID,
-			.num_send_queues = clamp(num_stream_support, 1,
+			.num_send_queues = clamp_t(
+				unsigned int, num_stream_support, 1,
 				INTEL_IPU4_ISYS_NUM_STREAMS_B0),
 			.num_recv_queues = 1,
 			.send_queue_size = 40,
