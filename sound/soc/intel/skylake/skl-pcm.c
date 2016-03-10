@@ -28,6 +28,7 @@
 #include "skl-topology.h"
 #include "skl-sst-dsp.h"
 #include "skl-sst-ipc.h"
+#include "skl-sdw-pcm.h"
 
 #define HDA_MONO 1
 #define HDA_STEREO 2
@@ -636,6 +637,67 @@ static int skl_link_hw_free(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static int skl_sdw_startup(struct snd_pcm_substream *substream,
+		struct snd_soc_dai *dai)
+{
+	/* Find the type of DAI, Its decided based on which copier
+	 * is connected to the DAI. All the soundwire DAIs are identical
+	 * but some registers needs to be programmed based on its a
+	 * PDM or PCM. Copier tells DAI is to be used as PDM  or PCM
+	 * This makes sure no change is required in code, only change
+	 * required is in the topology to change DAI from PDM to PCM or
+	 * vice versa.
+	 */
+	return cnl_sdw_startup(substream, dai);
+
+}
+
+static int skl_sdw_hw_params(struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params,
+				struct snd_soc_dai *dai)
+{
+	int ret = 0;
+
+	ret = pm_runtime_get_sync(dai->dev);
+	if (!ret)
+		return ret;
+	/* Allocate the port based on hw_params.
+	 * Allocate PDI stream based on hw_params
+	 * Program stream params to the sdw bus driver
+	 * program Port params to sdw bus driver
+	 */
+	return cnl_sdw_hw_params(substream, params, dai);
+}
+
+static int skl_sdw_hw_free(struct snd_pcm_substream *substream,
+		struct snd_soc_dai *dai)
+{
+	/* De-allocate the port from master controller
+	 * De allocate stream from bus driver
+	 */
+	return cnl_sdw_hw_free(substream, dai);
+}
+
+static int skl_sdw_pcm_prepare(struct snd_pcm_substream *substream,
+		struct snd_soc_dai *dai)
+{
+	return cnl_sdw_pcm_prepare(substream, dai);
+}
+
+static int skl_sdw_pcm_trigger(struct snd_pcm_substream *substream,
+	int cmd, struct snd_soc_dai *dai)
+{
+		return cnl_sdw_pcm_trigger(substream, cmd, dai);
+}
+
+static void skl_sdw_shutdown(struct snd_pcm_substream *substream,
+		struct snd_soc_dai *dai)
+{
+	cnl_sdw_shutdown(substream, dai);
+	pm_runtime_mark_last_busy(dai->dev);
+	pm_runtime_put_autosuspend(dai->dev);
+}
+
 static const struct snd_soc_dai_ops skl_pcm_dai_ops = {
 	.startup = skl_pcm_open,
 	.shutdown = skl_pcm_close,
@@ -658,6 +720,15 @@ static const struct snd_soc_dai_ops skl_link_dai_ops = {
 	.hw_params = skl_link_hw_params,
 	.hw_free = skl_link_hw_free,
 	.trigger = skl_link_pcm_trigger,
+};
+
+static struct snd_soc_dai_ops skl_sdw_dai_ops = {
+	.startup = skl_sdw_startup,
+	.prepare = skl_sdw_pcm_prepare,
+	.hw_params = skl_sdw_hw_params,
+	.hw_free = skl_sdw_hw_free,
+	.trigger = skl_sdw_pcm_trigger,
+	.shutdown = skl_sdw_shutdown,
 };
 
 static struct snd_soc_dai_driver skl_platform_dai[] = {
@@ -982,6 +1053,29 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 		.rates = SNDRV_PCM_RATE_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	},
+},
+{
+	/* Currently adding 1 playback and 1 capture pin, ideally it
+	 * should be coming from CLT based on endpoints to be supported
+	 */
+	.name = "SDW Pin",
+	.ops = &skl_sdw_dai_ops,
+	.playback = {
+		.stream_name = "SDW Tx",
+		.channels_min = HDA_STEREO,
+		.channels_max = HDA_STEREO,
+		.rates = SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.capture = {
+		.stream_name = "SDW Rx",
+		.channels_min = HDA_STEREO,
+		.channels_max = HDA_STEREO,
+		.rates = SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+	},
+
+
 },
 };
 
