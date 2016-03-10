@@ -228,7 +228,7 @@ static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = 
 	{0x334F, CRL_REG_LEN_08BIT, 0x01},
 };
 
-static struct crl_register_write_rep imx185_1080P_RAW10_30FPS_27MHZ_CROPPING[] = {
+static struct crl_register_write_rep imx185_1952_1088_RAW10_30FPS_27MHZ_CROPPING[] = {
 	/* 0x02h */
 	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x50},	/* 1080p cropping */
@@ -257,11 +257,11 @@ static struct crl_register_write_rep imx185_1080P_RAW10_30FPS_27MHZ_CROPPING[] =
 	/* Crop settings */
 	{0x3038, CRL_REG_LEN_08BIT, 0x00}, /* WPV = 0 */
 	{0x3039, CRL_REG_LEN_08BIT, 0x00},
-	{0x303A, CRL_REG_LEN_08BIT, 0x40}, /* WV = PIC_SIZE + 8 */
+	{0x303A, CRL_REG_LEN_08BIT, 0x48}, /* WV = PIC_SIZE + 8 */
 	{0x303B, CRL_REG_LEN_08BIT, 0x04},
 	{0x303C, CRL_REG_LEN_08BIT, 0x04}, /* WPH = 4 */
 	{0x303D, CRL_REG_LEN_08BIT, 0x00},
-	{0x303E, CRL_REG_LEN_08BIT, 0x7C}, /* Effective size = 1916*/
+	{0x303E, CRL_REG_LEN_08BIT, 0x9C},
 	{0x303F, CRL_REG_LEN_08BIT, 0x07},
 	/* 0x03h */
 	{0x311D, CRL_REG_LEN_08BIT, 0x0A},
@@ -365,7 +365,7 @@ static struct crl_register_write_rep imx185_1080P_RAW10_30FPS_27MHZ_CROPPING[] =
 	{0x3303, CRL_REG_LEN_08BIT, 0x10},	/* repetation */
 	{0x3316, CRL_REG_LEN_08BIT, 0x04},
 	{0x3317, CRL_REG_LEN_08BIT, 0x04},
-	{0x3318, CRL_REG_LEN_08BIT, 0x38},	/* PIC_SIZE = 1080 */
+	{0x3318, CRL_REG_LEN_08BIT, 0x40},	/* PIC_SIZE = 1088 */
 	{0x3319, CRL_REG_LEN_08BIT, 0x04},
 	{0x334E, CRL_REG_LEN_08BIT, 0x3D},	/* INCL selection 27MHz */
 	{0x334F, CRL_REG_LEN_08BIT, 0x01},
@@ -755,7 +755,32 @@ static struct crl_pll_configuration imx185_pll_configurations[] = {
 	}
 };
 
-static struct crl_subdev_rect_rep imx185_1080_rects[] = {
+static struct crl_subdev_rect_rep imx185_1952_1088_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1952,
+		.in_rect.height = 1088,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1952,
+		.out_rect.height = 1088,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1952,
+		.in_rect.height = 1088,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1952,
+		.out_rect.height = 1088,
+	}
+};
+
+static struct crl_subdev_rect_rep imx185_1080_wdr_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect.left = 0,
@@ -785,19 +810,19 @@ static struct crl_subdev_rect_rep imx185_720_rects[] = {
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect.left = 0,
 		.in_rect.top = 0,
-		.in_rect.width = 1920,
-		.in_rect.height = 1080,
+		.in_rect.width = 1952,
+		.in_rect.height = 1088,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
-		.out_rect.width = 1920,
-		.out_rect.height = 1080,
+		.out_rect.width = 1952,
+		.out_rect.height = 1088,
 	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
 		.in_rect.left = 0,
 		.in_rect.top = 0,
-		.in_rect.width = 1920,
-		.in_rect.height = 1080,
+		.in_rect.width = 1952,
+		.in_rect.height = 1088,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
 		.out_rect.width = 1280,
@@ -807,23 +832,23 @@ static struct crl_subdev_rect_rep imx185_720_rects[] = {
 
 static struct crl_mode_rep imx185_modes[] = {
 	{
-		.sd_rects_items = ARRAY_SIZE(imx185_1080_rects),
-		.sd_rects = imx185_1080_rects,
+		.sd_rects_items = ARRAY_SIZE(imx185_1952_1088_rects),
+		.sd_rects = imx185_1952_1088_rects,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
-		.width = 1920,
-		.height = 1080,
+		.width = 1952,
+		.height = 1088,
 		.min_llp = 2200,
 		.min_fll = 1125,
 		.comp_items = 1,
 		.ctrl_data = &ctrl_data_modes[0],
-		.mode_regs_items = ARRAY_SIZE(imx185_1080P_RAW10_30FPS_27MHZ_CROPPING),
-		.mode_regs = imx185_1080P_RAW10_30FPS_27MHZ_CROPPING,
+		.mode_regs_items = ARRAY_SIZE(imx185_1952_1088_RAW10_30FPS_27MHZ_CROPPING),
+		.mode_regs = imx185_1952_1088_RAW10_30FPS_27MHZ_CROPPING,
 	},
 	{
-		.sd_rects_items = ARRAY_SIZE(imx185_1080_rects),
-		.sd_rects = imx185_1080_rects,
+		.sd_rects_items = ARRAY_SIZE(imx185_1080_wdr_rects),
+		.sd_rects = imx185_1080_wdr_rects,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
@@ -867,8 +892,8 @@ static struct crl_sensor_subdev_config imx185_sensor_subdevs[] = {
 static struct crl_sensor_limits imx185_sensor_limits = {
 	.x_addr_min = 0,
 	.y_addr_min = 0,
-	.x_addr_max = 1920,
-	.y_addr_max = 1080,
+	.x_addr_max = 1952,
+	.y_addr_max = 1088,
 	.min_frame_length_lines = 320,
 	.max_frame_length_lines = 65535,
 	.min_line_length_pixels = 380,
