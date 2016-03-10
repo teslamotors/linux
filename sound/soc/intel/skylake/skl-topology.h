@@ -199,8 +199,8 @@ union skl_connector_node_id {
 	u32 val;
 	struct {
 		u32 vindex:8;
-		u32 dma_type:4;
-		u32 rsvd:20;
+		u32 dma_type:5;
+		u32 rsvd:19;
 	} node;
 };
 
