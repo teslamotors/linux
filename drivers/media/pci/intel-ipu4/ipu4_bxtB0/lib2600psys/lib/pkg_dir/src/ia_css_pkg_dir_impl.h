@@ -75,6 +75,15 @@ ia_css_pkg_dir_get_version(const ia_css_pkg_dir_entry_t *pkg_dir_header)
 	return pkg_dir_header->version;
 }
 
+uint16_t ia_css_pkg_dir_set_version(ia_css_pkg_dir_entry_t *pkg_dir_header, enum ia_css_pkg_dir_version version)
+{
+	if (pkg_dir_header != NULL) {
+		pkg_dir_header->version = version;
+		return 0;
+	}
+	return 1;
+}
+
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint32_t ia_css_pkg_dir_get_size_in_bytes(const ia_css_pkg_dir_entry_t *pkg_dir_header)
 {
@@ -90,7 +99,7 @@ IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint32_t ia_css_pkg_dir_entry_get_address_lo(const ia_css_pkg_dir_entry_t *entry)
 {
 
-	if(entry == NULL) {
+	if (entry == NULL) {
 		assert(NULL == "ia_css_pkg_dir_entry_get_addresss");
 		return 0;
 	}
@@ -114,7 +123,7 @@ IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint32_t ia_css_pkg_dir_entry_get_size(const ia_css_pkg_dir_entry_t *entry)
 {
 
-	if(entry == NULL) {
+	if (entry == NULL) {
 		assert(NULL == "ia_css_pkg_dir_entry_get_size");
 		return 0;
 	}
@@ -126,7 +135,7 @@ IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint16_t ia_css_pkg_dir_entry_get_version(const ia_css_pkg_dir_entry_t *entry)
 {
 
-	if(entry == NULL) {
+	if (entry == NULL) {
 		assert(NULL == "ia_css_pkg_dir_entry_get_version");
 		return 0;
 	}
@@ -138,7 +147,7 @@ IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint8_t ia_css_pkg_dir_entry_get_type(const ia_css_pkg_dir_entry_t *entry)
 {
 
-	if(entry == NULL) {
+	if (entry == NULL) {
 		assert(NULL == "ia_css_pkg_dir_entry_get_type");
 		return 0;
 	}

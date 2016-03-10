@@ -103,6 +103,8 @@ ia_css_syscom_size_intern(
 {
 	/* convert syscom config into syscom internal size struct */
 
+	unsigned int i;
+
 	size->context = sizeof(struct ia_css_syscom_context);
 	size->input_queue = cfg->num_input_queues * sizeof(struct sys_queue);
 	size->output_queue = cfg->num_output_queues * sizeof(struct sys_queue);
@@ -112,10 +114,19 @@ ia_css_syscom_size_intern(
 	size->fw_config = sizeof(struct ia_css_syscom_config_fw);
 	size->specific = cfg->specific_size;
 
-	size->input_buffer = cfg->num_input_queues *
-		sys_queue_buf_size(cfg->input_queue_size, cfg->input_token_size);
-	size->output_buffer = cfg->num_output_queues *
-		sys_queue_buf_size(cfg->output_queue_size, cfg->output_token_size);
+	/* accumulate input queue buffer sizes */
+	size->input_buffer = 0;
+	for (i=0; i<cfg->num_input_queues; i++) {
+		size->input_buffer += 
+			sys_queue_buf_size(cfg->input[i].queue_size, cfg->input[i].token_size);
+	}
+
+	/* accumulate outut queue buffer sizes */
+	size->output_buffer = 0;
+	for (i=0; i<cfg->num_output_queues; i++) {
+		size->output_buffer += 
+			sys_queue_buf_size(cfg->output[i].queue_size, cfg->output[i].token_size);
+	}
 }
 
 static void
@@ -263,15 +274,18 @@ ia_css_syscom_open(
 	res.host_address = ctx->ibuf_host_addr;
 	res.vied_address = ctx->ibuf_vied_addr;
 	for (i=0; i<cfg->num_input_queues; i++) {
-		sys_queue_init(ctx->input_queue + i, cfg->input_queue_size, cfg->input_token_size, &(ctx->env), &res);
+		sys_queue_init(ctx->input_queue + i,
+			cfg->input[i].queue_size, cfg->input[i].token_size,
+			&(ctx->env), &res);
 	}
 
 	/* initialize output queues */
 	res.host_address = ctx->obuf_host_addr;
 	res.vied_address = ctx->obuf_vied_addr;
 	for (i=0; i<cfg->num_output_queues; i++) {
-		sys_queue_init(ctx->output_queue + i, cfg->output_queue_size,
-			cfg->output_token_size, &(ctx->env), &res);
+		sys_queue_init(ctx->output_queue + i,
+			cfg->output[i].queue_size, cfg->output[i].token_size,
+			&(ctx->env), &res);
 	}
 
 	/* fill shared queue structs */

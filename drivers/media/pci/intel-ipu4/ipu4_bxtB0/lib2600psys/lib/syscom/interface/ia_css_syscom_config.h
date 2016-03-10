@@ -39,6 +39,11 @@ struct ia_css_syscom_buf {
 	vied_virtual_address_t obuf_cell; /* output queue shared buffer cell address */
 };
 
+struct ia_css_syscom_queue_config {
+	unsigned int queue_size; /* tokens per queue */
+	unsigned int token_size; /* bytes per token */
+};
+
 /**
   * Parameter struct for ia_css_syscom_open
   */
@@ -54,12 +59,11 @@ struct ia_css_syscom_config {
 
 	unsigned int ssid;
 	unsigned int mmid;
+
 	unsigned int num_input_queues;
 	unsigned int num_output_queues;
-	unsigned int input_queue_size; /* max # tokens per queue */
-	unsigned int output_queue_size; /* max # tokens per queue */
-	unsigned int input_token_size; /* in bytes */
-	unsigned int output_token_size; /* in bytes */
+	struct ia_css_syscom_queue_config *input;
+	struct ia_css_syscom_queue_config *output;
 
 	unsigned int regs_addr;
 	unsigned int dmem_addr;

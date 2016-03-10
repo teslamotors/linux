@@ -25,28 +25,21 @@
 
 #include "ia_css_cell.h"
 
-#define IA_CSS_PSYS_CMD_QUEUE_SIZE				0x20
-#define IA_CSS_PSYS_EVENT_QUEUE_SIZE			0x40
+#define IA_CSS_PSYS_CMD_QUEUE_SIZE		0x20
+#define IA_CSS_PSYS_EVENT_QUEUE_SIZE		0x40
 
-static struct ia_css_syscom_config	psys_syscom_config = {
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0
+static struct ia_css_syscom_queue_config ia_css_psys_cmd_queue_cfg[IA_CSS_N_PSYS_CMD_QUEUE_ID] = {
+	{IA_CSS_PSYS_CMD_QUEUE_SIZE, IA_CSS_PSYS_CMD_BITS/8},
+	{IA_CSS_PSYS_CMD_QUEUE_SIZE, IA_CSS_PSYS_CMD_BITS/8}
 };
 
-static bool	external_alloc = true;
+static struct ia_css_syscom_queue_config ia_css_psys_event_queue_cfg[IA_CSS_N_PSYS_EVENT_QUEUE_ID] = {
+	{IA_CSS_PSYS_EVENT_QUEUE_SIZE, IA_CSS_PSYS_EVENT_BITS/8},
+};
 
+static struct ia_css_syscom_config psys_syscom_config;
 struct ia_css_syscom_context	*psys_syscom = NULL;
-
-static unsigned int ia_css_psys_cmd_queue_size[IA_CSS_N_PSYS_CMD_QUEUE_ID] = {
-	IA_CSS_PSYS_CMD_QUEUE_SIZE,
-	IA_CSS_PSYS_CMD_QUEUE_SIZE};
-static unsigned int ia_css_psys_event_queue_size[IA_CSS_N_PSYS_EVENT_QUEUE_ID] = {
-	IA_CSS_PSYS_EVENT_QUEUE_SIZE};
-
-static unsigned int ia_css_psys_cmd_msg_size[IA_CSS_N_PSYS_CMD_QUEUE_ID] = {
-	IA_CSS_PSYS_CMD_BITS/8,
-	IA_CSS_PSYS_CMD_BITS/8};
-static unsigned int ia_css_psys_event_msg_size[IA_CSS_N_PSYS_EVENT_QUEUE_ID] = {
-	IA_CSS_PSYS_EVENT_BITS/8};
+static bool external_alloc = true;
 
 int ia_css_psys_config_print(
 	const struct ia_css_syscom_config		*config,
@@ -68,8 +61,8 @@ EXIT:
 }
 
 int ia_css_psys_print(
-	const struct ia_css_syscom_context		*context,
-	void									*fh)
+	const struct ia_css_syscom_context	*context,
+	void					*fh)
 {
 	int	retval = -1;
 	NOT_USED(fh);
@@ -94,10 +87,8 @@ struct ia_css_syscom_config *ia_css_psys_specify(void)
 
 	config->num_input_queues = IA_CSS_N_PSYS_CMD_QUEUE_ID;
 	config->num_output_queues = IA_CSS_N_PSYS_EVENT_QUEUE_ID;
-	config->input_queue_size = IA_CSS_PSYS_CMD_QUEUE_SIZE;
-	config->output_queue_size = IA_CSS_PSYS_EVENT_QUEUE_SIZE;
-	config->input_token_size = IA_CSS_PSYS_CMD_BITS/8;
-	config->output_token_size = IA_CSS_PSYS_EVENT_BITS/8;
+	config->input = ia_css_psys_cmd_queue_cfg;
+	config->output = ia_css_psys_event_queue_cfg;
 
 	return config;
 }
@@ -591,8 +582,7 @@ size_t ia_css_psys_get_cmd_queue_size(
 	verifexit (context != NULL, EINVAL);
 	/* How can I query the context ? */
 	NOT_USED(context);
-	NOT_USED(id);
-	queue_size = ia_css_psys_cmd_queue_size[0];
+	queue_size = ia_css_psys_cmd_queue_cfg[id].queue_size;
 EXIT:
 	if (queue_size == 0) {
 		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_cmd_queue_size failed\n");
@@ -611,8 +601,7 @@ size_t ia_css_psys_get_event_queue_size(
 	verifexit (context != NULL, EINVAL);
 	/* How can I query the context ? */
 	NOT_USED(context);
-	NOT_USED(id);
-	queue_size = ia_css_psys_event_queue_size[0];
+	queue_size = ia_css_psys_event_queue_cfg[id].queue_size;
 EXIT:
 	if (queue_size == 0) {
 		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_event_queue_size failed\n");
@@ -631,8 +620,7 @@ size_t ia_css_psys_get_cmd_msg_size(
 	verifexit (context != NULL, EINVAL);
 	/* How can I query the context ? */
 	NOT_USED(context);
-	NOT_USED(id);
-	msg_size = ia_css_psys_cmd_msg_size[0];
+	msg_size = ia_css_psys_cmd_queue_cfg[id].token_size;
 EXIT:
 	if (msg_size == 0) {
 		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_cmd_msg_size failed\n");
@@ -651,8 +639,7 @@ size_t ia_css_psys_get_event_msg_size(
 	verifexit (context != NULL, EINVAL);
 	/* How can I query the context ? */
 	NOT_USED(context);
-	NOT_USED(id);
-	msg_size = ia_css_psys_event_msg_size[0];
+	msg_size = ia_css_psys_event_queue_cfg[id].token_size;
 EXIT:
 	if (msg_size == 0) {
 		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_cmd_msg_size failed\n");
