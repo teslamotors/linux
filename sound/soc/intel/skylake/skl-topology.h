@@ -183,6 +183,8 @@ enum skl_dma_type {
 	SKL_DMA_DMIC_LINK_INPUT_CLASS = 0xB,
 	SKL_DMA_I2S_LINK_OUTPUT_CLASS = 0xC,
 	SKL_DMA_I2S_LINK_INPUT_CLASS = 0xD,
+	SKL_DMA_SDW_LINK_OUTPUT_CLASS = 0x10,
+	SKL_DMA_SDW_LINK_INPUT_CLASS = 0x11,
 };
 
 union skl_ssp_dma_node {
@@ -404,6 +406,8 @@ struct skl_module_cfg {
 	u32 mem_pages;
 	enum d0i3_capability d0i3_caps;
 	u32 dma_buffer_size; /* in milli seconds */
+	u8 pdi_type;
+	u32 sdw_stream_num;
 	struct skl_module_pin *m_in_pin;
 	struct skl_module_pin *m_out_pin;
 	enum skl_module_type m_type;

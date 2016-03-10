@@ -540,6 +540,13 @@ static u32 skl_get_node_id(struct skl_sst *ctx,
 			SKL_DMA_HDA_HOST_INPUT_CLASS;
 		node_id.node.vindex = params->host_dma_id;
 		break;
+	case SKL_DEVICE_SDW:
+		node_id.node.dma_type =
+			(SKL_CONN_SOURCE == mconfig->hw_conn_type) ?
+			SKL_DMA_SDW_LINK_OUTPUT_CLASS :
+			SKL_DMA_SDW_LINK_INPUT_CLASS;
+		node_id.node.vindex = mconfig->sdw_stream_num;
+		break;
 
 	default:
 		node_id.val = 0xFFFFFFFF;

@@ -111,7 +111,14 @@ enum skl_dev_type {
 	SKL_DEVICE_SLIMBUS = 0x3,
 	SKL_DEVICE_HDALINK = 0x4,
 	SKL_DEVICE_HDAHOST = 0x5,
+	SKL_DEVICE_SDW = 0x6,
 	SKL_DEVICE_NONE
+};
+
+enum skl_pdi_type {
+	SKL_PDI_PCM = 0,
+	SKL_PDI_PDM = 1,
+	SKL_PDI_INVALID = 2
 };
 
 /**
