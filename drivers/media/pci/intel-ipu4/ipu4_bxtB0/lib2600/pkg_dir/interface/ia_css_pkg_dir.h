@@ -48,6 +48,13 @@ enum ia_css_pkg_dir_version ia_css_pkg_dir_get_version(
 );
 
 IA_CSS_PKG_DIR_STORAGE_CLASS_H
+uint16_t ia_css_pkg_dir_set_version(
+	ia_css_pkg_dir_entry_t *pkg_dir_header,
+	enum ia_css_pkg_dir_version version
+);
+
+
+IA_CSS_PKG_DIR_STORAGE_CLASS_H
 uint32_t ia_css_pkg_dir_entry_get_address_lo(
 	const ia_css_pkg_dir_entry_t *entry
 );

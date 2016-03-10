@@ -73,11 +73,14 @@ int ia_css_isys_device_open(
 	unsigned int stream_handle;
 	struct ia_css_isys_context *ctx;
 	struct ia_css_syscom_config sys;
+	struct ia_css_syscom_queue_config input_queue_cfg[STREAM_ID_MAX];
+	struct ia_css_syscom_queue_config output_queue_cfg;
 	unsigned long long program_host_address;
 	unsigned int program_vied_address;
 	struct ia_css_isys_fw_config isys_fw_cfg;
 	unsigned int ssid;
 	unsigned int mmid;
+	unsigned int i;
 
 	/* Printing "ENTRY IA_CSS_ISYS_DEVICE_OPEN" if tracing level = VERBOSE. */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_DEVICE_OPEN\n");
@@ -140,12 +143,20 @@ int ia_css_isys_device_open(
 	/* Copy to the sys config the driver_sys config, and add the internal info (token sizes) */
 	sys.ssid = config->driver_sys.ssid;
 	sys.mmid = config->driver_sys.mmid;
+
+	/* configure input queues: use same queue_size and token_size */
 	sys.num_input_queues = config->driver_sys.num_send_queues;
-	sys.num_output_queues = config->driver_sys.num_recv_queues;
-	sys.input_queue_size = config->driver_sys.send_queue_size;
-	sys.output_queue_size = config->driver_sys.recv_queue_size;
-	sys.input_token_size = sizeof(struct send_queue_token);
-	sys.output_token_size = sizeof(struct resp_queue_token);
+	sys.input = input_queue_cfg;
+	for (i=0; i<sys.num_input_queues; i++) {
+		input_queue_cfg[i].queue_size = config->driver_sys.send_queue_size;
+		input_queue_cfg[i].token_size = sizeof(struct send_queue_token);
+	}
+
+	/* configure output queue: one queue */
+	sys.num_output_queues = config->driver_sys.num_recv_queues; /* = 1 */
+	sys.output = &output_queue_cfg;
+	output_queue_cfg.queue_size = config->driver_sys.recv_queue_size;
+	output_queue_cfg.token_size = sizeof(struct resp_queue_token);
 
 	sys.regs_addr = ipu_device_cell_memory_address(SPC0, IPU_DEVICE_SP2600_CONTROL_REGS);
 	sys.dmem_addr = ipu_device_cell_memory_address(SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM);
