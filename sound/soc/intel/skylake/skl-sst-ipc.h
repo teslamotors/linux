@@ -118,6 +118,11 @@ struct skl_sst {
 	struct skl_d0i3_data d0i3;
 
 	const struct skl_dsp_ops *dsp_ops;
+
+	/* SDW Devices in DSP Space */
+	int num_sdw_controllers;
+	/* Array of sdw masters */
+	struct sdw_master *mstr;
 };
 
 struct skl_ipc_init_instance_msg {

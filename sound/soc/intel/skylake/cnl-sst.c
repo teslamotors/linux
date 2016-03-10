@@ -27,6 +27,8 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/device.h>
+#include <linux/sdw_bus.h>
+#include <linux/sdw/sdw_cnl.h>
 #include <asm/set_memory.h>
 
 #include "../common/sst-dsp.h"
@@ -497,6 +499,118 @@ static int cnl_ipc_init(struct device *dev, struct skl_sst *cnl)
 	return 0;
 }
 
+static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
+			void __iomem *mmio_base, int irq)
+{
+	struct sdw_master_capabilities *m_cap;
+	struct sdw_mstr_dp0_capabilities *dp0_cap;
+	struct sdw_mstr_dpn_capabilities *dpn_cap;
+	struct sdw_master *master;
+	struct cnl_sdw_data *p_data;
+	int ret = 0, i, j;
+	/* TODO: This number 4 should come from ACPI */
+	dsp->num_sdw_controllers = 1;
+	master = devm_kzalloc(dev,
+			(sizeof(*master) * dsp->num_sdw_controllers),
+			GFP_KERNEL);
+	if (!master) {
+			return -ENOMEM;
+			dsp->num_sdw_controllers = 0;
+	}
+	dsp->mstr = master;
+	/* TODO This should come from ACPI */
+	for (i = 0; i < dsp->num_sdw_controllers; i++) {
+		p_data = devm_kzalloc(dev, sizeof(*p_data), GFP_KERNEL);
+		if (!p_data)
+			return -ENOMEM;
+		/* PCI Device is parent of the SoundWire master device */
+		/* TODO: All these hardcoding should come from ACPI */
+		master[i].dev.parent = dev;
+		master[i].dev.platform_data = p_data;
+		m_cap = &master[i].mstr_capabilities;
+		dp0_cap = &m_cap->sdw_dp0_cap;
+		master[i].nr = i;
+		master[i].timeout = -1;
+		master[i].retries = CNL_SDW_MAX_CMD_RETRIES;
+		m_cap->base_clk_freq = 9.6 * 1000 * 1000;
+		strcpy(master[i].name, "cnl_sdw_mstr");
+		m_cap->highphy_capable = 0;
+		m_cap->sdw_dp0_supported = 1;
+		m_cap->num_data_ports = CNL_SDW_MAX_PORTS;
+		dp0_cap->max_word_length = 32;
+		dp0_cap->min_word_length = 1;
+		dp0_cap->num_word_length = 0;
+		dp0_cap->word_length_buffer = NULL;
+		dp0_cap->bra_max_data_per_frame = 0;
+		m_cap->sdw_dpn_cap = kzalloc(((sizeof(*dpn_cap)) *
+					CNL_SDW_MAX_PORTS), GFP_KERNEL);
+		if (!m_cap->sdw_dpn_cap)
+			return -ENOMEM;
+		for (j = 0; j < m_cap->num_data_ports; j++) {
+			dpn_cap = &m_cap->sdw_dpn_cap[i];
+			/* Both Tx and Rx */
+			dpn_cap->port_direction = 0x3;
+			dpn_cap->port_number = i;
+			dpn_cap->max_word_length = 32;
+			dpn_cap->min_word_length = 1;
+			dpn_cap->num_word_length = 0;
+			dpn_cap->word_length_buffer = NULL;
+			dpn_cap->dpn_type = SDW_FULL_DP;
+			dpn_cap->min_ch_num = 1;
+			dpn_cap->max_ch_num = 8;
+			dpn_cap->num_ch_supported = 0;
+			dpn_cap->ch_supported =  NULL;
+			/* IP supports all, but we are going to support only
+			 * isochronous
+			 */
+			dpn_cap->port_mode_mask =
+				SDW_PORT_FLOW_MODE_ISOCHRONOUS;
+			dpn_cap->block_packing_mode_mask =
+				SDW_PORT_BLK_PKG_MODE_BLK_PER_PORT |
+				SDW_PORT_BLK_PKG_MODE_BLK_PER_CH;
+		}
+		switch (i) {
+		case 0:
+			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_0_BASE;
+			break;
+		case 1:
+			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_1_BASE;
+			break;
+		case 2:
+			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_2_BASE;
+			break;
+		case 3:
+			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_3_BASE;
+			break;
+		default:
+			return -EINVAL;
+		}
+		p_data->sdw_shim = mmio_base + CNL_SDW_SHIM_BASE;
+		p_data->alh_base = mmio_base + CNL_ALH_BASE;
+		p_data->inst_id = i;
+		p_data->irq = irq;
+		ret = sdw_add_master_controller(&master[i]);
+		if (ret) {
+			dev_err(dev, "Failed to register soundwire master\n");
+			return ret;
+		}
+	}
+	/* Enable the global soundwire interrupts */
+	cnl_sdw_int_enable(dsp->dsp, 1);
+	return 0;
+}
+
+static void skl_unregister_sdw_masters(struct skl_sst *ctx)
+{
+	int i;
+
+	/* Disable global soundwire interrupts */
+	cnl_sdw_int_enable(ctx->dsp, 0);
+	for (i = 0; i < ctx->num_sdw_controllers; i++)
+		sdw_del_master_controller(&ctx->mstr[i]);
+
+}
+
 int cnl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 		     const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
 		     struct skl_sst **dsp)
@@ -540,6 +654,12 @@ int cnl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 		return ret;
 	}
 
+	ret = skl_register_sdw_masters(dev, cnl, mmio_base, irq);
+	if (ret) {
+		dev_err(cnl->dev, "%s SoundWire masters registration failed\n", __func__);
+		return ret;
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(cnl_sst_dsp_init);
@@ -571,6 +691,7 @@ void cnl_sst_dsp_cleanup(struct device *dev, struct skl_sst *ctx)
 		release_firmware(ctx->dsp->fw);
 
 	skl_freeup_uuid_list(ctx);
+	skl_unregister_sdw_masters(ctx);
 	cnl_ipc_free(&ctx->ipc);
 
 	ctx->dsp->ops->free(ctx->dsp);

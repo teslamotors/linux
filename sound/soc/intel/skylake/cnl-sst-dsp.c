@@ -237,6 +237,12 @@ void cnl_ipc_int_disable(struct sst_dsp *ctx)
 					  CNL_ADSPIC_IPC, 0);
 }
 
+void cnl_sdw_int_enable(struct sst_dsp *ctx, bool enable)
+{
+	sst_dsp_shim_update_bits(ctx, CNL_ADSP_REG_ADSPIC2,
+		CNL_ADSPIC2_SNDW, CNL_ADSPIC2_SNDW);
+}
+
 void cnl_ipc_op_int_enable(struct sst_dsp *ctx)
 {
 	/* enable IPC DONE interrupt */
