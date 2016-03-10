@@ -48,6 +48,7 @@ enum nhlt_link_type {
 	NHLT_LINK_DSP = 1,
 	NHLT_LINK_DMIC = 2,
 	NHLT_LINK_SSP = 3,
+	NHLT_LINK_SDW = 4,
 	NHLT_LINK_INVALID
 };
 

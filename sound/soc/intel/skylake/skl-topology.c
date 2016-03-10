@@ -1762,7 +1762,9 @@ static u8 skl_tplg_be_link_type(int dev_type)
 	case SKL_DEVICE_HDALINK:
 		ret = NHLT_LINK_HDA;
 		break;
-
+	case SKL_DEVICE_SDW:
+		ret = NHLT_LINK_SDW;
+		break;
 	default:
 		ret = NHLT_LINK_INVALID;
 		break;
@@ -1789,7 +1791,7 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 
 	skl_tplg_fill_dma_id(mconfig, params);
 
-	if (link_type == NHLT_LINK_HDA)
+	if (link_type == NHLT_LINK_HDA || link_type == NHLT_LINK_SDW)
 		return 0;
 
 	/* update the blob based on virtual bus_id*/
