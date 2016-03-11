@@ -22,7 +22,7 @@
 
 #include <security/keystore_api_common.h>
 
-#define KEYSTORE_MAX_APPKEY_SIZE       32
+#define KEYSTORE_MAX_APPKEY_SIZE      208
 #define KEYSTORE_CLIENT_KEY_SIZE       32
 #define KEYSTORE_MAX_CLIENT_ID_SIZE    32
 #define KEYSTORE_CLIENTS_MAX          256
@@ -64,6 +64,7 @@
 struct keystore_slot {
 	struct list_head list;       /* kernel's list structure */
 
+	enum keystore_key_spec key_spec;
 	uint8_t app_key[KEYSTORE_MAX_APPKEY_SIZE]; /* AppKey */
 	unsigned int app_key_size;   /* AppKey size in bytes */
 	unsigned int slot_id;                 /* SlotID */

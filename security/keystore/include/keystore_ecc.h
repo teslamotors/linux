@@ -20,10 +20,16 @@
 #include <security/keystore_api_common.h>
 
 /* ECC Public key size for backup operations */
-#define KEYSTORE_ECC_PUB_KEY_SIZE   (sizeof(struct ias_keystore_ecc_public_key))
+#define KEYSTORE_ECC_PUB_KEY_SIZE   (sizeof(struct keystore_ecc_public_key))
 
 /* ECC Private key size used on the host for migration */
 #define KEYSTORE_ECC_PRIV_KEY_SIZE  (sizeof(__u32) * KEYSTORE_ECC_DIGITS)
+
+/* ECC Key pair size */
+#define KEYSTORE_ECC_KEYPAIR_SIZE   (sizeof(struct ias_keystore_ecc_keypair))
+
+/* ECC Encrypted data extra size in bytes */
+#define KEYSTORE_ECIES_EXTRA_SIZE   185
 
 /**
  * keystore_ecc_gen_keys() - Generate ECC private and public key from a seed

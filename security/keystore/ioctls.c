@@ -39,6 +39,8 @@ union keystore_ops_union {
 	struct ias_keystore_unload_key unload_key;
 	struct ias_keystore_crypto_size crypto_size;
 	struct ias_keystore_encrypt_decrypt encrypt_decrypt;
+	struct ias_keystore_sign_verify sign_verify;
+	struct ias_keystore_get_public_key pub_key;
 	struct ias_keystore_backup backup;
 	struct keystore_ecc_public_key ecc_pub_key;
 	struct ias_keystore_ecc_keypair ecc_keys;
@@ -65,6 +67,10 @@ static unsigned int is_cmd_supported(unsigned int cmd)
 	case KEYSTORE_IOC_ENCRYPT:
 	case KEYSTORE_IOC_DECRYPT_SIZE:
 	case KEYSTORE_IOC_DECRYPT:
+	case KEYSTORE_IOC_SIGN_VERIFY_SIZE:
+	case KEYSTORE_IOC_SIGN:
+	case KEYSTORE_IOC_VERIFY:
+	case KEYSTORE_IOC_PUBKEY:
 	case KEYSTORE_IOC_BACKUP:
 	case KEYSTORE_IOC_GET_KSM_KEY:
 	case KEYSTORE_IOC_GEN_MKEY:
@@ -114,6 +120,14 @@ static unsigned char *getcmdstr(unsigned int cmd)
 		return "KEYSTORE_IOC_DECRYPT_SIZE";
 	case KEYSTORE_IOC_DECRYPT:
 		return "KEYSTORE_IOC_DECRYPT";
+	case KEYSTORE_IOC_SIGN_VERIFY_SIZE:
+		return "KEYSTORE_IOC_SIGN_VERIFY_SIZE";
+	case KEYSTORE_IOC_SIGN:
+		return "KEYSTORE_IOC_SIGN";
+	case KEYSTORE_IOC_VERIFY:
+		return "KEYSTORE_IOC_VERIFY";
+	case KEYSTORE_IOC_PUBKEY:
+		return "KEYSTORE_IOC_PUBKEY";
 	case KEYSTORE_IOC_BACKUP:
 		return "KEYSTORE_IOC_BACKUP";
 	case  KEYSTORE_IOC_GET_KSM_KEY:
@@ -179,7 +193,8 @@ static int wrapped_keysize_op(struct ias_keystore_wrapped_key_size *user_data)
 		return -EFAULT;
 
 	return keystore_wrapped_key_size(user_data->key_spec,
-					 &user_data->key_size);
+					 &user_data->key_size,
+					 &user_data->unwrapped_key_size);
 }
 
 static int generate_key_op(struct ias_keystore_generate_key *user_data)
@@ -192,7 +207,7 @@ static int generate_key_op(struct ias_keystore_generate_key *user_data)
 		return -EFAULT;
 
 	res = keystore_wrapped_key_size(user_data->key_spec,
-					&wrapped_key_size);
+					&wrapped_key_size, NULL);
 	if (res)
 		return -EINVAL;
 
@@ -217,23 +232,31 @@ free_buf:
 static int wrap_key_op(struct ias_keystore_wrap_key *user_data)
 {
 	int res = 0;
-	unsigned int wrapped_key_size;
 	uint8_t *wrapped_key = NULL;
+	uint8_t *app_key = NULL;
+	unsigned int wrapped_key_size;
+	unsigned int unwrapped_key_size;
 
 	if (!user_data)
 		return -EFAULT;
 
 	res = keystore_wrapped_key_size(user_data->key_spec,
-					&wrapped_key_size);
+					&wrapped_key_size, &unwrapped_key_size);
 	if (res)
 		return -EINVAL;
 
 	wrapped_key = kmalloc(wrapped_key_size, GFP_KERNEL);
-	if (!wrapped_key)
-		return -ENOMEM;
+	app_key = kmalloc(user_data->app_key_size, GFP_KERNEL);
+	if (!wrapped_key || !app_key) {
+		res = -ENOMEM;
+		goto free_buf;
+	}
+
+	res = copy_from_user(app_key, user_data->app_key,
+			     user_data->app_key_size);
 
 	res = keystore_wrap_key(user_data->client_ticket,
-				user_data->app_key,
+				app_key,
 				user_data->app_key_size,
 				user_data->key_spec,
 				wrapped_key);
@@ -245,6 +268,7 @@ static int wrap_key_op(struct ias_keystore_wrap_key *user_data)
 
 free_buf:
 	kzfree(wrapped_key);
+	kzfree(app_key);
 	return res;
 }
 
@@ -318,8 +342,6 @@ static int encrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 	input = kmalloc(user_data->input_size, GFP_KERNEL);
 	output = kmalloc(output_size, GFP_KERNEL);
 	if (!input || !output) {
-		ks_err(KBUILD_MODNAME ": Error allocating memory: input: %u @ 0x%x, output: %u @ 0x%x\n",
-		       input, user_data->input_size, output, output_size);
 		res = -ENOMEM;
 		goto free_buf;
 	}
@@ -331,8 +353,6 @@ static int encrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 	if (user_data->iv && user_data->iv_size > 0) {
 		iv = kmalloc(user_data->iv_size, GFP_KERNEL);
 		if (!iv) {
-			ks_err(KBUILD_MODNAME ": Error allocating memory for IV (%u)\n",
-				user_data->iv_size);
 			res = -ENOMEM;
 			goto free_buf;
 		}
@@ -422,6 +442,138 @@ free_buf:
 	kzfree(input);
 	kzfree(output);
 	kzfree(iv);
+	return res;
+}
+
+static int sign_verify_size_op(struct ias_keystore_crypto_size *user_data)
+{
+	if (!user_data)
+		return -EFAULT;
+	return keystore_sign_verify_size(user_data->algospec,
+				     &user_data->output_size);
+}
+
+static int sign_op(struct ias_keystore_sign_verify *user_data)
+{
+	int res;
+	unsigned int signature_size = 0;
+	uint8_t *input = NULL;
+	uint8_t *signature = NULL;
+
+	if (!user_data)
+		return -EFAULT;
+
+	res = keystore_sign_verify_size(user_data->algospec,
+				    &signature_size);
+	if (res)
+		return res;
+
+	input = kmalloc(user_data->input_size, GFP_KERNEL);
+	signature = kmalloc(signature_size, GFP_KERNEL);
+	if (!input || !signature) {
+		res = -ENOMEM;
+		goto free_buf;
+	}
+
+	res = copy_from_user(input, user_data->input, user_data->input_size);
+	if (res)
+		goto free_buf;
+
+	res = keystore_sign(user_data->client_ticket, user_data->slot_id,
+			       user_data->algospec,
+			       input, user_data->input_size,
+			       signature);
+
+	if (res)
+		goto free_buf;
+
+	res = copy_to_user(user_data->signature, signature, signature_size);
+
+free_buf:
+	kzfree(input);
+	kzfree(signature);
+	return res;
+}
+
+static int verify_op(struct ias_keystore_sign_verify *user_data)
+{
+	int res;
+	unsigned int signature_size = 0;
+	uint8_t *input = NULL;
+	uint8_t *signature = NULL;
+
+	if (!user_data)
+		return -EFAULT;
+
+	res = keystore_sign_verify_size(user_data->algospec,
+				    &signature_size);
+	if (res)
+		return res;
+
+	input = kmalloc(user_data->input_size, GFP_KERNEL);
+	signature = kmalloc(signature_size, GFP_KERNEL);
+	if (!input || !signature) {
+		res = -ENOMEM;
+		goto free_buf;
+	}
+
+	res = copy_from_user(input, user_data->input, user_data->input_size);
+	if (res)
+		goto free_buf;
+
+	res = copy_from_user(signature, user_data->signature, signature_size);
+	if (res)
+		goto free_buf;
+
+	res = keystore_verify(user_data->client_ticket, user_data->slot_id,
+			       user_data->algospec,
+			       input, user_data->input_size,
+			       signature);
+
+free_buf:
+	kzfree(input);
+	kzfree(signature);
+	return res;
+}
+
+static int pubkey_op(struct ias_keystore_get_public_key *user_data)
+{
+	int res;
+	uint8_t *unwrapped_key = NULL;
+	unsigned int wrapped_size, unwrapped_size;
+
+	if (!user_data)
+		return -EFAULT;
+
+	/* Call once to extract the key_spec of the key in slot */
+	res = keystore_get_public_key(user_data->client_ticket,
+				      user_data->slot_id,
+				      &user_data->key_spec,
+				      NULL);
+	if (res)
+		return res;
+
+	res = keystore_wrapped_key_size(user_data->key_spec,
+					&wrapped_size, &unwrapped_size);
+	if (res)
+		return res;
+
+	unwrapped_key = kmalloc(unwrapped_size, GFP_KERNEL);
+	if (!unwrapped_key)
+		return -ENOMEM;
+
+	res = keystore_get_public_key(user_data->client_ticket,
+				      user_data->slot_id,
+				      &user_data->key_spec,
+				      unwrapped_key);
+	if (res)
+		goto free_buf;
+
+	res = copy_to_user(user_data->unwrapped_key, unwrapped_key,
+			   unwrapped_size);
+
+free_buf:
+	kzfree(unwrapped_key);
 	return res;
 }
 
@@ -705,6 +857,22 @@ long keystore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	case KEYSTORE_IOC_DECRYPT:
 		res = decrypt_op(&op.encrypt_decrypt);
+		break;
+
+	case KEYSTORE_IOC_SIGN_VERIFY_SIZE:
+		res = sign_verify_size_op(&op.crypto_size);
+		break;
+
+	case KEYSTORE_IOC_SIGN:
+		res = sign_op(&op.sign_verify);
+		break;
+
+	case KEYSTORE_IOC_VERIFY:
+		res = verify_op(&op.sign_verify);
+		break;
+
+	case KEYSTORE_IOC_PUBKEY:
+		res = pubkey_op(&op.pub_key);
 		break;
 
 	case KEYSTORE_IOC_BACKUP:

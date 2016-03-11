@@ -62,12 +62,14 @@ int keystore_unregister(const uint8_t *client_ticket);
  * keystore_wrapped_key_size() - Get the wrapped key size in bytes
  * @keyspec:     The key type
  * @size:        Output size
+ * @unwrapped_size: Unwrapped key size (can be left null).
  *
  * To be called before generate/import key to allocate space for
  * a wrapped key buffer.
  */
 int keystore_wrapped_key_size(enum keystore_key_spec keyspec,
-			      unsigned int *size);
+			      unsigned int *size,
+			      unsigned int *unwrapped_size);
 
 /**
  * keystore_generate_key() - Generate a random key and wrap it.
@@ -150,8 +152,8 @@ int keystore_encrypt_size(enum keystore_algo_spec algo_spec,
  * @client_ticket:   The client ticket (KEYSTORE_CLIENT_TICKET_SIZE bytes).
  * @slot_id:         The slot ID.
  * @algo_spec:       The algorithm specification.
- * @iv:              Encryption initialization vector.
- * @iv_size:         Initialization vector size in bytes.
+ * @iv:              Encryption initialization vector (must be NULL for ECIES).
+ * @iv_size:         Initialization vector size in bytes (must be 0 for ECIES).
  * @input:           Input block of data to encrypt.
  * @input_size:      Input block size in bytes.
  * @output:          Pointer to the block for encrypted data. The caller
@@ -159,8 +161,6 @@ int keystore_encrypt_size(enum keystore_algo_spec algo_spec,
  *                   by first calling keystore_encrypt_size.
  *
  * Use the key stored in the given slot to encrypt a block of data.
- * The output contains the algo_spec and IV which is extracted by
- * the decrypt command.
  *
  * Return: Encrypted data size in bytes if OK or negative error code
  *         (see errno.h).
@@ -187,9 +187,9 @@ int keystore_decrypt_size(enum keystore_algo_spec algo_spec,
  *
  * @client_ticket:  The client ticket (KEYSTORE_CLIENT_TICKET_SIZE bytes).
  * @slot_id:        The slot ID.
- * @algo_spec:       The algorithm specification.
- * @iv:              Encryption initialization vector.
- * @iv_size:         Initialization vector size in bytes.
+ * @algo_spec:      The algorithm specification.
+ * @iv:             Encryption initialization vector.
+ * @iv_size:        Initialization vector size in bytes.
  * @input:          Input block of data to decrypt.
  * @input_size:     Input block size in bytes.
  * @output:         Pointer to the block for decrypted data. The caller
@@ -206,6 +206,84 @@ int keystore_decrypt(const uint8_t *client_ticket, int slot_id,
 		     const uint8_t *iv, unsigned int iv_size,
 		     const uint8_t *input, unsigned int input_size,
 		     uint8_t *output);
+
+/**
+ * keystore_sign_verify_size() - Get the required size of a signature buffer.
+ * @algo_spec:      The encryption algorithm specification.
+ * @signature_size: The size of the signature buffer.
+ *
+ * Return: 0 if OK or negative error code (see errno.h).
+ */
+int keystore_sign_verify_size(enum keystore_algo_spec algo_spec,
+			  unsigned int *signature_size);
+
+/**
+ * keystore_sign() - Sign plaintext using AppKey according to AlgoSpec.
+ *
+ * @client_ticket:   The client ticket (KEYSTORE_CLIENT_TICKET_SIZE bytes).
+ * @slot_id:         The slot ID.
+ * @algo_spec:       The algorithm specification.
+ * @input:           Input block of data to sign.
+ * @input_size:      Input block size in bytes.
+ * @signature:       Pointer to the block for signature data. The caller
+ *                   is responsible for providing a buffer of sufficent size
+ *                   by first calling keystore_sign_verify_size.
+ *
+ * Use the key stored in the given slot to sign a block of data.
+ *
+ * Return: Signature data size in bytes if OK or negative error code
+ *         (see errno.h).
+ */
+int keystore_sign(const uint8_t *client_ticket, int slot_id,
+		     enum keystore_algo_spec algo_spec,
+		     const uint8_t *input, unsigned int input_size,
+		     uint8_t *signature);
+
+/**
+ * keystore_verify() - verify plaintext using AppKey and Signature according
+ *                     to AlgoSpec.
+ *
+ * @client_ticket:   The client ticket (KEYSTORE_CLIENT_TICKET_SIZE bytes).
+ * @slot_id:         The slot ID.
+ * @algo_spec:       The algorithm specification.
+ * @input:           Input block of data to sign.
+ * @input_size:      Input block size in bytes.
+ * @signature:       Pointer to the signature data. The signature size must
+ *                   match the value returned by keystore_sign_verify_size
+ *                   for the given algo_spec.
+ *
+ * Use the key stored in the given slot and the signature to verify
+ * a block of data.
+ *
+ * Return: Zero if OK or negative error code
+ *         (see errno.h).
+ */
+int keystore_verify(const uint8_t *client_ticket, int slot_id,
+		     enum keystore_algo_spec algo_spec,
+		     const uint8_t *input, unsigned int input_size,
+		     uint8_t *signature);
+
+/**
+ * keystore_get_public_key() - Retrieve the public key from a loaded key.
+ * @client_ticket:   The client ticket (KEYSTORE_CLIENT_TICKET_SIZE bytes).
+ * @slot_id:         The slot ID.
+ * @key_spec:        Output key spec of the key in @slot_id.
+ * @unwrapped_key:   Output buffer for the unwrapped key.
+ *
+ * Retrieves the app key in the slot denoted by @slot. Make a copy of
+ * the key pair represented by the app key, but only copies the public
+ * key. The private key is filled with dummy values.
+ *
+ * If the @unwrapped_key is provided as null, the function will succeed
+ * and return the @key_spec of the key stored in @slot_id. To get the required
+ * size, keystore_wrapped_key_size() should be called providing a input
+ * for the @unwrapped_key argument.
+ *
+ * Returns: 0 OK or negative error code (see errno.h)
+ */
+int keystore_get_public_key(const uint8_t *client_ticket, int slot_id,
+			    enum keystore_key_spec *key_spec,
+			    uint8_t *unwrapped_key);
 
 /**
  * keystore_get_ksm_key() - Retrieve the Keystore public ECC key.

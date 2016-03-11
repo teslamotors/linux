@@ -32,20 +32,32 @@ struct keystore_test tests[] = {
 		.run  = keystore_test_ecc
 	},
 	{
-		.name = "Gen Key",
-		.run  = keystore_test_genkey
+		.name = "Gen Key AES",
+		.run  = keystore_test_genkey_aes
+	},
+	{
+		.name = "Gen Key ECC",
+		.run  = keystore_test_genkey_ecc
 	},
 	{
 		.name = "Wrap/Unwrap",
 		.run  = keystore_test_wrap_unwrap
 	},
 	{
-		.name = "Encrypt/Decrypt CCM",
-		.run  = keystore_test_encrypt_decrypt_ccm
+		.name = "Encrypt/Decrypt AES-CCM",
+		.run  = keystore_test_encrypt_decrypt_algo_aes_ccm
 	},
 	{
-		.name = "Encrypt/Decrypt GCM",
-		.run  = keystore_test_encrypt_decrypt_gcm
+		.name = "Encrypt/Decrypt AES-GCM",
+		.run  = keystore_test_encrypt_decrypt_algo_aes_gcm
+	},
+	{
+		.name = "Encrypt/Decrypt ECIES",
+		.run  = keystore_test_encrypt_decrypt_algo_ecies
+	},
+	{
+		.name = "Sign/Verify ECDSA",
+		.run  = keystore_test_sign_verify_algo_ecdsa
 	},
 	{
 		.name = "Encrypt/Decrypt for host",

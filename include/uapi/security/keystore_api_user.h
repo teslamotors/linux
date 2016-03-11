@@ -61,6 +61,10 @@
  *
  * keystore_encrypt() and keystore_decrypt()
  *
+ * Depending on the key type, data can also be signed or a signature verifed:
+ *
+ * keystore_sign() and keystore_verify()
+ *
  * Finally, the slot can be freed and session ended using:
  *
  * keystore_unload_key() and keystore_unregister()
@@ -187,10 +191,14 @@ struct ias_keystore_unregister {
  * struct ias_keystore_wrapped_key_size - Gets size of a wrapped key in bytes.
  * @key_spec:       The key type to get the size for.
  * @key_size:       The size of the wrapped key in bytes.
+ * @unwrapped_key_size: Size of the unwrapped key.
  *
  * Returns the size of a wrapped key for a given key spec. This
  * should be called before a wrapped key is generated or imported
  * in order to allocate memory for the wrapped key buffer.
+ *
+ * The unwrapped key size will also be returned to be used when
+ * importing exisiting keys or retrieving public keys.
  */
 struct ias_keystore_wrapped_key_size {
 	/* input */
@@ -198,6 +206,7 @@ struct ias_keystore_wrapped_key_size {
 
 	/* output */
 	__u32 key_size;
+	__u32 unwrapped_key_size;
 };
 
 /**
@@ -327,6 +336,52 @@ struct ias_keystore_encrypt_decrypt {
 
 	/* output */
 	__u8 __user *output;  /* notice: pointer */
+};
+
+/**
+ * struct ias_keystore_sign_verify - Sign and Verify using a loaded key
+ * @client_ticket:    Ticket used to identify this client session
+ * @slot_id:          The assigned slot
+ * @algospec:         The signature algorithm to use
+ * @input:            Pointer to the cleartext input
+ * @input_size:       Size of the input data
+ * @signature:        Pointer to a signature buffer
+ *
+ * Sign/Verify a block of data using the key stored in the given slot.
+ * The caller must assure that the output points to a buffer with
+ * at enough space. The correct size can be calculated by calling
+ * ias_keystore_crypto_size.
+ */
+struct ias_keystore_sign_verify {
+	/* input */
+	__u8 client_ticket[KEYSTORE_CLIENT_TICKET_SIZE];
+	__u32 slot_id;
+	__u32 algospec;
+	const __u8 __user *input;
+	__u32 input_size;
+
+	/* input/output */
+	__u8 __user *signature;  /* notice: pointer */
+};
+
+/**
+ * struct ias_keystore_get_public_key - Get the public key from a loaded pair.
+ * @client_ticket:    Ticket used to identify this client session.
+ * @slot_id:          The assigned slot.
+ * @unwrapped_key:    A pointer to the unwrapped key output buffer.
+ *
+ * For a key pair generated within keystore, an API is required to retrieve
+ * the public key in unwrapped form.
+ *
+ */
+struct ias_keystore_get_public_key {
+	/* input */
+	__u8 client_ticket[KEYSTORE_CLIENT_TICKET_SIZE];
+	__u32 slot_id;
+	__u32 key_spec;
+
+	/* output */
+	__u8 __user *unwrapped_key;
 };
 
 /**
@@ -629,13 +684,50 @@ struct ias_keystore_migrate {
 	_IOW(KEYSTORE_IOC_MAGIC,  11, struct ias_keystore_encrypt_decrypt)
 
 /**
+ * KEYSTORE_IOC_SIGN_VERIFY_SIZE - Get the required size of an encrypted buffer.
+ *
+ * Calls the keystore_sign_verify_size() function with
+ * &struct ias_keystore_crypto_size.
+ */
+#define KEYSTORE_IOC_SIGN_VERIFY_SIZE\
+	_IOWR(KEYSTORE_IOC_MAGIC,  12, struct ias_keystore_crypto_size)
+
+/**
+ * KEYSTORE_IOC_SIGN - Sign plaintext using AppKey according to AlgoSpec.
+ *
+ * Calls the keystore_sign() function with
+ * &struct ias_keystore_sign_verify.
+ */
+#define KEYSTORE_IOC_SIGN\
+	_IOW(KEYSTORE_IOC_MAGIC,  13, struct ias_keystore_sign_verify)
+
+/**
+ * KEYSTORE_IOC_VERIFY - Verify plaintext using AppKey and Signature according
+ *                       to AlgoSpec.
+ *
+ * Calls the keystore_verify() function with
+ * &struct ias_keystore_sign_verify.
+ */
+#define KEYSTORE_IOC_VERIFY\
+	_IOW(KEYSTORE_IOC_MAGIC,  14, struct ias_keystore_sign_verify)
+
+/**
+ * KEYSTORE_IOC_PUBKEY - Get the public key corresponding to a loaded key pair.
+ *
+ * Calls the keystore_get_public_key() function with
+ * &struct ias_keystore_get_public key.
+ */
+#define KEYSTORE_IOC_PUBKEY\
+	_IOW(KEYSTORE_IOC_MAGIC,  15, struct ias_keystore_get_public_key)
+
+/**
  * KEYSTORE_IOC_GET_KSM_KEY - Retrieve the Keystore public ECC key.
  *
  * Calls the keystore_get_ksm_key() function with
  * &struct keystore_ecc_public_key.
  */
 #define KEYSTORE_IOC_GET_KSM_KEY\
-	_IOR(KEYSTORE_IOC_MAGIC,  12, struct keystore_ecc_public_key)
+	_IOR(KEYSTORE_IOC_MAGIC,  100, struct keystore_ecc_public_key)
 
 /**
  * KEYSTORE_IOC_BACKUP - Create an encrypted backup of the Client Key.
@@ -644,16 +736,16 @@ struct ias_keystore_migrate {
  * &struct ias_keystore_backup.
  */
 #define KEYSTORE_IOC_BACKUP\
-	_IOWR(KEYSTORE_IOC_MAGIC,  13, struct ias_keystore_backup)
+	_IOWR(KEYSTORE_IOC_MAGIC,  101, struct ias_keystore_backup)
 
 /**
  * KEYSTORE_IOC_GEN_MKEY - Generate migration key.
  *
- * Calls the keystore_genereate_mkey() function with
+ * Calls the keystore_generate_mkey() function with
  * &struct ias_keystore_gen_mkey.
  */
 #define KEYSTORE_IOC_GEN_MKEY\
-	_IOWR(KEYSTORE_IOC_MAGIC, 14, struct ias_keystore_gen_mkey)
+	_IOWR(KEYSTORE_IOC_MAGIC,  102, struct ias_keystore_gen_mkey)
 
 /**
  * KEYSTORE_IOC_REWRAP - Import key backup and re-wrap a key
@@ -662,19 +754,19 @@ struct ias_keystore_migrate {
  * &struct ias_keystore_rewrap.
  */
 #define KEYSTORE_IOC_REWRAP\
-	_IOWR(KEYSTORE_IOC_MAGIC, 15, struct ias_keystore_rewrap)
+	_IOWR(KEYSTORE_IOC_MAGIC,  103, struct ias_keystore_rewrap)
 
 /**
  * KEYSTORE_IOC_GEN_ECC_KEYS - Generate a random ECC private and public keypair.
  */
 #define KEYSTORE_IOC_GEN_ECC_KEYS\
-	_IOWR(KEYSTORE_IOC_MAGIC,  100, struct ias_keystore_ecc_keypair)
+	_IOWR(KEYSTORE_IOC_MAGIC,  200, struct ias_keystore_ecc_keypair)
 
 /**
  * KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE - Verify an ECC signature.
  */
 #define KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE\
-	_IOW(KEYSTORE_IOC_MAGIC,  101, struct ias_keystore_verify_signature)
+	_IOW(KEYSTORE_IOC_MAGIC,  201, struct ias_keystore_verify_signature)
 
 /**
  * KEYSTORE_IOC_UNWRAPPED_KEYSIZE - Get the size of an unwrapped key
@@ -684,7 +776,7 @@ struct ias_keystore_migrate {
  * has been set.
  */
 #define KEYSTORE_IOC_UNWRAPPED_KEYSIZE\
-	_IOWR(KEYSTORE_IOC_MAGIC, 102, struct ias_keystore_unwrapped_key_size)
+	_IOWR(KEYSTORE_IOC_MAGIC, 202, struct ias_keystore_unwrapped_key_size)
 
 /**
  * KEYSTORE_IOC_UNWRAP_WITH_BACKUP - Unwrap a key using encrypted backup
@@ -694,7 +786,7 @@ struct ias_keystore_migrate {
  * has been set.
  */
 #define KEYSTORE_IOC_UNWRAP_WITH_BACKUP\
-	_IOWR(KEYSTORE_IOC_MAGIC, 103, struct ias_keystore_unwrap_with_backup)
+	_IOWR(KEYSTORE_IOC_MAGIC, 203, struct ias_keystore_unwrap_with_backup)
 
 /**
  * KEYSTORE_IOC_MIGRATE - Re-encrypt using a migration key.
@@ -704,7 +796,7 @@ struct ias_keystore_migrate {
  * has been set.
  */
 #define KEYSTORE_IOC_MIGRATE\
-	_IOWR(KEYSTORE_IOC_MAGIC, 104, struct ias_keystore_migrate)
+	_IOWR(KEYSTORE_IOC_MAGIC, 204, struct ias_keystore_migrate)
 
 /**
  * KEYSTORE_IOC_MIGRATE_RUN_TESTS - Runs a series of self-test functions.

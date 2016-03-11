@@ -57,6 +57,7 @@ int ctx_remove_client(const uint8_t *client_ticket)
 }
 
 int ctx_add_app_key(const uint8_t *client_ticket,
+		    enum keystore_key_spec key_spec,
 		    const uint8_t *app_key, unsigned int app_key_size,
 		    unsigned int *slot_id)
 {
@@ -81,6 +82,7 @@ int ctx_add_app_key(const uint8_t *client_ticket,
 		goto unlock_mutex;
 	}
 
+	slot->key_spec = key_spec;
 	slot->app_key_size = app_key_size;
 	memcpy(slot->app_key, app_key, app_key_size);
 
@@ -92,7 +94,7 @@ unlock_mutex:
 }
 
 int ctx_get_client_key(const uint8_t *client_ticket,
-		    uint8_t *client_key, uint8_t *client_id)
+		       uint8_t *client_key, uint8_t *client_id)
 {
 	struct keystore_ctx *ctx = NULL;
 	int res = 0;
@@ -121,16 +123,15 @@ unlock_mutex:
 }
 
 
-int ctx_get_app_key(const uint8_t *client_ticket,
-		    unsigned int slot_id,
-		    uint8_t *app_key,
-		    unsigned int *app_key_size)
+int ctx_get_app_key(const uint8_t *client_ticket, unsigned int slot_id,
+		    enum keystore_key_spec *key_spec,
+		    uint8_t *app_key, unsigned int *app_key_size)
 {
 	struct keystore_ctx *ctx = NULL;
 	struct keystore_slot *slot = NULL;
 	int res = 0;
 
-	if (!client_ticket || !app_key_size)
+	if (!client_ticket || !key_spec || !app_key_size)
 		return -EFAULT;
 
 	if (slot_id >= KEYSTORE_SLOTS_MAX)
@@ -154,6 +155,8 @@ int ctx_get_app_key(const uint8_t *client_ticket,
 		goto unlock_mutex;
 	}
 
+	/* Copy the key spec to start with */
+	*key_spec = slot->key_spec;
 
 	/* If app_key is null, assume the caller wants to know the size */
 	if (!app_key) {

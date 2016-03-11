@@ -93,6 +93,7 @@ int ctx_remove_client(const uint8_t *client_ticket);
  *
  * @client_ticket: The client ticket to register against. Expected to be an
  *          array of size %KEYSTORE_CLIENT_TICKET_SIZE.
+ * @key_spec: The Key Spec for this key.
  * @app_key: A pointer to the application key to be stored.
  * @app_key_size: Size of @app_key in bytes.
  * @slot_id: Output the number of slot where the key is stored.
@@ -103,6 +104,7 @@ int ctx_remove_client(const uint8_t *client_ticket);
  *
  */
 int ctx_add_app_key(const uint8_t *client_ticket,
+		    enum keystore_key_spec key_spec,
 		    const uint8_t *app_key,
 		    unsigned int app_key_size,
 		    unsigned int *slot_id);
@@ -135,6 +137,7 @@ int ctx_get_client_key(const uint8_t *client_ticket,
  *
  * @client_ticket: The client ticket to register against. Expected to be an
  *          array of size %KEYSTORE_CLIENT_TICKET_SIZE.
+ * @key_spec: The Key Spec for this key.
  * @slot_id: The number of the slot where the key is stored.
  * @app_key: A pointer to the application key to be stored.
  * @app_key_size: Size of @app_key in bytes.
@@ -156,6 +159,7 @@ int ctx_get_client_key(const uint8_t *client_ticket,
  *
  */
 int ctx_get_app_key(const uint8_t *client_ticket, unsigned int slot_id,
+		    enum keystore_key_spec *key_spec,
 		    uint8_t *app_key, unsigned int *app_key_size);
 
 /**

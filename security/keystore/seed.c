@@ -130,8 +130,7 @@ int keystore_fill_seeds(void)
 
 const uint8_t *keystore_get_seed(enum keystore_seed_type type)
 {
-	if ((type != SEED_TYPE_DEVICE) ||
-	    (type != SEED_TYPE_USER))
+	if ((type != SEED_TYPE_DEVICE) && (type != SEED_TYPE_USER))
 		return NULL;
 
 	if (!seed_available[type])

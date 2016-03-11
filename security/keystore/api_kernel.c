@@ -48,7 +48,7 @@ int keystore_register(enum keystore_seed_type seed_type, uint8_t *client_ticket)
 	 * can still call api's so check for sb-status and act accordingly.
 	 */
 #ifdef CONFIG_KEYSTORE_SECURE_BOOT_IGNORE
-	ks_info(KBUILD_MODNAME ": Using hardcoded SEEDs for key generation\n");
+	ks_warn(KBUILD_MODNAME ": Using hardcoded SEEDs for key generation\n");
 #else
 	if (!get_sb_stat()) {
 		ks_err(KBUILD_MODNAME ": Cannot register with keystore - secure boot not enabled\n");
@@ -119,13 +119,21 @@ int keystore_unregister(const uint8_t *client_ticket)
 EXPORT_SYMBOL(keystore_unregister);
 
 int keystore_wrapped_key_size(enum keystore_key_spec keyspec,
-			      unsigned int *size)
+			      unsigned int *size,
+			      unsigned int *unwrapped_size)
 {
 	int res = 0;
 
 	FUNC_BEGIN;
 	res = keyspec_to_wrapped_keysize(keyspec, size);
+	if (res)
+		goto exit;
 
+	/* Also copy the unwrapped size if not null */
+	if (unwrapped_size)
+		res = unwrapped_key_size(*size, unwrapped_size);
+
+exit:
 	FUNC_RES(res);
 	return res;
 }
@@ -214,7 +222,7 @@ int keystore_load_key(const uint8_t *client_ticket, const uint8_t *wrapped_key,
 	uint8_t app_key[KEYSTORE_MAX_APPKEY_SIZE];
 	unsigned int app_key_size = 0;
 	int res = 0;
-	enum keystore_key_spec keyspec;
+	enum keystore_key_spec keyspec = KEYSPEC_INVALID;
 
 	FUNC_BEGIN;
 
@@ -246,7 +254,8 @@ int keystore_load_key(const uint8_t *client_ticket, const uint8_t *wrapped_key,
 		goto key_clear;
 	}
 
-	res = ctx_add_app_key(client_ticket, app_key, app_key_size, slot_id);
+	res = ctx_add_app_key(client_ticket, keyspec, app_key, app_key_size,
+			      slot_id);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Insert key to slot failed\n",
 		       __func__);
@@ -295,17 +304,19 @@ int keystore_encrypt(const uint8_t *client_ticket, int slot_id,
 		     uint8_t *output)
 {
 	uint8_t app_key[KEYSTORE_MAX_APPKEY_SIZE];
-	unsigned int app_key_size = 0;
+	unsigned int app_key_size = sizeof(app_key);
+	enum keystore_key_spec key_spec = KEYSPEC_INVALID;
 	int res = 0;
 
 	FUNC_BEGIN;
 
-	ks_info(KBUILD_MODNAME
-		": keystore_encrypt slot_id=%d algo_spec=%d iv_size=%u isize=%u\n",
-		slot_id, (int)algo_spec, iv_size, input_size);
+	ks_debug(KBUILD_MODNAME
+		 ": keystore_encrypt slot_id=%d algo_spec=%d iv_size=%u isize=%u\n",
+		 slot_id, (int)algo_spec, iv_size, input_size);
 
 	/* Get the application key */
-	res = ctx_get_app_key(client_ticket, slot_id, app_key, &app_key_size);
+	res = ctx_get_app_key(client_ticket, slot_id, &key_spec,
+			      app_key, &app_key_size);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Error %d getting app key.\n",
 		       __func__, res);
@@ -316,7 +327,7 @@ int keystore_encrypt(const uint8_t *client_ticket, int slot_id,
 	res = do_encrypt(algo_spec, app_key, app_key_size, iv, iv_size,
 			 input, input_size, output);
 	if (res) {
-		ks_err(KBUILD_MODNAME ": %s: Error %d in keystore_aes_ccm_crypt\n",
+		ks_err(KBUILD_MODNAME ": %s: Error %d in do_encrypt\n",
 		       __func__, res);
 		goto zero_buf;
 	}
@@ -344,13 +355,15 @@ int keystore_decrypt(const uint8_t *client_ticket, int slot_id,
 		     uint8_t *output)
 {
 	uint8_t app_key[KEYSTORE_MAX_APPKEY_SIZE];
-	unsigned int app_key_size = 0;
+	unsigned int app_key_size = sizeof(app_key);
+	enum keystore_key_spec key_spec = KEYSPEC_INVALID;
 	int res = 0;
 
 	FUNC_BEGIN;
 
 	/* Get the application key */
-	res = ctx_get_app_key(client_ticket, slot_id, app_key, &app_key_size);
+	res = ctx_get_app_key(client_ticket, slot_id, &key_spec,
+			      app_key, &app_key_size);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Error %d getting app key.\n",
 		       __func__, res);
@@ -360,7 +373,7 @@ int keystore_decrypt(const uint8_t *client_ticket, int slot_id,
 	res = do_decrypt(algo_spec, app_key, app_key_size, iv, iv_size,
 			 input, input_size, output);
 	if (res) {
-		ks_err(KBUILD_MODNAME ": %s: Error %d in keystore_aes_ccm_crypt\n",
+		ks_err(KBUILD_MODNAME ": %s: Error %d in do_decrypt\n",
 		       __func__, res);
 		goto zero_buf;
 	}
@@ -373,6 +386,154 @@ exit:
 	return res;
 }
 EXPORT_SYMBOL(keystore_decrypt);
+
+int keystore_sign_verify_size(enum keystore_algo_spec algo_spec,
+			      unsigned int *signature_size)
+{
+	int res = 0;
+
+	FUNC_BEGIN;
+	res = signature_input_output_size(algo_spec, signature_size);
+
+	FUNC_RES(res);
+	return res;
+}
+EXPORT_SYMBOL(keystore_sign_verify_size);
+
+int keystore_sign(const uint8_t *client_ticket, int slot_id,
+		  enum keystore_algo_spec algo_spec,
+		  const uint8_t *input, unsigned int input_size,
+		  uint8_t *signature)
+{
+	uint8_t app_key[KEYSTORE_MAX_APPKEY_SIZE];
+	unsigned int app_key_size = sizeof(app_key);
+	enum keystore_key_spec key_spec = KEYSPEC_INVALID;
+	int res = 0;
+
+	FUNC_BEGIN;
+
+	ks_debug(KBUILD_MODNAME
+		 ": keystore_sign slot_id=%d algo_spec=%d isize=%u\n",
+		 slot_id, (int)algo_spec, input_size);
+
+	/* Get the application key */
+	res = ctx_get_app_key(client_ticket, slot_id, &key_spec,
+			      app_key, &app_key_size);
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s: Error %d getting app key.\n",
+		       __func__, res);
+		goto exit;
+	}
+
+	/* Sign */
+	res = do_sign(algo_spec, app_key, app_key_size,
+			 input, input_size, signature);
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s: Error %d in do_sign\n",
+		       __func__, res);
+		goto zero_buf;
+	}
+
+zero_buf:
+	/* clear local copy of AppKey */
+	memset(app_key, 0, sizeof(app_key));
+exit:
+	FUNC_RES(res);
+	return res;
+}
+EXPORT_SYMBOL(keystore_sign);
+
+int keystore_verify(const uint8_t *client_ticket, int slot_id,
+		    enum keystore_algo_spec algo_spec,
+		    const uint8_t *input, unsigned int input_size,
+		    uint8_t *signature)
+{
+	uint8_t app_key[KEYSTORE_MAX_APPKEY_SIZE];
+	unsigned int app_key_size = sizeof(app_key);
+	enum keystore_key_spec key_spec = KEYSPEC_INVALID;
+	int res = 0;
+
+	FUNC_BEGIN;
+
+	ks_debug(KBUILD_MODNAME
+		 ": keystore_verify slot_id=%d algo_spec=%d isize=%u\n",
+		 slot_id, (int)algo_spec, input_size);
+
+	/* Get the application key */
+	res = ctx_get_app_key(client_ticket, slot_id, &key_spec,
+			      app_key, &app_key_size);
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s: Error %d getting app key.\n",
+		       __func__, res);
+		goto exit;
+	}
+
+	/* Verify */
+	res = do_verify(algo_spec, app_key, app_key_size,
+			input, input_size, signature);
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s: Error %d in do_verify\n",
+		       __func__, res);
+		goto zero_buf;
+	}
+
+zero_buf:
+	/* clear local copy of AppKey */
+	memset(app_key, 0, sizeof(app_key));
+exit:
+	FUNC_RES(res);
+	return res;
+}
+EXPORT_SYMBOL(keystore_verify);
+
+int keystore_get_public_key(const uint8_t *client_ticket, int slot_id,
+			    enum keystore_key_spec *key_spec,
+			    uint8_t *unwrapped_key)
+{
+	uint8_t app_key[KEYSTORE_MAX_APPKEY_SIZE];
+	unsigned int app_key_size = sizeof(app_key);
+
+	int res = 0;
+
+	FUNC_BEGIN;
+
+	ks_debug(KBUILD_MODNAME
+		 ": keystore_get_public_key slot_id=%d\n", slot_id);
+
+	if (!key_spec) {
+		res = -EFAULT;
+		goto exit;
+	}
+
+	/* Get the application key */
+	res = ctx_get_app_key(client_ticket, slot_id, key_spec,
+			      app_key, &app_key_size);
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s: Error %d getting app key.\n",
+		       __func__, res);
+		goto exit;
+	}
+
+	/* A null unwrapped_key: assume the called just wants the key_spec */
+	if (!unwrapped_key) {
+		res = 0;
+		goto zero_buf;
+	}
+
+	res = get_public_key(*key_spec, app_key, app_key_size, unwrapped_key);
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s: Error %d in get_public_key\n",
+		       __func__, res);
+	}
+
+zero_buf:
+	/* clear local copy of AppKey */
+	memset(app_key, 0, sizeof(app_key));
+exit:
+	FUNC_RES(res);
+	return res;
+}
+EXPORT_SYMBOL(keystore_get_public_key);
 
 int keystore_get_ksm_key(struct keystore_ecc_public_key *public_key)
 {

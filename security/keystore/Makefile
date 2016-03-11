@@ -6,7 +6,7 @@
 ccflags-y += -Isecurity/keystore/include -Isecurity/keystore/crypto
 
 # Keystore module
-obj-$(CONFIG_KEYSTORE) += keystore.o
+obj-$(CONFIG_KEYSTORE) := keystore.o
 
 keystore-y :=\
 	keystore_kmod.o\

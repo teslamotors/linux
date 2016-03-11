@@ -105,27 +105,6 @@ static int keystore_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-#ifdef DEBUG
-static ssize_t keystore_debug_read(struct file *file, char __user *user,
-		size_t size, loff_t *offset)
-{
-	const char *str = "Hello World\n";
-	int res;
-
-	res = copy_to_user(user, str, 12);
-	if (res != 0) {
-		ks_info(KBUILD_MODNAME ": Failed to copy string into user space\n");
-		return res;
-	}
-
-	if (*offset == 0) {
-		*offset += 12;
-		return 12;
-	}
-	return 0;
-}
-#endif
-
 /* The various file operations we support. */
 static const struct file_operations keystore_fops = {
 open:		 keystore_open,
@@ -163,9 +142,6 @@ static int __init keystore_init(void)
 				res);
 		return res;
 	}
-
-	/* Run tests (if CONFIG_KEYSTORE_TESTMODE is set) */
-	keystore_run_tests();
 
 	/* create dynamic node device */
 	res = alloc_chrdev_region(&dev_keystore, 0, 1, "keystore");

@@ -152,11 +152,13 @@ enum keystore_seed_type {
  * @KEYSPEC_INVALID: Invalid keyspec
  * @KEYSPEC_LENGTH_128: 128-bit raw key (for AES)
  * @KEYSPEC_LENGTH_256: 256-bit raw key (for AES)
+ * @KEYSPEC_LENGTH_ECC_PAIR: 1664-bit raw key pair (for ECC)
  */
 enum keystore_key_spec {
 	KEYSPEC_INVALID = 0,
-	KEYSPEC_LENGTH_128,
-	KEYSPEC_LENGTH_256
+	KEYSPEC_LENGTH_128 = 1,
+	KEYSPEC_LENGTH_256 = 2,
+	KEYSPEC_LENGTH_ECC_PAIR = 128,
 };
 
 /**
@@ -164,11 +166,15 @@ enum keystore_key_spec {
  * @ALGOSPEC_INVALID: Invalid Algospec
  * @ALGOSPEC_AES_CCM: AES_CCM Algorithm (128/256 bit depending on key length)
  * @ALGOSPEC_AES_GCM: AES_GCM Algorithm (128/256 bit depending on key length)
+ * @ALGOSPEC_ECIES: ECC/ECIES Encryption Algorithm (using secp521r1)
+ * @ALGOSPEC_ECDSA: ECC/ECDSA Signature Algorithm (using secp521r1)
  */
 enum keystore_algo_spec {
 	ALGOSPEC_INVALID = 0,
 	ALGOSPEC_AES_CCM = 1,
-	ALGOSPEC_AES_GCM = 2
+	ALGOSPEC_AES_GCM = 2,
+	ALGOSPEC_ECIES = 128,
+	ALGOSPEC_ECDSA = 129
 };
 
 #endif /* _KEYSTORE_API_COMMON_H_ */

@@ -15,7 +15,7 @@
 #include "keystore_ecc.h"
 #include "keystore_aes.h"
 
-int keystore_test_genkey(void)
+int keystore_test_genkey_aes(void)
 {
 	int res = 0;
 	void *app_key = NULL;
@@ -27,6 +27,26 @@ int keystore_test_genkey(void)
 	if (keystore_assert(app_key != NULL))
 		goto exit;
 	if (keystore_assert(app_key_size == 32))
+		goto free_key;
+
+free_key:
+	kfree(app_key);
+exit:
+	return res;
+}
+
+int keystore_test_genkey_ecc(void)
+{
+	int res = 0;
+	void *app_key = NULL;
+	unsigned int app_key_size;
+	enum keystore_key_spec spec = KEYSPEC_LENGTH_ECC_PAIR;
+
+	app_key = generate_new_key(spec, &app_key_size);
+
+	if (keystore_assert(app_key != NULL))
+		goto exit;
+	if (keystore_assert(app_key_size == 208))
 		goto free_key;
 
 free_key:
@@ -98,7 +118,8 @@ exit:
 	return res;
 }
 
-static int keystore_test_encrypt_decrypt_algo(enum keystore_algo_spec algo_spec)
+static int keystore_test_encrypt_decrypt_algo_aes(
+				enum keystore_algo_spec algo_spec)
 {
 	int res = 0;
 	size_t m_len = 32;
@@ -110,7 +131,7 @@ static int keystore_test_encrypt_decrypt_algo(enum keystore_algo_spec algo_spec)
 	uint8_t *m2 = NULL;
 	unsigned int m2_len = 0;
 
-	ks_info(KBUILD_MODNAME ": keystore_test_encrypt_decrypt_algo(%d)\n", algo_spec);
+	ks_info(KBUILD_MODNAME ": keystore_test_encrypt_decrypt_algo_aes(%d)\n", algo_spec);
 
 	res = keystore_get_rdrand(iv, sizeof(iv));
 	keystore_hexdump("IV", iv, sizeof(iv));
@@ -162,8 +183,10 @@ static int keystore_test_encrypt_decrypt_algo(enum keystore_algo_spec algo_spec)
 	}
 
 	m2 = kmalloc(m2_len, GFP_KERNEL);
-	if (keystore_assert(c != NULL))
+	if (keystore_assert(m2 != NULL)) {
+		res = -ENOMEM;
 		goto free_mem;
+	}
 
 	res = do_decrypt(algo_spec, key, sizeof(key),
 			 iv, sizeof(iv), c, c_len, m2);
@@ -178,14 +201,130 @@ free_mem:
 	return res;
 }
 
-int keystore_test_encrypt_decrypt_ccm(void)
+int keystore_test_encrypt_decrypt_algo_aes_ccm(void)
 {
-	return keystore_test_encrypt_decrypt_algo(ALGOSPEC_AES_CCM);
+	return keystore_test_encrypt_decrypt_algo_aes(ALGOSPEC_AES_CCM);
 }
 
-int keystore_test_encrypt_decrypt_gcm(void)
+int keystore_test_encrypt_decrypt_algo_aes_gcm(void)
 {
-	return keystore_test_encrypt_decrypt_algo(ALGOSPEC_AES_GCM);
+	return keystore_test_encrypt_decrypt_algo_aes(ALGOSPEC_AES_GCM);
+}
+
+int keystore_test_encrypt_decrypt_algo_ecies(void)
+{
+	int res = 0;
+	size_t m_len = 32;
+	uint8_t m[m_len];
+	uint8_t *key = NULL;
+	unsigned int key_size;
+	uint8_t *c = NULL;
+	unsigned int c_len = 0;
+	uint8_t *m2 = NULL;
+	unsigned int m2_len = 0;
+
+	ks_info(KBUILD_MODNAME ": keystore_test_encrypt_decrypt_algo_ecies\n");
+
+	res = keystore_get_rdrand(m, sizeof(m));
+	keystore_hexdump("Plain data", m, m_len);
+	if (keystore_assert(res == 0))
+		return res;
+
+	key = generate_new_key(KEYSPEC_LENGTH_ECC_PAIR, &key_size);
+	keystore_hexdump("Key", key, sizeof(key));
+	if (keystore_assert(key != NULL))
+		return -1;
+
+	res = encrypt_output_size(ALGOSPEC_ECIES, m_len, &c_len);
+	if (keystore_assert(res == 0))
+		goto free_mem;
+
+	c = kmalloc(c_len, GFP_KERNEL);
+	if (keystore_assert(c != NULL))
+		goto free_mem;
+	memset(c, 0, c_len);
+
+	res = do_encrypt(ALGOSPEC_ECIES, key, sizeof(key),
+			 NULL, 0, m, m_len, c);
+
+	keystore_hexdump("Encrypted data", c, c_len);
+
+	if (keystore_assert(res == 0))
+		goto free_mem;
+
+	res = decrypt_output_size(ALGOSPEC_ECIES, c_len, &m2_len);
+	if (keystore_assert(res == 0) || keystore_assert(m2_len == m_len)) {
+		res = -1;
+		goto free_mem;
+	}
+
+	m2 = kmalloc(m2_len, GFP_KERNEL);
+	if (keystore_assert(m2 != NULL)) {
+		res = -ENOMEM;
+		goto free_mem;
+	}
+
+	res = do_decrypt(ALGOSPEC_ECIES, key, sizeof(key),
+			 NULL, 0, c, c_len, m2);
+	if (keystore_assert(res == 0))
+		goto free_mem;
+
+	res = keystore_assert(memcmp(m, m2, m_len) == 0);
+
+free_mem:
+	kzfree(key);
+	kzfree(c);
+	kzfree(m2);
+	return res;
+}
+
+int keystore_test_sign_verify_algo_ecdsa(void)
+{
+	int res = 0;
+	size_t m_len = 32;
+	uint8_t m[m_len];
+	uint8_t *key = NULL;
+	unsigned int key_size;
+	uint8_t *s = NULL;
+	unsigned int s_len = 0;
+
+	ks_info(KBUILD_MODNAME ": keystore_test_sign_verify_algo_ecdsa\n");
+
+	res = keystore_get_rdrand(m, sizeof(m));
+	keystore_hexdump("Plain data", m, m_len);
+	if (keystore_assert(res == 0))
+		return res;
+
+	key = generate_new_key(KEYSPEC_LENGTH_ECC_PAIR, &key_size);
+	keystore_hexdump("Key", key, sizeof(key));
+	if (keystore_assert(key != NULL))
+		return -1;
+
+	res = signature_input_output_size(ALGOSPEC_ECDSA, &s_len);
+	if (keystore_assert(res == 0))
+		goto free_mem;
+
+	s = kmalloc(s_len, GFP_KERNEL);
+	if (keystore_assert(s != NULL))
+		goto free_mem;
+	memset(s, 0, s_len);
+
+	res = do_sign(ALGOSPEC_ECDSA, key, sizeof(key),
+			 m, m_len, s);
+
+	keystore_hexdump("Signature data", s, s_len);
+
+	if (keystore_assert(res == 0))
+		goto free_mem;
+
+	res = do_verify(ALGOSPEC_ECDSA, key, sizeof(key),
+			 m, m_len, s);
+	keystore_assert(res == 0);
+
+free_mem:
+	kzfree(key);
+	kzfree(s);
+	return res;
 }
 
 int keystore_test_encrypt_for_host(void)

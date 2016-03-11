@@ -12,6 +12,8 @@ config KEYSTORE
 	select CRYPTO_RNG
 	select CRYPTO_MANAGER
 	select CRYPTO_CCM
+	select CRYPTO_GCM
+        select CRYPTO_ECB
 	select CRYPTO_CTR
 	select CRYPTO_SEQIV
 	select CRYPTO_CBC
@@ -88,20 +90,6 @@ config KEYSTORE_SEED_SIZE_64
 
 endchoice
 
-config KEYSTORE_HARD_CODED_SEED
-	bool "Hard-coded SEEDs and Keys (DANGEROUS!)"
-	depends on KEYSTORE
-        default n
-	help
-                Sets the keystore SEED a to fixed values instead
-                of using values passed via the kernel command line.
-
-                WARNING: This is only for testing purposes and should not be used
-                for production as any data encrypted with keystore will be vulnerable
-                to attack.
-
-                If in doubt, select "N".
-
 config KEYSTORE_TESTMODE
 	bool "Enable Diagnostic Tests"
 	depends on KEYSTORE
@@ -126,4 +114,45 @@ config KEYSTORE_TEST_MIGRATION
 		of on a host machine.
 
                 If unsure, select "N".
+
+config KEYSTORE_DEBUG
+	bool "Enable additional debug messages for Keystore (DANGEROUS!)"
+	depends on KEYSTORE
+        default n
+	help
+		Provides additional debug prints, hexdumps during keystore
+		operation. Includes hexdump of cryptographic data structures
+		such as public keys.
+
+                Should not be enabled in production as it will expose
+                sensitive information!
+
+                If unsure, select "N".
+
+config KEYSTORE_SECURE_BOOT_IGNORE
+	bool "Ignore Secure Boot Status (DANGEROUS!)"
+	depends on KEYSTORE
+	default n
+	help
+		Check this option to ignore secure boot status when
+		starting keystore.
+
+		This should not be enabled for production as applications
+		will wrongly assume a secure environment.
+
+                If unsure, select "N".
+
+config KEYSTORE_HARD_CODED_SEED
+	bool "Hard-coded SEEDs and Keys (DANGEROUS!)"
+	depends on KEYSTORE
+        default n
+	help
+                Sets the keystore SEED a to fixed values instead
+                of using values passed via the kernel command line.
+
+                WARNING: This is only for testing purposes and should not be used
+                for production as any data encrypted with keystore will be vulnerable
+                to attack.
+
+                If in doubt, select "N".
 

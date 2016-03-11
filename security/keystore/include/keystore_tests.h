@@ -79,13 +79,19 @@ int keystore_test_ecc(void);
  */
 int keystore_test_gpg_to_raw(void);
 
-int keystore_test_genkey(void);
+int keystore_test_genkey_aes(void);
+
+int keystore_test_genkey_ecc(void);
 
 int keystore_test_wrap_unwrap(void);
 
-int keystore_test_encrypt_decrypt_ccm(void);
+int keystore_test_encrypt_decrypt_algo_aes_ccm(void);
 
-int keystore_test_encrypt_decrypt_gcm(void);
+int keystore_test_encrypt_decrypt_algo_aes_gcm(void);
+
+int keystore_test_encrypt_decrypt_algo_ecies(void);
+
+int keystore_test_sign_verify_algo_ecdsa(void);
 
 int keystore_test_encrypt_for_host(void);
 

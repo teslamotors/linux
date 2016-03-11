@@ -126,7 +126,6 @@ static int serialize_cipher(const ecc_cipher_t *cipher,
  * Encrypt a block of data using ECC (ECIES).
  *
  * @param key Public key pointer (raw data).
- * @param key_size Public key size in bytes.
  * @param data Block of data to be encrypted.
  * @param data_size Size of data in bytes.
  * @param output Block of data for the result.
@@ -197,7 +196,6 @@ int keystore_ecc_encrypt(const struct keystore_ecc_public_key *key,
  * Decrypt a block of data using ECC (ECIES).
  *
  * @param key Private key pointer (raw data).
- * @param key_size Private key size in bytes.
  * @param data Block of data to be decrypted.
  * @param data_size Size of data in bytes.
  * @param output Block of data for the result.
@@ -252,14 +250,18 @@ int keystore_ecc_decrypt(const uint32_t *key,
 	}
 
 	/*copy dh key from blob */
-	memcpy(&dhkey_buffer, (data + 16), sizeof(dhkey_buffer));
+	memcpy(&dhkey_buffer,
+	       (data + sizeof(struct transport_format)),
+	       sizeof(dhkey_buffer));
 	/*copy mac from blob */
-	memcpy(&mac_buffer, (data + 16 + sizeof(dhkey_buffer)),
+	memcpy(&mac_buffer,
+	       (data + sizeof(struct transport_format) + sizeof(dhkey_buffer)),
 	       sizeof(mac_buffer));
 	/*copy text from blob */
 	memcpy(cipher.text,
-	       (data + 16 + sizeof(dhkey_buffer) +
-		sizeof(mac_buffer)), cipher.textlen);
+	       (data + sizeof(struct transport_format) + sizeof(dhkey_buffer) +
+		sizeof(mac_buffer)),
+	       cipher.textlen);
 
 	keystore_hexdump("DH Key", dhkey_buffer, sizeof(dhkey_buffer));
 	keystore_hexdump("MAC", mac_buffer, sizeof(mac_buffer));

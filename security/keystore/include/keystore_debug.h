@@ -64,15 +64,16 @@ static inline int show_and_compare(const char *name1, const void *ptr1,
 }
 #endif
 
+#define ks_info(...)  pr_info(__VA_ARGS__)
+#define ks_warn(...)  pr_warn(__VA_ARGS__)
+#define ks_err(...)   pr_err(__VA_ARGS__)
+
 #ifdef CONFIG_KEYSTORE_DEBUG
 
 /* Enable output of pr_debug */
 #define DEBUG
 
-#define ks_info(...)  pr_info(__VA_ARGS__)
 #define ks_debug(...) pr_debug(__VA_ARGS__)
-#define ks_warn(...)  pr_warn(__VA_ARGS__)
-#define ks_err(...)   pr_err(__VA_ARGS__)
 
 #define FUNC_BEGIN   ks_info(KBUILD_MODNAME ": %s() BEGIN\n", __func__)
 #define FUNC_END     ks_info(KBUILD_MODNAME ": %s() END\n", __func__)
@@ -82,10 +83,7 @@ static inline int show_and_compare(const char *name1, const void *ptr1,
 
 #else
 
-#define ks_info(...)
 #define ks_debug(...)
-#define ks_warn(...)
-#define ks_err(...)
 
 #define FUNC_BEGIN
 #define FUNC_END

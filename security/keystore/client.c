@@ -121,8 +121,8 @@ int keystore_calc_clientkey(const enum keystore_seed_type seed_type,
 
 	seed = keystore_get_seed(seed_type);
 	if (!seed) {
-		ks_err(KBUILD_MODNAME
-		       ": %s: Seed type %d invalid or not available.\n");
+		ks_err(KBUILD_MODNAME ": %s: Seed type %d invalid or not available.\n",
+			       __func__, seed_type);
 		return -EINVAL;
 	}
 

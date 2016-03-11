@@ -38,8 +38,8 @@ int keystore_generate_mkey(const struct keystore_ecc_public_key *key_enc_mkey,
 	FUNC_BEGIN;
 
 	if (!mkey_sig || !key_enc_mkey) {
-		ks_err(KBUILD_MODNAME ": %s: [ptr] oem_pub: %p, emkey: %p, mkey_sig: %p, mkey_nonce: %p\n",
-		       __func__, oem_pub, emkey, mkey_sig, mkey_nonce);
+		ks_err(KBUILD_MODNAME ": %s: [ptr] mkey_sig: %p, key_enc_mkey: %p\n",
+		       __func__, mkey_sig, key_enc_mkey);
 		res = -EFAULT;
 		goto exit;
 	}
@@ -76,7 +76,7 @@ int keystore_generate_mkey(const struct keystore_ecc_public_key *key_enc_mkey,
 
 	res = encrypt_for_host(key_enc_mkey, mkey, KEYSTORE_MKEY_SIZE,
 			       mkey_enc, KEYSTORE_EMKEY_SIZE);
-	if (res < 1) {
+	if (res) {
 		ks_err(KBUILD_MODNAME
 		       ": keystore_ecc_encrypt() error %d in %s\n",
 		       res, __func__);
@@ -84,6 +84,9 @@ int keystore_generate_mkey(const struct keystore_ecc_public_key *key_enc_mkey,
 	}
 
 	res = sign_for_host(mkey_enc, KEYSTORE_EMKEY_SIZE, mkey_sig);
+
+	keystore_hexdump("migration key signature", mkey_sig,
+			 sizeof(struct keystore_ecc_signature));
 
 	ks_debug(KBUILD_MODNAME ": migration - ECC signature verification - OK\n");
 	ks_debug(KBUILD_MODNAME ": migration - Signing MKEY with KSM2 ECC private - OK\n");

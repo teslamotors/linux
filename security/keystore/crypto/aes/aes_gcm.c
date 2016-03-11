@@ -46,9 +46,9 @@
  * @return 0 if OK or negative error code (see errno).
  */
 int keystore_aes_gcm_crypt(int enc, const char *key, size_t klen,
-		const char *iv, size_t ivlen, const char *data_in,
-		size_t ilen, const char *assoc_in, size_t alen,
-		char *data_out,	size_t outlen)
+			   const char *iv, size_t ivlen, const char *data_in,
+			   size_t ilen, const char *assoc_in, size_t alen,
+			   char *data_out,	size_t outlen)
 {
 	struct crypto_aead *tfm;
 	struct scatterlist src, dst, asg;

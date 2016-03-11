@@ -23,8 +23,14 @@
 
 static int keysize_is_valid(unsigned int keysize)
 {
-	return ((keysize == AES128_KEY_SIZE) ||
-		(keysize == AES256_KEY_SIZE));
+	switch (keysize) {
+	case AES128_KEY_SIZE:
+	case AES256_KEY_SIZE:
+	case KEYSTORE_ECC_KEYPAIR_SIZE:
+		return 1;
+	default:
+		return 0;
+	}
 }
 
 static int wrapped_keysize_is_valid(unsigned int wrapped_keysize)
@@ -36,15 +42,15 @@ static int wrapped_keysize_is_valid(unsigned int wrapped_keysize)
 	if (res)
 		return -EINVAL;
 
-	return ((keysize == AES128_KEY_SIZE) ||
-		(keysize == AES256_KEY_SIZE));
+	return keysize_is_valid(keysize);
 }
 
 static int keyspec_is_valid(enum keystore_key_spec keyspec)
 {
 	switch (keyspec) {
-	case KEYSPEC_LENGTH_256:
 	case KEYSPEC_LENGTH_128:
+	case KEYSPEC_LENGTH_256:
+	case KEYSPEC_LENGTH_ECC_PAIR:
 		return 1;
 	default:
 		return 0;
@@ -65,6 +71,9 @@ static int keyspec_to_keysize(enum keystore_key_spec keyspec,
 		break;
 	case KEYSPEC_LENGTH_256:
 		*keysize = AES256_KEY_SIZE;
+		break;
+	case KEYSPEC_LENGTH_ECC_PAIR:
+		*keysize = KEYSTORE_ECC_KEYPAIR_SIZE;
 		break;
 	default:
 		*keysize = 0;
@@ -126,6 +135,7 @@ uint8_t *generate_new_key(enum keystore_key_spec keyspec,
 {
 	int res = 0;
 	uint8_t *app_key = NULL;
+	uint8_t seed[SEC_SEED_SIZE];
 
 	if (!app_key_size)
 		return NULL;
@@ -141,7 +151,31 @@ uint8_t *generate_new_key(enum keystore_key_spec keyspec,
 	if (!app_key)
 		return NULL;
 
-	keystore_get_rdrand(app_key, (*app_key_size));
+	switch (keyspec) {
+	case KEYSPEC_LENGTH_128:
+	case KEYSPEC_LENGTH_256:
+		res = keystore_get_rdrand(app_key, (*app_key_size));
+		break;
+	case KEYSPEC_LENGTH_ECC_PAIR:
+		res = keystore_get_rdrand(seed, SEC_SEED_SIZE);
+		if (res == 0)
+			res = keystore_ecc_gen_keys(seed, SEC_SEED_SIZE,
+						    (struct ias_keystore_ecc_keypair *) app_key);
+		memset(seed, 0, SEC_SEED_SIZE);
+		break;
+	default:
+		res = -EINVAL;
+		ks_err(KBUILD_MODNAME ": %s: Keyspec %d cannot be used to generate key\n",
+		       __func__, keyspec);
+		break;
+	}
+
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s: Cannot generate new key(%d)\n",
+				__func__, res);
+		kfree(app_key);
+		return NULL;
+	}
 
 	return app_key;
 }
@@ -157,21 +191,29 @@ int wrap_key(const uint8_t *client_key,
 	unsigned int key_size;
 	unsigned int wrapped_key_size;
 
-	/* Prepare app key */
-	if (!client_key || !app_key || !wrapped_key)
-		return -EFAULT;
+	FUNC_BEGIN;
 
-	if (!keysize_is_valid(app_key_size) || !keyspec_is_valid(keyspec))
-		return -EINVAL;
+	/* Prepare app key */
+	if (!client_key || !app_key || !wrapped_key) {
+		res = -EFAULT;
+		goto exit;
+	}
+
+	if (!keysize_is_valid(app_key_size) || !keyspec_is_valid(keyspec)) {
+		res = -EINVAL;
+		goto exit;
+	}
 
 	res = keyspec_to_wrapped_keysize(keyspec, &wrapped_key_size);
 	if (res)
-		return res;
+		goto exit;
 
 	key_size = sizeof(uint8_t) + app_key_size;
 	key = kmalloc(key_size, GFP_KERNEL);
-	if (!key)
-		return -ENOMEM;
+	if (!key) {
+		res = -ENOMEM;
+		goto exit;
+	}
 
 	/* prepare key for wrapping */
 	key[0] = (uint8_t)keyspec;
@@ -182,8 +224,11 @@ int wrap_key(const uint8_t *client_key,
 				     key, key_size,
 				     NULL, 0,
 				     wrapped_key, wrapped_key_size);
+
 	memset(key, 0, key_size);
 	kfree(key);
+exit:
+	FUNC_RES(res);
 	return res;
 }
 
@@ -256,8 +301,12 @@ int encrypt_output_size(enum keystore_algo_spec algo_spec,
 	case ALGOSPEC_AES_GCM:
 		*output_size = input_size + KEYSTORE_GCM_AUTH_SIZE;
 		break;
+	case ALGOSPEC_ECIES:
+		*output_size = input_size + KEYSTORE_ECIES_EXTRA_SIZE;
+		break;
 	default:
-		ks_err(KBUILD_MODNAME "Unknown algo_spec: %u\n", algo_spec);
+		ks_err(KBUILD_MODNAME ": Unknown or invalid algo_spec: %u\n",
+		       algo_spec);
 		return -EINVAL;
 	}
 
@@ -284,7 +333,33 @@ int decrypt_output_size(enum keystore_algo_spec algo_spec,
 			return -EINVAL;
 		*output_size = input_size - KEYSTORE_GCM_AUTH_SIZE;
 		break;
+	case ALGOSPEC_ECIES:
+		if (input_size < KEYSTORE_ECIES_EXTRA_SIZE)
+			return -EINVAL;
+		*output_size = input_size - KEYSTORE_ECIES_EXTRA_SIZE;
+		break;
 	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int signature_input_output_size(enum keystore_algo_spec algo_spec,
+				unsigned int *signature_size)
+{
+	if (!signature_size)
+		return -EFAULT;
+
+	*signature_size = 0;
+
+	switch (algo_spec) {
+	case ALGOSPEC_ECDSA:
+		*signature_size = sizeof(struct keystore_ecc_signature);
+		break;
+	default:
+		ks_err(KBUILD_MODNAME ": Unknown or invalid algo_spec: %u\n",
+		       algo_spec);
 		return -EINVAL;
 	}
 
@@ -299,15 +374,30 @@ int do_encrypt(enum keystore_algo_spec algo_spec,
 {
 	int res = 0;
 	unsigned int output_size;
+	struct ias_keystore_ecc_keypair *keypair =
+			(struct ias_keystore_ecc_keypair *) app_key;
 
 	/* Check inputs */
-	if (!app_key || !iv || !input || !output)
+	if (!app_key || !input || !output)
 		return -EFAULT;
 
-	if (!input_size || (iv_size != KEYSTORE_AES_IV_SIZE) ||
-	    (algo_spec != ALGOSPEC_AES_CCM && algo_spec != ALGOSPEC_AES_GCM)) {
+	switch (algo_spec) {
+	case ALGOSPEC_AES_CCM:
+	case ALGOSPEC_AES_GCM:
+		if (input_size && iv && (iv_size == KEYSTORE_AES_IV_SIZE))
+			break;
 		ks_err(KBUILD_MODNAME ": Incorrect input values to %s\n",
 		       __func__);
+		return -EINVAL;
+	case ALGOSPEC_ECIES:
+		if (input_size && !iv && !iv_size)
+			break;
+		ks_err(KBUILD_MODNAME ": Incorrect input values to %s\n",
+		       __func__);
+		return -EINVAL;
+	default:
+		ks_err(KBUILD_MODNAME ": Unknown or invalid algo_spec: %u\n",
+		       algo_spec);
 		return -EINVAL;
 	}
 
@@ -331,6 +421,14 @@ int do_encrypt(enum keystore_algo_spec algo_spec,
 					     NULL, 0,
 					     output, output_size);
 		break;
+	case ALGOSPEC_ECIES:
+		res = keystore_ecc_encrypt(
+					     &keypair->public_key,
+					     input, input_size,
+					     output, output_size);
+		break;
+	default:
+		break;
 	}
 	return res;
 }
@@ -343,15 +441,30 @@ int do_decrypt(enum keystore_algo_spec algo_spec,
 {
 	int res = 0;
 	unsigned int output_size;
+	struct ias_keystore_ecc_keypair *keypair =
+			(struct ias_keystore_ecc_keypair *) app_key;
 
 	/* Check inputs */
-	if (!app_key || !input || !output || !iv)
+	if (!app_key || !input || !output)
 		return -EFAULT;
 
-	if (!input_size || (iv_size != KEYSTORE_AES_IV_SIZE) ||
-	    (algo_spec != ALGOSPEC_AES_CCM && algo_spec != ALGOSPEC_AES_GCM)) {
+	switch (algo_spec) {
+	case ALGOSPEC_AES_CCM:
+	case ALGOSPEC_AES_GCM:
+		if (input_size && iv && (iv_size == KEYSTORE_AES_IV_SIZE))
+			break;
 		ks_err(KBUILD_MODNAME ": Incorrect input values to %s\n",
 		       __func__);
+		return -EINVAL;
+	case ALGOSPEC_ECIES:
+		if (input_size && !iv && !iv_size)
+			break;
+		ks_err(KBUILD_MODNAME ": Incorrect input values to %s\n",
+		       __func__);
+		return -EINVAL;
+	default:
+		ks_err(KBUILD_MODNAME ": Unknown or invalid algo_spec: %u\n",
+		       algo_spec);
 		return -EINVAL;
 	}
 
@@ -376,8 +489,143 @@ int do_decrypt(enum keystore_algo_spec algo_spec,
 					     NULL, 0,
 					     output, output_size);
 		break;
+	case ALGOSPEC_ECIES:
+		res = keystore_ecc_decrypt(keypair->private_key,
+					   input, input_size,
+					   output, output_size);
+		break;
+	default:
+		break;
 	}
 
+	return res;
+}
+
+int do_sign(enum keystore_algo_spec algo_spec,
+	    const void *app_key, unsigned int app_key_size,
+	    const void *input, unsigned int input_size,
+	    void *signature)
+{
+	int res = 0;
+	struct ias_keystore_ecc_keypair *keypair =
+			(struct ias_keystore_ecc_keypair *) app_key;
+
+	/* Check inputs */
+	if (!app_key || !input || !signature)
+		return -EFAULT;
+
+	switch (algo_spec) {
+	case ALGOSPEC_ECDSA:
+		if (input_size)
+			break;
+		ks_err(KBUILD_MODNAME ": Incorrect input values to %s\n",
+		       __func__);
+		return -EINVAL;
+	default:
+		ks_err(KBUILD_MODNAME ": Unknown or invalid algo_spec: %u\n",
+		       algo_spec);
+		return -EINVAL;
+	}
+
+	switch (algo_spec) {
+	case ALGOSPEC_ECDSA:
+		res = keystore_ecc_sign(keypair->private_key, input, input_size,
+					(struct keystore_ecc_signature *)
+					signature);
+		break;
+	default:
+		break;
+	}
+
+	return res;
+}
+
+int do_verify(enum keystore_algo_spec algo_spec,
+	      const void *app_key, unsigned int app_key_size,
+	      const void *input, unsigned int input_size,
+	      void *signature)
+{
+	int res = 0;
+	struct ias_keystore_ecc_keypair *keypair =
+			(struct ias_keystore_ecc_keypair *) app_key;
+
+	/* Check inputs */
+	if (!app_key || !input || !signature)
+		return -EFAULT;
+
+	switch (algo_spec) {
+	case ALGOSPEC_ECDSA:
+		if (input_size)
+			break;
+		ks_err(KBUILD_MODNAME ": Incorrect input values to %s\n",
+		       __func__);
+		return -EINVAL;
+	default:
+		ks_err(KBUILD_MODNAME ": Unknown or invalid algo_spec: %u\n",
+		       algo_spec);
+		return -EINVAL;
+	}
+
+	switch (algo_spec) {
+	case ALGOSPEC_ECDSA:
+		res = keystore_ecc_verify(&keypair->public_key,
+					  input, input_size,
+					  (struct keystore_ecc_signature *)
+					  signature);
+		break;
+	default:
+		break;
+	}
+	return res;
+}
+
+int get_public_key(enum keystore_key_spec key_spec,
+		   const uint8_t *app_key, unsigned int app_key_size,
+		   uint8_t *unwrapped_key)
+{
+	int res = 0;
+	struct ias_keystore_ecc_keypair *key_pair_out, *app_key_as_pair;
+
+	FUNC_BEGIN;
+
+	if (!app_key || !unwrapped_key) {
+		res = -EFAULT;
+		goto exit;
+	}
+
+	switch (key_spec) {
+	case KEYSPEC_INVALID:
+	case KEYSPEC_LENGTH_128:
+	case KEYSPEC_LENGTH_256:
+		res = -EINVAL;
+		ks_err(KBUILD_MODNAME ": %s: Key spec %u does not have a public key.\n",
+		       __func__, key_spec);
+		break;
+	case KEYSPEC_LENGTH_ECC_PAIR:
+		if (app_key_size != KEYSTORE_ECC_KEYPAIR_SIZE) {
+			res = -EINVAL;
+			ks_err(KBUILD_MODNAME ": Wrong key size provided to %s (output: %u, required %lu).\n",
+			       __func__, app_key_size,
+			       KEYSTORE_ECC_KEYPAIR_SIZE);
+			goto exit;
+		}
+
+		key_pair_out = (struct ias_keystore_ecc_keypair *)unwrapped_key;
+		app_key_as_pair = (struct ias_keystore_ecc_keypair *)app_key;
+
+		memset(key_pair_out, 0x0, KEYSTORE_ECC_KEYPAIR_SIZE);
+		memcpy(&key_pair_out->public_key, &app_key_as_pair->public_key,
+		       KEYSTORE_ECC_PUB_KEY_SIZE);
+		break;
+	default:
+		res = -EINVAL;
+		ks_err(KBUILD_MODNAME ": %s: Unknown key spec %u.\n",
+		       __func__, key_spec);
+		break;
+	}
+
+exit:
+	FUNC_RES(res);
 	return res;
 }
 

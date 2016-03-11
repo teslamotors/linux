@@ -140,6 +140,17 @@ int decrypt_output_size(enum keystore_algo_spec algo_spec,
 			unsigned int *output_size);
 
 /**
+ * signature_input_output_size() - Return the size of signature data buffer
+ *
+ * @algo_spec: Algorithm specification
+ * @signature_size: Size of the signature input or output.
+ *
+ * Returns: 0 on success or negative errno.
+ */
+int signature_input_output_size(enum keystore_algo_spec algo_spec,
+			unsigned int *signature_size);
+
+/**
  * do_encrypt() - Perform encryption
  * @algo_spec:       The algorithm specification.
  * @app_key:         Application (unwrapped) key.
@@ -180,6 +191,61 @@ int do_decrypt(enum keystore_algo_spec algo_spec,
 	       const void *iv, unsigned int iv_size,
 	       const void *input, unsigned int input_size,
 	       void *output);
+
+/**
+ * do_sign() - Perform signing
+ * @algo_spec:       The algorithm specification.
+ * @app_key:         Application (unwrapped) key.
+ * @app_key_size:    Size of the application key.
+ * @input:           Input block of data to sign.
+ * @input_size:      Input block size in bytes.
+ * @signature:       Pointer to the block for signature data. The caller
+ *                   is responsible for providing a buffer of sufficent size
+ *                   by first calling signature_input_output_size.
+ *
+ * Returns: 0 on success or negative errno.
+ */
+int do_sign(enum keystore_algo_spec algo_spec,
+	       const void *app_key, unsigned int app_key_size,
+	       const void *input, unsigned int input_size,
+	       void *signature);
+
+/**
+ * do_verify() - Perform signature verification
+ * @algo_spec:       The algorithm specification.
+ * @app_key:         Application (unwrapped) key.
+ * @app_key_size:    Size of the application key.
+ * @input:           Input block of data to sign.
+ * @input_size:      Input block size in bytes.
+ * @signature:       Pointer to the signature data. The signature size must
+ *                   match the value returned by signature_input_output_size
+ *                   for the given algo_spec.
+ *
+ * Returns: 0 on successful verification or negative errno.
+ */
+int do_verify(enum keystore_algo_spec algo_spec,
+	       const void *app_key, unsigned int app_key_size,
+	       const void *input, unsigned int input_size,
+	       void *signature);
+
+/**
+ * get_public_key() - Get the public key from a key pair.
+ * @key_spec:       Key spec for the key blob
+ * @app_key:        The app key which contains a private/public key pair.
+ * @app_key_size:   Size of the app key input.
+ * @unwrapped_key:  Pointer to the output
+ *
+ * Will cast the @app_key as a key pair depending on the value of @key_spec.
+ * The @unwrapped_key output is also cast as a key pair, and the public key
+ * only (not private!) is copied from @app_key.
+ *
+ * The output @unwrapped_key buffer must be at least @app_key_size in size.
+ *
+ * Returns: 0 on success of negative errno.
+ */
+int get_public_key(enum keystore_key_spec key_spec,
+		   const uint8_t *app_key, unsigned int app_key_size,
+		   uint8_t *unwrapped_key);
 
 /**
  * verify_oem_signature() - Verify that the OEM signature of a data block.
@@ -250,8 +316,7 @@ int keystore_get_ksm_keypair(struct ias_keystore_ecc_keypair *key_pair);
  * sign_for_host() - Sign data with the keystore ECC key.
  * @data: Data blob to be signed.
  * @data_size: Size of the data to be signed
- * @signature: Output sgnature of the data, called must ensure
- *             ECC_SIGNATURE_SIZE bytes are available.
+ * @signature: Output signature of the data.
  *
  * Returns: 0 on success or negative errno.
  */

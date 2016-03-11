@@ -221,9 +221,9 @@ static int keystore_test_aes_gcm(void)
 	const unsigned int alen = 0;
 	static const char *input = "\xd9\x31\x32\x25\xf8\x84\x06\xe5\xa5\x59\x09\xc5\xaf\xf5\x26\x9a\x86\xa7\xa9\x53\x15\x34\xf7\xda\x2e\x4c\x30\x3d\x8a\x31\x8a\x72\x1c\x3c\x0c\x95\x95\x68\x09\x53\x2f\xcf\x0e\x24\x49\xa6\xb5\x25\xb1\x6a\xed\xf5\xaa\x0d\xe6\x57\xba\x63\x7b\x39\x1a\xaf\xd2\x55";
 	const unsigned int ilen = 64;
-	static const char *result = "\x42\x83\x1e\xc2\x21\x77\x74\x24\x4b\x72\x21\xb7\x84\xd0\xd4\x9c\xe3\xaa\x21\x2f\x2c\x02\xa4\xe0\x35\xc1\x7e\x23\x29\xac\xa1\x2ex21\xd5\x14\xb2\x54\x66\x93\x1c\x7d\x8f\x6a\x5a\xac\x84\xaa\x05\x1b\xa3\x0b\x39\x6a\x0a\xac\x97\x3d\x58\xe0\x91\x47\x3f\x59\x85";
+	static const char *result = "\x42\x83\x1e\xc2\x21\x77\x74\x24\x4b\x72\x21\xb7\x84\xd0\xd4\x9c\xe3\xaa\x21\x2f\x2c\x02\xa4\xe0\x35\xc1\x7e\x23\x29\xac\xa1\x2e\x21\xd5\x14\xb2\x54\x66\x93\x1c\x7d\x8f\x6a\x5a\xac\x84\xaa\x05\x1b\xa3\x0b\x39\x6a\x0a\xac\x97\x3d\x58\xe0\x91\x47\x3f\x59\x85";
 	const unsigned int rlen = 64;
-	unsigned char output[rlen];
+	unsigned char output[rlen + KEYSTORE_GCM_AUTH_SIZE];
 	unsigned char output2[ilen];
 	int res;
 
@@ -232,8 +232,8 @@ static int keystore_test_aes_gcm(void)
 	memset(output, 0, sizeof(output));
 	memset(output2, 0, sizeof(output2));
 
-	res = keystore_aes_gcm_crypt(1, key, klen, iv, ivlen, input, ilen, assoc
-			, alen, output, sizeof(output));
+	res = keystore_aes_gcm_crypt(1, key, klen, iv, ivlen, input, ilen,
+				     assoc, alen, output, sizeof(output));
 	if (res) {
 		ks_info(KBUILD_MODNAME ": keystore_aes_gcm_crypt returned %d\n",
 			res);
@@ -305,8 +305,8 @@ static int keystore_test_aes_ctr(void)
 	memset(output, 0, sizeof(output));
 	memset(output2, 0, sizeof(output2));
 
-	res = keystore_aes_ctr_crypt(1, key, klen, iv, ivlen, input, output,
-			len);
+	res = keystore_aes_ctr_crypt(1, key, klen, iv, ivlen, input,
+				     output, len);
 	if (res) {
 		ks_info(KBUILD_MODNAME ": keystore_aes_ctr_crypt returned %d\n",
 			res);
@@ -351,25 +351,15 @@ static int keystore_test_aes_ctr(void)
  */
 int keystore_test_aes(void)
 {
-	int res;
+	int res = 0;
 
-	res = keystore_test_aes128();
-	if (res)
-		return res;
+	res |= keystore_test_aes128();
+	res |= keystore_test_aes256();
+	res |= keystore_test_aes_ccm();
+	res |= keystore_test_aes_gcm();
+	res |= keystore_test_aes_ctr();
 
-	res = keystore_test_aes256();
-	if (res)
-		return res;
-
-	res = keystore_test_aes_ccm();
-	if (res)
-		return res;
-
-	res = keystore_test_aes_gcm();
-	if (res)
-		return res;
-
-	return keystore_test_aes_ctr();
+	return res;
 }
 
 /* end of file */
