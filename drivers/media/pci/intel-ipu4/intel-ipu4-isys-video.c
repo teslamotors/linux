@@ -369,30 +369,33 @@ int intel_ipu4_isys_vidioc_enum_fmt(struct file *file, void *fh,
 	const struct intel_ipu4_isys_pixelformat *pfmt;
 	uint32_t index;
 
-	for (index = 0; supported_codes[index]; index++) {
-		if (index == f->index) {
-			f->type = av->aq.vbq.type;
-			f->flags = 0;
-			if (supported_codes[index] == MEDIA_BUS_FMT_FIXED) {
-				/* FIXME: No proper pixel format. Use 0. */
-				f->pixelformat = 0;
-				break;
-			}
-			for (pfmt = av->pfmts; pfmt->bpp; pfmt++)
-				if (pfmt->code == supported_codes[index])
-					break;
-			if (!pfmt->bpp) {
-				dev_warn(&av->isys->adev->dev,
-					"Format not found in mapping table.");
-				return -EINVAL;
-			}
-			f->pixelformat = pfmt->pixelformat;
-			break;
-		}
+	/* Walk the 0-terminated array for the f->index-th code. */
+	for (index = f->index; *supported_codes && index;
+	     index--, supported_codes++);
+
+	if (!*supported_codes)
+		return -EINVAL;
+
+	f->flags = 0;
+
+	if (*supported_codes == MEDIA_BUS_FMT_FIXED) {
+		/* FIXME: No proper pixel format. Use 0. */
+		f->pixelformat = 0;
+		return 0;
 	}
 
-	if (!supported_codes[index])
+	/* Code found */
+	for (pfmt = av->pfmts; pfmt->bpp; pfmt++)
+		if (pfmt->code == *supported_codes)
+			break;
+
+	if (!pfmt->bpp) {
+		dev_warn(&av->isys->adev->dev,
+			 "Format not found in mapping table.");
 		return -EINVAL;
+	}
+
+	f->pixelformat = pfmt->pixelformat;
 
 	return 0;
 }
@@ -1319,7 +1322,7 @@ static const struct v4l2_ioctl_ops ioctl_ops_splane = {
 
 static const struct v4l2_ioctl_ops ioctl_ops_mplane = {
 	.vidioc_querycap = intel_ipu4_isys_vidioc_querycap,
-	.vidioc_enum_fmt_vid_cap = intel_ipu4_isys_vidioc_enum_fmt,
+	.vidioc_enum_fmt_vid_cap_mplane = intel_ipu4_isys_vidioc_enum_fmt,
 	.vidioc_g_fmt_vid_cap_mplane = vidioc_g_fmt_vid_cap_mplane,
 	.vidioc_s_fmt_vid_cap_mplane = vidioc_s_fmt_vid_cap_mplane,
 	.vidioc_try_fmt_vid_cap_mplane = vidioc_try_fmt_vid_cap_mplane,
