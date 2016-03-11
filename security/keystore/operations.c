@@ -7,7 +7,6 @@
 #include <security/keystore_api_kernel.h>
 #include <security/oem_key.h>
 
-#include "keystore_constants.h"
 #include "keystore_operations.h"
 #include "keystore_context.h"
 #include "keystore_debug.h"
@@ -420,14 +419,18 @@ int decrypt_from_target(const uint32_t *oem_priv,
 int keystore_get_ksm_keypair(struct ias_keystore_ecc_keypair *key_pair)
 {
 	int res = 0;
+	const uint8_t *seed = NULL;
 
 	FUNC_BEGIN;
 
 	if (!key_pair)
 		return -EFAULT;
 
-	res = keystore_ecc_gen_keys(sec_seed[SEED_TYPE_DEVICE], SEC_SEED_SIZE,
-				    key_pair);
+	seed = keystore_get_seed(SEED_TYPE_DEVICE);
+	if (!seed)
+		return -EPERM;
+
+	res = keystore_ecc_gen_keys(seed, SEC_SEED_SIZE, key_pair);
 
 	keystore_hexdump("KSM public", &key_pair->public_key,
 			 sizeof(struct keystore_ecc_public_key));
@@ -478,18 +481,20 @@ zero_buf:
 int generate_migration_key(const void *mkey_nonce, uint8_t *mkey)
 {
 	int res = 0;
+	const uint8_t *seed = NULL;
 
 	if (!mkey || !mkey_nonce)
 		return -EFAULT;
 
+	seed = keystore_get_seed(SEED_TYPE_DEVICE);
+	if (!seed)
+		return -EPERM;
+
 	memset(mkey, 0, KEYSTORE_MKEY_SIZE);
 	res = keystore_calc_mac("hmac(sha256)",
-				(const char *)&sec_seed[0][0],
-				SEC_SEED_SIZE,
-				mkey_nonce,
-				KEYSTORE_MKEY_SIZE,
-				mkey,
-				KEYSTORE_MKEY_SIZE);
+				seed, SEC_SEED_SIZE,
+				mkey_nonce, KEYSTORE_MKEY_SIZE,
+				mkey, KEYSTORE_MKEY_SIZE);
 
 	keystore_hexdump("migration - MKEY", mkey, KEYSTORE_MKEY_SIZE);
 

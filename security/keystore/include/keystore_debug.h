@@ -20,24 +20,29 @@
 #ifdef CONFIG_KEYSTORE_DEBUG
 
 /**
- * Display a block of data hexadecimally.
+ * keystore_hexdump() - Display a block of data hexadecimally.
  *
- * @param txt Prefix string to display.
- * @param ptr Pointer to the block of data.
- * @param size Size of the block of data in bytes.
+ * @txt: Prefix string to display.
+ * @ptr: Pointer to the block of data.
+ * @size: Size of the block of data in bytes.
+ *
+ * Will only be enabled if the %KEYSTORE_DEBUG config parameter
+ * is activated.
  */
 void keystore_hexdump(const char *txt, const void *ptr, unsigned int size);
 
 
 /**
- * Compare two blocks of data. Show the first block.
+ * show_and_compare() - Compare two blocks of data. Show the first block.
  * Show error message and the second block if different.
  *
- * @param name1 First data block name.
- * @param ptr1 First data block pointer.
- * @param name2 Second data block name.
- * @param ptr2 Second data block pointer.
- * @param size Size of data blocks in bytes.
+ * @name1: First data block name.
+ * @ptr1: First data block pointer.
+ * @name2: Second data block name.
+ * @ptr2: Second data block pointer.
+ * @size: Size of data blocks in bytes.
+ *
+ * Returns: 0 on success or negative error number.
  */
 int show_and_compare(const char *name1, const void *ptr1,
 		     const char *name2, const void *ptr2,

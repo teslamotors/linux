@@ -34,7 +34,7 @@
  *
  * @return signature size if OK or negative error code (see errno).
  */
-int keystore_ecc_sign(const void *key,
+int keystore_ecc_sign(const uint32_t *key,
 		      const void *data, unsigned int data_size,
 		      struct keystore_ecc_signature *sig)
 {

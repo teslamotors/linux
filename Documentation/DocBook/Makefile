@@ -17,6 +17,8 @@ DOCBOOKS := z8530book.xml device-drivers.xml keystore.xml \
 	    tracepoint.xml drm.xml media_api.xml w1.xml \
 	    writing_musb_glue_layer.xml crypto-API.xml
 
+PNG-keystore := $(addprefix $(obj)/,keystore_internal.png)
+
 include Documentation/DocBook/media/Makefile
 
 ###

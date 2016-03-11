@@ -20,25 +20,24 @@
 #include <linux/slab.h>
 
 #include <security/keystore_api_kernel.h>
-#include "keystore_constants.h"
 #include "keystore_context_safe.h"
 #include "keystore_rand.h"
 #include "keystore_operations.h"
 
 #include "keystore_debug.h"
 
-int keystore_generate_mkey(const struct keystore_ecc_public_key *oem_pub,
-			   const uint8_t *oem_pub_sig,
-			   uint8_t *emkey,
+int keystore_generate_mkey(const struct keystore_ecc_public_key *key_enc_mkey,
+			   const uint8_t *key_enc_mkey_sig,
+			   uint8_t *mkey_enc,
 			   struct keystore_ecc_signature *mkey_sig,
-			   uint8_t *mkey_nonce)
+			   uint8_t *nonce)
 {
 	int res;
 	uint8_t mkey[KEYSTORE_MKEY_SIZE] = {0};
 
 	FUNC_BEGIN;
 
-	if (!mkey_sig || !mkey_nonce) {
+	if (!mkey_sig || !key_enc_mkey) {
 		ks_err(KBUILD_MODNAME ": %s: [ptr] oem_pub: %p, emkey: %p, mkey_sig: %p, mkey_nonce: %p\n",
 		       __func__, oem_pub, emkey, mkey_sig, mkey_nonce);
 		res = -EFAULT;
@@ -46,9 +45,9 @@ int keystore_generate_mkey(const struct keystore_ecc_public_key *oem_pub,
 	}
 
 	/* verify public key signature */
-	res = verify_oem_signature(oem_pub,
+	res = verify_oem_signature(key_enc_mkey,
 				   sizeof(struct keystore_ecc_public_key),
-				   oem_pub_sig, RSA_SIGNATURE_BYTE_SIZE);
+				   key_enc_mkey_sig, RSA_SIGNATURE_BYTE_SIZE);
 
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: OEMpub2Sig verfifcation: Failed\n",
@@ -57,26 +56,26 @@ int keystore_generate_mkey(const struct keystore_ecc_public_key *oem_pub,
 	}
 
 	/* use RDRAND to get the nonce */
-	res = keystore_get_rdrand(mkey_nonce, KEYSTORE_MKEY_NONCE_SIZE);
+	res = keystore_get_rdrand(nonce, KEYSTORE_MKEY_NONCE_SIZE);
 	if (res != 0) {
 		ks_err(KBUILD_MODNAME ": Random number generator test error %d\n",
 		       res);
 		goto exit;
 	}
 
-	keystore_hexdump("migration - nonce", mkey_nonce,
+	keystore_hexdump("migration - nonce", nonce,
 			 KEYSTORE_MKEY_NONCE_SIZE);
 
 	/* Generate Migration Key */
-	res = generate_migration_key(mkey_nonce, mkey);
+	res = generate_migration_key(nonce, mkey);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: generate_migration_key error %d\n",
 		       __func__, res);
 		goto exit;
 	}
 
-	res = encrypt_for_host(oem_pub, mkey, KEYSTORE_MKEY_SIZE,
-			       emkey, KEYSTORE_EMKEY_SIZE);
+	res = encrypt_for_host(key_enc_mkey, mkey, KEYSTORE_MKEY_SIZE,
+			       mkey_enc, KEYSTORE_EMKEY_SIZE);
 	if (res < 1) {
 		ks_err(KBUILD_MODNAME
 		       ": keystore_ecc_encrypt() error %d in %s\n",
@@ -84,12 +83,10 @@ int keystore_generate_mkey(const struct keystore_ecc_public_key *oem_pub,
 		goto zero_buf;
 	}
 
-	res = sign_for_host(emkey, KEYSTORE_EMKEY_SIZE, mkey_sig);
+	res = sign_for_host(mkey_enc, KEYSTORE_EMKEY_SIZE, mkey_sig);
 
-#ifdef DEBUG
-	ks_info(KBUILD_MODNAME ": migration - ECC signature verification - OK\n");
-	ks_info(KBUILD_MODNAME ": migration - Signing MKEY with KSM2 ECC private - OK\n");
-#endif
+	ks_debug(KBUILD_MODNAME ": migration - ECC signature verification - OK\n");
+	ks_debug(KBUILD_MODNAME ": migration - Signing MKEY with KSM2 ECC private - OK\n");
 
 zero_buf:
 	/* clear local secure data */
@@ -101,8 +98,8 @@ exit:
 EXPORT_SYMBOL(keystore_generate_mkey);
 
 int keystore_rewrap_key(const uint8_t *client_ticket,
-			const uint8_t *backup_emkey,
-			const uint8_t *mkey_nonce,
+			const uint8_t *backup_mk_enc,
+			const uint8_t *nonce,
 			const uint8_t *wrapped_key,
 			unsigned int wrapped_key_size,
 			uint8_t *rewrapped_key)
@@ -124,10 +121,10 @@ int keystore_rewrap_key(const uint8_t *client_ticket,
 	/****************************************************************/
 	/* 1. Check input values                                        */
 	/****************************************************************/
-	if (!client_ticket || !backup_emkey || !mkey_nonce ||
+	if (!client_ticket || !backup_mk_enc || !nonce ||
 	    !wrapped_key || !rewrapped_key) {
-		ks_err(KBUILD_MODNAME ": %s: NULL pointer: client_ticket: %p, backup_emkey: %p, mkey_nonce: %p, wrapped_key: %p, rewrapped_key: %p\n",
-		       __func__, client_ticket, backup_emkey, mkey_nonce,
+		ks_err(KBUILD_MODNAME ": %s: NULL pointer: client_ticket: %p, backup_mk_enc: %p, nonce: %p, wrapped_key: %p, rewrapped_key: %p\n",
+		       __func__, client_ticket, backup_mk_enc, nonce,
 		       wrapped_key, rewrapped_key);
 		res = -EFAULT;
 		goto exit;
@@ -166,10 +163,10 @@ int keystore_rewrap_key(const uint8_t *client_ticket,
 	/* 4. Re-generate migration key using the client key and nonce  */
 	/****************************************************************/
 	keystore_hexdump("rewrap - nonce",
-			 mkey_nonce, KEYSTORE_MKEY_NONCE_SIZE);
+			 nonce, KEYSTORE_MKEY_NONCE_SIZE);
 
 	/* Generate Migration Key */
-	res = generate_migration_key(mkey_nonce, mkey);
+	res = generate_migration_key(nonce, mkey);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: generate_migration_key error %d\n",
 		       __func__, res);
@@ -182,7 +179,7 @@ int keystore_rewrap_key(const uint8_t *client_ticket,
 	/* 5. Use the migration key to decrypt the backup data          */
 	/****************************************************************/
 
-	res = unwrap_backup(mkey, backup_emkey, REENCRYPTED_BACKUP_SIZE,
+	res = unwrap_backup(mkey, backup_mk_enc, REENCRYPTED_BACKUP_SIZE,
 			    &plain_backup, sizeof(plain_backup));
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Cannot unwrap backup\n", __func__);

@@ -30,9 +30,15 @@
 /* Device and User seed - derived from platform seed and nonces from PDR */
 uint8_t sec_seed[MAX_SEED_TYPES][SEC_SEED_SIZE];
 
-static int keystore_get_seed(struct seed_offset *offset)
+bool seed_available[MAX_SEED_TYPES];
+
+static int keystore_copy_seeds(struct seed_offset *offset)
 {
 	int res = 0;
+
+	/* Set default availability */
+	seed_available[SEED_TYPE_DEVICE] = false;
+	seed_available[SEED_TYPE_USER] = false;
 
 	/* each seed should be atleast SEC_SEED_SIZE */
 	if (!offset) {
@@ -58,6 +64,8 @@ static int keystore_get_seed(struct seed_offset *offset)
 		ks_err(KBUILD_MODNAME ": Error retrieving Device SEED\n");
 		return res;
 	}
+
+	seed_available[SEED_TYPE_DEVICE] = true;
 #endif
 
 	memset_ph((phys_addr_t)offset->device_seed, 0, (size_t)SEC_SEED_SIZE);
@@ -68,9 +76,12 @@ static int keystore_get_seed(struct seed_offset *offset)
 				     (phys_addr_t)offset->user_seed,
 				     (size_t)SEC_SEED_SIZE);
 		if (res) {
-			ks_err(KBUILD_MODNAME ": Error retrieving Device SEED\n");
+			ks_err(KBUILD_MODNAME ": Error retrieving User SEED\n");
 			return res;
 		}
+
+		seed_available[SEED_TYPE_USER] = true;
+
 #endif
 		memset_ph((phys_addr_t)offset->user_seed, 0,
 			  (size_t)SEC_SEED_SIZE);
@@ -91,7 +102,15 @@ int keystore_fill_seeds(void)
 		memset(sec_seed[indx], ((indx + 0xa5) & 0xFF), SEC_SEED_SIZE);
 		keystore_hexdump("Keystore SEED",
 				 sec_seed[indx], SEC_SEED_SIZE);
+		seed_available[indx] = true;
 	}
+
+#if defined(CONFIG_KEYSTORE_DISABLE_DEVICE_SEED)
+	seed_available[SEED_TYPE_DEVICE] = false;
+#elif defined(CONFIG_KEYSTORE_DISABLE_USER_SEED)
+	seed_available[SEED_TYPE_USER] = false;
+#endif
+
 #else
 	/* Get keys and seeds offsets from cmdline
 	 * - ikey, okey, keysize, dseed and useed.
@@ -103,10 +122,22 @@ int keystore_fill_seeds(void)
 		return res;
 	}
 
-	res = keystore_get_seed(&s_off);
+	res = keystore_copy_seeds(&s_off);
 
 #endif
 	return res;
+}
+
+const uint8_t *keystore_get_seed(enum keystore_seed_type type)
+{
+	if ((type != SEED_TYPE_DEVICE) ||
+	    (type != SEED_TYPE_USER))
+		return NULL;
+
+	if (!seed_available[type])
+		return NULL;
+
+	return sec_seed[type];
 }
 
 /* end of file */

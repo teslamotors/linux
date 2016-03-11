@@ -19,32 +19,34 @@
 
 #include <linux/types.h>
 
+#define SHA256_HMAC_SIZE	                32
+
 /**
- * Calculate SHA-256 HMAC or AES-128 CMAC.
+ * keystore_calc_mac() - Calculate SHA-256 HMAC or AES-128 CMAC.
  *
- * @param alg_name Algorithm name ("hmac(sha256)" or "cmac(aes)").
- * @param key Pointer to the key.
- * @param klen Key size in bytes.
- * @param data_in Pointer to the data block.
- * @param dlen Data block size in bytes.
- * @param hash_out Pointer to the output buffer.
- * @param outlen Output buffer size in bytes.
+ * @alg_name: Algorithm name ("hmac(sha256)" or "cmac(aes)").
+ * @key: Pointer to the key.
+ * @klen: Key size in bytes.
+ * @data_in: Pointer to the data block.
+ * @dlen: Data block size in bytes.
+ * @hash_out: Pointer to the output buffer.
+ * @outlen: Output buffer size in bytes.
  *
- * @return 0 if OK or negative error code (see errno).
+ * Returns: 0 if OK or negative error code (see errno).
  */
 int keystore_calc_mac(const char *alg_name, const char *key, size_t klen,
 		      const char *data_in, size_t dlen,
 		      char *hash_out, size_t outlen);
 
 /**
- * Calculate SHA-256 digest of a data block.
+ * keystore_sha256_block() - Calculate SHA-256 digest of a data block.
  *
- * @param data The data block pointer.
- * @param size The size of data in bytes.
- * @param result The result digest pointer.
- * @param result_size The result digest block size.
+ * @data: The data block pointer.
+ * @size: The size of data in bytes.
+ * @result: The result digest pointer.
+ * @result_size: The result digest block size.
  *
- * @return 0 if OK or negative error code.
+ * Returns: 0 if OK or negative error code.
  */
 int keystore_sha256_block(const void *data, unsigned int size,
 			  void *result, unsigned int result_size);

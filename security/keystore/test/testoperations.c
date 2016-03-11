@@ -8,12 +8,12 @@
 
 #include "keystore_operations.h"
 #include "keystore_tests.h"
-#include "keystore_constants.h"
 #include "keystore_rand.h"
 #include "keystore_context.h"
 #include "keystore_context_safe.h"
 #include "keystore_debug.h"
 #include "keystore_ecc.h"
+#include "keystore_aes.h"
 
 int keystore_test_genkey(void)
 {
@@ -84,7 +84,8 @@ int keystore_test_wrap_unwrap(void)
 			 &unwrap_spec, unwrapped_key);
 	if (keystore_assert(res == 0))
 		goto free_key;
-	if (keystore_assert(memcmp(app_key, unwrapped_key, app_key_size) == 0)) {
+	if (keystore_assert(
+		    memcmp(app_key, unwrapped_key, app_key_size) == 0)) {
 		res = -1;
 		goto free_key;
 	}

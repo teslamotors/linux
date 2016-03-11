@@ -19,14 +19,20 @@
 
 #include <security/keystore_api_common.h>
 
+/* ECC Public key size for backup operations */
+#define KEYSTORE_ECC_PUB_KEY_SIZE   (sizeof(struct ias_keystore_ecc_public_key))
+
+/* ECC Private key size used on the host for migration */
+#define KEYSTORE_ECC_PRIV_KEY_SIZE  (sizeof(__u32) * KEYSTORE_ECC_DIGITS)
+
 /**
- * Generate ECC private and public key from a seed
+ * keystore_ecc_gen_keys() - Generate ECC private and public key from a seed
  *
- * @param public_key public ECC key.
- * @param private_key private ECC key.
- * @param seed_in a pointer to the seed used to derive the keys
+ * @seed_in: Pointer to the random seed used to derive the keys.
+ * @seed_in_size: Size of the seed @seed_in.
+ * @key_pair: Output generated ECC key pair.
  *
- * @return 0 OK or negative error code (see errno),
+ * Returns: 0 OK or negative error code (see errno),
  * ENODATA if SEED cannot be used to generate private key or
  * EKEYREJECTED if public key cannot pass verification.
  */
@@ -34,16 +40,15 @@ int keystore_ecc_gen_keys(const uint8_t *seed_in, size_t seed_in_size,
 			  struct ias_keystore_ecc_keypair *key_pair);
 
 /**
- * Encrypt a block of data using ECC (ECIES).
+ * keystore_ecc_encrypt() - Encrypt a block of data using ECC (ECIES).
  *
- * @param key Public key pointer (raw data).
- * @param key_size Public key size in bytes.
- * @param data Block of data to be encrypted.
- * @param data_size Size of data in bytes.
- * @param output Block of data for the result.
- * @param output_size Size of output data block.
+ * @key: Public key pointer (raw data).
+ * @data: Block of data to be encrypted.
+ * @data_size: Size of data in bytes.
+ * @output: Block of data for the result.
+ * @output_size: Size of output data block.
  *
- * @return The number of bytes written into output block if OK
+ * Returns: The number of bytes written into output block if OK
  * or negative error code (see errno).
  */
 int keystore_ecc_encrypt(const struct keystore_ecc_public_key *key,
@@ -51,16 +56,15 @@ int keystore_ecc_encrypt(const struct keystore_ecc_public_key *key,
 			 void *output, unsigned int output_size);
 
 /**
- * Decrypt a block of data using ECC (ECIES).
+ * keystore_ecc_decrypt() - Decrypt a block of data using ECC (ECIES).
  *
- * @param key Private key pointer (raw data).
- * @param key_size Pricate key size in bytes.
- * @param data Block of data to be decrypted.
- * @param data_size Size of data in bytes.
- * @param output Block of data for the result.
- * @param output_size Size of output data block.
+ * @key: Private key pointer (raw data).
+ * @data: Block of data to be decrypted.
+ * @data_size: Size of data in bytes.
+ * @output: Block of data for the result.
+ * @output_size: Size of output data block.
  *
- * @return The number of bytes written into output block if OK or negative error
+ * Returns: The number of bytes written into output block if OK or negative error
  * code (see errno).
  */
 int keystore_ecc_decrypt(const uint32_t *key,
@@ -68,30 +72,28 @@ int keystore_ecc_decrypt(const uint32_t *key,
 			 void *output, unsigned int output_size);
 
 /**
- * Perform data sign using ecc Public key.
+ * keystore_ecc_sign() - Perform data sign using ecc Public key.
  *
- * @param key Public ECC key.
- * @param key_size Public ECC key size.
- * @param data Data from which hash sum will be counted.
- * @param data Data size.
+ * @key: Private ECC key.
+ * @data: Data from which hash sum will be counted.
+ * @data_size: Size of @data.
+ * @sig: The ECC signature of @data.
  *
- * @return signature size if OK or negative error code (see errno).
+ * Returns: signature size if OK or negative error code (see errno).
  */
-int keystore_ecc_sign(const void *key,
+int keystore_ecc_sign(const uint32_t *key,
 		      const void *data, unsigned int data_size,
 		      struct keystore_ecc_signature *sig);
 
 /**
- * Perform signature verification using ecc public key.
+ *  keystore_ecc_verify() - Perform signature verification using ecc public key.
  *
- * @param signature Private ECC key.
- * @param signature_size Private ECC key size.
- * @param key public ECC key to decrypt hash sum from signature file.
- * @param key key size.
- * @param data Data from which hash sum will be counted.
- * @param data Data size.
+ * @key: public ECC key to decrypt hash sum from signature file.
+ * @data: Data from which hash sum will be counted.
+ * @data_size: Data size.
+ * @sig: ECC signature to be verfied.
  *
- * @return 0 if OK or negative error code (see errno).
+ * Returns: if OK or negative error code (see errno).
  */
 int keystore_ecc_verify(const struct keystore_ecc_public_key *key,
 			const void *data, unsigned int data_size,

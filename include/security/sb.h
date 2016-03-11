@@ -18,6 +18,16 @@
 #define _SB_H_
 
 /**
+ * DOC: Secure Boot
+ *
+ * The sb module obtains the secure boot status from the
+ * Converged Security Engine (CSE) and caches it locally.
+ *
+ * The status is available via the get_sb_stat() function.
+ *
+ */
+
+/**
  * get_sb_stat() - Function to check secure boot status.
  *
  * Returns: 1 on SB enabled systems else returns 0

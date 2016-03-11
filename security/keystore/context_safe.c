@@ -56,7 +56,7 @@ int ctx_remove_client(const uint8_t *client_ticket)
 	return res;
 }
 
-int ctx_add_app_key(const void *client_ticket,
+int ctx_add_app_key(const uint8_t *client_ticket,
 		    const uint8_t *app_key, unsigned int app_key_size,
 		    unsigned int *slot_id)
 {
@@ -91,7 +91,7 @@ unlock_mutex:
 	return res;
 }
 
-int ctx_get_client_key(const void *client_ticket,
+int ctx_get_client_key(const uint8_t *client_ticket,
 		    uint8_t *client_key, uint8_t *client_id)
 {
 	struct keystore_ctx *ctx = NULL;
@@ -121,7 +121,7 @@ unlock_mutex:
 }
 
 
-int ctx_get_app_key(const void *client_ticket,
+int ctx_get_app_key(const uint8_t *client_ticket,
 		    unsigned int slot_id,
 		    uint8_t *app_key,
 		    unsigned int *app_key_size)
@@ -129,6 +129,9 @@ int ctx_get_app_key(const void *client_ticket,
 	struct keystore_ctx *ctx = NULL;
 	struct keystore_slot *slot = NULL;
 	int res = 0;
+
+	if (!client_ticket || !app_key_size)
+		return -EFAULT;
 
 	if (slot_id >= KEYSTORE_SLOTS_MAX)
 		return -EINVAL;
@@ -151,6 +154,21 @@ int ctx_get_app_key(const void *client_ticket,
 		goto unlock_mutex;
 	}
 
+
+	/* If app_key is null, assume the caller wants to know the size */
+	if (!app_key) {
+		*app_key_size = slot->app_key_size;
+		goto unlock_mutex;
+	}
+
+	/* Check buffer size */
+	if (*app_key_size < slot->app_key_size) {
+		ks_err(KBUILD_MODNAME ": %s app_key_size too small\n",
+		       __func__);
+		res = -EINVAL;
+		goto unlock_mutex;
+	}
+
 	memcpy(app_key, slot->app_key, slot->app_key_size);
 	*app_key_size = slot->app_key_size;
 
@@ -159,7 +177,7 @@ unlock_mutex:
 	return res;
 }
 
-int ctx_remove_app_key(const void *client_ticket, unsigned int slot_id)
+int ctx_remove_app_key(const uint8_t *client_ticket, unsigned int slot_id)
 {
 	struct keystore_ctx *ctx = NULL;
 	int res = 0;
@@ -186,7 +204,7 @@ unlock_mutex:
 	return res;
 }
 
-int ctx_take_backup(const void *client_ticket,
+int ctx_take_backup(const uint8_t *client_ticket,
 		    struct keystore_backup_data *backup)
 {
 	struct keystore_ctx *ctx = NULL;
@@ -214,6 +232,7 @@ unlock_mutex:
 	mutex_unlock(&contexts_mutex);
 	return res;
 }
+
 
 int ctx_free(void)
 {

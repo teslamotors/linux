@@ -20,10 +20,16 @@
 #include <linux/types.h>
 
 /**
+ * keystore_get_rdrand() - Fill buffer with random bytes.
+ *
+ * @buf: Pointer to input buffer
+ * @size: Size of input buffer
+ *
  * Function gets CPU information then checks if CPU support RDRAND instruction and
  * finally get data as int from RDRAND register
  * If CPU does not support RDRAND ENODATA will be return
- * @param random is pointer to simple data type in case NULL EINVAL will be returned
+ *
+ * Returns: 0 on sucess or negative error number.
  */
 int keystore_get_rdrand(uint8_t *buf, int size);
 

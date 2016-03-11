@@ -24,7 +24,6 @@
 
 #include <security/keystore_api_kernel.h>
 #include "keystore_client.h"
-#include "keystore_constants.h"
 #include "keystore_context_safe.h"
 #include "keystore_rand.h"
 #include "keystore_ecc.h"
@@ -60,18 +59,19 @@ EXPORT_SYMBOL(keystore_gen_ecc_keys);
 int keystore_test_verify_ecc_signature(const struct keystore_ecc_public_key
 				       *public_key, const uint8_t *data,
 				       unsigned int data_size,
-				       const struct keystore_ecc_signature *sig)
+				       const struct keystore_ecc_signature
+				       *output_sig)
 {
 	int res = 0;
 
 	FUNC_BEGIN;
 
-	if (!public_key || !data || !sig) {
+	if (!public_key || !data || !output_sig) {
 		res = -EFAULT;
 		goto exit;
 	}
 
-	res = keystore_ecc_verify(public_key, data, data_size, sig);
+	res = keystore_ecc_verify(public_key, data, data_size, output_sig);
 
 	if (res != 0)
 		ks_err(KBUILD_MODNAME ": %s: Error %d in keystore_ecc_verify_signature\n",
@@ -83,31 +83,37 @@ exit:
 }
 EXPORT_SYMBOL(keystore_test_verify_ecc_signature);
 
-int keystore_migrate(const uint32_t *oem_priv, const uint8_t *backup,
-		     const uint32_t *oem_priv2, const uint8_t *mig_key,
-		     uint8_t *output)
+int keystore_unwrapped_key_size(unsigned int wrapped_size,
+				unsigned int *unwrapped_size)
+{
+	return unwrapped_key_size(wrapped_size, unwrapped_size);
+}
+EXPORT_SYMBOL(keystore_unwrapped_key_size);
+
+int keystore_unwrap_with_backup(const uint32_t *key_enc_backup,
+				const uint8_t *backup_enc,
+				const uint8_t *wrapped_key,
+				unsigned int wrapped_key_size,
+				enum keystore_key_spec *keyspec,
+				uint8_t *unwrapped_key)
 {
 	int res = 0;
-	struct keystore_backup_data _backup, aes_backup;
-	uint8_t mkey[KEYSTORE_MKEY_SIZE];
+	struct keystore_backup_data backup;
 
 	FUNC_BEGIN;
 
 	/* Check inputs */
-	if (!oem_priv || !backup || !oem_priv2 || !mig_key || !output) {
+	if (!key_enc_backup || !backup_enc ||
+	    !wrapped_key || !unwrapped_key || !keyspec) {
 		res = -EFAULT;
 		goto exit;
 	}
 
-	/* Prepare data strutures */
-	memset(&_backup, 0, sizeof(_backup));
-	memset(&aes_backup, 0, sizeof(aes_backup));
-	memset(&mkey, 0, sizeof(mkey));
+	res = decrypt_from_target(key_enc_backup,
+				  backup_enc, KEYSTORE_BACKUP_SIZE,
+				  &backup, sizeof(backup));
 
-	res = decrypt_from_target(oem_priv, backup, KEYSTORE_BACKUP_SIZE,
-				  &_backup, sizeof(_backup));
-
-	keystore_hexdump("Decrypted backup", &_backup, sizeof(_backup));
+	keystore_hexdump("Decrypted backup", &backup, sizeof(backup));
 
 	if (res < 0) {
 		ks_warn(KBUILD_MODNAME ": %s: Error %d, fail to decrypt backup\n",
@@ -115,7 +121,62 @@ int keystore_migrate(const uint32_t *oem_priv, const uint8_t *backup,
 		goto exit;
 	}
 
-	res = decrypt_from_target(oem_priv2, mig_key, KEYSTORE_EMKEY_SIZE,
+	res = unwrap_key(backup.client_key,
+			 wrapped_key, wrapped_key_size,
+			 keyspec, unwrapped_key);
+
+	keystore_hexdump("Unwrapped key:",
+			 unwrapped_key,
+			 unwrapped_key_size);
+
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s: Cannot unwrap appkey\n", __func__);
+		goto exit;
+	}
+exit:
+	FUNC_RES(res);
+	return res;
+}
+EXPORT_SYMBOL(keystore_unwrap_with_backup);
+
+int keystore_migrate(const uint32_t *key_enc_backup,
+		     const uint8_t *backup_enc,
+		     const uint32_t *key_enc_mkey,
+		     const uint8_t *mkey_enc,
+		     uint8_t *backup_mk_enc)
+{
+	int res = 0;
+	struct keystore_backup_data backup, aes_backup;
+	uint8_t mkey[KEYSTORE_MKEY_SIZE];
+
+	FUNC_BEGIN;
+
+	/* Check inputs */
+	if (!key_enc_backup || !backup_enc ||
+	    !key_enc_mkey || !mkey_enc ||
+	    !backup_mk_enc) {
+		res = -EFAULT;
+		goto exit;
+	}
+
+	/* Prepare data strutures */
+	memset(&backup, 0, sizeof(backup));
+	memset(&aes_backup, 0, sizeof(aes_backup));
+	memset(&mkey, 0, sizeof(mkey));
+
+	res = decrypt_from_target(key_enc_backup,
+				  backup_enc, KEYSTORE_BACKUP_SIZE,
+				  &backup, sizeof(backup));
+
+	keystore_hexdump("Decrypted backup", &backup, sizeof(backup));
+
+	if (res < 0) {
+		ks_warn(KBUILD_MODNAME ": %s: Error %d, fail to decrypt backup\n",
+			__func__, res);
+		goto exit;
+	}
+
+	res = decrypt_from_target(key_enc_mkey, mkey_enc, KEYSTORE_EMKEY_SIZE,
 				  mkey, sizeof(mkey));
 
 	keystore_hexdump("Decrypted mkey (ECIES)", mkey, sizeof(mkey));
@@ -126,10 +187,10 @@ int keystore_migrate(const uint32_t *oem_priv, const uint8_t *backup,
 		goto exit;
 	}
 
-	res = wrap_backup(mkey, &_backup, sizeof(_backup),
-			  output, REENCRYPTED_BACKUP_SIZE);
+	res = wrap_backup(mkey, &backup, sizeof(backup),
+			  backup_mk_enc, REENCRYPTED_BACKUP_SIZE);
 
-	keystore_hexdump("Output", output, REENCRYPTED_BACKUP_SIZE);
+	keystore_hexdump("Output", backup_mk_enc, REENCRYPTED_BACKUP_SIZE);
 
 	if (res) {
 		ks_warn(KBUILD_MODNAME ": %s: Error %d in wrap_backup\n",
@@ -137,10 +198,10 @@ int keystore_migrate(const uint32_t *oem_priv, const uint8_t *backup,
 		goto exit;
 	}
 
-	res = unwrap_backup(mkey, output, REENCRYPTED_BACKUP_SIZE,
+	res = unwrap_backup(mkey, backup_mk_enc, REENCRYPTED_BACKUP_SIZE,
 			    &aes_backup, sizeof(aes_backup));
 
-	keystore_hexdump("original backup:", &_backup, sizeof(_backup));
+	keystore_hexdump("original backup:", &backup, sizeof(backup));
 	keystore_hexdump("aes dec  backup:", &aes_backup, sizeof(aes_backup));
 
 	if (res) {
@@ -149,9 +210,9 @@ int keystore_migrate(const uint32_t *oem_priv, const uint8_t *backup,
 		goto exit;
 	}
 
-	if (res || memcmp((const uint8_t *)&_backup,
+	if (res || memcmp((const uint8_t *)&backup,
 			  (const uint8_t *)&aes_backup,
-			  sizeof(_backup)) != 0) {
+			  sizeof(backup)) != 0) {
 		ks_warn(KBUILD_MODNAME ": %s: Inconsistency in re-encrypted backup data!\n",
 			__func__);
 		res = -EBADE;

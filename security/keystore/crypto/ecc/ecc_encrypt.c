@@ -19,7 +19,6 @@
 #include <linux/slab.h>
 #include <crypto/sha.h>
 
-#include "keystore_constants.h"
 #include "keystore_debug.h"
 
 #include "ecc.h"

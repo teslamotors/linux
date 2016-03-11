@@ -19,7 +19,6 @@
 
 #include "keystore_mac.h"
 #include "keystore_debug.h"
-#include "keystore_constants.h"
 
 /**
  * Test the SHA-256 HMAC.
@@ -36,9 +35,7 @@ int keystore_test_hmac(void)
 	unsigned char hmac[SHA256_HMAC_SIZE];
 	int res;
 
-#ifdef DEBUG_TRACE
 	ks_info(KBUILD_MODNAME ": keystore_test_hmac\n");
-#endif
 
 	memset(hmac, 0, sizeof(hmac));
 
@@ -50,18 +47,14 @@ int keystore_test_hmac(void)
 		return res;
 	}
 
-#ifdef DEBUG_TRACE
 	keystore_hexdump("KEY   ", key, strlen(key));
 	keystore_hexdump("INPUT ", data, strlen(data));
 	keystore_hexdump("HMAC  ", hmac, sizeof(hmac));
 	keystore_hexdump("EXPECT", result, sizeof(hmac));
-#endif
 
 	res = memcmp(hmac, result, sizeof(hmac));
 
-#ifdef DEBUG_TRACE
 	ks_info(KBUILD_MODNAME ":   %s!\n", res ? "ERROR" : "OK");
-#endif
 
 	return res ? -1 : 0;
 }

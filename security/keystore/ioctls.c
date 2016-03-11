@@ -23,7 +23,6 @@
 
 #include <security/keystore_api_kernel.h>
 #include <security/keystore_api_user.h>
-#include "keystore_constants.h"
 
 #include "keystore_debug.h"
 #include "keystore_tests.h"
@@ -47,6 +46,8 @@ union keystore_ops_union {
 	struct ias_keystore_rewrap rewrap;
 	struct ias_keystore_verify_signature verify_signature;
 	struct ias_keystore_migrate migrate;
+	struct ias_keystore_unwrapped_key_size unwrapped_keysize;
+	struct ias_keystore_unwrap_with_backup unwrap;
 };
 
 static unsigned int is_cmd_supported(unsigned int cmd)
@@ -72,6 +73,8 @@ static unsigned int is_cmd_supported(unsigned int cmd)
 	case KEYSTORE_IOC_GEN_ECC_KEYS:
 	case KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE:
 	case KEYSTORE_IOC_MIGRATE:
+	case KEYSTORE_IOC_UNWRAPPED_KEYSIZE:
+	case KEYSTORE_IOC_UNWRAP_WITH_BACKUP:
 #endif
 #if defined(CONFIG_KEYSTORE_TESTMODE)
 	case KEYSTORE_IOC_RUN_TESTS:
@@ -83,6 +86,7 @@ static unsigned int is_cmd_supported(unsigned int cmd)
 	}
 }
 
+#if defined(CONFIG_KEYSTORE_DEBUG)
 static unsigned char *getcmdstr(unsigned int cmd)
 {
 	switch (cmd) {
@@ -124,12 +128,17 @@ static unsigned char *getcmdstr(unsigned int cmd)
 		return "KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE";
 	case KEYSTORE_IOC_MIGRATE:
 		return "KEYSTORE_IOC_MIGRATE";
+	case KEYSTORE_IOC_UNWRAPPED_KEYSIZE:
+		return "KEYSTORE_IOC_UNWRAPPED_KEYSIZE";
+	case KEYSTORE_IOC_UNWRAP_WITH_BACKUP:
+		return "KEYSTORE_IOC_UNWRAP_WITH_BACKUP";
 	case KEYSTORE_IOC_RUN_TESTS:
 		return "KEYSTORE_IOC_RUN_TESTS";
 	default:
 		return "not-supported";
 	}
 }
+#endif
 
 static int version_op(struct ias_keystore_version *user_data)
 {
@@ -424,10 +433,10 @@ static int backup_op(struct ias_keystore_backup *user_data)
 		return -EFAULT;
 
 	res = keystore_backup(user_data->client_ticket,
-			      &user_data->backup_key,
-			      user_data->sig,
-			      user_data->backup_encrypted,
-			      &user_data->output_sig);
+			      &user_data->key_enc_backup,
+			      user_data->key_enc_backup_sig,
+			      user_data->backup_enc,
+			      &user_data->backup_enc_sig);
 
 	return res;
 }
@@ -439,11 +448,11 @@ static int gen_mkey_op(struct ias_keystore_gen_mkey *user_data)
 	if (!user_data)
 		return -EFAULT;
 
-	res = keystore_generate_mkey(&user_data->backup_key,
-				     user_data->sig,
-				     user_data->mkey_encrypted,
+	res = keystore_generate_mkey(&user_data->key_enc_mkey,
+				     user_data->key_enc_mkey_sig,
+				     user_data->mkey_enc,
 				     &user_data->mkey_sig,
-				     user_data->output_nonce);
+				     user_data->nonce);
 	return res;
 }
 
@@ -477,7 +486,7 @@ static int keystore_rewrap_op(struct ias_keystore_rewrap *user_data)
 		goto free_buf;
 
 	res = keystore_rewrap_key(user_data->client_ticket,
-				  user_data->backup,
+				  user_data->backup_mk_enc,
 				  user_data->nonce,
 				  wrapped_key,
 				  user_data->wrapped_key_size,
@@ -529,6 +538,65 @@ free_buf:
 	return res;
 }
 
+static int unwrapped_keysize_op(struct ias_keystore_unwrapped_key_size
+				*user_data)
+{
+	int res = 0;
+
+	if (!user_data)
+		return -EFAULT;
+
+	res = keystore_unwrapped_key_size(user_data->wrapped_size,
+					  &user_data->unwrapped_size);
+
+	return res;
+}
+
+static int unwrap_op(struct ias_keystore_unwrap_with_backup *user_data)
+{
+	int res = 0;
+	uint8_t *wrapped_key = NULL;
+	uint8_t *unwrapped_key = NULL;
+	unsigned int unwrapped_key_size;
+
+	if (!user_data)
+		return -EFAULT;
+
+	res = keystore_unwrapped_key_size(user_data->wrapped_key_size,
+					  &unwrapped_key_size);
+	if (res)
+		return -EINVAL;
+
+	wrapped_key = kmalloc(user_data->wrapped_key_size, GFP_KERNEL);
+	unwrapped_key = kmalloc(unwrapped_key_size, GFP_KERNEL);
+	if (!wrapped_key || !unwrapped_key) {
+		res = -ENOMEM;
+		goto free_buf;
+	}
+
+	res = copy_from_user(wrapped_key, user_data->wrapped_key,
+			     user_data->wrapped_key_size);
+	if (res)
+		goto free_buf;
+
+	res = keystore_unwrap_with_backup(user_data->key_enc_backup,
+					  user_data->backup_enc,
+					  wrapped_key,
+					  user_data->wrapped_key_size,
+					  &user_data->keyspec,
+					  unwrapped_key);
+	if (res)
+		goto free_buf;
+
+	res = copy_to_user(user_data->unwrapped_key, unwrapped_key,
+			   unwrapped_key_size);
+
+free_buf:
+	kzfree(wrapped_key);
+	kzfree(unwrapped_key);
+	return res;
+}
+
 static int migrate_op(struct ias_keystore_migrate *user_data)
 {
 	int res = 0;
@@ -537,10 +605,10 @@ static int migrate_op(struct ias_keystore_migrate *user_data)
 		return -EFAULT;
 
 	res = keystore_migrate(user_data->key_enc_backup,
-			       user_data->backup,
-			       user_data->key_enc_mig_key,
-			       user_data->mig_key,
-			       user_data->output);
+			       user_data->backup_enc,
+			       user_data->key_enc_mkey,
+			       user_data->mkey_enc,
+			       user_data->backup_mk_enc);
 
 	return res;
 }
@@ -654,9 +722,11 @@ long keystore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case KEYSTORE_IOC_REWRAP:
 		res = keystore_rewrap_op(&op.rewrap);
 		break;
+
 	case KEYSTORE_IOC_RUN_TESTS:
 		res = keystore_run_tests();
 		break;
+
 #if defined(CONFIG_KEYSTORE_TEST_MIGRATION)
 	case KEYSTORE_IOC_GEN_ECC_KEYS:
 		res = gen_ecc_keys_op(&op.ecc_keys);
@@ -665,6 +735,14 @@ long keystore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case KEYSTORE_IOC_TEST_VERIFY_ECC_SIGNATURE:
 		res = keystore_test_verify_ecc_signature_op(
 			&op.verify_signature);
+		break;
+
+	case KEYSTORE_IOC_UNWRAPPED_KEYSIZE:
+		res = unwrapped_keysize_op(&op.unwrapped_keysize);
+		break;
+
+	case KEYSTORE_IOC_UNWRAP_WITH_BACKUP:
+		res = unwrap_op(&op.unwrap);
 		break;
 
 	case KEYSTORE_IOC_MIGRATE:

@@ -14,9 +14,10 @@
 #include <security/keystore_api_kernel.h>
 #include "keystore_client.h"
 #include "keystore_mac.h"
-#include "keystore_constants.h"
 #include "keystore_seed.h"
 #include "keystore_debug.h"
+
+#define KERNEL_CLIENTS_ID			"+(!$(%@#%$$)*"
 
 /**
  * Get the absolute path of current process in the filesystem. This is used
@@ -113,26 +114,21 @@ int keystore_calc_clientkey(const enum keystore_seed_type seed_type,
 			    u8 *client_key, const unsigned int client_key_size)
 {
 	int res = 0;
+	const uint8_t *seed = NULL;
 
 	if (!client_key || !client_id)
 		return -EFAULT;
 
-	if (seed_type < 0 || seed_type >= MAX_SEED_TYPES)
+	seed = keystore_get_seed(seed_type);
+	if (!seed) {
+		ks_err(KBUILD_MODNAME
+		       ": %s: Seed type %d invalid or not available.\n");
 		return -EINVAL;
-
-#if defined(CONFIG_KEYSTORE_DISABLE_DEVICE_SEED)
-	if (seed_type == DEVICE_SEED)
-		return -EINVAL;
-#endif
-
-#if defined(CONIFG_KEYSTORE_DISABLE_USER_SEED)
-	if (seed_type == USER_SEED)
-		return -EINVAL;
-#endif
+	}
 
 	/* calculate KDF(key = SEED, data = ClientID) */
 	res = keystore_calc_mac("hmac(sha256)",
-				sec_seed[seed_type], SEC_SEED_SIZE,
+				seed, SEC_SEED_SIZE,
 				client_id,  client_id_size,
 				client_key, client_key_size);
 

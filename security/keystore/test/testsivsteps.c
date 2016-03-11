@@ -17,8 +17,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 
-#include "keystore_constants.h"
-
 #include "keystore_aes.h"
 #include "keystore_mac.h"
 #include "keystore_debug.h"
@@ -95,9 +93,7 @@ int keystore_test_aes_siv_steps(void)
 	struct aes_siv_string strings[2];
 	int res;
 
-#ifdef DEBUG_TRACE
 	ks_info(KBUILD_MODNAME ": keystore_test_aes_siv_steps\n");
-#endif
 	memset(output, 0, output_size);
 
 	/* CMAC(zero) */
@@ -109,12 +105,10 @@ int keystore_test_aes_siv_steps(void)
 		return res;
 	}
 
-#ifdef DEBUG_TRACE
 	keystore_hexdump("KEY       ", key, sizeof(key));
 	keystore_hexdump("AD        ", ad, sizeof(ad));
 	keystore_hexdump("PLAINTEXT ", plaintext, sizeof(plaintext));
 	keystore_hexdump("ZEROS     ", zeros, sizeof(zeros));
-#endif
 
 	if (show_and_compare("CMAC(zero)", output, "EXPECT    ", cmac_zero
 				, output_size)) {
@@ -227,9 +221,7 @@ int keystore_test_aes_siv_steps(void)
 		return -1;
 	}
 
-#ifdef DEBUG_TRACE
 	ks_info(KBUILD_MODNAME ":   OK!\n");
-#endif
 
 	return 0;
 }

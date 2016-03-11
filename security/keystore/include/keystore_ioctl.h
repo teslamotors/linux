@@ -19,11 +19,11 @@
 #include <linux/fs.h>
 
 /**
- * keystore_ioctl - the ioctl function
+ * keystore_ioctl() - the ioctl function
  *
- * @param file pointer to file structure
- * @param cmd command to execute
- * @param arg user space pointer to arguments structure
+ * @file: pointer to file structure
+ * @cmd: command to execute
+ * @arg: user space pointer to arguments structure
  *
  * @returns 0 on success, <0 on error
  */

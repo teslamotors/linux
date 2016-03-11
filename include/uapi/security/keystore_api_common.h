@@ -19,6 +19,14 @@
 
 #include <linux/types.h>
 
+/**
+ * DOC: Introduction
+ *
+ * Common constants and structures common to both user- and kernel-space
+ * clients are listed here.
+ *
+ */
+
 /* Version numbers of the Keystore API
  * Follows the Apache versioning scheme
  *
@@ -33,46 +41,62 @@
 #define KEYSTORE_VERSION_MINOR 0
 #define KEYSTORE_VERSION_PATCH 0
 
-/* "/dev/keystore" char device major number */
+/**
+ * KEYSTORE_MAJOR - "/dev/keystore" char device major number
+ */
 #define KEYSTORE_MAJOR               40
 
-/* client_ticket size in bytes for most API calls */
+/**
+ * KEYSTORE_CLIENT_TICKET_SIZE - client_ticket size in bytes
+ */
 #define KEYSTORE_CLIENT_TICKET_SIZE   8
 
-/* Maximum size of the Initialization vection for encrypt/decrypt */
+/**
+ * KEYSTORE_MAX_IV_SIZE - Maximum size of the Initialization Vector
+ */
 #define KEYSTORE_MAX_IV_SIZE         16
 
-/* Expected RSA signature size
+/**
+ * RSA_SIGNATURE_BYTE_SIZE - Expected RSA signature size.
+ *
  * Used when verifying the signature of backup keys
  */
 #define RSA_SIGNATURE_BYTE_SIZE	    256
 
-/* Size of Encrypted backup
+/**
+ * KEYSTORE_BACKUP_SIZE - Size of Encrypted backup
  *
  * The backup operation returns an ECC encrypted blob.
  * The total size of this blob is given below.
  */
 #define KEYSTORE_BACKUP_SIZE        249
 
-/* Number of ECC digits used to calculate ECC key sizes */
+/**
+ * KEYSTORE_ECC_DIGITS - Number of ECC digits used to calculate ECC key sizes
+ */
 #define KEYSTORE_ECC_DIGITS          17
 
-/* ECC Public key size for backup operations */
-#define KEYSTORE_ECC_PUB_KEY_SIZE   (sizeof(struct ias_keystore_ecc_public_key))
+/**
+ * REENCRYPTED_BACKUP_SIZE - Size of the backup after
+ * re-encryption with the migration key
+ */
+#define REENCRYPTED_BACKUP_SIZE       89
 
-/* ECC Private key size used on the host for migration */
-#define KEYSTORE_ECC_PRIV_KEY_SIZE  (sizeof(__u32) * KEYSTORE_ECC_DIGITS)
-
-/* Size of the backup after re-encryption with the migration key */
-#define REENCRYPTED_BACKUP_SIZE       89  /* size of re-encrypted backup data */
-
-/* Size of the nonce used to create the migration key */
+/**
+ * KEYSTORE_MKEY_NONCE_SIZE - Size of the nonce used to create
+ * the migration key
+ */
 #define KEYSTORE_MKEY_NONCE_SIZE      32
 
-/* Size of the migration key */
+/**
+ * KEYSTORE_MKEY_SIZE - Size of the migration key
+ */
 #define KEYSTORE_MKEY_SIZE            32
 
-/* Size of the migration key encrypted with an ECC public key */
+/**
+ * KEYSTORE_EMKEY_SIZE - Size of the migration key encrypted
+ * with an ECC public key
+ */
 #define KEYSTORE_EMKEY_SIZE           217
 
 /**
@@ -97,6 +121,14 @@ struct ias_keystore_ecc_keypair {
 	struct keystore_ecc_public_key public_key;
 };
 
+/**
+ * struct keystore_ecc_signature - ECDSA signature
+ * @r: r component of the signature
+ * @s: s component of the signature
+ *
+ * Holds and Eliptic Curve Digital Signature Algorithm signature.
+ * The meaning of the (@r, @s) components can be found in FIPS-186-4.
+ */
 struct keystore_ecc_signature {
 	__u32 r[KEYSTORE_ECC_DIGITS];
 	__u32 s[KEYSTORE_ECC_DIGITS];

@@ -20,6 +20,13 @@
 #include <security/keystore_api_common.h>
 
 /**
+ * DOC: Introduction
+ *
+ * Keystore can be accessed from kernel clients via this interface.
+ * The user-space ioctl calls also call into this interface.
+ */
+
+/**
  * keystore_register() - Register a keystore client
  * @seed_type:           Which SEED to use to register the client.
  *                       This can be either a device or user-specific seed.
@@ -87,7 +94,6 @@ int keystore_generate_key(const uint8_t *client_ticket,
  * @app_key_size:  The application key size in bytes.
  * @keyspec:       The key specification.
  * @wrapped_key:   Output buffer for the wrapped key.
- *                 (app_key_size + KEYSTORE_WRAPPED_KEY_EXTRA bytes).
  *
  * Wrap (import) a bare (unencrypted) application key which has the given
  * keyspec. The wrapped key is returned to the client for use with keystore
@@ -202,33 +208,6 @@ int keystore_decrypt(const uint8_t *client_ticket, int slot_id,
 		     uint8_t *output);
 
 /**
- * keystore_backup() - Create an encrypted backup of the Client Key.
- *
- * @client_ticket:         The client ticket
- *                         (KEYSTORE_CLIENT_TICKET_SIZE bytes).
- * @oem_pub:               OEM public ECC key.
- * @oem_pub_sig:           ECC key signed by OEM RSA key, must be
- *                         RSA_SIGNATURE_SIZE bytes in size.
- * @output:                Pointer to the block for encrypted data.
- *                         (at least KEYSTORE_BACKUP_SIZE bytes).
- * @output_signature:      ECC signature of output buffer, must
- *                         be ECC_SIGNATURE_SIZE in size.
- *
- * Validate OEM public ECC key and encrypt data for backup with it.
- * The backup data contains the Client ID and Client key.
- * The encryped output is signed by the keystore public ECC key.
- * The signed and encrypted output can be used to migrate keystore client
- * keys between targets.
- *
- * Return: 0 if OK or negative error code (see errno.h).
- */
-int keystore_backup(const uint8_t *client_ticket,
-		    const struct keystore_ecc_public_key *oem_pub,
-		    const uint8_t *signature,
-		    uint8_t *output,
-		    struct keystore_ecc_signature *output_signature);
-
-/**
  * keystore_get_ksm_key() - Retrieve the Keystore public ECC key.
  *
  * @public_key: The Keystore public ECC key
@@ -240,16 +219,44 @@ int keystore_backup(const uint8_t *client_ticket,
 int keystore_get_ksm_key(struct keystore_ecc_public_key *public_key);
 
 /**
+ * keystore_backup() - Create an encrypted backup of the Client Key.
+ *
+ * @client_ticket:      The client ticket (%KEYSTORE_CLIENT_TICKET_SIZE bytes).
+ * @key_enc_backup:     Public key to encrypt the backup.
+ * @key_enc_backup_sig: RSA signature of @key_enc_backup, the caller must
+ *                      provide a buffer of %RSA_SIGNATURE_BYTE_SIZE bytes.
+ * @backup_enc:         The client_id and client_key encrypted with
+ *                      the backup key, @key_enc_backup.
+ * @backup_enc_sig:     ECDSA signature of @backup_enc, signed with the keystore
+ *                      ECC key.
+ *
+ * Validate OEM public ECC key and encrypt data for backup with it.
+ * The backup data contains the Client ID and Client key.
+ * The encryped output is signed by the keystore public ECC key.
+ * The signed and encrypted output can be used to migrate keystore client
+ * keys between targets.
+ *
+ * Return: 0 if OK or negative error code (see errno.h).
+ */
+int keystore_backup(const uint8_t *client_ticket,
+		    const struct keystore_ecc_public_key *key_enc_backup,
+		    const uint8_t *key_enc_backup_sig,
+		    uint8_t *backup_enc,
+		    struct keystore_ecc_signature *backup_enc_sig);
+
+/**
  * keystore_generate_mkey() - Generate migration key.
  *
- * @oem_pub:          OEM public ECC key.
- * @oem_pub_sig:      ECC key signed by OEM RSA key, RSA_SIGNATURE_SIZE
- *                    bytes in size.
- * @emkey:            Encrypted migration key, caller must reserve
- *                    KEYSTORE_MKEY_SIZE bytes.
- * @mkey_sig:         Signature of encrypted migration key.
- * @mkey_nonce:       Nonce used to create the migration key, caller must
- *                    ensure KEYSTORE_MKEY_NONCE_SIZE bytes are available.
+ * @key_enc_mkey:        Public ECC key which should be used to encrypt the
+ *                       migration key.
+ * @key_enc_mkey_sig:    RSA signature of the backup key, %RSA_SIGNATURE_SIZE
+ *                       bytes in size.
+ * @mkey_enc:            The migration key encrypted with the @key_enc_mkey. The
+ *                       caller must reserve %KEYSTORE_MKEY_SIZE bytes.
+ * @mkey_sig:            Encrypted migration key signed using keystore ECC key.
+ * @nonce:               The nonce used to generate the migration key. Caller
+ *                       must ensure that %KEYSTORE_MKEY_NONCE_SIZE bytes are
+ *                       available.
  *
  * Keystore will check the signature of the ECC public key against the
  * OEM RSA public key. This ECC key will be used to encrypt a randomly
@@ -258,35 +265,39 @@ int keystore_get_ksm_key(struct keystore_ecc_public_key *public_key);
  *
  * Return: 0 if OK or negative error code (see errno.h).
  */
-int keystore_generate_mkey(const struct keystore_ecc_public_key *oem_pub,
-			   const uint8_t *oem_pub_sig,
-			   uint8_t *emkey,
+int keystore_generate_mkey(const struct keystore_ecc_public_key *key_enc_mkey,
+			   const uint8_t *key_enc_mkey_sig,
+			   uint8_t *mkey_enc,
 			   struct keystore_ecc_signature *mkey_sig,
-			   uint8_t *mkey_nonce);
+			   uint8_t *nonce);
 
 /**
  * keystore_rewrap_key() - Import key backup from another keystore
  *
- * @client_ticket:      The client ticket (KEYSTORE_CLIENT_TICKET_SIZE bytes).
- * @backup_emkey:       Backup data encrypted using migration key(AES-CCM),
- *                      mkey - {ClientKey1, ClientIDMK}. Expected size is
- *                      REENCRYPTED_BACKUP_SIZE bytes.
- * @mkey_nonce:         Nonce for creating migration key,
- *                      KEYSTORE_MKEY_NONCE_SIZE bytes in size.
- * @wrapped_key:        Wrapped key which needs to be rewrapped.
+ * @client_ticket:      Ticket used to identify this client session
+ *                      (%KEYSTORE_CLIENT_TICKET_SIZE bytes).
+ * @backup_mk_enc:      The backup encrypted using the migration key
+ *                      (%REENCRYPTED_BACKUP_SIZE bytes).
+ * @nonce:              The nonce used to create the migration key
+ *                      (%KEYSTORE_MKEY_NONCE_SIZE).
+ * @wrapped_key:        The wrapped key from the other system which is
+ *                      being migrated from.
  * @wrapped_key_size:   Size of the wrapped key.
- * @rewrapped_key:      Rewrapped key with new KSM client key. The caller must
- *                      ensure wrapped_key_size bytes are available.
+ * @rewrapped_key:      The key wrapped for this system (which is being migrated
+ *                      to). The caller must ensure that @wrapped_key_size
+ *                      bytes are available.
  *
- * Takes a wrapped key and re-encrypted migration data from a different
- * keystore and re-wraps the key using the Client key associated with
- * the current client.
+ * Takes a wrapped key and encrypted client data from the system which
+ * is the source of the backup. Regenerates the migration key from the
+ * nonce and uses it to decrypt the backup. The backup contains the
+ * client key which is used to unwrap the wrapped key. The bare key is
+ * rewrapped using the client key corresponding to the client_ticket.
  *
  * Return: 0 if OK or negative error code (see errno.h).
  */
 int keystore_rewrap_key(const uint8_t *client_ticket,
-			const uint8_t *backup_emkey,
-			const uint8_t *mkey_nonce,
+			const uint8_t *backup_mk_enc,
+			const uint8_t *nonce,
 			const uint8_t *wrapped_key,
 			unsigned int wrapped_key_size,
 			uint8_t *rewrapped_key);
@@ -309,7 +320,7 @@ int keystore_gen_ecc_keys(struct ias_keystore_ecc_keypair *key_pair);
  * @public_key:      Public ECC key.
  * @data:            Data to verify the signature of.
  * @data_size:       Size of data.
- * @sig:             Signature data, must be ECC_SIGNATURE_SIZE bytes in size
+ * @output_sig:      ECDSA signature.
  *
  * Return: 0 if OK or negative error code (see errno.h).
  */
@@ -321,26 +332,66 @@ int keystore_test_verify_ecc_signature(const struct keystore_ecc_public_key
 				       *output_sig);
 
 /**
+ * keystore_unwrapped_key_size() - Get the size of an unwrapped key
+ * @unwrapped_size: Unwrapped key size.
+ * @wrapped_size: Wrapped key size output.
+ *
+ * This function should be called before calling keystore_unwrap_with_backup()
+ * function in order to find the length of an unwrapped key buffer.
+ *
+ * Returns: 0 on success or negative errno.
+ */
+int keystore_unwrapped_key_size(unsigned int wrapped_size,
+				unsigned int *unwrapped_size);
+
+/**
+ * keystore_unwrap_with_backup() - Unwrap a wrapped key using encrypted backup.
+ * @key_enc_backup:   The ECC private key whose public key was used to encrypt
+ *                    the backup data.
+ * @backup_enc:       Encrypted backup data from the keystore_backup() function.
+ * @wrapped_key:      The wrapped user application key.
+ * @wrapped_key_size: Size of the wrapped key
+ * @keyspec:          Returns the keyspec used to wrap the key.
+ * @unwrapped_key:    The output wrapped key. The caller must ensure
+ *                    that a correctly sized buffer is available by
+ *                    first calling keystore_unwrapped_key_size().
+ *
+ * Will unwrap a wrapped key using an encrypted backup blob obtained from
+ * the keystore_backup() function. The unwrapped key could be re-wrapped on
+ * a second keystore device assuming the environment is secure. If the
+ * backup and migration environment is insecure the keystore_generate_mkey()
+ * and keystore_rewrap_key() functions should be used.
+ *
+ * Returns: 0 on success or negative errno.
+ */
+int keystore_unwrap_with_backup(const uint32_t *key_enc_backup,
+				const uint8_t *backup_enc,
+				const uint8_t *wrapped_key,
+				unsigned int wrapped_key_size,
+				enum keystore_key_spec *keyspec,
+				uint8_t *unwrapped_key);
+
+/**
  * keystore_migrate() - Re-encrypt using a migration key,
  *
- * @private_key:       Private ECC key whose public key was used to encrypt
+ * @key_enc_backup:    Private ECC key whose public key was used to encrypt
  *                     the backup data.
- * @backup:            Backup data from the keystore_backup function.
- * @private_key2:      Private ECC key whose public key was used to encrypt the
+ * @backup_enc:        Backup data from the keystore_backup function.
+ * @key_enc_mkey:      Private ECC key whose public key was used to encrypt the
  *                     migration key.
- * @mig_key:           Encrypted migration key.
- * @output:            Backup data re-encrypted using the migration key.
+ * @mkey_enc:          Encrypted migration key.
+ * @backup_mk_enc:     Backup data re-encrypted using the migration key.
  *
  * Decrypt backup and migration key and then encrypt backup data with migration
  * key. Intended to test the migration operation.
  *
  * Return: 0 OK or negative error code (see errno.h).
  */
-int keystore_migrate(const uint32_t *private_key,
-		     const uint8_t *backup,
-		     const uint32_t *private_key2,
-		     const uint8_t *mig_key,
-		     uint8_t *output);
+int keystore_migrate(const uint32_t *key_enc_backup,
+		     const uint8_t *backup_enc,
+		     const uint32_t *key_enc_mkey,
+		     const uint8_t *mkey_enc,
+		     uint8_t *backup_mk_enc);
 
 #endif /* KEYSTORE_TEST_MIGRATION */
 

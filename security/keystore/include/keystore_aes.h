@@ -19,37 +19,45 @@
 
 #include <linux/types.h>
 
+#define AES_BLOCK_SIZE				16
+#define AES128_KEY_SIZE				16
+#define AES256_KEY_SIZE				32
+#define KEYSTORE_CCM_AUTH_SIZE			8
+#define KEYSTORE_GCM_AUTH_SIZE			8
+#define KEYSTORE_AES_IV_SIZE			AES_BLOCK_SIZE
+
+
 /**
- * Encrypt or decrypt a block of data using AES ECB.
+ * keystore_aes_crypt() - Encrypt or decrypt a block of data using AES ECB.
  *
- * @param enc Mode: 1 - encrypt, 0 - decrypt.
- * @param key Pointer to the key.
- * @param klen Key size in bytes.
- * @param data_in Pointer to the input data block.
- * @param data_out Pointer to the output buffer.
- * @param len Input/output data size in bytes.
+ * @enc: Mode: 1 - encrypt, 0 - decrypt.
+ * @key: Pointer to the key.
+ * @klen: Key size in bytes.
+ * @data_in: Pointer to the input data block.
+ * @data_out: Pointer to the output buffer.
+ * @len: Input/output data size in bytes.
  *
- * @return 0 if OK or negative error code (see errno).
+ * Returns: 0 if OK or negative error code (see errno).
  */
 int keystore_aes_crypt(int enc, const char *key, size_t klen,
 		const char *data_in, char *data_out, size_t len);
 
 /**
- * Encrypt or decrypt a block of data using AES CCM.
+ * keystore_aes_ccm_crypt() - Encrypt or decrypt a block of data using AES CCM.
  *
- * @param enc Mode: 1 - encrypt, 0 - decrypt.
- * @param key Pointer to the key.
- * @param klen Key size in bytes.
- * @param iv Pointer to the Initialization Vector.
- * @param ivlen Initialization Vector size in bytes.
- * @param data_in Pointer to the input data block.
- * @param ilen Input data block size in bytes.
- * @param assoc_in Pointer to the associated data block.
- * @param alen Associated data block size in bytes.
- * @param data_out Pointer to the output buffer.
- * @param outlen Output buffer size in bytes.
+ * @enc: Mode: 1 - encrypt, 0 - decrypt.
+ * @key: Pointer to the key.
+ * @klen: Key size in bytes.
+ * @iv: Pointer to the Initialization Vector.
+ * @ivlen: Initialization Vector size in bytes.
+ * @data_in: Pointer to the input data block.
+ * @ilen: Input data block size in bytes.
+ * @assoc_in: Pointer to the associated data block.
+ * @alen: Associated data block size in bytes.
+ * @data_out: Pointer to the output buffer.
+ * @outlen: Output buffer size in bytes.
  *
- * @return 0 if OK or negative error code (see errno).
+ * Returns: 0 if OK or negative error code (see errno).
  */
 int keystore_aes_ccm_crypt(int enc, const char *key, size_t klen,
 		const char *iv, size_t ivlen,
@@ -58,22 +66,22 @@ int keystore_aes_ccm_crypt(int enc, const char *key, size_t klen,
 		char *data_out, size_t outlen);
 
 /**
- ** Encrypt or decrypt a block of data using AES GCM.
- **
- ** @param enc Mode: 1 - encrypt, 0 - decrypt.
- ** @param key Pointer to the key.
- ** @param klen Key size in bytes.
- ** @param iv Pointer to the Initialization Vector.
- ** @param ivlen Initialization Vector size in bytes.
- ** @param data_in Pointer to the input data block.
- ** @param ilen Input data block size in bytes.
- ** @param assoc_in Pointer to the associated data block.
- ** @param alen Associated data block size in bytes.
- ** @param data_out Pointer to the output buffer.
- ** @param outlen Output buffer size in bytes.
- **
- ** @return 0 if OK or negative error code (see errno).
- **/
+ * keystore_aes_gcm_crypt() - Encrypt or decrypt a block of data using AES GCM.
+ *
+ * @enc: Mode: 1 - encrypt, 0 - decrypt.
+ * @key: Pointer to the key.
+ * @klen: Key size in bytes.
+ * @iv: Pointer to the Initialization Vector.
+ * @ivlen: Initialization Vector size in bytes.
+ * @data_in: Pointer to the input data block.
+ * @ilen: Input data block size in bytes.
+ * @assoc_in: Pointer to the associated data block.
+ * @alen: Associated data block size in bytes.
+ * @data_out: Pointer to the output buffer.
+ * @outlen: Output buffer size in bytes.
+ *
+ * Returns: if OK or negative error code (see errno).
+ */
 int keystore_aes_gcm_crypt(int enc, const char *key, size_t klen,
 		const char *iv, size_t ivlen,
 		const char *data_in, size_t ilen, const char *assoc_in,
@@ -81,37 +89,37 @@ int keystore_aes_gcm_crypt(int enc, const char *key, size_t klen,
 		char *data_out, size_t outlen);
 
 /**
- * Encrypt or decrypt a block of data using AES CTR.
+ * keystore_aes_ctr_crypt() - Encrypt or decrypt a block of data using AES CTR.
  *
- * @param enc Mode: 1 - encrypt, 0 - decrypt.
- * @param key Pointer to the key.
- * @param klen Key size in bytes.
- * @param iv Pointer to the Initialization Vector.
- * @param ivlen Initialization Vector size in bytes.
- * @param data_in Pointer to the input data block.
- * @param data_out Pointer to the output buffer.
- * @param len Input/output data size in bytes.
+ * @enc: Mode: 1 - encrypt, 0 - decrypt.
+ * @key: Pointer to the key.
+ * @klen: Key size in bytes.
+ * @iv: Pointer to the Initialization Vector.
+ * @ivlen: Initialization Vector size in bytes.
+ * @data_in: Pointer to the input data block.
+ * @data_out: Pointer to the output buffer.
+ * @len: Input/output data size in bytes.
  *
- * @return 0 if OK or negative error code (see errno).
+ * Returns: 0 if OK or negative error code (see errno).
  */
 int keystore_aes_ctr_crypt(int enc, const char *key, size_t klen,
 		const char *iv, size_t ivlen,
 		const char *data_in, char *data_out, size_t len);
 
 /**
- * Decrypt a block of data using AES-SIV.
+ * keystore_aes_siv_crypt() - Decrypt a block of data using AES-SIV.
  *
- * @param enc Mode: 1 - encrypt, 0 - decrypt.
- * @param key Pointer to the key.
- * @param key_size Key size in bytes.
- * @param input Pointer to the input data block.
- * @param isize Input data block size in bytes.
- * @param associated_data Pointer to the associated data block.
- * @param asize Associated data block size in bytes.
- * @param output Pointer to the output buffer.
- * @param osize Output buffer size in bytes.
+ * @enc: Mode: 1 - encrypt, 0 - decrypt.
+ * @key: Pointer to the key.
+ * @key_size: Key size in bytes.
+ * @input: Pointer to the input data block.
+ * @isize: Input data block size in bytes.
+ * @associated_data: Pointer to the associated data block.
+ * @asize: Associated data block size in bytes.
+ * @output: Pointer to the output buffer.
+ * @osize: Output buffer size in bytes.
  *
- * @return 0 if OK or negative error code (see errno).
+ * Returns: 0 if OK or negative error code (see errno).
  */
 int keystore_aes_siv_crypt(int enc, const void *key, unsigned int key_size,
 			   const void *input, unsigned int isize,

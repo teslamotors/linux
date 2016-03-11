@@ -20,7 +20,6 @@
 #include <crypto/sha.h>
 
 #include <security/keystore_api_common.h>
-#include "keystore_constants.h"
 #include "keystore_ecc.h"
 #include "keystore_mac.h"
 #include "keystore_debug.h"

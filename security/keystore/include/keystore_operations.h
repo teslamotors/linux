@@ -19,6 +19,18 @@
 #include <security/keystore_api_common.h>
 
 /**
+ * DOC: Introduction
+ *
+ * The Keystore operations provide a set of high-level cryptographic
+ * operations for key-wrapping an unwrapping and encrypt/decrypt APIs.
+ *
+ * For backup and migration, functions are provided to verify data
+ * sent from the OEM, signing data for the OEM and wrapping and
+ * unwrapping of backup data.
+ *
+ */
+
+/**
  * wrapped_key_size() - Return the size of a wrapped key
  * @unwrapped_size: Unwrapped key size.
  * @wrapped_size: Wrapped key size output.
@@ -50,7 +62,6 @@ int keyspec_to_wrapped_keysize(enum keystore_key_spec keyspec,
 /**
  * generate_new_key() - Generate an unwrapped key from the keyspec.
  * @keyspec: The key specification.
- * @app_key: Pointer to the generated key output.
  * @app_key_size: Size of the generated key.
  *
  * Generates a new unwrapped key from the given keyspec. Memory
@@ -72,7 +83,7 @@ uint8_t *generate_new_key(enum keystore_key_spec keyspec,
  * @keyspec:      The type of the key to be wrapped
  * @wrapped_key:  The output wrapped key. The caller must ensure
  *                that a correctly sized buffer is available by
- *                first calling keyspec_to_wrapped_keysize.
+ *                first calling keyspec_to_wrapped_keysize().
  *
  * Returns: 0 on success or negative errno.
  */
@@ -86,13 +97,13 @@ int wrap_key(const uint8_t *client_key,
  * unwrap_key() - Wrap a buffer using the given client key.
  *
  * @client_key:   The client key used for wrapping.
- *                Must be KEYSTORE_CLIENT_KEY_SIZE in size.
+ *                Must be %KEYSTORE_CLIENT_KEY_SIZE in size.
  * @wrapped_key:  The wrapped user application key.
  * @wrapped_key_size: Size of the wrapped key
  * @keyspec:      Returns the keyspec used to wrap the key.
  * @app_key:      The output wrapped key. The caller must ensure
  *                that a correctly sized buffer is available by
- *                first calling unwrapped_key_size.
+ *                first calling unwrapped_key_size().
  *
  * Returns: 0 on success or negative errno.
  */

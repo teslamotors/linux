@@ -17,7 +17,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 
-#include "keystore_constants.h"
 #include "keystore_aes.h"
 #include "keystore_debug.h"
 

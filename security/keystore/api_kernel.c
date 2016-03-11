@@ -25,13 +25,9 @@
 #include <security/keystore_api_kernel.h>
 #include <security/sb.h>
 
-#include "keystore_constants.h"
-
 #include "keystore_debug.h"
-
 #include "keystore_client.h"
 #include "keystore_context_safe.h"
-#include "keystore_context.h"
 #include "keystore_operations.h"
 
 #include "keystore_rand.h"
@@ -400,10 +396,10 @@ int keystore_get_ksm_key(struct keystore_ecc_public_key *public_key)
 EXPORT_SYMBOL(keystore_get_ksm_key);
 
 int keystore_backup(const uint8_t *client_ticket,
-		    const struct keystore_ecc_public_key *oem_pub,
-		    const uint8_t *signature,
-		    uint8_t *output,
-		    struct keystore_ecc_signature *output_signature)
+		    const struct keystore_ecc_public_key *key_enc_backup,
+		    const uint8_t *key_enc_backup_sig,
+		    uint8_t *backup_enc,
+		    struct keystore_ecc_signature *backup_enc_sig)
 {
 	int res = 0;
 	int backup_size = 0;
@@ -412,9 +408,9 @@ int keystore_backup(const uint8_t *client_ticket,
 
 	FUNC_BEGIN;
 
-	res = verify_oem_signature(oem_pub,
+	res = verify_oem_signature(key_enc_backup,
 				   sizeof(struct keystore_ecc_public_key),
-				   signature, RSA_SIGNATURE_BYTE_SIZE);
+				   key_enc_backup_sig, RSA_SIGNATURE_BYTE_SIZE);
 	if (res)
 		goto exit;
 
@@ -430,25 +426,26 @@ int keystore_backup(const uint8_t *client_ticket,
 			 backup.client_key, sizeof(backup.client_key));
 
 	/* Encrypt the backup with the backup ECC key */
-	res = encrypt_for_host(oem_pub, &backup, sizeof(backup),
-			       output, KEYSTORE_BACKUP_SIZE);
+	res = encrypt_for_host(key_enc_backup, &backup, sizeof(backup),
+			       backup_enc, KEYSTORE_BACKUP_SIZE);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Error %d in keystore_ecc_encrypt\n",
 		       __func__, res);
 		goto zero_backup;
 	}
 
-	keystore_hexdump("Encrypted backup", output, KEYSTORE_BACKUP_SIZE);
+	keystore_hexdump("Encrypted backup", backup_enc_sig,
+			 KEYSTORE_BACKUP_SIZE);
 
 	backup_size = res; /* store size to return back to calling func */
 
-	res = sign_for_host(output, KEYSTORE_BACKUP_SIZE, output_signature);
+	res = sign_for_host(backup_enc, KEYSTORE_BACKUP_SIZE, backup_enc_sig);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Error %d in keystore_ecc_encrypt\n",
 		       __func__, res);
 	}
 
-	keystore_hexdump("Encrypted backup signature", output_signature,
+	keystore_hexdump("Encrypted backup signature", backup_enc_sig,
 			 sizeof(struct keystore_ecc_signature));
 
 zero_backup:
