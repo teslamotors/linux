@@ -1,0 +1,20 @@
+What:		/sys/class/rpmb/
+Date:		Jun 2018
+KernelVersion:	4.17
+Contact:	Tomas Winkler <tomas.winkler@intel.com>
+Description:
+		The rpmb/ class sub-directory belongs to RPMB device class.
+
+		Few storage technologies such is EMMC, UFS, and NVMe support
+		Replay Protected Memory Block (RPMB) hardware partition with
+		common protocol and similar frame layout.
+		Such a partition provides authenticated and replay protected access,
+		hence suitable as a secure storage.
+
+What:		/sys/class/rpmb/rpmbN/
+Date:		Jun 2018
+KernelVersion:	4.17
+Contact:	Tomas Winkler <tomas.winkler@intel.com>
+Description:
+		The /sys/class/rpmb/rpmbN directory is created for
+		each RPMB registered device.
