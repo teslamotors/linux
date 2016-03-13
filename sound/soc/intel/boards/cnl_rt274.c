@@ -226,6 +226,7 @@ struct snd_soc_dai_link cnl_rt274_msic_dailink[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = pname,
 		.dpcm_playback = 1,
+		.dpcm_capture = 1,
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
