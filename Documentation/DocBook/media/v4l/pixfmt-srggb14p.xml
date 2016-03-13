@@ -1,0 +1,118 @@
+    <refentry id="pixfmt-srggb14p">
+      <refmeta>
+	<refentrytitle>V4L2_PIX_FMT_SRGGB14P ('pREE'),
+	 V4L2_PIX_FMT_SGRBG14P ('pgEE'),
+	 V4L2_PIX_FMT_SGBRG14P ('pGEE'),
+	 V4L2_PIX_FMT_SBGGR14P ('pBEE'),
+	 </refentrytitle>
+	&manvol;
+      </refmeta>
+      <refnamediv>
+	<refname id="V4L2-PIX-FMT-SRGGB14P"><constant>V4L2_PIX_FMT_SRGGB14P</constant></refname>
+	<refname id="V4L2-PIX-FMT-SGRBG14P"><constant>V4L2_PIX_FMT_SGRBG14P</constant></refname>
+	<refname id="V4L2-PIX-FMT-SGBRG14P"><constant>V4L2_PIX_FMT_SGBRG14P</constant></refname>
+	<refname id="V4L2-PIX-FMT-SBGGR14P"><constant>V4L2_PIX_FMT_SBGGR14P</constant></refname>
+	<refpurpose>14-bit packed Bayer formats</refpurpose>
+      </refnamediv>
+      <refsect1>
+	<title>Description</title>
+
+	<para>These four pixel formats are packed raw sRGB / Bayer
+	formats with 14 bits per colour. Every four consecutive colour
+	components are packed into 7 bytes. Each of the first 4 bytes
+	contain the 8 high order bits of the pixels, and the fifth, sixth
+	and seventh bytes contains the six least significants bits of each
+	pixel, in the same order.</para>
+
+	<para>Each n-pixel row contains n/2 green samples and n/2 blue
+	or red samples, with alternating green-red and green-blue
+	rows. They are conventionally described as GRGR... BGBG...,
+	RGRG... GBGB..., etc. Below is an example of one of these
+	formats:</para>
+
+    <example>
+      <title><constant>V4L2_PIX_FMT_SBGGR14P</constant> 4 &times; 4
+      pixel image</title>
+
+      <formalpara>
+	<title>Byte Order.</title>
+	<para>Each cell is one byte. The bits in subscript denote bits
+	  of the sample. The bits of the cell byte can be found in
+	  parentheses.
+
+	  <informaltable frame="topbot" colsep="1" rowsep="1">
+	    <tgroup cols="7" align="center">
+	      <colspec align="left" colwidth="2*" />
+	      <tbody valign="top">
+		<row>
+		  <entry>start&nbsp;+&nbsp;0:</entry>
+		  <entry>B<subscript>00 bits 13--8</subscript></entry>
+		  <entry>G<subscript>01 bits 13--8</subscript></entry>
+		  <entry>B<subscript>02 bits 13--8</subscript></entry>
+		  <entry>G<subscript>03 bits 13--8</subscript></entry>
+		  <entry>G<subscript>01 bits 1--0</subscript>(bits 7--6)
+			 B<subscript>00 bits 5--0</subscript>(bits 5--0)
+		  </entry>
+		  <entry>B<subscript>02 bits 3--0</subscript>(bits 7--4)
+			 G<subscript>01 bits 5--2</subscript>(bits 3--0)
+		  </entry>
+		  <entry>G<subscript>03 bits 5--0</subscript>(bits 7--2)
+			 B<subscript>02 bits 5--4</subscript>(bits 1--0)
+		  </entry>
+		</row>
+		<row>
+		  <entry>start&nbsp;+&nbsp;7:</entry>
+		  <entry>G<subscript>10 bits 13--8</subscript></entry>
+		  <entry>R<subscript>11 bits 13--8</subscript></entry>
+		  <entry>G<subscript>12 bits 13--8</subscript></entry>
+		  <entry>R<subscript>13 bits 13--8</subscript></entry>
+		  <entry>R<subscript>11 bits 1--0</subscript>(bits 7--6)
+			 B<subscript>10 bits 5--0</subscript>(bits 5--0)
+		  </entry>
+		  <entry>R<subscript>12 bits 3--0</subscript>(bits 7--4)
+			 G<subscript>11 bits 5--2</subscript>(bits 3--0)
+		  </entry>
+		  <entry>R<subscript>13 bits 5--0</subscript>(bits 7--2)
+			 B<subscript>12 bits 5--4</subscript>(bits 1--0)
+		  </entry>
+		</row>
+		<row>
+		  <entry>start&nbsp;+&nbsp;14:</entry>
+		  <entry>B<subscript>20 bits 13--8</subscript></entry>
+		  <entry>G<subscript>21 bits 13--8</subscript></entry>
+		  <entry>B<subscript>22 bits 13--8</subscript></entry>
+		  <entry>G<subscript>23 bits 13--8</subscript></entry>
+		  <entry>G<subscript>21 bits 1--0</subscript>(bits 7--6)
+			 B<subscript>20 bits 5--0</subscript>(bits 5--0)
+		  </entry>
+		  <entry>B<subscript>22 bits 3--0</subscript>(bits 7--4)
+			 G<subscript>21 bits 5--2</subscript>(bits 3--0)
+		  </entry>
+		  <entry>G<subscript>23 bits 5--0</subscript>(bits 7--2)
+			 B<subscript>22 bits 5--4</subscript>(bits 1--0)
+		  </entry>
+		</row>
+		<row>
+		  <entry>start&nbsp;+&nbsp;21:</entry>
+		  <entry>G<subscript>30 bits 13--8</subscript></entry>
+		  <entry>R<subscript>31 bits 13--8</subscript></entry>
+		  <entry>G<subscript>32 bits 13--8</subscript></entry>
+		  <entry>R<subscript>33 bits 13--8</subscript></entry>
+		  <entry>R<subscript>31 bits 1--0</subscript>(bits 7--6)
+			 B<subscript>30 bits 5--0</subscript>(bits 5--0)
+		  </entry>
+		  <entry>R<subscript>32 bits 3--0</subscript>(bits 7--4)
+			 G<subscript>31 bits 5--2</subscript>(bits 3--0)
+		  </entry>
+		  <entry>R<subscript>33 bits 5--0</subscript>(bits 7--2)
+			 B<subscript>32 bits 5--4</subscript>(bits 1--0)
+		  </entry>
+		</row>
+	      </tbody>
+	    </tgroup>
+	  </informaltable>
+	</para>
+      </formalpara>
+    </example>
+  </refsect1>
+</refentry>
