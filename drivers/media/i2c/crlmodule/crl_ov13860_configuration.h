@@ -1524,7 +1524,6 @@ struct crl_sensor_configuration ov13860_crl_configuration = {
 	.poweroff_regs_items = 0,
 	.poweroff_regs = 0,
 
-
 	.id_reg_items = ARRAY_SIZE(ov13860_sensor_detect_regset),
 	.id_regs = ov13860_sensor_detect_regset,
 
@@ -1535,7 +1534,6 @@ struct crl_sensor_configuration ov13860_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(ov13860_pll_configurations),
 	.pll_configs = ov13860_pll_configurations,
-	.pll_index = 0,
 
 	.modes_items = ARRAY_SIZE(ov13860_modes),
 	.modes = ov13860_modes,
@@ -1551,7 +1549,6 @@ struct crl_sensor_configuration ov13860_crl_configuration = {
 
 	.csi_fmts_items = ARRAY_SIZE(ov13860_crl_csi_data_fmt),
 	.csi_fmts = ov13860_crl_csi_data_fmt,
-	.fmt_index = 1, /* MEDIA_BUS_FMT_SRGGB10_1X10 */
 
 	.flip_items = ARRAY_SIZE(ov13860_flip_configurations),
 	.flip_data = ov13860_flip_configurations,

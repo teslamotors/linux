@@ -1188,7 +1188,6 @@ struct crl_sensor_configuration imx185_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(imx185_pll_configurations),
 	.pll_configs = imx185_pll_configurations,
-	.pll_index = 0,
 
 	.modes_items = ARRAY_SIZE(imx185_modes),
 	.modes = imx185_modes,
@@ -1204,7 +1203,6 @@ struct crl_sensor_configuration imx185_crl_configuration = {
 
 	.csi_fmts_items = ARRAY_SIZE(imx185_crl_csi_data_fmt),
 	.csi_fmts = imx185_crl_csi_data_fmt,
-	.fmt_index = 1, /* MEDIA_BUS_FMT_SRGGB10_1X10 */
 
 	.flip_items = ARRAY_SIZE(imx185_flip_configurations),
 	.flip_data = imx185_flip_configurations,

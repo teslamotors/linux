@@ -702,7 +702,6 @@ static struct crl_sensor_configuration adv7481_crl_configuration = {
 	.pll_config_items = ARRAY_SIZE(adv7481_pll_configurations),
 	.pll_configs = adv7481_pll_configurations,
 	.op_sys_clk = adv7481_op_sys_clock,
-	.pll_index = 0,
 
 	.modes_items = ARRAY_SIZE(adv7481_modes),
 	.modes = adv7481_modes,
@@ -718,7 +717,6 @@ static struct crl_sensor_configuration adv7481_crl_configuration = {
 
 	.csi_fmts_items = ARRAY_SIZE(adv7481_crl_csi_data_fmt),
 	.csi_fmts = adv7481_crl_csi_data_fmt,
-	.fmt_index = 0,
 };
 
 #endif  /* __CRLMODULE_ADV7481_CONFIGURATION_H_ */

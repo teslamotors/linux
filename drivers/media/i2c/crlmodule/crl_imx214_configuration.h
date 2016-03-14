@@ -1183,7 +1183,6 @@ struct crl_sensor_configuration imx214_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(imx214_pll_configurations),
 	.pll_configs = imx214_pll_configurations,
-	.pll_index = 0,
 
 	.modes_items = ARRAY_SIZE(imx214_modes),
 	.modes = imx214_modes,
@@ -1200,7 +1199,6 @@ struct crl_sensor_configuration imx214_crl_configuration = {
 
 	.csi_fmts_items = ARRAY_SIZE(imx214_crl_csi_data_fmt),
 	.csi_fmts = imx214_crl_csi_data_fmt,
-	.fmt_index = 1, /* MEDIA_BUS_FMT_SRGGB10_1X10 */
 
 	.flip_items = ARRAY_SIZE(imx214_flip_configurations),
 	.flip_data = imx214_flip_configurations,

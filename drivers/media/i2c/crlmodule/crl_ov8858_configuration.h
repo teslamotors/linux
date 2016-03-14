@@ -1296,7 +1296,6 @@ static struct crl_sensor_configuration ov8858_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(ov8858_pll_configurations),
 	.pll_configs = ov8858_pll_configurations,
-	.pll_index = 0,
 
 	.modes_items = ARRAY_SIZE(ov8858_modes),
 	.modes = ov8858_modes,
@@ -1312,7 +1311,6 @@ static struct crl_sensor_configuration ov8858_crl_configuration = {
 
 	.csi_fmts_items = ARRAY_SIZE(ov8858_crl_csi_data_fmt),
 	.csi_fmts = ov8858_crl_csi_data_fmt,
-	.fmt_index = 2, /* MEDIA_BUS_FMT_SBGGR10_1X10 */
 
 	.flip_items = ARRAY_SIZE(ov8858_flip_configurations),
 	.flip_data = ov8858_flip_configurations,

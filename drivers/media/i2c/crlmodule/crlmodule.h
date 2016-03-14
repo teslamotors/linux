@@ -77,6 +77,10 @@ struct crl_sensor {
 	u8 binning_vertical;
 
 	u8 scale_m;
+	u8 fmt_index;
+	u8 flip_info;
+	u8 pll_index;
+
 
 	int power_count;
 
@@ -93,9 +97,10 @@ struct crl_sensor {
 	bool ext_ctrl_impacts_pll_selection;
 	bool ext_ctrl_impacts_mode_selection;
 	bool blanking_ctrl_not_use;
+	struct crl_mode_rep *current_mode;
 
 	struct clk *xclk;
-	struct regulator **crl_rails;
+	struct crl_power_seq_entity *pwr_entity;
 
 	u8 *nvm_data;
 	u16 nvm_size;

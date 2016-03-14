@@ -47,7 +47,7 @@ static int __crlmodule_get_variable_ref(struct crl_sensor *sensor,
 		break;
 	case CRL_VAR_REF_BITSPERPIXEL:
 		*val = sensor->sensor_ds->csi_fmts[
-				   sensor->sensor_ds->fmt_index].bits_per_pixel;
+				   sensor->fmt_index].bits_per_pixel;
 		break;
 	default:
 		return -EINVAL;
@@ -211,7 +211,7 @@ static int __crlmodule_update_pll_index(struct crl_sensor *sensor)
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	const struct crl_pll_configuration *pll_config;
 	const struct crl_csi_data_fmt *fmts =
-		     &sensor->sensor_ds->csi_fmts[sensor->sensor_ds->fmt_index];
+		     &sensor->sensor_ds->csi_fmts[sensor->fmt_index];
 	u32 link_freq;
 	unsigned int i;
 
@@ -249,7 +249,7 @@ static int __crlmodule_update_pll_index(struct crl_sensor *sensor)
 		dev_dbg(&client->dev, "%s Found PLL index: %d for freq: %d\n",
 				      __func__, i, link_freq);
 
-		sensor->sensor_ds->pll_index = i;
+		sensor->pll_index = i;
 
 		/* Update the control values for pixelrate_pa and csi */
 		__v4l2_ctrl_s_ctrl_int64(sensor->pixel_rate_pa, pll_config->pixel_rate_pa);
@@ -550,15 +550,14 @@ static int __crlmodule_update_flip_info(struct crl_sensor *sensor,
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	const struct crl_csi_data_fmt *fmt =
-		&sensor->sensor_ds->csi_fmts[sensor->sensor_ds->fmt_index];
+		&sensor->sensor_ds->csi_fmts[sensor->fmt_index];
 	u8 bpp = fmt->bits_per_pixel;
-	u8 flip_info = sensor->sensor_ds->flip_info;
+	u8 flip_info = sensor->flip_info;
 	u8 new_order;
 	int i, ret;
 
 	dev_dbg(&client->dev, "%s current flip_info: %d curr index: %d\n",
-			       __func__, flip_info,
-			       sensor->sensor_ds->fmt_index);
+			       __func__, flip_info, sensor->fmt_index);
 
 	switch (ctrl->id) {
 	case V4L2_CID_HFLIP:
@@ -606,8 +605,8 @@ static int __crlmodule_update_flip_info(struct crl_sensor *sensor,
 	}
 
 	/* New format found. Update info */
-	sensor->sensor_ds->fmt_index = i;
-	sensor->sensor_ds->flip_info = flip_info;
+	sensor->fmt_index = i;
+	sensor->flip_info = flip_info;
 
 	dev_dbg(&client->dev, "%s flip success flip: %d new fmt index: %d\n",
 			      __func__, flip_info, i);
@@ -618,7 +617,7 @@ static int __crlmodule_update_framesize(struct crl_sensor *sensor,
 					struct crl_v4l2_ctrl *crl_ctrl,
 					struct v4l2_ctrl *ctrl)
 {
-	const struct crl_mode_rep *mode = sensor->sensor_ds->current_modes;
+	const struct crl_mode_rep *mode = sensor->current_mode;
 	unsigned int val;
 
 	switch (ctrl->id) {
@@ -982,7 +981,7 @@ static bool __crlmodule_rect_matches(struct i2c_client *client,
 static int __crlmodule_update_hblank(struct crl_sensor *sensor,
 				      struct v4l2_ctrl *hblank)
 {
-	const struct crl_mode_rep *mode = sensor->sensor_ds->current_modes;
+	const struct crl_mode_rep *mode = sensor->current_mode;
 	const struct crl_sensor_limits *limits = sensor->sensor_ds->sensor_limits;
 	unsigned int width = sensor->pixel_array->crop[CRL_PA_PAD_SRC].width;
 	unsigned int min_llp, max_llp;
@@ -1011,7 +1010,7 @@ static int __crlmodule_update_hblank(struct crl_sensor *sensor,
 static int __crlmodule_update_vblank(struct crl_sensor *sensor,
 				      struct v4l2_ctrl *vblank)
 {
-	const struct crl_mode_rep *mode = sensor->sensor_ds->current_modes;
+	const struct crl_mode_rep *mode = sensor->current_mode;
 	const struct crl_sensor_limits *limits = sensor->sensor_ds->sensor_limits;
 	unsigned int height = sensor->pixel_array->crop[CRL_PA_PAD_SRC].height;
 	unsigned int min_fll, max_fll;
@@ -1039,7 +1038,7 @@ static int __crlmodule_update_vblank(struct crl_sensor *sensor,
 
 static void crlmodule_update_framesize(struct crl_sensor *sensor)
 {
-	const struct crl_mode_rep *mode = sensor->sensor_ds->current_modes;
+	const struct crl_mode_rep *mode = sensor->current_mode;
 	struct v4l2_ctrl *llength;
 	struct v4l2_ctrl *flength;
 
@@ -1180,7 +1179,7 @@ static int crlmodule_update_current_mode(struct crl_sensor *sensor)
 			 __func__, i);
 	}
 
-	sensor->sensor_ds->current_modes = this;
+	sensor->current_mode = this;
 
 	/*
 	 * We have a valid mode now. If there are any mode specific "get"
@@ -1241,7 +1240,7 @@ static int __crlmodule_get_format(struct v4l2_subdev *subdev,
 	fmt->format.width = r->width;
 	fmt->format.height = r->height;
 	fmt->format.code =
-		sensor->sensor_ds->csi_fmts[sensor->sensor_ds->fmt_index].code;
+		sensor->sensor_ds->csi_fmts[sensor->fmt_index].code;
 	fmt->format.field = (ssd->field == V4L2_FIELD_ANY) ? V4L2_FIELD_NONE : ssd->field;
 	return 0;
 }
@@ -1606,7 +1605,7 @@ static int crlmodule_set_format(struct v4l2_subdev *subdev,
 				return -EINVAL;
 			}
 
-			sensor->sensor_ds->fmt_index = idx;
+			sensor->fmt_index = idx;
 			/* TODO! validate PLL? */
 		}
 		mutex_unlock(&sensor->mutex);
@@ -1706,11 +1705,11 @@ static int crlmodule_start_streaming(struct crl_sensor *sensor)
 	int rval;
 
 	dev_dbg(&client->dev, "%s start streaming pll_idx: %d fmt_idx: %d\n",
-			      __func__, sensor->sensor_ds->pll_index,
-			      sensor->sensor_ds->fmt_index);
+			      __func__, sensor->pll_index,
+			      sensor->fmt_index);
 
-	pll = &sensor->sensor_ds->pll_configs[sensor->sensor_ds->pll_index];
-	fmt = &sensor->sensor_ds->csi_fmts[sensor->sensor_ds->fmt_index];
+	pll = &sensor->sensor_ds->pll_configs[sensor->pll_index];
+	fmt = &sensor->sensor_ds->csi_fmts[sensor->fmt_index];
 
 	rval = crlmodule_update_current_mode(sensor);
 	if (rval) {
@@ -1732,8 +1731,8 @@ static int crlmodule_start_streaming(struct crl_sensor *sensor)
 
 	/* Write mode list */
 	rval = crlmodule_write_regs(sensor,
-			sensor->sensor_ds->current_modes->mode_regs,
-			sensor->sensor_ds->current_modes->mode_regs_items);
+			sensor->current_mode->mode_regs,
+			sensor->current_mode->mode_regs_items);
 	if (rval) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
 		return rval;
@@ -2031,7 +2030,7 @@ static void crlmodule_undo_poweron_entities(
 	int idx;
 
 	for (idx = rev_idx; idx >= 0; idx--) {
-		entity = &sensor->sensor_ds->power_entities[idx];
+		entity = &sensor->pwr_entity[idx];
 		dev_dbg(&client->dev, "%s power type %d index %d\n",
 				__func__, entity->type, idx);
 
@@ -2067,7 +2066,7 @@ static int __crlmodule_powerup_sequence(struct crl_sensor *sensor)
 	int rval;
 
 	for (idx = 0; idx < sensor->sensor_ds->power_items; idx++) {
-		entity = &sensor->sensor_ds->power_entities[idx];
+		entity = &sensor->pwr_entity[idx];
 		dev_dbg(&client->dev, "%s power type %d index %d\n",
 				__func__, entity->type, idx);
 
@@ -2308,11 +2307,22 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 	struct crl_power_seq_entity *entity;
 	unsigned idx;
 
+	sensor->pwr_entity = devm_kzalloc(&client->dev,
+		sizeof(struct crl_power_seq_entity) *
+		 sensor->sensor_ds->power_items, GFP_KERNEL);
+
+	if (!sensor->pwr_entity)
+		return -ENOMEM;
+
+	for (idx = 0; idx < sensor->sensor_ds->power_items; idx++)
+		sensor->pwr_entity[idx] =
+		 sensor->sensor_ds->power_entities[idx];
+
 	dev_dbg(&client->dev, "%s\n", __func__);
 
 	for (idx = 0; idx < sensor->sensor_ds->power_items; idx++) {
 		int rval;
-		entity = &sensor->sensor_ds->power_entities[idx];
+		entity = &sensor->pwr_entity[idx];
 
 		switch (entity->type) {
 		case CRL_POWER_ETY_GPIO_FROM_PDATA:
@@ -2398,7 +2408,7 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 	sensor->binning_horizontal = 1;
 	sensor->binning_vertical = 1;
 	sensor->scale_m = 1;
-	sensor->sensor_ds->flip_info = CRL_FLIP_DEFAULT_NONE;
+	sensor->flip_info = CRL_FLIP_DEFAULT_NONE;
 	sensor->ext_ctrl_impacts_pll_selection = false;
 	sensor->ext_ctrl_impacts_mode_selection = false;
 	sensor->pixel_array->sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;

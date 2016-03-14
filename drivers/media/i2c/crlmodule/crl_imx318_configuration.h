@@ -1043,7 +1043,6 @@ struct crl_sensor_configuration imx318_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(imx318_pll_configurations),
 	.pll_configs = imx318_pll_configurations,
-	.pll_index = 0,
 
 	.modes_items = ARRAY_SIZE(imx318_modes),
 	.modes = imx318_modes,
@@ -1060,7 +1059,6 @@ struct crl_sensor_configuration imx318_crl_configuration = {
 
 	.csi_fmts_items = ARRAY_SIZE(imx318_crl_csi_data_fmt),
 	.csi_fmts = imx318_crl_csi_data_fmt,
-	.fmt_index = 1,
 
 	.flip_items = ARRAY_SIZE(imx318_flip_configurations),
 	.flip_data = imx318_flip_configurations,

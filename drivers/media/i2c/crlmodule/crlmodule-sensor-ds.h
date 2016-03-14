@@ -446,8 +446,8 @@ struct crl_sensor_configuration {
 	const struct crl_clock_entity *clock_entity;
 
 	const unsigned int power_items;
-	struct crl_power_seq_entity *power_entities;
-	unsigned int power_delay; /* in micro seconds */
+	const struct crl_power_seq_entity *power_entities;
+	const unsigned int power_delay; /* in micro seconds */
 
 	const unsigned int powerup_regs_items;
 	const struct crl_register_write_rep *powerup_regs;
@@ -458,19 +458,17 @@ struct crl_sensor_configuration {
 	const unsigned int id_reg_items;
 	const struct crl_sensor_detect_config *id_regs;
 
-	unsigned int subdev_items;
-	struct crl_sensor_subdev_config *subdevs;
+	const unsigned int subdev_items;
+	const struct crl_sensor_subdev_config *subdevs;
 
 	const struct crl_sensor_limits *sensor_limits;
 
 	const unsigned int pll_config_items;
 	const struct crl_pll_configuration *pll_configs;
 	const s64 *op_sys_clk;
-	u8 pll_index;
 
 	const unsigned int modes_items;
 	const struct crl_mode_rep *modes;
-	const struct crl_mode_rep *current_modes;
 	/*
 	 * Fail safe mode should be the largest resolution available in the
 	 * mode list. If none of the mode parameters are matched, the driver
@@ -489,11 +487,9 @@ struct crl_sensor_configuration {
 
 	const unsigned int csi_fmts_items;
 	const struct crl_csi_data_fmt *csi_fmts;
-	u8 fmt_index;
 
 	const unsigned int flip_items;
 	const struct crl_flip_data *flip_data;
-	u8 flip_info;
 
 	struct crl_nvm crl_nvm_info;
 

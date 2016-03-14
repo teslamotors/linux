@@ -1950,7 +1950,6 @@ struct crl_sensor_configuration imx230_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(imx230_pll_configurations),
 	.pll_configs = imx230_pll_configurations,
-	.pll_index = 0,
 
 	.modes_items = ARRAY_SIZE(imx230_modes),
 	.modes = imx230_modes,
@@ -1967,7 +1966,6 @@ struct crl_sensor_configuration imx230_crl_configuration = {
 
 	.csi_fmts_items = ARRAY_SIZE(imx230_crl_csi_data_fmt),
 	.csi_fmts = imx230_crl_csi_data_fmt,
-	.fmt_index = 1, /* MEDIA_BUS_FMT_SRGGB10_1X10 */
 
 	.flip_items = ARRAY_SIZE(imx230_flip_configurations),
 	.flip_data = imx230_flip_configurations,
