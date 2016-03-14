@@ -87,6 +87,7 @@ struct crl_sensor {
 	bool streaming;
 
 	struct crl_sensor_configuration *sensor_ds;
+	struct crl_v4l2_ctrl *v4l2_ctrl_bank;
 
 	/* These are mandatory controls. So good to have reference to these */
 	struct v4l2_ctrl *pixel_rate_pa;

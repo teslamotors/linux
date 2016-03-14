@@ -82,7 +82,7 @@ static int __crlmodule_get_crl_ctrl_index(struct crl_sensor *sensor,
 	unsigned int i;
 
 	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++)
-		if (sensor->sensor_ds->v4l2_ctrl_bank[i].ctrl_id == id)
+		if (sensor->v4l2_ctrl_bank[i].ctrl_id == id)
 			break;
 
 	if (i >= sensor->sensor_ds->v4l2_ctrls_items)
@@ -108,15 +108,15 @@ static int __crlmodule_get_ctrl_value(struct crl_sensor *sensor,
 		return ret;
 
 	/* If no corresponding v4l2 ctrl created, return */
-	if (!sensor->sensor_ds->v4l2_ctrl_bank[i].ctrl) {
+	if (!sensor->v4l2_ctrl_bank[i].ctrl) {
 		dev_dbg(&client->dev,
 			"%s ctrl_id: 0x%x desc: %s not ready\n", __func__, id,
-			sensor->sensor_ds->v4l2_ctrl_bank[i].name);
+			sensor->v4l2_ctrl_bank[i].name);
 		return -ENODATA;
 	}
 
-	ctrl = sensor->sensor_ds->v4l2_ctrl_bank[i].ctrl;
-	switch (sensor->sensor_ds->v4l2_ctrl_bank[i].type) {
+	ctrl = sensor->v4l2_ctrl_bank[i].ctrl;
+	switch (sensor->v4l2_ctrl_bank[i].type) {
 	case CRL_V4L2_CTRL_TYPE_MENU_INT:
 		*val = ctrl->qmenu_int[ctrl->val];
 		break;
@@ -127,8 +127,7 @@ static int __crlmodule_get_ctrl_value(struct crl_sensor *sensor,
 
 	dev_dbg(&client->dev, "%s ctrl_id: 0x%x desc: %s val: %d\n",
 			       __func__, id,
-			       sensor->sensor_ds->v4l2_ctrl_bank[i].name,
-			       *val);
+			       sensor->v4l2_ctrl_bank[i].name, *val);
 	return 0;
 }
 
@@ -143,7 +142,7 @@ static struct v4l2_ctrl *__crlmodule_get_v4l2_ctrl(struct crl_sensor *sensor,
 	if (__crlmodule_get_crl_ctrl_index(sensor, id, &i))
 		return NULL;
 
-	return sensor->sensor_ds->v4l2_ctrl_bank[i].ctrl;
+	return sensor->v4l2_ctrl_bank[i].ctrl;
 }
 
 /*
@@ -157,7 +156,7 @@ static void __crlmodule_grab_v4l2_ctrl(struct crl_sensor *sensor,
 	unsigned int i;
 
 	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++) {
-		crl_ctrl = &sensor->sensor_ds->v4l2_ctrl_bank[i];
+		crl_ctrl = &sensor->v4l2_ctrl_bank[i];
 
 		if (crl_ctrl->context == ctxt)
 			v4l2_ctrl_grab(crl_ctrl->ctrl, action);
@@ -504,10 +503,10 @@ static int __crlmodule_handle_dependency_ctrl(
 			if (ret)
 				continue;
 
-			dep_crl_ctrl = &sensor->sensor_ds->v4l2_ctrl_bank[idx];
+			dep_crl_ctrl = &sensor->v4l2_ctrl_bank[idx];
 			dev_dbg(&client->dev,
 				"%s crl_ctrl: 0x%p 0x%p\n", __func__,
-				&sensor->sensor_ds->v4l2_ctrl_bank[idx],
+				&sensor->v4l2_ctrl_bank[idx],
 				dep_crl_ctrl);
 
 			ret = __crlmodule_update_dynamic_regs(sensor,
@@ -692,7 +691,7 @@ static int crlmodule_set_ctrl(struct v4l2_ctrl *ctrl)
 	 * with the crlmodule's wrapper v4l2ctrl.
 	 */
 	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++) {
-		crl_ctrl = &sensor->sensor_ds->v4l2_ctrl_bank[i];
+		crl_ctrl = &sensor->v4l2_ctrl_bank[i];
 		if (crl_ctrl->ctrl == ctrl)
 			break;
 	}
@@ -804,9 +803,22 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 	unsigned int i;
 	int rval;
 
+
+	sensor->v4l2_ctrl_bank = devm_kzalloc(&client->dev,
+		sizeof(struct crl_v4l2_ctrl) *
+		 sensor->sensor_ds->v4l2_ctrls_items,
+		 GFP_KERNEL);
+
+	if (!sensor->v4l2_ctrl_bank)
+		return -ENOMEM;
+
+	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++)
+		sensor->v4l2_ctrl_bank[i] =
+		 sensor->sensor_ds->v4l2_ctrl_bank[i];
+
 	/* Count the number of controls in PA and SRC subdevices */
 	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++) {
-		crl_ctrl = &sensor->sensor_ds->v4l2_ctrl_bank[i];
+		crl_ctrl = &sensor->v4l2_ctrl_bank[i];
 		if (crl_ctrl->sd_type == CRL_SUBDEV_TYPE_PIXEL_ARRAY)
 			pa_ctrls++;
 
@@ -836,7 +848,7 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 	}
 
 	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++) {
-		crl_ctrl = &sensor->sensor_ds->v4l2_ctrl_bank[i];
+		crl_ctrl = &sensor->v4l2_ctrl_bank[i];
 		ctrl_handler = __crlmodule_get_sd_ctrl_handler(sensor,
 					crl_ctrl->sd_type);
 
@@ -1198,12 +1210,12 @@ static int crlmodule_update_current_mode(struct crl_sensor *sensor)
 			continue;
 
 		/* No need to update this control, if this is a set op ctrl */
-		if (sensor->sensor_ds->v4l2_ctrl_bank[idx].op_type
+		if (sensor->v4l2_ctrl_bank[idx].op_type
 		    == CRL_V4L2_CTRL_SET_OP)
 			continue;
 
 		/* Update the control value */
-		__v4l2_ctrl_s_ctrl(sensor->sensor_ds->v4l2_ctrl_bank[idx].ctrl,
+		__v4l2_ctrl_s_ctrl(sensor->v4l2_ctrl_bank[idx].ctrl,
 				   ctrl_comp->data);
 	}
 

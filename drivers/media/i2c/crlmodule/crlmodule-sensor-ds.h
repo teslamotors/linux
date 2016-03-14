@@ -482,8 +482,8 @@ struct crl_sensor_configuration {
 	const unsigned int streamoff_regs_items;
 	const struct crl_register_write_rep *streamoff_regs;
 
-	unsigned int v4l2_ctrls_items;
-	struct crl_v4l2_ctrl *v4l2_ctrl_bank;
+	const unsigned int v4l2_ctrls_items;
+	const struct crl_v4l2_ctrl *v4l2_ctrl_bank;
 
 	const unsigned int csi_fmts_items;
 	const struct crl_csi_data_fmt *csi_fmts;
