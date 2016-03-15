@@ -18,9 +18,14 @@
 #include "type_support.h"
 
 enum {
-	SYSCOM_CLOSE_REQ_STATE_READY	= 0x00000000,	/* This must be an invalid address */
-	SYSCOM_CLOSE_REQ_STATE_ACTIVE	= 0x57A7E001,	/* Signature State */
-	SYSCOM_CLOSE_REQ_STATE_ACKED	= 0x57A7E002	/* Signature State */
+	SYSCOM_STATE_UNINIT	= 0x57A7E000,	/* Program load or explicit host setting should init to this */
+	SYSCOM_STATE_READY	= 0x57A7E001,	/* SP Syscom sets this when it is ready for use */
+	SYSCOM_STATE_INACTIVE	= 0x57A7E002	/* SP Syscom sets this when no more syscom accesses will happen */
+};
+
+enum {
+	SYSCOM_COMMAND_UNINIT	= 0x57A7F000,	/* Program load or explicit host setting should init to this */
+	SYSCOM_COMMAND_INACTIVE = 0x57A7F001	/* Host Syscom requests syscom to become inactive */
 };
 
 /* firmware config: data that sent from the host to SP via DDR */

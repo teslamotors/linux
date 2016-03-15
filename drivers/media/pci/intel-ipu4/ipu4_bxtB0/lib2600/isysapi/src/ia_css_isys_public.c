@@ -135,11 +135,6 @@ int ia_css_isys_device_open(
 	verifret(ctx != NULL, EFAULT);
 	*context = (HANDLE)ctx;
 
-	for (stream_handle = 0; stream_handle < STREAM_ID_MAX; stream_handle++) {
-		ctx->stream_state_array[stream_handle] = IA_CSS_ISYS_STREAM_STATE_IDLE;
-		ctx->stream_nof_output_pins[stream_handle] = 0;
-	}
-
 	/* Copy to the sys config the driver_sys config, and add the internal info (token sizes) */
 	sys.ssid = config->driver_sys.ssid;
 	sys.mmid = config->driver_sys.mmid;
@@ -187,6 +182,11 @@ int ia_css_isys_device_open(
 	ctx->num_send_queues = config->driver_sys.num_send_queues;
 	ctx->send_queue_size = config->driver_sys.send_queue_size;
 
+	for (stream_handle = 0; stream_handle < STREAM_ID_MAX; stream_handle++) {
+		ctx->stream_state_array[stream_handle] = IA_CSS_ISYS_STREAM_STATE_IDLE;
+		ctx->stream_nof_output_pins[stream_handle] = 0;
+	}
+
 	retval = ia_css_isys_constr_comm_buff_queue(ctx);
 	if (retval) {
 		ia_css_syscom_close(ctx->sys);
@@ -195,7 +195,9 @@ int ia_css_isys_device_open(
 		return retval;
 	}
 
-	retval = ia_css_syscom_recv_port_open(ctx->sys, 0);
+	do {
+		retval = ia_css_syscom_recv_port_open(ctx->sys, 0);
+	} while (retval == ERROR_BUSY);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval == 0, EINVAL);
 
