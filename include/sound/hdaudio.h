@@ -15,6 +15,7 @@ struct hdac_bus;
 struct hdac_device;
 struct hdac_driver;
 struct hdac_widget_tree;
+struct hda_device_id;
 
 /*
  * exported bus type
