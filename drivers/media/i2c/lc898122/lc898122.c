@@ -359,9 +359,6 @@ static int lc898122_set_stabilization(struct lc898122_device *lc898122_dev, int 
 	} else {
 		/* Turn OIS OFF */
 		lc898122_RtnCen(lc898122_dev, 0x00);
-		/* X/Y axis servo OFF */
-		lc898122_SrvCon(lc898122_dev, LC898122_X_DIR, OFF);
-		lc898122_SrvCon(lc898122_dev, LC898122_Y_DIR, OFF);
 	}
 	/* TODO: Check OIS for Video and still modes */
 
@@ -564,6 +561,12 @@ static int lc898122_runtime_suspend(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct lc898122_device *lc898122_dev =
 		container_of(sd, struct lc898122_device, subdev_vcm);
+
+	/* X/Y axis servo OFF */
+	lc898122_SrvCon(lc898122_dev, LC898122_X_DIR, OFF);
+	lc898122_SrvCon(lc898122_dev, LC898122_Y_DIR, OFF);
+
+	lc898122_settregaf(lc898122_dev, 0x00);
 
 	if (lc898122_dev->sensor_dev)
 		pm_runtime_put(lc898122_dev->sensor_dev);
