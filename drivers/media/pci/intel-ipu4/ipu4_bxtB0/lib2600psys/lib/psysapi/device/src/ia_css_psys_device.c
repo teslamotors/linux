@@ -133,16 +133,24 @@ struct ia_css_syscom_context *ia_css_psys_open(
 	if (context == NULL)
 		goto EXIT;
 
+	/* start SPC */
+	ia_css_cell_start(config->ssid, SPC0);
+
 	for (i=0; i < IA_CSS_N_PSYS_CMD_QUEUE_ID; i++) {
-		verifexit(ia_css_syscom_send_port_open(context, (unsigned int)i) == 0, EINVAL);
+		int retval;
+		do {
+			retval = ia_css_syscom_send_port_open(context, (unsigned int)i);
+		} while (retval == ERROR_BUSY);
+		verifexit(retval == 0, EINVAL);
 	}
 
 	for (i=0; i < IA_CSS_N_PSYS_EVENT_QUEUE_ID; i++) {
-		verifexit(ia_css_syscom_recv_port_open(context, (unsigned int)i) == 0, EINVAL);
+		int retval;
+		do {
+			retval = ia_css_syscom_recv_port_open(context, (unsigned int)i);
+		} while (retval == ERROR_BUSY);
+		verifexit(retval == 0, EINVAL);
 	}
-
-	/* start SPC */
-	ia_css_cell_start(config->ssid, SPC0);
 
 	return context;
 

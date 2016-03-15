@@ -316,28 +316,30 @@ ia_css_syscom_open(
 	shared_memory_store(cfg->mmid, ctx->config_host_addr, &fw_cfg, sizeof(struct ia_css_syscom_config_fw));
 	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(ctx->config_host_addr), sizeof(struct ia_css_syscom_config_fw));
 
-	/* store firmware configuration address in reg 0 */
+	/* store syscom uninitialized state */
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG, SYSCOM_STATE_UNINIT, cfg->ssid);
+	/* store syscom uninitialized command */
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_COMMAND_REG, SYSCOM_COMMAND_UNINIT, cfg->ssid);
+	/* store firmware configuration address */
 	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_CONFIG_REG, ctx->config_vied_addr, cfg->ssid);
-
-	/* The SP is not started here */
 
 	return ctx;
 }
 
 
-extern int
+int
 ia_css_syscom_close(
 	struct ia_css_syscom_context *ctx
 ) {
 	int state;
 
-	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_CONFIG_REG, ctx->env.ssid);
-	if (state != SYSCOM_CLOSE_REQ_STATE_READY) {
+	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG, ctx->env.ssid);
+	if (state != SYSCOM_STATE_READY) {
 		return ERROR_BUSY; /* SPC is not ready to handle close request yet */
 	}
 
 	/* set close request flag */
-	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_CONFIG_REG, SYSCOM_CLOSE_REQ_STATE_ACTIVE, ctx->env.ssid);
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_COMMAND_REG, SYSCOM_COMMAND_INACTIVE, ctx->env.ssid);
 
 	return 0;
 }
@@ -354,7 +356,7 @@ ia_css_syscom_free(struct ia_css_syscom_context *ctx)
 	ia_css_cpu_mem_free(ctx);
 }
 
-extern int
+int
 ia_css_syscom_release(
 	struct ia_css_syscom_context *ctx,
 	unsigned int force
@@ -380,9 +382,17 @@ int ia_css_syscom_send_port_open(
 	unsigned int port
 )
 {
+	int state;
+
 	/* check parameters */
 	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
 	verifret(port < ctx->num_input_queues, ERROR_INVALID_PARAMETER);
+
+	/* check if SP syscom is ready to open the queue */
+	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG, ctx->env.ssid);
+	if (state != SYSCOM_STATE_READY) {
+		return ERROR_BUSY; /* SPC is not ready to handle messages yet */
+	}
 
 	/* initialize the port */
 	send_port_open(ctx->send_port + port, ctx->input_queue + port, &(ctx->env));
@@ -432,9 +442,17 @@ int ia_css_syscom_recv_port_open(
 	unsigned int port
 )
 {
+	int state;
+
 	/* check parameters */
 	verifret(ctx != NULL, ERROR_BAD_ADDRESS);
 	verifret(port < ctx->num_output_queues, ERROR_INVALID_PARAMETER);
+
+	/* check if SP syscom is ready to open the queue */
+	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG, ctx->env.ssid);
+	if (state != SYSCOM_STATE_READY) {
+		return ERROR_BUSY; /* SPC is not ready to handle messages yet */
+	}
 
 	/* initialize the port */
 	recv_port_open(ctx->recv_port + port, ctx->output_queue + port, &(ctx->env));

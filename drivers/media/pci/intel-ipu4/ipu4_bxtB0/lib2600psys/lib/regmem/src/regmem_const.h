@@ -15,7 +15,11 @@
 #ifndef _REGMEM_CONST_H_
 #define _REGMEM_CONST_H_
 
-#define REGMEM_SIZE	16
-#define REGMEM_OFFSET	0
+#ifndef REGMEM_SIZE
+#define REGMEM_SIZE	(16)
+#endif /* REGMEM_SIZE */
+#ifndef REGMEM_OFFSET
+#define REGMEM_OFFSET	(0)
+#endif /* REGMEM_OFFSET */
 
 #endif /*_REGMEM_CONST_H_*/
