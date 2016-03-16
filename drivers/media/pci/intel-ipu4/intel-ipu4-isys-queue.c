@@ -810,8 +810,8 @@ static u64 get_sof_ns_delta(struct intel_ipu4_isys_video *av,
 	return intel_ipu4_buttress_tsc_ticks_to_ns(delta);
 }
 
-void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
-				    struct ia_css_isys_resp_info *info)
+void intel_ipu4_isys_buf_calc_sequence_time(struct intel_ipu4_isys_buffer *ib,
+					struct ia_css_isys_resp_info *info)
 {
 	struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
@@ -851,6 +851,11 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
 	dev_dbg(&av->isys->adev->dev, "%s: buffer done %u\n", av->vdev.name,
 		vb->index);
 #endif
+}
+
+void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib)
+{
+	struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 
 	vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
 }
@@ -897,18 +902,31 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 		dev_dbg(&isys->adev->dev, "found buffer %pad\n", &addr);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
-		vb->v4l2_buf.field =
-			intel_ipu4_isys_csi2_get_current_field(ip);
+		vb->v4l2_buf.field = V4L2_FIELD_NONE;
 #else
 		vbuf = to_vb2_v4l2_buffer(vb);
-		vbuf->field =
-			intel_ipu4_isys_csi2_get_current_field(ip);
+		vbuf->field = V4L2_FIELD_NONE;
 #endif
 
 		list_del(&ib->head);
 		spin_unlock_irqrestore(&aq->lock, flags);
 
-		intel_ipu4_isys_queue_buf_done(ib, info);
+		intel_ipu4_isys_buf_calc_sequence_time(ib, info);
+
+		/*
+		 * For interlaced buffers, the notification to user space
+		 * is postponed to capture_done event since the field
+		 * information is available only at that time.
+		 */
+		if (ip->interlaced) {
+			spin_lock_irqsave(&ip->short_packet_queue_lock, flags);
+			list_add(&ib->head, &ip->pending_interlaced_bufs);
+			spin_unlock_irqrestore(&ip->short_packet_queue_lock,
+					       flags);
+		} else {
+			intel_ipu4_isys_queue_buf_done(ib);
+		}
+
 		return;
 	}
 
@@ -924,9 +942,13 @@ void intel_ipu4_isys_queue_short_packet_ready(
 {
 	struct intel_ipu4_isys *isys =
 		container_of(ip, struct intel_ipu4_isys_video, ip)->isys;
+	unsigned long flags;
 
 	dev_dbg(&isys->adev->dev, "receive short packet buffer %8.8x\n",
 		info->pin.addr);
+	spin_lock_irqsave(&ip->short_packet_queue_lock, flags);
+	ip->cur_field = intel_ipu4_isys_csi2_get_current_field(ip);
+	spin_unlock_irqrestore(&ip->short_packet_queue_lock, flags);
 }
 
 struct vb2_ops intel_ipu4_isys_queue_ops = {

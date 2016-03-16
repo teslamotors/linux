@@ -756,8 +756,10 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_video *av)
 	/* Initialize short packet queue. */
 	INIT_LIST_HEAD(&av->ip.short_packet_incoming);
 	INIT_LIST_HEAD(&av->ip.short_packet_active);
+	INIT_LIST_HEAD(&av->ip.pending_interlaced_bufs);
 	init_dma_attrs(&attrs);
 	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+	av->ip.cur_field = V4L2_FIELD_TOP;
 
 	av->ip.short_packet_bufs =
 		kzalloc(sizeof(struct intel_ipu4_isys_private_buffer) *

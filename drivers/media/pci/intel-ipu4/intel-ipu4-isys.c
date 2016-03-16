@@ -1256,6 +1256,34 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 		dev_dbg(&adev->dev,
 			"%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE, timestamp 0x%16.16llx\n",
 			resp.stream_handle, ts);
+		if (pipe->interlaced) {
+			struct intel_ipu4_isys_buffer *ib, *ib_safe;
+			struct list_head list;
+			unsigned long flags;
+
+			/*
+			 * Move the pending buffers to a local temp list.
+			 * Then we do not need to handle the lock during
+			 * the loop.
+			 */
+			spin_lock_irqsave(&pipe->short_packet_queue_lock,
+					  flags);
+			list_cut_position(&list,
+					  &pipe->pending_interlaced_bufs,
+					  pipe->pending_interlaced_bufs.prev);
+			spin_unlock_irqrestore(&pipe->short_packet_queue_lock,
+					       flags);
+
+			list_for_each_entry_safe(ib, ib_safe, &list, head) {
+				struct vb2_buffer *vb;
+
+				vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
+				vb->v4l2_buf.field = pipe->cur_field;
+				list_del(&ib->head);
+
+				intel_ipu4_isys_queue_buf_done(ib);
+			}
+		}
 		for (i = 0; i < INTEL_IPU4_NUM_CAPTURE_DONE; i++)
 			if (pipe->capture_done[i])
 				pipe->capture_done[i](pipe, &resp);

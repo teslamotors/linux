@@ -85,9 +85,11 @@ struct intel_ipu4_isys_pipeline {
 	size_t short_packet_buffer_size;
 	unsigned int num_short_packet_lines;
 	unsigned int short_packet_output_pin;
+	unsigned int cur_field;
 	struct list_head short_packet_incoming;
 	struct list_head short_packet_active;
 	spinlock_t short_packet_queue_lock;
+	struct list_head pending_interlaced_bufs;
 };
 
 #define to_intel_ipu4_isys_pipeline(__pipe)				\
