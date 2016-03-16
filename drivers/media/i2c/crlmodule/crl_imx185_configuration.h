@@ -87,7 +87,7 @@ static struct crl_register_write_rep imx185_powerup_standby[] = {
 	{0x00, CRL_REG_LEN_DELAY, 200, 0x00},
 };
 
-static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = {
+static struct crl_register_write_rep imx185_1312_728_RAW10_30FPS_27MHZ_CROPPING[] = {
 	/* 0x02h */
 	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 ADBIT: 10/12 , raw 10 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x60},	/* mode selection */
@@ -116,12 +116,12 @@ static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = 
 	/* Crop settings */
 	{0x3038, CRL_REG_LEN_08BIT, 0x00}, /* WPV = 0 */
 	{0x3039, CRL_REG_LEN_08BIT, 0x00},
-	{0x303A, CRL_REG_LEN_08BIT, 0xD8}, /* WV = PIC_SIZE + 8 */
+	{0x303A, CRL_REG_LEN_08BIT, 0xE0}, /* WV = PIC_SIZE + 8 */
 	{0x303B, CRL_REG_LEN_08BIT, 0x02},
 	{0x303C, CRL_REG_LEN_08BIT, 0x04}, /* WPH = 4 */
 	{0x303D, CRL_REG_LEN_08BIT, 0x00},
-	{0x303E, CRL_REG_LEN_08BIT, 0xFC}, /* Effective size = 1276*/
-	{0x303F, CRL_REG_LEN_08BIT, 0x04},
+	{0x303E, CRL_REG_LEN_08BIT, 0x1C}, /* Effective size = 1308*/
+	{0x303F, CRL_REG_LEN_08BIT, 0x05},
 	/* 0x03h */
 	{0x311D, CRL_REG_LEN_08BIT, 0x0A},
 	{0x3123, CRL_REG_LEN_08BIT, 0x0F},
@@ -222,7 +222,7 @@ static struct crl_register_write_rep imx185_720P_RAW10_30FPS_27MHZ_CROPPING[] = 
 	{0x3303, CRL_REG_LEN_08BIT, 0x20},	/* repetation */
 	{0x3316, CRL_REG_LEN_08BIT, 0x02},
 	{0x3317, CRL_REG_LEN_08BIT, 0x02},
-	{0x3318, CRL_REG_LEN_08BIT, 0xD0},	/* PIC_SIZE = 720 */
+	{0x3318, CRL_REG_LEN_08BIT, 0xD8},	/* PIC_SIZE = 728 */
 	{0x3319, CRL_REG_LEN_08BIT, 0x02},
 	{0x334E, CRL_REG_LEN_08BIT, 0x3D},	/* INCL selection 27MHz */
 	{0x334F, CRL_REG_LEN_08BIT, 0x01},
@@ -371,7 +371,7 @@ static struct crl_register_write_rep imx185_1952_1088_RAW10_30FPS_27MHZ_CROPPING
 	{0x334F, CRL_REG_LEN_08BIT, 0x01},
 };
 
-static struct crl_register_write_rep imx185_1080p_RAW12_BUILD_IN_WDR_30FPS_27MHZ[] = {
+static struct crl_register_write_rep imx185_1952_1088_RAW12_1952_BUILD_IN_WDR_30FPS_27MHZ[] = {
 	/* 0x02h */
 	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x50},	/* mode selection */
@@ -406,11 +406,11 @@ static struct crl_register_write_rep imx185_1080p_RAW12_BUILD_IN_WDR_30FPS_27MHZ
 	/* Crop settings */
 	{0x3038, CRL_REG_LEN_08BIT, 0x00}, /* WPV = 0 */
 	{0x3039, CRL_REG_LEN_08BIT, 0x00},
-	{0x303A, CRL_REG_LEN_08BIT, 0x40}, /* WV = PIC_SIZE + 8 */
+	{0x303A, CRL_REG_LEN_08BIT, 0x48}, /* WV = PIC_SIZE + 8 */
 	{0x303B, CRL_REG_LEN_08BIT, 0x04},
 	{0x303C, CRL_REG_LEN_08BIT, 0x04}, /* WPH = 4 */
 	{0x303D, CRL_REG_LEN_08BIT, 0x00},
-	{0x303E, CRL_REG_LEN_08BIT, 0x7C}, /* Effective size = 1916*/
+	{0x303E, CRL_REG_LEN_08BIT, 0x9C}, /* Effective size = 1948*/
 	{0x303F, CRL_REG_LEN_08BIT, 0x07},
 	/* 0x03h */
 	{0x311D, CRL_REG_LEN_08BIT, 0x0A},
@@ -515,7 +515,7 @@ static struct crl_register_write_rep imx185_1080p_RAW12_BUILD_IN_WDR_30FPS_27MHZ
 	{0x3314, CRL_REG_LEN_08BIT, 0x08},
 	{0x3316, CRL_REG_LEN_08BIT, 0x04},
 	{0x3317, CRL_REG_LEN_08BIT, 0x04},
-	{0x3318, CRL_REG_LEN_08BIT, 0x38},	/* PIC_SIZE = 1080 */
+	{0x3318, CRL_REG_LEN_08BIT, 0x40},	/* PIC_SIZE = 1088 */
 	{0x3319, CRL_REG_LEN_08BIT, 0x04},
 	{0x334E, CRL_REG_LEN_08BIT, 0x3D},	/* INCL selection 27MHz */
 	{0x334F, CRL_REG_LEN_08BIT, 0x01},
@@ -780,32 +780,7 @@ static struct crl_subdev_rect_rep imx185_1952_1088_rects[] = {
 	}
 };
 
-static struct crl_subdev_rect_rep imx185_1080_wdr_rects[] = {
-	{
-		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
-		.in_rect.left = 0,
-		.in_rect.top = 0,
-		.in_rect.width = 1920,
-		.in_rect.height = 1080,
-		.out_rect.left = 0,
-		.out_rect.top = 0,
-		.out_rect.width = 1920,
-		.out_rect.height = 1080,
-	},
-	{
-		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
-		.in_rect.left = 0,
-		.in_rect.top = 0,
-		.in_rect.width = 1920,
-		.in_rect.height = 1080,
-		.out_rect.left = 0,
-		.out_rect.top = 0,
-		.out_rect.width = 1920,
-		.out_rect.height = 1080,
-	 }
-};
-
-static struct crl_subdev_rect_rep imx185_720_rects[] = {
+static struct crl_subdev_rect_rep imx185_1312_728_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect.left = 0,
@@ -825,8 +800,8 @@ static struct crl_subdev_rect_rep imx185_720_rects[] = {
 		.in_rect.height = 1088,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
-		.out_rect.width = 1280,
-		.out_rect.height = 720,
+		.out_rect.width = 1312,
+		.out_rect.height = 728,
 	 }
 };
 
@@ -847,34 +822,34 @@ static struct crl_mode_rep imx185_modes[] = {
 		.mode_regs = imx185_1952_1088_RAW10_30FPS_27MHZ_CROPPING,
 	},
 	{
-		.sd_rects_items = ARRAY_SIZE(imx185_1080_wdr_rects),
-		.sd_rects = imx185_1080_wdr_rects,
+		.sd_rects_items = ARRAY_SIZE(imx185_1952_1088_rects),
+		.sd_rects = imx185_1952_1088_rects,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
-		.width = 1920,
-		.height = 1080,
+		.width = 1952,
+		.height = 1088,
 		.min_llp = 2200,
 		.min_fll = 1125,
 		.comp_items = 1,
 		.ctrl_data = &ctrl_data_modes[1],
-		.mode_regs_items = ARRAY_SIZE(imx185_1080p_RAW12_BUILD_IN_WDR_30FPS_27MHZ),
-		.mode_regs = imx185_1080p_RAW12_BUILD_IN_WDR_30FPS_27MHZ,
+		.mode_regs_items = ARRAY_SIZE(imx185_1952_1088_RAW12_1952_BUILD_IN_WDR_30FPS_27MHZ),
+		.mode_regs = imx185_1952_1088_RAW12_1952_BUILD_IN_WDR_30FPS_27MHZ,
 	},
 	{
-		.sd_rects_items = ARRAY_SIZE(imx185_720_rects),
-		.sd_rects = imx185_720_rects,
+		.sd_rects_items = ARRAY_SIZE(imx185_1312_728_rects),
+		.sd_rects = imx185_1312_728_rects,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
-		.width = 1280,
-		.height = 720,
+		.width = 1312,
+		.height = 728,
 		.min_llp = 1300,
 		.min_fll = 787,
 		.comp_items = 1,
 		.ctrl_data = &ctrl_data_modes[0],
-		.mode_regs_items = ARRAY_SIZE(imx185_720P_RAW10_30FPS_27MHZ_CROPPING),
-		.mode_regs = imx185_720P_RAW10_30FPS_27MHZ_CROPPING,
+		.mode_regs_items = ARRAY_SIZE(imx185_1312_728_RAW10_30FPS_27MHZ_CROPPING),
+		.mode_regs = imx185_1312_728_RAW10_30FPS_27MHZ_CROPPING,
 	 }
 };
 
