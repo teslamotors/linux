@@ -433,7 +433,6 @@ static int vidioc_s_fmt_vid_cap_mplane(struct file *file, void *fh,
 
 	av->pfmt = av->try_fmt_vid_mplane(av, &f->fmt.pix_mp);
 	av->mpix = f->fmt.pix_mp;
-	av->ip.interlaced = (f->fmt.pix_mp.field == V4L2_FIELD_ALTERNATE);
 
 	return 0;
 }
@@ -497,8 +496,6 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *fh,
 
 	av->pfmt = av->try_fmt_vid_mplane(av, &mpix);
 	av->mpix = mpix;
-
-	av->ip.interlaced = (f->fmt.pix.field == V4L2_FIELD_ALTERNATE);
 
 	fmt_mp_to_sp(&f->fmt.pix, &mpix);
 
@@ -696,6 +693,132 @@ static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys)
 	return rval;
 }
 
+static int get_external_facing_format(struct intel_ipu4_isys_pipeline *ip,
+				      struct v4l2_subdev_format *format)
+{
+	struct intel_ipu4_isys_video *av =
+		container_of(ip, struct intel_ipu4_isys_video, ip);
+	struct media_pad *external_facing =
+		(media_entity_to_v4l2_subdev(ip->external->entity)->owner
+		== THIS_MODULE)
+		? ip->external : media_entity_remote_pad(ip->external);
+
+	if (WARN_ON(!external_facing)) {
+		dev_warn(&av->isys->adev->dev,
+			"no external facing pad --- driver bug?\n");
+		return -EINVAL;
+	}
+
+	format->which = V4L2_SUBDEV_FORMAT_ACTIVE;
+	format->pad = 0;
+	return v4l2_subdev_call(
+		media_entity_to_v4l2_subdev(external_facing->entity), pad,
+		get_fmt, NULL, format);
+}
+
+static void short_packet_queue_destroy(struct intel_ipu4_isys_video *av)
+{
+	struct dma_attrs attrs;
+	unsigned int i;
+
+	init_dma_attrs(&attrs);
+	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+	if (!av->ip.short_packet_bufs)
+		return;
+	for (i = 0; i < INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM; i++) {
+		if (av->ip.short_packet_bufs[i].buffer)
+			dma_free_attrs(&av->isys->adev->dev,
+				av->ip.short_packet_buffer_size,
+				av->ip.short_packet_bufs[i].buffer,
+				av->ip.short_packet_bufs[i].dma_addr, &attrs);
+	}
+	kfree(av->ip.short_packet_bufs);
+	av->ip.short_packet_bufs = NULL;
+}
+
+static int short_packet_queue_setup(struct intel_ipu4_isys_video *av)
+{
+	struct v4l2_subdev_format source_fmt = {0};
+	struct dma_attrs attrs;
+	unsigned int i;
+	int rval;
+	size_t buf_size;
+
+	rval = get_external_facing_format(&av->ip, &source_fmt);
+	if (rval)
+		return rval;
+	buf_size =
+		INTEL_IPU4_ISYS_SHORT_PACKET_BUF_SIZE(source_fmt.format.height);
+	av->ip.short_packet_buffer_size = buf_size;
+	av->ip.num_short_packet_lines = INTEL_IPU4_ISYS_SHORT_PACKET_PKT_LINES(
+		source_fmt.format.height);
+
+	/* Initialize short packet queue. */
+	INIT_LIST_HEAD(&av->ip.short_packet_incoming);
+	INIT_LIST_HEAD(&av->ip.short_packet_active);
+	init_dma_attrs(&attrs);
+	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+
+	av->ip.short_packet_bufs =
+		kzalloc(sizeof(struct intel_ipu4_isys_private_buffer) *
+		INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM, GFP_KERNEL);
+	if (!av->ip.short_packet_bufs)
+		return -ENOMEM;
+
+	for (i = 0; i < INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM; i++) {
+		struct intel_ipu4_isys_private_buffer *buf =
+			&av->ip.short_packet_bufs[i];
+		buf->index = (unsigned int) i;
+		buf->ip = &av->ip;
+		buf->ib.type = INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER;
+		buf->bytesused = buf_size;
+		buf->buffer = dma_alloc_attrs(
+			&av->isys->adev->dev, buf_size,
+			&buf->dma_addr, GFP_KERNEL, &attrs);
+		if (!buf->buffer) {
+			short_packet_queue_destroy(av);
+			return -ENOMEM;
+		}
+		list_add(&buf->ib.head, &av->ip.short_packet_incoming);
+	}
+
+	return 0;
+}
+
+void csi_short_packet_prepare_firmware_stream_cfg(
+	struct intel_ipu4_isys_pipeline *ip,
+	struct ia_css_isys_stream_cfg_data *cfg)
+{
+	int input_pin = cfg->nof_input_pins++;
+	int output_pin = cfg->nof_output_pins++;
+	struct ia_css_isys_input_pin_info *input_info =
+		&cfg->input_pins[input_pin];
+	struct ia_css_isys_output_pin_info *output_info =
+		&cfg->output_pins[output_pin];
+
+	/*
+	 * Setting dt as INTEL_IPU4_ISYS_SHORT_PACKET_GENERAL_DT will cause
+	 * MIPI receiver to receive all MIPI short packets.
+	 */
+	input_info->dt = INTEL_IPU4_ISYS_SHORT_PACKET_GENERAL_DT;
+	input_info->input_res.width = INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH;
+	input_info->input_res.height = ip->num_short_packet_lines;
+
+	ip->output_pins[output_pin].pin_ready =
+		intel_ipu4_isys_queue_short_packet_ready;
+	ip->output_pins[output_pin].aq = NULL;
+	ip->short_packet_output_pin = output_pin;
+
+	output_info->input_pin_id = input_pin;
+	output_info->output_res.width = INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH;
+	output_info->output_res.height = ip->num_short_packet_lines;
+	output_info->stride = INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH *
+			      INTEL_IPU4_ISYS_SHORT_PACKET_UNITSIZE;
+	output_info->pt = INTEL_IPU4_ISYS_SHORT_PACKET_PT;
+	output_info->ft = INTEL_IPU4_ISYS_SHORT_PACKET_FT;
+	output_info->send_irq = 1;
+}
+
 void intel_ipu4_isys_prepare_firmware_stream_cfg_default(
 	struct intel_ipu4_isys_video *av,
 	struct ia_css_isys_stream_cfg_data *cfg)
@@ -728,9 +851,6 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 	struct device *dev = &av->isys->adev->dev;
-	struct v4l2_subdev_format source_fmt = {
-		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-	};
 	struct v4l2_subdev_selection sel_fmt = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
 		.target = V4L2_SEL_TGT_CROP,
@@ -745,20 +865,10 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	struct ia_css_isys_frame_buff_set buf = { };
 	struct intel_ipu4_isys_queue *aq;
 	struct intel_ipu4_isys_video *isl_av = NULL;
-	struct media_pad *external_facing =
-		media_entity_to_v4l2_subdev(ip->external->entity)->owner
-		== THIS_MODULE
-		? ip->external : media_entity_remote_pad(ip->external);
+	struct v4l2_subdev_format source_fmt = {0};
 	int rval, rvalout, tout;
 
-	if (WARN_ON(!external_facing)) {
-		dev_warn(dev, "no external facing pad --- driver bug?\n");
-		return -EINVAL;
-	}
-
-	rval = v4l2_subdev_call(
-		media_entity_to_v4l2_subdev(external_facing->entity), pad,
-		get_fmt, NULL, &source_fmt);
+	rval = get_external_facing_format(ip, &source_fmt);
 	if (rval)
 		return rval;
 
@@ -818,6 +928,9 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 
 		__av->prepare_firmware_stream_cfg(__av, &stream_cfg);
 	}
+
+	if (ip->interlaced)
+		csi_short_packet_prepare_firmware_stream_cfg(ip, &stream_cfg);
 
 	csslib_dump_isys_stream_cfg(dev, &stream_cfg);
 
@@ -1033,6 +1146,13 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	dev_dbg(dev, "prepare streaming %d\n", state);
 
 	if (!state) {
+		struct intel_ipu4_isys_pipeline *ip =
+			to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
+		struct intel_ipu4_isys_video *pipe_av =
+			container_of(ip, struct intel_ipu4_isys_video, ip);
+
+		if (pipe_av->ip.interlaced)
+			short_packet_queue_destroy(pipe_av);
 		media_entity_pipeline_stop(&av->vdev.entity);
 		return 0;
 	}
@@ -1051,6 +1171,7 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	memset(av->ip.seq, 0, sizeof(av->ip.seq));
 
 	WARN_ON(!list_empty(&av->ip.queues));
+	av->ip.interlaced = false;
 
 	rval = media_entity_pipeline_start(&av->vdev.entity,
 					   &av->ip.pipe);
@@ -1064,6 +1185,17 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 		media_entity_pipeline_stop(&av->vdev.entity);
 		return -EINVAL;
 	}
+
+	if (av->ip.interlaced) {
+		rval = short_packet_queue_setup(av);
+		if (rval) {
+			media_entity_pipeline_stop(&av->vdev.entity);
+			dev_err(&av->isys->adev->dev,
+				"Failed to setup short packet queue.\n");
+			return rval;
+		}
+	}
+
 	dev_dbg(dev, "external entity %s\n", av->ip.external->entity->name);
 
 	return 0;
@@ -1237,6 +1369,7 @@ int intel_ipu4_isys_video_init(struct intel_ipu4_isys_video *av,
 	init_completion(&av->ip.stream_stop_completion);
 	init_completion(&av->ip.capture_ack_completion);
 	INIT_LIST_HEAD(&av->ip.queues);
+	spin_lock_init(&av->ip.short_packet_queue_lock);
 	av->ip.isys = av->isys;
 
 	if (pad_flags & MEDIA_PAD_FL_SINK) {

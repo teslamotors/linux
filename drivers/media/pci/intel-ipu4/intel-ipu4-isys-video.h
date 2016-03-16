@@ -79,9 +79,15 @@ struct intel_ipu4_isys_pipeline {
 		 struct ia_css_isys_resp_info *resp);
 	struct output_pin_data output_pins[INTEL_IPU4_ISYS_OUTPUT_PINS];
 	bool has_sof;
-	int error;
 	bool interlaced;
-	unsigned int cur_field;
+	int error;
+	struct intel_ipu4_isys_private_buffer *short_packet_bufs;
+	size_t short_packet_buffer_size;
+	unsigned int num_short_packet_lines;
+	unsigned int short_packet_output_pin;
+	struct list_head short_packet_incoming;
+	struct list_head short_packet_active;
+	spinlock_t short_packet_queue_lock;
 };
 
 #define to_intel_ipu4_isys_pipeline(__pipe)				\

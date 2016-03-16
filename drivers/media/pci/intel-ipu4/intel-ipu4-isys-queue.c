@@ -180,11 +180,45 @@ void intel_ipu4_isys_buffer_list_queue(struct intel_ipu4_isys_buffer_list *bl,
 		op_flags & INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING);
 
 	list_for_each_entry_safe(ib, ib_safe, &bl->head, head) {
-		struct vb2_buffer *vb =
-			intel_ipu4_isys_buffer_to_vb2_buffer(ib);
-		struct intel_ipu4_isys_queue *aq =
-			vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
-		struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
+		struct intel_ipu4_isys_video *av;
+
+		if (ib->type == INTEL_IPU4_ISYS_VIDEO_BUFFER) {
+			struct vb2_buffer *vb =
+				intel_ipu4_isys_buffer_to_vb2_buffer(ib);
+			struct intel_ipu4_isys_queue *aq =
+				vb2_queue_to_intel_ipu4_isys_queue(
+					vb->vb2_queue);
+
+			av = intel_ipu4_isys_queue_to_video(aq);
+			spin_lock_irqsave(&aq->lock, flags);
+			list_del(&ib->head);
+			if (op_flags & INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE)
+				list_add(&ib->head, &aq->active);
+			else if (op_flags &
+				INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING)
+				list_add_tail(&ib->head, &aq->incoming);
+			spin_unlock_irqrestore(&aq->lock, flags);
+
+			if (op_flags & INTEL_IPU4_ISYS_BUFFER_LIST_FL_SET_STATE)
+				vb2_buffer_done(vb, state);
+		} else if (ib->type == INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER) {
+			struct intel_ipu4_isys_private_buffer *pb =
+				intel_ipu4_isys_buffer_to_private_buffer(ib);
+			struct intel_ipu4_isys_pipeline *ip = pb->ip;
+
+			av = container_of(ip, struct intel_ipu4_isys_video, ip);
+			spin_lock_irqsave(&ip->short_packet_queue_lock, flags);
+			list_del(&ib->head);
+			if (op_flags & INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE)
+				list_add(&ib->head, &ip->short_packet_active);
+			else if (op_flags &
+				INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING)
+				list_add(&ib->head, &ip->short_packet_incoming);
+			spin_unlock_irqrestore(&ip->short_packet_queue_lock, flags);
+		} else {
+			WARN_ON(1);
+			return;
+		}
 
 		if (first) {
 			dev_dbg(&av->isys->adev->dev,
@@ -192,17 +226,6 @@ void intel_ipu4_isys_buffer_list_queue(struct intel_ipu4_isys_buffer_list *bl,
 				bl, op_flags, state, bl->nbufs);
 			first = false;
 		}
-
-		spin_lock_irqsave(&aq->lock, flags);
-		list_del(&ib->head);
-		if (op_flags & INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE)
-			list_add(&ib->head, &aq->active);
-		else if (op_flags & INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING)
-			list_add_tail(&ib->head, &aq->incoming);
-		spin_unlock_irqrestore(&aq->lock, flags);
-
-		if (op_flags & INTEL_IPU4_ISYS_BUFFER_LIST_FL_SET_STATE)
-			vb2_buffer_done(vb, state);
 
 		bl->nbufs--;
 	}
@@ -287,12 +310,7 @@ static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
 		spin_lock_irqsave(&aq->lock, flags);
 		if (list_empty(&aq->incoming)) {
 			spin_unlock_irqrestore(&aq->lock, flags);
-			if (!list_empty(&bl->head))
-				intel_ipu4_isys_buffer_list_queue(
-					bl,
-					INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING,
-					0);
-			return -ENODATA;
+			goto failed_no_buffer;
 		}
 
 		ib = list_last_entry(&aq->incoming,
@@ -323,10 +341,32 @@ static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
 			aq->prepare_frame_buff_set(vb);
 	}
 
+	/* Get short packet buffer. */
+	if (ip->interlaced) {
+		spin_lock_irqsave(&ip->short_packet_queue_lock, flags);
+		ib = intel_ipu4_isys_csi2_get_short_packet_buffer(ip);
+		if (!ib) {
+			spin_unlock_irqrestore(&ip->short_packet_queue_lock,
+					       flags);
+			dev_err(&ip->isys->adev->dev,
+				"No more short packet buffers. Driver bug?");
+			WARN_ON(1);
+			goto failed_no_buffer;
+		}
+		list_move(&ib->head, &bl->head);
+		spin_unlock_irqrestore(&ip->short_packet_queue_lock, flags);
+		bl->nbufs++;
+	}
+
 	dev_dbg(&ip->isys->adev->dev, "get buffer list %p, %u buffers\n", bl,
 		bl->nbufs);
-
 	return 0;
+
+failed_no_buffer:
+	if (!list_empty(&bl->head))
+		intel_ipu4_isys_buffer_list_queue(bl,
+			INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING, 0);
+	return -ENODATA;
 }
 
 void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin(
@@ -361,12 +401,26 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 	set->send_irq_eof = 1;
 
 	list_for_each_entry(ib, &bl->head, head) {
-		struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
-		struct intel_ipu4_isys_queue *aq =
-			vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
+		if (ib->type == INTEL_IPU4_ISYS_VIDEO_BUFFER) {
+			struct vb2_buffer *vb =
+				intel_ipu4_isys_buffer_to_vb2_buffer(ib);
+			struct intel_ipu4_isys_queue *aq =
+				vb2_queue_to_intel_ipu4_isys_queue(
+					vb->vb2_queue);
 
-		if (aq->fill_frame_buff_set_pin)
-			aq->fill_frame_buff_set_pin(vb, set);
+			if (aq->fill_frame_buff_set_pin)
+				aq->fill_frame_buff_set_pin(vb, set);
+		} else if (ib->type == INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER) {
+			struct intel_ipu4_isys_private_buffer *pb =
+				intel_ipu4_isys_buffer_to_private_buffer(ib);
+			struct ia_css_isys_output_pin_payload *output_pin =
+				&set->output_pins[ip->short_packet_output_pin];
+
+			output_pin->addr = pb->dma_addr;
+			output_pin->out_buf_id = pb->index + 1;
+		} else {
+			WARN_ON(1);
+		}
 	}
 }
 
@@ -621,7 +675,6 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 
 	mutex_lock(&pipe_av->mutex);
 	ip->nr_streaming++;
-	ip->cur_field = V4L2_FIELD_TOP;
 	dev_dbg(&av->isys->adev->dev, "queue %u of %u\n", ip->nr_streaming,
 		ip->nr_queues);
 	list_add(&aq->node, &ip->queues);
@@ -844,17 +897,12 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 		dev_dbg(&isys->adev->dev, "found buffer %pad\n", &addr);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
-		if (ip->interlaced)
-			vb->v4l2_buf.field = ip->cur_field;
-		else
-			vb->v4l2_buf.field = V4L2_FIELD_NONE;
+		vb->v4l2_buf.field =
+			intel_ipu4_isys_csi2_get_current_field(ip);
 #else
 		vbuf = to_vb2_v4l2_buffer(vb);
-
-		if (ip->interlaced)
-			vbuf->field = ip->cur_field;
-		else
-			vbuf->field = V4L2_FIELD_NONE;
+		vbuf->field =
+			intel_ipu4_isys_csi2_get_current_field(ip);
 #endif
 
 		list_del(&ib->head);
@@ -868,6 +916,17 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 		"WARNING: cannot find a matching video buffer!\n");
 
 	spin_unlock_irqrestore(&aq->lock, flags);
+}
+
+void intel_ipu4_isys_queue_short_packet_ready(
+	struct intel_ipu4_isys_pipeline *ip,
+	struct ia_css_isys_resp_info *info)
+{
+	struct intel_ipu4_isys *isys =
+		container_of(ip, struct intel_ipu4_isys_video, ip)->isys;
+
+	dev_dbg(&isys->adev->dev, "receive short packet buffer %8.8x\n",
+		info->pin.addr);
 }
 
 struct vb2_ops intel_ipu4_isys_queue_ops = {

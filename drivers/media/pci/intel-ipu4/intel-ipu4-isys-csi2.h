@@ -33,6 +33,30 @@ struct intel_ipu4_isys;
 #define INTEL_IPU4_ISYS_CSI2_SENSOR_CFG_LANE_CLOCK	0
 #define INTEL_IPU4_ISYS_CSI2_SENSOR_CFG_LANE_DATA(n)	((n) + 1)
 
+#define INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM	VIDEO_MAX_FRAME
+#define INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH	32
+#define INTEL_IPU4_ISYS_SHORT_PACKET_FRAME_PACKETS	2
+#define INTEL_IPU4_ISYS_SHORT_PACKET_EXTRA_PACKETS	64
+#define INTEL_IPU4_ISYS_SHORT_PACKET_UNITSIZE	8
+#define INTEL_IPU4_ISYS_SHORT_PACKET_GENERAL_DT	0
+#define INTEL_IPU4_ISYS_SHORT_PACKET_PT		0
+#define INTEL_IPU4_ISYS_SHORT_PACKET_FT		0
+#define INTEL_IPU4_ISYS_SHORT_PACKET_DTYPE_MASK	0x3f
+#define INTEL_IPU4_ISYS_SHORT_PACKET_STRIDE \
+	(INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH * \
+	INTEL_IPU4_ISYS_SHORT_PACKET_UNITSIZE)
+#define INTEL_IPU4_ISYS_SHORT_PACKET_NUM(num_lines) \
+	((num_lines) * 2 + INTEL_IPU4_ISYS_SHORT_PACKET_FRAME_PACKETS + \
+	INTEL_IPU4_ISYS_SHORT_PACKET_EXTRA_PACKETS)
+#define INTEL_IPU4_ISYS_SHORT_PACKET_PKT_LINES(num_lines) \
+	DIV_ROUND_UP(INTEL_IPU4_ISYS_SHORT_PACKET_NUM(num_lines) * \
+	INTEL_IPU4_ISYS_SHORT_PACKET_UNITSIZE, \
+	INTEL_IPU4_ISYS_SHORT_PACKET_STRIDE)
+#define INTEL_IPU4_ISYS_SHORT_PACKET_BUF_SIZE(num_lines) \
+	(INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH * \
+	INTEL_IPU4_ISYS_SHORT_PACKET_PKT_LINES(num_lines) * \
+	INTEL_IPU4_ISYS_SHORT_PACKET_UNITSIZE)
+
 /*
  * struct intel_ipu4_isys_csi2
  *
@@ -59,6 +83,22 @@ struct intel_ipu4_isys_csi2_timing {
 	uint32_t dsettle;
 };
 
+/*
+ * This structure defines the MIPI packet header output
+ * from IPU4 MIPI receiver. Due to hardware conversion,
+ * this structure is not the same as defined in CSI-2 spec.
+ */
+__packed struct intel_ipu4_isys_mipi_packet_header {
+	uint32_t word_count : 16,
+		 dtype : 13,
+		 sync : 2,
+		 stype : 1;
+	uint32_t sid : 4,
+		 port_id : 4,
+		 reserved : 23,
+		 odd_even : 1;
+};
+
 #define to_intel_ipu4_isys_csi2(sd)					\
 	container_of(to_intel_ipu4_isys_subdev(sd), struct intel_ipu4_isys_csi2, asd)
 
@@ -69,5 +109,9 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 		      void __iomem *base, unsigned int index);
 void intel_ipu4_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2);
 void intel_ipu4_isys_csi2_isr(struct intel_ipu4_isys_csi2 *csi2);
+struct intel_ipu4_isys_buffer *intel_ipu4_isys_csi2_get_short_packet_buffer(
+	struct intel_ipu4_isys_pipeline *ip);
+unsigned int intel_ipu4_isys_csi2_get_current_field(
+	struct intel_ipu4_isys_pipeline *ip);
 
 #endif /* INTEL_IPU4_ISYS_CSI2_H */

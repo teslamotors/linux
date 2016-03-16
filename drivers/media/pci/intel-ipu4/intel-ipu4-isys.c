@@ -1259,13 +1259,6 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 		for (i = 0; i < INTEL_IPU4_NUM_CAPTURE_DONE; i++)
 			if (pipe->capture_done[i])
 				pipe->capture_done[i](pipe, &resp);
-		/*
-		 * FIXME: Currently FW cannot provide field information.
-		 * This workaround automatically switch the output buffer field.
-		 * Will change to use FW provided information when FW is ready.
-		 */
-		pipe->cur_field = (pipe->cur_field == V4L2_FIELD_TOP) ?
-			V4L2_FIELD_BOTTOM : V4L2_FIELD_TOP;
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_FRAME_SOF:
 		pipe->seq[pipe->seq_index].sequence =

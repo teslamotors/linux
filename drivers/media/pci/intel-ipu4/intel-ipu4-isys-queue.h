@@ -29,6 +29,11 @@ struct intel_ipu4_isys_pipeline;
 struct ia_css_isys_resp_info;
 struct ia_css_isys_frame_buff_set;
 
+enum intel_ipu4_isys_buffer_type {
+	INTEL_IPU4_ISYS_VIDEO_BUFFER,
+	INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER,
+};
+
 /*
  * @lock: serialise access to queued and pre_streamon_queued
  */
@@ -52,6 +57,7 @@ struct intel_ipu4_isys_queue {
 
 struct intel_ipu4_isys_buffer {
 	struct list_head head;
+	enum intel_ipu4_isys_buffer_type type;
 };
 
 struct intel_ipu4_isys_video_buffer {
@@ -61,6 +67,15 @@ struct intel_ipu4_isys_video_buffer {
 	struct vb2_v4l2_buffer vb_v4l2;
 #endif
 	struct intel_ipu4_isys_buffer ib;
+};
+
+struct intel_ipu4_isys_private_buffer {
+	struct intel_ipu4_isys_buffer ib;
+	struct intel_ipu4_isys_pipeline *ip;
+	unsigned int index;
+	unsigned int bytesused;
+	dma_addr_t dma_addr;
+	void *buffer;
 };
 
 #define INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING	BIT(0)
@@ -96,6 +111,9 @@ struct intel_ipu4_isys_buffer_list {
 #define vb2_buffer_to_intel_ipu4_isys_buffer(__vb) \
 	(&vb2_buffer_to_intel_ipu4_isys_video_buffer(__vb)->ib)
 
+#define intel_ipu4_isys_buffer_to_private_buffer(__ib) \
+	container_of(__ib, struct intel_ipu4_isys_private_buffer, ib)
+
 void intel_ipu4_isys_queue_lock(struct vb2_queue *q);
 void intel_ipu4_isys_queue_unlock(struct vb2_queue *q);
 
@@ -115,6 +133,9 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib,
 				    struct ia_css_isys_resp_info *info);
 void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 				     struct ia_css_isys_resp_info *info);
+void intel_ipu4_isys_queue_short_packet_ready(
+	struct intel_ipu4_isys_pipeline *ip,
+	struct ia_css_isys_resp_info *info);
 
 int intel_ipu4_isys_queue_init(struct intel_ipu4_isys_queue *aq);
 void intel_ipu4_isys_queue_cleanup(struct intel_ipu4_isys_queue *aq);

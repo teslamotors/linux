@@ -411,6 +411,18 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 static void csi2_capture_done(struct intel_ipu4_isys_pipeline *ip,
 			      struct ia_css_isys_resp_info *info)
 {
+	if (ip->interlaced) {
+		struct intel_ipu4_isys_buffer *ib;
+		unsigned long flags;
+
+		spin_lock_irqsave(&ip->short_packet_queue_lock, flags);
+		if (!list_empty(&ip->short_packet_active)) {
+			ib = list_last_entry(&ip->short_packet_active,
+				struct intel_ipu4_isys_buffer, head);
+			list_move(&ib->head, &ip->short_packet_incoming);
+		}
+		spin_unlock_irqrestore(&ip->short_packet_queue_lock, flags);
+	}
 	if (ip->csi2)
 		intel_ipu4_isys_csi2_error(ip->csi2);
 }
@@ -482,8 +494,24 @@ static int intel_ipu4_isys_csi2_set_fmt(struct v4l2_subdev *sd,
 	return intel_ipu4_isys_subdev_set_ffmt(sd, cfg, fmt);
 }
 
+static int __subdev_link_validate(
+	struct v4l2_subdev *sd, struct media_link *link,
+	struct v4l2_subdev_format *source_fmt,
+	struct v4l2_subdev_format *sink_fmt)
+{
+	struct intel_ipu4_isys_pipeline *ip =
+		container_of(sd->entity.pipe,
+		struct intel_ipu4_isys_pipeline, pipe);
+
+	if (source_fmt->format.field == V4L2_FIELD_ALTERNATE)
+		ip->interlaced = true;
+
+	return intel_ipu4_isys_subdev_link_validate(
+		sd, link, source_fmt, sink_fmt);
+}
+
 static const struct v4l2_subdev_pad_ops csi2_sd_pad_ops = {
-	.link_validate = intel_ipu4_isys_subdev_link_validate,
+	.link_validate = __subdev_link_validate,
 	.get_fmt = intel_ipu4_isys_csi2_get_fmt,
 	.set_fmt = intel_ipu4_isys_csi2_set_fmt,
 	.enum_mbus_code = intel_ipu4_isys_subdev_enum_mbus_code,
@@ -720,3 +748,56 @@ void intel_ipu4_isys_csi2_isr(struct intel_ipu4_isys_csi2 *csi2)
 
 	intel_ipu4_isys_csi2_sof_event(csi2);
 }
+
+struct intel_ipu4_isys_buffer *
+intel_ipu4_isys_csi2_get_short_packet_buffer(
+	struct intel_ipu4_isys_pipeline *ip)
+{
+	struct intel_ipu4_isys_buffer *ib;
+	struct intel_ipu4_isys_private_buffer *pb;
+	struct intel_ipu4_isys_mipi_packet_header *ph;
+
+	if (list_empty(&ip->short_packet_incoming))
+		return NULL;
+	ib = list_last_entry(&ip->short_packet_incoming,
+			     struct intel_ipu4_isys_buffer, head);
+	pb = intel_ipu4_isys_buffer_to_private_buffer(ib);
+	ph = (struct intel_ipu4_isys_mipi_packet_header *) pb->buffer;
+
+	/* Fill the packet header with magic number. */
+	ph->word_count = 0xffff;
+	ph->dtype = 0xff;
+
+	dma_sync_single_for_cpu(&ip->isys->adev->dev, pb->dma_addr,
+		sizeof(*ph), DMA_BIDIRECTIONAL);
+	return ib;
+}
+
+unsigned int intel_ipu4_isys_csi2_get_current_field(
+	struct intel_ipu4_isys_pipeline *ip)
+{
+	struct intel_ipu4_isys_buffer *short_packet_ib =
+		list_last_entry(&ip->short_packet_active,
+		struct intel_ipu4_isys_buffer, head);
+	struct intel_ipu4_isys_private_buffer *pb =
+		intel_ipu4_isys_buffer_to_private_buffer(
+		short_packet_ib);
+	struct intel_ipu4_isys_mipi_packet_header *ph =
+		(struct intel_ipu4_isys_mipi_packet_header *)
+		pb->buffer;
+	struct intel_ipu4_isys_video *av =
+		container_of(ip, struct intel_ipu4_isys_video, ip);
+	unsigned int field;
+
+	/* Check if the first SOF packet is received. */
+	if ((ph->dtype & INTEL_IPU4_ISYS_SHORT_PACKET_DTYPE_MASK) != 0)
+		dev_warn(&av->isys->adev->dev,
+			"First short packet is not SOF.\n");
+	field = (ph->word_count % 2) ? V4L2_FIELD_TOP : V4L2_FIELD_BOTTOM;
+	dev_dbg(&av->isys->adev->dev,
+		"Interlaced field ready. frame_num = %d field = %d\n",
+		ph->word_count, field);
+
+	return field;
+}
+
