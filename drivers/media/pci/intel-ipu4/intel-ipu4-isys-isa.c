@@ -450,16 +450,18 @@ static void isa_prepare_firmware_stream_cfg(
 {
 #ifdef IPU_STEP_BXTB0
 	struct v4l2_rect *r;
-	unsigned int pad, cropping_location;
+	unsigned int pad, cropping_location, res_info;
 
 	if (av == &av->isys->isa.av) {
 		pad = ISA_PAD_SOURCE;
 		cropping_location =
 			IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED;
+		res_info = IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED;
 	} else if (av == &av->isys->isa.av_scaled) {
 		pad = ISA_PAD_SOURCE_SCALED;
 		cropping_location =
 			IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED;
+		res_info = IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED;
 	} else {
 		BUG();
 	}
@@ -472,6 +474,13 @@ static void isa_prepare_firmware_stream_cfg(
 	cfg->crop[cropping_location].left_offset = r->left;
 	cfg->crop[cropping_location].bottom_offset = r->top + r->height;
 	cfg->crop[cropping_location].right_offset = r->left + r->width;
+
+	r = __intel_ipu4_isys_get_selection(&av->isys->isa.asd.sd, NULL,
+					    V4L2_SEL_TGT_COMPOSE, pad,
+					    V4L2_SUBDEV_FORMAT_ACTIVE);
+
+	cfg->isa_cfg.isa_res[res_info].height = r->height;
+	cfg->isa_cfg.isa_res[res_info].width = r->width;
 #endif
 	intel_ipu4_isys_prepare_firmware_stream_cfg_default(av, cfg);
 }
