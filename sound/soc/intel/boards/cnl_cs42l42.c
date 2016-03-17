@@ -47,6 +47,7 @@ struct cnl_cs42l42_mc_private {
 static const struct snd_soc_dapm_widget cnl_cs42l42_widgets[] = {
 	SND_SOC_DAPM_HP("Headphones", NULL),
 	SND_SOC_DAPM_MIC("AMIC", NULL),
+	SND_SOC_DAPM_MIC("SoC DMIC", NULL),
 };
 
 static const struct snd_soc_dapm_route cnl_cs42l42_map[] = {
@@ -62,6 +63,9 @@ static const struct snd_soc_dapm_route cnl_cs42l42_map[] = {
 	{ "sdw_codec0_in", NULL, "SDW Rx" },
 	{ "SDW Rx", NULL, "Capture" },
 
+	{"DMic", NULL, "SoC DMIC"},
+	{"DMIC01 Rx", NULL, "Capture"},
+	{"dmic01_hifi", NULL, "DMIC01 Rx"},
 
 };
 
@@ -181,6 +185,16 @@ static int cnl_cs42l42_codec_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	be_cpu_dai = rtd->cpu_dai;
 	return ret;
+}
+
+static int cnl_dmic_fixup(struct snd_soc_pcm_runtime *rtd,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *channels = hw_param_interval(params,
+						SNDRV_PCM_HW_PARAM_CHANNELS);
+	channels->min = channels->max = 2;
+
+	return 0;
 }
 
 static const struct snd_soc_pcm_stream cnl_cs42l42_dai_params = {
