@@ -509,7 +509,7 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 	struct cnl_sdw_data *p_data;
 	int ret = 0, i, j;
 	/* TODO: This number 4 should come from ACPI */
-	dsp->num_sdw_controllers = 1;
+	dsp->num_sdw_controllers = 4;
 	master = devm_kzalloc(dev,
 			(sizeof(*master) * dsp->num_sdw_controllers),
 			GFP_KERNEL);
