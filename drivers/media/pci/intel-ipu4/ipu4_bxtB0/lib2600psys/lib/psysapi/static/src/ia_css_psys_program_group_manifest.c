@@ -266,7 +266,7 @@ bool ia_css_is_program_group_manifest_valid(
 				verifexit(program_dependency_k < program_count, EINVAL);
 				verifexit((program_type_k != IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
 						  (program_type_k != IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB), EINVAL);
-				verifexit(ia_css_is_kernel_bitmap_intersection_empty(program_bitmap_i, program_bitmap_k), EINVAL);
+				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || ia_css_is_kernel_bitmap_intersection_empty(program_bitmap_i, program_bitmap_k), EINVAL);
 			}
 		}
 
@@ -352,7 +352,7 @@ bool ia_css_is_program_group_manifest_valid(
 					verifexit((i != j), EINVAL);
 					verifexit((program_type_i != IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
 							(program_type_i != IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB), EINVAL);
-					verifexit(ia_css_is_kernel_bitmap_intersection_empty(program_bitmap_i, program_bitmap_j) ^ is_sub_j, EINVAL);
+					verifexit(USE_SIMPLIFIED_GRAPH_MODEL || (ia_css_is_kernel_bitmap_intersection_empty(program_bitmap_i, program_bitmap_j) ^ is_sub_j), EINVAL);
 				}
 			}
 
