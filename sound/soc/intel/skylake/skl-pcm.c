@@ -716,6 +716,10 @@ static int skl_get_compr_core(struct snd_compr_stream *stream)
 		return 0;
 	else if (!strcmp(dai->name, "TraceBuffer1 Pin"))
 		return 1;
+	else if (!strcmp(dai->name, "TraceBuffer2 Pin"))
+		return 2;
+	else if (!strcmp(dai->name, "TraceBuffer3 Pin"))
+		return 3;
 	else
 		return INT_MIN;
 }
@@ -874,7 +878,7 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	.compress_new = snd_soc_new_compress,
 	.cops = &skl_trace_compr_ops,
 	.capture = {
-		.stream_name = "TraceBuffer Capture",
+		.stream_name = "TraceBuffer0 Capture",
 		.channels_min = HDA_MONO,
 		.channels_max = HDA_MONO,
 	},
@@ -885,6 +889,26 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	.cops = &skl_trace_compr_ops,
 	.capture = {
 		.stream_name = "TraceBuffer1 Capture",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_MONO,
+	},
+},
+{
+	.name = "TraceBuffer2 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_trace_compr_ops,
+	.capture = {
+		.stream_name = "TraceBuffer2 Capture",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_MONO,
+	},
+},
+{
+	.name = "TraceBuffer3 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_trace_compr_ops,
+	.capture = {
+		.stream_name = "TraceBuffer3 Capture",
 		.channels_min = HDA_MONO,
 		.channels_max = HDA_MONO,
 	},
