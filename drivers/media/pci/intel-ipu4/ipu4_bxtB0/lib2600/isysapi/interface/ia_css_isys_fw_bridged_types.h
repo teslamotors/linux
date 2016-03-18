@@ -120,6 +120,8 @@ struct ia_css_isys_isa_cfg_comm {
 	aligned_uint32(unsigned int, af_enabled);		/* acc id 5, set if process required */
 	aligned_uint32(unsigned int, ae_enabled);		/* acc id 6, set if process required */
 	aligned_uint32(unsigned int, paf_enabled);		/* acc id 7, set if process required */
+	aligned_uint32(unsigned int, send_irq_stats_ready);	/* Send irq for any statistics buffers which got completed */
+	aligned_uint32(unsigned int, send_resp_stats_ready);	/* Send response for any statistics buffers which got completed */
 };
 
  /**
@@ -217,6 +219,8 @@ struct ia_css_isys_resp_info_comm {
 	aligned_struct(struct ia_css_isys_error_info_comm, error_info);
 	aligned_struct(struct ia_css_isys_output_pin_payload_comm, pin);
 	aligned_uint32(unsigned int, pin_id);
+	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
+	aligned_uint32(unsigned int, acc_id);
 	aligned_uint64(ia_css_return_token, buf_id);	/* Used internally only */
 };
 

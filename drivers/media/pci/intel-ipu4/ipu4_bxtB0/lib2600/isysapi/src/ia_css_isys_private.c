@@ -359,6 +359,8 @@ STORAGE_CLASS_INLINE void isa_cfg_host_to_css(const struct ia_css_isys_isa_cfg *
 	isa_cfg_css->af_enabled = isa_cfg_host->af_enabled;
 	isa_cfg_css->ae_enabled = isa_cfg_host->ae_enabled;
 	isa_cfg_css->paf_enabled = isa_cfg_host->paf_enabled;
+	isa_cfg_css->send_irq_stats_ready = isa_cfg_host->send_irq_stats_ready ? 1 : 0;
+	isa_cfg_css->send_resp_stats_ready = isa_cfg_host->send_irq_stats_ready ? 1 : isa_cfg_host->send_resp_stats_ready;
 }
 
 STORAGE_CLASS_INLINE void cropping_host_to_css(const struct ia_css_isys_cropping *cropping_host, struct ia_css_isys_cropping_comm *cropping_css) {
@@ -424,6 +426,11 @@ STORAGE_CLASS_INLINE void output_pin_payload_css_to_host(const struct ia_css_isy
 	output_pin_payload_host->addr = output_pin_payload_css->addr;
 }
 
+STORAGE_CLASS_INLINE void param_pin_css_to_host(const struct ia_css_isys_param_pin_comm *param_pin_css, struct ia_css_isys_param_pin *param_pin_host) {
+	param_pin_host->param_buf_id = param_pin_css->param_buf_id;
+	param_pin_host->addr = param_pin_css->addr;
+}
+
 STORAGE_CLASS_INLINE void resp_info_css_to_host(const struct ia_css_isys_resp_info_comm *resp_info_css, struct ia_css_isys_resp_info *resp_info_host) {
 	resp_info_host->type = resp_info_css->type;
 	resp_info_host->timestamp[0] = resp_info_css->timestamp[0];
@@ -433,6 +440,8 @@ STORAGE_CLASS_INLINE void resp_info_css_to_host(const struct ia_css_isys_resp_in
 	resp_info_host->error_details = resp_info_css->error_info.error_details;
 	output_pin_payload_css_to_host(&resp_info_css->pin, &resp_info_host->pin);
 	resp_info_host->pin_id = resp_info_css->pin_id;
+	param_pin_css_to_host(&resp_info_css->process_group_light, &resp_info_host->process_group_light);
+	resp_info_host->acc_id = resp_info_css->acc_id;
 }
 
 

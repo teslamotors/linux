@@ -127,6 +127,8 @@ struct ia_css_isys_isa_cfg {
 	unsigned int af_enabled;		/* acc id 5, set if process required */
 	unsigned int ae_enabled;		/* acc id 6, set if process required */
 	unsigned int paf_enabled;		/* acc id 7, set if process required */
+	unsigned int send_irq_stats_ready;	/* Send irq for any statistics buffers which got completed */
+	unsigned int send_resp_stats_ready;	/* Send response for any statistics buffers which got completed */
 };
 
 /**
@@ -209,9 +211,10 @@ struct ia_css_isys_frame_buff_set {
  * @timestamp: Time information for event if available
  * @error: error code if something went wrong
  * @error_details: depending on error code, it may contain additional error info
- * @pin: this var is only valid for pin event related responses,
- *	contains pin addresses
- * @pin_id: pin id that the pin payload corresponds to
+ * @pin: this var is valid for pin event related responses, contains pin addresses
+ * @pin_id: this var is valid for pin event related responses, contains pin id that the pin payload corresponds to
+ * @process_group_light: this var is valid for stats ready related responses, contains process group addresses
+ * @acc_id: this var is valid for stats ready related responses, contains accelerator id that finished producing all related statistics
  */
 struct ia_css_isys_resp_info {
 	enum ia_css_isys_resp_type type;
@@ -221,6 +224,8 @@ struct ia_css_isys_resp_info {
 	unsigned int error_details;
 	struct ia_css_isys_output_pin_payload pin;
 	unsigned int pin_id;
+	struct ia_css_isys_param_pin process_group_light;
+	unsigned int acc_id;
 };
 
 
