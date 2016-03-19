@@ -358,7 +358,11 @@ skl_process_log_buffer(struct sst_dsp *sst, struct skl_ipc_header header)
 	u32 *ptr, avail;
 	u8 *base;
 
+#if defined(CONFIG_SND_SOC_INTEL_CNL_FPGA)
+	core = 0;
+#else
 	core = IPC_GLB_NOTIFY_CORE_ID(header.primary);
+#endif
 	if (!(BIT(core) & sst->trace_wind.flags)) {
 		dev_err(sst->dev, "Logging is disabled on dsp %d\n", core);
 		return;
@@ -370,7 +374,11 @@ skl_process_log_buffer(struct sst_dsp *sst, struct skl_ipc_header header)
 		return;
 	}
 	skl_dsp_get_log_buff(sst, core);
+#if defined(CONFIG_SND_SOC_INTEL_CNL_FPGA)
+	size = sst->trace_wind.size;
+#else
 	size = sst->trace_wind.size/sst->trace_wind.nr_dsp;
+#endif
 	base = (u8 *)sst->trace_wind.addr;
 	/* move to the source dsp tracing window */
 	base += (core * size);
