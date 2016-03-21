@@ -34,6 +34,8 @@
 #include "crlmodule-regs.h"
 #include "crlmodule-msrlist.h"
 
+static void crlmodule_update_current_mode(struct crl_sensor *sensor);
+
 static int __crlmodule_get_variable_ref(struct crl_sensor *sensor,
 					enum crl_member_data_reference_ids ref,
 					u32 *val)
@@ -775,6 +777,11 @@ static int crlmodule_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_LINE_LENGTH_PIXELS:
 		ret = __crlmodule_update_framesize(sensor, crl_ctrl, ctrl);
 		goto out;
+
+	case CRL_CID_SENSOR_MODE:
+		sensor->sensor_mode = ctrl->val;
+		crlmodule_update_current_mode(sensor);
+		goto out;
 	}
 
 	ret = __crlmodule_update_dynamic_regs(sensor, crl_ctrl, ctrl->val);
@@ -1063,6 +1070,9 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 		    crl_ctrl->ctrl_id == V4L2_CID_LINE_LENGTH_PIXELS)
 		    sensor->blanking_ctrl_not_use = 1;
 
+		if (crl_ctrl->ctrl_id == CRL_CID_SENSOR_MODE)
+			sensor->direct_mode_in_use = 1;
+
 		/* Save mandatory control references - link_freq in src sd */
 		if (crl_ctrl->ctrl_id == V4L2_CID_LINK_FREQ &&
 		    (crl_ctrl->sd_type == CRL_SUBDEV_TYPE_SCALER ||
@@ -1231,11 +1241,11 @@ static int crlmodule_update_frame_blanking(struct crl_sensor *sensor)
 	return 0;
 }
 
-static int crlmodule_update_current_mode(struct crl_sensor *sensor)
+static void crlmodule_update_mode_bysel(struct crl_sensor *sensor)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
-	const struct crl_mode_rep *this;
-	unsigned int i, j;
+	struct crl_mode_rep *this;
+	unsigned int i;
 
 	dev_dbg(&client->dev, "%s look for w: %d, h: %d, in [%d] modes\n",
 			      __func__, sensor->src->crop[CRL_PAD_SRC].width,
@@ -1328,6 +1338,73 @@ static int crlmodule_update_current_mode(struct crl_sensor *sensor)
 	}
 
 	sensor->current_mode = this;
+}
+
+static void crlmodule_update_mode_v4l2ctrl(struct crl_sensor *sensor)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
+	struct crl_mode_rep *this;
+	const struct crl_subdev_rect_rep *current_rects;
+	int i;
+
+	dev_dbg(&client->dev, "%s Sensor Mode :%d\n",
+		 __func__, sensor->sensor_mode);
+	/* point to selected mode */
+	this = &sensor->sensor_ds->modes[sensor->sensor_mode];
+	sensor->current_mode = this;
+
+	for (i = 0; i < this->sd_rects_items; i++) {
+
+		if (CRL_SUBDEV_TYPE_PIXEL_ARRAY ==
+		 this->sd_rects[i].subdev_type) {
+			sensor->pixel_array->crop[CRL_PA_PAD_SRC] =
+			 this->sd_rects[CRL_SD_PA_INDEX].out_rect;
+		}
+
+		if (CRL_SUBDEV_TYPE_BINNER ==
+		 this->sd_rects[i].subdev_type) {
+			sensor->binner->sink_fmt =
+			 this->sd_rects[i].in_rect;
+			sensor->binner->crop[CRL_PAD_SINK] =
+			 this->sd_rects[i].in_rect;
+			sensor->binner->crop[CRL_PAD_SRC] =
+			 this->sd_rects[i].out_rect;
+			sensor->binning_vertical = this->binn_vert;
+			sensor->binning_horizontal = this->binn_hor;
+			if (this->binn_vert > 1)
+				sensor->binner->compose =
+				 this->sd_rects[i].out_rect;
+		}
+
+		if (CRL_SUBDEV_TYPE_SCALER ==
+		 this->sd_rects[i].subdev_type) {
+			sensor->scaler->crop[CRL_PAD_SINK] =
+			 this->sd_rects[i].in_rect;
+			sensor->scaler->crop[CRL_PAD_SRC] =
+			 this->sd_rects[i].out_rect;
+			sensor->scaler->sink_fmt =
+			 this->sd_rects[i].in_rect;
+			sensor->scale_m = this->scale_m;
+			if (this->scale_m != 1)
+				sensor->scaler->compose =
+				 this->sd_rects[i].out_rect;
+		}
+	}
+
+	/* Set source */
+	sensor->src->crop[CRL_PAD_SRC].width = this->width;
+	sensor->src->crop[CRL_PAD_SRC].height = this->height;
+}
+
+static void crlmodule_update_current_mode(struct crl_sensor *sensor)
+{
+	const struct crl_mode_rep *this;
+	int i;
+
+	if (sensor->direct_mode_in_use)
+		crlmodule_update_mode_v4l2ctrl(sensor);
+	else
+		crlmodule_update_mode_bysel(sensor);
 
 	/*
 	 * We have a valid mode now. If there are any mode specific "get"
@@ -1335,8 +1412,11 @@ static int crlmodule_update_current_mode(struct crl_sensor *sensor)
 	 * user space for any mode specific information. So go through the
 	 * mode specific v4l2_ctrls and update its value from the selected mode.
 	 */
-	for (j = 0; j < this->comp_items; j++) {
-		struct crl_ctrl_data_pair *ctrl_comp = &this->ctrl_data[j];
+
+	this = sensor->current_mode;
+
+	for (i = 0; i < this->comp_items; i++) {
+		struct crl_ctrl_data_pair *ctrl_comp = &this->ctrl_data[i];
 		unsigned int idx;
 
 		/* Get the v4l2_ctrl pointer corresponding ctrl id */
@@ -1346,8 +1426,7 @@ static int crlmodule_update_current_mode(struct crl_sensor *sensor)
 			continue;
 
 		/* No need to update this control, if this is a set op ctrl */
-		if (sensor->v4l2_ctrl_bank[idx].op_type
-		    == CRL_V4L2_CTRL_SET_OP)
+		if (sensor->v4l2_ctrl_bank[idx].op_type == CRL_V4L2_CTRL_SET_OP)
 			continue;
 
 		/* Update the control value */
@@ -1355,12 +1434,10 @@ static int crlmodule_update_current_mode(struct crl_sensor *sensor)
 				   ctrl_comp->data);
 	}
 
-	if (sensor->blanking_ctrl_not_use) {
+	if (sensor->blanking_ctrl_not_use)
 		crlmodule_update_framesize(sensor);
-		return 0;
-	}
-		/* Update the frame blanking values based on this mode */
-	return crlmodule_update_frame_blanking(sensor);
+	else
+		crlmodule_update_frame_blanking(sensor);
 }
 
 /*
@@ -1648,7 +1725,7 @@ static int crlmodule_set_compose(struct v4l2_subdev *subdev,
 			 V4L2_SEL_TGT_COMPOSE);
 
 	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		return crlmodule_update_current_mode(sensor);
+		crlmodule_update_current_mode(sensor);
 
 	return 0;
 }
@@ -1859,11 +1936,7 @@ static int crlmodule_start_streaming(struct crl_sensor *sensor)
 	pll = &sensor->sensor_ds->pll_configs[sensor->pll_index];
 	fmt = &sensor->sensor_ds->csi_fmts[sensor->fmt_index];
 
-	rval = crlmodule_update_current_mode(sensor);
-	if (rval) {
-		dev_err(&client->dev, "%s failed find any mode\n", __func__);
-		return rval;
-	}
+	crlmodule_update_current_mode(sensor);
 
 	rval = crlmodule_write_regs(sensor, fmt->regs, fmt->regs_items);
 	if (rval) {
@@ -2156,7 +2229,7 @@ static int crlmodule_run_poweron_init(struct crl_sensor *sensor)
 	__crlmodule_grab_v4l2_ctrl(sensor, SENSOR_POWERED_ON, false);
 
 	mutex_lock(&sensor->mutex);
-	rval = crlmodule_update_current_mode(sensor);
+	crlmodule_update_current_mode(sensor);
 	mutex_unlock(&sensor->mutex);
 
 	return rval;
@@ -2566,11 +2639,8 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 		goto out;
 
 	mutex_lock(&sensor->mutex);
-	rval = crlmodule_update_current_mode(sensor);
+	crlmodule_update_current_mode(sensor);
 	mutex_unlock(&sensor->mutex);
-	if (rval)
-		goto out;
-
 	rval = crlmodule_nvm_init(sensor);
 
 out:

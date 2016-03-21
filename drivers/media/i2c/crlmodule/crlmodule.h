@@ -76,6 +76,7 @@ struct crl_sensor {
 	u8 binning_horizontal;
 	u8 binning_vertical;
 
+	u8 sensor_mode;
 	u8 scale_m;
 	u8 fmt_index;
 	u8 flip_info;
@@ -100,6 +101,7 @@ struct crl_sensor {
 	bool ext_ctrl_impacts_pll_selection;
 	bool ext_ctrl_impacts_mode_selection;
 	bool blanking_ctrl_not_use;
+	bool direct_mode_in_use;
 	struct crl_mode_rep *current_mode;
 
 	struct clk *xclk;
