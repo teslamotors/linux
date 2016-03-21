@@ -392,7 +392,9 @@ ia_css_kernel_fragment_sequencer_info_desc_t *ia_css_program_terminal_get_kernel
 		*kernel_fragment_sequencer_info_desc = NULL;
 
 	verifjmpexit(program_terminal != NULL);
-	verifjmpexit(info_index < nof_kernel_fragment_sequencer_infos);
+	if (nof_kernel_fragment_sequencer_infos > 0) {
+		verifjmpexit(info_index < nof_kernel_fragment_sequencer_infos);
+	}
 
 	kernel_fragment_sequencer_info_desc_base = (ia_css_kernel_fragment_sequencer_info_desc_t *)(((const char *)program_terminal) +
 		program_terminal->kernel_fragment_sequencer_info_desc_offset);
