@@ -505,13 +505,6 @@ static struct crl_arithmetic_ops ov8858_hblank_ops[] = {
 	 },
 };
 
-static struct crl_arithmetic_ops ov8858_dgain_ops[] = {
-	{
-		.op = CRL_BITWISE_RSHIFT,
-		.operand.entity_val = 6,
-	 },
-};
-
 static struct crl_arithmetic_ops ov8858_exposure_ops[] = {
 	{
 		.op = CRL_BITWISE_LSHIFT,
@@ -531,18 +524,25 @@ static struct crl_dynamic_register_access ov8858_v_flip_regs[] = {
 
 static struct crl_dynamic_register_access ov8858_dig_gain_regs[] = {
 	{
-		.address = 0x350A,
-		.len = CRL_REG_LEN_08BIT,
-		.ops_items = ARRAY_SIZE(ov8858_dgain_ops),
-		.ops = ov8858_dgain_ops,
-		.mask = 0xff,
-	},
-	{
-		.address = 0x350B,
-		.len = CRL_REG_LEN_08BIT,
+		.address = 0x5032,
+		.len = CRL_REG_LEN_16BIT,
 		.ops_items = 0,
 		.ops = 0,
-		.mask = 0x3f,
+		.mask = 0xffff,
+	},
+	{
+		.address = 0x5034,
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
+	},
+	{
+		.address = 0x5036,
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
 	},
 };
 
@@ -1159,9 +1159,9 @@ static struct crl_v4l2_ctrl ov8858_v4l2_ctrls[] = {
 		.name = "Digital Gain",
 		.type = CRL_V4L2_CTRL_TYPE_INTEGER,
 		.data.std_data.min = 0,
-		.data.std_data.max = 16383,
+		.data.std_data.max = 4095,
 		.data.std_data.step = 1,
-		.data.std_data.def = 2048,
+		.data.std_data.def = 1024,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.reg_update_mode = CRL_REG_UPDATE_MODE_REPLACE,
