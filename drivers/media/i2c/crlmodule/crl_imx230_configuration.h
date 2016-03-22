@@ -805,7 +805,7 @@ static struct crl_register_write_rep imx230_mode_3280x2460_scale[] = {
 };
 
 
-static struct crl_register_write_rep imx230_mode_1080[] = {
+static struct crl_register_write_rep imx230_mode_1940x1092[] = {
 	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
@@ -830,12 +830,12 @@ static struct crl_register_write_rep imx230_mode_1080[] = {
 	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x07 } /*1920 x 1080*/,
-	{ 0x034D, CRL_REG_LEN_08BIT, 0x80 },
+	{ 0x034D, CRL_REG_LEN_08BIT, 0x94 },
 	{ 0x034E, CRL_REG_LEN_08BIT, 0x04 },
-	{ 0x034F, CRL_REG_LEN_08BIT, 0x38 },
+	{ 0x034F, CRL_REG_LEN_08BIT, 0x44 },
 	{ 0x0401, CRL_REG_LEN_08BIT, 0x02 },
 	{ 0x0404, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0405, CRL_REG_LEN_08BIT, 0x14 },
+	{ 0x0405, CRL_REG_LEN_08BIT, 0x16 },
 	{ 0x0408, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0409, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x040A, CRL_REG_LEN_08BIT, 0x00 },
@@ -1309,7 +1309,7 @@ static struct crl_subdev_rect_rep imx230_2k2k_rects[] = {
 };
 
 
-static struct crl_subdev_rect_rep imx230_1080_rects[] = {
+static struct crl_subdev_rect_rep imx230_1940x1092_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect = { 0, 0, 5344, 4016 },
@@ -1323,7 +1323,7 @@ static struct crl_subdev_rect_rep imx230_1080_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
 		.in_rect = { 0, 0, 2672, 1504 },
-		.out_rect = { 0, 0, 1920, 1080 },
+		.out_rect = { 0, 0, 1940, 1092 },
 	},
 };
 
@@ -1485,19 +1485,19 @@ static struct crl_mode_rep imx230_modes[] = {
 		.mode_regs = imx230_mode_2k2k,
 	},
 	{
-		.sd_rects_items = ARRAY_SIZE(imx230_1080_rects),
-		.sd_rects = imx230_1080_rects,
+		.sd_rects_items = ARRAY_SIZE(imx230_1940x1092_rects),
+		.sd_rects = imx230_1940x1092_rects,
 		.binn_hor = 2,
 		.binn_vert = 2,
-		.scale_m = 1,
-		.width = 1920,
-		.height = 1080,
+		.scale_m = 22,
+		.width = 1940,
+		.height = 1092,
 		.min_llp = 6024,
 		.min_fll = 1200,
 		.comp_items = 0,
 		.ctrl_data = 0,
-		.mode_regs_items = ARRAY_SIZE(imx230_mode_1080),
-		.mode_regs = imx230_mode_1080,
+		.mode_regs_items = ARRAY_SIZE(imx230_mode_1940x1092),
+		.mode_regs = imx230_mode_1940x1092,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(imx230_1440_rects),
@@ -1529,7 +1529,6 @@ static struct crl_mode_rep imx230_modes[] = {
 		.mode_regs_items = ARRAY_SIZE(imx230_mode_720),
 		.mode_regs = imx230_mode_720,
 	},
-
 };
 
 static struct crl_sensor_subdev_config imx230_sensor_subdevs[] = {
