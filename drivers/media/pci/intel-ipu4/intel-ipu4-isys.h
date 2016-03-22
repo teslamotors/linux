@@ -139,6 +139,19 @@ extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;
 int intel_ipu4_pipeline_pm_use(struct media_entity *entity, int use);
 int intel_ipu4_isys_isr_run(void *ptr);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#define is_media_entity_v4l2_subdev(e) \
+	(media_entity_type(e) == MEDIA_ENT_T_V4L2_SUBDEV)
+#define is_media_entity_v4l2_io(e) \
+	(media_entity_type(e) == MEDIA_ENT_T_DEVNODE)
+#define media_create_pad_link(a, b, c, d, e)	\
+	media_entity_create_link(a, b, c, d, e)
+#define media_entity_pads_init(a, b, c)	\
+	media_entity_init(a, b, c, 0)
+#define media_entity_id(ent) (ent)->id
+#endif
+
+
 #define intel_ipu4_lib_call_notrace(func, isys, ...)			\
 	({								\
 		 int rval;						\

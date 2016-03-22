@@ -106,7 +106,7 @@ static int intel_ipu4_pipeline_pm_use_count(struct media_entity *entity)
 	media_entity_graph_walk_start(&graph, entity);
 
 	while ((entity = media_entity_graph_walk_next(&graph))) {
-		if (media_entity_type(entity) == MEDIA_ENT_T_DEVNODE)
+		if (is_media_entity_v4l2_io(entity))
 			use += entity->use_count;
 	}
 
@@ -130,7 +130,7 @@ static int intel_ipu4_pipeline_pm_power_one(struct media_entity *entity,
 	struct v4l2_subdev *subdev;
 	int ret;
 
-	subdev = media_entity_type(entity) == MEDIA_ENT_T_V4L2_SUBDEV
+	subdev = is_media_entity_v4l2_subdev(entity)
 	       ? media_entity_to_v4l2_subdev(entity) : NULL;
 
 	if (entity->use_count == 0 && change > 0 && subdev != NULL) {
@@ -170,7 +170,7 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity, int change)
 	media_entity_graph_walk_start(&graph, entity);
 
 	while (!ret && (entity = media_entity_graph_walk_next(&graph)))
-		if (media_entity_type(entity) != MEDIA_ENT_T_DEVNODE)
+		if (!is_media_entity_v4l2_io(entity))
 			ret = intel_ipu4_pipeline_pm_power_one(entity, change);
 
 	if (!ret)
@@ -180,7 +180,7 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity, int change)
 
 	while ((first = media_entity_graph_walk_next(&graph))
 	       && first != entity)
-		if (media_entity_type(first) != MEDIA_ENT_T_DEVNODE)
+		if (!is_media_entity_v4l2_io(first))
 			intel_ipu4_pipeline_pm_power_one(first, -change);
 
 	return ret;
@@ -456,7 +456,7 @@ static int isys_complete_ext_device_registration(
 		goto skip_unregister_subdev;
 	}
 
-	rval = media_entity_create_link(
+	rval = media_create_pad_link(
 		&sd->entity, i,
 		&isys->csi2[csi2->port].asd.sd.entity, 0, 0);
 	if (rval) {
@@ -703,7 +703,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 	}
 
 	for (i = 0; i < csi2->nports; i++) {
-		rval = media_entity_create_link(
+		rval = media_create_pad_link(
 			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE,
 			&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
 			CSI2_BE_PAD_SINK, 0);
@@ -714,7 +714,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		}
 		if (csi2_be->nbes < 2)
 			continue;
-		rval = media_entity_create_link(
+		rval = media_create_pad_link(
 			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE,
 			&isys->csi2_be[INTEL_IPU4_BE_SOC].asd.sd.entity,
 			CSI2_BE_PAD_SINK, 0);
@@ -726,7 +726,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 	}
 
 	for (i = 0; i < tpg->ntpgs; i++) {
-		rval = media_entity_create_link(
+		rval = media_create_pad_link(
 			&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
 			&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
 			CSI2_BE_PAD_SINK, 0);
@@ -737,7 +737,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		}
 		if (csi2_be->nbes < 2)
 			continue;
-		rval = media_entity_create_link(
+		rval = media_create_pad_link(
 			&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
 			&isys->csi2_be[INTEL_IPU4_BE_SOC].asd.sd.entity,
 			CSI2_BE_PAD_SINK, 0);
@@ -748,7 +748,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		}
 	}
 
-	rval = media_entity_create_link(
+	rval = media_create_pad_link(
 		&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
 		CSI2_BE_PAD_SOURCE, &isys->isa.asd.sd.entity, ISA_PAD_SINK, 0);
 	if (rval) {

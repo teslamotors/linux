@@ -647,7 +647,7 @@ int intel_ipu4_isys_subdev_init(struct intel_ipu4_isys_subdev *asd,
 	    !asd->valid_tgts)
 		return -ENOMEM;
 
-	rval = media_entity_init(&asd->sd.entity, num_pads, asd->pad, 0);
+	rval = media_entity_pads_init(&asd->sd.entity, num_pads, asd->pad);
 	if (rval)
 		goto out_mutex_destroy;
 

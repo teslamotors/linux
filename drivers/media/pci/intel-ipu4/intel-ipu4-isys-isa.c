@@ -217,7 +217,7 @@ static int isa_link_validate(struct media_link *link)
 	struct media_pipeline *pipe;
 
 	/* Non-video node source */
-	if (media_entity_type(link->source->entity) == MEDIA_ENT_T_V4L2_SUBDEV)
+	if (is_media_entity_v4l2_subdev(link->source->entity))
 		return v4l2_subdev_link_validate(link);
 
 	av = container_of(link->source, struct intel_ipu4_isys_video, pad);

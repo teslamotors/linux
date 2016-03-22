@@ -566,7 +566,7 @@ static bool is_external(struct intel_ipu4_isys_video *av,
 	unsigned int i;
 
 	/* All video nodes are ours. */
-	if (media_entity_type(entity) != MEDIA_ENT_T_V4L2_SUBDEV)
+	if (!is_media_entity_v4l2_subdev(entity))
 		return false;
 
 	sd = media_entity_to_v4l2_subdev(entity);
@@ -1233,7 +1233,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 		dev_dbg(dev, "set stream: entity %s\n", entity->name);
 
 		/* Non-subdev nodes can be safely ignored here. */
-		if (media_entity_type(entity) != MEDIA_ENT_T_V4L2_SUBDEV)
+		if (!is_media_entity_v4l2_subdev(entity))
 			continue;
 
 		/* Don't start truly external devices quite yet. */
@@ -1400,7 +1400,7 @@ int intel_ipu4_isys_video_init(struct intel_ipu4_isys_video *av,
 		goto out_mutex_destroy;
 
 	av->pad.flags = pad_flags | MEDIA_PAD_FL_MUST_CONNECT;
-	rval = media_entity_init(&av->vdev.entity, 1, &av->pad, 0);
+	rval = media_entity_pads_init(&av->vdev.entity, 1, &av->pad);
 	if (rval)
 		goto out_intel_ipu4_isys_queue_cleanup;
 
@@ -1416,10 +1416,10 @@ int intel_ipu4_isys_video_init(struct intel_ipu4_isys_video *av,
 	video_set_drvdata(&av->vdev, av);
 
 	if (pad_flags & MEDIA_PAD_FL_SINK)
-		rval = media_entity_create_link(
+		rval = media_create_pad_link(
 			entity, pad, &av->vdev.entity, 0, flags);
 	else
-		rval = media_entity_create_link(
+		rval = media_create_pad_link(
 			&av->vdev.entity, 0, entity, pad, flags);
 	if (rval) {
 		dev_info(&av->isys->adev->dev, "can't create link\n");
