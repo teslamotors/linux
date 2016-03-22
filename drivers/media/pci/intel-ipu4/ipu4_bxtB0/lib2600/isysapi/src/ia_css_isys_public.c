@@ -588,7 +588,6 @@ int ia_css_isys_stream_capture_indication(
 	const struct ia_css_isys_frame_buff_set *next_frame
 ) {
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
-	unsigned int i;
 	int retval = 0;
 	int packets;
 	struct send_queue_token token;
@@ -614,15 +613,6 @@ int ia_css_isys_stream_capture_indication(
 	verifret(ctx->stream_state_array[stream_handle] == IA_CSS_ISYS_STREAM_STATE_STARTED, EPERM);
 
 	verifret(next_frame != NULL, EFAULT);
-
-	{
-		assert(ctx->stream_nof_output_pins[stream_handle] < MAX_OPINS);
-		for (i = 0; i < ctx->stream_nof_output_pins[stream_handle]; i++) {
-			/* Verify output pin */
-			verifret(next_frame->output_pins[i].addr != 0, EFAULT);
-			verifret(next_frame->output_pins[i].out_buf_id != 0, EFAULT);
-		}
-	}
 
 	packets = ia_css_syscom_send_port_available(ctx->sys, stream_handle);
 	verifret(packets != ERROR_BAD_ADDRESS, EFAULT);
