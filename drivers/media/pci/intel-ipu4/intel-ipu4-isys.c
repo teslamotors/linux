@@ -103,6 +103,7 @@ static int intel_ipu4_pipeline_pm_use_count(struct media_entity *entity)
 	struct media_entity_graph graph;
 	int use = 0;
 
+	media_entity_graph_walk_init(&graph, entity->graph_obj.mdev);
 	media_entity_graph_walk_start(&graph, entity);
 
 	while ((entity = media_entity_graph_walk_next(&graph))) {
@@ -110,6 +111,7 @@ static int intel_ipu4_pipeline_pm_use_count(struct media_entity *entity)
 			use += entity->use_count;
 	}
 
+	media_entity_graph_walk_cleanup(&graph);
 	return use;
 }
 
@@ -167,15 +169,18 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity, int change)
 	if (!change)
 		return 0;
 
+	media_entity_graph_walk_init(&graph, entity->graph_obj.mdev);
 	media_entity_graph_walk_start(&graph, entity);
 
 	while (!ret && (entity = media_entity_graph_walk_next(&graph)))
 		if (!is_media_entity_v4l2_io(entity))
 			ret = intel_ipu4_pipeline_pm_power_one(entity, change);
 
+	media_entity_graph_walk_cleanup(&graph);
 	if (!ret)
 		return 0;
 
+	media_entity_graph_walk_init(&graph, entity->graph_obj.mdev);
 	media_entity_graph_walk_start(&graph, first);
 
 	while ((first = media_entity_graph_walk_next(&graph))
@@ -183,6 +188,7 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity, int change)
 		if (!is_media_entity_v4l2_io(first))
 			intel_ipu4_pipeline_pm_power_one(first, -change);
 
+	media_entity_graph_walk_cleanup(&graph);
 	return ret;
 }
 

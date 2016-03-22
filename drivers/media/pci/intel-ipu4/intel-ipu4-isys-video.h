@@ -91,6 +91,9 @@ struct intel_ipu4_isys_pipeline {
 	struct list_head short_packet_active;
 	spinlock_t short_packet_queue_lock;
 	struct list_head pending_interlaced_bufs;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+	struct media_entity_graph graph;
+#endif
 };
 
 #define to_intel_ipu4_isys_pipeline(__pipe)				\

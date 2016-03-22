@@ -1226,10 +1226,10 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 	struct device *dev = &av->isys->adev->dev;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	struct media_device *mdev = av->vdev.entity.parent;
+	struct media_entity_graph graph;
 #else
 	struct media_device *mdev = av->vdev.entity.graph_obj.mdev;
 #endif
-	struct media_entity_graph graph;
 	struct media_entity *entity, *entity2;
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
@@ -1237,6 +1237,12 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 	int rval = 0;
 
 	dev_dbg(dev, "set stream: %d\n", state);
+
+	if (state) {
+		rval = media_entity_graph_walk_init(&ip->graph, mdev);
+		if (rval)
+			return rval;
+	}
 
 	if (!state) {
 		stop_streaming_firmware(av);
@@ -1252,9 +1258,17 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 
 	mutex_lock(&mdev->graph_mutex);
 
-	media_entity_graph_walk_start(&graph, &av->vdev.entity);
+	media_entity_graph_walk_start(&
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+				      ip->
+#endif
+				      graph, &av->vdev.entity);
 
-	while ((entity = media_entity_graph_walk_next(&graph))) {
+	while ((entity = media_entity_graph_walk_next(&
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+						      ip->
+#endif
+						      graph))) {
 		struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(entity);
 
 		dev_dbg(dev, "set stream: entity %s\n", entity->name);
@@ -1310,6 +1324,8 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 		close_streaming_firmware(av);
 	}
 
+	if (!state)
+		media_entity_graph_walk_cleanup(&ip->graph);
 	av->streaming = state;
 
 	return 0;
@@ -1320,9 +1336,17 @@ out_media_entity_stop_streaming_firmware:
 out_media_entity_stop_streaming:
 	mutex_lock(&mdev->graph_mutex);
 
-	media_entity_graph_walk_start(&graph, &av->vdev.entity);
+	media_entity_graph_walk_start(&
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+				      ip->
+#endif
+				      graph, &av->vdev.entity);
 
-	while (state && (entity2 = media_entity_graph_walk_next(&graph))
+	while (state && (entity2 = media_entity_graph_walk_next(&
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+								ip->
+#endif
+								graph))
 		&& entity2 != entity) {
 		struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(entity2);
 
@@ -1333,6 +1357,8 @@ out_media_entity_stop_streaming:
 	}
 
 	mutex_unlock(&mdev->graph_mutex);
+
+	media_entity_graph_walk_cleanup(&ip->graph);
 
 	return rval;
 }
