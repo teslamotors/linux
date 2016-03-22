@@ -203,7 +203,13 @@ int intel_ipu4_pipeline_pm_use(struct media_entity *entity, int use)
 	int change = use ? 1 : -1;
 	int ret;
 
-	mutex_lock(&entity->parent->graph_mutex);
+	mutex_lock(&entity->
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+		   parent
+#else
+		   graph_obj.mdev
+#endif
+		   ->graph_mutex);
 
 	/* Apply use count to node. */
 	entity->use_count += change;
@@ -214,7 +220,13 @@ int intel_ipu4_pipeline_pm_use(struct media_entity *entity, int use)
 	if (ret < 0)
 		entity->use_count -= change;
 
-	mutex_unlock(&entity->parent->graph_mutex);
+	mutex_unlock(&entity->
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+		     parent
+#else
+		     graph_obj.mdev
+#endif
+		     ->graph_mutex);
 
 	return ret;
 }

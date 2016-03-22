@@ -1224,7 +1224,11 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 				     struct intel_ipu4_isys_buffer_list *bl)
 {
 	struct device *dev = &av->isys->adev->dev;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	struct media_device *mdev = av->vdev.entity.parent;
+#else
+	struct media_device *mdev = av->vdev.entity.graph_obj.mdev;
+#endif
 	struct media_entity_graph graph;
 	struct media_entity *entity, *entity2;
 	struct intel_ipu4_isys_pipeline *ip =
