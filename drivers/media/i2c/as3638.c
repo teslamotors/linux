@@ -180,7 +180,7 @@ struct as3638_flash {
 	struct mutex lock;
 	bool open[AS3638_LED_MAX];
 
-	enum as3638_led_id current_led;
+	int current_led;
 
 	struct as3638_handler ctrls_led[AS3638_LED_MAX];
 	struct v4l2_ctrl *led_mode[AS3638_LED_MAX];
@@ -1010,7 +1010,6 @@ static int as3638_suspend(struct device *dev)
 	struct as3638_subdev *sd_led = subdev_to_as3638_subdev_led(sd);
 	struct as3638_flash *flash = subdev_led_to_as3638_flash(sd_led,
 								sd_led->led);
-
 	gpio_set_value(flash->pdata->gpio_reset, 0);
 	return 0;
 }
@@ -1029,14 +1028,11 @@ static int as3638_resume(struct device *dev)
 	if (flash->current_led == AS3638_NO_LED)
 		return 0;
 
-	rval = v4l2_ctrl_handler_setup(&flash->ctrls_led[flash->current_led]);
+	rval = v4l2_ctrl_handler_setup(&flash->ctrls_led[flash->current_led].handler);
 
 	return rval;
 }
-
 #else
-#define as3638_suspend NULL
-#define as3638_resume  NULL
 #define as3638_suspend NULL
 #define as3638_resume  NULL
 #endif

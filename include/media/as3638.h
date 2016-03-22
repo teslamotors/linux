@@ -26,12 +26,12 @@
 #define AS3638_TORCH_MAX_BRIGHTNESS_LED3	88   /* mA, Warm White LED */
 
 enum as3638_led_id {
-	AS3638_NO_LED = -1,
 	AS3638_LED1 = 0,
 	AS3638_LED2,
 	AS3638_LED3,
 	AS3638_LED_MAX,
 };
+#define AS3638_NO_LED -1
 
 struct as3638_platform_data {
 	int gpio_torch;
