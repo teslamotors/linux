@@ -30,19 +30,42 @@
 #include "intel-ipu4-mmu.h"
 
 #ifdef CONFIG_PM
+static struct bus_type intel_ipu4_bus;
+
+static int bus_pm_suspend_child_dev(struct device *dev, void *p)
+{
+	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
+	struct device *parent = (struct device *)p;
+
+	if (!intel_ipu4_bus_get_drvdata(adev))
+		return 0;	/* Device not attached to any driver yet */
+
+	if (dev->parent != parent || adev->ctrl)
+		return 0;
+
+	return pm_generic_runtime_suspend(dev);
+}
+
 static int bus_pm_runtime_suspend(struct device *dev)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
-	int rval = 0;
-
-	rval = pm_generic_runtime_suspend(dev);
-	if (rval)
-		return rval;
+	int rval;
 
 	if (!adev->ctrl) {
 		dev_dbg(dev, "has no buttress control info, bailing out\n");
 		return 0;
 	}
+
+	rval = bus_for_each_dev(&intel_ipu4_bus, NULL, dev,
+				bus_pm_suspend_child_dev);
+	if (rval) {
+		dev_err(dev, "failed to suspend child device\n");
+		return rval;
+	}
+
+	rval = pm_generic_runtime_suspend(dev);
+	if (rval)
+		return rval;
 
 	rval = intel_ipu4_buttress_power(dev, adev->ctrl, false);
 	dev_dbg(dev, "%s: buttress power down %d\n", __func__, rval);
@@ -59,24 +82,56 @@ static int bus_pm_runtime_suspend(struct device *dev)
 	return -EIO;
 }
 
+static int bus_pm_resume_child_dev(struct device *dev, void *p)
+{
+	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
+	struct device *parent = (struct device *)p;
+	int r;
+
+	if (!intel_ipu4_bus_get_drvdata(adev))
+		return 0;	/* Device not attached to any driver yet */
+
+	if (dev->parent != parent || adev->ctrl)
+		return 0;
+
+	mutex_lock(&adev->resume_lock);
+	r = pm_generic_runtime_resume(dev);
+	mutex_unlock(&adev->resume_lock);
+	return r;
+}
+
 static int bus_pm_runtime_resume(struct device *dev)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
-	int rval = 0;
+	int rval;
 
-	if (adev->ctrl) {
-		rval = intel_ipu4_buttress_power(dev, adev->ctrl, true);
-		dev_dbg(dev, "%s: buttress power up %d\n", __func__, rval);
-		if (rval)
-			return rval;
-	} else {
-		dev_dbg(dev, "has no buttress control info, skipping\n");
+	if (!adev->ctrl) {
+		dev_dbg(dev, "has no buttress control info, bailing out\n");
+		return 0;
 	}
+
+	rval = intel_ipu4_buttress_power(dev, adev->ctrl, true);
+	dev_dbg(dev, "%s: buttress power up %d\n", __func__, rval);
+	if (rval)
+		return rval;
 
 	rval = pm_generic_runtime_resume(dev);
 	dev_dbg(dev, "%s: resume %d\n", __func__, rval);
 	if (rval)
 		goto out_err;
+
+	/*
+	 * It needs to be ensured that IPU4 child devices' resume/suspend are
+	 * called only when the child devices' power is turned on/off by the
+	 * parent device here. Therefore, children's suspend/resume are called
+	 * from here, because that is the only way to guarantee it.
+	 */
+	rval = bus_for_each_dev(&intel_ipu4_bus, NULL, dev,
+				bus_pm_resume_child_dev);
+	if (rval) {
+		dev_err(dev, "failed to resume child device\n");
+		goto out_err;
+	}
 
 	return 0;
 
@@ -203,7 +258,24 @@ static int intel_ipu4_bus_probe(struct device *dev)
 	}
 
 	adev->adrv = adrv;
-	rval = adrv->probe ? adrv->probe(adev) : -ENODEV;
+	if (adrv->probe) {
+		rval = adrv->probe(adev);
+		if (!rval) {
+			/*
+			 * If the device power, after probe, is enabled
+			 * (from the parent device), its resume needs to
+			 * be called to initialize the device properly.
+			 */
+			if (!adev->ctrl &&
+			    !pm_runtime_status_suspended(dev->parent)) {
+				mutex_lock(&adev->resume_lock);
+				pm_generic_runtime_resume(dev);
+				mutex_unlock(&adev->resume_lock);
+			}
+		}
+	} else {
+		rval = -ENODEV;
+	}
 
 	if (rval)
 		goto out_err;
@@ -274,6 +346,7 @@ struct intel_ipu4_bus_device *intel_ipu4_bus_add_device(
 	adev->ctrl = ctrl;
 	adev->pdata = pdata;
 	adev->isp = isp;
+	mutex_init(&adev->resume_lock);
 	dev_set_name(&adev->dev, "%s%d", name, nr);
 
 	rval = device_register(&adev->dev);
