@@ -136,7 +136,9 @@ struct intel_ipu4_isys {
 
 extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 int intel_ipu4_pipeline_pm_use(struct media_entity *entity, int use);
+#endif
 int intel_ipu4_isys_isr_run(void *ptr);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)

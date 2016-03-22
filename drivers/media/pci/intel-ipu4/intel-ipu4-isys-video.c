@@ -18,10 +18,14 @@
 #include <linux/kthread.h>
 #include <linux/pm_runtime.h>
 #include <linux/module.h>
+#include <linux/version.h>
 
 #include <media/media-entity.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
+#include <media/v4l2-mc.h>
+#endif
 
 #include "libintel-ipu4.h"
 #include "intel-ipu4-bus.h"
@@ -200,7 +204,11 @@ static int video_open(struct file *file)
 	if (rval)
 		goto out_power_down;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	rval = intel_ipu4_pipeline_pm_use(&av->vdev.entity, 1);
+#else
+	rval = v4l2_pipeline_pm_use(&av->vdev.entity, 1);
+#endif
 	if (rval)
 		goto out_v4l2_fh_release;
 
@@ -257,7 +265,11 @@ out_lib_init:
 out_intel_ipu4_pipeline_pm_use:
 	isys->video_opened--;
 	mutex_unlock(&isys->mutex);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	intel_ipu4_pipeline_pm_use(&av->vdev.entity, 0);
+#else
+	v4l2_pipeline_pm_use(&av->vdev.entity, 0);
+#endif
 
 out_v4l2_fh_release:
 	v4l2_fh_release(file);
@@ -289,7 +301,11 @@ static int video_release(struct file *file)
 
 	mutex_unlock(&av->isys->mutex);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	intel_ipu4_pipeline_pm_use(&av->vdev.entity, 0);
+#else
+	v4l2_pipeline_pm_use(&av->vdev.entity, 0);
+#endif
 
 	pm_runtime_put(&av->isys->adev->dev);
 

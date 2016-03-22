@@ -21,9 +21,13 @@
 #include <linux/pm_runtime.h>
 #include <linux/string.h>
 #include <linux/sched.h>
+#include <linux/version.h>
 
 #include <media/intel-ipu4-isys.h>
 #include <media/intel-ipu4-acpi.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
+#include <media/v4l2-mc.h>
+#endif
 #include <media/v4l2-subdev.h>
 
 #include "intel-ipu4.h"
@@ -86,6 +90,7 @@ static struct intel_ipu4_trace_block isys_trace_blocks[] = {
 	}
 };
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 /*
  * BEGIN adapted code from drivers/media/platform/omap3isp/isp.c.
  * FIXME: This (in terms of functionality if not code) should be most
@@ -103,7 +108,9 @@ static int intel_ipu4_pipeline_pm_use_count(struct media_entity *entity)
 	struct media_entity_graph graph;
 	int use = 0;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	media_entity_graph_walk_init(&graph, entity->graph_obj.mdev);
+#endif
 	media_entity_graph_walk_start(&graph, entity);
 
 	while ((entity = media_entity_graph_walk_next(&graph))) {
@@ -111,7 +118,9 @@ static int intel_ipu4_pipeline_pm_use_count(struct media_entity *entity)
 			use += entity->use_count;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	media_entity_graph_walk_cleanup(&graph);
+#endif
 	return use;
 }
 
@@ -169,18 +178,24 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity, int change)
 	if (!change)
 		return 0;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	media_entity_graph_walk_init(&graph, entity->graph_obj.mdev);
+#endif
 	media_entity_graph_walk_start(&graph, entity);
 
 	while (!ret && (entity = media_entity_graph_walk_next(&graph)))
 		if (!is_media_entity_v4l2_io(entity))
 			ret = intel_ipu4_pipeline_pm_power_one(entity, change);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	media_entity_graph_walk_cleanup(&graph);
+#endif
 	if (!ret)
 		return 0;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	media_entity_graph_walk_init(&graph, entity->graph_obj.mdev);
+#endif
 	media_entity_graph_walk_start(&graph, first);
 
 	while ((first = media_entity_graph_walk_next(&graph))
@@ -188,7 +203,9 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity, int change)
 		if (!is_media_entity_v4l2_io(first))
 			intel_ipu4_pipeline_pm_power_one(first, -change);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	media_entity_graph_walk_cleanup(&graph);
+#endif
 	return ret;
 }
 
@@ -285,6 +302,7 @@ static int intel_ipu4_pipeline_link_notify(struct media_link *link, u32 flags,
 	return 0;
 }
 /* END adapted code from drivers/media/platform/omap3isp/isp.c */
+#endif /* < v4.6 */
 
 static int isys_determine_legacy_csi_lane_configuration(struct intel_ipu4_isys *isys)
 {
@@ -787,7 +805,11 @@ static int isys_register_devices(struct intel_ipu4_isys *isys)
 	int rval;
 
 	isys->media_dev.dev = &isys->adev->dev;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	isys->media_dev.link_notify = intel_ipu4_pipeline_link_notify;
+#else
+	isys->media_dev.link_notify = v4l2_pipeline_link_notify;
+#endif
 	strlcpy(isys->media_dev.model,
 		intel_ipu4_media_ctl_dev_model(isys->adev->isp),
 		sizeof(isys->media_dev.model));
