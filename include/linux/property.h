@@ -234,6 +234,7 @@ struct property_set {
 	struct property_entry *properties;
 };
 
-void device_add_property_set(struct device *dev, struct property_set *pset);
+int device_add_property_set(struct device *dev, const struct property_set *pset);
+void device_remove_property_set(struct device *dev);
 
 #endif /* _LINUX_PROPERTY_H_ */
