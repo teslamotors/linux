@@ -87,7 +87,7 @@ static struct crl_register_write_rep imx185_powerup_standby[] = {
 	{0x00, CRL_REG_LEN_DELAY, 200, 0x00},
 };
 
-static struct crl_register_write_rep imx185_1312_728_RAW10_30FPS_27MHZ_CROPPING[] = {
+static struct crl_register_write_rep imx185_1312_728_30FPS_27MHZ_CROPPING[] = {
 	/* 0x02h */
 	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 ADBIT: 10/12 , raw 10 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x60},	/* mode selection */
@@ -228,7 +228,7 @@ static struct crl_register_write_rep imx185_1312_728_RAW10_30FPS_27MHZ_CROPPING[
 	{0x334F, CRL_REG_LEN_08BIT, 0x01},
 };
 
-static struct crl_register_write_rep imx185_1952_1088_RAW10_30FPS_27MHZ_CROPPING[] = {
+static struct crl_register_write_rep imx185_1952_1088_30FPS_27MHZ_CROPPING[] = {
 	/* 0x02h */
 	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x50},	/* 1080p cropping */
@@ -818,8 +818,8 @@ static struct crl_mode_rep imx185_modes[] = {
 		.min_fll = 1125,
 		.comp_items = 1,
 		.ctrl_data = &ctrl_data_modes[0],
-		.mode_regs_items = ARRAY_SIZE(imx185_1952_1088_RAW10_30FPS_27MHZ_CROPPING),
-		.mode_regs = imx185_1952_1088_RAW10_30FPS_27MHZ_CROPPING,
+		.mode_regs_items = ARRAY_SIZE(imx185_1952_1088_30FPS_27MHZ_CROPPING),
+		.mode_regs = imx185_1952_1088_30FPS_27MHZ_CROPPING,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(imx185_1952_1088_rects),
@@ -848,8 +848,8 @@ static struct crl_mode_rep imx185_modes[] = {
 		.min_fll = 787,
 		.comp_items = 1,
 		.ctrl_data = &ctrl_data_modes[0],
-		.mode_regs_items = ARRAY_SIZE(imx185_1312_728_RAW10_30FPS_27MHZ_CROPPING),
-		.mode_regs = imx185_1312_728_RAW10_30FPS_27MHZ_CROPPING,
+		.mode_regs_items = ARRAY_SIZE(imx185_1312_728_30FPS_27MHZ_CROPPING),
+		.mode_regs = imx185_1312_728_30FPS_27MHZ_CROPPING,
 	 }
 };
 
