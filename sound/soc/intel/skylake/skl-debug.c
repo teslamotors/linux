@@ -603,6 +603,10 @@ static ssize_t adsp_control_write(struct file *file,
 
 	while (buf[j] != '\0') {
 		if (buf[j] == ',') {
+			if ((bufsize-j) > sizeof(id)) {
+				dev_err(d->dev, "ID buffer overflow\n");
+				return -EINVAL;
+			}
 			strncpy(id, &buf[j+1], (bufsize-j));
 			buf[j] = '\0';
 			tx_param = 1;
