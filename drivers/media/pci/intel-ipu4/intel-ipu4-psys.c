@@ -568,18 +568,17 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 
 	mutex_lock(&psys->mutex);
 
-	/* Clean up remaining commands: first remove fh from the fh list, which
-	 * prevents scheduler from running more kcmds from this client */
-	list_del(&fh->list);
-
 	/* Set pg_user to NULL so that completed kcmds don't write
 	 * their result to user space anymore */
 	for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++)
 		list_for_each_entry(kcmd, &fh->kcmds[p], list)
 			kcmd->pg_user = NULL;
 
+	/* Prevent scheduler from running more kcmds */
+	memset(fh->new_kcmd_tail, NULL, sizeof(fh->new_kcmd_tail));
+
 	/* Wait until kcmds are completed in this queue and free them */
-	for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++)
+	for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
 		list_for_each_entry_safe(kcmd, kcmd0, &fh->kcmds[p], list) {
 			if (kcmd->state == KCMD_STATE_RUNNING) {
 				mutex_unlock(&psys->mutex);
@@ -588,6 +587,7 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 			}
 			intel_ipu4_psys_kcmd_free(kcmd);
 		}
+	}
 
 	/* clean up buffers */
 	list_for_each_entry_safe(kbuf, kbuf0, &fh->bufmap, list) {
@@ -600,6 +600,8 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 		kthread_stop(psys->isr_thread);
 		psys->isr_thread = NULL;
 	}
+
+	list_del(&fh->list);
 
 	mutex_unlock(&psys->mutex);
 
@@ -877,6 +879,13 @@ error:
 static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 {
 	int p;
+
+	/* Code below will crash if fhs is empty. Normally this
+	 * shouldn't happen. */
+	if (list_empty(&psys->fhs)) {
+		WARN_ON(1);
+		return;
+	}
 
 	for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
 		int removed;
