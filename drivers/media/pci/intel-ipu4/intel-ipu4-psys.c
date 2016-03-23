@@ -1563,6 +1563,8 @@ static int psys_runtime_pm_resume(struct device *dev)
 	struct ia_css_syscom_config *syscom_config = psys->syscom_config;
 	void *syscom_buffer = psys->syscom_buffer;
 	unsigned long flags;
+	int retry = INTEL_IPU4_PSYS_OPEN_RETRY;
+	bool opened;
 
 	if (!syscom_buffer) {
 		dev_err(&psys->adev->dev,
@@ -1581,6 +1583,21 @@ static int psys_runtime_pm_resume(struct device *dev)
 	psys->dev_ctx = ia_css_psys_open(syscom_buffer, syscom_config);
 	if (!psys->dev_ctx) {
 		dev_err(&psys->adev->dev, "psys library open failed\n");
+		return -ENODEV;
+	}
+
+	do {
+		opened = ia_css_psys_open_is_ready(psys->dev_ctx);
+		if (opened)
+			break;
+		usleep_range(INTEL_IPU4_PSYS_OPEN_TIMEOUT_US,
+			     INTEL_IPU4_PSYS_OPEN_TIMEOUT_US + 10);
+		retry--;
+	} while (retry > 0);
+
+	if (!retry && !opened) {
+		dev_err(&psys->adev->dev, "psys library open ready failed\n");
+		ia_css_psys_close(psys->dev_ctx);
 		return -ENODEV;
 	}
 

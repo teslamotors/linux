@@ -40,6 +40,8 @@
  * of the SP processor. As long as the SP processor runs we can't proceed with
  * clean up of resources.
  */
+#define INTEL_IPU4_ISYS_OPEN_TIMEOUT_US		1000
+#define INTEL_IPU4_ISYS_OPEN_RETRY		1000
 #define INTEL_IPU4_ISYS_TURNOFF_DELAY_US		1000
 #define INTEL_IPU4_ISYS_TURNOFF_TIMEOUT		1000
 #define INTEL_IPU4_LIB_CALL_TIMEOUT_MS		2000

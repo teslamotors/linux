@@ -16,6 +16,7 @@
 #include "libintel-ipu4.h"
 
 EXPORT_SYMBOL_GPL(ia_css_isys_device_open);
+EXPORT_SYMBOL_GPL(ia_css_isys_device_open_ready);
 EXPORT_SYMBOL_GPL(ia_css_isys_device_close);
 EXPORT_SYMBOL_GPL(ia_css_isys_device_release);
 EXPORT_SYMBOL_GPL(ia_css_isys_stream_open);

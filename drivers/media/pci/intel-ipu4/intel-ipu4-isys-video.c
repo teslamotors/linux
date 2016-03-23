@@ -620,6 +620,7 @@ static void put_stream_handle(struct intel_ipu4_isys_video *av)
 int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 {
 	u64 firmware_address = 0;
+	int retry = INTEL_IPU4_ISYS_OPEN_RETRY;
 
 	struct ia_css_isys_device_cfg_data isys_cfg = {
 		.driver_sys = {
@@ -658,8 +659,25 @@ int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
 		isys_cfg.driver_sys.firmware_address = &firmware_address;
 
 	rval = -ia_css_isys_device_open(&isys->ssi, &isys_cfg);
-	if (rval < 0)
+	if (rval < 0) {
 		dev_err(dev, "isys device open failed %d\n", rval);
+		return rval;
+	}
+
+	do {
+		usleep_range(INTEL_IPU4_ISYS_OPEN_TIMEOUT_US,
+			     INTEL_IPU4_ISYS_OPEN_TIMEOUT_US + 10);
+		rval = intel_ipu4_lib_call(device_open_ready, isys);
+		if (!rval)
+			break;
+		retry--;
+	} while (retry > 0);
+
+	if (!retry && rval) {
+		dev_err(dev, "isys device open ready failed %d\n", rval);
+		intel_ipu4_isys_library_close(isys);
+	}
+
 	return rval;
 }
 

@@ -39,6 +39,7 @@ EXPORT_SYMBOL_GPL(ia_css_process_group_set_token);
 EXPORT_SYMBOL_GPL(ia_css_psys_close);
 EXPORT_SYMBOL_GPL(ia_css_psys_event_queue_receive);
 EXPORT_SYMBOL_GPL(ia_css_psys_open);
+EXPORT_SYMBOL_GPL(ia_css_psys_open_is_ready);
 EXPORT_SYMBOL_GPL(ia_css_sizeof_process_group);
 EXPORT_SYMBOL_GPL(ia_css_sizeof_psys);
 EXPORT_SYMBOL_GPL(ia_css_terminal_get_type);
