@@ -2132,8 +2132,10 @@ static int crlmodule_set_power(struct v4l2_subdev *subdev, int on)
 
 	if (on) {
 		ret = pm_runtime_get_sync(&client->dev);
-		if (ret < 0)
+		if (ret < 0) {
+			pm_runtime_put(&client->dev);
 			return ret;
+		}
 	}
 
 	mutex_lock(&sensor->power_mutex);
@@ -2377,8 +2379,10 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 
 
 	/* Power up the sensor */
-	if (pm_runtime_get_sync(&client->dev) < 0)
+	if (pm_runtime_get_sync(&client->dev) < 0) {
+		pm_runtime_put(&client->dev);
 		return -ENODEV;
+	}
 
 	/* Identify the module */
 	rval = crlmodule_identify_module(subdev);
@@ -2430,6 +2434,7 @@ static int crlmodule_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	u32 mbus_code = MEDIA_BUS_FMT_SRGGB10_1X10;
 	unsigned int i;
+	int rval;
 
 	dev_dbg(&client->dev, "%s\n", __func__);
 
@@ -2460,7 +2465,11 @@ static int crlmodule_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	mutex_unlock(&sensor->mutex);
 
-	return pm_runtime_get_sync(&client->dev);
+
+	rval = pm_runtime_get_sync(&client->dev);
+	if (rval < 0)
+		pm_runtime_put(&client->dev);
+	return rval;
 }
 
 static int crlmodule_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
