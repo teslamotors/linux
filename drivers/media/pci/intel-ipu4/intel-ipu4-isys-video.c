@@ -1025,10 +1025,8 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	}
 	if (ip->error) {
 		dev_err(dev, "capture indication error: %d\n", ip->error);
-		if (ip->error != IA_CSS_ISYS_ERROR_STREAM_IN_SUSPENSION) {
-			rval = -EIO;
-			goto out_stream_stop;
-		}
+		rval = -EIO;
+		goto out_stream_stop;
 	}
 	dev_dbg(dev, "capture ack complete\n");
 
