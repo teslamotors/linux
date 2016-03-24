@@ -57,6 +57,9 @@ struct intel_ipu4_isys;
 	INTEL_IPU4_ISYS_SHORT_PACKET_PKT_LINES(num_lines) * \
 	INTEL_IPU4_ISYS_SHORT_PACKET_UNITSIZE)
 
+#define INTEL_IPU4_EOF_TIMEOUT 1000
+#define INTEL_IPU4_EOF_TIMEOUT_JIFFIES msecs_to_jiffies(INTEL_IPU4_EOF_TIMEOUT)
+
 /*
  * struct intel_ipu4_isys_csi2
  *
@@ -68,12 +71,15 @@ struct intel_ipu4_isys_csi2 {
 	struct intel_ipu4_isys_subdev asd;
 	struct intel_ipu4_isys_video av;
 	struct intel_ipu4_isys_video av_meta;
+	struct completion eof_completion;
 
 	void __iomem *base;
 	u32 receiver_errors;
 	unsigned int nlanes;
 	unsigned int index;
 	atomic_t sof_sequence;
+	bool in_frame;
+	bool wait_for_sync;
 };
 
 struct intel_ipu4_isys_csi2_timing {
@@ -113,5 +119,6 @@ struct intel_ipu4_isys_buffer *intel_ipu4_isys_csi2_get_short_packet_buffer(
 	struct intel_ipu4_isys_pipeline *ip);
 unsigned int intel_ipu4_isys_csi2_get_current_field(
 	struct intel_ipu4_isys_pipeline *ip);
+void intel_ipu4_isys_csi2_wait_last_eof(struct intel_ipu4_isys_csi2 *csi2);
 
 #endif /* INTEL_IPU4_ISYS_CSI2_H */

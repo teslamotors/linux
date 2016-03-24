@@ -1099,6 +1099,14 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 		else
 			dev_dbg(dev, "stream stop complete\n");
 	}
+}
+
+static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
+{
+	struct intel_ipu4_isys_pipeline *ip =
+		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
+	struct device *dev = &av->isys->adev->dev;
+	int rval, tout;
 
 	reinit_completion(&ip->stream_close_completion);
 	rval = intel_ipu4_lib_call(stream_close, av->isys, ip->stream_handle);
@@ -1223,8 +1231,17 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 
 	dev_dbg(dev, "set streaming %d\n", state);
 
-	if (!state)
+	if (!state) {
 		stop_streaming_firmware(av);
+
+		/* stop external sub-device now. */
+		dev_err(dev, "s_stream %s (ext)\n", ip->external->entity->name);
+		v4l2_subdev_call(
+			media_entity_to_v4l2_subdev(ip->external->entity),
+			video, s_stream, state);
+		if (ip->csi2)
+			intel_ipu4_isys_csi2_wait_last_eof(ip->csi2);
+	}
 
 	mutex_lock(&mdev->graph_mutex);
 
@@ -1271,15 +1288,17 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 			goto out_media_entity_stop_streaming;
 		dev_dbg(dev, "source %d, stream_handle %d\n",
 				ip->source, ip->stream_handle);
-	}
 
-	/* Start external sub-device now. */
-	dev_dbg(dev, "s_stream %s (ext)\n", ip->external->entity->name);
-	rval = v4l2_subdev_call(
-		media_entity_to_v4l2_subdev(ip->external->entity),
-		video, s_stream, state);
-	if (rval && state)
-		goto out_media_entity_stop_streaming_firmware;
+		/* Start external sub-device now. */
+		dev_err(dev, "s_stream %s (ext)\n", ip->external->entity->name);
+		rval = v4l2_subdev_call(
+			media_entity_to_v4l2_subdev(ip->external->entity),
+			video, s_stream, state);
+		if (rval)
+			goto out_media_entity_stop_streaming_firmware;
+	} else {
+		close_streaming_firmware(av);
+	}
 
 	av->streaming = state;
 

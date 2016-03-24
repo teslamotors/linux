@@ -384,7 +384,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 		writel(csi2s2m, csi2->base + CSI2_REG_CSI2S2M_IRQ_ENABLE);
 	} else {
 		/* SOF enabled from CSI2PART register in B0 */
-		csi2part = CSI2_IRQ_FS_VC(0) |
+		csi2part = CSI2_IRQ_FS_VC(0) | CSI2_IRQ_FE_VC(0) |
 			   CSI2_CSI2PART_IRQ_CSIRX_B0;
 	}
 
@@ -598,6 +598,7 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 
 	csi2->asd.sd.entity.ops = &csi2_entity_ops;
 	csi2->asd.isys = isys;
+	init_completion(&csi2->eof_completion);
 
 	rval = intel_ipu4_isys_subdev_init(&csi2->asd, &csi2_sd_ops, 0,
 					NR_OF_CSI2_PADS);
@@ -699,6 +700,7 @@ static void intel_ipu4_isys_csi2_sof_event(struct intel_ipu4_isys_csi2 *csi2)
 	unsigned long flags;
 
 	spin_lock_irqsave(&csi2->isys->lock, flags);
+	csi2->in_frame = true;
 	ip = to_intel_ipu4_isys_pipeline(csi2->asd.sd.entity.pipe);
 	/* Pipe already vanished */
 	if (!ip) {
@@ -713,6 +715,40 @@ static void intel_ipu4_isys_csi2_sof_event(struct intel_ipu4_isys_csi2 *csi2)
 	dev_dbg(&csi2->isys->adev->dev, "%s csi2-%i sequence %i\n", __func__,
 		csi2->index, ev.u.frame_sync.frame_sequence);
 	v4l2_event_queue(vdev, &ev);
+}
+
+static void intel_ipu4_isys_csi2_eof_event(struct intel_ipu4_isys_csi2 *csi2)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&csi2->isys->lock, flags);
+	csi2->in_frame = false;
+	if (csi2->wait_for_sync)
+		complete(&csi2->eof_completion);
+	spin_unlock_irqrestore(&csi2->isys->lock, flags);
+}
+
+/* Call this function only _after_ the sensor has been stopped */
+void intel_ipu4_isys_csi2_wait_last_eof(struct intel_ipu4_isys_csi2 *csi2)
+{
+	unsigned long flags;
+	int tout;
+
+	spin_lock_irqsave(&csi2->isys->lock, flags);
+	if (!csi2->in_frame) {
+		spin_unlock_irqrestore(&csi2->isys->lock, flags);
+		return;
+	}
+
+	reinit_completion(&csi2->eof_completion);
+	csi2->wait_for_sync = true;
+	spin_unlock_irqrestore(&csi2->isys->lock, flags);
+	tout = wait_for_completion_timeout(&csi2->eof_completion,
+					   INTEL_IPU4_EOF_TIMEOUT_JIFFIES);
+	if (!tout)
+		dev_err(&csi2->isys->adev->dev,
+			"csi2-%d: timeout at sync to eof\n", csi2->index);
+	csi2->wait_for_sync = false;
 }
 
 static void intel_ipu4_isys_register_errors(struct intel_ipu4_isys_csi2 *csi2)
@@ -743,10 +779,13 @@ void intel_ipu4_isys_csi2_isr(struct intel_ipu4_isys_csi2 *csi2)
 	    status & CSI2_CSI2PART_IRQ_CSIRX_B0))
 		intel_ipu4_isys_register_errors(csi2);
 
-	if (!(status & CSI2_IRQ_FS_VC(0)))
-		return;
+	if ((status & CSI2_IRQ_FS_VC(0)))
+		intel_ipu4_isys_csi2_sof_event(csi2);
 
-	intel_ipu4_isys_csi2_sof_event(csi2);
+	if ((status & CSI2_IRQ_FE_VC(0)))
+		intel_ipu4_isys_csi2_eof_event(csi2);
+
+	return;
 }
 
 struct intel_ipu4_isys_buffer *
