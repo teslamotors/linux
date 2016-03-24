@@ -184,12 +184,9 @@ static int video_open(struct file *file)
 		/*
 		 * Something went wrong in previous shutdown. As we are now
 		 * restarting isys we can safely delete old context.
-		 * Library internal context could be inconsistent and it
-		 * will call assert. We can ignore clean up in cost of
-		 * memory leak.
 		 */
-		dev_err(&isys->adev->dev, "Old context exists but can't be removed\n");
-		dev_err(&isys->adev->dev, "FIXME: memory leak in isys open\n");
+		dev_err(&isys->adev->dev, "Clearing old context\n");
+		intel_ipu4_lib_call(device_release, isys, 1);
 		isys->ssi = NULL;
 	}
 
