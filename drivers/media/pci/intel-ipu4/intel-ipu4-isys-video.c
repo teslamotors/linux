@@ -1088,16 +1088,6 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 	struct device *dev = &av->isys->adev->dev;
 	int rval, tout;
 
-	/*
-	 * Workaround: Wait a bit before stopping the stream.
-	 * Otherwise isysfw stops message handling in the next
-	 * stream start. Isys can't be power cycled in all
-	 * environments so HW remembers its state from the previous run.
-	 */
-	if (av->isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA ||
-	    av->isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4)
-		msleep(500);
-
 	reinit_completion(&ip->stream_stop_completion);
 	rval = intel_ipu4_lib_call(stream_flush, av->isys, ip->stream_handle);
 	if (rval < 0) {
