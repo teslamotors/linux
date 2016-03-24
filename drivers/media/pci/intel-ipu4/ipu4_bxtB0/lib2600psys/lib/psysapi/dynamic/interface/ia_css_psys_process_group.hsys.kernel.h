@@ -1,4 +1,4 @@
-/**
+/*
 * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
  *
@@ -47,7 +47,7 @@ extern uint64_t ia_css_process_group_get_token(
  @param	token[in]				user token
 
  Note: The token value shall be non-zero. This token is
- returned in each return message realted to the process
+ returned in each return message related to the process
  group the token is registered with.
 
  @return < 0 on error
@@ -67,7 +67,7 @@ extern int ia_css_process_group_set_token(
  @return 0 on error
  */
 extern uint16_t ia_css_process_group_get_fragment_limit(
-	ia_css_process_group_t					*process_group);
+	const ia_css_process_group_t				*process_group);
 
 /*! Set the new fragment progress limit of the process group
 
@@ -78,7 +78,7 @@ extern uint16_t ia_css_process_group_get_fragment_limit(
  count value. The process group will not make progress beyond
  the limit value. The limit value can be modified asynchronously
  If the limit value is reached before an update happens, the
- proces group will suspend and will not automatically resume.
+ process group will suspend and will not automatically resume.
 
  The limit is monotonically increasing. The default value is
  equal to the fragment count
@@ -125,7 +125,7 @@ extern int ia_css_process_group_start(
  @param	process_group[in]		process group object
 
  Note: Suspend indicates that the process group execution
- is halted at the next fragement boundary. The process group
+ is halted at the next fragment boundary. The process group
  will not automatically resume
 
  Precondition: The process group must be running
@@ -239,7 +239,7 @@ extern vied_vaddress_t ia_css_process_group_detach_buffer(
  Note: The stream handle shall not be zero, the buffer
  state can be undefined; BUFFER_UNDEFINED
 
- Note: The stream is usex exclusive to a buffer; the latter can be in memory
+ Note: The stream is used exclusive to a buffer; the latter can be in memory
  or streaming over memory
 
  @return < 0 on error

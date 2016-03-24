@@ -1,4 +1,4 @@
-/**
+/*
 * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
  *
@@ -48,6 +48,7 @@ typedef enum ia_css_psys_event_types {
 	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_PROCESS_INIT_ERR = 9,		/**< Process(es) initialization */
 	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_ABORT = 10,			/**< Aborted (after host request) */
 	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_NULL = 11,			/**< NULL pointer in the process group */
+	IA_CSS_PSYS_EVENT_TYPE_PROC_GRP_VALIDATION_ERR = 12		/**< Process group validation failed */
 } ia_css_psys_event_type_t;
 
 #define IA_CSS_PSYS_CMD_BITS					64

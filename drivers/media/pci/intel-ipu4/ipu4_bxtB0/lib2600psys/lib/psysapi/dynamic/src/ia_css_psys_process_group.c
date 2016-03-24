@@ -1,4 +1,4 @@
-/**
+/*
 * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
  *
@@ -567,7 +567,7 @@ EXIT:
 #endif
 
 uint16_t ia_css_process_group_get_fragment_limit(
-	ia_css_process_group_t					*process_group)
+	const ia_css_process_group_t				*process_group)
 {
 	uint16_t	fragment_limit = 0;
 
@@ -979,7 +979,6 @@ bool ia_css_can_process_group_start (
 	verifexit(process_group != NULL, EINVAL);
 
 	terminal_count = ia_css_process_group_get_terminal_count(process_group);
-
 	for (i = 0; i < (int)terminal_count; i++) {
 		ia_css_terminal_t		*terminal = ia_css_process_group_get_terminal(process_group, i);
 		ia_css_buffer_state_t	buffer_state;
@@ -1339,7 +1338,7 @@ EXIT:
 }
 
 int ia_css_process_group_get_fragment_state(
-	ia_css_process_group_t					*process_group,
+	const ia_css_process_group_t				*process_group,
 	uint16_t *fragment_state)
 {
 	int	retval = -1;

@@ -1,4 +1,4 @@
-/**
+/*
 * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
  *
@@ -59,7 +59,7 @@
  @return the fragment count, 0 on error
  */
 extern uint16_t ia_css_process_group_get_fragment_count(
-	const ia_css_process_group_t			*process_group);
+	const ia_css_process_group_t		*process_group);
 
 
 /*! Get the fragment state on the process group
@@ -70,8 +70,8 @@ extern uint16_t ia_css_process_group_get_fragment_count(
  @return -1 on error
  */
 extern int ia_css_process_group_get_fragment_state(
-	ia_css_process_group_t			*process_group,
-	uint16_t			*fragment_state);
+	const ia_css_process_group_t		*process_group,
+	uint16_t				*fragment_state);
 
 /*! Set the fragment state on the process group
 
@@ -79,10 +79,10 @@ extern int ia_css_process_group_get_fragment_state(
  @param	fragment_state[in]		current fragment of processing
 
  @return -1 on error
- */
+  */
 extern int ia_css_process_group_set_fragment_state(
 	ia_css_process_group_t			*process_group,
-uint16_t			fragment_state);
+	uint16_t				fragment_state);
 
 /*! Get the number of processes on the process group
 
@@ -91,7 +91,7 @@ uint16_t			fragment_state);
  @return the process count, 0 on error
  */
 extern uint8_t ia_css_process_group_get_process_count(
-	const ia_css_process_group_t			*process_group);
+	const ia_css_process_group_t		*process_group);
 
 /*! Get the number of terminals on the process group
 
@@ -103,7 +103,7 @@ extern uint8_t ia_css_process_group_get_process_count(
  @return the terminal count, 0 on error
  */
 extern uint8_t ia_css_process_group_get_terminal_count(
-	const ia_css_process_group_t			*process_group);
+	const ia_css_process_group_t		*process_group);
 
 
 /*! Get the (pointer to) the indexed terminal of the process group object
@@ -114,8 +114,8 @@ extern uint8_t ia_css_process_group_get_terminal_count(
  @return the pointer to the terminal, NULL on error
  */
 extern ia_css_terminal_t *ia_css_process_group_get_terminal(
-	const ia_css_process_group_t			*process_group,
-	const unsigned int						terminal_index);
+	const ia_css_process_group_t		*process_group,
+	const unsigned int			terminal_index);
 
 /*! Get the (pointer to) the indexed process of the process group object
 
@@ -125,8 +125,8 @@ extern ia_css_terminal_t *ia_css_process_group_get_terminal(
  @return the pointer to the process, NULL on error
  */
 extern ia_css_process_t *ia_css_process_group_get_process(
-	const ia_css_process_group_t			*process_group,
-	const unsigned int						process_index);
+	const ia_css_process_group_t		*process_group,
+	const unsigned int			process_index);
 
 /*! Get the stored size of the process group object
 
@@ -135,7 +135,7 @@ extern ia_css_process_t *ia_css_process_group_get_process(
  @return size, 0 on error
  */
 extern size_t ia_css_process_group_get_size(
-	const ia_css_process_group_t			*process_group);
+	const ia_css_process_group_t		*process_group);
 
 /*! Get the state of the the process group object
 
@@ -144,7 +144,7 @@ extern size_t ia_css_process_group_get_size(
  @return state, limit value on error
  */
 extern ia_css_process_group_state_t ia_css_process_group_get_state(
-	const ia_css_process_group_t			*process_group);
+	const ia_css_process_group_t		*process_group);
 
 /*! Get the unique ID of program group used by the process group object
 
@@ -153,7 +153,7 @@ extern ia_css_process_group_state_t ia_css_process_group_get_state(
  @return ID, 0 on error
  */
 extern ia_css_program_group_ID_t ia_css_process_group_get_program_group_ID(
-	const ia_css_process_group_t			*process_group);
+	const ia_css_process_group_t		*process_group);
 
 /*! Get the resource bitmap of the process group
 
@@ -162,7 +162,7 @@ extern ia_css_program_group_ID_t ia_css_process_group_get_program_group_ID(
  @return the reource bitmap
  */
 extern vied_nci_resource_bitmap_t ia_css_process_group_get_resource_bitmap(
-	const ia_css_process_group_t			*process_group);
+	const ia_css_process_group_t		*process_group);
 
 /*! Set the resource bitmap of the process group
 
@@ -172,8 +172,8 @@ extern vied_nci_resource_bitmap_t ia_css_process_group_get_resource_bitmap(
  @return < 0 on error
  */
 extern int ia_css_process_group_set_resource_bitmap(
-	ia_css_process_group_t					*process_group,
-	const vied_nci_resource_bitmap_t		resource_bitmap);
+	ia_css_process_group_t			*process_group,
+	const vied_nci_resource_bitmap_t	resource_bitmap);
 
 /*! Get IPU virtual address of process group
 
@@ -183,8 +183,8 @@ extern int ia_css_process_group_set_resource_bitmap(
  @return -1 on error
  */
 extern int ia_css_process_group_get_ipu_vaddress(
-	const ia_css_process_group_t			*process_group,
-	vied_vaddress_t 				*ipu_vaddress);
+	const ia_css_process_group_t		*process_group,
+	vied_vaddress_t 			*ipu_vaddress);
 
 /*! Set IPU virtual address of process group
 
@@ -195,6 +195,6 @@ extern int ia_css_process_group_get_ipu_vaddress(
  */
 extern int ia_css_process_group_set_ipu_vaddress(
 	ia_css_process_group_t			*process_group,
-	vied_vaddress_t 				ipu_vaddress);
+	vied_vaddress_t 			ipu_vaddress);
 
 #endif /* __IA_CSS_PSYS_PROCESS_GROUP_H_INCLUDED__ */
