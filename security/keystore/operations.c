@@ -5,7 +5,7 @@
 #include <linux/dcache.h>
 
 #include <security/keystore_api_kernel.h>
-#include <security/oem_key.h>
+#include <security/manifest.h>
 
 #include "keystore_operations.h"
 #include "keystore_context.h"
@@ -16,10 +16,6 @@
 #include "keystore_aes.h"
 #include "keystore_mac.h"
 #include "keystore_rand.h"
-
-#if (RSA_SIGNATURE_SIZE != RSA_SIGNATURE_BYTE_SIZE)
-#error RSA_SIGNATURE_BYTE_SIZE set to wrong value in keystore_api_common.h
-#endif
 
 static int keysize_is_valid(unsigned int keysize)
 {
@@ -635,27 +631,31 @@ int verify_oem_signature(const void *data, unsigned int data_size,
 	int res = 0;
 	unsigned char digest[SHA256_HMAC_SIZE];
 
-	if (!data || !sig)
-		return -EFAULT;
+	FUNC_BEGIN;
 
-	if (sig_size != RSA_SIGNATURE_BYTE_SIZE)
-		return -EINVAL;
+	if (!data || !sig) {
+		FUNC_RES(-EFAULT);
+		return -EFAULT;
+	}
 
 	/* calculate ECC key digest */
 	res = keystore_sha256_block(data, data_size, digest, sizeof(digest));
 	if (res < 0) {
 		ks_err(KBUILD_MODNAME ": keystore_sha256_block() error %d in %s\n",
 		       res, __func__);
+		FUNC_RES(res);
 		return res;
 	}
 
 	keystore_hexdump("Digest", digest, sizeof(digest));
 	keystore_hexdump("Signature", sig, sig_size);
 
-	/* verify public key signature */
-	res = oem_key_verify_digest(digest, sizeof(digest),
-				    sig, sig_size);
+	res = manifest_key_verify_digest(digest, sizeof(digest),
+					 sig, sig_size,
+					 CONFIG_KEYSTORE_OEM_KEY_IDENTIFIER,
+					 CONFIG_KEYSTORE_OEM_KEY_USAGE_BIT);
 
+	FUNC_RES(res);
 	return res;
 }
 

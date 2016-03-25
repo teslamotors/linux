@@ -23,6 +23,16 @@ struct seed_offset {
 };
 
 /**
+ * struct manifest_offset - ABL MANIFEST address and size holder
+ * @size: Size of manifest
+ * @manifest: Offset for manifest
+ */
+struct manifest_offset {
+	unsigned int	size;
+	unsigned int	offset;
+};
+
+/**
  * get_seed_offsets() - Get the SEED offsets from the kernel command line.
  * @param ksoff - output variable which returns all the offsets.
  *
@@ -34,7 +44,7 @@ struct seed_offset {
 int get_seed_offsets(struct seed_offset *ksoff);
 
 /**
- * get_seckey_offsets() - Get the public key address from the  command line.
+ * get_seckey_offsets() - Get the public key address from the command line.
  * @param ksoff - output variable which returns all the offsets.
  *
  * Parse kernel cmdline string and returns the address and length of
@@ -43,6 +53,17 @@ int get_seed_offsets(struct seed_offset *ksoff);
  * Return: 0 if OK or negative error code (see errno.h).
  */
 int get_seckey_offsets(struct key_offset *ksoff);
+
+/**
+ * get_manifest_offset() - Get the manifest address from the command line.
+ * @param moff - output variable which returns all the offsets.
+ *
+ * Parse kernel cmdline string and returns the address and length of
+ * the manifest.
+ *
+ * Return: 0 if OK or negative error code (see errno.h).
+ */
+int get_manifest_offset(struct manifest_offset *moff);
 
 /**
  * memcpy_from_ph() - Copy block of data from physical memory.

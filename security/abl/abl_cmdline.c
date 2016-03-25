@@ -29,11 +29,13 @@
 /* tag format from ABL */
 #define TAG_ABL_KEYS		"ABL.keys"
 #define TAG_ABL_SEED		"ABL.seed"
+#define TAG_ABL_MANIFEST	"ABL.oemkm"
 
 /* below macros are used to check return stat of sscanf() */
 #define ABL_RET_KSIZE_IKEY		2
-#define ABL_RET_KSIZE_IKEY_OKEY		3
+#define ABL_RET_KSIZE_IKEY_OKEY	3
 #define ABL_RET_DSEED_USEED		2
+#define ABL_RET_SIZE_MANIFEST	2
 
 /* offset format from ABL */
 
@@ -50,6 +52,9 @@
 
 /* device and user seed */
 #define ABL_SEED_FORMAT		"ABL.seed=%x,%x"
+
+/* manifest */
+#define ABL_MANIFEST_FORMAT	"ABL.oemkm=%x@%x"
 
 /**
  * Functions to read and copy the cmdline string
@@ -73,7 +78,7 @@ static int read_cmdline(char *cmdline, int size)
 }
 
 /**
- * Parse kernel cmdline string and returns the pointer to a substing
+ * Parse kernel cmdline string and returns the pointer to a substring
  * with complete values.
  *
  * @param tag - cmdline tag to be searched for
@@ -232,6 +237,61 @@ err:
 	return res;
 }
 EXPORT_SYMBOL(get_seckey_offsets);
+
+int get_manifest_offset(struct manifest_offset *moff)
+{
+	static char cmdline[COMMAND_LINE_SIZE];
+	int res;
+	char *s = NULL;
+
+	if (!moff) {
+		pr_err(KBUILD_MODNAME ": null ptr - moff: %p\n", moff);
+		return -EFAULT;
+	}
+
+	memset(moff, 0, sizeof(struct manifest_offset));
+	memset(cmdline, 0, sizeof(cmdline));
+	res = read_cmdline(cmdline, COMMAND_LINE_SIZE);
+	if (res < 0)
+		return res;
+
+	/* get the substrings for kestore required tags */
+	s = get_strtag(TAG_ABL_MANIFEST, cmdline);
+
+	/* return error if manifest missing in cmdline */
+	if (!s) {
+		pr_err(KBUILD_MODNAME ": manifest tag: missing.\n");
+		res = -ENODATA;
+		goto err;
+	}
+
+	/* Scan ABL.manifest tag */
+	res = sscanf(s, ABL_MANIFEST_FORMAT,
+		     &moff->size,
+		     &moff->offset);
+	pr_info(KBUILD_MODNAME ": %s - tag scan: got %d values[%u, %u]\n",
+		s, res,
+		moff->size,
+		moff->offset);
+	/* check if we got both the seed offsets */
+	if (res < ABL_RET_SIZE_MANIFEST) {
+		pr_err(KBUILD_MODNAME ": %s - manifest missing/wrong format (res: %d)\n",
+		       s, res);
+		res = -ENODATA;
+		goto err;
+	}
+
+	/* all good, success */
+	res = 0;
+err:
+	/* free strdup mem, kfree have its own NULL check */
+	kfree(s);
+
+	return res;
+}
+EXPORT_SYMBOL(get_manifest_offset);
+
+
 
 #ifndef ARCH_HAS_VALID_PHYS_ADDR_RANGE
 static inline int valid_phys_addr_range(phys_addr_t addr, size_t count)

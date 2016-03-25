@@ -3,7 +3,7 @@ config KEYSTORE
 	default n
 	select SECURE_BOOT
 	select ABL_UTILS
-	select OEM_KEY
+	select MANIFEST
         select CRYPTO
 	select CRYPTO_AES
 	select CRYPTO_AES_NI_INTEL
@@ -89,6 +89,24 @@ config KEYSTORE_SEED_SIZE_64
                 If unsure, select "N".
 
 endchoice
+
+config KEYSTORE_OEM_KEY_USAGE_BIT
+	int "OEM Key usage bit"
+	depends on KEYSTORE
+	default 47
+	help
+		Sets the key manifest usage bit to use when
+		verifying data (e.g. backup and migration keys) which
+		are sent from the OEM.
+
+config KEYSTORE_OEM_KEY_IDENTIFIER
+	string "OEM Kernel Keyring Identifier"
+	depends on KEYSTORE
+	default "OEM: Keystore: 00"
+	help
+		The key identifier for the OEM public key used to
+		verify data (e.g. backup and migration keys) which
+		are sent from the OEM.
 
 config KEYSTORE_TESTMODE
 	bool "Enable Diagnostic Tests"

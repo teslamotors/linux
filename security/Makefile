@@ -35,8 +35,8 @@ obj-$(CONFIG_INTEGRITY)			+= integrity/
 subdir-$(CONFIG_KEYSTORE)		+= keystore
 obj-$(CONFIG_KEYSTORE)                  += keystore/
 
-subdir-$(CONFIG_OEM_KEY)		+= oemkey
-obj-$(CONFIG_OEM_KEY)			+= oemkey/
+subdir-y				+= oemkey
+obj-y                                   += oemkey/
 
 subdir-$(CONFIG_SECURE_BOOT)		+= sb
 obj-$(CONFIG_SECURE_BOOT)               += sb/
