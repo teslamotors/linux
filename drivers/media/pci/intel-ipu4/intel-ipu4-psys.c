@@ -806,7 +806,7 @@ static int intel_ipu4_psys_kcmd_abort(struct intel_ipu4_psys *psys,
 				       int error)
 {
 	if (kcmd->state == KCMD_STATE_COMPLETE)
-		return;
+		return 0;
 
 	if (kcmd->state == KCMD_STATE_RUNNING &&
 	    ia_css_process_group_stop(kcmd->pg))
