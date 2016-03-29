@@ -553,14 +553,6 @@ static int lm3643_init_device(struct lm3643_flash *flash)
 	flash->led_mode = V4L2_FLASH_LED_MODE_NONE;
 	lm3643_mode_ctrl(flash);
 
-	/*Disable TX pin*/
-	rval = regmap_update_bits(flash->regmap,
-				  ENABLE_REG,
-				  TX_PIN_MASK,
-				  0);
-	if (rval < 0)
-		return rval;
-
 	/* Enable both leds*/
 	rval = regmap_update_bits(flash->regmap,
 				  ENABLE_REG,
