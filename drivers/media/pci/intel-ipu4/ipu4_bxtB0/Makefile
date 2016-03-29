@@ -12,7 +12,7 @@
 #
 
 IPU_STEP = bxtB0
-ccflags-y += -DIPU_STEP_BXTB0
+ccflags-y += -DIPU_STEP_BXTB0 -DIPU_STEP_BXTC0
 include $(srctree)/$(src)/../Makefile.common
 include $(srctree)/$(src)/../Makefile.lib2600
 include $(srctree)/$(src)/../Makefile.lib2600psys

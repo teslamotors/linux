@@ -47,15 +47,22 @@
  * S2C FPGA	A0	0x0a88		0x8e
  * S2C FPGA	B0	0x0a88		0x8e (Bug in FPGA bit files)
  *
- * RVP		A0	0x0a88		0x01
- * RVP		A1	0x0a88		0x01
- * RVP		B0	0x1a88		--
+ * BXT:
+ * SOC		A0	0x0a88		0x01
+ * SOC		A1	0x0a88		0x01
+ * SOC		B1	0x1a88		0x07
+ * SOC		C0	0x1a88		0x0c
+ *
+ * BXT-P:
+ * SOC		A0	0x5a88		??
  */
 
 #define INTEL_IPU4_HW_BXT_A0_OLD	0x4008
 #define INTEL_IPU4_HW_BXT_A0		0x0a88
 #define INTEL_IPU4_HW_BXT_B0		0x1a88
 #define INTEL_IPU4_HW_BXT_P_A0		0x5a88 /* BXTP A0 Iunit=BXT B0 Iunit */
+
+#define INTEL_IPU4_HW_BXT_C0_REV	0xc
 
 /* processing system frequency: 25Mhz x ratio, Legal values [8,32] */
 #define PS_FREQ_CTL_DEFAULT_RATIO_A0	0x8
@@ -112,6 +119,7 @@ struct intel_ipu4_device {
 
 #define is_intel_ipu4_hw_bxt_a0(isp) IS_BUILTIN(IPU_STEP_BXTA0)
 #define is_intel_ipu4_hw_bxt_b0(isp) IS_BUILTIN(IPU_STEP_BXTB0)
+#define is_intel_ipu4_hw_bxt_c0(isp) IS_BUILTIN(IPU_STEP_BXTC0)
 
 #define is_intel_ipu4_hw_bxt_fpga(isp) 1
 
@@ -124,6 +132,14 @@ struct intel_ipu4_device {
 #define is_intel_ipu4_hw_bxt_b0(isp)		\
 	((isp)->pdev->device == INTEL_IPU4_HW_BXT_B0 ||		\
 	 (isp)->pdev->device == INTEL_IPU4_HW_BXT_P_A0)
+
+/*
+ * Use C0 stepping only for C0 specific code. Otherwise use B0 stepping.
+ * BXT C0 == BXT B0 with specific corrections.
+ */
+#define is_intel_ipu4_hw_bxt_c0(isp)			\
+	((isp)->pdev->device == INTEL_IPU4_HW_BXT_B0 &&		\
+	 (isp)->pdev->revision == INTEL_IPU4_HW_BXT_C0_REV)
 
 #define is_intel_ipu4_hw_bxt_fpga(isp) 0
 #endif
