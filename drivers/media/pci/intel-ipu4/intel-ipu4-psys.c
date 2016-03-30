@@ -1650,15 +1650,15 @@ static int psys_runtime_pm_resume(struct device *dev)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
-	struct ia_css_syscom_config *syscom_config = psys->syscom_config;
-	void *syscom_buffer = psys->syscom_buffer;
+	struct ia_css_syscom_config *syscom_config = psys ?
+						psys->syscom_config : NULL;
+	void *syscom_buffer = psys ? psys->syscom_buffer : NULL;
 	unsigned long flags;
 	int retry = INTEL_IPU4_PSYS_OPEN_RETRY;
 	bool opened;
 
-	if (!syscom_buffer) {
-		dev_err(&psys->adev->dev,
-			"resume called before probing. skipping.\n");
+	if (!psys || !syscom_buffer) {
+		WARN(1, "%s called before probing. skipping.\n", __func__);
 		return 0;
 	}
 
@@ -1707,6 +1707,11 @@ static int psys_runtime_pm_suspend(struct device *dev)
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
 	unsigned long flags;
+
+	if (!psys) {
+		WARN(1, "%s called before probing. skipping.\n", __func__);
+		return 0;
+	}
 
 	spin_lock_irqsave(&psys->power_lock, flags);
 	psys->power = 0;

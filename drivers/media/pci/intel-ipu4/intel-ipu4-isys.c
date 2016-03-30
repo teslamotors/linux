@@ -962,6 +962,11 @@ static int isys_runtime_pm_resume(struct device *dev)
 	unsigned long flags;
 	int ret;
 
+	if (!isys) {
+		WARN(1, "%s called before probing. skipping.\n", __func__);
+		return 0;
+	}
+
 	intel_ipu4_trace_restore(dev);
 
 	intel_ipu4_buttress_csi_port_config(isp,
@@ -986,6 +991,11 @@ static int isys_runtime_pm_suspend(struct device *dev)
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
 	unsigned long flags;
+
+	if (!isys) {
+		WARN(1, "%s called before probing. skipping.\n", __func__);
+		return 0;
+	}
 
 	spin_lock_irqsave(&isys->power_lock, flags);
 	isys->power = 0;
