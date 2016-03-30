@@ -53,6 +53,12 @@
 #define CREATE_TRACE_POINTS
 #include "intel-ipu4-trace-event.h"
 
+static bool early_pg_transfer;
+module_param(early_pg_transfer, bool,
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+MODULE_PARM_DESC(early_pg_transfer,
+			"Copy PGs back to user after resource allocation");
+
 #define INTEL_IPU4_PSYS_NUM_DEVICES	4
 #define INTEL_IPU4_PSYS_WORK_QUEUE	system_power_efficient_wq
 
@@ -792,7 +798,7 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 		intel_ipu4_buttress_remove_psys_constraint(psys->adev->isp,
 							   &kcmd->constraint);
 
-	if (kcmd->pg_user && kcmd->pg)
+	if (!early_pg_transfer && kcmd->pg_user && kcmd->pg)
 		memcpy(kcmd->pg_user, kcmd->pg, kcmd->pg_size);
 
 	complete(&kcmd->cmd_complete);
@@ -842,6 +848,10 @@ static int intel_ipu4_psys_kcmd_run(struct intel_ipu4_psys *psys,
 	psys->active_kcmds++;
 
 	kcmd->watchdog.expires = jiffies + msecs_to_jiffies(psys->timeout);
+
+	if (early_pg_transfer && kcmd->pg_user && kcmd->pg)
+		memcpy(kcmd->pg_user, kcmd->pg, kcmd->pg_size);
+
 #ifdef IPU_STEP_BXTA0
 	clflush_cache_range(kcmd->pg, kcmd->pg_size);
 #endif
