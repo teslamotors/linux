@@ -2297,7 +2297,7 @@ static int ahci_port_start(struct ata_port *ap)
 	/*
 	 * Switch to per-port locking in case each port has its own MSI vector.
 	 */
-	if ((hpriv->flags & AHCI_HFLAG_MULTI_MSI)) {
+	if (hpriv->flags & AHCI_HFLAG_MULTI_MSI) {
 		spin_lock_init(&pp->lock);
 		ap->lock = &pp->lock;
 	}
@@ -2425,7 +2425,10 @@ static int ahci_host_activate_multi_irqs(struct ata_host *host, int irq,
 	rc = ata_host_start(host);
 	if (rc)
 		return rc;
-
+	/*
+	 * Requests IRQs according to AHCI-1.1 when multiple MSIs were
+	 * allocated. That is one MSI per port, starting from @irq.
+	 */
 	for (i = 0; i < host->n_ports; i++) {
 		struct ahci_port_priv *pp = host->ports[i]->private_data;
 
@@ -2464,12 +2467,7 @@ out_free_irqs:
 /**
  *	ahci_host_activate - start AHCI host, request IRQs and register it
  *	@host: target ATA host
- *	@irq: base IRQ number to request
  *	@sht: scsi_host_template to use when registering the host
- *
- *	Similar to ata_host_activate, but requests IRQs according to AHCI-1.1
- *	when multiple MSIs were allocated. That is one MSI per port, starting
- *	from @irq.
  *
  *	LOCKING:
  *	Inherited from calling layer (may sleep).
@@ -2477,10 +2475,10 @@ out_free_irqs:
  *	RETURNS:
  *	0 on success, -errno otherwise.
  */
-int ahci_host_activate(struct ata_host *host, int irq,
-		       struct scsi_host_template *sht)
+int ahci_host_activate(struct ata_host *host, struct scsi_host_template *sht)
 {
 	struct ahci_host_priv *hpriv = host->private_data;
+	int irq = hpriv->irq;
 	int rc;
 
 	if (hpriv->flags & AHCI_HFLAG_MULTI_MSI)
