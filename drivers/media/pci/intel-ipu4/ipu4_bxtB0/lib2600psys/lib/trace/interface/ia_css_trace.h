@@ -27,7 +27,7 @@
  *             {Module Name} is the name of the targeted module.
  *
  *         Example:
- *             #define VIED_NCI_DMA_TRACE_METHOD IA_CSS_TRACE_METHOD_NATIVE
+ *             #define NCI_DMA_TRACE_METHOD IA_CSS_TRACE_METHOD_NATIVE
  */
 #define IA_CSS_TRACE_METHOD_NATIVE  1	/**< Use whatever method of tracing that best suits the platform this code is compiled for. */
 #define IA_CSS_TRACE_METHOD_TRACE   2	/**< Use the Tracing NCI. */
@@ -40,8 +40,8 @@
  *                 following values: {ASSERT, ERROR, WARNING, INFO, DEBUG, VERBOSE}.
  *
  *         Example:
- *             #define VIED_NCI_DMA_TRACE_LEVEL_ASSERT IA_CSS_TRACE_LEVEL_DISABLED
- *             #define VIED_NCI_DMA_TRACE_LEVEL_ERROR  IA_CSS_TRACE_LEVEL_ENABLED
+ *             #define NCI_DMA_TRACE_LEVEL_ASSERT IA_CSS_TRACE_LEVEL_DISABLED
+ *             #define NCI_DMA_TRACE_LEVEL_ERROR  IA_CSS_TRACE_LEVEL_ENABLED
  */
 #define IA_CSS_TRACE_LEVEL_DISABLED 0	/**< Disables the corresponding trace level. */
 #define IA_CSS_TRACE_LEVEL_ENABLED  1	/**< Enables the corresponding trace level. */
