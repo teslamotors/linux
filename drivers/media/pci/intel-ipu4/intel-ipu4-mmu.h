@@ -39,7 +39,7 @@ struct intel_ipu4_mmu_domain {
 	uint32_t dummy_page;
 
 	/* Reference to the trash address to unmap on domain destroy */
-	dma_addr_t *iova_addr_trash;
+	dma_addr_t iova_addr_trash;
 };
 
 /*

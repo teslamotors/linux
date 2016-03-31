@@ -339,7 +339,8 @@ static void intel_ipu4_mmu_domain_destroy(struct iommu_domain *domain)
 	uint32_t l1_idx;
 
 	if (adom->iova_addr_trash) {
-		iova = find_iova(&adom->dmap->iovad, *adom->iova_addr_trash);
+		iova = find_iova(&adom->dmap->iovad, adom->iova_addr_trash >>
+				 PAGE_SHIFT);
 		/* unmap and free the corresponding trash buffer iova */
 		iommu_unmap(domain, iova->pfn_lo << PAGE_SHIFT,
 			    (iova->pfn_hi - iova->pfn_lo + 1) << PAGE_SHIFT);
@@ -347,11 +348,9 @@ static void intel_ipu4_mmu_domain_destroy(struct iommu_domain *domain)
 
 		/*
 		 * Set iova_addr_trash in mmu to 0, so that on next HW init
-		 * this will be mapped again. Set the reference to trash
-		 * buffer iova in domain also to NULL
+		 * this will be mapped again.
 		 */
-		*adom->iova_addr_trash = 0;
-		adom->iova_addr_trash = NULL;
+		adom->iova_addr_trash = 0;
 	}
 
 	for (l1_idx = 0; l1_idx < ISP_L1PT_PTES; l1_idx++)
@@ -595,6 +594,8 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 	}
 	adom = to_intel_ipu4_mmu_domain(mmu->dmap->domain);
 
+	adom->dmap = mmu->dmap;
+
 	/* Initialise the each MMU HW block*/
 	for (i = 0; i < mmu->nr_mmus; i++) {
 		struct intel_ipu4_mmu_hw *mmu_hw = &mmu->mmu_hw[i];
@@ -683,7 +684,7 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 		 * Update the domain pointer to trash buffer to release it on
 		 * domain destroy
 		 */
-		adom->iova_addr_trash = &mmu->iova_addr_trash;
+		adom->iova_addr_trash = mmu->iova_addr_trash;
 	}
 
 	return 0;
@@ -692,12 +693,10 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 static void set_mapping(struct intel_ipu4_mmu *mmu,
 			struct intel_ipu4_dma_mapping *dmap)
 {
-	if (mmu->dmap) {
-		dev_warn(mmu->dev, "mmu was already mapped.");
-		return;
-        }
-
 	mmu->dmap = dmap;
+
+	if (!dmap)
+		return;
 
 	pm_runtime_get_sync(mmu->dev);
 	intel_ipu4_mmu_hw_init(mmu->dev);

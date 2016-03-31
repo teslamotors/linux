@@ -135,12 +135,14 @@ static struct intel_ipu4_dma_mapping *alloc_dma_mapping(struct device *dev)
 
 static void free_dma_mapping(void *ptr)
 {
-	struct intel_ipu4_dma_mapping *dmap = ptr;
+	struct intel_ipu4_mmu *mmu = ptr;
+	struct intel_ipu4_dma_mapping *dmap = mmu->dmap;
 
-	put_iova_domain(&dmap->iovad);
 	iommu_domain_free(dmap->domain);
-	kfree(dmap);
+	mmu->set_mapping(mmu, NULL);
 	iova_cache_put();
+	put_iova_domain(&dmap->iovad);
+	kfree(dmap);
 }
 
 static struct iommu_group *intel_ipu4_bus_get_group(struct device *dev)
@@ -172,7 +174,7 @@ static struct iommu_group *intel_ipu4_bus_get_group(struct device *dev)
 		return NULL;
 	}
 
-	iommu_group_set_iommudata(group, dmap, free_dma_mapping);
+	iommu_group_set_iommudata(group, mmu, free_dma_mapping);
 
 	mmu->set_mapping(mmu, dmap);
 
@@ -211,8 +213,8 @@ static int intel_ipu4_bus_probe(struct device *dev)
 out_err:
 	intel_ipu4_bus_set_drvdata(adev, NULL);
 	adev->adrv = NULL;
+	iommu_group_remove_device(dev);
 	iommu_group_put(group);
-
 	return rval;
 }
 
