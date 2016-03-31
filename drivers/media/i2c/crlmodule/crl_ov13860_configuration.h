@@ -616,7 +616,7 @@ static struct crl_register_write_rep ov13860_mode_3m[] = {
 	{ 0x5205, CRL_REG_LEN_08BIT, 0x80 }, /* Magic */
 };
 
-static struct crl_register_write_rep ov13860_mode_1080[] = {
+static struct crl_register_write_rep ov13860_mode_1952_1088[] = {
 
 	/*
 	 * Exposure & Gain
@@ -638,10 +638,10 @@ static struct crl_register_write_rep ov13860_mode_1080[] = {
 	{ 0x3805, CRL_REG_LEN_08BIT, 0x8B },/* h_crop_end low */
 	{ 0x3806, CRL_REG_LEN_08BIT, 0x0C },/* v_crop_end high */
 	{ 0x3807, CRL_REG_LEN_08BIT, 0x43 },/* v_crop_end low */
-	{ 0x3808, CRL_REG_LEN_08BIT, 0x07 },/* h_output_size high 1920 x 1080 */
-	{ 0x3809, CRL_REG_LEN_08BIT, 0x80 },/* h_output_size low */
+	{ 0x3808, CRL_REG_LEN_08BIT, 0x07 },/* h_output_size high 1952 x 1088 */
+	{ 0x3809, CRL_REG_LEN_08BIT, 0xA0 },/* h_output_size low */
 	{ 0x380A, CRL_REG_LEN_08BIT, 0x04 },/* v_output_size high */
-	{ 0x380B, CRL_REG_LEN_08BIT, 0x38 },/* v_output_size low */
+	{ 0x380B, CRL_REG_LEN_08BIT, 0x40 },/* v_output_size low */
 	{ 0x3810, CRL_REG_LEN_08BIT, 0x00 },/* Manual horizontal window offset high */
 	{ 0x3811, CRL_REG_LEN_08BIT, 0x04 },/* Manual horizontal window offset low */
 	{ 0x3813, CRL_REG_LEN_08BIT, 0x04 },/* Manual vertical window offset low */
@@ -1047,7 +1047,7 @@ static struct crl_subdev_rect_rep ov13860_3m_rects[] = {
 	 },
 };
 
-static struct crl_subdev_rect_rep ov13860_1080_rects[] = {
+static struct crl_subdev_rect_rep ov13860_1952_1088_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect.left = 0,
@@ -1067,8 +1067,8 @@ static struct crl_subdev_rect_rep ov13860_1080_rects[] = {
 		.in_rect.height = 3120,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
-		.out_rect.width = 1920,
-		.out_rect.height = 1080,
+		.out_rect.width = 1952,
+		.out_rect.height = 1088,
 	 },
 };
 
@@ -1202,17 +1202,17 @@ static struct crl_mode_rep ov13860_modes[] = {
 		.mode_regs = ov13860_mode_3m,
 	 },
 		{
-		.sd_rects_items = ARRAY_SIZE(ov13860_1080_rects),
-		.sd_rects = ov13860_1080_rects,
+		.sd_rects_items = ARRAY_SIZE(ov13860_1952_1088_rects),
+		.sd_rects = ov13860_1952_1088_rects,
 		.binn_hor = 2,
 		.binn_vert = 2,
 		.scale_m = 1,
-		.width = 1920,
-		.height = 1080,
+		.width = 1952,
+		.height = 1088,
 		.comp_items = 0,
 		.ctrl_data = 0,
-		.mode_regs_items = ARRAY_SIZE(ov13860_mode_1080),
-		.mode_regs = ov13860_mode_1080,
+		.mode_regs_items = ARRAY_SIZE(ov13860_mode_1952_1088),
+		.mode_regs = ov13860_mode_1952_1088,
 	 },
 		{
 		.sd_rects_items = ARRAY_SIZE(ov13860_720_rects),
