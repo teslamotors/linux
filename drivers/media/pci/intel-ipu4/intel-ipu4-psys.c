@@ -1799,6 +1799,12 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		(const ia_css_pkg_dir_entry_t *)isp->pkg_dir);
 	dev_info(&adev->dev, "pkg_dir entry count:%d\n", caps.pg_count);
 
+	rval = intel_ipu4_buttress_authenticate(isp);
+	if (rval) {
+		dev_err(&adev->dev, "FW authentication failed(%d)\n", rval);
+		goto out_remove_pkg_dir_shared_buffer;
+	}
+
 	psys->dev.parent = &adev->dev;
 	psys->dev.bus = &intel_ipu4_psys_bus;
 	psys->dev.devt = MKDEV(MAJOR(intel_ipu4_psys_dev_t), minor);
