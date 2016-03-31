@@ -1047,7 +1047,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	int rval = 0;
 
 	/* Has the domain been attached? */
-	if (!mmu)
+	if (!mmu || !isp->pkg_dir_dma_addr)
 		return -EPROBE_DEFER;
 
 	intel_ipu4_wrapper_set_device(&adev->dev, ISYS_MMID);
