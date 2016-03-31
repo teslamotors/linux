@@ -563,9 +563,12 @@ bool intel_ipu4_buttress_get_secure_mode(struct intel_ipu4_device *isp)
 	return val & (1 << BUTTRESS_SECURITY_CTL_FW_SECURE_MODE_SHIFT);
 }
 
-static bool intel_ipu4_buttress_auth_done(struct intel_ipu4_device *isp)
+bool intel_ipu4_buttress_auth_done(struct intel_ipu4_device *isp)
 {
 	u32 val;
+
+	if (!isp->secure_mode)
+		return 1;
 
 	if (is_intel_ipu_hw_fpga(isp))
 		return 0;
@@ -575,6 +578,7 @@ static bool intel_ipu4_buttress_auth_done(struct intel_ipu4_device *isp)
 	return (val & BUTTRESS_SECURITY_CTL_FW_SETUP_MASK) ==
 		BUTTRESS_SECURITY_CTL_AUTH_DONE;
 }
+EXPORT_SYMBOL(intel_ipu4_buttress_auth_done);
 
 static void intel_ipu4_buttress_set_psys_ratio(struct intel_ipu4_device *isp,
 					       unsigned int psys_divisor,

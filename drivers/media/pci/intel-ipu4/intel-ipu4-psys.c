@@ -1662,6 +1662,11 @@ static int psys_runtime_pm_resume(struct device *dev)
 		return 0;
 	}
 
+	if (!intel_ipu4_buttress_auth_done(adev->isp)) {
+		dev_err(dev, "%s: not yet authenticated, skipping\n", __func__);
+		return 0;
+	}
+
 	psys_setup_hw(psys);
 
 	intel_ipu4_trace_restore(&psys->adev->dev);
