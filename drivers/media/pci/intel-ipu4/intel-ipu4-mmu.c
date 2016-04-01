@@ -690,7 +690,10 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 static void set_mapping(struct intel_ipu4_mmu *mmu,
 			struct intel_ipu4_dma_mapping *dmap)
 {
-	WARN_ON(mmu->dmap);
+	if (mmu->dmap) {
+		dev_warn(mmu->dev, "mmu was already mapped.");
+		return;
+        }
 
 	mmu->dmap = dmap;
 
