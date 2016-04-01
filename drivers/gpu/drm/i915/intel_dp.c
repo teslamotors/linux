@@ -4823,6 +4823,8 @@ intel_dp_long_pulse(struct intel_connector *intel_connector)
 	intel_dp->aux.i2c_nack_count = 0;
 	intel_dp->aux.i2c_defer_count = 0;
 
+	intel_dp_detect_dpcd(intel_dp);
+
 	intel_dp_set_edid(intel_dp);
 	if (is_edp(intel_dp) || intel_connector->detect_edid)
 		status = connector_status_connected;
