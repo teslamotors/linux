@@ -21,4 +21,10 @@
 #define V4L2_CID_LINE_LENGTH_PIXELS (V4L2_CID_CRLMODULE_BASE + 2)
 #define CRL_CID_SENSOR_THERMAL_DATA (V4L2_CID_CRLMODULE_BASE + 3)
 
+/*
+ * Select sensor mode directly, driver programs media pad
+ * formats as in configuration file
+ */
+#define CRL_CID_SENSOR_MODE (V4L2_CID_CRLMODULE_BASE + 4)
+
 #endif /* UAPI_LINUX_CRLMODULE_H */
