@@ -19,7 +19,7 @@
 #include "ia_css_psys_process_group.h"
 
 #define	N_UINT64_IN_PROCESS_GROUP_STRUCT			2
-#define	N_UINT32_IN_PROCESS_GROUP_STRUCT			1
+#define	N_UINT32_IN_PROCESS_GROUP_STRUCT			5
 #define	N_UINT16_IN_PROCESS_GROUP_STRUCT			5
 #define	N_UINT8_IN_PROCESS_GROUP_STRUCT				3
 #define	N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT		7
@@ -39,6 +39,10 @@ struct ia_css_process_group_s {
 	uint64_t							token;											/**< User (callback) token / user context reference, zero is an error value */
 	uint64_t							private_token;									/**< private token / context reference, zero is an error value */
 	uint32_t							size;											/**< Size of this structure */
+	uint32_t							pg_load_start_ts;								/**< The timestamp when PG load starts */
+	uint32_t 							pg_load_cycles;									/**< PG load time in cycles */
+	uint32_t 							pg_init_cycles;									/**< PG init time in cycles */
+	uint32_t 							pg_processing_cycles;								/**< PG processing time in cycles */
 	ia_css_program_group_ID_t			ID;												/**< Referal ID to program group FW */
 	ia_css_process_group_state_t		state;											/**< State of the process group FSM */
 	vied_vaddress_t						ipu_virtual_address;							/**< Virtual address of process group in IPU */

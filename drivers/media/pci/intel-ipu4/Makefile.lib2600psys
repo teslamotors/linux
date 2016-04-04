@@ -21,6 +21,7 @@ PSYS2600_INCLUDES := \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/dynamic/interface \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/kernel/interface \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/param/interface \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/resource_model/$(IPU_STEP) \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/sim/interface \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/psysapi/static/interface \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/reg_dump/src \

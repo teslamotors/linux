@@ -23,6 +23,7 @@ PSYSAPI_MANIFEST_HOST_FILES    += $(PSYSAPI_DIR)/static/src/ia_css_psys_terminal
 PSYSAPI_MANIFEST_HOST_FILES    += $(PSYSAPI_DIR)/sim/src/vied_nci_psys_system.c
 PSYSAPI_MANIFEST_HOST_FILES    += $(PSYSAPI_DIR)/kernel/src/ia_css_kernel_bitmap.c
 PSYSAPI_MANIFEST_HOST_FILES    += $(PSYSAPI_DIR)/data/src/ia_css_program_group_data.c
+PSYSAPI_MANIFEST_HOST_FILES    += $(PSYSAPI_DIR)/resource_model/$(IPU_SYSVER)/vied_nci_psys_resource_model.c
 
 # Use PSYSAPI_HOST_FILES when program and process group are both needed
 PSYSAPI_HOST_FILES = $(PSYSAPI_PROCESS_HOST_FILES) $(PSYSAPI_MANIFEST_HOST_FILES)
@@ -45,10 +46,13 @@ PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/kernel/interface
 PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/param/interface
 PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/param/src
 PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/sim/interface
+PSYSAPI_HOST_CPPFLAGS += -I$(PSYSAPI_DIR)/resource_model/$(IPU_SYSVER)
 
 PSYSAPI_FW_CPPFLAGS = $(PSYSAPI_HOST_CPPFLAGS)
 PSYSAPI_FW_CPPFLAGS += -I$(PSYSAPI_DIR)/static/src
+PSYSAPI_FW_CPPFLAGS += -I$(PSYSAPI_DIR)/resource_model/$(IPU_SYSVER)
 PSYSAPI_SYSTEM_GLOBAL_CPPFLAGS += -I$(PSYSAPI_DIR)/sim/interface
+PSYSAPI_SYSTEM_GLOBAL_CPPFLAGS += -I$(PSYSAPI_DIR)/resource_model/$(IPU_SYSVER)
 
 # Defining the trace level for the PSYSAPI
 PSYSAPI_HOST_CPPFLAGS += -DPSYSAPI_TRACE_CONFIG=PSYSAPI_TRACE_LOG_LEVEL_NORMAL
@@ -70,4 +74,5 @@ PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/sim/src/ia_css_psys_sim_data.c
 PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/static/src/ia_css_psys_program_group_manifest.c
 PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/static/src/ia_css_psys_program_manifest.c
 PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/static/src/ia_css_psys_terminal_manifest.c
+PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/resource_model/$(IPU_SYSVER)/vied_nci_psys_resource_model.c
 

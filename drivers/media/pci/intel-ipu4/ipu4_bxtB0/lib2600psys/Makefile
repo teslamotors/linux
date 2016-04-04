@@ -63,6 +63,7 @@ HOST_INCLUDES  = \
 		 -I$(INCLUDE_DIR)/psysapi/kernel/interface \
 		 -I$(INCLUDE_DIR)/psysapi/param/interface \
 		 -I$(INCLUDE_DIR)/psysapi/param/src \
+		 -I$(INCLUDE_DIR)/psysapi/resource_model/$(IPU_SYSVER) \
 		 -I$(INCLUDE_DIR)/psysapi/sim/interface \
 		 -I$(INCLUDE_DIR)/psysapi/static/interface \
 		 -I$(INCLUDE_DIR)/psys_infobits/interface \
@@ -82,47 +83,35 @@ HOST_INCLUDES  = \
 		 -I$(INCLUDE_DIR)/reg_dump/src/psys/bxtB0_gen_reg_dump \
 
 HOST_SRC = libcsspsys2600.o \
+	   $(MODULES_DIR)/buffer/src/cpu/buffer_access.o \
+	   $(MODULES_DIR)/buffer/src/cpu/ia_css_buffer.o \
+	   $(MODULES_DIR)/buffer/src/cpu/ia_css_input_buffer.o \
+	   $(MODULES_DIR)/buffer/src/cpu/ia_css_output_buffer.o \
+	   $(MODULES_DIR)/buffer/src/cpu/ia_css_shared_buffer.o \
+	   $(MODULES_DIR)/cell_program_load/src/ia_css_cell_program_load.o \
+	   $(MODULES_DIR)/client_pkg/src/ia_css_client_pkg.o \
+	   $(MODULES_DIR)/fw_load/src/$(FW_LOAD_IMPL)/ia_css_fw_load.o \
+	   $(MODULES_DIR)/pkg_dir/src/ia_css_pkg_dir.o \
+	   $(MODULES_DIR)/port/src/queue.o \
+	   $(MODULES_DIR)/port/src/recv_port.o \
+	   $(MODULES_DIR)/port/src/send_port.o \
+	   $(MODULES_DIR)/psysapi/data/src/ia_css_program_group_data.o \
+	   $(MODULES_DIR)/psysapi/device/src/ia_css_psys_device.o \
+	   $(MODULES_DIR)/psysapi/dynamic/src/ia_css_psys_process.o \
+	   $(MODULES_DIR)/psysapi/dynamic/src/ia_css_psys_process_group.o \
+	   $(MODULES_DIR)/psysapi/dynamic/src/ia_css_psys_terminal.o \
+	   $(MODULES_DIR)/psysapi/kernel/src/ia_css_kernel_bitmap.o \
+	   $(MODULES_DIR)/psysapi/param/src/ia_css_program_group_param.o \
+	   $(MODULES_DIR)/psysapi/resource_model/$(IPU_SYSVER)/vied_nci_psys_resource_model.o \
+	   $(MODULES_DIR)/psysapi/sim/src/ia_css_psys_sim_data.o \
+	   $(MODULES_DIR)/psysapi/sim/src/vied_nci_psys_system.o \
+	   $(MODULES_DIR)/psysapi/static/src/ia_css_psys_program_group_manifest.o \
+	   $(MODULES_DIR)/psysapi/static/src/ia_css_psys_program_manifest.o \
+	   $(MODULES_DIR)/psysapi/static/src/ia_css_psys_terminal_manifest.o \
+	   $(MODULES_DIR)/psys_server/src/bxt_spctrl_process_group_cmd_impl.o \
 	   $(MODULES_DIR)/reg_dump/src/reg_dump_generic_bridge.o \
 	   $(MODULES_DIR)/syscom/src/ia_css_syscom.o \
 	   $(MODULES_DIR)/syscom/src/syscom_cell.o \
-	   $(MODULES_DIR)/port/src/send_port.o \
-	   $(MODULES_DIR)/port/src/recv_port.o \
-	   $(MODULES_DIR)/port/src/queue.o \
-	   $(MODULES_DIR)/port/src/send_port.o \
-	   $(MODULES_DIR)/port/src/recv_port.o \
-	   $(MODULES_DIR)/fw_load/src/$(FW_LOAD_IMPL)/ia_css_fw_load.o \
-	   $(MODULES_DIR)/psysapi/dynamic/src/ia_css_psys_process.o \
-	   $(MODULES_DIR)/psysapi/dynamic/src/ia_css_psys_process_group.o \
-	   $(MODULES_DIR)/psysapi/dynamic/src/ia_css_psys_terminal.o \
-	   $(MODULES_DIR)/psysapi/static/src/ia_css_psys_program_group_manifest.o \
-	   $(MODULES_DIR)/psysapi/static/src/ia_css_psys_program_manifest.o \
-	   $(MODULES_DIR)/psysapi/static/src/ia_css_psys_terminal_manifest.o \
-	   $(MODULES_DIR)/psysapi/sim/src/vied_nci_psys_system.o \
-	   $(MODULES_DIR)/psysapi/kernel/src/ia_css_kernel_bitmap.o \
-	   $(MODULES_DIR)/psysapi/data/src/ia_css_program_group_data.o \
-	   $(MODULES_DIR)/psysapi/sim/src/ia_css_psys_sim_data.o \
-	   $(MODULES_DIR)/psysapi/param/src/ia_css_program_group_param.o \
-	   $(MODULES_DIR)/psysapi/dynamic/src/ia_css_psys_process.o \
-	   $(MODULES_DIR)/psysapi/dynamic/src/ia_css_psys_process_group.o \
-	   $(MODULES_DIR)/psysapi/dynamic/src/ia_css_psys_terminal.o \
-	   $(MODULES_DIR)/psysapi/data/src/ia_css_program_group_data.o \
-	   $(MODULES_DIR)/psysapi/sim/src/vied_nci_psys_system.o \
-	   $(MODULES_DIR)/psysapi/sim/src/ia_css_psys_sim_data.o \
-	   $(MODULES_DIR)/psysapi/static/src/ia_css_psys_program_group_manifest.o \
-	   $(MODULES_DIR)/psysapi/static/src/ia_css_psys_program_manifest.o \
-	   $(MODULES_DIR)/psysapi/static/src/ia_css_psys_terminal_manifest.o \
-	   $(MODULES_DIR)/psysapi/device/src/ia_css_psys_device.o \
-	   $(MODULES_DIR)/cell_program_load/src/ia_css_cell_program_load.o \
-	   $(MODULES_DIR)/buffer/src/cpu/ia_css_buffer.o \
-	   $(MODULES_DIR)/buffer/src/cpu/ia_css_output_buffer.o \
-	   $(MODULES_DIR)/buffer/src/cpu/ia_css_input_buffer.o \
-	   $(MODULES_DIR)/buffer/src/cpu/ia_css_shared_buffer.o \
-	   $(MODULES_DIR)/buffer/src/cpu/buffer_access.o \
-	   $(MODULES_DIR)/psys_server/src/bxt_spctrl_process_group_cmd_impl.o \
-	   $(MODULES_DIR)/client_pkg/src/ia_css_client_pkg.o \
-	   $(MODULES_DIR)/pkg_dir/src/ia_css_pkg_dir.o \
-	   $(MODULES_DIR)/vied_parameters/src/ia_css_terminal.o \
-	   $(MODULES_DIR)/vied_parameters/src/ia_css_terminal_manifest.o \
 	   $(MODULES_DIR)/vied_parameters/src/ia_css_terminal.o \
 	   $(MODULES_DIR)/vied_parameters/src/ia_css_terminal_manifest.o
 

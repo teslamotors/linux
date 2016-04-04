@@ -374,6 +374,12 @@ ia_css_process_group_t *ia_css_process_group_create(
 	process_group->size = (uint32_t)ia_css_sizeof_process_group(manifest, param);
 	process_group->ID = ia_css_program_group_manifest_get_program_group_ID(manifest);
 
+	/* Initialize performance measurement fields to zero */
+	process_group->pg_load_start_ts     = 0;
+	process_group->pg_load_cycles       = 0;
+	process_group->pg_init_cycles       = 0;
+	process_group->pg_processing_cycles = 0;
+
 	verifexit(process_group->ID != 0, EINVAL);
 
 	ret = ia_css_process_group_on_create(process_group, manifest, param);
@@ -1105,6 +1111,70 @@ uint8_t ia_css_process_group_get_terminal_count(
 	}
 
 	return terminal_count;
+}
+
+uint32_t ia_css_process_group_get_pg_load_start_ts(
+	const ia_css_process_group_t *process_group)
+{
+	uint32_t pg_load_start_ts = 0;
+
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_load_start_ts(): enter: \n");
+
+	if (process_group != NULL) {
+		pg_load_start_ts = process_group->pg_load_start_ts;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_pg_load_start_ts invalid argument\n");
+	}
+
+	return pg_load_start_ts;
+}
+
+uint32_t ia_css_process_group_get_pg_load_cycles(
+	const ia_css_process_group_t *process_group)
+{
+	uint32_t pg_load_cycles = 0;
+
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_load_cycles(): enter: \n");
+
+	if (process_group != NULL) {
+		pg_load_cycles = process_group->pg_load_cycles;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_pg_load_cycles invalid argument\n");
+	}
+
+	return pg_load_cycles;
+}
+
+uint32_t ia_css_process_group_get_pg_init_cycles(
+	const ia_css_process_group_t *process_group)
+{
+	uint32_t pg_init_cycles = 0;
+
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_init_cycles(): enter: \n");
+
+	if (process_group != NULL) {
+		pg_init_cycles = process_group->pg_init_cycles;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_pg_init_cycles invalid argument\n");
+	}
+
+	return pg_init_cycles;
+}
+
+uint32_t ia_css_process_group_get_pg_processing_cycles(
+	const ia_css_process_group_t *process_group)
+{
+	uint32_t pg_processing_cycles = 0;
+
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_processing_cycles(): enter: \n");
+
+	if (process_group != NULL) {
+		pg_processing_cycles = process_group->pg_processing_cycles;
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_pg_processing_cycles invalid argument\n");
+	}
+
+	return pg_processing_cycles;
 }
 
 ia_css_terminal_t *ia_css_process_group_get_terminal(

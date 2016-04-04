@@ -105,6 +105,42 @@ extern uint8_t ia_css_process_group_get_process_count(
 extern uint8_t ia_css_process_group_get_terminal_count(
 	const ia_css_process_group_t		*process_group);
 
+/*! Get the PG load start timestamp
+
+ @param	process_group[in]		process group object
+
+ @return PG load start timestamp, 0 on error
+ */
+extern uint32_t ia_css_process_group_get_pg_load_start_ts(
+	const ia_css_process_group_t			*process_group);
+
+/*! Get the PG load time in cycles
+
+ @param	process_group[in]		process group object
+
+ @return PG load time in cycles, 0 on error
+ */
+extern uint32_t ia_css_process_group_get_pg_load_cycles(
+	const ia_css_process_group_t			*process_group);
+
+/*! Get the PG init time in cycles
+
+ @param	process_group[in]		process group object
+
+ @return PG init time in cycles, 0 on error
+ */
+extern uint32_t ia_css_process_group_get_pg_init_cycles(
+	const ia_css_process_group_t			*process_group);
+
+/*! Get the PG processing time in cycles
+
+ @param	process_group[in]		process group object
+
+ @return PG processing time in cycles, 0 on error
+ */
+extern uint32_t ia_css_process_group_get_pg_processing_cycles(
+	const ia_css_process_group_t			*process_group);
+
 
 /*! Get the (pointer to) the indexed terminal of the process group object
 
