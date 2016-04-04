@@ -33,10 +33,8 @@
 /* The following provides the sys layer functions */
 #include "ia_css_syscom.h"
 
-#include "ia_css_pkg_dir_iunit.h"
 #include "ia_css_cell.h"
 #include "ipu_device_cell_properties.h"
-#include "ia_css_server_init_host.h"
 
 /* The following provides the tracing functions */
 #include "ia_css_isysapi_trace.h"
@@ -82,34 +80,15 @@ int ia_css_isys_device_open(
 	verifret(config != NULL, EFAULT);
 	verifret(config->driver_sys.num_send_queues <= STREAM_ID_MAX, EINVAL);
 
-	ssid = config->driver_sys.ssid;
-	mmid = config->driver_sys.mmid;
-
-	/* get firmware address from config */
-
-	if (config->driver_sys.pkg_dir_host_address) {
-		/* Internally initialize SPC icache from PKG_DIR */
-		IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Loading program from pkg_dir\n");
-
-		if (ia_css_server_init_host(ssid, mmid,
-			config->driver_sys.pkg_dir_host_address,
-			config->driver_sys.pkg_dir_vied_address,
-			IA_CSS_PKG_DIR_ISYS_INDEX,
-			0, /* secure mode never used internal */
-			0 /* imr_offset not used */) != 0)
-		{
-			IA_CSS_TRACE_0(ISYSAPI, ERROR, "ia_css_server_init_host failed\n");
-			return ENOEXEC;
-		}
-	}
-
 	ctx = (struct ia_css_isys_context *)ia_css_cpu_mem_alloc(sizeof(struct ia_css_isys_context));
 	verifret(ctx != NULL, EFAULT);
 	*context = (HANDLE)ctx;
 
 	/* Copy to the sys config the driver_sys config, and add the internal info (token sizes) */
-	sys.ssid = config->driver_sys.ssid;
-	sys.mmid = config->driver_sys.mmid;
+	ssid = config->driver_sys.ssid;
+	mmid = config->driver_sys.mmid;
+	sys.ssid = ssid;
+	sys.mmid = mmid;
 
 	/* configure input queues: use same queue_size and token_size */
 	sys.num_input_queues = config->driver_sys.num_send_queues;
@@ -148,8 +127,8 @@ int ia_css_isys_device_open(
 	ia_css_cell_start(ssid, SPC0);
 
 	/* Update the context with the id's */
-	ctx->ssid = config->driver_sys.ssid;
-	ctx->mmid = config->driver_sys.mmid;
+	ctx->ssid = ssid;
+	ctx->mmid = mmid;
 
 	ctx->num_send_queues = config->driver_sys.num_send_queues;
 	ctx->send_queue_size = config->driver_sys.send_queue_size;
