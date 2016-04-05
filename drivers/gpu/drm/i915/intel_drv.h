@@ -1651,6 +1651,8 @@ bool intel_digital_port_connected(struct drm_i915_private *dev_priv,
 
 /* intel_dp_aux_backlight.c */
 int intel_dp_aux_init_backlight_funcs(struct intel_connector *intel_connector);
+void intel_dp_aux_backlight_power(struct intel_connector *connector,
+				      bool enable);
 
 /* intel_dp_mst.c */
 int intel_dp_mst_encoder_init(struct intel_digital_port *intel_dig_port, int conn_id);
