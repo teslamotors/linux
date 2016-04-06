@@ -267,9 +267,13 @@ static void isa_set_ffmt(struct v4l2_subdev *sd,
 		struct v4l2_mbus_framefmt *sink_ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg, ISA_PAD_SINK,
 						   fmt->which);
+		struct v4l2_rect *r =
+			__intel_ipu4_isys_get_selection(
+				sd, cfg, V4L2_SEL_TGT_CROP,
+				ISA_PAD_SOURCE, fmt->which);
 
-		ffmt->width = sink_ffmt->width;
-		ffmt->height = sink_ffmt->height;
+		ffmt->width = r->width;
+		ffmt->height = r->height;
 		ffmt->field = sink_ffmt->field;
 		ffmt->code = isa_supported_codes_pad_source[
 			intel_ipu4_isys_subdev_get_pixelorder(sink_ffmt->code)];
@@ -287,7 +291,7 @@ static void isa_set_ffmt(struct v4l2_subdev *sd,
 						   fmt->which);
 		struct v4l2_rect *r =
 			__intel_ipu4_isys_get_selection(
-				sd, cfg, V4L2_SEL_TGT_COMPOSE,
+				sd, cfg, V4L2_SEL_TGT_CROP,
 				ISA_PAD_SOURCE_SCALED, fmt->which);
 
 		ffmt->width = r->width;
@@ -907,11 +911,13 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 		| MEDIA_PAD_FL_MUST_CONNECT;
 	isa->asd.pad[ISA_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE
 		| MEDIA_PAD_FL_MUST_CONNECT;
+	isa->asd.valid_tgts[ISA_PAD_SOURCE].crop = true;
 	isa->asd.pad[ISA_PAD_CONFIG].flags = MEDIA_PAD_FL_SINK
 		| MEDIA_PAD_FL_MUST_CONNECT;
 	isa->asd.pad[ISA_PAD_3A].flags = MEDIA_PAD_FL_SOURCE;
 	isa->asd.pad[ISA_PAD_SOURCE_SCALED].flags = MEDIA_PAD_FL_SOURCE;
 	isa->asd.valid_tgts[ISA_PAD_SOURCE_SCALED].compose = true;
+	isa->asd.valid_tgts[ISA_PAD_SOURCE_SCALED].crop = true;
 
 	isa->asd.isl_mode = INTEL_IPU4_ISL_ISA;
 	isa->asd.supported_codes = isa_supported_codes;
