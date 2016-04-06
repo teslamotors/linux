@@ -28,7 +28,6 @@ typedef enum {
 	VIED_NCI_SP0_ID = 0,
 	VIED_NCI_SP1_ID,
 	VIED_NCI_SP2_ID,
-	VIED_NCI_SP3_ID,
 	VIED_NCI_VP0_ID,
 	VIED_NCI_VP1_ID,
 	VIED_NCI_VP2_ID,
@@ -67,7 +66,6 @@ typedef enum {
 typedef enum {
 	VIED_NCI_SP_CTRL_TYPE_ID = 0,
 	VIED_NCI_SP_SERVER_TYPE_ID,
-	VIED_NCI_SP_FLOAT_TYPE_ID,
 	VIED_NCI_VP_TYPE_ID,
 	VIED_NCI_ACC_PSA_TYPE_ID,
 	VIED_NCI_ACC_ISA_TYPE_ID,
@@ -117,11 +115,10 @@ typedef enum {
 } vied_nci_mem_type_ID_t;
 
 /* Excluding PMEM */
-#define VIED_NCI_N_DATA_MEM_TYPE_ID		(VIED_NCI_N_MEM_TYPE_ID - 1)
+#define VIED_NCI_N_DATA_MEM_TYPE_ID	(VIED_NCI_N_MEM_TYPE_ID - 1)
 
 #define VIED_NCI_N_SP_CTRL_MEM		2
 #define VIED_NCI_N_SP_SERVER_MEM	2
-#define VIED_NCI_N_SP_FLOAT_MEM		2
 #define VIED_NCI_N_VP_MEM		4
 #define VIED_NCI_N_ACC_PSA_MEM		0
 #define VIED_NCI_N_ACC_ISA_MEM		0
@@ -186,7 +183,7 @@ typedef enum {
  * Number of channels per device
  */
 #define VIED_NCI_DEV_CHN_DMA_EXT0_MAX_SIZE		(30)
-#define VIED_NCI_DEV_CHN_GDC_MAX_SIZE			(256) /* Value not final */
+#define VIED_NCI_DEV_CHN_GDC_MAX_SIZE			(4)
 #define VIED_NCI_DEV_CHN_DMA_EXT1_READ_MAX_SIZE		(30)
 #define VIED_NCI_DEV_CHN_DMA_EXT1_WRITE_MAX_SIZE	(20)
 #define VIED_NCI_DEV_CHN_DMA_INTERNAL_MAX_SIZE		(2)
@@ -211,9 +208,11 @@ typedef uint32_t			vied_nci_resource_bitmap_t;
 
 /*
  * Resource specifications
+ * Note that the FAS uses the terminology local/remote memory. In the PSYS API,
+ * these are called internal/external memory.
  */
 
-/* resource spec for internal memory */
+/* resource spec for internal (local) memory */
 struct vied_nci_resource_spec_int_mem_s {
 	vied_nci_resource_id_t		type_id;
 	vied_nci_resource_size_t	size;
@@ -222,7 +221,7 @@ struct vied_nci_resource_spec_int_mem_s {
 
 typedef struct vied_nci_resource_spec_int_mem_s vied_nci_resource_spec_int_mem_t;
 
-/* resource spec for external memory */
+/* resource spec for external (remote) memory */
 struct vied_nci_resource_spec_ext_mem_s {
 	vied_nci_resource_id_t		type_id;
 	vied_nci_resource_size_t	size;
@@ -257,7 +256,5 @@ extern const vied_nci_mem_ID_t vied_nci_cell_mem[VIED_NCI_N_CELL_ID][VIED_NCI_N_
 extern const uint16_t vied_nci_mem_size[VIED_NCI_N_MEM_ID];
 extern const uint16_t vied_nci_mem_element_size[VIED_NCI_N_MEM_TYPE_ID];
 extern const uint16_t vied_nci_dev_chn_size[VIED_NCI_N_DEV_CHN_ID];
-
-extern const vied_nci_resource_spec_t vied_nci_psys_reserved_resources;
 
 #endif /* __VIED_NCI_PSYS_RESOURCE_MODEL_H_INCLUDED__ */

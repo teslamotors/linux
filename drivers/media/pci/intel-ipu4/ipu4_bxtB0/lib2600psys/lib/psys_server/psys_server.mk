@@ -34,7 +34,7 @@ PSYS_SERVER_FW_FILES += $(PSYS_SERVER_SOURCES)/psys_init_fw.c
 PSYS_SERVER_FW_FILES += $(PSYS_SERVER_SOURCES)/psys_process_group_fw.c
 
 # Files that server modules need to use
-PSYS_SERVER_SUPPORT_FILES = $(PSYS_SERVER_SOURCES)/ia_css_psys_server_dev_access_type_conv.c
+PSYS_SERVER_SUPPORT_FILES = $(PSYS_SERVER_SOURCES)/dev_access_conv/$(IPU_SYSVER)/ia_css_psys_server_dev_access_type_conv.c
 
 # Include those to build the release firmware. Otherwise replace by test code.
 PSYS_SERVER_RELEASE_FW_FILES = $(PSYS_SERVER_SOURCES)/psys_server.c
