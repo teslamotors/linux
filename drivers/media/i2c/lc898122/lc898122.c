@@ -480,7 +480,7 @@ static int lc898122_probe(struct i2c_client *client,
 	rval = pm_runtime_get_sync(&client->dev);
 	if (rval >= 0)
 		rval = lc898122_eeprom_read(lc898122_dev, lc898122_dev->buf);
-	pm_runtime_put(&client->dev);
+	pm_runtime_put_sync(&client->dev);
 
 	if (rval)
 		goto err_cleanup;
