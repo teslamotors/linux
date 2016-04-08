@@ -843,6 +843,51 @@ void intel_ipu4_isys_prepare_firmware_stream_cfg_default(
 	pin_info->send_irq = 1;
 }
 
+static unsigned int intel_ipu4_isys_get_compression_scheme(u32 code)
+{
+	switch (code) {
+	case MEDIA_BUS_FMT_SBGGR10_DPCM8_1X8:
+	case MEDIA_BUS_FMT_SGBRG10_DPCM8_1X8:
+	case MEDIA_BUS_FMT_SGRBG10_DPCM8_1X8:
+	case MEDIA_BUS_FMT_SRGGB10_DPCM8_1X8:
+		return 3;
+	default:
+		return 0;
+	}
+}
+
+static unsigned int get_comp_format(u32 code)
+{
+	unsigned int predictor = 0; /* currently hard coded */
+	unsigned int udt = intel_ipu4_isys_mbus_code_to_mipi(code);
+	unsigned int scheme = intel_ipu4_isys_get_compression_scheme(code);
+
+	/* if data type is not user defined return here */
+	if ((udt < INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_USER_DEF(1))
+		 || (udt > INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_USER_DEF(8)))
+		return 0;
+
+	/*
+	 * For each user defined type (1..8) there is configuration bitfield for
+	 * decompression.
+	 *
+	 * | bit 3     | bits 2:0 |
+	 * | predictor | scheme   |
+	 * compression schemes:
+	 * 000 = no compression
+	 * 001 = 10 - 6 - 10
+	 * 010 = 10 - 7 - 10
+	 * 011 = 10 - 8 - 10
+	 * 100 = 12 - 6 - 12
+	 * 101 = 12 - 7 - 12
+	 * 110 = 12 - 8 - 12
+	 */
+
+	return ((predictor << 3) | scheme) <<
+		 ((udt - INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_USER_DEF(1)) * 4);
+}
+
+
 /* Create stream and start it using the CSS library API. */
 static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 				 struct intel_ipu4_isys_buffer_list *bl)
@@ -870,7 +915,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	rval = get_external_facing_format(ip, &source_fmt);
 	if (rval)
 		return rval;
-
+	stream_cfg.compfmt = get_comp_format(source_fmt.format.code);
 	stream_cfg.input_pins[0].input_res.width = source_fmt.format.width;
 	stream_cfg.input_pins[0].input_res.height = source_fmt.format.height;
 	stream_cfg.input_pins[0].dt =

@@ -35,7 +35,31 @@
 #include "intel-ipu4-trace-event.h"
 
 
-static const uint32_t csi2_supported_codes_pad[] = {
+static const uint32_t csi2_supported_codes_pad_sink[] = {
+	MEDIA_BUS_FMT_RGB565_1X16,
+	MEDIA_BUS_FMT_RGB888_1X24,
+	MEDIA_BUS_FMT_UYVY8_1X16,
+	MEDIA_BUS_FMT_YUYV8_1X16,
+	MEDIA_BUS_FMT_SBGGR10_1X10,
+	MEDIA_BUS_FMT_SGBRG10_1X10,
+	MEDIA_BUS_FMT_SGRBG10_1X10,
+	MEDIA_BUS_FMT_SRGGB10_1X10,
+	MEDIA_BUS_FMT_SBGGR10_DPCM8_1X8,
+	MEDIA_BUS_FMT_SGBRG10_DPCM8_1X8,
+	MEDIA_BUS_FMT_SGRBG10_DPCM8_1X8,
+	MEDIA_BUS_FMT_SRGGB10_DPCM8_1X8,
+	MEDIA_BUS_FMT_SBGGR12_1X12,
+	MEDIA_BUS_FMT_SGBRG12_1X12,
+	MEDIA_BUS_FMT_SGRBG12_1X12,
+	MEDIA_BUS_FMT_SRGGB12_1X12,
+	MEDIA_BUS_FMT_SBGGR8_1X8,
+	MEDIA_BUS_FMT_SGBRG8_1X8,
+	MEDIA_BUS_FMT_SGRBG8_1X8,
+	MEDIA_BUS_FMT_SRGGB8_1X8,
+	0,
+};
+
+static const uint32_t csi2_supported_codes_pad_source[] = {
 	MEDIA_BUS_FMT_RGB565_1X16,
 	MEDIA_BUS_FMT_RGB888_1X24,
 	MEDIA_BUS_FMT_UYVY8_1X16,
@@ -61,8 +85,8 @@ static const uint32_t csi2_supported_codes_pad_meta[] = {
 };
 
 static const uint32_t *csi2_supported_codes[] = {
-	csi2_supported_codes_pad,
-	csi2_supported_codes_pad,
+	csi2_supported_codes_pad_sink,
+	csi2_supported_codes_pad_source,
 	csi2_supported_codes_pad_meta,
 };
 
@@ -531,10 +555,33 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_pad_config *cfg,
 			  struct v4l2_subdev_format *fmt)
 {
+	struct v4l2_mbus_framefmt *ffmt =
+		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->which);
+
 	if (fmt->format.field != V4L2_FIELD_ALTERNATE)
 		fmt->format.field = V4L2_FIELD_NONE;
 
-	if (fmt->pad == CSI2_PAD_META) {
+	switch (fmt->pad) {
+	case CSI2_PAD_SINK:
+		*ffmt = fmt->format;
+		intel_ipu4_isys_subdev_fmt_propagate(
+			sd, cfg, &fmt->format, NULL,
+			INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SINK_FMT, fmt->pad,
+			fmt->which);
+		break;
+	case CSI2_PAD_SOURCE: {
+		struct v4l2_mbus_framefmt *sink_ffmt =
+			__intel_ipu4_isys_get_ffmt(sd, cfg, CSI2_PAD_SINK,
+						   fmt->which);
+		ffmt->width = sink_ffmt->width;
+		ffmt->height = sink_ffmt->height;
+		ffmt->field = sink_ffmt->field;
+		ffmt->code =
+			intel_ipu4_isys_subdev_code_to_uncompressed(
+				sink_ffmt->code);
+		break;
+		}
+	case CSI2_PAD_META: {
 		struct v4l2_mbus_framefmt *ffmt =
 			__intel_ipu4_isys_get_ffmt(
 				sd, cfg, fmt->pad, fmt->which);
@@ -561,9 +608,11 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 			ffmt->height = entry.size.two_dim.height;
 			ffmt->code = entry.pixelcode;
 			ffmt->field = V4L2_FIELD_NONE;
+			}
+		break;
 		}
-	} else {
-		intel_ipu4_isys_subdev_set_ffmt_default(sd, cfg, fmt);
+	default:
+		BUG_ON(1);
 	}
 }
 

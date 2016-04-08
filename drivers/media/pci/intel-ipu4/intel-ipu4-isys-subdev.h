@@ -35,7 +35,7 @@
 #define INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_RAW10	0x2b
 #define INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_RAW12	0x2c
 #define INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_RAW14	0x2d
-#define INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_USER_DEF(i)	(0x30 + (i)) /* 0..7 */
+#define INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_USER_DEF(i)	(0x30 + (i)-1) /* 1-8 */
 
 #define FMT_ENTRY (struct intel_ipu4_isys_fmt_entry [])
 
@@ -110,6 +110,7 @@ struct v4l2_mbus_framefmt *__intel_ipu4_isys_get_ffmt(struct v4l2_subdev *sd,
 
 unsigned int intel_ipu4_isys_mbus_code_to_bpp(u32 code);
 unsigned int intel_ipu4_isys_mbus_code_to_mipi(u32 code);
+u32 intel_ipu4_isys_subdev_code_to_uncompressed(u32 sink_code);
 
 enum intel_ipu4_isys_subdev_pixelorder
 intel_ipu4_isys_subdev_get_pixelorder(u32 code);
