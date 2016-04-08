@@ -775,6 +775,17 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	writel(data, isp->base + BUTTRESS_REG_FW_SOURCE_BASE_HI);
 
 	/*
+	  * Before communicate with CSE, do a rpc reset to prepare
+	  * CSE
+	  */
+	rval = intel_ipu4_buttress_ipc_reset(
+		isp, INTEL_IPU4_BUTTRESS_IPC_CSE);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "IPC reset protocol failed!\n");
+		goto iunit_power_off;
+	}
+
+	/*
 	 * Write boot_load into IU2CSEDATA0
 	 * Write sizeof(boot_load) | 0x2 << CLIENT_ID to
 	 * IU2CSEDB.IU2CSECMD and set IU2CSEDB.IU2CSEBUSY as
@@ -1659,17 +1670,8 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 	if (isp->secure_mode != secure_mode_enable)
 		dev_warn(&isp->pdev->dev, "Unable to set secure mode!\n");
 
-	if (isp->secure_mode) {
-		dev_info(&isp->pdev->dev, "IPU4 in secure mode\n");
-		rval = intel_ipu4_buttress_ipc_reset(
-			isp, INTEL_IPU4_BUTTRESS_IPC_CSE);
-		if (rval) {
-			dev_err(&isp->pdev->dev, "IPC reset protocol failed!\n");
-			return rval;
-		}
-	} else {
-		dev_info(&isp->pdev->dev, "IPU4 in non-secure mode\n");
-	}
+	dev_info(&isp->pdev->dev, "IPU4 in %s mode\n",
+			isp->secure_mode ? "secure" : "non-secure");
 
 	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_CLEAR);
 	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_ENABLE);
