@@ -338,6 +338,25 @@ void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
 }
 EXPORT_SYMBOL(intel_ipu4_configure_spc);
 
+void intel_ipu4_configure_vc_mechanism(struct intel_ipu4_device *isp)
+{
+	u32 val = readl(isp->base + BUTTRESS_REG_BTRS_CTRL);
+
+	if (INTEL_IPU4_BTRS_ARB_STALL_MODE_VC0 ==
+			INTEL_IPU4_BTRS_ARB_MODE_TYPE_STALL)
+		val |= BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC0;
+	else
+		val &= ~BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC0;
+
+	if (INTEL_IPU4_BTRS_ARB_STALL_MODE_VC1 ==
+			INTEL_IPU4_BTRS_ARB_MODE_TYPE_STALL)
+		val |= BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC1;
+	else
+		val &= ~BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC1;
+
+	writel(val, isp->base + BUTTRESS_REG_BTRS_CTRL);
+}
+
 static const struct intel_ipu4_isys_internal_pdata isys_ipdata_a0 = {
 	.csi2 = {
 		.nports = INTEL_IPU4_ISYS_MAX_CSI2_PORTS,
@@ -770,23 +789,8 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	}
 
 	/* Configure the arbitration mechanisms for VC requests */
-	if (is_intel_ipu4_hw_bxt_b0(isp)) {
-		u32 val = readl(isp->base + BUTTRESS_REG_BTRS_CTRL);
-
-		if (INTEL_IPU4_BTRS_ARB_STALL_MODE_VC0 ==
-				INTEL_IPU4_BTRS_ARB_MODE_TYPE_STALL)
-			val |= BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC0;
-		else
-			val &= ~BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC0;
-
-		if (INTEL_IPU4_BTRS_ARB_STALL_MODE_VC1 ==
-				INTEL_IPU4_BTRS_ARB_MODE_TYPE_STALL)
-			val |= BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC1;
-		else
-			val &= ~BUTTRESS_REG_BTRS_CTRL_STALL_MODE_VC1;
-
-		writel(val, isp->base + BUTTRESS_REG_BTRS_CTRL);
-	}
+	if (is_intel_ipu4_hw_bxt_b0(isp))
+		intel_ipu4_configure_vc_mechanism(isp);
 
 	pm_runtime_put_noidle(&pdev->dev);
 	pm_runtime_allow(&pdev->dev);
@@ -833,12 +837,26 @@ static int intel_ipu4_suspend(struct device *dev)
 
 static int intel_ipu4_resume(struct device *dev)
 {
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct intel_ipu4_device *isp = pci_get_drvdata(pdev);
+
+	/* Configure the arbitration mechanisms for VC requests */
+	if (is_intel_ipu4_hw_bxt_b0(isp))
+		intel_ipu4_configure_vc_mechanism(isp);
+
+	intel_ipu4_buttress_set_secure_mode(isp);
+	isp->secure_mode = intel_ipu4_buttress_get_secure_mode(isp);
+	dev_info(dev, "IPU4 in %s mode\n",
+			isp->secure_mode ? "secure" : "non-secure");
+
+	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_CLEAR);
+	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_ENABLE);
+
 	return 0;
 }
 
 static const struct dev_pm_ops intel_ipu4_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(&intel_ipu4_suspend, &intel_ipu4_resume)
-	SET_RUNTIME_PM_OPS(&intel_ipu4_suspend, &intel_ipu4_resume, NULL)
 };
 
 #define INTEL_IPU4_PM (&intel_ipu4_pm_ops)

@@ -37,13 +37,6 @@
 #define BOOTLOADER_STATUS_OFFSET	0x8000
 #define BOOTLOADER_MAGIC_KEY		0xb00710ad
 
-#define BUTTRESS_IRQS		(BUTTRESS_ISR_IPC_FROM_CSE_IS_WAITING | \
-				 BUTTRESS_ISR_IPC_FROM_ISH_IS_WAITING |	\
-				 BUTTRESS_ISR_IPC_EXEC_DONE_BY_CSE |	\
-				 BUTTRESS_ISR_IPC_EXEC_DONE_BY_ISH |	\
-				 BUTTRESS_ISR_IS_IRQ |			\
-				 BUTTRESS_ISR_PS_IRQ)
-
 #define ENTRY	BUTTRESS_IU2CSECSR_IPC_PEER_COMP_ACTIONS_RST_PHASE1
 #define EXIT	BUTTRESS_IU2CSECSR_IPC_PEER_COMP_ACTIONS_RST_PHASE2
 #define QUERY	BUTTRESS_IU2CSECSR_IPC_PEER_QUERIED_IP_COMP_ACTIONS_RST_PHASE
@@ -567,8 +560,9 @@ void intel_ipu4_buttress_set_secure_mode(struct intel_ipu4_device *isp)
 				"update security control register failed\n");
 	}
 }
+EXPORT_SYMBOL_GPL(intel_ipu4_buttress_set_secure_mode);
 
-static bool intel_ipu4_buttress_get_secure_mode(struct intel_ipu4_device *isp)
+bool intel_ipu4_buttress_get_secure_mode(struct intel_ipu4_device *isp)
 {
 	u32 val;
 

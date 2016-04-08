@@ -22,6 +22,13 @@
 #define INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS	3
 #define INTEL_IPU4_BUTTRESS_NUM_OF_PLL_CKS	3
 
+#define BUTTRESS_IRQS		(BUTTRESS_ISR_IPC_FROM_CSE_IS_WAITING | \
+				 BUTTRESS_ISR_IPC_FROM_ISH_IS_WAITING |	\
+				 BUTTRESS_ISR_IPC_EXEC_DONE_BY_CSE |	\
+				 BUTTRESS_ISR_IPC_EXEC_DONE_BY_ISH |	\
+				 BUTTRESS_ISR_IS_IRQ |			\
+				 BUTTRESS_ISR_PS_IRQ)
+
 struct intel_ipu4_buttress_ctrl {
 	u32 freq_ctl, pwr_sts_shift, pwr_sts_mask, pwr_sts_on,
 		pwr_sts_off;
@@ -74,6 +81,8 @@ void intel_ipu4_buttress_add_psys_constraint(
 void intel_ipu4_buttress_remove_psys_constraint(
 	struct intel_ipu4_device *isp,
 	struct intel_ipu4_buttress_constraint *constraint);
+void intel_ipu4_buttress_set_secure_mode(struct intel_ipu4_device *isp);
+bool intel_ipu4_buttress_get_secure_mode(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_start_tsc_sync(struct intel_ipu4_device *isp);
 int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val);
@@ -87,6 +96,5 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp);
 void intel_ipu4_buttress_exit(struct intel_ipu4_device *isp);
 void intel_ipu4_buttress_csi_port_config(struct intel_ipu4_device *isp,
 					u32 legacy, u32 combo);
-
 
 #endif /* INTEL_IPU4_BUTTRESS_H */
