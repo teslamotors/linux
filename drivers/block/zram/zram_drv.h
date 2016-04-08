@@ -135,7 +135,7 @@ static inline void zram_unlock_table(struct zram_table_entry *table)
 	bit_spin_unlock(ZRAM_ACCESS, &table->value);
 }
 
-static inline void zram_meta_init_locks(struct zram_meta *meta, u64 disksize) { }
+static inline void zram_meta_init_table_locks(struct zram_meta *meta, u64 disksize) { }
 #else /* CONFIG_PREEMPT_RT_BASE */
 static inline void zram_lock_table(struct zram_table_entry *table)
 {
