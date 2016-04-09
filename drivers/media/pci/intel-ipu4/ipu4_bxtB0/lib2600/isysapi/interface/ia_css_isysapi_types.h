@@ -152,6 +152,7 @@ struct ia_css_isys_cropping {
  * @src: Stream source index e.g. MIPI_generator_0, CSI2-rx_1
  * @vc: MIPI Virtual Channel (up to 4 virtual per physical channel)
  * @isl_use: indicates whether stream requires ISL and how
+ * @compfmt: de-compression setting for User Defined Data
  * @isa_cfg: details about what ACCs are active if ISA is used
  * @crop: defines cropping resolution for the
  * maximum number of input pins which can be cropped,
@@ -170,6 +171,7 @@ struct ia_css_isys_stream_cfg_data {
 	enum ia_css_isys_stream_source src;
 	enum ia_css_isys_mipi_vc vc;
 	enum ia_css_isys_isl_use isl_use;
+	unsigned int compfmt;
 	struct ia_css_isys_isa_cfg isa_cfg;
 	struct ia_css_isys_cropping crop[N_IA_CSS_ISYS_CROPPING_LOCATION];
 	unsigned int send_irq_sof_discarded;

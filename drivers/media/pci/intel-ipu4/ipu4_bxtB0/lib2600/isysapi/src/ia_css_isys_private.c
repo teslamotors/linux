@@ -375,6 +375,7 @@ STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(const struct ia_css_isys_st
 	stream_cfg_data_css->src = stream_cfg_data_host->src;
 	stream_cfg_data_css->vc = stream_cfg_data_host->vc;
 	stream_cfg_data_css->isl_use = stream_cfg_data_host->isl_use;
+	stream_cfg_data_css->compfmt = stream_cfg_data_host->compfmt;
 	switch (stream_cfg_data_host->isl_use) {
 		case IA_CSS_ISYS_USE_SINGLE_ISA:
 		isa_cfg_host_to_css(&stream_cfg_data_host->isa_cfg, &stream_cfg_data_css->isa_cfg);
