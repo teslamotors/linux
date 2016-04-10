@@ -284,7 +284,8 @@ enum skl_ipc_module_msg {
 	IPC_MOD_BIND = 5,
 	IPC_MOD_UNBIND = 6,
 	IPC_MOD_SET_DX = 7,
-	IPC_MOD_SET_D0IX = 8
+	IPC_MOD_SET_D0IX = 8,
+	IPC_MOD_DELETE_INSTANCE = 11
 };
 
 void skl_ipc_tx_data_copy(struct ipc_message *msg, char *tx_data,
@@ -801,6 +802,33 @@ int skl_ipc_set_dx(struct sst_generic_ipc *ipc, u8 instance_id,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(skl_ipc_set_dx);
+
+int skl_ipc_delete_instance(struct sst_generic_ipc *ipc,
+			struct skl_ipc_init_instance_msg *msg)
+{
+	struct skl_ipc_header header = {0};
+	u64 *ipc_header = (u64 *)(&header);
+	int ret;
+
+	header.primary = IPC_MSG_TARGET(IPC_MOD_MSG);
+	header.primary |= IPC_MSG_DIR(IPC_MSG_REQUEST);
+	header.primary |= IPC_GLB_TYPE(IPC_MOD_DELETE_INSTANCE);
+	header.primary |= IPC_MOD_INSTANCE_ID(msg->instance_id);
+	header.primary |= IPC_MOD_ID(msg->module_id);
+
+	dev_dbg(ipc->dev, "In %s primary =%x ext=%x\n", __func__,
+			 header.primary, header.extension);
+	ret = sst_ipc_tx_message_wait(ipc, *ipc_header, NULL,
+			msg->param_data_size, NULL, 0);
+
+	if (ret < 0) {
+		dev_err(ipc->dev, "ipc: delete instance failed\n");
+		return ret;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(skl_ipc_delete_instance);
 
 int skl_ipc_init_instance(struct sst_generic_ipc *ipc,
 		struct skl_ipc_init_instance_msg *msg, void *param_data)

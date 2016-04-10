@@ -191,6 +191,9 @@ int skl_ipc_restore_pipeline(struct sst_generic_ipc *ipc, u8 instance_id);
 int skl_ipc_init_instance(struct sst_generic_ipc *sst_ipc,
 		struct skl_ipc_init_instance_msg *msg, void *param_data);
 
+int skl_ipc_delete_instance(struct sst_generic_ipc *sst_ipc,
+				struct skl_ipc_init_instance_msg *msg);
+
 int skl_ipc_bind_unbind(struct sst_generic_ipc *sst_ipc,
 		struct skl_ipc_bind_unbind_msg *msg);
 
