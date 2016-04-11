@@ -252,6 +252,7 @@ struct intel_ipu4_isys_internal_pdata {
 	struct intel_ipu4_isys_internal_csi2_be_pdata csi2_be;
 	struct intel_ipu4_hw_variants hw_variant;
 	u32 num_parallel_streams;
+	u32 isys_dma_overshoot;
 };
 
 struct intel_ipu4_isys_pdata {

@@ -76,6 +76,13 @@
 #define INTEL_IPU4_ISYS_NUM_STREAMS_B0		4 /* Max 6 */
 
 /*
+ * ISYS DMA can overshoot. For higher resolutions over allocation is one line
+ * but it must be at minimum 1024 bytes (BXT). Value could be different in
+ * different versions / generations thus provide it via platform data.
+ */
+#define INTEL_IPU4_ISYS_OVERALLOC_MIN		1024
+
+/*
  * The following definitions are encoded to the media_device's model field so
  * that the software components which uses IPU4 driver can get the hw stepping
  * information.

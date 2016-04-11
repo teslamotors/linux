@@ -409,10 +409,15 @@ const struct intel_ipu4_isys_pixelformat
 	 * is a power of two, and a line should be transferred as few units
 	 * as possible. The result is that up to line length more data than
 	 * the image size may be transferred to memory after the image.
+	 * Another limition is the GDA allocation unit size. For low
+	 * resolution it gives a bigger number. Use larger one to avoid
+	 * memory corruption.
 	 */
 	mpix->plane_fmt[0].sizeimage =
 		max(mpix->plane_fmt[0].sizeimage,
-		    mpix->plane_fmt[0].bytesperline * (mpix->height + 1));
+		    mpix->plane_fmt[0].bytesperline * mpix->height +
+		    max(mpix->plane_fmt[0].bytesperline,
+			av->isys->pdata->ipdata->isys_dma_overshoot));
 
 	if (mpix->field == V4L2_FIELD_ANY)
 		mpix->field = V4L2_FIELD_NONE;
