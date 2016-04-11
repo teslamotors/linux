@@ -54,14 +54,16 @@
 #define CRL_IMPACTS_MODE_SELECTION		(1 << 2)
 
 /*
- * In crl_dynamic_value::operand_type is denoted by bits 6 and 7
- * 00 -> crl_dynamic_value:operand_value is a constant
- * 01 -> crl_dynamic_value:operand_value is a referene to variable
- * 10 -> crl_dynamic_value:operand_value is a v4l2_ctrl value
+ * In crl_dynamic_entity::entity_type is denoted by bits 6 and 7
+ * 0 -> crl_dynamic_entity:entity_value is a constant
+ * 1 -> crl_dynamic_entity:entity_value is a referene to variable
+ * 2 -> crl_dynamic_entity:entity_value is a v4l2_ctrl value
  */
-#define CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST	0x00
-#define CRL_DYNAMIC_VAL_OPERAND_TYPE_VAR_REF	0x40
-#define CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL	0x80
+enum crl_dynamic_entity_type {
+	CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST = 0,
+	CRL_DYNAMIC_VAL_OPERAND_TYPE_VAR_REF,
+	CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+};
 
 /*
  * For some combo device which has some devices inside itself with different
@@ -162,7 +164,7 @@ enum crl_pwr_ent_type {
 };
 
 struct crl_dynamic_entity {
-	u8 entity_type;
+	enum crl_dynamic_entity_type entity_type;
 	u32 entity_val;
 };
 
