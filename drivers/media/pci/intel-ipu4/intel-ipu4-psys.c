@@ -54,10 +54,15 @@
 #include "intel-ipu4-trace-event.h"
 
 static bool early_pg_transfer;
+static bool enable_concurrency = true;
 module_param(early_pg_transfer, bool,
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+module_param(enable_concurrency, bool,
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 MODULE_PARM_DESC(early_pg_transfer,
 			"Copy PGs back to user after resource allocation");
+MODULE_PARM_DESC(enable_concurrency,
+			"Enable concurrent execution of program groups");
 
 #define INTEL_IPU4_PSYS_NUM_DEVICES	4
 #define INTEL_IPU4_PSYS_WORK_QUEUE	system_power_efficient_wq
@@ -896,6 +901,12 @@ static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 		WARN_ON(1);
 		return;
 	}
+
+	/* If concurrency is disabled and there are already
+	 * commands running on the PSYS, do not run new commands.
+	 */
+	if (!enable_concurrency && psys->active_kcmds > 0)
+		return;
 
 	for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
 		int removed;
