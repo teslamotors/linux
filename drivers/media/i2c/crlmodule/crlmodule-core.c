@@ -338,6 +338,18 @@ static int __crlmodule_parse_dynamic_entity(struct crl_sensor *sensor,
 	case CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL:
 		return __crlmodule_get_ctrl_value(sensor,
 						  entity.entity_val, val);
+	case CRL_DYNAMIC_VAL_OPERAND_TYPE_REG_VAL: {
+		struct crl_register_read_rep reg;
+
+		/* Note: Only 8bit registers are supported. */
+		reg.address = entity.entity_val;
+		reg.len = CRL_REG_LEN_08BIT;
+		reg.mask = 0xff;
+		reg.dev_i2c_addr = CRL_I2C_ADDRESS_NO_OVERRIDE;
+		return crlmodule_read_reg(sensor, reg, val);
+	}
+	default:
+		break;
 	};
 
 	return -EINVAL;

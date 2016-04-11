@@ -58,11 +58,13 @@
  * 0 -> crl_dynamic_entity:entity_value is a constant
  * 1 -> crl_dynamic_entity:entity_value is a referene to variable
  * 2 -> crl_dynamic_entity:entity_value is a v4l2_ctrl value
+ * 3 -> crl_dynamic_entity:entity_value is a 8 bit register address
  */
 enum crl_dynamic_entity_type {
 	CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST = 0,
 	CRL_DYNAMIC_VAL_OPERAND_TYPE_VAR_REF,
 	CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+	CRL_DYNAMIC_VAL_OPERAND_TYPE_REG_VAL, /* Only 8bit registers */
 };
 
 /*
