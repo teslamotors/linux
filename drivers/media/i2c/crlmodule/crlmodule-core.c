@@ -677,13 +677,28 @@ static void __crlmodule_update_selection_impact_flags(
 		sensor->ext_ctrl_impacts_mode_selection = true;
 }
 
+static struct crl_v4l2_ctrl *__crlmodule_find_crlctrl(
+						struct crl_sensor *sensor,
+						struct v4l2_ctrl *ctrl)
+{
+	struct crl_v4l2_ctrl *crl_ctrl;
+	unsigned int i;
+
+	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++) {
+		crl_ctrl = &sensor->v4l2_ctrl_bank[i];
+		if (crl_ctrl->ctrl == ctrl)
+			return crl_ctrl;
+	}
+
+	return NULL;
+}
+
 static int crlmodule_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct crl_sensor *sensor = container_of(ctrl->handler,
 			   struct crl_subdev, ctrl_handler)->sensor;
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	struct crl_v4l2_ctrl *crl_ctrl = NULL;
-	unsigned int i;
 	int ret = 0;
 
 	dev_dbg(&client->dev, "%s id:%d val:%d\n", __func__, ctrl->id,
@@ -702,16 +717,10 @@ static int crlmodule_set_ctrl(struct v4l2_ctrl *ctrl)
 	 * This is needed because all the register information is associated
 	 * with the crlmodule's wrapper v4l2ctrl.
 	 */
-	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++) {
-		crl_ctrl = &sensor->v4l2_ctrl_bank[i];
-		if (crl_ctrl->ctrl == ctrl)
-			break;
-	}
-
-	/* Not found. TODO! Check will this ever happen? */
-	if (i >= sensor->sensor_ds->v4l2_ctrls_items) {
-		dev_err(&client->dev, "%s ctrl not supported\n", __func__);
-		return -EINVAL;
+	crl_ctrl = __crlmodule_find_crlctrl(sensor, ctrl);
+	if (!crl_ctrl) {
+		dev_err(&client->dev, "%s ctrl :0x%x not supported\n",
+				      __func__, ctrl->id);
 	}
 
 	dev_dbg(&client->dev, "%s id:0x%x name:%s\n", __func__, ctrl->id,
@@ -781,8 +790,61 @@ out:
 	return ret;
 }
 
+static int crlmodule_get_ctrl(struct v4l2_ctrl *ctrl)
+{
+	struct crl_sensor *sensor = container_of(ctrl->handler,
+			   struct crl_subdev, ctrl_handler)->sensor;
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
+	struct crl_v4l2_ctrl *crl_ctrl;
+	struct crl_dynamic_register_access *reg;
+
+	/*
+	 * Need to find the corresponding crlmodule wrapper for this v4l2_ctrl.
+	 * This is needed because all the register information is associated
+	 * with the crlmodule's wrapper v4l2ctrl.
+	 */
+	crl_ctrl = __crlmodule_find_crlctrl(sensor, ctrl);
+	if (!crl_ctrl) {
+		dev_err(&client->dev, "%s ctrl :0x%x not supported\n",
+				      __func__, ctrl->id);
+		return -EINVAL;
+	}
+
+	dev_dbg(&client->dev, "%s id:0x%x name:%s\n", __func__, ctrl->id,
+			      crl_ctrl->name);
+
+	/* cannot handle if the V4L2_CTRL_FLAG_READ_ONLY flag is not set */
+	if (!(ctrl->flags & V4L2_CTRL_FLAG_READ_ONLY)) {
+		dev_err(&client->dev, "%s Control id:0x%x is not read only\n",
+				      __func__, ctrl->id);
+		return -EINVAL;
+	}
+
+	/*
+	 * Found the crl control wrapper. Use the dynamic entity information
+	 * to calculate the value for this control. For get control, there
+	 * could be only one item in the crl_dynamic_register_access. ctrl->
+	 * regs_items must be 1. Also the crl_dynamic_register_access.address
+	 * and crl_dynamic_register_access.len are not used.
+	 * Instead the values to be found or calculated need to be encoded into
+	 * crl_dynamic_register_access.crl_arithmetic_ops. It has possibility
+	 * to read from registers, existing control values and simple arithmetic
+	 * operations etc.
+	 */
+	if (crl_ctrl->regs_items > 1)
+		dev_warn(&client->dev,
+			 "%s multiple dynamic entities, will skip the rest\n",
+			 __func__);
+	reg = &crl_ctrl->regs[0];
+
+	/* Get the value associated with the dynamic entity */
+	return  __crlmodule_calc_dynamic_entity_values(sensor, reg->ops_items,
+						       reg->ops, &ctrl->val);
+}
+
 static const struct v4l2_ctrl_ops crlmodule_ctrl_ops = {
 	.s_ctrl = crlmodule_set_ctrl,
+	.g_volatile_ctrl = crlmodule_get_ctrl,
 };
 
 static struct v4l2_ctrl_handler *__crlmodule_get_sd_ctrl_handler(

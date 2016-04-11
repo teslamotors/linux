@@ -194,6 +194,27 @@ struct crl_register_read_rep {
 	u16 dev_i2c_addr;
 };
 
+/*
+ * crl_dynamic_register_access is used mainly in the v4l2_ctrl context.
+ * This is intended to provide some generic arithmetic operations on the values
+ * to be written to a control's register or on the values read from a register.
+ * These arithmetic operations are controlled using struct crl_arithmetic_ops.
+ *
+ * One important information is that this structure behave differently for the
+ * set controls and volatile get controls.
+ *
+ * For the set control operation, the usage of the members are straight forward.
+ * The set control can result into multiple register write operations. Hence
+ * there can be more than one crl_dynamic_register_access entries associated
+ * with a control which results into separate register writes.
+ *
+ * But for the volatile get control operation, where a v4l2 control is used
+ * to query read only information from the sensor, there could be only one
+ * crl_dynamic_register_access entry. Because the result of a get control is
+ * a single value. crl_dynamic_register_access.address, len and mask values are
+ * not used in volatile get control context. Instead all the needed information
+ * must be encoded into member -> ops (struct crl_arithmetic_ops)
+ */
 struct crl_dynamic_register_access {
 	u16 address;
 	u8 len;
@@ -305,6 +326,13 @@ union crl_v4l2_ctrl_data_types {
 	struct crl_v4l2_ctrl_data_int_menu v4l2_int_menu;
 };
 
+/*
+ * Please note a difference in the usage of "regs" member in case of a
+ * volatile get control for read only purpose. Please check the
+ * "struct crl_dynamic_register_access" declaration comments for more details.
+ *
+ * Read only controls must have "flags" V4L2_CTRL_FLAG_READ_ONLY set.
+ */
 struct crl_v4l2_ctrl {
 	enum crl_subdev_type sd_type;
 	enum crl_v4l2ctrl_op_type op_type;
