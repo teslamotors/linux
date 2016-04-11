@@ -26,20 +26,11 @@
 #define CRL_SD_BINNER_INDEX			1
 #define CRL_SD_SCALER_INDEX			2
 
-/*
- * Flag denote to register update mode in CRL's v4l2 control handler
- * Denotes either replace register value completely or modify
- */
-#define CRL_REG_UPDATE_MODE_REPLACE		0
-#define CRL_REG_UPDATE_MODE_MODIFY		1
-
 #define CRL_REG_LEN_08BIT			1
 #define CRL_REG_LEN_16BIT			2
 #define CRL_REG_LEN_24BIT			3
 #define CRL_REG_LEN_32BIT			4
 
-
-/* TODO replace this with reg_update_mode flags */
 #define CRL_REG_READ_AND_UPDATE			(1 << 3)
 #define CRL_REG_LEN_READ_MASK			0x07
 #define CRL_REG_LEN_DELAY			0x10
@@ -320,7 +311,6 @@ struct crl_v4l2_ctrl {
 	union crl_v4l2_ctrl_data_types data;
 	unsigned long flags;
 	u32 impact; /* If this control impact any config selection */
-	u8 reg_update_mode;
 	struct v4l2_ctrl *ctrl;
 	unsigned int regs_items;
 	struct crl_dynamic_register_access *regs;
