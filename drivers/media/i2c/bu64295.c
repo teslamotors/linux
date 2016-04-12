@@ -204,10 +204,20 @@ static int bu64295_probe(struct i2c_client *client,
 	rval = bu64295_init_controls(bu64295_dev);
 	if (rval)
 		goto err_cleanup;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	rval = media_entity_init(&bu64295_dev->subdev_vcm.entity, 0, NULL, 0);
+#else
+	rval = media_entity_pads_init(&bu64295_dev->subdev_vcm.entity, 0,
+				      NULL);
+#endif
 	if (rval)
 		goto err_cleanup;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	bu64295_dev->subdev_vcm.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_LENS;
+#else
+	bu64295_dev->subdev_vcm.entity.function = MEDIA_ENT_F_LENS;
+#endif
 	bu64295_dev->vcm_mode = BU64295_DIRECT;
 
 	return 0;
