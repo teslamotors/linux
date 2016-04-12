@@ -1415,6 +1415,12 @@ int intel_ipu4_isys_video_init(struct intel_ipu4_isys_video *av,
 	set_bit(V4L2_FL_USES_V4L2_FH, &av->vdev.flags);
 	video_set_drvdata(&av->vdev, av);
 
+	mutex_lock(&av->mutex);
+
+	rval = video_register_device(&av->vdev, VFL_TYPE_GRABBER, -1);
+	if (rval)
+		goto out_media_entity_cleanup;
+
 	if (pad_flags & MEDIA_PAD_FL_SINK)
 		rval = media_create_pad_link(
 			entity, pad, &av->vdev.entity, 0, flags);
@@ -1428,13 +1434,13 @@ int intel_ipu4_isys_video_init(struct intel_ipu4_isys_video *av,
 
 	av->pfmt = av->try_fmt_vid_mplane(av, &av->mpix);
 
-	rval = video_register_device(&av->vdev, VFL_TYPE_GRABBER, -1);
-	if (rval)
-		goto out_media_entity_cleanup;
+	mutex_unlock(&av->mutex);
 
 	return rval;
 
 out_media_entity_cleanup:
+	video_unregister_device(&av->vdev);
+	mutex_unlock(&av->mutex);
 	media_entity_cleanup(&av->vdev.entity);
 
 out_intel_ipu4_isys_queue_cleanup:
