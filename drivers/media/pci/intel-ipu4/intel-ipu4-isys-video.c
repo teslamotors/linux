@@ -296,12 +296,32 @@ static int video_release(struct file *file)
 	return ret;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+static struct media_pad *other_pad(struct media_pad *pad)
+{
+	struct media_link *link;
+
+	list_for_each_entry(link, &pad->entity->links, list) {
+		if ((link->flags & MEDIA_LNK_FL_LINK_TYPE)
+		    != MEDIA_LNK_FL_DATA_LINK)
+			continue;
+
+		return link->source == pad ? link->sink : link->source;
+	}
+
+	BUG();
+}
+#endif
+
 const struct intel_ipu4_isys_pixelformat *intel_ipu4_isys_get_pixelformat(
 	struct intel_ipu4_isys_video *av, uint32_t pixelformat)
 {
-	struct media_pad *pad =
-		av->vdev.entity.pads[0].flags & MEDIA_PAD_FL_SOURCE ?
-		av->vdev.entity.links[0].sink : av->vdev.entity.links[0].source;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+	struct media_pad *pad = av->vdev.entity.pads[0].flags & MEDIA_PAD_FL_SOURCE ?
+		      av->vdev.entity.links[0].sink : av->vdev.entity.links[0].source;
+#else
+	struct media_pad *pad = other_pad(&av->vdev.entity.pads[0]);
+#endif
 	const uint32_t *supported_codes =
 		to_intel_ipu4_isys_subdev(
 			media_entity_to_v4l2_subdev(pad->entity))
@@ -366,9 +386,12 @@ int intel_ipu4_isys_vidioc_enum_fmt(struct file *file, void *fh,
 				      struct v4l2_fmtdesc *f)
 {
 	struct intel_ipu4_isys_video *av = video_drvdata(file);
-	struct media_pad *pad =
-		av->vdev.entity.pads[0].flags & MEDIA_PAD_FL_SOURCE ?
-		av->vdev.entity.links[0].sink : av->vdev.entity.links[0].source;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+	struct media_pad *pad = av->vdev.entity.pads[0].flags & MEDIA_PAD_FL_SOURCE ?
+		      av->vdev.entity.links[0].sink : av->vdev.entity.links[0].source;
+#else
+	struct media_pad *pad = other_pad(&av->vdev.entity.pads[0]);
+#endif
 	const uint32_t *supported_codes =
 		to_intel_ipu4_isys_subdev(
 			media_entity_to_v4l2_subdev(pad->entity))
