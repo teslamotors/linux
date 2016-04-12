@@ -155,10 +155,19 @@ static int dw9714_probe(struct i2c_client *client,
 	rval = dw9714_init_controls(dw9714_dev);
 	if (rval)
 		goto err_cleanup;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	rval = media_entity_init(&dw9714_dev->subdev_vcm.entity, 0, NULL, 0);
+#else
+	rval = media_entity_pads_init(&dw9714_dev->subdev_vcm.entity, 0,
+				      NULL);
+#endif
 	if (rval < 0)
 		goto err_cleanup;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	dw9714_dev->subdev_vcm.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_LENS;
+#else
+	dw9714_dev->subdev_vcm.entity.function = MEDIA_ENT_F_LENS;
+#endif
 	dw9714_dev->vcm_mode = DW9714_DIRECT;
 	return 0;
 
