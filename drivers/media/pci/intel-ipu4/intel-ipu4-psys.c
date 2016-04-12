@@ -902,12 +902,6 @@ static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 		return;
 	}
 
-	/* If concurrency is disabled and there are already
-	 * commands running on the PSYS, do not run new commands.
-	 */
-	if (!enable_concurrency && psys->active_kcmds > 0)
-		return;
-
 	for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
 		int removed;
 
@@ -929,6 +923,14 @@ static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 				struct intel_ipu4_psys_kcmd *kcmd =
 						fh->new_kcmd_tail[p];
 				int ret;
+
+				/* If concurrency is disabled and there are
+				 * already commands running on the PSYS, do not
+				 * run new commands.
+				 */
+				if (!enable_concurrency &&
+				    psys->active_kcmds > 0)
+					return;
 
 				/* Are there new kcmds available for running? */
 				if (kcmd == NULL)
