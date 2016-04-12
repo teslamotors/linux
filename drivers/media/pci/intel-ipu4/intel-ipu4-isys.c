@@ -779,10 +779,14 @@ static int isys_register_devices(struct intel_ipu4_isys *isys)
 	strlcpy(isys->v4l2_dev.name, isys->media_dev.model,
 		sizeof(isys->v4l2_dev.name));
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+	media_device_init(&isys->media_dev);
+#endif
+
 	rval = media_device_register(&isys->media_dev);
 	if (rval < 0) {
 		dev_info(&isys->adev->dev, "can't register media device\n");
-		return rval;
+		goto out_media_device_unregister;
 	}
 
 	isys->v4l2_dev.mdev = &isys->media_dev;
@@ -827,6 +831,9 @@ out_v4l2_device_unregister:
 
 out_media_device_unregister:
 	media_device_unregister(&isys->media_dev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+	media_device_cleanup(&isys->media_dev);
+#endif
 
 	return rval;
 }
@@ -836,6 +843,9 @@ static void isys_unregister_devices(struct intel_ipu4_isys *isys)
 	isys_unregister_subdevices(isys);
 	v4l2_device_unregister(&isys->v4l2_dev);
 	media_device_unregister(&isys->media_dev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+	media_device_cleanup(&isys->media_dev);
+#endif
 }
 
 static void isys_setup_hw(struct intel_ipu4_isys *isys)
