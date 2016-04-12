@@ -465,10 +465,19 @@ static int lc898122_probe(struct i2c_client *client,
 	rval = lc898122_init_controls(lc898122_dev);
 	if (rval)
 		goto err_cleanup;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	rval = media_entity_init(&lc898122_dev->subdev_vcm.entity, 0, NULL, 0);
+#else
+	rval = media_entity_pads_init(&lc898122_dev->subdev_vcm.entity, 0,
+				      NULL);
+#endif
 	if (rval < 0)
 		goto err_cleanup;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	lc898122_dev->subdev_vcm.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_LENS;
+#else
+	lc898122_dev->subdev_vcm.entity.function = MEDIA_ENT_F_LENS;
+#endif
 
 	atomic_set(&lc898122_dev->open, 0);
 	pm_runtime_enable(&client->dev);
