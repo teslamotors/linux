@@ -487,10 +487,11 @@ const struct intel_ipu4_isys_pixelformat
 	 * memory corruption.
 	 */
 	mpix->plane_fmt[0].sizeimage =
-		max(mpix->plane_fmt[0].sizeimage,
-		    mpix->plane_fmt[0].bytesperline * mpix->height +
-		    max(mpix->plane_fmt[0].bytesperline,
-			av->isys->pdata->ipdata->isys_dma_overshoot));
+		max(max(mpix->plane_fmt[0].sizeimage,
+			mpix->plane_fmt[0].bytesperline * mpix->height +
+			max(mpix->plane_fmt[0].bytesperline,
+			    av->isys->pdata->ipdata->isys_dma_overshoot)),
+		    1U);
 
 	if (mpix->field == V4L2_FIELD_ANY)
 		mpix->field = V4L2_FIELD_NONE;
