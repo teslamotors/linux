@@ -122,8 +122,28 @@ static struct intel_ipu4_bus_device *intel_ipu4_psys_init(
 					 INTEL_IPU4_PSYS_NAME, nr);
 }
 
-#ifdef CONFIG_DEBUG_FS
+int intel_ipu4_fw_authenticate(void *data, u64 val)
+{
+	struct intel_ipu4_device *isp = data;
+	int ret;
 
+	if (!isp->secure_mode)
+		return -EINVAL;
+
+	ret = intel_ipu4_buttress_reset_authentication(isp);
+	if (ret) {
+		dev_err(&isp->pdev->dev,
+			"Failed to reset authentication!\n");
+		return ret;
+	}
+
+	return intel_ipu4_buttress_authenticate(isp);
+}
+EXPORT_SYMBOL(intel_ipu4_fw_authenticate);
+DEFINE_SIMPLE_ATTRIBUTE(authenticate_fops, NULL,
+			intel_ipu4_fw_authenticate, "%llu\n");
+
+#ifdef CONFIG_DEBUG_FS
 static int resume_intel_ipu4_bus_device(struct intel_ipu4_bus_device *adev)
 {
 	struct device *dev = &adev->dev;
@@ -206,27 +226,6 @@ static int force_suspend_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(force_suspend_fops, force_suspend_get,
 			force_suspend_set, "%llu\n");
 
-static int authenticate(void *data, u64 val)
-{
-	struct intel_ipu4_device *isp = data;
-	int ret;
-
-	if (!isp->secure_mode)
-		return -ENODEV;
-
-	ret = intel_ipu4_buttress_reset_authentication(isp);
-	if (ret) {
-		dev_err(&isp->pdev->dev,
-			"Failed to reset authentication!\n");
-		return ret;
-	}
-
-	return intel_ipu4_buttress_authenticate(isp);
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(authenticate_fops, NULL,
-			authenticate, "%llu\n");
-
 static int isys_fw_reload(void *data, u64 val)
 {
 	struct intel_ipu4_device *isp = data;
@@ -234,9 +233,27 @@ static int isys_fw_reload(void *data, u64 val)
 
 	if (isp->isys_fw_reload)
 		rval = isp->isys_fw_reload(isp);
+
 	return rval;
 }
 DEFINE_SIMPLE_ATTRIBUTE(isys_fw_fops, NULL, isys_fw_reload, "%llu\n");
+
+/*
+ * The sysfs interface for reloading cpd fw is there only for debug purpose,
+ * and it must not be used when either isys or psys is in use.
+ */
+static int cpd_fw_reload(void *data, u64 val)
+{
+	struct intel_ipu4_device *isp = data;
+	int rval = -EINVAL;
+
+	if (isp->cpd_fw_reload)
+		rval = isp->cpd_fw_reload(isp);
+
+	return rval;
+}
+DEFINE_SIMPLE_ATTRIBUTE(cpd_fw_fops, NULL, cpd_fw_reload, "%llu\n");
+
 
 #endif /* CONFIG_DEBUG_FS */
 
@@ -259,9 +276,13 @@ static int intel_ipu4_init_debugfs(struct intel_ipu4_device *isp)
 	if (!file)
 		goto err;
 
-
 	file = debugfs_create_file("isys_fw_reload", S_IRWXU, dir, isp,
 				   &isys_fw_fops);
+	if (!file)
+		goto err;
+
+	file = debugfs_create_file("cpd_fw_reload", S_IRWXU, dir, isp,
+				   &cpd_fw_fops);
 	if (!file)
 		goto err;
 

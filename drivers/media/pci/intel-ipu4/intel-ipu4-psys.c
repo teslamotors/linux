@@ -1659,6 +1659,104 @@ static const struct dev_pm_ops psys_pm_ops = {
 #define PSYS_PM_OPS NULL
 #endif
 
+static int cpd_fw_reload(struct intel_ipu4_device *isp)
+{
+	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(isp->psys);
+	int rval;
+
+	if (!isp->secure_mode) {
+		dev_warn(&isp->pdev->dev,
+			"CPD firmware reload was only supported for B0 secure mode.\n");
+		return -EINVAL;
+	}
+
+	if (isp->cpd_fw) {
+		intel_ipu4_wrapper_remove_shared_memory_buffer(
+			PSYS_MMID, psys->pkg_dir);
+		intel_ipu4_cpd_free_pkg_dir(isp->psys, psys->pkg_dir,
+						psys->pkg_dir_dma_addr,
+						psys->pkg_dir_size);
+		intel_ipu4_wrapper_remove_shared_memory_buffer(
+			PSYS_MMID, (void *) isp->cpd_fw->data);
+		intel_ipu4_buttress_unmap_fw_image(isp->psys, &psys->fw_sgt);
+		release_firmware(isp->cpd_fw);
+		isp->cpd_fw = NULL;
+		dev_info(&isp->pdev->dev, "Old FW removed\n");
+	}
+
+	rval = request_firmware(&isp->cpd_fw,
+						INTEL_IPU4_CPD_FIRMWARE_B0,
+						&isp->pdev->dev);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Requesting signed firmware(%s) failed\n",
+				INTEL_IPU4_CPD_FIRMWARE_B0);
+		return rval;
+	}
+
+	rval = intel_ipu4_cpd_validate_cpd_file(isp, isp->cpd_fw->data,
+						isp->cpd_fw->size);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Failed to validate cpd file\n");
+		goto out_release_firmware;
+	}
+
+	rval = intel_ipu4_buttress_map_fw_image(
+		isp->psys, isp->cpd_fw, &psys->fw_sgt);
+	if (rval)
+		goto out_release_firmware;
+
+	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+		PSYS_MMID, (void *)isp->cpd_fw->data,
+		sg_dma_address(psys->fw_sgt.sgl),
+		isp->cpd_fw->size);
+	if (rval)
+		goto out_unmap_fw_image;
+
+	psys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
+			isp->psys, isp->cpd_fw->data,
+			sg_dma_address(psys->fw_sgt.sgl),
+			&psys->pkg_dir_dma_addr,
+			&psys->pkg_dir_size);
+	if (psys->pkg_dir == NULL) {
+		rval = -EINVAL;
+		goto  out_remove_shared_buffer;
+	}
+
+	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+			PSYS_MMID, (void *)psys->pkg_dir,
+			psys->pkg_dir_dma_addr,
+			psys->pkg_dir_size);
+	if (rval)
+		 goto out_free_pkg_dir;
+
+	isp->pkg_dir = psys->pkg_dir;
+	isp->pkg_dir_dma_addr = psys->pkg_dir_dma_addr;
+	isp->pkg_dir_size = psys->pkg_dir_size;
+
+	rval = intel_ipu4_fw_authenticate(isp, 1);
+	if (rval)
+		goto out_remove_pkg_dir_shared_buffer;
+
+	return 0;
+
+out_remove_pkg_dir_shared_buffer:
+	intel_ipu4_wrapper_remove_shared_memory_buffer(
+		PSYS_MMID, psys->pkg_dir);
+out_free_pkg_dir:
+	intel_ipu4_cpd_free_pkg_dir(isp->psys, psys->pkg_dir,
+					psys->pkg_dir_dma_addr,
+					psys->pkg_dir_size);
+out_remove_shared_buffer:
+	intel_ipu4_wrapper_remove_shared_memory_buffer(
+		PSYS_MMID, (void *) isp->cpd_fw->data);
+out_unmap_fw_image:
+	intel_ipu4_buttress_unmap_fw_image(isp->psys, &psys->fw_sgt);
+out_release_firmware:
+	release_firmware(isp->cpd_fw);
+
+	return rval;
+}
+
 static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
@@ -1859,6 +1957,8 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		sizeof(caps.dev_model));
 
 	mutex_unlock(&intel_ipu4_psys_mutex);
+
+	adev->isp->cpd_fw_reload = &cpd_fw_reload;
 
 	dev_info(&adev->dev, "psys probe minor: %d\n", minor);
 
