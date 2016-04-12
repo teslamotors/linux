@@ -292,6 +292,7 @@ static struct crl_register_write_rep imx230_powerup_regset[] = {
 	{ 0x3121, CRL_REG_LEN_08BIT, 0x00 }, /*PDAF calc enable/disable */
 	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 }, /*PDAF fir HDR enable/disable */
 	{ 0x3123, CRL_REG_LEN_08BIT, 0x00 }, /*PDAF output enable/disable **/
+	{ 0x0138, CRL_REG_LEN_08BIT, 0x01 }, /* Temperature control enable */
 };
 
 static struct crl_register_write_rep imx230_mode_2k2k[] = {
@@ -1125,6 +1126,24 @@ static struct crl_sensor_detect_config imx230_sensor_detect_regset[] = {
 	},
 };
 
+static struct crl_arithmetic_ops imx230_thermal_ops[] = {
+	{
+		.op = CRL_ASSIGNMENT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_REG_VAL,
+		.operand.entity_val = 0x013a,
+	},
+};
+
+static struct crl_dynamic_register_access imx230_thermal_regs[] = {
+	{
+		.address = 0x013a,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx230_thermal_ops),
+		.ops = imx230_thermal_ops,
+		.mask = 0xff,
+	},
+};
+
 static struct crl_pll_configuration imx230_pll_configurations[] = {
 	{
 		.input_clk = 24000000,
@@ -1834,7 +1853,26 @@ static struct crl_v4l2_ctrl imx230_vl42_ctrls[] = {
 		.dep_items = 0,
 		.dep_ctrls = 0,
 	},
-
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_GET_OP,
+		.context = SENSOR_STREAMING,
+		.ctrl_id = CRL_CID_SENSOR_THERMAL_DATA,
+		.name = "Sensor Thermal Data",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = INT_MAX,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0,
+		.flags = V4L2_CTRL_FLAG_VOLATILE | V4L2_CTRL_FLAG_READ_ONLY,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx230_thermal_regs),
+		.regs = imx230_thermal_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
 };
 
 /* Power items, they are enabled in the order they are listed here */
