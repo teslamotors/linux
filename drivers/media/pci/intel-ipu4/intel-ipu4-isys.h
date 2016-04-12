@@ -151,6 +151,8 @@ int intel_ipu4_isys_isr_run(void *ptr);
 #define media_entity_id(ent) (ent)->id
 #define media_entity_graph_walk_init(a, b) 0
 #define media_entity_graph_walk_cleanup(a) do { } while (0)
+#define media_entity_enum_init(a, b) ({ int foo = 0; foo = *(&foo); foo; })
+#define media_entity_enum_cleanup(a) do { } while (0)
 #endif
 
 

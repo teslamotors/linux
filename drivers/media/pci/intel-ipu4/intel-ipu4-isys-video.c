@@ -1227,13 +1227,14 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	struct media_device *mdev = av->vdev.entity.parent;
 	struct media_entity_graph graph;
+	unsigned int entities = 0;
 #else
 	struct media_device *mdev = av->vdev.entity.graph_obj.mdev;
+	struct media_entity_enum entities;
 #endif
 	struct media_entity *entity, *entity2;
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
-	unsigned int entities = 0;
 	int rval = 0;
 
 	dev_dbg(dev, "set stream: %d\n", state);
@@ -1242,6 +1243,9 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 		rval = media_entity_graph_walk_init(&ip->graph, mdev);
 		if (rval)
 			return rval;
+		rval = media_entity_enum_init(&entities, mdev);
+		if (rval)
+			goto out_media_entity_graph_init;
 	}
 
 	if (!state) {
@@ -1291,13 +1295,17 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 			goto out_media_entity_stop_streaming;
 		}
 
-		if (entity->id >= sizeof(entities) << 3) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+		if (media_entity_id(entity) >= sizeof(entities) << 3) {
 			mutex_unlock(&mdev->graph_mutex);
 			WARN_ON(1);
 			goto out_media_entity_stop_streaming;
 		}
 
-		entities |= 1 << entity->id;
+		entities |= 1 << media_entity_id(entity);
+#else
+		media_entity_enum_set(&entities, entity);
+#endif
 	}
 
 	mutex_unlock(&mdev->graph_mutex);
@@ -1324,7 +1332,9 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 		close_streaming_firmware(av);
 	}
 
-	if (!state)
+	if (state)
+		media_entity_enum_cleanup(&entities);
+	else
 		media_entity_graph_walk_cleanup(&ip->graph);
 	av->streaming = state;
 
@@ -1350,7 +1360,11 @@ out_media_entity_stop_streaming:
 		&& entity2 != entity) {
 		struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(entity2);
 
-		if (!(1 << entity2->id & entities))
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+		if (!(1 << media_entity_id(entity2) & entities))
+#else
+		if (!media_entity_enum_test(&entities, entity))
+#endif
 			continue;
 
 		v4l2_subdev_call(sd, video, s_stream, 0);
@@ -1358,6 +1372,9 @@ out_media_entity_stop_streaming:
 
 	mutex_unlock(&mdev->graph_mutex);
 
+	media_entity_enum_cleanup(&entities);
+
+out_media_entity_graph_init:
 	media_entity_graph_walk_cleanup(&ip->graph);
 
 	return rval;
