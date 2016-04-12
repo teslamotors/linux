@@ -2486,23 +2486,16 @@ static int crlmodule_init_subdevs(struct v4l2_subdev *subdev)
 		sd->sd.owner = THIS_MODULE;
 		v4l2_set_subdevdata(&sd->sd, client);
 
-		rval = media_entity_init(&sd->sd.entity,
-					 sd->npads, sd->pads, 0);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+		rval = media_entity_init(&sd->sd.entity, sd->npads,
+					 sd->pads, 0);
+#else
+		rval = media_entity_pads_init(&sd->sd.entity, sd->npads,
+					      sd->pads);
+#endif
 		if (rval) {
 			dev_err(&client->dev,
 				"media_entity_init failed\n");
-			return rval;
-		}
-
-		rval = media_entity_create_link(&sd->sd.entity,
-						sd->source_pad,
-						&prev_sd->sd.entity,
-						prev_sd->sink_pad,
-						MEDIA_LNK_FL_ENABLED |
-						MEDIA_LNK_FL_IMMUTABLE);
-		if (rval) {
-			dev_err(&client->dev,
-				"media_entity_create_link failed\n");
 			return rval;
 		}
 
@@ -2511,6 +2504,22 @@ static int crlmodule_init_subdevs(struct v4l2_subdev *subdev)
 		if (rval) {
 			dev_err(&client->dev,
 				"v4l2_device_register_subdev failed\n");
+			return rval;
+		}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+		rval = media_entity_create_link(&sd->sd.entity,
+#else
+		rval = media_create_pad_link(&sd->sd.entity,
+#endif
+						sd->source_pad,
+						&prev_sd->sd.entity,
+						prev_sd->sink_pad,
+						MEDIA_LNK_FL_ENABLED |
+						MEDIA_LNK_FL_IMMUTABLE);
+		if (rval) {
+			dev_err(&client->dev,
+				"media_entity_create_link failed\n");
 			return rval;
 		}
 
@@ -2631,7 +2640,11 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 	sensor->flip_info = CRL_FLIP_DEFAULT_NONE;
 	sensor->ext_ctrl_impacts_pll_selection = false;
 	sensor->ext_ctrl_impacts_mode_selection = false;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	sensor->pixel_array->sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
+#else
+	sensor->pixel_array->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
+#endif
 
 	rval = crlmodule_init_controls(sensor);
 	if (rval)
@@ -2846,8 +2859,13 @@ static int crlmodule_probe(struct i2c_client *client,
 	sensor->src->sensor = sensor;
 
 	sensor->src->pads[0].flags = MEDIA_PAD_FL_SOURCE;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	ret = media_entity_init(&sensor->src->sd.entity, 2,
-				 sensor->src->pads, 0);
+                                sensor->src->pads, 0);
+#else
+	ret = media_entity_pads_init(&sensor->src->sd.entity, 2,
+				     sensor->src->pads);
+#endif
 	if (ret < 0)
 		goto cleanup;
 	ret = v4l2_async_register_subdev(&sensor->src->sd);
