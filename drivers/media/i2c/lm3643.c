@@ -527,10 +527,19 @@ static int lm3643_subdev_init(struct lm3643_flash *flash)
 	rval = lm3643_init_controls(flash);
 	if (rval)
 		goto err_out;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	rval = media_entity_init(&flash->subdev_led.entity, 0, NULL, 0);
+#else
+	rval = media_entity_pads_init(&flash->subdev_led.entity, 0, NULL);
+#endif
 	if (rval < 0)
 		goto err_out;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	flash->subdev_led.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_FLASH;
+#else
+	flash->subdev_led.entity.function = MEDIA_ENT_F_FLASH;
+#endif
 err_out:
 	return rval;
 }
