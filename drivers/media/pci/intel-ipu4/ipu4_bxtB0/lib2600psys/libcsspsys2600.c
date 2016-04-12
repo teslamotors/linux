@@ -18,11 +18,13 @@
 EXPORT_SYMBOL_GPL(ia_css_data_terminal_get_frame);
 EXPORT_SYMBOL_GPL(ia_css_data_terminal_set_connection_type);
 EXPORT_SYMBOL_GPL(ia_css_frame_set_data_bytes);
+EXPORT_SYMBOL_GPL(ia_css_process_get_dev_chn);
 EXPORT_SYMBOL_GPL(ia_css_process_group_abort);
 EXPORT_SYMBOL_GPL(ia_css_process_group_attach_buffer);
 EXPORT_SYMBOL_GPL(ia_css_process_group_create);
 EXPORT_SYMBOL_GPL(ia_css_process_group_destroy);
 EXPORT_SYMBOL_GPL(ia_css_process_group_detach_buffer);
+EXPORT_SYMBOL_GPL(ia_css_process_group_get_program_group_ID);
 EXPORT_SYMBOL_GPL(ia_css_process_group_get_resource_bitmap);
 EXPORT_SYMBOL_GPL(ia_css_process_group_get_terminal);
 EXPORT_SYMBOL_GPL(ia_css_process_group_get_terminal_count);

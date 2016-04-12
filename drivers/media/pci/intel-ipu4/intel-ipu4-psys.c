@@ -704,6 +704,39 @@ struct intel_ipu4_psys_pg *__get_pg_buf(
 	return kpg;
 }
 
+static void intel_ipu4_dumppg(
+	struct device *dev, ia_css_process_group_t *pg, const char *note)
+{
+	ia_css_program_group_ID_t pgid =
+				ia_css_process_group_get_program_group_ID(pg);
+	uint8_t processes = ia_css_process_group_get_process_count(pg);
+	unsigned int p;
+
+	dev_dbg(dev, "%s %s pgid %i processes %i\n",
+		__func__, note, pgid, processes);
+	for (p = 0; p < processes; p++) {
+		ia_css_process_t *process =
+			ia_css_process_group_get_process(pg, p);
+
+		dev_dbg(dev, "%s pgid %i process %i cell %i dev_chn: "
+			"ext0 %i ext1r %i ext1w %i int %i ipfd %i isa %i\n",
+			__func__, pgid, p,
+			ia_css_process_get_cell(process),
+			ia_css_process_get_dev_chn(process,
+					VIED_NCI_DEV_CHN_DMA_EXT0_ID),
+			ia_css_process_get_dev_chn(process,
+					VIED_NCI_DEV_CHN_DMA_EXT1_READ_ID),
+			ia_css_process_get_dev_chn(process,
+					VIED_NCI_DEV_CHN_DMA_EXT1_WRITE_ID),
+			ia_css_process_get_dev_chn(process,
+					VIED_NCI_DEV_CHN_DMA_INTERNAL_ID),
+			ia_css_process_get_dev_chn(process,
+					VIED_NCI_DEV_CHN_DMA_IPFD_ID),
+			ia_css_process_get_dev_chn(process,
+					VIED_NCI_DEV_CHN_DMA_ISA_ID));
+	}
+}
+
 struct intel_ipu4_psys_kcmd *
 intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 		      struct intel_ipu4_psys_fh *fh)
@@ -888,6 +921,9 @@ static int intel_ipu4_psys_kcmd_run(struct intel_ipu4_psys *psys,
 	ret = -ia_css_process_group_start(kcmd->kpg->pg);
 	if (ret)
 		goto error;
+
+	intel_ipu4_dumppg(&psys->adev->dev, kcmd->kpg->pg, "run");
+
 #ifdef IPU_STEP_BXTB0
 	/*
 	 * Starting from scci_master_20151228_1800, pg start api is split into
