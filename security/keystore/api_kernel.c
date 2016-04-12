@@ -48,7 +48,7 @@ int keystore_register(enum keystore_seed_type seed_type, uint8_t *client_ticket)
 	 * can still call api's so check for sb-status and act accordingly.
 	 */
 #ifdef CONFIG_KEYSTORE_SECURE_BOOT_IGNORE
-	ks_warn(KBUILD_MODNAME ": Using hardcoded SEEDs for key generation\n");
+	ks_warn(KBUILD_MODNAME ": Ignoring secure boot status!\n");
 #else
 	if (!get_sb_stat()) {
 		ks_err(KBUILD_MODNAME ": Cannot register with keystore - secure boot not enabled\n");

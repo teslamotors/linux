@@ -267,6 +267,12 @@ int oem_key_verify_digest(void *digest, unsigned int digest_size,
 	MPI sig; /* RSA signature of ECC key made using RSA root private key */
 	int res;
 
+	if (!oem_rsa_public_key.key) {
+		pr_err(KBUILD_MODNAME ": %s: Error OEM RSA public key is null\n",
+			__func__);
+		return -EFAULT;
+	}
+
 	if (!digest || !signature)
 		return -EFAULT;
 

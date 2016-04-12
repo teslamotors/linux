@@ -97,11 +97,13 @@ int keystore_fill_seeds(void)
 	struct seed_offset s_off;
 
 #ifdef CONFIG_KEYSTORE_HARD_CODED_SEED
+
+	ks_warn(KBUILD_MODNAME ": Using hardcoded SEEDs for key generation!\n");
+	ks_warn(KBUILD_MODNAME ": Keys wrapped with keystore will not be secure!\n");
+
 	/* return constant SEED for testing */
 	for (indx = 0; indx < MAX_SEED_TYPES; indx++) {
 		memset(sec_seed[indx], ((indx + 0xa5) & 0xFF), SEC_SEED_SIZE);
-		keystore_hexdump("Keystore SEED",
-				 sec_seed[indx], SEC_SEED_SIZE);
 		seed_available[indx] = true;
 	}
 
@@ -133,8 +135,13 @@ const uint8_t *keystore_get_seed(enum keystore_seed_type type)
 	if ((type != SEED_TYPE_DEVICE) && (type != SEED_TYPE_USER))
 		return NULL;
 
+	ks_debug(KBUILD_MODNAME ": Seed %u: %s\n",
+		 type, seed_available[type] ? "Enabled" : "Disabled");
+
 	if (!seed_available[type])
 		return NULL;
+
+	keystore_hexdump("SEED Value", sec_seed[type], SEC_SEED_SIZE);
 
 	return sec_seed[type];
 }

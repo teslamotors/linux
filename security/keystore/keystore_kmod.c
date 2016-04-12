@@ -123,7 +123,7 @@ static int __init keystore_init(void)
 	ks_info("--------\n" KBUILD_MODNAME ": keystore_init\n");
 
 #ifdef CONFIG_KEYSTORE_SECURE_BOOT_IGNORE
-	ks_info(KBUILD_MODNAME ": Using hardcoded SEEDs for key generation\n");
+	ks_info(KBUILD_MODNAME ": Not checking secure boot status!\n");
 #else
 	/*
 	 * Check if secure boot status. Keystore should not start on
