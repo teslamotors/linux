@@ -36,6 +36,16 @@
 #define _CAT3(a, b, c)	a ## b ## c
 #define CAT3(a, b, c)	_CAT3(a, b, c)
 
+/* NO_HOIST, NO_CSE attributes must be ignored for host code */
+#ifndef __HIVECC
+#ifndef NO_HOIST
+#define NO_HOIST
+#endif
+#ifndef NO_CSE
+#define NO_CSE
+#endif
+#endif
+
 /* Derive METHOD */
 #if defined(C_RUN)
 	#define HIVE_METHOD "crun"
