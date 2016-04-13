@@ -818,20 +818,22 @@ static int intel_ipu4_psys_kcmd_abort(struct intel_ipu4_psys *psys,
 				       struct intel_ipu4_psys_kcmd *kcmd,
 				       int error)
 {
+	int ret = 0;
+
 	if (kcmd->state == KCMD_STATE_COMPLETE)
 		return 0;
 
 	if (kcmd->state == KCMD_STATE_RUNNING &&
-	    ia_css_process_group_stop(kcmd->pg))
-		goto stop_failed;
+	    ia_css_process_group_stop(kcmd->pg)) {
+		dev_err(&psys->adev->dev, "failed to abort kcmd!\n");
+		kcmd->pg_user = NULL;
+		ret = error = -EIO;
+		/* TODO: need to reset PSYS by power cycling it */
+	}
 
 	intel_ipu4_psys_kcmd_complete(psys, kcmd, error);
-	return 0;
 
-stop_failed:
-	dev_err(&psys->adev->dev, "fatal: failed to abort kcmd!\n");
-	/* TODO: need to reset PSYS by power cycling it */
-	return -EIO;
+	return ret;
 }
 
 /*
