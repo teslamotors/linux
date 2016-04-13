@@ -204,6 +204,7 @@ static void *get_dsdt_vcm(struct device *dev, char *vcm, char *second)
 		if (lc_pdata)
 			lc_pdata->sensor_device = dev;
 		pdata = lc_pdata;
+		strlcpy(vcm, LC898122_NAME, VCM_BUFFER_SIZE);
 	}
 	return pdata;
 }
