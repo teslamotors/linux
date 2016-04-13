@@ -586,7 +586,7 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 			kcmd->pg_user = NULL;
 
 	/* Prevent scheduler from running more kcmds */
-	memset(fh->new_kcmd_tail, NULL, sizeof(fh->new_kcmd_tail));
+	memset(fh->new_kcmd_tail, 0, sizeof(fh->new_kcmd_tail));
 
 	/* Wait until kcmds are completed in this queue and free them */
 	for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
@@ -1011,12 +1011,8 @@ static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
 
 	intel_ipu4_psys_run_next(psys);
 	mutex_unlock(&psys->mutex);
-	return;
 
-stop_failed:
-	dev_err(&psys->adev->dev, "fatal: failed to stop expired kcmd!\n");
-	/* TODO: add recovery code which recycles PSYS power */
-	mutex_unlock(&psys->mutex);
+	return;
 }
 
 static void intel_ipu4_psys_watchdog(unsigned long data)
