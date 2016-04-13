@@ -866,6 +866,55 @@ static struct v4l2_ctrl_handler *__crlmodule_get_sd_ctrl_handler(
 	return NULL;
 }
 
+static int __crlmodule_init_link_freq_ctrl_menu(
+					struct crl_sensor *sensor,
+					struct crl_v4l2_ctrl *crl_ctrl)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
+	unsigned int items = 0;
+	unsigned int i;
+
+	/* Cannot handle if the control type is not integer menu */
+	if (crl_ctrl->type != CRL_V4L2_CTRL_TYPE_MENU_INT)
+		return 0;
+
+	/* If the menu contents exist, skip filling it dynamically */
+	if (crl_ctrl->data.v4l2_int_menu.menu)
+		return 0;
+
+	sensor->link_freq_menu = devm_kzalloc(&client->dev, sizeof(s64) *
+					 sensor->sensor_ds->pll_config_items,
+					 GFP_KERNEL);
+	if (!sensor->link_freq_menu)
+		return -ENOMEM;
+
+	for (i = 0; i < sensor->sensor_ds->pll_config_items; i++) {
+		bool dup = false;
+		unsigned int j;
+
+		/*
+		 * Skip the duplicate entries. We are using the value to match
+		 * not the index
+		 */
+		for (j = 0; j < items && !dup; j++)
+			dup = (sensor->link_freq_menu[j] ==
+			       sensor->sensor_ds->pll_configs[i].op_sys_clk);
+		if (dup)
+			continue;
+
+		sensor->link_freq_menu[items] =
+				   sensor->sensor_ds->pll_configs[i].op_sys_clk;
+		items++;
+	}
+
+	crl_ctrl->data.v4l2_int_menu.menu = sensor->link_freq_menu;
+
+	/* items will not be 0 as there will be atleast one pll_config_item */
+	crl_ctrl->data.v4l2_int_menu.max = items - 1;
+
+	return 0;
+}
+
 static int crlmodule_init_controls(struct crl_sensor *sensor)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
@@ -877,21 +926,23 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 	unsigned int i;
 	int rval;
 
-
 	sensor->v4l2_ctrl_bank = devm_kzalloc(&client->dev,
 		sizeof(struct crl_v4l2_ctrl) *
 		 sensor->sensor_ds->v4l2_ctrls_items,
 		 GFP_KERNEL);
-
 	if (!sensor->v4l2_ctrl_bank)
 		return -ENOMEM;
 
-	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++)
-		sensor->v4l2_ctrl_bank[i] =
-		 sensor->sensor_ds->v4l2_ctrl_bank[i];
-
-	/* Count the number of controls in PA and SRC subdevices */
+	/* Prepare to initialise the v4l2_ctrls from the crl wrapper */
 	for (i = 0; i < sensor->sensor_ds->v4l2_ctrls_items; i++) {
+		/*
+		 * First copy the v4l2_ctrls to the sensor as there could be
+		 * more than one similar sensors in a product which could share
+		 * the same configuration files
+		 */
+		sensor->v4l2_ctrl_bank[i] =
+					sensor->sensor_ds->v4l2_ctrl_bank[i];
+
 		crl_ctrl = &sensor->v4l2_ctrl_bank[i];
 		if (crl_ctrl->sd_type == CRL_SUBDEV_TYPE_PIXEL_ARRAY)
 			pa_ctrls++;
@@ -899,6 +950,16 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 		if (crl_ctrl->sd_type == CRL_SUBDEV_TYPE_SCALER ||
 		    crl_ctrl->sd_type == CRL_SUBDEV_TYPE_BINNER)
 			src_ctrls++;
+
+		/* populate the v4l2_ctrl for the Link_freq dynamically */
+		if (crl_ctrl->ctrl_id == V4L2_CID_LINK_FREQ &&
+			(crl_ctrl->sd_type == CRL_SUBDEV_TYPE_SCALER ||
+			 crl_ctrl->sd_type == CRL_SUBDEV_TYPE_BINNER)) {
+			rval = __crlmodule_init_link_freq_ctrl_menu(sensor,
+								    crl_ctrl);
+			if (rval)
+				return rval;
+		}
 	}
 	dev_dbg(&client->dev, "%s pa_ctrls: %d src_ctrls: %d\n", __func__,
 			       pa_ctrls, src_ctrls);

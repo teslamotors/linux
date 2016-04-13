@@ -94,6 +94,8 @@ struct crl_sensor {
 	struct v4l2_ctrl *link_freq;
 	struct v4l2_ctrl *pixel_rate_csi;
 
+	s64 *link_freq_menu;
+
 	/* If extra v4l2 contrl has an impact on PLL selection */
 	bool ext_ctrl_impacts_pll_selection;
 	bool ext_ctrl_impacts_mode_selection;
