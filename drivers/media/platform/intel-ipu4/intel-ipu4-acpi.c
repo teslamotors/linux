@@ -26,6 +26,7 @@
 
 #include <media/crlmodule.h>
 #include <media/intel-ipu4-acpi.h>
+#include <media/as3638.h>
 #include <media/lm3643.h>
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 #include <media/smiapp.h>
@@ -437,6 +438,67 @@ static int get_lm3643_pdata(struct i2c_client *client,
 	return 0;
 };
 
+static int get_as3638_pdata(struct i2c_client *client,
+			    struct ipu4_camera_module_data *data,
+			    struct ipu4_i2c_helper *helper,
+			    void *priv, size_t size)
+{
+	struct as3638_platform_data *pdata;
+	struct gpio_desc *gpiod_pin;
+	int i;
+
+	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return -ENOMEM;
+
+	gpiod_pin = gpiod_get_index(&client->dev, NULL, 0, GPIOD_ASIS);
+	if (IS_ERR(gpiod_pin)) {
+		pdata->gpio_reset = -1;
+		dev_info(&client->dev, "No reset gpio for as3638\n");
+	} else {
+		pdata->gpio_reset = desc_to_gpio(gpiod_pin);
+		gpiod_put(gpiod_pin);
+	}
+
+	gpiod_pin = gpiod_get_index(&client->dev, NULL, 1, GPIOD_ASIS);
+	if (IS_ERR(gpiod_pin)) {
+		pdata->gpio_torch = -1;
+		dev_info(&client->dev, "No torch gpio for as3638\n");
+	} else {
+		pdata->gpio_torch = desc_to_gpio(gpiod_pin);
+		gpiod_put(gpiod_pin);
+	}
+
+	gpiod_pin = gpiod_get_index(&client->dev, NULL, 2, GPIOD_ASIS);
+	if (IS_ERR(gpiod_pin)) {
+		pdata->gpio_strobe = -1;
+		dev_info(&client->dev, "No strobe gpio for as3638\n");
+	} else {
+		pdata->gpio_strobe = desc_to_gpio(gpiod_pin);
+		gpiod_put(gpiod_pin);
+	}
+
+	/* These should be added to ACPI */
+	data->pdata = pdata;
+	pdata->flash_max_brightness[AS3638_LED1] =
+		AS3638_FLASH_MAX_BRIGHTNESS_LED1;
+	pdata->torch_max_brightness[AS3638_LED1] =
+		AS3638_TORCH_MAX_BRIGHTNESS_LED1;
+	pdata->flash_max_brightness[AS3638_LED2] =
+		AS3638_FLASH_MAX_BRIGHTNESS_LED2;
+	pdata->torch_max_brightness[AS3638_LED2] =
+		AS3638_TORCH_MAX_BRIGHTNESS_LED2;
+	pdata->flash_max_brightness[AS3638_LED3] =
+		AS3638_FLASH_MAX_BRIGHTNESS_LED3;
+	pdata->torch_max_brightness[AS3638_LED3] =
+		AS3638_TORCH_MAX_BRIGHTNESS_LED3;
+
+	client->dev.platform_data = pdata;
+	helper->fn(&client->dev, helper->driver_data, NULL, true);
+
+	return 0;
+};
+
 static const struct ipu4_acpi_devices supported_devices[] = {
 	{ "SONY230A", CRLMODULE_NAME, get_crlmodule_pdata, LC898122_NAME, 0,
 	  imx230regulators },
@@ -447,6 +509,7 @@ static const struct ipu4_acpi_devices supported_devices[] = {
 	{ "SONY132A", SMIAPP_NAME,    get_smiapp_pdata, imx132_op_clocks,
 	  sizeof(imx132_op_clocks) },
 	{ "TXNW3643", LM3643_NAME,    get_lm3643_pdata, NULL, 0 },
+	{ "AMS3638", AS3638_NAME,    get_as3638_pdata, NULL, 0 },
 };
 
 static int get_table_index(struct device *device)
@@ -474,6 +537,7 @@ static const struct acpi_device_id ipu4_acpi_match[] = {
 	{ "INT3477",  0 },
 	{ "INT3471",  0 },
 	{ "TXNW3643", 0 },
+	{ "AMS3638", 0 },
 	{ "SONY214A", 0 },
 	{ "SONY132A", 0 },
 	{},
