@@ -13,8 +13,10 @@ ifeq ($(IPU_SYSVER), bxtA0)
 	PSYS_SERVER_VERSION=v1
 else ifeq ($(IPU_SYSVER), bxtB0)
 	PSYS_SERVER_VERSION=v2
-else ifeq ($(IPU_SYSVER), $(filter $(IPU_SYSVER), cnlA0 cnlB0 glvA0))
+else ifeq ($(IPU_SYSVER), $(filter $(IPU_SYSVER), cnlA0 cnlB0))
 	PSYS_SERVER_VERSION=v3
+else ifeq ($(IPU_SYSVER), glvA0)
+	PSYS_SERVER_VERSION=v4
 endif
 
 # PSYS API implementation files. Consider a new module for those to avoid
@@ -55,21 +57,13 @@ PSYS_SERVER_FW_CPPFLAGS += -DMMID=$(MMID)
 
 ifeq ($(IPU_SYSVER), bxtA0)
 	PSYS_SERVER_FW_CPPFLAGS += -DBXT_A0_HW
-else
-	ifeq ($(IPU_SYSVER), bxtB0)
-		PSYS_SERVER_FW_CPPFLAGS += -DBXT_B0_HW
-	else
-		ifeq ($(IPU_SYSVER), cnlA0)
-			PSYS_SERVER_FW_CPPFLAGS += -DCNL_A0_HW
-		else
-			ifeq ($(IPU_SYSVER), cnlB0)
-				PSYS_SERVER_FW_CPPFLAGS += -DCNL_B0_HW
-			else
-				ifeq ($(IPU_SYSVER), glvA0)
-					PSYS_SERVER_FW_CPPFLAGS += -DGLV_A0_HW
-				endif
-			endif
-		endif
-	endif
+else ifeq ($(IPU_SYSVER), bxtB0)
+	PSYS_SERVER_FW_CPPFLAGS += -DBXT_B0_HW
+else ifeq ($(IPU_SYSVER), cnlA0)
+	PSYS_SERVER_FW_CPPFLAGS += -DCNL_A0_HW
+else ifeq ($(IPU_SYSVER), cnlB0)
+	PSYS_SERVER_FW_CPPFLAGS += -DCNL_B0_HW
+else  ifeq ($(IPU_SYSVER), glvA0)
+	PSYS_SERVER_FW_CPPFLAGS += -DGLV_A0_HW
 endif
 
