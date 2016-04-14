@@ -211,9 +211,13 @@ static int uvesafb_exec(struct uvesafb_ktask *task)
 	} else if (err == -ENOBUFS)
 		err = 0;
 
-	if (!err && !(task->t.flags & TF_EXIT))
+	if (!err && !(task->t.flags & TF_EXIT)) {
 		err = !wait_for_completion_timeout(task->done,
 				msecs_to_jiffies(UVESAFB_TIMEOUT));
+		if (err)
+			printk_ratelimited(KERN_ERR "uvesafb: %u ms task timeout error\n",
+					UVESAFB_TIMEOUT);
+	}
 
 	mutex_lock(&uvfb_lock);
 	uvfb_tasks[seq] = NULL;
