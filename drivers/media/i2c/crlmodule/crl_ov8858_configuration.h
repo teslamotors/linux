@@ -623,8 +623,6 @@ static struct crl_sensor_detect_config ov8858_sensor_detect_regset[] = {
 	 },
 };
 
-static const s64 ov8858_op_sys_clock[] =  { 360000000, };
-
 static struct crl_pll_configuration ov8858_pll_configurations[] = {
 	{
 		.input_clk = 24000000,
@@ -1044,8 +1042,8 @@ static struct crl_v4l2_ctrl ov8858_v4l2_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max = ARRAY_SIZE(ov8858_pll_configurations) - 1,
-		.data.v4l2_int_menu.menu = ov8858_op_sys_clock,
+		.data.v4l2_int_menu.max = 0,
+		.data.v4l2_int_menu.menu = 0,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.regs_items = 0,
