@@ -581,8 +581,8 @@ static struct crl_arithmetic_ops imx185_hflip_ops[] = {
 	}
 };
 
-static struct crl_arithmetic_ops imx185_exposure_lsb_ops[] = {
-	/* shutter = fll - exposure -1 */
+/* shs1 = fll - exposure -1 */
+static struct crl_arithmetic_ops imx185_shs1_lsb_ops[] = {
 	{
 		.op = CRL_SUBTRACT,
 		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
@@ -595,7 +595,7 @@ static struct crl_arithmetic_ops imx185_exposure_lsb_ops[] = {
 	}
 };
 
-static struct crl_arithmetic_ops imx185_exposure_msb_ops[] = {
+static struct crl_arithmetic_ops imx185_shs1_msb_ops[] = {
 	{
 		.op = CRL_SUBTRACT,
 		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
@@ -613,7 +613,72 @@ static struct crl_arithmetic_ops imx185_exposure_msb_ops[] = {
 	}
 };
 
-static struct crl_arithmetic_ops imx185_exposure_hsb_ops[] = {
+static struct crl_arithmetic_ops imx185_shs1_hsb_ops[] = {
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 1,
+	},
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 16,
+	}
+};
+
+/* shs2 = fll - exposure * 16 -1 */
+static struct crl_arithmetic_ops imx185_shs2_lsb_ops[] = {
+	{
+		.op = CRL_BITWISE_LSHIFT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 4,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 1,
+	}
+};
+
+static struct crl_arithmetic_ops imx185_shs2_msb_ops[] = {
+	{
+		.op = CRL_BITWISE_LSHIFT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 4,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 1,
+	},
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 8,
+	}
+};
+
+static struct crl_arithmetic_ops imx185_shs2_hsb_ops[] = {
+	{
+		.op = CRL_BITWISE_LSHIFT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 4,
+	},
 	{
 		.op = CRL_SUBTRACT,
 		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
@@ -675,7 +740,7 @@ static struct crl_dynamic_register_access imx185_ana_gain_global_regs[] = {
 	 }
 };
 
-static struct crl_dynamic_register_access imx185_exposure_regs[] = {
+static struct crl_dynamic_register_access imx185_shs_regs[] = {
 	/*
 	 * Use 8bits access since 24bits or 32bits access will fail
 	 * TODO: root cause the 24bits and 32bits access issues
@@ -683,22 +748,43 @@ static struct crl_dynamic_register_access imx185_exposure_regs[] = {
 	{
 		.address = 0x3020,
 		.len = CRL_REG_LEN_08BIT,
-		.ops_items = ARRAY_SIZE(imx185_exposure_lsb_ops),
-		.ops = imx185_exposure_lsb_ops,
+		.ops_items = ARRAY_SIZE(imx185_shs1_lsb_ops),
+		.ops = imx185_shs1_lsb_ops,
 		.mask = 0xff,
 	},
 	{
 		.address = 0x3021,
 		.len = CRL_REG_LEN_08BIT,
-		.ops_items = ARRAY_SIZE(imx185_exposure_msb_ops),
-		.ops = imx185_exposure_msb_ops,
+		.ops_items = ARRAY_SIZE(imx185_shs1_msb_ops),
+		.ops = imx185_shs1_msb_ops,
 		.mask = 0xff,
 	},
 	{
 		.address = 0x3022,
 		.len = CRL_REG_LEN_08BIT,
-		.ops_items = ARRAY_SIZE(imx185_exposure_hsb_ops),
-		.ops = imx185_exposure_hsb_ops,
+		.ops_items = ARRAY_SIZE(imx185_shs1_hsb_ops),
+		.ops = imx185_shs1_hsb_ops,
+		.mask = 0x1,
+	},
+	{
+		.address = 0x3023,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx185_shs2_lsb_ops),
+		.ops = imx185_shs2_lsb_ops,
+		.mask = 0xff,
+	},
+	{
+		.address = 0x3024,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx185_shs2_msb_ops),
+		.ops = imx185_shs2_msb_ops,
+		.mask = 0xff,
+	},
+	{
+		.address = 0x3025,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx185_shs2_hsb_ops),
+		.ops = imx185_shs2_hsb_ops,
 		.mask = 0x1,
 	}
 };
@@ -1130,8 +1216,8 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.ctrl = 0,
-		.regs_items = ARRAY_SIZE(imx185_exposure_regs),
-		.regs = imx185_exposure_regs,
+		.regs_items = ARRAY_SIZE(imx185_shs_regs),
+		.regs = imx185_shs_regs,
 		.dep_items = 0,
 		.dep_ctrls = 0,
 	},
