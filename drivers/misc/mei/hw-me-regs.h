@@ -126,6 +126,7 @@
 
 #define MEI_DEV_ID_BXT_M      0x1A9A  /* Broxton M */
 #define MEI_DEV_ID_APL_I      0x5A9A  /* Apollo Lake I */
+#define MEI_DEV_ID_DNV        0x19D3  /* Denverton (BXT) */
 
 #define MEI_DEV_ID_GLK        0x319A  /* Gemini Lake */
 
