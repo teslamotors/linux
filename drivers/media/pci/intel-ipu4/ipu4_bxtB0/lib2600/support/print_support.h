@@ -54,6 +54,8 @@ extern void FwTracePrintPDEBUG(const char *fmt, ...);
 
 */
 
+#define PRINTSTRING(str) OP___printstring(str)
+
 #elif defined(__KERNEL__)
 #include <linux/kernel.h>
 #include <linux/printk.h>
@@ -71,6 +73,8 @@ extern void FwTracePrintPDEBUG(const char *fmt, ...);
 #define PRINT(format, arguments...)		printf(format, ##arguments)
 #define PERROR(format, arguments...)		printf("error: " format, ##arguments)
 #define PDEBUG(format, arguments...)		printf("debug: " format, ##arguments)
+
+#define PRINTSTRING(str) printf("%s", str)
 
 #endif
 
