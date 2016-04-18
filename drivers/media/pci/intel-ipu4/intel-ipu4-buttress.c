@@ -49,6 +49,8 @@
 
 #define BUTTRESS_IPC_TX_TIMEOUT			1000
 
+#define BUTTRESS_POWER_TIMEOUT			1000
+
 #define INTEL_IPU4_BUTTRESS_TSC_LIMIT	500 /* 26 us @ 19.2 MHz */
 #define INTEL_IPU4_BUTTRESS_TSC_RETRY	10
 
@@ -458,7 +460,8 @@ int intel_ipu4_buttress_power(
 	struct device *dev, struct intel_ipu4_buttress_ctrl *ctrl, bool on)
 {
 	struct intel_ipu4_device *isp = to_intel_ipu4_bus_device(dev)->isp;
-	u32 pwr_sts, val, retry = 300;
+	unsigned long tout_jfs;
+	u32 pwr_sts, val;
 	int ret = 0;
 
 	if (!ctrl)
@@ -479,16 +482,15 @@ int intel_ipu4_buttress_power(
 
 	writel(val, isp->base + ctrl->freq_ctl);
 
-	/* TODO: How long we should wait? */
+	tout_jfs = jiffies + msecs_to_jiffies(BUTTRESS_POWER_TIMEOUT);
 	do {
-		usleep_range(100, 1000);
+		usleep_range(10, 40);
 		val = readl(isp->base + BUTTRESS_REG_PWR_STATE);
 		if ((val & ctrl->pwr_sts_mask) == pwr_sts) {
 			dev_dbg(&isp->pdev->dev, "Rail state successfully changed\n");
 			goto out;
 		}
-
-	} while (retry--);
+	} while (!time_after(jiffies, tout_jfs));
 
 	dev_err(&isp->pdev->dev,
 		"Timeout when trying to change state of the rail 0x%x\n", val);
