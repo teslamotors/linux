@@ -148,7 +148,6 @@ static void tlb_invalidate(struct intel_ipu4_mmu *mmu)
 {
 	unsigned int i;
 
-	pm_runtime_get_sync(mmu->dev);
 	for (i = 0; i < mmu->nr_mmus; i++) {
 		u32 inv;
 
@@ -177,7 +176,6 @@ static void tlb_invalidate(struct intel_ipu4_mmu *mmu)
 			writel(inv, mmu->mmu_hw[i].base + REG_TLB_INVALIDATE);
 		}
 	}
-	pm_runtime_put(mmu->dev);
 }
 
 #ifdef DEBUG
