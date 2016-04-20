@@ -133,14 +133,38 @@ static int ipu4_isys_csi2_be2_set_sel(struct v4l2_subdev *sd,
 		struct v4l2_mbus_framefmt *ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg, sel->pad,
 						   sel->which);
+		struct v4l2_rect *r = __intel_ipu4_isys_get_selection(
+			sd, cfg, sel->target, CSI2_BE_PAD_SINK, sel->which);
 
 		if (get_supported_code_index(ffmt->code) < 0) {
 			/* Non-bayer formats can't be single line cropped */
 			sel->r.left &= ~1;
 			sel->r.top &= ~1;
-		}
-	}
 
+			/* Non-bayer formats can't pe padded at all */
+			sel->r.width = clamp(sel->r.width,
+					     INTEL_IPU4_ISYS_MIN_WIDTH,
+					     r->width);
+		} else {
+			sel->r.width = clamp(sel->r.width,
+					     INTEL_IPU4_ISYS_MIN_WIDTH,
+					     INTEL_IPU4_ISYS_MAX_WIDTH);
+		}
+
+		/*
+		 * ISAPF can pad only horizontally, height is
+		 * restricted by sink pad resolution.
+		 */
+		sel->r.height = clamp(sel->r.height, INTEL_IPU4_ISYS_MIN_HEIGHT,
+				      r->height);
+		*__intel_ipu4_isys_get_selection(sd, cfg, sel->target, sel->pad,
+						 sel->which) = sel->r;
+		intel_ipu4_isys_subdev_fmt_propagate(
+			sd, cfg, NULL, &sel->r,
+			INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SOURCE_CROP,
+			sel->pad, sel->which);
+		return 0;
+	}
 	return intel_ipu4_isys_subdev_set_sel(sd, cfg, sel);
 }
 
