@@ -1,5 +1,5 @@
 snd-soc-skl-objs := skl.o skl-sdw-pcm.o skl-pcm.o skl-nhlt.o skl-messages.o \
-skl-topology.o
+skl-topology.o skl-compress.o skl-probe.o
 
 ifdef CONFIG_DEBUG_FS
   snd-soc-skl-objs += skl-debug.o

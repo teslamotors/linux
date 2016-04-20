@@ -30,6 +30,7 @@
 #include "skl-sst-ipc.h"
 #include "skl-sdw-pcm.h"
 #include "skl-fwlog.h"
+#include "skl-probe.h"
 
 #define HDA_MONO 1
 #define HDA_STEREO 2
@@ -800,13 +801,15 @@ static int skl_trace_compr_copy(struct snd_compr_stream *stream,
 				char __user *dest, size_t count)
 {
 	struct skl_sst *skl_sst = skl_get_sst_compr(stream);
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct sst_dsp *sst = skl_sst->dsp;
 	int core = skl_get_compr_core(stream);
 
 	if (skl_is_logging_core(core))
 		return skl_dsp_copy_log_user(sst, core, dest, count);
 	else
-		return 0;
+		return skl_probe_compr_copy(stream, dest, count, cpu_dai);
 }
 
 static int skl_trace_compr_free(struct snd_compr_stream *stream,
@@ -831,6 +834,15 @@ static int skl_trace_compr_free(struct snd_compr_stream *stream,
 
 static struct snd_compr_ops skl_platform_compr_ops = {
 	.copy = skl_trace_compr_copy,
+};
+
+static struct snd_soc_cdai_ops skl_probe_compr_ops = {
+	.startup = skl_probe_compr_open,
+	.shutdown = skl_probe_compr_close,
+	.trigger = skl_probe_compr_trigger,
+	.ack = skl_probe_compr_ack,
+	.pointer = skl_probe_compr_tstamp,
+	.set_params = skl_probe_compr_set_params,
 };
 
 static struct snd_soc_cdai_ops skl_trace_compr_ops = {
@@ -984,6 +996,24 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 		.rates = SNDRV_PCM_RATE_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 		.sig_bits = 32,
+	},
+},
+{
+	.name = "Compress Probe0 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_probe_compr_ops,
+	.playback = {
+		.stream_name = "Probe Playback",
+		.channels_min = HDA_MONO,
+	},
+},
+{
+	.name = "Compress Probe1 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_probe_compr_ops,
+	.capture = {
+			.stream_name = "Probe Capture",
+			.channels_min = HDA_MONO,
 	},
 },
 {
@@ -1645,6 +1675,29 @@ static int skl_populate_modules(struct skl *skl)
 
 	return ret;
 }
+static int skl_get_probe_widget(struct snd_soc_platform *platform,
+							struct skl *skl)
+{
+	struct skl_probe_config *pconfig = &skl->skl_sst->probe_config;
+	struct snd_soc_dapm_widget *w;
+
+	list_for_each_entry(w, &platform->component.card->widgets, list) {
+		if (is_skl_dsp_widget_type(w) &&
+				(strstr(w->name, "probe") != NULL)) {
+			pconfig->w = w;
+
+			dev_dbg(platform->dev, "widget type=%d name=%s\n",
+							w->id, w->name);
+			break;
+		}
+	}
+
+	pconfig->probe_count = 0;
+	pconfig->no_injector = 6;
+	pconfig->no_extractor = 8;
+
+	return 0;
+}
 
 static int skl_platform_soc_probe(struct snd_soc_platform *platform)
 {
@@ -1684,6 +1737,7 @@ static int skl_platform_soc_probe(struct snd_soc_platform *platform)
 		skl_populate_modules(skl);
 		skl->skl_sst->update_d0i3c = skl_update_d0i3c;
 		skl_dsp_enable_notification(skl->skl_sst, false);
+		skl_get_probe_widget(platform, skl);
 	}
 	pm_runtime_mark_last_busy(platform->dev);
 	pm_runtime_put_autosuspend(platform->dev);

@@ -18,10 +18,14 @@
 
 #include <linux/irqreturn.h>
 #include "../common/sst-ipc.h"
+#include "skl-sst-dsp.h"
 
 struct sst_dsp;
 struct skl_sst;
 struct sst_generic_ipc;
+
+#define NO_OF_INJECTOR 6
+#define NO_OF_EXTRACTOR 8
 
 enum skl_ipc_pipeline_state {
 	PPL_INVALID_STATE =	0,
@@ -75,6 +79,32 @@ struct skl_lib_info {
 	const struct firmware *fw;
 };
 
+struct injector_data {
+	int set;
+	int id;
+	struct hdac_ext_stream *stream;
+	int dma_id;
+	int dma_buf_size;
+};
+
+struct extractor_data {
+	int set;
+	int id;
+};
+
+struct skl_probe_config {
+	struct snd_soc_dapm_widget *w;
+	int probe_count;
+	int edma_id;
+	int edma_type;
+	int edma_buffsize;
+	int no_extractor;
+	int no_injector;
+	struct hdac_ext_stream *estream;
+	struct injector_data iprobe[NO_OF_INJECTOR];
+	struct extractor_data eprobe[NO_OF_EXTRACTOR];
+};
+
 struct skl_sst {
 	struct device *dev;
 	struct sst_dsp *dsp;
@@ -123,6 +153,7 @@ struct skl_sst {
 	int num_sdw_controllers;
 	/* Array of sdw masters */
 	struct sdw_master *mstr;
+	struct skl_probe_config probe_config;
 };
 
 struct skl_ipc_init_instance_msg {

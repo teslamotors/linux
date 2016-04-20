@@ -25,6 +25,7 @@
  */
 #define SKL_CONTROL_TYPE_BYTE_TLV	0x100
 #define SKL_CONTROL_TYPE_MIC_SELECT	0x102
+#define SKL_CONTROL_TYPE_BYTE_PROBE	0x101
 
 #define HDA_SST_CFG_MAX	900 /* size of copier cfg*/
 #define MAX_IN_QUEUE 8
@@ -86,6 +87,7 @@ enum skl_module_type {
 	SKL_MODULE_TYPE_BASE_OUTFMT,
 	SKL_MODULE_TYPE_KPB,
 	SKL_MODULE_TYPE_MIC_SELECT,
+	SKL_MODULE_TYPE_PROBE
 };
 
 enum skl_core_affinity {
@@ -158,6 +160,17 @@ enum skl_module_param_type {
 	SKL_PARAM_INIT,
 	SKL_PARAM_SET,
 	SKL_PARAM_BIND
+};
+
+enum skl_probe_connect_type {
+	SKL_PROBE_CONNECT = 3,
+	SKL_PROBE_DISCONNECT
+};
+
+enum skl_probe_direction {
+	SKL_PROBE_EXTRACT = 0,
+	SKL_PROBE_INJECT,
+	SKL_PROBE_INJECT_REEXTRACT
 };
 
 struct skl_dfw_sdw_aggdata {

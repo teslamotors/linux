@@ -378,7 +378,8 @@ int snd_hdac_stream_setup_periods(struct hdac_stream *azx_dev)
 	} else if (csubstream) {
 		cruntime = csubstream->runtime;
 		dma_buffer_p = csubstream->runtime->dma_buffer_p;
-	}
+	} else
+		return -EINVAL;
 
 	/* reset BDL address */
 	snd_hdac_stream_writel(azx_dev, SD_BDLPL, 0);
@@ -453,27 +454,29 @@ int snd_hdac_stream_set_params(struct hdac_stream *azx_dev,
 	struct snd_pcm_runtime *runtime = NULL;
 	struct snd_compr_runtime *cruntime = NULL;
 	int err;
+	unsigned int no_period_wakeup;
 
 	if (substream) {
 		runtime = substream->runtime;
 		bufsize = snd_pcm_lib_buffer_bytes(substream);
 		period_bytes = snd_pcm_lib_period_bytes(substream);
+		no_period_wakeup = runtime->no_period_wakeup;
 	} else if (csubstream) {
 		cruntime = csubstream->runtime;
 		bufsize = cruntime->buffer_size;
 		period_bytes = cruntime->fragment_size;
+		no_period_wakeup  = 0;
 	} else
 		return -EINVAL;
 
 	if (bufsize != azx_dev->bufsize ||
 	    period_bytes != azx_dev->period_bytes ||
 	    format_val != azx_dev->format_val ||
-	    runtime->no_period_wakeup != azx_dev->no_period_wakeup) {
+	    no_period_wakeup != azx_dev->no_period_wakeup) {
 		azx_dev->bufsize = bufsize;
 		azx_dev->period_bytes = period_bytes;
 		azx_dev->format_val = format_val;
-		if (substream)
-			azx_dev->no_period_wakeup = runtime->no_period_wakeup;
+		azx_dev->no_period_wakeup = no_period_wakeup;
 		err = snd_hdac_stream_setup_periods(azx_dev);
 		if (err < 0)
 			return err;

@@ -768,6 +768,30 @@ static void skl_set_copier_format(struct skl_sst *ctx,
 	skl_setup_cpr_gateway_cfg(ctx, mconfig, cpr_mconfig);
 }
 
+static void skl_setup_probe_gateway_cfg(struct skl_sst *ctx,
+			struct skl_module_cfg *mconfig,
+			struct skl_probe_cfg *probe_cfg)
+{
+	union skl_connector_node_id node_id = {0};
+	struct skl_probe_config *pconfig = &ctx->probe_config;
+
+	node_id.node.dma_type = pconfig->edma_type;
+	node_id.node.vindex = pconfig->edma_id;
+	probe_cfg->prb_cfg.dma_buffer_size = pconfig->edma_buffsize;
+
+	memcpy(&(probe_cfg->prb_cfg.node_id), &node_id, sizeof(u32));
+}
+
+static void skl_set_probe_format(struct skl_sst *ctx,
+			struct skl_module_cfg *mconfig,
+			struct skl_probe_cfg *probe_mconfig)
+{
+	struct skl_base_cfg *base_cfg = (struct skl_base_cfg *)probe_mconfig;
+
+	skl_set_base_module_format(ctx, mconfig, base_cfg);
+	skl_setup_probe_gateway_cfg(ctx, mconfig, probe_mconfig);
+}
+
 /*
  * Algo module are DSP pre processing modules. Algo module take base module
  * configuration and params
@@ -819,6 +843,9 @@ static u16 skl_get_module_param_size(struct skl_sst *ctx,
 		param_size = sizeof(struct skl_cpr_cfg);
 		param_size += mconfig->formats_config.caps_size;
 		return param_size;
+
+	case SKL_MODULE_TYPE_PROBE:
+		return sizeof(struct skl_probe_cfg);
 
 	case SKL_MODULE_TYPE_SRCINT:
 		return sizeof(struct skl_src_module_cfg);
@@ -872,6 +899,10 @@ static int skl_set_module_format(struct skl_sst *ctx,
 	switch (module_config->m_type) {
 	case SKL_MODULE_TYPE_COPIER:
 		skl_set_copier_format(ctx, module_config, *param_data);
+		break;
+
+	case SKL_MODULE_TYPE_PROBE:
+		skl_set_probe_format(ctx, module_config, *param_data);
 		break;
 
 	case SKL_MODULE_TYPE_SRCINT:
@@ -1041,6 +1072,70 @@ int skl_init_module(struct skl_sst *ctx,
 	return ret;
 }
 
+int skl_init_probe_module(struct skl_sst *ctx,
+			struct skl_module_cfg *mconfig)
+{
+	u16 module_config_size = 0;
+	void *param_data = NULL;
+	int ret;
+	struct skl_ipc_init_instance_msg msg;
+
+	dev_dbg(ctx->dev, "%s: module_id = %d instance=%d\n", __func__,
+		 mconfig->id.module_id, mconfig->id.instance_id);
+
+
+	ret = skl_set_module_format(ctx, mconfig,
+			&module_config_size, &param_data);
+	if (ret < 0) {
+		dev_err(ctx->dev, "Failed to set module format ret=%d\n", ret);
+		return ret;
+	}
+
+	msg.module_id = mconfig->id.module_id;
+	msg.instance_id = mconfig->id.instance_id;
+	msg.ppl_instance_id = -1;
+	msg.param_data_size = module_config_size;
+	msg.core_id = mconfig->core_id;
+	msg.domain = mconfig->domain;
+
+	ret = skl_ipc_init_instance(&ctx->ipc, &msg, param_data);
+	if (ret < 0) {
+		dev_err(ctx->dev, "Failed to init instance ret=%d\n", ret);
+		kfree(param_data);
+		return ret;
+	}
+	mconfig->m_state = SKL_MODULE_INIT_DONE;
+	kfree(param_data);
+	return ret;
+}
+
+int skl_uninit_probe_module(struct skl_sst *ctx,
+			struct skl_module_cfg *mconfig)
+{
+	u16 module_config_size = 0;
+	int ret;
+	struct skl_ipc_init_instance_msg msg;
+
+	dev_dbg(ctx->dev, "%s: module_id = %d instance=%d\n", __func__,
+		 mconfig->id.module_id, mconfig->id.instance_id);
+
+	msg.module_id = mconfig->id.module_id;
+	msg.instance_id = mconfig->id.instance_id;
+	msg.ppl_instance_id = -1;
+	msg.param_data_size = module_config_size;
+	msg.core_id = mconfig->core_id;
+	msg.domain = mconfig->domain;
+
+	ret = skl_ipc_delete_instance(&ctx->ipc, &msg);
+	if (ret < 0) {
+		dev_err(ctx->dev, "Failed to delete instance ret=%d\n", ret);
+		return ret;
+	}
+	mconfig->m_state = SKL_MODULE_UNINIT;
+
+	return ret;
+}
+
 static void skl_dump_bind_info(struct skl_sst *ctx, struct skl_module_cfg
 	*src_module, struct skl_module_cfg *dst_module)
 {
@@ -1053,6 +1148,34 @@ static void skl_dump_bind_info(struct skl_sst *ctx, struct skl_module_cfg
 		src_module->m_state, dst_module->m_state);
 }
 
+int skl_disconnect_probe_point(struct skl_sst *ctx,
+				struct snd_soc_dapm_widget *w)
+{
+	struct skl_ipc_large_config_msg msg;
+	struct skl_probe_config *pconfig = &ctx->probe_config;
+	struct skl_module_cfg *mcfg;
+	int probe_point[8] = {0};
+	int n = 0, i;
+	int no_of_extractor = pconfig->no_extractor;
+
+	dev_dbg(ctx->dev, "Disconnecting probe\n");
+	mcfg = w->priv;
+	msg.module_id = mcfg->id.module_id;
+	msg.instance_id = mcfg->id.instance_id;
+	msg.large_param_id = SKL_PROBE_DISCONNECT;
+
+	for (i = 0; i < no_of_extractor; i++) {
+		if (pconfig->eprobe[i].set) {
+			probe_point[n] = pconfig->eprobe[i].id;
+			pconfig->eprobe[i].set = -1;
+			n++;
+		}
+	}
+
+	msg.param_data_size = n * sizeof(u32);
+	return skl_ipc_set_large_config(&ctx->ipc, &msg,
+						probe_point);
+}
 /*
  * On module freeup, we need to unbind the module with modules
  * it is already bind.
