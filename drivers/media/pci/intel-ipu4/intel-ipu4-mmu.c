@@ -147,6 +147,13 @@ static void zlw_invalidate(struct intel_ipu4_mmu *mmu,
 static void tlb_invalidate(struct intel_ipu4_mmu *mmu)
 {
 	unsigned int i;
+	unsigned long flags;
+
+	spin_lock_irqsave(&mmu->ready_lock, flags);
+	if (!mmu->ready) {
+		spin_unlock_irqrestore(&mmu->ready_lock, flags);
+		return;
+	}
 
 	for (i = 0; i < mmu->nr_mmus; i++) {
 		u32 inv;
@@ -176,6 +183,7 @@ static void tlb_invalidate(struct intel_ipu4_mmu *mmu)
 			writel(inv, mmu->mmu_hw[i].base + REG_TLB_INVALIDATE);
 		}
 	}
+	spin_unlock_irqrestore(&mmu->ready_lock, flags);
 }
 
 #ifdef DEBUG
@@ -579,6 +587,7 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 	struct intel_ipu4_mmu_pdata *pdata = adev->pdata;
 	struct intel_ipu4_mmu_domain *adom;
 	unsigned int i;
+	unsigned long flags;
 
 	dev_dbg(dev, "mmu hw init\n");
 	/*
@@ -685,6 +694,10 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 		adom->iova_addr_trash = mmu->iova_addr_trash;
 	}
 
+	spin_lock_irqsave(&mmu->ready_lock, flags);
+	mmu->ready = true;
+	spin_unlock_irqrestore(&mmu->ready_lock, flags);
+
 	return 0;
 }
 
@@ -768,6 +781,8 @@ static int intel_ipu4_mmu_probe(struct intel_ipu4_bus_device *adev)
 	mmu->tlb_invalidate = tlb_invalidate;
 	mmu->set_mapping = set_mapping;
 	mmu->dev = &adev->dev;
+	mmu->ready = false;
+	spin_lock_init(&mmu->ready_lock);
 
 	/*
 	 * Allocate 1 page of physical memory for the trash buffer
@@ -814,6 +829,14 @@ static irqreturn_t intel_ipu4_mmu_isr(struct intel_ipu4_bus_device *adev)
 #ifdef CONFIG_PM
 static int intel_ipu4_mmu_suspend(struct device *dev)
 {
+	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
+	struct intel_ipu4_mmu *mmu = intel_ipu4_bus_get_drvdata(adev);
+	unsigned long flags;
+
+	spin_lock_irqsave(&mmu->ready_lock, flags);
+	mmu->ready = false;
+	spin_unlock_irqrestore(&mmu->ready_lock, flags);
+
 	return 0;
 }
 

@@ -61,6 +61,9 @@ struct intel_ipu4_mmu {
 	struct page *trash_page;
 	dma_addr_t iova_addr_trash;
 
+	bool ready;
+	spinlock_t ready_lock;
+
 	void (*tlb_invalidate)(struct intel_ipu4_mmu *mmu);
 	void (*set_mapping)(struct intel_ipu4_mmu *mmu,
 			   struct intel_ipu4_dma_mapping *dmap);
