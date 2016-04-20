@@ -357,6 +357,13 @@ static struct crl_sensor_limits adv7481_eval_sensor_limits = {
 
 static struct crl_csi_data_fmt adv7481_eval_crl_csi_data_fmt[] = {
 	{
+		.code = MEDIA_BUS_FMT_YUYV8_1X16,
+		.pixel_order = CRL_PIXEL_ORDER_GRBG,
+		.bits_per_pixel = 16,
+		.regs_items = 0,
+		.regs = NULL,
+	},
+	{
 		.code = MEDIA_BUS_FMT_UYVY8_1X16,
 		.pixel_order = CRL_PIXEL_ORDER_GRBG,
 		.bits_per_pixel = 16,
