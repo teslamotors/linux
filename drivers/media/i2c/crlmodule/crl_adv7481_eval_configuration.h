@@ -44,7 +44,17 @@ static struct crl_pll_configuration adv7481_eval_pll_configurations[] = {
 		.pll_regs_items = 0,
 		.pll_regs = NULL,
 	 },
-
+	 {
+		.input_clk = 24000000,
+		.op_sys_clk = 400000000,
+		.bitsperpixel = 24,
+		.pixel_rate_csi = 800000000,
+		.pixel_rate_pa = 800000000,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.pll_regs_items = 0,
+		.pll_regs = NULL,
+	 },
 };
 
 static struct crl_subdev_rect_rep adv7481_eval_1080p_rects[] = {
