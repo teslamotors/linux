@@ -1282,11 +1282,11 @@ static struct crl_frame_desc ov8858_frame_desc[] = {
 		.start_line.entity_val = 0,
 		.start_pixel.entity_val = 0,
 		.width = {
-			 .ops_items = ARRAY_SIZE(imx230_frame_desc_width_ops),
+			 .ops_items = ARRAY_SIZE(ov8858_frame_desc_width_ops),
 			 .ops = ov8858_frame_desc_width_ops,
 			 },
 		.height = {
-			  .ops_items = ARRAY_SIZE(imx230_frame_desc_height_ops),
+			  .ops_items = ARRAY_SIZE(ov8858_frame_desc_height_ops),
 			  .ops = ov8858_frame_desc_height_ops,
 			  },
 		.csi2_channel.entity_val = 0,
