@@ -122,6 +122,48 @@ const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_packed[] = {
 
 static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys);
 
+static int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys)
+{
+	int retry = INTEL_IPU4_ISYS_OPEN_RETRY;
+
+	struct ia_css_isys_device_cfg_data isys_cfg = {
+		.driver_sys = {
+			.ssid = ISYS_SSID,
+			.mmid = ISYS_MMID,
+			.num_send_queues = clamp_t(
+				unsigned int, num_stream_support, 1,
+				INTEL_IPU4_ISYS_NUM_STREAMS_B0),
+			.num_recv_queues = 1,
+			.send_queue_size = 40,
+			.recv_queue_size = 40,
+		},
+	};
+	struct device *dev = &isys->adev->dev;
+	int rval;
+
+	rval = -ia_css_isys_device_open(&isys->ssi, &isys_cfg);
+	if (rval < 0) {
+		dev_err(dev, "isys device open failed %d\n", rval);
+		return rval;
+	}
+
+	do {
+		usleep_range(INTEL_IPU4_ISYS_OPEN_TIMEOUT_US,
+			     INTEL_IPU4_ISYS_OPEN_TIMEOUT_US + 10);
+		rval = intel_ipu4_lib_call(device_open_ready, isys);
+		if (!rval)
+			break;
+		retry--;
+	} while (retry > 0);
+
+	if (!retry && rval) {
+		dev_err(dev, "isys device open ready failed %d\n", rval);
+		intel_ipu4_isys_library_close(isys);
+	}
+
+	return rval;
+}
+
 /**
  * Returns true if device does not support real interrupts and
  * polling must be used.
@@ -209,8 +251,7 @@ static int video_open(struct file *file)
 
 	if (isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA ||
 	    isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4) {
-		rval = intel_ipu4_isys_library_init(
-			av->isys, (void *)&isys->fw->data);
+		rval = intel_ipu4_isys_library_init(av->isys);
 		if (rval < 0)
 			goto out_lib_init;
 	}
@@ -617,70 +658,6 @@ static void put_stream_handle(struct intel_ipu4_isys_video *av)
 	av->isys->pipes[ip->stream_handle] = NULL;
 	ip->stream_handle = -1;
 	spin_unlock_irqrestore(&av->isys->lock, flags);
-}
-
-int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys, void *fw)
-{
-	u64 firmware_address = 0;
-	int retry = INTEL_IPU4_ISYS_OPEN_RETRY;
-
-	struct ia_css_isys_device_cfg_data isys_cfg = {
-		.driver_sys = {
-			.ssid = ISYS_SSID,
-			.mmid = ISYS_MMID,
-			.num_send_queues = clamp_t(
-				unsigned int, num_stream_support, 1,
-				INTEL_IPU4_ISYS_NUM_STREAMS_B0),
-			.num_recv_queues = 1,
-			.send_queue_size = 40,
-			.recv_queue_size = 40,
-			.mmio_base_address = isys->pdata->base,
-		},
-#ifdef IPU_STEP_BXTA0
-		/*
-		 * For A0/1, SRAM partitions is configured by driver,
-		 * For B0/1, this will be done by FW, so the API is removed.
-		 */
-		.mipi = {
-			.nof_blocks = INTEL_IPU4_ISYS_MAX_STREAMS,
-			.block_size = { 0x6000, 0x6000 },
-		},
-		.pixel = {
-			.nof_blocks = INTEL_IPU4_ISYS_MAX_STREAMS,
-			.block_size = { 0x6000, 0x6000 },
-		},
-#endif
-	};
-	struct device *dev = &isys->adev->dev;
-	int rval;
-
-	/* A0 FW is not a pkg_dir */
-	if (is_intel_ipu4_hw_bxt_a0(isys->adev->isp))
-		isys_cfg.driver_sys.firmware_address = fw;
-	else
-		isys_cfg.driver_sys.firmware_address = &firmware_address;
-
-	rval = -ia_css_isys_device_open(&isys->ssi, &isys_cfg);
-	if (rval < 0) {
-		dev_err(dev, "isys device open failed %d\n", rval);
-		return rval;
-	}
-
-	do {
-		usleep_range(INTEL_IPU4_ISYS_OPEN_TIMEOUT_US,
-			     INTEL_IPU4_ISYS_OPEN_TIMEOUT_US + 10);
-		rval = intel_ipu4_lib_call(device_open_ready, isys);
-		if (!rval)
-			break;
-		retry--;
-	} while (retry > 0);
-
-	if (!retry && rval) {
-		dev_err(dev, "isys device open ready failed %d\n", rval);
-		intel_ipu4_isys_library_close(isys);
-	}
-
-	return rval;
 }
 
 static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys)
