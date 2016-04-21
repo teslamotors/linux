@@ -1281,6 +1281,44 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 	},
 };
 
+static struct crl_arithmetic_ops imx185_frame_desc_width_ops[] = {
+	{
+		 .op = CRL_ASSIGNMENT,
+		 .operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_VAR_REF,
+		 .operand.entity_val = CRL_VAR_REF_OUTPUT_WIDTH,
+	},
+};
+
+static struct crl_arithmetic_ops imx185_frame_desc_height_ops[] = {
+	{
+		 .op = CRL_ASSIGNMENT,
+		 .operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		 .operand.entity_val = 1,
+	},
+};
+
+static struct crl_frame_desc imx185_frame_desc[] = {
+	{
+		.flags.entity_val = 0,
+		.bpp.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_VAR_REF,
+		.bpp.entity_val = CRL_VAR_REF_BITSPERPIXEL,
+		.pixelcode.entity_val = MEDIA_BUS_FMT_FIXED,
+		.length.entity_val = 0,
+		.start_line.entity_val = 0,
+		.start_pixel.entity_val = 0,
+		.width = {
+			 .ops_items = ARRAY_SIZE(imx185_frame_desc_width_ops),
+			 .ops = imx185_frame_desc_width_ops,
+			 },
+		.height = {
+			  .ops_items = ARRAY_SIZE(imx185_frame_desc_height_ops),
+			  .ops = imx185_frame_desc_height_ops,
+			  },
+		.csi2_channel.entity_val = 0,
+		.csi2_data_type.entity_val = 0x12,
+	},
+};
+
 /* Power items, they are enabled in the order they are listed here */
 static struct crl_power_seq_entity imx185_power_items[] = {
 	{
@@ -1332,6 +1370,10 @@ struct crl_sensor_configuration imx185_crl_configuration = {
 
 	.flip_items = ARRAY_SIZE(imx185_flip_configurations),
 	.flip_data = imx185_flip_configurations,
+
+	.frame_desc_entries = ARRAY_SIZE(imx185_frame_desc),
+	.frame_desc_type = CRL_V4L2_MBUS_FRAME_DESC_TYPE_CSI2,
+	.frame_desc = imx185_frame_desc,
 };
 
 #endif  /* __CRLMODULE_IMX185_CONFIGURATION_H_ */
