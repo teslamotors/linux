@@ -51,11 +51,19 @@ enum ipu_device_cell_reg {
 enum ipu_device_cell_mem {
 	IPU_DEVICE_CELL_REGS,	/* memory id of registers */
 	IPU_DEVICE_CELL_PMEM,	/* memory id of pmem */
-	IPU_DEVICE_CELL_DMEM	/* memory id of dmem */
+	IPU_DEVICE_CELL_DMEM,	/* memory id of dmem */
+	IPU_DEVICE_CELL_BAMEM,	/* memory id of bamem */
+	IPU_DEVICE_CELL_VMEM	/* memory id of vmem */
 };
+#define IPU_DEVICE_CELL_NUM_MEMORIES (IPU_DEVICE_CELL_VMEM + 1)
 
 enum ipu_device_cell_master {
-	IPU_DEVICE_CELL_MASTER_ICACHE	/* master port id of icache */
+	IPU_DEVICE_CELL_MASTER_ICACHE,	/* master port id of icache */
+	IPU_DEVICE_CELL_MASTER_QMEM,
+	IPU_DEVICE_CELL_MASTER_CMEM,
+	IPU_DEVICE_CELL_MASTER_XMEM,
+	IPU_DEVICE_CELL_MASTER_XVMEM
 };
+#define IPU_DEVICE_CELL_MASTER_NUM_MASTERS (IPU_DEVICE_CELL_MASTER_XVMEM + 1)
 
 #endif /* _IPU_DEVICE_CELL_TYPE_PROPERTIES_H_ */

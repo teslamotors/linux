@@ -73,8 +73,8 @@ void ia_css_psys_set_master_port_regs(unsigned int ssid)
 	assert(SPP1 < ISP0);
 
 	for (m = ISP0; m < NUM_CELLS; m++) {
-		ia_css_cell_set_master_info_bits(ssid, m, IPU_DEVICE_ISP2600_ICACHE, info_bits);
-		ia_css_cell_set_master_info_bits(ssid, m, IPU_DEVICE_ISP2600_XMEM, info_bits);
-		ia_css_cell_set_master_base_address(ssid, m, IPU_DEVICE_ISP2600_XMEM, 0);
+		ia_css_cell_set_master_info_bits(ssid, m, IPU_DEVICE_CELL_MASTER_ICACHE, info_bits);
+		ia_css_cell_set_master_info_bits(ssid, m, IPU_DEVICE_CELL_MASTER_XMEM, info_bits);
+		ia_css_cell_set_master_base_address(ssid, m, IPU_DEVICE_CELL_MASTER_XMEM, 0);
 	}
 }
