@@ -2080,6 +2080,14 @@ static int resize_chunks(struct r5conf *conf, int new_disks, int new_sectors)
 	unsigned long cpu;
 	int err = 0;
 
+	/*
+	 * Never shrink. And mddev_suspend() could deadlock if this is called
+	 * from raid5d. In that case, scribble_disks and scribble_sectors
+	 * should equal to new_disks and new_sectors
+	 */
+	if (conf->scribble_disks >= new_disks &&
+	    conf->scribble_sectors >= new_sectors)
+		return 0;
 	mddev_suspend(conf->mddev);
 	get_online_cpus();
 	for_each_present_cpu(cpu) {
@@ -2101,6 +2109,10 @@ static int resize_chunks(struct r5conf *conf, int new_disks, int new_sectors)
 	}
 	put_online_cpus();
 	mddev_resume(conf->mddev);
+	if (!err) {
+		conf->scribble_disks = new_disks;
+		conf->scribble_sectors = new_sectors;
+	}
 	return err;
 }
 
@@ -4220,7 +4232,6 @@ static void break_stripe_batch_list(struct stripe_head *head_sh,
 		WARN_ON_ONCE(sh->state & ((1 << STRIPE_ACTIVE) |
 					  (1 << STRIPE_SYNCING) |
 					  (1 << STRIPE_REPLACED) |
-					  (1 << STRIPE_PREREAD_ACTIVE) |
 					  (1 << STRIPE_DELAYED) |
 					  (1 << STRIPE_BIT_DELAY) |
 					  (1 << STRIPE_FULL_WRITE) |
@@ -4235,6 +4246,7 @@ static void break_stripe_batch_list(struct stripe_head *head_sh,
 					      (1 << STRIPE_REPLACED)));
 
 		set_mask_bits(&sh->state, ~(STRIPE_EXPAND_SYNC_FLAGS |
+					    (1 << STRIPE_PREREAD_ACTIVE) |
 					    (1 << STRIPE_DEGRADED)),
 			      head_sh->state & (1 << STRIPE_INSYNC));
 
@@ -6366,6 +6378,12 @@ static int raid5_alloc_percpu(struct r5conf *conf)
 	}
 	put_online_cpus();
 
+	if (!err) {
+		conf->scribble_disks = max(conf->raid_disks,
+			conf->previous_raid_disks);
+		conf->scribble_sectors = max(conf->chunk_sectors,
+			conf->prev_chunk_sectors);
+	}
 	return err;
 }
 
@@ -6942,8 +6960,8 @@ static int run(struct mddev *mddev)
 		}
 
 		if (discard_supported &&
-		   mddev->queue->limits.max_discard_sectors >= stripe &&
-		   mddev->queue->limits.discard_granularity >= stripe)
+		    mddev->queue->limits.max_discard_sectors >= (stripe >> 9) &&
+		    mddev->queue->limits.discard_granularity >= stripe)
 			queue_flag_set_unlocked(QUEUE_FLAG_DISCARD,
 						mddev->queue);
 		else
