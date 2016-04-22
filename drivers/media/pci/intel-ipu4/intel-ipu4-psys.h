@@ -22,6 +22,8 @@
 #include "intel-ipu4-pdata.h"
 #include "intel-ipu4-resources.h"
 
+#define INTEL_IPU4_PSYS_PG_POOL_SIZE 16
+#define INTEL_IPU4_PSYS_PG_MAX_SIZE 2048
 #define INTEL_IPU4_MAX_PSYS_CMD_BUFFERS 32
 #define INTEL_IPU4_PSYS_CMD_TIMEOUT_MS_FPGA (60000*15)
 #define INTEL_IPU4_PSYS_CMD_TIMEOUT_MS_SOC 10000
@@ -46,6 +48,7 @@ struct intel_ipu4_psys {
 	int power;
 	spinlock_t power_lock;
 	struct list_head fhs;
+	struct list_head pgs;
 	struct intel_ipu4_psys_pdata *pdata;
 	struct intel_ipu4_bus_device *adev;
 	void *syscom_buffer;
@@ -78,6 +81,14 @@ struct intel_ipu4_psys_fh {
 	wait_queue_head_t wait;
 };
 
+struct intel_ipu4_psys_pg {
+	ia_css_process_group_t *pg;
+	size_t size;
+	size_t pg_size;
+	dma_addr_t pg_dma_addr;
+	struct list_head list;
+};
+
 struct intel_ipu4_psys_kcmd {
 	struct intel_ipu4_psys_fh *fh;
 	struct list_head list;
@@ -92,9 +103,7 @@ struct intel_ipu4_psys_kcmd {
 	struct intel_ipu4_psys_dma_buf *buffers;
 	size_t nbuffers;
 	ia_css_process_group_t *pg_user;
-	ia_css_process_group_t *pg;
-	size_t pg_size;
-	dma_addr_t pg_dma_addr;
+	struct intel_ipu4_psys_pg *kpg;
 	uint32_t id;
 	uint64_t issue_id;
 	uint32_t priority;

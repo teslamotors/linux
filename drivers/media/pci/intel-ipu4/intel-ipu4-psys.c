@@ -554,14 +554,11 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
  */
 static void intel_ipu4_psys_kcmd_free(struct intel_ipu4_psys_kcmd *kcmd)
 {
-	struct intel_ipu4_psys *psys = kcmd->fh->psys;
-
 	if (!list_empty(&kcmd->list))
 		list_del(&kcmd->list);
 
-	if (kcmd->pg)
-		dma_free_noncoherent(&psys->adev->dev,
-				kcmd->pg_size, kcmd->pg, kcmd->pg_dma_addr);
+	if (kcmd->kpg)
+		kcmd->kpg->pg_size = 0;
 
 	kfree(kcmd->pg_manifest);
 	kfree(kcmd->kbufs);
@@ -677,6 +674,36 @@ static int intel_ipu4_psys_putbuf(struct intel_ipu4_psys_buffer *buf,
 	return 0;
 }
 
+struct intel_ipu4_psys_pg *__get_pg_buf(
+		struct intel_ipu4_psys *psys, size_t pg_size)
+{
+	struct intel_ipu4_psys_pg *kpg;
+
+	list_for_each_entry(kpg, &psys->pgs, list) {
+		if (!kpg->pg_size && kpg->size >= pg_size) {
+			kpg->pg_size = pg_size;
+			return kpg;
+		}
+	}
+	/* no big enough buffer available, allocate new one */
+	kpg = kzalloc(sizeof(*kpg), GFP_KERNEL);
+	if (!kpg)
+		return NULL;
+
+	kpg->pg = dma_alloc_noncoherent(&psys->adev->dev, pg_size,
+			&kpg->pg_dma_addr, GFP_KERNEL);
+	if (!kpg->pg) {
+		kfree(kpg);
+		return NULL;
+	}
+
+	kpg->pg_size = pg_size;
+	kpg->size = pg_size;
+	list_add(&kpg->list, &psys->pgs);
+
+	return kpg;
+}
+
 struct intel_ipu4_psys_kcmd *
 intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 		      struct intel_ipu4_psys_fh *fh)
@@ -706,20 +733,17 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 		goto error;
 
 	kcmd->pg_user = kpgbuf->kaddr;
-	kcmd->pg_size = kpgbuf->len;
-
-	kcmd->pg = dma_alloc_noncoherent(&psys->adev->dev, kcmd->pg_size,
-					 &kcmd->pg_dma_addr, GFP_KERNEL);
-	if (!kcmd->pg)
+	kcmd->kpg = __get_pg_buf(psys, kpgbuf->len);
+	if (!kcmd->kpg)
 		goto error;
 
-	memcpy(kcmd->pg, kcmd->pg_user, kcmd->pg_size);
+	memcpy(kcmd->kpg->pg, kcmd->pg_user, kcmd->kpg->pg_size);
 
 	kcmd->pg_manifest = kzalloc(cmd->pg_manifest_size, GFP_KERNEL);
 	if (!kcmd->pg_manifest)
 		goto error;
 
-	kcmd->nbuffers = ia_css_process_group_get_terminal_count(kcmd->pg);
+	kcmd->nbuffers = ia_css_process_group_get_terminal_count(kcmd->kpg->pg);
 	if (kcmd->nbuffers > cmd->bufcount)
 		goto error;
 
@@ -792,7 +816,6 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 
 	intel_ipu4_psys_free_resources(&kcmd->resource_alloc,
 				       &kcmd->fh->psys->resource_pool);
-
 	kcmd->ev.type = INTEL_IPU4_PSYS_EVENT_TYPE_CMD_COMPLETE;
 	kcmd->ev.id = kcmd->id;
 	kcmd->ev.issue_id = kcmd->issue_id;
@@ -803,8 +826,8 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 		intel_ipu4_buttress_remove_psys_constraint(psys->adev->isp,
 							   &kcmd->constraint);
 
-	if (!early_pg_transfer && kcmd->pg_user && kcmd->pg)
-		memcpy(kcmd->pg_user, kcmd->pg, kcmd->pg_size);
+	if (!early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
+		memcpy(kcmd->pg_user, kcmd->kpg->pg, kcmd->kpg->pg_size);
 
 	complete(&kcmd->cmd_complete);
 	wake_up_interruptible(&kcmd->fh->wait);
@@ -824,7 +847,7 @@ static int intel_ipu4_psys_kcmd_abort(struct intel_ipu4_psys *psys,
 		return 0;
 
 	if (kcmd->state == KCMD_STATE_RUNNING &&
-	    ia_css_process_group_stop(kcmd->pg)) {
+	    ia_css_process_group_stop(kcmd->kpg->pg)) {
 		dev_err(&psys->adev->dev, "failed to abort kcmd!\n");
 		kcmd->pg_user = NULL;
 		ret = error = -EIO;
@@ -856,13 +879,13 @@ static int intel_ipu4_psys_kcmd_run(struct intel_ipu4_psys *psys,
 
 	kcmd->watchdog.expires = jiffies + msecs_to_jiffies(psys->timeout);
 
-	if (early_pg_transfer && kcmd->pg_user && kcmd->pg)
-		memcpy(kcmd->pg_user, kcmd->pg, kcmd->pg_size);
+	if (early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
+		memcpy(kcmd->pg_user, kcmd->kpg->pg, kcmd->kpg->pg_size);
 
 #ifdef IPU_STEP_BXTA0
-	clflush_cache_range(kcmd->pg, kcmd->pg_size);
+	clflush_cache_range(kcmd->kpg->pg, kcmd->kpg->pg_size);
 #endif
-	ret = -ia_css_process_group_start(kcmd->pg);
+	ret = -ia_css_process_group_start(kcmd->kpg->pg);
 	if (ret)
 		goto error;
 #ifdef IPU_STEP_BXTB0
@@ -871,9 +894,9 @@ static int intel_ipu4_psys_kcmd_run(struct intel_ipu4_psys *psys,
 	 * two different calls, making driver responsible to flush pg between
 	 * start and disown library calls.
 	 */
-	clflush_cache_range(kcmd->pg, kcmd->pg_size);
+	clflush_cache_range(kcmd->kpg->pg, kcmd->kpg->pg_size);
 
-	ret = -ia_css_process_group_disown(kcmd->pg);
+	ret = -ia_css_process_group_disown(kcmd->kpg->pg);
 	if (ret)
 		goto error;
 #endif
@@ -940,7 +963,7 @@ static void intel_ipu4_psys_run_next(struct intel_ipu4_psys *psys)
 
 				ret = intel_ipu4_psys_allocate_resources(
 					&psys->adev->dev,
-					kcmd->pg,
+					kcmd->kpg->pg,
 					kcmd->pg_manifest,
 					&kcmd->resource_alloc,
 					&psys->resource_pool);
@@ -1051,15 +1074,16 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 							&kcmd->constraint);
 	}
 
-	pg_size = ia_css_process_group_get_size(kcmd->pg);
-	if (pg_size > kcmd->pg_size) {
+	pg_size = ia_css_process_group_get_size(kcmd->kpg->pg);
+	if (pg_size > kcmd->kpg->pg_size) {
 		dev_dbg(&psys->adev->dev, "pg size mismatch %lu %lu\n",
-			pg_size, kcmd->pg_size);
+			pg_size, kcmd->kpg->pg_size);
 		ret = -EINVAL;
 		goto error;
 	}
 
-	ret = ia_css_process_group_set_ipu_vaddress(kcmd->pg, kcmd->pg_dma_addr);
+	ret = ia_css_process_group_set_ipu_vaddress(kcmd->kpg->pg,
+						    kcmd->kpg->pg_dma_addr);
 	if (ret) {
 		ret = -EIO;
 		goto error;
@@ -1071,7 +1095,7 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 		ia_css_terminal_type_t type;
 		vied_vaddress_t buffer;
 
-		terminal = ia_css_process_group_get_terminal(kcmd->pg, i);
+		terminal = ia_css_process_group_get_terminal(kcmd->kpg->pg, i);
 		if (!terminal)
 			continue;
 
@@ -1128,7 +1152,7 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 		buffer = (vied_vaddress_t)kcmd->kbufs[i]->dma_addr +
 			 kcmd->buffers[i].data_offset;
 
-		ret = -ia_css_process_group_attach_buffer(kcmd->pg, buffer,
+		ret = -ia_css_process_group_attach_buffer(kcmd->kpg->pg, buffer,
 							  buffer_state, i);
 		if (ret) {
 			ret = -EIO;
@@ -1136,9 +1160,9 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 		}
 	}
 
-	ia_css_process_group_set_token(kcmd->pg, (uint64_t)kcmd);
+	ia_css_process_group_set_token(kcmd->kpg->pg, (uint64_t)kcmd);
 
-	ret = -ia_css_process_group_submit(kcmd->pg);
+	ret = -ia_css_process_group_submit(kcmd->kpg->pg);
 	if (ret) {
 		dev_err(&psys->adev->dev, "pg submit failed %d\n", ret);
 		ret = -EIO;
@@ -1761,10 +1785,11 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
 	struct intel_ipu4_device *isp = adev->isp;
+	struct intel_ipu4_psys_pg *kpg, *kpg0;
 	struct intel_ipu4_psys *psys;
 	const struct firmware *fw;
 	unsigned int minor;
-	int rval = -E2BIG;
+	int i, rval = -E2BIG;
 
 	/* Has the domain been attached? */
 	if (!mmu)
@@ -1814,6 +1839,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		psys->timeout = INTEL_IPU4_PSYS_CMD_TIMEOUT_MS_SOC;
 	mutex_init(&psys->mutex);
 	INIT_LIST_HEAD(&psys->fhs);
+	INIT_LIST_HEAD(&psys->pgs);
 	INIT_WORK(&psys->watchdog_work, intel_ipu4_psys_watchdog_work);
 
 	intel_ipu4_bus_set_drvdata(adev, psys);
@@ -1915,6 +1941,22 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		psys->server_init->pkg_dir_size = 0;
 	}
 
+	/* allocate and map memory for process groups */
+	for (i = 0; i < INTEL_IPU4_PSYS_PG_POOL_SIZE; i++) {
+		kpg = kzalloc(sizeof(*kpg), GFP_KERNEL);
+		if (!kpg)
+			goto out_free_pgs;
+		kpg->pg = dma_alloc_noncoherent(&adev->dev,
+				INTEL_IPU4_PSYS_PG_MAX_SIZE, &kpg->pg_dma_addr,
+				GFP_KERNEL);
+		if (!kpg->pg) {
+			kfree(kpg);
+			goto out_free_pgs;
+		}
+		kpg->size = INTEL_IPU4_PSYS_PG_MAX_SIZE;
+		list_add(&kpg->list, &psys->pgs);
+	}
+
 	isp->pkg_dir = psys->pkg_dir;
 	isp->pkg_dir_dma_addr = psys->pkg_dir_dma_addr;
 	isp->pkg_dir_size = psys->pkg_dir_size;
@@ -1964,6 +2006,12 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 
 	return 0;
 
+out_free_pgs:
+	list_for_each_entry_safe(kpg, kpg0, &psys->pgs, list) {
+		dma_free_noncoherent(&adev->dev, kpg->size, kpg->pg,
+				     kpg->pg_dma_addr);
+		kfree(kpg);
+	}
 out_remove_pkg_dir_shared_buffer:
 	if (!is_intel_ipu4_hw_bxt_a0(isp))
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
@@ -2004,10 +2052,17 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_device *isp = adev->isp;
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
+	struct intel_ipu4_psys_pg *kpg, *kpg0;
 
 	flush_workqueue(INTEL_IPU4_PSYS_WORK_QUEUE);
 
 	mutex_lock(&intel_ipu4_psys_mutex);
+
+	list_for_each_entry_safe(kpg, kpg0, &psys->pgs, list) {
+		dma_free_noncoherent(&adev->dev, kpg->size, kpg->pg,
+				     kpg->pg_dma_addr);
+		kfree(kpg);
+	}
 
 	isp->pkg_dir = NULL;
 	isp->pkg_dir_dma_addr = 0;
