@@ -1282,7 +1282,7 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 
 	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++) {
 		char buffer[16]; /* max for clk_register_clkdev */
-		unsigned int parent_index;
+		unsigned int parent_index = 0;
 		struct clk_intel_ipu4_sensor *my_clk =
 			devm_kzalloc(&isp->pdev->dev, sizeof(*my_clk),
 				     GFP_KERNEL);
