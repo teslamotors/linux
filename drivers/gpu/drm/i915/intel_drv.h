@@ -1706,6 +1706,10 @@ static inline void intel_fbdev_restore_mode(struct drm_device *dev)
 }
 #endif
 
+/* initial modesetting support */
+extern void intel_initial_mode_config_init(struct drm_device *dev);
+extern void intel_initial_mode_config_fini(struct drm_device *dev);
+
 /* intel_fbc.c */
 void intel_fbc_choose_crtc(struct drm_i915_private *dev_priv,
 			   struct drm_atomic_state *state);

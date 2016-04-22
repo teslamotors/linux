@@ -77,6 +77,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.enable_conformance_check = true,
 	.disable_gvt_fw_loading = true,
 	.gvt_workload_priority = 0,
+	.enable_initial_modeset = false,
 };
 
 i915_param_named(modeset, int, 0400,
@@ -253,3 +254,7 @@ module_param_named(gvt_workload_priority, i915_modparams.gvt_workload_priority, 
 MODULE_PARM_DESC(gvt_workload_priority,
 	"Set GVT-g workload priority, (range: (-1023, 1023), default: 0, "
 	"more positive value means higher priority).");
+
+module_param_named_unsafe(enable_initial_modeset, i915_modparams.enable_initial_modeset, bool, 0400);
+MODULE_PARM_DESC(enable_initial_modeset,
+		 "Do initial modeset (default : false)");
