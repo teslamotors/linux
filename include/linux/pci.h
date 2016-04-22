@@ -577,9 +577,15 @@ int raw_pci_read(unsigned int domain, unsigned int bus, unsigned int devfn,
 int raw_pci_write(unsigned int domain, unsigned int bus, unsigned int devfn,
 		  int reg, int len, u32 val);
 
+#ifdef CONFIG_PCI_BUS_ADDR_T_64BIT
+typedef u64 pci_bus_addr_t;
+#else
+typedef u32 pci_bus_addr_t;
+#endif
+
 struct pci_bus_region {
-	dma_addr_t start;
-	dma_addr_t end;
+	pci_bus_addr_t start;
+	pci_bus_addr_t end;
 };
 
 struct pci_dynids {
@@ -1006,6 +1012,7 @@ int __must_check pci_assign_resource(struct pci_dev *dev, int i);
 int __must_check pci_reassign_resource(struct pci_dev *dev, int i, resource_size_t add_size, resource_size_t align);
 int pci_select_bars(struct pci_dev *dev, unsigned long flags);
 bool pci_device_is_present(struct pci_dev *pdev);
+void pci_ignore_hotplug(struct pci_dev *dev);
 
 /* ROM control related routines */
 int pci_enable_rom(struct pci_dev *pdev);
@@ -1042,11 +1049,6 @@ int pci_back_from_sleep(struct pci_dev *dev);
 bool pci_dev_run_wake(struct pci_dev *dev);
 bool pci_check_pme_status(struct pci_dev *dev);
 void pci_pme_wakeup_bus(struct pci_bus *bus);
-
-static inline void pci_ignore_hotplug(struct pci_dev *dev)
-{
-	dev->ignore_hotplug = 1;
-}
 
 static inline int pci_enable_wake(struct pci_dev *dev, pci_power_t state,
 				  bool enable)
@@ -1128,7 +1130,7 @@ int __must_check pci_bus_alloc_resource(struct pci_bus *bus,
 
 int pci_remap_iospace(const struct resource *res, phys_addr_t phys_addr);
 
-static inline dma_addr_t pci_bus_address(struct pci_dev *pdev, int bar)
+static inline pci_bus_addr_t pci_bus_address(struct pci_dev *pdev, int bar)
 {
 	struct pci_bus_region region;
 

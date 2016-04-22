@@ -30,6 +30,8 @@ EXPORT_SYMBOL_GPL(power_supply_notifier);
 
 static struct device_type power_supply_dev_type;
 
+#define POWER_SUPPLY_DEFERRED_REGISTER_TIME	msecs_to_jiffies(10)
+
 static bool __power_supply_is_supplied_by(struct power_supply *supplier,
 					 struct power_supply *supply)
 {
@@ -120,6 +122,30 @@ void power_supply_changed(struct power_supply *psy)
 	schedule_work(&psy->changed_work);
 }
 EXPORT_SYMBOL_GPL(power_supply_changed);
+
+/*
+ * Notify that power supply was registered after parent finished the probing.
+ *
+ * Often power supply is registered from driver's probe function. However
+ * calling power_supply_changed() directly from power_supply_register()
+ * would lead to execution of get_property() function provided by the driver
+ * too early - before the probe ends.
+ *
+ * Avoid that by waiting on parent's mutex.
+ */
+static void power_supply_deferred_register_work(struct work_struct *work)
+{
+	struct power_supply *psy = container_of(work, struct power_supply,
+						deferred_register_work.work);
+
+	if (psy->dev.parent)
+		mutex_lock(&psy->dev.parent->mutex);
+
+	power_supply_changed(psy);
+
+	if (psy->dev.parent)
+		mutex_unlock(&psy->dev.parent->mutex);
+}
 
 #ifdef CONFIG_OF
 #include <linux/of.h>
@@ -645,6 +671,10 @@ __power_supply_register(struct device *parent,
 	struct power_supply *psy;
 	int rc;
 
+	if (!parent)
+		pr_warn("%s: Expected proper parent device for '%s'\n",
+			__func__, desc->name);
+
 	psy = kzalloc(sizeof(*psy), GFP_KERNEL);
 	if (!psy)
 		return ERR_PTR(-ENOMEM);
@@ -659,7 +689,6 @@ __power_supply_register(struct device *parent,
 	dev->release = power_supply_dev_release;
 	dev_set_drvdata(dev, psy);
 	psy->desc = desc;
-	atomic_inc(&psy->use_cnt);
 	if (cfg) {
 		psy->drv_data = cfg->drv_data;
 		psy->of_node = cfg->of_node;
@@ -672,6 +701,8 @@ __power_supply_register(struct device *parent,
 		goto dev_set_name_failed;
 
 	INIT_WORK(&psy->changed_work, power_supply_changed_work);
+	INIT_DELAYED_WORK(&psy->deferred_register_work,
+			  power_supply_deferred_register_work);
 
 	rc = power_supply_check_supplies(psy);
 	if (rc) {
@@ -700,7 +731,20 @@ __power_supply_register(struct device *parent,
 	if (rc)
 		goto create_triggers_failed;
 
-	power_supply_changed(psy);
+	/*
+	 * Update use_cnt after any uevents (most notably from device_add()).
+	 * We are here still during driver's probe but
+	 * the power_supply_uevent() calls back driver's get_property
+	 * method so:
+	 * 1. Driver did not assigned the returned struct power_supply,
+	 * 2. Driver could not finish initialization (anything in its probe
+	 *    after calling power_supply_register()).
+	 */
+	atomic_inc(&psy->use_cnt);
+
+	queue_delayed_work(system_power_efficient_wq,
+			   &psy->deferred_register_work,
+			   POWER_SUPPLY_DEFERRED_REGISTER_TIME);
 
 	return psy;
 
@@ -720,7 +764,8 @@ dev_set_name_failed:
 
 /**
  * power_supply_register() - Register new power supply
- * @parent:	Device to be a parent of power supply's device
+ * @parent:	Device to be a parent of power supply's device, usually
+ *		the device which probe function calls this
  * @desc:	Description of power supply, must be valid through whole
  *		lifetime of this power supply
  * @cfg:	Run-time specific configuration accessed during registering,
@@ -741,7 +786,8 @@ EXPORT_SYMBOL_GPL(power_supply_register);
 
 /**
  * power_supply_register() - Register new non-waking-source power supply
- * @parent:	Device to be a parent of power supply's device
+ * @parent:	Device to be a parent of power supply's device, usually
+ *		the device which probe function calls this
  * @desc:	Description of power supply, must be valid through whole
  *		lifetime of this power supply
  * @cfg:	Run-time specific configuration accessed during registering,
@@ -770,7 +816,8 @@ static void devm_power_supply_release(struct device *dev, void *res)
 
 /**
  * power_supply_register() - Register managed power supply
- * @parent:	Device to be a parent of power supply's device
+ * @parent:	Device to be a parent of power supply's device, usually
+ *		the device which probe function calls this
  * @desc:	Description of power supply, must be valid through whole
  *		lifetime of this power supply
  * @cfg:	Run-time specific configuration accessed during registering,
@@ -805,7 +852,8 @@ EXPORT_SYMBOL_GPL(devm_power_supply_register);
 
 /**
  * power_supply_register() - Register managed non-waking-source power supply
- * @parent:	Device to be a parent of power supply's device
+ * @parent:	Device to be a parent of power supply's device, usually
+ *		the device which probe function calls this
  * @desc:	Description of power supply, must be valid through whole
  *		lifetime of this power supply
  * @cfg:	Run-time specific configuration accessed during registering,
@@ -849,6 +897,7 @@ void power_supply_unregister(struct power_supply *psy)
 {
 	WARN_ON(atomic_dec_return(&psy->use_cnt));
 	cancel_work_sync(&psy->changed_work);
+	cancel_delayed_work_sync(&psy->deferred_register_work);
 	sysfs_remove_link(&psy->dev.kobj, "powers");
 	power_supply_remove_triggers(psy);
 	psy_unregister_cooler(psy);
