@@ -49,6 +49,7 @@ struct intel_ipu4_psys {
 	spinlock_t power_lock;
 	struct list_head fhs;
 	struct list_head pgs;
+	struct list_head started_kcmds_list;
 	struct intel_ipu4_psys_pdata *pdata;
 	struct intel_ipu4_bus_device *adev;
 	void *syscom_buffer;
@@ -59,7 +60,8 @@ struct intel_ipu4_psys {
 	struct work_struct watchdog_work;
 
 	/* Resources needed to be managed for process groups */
-	struct intel_ipu4_psys_resource_pool resource_pool;
+	struct intel_ipu4_psys_resource_pool resource_pool_running;
+	struct intel_ipu4_psys_resource_pool resource_pool_started;
 
 	const struct firmware *fw;
 	struct sg_table fw_sgt;
@@ -68,7 +70,7 @@ struct intel_ipu4_psys {
 	unsigned pkg_dir_size;
 	unsigned long timeout;
 
-	int active_kcmds;
+	int active_kcmds, started_kcmds;
 };
 
 struct intel_ipu4_psys_fh {
@@ -92,8 +94,10 @@ struct intel_ipu4_psys_pg {
 struct intel_ipu4_psys_kcmd {
 	struct intel_ipu4_psys_fh *fh;
 	struct list_head list;
+	struct list_head started_list;
 	enum {
 		KCMD_STATE_NEW,
+		KCMD_STATE_STARTED,
 		KCMD_STATE_RUNNING,
 		KCMD_STATE_COMPLETE
 	} state;
