@@ -227,10 +227,10 @@ static int x509_validate_trust(struct x509_certificate *cert,
 	if (!trust_keyring)
 		return -EOPNOTSUPP;
 
-	if (ca_keyid && !asymmetric_key_id_partial(cert->authority, ca_keyid))
+	if (ca_keyid && !asymmetric_key_id_partial(cert->akid_skid, ca_keyid))
 		return -EPERM;
 
-	key = x509_request_asymmetric_key(trust_keyring, cert->authority,
+	key = x509_request_asymmetric_key(trust_keyring, cert->akid_skid,
 					  false);
 	if (!IS_ERR(key))  {
 		if (!use_builtin_keys
@@ -271,14 +271,7 @@ static int x509_key_preparse(struct key_preparsed_payload *prep)
 	}
 
 	pr_devel("Cert Key Algo: %s\n", pkey_algo_name[cert->pub->pkey_algo]);
-	pr_devel("Cert Valid From: %04ld-%02d-%02d %02d:%02d:%02d\n",
-		 cert->valid_from.tm_year + 1900, cert->valid_from.tm_mon + 1,
-		 cert->valid_from.tm_mday, cert->valid_from.tm_hour,
-		 cert->valid_from.tm_min,  cert->valid_from.tm_sec);
-	pr_devel("Cert Valid To: %04ld-%02d-%02d %02d:%02d:%02d\n",
-		 cert->valid_to.tm_year + 1900, cert->valid_to.tm_mon + 1,
-		 cert->valid_to.tm_mday, cert->valid_to.tm_hour,
-		 cert->valid_to.tm_min,  cert->valid_to.tm_sec);
+	pr_devel("Cert Valid period: %lld-%lld\n", cert->valid_from, cert->valid_to);
 	pr_devel("Cert Signature: %s + %s\n",
 		 pkey_algo_name[cert->sig.pkey_algo],
 		 hash_algo_name[cert->sig.pkey_hash_algo]);
@@ -287,8 +280,8 @@ static int x509_key_preparse(struct key_preparsed_payload *prep)
 	cert->pub->id_type = PKEY_ID_X509;
 
 	/* Check the signature on the key if it appears to be self-signed */
-	if (!cert->authority ||
-	    asymmetric_key_id_same(cert->skid, cert->authority)) {
+	if (!cert->akid_skid ||
+	    asymmetric_key_id_same(cert->skid, cert->akid_skid)) {
 		ret = x509_check_signature(cert->pub, cert); /* self-signed */
 		if (ret < 0)
 			goto error_free_cert;
