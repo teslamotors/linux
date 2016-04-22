@@ -703,6 +703,7 @@ static struct pinmux_ops adi_pinmux_ops = {
 	.get_function_name = adi_pinmux_get_func_name,
 	.get_function_groups = adi_pinmux_get_groups,
 	.gpio_request_enable = adi_pinmux_request_gpio,
+	.strict = true,
 };
 
 

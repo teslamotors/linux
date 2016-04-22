@@ -22,6 +22,27 @@ menuconfig MTD_NAND
 
 if MTD_NAND
 
+config MTD_NAND_BENAND
+	tristate
+	depends on MTD_NAND_BENAND_ENABLE
+	default MTD_NAND
+
+config MTD_NAND_BENAND_ENABLE
+	bool "Support for Toshiba BENAND (Built-in ECC NAND)"
+	default y
+	help
+	  This enables support for Toshiba BENAND.
+	  Toshiba BENAND is a SLC NAND solution that automatically
+	  generates ECC inside NAND chip.
+
+config MTD_NAND_BENAND_ECC_STATUS
+	bool "Enable ECC Status Read Command(0x7A)"
+	depends on MTD_NAND_BENAND_ENABLE
+	help
+	  This enables support for ECC Status Read Command(0x7A) of BENAND.
+	  When this enables, report the real number of bitflips.
+	  In other cases, report the assumud number.
+
 config MTD_NAND_BCH
 	tristate
 	select BCH

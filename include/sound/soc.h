@@ -984,6 +984,9 @@ struct snd_soc_dai_link {
 	unsigned int dpcm_capture:1;
 	unsigned int dpcm_playback:1;
 
+	/* DPCM used FE & BE merged format */
+	unsigned int dpcm_merged_format:1;
+
 	/* pmdown_time is ignored at stop */
 	unsigned int ignore_pmdown_time:1;
 
@@ -1530,6 +1533,10 @@ int snd_soc_of_parse_audio_simple_widgets(struct snd_soc_card *card,
 int snd_soc_of_parse_tdm_slot(struct device_node *np,
 			      unsigned int *slots,
 			      unsigned int *slot_width);
+void snd_soc_of_parse_audio_prefix(struct snd_soc_card *card,
+				   struct snd_soc_codec_conf *codec_conf,
+				   struct device_node *of_node,
+				   const char *propname);
 int snd_soc_of_parse_audio_routing(struct snd_soc_card *card,
 				   const char *propname);
 unsigned int snd_soc_of_parse_daifmt(struct device_node *np,
