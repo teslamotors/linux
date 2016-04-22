@@ -268,7 +268,7 @@ static const struct usb_device_id blacklist_table[] = {
 	{ USB_DEVICE(0x0e5e, 0x6622), .driver_info = BTUSB_BROKEN_ISOC },
 
 	/* Roper Class 1 Bluetooth Dongle (Silicon Wave based) */
-	{ USB_DEVICE(0x1300, 0x0001), .driver_info = BTUSB_SWAVE },
+	{ USB_DEVICE(0x1310, 0x0001), .driver_info = BTUSB_SWAVE },
 
 	/* Digianswer devices */
 	{ USB_DEVICE(0x08fd, 0x0001), .driver_info = BTUSB_DIGIANSWER },
@@ -1993,6 +1993,8 @@ static int btusb_setup_intel(struct hci_dev *hdev)
 	}
 	fw_ptr = fw->data;
 
+	kfree_skb(skb);
+
 	/* This Intel specific command enables the manufacturer mode of the
 	 * controller.
 	 *
@@ -2334,6 +2336,7 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
 	struct intel_boot_params *params;
 	const struct firmware *fw;
 	const u8 *fw_ptr;
+	u32 frag_len;
 	char fwname[64];
 	ktime_t calltime, delta, rettime;
 	unsigned long long duration;
@@ -2540,24 +2543,33 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
 	}
 
 	fw_ptr = fw->data + 644;
+	frag_len = 0;
 
 	while (fw_ptr - fw->data < fw->size) {
-		struct hci_command_hdr *cmd = (void *)fw_ptr;
-		u8 cmd_len;
+		struct hci_command_hdr *cmd = (void *)(fw_ptr + frag_len);
 
-		cmd_len = sizeof(*cmd) + cmd->plen;
+		frag_len += sizeof(*cmd) + cmd->plen;
 
-		/* Send each command from the firmware data buffer as
-		 * a single Data fragment.
+		/* The paramter length of the secure send command requires
+		 * a 4 byte alignment. It happens so that the firmware file
+		 * contains proper Intel_NOP commands to align the fragments
+		 * as needed.
+		 *
+		 * Send set of commands with 4 byte alignment from the
+		 * firmware data buffer as a single Data fragement.
 		 */
-		err = btusb_intel_secure_send(hdev, 0x01, cmd_len, fw_ptr);
-		if (err < 0) {
-			BT_ERR("%s: Failed to send firmware data (%d)",
-			       hdev->name, err);
-			goto done;
-		}
+		if (!(frag_len % 4)) {
+			err = btusb_intel_secure_send(hdev, 0x01, frag_len,
+						      fw_ptr);
+			if (err < 0) {
+				BT_ERR("%s: Failed to send firmware data (%d)",
+				       hdev->name, err);
+				goto done;
+			}
 
-		fw_ptr += cmd_len;
+			fw_ptr += frag_len;
+			frag_len = 0;
+		}
 	}
 
 	set_bit(BTUSB_FIRMWARE_LOADED, &data->flags);
