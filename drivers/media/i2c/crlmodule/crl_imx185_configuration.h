@@ -839,8 +839,6 @@ static struct crl_sensor_detect_config imx185_sensor_detect_regset[] = {
 	}
 };
 
-const s64 imx185_op_sys_clock[] = { 55687500, 111375000, 222750000 };
-
 static struct crl_pll_configuration imx185_pll_configurations[] = {
 	{
 		.input_clk = 27000000,
@@ -1100,8 +1098,8 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max = ARRAY_SIZE(imx185_pll_configurations) - 1,
-		.data.v4l2_int_menu.menu = imx185_op_sys_clock,
+		.data.v4l2_int_menu.max = 0,
+		.data.v4l2_int_menu.menu = 0,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.regs_items = 0,
