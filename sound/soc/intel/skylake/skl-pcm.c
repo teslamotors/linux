@@ -1074,6 +1074,21 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 		.rates = SNDRV_PCM_RATE_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	},
+},
+{
+	/* Currently adding 1 capture pin, for PDM ideally it
+	 * should be coming from CLT based on endpoints to be supported
+	 */
+	.name = "SDW PDM Pin",
+	.ops = &skl_sdw_dai_ops,
+	.capture = {
+		.stream_name = "SDW Rx1",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_QUAD,
+		.rates = SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+	},
+
 
 
 },
