@@ -113,6 +113,7 @@ int cnl_sdw_hw_params(struct snd_pcm_substream *substream,
 	int ret = 0;
 	struct skl_pipe_params p_params = {0};
 	struct skl_module_cfg *m_cfg;
+	int upscale_factor = 16;
 
 	p_params.s_fmt = snd_pcm_format_width(params_format(params));
 	p_params.ch = params_channels(params);
@@ -145,9 +146,21 @@ int cnl_sdw_hw_params(struct snd_pcm_substream *substream,
 	}
 	m_cfg->sdw_stream_num = dma->port->pdi_stream->sdw_pdi_num;
 	stream_config.frame_rate =  params_rate(params);
+	/* TODO: Get the multiplication factor from NHLT or the XML
+	 * to decide with Poland team from where to get it
+	 */
+	if (dma->stream_type == CNL_SDW_PDI_TYPE_PDM)
+		stream_config.frame_rate *= upscale_factor;
 	stream_config.channel_count = channels;
-	stream_config.bps =
+	/* TODO: Get the PDM BPS from NHLT or the XML
+	 * to decide with Poland team from where to get it
+	 */
+	if (dma->stream_type == CNL_SDW_PDI_TYPE_PDM)
+		stream_config.bps = 1;
+	else
+		stream_config.bps =
 			snd_pcm_format_width(params_format(params));
+
 	stream_config.direction = direction;
 	ret = sdw_config_stream(dma->mstr, NULL, &stream_config,
 							dma->stream_tag);
