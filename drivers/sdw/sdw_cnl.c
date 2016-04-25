@@ -1097,7 +1097,11 @@ static int cnl_sdw_set_clock_freq(struct sdw_master *mstr,
 	/* TODO: Retrieve divider value or get value directly from calling
 	 * function
 	 */
+#ifdef CONFIG_SND_SOC_SVFPGA
+	int divider = ((9600000 * 2/cur_clk_freq) - 1);
+#else
 	int divider = ((9600000/cur_clk_freq) - 1);
+#endif
 
 	if (bank) {
 		mcp_clockctrl_offset = SDW_CNL_MCP_CLOCKCTRL1;
