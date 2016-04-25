@@ -1090,22 +1090,24 @@ see <xref linkend="colorspaces" />.</entry>
 
       <table pgwide="0" frame="none" id="v4l2-mbus-pixelcode-bayer">
 	<title>Bayer Formats</title>
-	<tgroup cols="15">
+	<tgroup cols="17">
 	  <colspec colname="id" align="left" />
 	  <colspec colname="code" align="center"/>
 	  <colspec colname="bit" />
-	  <colspec colnum="4" colname="b11" align="center" />
-	  <colspec colnum="5" colname="b10" align="center" />
-	  <colspec colnum="6" colname="b09" align="center" />
-	  <colspec colnum="7" colname="b08" align="center" />
-	  <colspec colnum="8" colname="b07" align="center" />
-	  <colspec colnum="9" colname="b06" align="center" />
-	  <colspec colnum="10" colname="b05" align="center" />
-	  <colspec colnum="11" colname="b04" align="center" />
-	  <colspec colnum="12" colname="b03" align="center" />
-	  <colspec colnum="13" colname="b02" align="center" />
-	  <colspec colnum="14" colname="b01" align="center" />
-	  <colspec colnum="15" colname="b00" align="center" />
+	  <colspec colnum="4" colname="b13" align="center" />
+	  <colspec colnum="5" colname="b12" align="center" />
+	  <colspec colnum="6" colname="b11" align="center" />
+	  <colspec colnum="7" colname="b10" align="center" />
+	  <colspec colnum="8" colname="b09" align="center" />
+	  <colspec colnum="9" colname="b08" align="center" />
+	  <colspec colnum="10" colname="b07" align="center" />
+	  <colspec colnum="11" colname="b06" align="center" />
+	  <colspec colnum="12" colname="b05" align="center" />
+	  <colspec colnum="13" colname="b04" align="center" />
+	  <colspec colnum="14" colname="b03" align="center" />
+	  <colspec colnum="15" colname="b02" align="center" />
+	  <colspec colnum="16" colname="b01" align="center" />
+	  <colspec colnum="17" colname="b00" align="center" />
 	  <spanspec namest="b11" nameend="b00" spanname="b0" />
 	  <thead>
 	    <row>
@@ -1118,6 +1120,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry></entry>
 	      <entry></entry>
 	      <entry>Bit</entry>
+	      <entry>13</entry>
+	      <entry>12</entry>
 	      <entry>11</entry>
 	      <entry>10</entry>
 	      <entry>9</entry>
@@ -1141,6 +1145,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>b<subscript>7</subscript></entry>
 	      <entry>b<subscript>6</subscript></entry>
 	      <entry>b<subscript>5</subscript></entry>
@@ -1154,6 +1160,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SGBRG8_1X8</entry>
 	      <entry>0x3013</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1175,6 +1183,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>g<subscript>7</subscript></entry>
 	      <entry>g<subscript>6</subscript></entry>
 	      <entry>g<subscript>5</subscript></entry>
@@ -1188,6 +1198,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SRGGB8_1X8</entry>
 	      <entry>0x3014</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1209,6 +1221,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>b<subscript>7</subscript></entry>
 	      <entry>b<subscript>6</subscript></entry>
 	      <entry>b<subscript>5</subscript></entry>
@@ -1222,6 +1236,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SGBRG10_ALAW8_1X8</entry>
 	      <entry>0x3016</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1243,6 +1259,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>g<subscript>7</subscript></entry>
 	      <entry>g<subscript>6</subscript></entry>
 	      <entry>g<subscript>5</subscript></entry>
@@ -1256,6 +1274,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SRGGB10_ALAW8_1X8</entry>
 	      <entry>0x3018</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1277,6 +1297,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>b<subscript>7</subscript></entry>
 	      <entry>b<subscript>6</subscript></entry>
 	      <entry>b<subscript>5</subscript></entry>
@@ -1290,6 +1312,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SGBRG10_DPCM8_1X8</entry>
 	      <entry>0x300c</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1311,6 +1335,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>g<subscript>7</subscript></entry>
 	      <entry>g<subscript>6</subscript></entry>
 	      <entry>g<subscript>5</subscript></entry>
@@ -1324,6 +1350,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SRGGB10_DPCM8_1X8</entry>
 	      <entry>0x300d</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1345,6 +1373,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>0</entry>
 	      <entry>0</entry>
 	      <entry>0</entry>
@@ -1358,6 +1388,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry></entry>
 	      <entry></entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1379,6 +1411,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>b<subscript>7</subscript></entry>
 	      <entry>b<subscript>6</subscript></entry>
 	      <entry>b<subscript>5</subscript></entry>
@@ -1392,6 +1426,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry></entry>
 	      <entry></entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1413,6 +1449,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>b<subscript>9</subscript></entry>
 	      <entry>b<subscript>8</subscript></entry>
 	      <entry>b<subscript>7</subscript></entry>
@@ -1426,6 +1464,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry></entry>
 	      <entry></entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1447,6 +1487,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>b<subscript>1</subscript></entry>
 	      <entry>b<subscript>0</subscript></entry>
 	      <entry>0</entry>
@@ -1460,6 +1502,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry></entry>
 	      <entry></entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
@@ -1479,6 +1523,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry></entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>b<subscript>9</subscript></entry>
 	      <entry>b<subscript>8</subscript></entry>
 	      <entry>b<subscript>7</subscript></entry>
@@ -1494,6 +1540,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SGBRG10_1X10</entry>
 	      <entry>0x300e</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
 	      <entry>g<subscript>9</subscript></entry>
@@ -1513,6 +1561,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry></entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>g<subscript>9</subscript></entry>
 	      <entry>g<subscript>8</subscript></entry>
 	      <entry>g<subscript>7</subscript></entry>
@@ -1530,6 +1580,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry></entry>
 	      <entry>-</entry>
 	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>r<subscript>9</subscript></entry>
 	      <entry>r<subscript>8</subscript></entry>
 	      <entry>r<subscript>7</subscript></entry>
@@ -1545,6 +1597,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SBGGR12_1X12</entry>
 	      <entry>0x3008</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>b<subscript>11</subscript></entry>
 	      <entry>b<subscript>10</subscript></entry>
 	      <entry>b<subscript>9</subscript></entry>
@@ -1562,6 +1616,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SGBRG12_1X12</entry>
 	      <entry>0x3010</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>g<subscript>11</subscript></entry>
 	      <entry>g<subscript>10</subscript></entry>
 	      <entry>g<subscript>9</subscript></entry>
@@ -1579,6 +1635,8 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SGRBG12_1X12</entry>
 	      <entry>0x3011</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
 	      <entry>g<subscript>11</subscript></entry>
 	      <entry>g<subscript>10</subscript></entry>
 	      <entry>g<subscript>9</subscript></entry>
@@ -1596,6 +1654,84 @@ see <xref linkend="colorspaces" />.</entry>
 	      <entry>MEDIA_BUS_FMT_SRGGB12_1X12</entry>
 	      <entry>0x3012</entry>
 	      <entry></entry>
+	      <entry>-</entry>
+	      <entry>-</entry>
+	      <entry>r<subscript>11</subscript></entry>
+	      <entry>r<subscript>10</subscript></entry>
+	      <entry>r<subscript>9</subscript></entry>
+	      <entry>r<subscript>8</subscript></entry>
+	      <entry>r<subscript>7</subscript></entry>
+	      <entry>r<subscript>6</subscript></entry>
+	      <entry>r<subscript>5</subscript></entry>
+	      <entry>r<subscript>4</subscript></entry>
+	      <entry>r<subscript>3</subscript></entry>
+	      <entry>r<subscript>2</subscript></entry>
+	      <entry>r<subscript>1</subscript></entry>
+	      <entry>r<subscript>0</subscript></entry>
+	    </row>
+	    <row id="MEDIA-BUS-FMT-SBGGR14-1X14">
+	      <entry>MEDIA_BUS_FMT_SBGGR14_1X14</entry>
+	      <entry>0x3019</entry>
+	      <entry></entry>
+	      <entry>b<subscript>13</subscript></entry>
+	      <entry>b<subscript>12</subscript></entry>
+	      <entry>b<subscript>11</subscript></entry>
+	      <entry>b<subscript>10</subscript></entry>
+	      <entry>b<subscript>9</subscript></entry>
+	      <entry>b<subscript>8</subscript></entry>
+	      <entry>b<subscript>7</subscript></entry>
+	      <entry>b<subscript>6</subscript></entry>
+	      <entry>b<subscript>5</subscript></entry>
+	      <entry>b<subscript>4</subscript></entry>
+	      <entry>b<subscript>3</subscript></entry>
+	      <entry>b<subscript>2</subscript></entry>
+	      <entry>b<subscript>1</subscript></entry>
+	      <entry>b<subscript>0</subscript></entry>
+	    </row>
+	    <row id="MEDIA-BUS-FMT-SGBRG14-1X14">
+	      <entry>MEDIA_BUS_FMT_SGBRG14_1X14</entry>
+	      <entry>0x301a</entry>
+	      <entry></entry>
+	      <entry>g<subscript>13</subscript></entry>
+	      <entry>g<subscript>12</subscript></entry>
+	      <entry>g<subscript>11</subscript></entry>
+	      <entry>g<subscript>10</subscript></entry>
+	      <entry>g<subscript>9</subscript></entry>
+	      <entry>g<subscript>8</subscript></entry>
+	      <entry>g<subscript>7</subscript></entry>
+	      <entry>g<subscript>6</subscript></entry>
+	      <entry>g<subscript>5</subscript></entry>
+	      <entry>g<subscript>4</subscript></entry>
+	      <entry>g<subscript>3</subscript></entry>
+	      <entry>g<subscript>2</subscript></entry>
+	      <entry>g<subscript>1</subscript></entry>
+	      <entry>g<subscript>0</subscript></entry>
+	    </row>
+	    <row id="MEDIA-BUS-FMT-SGRBG14-1X14">
+	      <entry>MEDIA_BUS_FMT_SGRBG14_1X14</entry>
+	      <entry>0x301b</entry>
+	      <entry></entry>
+	      <entry>g<subscript>13</subscript></entry>
+	      <entry>g<subscript>12</subscript></entry>
+	      <entry>g<subscript>11</subscript></entry>
+	      <entry>g<subscript>10</subscript></entry>
+	      <entry>g<subscript>9</subscript></entry>
+	      <entry>g<subscript>8</subscript></entry>
+	      <entry>g<subscript>7</subscript></entry>
+	      <entry>g<subscript>6</subscript></entry>
+	      <entry>g<subscript>5</subscript></entry>
+	      <entry>g<subscript>4</subscript></entry>
+	      <entry>g<subscript>3</subscript></entry>
+	      <entry>g<subscript>2</subscript></entry>
+	      <entry>g<subscript>1</subscript></entry>
+	      <entry>g<subscript>0</subscript></entry>
+	    </row>
+	    <row id="MEDIA-BUS-FMT-SRGGB14-1X14">
+	      <entry>MEDIA_BUS_FMT_SRGGB14_1X14</entry>
+	      <entry>0x301c</entry>
+	      <entry></entry>
+	      <entry>r<subscript>13</subscript></entry>
+	      <entry>r<subscript>12</subscript></entry>
 	      <entry>r<subscript>11</subscript></entry>
 	      <entry>r<subscript>10</subscript></entry>
 	      <entry>r<subscript>9</subscript></entry>
