@@ -795,6 +795,34 @@ static long media_device_ioctl(struct file *filp, unsigned int cmd,
 		ioctl_info, ARRAY_SIZE(ioctl_info));
 }
 
+static unsigned int media_device_poll(struct file *filp,
+				      struct poll_table_struct *wait)
+{
+	struct media_device_fh *fh = media_device_fh(filp);
+	struct media_device *mdev = to_media_device(fh->fh.devnode);
+	unsigned int poll_events = poll_requested_events(wait);
+	int ret = 0;
+
+	if (poll_events & (POLLIN | POLLOUT))
+		return POLLERR;
+
+	if (poll_events & POLLPRI) {
+		unsigned long flags;
+		bool empty;
+
+		spin_lock_irqsave(&mdev->req_lock, flags);
+		empty = list_empty(&fh->kevents.head);
+		spin_unlock_irqrestore(&mdev->req_lock, flags);
+
+		if (empty)
+			poll_wait(filp, &fh->kevents.wait, wait);
+		else
+			ret |= POLLPRI;
+	}
+
+	return ret;
+}
+
 #ifdef CONFIG_COMPAT
 
 struct media_links_enum32 {
@@ -848,6 +876,7 @@ static const struct media_file_operations media_device_fops = {
 	.owner = THIS_MODULE,
 	.open = media_device_open,
 	.ioctl = media_device_ioctl,
+	.poll = media_device_poll,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = media_device_compat_ioctl,
 #endif /* CONFIG_COMPAT */
