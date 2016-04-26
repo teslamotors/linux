@@ -425,6 +425,27 @@ static struct snd_soc_dai_link broxton_rt298_dais[] = {
 		.nonatomic = 1,
 		.dynamic = 1,
 	},
+	/* Probe DAI links */
+	{
+		.name = "Bxt Compress Probe playback",
+		.stream_name = "Probe Playback",
+		.cpu_dai_name = "Compress Probe0 Pin",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "0000:00:0e.0",
+		.init = NULL,
+		.nonatomic = 1,
+	},
+	{
+		.name = "Bxt Compress Probe capture",
+		.stream_name = "Probe Capture",
+		.cpu_dai_name = "Compress Probe1 Pin",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "0000:00:0e.0",
+		.init = NULL,
+		.nonatomic = 1,
+	},
 	/* Trace Buffer DAI links */
 	{
 		.name = "Bxt Trace Buffer0",
