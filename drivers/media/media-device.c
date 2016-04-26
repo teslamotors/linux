@@ -19,6 +19,7 @@
 /* We need to access legacy defines from linux/media.h */
 #define __NEED_MEDIA_LEGACY_API
 
+#include <linux/atomic.h>
 #include <linux/compat.h>
 #include <linux/export.h>
 #include <linux/idr.h>
@@ -28,6 +29,7 @@
 #include <linux/types.h>
 #include <linux/pci.h>
 #include <linux/usb.h>
+#include <linux/wait.h>
 
 #include <media/media-device.h>
 #include <media/media-devnode.h>
@@ -49,6 +51,11 @@ static char *__request_state[] = {
 struct media_device_fh {
 	struct media_devnode_fh fh;
 	struct list_head requests;
+	struct {
+		struct list_head head;
+		wait_queue_head_t wait;
+		atomic_t sequence;
+	} kevents;
 };
 
 static inline struct media_device_fh *media_device_fh(struct file *filp)
@@ -105,6 +112,25 @@ void media_device_request_get(struct media_device_request *req)
 }
 EXPORT_SYMBOL_GPL(media_device_request_get);
 
+static void media_device_request_queue_event(struct media_device *mdev,
+					     struct media_device_request *req,
+					     struct media_device_fh *fh)
+{
+	struct media_kevent *kev = req->kev;
+	struct media_event *ev = &kev->ev;
+
+	lockdep_assert_held(&mdev->req_lock);
+
+	ev->sequence = atomic_inc_return(&fh->kevents.sequence);
+	ev->type = MEDIA_EVENT_TYPE_REQUEST_COMPLETE;
+	ev->req_complete.id = req->id;
+
+	list_add(&kev->list, &fh->kevents.head);
+	req->kev = NULL;
+	req->state = MEDIA_DEVICE_REQUEST_STATE_COMPLETE;
+	wake_up(&fh->kevents.wait);
+}
+
 static void media_device_request_release(struct kref *kref)
 {
 	struct media_device_request *req =
@@ -114,6 +140,9 @@ static void media_device_request_release(struct kref *kref)
 	dev_dbg(mdev->dev, "release request %u\n", req->id);
 
 	ida_simple_remove(&mdev->req_ids, req->id);
+
+	kfree(req->kev);
+	req->kev = NULL;
 
 	mdev->ops->req_free(mdev, req);
 }
@@ -130,6 +159,7 @@ static int media_device_request_alloc(struct media_device *mdev,
 {
 	struct media_device_fh *fh = media_device_fh(filp);
 	struct media_device_request *req;
+	struct media_kevent *kev;
 	unsigned long flags;
 	int id = ida_simple_get(&mdev->req_ids, 1, 0, GFP_KERNEL);
 	int ret;
@@ -139,16 +169,23 @@ static int media_device_request_alloc(struct media_device *mdev,
 		return id;
 	}
 
+	kev = kzalloc(sizeof(*kev), GFP_KERNEL);
+	if (!kev) {
+		ret = -ENOMEM;
+		goto out_ida_simple_remove;
+	}
+
 	req = mdev->ops->req_alloc(mdev);
 	if (!req) {
 		ret = -ENOMEM;
-		goto out_ida_simple_remove;
+		goto out_kev_free;
 	}
 
 	req->mdev = mdev;
 	req->id = id;
 	req->filp = filp;
 	req->state = MEDIA_DEVICE_REQUEST_STATE_IDLE;
+	req->kev = kev;
 	kref_init(&req->kref);
 
 	spin_lock_irqsave(&mdev->req_lock, flags);
@@ -161,6 +198,9 @@ static int media_device_request_alloc(struct media_device *mdev,
 	dev_dbg(mdev->dev, "request: allocated id %u\n", req->id);
 
 	return 0;
+
+out_kev_free:
+	kfree(kev);
 
 out_ida_simple_remove:
 	ida_simple_remove(&mdev->req_ids, id);
@@ -235,6 +275,8 @@ void media_device_request_complete(struct media_device *mdev,
 		 */
 		list_del(&req->list);
 		list_del(&req->fh_list);
+		media_device_request_queue_event(
+			mdev, req, media_device_fh(filp));
 		req->filp = NULL;
 	}
 
@@ -360,6 +402,9 @@ static int media_device_open(struct file *filp)
 		return -ENOMEM;
 
 	INIT_LIST_HEAD(&fh->requests);
+	INIT_LIST_HEAD(&fh->kevents.head);
+	init_waitqueue_head(&fh->kevents.wait);
+	atomic_set(&fh->kevents.sequence, -1);
 	filp->private_data = &fh->fh;
 
 	return 0;
@@ -380,6 +425,16 @@ static int media_device_close(struct file *filp)
 		req->filp = NULL;
 		spin_unlock_irq(&mdev->req_lock);
 		media_device_request_put(req);
+		spin_lock_irq(&mdev->req_lock);
+	}
+
+	while (!list_empty(&fh->kevents.head)) {
+		struct media_kevent *kev =
+			list_first_entry(&fh->kevents.head, typeof(*kev), list);
+
+		list_del(&kev->list);
+		spin_unlock_irq(&mdev->req_lock);
+		kfree(kev);
 		spin_lock_irq(&mdev->req_lock);
 	}
 	spin_unlock_irq(&mdev->req_lock);
@@ -697,6 +752,48 @@ static long media_device_get_topology(struct media_device *mdev,
 
 	return ret;
 }
+static struct media_kevent *opportunistic_dqevent(struct media_device *mdev,
+						  struct file *filp)
+{
+	struct media_device_fh *fh = media_device_fh(filp);
+	struct media_kevent *kev = NULL;
+	unsigned long flags;
+
+	spin_lock_irqsave(&mdev->req_lock, flags);
+	if (!list_empty(&fh->kevents.head)) {
+		kev = list_last_entry(&fh->kevents.head,
+				      struct media_kevent, list);
+		list_del(&kev->list);
+	}
+	spin_unlock_irqrestore(&mdev->req_lock, flags);
+
+	return kev;
+}
+
+static int media_device_dqevent(struct media_device *mdev,
+				struct file *filp,
+				struct media_event *ev)
+{
+	struct media_device_fh *fh = media_device_fh(filp);
+	struct media_kevent *kev;
+
+	if (filp->f_flags & O_NONBLOCK) {
+		kev = opportunistic_dqevent(mdev, filp);
+		if (!kev)
+			return -ENODATA;
+	} else {
+		int ret = wait_event_interruptible(
+			fh->kevents.wait,
+			(kev = opportunistic_dqevent(mdev, filp)));
+		if (ret == -ERESTARTSYS)
+			return ret;
+	}
+
+	*ev = kev->ev;
+	kfree(kev);
+
+	return 0;
+}
 
 static long copy_arg_from_user(void *karg, void __user *uarg, unsigned int cmd)
 {
@@ -748,6 +845,7 @@ static const struct media_ioctl_info ioctl_info[] = {
 	MEDIA_IOC(SETUP_LINK, media_device_setup_link, MEDIA_IOC_FL_GRAPH_MUTEX),
 	MEDIA_IOC(G_TOPOLOGY, media_device_get_topology, MEDIA_IOC_FL_GRAPH_MUTEX),
 	MEDIA_IOC(REQUEST_CMD, media_device_request_cmd, 0),
+	MEDIA_IOC(DQEVENT, media_device_dqevent, 0),
 };
 
 static long media_device_ioctl(struct file *filp, unsigned int cmd,
@@ -795,7 +893,6 @@ out_free:
 
 	return ret;
 }
-
 #ifdef CONFIG_COMPAT
 
 struct media_links_enum32 {
@@ -825,7 +922,6 @@ static long media_device_enum_links32(struct media_device *mdev,
 }
 
 #define MEDIA_IOC_ENUM_LINKS32		_IOWR('|', 0x02, struct media_links_enum32)
-
 static long media_device_compat_ioctl(struct file *filp, unsigned int cmd,
 				      unsigned long arg)
 {
