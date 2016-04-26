@@ -32,8 +32,12 @@
 #include <media/media-devnode.h>
 #include <media/media-entity.h>
 
+#include <uapi/linux/media.h>
+
 struct device;
+struct file;
 struct media_device;
+struct media_device_fh;
 
 enum media_device_request_state {
 	MEDIA_DEVICE_REQUEST_STATE_IDLE,
@@ -56,6 +60,7 @@ struct media_device_request {
 	u32 id;
 	struct media_device *mdev;
 	struct file *filp;
+	struct media_kevent *kev;
 	struct kref kref;
 	struct list_head list;
 	struct list_head fh_list;
@@ -81,6 +86,11 @@ struct media_device_ops {
 			 struct media_device_request *req);
 	int (*req_queue)(struct media_device *mdev,
 			 struct media_device_request *req);
+};
+
+struct media_kevent {
+	struct list_head list;
+	struct media_event ev;
 };
 
 /**

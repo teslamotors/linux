@@ -179,10 +179,27 @@ struct __attribute__ ((packed)) media_request_cmd {
 	__u32 request;
 };
 
+struct __attribute__ ((packed)) media_event_request_complete {
+	__u32 id;
+};
+
+#define MEDIA_EVENT_TYPE_REQUEST_COMPLETE	1
+
+struct __attribute__ ((packed)) media_event {
+	__u32 type;
+	__u32 sequence;
+	__u32 reserved[4];
+
+	union {
+		struct media_event_request_complete req_complete;
+	};
+};
+
 #define MEDIA_IOC_DEVICE_INFO		_IOWR('|', 0x00, struct media_device_info)
 #define MEDIA_IOC_ENUM_ENTITIES		_IOWR('|', 0x01, struct media_entity_desc)
 #define MEDIA_IOC_ENUM_LINKS		_IOWR('|', 0x02, struct media_links_enum)
 #define MEDIA_IOC_SETUP_LINK		_IOWR('|', 0x03, struct media_link_desc)
 #define MEDIA_IOC_REQUEST_CMD		_IOWR('|', 0x05, struct media_request_cmd)
+#define MEDIA_IOC_DQEVENT		_IOWR('|', 0x06, struct media_event)
 
 #endif /* __LINUX_MEDIA_H */
