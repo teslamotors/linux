@@ -182,6 +182,47 @@ static void media_device_request_delete(struct media_device *mdev,
 	media_device_request_put(req);
 }
 
+static int media_device_request_queue_apply(
+	struct media_device *mdev, struct media_device_request *req,
+	int (*fn)(struct media_device *mdev,
+		  struct media_device_request *req), bool queue)
+{
+	char *str = queue ? "queue" : "apply";
+	unsigned long flags;
+	int rval = 0;
+
+	if (!fn)
+		return -ENOSYS;
+
+	spin_lock_irqsave(&mdev->req_lock, flags);
+	if (req->state != MEDIA_DEVICE_REQUEST_STATE_IDLE) {
+		rval = -EINVAL;
+		dev_dbg(mdev->dev,
+			"request: unable to %s %u, request in state %s\n",
+			str, req->id, request_state(req->state));
+	} else {
+		req->state = MEDIA_DEVICE_REQUEST_STATE_QUEUED;
+	}
+	spin_unlock_irqrestore(&mdev->req_lock, flags);
+
+	if (rval)
+		return rval;
+
+	rval = fn(mdev, req);
+	if (rval) {
+		spin_lock_irqsave(&mdev->req_lock, flags);
+		req->state = MEDIA_DEVICE_REQUEST_STATE_IDLE;
+		spin_unlock_irqrestore(&mdev->req_lock, flags);
+		dev_dbg(mdev->dev,
+			"request: can't %s %u\n", str, req->id);
+	} else {
+		dev_dbg(mdev->dev,
+			"request: %s %u\n", str, req->id);
+	}
+
+	return rval;
+}
+
 static long media_device_request_cmd(struct media_device *mdev,
 				     struct file *filp,
 				     struct media_request_cmd *cmd)
@@ -209,17 +250,15 @@ static long media_device_request_cmd(struct media_device *mdev,
 		break;
 
 	case MEDIA_REQ_CMD_APPLY:
-		if (!mdev->ops->req_apply)
-			return -ENOSYS;
-
-		ret = mdev->ops->req_apply(mdev, req);
+		ret = media_device_request_queue_apply(mdev, req,
+						       mdev->ops->req_apply,
+						       false);
 		break;
 
 	case MEDIA_REQ_CMD_QUEUE:
-		if (!mdev->ops->req_queue)
-			return -ENOSYS;
-
-		ret = mdev->ops->req_queue(mdev, req);
+		ret = media_device_request_queue_apply(mdev, req,
+						       mdev->ops->req_queue,
+						       true);
 		break;
 
 	default:
