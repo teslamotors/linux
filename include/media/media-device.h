@@ -38,6 +38,7 @@ struct media_device;
 enum media_device_request_state {
 	MEDIA_DEVICE_REQUEST_STATE_IDLE,
 	MEDIA_DEVICE_REQUEST_STATE_QUEUED,
+	MEDIA_DEVICE_REQUEST_STATE_DELETED,
 };
 
 /**
