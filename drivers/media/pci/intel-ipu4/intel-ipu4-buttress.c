@@ -351,7 +351,7 @@ irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 	u32 irq_status;
 	unsigned int i;
 
-	dev_dbg(&isp->pdev->dev, "Buttress interrupt handler\n");
+	dev_dbg(&isp->pdev->dev, "isr: Buttress interrupt handler\n");
 
 	trace_ipu4_perf_reg(BUTTRESS_REG_IS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_IS_FREQ_CTL));
 	trace_ipu4_perf_reg(BUTTRESS_REG_PS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_PS_FREQ_CTL));
@@ -433,7 +433,7 @@ irqreturn_t intel_ipu4_buttress_isr_threaded(int irq, void *isp_ptr)
 	irqreturn_t ret = IRQ_NONE;
 	unsigned int i;
 
-	dev_dbg(&isp->pdev->dev, "Buttress threaded interrupt handler\n");
+	dev_dbg(&isp->pdev->dev, "isr: Buttress threaded interrupt handler\n");
 
 	for (i = 0; i < ARRAY_SIZE(intel_ipu4_adev_irq_mask); i++) {
 		if (adev[i] && adev[i]->adrv &&

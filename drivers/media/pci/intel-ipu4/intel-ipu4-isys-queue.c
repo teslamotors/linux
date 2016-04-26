@@ -105,7 +105,7 @@ static int buf_init(struct vb2_buffer *vb)
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
-	dev_dbg(&av->isys->adev->dev, "%s: buf_init\n", av->vdev.name);
+	dev_dbg(&av->isys->adev->dev, "buffer: %s: buf_init\n", av->vdev.name);
 
 	if (aq->buf_init)
 		return aq->buf_init(vb);
@@ -120,7 +120,8 @@ int intel_ipu4_isys_buf_prepare(struct vb2_buffer *vb)
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
 	dev_dbg(&av->isys->adev->dev,
-		"%s: configured size %u, buffer size %lu\n", av->vdev.name,
+		"buffer: %s: configured size %u, buffer size %lu\n",
+		av->vdev.name,
 		av->mpix.plane_fmt[0].sizeimage, vb2_plane_size(vb, 0));
 
 	if (av->mpix.plane_fmt[0].sizeimage > vb2_plane_size(vb, 0))
@@ -154,7 +155,8 @@ static void buf_cleanup(struct vb2_buffer *vb)
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
-	dev_dbg(&av->isys->adev->dev, "%s: buf_cleanup\n", av->vdev.name);
+	dev_dbg(&av->isys->adev->dev, "buffer: %s: buf_cleanup\n",
+		av->vdev.name);
 
 	if (aq->buf_cleanup)
 		return aq->buf_cleanup(vb);
@@ -316,7 +318,7 @@ static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
 		ib = list_last_entry(&aq->incoming,
 				     struct intel_ipu4_isys_buffer, head);
 
-		dev_dbg(&ip->isys->adev->dev, "%s: buffer %u\n",
+		dev_dbg(&ip->isys->adev->dev, "buffer: %s: buffer %u\n",
 			intel_ipu4_isys_queue_to_video(aq)->vdev.name,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 			intel_ipu4_isys_buffer_to_vb2_buffer(ib)->v4l2_buf.index
@@ -490,7 +492,8 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 	unsigned int i;
 	int rval;
 
-	dev_dbg(&av->isys->adev->dev, "%s: buf_queue %u\n", av->vdev.name,
+	dev_dbg(&av->isys->adev->dev, "buffer: %s: buf_queue %u\n",
+		av->vdev.name,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		vb->v4l2_buf.index);
 #else
@@ -498,7 +501,7 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 #endif
 
 	for (i = 0; i < vb->num_planes; i++)
-		dev_dbg(&av->isys->adev->dev, "plane %u iova 0x%x\n", i,
+		dev_dbg(&av->isys->adev->dev, "iova: plane %u iova 0x%x\n", i,
 			(uint32_t)vb2_dma_contig_plane_dma_addr(vb, i));
 
 	spin_lock_irqsave(&aq->lock, flags);
@@ -704,7 +707,7 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 	int rval;
 
 	dev_dbg(&av->isys->adev->dev,
-		"%s: width %u, height %u, css pixelformat %u\n",
+		"stream: %s: width %u, height %u, css pixelformat %u\n",
 		av->vdev.name, av->mpix.width, av->mpix.height,
 		av->pfmt->css_pixelformat);
 
@@ -824,7 +827,7 @@ static unsigned int get_sof_sequence_by_timestamp(
 	for (i = 0; i < INTEL_IPU4_ISYS_MAX_PARALLEL_SOF; i++)
 		if (time == ip->seq[i].timestamp) {
 			dev_dbg(&isys->adev->dev,
-				"using sequence number %u for timestamp 0x%16.16llx\n",
+				"sof: using sequence number %u for timestamp 0x%16.16llx\n",
 				ip->seq[i].sequence, time);
 			return ip->seq[i].sequence;
 		}
@@ -883,13 +886,15 @@ void intel_ipu4_isys_buf_calc_sequence_time(struct intel_ipu4_isys_buffer *ib,
 	vb->v4l2_buf.timestamp.tv_sec = ts_now.tv_sec;
 	vb->v4l2_buf.timestamp.tv_usec = ts_now.tv_nsec / NSEC_PER_USEC;
 
-	dev_dbg(&av->isys->adev->dev, "%s: buffer done %u\n", av->vdev.name,
+	dev_dbg(&av->isys->adev->dev, "buffer: %s: buffer done %u\n",
+		av->vdev.name,
 		vb->v4l2_buf.index);
 #else
 	vbuf->vb2_buf.timestamp = ns;
 	vbuf->sequence = sequence;
 
-	dev_dbg(&av->isys->adev->dev, "%s: buffer done %u\n", av->vdev.name,
+	dev_dbg(&av->isys->adev->dev, "buffer: %s: buffer done %u\n",
+		av->vdev.name,
 		vb->index);
 #endif
 }
@@ -915,7 +920,7 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 	unsigned long flags;
 	bool first = true;
 
-	dev_dbg(&isys->adev->dev, "%s: received buffer %8.8x\n",
+	dev_dbg(&isys->adev->dev, "buffer: %s: received buffer %8.8x\n",
 		intel_ipu4_isys_queue_to_video(aq)->vdev.name, info->pin.addr);
 
 	spin_lock_irqsave(&aq->lock, flags);
@@ -940,7 +945,7 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 			continue;
 		}
 
-		dev_dbg(&isys->adev->dev, "found buffer %pad\n", &addr);
+		dev_dbg(&isys->adev->dev, "buffer: found buffer %pad\n", &addr);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
 		vb->v4l2_buf.field = V4L2_FIELD_NONE;

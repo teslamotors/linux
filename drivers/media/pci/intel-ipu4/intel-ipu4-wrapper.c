@@ -185,7 +185,7 @@ void vied_subsystem_store(vied_subsystem_t ssid,
 {
 	void *dst = host_addr(ssid, addr);
 
-	dev_dbg(get_sub_system(ssid)->dev, "%s 0x%x size: %d\n",
+	dev_dbg(get_sub_system(ssid)->dev, "access: %s 0x%x size: %d\n",
 		__func__, addr, size);
 
 	for (; size >= sizeof(uint32_t); size -= sizeof(uint32_t),
@@ -231,7 +231,7 @@ void vied_subsystem_load(vied_subsystem_t ssid,
 {
 	void *src = host_addr(ssid, addr);
 
-	dev_dbg(get_sub_system(ssid)->dev, "%s 0x%x size: %d\n",
+	dev_dbg(get_sub_system(ssid)->dev, "access: %s 0x%x size: %d\n",
 		__func__, addr, size);
 
 	for (; size >= sizeof(uint32_t); size -= sizeof(uint32_t),
@@ -421,7 +421,8 @@ void shared_memory_store_8(vied_memory_t mmid, host_virtual_address_t addr,
 			   uint8_t data)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"%s: Enter addr = 0x%llx data = 0x%x\n", __func__, addr, data);
+		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
+		__func__, addr, data);
 
 	*((uint8_t *) addr) = data;
 	/*Invalidate the cache lines to flush the content to ddr.*/
@@ -436,7 +437,8 @@ void shared_memory_store_16(vied_memory_t mmid, host_virtual_address_t addr,
 			    uint16_t data)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"%s: Enter addr = 0x%llx data = 0x%x\n", __func__, addr, data);
+		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
+		__func__, addr, data);
 
 	*((uint16_t *) addr) = data;
 	/*Invalidate the cache lines to flush the content to ddr. */
@@ -451,7 +453,8 @@ void shared_memory_store_32(vied_memory_t mmid, host_virtual_address_t addr,
 			    uint32_t data)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"%s: Enter addr = 0x%llx data = 0x%x\n", __func__, addr,  data);
+		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
+		__func__, addr,  data);
 
 	*((uint32_t *) addr) = data;
 	/* Invalidate the cache lines to flush the content to ddr. */
@@ -466,7 +469,7 @@ void shared_memory_store(vied_memory_t mmid, host_virtual_address_t addr,
 			 const void *data, size_t bytes)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"%s: Enter addr = 0x%lx bytes = 0x%lx\n", __func__,
+		"access: %s: Enter addr = 0x%lx bytes = 0x%lx\n", __func__,
 		(unsigned long)addr, bytes);
 
 	if (!data)
@@ -493,7 +496,8 @@ void shared_memory_zero(vied_memory_t mmid, host_virtual_address_t addr,
 			size_t bytes)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"%s: Enter addr = 0x%llx data = 0x%lu\n", __func__, addr, bytes);
+		"access: %s: Enter addr = 0x%llx data = 0x%lu\n",
+		__func__, addr, bytes);
 
 	memset((void *)addr, 0, bytes);
 	clflush_cache_range((void *)addr, bytes);
@@ -508,7 +512,7 @@ uint8_t shared_memory_load_8(vied_memory_t mmid, host_virtual_address_t addr)
 	uint8_t data = 0;
 
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"%s: Enter addr = 0x%llx\n", __func__, addr);
+		"access: %s: Enter addr = 0x%llx\n", __func__, addr);
 
 	/* Invalidate the cache lines to flush the content to ddr. */
 	clflush_cache_range((void *)addr, sizeof(uint8_t));
@@ -525,7 +529,7 @@ uint16_t shared_memory_load_16(vied_memory_t mmid, host_virtual_address_t addr)
 	uint16_t data = 0;
 
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"%s: Enter addr = 0x%llx\n", __func__, addr);
+		"access: %s: Enter addr = 0x%llx\n", __func__, addr);
 
 	/* Invalidate the cache lines to flush the content to ddr. */
 	clflush_cache_range((void *)addr, sizeof(uint16_t));
@@ -542,7 +546,7 @@ uint32_t shared_memory_load_32(vied_memory_t mmid, host_virtual_address_t addr)
 	uint32_t data = 0;
 
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"%s: Enter addr = 0x%llx\n", __func__, addr);
+		"access: %s: Enter addr = 0x%llx\n", __func__, addr);
 
 	/* Invalidate the cache lines to flush the content to ddr. */
 	clflush_cache_range((void *)addr, sizeof(uint32_t));
@@ -558,7 +562,7 @@ void shared_memory_load(vied_memory_t mmid, host_virtual_address_t addr,
 			void *data, size_t bytes)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"%s: Enter addr = 0x%lx bytes = 0x%lx\n", __func__,
+		"access: %s: Enter addr = 0x%lx bytes = 0x%lx\n", __func__,
 		(unsigned long)addr, bytes);
 
 	if (!data)

@@ -315,14 +315,14 @@ static int intel_ipu4_dma_map_sg(struct device *dev, struct scatterlist *sglist,
 	for_each_sg(sglist, sg, nents, i)
 		size += PAGE_ALIGN(sg->length) >> PAGE_SHIFT;
 
-	dev_dbg(dev, "mapping sg %d entries, %zu pages\n", nents, size);
+	dev_dbg(dev, "dmamap: mapping sg %d entries, %zu pages\n", nents, size);
 
 	iova = alloc_iova(&mmu->dmap->iovad, size,
 		  DMA_BIT_MASK(INTEL_IPU4_MMU_ADDRESS_BITS) >> PAGE_SHIFT, 0);
 	if (!iova)
 		return 0;
 
-	dev_dbg(dev, "iova low pfn %lu, high pfn %lu\n", iova->pfn_lo,
+	dev_dbg(dev, "dmamap: iova low pfn %lu, high pfn %lu\n", iova->pfn_lo,
 		iova->pfn_hi);
 
 	iova_addr = iova->pfn_lo;
@@ -331,7 +331,7 @@ static int intel_ipu4_dma_map_sg(struct device *dev, struct scatterlist *sglist,
 		int rval;
 
 		dev_dbg(dev,
-			"mapping entry %d: iova 0x%8.8x, physical 0x%16.16llx\n",
+			"dmamap details: mapping entry %d: iova 0x%8.8x, physical 0x%16.16llx\n",
 			i, iova_addr << PAGE_SHIFT, page_to_phys(sg_page(sg)));
 		rval = iommu_map(mmu->dmap->domain, iova_addr << PAGE_SHIFT,
 				 page_to_phys(sg_page(sg)),

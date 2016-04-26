@@ -987,7 +987,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	reinit_completion(&ip->stream_open_completion);
 	rval = intel_ipu4_lib_call(stream_open, av->isys, ip->stream_handle, &stream_cfg);
 	if (rval < 0) {
-		dev_dbg(dev, "can't open stream (%d)\n", rval);
+		dev_err(dev, "can't open stream (%d)\n", rval);
 		goto out_put_stream_handle;
 	}
 	get_stream_opened(av);
@@ -1004,7 +1004,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 		rval = -EIO;
 		goto out_put_stream_opened;
 	}
-	dev_dbg(dev, "stream open complete\n");
+	dev_dbg(dev, "start stream: open complete\n");
 
 	if (bl) {
 		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
@@ -1019,7 +1019,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	rval = intel_ipu4_lib_call(stream_start, av->isys, ip->stream_handle,
 				   bl ? &buf : NULL);
 	if (rval < 0) {
-		dev_dbg(dev, "can't start streaning (%d)\n", rval);
+		dev_err(dev, "can't start streaming (%d)\n", rval);
 		goto out_stream_close;
 	}
 
@@ -1035,7 +1035,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 		rval = -EIO;
 		goto out_stream_close;
 	}
-	dev_dbg(dev, "stream start complete\n");
+	dev_dbg(dev, "start stream: complete\n");
 
 	return 0;
 
@@ -1074,7 +1074,7 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 	reinit_completion(&ip->stream_stop_completion);
 	rval = intel_ipu4_lib_call(stream_flush, av->isys, ip->stream_handle);
 	if (rval < 0) {
-		dev_dbg(dev, "can't stop stream (%d)\n", rval);
+		dev_err(dev, "can't stop stream (%d)\n", rval);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_stop_completion,
 				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
@@ -1083,7 +1083,7 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 		else if (ip->error)
 			dev_err(dev, "stream stop error: %d\n", ip->error);
 		else
-			dev_dbg(dev, "stream stop complete\n");
+			dev_dbg(dev, "stop stream: complete\n");
 	}
 }
 
@@ -1097,7 +1097,7 @@ static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
 	reinit_completion(&ip->stream_close_completion);
 	rval = intel_ipu4_lib_call(stream_close, av->isys, ip->stream_handle);
 	if (rval < 0) {
-		dev_dbg(dev, "can't close stream (%d)\n", rval);
+		dev_err(dev, "can't close stream (%d)\n", rval);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_close_completion,
 				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
@@ -1106,7 +1106,7 @@ static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
 		else if (ip->error)
 			dev_err(dev, "stream close error: %d\n", ip->error);
 		else
-			dev_dbg(dev, "stream close complete\n");
+			dev_dbg(dev, "close stream: complete\n");
 	}
 	put_stream_opened(av);
 	put_stream_handle(av);
@@ -1144,7 +1144,7 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	int rval;
 	unsigned int i;
 
-	dev_dbg(dev, "prepare streaming %d\n", state);
+	dev_dbg(dev, "prepare stream: %d\n", state);
 
 	if (!state) {
 		struct intel_ipu4_isys_pipeline *ip =
@@ -1197,7 +1197,8 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 		}
 	}
 
-	dev_dbg(dev, "external entity %s\n", av->ip.external->entity->name);
+	dev_dbg(dev, "prepare stream: external entity %s\n",
+		av->ip.external->entity->name);
 
 	return 0;
 }
@@ -1215,7 +1216,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 	unsigned int entities = 0;
 	int rval = 0;
 
-	dev_dbg(dev, "set streaming %d\n", state);
+	dev_dbg(dev, "set stream: %d\n", state);
 
 	if (!state) {
 		stop_streaming_firmware(av);
@@ -1236,7 +1237,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 	while ((entity = media_entity_graph_walk_next(&graph))) {
 		struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(entity);
 
-		dev_dbg(dev, "entity %s\n", entity->name);
+		dev_dbg(dev, "set stream: entity %s\n", entity->name);
 
 		/* Non-subdev nodes can be safely ignored here. */
 		if (media_entity_type(entity) != MEDIA_ENT_T_V4L2_SUBDEV)
@@ -1272,11 +1273,14 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 		rval = start_stream_firmware(av, bl);
 		if (rval)
 			goto out_media_entity_stop_streaming;
-		dev_dbg(dev, "source %d, stream_handle %d\n",
+
+		dev_dbg(dev, "set stream: source %d, stream_handle %d\n",
 				ip->source, ip->stream_handle);
 
 		/* Start external sub-device now. */
-		dev_err(dev, "s_stream %s (ext)\n", ip->external->entity->name);
+		dev_dbg(dev, "set stream: s_stream %s (ext)\n",
+			ip->external->entity->name);
+
 		rval = v4l2_subdev_call(
 			media_entity_to_v4l2_subdev(ip->external->entity),
 			video, s_stream, state);

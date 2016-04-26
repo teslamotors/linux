@@ -639,20 +639,21 @@ static int isa_import_pg(struct vb2_buffer *vb)
 		}
 
 		dev_dbg(&av->isys->adev->dev,
-			"parsing terminal %u, size %u, capture %u / %u\n",
+			"terminal: parsing terminal %u, size %u, capture %u / %u\n",
 			i, t->size, capture, is_capture_terminal(t));
 
 		if (capture != is_capture_terminal(t))
 			continue;
 
-		dev_dbg(&av->isys->adev->dev, "terminal %u offset %u\n", i,
-			ia_css_terminal_offsets(pg)[i]);
+		dev_dbg(&av->isys->adev->dev,
+			       "terminal: %u offset %u\n", i,
+			       ia_css_terminal_offsets(pg)[i]);
 
 		rval = isa_terminal_get_iova(&av->isys->adev->dev, t, &iova);
 		if (rval)
 			return rval;
 
-		dev_dbg(&av->isys->adev->dev, "offset 0x%x, address 0x%8.8x\n",
+		dev_dbg(&av->isys->adev->dev, "terminal: offset 0x%x, address 0x%8.8x\n",
 			*iova, (uint32_t)addr + *iova);
 
 		if (addr + *iova < addr) {
@@ -719,19 +720,17 @@ static void isa_config_prepare_frame_buff_set_one(
 {
 	unsigned int i;
 
-	dev_dbg(dev, "size %u\n", pg->size);
-	dev_dbg(dev, "terminal_count %u\n", pg->terminal_count);
-	dev_dbg(dev, "terminals_offset_offset %u\n",
-		pg->terminals_offset_offset);
+	dev_dbg(dev, "terminal: size %u, count %u, offset %u\n",
+		pg->size, pg->terminal_count, pg->terminals_offset_offset);
 
-	dev_dbg(dev, "copying %u terminal offsets to %p from %p\n",
+	dev_dbg(dev, "terminal: copying %u terminal offsets to %p from %p\n",
 		pg->terminal_count, ia_css_terminal_offsets(cpg),
 		ia_css_terminal_offsets(pg));
 
 	for (i = 0; i < pg->terminal_count; i++) {
 		struct ia_css_terminal *t = to_ia_css_terminal(pg, i), *ct;
 
-		dev_dbg(dev, "parsing terminal %u, size %u, capture %u / %u\n",
+		dev_dbg(dev, "terminal: parsing %u, size %u, capture %u / %u\n",
 			i, t->size, capture, is_capture_terminal(t));
 
 		if (capture != is_capture_terminal(t))
@@ -740,12 +739,12 @@ static void isa_config_prepare_frame_buff_set_one(
 		ia_css_terminal_offsets(cpg)[*terminal_count] =
 			ia_css_terminal_offset(cpg, *terminal_count);
 
-		dev_dbg(dev, "terminal %u offset %u\n", *terminal_count,
+		dev_dbg(dev, "terminal: %u offset %u\n", *terminal_count,
 			ia_css_terminal_offsets(cpg)[*terminal_count]);
 
 		ct = to_ia_css_terminal(cpg, *terminal_count);
 
-		dev_dbg(dev, "copying terminal %p to %p (%u bytes)\n",
+		dev_dbg(dev, "terminal: copying terminal %p to %p (%u bytes)\n",
 			t, ct, t->size);
 		memcpy(ct, t, t->size);
 
@@ -800,12 +799,9 @@ static void isa_config_prepare_frame_buff_set(struct vb2_buffer *__vb)
 					   DMA_TO_DEVICE);
 
 		dev_dbg(&av->isys->adev->dev,
-			"queue %u, plane 0: vaddr %p, dma_addr %pad\n",
-			i, pg[i], &addr[i]);
-		dev_dbg(&av->isys->adev->dev,
-			"program group size %u\n", pg[i]->size);
-		dev_dbg(&av->isys->adev->dev,
-			"program group terminals %u\n", pg[i]->terminal_count);
+			"terminal: queue %u, plane 0: vaddr %p, dma_addr %pad program group size %u program group terminals %u\n",
+			       i, pg[i], &addr[i],
+			       pg[i]->size, pg[i]->terminal_count);
 	}
 
 	cpg = __isa_buf->pgl.common_pg;
@@ -833,9 +829,8 @@ static void isa_config_prepare_frame_buff_set(struct vb2_buffer *__vb)
 
 	cpg->size = ia_css_terminal_offset(cpg, cpg->terminal_count);
 
-	dev_dbg(&av->isys->adev->dev, "common pg size %x\n", cpg->size);
-	dev_dbg(&av->isys->adev->dev, "common pg terminals %x\n",
-		cpg->terminal_count);
+	dev_dbg(&av->isys->adev->dev, "common pg size 0x%x count %d\n",
+		       cpg->size, cpg->terminal_count);
 
 	dma_sync_single_for_device(&av->isys->adev->dev, __isa_buf->pgl.iova,
 				   PGL_SIZE << 1, DMA_TO_DEVICE);
