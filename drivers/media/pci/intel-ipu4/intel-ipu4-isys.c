@@ -1315,7 +1315,11 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 				struct vb2_buffer *vb;
 
 				vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 				vb->v4l2_buf.field = pipe->cur_field;
+#else
+				to_vb2_v4l2_buffer(vb)->field = pipe->cur_field;
+#endif
 				list_del(&ib->head);
 
 				intel_ipu4_isys_queue_buf_done(ib);
