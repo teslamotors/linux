@@ -704,14 +704,6 @@ static int crlmodule_set_ctrl(struct v4l2_ctrl *ctrl)
 	dev_dbg(&client->dev, "%s id:%d val:%d\n", __func__, ctrl->id,
 			      ctrl->val);
 
-	/* First go through the mandatory controls */
-	switch (ctrl->id) {
-	case V4L2_CID_LINK_FREQ:
-		/* Go through the supported list and compare the values */
-		ret = __crlmodule_update_pll_index(sensor);
-		goto out;
-	};
-
 	/*
 	 * Need to find the corresponding crlmodule wrapper for this v4l2_ctrl.
 	 * This is needed because all the register information is associated
@@ -721,10 +713,19 @@ static int crlmodule_set_ctrl(struct v4l2_ctrl *ctrl)
 	if (!crl_ctrl) {
 		dev_err(&client->dev, "%s ctrl :0x%x not supported\n",
 				      __func__, ctrl->id);
+		return -EINVAL;
 	}
 
 	dev_dbg(&client->dev, "%s id:0x%x name:%s\n", __func__, ctrl->id,
 			      crl_ctrl->name);
+
+	/* Then go through the mandatory controls */
+	switch (ctrl->id) {
+	case V4L2_CID_LINK_FREQ:
+		/* Go through the supported list and compare the values */
+		ret = __crlmodule_update_pll_index(sensor);
+		goto out;
+	};
 
 	/* update the selection impacts flags */
 	__crlmodule_update_selection_impact_flags(sensor, crl_ctrl);
