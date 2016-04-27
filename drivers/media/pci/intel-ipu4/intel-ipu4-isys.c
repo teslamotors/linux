@@ -1161,6 +1161,41 @@ trace_uninit:
 	return rval;
 }
 
+struct fwmsg {
+	int type;
+	char *msg;
+	bool valid_ts;
+};
+
+static const struct fwmsg fw_msg[] = {
+	{ IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE,    "STREAM_OPEN_DONE", 0 },
+	{ IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK,    "STREAM_CLOSE_ACK", 0 },
+	{ IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK,    "STREAM_START_ACK", 0 },
+	{ IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK,
+	  "STREAM_START_AND_CAPTURE_ACK", 0 },
+	{ IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK,     "STREAM_STOP_ACK", 0 },
+	{ IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK,    "STREAM_FLUSH_ACK", 0 },
+	{ IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY,      "PIN_DATA_READY", 1 },
+	{ IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK,  "STREAM_CAPTURE_ACK", 0 },
+	{ IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE,
+	  "STREAM_START_AND_CAPTURE_DONE", 1 },
+	{ IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE, "STREAM_CAPTURE_DONE", 1 },
+	{ IA_CSS_ISYS_RESP_TYPE_FRAME_SOF,           "FRAME_SOF", 1 },
+	{ IA_CSS_ISYS_RESP_TYPE_FRAME_EOF,           "FRAME_EOF", 1 },
+	{ -1, "UNKNOWN MESSAGE", 0 },
+};
+
+static int resp_type_to_index(int type)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(fw_msg); i++)
+		if (fw_msg[i].type == type)
+			return i;
+
+	return i - 1;
+}
+
 static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
@@ -1179,15 +1214,34 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 
 	ts = (u64)resp.timestamp[1] << 32 | resp.timestamp[0];
 
-#ifdef IPU_STEP_BXTB0
-	dev_dbg(&adev->dev,
-		"resp type %u, error %d, error details %d, stream %u\n",
-		resp.type, resp.error, resp.error ? resp.error_details : 0,
-		resp.stream_handle);
-#else
-	dev_dbg(&adev->dev, "resp type %u, error %d, stream %u\n",
-		resp.type, resp.error, resp.stream_handle);
-#endif
+
+	if (resp.error == IA_CSS_ISYS_ERROR_STREAM_IN_SUSPENSION)
+		/* Suspension is kind of special case: not enough buffers */
+		dev_dbg(&adev->dev,
+			"hostlib: error resp %02d %s, stream %u, error SUSPENSION, details %d, timestamp 0x%16.16llx, pin %d\n",
+			resp.type,
+			fw_msg[resp_type_to_index(resp.type)].msg,
+			resp.stream_handle,
+			resp.error_details,
+			fw_msg[resp_type_to_index(resp.type)].valid_ts ?
+			ts : 0, resp.pin_id);
+	else if (resp.error)
+		dev_dbg(&adev->dev,
+			"hostlib: error resp %02d %s, stream %u, error %d, details %d, timestamp 0x%16.16llx, pin %d\n",
+			resp.type,
+			fw_msg[resp_type_to_index(resp.type)].msg,
+			resp.stream_handle,
+			resp.error, resp.error_details,
+			fw_msg[resp_type_to_index(resp.type)].valid_ts ?
+			ts : 0, resp.pin_id);
+	else
+		dev_dbg(&adev->dev,
+			"hostlib: resp %02d %s, stream %u, timestamp 0x%16.16llx, pin %d\n",
+			resp.type,
+			fw_msg[resp_type_to_index(resp.type)].msg,
+			resp.stream_handle,
+			fw_msg[resp_type_to_index(resp.type)].valid_ts ?
+			ts : 0, resp.pin_id);
 
 	if (resp.stream_handle >= INTEL_IPU4_ISYS_MAX_STREAMS) {
 		dev_err(&adev->dev, "bad stream handle %u\n",
@@ -1205,39 +1259,24 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 
 	switch (resp.type) {
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE\n",
-			resp.stream_handle);
 		complete(&pipe->stream_open_completion);
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK\n",
-			resp.stream_handle);
 		complete(&pipe->stream_close_completion);
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK\n",
-			resp.stream_handle);
 		complete(&pipe->stream_start_completion);
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK\n",
-			resp.stream_handle);
 		complete(&pipe->stream_start_completion);
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK\n",
-			resp.stream_handle);
 		complete(&pipe->stream_stop_completion);
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK\n",
-			resp.stream_handle);
 		complete(&pipe->stream_stop_completion);
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY:
-		dev_dbg(&adev->dev,
-			"%d:IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY at pin %u, timestamp 0x%16.16llx\n",
-			resp.stream_handle, resp.pin_id, ts);
 		if (resp.pin_id <  INTEL_IPU4_ISYS_OUTPUT_PINS &&
 		    pipe->output_pins[resp.pin_id].pin_ready)
 			pipe->output_pins[resp.pin_id].pin_ready(pipe, &resp);
@@ -1247,15 +1286,10 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 				resp.stream_handle, resp.pin_id);
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK\n",
-			resp.stream_handle);
 		complete(&pipe->capture_ack_completion);
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE:
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE:
-		dev_dbg(&adev->dev,
-			"%d:IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE, timestamp 0x%16.16llx\n",
-			resp.stream_handle, ts);
 		if (pipe->interlaced) {
 			struct intel_ipu4_isys_buffer *ib, *ib_safe;
 			struct list_head list;
@@ -1293,15 +1327,13 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			atomic_read(&pipe->sequence) - 1;
 		pipe->seq[pipe->seq_index].timestamp = ts;
 		dev_dbg(&adev->dev,
-			"%d:IA_CSS_ISYS_RESP_TYPE_FRAME_SOF (index %u), timestamp 0x%16.16llx\n",
+			"sof: handle %d: (index %u), timestamp 0x%16.16llx\n",
 			resp.stream_handle, pipe->seq[pipe->seq_index].sequence,
 			ts);
 		pipe->seq_index = (pipe->seq_index + 1)
 			% INTEL_IPU4_ISYS_MAX_PARALLEL_SOF;
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_FRAME_EOF:
-		dev_dbg(&adev->dev, "%d:IA_CSS_ISYS_RESP_TYPE_FRAME_EOF, timestamp 0x%16.16llx\n",
-			resp.stream_handle, ts);
 		break;
 	default:
 		dev_err(&adev->dev, "%d:unknown response type %u\n",

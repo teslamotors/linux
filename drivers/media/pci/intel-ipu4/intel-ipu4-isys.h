@@ -152,7 +152,7 @@ int intel_ipu4_isys_isr_run(void *ptr);
 #define intel_ipu4_lib_call(func, isys, ...)				\
 	({								\
 		 int rval;						\
-		 dev_dbg(&(isys)->adev->dev, "Library call %s\n", #func);\
+		 dev_dbg(&(isys)->adev->dev, "hostlib: libcall %s\n", #func);\
 		 rval = intel_ipu4_lib_call_notrace(func, isys, ##__VA_ARGS__);\
 									\
 		 rval;							\
