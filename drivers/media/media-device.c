@@ -230,12 +230,32 @@ static long media_device_setup_link(struct media_device *mdev,
 	return ret;
 }
 
-static long media_device_ioctl(struct file *filp, unsigned int cmd,
-			       unsigned long arg)
+#define MEDIA_IOC(__cmd) \
+	[_IOC_NR(MEDIA_IOC_##__cmd)] = { .cmd = MEDIA_IOC_##__cmd }
+
+/* the table is indexed by _IOC_NR(cmd) */
+struct media_ioctl_info {
+	unsigned int cmd;
+};
+
+static inline long is_valid_ioctl(const struct media_ioctl_info *info,
+				  unsigned int len, unsigned int cmd)
+{
+	return (_IOC_NR(cmd) >= len
+		|| info[_IOC_NR(cmd)].cmd != cmd) ? -ENOIOCTLCMD : 0;
+}
+
+static long __media_device_ioctl(
+	struct file *filp, unsigned int cmd, void __user *arg,
+	const struct media_ioctl_info *info_array, unsigned int info_array_len)
 {
 	struct media_devnode *devnode = media_devnode_data(filp);
 	struct media_device *dev = to_media_device(devnode);
 	long ret;
+
+	ret = is_valid_ioctl(info_array, info_array_len, cmd);
+	if (ret)
+		return ret;
 
 	switch (cmd) {
 	case MEDIA_IOC_DEVICE_INFO:
@@ -269,6 +289,21 @@ static long media_device_ioctl(struct file *filp, unsigned int cmd,
 	return ret;
 }
 
+static const struct media_ioctl_info ioctl_info[] = {
+	MEDIA_IOC(DEVICE_INFO),
+	MEDIA_IOC(ENUM_ENTITIES),
+	MEDIA_IOC(ENUM_LINKS),
+	MEDIA_IOC(SETUP_LINK),
+};
+
+static long media_device_ioctl(struct file *filp, unsigned int cmd,
+			       unsigned long arg)
+{
+	return __media_device_ioctl(
+		filp, cmd, (void __user *)arg,
+		ioctl_info, ARRAY_SIZE(ioctl_info));
+}
+
 #ifdef CONFIG_COMPAT
 
 struct media_links_enum32 {
@@ -299,6 +334,13 @@ static long media_device_enum_links32(struct media_device *mdev,
 
 #define MEDIA_IOC_ENUM_LINKS32		_IOWR('|', 0x02, struct media_links_enum32)
 
+static const struct media_ioctl_info compat_ioctl_info[] = {
+	MEDIA_IOC(DEVICE_INFO),
+	MEDIA_IOC(ENUM_ENTITIES),
+	MEDIA_IOC(ENUM_LINKS32),
+	MEDIA_IOC(SETUP_LINK),
+};
+
 static long media_device_compat_ioctl(struct file *filp, unsigned int cmd,
 				      unsigned long arg)
 {
@@ -310,7 +352,9 @@ static long media_device_compat_ioctl(struct file *filp, unsigned int cmd,
 	case MEDIA_IOC_DEVICE_INFO:
 	case MEDIA_IOC_ENUM_ENTITIES:
 	case MEDIA_IOC_SETUP_LINK:
-		return media_device_ioctl(filp, cmd, arg);
+		return __media_device_ioctl(
+			filp, cmd, (void __user *)arg,
+			compat_ioctl_info, ARRAY_SIZE(compat_ioctl_info));
 
 	case MEDIA_IOC_ENUM_LINKS32:
 		mutex_lock(&dev->graph_mutex);
