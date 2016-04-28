@@ -649,19 +649,24 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 	csi2->asd.source = IA_CSS_ISYS_STREAM_SRC_CSI2_PORT0 + index;
 	csi2->asd.supported_codes = csi2_supported_codes;
 	csi2->asd.set_ffmt = csi2_set_ffmt;
-	intel_ipu4_isys_subdev_set_ffmt(&csi2->asd.sd, NULL, &fmt);
-	intel_ipu4_isys_subdev_set_ffmt(&csi2->asd.sd, NULL, &fmt_meta);
 
 	csi2->asd.sd.flags |= V4L2_SUBDEV_FL_HAS_EVENTS;
 	csi2->asd.sd.internal_ops = &csi2_sd_internal_ops;
 	snprintf(csi2->asd.sd.name, sizeof(csi2->asd.sd.name),
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " CSI-2 %u", index);
 	v4l2_set_subdevdata(&csi2->asd.sd, &csi2->asd);
+
+	mutex_lock(&csi2->asd.mutex);
 	rval = v4l2_device_register_subdev(&isys->v4l2_dev, &csi2->asd.sd);
 	if (rval) {
+		mutex_unlock(&csi2->asd.mutex);
 		dev_info(&isys->adev->dev, "can't register v4l2 subdev\n");
 		goto fail;
 	}
+
+	__intel_ipu4_isys_subdev_set_ffmt(&csi2->asd.sd, NULL, &fmt);
+	__intel_ipu4_isys_subdev_set_ffmt(&csi2->asd.sd, NULL, &fmt_meta);
+	mutex_unlock(&csi2->asd.mutex);
 
 	snprintf(csi2->av.vdev.name, sizeof(csi2->av.vdev.name),
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " CSI-2 %u capture", index);
