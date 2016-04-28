@@ -22,11 +22,6 @@ lib2600-mod-$(IPU_STEP)-objs := ../libintel-ipu4.$(IPU_STEP).lnk.o \
 	$(LIB2600_LIBRARY)/buffer/src/cpu/ia_css_input_buffer.o \
 	$(LIB2600_LIBRARY)/buffer/src/cpu/ia_css_shared_buffer.o \
 	$(LIB2600_LIBRARY)/buffer/src/cpu/buffer_access.o
-ifeq ($(IPU_STEP),bxtB0)
-lib2600-mod-$(IPU_STEP)-objs += \
-	$(LIB2600_LIBRARY)/server_init/src/ia_css_server_init_host.o \
-	$(LIB2600_LIBRARY)/server_init/src/ia_css_server_offset.o
-endif
 ifeq ($(IPU_STEP),bxtA0)
 lib2600-mod-$(IPU_STEP)-objs += \
 	$(LIB2600_LIBRARY)/isys_infobits/src/isys_infobits.o
