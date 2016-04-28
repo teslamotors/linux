@@ -35,6 +35,7 @@ static char *__request_state[] = {
 	"IDLE",
 	"QUEUED",
 	"DELETED",
+	"COMPLETED",
 };
 
 #define request_state(i)			\
@@ -195,6 +196,54 @@ static int media_device_request_delete(struct media_device *mdev,
 
 	return 0;
 }
+
+void media_device_request_complete(struct media_device *mdev,
+				   struct media_device_request *req)
+{
+	struct file *filp;
+	unsigned long flags;
+
+	spin_lock_irqsave(&mdev->req_lock, flags);
+
+	if (req->state == MEDIA_DEVICE_REQUEST_STATE_IDLE) {
+		dev_dbg(mdev->dev,
+			"request: not completing an idle request %u\n",
+			req->id);
+		spin_unlock_irqrestore(&mdev->req_lock, flags);
+		return;
+	}
+
+	if (WARN_ON(req->state != MEDIA_DEVICE_REQUEST_STATE_QUEUED)) {
+		dev_dbg(mdev->dev, "request: can't delete %u, state %s\n",
+			req->id, request_state(req->state));
+		spin_unlock_irqrestore(&mdev->req_lock, flags);
+		return;
+	}
+
+	req->state = MEDIA_DEVICE_REQUEST_STATE_COMPLETE;
+	filp = req->filp;
+	if (filp) {
+		/*
+		 * If the file handle is still around we remove if
+		 * from the lists here. Otherwise it has been removed
+		 * when the file handle closed.
+		 */
+		list_del(&req->list);
+		list_del(&req->fh_list);
+		req->filp = NULL;
+	}
+
+	spin_unlock_irqrestore(&mdev->req_lock, flags);
+
+	/*
+	 * The driver holds a reference to a request if the filp
+	 * pointer is non-NULL: the file handle associated to the
+	 * request may have been released by now, i.e. filp is NULL.
+	 */
+	if (filp)
+		media_device_request_put(req);
+}
+EXPORT_SYMBOL_GPL(media_device_request_complete);
 
 static int media_device_request_queue_apply(
 	struct media_device *mdev, struct media_device_request *req,
