@@ -27,6 +27,7 @@
 #include <linux/sched.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
+#include <linux/dma-attrs.h>
 
 #include <uapi/linux/intel-ipu4-psys.h>
 
@@ -388,14 +389,16 @@ static struct sg_table *intel_ipu4_dma_buf_map(struct dma_buf_attachment *attach
 					    enum dma_data_direction dir)
 {
 	struct intel_ipu4_psys_kbuffer *kbuf = attach->priv;
+	DEFINE_DMA_ATTRS(attrs);
 	int ret;
 
 	ret = intel_ipu4_psys_get_userpages(kbuf);
 	if (ret)
 		return NULL;
 
-	ret = dma_map_sg(attach->dev, kbuf->sgt->sgl, kbuf->sgt->orig_nents,
-			 dir);
+	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+	ret = dma_map_sg_attrs(attach->dev, kbuf->sgt->sgl,
+				kbuf->sgt->orig_nents, dir, &attrs);
 	if (ret < kbuf->sgt->orig_nents) {
 		intel_ipu4_psys_put_userpages(kbuf);
 		dev_dbg(&kbuf->psys->adev->dev, "buf map failed\n");
