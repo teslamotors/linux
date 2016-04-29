@@ -1838,7 +1838,7 @@ int sdw_config_stream(struct sdw_master *mstr,
 		}
 	}
 	if (!sdw_rt) {
-		dev_dbg(&mstr->dev, "Valid stream tag not found\n");
+		dev_err(&mstr->dev, "Valid stream tag not found\n");
 		ret = -EINVAL;
 		goto out;
 	}
