@@ -1365,11 +1365,32 @@ static int cnl_sdw_port_activate_ch_post(struct sdw_master *mstr,
 	int sync_reg;
 	struct cnl_sdw *sdw = sdw_master_get_drvdata(mstr);
 	struct cnl_sdw_data *data = &sdw->data;
+	volatile int sync_update = 0;
+	int timeout = 10;
+
 
 	sync_reg = cnl_sdw_reg_readl(data->sdw_shim,  SDW_CNL_SYNC);
-	sync_reg |= CNL_SYNC_SYNCGO_MASK << CNL_SYNC_SYNCGO_SHIFT;
+	/* If waiting for synchronization set the go bit, else return */
+	if (!(sync_reg & SDW_CMDSYNC_SET_MASK))
+		return 0;
+	sync_reg |= (CNL_SYNC_SYNCGO_MASK << CNL_SYNC_SYNCGO_SHIFT);
 	cnl_sdw_reg_writel(data->sdw_shim, SDW_CNL_SYNC, sync_reg);
 
+	do {
+		sync_update = cnl_sdw_reg_readl(data->sdw_shim,  SDW_CNL_SYNC);
+		if ((sync_update &
+			(CNL_SYNC_SYNCGO_MASK << CNL_SYNC_SYNCGO_SHIFT)) == 0)
+			break;
+		msleep(20);
+		timeout--;
+
+	}  while (timeout);
+
+	if ((sync_update &
+		(CNL_SYNC_SYNCGO_MASK << CNL_SYNC_SYNCGO_SHIFT)) != 0) {
+		dev_err(&mstr->dev, "Failed to set sync go\n");
+		return -EIO;
+	}
 	return 0;
 }
 
