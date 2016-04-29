@@ -79,6 +79,12 @@ static inline void cnl_sdw_port_reg_writel(u32 __iomem *base, int offset,
 	return cnl_sdw_reg_writel(base, offset + port_num * 128, value);
 }
 
+struct cnl_sdw_async_msg {
+	struct completion *async_xfer_complete;
+	struct sdw_msg *msg;
+	int length;
+};
+
 struct cnl_sdw {
 	struct cnl_sdw_data data;
 	struct sdw_master *mstr;
@@ -100,6 +106,7 @@ struct cnl_sdw {
 	struct cnl_sdw_pdi_stream *out_pdm_streams;
 	struct mutex	stream_lock;
 	spinlock_t ctrl_lock;
+	struct cnl_sdw_async_msg async_msg;
 	u32 response_buf[0x80];
 	bool sdw_link_status;
 
@@ -808,6 +815,46 @@ static void cnl_sdw_read_response(struct cnl_sdw *sdw)
 	}
 }
 
+static enum sdw_command_response sdw_fill_message_response(
+			struct sdw_master *mstr,
+			struct sdw_msg *msg,
+			int count, int offset)
+{
+	int i, j;
+	int no_ack = 0, nack = 0;
+	struct cnl_sdw *sdw = sdw_master_get_drvdata(mstr);
+
+	for (i = 0; i < count; i++) {
+		if (!(MCP_RESPONSE_ACK_MASK & sdw->response_buf[i])) {
+			no_ack = 1;
+			dev_err(&mstr->dev, "Ack not recevied\n");
+			if ((MCP_RESPONSE_NACK_MASK &
+					sdw->response_buf[i])) {
+				nack = 1;
+				dev_err(&mstr->dev, "NACK recevied\n");
+			}
+		}
+		break;
+	}
+	if (nack) {
+		dev_err(&mstr->dev, "Nack detected for slave %d\n", msg->slave_addr);
+		msg->len = 0;
+		return -EREMOTEIO;
+	} else if (no_ack) {
+		dev_err(&mstr->dev, "Command ignored for slave %d\n", msg->slave_addr);
+		msg->len = 0;
+		return -EREMOTEIO;
+	}
+	if (msg->flag == SDW_MSG_FLAG_WRITE)
+		return 0;
+	/* Response and Command has same base address */
+	for (j = 0; j < count; j++)
+			msg->buf[j + offset] =
+			(sdw->response_buf[j]  >> MCP_RESPONSE_RDATA_SHIFT);
+	return 0;
+}
+
+
 irqreturn_t cnl_sdw_irq_handler(int irq, void *context)
 {
 	struct cnl_sdw *sdw = context;
@@ -840,7 +887,14 @@ irqreturn_t cnl_sdw_irq_handler(int irq, void *context)
 
 	if (int_status & (MCP_INTSTAT_RXWL_MASK << MCP_INTSTAT_RXWL_SHIFT)) {
 		cnl_sdw_read_response(sdw);
-		complete(&sdw->tx_complete);
+		if (sdw->async_msg.async_xfer_complete) {
+			sdw_fill_message_response(mstr, sdw->async_msg.msg,
+					sdw->async_msg.length, 0);
+			complete(sdw->async_msg.async_xfer_complete);
+			sdw->async_msg.async_xfer_complete = NULL;
+			sdw->async_msg.msg = NULL;
+		} else
+			complete(&sdw->tx_complete);
 	}
 	if (int_status & (MCP_INTSTAT_CONTROLBUSCLASH_MASK <<
 				MCP_INTSTAT_CONTROLBUSCLASH_SHIFT)) {
@@ -945,16 +999,14 @@ static enum sdw_command_response cnl_program_scp_addr(struct sdw_master *mstr,
 }
 
 static enum sdw_command_response sdw_xfer_msg(struct sdw_master *mstr,
-		struct sdw_msg *msg, int cmd, int offset, int count)
+		struct sdw_msg *msg, int cmd, int offset, int count, bool async)
 {
 	struct cnl_sdw *sdw = sdw_master_get_drvdata(mstr);
 	struct cnl_sdw_data *data = &sdw->data;
-	int i, j;
+	int j;
 	u32 cmd_base =  SDW_CNL_MCP_COMMAND_BASE;
-	u32 response_base = SDW_CNL_MCP_RESPONSE_BASE;
-	u32 cmd_data = 0, response_data;
+	u32 cmd_data = 0;
 	unsigned long time_left;
-	int no_ack = 0, nack = 0;
 	u16 addr = msg->addr;
 
 	/* Program the watermark level upto number of count */
@@ -983,6 +1035,10 @@ static enum sdw_command_response sdw_xfer_msg(struct sdw_master *mstr,
 					cmd_base, cmd_data);
 		cmd_base += SDW_CNL_CMD_WORD_LEN;
 	}
+
+	/* If Async dont wait for completion */
+	if (async)
+		return 0;
 	/* Wait for 3 second for timeout */
 	time_left = wait_for_completion_timeout(&sdw->tx_complete, 3 * HZ);
 	if (!time_left) {
@@ -990,39 +1046,52 @@ static enum sdw_command_response sdw_xfer_msg(struct sdw_master *mstr,
 		msg->len = 0;
 		return -ETIMEDOUT;
 	}
-	for (i = 0; i < count; i++) {
-		if (!(MCP_RESPONSE_ACK_MASK & sdw->response_buf[i])) {
-			no_ack = 1;
-			dev_err(&mstr->dev, "Ack not recevied\n");
-			if ((MCP_RESPONSE_NACK_MASK &
-					sdw->response_buf[i])) {
-				nack = 1;
-				dev_err(&mstr->dev, "NACK recevied\n");
-			}
-		}
+	return sdw_fill_message_response(mstr, msg, count, offset);
+}
+
+static enum sdw_command_response cnl_sdw_xfer_msg_async(struct sdw_master *mstr,
+		struct sdw_msg *msg, bool program_scp_addr_page,
+		struct sdw_async_xfer_data *data)
+{
+	int ret = 0, cmd;
+	struct cnl_sdw *sdw = sdw_master_get_drvdata(mstr);
+
+	/* Only 1 message can be handled in Async fashion. This is used
+	 * only for Bank switching where during aggregation it is required
+	 * to synchronously switch the bank on  more than 1 controller
+	 */
+	if (msg->len > 1) {
+		ret = -EINVAL;
+		goto error;
+	}
+	/* If scp addr programming fails goto error */
+	if (program_scp_addr_page)
+		ret = cnl_program_scp_addr(mstr, msg);
+	if (ret)
+		goto error;
+
+	switch (msg->flag) {
+	case SDW_MSG_FLAG_READ:
+		cmd = 0x2;
 		break;
+	case SDW_MSG_FLAG_WRITE:
+		cmd = 0x3;
+		break;
+	default:
+		dev_err(&mstr->dev, "Command not supported\n");
+		return -EINVAL;
 	}
-	if (nack) {
-		dev_err(&mstr->dev, "Nack detected for slave %d\n", msg->slave_addr);
-		msg->len = 0;
-		return -EREMOTEIO;
-	} else if (no_ack) {
-		dev_err(&mstr->dev, "Command ignored for slave %d\n", msg->slave_addr);
-		msg->len = 0;
-		return -EREMOTEIO;
-	}
-	if (msg->flag == SDW_MSG_FLAG_WRITE)
-		return 0;
-	/* Response and Command has same base address */
-	response_base = SDW_CNL_MCP_COMMAND_BASE;
-	for (j = 0; j < count; j++) {
-			response_data = cnl_sdw_reg_readl(data->sdw_regs,
-								cmd_base);
-			msg->buf[j + offset] =
-			(sdw->response_buf[j]  >> MCP_RESPONSE_RDATA_SHIFT);
-			cmd_base += 4;
-	}
-	return 0;
+	sdw->async_msg.async_xfer_complete = &data->xfer_complete;
+	sdw->async_msg.msg = msg;
+	sdw->async_msg.length = msg->len;
+	/* Dont wait for reply, calling function will wait for reply. */
+	ret = sdw_xfer_msg(mstr, msg, cmd, 0, msg->len, true);
+	return ret;
+error:
+	msg->len = 0;
+	complete(&data->xfer_complete);
+	return -EINVAL;
+
 }
 
 static enum sdw_command_response cnl_sdw_xfer_msg(struct sdw_master *mstr,
@@ -1052,14 +1121,14 @@ static enum sdw_command_response cnl_sdw_xfer_msg(struct sdw_master *mstr,
 	for (i = 0; i < msg->len / SDW_CNL_MCP_COMMAND_LENGTH; i++) {
 		ret = sdw_xfer_msg(mstr, msg,
 				cmd, i * SDW_CNL_MCP_COMMAND_LENGTH,
-				SDW_CNL_MCP_COMMAND_LENGTH);
+				SDW_CNL_MCP_COMMAND_LENGTH, false);
 		if (ret < 0)
 			break;
 	}
 	if (!(msg->len % SDW_CNL_MCP_COMMAND_LENGTH))
 		return ret;
 	ret = sdw_xfer_msg(mstr, msg, cmd, i * SDW_CNL_MCP_COMMAND_LENGTH,
-			msg->len % SDW_CNL_MCP_COMMAND_LENGTH);
+			msg->len % SDW_CNL_MCP_COMMAND_LENGTH, false);
 	if (ret < 0)
 		return -EINVAL;
 	return ret;
@@ -1561,6 +1630,7 @@ static const struct dev_pm_ops cnl_sdw_pm_ops = {
 };
 
 static struct sdw_master_ops cnl_sdw_master_ops  = {
+	.xfer_msg_async = cnl_sdw_xfer_msg_async,
 	.xfer_msg = cnl_sdw_xfer_msg,
 	.xfer_bulk = cnl_sdw_xfer_bulk,
 	.monitor_handover = cnl_sdw_mon_handover,
