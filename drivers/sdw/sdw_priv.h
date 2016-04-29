@@ -196,6 +196,7 @@ struct sdw_bus {
 	struct kthread_work kwork;
 	struct list_head status_list;
 	spinlock_t spinlock;
+	struct sdw_async_xfer_data async_data;
 };
 
 /** Holds supported Row-Column combination related information */
@@ -239,5 +240,11 @@ int sdw_mstr_bw_init(struct sdw_bus *sdw_bs);
 int sdw_bus_calc_bw(struct sdw_stream_tag *stream_tag, bool enable);
 int sdw_bus_calc_bw_dis(struct sdw_stream_tag *stream_tag, bool unprepare);
 int sdw_chn_enable(void);
+void sdw_unlock_mstr(struct sdw_master *mstr);
+int sdw_trylock_mstr(struct sdw_master *mstr);
+void sdw_lock_mstr(struct sdw_master *mstr);
+int sdw_slave_transfer_async(struct sdw_master *mstr, struct sdw_msg *msg,
+				int num,
+				struct sdw_async_xfer_data *async_data);
 
 #endif /* _LINUX_SDW_PRIV_H */

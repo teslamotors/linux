@@ -419,13 +419,12 @@ void sdw_lock_mstr(struct sdw_master *mstr)
 {
 	rt_mutex_lock(&mstr->bus_lock);
 }
-EXPORT_SYMBOL_GPL(sdw_lock_mstr);
 
 /**
  * sdw_trylock_mstr - Try to get exclusive access to an SDW bus segment
  * @mstr: Target SDW bus segment
  */
-static int sdw_trylock_mstr(struct sdw_master *mstr)
+int sdw_trylock_mstr(struct sdw_master *mstr)
 {
 	return rt_mutex_trylock(&mstr->bus_lock);
 }
@@ -439,7 +438,6 @@ void sdw_unlock_mstr(struct sdw_master *mstr)
 {
 	rt_mutex_unlock(&mstr->bus_lock);
 }
-EXPORT_SYMBOL_GPL(sdw_unlock_mstr);
 
 
 static int sdw_assign_slv_number(struct sdw_master *mstr,
@@ -663,7 +661,8 @@ slv_number_assign_fail:
  * Adapter lock must be held when calling this function. No debug logging
  * takes place. mstr->algo->master_xfer existence isn't checked.
  */
-int __sdw_transfer(struct sdw_master *mstr, struct sdw_msg *msg, int num)
+int __sdw_transfer(struct sdw_master *mstr, struct sdw_msg *msg, int num,
+				struct sdw_async_xfer_data *async_data)
 {
 	unsigned long orig_jiffies;
 	int ret = 0, try, i;
@@ -707,8 +706,24 @@ int __sdw_transfer(struct sdw_master *mstr, struct sdw_msg *msg, int num)
 				program_scp_addr_page =
 					slv_cap->paging_supported;
 			}
-			ret = mstr->driver->mstr_ops->xfer_msg(mstr,
+			/* Call async or sync handler based on call */
+			if (!async_data)
+				ret = mstr->driver->mstr_ops->xfer_msg(mstr,
 						msg, program_scp_addr_page);
+			/* Async transfer is not mandatory to support
+			 * It requires only if stream is split across the
+			 * masters, where bus driver need to send the commands
+			 * for bank switch individually and wait for them
+			 * to complete out side of the master context
+			 */
+			else if (mstr->driver->mstr_ops->xfer_msg_async &&
+				async_data)
+				ret = mstr->driver->mstr_ops->xfer_msg_async(
+						mstr, msg,
+						program_scp_addr_page,
+						async_data);
+			else
+				return -ENOTSUPP;
 			if (ret != -EAGAIN)
 				break;
 			if (time_after(jiffies,
@@ -740,11 +755,32 @@ static int sdw_slave_transfer_nopm(struct sdw_master *mstr, struct sdw_msg *msg,
 	int ret;
 
 	if (mstr->driver->mstr_ops->xfer_msg) {
-		ret = __sdw_transfer(mstr, msg, num);
+		ret = __sdw_transfer(mstr, msg, num, NULL);
 		return ret;
 	}
 	dev_dbg(&mstr->dev, "SDW level transfers not supported\n");
 	return -EOPNOTSUPP;
+}
+
+int sdw_slave_transfer_async(struct sdw_master *mstr, struct sdw_msg *msg,
+					int num,
+					struct sdw_async_xfer_data *async_data)
+{
+	int ret;
+	/* Currently we support only message asynchronously, This is mainly
+	 * used to do bank switch for multiple controllers
+	 */
+	if (num != 1)
+		return -EINVAL;
+	if (!(mstr->driver->mstr_ops->xfer_msg)) {
+		dev_dbg(&mstr->dev, "SDW level transfers not supported\n");
+		return -EOPNOTSUPP;
+	}
+	pm_runtime_get_sync(&mstr->dev);
+	ret = __sdw_transfer(mstr, msg, num, async_data);
+	pm_runtime_mark_last_busy(&mstr->dev);
+	pm_runtime_put_sync_autosuspend(&mstr->dev);
+	return ret;
 }
 
 /**
@@ -789,7 +825,7 @@ int sdw_slave_transfer(struct sdw_master *mstr, struct sdw_msg *msg, int num)
 	} else {
 		sdw_lock_mstr(mstr);
 	}
-	ret = __sdw_transfer(mstr, msg, num);
+	ret = __sdw_transfer(mstr, msg, num, NULL);
 	sdw_unlock_mstr(mstr);
 out:
 	pm_runtime_mark_last_busy(&mstr->dev);
@@ -1125,6 +1161,7 @@ static int sdw_register_master(struct sdw_master *mstr)
 	if (!sdw_bus)
 		goto bus_alloc_failed;
 	sdw_bus->mstr = mstr;
+	init_completion(&sdw_bus->async_data.xfer_complete);
 
 	mutex_lock(&sdw_core.core_lock);
 	list_add_tail(&sdw_bus->bus_node, &sdw_core.bus_list);

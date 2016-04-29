@@ -338,6 +338,29 @@ struct sdw_slv_bra_capabilities {
 };
 
 /**
+ *  struct sdw_async_xfer_data: Data to be provided by bus driver to
+ *				to master controller, in case bus driver
+ *				driver doesnt want to call synchronous
+ *				xfer message API. This is used by bus
+ *				driver during aggregation, where it calls
+ *				the bank switch of multiple master
+ *				if the stream is split between two master.
+ *				In this case bus driver will wait outside
+ *				master controller context for bank switch
+ *				to happen.
+ *  @result:			Result of the asynchronous transfer.
+ *  @xfer_complete		Bus driver will wait on this. Master controller
+ *				needs to ack on this for transfer complete.
+ *  @msg			Message to be transferred.
+ */
+
+struct sdw_async_xfer_data {
+	int result;
+	struct completion xfer_complete;
+	struct sdw_msg *msg;
+};
+
+/**
  * struct sdw_slv_dp0_capabilities: Capabilities of the Data Port 0 of Slave.
  *
  * @max_word_length: Maximum word length supported by the Data Port.
@@ -831,6 +854,9 @@ struct sdw_master_port_ops {
 struct sdw_master_ops {
 	enum sdw_command_response (*xfer_msg)(struct sdw_master *mstr,
 		struct sdw_msg *msg, bool program_scp_addr_page);
+	enum sdw_command_response (*xfer_msg_async)(struct sdw_master *mstr,
+		struct sdw_msg *msg, bool program_scp_addr_page,
+		struct sdw_async_xfer_data *data);
 	int (*xfer_bulk)(struct sdw_master *mstr,
 		struct sdw_bra_block *block);
 	int (*monitor_handover)(struct sdw_master *mstr,
