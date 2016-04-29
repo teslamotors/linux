@@ -509,8 +509,7 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 	struct cnl_sdw_data *p_data;
 	int ret = 0, i, j;
 	/* TODO: This number 4 should come from ACPI */
-#ifdef CONFIG_SDW_MAXIM_SLAVE
-
+#if defined(CONFIG_SDW_MAXIM_SLAVE) || defined(CONFIG_SND_SOC_MXFPGA)
 	dsp->num_sdw_controllers = 3;
 #else
 	dsp->num_sdw_controllers = 4;
@@ -574,12 +573,19 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 				SDW_PORT_BLK_PKG_MODE_BLK_PER_PORT |
 				SDW_PORT_BLK_PKG_MODE_BLK_PER_CH;
 		}
+		master[i].link_sync_mask = 0x0;
 		switch (i) {
 		case 0:
 			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_0_BASE;
+#ifdef CONFIG_SND_SOC_MXFPGA
+			master[i].link_sync_mask = 0x1;
+#endif
 			break;
 		case 1:
 			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_1_BASE;
+#ifdef CONFIG_SND_SOC_MXFPGA
+			master[i].link_sync_mask = 0x2;
+#endif
 			break;
 		case 2:
 			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_2_BASE;
