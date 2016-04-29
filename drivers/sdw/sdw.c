@@ -524,6 +524,8 @@ static void sdw_free_slv_number(struct sdw_master *mstr,
 	sdw_unlock_mstr(mstr);
 }
 
+
+int count;
 static int sdw_register_slave(struct sdw_master *mstr)
 {
 	int ret = 0, i, ports;
@@ -605,7 +607,7 @@ static int sdw_register_slave(struct sdw_master *mstr)
 			sdw_slave->dev_id[2],
 			sdw_slave->dev_id[3],
 			sdw_slave->dev_id[4],
-			sdw_slave->dev_id[5]);
+			sdw_slave->dev_id[5] + mstr->nr);
 		/* Set name based on dev_id. This will be
 		 * compared to load driver
 		 */
@@ -615,7 +617,7 @@ static int sdw_register_slave(struct sdw_master *mstr)
 				sdw_slave->dev_id[2],
 				sdw_slave->dev_id[3],
 				sdw_slave->dev_id[4],
-				sdw_slave->dev_id[5]);
+				sdw_slave->dev_id[5] + mstr->nr);
 		ret = device_register(&sdw_slave->dev);
 		if (ret) {
 			dev_err(&mstr->dev, "Register slave failed\n");
@@ -635,6 +637,7 @@ static int sdw_register_slave(struct sdw_master *mstr)
 		sdw_unlock_mstr(mstr);
 
 	}
+	count++;
 	return 0;
 program_slv_failed:
 	device_unregister(&sdw_slave->dev);
