@@ -440,7 +440,11 @@ static int sdw_init(struct cnl_sdw *sdw)
 {
 	struct sdw_master *mstr = sdw->mstr;
 	struct cnl_sdw_data *data = &sdw->data;
-	int mcp_config, mcp_control;
+	int mcp_config, mcp_control, sync_reg;
+
+	volatile int sync_update = 0;
+	/* Try 10 times before timing out */
+	int timeout = 10;
 	int ret = 0;
 
 	/* Power up the link controller */
@@ -453,6 +457,25 @@ static int sdw_init(struct cnl_sdw *sdw)
 
 	/* Switch the ownership to Master IP from glue logic */
 	sdw_switch_to_mip(sdw);
+
+	/* Set the Sync period to default */
+	sync_reg = cnl_sdw_reg_readl(data->sdw_shim,  SDW_CNL_SYNC);
+	sync_reg |= (SDW_CNL_DEFAULT_SYNC_PERIOD << CNL_SYNC_SYNCPRD_SHIFT);
+	sync_reg |= (0x1 << CNL_SYNC_SYNCCPU_SHIFT);
+	cnl_sdw_reg_writel(data->sdw_shim, SDW_CNL_SYNC, sync_reg);
+
+	do {
+		sync_update = cnl_sdw_reg_readl(data->sdw_shim,  SDW_CNL_SYNC);
+		if ((sync_update & CNL_SYNC_SYNCCPU_MASK) == 0)
+			break;
+		timeout--;
+		/* Wait 20ms before each time */
+		msleep(20);
+	} while (timeout != 0);
+	if ((sync_update & CNL_SYNC_SYNCCPU_MASK) != 0) {
+		dev_err(&mstr->dev, "Fail to set sync period\n");
+		return -EINVAL;
+	}
 
 	/* Set command acceptance mode. This is required because when
 	 * Master broadcasts the clock_stop command to slaves, slaves
