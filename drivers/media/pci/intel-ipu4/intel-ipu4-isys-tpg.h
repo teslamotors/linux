@@ -28,6 +28,9 @@ struct intel_ipu4_isys;
 
 #define TPG_PAD_SOURCE			0
 #define NR_OF_TPG_PADS			1
+#define NR_OF_TPG_SOURCE_PADS		1
+#define NR_OF_TPG_SINK_PADS		0
+#define NR_OF_TPG_STREAMS		1
 
 /*
  * struct intel_ipu4_isys_tpg

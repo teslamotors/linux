@@ -76,6 +76,20 @@ static const uint32_t *csi2_be_supported_codes[] = {
 static const uint32_t *csi2_be_soc_supported_codes[] = {
 	csi2_be_soc_supported_codes_pad,
 	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
+	csi2_be_soc_supported_codes_pad,
 };
 
 static struct v4l2_subdev_internal_ops csi2_be_sd_internal_ops = {
@@ -129,12 +143,12 @@ static int ipu4_isys_csi2_be2_set_sel(struct v4l2_subdev *sd,
 
 	if (sel->target == V4L2_SEL_TGT_CROP &&
 	    pad->flags & MEDIA_PAD_FL_SOURCE &&
-	    asd->valid_tgts[CSI2_BE_PAD_SOURCE].crop) {
+	    asd->valid_tgts[CSI2_BE_RAW_PAD_SOURCE].crop) {
 		struct v4l2_mbus_framefmt *ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg, sel->pad,
 						   sel->which);
 		struct v4l2_rect *r = __intel_ipu4_isys_get_selection(
-			sd, cfg, sel->target, CSI2_BE_PAD_SINK, sel->which);
+			sd, cfg, sel->target, CSI2_BE_RAW_PAD_SINK, sel->which);
 
 		if (get_supported_code_index(ffmt->code) < 0) {
 			/* Non-bayer formats can't be single line cropped */
@@ -199,7 +213,7 @@ static void csi2_be_set_ffmt(struct v4l2_subdev *sd,
 		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->which);
 
 	switch (fmt->pad) {
-	case CSI2_BE_PAD_SINK:
+	case CSI2_BE_RAW_PAD_SINK:
 		if (fmt->format.field != V4L2_FIELD_ALTERNATE)
 			fmt->format.field = V4L2_FIELD_NONE;
 		*ffmt = fmt->format;
@@ -209,20 +223,20 @@ static void csi2_be_set_ffmt(struct v4l2_subdev *sd,
 			INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SINK_FMT, fmt->pad,
 			fmt->which);
 		return;
-	case CSI2_BE_PAD_SOURCE: {
+	case CSI2_BE_RAW_PAD_SOURCE: {
 		struct v4l2_mbus_framefmt *sink_ffmt =
-			__intel_ipu4_isys_get_ffmt(sd, cfg, CSI2_BE_PAD_SINK,
-						   fmt->which);
+			__intel_ipu4_isys_get_ffmt(sd, cfg,
+					CSI2_BE_RAW_PAD_SINK, fmt->which);
 		struct v4l2_rect *r =
 			__intel_ipu4_isys_get_selection(
 				sd, cfg, V4L2_SEL_TGT_CROP,
-				CSI2_BE_PAD_SOURCE, fmt->which);
+				CSI2_BE_RAW_PAD_SOURCE, fmt->which);
 		struct intel_ipu4_isys_subdev *asd =
 			to_intel_ipu4_isys_subdev(sd);
 		u32 code = sink_ffmt->code;
 		int idx = get_supported_code_index(code);
 
-		if (asd->valid_tgts[CSI2_BE_PAD_SOURCE].crop && idx >= 0) {
+		if (asd->valid_tgts[CSI2_BE_RAW_PAD_SOURCE].crop && idx >= 0) {
 			int crop_info = 0;
 
 			if (r->top & 1)
@@ -257,7 +271,7 @@ int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
 {
 	struct v4l2_subdev_format fmt = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-		.pad = CSI2_BE_PAD_SINK,
+		.pad = CSI2_BE_RAW_PAD_SINK,
 		.format = {
 			.width = 4096,
 			.height = 3072,
@@ -265,7 +279,7 @@ int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
 	};
 	struct v4l2_subdev_selection sel = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-		.pad = CSI2_BE_PAD_SOURCE,
+		.pad = CSI2_BE_RAW_PAD_SOURCE,
 		.target = V4L2_SEL_TGT_CROP,
 		.r = {
 			.width = fmt.format.width,
@@ -281,26 +295,30 @@ int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
 	csi2_be->asd.isys = isys;
 
 	rval = intel_ipu4_isys_subdev_init(&csi2_be->asd, &csi2_be_sd_ops, 0,
-					NR_OF_CSI2_BE_PADS);
+					NR_OF_CSI2_BE_RAW_PADS);
 	if (rval)
 		goto fail;
 
-	csi2_be->asd.pad[CSI2_BE_PAD_SINK].flags = MEDIA_PAD_FL_SINK
+	csi2_be->asd.pad[CSI2_BE_RAW_PAD_SINK].flags = MEDIA_PAD_FL_SINK
 		| MEDIA_PAD_FL_MUST_CONNECT;
-	csi2_be->asd.pad[CSI2_BE_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
+	csi2_be->asd.pad[CSI2_BE_RAW_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 
 	if (type == INTEL_IPU4_BE_RAW)
-		csi2_be->asd.valid_tgts[CSI2_BE_PAD_SOURCE].crop = true;
+		csi2_be->asd.valid_tgts[CSI2_BE_RAW_PAD_SOURCE].crop = true;
 	else
-		csi2_be->asd.valid_tgts[CSI2_BE_PAD_SOURCE].crop = false;
+		csi2_be->asd.valid_tgts[CSI2_BE_RAW_PAD_SOURCE].crop = false;
 
 	csi2_be->asd.set_ffmt = csi2_be_set_ffmt;
 	csi2_be->asd.isys = isys;
 	if (type == INTEL_IPU4_BE_RAW) {
+		BUILD_BUG_ON(ARRAY_SIZE(csi2_be_supported_codes) !=
+							NR_OF_CSI2_BE_RAW_PADS);
 		csi2_be->asd.supported_codes = csi2_be_supported_codes;
 		csi2_be->asd.be_mode = INTEL_IPU4_BE_RAW;
 		csi2_be->asd.isl_mode = INTEL_IPU4_ISL_CSI2_BE;
 	} else {
+		BUILD_BUG_ON(ARRAY_SIZE(csi2_be_soc_supported_codes) !=
+							NR_OF_CSI2_BE_SOC_PADS);
 		csi2_be->asd.supported_codes = csi2_be_soc_supported_codes;
 		csi2_be->asd.be_mode = INTEL_IPU4_BE_SOC;
 		csi2_be->asd.isl_mode = INTEL_IPU4_ISL_OFF;
@@ -349,7 +367,7 @@ int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
 		sizeof(struct intel_ipu4_isys_video_buffer);
 
 	rval = intel_ipu4_isys_video_init(
-		&csi2_be->av, &csi2_be->asd.sd.entity, CSI2_BE_PAD_SOURCE,
+		&csi2_be->av, &csi2_be->asd.sd.entity, CSI2_BE_RAW_PAD_SOURCE,
 		MEDIA_PAD_FL_SINK, 0);
 	if (rval) {
 		dev_info(&isys->adev->dev, "can't init video node\n");

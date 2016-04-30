@@ -25,9 +25,27 @@
 struct intel_ipu4_isys_csi2_be_pdata;
 struct intel_ipu4_isys;
 
-#define CSI2_BE_PAD_SINK			0
-#define CSI2_BE_PAD_SOURCE			1
-#define NR_OF_CSI2_BE_PADS			2
+#define CSI2_BE_RAW_PAD_SINK		0
+#define CSI2_BE_RAW_PAD_SOURCE		1
+
+#define NR_OF_CSI2_BE_RAW_PADS		2
+#define NR_OF_CSI2_BE_RAW_SOURCE_PADS	1
+#define NR_OF_CSI2_BE_RAW_SINK_PADS	1
+#define NR_OF_CSI2_BE_RAW_STREAMS	1
+
+#define NR_OF_CSI2_BE_SOC_SOURCE_PADS	8
+#define NR_OF_CSI2_BE_SOC_SINK_PADS	8
+#define NR_OF_CSI2_BE_SOC_PADS \
+	(NR_OF_CSI2_BE_SOC_SOURCE_PADS + NR_OF_CSI2_BE_SOC_SINK_PADS)
+#define NR_OF_CSI2_BE_SOC_STREAMS	8
+
+#define CSI2_BE_SOC_PAD_SINK(n)		\
+	((n) >= NR_OF_CSI2_BE_SOC_SINK_PADS ? (NR_OF_CSI2_BE_SOC_SINK_PADS) \
+	 : (n))
+#define CSI2_BE_SOC_PAD_SOURCE(n)	\
+	((n) >= NR_OF_CSI2_BE_SOC_SOURCE_PADS ? \
+		(NR_OF_CSI2_BE_SOC_PADS - 1) : \
+		((n) + NR_OF_CSI2_BE_SOC_SINK_PADS))
 
 #define CSI2_BE_CROP_HOR	(1 << 0)
 #define CSI2_BE_CROP_VER	(1 << 1)

@@ -33,7 +33,11 @@ struct ia_css_isys_stream_cfg_data;
 #define ISA_PAD_CONFIG			2
 #define ISA_PAD_3A			3
 #define ISA_PAD_SOURCE_SCALED		4
+
 #define NR_OF_ISA_PADS			5
+#define NR_OF_ISA_SINK_PADS		2
+#define NR_OF_ISA_SOURCE_PADS		3
+#define NR_OF_ISA_STREAMS		1
 
 struct ia_css_process_group_light;
 struct ia_css_terminal;

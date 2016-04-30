@@ -26,9 +26,17 @@ struct intel_ipu4_isys_csi2_pdata;
 struct intel_ipu4_isys;
 
 #define CSI2_PAD_SINK			0
-#define CSI2_PAD_SOURCE			1
-#define CSI2_PAD_META                   2
-#define NR_OF_CSI2_PADS			3
+#define CSI2_PAD_SOURCE(n)	\
+	((n) >= NR_OF_CSI2_SOURCE_PADS ? \
+		(NR_OF_CSI2_PADS - 2) : \
+		((n) + NR_OF_CSI2_SINK_PADS))
+
+#define CSI2_PAD_META                   5
+
+#define NR_OF_CSI2_PADS			6
+#define NR_OF_CSI2_SINK_PADS		1
+#define NR_OF_CSI2_SOURCE_PADS		(NR_OF_CSI2_PADS - 2)
+#define NR_OF_CSI2_STREAMS		4
 
 #define INTEL_IPU4_ISYS_CSI2_SENSOR_CFG_LANE_CLOCK	0
 #define INTEL_IPU4_ISYS_CSI2_SENSOR_CFG_LANE_DATA(n)	((n) + 1)

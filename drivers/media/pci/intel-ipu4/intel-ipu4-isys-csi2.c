@@ -87,6 +87,9 @@ static const uint32_t csi2_supported_codes_pad_meta[] = {
 static const uint32_t *csi2_supported_codes[] = {
 	csi2_supported_codes_pad_sink,
 	csi2_supported_codes_pad_source,
+	csi2_supported_codes_pad_source,
+	csi2_supported_codes_pad_source,
+	csi2_supported_codes_pad_source,
 	csi2_supported_codes_pad_meta,
 };
 
@@ -557,7 +560,7 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 			INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SINK_FMT, fmt->pad,
 			fmt->which);
 		break;
-	case CSI2_PAD_SOURCE: {
+	case CSI2_PAD_SOURCE(0): {
 		struct v4l2_mbus_framefmt *sink_ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg, CSI2_PAD_SINK,
 						   fmt->which);
@@ -644,7 +647,7 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 
 	csi2->asd.pad[CSI2_PAD_SINK].flags = MEDIA_PAD_FL_SINK
 		| MEDIA_PAD_FL_MUST_CONNECT;
-	csi2->asd.pad[CSI2_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
+	csi2->asd.pad[CSI2_PAD_SOURCE(0)].flags = MEDIA_PAD_FL_SOURCE;
 	csi2->asd.pad[CSI2_PAD_META].flags = MEDIA_PAD_FL_SOURCE;
 	csi2->asd.source = IA_CSS_ISYS_STREAM_SRC_CSI2_PORT0 + index;
 	csi2->asd.supported_codes = csi2_supported_codes;
@@ -690,7 +693,7 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 		sizeof(struct intel_ipu4_isys_video_buffer);
 
 	rval = intel_ipu4_isys_video_init(
-		&csi2->av, &csi2->asd.sd.entity, CSI2_PAD_SOURCE,
+		&csi2->av, &csi2->asd.sd.entity, CSI2_PAD_SOURCE(0),
 		MEDIA_PAD_FL_SINK, 0);
 	if (rval) {
 		dev_info(&isys->adev->dev, "can't init video node\n");

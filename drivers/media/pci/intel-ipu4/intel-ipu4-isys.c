@@ -738,9 +738,9 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 
 	for (i = 0; i < csi2->nports; i++) {
 		rval = media_create_pad_link(
-			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE,
+			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE(0),
 			&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
-			CSI2_BE_PAD_SINK, 0);
+			CSI2_BE_RAW_PAD_SINK, 0);
 		if (rval) {
 			dev_info(&isys->adev->dev,
 				 "can't create link between csi2 and csi2_be\n");
@@ -749,9 +749,9 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		if (csi2_be->nbes < 2)
 			continue;
 		rval = media_create_pad_link(
-			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE,
+			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE(0),
 			&isys->csi2_be[INTEL_IPU4_BE_SOC].asd.sd.entity,
-			CSI2_BE_PAD_SINK, 0);
+			CSI2_BE_RAW_PAD_SINK, 0);
 		if (rval) {
 			dev_info(&isys->adev->dev,
 				 "can't create link between csi2 and csi2_be soc\n");
@@ -763,7 +763,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		rval = media_create_pad_link(
 			&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
 			&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
-			CSI2_BE_PAD_SINK, 0);
+			CSI2_BE_RAW_PAD_SINK, 0);
 		if (rval) {
 			dev_info(&isys->adev->dev,
 				 "can't create link between tpg and csi2_be\n");
@@ -774,7 +774,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		rval = media_create_pad_link(
 			&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
 			&isys->csi2_be[INTEL_IPU4_BE_SOC].asd.sd.entity,
-			CSI2_BE_PAD_SINK, 0);
+			CSI2_BE_RAW_PAD_SINK, 0);
 		if (rval) {
 			dev_info(&isys->adev->dev,
 				 "can't create link between tpg and csi2_be soc\n");
@@ -784,7 +784,8 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 
 	rval = media_create_pad_link(
 		&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
-		CSI2_BE_PAD_SOURCE, &isys->isa.asd.sd.entity, ISA_PAD_SINK, 0);
+		CSI2_BE_RAW_PAD_SOURCE, &isys->isa.asd.sd.entity, ISA_PAD_SINK,
+		0);
 	if (rval) {
 		dev_info(&isys->adev->dev,
 			 "can't create link between CSI2be and ISA\n");
