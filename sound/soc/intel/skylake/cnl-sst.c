@@ -538,7 +538,8 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 		master[i].retries = CNL_SDW_MAX_CMD_RETRIES;
 		m_cap->base_clk_freq = 9.6 * 1000 * 1000;
 		strcpy(master[i].name, "cnl_sdw_mstr");
-		m_cap->highphy_capable = 0;
+		m_cap->highphy_capable = false;
+		m_cap->monitor_handover_supported = false;
 		m_cap->sdw_dp0_supported = 1;
 		m_cap->num_data_ports = CNL_SDW_MAX_PORTS;
 		dp0_cap->max_word_length = 32;
