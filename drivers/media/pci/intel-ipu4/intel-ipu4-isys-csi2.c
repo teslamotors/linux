@@ -642,7 +642,9 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 	init_completion(&csi2->eof_completion);
 
 	rval = intel_ipu4_isys_subdev_init(&csi2->asd, &csi2_sd_ops, 0,
-					NR_OF_CSI2_PADS);
+				NR_OF_CSI2_PADS, NR_OF_CSI2_STREAMS,
+				NR_OF_CSI2_SOURCE_PADS, NR_OF_CSI2_SINK_PADS,
+				V4L2_SUBDEV_FL_HAS_SUBSTREAMS);
 	if (rval)
 		goto fail;
 

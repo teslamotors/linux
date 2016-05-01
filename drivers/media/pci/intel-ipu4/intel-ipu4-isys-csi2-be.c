@@ -295,7 +295,9 @@ int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
 	csi2_be->asd.isys = isys;
 
 	rval = intel_ipu4_isys_subdev_init(&csi2_be->asd, &csi2_be_sd_ops, 0,
-					NR_OF_CSI2_BE_RAW_PADS);
+			NR_OF_CSI2_BE_RAW_PADS, NR_OF_CSI2_BE_RAW_STREAMS,
+			NR_OF_CSI2_BE_RAW_SOURCE_PADS,
+			NR_OF_CSI2_BE_RAW_SINK_PADS, 0);
 	if (rval)
 		goto fail;
 

@@ -186,8 +186,10 @@ int intel_ipu4_isys_subdev_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *f
 int intel_ipu4_isys_subdev_close(struct v4l2_subdev *sd,
 			      struct v4l2_subdev_fh *fh);
 int intel_ipu4_isys_subdev_init(struct intel_ipu4_isys_subdev *asd,
-			     struct v4l2_subdev_ops *ops,
-			     unsigned int nr_ctrls, unsigned int num_pads);
+			     struct v4l2_subdev_ops *ops, unsigned int nr_ctrls,
+			     unsigned int num_pads, unsigned int num_streams,
+			     unsigned int num_source, unsigned int num_sink,
+			     unsigned int sd_flags);
 void intel_ipu4_isys_subdev_cleanup(struct intel_ipu4_isys_subdev *asd);
 
 #endif /* INTEL_IPU4_ISYS_SUBDEV_H */

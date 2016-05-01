@@ -899,7 +899,9 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 	isa->asd.isys = isys;
 
 	rval = intel_ipu4_isys_subdev_init(&isa->asd, &isa_sd_ops, 1,
-					   NR_OF_ISA_PADS);
+				NR_OF_ISA_PADS, NR_OF_ISA_STREAMS,
+				NR_OF_ISA_SOURCE_PADS, NR_OF_ISA_SINK_PADS,
+				0);
 	if (rval)
 		goto fail;
 

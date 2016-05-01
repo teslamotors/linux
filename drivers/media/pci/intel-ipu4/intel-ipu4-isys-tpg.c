@@ -281,7 +281,9 @@ int intel_ipu4_isys_tpg_init(struct intel_ipu4_isys_tpg *tpg,
 	tpg->asd.isys = isys;
 
 	rval = intel_ipu4_isys_subdev_init(&tpg->asd, &tpg_sd_ops, 3,
-					NR_OF_TPG_PADS);
+				NR_OF_TPG_PADS, NR_OF_TPG_STREAMS,
+				NR_OF_TPG_SOURCE_PADS, NR_OF_TPG_SINK_PADS,
+				0);
 	if (rval)
 		return rval;
 

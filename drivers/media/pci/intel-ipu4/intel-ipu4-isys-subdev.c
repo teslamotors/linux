@@ -627,22 +627,29 @@ int intel_ipu4_isys_subdev_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *
 
 int intel_ipu4_isys_subdev_init(struct intel_ipu4_isys_subdev *asd,
 			     struct v4l2_subdev_ops *ops, unsigned int nr_ctrls,
-			     unsigned int num_pads)
+			     unsigned int num_pads, unsigned int num_streams,
+			     unsigned int num_source, unsigned int num_sink,
+			     unsigned int sd_flags)
 {
-	int rval = -EINVAL;
+	int i, rval = -EINVAL;
 
 	mutex_init(&asd->mutex);
 
 	v4l2_subdev_init(&asd->sd, ops);
 
-	asd->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	asd->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | sd_flags;
 	asd->sd.owner = THIS_MODULE;
+
+	asd->nstreams = num_streams;
+	asd->nsources = num_source;
+	asd->nsinks = num_sink;
 
 	asd->pad = devm_kcalloc(&asd->isys->adev->dev, num_pads,
 				sizeof(*asd->pad), GFP_KERNEL);
 
-	asd->ffmt = devm_kcalloc(&asd->isys->adev->dev, num_pads,
-				 sizeof(*asd->ffmt), GFP_KERNEL);
+	asd->ffmt = (struct v4l2_mbus_framefmt **)
+			devm_kcalloc(&asd->isys->adev->dev, num_pads,
+			sizeof(struct v4l2_mbus_framefmt *), GFP_KERNEL);
 
 	asd->crop = devm_kcalloc(&asd->isys->adev->dev, num_pads,
 				 sizeof(*asd->crop), GFP_KERNEL);
@@ -656,6 +663,14 @@ int intel_ipu4_isys_subdev_init(struct intel_ipu4_isys_subdev *asd,
 	if (!asd->pad || !asd->ffmt || !asd->crop || !asd->compose ||
 	    !asd->valid_tgts)
 		return -ENOMEM;
+
+	for (i = 0; i < num_pads; i++) {
+		asd->ffmt[i] = (struct v4l2_mbus_framefmt *)
+				devm_kcalloc(&asd->isys->adev->dev, num_streams,
+				sizeof(struct v4l2_mbus_framefmt), GFP_KERNEL);
+		if (!asd->ffmt[i])
+			return -ENOMEM;
+	}
 
 	rval = media_entity_pads_init(&asd->sd.entity, num_pads, asd->pad);
 	if (rval)
