@@ -156,12 +156,12 @@ struct v4l2_mbus_framefmt *__intel_ipu4_isys_get_ffmt(
 #else
 	struct v4l2_subdev_pad_config *cfg,
 #endif
-	unsigned int pad, unsigned int which)
+	unsigned int pad, unsigned int stream, unsigned int which)
 {
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 
 	if (which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		return &asd->ffmt[pad];
+		return &asd->ffmt[pad][stream];
 	else
 		return v4l2_subdev_get_try_format(
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
@@ -245,7 +245,7 @@ void intel_ipu4_isys_subdev_fmt_propagate(
 		return;
 
 	for (i = 0; i < sd->entity.num_pads; i++) {
-		ffmts[i] = __intel_ipu4_isys_get_ffmt(sd, cfg, i, which);
+		ffmts[i] = __intel_ipu4_isys_get_ffmt(sd, cfg, i, 0, which);
 		crops[i] = __intel_ipu4_isys_get_selection(
 			sd, cfg, V4L2_SEL_TGT_CROP, i, which);
 		compose[i] = __intel_ipu4_isys_get_selection(
@@ -327,12 +327,14 @@ void intel_ipu4_isys_subdev_set_ffmt_default(struct v4l2_subdev *sd,
 					     struct v4l2_subdev_format *fmt)
 {
 	struct v4l2_mbus_framefmt *ffmt =
-		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->which);
+		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->stream,
+					   fmt->which);
 
 	/* No propagation for non-zero pads. */
 	if (fmt->pad) {
 		struct v4l2_mbus_framefmt *sink_ffmt =
-			__intel_ipu4_isys_get_ffmt(sd, cfg, 0, fmt->which);
+			__intel_ipu4_isys_get_ffmt(sd, cfg, 0, fmt->stream,
+						   fmt->which);
 
 		ffmt->width = sink_ffmt->width;
 		ffmt->height = sink_ffmt->height;
@@ -361,7 +363,8 @@ int __intel_ipu4_isys_subdev_set_ffmt(struct v4l2_subdev *sd,
 {
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 	struct v4l2_mbus_framefmt *ffmt =
-		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->which);
+		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->stream,
+					   fmt->which);
 	uint32_t code = asd->supported_codes[fmt->pad][0];
 	unsigned int i;
 
@@ -400,6 +403,9 @@ int intel_ipu4_isys_subdev_set_ffmt(struct v4l2_subdev *sd,
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 	int rval;
 
+	if (fmt->stream >= asd->nstreams)
+		return -EINVAL;
+
 	mutex_lock(&asd->mutex);
 	rval = __intel_ipu4_isys_subdev_set_ffmt(sd, cfg, fmt);
 	mutex_unlock(&asd->mutex);
@@ -417,8 +423,12 @@ int intel_ipu4_isys_subdev_get_ffmt(struct v4l2_subdev *sd,
 {
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 
+	if (fmt->stream >= asd->nstreams)
+		return -EINVAL;
+
 	mutex_lock(&asd->mutex);
-	fmt->format = *__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->which);
+	fmt->format = *__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad,
+						  fmt->stream, fmt->which);
 	mutex_unlock(&asd->mutex);
 
 	return 0;
@@ -444,7 +454,7 @@ int intel_ipu4_isys_subdev_set_sel(struct v4l2_subdev *sd,
 	case V4L2_SEL_TGT_CROP:
 		if (pad->flags & MEDIA_PAD_FL_SINK) {
 			struct v4l2_mbus_framefmt *ffmt =
-				__intel_ipu4_isys_get_ffmt(sd, cfg, sel->pad,
+				__intel_ipu4_isys_get_ffmt(sd, cfg, sel->pad, 0,
 							   sel->which);
 
 			__r.width = ffmt->width;
@@ -600,7 +610,7 @@ int intel_ipu4_isys_subdev_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *f
 #endif
 				i);
 
-		*try_fmt = asd->ffmt[i];
+		*try_fmt = asd->ffmt[i][0];
 		*try_crop = asd->crop[i];
 		*try_compose = asd->compose[i];
 	}

@@ -76,9 +76,12 @@ struct intel_ipu4_isys_subdev {
 	struct intel_ipu4_isys *isys;
 	uint32_t const * const *supported_codes;
 	struct media_pad *pad;
-	struct v4l2_mbus_framefmt *ffmt;
+	struct v4l2_mbus_framefmt **ffmt;
 	struct v4l2_rect *crop;
 	struct v4l2_rect *compose;
+	unsigned int nstreams;
+	unsigned int nsinks;
+	unsigned int nsources;
 	struct v4l2_ctrl_handler ctrl_handler;
 	void (*ctrl_init)(struct v4l2_subdev *sd);
 	void (*set_ffmt)(struct v4l2_subdev *sd,
@@ -106,7 +109,7 @@ struct v4l2_mbus_framefmt *__intel_ipu4_isys_get_ffmt(struct v4l2_subdev *sd,
 #else
 	struct v4l2_subdev_pad_config *cfg,
 #endif
-	unsigned int pad, unsigned int which);
+	unsigned int pad, unsigned int stream, unsigned int which);
 
 unsigned int intel_ipu4_isys_mbus_code_to_bpp(u32 code);
 unsigned int intel_ipu4_isys_mbus_code_to_mipi(u32 code);

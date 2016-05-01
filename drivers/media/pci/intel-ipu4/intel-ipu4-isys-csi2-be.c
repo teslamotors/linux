@@ -145,7 +145,7 @@ static int ipu4_isys_csi2_be2_set_sel(struct v4l2_subdev *sd,
 	    pad->flags & MEDIA_PAD_FL_SOURCE &&
 	    asd->valid_tgts[CSI2_BE_RAW_PAD_SOURCE].crop) {
 		struct v4l2_mbus_framefmt *ffmt =
-			__intel_ipu4_isys_get_ffmt(sd, cfg, sel->pad,
+			__intel_ipu4_isys_get_ffmt(sd, cfg, sel->pad, 0,
 						   sel->which);
 		struct v4l2_rect *r = __intel_ipu4_isys_get_selection(
 			sd, cfg, sel->target, CSI2_BE_RAW_PAD_SINK, sel->which);
@@ -210,8 +210,8 @@ static void csi2_be_set_ffmt(struct v4l2_subdev *sd,
 	struct v4l2_subdev_format *fmt)
 {
 	struct v4l2_mbus_framefmt *ffmt =
-		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->which);
-
+		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->stream,
+					   fmt->which);
 	switch (fmt->pad) {
 	case CSI2_BE_RAW_PAD_SINK:
 		if (fmt->format.field != V4L2_FIELD_ALTERNATE)
@@ -226,7 +226,7 @@ static void csi2_be_set_ffmt(struct v4l2_subdev *sd,
 	case CSI2_BE_RAW_PAD_SOURCE: {
 		struct v4l2_mbus_framefmt *sink_ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg,
-					CSI2_BE_RAW_PAD_SINK, fmt->which);
+				CSI2_BE_RAW_PAD_SINK, fmt->stream, fmt->which);
 		struct v4l2_rect *r =
 			__intel_ipu4_isys_get_selection(
 				sd, cfg, V4L2_SEL_TGT_CROP,

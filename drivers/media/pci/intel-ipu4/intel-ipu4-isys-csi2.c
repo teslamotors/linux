@@ -547,7 +547,8 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_format *fmt)
 {
 	struct v4l2_mbus_framefmt *ffmt =
-		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->which);
+		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->stream,
+					   fmt->which);
 
 	if (fmt->format.field != V4L2_FIELD_ALTERNATE)
 		fmt->format.field = V4L2_FIELD_NONE;
@@ -563,7 +564,7 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 	case CSI2_PAD_SOURCE(0): {
 		struct v4l2_mbus_framefmt *sink_ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg, CSI2_PAD_SINK,
-						   fmt->which);
+						   fmt->stream, fmt->which);
 		ffmt->width = sink_ffmt->width;
 		ffmt->height = sink_ffmt->height;
 		ffmt->field = sink_ffmt->field;
@@ -575,7 +576,7 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 	case CSI2_PAD_META: {
 		struct v4l2_mbus_framefmt *ffmt =
 			__intel_ipu4_isys_get_ffmt(
-				sd, cfg, fmt->pad, fmt->which);
+				sd, cfg, fmt->pad, fmt->stream, fmt->which);
 		struct media_pad *pad = media_entity_remote_pad(
 			&sd->entity.pads[CSI2_PAD_SINK]);
 		struct v4l2_mbus_frame_desc_entry entry;

@@ -60,7 +60,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct intel_ipu4_isys_tpg *tpg = to_intel_ipu4_isys_tpg(sd);
 	unsigned int bpp = intel_ipu4_isys_mbus_code_to_bpp(
-					tpg->asd.ffmt[TPG_PAD_SOURCE].code);
+					tpg->asd.ffmt[TPG_PAD_SOURCE][0].code);
 
 	/*
 	 * In B0 MIPI_GEN block is CSI2 FB. Need to enable/disable TPG selection
@@ -76,18 +76,18 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 	writel(MIPI_GEN_COM_DTYPE_RAWn(bpp),
 	       tpg->base + MIPI_GEN_REG_COM_DTYPE);
 	writel(intel_ipu4_isys_mbus_code_to_mipi(
-		       tpg->asd.ffmt[TPG_PAD_SOURCE].code),
+		       tpg->asd.ffmt[TPG_PAD_SOURCE][0].code),
 	       tpg->base + MIPI_GEN_REG_COM_VTYPE);
 	writel(0, tpg->base + MIPI_GEN_REG_COM_VCHAN);
-	writel(DIV_ROUND_UP(tpg->asd.ffmt[TPG_PAD_SOURCE].width *
+	writel(DIV_ROUND_UP(tpg->asd.ffmt[TPG_PAD_SOURCE][0].width *
 			    bpp, BITS_PER_BYTE),
 	       tpg->base + MIPI_GEN_REG_COM_WCOUNT);
 
 	writel(0, tpg->base + MIPI_GEN_REG_SYNG_NOF_FRAMES);
 
-	writel(DIV_ROUND_UP(tpg->asd.ffmt[TPG_PAD_SOURCE].width, MIPI_GEN_PPC),
-	       tpg->base + MIPI_GEN_REG_SYNG_NOF_PIXELS);
-	writel(tpg->asd.ffmt[TPG_PAD_SOURCE].height,
+	writel(DIV_ROUND_UP(tpg->asd.ffmt[TPG_PAD_SOURCE][0].width,
+	       MIPI_GEN_PPC), tpg->base + MIPI_GEN_REG_SYNG_NOF_PIXELS);
+	writel(tpg->asd.ffmt[TPG_PAD_SOURCE][0].height,
 	       tpg->base + MIPI_GEN_REG_SYNG_NOF_LINES);
 
 	writel(0, tpg->base + MIPI_GEN_REG_TPG_MODE);
@@ -117,11 +117,11 @@ static int intel_ipu4_isys_tpg_s_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_HBLANK:
-		writel(tpg->asd.ffmt[TPG_PAD_SOURCE].width + ctrl->val,
+		writel(tpg->asd.ffmt[TPG_PAD_SOURCE][0].width + ctrl->val,
 		       tpg->base + MIPI_GEN_REG_SYNG_HBLANK_CYC);
 		break;
 	case V4L2_CID_VBLANK:
-		writel(tpg->asd.ffmt[TPG_PAD_SOURCE].height + ctrl->val,
+		writel(tpg->asd.ffmt[TPG_PAD_SOURCE][0].height + ctrl->val,
 		       tpg->base + MIPI_GEN_REG_SYNG_VBLANK_CYC);
 		break;
 	case V4L2_CID_TEST_PATTERN:
@@ -203,8 +203,8 @@ static void tpg_set_ffmt(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_format *fmt)
 {
 	fmt->format.field = V4L2_FIELD_NONE;
-	*__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->which) =
-		fmt->format;
+	*__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->stream,
+				    fmt->which) = fmt->format;
 }
 
 static int intel_ipu4_isys_tpg_set_ffmt(struct v4l2_subdev *sd,
@@ -229,7 +229,7 @@ static int intel_ipu4_isys_tpg_set_ffmt(struct v4l2_subdev *sd,
 		tpg->pixel_rate,
 		intel_ipu4_isys_tpg_rate(
 			tpg, intel_ipu4_isys_mbus_code_to_bpp(
-				tpg->asd.ffmt[TPG_PAD_SOURCE].code)));
+				tpg->asd.ffmt[TPG_PAD_SOURCE][0].code)));
 
 	return 0;
 }

@@ -251,7 +251,8 @@ static void isa_set_ffmt(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_format *fmt)
 {
 	struct v4l2_mbus_framefmt *ffmt =
-		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->which);
+		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->stream,
+					   fmt->which);
 
 	switch (fmt->pad) {
 	case ISA_PAD_SINK:
@@ -266,7 +267,7 @@ static void isa_set_ffmt(struct v4l2_subdev *sd,
 	case ISA_PAD_SOURCE: {
 		struct v4l2_mbus_framefmt *sink_ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg, ISA_PAD_SINK,
-						   fmt->which);
+						   fmt->stream, fmt->which);
 		struct v4l2_rect *r =
 			__intel_ipu4_isys_get_selection(
 				sd, cfg, V4L2_SEL_TGT_CROP,
@@ -288,7 +289,7 @@ static void isa_set_ffmt(struct v4l2_subdev *sd,
 	case ISA_PAD_SOURCE_SCALED: {
 		struct v4l2_mbus_framefmt *sink_ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg, ISA_PAD_SINK,
-						   fmt->which);
+						   fmt->stream, fmt->which);
 		struct v4l2_rect *r =
 			__intel_ipu4_isys_get_selection(
 				sd, cfg, V4L2_SEL_TGT_CROP,
