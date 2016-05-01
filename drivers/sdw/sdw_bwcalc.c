@@ -260,14 +260,17 @@ int sdw_cfg_slv_params(struct sdw_bus *mstr_bs,
 	rd_msg.buf = rbuf;
 	rd_msg.addr_page1 = 0x0;
 	rd_msg.addr_page2 = 0x0;
-
+/* Dont program slave params for the Aggregation.
+ * Its with master loop back
+ */
+#ifndef CONFIG_SND_SOC_MXFPGA
 	ret = sdw_slave_transfer(mstr_bs->mstr, &rd_msg, 1);
 	if (ret != 1) {
 		ret = -EINVAL;
 		dev_err(&mstr_bs->mstr->dev, "Register transfer failed\n");
 		goto out;
 	}
-
+#endif
 
 	wbuf1[0] = (p_slv_params->port_flow_mode |
 			(p_slv_params->port_data_mode <<
@@ -304,7 +307,10 @@ int sdw_cfg_slv_params(struct sdw_bus *mstr_bs,
 	wr_msg1.buf = &wbuf1[0];
 	wr_msg1.addr_page1 = 0x0;
 	wr_msg1.addr_page2 = 0x0;
-
+/* Dont program slave params for the Aggregation.
+ * Its with master loop back
+ */
+#ifndef CONFIG_SND_SOC_MXFPGA
 	ret = sdw_slave_transfer(mstr_bs->mstr, &wr_msg, 1);
 	if (ret != 1) {
 		ret = -EINVAL;
@@ -319,8 +325,9 @@ int sdw_cfg_slv_params(struct sdw_bus *mstr_bs,
 		dev_err(&mstr_bs->mstr->dev, "Register transfer failed\n");
 		goto out;
 	}
-
 out:
+#endif
+
 	return ret;
 }
 
@@ -601,6 +608,10 @@ int sdw_cfg_slv_enable_disable(struct sdw_bus *mstr_bs,
 		 */
 
 		/* 2. slave port enable */
+/* Dont program slave params for the Aggregation.
+ * Its with master loop back
+ */
+#ifndef CONFIG_SND_SOC_MXFPGA
 		ret = sdw_slave_transfer(mstr_bs->mstr, &rd_msg, 1);
 		if (ret != 1) {
 			ret = -EINVAL;
@@ -627,7 +638,7 @@ int sdw_cfg_slv_enable_disable(struct sdw_bus *mstr_bs,
 					"Register transfer failed\n");
 			goto out;
 		}
-
+#endif
 		/*
 		 * 3. slave port enable post pre
 		 * --> callback
@@ -642,6 +653,10 @@ int sdw_cfg_slv_enable_disable(struct sdw_bus *mstr_bs,
 		 * --> callback
 		 * --> no callback available
 		 */
+/* Dont program slave params for the Aggregation.
+ * Its with master loop back
+ */
+#ifndef CONFIG_SND_SOC_MXFPGA
 
 		/* 2. slave port disable */
 		ret = sdw_slave_transfer(mstr_bs->mstr, &rd_msg, 1);
@@ -670,7 +685,7 @@ int sdw_cfg_slv_enable_disable(struct sdw_bus *mstr_bs,
 					"Register transfer failed\n");
 			goto out;
 		}
-
+#endif
 		/*
 		 * 3. slave port enable post unpre
 		 * --> callback
@@ -680,8 +695,9 @@ int sdw_cfg_slv_enable_disable(struct sdw_bus *mstr_bs,
 			slv_rt_strm->rt_state = SDW_STATE_DISABLE_RT;
 
 	}
-
+#ifndef CONFIG_SND_SOC_MXFPGA
 out:
+#endif
 	return ret;
 
 }
@@ -1284,12 +1300,20 @@ int sdw_compute_blk_subblk_offset(struct sdw_bus *sdw_mstr_bs)
 					(hstop1 != hstop2)) {
 					block_offset = 1;
 				} else {
+/* We are doing loopback for the Aggregation so block offset should
+ * always remain same. This is not a requirement. This we are doing
+ * to test aggregation without codec.
+ */
+#ifdef CONFIG_SND_SOC_MXFPGA
+					block_offset = 1;
+#else
 					block_offset +=
 						(sdw_mstr_bs_rt->stream_params.
 						bps
 						*
 						sdw_mstr_bs_rt->stream_params.
 						channel_count);
+#endif
 				}
 #endif
 
@@ -1641,7 +1665,9 @@ int sdw_cfg_slv_prep_unprep(struct sdw_bus *mstr_bs,
 	wr_msg.addr_page1 = 0x0;
 	wr_msg.addr_page2 = 0x0;
 
-
+#ifdef CONFIG_SND_SOC_MXFPGA
+	sdw_slv_dpn_cap->prepare_ch = 0;
+#endif
 	if (prep) { /* PREPARE */
 
 		/*
