@@ -373,6 +373,16 @@ struct skl_module {
 	struct skl_module_iface formats[SKL_MAX_MODULE_FORMATS];
 };
 
+struct skl_sdw_agg_data {
+	int alh_stream_num;
+	int ch_mask;
+};
+
+struct skl_sdw_aggregation {
+	int num_masters;
+	struct skl_sdw_agg_data agg_data[4];
+};
+
 struct skl_module_cfg {
 	u8 guid[16];
 	struct skl_module_inst_id id;
@@ -408,6 +418,8 @@ struct skl_module_cfg {
 	u32 dma_buffer_size; /* in milli seconds */
 	u8 pdi_type;
 	u32 sdw_stream_num;
+	bool sdw_agg_enable;
+	struct skl_sdw_aggregation sdw_agg;
 	struct skl_module_pin *m_in_pin;
 	struct skl_module_pin *m_out_pin;
 	enum skl_module_type m_type;
