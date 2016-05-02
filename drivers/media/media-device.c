@@ -270,8 +270,10 @@ void media_device_request_complete(struct media_device *mdev,
 		 */
 		list_del(&req->list);
 		list_del(&req->fh_list);
-		media_device_request_queue_event(
-			mdev, req, media_device_fh(filp));
+		/* If the user asked for an event, let's queue one. */
+		if (req->flags & MEDIA_REQ_FL_COMPLETE_EVENT)
+			media_device_request_queue_event(
+				mdev, req, media_device_fh(filp));
 		req->filp = NULL;
 	}
 
@@ -289,8 +291,8 @@ EXPORT_SYMBOL_GPL(media_device_request_complete);
 
 static int media_device_request_queue_apply(
 	struct media_device *mdev, struct media_device_request *req,
-	int (*fn)(struct media_device *mdev,
-		  struct media_device_request *req), bool queue)
+	u32 req_flags, int (*fn)(struct media_device *mdev,
+				 struct media_device_request *req), bool queue)
 {
 	char *str = queue ? "queue" : "apply";
 	unsigned long flags;
@@ -307,6 +309,7 @@ static int media_device_request_queue_apply(
 			str, req->id, request_state(req->state));
 	} else {
 		req->state = MEDIA_DEVICE_REQUEST_STATE_QUEUED;
+		req->flags = req_flags;
 	}
 	spin_unlock_irqrestore(&mdev->req_lock, flags);
 
@@ -354,13 +357,13 @@ static long media_device_request_cmd(struct media_device *mdev,
 		break;
 
 	case MEDIA_REQ_CMD_APPLY:
-		ret = media_device_request_queue_apply(mdev, req,
+		ret = media_device_request_queue_apply(mdev, req, cmd->flags,
 						       mdev->ops->req_apply,
 						       false);
 		break;
 
 	case MEDIA_REQ_CMD_QUEUE:
-		ret = media_device_request_queue_apply(mdev, req,
+		ret = media_device_request_queue_apply(mdev, req, cmd->flags,
 						       mdev->ops->req_queue,
 						       true);
 		break;

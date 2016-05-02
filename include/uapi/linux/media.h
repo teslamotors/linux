@@ -174,9 +174,19 @@ struct media_links_enum {
 #define MEDIA_REQ_CMD_APPLY		2
 #define MEDIA_REQ_CMD_QUEUE		3
 
+#define MEDIA_REQ_FL_COMPLETE_EVENT	(1 << 0)
+
+#ifdef __KERNEL__
+struct __attribute__ ((packed)) media_request_cmd_0 {
+	__u32 cmd;
+	__u32 request;
+};
+#endif
+
 struct __attribute__ ((packed)) media_request_cmd {
 	__u32 cmd;
 	__u32 request;
+	__u32 flags;
 };
 
 struct __attribute__ ((packed)) media_event_request_complete {
