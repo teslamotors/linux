@@ -1,0 +1,23 @@
+IPU_ISYSLIB_INC = \
+	-I$(IPU_ISYSLIB_ROOT)/buffer/interface \
+	-I$(IPU_ISYSLIB_ROOT)/cell/interface \
+	-I$(IPU_ISYSLIB_ROOT)/cell/src \
+	-I$(IPU_ISYSLIB_ROOT)/device_access/interface \
+	-I$(IPU_ISYSLIB_ROOT)/device_access/src \
+	-I$(IPU_ISYSLIB_ROOT)/devices \
+	-I$(IPU_ISYSLIB_ROOT)/devices/interface \
+	-I$(IPU_ISYSLIB_ROOT)/devices/isys/bxtB0 \
+	-I$(IPU_ISYSLIB_ROOT)/devices/src \
+	-I$(IPU_ISYSLIB_ROOT)/isysapi/interface \
+	-I$(IPU_ISYSLIB_ROOT)/pkg_dir/interface \
+	-I$(IPU_ISYSLIB_ROOT)/pkg_dir/src \
+	-I$(IPU_ISYSLIB_ROOT)/port/interface \
+	-I$(IPU_ISYSLIB_ROOT)/reg_dump/src/isys/bxtB0_gen_reg_dump \
+	-I$(IPU_ISYSLIB_ROOT)/regmem/interface \
+	-I$(IPU_ISYSLIB_ROOT)/regmem/src \
+	-I$(IPU_ISYSLIB_ROOT)/support \
+	-I$(IPU_ISYSLIB_ROOT)/syscom/interface \
+	-I$(IPU_ISYSLIB_ROOT)/trace/interface \
+	-I$(IPU_ISYSLIB_ROOT)/utils/system_defs/ \
+	-I$(IPU_ISYSLIB_ROOT)/vied \
+	-I$(IPU_ISYSLIB_ROOT)/vied/vied/

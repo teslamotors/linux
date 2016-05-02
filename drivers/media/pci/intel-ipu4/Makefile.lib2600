@@ -1,68 +1,23 @@
-LIB2600_LIBRARY = lib2600
-
 PROGRAMS = isys_fw
 SYSTEM = input_system_system
-include $(srctree)/$(src)/../gencfg.mk
+IPU_ISYSLIB_ROOT_REL = lib2600
+IPU_ISYSLIB_ROOT = $(srctree)/$(src)/$(IPU_ISYSLIB_ROOT_REL)
+
+include $(srctree)/$(src)/Makefile.ipu4isys_inc
+include $(srctree)/$(src)/Makefile.ipu4isys_src
 
 include $(srctree)/$(src)/../Makefile.link
 
-lib2600-mod-$(IPU_STEP)-objs := ../libintel-ipu4.$(IPU_STEP).lnk.o \
-	$(LIB2600_LIBRARY)/port/src/send_port.o \
-	$(LIB2600_LIBRARY)/port/src/recv_port.o \
-	$(LIB2600_LIBRARY)/port/src/queue.o \
-	$(LIB2600_LIBRARY)/syscom/src/ia_css_syscom.o \
-	$(LIB2600_LIBRARY)/isysapi/src/ia_css_isys_public.o \
-	$(LIB2600_LIBRARY)/isysapi/src/ia_css_isys_public_trace.o \
-	$(LIB2600_LIBRARY)/isysapi/src/ia_css_isys_private.o \
-	$(LIB2600_LIBRARY)/buffer/src/cpu/ia_css_buffer.o \
-	$(LIB2600_LIBRARY)/buffer/src/cpu/ia_css_output_buffer.o \
-	$(LIB2600_LIBRARY)/buffer/src/cpu/ia_css_input_buffer.o \
-	$(LIB2600_LIBRARY)/buffer/src/cpu/ia_css_shared_buffer.o \
-	$(LIB2600_LIBRARY)/buffer/src/cpu/buffer_access.o
-ifeq ($(IPU_STEP),bxtA0)
-lib2600-mod-$(IPU_STEP)-objs += \
-	$(LIB2600_LIBRARY)/isys_infobits/src/isys_infobits.o
-endif
+lib2600-mod-$(IPU_STEP)-objs := \
+	../libintel-ipu4.$(IPU_STEP).lnk.o \
+	$(IPU_ISYSLIB_SRC)
 
 obj-$(CONFIG_VIDEO_INTEL_IPU4)	+= lib2600-mod-$(IPU_STEP).o
 
 INCLUDES := \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY) \
+	-I$(srctree)/$(src)/$(IPU_ISYSLIB_ROOT_REL) \
 	-I$(srctree)/$(src) \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/support \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/vied/vied \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/trace/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/regmem/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/regmem/src \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/port/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/syscom/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/fw_load/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/fw_load/src/xmem \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/fw_load/src \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/cell_program_load/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/cell_program_load/src \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/cell/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/cell/src \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/device_access/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/device_access/src \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/isys_infobits/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/isysapi/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/support \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/syscom/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/buffer/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/support \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/utils/system_defs/ \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/vied \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/interface \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/src \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/isys/$(IPU_STEP) \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/input_system_system/$(IPU_STEP) \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/bxt_isys_fw_binaries
-ifeq ($(IPU_STEP),bxtB0)
-INCLUDES += \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/server_init/interface
-endif
+	$(IPU_ISYSLIB_INC)
 
 DEFINES:= -D__HOST__ -D__KERNEL__ -DISYS_FPGA -DPSYS_FPGA
 
