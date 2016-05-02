@@ -51,6 +51,7 @@ enum media_device_request_state {
  * @fh_list: List entry in the media file handle requests list
  * @state: The state of the request, MEDIA_DEVICE_REQUEST_STATE_*,
  *	   access to state serialised by mdev->req_lock
+ * @flags: Request specific flags, MEDIA_REQ_FL_*
  */
 struct media_device_request {
 	u32 id;
@@ -61,6 +62,7 @@ struct media_device_request {
 	struct list_head list;
 	struct list_head fh_list;
 	enum media_device_request_state state;
+	u32 flags;
 };
 
 /**
