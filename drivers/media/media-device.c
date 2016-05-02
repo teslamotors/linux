@@ -224,32 +224,71 @@ static long copy_arg_to_user_nop(void __user *uarg, void *karg,
 /* Do acquire the graph mutex */
 #define MEDIA_IOC_FL_GRAPH_MUTEX	BIT(0)
 
-#define MEDIA_IOC_ARG(__cmd, func, fl, from_user, to_user)		\
+#define MEDIA_IOC_SZ_ARG(__cmd, func, fl, alt_sz, from_user, to_user)	\
 	[_IOC_NR(MEDIA_IOC_##__cmd)] = {				\
 		.cmd = MEDIA_IOC_##__cmd,				\
 		.fn = (long (*)(struct media_device *, void *))func,	\
 		.flags = fl,						\
+		.alt_arg_sizes = alt_sz,				\
 		.arg_from_user = from_user,				\
 		.arg_to_user = to_user,					\
 	}
 
-#define MEDIA_IOC(__cmd, func, fl)					\
-	MEDIA_IOC_ARG(__cmd, func, fl, copy_arg_from_user, copy_arg_to_user)
+#define MEDIA_IOC_ARG(__cmd, func, fl, from_user, to_user)		\
+	MEDIA_IOC_SZ_ARG(__cmd, func, fl, NULL, from_user, to_user)
+
+#define MEDIA_IOC_SZ(__cmd, func, fl, alt_sz)			\
+	MEDIA_IOC_SZ_ARG(__cmd, func, fl, alt_sz,		\
+			 copy_arg_from_user, copy_arg_to_user)
+
+#define MEDIA_IOC(__cmd, func, fl)				\
+	MEDIA_IOC_ARG(__cmd, func, fl,				\
+		      copy_arg_from_user, copy_arg_to_user)
 
 /* the table is indexed by _IOC_NR(cmd) */
 struct media_ioctl_info {
 	unsigned int cmd;
 	long (*fn)(struct media_device *dev, void *arg);
+	unsigned short flags;
+	const unsigned short *alt_arg_sizes;
 	long (*arg_from_user)(void *karg, void __user *uarg, unsigned int cmd);
 	long (*arg_to_user)(void __user *uarg, void *karg, unsigned int cmd);
-	unsigned short flags;
 };
+
+#define MASK_IOC_SIZE(cmd) \
+	((cmd) & ~(_IOC_SIZEMASK << _IOC_SIZESHIFT))
 
 static inline long is_valid_ioctl(const struct media_ioctl_info *info,
 				  unsigned int len, unsigned int cmd)
 {
-	return (_IOC_NR(cmd) >= len
-		|| info[_IOC_NR(cmd)].cmd != cmd) ? -ENOIOCTLCMD : 0;
+	const unsigned short *alt_arg_sizes;
+
+	if (unlikely(_IOC_NR(cmd) >= len))
+		return -ENOIOCTLCMD;
+
+	info += _IOC_NR(cmd);
+
+	if (info->cmd == cmd)
+		return 0;
+
+	/*
+	 * Verify that the size-dependent patch of the IOCTL command
+	 * matches and that the size does not exceed the principal
+	 * argument size.
+	 */
+	if (unlikely(MASK_IOC_SIZE(info->cmd) != MASK_IOC_SIZE(cmd)
+		     || _IOC_SIZE(info->cmd) < _IOC_SIZE(cmd)))
+		return -ENOIOCTLCMD;
+
+	alt_arg_sizes = info->alt_arg_sizes;
+	if (unlikely(!alt_arg_sizes))
+		return -ENOIOCTLCMD;
+
+	for (; *alt_arg_sizes; alt_arg_sizes++)
+		if (_IOC_SIZE(cmd) == *alt_arg_sizes)
+			return 0;
+
+	return -ENOIOCTLCMD;
 }
 
 static long __media_device_ioctl(
@@ -277,6 +316,9 @@ static long __media_device_ioctl(
 	ret = info->arg_from_user(karg, arg, cmd);
 	if (ret)
 		goto out_free;
+
+	/* Set the rest of the argument struct to zero */
+	memset(karg + _IOC_SIZE(cmd), 0, _IOC_SIZE(info->cmd) - _IOC_SIZE(cmd));
 
 	if (info->flags & MEDIA_IOC_FL_GRAPH_MUTEX)
 		mutex_lock(&dev->graph_mutex);
