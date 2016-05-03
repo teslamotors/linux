@@ -37,6 +37,8 @@ struct ia_css_driver_sys_config {
 	unsigned int num_recv_queues;
 	unsigned int send_queue_size; /* max # tokens per queue */
 	unsigned int recv_queue_size; /* max # tokens per queue */
+
+	unsigned int icache_prefetch; /* enable prefetching for SPC */
 };
 
  /**

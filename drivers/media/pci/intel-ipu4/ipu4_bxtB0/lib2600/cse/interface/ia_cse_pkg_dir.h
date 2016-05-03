@@ -1,5 +1,5 @@
-/**
-* Support for Intel Camera Imaging ISP subsystem.
+/*
+ * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -10,20 +10,17 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
-*/
+ */
 
-#ifndef _SYSCOM_CELL_H_
-#define _SYSCOM_CELL_H_
+#ifndef _IA_CSE_PKG_DIR_H
+#define _IA_CSE_PKG_DIR_H
 
-unsigned int
-syscom_cell_get_stat_ctrl(unsigned int ssid, unsigned int cell_regs_addr);
+/* Address of CSE_PKG_DIR in IMR (in secure mode only) */
 
-void
-syscom_cell_set_stat_ctrl(unsigned int ssid, unsigned int cell_regs_addr, unsigned int value);
+#if defined(C_RUN) || defined(HRT_UNSCHED) || defined(HRT_SCHED)
+#define IA_CSE_PKG_DIR_ADDRESS 0x1000
+#else
+#define IA_CSE_PKG_DIR_ADDRESS 0x40
+#endif
 
-void
-syscom_cell_start(unsigned int ssid, unsigned int cell_regs_addr);
-
-unsigned int syscom_cell_is_ready(unsigned int ssid, unsigned int cell_regs_addr);
-
-#endif /* _SYSCOM_CELL_H_ */
+#endif /* __IA_CSE_PKG_DIR_H__ */

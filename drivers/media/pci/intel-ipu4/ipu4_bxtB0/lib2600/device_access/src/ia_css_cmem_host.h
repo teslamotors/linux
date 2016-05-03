@@ -30,6 +30,18 @@ ia_css_cmem_load_32(unsigned int ssid, ia_css_cmem_address_t address)
 	return vied_subsystem_load_32(ssid, address);
 }
 
+STORAGE_CLASS_INLINE uint32_t
+ia_css_cond_cmem_load_32(bool cond, unsigned int ssid, ia_css_cmem_address_t address)
+{
+	/* Address has to be word aligned */
+	assert(0 == address % 4);
+	if (cond) {
+		return vied_subsystem_load_32(ssid, address);
+	} else {
+		return 0;
+	}
+}
+
 STORAGE_CLASS_INLINE void
 ia_css_cmem_store_32(unsigned int ssid, ia_css_cmem_address_t address, uint32_t data)
 {
