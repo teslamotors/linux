@@ -538,7 +538,7 @@ static int allocate_trash_buffer(struct intel_ipu4_bus_device *adev)
 
 	/* Allocate 8MB in iova range */
 	iova = alloc_iova(&mmu->dmap->iovad, n_pages,
-		  DMA_BIT_MASK(INTEL_IPU4_MMU_ADDRESS_BITS) >> PAGE_SHIFT, 0);
+			  dma_get_mask(mmu->dev) >> PAGE_SHIFT, 0);
 	if (!iova) {
 		dev_err(&adev->dev, "cannot allocate iova range for trash\n");
 		return -ENOMEM;

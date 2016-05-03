@@ -173,7 +173,7 @@ static void *intel_ipu4_dma_alloc(struct device *dev, size_t size,
 	size = PAGE_ALIGN(size);
 
 	iova = alloc_iova(&mmu->dmap->iovad, size >> PAGE_SHIFT,
-		  DMA_BIT_MASK(INTEL_IPU4_MMU_ADDRESS_BITS) >> PAGE_SHIFT, 0);
+			  dma_get_mask(dev) >> PAGE_SHIFT, 0);
 	if (!iova)
 		return NULL;
 
@@ -318,7 +318,7 @@ static int intel_ipu4_dma_map_sg(struct device *dev, struct scatterlist *sglist,
 	dev_dbg(dev, "dmamap: mapping sg %d entries, %zu pages\n", nents, size);
 
 	iova = alloc_iova(&mmu->dmap->iovad, size,
-		  DMA_BIT_MASK(INTEL_IPU4_MMU_ADDRESS_BITS) >> PAGE_SHIFT, 0);
+			  dma_get_mask(dev) >> PAGE_SHIFT, 0);
 	if (!iova)
 		return 0;
 

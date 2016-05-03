@@ -122,7 +122,7 @@ static struct intel_ipu4_dma_mapping *alloc_dma_mapping(struct device *dev)
 	}
 
 	init_iova_domain(&dmap->iovad, SZ_4K, 1,
-		DMA_BIT_MASK(INTEL_IPU4_MMU_ADDRESS_BITS) >> PAGE_SHIFT);
+			 dma_get_mask(dev) >> PAGE_SHIFT);
 
 	kref_init(&dmap->ref);
 
