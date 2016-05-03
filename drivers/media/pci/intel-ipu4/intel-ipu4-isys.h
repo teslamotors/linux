@@ -15,6 +15,7 @@
 #ifndef INTEL_IPU4_ISYS_H
 #define INTEL_IPU4_ISYS_H
 
+#include <linux/pm_qos.h>
 #include <linux/spinlock.h>
 
 #include <media/v4l2-device.h>
@@ -137,6 +138,7 @@ struct intel_ipu4_isys {
 	unsigned pkg_dir_size;
 
 	struct list_head requests;
+	struct pm_qos_request pm_qos;
 };
 
 extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;

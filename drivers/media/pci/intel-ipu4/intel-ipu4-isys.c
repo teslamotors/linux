@@ -51,6 +51,8 @@
 #include "pkg_dir/interface/ia_css_pkg_dir_types.h"
 #include "pkg_dir/interface/ia_css_pkg_dir.h"
 
+#define ISYS_PM_QOS_VALUE	300
+
 /* Trace block definitions for isys */
 static struct intel_ipu4_trace_block isys_trace_blocks[] = {
 	{
@@ -969,6 +971,8 @@ static int isys_runtime_pm_resume(struct device *dev)
 
 	intel_ipu4_trace_restore(dev);
 
+	pm_qos_update_request(&isys->pm_qos, ISYS_PM_QOS_VALUE);
+
 	intel_ipu4_buttress_csi_port_config(isp,
 					    isys->legacy_port_cfg,
 					    isys->combo_port_cfg);
@@ -1006,6 +1010,8 @@ static int isys_runtime_pm_suspend(struct device *dev)
 	isys->reset_needed = false;
 	mutex_unlock(&isys->mutex);
 
+	pm_qos_update_request(&isys->pm_qos, PM_QOS_DEFAULT_VALUE);
+
 	return 0;
 }
 
@@ -1027,6 +1033,7 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 	debugfs_remove_recursive(isys->debugfsdir);
 
 	intel_ipu4_trace_uninit(&adev->dev);
+	pm_qos_remove_request(&isys->pm_qos);
 	isys_unregister_devices(isys);
 	if (!isp->secure_mode) {
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
@@ -1253,6 +1260,9 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	rval = isys_register_devices(isys);
 	if (rval)
 		goto out_remove_pkg_dir_shared_buffer;
+
+	pm_qos_add_request(&isys->pm_qos, PM_QOS_CPU_DMA_LATENCY,
+			   PM_QOS_DEFAULT_VALUE);
 
 	trace_printk("E|TMWK\n");
 	return 0;
