@@ -15,6 +15,7 @@
 #ifndef __IA_CSS_PSYS_DEVICE_H_INCLUDED__
 #define __IA_CSS_PSYS_DEVICE_H_INCLUDED__
 
+#include "ia_css_psys_init.h"
 #include "ia_css_psys_transport.h"
 
 /*! \file */
@@ -40,17 +41,6 @@
 #define IA_CSS_PSYS_STATE_INITIALIZING_PATTERN (0xB3B3B3B3)
 #define IA_CSS_PSYS_STATE_INITIALIZED_PATTERN (0xA0A0A0A0)
 
-/* Temporary flag to facilitate merging as type is already used by drivers */
-#ifdef PSYS_SERVER_ON_SPC
-
-/* Init parameters passed to the fw on device open (non secure mode) */
-typedef struct ia_css_psys_server_init {
-	vied_vaddress_t		ddr_pkg_dir_address;		/* Address of pkg_dir structure in DDR */
-	unsigned long long	host_ddr_pkg_dir;		/* Shared memory host address of pkg dir */
-	uint32_t		pkg_dir_size;			/* Size of Package dir in DDR */
-} ia_css_psys_server_init_t;
-
-#endif
 /*
 	Defines the state of psys:
 	- IA_CSS_PSYS_STATE_UNKNOWN = psys status is unknown (or not recognized)

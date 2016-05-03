@@ -35,7 +35,7 @@
 #include <vied/shared_memory_map.h>
 #include "platform_support.h"
 
-#include "syscom_cell.h"
+#include "ia_css_cell.h"
 
 /* struct of internal buffer sizes */
 struct ia_css_syscom_size_intern {
@@ -236,7 +236,7 @@ ia_css_syscom_open(
 	/* check members of cfg: TBD */
 
 	/* Check if SP is in valid state */
-	if (!syscom_cell_is_ready(cfg->ssid, cfg->regs_addr)) {
+	if (!ia_css_cell_is_ready(cfg->ssid, SPC0)) {
 		return NULL;	/* NULL means error */
 	}
 
@@ -363,7 +363,7 @@ ia_css_syscom_release(
 ) {
 	/* check if release is forced, an verify cell state if it is not */
 	if (!force) {
-		if (!syscom_cell_is_ready(ctx->env.ssid, ctx->cell_regs_addr)) {
+		if (!ia_css_cell_is_ready(ctx->env.ssid, SPC0)) {
 			return ERROR_BUSY;
 		}
 	}

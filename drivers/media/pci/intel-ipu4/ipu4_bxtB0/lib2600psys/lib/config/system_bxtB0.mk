@@ -11,5 +11,5 @@ ISP_CELL			= isp2601
 # The non-capital define isp2601 is used in the sdk, in order to distinguish
 # between different isp versions the ISP_CELL_IDENTIFIER define is added.
 ISP_CELL_IDENTIFIER		= ISP2601
-HAS_IPFD_DMA                    = 1
+HAS_IPFD			= 1
 DLI_SYSTEM			= hive_isp_css_2600_system
