@@ -37,6 +37,7 @@ struct intel_ipu4_bus_device {
 	struct intel_ipu4_device *isp;
 	struct intel_ipu4_subsystem_trace_config *trace_cfg;
 	struct intel_ipu4_buttress_ctrl *ctrl;
+	u64 dma_mask;
 };
 
 #define to_intel_ipu4_bus_device(_dev) \

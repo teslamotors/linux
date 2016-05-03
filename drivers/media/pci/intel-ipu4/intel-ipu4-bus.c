@@ -266,8 +266,10 @@ struct intel_ipu4_bus_device *intel_ipu4_bus_add_device(
 	adev->dev.bus = &intel_ipu4_bus;
 	adev->dev.release = intel_ipu4_bus_release;
 	adev->dev.archdata.dma_ops = &intel_ipu4_dma_ops;
-	adev->dev.dma_mask = pdev->dev.dma_mask;
-	adev->dev.coherent_dma_mask = pdev->dev.coherent_dma_mask;
+	adev->dma_mask = DMA_BIT_MASK(isp->secure_mode ?
+				      INTEL_IPU4_MMU_ADDRESS_BITS :
+				      INTEL_IPU4_MMU_ADDRESS_BITS_NON_SECURE);
+	adev->dev.dma_mask = &adev->dma_mask;
 	adev->iommu = iommu;
 	adev->ctrl = ctrl;
 	adev->pdata = pdata;
