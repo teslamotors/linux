@@ -111,7 +111,6 @@ HOST_SRC = libcsspsys2600.o \
 	   $(MODULES_DIR)/psys_server/src/bxt_spctrl_process_group_cmd_impl.o \
 	   $(MODULES_DIR)/reg_dump/src/reg_dump_generic_bridge.o \
 	   $(MODULES_DIR)/syscom/src/ia_css_syscom.o \
-	   $(MODULES_DIR)/syscom/src/syscom_cell.o \
 	   $(MODULES_DIR)/vied_parameters/src/ia_css_terminal.o \
 	   $(MODULES_DIR)/vied_parameters/src/ia_css_terminal_manifest.o
 
