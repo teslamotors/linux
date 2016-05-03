@@ -76,7 +76,7 @@ struct ipu4_acpi_devices {
 				 void *priv, size_t size);
 	void *priv_data;
 	size_t priv_size;
-	struct intel_ipu4_regulator *regulators;
+	const struct intel_ipu4_regulator *regulators;
 };
 
 static uint64_t imx132_op_clocks[] = (uint64_t []){ 312000000, 0 };
@@ -445,7 +445,6 @@ static int get_as3638_pdata(struct i2c_client *client,
 {
 	struct as3638_platform_data *pdata;
 	struct gpio_desc *gpiod_pin;
-	int i;
 
 	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
@@ -576,7 +575,7 @@ static int intel_ipu4_acpi_pdata(struct i2c_client *client,
 			  struct ipu4_i2c_helper *helper)
 {
 	struct ipu4_camera_module_data *camdata;
-	struct intel_ipu4_regulator *regulators;
+	const struct intel_ipu4_regulator *regulators;
 	int index = get_table_index(&client->dev);
 
 	if (index < 0) {

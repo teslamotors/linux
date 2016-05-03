@@ -36,6 +36,7 @@
 
 #define GPIO_BASE		422
 
+#ifdef CONFIG_INTEL_IPU4_IMX185
 /*
  * The following imx185 platform data is for Leaf Hill board(BXT-P).
  */
@@ -62,7 +63,9 @@ static struct intel_ipu4_isys_subdev_info imx185_crl_sd = {
 		.i2c_adapter_id = 2,
 	}
 };
+#endif
 
+#ifdef CONFIG_INTEL_IPU4_OV13860
 /*
  * The following ov13860 platform data is for Leaf Hill board(BXT-P).
  */
@@ -90,7 +93,9 @@ static struct intel_ipu4_isys_subdev_info ov13860_crl_sd = {
 		.i2c_adapter_id = 2,
 	}
 };
+#endif
 
+#ifdef CONFIG_VIDEO_BU64295
 static struct intel_ipu4_isys_subdev_info bu64295_sd = {
 	.i2c = {
 		.board_info = {
@@ -99,7 +104,9 @@ static struct intel_ipu4_isys_subdev_info bu64295_sd = {
 		.i2c_adapter_id = 2,
 	}
 };
+#endif
 
+#ifdef CONFIG_INTEL_IPU4_ADV7481
 /*
  * The following adv7481 platform data is for Leaf Hill board(BXT-P).
  */
@@ -130,7 +137,9 @@ static struct intel_ipu4_isys_subdev_info adv7481_crl_sd = {
 		.i2c_adapter_id = 2,
 	}
 };
+#endif
 
+#ifdef CONFIG_INTEL_IPU4_ADV7481_EVAL
 /*
  * The following adv7481 evaluation board platform data is
  * for Leaf Hill board(BXT-P).
@@ -162,6 +171,8 @@ static struct intel_ipu4_isys_subdev_info adv7481_eval_crl_sd = {
 		.i2c_adapter_id = 2,
 	}
 };
+#endif
+
 /*
  * Map buttress output sensor clocks to sensors -
  * this should be coming from ACPI
