@@ -134,7 +134,7 @@ struct ia_css_syscom_context *ia_css_psys_open(
 		goto EXIT;
 
 	/* start SPC */
-	ia_css_cell_start(config->ssid, SPC0);
+	ia_css_cell_start_prefetch(config->ssid, SPC0, 0);
 
 	for (i=0; i < IA_CSS_N_PSYS_CMD_QUEUE_ID; i++) {
 		int retval;

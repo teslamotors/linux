@@ -16,18 +16,17 @@
 #define __TYPE_SUPPORT_H_INCLUDED__
 
 /* Per the DLI spec, types are in "type_support.h" and
- * "platform_support.h" is for uncalssified/to be refactored
+ * "platform_support.h" is for unclassified/to be refactored
  * platform specific definitions.
  */
-#define IA_CSS_UINT8_T_BITS						8
-#define IA_CSS_UINT16_T_BITS					16
-#define IA_CSS_UINT32_T_BITS					32
-#define IA_CSS_INT32_T_BITS						32
-#define IA_CSS_UINT64_T_BITS					64
+#define IA_CSS_UINT8_T_BITS	8
+#define IA_CSS_UINT16_T_BITS	16
+#define IA_CSS_UINT32_T_BITS	32
+#define IA_CSS_INT32_T_BITS	32
+#define IA_CSS_UINT64_T_BITS	64
 
 
 #if defined(_MSC_VER)
-#define __INDIRECT_STDINT_INCLUDE
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

@@ -54,9 +54,6 @@ ia_css_cell_program_load_icache_prog(
 	/* set icache info bits */
 	ia_css_cell_regs_set_icache_info_bits(ssid, regs_addr, IA_CSS_INFO_BITS_M0_DDR);
 
-	/* invalidate icache */
-	ia_css_cell_regs_icache_invalidate(ssid, regs_addr);
-
 	return 0;
 }
 

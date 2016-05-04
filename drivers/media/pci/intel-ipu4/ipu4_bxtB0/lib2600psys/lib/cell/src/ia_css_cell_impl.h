@@ -15,6 +15,8 @@
 #ifndef _IA_CSS_CELL_IMPL_H_
 #define _IA_CSS_CELL_IMPL_H_
 
+#include "ia_css_cell.h"
+
 #include "ia_css_cmem.h"
 #include "ipu_device_cell_properties.h"
 #include "storage_class.h"
@@ -87,14 +89,23 @@ ia_css_cell_set_start_bit(unsigned int ssid, unsigned int cell_id)
 STORAGE_CLASS_INLINE void
 ia_css_cell_start(unsigned int ssid, unsigned int cell_id)
 {
-	unsigned int reg;
+	ia_css_cell_start_prefetch(ssid, cell_id, 0);
+}
 
-	/* set run bit and start bit */
-	reg = ia_css_cell_get_stat_ctrl(ssid, cell_id);
+STORAGE_CLASS_INLINE void
+ia_css_cell_start_prefetch(unsigned int ssid, unsigned int cell_id, bool prefetch)
+{
+	unsigned int reg = 0;
+
+	/* Set run bit and start bit */
 	reg |= (1 << IPU_DEVICE_CELL_STAT_CTRL_START_BIT);
 	reg |= (1 << IPU_DEVICE_CELL_STAT_CTRL_RUN_BIT);
-	/* disable prefetch */
-	/* reg |= (1 << IPU_DEVICE_CELL_STAT_CTRL_ICACHE_ENABLE_PREFETCH_BIT); */
+	/* Invalidate the icache */
+	reg |= (1 << IPU_DEVICE_CELL_STAT_CTRL_INVALIDATE_ICACHE_BIT);
+	/* Optionally enable prefetching */
+	reg |= ((prefetch == 1) ? (1 << IPU_DEVICE_CELL_STAT_CTRL_ICACHE_ENABLE_PREFETCH_BIT) : 0);
+
+	/* store into register */
 	ia_css_cell_set_stat_ctrl(ssid, cell_id, reg);
 }
 
@@ -111,17 +122,6 @@ ia_css_cell_set_icache_base_address(unsigned int ssid, unsigned int cell_id, uns
 {
 	ia_css_cmem_store_32(ssid, ia_css_cell_regs_addr(cell_id) + IPU_DEVICE_CELL_ICACHE_BASE_REG_ADDRESS, value);
 }
-
-STORAGE_CLASS_INLINE void
-ia_css_cell_invalidate_icache(unsigned int ssid, unsigned int cell_id)
-{
-	unsigned int reg;
-
-	reg = ia_css_cell_get_stat_ctrl(ssid, cell_id);
-	reg |= (1 << IPU_DEVICE_CELL_STAT_CTRL_INVALIDATE_ICACHE_BIT);
-	ia_css_cell_set_stat_ctrl(ssid, cell_id, reg);
-}
-
 
 /* master port configuration */
 

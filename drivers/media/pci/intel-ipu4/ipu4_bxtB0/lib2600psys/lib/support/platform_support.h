@@ -20,11 +20,6 @@
 #if defined(_MSC_VER)
 #include <string.h>
 
-/* 2600 SDK has stdint.h */
-#ifndef HAVE_STDINT
-#define HAVE_STDINT
-#endif
-
 #define CSS_ALIGN(d, a) _declspec(align(a)) d
 
 STORAGE_CLASS_INLINE void ia_css_sleep(void)
