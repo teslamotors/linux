@@ -102,7 +102,7 @@ struct crl_sensor {
 	bool ext_ctrl_impacts_mode_selection;
 	bool blanking_ctrl_not_use;
 	bool direct_mode_in_use;
-	struct crl_mode_rep *current_mode;
+	const struct crl_mode_rep *current_mode;
 
 	struct clk *xclk;
 	struct crl_power_seq_entity *pwr_entity;

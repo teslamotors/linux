@@ -483,19 +483,6 @@ static struct crl_register_write_rep ov8858_data_fmt_width10[] = {
 	{ 0x3031, CRL_REG_LEN_08BIT, 0x0a }
 };
 
-static struct crl_register_write_rep ov8858_data_fmt_width8[] = {
-	{ 0x3031, CRL_REG_LEN_08BIT, 0x08 }
-};
-
-static struct crl_register_write_rep ov8858_param_on[] = {
-	{ 0x3028, CRL_REG_LEN_08BIT, 0x00 }
-};
-
-static struct crl_register_write_rep ov8858_param_off[] = {
-	{ 0x3028, CRL_REG_LEN_08BIT, 0x10 },
-	{ 0x3028, CRL_REG_LEN_08BIT, 0xa0 },
-};
-
 static struct crl_arithmetic_ops ov8858_vflip_ops[] = {
 	{
 		.op = CRL_BITWISE_LSHIFT,
