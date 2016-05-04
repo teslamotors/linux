@@ -860,7 +860,8 @@ void intel_ipu4_isys_buf_calc_sequence_time(struct intel_ipu4_isys_buffer *ib,
 	struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
-#else
+#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	struct timespec ts_now;
 #endif
 	struct intel_ipu4_isys_queue *aq =
@@ -889,6 +890,14 @@ void intel_ipu4_isys_buf_calc_sequence_time(struct intel_ipu4_isys_buffer *ib,
 	dev_dbg(&av->isys->adev->dev, "buffer: %s: buffer done %u\n",
 		av->vdev.name,
 		vb->v4l2_buf.index);
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+	vbuf->sequence = sequence;
+	ts_now = ns_to_timespec(ns);
+	vbuf->timestamp.tv_sec = ts_now.tv_sec;
+	vbuf->timestamp.tv_usec = ts_now.tv_nsec / NSEC_PER_USEC;
+
+	dev_dbg(&av->isys->adev->dev, "%s: buffer done %u\n", av->vdev.name,
+		vb->index);
 #else
 	vbuf->vb2_buf.timestamp = ns;
 	vbuf->sequence = sequence;

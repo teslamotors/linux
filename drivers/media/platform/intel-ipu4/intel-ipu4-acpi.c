@@ -28,7 +28,7 @@
 #include <media/intel-ipu4-acpi.h>
 #include <media/as3638.h>
 #include <media/lm3643.h>
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 #include <media/smiapp.h>
 #else
 #include <media/i2c/smiapp.h>
