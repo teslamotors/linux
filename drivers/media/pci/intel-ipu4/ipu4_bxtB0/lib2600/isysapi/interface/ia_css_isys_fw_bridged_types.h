@@ -75,14 +75,14 @@ struct frame_format_info {
  * @send_irq: assert if pin event should trigger irq
  */
 struct ia_css_isys_output_pin_info_comm {
-	aligned_uint32(unsigned int, input_pin_id);
 	aligned_struct(struct ia_css_isys_resolution_comm, output_res);
+	aligned_struct(struct frame_format_info, ft_info);
+	aligned_uint32(unsigned int, input_pin_id);
 	aligned_uint32(unsigned int, stride);
-	aligned_enum(enum ia_css_isys_pin_type, pt);
-	aligned_enum(enum ia_css_isys_frame_format_type, ft);
 	aligned_uint32(unsigned int, watermark_in_lines);
 	aligned_uint32(unsigned int, send_irq);
-	aligned_struct(struct frame_format_info, ft_info);
+	aligned_enum(enum ia_css_isys_pin_type, pt);
+	aligned_enum(enum ia_css_isys_frame_format_type, ft);
 };
 
 /**
@@ -103,8 +103,8 @@ struct ia_css_isys_param_pin_comm {
  */
 struct ia_css_isys_input_pin_info_comm {
 	aligned_struct(struct ia_css_isys_resolution_comm, input_res);
-	aligned_enum(enum ia_css_isys_mipi_data_type, dt);
 	aligned_uint32(unsigned int, bits_per_pix);
+	aligned_enum(enum ia_css_isys_mipi_data_type, dt);
 };
 
 /**
@@ -156,20 +156,20 @@ struct ia_css_isys_cropping_comm {
  * @the rest: input/output pin descriptors
  */
 struct ia_css_isys_stream_cfg_data_comm {
-	aligned_enum(enum ia_css_isys_stream_source, src);
-	aligned_enum(enum ia_css_isys_mipi_vc, vc);
-	aligned_enum(enum ia_css_isys_isl_use, isl_use);
-	aligned_uint32(unsigned int, compfmt);
 	aligned_struct(struct ia_css_isys_isa_cfg_comm, isa_cfg);
 	aligned_struct(struct ia_css_isys_cropping_comm, crop[N_IA_CSS_ISYS_CROPPING_LOCATION]);
+	aligned_struct(struct ia_css_isys_input_pin_info_comm, input_pins[MAX_IPINS]);
+	aligned_struct(struct ia_css_isys_output_pin_info_comm, output_pins[MAX_OPINS]);
 	aligned_uint32(unsigned int, send_irq_sof_discarded);
 	aligned_uint32(unsigned int, send_irq_eof_discarded);
 	aligned_uint32(unsigned int, send_resp_sof_discarded);
 	aligned_uint32(unsigned int, send_resp_eof_discarded);
 	aligned_uint32(unsigned int, nof_input_pins);
 	aligned_uint32(unsigned int, nof_output_pins);
-	aligned_struct(struct ia_css_isys_input_pin_info_comm, input_pins[MAX_IPINS]);
-	aligned_struct(struct ia_css_isys_output_pin_info_comm, output_pins[MAX_OPINS]);
+	aligned_uint32(unsigned int, compfmt);
+	aligned_enum(enum ia_css_isys_stream_source, src);
+	aligned_enum(enum ia_css_isys_mipi_vc, vc);
+	aligned_enum(enum ia_css_isys_isl_use, isl_use);
 };
 
 /**
@@ -215,15 +215,15 @@ struct ia_css_isys_error_info_comm {
  * @pin_id: pin id that the pin payload corresponds to
  */
 struct ia_css_isys_resp_info_comm {
-	aligned_enum(enum ia_css_isys_resp_type, type);
+	aligned_struct(struct ia_css_isys_output_pin_payload_comm, pin);
+	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
+	aligned_struct(struct ia_css_isys_error_info_comm, error_info);
+	aligned_uint64(ia_css_return_token, buf_id);	/* Used internally only */
 	aligned_uint32(unsigned int, stream_handle);
 	aligned_uint32(unsigned int, timestamp[2]);
-	aligned_struct(struct ia_css_isys_error_info_comm, error_info);
-	aligned_struct(struct ia_css_isys_output_pin_payload_comm, pin);
 	aligned_uint32(unsigned int, pin_id);
-	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
 	aligned_uint32(unsigned int, acc_id);
-	aligned_uint64(ia_css_return_token, buf_id);	/* Used internally only */
+	aligned_enum(enum ia_css_isys_resp_type, type);
 };
 
 /* From here on type defines not coming from the ISYSAPI interface */

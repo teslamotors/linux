@@ -16,6 +16,7 @@
 #define _IA_CSS_CELL_H_
 
 #include "storage_class.h"
+#include "type_support.h"
 
 STORAGE_CLASS_INLINE unsigned int
 ia_css_cell_get_stat_ctrl(unsigned int ssid, unsigned int cell_id);
@@ -84,10 +85,10 @@ STORAGE_CLASS_INLINE void
 ia_css_cell_start(unsigned int ssid, unsigned int cell_id);
 
 STORAGE_CLASS_INLINE void
-ia_css_cell_wait(unsigned int ssid, unsigned int cell_id);
+ia_css_cell_start_prefetch(unsigned int ssid, unsigned int cell_id, bool prefetch);
 
 STORAGE_CLASS_INLINE void
-ia_css_cell_invalidate_icache(unsigned int ssid, unsigned int cell_id);
+ia_css_cell_wait(unsigned int ssid, unsigned int cell_id);
 
 /* include inline implementation */
 #include "ia_css_cell_impl.h"

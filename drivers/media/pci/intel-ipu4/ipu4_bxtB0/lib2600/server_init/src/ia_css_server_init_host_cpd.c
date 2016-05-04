@@ -121,9 +121,6 @@ ia_css_server_init_host_cpd(unsigned int ssid,
 	/* set icache info bits */
 	ia_css_cell_set_master_info_bits(ssid, SPC0, IPU_DEVICE_SP2600_CONTROL_ICACHE, IA_CSS_INFO_BITS_M0_DDR);
 
-	/* invalidate icache */
-	ia_css_cell_invalidate_icache(ssid, SPC0);
-
 	/* Write pkg_dir address in SPC DMEM */
 	regmem_store_32(ipu_device_cell_memory_address(SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM),
 		PKG_DIR_ADDR_REG, secure ? imr_offset : pkg_dir_vied_address, ssid);

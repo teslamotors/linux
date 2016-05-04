@@ -124,7 +124,7 @@ int ia_css_isys_device_open(
 	}
 
 	/* The firmware is loaded and syscom is ready, start the SPC */
-	ia_css_cell_start(ssid, SPC0);
+	ia_css_cell_start_prefetch(ssid, SPC0, 0);
 
 	/* Update the context with the id's */
 	ctx->ssid = ssid;

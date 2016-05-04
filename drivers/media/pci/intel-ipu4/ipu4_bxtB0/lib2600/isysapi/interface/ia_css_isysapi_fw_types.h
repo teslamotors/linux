@@ -18,13 +18,12 @@
 
 /* Max number of Input/Output Pins */
 #define MAX_IPINS (6)
-#define MAX_OPINS ((MAX_IPINS)+5)	/* worst case is ISA use where a single input pin produces:
-					 * Mipi output, NS Pixel Output, Scaled Pixel Output, and
-					 * 3x 3A statistics (AWB, AF, AE). This is how the 5 is
-					 * calculated */
+#define MAX_OPINS ((MAX_IPINS) + 2)	/* worst case is ISA use where a single input pin produces:
+					 * Mipi output, NS Pixel Output, and Scaled Pixel Output.
+					 * This is how the 2 is calculated */
 
 /* Max number of supported virtual streams */
-#define STREAM_ID_MAX (6)
+#define STREAM_ID_MAX (8)
 
 /* Max number of supported SRAM buffer partitions */
 /* It refers to the size of stream partitions */
