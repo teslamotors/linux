@@ -29,7 +29,6 @@
 #include <misc_support.h>
 #include "ia_css_psys_private_pg_data.h"
 
-/* #include <bitop_support.h> */
 #include <vied_nci_psys_system_global.h>	/* Safer bit mask functions */
 
 #include "ia_css_psys_static_trace.h"
