@@ -43,4 +43,14 @@ static inline s64 trusty_fast_call64(struct device *dev,
 #endif
 #endif
 
+struct notifier_block;
+enum {
+	TRUSTY_CALL_PREPARE,
+	TRUSTY_CALL_RETURNED,
+};
+int trusty_call_notifier_register(struct device *dev,
+				  struct notifier_block *n);
+int trusty_call_notifier_unregister(struct device *dev,
+				    struct notifier_block *n);
+
 #endif

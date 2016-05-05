@@ -26,6 +26,7 @@
 
 struct trusty_state {
 	struct mutex smc_lock;
+	struct atomic_notifier_head notifier;
 };
 
 #ifdef CONFIG_ARM64
@@ -123,7 +124,14 @@ static ulong trusty_std_call_helper(struct device *dev, ulong smcnr,
 	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
 
 	while (true) {
+		local_irq_disable();
+		atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_PREPARE,
+					   NULL);
 		ret = trusty_std_call_inner(dev, smcnr, a0, a1, a2);
+		atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_RETURNED,
+					   NULL);
+		local_irq_enable();
+
 		if ((int)ret != SM_ERR_BUSY)
 			break;
 
@@ -178,6 +186,23 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 }
 EXPORT_SYMBOL(trusty_std_call32);
 
+int trusty_call_notifier_register(struct device *dev, struct notifier_block *n)
+{
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+
+	return atomic_notifier_chain_register(&s->notifier, n);
+}
+EXPORT_SYMBOL(trusty_call_notifier_register);
+
+int trusty_call_notifier_unregister(struct device *dev,
+				    struct notifier_block *n)
+{
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+
+	return atomic_notifier_chain_unregister(&s->notifier, n);
+}
+EXPORT_SYMBOL(trusty_call_notifier_unregister);
+
 static int trusty_remove_child(struct device *dev, void *data)
 {
 	platform_device_unregister(to_platform_device(dev));
@@ -201,6 +226,7 @@ static int trusty_probe(struct platform_device *pdev)
 		goto err_allocate_state;
 	}
 	mutex_init(&s->smc_lock);
+	ATOMIC_INIT_NOTIFIER_HEAD(&s->notifier);
 	platform_set_drvdata(pdev, s);
 
 	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
