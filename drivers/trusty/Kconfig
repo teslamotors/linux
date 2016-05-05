@@ -28,4 +28,9 @@ config TRUSTY_FIQ_ARM64
 	select TRUSTY_FIQ
 	default y
 
+config TRUSTY_LOG
+	tristate
+	depends on TRUSTY
+	default y
+
 endmenu

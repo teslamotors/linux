@@ -51,6 +51,7 @@
 #define	SMC_ENTITY_RESERVED		5	/* Reserved for future use */
 #define	SMC_ENTITY_TRUSTED_APP		48	/* Trusted Application calls */
 #define	SMC_ENTITY_TRUSTED_OS		50	/* Trusted OS calls */
+#define	SMC_ENTITY_LOGGING		51	/* Used for secure -> nonsecure logging */
 #define	SMC_ENTITY_SECURE_MONITOR	60	/* Trusted OS calls internal to secure monitor */
 
 /* FC = Fast call, SC = Standard call */
