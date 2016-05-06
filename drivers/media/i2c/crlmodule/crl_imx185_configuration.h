@@ -138,7 +138,7 @@ static struct crl_register_write_rep imx185_pll_445mbps[] = {
 	{0x30D3, CRL_REG_LEN_08BIT, 0x00},
 	{0x3303, CRL_REG_LEN_08BIT, 0x00},	/* repetation */
 	{0x3305, CRL_REG_LEN_08BIT, 0x03},
-	{0x332C, CRL_REG_LEN_08BIT, 0x40},
+	{0x332C, CRL_REG_LEN_08BIT, 0x40},	/* mipi timing */
 	{0x332D, CRL_REG_LEN_08BIT, 0x20},
 	{0x3341, CRL_REG_LEN_08BIT, 0x00},
 	{0x3342, CRL_REG_LEN_08BIT, 0x1B},
@@ -181,13 +181,13 @@ static struct crl_register_write_rep imx185_1312_728_27MHZ_CROPPING[] = {
 	{0x305E, CRL_REG_LEN_08BIT, 0x21},
 	{0x3063, CRL_REG_LEN_08BIT, 0x54},
 	/* Crop settings */
-	{0x3038, CRL_REG_LEN_08BIT, 0x00}, /* WPV = 0 */
+	{0x3038, CRL_REG_LEN_08BIT, 0x00},	/* WPV = 0 */
 	{0x3039, CRL_REG_LEN_08BIT, 0x00},
-	{0x303A, CRL_REG_LEN_08BIT, 0xE0}, /* WV = PIC_SIZE + 8 */
+	{0x303A, CRL_REG_LEN_08BIT, 0xE0},	/* WV = PIC_SIZE + 8 */
 	{0x303B, CRL_REG_LEN_08BIT, 0x02},
-	{0x303C, CRL_REG_LEN_08BIT, 0x04}, /* WPH = 4 */
+	{0x303C, CRL_REG_LEN_08BIT, 0x04},	/* WPH = 4 */
 	{0x303D, CRL_REG_LEN_08BIT, 0x00},
-	{0x303E, CRL_REG_LEN_08BIT, 0x1C}, /* Effective size = 1308*/
+	{0x303E, CRL_REG_LEN_08BIT, 0x1C},	/* Effective size = 1308*/
 	{0x303F, CRL_REG_LEN_08BIT, 0x05},
 	/* 0x03h */
 	{0x311D, CRL_REG_LEN_08BIT, 0x0A},
@@ -305,11 +305,11 @@ static struct crl_register_write_rep imx185_1952_1088_27MHZ_CROPPING[] = {
 	{0x305E, CRL_REG_LEN_08BIT, 0x21},
 	{0x3063, CRL_REG_LEN_08BIT, 0x54},
 	/* Crop settings */
-	{0x3038, CRL_REG_LEN_08BIT, 0x00}, /* WPV = 0 */
+	{0x3038, CRL_REG_LEN_08BIT, 0x00},	/* WPV = 0 */
 	{0x3039, CRL_REG_LEN_08BIT, 0x00},
-	{0x303A, CRL_REG_LEN_08BIT, 0x48}, /* WV = PIC_SIZE + 8 */
+	{0x303A, CRL_REG_LEN_08BIT, 0x48},	/* WV = PIC_SIZE + 8 */
 	{0x303B, CRL_REG_LEN_08BIT, 0x04},
-	{0x303C, CRL_REG_LEN_08BIT, 0x04}, /* WPH = 4 */
+	{0x303C, CRL_REG_LEN_08BIT, 0x04},	/* WPH = 4 */
 	{0x303D, CRL_REG_LEN_08BIT, 0x00},
 	{0x303E, CRL_REG_LEN_08BIT, 0x9C},
 	{0x303F, CRL_REG_LEN_08BIT, 0x07},
@@ -422,7 +422,7 @@ static struct crl_register_write_rep imx185_1952_1088_27MHZ_CROPPING[] = {
 
 static struct crl_register_write_rep imx185_1952_1088_BUILD_IN_WDR_27MHZ[] = {
 	/* 0x02h */
-	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 */
+	{0x3005, CRL_REG_LEN_08BIT, 0x01},	/* ADBIT: 10/12 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x50},	/* mode selection */
 	{0x300A, CRL_REG_LEN_08BIT, 0xF0},
 	{0x300C, CRL_REG_LEN_08BIT, 0x02},
@@ -443,13 +443,13 @@ static struct crl_register_write_rep imx185_1952_1088_BUILD_IN_WDR_27MHZ[] = {
 	{0x305E, CRL_REG_LEN_08BIT, 0x21},
 	{0x3063, CRL_REG_LEN_08BIT, 0x54},
 	/* Crop settings */
-	{0x3038, CRL_REG_LEN_08BIT, 0x00}, /* WPV = 0 */
+	{0x3038, CRL_REG_LEN_08BIT, 0x00},	/* WPV = 0 */
 	{0x3039, CRL_REG_LEN_08BIT, 0x00},
-	{0x303A, CRL_REG_LEN_08BIT, 0x48}, /* WV = PIC_SIZE + 8 */
+	{0x303A, CRL_REG_LEN_08BIT, 0x48},	/* WV = PIC_SIZE + 8 */
 	{0x303B, CRL_REG_LEN_08BIT, 0x04},
-	{0x303C, CRL_REG_LEN_08BIT, 0x04}, /* WPH = 4 */
+	{0x303C, CRL_REG_LEN_08BIT, 0x04},	/* WPH = 4 */
 	{0x303D, CRL_REG_LEN_08BIT, 0x00},
-	{0x303E, CRL_REG_LEN_08BIT, 0x9C}, /* Effective size = 1948*/
+	{0x303E, CRL_REG_LEN_08BIT, 0x9C},	/* Effective size = 1948*/
 	{0x303F, CRL_REG_LEN_08BIT, 0x07},
 	/* 0x03h */
 	{0x311D, CRL_REG_LEN_08BIT, 0x0A},
@@ -556,6 +556,136 @@ static struct crl_register_write_rep imx185_1952_1088_BUILD_IN_WDR_27MHZ[] = {
 	{0x3317, CRL_REG_LEN_08BIT, 0x04},
 	{0x3318, CRL_REG_LEN_08BIT, 0x40},	/* PIC_SIZE = 1088 */
 	{0x3319, CRL_REG_LEN_08BIT, 0x04},
+	{0x334E, CRL_REG_LEN_08BIT, 0x3D},	/* INCL selection 27MHz */
+	{0x334F, CRL_REG_LEN_08BIT, 0x01},
+};
+
+static struct crl_register_write_rep imx185_1952_1208_27MHZ_CROPPING[] = {
+	/* 0x02h */
+	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 */
+	{0x3007, CRL_REG_LEN_08BIT, 0x40},	/* WUXGA cropping */
+	{0x3018, CRL_REG_LEN_08BIT, 0x28},
+	{0x3019, CRL_REG_LEN_08BIT, 0x05},
+	{0x301B, CRL_REG_LEN_08BIT, 0x53},
+	{0x301C, CRL_REG_LEN_08BIT, 0x07},
+	{0x301D, CRL_REG_LEN_08BIT, 0x08},
+	{0x301E, CRL_REG_LEN_08BIT, 0x02},
+	{0x3048, CRL_REG_LEN_08BIT, 0x33},
+	{0x305C, CRL_REG_LEN_08BIT, 0x2c},	/* INCLKSEL default */
+	{0x305E, CRL_REG_LEN_08BIT, 0x21},
+	{0x3063, CRL_REG_LEN_08BIT, 0x54},
+	/* Crop settings */
+	{0x3038, CRL_REG_LEN_08BIT, 0x00},	/* WPV = 0 */
+	{0x3039, CRL_REG_LEN_08BIT, 0x00},
+	{0x303A, CRL_REG_LEN_08BIT, 0xC0},	/* WV = PIC_SIZE + 8 */
+	{0x303B, CRL_REG_LEN_08BIT, 0x04},
+	{0x303C, CRL_REG_LEN_08BIT, 0x04},	/* WPH = 4 */
+	{0x303D, CRL_REG_LEN_08BIT, 0x00},
+	{0x303E, CRL_REG_LEN_08BIT, 0x9C},
+	{0x303F, CRL_REG_LEN_08BIT, 0x07},
+	/* 0x03h */
+	{0x311D, CRL_REG_LEN_08BIT, 0x0A},
+	{0x3123, CRL_REG_LEN_08BIT, 0x0F},
+	{0x3126, CRL_REG_LEN_08BIT, 0x00},
+	{0x3147, CRL_REG_LEN_08BIT, 0x87},
+	{0x31E0, CRL_REG_LEN_08BIT, 0x00},
+	{0x31E1, CRL_REG_LEN_08BIT, 0x9E},
+	{0x31E2, CRL_REG_LEN_08BIT, 0x01},
+	{0x31E5, CRL_REG_LEN_08BIT, 0x05},
+	{0x31E6, CRL_REG_LEN_08BIT, 0x05},
+	{0x31E7, CRL_REG_LEN_08BIT, 0x3A},
+	{0x31E8, CRL_REG_LEN_08BIT, 0x3A},
+	/* 0x04h */
+	{0x3203, CRL_REG_LEN_08BIT, 0xC8},
+	{0x3207, CRL_REG_LEN_08BIT, 0x54},
+	{0x3213, CRL_REG_LEN_08BIT, 0x16},
+	{0x3215, CRL_REG_LEN_08BIT, 0xF6},
+	{0x321A, CRL_REG_LEN_08BIT, 0x14},
+	{0x321B, CRL_REG_LEN_08BIT, 0x51},
+	{0x3229, CRL_REG_LEN_08BIT, 0xE7},
+	{0x322A, CRL_REG_LEN_08BIT, 0xF0},
+	{0x322B, CRL_REG_LEN_08BIT, 0x10},
+	{0x3231, CRL_REG_LEN_08BIT, 0xE7},
+	{0x3232, CRL_REG_LEN_08BIT, 0xF0},
+	{0x3233, CRL_REG_LEN_08BIT, 0x10},
+	{0x323C, CRL_REG_LEN_08BIT, 0xE8},
+	{0x323D, CRL_REG_LEN_08BIT, 0x70},
+	{0x3243, CRL_REG_LEN_08BIT, 0x08},
+	{0x3244, CRL_REG_LEN_08BIT, 0xE1},
+	{0x3245, CRL_REG_LEN_08BIT, 0x10},
+	{0x3247, CRL_REG_LEN_08BIT, 0xE7},
+	{0x3248, CRL_REG_LEN_08BIT, 0x60},
+	{0x3249, CRL_REG_LEN_08BIT, 0x1E},
+	{0x324B, CRL_REG_LEN_08BIT, 0x00},
+	{0x324C, CRL_REG_LEN_08BIT, 0x41},
+	{0x3250, CRL_REG_LEN_08BIT, 0x30},
+	{0x3251, CRL_REG_LEN_08BIT, 0x0A},
+	{0x3252, CRL_REG_LEN_08BIT, 0xFF},
+	{0x3253, CRL_REG_LEN_08BIT, 0xFF},
+	{0x3254, CRL_REG_LEN_08BIT, 0xFF},
+	{0x3255, CRL_REG_LEN_08BIT, 0x02},
+	{0x3257, CRL_REG_LEN_08BIT, 0xF0},
+	{0x325A, CRL_REG_LEN_08BIT, 0xA6},
+	{0x325D, CRL_REG_LEN_08BIT, 0x14},
+	{0x325E, CRL_REG_LEN_08BIT, 0x51},
+	{0x3261, CRL_REG_LEN_08BIT, 0x61},
+	{0x3266, CRL_REG_LEN_08BIT, 0x30},
+	{0x3267, CRL_REG_LEN_08BIT, 0x05},
+	{0x3275, CRL_REG_LEN_08BIT, 0xE7},
+	{0x3281, CRL_REG_LEN_08BIT, 0xEA},
+	{0x3282, CRL_REG_LEN_08BIT, 0x70},
+	{0x3285, CRL_REG_LEN_08BIT, 0xFF},
+	{0x328A, CRL_REG_LEN_08BIT, 0xF0},
+	{0x328D, CRL_REG_LEN_08BIT, 0xB6},
+	{0x328E, CRL_REG_LEN_08BIT, 0x40},
+	{0x3290, CRL_REG_LEN_08BIT, 0x42},
+	{0x3291, CRL_REG_LEN_08BIT, 0x51},
+	{0x3292, CRL_REG_LEN_08BIT, 0x1E},
+	{0x3294, CRL_REG_LEN_08BIT, 0xC4},
+	{0x3295, CRL_REG_LEN_08BIT, 0x20},
+	{0x3297, CRL_REG_LEN_08BIT, 0x50},
+	{0x3298, CRL_REG_LEN_08BIT, 0x31},
+	{0x3299, CRL_REG_LEN_08BIT, 0x1F},
+	{0x329B, CRL_REG_LEN_08BIT, 0xC0},
+	{0x329C, CRL_REG_LEN_08BIT, 0x60},
+	{0x329E, CRL_REG_LEN_08BIT, 0x4C},
+	{0x329F, CRL_REG_LEN_08BIT, 0x71},
+	{0x32A0, CRL_REG_LEN_08BIT, 0x1F},
+	{0x32A2, CRL_REG_LEN_08BIT, 0xB6},
+	{0x32A3, CRL_REG_LEN_08BIT, 0xC0},
+	{0x32A4, CRL_REG_LEN_08BIT, 0x0B},
+	{0x32A9, CRL_REG_LEN_08BIT, 0x24},
+	{0x32AA, CRL_REG_LEN_08BIT, 0x41},
+	{0x32B0, CRL_REG_LEN_08BIT, 0x25},
+	{0x32B1, CRL_REG_LEN_08BIT, 0x51},
+	{0x32B7, CRL_REG_LEN_08BIT, 0x1C},
+	{0x32B8, CRL_REG_LEN_08BIT, 0xC1},
+	{0x32B9, CRL_REG_LEN_08BIT, 0x12},
+	{0x32BE, CRL_REG_LEN_08BIT, 0x1D},
+	{0x32BF, CRL_REG_LEN_08BIT, 0xD1},
+	{0x32C0, CRL_REG_LEN_08BIT, 0x12},
+	{0x32C2, CRL_REG_LEN_08BIT, 0xA8},
+	{0x32C3, CRL_REG_LEN_08BIT, 0xC0},
+	{0x32C4, CRL_REG_LEN_08BIT, 0x0A},
+	{0x32C5, CRL_REG_LEN_08BIT, 0x1E},
+	{0x32C6, CRL_REG_LEN_08BIT, 0x21},
+	{0x32C9, CRL_REG_LEN_08BIT, 0xB0},
+	{0x32CA, CRL_REG_LEN_08BIT, 0x40},
+	{0x32CC, CRL_REG_LEN_08BIT, 0x26},
+	{0x32CD, CRL_REG_LEN_08BIT, 0xA1},
+	{0x32D0, CRL_REG_LEN_08BIT, 0xB6},
+	{0x32D1, CRL_REG_LEN_08BIT, 0xC0},
+	{0x32D2, CRL_REG_LEN_08BIT, 0x0B},
+	{0x32D4, CRL_REG_LEN_08BIT, 0xE2},
+	{0x32D5, CRL_REG_LEN_08BIT, 0x40},
+	{0x32D8, CRL_REG_LEN_08BIT, 0x4E},
+	{0x32D9, CRL_REG_LEN_08BIT, 0xA1},
+	{0x32EC, CRL_REG_LEN_08BIT, 0xF0},
+	/* 0x05h */
+	{0x3316, CRL_REG_LEN_08BIT, 0x04},
+	{0x3317, CRL_REG_LEN_08BIT, 0x04},
+	{0x3318, CRL_REG_LEN_08BIT, 0x48},	/* PIC_SIZE = 1208 */
+	{0x3319, CRL_REG_LEN_08BIT, 0x06},
 	{0x334E, CRL_REG_LEN_08BIT, 0x3D},	/* INCL selection 27MHz */
 	{0x334F, CRL_REG_LEN_08BIT, 0x01},
 };
@@ -890,24 +1020,49 @@ static struct crl_pll_configuration imx185_pll_configurations[] = {
 	}
 };
 
-static struct crl_subdev_rect_rep imx185_1952_1088_rects[] = {
+static struct crl_subdev_rect_rep imx185_1952_1208_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect.left = 0,
 		.in_rect.top = 0,
 		.in_rect.width = 1952,
-		.in_rect.height = 1088,
+		.in_rect.height = 1208,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
 		.out_rect.width = 1952,
-		.out_rect.height = 1088,
+		.out_rect.height = 1208,
 	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
 		.in_rect.left = 0,
 		.in_rect.top = 0,
 		.in_rect.width = 1952,
-		.in_rect.height = 1088,
+		.in_rect.height = 1208,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1952,
+		.out_rect.height = 1208,
+	}
+};
+
+static struct crl_subdev_rect_rep imx185_1952_1088_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1952,
+		.in_rect.height = 1208,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1952,
+		.out_rect.height = 1208,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1952,
+		.in_rect.height = 1208,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
 		.out_rect.width = 1952,
@@ -921,18 +1076,18 @@ static struct crl_subdev_rect_rep imx185_1312_728_rects[] = {
 		.in_rect.left = 0,
 		.in_rect.top = 0,
 		.in_rect.width = 1952,
-		.in_rect.height = 1088,
+		.in_rect.height = 1208,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
 		.out_rect.width = 1952,
-		.out_rect.height = 1088,
+		.out_rect.height = 1208,
 	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
 		.in_rect.left = 0,
 		.in_rect.top = 0,
 		.in_rect.width = 1952,
-		.in_rect.height = 1088,
+		.in_rect.height = 1208,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
 		.out_rect.width = 1312,
@@ -941,6 +1096,21 @@ static struct crl_subdev_rect_rep imx185_1312_728_rects[] = {
 };
 
 static struct crl_mode_rep imx185_modes[] = {
+	{
+		.sd_rects_items = ARRAY_SIZE(imx185_1952_1208_rects),
+		.sd_rects = imx185_1952_1208_rects,
+		.binn_hor = 1,
+		.binn_vert = 1,
+		.scale_m = 1,
+		.width = 1952,
+		.height = 1208,
+		.min_llp = 2250,
+		.min_fll = 1320,
+		.comp_items = 1,
+		.ctrl_data = &ctrl_data_modes[0],
+		.mode_regs_items = ARRAY_SIZE(imx185_1952_1208_27MHZ_CROPPING),
+		.mode_regs = imx185_1952_1208_27MHZ_CROPPING,
+	},
 	{
 		.sd_rects_items = ARRAY_SIZE(imx185_1952_1088_rects),
 		.sd_rects = imx185_1952_1088_rects,
@@ -1004,7 +1174,7 @@ static struct crl_sensor_limits imx185_sensor_limits = {
 	.x_addr_min = 0,
 	.y_addr_min = 0,
 	.x_addr_max = 1952,
-	.y_addr_max = 1088,
+	.y_addr_max = 1208,
 	.min_frame_length_lines = 320,
 	.max_frame_length_lines = 65535,
 	.min_line_length_pixels = 380,
