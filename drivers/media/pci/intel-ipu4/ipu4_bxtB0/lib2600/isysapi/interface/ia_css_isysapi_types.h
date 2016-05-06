@@ -23,6 +23,14 @@
 
 
 /**
+ * struct ia_css_isys_buffer_partition - buffer partition information
+ * @num_gda_pages: Number of virtual gda pages available for each virtual stream
+ */
+struct ia_css_isys_buffer_partition {
+	unsigned int num_gda_pages[STREAM_ID_MAX];
+};
+
+/**
  * This should contain the driver specified info for sys
  */
 struct ia_css_driver_sys_config {
@@ -43,13 +51,13 @@ struct ia_css_driver_sys_config {
 
  /**
  * struct ia_css_isys_device_cfg_data - ISYS device configuration data
- * Partitions could be defined as part of the input pins but it is decided
- * to statically define them here an just map them at stream open. The book
- * keeping is much simplified to check stream cfg for validity, with minor
- * loss of flexibility.
+ * @driver_sys
+ * @buffer_partition: Information required for the virtual SRAM space partition of
+ * the streams.
  */
 struct ia_css_isys_device_cfg_data {
 	struct ia_css_driver_sys_config driver_sys;
+	struct ia_css_isys_buffer_partition buffer_partition;
 };
 
 /**

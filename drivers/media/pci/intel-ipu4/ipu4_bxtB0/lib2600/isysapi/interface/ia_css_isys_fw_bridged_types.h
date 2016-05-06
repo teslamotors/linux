@@ -21,10 +21,19 @@
 
 
 /**
+ * struct ia_css_isys_buffer_partition_comm - buffer partition information
+ * @num_gda_pages: Number of virtual gda pages available for each virtual stream
+ */
+struct ia_css_isys_buffer_partition_comm {
+	aligned_uint32(unsigned int, num_gda_pages[STREAM_ID_MAX]);
+};
+
+/**
  * struct ia_css_isys_fw_config - contains the parts from ia_css_isys_device_cfg_data
  * we need to transfer to the cell
  */
 struct ia_css_isys_fw_config {
+	aligned_struct(struct ia_css_isys_buffer_partition_comm, buffer_partition);
 	aligned_uint32(unsigned int, num_send_queues);
 	aligned_uint32(unsigned int, num_recv_queues);
 };

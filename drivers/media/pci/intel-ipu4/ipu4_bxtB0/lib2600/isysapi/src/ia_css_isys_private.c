@@ -421,6 +421,15 @@ STORAGE_CLASS_INLINE void frame_buff_set_host_to_css(const struct ia_css_isys_fr
 	frame_buff_set_css->send_resp_eof = frame_buff_set_host->send_irq_eof ? 1 : frame_buff_set_host->send_resp_eof;
 }
 
+STORAGE_CLASS_INLINE void buffer_partition_host_to_css(const struct ia_css_isys_buffer_partition *buffer_partition_host,
+		struct ia_css_isys_buffer_partition_comm *buffer_partition_css)
+{
+	int i;
+
+	for (i = 0; i < STREAM_ID_MAX; i++) {
+		buffer_partition_css->num_gda_pages[i] = buffer_partition_host->num_gda_pages[i];
+	}
+}
 
 STORAGE_CLASS_INLINE void output_pin_payload_css_to_host(const struct ia_css_isys_output_pin_payload_comm *output_pin_payload_css, struct ia_css_isys_output_pin_payload *output_pin_payload_host) {
 	output_pin_payload_host->out_buf_id = output_pin_payload_css->out_buf_id;
@@ -617,11 +626,14 @@ int ia_css_isys_extract_fw_response(
  */
 void ia_css_isys_prepare_param(
 	struct ia_css_isys_fw_config *isys_fw_cfg,
+	const struct ia_css_isys_buffer_partition *buf_partition,
 	const unsigned int num_send_queues,
 	const unsigned int num_recv_queues
 ) {
 	assert(isys_fw_cfg != NULL);
+	assert(buf_partition != NULL);
 
+	buffer_partition_host_to_css(buf_partition, &isys_fw_cfg->buffer_partition);
 	isys_fw_cfg->num_send_queues = num_send_queues;
 	isys_fw_cfg->num_recv_queues = num_recv_queues;
 }

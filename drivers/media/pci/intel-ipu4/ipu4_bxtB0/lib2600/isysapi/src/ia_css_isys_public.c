@@ -110,11 +110,12 @@ int ia_css_isys_device_open(
 	/* Prepare the param */
 	ia_css_isys_prepare_param(
 		&isys_fw_cfg,
+		&config->buffer_partition,
 		config->driver_sys.num_send_queues,
 		config->driver_sys.num_recv_queues);
 
-	sys.specific_addr = &isys_fw_cfg;        /* parameter struct to be passed to fw */
-	sys.specific_size = sizeof(isys_fw_cfg); /* parameters size */
+	sys.specific_addr = &isys_fw_cfg;		/* parameter struct to be passed to fw */
+	sys.specific_size = sizeof(isys_fw_cfg);	/* parameters size */
 
 	/* The allocation of the queues will take place within this call and info will be stored in sys_context output */
 	ctx->sys = ia_css_syscom_open(&sys, NULL);
