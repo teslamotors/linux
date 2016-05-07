@@ -358,7 +358,7 @@ STORAGE_CLASS_INLINE void isa_cfg_host_to_css(const struct ia_css_isys_isa_cfg *
 	isa_cfg_css->awb_enabled = isa_cfg_host->awb_enabled;
 	isa_cfg_css->af_enabled = isa_cfg_host->af_enabled;
 	isa_cfg_css->ae_enabled = isa_cfg_host->ae_enabled;
-	isa_cfg_css->paf_enabled = isa_cfg_host->paf_enabled;
+	isa_cfg_css->paf_type = isa_cfg_host->paf_type;
 	isa_cfg_css->send_irq_stats_ready = isa_cfg_host->send_irq_stats_ready ? 1 : 0;
 	isa_cfg_css->send_resp_stats_ready = isa_cfg_host->send_irq_stats_ready ? 1 : isa_cfg_host->send_resp_stats_ready;
 }

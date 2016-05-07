@@ -128,7 +128,7 @@ struct ia_css_isys_isa_cfg_comm {
 	aligned_uint32(unsigned int, awb_enabled);		/* acc id 4, set if process required */
 	aligned_uint32(unsigned int, af_enabled);		/* acc id 5, set if process required */
 	aligned_uint32(unsigned int, ae_enabled);		/* acc id 6, set if process required */
-	aligned_uint32(unsigned int, paf_enabled);		/* acc id 7, set if process required */
+	aligned_enum(enum ia_css_isys_type_paf, paf_type);	/* acc id 7, disabled, or type of paf enabled */
 	aligned_uint32(unsigned int, send_irq_stats_ready);	/* Send irq for any statistics buffers which got completed */
 	aligned_uint32(unsigned int, send_resp_stats_ready);	/* Send response for any statistics buffers which got completed */
 };

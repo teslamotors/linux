@@ -288,6 +288,20 @@ enum ia_css_isys_isl_use {
 };
 
 /**
+ * enum ia_css_isys_type_paf. Describes the Type of PAF enabled (PAF path in after cnlB0)
+ */
+enum ia_css_isys_type_paf {
+	IA_CSS_ISYS_TYPE_NO_PAF = 0,			/* PAF data not present */
+	/* Type 2 sensor types, PAF coming separately from Image Frame  */
+	IA_CSS_ISYS_TYPE_INTERLEAVED_PAF,		/* PAF data in interleaved format(RLRL or LRLR)*/
+	IA_CSS_ISYS_TYPE_NON_INTERLEAVED_PAF,		/* PAF data in non-interleaved format(LL/RR or RR/LL) */
+	/* Type 3 sensor types , PAF data embedded in Image Frame*/
+	IA_CSS_ISYS_TYPE_FRAME_EMB_INTERLEAVED_PAF,	/* Frame Embedded PAF in interleaved format(RLRL or LRLR)*/
+	IA_CSS_ISYS_TYPE_FRAME_EMB_NON_INTERLEAVED_PAF,	/* Frame Embedded PAF non-interleaved format(LL/RR or RR/LL)*/
+	N_IA_CSS_ISYS_TYPE_PAF
+};
+
+/**
  * enum ia_css_isys_cropping_location. Enumerates the cropping locations in ISYS
  */
 enum ia_css_isys_cropping_location {

@@ -121,6 +121,7 @@ struct ia_css_isys_input_pin_info {
 	enum ia_css_isys_mipi_data_type dt;
 };
 
+
 /**
  * struct ia_css_isys_isa_cfg. Describes the ISA cfg
  */
@@ -136,7 +137,7 @@ struct ia_css_isys_isa_cfg {
 	unsigned int awb_enabled;		/* acc id 4, set if process required */
 	unsigned int af_enabled;		/* acc id 5, set if process required */
 	unsigned int ae_enabled;		/* acc id 6, set if process required */
-	unsigned int paf_enabled;		/* acc id 7, set if process required */
+	enum ia_css_isys_type_paf paf_type;	/* acc id 7, disabled, or type of paf enabled*/
 	unsigned int send_irq_stats_ready;	/* Send irq for any statistics buffers which got completed */
 	unsigned int send_resp_stats_ready;	/* Send response for any statistics buffers which got completed */
 };

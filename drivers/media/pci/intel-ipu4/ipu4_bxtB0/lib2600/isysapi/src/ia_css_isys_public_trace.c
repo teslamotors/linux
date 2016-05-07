@@ -198,8 +198,8 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
 		, stream_cfg->isa_cfg.ae_enabled);
 
 	IA_CSS_TRACE_1(ISYSAPI, VERBOSE,
-		"\t\t\tia_css_isys_stream_cfg_data->ia_css_isys_isa_cfg.paf_enabled = %d\n"
-		, stream_cfg->isa_cfg.paf_enabled);
+		"\t\t\tia_css_isys_stream_cfg_data->ia_css_isys_isa_cfg.paf_type = %d\n"
+		, stream_cfg->isa_cfg.paf_type);
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "------------------------------------------------------------\n");
 	return 0;
