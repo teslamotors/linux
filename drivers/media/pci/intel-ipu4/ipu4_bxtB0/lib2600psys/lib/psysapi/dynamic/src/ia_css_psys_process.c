@@ -1087,15 +1087,7 @@ EXIT:
 	return retval;
 }
 
-/* This source file is created with the intention of sharing and
- * compiled for host and firmware. Since there is no native 64bit
- * data type support for firmware this wouldn't compile for SP
- * tile. The part of the file that is not compilable are marked
- * with the following __HIVECC marker and this comment. Once we
- * come up with a solution to address this issue this will be
- * removed.
- */
-#if !defined(__HIVECC)
+
 ia_css_kernel_bitmap_t ia_css_process_get_kernel_bitmap(
 	const ia_css_process_t					*process)
 {
@@ -1113,7 +1105,6 @@ EXIT:
 	}
 	return bitmap;
 }
-#endif
 
 int ia_css_process_cmd(
 	ia_css_process_t					*process,
@@ -1176,3 +1167,44 @@ EXIT:
 	return retval;
 }
 
+bool ia_css_is_process_valid(
+	const ia_css_process_t		*process,
+	const ia_css_program_manifest_t	*p_manifest)
+{
+	bool invalid_flag = false;
+	ia_css_program_ID_t prog_id;
+	ia_css_kernel_bitmap_t prog_kernel_bitmap;
+
+	verifjmpexit(NULL != process);
+	verifjmpexit(NULL != p_manifest);
+
+	prog_id = ia_css_process_get_program_ID(process);
+	verifjmpexit(prog_id == ia_css_program_manifest_get_program_ID(p_manifest));
+
+	prog_kernel_bitmap = ia_css_program_manifest_get_kernel_bitmap(p_manifest);
+
+	invalid_flag = (process->size <= process->cell_dependencies_offset) ||
+			(process->size <= process->terminal_dependencies_offset) ||
+			!ia_css_is_kernel_bitmap_subset(prog_kernel_bitmap, process->kernel_bitmap);
+
+	if (ia_css_has_program_manifest_fixed_cell(p_manifest)) {
+		vied_nci_cell_ID_t cell_id;
+
+		cell_id = ia_css_program_manifest_get_cell_ID(p_manifest);
+		invalid_flag = invalid_flag || (cell_id != (vied_nci_cell_ID_t)(process->cell_id));
+	}
+	invalid_flag = invalid_flag ||
+		((process->cell_dependency_count + process->terminal_dependency_count) == 0) ||
+		(process->cell_dependency_count != ia_css_program_manifest_get_program_dependency_count(p_manifest)) ||
+		(process->terminal_dependency_count != ia_css_program_manifest_get_terminal_dependency_count(p_manifest));
+
+	/* TODO: to be removed once all PGs pass validation */
+	if (invalid_flag == true) {
+		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_is_process_valid(): false\n");
+	}
+	return (!invalid_flag);
+
+EXIT:
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR, "ia_css_is_process_valid() invalid argument\n");
+	return false;
+}

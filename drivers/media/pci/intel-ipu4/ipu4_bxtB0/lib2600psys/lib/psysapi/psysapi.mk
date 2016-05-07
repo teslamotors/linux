@@ -80,4 +80,4 @@ PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/static/src/ia_css_psys_program_manifest.c
 PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/static/src/ia_css_psys_terminal_manifest.c
 PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/resource_model/$(IPU_SYSVER)/vied_nci_psys_resource_model.c
 PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/psys_server_manifest/$(IPU_SYSVER)/ia_css_psys_server_manifest.c
-
+PSYSAPI_FW_FILES += $(PSYSAPI_DIR)/kernel/src/ia_css_kernel_bitmap.c

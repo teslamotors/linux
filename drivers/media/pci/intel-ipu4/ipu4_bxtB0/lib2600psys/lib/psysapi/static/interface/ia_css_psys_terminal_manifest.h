@@ -224,7 +224,7 @@ extern int ia_css_data_terminal_manifest_set_min_size(
 /*! Set the max size of the (data) terminal manifest object
 
  @param	manifest[in]			(data) terminal manifest object
- @param	min_size[in]			Maximum size of the frame array
+ @param	max_size[in]			Maximum size of the frame array
 
   @return < 0 on invalid manifest argument
   */
@@ -246,7 +246,7 @@ extern int ia_css_data_terminal_manifest_get_min_size(
 /*! Get the max size of the (data) terminal manifest object
 
  @param	manifest[in]			(data) terminal manifest object
- @param	min_size[in]			Maximum size of the frame array
+ @param	max_size[in]			Maximum size of the frame array
 
  @return < 0 on invalid manifest argument
  */
@@ -254,5 +254,48 @@ extern int ia_css_data_terminal_manifest_get_max_size(
 	const ia_css_data_terminal_manifest_t		*manifest,
 	uint16_t					max_size[IA_CSS_N_DATA_DIMENSION]);
 
+/*! Set the min fragment size of the (data) terminal manifest object
+
+ @param	manifest[in]			(data) terminal manifest object
+ @param	min_size[in]			Minimum size of the fragment array
+
+ @return < 0 on invalid manifest argument
+ */
+extern int ia_css_data_terminal_manifest_set_min_fragment_size(
+	ia_css_data_terminal_manifest_t			*manifest,
+	const uint16_t					min_size[IA_CSS_N_DATA_DIMENSION]);
+
+/*! Set the max fragment size of the (data) terminal manifest object
+
+ @param	manifest[in]			(data) terminal manifest object
+ @param	max_size[in]			Maximum size of the fragment array
+
+  @return < 0 on invalid manifest argument
+  */
+extern int ia_css_data_terminal_manifest_set_max_fragment_size(
+	ia_css_data_terminal_manifest_t			*manifest,
+	const uint16_t					max_size[IA_CSS_N_DATA_DIMENSION]);
+
+/*! Get the min fragment size of the (data) terminal manifest object
+
+ @param	manifest[in]			(data) terminal manifest object
+ @param	min_size[in]			Minimum size of the fragment array
+
+ @return < 0 on invalid manifest argument
+ */
+extern int ia_css_data_terminal_manifest_get_min_fragment_size(
+	const ia_css_data_terminal_manifest_t		*manifest,
+	uint16_t					min_size[IA_CSS_N_DATA_DIMENSION]);
+
+/*! Get the max fragment size of the (data) terminal manifest object
+
+ @param	manifest[in]			(data) terminal manifest object
+ @param	max_size[in]			Maximum size of the fragment array
+
+ @return < 0 on invalid manifest argument
+ */
+extern int ia_css_data_terminal_manifest_get_max_fragment_size(
+	const ia_css_data_terminal_manifest_t		*manifest,
+	uint16_t					max_size[IA_CSS_N_DATA_DIMENSION]);
 
 #endif /* __IA_CSS_PSYS_TERMINAL_MANIFEST_H_INCLUDED__ */

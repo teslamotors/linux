@@ -236,12 +236,6 @@ EXIT:
 	return retval;
 }
 
-/* We need to refactor those files in order to build in the firmware only
-   what is needed, switches are put current to workaround compilation problems
-   in the firmware (for example lack of uint64_t support)
-   supported in the firmware
-  */
-#if !defined(__HIVECC)
 ia_css_frame_format_bitmap_t ia_css_data_terminal_manifest_get_frame_format_bitmap(
 	const ia_css_data_terminal_manifest_t		*manifest)
 {
@@ -274,7 +268,6 @@ int ia_css_data_terminal_manifest_set_frame_format_bitmap(
 
 	return ret;
 }
-#endif
 
 ia_css_connection_bitmap_t ia_css_data_terminal_manifest_get_connection_bitmap(
 	const ia_css_data_terminal_manifest_t	*manifest)
@@ -434,6 +427,94 @@ int ia_css_data_terminal_manifest_get_max_size(
 EXIT:
 	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR, "ia_css_data_terminal_manifest_get_max_size invalid argument\n");
+	}
+	return retval;
+}
+
+int ia_css_data_terminal_manifest_set_min_fragment_size(
+	ia_css_data_terminal_manifest_t	*manifest,
+	const uint16_t			min_size[IA_CSS_N_DATA_DIMENSION])
+{
+	int	retval = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_set_min_fragment_size(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	manifest->min_fragment_size[IA_CSS_COL_DIMENSION] = min_size[IA_CSS_COL_DIMENSION];
+	manifest->min_fragment_size[IA_CSS_ROW_DIMENSION] = min_size[IA_CSS_ROW_DIMENSION];
+	retval = 0;
+
+EXIT:
+	if (NULL == manifest) {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
+				"ia_css_data_terminal_manifest_set_min_fragment_size invalid argument\n");
+	}
+	return retval;
+}
+
+int ia_css_data_terminal_manifest_set_max_fragment_size(
+	ia_css_data_terminal_manifest_t	*manifest,
+	const uint16_t			max_size[IA_CSS_N_DATA_DIMENSION])
+{
+	int	retval = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_set_max_fragment_size(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	manifest->max_fragment_size[IA_CSS_COL_DIMENSION] = max_size[IA_CSS_COL_DIMENSION];
+	manifest->max_fragment_size[IA_CSS_ROW_DIMENSION] = max_size[IA_CSS_ROW_DIMENSION];
+	retval = 0;
+
+EXIT:
+	if (NULL == manifest) {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
+				"ia_css_data_terminal_manifest_set_max_fragment_size invalid argument\n");
+	}
+	return retval;
+}
+
+int ia_css_data_terminal_manifest_get_min_fragment_size(
+	const ia_css_data_terminal_manifest_t	*manifest,
+	uint16_t				min_size[IA_CSS_N_DATA_DIMENSION])
+{
+	int	retval = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_get_min_fragment_size(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	min_size[IA_CSS_COL_DIMENSION] = manifest->min_fragment_size[IA_CSS_COL_DIMENSION];
+	min_size[IA_CSS_ROW_DIMENSION] = manifest->min_fragment_size[IA_CSS_ROW_DIMENSION];
+	retval = 0;
+
+EXIT:
+	if (NULL == manifest) {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
+			"ia_css_data_terminal_manifest_get_min_fragment_size invalid argument\n");
+	}
+	return retval;
+}
+
+int ia_css_data_terminal_manifest_get_max_fragment_size(
+	const ia_css_data_terminal_manifest_t	*manifest,
+	uint16_t				max_size[IA_CSS_N_DATA_DIMENSION])
+{
+	int	retval = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_get_max_fragment_size(): enter:\n");
+
+	verifexit(manifest != NULL, EINVAL);
+
+	max_size[IA_CSS_COL_DIMENSION] = manifest->max_fragment_size[IA_CSS_COL_DIMENSION];
+	max_size[IA_CSS_ROW_DIMENSION] = manifest->max_fragment_size[IA_CSS_ROW_DIMENSION];
+	retval = 0;
+
+EXIT:
+	if (NULL == manifest) {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
+			"ia_css_data_terminal_manifest_get_max_fragment_size invalid argument\n");
 	}
 	return retval;
 }

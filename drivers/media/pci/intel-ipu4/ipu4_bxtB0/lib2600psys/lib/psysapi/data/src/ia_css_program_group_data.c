@@ -286,21 +286,12 @@ EXIT:
 	return retval;
 }
 
-/* This source file is created with the intention of sharing and
- * compiled for host and firmware. Since there is no native 64bit
- * data type support for firmware this wouldn't compile for SP
- * tile. The part of the file that is not compilable are marked
- * with the following __HIVECC marker and this comment. Once we
- * come up with a solution to address this issue this will be
- * removed.
- */
-#if !defined(__HIVECC)
 ia_css_frame_format_bitmap_t ia_css_frame_format_bit_mask(
 	const ia_css_frame_format_type_t		frame_format_type)
 {
 	ia_css_frame_format_bitmap_t	bit_mask = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, INFO, "ia_css_frame_format_bit_mask(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_format_bit_mask(): enter:\n");
 
 	if ((frame_format_type < IA_CSS_N_FRAME_FORMAT_TYPES) && (frame_format_type < IA_CSS_FRAME_FORMAT_BITMAP_BITS)) {
 		bit_mask = (ia_css_frame_format_bitmap_t)1 << frame_format_type;
@@ -313,11 +304,10 @@ ia_css_frame_format_bitmap_t ia_css_frame_format_bit_mask(
 
 ia_css_frame_format_bitmap_t ia_css_frame_format_bitmap_clear(void)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_format_bitmap_clear(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_format_bitmap_clear(): enter:\n");
 
 	return 0;
 }
-#endif
 
 size_t ia_css_sizeof_frame_descriptor(
 		const uint8_t			plane_count)

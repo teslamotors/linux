@@ -154,4 +154,15 @@ extern int ia_css_terminal_set_parent(
 	ia_css_terminal_t						*terminal,
 	ia_css_process_group_t					*parent);
 
+/*! Boolean test if the terminal object type is valid
+
+ @param	terminal[in]			process terminal object
+ @param	terminal_manifest[in]		program terminal manifest
+
+ @return true if the process terminal object is correct, false on error
+ */
+extern bool ia_css_is_terminal_valid(
+	const ia_css_terminal_t		 *terminal,
+	const ia_css_terminal_manifest_t *terminal_manifest);
+
 #endif /* __IA_CSS_PSYS_TERMINAL_H_INCLUDED__ */

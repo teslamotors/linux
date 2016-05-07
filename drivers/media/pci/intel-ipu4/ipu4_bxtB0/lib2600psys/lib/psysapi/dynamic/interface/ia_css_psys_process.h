@@ -260,4 +260,15 @@ int ia_css_process_set_dev_chn(
 	const vied_nci_dev_chn_ID_t         dev_chn_id,
 	const vied_nci_resource_size_t      offset);
 
+/*! Boolean test if the process object type is valid
+
+ @param	process[in]			process object
+ @param	p_manifest[in]			program manifest
+
+ @return true if the process object is correct, false on error
+ */
+bool ia_css_is_process_valid(
+	const ia_css_process_t		*process,
+	const ia_css_program_manifest_t	*p_manifest);
+
 #endif /* __IA_CSS_PSYS_PROCESS_H_INCLUDED__ */

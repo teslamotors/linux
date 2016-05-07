@@ -189,12 +189,6 @@ int ia_css_program_manifest_set_type(
 	return retval;
 }
 
-/* We need to refactor those files in order to build in the firmware only
-   what is needed, switches are put current to workaround compilation problems
-   in the firmware (for example lack of uint64_t support)
-   supported in the firmware
-  */
-#if !defined(__HIVECC)
 ia_css_kernel_bitmap_t ia_css_program_manifest_get_kernel_bitmap(
 	const ia_css_program_manifest_t			*manifest)
 {
@@ -226,7 +220,6 @@ int ia_css_program_manifest_set_kernel_bitmap(
 	}
 	return retval;
 }
-#endif
 
 vied_nci_cell_ID_t ia_css_program_manifest_get_cell_ID(
 	const ia_css_program_manifest_t			*manifest)

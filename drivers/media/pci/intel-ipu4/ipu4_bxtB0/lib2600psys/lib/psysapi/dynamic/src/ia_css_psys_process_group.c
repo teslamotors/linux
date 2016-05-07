@@ -883,37 +883,76 @@ EXIT:
 	return retval;
 }
 
-/* This source file is created with the intention of sharing and
- * compiled for host and firmware. Since there is no native 64bit
- * data type support for firmware this wouldn't compile for SP
- * tile. The part of the file that is not compilable are marked
- * with the following __HIVECC marker and this comment. Once we
- * come up with a solution to address this issue this will be
- * removed.
- */
-#if !defined(__HIVECC)
 bool ia_css_is_process_group_valid(
-	const ia_css_process_group_t			*process_group,
-	const ia_css_program_group_manifest_t	*manifest,
-	const ia_css_program_group_param_t		*param)
+	const ia_css_process_group_t		*process_group,
+	const ia_css_program_group_manifest_t	*pg_manifest,
+	const ia_css_program_group_param_t	*param)
 {
-	bool is_valid = false;
+	bool invalid_flag = false;
+	uint8_t proc_idx;
+	uint8_t prog_idx;
+	uint8_t proc_term_idx;
+	uint8_t	process_count;
+	uint8_t	program_count;
+	uint8_t terminal_count;
+	uint8_t man_terminal_count;
 
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_process_group_valid(): enter: \n");
 
 	verifexit(process_group != NULL, EINVAL);
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(param != NULL, EINVAL);
+	verifexit(pg_manifest != NULL, EINVAL);
+	NOT_USED(param);
 
-	is_valid = ia_css_is_program_group_manifest_valid(manifest);
+	process_count = process_group->process_count;
+	terminal_count = process_group->terminal_count;
+	program_count = ia_css_program_group_manifest_get_program_count(pg_manifest);
+	man_terminal_count = ia_css_program_group_manifest_get_terminal_count(pg_manifest);
 
-EXIT:
-	if(NULL == process_group || NULL ==  manifest || NULL == param) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_is_process_group_valid invalid argument\n");
+	/* Validate process group */
+	invalid_flag = invalid_flag ||
+			!(program_count >= process_count) ||
+			!(man_terminal_count >= terminal_count) ||
+			!(process_group->size > process_group->processes_offset) ||
+			!(process_group->size > process_group->terminals_offset);
+	/* Validate processes */
+	for (proc_idx = 0; proc_idx < process_count; proc_idx++) {
+		const ia_css_process_t *process;
+		ia_css_program_ID_t prog_id;
+		bool no_match_found = true;
+
+		process = ia_css_process_group_get_process(process_group, proc_idx);
+		verifjmpexit(NULL != process);
+		prog_id = ia_css_process_get_program_ID(process);
+		for (prog_idx = 0; prog_idx < program_count; prog_idx++) {
+			ia_css_program_manifest_t *p_manifest = NULL;
+
+			p_manifest = ia_css_program_group_manifest_get_program_manifest(pg_manifest, prog_idx);
+			if (prog_id == ia_css_program_manifest_get_program_ID(p_manifest)) {
+				invalid_flag = invalid_flag || !ia_css_is_process_valid(process, p_manifest);
+				no_match_found = false;
+				break;
+			}
+		}
+		invalid_flag = invalid_flag || no_match_found;
 	}
-	return is_valid;
+	/* Validate terminals */
+	for (proc_term_idx = 0; proc_term_idx < terminal_count; proc_term_idx++) {
+		int man_term_idx;
+		const ia_css_terminal_t *terminal;
+		const ia_css_terminal_manifest_t *terminal_manifest;
+
+		terminal = ia_css_process_group_get_terminal(process_group, proc_term_idx);
+		verifjmpexit(NULL != terminal);
+		man_term_idx = ia_css_terminal_get_terminal_manifest_index(terminal);
+		terminal_manifest = ia_css_program_group_manifest_get_terminal_manifest(pg_manifest, man_term_idx);
+		invalid_flag = invalid_flag || !ia_css_is_terminal_valid(terminal, terminal_manifest);
+	}
+	return (!invalid_flag);
+EXIT:
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR, "ia_css_is_process_group_valid() invalid argument\n");
+	return false;
 }
-#endif
+
 
 bool ia_css_can_process_group_submit (
 	const ia_css_process_group_t			*process_group)
