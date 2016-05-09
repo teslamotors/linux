@@ -1993,8 +1993,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	psys->syscom_buffer = kzalloc(ia_css_sizeof_psys(NULL), GFP_KERNEL);
 	if (!psys->syscom_buffer) {
 		dev_err(&psys->dev,
-			"psys unable to alloc syscom buffer (%zu)\n",
-			ia_css_sizeof_psys(NULL));
+			"psys unable to alloc syscom buffer\n");
 		rval = -ENOMEM;
 		goto out_mutex_destroy;
 	}
@@ -2016,9 +2015,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	psys->syscom_config = kzalloc(
 		sizeof(struct ia_css_syscom_config), GFP_KERNEL);
 	if (!psys->syscom_config) {
-		dev_err(&psys->dev,
-			"psys unable to alloc syscom config (%zu)\n",
-			ia_css_sizeof_psys(NULL));
+		dev_err(&psys->dev, "psys unable to alloc syscom config\n");
 		rval = -ENOMEM;
 		goto out_resources_running_free;
 	}
@@ -2026,9 +2023,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	psys->server_init = kzalloc(
 		sizeof(struct ia_css_psys_server_init), GFP_KERNEL);
 	if (!psys->server_init) {
-		dev_err(&psys->dev,
-			"psys unable to alloc server init (%zu)\n",
-			ia_css_sizeof_psys(NULL));
+		dev_err(&psys->dev, "psys unable to alloc server init\n");
 		rval = -ENOMEM;
 		goto out_sysconfig_free;
 	}
