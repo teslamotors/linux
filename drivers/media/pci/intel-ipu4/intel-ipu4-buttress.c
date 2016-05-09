@@ -23,6 +23,7 @@
 #include <linux/errno.h>
 #include <linux/firmware.h>
 #include <linux/module.h>
+#include <linux/pci.h>
 #include <linux/pm_runtime.h>
 #include <media/intel-ipu4-isys.h>
 
@@ -1385,6 +1386,23 @@ err:
 	return rval;
 }
 
+static void intel_ipu4_buttress_clk_exit(struct intel_ipu4_device *isp)
+{
+	struct intel_ipu4_buttress *b = &isp->buttress;
+	int i, num_plls;
+
+	num_plls = is_intel_ipu4_hw_bxt_a0(isp) ?
+		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_a0) :
+		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0);
+
+	/* It is safe to call clk_unregister with null pointer */
+	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++)
+		clk_unregister(b->clk_sensor[i]);
+
+	for (i = 0; i < num_plls; i++)
+		clk_unregister(b->pll_sensor[i]);
+}
+
 #ifdef CONFIG_DEBUG_FS
 
 static int intel_ipu4_buttress_reg_open(struct inode *inode, struct file *file)
@@ -1664,6 +1682,42 @@ err:
 
 #endif /* CONFIG_DEBUG_FS */
 
+static ssize_t intel_ipu4_buttress_psys_fused_min_freq_get(
+	struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct intel_ipu4_device *isp = pci_get_drvdata(to_pci_dev(dev));
+
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+			isp->buttress.psys_fused_freqs.min_freq);
+}
+
+static DEVICE_ATTR(psys_fused_min_freq, S_IRUGO,
+		   intel_ipu4_buttress_psys_fused_min_freq_get, NULL);
+
+static ssize_t intel_ipu4_buttress_psys_fused_max_freq_get(
+	struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct intel_ipu4_device *isp = pci_get_drvdata(to_pci_dev(dev));
+
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+			isp->buttress.psys_fused_freqs.max_freq);
+}
+
+static DEVICE_ATTR(psys_fused_max_freq, S_IRUGO,
+		   intel_ipu4_buttress_psys_fused_max_freq_get, NULL);
+
+static ssize_t intel_ipu4_buttress_psys_fused_efficient_freq_get(
+	struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct intel_ipu4_device *isp = pci_get_drvdata(to_pci_dev(dev));
+
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+			isp->buttress.psys_fused_freqs.efficient_freq);
+}
+
+static DEVICE_ATTR(psys_fused_efficient_freq, S_IRUGO,
+		   intel_ipu4_buttress_psys_fused_efficient_freq_get, NULL);
+
 void intel_ipu4_buttress_csi_port_config(struct intel_ipu4_device *isp,
 					 u32 legacy, u32 combo)
 {
@@ -1715,10 +1769,8 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 
 	rval = intel_ipu4_buttress_clk_init(isp);
 	if (rval) {
-		mutex_destroy(&b->power_mutex);
-		mutex_destroy(&b->auth_mutex);
-		mutex_destroy(&b->cons_mutex);
-		return rval;
+		dev_err(&isp->pdev->dev, "Clock init failed\n");
+		goto err_mutex_destroy;
 	}
 
 	intel_ipu4_buttress_set_secure_mode(isp);
@@ -1734,26 +1786,59 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_CLEAR);
 	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_ENABLE);
 
-	return 0;
+	rval = device_create_file(&isp->pdev->dev,
+				  &dev_attr_psys_fused_min_freq);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Create min freq file failed\n");
+		goto err_clk_unregister;
+	}
+
+	rval = device_create_file(&isp->pdev->dev,
+				  &dev_attr_psys_fused_max_freq);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Create max freq file failed\n");
+		goto err_remove_min_freq_file;
+	}
+
+	rval = device_create_file(&isp->pdev->dev,
+				  &dev_attr_psys_fused_efficient_freq);
+	if (rval) {
+		dev_err(&isp->pdev->dev, "Create efficient freq file failed\n");
+		goto err_remove_max_freq_file;
+	}
+
+	return rval;
+
+err_remove_max_freq_file:
+	device_remove_file(&isp->pdev->dev,
+			   &dev_attr_psys_fused_max_freq);
+err_remove_min_freq_file:
+	device_remove_file(&isp->pdev->dev,
+			   &dev_attr_psys_fused_min_freq);
+err_clk_unregister:
+	intel_ipu4_buttress_clk_exit(isp);
+err_mutex_destroy:
+	mutex_destroy(&b->power_mutex);
+	mutex_destroy(&b->auth_mutex);
+	mutex_destroy(&b->cons_mutex);
+
+	return rval;
 }
 
 void intel_ipu4_buttress_exit(struct intel_ipu4_device *isp)
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
-	int i, num_plls;
-
-	num_plls = is_intel_ipu4_hw_bxt_a0(isp) ?
-		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_a0) :
-		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0);
 
 	writel(0, isp->base + BUTTRESS_REG_ISR_ENABLE);
 
-	/* It is safe to call clk_unregister with null pointer */
-	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++)
-		clk_unregister(b->clk_sensor[i]);
+	device_remove_file(&isp->pdev->dev,
+			   &dev_attr_psys_fused_efficient_freq);
+	device_remove_file(&isp->pdev->dev,
+			   &dev_attr_psys_fused_max_freq);
+	device_remove_file(&isp->pdev->dev,
+			   &dev_attr_psys_fused_min_freq);
 
-	for (i = 0; i < num_plls; i++)
-		clk_unregister(b->pll_sensor[i]);
+	intel_ipu4_buttress_clk_exit(isp);
 
 	mutex_destroy(&b->power_mutex);
 	mutex_destroy(&b->auth_mutex);
