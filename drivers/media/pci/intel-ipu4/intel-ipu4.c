@@ -21,6 +21,7 @@
 #include <linux/pm_qos.h>
 #include <linux/pm_runtime.h>
 #include <linux/timer.h>
+#include <linux/sched.h>
 
 #include "intel-ipu4.h"
 #include "intel-ipu4-buttress.h"
@@ -623,9 +624,12 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	const char *cpd_filename;
 	int rval;
 
+	trace_printk("B|%d|TMWK\n", current->pid);
+
 	isp = devm_kzalloc(&pdev->dev, sizeof(*isp), GFP_KERNEL);
 	if (!isp) {
 		dev_err(&pdev->dev, "Failed to alloc CI ISP structure\n");
+		trace_printk("E|TMWK\n");
 		return -ENOMEM;
 	}
 	isp->pdev = pdev;
@@ -635,6 +639,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	if (rval) {
 		dev_err(&pdev->dev, "Failed to enable CI ISP device (%d)\n",
 			rval);
+		trace_printk("E|TMWK\n");
 		return rval;
 	}
 
@@ -647,6 +652,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	if (rval) {
 		dev_err(&pdev->dev, "Failed to I/O memory remapping (%d)\n",
 			rval);
+		trace_printk("E|TMWK\n");
 		return rval;
 	}
 	dev_info(&pdev->dev, "physical base address 0x%llx\n", phys);
@@ -654,6 +660,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	iomap = pcim_iomap_table(pdev);
 	if (!iomap) {
 		dev_err(&pdev->dev, "Failed to iomap table (%d)\n", rval);
+		trace_printk("E|TMWK\n");
 		return -ENODEV;
 	}
 
@@ -678,6 +685,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 		cpd_filename = INTEL_IPU4_CPD_FIRMWARE_B0;
 	} else {
 		dev_err(&pdev->dev, "Not supported device\n");
+		trace_printk("E|TMWK\n");
 		return -EINVAL;
 	}
 
@@ -697,12 +705,15 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 						   DMA_BIT_MASK(dma_mask));
 	if (rval) {
 		dev_err(&pdev->dev, "Failed to set DMA mask (%d)\n", rval);
+		trace_printk("E|TMWK\n");
 		return rval;
 	}
 
 	rval = intel_ipu4_pci_config_setup(pdev);
-	if (rval)
+	if (rval) {
+		trace_printk("E|TMWK\n");
 		return rval;
+	}
 
 	rval = devm_request_threaded_irq(&pdev->dev, pdev->irq,
 					 intel_ipu4_buttress_isr,
@@ -711,18 +722,22 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	if (rval) {
 		dev_err(&pdev->dev, "Requesting irq failed(%d)\n",
 			rval);
+		trace_printk("E|TMWK\n");
 		return rval;
 	}
 
 	rval = intel_ipu4_buttress_init(isp);
-	if (rval)
+	if (rval) {
+		trace_printk("E|TMWK\n");
 		return rval;
+	}
 
 	dev_info(&pdev->dev, "cpd file name: %s\n", cpd_filename);
 
 	rval = request_firmware(&isp->cpd_fw, cpd_filename, &pdev->dev);
 	if (rval) {
 		dev_err(&isp->pdev->dev, "Requesting signed firmware failed\n");
+		trace_printk("E|TMWK\n");
 		return rval;
 	}
 
@@ -826,6 +841,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	pm_runtime_put_noidle(&pdev->dev);
 	pm_runtime_allow(&pdev->dev);
 
+	trace_printk("E|TMWK\n");
 	return 0;
 
 out_intel_ipu4_bus_del_devices:
@@ -833,6 +849,7 @@ out_intel_ipu4_bus_del_devices:
 	intel_ipu4_buttress_exit(isp);
 	release_firmware(isp->cpd_fw);
 
+	trace_printk("E|TMWK\n");
 	return rval;
 }
 

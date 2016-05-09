@@ -19,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
 #include <linux/string.h>
+#include <linux/sched.h>
 
 #include <media/intel-ipu4-isys.h>
 #include <media/intel-ipu4-acpi.h>
@@ -1046,15 +1047,21 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	const struct firmware *uninitialized_var(fw);
 	int rval = 0;
 
+	trace_printk("B|%d|TMWK\n", current->pid);
+
 	/* Has the domain been attached? */
-	if (!mmu || !isp->pkg_dir_dma_addr)
+	if (!mmu || !isp->pkg_dir_dma_addr) {
+		trace_printk("E|TMWK\n");
 		return -EPROBE_DEFER;
+	}
 
 	intel_ipu4_wrapper_set_device(&adev->dev, ISYS_MMID);
 
 	isys = devm_kzalloc(&adev->dev, sizeof(*isys), GFP_KERNEL);
-	if (!isys)
+	if (!isys) {
+		trace_printk("E|TMWK\n");
 		return -ENOMEM;
+	}
 
 	isys->adev = adev;
 	isys->pdata = adev->pdata;
@@ -1133,6 +1140,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	adev->isp->isys_fw_reload = &isys_fw_reload;
 
+	trace_printk("E|TMWK\n");
 	return 0;
 
 out_remove_pkg_dir_shared_buffer:
@@ -1158,6 +1166,7 @@ release_firmware:
 trace_uninit:
 	intel_ipu4_trace_uninit(&adev->dev);
 
+	trace_printk("E|TMWK\n");
 	return rval;
 }
 

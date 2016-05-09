@@ -1919,9 +1919,13 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	unsigned int minor;
 	int i, rval = -E2BIG;
 
+	trace_printk("B|%d|TMWK\n", current->pid);
+
 	/* Has the domain been attached? */
-	if (!mmu)
+	if (!mmu) {
+		trace_printk("E|TMWK\n");
 		return -EPROBE_DEFER;
+	}
 
 	intel_ipu4_wrapper_set_device(&adev->dev, PSYS_MMID);
 
@@ -2140,6 +2144,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 
 	dev_info(&adev->dev, "psys probe minor: %d\n", minor);
 
+	trace_printk("E|TMWK\n");
 	return 0;
 
 out_free_pgs:
@@ -2183,6 +2188,7 @@ out_unlock:
 	intel_ipu4_trace_uninit(&adev->dev);
 	mutex_unlock(&intel_ipu4_psys_mutex);
 
+	trace_printk("E|TMWK\n");
 	return rval;
 }
 
