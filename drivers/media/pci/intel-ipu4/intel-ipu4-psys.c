@@ -2101,7 +2101,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	rval = intel_ipu4_buttress_authenticate(isp);
 	if (rval) {
 		dev_err(&adev->dev, "FW authentication failed(%d)\n", rval);
-		goto out_remove_pkg_dir_shared_buffer;
+		goto out_free_pgs;
 	}
 
 	psys->dev.parent = &adev->dev;
@@ -2112,7 +2112,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	rval = device_register(&psys->dev);
 	if (rval < 0) {
 		dev_err(&psys->dev, "psys device_register failed\n");
-		goto out_remove_pkg_dir_shared_buffer;
+		goto out_free_pgs;
 	}
 
 	/* Add the hw stepping information to caps */
@@ -2137,7 +2137,6 @@ out_free_pgs:
 				     kpg->pg_dma_addr);
 		kfree(kpg);
 	}
-out_remove_pkg_dir_shared_buffer:
 	intel_ipu4_wrapper_remove_shared_memory_buffer(
 			PSYS_MMID, psys->pkg_dir);
 out_free_pkg_dir:
