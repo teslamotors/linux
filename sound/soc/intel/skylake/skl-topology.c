@@ -523,6 +523,9 @@ int skl_tplg_set_probe_params(struct snd_soc_dapm_widget *w,
 
 		/* only one injector point can be set at a time*/
 		n = skl_get_probe_index(dai, pconfig);
+		if (n < 0)
+			return -EINVAL;
+
 		k = &w->kcontrol_news[pconfig->no_extractor + n];
 
 		if (k->access & SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK) {
@@ -1722,6 +1725,10 @@ static int skl_cache_probe_param(struct snd_kcontrol *kctl,
 				break;
 			}
 		}
+
+		if (index < 0)
+			return -EINVAL;
+
 		pr_debug("Setting extractor probe index %d\n", index);
 		memcpy(&ap->node_id, &node_id, sizeof(u32));
 		pconfig->eprobe[index].id = ap->params;
@@ -1740,6 +1747,10 @@ static int skl_cache_probe_param(struct snd_kcontrol *kctl,
 				break;
 			}
 		}
+
+		if (index < 0)
+			return -EINVAL;
+
 		pconfig->iprobe[index].id = ap->params;
 		node_id.node.dma_type = SKL_DMA_HDA_HOST_OUTPUT_CLASS;
 		node_id.node.vindex = pconfig->iprobe[index].dma_id;
@@ -1766,6 +1777,7 @@ static int skl_tplg_tlv_probe_set(struct snd_kcontrol *kcontrol,
 	struct probe_pt_param connect_point;
 	int disconnect_point;
 	void *offset;
+	int ret;
 
 	dev_dbg(dapm->dev, "in %s control=%s\n", __func__, kcontrol->id.name);
 	dev_dbg(dapm->dev, "size = %u, %#x\n", size, size);
@@ -1790,7 +1802,9 @@ static int skl_tplg_tlv_probe_set(struct snd_kcontrol *kcontrol,
 		dev_dbg(dapm->dev, "connect state = %d, extract_inject = %d, params = %d \n",
 						ap->is_connect, ap->is_ext_inj, ap->params);
 
-		skl_cache_probe_param(kcontrol, ap, skl->skl_sst);
+		ret = skl_cache_probe_param(kcontrol, ap, skl->skl_sst);
+		if (ret < 0)
+			return -EINVAL;
 
 		if (pconfig->probe_count) {
 			/* In the case of extraction, additional probe points can be set when

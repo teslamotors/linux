@@ -68,6 +68,9 @@ int skl_probe_compr_open(struct snd_compr_stream *substream,
 		pconfig->estream = hdac_ext_host_stream_compr_assign(ebus,
 								substream,
 							SND_COMPRESS_CAPTURE);
+		if (!pconfig->estream)
+			return -EINVAL;
+
 		pconfig->edma_id = hdac_stream(pconfig->estream)->stream_tag - 1;
 	}
 
@@ -146,7 +149,10 @@ int skl_probe_compr_set_params(struct snd_compr_stream *substream,
 	if (substream->direction == SND_COMPRESS_PLAYBACK)
 		skl_tplg_attach_probe_dma(pconfig->w, skl->skl_sst, dai);
 
-	skl_tplg_set_probe_params(pconfig->w, skl->skl_sst, substream->direction, dai);
+	ret = skl_tplg_set_probe_params(pconfig->w, skl->skl_sst, substream->direction, dai);
+	if (ret < 0)
+		return -EINVAL;
+
 	pconfig->probe_count++;
 
 #if USE_SPIB
