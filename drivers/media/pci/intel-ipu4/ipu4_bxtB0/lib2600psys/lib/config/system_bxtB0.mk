@@ -13,3 +13,4 @@ ISP_CELL			= isp2601
 ISP_CELL_IDENTIFIER		= ISP2601
 HAS_IPFD			= 1
 DLI_SYSTEM			= hive_isp_css_2600_system
+USE_REG_DUMP			= 1
