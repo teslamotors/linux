@@ -392,32 +392,32 @@
 #endif /* Platform */
 
 #if defined(IA_CSS_TRACE_PLATFORM_CELL)
-	#include <hive/attributes.h> /* VOLATILE */
+	#include <hive/attributes.h> /* SYNC */
 
 	#ifdef IA_CSS_TRACE_PRINT_FILE_LINE
 		#define IA_CSS_TRACE_FILE_PRINT_COMMAND \
 			do { \
-				OP___printstring(__FILE__":") VOLATILE; \
-				OP___printdec(__LINE__) VOLATILE; \
-				OP___printstring("\n") VOLATILE; \
+				OP___printstring(__FILE__":") SYNC(debug); \
+				OP___printdec(__LINE__) SYNC(debug); \
+				OP___printstring("\n") SYNC(debug); \
 			while (0)
 	#else
 		#define IA_CSS_TRACE_FILE_PRINT_COMMAND
 	#endif
 
 	#define IA_CSS_TRACE_MODULE_SEVERITY_PRINT(module, severity) \
-		OP___printstring("["module"]:["severity"]:") VOLATILE;
+		OP___printstring("["module"]:["severity"]:") SYNC(debug);
 
 	#define IA_CSS_TRACE_MSG_NATIVE(severity, module, format) \
 		do { \
 			IA_CSS_TRACE_FILE_PRINT_COMMAND; \
-			OP___printstring("["module"]:["severity"]: "format) VOLATILE; \
+			OP___printstring("["module"]:["severity"]: "format) SYNC(debug); \
 		} while (0)
 
 	#define IA_CSS_TRACE_ARG_NATIVE(module, severity, i, value) \
 		do { \
 			IA_CSS_TRACE_MODULE_SEVERITY_PRINT(module, severity); \
-			OP___dump(i, value) VOLATILE; \
+			OP___dump(i, value) SYNC(debug); \
 		} while (0)
 
 	#define IA_CSS_TRACE_NATIVE_0(severity, module, format) \
