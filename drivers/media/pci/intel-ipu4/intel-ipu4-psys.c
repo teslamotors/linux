@@ -1676,12 +1676,11 @@ static int psys_runtime_pm_resume(struct device *dev)
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
 	struct ia_css_syscom_config *syscom_config = psys ?
 						psys->syscom_config : NULL;
-	void *syscom_buffer = psys ? psys->syscom_buffer : NULL;
 	unsigned long flags;
 	int retry = INTEL_IPU4_PSYS_OPEN_RETRY;
 	bool opened;
 
-	if (!psys || !syscom_buffer) {
+	if (!psys) {
 		WARN(1, "%s called before probing. skipping.\n", __func__);
 		return 0;
 	}
@@ -1702,7 +1701,7 @@ static int psys_runtime_pm_resume(struct device *dev)
 				 psys->pdata->base, psys->pkg_dir,
 				 psys->pkg_dir_dma_addr);
 
-	psys->dev_ctx = ia_css_psys_open(syscom_buffer, syscom_config);
+	psys->dev_ctx = ia_css_psys_open(NULL, syscom_config);
 	if (!psys->dev_ctx) {
 		dev_err(&psys->adev->dev, "psys library open failed\n");
 		return -ENODEV;
@@ -2014,19 +2013,11 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 
 	psys->pdata = adev->pdata;
 
-	psys->syscom_buffer = kzalloc(ia_css_sizeof_psys(NULL), GFP_KERNEL);
-	if (!psys->syscom_buffer) {
-		dev_err(&psys->dev,
-			"psys unable to alloc syscom buffer\n");
-		rval = -ENOMEM;
-		goto out_mutex_destroy;
-	}
-
 	rval = intel_ipu4_psys_resource_pool_init(&psys->resource_pool_started);
 	if (rval < 0) {
 		dev_err(&psys->dev,
 			"unable to alloc process group resources\n");
-		goto out_syscom_buffer_free;
+		goto out_mutex_destroy;
 	}
 
 	rval = intel_ipu4_psys_resource_pool_init(&psys->resource_pool_running);
@@ -2186,8 +2177,6 @@ out_resources_running_free:
 	intel_ipu4_psys_resource_pool_cleanup(&psys->resource_pool_running);
 out_resources_started_free:
 	intel_ipu4_psys_resource_pool_cleanup(&psys->resource_pool_started);
-out_syscom_buffer_free:
-	kfree(psys->syscom_buffer);
 out_mutex_destroy:
 	mutex_destroy(&psys->mutex);
 	cdev_del(&psys->cdev);
@@ -2239,8 +2228,6 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 
 	intel_ipu4_psys_resource_pool_cleanup(&psys->resource_pool_started);
 	intel_ipu4_psys_resource_pool_cleanup(&psys->resource_pool_running);
-
-	kfree(psys->syscom_buffer);
 
 	device_unregister(&psys->dev);
 

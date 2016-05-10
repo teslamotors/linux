@@ -48,7 +48,6 @@ struct intel_ipu4_psys {
 	struct list_head started_kcmds_list;
 	struct intel_ipu4_psys_pdata *pdata;
 	struct intel_ipu4_bus_device *adev;
-	void *syscom_buffer;
 	struct ia_css_syscom_context *dev_ctx;
 	struct ia_css_syscom_config *syscom_config;
 	struct ia_css_psys_server_init *server_init;
