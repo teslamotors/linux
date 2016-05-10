@@ -55,9 +55,6 @@
 #define INTEL_IPU4_BUTTRESS_TSC_RETRY	10
 
 #define BUTTRESS_PS_FREQ_STEP		25U
-#define BUTTRESS_MIN_PS_FREQ		(BUTTRESS_PS_FREQ_STEP *	\
-					 PS_FREQ_CTL_DEFAULT_RATIO_B0)
-#define BUTTRESS_MAX_PS_FREQ		600U
 #define BUTTRESS_MIN_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 8)
 #define BUTTRESS_MAX_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 32)
 
@@ -635,14 +632,15 @@ void intel_ipu4_buttress_add_psys_constraint(
 	struct intel_ipu4_device *isp,
 	struct intel_ipu4_buttress_constraint *constraint)
 {
-	mutex_lock(&isp->buttress.cons_mutex);
-	list_add(&constraint->list, &isp->buttress.constraints);
+	struct intel_ipu4_buttress *b = &isp->buttress;
 
-	if (constraint->min_freq > isp->buttress.psys_min_freq) {
+	mutex_lock(&b->cons_mutex);
+	list_add(&constraint->list, &b->constraints);
+
+	if (constraint->min_freq > b->psys_min_freq) {
 		isp->buttress.psys_min_freq = min(constraint->min_freq,
-						  BUTTRESS_MAX_PS_FREQ);
-		intel_ipu4_buttress_set_psys_freq(isp,
-						  isp->buttress.psys_min_freq);
+						  b->psys_fused_freqs.max_freq);
+		intel_ipu4_buttress_set_psys_freq(isp, b->psys_min_freq);
 	}
 	mutex_unlock(&isp->buttress.cons_mutex);
 }
@@ -652,23 +650,24 @@ void intel_ipu4_buttress_remove_psys_constraint(
 	struct intel_ipu4_device *isp,
 	struct intel_ipu4_buttress_constraint *constraint)
 {
+	struct intel_ipu4_buttress *b = &isp->buttress;
 	struct intel_ipu4_buttress_constraint *c;
 	unsigned int min_freq = 0;
 
-	mutex_lock(&isp->buttress.cons_mutex);
+	mutex_lock(&b->cons_mutex);
 	list_del(&constraint->list);
 
-	if (constraint->min_freq >= isp->buttress.psys_min_freq) {
-		list_for_each_entry(c, &isp->buttress.constraints, list)
+	if (constraint->min_freq >= b->psys_min_freq) {
+		list_for_each_entry(c, &b->constraints, list)
 			if (c->min_freq > min_freq)
 				min_freq = c->min_freq;
-		isp->buttress.psys_min_freq =
-			clamp(min_freq, BUTTRESS_MIN_PS_FREQ,
-			      BUTTRESS_MAX_PS_FREQ);
+		b->psys_min_freq =
+			clamp(min_freq, b->psys_fused_freqs.efficient_freq,
+			      b->psys_fused_freqs.max_freq);
 		intel_ipu4_buttress_set_psys_freq(
-			isp, isp->buttress.psys_min_freq);
+			isp, b->psys_min_freq);
 	}
-	mutex_unlock(&isp->buttress.cons_mutex);
+	mutex_unlock(&b->cons_mutex);
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_buttress_remove_psys_constraint);
 
@@ -1233,6 +1232,31 @@ static struct clk_init_data intel_ipu4_buttress_sensor_pll_data_b0[] = {
 	},
 };
 
+static void intel_ipu4_buttress_read_psys_fused_freqs(
+	struct intel_ipu4_device *isp)
+{
+	struct intel_ipu4_buttress_fused_freqs *fused_freq =
+		&isp->buttress.psys_fused_freqs;
+	u32 reg_val, max_ratio, min_ratio, efficient_ratio;
+
+	reg_val = readl(isp->base + BUTTRESS_REG_PS_FREQ_CAPABILITIES);
+
+	min_ratio = (reg_val &
+		     BUTTRESS_PS_FREQ_CAPABILITIES_MIN_RATIO_MASK) >>
+		BUTTRESS_PS_FREQ_CAPABILITIES_MIN_RATIO_SHIFT;
+	max_ratio = (reg_val &
+		     BUTTRESS_PS_FREQ_CAPABILITIES_MAX_RATIO_MASK) >>
+		BUTTRESS_PS_FREQ_CAPABILITIES_MAX_RATIO_SHIFT;
+	efficient_ratio =
+		(reg_val &
+		 BUTTRESS_PS_FREQ_CAPABILITIES_EFFICIENT_RATIO_MASK) >>
+		BUTTRESS_PS_FREQ_CAPABILITIES_EFFICIENT_RATIO_SHIFT;
+
+	fused_freq->min_freq = min_ratio * BUTTRESS_PS_FREQ_STEP;
+	fused_freq->max_freq = max_ratio * BUTTRESS_PS_FREQ_STEP;
+	fused_freq->efficient_freq = efficient_ratio * BUTTRESS_PS_FREQ_STEP;
+}
+
 static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
@@ -1245,7 +1269,8 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 	int i, rval;
 	unsigned int num_plls;
 
-	isp->buttress.psys_min_freq = BUTTRESS_MIN_PS_FREQ;
+	intel_ipu4_buttress_read_psys_fused_freqs(isp);
+	isp->buttress.psys_min_freq = b->psys_fused_freqs.efficient_freq;
 
 	clk_data_parent = is_intel_ipu4_hw_bxt_a0(isp) ?
 		intel_ipu4_buttress_sensor_pll_data_a0 :

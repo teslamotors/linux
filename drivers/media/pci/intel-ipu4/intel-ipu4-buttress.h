@@ -37,6 +37,12 @@ struct intel_ipu4_buttress_ctrl {
 	bool started;
 };
 
+struct intel_ipu4_buttress_fused_freqs {
+	unsigned int min_freq;
+	unsigned int max_freq;
+	unsigned int efficient_freq;
+};
+
 struct intel_ipu4_buttress {
 	struct mutex power_mutex, auth_mutex, cons_mutex;
 	spinlock_t tsc_lock;
@@ -45,6 +51,7 @@ struct intel_ipu4_buttress {
 	struct completion cse_ipc_complete;
 	struct completion ish_ipc_complete;
 	struct list_head constraints;
+	struct intel_ipu4_buttress_fused_freqs psys_fused_freqs;
 	unsigned int psys_min_freq;
 	u8 psys_force_ratio;
 	bool force_suspend;
