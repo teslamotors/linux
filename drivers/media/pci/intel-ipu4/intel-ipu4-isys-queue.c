@@ -31,7 +31,7 @@
 #include "isysapi/interface/ia_css_isysapi.h"
 
 static int queue_setup(struct vb2_queue *q,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 		       const struct v4l2_format *__fmt,
 #endif
 		       unsigned int *num_buffers, unsigned int *num_planes,
