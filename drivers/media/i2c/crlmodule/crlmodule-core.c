@@ -2330,10 +2330,10 @@ static int __crlmodule_powerup_sequence(struct crl_sensor *sensor)
 			rval = -ENODEV;
 			goto error;
 			break;
-	}
+		}
 
-	if (entity->delay)
-		usleep_range(entity->delay, entity->delay + 10);
+		if (entity->delay)
+			usleep_range(entity->delay, entity->delay + 10);
 	}
 	return 0;
 error:
