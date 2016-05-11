@@ -21,6 +21,8 @@
 #include "ia_css_cell_program_load_prog.h"
 #include "ia_css_cell_program_struct.h"
 
+
+
 IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
 int
 ia_css_cell_program_load(
@@ -32,17 +34,28 @@ ia_css_cell_program_load(
 	struct ia_css_cell_program_s prog;
 	int status;
 
-	status = ia_css_cell_program_load_header(mmid, host_addr, &prog);
+	status = ia_css_cell_program_load_prog(ssid, mmid, host_addr, vied_addr, &prog);
+
+	return status;
+}
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+int
+ia_css_cell_program_load_multi_entry(
+	unsigned int ssid,
+	unsigned int mmid,
+	ia_css_xmem_address_t host_addr,
+	unsigned int vied_addr,
+	struct ia_css_cell_program_entry_func_info_s *entry_info)
+{
+	struct ia_css_cell_program_s prog;
+	int status;
+
+	status = ia_css_cell_program_load_prog(ssid, mmid, host_addr, vied_addr, &prog);
 	if (status)
 		return status;
 
-	status = ia_css_cell_program_load_icache_prog(ssid, mmid, host_addr, vied_addr, &prog);
-	if (status)
-		return status;
-
-	status = ia_css_cell_program_load_mem_prog(ssid, mmid, host_addr, vied_addr, &prog);
-	if (status)
-		return status;
+	ia_css_cell_program_load_encode_entry_info(entry_info, &prog);
 
 	return status;
 }
@@ -83,6 +96,39 @@ ia_css_cell_program_load_mem(
 
 	status = ia_css_cell_program_load_mem_prog(ssid, mmid, host_addr, vied_addr, &prog);
 	return status;
+}
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+void
+ia_css_cell_program_load_set_init_start_pc(
+	unsigned int ssid,
+	const struct ia_css_cell_program_entry_func_info_s *entry_info)
+{
+	assert(entry_info != NULL);
+
+	ia_css_cell_program_load_set_start_pc(ssid, entry_info, IA_CSS_CELL_PROGRAM_INIT_FUNC_ID);
+}
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+void
+ia_css_cell_program_load_set_exec_start_pc(
+	unsigned int ssid,
+	const struct ia_css_cell_program_entry_func_info_s *entry_info)
+{
+	assert(entry_info != NULL);
+
+	ia_css_cell_program_load_set_start_pc(ssid, entry_info, IA_CSS_CELL_PROGRAM_EXEC_FUNC_ID);
+}
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+void
+ia_css_cell_program_load_set_done_start_pc(
+	unsigned int ssid,
+	const struct ia_css_cell_program_entry_func_info_s *entry_info)
+{
+	assert(entry_info != NULL);
+
+	ia_css_cell_program_load_set_start_pc(ssid, entry_info, IA_CSS_CELL_PROGRAM_DONE_FUNC_ID);
 }
 
 #endif /* _IA_CSS_CELL_PROGRAM_LOAD_IMPL_H_ */

@@ -20,6 +20,32 @@
 
 IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
 int
+ia_css_cell_program_load_prog(
+	unsigned int ssid,
+	unsigned int mmid,
+	ia_css_xmem_address_t host_addr,
+	unsigned int vied_addr,
+	struct ia_css_cell_program_s *prog)
+{
+	int status;
+
+	status = ia_css_cell_program_load_header(mmid, host_addr, prog);
+	if (status)
+		return status;
+
+	status = ia_css_cell_program_load_icache_prog(ssid, mmid, host_addr, vied_addr, prog);
+	if (status)
+		return status;
+
+	status = ia_css_cell_program_load_mem_prog(ssid, mmid, host_addr, vied_addr, prog);
+	if (status)
+		return status;
+
+	return status;
+}
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+int
 ia_css_cell_program_load_header(
 	unsigned int mmid,
 	ia_css_xmem_address_t host_addr,

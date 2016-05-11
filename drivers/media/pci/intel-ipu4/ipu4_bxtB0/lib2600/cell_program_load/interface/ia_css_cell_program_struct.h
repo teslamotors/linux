@@ -18,13 +18,38 @@
 #define IA_CSS_CELL_ID_UNDEFINED		0xFFFFFFFF
 #define IA_CSS_CELL_PROGRAM_MAGIC_NUMBER	0xF1A30002
 
+#define CSIM_PROGRAM_NAME_SIZE 32
+
+enum ia_css_cell_program_entry_func_id {
+	IA_CSS_CELL_PROGRAM_INIT_FUNC_ID,
+	IA_CSS_CELL_PROGRAM_EXEC_FUNC_ID,
+	IA_CSS_CELL_PROGRAM_DONE_FUNC_ID,
+	IA_CSS_CELL_PROGRAM_NUM_FUNC_ID,
+};
+
+struct ia_css_cell_program_entry_func_info_s {
+	unsigned int start[IA_CSS_CELL_PROGRAM_NUM_FUNC_ID];	/* start PC value of program entry functions */
+
+#if defined(C_RUN) || defined(HRT_UNSCHED) || defined(HRT_SCHED)
+	char func_name[IA_CSS_CELL_PROGRAM_NUM_FUNC_ID][CSIM_PROGRAM_NAME_SIZE];	/* entry function names */
+	unsigned int cell_id;		/* for crun use only */
+#endif
+	unsigned int regs_addr;		/* base address for cell's registers */
+
+};
+
 struct ia_css_cell_program_s {
 	unsigned int magic_number;      /* must be equal to IA_CSS_CELL_PROGRAM_MAGIC_NUMBER */
 
 	unsigned int blob_offset;	/* offset of blob relative to start of this struct */
 	unsigned int blob_size;		/* size of the blob, not used */
 
-	unsigned int start;		/* start PC value */
+	unsigned int start[IA_CSS_CELL_PROGRAM_NUM_FUNC_ID];	/* start PC value of program entry functions */
+
+#if defined(C_RUN) || defined(HRT_UNSCHED) || defined(HRT_SCHED)
+	char prog_name[CSIM_PROGRAM_NAME_SIZE];		/* program name */
+	char func_name[IA_CSS_CELL_PROGRAM_NUM_FUNC_ID][CSIM_PROGRAM_NAME_SIZE];	/* entry function names */
+#endif
 
 	unsigned int icache_source;	/* offset of icache section in blob */
 	unsigned int icache_target;	/* offset in the instruction space, not used */

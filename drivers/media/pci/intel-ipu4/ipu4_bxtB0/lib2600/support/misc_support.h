@@ -55,6 +55,7 @@
 	#define HIVE_METHOD "sched"
 #else
 	#define HIVE_METHOD "target"
+	#define HRT_TARGET 1
 #endif
 
 #endif /* __MISC_SUPPORT_H_INCLUDED__ */
