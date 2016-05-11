@@ -80,8 +80,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 	 * In B0 MIPI_GEN block is CSI2 FB. Need to enable/disable TPG selection
 	 * register to control the TPG streaming.
 	 */
-	if (is_intel_ipu4_hw_bxt_b0(tpg->isys->adev->isp))
-		writel(enable ? 1 : 0, tpg->sel);
+	writel(enable ? 1 : 0, tpg->sel);
 
 	if (!enable) {
 		writel(0, tpg->base + MIPI_GEN_REG_COM_ENABLE);

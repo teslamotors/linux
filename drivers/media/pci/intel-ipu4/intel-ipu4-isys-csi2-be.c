@@ -332,9 +332,7 @@ int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
 
 	csi2_be->av.isys = isys;
 
-	if (is_intel_ipu4_hw_bxt_a0(isys->adev->isp))
-		csi2_be->av.pfmts = intel_ipu4_isys_pfmts_a0;
-	else if (type == INTEL_IPU4_BE_RAW)
+	if (type == INTEL_IPU4_BE_RAW)
 		csi2_be->av.pfmts = intel_ipu4_isys_pfmts_b0;
 	else
 		csi2_be->av.pfmts = intel_ipu4_isys_pfmts_b0_be_soc;

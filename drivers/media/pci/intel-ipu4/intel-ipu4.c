@@ -226,19 +226,6 @@ static int force_suspend_set(void *data, u64 val)
 
 DEFINE_SIMPLE_ATTRIBUTE(force_suspend_fops, force_suspend_get,
 			force_suspend_set, "%llu\n");
-
-static int isys_fw_reload(void *data, u64 val)
-{
-	struct intel_ipu4_device *isp = data;
-	int rval = -EINVAL;
-
-	if (isp->isys_fw_reload)
-		rval = isp->isys_fw_reload(isp);
-
-	return rval;
-}
-DEFINE_SIMPLE_ATTRIBUTE(isys_fw_fops, NULL, isys_fw_reload, "%llu\n");
-
 /*
  * The sysfs interface for reloading cpd fw is there only for debug purpose,
  * and it must not be used when either isys or psys is in use.
@@ -274,11 +261,6 @@ static int intel_ipu4_init_debugfs(struct intel_ipu4_device *isp)
 		goto err;
 	file = debugfs_create_file("authenticate", S_IRWXU, dir, isp,
 				   &authenticate_fops);
-	if (!file)
-		goto err;
-
-	file = debugfs_create_file("isys_fw_reload", S_IRWXU, dir, isp,
-				   &isys_fw_fops);
 	if (!file)
 		goto err;
 
@@ -333,9 +315,6 @@ void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
 {
 	u32 val;
 
-	if (is_intel_ipu4_hw_bxt_a0(isp))
-		return;
-
 	val = readl(base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
 	val |= INTEL_IPU4_PSYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
 	writel(val, base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
@@ -387,50 +366,6 @@ void intel_ipu4_configure_vc_mechanism(struct intel_ipu4_device *isp)
 	writel(val, isp->base + BUTTRESS_REG_BTRS_CTRL);
 }
 
-static const struct intel_ipu4_isys_internal_pdata isys_ipdata_a0 = {
-	.csi2 = {
-		.nports = INTEL_IPU4_ISYS_MAX_CSI2_PORTS,
-		.offsets = { 0x64000, 0x65000, 0x66000, 0x67000, 0x6C000, 0x6C800},
-	},
-	.tpg = {
-		.ntpgs = 2,
-		.offsets = { INTEL_IPU4_BXT_A0_TPG0_ADDR_OFFSET,
-			     INTEL_IPU4_BXT_A0_TPG1_ADDR_OFFSET },
-		.sels = { INTEL_IPU4_BXT_GPOFFSET +
-			  INTEL_IPU4_GPREG_MIPI_PKT_GEN0_SEL,
-			  INTEL_IPU4_BXT_COMBO_GPOFFSET +
-			  INTEL_IPU4_GPREG_MIPI_PKT_GEN1_SEL },
-	},
-	.csi2_be = {
-		.nbes = 1,
-	},
-	.hw_variant = {
-		.offset = INTEL_IPU4_BXT_A0_ISYS_OFFSET,
-		.nr_mmus = 2,
-		.mmu_hw = {
-			{
-			 .offset = INTEL_IPU4_BXT_A0_ISYS_IOMMU0_OFFSET,
-			 .info_bits =
-				   INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
-			 .nr_l1streams = 0,
-			 .nr_l2streams = 0,
-			 .insert_read_before_invalidate = true,
-			},
-			{
-			 .offset = INTEL_IPU4_BXT_A0_ISYS_IOMMU1_OFFSET,
-			 .info_bits =
-				   INTEL_IPU4_INFO_REQUEST_DESTINATION_BUT_REGS,
-			 .nr_l1streams = 0,
-			 .nr_l2streams = 0,
-			 .insert_read_before_invalidate = true,
-			},
-		},
-		.fw_filename = INTEL_IPU4_ISYS_FIRMWARE_A0,
-	},
-	.num_parallel_streams = INTEL_IPU4_ISYS_NUM_STREAMS_A0,
-	.isys_dma_overshoot =  INTEL_IPU4_ISYS_OVERALLOC_MIN,
-};
-
 static const struct intel_ipu4_isys_internal_pdata isys_ipdata_b0 = {
 	.csi2 = {
 		.nports = INTEL_IPU4_ISYS_MAX_CSI2_PORTS,
@@ -481,32 +416,6 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_b0 = {
 	},
 	.num_parallel_streams = INTEL_IPU4_ISYS_NUM_STREAMS_B0,
 	.isys_dma_overshoot =  INTEL_IPU4_ISYS_OVERALLOC_MIN,
-};
-
-static const struct intel_ipu4_psys_internal_pdata psys_ipdata_a0 = {
-	.hw_variant = {
-		.offset = INTEL_IPU4_BXT_A0_PSYS_OFFSET,
-		.nr_mmus = 2,
-		.mmu_hw = {
-			{
-			 .offset = INTEL_IPU4_BXT_A0_PSYS_IOMMU0_OFFSET,
-			 .info_bits =
-				 INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
-			 .nr_l1streams = 0,
-			 .nr_l2streams = 0,
-			 .insert_read_before_invalidate = true,
-			},
-			{
-			 .offset = INTEL_IPU4_BXT_A0_PSYS_IOMMU1_OFFSET,
-			 .info_bits =
-				  INTEL_IPU4_INFO_REQUEST_DESTINATION_BUT_REGS,
-			 .nr_l1streams = 0,
-			 .nr_l2streams = 0,
-			 .insert_read_before_invalidate = true,
-			},
-		},
-		.fw_filename = INTEL_IPU4_PSYS_FIRMWARE_A0,
-	},
 };
 
 static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
@@ -563,15 +472,6 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
  * detect if power on/off is ready. Using IS_PWR_FSM and PS_PWR_FSM
  * fields instead.
  */
-static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_a0 = {
-	.divisor = IS_FREQ_CTL_DIVISOR_A0,
-	.qos_floor = 0,
-	.freq_ctl = BUTTRESS_REG_IS_FREQ_CTL,
-	.pwr_sts_shift = BUTTRESS_PWR_STATE_IS_PWR_SHIFT,
-	.pwr_sts_mask = BUTTRESS_PWR_STATE_IS_PWR_MASK,
-	.pwr_sts_on = BUTTRESS_PWR_STATE_PWR_RDY,
-	.pwr_sts_off = BUTTRESS_PWR_STATE_PWR_IDLE,
-};
 
 static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_b0 = {
 	.divisor = IS_FREQ_CTL_DIVISOR_B0,
@@ -587,15 +487,6 @@ static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_b0 = {
  * This is meant only as reference for initialising the buttress control,
  * because the different HW stepping can have different initial values
  */
-static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_a0 = {
-	.divisor = PS_FREQ_CTL_DEFAULT_RATIO_A0,
-	.qos_floor = PS_FREQ_CTL_DEFAULT_RATIO_A0,
-	.freq_ctl = BUTTRESS_REG_PS_FREQ_CTL,
-	.pwr_sts_shift = BUTTRESS_PWR_STATE_PS_PWR_SHIFT,
-	.pwr_sts_mask = BUTTRESS_PWR_STATE_PS_PWR_MASK,
-	.pwr_sts_on = BUTTRESS_PWR_STATE_PWR_RDY,
-	.pwr_sts_off = BUTTRESS_PWR_STATE_PWR_IDLE,
-};
 
 static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_b0 = {
 	.divisor = PS_FREQ_CTL_DEFAULT_RATIO_B0,
@@ -671,13 +562,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 
 	pci_set_master(pdev);
 
-	if (is_intel_ipu4_hw_bxt_a0(isp)) {
-		isys_ipdata = &isys_ipdata_a0;
-		psys_ipdata = &psys_ipdata_a0;
-		isys_buttress_ctrl = &isys_buttress_ctrl_a0;
-		psys_buttress_ctrl = &psys_buttress_ctrl_a0;
-		cpd_filename = INTEL_IPU4_CPD_FIRMWARE_A0;
-	} else if (is_intel_ipu4_hw_bxt_b0(isp)) {
+	if (is_intel_ipu4_hw_bxt_b0(isp)) {
 		isys_ipdata = &isys_ipdata_b0;
 		psys_ipdata = &psys_ipdata_b0;
 		isys_buttress_ctrl = &isys_buttress_ctrl_b0;
@@ -694,10 +579,6 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 
 	isys_base = isp->base + isys_ipdata->hw_variant.offset;
 	psys_base = isp->base + psys_ipdata->hw_variant.offset;
-
-#ifdef IPU_STEP_BXTA0
-	dev_info(&pdev->dev, "CSS library release: %s\n", IA_CSS_FW_RELEASE);
-#endif
 
 	rval = pci_set_dma_mask(pdev, DMA_BIT_MASK(dma_mask));
 	if (!rval)
@@ -835,8 +716,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	}
 
 	/* Configure the arbitration mechanisms for VC requests */
-	if (is_intel_ipu4_hw_bxt_b0(isp))
-		intel_ipu4_configure_vc_mechanism(isp);
+	intel_ipu4_configure_vc_mechanism(isp);
 
 	pm_runtime_put_noidle(&pdev->dev);
 	pm_runtime_allow(&pdev->dev);
@@ -889,8 +769,7 @@ static int intel_ipu4_resume(struct device *dev)
 	struct intel_ipu4_device *isp = pci_get_drvdata(pdev);
 
 	/* Configure the arbitration mechanisms for VC requests */
-	if (is_intel_ipu4_hw_bxt_b0(isp))
-		intel_ipu4_configure_vc_mechanism(isp);
+	intel_ipu4_configure_vc_mechanism(isp);
 
 	intel_ipu4_buttress_set_secure_mode(isp);
 	isp->secure_mode = intel_ipu4_buttress_get_secure_mode(isp);
@@ -920,13 +799,8 @@ static const struct pci_device_id intel_ipu4_pci_tbl[] = {
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_A0)},
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
 #else
-#ifdef IPU_STEP_BXTA0
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_A0_OLD)},
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_A0)},
-#else
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_P_A0)},
-#endif
 #endif
 	{0,}
 };

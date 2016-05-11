@@ -41,32 +41,6 @@
 #include "isysapi/interface/ia_css_isysapi.h"
 
 /* Trace block definitions for isys */
-static struct intel_ipu4_trace_block isys_trace_blocks_a0[] = {
-	{
-		.offset = TRACE_REG_IS_TRACE_UNIT_BASE,
-		.type = INTEL_IPU4_TRACE_BLOCK_TUN,
-	},
-	{
-		.offset = TRACE_REG_IS_SP_EVQ_BASE,
-		.type = INTEL_IPU4_TRACE_BLOCK_TM,
-	},
-	{
-		.offset = TRACE_REG_IS_SP_GPC_BASE,
-		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
-	},
-	{
-		.offset = TRACE_REG_IS_ISL_GPC_BASE,
-		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
-	},
-	{
-		.offset = TRACE_REG_IS_MMU_GPC_BASE,
-		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
-	},
-	{
-		.type = INTEL_IPU4_TRACE_BLOCK_END,
-	}
-};
-
 static struct intel_ipu4_trace_block isys_trace_blocks[] = {
 	{
 		.offset = TRACE_REG_IS_TRACE_UNIT_BASE,
@@ -697,11 +671,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		if (rval)
 			goto fail;
 
-		if (is_intel_ipu4_hw_bxt_a0(isys->adev->isp))
-			isys->isr_csi2_bits |=
-				INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(i);
-		if (is_intel_ipu4_hw_bxt_b0(isys->adev->isp))
-			isys->isr_csi2_bits |=
+		isys->isr_csi2_bits |=
 				INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i);
 	}
 
@@ -874,20 +844,12 @@ static void isys_setup_hw(struct intel_ipu4_isys *isys)
 	unsigned int i;
 
 	/* Enable irqs for all MIPI busses */
-
-	if (is_intel_ipu4_hw_bxt_a0(isys->adev->isp)) {
-		irqs = INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(0) |
-		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(1) |
-		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(2) |
-		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(3);
-	} else {
-		irqs = INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(0) |
-		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(1) |
-		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(2) |
-		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(3) |
-		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(4) |
-		       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(5);
-	}
+	irqs = INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(0) |
+	       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(1) |
+	       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(2) |
+	       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(3) |
+	       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(4) |
+	       INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(5);
 
 	irqs |= INTEL_IPU4_ISYS_UNISPART_IRQ_SW;
 
@@ -985,60 +947,6 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 	mutex_destroy(&isys->mutex);
 }
 
-static int isys_fw_reload(struct intel_ipu4_device *isp)
-{
-	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(isp->isys);
-	int rval;
-
-	if (!is_intel_ipu4_hw_bxt_a0(isys->adev->isp))
-		return -EINVAL;
-
-	if (isys->fw) {
-		dev_info(&isp->pdev->dev, "Remove old isys FW\n");
-
-		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_MMID, (void *) isys->fw->data);
-
-		intel_ipu4_buttress_unmap_fw_image(isp->isys, &isys->fw_sgt);
-
-		release_firmware(isys->fw);
-		isys->fw  = NULL;
-		dev_info(&isp->pdev->dev, "Old FW removed\n");
-	}
-
-	dev_info(&isp->pdev->dev, "Request new isys FW\n");
-	rval = request_firmware(&isys->fw,
-				isys->pdata->ipdata->hw_variant.fw_filename,
-				&isp->isys->dev);
-	if (rval < 0) {
-		dev_err(&isp->pdev->dev, "ERROR: isys FW not found\n");
-		return -EINVAL;
-	}
-
-	dev_info(&isp->pdev->dev, "Map new isys FW\n");
-	rval = intel_ipu4_buttress_map_fw_image(isp->isys,
-						isys->fw,
-						&isys->fw_sgt);
-
-	if (rval) {
-		dev_err(&isp->pdev->dev, "Mapping of new isys FW failed\n");
-		return -EINVAL;
-	}
-
-	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-		ISYS_MMID, (void *)isys->fw->data,
-		sg_dma_address(isys->fw_sgt.sgl),
-		isys->fw->size);
-
-	if (rval) {
-		dev_err(&isp->pdev->dev, "Mapping of isys FW fails\n");
-		return -EINVAL;
-	}
-	dev_info(&isp->pdev->dev, "New isys FW loaded succesfully\n");
-
-	return 0;
-}
-
 static int isys_probe(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
@@ -1083,22 +991,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 #endif
 
 	if (!isp->secure_mode) {
-		if (is_intel_ipu4_hw_bxt_a0(isp)) {
-			dev_info(&isp->pdev->dev, "isys binary file name: %s\n",
-				 isys->pdata->ipdata->hw_variant.fw_filename);
-
-			rval = request_firmware(
-				&isys->fw,
-				isys->pdata->ipdata->hw_variant.fw_filename,
-				&adev->dev);
-			if (rval) {
-				dev_err(&adev->dev, "Requesting isys firmware failed\n");
-				goto trace_uninit;
-			}
-			fw = isys->fw;
-		} else {
-			fw = isp->cpd_fw;
-		}
+		fw = isp->cpd_fw;
 
 		rval = intel_ipu4_buttress_map_fw_image(
 			adev, fw, &isys->fw_sgt);
@@ -1112,43 +1005,39 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 		if (rval)
 			goto unmap_fw_image;
 
-		if (!is_intel_ipu4_hw_bxt_a0(isp)) {
-			isys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
-				adev, isp->cpd_fw->data,
-				sg_dma_address(isys->fw_sgt.sgl),
-				&isys->pkg_dir_dma_addr,
-				&isys->pkg_dir_size);
-			if (isys->pkg_dir == NULL)
-				goto  remove_shared_buffer;
+		isys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
+			adev, isp->cpd_fw->data,
+			sg_dma_address(isys->fw_sgt.sgl),
+			&isys->pkg_dir_dma_addr,
+			&isys->pkg_dir_size);
+		if (isys->pkg_dir == NULL)
+			goto  remove_shared_buffer;
 
-			rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-				ISYS_MMID, (void *)isys->pkg_dir,
-				isys->pkg_dir_dma_addr,
-				isys->pkg_dir_size);
-			if (rval)
-				goto out_free_pkg_dir;
-		}
+		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+			ISYS_MMID, (void *)isys->pkg_dir,
+			isys->pkg_dir_dma_addr,
+			isys->pkg_dir_size);
+		if (rval)
+			goto out_free_pkg_dir;
+
 	}
 
 	intel_ipu4_trace_init(adev->isp, isys->pdata->base, &adev->dev,
-			      is_intel_ipu4_hw_bxt_a0(adev->isp) ?
-			      isys_trace_blocks_a0 : isys_trace_blocks);
+			      isys_trace_blocks);
 
 	rval = isys_register_devices(isys);
 	if (rval)
 		goto out_remove_pkg_dir_shared_buffer;
 
-	adev->isp->isys_fw_reload = &isys_fw_reload;
-
 	trace_printk("E|TMWK\n");
 	return 0;
 
 out_remove_pkg_dir_shared_buffer:
-	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
+	if (!isp->secure_mode)
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
 			ISYS_MMID, isys->pkg_dir);
 out_free_pkg_dir:
-	if (!isp->secure_mode && !is_intel_ipu4_hw_bxt_a0(isp))
+	if (!isp->secure_mode)
 		intel_ipu4_cpd_free_pkg_dir(adev, isys->pkg_dir,
 					    isys->pkg_dir_dma_addr,
 					    isys->pkg_dir_size);
@@ -1163,7 +1052,6 @@ unmap_fw_image:
 release_firmware:
 	if (!isp->secure_mode)
 		release_firmware(isys->fw);
-trace_uninit:
 	intel_ipu4_trace_uninit(&adev->dev);
 
 	trace_printk("E|TMWK\n");
@@ -1375,12 +1263,8 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 			unsigned int i;
 
 			for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
-				if (is_intel_ipu4_hw_bxt_a0(adev->isp) &&
-				    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_A0(i))
-					intel_ipu4_isys_csi2_isr(
-						&isys->csi2[i]);
-				if (is_intel_ipu4_hw_bxt_b0(adev->isp) &&
-				    status & INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i))
+				if (status &
+				 INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i))
 					intel_ipu4_isys_csi2_isr(
 						&isys->csi2[i]);
 			}

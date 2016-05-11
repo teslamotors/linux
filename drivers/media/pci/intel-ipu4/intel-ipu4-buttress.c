@@ -517,7 +517,7 @@ out:
 	return ret;
 }
 
-#if defined(IPU_STEP_BXTA0) || is_intel_ipu4_hw_bxt_fpga()
+#if is_intel_ipu4_hw_bxt_fpga()
 static bool secure_mode_enable;
 #else
 static bool secure_mode_enable = 1;
@@ -546,19 +546,18 @@ void intel_ipu4_buttress_set_secure_mode(struct intel_ipu4_device *isp)
 	 * might not succeed at first attempt. Write twice untill the
 	 * write is successful
 	 */
-	if (is_intel_ipu4_hw_bxt_b0(isp)) {
+	writel(val, isp->base + BUTTRESS_REG_SECURITY_CTL);
+
+	while (retry--) {
+		read = readl(isp->base + BUTTRESS_REG_SECURITY_CTL);
+		if (read == val)
+			break;
+
 		writel(val, isp->base + BUTTRESS_REG_SECURITY_CTL);
 
-		while (retry--) {
-			read = readl(isp->base + BUTTRESS_REG_SECURITY_CTL);
-			if (read == val)
-				break;
-
-			writel(val, isp->base + BUTTRESS_REG_SECURITY_CTL);
-		}
-		if (retry == 0)
-			dev_err(&isp->pdev->dev,
-				"update security control register failed\n");
+	if (retry == 0)
+		dev_err(&isp->pdev->dev,
+			"update security control register failed\n");
 	}
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_buttress_set_secure_mode);
@@ -1016,6 +1015,7 @@ static int intel_ipu4_buttress_clk_pll_enable(struct clk_hw *hw)
 {
 	struct clk_intel_ipu4_sensor *ck = to_clk_intel_ipu4_sensor(hw);
 	u32 val;
+	unsigned int i;
 
 	/*
 	 * Start bit behaves like master clock request towards ICLK.
@@ -1024,21 +1024,16 @@ static int intel_ipu4_buttress_clk_pll_enable(struct clk_hw *hw)
 	 */
 	val = readl(ck->isp->base + BUTTRESS_REG_SENSOR_FREQ_CTL);
 	val |= 1 << BUTTRESS_FREQ_CTL_START_SHIFT;
+	val &= ~BUTTRESS_SENSOR_FREQ_CTL_OSC_OUT_FREQ_MASK_B0(ck->id);
+	for (i = 0; i < ARRAY_SIZE(sensor_clk_freqs); i++)
+		if (sensor_clk_freqs[i].rate == ck->rate)
+			break;
 
-	if (is_intel_ipu4_hw_bxt_b0(ck->isp)) {
-		unsigned int i;
-
-		val &= ~BUTTRESS_SENSOR_FREQ_CTL_OSC_OUT_FREQ_MASK_B0(ck->id);
-		for (i = 0; i < ARRAY_SIZE(sensor_clk_freqs); i++)
-			if (sensor_clk_freqs[i].rate == ck->rate)
-				break;
-
-		if (i < ARRAY_SIZE(sensor_clk_freqs))
-			val |= sensor_clk_freqs[i].val <<
-			    BUTTRESS_SENSOR_FREQ_CTL_OSC_OUT_FREQ_SHIFT_B0(ck->id);
-		else
-			val |= BUTTRESS_SENSOR_FREQ_CTL_OSC_OUT_FREQ_DEFAULT_B0(ck->id);
-	}
+	if (i < ARRAY_SIZE(sensor_clk_freqs))
+		val |= sensor_clk_freqs[i].val <<
+		    BUTTRESS_SENSOR_FREQ_CTL_OSC_OUT_FREQ_SHIFT_B0(ck->id);
+	else
+		val |= BUTTRESS_SENSOR_FREQ_CTL_OSC_OUT_FREQ_DEFAULT_B0(ck->id);
 
 	writel(val, ck->isp->base + BUTTRESS_REG_SENSOR_FREQ_CTL);
 
@@ -1084,13 +1079,9 @@ static void intel_ipu4_buttress_clk_disable(struct clk_hw *hw)
 static long intel_ipu4_buttress_clk_round_rate(
 	struct clk_hw *hw, unsigned long rate, unsigned long *parent_rate)
 {
-	struct clk_intel_ipu4_sensor *ck = to_clk_intel_ipu4_sensor(hw);
 	unsigned long best = ULONG_MAX;
 	unsigned long round_rate = 0;
 	int i;
-
-	if (is_intel_ipu4_hw_bxt_a0(ck->isp))
-		return 24000000;
 
 	for (i = 0; i < ARRAY_SIZE(sensor_clk_freqs); i++) {
 		long diff = sensor_clk_freqs[i].rate - rate;
@@ -1151,36 +1142,6 @@ static struct clk_ops intel_ipu4_buttress_clk_sensor_ops_parent = {
 	.set_rate = intel_ipu4_buttress_clk_set_rate,
 };
 
-static struct clk_init_data intel_ipu4_buttress_sensor_clk_data_a0[] = {
-	{
-		.name = "OSC_CLK_OUT0",
-		.ops = &intel_ipu4_buttress_clk_sensor_ops,
-		.parent_names = (const char *[]){
-			"intel_ipu4_sensor_pll"
-		},
-		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
-	},
-	{
-		.name = "OSC_CLK_OUT1",
-		.ops = &intel_ipu4_buttress_clk_sensor_ops,
-		.parent_names = (const char *[]){
-			"intel_ipu4_sensor_pll"
-		},
-		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
-	},
-	{
-		.name = "OSC_CLK_OUT2",
-		.ops = &intel_ipu4_buttress_clk_sensor_ops,
-		.parent_names = (const char *[]){
-			"OSC_CLK_OUT1"
-		},
-		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
-	},
-};
-
 static struct clk_init_data intel_ipu4_buttress_sensor_clk_data_b0[] = {
 	{
 		.name = "OSC_CLK_OUT0",
@@ -1209,13 +1170,6 @@ static struct clk_init_data intel_ipu4_buttress_sensor_clk_data_b0[] = {
 		.num_parents = 1,
 		.flags = CLK_SET_RATE_PARENT,
 	},
-};
-
-static struct clk_init_data intel_ipu4_buttress_sensor_pll_data_a0[] = {
-	{
-		.name = "intel_ipu4_sensor_pll",
-		.ops = &intel_ipu4_buttress_clk_sensor_ops_parent,
-	}
 };
 
 static struct clk_init_data intel_ipu4_buttress_sensor_pll_data_b0[] = {
@@ -1273,13 +1227,9 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 	intel_ipu4_buttress_read_psys_fused_freqs(isp);
 	isp->buttress.psys_min_freq = b->psys_fused_freqs.efficient_freq;
 
-	clk_data_parent = is_intel_ipu4_hw_bxt_a0(isp) ?
-		intel_ipu4_buttress_sensor_pll_data_a0 :
-		intel_ipu4_buttress_sensor_pll_data_b0;
+	clk_data_parent = intel_ipu4_buttress_sensor_pll_data_b0;
 
-	num_plls = is_intel_ipu4_hw_bxt_a0(isp) ?
-		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_a0) :
-		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0);
+	num_plls = ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0);
 
 	for (i = 0; i < num_plls; i++) {
 		struct clk_intel_ipu4_sensor *parent_clk =
@@ -1302,9 +1252,7 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 		}
 	}
 
-	clk_data = is_intel_ipu4_hw_bxt_a0(isp) ?
-		intel_ipu4_buttress_sensor_clk_data_a0 :
-		intel_ipu4_buttress_sensor_clk_data_b0;
+	clk_data = intel_ipu4_buttress_sensor_clk_data_b0;
 
 	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++) {
 		char buffer[16]; /* max for clk_register_clkdev */
@@ -1331,18 +1279,8 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 			rval = PTR_ERR(b->clk_sensor[i]);
 			goto err;
 		}
-
-		/*
-		 * Workaround for hsd 120947163. I.e. osc_clk1 and
-		 * osc_clk2 share en control in A0
-		 */
-
-		if ((is_intel_ipu4_hw_bxt_a0(isp)) && (i == 2))
-			rval = clk_set_parent(b->clk_sensor[i],
-					      b->clk_sensor[1]);
-		else
-			rval = clk_set_parent(b->clk_sensor[i],
-					      b->pll_sensor[parent_index]);
+		rval = clk_set_parent(b->clk_sensor[i],
+				      b->pll_sensor[parent_index]);
 		if (rval)
 			goto err;
 
@@ -1389,17 +1327,13 @@ err:
 static void intel_ipu4_buttress_clk_exit(struct intel_ipu4_device *isp)
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
-	int i, num_plls;
-
-	num_plls = is_intel_ipu4_hw_bxt_a0(isp) ?
-		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_a0) :
-		ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0);
+	int i;
 
 	/* It is safe to call clk_unregister with null pointer */
 	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++)
 		clk_unregister(b->clk_sensor[i]);
 
-	for (i = 0; i < num_plls; i++)
+	for (i = 0; i < ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0); i++)
 		clk_unregister(b->pll_sensor[i]);
 }
 
@@ -1721,18 +1655,12 @@ static DEVICE_ATTR(psys_fused_efficient_freq, S_IRUGO,
 void intel_ipu4_buttress_csi_port_config(struct intel_ipu4_device *isp,
 					 u32 legacy, u32 combo)
 {
-	int combo_shift;
 	unsigned int retry = 1000;
 	u32 value;
 
-	if (is_intel_ipu4_hw_bxt_a0(isp))
-		combo_shift = BUTTRESS_CSI2_PORT_CONFIG_AB_COMBO_SHIFT_A0;
-	else
-		combo_shift = BUTTRESS_CSI2_PORT_CONFIG_AB_COMBO_SHIFT_B0;
-
 	value = (legacy & BUTTRESS_CSI2_PORT_CONFIG_AB_MUX_MASK) |
 		((combo & BUTTRESS_CSI2_PORT_CONFIG_AB_MUX_MASK)
-		 << combo_shift);
+		 << BUTTRESS_CSI2_PORT_CONFIG_AB_COMBO_SHIFT_B0);
 
 	/*
 	 * WA for #H1804184522: write twice, read back, compare until

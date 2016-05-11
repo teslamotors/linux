@@ -26,10 +26,6 @@
 
 #define INTEL_IPU4_NAME			"intel-ipu4"
 
-#define INTEL_IPU4_ISYS_FIRMWARE_A0	"ipu4_isys_bxt_fw_a0.bin"
-#define INTEL_IPU4_CPD_FIRMWARE_A0	"ipu4_cpd_a0.bin"
-#define INTEL_IPU4_PSYS_FIRMWARE_A0	"ipu4_psys_bxt_fw_a0.bin"
-
 #define INTEL_IPU4_ISYS_FIRMWARE_B0	"ipu4_isys_bxt_fw_b0_pkg_dir.bin"
 #define INTEL_IPU4_CPD_FIRMWARE_B0	"ipu4_cpd_b0.bin"
 #define INTEL_IPU4_PSYS_FIRMWARE_B0	"ipu4_psys_bxt_fw_b0.bin"
@@ -48,8 +44,6 @@
  * S2C FPGA	B0	0x0a88		0x8e (Bug in FPGA bit files)
  *
  * BXT:
- * SOC		A0	0x0a88		0x01
- * SOC		A1	0x0a88		0x01
  * SOC		B1	0x1a88		0x07
  * SOC		C0	0x1a88		0x0c
  *
@@ -57,22 +51,17 @@
  * SOC		A0	0x5a88		??
  */
 
-#define INTEL_IPU4_HW_BXT_A0_OLD	0x4008
-#define INTEL_IPU4_HW_BXT_A0		0x0a88
 #define INTEL_IPU4_HW_BXT_B0		0x1a88
 #define INTEL_IPU4_HW_BXT_P_A0		0x5a88 /* BXTP A0 Iunit=BXT B0 Iunit */
 
 #define INTEL_IPU4_HW_BXT_C0_REV	0xc
 
 /* processing system frequency: 25Mhz x ratio, Legal values [8,32] */
-#define PS_FREQ_CTL_DEFAULT_RATIO_A0	0x8
 #define PS_FREQ_CTL_DEFAULT_RATIO_B0	0x12
 
 /* input system frequency: 1600Mhz / divisor. Legal values [2,8] */
-#define IS_FREQ_CTL_DIVISOR_A0		0x8
 #define IS_FREQ_CTL_DIVISOR_B0		0x4
 
-#define INTEL_IPU4_ISYS_NUM_STREAMS_A0		2 /* Max 2 */
 #define INTEL_IPU4_ISYS_NUM_STREAMS_B0		4 /* Max 6 */
 
 /*
@@ -125,18 +114,12 @@ struct intel_ipu4_device {
 	|| defined CONFIG_VIDEO_INTEL_IPU4_ISYS_FPGA	\
 	|| defined CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA
 
-#define is_intel_ipu4_hw_bxt_a0(isp) IS_BUILTIN(IPU_STEP_BXTA0)
 #define is_intel_ipu4_hw_bxt_b0(isp) IS_BUILTIN(IPU_STEP_BXTB0)
 #define is_intel_ipu4_hw_bxt_c0(isp) IS_BUILTIN(IPU_STEP_BXTC0)
 
 #define is_intel_ipu4_hw_bxt_fpga(isp) 1
 
 #else
-
-#define is_intel_ipu4_hw_bxt_a0(isp)				\
-	((isp)->pdev->device == INTEL_IPU4_HW_BXT_A0 ||		\
-	 (isp)->pdev->device == INTEL_IPU4_HW_BXT_A0_OLD)
-
 #define is_intel_ipu4_hw_bxt_b0(isp)		\
 	((isp)->pdev->device == INTEL_IPU4_HW_BXT_B0 ||		\
 	 (isp)->pdev->device == INTEL_IPU4_HW_BXT_P_A0)

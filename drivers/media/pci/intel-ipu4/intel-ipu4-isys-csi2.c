@@ -394,23 +394,11 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 
 	writel(CSI2_CSI_RX_ENABLE_ENABLE, csi2->base + CSI2_REG_CSI_RX_ENABLE);
 
-	if (is_intel_ipu4_hw_bxt_a0(csi2->isys->adev->isp)) {
-		/* Enable frame start (SOF) irq for virtual channel zero */
-		u32 csi2s2m = CSI2_IRQ_FS_VC(0);
-		/* Enable irqs only from S2M source */
-		csi2part = CSI2_CSI2PART_IRQ_CSI2S2M_A0 |
-			   CSI2_CSI2PART_IRQ_CSIRX_A0;
 
-		writel(csi2s2m, csi2->base + CSI2_REG_CSI2S2M_IRQ_EDGE);
-		writel(0, csi2->base + CSI2_REG_CSI2S2M_IRQ_LEVEL_NOT_PULSE);
-		writel(csi2s2m, csi2->base + CSI2_REG_CSI2S2M_IRQ_CLEAR);
-		writel(csi2s2m, csi2->base + CSI2_REG_CSI2S2M_IRQ_MASK);
-		writel(csi2s2m, csi2->base + CSI2_REG_CSI2S2M_IRQ_ENABLE);
-	} else {
-		/* SOF enabled from CSI2PART register in B0 */
-		csi2part = CSI2_IRQ_FS_VC(0) | CSI2_IRQ_FE_VC(0) |
-			   CSI2_CSI2PART_IRQ_CSIRX_B0;
-	}
+	/* SOF enabled from CSI2PART register in B0 */
+	csi2part = CSI2_IRQ_FS_VC(0) | CSI2_IRQ_FE_VC(0) |
+		   CSI2_CSI2PART_IRQ_CSIRX_B0;
+
 
 	/* Enable csi2 receiver error interrupts */
 	csi2csirx = BIT(CSI2_CSIRX_NUM_ERRORS) - 1;
@@ -814,18 +802,7 @@ void intel_ipu4_isys_csi2_isr(struct intel_ipu4_isys_csi2 *csi2)
 
 	writel(status, csi2->base + CSI2_REG_CSI2PART_IRQ_CLEAR);
 
-	if (is_intel_ipu4_hw_bxt_a0(csi2->isys->adev->isp)) {
-		if (status & CSI2_CSI2PART_IRQ_CSIRX_A0)
-			intel_ipu4_isys_register_errors(csi2);
-
-		if (!(status & CSI2_CSI2PART_IRQ_CSI2S2M_A0))
-			return;
-
-		status = readl(csi2->base + CSI2_REG_CSI2S2M_IRQ_STATUS);
-		writel(status, csi2->base + CSI2_REG_CSI2S2M_IRQ_CLEAR);
-	}
-	if ((is_intel_ipu4_hw_bxt_b0(csi2->isys->adev->isp) &&
-	    status & CSI2_CSI2PART_IRQ_CSIRX_B0))
+	if (status & CSI2_CSI2PART_IRQ_CSIRX_B0)
 		intel_ipu4_isys_register_errors(csi2);
 
 	if ((status & CSI2_IRQ_FS_VC(0)))

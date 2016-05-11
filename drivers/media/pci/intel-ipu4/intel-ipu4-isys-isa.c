@@ -935,12 +935,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " ISA capture");
 	isa->av.isys = isys;
 	isa->av.aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_RAW_NS;
-
-	if (is_intel_ipu4_hw_bxt_a0(isys->adev->isp))
-		isa->av.pfmts = intel_ipu4_isys_pfmts_a0;
-	else
-		isa->av.pfmts = intel_ipu4_isys_pfmts_b0;
-
+	isa->av.pfmts = intel_ipu4_isys_pfmts_b0;
 	isa->av.try_fmt_vid_mplane =
 		intel_ipu4_isys_video_try_fmt_vid_mplane_default;
 	isa->av.prepare_firmware_stream_cfg =
