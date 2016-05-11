@@ -728,7 +728,7 @@ static struct crl_power_seq_entity imx135_power_items[] = {
 		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
 		.ent_name = "VANA",
 		.val = 2700000,
-		.delay = 30000,
+		.delay = 0,
 	},
 	{
 		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
@@ -739,10 +739,12 @@ static struct crl_power_seq_entity imx135_power_items[] = {
 	{
 		.type = CRL_POWER_ETY_CLK_FRAMEWORK,
 		.val = 24000000,
+		.delay = 2000,
 	},
 	{
 		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
 		.val = 1,
+		.delay = 250,
 	},
 };
 
