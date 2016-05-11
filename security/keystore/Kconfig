@@ -174,3 +174,17 @@ config KEYSTORE_HARD_CODED_SEED
 
                 If in doubt, select "N".
 
+config APPLICATION_AUTH
+        bool "Application Auth by signed manifest"
+        depends on KEYSTORE
+        select SYSTEM_TRUSTED_KEYRING
+        select KEYS
+        select CRYPTO
+        select ASN1
+        select OID_REGISTRY
+        select X509_CERTIFICATE_PARSER
+        default n
+        help
+                Authenticate the application by verifying the manifest and
+                application file hashes.
+
