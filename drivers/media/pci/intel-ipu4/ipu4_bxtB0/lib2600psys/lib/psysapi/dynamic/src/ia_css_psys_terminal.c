@@ -874,6 +874,7 @@ STORAGE_CLASS_INLINE bool ia_css_is_data_terminal_valid(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_data_terminal_valid enter\n");
 
 	frame_descriptor = ia_css_data_terminal_get_frame_descriptor(dterminal);
+	verifjmpexit(frame_descriptor != NULL);
 	man_frame_format_bitmap = ia_css_data_terminal_manifest_get_frame_format_bitmap(dt_manifest);
 	proc_frame_format_bitmap = ia_css_frame_format_bit_mask(frame_descriptor->frame_format_type);
 	/* TODO: Replace by 'validation of frame format type'.
@@ -937,6 +938,10 @@ STORAGE_CLASS_INLINE bool ia_css_is_data_terminal_valid(
 	NOT_USED(nof_fragments);
 
 	return (!invalid_flag);
+
+EXIT:
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR, "ia_css_is_data_terminal_valid() invalid argument\n");
+	return false;
 }
 
 STORAGE_CLASS_INLINE void ia_css_program_terminal_seq_info_print(
@@ -1188,6 +1193,8 @@ STORAGE_CLASS_INLINE bool ia_css_is_sliced_terminal_valid(
 	for (frag_idx = 0; frag_idx < nof_fragments; frag_idx++) {
 		const ia_css_fragment_slice_desc_t *fragment_slice_desc =
 			ia_css_sliced_param_terminal_get_fragment_slice_desc(sliced_term, frag_idx);
+
+		verifjmpexit(fragment_slice_desc != NULL);
 
 		for (slice_idx = 0; slice_idx < fragment_slice_desc->slice_count; slice_idx++) {
 			for (section_idx = 0; section_idx < sliced_term_man->sliced_param_section_count; section_idx++) {

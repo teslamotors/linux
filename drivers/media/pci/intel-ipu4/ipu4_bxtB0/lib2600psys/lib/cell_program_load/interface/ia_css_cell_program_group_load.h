@@ -31,6 +31,22 @@ ia_css_cell_program_group_load(
 	unsigned int program_addr_icache    /* program address as seen from cell's icache */
 );
 
+/*  Load all programs in program group
+    each group may have mutiple entry function. This function will return the info
+    of each entry function to allow user start any of them
+    Return 0 on success, -1 on incorrect magic number, -2 on incorrect release tag
+ */
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_H
+int
+ia_css_cell_program_group_load_multi_entry(
+	unsigned int ssid,
+	unsigned int mmid,
+	ia_css_xmem_address_t program_addr, /* program address as seen from caller */
+	unsigned int program_addr_icache,    /* program address as seen from cell's icache */
+	struct ia_css_cell_program_entry_func_info_s *entry_info
+);
+
 /*  Load all programs in program group, except icache of first program
  */
 

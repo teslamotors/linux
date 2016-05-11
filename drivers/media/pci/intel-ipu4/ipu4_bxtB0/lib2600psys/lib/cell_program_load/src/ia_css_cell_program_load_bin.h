@@ -26,6 +26,33 @@
 #include "ipu_device_buttress_properties_struct.h"
 
 IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+void
+ia_css_cell_program_load_encode_entry_info(
+	struct ia_css_cell_program_entry_func_info_s *entry_info,
+	const struct ia_css_cell_program_s *prog)
+{
+	unsigned int i;
+
+	for (i = 0; i < IA_CSS_CELL_PROGRAM_NUM_FUNC_ID; i++)
+		entry_info->start[i] = prog->start[i];
+	entry_info->regs_addr = prog->regs_addr;
+}
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+void
+ia_css_cell_program_load_set_start_pc(
+	unsigned int ssid,
+	const struct ia_css_cell_program_entry_func_info_s *entry_info,
+	enum ia_css_cell_program_entry_func_id func_id)
+{
+	unsigned int start_pc;
+
+	start_pc = entry_info->start[func_id];
+	/* set start address */
+	ia_css_cell_regs_set_start_pc(ssid, entry_info->regs_addr, start_pc);
+}
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
 int
 ia_css_cell_program_load_icache_prog(
 	unsigned int ssid,
@@ -35,6 +62,7 @@ ia_css_cell_program_load_icache_prog(
 	const struct ia_css_cell_program_s *prog)
 {
 	unsigned int regs_addr;
+	struct ia_css_cell_program_entry_func_info_s entry_info;
 
 	NOT_USED(mmid);
 	NOT_USED(host_addr);
@@ -44,15 +72,16 @@ ia_css_cell_program_load_icache_prog(
 
 	regs_addr = prog->regs_addr;
 
-	/* set start address */
-	ia_css_cell_regs_set_start_pc(ssid, regs_addr, prog->start);
-
 	/* set icache base address */
 	ia_css_cell_regs_set_icache_base_address(ssid, regs_addr,
 		vied_addr + prog->blob_offset + prog->icache_source);
 
 	/* set icache info bits */
 	ia_css_cell_regs_set_icache_info_bits(ssid, regs_addr, IA_CSS_INFO_BITS_M0_DDR);
+
+	/* by default we set to start PC of exec entry function */
+	ia_css_cell_program_load_encode_entry_info(&entry_info, prog);
+	ia_css_cell_program_load_set_start_pc(ssid, &entry_info, IA_CSS_CELL_PROGRAM_EXEC_FUNC_ID);
 
 	return 0;
 }

@@ -34,21 +34,43 @@ ia_css_cell_program_group_load(
 	int status = 0;
 
 	do {
-		status = ia_css_cell_program_load_header(mmid, host_addr, &prog);
-		if (status)
-			return status;
-
-		status = ia_css_cell_program_load_icache_prog(ssid, mmid, host_addr, vied_addr, &prog);
-		if (status)
-			return status;
-
-		status = ia_css_cell_program_load_mem_prog(ssid, mmid, host_addr, vied_addr, &prog);
+		status = ia_css_cell_program_load_prog(ssid, mmid, host_addr, vied_addr, &prog);
 		if (status)
 			return status;
 
 		next = prog.next;
 		host_addr += next;
 		vied_addr += next;
+	} while (next);
+
+	return status;
+}
+
+IA_CSS_CELL_PROGRAM_LOAD_STORAGE_CLASS_C
+int
+ia_css_cell_program_group_load_multi_entry(
+	unsigned int ssid,
+	unsigned int mmid,
+	ia_css_xmem_address_t host_addr,
+	unsigned int vied_addr,
+	struct ia_css_cell_program_entry_func_info_s *entry_info)
+{
+	struct ia_css_cell_program_s prog;
+	unsigned int next;
+	int status = 0;
+	unsigned int i = 0;
+
+	do {
+		status = ia_css_cell_program_load_prog(ssid, mmid, host_addr, vied_addr, &prog);
+		if (status)
+			return status;
+
+		ia_css_cell_program_load_encode_entry_info(&entry_info[i], &prog);
+
+		next = prog.next;
+		host_addr += next;
+		vied_addr += next;
+		i++;
 	} while (next);
 
 	return status;
