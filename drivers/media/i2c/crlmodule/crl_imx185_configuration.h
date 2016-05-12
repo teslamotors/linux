@@ -692,16 +692,16 @@ static struct crl_register_write_rep imx185_1952_1208_27MHZ_CROPPING[] = {
 
 static struct crl_register_write_rep imx185_streamon_regs[] = {
 	{IMX185_REG_STANDBY, CRL_REG_LEN_08BIT, 0x00},
-	{0x00, CRL_REG_LEN_DELAY, 50, 0x00}, /* Delay 50ms */
+	{0x00, CRL_REG_LEN_DELAY, 20, 0x00}, /* Delay 20ms */
 	{IMX185_REG_XMSTA, CRL_REG_LEN_08BIT, 0x00},
-	{0x00, CRL_REG_LEN_DELAY, 200, 0x00}, /* Delay 200ms */
+	{0x00, CRL_REG_LEN_DELAY, 20, 0x00}, /* Delay 20ms */
 };
 
 static struct crl_register_write_rep imx185_streamoff_regs[] = {
 	{IMX185_REG_STANDBY, CRL_REG_LEN_08BIT, 0x01},
-	{0x00, CRL_REG_LEN_DELAY, 50, 0x00}, /* Delay 50ms */
+	{0x00, CRL_REG_LEN_DELAY, 20, 0x00}, /* Delay 20ms */
 	{IMX185_REG_XMSTA, CRL_REG_LEN_08BIT, 0x01},
-	{0x00, CRL_REG_LEN_DELAY, 200, 0x00}, /* Delay 200ms */
+	{0x00, CRL_REG_LEN_DELAY, 20, 0x00}, /* Delay 20ms */
 };
 
 static struct crl_arithmetic_ops imx185_hflip_ops[] = {
