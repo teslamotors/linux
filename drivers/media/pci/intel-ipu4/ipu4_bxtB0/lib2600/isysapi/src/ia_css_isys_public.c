@@ -117,6 +117,7 @@ int ia_css_isys_device_open(
 	sys.specific_addr = &isys_fw_cfg;		/* parameter struct to be passed to fw */
 	sys.specific_size = sizeof(isys_fw_cfg);	/* parameters size */
 
+	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ISYSAPI call SYSCOM_OPEN\n");
 	/* The allocation of the queues will take place within this call and info will be stored in sys_context output */
 	ctx->sys = ia_css_syscom_open(&sys, NULL);
 	if (!ctx->sys)	{
@@ -124,6 +125,7 @@ int ia_css_isys_device_open(
 		return EFAULT;
 	}
 
+	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ISYSAPI start SPC\n");
 	/* The firmware is loaded and syscom is ready, start the SPC */
 	ia_css_cell_start_prefetch(ssid, SPC0, 0);
 

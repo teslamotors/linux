@@ -33,8 +33,9 @@ ia_css_cell_program_load_encode_entry_info(
 {
 	unsigned int i;
 
-	for (i = 0; i < IA_CSS_CELL_PROGRAM_NUM_FUNC_ID; i++)
+	for (i = 0; i < IA_CSS_CELL_PROGRAM_NUM_FUNC_ID; i++) {
 		entry_info->start[i] = prog->start[i];
+	}
 	entry_info->regs_addr = prog->regs_addr;
 }
 

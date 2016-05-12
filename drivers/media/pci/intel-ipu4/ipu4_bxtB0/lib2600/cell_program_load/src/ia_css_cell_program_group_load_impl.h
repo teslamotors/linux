@@ -53,7 +53,8 @@ ia_css_cell_program_group_load_multi_entry(
 	unsigned int mmid,
 	ia_css_xmem_address_t host_addr,
 	unsigned int vied_addr,
-	struct ia_css_cell_program_entry_func_info_s *entry_info)
+	struct ia_css_cell_program_entry_func_info_s *entry_info,
+	unsigned int num_entry_info)
 {
 	struct ia_css_cell_program_s prog;
 	unsigned int next;
@@ -64,7 +65,10 @@ ia_css_cell_program_group_load_multi_entry(
 		status = ia_css_cell_program_load_prog(ssid, mmid, host_addr, vied_addr, &prog);
 		if (status)
 			return status;
-
+		if (i >= num_entry_info) {
+			/* more program than entry info, cause access out of bound. */
+			return 1;
+		}
 		ia_css_cell_program_load_encode_entry_info(&entry_info[i], &prog);
 
 		next = prog.next;
