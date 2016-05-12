@@ -125,6 +125,7 @@ typedef enum {
 #define VIED_NCI_N_ACC_OSA_MEM		0
 
 #define VIED_NCI_N_VP_CELL		4
+#define VIED_NCI_N_ACC_CELL		8
 
 /*
  * Device IDs

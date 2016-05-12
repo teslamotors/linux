@@ -44,7 +44,8 @@ ia_css_cell_program_group_load_multi_entry(
 	unsigned int mmid,
 	ia_css_xmem_address_t program_addr, /* program address as seen from caller */
 	unsigned int program_addr_icache,    /* program address as seen from cell's icache */
-	struct ia_css_cell_program_entry_func_info_s *entry_info
+	struct ia_css_cell_program_entry_func_info_s *entry_info,
+	unsigned int num_entry_info
 );
 
 /*  Load all programs in program group, except icache of first program
