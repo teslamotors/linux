@@ -1244,7 +1244,7 @@ static int crlmodule_update_frame_blanking(struct crl_sensor *sensor)
 static void crlmodule_update_mode_bysel(struct crl_sensor *sensor)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
-	struct crl_mode_rep *this;
+	const struct crl_mode_rep *this;
 	unsigned int i;
 
 	dev_dbg(&client->dev, "%s look for w: %d, h: %d, in [%d] modes\n",
@@ -1343,8 +1343,7 @@ static void crlmodule_update_mode_bysel(struct crl_sensor *sensor)
 static void crlmodule_update_mode_v4l2ctrl(struct crl_sensor *sensor)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
-	struct crl_mode_rep *this;
-	const struct crl_subdev_rect_rep *current_rects;
+	const struct crl_mode_rep *this;
 	int i;
 
 	dev_dbg(&client->dev, "%s Sensor Mode :%d\n",
