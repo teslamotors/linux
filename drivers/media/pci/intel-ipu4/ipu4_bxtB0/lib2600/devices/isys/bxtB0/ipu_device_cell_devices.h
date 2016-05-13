@@ -17,7 +17,7 @@
 
 /* define cell instances in ISYS */
 
-#define SPC0_CELL ISYS_SPC0_CELL
+#define SPC0_CELL input_system_unis_logic_sp_control_tile_sp
 
 enum ipu_device_isys_cell_id {
 	SPC0,

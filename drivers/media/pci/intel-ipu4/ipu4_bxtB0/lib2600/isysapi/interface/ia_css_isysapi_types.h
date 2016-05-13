@@ -36,11 +36,6 @@ struct ia_css_isys_buffer_partition {
 struct ia_css_driver_sys_config {
 	unsigned int ssid;
 	unsigned int mmid;
-	void *mmio_base_address;
-	void *page_table_base_address; /* for all mmu's*/
-	void *firmware_address; /* pointer to program host address */
-	unsigned long long pkg_dir_host_address; /* host virtual address of pkg_dir in DDR */
-	unsigned int pkg_dir_vied_address; /* vied virtual address of pkg_dir in DDR */
 	unsigned int num_send_queues;
 	unsigned int num_recv_queues;
 	unsigned int send_queue_size; /* max # tokens per queue */
