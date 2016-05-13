@@ -15,13 +15,13 @@
 #ifndef _IPU_DEVICE_CELL_DEVICES_H_
 #define _IPU_DEVICE_CELL_DEVICES_H_
 
-#define SPC0_CELL PSYS_SPC0_CELL
-#define SPP0_CELL PSYS_SPP0_CELL
-#define SPP1_CELL PSYS_SPP1_CELL
-#define ISP0_CELL PSYS_ISP0_CELL
-#define ISP1_CELL PSYS_ISP1_CELL
-#define ISP2_CELL PSYS_ISP2_CELL
-#define ISP3_CELL PSYS_ISP3_CELL
+#define SPC0_CELL  processing_system_sp_cluster_sp_cluster_logic_spc_tile_sp
+#define SPP0_CELL  processing_system_sp_cluster_sp_cluster_logic_spp_tile0_sp
+#define SPP1_CELL  processing_system_sp_cluster_sp_cluster_logic_spp_tile1_sp
+#define ISP0_CELL  processing_system_isp_tile0_logic_isp
+#define ISP1_CELL  processing_system_isp_tile1_logic_isp
+#define ISP2_CELL  processing_system_isp_tile2_logic_isp
+#define ISP3_CELL  processing_system_isp_tile3_logic_isp
 
 enum ipu_device_psys_cell_id {
 	SPC0,
