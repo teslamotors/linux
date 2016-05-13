@@ -39,8 +39,8 @@ struct trusty_state {
 #define SMC_ARG2		"x2"
 #define SMC_ARG3		"x3"
 #define SMC_ARCH_EXTENSION	""
-#define SMC_REGISTERS_TRASHED	"x4","x5","x6","x7","x8","x9","x10","x11", \
-				"x12","x13","x14","x15","x16","x17"
+#define SMC_REGISTERS_TRASHED	"x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", \
+				"x12", "x13", "x14", "x15", "x16", "x17"
 #else
 #define SMC_ARG0		"r0"
 #define SMC_ARG1		"r1"
