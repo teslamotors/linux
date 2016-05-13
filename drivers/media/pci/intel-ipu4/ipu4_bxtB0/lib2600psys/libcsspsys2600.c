@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation. All Rights Reserved.
+ * Copyright (c) 2015--2016 Intel Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -39,6 +39,7 @@ EXPORT_SYMBOL_GPL(ia_css_process_group_set_ipu_vaddress);
 EXPORT_SYMBOL_GPL(ia_css_process_group_set_resource_bitmap);
 EXPORT_SYMBOL_GPL(ia_css_process_group_set_token);
 EXPORT_SYMBOL_GPL(ia_css_psys_close);
+EXPORT_SYMBOL_GPL(ia_css_psys_release);
 EXPORT_SYMBOL_GPL(ia_css_psys_event_queue_receive);
 EXPORT_SYMBOL_GPL(ia_css_psys_open);
 EXPORT_SYMBOL_GPL(ia_css_psys_open_is_ready);

@@ -1758,6 +1758,7 @@ static int psys_runtime_pm_resume(struct device *dev)
 	if (!retry && !opened) {
 		dev_err(&psys->adev->dev, "psys library open ready failed\n");
 		ia_css_psys_close(psys->dev_ctx);
+		ia_css_psys_release(psys->dev_ctx, 1);
 		return -ENODEV;
 	}
 
@@ -1774,6 +1775,8 @@ static int psys_runtime_pm_suspend(struct device *dev)
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
 	unsigned long flags;
+	unsigned int retry = 20000;
+	int r;
 
 	if (!psys) {
 		WARN(1, "%s called before probing. skipping.\n", __func__);
@@ -1784,13 +1787,27 @@ static int psys_runtime_pm_suspend(struct device *dev)
 	psys->power = 0;
 	spin_unlock_irqrestore(&psys->power_lock, flags);
 
-	if (psys->dev_ctx) {
-		ia_css_psys_close(psys->dev_ctx);
-		psys_syscom = NULL;
-
-		intel_ipu4_trace_stop(&psys->adev->dev);
+	if (!psys->dev_ctx) {
+		dev_err(dev, "no psys library context\n");
+		return 0;
 	}
 
+	if (ia_css_psys_close(psys->dev_ctx)) {
+		dev_err(dev, "psys library close failed\n");
+		goto out;
+	}
+	do {
+		r = -ia_css_psys_release(psys->dev_ctx, 0);
+		if (r && r != -EBUSY) {
+			dev_dbg(dev, "psys library release failed\n");
+			break;
+		}
+		usleep_range(100, 500);
+	} while (r && --retry);
+
+out:
+	psys_syscom = NULL;
+	intel_ipu4_trace_stop(&psys->adev->dev);
 	return 0;
 }
 
