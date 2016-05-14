@@ -1175,6 +1175,9 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 {
 	struct device *dev = &av->isys->adev->dev;
 	struct intel_ipu4_isys_pipeline *ip;
+	struct media_entity_graph graph;
+	struct media_entity *entity;
+	struct media_device *mdev = &av->isys->media_dev;
 	int rval;
 	unsigned int i;
 
@@ -1188,6 +1191,7 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 				container_of(ip,
 					     struct intel_ipu4_isys_video, ip));
 		media_entity_pipeline_stop(&av->vdev.entity);
+		media_entity_enum_cleanup(&ip->entity_enum);
 		return 0;
 	}
 
@@ -1199,6 +1203,7 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	ip->external = NULL;
 	atomic_set(&ip->sequence, 0);
 	ip->isl_mode = INTEL_IPU4_ISL_OFF;
+
 	for (i = 0; i < INTEL_IPU4_NUM_CAPTURE_DONE; i++)
 		ip->capture_done[i] = NULL;
 	ip->csi2_be = NULL;
@@ -1209,26 +1214,50 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	WARN_ON(!list_empty(&ip->queues));
 	ip->interlaced = false;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+	ip->entity_enum = 0;
+#else
+	rval = media_entity_enum_init(&ip->entity_enum, mdev);
+	if (rval)
+		return rval;
+#endif
+
 	rval = media_entity_pipeline_start(&av->vdev.entity,
 					   &ip->pipe);
 	if (rval < 0) {
 		dev_dbg(dev, "pipeline start failed\n");
-		return rval;
+		goto out_enum_cleanup;
 	}
 
 	if (!ip->external) {
 		dev_err(dev, "no external entity set! Driver bug?\n");
-		media_entity_pipeline_stop(&av->vdev.entity);
-		return -EINVAL;
+		rval = -EINVAL;
+		goto out_pipeline_stop;
 	}
+
+	rval = media_entity_graph_walk_init(&graph, mdev);
+	if (rval)
+		goto out_pipeline_stop;
+
+	/* Gather all entities in the graph. */
+	mutex_lock(&mdev->graph_mutex);
+	media_entity_graph_walk_start(&graph, &av->vdev.entity);
+	while ((entity = media_entity_graph_walk_next(&graph)))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+		media_entity_enum_set(&ip->entity_enum, entity);
+#else
+		ip->entity_enum |= media_entity_id(entity);
+#endif
+	mutex_unlock(&mdev->graph_mutex);
+
+	media_entity_graph_walk_cleanup(&graph);
 
 	if (ip->interlaced) {
 		rval = short_packet_queue_setup(av);
 		if (rval) {
-			media_entity_pipeline_stop(&av->vdev.entity);
 			dev_err(&av->isys->adev->dev,
 				"Failed to setup short packet queue.\n");
-			return rval;
+			goto out_pipeline_stop;
 		}
 	}
 
@@ -1236,6 +1265,14 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 		ip->external->entity->name);
 
 	return 0;
+
+out_pipeline_stop:
+	media_entity_pipeline_stop(&av->vdev.entity);
+
+out_enum_cleanup:
+	media_entity_enum_cleanup(&ip->entity_enum);
+
+	return rval;
 }
 
 int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,

@@ -93,6 +93,9 @@ struct intel_ipu4_isys_pipeline {
 	struct list_head pending_interlaced_bufs;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	struct media_entity_graph graph;
+	struct media_entity_enum entity_enum;
+#else
+	u64 entity_enum;
 #endif
 };
 
