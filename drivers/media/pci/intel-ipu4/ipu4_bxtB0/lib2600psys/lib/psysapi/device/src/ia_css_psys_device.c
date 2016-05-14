@@ -15,13 +15,12 @@
 
 #include "ia_css_psys_device.h"
 #include "ia_css_psys_device_trace.h"
+#include "ia_css_psys_init.h"
 
 #include <error_support.h>
 #include <assert_support.h>
 #include <print_support.h>
 #include <misc_support.h>
-
-#include "ia_css_psys_device_trace.h"
 
 #include "ia_css_cell.h"
 
@@ -110,6 +109,7 @@ struct ia_css_syscom_context *ia_css_psys_open(
 	struct ia_css_syscom_config *config)
 {
 	struct ia_css_syscom_context *context;
+	ia_css_psys_server_init_t *server_config;
 	int i;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_open(): enter:\n");
@@ -133,8 +133,12 @@ struct ia_css_syscom_context *ia_css_psys_open(
 	if (context == NULL)
 		goto EXIT;
 
-	/* start SPC */
-	ia_css_cell_start_prefetch(config->ssid, SPC0, 0);
+
+	/* Configure SPC icache prefetching and start SPC */
+	server_config = (ia_css_psys_server_init_t *)config->specific_addr;
+	IA_CSS_TRACE_1(PSYSAPI_DEVICE, INFO, "SPC prefetch: %d\n",
+		server_config->icache_prefetch_sp);
+	ia_css_cell_start_prefetch(config->ssid, SPC0, server_config->icache_prefetch_sp);
 
 	for (i=0; i < IA_CSS_N_PSYS_CMD_QUEUE_ID; i++) {
 		int retval;
