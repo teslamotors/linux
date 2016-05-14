@@ -127,7 +127,9 @@ int ia_css_isys_device_open(
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ISYSAPI start SPC\n");
 	/* The firmware is loaded and syscom is ready, start the SPC */
-	ia_css_cell_start_prefetch(ssid, SPC0, 0);
+	ia_css_cell_start_prefetch(ssid, SPC0, config->driver_sys.icache_prefetch);
+	IA_CSS_TRACE_1(ISYSAPI, VERBOSE, "SPC prefetch: %d\n",
+		config->driver_sys.icache_prefetch);
 
 	/* Update the context with the id's */
 	ctx->ssid = ssid;
