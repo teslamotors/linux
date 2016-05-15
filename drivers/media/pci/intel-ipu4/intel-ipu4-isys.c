@@ -1161,6 +1161,10 @@ release_firmware:
 	intel_ipu4_trace_uninit(&adev->dev);
 
 	trace_printk("E|TMWK\n");
+
+	mutex_destroy(&isys->mutex);
+	mutex_destroy(&isys->stream_mutex);
+
 	return rval;
 }
 
