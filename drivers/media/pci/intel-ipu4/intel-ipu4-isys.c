@@ -1081,6 +1081,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	mutex_init(&isys->mutex);
 	mutex_init(&isys->stream_mutex);
+	mutex_init(&isys->lib_mutex);
 
 	dev_info(&adev->dev, "isys probe %p %p\n", adev, &adev->dev);
 	intel_ipu4_bus_set_drvdata(adev, isys);
@@ -1164,6 +1165,7 @@ release_firmware:
 
 	mutex_destroy(&isys->mutex);
 	mutex_destroy(&isys->stream_mutex);
+	mutex_destroy(&isys->lib_mutex);
 
 	return rval;
 }
@@ -1215,7 +1217,8 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 	if (!isys->ssi)
 		return 0;
 
-	rval = intel_ipu4_lib_call_notrace(stream_handle_response, isys, &resp);
+	rval = intel_ipu4_lib_call_notrace_unlocked(stream_handle_response,
+						    isys, &resp);
 	if (rval < 0)
 		return rval;
 

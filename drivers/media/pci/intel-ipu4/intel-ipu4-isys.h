@@ -118,6 +118,7 @@ struct intel_ipu4_isys {
 	struct dentry *debugfsdir;
 	struct mutex mutex;
 	struct mutex stream_mutex;
+	struct mutex lib_mutex;
 
 	struct intel_ipu4_isys_pdata *pdata;
 
@@ -158,11 +159,25 @@ int intel_ipu4_isys_isr_run(void *ptr);
 #endif
 
 
-#define intel_ipu4_lib_call_notrace(func, isys, ...)			\
+#define intel_ipu4_lib_call_notrace_unlocked(func, isys, ...)		\
 	({								\
 		 int rval;						\
 									\
 		 rval = -ia_css_isys_##func((isys)->ssi, ##__VA_ARGS__);\
+									\
+		 rval;							\
+	})
+
+#define intel_ipu4_lib_call_notrace(func, isys, ...)			\
+	({								\
+		 int rval;						\
+									\
+		 mutex_lock(&(isys)->lib_mutex);			\
+									\
+		 rval = intel_ipu4_lib_call_notrace_unlocked(		\
+			 func, isys, ##__VA_ARGS__);			\
+									\
+		 mutex_unlock(&(isys)->lib_mutex);			\
 									\
 		 rval;							\
 	})
