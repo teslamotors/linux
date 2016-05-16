@@ -1011,6 +1011,8 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 
 	csslib_dump_isys_stream_cfg(dev, &stream_cfg);
 
+	ip->nr_output_pins = stream_cfg.nof_output_pins;
+
 	rval = get_stream_handle(av);
 	if (rval) {
 		dev_dbg(dev, "Can't get stream_handle\n");

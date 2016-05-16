@@ -58,6 +58,7 @@ struct intel_ipu4_isys_pipeline {
 	struct sequence_info seq[INTEL_IPU4_ISYS_MAX_PARALLEL_SOF];
 	int source; /* SSI stream source */
 	int stream_handle; /* stream handle for CSS API */
+	unsigned int nr_output_pins; /* How many firmware pins? */
 	enum intel_ipu4_isl_mode isl_mode;
 	struct intel_ipu4_isys_csi2_be *csi2_be;
 	struct intel_ipu4_isys_csi2 *csi2;
