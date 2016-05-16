@@ -1174,53 +1174,55 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 					 unsigned int state)
 {
 	struct device *dev = &av->isys->adev->dev;
+	struct intel_ipu4_isys_pipeline *ip;
 	int rval;
 	unsigned int i;
 
 	dev_dbg(dev, "prepare stream: %d\n", state);
 
 	if (!state) {
-		struct intel_ipu4_isys_pipeline *ip =
-			to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
-		struct intel_ipu4_isys_video *pipe_av =
-			container_of(ip, struct intel_ipu4_isys_video, ip);
+		ip = to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 
-		if (pipe_av->ip.interlaced)
-			short_packet_queue_destroy(pipe_av);
+		if (ip->interlaced)
+			short_packet_queue_destroy(
+				container_of(ip,
+					     struct intel_ipu4_isys_video, ip));
 		media_entity_pipeline_stop(&av->vdev.entity);
 		return 0;
 	}
 
-	WARN_ON(av->ip.nr_streaming);
-	av->ip.has_sof = false;
-	av->ip.nr_queues = 0;
-	av->ip.external = NULL;
-	atomic_set(&av->ip.sequence, 0);
-	av->ip.isl_mode = INTEL_IPU4_ISL_OFF;
-	for (i = 0; i < INTEL_IPU4_NUM_CAPTURE_DONE; i++)
-		av->ip.capture_done[i] = NULL;
-	av->ip.csi2_be = NULL;
-	av->ip.csi2 = NULL;
-	av->ip.seq_index = 0;
-	memset(av->ip.seq, 0, sizeof(av->ip.seq));
+	ip = &av->ip;
 
-	WARN_ON(!list_empty(&av->ip.queues));
-	av->ip.interlaced = false;
+	WARN_ON(ip->nr_streaming);
+	ip->has_sof = false;
+	ip->nr_queues = 0;
+	ip->external = NULL;
+	atomic_set(&ip->sequence, 0);
+	ip->isl_mode = INTEL_IPU4_ISL_OFF;
+	for (i = 0; i < INTEL_IPU4_NUM_CAPTURE_DONE; i++)
+		ip->capture_done[i] = NULL;
+	ip->csi2_be = NULL;
+	ip->csi2 = NULL;
+	ip->seq_index = 0;
+	memset(ip->seq, 0, sizeof(ip->seq));
+
+	WARN_ON(!list_empty(&ip->queues));
+	ip->interlaced = false;
 
 	rval = media_entity_pipeline_start(&av->vdev.entity,
-					   &av->ip.pipe);
+					   &ip->pipe);
 	if (rval < 0) {
 		dev_dbg(dev, "pipeline start failed\n");
 		return rval;
 	}
 
-	if (!av->ip.external) {
+	if (!ip->external) {
 		dev_err(dev, "no external entity set! Driver bug?\n");
 		media_entity_pipeline_stop(&av->vdev.entity);
 		return -EINVAL;
 	}
 
-	if (av->ip.interlaced) {
+	if (ip->interlaced) {
 		rval = short_packet_queue_setup(av);
 		if (rval) {
 			media_entity_pipeline_stop(&av->vdev.entity);
@@ -1231,7 +1233,7 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	}
 
 	dev_dbg(dev, "prepare stream: external entity %s\n",
-		av->ip.external->entity->name);
+		ip->external->entity->name);
 
 	return 0;
 }
