@@ -33,6 +33,7 @@
 
 #define ADV7481_LANES		4
 #define ADV7481_I2C_ADDRESS	0xe0
+#define ADV7481B_I2C_ADDRESS	0xe2
 
 #define GPIO_BASE		422
 
@@ -171,6 +172,34 @@ static struct intel_ipu4_isys_subdev_info adv7481_eval_crl_sd = {
 		.i2c_adapter_id = 2,
 	}
 };
+
+static struct crlmodule_platform_data adv7481b_eval_pdata = {
+	/* FIXME: may need to revisit */
+	.xshutdown = GPIO_BASE + 63,
+	.lanes = ADV7481_LANES,
+	/* FIXME: may need to revisit */
+	.ext_clk = 24000000,
+	.op_sys_clock = (uint64_t []){600000000},
+	.module_name = "ADV7481B_EVAL"
+};
+
+static struct intel_ipu4_isys_csi2_config adv7481b_eval_csi2_cfg = {
+	.nlanes = ADV7481_LANES,
+	.port = 4,
+};
+
+static struct intel_ipu4_isys_subdev_info adv7481b_eval_crl_sd = {
+	.csi2 = &adv7481b_eval_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 .type = CRLMODULE_NAME,
+			 .flags = I2C_CLIENT_TEN,
+			 .addr = ADV7481B_I2C_ADDRESS,
+			 .platform_data = &adv7481b_eval_pdata,
+		},
+		.i2c_adapter_id = 2,
+	}
+};
 #endif
 
 /*
@@ -181,6 +210,7 @@ struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
 	{ CLKDEV_INIT("2-001a", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("2-0010", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("2-a0e0", NULL, NULL), "OSC_CLK_OUT0" },
+	{ CLKDEV_INIT("2-a0e2", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT(NULL, NULL, NULL), NULL }
 };
 
@@ -200,6 +230,7 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
 #endif
 #ifdef CONFIG_INTEL_IPU4_ADV7481_EVAL
 		&adv7481_eval_crl_sd,
+		&adv7481b_eval_crl_sd,
 #endif
 		NULL,
 	},
