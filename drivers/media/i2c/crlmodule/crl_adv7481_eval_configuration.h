@@ -336,6 +336,17 @@ static struct crl_sensor_subdev_config adv7481_eval_sensor_subdevs[] = {
 	},
 };
 
+static struct crl_sensor_subdev_config adv7481b_eval_sensor_subdevs[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.name = "adv7481b binner",
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.name = "adv7481b pixel array",
+	},
+};
+
 static struct crl_sensor_limits adv7481_eval_sensor_limits = {
 	.x_addr_min = 0,
 	.y_addr_min = 0,
@@ -474,6 +485,42 @@ static struct crl_sensor_configuration adv7481_eval_crl_configuration = {
 
 	.subdev_items = 0,
 	.subdevs = adv7481_eval_sensor_subdevs,
+
+	.sensor_limits = &adv7481_eval_sensor_limits,
+
+	.pll_config_items = ARRAY_SIZE(adv7481_eval_pll_configurations),
+	.pll_configs = adv7481_eval_pll_configurations,
+	.op_sys_clk = adv7481_eval_op_sys_clock,
+
+	.modes_items = ARRAY_SIZE(adv7481_eval_modes),
+	.modes = adv7481_eval_modes,
+
+	.streamon_regs_items = 0,
+	.streamon_regs = NULL,
+
+	.streamoff_regs_items = 0,
+	.streamoff_regs = NULL,
+
+	.v4l2_ctrls_items = ARRAY_SIZE(adv7481_eval_v4l2_ctrls),
+	.v4l2_ctrl_bank = adv7481_eval_v4l2_ctrls,
+
+	.csi_fmts_items = ARRAY_SIZE(adv7481_eval_crl_csi_data_fmt),
+	.csi_fmts = adv7481_eval_crl_csi_data_fmt,
+};
+
+static struct crl_sensor_configuration adv7481b_eval_crl_configuration = {
+
+	.powerup_regs_items = 0,
+	.powerup_regs = NULL,
+
+	.poweroff_regs_items = 0,
+	.poweroff_regs = NULL,
+
+	.id_reg_items = 0,
+	.id_regs = NULL,
+
+	.subdev_items = 0,
+	.subdevs = adv7481b_eval_sensor_subdevs,
 
 	.sensor_limits = &adv7481_eval_sensor_limits,
 

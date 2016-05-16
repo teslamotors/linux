@@ -33,7 +33,7 @@ struct crlmodule_platform_data {
 	const s64 *op_sys_clock;
 
 	int xshutdown;			/* gpio */
-	char module_name[12]; /* module name from ACPI */
+	char module_name[16]; /* module name from ACPI */
 };
 
 #endif /* __CRLMODULE_H  */

@@ -36,6 +36,7 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "OV13860", "ov13860", &ov13860_crl_configuration },
 	{ "ADV7481", "adv7481", &adv7481_crl_configuration },
 	{ "ADV7481_EVAL", "adv7481_eval", &adv7481_eval_crl_configuration },
+	{ "ADV7481B_EVAL", "adv7481b_eval", &adv7481b_eval_crl_configuration },
 	{ "SONY318A", "imx318", &imx318_crl_configuration },
 };
 
