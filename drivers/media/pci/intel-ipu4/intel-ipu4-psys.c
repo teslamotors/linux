@@ -882,16 +882,12 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	if (early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
 		memcpy(kcmd->pg_user, kcmd->kpg->pg, kcmd->kpg->pg_size);
 
-#ifdef IPU_STEP_BXTA0
-	clflush_cache_range(kcmd->kpg->pg, kcmd->kpg->pg_size);
-#endif
 	ret = -ia_css_process_group_start(kcmd->kpg->pg);
 	if (ret)
 		goto error;
 
 	intel_ipu4_dumppg(&psys->adev->dev, kcmd->kpg->pg, "run");
 
-#ifdef IPU_STEP_BXTB0
 	/*
 	 * Starting from scci_master_20151228_1800, pg start api is split into
 	 * two different calls, making driver responsible to flush pg between
@@ -902,7 +898,6 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	ret = -ia_css_process_group_disown(kcmd->kpg->pg);
 	if (ret)
 		goto error;
-#endif
 	switch (kcmd->state) {
 	case KCMD_STATE_RUNNING:
 		psys->active_kcmds++;

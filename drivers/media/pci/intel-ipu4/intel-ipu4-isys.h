@@ -52,14 +52,10 @@
 #define INTEL_IPU4_ISYS_CSI2_LONG_PACKET_FOOTER_SIZE	32
 
 /*
- * For A0/1: FW frozen at tag 20151019, so only support max 2 streams
  * For B0/1: FW support max 6 streams
  */
-#ifdef IPU_STEP_BXTA0
-#define INTEL_IPU4_ISYS_MAX_STREAMS		2
-#else
 #define INTEL_IPU4_ISYS_MAX_STREAMS		6
-#endif
+
 
 #define INTEL_IPU4_ISYS_MIN_WIDTH		1U
 #define INTEL_IPU4_ISYS_MIN_HEIGHT		1U

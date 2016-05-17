@@ -33,10 +33,6 @@
 #include "intel-ipu4-trace.h"
 #include "intel-ipu4-wrapper.h"
 
-#ifdef IPU_STEP_BXTA0
-#include <ia_css_fw_release.h>
-#endif
-
 /* for IA_CSS_ISYS_STREAM_SRC_MIPIGEN_PORT0 */
 #include <ia_css_isysapi_fw_types.h>
 #include <ia_css_pkg_dir_types.h>
@@ -795,8 +791,6 @@ static const struct pci_device_id intel_ipu4_pci_tbl[] = {
 #if defined CONFIG_VIDEO_INTEL_IPU4_FPGA		\
 	|| defined CONFIG_VIDEO_INTEL_IPU4_ISYS_FPGA	\
 	|| defined CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_A0_OLD)},
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_A0)},
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
 #else
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},

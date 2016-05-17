@@ -47,11 +47,7 @@ void csslib_dump_isys_stream_cfg(struct device *dev, struct ia_css_isys_stream_c
 		dev_dbg(dev, "Input res height %d\n", stream_cfg->input_pins[i].input_res.height);
 	}
 
-#ifdef IPU_STEP_BXTA0
-	for (i = 0; i < MAX_IPINS_IN_ISL; i++) {
-#else
 	for (i = 0; i < N_IA_CSS_ISYS_CROPPING_LOCATION; i++) {
-#endif
 		dev_dbg(dev, "Crop info %d\n", i);
 		dev_dbg(dev, "Crop.top_offset %d\n", stream_cfg->crop[i].top_offset);
 		dev_dbg(dev, "Crop.left_offset %d\n", stream_cfg->crop[i].left_offset);
