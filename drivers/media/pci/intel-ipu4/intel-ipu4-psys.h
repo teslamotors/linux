@@ -60,6 +60,7 @@ struct intel_ipu4_psys {
 	struct ia_css_psys_server_init *server_init;
 	struct task_struct *isr_thread;
 	struct work_struct watchdog_work;
+	struct dentry *debugfsdir;
 
 	/* Resources needed to be managed for process groups */
 	struct intel_ipu4_psys_resource_pool resource_pool_running;

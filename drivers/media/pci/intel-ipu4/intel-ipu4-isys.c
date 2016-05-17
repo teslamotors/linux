@@ -12,6 +12,7 @@
  *
  */
 
+#include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/firmware.h>
@@ -929,6 +930,8 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_device *isp = adev->isp;
 
 	dev_info(&adev->dev, "removed\n");
+	debugfs_remove_recursive(isys->debugfsdir);
+
 	intel_ipu4_trace_uninit(&adev->dev);
 	isys_unregister_devices(isys);
 	if (!isp->secure_mode) {
@@ -945,6 +948,54 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 
 	mutex_destroy(&isys->stream_mutex);
 	mutex_destroy(&isys->mutex);
+}
+
+static int intel_ipu4_isys_icache_prefetch_get(void *data, u64 *val)
+{
+	struct intel_ipu4_isys *isys = data;
+
+	*val = isys->icache_prefetch;
+	return 0;
+}
+
+static int intel_ipu4_isys_icache_prefetch_set(void *data, u64 val)
+{
+	struct intel_ipu4_isys *isys = data;
+
+	if (val != !!val)
+		return -EINVAL;
+
+	isys->icache_prefetch = val;
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(isys_icache_prefetch_fops,
+			intel_ipu4_isys_icache_prefetch_get,
+			intel_ipu4_isys_icache_prefetch_set,
+			"%llu\n");
+
+static int intel_ipu4_isys_init_debugfs(struct intel_ipu4_isys *isys)
+{
+	struct dentry *file;
+	struct dentry *dir;
+
+	dir = debugfs_create_dir("isys", isys->adev->isp->intel_ipu4_dir);
+	if (IS_ERR(dir))
+		return -ENOMEM;
+
+	file = debugfs_create_file("icache_prefetch", S_IRUSR | S_IWUSR,
+				   dir, isys,
+				   &isys_icache_prefetch_fops);
+	if (IS_ERR(file))
+		goto err;
+
+	isys->debugfsdir = dir;
+
+	return 0;
+err:
+	debugfs_remove_recursive(dir);
+	return -ENOMEM;
 }
 
 static int isys_probe(struct intel_ipu4_bus_device *adev)
@@ -1022,6 +1073,9 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 			goto out_free_pkg_dir;
 
 	}
+
+	/* Debug fs failure is not fatal. */
+	intel_ipu4_isys_init_debugfs(isys);
 
 	intel_ipu4_trace_init(adev->isp, isys->pdata->base, &adev->dev,
 			      isys_trace_blocks);

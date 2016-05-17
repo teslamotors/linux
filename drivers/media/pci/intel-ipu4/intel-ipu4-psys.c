@@ -12,6 +12,7 @@
  *
  */
 
+#include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/dma-buf.h>
@@ -1660,6 +1661,9 @@ static int psys_runtime_pm_resume(struct device *dev)
 
 	intel_ipu4_trace_restore(&psys->adev->dev);
 
+	psys->server_init->icache_prefetch_sp = psys->icache_prefetch_sp;
+	psys->server_init->icache_prefetch_isp = psys->icache_prefetch_isp;
+
 	intel_ipu4_configure_spc(adev->isp, IA_CSS_PKG_DIR_PSYS_INDEX,
 				 psys->pdata->base, psys->pkg_dir,
 				 psys->pkg_dir_dma_addr);
@@ -1820,6 +1824,87 @@ out_release_firmware:
 	return rval;
 }
 
+static int intel_ipu4_psys_icache_prefetch_sp_get(void *data, u64 *val)
+{
+	struct intel_ipu4_psys *psys = data;
+
+	*val = psys->icache_prefetch_sp;
+	return 0;
+}
+
+static int intel_ipu4_psys_icache_prefetch_sp_set(void *data, u64 val)
+{
+	struct intel_ipu4_psys *psys = data;
+
+	if (val != !!val)
+		return -EINVAL;
+
+	psys->icache_prefetch_sp = val;
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(psys_icache_prefetch_sp_fops,
+			intel_ipu4_psys_icache_prefetch_sp_get,
+			intel_ipu4_psys_icache_prefetch_sp_set,
+			"%llu\n");
+
+static int intel_ipu4_psys_icache_prefetch_isp_get(void *data, u64 *val)
+{
+	struct intel_ipu4_psys *psys = data;
+
+	*val = psys->icache_prefetch_isp;
+	return 0;
+}
+
+static int intel_ipu4_psys_icache_prefetch_isp_set(void *data, u64 val)
+{
+	struct intel_ipu4_psys *psys = data;
+
+	if (val != !!val)
+		return -EINVAL;
+
+	psys->icache_prefetch_isp = val;
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(psys_icache_prefetch_isp_fops,
+			intel_ipu4_psys_icache_prefetch_isp_get,
+			intel_ipu4_psys_icache_prefetch_isp_set,
+			"%llu\n");
+
+static int intel_ipu4_psys_init_debugfs(struct intel_ipu4_psys *psys)
+{
+	struct dentry *file;
+	struct dentry *dir;
+
+	dir = debugfs_create_dir("psys", psys->adev->isp->intel_ipu4_dir);
+	if (IS_ERR(dir))
+		return -ENOMEM;
+
+	file = debugfs_create_file("icache_prefetch_sp",
+				   S_IRUSR | S_IWUSR,
+				   dir, psys,
+				   &psys_icache_prefetch_sp_fops);
+	if (IS_ERR(file))
+		goto err;
+
+	file = debugfs_create_file("icache_prefetch_isp",
+				   S_IRUSR | S_IWUSR,
+				   dir, psys,
+				   &psys_icache_prefetch_isp_fops);
+	if (IS_ERR(file))
+		goto err;
+
+	psys->debugfsdir = dir;
+
+	return 0;
+err:
+	debugfs_remove_recursive(dir);
+	return -ENOMEM;
+}
+
 static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
@@ -1963,9 +2048,6 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	psys->server_init->host_ddr_pkg_dir = 0;
 	psys->server_init->pkg_dir_size = 0;
 
-	psys->server_init->icache_prefetch_sp = psys->icache_prefetch_sp;
-	psys->server_init->icache_prefetch_isp = psys->icache_prefetch_isp;
-
 	/* allocate and map memory for process groups */
 	for (i = 0; i < INTEL_IPU4_PSYS_PG_POOL_SIZE; i++) {
 		kpg = kzalloc(sizeof(*kpg), GFP_KERNEL);
@@ -2025,6 +2107,9 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 
 	mutex_unlock(&intel_ipu4_psys_mutex);
 
+	/* Debug fs failure is not fatal. */
+	intel_ipu4_psys_init_debugfs(psys);
+
 	adev->isp->cpd_fw_reload = &cpd_fw_reload;
 
 	dev_info(&adev->dev, "psys probe minor: %d\n", minor);
@@ -2078,6 +2163,8 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_device *isp = adev->isp;
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
 	struct intel_ipu4_psys_pg *kpg, *kpg0;
+
+	debugfs_remove_recursive(psys->debugfsdir);
 
 	flush_workqueue(INTEL_IPU4_PSYS_WORK_QUEUE);
 

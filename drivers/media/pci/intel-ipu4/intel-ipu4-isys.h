@@ -118,6 +118,7 @@ struct intel_ipu4_isys {
 	bool icache_prefetch;
 	unsigned int video_opened;
 	unsigned int stream_opened;
+	struct dentry *debugfsdir;
 	struct mutex mutex;
 	struct mutex stream_mutex;
 
