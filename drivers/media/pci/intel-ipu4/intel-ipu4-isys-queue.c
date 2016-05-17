@@ -502,7 +502,6 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 	WARN_ON(!bl->nbufs);
 
 	set->send_irq_sof = 1;
-	set->send_irq_eof = 1;
 
 	list_for_each_entry(ib, &bl->head, head) {
 		if (ib->type == INTEL_IPU4_ISYS_VIDEO_BUFFER) {
