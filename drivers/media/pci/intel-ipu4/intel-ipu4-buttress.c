@@ -1122,7 +1122,7 @@ static struct clk_ops intel_ipu4_buttress_clk_sensor_ops_parent = {
 	.set_rate = intel_ipu4_buttress_clk_set_rate,
 };
 
-static struct clk_init_data intel_ipu4_buttress_sensor_clk_data_b0[] = {
+static struct clk_init_data intel_ipu4_buttress_sensor_clk_data[] = {
 	{
 		.name = "OSC_CLK_OUT0",
 		.ops = &intel_ipu4_buttress_clk_sensor_ops,
@@ -1152,7 +1152,7 @@ static struct clk_init_data intel_ipu4_buttress_sensor_clk_data_b0[] = {
 	},
 };
 
-static struct clk_init_data intel_ipu4_buttress_sensor_pll_data_b0[] = {
+static struct clk_init_data intel_ipu4_buttress_sensor_pll_data[] = {
 	{
 		.name = "intel_ipu4_sensor_pll0",
 		.ops = &intel_ipu4_buttress_clk_sensor_ops_parent,
@@ -1207,9 +1207,9 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 	intel_ipu4_buttress_read_psys_fused_freqs(isp);
 	isp->buttress.psys_min_freq = b->psys_fused_freqs.efficient_freq;
 
-	clk_data_parent = intel_ipu4_buttress_sensor_pll_data_b0;
+	clk_data_parent = intel_ipu4_buttress_sensor_pll_data;
 
-	num_plls = ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0);
+	num_plls = ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data);
 
 	for (i = 0; i < num_plls; i++) {
 		struct clk_intel_ipu4_sensor *parent_clk =
@@ -1232,7 +1232,7 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 		}
 	}
 
-	clk_data = intel_ipu4_buttress_sensor_clk_data_b0;
+	clk_data = intel_ipu4_buttress_sensor_clk_data;
 
 	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++) {
 		char buffer[16]; /* max for clk_register_clkdev */
@@ -1313,7 +1313,7 @@ static void intel_ipu4_buttress_clk_exit(struct intel_ipu4_device *isp)
 	for (i = 0; i < INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS; i++)
 		clk_unregister(b->clk_sensor[i]);
 
-	for (i = 0; i < ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data_b0); i++)
+	for (i = 0; i < ARRAY_SIZE(intel_ipu4_buttress_sensor_pll_data); i++)
 		clk_unregister(b->pll_sensor[i]);
 }
 

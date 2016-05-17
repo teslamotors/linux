@@ -41,7 +41,7 @@ static unsigned int  num_stream_support = INTEL_IPU4_ISYS_NUM_STREAMS_B0;
 module_param(num_stream_support, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(num_stream_support, "IPU4 project support number of stream");
 
-const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_b0[] = {
+const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts[] = {
 	/* YUV vector format */
 	{ V4L2_PIX_FMT_YUYV420_V32, 24, 24, MEDIA_BUS_FMT_YUYV12_1X24, IA_CSS_ISYS_FRAME_FORMAT_YUV420_16 },
 	/* Raw bayer vector formats. */
@@ -61,7 +61,7 @@ const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_b0[] = {
 	{ }
 };
 
-const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_b0_be_soc[] = {
+const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_be_soc[] = {
 	{ V4L2_PIX_FMT_UYVY, 16, 16, MEDIA_BUS_FMT_UYVY8_1X16, IA_CSS_ISYS_FRAME_FORMAT_UYVY },
 	{ V4L2_PIX_FMT_YUYV, 16, 16, MEDIA_BUS_FMT_YUYV8_1X16, IA_CSS_ISYS_FRAME_FORMAT_YUYV },
 	{ V4L2_PIX_FMT_XRGB32, 32, 32, MEDIA_BUS_FMT_RGB565_1X16, IA_CSS_ISYS_FRAME_FORMAT_RGBA888 },

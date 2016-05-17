@@ -362,7 +362,7 @@ void intel_ipu4_configure_vc_mechanism(struct intel_ipu4_device *isp)
 	writel(val, isp->base + BUTTRESS_REG_BTRS_CTRL);
 }
 
-static const struct intel_ipu4_isys_internal_pdata isys_ipdata_b0 = {
+static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu4 = {
 	.csi2 = {
 		.nports = INTEL_IPU4_ISYS_MAX_CSI2_PORTS,
 		.offsets = { 0x64000, 0x65000, 0x66000, 0x67000, 0x6C000, 0x6C800},
@@ -414,7 +414,7 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_b0 = {
 	.isys_dma_overshoot =  INTEL_IPU4_ISYS_OVERALLOC_MIN,
 };
 
-static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
+static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu4 = {
 	.hw_variant = {
 		.offset = INTEL_IPU4_BXT_B0_PSYS_OFFSET,
 		.nr_mmus = 3,
@@ -469,7 +469,7 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_b0 = {
  * fields instead.
  */
 
-static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_b0 = {
+static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_ipu4 = {
 	.divisor = IS_FREQ_CTL_DIVISOR_B0,
 	.qos_floor = 0,
 	.freq_ctl = BUTTRESS_REG_IS_FREQ_CTL,
@@ -484,7 +484,7 @@ static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_b0 = {
  * because the different HW stepping can have different initial values
  */
 
-static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_b0 = {
+static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_ipu4 = {
 	.divisor = PS_FREQ_CTL_DEFAULT_RATIO_B0,
 	.qos_floor = PS_FREQ_CTL_DEFAULT_RATIO_B0,
 	.freq_ctl = BUTTRESS_REG_PS_FREQ_CTL,
@@ -559,10 +559,10 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	pci_set_master(pdev);
 
 	if (is_intel_ipu4_hw_bxt_b0(isp)) {
-		isys_ipdata = &isys_ipdata_b0;
-		psys_ipdata = &psys_ipdata_b0;
-		isys_buttress_ctrl = &isys_buttress_ctrl_b0;
-		psys_buttress_ctrl = &psys_buttress_ctrl_b0;
+		isys_ipdata = &isys_ipdata_ipu4;
+		psys_ipdata = &psys_ipdata_ipu4;
+		isys_buttress_ctrl = &isys_buttress_ctrl_ipu4;
+		psys_buttress_ctrl = &psys_buttress_ctrl_ipu4;
 		cpd_filename = INTEL_IPU4_CPD_FIRMWARE_B0;
 	} else {
 		dev_err(&pdev->dev, "Not supported device\n");

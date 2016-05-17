@@ -122,8 +122,8 @@ struct intel_ipu4_isys_video {
 #define intel_ipu4_isys_queue_to_video(__aq) \
 	container_of(__aq, struct intel_ipu4_isys_video, aq)
 
-extern const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_b0[];
-extern const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_b0_be_soc[];
+extern const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts[];
+extern const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_be_soc[];
 extern const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_packed[];
 
 const struct intel_ipu4_isys_pixelformat *intel_ipu4_isys_get_pixelformat(
