@@ -985,6 +985,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	intel_ipu4_bus_set_drvdata(adev, isys);
 
 	isys->line_align = INTEL_IPU4_ISYS_2600_MEM_LINE_ALIGN;
+	isys->icache_prefetch = is_intel_ipu4_hw_bxt_c0(isp);
 
 #ifndef CONFIG_PM
 	isys_setup_hw(isys);

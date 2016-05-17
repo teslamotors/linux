@@ -1857,6 +1857,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 
 	psys->adev = adev;
 	psys->pdata = adev->pdata;
+	psys->icache_prefetch_sp = is_intel_ipu4_hw_bxt_c0(isp);
 
 	intel_ipu4_trace_init(adev->isp, psys->pdata->base, &adev->dev,
 			      psys_trace_blocks);
@@ -1962,6 +1963,8 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	psys->server_init->host_ddr_pkg_dir = 0;
 	psys->server_init->pkg_dir_size = 0;
 
+	psys->server_init->icache_prefetch_sp = psys->icache_prefetch_sp;
+	psys->server_init->icache_prefetch_isp = psys->icache_prefetch_isp;
 
 	/* allocate and map memory for process groups */
 	for (i = 0; i < INTEL_IPU4_PSYS_PG_POOL_SIZE; i++) {

@@ -46,6 +46,8 @@ struct intel_ipu4_psys {
 
 	struct mutex mutex;
 	int power;
+	bool icache_prefetch_sp;
+	bool icache_prefetch_isp;
 	spinlock_t power_lock;
 	struct list_head fhs;
 	struct list_head pgs;

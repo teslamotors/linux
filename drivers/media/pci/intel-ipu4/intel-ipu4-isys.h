@@ -115,6 +115,7 @@ struct intel_ipu4_isys {
 	u32 combo_port_cfg;
 	struct task_struct *isr_thread;
 	bool reset_needed;
+	bool icache_prefetch;
 	unsigned int video_opened;
 	unsigned int stream_opened;
 	struct mutex mutex;

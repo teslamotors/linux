@@ -118,6 +118,7 @@ static int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys)
 			.num_recv_queues = 1,
 			.send_queue_size = 40,
 			.recv_queue_size = 40,
+			.icache_prefetch = isys->icache_prefetch,
 		},
 	};
 	struct device *dev = &isys->adev->dev;
