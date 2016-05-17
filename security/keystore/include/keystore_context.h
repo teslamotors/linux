@@ -23,8 +23,6 @@
 #include <security/keystore_api_common.h>
 
 #define KEYSTORE_MAX_APPKEY_SIZE      208
-#define KEYSTORE_CLIENT_KEY_SIZE       32
-#define KEYSTORE_MAX_CLIENT_ID_SIZE    32
 #define KEYSTORE_CLIENTS_MAX          256
 #define KEYSTORE_SLOTS_MAX            256
 

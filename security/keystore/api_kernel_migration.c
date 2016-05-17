@@ -179,13 +179,24 @@ int keystore_rewrap_key(const uint8_t *client_ticket,
 	keystore_hexdump("rewrap- MKEY", mkey, KEYSTORE_MKEY_SIZE);
 
 	/****************************************************************/
-	/* 5. Use the migration key to decrypt the backup data          */
+	/* 5a. Use the migration key to decrypt the backup data         */
 	/****************************************************************/
 
 	res = unwrap_backup(mkey, backup_mk_enc, REENCRYPTED_BACKUP_SIZE,
 			    &plain_backup, sizeof(plain_backup));
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Cannot unwrap backup\n", __func__);
+		goto zero_buf;
+	}
+
+	/****************************************************************/
+	/* 5b. Check the client ID in the backup against current app    */
+	/****************************************************************/
+	res = memcmp(client_id, plain_backup.client_id, sizeof(client_id));
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s: Backup data client ID does not match current client ID!\n",
+		       __func__);
+		res = -EINVAL;
 		goto zero_buf;
 	}
 
@@ -230,4 +241,3 @@ exit:
 	return res;
 }
 EXPORT_SYMBOL(keystore_rewrap_key);
-

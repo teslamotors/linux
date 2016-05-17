@@ -36,25 +36,6 @@
  */
 
 /**
- * struct keystore_backup_data - The keystore backup structure
- *
- * @client_key: The derived client key.
- * @client_id: The derived client ID
- *
- * The backup struct can be used to transfer wrapped keys between
- * different client application and between keystores with different
- * SEED values.
- *
- * The backup struct and corresponding client key is only exposed
- * outside of keystore in an encrypted form.
- */
-struct keystore_backup_data {
-	uint8_t client_key[KEYSTORE_CLIENT_KEY_SIZE];   /* ClientKey */
-	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE]; /* Client ID */
-};
-
-
-/**
  * ctx_add_client() - Register a new client
  *
  * @client_ticket: The client ticket to register against. Expected to be an

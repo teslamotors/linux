@@ -45,7 +45,7 @@ static unsigned int version_minor = KEYSTORE_VERSION_MINOR;
 static unsigned int version_patch = KEYSTORE_VERSION_PATCH;
 
 #if defined(CONFIG_KEYSTORE_TESTMODE)
-#pragma message "Keystore diagnostics run on startup"
+#pragma message "Keystore self-tests are enabled."
 static bool testing = 1;  /* Testing on host is enabled */
 #else
 static bool testing;      /* Testing on host is disabled */

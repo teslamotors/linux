@@ -39,7 +39,7 @@
  */
 #define KEYSTORE_VERSION_MAJOR 2
 #define KEYSTORE_VERSION_MINOR 0
-#define KEYSTORE_VERSION_PATCH 0
+#define KEYSTORE_VERSION_PATCH 1
 
 /**
  * KEYSTORE_MAJOR - "/dev/keystore" char device major number
@@ -50,6 +50,25 @@
  * KEYSTORE_CLIENT_TICKET_SIZE - client_ticket size in bytes
  */
 #define KEYSTORE_CLIENT_TICKET_SIZE   8
+
+/**
+ * KEYSTORE_MAX_CLIENT_ID_SIZE - size of the client ID
+ *
+ * The client ID is unique per application and is not normally
+ * needed outside of Keystore. It is only required when migrated
+ * from one application to another during the backup and migration
+ * proceedure.
+ */
+#define KEYSTORE_MAX_CLIENT_ID_SIZE    32
+
+/**
+ * KEYSTORE_CLIENT_KEY_SIZE - size of the client key
+ *
+ * The client keys are used to wrap application keys in keystore.
+ * This variable is only needed outside of keystore during the
+ * backup and migration proceedure.
+ */
+#define KEYSTORE_CLIENT_KEY_SIZE       32
 
 /**
  * KEYSTORE_MAX_IV_SIZE - Maximum size of the Initialization Vector
@@ -175,6 +194,29 @@ enum keystore_algo_spec {
 	ALGOSPEC_AES_GCM = 2,
 	ALGOSPEC_ECIES = 128,
 	ALGOSPEC_ECDSA = 129
+};
+
+/**
+ * struct keystore_backup_data - The keystore backup structure
+ *
+ * @client_key: The derived client key.
+ * @client_id: The derived client ID
+ *
+ * The backup struct can be used to transfer wrapped keys between
+ * different client applications and between keystores with different
+ * SEED values.
+ *
+ * The backup struct and corresponding client key is only exposed
+ * outside of keystore in an encrypted form.
+ *
+ * The backup data can be used to transfer data between applications
+ * (with different client_ids) by overwriting the client_id with
+ * the new value before re-encrypting with the migration key
+ * and sending to keystore_rewrap().
+ */
+struct keystore_backup_data {
+	uint8_t client_key[KEYSTORE_CLIENT_KEY_SIZE];   /* ClientKey */
+	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE]; /* Client ID */
 };
 
 #endif /* _KEYSTORE_API_COMMON_H_ */

@@ -30,16 +30,15 @@
 #define GPG_PUBLIC_RSA_KEY_SIZE			264
 
 /**
- * Check if the ECC public key is allowed to be used for ClientKey backup.
- * Verify the signature against the RSA Root Key.
+ * oem_key_verify_digest() - Check signature of message digest
+ * and verify the signature against the RSA Root Key.
  *
- * @param ecc_key Public ECC key pointer (raw data).
- * @param size Public key size in bytes.
- * @param rsa_key Structure holding gpg key in raw format.(264 bytes)
- * @param signature Public key signature pointer (raw data, MSB first).
- * @param signature_size Signature size in bytes.
+ * @digest: SHA256 digest of data to be verified.
+ * @digest_size: Size of the digest
+ * @signature: Public key signature pointer (raw data, MSB first).
+ * @signature_size: Signature size in bytes.
  *
- * @return 0 if OK or negative error code (see errno).
+ * Returns: 0 if OK or negative error code (see errno).
  */
 int oem_key_verify_digest(void *digest, unsigned int digest_size,
 			  const void *signature, unsigned int signature_size);
