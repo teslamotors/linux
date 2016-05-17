@@ -694,6 +694,8 @@ static int snd_pcm_hw_params(struct snd_pcm_substream *substream,
 	runtime->no_period_wakeup =
 			(params->info & SNDRV_PCM_INFO_NO_PERIOD_WAKEUP) &&
 			(params->flags & SNDRV_PCM_HW_PARAMS_NO_PERIOD_WAKEUP);
+	runtime->no_rewinds =
+		(params->flags & SNDRV_PCM_HW_PARAMS_NO_REWINDS) ? 1 : 0;
 
 	bits = snd_pcm_format_physical_width(runtime->format);
 	runtime->sample_bits = bits;
@@ -2611,6 +2613,9 @@ static snd_pcm_sframes_t snd_pcm_playback_rewind(struct snd_pcm_substream *subst
 	if (frames == 0)
 		return 0;
 
+	if (runtime->no_rewinds)
+		return 0;
+
 	snd_pcm_stream_lock_irq(substream);
 	ret = do_pcm_hwsync(substream);
 	if (!ret)
@@ -2627,6 +2632,9 @@ static snd_pcm_sframes_t snd_pcm_capture_rewind(struct snd_pcm_substream *substr
 	snd_pcm_sframes_t ret;
 
 	if (frames == 0)
+		return 0;
+
+	if (runtime->no_rewinds)
 		return 0;
 
 	snd_pcm_stream_lock_irq(substream);
