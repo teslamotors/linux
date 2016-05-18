@@ -1975,6 +1975,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		dev_err(&psys->dev,
 			"psys unable to alloc syscom buffer (%zu)\n",
 			ia_css_sizeof_psys(NULL));
+		rval = -ENOMEM;
 		goto out_mutex_destroy;
 	}
 
@@ -1998,6 +1999,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		dev_err(&psys->dev,
 			"psys unable to alloc syscom config (%zu)\n",
 			ia_css_sizeof_psys(NULL));
+		rval = -ENOMEM;
 		goto out_resources_running_free;
 	}
 
@@ -2007,6 +2009,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		dev_err(&psys->dev,
 			"psys unable to alloc server init (%zu)\n",
 			ia_css_sizeof_psys(NULL));
+		rval = -ENOMEM;
 		goto out_sysconfig_free;
 	}
 
@@ -2029,9 +2032,10 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		sg_dma_address(psys->fw_sgt.sgl),
 		&psys->pkg_dir_dma_addr,
 		&psys->pkg_dir_size);
-	if (psys->pkg_dir == NULL)
+	if (psys->pkg_dir == NULL) {
+		rval = -ENOMEM;
 		goto  out_remove_shared_buffer;
-
+	}
 	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
 		PSYS_MMID, (void *)psys->pkg_dir,
 		psys->pkg_dir_dma_addr,

@@ -1062,9 +1062,10 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 			sg_dma_address(isys->fw_sgt.sgl),
 			&isys->pkg_dir_dma_addr,
 			&isys->pkg_dir_size);
-		if (isys->pkg_dir == NULL)
+		if (isys->pkg_dir == NULL) {
+			rval = -ENOMEM;
 			goto  remove_shared_buffer;
-
+		}
 		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
 			ISYS_MMID, (void *)isys->pkg_dir,
 			isys->pkg_dir_dma_addr,
