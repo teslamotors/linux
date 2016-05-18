@@ -32,8 +32,9 @@
 
 #define INTEL_IPU4_ISYS_2600_MEM_LINE_ALIGN	64
 
+/* for TPG */
 #define INTEL_IPU4_ISYS_FREQ_BXT_FPGA		25000000UL
-#define INTEL_IPU4_ISYS_FREQ_BXT_A0		533000000UL
+#define INTEL_IPU4_ISYS_FREQ_BXT		533000000UL
 
 /*
  * Device close takes some time from last ack message to actual stopping
