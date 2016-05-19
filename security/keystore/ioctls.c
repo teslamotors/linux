@@ -550,7 +550,11 @@ static int pubkey_op(struct ias_keystore_get_public_key *user_data)
 				      user_data->slot_id,
 				      &user_data->key_spec,
 				      NULL);
-	if (res)
+
+	/* Return on error or if the unwrapped key is NULL:     */
+	/* A NULL unwrapped_key indicates the user only wants   */
+	/* to extract the key_spec.                             */
+	if (res || !user_data->unwrapped_key)
 		return res;
 
 	res = keystore_wrapped_key_size(user_data->key_spec,

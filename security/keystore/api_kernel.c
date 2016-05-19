@@ -514,8 +514,9 @@ int keystore_get_public_key(const uint8_t *client_ticket, int slot_id,
 		goto exit;
 	}
 
-	/* A null unwrapped_key: assume the called just wants the key_spec */
+	/* A null unwrapped_key: assume the caller just wants the key_spec */
 	if (!unwrapped_key) {
+		ks_debug(KBUILD_MODNAME ": Key spec: %u\n", *key_spec);
 		res = 0;
 		goto zero_buf;
 	}

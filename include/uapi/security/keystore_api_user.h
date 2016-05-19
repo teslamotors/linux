@@ -718,7 +718,7 @@ struct ias_keystore_migrate {
  * &struct ias_keystore_get_public key.
  */
 #define KEYSTORE_IOC_PUBKEY\
-	_IOW(KEYSTORE_IOC_MAGIC,  15, struct ias_keystore_get_public_key)
+	_IOWR(KEYSTORE_IOC_MAGIC,  15, struct ias_keystore_get_public_key)
 
 /**
  * KEYSTORE_IOC_GET_KSM_KEY - Retrieve the Keystore public ECC key.
