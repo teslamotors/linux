@@ -72,6 +72,18 @@
 #define INTEL_IPU4_ISYS_OVERALLOC_MIN		1024
 
 /*
+ * Physical pages in GDA 128 * 1K pages.
+ */
+#define INTEL_IPU4_DEVICE_GDA_NR_PAGES		128
+
+/*
+ * Virtualization factor for Broxton to calculate the available virtual pages.
+ * In IPU4, there is limitation of only 1024 virtual pages. Hence the
+ * virtualization factor is 8 (128 * 8 = 1024).
+ */
+#define INTEL_IPU4_DEVICE_GDA_VIRT_FACTOR	8
+
+/*
  * The following definitions are encoded to the media_device's model field so
  * that the software components which uses IPU4 driver can get the hw stepping
  * information.

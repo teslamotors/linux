@@ -118,6 +118,7 @@ static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys);
 static int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys)
 {
 	int retry = INTEL_IPU4_ISYS_OPEN_RETRY;
+	unsigned int i;
 
 	struct ia_css_isys_device_cfg_data isys_cfg = {
 		.driver_sys = {
@@ -134,6 +135,20 @@ static int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys)
 	};
 	struct device *dev = &isys->adev->dev;
 	int rval;
+
+	/*
+	 * SRAM partitioning. Initially equal partitioning is set
+	 * TODO: Fine tune the partitining based on the stream pixel load
+	 */
+	for (i = 0; i < NOF_SRAM_BLOCKS_MAX; i++) {
+		if (i < isys_cfg.driver_sys.num_send_queues)
+			isys_cfg.buffer_partition.num_gda_pages[i] =
+				(INTEL_IPU4_DEVICE_GDA_NR_PAGES *
+				 INTEL_IPU4_DEVICE_GDA_VIRT_FACTOR) /
+				 isys_cfg.driver_sys.num_send_queues;
+		else
+			isys_cfg.buffer_partition.num_gda_pages[i] = 0;
+	}
 
 	rval = -ia_css_isys_device_open(&isys->ssi, &isys_cfg);
 	if (rval < 0) {
