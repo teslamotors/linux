@@ -88,9 +88,7 @@ HOST_SRC = libcsspsys2600.o \
 	   $(MODULES_DIR)/buffer/src/cpu/ia_css_input_buffer.o \
 	   $(MODULES_DIR)/buffer/src/cpu/ia_css_output_buffer.o \
 	   $(MODULES_DIR)/buffer/src/cpu/ia_css_shared_buffer.o \
-	   $(MODULES_DIR)/cell_program_load/src/ia_css_cell_program_load.o \
 	   $(MODULES_DIR)/client_pkg/src/ia_css_client_pkg.o \
-	   $(MODULES_DIR)/fw_load/src/$(FW_LOAD_IMPL)/ia_css_fw_load.o \
 	   $(MODULES_DIR)/pkg_dir/src/ia_css_pkg_dir.o \
 	   $(MODULES_DIR)/port/src/queue.o \
 	   $(MODULES_DIR)/port/src/recv_port.o \
