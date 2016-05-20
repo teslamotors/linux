@@ -59,6 +59,17 @@
 #define BUTTRESS_MIN_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 8)
 #define BUTTRESS_MAX_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 32)
 
+#define CSR_OUT(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
+			 BUTTRESS_REG_IU2CSECSR : BUTTRESS_REG_IU2ISHCSR)
+#define CSR_IN(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
+			 BUTTRESS_REG_CSE2IUCSR : BUTTRESS_REG_ISH2IUCSR)
+#define DB0_IN(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
+			 BUTTRESS_REG_CSE2IUDB0 : BUTTRESS_REG_ISH2IUDB0)
+#define DB0_OUT(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
+			 BUTTRESS_REG_IU2CSEDB0 : BUTTRESS_REG_IU2ISHDB0)
+#define DATA0(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
+			 BUTTRESS_REG_IU2CSEDATA0 : BUTTRESS_REG_IU2ISHDATA0)
+
 const struct intel_ipu4_buttress_sensor_clk_freq sensor_clk_freqs[] = {
 	{ 6750000, BUTTRESS_SENSOR_CLK_FREQ_6P75MHZ },
 	{ 8000000, BUTTRESS_SENSOR_CLK_FREQ_8MHZ },
@@ -86,37 +97,20 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 	unsigned long tout_jfs;
 	unsigned tout = 500;
 	u32 val = 0;
-	u32 csr_in, csr_out, db0;
-
-	switch (ipc) {
-	case INTEL_IPU4_BUTTRESS_IPC_CSE:
-		csr_in = BUTTRESS_REG_CSE2IUCSR;
-		csr_out = BUTTRESS_REG_IU2CSECSR;
-		db0 = BUTTRESS_REG_CSE2IUDB0;
-		break;
-	case INTEL_IPU4_BUTTRESS_IPC_ISH:
-		csr_in = BUTTRESS_REG_ISH2IUCSR;
-		csr_out = BUTTRESS_REG_IU2ISHCSR;
-		db0 = BUTTRESS_REG_ISH2IUDB0;
-		break;
-	default:
-		dev_err(&isp->pdev->dev, "%s: Invalid IPC domain\n", __func__);
-		return -EINVAL;
-	}
 
 	/* Clear-by-1 CSR (all bits), corresponding internal states. */
-	val = readl(isp->base + csr_in);
-	writel(val, isp->base + csr_in);
+	val = readl(isp->base + CSR_IN(ipc));
+	writel(val, isp->base + CSR_IN(ipc));
 
 	/* Set peer CSR bit IPC_PEER_COMP_ACTIONS_RST_PHASE1 */
-	writel(ENTRY, isp->base + csr_out);
+	writel(ENTRY, isp->base + CSR_OUT(ipc));
 
 	/*
 	* How long we should wait here?
 	*/
 	tout_jfs = jiffies + msecs_to_jiffies(tout);
 	do {
-		val = readl(isp->base + csr_in);
+		val = readl(isp->base + CSR_IN(ipc));
 		dev_dbg(&isp->pdev->dev, "%s: csr_in = %x\n", __func__, val);
 		if (val & ENTRY) {
 			if (val & EXIT) {
@@ -130,9 +124,9 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 				 * 2) Set peer CSR bit
 				 * IPC_PEER_QUERIED_IP_COMP_ACTIONS_RST_PHASE.
 				 */
-				writel(ENTRY | EXIT, isp->base + csr_in);
+				writel(ENTRY | EXIT, isp->base + CSR_IN(ipc));
 
-				writel(QUERY, isp->base + csr_out);
+				writel(QUERY, isp->base + CSR_OUT(ipc));
 
 				tout_jfs = jiffies + msecs_to_jiffies(tout);
 				continue;
@@ -146,9 +140,9 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 				 * 2) Set peer CSR bit
 				 * IPC_PEER_COMP_ACTIONS_RST_PHASE1.
 				 */
-				writel(ENTRY | QUERY, isp->base + csr_in);
+				writel(ENTRY | QUERY, isp->base + CSR_IN(ipc));
 
-				writel(ENTRY, isp->base + csr_out);
+				writel(ENTRY, isp->base + CSR_OUT(ipc));
 
 				tout_jfs = jiffies + msecs_to_jiffies(tout);
 				continue;
@@ -169,17 +163,17 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 			 * 3) Set peer CSR bit
 			 * IPC_PEER_COMP_ACTIONS_RST_PHASE2.
 			 */
-			writel(EXIT, isp->base + csr_in);
+			writel(EXIT, isp->base + CSR_IN(ipc));
 
 			writel(1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT,
-			       isp->base + db0);
+			       isp->base + DB0_IN(ipc));
 
 			writel(BUTTRESS_IU2CSECSR_IPC_PEER_DEASSERTED_REG_VALID_RE |
 			       BUTTRESS_IU2CSECSR_IPC_PEER_ACKED_REG_VALID |
 			       BUTTRESS_IU2CSECSR_IPC_PEER_ASSERTED_REG_VALID_REQ |
-			       QUERY, isp->base + csr_in);
+			       QUERY, isp->base + CSR_IN(ipc));
 
-			writel(EXIT, isp->base + csr_out);
+			writel(EXIT, isp->base + CSR_OUT(ipc));
 
 			return 0;
 		} else if (val & QUERY) {
@@ -191,9 +185,9 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 			 * 2) Set peer CSR bit
 			 * IPC_PEER_COMP_ACTIONS_RST_PHASE1
 			 */
-			writel(QUERY, isp->base + csr_in);
+			writel(QUERY, isp->base + CSR_IN(ipc));
 
-			writel(ENTRY, isp->base + csr_out);
+			writel(ENTRY, isp->base + CSR_OUT(ipc));
 
 			tout_jfs = jiffies + msecs_to_jiffies(tout);
 		}
@@ -246,28 +240,9 @@ static void intel_ipu4_buttress_ipc_recv(
 	enum intel_ipu4_buttress_ipc_domain ipc,
 	u32 *ipc_msg)
 {
-	u32 data0_offs, db0_offs, val;
-
-	switch (ipc) {
-	case INTEL_IPU4_BUTTRESS_IPC_CSE:
-		data0_offs = BUTTRESS_REG_CSE2IUDATA0;
-		db0_offs = BUTTRESS_REG_CSE2IUDB0;
-		break;
-	case INTEL_IPU4_BUTTRESS_IPC_ISH:
-		data0_offs = BUTTRESS_REG_ISH2IUDATA0;
-		db0_offs = BUTTRESS_REG_ISH2IUDB0;
-		break;
-	default:
-		dev_err(&isp->pdev->dev, "%s: Invalid IPC domain\n", __func__);
-		WARN_ON(1);
-		return;
-	}
-
-	val = readl(isp->base + data0_offs);
-	writel(0, isp->base + db0_offs);
-
 	if (ipc_msg)
-		*ipc_msg = val;
+		*ipc_msg = readl(isp->base + DATA0(ipc));
+	writel(0, isp->base + DB0_OUT(ipc));
 }
 
 static int intel_ipu4_buttress_ipc_send(
@@ -277,32 +252,19 @@ static int intel_ipu4_buttress_ipc_send(
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
 	struct completion *ipc_complete;
-	u32 val, data0_offs, db0_offs;
+	u32 val;
 	int ret;
 
-	switch (ipc) {
-	case INTEL_IPU4_BUTTRESS_IPC_CSE:
-		data0_offs = BUTTRESS_REG_IU2CSEDATA0;
-		db0_offs = BUTTRESS_REG_IU2CSEDB0;
-		ipc_complete = &b->cse_ipc_complete;
-		break;
-	case INTEL_IPU4_BUTTRESS_IPC_ISH:
-		data0_offs = BUTTRESS_REG_IU2CSEDATA0;
-		db0_offs = BUTTRESS_REG_IU2CSEDB0;
-		ipc_complete = &b->ish_ipc_complete;
-		break;
-	default:
-		dev_err(&isp->pdev->dev, "%s: Invalid IPC domain\n", __func__);
-		return -EINVAL;
-	}
+	ipc_complete = ipc == INTEL_IPU4_BUTTRESS_IPC_CSE ?
+		&b->cse_ipc_complete : &b->ish_ipc_complete;
 
 	init_completion(ipc_complete);
 
-	writel(ipc_msg, isp->base + data0_offs);
+	writel(ipc_msg, isp->base + DATA0(ipc));
 
 	val = 1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT | 1;
 
-	writel(val, isp->base + db0_offs);
+	writel(val, isp->base + DB0_OUT(ipc));
 
 	/*
 	 * TODO: How long we should wait?
