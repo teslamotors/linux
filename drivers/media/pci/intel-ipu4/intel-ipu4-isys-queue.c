@@ -1121,9 +1121,6 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 	struct intel_ipu4_isys_queue *aq = ip->output_pins[info->pin_id].aq;
 	struct intel_ipu4_isys_buffer *ib;
 	struct vb2_buffer *vb;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
-	struct vb2_v4l2_buffer *vbuf;
-#endif
 	unsigned long flags;
 	bool first = true;
 
@@ -1157,8 +1154,7 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
 		vb->v4l2_buf.field = V4L2_FIELD_NONE;
 #else
-		vbuf = to_vb2_v4l2_buffer(vb);
-		vbuf->field = V4L2_FIELD_NONE;
+		to_vb2_v4l2_buffer(vb)->field = V4L2_FIELD_NONE;
 #endif
 
 		list_del(&ib->head);
