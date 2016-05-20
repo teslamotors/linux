@@ -56,20 +56,6 @@ static struct v4l2_subdev_internal_ops tpg_sd_internal_ops = {
 	.close = intel_ipu4_isys_subdev_close,
 };
 
-static int subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
-			   struct v4l2_event_subscription *sub)
-{
-	if (sub->type != V4L2_EVENT_FRAME_END || sub->id != 0)
-		return -EINVAL;
-
-	return v4l2_event_subscribe(fh, sub, 10, NULL);
-}
-
-static const struct v4l2_subdev_core_ops tpg_sd_core_ops = {
-	.subscribe_event = subscribe_event,
-	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
-};
-
 static int set_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct intel_ipu4_isys_tpg *tpg = to_intel_ipu4_isys_tpg(sd);
@@ -255,7 +241,6 @@ static const struct v4l2_subdev_pad_ops tpg_sd_pad_ops = {
 };
 
 static struct v4l2_subdev_ops tpg_sd_ops = {
-	.core = &tpg_sd_core_ops,
 	.video = &tpg_sd_video_ops,
 	.pad = &tpg_sd_pad_ops,
 };
@@ -307,7 +292,6 @@ int intel_ipu4_isys_tpg_init(struct intel_ipu4_isys_tpg *tpg,
 	tpg->asd.set_ffmt = tpg_set_ffmt;
 	intel_ipu4_isys_subdev_set_ffmt(&tpg->asd.sd, NULL, &fmt);
 
-	tpg->asd.sd.flags |= V4L2_SUBDEV_FL_HAS_EVENTS;
 	tpg->asd.sd.internal_ops = &tpg_sd_internal_ops;
 	snprintf(tpg->asd.sd.name, sizeof(tpg->asd.sd.name),
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " TPG %u", index);
