@@ -1777,6 +1777,17 @@ static u8 skl_tplg_be_link_type(int dev_type)
 
 	return ret;
 }
+struct skl_sdw_agg_data_caps {
+	u32 alh_stream_num;
+	u32 ch_mask;
+} __packed;
+
+struct skl_sdw_caps_cfg {
+	u32 gw_attributes;
+	u32 count;
+	struct skl_sdw_agg_data_caps data[0];
+
+} __packed;
 
 /*
  * Fill the BE gateway parameters
@@ -1785,20 +1796,45 @@ static u8 skl_tplg_be_link_type(int dev_type)
  * The port can have multiple settings so pick based on the PCM
  * parameters
  */
+#define SDW_MAX_MASTERS	4
 static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 				struct skl_module_cfg *mconfig,
 				struct skl_pipe_params *params)
 {
+	int i;
 	struct nhlt_specific_cfg *cfg;
+	struct skl_sdw_caps_cfg *sdw_cfg;
 	struct skl *skl = get_skl_ctx(dai->dev);
 	int link_type = skl_tplg_be_link_type(mconfig->dev_type);
 	u8 dev_type = skl_tplg_be_dev_type(mconfig->dev_type);
 
 	skl_tplg_fill_dma_id(mconfig, params);
 
-	if (link_type == NHLT_LINK_HDA || link_type == NHLT_LINK_SDW)
+	if (link_type == NHLT_LINK_HDA)
 		return 0;
+	if (link_type == NHLT_LINK_SDW) {
+		sdw_cfg = kzalloc((((sizeof(struct skl_sdw_agg_data_caps)) *
+				(mconfig->sdw_agg.num_masters)) + 2),
+				GFP_KERNEL);
+		if (!sdw_cfg)
+			return -ENOMEM;
+		mconfig->formats_config.caps_size = (((sizeof(u32)) *
+			(mconfig->sdw_agg.num_masters) * 2)
+			+ (2 * (sizeof(u32))));
 
+		sdw_cfg->count = mconfig->sdw_agg.num_masters;
+		for (i = 0; i < SDW_MAX_MASTERS; i++) {
+			if (mconfig->sdw_agg.agg_data[i].ch_mask) {
+				sdw_cfg->data[i].ch_mask =
+					mconfig->sdw_agg.agg_data[i].ch_mask;
+				sdw_cfg->data[i].alh_stream_num =
+					mconfig->sdw_agg.agg_data[i].alh_stream_num;
+			}
+		}
+		sdw_cfg->count = mconfig->sdw_agg.num_masters;
+		mconfig->formats_config.caps = (u32 *) sdw_cfg;
+		return 0;
+	}
 	/* update the blob based on virtual bus_id*/
 	if (!skl->nhlt_override) {
 		cfg = skl_get_ep_blob(skl, mconfig->vbus_id, link_type,
