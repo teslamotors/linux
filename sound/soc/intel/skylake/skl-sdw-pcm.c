@@ -24,6 +24,7 @@
 #include <sound/soc.h>
 #include "skl.h"
 #include "skl-topology.h"
+#include "skl-sdw-pcm.h"
 
 #define STREAM_STATE_ALLOC_STREAM_TAG		0x1
 #define STREAM_STATE_ALLOC_STREAM		0x2
@@ -42,6 +43,7 @@ struct sdw_dma_data {
 	struct sdw_master *mstr;
 	enum cnl_sdw_pdi_stream_type stream_type;
 	int stream_state;
+	int mstr_nr;
 };
 
 
@@ -54,6 +56,7 @@ int cnl_sdw_startup(struct snd_pcm_substream *substream,
 	struct sdw_master *mstr;
 	struct sdw_dma_data *dma;
 	int ret = 0;
+	char *uuid = NULL;
 
 
 	m_cfg = skl_tplg_be_get_cpr_module(dai, substream->stream);
@@ -61,7 +64,18 @@ int cnl_sdw_startup(struct snd_pcm_substream *substream,
 		dev_err(dai->dev, "BE Copier not found\n");
 		return -EINVAL;
 	}
-	sdw_ctrl_nr = m_cfg->vbus_id;
+	if (dai->id >= SDW_BE_DAI_ID_MSTR3)
+		sdw_ctrl_nr = 3;
+
+	else if (dai->id >= SDW_BE_DAI_ID_MSTR2)
+		sdw_ctrl_nr = 2;
+
+	else if (dai->id >= SDW_BE_DAI_ID_MSTR1)
+		sdw_ctrl_nr = 1;
+
+	else
+		sdw_ctrl_nr = 0;
+
 	mstr = sdw_get_master(sdw_ctrl_nr);
 	if (!mstr) {
 		dev_err(dai->dev, "Master controller not found\n");
@@ -81,9 +95,10 @@ int cnl_sdw_startup(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 	dma->mstr = mstr;
+	dma->mstr_nr = sdw_ctrl_nr;
 	snd_soc_dai_set_dma_data(dai, substream, dma);
 
-	ret = sdw_alloc_stream_tag(NULL, &dma->stream_tag);
+	ret = sdw_alloc_stream_tag(uuid, &dma->stream_tag);
 	if (ret) {
 		dev_err(dai->dev, "Unable to allocate stream tag");
 		ret =  -EINVAL;
@@ -144,7 +159,17 @@ int cnl_sdw_hw_params(struct snd_pcm_substream *substream,
 		dev_err(dai->dev, "BE Copier not found\n");
 		return -EINVAL;
 	}
-	m_cfg->sdw_stream_num = dma->port->pdi_stream->sdw_pdi_num;
+
+	if (!m_cfg->sdw_agg_enable)
+		m_cfg->sdw_stream_num = dma->port->pdi_stream->sdw_pdi_num;
+	else
+		m_cfg->sdw_agg.agg_data[dma->mstr_nr].alh_stream_num =
+					dma->port->pdi_stream->sdw_pdi_num;
+	ret = skl_tplg_be_update_params(dai, &p_params);
+	if (ret)
+		return ret;
+
+
 	stream_config.frame_rate =  params_rate(params);
 	/* TODO: Get the multiplication factor from NHLT or the XML
 	 * to decide with Poland team from where to get it
