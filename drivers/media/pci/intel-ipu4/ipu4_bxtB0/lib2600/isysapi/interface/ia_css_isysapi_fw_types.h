@@ -80,7 +80,6 @@ enum ia_css_isys_send_type {
 /**
  * enum ia_css_isys_stream_source: Specifies a source for a stream
  */
-
 enum ia_css_isys_stream_source {
 	IA_CSS_ISYS_STREAM_SRC_PORT_0 = 0,
 	IA_CSS_ISYS_STREAM_SRC_PORT_1,
@@ -285,6 +284,16 @@ enum ia_css_isys_isl_use {
 	IA_CSS_ISYS_USE_SINGLE_DUAL_ISL,
 	IA_CSS_ISYS_USE_SINGLE_ISA,
 	N_IA_CSS_ISYS_USE
+};
+
+/**
+ * enum ia_css_isys_mipi_store_mode. Describes if long MIPI packets reach MIPI SRAM with the long packet header or not.
+ * if not, then only option is to capture it with pin type MIPI.
+ */
+enum ia_css_isys_mipi_store_mode {
+	IA_CSS_ISYS_MIPI_STORE_MODE_NORMAL = 0,
+	IA_CSS_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER,
+	N_IA_CSS_ISYS_MIPI_STORE_MODE
 };
 
 /**

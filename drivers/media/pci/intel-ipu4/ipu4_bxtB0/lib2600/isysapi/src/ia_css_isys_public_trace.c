@@ -126,6 +126,10 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
 			, stream_cfg->input_pins[i].input_res.width
 			, i
 			, stream_cfg->input_pins[i].input_res.height);
+		IA_CSS_TRACE_2(ISYSAPI, VERBOSE,
+			"\tia_css_isys_stream_cfg_data->ia_css_isys_input_pin_info[i = %d].ia_css_isys_mipi_store_mode = %d\n"
+			, i
+			, stream_cfg->input_pins[i].mipi_store_mode);
 	}
 	for (i = 0; i < N_IA_CSS_ISYS_CROPPING_LOCATION; i++) {
 		IA_CSS_TRACE_4(ISYSAPI, VERBOSE,

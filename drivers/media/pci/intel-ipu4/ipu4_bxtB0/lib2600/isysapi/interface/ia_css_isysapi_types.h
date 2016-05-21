@@ -110,10 +110,13 @@ struct ia_css_isys_param_pin {
  * struct ia_css_isys_input_pin_info
  * @input_res: input resolution
  * @dt: mipi data type
+ * @mipi_store_mode: defines if legacy long packet header will be stored or discarded
+ *                   if discarded, output pin pin type for this input pin can only be MIPI
  */
 struct ia_css_isys_input_pin_info {
 	struct ia_css_isys_resolution input_res;
 	enum ia_css_isys_mipi_data_type dt;
+	enum ia_css_isys_mipi_store_mode mipi_store_mode;
 };
 
 

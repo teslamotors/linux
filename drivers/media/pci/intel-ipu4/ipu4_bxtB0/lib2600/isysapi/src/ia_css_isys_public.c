@@ -243,6 +243,9 @@ int ia_css_isys_device_open_ready(
 			stream_cfg->input_pins[i].input_res.height >= INPUT_MIN_HEIGHT &&
 			stream_cfg->input_pins[i].input_res.height <= INPUT_MAX_HEIGHT, EINVAL);
 		verifret(stream_cfg->input_pins[i].dt < N_IA_CSS_ISYS_MIPI_DATA_TYPE, EINVAL);
+#ifdef DRIVER_INIT_MIPI_STORE_MODE	/* #ifdef To be removed when driver inits the value */
+		verifret(stream_cfg->input_pins[i].mipi_store_mode < N_IA_CSS_ISYS_MIPI_STORE_MODE, EINVAL);
+#endif /* DRIVER_INIT_MIPI_STORE_MODE */
 	}
 	for (i = 0; i < stream_cfg->nof_output_pins; i++) {
 		/* Verify output pin */
@@ -250,11 +253,14 @@ int ia_css_isys_device_open_ready(
 		verifret(stream_cfg->output_pins[i].pt < N_IA_CSS_ISYS_PIN_TYPE, EINVAL);
 		verifret(stream_cfg->output_pins[i].ft < N_IA_CSS_ISYS_FRAME_FORMAT, EINVAL);
 		verifret(stream_cfg->output_pins[i].stride%(XMEM_WIDTH/8) == 0, EINVAL);  /* Verify that the stride is aligned to 64 bytes: HW spec */
-		verifret(
-			stream_cfg->output_pins[i].output_res.width >= OUTPUT_MIN_WIDTH &&
-			stream_cfg->output_pins[i].output_res.width <= OUTPUT_MAX_WIDTH &&
-			stream_cfg->output_pins[i].output_res.height >= OUTPUT_MIN_HEIGHT &&
-			stream_cfg->output_pins[i].output_res.height <= OUTPUT_MAX_HEIGHT, EINVAL);
+		verifret((stream_cfg->output_pins[i].output_res.width >= OUTPUT_MIN_WIDTH) &&
+			 (stream_cfg->output_pins[i].output_res.width <= OUTPUT_MAX_WIDTH) &&
+			 (stream_cfg->output_pins[i].output_res.height >= OUTPUT_MIN_HEIGHT) &&
+			 (stream_cfg->output_pins[i].output_res.height <= OUTPUT_MAX_HEIGHT),
+			 EINVAL);
+		verifret((stream_cfg->output_pins[i].pt == IA_CSS_ISYS_PIN_TYPE_MIPI) ||
+			 (stream_cfg->input_pins[stream_cfg->output_pins[i].input_pin_id].mipi_store_mode != IA_CSS_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER),
+			 EINVAL);
 		if (stream_cfg->isl_use == IA_CSS_ISYS_USE_SINGLE_ISA) {
 			switch(stream_cfg->output_pins[i].pt) {
 			case IA_CSS_ISYS_PIN_TYPE_RAW_NS:

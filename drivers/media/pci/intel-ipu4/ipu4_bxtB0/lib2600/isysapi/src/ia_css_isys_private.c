@@ -343,6 +343,7 @@ STORAGE_CLASS_INLINE void input_pin_info_host_to_css(const struct ia_css_isys_in
 		return;
 	}
 	input_pin_info_css->dt = input_pin_info_host->dt;
+	input_pin_info_css->mipi_store_mode = input_pin_info_host->mipi_store_mode;
 	input_pin_info_css->bits_per_pix = ia_css_isys_extracted_bits_per_pixel_per_mipi_data_type[input_pin_info_host->dt];
 }
 
