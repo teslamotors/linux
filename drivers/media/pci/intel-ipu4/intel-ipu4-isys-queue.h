@@ -24,6 +24,8 @@
 #include <media/videobuf2-v4l2.h>
 #endif
 
+#include "intel-ipu4-isys-compat-defs.h"
+
 struct intel_ipu4_isys;
 struct intel_ipu4_isys_pipeline;
 struct ia_css_isys_resp_info;

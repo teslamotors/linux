@@ -800,6 +800,7 @@ fail:
 	return rval;
 }
 
+#ifdef MEDIA_IOC_REQUEST_CMD
 struct media_device_ops isys_mdev_ops = {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	.link_notify = intel_ipu4_pipeline_link_notify,
@@ -810,13 +811,22 @@ struct media_device_ops isys_mdev_ops = {
 	.req_free = intel_ipu4_isys_req_free,
 	.req_queue = intel_ipu4_isys_req_queue,
 };
+#endif /* MEDIA_IOC_REQUEST_CMD */
 
 static int isys_register_devices(struct intel_ipu4_isys *isys)
 {
 	int rval;
 
 	isys->media_dev.dev = &isys->adev->dev;
+#ifdef MEDIA_IOC_REQUEST_CMD
 	isys->media_dev.ops = &isys_mdev_ops;
+#else /* ! MEDIA_IOC_REQUEST_CMD */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+	isys->media_dev.link_notify = intel_ipu4_pipeline_link_notify,
+#else
+	isys->media_dev.link_notify = v4l2_pipeline_link_notify,
+#endif
+#endif /* ! MEDIA_IOC_REQUEST_CMD */
 	strlcpy(isys->media_dev.model,
 		intel_ipu4_media_ctl_dev_model(isys->adev->isp),
 		sizeof(isys->media_dev.model));

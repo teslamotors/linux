@@ -144,18 +144,22 @@ static int buf_prepare(struct vb2_buffer *vb)
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av =
 		intel_ipu4_isys_queue_to_video(aq);
-	struct media_device *mdev = &av->isys->media_dev;
-	struct intel_ipu4_isys_request *ireq;
 	struct intel_ipu4_isys_buffer *ib =
 		vb2_buffer_to_intel_ipu4_isys_buffer(vb);
 	u32 request =
+#ifdef MEDIA_IOC_REQUEST_CMD
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
 		to_vb2_v4l2_buffer(vb)->request;
 #else
 		vb->v4l2_buf.request;
 #endif
+	struct media_device *mdev = &av->isys->media_dev;
+	struct intel_ipu4_isys_request *ireq;
 	u32 request_state;
 	unsigned long flags;
+#else /* ! MEDIA_IOC_REQUEST_CMD */
+		0;
+#endif /* ! MEDIA_IOC_REQUEST_CMD */
 	int rval;
 
 	if (request) {
@@ -169,6 +173,7 @@ static int buf_prepare(struct vb2_buffer *vb)
 	}
 
 	rval = aq->buf_prepare(vb);
+#ifdef MEDIA_IOC_REQUEST_CMD
 	if (!request)
 		return rval;
 	if (rval)
@@ -200,6 +205,7 @@ out_put_request:
 	media_device_request_put(ib->req);
 	ib->req = NULL;
 
+#endif /* ! MEDIA_IOC_REQUEST_CMD */
 	return rval;
 }
 
@@ -1382,7 +1388,9 @@ int intel_ipu4_isys_queue_init(struct intel_ipu4_isys_queue *aq)
 	if (!aq->vbq.io_modes)
 		aq->vbq.io_modes = VB2_USERPTR | VB2_MMAP | VB2_DMABUF;
 	aq->vbq.drv_priv = aq;
+#ifdef MEDIA_IOC_REQUEST_CMD
 	aq->vbq.allow_requests = true;
+#endif
 	aq->vbq.ops = &intel_ipu4_isys_queue_ops;
 	aq->vbq.mem_ops = &vb2_dma_contig_memops;
 	aq->vbq.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
