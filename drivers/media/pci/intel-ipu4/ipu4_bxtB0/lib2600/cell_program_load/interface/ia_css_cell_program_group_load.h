@@ -17,6 +17,7 @@
 
 #include "ia_css_cell_program_load_storage_class.h"
 #include "ia_css_xmem.h"
+#include "ia_css_cell_program_struct.h"
 
 /*  Load all programs in program group
     Return 0 on success, -1 on incorrect magic number, -2 on incorrect release tag
