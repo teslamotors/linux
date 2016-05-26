@@ -238,7 +238,11 @@ static int intel_ipu4_psys_get_userpages(struct intel_ipu4_psys_kbuffer *kbuf)
 			pages[nr] = pfn_to_page(pfn);
 		}
 	} else {
-		nr = get_user_pages(current, current->mm, start & PAGE_MASK,
+		nr = get_user_pages(
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+			current, current->mm,
+#endif
+			start & PAGE_MASK,
 				    npages, 1, 0, pages, NULL);
 		if (nr < npages)
 			goto error_up_read;
