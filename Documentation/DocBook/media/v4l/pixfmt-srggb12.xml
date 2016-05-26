@@ -31,7 +31,7 @@ pixel image</title>
 
       <formalpara>
 	<title>Byte Order.</title>
-	<para>Each cell is one byte, high 6 bits in high bytes are 0.
+	<para>Each cell is one byte, high 4 bits in high bytes are 0.
 	  <informaltable frame="none">
 	    <tgroup cols="5" align="center">
 	      <colspec align="left" colwidth="2*" />
