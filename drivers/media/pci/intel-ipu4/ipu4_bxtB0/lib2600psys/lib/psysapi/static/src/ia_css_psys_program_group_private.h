@@ -89,7 +89,8 @@ struct ia_css_program_manifest_s {
 	+ IA_CSS_KERNEL_BITMAP_BITS \
 	+ (4 * (IA_CSS_UINT16_T_BITS * IA_CSS_N_DATA_DIMENSION)) \
 	+ IA_CSS_UINT16_T_BITS \
-	+ (5*IA_CSS_UINT8_T_BITS))
+	+ IA_CSS_UINT8_T_BITS \
+	+ (4*IA_CSS_UINT8_T_BITS))
 /*
  * Inherited data terminal class
  */
@@ -103,7 +104,9 @@ struct ia_css_data_terminal_manifest_s {
 	uint16_t							max_fragment_size[IA_CSS_N_DATA_DIMENSION];		/**< Maximum size of a fragment that the program port can accept */
 	uint16_t							terminal_dependency;							/**< Indicate if this terminal is derived from a principal terminal */
 	ia_css_connection_bitmap_t			connection_bitmap;								/**< Indicate what (streaming) interface types this terminal supports */
-	uint8_t								reserved[5];
+	uint8_t						compression_support;							/**< Indicates if compression is supported on the data associated with this terminal.
+																 * '1' indicates compression is supported, '0' otherwise */
+	uint8_t								reserved[4];
 };
 
 extern void ia_css_program_manifest_init(

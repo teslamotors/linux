@@ -269,6 +269,43 @@ int ia_css_data_terminal_manifest_set_frame_format_bitmap(
 	return ret;
 }
 
+bool ia_css_data_terminal_manifest_can_support_compression(
+	const ia_css_data_terminal_manifest_t		*manifest)
+{
+	bool compression_support = false;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_get_compression_support(): enter:\n");
+
+	if (manifest != NULL) {
+		/* compression_support is used boolean encoded in uint8_t. So we only need to check
+		 * if this is non-zero
+		 */
+		compression_support = (manifest->compression_support != 0);
+	} else {
+		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR, "ia_css_data_terminal_manifest_can_support_compression invalid argument\n");
+	}
+
+	return compression_support;
+}
+
+int ia_css_data_terminal_manifest_set_compression_support(
+	ia_css_data_terminal_manifest_t			*manifest,
+	bool						compression_support)
+{
+	int ret = -1;
+
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_data_terminal_manifest_set_compression_support(): enter:\n");
+
+	if (manifest != NULL) {
+		manifest->compression_support = (compression_support == true) ? 1 : 0;
+		ret = 0;
+	} else {
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR, "ia_css_data_terminal_manifest_set_compression_support failed (%i)\n", ret);
+	}
+
+	return ret;
+}
+
 ia_css_connection_bitmap_t ia_css_data_terminal_manifest_get_connection_bitmap(
 	const ia_css_data_terminal_manifest_t	*manifest)
 {

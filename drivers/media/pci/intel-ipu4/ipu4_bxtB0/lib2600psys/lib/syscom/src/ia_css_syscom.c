@@ -117,14 +117,14 @@ ia_css_syscom_size_intern(
 	/* accumulate input queue buffer sizes */
 	size->input_buffer = 0;
 	for (i=0; i<cfg->num_input_queues; i++) {
-		size->input_buffer += 
+		size->input_buffer +=
 			sys_queue_buf_size(cfg->input[i].queue_size, cfg->input[i].token_size);
 	}
 
 	/* accumulate outut queue buffer sizes */
 	size->output_buffer = 0;
 	for (i=0; i<cfg->num_output_queues; i++) {
-		size->output_buffer += 
+		size->output_buffer +=
 			sys_queue_buf_size(cfg->output[i].queue_size, cfg->output[i].token_size);
 	}
 }

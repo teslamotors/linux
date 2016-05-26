@@ -127,8 +127,8 @@ struct ia_css_param_frame_s {
 
 #define	N_UINT32_IN_FRAME_DESC_STRUCT		(1 + IA_CSS_N_FRAME_PLANES + (IA_CSS_N_DATA_DIMENSION - 1))
 #define	N_UINT16_IN_FRAME_DESC_STRUCT		(1 + IA_CSS_N_DATA_DIMENSION)
-#define	N_UINT8_IN_FRAME_DESC_STRUCT		2
-#define	N_PADDING_UINT8_IN_FRAME_DESC_STRUCT	4
+#define	N_UINT8_IN_FRAME_DESC_STRUCT		3
+#define	N_PADDING_UINT8_IN_FRAME_DESC_STRUCT	3
 
 #define	IA_CSS_FRAME_DESCRIPTOR_STRUCT_BITS \
 	( IA_CSS_FRAME_FORMAT_TYPE_BITS \
@@ -154,6 +154,7 @@ struct ia_css_frame_descriptor_s {
 	uint16_t			size;						/**< Size of this descriptor */
 	uint8_t				bpp;						/**< Bits per pixel */
 	uint8_t				bpe;						/**< Bits per element */
+	uint8_t				is_compressed;					/**< 1 if terminal uses compressed datatype, 0 otherwise */
 	uint8_t				padding[N_PADDING_UINT8_IN_FRAME_DESC_STRUCT];	/**< Padding for 64bit alignment */
 };
 

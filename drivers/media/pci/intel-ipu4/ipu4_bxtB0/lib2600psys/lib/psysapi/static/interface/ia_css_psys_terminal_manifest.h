@@ -170,6 +170,26 @@ extern int ia_css_data_terminal_manifest_set_frame_format_bitmap(
 	ia_css_data_terminal_manifest_t			*manifest,
 	ia_css_frame_format_bitmap_t			bitmap);
 
+/*! Check if the (data) terminal manifest object supports compression
+
+ @param	manifest[in]			(data) terminal manifest object
+
+ @return compression_support, true if compression is supported
+ */
+extern bool ia_css_data_terminal_manifest_can_support_compression(
+	const ia_css_data_terminal_manifest_t		*manifest);
+
+/*! Set the compression support feature of the (data) terminal manifest object
+
+ @param	manifest[in]			(data) terminal manifest object
+ @param	compression_support[in]		set true to support compression
+
+ @return < 0 on invalid manifest argument
+ */
+extern int ia_css_data_terminal_manifest_set_compression_support(
+	ia_css_data_terminal_manifest_t			*manifest,
+	bool						compression_support);
+
 /*! Get the connection bitmap of the (data) terminal manifest object
 
  @param	manifest[in]			(data) terminal manifest object
