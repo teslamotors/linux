@@ -66,6 +66,9 @@ static inline void __local_lock(struct local_irq_lock *lv)
 #define local_lock(lvar)					\
 	do { __local_lock(&get_local_var(lvar)); } while (0)
 
+#define local_lock_on(lvar, cpu)				\
+	do { __local_lock(&per_cpu(lvar, cpu)); } while (0)
+
 static inline int __local_trylock(struct local_irq_lock *lv)
 {
 	if (lv->owner != current && spin_trylock_local(&lv->lock)) {
@@ -103,6 +106,9 @@ static inline void __local_unlock(struct local_irq_lock *lv)
 		__local_unlock(&__get_cpu_var(lvar));		\
 		put_local_var(lvar);				\
 	} while (0)
+
+#define local_unlock_on(lvar, cpu)                       \
+	do { __local_unlock(&per_cpu(lvar, cpu)); } while (0)
 
 static inline void __local_lock_irq(struct local_irq_lock *lv)
 {
