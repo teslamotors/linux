@@ -493,6 +493,10 @@ static void intel_ipu4_psys_kcmd_free(struct intel_ipu4_psys_kcmd *kcmd)
 	kfree(kcmd);
 }
 
+static int intel_ipu4_psys_kcmd_abort(struct intel_ipu4_psys *psys,
+				      struct intel_ipu4_psys_kcmd *kcmd,
+				      int error);
+
 static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 {
 	struct intel_ipu4_psys *psys = inode_to_intel_ipu4_psys(inode);
@@ -514,13 +518,9 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 
 	/* Wait until kcmds are completed in this queue and free them */
 	for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
+		fh->new_kcmd_tail[p] = NULL;
 		list_for_each_entry_safe(kcmd, kcmd0, &fh->kcmds[p], list) {
-			if (kcmd->state == KCMD_STATE_RUNNING ||
-			    kcmd->state == KCMD_STATE_STARTED) {
-				mutex_unlock(&psys->mutex);
-				wait_for_completion(&kcmd->cmd_complete);
-				mutex_lock(&psys->mutex);
-			}
+			intel_ipu4_psys_kcmd_abort(psys, kcmd, -EIO);
 			intel_ipu4_psys_kcmd_free(kcmd);
 		}
 	}
