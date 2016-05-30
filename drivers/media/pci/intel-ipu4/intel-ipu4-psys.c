@@ -950,6 +950,9 @@ static int intel_ipu4_psys_kcmd_queue(struct intel_ipu4_psys *psys,
 		}
 
 		if (ret != -ENOSPC || !psys->active_kcmds) {
+			dev_err(&psys->adev->dev,
+				"kcmd %p failed to alloc resources (running)\n",
+				kcmd);
 			intel_ipu4_psys_kcmd_complete(psys, kcmd, ret);
 			return -EINVAL;
 		}
@@ -966,6 +969,9 @@ static int intel_ipu4_psys_kcmd_queue(struct intel_ipu4_psys *psys,
 	}
 
 	if (ret != -ENOSPC || !psys->started_kcmds) {
+		dev_err(&psys->adev->dev,
+			"kcmd %p failed to alloc resources (started)\n",
+			kcmd);
 		intel_ipu4_psys_kcmd_complete(psys, kcmd, ret);
 		ret = -EINVAL;
 	}
