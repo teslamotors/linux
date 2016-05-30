@@ -1071,8 +1071,7 @@ static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
 			list_for_each_entry(kcmd, &fh->kcmds[p], list) {
 				if (fh->new_kcmd_tail[p] == kcmd)
 					break;
-				if (kcmd->state != KCMD_STATE_RUNNING ||
-				    kcmd->state != KCMD_STATE_STARTED)
+				if (kcmd->state != KCMD_STATE_RUNNING)
 					continue;
 				if (timer_pending(&kcmd->watchdog))
 					continue;
