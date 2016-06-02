@@ -429,8 +429,6 @@ static struct i2c_client *isys_find_i2c_subdev(struct i2c_adapter *adapter,
 	};
 	int rval;
 
-	request_module(I2C_MODULE_PREFIX "%s", info->type);
-
 	rval = i2c_for_each_dev(&test, isys_i2c_test);
 	if (rval || !test.client)
 		return NULL;
