@@ -771,15 +771,10 @@ static void intel_ipu4_psys_kcmd_run(struct intel_ipu4_psys *psys)
 		started_list);
 	int ret;
 
-	intel_ipu4_psys_free_resources(
-		&kcmd->resource_alloc,
-		&kcmd->fh->psys->resource_pool_started);
-
-	ret = intel_ipu4_psys_allocate_resources(&psys->adev->dev,
-						 kcmd->kpg->pg,
-						 kcmd->pg_manifest,
-						 &kcmd->resource_alloc,
-						 &psys->resource_pool_running);
+	ret = intel_ipu4_psys_move_resources(&psys->adev->dev,
+				       &kcmd->resource_alloc,
+				       &psys->resource_pool_started,
+				       &psys->resource_pool_running);
 	if (!ret) {
 		psys->started_kcmds--;
 		psys->active_kcmds++;
@@ -793,18 +788,11 @@ static void intel_ipu4_psys_kcmd_run(struct intel_ipu4_psys *psys)
 
 	if (ret != -ENOSPC || !psys->active_kcmds) {
 		dev_err(&psys->adev->dev,
-			"kcmd %p failed to alloc resources (running)\n",
-			kcmd);
+			"kcmd %p failed to alloc resources (running (%d, psys->active_kcmds = %d))\n",
+			kcmd, ret, psys->active_kcmds);
 		intel_ipu4_psys_kcmd_abort(psys, kcmd, ret);
 		return;
 	}
-
-	intel_ipu4_psys_allocate_resources(
-		&psys->adev->dev,
-		kcmd->kpg->pg,
-		kcmd->pg_manifest,
-		&kcmd->resource_alloc,
-		&psys->resource_pool_started);
 }
 
 /*
