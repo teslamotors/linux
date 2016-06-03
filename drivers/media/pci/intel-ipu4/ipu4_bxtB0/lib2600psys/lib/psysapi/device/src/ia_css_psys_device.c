@@ -181,41 +181,52 @@ EXIT:
 	return ready;
 }
 
-struct ia_css_syscom_context* ia_css_psys_close(
-	struct ia_css_syscom_context			*context)
+
+struct ia_css_syscom_context *ia_css_psys_close(
+	struct ia_css_syscom_context *context)
 {
-	int 							i = 0;
-	int								retval = -1;
+	/* Success: return NULL, Error: return context pointer value
+	 * Intention is to change return type to int (errno), see commented values.
+	 */
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_close(): enter: \n");
+	unsigned int i;
 
-	verifexit(context != NULL, EINVAL);
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_close(): enter:\n");
+
+	/* NULL pointer check disabled, since there is no proper return value */
 
 	for (i=0; i < IA_CSS_N_PSYS_CMD_QUEUE_ID; i++) {
-		verifexit(ia_css_syscom_send_port_close(context, (unsigned int)i) == 0, EINVAL);
+		if (ia_css_syscom_send_port_close(context, i) != 0)
+			return context; /* EINVAL */
 	}
 
 	for (i=0; i < IA_CSS_N_PSYS_EVENT_QUEUE_ID; i++) {
-		verifexit(ia_css_syscom_recv_port_close(context, (unsigned int)i) == 0, EINVAL);
+		if (ia_css_syscom_recv_port_close(context, i) != 0)
+			return context; /* EINVAL */
 	}
 
-	verifexit((ia_css_syscom_close(context) == 0), EFAULT);
-	context = NULL;
+	/* request device close */
+	if (ia_css_syscom_close(context) != 0)
+		return context; /* EBUSY */
 
-	retval = 0;
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_close(): leave: OK\n");
+	return NULL;
+}
 
-	if (external_alloc) {
-		/* memset(); */
-	} else {
-		/* Free local allocations */
-		/* Reset */
-		external_alloc = true;
-	}
-EXIT:
-	if ((context != NULL) || (retval !=0)) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_close failed\n");
-	}
-	return context;
+
+int ia_css_psys_release(
+	struct ia_css_syscom_context *context,
+	bool force)
+{
+	if (context == NULL)
+		return EFAULT;
+
+	/* try to free resources */
+	if (ia_css_syscom_release(context, force) != 0)
+		return EBUSY;
+
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_release(): leave: OK\n");
+	return 0;
 }
 
 ia_css_psys_state_t ia_css_psys_check_state(

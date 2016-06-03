@@ -87,6 +87,14 @@ ia_css_cell_set_start_bit(unsigned int ssid, unsigned int cell_id)
 }
 
 STORAGE_CLASS_INLINE void
+ia_css_cell_set_run_bit(unsigned int ssid, unsigned int cell_id, unsigned int value)
+{
+	unsigned int reg;
+	reg = value << IPU_DEVICE_CELL_STAT_CTRL_RUN_BIT;
+	ia_css_cell_set_stat_ctrl(ssid, cell_id, reg);
+}
+
+STORAGE_CLASS_INLINE void
 ia_css_cell_start(unsigned int ssid, unsigned int cell_id)
 {
 	ia_css_cell_start_prefetch(ssid, cell_id, 0);
@@ -185,6 +193,24 @@ ia_css_cell_set_master_info_bits(unsigned int ssid, unsigned int cell,
 
 	addr = ipu_device_cell_memory_address(cell, 0);
 	addr += ipu_device_cell_master_info_reg(cell, master);
+	stride = ipu_device_cell_master_stride(cell, master);
+	num_segments = ipu_device_cell_master_num_segments(cell, master);
+	for (s = 0; s < num_segments; s++) {
+		ia_css_cmem_store_32(ssid, addr, value);
+		addr += stride;
+	}
+}
+
+STORAGE_CLASS_INLINE void
+ia_css_cell_set_master_info_override_bits(unsigned int ssid, unsigned int cell,
+	unsigned int master, unsigned int value)
+{
+	unsigned int addr, s, stride, num_segments;
+	assert(cell < ipu_device_cell_num_devices());
+	assert(master < ipu_device_cell_num_masters(cell));
+
+	addr = ipu_device_cell_memory_address(cell, 0);
+	addr += ipu_device_cell_master_info_override_reg(cell, master);
 	stride = ipu_device_cell_master_stride(cell, master);
 	num_segments = ipu_device_cell_master_num_segments(cell, master);
 	for (s = 0; s < num_segments; s++) {

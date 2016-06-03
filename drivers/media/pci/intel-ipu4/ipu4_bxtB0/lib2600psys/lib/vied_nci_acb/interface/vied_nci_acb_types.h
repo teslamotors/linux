@@ -49,15 +49,10 @@ typedef struct {
 	vied_nci_acb_port_t in_select;	/* 0 = ISP, 1 = Acc */
 	vied_nci_acb_port_t out_select;	/* 0 = ISP, 1 = Acc */
 	uint32_t ignore_line_num;		/* When set, Ack will be sent only when Eof arrives */
+	uint32_t fork_acb_output;		/* Fork adapter to enable streaming to both output (next acb out and isp out) */
 } vied_nci_acb_route_t;
 
 typedef struct {
-	/* ACB_CTRL */
-#if 0		/* These are not set/configured at the moment */
-	uint32_t acb_pix_rep_en;			/* When set, ACB pixel replication is enabled */
-	uint32_t acb_pix_pair_rep_number;		/* Number of pixel pairs to pad at the end of each line */
-#endif /*0*/
-	uint32_t fork_acb_output;		/* Fork adapter to enable streaming to both output (next acb out and isp out) */
 	/* ACB_FRAME_SIZE */
 	uint32_t frame_width;			/* For the FRAGMENT to process, just in ISYS frame == fragment */
 	uint32_t frame_height;			/* For the FRAGMENT to process, just in ISYS frame == fragment */

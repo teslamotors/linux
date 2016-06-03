@@ -60,6 +60,10 @@ ia_css_cell_set_master_segment_info_bits(unsigned int ssid, unsigned int cell_id
 	unsigned int master, unsigned int segment, unsigned int value);
 
 STORAGE_CLASS_INLINE void
+ia_css_cell_set_master_info_override_bits(unsigned int ssid, unsigned int cell,
+	unsigned int master, unsigned int value);
+
+STORAGE_CLASS_INLINE void
 ia_css_cell_set_master_segment_info_override_bits(unsigned int ssid, unsigned int cell,
 	unsigned int master, unsigned int segment, unsigned int value);
 
@@ -80,6 +84,9 @@ ia_css_cell_is_ready(unsigned int ssid, unsigned int cell_id);
 
 STORAGE_CLASS_INLINE void
 ia_css_cell_set_start_bit(unsigned int ssid, unsigned int cell_id);
+
+STORAGE_CLASS_INLINE void
+ia_css_cell_set_run_bit(unsigned int ssid, unsigned int cell_id, unsigned int value);
 
 STORAGE_CLASS_INLINE void
 ia_css_cell_start(unsigned int ssid, unsigned int cell_id);

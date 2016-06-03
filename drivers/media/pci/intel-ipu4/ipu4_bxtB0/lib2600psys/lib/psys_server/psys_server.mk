@@ -44,7 +44,6 @@ PSYS_SERVER_SUPPORT_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_server_config.c
 
 # Include those to build the release firmware. Otherwise replace by test code.
 PSYS_SERVER_RELEASE_FW_FILES = $(PSYS_SERVER_SOURCES)/psys_server.c
-PSYS_SERVER_RELEASE_FW_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_server_init.c
 PSYS_SERVER_RELEASE_FW_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_proxy.c
 PSYS_SERVER_RELEASE_FW_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_server_terminal_load.c
 PSYS_SERVER_RELEASE_FW_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_server_event.c

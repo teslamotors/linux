@@ -131,16 +131,26 @@ extern struct ia_css_syscom_context *ia_css_psys_open(
  @return false if psys open has not completed successfully
  */
 extern bool ia_css_psys_open_is_ready(
-	struct ia_css_syscom_context			*context);
+	struct ia_css_syscom_context *context);
 
-/*! close (and unmap the storage of) the Psys syscom object
-
- @param	context[in]				Psys syscom object
-
- @return NULL
+/*! Request close of a PSYS context
+ * @param	context[in]: Psys context
+ * @return	NULL    if close is successful
+ *		context otherwise
  */
 extern struct ia_css_syscom_context *ia_css_psys_close(
-	struct ia_css_syscom_context			*context);
+	struct ia_css_syscom_context *context);
+
+/*! Unmap and free the storage of the PSYS context
+ * @param	context[in]		Psys context
+ * @param	force[in]		Force release even if device is busy
+ * @return	0      if release is successful
+ *		EINVAL if context is invalid
+ *		EBUSY  if device is not yet idle, and force==0
+ */
+extern int ia_css_psys_release(
+	struct ia_css_syscom_context *context,
+	bool force);
 
 /*! Checks the state of the Psys syscom object
 

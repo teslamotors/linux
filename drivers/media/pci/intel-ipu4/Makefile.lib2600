@@ -11,8 +11,6 @@ lib2600-mod-$(IPU_STEP)-objs := ../libintel-ipu4.$(IPU_STEP).lnk.o \
 	$(LIB2600_LIBRARY)/port/src/recv_port.o \
 	$(LIB2600_LIBRARY)/port/src/queue.o \
 	$(LIB2600_LIBRARY)/syscom/src/ia_css_syscom.o \
-	$(LIB2600_LIBRARY)/fw_load/src/xmem/ia_css_fw_load.o \
-	$(LIB2600_LIBRARY)/cell_program_load/src/ia_css_cell_program_load.o \
 	$(LIB2600_LIBRARY)/isysapi/src/ia_css_isys_public.o \
 	$(LIB2600_LIBRARY)/isysapi/src/ia_css_isys_public_trace.o \
 	$(LIB2600_LIBRARY)/isysapi/src/ia_css_isys_private.o \
