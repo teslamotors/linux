@@ -22,6 +22,7 @@
 
 /* Opaque structure. Do not access fields. */
 struct intel_ipu4_resource {
+	u32 id;
 	int elements;		/* Number of elements available to allocation */
 	unsigned long *bitmap;	/* Allocation bitmap, a bit for each element */
 };
@@ -34,7 +35,8 @@ struct intel_ipu4_resource_alloc {
 	int pos;
 };
 
-int intel_ipu4_resource_init(struct intel_ipu4_resource *res, int elements);
+int intel_ipu4_resource_init(struct intel_ipu4_resource *res,
+			     u32 id, int elements);
 unsigned long intel_ipu4_resource_alloc(struct intel_ipu4_resource *res, int n,
 				struct intel_ipu4_resource_alloc *alloc);
 void intel_ipu4_resource_free(struct intel_ipu4_resource_alloc *alloc);
@@ -78,10 +80,14 @@ void intel_ipu4_psys_resource_alloc_init(
 				struct intel_ipu4_psys_resource_alloc *alloc);
 
 int intel_ipu4_psys_allocate_resources(const struct device *dev,
-			ia_css_process_group_t *pg,
-			void *pg_manifest,
-			struct intel_ipu4_psys_resource_alloc *alloc,
-			struct intel_ipu4_psys_resource_pool *pool);
+			       ia_css_process_group_t *pg,
+			       void *pg_manifest,
+			       struct intel_ipu4_psys_resource_alloc *alloc,
+			       struct intel_ipu4_psys_resource_pool *pool);
+int intel_ipu4_psys_move_resources(const struct device *dev,
+			   struct intel_ipu4_psys_resource_alloc *alloc,
+			   struct intel_ipu4_psys_resource_pool *source_pool,
+			   struct intel_ipu4_psys_resource_pool *target_pool);
 
 void intel_ipu4_psys_free_resources(
 			struct intel_ipu4_psys_resource_alloc *alloc,

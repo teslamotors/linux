@@ -30,7 +30,8 @@
 
 /********** Generic resource handling **********/
 
-int intel_ipu4_resource_init(struct intel_ipu4_resource *res, int elements)
+int intel_ipu4_resource_init(struct intel_ipu4_resource *res,
+			     u32 id, int elements)
 {
 	if (elements <= 0) {
 		res->bitmap = NULL;
@@ -42,6 +43,7 @@ int intel_ipu4_resource_init(struct intel_ipu4_resource *res, int elements)
 	if (!res->bitmap)
 		return -ENOMEM;
 	res->elements = elements;
+	res->id = id;
 	return 0;
 }
 
@@ -135,7 +137,7 @@ int intel_ipu4_psys_resource_pool_init(
 	pool->cells = 0;
 
 	for (i = 0; i < VIED_NCI_N_DEV_CHN_ID; i++) {
-		ret = intel_ipu4_resource_init(&pool->dev_channels[i],
+		ret = intel_ipu4_resource_init(&pool->dev_channels[i], i,
 					       intel_ipu4_num_dev_channels[i]);
 		if (ret)
 			goto error;
@@ -225,6 +227,7 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 		ia_css_program_manifest_t *pm;
 
 		if (process == NULL) {
+			dev_err(dev, "can not get process\n");
 			ret = -ENOENT;
 			goto free_out;
 		}
@@ -282,6 +285,47 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 free_out:
 	intel_ipu4_psys_free_resources(alloc, pool);
 	return ret;
+}
+
+int intel_ipu4_psys_move_resources(const struct device *dev,
+			   struct intel_ipu4_psys_resource_alloc *alloc,
+			   struct intel_ipu4_psys_resource_pool *source_pool,
+			   struct intel_ipu4_psys_resource_pool *target_pool)
+{
+	vied_nci_dev_chn_ID_t res_id;
+	int i;
+
+	if (target_pool->cells & alloc->cells) {
+		dev_dbg(dev, "out of cell resources\n");
+		return -ENOSPC;
+	}
+
+	for (i = 0; i < alloc->resources; i++) {
+		unsigned long bitmap = 0;
+
+		bitmap_set(&bitmap, alloc->resource_alloc[i].pos,
+			   alloc->resource_alloc[i].elements);
+		if (*target_pool->dev_channels[alloc->resource_alloc[i].resource->id].bitmap &
+		    bitmap)
+			return -ENOSPC;
+	}
+
+	for (i = 0; i < alloc->resources; i++) {
+		unsigned long bitmap = 0;
+		u32 id = alloc->resource_alloc[i].resource->id;
+
+		bitmap_set(&bitmap, alloc->resource_alloc[i].pos,
+			   alloc->resource_alloc[i].elements);
+		*target_pool->dev_channels[id].bitmap |= bitmap;
+		intel_ipu4_resource_free(&alloc->resource_alloc[i]);
+		alloc->resource_alloc[i].resource =
+			&target_pool->dev_channels[id];
+	}
+
+	target_pool->cells |= alloc->cells;
+	source_pool->cells &= ~alloc->cells;
+
+	return 0;
 }
 
 /* Free resources marked in `alloc' from `resources' */
