@@ -23,8 +23,7 @@ unsigned int sys_queue_buf_size(unsigned int size, unsigned int token_size)
 }
 
 void
-sys_queue_init(struct sys_queue *q, unsigned int size, unsigned int token_size,
-	const struct port_env *env, struct sys_queue_res *res)
+sys_queue_init(struct sys_queue *q, unsigned int size, unsigned int token_size, struct sys_queue_res *res)
 {
 	unsigned int buf_size;
 
@@ -44,7 +43,4 @@ sys_queue_init(struct sys_queue *q, unsigned int size, unsigned int token_size,
 	q->rd_reg = res->reg;
 	res->reg++;
 
-	/* initialize the shared read and write pointers */
-	regmem_store_32(env->mem_addr, q->wr_reg, 0, env->ssid);
-	regmem_store_32(env->mem_addr, q->rd_reg, 0, env->ssid);
 }

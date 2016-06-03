@@ -275,8 +275,7 @@ ia_css_syscom_open(
 	res.vied_address = ctx->ibuf_vied_addr;
 	for (i=0; i<cfg->num_input_queues; i++) {
 		sys_queue_init(ctx->input_queue + i,
-			cfg->input[i].queue_size, cfg->input[i].token_size,
-			&(ctx->env), &res);
+			cfg->input[i].queue_size, cfg->input[i].token_size, &res);
 	}
 
 	/* initialize output queues */
@@ -284,8 +283,7 @@ ia_css_syscom_open(
 	res.vied_address = ctx->obuf_vied_addr;
 	for (i=0; i<cfg->num_output_queues; i++) {
 		sys_queue_init(ctx->output_queue + i,
-			cfg->output[i].queue_size, cfg->output[i].token_size,
-			&(ctx->env), &res);
+			cfg->output[i].queue_size, cfg->output[i].token_size, &res);
 	}
 
 	/* fill shared queue structs */
