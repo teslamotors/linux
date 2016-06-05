@@ -32,7 +32,7 @@
 #include "ia_css_shared_buffer_cpu.h"
 
 #define STREAM_CFG_BUFS_PER_MSG_QUEUE	(1)	/* defines how many stream cfg host may sent concurrently before receiving the stream ack */
-#define NEXT_FRAME_BUFS_PER_MSG_QUEUE	(ctx->send_queue_size+4+1)
+#define NEXT_FRAME_BUFS_PER_MSG_QUEUE	(ctx->send_queue_size[IA_CSS_ISYS_QUEUE_TYPE_MSG]+4+1)
 /* There is an edge case that host has filled the full queue with capture requests (ctx->send_queue_size), SP reads and HW-queues all of them (4),
  * while in the meantime host continues queueing capture requests without checking for responses which SP will have sent with each HW-queue
  * capture request (if it does then the 4 is much more improbable to appear, but still not impossible). After this, host tries to queue an extra
@@ -188,7 +188,6 @@ STORAGE_CLASS_INLINE void free_comm_buff_shared_mem(
 	}
 }
 
-
 /**
  * ia_css_isys_constr_comm_buff_queue()
  */
@@ -202,16 +201,16 @@ int ia_css_isys_constr_comm_buff_queue(
 
 	assert(ctx != NULL);
 
-	ctx->isys_comm_buffer_queue.pstream_cfg_buff_id = (ia_css_shared_buffer *)ia_css_cpu_mem_alloc(ctx->num_send_queues * STREAM_CFG_BUFS_PER_MSG_QUEUE * sizeof(ia_css_shared_buffer));
+	ctx->isys_comm_buffer_queue.pstream_cfg_buff_id = (ia_css_shared_buffer *)ia_css_cpu_mem_alloc(ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG] * STREAM_CFG_BUFS_PER_MSG_QUEUE * sizeof(ia_css_shared_buffer));
 	verifret(ctx->isys_comm_buffer_queue.pstream_cfg_buff_id != NULL, EFAULT);
 
-	ctx->isys_comm_buffer_queue.pnext_frame_buff_id = (ia_css_shared_buffer *)ia_css_cpu_mem_alloc(ctx->num_send_queues * NEXT_FRAME_BUFS_PER_MSG_QUEUE * sizeof(ia_css_shared_buffer));
+	ctx->isys_comm_buffer_queue.pnext_frame_buff_id = (ia_css_shared_buffer *)ia_css_cpu_mem_alloc(ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG] * NEXT_FRAME_BUFS_PER_MSG_QUEUE * sizeof(ia_css_shared_buffer));
 	if (ctx->isys_comm_buffer_queue.pnext_frame_buff_id == NULL) {
 		ia_css_cpu_mem_free(ctx->isys_comm_buffer_queue.pstream_cfg_buff_id);
 		return EFAULT;
 	}
 
-	for (stream_handle = 0; stream_handle < (int)ctx->num_send_queues; stream_handle++) {
+	for (stream_handle = 0; stream_handle < (int)ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG]; stream_handle++) {
 		stream_cfg_buff_counter = 0;	/* Initialisation needs to happen here for both loops */
 		next_frame_buff_counter = 0;	/* Initialisation needs to happen here for both loops */
 		for (; stream_cfg_buff_counter < STREAM_CFG_BUFS_PER_MSG_QUEUE; stream_cfg_buff_counter++) {
@@ -262,7 +261,7 @@ int ia_css_isys_force_unmap_comm_buff_queue(
 	assert(ctx != NULL);
 
 	IA_CSS_TRACE_0(ISYSAPI, WARNING, "ia_css_isys_force_unmap_comm_buff_queue() called\n");
-	for (stream_handle = 0; stream_handle < (int)ctx->num_send_queues; stream_handle++) {
+	for (stream_handle = 0; stream_handle < (int)ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG]; stream_handle++) {
 		assert((ctx->isys_comm_buffer_queue.stream_cfg_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle]) <= STREAM_CFG_BUFS_PER_MSG_QUEUE);
 		verifret((ctx->isys_comm_buffer_queue.stream_cfg_queue_head[stream_handle] - ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle]) <= STREAM_CFG_BUFS_PER_MSG_QUEUE, EFAULT);	/* For some reason queue is more than full */
 		for (; ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle] < ctx->isys_comm_buffer_queue.stream_cfg_queue_head[stream_handle]; ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[stream_handle]++) {
@@ -293,7 +292,7 @@ int ia_css_isys_destr_comm_buff_queue(
 
 	free_comm_buff_shared_mem(
 		ctx,
-		ctx->num_send_queues - 1,
+		ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG] - 1,
 		STREAM_CFG_BUFS_PER_MSG_QUEUE - 1,
 		NEXT_FRAME_BUFS_PER_MSG_QUEUE - 1);
 
@@ -454,7 +453,6 @@ STORAGE_CLASS_INLINE void resp_info_css_to_host(const struct ia_css_isys_resp_in
 	param_pin_css_to_host(&resp_info_css->process_group_light, &resp_info_host->process_group_light);
 	resp_info_host->acc_id = resp_info_css->acc_id;
 }
-
 
 /**
  * ia_css_isys_constr_fw_stream_cfg()
@@ -623,19 +621,42 @@ int ia_css_isys_extract_fw_response(
 
 
 /**
+ * ia_css_isys_extract_proxy_response()
+ */
+int ia_css_isys_extract_proxy_response(
+	const struct proxy_resp_queue_token *token,
+	struct ia_css_proxy_write_req_resp *preceived_response
+) {
+	assert(token != NULL);
+	assert(preceived_response != NULL);
+
+	preceived_response->request_id = token->proxy_resp_info.request_id;
+	preceived_response->error = token->proxy_resp_info.error_info.error;
+	preceived_response->error_details = token->proxy_resp_info.error_info.error_details;
+
+	return 0;
+}
+
+
+/**
  * ia_css_isys_prepare_param()
  */
 void ia_css_isys_prepare_param(
 	struct ia_css_isys_fw_config *isys_fw_cfg,
 	const struct ia_css_isys_buffer_partition *buf_partition,
-	const unsigned int num_send_queues,
-	const unsigned int num_recv_queues
+	const unsigned int num_send_queues[],
+	const unsigned int num_recv_queues[]
 ) {
+	unsigned int i;
 	assert(isys_fw_cfg != NULL);
 	assert(buf_partition != NULL);
+	assert(num_send_queues != NULL);
+	assert(num_recv_queues != NULL);
 
 	buffer_partition_host_to_css(buf_partition, &isys_fw_cfg->buffer_partition);
-	isys_fw_cfg->num_send_queues = num_send_queues;
-	isys_fw_cfg->num_recv_queues = num_recv_queues;
+	for (i = 0; i < N_IA_CSS_ISYS_QUEUE_TYPE; i++) {
+		isys_fw_cfg->num_send_queues[i] = num_send_queues[i];
+		isys_fw_cfg->num_recv_queues[i] = num_recv_queues[i];
+	}
 }
 

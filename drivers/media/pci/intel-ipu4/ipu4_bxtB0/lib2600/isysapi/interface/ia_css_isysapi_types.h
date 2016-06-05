@@ -36,12 +36,19 @@ struct ia_css_isys_buffer_partition {
 struct ia_css_driver_sys_config {
 	unsigned int ssid;
 	unsigned int mmid;
-	unsigned int num_send_queues;
-	unsigned int num_recv_queues;
+	unsigned int num_send_queues; /* # of MSG send queues */
+	unsigned int num_recv_queues; /* # of MSG recv queues */
 	unsigned int send_queue_size; /* max # tokens per queue */
 	unsigned int recv_queue_size; /* max # tokens per queue */
 
 	unsigned int icache_prefetch; /* enable prefetching for SPC */
+};
+
+/**
+ * This should contain the driver specified info for proxy write queues
+ */
+struct ia_css_driver_proxy_config {
+	unsigned int proxy_write_queue_size;	/* max # tokens per PROXY send/recv queue. Proxy queues are used for write access purpose */
 };
 
  /**
@@ -53,6 +60,7 @@ struct ia_css_driver_sys_config {
 struct ia_css_isys_device_cfg_data {
 	struct ia_css_driver_sys_config driver_sys;
 	struct ia_css_isys_buffer_partition buffer_partition;
+	struct ia_css_driver_proxy_config driver_proxy;
 };
 
 /**
@@ -118,7 +126,6 @@ struct ia_css_isys_input_pin_info {
 	enum ia_css_isys_mipi_data_type dt;
 	enum ia_css_isys_mipi_store_mode mipi_store_mode;
 };
-
 
 /**
  * struct ia_css_isys_isa_cfg. Describes the ISA cfg
@@ -237,6 +244,33 @@ struct ia_css_isys_resp_info {
 	unsigned int pin_id;
 	struct ia_css_isys_param_pin process_group_light;
 	unsigned int acc_id;
+};
+
+/**
+ * struct ia_css_proxy_write_req_val
+ * @request_id: Unique identifier for the write request (in case multiple write requests are issued for same register)
+ * @region_index: region id for the write request
+ * @offset: Offset to the specific register within the region
+ * @value: Value to be written to register
+ */
+struct ia_css_proxy_write_req_val {
+	uint32_t request_id;
+	uint32_t region_index;
+	uint32_t offset;
+	uint32_t value;
+};
+
+/**
+ * struct ia_css_proxy_write_req_resp
+ * @request_id: Unique identifier for the write request (in case multiple write requests are issued for same register)
+ * @error: error code if something went wrong
+ * @error_details: error detail includes either offset or region index information
+ *					which caused proxy request to be rejected (invalid access request)
+ */
+struct ia_css_proxy_write_req_resp {
+	uint32_t request_id;
+	enum ia_css_proxy_error error;
+	uint32_t error_details;
 };
 
 

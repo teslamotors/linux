@@ -19,7 +19,6 @@
 
 #include "ia_css_isysapi_fw_types.h"
 
-
 /**
  * struct ia_css_isys_buffer_partition_comm - buffer partition information
  * @num_gda_pages: Number of virtual gda pages available for each virtual stream
@@ -31,11 +30,13 @@ struct ia_css_isys_buffer_partition_comm {
 /**
  * struct ia_css_isys_fw_config - contains the parts from ia_css_isys_device_cfg_data
  * we need to transfer to the cell
+ * @num_send_queues: Number of send queues per queue type(N_IA_CSS_ISYS_QUEUE_TYPE)
+ * @num_recv_queues: Number of receive queues per queue type(N_IA_CSS_ISYS_QUEUE_TYPE)
  */
 struct ia_css_isys_fw_config {
 	aligned_struct(struct ia_css_isys_buffer_partition_comm, buffer_partition);
-	aligned_uint32(unsigned int, num_send_queues);
-	aligned_uint32(unsigned int, num_recv_queues);
+	aligned_uint32(unsigned int, num_send_queues[N_IA_CSS_ISYS_QUEUE_TYPE]);
+	aligned_uint32(unsigned int, num_recv_queues[N_IA_CSS_ISYS_QUEUE_TYPE]);
 };
 
 /**
@@ -217,6 +218,16 @@ struct ia_css_isys_error_info_comm {
 };
 
 /**
+ * struct ia_css_isys_proxy_error_info_comm
+ * @proxy_error: error code if something went wrong
+ * @proxy_error_details: depending on error code, it may contain additional error info
+ */
+struct ia_css_isys_proxy_error_info_comm {
+	aligned_enum(enum ia_css_proxy_error, error);
+	aligned_uint32(unsigned int, error_details);
+};
+
+/**
  * struct ia_css_isys_resp_info_comm
  * @type: response type
  * @stream_handle: stream id the response corresponds to
@@ -238,6 +249,26 @@ struct ia_css_isys_resp_info_comm {
 	aligned_enum(enum ia_css_isys_resp_type, type);
 };
 
+struct ia_css_isys_proxy_resp_info_comm {
+	aligned_uint32(uint32_t, request_id);
+	aligned_struct(struct ia_css_isys_proxy_error_info_comm, error_info);
+};
+
+/**
+ * struct ia_css_proxy_write_queue_token
+ * @request_id: update id for the specific proxy write request
+ * @region_index: Region id for the proxy write request
+ * @offset: Offset of the write request according to the base address of the region
+ * @value: Value that is requested to be written with the proxy write request
+ */
+struct ia_css_proxy_write_queue_token {
+	aligned_uint32(uint32_t, request_id);
+	aligned_uint32(uint32_t, region_index);
+	aligned_uint32(uint32_t, offset);
+	aligned_uint32(uint32_t, value);
+};
+
+
 /* From here on type defines not coming from the ISYSAPI interface */
 
 /**
@@ -256,5 +287,21 @@ struct send_queue_token {
 	aligned_uint64(ia_css_return_token, buf_handle);
 };
 
+/**
+ * struct proxy_resp_queue_token
+ */
+struct proxy_resp_queue_token {
+	aligned_struct(struct ia_css_isys_proxy_resp_info_comm, proxy_resp_info);
+};
+
+/**
+ * struct proxy_send_queue_token
+ */
+struct proxy_send_queue_token {
+	aligned_uint32(uint32_t, request_id);
+	aligned_uint32(uint32_t, region_index);
+	aligned_uint32(uint32_t, offset);
+	aligned_uint32(uint32_t, value);
+};
 
 #endif /*__IA_CSS_ISYS_FW_BRIDGED_TYPES_H__*/

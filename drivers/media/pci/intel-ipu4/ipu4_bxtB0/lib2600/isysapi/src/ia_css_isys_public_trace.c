@@ -67,21 +67,26 @@ int print_handle_context(struct ia_css_isys_context *ctx)
 int print_device_config_data(const struct ia_css_isys_device_cfg_data *config)
 {
 	verifret(config != NULL, EFAULT);
-	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Print ia_css_isys_device_cfg_data *config\n"
+	IA_CSS_TRACE_0(ISYSAPI,
+		VERBOSE,
+		"Print ia_css_isys_device_cfg_data *config\n"
 		"-------------------------------------------------------------------------------\n");
-	IA_CSS_TRACE_6(ISYSAPI, VERBOSE,
+	IA_CSS_TRACE_7(ISYSAPI,
+		VERBOSE,
 		"\tia_css_isys_device_cfg_data->driver_sys.ssid = %d\n"
 		"\t\t\tia_css_isys_device_cfg_data->driver_sys.mmid = %d\n"
 		"\t\t\tia_css_isys_device_cfg_data->driver_sys.num_send_queues = %d\n"
 		"\t\t\tia_css_isys_device_cfg_data->driver_sys.num_recv_queues = %d\n"
 		"\t\t\tia_css_isys_device_cfg_data->driver_sys.send_queue_size = %d\n"
 		"\t\t\tia_css_isys_device_cfg_data->driver_sys.recv_queue_size = %d\n"
-		, config->driver_sys.ssid
-		, config->driver_sys.mmid
-		, config->driver_sys.num_send_queues
-		, config->driver_sys.num_recv_queues
-		, config->driver_sys.send_queue_size
-		, config->driver_sys.recv_queue_size);
+		"\t\t\tia_css_isys_device_cfg_data->driver_proxy.proxy_write_queue_size = %d\n",
+		config->driver_sys.ssid,
+		config->driver_sys.mmid,
+		config->driver_sys.num_send_queues,
+		config->driver_sys.num_recv_queues,
+		config->driver_sys.send_queue_size,
+		config->driver_sys.recv_queue_size,
+		config->driver_proxy.proxy_write_queue_size);
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "------------------------------------------------------------\n");
 	return 0;
 }

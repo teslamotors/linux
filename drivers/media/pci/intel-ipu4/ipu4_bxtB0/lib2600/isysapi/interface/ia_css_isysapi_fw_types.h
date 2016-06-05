@@ -25,6 +25,15 @@
 /* Max number of supported virtual streams */
 #define STREAM_ID_MAX (8)
 
+#define N_MAX_MSG_SEND_QUEUES 		(STREAM_ID_MAX)		/* Aligned with the approach of having one dedicated per stream */
+#define N_MAX_MSG_RECV_QUEUES 		(1)
+#define N_MAX_PROXY_SEND_QUEUES 	(1)			/* Single dedicated send queue for proxy interface */
+#define N_MAX_PROXY_RECV_QUEUES 	(1)			/* Single dedicated recv queue for proxy interface */
+#define N_MAX_SEND_QUEUES		(N_MAX_MSG_SEND_QUEUES + N_MAX_PROXY_SEND_QUEUES)
+#define N_MAX_RECV_QUEUES		(N_MAX_MSG_RECV_QUEUES + N_MAX_PROXY_RECV_QUEUES)
+#define MAX_QUEUE_SIZE			(256)
+#define MIN_QUEUE_SIZE			(1)
+
 /* Max number of supported SRAM buffer partitions */
 /* It refers to the size of stream partitions */
 /* These partitions are further subpartitioned internally */
@@ -75,6 +84,15 @@ enum ia_css_isys_send_type {
 	IA_CSS_ISYS_SEND_TYPE_STREAM_FLUSH,
 	IA_CSS_ISYS_SEND_TYPE_STREAM_CLOSE,
 	N_IA_CSS_ISYS_SEND_TYPE
+};
+
+/**
+ * enum ia_css_isys_queue_type
+ */
+enum ia_css_isys_queue_type {
+	IA_CSS_ISYS_QUEUE_TYPE_PROXY = 0,
+	IA_CSS_ISYS_QUEUE_TYPE_MSG,
+	N_IA_CSS_ISYS_QUEUE_TYPE
 };
 
 /**
@@ -350,5 +368,14 @@ enum ia_css_isys_error {
 	N_IA_CSS_ISYS_ERROR
 };
 
+/**
+ * enum ia_css_proxy_error. Describes the error type for the proxy detected by the FW
+ */
+enum ia_css_proxy_error {
+	IA_CSS_PROXY_ERROR_NONE = 0,
+	IA_CSS_PROXY_ERROR_INVALID_WRITE_REGION,
+	IA_CSS_PROXY_ERROR_INVALID_WRITE_OFFSET,
+	N_IA_CSS_PROXY_ERROR
+};
 
 #endif /*__IA_CSS_ISYSAPI_FW_TYPES_H__*/

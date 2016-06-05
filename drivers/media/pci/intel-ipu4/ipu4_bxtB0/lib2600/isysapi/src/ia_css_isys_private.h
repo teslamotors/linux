@@ -68,12 +68,13 @@ struct ia_css_isys_comm_buffer_queue {
  */
 struct ia_css_isys_context {
 	struct ia_css_syscom_context *sys;
-    /*add here any isys specific members that need
+    /* add here any isys specific members that need
 	  to be passed into the isys api functions as input */
 	unsigned int ssid;
 	unsigned int mmid;
-	unsigned int num_send_queues;
-	unsigned int send_queue_size;
+	unsigned int num_send_queues[N_IA_CSS_ISYS_QUEUE_TYPE];
+	unsigned int num_recv_queues[N_IA_CSS_ISYS_QUEUE_TYPE];
+	unsigned int send_queue_size[N_IA_CSS_ISYS_QUEUE_TYPE];
 	struct ia_css_isys_comm_buffer_queue isys_comm_buffer_queue;
 	unsigned int stream_nof_output_pins[STREAM_ID_MAX];
 #if (VERIFY_DEVSTATE != 0)
@@ -134,6 +135,10 @@ extern int ia_css_isys_extract_fw_response(
 	const struct resp_queue_token *token,
 	struct ia_css_isys_resp_info *received_response
 );
+extern int ia_css_isys_extract_proxy_response(
+	const struct proxy_resp_queue_token *token,
+	struct ia_css_proxy_write_req_resp *received_response
+);
 
 /**
  * ia_css_isys_prepare_param()
@@ -141,8 +146,8 @@ extern int ia_css_isys_extract_fw_response(
 extern void ia_css_isys_prepare_param(
 	struct ia_css_isys_fw_config *isys_fw_cfg,
 	const struct ia_css_isys_buffer_partition *buf_partition,
-	const unsigned int num_send_queues,
-	const unsigned int num_recv_queues
+	const unsigned int num_send_queues[],
+	const unsigned int num_recv_queues[]
 );
 
 #endif /*__IA_CSS_ISYS_PRIVATE_H_INCLUDED__*/
