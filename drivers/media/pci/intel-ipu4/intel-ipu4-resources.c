@@ -255,9 +255,7 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 				ret = -ENOSPC;
 				goto free_out;
 			}
-			if (ia_css_process_set_cell(process, cell) &&
-			    (ia_css_process_clear_cell(process) ||
-			     ia_css_process_set_cell(process, cell))) {
+			if (ia_css_process_set_cell(process, cell)) {
 				dev_err(dev, "could not assign cell\n");
 				ret = -EIO;
 				goto free_out;
@@ -283,6 +281,22 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 	return 0;
 
 free_out:
+	for (; i >= 0; i--) {
+		ia_css_process_t *process =
+			ia_css_process_group_get_process(pg, i);
+		ia_css_program_manifest_t *pm;
+
+		if (process == NULL)
+			break;
+		pm = intel_ipu4_psys_get_program_manifest_by_process(
+						pg_manifest, process);
+		if (pm == NULL)
+			break;
+		if (ia_css_has_program_manifest_fixed_cell(pm))
+			continue;
+		ia_css_process_clear_cell(process);
+	}
+
 	intel_ipu4_psys_free_resources(alloc, pool);
 	return ret;
 }
