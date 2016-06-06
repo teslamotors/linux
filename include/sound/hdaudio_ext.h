@@ -89,6 +89,7 @@ struct hdac_ext_stream {
 
 	u32 dpib;
 	u32 lpib;
+	u32 spib;
 	bool decoupled:1;
 	bool link_locked:1;
 	bool link_prepared;

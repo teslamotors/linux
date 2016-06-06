@@ -463,6 +463,8 @@ int snd_hdac_ext_stream_set_spib(struct hdac_ext_bus *ebus,
 	}
 
 	writel(value, stream->spib_addr);
+	/* save the value in stream context */
+	stream->spib = value;
 
 	return 0;
 }
