@@ -52,7 +52,8 @@ static const struct snd_pcm_hardware azx_pcm_hw = {
 	.formats =		SNDRV_PCM_FMTBIT_S16_LE |
 				SNDRV_PCM_FMTBIT_S32_LE |
 				SNDRV_PCM_FMTBIT_S24_LE |
-				SNDRV_PCM_FMTBIT_FLOAT_LE,
+				SNDRV_PCM_FMTBIT_FLOAT_LE |
+				SNDRV_PCM_FMTBIT_S24_3LE,
 	.rates =		SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
 	.rate_min =		8000,
 	.rate_max =		192000,
@@ -378,8 +379,12 @@ static int skl_pcm_hw_params(struct snd_pcm_substream *substream,
 
 
 	m_cfg = skl_tplg_fe_get_cpr_module(dai, p_params.stream);
-	if (m_cfg)
-		skl_tplg_update_pipe_params(dai->dev, m_cfg, &p_params);
+	if (m_cfg) {
+		skl_tplg_update_pipe_params(dai->dev,
+					m_cfg,
+					&p_params,
+					params_format(params));
+	}
 
 	return 0;
 }
@@ -1142,7 +1147,8 @@ static struct snd_soc_dai_driver skl_fe_dai[] = {
 		.channels_max = HDA_8_CH,
 		.rates = SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE |
-			SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT_LE,
+			SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT_LE |
+			SNDRV_PCM_FMTBIT_S24_3LE,
 		.sig_bits = 32,
 	},
 	.capture = {
@@ -1151,7 +1157,8 @@ static struct snd_soc_dai_driver skl_fe_dai[] = {
 		.channels_max = HDA_8_CH,
 		.rates = SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE |
-			SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT_LE,
+			SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT_LE |
+			SNDRV_PCM_FMTBIT_S24_3LE,
 		.sig_bits = 32,
 	},
 },
@@ -1293,7 +1300,9 @@ static struct snd_soc_dai_driver skl_fe_dai[] = {
 		.channels_max = HDA_STEREO,
 		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_16000 |
 			SNDRV_PCM_RATE_8000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE |
+			SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE |
+			SNDRV_PCM_FMTBIT_FLOAT_LE,
 	},
 },
 {
