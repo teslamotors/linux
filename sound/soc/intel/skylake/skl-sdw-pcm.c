@@ -124,18 +124,6 @@ alloc_failed:
 	return ret;
 }
 
-#ifdef CONFIG_SND_SOC_MXFPGA
-static void skl_set_agg(struct skl_module_cfg *m_cfg, int be_id) {
-	m_cfg->sdw_agg_enable = true;
-	m_cfg->sdw_agg.num_masters = 2;
-	if (be_id > SDW_BE_DAI_ID_MSTR0)
-		m_cfg->sdw_agg.agg_data[1].ch_mask = 0x2;
-	else
-		m_cfg->sdw_agg.agg_data[0].ch_mask = 0x1;
-
-}
-#endif
-
 int cnl_sdw_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params,
 				struct snd_soc_dai *dai)
@@ -180,10 +168,6 @@ int cnl_sdw_hw_params(struct snd_pcm_substream *substream,
 		dev_err(dai->dev, "BE Copier not found\n");
 		return -EINVAL;
 	}
-#ifdef CONFIG_SND_SOC_MXFPGA
-	/* Ideally this will come from DFW */
-	skl_set_agg(m_cfg, dai->id);
-#endif
 
 	if (!m_cfg->sdw_agg_enable)
 		m_cfg->sdw_stream_num = dma->port->pdi_stream->sdw_pdi_num;
