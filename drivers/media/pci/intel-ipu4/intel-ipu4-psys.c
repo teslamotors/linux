@@ -32,18 +32,12 @@
 
 #include <uapi/linux/intel-ipu4-psys.h>
 
-#include <ia_css_psys_process.h>
-#include <ia_css_psys_process_group.h>
-#include <ia_css_psys_program_group_manifest.h>
-#include <ia_css_psys_program_manifest.h>
-#include <ia_css_psys_terminal.h>
-#include <ia_css_psys_device.h>
-#include <ipu_device_cell_properties_func.h>
-
 #include "intel-ipu4.h"
 #include "intel-ipu4-bus.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-cpd.h"
+#include "intel-ipu4-psys-abi-defs.h"
+#include "intel-ipu4-psys-abi.h"
 #include "intel-ipu4-psys.h"
 #include "intel-ipu4-wrapper.h"
 #include "intel-ipu4-buttress.h"
@@ -51,6 +45,8 @@
 #include "intel-ipu5-regs.h"
 #define CREATE_TRACE_POINTS
 #include "intel-ipu4-trace-event.h"
+#include "intel-ipu4-isys-fw-msgs.h"
+#include "intel-ipu4-fw-com.h"
 
 static bool early_pg_transfer;
 static bool enable_concurrency = true;
@@ -95,10 +91,7 @@ static dev_t intel_ipu4_psys_dev_t;
 static DECLARE_BITMAP(intel_ipu4_psys_devices, INTEL_IPU4_PSYS_NUM_DEVICES);
 static DEFINE_MUTEX(intel_ipu4_psys_mutex);
 
-extern struct ia_css_syscom_context *psys_syscom;
-
 static struct intel_ipu4_trace_block psys_trace_blocks_ipu4[] = {
-
 	{
 		.offset = TRACE_REG_PS_TRACE_UNIT_BASE,
 		.type = INTEL_IPU4_TRACE_BLOCK_TUN,
@@ -780,39 +773,6 @@ struct intel_ipu4_psys_pg *__get_pg_buf(
 	return kpg;
 }
 
-static void intel_ipu4_dumppg(
-	struct device *dev, ia_css_process_group_t *pg, const char *note)
-{
-	ia_css_program_group_ID_t pgid =
-				ia_css_process_group_get_program_group_ID(pg);
-	uint8_t processes = ia_css_process_group_get_process_count(pg);
-	unsigned int p;
-
-	dev_dbg(dev, "%s %s pgid %i processes %i\n",
-		__func__, note, pgid, processes);
-	for (p = 0; p < processes; p++) {
-		ia_css_process_t *process =
-			ia_css_process_group_get_process(pg, p);
-
-		dev_dbg(dev, "%s pgid %i process %i cell %i dev_chn: \
-			ext0 %i ext1r %i ext1w %i int %i ipfd %i isa %i\n",
-			__func__, pgid, p,
-			ia_css_process_get_cell(process),
-			ia_css_process_get_dev_chn(process,
-					VIED_NCI_DEV_CHN_DMA_EXT0_ID),
-			ia_css_process_get_dev_chn(process,
-					VIED_NCI_DEV_CHN_DMA_EXT1_READ_ID),
-			ia_css_process_get_dev_chn(process,
-					VIED_NCI_DEV_CHN_DMA_EXT1_WRITE_ID),
-			ia_css_process_get_dev_chn(process,
-					VIED_NCI_DEV_CHN_DMA_INTERNAL_ID),
-			ia_css_process_get_dev_chn(process,
-					VIED_NCI_DEV_CHN_DMA_IPFD_ID),
-			ia_css_process_get_dev_chn(process,
-					VIED_NCI_DEV_CHN_DMA_ISA_ID));
-	}
-}
-
 struct intel_ipu4_psys_kcmd *
 intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 		      struct intel_ipu4_psys_fh *fh)
@@ -854,7 +814,7 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 	if (!kcmd->pg_manifest)
 		goto error;
 
-	kcmd->nbuffers = ia_css_process_group_get_terminal_count(kcmd->kpg->pg);
+	kcmd->nbuffers = intel_ipu4_psys_abi_pg_get_terminal_count(kcmd);
 	if (kcmd->nbuffers > cmd->bufcount)
 		goto error;
 
@@ -959,7 +919,7 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 					  int error)
 {
 	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority,
-		ia_css_process_group_get_program_group_ID(kcmd->kpg->pg));
+			   intel_ipu4_psys_abi_pg_get_id(kcmd));
 
 	switch (kcmd->state) {
 	case KCMD_STATE_RUNNING:
@@ -1033,18 +993,24 @@ static int intel_ipu4_psys_kcmd_abort(struct intel_ipu4_psys *psys,
 				       struct intel_ipu4_psys_kcmd *kcmd,
 				       int error)
 {
+	int ret = 0;
+
 	if (kcmd->state == KCMD_STATE_COMPLETE)
 		return 0;
 
 	if ((kcmd->state == KCMD_STATE_RUNNING  ||
-	     kcmd->state == KCMD_STATE_STARTED) &&
-	    ia_css_process_group_stop(kcmd->kpg->pg)) {
-		dev_err(&psys->adev->dev, "failed to abort kcmd!\n");
-		return -EIO;
+	     kcmd->state == KCMD_STATE_STARTED)) {
+		ret = intel_ipu4_psys_abi_pg_abort(kcmd);
+		if (ret) {
+			dev_err(&psys->adev->dev, "failed to abort kcmd!\n");
+			goto out;
+		}
 	}
 
-	intel_ipu4_psys_kcmd_complete(psys, kcmd, error);
-	return 0;
+out:
+	intel_ipu4_psys_kcmd_complete(psys, kcmd, ret);
+
+	return ret;
 }
 
 /*
@@ -1088,11 +1054,13 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	if (early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
 		memcpy(kcmd->pg_user, kcmd->kpg->pg, kcmd->kpg->pg_size);
 
-	ret = -ia_css_process_group_start(kcmd->kpg->pg);
-	if (ret)
+	ret = intel_ipu4_psys_abi_pg_start(kcmd);
+	if (ret) {
+		dev_err(&psys->adev->dev, "failed to start kcmd!\n");
 		goto error;
+	}
 
-	intel_ipu4_dumppg(&psys->adev->dev, kcmd->kpg->pg, "run");
+	intel_ipu4_psys_abi_pg_dump(psys, kcmd, "run");
 
 	/*
 	 * Starting from scci_master_20151228_1800, pg start api is split into
@@ -1101,12 +1069,14 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	 */
 	clflush_cache_range(kcmd->kpg->pg, kcmd->kpg->pg_size);
 
-	ret = -ia_css_process_group_disown(kcmd->kpg->pg);
-	if (ret)
+	ret = intel_ipu4_psys_abi_pg_disown(kcmd);
+	if (ret) {
+		dev_err(&psys->adev->dev, "failed to start kcmd!\n");
 		goto error;
+	}
 
 	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority,
-		ia_css_process_group_get_program_group_ID(kcmd->kpg->pg));
+		intel_ipu4_psys_abi_pg_get_id(kcmd));
 
 	switch (kcmd->state) {
 	case KCMD_STATE_RUNNING:
@@ -1122,6 +1092,7 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 		break;
 	default:
 		WARN_ON(1);
+		ret = -EINVAL;
 		goto error;
 	}
 	return 0;
@@ -1415,7 +1386,7 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 							&kcmd->constraint);
 	}
 
-	pg_size = ia_css_process_group_get_size(kcmd->kpg->pg);
+	pg_size = intel_ipu4_psys_abi_pg_get_size(kcmd);
 	if (pg_size > kcmd->kpg->pg_size) {
 		dev_dbg(&psys->adev->dev, "pg size mismatch %lu %lu\n",
 			pg_size, kcmd->kpg->pg_size);
@@ -1423,90 +1394,41 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 		goto error;
 	}
 
-	ret = ia_css_process_group_set_ipu_vaddress(kcmd->kpg->pg,
-						    kcmd->kpg->pg_dma_addr);
+	ret = intel_ipu4_psys_abi_pg_set_ipu_vaddress(
+		kcmd, kcmd->kpg->pg_dma_addr);
 	if (ret) {
 		ret = -EIO;
 		goto error;
 	}
 
 	for (i = 0; i < kcmd->nbuffers; i++) {
-		ia_css_buffer_state_t buffer_state;
-		ia_css_terminal_t *terminal;
-		ia_css_terminal_type_t type;
-		vied_vaddress_t buffer;
+		struct ia_css_terminal *terminal;
+		u32 buffer;
 
-		terminal = ia_css_process_group_get_terminal(kcmd->kpg->pg, i);
+		terminal = intel_ipu4_psys_abi_pg_get_terminal(kcmd, i);
 		if (!terminal)
 			continue;
 
-		type = ia_css_terminal_get_type(terminal);
-
-		switch (type) {
-		case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN:
-		case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT:
-		case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN:
-		case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT:
-		case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_IN:
-		case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT:
-		case IA_CSS_TERMINAL_TYPE_PROGRAM:
-			buffer_state = IA_CSS_BUFFER_UNDEFINED;
-			break;
-		case IA_CSS_TERMINAL_TYPE_PARAM_STREAM:
-		case IA_CSS_TERMINAL_TYPE_DATA_IN:
-		case IA_CSS_TERMINAL_TYPE_STATE_IN:
-			buffer_state = IA_CSS_BUFFER_FULL;
-			break;
-		case IA_CSS_TERMINAL_TYPE_DATA_OUT:
-		case IA_CSS_TERMINAL_TYPE_STATE_OUT:
-			buffer_state = IA_CSS_BUFFER_EMPTY;
-			break;
-		default:
-			dev_err(&psys->adev->dev,
-				"unknown terminal type: 0x%x\n", type);
-			continue;
-		}
-		if (type == IA_CSS_TERMINAL_TYPE_DATA_IN ||
-		    type == IA_CSS_TERMINAL_TYPE_DATA_OUT) {
-			ia_css_frame_t *frame;
-
-			if (ia_css_data_terminal_set_connection_type(
-					(ia_css_data_terminal_t *)terminal,
-					IA_CSS_CONNECTION_MEMORY)) {
-				ret = -EIO;
-				goto error;
-			}
-			frame = ia_css_data_terminal_get_frame(
-					(ia_css_data_terminal_t *)terminal);
-			if (!frame) {
-				ret = -EIO;
-				goto error;
-			}
-
-			if (ia_css_frame_set_data_bytes(frame,
-							kcmd->kbufs[i]->len)) {
-				ret = -EIO;
-				goto error;
-			}
-		}
-
-		buffer = (vied_vaddress_t)kcmd->kbufs[i]->dma_addr +
+		buffer = (u32)kcmd->kbufs[i]->dma_addr +
 			 kcmd->buffers[i].data_offset;
 
-		ret = -ia_css_process_group_attach_buffer(kcmd->kpg->pg, buffer,
-							  buffer_state, i);
+		ret = intel_ipu4_psys_abi_terminal_set(terminal, i, kcmd,
+						       buffer,
+						       kcmd->kbufs[i]->len);
+		if (ret == -EAGAIN)
+			continue;
+
 		if (ret) {
-			ret = -EIO;
+			dev_err(&psys->adev->dev, "Unable to set terminal\n");
 			goto error;
 		}
 	}
 
-	ia_css_process_group_set_token(kcmd->kpg->pg, (uint64_t)kcmd);
+	intel_ipu4_psys_abi_pg_set_token(kcmd, (u64)kcmd);
 
-	ret = -ia_css_process_group_submit(kcmd->kpg->pg);
+	ret = intel_ipu4_psys_abi_pg_submit(kcmd);
 	if (ret) {
-		dev_err(&psys->adev->dev, "pg submit failed %d\n", ret);
-		ret = -EIO;
+		dev_err(&psys->adev->dev, "failed to submit kcmd!\n");
 		goto error;
 	}
 
@@ -1983,11 +1905,8 @@ static int psys_runtime_pm_resume(struct device *dev)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
-	struct ia_css_syscom_config *syscom_config = psys ?
-						psys->syscom_config : NULL;
 	unsigned long flags;
-	int retry = INTEL_IPU4_PSYS_OPEN_RETRY;
-	bool opened;
+	int retval;
 
 	if (!psys) {
 		WARN(1, "%s called before probing. skipping.\n", __func__);
@@ -2016,38 +1935,18 @@ static int psys_runtime_pm_resume(struct device *dev)
 
 	intel_ipu4_trace_restore(&psys->adev->dev);
 
-	psys->server_init->icache_prefetch_sp = psys->icache_prefetch_sp;
-	psys->server_init->icache_prefetch_isp = psys->icache_prefetch_isp;
+	intel_ipu4_configure_spc(
+		adev->isp,
+		INTEL_IPU4_CPD_PKG_DIR_PSYS_SERVER_IDX,
+		psys->pdata->base, psys->pkg_dir,
+		psys->pkg_dir_dma_addr);
 
-	intel_ipu4_configure_spc(adev->isp,
-				 INTEL_IPU4_CPD_PKG_DIR_PSYS_SERVER_IDX,
-				 psys->pdata->base, psys->pkg_dir,
-				 psys->pkg_dir_dma_addr);
-
-	psys->dev_ctx = ia_css_psys_open(NULL, syscom_config);
-	if (!psys->dev_ctx) {
-		dev_err(&psys->adev->dev, "psys library open failed\n");
-		return -ENODEV;
+	retval = intel_ipu4_psys_abi_open(psys);
+	if (retval) {
+		dev_err(&psys->adev->dev, "Failed to open abi.\n");
+		return retval;
 	}
 
-	do {
-		opened = ia_css_psys_open_is_ready(psys->dev_ctx);
-		if (opened)
-			break;
-		usleep_range(INTEL_IPU4_PSYS_OPEN_TIMEOUT_US,
-			     INTEL_IPU4_PSYS_OPEN_TIMEOUT_US + 10);
-		retry--;
-	} while (retry > 0);
-
-	if (!retry && !opened) {
-		dev_err(&psys->adev->dev, "psys library open ready failed\n");
-		ia_css_psys_close(psys->dev_ctx);
-		ia_css_psys_release(psys->dev_ctx, 1);
-		psys->dev_ctx = NULL;
-		return -ENODEV;
-	}
-
-	psys_syscom = psys->dev_ctx;
 	spin_lock_irqsave(&psys->power_lock, flags);
 	psys->power = 1;
 	spin_unlock_irqrestore(&psys->power_lock, flags);
@@ -2060,41 +1959,29 @@ static int psys_runtime_pm_suspend(struct device *dev)
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
 	unsigned long flags;
-	unsigned int retry = INTEL_IPU4_PSYS_CLOSE_TIMEOUT;
-	int r;
+	int rval;
 
 	if (!psys) {
 		WARN(1, "%s called before probing. skipping.\n", __func__);
 		return 0;
 	}
 
+	if (!psys->power)
+		return 0;
+
 	spin_lock_irqsave(&psys->power_lock, flags);
 	psys->power = 0;
 	spin_unlock_irqrestore(&psys->power_lock, flags);
 
-	if (!psys->dev_ctx) {
-		dev_err(dev, "no psys library context\n");
-		return 0;
-	}
+	/*
+	 * We can trace failure but better to not return an error.
+	 * At suspend we are progressing towards psys power gated state.
+	 * Any hang / failure inside psys will be forgotten soon.
+	 */
+	rval = intel_ipu4_psys_abi_close(psys);
+	if (rval)
+		dev_err(dev, "Device close failure: %d\n", rval);
 
-	if (ia_css_psys_close(psys->dev_ctx)) {
-		dev_err(dev, "psys library close failed\n");
-		goto out;
-	}
-	do {
-		r = ia_css_psys_release(psys->dev_ctx, 0);
-		if (r && r != -EBUSY) {
-			dev_dbg(dev, "psys library release failed\n");
-			break;
-		}
-		usleep_range(INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US,
-			     INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US + 10);
-	} while (r && --retry);
-
-out:
-	psys->dev_ctx = NULL;
-	psys_syscom = NULL;
-	intel_ipu4_trace_stop(&psys->adev->dev);
 	return 0;
 }
 
@@ -2311,6 +2198,81 @@ static int intel_ipu4_psys_sched_cmd(void *ptr)
 	return 0;
 }
 
+static void start_sp(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
+	u32 val = 0;
+
+	val |= INTEL_IPU4_ISYS_SPC_STATUS_START |
+		INTEL_IPU4_ISYS_SPC_STATUS_RUN |
+		INTEL_IPU4_ISYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
+	val |= psys->icache_prefetch_sp ?
+		INTEL_IPU4_ISYS_SPC_STATUS_ICACHE_PREFETCH : 0;
+	writel(val, psys->pdata->base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
+}
+
+static int query_sp(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
+	u32 val =
+		readl(psys->pdata->base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
+
+	/* return true when READY == 1, START == 0 */
+	val &= INTEL_IPU4_ISYS_SPC_STATUS_READY |
+		INTEL_IPU4_ISYS_SPC_STATUS_START;
+
+	return val == INTEL_IPU4_ISYS_SPC_STATUS_READY;
+}
+
+static int intel_ipu4_psys_fw_init(struct intel_ipu4_psys *psys)
+{
+	struct ia_css_syscom_queue_config ia_css_psys_cmd_queue_cfg[] = {
+		{ IA_CSS_PSYS_CMD_QUEUE_SIZE, sizeof(struct ia_css_psys_cmd) },
+		{ IA_CSS_PSYS_CMD_QUEUE_SIZE, sizeof(struct ia_css_psys_cmd) }
+	};
+
+	struct ia_css_syscom_queue_config ia_css_psys_event_queue_cfg[] = {
+		{ IA_CSS_PSYS_EVENT_QUEUE_SIZE,
+		  sizeof(struct ia_css_psys_event) }
+	};
+
+	struct ia_css_psys_srv_init server_init = {
+		.ddr_pkg_dir_address = 0,
+		.host_ddr_pkg_dir = 0,
+		.pkg_dir_size = 0,
+		.icache_prefetch_sp = psys->icache_prefetch_sp,
+		.icache_prefetch_isp = psys->icache_prefetch_isp,
+	};
+	struct intel_ipu4_fw_com_cfg fwcom = {
+		.num_input_queues = IA_CSS_N_PSYS_CMD_QUEUE_ID,
+		.num_output_queues = IA_CSS_N_PSYS_EVENT_QUEUE_ID,
+		.input = ia_css_psys_cmd_queue_cfg,
+		.output = ia_css_psys_event_queue_cfg,
+		.dmem_addr = INTEL_IPU4_DMEM_OFFSET,
+		.specific_addr = &server_init,
+		.specific_size = sizeof(server_init),
+		.cell_start = start_sp,
+		.cell_ready = query_sp,
+	};
+	int rval;
+
+	rval = intel_ipu4_buttress_authenticate(psys->adev->isp);
+	if (rval) {
+		dev_err(&psys->adev->dev, "FW authentication failed(%d)\n",
+			rval);
+		return rval;
+	}
+
+	psys->fwcom = intel_ipu4_fw_com_prepare(&fwcom, psys->adev,
+						psys->pdata->base);
+	if (!psys->fwcom) {
+		dev_err(&psys->adev->dev, "psys fw com prepare failed\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
@@ -2416,28 +2378,12 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		goto out_resources_started_free;
 	}
 
-	psys->syscom_config = kzalloc(
-		sizeof(struct ia_css_syscom_config), GFP_KERNEL);
-	if (!psys->syscom_config) {
-		dev_err(&psys->dev, "psys unable to alloc syscom config\n");
-		rval = -ENOMEM;
-		goto out_resources_running_free;
-	}
-
-	psys->server_init = kzalloc(
-		sizeof(struct ia_css_psys_server_init), GFP_KERNEL);
-	if (!psys->server_init) {
-		dev_err(&psys->dev, "psys unable to alloc server init\n");
-		rval = -ENOMEM;
-		goto out_sysconfig_free;
-	}
-
 	fw = adev->isp->cpd_fw;
 
 	rval = intel_ipu4_buttress_map_fw_image(
 		adev, fw, &psys->fw_sgt);
 	if (rval)
-		goto out_release_firmware;
+		goto out_resources_running_free;
 
 	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
 		PSYS_MMID, (void *)fw->data,
@@ -2473,10 +2419,6 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 			goto out_free_pkg_dir;
 	}
 
-	psys->server_init->ddr_pkg_dir_address = 0;
-	psys->server_init->host_ddr_pkg_dir = 0;
-	psys->server_init->pkg_dir_size = 0;
-
 	/* allocate and map memory for process groups */
 	for (i = 0; i < INTEL_IPU4_PSYS_PG_POOL_SIZE; i++) {
 		kpg = kzalloc(sizeof(*kpg), GFP_KERNEL);
@@ -2497,35 +2439,13 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	isp->pkg_dir_dma_addr = psys->pkg_dir_dma_addr;
 	isp->pkg_dir_size = psys->pkg_dir_size;
 
-	*psys->syscom_config = *ia_css_psys_specify();
-	psys->syscom_config->specific_addr = psys->server_init;
-	psys->syscom_config->specific_size =
-		sizeof(struct ia_css_psys_server_init);
-	psys->syscom_config->ssid = PSYS_SSID;
-	psys->syscom_config->mmid = PSYS_MMID;
-
-	if (is_intel_ipu5_hw_a0(isp)) {
-		psys->syscom_config->regs_addr =
-			INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL;
-		psys->syscom_config->dmem_addr =
-			INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL
-			+INTEL_IPU5_DMEM_OFFSET;
-	} else {
-		psys->syscom_config->regs_addr =
-			ipu_device_cell_memory_address(
-				SPC0, IPU_DEVICE_SP2600_CONTROL_REGS);
-		psys->syscom_config->dmem_addr =
-			ipu_device_cell_memory_address(
-				SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM);
-	}
-
 	caps.pg_count = intel_ipu4_cpd_pkg_dir_get_num_entries(psys->pkg_dir);
 
 	dev_info(&adev->dev, "pkg_dir entry count:%d\n", caps.pg_count);
 
-	rval = intel_ipu4_buttress_authenticate(isp);
+	rval = intel_ipu4_psys_fw_init(psys);
 	if (rval) {
-		dev_err(&adev->dev, "FW authentication failed(%d)\n", rval);
+		dev_err(&adev->dev, "FW init failed(%d)\n", rval);
 		goto out_free_pgs;
 	}
 
@@ -2537,7 +2457,7 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	rval = device_register(&psys->dev);
 	if (rval < 0) {
 		dev_err(&psys->dev, "psys device_register failed\n");
-		goto out_free_pgs;
+		goto out_release_fw_com;
 	}
 
 	/* Add the hw stepping information to caps */
@@ -2561,6 +2481,8 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	trace_printk("E|TMWK\n");
 	return 0;
 
+out_release_fw_com:
+	intel_ipu4_fw_com_release(psys->fwcom, 1);
 out_free_pgs:
 	list_for_each_entry_safe(kpg, kpg0, &psys->pgs, list) {
 		dma_free_noncoherent(&adev->dev, kpg->size, kpg->pg,
@@ -2579,10 +2501,6 @@ out_remove_shared_buffer:
 		PSYS_MMID, (void *) fw->data);
 out_unmap_fw_image:
 	intel_ipu4_buttress_unmap_fw_image(adev, &psys->fw_sgt);
-out_release_firmware:
-	kfree(psys->server_init);
-out_sysconfig_free:
-	kfree(psys->syscom_config);
 out_resources_running_free:
 	intel_ipu4_psys_resource_pool_cleanup(&psys->resource_pool_running);
 out_resources_started_free:
@@ -2628,6 +2546,9 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 		kfree(kpg);
 	}
 
+	if (intel_ipu4_fw_com_release(psys->fwcom, 1))
+		dev_err(&adev->dev, "fw com release failed.\n");
+
 	isp->pkg_dir = NULL;
 	isp->pkg_dir_dma_addr = 0;
 	isp->pkg_dir_size = 0;
@@ -2666,15 +2587,11 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 static void intel_ipu4_psys_handle_events(struct intel_ipu4_psys *psys)
 {
 	struct intel_ipu4_psys_kcmd *kcmd;
-	struct ia_css_psys_event_s event;
+	u32 status;
 
-	while (ia_css_psys_event_queue_receive(psys->dev_ctx,
-				IA_CSS_PSYS_EVENT_QUEUE_MAIN_ID, &event)) {
+	kcmd = intel_ipu4_psys_abi_rcv_kcmd(psys, &status);
 
-		dev_dbg(&psys->adev->dev, "psys received event status:%d\n",
-			event.status);
-
-		kcmd = (struct intel_ipu4_psys_kcmd *)event.token;
+	do {
 		if (!kcmd) {
 			dev_err(&psys->adev->dev,
 				"no token received, command unknown\n");
@@ -2682,18 +2599,21 @@ static void intel_ipu4_psys_handle_events(struct intel_ipu4_psys *psys)
 			pm_runtime_put(&psys->adev->dev);
 			intel_ipu4_psys_reset(psys);
 			pm_runtime_get(&psys->adev->dev);
-			return;
+			break;
 		}
 
-		intel_ipu4_psys_kcmd_complete(psys, kcmd,
-		    event.status == INTEL_IPU4_PSYS_EVENT_CMD_COMPLETE ||
-		    event.status == INTEL_IPU4_PSYS_EVENT_FRAGMENT_COMPLETE ?
-		    0 : -EIO);
+		intel_ipu4_psys_kcmd_complete(
+			psys, kcmd,
+			status == INTEL_IPU4_PSYS_EVENT_CMD_COMPLETE ||
+			status == INTEL_IPU4_PSYS_EVENT_FRAGMENT_COMPLETE ?
+			0 : -EIO);
 
 		/* Kick command scheduler thread */
 		atomic_set(&psys->wakeup_sched_thread_count, 1);
 		wake_up_interruptible(&psys->sched_cmd_wq);
-	}
+
+		kcmd = intel_ipu4_psys_abi_rcv_kcmd(psys, &status);
+	} while (kcmd);
 }
 
 static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)

@@ -74,6 +74,7 @@ struct intel_ipu4_psys {
 	unsigned long timeout;
 
 	int active_kcmds, started_kcmds;
+	void *fwcom;
 };
 
 struct intel_ipu4_psys_fh {
@@ -88,7 +89,7 @@ struct intel_ipu4_psys_fh {
 };
 
 struct intel_ipu4_psys_pg {
-	ia_css_process_group_t *pg;
+	struct ia_css_process_group *pg;
 	size_t size;
 	size_t pg_size;
 	dma_addr_t pg_dma_addr;
@@ -114,7 +115,7 @@ struct intel_ipu4_psys_kcmd {
 	struct intel_ipu4_psys_kbuffer **kbufs;
 	struct intel_ipu4_psys_dma_buf *buffers;
 	size_t nbuffers;
-	ia_css_process_group_t *pg_user;
+	struct ia_css_process_group *pg_user;
 	struct intel_ipu4_psys_pg *kpg;
 	uint32_t id;
 	uint64_t issue_id;

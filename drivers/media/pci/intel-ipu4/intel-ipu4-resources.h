@@ -15,9 +15,6 @@
 #ifndef INTEL_IPU4_RESOURCES_H
 #define INTEL_IPU4_RESOURCES_H
 
-#include "ia_css_psys_process_types.h"
-#include "vied_nci_psys_system_global.h"
-
 /********** Generic resource handling **********/
 
 /* Opaque structure. Do not access fields. */
@@ -46,6 +43,39 @@ void intel_ipu4_resource_cleanup(struct intel_ipu4_resource *res);
 
 #define INTEL_IPU4_MAX_RESOURCES 32
 
+struct ia_css_program_group_manifest {
+	u64 kernel_bitmap;
+	u32 ID;
+	u32 program_manifest_offset;
+	u32 terminal_manifest_offset;
+	u32 private_data_offset;
+	u16 size;
+	u8 alignment;
+	u8 kernel_count;
+	u8 program_count;
+	u8 terminal_count;
+	u8 subgraph_count;
+	u8 reserved[1];
+};
+
+struct ia_css_program_manifest {
+	u64 kernel_bitmap;
+	u32 ID;
+	u32 program_type;
+	s32 parent_offset;
+	u32 program_dependency_offset;
+	u32 terminal_dependency_offset;
+	u16 size;
+	u16 int_mem_size[VIED_NCI_N_MEM_TYPE_ID];
+	u16 ext_mem_size[VIED_NCI_N_DATA_MEM_TYPE_ID];
+	u16 dev_chn_size[VIED_NCI_N_DEV_CHN_ID];
+	u8 cell_id;
+	u8 cell_type_id;
+	u8 program_dependency_count;
+	u8 terminal_dependency_count;
+	u8 reserved[4];
+};
+
 /*
  * This struct represents all of the currently allocated
  * resources from IPU model. It is used also for allocating
@@ -54,7 +84,7 @@ void intel_ipu4_resource_cleanup(struct intel_ipu4_resource *res);
  * yet reserve real IPU4 resources).
  */
 struct intel_ipu4_psys_resource_pool {
-	vied_nci_resource_bitmap_t cells;	/* Bitmask of cells allocated */
+	u32 cells;	/* Bitmask of cells allocated */
 	struct intel_ipu4_resource dev_channels[VIED_NCI_N_DEV_CHN_ID];
 };
 
@@ -64,11 +94,13 @@ struct intel_ipu4_psys_resource_pool {
  * when the PG is released from IPU4 (or model of IPU4).
  */
 struct intel_ipu4_psys_resource_alloc {
-	vied_nci_resource_bitmap_t cells;	/* Bitmask of cells needed */
+	u32 cells;	/* Bitmask of cells needed */
 	struct intel_ipu4_resource_alloc
 		resource_alloc[INTEL_IPU4_MAX_RESOURCES];
 	int resources;
 };
+
+struct ia_css_process_group;
 
 int intel_ipu4_psys_resource_pool_init(
 				struct intel_ipu4_psys_resource_pool *pool);
@@ -80,7 +112,7 @@ void intel_ipu4_psys_resource_alloc_init(
 				struct intel_ipu4_psys_resource_alloc *alloc);
 
 int intel_ipu4_psys_allocate_resources(const struct device *dev,
-			       ia_css_process_group_t *pg,
+			       struct ia_css_process_group *pg,
 			       void *pg_manifest,
 			       struct intel_ipu4_psys_resource_alloc *alloc,
 			       struct intel_ipu4_psys_resource_pool *pool);
