@@ -147,10 +147,6 @@ static int acm_ms_do_config(struct usb_configuration *c)
 	if (status < 0)
 		goto put_msg;
 
-	status = fsg_common_run_thread(opts->common);
-	if (status)
-		goto remove_acm;
-
 	status = usb_add_function(c, f_msg);
 	if (status)
 		goto remove_acm;
@@ -200,10 +196,6 @@ static int acm_ms_bind(struct usb_composite_dev *cdev)
 	if (status)
 		goto fail;
 
-	status = fsg_common_set_nluns(opts->common, config.nluns);
-	if (status)
-		goto fail_set_nluns;
-
 	status = fsg_common_set_cdev(opts->common, cdev, config.can_stall);
 	if (status)
 		goto fail_set_cdev;
@@ -239,8 +231,6 @@ static int acm_ms_bind(struct usb_composite_dev *cdev)
 fail_string_ids:
 	fsg_common_remove_luns(opts->common);
 fail_set_cdev:
-	fsg_common_free_luns(opts->common);
-fail_set_nluns:
 	fsg_common_free_buffers(opts->common);
 fail:
 	usb_put_function_instance(fi_msg);
