@@ -20,15 +20,15 @@ enum ipu_device_gp_isa_value {
 	IPU_DEVICE_GP_ISA_MUX_SEL_ICA = 0, /* Enable output after FF ICA */
 	IPU_DEVICE_GP_ISA_MUX_SEL_LSC = 1, /* Enable output after FF LSC */
 	IPU_DEVICE_GP_ISA_MUX_SEL_DPC = 2, /* Enable output after FF DPC */
-	/* ICA Fork adapter options */
-	IPU_DEVICE_GP_ISA_FA_ICA_UNBLOCK = 0, /* UNBLOCK signal received from ICA */
-	IPU_DEVICE_GP_ISA_FA_ICA_BLOCK = 1, /* BLOCK signal received from ICA */
-	/* LSC Fork adapter options */
-	IPU_DEVICE_GP_ISA_FA_LSC_UNBLOCK = 0, /* UNBLOCK signal received from LSC */
-	IPU_DEVICE_GP_ISA_FA_LSC_BLOCK = 1, /* BLOCK signal received from LSC */
-	/* DPC Fork adapter options */
-	IPU_DEVICE_GP_ISA_FA_DPC_UNBLOCK = 0, /* UNBLOCK signal received from DPC */
-	IPU_DEVICE_GP_ISA_FA_DPC_BLOCK = 1, /* BLOCK signal received from DPC */
+	/* ICA stream block options */
+	IPU_DEVICE_GP_ISA_ICA_UNBLOCK = 0, /* UNBLOCK signal received from ICA */
+	IPU_DEVICE_GP_ISA_ICA_BLOCK = 1, /* BLOCK signal received from ICA */
+	/* LSC stream block options */
+	IPU_DEVICE_GP_ISA_LSC_UNBLOCK = 0, /* UNBLOCK signal received from LSC */
+	IPU_DEVICE_GP_ISA_LSC_BLOCK = 1, /* BLOCK signal received from LSC */
+	/* DPC stream block options */
+	IPU_DEVICE_GP_ISA_DPC_UNBLOCK = 0, /* UNBLOCK signal received from DPC */
+	IPU_DEVICE_GP_ISA_DPC_BLOCK = 1, /* BLOCK signal received from DPC */
 	/* Defines needed only for bxtB0 */
 	/* ISA_AWB_MUX_SEL options */
 	IPU_DEVICE_GP_ISA_AWB_MUX_SEL_ICA = 0, /* Input Correction input */
@@ -45,8 +45,8 @@ enum ipu_device_gp_isa_value {
 	IPU_DEVICE_GP_ISA_PAF_ENABLE_STREAM0 = 1, /* Enable stream0 to PAF FF*/
 	IPU_DEVICE_GP_ISA_PAF_ENABLE_STREAM1 = 2, /* Enable stream1 to PAF FF*/
 	/* PAF SRC SEL options */
-	IPU_DEVICE_GP_ISA_PAF_SRC_SEL0 = 0,
-	IPU_DEVICE_GP_ISA_PAF_SRC_SEL1 = 1,
+	IPU_DEVICE_GP_ISA_PAF_SRC_SEL0 = 0,	/* External channel input */
+	IPU_DEVICE_GP_ISA_PAF_SRC_SEL1 = 1,	/* DPC extracted input */
 	/* PAF_GDDPC_BLK options */
 	IPU_DEVICE_GP_ISA_PAF_GDDPC_PORT_BLK0 = 0,
 	IPU_DEVICE_GP_ISA_PAF_GDDPC_PORT_BLK1 = 1,
@@ -54,6 +54,13 @@ enum ipu_device_gp_isa_value {
 	IPU_DEVICE_GP_ISA_PAF_STR_PORT0 = 0,
 	IPU_DEVICE_GP_ISA_PAF_STR_PORT1 = 1,
 
+	/* Needed only for glv */
+	/* scaler port block options */
+	IPU_DEVICE_GP_ISA_SCALER_PORT_UNBLOCK = 0,
+	IPU_DEVICE_GP_ISA_SCALER_PORT_BLOCK = 1,
+	/* sis port block options */
+	IPU_DEVICE_GP_ISA_SIS_PORT_UNBLOCK = 0,
+	IPU_DEVICE_GP_ISA_SIS_PORT_BLOCK = 1,
 	IPU_DEVICE_GP_ISA_CONF_INVALID = 0xFF
 };
 
@@ -76,6 +83,36 @@ enum ipu_device_gp_psa_value {
 	/* PSA_V2S_RGB_4_DEMUX */
 	IPU_DEVICE_GP_PSA_DEMUX_POST_V2S_RGB_4_TO_GTM = 0,
 	IPU_DEVICE_GP_PSA_DEMUX_POST_V2S_RGB_4_TO_ACM = 1,
+	/* Defines needed for glv. For details see diagram in section 2.2.2 of IPU5 general fixed function MAS. */
+	/* choose between pixel stream and delta stream as BNLM output (gpreg 1) */
+	IPU_DEVICE_GP_PSA_1_NOISE_MUX_BNLM_PIXELS = 0,
+	IPU_DEVICE_GP_PSA_1_NOISE_MUX_DELTA_STREAM = 1,
+	/* enable/disable BNLM Pixel Block (gpreg 2) */
+	IPU_DEVICE_GP_PSA_1_BNLM_PIXEL_STREAM_BLOCK_DISABLE = 0,
+	IPU_DEVICE_GP_PSA_1_BNLM_PIXEL_STREAM_BLOCK_ENABLE = 1,
+	/* enable/disable BNLM delta stream (gpreg 3) */
+	IPU_DEVICE_GP_PSA_1_BNLM_DELTA_STREAM_BLOCK_DISABLE = 0,
+	IPU_DEVICE_GP_PSA_1_BNLM_DELTA_STREAM_BLOCK_ENABLE = 1,
+	/* choose BNLM output to XNR or to WB/DM (gpreg 0) */
+	IPU_DEVICE_GP_PSA_2_BNLM_TO_XNR = 0,
+	IPU_DEVICE_GP_PSA_2_BNLM_TO_WB_DM = 1,
+	/* choose direction of output from vec2str 4 (gpreg 4) */
+	IPU_DEVICE_GP_PSA_2_V2S_RGB_4_TO_GTC = 0,
+	IPU_DEVICE_GP_PSA_2_V2S_RGB_4_TO_ACM = 1,
+	IPU_DEVICE_GP_PSA_2_V2S_RGB_4_TO_VCSC = 2,
+	IPU_DEVICE_GP_PSA_2_V2S_RGB_4_TO_GSTAR = 3,
+	/* enable/disable VCSC input block (gpreg 7) */
+	IPU_DEVICE_GP_PSA_2_VCSC_INPUT_BLOCK_DISABLE = 0,
+	IPU_DEVICE_GP_PSA_2_VCSC_INPUT_BLOCK_ENABLE = 1,
+	/* enable/disable XNR5 bypass block (gpreg 8) */
+	IPU_DEVICE_GP_PSA_2_XNR5_BP_BLOCK_DISABLE = 0,
+	IPU_DEVICE_GP_PSA_2_XNR5_BP_BLOCK_ENABLE = 1,
+	/* choose to use VCSC or bypass it (gpreg 5) */
+	IPU_DEVICE_GP_PSA_3_MUX_USE_VCSC = 0,
+	IPU_DEVICE_GP_PSA_3_MUX_BP_VCSC = 1,
+	/* choose to use XNR5 or bypass it (gpreg 6) */
+	IPU_DEVICE_GP_PSA_3_MUX_USE_XNR5 = 0,
+	IPU_DEVICE_GP_PSA_3_MUX_BP_XNR5 = 1,
 	IPU_DEVICE_GP_PSA_CONF_INVALID = 0xFF
 };
 

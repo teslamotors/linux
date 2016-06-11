@@ -214,6 +214,8 @@ int ia_css_frame_descriptor_print(
 
 	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tbpp = %d\n", frame_descriptor->bpp);
 	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tbpe = %d\n", frame_descriptor->bpe);
+	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tis_compressed = %d\n",
+			frame_descriptor->is_compressed);
 
 	frame_plane_count = IA_CSS_N_FRAME_PLANES;
 	/*	frame_plane_count = ia_css_frame_plane_count(frame_descriptor->frame_format_type); */

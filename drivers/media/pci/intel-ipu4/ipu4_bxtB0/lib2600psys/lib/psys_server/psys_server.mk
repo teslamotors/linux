@@ -4,6 +4,8 @@
 
 # TODO: IPU5_SDK Verify that the glvA0 changes are correct when IPU5 SDK has been released.
 
+include $(MODULES_DIR)/config/$(SUBSYSTEM)/subsystem_$(IPU_SYSVER).mk
+
 PSYS_SERVER_DIR=$${MODULES_DIR}/psys_server
 
 # The watchdog should never be merged enabled
@@ -57,6 +59,7 @@ PSYS_SERVER_FW_CPPFLAGS += -I$(PSYS_SERVER_SOURCES)/$(PSYS_SERVER_VERSION)
 
 PSYS_SERVER_FW_CPPFLAGS += -DSSID=$(SSID)
 PSYS_SERVER_FW_CPPFLAGS += -DMMID=$(MMID)
+PSYS_SERVER_FW_CPPFLAGS += -DHAS_DPCM=$(if $(HAS_DPCM),1,0)
 
 # PSYS server watchdog for debugging
 ifeq ($(PSYS_SERVER_WATCHDOG_ENABLE), 1)

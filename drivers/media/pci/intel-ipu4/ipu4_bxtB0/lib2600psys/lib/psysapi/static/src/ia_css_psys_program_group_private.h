@@ -56,7 +56,7 @@ struct ia_css_program_group_manifest_s {
 	+ (VIED_NCI_RESOURCE_SIZE_BITS * VIED_NCI_N_DEV_CHN_ID) \
 	+ (2 * VIED_NCI_RESOURCE_ID_BITS) \
 	+ (2 * IA_CSS_UINT8_T_BITS) \
-	+ (4 * IA_CSS_UINT8_T_BITS))
+	+ (N_PADDING_UINT8_IN_PROGRAM_GROUP_MANFEST * IA_CSS_UINT8_T_BITS))
 /*
  * This structure contains only the information required for resource management and
  * construction of the process group. The header for the program binary load is separate
@@ -74,9 +74,9 @@ struct ia_css_program_manifest_s {
 	vied_nci_resource_size_t			dev_chn_size[VIED_NCI_N_DEV_CHN_ID];			/**< Device channel allocation size needs of this program */
 	vied_nci_resource_id_t				cell_id;										/**< (optional) specification of a cell to be used by this program */
 	vied_nci_resource_id_t				cell_type_id;									/**< (exclusive) indication of a cell type to be used by this program */
-	uint8_t								program_dependency_count;						/**< Number of programs this program depends on */
-	uint8_t								terminal_dependency_count;						/**< Number of terminals this program depends on */
-	uint8_t								reserved[4];
+	uint8_t						program_dependency_count;						/**< Number of programs this program depends on */
+	uint8_t						terminal_dependency_count;						/**< Number of terminals this program depends on */
+	uint8_t						reserved[N_PADDING_UINT8_IN_PROGRAM_GROUP_MANFEST];
 };
 
 /*

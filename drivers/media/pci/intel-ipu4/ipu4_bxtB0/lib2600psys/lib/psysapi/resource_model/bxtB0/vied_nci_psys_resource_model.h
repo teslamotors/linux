@@ -17,6 +17,12 @@
 
 #include "type_support.h"
 
+/* The amount of padding bytes needed to make
+ * ia_css_process_s structure 64 bit aligned
+ */
+#define	N_PADDING_UINT8_IN_PROCESS_STRUCT			8
+#define	N_PADDING_UINT8_IN_PROGRAM_GROUP_MANFEST		4
+
 /**
  * Resource model for BXT B0
  */
