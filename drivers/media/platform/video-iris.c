@@ -37,13 +37,16 @@ static int camera_set_pwm(struct camera_iris *iris, int val)
 		return rval;
 	}
 
-	rval = pwm_enable(pwm->pwm);
-	if (rval) {
-		dev_err(pdev, "Failed to enable camera PWM!\n");
-		return rval;
+	if (val == 0) {
+		pwm_disable(pwm->pwm);
+		return 0;
 	}
 
-	return 0;
+	rval = pwm_enable(pwm->pwm);
+	if (rval)
+		dev_err(pdev, "Failed to enable camera PWM!\n");
+
+	return rval;
 }
 
 static int camera_iris_s_ctrl(struct v4l2_ctrl *ctrl)
@@ -173,6 +176,8 @@ static int camera_iris_probe(struct platform_device *pdev)
 		goto out_free_pwm;
 	}
 
+	iris->camera_pwm.duty_period = CAMERA_PWM_PERIOD;
+
 	return 0;
 
 out_free_pwm:
@@ -195,16 +200,53 @@ static int camera_iris_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int camera_iris_suspend(struct device *dev)
+{
+	struct v4l2_device *v4l2_dev = dev_get_drvdata(dev);
+	struct camera_iris *iris = container_of(v4l2_dev,
+					struct camera_iris, v4l2_dev);
+
+	pwm_disable(iris->camera_pwm.pwm);
+	return 0;
+}
+
+static int camera_iris_resume(struct device *dev)
+{
+	struct v4l2_device *v4l2_dev = dev_get_drvdata(dev);
+	struct camera_iris *iris = container_of(v4l2_dev,
+					struct camera_iris, v4l2_dev);
+	int rval;
+
+	if (iris->camera_pwm.duty_period == CAMERA_PWM_PERIOD)
+		return 0;
+
+	rval = pwm_config(iris->camera_pwm.pwm,
+			iris->camera_pwm.duty_period,
+			CAMERA_PWM_PERIOD);
+	if (rval) {
+		dev_err(dev, "Failed to configure camera PWM!\n");
+		return rval;
+	}
+
+	return pwm_enable(iris->camera_pwm.pwm);
+}
+#endif
+
 static const struct platform_device_id camera_iris_id_table[] = {
 	{ CAMERA_IRIS_NAME, 0 },
 	{ },
 };
+
+static SIMPLE_DEV_PM_OPS(camera_iris_pm_ops,
+			 camera_iris_suspend, camera_iris_resume);
 
 MODULE_DEVICE_TABLE(platform, camera_iris_id_table);
 
 static struct platform_driver camera_iris_driver = {
 	.driver = {
 		.name = CAMERA_IRIS_NAME,
+		.pm = &camera_iris_pm_ops,
 	},
 	.probe = camera_iris_probe,
 	.remove	= camera_iris_remove,
