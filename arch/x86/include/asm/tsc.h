@@ -45,6 +45,8 @@ static __always_inline cycles_t vget_cycles(void)
 	return (cycles_t)__native_read_tsc();
 }
 
+extern struct system_counterval_t convert_art_to_tsc(cycle_t art);
+
 extern void tsc_init(void);
 extern void mark_tsc_unstable(char *reason);
 extern int unsynchronized_tsc(void);
