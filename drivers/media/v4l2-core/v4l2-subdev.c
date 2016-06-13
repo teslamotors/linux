@@ -570,19 +570,19 @@ v4l2_subdev_link_validate_get_format(struct media_pad *pad,
 	return -EINVAL;
 }
 
-int v4l2_subdev_link_validate(struct media_link *link)
+static int v4l2_subdev_link_validate_one(struct media_link *link,
+					 struct media_pad *source_pad,
+					 struct media_pad *sink_pad)
 {
 	struct v4l2_subdev *sink;
 	struct v4l2_subdev_format sink_fmt, source_fmt;
 	int rval;
 
-	rval = v4l2_subdev_link_validate_get_format(
-		link->source, &source_fmt);
+	rval = v4l2_subdev_link_validate_get_format(source_pad, &source_fmt);
 	if (rval < 0)
 		return 0;
 
-	rval = v4l2_subdev_link_validate_get_format(
-		link->sink, &sink_fmt);
+	rval = v4l2_subdev_link_validate_get_format(sink_pad, &sink_fmt);
 	if (rval < 0)
 		return 0;
 
@@ -595,6 +595,139 @@ int v4l2_subdev_link_validate(struct media_link *link)
 
 	return v4l2_subdev_link_validate_default(
 		sink, link, &source_fmt, &sink_fmt);
+}
+
+/* How many routes to assume there can be per a sub-device? */
+#define LINK_VALIDATE_ROUTES	8
+
+int v4l2_subdev_link_validate(struct media_link *link)
+{
+	struct v4l2_subdev *sink;
+	struct v4l2_subdev_route sink_routes[LINK_VALIDATE_ROUTES];
+	struct v4l2_subdev_routing sink_routing = {
+		.routes = sink_routes,
+		.num_routes = ARRAY_SIZE(sink_routes),
+	};
+	struct v4l2_subdev_route src_routes[LINK_VALIDATE_ROUTES];
+	struct v4l2_subdev_routing src_routing = {
+		.routes = src_routes,
+		.num_routes = ARRAY_SIZE(src_routes),
+	};
+	unsigned int i, j;
+	int rval;
+
+	sink = media_entity_to_v4l2_subdev(link->sink->entity);
+
+	/*
+	 * Check whether the sink sub-device supports routing. If it
+	 * doesn't, simply validate the link as usual.
+	 */
+	rval = v4l2_subdev_call(sink, pad, get_routing, &sink_routing);
+	switch (rval) {
+	case -ENOIOCTLCMD:
+		return v4l2_subdev_link_validate_one(link, link->source,
+						     link->sink);
+	case 0:
+		break;
+	default:
+		dev_dbg(sink->entity.parent->dev,
+			"error %d in get_routing() on %s, sink pad %u\n", rval,
+			sink->entity.name, link->sink->index);
+
+		return rval;
+	}
+
+	rval = v4l2_subdev_call(media_entity_to_v4l2_subdev(
+					link->source->entity),
+				pad, get_routing, &src_routing);
+	if (rval) {
+		dev_dbg(sink->entity.parent->dev,
+			"error %d in get_routing() on %s, source pad %u\n",
+			rval, sink->entity.name, link->source->index);
+
+		return rval;
+	}
+
+	dev_dbg(sink->entity.parent->dev,
+		"validating multiplexed link \"%s\":%u -> \"%s\":%u; %u/%u routes\n",
+		link->source->entity->name, link->source->index,
+		sink->entity.name, link->sink->index,
+		src_routing.num_routes, sink_routing.num_routes);
+
+	for (i = 0, j = 0; i < sink_routing.num_routes; ) {
+		/* Get the first active route for the sink pad. */
+		if (sink_routes[i].sink_pad != link->sink->index ||
+		    !(sink_routes[i].flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE)) {
+			dev_dbg(sink->entity.parent->dev,
+				"skipping sink route %u/%u -> %u/%u[%u]\n",
+				sink_routes[i].sink_pad,
+				sink_routes[i].sink_stream,
+				sink_routes[i].source_pad,
+				sink_routes[i].source_stream,
+				(bool)(sink_routes[i].flags
+				       & V4L2_SUBDEV_ROUTE_FL_ACTIVE));
+			i++;
+			continue;
+		}
+
+		/* Have we exhausted the source routes already? */
+		if (j >= src_routing.num_routes)
+			break;
+
+		/*
+		 * Get the corresponding route for the source pad.
+		 * It's ok for the source pad to have routes active
+		 * where the sink pad does not, but the routes that
+		 * are active on the source pad have to be active on
+		 * the sink pad as well.
+		 */
+		if (src_routes[j].source_pad != link->source->index ||
+		    src_routes[j].source_stream
+		    != sink_routes[i].sink_stream) {
+			dev_dbg(sink->entity.parent->dev,
+				"skipping source route %u/%u -> %u/%u\n",
+				src_routes[j].sink_pad,
+				src_routes[j].sink_stream,
+				src_routes[j].source_pad,
+				src_routes[j].source_stream);
+			j++;
+			continue;
+		}
+
+		/* The source route must be active. */
+		if (!(src_routes[j].flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE)) {
+			dev_dbg(sink->entity.parent->dev,
+				"source route not active\n");
+			return -EINVAL;
+		}
+
+		dev_dbg(sink->entity.parent->dev,
+			"validating routes \"%s\": %u/%u -> %u/%u and \"%s\" %u/%u -> %u/%u\n",
+			link->source->entity->name, src_routes[j].sink_pad,
+			src_routes[j].sink_stream, src_routes[j].source_pad,
+			src_routes[j].source_stream, sink->entity.name,
+			sink_routes[i].sink_pad, sink_routes[i].sink_stream,
+			sink_routes[i].source_pad,
+			sink_routes[i].source_stream);
+
+		rval = v4l2_subdev_link_validate_one(
+			link, &link->source->entity->pads[
+				src_routes[j].sink_pad],
+			&sink->entity.pads[sink_routes[i].source_pad]);
+		if (rval) {
+			dev_dbg(sink->entity.parent->dev,
+				"error %d in link validation\n", rval);
+			return rval;
+		}
+	}
+
+	if (i < sink_routing.num_routes) {
+		dev_dbg(sink->entity.parent->dev,
+			"not all sink routes verified; out of source routes\n");
+		return -EINVAL;
+	}
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(v4l2_subdev_link_validate);
 #endif /* CONFIG_MEDIA_CONTROLLER */
