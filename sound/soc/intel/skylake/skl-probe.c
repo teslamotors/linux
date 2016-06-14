@@ -149,10 +149,6 @@ int skl_probe_compr_set_params(struct snd_compr_stream *substream,
 	if (substream->direction == SND_COMPRESS_PLAYBACK)
 		skl_tplg_attach_probe_dma(pconfig->w, skl->skl_sst, dai);
 
-	ret = skl_tplg_set_probe_params(pconfig->w, skl->skl_sst, substream->direction, dai);
-	if (ret < 0)
-		return -EINVAL;
-
 	pconfig->probe_count++;
 
 #if USE_SPIB
@@ -293,6 +289,9 @@ int skl_probe_compr_trigger(struct snd_compr_stream *substream, int cmd,
 	struct hdac_stream *hstr;
 	int start;
 	unsigned long cookie;
+	struct skl *skl = get_skl_ctx(dai->dev);
+	struct skl_probe_config *pconfig =  &skl->skl_sst->probe_config;
+	int ret;
 
 	stream = get_hdac_ext_compr_stream(substream);
 	hstr = hdac_stream(stream);
@@ -325,6 +324,15 @@ int skl_probe_compr_trigger(struct snd_compr_stream *substream, int cmd,
 		snd_hdac_stream_stop(hdac_stream(stream));
 
 	spin_unlock_irqrestore(&bus->reg_lock, cookie);
+
+	if (start) {
+		/* FW starts probe module soon after its params are set.
+		 * So to avoid xruns, start DMA first and then set probe params.
+		 */
+		ret = skl_tplg_set_probe_params(pconfig->w, skl->skl_sst, substream->direction, dai);
+		if (ret < 0)
+			return -EINVAL;
+	}
 
 	return 0;
 }
