@@ -30,6 +30,13 @@
 
 #define USE_SPIB 0
 
+/*
+ * DMA buffer size needed for 48KHz, 4 channel, 32 bit data
+ * scheduled at 4ms  for 2 probe packets is
+ * 2* [ 24 + (48*4*4*32/8) + 8]  = 6208.
+ */
+#define SKL_EXTRACT_PROBE_DMA_BUFF_SIZE 6208
+
 static int set_injector_stream(struct hdac_ext_stream *stream,
 						struct snd_soc_dai *dai)
 {
@@ -62,8 +69,7 @@ int skl_probe_compr_open(struct snd_compr_stream *substream,
 	dev_dbg(dai->dev, "%s dev is  %s\n",  __func__, dev_name(dai->dev));
 
 	if (!pconfig->probe_count) {
-		/*TODO: Configuring the right DMA buffer size*/
-		pconfig->edma_buffsize = 832;
+		pconfig->edma_buffsize = SKL_EXTRACT_PROBE_DMA_BUFF_SIZE;
 		pconfig->edma_type = SKL_DMA_HDA_HOST_INPUT_CLASS;
 		pconfig->estream = hdac_ext_host_stream_compr_assign(ebus,
 								substream,
