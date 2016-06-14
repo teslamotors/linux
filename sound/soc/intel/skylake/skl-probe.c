@@ -230,6 +230,12 @@ int skl_probe_compr_copy(struct snd_compr_stream *stream, char __user *buf,
 {
 	int offset = 0, availcount = 0, retval = 0, copy;
 	void *dstn;
+	/*
+	 * If userspace happens to issue a copy with count > ring buffer size,
+	 * limit the count to the allocated ring buffer size.
+	 */
+	if (count > stream->runtime->buffer_size)
+		count = stream->runtime->buffer_size;
 
 	if (stream->direction == SND_COMPRESS_CAPTURE) {
 		offset = stream->runtime->total_bytes_transferred %
