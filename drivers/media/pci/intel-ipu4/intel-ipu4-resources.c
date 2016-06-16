@@ -215,8 +215,7 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 			struct intel_ipu4_psys_resource_pool *pool)
 {
 	vied_nci_dev_chn_ID_t res_id;
-	unsigned int i;
-	int ret;
+	int ret, i;
 	uint8_t processes = ia_css_process_group_get_process_count(pg);
 	vied_nci_resource_bitmap_t cells = 0;
 
