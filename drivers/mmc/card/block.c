@@ -614,6 +614,10 @@ static int mmc_blk_ioctl_cmd(struct block_device *bdev,
 
 	err = __mmc_blk_ioctl_cmd(card, md, idata);
 
+	/* Always switch back to main area after RPMB access */
+	if (md->area_type & MMC_BLK_DATA_AREA_RPMB)
+		mmc_blk_part_switch(card, dev_get_drvdata(&card->dev));
+
 	mmc_put_card(card);
 
 	if (!err)
@@ -676,6 +680,10 @@ static int mmc_blk_ioctl_multi_cmd(struct block_device *bdev,
 			goto cmd_done;
 		}
 	}
+
+	/* Always switch back to main area after RPMB access */
+	if (md->area_type & MMC_BLK_DATA_AREA_RPMB)
+		mmc_blk_part_switch(card, dev_get_drvdata(&card->dev));
 
 	mmc_put_card(card);
 
