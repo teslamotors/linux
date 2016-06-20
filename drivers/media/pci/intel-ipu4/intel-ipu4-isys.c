@@ -669,12 +669,10 @@ static void isys_unregister_subdevices(struct intel_ipu4_isys *isys)
 		&isys->pdata->ipdata->tpg;
 	const struct intel_ipu4_isys_internal_csi2_pdata *csi2 =
 		&isys->pdata->ipdata->csi2;
-	const struct intel_ipu4_isys_internal_csi2_be_pdata *csi2_be =
-		&isys->pdata->ipdata->csi2_be;
 	unsigned int i;
 
-	for (i = 0; i < csi2_be->nbes; i++)
-		intel_ipu4_isys_csi2_be_cleanup(&isys->csi2_be[i]);
+	intel_ipu4_isys_csi2_be_cleanup(&isys->csi2_be);
+	intel_ipu4_isys_csi2_be_soc_cleanup(&isys->csi2_be_soc);
 
 	intel_ipu4_isys_isa_cleanup(&isys->isa);
 
@@ -691,9 +689,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		&isys->pdata->ipdata->tpg;
 	const struct intel_ipu4_isys_internal_csi2_pdata *csi2 =
 		&isys->pdata->ipdata->csi2;
-	const struct intel_ipu4_isys_internal_csi2_be_pdata *csi2_be =
-		&isys->pdata->ipdata->csi2_be;
-	unsigned int i;
+	unsigned int i, j, k;
 	int rval;
 
 	BUG_ON(csi2->nports > INTEL_IPU4_ISYS_MAX_CSI2_PORTS);
@@ -719,14 +715,18 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 			goto fail;
 	}
 
-	for (i = 0; i < csi2_be->nbes; i++) {
-		rval = intel_ipu4_isys_csi2_be_init(&isys->csi2_be[i], isys,
-				i);
-		if (rval) {
-			dev_info(&isys->adev->dev,
-				 "can't register csi2_be device\n");
-			goto fail;
-		}
+	rval = intel_ipu4_isys_csi2_be_soc_init(&isys->csi2_be_soc, isys);
+	if (rval) {
+		dev_info(&isys->adev->dev,
+			 "can't register soc csi2 be device\n");
+		goto fail;
+	}
+
+	rval = intel_ipu4_isys_csi2_be_init(&isys->csi2_be, isys);
+	if (rval) {
+		dev_info(&isys->adev->dev,
+			 "can't register raw csi2 be device\n");
+		goto fail;
 	}
 
 	rval = intel_ipu4_isys_isa_init(&isys->isa, isys, NULL);
@@ -737,58 +737,65 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 	}
 
 	for (i = 0; i < csi2->nports; i++) {
-		rval = media_create_pad_link(
-			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE(0),
-			&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
-			CSI2_BE_RAW_PAD_SINK, 0);
-		if (rval) {
-			dev_info(&isys->adev->dev,
-				 "can't create link between csi2 and csi2_be\n");
-			goto fail;
-		}
-		if (csi2_be->nbes < 2)
-			continue;
-		rval = media_create_pad_link(
-			&isys->csi2[i].asd.sd.entity, CSI2_PAD_SOURCE(0),
-			&isys->csi2_be[INTEL_IPU4_BE_SOC].asd.sd.entity,
-			CSI2_BE_RAW_PAD_SINK, 0);
-		if (rval) {
-			dev_info(&isys->adev->dev,
-				 "can't create link between csi2 and csi2_be soc\n");
-			goto fail;
+		for (j = CSI2_PAD_SOURCE(0);
+		     j < (NR_OF_CSI2_SOURCE_PADS + CSI2_PAD_SOURCE(0)); j++) {
+			rval = media_entity_create_link(
+				&isys->csi2[i].asd.sd.entity, j,
+				&isys->csi2_be.asd.sd.entity,
+				CSI2_BE_PAD_SINK, 0);
+			if (rval) {
+				dev_info(&isys->adev->dev,
+					 "can't create link csi2 <=> csi2_be\n");
+				goto fail;
+			}
+
+			for (k = CSI2_BE_SOC_PAD_SINK(0);
+				k < NR_OF_CSI2_BE_SOC_SINK_PADS; k++) {
+				rval = media_entity_create_link(
+					&isys->csi2[i].asd.sd.entity, j,
+				&isys->csi2_be_soc.asd.sd.entity,
+					k, MEDIA_LNK_FL_DYNAMIC);
+				if (rval) {
+					dev_info(&isys->adev->dev,
+					"can't create link csi2->be_soc\n");
+					goto fail;
+				}
+			}
 		}
 	}
 
 	for (i = 0; i < tpg->ntpgs; i++) {
 		rval = media_create_pad_link(
 			&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
-			&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
-			CSI2_BE_RAW_PAD_SINK, 0);
+			&isys->csi2_be.asd.sd.entity,
+			CSI2_BE_PAD_SINK, 0);
 		if (rval) {
 			dev_info(&isys->adev->dev,
 				 "can't create link between tpg and csi2_be\n");
 			goto fail;
 		}
-		if (csi2_be->nbes < 2)
-			continue;
-		rval = media_create_pad_link(
-			&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
-			&isys->csi2_be[INTEL_IPU4_BE_SOC].asd.sd.entity,
-			CSI2_BE_RAW_PAD_SINK, 0);
-		if (rval) {
-			dev_info(&isys->adev->dev,
-				 "can't create link between tpg and csi2_be soc\n");
-			goto fail;
+
+		for (k = CSI2_BE_SOC_PAD_SINK(0);
+		     k < NR_OF_CSI2_BE_SOC_SINK_PADS; k++) {
+			rval = media_entity_create_link(
+				&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
+				&isys->csi2_be_soc.asd.sd.entity,
+							k, 0);
+			if (rval) {
+				dev_info(&isys->adev->dev,
+					 "can't create link tpg->be_soc\n");
+				goto fail;
+			}
 		}
 	}
 
 	rval = media_create_pad_link(
-		&isys->csi2_be[INTEL_IPU4_BE_RAW].asd.sd.entity,
-		CSI2_BE_RAW_PAD_SOURCE, &isys->isa.asd.sd.entity, ISA_PAD_SINK,
+		&isys->csi2_be.asd.sd.entity,
+		CSI2_BE_PAD_SOURCE, &isys->isa.asd.sd.entity, ISA_PAD_SINK,
 		0);
 	if (rval) {
 		dev_info(&isys->adev->dev,
-			 "can't create link between CSI2be and ISA\n");
+			 "can't create link between CSI2 raw be and ISA\n");
 		goto fail;
 	}
 

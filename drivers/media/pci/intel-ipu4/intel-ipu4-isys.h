@@ -125,8 +125,9 @@ struct intel_ipu4_isys {
 
 	struct intel_ipu4_isys_csi2 csi2[INTEL_IPU4_ISYS_MAX_CSI2_PORTS];
 	struct intel_ipu4_isys_tpg tpg[INTEL_IPU4_ISYS_MAX_TPGS];
-	struct intel_ipu4_isys_csi2_be csi2_be[INTEL_IPU4_ISYS_MAX_CSI2BE];
 	struct intel_ipu4_isys_isa isa;
+	struct intel_ipu4_isys_csi2_be csi2_be;
+	struct intel_ipu4_isys_csi2_be_soc csi2_be_soc;
 
 	const struct firmware *fw;
 	struct sg_table fw_sgt;

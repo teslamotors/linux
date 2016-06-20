@@ -30,6 +30,8 @@
 
 struct intel_ipu4_isys;
 struct ia_css_isys_stream_cfg_data;
+struct intel_ipu4_isys_csi2_be_raw;
+struct intel_ipu4_isys_csi2_be_soc;
 
 struct intel_ipu4_isys_pixelformat {
 	uint32_t pixelformat;
@@ -61,6 +63,7 @@ struct intel_ipu4_isys_pipeline {
 	unsigned int nr_output_pins; /* How many firmware pins? */
 	enum intel_ipu4_isl_mode isl_mode;
 	struct intel_ipu4_isys_csi2_be *csi2_be;
+	struct intel_ipu4_isys_csi2_be_soc *csi2_be_soc;
 	struct intel_ipu4_isys_csi2 *csi2;
 	/*
 	 * Number of capture queues, write access serialised using struct

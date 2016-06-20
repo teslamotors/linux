@@ -232,10 +232,6 @@ struct intel_ipu4_isys_internal_tpg_pdata {
 	unsigned int sels[INTEL_IPU4_ISYS_MAX_TPGS];
 };
 
-struct intel_ipu4_isys_internal_csi2_be_pdata {
-	unsigned int nbes;
-};
-
 /*
  * One place to handle all the IPU4 HW variations
  */
@@ -251,7 +247,6 @@ struct intel_ipu4_hw_variants {
 struct intel_ipu4_isys_internal_pdata {
 	struct intel_ipu4_isys_internal_csi2_pdata csi2;
 	struct intel_ipu4_isys_internal_tpg_pdata tpg;
-	struct intel_ipu4_isys_internal_csi2_be_pdata csi2_be;
 	struct intel_ipu4_hw_variants hw_variant;
 	u32 num_parallel_streams;
 	u32 isys_dma_overshoot;

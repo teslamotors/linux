@@ -947,7 +947,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	struct v4l2_subdev_selection sel_fmt = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
 		.target = V4L2_SEL_TGT_CROP,
-		.pad = CSI2_BE_RAW_PAD_SOURCE,
+		.pad = CSI2_BE_PAD_SOURCE,
 	};
 	struct ia_css_isys_stream_cfg_data stream_cfg = {
 		.src = ip->source,
@@ -1233,6 +1233,7 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	for (i = 0; i < INTEL_IPU4_NUM_CAPTURE_DONE; i++)
 		ip->capture_done[i] = NULL;
 	ip->csi2_be = NULL;
+	ip->csi2_be_soc = NULL;
 	ip->csi2 = NULL;
 	ip->seq_index = 0;
 	memset(ip->seq, 0, sizeof(ip->seq));

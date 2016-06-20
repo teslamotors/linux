@@ -376,9 +376,6 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu4 = {
 			  INTEL_IPU4_BXT_COMBO_GPOFFSET +
 			  INTEL_IPU4_GPREG_MIPI_PKT_GEN1_SEL },
 	},
-	.csi2_be = {
-		.nbes = 2,
-	},
 	.hw_variant = {
 		.offset = INTEL_IPU4_BXT_B0_ISYS_OFFSET,
 		.nr_mmus = 2,

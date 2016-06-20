@@ -25,13 +25,13 @@
 struct intel_ipu4_isys_csi2_be_pdata;
 struct intel_ipu4_isys;
 
-#define CSI2_BE_RAW_PAD_SINK		0
-#define CSI2_BE_RAW_PAD_SOURCE		1
+#define CSI2_BE_PAD_SINK		0
+#define CSI2_BE_PAD_SOURCE		1
 
-#define NR_OF_CSI2_BE_RAW_PADS		2
-#define NR_OF_CSI2_BE_RAW_SOURCE_PADS	1
-#define NR_OF_CSI2_BE_RAW_SINK_PADS	1
-#define NR_OF_CSI2_BE_RAW_STREAMS	1
+#define NR_OF_CSI2_BE_PADS		2
+#define NR_OF_CSI2_BE_SOURCE_PADS	1
+#define NR_OF_CSI2_BE_SINK_PADS	1
+#define NR_OF_CSI2_BE_STREAMS	1
 
 #define NR_OF_CSI2_BE_SOC_SOURCE_PADS	8
 #define NR_OF_CSI2_BE_SOC_SINK_PADS	8
@@ -60,12 +60,29 @@ struct intel_ipu4_isys_csi2_be {
 	struct intel_ipu4_isys_video av;
 };
 
-#define to_intel_ipu4_isys_csi2_be(sd)					\
+struct intel_ipu4_isys_csi2_be_soc {
+	struct intel_ipu4_isys_csi2_be_pdata *pdata;
+	struct intel_ipu4_isys_subdev asd;
+	struct intel_ipu4_isys_video av[NR_OF_CSI2_BE_SOC_SOURCE_PADS];
+};
+
+#define to_intel_ipu4_isys_csi2_be(sd)				\
 	container_of(to_intel_ipu4_isys_subdev(sd), struct intel_ipu4_isys_csi2_be, asd)
 
-int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
-			  struct intel_ipu4_isys *isys, unsigned int type);
-void intel_ipu4_isys_csi2_be_cleanup(struct intel_ipu4_isys_csi2_be *csi2_be);
+#define to_intel_ipu4_isys_csi2_be_soc(sd)				\
+	container_of(to_intel_ipu4_isys_subdev(sd), struct intel_ipu4_isys_csi2_be_soc, asd)
+
+int intel_ipu4_isys_csi2_be_init(
+				struct intel_ipu4_isys_csi2_be *csi2_be,
+				struct intel_ipu4_isys *isys);
+int intel_ipu4_isys_csi2_be_soc_init(
+				struct intel_ipu4_isys_csi2_be_soc *csi2_be_soc,
+				struct intel_ipu4_isys *isys);
+void intel_ipu4_isys_csi2_be_cleanup( struct intel_ipu4_isys_csi2_be *csi2_be);
+void intel_ipu4_isys_csi2_be_soc_cleanup(
+				struct intel_ipu4_isys_csi2_be_soc *csi2_be);
 void intel_ipu4_isys_csi2_be_isr(struct intel_ipu4_isys_csi2_be *csi2_be);
+void intel_ipu4_isys_csi2_be_soc_isr(
+				struct intel_ipu4_isys_csi2_be_soc *csi2_be);
 
 #endif /* INTEL_IPU4_ISYS_CSI2_BE_H */
