@@ -524,7 +524,25 @@ int intel_ipu4_isys_subdev_enum_mbus_code(
 {
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 	const uint32_t *supported_codes = asd->supported_codes[code->pad];
+	bool next_stream = false;
 	uint32_t index;
+
+	if (sd->entity.pads[code->pad].flags & MEDIA_PAD_FL_MULTIPLEX) {
+		if (code->stream & V4L2_SUBDEV_FLAG_NEXT_STREAM) {
+			next_stream = true;
+			code->stream &= ~V4L2_SUBDEV_FLAG_NEXT_STREAM;
+		}
+
+		if (code->stream > asd->nstreams - 1)
+			return -EINVAL;
+
+		if (next_stream && (code->stream < asd->nstreams)) {
+			code->stream++;
+			return 0;
+		}
+
+		return -EINVAL;
+	}
 
 	for (index = 0; supported_codes[index]; index++) {
 		if (index == code->index) {
