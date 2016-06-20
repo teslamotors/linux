@@ -79,6 +79,15 @@ struct intel_ipu4_isys_subdev {
 	struct v4l2_mbus_framefmt **ffmt;
 	struct v4l2_rect *crop;
 	struct v4l2_rect *compose;
+	struct {
+		unsigned int *stream_id;
+		DECLARE_BITMAP(streams_stat, 32);
+	} *stream; /* stream enable/disable status, indexed by pad */
+	struct {
+		unsigned int sink;
+		unsigned int source;
+		int flags;
+	} *route; /* pad level info, indexed by stream */
 	unsigned int nstreams;
 	unsigned int nsinks;
 	unsigned int nsources;
@@ -193,4 +202,10 @@ int intel_ipu4_isys_subdev_init(struct intel_ipu4_isys_subdev *asd,
 void intel_ipu4_isys_subdev_cleanup(struct intel_ipu4_isys_subdev *asd);
 int intel_ipu4_isys_subdev_get_frame_desc(struct v4l2_subdev *sd,
 					struct v4l2_mbus_frame_desc *desc);
+int intel_ipu4_isys_subdev_set_routing(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_routing *route);
+int intel_ipu4_isys_subdev_get_routing(struct v4l2_subdev *sd,
+				       struct v4l2_subdev_routing *route);
+bool intel_ipu4_isys_subdev_has_route(struct media_entity *entity,
+				      unsigned int pad0, unsigned int pad1);
 #endif /* INTEL_IPU4_ISYS_SUBDEV_H */

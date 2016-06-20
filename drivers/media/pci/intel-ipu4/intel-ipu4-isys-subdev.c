@@ -484,6 +484,139 @@ int intel_ipu4_isys_subdev_get_frame_desc(struct v4l2_subdev *sd,
 	return rval;
 }
 
+bool intel_ipu4_isys_subdev_has_route(struct media_entity *entity,
+				      unsigned int pad0, unsigned int pad1)
+{
+	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(
+					media_entity_to_v4l2_subdev(entity));
+	int i;
+
+	/* Two sinks are never connected together. */
+	if (pad0 < asd->nsinks && pad1 < asd->nsinks)
+		return false;
+
+	for (i = 0; i < asd->nstreams; i++) {
+		if ((asd->route[i].flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE) &&
+			((asd->route[i].sink == pad0 &&
+			asd->route[i].source == pad1) ||
+			(asd->route[i].sink == pad1 &&
+			asd->route[i].source == pad0)))
+			return true;
+	}
+
+	return false;
+}
+
+int intel_ipu4_isys_subdev_set_routing(struct v4l2_subdev *sd,
+				       struct v4l2_subdev_routing *route)
+{
+	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
+	int i, j, ret = 0;
+
+	WARN_ON(!mutex_is_locked(&sd->entity.parent->graph_mutex));
+
+	for (i = 0; i < min(route->num_routes, asd->nstreams); ++i) {
+		struct v4l2_subdev_route *t = &route->routes[i];
+
+		if (t->sink_stream > asd->nstreams - 1 ||
+			t->source_stream > asd->nstreams - 1)
+			continue;
+
+		if (t->sink_stream != t->source_stream)
+			continue;
+
+		for (j = 0; j < asd->nstreams; j++) {
+			if (t->sink_pad == asd->route[j].sink &&
+				t->source_pad == asd->route[j].source)
+				break;
+		}
+
+		if (j == asd->nstreams)
+			continue;
+
+		if (t->flags & V4L2_SUBDEV_ROUTE_FL_IMMUTABLE &&
+			t->flags != asd->route[j].flags)
+			continue;
+
+		if ((t->flags & V4L2_SUBDEV_ROUTE_FL_SOURCE) && asd->nsinks)
+			continue;
+
+
+		if (!(t->flags & V4L2_SUBDEV_ROUTE_FL_SOURCE)) {
+			int source_pad = 0;
+
+			if (sd->entity.pads[t->sink_pad].flags &
+				MEDIA_PAD_FL_MULTIPLEX)
+				source_pad = t->source_pad - asd->nsinks;
+
+			asd->stream[t->sink_pad].stream_id[source_pad] =
+				t->sink_stream;
+		}
+
+		if (sd->entity.pads[t->source_pad].flags &
+				MEDIA_PAD_FL_MULTIPLEX)
+			asd->stream[t->source_pad].stream_id[t->sink_pad] =
+				t->source_stream;
+		else
+			asd->stream[t->source_pad].stream_id[0] =
+				t->source_stream;
+
+		if (t->flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE) {
+			bitmap_set(asd->stream[t->source_pad].streams_stat,
+				   t->source_stream, 1);
+			if (!(t->flags & V4L2_SUBDEV_ROUTE_FL_SOURCE))
+				bitmap_set(asd->stream[t->sink_pad].streams_stat
+					   , t->sink_stream, 1);
+			asd->route[j].flags |= V4L2_SUBDEV_ROUTE_FL_ACTIVE;
+		} else if (!t->flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE) {
+			bitmap_set(asd->stream[t->source_pad].streams_stat,
+				   t->source_stream, 0);
+			if (!(t->flags & V4L2_SUBDEV_ROUTE_FL_SOURCE))
+				bitmap_set(asd->stream[t->sink_pad].streams_stat
+					   , t->sink_stream, 0);
+			asd->route[j].flags &= (~V4L2_SUBDEV_ROUTE_FL_ACTIVE);
+		}
+	}
+
+	return ret;
+}
+
+int intel_ipu4_isys_subdev_get_routing(struct v4l2_subdev *sd,
+				       struct v4l2_subdev_routing *route)
+{
+	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
+	int i, j;
+
+	for (i = 0, j = 0; i < min(asd->nstreams, route->num_routes); ++i) {
+		route->routes[j].sink_pad = asd->route[i].sink;
+		if (sd->entity.pads[asd->route[i].sink].flags &
+			MEDIA_PAD_FL_MULTIPLEX) {
+			int source_pad = asd->route[i].source - asd->nsinks;
+
+			route->routes[j].sink_stream =
+			asd->stream[asd->route[i].sink].stream_id[source_pad];
+		} else {
+			route->routes[j].sink_stream =
+			asd->stream[asd->route[i].sink].stream_id[0];
+		}
+
+		route->routes[j].source_pad = asd->route[i].source;
+		if (sd->entity.pads[asd->route[i].source].flags &
+			MEDIA_PAD_FL_MULTIPLEX) {
+			route->routes[j].source_stream =
+		asd->stream[asd->route[i].source].stream_id[asd->route[i].sink];
+		} else {
+			route->routes[j].source_stream =
+			asd->stream[asd->route[i].source].stream_id[0];
+		}
+		route->routes[j++].flags = asd->route[i].flags;
+	}
+
+	route->num_routes = j;
+
+	return 0;
+}
+
 int intel_ipu4_isys_subdev_set_sel(struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 				   struct v4l2_subdev_fh *cfg,
@@ -727,9 +860,14 @@ int intel_ipu4_isys_subdev_init(struct intel_ipu4_isys_subdev *asd,
 
 	asd->valid_tgts = devm_kcalloc(&asd->isys->adev->dev, num_pads,
 				       sizeof(*asd->valid_tgts), GFP_KERNEL);
+	asd->route = devm_kcalloc(&asd->isys->adev->dev, num_streams,
+				       sizeof(*asd->route), GFP_KERNEL);
+
+	asd->stream = devm_kcalloc(&asd->isys->adev->dev, num_pads,
+				       sizeof(*asd->stream), GFP_KERNEL);
 
 	if (!asd->pad || !asd->ffmt || !asd->crop || !asd->compose ||
-	    !asd->valid_tgts)
+	    !asd->valid_tgts || !asd->route || !asd->stream)
 		return -ENOMEM;
 
 	for (i = 0; i < num_pads; i++) {
@@ -737,6 +875,12 @@ int intel_ipu4_isys_subdev_init(struct intel_ipu4_isys_subdev *asd,
 				devm_kcalloc(&asd->isys->adev->dev, num_streams,
 				sizeof(struct v4l2_mbus_framefmt), GFP_KERNEL);
 		if (!asd->ffmt[i])
+			return -ENOMEM;
+
+		asd->stream[i].stream_id =
+				devm_kcalloc(&asd->isys->adev->dev, num_source,
+				sizeof(*asd->stream[i].stream_id), GFP_KERNEL);
+		if (!asd->stream[i].stream_id)
 			return -ENOMEM;
 	}
 

@@ -107,6 +107,8 @@ static const struct v4l2_subdev_pad_ops csi2_be_soc_sd_pad_ops = {
 	.get_fmt = intel_ipu4_isys_subdev_get_ffmt,
 	.set_fmt = intel_ipu4_isys_subdev_set_ffmt,
 	.enum_mbus_code = intel_ipu4_isys_subdev_enum_mbus_code,
+	.set_routing = intel_ipu4_isys_subdev_set_routing,
+	.get_routing = intel_ipu4_isys_subdev_get_routing,
 };
 
 static struct v4l2_subdev_ops csi2_be_soc_sd_ops = {
@@ -117,6 +119,7 @@ static struct v4l2_subdev_ops csi2_be_soc_sd_ops = {
 
 static struct media_entity_operations csi2_be_soc_entity_ops = {
 	.link_validate = v4l2_subdev_link_validate,
+	.has_route = intel_ipu4_isys_subdev_has_route,
 };
 
 static void csi2_be_soc_set_ffmt(struct v4l2_subdev *sd,
@@ -224,6 +227,29 @@ int intel_ipu4_isys_csi2_be_soc_init(
 		dev_info(&isys->adev->dev, "can't register v4l2 subdev\n");
 		goto fail;
 	}
+
+	/* create default route information */
+	for (i = 0; i < NR_OF_CSI2_BE_SOC_STREAMS; i++) {
+		csi2_be_soc->asd.route[i].sink = CSI2_BE_SOC_PAD_SINK(i);
+		csi2_be_soc->asd.route[i].source = CSI2_BE_SOC_PAD_SOURCE(i);
+		csi2_be_soc->asd.route[i].flags = 0;
+	}
+
+	for (i = 0; i < NR_OF_CSI2_BE_SOC_SOURCE_PADS; i++) {
+		csi2_be_soc->asd.stream[CSI2_BE_SOC_PAD_SINK(i)].stream_id[0]
+			= i;
+		csi2_be_soc->asd.stream[CSI2_BE_SOC_PAD_SOURCE(i)].stream_id[0]
+			= i;
+	}
+
+	csi2_be_soc->asd.route[0].flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE |
+					V4L2_SUBDEV_ROUTE_FL_IMMUTABLE;
+	bitmap_set(
+		csi2_be_soc->asd.stream[CSI2_BE_SOC_PAD_SINK(0)].streams_stat,
+		0, 1);
+	bitmap_set(
+		csi2_be_soc->asd.stream[CSI2_BE_SOC_PAD_SOURCE(0)].streams_stat,
+		0, 1);
 
 	mutex_unlock(&csi2_be_soc->asd.mutex);
 	for (i = 0; i < NR_OF_CSI2_BE_SOC_SOURCE_PADS; i++) {

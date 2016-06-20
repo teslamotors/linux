@@ -458,6 +458,16 @@ static int csi2_link_validate(struct media_link *link)
 	return v4l2_subdev_link_validate(link);
 }
 
+bool csi2_has_route(struct media_entity *entity, unsigned int pad0,
+		    unsigned int pad1)
+{
+	/* TODO: need to remove this when meta data node is removed */
+	if (pad0 == CSI2_PAD_META || pad1 == CSI2_PAD_META)
+		return true;
+
+	return intel_ipu4_isys_subdev_has_route(entity, pad0, pad1);
+}
+
 static const struct v4l2_subdev_video_ops csi2_sd_video_ops = {
 	.s_stream = set_stream,
 };
@@ -530,6 +540,8 @@ static const struct v4l2_subdev_pad_ops csi2_sd_pad_ops = {
 	.get_fmt = intel_ipu4_isys_csi2_get_fmt,
 	.set_fmt = intel_ipu4_isys_csi2_set_fmt,
 	.enum_mbus_code = intel_ipu4_isys_subdev_enum_mbus_code,
+	.set_routing = intel_ipu4_isys_subdev_set_routing,
+	.get_routing = intel_ipu4_isys_subdev_get_routing,
 };
 
 static struct v4l2_subdev_ops csi2_sd_ops = {
@@ -540,6 +552,7 @@ static struct v4l2_subdev_ops csi2_sd_ops = {
 
 static struct media_entity_operations csi2_entity_ops = {
 	.link_validate = csi2_link_validate,
+	.has_route = csi2_has_route,
 };
 
 static void csi2_set_ffmt(struct v4l2_subdev *sd,
@@ -677,6 +690,24 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 
 	__intel_ipu4_isys_subdev_set_ffmt(&csi2->asd.sd, NULL, &fmt);
 	__intel_ipu4_isys_subdev_set_ffmt(&csi2->asd.sd, NULL, &fmt_meta);
+
+	/* create default route information */
+	for (i = 0; i < NR_OF_CSI2_STREAMS; i++) {
+		csi2->asd.route[i].sink = CSI2_PAD_SINK;
+		csi2->asd.route[i].source = CSI2_PAD_SOURCE(i);
+		csi2->asd.route[i].flags = 0;
+	}
+
+	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++) {
+		csi2->asd.stream[CSI2_PAD_SINK].stream_id[i] = i;
+		csi2->asd.stream[CSI2_PAD_SOURCE(i)].stream_id[CSI2_PAD_SINK]
+									= i;
+	}
+	csi2->asd.route[0].flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE |
+					V4L2_SUBDEV_ROUTE_FL_IMMUTABLE;
+	bitmap_set(csi2->asd.stream[CSI2_PAD_SINK].streams_stat, 0, 1);
+	bitmap_set(csi2->asd.stream[CSI2_PAD_SOURCE(0)].streams_stat, 0, 1);
+
 	mutex_unlock(&csi2->asd.mutex);
 
 	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++) {
