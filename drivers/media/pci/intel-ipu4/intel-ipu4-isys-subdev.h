@@ -191,5 +191,6 @@ int intel_ipu4_isys_subdev_init(struct intel_ipu4_isys_subdev *asd,
 			     unsigned int num_source, unsigned int num_sink,
 			     unsigned int sd_flags);
 void intel_ipu4_isys_subdev_cleanup(struct intel_ipu4_isys_subdev *asd);
-
+int intel_ipu4_isys_subdev_get_frame_desc(struct v4l2_subdev *sd,
+					struct v4l2_mbus_frame_desc *desc);
 #endif /* INTEL_IPU4_ISYS_SUBDEV_H */

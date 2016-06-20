@@ -464,6 +464,26 @@ int intel_ipu4_isys_subdev_get_ffmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
+int intel_ipu4_isys_subdev_get_frame_desc(struct v4l2_subdev *sd,
+					  struct v4l2_mbus_frame_desc *desc)
+{
+	int i, rval = 0;
+
+	for (i = 0; i < sd->entity.num_pads; i++) {
+		if (!(sd->entity.pads[i].flags & MEDIA_PAD_FL_SOURCE))
+			continue;
+
+		rval = v4l2_subdev_call(sd, pad, get_frame_desc, i, desc);
+		if (!rval)
+			return rval;
+	}
+
+	if (i == sd->entity.num_pads)
+		rval = -EINVAL;
+
+	return rval;
+}
+
 int intel_ipu4_isys_subdev_set_sel(struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 				   struct v4l2_subdev_fh *cfg,
