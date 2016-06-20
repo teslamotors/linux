@@ -156,6 +156,7 @@ struct v4l2_subdev_selection {
 
 #define V4L2_SUBDEV_ROUTE_FL_ACTIVE	(1 << 0)
 #define V4L2_SUBDEV_ROUTE_FL_IMMUTABLE	(1 << 1)
+#define V4L2_SUBDEV_ROUTE_FL_SOURCE	(1 << 2)
 
 /**
  * struct v4l2_subdev_route - A signal route inside a subdev
@@ -171,6 +172,10 @@ struct v4l2_subdev_selection {
  *
  *	V4L2_SUBDEV_ROUTE_FL_IMMUTABLE: Is the stream immutable, i.e.
  *	can it be activated and inactivated? Set by the driver.
+ *
+ *	V4L2_SUBDEV_ROUTE_FL_SOURCE: Is the sub-device the source of a
+ *	stream? In this case the sink information is unused (and
+ *	zero). Set by the driver.
  */
 struct v4l2_subdev_route {
 	__u32 sink_pad;
