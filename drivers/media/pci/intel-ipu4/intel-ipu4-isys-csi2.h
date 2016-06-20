@@ -88,6 +88,9 @@ struct intel_ipu4_isys_csi2 {
 	atomic_t sof_sequence;
 	bool in_frame;
 	bool wait_for_sync;
+
+	unsigned int remote_streams;
+	unsigned int stream_count;
 };
 
 struct intel_ipu4_isys_csi2_timing {

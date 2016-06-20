@@ -357,6 +357,8 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 		writel(0, csi2->base + CSI2_REG_CSI2S2M_IRQ_ENABLE);
 		writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_MASK);
 		writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
+		csi2->stream_count--;
+
 		return 0;
 	}
 
@@ -419,6 +421,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 	writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
 
 	ip->has_sof = true;
+	csi2->stream_count++;
 
 	return 0;
 }
@@ -448,6 +451,13 @@ static int csi2_link_validate(struct media_link *link)
 		media_entity_to_v4l2_subdev(link->sink->entity));
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(link->sink->entity->pipe);
+	struct v4l2_subdev_route r[INTEL_IPU4_ISYS_MAX_STREAMS];
+	struct v4l2_subdev_routing routing = {
+		.routes = r,
+		.num_routes = INTEL_IPU4_ISYS_MAX_STREAMS,
+	};
+	int i, rval;
+	unsigned int active = 0;
 
 	csi2->receiver_errors = 0;
 	ip->csi2 = csi2;
@@ -455,7 +465,31 @@ static int csi2_link_validate(struct media_link *link)
 		to_intel_ipu4_isys_pipeline(link->sink->entity->pipe),
 		csi2_capture_done);
 
-	return v4l2_subdev_link_validate(link);
+	rval = v4l2_subdev_link_validate(link);
+	if (rval)
+		return rval;
+
+	rval = v4l2_subdev_call(
+		media_entity_to_v4l2_subdev(link->source->entity), pad,
+		get_routing, &routing);
+
+	if (rval) {
+		csi2->remote_streams = 1;
+		return 0;
+	}
+
+	for (i = 0; i < routing.num_routes; i++) {
+		if (routing.routes[i].flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE)
+			active++;
+	}
+
+	if (active != bitmap_weight(
+		csi2->asd.stream[link->sink->index].streams_stat, 32))
+		return -EINVAL;
+
+	csi2->remote_streams = active;
+
+	return 0;
 }
 
 bool csi2_has_route(struct media_entity *entity, unsigned int pad0,
@@ -655,6 +689,8 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 	csi2->asd.sd.entity.ops = &csi2_entity_ops;
 	csi2->asd.isys = isys;
 	init_completion(&csi2->eof_completion);
+	csi2->remote_streams = 1;
+	csi2->stream_count = 0;
 
 	rval = intel_ipu4_isys_subdev_init(&csi2->asd, &csi2_sd_ops, 0,
 				NR_OF_CSI2_PADS, NR_OF_CSI2_STREAMS,

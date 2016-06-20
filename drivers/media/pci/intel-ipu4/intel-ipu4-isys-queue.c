@@ -788,6 +788,7 @@ int intel_ipu4_isys_link_fmt_validate(struct intel_ipu4_isys_queue *aq)
 
 	fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	fmt.pad = pad->index;
+	fmt.stream = 0;
 	rval = v4l2_subdev_call(sd, pad, get_fmt, NULL, &fmt);
 	if (rval)
 		return rval;
@@ -989,9 +990,9 @@ static void stop_streaming(struct vb2_queue *q)
 		mutex_lock(&pipe_av->mutex);
 	}
 
+	mutex_lock(&av->isys->stream_mutex);
 	if (ip->nr_streaming == ip->nr_queues && ip->streaming)
 		intel_ipu4_isys_video_set_streaming(av, 0, NULL);
-	mutex_lock(&av->isys->stream_mutex);
 	if (ip->nr_streaming == 1)
 		intel_ipu4_isys_video_prepare_streaming(av, 0);
 	mutex_unlock(&av->isys->stream_mutex);

@@ -644,12 +644,51 @@ static int link_validate(struct media_link *link)
 	/* All sub-devices connected to a video node are ours. */
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
+	struct v4l2_subdev_route r[INTEL_IPU4_ISYS_MAX_STREAMS];
+	struct v4l2_subdev_routing routing = {
+		.routes = r,
+		.num_routes = INTEL_IPU4_ISYS_MAX_STREAMS,
+	};
+	int i, rval, active = 0;
 
 	if (is_external(av, link->source->entity)) {
 		ip->external = media_entity_remote_pad(av->vdev.entity.pads);
 		ip->source = to_intel_ipu4_isys_subdev(
 			media_entity_to_v4l2_subdev(
 				link->source->entity))->source;
+	}
+
+	rval = v4l2_subdev_call(
+		media_entity_to_v4l2_subdev(link->source->entity), pad,
+		get_routing, &routing);
+
+	if (!rval) {
+		for (i = 0; i < routing.num_routes; i++) {
+			if (!(routing.routes[i].flags &
+				V4L2_SUBDEV_ROUTE_FL_ACTIVE))
+				continue;
+
+			if (routing.routes[i].source_pad ==
+			    link->source->index) {
+				ip->stream_id =
+				    routing.routes[i].source_stream;
+			}
+			active++;
+		}
+
+		if (ip->external) {
+			struct v4l2_mbus_frame_desc desc = {
+				.num_entries = INTEL_IPU4_ISYS_MAX_STREAMS,
+			};
+
+			rval = intel_ipu4_isys_subdev_get_frame_desc(
+			       media_entity_to_v4l2_subdev(
+							ip->external->entity),
+							&desc);
+			if (!rval && (ip->stream_id < desc.num_entries))
+				ip->vc =
+				    desc.entry[ip->stream_id].bus.csi2.channel;
+		}
 	}
 
 	ip->nr_queues++;
@@ -890,6 +929,7 @@ void intel_ipu4_isys_prepare_firmware_stream_cfg_default(
 	pin_info->pt = aq->css_pin_type;
 	pin_info->ft = av->pfmt->css_pixelformat;
 	pin_info->send_irq = 1;
+	cfg->vc = ip->vc;
 }
 
 static unsigned int intel_ipu4_isys_get_compression_scheme(u32 code)
@@ -1310,7 +1350,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	struct media_device *mdev = av->vdev.entity.parent;
 	struct media_entity_graph graph;
-	unsigned int entities = 0;
+	unsigned long entities = 0;
 #else
 	struct media_device *mdev = av->vdev.entity.graph_obj.mdev;
 	struct media_entity_enum entities;
@@ -1336,11 +1376,19 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 
 		/* stop external sub-device now. */
 		dev_err(dev, "s_stream %s (ext)\n", ip->external->entity->name);
-		v4l2_subdev_call(
-			media_entity_to_v4l2_subdev(ip->external->entity),
-			video, s_stream, state);
-		if (ip->csi2)
-			intel_ipu4_isys_csi2_wait_last_eof(ip->csi2);
+
+		if (ip->csi2) {
+			if (ip->csi2->stream_count == 1) {
+				v4l2_subdev_call(media_entity_to_v4l2_subdev(
+						ip->external->entity),
+						video, s_stream, state);
+				intel_ipu4_isys_csi2_wait_last_eof(ip->csi2);
+			}
+		} else {
+			v4l2_subdev_call(media_entity_to_v4l2_subdev(
+					ip->external->entity),
+					video, s_stream, state);
+		}
 	}
 
 	mutex_lock(&mdev->graph_mutex);
@@ -1405,10 +1453,17 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 		/* Start external sub-device now. */
 		dev_dbg(dev, "set stream: s_stream %s (ext)\n",
 			ip->external->entity->name);
-
-		rval = v4l2_subdev_call(
-			media_entity_to_v4l2_subdev(ip->external->entity),
-			video, s_stream, state);
+		if (ip->csi2 &&
+			ip->csi2->remote_streams == ip->csi2->stream_count)
+			rval = v4l2_subdev_call(
+					media_entity_to_v4l2_subdev(
+						ip->external->entity),
+					video, s_stream, state);
+		else if (!ip->csi2)
+			rval = v4l2_subdev_call(
+					media_entity_to_v4l2_subdev(
+						ip->external->entity),
+					video, s_stream, state);
 		if (rval)
 			goto out_media_entity_stop_streaming_firmware;
 	} else {
