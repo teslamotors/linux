@@ -38,6 +38,9 @@
 #define REPLY_TIMEOUT			5000
 #define TXBUF_TIMEOUT			15000
 
+#define PULSE_ACTIVE                    1
+#define PULSE_DEACTIVE                  0
+
 #define MAX_SRV_NAME_LEN		256
 #define MAX_DEV_NAME_LEN		32
 
@@ -705,6 +708,7 @@ EXPORT_SYMBOL(tipc_chan_destroy);
 /***************************************************************************/
 
 struct tipc_dn_chan {
+	int pulse;
 	int state;
 	struct mutex lock; /* protects rx_msg_queue list and channel state */
 	struct tipc_chan *chan;
@@ -729,9 +733,10 @@ static int dn_wait_for_reply(struct tipc_dn_chan *dn, int timeout)
 		ret = -ETIMEDOUT;
 	} else {
 		/* got reply */
-		if (dn->state == TIPC_CONNECTED)
+		if (dn->pulse == PULSE_ACTIVE) {
+			dn->pulse = PULSE_DEACTIVE;
 			ret = 0;
-		else if (dn->state == TIPC_DISCONNECTED)
+		} else if (dn->state == TIPC_DISCONNECTED)
 			if (!list_empty(&dn->rx_msg_queue))
 				ret = 0;
 			else
@@ -775,6 +780,7 @@ static void dn_connected(struct tipc_dn_chan *dn)
 {
 	mutex_lock(&dn->lock);
 	dn->state = TIPC_CONNECTED;
+	dn->pulse = PULSE_ACTIVE;
 
 	/* complete all pending  */
 	complete(&dn->reply_comp);
@@ -883,6 +889,7 @@ static int tipc_open(struct inode *inode, struct file *filp)
 	INIT_LIST_HEAD(&dn->rx_msg_queue);
 
 	dn->state = TIPC_DISCONNECTED;
+	dn->pulse = PULSE_DEACTIVE;
 
 	dn->chan = vds_create_channel(vds, &_dn_ops, dn);
 	if (IS_ERR(dn->chan)) {
