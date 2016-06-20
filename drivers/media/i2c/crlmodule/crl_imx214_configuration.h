@@ -436,6 +436,75 @@ static struct crl_register_write_rep imx214_mode_1080[] = {
 	{ 0x0138, CRL_REG_LEN_08BIT, 0x01 },
 };
 
+static struct crl_register_write_rep imx214_mode_720[] = {
+	{ 0x0114, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
+	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0344, CRL_REG_LEN_08BIT, 0x05 },
+	{ 0x0345, CRL_REG_LEN_08BIT, 0x78 },
+	{ 0x0346, CRL_REG_LEN_08BIT, 0x04 },
+	{ 0x0347, CRL_REG_LEN_08BIT, 0x8E },
+	{ 0x0348, CRL_REG_LEN_08BIT, 0x0A },
+	{ 0x0349, CRL_REG_LEN_08BIT, 0xF7 },
+	{ 0x034A, CRL_REG_LEN_08BIT, 0x07 },
+	{ 0x034B, CRL_REG_LEN_08BIT, 0xA1 },
+	{ 0x0381, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0383, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0385, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0387, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0901, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3000, CRL_REG_LEN_08BIT, 0x35 },
+	{ 0x3054, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
+	{ 0x034C, CRL_REG_LEN_08BIT, 0x05 },
+	{ 0x034D, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x034E, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x034F, CRL_REG_LEN_08BIT, 0xD0 },
+	{ 0x0401, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0404, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0405, CRL_REG_LEN_08BIT, 0x10 },
+	{ 0x0408, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0409, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x040A, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x040B, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x040C, CRL_REG_LEN_08BIT, 0x05 },
+	{ 0x040D, CRL_REG_LEN_08BIT, 0x80 },
+	{ 0x040E, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x040F, CRL_REG_LEN_08BIT, 0x14 },
+	{ 0x3A03, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x3A04, CRL_REG_LEN_08BIT, 0xF8 },
+	{ 0x3A05, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0B06, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x30A2, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30B4, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3A02, CRL_REG_LEN_08BIT, 0xFF },
+	{ 0x3011, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3013, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
+	{ 0x0204, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0205, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x020E, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x020F, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0210, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0211, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0212, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0213, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0214, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0215, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0216, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0217, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x4170, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x4171, CRL_REG_LEN_08BIT, 0x10 },
+	{ 0x4176, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x4177, CRL_REG_LEN_08BIT, 0x3C },
+	{ 0xAE20, CRL_REG_LEN_08BIT, 0x04 },
+	{ 0xAE21, CRL_REG_LEN_08BIT, 0x5C },
+	{ 0x0138, CRL_REG_LEN_08BIT, 0x01 },
+};
 
 static struct crl_register_write_rep imx214_streamon_regs[] = {
 	{ 0x0100, CRL_REG_LEN_08BIT, 0x01 }
@@ -546,7 +615,7 @@ static struct crl_sensor_detect_config imx214_sensor_detect_regset[] = {
 	},
 };
 
-const s64 imx214_op_sys_clock[] =  { 504000000, 600000000};
+const s64 imx214_op_sys_clock[] =  { 504000000, 504000000, 600000000, 600000000};
 
 static struct crl_pll_configuration imx214_pll_configurations[] = {
 	{
@@ -752,6 +821,41 @@ static struct crl_subdev_rect_rep imx214_1080_rects[] = {
 	},
 };
 
+static struct crl_subdev_rect_rep imx214_720_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4208,
+		.in_rect.height = 3120,
+		.out_rect.left = 1400,
+		.out_rect.top = 1166,
+		.out_rect.width = 1408,
+		.out_rect.height = 788,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1408,
+		.in_rect.height = 788,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1408,
+		.out_rect.height = 788,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1408,
+		.in_rect.height = 788,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1280,
+		.out_rect.height = 720,
+	},
+};
 
 static struct crl_mode_rep imx214_modes[] = {
 	{
@@ -814,7 +918,21 @@ static struct crl_mode_rep imx214_modes[] = {
 		.mode_regs_items = ARRAY_SIZE(imx214_mode_1080),
 		.mode_regs = imx214_mode_1080,
 	},
-
+	{
+		.sd_rects_items = ARRAY_SIZE(imx214_720_rects),
+		.sd_rects = imx214_720_rects,
+		.binn_hor = 1,
+		.binn_vert = 1,
+		.scale_m = 1,
+		.width = 1280,
+		.height = 720,
+		.min_llp = 5008,
+		.min_fll = 828,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = ARRAY_SIZE(imx214_mode_720),
+		.mode_regs = imx214_mode_720,
+	},
 };
 
 static struct crl_sensor_subdev_config imx214_sensor_subdevs[] = {
