@@ -275,16 +275,45 @@ void intel_ipu4_isys_subdev_fmt_propagate(
 		if (pad)
 			return;
 
-		for (i = 1; i < sd->entity.num_pads; i++) {
-			if (!(sd->entity.pads[i].flags & MEDIA_PAD_FL_SOURCE))
-				continue;
-
-			compose[i]->left = compose[i]->top = 0;
-			compose[i]->width = r->width;
-			compose[i]->height = r->height;
+		/* 1:n and 1:1 case: only propagate to the first source pad */
+		if (asd->nsinks == 1 && asd->nsources >= 1) {
+			compose[asd->nsinks]->left =
+				compose[asd->nsinks]->top = 0;
+			compose[asd->nsinks]->width = r->width;
+			compose[asd->nsinks]->height = r->height;
 			intel_ipu4_isys_subdev_fmt_propagate(
-				sd, cfg, ffmt, compose[i], tgt + 1, i, which);
+				sd, cfg, ffmt, compose[asd->nsinks], tgt + 1,
+				asd->nsinks, which);
+		/* n:n case: propagate according to route info */
+		} else if (asd->nsinks == asd->nsources && asd->nsources > 1) {
+			for (i = asd->nsinks; i < sd->entity.num_pads; i++)
+				if (media_entity_has_route(&sd->entity, pad, i))
+					break;
+
+			if (i != sd->entity.num_pads) {
+				compose[i]->left = compose[i]->top = 0;
+				compose[i]->width = r->width;
+				compose[i]->height = r->height;
+				intel_ipu4_isys_subdev_fmt_propagate(
+					sd, cfg, ffmt, compose[i],
+					tgt + 1, i, which);
+			}
+		/* n:m case: propagate to all source pad */
+		} else if (asd->nsinks != asd->nsources && asd->nsources > 1 &&
+				asd->nsources > 1) {
+			for (i = 1; i < sd->entity.num_pads; i++) {
+				if (!(sd->entity.pads[i].flags &
+						MEDIA_PAD_FL_SOURCE))
+					continue;
+
+				compose[i]->left = compose[i]->top = 0;
+				compose[i]->width = r->width;
+				compose[i]->height = r->height;
+				intel_ipu4_isys_subdev_fmt_propagate(sd, cfg,
+					ffmt, compose[i], tgt + 1, i, which);
+			}
 		}
+
 		return;
 	case INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SOURCE_COMPOSE:
 		if (WARN_ON(sd->entity.pads[pad].flags & MEDIA_PAD_FL_SINK))
@@ -309,6 +338,7 @@ void intel_ipu4_isys_subdev_fmt_propagate(
 				 * or the current one.
 				 */
 				.code = ffmt ? ffmt->code : ffmts[pad]->code,
+				.field = ffmt ? ffmt->field : ffmts[pad]->field,
 			},
 		};
 
