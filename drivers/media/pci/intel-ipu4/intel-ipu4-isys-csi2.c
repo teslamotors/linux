@@ -553,27 +553,17 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 	if (fmt->format.field != V4L2_FIELD_ALTERNATE)
 		fmt->format.field = V4L2_FIELD_NONE;
 
-	switch (fmt->pad) {
-	case CSI2_PAD_SINK:
+	if (fmt->pad == CSI2_PAD_SINK) {
 		*ffmt = fmt->format;
-		intel_ipu4_isys_subdev_fmt_propagate(
-			sd, cfg, &fmt->format, NULL,
-			INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SINK_FMT, fmt->pad,
-			fmt->which);
-		break;
-	case CSI2_PAD_SOURCE(0): {
-		struct v4l2_mbus_framefmt *sink_ffmt =
-			__intel_ipu4_isys_get_ffmt(sd, cfg, CSI2_PAD_SINK,
-						   fmt->stream, fmt->which);
-		ffmt->width = sink_ffmt->width;
-		ffmt->height = sink_ffmt->height;
-		ffmt->field = sink_ffmt->field;
-		ffmt->code =
-			intel_ipu4_isys_subdev_code_to_uncompressed(
-				sink_ffmt->code);
-		break;
-		}
-	case CSI2_PAD_META: {
+		if (fmt->stream == 0)
+			intel_ipu4_isys_subdev_fmt_propagate(
+				sd, cfg, &fmt->format, NULL,
+				INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SINK_FMT,
+				fmt->pad, fmt->which);
+		return;
+	}
+
+	if (fmt->pad == CSI2_PAD_META) {
 		struct v4l2_mbus_framefmt *ffmt =
 			__intel_ipu4_isys_get_ffmt(
 				sd, cfg, fmt->pad, fmt->stream, fmt->which);
@@ -600,12 +590,22 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 			ffmt->height = entry.size.two_dim.height;
 			ffmt->code = entry.pixelcode;
 			ffmt->field = V4L2_FIELD_NONE;
-			}
-		break;
 		}
-	default:
-		BUG_ON(1);
+
+		return;
 	}
+
+	if (sd->entity.pads[fmt->pad].flags & MEDIA_PAD_FL_SOURCE) {
+		ffmt->width = fmt->format.width;
+		ffmt->height = fmt->format.height;
+		ffmt->field = fmt->format.field;
+		ffmt->code =
+			intel_ipu4_isys_subdev_code_to_uncompressed(
+				fmt->format.code);
+		return;
+	}
+
+	BUG_ON(1);
 }
 
 void intel_ipu4_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2)
