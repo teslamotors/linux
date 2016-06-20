@@ -495,16 +495,7 @@ __must_check int __media_pipeline_start(struct media_entity *entity,
 
 		entity->stream_count++;
 
-		if (WARN_ON(entity->pipe && entity->pipe != pipe)) {
-			ret = -EBUSY;
-			goto error;
-		}
-
 		entity->pipe = pipe;
-
-		/* Already streaming --- no need to check. */
-		if (entity->stream_count > 1)
-			continue;
 
 		if (!entity->ops || !entity->ops->link_validate)
 			continue;
