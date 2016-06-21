@@ -129,6 +129,7 @@ struct pstate_funcs {
 	int (*get_max)(void);
 	int (*get_min)(void);
 	int (*get_turbo)(void);
+	void (*adjust_states)(struct cpudata *);
 	int (*get_scaling)(void);
 	void (*set)(struct cpudata*, int pstate);
 	void (*get_vid)(struct cpudata *);
@@ -601,6 +602,26 @@ static int core_get_turbo_pstate(void)
 	return ret;
 }
 
+static void core_adjust_states(struct cpudata *cpudata)
+{
+	u64 value;
+
+	if (rdmsrl_safe(MSR_TURBO_ACTIVATION_RATIO, &value))
+		return;
+
+	if (value & BIT(31))
+		return; /* locked */
+
+	if (cpudata->pstate.max_pstate > value) {
+		int err;
+
+		value = cpudata->pstate.max_pstate & 0xff;
+		err = wrmsrl_safe(MSR_TURBO_ACTIVATION_RATIO, value);
+		if (err)
+			pr_err("Adjust MSR_TURBO_ACTIVATION_RATIO failed\n");
+	}
+}
+
 static inline int core_get_scaling(void)
 {
 	return 100000;
@@ -645,6 +666,7 @@ static struct cpu_defaults core_params = {
 		.get_turbo = core_get_turbo_pstate,
 		.get_scaling = core_get_scaling,
 		.set = core_set_pstate,
+		.adjust_states = core_adjust_states,
 	},
 };
 
@@ -738,6 +760,9 @@ static void intel_pstate_get_cpu_pstates(struct cpudata *cpu)
 	if (pstate_funcs.get_vid)
 		pstate_funcs.get_vid(cpu);
 	intel_pstate_set_pstate(cpu, cpu->pstate.min_pstate, false);
+
+	if (pstate_funcs.adjust_states)
+		pstate_funcs.adjust_states(cpu);
 }
 
 static inline void intel_pstate_calc_busy(struct cpudata *cpu)
@@ -1106,6 +1131,7 @@ static void copy_cpu_funcs(struct pstate_funcs *funcs)
 	pstate_funcs.get_scaling = funcs->get_scaling;
 	pstate_funcs.set       = funcs->set;
 	pstate_funcs.get_vid   = funcs->get_vid;
+	pstate_funcs.adjust_states   = funcs->adjust_states;
 }
 
 #if IS_ENABLED(CONFIG_ACPI)
