@@ -26,6 +26,7 @@
 #include <linux/fs.h>
 #include <linux/debugfs.h>
 #include <linux/acpi.h>
+#include <linux/vmalloc.h>
 #include <trace/events/power.h>
 
 #include <asm/div64.h>
@@ -68,6 +69,7 @@ struct sample {
 	int32_t core_pct_busy;
 	u64 aperf;
 	u64 mperf;
+	u64 tsc;
 	int freq;
 	ktime_t time;
 };
@@ -109,6 +111,7 @@ struct cpudata {
 	ktime_t last_sample_time;
 	u64	prev_aperf;
 	u64	prev_mperf;
+	u64	prev_tsc;
 	struct sample sample;
 };
 
@@ -396,7 +399,7 @@ static ssize_t store_no_turbo(struct kobject *a, struct attribute *b,
 
 	update_turbo_state();
 	if (limits.turbo_disabled) {
-		pr_warn("Turbo disabled by BIOS or unavailable on processor\n");
+		pr_warn("intel_pstate: Turbo disabled by BIOS or unavailable on processor\n");
 		return -EPERM;
 	}
 
@@ -481,12 +484,11 @@ static void __init intel_pstate_sysfs_expose_params(void)
 }
 /************************** sysfs end ************************/
 
-static void intel_pstate_hwp_enable(void)
+static void intel_pstate_hwp_enable(struct cpudata *cpudata)
 {
-	hwp_active++;
-	pr_info("intel_pstate HWP enabled\n");
+	pr_info("intel_pstate: HWP enabled\n");
 
-	wrmsrl( MSR_PM_ENABLE, 0x1);
+	wrmsrl_on_cpu(cpudata->cpu, MSR_PM_ENABLE, 0x1);
 }
 
 static int byt_get_min_pstate(void)
@@ -705,19 +707,20 @@ static void intel_pstate_get_min_max(struct cpudata *cpu, int *min, int *max)
 	*min = clamp_t(int, min_perf, cpu->pstate.min_pstate, max_perf);
 }
 
-static void intel_pstate_set_pstate(struct cpudata *cpu, int pstate)
+static void intel_pstate_set_pstate(struct cpudata *cpu, int pstate, bool force)
 {
 	int max_perf, min_perf;
 
-	update_turbo_state();
+	if (force) {
+		update_turbo_state();
 
-	intel_pstate_get_min_max(cpu, &min_perf, &max_perf);
+		intel_pstate_get_min_max(cpu, &min_perf, &max_perf);
 
-	pstate = clamp_t(int, pstate, min_perf, max_perf);
+		pstate = clamp_t(int, pstate, min_perf, max_perf);
 
-	if (pstate == cpu->pstate.current_pstate)
-		return;
-
+		if (pstate == cpu->pstate.current_pstate)
+			return;
+	}
 	trace_cpu_frequency(pstate * cpu->pstate.scaling, cpu->cpu);
 
 	cpu->pstate.current_pstate = pstate;
@@ -734,7 +737,7 @@ static void intel_pstate_get_cpu_pstates(struct cpudata *cpu)
 
 	if (pstate_funcs.get_vid)
 		pstate_funcs.get_vid(cpu);
-	intel_pstate_set_pstate(cpu, cpu->pstate.min_pstate);
+	intel_pstate_set_pstate(cpu, cpu->pstate.min_pstate, false);
 }
 
 static inline void intel_pstate_calc_busy(struct cpudata *cpu)
@@ -757,6 +760,7 @@ static inline void intel_pstate_sample(struct cpudata *cpu)
 {
 	u64 aperf, mperf;
 	unsigned long flags;
+	u64 tsc;
 
 	local_irq_save(flags);
 	rdmsrl(MSR_IA32_APERF, aperf);
@@ -766,19 +770,23 @@ static inline void intel_pstate_sample(struct cpudata *cpu)
 		return;
 	}
 
+	tsc = native_read_tsc();
 	local_irq_restore(flags);
 
 	cpu->last_sample_time = cpu->sample.time;
 	cpu->sample.time = ktime_get();
 	cpu->sample.aperf = aperf;
 	cpu->sample.mperf = mperf;
+	cpu->sample.tsc =  tsc;
 	cpu->sample.aperf -= cpu->prev_aperf;
 	cpu->sample.mperf -= cpu->prev_mperf;
+	cpu->sample.tsc -= cpu->prev_tsc;
 
 	intel_pstate_calc_busy(cpu);
 
 	cpu->prev_aperf = aperf;
 	cpu->prev_mperf = mperf;
+	cpu->prev_tsc = tsc;
 }
 
 static inline void intel_hwp_set_sample_time(struct cpudata *cpu)
@@ -843,6 +851,10 @@ static inline void intel_pstate_adjust_busy_pstate(struct cpudata *cpu)
 	int32_t busy_scaled;
 	struct _pid *pid;
 	signed int ctl;
+	int from;
+	struct sample *sample;
+
+	from = cpu->pstate.current_pstate;
 
 	pid = &cpu->pid;
 	busy_scaled = intel_pstate_get_scaled_busy(cpu);
@@ -850,7 +862,17 @@ static inline void intel_pstate_adjust_busy_pstate(struct cpudata *cpu)
 	ctl = pid_calc(pid, busy_scaled);
 
 	/* Negative values of ctl increase the pstate and vice versa */
-	intel_pstate_set_pstate(cpu, cpu->pstate.current_pstate - ctl);
+	intel_pstate_set_pstate(cpu, cpu->pstate.current_pstate - ctl, true);
+
+	sample = &cpu->sample;
+	trace_pstate_sample(fp_toint(sample->core_pct_busy),
+		fp_toint(busy_scaled),
+		from,
+		cpu->pstate.current_pstate,
+		sample->mperf,
+		sample->aperf,
+		sample->tsc,
+		sample->freq);
 }
 
 static void intel_hwp_timer_func(unsigned long __data)
@@ -864,20 +886,10 @@ static void intel_hwp_timer_func(unsigned long __data)
 static void intel_pstate_timer_func(unsigned long __data)
 {
 	struct cpudata *cpu = (struct cpudata *) __data;
-	struct sample *sample;
 
 	intel_pstate_sample(cpu);
 
-	sample = &cpu->sample;
-
 	intel_pstate_adjust_busy_pstate(cpu);
-
-	trace_pstate_sample(fp_toint(sample->core_pct_busy),
-			fp_toint(intel_pstate_get_scaled_busy(cpu)),
-			cpu->pstate.current_pstate,
-			sample->mperf,
-			sample->aperf,
-			sample->freq);
 
 	intel_pstate_set_sample_time(cpu);
 }
@@ -901,6 +913,7 @@ static const struct x86_cpu_id intel_pstate_cpu_ids[] = {
 	ICPU(0x4c, byt_params),
 	ICPU(0x4e, core_params),
 	ICPU(0x4f, core_params),
+	ICPU(0x5e, core_params),
 	ICPU(0x56, core_params),
 	ICPU(0x57, knl_params),
 	{}
@@ -925,6 +938,10 @@ static int intel_pstate_init_cpu(unsigned int cpunum)
 	cpu = all_cpu_data[cpunum];
 
 	cpu->cpu = cpunum;
+
+	if (hwp_active)
+		intel_pstate_hwp_enable(cpu);
+
 	intel_pstate_get_cpu_pstates(cpu);
 
 	init_timer_deferrable(&cpu->timer);
@@ -941,7 +958,7 @@ static int intel_pstate_init_cpu(unsigned int cpunum)
 
 	add_timer_on(&cpu->timer, cpunum);
 
-	pr_debug("Intel pstate controlling: cpu %d\n", cpunum);
+	pr_debug("intel_pstate: controlling: cpu %d\n", cpunum);
 
 	return 0;
 }
@@ -1007,13 +1024,13 @@ static void intel_pstate_stop_cpu(struct cpufreq_policy *policy)
 	int cpu_num = policy->cpu;
 	struct cpudata *cpu = all_cpu_data[cpu_num];
 
-	pr_info("intel_pstate CPU %d exiting\n", cpu_num);
+	pr_debug("intel_pstate: CPU %d exiting\n", cpu_num);
 
 	del_timer_sync(&all_cpu_data[cpu_num]->timer);
 	if (hwp_active)
 		return;
 
-	intel_pstate_set_pstate(cpu, cpu->pstate.min_pstate);
+	intel_pstate_set_pstate(cpu, cpu->pstate.min_pstate, false);
 }
 
 static int intel_pstate_cpu_init(struct cpufreq_policy *policy)
@@ -1238,7 +1255,7 @@ static int __init intel_pstate_init(void)
 		return -ENOMEM;
 
 	if (static_cpu_has_safe(X86_FEATURE_HWP) && !no_hwp)
-		intel_pstate_hwp_enable();
+		hwp_active++;
 
 	if (!hwp_active && hwp_only)
 		goto out;
