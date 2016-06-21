@@ -276,9 +276,41 @@ static void ovl_dentry_release(struct dentry *dentry)
 	}
 }
 
+static struct dentry *ovl_d_real(struct dentry *dentry, struct inode *inode)
+{
+	struct dentry *real;
+
+	if (d_is_dir(dentry)) {
+		if (!inode || inode == d_inode(dentry))
+			return dentry;
+		goto bug;
+	}
+
+	real = ovl_dentry_upper(dentry);
+	if (real && (!inode || inode == d_inode(real)))
+		return real;
+
+	real = ovl_dentry_lower(dentry);
+	if (!real)
+		goto bug;
+
+	if (!inode || inode == d_inode(real))
+		return real;
+
+	/* Handle recursion */
+	if (real->d_flags & DCACHE_OP_REAL)
+		return real->d_op->d_real(real, inode);
+
+bug:
+	WARN(1, "ovl_d_real(%pd4, %s:%lu\n): real dentry not found\n", dentry,
+	     inode ? inode->i_sb->s_id : "NULL", inode ? inode->i_ino : 0);
+	return dentry;
+}
+
 static const struct dentry_operations ovl_dentry_operations = {
 	.d_release = ovl_dentry_release,
 	.d_select_inode = ovl_d_select_inode,
+	.d_real = ovl_d_real,
 };
 
 static struct ovl_entry *ovl_alloc_entry(unsigned int numlower)
