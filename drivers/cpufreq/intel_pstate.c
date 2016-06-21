@@ -658,7 +658,7 @@ static void core_set_pstate(struct cpudata *cpudata, int pstate)
 	wrmsrl_on_cpu(cpudata->cpu, MSR_IA32_PERF_CTL, val);
 }
 
-u64 core_get_turbo_ratio_limit(struct cpudata *cpudata)
+static u64 core_get_turbo_ratio_limit(struct cpudata *cpudata)
 {
 	u64 value;
 
@@ -667,8 +667,8 @@ u64 core_get_turbo_ratio_limit(struct cpudata *cpudata)
 	return value;
 }
 
-int core_set_turbo_ratio_limit(struct cpudata *cpudata, u64 def_ratio,
-			       u64 new_ratio)
+static int core_set_turbo_ratio_limit(struct cpudata *cpudata, u64 def_ratio,
+				      u64 new_ratio)
 {
 	u64 value;
 
