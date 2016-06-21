@@ -306,7 +306,6 @@ int intel_ipu4_psys_move_resources(const struct device *dev,
 			   struct intel_ipu4_psys_resource_pool *source_pool,
 			   struct intel_ipu4_psys_resource_pool *target_pool)
 {
-	vied_nci_dev_chn_ID_t res_id;
 	int i;
 
 	if (target_pool->cells & alloc->cells) {
