@@ -1638,6 +1638,12 @@ void intel_ipu4_buttress_csi_port_config(struct intel_ipu4_device *isp,
 	unsigned int retry = 1000;
 	u32 value;
 
+	if (isp->secure_mode) {
+		dev_dbg(&isp->pdev->dev,
+			"ISP in secure mode, port configuration done by CSE");
+		return;
+	}
+
 	value = (legacy & BUTTRESS_CSI2_PORT_CONFIG_AB_MUX_MASK) |
 		((combo & BUTTRESS_CSI2_PORT_CONFIG_AB_MUX_MASK)
 		 << BUTTRESS_CSI2_PORT_CONFIG_AB_COMBO_SHIFT_B0);
