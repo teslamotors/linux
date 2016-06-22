@@ -23,6 +23,10 @@
 #include <linux/gpio/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regulator/driver.h>
+#include <linux/regulator/fixed.h>
+#include <linux/regulator/gpio-regulator.h>
+#include <linux/regulator/machine.h>
 
 #include <media/crlmodule.h>
 #include <media/intel-ipu4-acpi.h>
@@ -37,6 +41,48 @@
 
 #define HID_BUFFER_SIZE 32
 #define VCM_BUFFER_SIZE 32
+
+/* Data representation as it is in ACPI SSDB buffer */
+struct sensor_bios_data_packed {
+	u8 version;
+	u8 sku;
+	u8 guid_csi2[16];
+	u8 devfunction;
+	u8 bus;
+	u32 dphylinkenfuses;
+	u32 clockdiv;
+	u8 link;
+	u8 lanes;
+	u32 csiparams[10];
+	u32 maxlanespeed;
+	u8 sensorcalibfileidx;
+	u8 sensorcalibfileidxInMBZ[3];
+	u8 romtype;
+	u8 vcmtype;
+	u8 platforminfo;
+	u8 platformsubinfo;
+	u8 flash;
+	u8 privacyled;
+	u8 degree;
+	u8 mipilinkdefined;
+	u32 mclkspeed;
+	u8 controllogicid;
+	u8 reserved1[3];
+	u8 mclkport;
+	u8 reserved2[13];
+} __attribute__((__packed__));
+
+/* Fields needed by ipu4 driver */
+struct sensor_bios_data {
+	struct device *dev;
+	u8 link;
+	u8 lanes;
+	u8 vcmtype;
+	u8 flash;
+	u8 degree;
+	u8 mclkport;
+	u16 xshutdown;
+};
 
 static LIST_HEAD(devices);
 static LIST_HEAD(new_devs);
@@ -153,6 +199,39 @@ static int get_integer_dsdt_data(struct device *dev, const u8 *dsdt,
 	return 0;
 }
 
+static int read_acpi_block(struct device *dev, char *id, void *data, u32 size)
+{
+	union acpi_object *obj;
+	struct acpi_buffer buffer = { ACPI_ALLOCATE_BUFFER, NULL };
+	struct acpi_handle *dev_handle = ACPI_HANDLE(dev);
+	int status;
+
+	status = acpi_evaluate_object(dev_handle, id, NULL, &buffer);
+	if (!ACPI_SUCCESS(status))
+		return -ENODEV;
+
+	obj = (union acpi_object *)buffer.pointer;
+	if (!obj || obj->type != ACPI_TYPE_BUFFER) {
+		dev_err(dev, "Could't read acpi buffer\n");
+		status = -ENODEV;
+		goto err;
+	}
+
+	if (obj->buffer.length > size) {
+		dev_err(dev, "Given buffer is too small\n");
+		status = -ENODEV;
+		goto err;
+	}
+
+	memcpy(data, obj->buffer.pointer, obj->buffer.length);
+	kfree(buffer.pointer);
+
+	return obj->buffer.length;
+err:
+	kfree(buffer.pointer);
+	return status;
+}
+
 static struct ipu4_camera_module_data *add_device_to_list(
 	struct list_head *devices)
 {
@@ -164,22 +243,6 @@ static struct ipu4_camera_module_data *add_device_to_list(
 
 	list_add(&cam_device->list, devices);
 	return cam_device;
-}
-
-static int get_dsdt_hid(struct device *dev, char *hid)
-{
-	const u8 dsdt_cam_hwid[] = {
-		0x6A, 0xA7, 0x7B, 0x37, 0x90, 0xF3, 0xFF, 0x4A,
-		0xAB, 0x38, 0x9B, 0x1B, 0xF3, 0x3A, 0x30, 0x15};
-	int ret = get_string_dsdt_data(dev, dsdt_cam_hwid, 0,
-				       hid, HID_BUFFER_SIZE);
-
-	if (ret < 0) {
-		dev_err(dev, "get HID failed\n");
-		return ret;
-	}
-	dev_dbg(dev, "HID %s\n", hid);
-	return 0;
 }
 
 static void *get_dsdt_vcm(struct device *dev, char *vcm, char *second)
@@ -240,8 +303,159 @@ static int get_i2c_info(struct device *dev, struct ipu4_i2c_info *i2c, int size)
 	return num_i2c;
 }
 
+static int match_depend(struct device *dev, void *data)
+{
+	return (dev && dev->fwnode == data) ? 1 : 0;
+}
+
+static int get_sensor_gpio(struct device *dev, int index)
+{
+	struct gpio_desc *gpiod_gpio;
+	int gpio;
+
+	gpiod_gpio = gpiod_get_index(dev, NULL, index, GPIOD_ASIS);
+	if (IS_ERR(gpiod_gpio)) {
+		dev_err(dev, "No gpio from index %d\n", index);
+		return -ENODEV;
+	}
+	gpio = desc_to_gpio(gpiod_gpio);
+	gpiod_put(gpiod_gpio);
+	return gpio;
+}
+
+#define MAX_CONSUMERS 1
+struct ipu4_gpio_regulator {
+	struct regulator_consumer_supply consumers[MAX_CONSUMERS];
+	struct regulator_init_data init_data;
+	struct gpio_regulator_config info;
+	struct platform_device pdev;
+};
+
+static int create_gpio_regulator(struct device *dev, int index, char *name)
+{
+	struct ipu4_gpio_regulator *reg_device;
+	struct platform_device *cam_regs[1];
+	int gpio;
+	int num_consumers = 0;
+
+	gpio = get_sensor_gpio(dev, 1);
+	if (gpio < 0)
+		return gpio;
+
+	reg_device = kzalloc(sizeof(*reg_device), GFP_KERNEL);
+	if (!reg_device)
+		return -ENOMEM;
+
+	reg_device->consumers[num_consumers].supply = "VANA";
+	reg_device->consumers[num_consumers].dev_name = name;
+	num_consumers++;
+
+	reg_device->init_data.constraints.input_uV	 = 3300000;
+	reg_device->init_data.constraints.min_uV	 = 2800000;
+	reg_device->init_data.constraints.max_uV	 = 2800000;
+	reg_device->init_data.constraints.valid_ops_mask =
+		REGULATOR_CHANGE_STATUS;
+	reg_device->init_data.num_consumer_supplies  = num_consumers;
+	reg_device->init_data.consumer_supplies	     = reg_device->consumers;
+
+	reg_device->info.supply_name = dev_name(dev);
+	reg_device->info.enable_gpio = gpio;
+	reg_device->info.enable_high = 1;
+	reg_device->info.enabled_at_boot = 1;
+	reg_device->info.type = REGULATOR_VOLTAGE;
+	reg_device->info.init_data = &reg_device->init_data;
+	reg_device->pdev.name = "gpio-regulator";
+	reg_device->pdev.id = -1;
+	reg_device->pdev.dev.platform_data = &reg_device->info;
+	cam_regs[0] = &reg_device->pdev;
+
+	platform_add_devices(cam_regs, 1);
+
+	return 0;
+}
+
+static int get_acpi_dep_data(struct device *dev,
+			     struct sensor_bios_data *sensor)
+{
+	struct acpi_handle *dev_handle = ACPI_HANDLE(dev);
+	struct acpi_handle_list dep_devices;
+	acpi_status status;
+	int i;
+
+	if (!acpi_has_method(dev_handle, "_DEP"))
+		return 0;
+
+	status = acpi_evaluate_reference(dev_handle, "_DEP", NULL,
+					 &dep_devices);
+	if (ACPI_FAILURE(status)) {
+		dev_dbg(dev, "Failed to evaluate _DEP.\n");
+		return -ENODEV;
+	}
+
+	for (i = 0; i < dep_devices.count; i++) {
+		struct acpi_device *device;
+		struct acpi_device_info *info;
+		struct device *p_dev;
+		int match;
+
+		status = acpi_get_object_info(dep_devices.handles[i], &info);
+		if (ACPI_FAILURE(status)) {
+			dev_dbg(dev, "Error reading _DEP device info\n");
+			continue;
+		}
+
+		match = info->valid & ACPI_VALID_HID &&
+			!strcmp(info->hardware_id.string, "INT3472");
+
+		kfree(info);
+
+		if (!match)
+			continue;
+
+		/* Process device IN3472 created by acpi */
+		if (acpi_bus_get_device(dep_devices.handles[i], &device))
+			return -ENODEV;
+
+		dev_dbg(dev, "Depend ACPI device found: %s\n",
+			dev_name(&device->dev));
+
+		p_dev = bus_find_device(&platform_bus_type, NULL,
+					&device->fwnode, match_depend);
+		if (p_dev) {
+			dev_dbg(dev, "Dependent platform device found %s\n",
+				dev_name(p_dev));
+			sensor->dev = p_dev;
+			/* GPIO in index 1 is fixed regulator */
+			create_gpio_regulator(p_dev, 1, dev_name(dev));
+		}
+	}
+	return 0;
+}
+
+static int get_acpi_ssdb_sensor_data(struct device *dev,
+				     struct sensor_bios_data *sensor)
+{
+	struct sensor_bios_data_packed sensor_data;
+	int ret = read_acpi_block(dev, "SSDB", &sensor_data,
+				  sizeof(sensor_data));
+	if (ret < 0)
+		return ret;
+
+	get_acpi_dep_data(dev, sensor);
+
+	/* Xshutdown is not part of the ssdb data */
+	sensor->link = sensor_data.link;
+	sensor->lanes = sensor_data.lanes;
+	sensor->mclkport = sensor_data.mclkport;
+	sensor->flash = sensor_data.flash;
+	dev_dbg(dev, "sensor acpi data: link %d, lanes %d, mclk %d, flash %d\n",
+		sensor->link, sensor->lanes, sensor->mclkport, sensor->flash);
+	return 0;
+}
+
 static int intel_ipu4_acpi_get_sensor_data(struct device *dev,
-					   struct ipu4_camera_module_data *data)
+					   struct ipu4_camera_module_data *data,
+					   struct sensor_bios_data *sensor)
 {
 	const u8 mipi_port_dsdt[] = {
 		0xD8, 0x7B, 0x3B, 0xEA, 0x9B, 0xE0, 0x39, 0x42,
@@ -253,14 +467,27 @@ static int intel_ipu4_acpi_get_sensor_data(struct device *dev,
 	int rval;
 	u64 acpi_data;
 
-	rval = get_integer_dsdt_data(dev, mipi_port_dsdt, 0, &acpi_data);
-	if (rval < 0) {
-		dev_err(dev, "Can't get mipi port\n");
-		return rval;
-	}
+	if (sensor) {
+		/* Sensor data from ssdb block */
+		data->csi2.port = sensor->link;
+		data->csi2.nlanes = sensor->lanes;
+		acpi_data = sensor->mclkport;
+	} else {
+		rval = get_integer_dsdt_data(dev, mipi_port_dsdt, 0,
+					     &acpi_data);
+		if (rval < 0) {
+			dev_err(dev, "Can't get mipi port\n");
+			return rval;
+		}
+		data->csi2.port = acpi_data & 0xf;
+		data->csi2.nlanes = (acpi_data & 0xf0) >> 4;
 
-	data->csi2.port = acpi_data & 0xf;
-	data->csi2.nlanes = (acpi_data & 0xf0) >> 4;
+		rval = get_integer_dsdt_data(dev, mclk_out_dsdt, 0, &acpi_data);
+		if (rval < 0) {
+			dev_err(dev, "Can't get mclk info\n");
+			return rval;
+		}
+	}
 
 	/* dsdt data currently contains wrong numbers for combo ports */
 	if (data->csi2.port >= 6)
@@ -268,12 +495,6 @@ static int intel_ipu4_acpi_get_sensor_data(struct device *dev,
 
 	if (data->csi2.nlanes == 0)
 		return -ENODEV;
-
-	rval = get_integer_dsdt_data(dev, mclk_out_dsdt, 0, &acpi_data);
-	if (rval < 0) {
-		dev_err(dev, "Can't get mclk info\n");
-		return rval;
-	}
 
 	switch (acpi_data) {
 	case 0:
@@ -299,42 +520,35 @@ static int intel_ipu4_acpi_get_sensor_data(struct device *dev,
 	return 0;
 }
 
-static int get_sensor_gpio(struct i2c_client *client)
-{
-	struct gpio_desc *gpiod_xshutdown;
-	int gpio;
-
-	gpiod_xshutdown = gpiod_get_index(&client->dev, NULL, 0, GPIOD_ASIS);
-	if (IS_ERR(gpiod_xshutdown)) {
-		dev_err(&client->dev, "No xshutdown for sensor\n");
-		return -ENODEV;
-	}
-	gpio = desc_to_gpio(gpiod_xshutdown);
-	gpiod_put(gpiod_xshutdown);
-	return gpio;
-}
-
 static int get_crlmodule_pdata(struct i2c_client *client,
 			       struct ipu4_camera_module_data *data,
 			       struct ipu4_i2c_helper *helper,
 			       void *priv, size_t size)
 {
+	struct sensor_bios_data sensor;
 	struct crlmodule_platform_data *pdata;
 	struct ipu4_i2c_info i2c[2];
 	void *vcm_pdata;
 	char vcm[VCM_BUFFER_SIZE];
 	int num = get_i2c_info(&client->dev, i2c, ARRAY_SIZE(i2c));
+	int rval;
 
 	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
 
+	sensor.dev = &client->dev;
+
+	rval = get_acpi_ssdb_sensor_data(&client->dev, &sensor);
+
+	intel_ipu4_acpi_get_sensor_data(&client->dev, data,
+					rval == 0 ? &sensor : NULL);
+
 	data->pdata = pdata;
-	pdata->xshutdown = get_sensor_gpio(client);
+	/* sensor.dev may here point to sensor or dependent device */
+	pdata->xshutdown = get_sensor_gpio(sensor.dev, 0);
 	if (pdata->xshutdown < 0)
 		return -ENODEV;
-
-	intel_ipu4_acpi_get_sensor_data(&client->dev, data);
 
 	pdata->lanes = data->csi2.nlanes;
 	pdata->ext_clk = data->ext_clk;
@@ -367,11 +581,11 @@ static int get_smiapp_pdata(struct i2c_client *client,
 	data->pdata = pdata;
 
 	data->priv = source;
-	pdata->xshutdown = get_sensor_gpio(client);
+	pdata->xshutdown = get_sensor_gpio(&client->dev, 0);
 	if (pdata->xshutdown < 0)
 		return -ENODEV;
 
-	intel_ipu4_acpi_get_sensor_data(&client->dev, data);
+	intel_ipu4_acpi_get_sensor_data(&client->dev, data, NULL);
 
 	pdata->op_sys_clock = source;
 	pdata->lanes = data->csi2.nlanes;
@@ -511,19 +725,12 @@ static const struct ipu4_acpi_devices supported_devices[] = {
 	{ "AMS3638", AS3638_NAME,    get_as3638_pdata, NULL, 0 },
 };
 
-static int get_table_index(struct device *device)
+static int get_table_index(struct device *device, const __u8 *acpi_name)
 {
-	char hid[HID_BUFFER_SIZE] = { };
 	unsigned int i;
-	int rval;
 
-	rval = get_dsdt_hid(device, hid);
-	if (rval < 0)
-		return rval;
-
-	/* HID is always null terminated */
 	for (i = 0; i < ARRAY_SIZE(supported_devices); i++) {
-		if (!strcmp(hid, supported_devices[i].hid_name))
+		if (!strcmp(acpi_name, supported_devices[i].hid_name))
 			return i;
 	}
 
@@ -572,11 +779,12 @@ static int map_power_rails(char *src_dev_name, char *src_regulator,
 }
 
 static int intel_ipu4_acpi_pdata(struct i2c_client *client,
-			  struct ipu4_i2c_helper *helper)
+				 const struct acpi_device_id *acpi_id,
+				 struct ipu4_i2c_helper *helper)
 {
 	struct ipu4_camera_module_data *camdata;
 	const struct intel_ipu4_regulator *regulators;
-	int index = get_table_index(&client->dev);
+	int index = get_table_index(&client->dev, acpi_id->id);
 
 	if (index < 0) {
 		dev_err(&client->dev,
@@ -611,13 +819,17 @@ static int intel_ipu4_acpi_pdata(struct i2c_client *client,
 static int ipu4_i2c_test(struct device *dev, void *priv)
 {
 	struct i2c_client *client = i2c_verify_client(dev);
+	const struct acpi_device_id *acpi_id;
 
 	/*
 	 * Check that we are handling only I2C devices which really has
 	 * ACPI data and are one of the devices which we want to handle
 	 */
-	if (!ACPI_COMPANION(dev) || !client ||
-	    !acpi_match_device(ipu4_acpi_match, dev))
+	if (!ACPI_COMPANION(dev) || !client)
+		return 0;
+
+	acpi_id = acpi_match_device(ipu4_acpi_match, dev);
+	if (!acpi_id)
 		return 0;
 
 	/*
@@ -630,7 +842,7 @@ static int ipu4_i2c_test(struct device *dev, void *priv)
 	}
 
 	/* Looks that we got what we are looking for */
-	if (intel_ipu4_acpi_pdata(client, priv))
+	if (intel_ipu4_acpi_pdata(client, acpi_id, priv))
 		dev_err(dev, "Failed to process ACPI data");
 
 	/* Don't return error since we want to process remaining devices */
