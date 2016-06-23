@@ -13,7 +13,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
-#include <linux/regmap.h>
+#include <linux/acpi.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
 #include <sound/pcm_params.h>
@@ -21,6 +21,8 @@
 struct tdf8532_priv {
 	struct i2c_client *i2c;
 };
+
+static u8 packet_id;
 
 static int tdf8532_dai_startup(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
@@ -42,7 +44,7 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	struct snd_soc_codec *codec = dai->codec;
 	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(codec);
 
-	unsigned char data[6] = {0x02, 0x00, 0x03, 0x80, 0x1A, 0x01};
+	unsigned char data[6] = {0x02, packet_id++, 0x03, 0x80, 0x1A, 0x01};
 
 	dev_dbg(codec->dev, "%s: cmd = %d\n", __func__, cmd);
 
@@ -69,17 +71,54 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	return ret;
 }
 
-static int tdf8532_dai_prepare(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
+static int tdf8532_dai_prepare(struct snd_pcm_substream *substream,
+						struct snd_soc_dai *dai)
 {
 	return 0;
 }
 
+
+#define MUTE 0x42
+#define UNMUTE 0x43
+
+static int tdf8532_mute(struct snd_soc_dai *dai, int mute)
+{
+	int ret;
+	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(dai->codec);
+	unsigned char data[] = {0x02, packet_id++, 0x03, 0x80, MUTE, 0x1F};
+
+	if (!mute)
+		data[4] = UNMUTE;
+	else
+		data[4] = MUTE;
+
+	ret = i2c_master_send(tdf8532->i2c, data, ARRAY_SIZE(data));
+	dev_dbg(dai->codec->dev,
+			"%s:i2c master send returned :%d\n", __func__,
+				ret);
+
+	return 0;
+}
+
+static int tdf8532_set_fast_mute(struct i2c_client *i2c)
+{
+	int ret;
+	unsigned char data[] = {
+		0x02, packet_id++, 0x06, 0x80, 0x18, 0x03, 0x01, 0x02, 0x00};
+
+	ret = i2c_master_send(i2c, data, ARRAY_SIZE(data));
+
+	dev_dbg(&i2c->dev, "%s:i2c master send returned :%d\n", __func__, ret);
+
+	return ret;
+}
 
 static const struct snd_soc_dai_ops tdf8532_dai_ops = {
 	.startup  = tdf8532_dai_startup,
 	.hw_params  = tdf8532_dai_hw_params,
 	.trigger  = tdf8532_dai_trigger,
 	.prepare  = tdf8532_dai_prepare,
+	.digital_mute = tdf8532_mute,
 };
 
 static struct snd_soc_codec_driver soc_codec_tdf8532;
@@ -116,6 +155,11 @@ static int tdf8532_i2c_probe(struct i2c_client *i2c,
 	tdf8532->i2c = i2c;
 	i2c_set_clientdata(i2c, tdf8532);
 
+	ret = tdf8532_set_fast_mute(i2c);
+
+	if (ret < 0)
+		dev_err(&i2c->dev, "Failed to set fast mute option: %d\n", ret);
+
 	ret = snd_soc_register_codec(&i2c->dev, &soc_codec_tdf8532,
 			tdf8532_dai, ARRAY_SIZE(tdf8532_dai));
 	if (ret != 0)
@@ -138,10 +182,20 @@ static const struct i2c_device_id tdf8532_i2c_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, tdf8532_i2c_id);
 
+#if CONFIG_ACPI
+static const struct acpi_device_id tdf8532_acpi_match[] = {
+	{"INT34C3", 0},
+	{},
+};
+
+MODULE_DEVICE_TABLE(acpi, tdf8532_acpi_match);
+#endif
+
 static struct i2c_driver tdf8532_i2c_driver = {
 	.driver = {
 		.name = "tdf8532-codec",
 		.owner = THIS_MODULE,
+		.acpi_match_table = ACPI_PTR(tdf8532_acpi_match),
 	},
 	.probe =    tdf8532_i2c_probe,
 	.remove =   tdf8532_i2c_remove,
