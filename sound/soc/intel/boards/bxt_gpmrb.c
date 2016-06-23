@@ -25,24 +25,12 @@
 #include <linux/i2c.h>
 #include <sound/pcm_params.h>
 
-/* NXP TDF8532 Amplifier Mute Pin */
-#define GPIO_AMP_MUTE 322
-
-
-
 static const struct snd_kcontrol_new broxton_controls[] = {
 		SOC_DAPM_PIN_SWITCH("Speaker"),
 };
 
-/* mute speaker amplifier on/off depending on use */
-static int amp_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
-{
-	gpio_set_value(GPIO_AMP_MUTE, SND_SOC_DAPM_EVENT_ON(event));
-	return 0;
-}
-
 static const struct snd_soc_dapm_widget broxton_widgets[] = {
-		SND_SOC_DAPM_SPK("Speaker", amp_event),
+		SND_SOC_DAPM_SPK("Speaker", NULL),
 		SND_SOC_DAPM_MIC("DiranaCp", NULL),
 		SND_SOC_DAPM_HP("DiranaPb", NULL),
 		SND_SOC_DAPM_MIC("HdmiIn", NULL),
@@ -287,7 +275,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 				.name = "SSP4-Codec",
 				.be_id = 0,
 				.cpu_dai_name = "SSP4 Pin",
-				.codec_name = "tdf8532-codec.4-006c",
+				.codec_name = "i2c-INT34C3:00",
 				.codec_dai_name = "tdf8532-hifi",
 				.platform_name = "0000:00:0e.0",
 				.ignore_suspend = 1,
