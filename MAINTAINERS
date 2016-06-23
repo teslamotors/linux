@@ -12549,6 +12549,11 @@ F:	Documentation/sound/alsa/soc/
 F:	sound/soc/
 F:	include/sound/soc*
 
+APOLLO LAKE DUMMY CODEC
+M:	Seng Kai, Tan <seng.kai.tan@intel.com>
+S:	Supported
+F:	sound/soc/intel/boards/apli_lhcrb_dummy.c
+
 SP2 MEDIA DRIVER
 M:	Olli Salonen <olli.salonen@iki.fi>
 L:	linux-media@vger.kernel.org
