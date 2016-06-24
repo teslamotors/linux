@@ -610,9 +610,11 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 
 void intel_ipu4_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2)
 {
+	int i;
 	v4l2_device_unregister_subdev(&csi2->asd.sd);
 	intel_ipu4_isys_subdev_cleanup(&csi2->asd);
-	intel_ipu4_isys_video_cleanup(&csi2->av);
+	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++)
+		intel_ipu4_isys_video_cleanup(&csi2->av[i]);
 	intel_ipu4_isys_video_cleanup(&csi2->av_meta);
 }
 
@@ -631,7 +633,7 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
 		.pad = CSI2_PAD_META,
 	};
-	int rval;
+	int i, rval;
 
 	csi2->isys = isys;
 	csi2->base = base;
@@ -649,8 +651,11 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 		goto fail;
 
 	csi2->asd.pad[CSI2_PAD_SINK].flags = MEDIA_PAD_FL_SINK
-		| MEDIA_PAD_FL_MUST_CONNECT;
-	csi2->asd.pad[CSI2_PAD_SOURCE(0)].flags = MEDIA_PAD_FL_SOURCE;
+		| MEDIA_PAD_FL_MUST_CONNECT | MEDIA_PAD_FL_MULTIPLEX;
+	for (i = CSI2_PAD_SOURCE(0);
+		i < (NR_OF_CSI2_SOURCE_PADS + CSI2_PAD_SOURCE(0)); i++)
+		csi2->asd.pad[i].flags = MEDIA_PAD_FL_SOURCE;
+
 	csi2->asd.pad[CSI2_PAD_META].flags = MEDIA_PAD_FL_SOURCE;
 	csi2->asd.source = IA_CSS_ISYS_STREAM_SRC_CSI2_PORT0 + index;
 	csi2->asd.supported_codes = csi2_supported_codes;
@@ -674,35 +679,40 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ip
 	__intel_ipu4_isys_subdev_set_ffmt(&csi2->asd.sd, NULL, &fmt_meta);
 	mutex_unlock(&csi2->asd.mutex);
 
-	snprintf(csi2->av.vdev.name, sizeof(csi2->av.vdev.name),
-		 INTEL_IPU4_ISYS_ENTITY_PREFIX " CSI-2 %u capture", index);
-	csi2->av.isys = isys;
-	csi2->av.aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_MIPI;
-	csi2->av.pfmts = intel_ipu4_isys_pfmts_packed;
-	csi2->av.try_fmt_vid_mplane =
-		intel_ipu4_isys_video_try_fmt_vid_mplane_default;
-	csi2->av.prepare_firmware_stream_cfg =
-		intel_ipu4_isys_prepare_firmware_stream_cfg_default;
-	csi2->av.packed = true;
-	csi2->av.line_header_length =
-		INTEL_IPU4_ISYS_CSI2_LONG_PACKET_HEADER_SIZE;
-	csi2->av.line_footer_length =
-		INTEL_IPU4_ISYS_CSI2_LONG_PACKET_FOOTER_SIZE;
-	csi2->av.aq.buf_prepare = intel_ipu4_isys_buf_prepare;
-	csi2->av.aq.fill_frame_buff_set_pin =
+	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++) {
+		snprintf(csi2->av[i].vdev.name, sizeof(csi2->av[i].vdev.name),
+			 INTEL_IPU4_ISYS_ENTITY_PREFIX " CSI-2 %u capture %d",
+			 index, i);
+		csi2->av[i].isys = isys;
+		csi2->av[i].aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_MIPI;
+		csi2->av[i].pfmts = intel_ipu4_isys_pfmts_packed;
+		csi2->av[i].try_fmt_vid_mplane =
+			intel_ipu4_isys_video_try_fmt_vid_mplane_default;
+		csi2->av[i].prepare_firmware_stream_cfg =
+			intel_ipu4_isys_prepare_firmware_stream_cfg_default;
+		csi2->av[i].packed = true;
+		csi2->av[i].line_header_length =
+			INTEL_IPU4_ISYS_CSI2_LONG_PACKET_HEADER_SIZE;
+		csi2->av[i].line_footer_length =
+			INTEL_IPU4_ISYS_CSI2_LONG_PACKET_FOOTER_SIZE;
+		csi2->av[i].aq.buf_prepare = intel_ipu4_isys_buf_prepare;
+		csi2->av[i].aq.fill_frame_buff_set_pin =
 		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin;
-	csi2->av.aq.link_fmt_validate = intel_ipu4_isys_link_fmt_validate;
-	csi2->av.aq.vbq.buf_struct_size =
-		sizeof(struct intel_ipu4_isys_video_buffer);
+		csi2->av[i].aq.link_fmt_validate =
+			intel_ipu4_isys_link_fmt_validate;
+		csi2->av[i].aq.vbq.buf_struct_size =
+			sizeof(struct intel_ipu4_isys_video_buffer);
 
-	rval = intel_ipu4_isys_video_init(
-		&csi2->av, &csi2->asd.sd.entity, CSI2_PAD_SOURCE(0),
-		MEDIA_PAD_FL_SINK, 0);
-	if (rval) {
-		dev_info(&isys->adev->dev, "can't init video node\n");
-		goto fail;
+		rval = intel_ipu4_isys_video_init(
+			&csi2->av[i], &csi2->asd.sd.entity, CSI2_PAD_SOURCE(i),
+			MEDIA_PAD_FL_SINK, 0);
+		if (rval) {
+			dev_info(&isys->adev->dev, "can't init video node\n");
+			goto fail;
+		}
 	}
 
+	/* TODO: remove meta data pad */
 	snprintf(csi2->av_meta.vdev.name, sizeof(csi2->av_meta.vdev.name),
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " CSI-2 %u meta", index);
 	csi2->av_meta.isys = isys;

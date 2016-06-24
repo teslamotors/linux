@@ -77,7 +77,7 @@ struct intel_ipu4_isys_csi2 {
 	struct intel_ipu4_isys_csi2_pdata *pdata;
 	struct intel_ipu4_isys *isys;
 	struct intel_ipu4_isys_subdev asd;
-	struct intel_ipu4_isys_video av;
+	struct intel_ipu4_isys_video av[NR_OF_CSI2_SOURCE_PADS];
 	struct intel_ipu4_isys_video av_meta;
 	struct completion eof_completion;
 
