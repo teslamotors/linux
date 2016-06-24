@@ -35,6 +35,10 @@
 #define ADV7481_I2C_ADDRESS	0xe0
 #define ADV7481B_I2C_ADDRESS	0xe2
 
+#define VIDEO_AGGRE_LANES	4
+#define VIDEO_AGGRE_I2C_ADDRESS	0x3d
+#define VIDEO_AGGRE_B_I2C_ADDRESS	0x3c
+
 #define GPIO_BASE		422
 
 #ifdef CONFIG_INTEL_IPU4_IMX185
@@ -202,6 +206,40 @@ static struct intel_ipu4_isys_subdev_info adv7481b_eval_crl_sd = {
 };
 #endif
 
+#ifdef CONFIG_VIDEO_AGGREGATOR_STUB
+static struct intel_ipu4_isys_csi2_config video_aggre_csi2_cfg = {
+	.nlanes = VIDEO_AGGRE_LANES,
+	.port = 0,
+};
+
+static struct intel_ipu4_isys_subdev_info video_aggre_stub_sd = {
+	.csi2 = &video_aggre_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 .type = "video-aggre",
+			 .addr = VIDEO_AGGRE_I2C_ADDRESS,
+		},
+		.i2c_adapter_id = 2,
+	}
+};
+
+static struct intel_ipu4_isys_csi2_config video_aggre_b_csi2_cfg = {
+	.nlanes = VIDEO_AGGRE_LANES,
+	.port = 4,
+};
+
+static struct intel_ipu4_isys_subdev_info video_aggre_b_stub_sd = {
+	.csi2 = &video_aggre_b_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 .type = "video-aggre",
+			 .addr = VIDEO_AGGRE_B_I2C_ADDRESS,
+		},
+		.i2c_adapter_id = 2,
+	}
+};
+#endif
+
 /*
  * Map buttress output sensor clocks to sensors -
  * this should be coming from ACPI
@@ -231,6 +269,10 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
 #ifdef CONFIG_INTEL_IPU4_ADV7481_EVAL
 		&adv7481_eval_crl_sd,
 		&adv7481b_eval_crl_sd,
+#endif
+#ifdef CONFIG_VIDEO_AGGREGATOR_STUB
+		&video_aggre_stub_sd,
+		&video_aggre_b_stub_sd,
 #endif
 		NULL,
 	},
