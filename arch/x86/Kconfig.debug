@@ -415,18 +415,10 @@ config FRAME_POINTER
 	depends on !UNWINDER_ORC && !UNWINDER_GUESS
 	bool
 
-config X86_APL_FASTBOOT
-	bool "Fastboot support for Apollo Lake"
-	---help---
-	  Say Y here to get to see options related to fastboot optimization
-	  for Intel Apollo Lake platform.
-	  This will only made the suboptions visible.
-
-	  If you say N, all options in this submenu will be skipped and disabled.
+menu "Intel Apollo Lake  - Fastboot support"
 
 config FASTBOOT_PCI_PROBE
 	bool "Resort PCI device probing"
-	depends on X86_APL_FASTBOOT
 	depends on MMC
 	---help---
 	  This option enable a re-sorted PCI probe routine for Bus #0.
@@ -434,5 +426,21 @@ config FASTBOOT_PCI_PROBE
 	  - The internal eMMC is probed before the SD-Card.
 
 	  If unsure, say N.
+
+config FASTBOOT_FW_LOAD
+	bool "Enable fast-load firmware support over ABL"
+	depends on FW_LOADER
+	---help---
+	  Enalbe a specific Firmware loading mechanism over the Intel ABL
+	  (Automotive Boot Loader).
+
+	  The firmware file requested by the kernel driver, needs to be packaged
+	  into the multiboot iasImage format. Also needs to be mentioned inside
+	  the kernel cmdline.txt in the format: "<name>=%s@%a".
+	  e.g.:	i915/bxt_dmc_ver1.bin=%s@%a
+
+	  If unsure, say N.
+
+endmenu #Apollo Lake - Fastboot
 
 endmenu
