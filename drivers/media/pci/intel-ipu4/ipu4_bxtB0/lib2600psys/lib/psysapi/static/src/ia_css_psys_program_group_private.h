@@ -33,7 +33,7 @@
 struct ia_css_program_group_manifest_s {
 	ia_css_kernel_bitmap_t				kernel_bitmap;									/**< Indicate kernels are present in this program group */
 	ia_css_program_group_ID_t			ID;												/**< Referal ID to program group FW */
-	uint32_t 	program_manifest_offset;
+	uint32_t	program_manifest_offset;
 	uint32_t	terminal_manifest_offset;
 	uint32_t	private_data_offset;														/**< Offset to private data (not part of the official API) */
 	uint16_t							size;											/**< Size of this structure */
@@ -41,7 +41,7 @@ struct ia_css_program_group_manifest_s {
 	uint8_t								kernel_count;									/**< Total number of kernels in this program group */
 	uint8_t								program_count;									/**< Total number of program in this program group */
 	uint8_t								terminal_count;									/**< Total number of terminals on this program group */
-	uint8_t				 				subgraph_count;									/**< Total number of independent subgraphs in this program group */
+	uint8_t								subgraph_count;									/**< Total number of independent subgraphs in this program group */
 	uint8_t								reserved[1];
 };
 
@@ -65,7 +65,7 @@ struct ia_css_program_manifest_s {
 	ia_css_kernel_bitmap_t				kernel_bitmap;									/**< Indicate which kernels lead to this program being used */
 	ia_css_program_ID_t					ID;												/**< Referal ID to a specific program FW, valid ID's != 0 */
 	ia_css_program_type_t				program_type;									/**< Specification of for exclusive or parallel programs */
-	int32_t 		parent_offset; /**< offset to add to reach parent. This is negative value.*/
+	int32_t		parent_offset; /**< offset to add to reach parent. This is negative value.*/
 	uint32_t		program_dependency_offset;
 	uint32_t		terminal_dependency_offset;
 	uint16_t							size;											/**< Size of this structure */

@@ -79,7 +79,7 @@
 /* Absolute difference of a and b */
 #define ABS_DIF(a, b)		(((a) > (b)) ? ((a) - (b)) : ((b) - (a)))
 /* Square of x */
-#define SQR(x) 			((x)*(x))
+#define SQR(x)			((x)*(x))
 /* Integer round-half-down division of a nad b */
 #define ROUND_HALF_DOWN_DIV(a, b)	((b) ? ((a) + (b / 2) - 1) / (b) : 0)
 /* Align a to the round-half-down multiple of b */
@@ -177,9 +177,9 @@ STORAGE_CLASS_INLINE unsigned int ceil_pow2(uint32_t a)
 {
 	if (IS_POWER2(a)) {
 		return (unsigned int)a;
-	}
-	else {
+	} else {
 		unsigned int v = a;
+
 		v |= v>>1;
 		v |= v>>2;
 		v |= v>>4;
@@ -191,12 +191,12 @@ STORAGE_CLASS_INLINE unsigned int ceil_pow2(uint32_t a)
 
 STORAGE_CLASS_INLINE unsigned int floor_log2(uint32_t a)
 {
-	static const uint8_t de_bruijn[] =
-	{
+	static const uint8_t de_bruijn[] = {
 		0,  9,  1, 10, 13, 21,  2, 29, 11, 14, 16, 18, 22, 25,  3, 30,
 		8, 12, 20, 28, 15, 17, 24,  7, 19, 27, 23,  6, 26,  5,  4, 31
 	};
 	uint32_t v = a;
+
 	v |= v>>1;
 	v |= v>>2;
 	v |= v>>4;
@@ -209,7 +209,7 @@ STORAGE_CLASS_INLINE unsigned int floor_log2(uint32_t a)
 STORAGE_CLASS_INLINE unsigned int
 udiv2_small_i(uint32_t a, uint32_t b)
 {
-	assert (b <= 2);
+	assert(b <= 2);
 	return a >> (b-1);
 }
 
@@ -220,7 +220,7 @@ udiv2_small_i(uint32_t a, uint32_t b)
  */
 STORAGE_CLASS_INLINE unsigned int OP_std_modadd(int a, int b, int c)
 {
-	return (a+b<0 ? a+b+c : a+b>=c ? a+b-c : a+b);
+	return (a+b < 0 ? a+b+c : a+b >= c ? a+b-c : a+b);
 }
 
 /*

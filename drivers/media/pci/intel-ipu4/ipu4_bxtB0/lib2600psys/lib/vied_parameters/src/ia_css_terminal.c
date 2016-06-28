@@ -19,7 +19,8 @@
 #include "storage_class.h"
 
 
-STORAGE_CLASS_INLINE void __dummy_check_alignment(void) {
+STORAGE_CLASS_INLINE void __dummy_check_alignment(void)
+{
 
 	COMPILATION_ERROR_IF(
 		SIZE_OF_PARAM_TERMINAL_STRUCT_BITS != (CHAR_BIT * sizeof(ia_css_param_terminal_t)));

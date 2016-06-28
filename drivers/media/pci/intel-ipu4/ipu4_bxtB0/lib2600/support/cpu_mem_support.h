@@ -17,7 +17,7 @@
 
 #include "storage_class.h"
 
-#if defined (__KERNEL__)
+#if defined(__KERNEL__)
 
 #include <linux/slab.h>
 #include <linux/string.h>
@@ -42,25 +42,25 @@ ia_css_cpu_mem_alloc_page_aligned(unsigned int size)
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cpu_mem_protect(void* ptr, unsigned int size, int prot)
+ia_css_cpu_mem_protect(void *ptr, unsigned int size, int prot)
 {
 	/* nothing here yet */
 }
 
 STORAGE_CLASS_INLINE void*
-ia_css_cpu_mem_copy(void* dst, const void* src, unsigned int size)
+ia_css_cpu_mem_copy(void *dst, const void *src, unsigned int size)
 {
 	return memcpy(dst, src, size); /* available in kernel in linux/string.h */
 }
 
 STORAGE_CLASS_INLINE void*
-ia_css_cpu_mem_set_zero(void* dst, unsigned int size)
+ia_css_cpu_mem_set_zero(void *dst, unsigned int size)
 {
 	return memset(dst, 0, size); /* available in kernel in linux/string.h */
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cpu_mem_free(void* ptr)
+ia_css_cpu_mem_free(void *ptr)
 {
 	kfree(ptr);
 }
@@ -88,8 +88,8 @@ ia_css_cpu_mem_cache_invalidate(void *ptr, unsigned int size)
 #include <string.h>
 #include <stddef.h>
 
-extern void* hrt_malloc(size_t bytes, int zero_mem);
-extern void* hrt_free(void *ptr);
+extern void *hrt_malloc(size_t bytes, int zero_mem);
+extern void *hrt_free(void *ptr);
 extern void hrt_mem_cache_flush(void *ptr, unsigned int size);
 extern void hrt_mem_cache_invalidate(void *ptr, unsigned int size);
 
@@ -121,19 +121,19 @@ ia_css_cpu_mem_alloc_page_aligned(unsigned int size)
 }
 
 STORAGE_CLASS_INLINE void*
-ia_css_cpu_mem_copy(void* dst, const void* src, unsigned int size)
+ia_css_cpu_mem_copy(void *dst, const void *src, unsigned int size)
 {
 	return memcpy(dst, src, size);
 }
 
 STORAGE_CLASS_INLINE void*
-ia_css_cpu_mem_set_zero(void* dst, unsigned int size)
+ia_css_cpu_mem_set_zero(void *dst, unsigned int size)
 {
 	return memset(dst, 0, size);
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cpu_mem_free(void* ptr)
+ia_css_cpu_mem_free(void *ptr)
 {
 	free(ptr);
 }
@@ -182,24 +182,25 @@ STORAGE_CLASS_INLINE void*
 ia_css_cpu_mem_alloc_page_aligned(unsigned int size)
 {
 	int pagesize;
+
 	pagesize = sysconf(_SC_PAGE_SIZE);
 	return memalign(pagesize, size);
 }
 
 STORAGE_CLASS_INLINE void*
-ia_css_cpu_mem_copy(void* dst, const void* src, unsigned int size)
+ia_css_cpu_mem_copy(void *dst, const void *src, unsigned int size)
 {
 	return memcpy(dst, src, size);
 }
 
 STORAGE_CLASS_INLINE void*
-ia_css_cpu_mem_set_zero(void* dst, unsigned int size)
+ia_css_cpu_mem_set_zero(void *dst, unsigned int size)
 {
 	return memset(dst, 0, size);
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cpu_mem_free(void* ptr)
+ia_css_cpu_mem_free(void *ptr)
 {
 	free(ptr);
 }

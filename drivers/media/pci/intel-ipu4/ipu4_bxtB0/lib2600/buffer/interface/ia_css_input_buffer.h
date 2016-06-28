@@ -41,8 +41,8 @@
 
 #include "ia_css_buffer_address.h"
 
-typedef struct ia_css_buffer_s*	 ia_css_input_buffer; /* input buffer handle */
-typedef void *                   ia_css_input_buffer_cpu_address; /* CPU virtual address */
+typedef struct ia_css_buffer_s *ia_css_input_buffer; /* input buffer handle */
+typedef void *ia_css_input_buffer_cpu_address; /* CPU virtual address */
 typedef ia_css_buffer_address    ia_css_input_buffer_css_address; /* CSS virtual address */
 
 #endif /* __IA_CSS_INPUT_BUFFER_H__ */

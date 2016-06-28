@@ -62,7 +62,7 @@ bool ia_css_has_program_manifest_fixed_cell(
 	has_fixed_cell = ((cell_id != VIED_NCI_N_CELL_ID) && (cell_type_id == VIED_NCI_N_CELL_TYPE_ID));
 
 EXIT:
-	if(NULL == manifest) {
+	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_has_program_manifest_fixed_cell invalid argument\n");
 	}
 	return has_fixed_cell;
@@ -126,11 +126,11 @@ ia_css_program_group_manifest_t *ia_css_program_manifest_get_parent(
 
 	verifexit(manifest != NULL, EINVAL);
 
-	base = (char*)((char*)manifest + manifest->parent_offset);
+	base = (char *)((char *)manifest + manifest->parent_offset);
 
-	parent = (ia_css_program_group_manifest_t*) (base);
+	parent = (ia_css_program_group_manifest_t *) (base);
 EXIT:
-	if(NULL == manifest) {
+	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_program_manifest_get_parent invalid argument\n");
 	}
 	return parent;
@@ -232,7 +232,7 @@ vied_nci_cell_ID_t ia_css_program_manifest_get_cell_ID(
 
 	cell_id = (vied_nci_cell_ID_t)(manifest->cell_id);
 EXIT:
-	if(NULL == manifest) {
+	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_program_manifest_get_cell_ID invalid argument\n");
 	}
 	return cell_id;
@@ -265,7 +265,7 @@ vied_nci_cell_type_ID_t ia_css_program_manifest_get_cell_type_ID(
 
 	cell_type_id = (vied_nci_cell_type_ID_t)(manifest->cell_type_id);
 EXIT:
-	if(NULL == manifest) {
+	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_program_manifest_get_cell_type_ID invalid argument\n");
 	}
 	return cell_type_id;
@@ -302,6 +302,7 @@ vied_nci_resource_size_t ia_css_program_manifest_get_int_mem_size(
 
 	if (ia_css_has_program_manifest_fixed_cell(manifest)) {
 		vied_nci_cell_ID_t	cell_id = ia_css_program_manifest_get_cell_ID(manifest);
+
 		cell_type_id = vied_nci_cell_get_type(cell_id);
 	} else {
 		cell_type_id = ia_css_program_manifest_get_cell_type_ID(manifest);
@@ -315,7 +316,7 @@ vied_nci_resource_size_t ia_css_program_manifest_get_int_mem_size(
 	}
 
 EXIT:
-	if(NULL == manifest || mem_type_id >= VIED_NCI_N_MEM_TYPE_ID) {
+	if (NULL == manifest || mem_type_id >= VIED_NCI_N_MEM_TYPE_ID) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_program_manifest_get_int_mem_size invalid argument\n");
 	}
 	return int_mem_size;
@@ -334,6 +335,7 @@ int ia_css_program_manifest_set_int_mem_size(
 
 	if (ia_css_has_program_manifest_fixed_cell(manifest)) {
 		vied_nci_cell_ID_t	cell_id = ia_css_program_manifest_get_cell_ID(manifest);
+
 		cell_type_id = vied_nci_cell_get_type(cell_id);
 	} else {
 		cell_type_id = ia_css_program_manifest_get_cell_type_ID(manifest);
@@ -370,7 +372,7 @@ vied_nci_resource_size_t ia_css_program_manifest_get_ext_mem_size(
 
 	ext_mem_size = manifest->ext_mem_size[mem_type_id];
 EXIT:
-	if(NULL == manifest || mem_type_id >= VIED_NCI_N_DATA_MEM_TYPE_ID) {
+	if (NULL == manifest || mem_type_id >= VIED_NCI_N_DATA_MEM_TYPE_ID) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_program_manifest_get_ext_mem_size invalid argument\n");
 	}
 	return ext_mem_size;
@@ -408,7 +410,7 @@ vied_nci_resource_size_t ia_css_program_manifest_get_dev_chn_size(
 
 	dev_chn_size = manifest->dev_chn_size[dev_chn_id];
 EXIT:
-	if(NULL == manifest || dev_chn_id >= VIED_NCI_N_DEV_CHN_ID) {
+	if (NULL == manifest || dev_chn_id >= VIED_NCI_N_DEV_CHN_ID) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_program_manifest_get_dev_chn_size invalid argument\n");
 	}
 	return dev_chn_size;
@@ -461,7 +463,7 @@ uint8_t ia_css_program_manifest_get_program_dependency(
 	program_dependency_count = ia_css_program_manifest_get_program_dependency_count(manifest);
 
 	if (index < program_dependency_count) {
-		program_dep_ptr = (uint8_t*)((uint8_t*)manifest + manifest->program_dependency_offset +
+		program_dep_ptr = (uint8_t *)((uint8_t *)manifest + manifest->program_dependency_offset +
 				index * sizeof(uint8_t));
 		program_dependency = *program_dep_ptr;
 	} else {
@@ -486,7 +488,7 @@ int ia_css_program_manifest_set_program_dependency(
 	program_count = ia_css_program_group_manifest_get_program_count(ia_css_program_manifest_get_parent(manifest));
 
 	if ((index < program_dependency_count) && (program_dependency < program_count)) {
-		program_dep_ptr = (uint8_t*)((uint8_t*)manifest + manifest->program_dependency_offset + index * sizeof(uint8_t));
+		program_dep_ptr = (uint8_t *)((uint8_t *)manifest + manifest->program_dependency_offset + index * sizeof(uint8_t));
 		 *program_dep_ptr = program_dependency;
 		retval = 0;
 	}
@@ -524,7 +526,7 @@ uint8_t ia_css_program_manifest_get_terminal_dependency(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_manifest_get_terminal_dependency(): enter:\n");
 
 	if (index < terminal_dependency_count) {
-		terminal_dep_ptr = (uint8_t*)((uint8_t*)manifest + manifest->terminal_dependency_offset + index);
+		terminal_dep_ptr = (uint8_t *)((uint8_t *)manifest + manifest->terminal_dependency_offset + index);
 		terminal_dependency = *terminal_dep_ptr;
 	} else {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING, "ia_css_program_manifest_get_terminal_dependency invalid argument\n");
@@ -547,7 +549,7 @@ int ia_css_program_manifest_set_terminal_dependency(
 
 	if ((index < terminal_dependency_count) &&
 			(terminal_dependency < terminal_count)) {
-		terminal_dep_ptr = (uint8_t*)((uint8_t*)manifest + manifest->terminal_dependency_offset + index);
+		terminal_dep_ptr = (uint8_t *)((uint8_t *)manifest + manifest->terminal_dependency_offset + index);
 		 *terminal_dep_ptr = terminal_dependency;
 		retval = 0;
 	}
@@ -645,8 +647,8 @@ int ia_css_program_manifest_print(
 	verifexit(manifest != NULL, EINVAL);
 	NOT_USED(fid);
 
-	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sizeof(manifest) = %d\n",(int)ia_css_program_manifest_get_size(manifest));
-	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "program ID = %d\n",(int)ia_css_program_manifest_get_program_ID(manifest));
+	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sizeof(manifest) = %d\n", (int)ia_css_program_manifest_get_size(manifest));
+	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "program ID = %d\n", (int)ia_css_program_manifest_get_program_ID(manifest));
 /*	fprintf(f,"program ID = %s\n",ia_css_program_ID_string(ia_css_program_manifest_get_program_ID(manifest))); */
 
 	bitmap = ia_css_program_manifest_get_kernel_bitmap(manifest);
@@ -654,31 +656,32 @@ int ia_css_program_manifest_print(
 
 	if (ia_css_has_program_manifest_fixed_cell(manifest)) {
 		vied_nci_cell_ID_t	cell_id = ia_css_program_manifest_get_cell_ID(manifest);
+
 		cell_type_id = vied_nci_cell_get_type(cell_id);
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "cell(program) = %d\n",(int)cell_id);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "cell(program) = %d\n", (int)cell_id);
 /*		fprintf(f,"cell(program) = %s\n",vied_nci_cell_string(cell_id)); */
 	} else {
 		cell_type_id = ia_css_program_manifest_get_cell_type_ID(manifest);
 	}
-	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "cell type(program) = %d\n",(int)cell_type_id);
+	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "cell type(program) = %d\n", (int)cell_type_id);
 /*	fprintf(f,"cell_type(program) = %s\n",vied_nci_cell_type_string(cell_type_id)); */
 
 	for (mem_index = 0; mem_index < (int)VIED_NCI_N_MEM_TYPE_ID; mem_index++) {
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(internal mem) type = %d\n",(int)vied_nci_cell_type_get_mem_type(cell_type_id, mem_index));
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(internal mem) type = %d\n", (int)vied_nci_cell_type_get_mem_type(cell_type_id, mem_index));
 /*		fprintf(f,"\ttype(internal mem) type = %s\n",vied_nci_mem_type_string(mem_type)); */
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(internal mem) size = %d\n",manifest->int_mem_size[mem_index]);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(internal mem) size = %d\n", manifest->int_mem_size[mem_index]);
 	}
 
 	for (mem_index = 0; mem_index < (int)VIED_NCI_N_DATA_MEM_TYPE_ID; mem_index++) {
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(external mem) type = %d\n",(int)(vied_nci_mem_type_ID_t)mem_index);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(external mem) type = %d\n", (int)(vied_nci_mem_type_ID_t)mem_index);
 /*		fprintf(f,"\ttype(external mem) type = %s\n",vied_nci_mem_type_string(mem_type)); */
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(external mem) size = %d\n",manifest->ext_mem_size[mem_index]);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(external mem) size = %d\n", manifest->ext_mem_size[mem_index]);
 	}
 
 	for (dev_chn_index = 0; dev_chn_index < (int)VIED_NCI_N_DEV_CHN_ID; dev_chn_index++) {
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(device channel) type = %d\n",(int)dev_chn_index);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(device channel) type = %d\n", (int)dev_chn_index);
 /*		fprintf(f,"\ttype(device channel) type = %s\n",vied_nci_dev_chn_type_string(dev_chn_index)); */
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(device channel) size = %d\n",manifest->dev_chn_size[dev_chn_index]);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\ttype(device channel) size = %d\n", manifest->dev_chn_size[dev_chn_index]);
 	}
 
 	program_dependency_count = ia_css_program_manifest_get_program_dependency_count(manifest);
@@ -686,6 +689,7 @@ int ia_css_program_manifest_print(
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "program_dependencies[%d] {};\n", program_dependency_count);
 	} else {
 		uint8_t prog_dep;
+
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "program_dependencies[%d] {\n", program_dependency_count);
 		for (i = 0; i < (int)program_dependency_count - 1; i++) {
 			prog_dep = ia_css_program_manifest_get_program_dependency(manifest, i);
@@ -698,9 +702,10 @@ int ia_css_program_manifest_print(
 
 	terminal_dependency_count = ia_css_program_manifest_get_terminal_dependency_count(manifest);
 	if (terminal_dependency_count == 0) {
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "terminal_dependencies[%d] {};\n",terminal_dependency_count);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "terminal_dependencies[%d] {};\n", terminal_dependency_count);
 	} else {
 		uint8_t term_dep;
+
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "terminal_dependencies[%d] {\n", terminal_dependency_count);
 		for (i = 0; i < (int)terminal_dependency_count - 1; i++) {
 			term_dep = ia_css_program_manifest_get_terminal_dependency(manifest, i);

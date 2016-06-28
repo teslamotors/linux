@@ -82,6 +82,7 @@ STORAGE_CLASS_INLINE void
 ia_css_cell_set_start_bit(unsigned int ssid, unsigned int cell_id)
 {
 	unsigned int reg;
+
 	reg = 1 << IPU_DEVICE_CELL_STAT_CTRL_START_BIT;
 	ia_css_cell_set_stat_ctrl(ssid, cell_id, reg);
 }
@@ -90,6 +91,7 @@ STORAGE_CLASS_INLINE void
 ia_css_cell_set_run_bit(unsigned int ssid, unsigned int cell_id, unsigned int value)
 {
 	unsigned int reg;
+
 	reg = value << IPU_DEVICE_CELL_STAT_CTRL_RUN_BIT;
 	ia_css_cell_set_stat_ctrl(ssid, cell_id, reg);
 }
@@ -188,6 +190,7 @@ ia_css_cell_set_master_info_bits(unsigned int ssid, unsigned int cell,
 	unsigned int master, unsigned int value)
 {
 	unsigned int addr, s, stride, num_segments;
+
 	assert(cell < ipu_device_cell_num_devices());
 	assert(master < ipu_device_cell_num_masters(cell));
 
@@ -206,6 +209,7 @@ ia_css_cell_set_master_info_override_bits(unsigned int ssid, unsigned int cell,
 	unsigned int master, unsigned int value)
 {
 	unsigned int addr, s, stride, num_segments;
+
 	assert(cell < ipu_device_cell_num_devices());
 	assert(master < ipu_device_cell_num_masters(cell));
 
@@ -224,6 +228,7 @@ ia_css_cell_set_master_base_address(unsigned int ssid, unsigned int cell,
 	unsigned int master, unsigned int value)
 {
 	unsigned int addr, s, stride, num_segments, segment_size;
+
 	assert(cell < ipu_device_cell_num_devices());
 	assert(master < ipu_device_cell_num_masters(cell));
 

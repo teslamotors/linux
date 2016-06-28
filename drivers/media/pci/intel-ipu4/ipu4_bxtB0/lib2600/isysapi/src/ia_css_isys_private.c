@@ -113,38 +113,38 @@ static const uint32_t ia_css_isys_extracted_bits_per_pixel_per_mipi_data_type[N_
 #define IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE	(0)
 static const struct frame_format_info ft_info_per_frame_format_type[N_IA_CSS_ISYS_FRAME_FORMAT] = {
 	/* bits_per_raw_pixel */		/* bits_per_ddr_raw_pixel */		/* plane_count */	/* plane_horz_divider */	/* plane_vert_divider */	/* bits_per_raw_pixel_component */	/* bits_per_ddr_raw_pixel_component */
-	{8,					8,					2,			{1,2,0,0},			{1,1,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV11,          	12 bit YUV 411, Y, UV plane */
-	{8,					8,					2,			{1,1,0,0},			{1,2,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12,          	12 bit YUV 420, Y, UV plane */
-	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0,					0},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12_16,       	16 bit YUV 420, Y, UV plane */
-	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0,					0},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12_TILEY,    	12 bit YUV 420, Intel proprietary tiled format, TileY */
-	{8,					8,					2,			{1,1,0,0},			{1,1,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV16,          	16 bit YUV 422, Y, UV plane */
-	{8,					8,					2,			{1,1,0,0},			{1,2,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV21,          	12 bit YUV 420, Y, VU plane */
-	{8,					8,					2,			{1,1,0,0},			{1,1,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV61,          	16 bit YUV 422, Y, VU plane */
-	{8,					8,					3,			{1,2,2,0},			{1,2,2,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YV12,          	12 bit YUV 420, Y, V, U plane */
-	{8,					8,					3,			{1,2,2,0},			{1,1,1,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YV16,          	16 bit YUV 422, Y, V, U plane */
-	{8,					8,					3,			{1,2,2,0},			{1,2,2,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420,        	12 bit YUV 420, Y, U, V plane */
-	{24,					15,					1,			{1,0,0,0},			{1,0,0,0},			16,					10},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_10,     	yuv420, 10 bits per subpixel, single plane */
-	{24,					18,					1,			{1,0,0,0},			{1,0,0,0},			16,					12},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_12,     	yuv420, 12 bits per subpixel, single plane */
-	{24,					21,					1,			{1,0,0,0},			{1,0,0,0},			16,					14},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_14,     	yuv420, 14 bits per subpixel, single plane */
-	{24,					24,					1,			{1,0,0,0},			{1,0,0,0},			16,					16},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_16,     	yuv420, 16 bits per subpixel, single plane */
-	{8,					8,					3,			{1,2,2,0},			{1,1,1,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV422,        	12 bit YUV 422, Y, U, V plane */
-	{32,					32,					1,			{1,0,0,0},			{1,0,0,0},			16,					16},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV422_16,     	yuv422, 16 bits per subpixel, single plane */
-	{16,					16,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_UYVY,          	16 bit YUV 422, UYVY interleaved */
-	{16,					16,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUYV,          	16 bit YUV 422, YUYV interleaved */
-	{8,					8,					3,			{1,1,1,0},			{1,1,1,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV444,        	24 bit YUV 444, Y, U, V plane */
-	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0,					0},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV_LINE,      	Internal 422 format, 2 y lines followed by a uv interleaved line */
-	{8,					8,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW8,	        	RAW8, 1 plane */
-	{16,					10,					1,			{1,0,0,0},			{1,0,0,0},			16,					10},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW10,	        	RAW10, 1 plane */
-	{16,					12,					1,			{1,0,0,0},			{1,0,0,0},			16,					12},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW12,	        	RAW12, 1 plane */
-	{16,					14,					1,			{1,0,0,0},			{1,0,0,0},			16,					14},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW14,	        	RAW14, 1 plane */
-	{16,					16,					1,			{1,0,0,0},			{1,0,0,0},			16,					16},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW16,	        	RAW16, 1 plane */
-	{16,					16,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RGB565,		16 bit RGB, 1 plane. Each 3 sub
+	{8,					8,					2,			{1, 2, 0, 0},			{1, 1, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV11,          	12 bit YUV 411, Y, UV plane */
+	{8,					8,					2,			{1, 1, 0, 0},			{1, 2, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12,          	12 bit YUV 420, Y, UV plane */
+	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0, 0, 0, 0},			{0, 0, 0, 0},			0,					0},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12_16,       	16 bit YUV 420, Y, UV plane */
+	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0, 0, 0, 0},			{0, 0, 0, 0},			0,					0},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV12_TILEY,    	12 bit YUV 420, Intel proprietary tiled format, TileY */
+	{8,					8,					2,			{1, 1, 0, 0},			{1, 1, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV16,          	16 bit YUV 422, Y, UV plane */
+	{8,					8,					2,			{1, 1, 0, 0},			{1, 2, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV21,          	12 bit YUV 420, Y, VU plane */
+	{8,					8,					2,			{1, 1, 0, 0},			{1, 1, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_NV61,          	16 bit YUV 422, Y, VU plane */
+	{8,					8,					3,			{1, 2, 2, 0},			{1, 2, 2, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YV12,          	12 bit YUV 420, Y, V, U plane */
+	{8,					8,					3,			{1, 2, 2, 0},			{1, 1, 1, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YV16,          	16 bit YUV 422, Y, V, U plane */
+	{8,					8,					3,			{1, 2, 2, 0},			{1, 2, 2, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420,        	12 bit YUV 420, Y, U, V plane */
+	{24,					15,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			16,					10},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_10,     	yuv420, 10 bits per subpixel, single plane */
+	{24,					18,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			16,					12},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_12,     	yuv420, 12 bits per subpixel, single plane */
+	{24,					21,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			16,					14},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_14,     	yuv420, 14 bits per subpixel, single plane */
+	{24,					24,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			16,					16},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV420_16,     	yuv420, 16 bits per subpixel, single plane */
+	{8,					8,					3,			{1, 2, 2, 0},			{1, 1, 1, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV422,        	12 bit YUV 422, Y, U, V plane */
+	{32,					32,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			16,					16},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV422_16,     	yuv422, 16 bits per subpixel, single plane */
+	{16,					16,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_UYVY,          	16 bit YUV 422, UYVY interleaved */
+	{16,					16,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUYV,          	16 bit YUV 422, YUYV interleaved */
+	{8,					8,					3,			{1, 1, 1, 0},			{1, 1, 1, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV444,        	24 bit YUV 444, Y, U, V plane */
+	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0, 0, 0, 0},			{0, 0, 0, 0},			0,					0},	/*		IA_CSS_ISYS_FRAME_FORMAT_YUV_LINE,      	Internal 422 format, 2 y lines followed by a uv interleaved line */
+	{8,					8,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW8,	        	RAW8, 1 plane */
+	{16,					10,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			16,					10},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW10,	        	RAW10, 1 plane */
+	{16,					12,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			16,					12},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW12,	        	RAW12, 1 plane */
+	{16,					14,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			16,					14},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW14,	        	RAW14, 1 plane */
+	{16,					16,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			16,					16},	/*		IA_CSS_ISYS_FRAME_FORMAT_RAW16,	        	RAW16, 1 plane */
+	{16,					16,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RGB565,		16 bit RGB, 1 plane. Each 3 sub
 																																				pixels are packed into one 16 bit value, 5 bits for R, 6 bits
 																																				for G and 5 bits for B. */
-	{8,					8,					3,			{1,1,1,0},			{1,1,1,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_PLANAR_RGB888,		24 bit RGB, 3 planes */
-	{32,					32,					1,			{1,0,0,0},			{1,0,0,0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RGBA888,		32 bit RGBA, 1 plane, A=Alpha (alpha is unused) */
-	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0,0,0,0},			{0,0,0,0},			0,					0},	/*	IA_CSS_ISYS_FRAME_FORMAT_QPLANE6,		Internal, for advanced ISP, not used */
-	{8,					8,					1,			{1,0,0,0},			{1,0,0,0},			8,					8}	/*		IA_CSS_ISYS_FRAME_FORMAT_BINARY_8,		byte stream, used for jpeg. */
+	{8,					8,					3,			{1, 1, 1, 0},			{1, 1, 1, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_PLANAR_RGB888,		24 bit RGB, 3 planes */
+	{32,					32,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			8,					8},	/*		IA_CSS_ISYS_FRAME_FORMAT_RGBA888,		32 bit RGBA, 1 plane, A=Alpha (alpha is unused) */
+	{IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	IA_CSS_UNSUPPORTED_FRAME_FORMAT_TYPE,	0,			{0, 0, 0, 0},			{0, 0, 0, 0},			0,					0},	/*	IA_CSS_ISYS_FRAME_FORMAT_QPLANE6,		Internal, for advanced ISP, not used */
+	{8,					8,					1,			{1, 0, 0, 0},			{1, 0, 0, 0},			8,					8}	/*		IA_CSS_ISYS_FRAME_FORMAT_BINARY_8,		byte stream, used for jpeg. */
 };
 
 
@@ -170,6 +170,7 @@ STORAGE_CLASS_INLINE void free_comm_buff_shared_mem(
 	struct ia_css_isys_context *ctx,
 	int stream_handle,			/* used also as local var */
 	int stream_cfg_buff_counter,		/* used also as local var */
+
 	int next_frame_buff_counter		/* used also as local var */
 ) {
 	int buff_slot;
@@ -303,17 +304,20 @@ int ia_css_isys_destr_comm_buff_queue(
 }
 
 
-STORAGE_CLASS_INLINE void resolution_host_to_css(const struct ia_css_isys_resolution *resolution_host, struct ia_css_isys_resolution_comm *resolution_css) {
+STORAGE_CLASS_INLINE void resolution_host_to_css(const struct ia_css_isys_resolution *resolution_host, struct ia_css_isys_resolution_comm *resolution_css)
+{
 	resolution_css->width = resolution_host->width;
 	resolution_css->height = resolution_host->height;
 }
 
-STORAGE_CLASS_INLINE void output_pin_payload_host_to_css(const struct ia_css_isys_output_pin_payload *output_pin_payload_host, struct ia_css_isys_output_pin_payload_comm *output_pin_payload_css) {
+STORAGE_CLASS_INLINE void output_pin_payload_host_to_css(const struct ia_css_isys_output_pin_payload *output_pin_payload_host, struct ia_css_isys_output_pin_payload_comm *output_pin_payload_css)
+{
 	output_pin_payload_css->out_buf_id = output_pin_payload_host->out_buf_id;
 	output_pin_payload_css->addr = output_pin_payload_host->addr;
 }
 
-STORAGE_CLASS_INLINE void output_pin_info_host_to_css(const struct ia_css_isys_output_pin_info *output_pin_info_host, struct ia_css_isys_output_pin_info_comm *output_pin_info_css) {
+STORAGE_CLASS_INLINE void output_pin_info_host_to_css(const struct ia_css_isys_output_pin_info *output_pin_info_host, struct ia_css_isys_output_pin_info_comm *output_pin_info_css)
+{
 	output_pin_info_css->input_pin_id = output_pin_info_host->input_pin_id;
 	resolution_host_to_css(&output_pin_info_host->output_res, &output_pin_info_css->output_res);
 	output_pin_info_css->stride = output_pin_info_host->stride;
@@ -329,12 +333,14 @@ STORAGE_CLASS_INLINE void output_pin_info_host_to_css(const struct ia_css_isys_o
 	output_pin_info_css->ft_info = ft_info_per_frame_format_type[output_pin_info_host->ft];
 }
 
-STORAGE_CLASS_INLINE void param_pin_host_to_css(const struct ia_css_isys_param_pin *param_pin_host, struct ia_css_isys_param_pin_comm *param_pin_css) {
+STORAGE_CLASS_INLINE void param_pin_host_to_css(const struct ia_css_isys_param_pin *param_pin_host, struct ia_css_isys_param_pin_comm *param_pin_css)
+{
 	param_pin_css->param_buf_id = param_pin_host->param_buf_id;
 	param_pin_css->addr = param_pin_host->addr;
 }
 
-STORAGE_CLASS_INLINE void input_pin_info_host_to_css(const struct ia_css_isys_input_pin_info *input_pin_info_host, struct ia_css_isys_input_pin_info_comm *input_pin_info_css) {
+STORAGE_CLASS_INLINE void input_pin_info_host_to_css(const struct ia_css_isys_input_pin_info *input_pin_info_host, struct ia_css_isys_input_pin_info_comm *input_pin_info_css)
+{
 	resolution_host_to_css(&input_pin_info_host->input_res, &input_pin_info_css->input_res);
 	assert(input_pin_info_host->dt < N_IA_CSS_ISYS_MIPI_DATA_TYPE);
 	if (input_pin_info_host->dt >= N_IA_CSS_ISYS_MIPI_DATA_TYPE) {
@@ -346,8 +352,10 @@ STORAGE_CLASS_INLINE void input_pin_info_host_to_css(const struct ia_css_isys_in
 	input_pin_info_css->bits_per_pix = ia_css_isys_extracted_bits_per_pixel_per_mipi_data_type[input_pin_info_host->dt];
 }
 
-STORAGE_CLASS_INLINE void isa_cfg_host_to_css(const struct ia_css_isys_isa_cfg *isa_cfg_host, struct ia_css_isys_isa_cfg_comm *isa_cfg_css) {
+STORAGE_CLASS_INLINE void isa_cfg_host_to_css(const struct ia_css_isys_isa_cfg *isa_cfg_host, struct ia_css_isys_isa_cfg_comm *isa_cfg_css)
+{
 	unsigned int i;
+
 	for (i = 0; i < N_IA_CSS_ISYS_RESOLUTION_INFO; i++) {
 		resolution_host_to_css(&isa_cfg_host->isa_res[i], &isa_cfg_css->isa_res[i]);
 	}
@@ -363,15 +371,18 @@ STORAGE_CLASS_INLINE void isa_cfg_host_to_css(const struct ia_css_isys_isa_cfg *
 	isa_cfg_css->send_resp_stats_ready = isa_cfg_host->send_irq_stats_ready ? 1 : isa_cfg_host->send_resp_stats_ready;
 }
 
-STORAGE_CLASS_INLINE void cropping_host_to_css(const struct ia_css_isys_cropping *cropping_host, struct ia_css_isys_cropping_comm *cropping_css) {
+STORAGE_CLASS_INLINE void cropping_host_to_css(const struct ia_css_isys_cropping *cropping_host, struct ia_css_isys_cropping_comm *cropping_css)
+{
 	cropping_css->top_offset = cropping_host->top_offset;
 	cropping_css->left_offset = cropping_host->left_offset;
 	cropping_css->bottom_offset = cropping_host->bottom_offset;
 	cropping_css->right_offset = cropping_host->right_offset;
 }
 
-STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(const struct ia_css_isys_stream_cfg_data *stream_cfg_data_host, struct ia_css_isys_stream_cfg_data_comm *stream_cfg_data_css) {
+STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(const struct ia_css_isys_stream_cfg_data *stream_cfg_data_host, struct ia_css_isys_stream_cfg_data_comm *stream_cfg_data_css)
+{
 	unsigned int i;
+
 	stream_cfg_data_css->src = stream_cfg_data_host->src;
 	stream_cfg_data_css->vc = stream_cfg_data_host->vc;
 	stream_cfg_data_css->isl_use = stream_cfg_data_host->isl_use;
@@ -407,8 +418,10 @@ STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(const struct ia_css_isys_st
 	return 0;
 }
 
-STORAGE_CLASS_INLINE void frame_buff_set_host_to_css(const struct ia_css_isys_frame_buff_set *frame_buff_set_host, struct ia_css_isys_frame_buff_set_comm *frame_buff_set_css) {
+STORAGE_CLASS_INLINE void frame_buff_set_host_to_css(const struct ia_css_isys_frame_buff_set *frame_buff_set_host, struct ia_css_isys_frame_buff_set_comm *frame_buff_set_css)
+{
 	int i;
+
 	for (i = 0; i < MAX_OPINS; i++) {
 		output_pin_payload_host_to_css(&frame_buff_set_host->output_pins[i], &frame_buff_set_css->output_pins[i]);
 	}
@@ -431,17 +444,20 @@ STORAGE_CLASS_INLINE void buffer_partition_host_to_css(const struct ia_css_isys_
 	}
 }
 
-STORAGE_CLASS_INLINE void output_pin_payload_css_to_host(const struct ia_css_isys_output_pin_payload_comm *output_pin_payload_css, struct ia_css_isys_output_pin_payload *output_pin_payload_host) {
+STORAGE_CLASS_INLINE void output_pin_payload_css_to_host(const struct ia_css_isys_output_pin_payload_comm *output_pin_payload_css, struct ia_css_isys_output_pin_payload *output_pin_payload_host)
+{
 	output_pin_payload_host->out_buf_id = output_pin_payload_css->out_buf_id;
 	output_pin_payload_host->addr = output_pin_payload_css->addr;
 }
 
-STORAGE_CLASS_INLINE void param_pin_css_to_host(const struct ia_css_isys_param_pin_comm *param_pin_css, struct ia_css_isys_param_pin *param_pin_host) {
+STORAGE_CLASS_INLINE void param_pin_css_to_host(const struct ia_css_isys_param_pin_comm *param_pin_css, struct ia_css_isys_param_pin *param_pin_host)
+{
 	param_pin_host->param_buf_id = param_pin_css->param_buf_id;
 	param_pin_host->addr = param_pin_css->addr;
 }
 
-STORAGE_CLASS_INLINE void resp_info_css_to_host(const struct ia_css_isys_resp_info_comm *resp_info_css, struct ia_css_isys_resp_info *resp_info_host) {
+STORAGE_CLASS_INLINE void resp_info_css_to_host(const struct ia_css_isys_resp_info_comm *resp_info_css, struct ia_css_isys_resp_info *resp_info_host)
+{
 	resp_info_host->type = resp_info_css->type;
 	resp_info_host->timestamp[0] = resp_info_css->timestamp[0];
 	resp_info_host->timestamp[1] = resp_info_css->timestamp[1];
@@ -648,6 +664,7 @@ void ia_css_isys_prepare_param(
 	const unsigned int num_recv_queues[]
 ) {
 	unsigned int i;
+
 	assert(isys_fw_cfg != NULL);
 	assert(buf_partition != NULL);
 	assert(num_send_queues != NULL);

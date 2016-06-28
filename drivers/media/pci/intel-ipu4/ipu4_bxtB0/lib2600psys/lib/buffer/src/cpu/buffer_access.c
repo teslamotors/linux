@@ -12,12 +12,12 @@
  * more details.
 */
 
-// implementation of buffer access from the CPU
-// using shared_memory interface
+/* implementation of buffer access from the CPU */
+/* using shared_memory interface */
 
 #include "buffer_access.h"
 #include "vied/shared_memory_access.h"
-// #include <stdio.h>
+/* #include <stdio.h> */
 
 void
 buffer_load(buffer_address address, void *data, unsigned int bytes, unsigned int mm_id)

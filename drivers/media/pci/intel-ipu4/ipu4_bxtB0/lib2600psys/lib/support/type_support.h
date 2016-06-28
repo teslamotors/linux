@@ -74,7 +74,7 @@ typedef unsigned long long uint64_t;
 
 #if !defined(PIPE_GENERATION) && !defined(IO_GENERATION)
 /* genpipe cannot handle the void* syntax */
-typedef void* HANDLE;
+typedef void *HANDLE;
 #endif
 
 #endif /* __TYPE_SUPPORT_H_INCLUDED__ */

@@ -102,7 +102,7 @@ ia_css_program_param_t *ia_css_program_group_param_get_program_param(
 
 	verifexit(i < program_count, EINVAL);
 
-	program_param_base = (ia_css_program_param_t*)
+	program_param_base = (ia_css_program_param_t *)
 			(((char *)param) + param->program_param_offset);
 
 	program_param = &program_param_base[i];
@@ -427,6 +427,7 @@ static int ia_css_program_param_init(
 		int32_t offset)
 {
 	int retval = -1;
+
 	COMPILATION_ERROR_IF(
 		SIZE_OF_PROGRAM_PARAM_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_program_param_t)));
 	verifexit(program_param != NULL, EINVAL);
@@ -451,6 +452,7 @@ ia_css_terminal_param_init(ia_css_terminal_param_t *terminal_param,
 			enum ia_css_frame_format_type frame_format_type)
 {
 	int retval = -1;
+
 	COMPILATION_ERROR_IF(
 		SIZE_OF_TERMINAL_PARAM_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_terminal_param_t)));
 	verifexit(terminal_param != NULL, EINVAL);
@@ -484,7 +486,7 @@ ia_css_terminal_param_get_parent(
 
 	base = (char *)((char *)param + param->parent_offset);
 
-	parent = (ia_css_program_group_param_t * )(base);
+	parent = (ia_css_program_group_param_t *)(base);
 EXIT:
 	if (NULL == param) {
 		IA_CSS_TRACE_0(PSYSAPI_PARAM, WARNING, "ia_css_terminal_param_get_parent invalid argument\n");
@@ -499,7 +501,7 @@ int ia_css_program_group_param_init(
 	const uint16_t	fragment_count,
 	const enum ia_css_frame_format_type *frame_format_types)
 {
-	int i =0;
+	int i = 0;
 	char *param_base;
 	uint32_t offset;
 	int  retval = -1;
@@ -511,19 +513,19 @@ int ia_css_program_group_param_init(
 
 	assert(blob != 0);
 
-	verifexit(blob != NULL , EINVAL);
-	verifexit(frame_format_types != NULL , EINVAL);
+	verifexit(blob != NULL, EINVAL);
+	verifexit(frame_format_types != NULL, EINVAL);
 
 	blob->program_count = program_count;
 	blob->fragment_count = fragment_count;
 	blob->terminal_count = terminal_count;
 	blob->program_param_offset = sizeof(ia_css_program_group_param_t);
-	blob->terminal_param_offset = blob->program_param_offset + sizeof(ia_css_program_param_t )* program_count;
+	blob->terminal_param_offset = blob->program_param_offset + sizeof(ia_css_program_param_t) * program_count;
 
 	param_base = (char *)((char *)blob + blob->program_param_offset);
 	offset = blob->program_param_offset;
 
-	for (i =0; i < program_count; i++) {
+	for (i = 0; i < program_count; i++) {
 		ia_css_program_param_init((ia_css_program_param_t *)param_base, offset);
 		offset += sizeof(ia_css_program_param_t);
 		param_base += sizeof(ia_css_program_param_t);
@@ -564,7 +566,7 @@ int ia_css_program_group_param_print(
 	verifexit(param != NULL, EINVAL);
 	NOT_USED(fid);
 
-	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "sizeof(program_group_param) = %d\n",(int)ia_css_program_group_param_get_size(param));
+	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "sizeof(program_group_param) = %d\n", (int)ia_css_program_group_param_get_size(param));
 
 	program_count = ia_css_program_group_param_get_program_count(param);
 	terminal_count = ia_css_program_group_param_get_terminal_count(param);
@@ -572,15 +574,17 @@ int ia_css_program_group_param_print(
 	bitmap = ia_css_program_group_param_get_kernel_enable_bitmap(param);
 	verifexit(ia_css_kernel_bitmap_print(bitmap, fid) == 0, EINVAL);
 
-	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "%d program params\n",(int)program_count);
+	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "%d program params\n", (int)program_count);
 	for (i = 0; i < (int)program_count; i++) {
 		ia_css_program_param_t	*program_param = ia_css_program_group_param_get_program_param(param, i);
+
 		retval = ia_css_program_param_print(program_param, fid);
 		verifjmpexit(retval == 0);
 	}
-	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "%d terminal params\n",(int)terminal_count);
+	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "%d terminal params\n", (int)terminal_count);
 	for (i = 0; i < (int)terminal_count; i++) {
 		ia_css_terminal_param_t	*terminal_param = ia_css_program_group_param_get_terminal_param(param, i);
+
 		retval = ia_css_terminal_param_print(terminal_param, fid);
 		verifjmpexit(retval == 0);
 	}
@@ -604,9 +608,9 @@ int ia_css_terminal_param_print(
 	verifexit(param != NULL, EINVAL);
 	NOT_USED(fid);
 
-	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "sizeof(terminal_param) = %d\n",(int)ia_css_terminal_param_get_size(param));
+	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "sizeof(terminal_param) = %d\n", (int)ia_css_terminal_param_get_size(param));
 
-	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "\tframe_format_type = %d\n",param->frame_format_type);
+	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "\tframe_format_type = %d\n", param->frame_format_type);
 /*	fprintf(f,"\tframe_format_type = %s\n",ia_css_frame_format_string(param->frame_format_type)); */
 
 	retval = 0;
@@ -629,7 +633,7 @@ int ia_css_program_param_print(
 	verifexit(param != NULL, EINVAL);
 	NOT_USED(fid);
 
-	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "sizeof(program_param) = %d\n",(int)ia_css_program_param_get_size(param));
+	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "sizeof(program_param) = %d\n", (int)ia_css_program_param_get_size(param));
 
 	bitmap = ia_css_program_param_get_kernel_enable_bitmap(param);
 	verifexit(ia_css_kernel_bitmap_print(bitmap, fid) == 0, EINVAL);

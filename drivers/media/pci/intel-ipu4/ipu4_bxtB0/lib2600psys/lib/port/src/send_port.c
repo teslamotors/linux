@@ -12,10 +12,10 @@
  * more details.
 */
 
-// implemented:
+/* implemented: */
 #include "send_port.h"
 
-// used:
+/* used: */
 #include "queue.h"
 #include "queue_struct.h"
 #include "send_port_struct.h"
@@ -50,16 +50,16 @@ STORAGE_CLASS_INLINE unsigned int
 send_port_index(const struct send_port *p, unsigned int i)
 {
 	unsigned int wr = regmem_load_32(p->mem_addr, p->wr_reg, p->ssid);
+
 	return OP_std_modadd(wr, i, p->size);
 }
-
-////
 
 unsigned int
 send_port_available(const struct send_port *p)
 {
 	int rd   = (int)regmem_load_32(p->mem_addr, p->rd_reg, p->ssid);
 	int wr   = (int)regmem_load_32(p->mem_addr, p->wr_reg, p->ssid);
+
 	return OP_std_modadd(rd, -(wr+1), p->size);
 }
 
@@ -69,6 +69,7 @@ send_port_copy(const struct send_port *p, unsigned int i, const void *data)
 	unsigned int wr   = send_port_index(p, i);
 	unsigned int token_size = p->token_size;
 	buffer_address addr = p->buffer + (wr * token_size);
+
 	buffer_store(addr, data, token_size, p->mmid);
 #ifndef __VIED_CELL
 	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(addr), token_size);
@@ -79,10 +80,9 @@ STORAGE_CLASS_INLINE void
 send_port_release(const struct send_port *p, unsigned int i)
 {
 	unsigned int wr = send_port_index(p, i);
+
 	regmem_store_32(p->mem_addr, p->wr_reg, wr, p->ssid);
 }
-
-////
 
 unsigned int
 send_port_transfer(const struct send_port *p, const void *data)

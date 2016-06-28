@@ -17,14 +17,14 @@
 
 #include "ia_css_psys_sim_trace.h"
 
-static unsigned int ia_css_psys_ran_seed = 0;
+static unsigned int ia_css_psys_ran_seed;
 
-void ia_css_psys_ran_set_seed (
+void ia_css_psys_ran_set_seed(
     const unsigned int      seed)
 {
 	ia_css_psys_ran_seed = seed;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_set_seed(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_set_seed(): enter:\n");
 
 	return;
 }
@@ -35,13 +35,13 @@ static unsigned int ia_css_psys_ran_int (void)
 	return ia_css_psys_ran_seed;
 }
 
-unsigned int ia_css_psys_ran_var (
+unsigned int ia_css_psys_ran_var(
     const unsigned int      bit_depth)
 {
 	unsigned int	out;
 	unsigned int	tmp;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_var(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_var(): enter:\n");
 
 	tmp = ia_css_psys_ran_int();
 
@@ -55,13 +55,13 @@ unsigned int ia_css_psys_ran_var (
 	return out;
 }
 
-unsigned int ia_css_psys_ran_val (
+unsigned int ia_css_psys_ran_val(
     const unsigned int      range)
 {
 	unsigned int	out;
 	unsigned int	tmp;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_val(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_val(): enter:\n");
 
 	tmp = ia_css_psys_ran_int();
 
@@ -73,7 +73,7 @@ unsigned int ia_css_psys_ran_val (
 	return out;
 }
 
-unsigned int ia_css_psys_ran_interval (
+unsigned int ia_css_psys_ran_interval(
     const unsigned int      lo,
     const unsigned int      hi)
 {
@@ -81,7 +81,7 @@ unsigned int ia_css_psys_ran_interval (
 	unsigned int	tmp;
 	unsigned int	range = hi - lo;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_interval(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_interval(): enter:\n");
 
 	tmp = ia_css_psys_ran_int();
 

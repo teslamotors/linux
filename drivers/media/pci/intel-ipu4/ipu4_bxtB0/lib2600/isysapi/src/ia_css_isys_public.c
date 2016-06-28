@@ -57,7 +57,7 @@
  * ia_css_isys_device_open() - open and configure ISYS device
  */
 int ia_css_isys_device_open(
-	HANDLE *context,
+	HANDLE * context,
 	const struct ia_css_isys_device_cfg_data *config
 ) {
 	int retval;
@@ -310,7 +310,7 @@ int ia_css_isys_stream_open(
 			 (stream_cfg->input_pins[stream_cfg->output_pins[i].input_pin_id].mipi_store_mode != IA_CSS_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER),
 			 EINVAL);
 		if (stream_cfg->isl_use == IA_CSS_ISYS_USE_SINGLE_ISA) {
-			switch(stream_cfg->output_pins[i].pt) {
+			switch (stream_cfg->output_pins[i].pt) {
 			case IA_CSS_ISYS_PIN_TYPE_RAW_NS:
 				/* Ensure the PIFCONV cropped resolution matches the RAW_NS output pin resolution */
 				verifret(stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].bottom_offset == stream_cfg->crop[IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED].top_offset + (int)stream_cfg->output_pins[i].output_res.height, EINVAL);
@@ -464,8 +464,7 @@ int ia_css_isys_stream_start(
 		assert(next_frame_fw != 0);
 		token.payload = next_frame_fw;
 		token.buf_handle = HOST_ADDRESS(buf_next_frame_id);
-	}
-	else {
+	} else {
 		token.send_type = IA_CSS_ISYS_SEND_TYPE_STREAM_START;
 		token.payload = 0;
 		token.buf_handle = 0;
@@ -794,6 +793,7 @@ int ia_css_isys_proxy_write_req(
 	struct proxy_send_queue_token token;
 	int packets;
 	int retval = 0;
+
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_PROXY_WRITE_REQ\n");
 	verifret(write_req_val != NULL, EFAULT);
 
@@ -828,6 +828,7 @@ int ia_css_isys_proxy_handle_write_response(
 	struct proxy_resp_queue_token token;
 	int retval = 0;
 	int packets;
+
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_PROXY_HANDLE_WRITE_RESPONSE\n");
 	verifret(received_response != NULL, EFAULT);
 

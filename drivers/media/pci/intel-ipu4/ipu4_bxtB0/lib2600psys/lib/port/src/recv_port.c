@@ -12,10 +12,10 @@
  * more details.
 */
 
-// implemented:
+/* implemented: */
 #include "recv_port.h"
 
-// used:
+/* used: */
 #include "queue.h"
 #include "queue_struct.h"
 #include "recv_port_struct.h"
@@ -51,16 +51,16 @@ STORAGE_CLASS_INLINE unsigned int
 recv_port_index(const struct recv_port *p, unsigned int i)
 {
 	unsigned int rd = regmem_load_32(p->mem_addr, p->rd_reg, p->ssid);
+
 	return OP_std_modadd(rd, i, p->size);
 }
-
-////
 
 unsigned int
 recv_port_available(const struct recv_port *p)
 {
 	int wr = (int)regmem_load_32(p->mem_addr, p->wr_reg, p->ssid);
 	int rd = (int)regmem_load_32(p->mem_addr, p->rd_reg, p->ssid);
+
 	return OP_std_modadd(wr, -rd, p->size);
 }
 
@@ -80,6 +80,7 @@ STORAGE_CLASS_INLINE void
 recv_port_release(const struct recv_port *p, unsigned int i)
 {
 	unsigned int rd = recv_port_index(p, i);
+
 	regmem_store_32(p->mem_addr, p->rd_reg, rd, p->ssid);
 }
 

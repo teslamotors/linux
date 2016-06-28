@@ -21,9 +21,9 @@
 #include <errno.h>
 #endif
 
-// OS-independent definition of IA_CSS errno values
-// #define IA_CSS_EINVAL 1
-// #define IA_CSS_EFAULT 2
+/* OS-independent definition of IA_CSS errno values */
+/* #define IA_CSS_EINVAL 1 */
+/* #define IA_CSS_EFAULT 2 */
 
 #define verifret(cond, error_type)   \
 do {                                \
@@ -39,12 +39,12 @@ do {                                \
 	}                               \
 } while (0)
 
-#define verifexit(cond,error_tag)  \
+#define verifexit(cond, error_tag)  \
 do {                               \
-	if (!(cond)){              \
+	if (!(cond)) {              \
 		goto EXIT;         \
 	}                          \
-} while(0)
+} while (0)
 
 #define verifjmpexit(cond)         \
 do {                               \
@@ -53,9 +53,12 @@ do {                               \
 	}                          \
 } while (0)
 
-#define verifjmpexitsetretval(cond,retval)         \
+#define verifjmpexitsetretval(cond, retval)         \
+do {                               \
 	if (!(cond)) {              \
 		retval = -1;	   \
 		goto EXIT;         \
-	}
+	}                          \
+} while (0)
+
 #endif /* __ERROR_SUPPORT_H_INCLUDED__ */

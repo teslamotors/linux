@@ -19,7 +19,7 @@
 
  @param	seed[in]				Random number generator seed
  */
-extern void ia_css_psys_ran_set_seed (
+extern void ia_css_psys_ran_set_seed(
     const unsigned int      seed);
 
 /*! Generate a random number of a specified bit depth
@@ -28,7 +28,7 @@ extern void ia_css_psys_ran_set_seed (
 
  @return out, weight(out) <= bit_depth, 0 on error
  */
-extern unsigned int ia_css_psys_ran_var (
+extern unsigned int ia_css_psys_ran_var(
     const unsigned int      bit_depth);
 
 /*! Generate a random number of a specified range
@@ -37,7 +37,7 @@ extern unsigned int ia_css_psys_ran_var (
 
  @return 0 <= out < range, 0 on error
  */
-extern unsigned int ia_css_psys_ran_val (
+extern unsigned int ia_css_psys_ran_val(
     const unsigned int      range);
 
 /*! Generate a random number in a specified interval
@@ -47,7 +47,7 @@ extern unsigned int ia_css_psys_ran_val (
 
  @return lo <= out < hi, 0 on error
  */
-extern unsigned int ia_css_psys_ran_interval (
+extern unsigned int ia_css_psys_ran_interval(
     const unsigned int      lo,
     const unsigned int      hi);
 

@@ -37,13 +37,13 @@
 #define	N_PADDING_UINT8_IN_DATA_TERMINAL_STRUCT	4
 
 #define SIZE_OF_DATA_TERMINAL_STRUCT_BITS \
-	( SIZE_OF_TERMINAL_STRUCT_BITS \
+	(SIZE_OF_TERMINAL_STRUCT_BITS \
 	+ IA_CSS_FRAME_DESCRIPTOR_STRUCT_BITS \
 	+ IA_CSS_FRAME_STRUCT_BITS \
 	+ IA_CSS_STREAM_STRUCT_BITS \
 	+ IA_CSS_FRAME_FORMAT_TYPE_BITS \
 	+ IA_CSS_CONNECTION_TYPE_BITS \
-	+ (N_UINT16_IN_DATA_TERMINAL_STRUCT * 16 )	\
+	+ (N_UINT16_IN_DATA_TERMINAL_STRUCT * 16)	\
 	+ (N_UINT8_IN_DATA_TERMINAL_STRUCT * 8)	\
 	+ (N_PADDING_UINT8_IN_DATA_TERMINAL_STRUCT * 8))
 
@@ -57,7 +57,7 @@ struct ia_css_data_terminal_s {
 	ia_css_terminal_t			base;											/**< Data terminal base */
 	ia_css_frame_descriptor_t	frame_descriptor;								/**< Properties of the data attached to the terminal */
 	ia_css_frame_t				frame;											/**< Data buffer handle attached to the terminal */
-	ia_css_stream_t				stream;										   	/**< (exclusive) Data stream handle attached to the terminal if the data is sourced over a device port */
+	ia_css_stream_t				stream;											/**< (exclusive) Data stream handle attached to the terminal if the data is sourced over a device port */
 	ia_css_frame_format_type_t	frame_format_type;								/**< Indicates if this is a generic type or inbuild with variable size descriptor */
 	ia_css_connection_type_t	connection_type;								/**< Connection {buffer, stream, ...} */
 	uint16_t					fragment_descriptor_offset;						/**< Array[fragment_count] (fragment_count being equal for all terminals in a subgraph) of fragment descriptors */
@@ -88,7 +88,7 @@ size_t ia_css_sizeof_terminal(
 
 	COMPILATION_ERROR_IF(0 != sizeof(ia_css_data_terminal_t)%sizeof(uint64_t));
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_sizeof_terminal(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_sizeof_terminal(): enter:\n");
 
 	verifexit(manifest != NULL, EINVAL);
 	verifexit(param != NULL, EINVAL);
@@ -103,18 +103,19 @@ size_t ia_css_sizeof_terminal(
 				fragment_count);
 		} else {
 			assert(NULL == "Invalid parameter terminal type");
-			IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR, "ia_css_sizeof_terminal(): Invalid parameter terminal type: \n");
+			IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR, "ia_css_sizeof_terminal(): Invalid parameter terminal type:\n");
 			verifjmpexit(0);
 		}
 	} else if (ia_css_is_terminal_manifest_data_terminal(manifest)) {
 		size += sizeof(ia_css_data_terminal_t);
 		size += fragment_count * sizeof(ia_css_fragment_descriptor_t);
-	} else if(ia_css_is_terminal_manifest_program_terminal(manifest)) {
+	} else if (ia_css_is_terminal_manifest_program_terminal(manifest)) {
 		ia_css_program_terminal_manifest_t *prog_term_man = (ia_css_program_terminal_manifest_t *)manifest;
+
 		size = ia_css_program_terminal_get_descriptor_size(fragment_count, prog_term_man->fragment_param_manifest_section_desc_count,
 			prog_term_man->kernel_fragment_sequencer_info_manifest_info_count,
 			(fragment_count * prog_term_man->max_kernel_fragment_sequencer_command_desc));
-	} else if(ia_css_is_terminal_manifest_spatial_parameter_terminal(manifest)) {
+	} else if (ia_css_is_terminal_manifest_spatial_parameter_terminal(manifest)) {
 		ia_css_spatial_param_terminal_manifest_t *spatial_param_term =
 			(ia_css_spatial_param_terminal_manifest_t *)manifest;
 		size = ia_css_spatial_param_terminal_get_descriptor_size(
@@ -134,10 +135,10 @@ ia_css_terminal_t *ia_css_terminal_create(
 	const ia_css_terminal_param_t			*terminal_param,
 	ia_css_kernel_bitmap_t				enable_bitmap)
 {
-	char 				*terminal_raw_ptr;
+	char				*terminal_raw_ptr;
 	ia_css_terminal_t	*terminal = NULL;
 	uint16_t			fragment_count;
-	int 			i, j;
+	int			i, j;
 	int retval = -1;
 	ia_css_program_group_param_t *param;
 
@@ -176,7 +177,7 @@ ia_css_terminal_t *ia_css_terminal_create(
 		dterminal->fragment_descriptor_offset = (uint16_t) (terminal_raw_ptr - (char *)terminal);
 
 		dterminal->kernel_id = 0;
-		while(!ia_css_is_kernel_bitmap_empty(intersection)) {
+		while (!ia_css_is_kernel_bitmap_empty(intersection)) {
 			intersection = ia_css_kernel_bitmap_shift(intersection);
 			dterminal->kernel_id++;
 		}
@@ -195,6 +196,7 @@ ia_css_terminal_t *ia_css_terminal_create(
 		/* TODO: where to get the fragment description params from??? */
 		if (fragment_count > 0) {
 			ia_css_fragment_descriptor_t *fragment_descriptor = (ia_css_fragment_descriptor_t *) terminal_raw_ptr;
+
 			fragment_descriptor->index[IA_CSS_COL_DIMENSION] = terminal_param->index[IA_CSS_COL_DIMENSION];
 			fragment_descriptor->index[IA_CSS_ROW_DIMENSION] = terminal_param->index[IA_CSS_ROW_DIMENSION];
 			fragment_descriptor->offset[0] = terminal_param->offset;
@@ -227,7 +229,7 @@ ia_css_terminal_t *ia_css_terminal_create(
 		ia_css_terminal_manifest_get_type(manifest) == IA_CSS_TERMINAL_TYPE_PROGRAM) { /* for program terminal */
 		ia_css_program_terminal_t *prog_terminal = (ia_css_program_terminal_t *)terminal;
 		const ia_css_program_terminal_manifest_t *prog_terminal_man = (const ia_css_program_terminal_manifest_t *)manifest;
-		ia_css_kernel_fragment_sequencer_info_desc_t* sequencer_info_desc_base = NULL;
+		ia_css_kernel_fragment_sequencer_info_desc_t *sequencer_info_desc_base = NULL;
 		uint16_t section_count = prog_terminal_man->fragment_param_manifest_section_desc_count;
 		uint16_t manifest_info_count = prog_terminal_man->kernel_fragment_sequencer_info_manifest_info_count;
 		uint16_t nof_command_objs = 0; /* information needs to come from user or manifest once the size sizeof function is updated. */
@@ -293,10 +295,10 @@ ia_css_terminal_t *ia_css_terminal_create(
 
 	retval = 0;
 EXIT:
-	if(NULL == manifest) {
+	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_terminal_create invalid argument\n");
 	}
-	if (retval!= 0) {
+	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR, "ia_css_terminal_create failed (%i)\n", retval);
 		terminal = ia_css_terminal_destroy(terminal);
 	}
@@ -306,7 +308,7 @@ EXIT:
 ia_css_terminal_t *ia_css_terminal_destroy(
 	ia_css_terminal_t						*terminal)
 {
-	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "ia_css_terminal_destroy(terminal %p): enter: \n", terminal);
+	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "ia_css_terminal_destroy(terminal %p): enter:\n", terminal);
 	return terminal;
 }
 #endif
@@ -322,7 +324,7 @@ int ia_css_terminal_print(
 
 	NOT_USED(fid);
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_terminal_print(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_terminal_print(): enter:\n");
 
 	verifexit(terminal != NULL, EINVAL);
 
@@ -336,6 +338,7 @@ int ia_css_terminal_print(
 
 	if (is_data) {
 		ia_css_data_terminal_t *dterminal = (ia_css_data_terminal_t *)terminal;
+
 		fragment_count = ia_css_data_terminal_get_fragment_count(dterminal);
 		verifexit(fragment_count != 0, EINVAL);
 		retval = ia_css_frame_descriptor_print(ia_css_data_terminal_get_frame_descriptor(dterminal), fid);
@@ -352,10 +355,10 @@ int ia_css_terminal_print(
 
 	retval = 0;
 EXIT:
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_terminal_print invalid argument terminal\n");
 	}
-	if (retval!= 0) {
+	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR, "ia_css_terminal_print failed (%i)\n", retval);
 	}
 	return retval;
@@ -367,7 +370,7 @@ bool ia_css_is_terminal_input(
 	bool is_input = false;
 	ia_css_terminal_type_t	terminal_type;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_input(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_input(): enter:\n");
 
 	verifexit(terminal != NULL, EINVAL);
 
@@ -390,7 +393,7 @@ bool ia_css_is_terminal_input(
 	}
 
 EXIT:
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_is_terminal_input invalid argument\n");
 	}
 	return is_input;
@@ -401,7 +404,7 @@ size_t ia_css_terminal_get_size(
 {
 	size_t	size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_size(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_size(): enter:\n");
 
 	if (terminal != NULL) {
 		size = terminal->size;
@@ -416,7 +419,7 @@ ia_css_terminal_type_t ia_css_terminal_get_type(
 {
 	ia_css_terminal_type_t	terminal_type = IA_CSS_N_TERMINAL_TYPES;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_type(): enter:\n");
 
 	if (terminal != NULL) {
 		terminal_type = terminal->terminal_type;
@@ -432,17 +435,17 @@ int ia_css_terminal_set_type(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_set_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_set_type(): enter:\n");
 
 	verifexit(terminal != NULL, EINVAL);
 	terminal->terminal_type = terminal_type;
 
 	retval = 0;
 EXIT:
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_terminal_set_type invalid argument terminal\n");
 	}
-	if (retval!= 0) {
+	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR, "ia_css_terminal_set_type failed (%i)\n", retval);
 	}
 	return retval;
@@ -454,7 +457,7 @@ uint16_t ia_css_terminal_get_terminal_manifest_index(
 	uint16_t	terminal_manifest_index;
 
 	terminal_manifest_index = 0xffff;
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_terminal_manifest_index(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_terminal_manifest_index(): enter:\n");
 
 	if (terminal != NULL) {
 		terminal_manifest_index = terminal->tm_index;
@@ -470,17 +473,17 @@ int ia_css_terminal_set_terminal_manifest_index(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_set_terminal_manifest_index(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_set_terminal_manifest_index(): enter:\n");
 
 	verifexit(terminal != NULL, EINVAL);
 	terminal->tm_index = terminal_manifest_index;
 
 	retval = 0;
 EXIT:
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_terminal_set_terminal_manifest_index invalid argument terminal\n");
 	}
-	if (retval!= 0) {
+	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR, "ia_css_terminal_set_terminal_manifest_index failed (%i)\n", retval);
 	}
 	return retval;
@@ -490,9 +493,9 @@ ia_css_terminal_ID_t ia_css_terminal_get_ID(
 	const ia_css_terminal_t			*terminal)
 {
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_ID(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_ID(): enter:\n");
 
-	if(terminal != NULL) {
+	if (terminal != NULL) {
 		return terminal->ID;
 	} else {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR, "ia_css_terminal_get_ID invalid argument\n");
@@ -504,9 +507,9 @@ ia_css_terminal_ID_t ia_css_terminal_get_ID(
 uint8_t ia_css_data_terminal_get_kernel_id(
 	const ia_css_data_terminal_t			*dterminal)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_kernel_id(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_kernel_id(): enter:\n");
 
-	if(dterminal != NULL) {
+	if (dterminal != NULL) {
 		return dterminal->kernel_id;
 	} else {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR, "ia_css_data_terminal_get_kernel_id invalid argument\n");
@@ -519,13 +522,13 @@ ia_css_connection_type_t ia_css_data_terminal_get_connection_type(
 {
 	ia_css_connection_type_t	connection_type = IA_CSS_N_CONNECTION_TYPES;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_connection_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_connection_type(): enter:\n");
 
 	verifexit(dterminal != NULL, EINVAL);
 	connection_type = dterminal->connection_type;
 
 EXIT:
-	if(NULL == dterminal) {
+	if (NULL == dterminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_data_terminal_get_connection_type invalid argument\n");
 	}
 	return connection_type;
@@ -537,17 +540,17 @@ int ia_css_data_terminal_set_connection_type(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_set_connection_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_set_connection_type(): enter:\n");
 
 	verifexit(dterminal != NULL, EINVAL);
 	dterminal->connection_type = connection_type;
 
 	retval = 0;
 EXIT:
-	if(NULL == dterminal) {
+	if (NULL == dterminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_data_terminal_set_connection_type invalid argument dterminal\n");
 	}
-	if (retval!= 0) {
+	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR, "ia_css_data_terminal_set_connection_type failed (%i)\n", retval);
 	}
 	return retval;
@@ -558,14 +561,14 @@ ia_css_process_group_t *ia_css_terminal_get_parent(
 {
 	ia_css_process_group_t	*parent = NULL;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_parent(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_parent(): enter:\n");
 
 	verifexit(terminal != NULL, EINVAL);
 
 	parent = (ia_css_process_group_t *) ((char *)terminal + terminal->parent_offset);
 
 EXIT:
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_terminal_get_parent invalid argument\n");
 	}
 	return parent;
@@ -577,7 +580,7 @@ int ia_css_terminal_set_parent(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_set_parent(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_set_parent(): enter:\n");
 
 	verifexit(terminal != NULL, EINVAL);
 	verifexit(parent != NULL, EINVAL);
@@ -586,10 +589,10 @@ int ia_css_terminal_set_parent(
 
 	retval = 0;
 EXIT:
-	if(NULL == terminal || NULL == parent) {
+	if (NULL == terminal || NULL == parent) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_terminal_set_parent invalid argument\n");
 	}
-	if (retval!= 0) {
+	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR, "ia_css_terminal_set_parent failed (%i)\n", retval);
 	}
 	return retval;
@@ -600,13 +603,13 @@ ia_css_frame_t *ia_css_data_terminal_get_frame(
 {
 	ia_css_frame_t	*frame = NULL;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_frame(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_frame(): enter:\n");
 
 	verifexit(dterminal != NULL, EINVAL);
 
 	frame = (ia_css_frame_t	*)(&(dterminal->frame));
 EXIT:
-	if(NULL == dterminal) {
+	if (NULL == dterminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_data_terminal_get_frame invalid argument\n");
 	}
 	return frame;
@@ -617,13 +620,13 @@ ia_css_frame_descriptor_t *ia_css_data_terminal_get_frame_descriptor(
 {
 	ia_css_frame_descriptor_t	*frame_descriptor = NULL;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_frame_descriptor(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_frame_descriptor(): enter:\n");
 
 	verifexit(dterminal != NULL, EINVAL);
 
 	frame_descriptor = (ia_css_frame_descriptor_t *)(&(dterminal->frame_descriptor));
 EXIT:
-	if(NULL == dterminal) {
+	if (NULL == dterminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_data_terminal_get_frame_descriptor invalid argument\n");
 	}
 	return frame_descriptor;
@@ -636,7 +639,7 @@ ia_css_fragment_descriptor_t *ia_css_data_terminal_get_fragment_descriptor(
 	ia_css_fragment_descriptor_t	*fragment_descriptor = NULL;
 	uint16_t			fragment_count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_frame_descriptor(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_frame_descriptor(): enter:\n");
 
 	fragment_count = ia_css_data_terminal_get_fragment_count(dterminal);
 
@@ -651,7 +654,7 @@ ia_css_fragment_descriptor_t *ia_css_data_terminal_get_fragment_descriptor(
 
 	fragment_descriptor += fragment_index;
 EXIT:
-	if(NULL == dterminal) {
+	if (NULL == dterminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_data_terminal_get_frame_descriptor invalid argument\n");
 	}
 	return fragment_descriptor;
@@ -663,7 +666,7 @@ uint16_t ia_css_data_terminal_get_fragment_count(
 	ia_css_process_group_t			*parent;
 	uint16_t				fragment_count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_frame_descriptor(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_get_frame_descriptor(): enter:\n");
 
 	parent = ia_css_terminal_get_parent((ia_css_terminal_t *)dterminal);
 
@@ -673,7 +676,7 @@ uint16_t ia_css_data_terminal_get_fragment_count(
 
 	fragment_count = ia_css_process_group_get_fragment_count(parent);
 EXIT:
-	if(NULL == dterminal) {
+	if (NULL == dterminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_data_terminal_get_fragment_count invalid argument\n");
 	}
 	return fragment_count;
@@ -684,12 +687,12 @@ bool ia_css_is_terminal_parameter_terminal(
 {
 	ia_css_terminal_type_t	terminal_type;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_parameter_terminal(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_parameter_terminal(): enter:\n");
 
 	/* will return an error value on error */
 	terminal_type = ia_css_terminal_get_type(terminal);
 
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_is_terminal_parameter_terminal invalid argument\n");
 	}
 	return (terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN ||
@@ -701,12 +704,12 @@ bool ia_css_is_terminal_data_terminal(
 {
 	ia_css_terminal_type_t	terminal_type;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_data_terminal(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_data_terminal(): enter:\n");
 
 	/* will return an error value on error */
 	terminal_type = ia_css_terminal_get_type(terminal);
 
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_is_terminal_data_terminal invalid argument\n");
 	}
 	return (terminal_type == IA_CSS_TERMINAL_TYPE_DATA_IN ||
@@ -718,12 +721,12 @@ bool ia_css_is_terminal_program_terminal(
 {
 	ia_css_terminal_type_t	terminal_type;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_program_terminal(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_program_terminal(): enter:\n");
 
 	/* will return an error value on error */
 	terminal_type = ia_css_terminal_get_type(terminal);
 
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_is_terminal_program_terminal invalid argument\n");
 	}
 	return (terminal_type == IA_CSS_TERMINAL_TYPE_PROGRAM);
@@ -734,12 +737,12 @@ bool ia_css_is_terminal_spatial_parameter_terminal(
 {
 	ia_css_terminal_type_t	terminal_type;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_spatial_param_terminal(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_terminal_spatial_param_terminal(): enter:\n");
 
 	/* will return an error value on error */
 	terminal_type = ia_css_terminal_get_type(terminal);
 
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_is_terminal_spatial_param_terminal invalid argument\n");
 	}
 	return (terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN ||
@@ -760,12 +763,12 @@ uint16_t ia_css_param_terminal_compute_section_count(
 
 	NOT_USED(param);
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_param_terminal_compute_section_count(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_param_terminal_compute_section_count(): enter:\n");
 
 	verifexit(manifest != NULL, EINVAL);
 	section_count = ((const ia_css_param_terminal_manifest_t *)manifest)->param_manifest_section_desc_count;
 EXIT:
-	if(NULL == manifest || NULL == param) {
+	if (NULL == manifest || NULL == param) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_param_terminal_compute_section_count invalid argument\n");
 	}
 	return section_count;
@@ -782,9 +785,9 @@ uint8_t ia_css_data_terminal_compute_plane_count(
 	verifexit(param != NULL, EINVAL);
 	/* TODO: Implementation Missing*/
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_compute_plane_count(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_data_terminal_compute_plane_count(): enter:\n");
 EXIT:
-	if(NULL == manifest || NULL == param) {
+	if (NULL == manifest || NULL == param) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_data_terminal_compute_plane_count invalid argument\n");
 	}
 	return plane_count;
@@ -795,24 +798,28 @@ vied_vaddress_t  ia_css_terminal_get_buffer(
 {
 	vied_vaddress_t buffer = VIED_NULL;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_buffer(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_get_buffer(): enter:\n");
 
 	if (ia_css_is_terminal_data_terminal(terminal)) {
 		ia_css_frame_t			*frame = ia_css_data_terminal_get_frame((ia_css_data_terminal_t *)terminal);
+
 		verifexit(frame != NULL, EINVAL);
 		buffer = ia_css_frame_get_buffer(frame);
 	} else if (ia_css_is_terminal_parameter_terminal(terminal)) {
 		const ia_css_param_terminal_t *param_terminal = (const ia_css_param_terminal_t *)terminal;
+
 		buffer = param_terminal->param_payload.buffer;
 	}  else if (ia_css_is_terminal_program_terminal(terminal)) {
 		const ia_css_program_terminal_t *program_terminal = (const ia_css_program_terminal_t *)terminal;
+
 		buffer = program_terminal->param_payload.buffer;
 	} else if (ia_css_is_terminal_spatial_parameter_terminal(terminal)) {
 		const ia_css_spatial_param_terminal_t *spatial_terminal = (const ia_css_spatial_param_terminal_t *)terminal;
+
 		buffer = spatial_terminal->param_payload.buffer;
 	}
 EXIT:
-	if(NULL == terminal) {
+	if (NULL == terminal) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_terminal_get_buffer invalid argument terminal\n");
 	}
 	return buffer;
@@ -823,25 +830,29 @@ int ia_css_terminal_set_buffer(ia_css_terminal_t *terminal,
 {
 	int retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_set_buffer(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_terminal_set_buffer(): enter:\n");
 
 	if (ia_css_is_terminal_data_terminal(terminal) == true) {
 		/* Currently using Frames inside data terminal , TODO: start directly using data.*/
 		ia_css_data_terminal_t *dterminal = (ia_css_data_terminal_t *)terminal;
 		ia_css_frame_t *frame = ia_css_data_terminal_get_frame(dterminal);
+
 		verifexit(frame != NULL, EINVAL);
 		retval = ia_css_frame_set_buffer(frame, buffer);
 		verifexit(retval == 0, EINVAL);
 	} else if (ia_css_is_terminal_parameter_terminal(terminal) == true) {
 		ia_css_param_terminal_t *pterminal = (ia_css_param_terminal_t *)terminal;
+
 		pterminal->param_payload.buffer = buffer;
 		retval = 0;
 	} else if (ia_css_is_terminal_program_terminal(terminal) == true) {
 		ia_css_program_terminal_t *pterminal = (ia_css_program_terminal_t *)terminal;
+
 		pterminal->param_payload.buffer = buffer;
 		retval = 0;
 	} else if (ia_css_is_terminal_spatial_parameter_terminal(terminal) == true) {
 		ia_css_spatial_param_terminal_t *pterminal = (ia_css_spatial_param_terminal_t *)terminal;
+
 		pterminal->param_payload.buffer = buffer;
 		retval = 0;
 	} else {
@@ -850,7 +861,7 @@ int ia_css_terminal_set_buffer(ia_css_terminal_t *terminal,
 
 	retval = 0;
 EXIT:
-	if (retval!= 0) {
+	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR, "ia_css_terminal_set_buffer failed (%i)\n", retval);
 	}
 	return retval;

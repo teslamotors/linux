@@ -38,7 +38,7 @@
 struct ia_css_terminal_param_s {
 	uint32_t							size;										/**< Size of this structure */
 	ia_css_frame_format_type_t			frame_format_type;							/**< Indicates if this is a generic type or inbuild with variable size descriptor */
-	int32_t 		parent_offset; /**< offset to add to reach parent. This is negative value.*/
+	int32_t		parent_offset; /**< offset to add to reach parent. This is negative value.*/
 	uint16_t							dimensions[IA_CSS_N_DATA_DIMENSION];		/**< Logical dimensions */
 	uint16_t							index[IA_CSS_N_DATA_DIMENSION]; /**< Mapping to the index field of the terminal descriptor */
 	uint16_t							fragment_dimensions[IA_CSS_N_DATA_DIMENSION];		/**< Logical fragment dimension, TODO: fragment dimensions can be different per fragment */

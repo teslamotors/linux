@@ -49,7 +49,7 @@ struct ia_css_program_group_param_s {
 struct ia_css_program_param_s {
 	ia_css_kernel_bitmap_t				kernel_enable_bitmap;						/**< What to use this one for ? */
 	uint32_t							size;										/**< Size of this structure */
-	int32_t 		parent_offset; /**< offset to add to reach parent. This is negative value.*/
+	int32_t		parent_offset; /**< offset to add to reach parent. This is negative value.*/
 };
 
 #define SIZE_OF_TERMINAL_PARAM_STRUCT_IN_BITS \

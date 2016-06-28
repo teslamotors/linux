@@ -40,6 +40,7 @@ ia_css_xmem_to_cmem_copy(
 
 	while (dst != end) {
 		uint32_t data;
+
 		data = ia_css_xmem_load_32(mmid, src);
 		ia_css_cmem_store_32(ssid, dst, data);
 		dst += 4;
@@ -66,6 +67,7 @@ ia_css_cmem_to_xmem_copy(
 
 	while (dst != end) {
 		uint32_t data;
+
 		data = ia_css_cmem_load_32(mmid, src);
 		ia_css_xmem_store_32(ssid, dst, data);
 		dst += 4;

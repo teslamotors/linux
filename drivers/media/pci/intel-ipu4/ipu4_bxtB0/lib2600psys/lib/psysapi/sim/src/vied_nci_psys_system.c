@@ -26,7 +26,7 @@ vied_nci_resource_bitmap_t vied_nci_bit_mask(
 {
 	vied_nci_resource_bitmap_t	bit_mask = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bit_mask(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bit_mask(): enter:\n");
 
 	if (index < VIED_NCI_RESOURCE_BITMAP_BITS) {
 		bit_mask = (vied_nci_resource_bitmap_t)1 << index;
@@ -39,7 +39,7 @@ vied_nci_resource_bitmap_t vied_nci_bitmap_set(
 	const vied_nci_resource_bitmap_t		bit_mask)
 {
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_set(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_set(): enter:\n");
 
 /*
 	assert(vied_nci_is_bitmap_one_hot(bit_mask));
@@ -52,7 +52,7 @@ vied_nci_resource_bitmap_t vied_nci_bitmap_clear(
 	const vied_nci_resource_bitmap_t		bit_mask)
 {
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_clear(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_clear(): enter:\n");
 
 /*
 	assert(vied_nci_is_bitmap_one_hot(bit_mask));
@@ -66,7 +66,7 @@ vied_nci_resource_bitmap_t vied_nci_bitmap_set_unique(
 {
 	vied_nci_resource_bitmap_t	ret = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_set_unique(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_set_unique(): enter:\n");
 
 	if ((bitmap & bit_mask) == 0) {
 		ret = bitmap | bit_mask;
@@ -81,7 +81,7 @@ vied_nci_resource_bitmap_t vied_nci_bit_mask_set_unique(
 	vied_nci_resource_bitmap_t	ret = 0;
 	vied_nci_resource_bitmap_t	bit_mask;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bit_mask_set_unique(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bit_mask_set_unique(): enter:\n");
 
 	bit_mask = vied_nci_bit_mask(index);
 
@@ -95,7 +95,7 @@ bool vied_nci_is_bitmap_empty(
 	const vied_nci_resource_bitmap_t		bitmap)
 {
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_bitmap_empty(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_bitmap_empty(): enter:\n");
 
 	return (bitmap == 0);
 }
@@ -105,7 +105,7 @@ bool vied_nci_is_bitmap_set(
 	const vied_nci_resource_bitmap_t		bit_mask)
 {
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_bitmap_set(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_bitmap_set(): enter:\n");
 
 /*
 	assert(vied_nci_is_bitmap_one_hot(bit_mask));
@@ -118,7 +118,7 @@ bool vied_nci_is_bitmap_clear(
 	const vied_nci_resource_bitmap_t		bit_mask)
 {
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_bitmap_clear(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_bitmap_clear(): enter:\n");
 
 /*
 	assert(vied_nci_is_bitmap_one_hot(bit_mask));
@@ -133,7 +133,7 @@ int vied_nci_bitmap_compute_weight(
 	int	weight = 0;
 	int	i;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_compute_weight(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_compute_weight(): enter:\n");
 
 	/* Do not need the iterator "i" */
 	for (i = 0; (i < VIED_NCI_RESOURCE_BITMAP_BITS) && (loc_bitmap != 0); i++) {
@@ -145,27 +145,27 @@ int vied_nci_bitmap_compute_weight(
 }
 
 vied_nci_resource_bitmap_t vied_nci_bitmap_union(
-        const vied_nci_resource_bitmap_t	bitmap0,
-        const vied_nci_resource_bitmap_t	bitmap1)
+	const vied_nci_resource_bitmap_t	bitmap0,
+	const vied_nci_resource_bitmap_t	bitmap1)
 {
-        IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_union(): enter: \n");
-        return (bitmap0 | bitmap1);
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_union(): enter:\n");
+	return (bitmap0 | bitmap1);
 }
 
 vied_nci_resource_bitmap_t vied_nci_bitmap_intersection(
-        const vied_nci_resource_bitmap_t		bitmap0,
-        const vied_nci_resource_bitmap_t		bitmap1)
+	const vied_nci_resource_bitmap_t		bitmap0,
+	const vied_nci_resource_bitmap_t		bitmap1)
 {
-        IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_kernel_bitmap_intersection(): enter: \n");
-        return (bitmap0 & bitmap1);
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_kernel_bitmap_intersection(): enter:\n");
+	return (bitmap0 & bitmap1);
 }
 
 vied_nci_resource_bitmap_t vied_nci_bitmap_xor(
-        const vied_nci_resource_bitmap_t		bitmap0,
-        const vied_nci_resource_bitmap_t		bitmap1)
+	const vied_nci_resource_bitmap_t		bitmap0,
+	const vied_nci_resource_bitmap_t		bitmap1)
 {
-        IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_xor(): enter: \n");
-        return (bitmap0 ^ bitmap1);
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bitmap_xor(): enter:\n");
+	return (bitmap0 ^ bitmap1);
 }
 
 vied_nci_resource_bitmap_t vied_nci_cell_bit_mask(
@@ -173,7 +173,7 @@ vied_nci_resource_bitmap_t vied_nci_cell_bit_mask(
 {
 	vied_nci_resource_bitmap_t	bit_mask = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_bit_mask(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_bit_mask(): enter:\n");
 
 	if ((cell_id < VIED_NCI_N_CELL_ID) && (cell_id < VIED_NCI_RESOURCE_BITMAP_BITS)) {
 		bit_mask = (vied_nci_resource_bitmap_t)1 << cell_id;
@@ -186,7 +186,7 @@ vied_nci_resource_bitmap_t vied_nci_barrier_bit_mask(
 {
 	vied_nci_resource_bitmap_t	bit_mask = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_barrier_bit_mask(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_barrier_bit_mask(): enter:\n");
 
 	if ((barrier_id < VIED_NCI_N_BARRIER_ID) && ((barrier_id + VIED_NCI_N_CELL_ID) < VIED_NCI_RESOURCE_BITMAP_BITS)) {
 		bit_mask = (vied_nci_resource_bitmap_t)1 << (barrier_id + VIED_NCI_N_CELL_ID);
@@ -199,7 +199,7 @@ vied_nci_cell_type_ID_t vied_nci_cell_get_type(
 {
 	vied_nci_cell_type_ID_t	cell_type = VIED_NCI_N_CELL_TYPE_ID;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_get_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_get_type(): enter:\n");
 
 	if (cell_id < VIED_NCI_N_CELL_ID) {
 		cell_type = vied_nci_cell_type[cell_id];
@@ -215,7 +215,7 @@ vied_nci_mem_type_ID_t vied_nci_mem_get_type(
 {
 	vied_nci_mem_type_ID_t	mem_type = VIED_NCI_N_MEM_TYPE_ID;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_mem_get_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_mem_get_type(): enter:\n");
 
 	if (mem_id < VIED_NCI_N_MEM_ID) {
 		mem_type = vied_nci_mem_type[mem_id];
@@ -231,7 +231,7 @@ uint16_t vied_nci_mem_get_size(
 {
 	uint16_t	mem_size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_mem_get_size(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_mem_get_size(): enter:\n");
 
 	if (mem_id < VIED_NCI_N_MEM_ID) {
 		mem_size = vied_nci_mem_size[mem_id];
@@ -247,7 +247,7 @@ uint16_t vied_nci_dev_chn_get_size(
 {
 	uint16_t	dev_chn_size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_dev_chn_get_size(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_dev_chn_get_size(): enter:\n");
 
 	if (dev_chn_id < VIED_NCI_N_DEV_CHN_ID) {
 		dev_chn_size = vied_nci_dev_chn_size[dev_chn_id];
@@ -262,7 +262,7 @@ bool vied_nci_is_cell_of_type(
 	const vied_nci_cell_ID_t		cell_id,
 	const vied_nci_cell_type_ID_t	cell_type_id)
 {
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_cell_of_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_cell_of_type(): enter:\n");
 
 	return ((vied_nci_cell_get_type(cell_id) == cell_type_id) && (cell_type_id != VIED_NCI_N_CELL_TYPE_ID));
 }
@@ -271,7 +271,7 @@ bool vied_nci_is_mem_of_type(
 	const vied_nci_mem_ID_t			mem_id,
 	const vied_nci_mem_type_ID_t	mem_type_id)
 {
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_mem_of_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_mem_of_type(): enter:\n");
 
 	return ((vied_nci_mem_get_type(mem_id) == mem_type_id) && (mem_type_id != VIED_NCI_N_MEM_TYPE_ID));
 }
@@ -281,7 +281,7 @@ bool vied_nci_is_cell_mem_of_type(
 	const uint16_t					mem_index,
 	const vied_nci_mem_type_ID_t	mem_type_id)
 {
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_cell_mem_of_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_is_cell_mem_of_type(): enter:\n");
 
 	return ((vied_nci_cell_get_mem_type(cell_id, mem_index) == mem_type_id) && (mem_type_id != VIED_NCI_N_MEM_TYPE_ID));
 }
@@ -292,7 +292,7 @@ bool vied_nci_has_cell_mem_of_id(
 {
 	uint16_t		mem_index;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_has_cell_mem_of_id(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_has_cell_mem_of_id(): enter:\n");
 
 	for (mem_index = 0; mem_index < VIED_NCI_N_MEM_TYPE_ID; mem_index++) {
 		if ((vied_nci_cell_get_mem(cell_id, mem_index) == mem_id) && (mem_id != VIED_NCI_N_MEM_ID)) {
@@ -309,7 +309,7 @@ uint16_t vied_nci_cell_get_mem_count(
 	uint16_t	mem_count = 0;
 	vied_nci_cell_type_ID_t	cell_type;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_get_mem_count(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_get_mem_count(): enter:\n");
 
 	cell_type = vied_nci_cell_get_type(cell_id);
 
@@ -326,7 +326,7 @@ vied_nci_mem_type_ID_t vied_nci_cell_get_mem_type(
 {
 	vied_nci_mem_type_ID_t	mem_type = VIED_NCI_N_MEM_TYPE_ID;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_get_mem_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_get_mem_type(): enter:\n");
 
 	if ((cell_id < VIED_NCI_N_CELL_ID) && (mem_index < VIED_NCI_N_MEM_TYPE_ID)) {
 		mem_type = vied_nci_cell_mem_type[vied_nci_cell_get_type(cell_id)][mem_index];
@@ -341,7 +341,7 @@ vied_nci_mem_ID_t vied_nci_cell_get_mem(
 {
 	vied_nci_mem_ID_t	mem_id = VIED_NCI_N_MEM_ID;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_get_mem(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_get_mem(): enter:\n");
 
 	if ((cell_id < VIED_NCI_N_CELL_ID) && (mem_index < VIED_NCI_N_MEM_TYPE_ID)) {
 		mem_id = vied_nci_cell_mem[cell_id][mem_index];
@@ -356,7 +356,7 @@ vied_nci_mem_type_ID_t vied_nci_cell_type_get_mem_type(
 {
 	vied_nci_mem_type_ID_t	mem_type = VIED_NCI_N_MEM_TYPE_ID;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_type_get_mem_type(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_cell_type_get_mem_type(): enter:\n");
 
 	if ((cell_type_id < VIED_NCI_N_CELL_TYPE_ID) && (mem_index < VIED_NCI_N_MEM_TYPE_ID)) {
 		mem_type = vied_nci_cell_mem_type[cell_type_id][mem_index];

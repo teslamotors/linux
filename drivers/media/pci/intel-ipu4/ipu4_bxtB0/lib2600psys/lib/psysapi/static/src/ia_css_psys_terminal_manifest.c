@@ -208,9 +208,9 @@ ia_css_program_group_manifest_t *ia_css_terminal_manifest_get_parent(
 
 	verifexit(manifest != NULL, EINVAL);
 
-	base = (char*)((char*)manifest + manifest->parent_offset);
+	base = (char *)((char *)manifest + manifest->parent_offset);
 
-	parent = (ia_css_program_group_manifest_t * )(base);
+	parent = (ia_css_program_group_manifest_t *)(base);
 EXIT:
 	return parent;
 }
@@ -370,6 +370,7 @@ int ia_css_data_terminal_manifest_set_kernel_bitmap_unique(
 
 	if (manifest != NULL) {
 		ia_css_kernel_bitmap_t	kernel_bitmap = ia_css_kernel_bitmap_clear();
+
 		kernel_bitmap = ia_css_kernel_bitmap_set(kernel_bitmap, index);
 		verifexit(kernel_bitmap != 0, EINVAL);
 		verifexit(ia_css_data_terminal_manifest_set_kernel_bitmap(manifest, kernel_bitmap) == 0, EINVAL);
@@ -575,9 +576,9 @@ int ia_css_terminal_manifest_print(
 	verifexit(manifest != NULL, EINVAL);
 	NOT_USED(fid);
 
-	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sizeof(manifest) = %d\n",(int)ia_css_terminal_manifest_get_size(manifest));
+	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sizeof(manifest) = %d\n", (int)ia_css_terminal_manifest_get_size(manifest));
 
-	PRINT("typeof(manifest) = %s\n",terminal_type_strings[terminal_type]);
+	PRINT("typeof(manifest) = %s\n", terminal_type_strings[terminal_type]);
 
 	if (terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN ||
 		terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT) {
@@ -585,15 +586,15 @@ int ia_css_terminal_manifest_print(
 		uint16_t				section_count = pterminal_manifest->param_manifest_section_desc_count;
 		int	i;
 
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sections(manifest) = %d\n",(int)section_count);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sections(manifest) = %d\n", (int)section_count);
 		for (i = 0; i < section_count; i++) {
 			const ia_css_param_manifest_section_desc_t *manifest =
 				ia_css_param_terminal_manifest_get_param_manifest_section_desc(pterminal_manifest, i);
 			verifjmpexit(manifest != NULL);
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "kernel_id = %d\n",(int)manifest->kernel_id);
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "mem_type_id = %d\n",(int)manifest->mem_type_id);
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "max_mem_size = %d\n",(int)manifest->max_mem_size);
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "region_id = %d\n",(int)manifest->region_id);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "kernel_id = %d\n", (int)manifest->kernel_id);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "mem_type_id = %d\n", (int)manifest->mem_type_id);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "max_mem_size = %d\n", (int)manifest->max_mem_size);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "region_id = %d\n", (int)manifest->region_id);
 		}
 	} else if (terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_SLICED_IN ||
 		   terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT) {
@@ -607,17 +608,18 @@ int ia_css_terminal_manifest_print(
 
 		NOT_USED(kernel_id);
 
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "kernel_id = %d\n",(int)kernel_id);
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "section_count = %d\n",(int)section_count);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "kernel_id = %d\n", (int)kernel_id);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "section_count = %d\n", (int)section_count);
 
 		for (section_idx = 0; section_idx < section_count; section_idx++) {
-			ia_css_sliced_param_manifest_section_desc_t* sliced_param_manifest_section_desc;
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "section %d\n",(int)section_idx);
+			ia_css_sliced_param_manifest_section_desc_t *sliced_param_manifest_section_desc;
+
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "section %d\n", (int)section_idx);
 			sliced_param_manifest_section_desc = ia_css_sliced_param_terminal_manifest_get_sliced_param_manifest_section_desc(sliced_terminal_manifest, section_idx);
 			verifjmpexit(sliced_param_manifest_section_desc != NULL);
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "mem_type_id = %d\n",(int)sliced_param_manifest_section_desc->mem_type_id);
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "region_id = %d\n",(int)sliced_param_manifest_section_desc->region_id);
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "max_mem_size = %d\n",(int)sliced_param_manifest_section_desc->max_mem_size);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "mem_type_id = %d\n", (int)sliced_param_manifest_section_desc->mem_type_id);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "region_id = %d\n", (int)sliced_param_manifest_section_desc->region_id);
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "max_mem_size = %d\n", (int)sliced_param_manifest_section_desc->max_mem_size);
 		}
 	} else if (terminal_type == IA_CSS_TERMINAL_TYPE_PROGRAM) {
 		ia_css_program_terminal_manifest_t *program_terminal_manifest = (ia_css_program_terminal_manifest_t *)manifest;
@@ -633,13 +635,14 @@ int ia_css_terminal_manifest_print(
 		NOT_USED(sequencer_info_kernel_id);
 		NOT_USED(max_kernel_fragment_sequencer_command_desc);
 
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sequencer_info_kernel_id = %d\n",(int)sequencer_info_kernel_id);
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "max_kernel_fragment_sequencer_command_desc = %d\n",(int)max_kernel_fragment_sequencer_command_desc);
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "kernel_fragment_sequencer_info_manifest_info_count = %d\n",(int)kernel_fragment_sequencer_info_manifest_info_count);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sequencer_info_kernel_id = %d\n", (int)sequencer_info_kernel_id);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "max_kernel_fragment_sequencer_command_desc = %d\n", (int)max_kernel_fragment_sequencer_command_desc);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "kernel_fragment_sequencer_info_manifest_info_count = %d\n", (int)kernel_fragment_sequencer_info_manifest_info_count);
 
 		for (seq_info_idx = 0; seq_info_idx < kernel_fragment_sequencer_info_manifest_info_count; seq_info_idx++) {
-			ia_css_kernel_fragment_sequencer_info_manifest_desc_t* sequencer_info_manifest_desc;
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sequencer info %d\n",(int)seq_info_idx);
+			ia_css_kernel_fragment_sequencer_info_manifest_desc_t *sequencer_info_manifest_desc;
+
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sequencer info %d\n", (int)seq_info_idx);
 			sequencer_info_manifest_desc = ia_css_program_terminal_manifest_get_kernel_fragment_sequencer_info_manifest_section_desc(program_terminal_manifest, seq_info_idx);
 			verifjmpexit(sequencer_info_manifest_desc != NULL);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO, "min_fragment_grid_slice_dimension[] = {%d, %d}\n",
@@ -680,9 +683,9 @@ int ia_css_terminal_manifest_print(
 		NOT_USED(dterminal_manifest);
 
 		verifexit(ia_css_kernel_bitmap_print(ia_css_data_terminal_manifest_get_kernel_bitmap(dterminal_manifest), fid) == 0, EINVAL);
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "formats(manifest) = %04x\n",(int)ia_css_data_terminal_manifest_get_frame_format_bitmap(dterminal_manifest));
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "connection(manifest) = %04x\n",(int)ia_css_data_terminal_manifest_get_connection_bitmap(dterminal_manifest));
-		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "dependent(manifest) = %d\n",(int)dterminal_manifest->terminal_dependency);
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "formats(manifest) = %04x\n", (int)ia_css_data_terminal_manifest_get_frame_format_bitmap(dterminal_manifest));
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "connection(manifest) = %04x\n", (int)ia_css_data_terminal_manifest_get_connection_bitmap(dterminal_manifest));
+		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "dependent(manifest) = %d\n", (int)dterminal_manifest->terminal_dependency);
 
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\tmin_size[%d]   = {\n", IA_CSS_N_DATA_DIMENSION);
 		for (i = 0; i < (int)IA_CSS_N_DATA_DIMENSION - 1; i++) {

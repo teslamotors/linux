@@ -220,7 +220,7 @@ extern int ia_css_process_group_set_resource_bitmap(
  */
 extern int ia_css_process_group_get_ipu_vaddress(
 	const ia_css_process_group_t		*process_group,
-	vied_vaddress_t 			*ipu_vaddress);
+	vied_vaddress_t			*ipu_vaddress);
 
 /*! Set IPU virtual address of process group
 
@@ -231,6 +231,6 @@ extern int ia_css_process_group_get_ipu_vaddress(
  */
 extern int ia_css_process_group_set_ipu_vaddress(
 	ia_css_process_group_t			*process_group,
-	vied_vaddress_t 			ipu_vaddress);
+	vied_vaddress_t			ipu_vaddress);
 
 #endif /* __IA_CSS_PSYS_PROCESS_GROUP_H_INCLUDED__ */

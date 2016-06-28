@@ -109,7 +109,7 @@ static const unsigned int ipu_device_isp1_mem_databus_address[IPU_DEVICE_ISP2600
 static const unsigned int ipu_device_isp2_mem_databus_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
 	IPU_DEVICE_INVALID_MEM_ADDRESS, /* no reg addr */
 	0x0C000000,			/* pmem databus addr */
-	0x0C400000			,/* dmem databus addr */
+	0x0C400000,			/* dmem databus addr */
 	0x0D000000,			/* bamem databus addr */
 	0x0C800000			/* vmem databus addr */
 };

@@ -116,14 +116,14 @@ ia_css_syscom_size_intern(
 
 	/* accumulate input queue buffer sizes */
 	size->input_buffer = 0;
-	for (i=0; i<cfg->num_input_queues; i++) {
+	for (i = 0; i < cfg->num_input_queues; i++) {
 		size->input_buffer +=
 			sys_queue_buf_size(cfg->input[i].queue_size, cfg->input[i].token_size);
 	}
 
 	/* accumulate outut queue buffer sizes */
 	size->output_buffer = 0;
-	for (i=0; i<cfg->num_output_queues; i++) {
+	for (i = 0; i < cfg->num_output_queues; i++) {
 		size->output_buffer +=
 			sys_queue_buf_size(cfg->output[i].queue_size, cfg->output[i].token_size);
 	}
@@ -224,7 +224,7 @@ ia_css_syscom_open(
 	struct ia_css_syscom_size size;
 	struct ia_css_syscom_buf buf_intern;
 	struct ia_css_syscom_buf *buf;
-	struct ia_css_syscom_context* ctx;
+	struct ia_css_syscom_context *ctx;
 	struct ia_css_syscom_config_fw fw_cfg;
 	unsigned int i;
 	struct sys_queue_res res;
@@ -260,7 +260,7 @@ ia_css_syscom_open(
 	ctx->cell_regs_addr = cfg->regs_addr;
 	ctx->cell_dmem_addr = cfg->dmem_addr; /* regmem is at cell_dmem_addr + REGMEM_OFFSET */
 
-	ctx->num_input_queues 		= cfg->num_input_queues;
+	ctx->num_input_queues		= cfg->num_input_queues;
 	ctx->num_output_queues		= cfg->num_output_queues;
 
 	ctx->env.mmid = cfg->mmid;
@@ -273,7 +273,7 @@ ia_css_syscom_open(
 	res.reg = SYSCOM_QPR_BASE_REG;
 	res.host_address = ctx->ibuf_host_addr;
 	res.vied_address = ctx->ibuf_vied_addr;
-	for (i=0; i<cfg->num_input_queues; i++) {
+	for (i = 0; i < cfg->num_input_queues; i++) {
 		sys_queue_init(ctx->input_queue + i,
 			cfg->input[i].queue_size, cfg->input[i].token_size, &res);
 	}
@@ -281,7 +281,7 @@ ia_css_syscom_open(
 	/* initialize output queues */
 	res.host_address = ctx->obuf_host_addr;
 	res.vied_address = ctx->obuf_vied_addr;
-	for (i=0; i<cfg->num_output_queues; i++) {
+	for (i = 0; i < cfg->num_output_queues; i++) {
 		sys_queue_init(ctx->output_queue + i,
 			cfg->output[i].queue_size, cfg->output[i].token_size, &res);
 	}
@@ -376,7 +376,7 @@ ia_css_syscom_release(
 }
 
 int ia_css_syscom_send_port_open(
-	struct ia_css_syscom_context* ctx,
+	struct ia_css_syscom_context *ctx,
 	unsigned int port
 )
 {
@@ -399,7 +399,7 @@ int ia_css_syscom_send_port_open(
 }
 
 int ia_css_syscom_send_port_close(
-	struct ia_css_syscom_context* ctx,
+	struct ia_css_syscom_context *ctx,
 	unsigned int port
 )
 {
@@ -411,7 +411,7 @@ int ia_css_syscom_send_port_close(
 }
 
 int ia_css_syscom_send_port_available(
-	struct ia_css_syscom_context* ctx,
+	struct ia_css_syscom_context *ctx,
 	unsigned int port
 )
 {
@@ -425,7 +425,7 @@ int ia_css_syscom_send_port_available(
 int ia_css_syscom_send_port_transfer(
 	struct ia_css_syscom_context *ctx,
 	unsigned int port,
-	const void* token
+	const void *token
 )
 {
 	/* check params */
@@ -436,7 +436,7 @@ int ia_css_syscom_send_port_transfer(
 }
 
 int ia_css_syscom_recv_port_open(
-	struct ia_css_syscom_context* ctx,
+	struct ia_css_syscom_context *ctx,
 	unsigned int port
 )
 {
@@ -459,7 +459,7 @@ int ia_css_syscom_recv_port_open(
 }
 
 int ia_css_syscom_recv_port_close(
-	struct ia_css_syscom_context* ctx,
+	struct ia_css_syscom_context *ctx,
 	unsigned int port
 )
 {
@@ -475,7 +475,7 @@ int ia_css_syscom_recv_port_close(
  */
 int
 ia_css_syscom_recv_port_available(
-	struct ia_css_syscom_context* ctx,
+	struct ia_css_syscom_context *ctx,
 	unsigned int port
 )
 {
@@ -493,9 +493,9 @@ ia_css_syscom_recv_port_available(
  */
 int
 ia_css_syscom_recv_port_transfer(
-	struct ia_css_syscom_context* ctx,
+	struct ia_css_syscom_context *ctx,
 	unsigned int port,
-	void* token
+	void *token
 )
 {
 	/* check params */

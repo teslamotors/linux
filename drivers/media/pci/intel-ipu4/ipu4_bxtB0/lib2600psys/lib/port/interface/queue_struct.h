@@ -15,12 +15,12 @@
 #ifndef __SYS_QUEUE_STRUCT_H__
 #define __SYS_QUEUE_STRUCT_H__
 
-// queue description, shared between sender and receiver
+/* queue description, shared between sender and receiver */
 
 #include "type_support.h"
 
 #ifdef __VIED_CELL
-typedef struct {uint32_t v[2];} host_buffer_address_t;
+typedef struct {uint32_t v[2]; } host_buffer_address_t;
 #else
 typedef uint64_t		host_buffer_address_t;
 #endif

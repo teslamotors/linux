@@ -41,7 +41,7 @@
  * Return:  int type error code (errno.h)
  */
 extern int ia_css_isys_device_open(
-	HANDLE *context,
+	HANDLE * context,
 	const struct ia_css_isys_device_cfg_data *config
 );
 

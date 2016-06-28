@@ -55,7 +55,7 @@ ia_css_cond_cmem_store_32(bool cond, unsigned int ssid, ia_css_cmem_address_t ad
 {
 	/* Address has to be word aligned */
 	assert(0 == address % 4);
-	if(cond)
+	if (cond)
 		vied_subsystem_store_32(ssid, address, data);
 }
 

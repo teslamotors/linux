@@ -149,7 +149,7 @@ extern int
 ia_css_syscom_send_port_transfer(
 	struct ia_css_syscom_context *context,
 	unsigned int port,
-	const void* token
+	const void *token
 );
 
 /**
@@ -160,7 +160,7 @@ ia_css_syscom_send_port_transfer(
  */
 extern int
 ia_css_syscom_recv_port_open(
-	struct ia_css_syscom_context* context,
+	struct ia_css_syscom_context *context,
 	unsigned int port
 );
 
@@ -173,7 +173,7 @@ ia_css_syscom_recv_port_open(
  */
 extern int
 ia_css_syscom_recv_port_close(
-	struct ia_css_syscom_context* context,
+	struct ia_css_syscom_context *context,
 	unsigned int port
 );
 
@@ -186,7 +186,7 @@ ia_css_syscom_recv_port_close(
  */
 extern int
 ia_css_syscom_recv_port_available(
-	struct ia_css_syscom_context* context,
+	struct ia_css_syscom_context *context,
 	unsigned int port
 );
 
@@ -201,9 +201,9 @@ ia_css_syscom_recv_port_available(
  */
 extern int
 ia_css_syscom_recv_port_transfer(
-	struct ia_css_syscom_context* context,
+	struct ia_css_syscom_context *context,
 	unsigned int port,
-	void* token
+	void *token
 );
 
 #endif /* __IA_CSS_SYSCOM_H__*/

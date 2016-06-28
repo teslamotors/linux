@@ -131,7 +131,7 @@ struct ia_css_param_frame_s {
 #define	N_PADDING_UINT8_IN_FRAME_DESC_STRUCT	3
 
 #define	IA_CSS_FRAME_DESCRIPTOR_STRUCT_BITS \
-	( IA_CSS_FRAME_FORMAT_TYPE_BITS \
+	(IA_CSS_FRAME_FORMAT_TYPE_BITS \
 	+ (N_UINT32_IN_FRAME_DESC_STRUCT * 32) \
 	+ (N_UINT16_IN_FRAME_DESC_STRUCT * 16) \
 	+ (N_UINT8_IN_FRAME_DESC_STRUCT * 8) \
@@ -161,12 +161,12 @@ struct ia_css_frame_descriptor_s {
 #define	N_UINT32_IN_FRAME_STRUCT		1
 
 #define	IA_CSS_FRAME_STRUCT_BITS \
-	( IA_CSS_BUFFER_STATE_IN_BITS \
+	(IA_CSS_BUFFER_STATE_IN_BITS \
 	+ IA_CSS_ACCESS_TYPE_IN_BITS \
 	+ IA_CSS_POINTER_STATE_IN_BITS \
 	+ IA_CSS_ACCESS_SCOPES_IN_BITS \
 	+ VIED_VADDRESS_BITS \
-	+ (N_UINT32_IN_FRAME_STRUCT* 32))
+	+ (N_UINT32_IN_FRAME_STRUCT * 32))
 
 /*
  * Main frame structure holding the main store and auxilary access properties
@@ -186,7 +186,7 @@ struct ia_css_frame_s {
 #define	N_PADDING_UINT8_IN_FRAGMENT_DESC_STRUCT 4
 
 #define	IA_CSS_FRAGMENT_DESCRIPTOR_STRUCT_BITS \
-	( (N_UINT16_IN_FRAME_DESC_STRUCT * 16) \
+	((N_UINT16_IN_FRAME_DESC_STRUCT * 16) \
 	+ (N_PADDING_UINT8_IN_FRAGMENT_DESC_STRUCT * 8))
 
 /*
@@ -220,7 +220,7 @@ extern int ia_css_frame_print(
 
 @return buffer pointer, VIED_NULL on error
 */
-extern const vied_vaddress_t* ia_css_frame_get_buffer_host_virtual_address(
+extern const vied_vaddress_t *ia_css_frame_get_buffer_host_virtual_address(
 	const ia_css_frame_t	*frame);
 
 /*! Get the data buffer handle from the frame object

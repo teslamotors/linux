@@ -20,8 +20,7 @@
 #include "port_env_struct.h"
 
 /* host context */
-struct ia_css_syscom_context
-{
+struct ia_css_syscom_context {
 	vied_virtual_address_t	cell_firmware_addr;
 	unsigned int		cell_regs_addr;
 	unsigned int		cell_dmem_addr;
@@ -31,11 +30,11 @@ struct ia_css_syscom_context
 	unsigned int num_input_queues;
 	unsigned int num_output_queues;
 
-	struct sys_queue* input_queue;  /* array of input queues (from host to SP) */
-	struct sys_queue* output_queue; /* array of output queues (from SP to host) */
+	struct sys_queue *input_queue;  /* array of input queues (from host to SP) */
+	struct sys_queue *output_queue; /* array of output queues (from SP to host) */
 
-	struct send_port* send_port;
-	struct recv_port* recv_port;
+	struct send_port *send_port;
+	struct recv_port *recv_port;
 
 	unsigned int regmem_idx;
 	unsigned int free_buf;

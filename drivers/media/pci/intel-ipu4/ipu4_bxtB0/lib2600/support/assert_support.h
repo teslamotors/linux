@@ -65,7 +65,7 @@
 
 /* Compile time assertion */
 #ifndef CT_ASSERT
-#define CT_ASSERT(cnd) ((void)sizeof(char[(cnd)?1:-1]))
+#define CT_ASSERT(cnd) ((void)sizeof(char[(cnd)?1 :  -1]))
 #endif /* CT_ASSERT */
 
 #ifdef NDEBUG
@@ -113,11 +113,11 @@
  * because it seems that the BUG_ON() macro is not seen as a check by
  * gcc like the BUG() macro is. */
 #define assert(cnd)                                                     \
-        do {                                                            \
-                if (!(cnd)) {                                           \
-                        BUG();                                          \
-                }                                                       \
-        } while (0)
+	do {                                                            \
+		if (!(cnd)) {                                           \
+			BUG();                                          \
+		}                                                       \
+	} while (0)
 
 #elif defined(__FIST__) || defined(__GNUC__)
 
@@ -138,8 +138,8 @@
 #ifdef C_RUN
 #define compile_time_assert(cond) OP___assert(cond)
 #else
-extern void _compile_time_assert (void);
-STORAGE_CLASS_INLINE void compile_time_assert (unsigned cond)
+extern void _compile_time_assert(void);
+STORAGE_CLASS_INLINE void compile_time_assert(unsigned cond)
 {
 	/* Call undefined function if cond is false */
 	if (!cond) _compile_time_assert();

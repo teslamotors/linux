@@ -31,8 +31,7 @@ enum {
 /* firmware config: data that sent from the host to SP via DDR */
 /* Cell copies data into a context */
 
-struct ia_css_syscom_config_fw
-{
+struct ia_css_syscom_config_fw {
 	unsigned int firmware_address;
 
 	unsigned int num_input_queues;

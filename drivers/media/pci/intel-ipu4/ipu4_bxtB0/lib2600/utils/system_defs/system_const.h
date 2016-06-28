@@ -20,7 +20,7 @@
  * are not currently available in SDK
  */
 
-#define XMEM_WIDTH 				(512)
+#define XMEM_WIDTH				(512)
 #define MG_PPC					(4)
 
 #endif

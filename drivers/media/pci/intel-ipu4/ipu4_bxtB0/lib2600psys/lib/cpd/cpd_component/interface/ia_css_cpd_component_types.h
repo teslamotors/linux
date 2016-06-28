@@ -45,11 +45,11 @@ enum ia_css_cpd_component_platform_type {
  */
 typedef struct {
 	uint32_t				header_size;
-	unsigned int 				endianness; /**< Specifies endianness of the binary data */
+	unsigned int				endianness; /**< Specifies endianness of the binary data */
 	uint32_t				fw_pkg_date; /**< fw_pkg_date is current date stored in 'binary decimal' representation e.g. 538248729 (0x20150619) */
 	uint32_t				hive_sdk_date; /**< hive_sdk_date is date of HIVE_SDK stored in 'binary decimal' representation */
 	uint32_t				compiler_date; /**< compiler_date is date of ptools stored in 'binary decimal' representation */
-	unsigned int 				target_platform_type; /**< UNSCHED / SCHED / TARGET / CRUN */
+	unsigned int				target_platform_type; /**< UNSCHED / SCHED / TARGET / CRUN */
 	uint8_t					system_version[SIZE_OF_SYSTEM_VERSION];/**< specifies the system version stored as string e.g. BXTA0_IPU4'\0' */
 	uint8_t					fw_arch_version[SIZE_OF_FW_ARCH_VERSION]; /**< specifies fw architecture version e.g. for BXT CSS3.0'\0' */
 	uint8_t					rsvd[2];

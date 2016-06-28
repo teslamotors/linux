@@ -72,7 +72,7 @@ extern int ia_css_process_clear_cell(
  */
 extern int ia_css_process_set_int_mem(
 	ia_css_process_t						*process,
-	const 	vied_nci_mem_type_ID_t				mem_type_id,
+	const	vied_nci_mem_type_ID_t				mem_type_id,
 	const vied_nci_resource_size_t			offset);
 
 /*! Clear the memory resource (offset) specification for a memory

@@ -24,28 +24,30 @@
 typedef unsigned long long ia_css_return_token;
 
 STORAGE_CLASS_INLINE void
-ia_css_return_token_copy(ia_css_return_token* to, const ia_css_return_token* from)
+ia_css_return_token_copy(ia_css_return_token *to, const ia_css_return_token *from)
 {
 	/* copy a return token on VIED processor */
-	int* dst = (int*)to;
-	int* src = (int*)from;
+	int *dst = (int *)to;
+	int *src = (int *)from;
+
 	dst[0] = src[0];
 	dst[1] = src[1];
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_return_token_zero(ia_css_return_token* to)
+ia_css_return_token_zero(ia_css_return_token *to)
 {
 	/* zero return token on VIED processor */
-	int* dst = (int*)to;
+	int *dst = (int *)to;
+
 	dst[0] = 0;
 	dst[1] = 0;
 }
 
 STORAGE_CLASS_INLINE void _check_return_token_size(void)
 {
-  CT_ASSERT(sizeof(int)==4);
-  CT_ASSERT(sizeof(ia_css_return_token)==8);
+	CT_ASSERT(sizeof(int) == 4);
+	CT_ASSERT(sizeof(ia_css_return_token) == 8);
 }
 
 #endif /* __IA_CSS_RETURN_TOKEN__ */

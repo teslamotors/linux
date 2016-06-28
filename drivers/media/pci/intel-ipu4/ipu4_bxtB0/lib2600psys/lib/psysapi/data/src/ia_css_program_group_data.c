@@ -34,12 +34,12 @@ int ia_css_frame_print(
 
 	verifexit(frame != NULL, EINVAL);
 
-	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tbuffer = %d\n",ia_css_frame_get_buffer(frame));
-	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tbuffer_state = %d\n",ia_css_frame_get_buffer_state(frame));
+	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tbuffer = %d\n", ia_css_frame_get_buffer(frame));
+	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tbuffer_state = %d\n", ia_css_frame_get_buffer_state(frame));
 	/* IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tbuffer_state = %s\n",ia_css_buffer_state_string(ia_css_frame_get_buffer_state(frame))); */
-	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tpointer_state = %d\n",ia_css_frame_get_pointer_state(frame));
+	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tpointer_state = %d\n", ia_css_frame_get_pointer_state(frame));
 	/* IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tpointer_state = %s\n",ia_css_pointer_state_string(ia_css_frame_get_pointer_state(frame))); */
-	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tdata_bytes = %d\n",frame->data_bytes);
+	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tdata_bytes = %d\n", frame->data_bytes);
 
 	retval = 0;
 EXIT:
@@ -49,10 +49,10 @@ EXIT:
 	return retval;
 }
 
-const vied_vaddress_t* ia_css_frame_get_buffer_host_virtual_address(
+const vied_vaddress_t *ia_css_frame_get_buffer_host_virtual_address(
 	const ia_css_frame_t					*frame) {
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_get_buffer_host_virtual_address(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_get_buffer_host_virtual_address(): enter:\n");
 
 	verifexit(frame != NULL, EINVAL);
 	return &(frame->data);
@@ -69,13 +69,13 @@ vied_vaddress_t	ia_css_frame_get_buffer(
 {
 	vied_vaddress_t	buffer = VIED_NULL;
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_get_buffer(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_get_buffer(): enter:\n");
 
 	verifexit(frame != NULL, EINVAL);
 	buffer = frame->data;
 
 EXIT:
-	if(NULL == frame) {
+	if (NULL == frame) {
 		IA_CSS_TRACE_0(PSYSAPI_DATA, WARNING, "ia_css_frame_get_buffer invalid argument\n");
 	}
 	return buffer;
@@ -87,7 +87,7 @@ int ia_css_frame_set_buffer(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_set_buffer(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_set_buffer(): enter:\n");
 
 	verifexit(frame != NULL, EINVAL);
 	frame->data = buffer;
@@ -106,7 +106,7 @@ int ia_css_frame_set_data_bytes(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_set_data_bytes(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_set_data_bytes(): enter:\n");
 
 	verifexit(frame != NULL, EINVAL);
 	frame->data_bytes = size;
@@ -124,13 +124,13 @@ ia_css_buffer_state_t ia_css_frame_get_buffer_state(
 {
 	ia_css_buffer_state_t	buffer_state = IA_CSS_N_BUFFER_STATES;
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_get_buffer_state(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_get_buffer_state(): enter:\n");
 
 	verifexit(frame != NULL, EINVAL);
 	buffer_state = frame->buffer_state;
 
 EXIT:
-	if(NULL == frame) {
+	if (NULL == frame) {
 		IA_CSS_TRACE_0(PSYSAPI_DATA, WARNING, "ia_css_frame_get_buffer_state invalid argument\n");
 	}
 	return buffer_state;
@@ -142,7 +142,7 @@ int ia_css_frame_set_buffer_state(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_set_buffer_state(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_set_buffer_state(): enter:\n");
 
 	verifexit(frame != NULL, EINVAL);
 	frame->buffer_state = buffer_state;
@@ -160,13 +160,13 @@ ia_css_pointer_state_t ia_css_frame_get_pointer_state(
 {
 	ia_css_pointer_state_t	pointer_state = IA_CSS_N_POINTER_STATES;
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_get_pointer_state(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_get_pointer_state(): enter:\n");
 
 	verifexit(frame != NULL, EINVAL);
 	pointer_state = frame->pointer_state;
 
 EXIT:
-	if(NULL == frame) {
+	if (NULL == frame) {
 		IA_CSS_TRACE_0(PSYSAPI_DATA, WARNING, "ia_css_frame_get_pointer_state invalid argument\n");
 	}
 	return pointer_state;
@@ -178,7 +178,7 @@ int ia_css_frame_set_pointer_state(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_set_pointer_state(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_frame_set_pointer_state(): enter:\n");
 
 	verifexit(frame != NULL, EINVAL);
 	frame->pointer_state = pointer_state;
@@ -234,7 +234,7 @@ int ia_css_frame_descriptor_print(
 	}
 	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\t%4d }\n", frame_descriptor->dimension[i]);
 
-	assert ( 0 <= IA_CSS_N_DATA_DIMENSION - 2);
+	assert(0 <= IA_CSS_N_DATA_DIMENSION - 2);
 	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\tstride[%d] = {\n", IA_CSS_N_DATA_DIMENSION - 1);
 	for (i = 0; i < (int)IA_CSS_N_DATA_DIMENSION - 2; i++) {
 		IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\t%4d,\n", frame_descriptor->stride[i]);
@@ -316,14 +316,14 @@ size_t ia_css_sizeof_frame_descriptor(
 {
 	size_t size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_sizeof_frame_descriptor(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DATA, VERBOSE, "ia_css_sizeof_frame_descriptor(): enter:\n");
 
 	verifexit(plane_count > 0, EINVAL);
 	size += sizeof(ia_css_frame_descriptor_t);
 	size += plane_count * sizeof(uint32_t);
 
 EXIT:
-	if(0 == plane_count) {
+	if (0 == plane_count) {
 		IA_CSS_TRACE_0(PSYSAPI_DATA, WARNING, "ia_css_sizeof_frame_descriptor invalid argument\n");
 	}
 	return size;

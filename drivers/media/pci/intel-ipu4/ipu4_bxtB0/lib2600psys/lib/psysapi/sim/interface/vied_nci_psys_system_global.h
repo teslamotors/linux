@@ -25,7 +25,7 @@
 /* Subsystem internal physical address */
 #define VIED_ADDRESS_BITS					32
 
-//typedef uint32_t							vied_address_t;
+/* typedef uint32_t							vied_address_t; */
 
 /* Subsystem internal virtual address */
 
@@ -61,16 +61,16 @@ extern int vied_nci_bitmap_compute_weight(
 	const vied_nci_resource_bitmap_t		bitmap);
 
 extern vied_nci_resource_bitmap_t vied_nci_bitmap_union(
-        const vied_nci_resource_bitmap_t		bitmap0,
-        const vied_nci_resource_bitmap_t		bitmap1);
+	const vied_nci_resource_bitmap_t		bitmap0,
+	const vied_nci_resource_bitmap_t		bitmap1);
 
 extern vied_nci_resource_bitmap_t vied_nci_bitmap_intersection(
-        const vied_nci_resource_bitmap_t		bitmap0,
-        const vied_nci_resource_bitmap_t		bitmap1);
+	const vied_nci_resource_bitmap_t		bitmap0,
+	const vied_nci_resource_bitmap_t		bitmap1);
 
 extern vied_nci_resource_bitmap_t vied_nci_bitmap_xor(
-        const vied_nci_resource_bitmap_t		bitmap0,
-        const vied_nci_resource_bitmap_t		bitmap1);
+	const vied_nci_resource_bitmap_t		bitmap0,
+	const vied_nci_resource_bitmap_t		bitmap1);
 
 extern vied_nci_resource_bitmap_t vied_nci_bitmap_set_unique(
 	const vied_nci_resource_bitmap_t		bitmap,

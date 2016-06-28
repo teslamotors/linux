@@ -17,8 +17,7 @@
 
 #include "buffer_type.h"
 
-struct recv_port
-{
+struct recv_port {
 	buffer_address buffer;	/* address of buffer in DDR */
 	unsigned int size;
 	unsigned int token_size;

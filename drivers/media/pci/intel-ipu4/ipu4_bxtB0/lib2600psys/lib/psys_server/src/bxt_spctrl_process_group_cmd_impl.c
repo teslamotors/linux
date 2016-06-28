@@ -38,7 +38,7 @@ int ia_css_process_group_on_create(
 	NOT_USED(program_group_manifest);
 	NOT_USED(program_group_param);
 
-	IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_on_create(): enter: \n");
+	IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_on_create(): enter:\n");
 
 	return 0;
 }
@@ -48,7 +48,7 @@ int ia_css_process_group_on_destroy(
 {
 	NOT_USED(process_group);
 
-	IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_on_destroy(): enter: \n");
+	IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_on_destroy(): enter:\n");
 
 	return 0;
 }
@@ -62,7 +62,7 @@ int ia_css_process_group_exec_cmd(
 	struct ia_css_psys_cmd_s	psys_cmd;
 	bool	cmd_queue_full;
 
-	IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): enter: \n");
+	IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
@@ -74,7 +74,7 @@ int ia_css_process_group_exec_cmd(
 	switch (cmd) {
 	case IA_CSS_PROCESS_GROUP_CMD_SUBMIT:
 
-		IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_SUBMIT: \n");
+		IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_SUBMIT:\n");
 		verifexit(state == IA_CSS_PROCESS_GROUP_READY, EINVAL);
 
 		/* External resource availability checks */
@@ -84,7 +84,7 @@ int ia_css_process_group_exec_cmd(
 		break;
 	case IA_CSS_PROCESS_GROUP_CMD_START:
 
-		IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_START: \n");
+		IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_START:\n");
 		verifexit(state == IA_CSS_PROCESS_GROUP_BLOCKED, EINVAL);
 
 		/* External resource state checks */
@@ -94,7 +94,7 @@ int ia_css_process_group_exec_cmd(
 		break;
 	case IA_CSS_PROCESS_GROUP_CMD_DISOWN:
 
-		IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_DISOWN: \n");
+		IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_DISOWN:\n");
 		verifexit(state == IA_CSS_PROCESS_GROUP_STARTED, EINVAL);
 
 		cmd_queue_full = ia_css_is_psys_cmd_queue_full(psys_syscom, IA_CSS_PSYS_CMD_QUEUE_COMMAND_ID);
@@ -112,7 +112,7 @@ int ia_css_process_group_exec_cmd(
 		break;
 	case IA_CSS_PROCESS_GROUP_CMD_ABORT:
 
-		IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_ABORT: \n");
+		IA_CSS_TRACE_0(BXT_SPCTRL, INFO, "ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_ABORT:\n");
 
 		/* Once the flushing of shared buffers is fixed this verifexit should be changed to be state = IA_CSS_PROCESS_GROUP_STARTED */
 		verifexit(state == IA_CSS_PROCESS_GROUP_BLOCKED, EINVAL);

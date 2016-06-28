@@ -25,10 +25,10 @@
 /* Max number of supported virtual streams */
 #define STREAM_ID_MAX (8)
 
-#define N_MAX_MSG_SEND_QUEUES 		(STREAM_ID_MAX)		/* Aligned with the approach of having one dedicated per stream */
-#define N_MAX_MSG_RECV_QUEUES 		(1)
-#define N_MAX_PROXY_SEND_QUEUES 	(1)			/* Single dedicated send queue for proxy interface */
-#define N_MAX_PROXY_RECV_QUEUES 	(1)			/* Single dedicated recv queue for proxy interface */
+#define N_MAX_MSG_SEND_QUEUES		(STREAM_ID_MAX)	/* Aligned with the approach of having one dedicated per stream */
+#define N_MAX_MSG_RECV_QUEUES		(1)
+#define N_MAX_PROXY_SEND_QUEUES	(1)			/* Single dedicated send queue for proxy interface */
+#define N_MAX_PROXY_RECV_QUEUES	(1)			/* Single dedicated recv queue for proxy interface */
 #define N_MAX_SEND_QUEUES		(N_MAX_MSG_SEND_QUEUES + N_MAX_PROXY_SEND_QUEUES)
 #define N_MAX_RECV_QUEUES		(N_MAX_MSG_RECV_QUEUES + N_MAX_PROXY_RECV_QUEUES)
 #define MAX_QUEUE_SIZE			(256)
@@ -214,7 +214,7 @@ enum ia_css_isys_mipi_data_type {
 	/** GENERIC LONG PACKET DATA TYPES */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_NULL			= 0x10,
 	IA_CSS_ISYS_MIPI_DATA_TYPE_BLANKING_DATA	= 0x11,
-	IA_CSS_ISYS_MIPI_DATA_TYPE_EMBEDDED		= 0x12,        	/* Embedded 8-bit non Image Data */
+	IA_CSS_ISYS_MIPI_DATA_TYPE_EMBEDDED		= 0x12,		/* Embedded 8-bit non Image Data */
 	/** Reserved 0x13-0x17 */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RESERVED_0x13	= 0x13,
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RESERVED_0x14	= 0x14,
@@ -227,12 +227,12 @@ enum ia_css_isys_mipi_data_type {
 	IA_CSS_ISYS_MIPI_DATA_TYPE_YUV420_8_LEGACY	= 0x1A,		/* 8 bits per subpixel */
 	/** Reserved 0x1B */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RESERVED_0x1B	= 0x1B,
-	IA_CSS_ISYS_MIPI_DATA_TYPE_YUV420_8_SHIFT	= 0x1C,		/* YUV420 8-bit Chroma Shifted Pixel Sampling) */
-	IA_CSS_ISYS_MIPI_DATA_TYPE_YUV420_10_SHIFT	= 0x1D,		/* YUV420 8-bit (Chroma Shifted Pixel Sampling) */
+	IA_CSS_ISYS_MIPI_DATA_TYPE_YUV420_8_SHIFT	= 0x1C,		/* YUV420 8-bit (Chroma Shifted Pixel Sampling) */
+	IA_CSS_ISYS_MIPI_DATA_TYPE_YUV420_10_SHIFT	= 0x1D,		/* YUV420 10-bit (Chroma Shifted Pixel Sampling) */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_YUV422_8		= 0x1E,		/* UYVY..UVYV, 8 bits per subpixel */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_YUV422_10		= 0x1F,		/* UYVY..UVYV, 10 bits per subpixel */
 	/** RGB DATA TYPES */
-	IA_CSS_ISYS_MIPI_DATA_TYPE_RGB_444		= 0x20,        	/* BGR..BGR, 4 bits per subpixel */
+	IA_CSS_ISYS_MIPI_DATA_TYPE_RGB_444		= 0x20,		/* BGR..BGR, 4 bits per subpixel */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RGB_555		= 0x21,		/* BGR..BGR, 5 bits per subpixel */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RGB_565		= 0x22,		/* BGR..BGR, 5 bits B and R, 6 bits G */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RGB_666		= 0x23,		/* BGR..BGR, 6 bits per subpixel */
@@ -242,7 +242,7 @@ enum ia_css_isys_mipi_data_type {
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RESERVED_0x26	= 0x26,
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RESERVED_0x27	= 0x27,
 	/** RAW DATA TYPES */
-	IA_CSS_ISYS_MIPI_DATA_TYPE_RAW_6		= 0x28,       	/* RAW data, 6 bits per pixel */
+	IA_CSS_ISYS_MIPI_DATA_TYPE_RAW_6		= 0x28,	/* RAW data, 6 bits per pixel */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RAW_7		= 0x29,		/* RAW data, 7 bits per pixel */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RAW_8		= 0x2A,		/* RAW data, 8 bits per pixel */
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RAW_10		= 0x2B,		/* RAW data, 10 bits per pixel */
@@ -274,7 +274,7 @@ enum ia_css_isys_mipi_data_type {
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RESERVED_0x3E	= 0x3E,
 	IA_CSS_ISYS_MIPI_DATA_TYPE_RESERVED_0x3F	= 0x3F,
 
-	N_IA_CSS_ISYS_MIPI_DATA_TYPE  			= 0x40		/* Keep always last and max value */
+	N_IA_CSS_ISYS_MIPI_DATA_TYPE			= 0x40		/* Keep always last and max value */
 };
 
 /** enum ia_css_isys_pin_type: output pin buffer types.

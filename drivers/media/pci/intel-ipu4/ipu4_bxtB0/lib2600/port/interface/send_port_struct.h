@@ -17,8 +17,7 @@
 
 #include "buffer_type.h"
 
-struct send_port
-{
+struct send_port {
 	buffer_address buffer;
 	unsigned int size;
 	unsigned int token_size;

@@ -53,7 +53,7 @@
 	The state of psys can be obtained calling ia_css_psys_check_state()
 */
 typedef enum ia_css_psys_state {
-	IA_CSS_PSYS_STATE_UNKNOWN = 0,							/**< psys state is unknown             		  	*/
+	IA_CSS_PSYS_STATE_UNKNOWN = 0,							/**< psys state is unknown				*/
 	IA_CSS_PSYS_STATE_INITIALIZING = IA_CSS_PSYS_STATE_INITIALIZING_PATTERN,	/**< some of the psys components are not initialized yet*/
 	IA_CSS_PSYS_STATE_INITIALIZED = IA_CSS_PSYS_STATE_INITIALIZED_PATTERN,		/**< psys components are initialized			*/
 	IA_CSS_PSYS_STATE_STARTING = IA_CSS_PSYS_STATE_STARTING_PATTERN,		/**< some of the psys components are not started yet	*/

@@ -80,7 +80,7 @@ typedef enum ia_css_frame_format_type {
 	IA_CSS_DATA_S3A_STATISTICS_LO,		/**< 3A statistics output LO. */
 	IA_CSS_DATA_S3A_HISTOGRAM,		/**< histogram output */
 
-	IA_CSS_DATA_FORMAT_BAYER_LINE_INTERLEAVED, 	/**< Gr R B Gb Gr R B Gb  in PIXELS  (also called isys interleaved) */
+	IA_CSS_DATA_FORMAT_BAYER_LINE_INTERLEAVED,	/**< Gr R B Gb Gr R B Gb  in PIXELS  (also called isys interleaved) */
 	IA_CSS_DATA_FORMAT_BAYER_VECTORIZED,		/**< Gr R B Gb Gr R B Gb  in VECTORS (VCC IMAGE, ISP NWAY depentdent) */
 	IA_CSS_DATA_FORMAT_BAYER_GRBG_VECTORIZED,	/**< Gr R Gr R ... | B Gb B Gb ..  in VECTORS (ISP NWAY depentdent) */
 

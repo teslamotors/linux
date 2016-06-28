@@ -75,7 +75,7 @@ int ia_css_sliced_param_terminal_manifest_init(
 
 ia_css_sliced_param_manifest_section_desc_t *
 	ia_css_sliced_param_terminal_manifest_get_sliced_param_manifest_section_desc(
-		const ia_css_sliced_param_terminal_manifest_t* sliced_param_terminal_manifest,
+		const ia_css_sliced_param_terminal_manifest_t *sliced_param_terminal_manifest,
 		const unsigned int section_index
 );
 

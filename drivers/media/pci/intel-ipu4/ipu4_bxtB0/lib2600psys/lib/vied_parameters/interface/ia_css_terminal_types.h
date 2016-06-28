@@ -50,7 +50,7 @@ struct ia_css_param_section_desc_s {				/**< Frame constant parameters section *
 
 #define N_PADDING_UINT8_IN_PARAM_TERMINAL_STRUCT 6
 #define SIZE_OF_PARAM_TERMINAL_STRUCT_BITS \
-	( SIZE_OF_TERMINAL_STRUCT_BITS \
+	(SIZE_OF_TERMINAL_STRUCT_BITS \
 	+ IA_CSS_PARAM_PAYLOAD_STRUCT_BITS \
 	+ IA_CSS_UINT16_T_BITS \
 	+ N_PADDING_UINT8_IN_PARAM_TERMINAL_STRUCT * IA_CSS_UINT8_T_BITS)
@@ -194,7 +194,7 @@ struct ia_css_program_terminal_s {
 	ia_css_terminal_t		base;						/**< Program terminal base */
 	ia_css_param_payload_t		param_payload;					/**< Program terminal buffer handle attached to the terminal */
 	uint16_t			fragment_param_section_desc_offset;		/**< Points to array of ia_css_fragment_param_desc_s */
-	uint16_t			kernel_fragment_sequencer_info_desc_offset;  	/**< Points to array of ia_css_kernel_fragment_sequencer_info_s */
+	uint16_t			kernel_fragment_sequencer_info_desc_offset;	/**< Points to array of ia_css_kernel_fragment_sequencer_info_s */
 	uint8_t				padding[N_PADDING_UINT8_IN_PROG_TERM_STRUCT];	/**< align to 64 */
 };
 /* ==================== Program Terminal - END ==================== */

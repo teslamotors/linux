@@ -111,6 +111,7 @@ static bool ia_css_process_group_is_terminal_enabled(
 	ia_css_kernel_bitmap_t			enable_bitmap)
 {
 	ia_css_terminal_type_t terminal_type;
+
 	verifjmpexit(NULL != terminal_manifest);
 	terminal_type = ia_css_terminal_manifest_get_type(terminal_manifest);
 
@@ -125,6 +126,7 @@ static bool ia_css_process_group_is_terminal_enabled(
 	} else if (ia_css_is_terminal_manifest_spatial_parameter_terminal(terminal_manifest)) {
 		ia_css_kernel_bitmap_t term_kernel_bitmap = 0;
 		ia_css_spatial_param_terminal_manifest_t *spatial_term_man = (ia_css_spatial_param_terminal_manifest_t *)terminal_manifest;
+
 		term_kernel_bitmap = ia_css_kernel_bitmap_set(term_kernel_bitmap, spatial_term_man->kernel_id);
 		if (!ia_css_is_kernel_bitmap_intersection_empty(enable_bitmap, term_kernel_bitmap)) {
 			return true;
@@ -168,7 +170,7 @@ size_t ia_css_sizeof_process_group(
 	uint8_t terminal_count;
 	ia_css_kernel_bitmap_t	enable_bitmap;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE ,"ia_css_sizeof_process_group(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_sizeof_process_group(): enter:\n");
 
 	verifexit(manifest != NULL, EINVAL);
 	verifexit(param != NULL, EINVAL);
@@ -209,6 +211,7 @@ size_t ia_css_sizeof_process_group(
 
 	for (i = 0; i < (int)ia_css_program_group_manifest_get_terminal_count(manifest); i++) {
 		ia_css_terminal_manifest_t *terminal_manifest = ia_css_program_group_manifest_get_terminal_manifest(manifest, i);
+
 		if (ia_css_process_group_is_terminal_enabled(terminal_manifest, enable_bitmap)) {
 			size += ia_css_sizeof_terminal(terminal_manifest, param);
 		}
@@ -217,7 +220,7 @@ size_t ia_css_sizeof_process_group(
 	error_val = 0;
 
 EXIT:
-	if(NULL == manifest || NULL == param) {
+	if (NULL == manifest || NULL == param) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_sizeof_process_group invalid argument\n");
 	}
 	if (error_val != 0) {
@@ -243,7 +246,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 	uint16_t *process_tab_ptr, *terminal_tab_ptr;
 	ia_css_kernel_bitmap_t	enable_bitmap;
 
-	IA_CSS_TRACE_3(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_create(process_grp_mem %p, manifest %p, group_param %p): enter: \n", process_grp_mem, manifest, param);
+	IA_CSS_TRACE_3(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_create(process_grp_mem %p, manifest %p, group_param %p): enter:\n", process_grp_mem, manifest, param);
 
 	verifexit(process_grp_mem != NULL, EINVAL);
 	verifexit(manifest != NULL, EINVAL);
@@ -282,13 +285,16 @@ ia_css_process_group_t *ia_css_process_group_create(
 	/* Set process group terminal dependency list */
 	/* This list is used during creating the process dependency list */
 	uint8_t manifest_terminal_count = ia_css_program_group_manifest_get_terminal_count(manifest);
+
 	terminal_num = 0;
 	for (i = 0; i < (int)manifest_terminal_count; i++) {
 		ia_css_terminal_manifest_t *t_manifest = ia_css_program_group_manifest_get_terminal_manifest(manifest, i);
+
 		verifexit(NULL != t_manifest, EINVAL);
 		if (ia_css_process_group_is_terminal_enabled(t_manifest, enable_bitmap)) {
 			ia_css_terminal_t *terminal = NULL;
 			ia_css_terminal_param_t *terminal_param = ia_css_program_group_param_get_terminal_param(param, i);
+
 			verifexit(NULL != terminal_param, EINVAL);
 			terminal_tab_ptr[terminal_num] = (uint16_t) (process_grp_raw_ptr - (char *)process_group);
 			terminal = ia_css_terminal_create(process_grp_raw_ptr, t_manifest, terminal_param, enable_bitmap);
@@ -307,7 +313,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 	for (i = 0; i < (int)ia_css_program_group_manifest_get_program_count(manifest); i++) {
 		ia_css_process_t *process = NULL;
 		ia_css_program_manifest_t	*program_manifest = ia_css_program_group_manifest_get_program_manifest(manifest, i);
-		ia_css_program_param_t 		*program_param = ia_css_program_group_param_get_program_param(param, i);
+		ia_css_program_param_t		*program_param = ia_css_program_group_param_get_program_param(param, i);
 		unsigned int prog_dep_index, proc_dep_index;
 		unsigned int term_dep_index, term_index;
 
@@ -322,6 +328,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 			ia_css_process_set_parent(process, process_group);
 			if (ia_css_has_program_manifest_fixed_cell(program_manifest)) {
 				vied_nci_cell_ID_t	cell_id = ia_css_program_manifest_get_cell_ID(program_manifest);
+
 				IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_create: cell_id %d\n", cell_id);
 				ia_css_process_set_cell(process, cell_id);
 			}
@@ -337,6 +344,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 				verifexit(id != 0, EINVAL);
 				for (proc_dep_index = 0; proc_dep_index < process_num; proc_dep_index++) {
 					ia_css_process_t *dep_process = ia_css_process_group_get_process(process_group, proc_dep_index);
+
 					ia_css_process_set_cell_dependency(process, prog_dep_index, 0);
 					if (ia_css_process_get_program_ID(dep_process) == id) {
 						ia_css_process_set_cell_dependency(process, prog_dep_index, proc_dep_index);
@@ -354,7 +362,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 				IA_CSS_TRACE_2(PSYSAPI_DYNAMIC, INFO,
 						"ia_css_process_group_create(): term_dep_index: %d, pm_term_index: %d\n", term_dep_index, pm_term_index);
 				for (term_index = 0; term_index < terminal_count; term_index++) {
-					ia_css_terminal_t *terminal = ia_css_process_group_get_terminal( process_group, term_index);
+					ia_css_terminal_t *terminal = ia_css_process_group_get_terminal(process_group, term_index);
 
 					if (ia_css_terminal_get_terminal_manifest_index(terminal) == pm_term_index) {
 						ia_css_process_set_terminal_dependency(process, term_dep_index, term_index);
@@ -391,7 +399,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_create(): Created successfully process group ID 0x%x\n", process_group->ID);
 
 EXIT:
-	if(NULL == process_grp_mem || NULL == manifest || NULL == param) {
+	if (NULL == process_grp_mem || NULL == manifest || NULL == param) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_create invalid argument\n");
 	}
 	if (retval != 0) {
@@ -402,7 +410,7 @@ EXIT:
 }
 
 ia_css_process_group_t *ia_css_process_group_destroy(
-	ia_css_process_group_t			 		*process_group)
+	ia_css_process_group_t					*process_group)
 {
 	if (process_group != NULL) {
 		ia_css_process_group_on_destroy(process_group);
@@ -416,7 +424,7 @@ ia_css_process_group_t *ia_css_process_group_destroy(
 int ia_css_process_group_submit(
 	ia_css_process_group_t					*process_group)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_submit(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_submit(): enter:\n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_SUBMIT);
 }
@@ -424,7 +432,7 @@ int ia_css_process_group_submit(
 int ia_css_process_group_start(
 	ia_css_process_group_t					*process_group)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_start(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_start(): enter:\n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_START);
 }
@@ -432,7 +440,7 @@ int ia_css_process_group_start(
 int ia_css_process_group_stop(
 	ia_css_process_group_t					*process_group)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_stop(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_stop(): enter:\n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_STOP);
 }
@@ -440,7 +448,7 @@ int ia_css_process_group_stop(
 int ia_css_process_group_run(
 	ia_css_process_group_t					*process_group)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_run(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_run(): enter:\n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_RUN);
 }
@@ -448,7 +456,7 @@ int ia_css_process_group_run(
 int ia_css_process_group_suspend(
 	ia_css_process_group_t					*process_group)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_suspend(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_suspend(): enter:\n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_SUSPEND);
 }
@@ -456,7 +464,7 @@ int ia_css_process_group_suspend(
 int ia_css_process_group_resume(
 	ia_css_process_group_t					*process_group)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_resume(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_resume(): enter:\n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_RESUME);
 }
@@ -464,7 +472,7 @@ int ia_css_process_group_resume(
 int ia_css_process_group_reset(
 	ia_css_process_group_t					*process_group)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_reset(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_reset(): enter:\n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_RESET);
 }
@@ -472,7 +480,7 @@ int ia_css_process_group_reset(
 int ia_css_process_group_abort(
 	ia_css_process_group_t					*process_group)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_abort(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_abort(): enter:\n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_ABORT);
 }
@@ -480,7 +488,7 @@ int ia_css_process_group_abort(
 int ia_css_process_group_disown(
 	ia_css_process_group_t					*process_group)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_disown(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_disown(): enter:\n");
 
 	return ia_css_process_group_exec_cmd(process_group, IA_CSS_PROCESS_GROUP_CMD_DISOWN);
 }
@@ -490,14 +498,14 @@ extern uint64_t ia_css_process_group_get_token(
 {
 	uint64_t	token = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_token(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_token(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
 	token = process_group->token;
 
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_token invalid argument\n");
 	}
 	return token;
@@ -510,7 +518,7 @@ int ia_css_process_group_set_token(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_token(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_token(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 	verifexit(token != 0, EINVAL);
@@ -519,7 +527,7 @@ int ia_css_process_group_set_token(
 
 	retval = 0;
 EXIT:
-	if(NULL == process_group || 0 == token) {
+	if (NULL == process_group || 0 == token) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_set_token invalid argument\n");
 	}
 	if (retval != 0) {
@@ -533,14 +541,14 @@ extern uint64_t ia_css_process_group_get_private_token(
 {
 	uint64_t	token = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_private_token(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_private_token(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
 	token = process_group->private_token;
 
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_private_token invalid argument\n");
 	}
 	return token;
@@ -553,7 +561,7 @@ int ia_css_process_group_set_private_token(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_private_token(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_private_token(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 	verifexit(token != 0, EINVAL);
@@ -562,7 +570,7 @@ int ia_css_process_group_set_private_token(
 
 	retval = 0;
 EXIT:
-	if(NULL == process_group || 0 == token) {
+	if (NULL == process_group || 0 == token) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_set_private_token invalid argument\n");
 	}
 	if (retval != 0) {
@@ -577,14 +585,14 @@ uint16_t ia_css_process_group_get_fragment_limit(
 {
 	uint16_t	fragment_limit = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_fragment_limit(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_fragment_limit(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
 	fragment_limit = process_group->fragment_limit;
 
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_fragment_limit invalid argument\n");
 	}
 	return fragment_limit;
@@ -597,7 +605,7 @@ int ia_css_process_group_set_fragment_limit(
 	int	retval = -1;
 	uint16_t	fragment_state;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_fragment_limit(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_fragment_limit(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
@@ -612,7 +620,7 @@ int ia_css_process_group_set_fragment_limit(
 
 	retval = 0;
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_fragment_limit invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -626,14 +634,14 @@ int ia_css_process_group_clear_fragment_limit(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_clear_fragment_limit(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_clear_fragment_limit(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 	process_group->fragment_limit = 0;
 
 	retval = 0;
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_clear_fragment_limit invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -650,14 +658,14 @@ int ia_css_process_group_attach_buffer(
 	int	retval = -1;
 	ia_css_terminal_t *terminal = NULL;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_attach_buffer(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_attach_buffer(): enter:\n");
 
 	/* We should have a check that NULL != process_group but it process_group is NULL
 	 * ia_css_process_group_get_state will return IA_CSS_N_PROCESS_GROUP_STATES
 	 * so  it will be filtered anyway later.
 	*/
 
-	//verifexit(process_group != NULL, EINVAL);
+	/* verifexit(process_group != NULL, EINVAL); */
 
 	terminal = ia_css_process_group_get_terminal(process_group, terminal_index);
 
@@ -669,6 +677,7 @@ int ia_css_process_group_attach_buffer(
 
 	if (ia_css_is_terminal_data_terminal(terminal) == true) {
 		ia_css_frame_t	*frame = ia_css_data_terminal_get_frame((ia_css_data_terminal_t *)terminal);
+
 		verifexit(frame != NULL, EINVAL);
 		verifexit(ia_css_frame_set_buffer_state(frame, buffer_state) == 0, EINVAL);
 	}
@@ -676,7 +685,7 @@ int ia_css_process_group_attach_buffer(
 	retval = 0;
 
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_attach_buffer invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -695,14 +704,14 @@ vied_vaddress_t ia_css_process_group_detach_buffer(
 	ia_css_terminal_t	*terminal = NULL;
 	ia_css_process_group_state_t	state;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_detach_buffer(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_detach_buffer(): enter:\n");
 
 	/* We should have a check that NULL != process_group but it process_group is NULL
 	 * ia_css_process_group_get_state will return IA_CSS_N_PROCESS_GROUP_STATES
 	 * so  it will be filtered anyway later.
 	*/
 
-	//verifexit(process_group != NULL, EINVAL);
+	/* verifexit(process_group != NULL, EINVAL); */
 
 	terminal = ia_css_process_group_get_terminal(process_group, terminal_index);
 	state = ia_css_process_group_get_state(process_group);
@@ -714,6 +723,7 @@ vied_vaddress_t ia_css_process_group_detach_buffer(
 
 	if (ia_css_is_terminal_data_terminal(terminal) == true) {
 		ia_css_frame_t	*frame = ia_css_data_terminal_get_frame((ia_css_data_terminal_t *)terminal);
+
 		verifexit(frame != NULL, EINVAL);
 		verifexit(ia_css_frame_set_buffer_state(frame, IA_CSS_BUFFER_NULL) == 0, EINVAL);
 	}
@@ -722,7 +732,7 @@ vied_vaddress_t ia_css_process_group_detach_buffer(
 	retval = 0;
 EXIT:
 /* buffer pointer will appear on output, regardless of subsequent fails to avoid memory leaks */
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_detach_buffer invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -739,7 +749,7 @@ int ia_css_process_group_attach_stream(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_attach_stream(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_attach_stream(): enter:\n");
 
 	NOT_USED(process_group);
 	NOT_USED(stream);
@@ -759,7 +769,7 @@ uint32_t ia_css_process_group_detach_stream(
 	int		retval = -1;
 	uint32_t	stream = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_detach_stream(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_detach_stream(): enter:\n");
 
 	NOT_USED(process_group);
 	NOT_USED(terminal_index);
@@ -778,7 +788,7 @@ int ia_css_process_group_set_barrier(
 	vied_nci_resource_bitmap_t	bit_mask;
 	vied_nci_resource_bitmap_t	resource_bitmap;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_barrier(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_barrier(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
@@ -793,7 +803,7 @@ int ia_css_process_group_set_barrier(
 
 	retval = ia_css_process_group_set_resource_bitmap(process_group, resource_bitmap);
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_set_barrier invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -810,7 +820,7 @@ int ia_css_process_group_clear_barrier(
 	vied_nci_resource_bitmap_t	bit_mask;
 	vied_nci_resource_bitmap_t	resource_bitmap;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_clear_barrier(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_clear_barrier(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
@@ -825,7 +835,7 @@ int ia_css_process_group_clear_barrier(
 
 	retval = ia_css_process_group_set_resource_bitmap(process_group, resource_bitmap);
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_clear_barrier invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -847,7 +857,7 @@ int ia_css_process_group_print(
 
 	NOT_USED(fid);
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_print(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_print(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 	verifexit(ia_css_process_group_get_ipu_vaddress(process_group, &ipu_vaddress) == 0, EINVAL);
@@ -855,29 +865,31 @@ int ia_css_process_group_print(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "=============== Process group print start ===============\n");
 	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\tprocess_group cpu address = %p\n", process_group);
 	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\tipu_virtual_address = %#x\n", ipu_vaddress);
-	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\tsizeof(process_group) = %d\n",(int)ia_css_process_group_get_size(process_group));
-	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\tfragment_count = %d\n",(int)ia_css_process_group_get_fragment_count(process_group));
-	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\tprogram_group(process_group) = %d\n",(int)ia_css_process_group_get_program_group_ID(process_group));
+	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\tsizeof(process_group) = %d\n", (int)ia_css_process_group_get_size(process_group));
+	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\tfragment_count = %d\n", (int)ia_css_process_group_get_fragment_count(process_group));
+	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\tprogram_group(process_group) = %d\n", (int)ia_css_process_group_get_program_group_ID(process_group));
 
 	process_count = ia_css_process_group_get_process_count(process_group);
 	terminal_count = ia_css_process_group_get_terminal_count(process_group);
 
-	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\t%d processes\n",(int)process_count);
+	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\t%d processes\n", (int)process_count);
 	for (i = 0; i < (int)process_count; i++) {
 		ia_css_process_t	*process = ia_css_process_group_get_process(process_group, i);
+
 		retval = ia_css_process_print(process, fid);
 		verifjmpexit(retval == 0);
 	}
-	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\t%d terminals\n",(int)terminal_count);
+	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO, "\t%d terminals\n", (int)terminal_count);
 	for (i = 0; i < (int)terminal_count; i++) {
 		ia_css_terminal_t	*terminal = ia_css_process_group_get_terminal(process_group, i);
+
 		retval = ia_css_terminal_print(terminal, fid);
 		verifjmpexit(retval == 0);
 	}
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "=============== Process group print end ===============\n");
 	retval = 0;
 EXIT:
-	if(NULL == process_group){
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_print invalid argument\n");
 	}
 	return retval;
@@ -897,7 +909,7 @@ bool ia_css_is_process_group_valid(
 	uint8_t terminal_count;
 	uint8_t man_terminal_count;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_process_group_valid(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_is_process_group_valid(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 	verifexit(pg_manifest != NULL, EINVAL);
@@ -954,7 +966,7 @@ EXIT:
 }
 
 
-bool ia_css_can_process_group_submit (
+bool ia_css_can_process_group_submit(
 	const ia_css_process_group_t			*process_group)
 {
 	int		i;
@@ -962,7 +974,7 @@ bool ia_css_can_process_group_submit (
 	int	retval = -1;
 	uint8_t	terminal_count = ia_css_process_group_get_terminal_count(process_group);
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_can_process_group_submit(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_can_process_group_submit(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
@@ -982,6 +994,7 @@ bool ia_css_can_process_group_submit (
 		/* buffer_state is applicable only for data terminals*/
 		if (ia_css_is_terminal_data_terminal(terminal) == true) {
 			ia_css_frame_t	*frame = ia_css_data_terminal_get_frame((ia_css_data_terminal_t *)terminal);
+
 			verifexit(frame != NULL, EINVAL);
 			buffer_state = ia_css_frame_get_buffer_state(frame);
 			if ((buffer_state == IA_CSS_BUFFER_NULL) ||
@@ -1001,7 +1014,7 @@ bool ia_css_can_process_group_submit (
 
 	retval = 0;
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_can_process_group_submit invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -1011,7 +1024,7 @@ EXIT:
 }
 
 
-bool ia_css_can_process_group_start (
+bool ia_css_can_process_group_start(
 	const ia_css_process_group_t			*process_group)
 {
 	int		i;
@@ -1019,7 +1032,7 @@ bool ia_css_can_process_group_start (
 	int	retval = -1;
 	uint8_t	terminal_count;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_can_process_group_start(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_can_process_group_start(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
@@ -1063,7 +1076,7 @@ bool ia_css_can_process_group_start (
 
 	retval = 0;
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_can_process_group_submit invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -1077,7 +1090,7 @@ size_t ia_css_process_group_get_size(
 {
 	size_t	size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_size(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_size(): enter:\n");
 
 	if (process_group != NULL) {
 		size = process_group->size;
@@ -1093,7 +1106,7 @@ ia_css_process_group_state_t ia_css_process_group_get_state(
 {
 	ia_css_process_group_state_t	state = IA_CSS_N_PROCESS_GROUP_STATES;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_state(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_state(): enter:\n");
 
 	if (process_group != NULL) {
 		state = process_group->state;
@@ -1109,7 +1122,7 @@ uint16_t ia_css_process_group_get_fragment_count(
 {
 	uint16_t	fragment_count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_fragment_count(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_fragment_count(): enter:\n");
 
 	if (process_group != NULL) {
 		fragment_count = process_group->fragment_count;
@@ -1125,7 +1138,7 @@ uint8_t ia_css_process_group_get_process_count(
 {
 	uint8_t		process_count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_process_count(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_process_count(): enter:\n");
 
 	if (process_group != NULL) {
 		process_count = process_group->process_count;
@@ -1141,7 +1154,7 @@ uint8_t ia_css_process_group_get_terminal_count(
 {
 	uint8_t		terminal_count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_terminal_count(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_terminal_count(): enter:\n");
 
 	if (process_group != NULL) {
 		terminal_count = process_group->terminal_count;
@@ -1157,7 +1170,7 @@ uint32_t ia_css_process_group_get_pg_load_start_ts(
 {
 	uint32_t pg_load_start_ts = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_load_start_ts(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_load_start_ts(): enter:\n");
 
 	if (process_group != NULL) {
 		pg_load_start_ts = process_group->pg_load_start_ts;
@@ -1173,7 +1186,7 @@ uint32_t ia_css_process_group_get_pg_load_cycles(
 {
 	uint32_t pg_load_cycles = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_load_cycles(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_load_cycles(): enter:\n");
 
 	if (process_group != NULL) {
 		pg_load_cycles = process_group->pg_load_cycles;
@@ -1189,7 +1202,7 @@ uint32_t ia_css_process_group_get_pg_init_cycles(
 {
 	uint32_t pg_init_cycles = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_init_cycles(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_init_cycles(): enter:\n");
 
 	if (process_group != NULL) {
 		pg_init_cycles = process_group->pg_init_cycles;
@@ -1205,7 +1218,7 @@ uint32_t ia_css_process_group_get_pg_processing_cycles(
 {
 	uint32_t pg_processing_cycles = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_processing_cycles(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_pg_processing_cycles(): enter:\n");
 
 	if (process_group != NULL) {
 		pg_processing_cycles = process_group->pg_processing_cycles;
@@ -1223,7 +1236,7 @@ ia_css_terminal_t *ia_css_process_group_get_terminal(
 	ia_css_terminal_t *terminal_ptr = NULL;
 	uint16_t *terminal_offset_table;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_terminal(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_terminal(): enter:\n");
 
 	verifexit(process_grp != NULL, NULL);
 	verifexit(terminal_num < process_grp->terminal_count, NULL);
@@ -1232,7 +1245,7 @@ ia_css_terminal_t *ia_css_process_group_get_terminal(
 	terminal_ptr = (ia_css_terminal_t *) ((char *)process_grp +  terminal_offset_table[terminal_num]);
 
 EXIT:
-	if(NULL == process_grp || NULL == terminal_ptr) {
+	if (NULL == process_grp || NULL == terminal_ptr) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_terminal invalid argument\n");
 	}
 	return terminal_ptr;
@@ -1252,7 +1265,7 @@ ia_css_process_t *ia_css_process_group_get_process(
 	process_ptr = (ia_css_process_t *) ((char *)process_grp +  process_offset_table[process_num]);
 
 EXIT:
-	if(NULL == process_grp || NULL == process_ptr) {
+	if (NULL == process_grp || NULL == process_ptr) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_process invalid argument\n");
 	}
 	return process_ptr;
@@ -1263,14 +1276,14 @@ ia_css_program_group_ID_t ia_css_process_group_get_program_group_ID(
 {
 	ia_css_program_group_ID_t	id = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_program_group_ID(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_program_group_ID(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
 	id = process_group->ID;
 
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_program_group_ID invalid argument\n");
 	}
 	return id;
@@ -1281,14 +1294,14 @@ vied_nci_resource_bitmap_t ia_css_process_group_get_resource_bitmap(
 {
 	vied_nci_resource_bitmap_t	resource_bitmap = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_resource_bitmap(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_resource_bitmap(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
 	resource_bitmap = process_group->resource_bitmap;
 
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_resource_bitmap invalid argument\n");
 	}
 	return resource_bitmap;
@@ -1300,7 +1313,7 @@ int ia_css_process_group_set_resource_bitmap(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_resource_bitmap(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_resource_bitmap(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
@@ -1308,7 +1321,7 @@ int ia_css_process_group_set_resource_bitmap(
 
 	retval = 0;
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_set_resource_bitmap invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -1329,7 +1342,7 @@ uint32_t ia_css_process_group_compute_cycle_count(
 	cycle_count = 1;
 
 EXIT:
-	if(NULL == manifest || NULL == param) {
+	if (NULL == manifest || NULL == param) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_compute_cycle_count invalid argument\n");
 	}
 	return cycle_count;
@@ -1353,7 +1366,7 @@ uint8_t ia_css_process_group_compute_process_count(
 	ia_css_kernel_bitmap_t	enable_bitmap;
 	int							i;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_compute_process_count(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_compute_process_count(): enter:\n");
 
 	verifexit(manifest != NULL, EINVAL);
 	verifexit(param != NULL, EINVAL);
@@ -1394,7 +1407,8 @@ uint8_t ia_css_process_group_compute_terminal_count(
 	ia_css_kernel_bitmap_t	total_bitmap;
 	ia_css_kernel_bitmap_t	enable_bitmap;
 	int						i;
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_compute_terminal_count(): enter: \n");
+
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_compute_terminal_count(): enter:\n");
 
 	verifexit(manifest != NULL, EINVAL);
 	verifexit(param != NULL, EINVAL);
@@ -1429,7 +1443,7 @@ int ia_css_process_group_set_fragment_state(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_set_fragment_state(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_group_set_fragment_state(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 	verifexit(fragment_state <= ia_css_process_group_get_fragment_count(process_group), EINVAL);
@@ -1437,7 +1451,7 @@ int ia_css_process_group_set_fragment_state(
 	process_group->fragment_state = fragment_state;
 	retval = 0;
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_set_fragment_state invalid argument process_group\n");
 	}
 	if (retval != 0) {
@@ -1452,7 +1466,7 @@ int ia_css_process_group_get_fragment_state(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_fragment_state(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_fragment_state(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 	verifexit(fragment_state != NULL, EINVAL);
@@ -1460,7 +1474,7 @@ int ia_css_process_group_get_fragment_state(
 	*fragment_state = process_group->fragment_state;
 	retval = 0;
 EXIT:
-	if(NULL == process_group || NULL == fragment_state) {
+	if (NULL == process_group || NULL == fragment_state) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_fragment_state invalid argument\n");
 	}
 	if (retval != 0) {
@@ -1471,11 +1485,11 @@ EXIT:
 
 int ia_css_process_group_get_ipu_vaddress(
 	const ia_css_process_group_t			*process_group,
-	vied_vaddress_t 				*ipu_vaddress)
+	vied_vaddress_t				*ipu_vaddress)
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_ipu_vaddress(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_get_ipu_vaddress(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 	verifexit(ipu_vaddress != NULL, EINVAL);
@@ -1484,7 +1498,7 @@ int ia_css_process_group_get_ipu_vaddress(
 	retval = 0;
 
 EXIT:
-	if(NULL == process_group || NULL == ipu_vaddress) {
+	if (NULL == process_group || NULL == ipu_vaddress) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_get_ipu_vaddress invalid argument\n");
 	}
 	if (retval != 0) {
@@ -1495,11 +1509,11 @@ EXIT:
 
 int ia_css_process_group_set_ipu_vaddress(
 	ia_css_process_group_t			*process_group,
-	vied_vaddress_t 				ipu_vaddress)
+	vied_vaddress_t				ipu_vaddress)
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_ipu_vaddress(): enter: \n");
+	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE, "ia_css_process_group_set_ipu_vaddress(): enter:\n");
 
 	verifexit(process_group != NULL, EINVAL);
 
@@ -1507,7 +1521,7 @@ int ia_css_process_group_set_ipu_vaddress(
 	retval = 0;
 
 EXIT:
-	if(NULL == process_group) {
+	if (NULL == process_group) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING, "ia_css_process_group_set_ipu_vaddress invalid argument\n");
 	}
 	if (retval != 0) {

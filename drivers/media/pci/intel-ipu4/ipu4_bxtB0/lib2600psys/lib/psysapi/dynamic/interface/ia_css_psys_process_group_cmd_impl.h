@@ -25,7 +25,7 @@
 #define	N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT		7
 
 #define SIZE_OF_PROCESS_GROUP_STRUCT_BITS \
-	( (N_UINT64_IN_PROCESS_GROUP_STRUCT * 64) \
+	((N_UINT64_IN_PROCESS_GROUP_STRUCT * 64) \
 	+ (N_UINT32_IN_PROCESS_GROUP_STRUCT * 32) \
 	+ IA_CSS_PROGRAM_GROUP_ID_BITS \
 	+ IA_CSS_PROCESS_GROUP_STATE_BITS \
@@ -40,9 +40,9 @@ struct ia_css_process_group_s {
 	uint64_t							private_token;									/**< private token / context reference, zero is an error value */
 	uint32_t							size;											/**< Size of this structure */
 	uint32_t							pg_load_start_ts;								/**< The timestamp when PG load starts */
-	uint32_t 							pg_load_cycles;									/**< PG load time in cycles */
-	uint32_t 							pg_init_cycles;									/**< PG init time in cycles */
-	uint32_t 							pg_processing_cycles;								/**< PG processing time in cycles */
+	uint32_t							pg_load_cycles;									/**< PG load time in cycles */
+	uint32_t							pg_init_cycles;									/**< PG init time in cycles */
+	uint32_t							pg_processing_cycles;								/**< PG processing time in cycles */
 	ia_css_program_group_ID_t			ID;												/**< Referal ID to program group FW */
 	ia_css_process_group_state_t		state;											/**< State of the process group FSM */
 	vied_vaddress_t						ipu_virtual_address;							/**< Virtual address of process group in IPU */
@@ -50,12 +50,12 @@ struct ia_css_process_group_s {
 	uint16_t							fragment_count;									/**< Number of fragments offered on each terminal */
 	uint16_t							fragment_state;									/**< Current fragment of processing */
 	uint16_t							fragment_limit;									/**< Watermark to control fragment processing */
-	uint16_t 							processes_offset;								/**< Array[process_count] of process addresses in this process group */
-	uint16_t 							terminals_offset;								/**< Array[terminal_count] of terminal addresses on this process group */
+	uint16_t							processes_offset;								/**< Array[process_count] of process addresses in this process group */
+	uint16_t							terminals_offset;								/**< Array[terminal_count] of terminal addresses on this process group */
 	uint8_t								process_count;									/**< Parameter dependent number of processes in this process group */
-	uint8_t				 				terminal_count;									/**< Parameter dependent number of terminals on this process group */
-	uint8_t				 				subgraph_count;									/**< Parameter dependent number of independent subgraphs in this process group */
-	uint8_t				 				padding[N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT];									/**< Padding for 64bit alignment */
+	uint8_t								terminal_count;									/**< Parameter dependent number of terminals on this process group */
+	uint8_t								subgraph_count;									/**< Parameter dependent number of independent subgraphs in this process group */
+	uint8_t								padding[N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT];									/**< Padding for 64bit alignment */
 };
 
 /*! Callback after process group is created. Implementations can provide

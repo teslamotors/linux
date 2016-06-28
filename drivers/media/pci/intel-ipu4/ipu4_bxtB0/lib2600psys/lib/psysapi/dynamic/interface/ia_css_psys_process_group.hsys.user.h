@@ -64,7 +64,7 @@ extern ia_css_process_group_t *ia_css_process_group_create(
  @return NULL
  */
 extern ia_css_process_group_t *ia_css_process_group_destroy(
-	ia_css_process_group_t			 		*process_group);
+	ia_css_process_group_t					*process_group);
 
 /*! Print the process group object to file/stream
 
@@ -115,7 +115,7 @@ extern bool ia_css_is_process_group_valid(
 
  @return true if the process group can be submitted
  */
-extern bool ia_css_can_process_group_submit (
+extern bool ia_css_can_process_group_submit(
 	const ia_css_process_group_t			*process_group);
 
 

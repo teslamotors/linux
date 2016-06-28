@@ -32,6 +32,7 @@
 int print_handle_context(struct ia_css_isys_context *ctx)
 {
 	unsigned int i;
+
 	verifret(ctx != NULL, EFAULT);
 	/* Print ctx->(ssid, mmid, dev_state) */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Print ia_css_isys_context *ctx\n"
@@ -97,6 +98,7 @@ int print_device_config_data(const struct ia_css_isys_device_cfg_data *config)
 int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cfg)
 {
 	unsigned int i;
+
 	verifret(stream_cfg != NULL, EFAULT);
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Print ia_css_isys_stream_cfg_data stream_cfg\n"
 		"-------------------------------------------------------------------------------\n");
@@ -220,6 +222,7 @@ int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cf
 int print_isys_frame_buff_set(const struct ia_css_isys_frame_buff_set *next_frame, const unsigned int nof_output_pins)
 {
 	unsigned int i;
+
 	verifret(next_frame != NULL, EFAULT);
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "Print ia_css_isys_frame_buff_set *next_frame\n"

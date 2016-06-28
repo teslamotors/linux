@@ -344,7 +344,7 @@
 /* Bridge */
 #define IA_CSS_TRACE_DYNAMIC_IMPL(module, argument_count, severity, ...) \
 	if (IA_CSS_TRACE_CAT(IA_CSS_TRACE_CAT(module, _trace_level_), severity)) { \
-		IA_CSS_TRACE_IMPL(module, argument_count, severity, __VA_ARGS__ ); \
+		IA_CSS_TRACE_IMPL(module, argument_count, severity, __VA_ARGS__); \
 	}
 #endif
 
@@ -510,7 +510,7 @@
 		vied_nci_tunit_print3i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
 			severity, a1, a2, a3)
 
-	#define IA_CSS_TRACE_TRACE_4(severity, module , format, a1, a2, a3, a4) \
+	#define IA_CSS_TRACE_TRACE_4(severity, module, format, a1, a2, a3, a4) \
 		vied_nci_tunit_print4i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
 			severity, a1, a2, a3, a4)
 
@@ -787,7 +787,7 @@
 							IA_CSS_TRACE_CAT(module, _trace_verbose_enable)(); \
 							break; \
 						\
-					        default: \
+						default: \
 							break; \
 						} \
 					} \

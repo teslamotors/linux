@@ -69,7 +69,7 @@ struct ia_css_syscom_config {
 	unsigned int dmem_addr;
 
 	/* firmware-specific configuration data */
-	void* specific_addr;
+	void *specific_addr;
 	unsigned int specific_size;
 };
 
