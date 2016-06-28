@@ -1005,22 +1005,25 @@ static int lpc_ich_init_wdt(struct pci_dev *dev)
 	 * to it we have to read the PMC BASE from config space and address
 	 * the register at offset 0x8.
 	 */
-	if (lpc_chipset_info[priv->chipset].iTCO_version == 1) {
+	switch (lpc_chipset_info[priv->chipset].iTCO_version) {
+	case 1:
 		/* Don't register iomem for TCO ver 1 */
 		lpc_ich_cells[LPC_WDT].num_resources--;
-	} else if (lpc_chipset_info[priv->chipset].iTCO_version == 2) {
+		break;
+	case 2:
 		pci_read_config_dword(dev, RCBABASE, &base_addr_cfg);
 		base_addr = base_addr_cfg & 0xffffc000;
 		if (!(base_addr_cfg & 1)) {
-			dev_notice(&dev->dev, "RCBA is disabled by "
-					"hardware/BIOS, device disabled\n");
+			 dev_notice(&dev->dev, "RCBA is disabled by "
+				"hardware/BIOS, device disabled\n");
 			ret = -ENODEV;
 			goto wdt_done;
 		}
 		res = wdt_mem_res(ICH_RES_MEM_GCS_PMC);
 		res->start = base_addr + ACPIBASE_GCS_OFF;
 		res->end = base_addr + ACPIBASE_GCS_END;
-	} else if (lpc_chipset_info[priv->chipset].iTCO_version == 3) {
+		break;
+	case 3:
 		lpc_ich_enable_pmc_space(dev);
 		pci_read_config_dword(dev, ACPICTRL_PMCBASE, &base_addr_cfg);
 		base_addr = base_addr_cfg & 0xfffffe00;
@@ -1028,6 +1031,10 @@ static int lpc_ich_init_wdt(struct pci_dev *dev)
 		res = wdt_mem_res(ICH_RES_MEM_GCS_PMC);
 		res->start = base_addr + ACPIBASE_PMC_OFF;
 		res->end = base_addr + ACPIBASE_PMC_END;
+		break;
+	default:
+		dev_notice(&dev->dev, "Unknown TCO v%u\n",
+		lpc_chipset_info[priv->chipset].iTCO_version);
 	}
 
 	ret = lpc_ich_finalize_wdt_cell(dev);
