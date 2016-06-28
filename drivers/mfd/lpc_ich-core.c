@@ -69,6 +69,7 @@
 #include <linux/mfd/lpc_ich.h>
 #include <linux/platform_data/itco_wdt.h>
 #include <linux/platform_data/sbi_apl.h>
+#include <linux/pinctrl/pinctrl-apl.h>
 
 #define ACPIBASE		0x40
 #define ACPIBASE_GPE_OFF	0x28
@@ -1148,23 +1149,96 @@ wdt_done:
 	return ret;
 }
 
+#ifdef CONFIG_PINCTRL_APL_DEVICE
+static struct resource apl_gpio_res[] = {
+	{},
+	{
+		.start = 14,
+		.end = 14,
+		.flags = IORESOURCE_IRQ,
+	}
+};
+
+static struct apl_pinctrl_port apl_pinctrl_pdata;
+
+static const struct mfd_cell apl_gpio_devices = {
+	.name = "apl_gpio",
+	.resources = apl_gpio_res,
+	.num_resources = ARRAY_SIZE(apl_gpio_res),
+	.pdata_size = sizeof(apl_pinctrl_pdata),
+	.platform_data = &apl_pinctrl_pdata,
+	.ignore_resource_conflicts = true,
+};
+#endif
+
 static int lpc_ich_misc(struct pci_dev *dev, enum lpc_chipsets e,
 	struct lpc_ich_priv *priv)
 {
+	int ret = -ENODEV;
+	unsigned int apl_p2sb = PCI_DEVFN(0x0d, 0);
+#ifdef CONFIG_PINCTRL_APL_DEVICE
+	u32 dword;
+	resource_size_t apl_gpio_base = 0;
+#endif
+
 	switch (e) {
 	case LPC_APL:
 		sbi_apl_data.name = lpc_ich_cells[LPC_P2SB_APL].name;
 		sbi_apl_data.version = 1;
 		sbi_apl_data.bus = 0;
-		sbi_apl_data.p2sb = PCI_DEVFN(0x0d, 0);
+		sbi_apl_data.p2sb = apl_p2sb;
 		sbi_apl_data.lock = &priv->lock;
-		return mfd_add_devices(&dev->dev, PLATFORM_DEVID_AUTO,
+		ret = mfd_add_devices(&dev->dev, PLATFORM_DEVID_AUTO,
 			 &lpc_ich_cells[LPC_P2SB_APL], 1, NULL, 0, NULL);
-	break;
+		if (ret)
+			dev_warn(&dev->dev,
+				"Failed to add Apollo Lake Sideband\n");
+
+		/* Apollo lake, has not 1, but 4 gpio controllers, handle it
+		   a bit differently */
+#ifdef CONFIG_PINCTRL_APL_DEVICE
+		/* unhide and read apl_gpio_base */
+		mutex_lock(&priv->lock);
+		pci_bus_write_config_byte(dev->bus, apl_p2sb, 0xe1, 0x0);
+
+		/* Check if device present */
+		pci_bus_read_config_dword(dev->bus, apl_p2sb, 0,
+			&dword);
+		if (dword == ~0 || dword == 0) {
+			mutex_unlock(&priv->lock);
+			dev_warn(&dev->dev,
+				"P2SB device access disabled by BIOS?\n");
+			goto out_apl_pinctrl;
+		}
+		/* Get MMIO BAR */
+		apl_gpio_res[0].flags =
+			lpc_ich_res(&apl_gpio_base, dev->bus, apl_p2sb, 0);
+
+		/* rehide p2sb */
+		pci_bus_write_config_byte(dev->bus, apl_p2sb, 0xe1, 0x1);
+		mutex_unlock(&priv->lock);
+
+		for (dword = apl_pinctrl_n; dword < apl_pinctrl_max; dword++) {
+			apl_gpio_res[0].start = apl_gpio_base
+				+ apl_gpio_io_res_off[dword].start;
+			apl_gpio_res[0].end = apl_gpio_base
+				+ apl_gpio_io_res_off[dword].end;
+			apl_pinctrl_pdata.unique_id =
+				apl_gpio_io_res_off[dword].id;
+			ret = mfd_add_devices(&dev->dev, dword,
+				&apl_gpio_devices, 1, NULL, 0, NULL);
+			if (ret)
+				dev_warn(&dev->dev,
+					"Failed to add Apollo Lake GPIO %u\n",
+					dword);
+		}
+out_apl_pinctrl:
+#endif
+	return 0;
 	default:
 	break;
 	}
-	return -ENODEV;
+	return ret;
 }
 
 static int lpc_ich_probe(struct pci_dev *dev,

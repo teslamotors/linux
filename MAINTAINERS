@@ -2300,6 +2300,11 @@ S:	Supported
 F:	drivers/pinctrl/intel/pinctrl-apl-dev.c
 F:	include/linux/pinctrl/pinctrl-apl.h
 
+BROXTON PLATFORM TESTING
+M:	Yu, Ong Hock <ong.hock.yu@intel.com>
+S:	Supported
+F:	arch/x86/platform/bxt/*
+
 BSG (block layer generic sg v4 driver)
 M:	FUJITA Tomonori <fujita.tomonori@lab.ntt.co.jp>
 L:	linux-scsi@vger.kernel.org
