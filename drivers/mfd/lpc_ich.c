@@ -64,9 +64,11 @@
 #include <linux/errno.h>
 #include <linux/acpi.h>
 #include <linux/pci.h>
+#include <linux/mutex.h>
 #include <linux/mfd/core.h>
 #include <linux/mfd/lpc_ich.h>
 #include <linux/platform_data/itco_wdt.h>
+#include <linux/platform_data/sbi_apl.h>
 
 #define ACPIBASE		0x40
 #define ACPIBASE_GPE_OFF	0x28
@@ -102,8 +104,9 @@ struct lpc_ich_priv {
 	int gctrl;		/* GPIO control */
 
 	int abase_save;		/* Cached ACPI base value */
-	int actrl_pbase_save;		/* Cached ACPI control or PMC base value */
+	int actrl_pbase_save;	/* Cached ACPI control or PMC base value */
 	int gctrl_save;		/* Cached GPIO control value */
+	struct mutex lock;	/* Device hide/unhide control */
 };
 
 static struct resource wdt_ich_res[] = {
@@ -135,7 +138,10 @@ static struct resource gpio_ich_res[] = {
 enum lpc_cells {
 	LPC_WDT = 0,
 	LPC_GPIO,
+	LPC_P2SB_APL,
 };
+
+static struct sbi_platform_data sbi_apl_data;
 
 static struct mfd_cell lpc_ich_cells[] = {
 	[LPC_WDT] = {
@@ -150,6 +156,12 @@ static struct mfd_cell lpc_ich_cells[] = {
 		.resources = gpio_ich_res,
 		.ignore_resource_conflicts = true,
 	},
+	[LPC_P2SB_APL] = {
+		.name = "sbi_apl",
+		.num_resources = 0,
+		.platform_data = &sbi_apl_data,
+		.pdata_size = sizeof(sbi_apl_data),
+	}
 };
 
 /* chipset related info */
@@ -220,6 +232,7 @@ enum lpc_chipsets {
 	LPC_WPT_LP,	/* Wildcat Point-LP */
 	LPC_BRASWELL,	/* Braswell SoC */
 	LPC_9S,		/* 9 Series */
+	LPC_APL,	/* Apollo Lake SoC */
 };
 
 static struct lpc_ich_info lpc_chipset_info[] = {
@@ -531,6 +544,10 @@ static struct lpc_ich_info lpc_chipset_info[] = {
 		.name = "9 Series",
 		.iTCO_version = 2,
 	},
+	[LPC_APL]  = {
+		.name = "Apollo Lake SoC",
+		.iTCO_version = 5,
+	},
 };
 
 /*
@@ -679,6 +696,7 @@ static const struct pci_device_id lpc_ich_ids[] = {
 	{ PCI_VDEVICE(INTEL, 0x3b14), LPC_3420},
 	{ PCI_VDEVICE(INTEL, 0x3b16), LPC_3450},
 	{ PCI_VDEVICE(INTEL, 0x5031), LPC_EP80579},
+	{ PCI_VDEVICE(INTEL, 0x5ae8), LPC_APL},
 	{ PCI_VDEVICE(INTEL, 0x8c40), LPC_LPT},
 	{ PCI_VDEVICE(INTEL, 0x8c41), LPC_LPT},
 	{ PCI_VDEVICE(INTEL, 0x8c42), LPC_LPT},
@@ -794,6 +812,9 @@ static void lpc_ich_enable_acpi_space(struct pci_dev *dev)
 	u8 reg_save;
 
 	switch (lpc_chipset_info[priv->chipset].iTCO_version) {
+	case 5:
+		/* Doesn't apply for APL */
+		break;
 	case 3:
 		/*
 		 * Some chipsets (eg Avoton) enable the ACPI space in the
@@ -967,32 +988,73 @@ gpio_done:
 	return ret;
 }
 
+static unsigned long lpc_ich_res(resource_size_t *start, struct pci_bus *bus,
+	unsigned int devfn, unsigned int bar)
+{
+	u32 dword;
+	unsigned long flag = 0;
+	unsigned int addr = PCI_BASE_ADDRESS_0 + 4 * bar;
+
+	pci_bus_read_config_dword(bus, devfn, addr, &dword);
+	if ((dword & PCI_BASE_ADDRESS_SPACE) == PCI_BASE_ADDRESS_SPACE_IO) {
+		flag = IORESOURCE_IO;
+		*start = dword & PCI_BASE_ADDRESS_IO_MASK;
+	} else {
+		flag = IORESOURCE_MEM;
+		*start = dword & PCI_BASE_ADDRESS_MEM_MASK;
+		if (dword & PCI_BASE_ADDRESS_MEM_TYPE_64) {
+			flag |= IORESOURCE_MEM_64;
+#ifdef CONFIG_PHYS_ADDR_T_64BIT
+			addr += 4;
+			pci_bus_read_config_dword(bus, devfn, addr, &dword);
+			*start |= ((u64) dword) << 32;
+#endif
+		}
+	}
+	return flag;
+}
+
+static int lpc_ich_init_wdt_pmc(struct pci_dev *dev, struct lpc_ich_priv *priv,
+	u32 *base_addr_cfg, u32 *base_addr)
+{
+	struct resource *res;
+
+	/* Not applicable for APL */
+	if (lpc_chipset_info[priv->chipset].iTCO_version == 5)
+		return 0;
+
+	/* Setup power management base register */
+	pci_read_config_dword(dev, priv->abase, base_addr_cfg);
+	*base_addr = *base_addr_cfg & 0x0000ff80;
+	if (!*base_addr) {
+		dev_notice(&dev->dev, "I/O space for ACPI uninitialized\n");
+		return -ENODEV;
+	}
+
+	res = wdt_io_res(ICH_RES_IO_TCO);
+	res->start = *base_addr + ACPIBASE_TCO_OFF;
+	res->end = *base_addr + ACPIBASE_TCO_END;
+
+	res = wdt_io_res(ICH_RES_IO_SMI);
+	res->start = *base_addr + ACPIBASE_SMI_OFF;
+	res->end = *base_addr + ACPIBASE_SMI_END;
+
+	lpc_ich_enable_acpi_space(dev);
+	return 0;
+}
+
 static int lpc_ich_init_wdt(struct pci_dev *dev)
 {
 	struct lpc_ich_priv *priv = pci_get_drvdata(dev);
 	u32 base_addr_cfg;
 	u32 base_addr;
 	int ret;
-	struct resource *res;
+	struct resource *res, *smi, *tco;
+	unsigned int p2sb, pmc;
 
-	/* Setup power management base register */
-	pci_read_config_dword(dev, priv->abase, &base_addr_cfg);
-	base_addr = base_addr_cfg & 0x0000ff80;
-	if (!base_addr) {
-		dev_notice(&dev->dev, "I/O space for ACPI uninitialized\n");
-		ret = -ENODEV;
+	ret = lpc_ich_init_wdt_pmc(dev, priv, &base_addr_cfg, &base_addr);
+	if (ret)
 		goto wdt_done;
-	}
-
-	res = wdt_io_res(ICH_RES_IO_TCO);
-	res->start = base_addr + ACPIBASE_TCO_OFF;
-	res->end = base_addr + ACPIBASE_TCO_END;
-
-	res = wdt_io_res(ICH_RES_IO_SMI);
-	res->start = base_addr + ACPIBASE_SMI_OFF;
-	res->end = base_addr + ACPIBASE_SMI_END;
-
-	lpc_ich_enable_acpi_space(dev);
 
 	/*
 	 * iTCO v2:
@@ -1032,6 +1094,44 @@ static int lpc_ich_init_wdt(struct pci_dev *dev)
 		res->start = base_addr + ACPIBASE_PMC_OFF;
 		res->end = base_addr + ACPIBASE_PMC_END;
 		break;
+	case 5:
+		/* TCO may not necessarily be in IO space */
+		p2sb = PCI_DEVFN(13, 0);
+		pmc = PCI_DEVFN(13, 1);
+		smi = wdt_io_res(ICH_RES_IO_SMI);
+		tco = wdt_io_res(ICH_RES_IO_TCO);
+		res = wdt_mem_res(ICH_RES_MEM_GCS_PMC);
+		mutex_lock(&priv->lock);
+		pci_bus_write_config_byte(dev->bus, p2sb, 0xe1, 0x0);
+		pci_bus_read_config_dword(dev->bus, pmc, 0,
+			&base_addr_cfg);
+		if (base_addr_cfg == ~0 || base_addr_cfg == 0) {
+			ret = -ENODEV;
+			goto end_case_5;
+		} else {
+			ret = 0;
+		}
+		res->flags = lpc_ich_res(&res->start, dev->bus, pmc, 0);
+		res->end = res->start + 0x100c;
+		res->start += 0x1008;
+
+		/* We should really get the ACPI base off the 3rd BAR,
+		   but it is not programmed in the PCI config space */
+		tco->flags = smi->flags = IORESOURCE_IO;
+		smi->start = 0x400;
+		tco->start = smi->start + ACPIBASE_TCO_OFF;
+		tco->end = smi->start + ACPIBASE_TCO_END;
+		/* Apollo Lake is unusual for using 0x40-0x43 for the
+		   SMI_EN registers instead of the usual 0x30 */
+		smi->end = smi->start + 0x43;
+		smi->start += 0x40;
+
+end_case_5:
+		pci_bus_write_config_byte(dev->bus, p2sb, 0xe1, 0x1);
+		mutex_unlock(&priv->lock);
+		if (ret)
+			goto wdt_done;
+		break;
 	default:
 		dev_notice(&dev->dev, "Unknown TCO v%u\n",
 		lpc_chipset_info[priv->chipset].iTCO_version);
@@ -1046,6 +1146,25 @@ static int lpc_ich_init_wdt(struct pci_dev *dev)
 
 wdt_done:
 	return ret;
+}
+
+static int lpc_ich_misc(struct pci_dev *dev, enum lpc_chipsets e,
+	struct lpc_ich_priv *priv)
+{
+	switch (e) {
+	case LPC_APL:
+		sbi_apl_data.name = lpc_ich_cells[LPC_P2SB_APL].name;
+		sbi_apl_data.version = 1;
+		sbi_apl_data.bus = 0;
+		sbi_apl_data.p2sb = PCI_DEVFN(0x0d, 0);
+		sbi_apl_data.lock = &priv->lock;
+		return mfd_add_devices(&dev->dev, PLATFORM_DEVID_AUTO,
+			 &lpc_ich_cells[LPC_P2SB_APL], 1, NULL, 0, NULL);
+	break;
+	default:
+	break;
+	}
+	return -ENODEV;
 }
 
 static int lpc_ich_probe(struct pci_dev *dev,
@@ -1077,6 +1196,8 @@ static int lpc_ich_probe(struct pci_dev *dev,
 		priv->gctrl = GPIOCTRL_ICH6;
 	}
 
+	mutex_init(&priv->lock);
+
 	pci_set_drvdata(dev, priv);
 
 	if (lpc_chipset_info[priv->chipset].iTCO_version) {
@@ -1090,6 +1211,9 @@ static int lpc_ich_probe(struct pci_dev *dev,
 		if (!ret)
 			cell_added = true;
 	}
+
+	if (!lpc_ich_misc(dev, priv->chipset, priv))
+		cell_added = true;
 
 	/*
 	 * We only care if at least one or none of the cells registered
