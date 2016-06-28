@@ -1085,3 +1085,7 @@ module_exit(bxt_pinctrl_exit);
 MODULE_AUTHOR("Mika Westerberg <mika.westerberg@linux.intel.com>");
 MODULE_DESCRIPTION("Intel Broxton SoC pinctrl/GPIO driver");
 MODULE_LICENSE("GPL v2");
+
+#ifdef CONFIG_PINCTRL_APL_DEVICE
+MODULE_ALIAS("platform:apl_gpio");
+#endif
