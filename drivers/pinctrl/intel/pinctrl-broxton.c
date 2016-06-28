@@ -999,10 +999,11 @@ static const struct intel_pinctrl_soc_data *apl_pinctrl_soc_data[] = {
 
 static const struct acpi_device_id bxt_pinctrl_acpi_match[] = {
 #ifdef CONFIG_PINCTRL_APL_DEVICE
-	"apl_gpio", (kernel_ulong_t)apl_pinctrl_soc_data,
+	{ "apl_gpio", (kernel_ulong_t)apl_pinctrl_soc_data, },
+	{ "bxt_gpio", (kernel_ulong_t)bxt_pinctrl_soc_data, },
 #else
-	"INT3452", (kernel_ulong_t)apl_pinctrl_soc_data,
-	"INT34D1", (kernel_ulong_t)bxt_pinctrl_soc_data,
+	{ "INT3452", (kernel_ulong_t)apl_pinctrl_soc_data, },
+	{ "INT34D1", (kernel_ulong_t)bxt_pinctrl_soc_data, },
 #endif
 	{ }
 };
