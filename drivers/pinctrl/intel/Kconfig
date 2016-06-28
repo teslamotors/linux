@@ -36,11 +36,21 @@ config PINCTRL_INTEL
 
 config PINCTRL_BROXTON
 	tristate "Intel Broxton pinctrl and GPIO driver"
-	depends on ACPI
 	select PINCTRL_INTEL
 	help
 	  Broxton pinctrl driver provides an interface that allows
 	  configuring of SoC pins and using them as GPIOs.
+
+config PINCTRL_APL_DEVICE
+	tristate "Intel Apollo Lake GPIO pin control Platform Device Emulation"
+	depends on PINCTRL_BROXTON
+	help
+	  This driver is to set up platform device in the absent of ACPI
+	  enumeration.
+
+	  Say yes for non-ACPI platform. This will enable the platform devices
+	  to be created and bind with the Apollo Lake GPIO pin control platform
+	  driver.
 
 config PINCTRL_SUNRISEPOINT
 	tristate "Intel Sunrisepoint pinctrl and GPIO driver"

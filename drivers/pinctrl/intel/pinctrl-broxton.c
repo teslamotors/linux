@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm.h>
 #include <linux/pinctrl/pinctrl.h>
+#include <linux/pinctrl/pinctrl-apl.h>
 
 #include "pinctrl-intel.h"
 
@@ -997,8 +998,12 @@ static const struct intel_pinctrl_soc_data *apl_pinctrl_soc_data[] = {
 };
 
 static const struct acpi_device_id bxt_pinctrl_acpi_match[] = {
-	{ "INT3452", (kernel_ulong_t)apl_pinctrl_soc_data },
-	{ "INT34D1", (kernel_ulong_t)bxt_pinctrl_soc_data },
+#ifdef CONFIG_PINCTRL_APL_DEVICE
+	"apl_gpio", (kernel_ulong_t)apl_pinctrl_soc_data,
+#else
+	"INT3452", (kernel_ulong_t)apl_pinctrl_soc_data,
+	"INT34D1", (kernel_ulong_t)bxt_pinctrl_soc_data,
+#endif
 	{ }
 };
 MODULE_DEVICE_TABLE(acpi, bxt_pinctrl_acpi_match);
@@ -1008,21 +1013,34 @@ static int bxt_pinctrl_probe(struct platform_device *pdev)
 	const struct intel_pinctrl_soc_data *soc_data = NULL;
 	const struct intel_pinctrl_soc_data **soc_table;
 	const struct acpi_device_id *id;
-	struct acpi_device *adev;
 	int i;
+#ifdef CONFIG_PINCTRL_APL_DEVICE
+	struct device *dev = &pdev->dev;
+	struct apl_pinctrl_port *platform_data = dev->platform_data;
+
+	id = bxt_pinctrl_acpi_match;
+	if (strcmp(pdev->name, id->id))
+		return -ENODEV;
+#else
+	struct acpi_device *adev;
 
 	adev = ACPI_COMPANION(&pdev->dev);
 	if (!adev)
 		return -ENODEV;
 
 	id = acpi_match_device(bxt_pinctrl_acpi_match, &pdev->dev);
+#endif
 	if (!id)
 		return -ENODEV;
 
 	soc_table = (const struct intel_pinctrl_soc_data **)id->driver_data;
 
 	for (i = 0; soc_table[i]; i++) {
+#ifdef CONFIG_PINCTRL_APL_DEVICE
+		if (!strcmp(platform_data->unique_id, soc_table[i]->uid)) {
+#else
 		if (!strcmp(adev->pnp.unique_id, soc_table[i]->uid)) {
+#endif
 			soc_data = soc_table[i];
 			break;
 		}
@@ -1043,9 +1061,12 @@ static struct platform_driver bxt_pinctrl_driver = {
 	.probe = bxt_pinctrl_probe,
 	.remove = intel_pinctrl_remove,
 	.driver = {
-		.name = "broxton-pinctrl",
+		.name = "apl_gpio",
+		.owner  = THIS_MODULE,
+#ifndef CONFIG_PINCTRL_APL_DEVICE
 		.acpi_match_table = bxt_pinctrl_acpi_match,
 		.pm = &bxt_pinctrl_pm_ops,
+#endif
 	},
 };
 

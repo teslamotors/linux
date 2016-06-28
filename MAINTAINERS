@@ -2294,6 +2294,12 @@ L:	netdev@vger.kernel.org
 S:	Supported
 F:	drivers/net/ethernet/brocade/bna/
 
+BROXTON PLATFORM Pin Controller
+M:	Tan, Jui Nee <jui.nee.tan@intel.com>
+S:	Supported
+F:	drivers/pinctrl/intel/pinctrl-apl-dev.c
+F:	include/linux/pinctrl/pinctrl-apl.h
+
 BSG (block layer generic sg v4 driver)
 M:	FUJITA Tomonori <fujita.tomonori@lab.ntt.co.jp>
 L:	linux-scsi@vger.kernel.org
