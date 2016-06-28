@@ -42,7 +42,7 @@ config PINCTRL_BROXTON
 	  configuring of SoC pins and using them as GPIOs.
 
 config PINCTRL_APL_DEVICE
-	tristate "Intel Apollo Lake GPIO pin control Platform Device Emulation"
+	bool "Intel Apollo Lake GPIO pin control Platform Device Emulation"
 	depends on PINCTRL_BROXTON
 	help
 	  This driver is to set up platform device in the absent of ACPI
