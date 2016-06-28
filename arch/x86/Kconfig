@@ -649,6 +649,24 @@ config IOSF_MBI_DEBUG
 
 	  If you don't require the option or are in doubt, say N.
 
+config X86_INTEL_SBI_APL
+	tristate "Intel SoC Sideband Interface for Apollo Lake"
+	depends on PCI
+	---help---
+	  This option enables sideband interface access for Intel Apollo Lake.
+	  Like IOSF_MBI, the registers are used in lieu of MSR's.
+
+	  You should say Y if you are running a kernel on Apollo Lake.
+
+config X86_INTEL_SBI_APL_DEBUG
+	bool "Enable Intel SoC SBI for Apollo Lake access in debugfs"
+	depends on X86_INTEL_SBI_APL && DEBUG_FS
+	---help---
+	  Select this option to expose the Sideband Interface through
+	  debugfs.
+
+	  You should say N if you do not plan to debug the SoC.
+
 config X86_RDC321X
 	bool "RDC R-321x SoC"
 	depends on X86_32
