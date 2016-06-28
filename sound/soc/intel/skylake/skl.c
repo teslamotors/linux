@@ -463,13 +463,17 @@ static int skl_machine_device_register(struct skl *skl, void *driver_data)
 	struct sst_acpi_mach *mach = driver_data;
 	int ret;
 
+	if (IS_ENABLED(CONFIG_SND_SOC_RT700) ||
+	    IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA))
+		goto out;
+
 	mach = sst_acpi_find_machine(mach);
 	if (mach == NULL) {
 		dev_err(bus->dev, "No matching machine driver found\n");
 		return -ENODEV;
 	}
+out:
 	skl->fw_name = mach->fw_filename;
-
 	pdev = platform_device_alloc(mach->drv_name, -1);
 	if (pdev == NULL) {
 		dev_err(bus->dev, "platform device alloc failed\n");
@@ -1040,11 +1044,18 @@ static struct sst_acpi_mach sst_glk_devdata[] = {
 };
 
 static const struct sst_acpi_mach sst_cnl_devdata[] = {
+#if !IS_ENABLED(CONFIG_SND_SOC_RT700)
 	{
 		.id = "INT34C2",
 		.drv_name = "cnl_rt274",
 		.fw_filename = "intel/dsp_fw_cnl.bin",
 	},
+#else
+	{
+		.drv_name = "cnl_rt700",
+		.fw_filename = "intel/dsp_fw_cnl.bin",
+	},
+#endif
 };
 
 /* PCI IDs */

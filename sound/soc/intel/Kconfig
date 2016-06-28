@@ -336,6 +336,18 @@ config SND_SOC_INTEL_CNL_CS42L42_MACH
 	will create an alsa sound card.  Say Y if you have such a device If
 	unsure select "N".
 
+config SND_SOC_INTEL_CNL_RT700_MACH
+        tristate "SOC Machine Audio driver for CNL Platform"
+	select SND_SOC_RT700
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_DMIC
+        help
+        This adds support for ASoC machine driver . This will create an alsa
+        sound card.
+        Say Y if you have such a device
+        If unsure select "N".
+
 config SND_SOC_INTEL_CNL_SVFPGA_MACH
         tristate "SND_SOC_INTEL_CNL_SVFPGA_MACH for CNL Platform"
 	select SND_SOC_SVFPGA
