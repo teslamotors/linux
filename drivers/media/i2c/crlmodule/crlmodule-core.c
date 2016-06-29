@@ -2861,10 +2861,10 @@ static int crlmodule_probe(struct i2c_client *client,
 	sensor->src->pads[0].flags = MEDIA_PAD_FL_SOURCE;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	ret = media_entity_init(&sensor->src->sd.entity, 2,
-                                sensor->src->pads, 0);
+				sensor->src->pads, 0);
 #else
 	ret = media_entity_pads_init(&sensor->src->sd.entity, 2,
-				     sensor->src->pads);
+				sensor->src->pads);
 #endif
 	if (ret < 0)
 		goto cleanup;
