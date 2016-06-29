@@ -129,6 +129,11 @@ config VIDEO_SENSOR_STUB_PDATA
 	---help---
 	Pdata for sensor driver that is controlled outside (pixter/xactor)
 
+config VIDEO_AGGREGATOR_STUB
+	tristate "Intel video aggregator stub"
+	---help---
+	Dummy video aggregator driver that is controlled outside
+
 config VIDEO_IRIS
 	tristate "Intel camera DC-iris"
 	---help---

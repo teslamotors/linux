@@ -55,5 +55,6 @@ obj-$(CONFIG_VIDEO_SENSOR_STUB) += video-sensor-stub.o
 obj-$(CONFIG_VIDEO_SENSOR_STUB_PDATA) += video-sensor-stub-pdata.o
 obj-$(CONFIG_I2C_ADAPTER_STUB) += i2c-adapter-stub.o
 obj-$(CONFIG_VIDEO_IRIS) += video-iris.o
+obj-$(CONFIG_VIDEO_AGGREGATOR_STUB) += video-aggre-stub.o
 
 ccflags-y += -I$(srctree)/drivers/media/i2c
