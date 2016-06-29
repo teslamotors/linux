@@ -618,7 +618,7 @@ static int isys_acpi_add_device(struct device *dev, void *priv,
 		return -ENODEV;
 
 	/* Lock the module so we can safely get the v4l2_subdev pointer */
-        if (!try_module_get(client->dev.driver->owner))
+	if (!try_module_get(client->dev.driver->owner))
 		return -ENODEV;
 
 	sd = i2c_get_clientdata(client);
@@ -627,7 +627,7 @@ static int isys_acpi_add_device(struct device *dev, void *priv,
 		dev_warn(&isys->adev->dev, "can't create new i2c subdev\n");
 		goto leave_module_put;
 	}
-        module_put(client->dev.driver->owner);
+	module_put(client->dev.driver->owner);
 
 	if (!csi2)
 		return 0;
@@ -635,7 +635,7 @@ static int isys_acpi_add_device(struct device *dev, void *priv,
 	return isys_complete_ext_device_registration(isys, sd, csi2);
 
 leave_module_put:
-        module_put(client->dev.driver->owner);
+	module_put(client->dev.driver->owner);
 	return -ENODEV;
 }
 

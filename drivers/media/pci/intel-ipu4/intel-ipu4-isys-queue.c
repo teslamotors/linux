@@ -40,7 +40,7 @@ static int queue_setup(struct vb2_queue *q,
 {
 	struct intel_ipu4_isys_queue *aq = vb2_queue_to_intel_ipu4_isys_queue(q);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	const struct v4l2_format *fmt = __fmt;
 	const struct intel_ipu4_isys_pixelformat *pfmt;
 	struct v4l2_pix_format_mplane mpix;
@@ -49,7 +49,7 @@ static int queue_setup(struct vb2_queue *q,
 #endif
 	unsigned int i;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	if (fmt)
 		mpix = fmt->fmt.pix_mp;
 	else
@@ -67,7 +67,7 @@ static int queue_setup(struct vb2_queue *q,
 #endif
 
 	for (i = 0; i < *num_planes; i++) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		sizes[i] = mpix.plane_fmt[i].sizeimage;
 #else
 		if (use_fmt)
@@ -1151,7 +1151,7 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 
 		dev_dbg(&isys->adev->dev, "buffer: found buffer %pad\n", &addr);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		vb->v4l2_buf.field = V4L2_FIELD_NONE;
 #else
 		to_vb2_v4l2_buffer(vb)->field = V4L2_FIELD_NONE;
@@ -1331,7 +1331,9 @@ int intel_ipu4_isys_req_queue(struct media_device *mdev,
 
 	mutex_lock(&isys->stream_mutex);
 
-	if (pipe && (ip = to_intel_ipu4_isys_pipeline(pipe))->streaming) {
+	ip = to_intel_ipu4_isys_pipeline(pipe);
+
+	if (pipe && ip->streaming) {
 		struct ia_css_isys_frame_buff_set set = { .send_irq_sof = 1, };
 
 		if (no_pipe) {

@@ -75,7 +75,7 @@ static int psys_runtime_pm_suspend(struct device *dev);
 #else
 #define pm_runtime_dont_use_autosuspend(d)
 #define pm_runtime_use_autosuspend(d)
-#define pm_runtime_set_autosuspend_delay(d,f)	0
+#define pm_runtime_set_autosuspend_delay(d, f)	0
 #define pm_runtime_get_sync(d)			0
 #define pm_runtime_put(d)			0
 #define pm_runtime_put_sync(d)			0

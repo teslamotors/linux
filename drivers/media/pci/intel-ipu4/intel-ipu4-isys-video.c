@@ -432,7 +432,8 @@ int intel_ipu4_isys_vidioc_enum_fmt(struct file *file, void *fh,
 
 	/* Walk the 0-terminated array for the f->index-th code. */
 	for (index = f->index; *supported_codes && index;
-	     index--, supported_codes++);
+		index--, supported_codes++)
+		{};
 
 	if (!*supported_codes)
 		return -EINVAL;
@@ -1057,6 +1058,8 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	}
 	dev_dbg(dev, "start stream: open complete\n");
 
+	ireq = intel_ipu4_isys_next_queued_request(ip);
+
 	if (bl) {
 		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 			&buf, ip, bl);
@@ -1064,7 +1067,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
 		csslib_dump_isys_frame_buff_set(dev, &buf,
 						stream_cfg.nof_output_pins);
-	} else if ((ireq = intel_ipu4_isys_next_queued_request(ip))) {
+	} else if (ireq) {
 		intel_ipu4_isys_req_prepare(&av->isys->media_dev,
 					    ireq, ip, &buf);
 		csslib_dump_isys_frame_buff_set(dev, &buf,

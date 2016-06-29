@@ -29,7 +29,7 @@ int intel_ipu4_isys_isr_run(void *ptr);
 	media_entity_create_link(a, b, c, d, e)
 #define media_entity_pads_init(a, b, c)	\
 	media_entity_init(a, b, c, 0)
-#define media_entity_id(ent) (ent)->id
+#define media_entity_id(ent) ((ent)->id)
 #define media_entity_graph_walk_init(a, b) 0
 #define media_entity_graph_walk_cleanup(a) do { } while (0)
 #define media_entity_enum_init(a, b) ({ int foo = 0; foo = *(&foo); foo; })
