@@ -2,6 +2,28 @@ ifndef IPU_STEP
   $(error No IPU_STEP was defined. Stopping.)
 endif
 
+ifeq ($(IPU_STEP),glvA0)
+intel-ipu-mod-$(IPU_STEP)-objs			+= ../intel-ipu4.$(IPU_STEP).lnk.o ../intel-ipu4-bus.$(IPU_STEP).lnk.o ../intel-ipu4-dma.$(IPU_STEP).lnk.o ../intel-ipu4-buttress.$(IPU_STEP).lnk.o ../intel-ipu4-trace.$(IPU_STEP).lnk.o ../intel-ipu4-cpd.$(IPU_STEP).lnk.o
+obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= intel-ipu-mod-$(IPU_STEP).o
+intel-ipu-mmu-$(IPU_STEP)-objs		+= ../intel-ipu4-mmu.$(IPU_STEP).lnk.o
+obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= intel-ipu-mmu-$(IPU_STEP).o
+intel-ipu-isys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-isys.$(IPU_STEP).lnk.o ../intel-ipu4-isys-csi2.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-compat-defs.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-csi2-be-soc.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-csi2-be.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-isa.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-video.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-queue.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-subdev.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-tpg.$(IPU_STEP).lnk.o
+obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= intel-ipu-isys-mod-$(IPU_STEP).o
+intel-ipu-wrapper-$(IPU_STEP)-objs	+= ../intel-ipu4-wrapper.$(IPU_STEP).lnk.o
+obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= intel-ipu-wrapper-$(IPU_STEP).o
+intel-ipu-psys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-psys.$(IPU_STEP).lnk.o ../intel-ipu4-resources.$(IPU_STEP).lnk.o
+ifeq ($(CONFIG_COMPAT),y)
+intel-ipu-psys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-psys-compat32.$(IPU_STEP).lnk.o
+endif
+else
 intel-ipu4-mod-$(IPU_STEP)-objs			+= ../intel-ipu4.$(IPU_STEP).lnk.o ../intel-ipu4-bus.$(IPU_STEP).lnk.o ../intel-ipu4-dma.$(IPU_STEP).lnk.o ../intel-ipu4-buttress.$(IPU_STEP).lnk.o ../intel-ipu4-trace.$(IPU_STEP).lnk.o ../intel-ipu4-cpd.$(IPU_STEP).lnk.o
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= intel-ipu4-mod-$(IPU_STEP).o
 intel-ipu4-mmu-$(IPU_STEP)-objs		+= ../intel-ipu4-mmu.$(IPU_STEP).lnk.o
@@ -26,4 +48,5 @@ intel-ipu4-psys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-psys-compat32.$(IPU_STEP
 endif
 ifndef CONFIG_VIDEO_INTEL_IPU4_ISYS_FPGA
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= intel-ipu4-psys-mod-$(IPU_STEP).o
+endif
 endif
