@@ -13,6 +13,10 @@
 #include <linux/cpumask.h>
 #include <linux/pci-aspm.h>
 #include <asm-generic/pci-bridge.h>
+#include <linux/aer.h>
+#include <linux/acpi.h>
+#include <linux/irqdomain.h>
+#include <linux/pm_runtime.h>
 #include "pci.h"
 
 #define CARDBUS_LATENCY_TIMER	176	/* secondary latency timer */
@@ -773,6 +777,12 @@ int pci_scan_bridge(struct pci_bus *bus, struct pci_dev *dev, int max, int pass)
 	u8 primary, secondary, subordinate;
 	int broken = 0;
 
+	/*
+	 * Make sure the bridge is powered on to be able to access config
+	 * space of devices below it.
+	 */
+	pm_runtime_get_sync(&dev->dev);
+
 	pci_read_config_dword(dev, PCI_PRIMARY_BUS, &buses);
 	primary = buses & 0xFF;
 	secondary = (buses >> 8) & 0xFF;
@@ -952,6 +962,8 @@ int pci_scan_bridge(struct pci_bus *bus, struct pci_dev *dev, int max, int pass)
 
 out:
 	pci_write_config_word(dev, PCI_BRIDGE_CONTROL, bctl);
+
+	pm_runtime_put(&dev->dev);
 
 	return max;
 }
