@@ -827,8 +827,10 @@ struct mem_ctl_info *edac_mc_del_mc(struct device *dev)
 		edac_mc_owner = NULL;
 	mutex_unlock(&mem_ctls_mutex);
 
-	/* flush workq processes */
-	edac_mc_workq_teardown(mci);
+	if (mci->op_state == OP_RUNNING_POLL) {
+		/* flush workq processes */
+		edac_mc_workq_teardown(mci);
+	}
 
 	/* marking MCI offline */
 	mci->op_state = OP_OFFLINE;
