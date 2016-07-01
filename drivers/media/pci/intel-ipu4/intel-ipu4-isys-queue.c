@@ -569,13 +569,8 @@ intel_ipu4_isys_next_queued_request(struct intel_ipu4_isys_pipeline *ip)
 			dev_dbg(&isys->adev->dev, "%s: buffer in vdev %s\n",
 				__func__, av->vdev.name);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-			if (ip->entity_enum
-			    & (1 << media_entity_id(&av->vdev.entity)))
-#else
 			if (media_entity_enum_test(&ip->entity_enum,
 						   &av->vdev.entity))
-#endif
 				is_ours = true;
 			else
 				is_others = true;

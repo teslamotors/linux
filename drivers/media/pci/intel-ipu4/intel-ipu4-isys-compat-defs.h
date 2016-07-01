@@ -12,6 +12,8 @@
  *
  */
 
+#include <media/media-entity.h>
+
 #ifndef INTEL_IPU4_ISYS_COMPAT_DEFS_H
 #define INTEL_IPU4_ISYS_COMPAT_DEFS_H
 
@@ -32,8 +34,47 @@ int intel_ipu4_isys_isr_run(void *ptr);
 #define media_entity_id(ent) ((ent)->id)
 #define media_entity_graph_walk_init(a, b) 0
 #define media_entity_graph_walk_cleanup(a) do { } while (0)
-#define media_entity_enum_init(a, b) ({ int foo = 0; foo = *(&foo); foo; })
-#define media_entity_enum_cleanup(a) do { } while (0)
+
+#define INTEL_IPU4_COMPAT_MAX_ENTITIES MEDIA_ENTITY_ENUM_MAX_ID
+
+struct media_entity_enum {
+	unsigned long *bmap;
+	int idx_max;
+};
+
+int media_entity_enum_init(struct media_entity_enum *ent_enum,
+			   struct media_device *mdev);
+
+static inline void media_entity_enum_cleanup(struct media_entity_enum *ent_enum)
+{
+	kfree(ent_enum->bmap);
+}
+
+static inline void media_entity_enum_set(struct media_entity_enum *ent_enum,
+					 struct media_entity *entity)
+{
+	if (media_entity_id(entity) >= ent_enum->idx_max) {
+		WARN_ON(1);
+		return;
+	}
+	__set_bit(media_entity_id(entity), ent_enum->bmap);
+}
+
+static inline void media_entity_enum_zero(struct media_entity_enum *ent_enum)
+{
+	bitmap_zero(ent_enum->bmap, ent_enum->idx_max);
+}
+
+static inline bool media_entity_enum_test(struct media_entity_enum *ent_enum,
+					  struct media_entity *entity)
+{
+	if (media_entity_id(entity) >= ent_enum->idx_max) {
+		WARN_ON(1);
+		return false;
+	}
+
+	return test_bit(media_entity_id(entity), ent_enum->bmap);
+}
 #endif
 
 #ifndef MEDIA_IOC_REQUEST_CMD

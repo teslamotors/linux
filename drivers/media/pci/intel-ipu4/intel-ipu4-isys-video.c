@@ -1281,13 +1281,9 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	WARN_ON(!list_empty(&ip->queues));
 	ip->interlaced = false;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	ip->entity_enum = 0;
-#else
 	rval = media_entity_enum_init(&ip->entity_enum, mdev);
 	if (rval)
 		return rval;
-#endif
 
 	rval = media_entity_pipeline_start(&av->vdev.entity,
 					   &ip->pipe);
@@ -1310,11 +1306,8 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	mutex_lock(&mdev->graph_mutex);
 	media_entity_graph_walk_start(&graph, &av->vdev.entity);
 	while ((entity = media_entity_graph_walk_next(&graph)))
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 		media_entity_enum_set(&ip->entity_enum, entity);
-#else
-		ip->entity_enum |= 1 << media_entity_id(entity);
-#endif
+
 	mutex_unlock(&mdev->graph_mutex);
 
 	media_entity_graph_walk_cleanup(&graph);
@@ -1350,11 +1343,11 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	struct media_device *mdev = av->vdev.entity.parent;
 	struct media_entity_graph graph;
-	unsigned long entities = 0;
 #else
 	struct media_device *mdev = av->vdev.entity.graph_obj.mdev;
-	struct media_entity_enum entities;
 #endif
+	struct media_entity_enum entities;
+
 	struct media_entity *entity, *entity2;
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
@@ -1426,17 +1419,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 			goto out_media_entity_stop_streaming;
 		}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-		if (media_entity_id(entity) >= sizeof(entities) << 3) {
-			mutex_unlock(&mdev->graph_mutex);
-			WARN_ON(1);
-			goto out_media_entity_stop_streaming;
-		}
-
-		entities |= 1 << media_entity_id(entity);
-#else
 		media_entity_enum_set(&entities, entity);
-#endif
 	}
 
 	mutex_unlock(&mdev->graph_mutex);
@@ -1498,11 +1481,7 @@ out_media_entity_stop_streaming:
 		&& entity2 != entity) {
 		struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(entity2);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-		if (!(1 << media_entity_id(entity2) & entities))
-#else
 		if (!media_entity_enum_test(&entities, entity2))
-#endif
 			continue;
 
 		v4l2_subdev_call(sd, video, s_stream, 0);
