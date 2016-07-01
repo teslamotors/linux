@@ -285,6 +285,11 @@ static struct crl_register_write_rep imx230_powerup_regset[] = {
 	{ 0x0213, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0214, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x0215, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
+	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x3A21, CRL_REG_LEN_08BIT, 0x00 }, /* LSC setting */
 	{ 0x3011, CRL_REG_LEN_08BIT, 0x00 }, /* STATS Calc enable/disable */
 	{ 0x3013, CRL_REG_LEN_08BIT, 0x00 }, /*stats output enable/disable */
@@ -296,11 +301,6 @@ static struct crl_register_write_rep imx230_powerup_regset[] = {
 };
 
 static struct crl_register_write_rep imx230_mode_2k2k[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 }, /* ST GAIN*/
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x00 },
@@ -367,11 +367,6 @@ static struct crl_register_write_rep imx230_mode_2k2k[] = {
 
 /* UHD Scale */
 static struct crl_register_write_rep imx230_mode_4k2k[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x01 },
@@ -431,11 +426,6 @@ static struct crl_register_write_rep imx230_mode_4k2k[] = {
 
 /* UHD crop*/
 static struct crl_register_write_rep imx230_mode_uhd_crop[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x03 },
@@ -495,11 +485,6 @@ static struct crl_register_write_rep imx230_mode_uhd_crop[] = {
 
 /*5344 x 40160*/
 static struct crl_register_write_rep imx230_mode_full_4_3[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x00 },
@@ -558,11 +543,6 @@ static struct crl_register_write_rep imx230_mode_full_4_3[] = {
 
 /*5344 x 4016*/
 static struct crl_register_write_rep imx230_mode_full_16_9[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x01 },
@@ -620,11 +600,6 @@ static struct crl_register_write_rep imx230_mode_full_16_9[] = {
 };
 
 static struct crl_register_write_rep imx230_mode_3264x2448_crop[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x03 },
@@ -682,11 +657,6 @@ static struct crl_register_write_rep imx230_mode_3264x2448_crop[] = {
 };
 
 static struct crl_register_write_rep imx230_mode_3264x2448_scale[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x00 },
@@ -744,11 +714,6 @@ static struct crl_register_write_rep imx230_mode_3264x2448_scale[] = {
 };
 
 static struct crl_register_write_rep imx230_mode_3280x2460_scale[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x00 },
@@ -868,11 +833,6 @@ static struct crl_register_write_rep imx230_mode_2672x1504[] = {
 };
 
 static struct crl_register_write_rep imx230_mode_1940x1092[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x01 },
@@ -931,11 +891,6 @@ static struct crl_register_write_rep imx230_mode_1940x1092[] = {
 };
 
 static struct crl_register_write_rep imx230_mode_1440[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x05 },
@@ -994,11 +949,6 @@ static struct crl_register_write_rep imx230_mode_1440[] = {
 
 
 static struct crl_register_write_rep imx230_mode_720[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
-	{ 0x0222, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0346, CRL_REG_LEN_08BIT, 0x02 },
