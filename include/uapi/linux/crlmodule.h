@@ -27,4 +27,7 @@
  */
 #define CRL_CID_SENSOR_MODE (V4L2_CID_CRLMODULE_BASE + 4)
 
+/* IMX230 HDR specific controls */
+#define CRL_CID_IMX230_HDR_MODE		(V4L2_CID_CRLMODULE_BASE + 5)
+
 #endif /* UAPI_LINUX_CRLMODULE_H */
