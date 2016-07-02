@@ -37,7 +37,7 @@ static struct ia_css_syscom_queue_config ia_css_psys_event_queue_cfg[IA_CSS_N_PS
 };
 
 static struct ia_css_syscom_config psys_syscom_config;
-struct ia_css_syscom_context	*psys_syscom = NULL;
+struct ia_css_syscom_context	*psys_syscom;
 static bool external_alloc = true;
 
 int ia_css_psys_config_print(

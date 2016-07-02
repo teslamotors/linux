@@ -65,25 +65,32 @@ ia_css_syscom_alloc(
 
 	/* allocate cpu_mem */
 	buf->cpu = (char *)ia_css_cpu_mem_alloc(size->cpu);
-	if (!buf->cpu) goto EXIT7;
+	if (!buf->cpu)
+		goto EXIT7;
 
 	/* allocate and map shared config buffer */
 	buf->shm_host = shared_memory_alloc(mmid, size->shm);
-	if (!buf->shm_host) goto EXIT6;
+	if (!buf->shm_host)
+		goto EXIT6;
 	buf->shm_cell = shared_memory_map(ssid, mmid, buf->shm_host);
-	if (!buf->shm_cell) goto EXIT5;
+	if (!buf->shm_cell)
+		goto EXIT5;
 
 	/* allocate and map input queue buffer */
 	buf->ibuf_host = shared_memory_alloc(mmid, size->ibuf);
-	if (!buf->ibuf_host) goto EXIT4;
+	if (!buf->ibuf_host)
+		goto EXIT4;
 	buf->ibuf_cell = shared_memory_map(ssid, mmid, buf->ibuf_host);
-	if (!buf->ibuf_cell) goto EXIT3;
+	if (!buf->ibuf_cell)
+		goto EXIT3;
 
 	/* allocate and map output queue buffer */
 	buf->obuf_host = shared_memory_alloc(mmid, size->obuf);
-	if (!buf->obuf_host) goto EXIT2;
+	if (!buf->obuf_host)
+		goto EXIT2;
 	buf->obuf_cell = shared_memory_map(ssid, mmid, buf->obuf_host);
-	if (!buf->obuf_cell) goto EXIT1;
+	if (!buf->obuf_cell)
+		goto EXIT1;
 
 	return 0;
 

@@ -84,7 +84,7 @@ int ia_css_param_terminal_manifest_init(
 )
 {
 	if (param_terminal == NULL) {
-		return (EFAULT);
+		return EFAULT;
 	}
 
 	param_terminal->param_manifest_section_desc_count = section_count;
@@ -127,7 +127,7 @@ int ia_css_spatial_param_terminal_manifest_init(
 )
 {
 	if (spatial_param_terminal == NULL) {
-		return (EFAULT);
+		return EFAULT;
 	}
 
 	spatial_param_terminal->frame_grid_param_manifest_section_desc_count = section_count;
@@ -170,7 +170,7 @@ int ia_css_sliced_param_terminal_manifest_init(
 )
 {
 	if (sliced_param_terminal == NULL) {
-		return (EFAULT);
+		return EFAULT;
 	}
 
 	sliced_param_terminal->sliced_param_section_count = section_count;
@@ -216,7 +216,7 @@ int ia_css_program_terminal_manifest_init(
 )
 {
 	if (program_terminal == NULL) {
-		return (EFAULT);
+		return EFAULT;
 	}
 
 	program_terminal->fragment_param_manifest_section_desc_count =

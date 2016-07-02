@@ -142,7 +142,8 @@ extern void _compile_time_assert(void);
 STORAGE_CLASS_INLINE void compile_time_assert(unsigned cond)
 {
 	/* Call undefined function if cond is false */
-	if (!cond) _compile_time_assert();
+	if (!cond)
+		_compile_time_assert();
 }
 #endif
 #endif /* PIPE_GENERATION */

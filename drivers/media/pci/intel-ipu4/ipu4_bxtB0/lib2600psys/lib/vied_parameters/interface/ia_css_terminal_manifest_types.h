@@ -104,7 +104,7 @@ struct ia_css_spatial_param_terminal_manifest_s {
 #define N_PADDING_UINT8_IN_SLICED_TERMINAL_MAN_SECTION_STRUCT (4)
 
 #define SIZE_OF_SLICED_PARAM_MAN_SEC_STRUCT_IN_BITS \
-	(3*IA_CSS_UINT32_T_BITS) \
+	((3*IA_CSS_UINT32_T_BITS) \
 	+ (N_PADDING_UINT8_IN_PARAM_TERMINAL_MAN_STRUCT * IA_CSS_UINT8_T_BITS))
 
 struct ia_css_sliced_param_manifest_section_desc_s {
@@ -117,7 +117,7 @@ struct ia_css_sliced_param_manifest_section_desc_s {
 #define SIZE_OF_SLICED_TERMINAL_MANIFEST_STRUCT_IN_BITS \
 	((SIZE_OF_TERMINAL_MANIFEST_STRUCT_IN_BITS) \
 	+ (IA_CSS_UINT32_T_BITS) \
-	+ (2*IA_CSS_UINT16_T_BITS)
+	+ (2*IA_CSS_UINT16_T_BITS))
 
 struct ia_css_sliced_param_terminal_manifest_s {					/**< Frame constant parameters terminal manifest */
 	ia_css_terminal_manifest_t	base;						/**< Spatial Parameter terminal base */

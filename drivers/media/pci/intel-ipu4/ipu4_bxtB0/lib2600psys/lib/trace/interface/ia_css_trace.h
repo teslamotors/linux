@@ -293,9 +293,11 @@
 
 /* Bridge */
 #define IA_CSS_TRACE_DYNAMIC_IMPL(module, argument_count, severity, arguments ...) \
-	if (IA_CSS_TRACE_CAT(IA_CSS_TRACE_CAT(module, _trace_level_), severity)) { \
-		IA_CSS_TRACE_IMPL(module, argument_count, severity, ## arguments); \
-	}
+	do { \
+		if (IA_CSS_TRACE_CAT(IA_CSS_TRACE_CAT(module, _trace_level_), severity)) { \
+			IA_CSS_TRACE_IMPL(module, argument_count, severity, ## arguments); \
+		} \
+	} while (0)
 #elif defined(_MSC_VER)
 #define IA_CSS_TRACE_IMPL(module, argument_count, severity, ...) \
 	IA_CSS_TRACE_CAT( \
@@ -343,9 +345,11 @@
 
 /* Bridge */
 #define IA_CSS_TRACE_DYNAMIC_IMPL(module, argument_count, severity, ...) \
-	if (IA_CSS_TRACE_CAT(IA_CSS_TRACE_CAT(module, _trace_level_), severity)) { \
-		IA_CSS_TRACE_IMPL(module, argument_count, severity, __VA_ARGS__); \
-	}
+	do { \
+		if (IA_CSS_TRACE_CAT(IA_CSS_TRACE_CAT(module, _trace_level_), severity)) { \
+			IA_CSS_TRACE_IMPL(module, argument_count, severity, __VA_ARGS__); \
+		} \
+	} while (0)
 #endif
 
 /*
@@ -400,13 +404,15 @@
 				OP___printstring(__FILE__":") VOLATILE; \
 				OP___printdec(__LINE__) VOLATILE; \
 				OP___printstring("\n") VOLATILE; \
-			while (0)
+			} while (0)
 	#else
 		#define IA_CSS_TRACE_FILE_PRINT_COMMAND
 	#endif
 
 	#define IA_CSS_TRACE_MODULE_SEVERITY_PRINT(module, severity) \
-		OP___printstring("["module"]:["severity"]:") VOLATILE;
+		do { \
+			OP___printstring("["module"]:["severity"]:") VOLATILE; \
+		} while (0)
 
 	#define IA_CSS_TRACE_MSG_NATIVE(severity, module, format) \
 		do { \

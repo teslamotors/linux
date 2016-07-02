@@ -100,7 +100,7 @@ STORAGE_CLASS_INLINE ia_css_cmem_address_t
 ia_css_cmem_get_cmem_addr_from_dmem(unsigned int base_addr, void *p)
 {
 	NOT_USED(base_addr);
-	return(ia_css_cmem_address_t)(uintptr_t)p;
+	return (ia_css_cmem_address_t)(uintptr_t)p;
 }
 
 #endif

@@ -678,8 +678,7 @@ int ia_css_isys_stream_handle_response(
 
 	if (received_response->type == IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY ||
 		received_response->type == IA_CSS_ISYS_RESP_TYPE_PIN_DATA_WATERMARK ||
-		received_response->type == IA_CSS_ISYS_RESP_TYPE_PIN_DATA_SKIPPED)
-	{
+		received_response->type == IA_CSS_ISYS_RESP_TYPE_PIN_DATA_SKIPPED) {
 		verifret(received_response->pin.addr != 0, EFAULT);
 		verifret(received_response->pin.out_buf_id != 0, EFAULT);
 		verifret(received_response->pin_id < ctx->stream_nof_output_pins[received_response->stream_handle], EINVAL);
