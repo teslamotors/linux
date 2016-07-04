@@ -1146,6 +1146,10 @@ static struct crl_dynamic_register_access imx230_hdr_mode_regs[] = {
 					   imx230_hdr_mode_ops, 0 },
 };
 
+static struct crl_dynamic_register_access imx230_hdr_et_ratio_regs[] = {
+	{ 0x0222, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+};
+
 static struct crl_sensor_detect_config imx230_sensor_detect_regset[] = {
 	{
 		.reg = { 0x0019, CRL_REG_LEN_08BIT, 0x000000ff },
@@ -1955,6 +1959,26 @@ static struct crl_v4l2_ctrl imx230_vl42_ctrls[] = {
 		.ctrl = 0,
 		.regs_items = ARRAY_SIZE(imx230_hdr_mode_regs),
 		.regs = imx230_hdr_mode_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_IDLE, /* Cannot be set when streaming? */
+		.ctrl_id = CRL_CID_IMX230_HDR_ET_RATIO,
+		.name = "imx230 HDR ET Ratio",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 1,
+		.data.std_data.max = 16,
+		.data.std_data.step = 1,
+		.data.std_data.def = 1,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx230_hdr_et_ratio_regs),
+		.regs = imx230_hdr_et_ratio_regs,
 		.dep_items = 0,
 		.dep_ctrls = 0,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
