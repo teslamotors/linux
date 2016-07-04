@@ -12549,6 +12549,11 @@ F:	Documentation/sound/alsa/soc/
 F:	sound/soc/
 F:	include/sound/soc*
 
+APOLLO_LAKE_I WM8731 MACHINE DRIVER
+M:	Tan, Seng Kai <seng.kai.tan@intel.com>
+S:	Maintained
+F:	sound/soc/intel/boards/apli_lhcrb_wm8731.c
+
 SP2 MEDIA DRIVER
 M:	Olli Salonen <olli.salonen@iki.fi>
 L:	linux-media@vger.kernel.org
