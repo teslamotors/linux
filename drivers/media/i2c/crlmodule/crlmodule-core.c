@@ -2623,6 +2623,26 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 		return -ENODEV;
 	}
 
+	/* one time init */
+	rval = crlmodule_write_regs(sensor,
+				    sensor->sensor_ds->onetime_init_regs,
+				    sensor->sensor_ds->onetime_init_regs_items);
+	if (rval) {
+		dev_err(&client->dev, "%s failed to set powerup registers\n",
+				      __func__);
+		return -ENODEV;
+	}
+
+	/* sensor specific init */
+	if (sensor->sensor_ds->sensor_init) {
+		rval = sensor->sensor_ds->sensor_init(client);
+
+		if (rval) {
+			dev_err(&client->dev, "%s failed to run sensor specific init\n",
+				      __func__);
+			return -ENODEV;
+		}
+	}
 	/* Identify the module */
 	rval = crlmodule_identify_module(subdev);
 	if (rval) {
@@ -2908,6 +2928,9 @@ static int crlmodule_remove(struct i2c_client *client)
 	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
 	unsigned int i;
+
+	if (sensor->sensor_ds->sensor_cleanup)
+		sensor->sensor_ds->sensor_cleanup(client);
 
 	v4l2_async_unregister_subdev(&sensor->src->sd);
 	for (i = 0; i < sensor->ssds_used; i++) {

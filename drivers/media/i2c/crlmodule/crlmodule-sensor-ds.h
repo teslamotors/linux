@@ -77,6 +77,7 @@ enum crl_dynamic_entity_type {
 #define CRL_I2C_ADDRESS_NO_OVERRIDE		0
 
 struct crl_sensor;
+struct i2c_client;
 
 enum crl_subdev_type {
 	CRL_SUBDEV_TYPE_SCALER,
@@ -464,6 +465,9 @@ struct crl_frame_desc {
 	struct crl_dynamic_entity csi2_data_type;
 };
 
+typedef int (*sensor_specific_init)(struct i2c_client *);
+typedef int (*sensor_specific_cleanup)(struct i2c_client *);
+
 struct crl_sensor_configuration {
 
 	const struct crl_clock_entity *clock_entity;
@@ -471,6 +475,9 @@ struct crl_sensor_configuration {
 	const unsigned int power_items;
 	const struct crl_power_seq_entity *power_entities;
 	const unsigned int power_delay; /* in micro seconds */
+
+	const unsigned int onetime_init_regs_items;
+	const struct crl_register_write_rep *onetime_init_regs;
 
 	const unsigned int powerup_regs_items;
 	const struct crl_register_write_rep *powerup_regs;
@@ -522,6 +529,9 @@ struct crl_sensor_configuration {
 	enum crl_frame_desc_type frame_desc_type;
 	struct crl_frame_desc *frame_desc;
 	char *msr_file_name;
+
+	sensor_specific_init sensor_init;
+	sensor_specific_cleanup sensor_cleanup;
 };
 
 struct crlmodule_sensors {
