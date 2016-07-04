@@ -414,6 +414,17 @@ config SND_SOC_INTEL_APLI_LHCRB_DUMMY_MACH
 	  Say Y if you have such a device
 	  If unsure select "N".
 
+config SND_SOC_INTEL_APLI_LHCRB_WM8731_MACH
+        tristate "ASoC Audio driver for APLI LHCRB WM8731 Codec"
+        depends on X86_INTEL_LPSS && I2C
+        select SND_SOC_WM8731
+        default n
+        help
+          This adds support for ASoC machine driver for  Intel(R)
+          Apollo Lake-I Leaf Hill Customer reference board platform.
+          Say Y if you have such a device
+          If unsure select "N".
+
 endif ## SND_SOC_INTEL_SKYLAKE
 
 endif ## SND_SOC_INTEL_MACH
