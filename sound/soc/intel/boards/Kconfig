@@ -414,6 +414,17 @@ config SND_SOC_INTEL_APLI_LHCRB_WM8731_MACH
           Say Y if you have such a device
           If unsure select "N".
 
+config SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH
+        tristate "ASoC Audio driver for APLI LHCRB AIC3107"
+        depends on X86_INTEL_LPSS && I2C
+        select SND_SOC_TLV320AIC3x
+        default n
+        help
+          This adds support for ASoC machine driver for  Intel(R)
+          Apollo Lake-I Leaf Hill Customer reference board platform.
+          Say Y if you have such a device
+          If unsure select "N".
+
 endif ## SND_SOC_INTEL_SKYLAKE
 
 endif ## SND_SOC_INTEL_MACH
