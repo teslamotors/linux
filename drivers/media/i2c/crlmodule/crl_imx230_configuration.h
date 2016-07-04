@@ -81,9 +81,6 @@ static struct crl_register_write_rep imx230_pll_2_8_1500mbps[] = {
 	{ 0x0808, CRL_REG_LEN_08BIT, 0x01 },
 };
 
-
-
-
 static struct crl_register_write_rep imx230_powerup_regset[] = {
 	{ 0x4800, CRL_REG_LEN_08BIT, 0x0E },
 	{ 0x4890, CRL_REG_LEN_08BIT, 0x01 },
@@ -291,6 +288,11 @@ static struct crl_register_write_rep imx230_powerup_regset[] = {
 	{ 0x0224, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x0225, CRL_REG_LEN_08BIT, 0xF4 },
 	{ 0x3000, CRL_REG_LEN_08BIT, 0x74 }, /* HDR output control */
+	{ 0x30b1, CRL_REG_LEN_08BIT, 0x00 }, /* GlobalShadingComp - HDRZZ */
+	{ 0x30c6, CRL_REG_LEN_08BIT, 0x00 }, /* ShieldPixelCorr HDRZZ */
+	{ 0x30b2, CRL_REG_LEN_08BIT, 0x00 }, /* DefectCorr1D HDRZZ */
+	{ 0x30b3, CRL_REG_LEN_08BIT, 0x00 }, /* DefectCorr2D HDRZZ */
+	{ 0x30c7, CRL_REG_LEN_08BIT, 0x00 }, /* NoiseReduction HDRZZ */
 	{ 0x3A21, CRL_REG_LEN_08BIT, 0x00 }, /* LSC setting */
 	{ 0x3011, CRL_REG_LEN_08BIT, 0x00 }, /* STATS Calc enable/disable */
 	{ 0x3013, CRL_REG_LEN_08BIT, 0x00 }, /*stats output enable/disable */
@@ -1140,6 +1142,18 @@ static struct crl_dynamic_register_access imx230_hdr_et_ratio_regs[] = {
 	{ 0x0222, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
 };
 
+static struct crl_dynamic_register_access imx230_hdr_zigzag_regs[] = {
+	{ 0x30b4, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+	{ 0x30b5, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+	{ 0x30b6, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+	{ 0x30b7, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+	{ 0x30b8, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+	{ 0x30b9, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+	{ 0x30ba, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+	{ 0x30bb, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+	{ 0x30bc, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+};
+
 static struct crl_sensor_detect_config imx230_sensor_detect_regset[] = {
 	{
 		.reg = { 0x0019, CRL_REG_LEN_08BIT, 0x000000ff },
@@ -1969,6 +1983,26 @@ static struct crl_v4l2_ctrl imx230_vl42_ctrls[] = {
 		.ctrl = 0,
 		.regs_items = ARRAY_SIZE(imx230_hdr_et_ratio_regs),
 		.regs = imx230_hdr_et_ratio_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_IDLE, /* Cannot be set when streaming? */
+		.ctrl_id = CRL_CID_IMX230_HDR_ZIGZAG,
+		.name = "imx230 HDR zigzag",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = 1,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx230_hdr_zigzag_regs),
+		.regs = imx230_hdr_zigzag_regs,
 		.dep_items = 0,
 		.dep_ctrls = 0,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
