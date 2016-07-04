@@ -23,7 +23,7 @@ static int crlmodule_i2c_read(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 r
 			      u8 len, u32 *val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
-	struct i2c_msg msg;
+	struct i2c_msg msg[2];
 	unsigned char data[4];
 	int r;
 
@@ -34,38 +34,39 @@ static int crlmodule_i2c_read(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 r
 		return -EINVAL;
 
 	if (dev_i2c_addr == CRL_I2C_ADDRESS_NO_OVERRIDE)
-		msg.addr = client->addr;
+		msg[0].addr = client->addr;
 	else
-		msg.addr = dev_i2c_addr;
+		msg[0].addr = dev_i2c_addr;
 
-	msg.flags = 0;
-	msg.buf = data;
+	msg[1].addr = msg[0].addr;
 
-	if (sensor->sensor_ds->addr_len == CRL_ADDR_8BIT) {
+	msg[0].flags = 0;
+	msg[0].buf = data;
+
+	if (sensor->sensor_ds->addr_len == CRL_ADDR_7BIT) {
+		/* change address to 7bit format */
+		msg[0].addr = msg[0].addr >> 1;
+		msg[1].addr = msg[1].addr >> 1;
+	}
+	if ((sensor->sensor_ds->addr_len == CRL_ADDR_7BIT) ||
+			(sensor->sensor_ds->addr_len == CRL_ADDR_8BIT)) {
 		data[0] = (u8) (reg & 0xff);
-		msg.len = 1;
+		msg[0].len = 1;
 	} else {
 		/* high byte goes out first */
 		data[0] = (u8) (reg >> 8);
 		data[1] = (u8) (reg & 0xff);
-		msg.len = 2;
+		msg[0].len = 2;
 	}
 
-	r = i2c_transfer(client->adapter, &msg, 1);
-	if (r != 1) {
-		if (r >= 0)
-			r = -EBUSY;
-		goto err;
-	}
+	msg[1].flags = I2C_M_RD;
+	msg[1].buf = data;
+	msg[1].len = len;
 
-	msg.len = len;
-	msg.flags = I2C_M_RD;
-	r = i2c_transfer(client->adapter, &msg, 1);
-	if (r != 1) {
-		if (r >= 0)
-			r = -EBUSY;
+	r = i2c_transfer(client->adapter, msg, 2);
+
+	if (r < 0)
 		goto err;
-	}
 
 	*val = 0;
 	/* high byte comes first */
@@ -101,6 +102,7 @@ static int crlmodule_i2c_write(struct crl_sensor *sensor, u16 dev_i2c_addr,
 	unsigned char data[6];
 	unsigned int retries;
 	int r;
+	unsigned char *data_offset;
 
 	if (len != CRL_REG_LEN_08BIT && len != CRL_REG_LEN_16BIT &&
 	    len != CRL_REG_LEN_24BIT && len != CRL_REG_LEN_32BIT)
@@ -114,14 +116,20 @@ static int crlmodule_i2c_write(struct crl_sensor *sensor, u16 dev_i2c_addr,
 	msg.flags = 0; /* Write */
 	msg.buf = data;
 
-	if (sensor->sensor_ds->addr_len == CRL_ADDR_8BIT) {
+	if (sensor->sensor_ds->addr_len == CRL_ADDR_7BIT)
+		msg.addr = msg.addr >> 1;
+
+	if ((sensor->sensor_ds->addr_len == CRL_ADDR_7BIT) ||
+		(sensor->sensor_ds->addr_len == CRL_ADDR_8BIT)) {
 		data[0] = (u8) (reg & 0xff);
 		msg.len = 1 + len;
+		data_offset = &data[1];
 	} else {
 		/* high byte goes out first */
 		data[0] = (u8) (reg >> 8);
 		data[1] = (u8) (reg & 0xff);
 		msg.len = 2 + len;
+		data_offset = &data[2];
 	}
 
 	dev_dbg(&client->dev, "%s len reg, val: [%d, 0x%04x, 0x%04x]",
@@ -129,22 +137,22 @@ static int crlmodule_i2c_write(struct crl_sensor *sensor, u16 dev_i2c_addr,
 
 	switch (len) {
 	case CRL_REG_LEN_08BIT:
-		data[2] = val;
+		data_offset[0] = val;
 		break;
 	case CRL_REG_LEN_16BIT:
-		data[2] = val >> 8;
-		data[3] = val;
+		data_offset[0] = val >> 8;
+		data_offset[1] = val;
 		break;
 	case CRL_REG_LEN_24BIT:
-		data[2] = val >> 16;
-		data[3] = val >> 8;
-		data[4] = val;
+		data_offset[0] = val >> 16;
+		data_offset[1] = val >> 8;
+		data_offset[2] = val;
 		break;
 	case CRL_REG_LEN_32BIT:
-		data[2] = val >> 24;
-		data[3] = val >> 16;
-		data[4] = val >> 8;
-		data[5] = val;
+		data_offset[0] = val >> 24;
+		data_offset[1] = val >> 16;
+		data_offset[2] = val >> 8;
+		data_offset[3] = val;
 		break;
 	}
 

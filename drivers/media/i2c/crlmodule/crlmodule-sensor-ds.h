@@ -124,6 +124,7 @@ enum crl_v4l2_ctrl_type {
 enum crl_addr_len {
 	CRL_ADDR_16BIT = 0,
 	CRL_ADDR_8BIT,
+	CRL_ADDR_7BIT,
 };
 
 enum crl_operands {
