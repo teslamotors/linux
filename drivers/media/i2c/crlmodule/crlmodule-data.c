@@ -22,7 +22,8 @@
 #include "crl_imx318_configuration.h"
 #include "crl_ov8858_configuration.h"
 #include "crl_ov13860_configuration.h"
-#include "crl_adv7481_configuration.h"
+#include "crl_adv7481_cvbs_configuration.h"
+#include "crl_adv7481_hdmi_configuration.h"
 #include "crl_adv7481_eval_configuration.h"
 #include "crl_imx185_configuration.h"
 
@@ -35,7 +36,8 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-INT3477:00", "ov8858", &ov8858_crl_configuration },
 	{ "IMX185", "imx185", &imx185_crl_configuration },
 	{ "OV13860", "ov13860", &ov13860_crl_configuration },
-	{ "ADV7481", "adv7481", &adv7481_crl_configuration },
+	{ "ADV7481 CVBS", "adv7481_cvbs", &adv7481_cvbs_crl_configuration },
+	{ "ADV7481 HDMI", "adv7481_hdmi", &adv7481_hdmi_crl_configuration },
 	{ "ADV7481_EVAL", "adv7481_eval", &adv7481_eval_crl_configuration },
 	{ "ADV7481B_EVAL", "adv7481b_eval", &adv7481b_eval_crl_configuration },
 	{ "SONY318A", "imx318", &imx318_crl_configuration },
