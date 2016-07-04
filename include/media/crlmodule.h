@@ -34,6 +34,7 @@ struct crlmodule_platform_data {
 
 	int xshutdown;			/* gpio */
 	char module_name[16]; /* module name from ACPI */
+	int crl_irq_pin;
 };
 
 #endif /* __CRLMODULE_H  */
