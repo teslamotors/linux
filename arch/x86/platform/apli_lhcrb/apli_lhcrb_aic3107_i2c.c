@@ -29,7 +29,6 @@ static const struct i2c_board_info i2c_bus_info[] __initconst = {
 
 static int __init apli_lhcrb_aic3107_i2c_init(void)
 {
-	int i;
 	struct i2c_adapter *adapter = NULL;
 
 	adapter = i2c_get_adapter(AUDIO_I2C_CHANNEL);
