@@ -205,6 +205,7 @@ static int read_acpi_block(struct device *dev, char *id, void *data, u32 size)
 	struct acpi_buffer buffer = { ACPI_ALLOCATE_BUFFER, NULL };
 	struct acpi_handle *dev_handle = ACPI_HANDLE(dev);
 	int status;
+	u32 buffer_length;
 
 	status = acpi_evaluate_object(dev_handle, id, NULL, &buffer);
 	if (!ACPI_SUCCESS(status))
@@ -224,9 +225,10 @@ static int read_acpi_block(struct device *dev, char *id, void *data, u32 size)
 	}
 
 	memcpy(data, obj->buffer.pointer, obj->buffer.length);
+	buffer_length = obj->buffer.length;
 	kfree(buffer.pointer);
 
-	return obj->buffer.length;
+	return buffer_length;
 err:
 	kfree(buffer.pointer);
 	return status;
