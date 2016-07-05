@@ -1216,6 +1216,7 @@ static const struct fwmsg fw_msg[] = {
 	{ IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE, "STREAM_CAPTURE_DONE", 1 },
 	{ IA_CSS_ISYS_RESP_TYPE_FRAME_SOF,           "FRAME_SOF", 1 },
 	{ IA_CSS_ISYS_RESP_TYPE_FRAME_EOF,           "FRAME_EOF", 1 },
+	{ IA_CSS_ISYS_RESP_TYPE_STATS_DATA_READY,    "STATS_READY", 1 },
 	{ -1, "UNKNOWN MESSAGE", 0 },
 };
 
@@ -1374,6 +1375,8 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			% INTEL_IPU4_ISYS_MAX_PARALLEL_SOF;
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_FRAME_EOF:
+		break;
+	case IA_CSS_ISYS_RESP_TYPE_STATS_DATA_READY:
 		break;
 	default:
 		dev_err(&adev->dev, "%d:unknown response type %u\n",

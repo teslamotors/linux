@@ -516,6 +516,9 @@ static void isa_prepare_firmware_stream_cfg_param(
 	for (i = 0; i < ARRAY_SIZE(opts); i++)
 		*opts[i].cfg = (bool)(isa->isa_en->val & opts[i].bit);
 
+	cfg->isa_cfg.send_irq_stats_ready = 1;
+	cfg->isa_cfg.send_resp_stats_ready = 1;
+
 	intel_ipu4_isys_video_add_capture_done(ip, isa_capture_done);
 }
 
