@@ -28,7 +28,15 @@ intel-ipu-psys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-psys-compat32.$(IPU_STEP)
 endif
 obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= intel-ipu-psys-mod-$(IPU_STEP).o
 else
-intel-ipu4-mod-$(IPU_STEP)-objs			+= ../intel-ipu4.$(IPU_STEP).lnk.o ../intel-ipu4-bus.$(IPU_STEP).lnk.o ../intel-ipu4-dma.$(IPU_STEP).lnk.o ../intel-ipu4-buttress.$(IPU_STEP).lnk.o ../intel-ipu4-trace.$(IPU_STEP).lnk.o ../intel-ipu4-cpd.$(IPU_STEP).lnk.o
+intel-ipu4-mod-$(IPU_STEP)-objs			+= \
+						../intel-ipu4.$(IPU_STEP).lnk.o \
+						../intel-ipu4-bus.$(IPU_STEP).lnk.o \
+						../intel-ipu4-dma.$(IPU_STEP).lnk.o \
+						../intel-ipu4-buttress.$(IPU_STEP).lnk.o \
+						../intel-ipu4-trace.$(IPU_STEP).lnk.o \
+						../intel-ipu4-cpd.$(IPU_STEP).lnk.o \
+						../intel-ipu4-fw-com.$(IPU_STEP).lnk.o
+
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= intel-ipu4-mod-$(IPU_STEP).o
 intel-ipu4-mmu-$(IPU_STEP)-objs		+= ../intel-ipu4-mmu.$(IPU_STEP).lnk.o
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= intel-ipu4-mmu-$(IPU_STEP).o
