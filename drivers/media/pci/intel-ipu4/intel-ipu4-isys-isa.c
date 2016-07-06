@@ -115,18 +115,18 @@ const struct intel_ipu4_isys_pixelformat *isa_config_try_fmt_vid_out_mplane(
 		intel_ipu4_isys_get_pixelformat(av, mpix->pixelformat);
 
 	mpix->pixelformat = pfmt->pixelformat;
-	mpix->num_planes = ISA_BUF_PLANES;
+	mpix->num_planes = ISA_CFG_BUF_PLANES;
 
-	mpix->plane_fmt[ISA_BUF_PLANE_PG].bytesperline = 0;
-	mpix->plane_fmt[ISA_BUF_PLANE_PG].sizeimage = ALIGN(
+	mpix->plane_fmt[ISA_CFG_BUF_PLANE_PG].bytesperline = 0;
+	mpix->plane_fmt[ISA_CFG_BUF_PLANE_PG].sizeimage = ALIGN(
 		max_t(uint32_t,
 		      sizeof(struct ia_css_process_group_light),
-		      mpix->plane_fmt[ISA_BUF_PLANE_PG].sizeimage),
+		      mpix->plane_fmt[ISA_CFG_BUF_PLANE_PG].sizeimage),
 		av->isys->line_align);
 
-	mpix->plane_fmt[ISA_BUF_PLANE_DATA].bytesperline = 0;
-	mpix->plane_fmt[ISA_BUF_PLANE_DATA].sizeimage = ALIGN(
-		max(1U, mpix->plane_fmt[ISA_BUF_PLANE_DATA].sizeimage),
+	mpix->plane_fmt[ISA_CFG_BUF_PLANE_DATA].bytesperline = 0;
+	mpix->plane_fmt[ISA_CFG_BUF_PLANE_DATA].sizeimage = ALIGN(
+		max(1U, mpix->plane_fmt[ISA_CFG_BUF_PLANE_DATA].sizeimage),
 		av->isys->line_align);
 
 	return pfmt;
@@ -185,7 +185,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 	if (enable)
 		return 0;
 
-	for (i = 0; i < ISA_BUF_PLANES; i++)
+	for (i = 0; i < ISA_CFG_BUF_PLANES; i++)
 		isa->next_param[i] = NULL;
 
 	return 0;
@@ -580,7 +580,7 @@ static int isa_terminal_get_iova(struct device *dev, struct ia_css_terminal *t,
  */
 static int isa_import_pg(struct vb2_buffer *vb)
 {
-	void *__pg = vb2_plane_vaddr(vb, ISA_BUF_PLANE_PG);
+	void *__pg = vb2_plane_vaddr(vb, ISA_CFG_BUF_PLANE_PG);
 	struct intel_ipu4_isys_queue *aq =
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
@@ -589,7 +589,7 @@ static int isa_import_pg(struct vb2_buffer *vb)
 	struct ia_css_process_group_light *pg = isa_buf->pgl.pg;
 	bool capture = aq->vbq.type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	uint32_t addr = vb2_dma_contig_plane_dma_addr(vb,
-						      ISA_BUF_PLANE_DATA);
+						      ISA_CFG_BUF_PLANE_DATA);
 	unsigned int i;
 
 	if (!__pg) {
@@ -598,7 +598,7 @@ static int isa_import_pg(struct vb2_buffer *vb)
 		return -EINVAL;
 	}
 
-	if (vb2_plane_size(vb, ISA_BUF_PLANE_PG) > PGL_SIZE) {
+	if (vb2_plane_size(vb, ISA_CFG_BUF_PLANE_PG) > PGL_SIZE) {
 		dev_dbg(&av->isys->adev->dev,
 			"too large process group, max %lu\n",
 			PGL_SIZE);
@@ -609,12 +609,12 @@ static int isa_import_pg(struct vb2_buffer *vb)
 	 * Copy the light process group to a kernel buffer so that it
 	 * cannot be modified by the user space.
 	 */
-	memcpy(pg, __pg, vb2_plane_size(vb, ISA_BUF_PLANE_PG));
+	memcpy(pg, __pg, vb2_plane_size(vb, ISA_CFG_BUF_PLANE_PG));
 
-	if (pg->size > vb2_plane_size(vb, ISA_BUF_PLANE_PG)) {
+	if (pg->size > vb2_plane_size(vb, ISA_CFG_BUF_PLANE_PG)) {
 		dev_dbg(&av->isys->adev->dev,
 			"process group size too large (%u bytes, %lu bytes available)\n",
-			pg->size, vb2_plane_size(vb, ISA_BUF_PLANE_PG));
+			pg->size, vb2_plane_size(vb, ISA_CFG_BUF_PLANE_PG));
 		return -EINVAL;
 	}
 
@@ -666,7 +666,7 @@ static int isa_import_pg(struct vb2_buffer *vb)
 			return -EINVAL;
 		}
 
-		if (*iova > vb2_plane_size(vb, ISA_BUF_PLANE_DATA)) {
+		if (*iova > vb2_plane_size(vb, ISA_CFG_BUF_PLANE_DATA)) {
 			dev_dbg(&av->isys->adev->dev,
 				"offset outside the buffer\n");
 			return -EINVAL;
@@ -689,7 +689,7 @@ static int isa_terminal_buf_prepare(struct vb2_buffer *vb)
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 	unsigned int i;
 
-	for (i = 0; i < ISA_BUF_PLANES; i++) {
+	for (i = 0; i < ISA_CFG_BUF_PLANES; i++) {
 		vb2_set_plane_payload(vb, i, av->mpix.plane_fmt[i].sizeimage);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		vb->v4l2_planes[i].data_offset = 0;
@@ -785,7 +785,7 @@ static void isa_config_prepare_frame_buff_set(struct vb2_buffer *__vb)
 
 	/* Obtain common process group light buffer from config buffer */
 	__isa_buf = vb2_buffer_to_intel_ipu4_isys_isa_buffer(
-		isa->next_param[ISA_BUF_PLANE_PG]);
+		isa->next_param[ISA_CFG_BUF_PLANE_PG]);
 
 	for (i = 0; i < ISA_PARAM_QUEUES; i++) {
 		struct intel_ipu4_isys_isa_buffer *isa_buf;
@@ -794,12 +794,12 @@ static void isa_config_prepare_frame_buff_set(struct vb2_buffer *__vb)
 		isa_buf = vb2_buffer_to_intel_ipu4_isys_isa_buffer(vb[i]);
 		pg[i] = isa_buf->pgl.pg;
 		addr[i] = vb2_dma_contig_plane_dma_addr(vb[i],
-							ISA_BUF_PLANE_DATA);
+							ISA_CFG_BUF_PLANE_DATA);
 
 		dma_sync_single_for_device(&av->isys->adev->dev,
 					   addr[i],
 					   vb2_plane_size(vb[i],
-							  ISA_BUF_PLANE_DATA),
+						ISA_CFG_BUF_PLANE_DATA),
 					   DMA_TO_DEVICE);
 
 		dev_dbg(&av->isys->adev->dev,

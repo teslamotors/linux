@@ -62,9 +62,10 @@ struct intel_ipu4_isys_isa_buffer {
 	} pgl;
 };
 
-#define ISA_BUF_PLANE_PG		0
-#define ISA_BUF_PLANE_DATA		1
-#define ISA_BUF_PLANES			2
+/* ISA CFG will use multiplanar buffers */
+#define ISA_CFG_BUF_PLANE_PG		0
+#define ISA_CFG_BUF_PLANE_DATA		1
+#define ISA_CFG_BUF_PLANES		2
 
 #define ISA_PARAM_QUEUES		2
 
