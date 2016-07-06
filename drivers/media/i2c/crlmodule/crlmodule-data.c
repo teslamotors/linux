@@ -28,6 +28,7 @@
 
 static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-SONY214A:00", "imx214", &imx214_crl_configuration },
+	{ "IMX214", "imx214", &imx214_crl_configuration },
 	{ "i2c-SONY132A:00", "imx132", &imx132_crl_configuration },
 	{ "i2c-INT3471:00", "imx135", &imx135_crl_configuration },
 	{ "i2c-SONY230A:00", "imx230", &imx230_crl_configuration },
