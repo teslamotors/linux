@@ -13,6 +13,7 @@ PSYS2600_INCLUDES := \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/components/acc_cluster/acc_bc \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/components/acc_cluster/acc_wba \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/fw_abi_common_types \
+	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/fw_abi_common_types/cpu \
         -I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/hrt \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/pkg_dir/interface \
 	-I$(srctree)/$(src)/$(PSYS2600_LIBRARY)/lib/pkg_dir/src \

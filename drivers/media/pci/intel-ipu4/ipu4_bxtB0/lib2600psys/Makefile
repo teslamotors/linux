@@ -51,6 +51,7 @@ HOST_INCLUDES  = \
 		 -I$(INCLUDE_DIR)/device_access/interface \
 		 -I$(INCLUDE_DIR)/device_access/src \
 		 -I$(INCLUDE_DIR)/fw_abi_common_types \
+		 -I$(INCLUDE_DIR)/fw_abi_common_types/cpu \
 		 -I$(INCLUDE_DIR)/fw_load/interface \
 		 -I$(INCLUDE_DIR)/pkg_dir/interface \
 		 -I$(INCLUDE_DIR)/pkg_dir/src \

@@ -18,29 +18,6 @@
 #include "ia_css_isysapi_proxy_region_types.h"
 
 /*
- * Definitions for BXT_A0_PROXY_INT
- */
-
-#if defined(BXT_A0_PROXY_INT)
-
-/**
- * enum bxt_a0_ia_css_proxy_write_region. Provides the list of regions for bxtA0 that
- * can be accessed (for writing purpose) through the proxy interface
- */
-enum bxt_a0_ia_css_proxy_write_region {
-	N_BXT_A0_IA_CSS_PROXY_WRITE_REGION
-};
-
-#define BXT_A0_NO_PROXY_WRITE_REGION_AVAILABLE
-
-#ifndef BXT_A0_NO_PROXY_WRITE_REGION_AVAILABLE
-struct ia_css_proxy_write_region_description bxt_a0_reg_write_desc[N_BXT_A0_IA_CSS_PROXY_WRITE_REGION] = {
-}
-#endif /*BXT_A0_NO_PROXY_WRITE_REGION_AVAILABLE*/
-
-#endif /*defined(BXT_A0_PROXY_INT)*/
-
-/*
  * Definitions for BXT_B0_PROXY_INT
  */
 

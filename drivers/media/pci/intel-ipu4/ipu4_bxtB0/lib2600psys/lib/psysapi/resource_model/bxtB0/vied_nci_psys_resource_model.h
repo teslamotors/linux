@@ -155,6 +155,11 @@ typedef enum {
  * DMEM: in words, 4 Byte per word.
  * PMEM: in words, 64 Byte per word.
  */
+#define VIED_NCI_GMEM_WORD_SIZE     64
+#define VIED_NCI_DMEM_WORD_SIZE      4
+#define VIED_NCI_VMEM_WORD_SIZE     64
+#define VIED_NCI_BAMEM_WORD_SIZE    64
+
 #define VIED_NCI_VMEM0_MAX_SIZE		(0x0800)
 #define VIED_NCI_VMEM1_MAX_SIZE		(0x0800)
 #define VIED_NCI_VMEM2_MAX_SIZE		(0x0800)
@@ -262,6 +267,7 @@ extern const vied_nci_mem_type_ID_t vied_nci_cell_mem_type[VIED_NCI_N_CELL_TYPE_
 extern const vied_nci_mem_ID_t vied_nci_cell_mem[VIED_NCI_N_CELL_ID][VIED_NCI_N_MEM_TYPE_ID];
 extern const uint16_t vied_nci_mem_size[VIED_NCI_N_MEM_ID];
 extern const uint16_t vied_nci_mem_element_size[VIED_NCI_N_MEM_TYPE_ID];
+extern const uint16_t vied_nci_mem_word_size[VIED_NCI_N_DATA_MEM_TYPE_ID];
 extern const uint16_t vied_nci_dev_chn_size[VIED_NCI_N_DEV_CHN_ID];
 
 #endif /* __VIED_NCI_PSYS_RESOURCE_MODEL_H_INCLUDED__ */
