@@ -52,7 +52,7 @@
  *	registered cooling device.
  * @cpufreq_state: integer value representing the current state of cpufreq
  *	cooling	devices.
- * @cpufreq_val: integer value representing the absolute value of the clipped
+ * @clipped_freq: integer value representing the absolute value of the clipped
  *	frequency.
  * @max_level: maximum cooling level. One less than total number of valid
  *	cpufreq frequencies.
@@ -66,7 +66,7 @@ struct cpufreq_cooling_device {
 	int id;
 	struct thermal_cooling_device *cool_dev;
 	unsigned int cpufreq_state;
-	unsigned int cpufreq_val;
+	unsigned int clipped_freq;
 	unsigned int max_level;
 	unsigned int *freq_table;	/* In descending order */
 	struct cpumask allowed_cpus;
@@ -195,7 +195,7 @@ static int cpufreq_thermal_notifier(struct notifier_block *nb,
 					&cpufreq_dev->allowed_cpus))
 			continue;
 
-		max_freq = cpufreq_dev->cpufreq_val;
+		max_freq = cpufreq_dev->clipped_freq;
 
 		if (policy->max != max_freq)
 			cpufreq_verify_within_limits(policy, 0, max_freq);
@@ -273,7 +273,7 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 
 	clip_freq = cpufreq_device->freq_table[state];
 	cpufreq_device->cpufreq_state = state;
-	cpufreq_device->cpufreq_val = clip_freq;
+	cpufreq_device->clipped_freq = clip_freq;
 
 	cpufreq_update_policy(cpu);
 
@@ -363,14 +363,6 @@ __cpufreq_cooling_register(struct device_node *np,
 		goto free_table;
 	}
 
-	snprintf(dev_name, sizeof(dev_name), "thermal-cpufreq-%d",
-		 cpufreq_dev->id);
-
-	cool_dev = thermal_of_cooling_device_register(np, dev_name, cpufreq_dev,
-						      &cpufreq_cooling_ops);
-	if (IS_ERR(cool_dev))
-		goto remove_idr;
-
 	/* Fill freq-table in descending order of frequencies */
 	for (i = 0, freq = -1; i <= cpufreq_dev->max_level; i++) {
 		freq = find_next_max(table, freq);
@@ -383,7 +375,15 @@ __cpufreq_cooling_register(struct device_node *np,
 			pr_debug("%s: freq:%u KHz\n", __func__, freq);
 	}
 
-	cpufreq_dev->cpufreq_val = cpufreq_dev->freq_table[0];
+	snprintf(dev_name, sizeof(dev_name), "thermal-cpufreq-%d",
+		 cpufreq_dev->id);
+
+	cool_dev = thermal_of_cooling_device_register(np, dev_name, cpufreq_dev,
+						      &cpufreq_cooling_ops);
+	if (IS_ERR(cool_dev))
+		goto remove_idr;
+
+	cpufreq_dev->clipped_freq = cpufreq_dev->freq_table[0];
 	cpufreq_dev->cool_dev = cool_dev;
 
 	mutex_lock(&cooling_cpufreq_lock);
