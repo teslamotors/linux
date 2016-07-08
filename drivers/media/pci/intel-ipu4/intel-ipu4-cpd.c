@@ -27,8 +27,10 @@
 /* PKG_DIR size in bytes */
 #define PKG_DIR_SIZE			((MAX_PKG_DIR_ENT_CNT) *	\
 					 (PKG_DIR_ENT_LEN) * sizeof(u64))
-#define PKG_DIR_ID_OFFSET		48
-#define PKG_DIR_VERSION_OFFSET		32
+#define PKG_DIR_ID_SHIFT		48
+#define PKG_DIR_ID_MASK			0x7f
+#define PKG_DIR_VERSION_SHIFT		32
+#define PKG_DIR_SIZE_MASK		0xfffff
 /* _IUPKDR_ */
 #define PKG_DIR_HDR_MARK		0x5f4955504b44525f
 
@@ -194,8 +196,8 @@ static int intel_ipu4_cpd_parse_module_data(struct intel_ipu4_device *isp,
 		 * 63:56	55	54:48	47:32	31:24	23:0
 		 * Rsvd		Rsvd	Type	Version	Rsvd	Size
 		 */
-		*p = dir_ent->len | (u64) id << PKG_DIR_ID_OFFSET |
-			(u64) ver << PKG_DIR_VERSION_OFFSET;
+		*p = dir_ent->len | (u64) id << PKG_DIR_ID_SHIFT |
+			(u64) ver << PKG_DIR_VERSION_SHIFT;
 	}
 
 	return 0;
@@ -461,4 +463,34 @@ int intel_ipu4_cpd_validate_cpd_file(struct intel_ipu4_device *isp,
 
 	return 0;
 }
-EXPORT_SYMBOL(intel_ipu4_cpd_validate_cpd_file);
+EXPORT_SYMBOL_GPL(intel_ipu4_cpd_validate_cpd_file);
+
+unsigned int intel_ipu4_cpd_pkg_dir_get_address(
+	const u64 *pkg_dir, int pkg_dir_idx)
+{
+	return pkg_dir[++pkg_dir_idx * PKG_DIR_ENT_LEN];
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_cpd_pkg_dir_get_address);
+
+unsigned int intel_ipu4_cpd_pkg_dir_get_num_entries(
+	const u64 *pkg_dir)
+{
+	return pkg_dir[1];
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_cpd_pkg_dir_get_num_entries);
+
+unsigned int intel_ipu4_cpd_pkg_dir_get_size(
+	const u64 *pkg_dir, int pkg_dir_idx)
+{
+	return pkg_dir[++pkg_dir_idx * PKG_DIR_ENT_LEN + 1] & PKG_DIR_SIZE_MASK;
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_cpd_pkg_dir_get_size);
+
+unsigned int intel_ipu4_cpd_pkg_dir_get_type(
+	const u64 *pkg_dir, int pkg_dir_idx)
+{
+	return pkg_dir[++pkg_dir_idx * PKG_DIR_ENT_LEN + 1] >>
+		PKG_DIR_ID_SHIFT & PKG_DIR_ID_MASK;
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_cpd_pkg_dir_get_type);
+

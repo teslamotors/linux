@@ -32,10 +32,6 @@
 
 #include <uapi/linux/intel-ipu4-psys.h>
 
-#include <ia_css_client_pkg.h>
-#include <ia_css_pkg_dir.h>
-#include <ia_css_pkg_dir_iunit.h>
-#include <ia_css_pkg_dir_types.h>
 #include <ia_css_psys_process.h>
 #include <ia_css_psys_process_group.h>
 #include <ia_css_psys_program_group_manifest.h>
@@ -1770,11 +1766,8 @@ static long intel_ipu4_get_manifest(struct intel_ipu4_psys_manifest *manifest,
 {
 	struct intel_ipu4_psys *psys = fh->psys;
 	struct intel_ipu4_device *isp = psys->adev->isp;
-	const ia_css_pkg_dir_entry_t *entry;
-	const ia_css_pkg_dir_entry_t *pkg_dir =
-		(ia_css_pkg_dir_entry_t *)psys->pkg_dir;
-	struct ia_css_client_pkg_header_s *client_pkg;
-	uint32_t entries, offset;
+	struct intel_ipu_cpd_client_pkg_hdr *client_pkg;
+	uint32_t entries;
 	void *host_fw_data;
 	dma_addr_t dma_fw_data;
 	uint32_t client_pkg_offset;
@@ -1782,46 +1775,37 @@ static long intel_ipu4_get_manifest(struct intel_ipu4_psys_manifest *manifest,
 	host_fw_data = (void *)isp->cpd_fw->data;
 	dma_fw_data = sg_dma_address(psys->fw_sgt.sgl);
 
-	if (ia_css_pkg_dir_verify_header(pkg_dir))
+	entries = intel_ipu4_cpd_pkg_dir_get_num_entries(psys->pkg_dir);
+	if (!manifest || manifest->index > entries - 1) {
+		dev_err(&psys->adev->dev, "invalid argument\n");
 		return -EINVAL;
-
-	entries = ia_css_pkg_dir_get_num_entries(pkg_dir);
-	if (!manifest || manifest->index > entries - 1)
-		return -EINVAL;
-
-	entry = ia_css_pkg_dir_get_entry(pkg_dir, manifest->index);
-	if (!entry) {
-		dev_dbg(&psys->adev->dev, "no entry for index %d\n",
-			manifest->index);
-		return -EIO;
 	}
 
-	if (ia_css_pkg_dir_entry_get_size(entry) <= 0 ||
-	    ia_css_pkg_dir_entry_get_type(entry) < IA_CSS_PKG_DIR_CLIENT_PG) {
+	if (!intel_ipu4_cpd_pkg_dir_get_size(psys->pkg_dir, manifest->index) ||
+	    intel_ipu4_cpd_pkg_dir_get_type(psys->pkg_dir, manifest->index) <
+	    INTEL_IPU4_CPD_PKG_DIR_CLIENT_PG_TYPE) {
 		dev_dbg(&psys->adev->dev, "invalid pkg dir entry\n");
 		return -ENOENT;
 	}
 
-	client_pkg_offset = ia_css_pkg_dir_entry_get_address_lo(entry);
+	client_pkg_offset = intel_ipu4_cpd_pkg_dir_get_address(
+		psys->pkg_dir, manifest->index);
 
 #ifdef IPU_STEP_BXTB0
-	/* Check if entried are pointers or offsets in pkg dir */
-	if (ia_css_pkg_dir_get_version(pkg_dir) == IA_CSS_PKG_DIR_POINTER)
-		client_pkg_offset -= dma_fw_data;
+	client_pkg_offset -= dma_fw_data;
 #endif
 
 	client_pkg = host_fw_data + client_pkg_offset;
-
-	if (ia_css_client_pkg_get_pg_manifest_offset_size(client_pkg,
-						&offset, &manifest->size))
-		return -EIO;
+	manifest->size = client_pkg->pg_manifest_size;
 
 	if (!manifest->manifest)
 		return 0;
 
 	if (copy_to_user(manifest->manifest,
-		     (uint8_t *)client_pkg + offset, manifest->size))
+			 (uint8_t *)client_pkg + client_pkg->pg_manifest_offs,
+			 manifest->size)) {
 		return -EFAULT;
+	}
 
 	return 0;
 }
@@ -2035,7 +2019,8 @@ static int psys_runtime_pm_resume(struct device *dev)
 	psys->server_init->icache_prefetch_sp = psys->icache_prefetch_sp;
 	psys->server_init->icache_prefetch_isp = psys->icache_prefetch_isp;
 
-	intel_ipu4_configure_spc(adev->isp, IA_CSS_PKG_DIR_PSYS_INDEX,
+	intel_ipu4_configure_spc(adev->isp,
+				 INTEL_IPU4_CPD_PKG_DIR_PSYS_SERVER_IDX,
 				 psys->pdata->base, psys->pkg_dir,
 				 psys->pkg_dir_dma_addr);
 
@@ -2534,8 +2519,8 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 				SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM);
 	}
 
-	caps.pg_count = ia_css_pkg_dir_get_num_entries(
-		(const ia_css_pkg_dir_entry_t *)isp->pkg_dir);
+	caps.pg_count = intel_ipu4_cpd_pkg_dir_get_num_entries(psys->pkg_dir);
+
 	dev_info(&adev->dev, "pkg_dir entry count:%d\n", caps.pg_count);
 
 	rval = intel_ipu4_buttress_authenticate(isp);

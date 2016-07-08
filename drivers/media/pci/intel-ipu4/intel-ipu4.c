@@ -38,10 +38,6 @@
 #include "intel-ipu4-wrapper.h"
 #include "intel-ipu5-devel.h"
 
-#include <ia_css_pkg_dir_types.h>
-#include <ia_css_pkg_dir.h>
-#include <ia_css_pkg_dir_iunit.h>
-
 #define INTEL_IPU4_PCI_BAR		0
 
 struct intel_ipu4_dma_mapping;
@@ -324,7 +320,6 @@ void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
 		writel(INTEL_IPU4_PKG_DIR_IMR_OFFSET,
 		       base + INTEL_IPU4_DMEM_OFFSET);
 	} else {
-		const ia_css_pkg_dir_entry_t *entry;
 		u32 server_addr;
 
 		if (is_intel_ipu5_hw_a0(isp)) {
@@ -334,10 +329,8 @@ void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
 			return;
 		}
 
-		entry = ia_css_pkg_dir_get_entry(
-			(ia_css_pkg_dir_entry_t *)pkg_dir, pkg_dir_idx);
-
-		server_addr = ia_css_pkg_dir_entry_get_address_lo(entry);
+		server_addr = intel_ipu4_cpd_pkg_dir_get_address(pkg_dir,
+								 pkg_dir_idx);
 
 		writel(server_addr + intel_ipu4_cpd_get_pg_icache_base(
 			       isp, pkg_dir_idx, isp->cpd_fw->data,

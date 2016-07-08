@@ -4,8 +4,6 @@ IPU_PSYSLIB_SRC = \
 	$(IPU_PSYSLIB_ROOT_REL)/buffer/src/cpu/ia_css_input_buffer.o \
 	$(IPU_PSYSLIB_ROOT_REL)/buffer/src/cpu/ia_css_output_buffer.o \
 	$(IPU_PSYSLIB_ROOT_REL)/buffer/src/cpu/ia_css_shared_buffer.o \
-	$(IPU_PSYSLIB_ROOT_REL)/client_pkg/src/ia_css_client_pkg.o \
-	$(IPU_PSYSLIB_ROOT_REL)/pkg_dir/src/ia_css_pkg_dir.o \
 	$(IPU_PSYSLIB_ROOT_REL)/port/src/queue.o \
 	$(IPU_PSYSLIB_ROOT_REL)/port/src/recv_port.o \
 	$(IPU_PSYSLIB_ROOT_REL)/port/src/send_port.o \

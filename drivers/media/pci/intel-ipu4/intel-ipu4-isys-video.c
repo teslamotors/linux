@@ -36,9 +36,6 @@
 #include "intel-ipu4-trace.h"
 #include "intel-ipu4-isys-fw-msgs.h"
 #include "intel-ipu4-fw-com.h"
-#include <ia_css_pkg_dir.h>
-#include <ia_css_pkg_dir_iunit.h>
-#include <ia_css_pkg_dir_types.h>
 
 static unsigned int  num_stream_support = INTEL_IPU4_ISYS_NUM_STREAMS_B0;
 module_param(num_stream_support, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
@@ -201,7 +198,8 @@ static int video_open(struct file *file)
 		return 0;
 	}
 
-	intel_ipu4_configure_spc(adev->isp, IA_CSS_PKG_DIR_ISYS_INDEX,
+	intel_ipu4_configure_spc(adev->isp,
+				 INTEL_IPU4_CPD_PKG_DIR_ISYS_SERVER_IDX,
 				 isys->pdata->base, isys->pkg_dir,
 				 isys->pkg_dir_dma_addr);
 

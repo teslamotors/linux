@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation. All Rights Reserved.
+ * Copyright (c) 2015--2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -14,8 +14,6 @@
 #ifndef LIBCSSPSYS2600_H
 #define LIBCSSPSYS2600_H
 
-#include <ia_css_client_pkg.h>
-#include <ia_css_pkg_dir.h>
 #include <ia_css_psysapi.h>
 #include <ia_css_psys_process_group.h>
 #include <ia_css_psys_device.h>

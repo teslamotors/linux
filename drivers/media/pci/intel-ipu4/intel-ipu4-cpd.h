@@ -28,6 +28,8 @@
 #define INTEL_IPU4_CPD_PKG_DIR_PSYS_SERVER_IDX	0
 #define INTEL_IPU4_CPD_PKG_DIR_ISYS_SERVER_IDX	1
 
+#define INTEL_IPU4_CPD_PKG_DIR_CLIENT_PG_TYPE	3
+
 struct __packed intel_ipu4_cpd_module_data_hdr {
 	u32	hdr_len;
 	u32	endian;
@@ -74,6 +76,17 @@ struct __packed intel_ipu_cpd_metadata_extn {
 	u8 rsvd[16];
 };
 
+struct __packed intel_ipu_cpd_client_pkg_hdr {
+	u32 prog_list_offs;
+	u32 prog_list_size;
+	u32 prog_desc_offs;
+	u32 prog_desc_size;
+	u32 pg_manifest_offs;
+	u32 pg_manifest_size;
+	u32 prog_bin_offs;
+	u32 prog_bin_size;
+};
+
 void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_bus_device *adev,
 						 const void *src,
 						 dma_addr_t dma_addr_src,
@@ -94,4 +107,12 @@ u32 intel_ipu4_cpd_get_pg_entry_point(struct intel_ipu4_device *isp,
 int intel_ipu4_cpd_validate_cpd_file(struct intel_ipu4_device *isp,
 				     const void *cpd_file,
 				     unsigned long cpd_file_size);
+unsigned int intel_ipu4_cpd_pkg_dir_get_address(const u64 *pkg_dir,
+						int pkg_dir_idx);
+unsigned int intel_ipu4_cpd_pkg_dir_get_num_entries(const u64 *pkg_dir);
+unsigned int intel_ipu4_cpd_pkg_dir_get_size(const u64 *pkg_dir,
+					     int pkg_dir_idx);
+unsigned int intel_ipu4_cpd_pkg_dir_get_type(const u64 *pkg_dir,
+					     int pkg_dir_idx);
+
 #endif /* INTEL_IPU4_CPD_H */
