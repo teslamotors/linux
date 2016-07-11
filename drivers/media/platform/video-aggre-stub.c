@@ -419,7 +419,7 @@ static int video_aggre_register_subdev(struct video_aggregator *va)
 					       ctrl->def, ctrl->qmenu_int);
 
 	va->pad.flags = MEDIA_PAD_FL_SOURCE | MEDIA_PAD_FL_MULTIPLEX;
-	rval = media_entity_init(&va->sd.entity, va->npads, &va->pad, 0);
+	rval = media_entity_init(&va->sd.entity, 1, &va->pad, 0);
 	if (rval) {
 		dev_err(va->sd.dev,
 			"Failed to init media entity video aggre!\n");
