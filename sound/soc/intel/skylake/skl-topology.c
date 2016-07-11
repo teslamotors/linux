@@ -488,7 +488,7 @@ static void skl_tplg_update_module_params(struct snd_soc_dapm_widget *w,
 	skl_dump_mconfig(ctx, m_cfg);
 }
 
-int skl_get_probe_index(struct snd_soc_dai *dai,
+int skl_probe_get_index(struct snd_soc_dai *dai,
 				struct skl_probe_config *pconfig)
 {
 	int i, ret = -1;
@@ -502,62 +502,124 @@ int skl_get_probe_index(struct snd_soc_dai *dai,
 	return ret;
 }
 
-int skl_tplg_attach_probe_dma(struct snd_soc_dapm_widget *w,
-					struct skl_sst *ctx, struct snd_soc_dai *dai)
+int skl_probe_attach_inj_dma(struct snd_soc_dapm_widget *w,
+					struct skl_sst *ctx, int index)
 {
-	int i, ret;
+	int ret = -EINVAL;
+
 	struct skl_module_cfg *mconfig = w->priv;
-	struct skl_attach_probe_dma ad;
+	struct skl_probe_attach_inj_dma ad;
 	struct skl_probe_config *pconfig = &ctx->probe_config;
 
-	if ((i = skl_get_probe_index(dai, pconfig)) != -1) {
-		ad.node_id.node.vindex = pconfig->iprobe[i].dma_id;
+	if (pconfig->iprobe[index].state == SKL_PROBE_STATE_INJ_NONE) {
+		dev_dbg(ctx->dev, "Attaching injector DMA\n");
+		ad.node_id.node.vindex = pconfig->iprobe[index].dma_id;
 		ad.node_id.node.dma_type = SKL_DMA_HDA_HOST_OUTPUT_CLASS;
 		ad.node_id.node.rsvd = 0;
 		ad.dma_buff_size = SKL_INJECT_PROBE_DMA_BUFF_SIZE;
+
+		ret = skl_set_module_params(ctx, (void *)&ad,
+					sizeof(struct skl_probe_attach_inj_dma),
+					SKL_PROBE_INJECT_DMA_ATTACH, mconfig);
+		if (ret < 0)
+			return -EINVAL;
+
+		pconfig->iprobe[index].state = SKL_PROBE_STATE_INJ_DMA_ATTACHED;
+		dev_dbg(ctx->dev, "iprobe[%d].state %d\n", index,
+					pconfig->iprobe[index].state);
 	}
 
 	ret = skl_set_module_params(ctx, (u32 *)&ad,
-			sizeof(struct skl_attach_probe_dma), 1, mconfig);
+			sizeof(struct skl_probe_attach_inj_dma),
+							1, mconfig);
 	return ret;
 
 }
 
-int skl_tplg_set_probe_params(struct snd_soc_dapm_widget *w,
+int skl_probe_detach_inj_dma(struct skl_sst *ctx, struct snd_soc_dapm_widget *w,
+								int index)
+{
+	struct skl_module_cfg *mconfig = w->priv;
+	struct skl_probe_config *pconfig = &ctx->probe_config;
+	struct skl_ipc_large_config_msg msg;
+	union skl_connector_node_id node_id;
+	int ret = -EINVAL;
+
+	if (pconfig->iprobe[index].state == SKL_PROBE_STATE_INJ_DISCONNECTED) {
+		dev_dbg(ctx->dev, "Detaching injector DMA\n");
+		node_id.node.vindex = pconfig->iprobe[index].dma_id;
+		node_id.node.dma_type = SKL_DMA_HDA_HOST_OUTPUT_CLASS;
+		node_id.node.rsvd = 0;
+
+		msg.module_id = mconfig->id.module_id;
+		msg.instance_id = mconfig->id.instance_id;
+		msg.large_param_id = SKL_PROBE_INJECT_DMA_DETACH;
+		msg.param_data_size = sizeof(union skl_connector_node_id);
+
+		dev_dbg(ctx->dev, "setting module params size=%d\n",
+						msg.param_data_size);
+		ret = skl_ipc_set_large_config(&ctx->ipc, &msg,
+						(u32 *)&node_id);
+		if (ret < 0)
+			return -EINVAL;
+
+		pconfig->iprobe[index].state = SKL_PROBE_STATE_INJ_NONE;
+		dev_dbg(ctx->dev, "iprobe[%d].state %d\n", index,
+					pconfig->iprobe[index].state);
+	}
+	return ret;
+}
+
+
+int skl_probe_point_set_config(struct snd_soc_dapm_widget *w,
 					struct skl_sst *ctx, int direction,
 					struct snd_soc_dai *dai)
 {
-	int i, ret = 0, n = 0;
+	int i, ret = -EIO, n = 0;
 	struct skl_module_cfg *mconfig = w->priv;
 	const struct snd_kcontrol_new *k;
-	struct soc_bytes_ext *sb;
-	struct skl_probe_data *bc;
 	struct skl_probe_config *pconfig = &ctx->probe_config;
 	struct probe_pt_param prb_pt_param[8] = {{0}};
+	int store_prb_pt_index[8] = {0};
 
 	if (direction == SND_COMPRESS_PLAYBACK) {
 
 		/* only one injector point can be set at a time*/
-		n = skl_get_probe_index(dai, pconfig);
+		n = skl_probe_get_index(dai, pconfig);
 		if (n < 0)
 			return -EINVAL;
 
 		k = &w->kcontrol_news[pconfig->no_extractor + n];
+		dev_dbg(dai->dev, "operation = %d, purpose = %d, probe_point_id = %d\n",
+		pconfig->iprobe[n].operation, pconfig->iprobe[n].purpose,
+					pconfig->iprobe[n].probe_point_id);
 
-		if (k->access & SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK) {
-			sb = (void *) k->private_value;
-			bc = (struct skl_probe_data *)sb->dobj.private;
-			pr_debug("bc->is_ext_inj = %d, bc->params = %d, bc->is_connect = %d \n",
-						bc->is_ext_inj, bc->params, bc->is_connect);
-			if (!(bc->is_ext_inj == SKL_PROBE_INJECT ||
-					bc->is_ext_inj == SKL_PROBE_INJECT_REEXTRACT))
-				return -EINVAL;
+		if ((k->access & SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK)
+			&& (pconfig->iprobe[n].state ==
+				SKL_PROBE_STATE_INJ_DMA_ATTACHED)
+			&& (pconfig->iprobe[n].operation ==
+						SKL_PROBE_CONNECT)
+			&& (pconfig->iprobe[n].purpose ==
+						SKL_PROBE_INJECT ||
+			pconfig->iprobe[n].purpose ==
+					SKL_PROBE_INJECT_REEXTRACT)) {
 
-			prb_pt_param[0].params = (int)bc->params;
-			prb_pt_param[0].connection = bc->is_ext_inj;
+			prb_pt_param[0].params =
+					pconfig->iprobe[n].probe_point_id;
+			prb_pt_param[0].connection = pconfig->iprobe[n].purpose;
 			prb_pt_param[0].node_id =  pconfig->iprobe[n].dma_id;
-			ret = skl_set_module_params(ctx, (void *)prb_pt_param, sizeof(struct probe_pt_param),
-							bc->is_connect, mconfig);
+			ret = skl_set_module_params(ctx, (void *)prb_pt_param,
+				sizeof(struct probe_pt_param),
+				SKL_PROBE_CONNECT, mconfig);
+			if (ret < 0) {
+				dev_dbg(dai->dev, "failed to set injector probe point\n");
+				return -EINVAL;
+			}
+
+			pconfig->iprobe[n].state =
+					SKL_PROBE_STATE_INJ_CONNECTED;
+			dev_dbg(dai->dev, "iprobe[%d].state %d\n", n,
+						pconfig->iprobe[n].state);
 		}
 
 	} else if (direction == SND_COMPRESS_CAPTURE) {
@@ -565,26 +627,49 @@ int skl_tplg_set_probe_params(struct snd_soc_dapm_widget *w,
 		/*multiple extractor points can be set simultaneously*/
 		for (i = 0; i < pconfig->no_extractor; i++) {
 			k = &w->kcontrol_news[i];
-			if (k->access & SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK) {
-				sb = (void *) k->private_value;
-				bc = (struct skl_probe_data *)sb->dobj.private;
+			dev_dbg(dai->dev, "operation = %d, purpose = %d, probe_point_id = %d\n",
+					pconfig->eprobe[i].operation,
+					pconfig->eprobe[i].purpose,
+					pconfig->eprobe[i].probe_point_id);
+			if ((k->access & SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK)
+				&& (pconfig->eprobe[i].state ==
+						SKL_PROBE_STATE_EXT_NONE)
+				&& (pconfig->eprobe[i].operation ==
+						SKL_PROBE_CONNECT)
+				&& (pconfig->eprobe[i].purpose ==
+						SKL_PROBE_EXTRACT ||
+				pconfig->eprobe[i].purpose ==
+						SKL_PROBE_INJECT_REEXTRACT)) {
 
-				pr_debug("bc->is_ext_inj = %d, bc->params = %d, bc->is_connect = %d \n",
-							bc->is_ext_inj, bc->params, bc->is_connect);
-				if (bc->is_ext_inj == SKL_PROBE_EXTRACT &&
-						pconfig->eprobe[i].set == 1) {
-					pr_debug("Retrieving the exractor params \n");
-					prb_pt_param[n].params = (int)bc->params;
-					prb_pt_param[n].connection = bc->is_ext_inj;
-					prb_pt_param[n].node_id = -1;
-					n++;
-				}
+				dev_dbg(dai->dev, "Retrieving the exractor params\n");
+				prb_pt_param[n].params =
+					pconfig->eprobe[i].probe_point_id;
+				prb_pt_param[n].connection =
+					pconfig->eprobe[i].purpose;
+				prb_pt_param[n].node_id = -1;
+				store_prb_pt_index[i] = 1;
+				n++;
 			}
 		}
 
-		if (n > 0)
+		if (n > 0) {
 			ret = skl_set_module_params(ctx, (void *)prb_pt_param, n * sizeof(struct probe_pt_param),
 						SKL_PROBE_CONNECT, mconfig);
+
+			if (ret < 0) {
+				dev_dbg(dai->dev, "failed to set extractor probe point\n");
+				return -EINVAL;
+			}
+		}
+
+		for (i = 0; i < pconfig->no_extractor; i++) {
+			if (store_prb_pt_index[i]) {
+				pconfig->eprobe[i].state =
+					SKL_PROBE_STATE_EXT_CONNECTED;
+				dev_dbg(dai->dev, "eprobe[%d].state %d\n",
+						n, pconfig->eprobe[i].state);
+			}
+		}
 
 	}
 	return ret;
@@ -1819,64 +1904,85 @@ static void skl_tplg_fill_dma_id(struct skl_module_cfg *mcfg,
 		memcpy(pipe->p_params, params, sizeof(*params));
 	}
 }
-static int skl_cache_probe_param(struct snd_kcontrol *kctl,
-			struct skl_probe_data *ap, struct skl_sst *ctx)
+
+static int skl_probe_set_tlv_ext(struct snd_kcontrol *kcontrol)
 {
-	struct skl_probe_config *pconfig = &ctx->probe_config;
-	union skl_connector_node_id node_id = {-1};
+	struct snd_soc_dapm_context *dapm =
+			snd_soc_dapm_kcontrol_dapm(kcontrol);
+	struct snd_soc_dapm_widget *w = snd_soc_dapm_kcontrol_widget(kcontrol);
+	struct skl_module_cfg *mconfig = w->priv;
+	struct soc_bytes_ext *sb = (void *) kcontrol->private_value;
+	struct skl_probe_data *ap = (struct skl_probe_data *)sb->dobj.private;
+	struct skl *skl = get_skl_ctx(dapm->dev);
+	struct skl_probe_config *pconfig = &skl->skl_sst->probe_config;
+	struct probe_pt_param connect_point;
+	int disconnect_point;
+	int ret = 0;
 	int index = -1, i;
 	char buf[20], pos[10];
 
-	if (ap->is_ext_inj == SKL_PROBE_EXTRACT) {
-		/* From the control ID get the extractor index */
-		for (i = 0; i < pconfig->no_extractor; i++) {
-			strcpy(buf, "Extractor");
-			snprintf(pos, 4, "%d", i);
-			if (strstr(kctl->id.name, strcat(buf, pos))) {
-				index = i;
-				break;
-			}
+
+	for (i = 0; i < pconfig->no_extractor; i++) {
+		strcpy(buf, "Extractor");
+		snprintf(pos, 4, "%d", i);
+		if (strstr(kcontrol->id.name, strcat(buf, pos))) {
+			index = i;
+			break;
 		}
-
-		if (index < 0)
-			return -EINVAL;
-
-		pr_debug("Setting extractor probe index %d\n", index);
-		memcpy(&ap->node_id, &node_id, sizeof(u32));
-		pconfig->eprobe[index].id = ap->params;
-		if (ap->is_connect == SKL_PROBE_CONNECT)
-			pconfig->eprobe[index].set = 1;
-		else if (ap->is_connect == SKL_PROBE_DISCONNECT)
-			pconfig->eprobe[index].set = -1;
-
-	} else {
-		/* From the control ID get the injector index */
-		for (i = 0; i < pconfig->no_injector; i++) {
-			strcpy(buf, "Injector");
-			snprintf(pos, 4, "%d", i);
-			if (strstr(kctl->id.name, strcat(buf, pos))) {
-				index = i;
-				break;
-			}
-		}
-
-		if (index < 0)
-			return -EINVAL;
-
-		pconfig->iprobe[index].id = ap->params;
-		node_id.node.dma_type = SKL_DMA_HDA_HOST_OUTPUT_CLASS;
-		node_id.node.vindex = pconfig->iprobe[index].dma_id;
-		memcpy(&ap->node_id, &node_id, sizeof(u32));
-		if (ap->is_connect == SKL_PROBE_CONNECT)
-			pconfig->iprobe[index].set = 1;
-		else if (ap->is_connect == SKL_PROBE_DISCONNECT)
-			pconfig->iprobe[index].set = -1;
 	}
-	return 0;
+	if (index < 0)
+		return -EINVAL;
+
+	if ((ap->operation == SKL_PROBE_CONNECT) &&
+		(pconfig->eprobe[index].state == SKL_PROBE_STATE_EXT_NONE)) {
+		/* cache extractor params */
+		pconfig->eprobe[index].operation = ap->operation;
+		pconfig->eprobe[index].purpose = ap->purpose;
+		pconfig->eprobe[index].probe_point_id = ap->probe_point_id;
+
+		/* Below check ensures that atleast one extractor stream is in
+		 * progress in which case the driver can send the CONNECT IPC
+		 */
+		if (pconfig->e_refc > 0) {
+			memcpy(&connect_point.params, &ap->probe_point_id,
+								sizeof(u32));
+			connect_point.connection = ap->purpose;
+			connect_point.node_id = -1;
+			ret = skl_set_module_params(skl->skl_sst,
+					(void *)&connect_point,
+					sizeof(struct probe_pt_param),
+					SKL_PROBE_CONNECT, mconfig);
+			if (ret < 0) {
+				dev_err(dapm->dev, "failed to connect extractor probe point\n");
+				return -EINVAL;
+			}
+			pconfig->eprobe[index].state =
+						SKL_PROBE_STATE_EXT_CONNECTED;
+			dev_dbg(dapm->dev, "eprobe[%d].state %d\n", index,
+						pconfig->eprobe[index].state);
+		}
+	} else if ((ap->operation == SKL_PROBE_DISCONNECT) &&
+				(pconfig->eprobe[index].state ==
+				SKL_PROBE_STATE_EXT_CONNECTED) &&
+				(pconfig->e_refc > 0)) {
+		disconnect_point = (int)ap->probe_point_id;
+		ret = skl_set_module_params(skl->skl_sst,
+			(void *)&disconnect_point, sizeof(disconnect_point),
+						SKL_PROBE_DISCONNECT, mconfig);
+		if (ret < 0) {
+			dev_err(dapm->dev, "failed to disconnect extractor probe point\n");
+			return -EINVAL;
+		}
+		pconfig->eprobe[index].state = SKL_PROBE_STATE_EXT_NONE;
+		dev_dbg(dapm->dev, "eprobe[%d].state %d\n", index,
+					pconfig->eprobe[index].state);
+		} else
+			ret = -EINVAL;
+
+	return ret;
 }
 
-static int skl_tplg_tlv_probe_set(struct snd_kcontrol *kcontrol,
-			const unsigned int __user *data, unsigned int size)
+static int skl_probe_set_tlv_inj(struct snd_kcontrol *kcontrol)
 {
 	struct snd_soc_dapm_context *dapm =
 				snd_soc_dapm_kcontrol_dapm(kcontrol);
@@ -1886,64 +1992,118 @@ static int skl_tplg_tlv_probe_set(struct snd_kcontrol *kcontrol,
 	struct skl_probe_data *ap = (struct skl_probe_data *)sb->dobj.private;
 	struct skl *skl = get_skl_ctx(dapm->dev);
 	struct skl_probe_config *pconfig = &skl->skl_sst->probe_config;
-	struct probe_pt_param connect_point;
 	int disconnect_point;
-	void *offset;
-	int ret;
+	int ret = 0;
+	int index = -1, i;
+	char buf[20], pos[10];
 
-	dev_dbg(dapm->dev, "in %s control=%s\n", __func__, kcontrol->id.name);
+	for (i = 0; i < pconfig->no_injector; i++) {
+		strcpy(buf, "Injector");
+		snprintf(pos, 4, "%d", i);
+		if (strstr(kcontrol->id.name, strcat(buf, pos))) {
+			index = i;
+			break;
+		}
+	}
+	if (index < 0)
+		return -EINVAL;
+
+	if ((ap->operation == SKL_PROBE_CONNECT) &&
+		(pconfig->iprobe[index].state == SKL_PROBE_STATE_INJ_NONE)) {
+		/* cache injector params */
+		pconfig->iprobe[index].operation = ap->operation;
+		pconfig->iprobe[index].purpose = ap->purpose;
+		pconfig->iprobe[index].probe_point_id = ap->probe_point_id;
+	} else if ((ap->operation == SKL_PROBE_DISCONNECT) &&
+
+		(pconfig->iprobe[index].state ==
+				SKL_PROBE_STATE_INJ_CONNECTED) &&
+		(pconfig->i_refc > 0)) {
+		disconnect_point = (int)ap->probe_point_id;
+		ret = skl_set_module_params(skl->skl_sst,
+				(void *)&disconnect_point,
+				sizeof(disconnect_point),
+				SKL_PROBE_DISCONNECT, mconfig);
+		if (ret < 0) {
+			dev_err(dapm->dev, "failed to disconnect injector probe point\n");
+			return -EINVAL;
+		}
+		pconfig->iprobe[index].state = SKL_PROBE_STATE_INJ_DISCONNECTED;
+		dev_dbg(dapm->dev, "iprobe[%d].state %d\n", index,
+					pconfig->iprobe[index].state);
+	} else
+		ret = -EINVAL;
+
+	return ret;
+}
+
+static int skl_tplg_tlv_probe_set(struct snd_kcontrol *kcontrol,
+			const unsigned int __user *data, unsigned int size)
+{
+	struct snd_soc_dapm_context *dapm =
+				snd_soc_dapm_kcontrol_dapm(kcontrol);
+	struct soc_bytes_ext *sb = (void *) kcontrol->private_value;
+	struct skl_probe_data *ap = (struct skl_probe_data *)sb->dobj.private;
+	void *offset;
+	int ret = -EIO, ret1;
+
+	dev_dbg(dapm->dev, "In %s control=%s\n", __func__, kcontrol->id.name);
 	dev_dbg(dapm->dev, "size = %u, %#x\n", size, size);
 
 	if (data) {
 		offset = (unsigned char *)data;
 		offset += 2 * sizeof(u32); /* To skip TLV heeader */
-		if (copy_from_user(&ap->is_connect,
-					offset, sizeof(ap->is_connect)))
+		if (copy_from_user(&ap->operation,
+					offset, sizeof(ap->operation)))
 			return -EIO;
 
-		offset += sizeof(ap->is_connect);
-		if (copy_from_user(&ap->is_ext_inj,
-					offset, sizeof(ap->is_ext_inj)))
+		offset += sizeof(ap->operation);
+		if (copy_from_user(&ap->purpose,
+					offset, sizeof(ap->purpose)))
 			return -EIO;
 
-		offset += sizeof(ap->is_ext_inj);
-		if (copy_from_user(&ap->params,
-					offset, sizeof(ap->params)))
+		offset += sizeof(ap->purpose);
+		if (copy_from_user(&ap->probe_point_id,
+					offset, sizeof(ap->probe_point_id)))
 			return -EIO;
 
-		dev_dbg(dapm->dev, "connect state = %d, extract_inject = %d, params = %d \n",
-						ap->is_connect, ap->is_ext_inj, ap->params);
+		dev_dbg(dapm->dev, "operation = %d, purpose = %d, probe_point_id = %d\n",
+					ap->operation, ap->purpose, ap->probe_point_id);
 
-		ret = skl_cache_probe_param(kcontrol, ap, skl->skl_sst);
-		if (ret < 0)
-			return -EINVAL;
+		/* In the case of extraction, additional probe points can
+		 * be set when the stream is in progress and the driver can
+		 * immediately send the connect IPC. But in the case of
+		 * injector, for each probe point connection a new stream with
+		 * the DAI number corresponding to that control has to be
+		 * opened. Hence below implementation ensures that the connect
+		 * IPC is sent only in case of extractor.
+		 */
+		switch (ap->purpose) {
+		case SKL_PROBE_EXTRACT:
+			ret = skl_probe_set_tlv_ext(kcontrol);
+			break;
 
-		if (pconfig->probe_count) {
-			/* In the case of extraction, additional probe points can be set when
-			 * the stream is in progress and the driver can immediately send the
-			 * connect IPC. But in the case of injector, for each probe point
-			 * connection a new stream with the DAI number corresponding to that
-			 * control has to be opened. Hence below check ensures that the
-			 * connect IPC is sent only in case of extractor.
-			 */
-			if ((ap->is_connect == SKL_PROBE_CONNECT)
-				&& (ap->is_ext_inj == SKL_PROBE_EXTRACT)) {
+		case SKL_PROBE_INJECT:
+			ret = skl_probe_set_tlv_inj(kcontrol);
+			break;
 
-				memcpy(&connect_point.params, &ap->params, sizeof(u32));
-				connect_point.connection = ap->is_ext_inj;
-				memcpy(&connect_point.node_id, (&ap->node_id), sizeof(u32));
-				return skl_set_module_params(skl->skl_sst, (void *)&connect_point,
-						sizeof(struct probe_pt_param), ap->is_connect, mconfig);
+		case SKL_PROBE_INJECT_REEXTRACT:
+		/* Injector and extractor control will be set one by one
+		 * for Inject_Reextract
+		 */
+			ret = skl_probe_set_tlv_ext(kcontrol);
+			ret1 = skl_probe_set_tlv_inj(kcontrol);
+			if (ret == 0 || ret1 == 0)
+				ret = 0;
+			else
+				ret = -EINVAL;
+			break;
 
-			} else if (ap->is_connect == SKL_PROBE_DISCONNECT) {
-
-				disconnect_point = (int)ap->params;
-				return skl_set_module_params(skl->skl_sst, (void *)&disconnect_point,
-						sizeof(disconnect_point), ap->is_connect, mconfig);
-			}
+		default:
+			ret = -EINVAL;
 		}
 	}
-	return 0;
+	return ret;
 }
 
 /*

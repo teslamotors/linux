@@ -20,6 +20,7 @@
 #include <sound/memalloc.h>
 #include "../common/sst-ipc.h"
 #include "skl-sst-dsp.h"
+#include "skl-tplg-interface.h"
 
 struct sst_dsp;
 struct skl_sst;
@@ -100,21 +101,36 @@ struct skl_lib_info {
 };
 
 struct injector_data {
-	int set;
-	int id;
+	/* connect or disconnect */
+	u8 operation;
+	/* Specifies EXTRACTOR or INJECTOR or INJECT_REEXTRACT */
+	u32 purpose;
+	/* Injector probe param */
+	u32 probe_point_id;
 	struct hdac_ext_stream *stream;
 	int dma_id;
 	int dma_buf_size;
+	enum skl_probe_state_inj state;
 };
 
 struct extractor_data {
-	int set;
-	int id;
+	/* Probe connect or disconnect */
+	u8 operation;
+	/* Specifies EXTRACTOR or INJECTOR or INJECT_REEXTRACT */
+	u32 purpose;
+	/* Extractor probe param */
+	u32 probe_point_id;
+	enum skl_probe_state_ext state;
 };
 
 struct skl_probe_config {
 	struct snd_soc_dapm_widget *w;
-	int probe_count;
+	/* Number of extractor DMA's used */
+	int e_refc;
+
+	/* Number of injector DMA's used */
+	int i_refc;
+
 	int edma_id;
 	int edma_type;
 	int edma_buffsize;

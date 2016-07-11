@@ -158,15 +158,31 @@ enum skl_module_param_type {
 	SKL_PARAM_BIND
 };
 
-enum skl_probe_connect_type {
-	SKL_PROBE_CONNECT = 3,
+enum skl_probe_param_id_type {
+	SKL_PROBE_INJECT_DMA_ATTACH = 1,
+	SKL_PROBE_INJECT_DMA_DETACH,
+	SKL_PROBE_CONNECT,
 	SKL_PROBE_DISCONNECT
 };
 
-enum skl_probe_direction {
+enum skl_probe_purpose {
 	SKL_PROBE_EXTRACT = 0,
 	SKL_PROBE_INJECT,
 	SKL_PROBE_INJECT_REEXTRACT
+};
+
+/* Injector probe states */
+enum skl_probe_state_inj {
+	SKL_PROBE_STATE_INJ_NONE = 1,
+	SKL_PROBE_STATE_INJ_DMA_ATTACHED,
+	SKL_PROBE_STATE_INJ_CONNECTED,
+	SKL_PROBE_STATE_INJ_DISCONNECTED
+};
+
+/* Extractor probe states */
+enum skl_probe_state_ext {
+	SKL_PROBE_STATE_EXT_NONE = 1,
+	SKL_PROBE_STATE_EXT_CONNECTED
 };
 
 struct skl_dfw_sdw_aggdata {

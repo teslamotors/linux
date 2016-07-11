@@ -1994,33 +1994,83 @@ static void skl_dump_bind_info(struct skl_sst *ctx, struct skl_module_cfg
 		src_module->m_state, dst_module->m_state);
 }
 
-int skl_disconnect_probe_point(struct skl_sst *ctx,
+int skl_probe_point_disconnect_ext(struct skl_sst *ctx,
 				struct snd_soc_dapm_widget *w)
 {
 	struct skl_ipc_large_config_msg msg;
 	struct skl_probe_config *pconfig = &ctx->probe_config;
 	struct skl_module_cfg *mcfg;
-	int probe_point[8] = {0};
+	u32 probe_point[NO_OF_EXTRACTOR] = {0};
+	int store_prb_pt_index[NO_OF_EXTRACTOR] = {0};
 	int n = 0, i;
+	int ret = 0;
 	int no_of_extractor = pconfig->no_extractor;
 
-	dev_dbg(ctx->dev, "Disconnecting probe\n");
+	dev_dbg(ctx->dev, "Disconnecting extractor probe points\n");
 	mcfg = w->priv;
 	msg.module_id = mcfg->id.module_id;
 	msg.instance_id = mcfg->id.instance_id;
 	msg.large_param_id = SKL_PROBE_DISCONNECT;
 
 	for (i = 0; i < no_of_extractor; i++) {
-		if (pconfig->eprobe[i].set) {
-			probe_point[n] = pconfig->eprobe[i].id;
-			pconfig->eprobe[i].set = -1;
+		if (pconfig->eprobe[i].state == SKL_PROBE_STATE_EXT_CONNECTED) {
+			probe_point[n] = pconfig->eprobe[i].probe_point_id;
+			store_prb_pt_index[i] = 1;
 			n++;
 		}
 	}
+	if (n == 0)
+		return ret;
 
 	msg.param_data_size = n * sizeof(u32);
-	return skl_ipc_set_large_config(&ctx->ipc, &msg,
-						probe_point);
+	dev_dbg(ctx->dev, "setting module params size=%d\n",
+					msg.param_data_size);
+	ret = skl_ipc_set_large_config(&ctx->ipc, &msg, probe_point);
+	if (ret < 0)
+		return -EINVAL;
+
+	for (i = 0; i < pconfig->no_extractor; i++) {
+		if (store_prb_pt_index[i]) {
+			pconfig->eprobe[i].state = SKL_PROBE_STATE_EXT_NONE;
+			dev_dbg(ctx->dev, "eprobe[%d].state %d\n",
+					i, pconfig->eprobe[i].state);
+		}
+	}
+
+	return ret;
+}
+
+int skl_probe_point_disconnect_inj(struct skl_sst *ctx,
+				struct snd_soc_dapm_widget *w, int index)
+{
+	struct skl_ipc_large_config_msg msg;
+	struct skl_probe_config *pconfig = &ctx->probe_config;
+	struct skl_module_cfg *mcfg;
+	u32 probe_point = 0;
+	int ret = 0;
+
+	if (pconfig->iprobe[index].state == SKL_PROBE_STATE_INJ_CONNECTED) {
+		dev_dbg(ctx->dev, "Disconnecting injector probe point\n");
+		mcfg = w->priv;
+		msg.module_id = mcfg->id.module_id;
+		msg.instance_id = mcfg->id.instance_id;
+		msg.large_param_id = SKL_PROBE_DISCONNECT;
+		probe_point = pconfig->iprobe[index].probe_point_id;
+		msg.param_data_size = sizeof(u32);
+
+		dev_dbg(ctx->dev, "setting module params size=%d\n",
+						msg.param_data_size);
+		ret = skl_ipc_set_large_config(&ctx->ipc, &msg, &probe_point);
+		if (ret < 0)
+			return -EINVAL;
+
+		pconfig->iprobe[index].state = SKL_PROBE_STATE_INJ_DISCONNECTED;
+		dev_dbg(ctx->dev, "iprobe[%d].state %d\n",
+				index, pconfig->iprobe[index].state);
+	}
+
+	return ret;
+
 }
 /*
  * On module freeup, we need to unbind the module with modules

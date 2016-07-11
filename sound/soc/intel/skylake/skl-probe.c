@@ -40,6 +40,37 @@
  */
 #define SKL_EXTRACT_PROBE_DMA_BUFF_SIZE 6208
 
+/*
+ * ========================
+ * PROBE STATE TRANSITIONS:
+ * ========================
+ * Below gives the steps involved in setting-up and tearing down the
+ * extractor/injector probe point and the corresponding state to which
+ * it transition after each step.
+ *
+ * EXTRACTOR:
+ * Default state: SKL_PROBE_STATE_EXT_NONE
+ * 1. Probe module instantiation and probe point connections
+ *    (can connect multiple probe points)
+ *		State: SKL_PROBE_STATE_EXT_CONNECTED
+ *			--> State where the stream is running.
+ * 2. Probe point disconnection
+ *		State: SKL_PROBE_STATE_EXT_NONE
+ * Note: Extractor does not have separate attach/detach DMA step
+ *
+ * INJECTOR:
+ * Default state: SKL_PROBE_STATE_INJ_NONE
+ * 1. Probe module instantiation & Injection DMA attachment
+ *		State: SKL_PROBE_STATE_INJ_DMA_ATTACHED
+ * 2. Probe point connection
+ *		State: SKL_PROBE_STATE_INJ_CONNECTED
+ *			--> State where the stream is running.
+ * 3. Probe point disconnection
+ *		State: SKL_PROBE_STATE_INJ_DISCONNECTED
+ * 4. Injection DMA detachment
+ *		State: SKL_PROBE_STATE_INJ_NONE
+ */
+
 static int set_injector_stream(struct hdac_ext_stream *stream,
 						struct snd_soc_dai *dai)
 {
@@ -50,9 +81,9 @@ static int set_injector_stream(struct hdac_ext_stream *stream,
 	 */
 	struct skl *skl = get_skl_ctx(dai->dev);
 	struct skl_probe_config *pconfig =  &skl->skl_sst->probe_config;
-	int i;
+	int i = skl_probe_get_index(dai, pconfig);
 
-	if ((i = skl_get_probe_index(dai, pconfig)) != -1) {
+	if (i != -1) {
 		pconfig->iprobe[i].stream = stream;
 		pconfig->iprobe[i].dma_id =
 				hdac_stream(stream)->stream_tag - 1;
@@ -71,7 +102,7 @@ int skl_probe_compr_open(struct snd_compr_stream *substream,
 
 	dev_dbg(dai->dev, "%s dev is  %s\n",  __func__, dev_name(dai->dev));
 
-	if (!pconfig->probe_count) {
+	if ((pconfig->i_refc + pconfig->e_refc) == 0) {
 		pconfig->edma_buffsize = SKL_EXTRACT_PROBE_DMA_BUFF_SIZE;
 		pconfig->edma_type = SKL_DMA_HDA_HOST_INPUT_CLASS;
 		pconfig->estream = hdac_ext_host_stream_compr_assign(ebus,
@@ -118,8 +149,15 @@ int skl_probe_compr_set_params(struct snd_compr_stream *substream,
 	int ret, dma_id;
 	unsigned int format_val = 0;
 	int err;
+	int index;
 
 	dev_dbg(dai->dev, "%s: %s\n", __func__, dai->name);
+
+	if (hdac_stream(stream)->prepared) {
+		dev_dbg(dai->dev, "already stream is prepared - returning\n");
+		return 0;
+	}
+
 	ret = skl_substream_alloc_compr_pages(ebus, substream,
 				runtime->fragments*runtime->fragment_size);
 	if (ret < 0)
@@ -127,11 +165,6 @@ int skl_probe_compr_set_params(struct snd_compr_stream *substream,
 
 	dma_id = hdac_stream(stream)->stream_tag - 1;
 	dev_dbg(dai->dev, "dma_id=%d\n", dma_id);
-
-	if (hdac_stream(stream)->prepared) {
-		dev_dbg(dai->dev, "already stream is prepared - returning\n");
-		return 0;
-	}
 
 	snd_hdac_stream_reset(hdac_stream(stream));
 
@@ -148,17 +181,25 @@ int skl_probe_compr_set_params(struct snd_compr_stream *substream,
 	hdac_stream(stream)->prepared = 1;
 
 	/* Initialize probe module only the first time */
-	if (!pconfig->probe_count) {
-
+	if ((pconfig->i_refc + pconfig->e_refc) == 0) {
 		ret = skl_init_probe_module(skl->skl_sst, mconfig);
 		if (ret < 0)
 			return ret;
 	}
 
-	if (substream->direction == SND_COMPRESS_PLAYBACK)
-		skl_tplg_attach_probe_dma(pconfig->w, skl->skl_sst, dai);
+	if (substream->direction == SND_COMPRESS_PLAYBACK) {
+		index = skl_probe_get_index(dai, pconfig);
+		if (index < 0)
+			return -EINVAL;
 
-	pconfig->probe_count++;
+		ret = skl_probe_attach_inj_dma(pconfig->w, skl->skl_sst, index);
+		if (ret < 0)
+			return -EINVAL;
+
+		pconfig->i_refc++;
+	} else {
+		pconfig->e_refc++;
+	}
 
 #if USE_SPIB
 	snd_hdac_ext_stream_spbcap_enable(ebus, 1, hdac_stream(stream)->index);
@@ -173,15 +214,43 @@ int skl_probe_compr_close(struct snd_compr_stream *substream,
 	struct hdac_ext_bus *ebus = dev_get_drvdata(dai->dev);
 	struct skl *skl = get_skl_ctx(dai->dev);
 	struct skl_probe_config *pconfig =  &skl->skl_sst->probe_config;
-	int ret;
+	struct skl_module_cfg *mconfig = pconfig->w->priv;
+	int ret = 0;
+	int index;
 
 	dev_dbg(dai->dev, "%s: %s\n", __func__, dai->name);
 #if USE_SPIB
 	snd_hdac_ext_stream_spbcap_enable(ebus, 0, hdac_stream(stream)->index);
 #endif
+	if ((pconfig->i_refc + pconfig->e_refc) == 0)
+		goto probe_uninit;
 
-	if (!--pconfig->probe_count) {
-		skl_disconnect_probe_point(skl->skl_sst, pconfig->w);
+	if (substream->direction == SND_COMPRESS_PLAYBACK) {
+		index = skl_probe_get_index(dai, pconfig);
+		if (index < 0)
+			return -EINVAL;
+
+		ret = skl_probe_point_disconnect_inj(skl->skl_sst,
+						pconfig->w, index);
+		if (ret < 0)
+			return -EINVAL;
+
+		ret = skl_probe_detach_inj_dma(skl->skl_sst, pconfig->w, index);
+		if (ret < 0)
+			return -EINVAL;
+
+		pconfig->i_refc--;
+	} else if (substream->direction == SND_COMPRESS_CAPTURE) {
+		ret = skl_probe_point_disconnect_ext(skl->skl_sst, pconfig->w);
+		if (ret < 0)
+			return -EINVAL;
+
+		pconfig->e_refc--;
+	}
+
+probe_uninit:
+	if (((pconfig->i_refc + pconfig->e_refc) == 0)
+			&& mconfig->m_state == SKL_MODULE_INIT_DONE) {
 		ret = skl_uninit_probe_module(skl->skl_sst, pconfig->w->priv);
 		if (ret < 0)
 			return ret;
@@ -344,7 +413,8 @@ int skl_probe_compr_trigger(struct snd_compr_stream *substream, int cmd,
 		/* FW starts probe module soon after its params are set.
 		 * So to avoid xruns, start DMA first and then set probe params.
 		 */
-		ret = skl_tplg_set_probe_params(pconfig->w, skl->skl_sst, substream->direction, dai);
+		ret = skl_probe_point_set_config(pconfig->w, skl->skl_sst,
+						substream->direction, dai);
 		if (ret < 0)
 			return -EINVAL;
 	}

@@ -1729,6 +1729,7 @@ static int skl_get_probe_widget(struct snd_soc_platform *platform,
 {
 	struct skl_probe_config *pconfig = &skl->skl_sst->probe_config;
 	struct snd_soc_dapm_widget *w;
+	int i;
 
 	list_for_each_entry(w, &platform->component.card->widgets, list) {
 		if (is_skl_dsp_widget_type(w) &&
@@ -1741,9 +1742,16 @@ static int skl_get_probe_widget(struct snd_soc_platform *platform,
 		}
 	}
 
-	pconfig->probe_count = 0;
-	pconfig->no_injector = 6;
-	pconfig->no_extractor = 8;
+	pconfig->i_refc = 0;
+	pconfig->e_refc = 0;
+	pconfig->no_injector = NO_OF_INJECTOR;
+	pconfig->no_extractor = NO_OF_EXTRACTOR;
+
+	for (i = 0; i < pconfig->no_injector; i++)
+		pconfig->iprobe[i].state = SKL_PROBE_STATE_INJ_NONE;
+
+	for (i = 0; i < pconfig->no_extractor; i++)
+		pconfig->eprobe[i].state = SKL_PROBE_STATE_EXT_NONE;
 
 	return 0;
 }

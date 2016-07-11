@@ -459,13 +459,15 @@ struct skl_algo_data {
 };
 
 struct skl_probe_data {
-	u8 is_connect;
-	u32 is_ext_inj;
-	u32 params;
+	/* connect or disconnect */
+	u8 operation;
+	/* extractor or injector or inject-reextract */
+	u32 purpose;
+	u32 probe_point_id;
 	u32 node_id;
 } __packed;
 
-struct skl_attach_probe_dma {
+struct skl_probe_attach_inj_dma {
 	union skl_connector_node_id node_id;
 	u32 dma_buff_size;
 } __packed;
@@ -550,12 +552,14 @@ int skl_init_probe_module(struct skl_sst *ctx, struct skl_module_cfg *module_con
 
 int skl_uninit_probe_module(struct skl_sst *ctx, struct skl_module_cfg *module_config);
 
-int skl_get_probe_index(struct snd_soc_dai *dai,
+int skl_probe_get_index(struct snd_soc_dai *dai,
 				struct skl_probe_config *pconfig);
 
-int skl_tplg_attach_probe_dma(struct snd_soc_dapm_widget *w,
-					struct skl_sst *ctx, struct snd_soc_dai *dai);
-int skl_tplg_set_probe_params(struct snd_soc_dapm_widget *w,
+int skl_probe_attach_inj_dma(struct snd_soc_dapm_widget *w,
+					struct skl_sst *ctx, int index);
+int skl_probe_detach_inj_dma(struct skl_sst *ctx,
+		struct snd_soc_dapm_widget *w, int index);
+int skl_probe_point_set_config(struct snd_soc_dapm_widget *w,
 						struct skl_sst *ctx, int direction,
 						struct snd_soc_dai *dai);
 int skl_tplg_set_module_params(struct snd_soc_dapm_widget *w,
@@ -566,8 +570,10 @@ int skl_bind_modules(struct skl_sst *ctx, struct skl_module_cfg
 
 int skl_unbind_modules(struct skl_sst *ctx, struct skl_module_cfg
 	*src_module, struct skl_module_cfg *dst_module);
-int skl_disconnect_probe_point(struct skl_sst *ctx,
+int skl_probe_point_disconnect_ext(struct skl_sst *ctx,
 					struct snd_soc_dapm_widget *w);
+int skl_probe_point_disconnect_inj(struct skl_sst *ctx,
+			struct snd_soc_dapm_widget *w, int index);
 int skl_set_module_params(struct skl_sst *ctx, u32 *params, int size,
 			u32 param_id, struct skl_module_cfg *mcfg);
 int skl_get_module_params(struct skl_sst *ctx, u32 *params, int size,
