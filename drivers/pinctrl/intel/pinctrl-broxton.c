@@ -126,7 +126,8 @@ static const unsigned bxt_north_pwm2_pins[] = { 36 };
 static const unsigned bxt_north_pwm3_pins[] = { 37 };
 static const unsigned bxt_north_uart0_pins[] = { 38, 39, 40, 41 };
 static const unsigned bxt_north_uart1_pins[] = { 42, 43, 44, 45 };
-static const unsigned bxt_north_uart2_pins[] = { 46, 47, 48, 49 };
+static const unsigned bxt_north_uart2_in_pins[] = { 46, 49 };
+static const unsigned bxt_north_uart2_out_pins[] = { 47, 48 };
 static const unsigned bxt_north_uart0b_pins[] = { 50, 51, 52, 53 };
 static const unsigned bxt_north_uart1b_pins[] = { 54, 55, 56, 57 };
 static const unsigned bxt_north_uart2b_pins[] = { 58, 59, 60, 61 };
@@ -139,7 +140,9 @@ static const struct intel_pingroup bxt_north_groups[] = {
 	PIN_GROUP("pwm3_grp", bxt_north_pwm3_pins, 1),
 	PIN_GROUP("uart0_grp", bxt_north_uart0_pins, 1),
 	PIN_GROUP("uart1_grp", bxt_north_uart1_pins, 1),
-	PIN_GROUP("uart2_grp", bxt_north_uart2_pins, 1),
+	PIN_GROUP("uart2_in_gpio_grp", bxt_north_uart2_in_pins, 0),
+	PIN_GROUP("uart2_in_uart_grp", bxt_north_uart2_in_pins, 1),
+	PIN_GROUP("uart2_grp", bxt_north_uart2_out_pins, 1),
 	PIN_GROUP("uart0b_grp", bxt_north_uart0b_pins, 2),
 	PIN_GROUP("uart1b_grp", bxt_north_uart1b_pins, 2),
 	PIN_GROUP("uart2b_grp", bxt_north_uart2b_pins, 2),
@@ -156,8 +159,11 @@ static const char * const bxt_north_uart0_groups[] = {
 static const char * const bxt_north_uart1_groups[] = {
 	"uart1_grp", "uart1b_grp",
 };
-static const char * const bxt_north_uart2_groups[] = {
-	"uart2_grp", "uart2b_grp",
+static const char * const bxt_north_uart2_gpio_groups[] = {
+	"uart2_in_gpio_grp", "uart2_grp",
+};
+static const char * const bxt_north_uart2_uart_groups[] = {
+	"uart2_in_uart_grp", "uart2_grp", "uart2b_grp",
 };
 static const char * const bxt_north_uart3_groups[] = { "uart3_grp" };
 
@@ -168,7 +174,8 @@ static const struct intel_function bxt_north_functions[] = {
 	FUNCTION("pwm3", bxt_north_pwm3_groups),
 	FUNCTION("uart0", bxt_north_uart0_groups),
 	FUNCTION("uart1", bxt_north_uart1_groups),
-	FUNCTION("uart2", bxt_north_uart2_groups),
+	FUNCTION("uart2_uart", bxt_north_uart2_uart_groups),
+	FUNCTION("uart2_gpio", bxt_north_uart2_gpio_groups),
 	FUNCTION("uart3", bxt_north_uart3_groups),
 };
 
@@ -620,7 +627,8 @@ static const unsigned apl_north_pwm2_pins[] = { 36 };
 static const unsigned apl_north_pwm3_pins[] = { 37 };
 static const unsigned apl_north_uart0_pins[] = { 38, 39, 40, 41 };
 static const unsigned apl_north_uart1_pins[] = { 42, 43, 44, 45 };
-static const unsigned apl_north_uart2_pins[] = { 46, 47, 48, 49 };
+static const unsigned apl_north_uart2_in_pins[] = { 46, 49 };
+static const unsigned apl_north_uart2_pins[] = { 47, 48 };
 
 static const struct intel_pingroup apl_north_groups[] = {
 	PIN_GROUP("pwm0_grp", apl_north_pwm0_pins, 1),
@@ -629,6 +637,8 @@ static const struct intel_pingroup apl_north_groups[] = {
 	PIN_GROUP("pwm3_grp", apl_north_pwm3_pins, 1),
 	PIN_GROUP("uart0_grp", apl_north_uart0_pins, 1),
 	PIN_GROUP("uart1_grp", apl_north_uart1_pins, 1),
+	PIN_GROUP("uart2_in_gpio_grp", apl_north_uart2_in_pins, 0),
+	PIN_GROUP("uart2_in_uart_grp", apl_north_uart2_in_pins, 1),
 	PIN_GROUP("uart2_grp", apl_north_uart2_pins, 1),
 };
 
@@ -638,7 +648,12 @@ static const char * const apl_north_pwm2_groups[] = { "pwm2_grp" };
 static const char * const apl_north_pwm3_groups[] = { "pwm3_grp" };
 static const char * const apl_north_uart0_groups[] = { "uart0_grp" };
 static const char * const apl_north_uart1_groups[] = { "uart1_grp" };
-static const char * const apl_north_uart2_groups[] = { "uart2_grp" };
+static const char * const apl_north_uart2_gpio_groups[] = {
+	"uart2_in_gpio_grp", "uart2_grp"
+};
+static const char * const apl_north_uart2_uart_groups[] = {
+	"uart2_in_uart_grp", "uart2_grp"
+};
 
 static const struct intel_function apl_north_functions[] = {
 	FUNCTION("pwm0", apl_north_pwm0_groups),
@@ -647,7 +662,8 @@ static const struct intel_function apl_north_functions[] = {
 	FUNCTION("pwm3", apl_north_pwm3_groups),
 	FUNCTION("uart0", apl_north_uart0_groups),
 	FUNCTION("uart1", apl_north_uart1_groups),
-	FUNCTION("uart2", apl_north_uart2_groups),
+	FUNCTION("uart2_uart", apl_north_uart2_uart_groups),
+	FUNCTION("uart2_gpio", apl_north_uart2_gpio_groups),
 };
 
 static const struct intel_community apl_north_communities[] = {
