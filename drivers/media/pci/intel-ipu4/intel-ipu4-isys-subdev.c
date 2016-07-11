@@ -522,9 +522,6 @@ int intel_ipu4_isys_subdev_set_routing(struct v4l2_subdev *sd,
 			t->source_stream > asd->nstreams - 1)
 			continue;
 
-		if (t->sink_stream != t->source_stream)
-			continue;
-
 		for (j = 0; j < asd->nstreams; j++) {
 			if (t->sink_pad == asd->route[j].sink &&
 				t->source_pad == asd->route[j].source)

@@ -671,7 +671,7 @@ static int link_validate(struct media_link *link)
 			if (routing.routes[i].source_pad ==
 			    link->source->index) {
 				ip->stream_id =
-				    routing.routes[i].source_stream;
+				    routing.routes[i].sink_stream;
 			}
 			active++;
 		}
@@ -796,6 +796,7 @@ static int get_external_facing_format(struct intel_ipu4_isys_pipeline *ip,
 
 	format->which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	format->pad = 0;
+	format->stream = ip->stream_id;
 	return v4l2_subdev_call(
 		media_entity_to_v4l2_subdev(external_facing->entity), pad,
 		get_fmt, NULL, format);
@@ -1451,6 +1452,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 			goto out_media_entity_stop_streaming_firmware;
 	} else {
 		close_streaming_firmware(av);
+		av->ip.stream_id = 0;
 	}
 
 	if (state)
@@ -1567,6 +1569,7 @@ int intel_ipu4_isys_video_init(struct intel_ipu4_isys_video *av,
 	INIT_LIST_HEAD(&av->ip.queues);
 	spin_lock_init(&av->ip.short_packet_queue_lock);
 	av->ip.isys = av->isys;
+	av->ip.stream_id = 0;
 
 	if (pad_flags & MEDIA_PAD_FL_SINK) {
 		/* data_offset is available only for multi-plane buffers */
