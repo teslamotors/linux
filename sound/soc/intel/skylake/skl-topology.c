@@ -98,6 +98,13 @@ void skl_tplg_d0i3_put(struct skl *skl, enum d0i3_capability caps)
 }
 
 /*
+ * DMA buffer size needed for 48KHz, 4 channel, 32 bit data
+ * scheduled at 4ms  for 2 probe packets is
+ * 2* [ 24 + (48*4*4*32/8) + 8]  = 6208.
+ */
+#define SKL_INJECT_PROBE_DMA_BUFF_SIZE 6208
+
+/*
  * SKL DSP driver modelling uses only few DAPM widgets so for rest we will
  * ignore. This helpers checks if the SKL driver handles this widget type
  */
