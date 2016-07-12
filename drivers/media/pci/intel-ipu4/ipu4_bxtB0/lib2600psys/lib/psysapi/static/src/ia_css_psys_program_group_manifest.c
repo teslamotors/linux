@@ -948,6 +948,33 @@ int ia_css_program_group_manifest_print(
 		verifjmpexit(retval == 0);
 	}
 
+	struct ia_css_psys_private_pg_data *priv_data = (struct ia_css_psys_private_pg_data *)ia_css_program_group_manifest_get_private_data(manifest);
+
+	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "private_data_offset %d \n", manifest->private_data_offset);
+
+	for (i = 0; i < IPU_DEVICE_GP_PSA_MUX_NUM_MUX; i ++) {
+		IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO, "PSA MUX id %d mux val %d\n",i, priv_data->psa_mux_conf[i]);
+
+	}
+
+	for (i = 0; i < IPU_DEVICE_GP_ISA_STATIC_MUX_NUM_MUX; i ++) {
+		IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO, "ISA MUX id %d mux val %d\n",i, priv_data->isa_mux_conf[i]);
+
+	}
+
+	for (i = 0; i < IPU_DEVICE_ACB_NUM_ACB; i ++) {
+
+		if(priv_data->acb_route[i].in_select != VIED_NCI_ACB_PORT_INVALID) {
+
+			assert(priv_data->acb_route[i].in_select != VIED_NCI_ACB_PORT_INVALID &&
+				priv_data->acb_route[i].out_select != VIED_NCI_ACB_PORT_INVALID);
+
+			IA_CSS_TRACE_3(PSYSAPI_STATIC, INFO, "Route Cell id %d In %d Out %d\n",i, priv_data->acb_route[i].in_select, priv_data->acb_route[i].out_select);
+
+		}
+
+	}
+
 	retval = 0;
 EXIT:
 	if (retval != 0) {

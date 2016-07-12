@@ -41,35 +41,35 @@ static const unsigned int ipu_device_spp1_mem_address[IPU_DEVICE_SP2600_PROXY_NU
 };
 
 static const unsigned int ipu_device_isp0_mem_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
-	0x001C0000, /* reg addr */
-	0x001D0000, /* pmem addr */
-	0x001F0000, /* dmem addr */
-	0x00200000, /* bamem addr */
-	0x00220000  /* vmem addr */
+	ISP0_REGS_CBUS_ADDRESS, /* reg addr */
+	ISP0_PMEM_CBUS_ADDRESS, /* pmem addr */
+	ISP0_DMEM_CBUS_ADDRESS, /* dmem addr */
+	ISP0_BAMEM_CBUS_ADDRESS,/* bamem addr */
+	ISP0_VMEM_CBUS_ADDRESS  /* vmem addr */
 };
 
 static const unsigned int ipu_device_isp1_mem_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
-	0x00240000, /* reg addr */
-	0x00250000, /* pmem addr */
-	0x00270000, /* dmem addr */
-	0x00280000, /* bamem addr */
-	0x002A0000  /* vmem addr */
+	ISP1_REGS_CBUS_ADDRESS, /* reg addr */
+	ISP1_PMEM_CBUS_ADDRESS, /* pmem addr */
+	ISP1_DMEM_CBUS_ADDRESS, /* dmem addr */
+	ISP1_BAMEM_CBUS_ADDRESS,/* bamem addr */
+	ISP1_VMEM_CBUS_ADDRESS  /* vmem addr */
 };
 
 static const unsigned int ipu_device_isp2_mem_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
-	0x002C0000, /* reg addr */
-	0x002D0000, /* pmem addr */
-	0x002F0000, /* dmem addr */
-	0x00300000, /* bamem addr */
-	0x00320000  /* vmem addr */
+	ISP2_REGS_CBUS_ADDRESS, /* reg addr */
+	ISP2_PMEM_CBUS_ADDRESS, /* pmem addr */
+	ISP2_DMEM_CBUS_ADDRESS, /* dmem addr */
+	ISP2_BAMEM_CBUS_ADDRESS,/* bamem addr */
+	ISP2_VMEM_CBUS_ADDRESS  /* vmem addr */
 };
 
 static const unsigned int ipu_device_isp3_mem_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
-	0x00340000, /* reg addr */
-	0x00350000, /* pmem addr */
-	0x00370000, /* dmem addr */
-	0x00380000, /* bamem addr */
-	0x003A0000  /* vmem addr */
+	ISP3_REGS_CBUS_ADDRESS, /* reg addr */
+	ISP3_PMEM_CBUS_ADDRESS, /* pmem addr */
+	ISP3_DMEM_CBUS_ADDRESS, /* dmem addr */
+	ISP3_BAMEM_CBUS_ADDRESS,/* bamem addr */
+	ISP3_VMEM_CBUS_ADDRESS  /* vmem addr */
 };
 
 static const unsigned int ipu_device_spc0_mem_databus_address[IPU_DEVICE_SP2600_CONTROL_NUM_MEMORIES] = {
@@ -92,34 +92,34 @@ static const unsigned int ipu_device_spp1_mem_databus_address[IPU_DEVICE_SP2600_
 
 static const unsigned int ipu_device_isp0_mem_databus_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
 	IPU_DEVICE_INVALID_MEM_ADDRESS, /* no reg addr */
-	0x08000000,			/* pmem databus addr */
-	0x08400000,			/* dmem databus addr */
-	0x09000000,			/* bamem databus addr */
-	0x08800000			/* vmem databus addr */
+	ISP0_PMEM_DBUS_ADDRESS,			/* pmem databus addr */
+	ISP0_DMEM_DBUS_ADDRESS,			/* dmem databus addr */
+	ISP0_BAMEM_DBUS_ADDRESS,		/* bamem databus addr */
+	ISP0_VMEM_DBUS_ADDRESS			/* vmem databus addr */
 };
 
 static const unsigned int ipu_device_isp1_mem_databus_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
 	IPU_DEVICE_INVALID_MEM_ADDRESS, /* no reg addr */
-	0x0A000000,			/* pmem databus addr */
-	0x0A400000,			/* dmem databus addr */
-	0x0B000000,			/* bamem databus addr */
-	0x0A800000			/* vmem databus addr */
+	ISP1_PMEM_DBUS_ADDRESS,			/* pmem databus addr */
+	ISP1_DMEM_DBUS_ADDRESS,			/* dmem databus addr */
+	ISP1_BAMEM_DBUS_ADDRESS,		/* bamem databus addr */
+	ISP1_VMEM_DBUS_ADDRESS			/* vmem databus addr */
 };
 
 static const unsigned int ipu_device_isp2_mem_databus_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
 	IPU_DEVICE_INVALID_MEM_ADDRESS, /* no reg addr */
-	0x0C000000,			/* pmem databus addr */
-	0x0C400000,			/* dmem databus addr */
-	0x0D000000,			/* bamem databus addr */
-	0x0C800000			/* vmem databus addr */
+	ISP2_PMEM_DBUS_ADDRESS,			/* pmem databus addr */
+	ISP2_DMEM_DBUS_ADDRESS,			/* dmem databus addr */
+	ISP2_BAMEM_DBUS_ADDRESS,		/* bamem databus addr */
+	ISP2_VMEM_DBUS_ADDRESS			/* vmem databus addr */
 };
 
 static const unsigned int ipu_device_isp3_mem_databus_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
 	IPU_DEVICE_INVALID_MEM_ADDRESS, /* no reg addr */
-	0x0E000000,			/* pmem databus addr */
-	0x0E400000,			/* dmem databus addr */
-	0x0F000000,			/* bamem databus addr */
-	0x0E800000			/* vmem databus addr */
+	ISP3_PMEM_DBUS_ADDRESS,			/* pmem databus addr */
+	ISP3_DMEM_DBUS_ADDRESS,			/* dmem databus addr */
+	ISP3_BAMEM_DBUS_ADDRESS,		/* bamem databus addr */
+	ISP3_VMEM_DBUS_ADDRESS			/* vmem databus addr */
 };
 
 static const struct ipu_device_cell_properties_s ipu_device_cell_properties[NUM_CELLS] = {
