@@ -224,6 +224,7 @@ struct mtk_pinctrl {
 };
 
 int mtk_pctrl_init(struct platform_device *pdev,
-		const struct mtk_pinctrl_devdata *data);
+		const struct mtk_pinctrl_devdata *data,
+		struct regmap *regmap);
 
 #endif /* __PINCTRL_MTK_COMMON_H */

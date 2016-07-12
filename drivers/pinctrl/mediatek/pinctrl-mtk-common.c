@@ -1111,7 +1111,8 @@ static struct pinctrl_desc mtk_pctrl_desc = {
 };
 
 int mtk_pctrl_init(struct platform_device *pdev,
-		const struct mtk_pinctrl_devdata *data)
+		const struct mtk_pinctrl_devdata *data,
+		struct regmap *regmap)
 {
 	struct pinctrl_pin_desc *pins;
 	struct mtk_pinctrl *pctl;
@@ -1137,6 +1138,11 @@ int mtk_pctrl_init(struct platform_device *pdev,
 		pctl->regmap1 = syscon_node_to_regmap(node);
 		if (IS_ERR(pctl->regmap1))
 			return PTR_ERR(pctl->regmap1);
+	} else if (regmap) {
+		pctl->regmap1  = regmap;
+	} else {
+		dev_err(&pdev->dev, "Pinctrl node has not register regmap.\n");
+		return -EINVAL;
 	}
 
 	/* Only 8135 has two base addr, other SoCs have only one. */
@@ -1182,7 +1188,7 @@ int mtk_pctrl_init(struct platform_device *pdev,
 	pctl->chip->ngpio = pctl->devdata->npins;
 	pctl->chip->label = dev_name(&pdev->dev);
 	pctl->chip->dev = &pdev->dev;
-	pctl->chip->base = 0;
+	pctl->chip->base = -1;
 
 	ret = gpiochip_add(pctl->chip);
 	if (ret) {
@@ -1197,6 +1203,9 @@ int mtk_pctrl_init(struct platform_device *pdev,
 		ret = -EINVAL;
 		goto chip_error;
 	}
+
+	if (of_find_property(np, "interrupt-controller", NULL))
+		return 0;
 
 	/* Get EINT register base from dts. */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
