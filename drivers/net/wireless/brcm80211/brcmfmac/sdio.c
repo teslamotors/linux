@@ -773,11 +773,17 @@ brcmf_sdio_kso_control(struct brcmf_sdio *bus, bool on)
 	brcmf_dbg(TRACE, "Enter: on=%d\n", on);
 
 	wr_val = (on << SBSDIO_FUNC1_SLEEPCSR_KSO_SHIFT);
+
+	/* Cannot re-tune if device is asleep */
+	if (on)
+		sdio_retune_hold_now(bus->sdiodev->func[1]);
+
 	/* 1st KSO write goes to AOS wake up core if device is asleep  */
 	brcmf_sdiod_regwb(bus->sdiodev, SBSDIO_FUNC1_SLEEPCSR,
 			  wr_val, &err);
 
 	if (on) {
+		sdio_retune_release(bus->sdiodev->func[1]);
 		/* device WAKEUP through KSO:
 		 * write bit 0 & read back until
 		 * both bits 0 (kso bit) & 1 (dev on status) are set
