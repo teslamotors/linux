@@ -36,6 +36,12 @@
 #define SKL_FMT_FIXUP_MASK		(1 << 2)
 #define SKL_IN_DIR_BIT_MASK		BIT(0)
 #define SKL_PIN_COUNT_MASK		GENMASK(7, 4)
+/*
+ * DMA buffer size needed for 48KHz, 4 channel, 32 bit data
+ * scheduled at 4ms  for 2 probe packets is
+ * 2* [ 24 + (48*4*4*32/8) + 8]  = 6208.
+ */
+#define SKL_INJECT_PROBE_DMA_BUFF_SIZE 6208
 
 static const int mic_mono_list[] = {
 0, 1, 2, 3,
@@ -498,7 +504,7 @@ int skl_tplg_attach_probe_dma(struct snd_soc_dapm_widget *w,
 		ad.node_id.node.vindex = pconfig->iprobe[i].dma_id;
 		ad.node_id.node.dma_type = SKL_DMA_HDA_HOST_OUTPUT_CLASS;
 		ad.node_id.node.rsvd = 0;
-		ad.dma_buff_size = 1536;/* TODO:Configure based on calculation*/
+		ad.dma_buff_size = SKL_INJECT_PROBE_DMA_BUFF_SIZE;
 	}
 
 	ret = skl_set_module_params(ctx, (u32 *)&ad,
