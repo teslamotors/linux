@@ -27,6 +27,7 @@
 #include <linux/regulator/fixed.h>
 #include <linux/regulator/gpio-regulator.h>
 #include <linux/regulator/machine.h>
+#include <linux/list.h>
 
 #include <media/crlmodule.h>
 #include <media/intel-ipu4-acpi.h>
@@ -331,7 +332,9 @@ struct ipu4_gpio_regulator {
 	struct regulator_init_data init_data;
 	struct gpio_regulator_config info;
 	struct platform_device pdev;
+	struct list_head list;
 };
+static LIST_HEAD(ipu4_gpio_regulator_head);
 
 static int create_gpio_regulator(struct device *dev, int index, char *name)
 {
@@ -348,6 +351,7 @@ static int create_gpio_regulator(struct device *dev, int index, char *name)
 	if (!reg_device)
 		return -ENOMEM;
 
+	INIT_LIST_HEAD(&reg_device->list);
 	reg_device->consumers[num_consumers].supply = "VANA";
 	reg_device->consumers[num_consumers].dev_name = name;
 	num_consumers++;
@@ -372,6 +376,23 @@ static int create_gpio_regulator(struct device *dev, int index, char *name)
 	cam_regs[0] = &reg_device->pdev;
 
 	platform_add_devices(cam_regs, 1);
+	list_add_tail(&reg_device->list, &ipu4_gpio_regulator_head);
+
+	return 0;
+}
+
+static int remove_gpio_regulator(void)
+{
+	struct ipu4_gpio_regulator *reg_device;
+
+	while (!list_empty(&ipu4_gpio_regulator_head)) {
+		reg_device = list_first_entry(&ipu4_gpio_regulator_head,
+					struct ipu4_gpio_regulator, list);
+		list_del(&reg_device->list);
+
+		platform_device_unregister(&reg_device->pdev);
+		kfree(reg_device);
+	}
 
 	return 0;
 }
@@ -907,6 +928,12 @@ int intel_ipu4_get_acpi_devices(void *driver_data,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_get_acpi_devices);
+
+static void __exit intel_ipu4_acpi_exit(void)
+{
+	remove_gpio_regulator();
+}
+module_exit(intel_ipu4_acpi_exit);
 
 MODULE_AUTHOR("Samu Onkalo <samu.onkalo@intel.com>");
 MODULE_LICENSE("GPL");
