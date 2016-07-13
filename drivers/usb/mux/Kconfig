@@ -1,0 +1,11 @@
+#
+# USB port mux driver configuration
+#
+
+menu "USB Port MUX drivers"
+config USB_PORTMUX
+	select EXTCON
+	def_bool n
+	help
+	  Generic USB dual role port mux support.
+endmenu
