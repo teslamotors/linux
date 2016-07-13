@@ -794,8 +794,6 @@ static const struct pci_device_id intel_ipu4_pci_tbl[] = {
 	{0,}
 };
 
-MODULE_DEVICE_TABLE(pci, intel_ipu4_pci_tbl);
-
 static struct pci_driver intel_ipu4_pci_driver = {
 	.name = INTEL_IPU4_NAME,
 	.id_table = intel_ipu4_pci_tbl,
