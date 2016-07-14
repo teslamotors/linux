@@ -111,15 +111,16 @@ static struct intel_ipu4_trace_block isys_trace_blocks[] = {
  *
  * Return the total number of users of all video device nodes in the pipeline.
  */
-static int intel_ipu4_pipeline_pm_use_count(struct media_entity *entity)
+static int intel_ipu4_pipeline_pm_use_count(struct media_pad *pad)
 {
 	struct media_entity_graph graph;
+	struct media_entity *entity = pad->entity;
 	int use = 0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	media_entity_graph_walk_init(&graph, entity->graph_obj.mdev);
 #endif
-	media_entity_graph_walk_start(&graph, entity);
+	media_entity_graph_walk_start(&graph, pad);
 
 	while ((entity = media_entity_graph_walk_next(&graph))) {
 		if (is_media_entity_v4l2_io(entity))
@@ -192,7 +193,7 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	media_entity_graph_walk_init(&graph, entity->graph_obj.mdev);
 #endif
-	media_entity_graph_walk_start(&graph, entity);
+	media_entity_graph_walk_start(&graph, &entity->pads[0]);
 
 	while (!ret && (entity = media_entity_graph_walk_next(&graph)))
 		if (!is_media_entity_v4l2_io(entity))
@@ -207,7 +208,7 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	media_entity_graph_walk_init(&graph, entity->graph_obj.mdev);
 #endif
-	media_entity_graph_walk_start(&graph, first);
+	media_entity_graph_walk_start(&graph, &first->pads[0]);
 
 	while ((first = media_entity_graph_walk_next(&graph))
 	       && first != entity)
@@ -285,8 +286,8 @@ static int intel_ipu4_pipeline_link_notify(struct media_link *link, u32 flags,
 {
 	struct media_entity *source = link->source->entity;
 	struct media_entity *sink = link->sink->entity;
-	int source_use = intel_ipu4_pipeline_pm_use_count(source);
-	int sink_use = intel_ipu4_pipeline_pm_use_count(sink);
+	int source_use = intel_ipu4_pipeline_pm_use_count(link->source);
+	int sink_use = intel_ipu4_pipeline_pm_use_count(link->sink);
 	int ret;
 
 	if (notification == MEDIA_DEV_NOTIFY_POST_LINK_CH &&
