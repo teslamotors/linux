@@ -336,16 +336,16 @@ void media_graph_walk_cleanup(struct media_graph *graph)
 EXPORT_SYMBOL_GPL(media_graph_walk_cleanup);
 
 void media_graph_walk_start(struct media_graph *graph,
-			    struct media_entity *entity)
+			    struct media_pad *pad)
 {
 	media_entity_enum_zero(&graph->ent_enum);
-	media_entity_enum_set(&graph->ent_enum, entity);
+	media_entity_enum_set(&graph->ent_enum, pad->entity);
 
 	graph->top = 0;
 	graph->stack[graph->top].entity = NULL;
-	stack_push(graph, entity, -1);
-	dev_dbg(entity->graph_obj.mdev->dev,
-		"begin graph walk at '%s'\n", entity->name);
+	stack_push(graph, pad->entity, pad->index);
+	dev_dbg(pad->entity->graph_obj.mdev->dev,
+		"begin graph walk at '%s'\n", pad->entity->name);
 }
 EXPORT_SYMBOL_GPL(media_graph_walk_start);
 
@@ -388,8 +388,7 @@ static void media_graph_walk_iter(struct media_graph *graph)
 	 * Are the local pad and the pad we came from connected
 	 * internally in the entity ?
 	 */
-	if (from_pad != -1 &&
-	    !media_entity_has_route(entity, from_pad, local->index)) {
+	if (!media_entity_has_route(entity, from_pad, local->index)) {
 		link_top(graph) = link_top(graph)->next;
 		return;
 	}
@@ -487,7 +486,7 @@ __must_check int __media_pipeline_start(struct media_entity *entity,
 			goto error_graph_walk_start;
 	}
 
-	media_graph_walk_start(&pipe->graph, entity);
+	media_graph_walk_start(graph, &entity->pads[0]);
 
 	while ((entity = media_graph_walk_next(graph))) {
 		DECLARE_BITMAP(active, MEDIA_ENTITY_MAX_PADS);
@@ -559,7 +558,7 @@ error:
 	 * Link validation on graph failed. We revert what we did and
 	 * return the error.
 	 */
-	media_graph_walk_start(graph, entity_err);
+	media_graph_walk_start(graph, &entity_err->pads[0]);
 
 	while ((entity_err = media_graph_walk_next(graph))) {
 		/* Sanity check for negative stream_count */
@@ -610,7 +609,7 @@ void __media_pipeline_stop(struct media_entity *entity)
 	if (WARN_ON(!pipe))
 		return;
 
-	media_graph_walk_start(graph, entity);
+	media_graph_walk_start(graph, &entity->pads[0]);
 
 	while ((entity = media_graph_walk_next(graph))) {
 		/* Sanity check for negative stream_count */
