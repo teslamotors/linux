@@ -154,7 +154,7 @@ bool media_entity_has_route(struct media_entity *entity, unsigned int sink,
 			    unsigned int source);
 
 void media_entity_graph_walk_start(struct media_entity_graph *graph,
-		struct media_entity *entity);
+				   struct media_pad *pad);
 struct media_entity *
 media_entity_graph_walk_next(struct media_entity_graph *graph);
 __must_check int media_entity_pipeline_start(struct media_entity *entity,

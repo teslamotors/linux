@@ -150,7 +150,7 @@ static struct media_entity *stack_pop(struct media_entity_graph *graph)
 /**
  * media_entity_graph_walk_start - Start walking the media graph at a given entity
  * @graph: Media graph structure that will be used to walk the graph
- * @entity: Starting entity
+ * @pad: starting pad
  *
  * This function initializes the graph traversal structure to walk the entities
  * graph starting at the given entity. The traversal structure must not be
@@ -158,17 +158,17 @@ static struct media_entity *stack_pop(struct media_entity_graph *graph)
  * safely be freed.
  */
 void media_entity_graph_walk_start(struct media_entity_graph *graph,
-				   struct media_entity *entity)
+				   struct media_pad *pad)
 {
 	graph->top = 0;
 	graph->stack[graph->top].entity = NULL;
 	bitmap_zero(graph->entities, MEDIA_ENTITY_ENUM_MAX_ID);
 
-	if (WARN_ON(entity->id >= MEDIA_ENTITY_ENUM_MAX_ID))
+	if (WARN_ON(pad->entity->id >= MEDIA_ENTITY_ENUM_MAX_ID))
 		return;
 
-	__set_bit(entity->id, graph->entities);
-	stack_push(graph, entity, -1);
+	__set_bit(pad->entity->id, graph->entities);
+	stack_push(graph, pad->entity, pad->index);
 }
 EXPORT_SYMBOL_GPL(media_entity_graph_walk_start);
 
@@ -230,8 +230,7 @@ media_entity_graph_walk_next(struct media_entity_graph *graph)
 		 * Are the local pad and the pad we came from connected
 		 * internally in the entity ?
 		 */
-		if (from_pad != -1 &&
-		    !media_entity_has_route(entity, from_pad, local->index)) {
+		if (!media_entity_has_route(entity, from_pad, local->index)) {
 			link_top(graph)++;
 			continue;
 		}
@@ -279,7 +278,7 @@ __must_check int media_entity_pipeline_start(struct media_entity *entity,
 
 	mutex_lock(&mdev->graph_mutex);
 
-	media_entity_graph_walk_start(&graph, entity);
+	media_entity_graph_walk_start(&graph, &entity->pads[0]);
 
 	while ((entity = media_entity_graph_walk_next(&graph))) {
 		DECLARE_BITMAP(active, entity->num_pads);
@@ -354,7 +353,7 @@ error:
 	 * Link validation on graph failed. We revert what we did and
 	 * return the error.
 	 */
-	media_entity_graph_walk_start(&graph, entity_err);
+	media_entity_graph_walk_start(&graph, &entity_err->pads[0]);
 
 	while ((entity_err = media_entity_graph_walk_next(&graph))) {
 		entity_err->stream_count--;
@@ -394,7 +393,7 @@ void media_entity_pipeline_stop(struct media_entity *entity)
 
 	mutex_lock(&mdev->graph_mutex);
 
-	media_entity_graph_walk_start(&graph, entity);
+	media_entity_graph_walk_start(&graph, &entity->pads[0]);
 
 	while ((entity = media_entity_graph_walk_next(&graph))) {
 		entity->stream_count--;
