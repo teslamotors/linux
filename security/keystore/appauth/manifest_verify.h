@@ -17,16 +17,14 @@
 #ifndef _MANIFEST_VERIFY_H_
 #define _MANIFEST_VERIFY_H_
 
-enum VERIFY_STATUS {
-	STATUS_VALID,
-	STATUS_INVALID,
-	STATUS_CHECK_ERROR,
-	STATUS_UNAVAILABLE
-};
+#define MANIFEST_CACHE_TTL		300
+#define MANIFEST_DEFAULT_CAPS		0
 
 enum APP_AUTH_ERROR {
 	NO_ERROR,
-	MALFORMED_MANIFEST,
+	MALFORMED_MANIFEST = 300,
+	CERTIFICATE_FAILURE,
+	CAPS_FAILURE,
 	SIGNATURE_FAILURE,
 	EXE_NOT_FOUND,
 	HASH_FAILURE,
@@ -35,6 +33,6 @@ enum APP_AUTH_ERROR {
 	KEYID_NOT_FOUND
 };
 
-enum VERIFY_STATUS verify_manifest_file(char *manifest_file_path,
-					int timeout, int caps);
+int verify_manifest_file(char *manifest_file_path,
+					int timeout, uint16_t caps);
 #endif /* _MANIFEST_VERIFY_H_ */

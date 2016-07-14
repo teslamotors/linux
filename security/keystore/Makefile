@@ -63,9 +63,10 @@ keystore-$(CONFIG_KEYSTORE_TESTMODE) +=\
 	test/testoperations.o
 
 keystore-$(CONFIG_APPLICATION_AUTH) +=\
-        appauth/file_hash_verify.o\
-        appauth/key_setup.o\
-        appauth/manifest_parser.o\
-        appauth/manifest_read.o\
-        appauth/manifest_verify.o\
-        appauth/sign_verify.o
+	appauth/file_hash_verify.o\
+	appauth/key_setup.o\
+	appauth/manifest_cache.o\
+	appauth/manifest_parser.o\
+	appauth/manifest_read.o\
+	appauth/manifest_verify.o\
+	appauth/sign_verify.o

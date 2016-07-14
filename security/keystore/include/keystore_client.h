@@ -16,6 +16,8 @@
  *
  * @client_id: output array containing the client ID
  * @client_id_size: size of the output array
+ * @timeout: timeout parameter for signed manifest caching
+ * @caps: capabilities parameter for signed manifest verification
  *
  * Derive the client ID of a client from the path by
  * calculating SHA-256 on the directory name plus
@@ -25,8 +27,12 @@
  *
  * Returns: 0 if OK or negative error code.
  */
+#ifdef CONFIG_APPLICATION_AUTH
+int keystore_calc_clientid(u8 *client_id, const unsigned int client_id_size,
+		int timeout, u16 caps);
+#else
 int keystore_calc_clientid(u8 *client_id, const unsigned int client_id_size);
-
+#endif
 
 /**
  * keystore_calc_clientkey() - Derive the client key

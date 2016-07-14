@@ -17,6 +17,10 @@
 #include "keystore_seed.h"
 #include "keystore_debug.h"
 
+#ifdef CONFIG_APPLICATION_AUTH
+#include "appauth/manifest_verify.h"
+#endif
+
 #define KERNEL_CLIENTS_ID			"+(!$(%@#%$$)*"
 
 /**
@@ -61,11 +65,20 @@ out:
 	return result;
 }
 
+#ifdef CONFIG_APPLICATION_AUTH
+int keystore_calc_clientid(u8 *client_id, const unsigned int client_id_size,
+		int timeout, u16 caps)
+#else
 int keystore_calc_clientid(u8 *client_id, const unsigned int client_id_size)
+#endif
 {
-	char *buf = NULL, *f_path = NULL;
 	int res = 0;
-
+	char *buf = NULL, *f_path = NULL;
+#ifdef CONFIG_APPLICATION_AUTH
+	char *mbuf = NULL;
+	int mrootlen = PATH_MAX + NAME_MAX +
+		strlen(CONFIG_APPLICATION_AUTH_MANIFEST_ROOT) + 10;
+#endif
 	if (!client_id)
 		return -EINVAL;
 
@@ -73,6 +86,12 @@ int keystore_calc_clientid(u8 *client_id, const unsigned int client_id_size)
 	buf = kmalloc(PATH_MAX + NAME_MAX, GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
+#ifdef CONFIG_APPLICATION_AUTH
+	/* alloc mem for manifest path */
+	mbuf = kmalloc(mrootlen, GFP_KERNEL);
+	if (!mbuf)
+		return -ENOMEM;
+#endif
 
 	/* clear the buf */
 	memset(buf, 0, PATH_MAX + NAME_MAX);
@@ -96,6 +115,23 @@ int keystore_calc_clientid(u8 *client_id, const unsigned int client_id_size)
 		f_path = KERNEL_CLIENTS_ID;
 	}
 
+#ifdef CONFIG_APPLICATION_AUTH
+	strcpy(mbuf, CONFIG_APPLICATION_AUTH_MANIFEST_ROOT);
+	strcat(mbuf, "/");
+	strcat(mbuf, f_path);
+	strcat(mbuf, ".manifest");
+	ks_info(KBUILD_MODNAME ": %s Verifying manifest: %s.\n",
+		__func__, mbuf);
+
+	res = verify_manifest_file(mbuf, timeout, caps);
+	if (res) {
+		/* error case, do not register */
+		ks_err(KBUILD_MODNAME ": Cannot register with keystore - manifest verification failed (res=%d)\n", res);
+		res = -EFAULT;
+		goto out_buf;
+	}
+#endif
+
 	/* Clear the output buffer */
 	memset(client_id, 0, sizeof(u8) * client_id_size);
 
@@ -105,6 +141,9 @@ int keystore_calc_clientid(u8 *client_id, const unsigned int client_id_size)
 			      client_id_size);
 
 out_buf:
+#ifdef CONFIG_APPLICATION_AUTH
+	kfree(mbuf);
+#endif
 	kfree(buf);
 	return res;
 }

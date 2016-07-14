@@ -108,6 +108,23 @@ config KEYSTORE_OEM_KEY_IDENTIFIER
 		verify data (e.g. backup and migration keys) which
 		are sent from the OEM.
 
+config APPLICATION_AUTH
+	bool "Application Auth using signed manifest"
+	depends on KEYSTORE
+        default n
+	help
+		Enables authentication of keystore clients and other
+		applications using a signed manifest. In keystore
+		the manifest is verified during client registration.
+
+config APPLICATION_AUTH_MANIFEST_ROOT
+	string "Application Auth Manifest Root Directory"
+	depends on APPLICATION_AUTH
+	default "/opt/ias/etc/manifest"
+	help
+		The root directory for signed manifests of application
+		auth clients.
+
 config KEYSTORE_TESTMODE
 	bool "Enable Diagnostic Tests"
 	depends on KEYSTORE
@@ -173,18 +190,4 @@ config KEYSTORE_HARD_CODED_SEED
                 to attack.
 
                 If in doubt, select "N".
-
-config APPLICATION_AUTH
-        bool "Application Auth by signed manifest"
-        depends on KEYSTORE
-        select SYSTEM_TRUSTED_KEYRING
-        select KEYS
-        select CRYPTO
-        select ASN1
-        select OID_REGISTRY
-        select X509_CERTIFICATE_PARSER
-        default n
-        help
-                Authenticate the application by verifying the manifest and
-                application file hashes.
 

@@ -157,7 +157,7 @@ const char *mf_get_next_file(const uint8_t *mf,
 	struct mf_files_ctx *ctx, uint8_t *digest_algo_id, uint8_t **digest);
 
 /**
- * mf_get_data() - Get public key
+ * mf_get_data() - Get data
  *
  * @mf: binary manifest data
  * @len: pointer to a variable filled with the data length

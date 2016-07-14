@@ -14,11 +14,21 @@
  * more details.
  *
  */
-
+#include <linux/kernel.h>
+#include <security/manifest.h>
 #include "app_auth.h"
 #include "manifest_verify.h"
 
-static bool is_key_loaded;
+#ifdef CONFIG_MANIFEST_HARDCODE
+/* hardcoded manifest has wrong usage bit set
+   but it is only for testing so does not matter */
+#define ATTESTATION_KEY_USAGE_BIT	40
+#else
+#define ATTESTATION_KEY_USAGE_BIT	47
+#endif
+
+extern int public_key_verify_signature(const struct public_key *pk,
+				       const struct public_key_signature *sig);
 
 /**
  * Verifies the signature in the manifest.
@@ -30,14 +40,14 @@ static bool is_key_loaded;
  *
  * @return 0,if success or error code.
  */
-static int verify_manifest_signature(struct key *key, appauth_digest *hash,
+static int verify_manifest_signature(struct public_key *key, appauth_digest *hash,
 						const char *sig, int sig_len)
 {
 	struct public_key_signature pks;
 	int ret = -ENOMEM;
 
 #ifdef DEBUG_APP_AUTH
-	debug_key(key);
+	debug_public_key(key);
 #endif
 	memset(&pks, 0, sizeof(pks));
 
@@ -52,47 +62,8 @@ static int verify_manifest_signature(struct key *key, appauth_digest *hash,
 	keystore_hexdump("", pks.digest, pks.digest_size);
 #endif
 	if (pks.rsa.s)
-		ret = verify_signature(key, &pks);
+		ret = public_key_verify_signature(key, &pks);
 	return ret;
-}
-
-/**
- * Retrieves the public key from the certificate.
- *
- * @param cert_data     - contain the certificate.
- * @param cert_len      - length of the certificate.
- *
- * @return the pointer to the key,if success or NULL otherwise.
- */
-static struct key *retrieve_key(const char *cert_data, int cert_len)
-{
-	struct key *key = NULL;
-	struct x509_certificate *cert = NULL;
-	const char *key_id = NULL;
-
-	if (!is_key_loaded) {
-		if (load_key((const u8 *)cert_data, cert_len) < 0)
-			return NULL;
-		is_key_loaded = true;
-	}
-	cert = x509_cert_parse((void *)cert_data, cert_len);
-	if (!cert)
-		return NULL;
-
-	key_id = get_keyid_from_cert(cert);
-	x509_free_certificate(cert);
-
-	if (!key_id)
-		return NULL;
-
-	key = request_asymmetric_key(key_id);
-
-	kfree(key_id);
-
-	if (IS_ERR(key))
-		return NULL;
-
-	return key;
 }
 
 /**
@@ -177,25 +148,44 @@ static int calc_shash(appauth_digest *hash, const char *data, int len)
 int verify_manifest(const char *sig, const char *cert, const char *data,
 			int sig_len, int cert_len, int data_len)
 {
+	struct x509_certificate *x509cert = NULL;
 	appauth_digest hash;
-	struct key *key = NULL;
+	int res;
 
-	key = retrieve_key(cert, cert_len);
-	if (!key)
+	res = verify_self_signed_cert_against_manifest(cert, cert_len,
+		ATTESTATION_KEY_USAGE_BIT);
+	if (res != 0) {
+#ifdef DEBUG_APP_AUTH
+		ks_err("DEBUG_APPAUTH: Certificate Verification Failed (%d)\n", res);
+#endif
+		return -CERTIFICATE_FAILURE;
+	}
+
+	x509cert = x509_cert_parse((void *)cert, cert_len);
+	if (!x509cert)
+			return NULL;
+
+	if (!x509cert->pub) {
+		x509_free_certificate(x509cert);
 		return -KEY_RETRIEVE_ERROR;
+	}
 
 	hash.algo = default_sig_hash_algo;
-	if (calc_shash(&hash, data, data_len) < 0)
+	if (calc_shash(&hash, data, data_len) < 0) {
+		x509_free_certificate(x509cert);
 		return -SIGNATURE_FAILURE;
+	}
 
-	if (verify_manifest_signature(key, &hash, sig, sig_len) != 0) {
+	if (verify_manifest_signature(x509cert->pub, &hash, sig, sig_len) != 0) {
 #ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: Signature Verification Failed\n");
 #endif
+		x509_free_certificate(x509cert);
 		return -SIGNATURE_FAILURE;
 	}
 #ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: Signature Verification is SUCCESS\n");
 #endif
+	x509_free_certificate(x509cert);
 	return 0;
 }

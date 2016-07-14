@@ -19,19 +19,22 @@
 #include <linux/slab.h>
 #include "manifest_parser.h"
 #include "manifest_verify.h"
+#include "manifest_cache.h"
 #include "app_auth.h"
 
 /**
- * Verifies the signature in the manifest.
+ * Verifies the signature and capabilities in the manifest.
  *
  * @param manifest_buf - contain the entire manifest file content.
+ * @param caps - contain required capabilities.
  *
  * @return 0,if success or error code (see enum APP_AUTH_ERROR).
  */
-static int check_signature(char *manifest_buf)
+static int check_signature_and_caps(char *manifest_buf, uint16_t caps)
 {
 	const char *sig = 0, *cert = 0, *data = 0;
 	size_t sig_len = 0, cert_len = 0, data_len = 0;
+	const struct mf_app_data *app_data = NULL;
 
 	cert = mf_get_certificate(manifest_buf, &cert_len);
 	if (!cert) {
@@ -57,6 +60,21 @@ static int check_signature(char *manifest_buf)
 		return -MALFORMED_MANIFEST;
 	}
 
+	app_data = mf_get_app_data(manifest_buf);
+	if (!app_data) {
+#ifdef DEBUG_APP_AUTH
+		ks_err("DEBUG_APPAUTH: mf_get_app_data() failed\n");
+#endif
+		return -MALFORMED_MANIFEST;
+	}
+
+	if ((app_data->capabilities & caps) != caps) {
+#ifdef DEBUG_APP_AUTH
+		ks_err("DEBUG_APPAUTH: capabilities verification failed (required=0x%x offered=0x%x)\n", caps, app_data->capabilities);
+#endif
+		return -CAPS_FAILURE;
+	}
+
 	if (verify_manifest(sig, cert, data, sig_len, cert_len, data_len) < 0) {
 #ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: verify_manifest() failed\n");
@@ -70,6 +88,52 @@ static int check_signature(char *manifest_buf)
 }
 
 /**
+ * Verifies if the manifest contains executable name.
+ *
+ * @param manifest_buf - contain the entire manifest file content.
+ *
+ * @return executable name, if success or NULL.
+ */
+static const char *verify_exe_name(char *manifest_buf)
+{
+	struct mf_files_ctx ctx;
+	const char *filename = 0, *exe_name = 0;
+	uint8_t digest_algo_id;
+	uint8_t *digest = 0;
+	char *buf = 0;
+	bool exe_found = false;
+
+	mf_init_file_list_ctx(manifest_buf, &ctx);
+
+	exe_name = get_exe_name(&buf);
+	if (!exe_name)
+		return NULL;
+#ifdef DEBUG_APP_AUTH
+	ks_debug("DEBUG_APPAUTH: get_exe_name(): exe_name = %s\n", exe_name);
+#endif
+	while (1) {
+		filename = mf_get_next_file(manifest_buf, &ctx,
+					&digest_algo_id, &digest);
+		if (!filename)
+			break;
+#ifdef DEBUG_APP_AUTH
+		ks_debug("DEBUG_APPAUTH: mf_get_next_file: filename = %s\n",
+								filename);
+#endif
+		if (!memcmp(filename, exe_name, strlen(exe_name))) {
+#ifdef DEBUG_APP_AUTH
+			ks_debug("DEBUG_APPAUTH: setting exe_found\n");
+#endif
+			exe_found = true;
+		}
+	}
+	kfree(buf);
+	if (!exe_found)
+		return NULL;
+	return exe_name;
+}
+
+/**
  * Verifies the application files hashes against the hash values in the manifest.
  *
  * @param manifest_buf - contain the entire manifest file content.
@@ -79,21 +143,13 @@ static int check_signature(char *manifest_buf)
 static int verify_file_hashes(char *manifest_buf)
 {
 	struct mf_files_ctx ctx;
-	const char *filename = 0, *exe_name = 0;
+	const char *filename = 0;
 	uint8_t digest_algo_id;
 	uint8_t *digest = 0;
-	char *buf = 0;
 	int ret = 0;
-	bool exe_found = false;
 
 	mf_init_file_list_ctx(manifest_buf, &ctx);
 
-	exe_name = get_exe_name(&buf);
-	if (!exe_name)
-		return -EXE_NOT_FOUND;
-#ifdef DEBUG_APP_AUTH
-	ks_debug("DEBUG_APPAUTH: get_exe_name(): exe_name = %s\n", exe_name);
-#endif
 	while (1) {
 		filename = mf_get_next_file(manifest_buf, &ctx,
 					&digest_algo_id, &digest);
@@ -110,16 +166,7 @@ static int verify_file_hashes(char *manifest_buf)
 			ret = -HASH_FAILURE;
 			break;
 		}
-		if (!memcmp(filename, exe_name, strlen(exe_name))) {
-#ifdef DEBUG_APP_AUTH
-			ks_debug("DEBUG_APPAUTH: setting exe_found\n");
-#endif
-			exe_found = true;
-		}
 	}
-	kfree(buf);
-	if (!exe_found)
-		return -EXE_NOT_FOUND;
 	return ret;
 }
 
@@ -130,35 +177,48 @@ static int verify_file_hashes(char *manifest_buf)
  * @param timeout            - expiry time of the verification result.
  * @param caps               - capabilty(s) of the calling component. its a bit mask.
  *
- * @return STATUS_VALID,if success or error code (see enum VERIFY_STATUS).
+ * @return 0,if success or error code (see enum APP_AUTH_ERROR and/or ERRNO).
  */
-enum VERIFY_STATUS verify_manifest_file(char *manifest_file_path,
-						int timeout, int caps)
+int verify_manifest_file(char *manifest_file_path,
+						int timeout, uint16_t caps)
 {
 	int ret = 0;
 	char *manifest_buf = 0;
 	int manifest_len = 0;
+	const char *exe_name;
 
-	if (read_manifest(manifest_file_path, &manifest_buf,
-					&manifest_len) < 0) {
-		ret = STATUS_CHECK_ERROR;
+	ret = read_manifest(manifest_file_path, &manifest_buf,
+					&manifest_len);
+	if (ret < 0)
+		goto out;
+
+	ret = check_signature_and_caps(manifest_buf, caps);
+	if (ret < 0)
+		goto out;
+
+	exe_name = verify_exe_name(manifest_buf);
+	if (!exe_name) {
+		ret = -EXE_NOT_FOUND;
 		goto out;
 	}
 
-	if (check_signature(manifest_buf) < 0) {
-		ret = STATUS_INVALID;
-		goto out;
-	}
-
-	ret = verify_file_hashes(manifest_buf);
-	if (ret < 0) {
-		ret = STATUS_INVALID;
-		goto out;
+	if (mf_find_in_cache(exe_name) < 0) {
+		ret = verify_file_hashes(manifest_buf);
+		if (ret < 0)
+			goto out;
+#ifdef DEBUG_APP_AUTH
+		ks_debug("DEBUG_APPAUTH: %s not found in cache\n", exe_name);
+#endif
+		mf_add_to_cache(exe_name, timeout);
+	} else {
+#ifdef DEBUG_APP_AUTH
+		ks_debug("DEBUG_APPAUTH: %s found in cache\n", exe_name);
+#endif
 	}
 #ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: verify_manifest_file() succedded\n");
 #endif
-	return STATUS_VALID;
+	return NO_ERROR;
 out:
 #ifdef DEBUG_APP_AUTH
 	ks_err("DEBUG_APPAUTH: verify_manifest_file() failed\n");

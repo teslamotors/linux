@@ -236,6 +236,21 @@ int manifest_key_verify_digest(void *digest, unsigned int digest_size,
 			       const void *signature, unsigned int sig_size,
 			       char *keyid, unsigned int usage_bit);
 
+/**
+ * verify_self_signed_cert_against_manifest() - Check if a X509
+ * certificate (in DER format) is self signed and its public key
+ * is among the manifest keys with a specific usage bit set.
+ *
+ * @cert_data: X509 certificate to be verified (in DER format)
+ * @digest_size: Size of the certificate
+ * @usage_bit: The usage bit to check against
+ *
+ * Returns: 0 if verified OK or negative error code (see errno).
+ */
+int verify_self_signed_cert_against_manifest(const void *cert_data,
+					     size_t cert_datalen,
+					     unsigned int usage_bit);
+
 
 #ifdef CONFIG_MANIFEST_HARDCODE
 void hardcoded_manifest_test(void);

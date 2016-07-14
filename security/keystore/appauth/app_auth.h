@@ -31,7 +31,7 @@
 #include <keys/asymmetric-type.h>
 #include <keys/system_keyring.h>
 #include <keys/asymmetric-subtype.h>
-#include "../integrity/ima/ima.h"
+#include "../../integrity/ima/ima.h"
 #include "../../crypto/asymmetric_keys/x509_parser.h"
 #include "manifest_verify.h"
 #include "keystore_debug.h"
@@ -67,14 +67,10 @@ void print_kid(struct asymmetric_key_id *id);
 
 void print_string(unsigned char *p, int len);
 
-void debug_key(struct key *key);
+void debug_public_key(struct public_key *key);
 
 void print_mpi(MPI a);
 #endif
-
-struct key *request_asymmetric_key(const char *id);
-
-int load_key(const u8 *p, size_t plen);
 
 void appauth_free_buf(char **manifest_buf);
 

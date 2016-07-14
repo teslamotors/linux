@@ -31,6 +31,7 @@
 #include "keystore_operations.h"
 
 #include "keystore_rand.h"
+
 #ifdef CONFIG_APPLICATION_AUTH
 #include "appauth/manifest_verify.h"
 #endif
@@ -42,11 +43,6 @@ int keystore_register(enum keystore_seed_type seed_type, uint8_t *client_ticket)
 	int res = 0;
 
 	FUNC_BEGIN;
-
-#ifdef CONFIG_APPLICATION_AUTH
-	ks_debug(KBUILD_MODNAME ": calling verify_manifest\n");
-	verify_manifest_file("/opt/ias/bin/manifest", 0, 0);
-#endif
 
 	/*
 	 * Check for secure boot status.
@@ -71,7 +67,12 @@ int keystore_register(enum keystore_seed_type seed_type, uint8_t *client_ticket)
 	}
 
 	/* Calculate the Client ID */
+#ifdef CONFIG_APPLICATION_AUTH
+	res = keystore_calc_clientid(client_id, sizeof(client_id),
+			MANIFEST_CACHE_TTL, MANIFEST_DEFAULT_CAPS);
+#else
 	res = keystore_calc_clientid(client_id, sizeof(client_id));
+#endif
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s Error calculating client ID: %d\n",
 		       __func__, res);
