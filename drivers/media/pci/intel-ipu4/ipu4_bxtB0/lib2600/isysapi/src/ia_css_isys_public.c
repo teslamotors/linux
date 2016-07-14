@@ -58,8 +58,8 @@
  */
 int ia_css_isys_device_open(
 	HANDLE * context,
-	const struct ia_css_isys_device_cfg_data *config
-) {
+	const struct ia_css_isys_device_cfg_data *config)
+{
 	int retval;
 	unsigned int stream_handle;
 	struct ia_css_isys_context *ctx;
@@ -223,9 +223,8 @@ int ia_css_isys_device_open(
 /**
  * ia_css_isys_device_open_ready() - open and configure ISYS device
  */
-int ia_css_isys_device_open_ready(
-	HANDLE context
-) {
+int ia_css_isys_device_open_ready(HANDLE context)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 
 	/* Printing "ENTRY IA_CSS_ISYS_DEVICE_OPEN" if tracing level = VERBOSE. */
@@ -245,8 +244,8 @@ int ia_css_isys_device_open_ready(
 int ia_css_isys_stream_open(
 	HANDLE context,
 	const unsigned int stream_handle,
-	const struct ia_css_isys_stream_cfg_data *stream_cfg
-) {
+	const struct ia_css_isys_stream_cfg_data *stream_cfg)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	unsigned int i;
 	int retval = 0;
@@ -372,8 +371,8 @@ int ia_css_isys_stream_open(
  */
 int ia_css_isys_stream_close(
 	HANDLE context,
-	const unsigned int stream_handle
-) {
+	const unsigned int stream_handle)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	int retval = 0;
 	int packets;
@@ -426,9 +425,8 @@ int ia_css_isys_stream_close(
 int ia_css_isys_stream_start(
 	HANDLE context,
 	const unsigned int stream_handle,
-	const struct ia_css_isys_frame_buff_set *next_frame
-)
- {
+	const struct ia_css_isys_frame_buff_set *next_frame)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	int retval = 0;
 	int packets;
@@ -486,8 +484,8 @@ int ia_css_isys_stream_start(
  */
 int ia_css_isys_stream_stop(
 	HANDLE context,
-	const unsigned int stream_handle
-) {
+	const unsigned int stream_handle)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	int retval = 0;
 	int packets;
@@ -535,8 +533,8 @@ int ia_css_isys_stream_stop(
  */
 int ia_css_isys_stream_flush(
 	HANDLE context,
-	const unsigned int stream_handle
-) {
+	const unsigned int stream_handle)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	int retval = 0;
 	int packets;
@@ -585,8 +583,8 @@ int ia_css_isys_stream_flush(
 int ia_css_isys_stream_capture_indication(
 	HANDLE context,
 	const unsigned int stream_handle,
-	const struct ia_css_isys_frame_buff_set *next_frame
-) {
+	const struct ia_css_isys_frame_buff_set *next_frame)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	int retval = 0;
 	int packets;
@@ -640,8 +638,8 @@ int ia_css_isys_stream_capture_indication(
  */
 int ia_css_isys_stream_handle_response(
 	HANDLE context,
-	struct ia_css_isys_resp_info *received_response
-) {
+	struct ia_css_isys_resp_info *received_response)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	int retval = 0;
 	int packets;
@@ -694,9 +692,8 @@ int ia_css_isys_stream_handle_response(
 /**
  * ia_css_isys_device_close() - close ISYS device
  */
-int ia_css_isys_device_close(
-	HANDLE context
-) {
+int ia_css_isys_device_close(HANDLE context)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	unsigned int stream_handle;
 	unsigned int queue_id;
@@ -746,10 +743,8 @@ int ia_css_isys_device_close(
 /**
  * ia_css_isys_device_release() - release ISYS device
  */
-int ia_css_isys_device_release(
-	HANDLE context,
-	unsigned int force
-) {
+int ia_css_isys_device_release(HANDLE context, unsigned int force)
+{
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	int retval = 0;
 
@@ -785,8 +780,8 @@ int ia_css_isys_device_release(
  */
 int ia_css_isys_proxy_write_req(
 	HANDLE context,
-	const struct ia_css_proxy_write_req_val *write_req_val
-) {
+	const struct ia_css_proxy_write_req_val *write_req_val)
+{
 
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	struct proxy_send_queue_token token;
@@ -820,8 +815,8 @@ int ia_css_isys_proxy_write_req(
  */
 int ia_css_isys_proxy_handle_write_response(
 	HANDLE context,
-	struct ia_css_proxy_write_req_resp *received_response
-) {
+	struct ia_css_proxy_write_req_resp *received_response)
+{
 
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	struct proxy_resp_queue_token token;

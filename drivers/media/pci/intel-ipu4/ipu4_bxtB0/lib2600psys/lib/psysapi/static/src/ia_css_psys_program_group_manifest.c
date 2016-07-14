@@ -176,17 +176,21 @@ bool ia_css_is_program_group_manifest_valid(
 		bool						is_spatial_param = ia_css_is_terminal_manifest_spatial_parameter_terminal(terminal_manifest_i);
 
 		if (is_parameter_in) {
-/* There can be only one cached in parameter terminal it serves kernels, not programs */
+			/* There can be only one cached in parameter terminal */
+			/* it serves kernels, not programs */
 			verifexit(!has_parameter_terminal_in, EINVAL);
 			has_parameter_terminal_in = is_parameter_in;
 		} else if (is_parameter_out) {
-/* There can be only one cached out parameter terminal it serves kernels, not programs */
+			/* There can be only one cached out parameter terminal*/
+			/* it serves kernels, not programs */
 			verifexit(!has_parameter_terminal_out, EINVAL);
 			has_parameter_terminal_out = is_parameter_out;
 		} else if (is_data) {
 			ia_css_data_terminal_manifest_t	*dterminal_manifest_i = (ia_css_data_terminal_manifest_t *)terminal_manifest_i;
 			ia_css_kernel_bitmap_t		terminal_bitmap_i = ia_css_data_terminal_manifest_get_kernel_bitmap(dterminal_manifest_i);
-/* A terminal must depend on kernels that are a subset of the total, correction, it can only depend on one kernel */
+			/* A terminal must depend on kernels that are a */
+			/* subset of the total, correction, it can only */
+			/* depend on one kernel */
 			verifexit(!ia_css_is_kernel_bitmap_empty(terminal_bitmap_i), EINVAL);
 			verifexit(ia_css_is_kernel_bitmap_subset(total_bitmap, terminal_bitmap_i), EINVAL);
 			verifexit(ia_css_is_kernel_bitmap_onehot(terminal_bitmap_i), EINVAL);
@@ -240,7 +244,7 @@ bool ia_css_is_program_group_manifest_valid(
  * - No intersection between kernels (too strict for multiple instances ?)
  */
 		if (is_sub_i) {
-/* Subnode */
+			/* Subnode */
 			ia_css_program_manifest_t	*program_manifest_k = ia_css_program_group_manifest_get_program_manifest(manifest, program_dependency_i0);
 			ia_css_program_type_t		program_type_k = ia_css_program_manifest_get_type(program_manifest_k);
 			ia_css_kernel_bitmap_t		program_bitmap_k = ia_css_program_manifest_get_kernel_bitmap(program_manifest_k);
@@ -257,7 +261,7 @@ bool ia_css_is_program_group_manifest_valid(
 			verifexit(!ia_css_is_kernel_bitmap_equal(program_bitmap_k, program_bitmap_i), EINVAL);
 			verifexit(ia_css_is_kernel_bitmap_subset(program_bitmap_k, program_bitmap_i), EINVAL);
 		} else {
-/* Singular or Supernode */
+			/* Singular or Supernode */
 			int	k;
 
 			for (k = 0; k < program_dependency_count_i; k++) {
@@ -351,7 +355,7 @@ bool ia_css_is_program_group_manifest_valid(
 
 				verifexit((program_dependency_k < program_count), EINVAL);
 				if (program_dependency_k == i) {
-/* program[j] depends on program[i] */
+					/* program[j] depends on program[i] */
 					verifexit((i != j), EINVAL);
 					verifexit((program_type_i != IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
 							(program_type_i != IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB), EINVAL);
@@ -365,7 +369,8 @@ bool ia_css_is_program_group_manifest_valid(
  * - We do not (yet) detect if programs properly depend on all parallel nodes
  */
 			if (!ia_css_is_kernel_bitmap_intersection_empty(program_bitmap_i, program_bitmap_j)) {
-/* This test will pass if the program manifest is NULL, but that's no concern here */
+				/* This test will pass if the program manifest*/
+				/* is NULL, but that's no concern here */
 				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || !ia_css_is_program_manifest_singular_program_type(program_manifest_i), EINVAL);
 				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || !ia_css_is_program_manifest_singular_program_type(program_manifest_j), EINVAL);
 				if (!is_virtual_sub_j)
@@ -389,7 +394,8 @@ bool ia_css_is_program_group_manifest_valid(
 			verifexit(terminal_dependency < terminal_count, EINVAL);
 			if ((program_type_i != IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
 				(program_type_i != IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB)) {
-/* If the subnode always came after the supernode we could check for presence */
+				/* If the subnode always came after the */
+				/* supernode we could check for presence */
 				terminal_bitmap = vied_nci_bit_mask_set_unique(terminal_bitmap, terminal_dependency);
 				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || !vied_nci_is_bitmap_empty(terminal_bitmap), EINVAL);
 			}

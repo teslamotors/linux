@@ -62,6 +62,8 @@ typedef enum ia_css_psys_state {
 	IA_CSS_PSYS_STATE_READY = IA_CSS_PSYS_STATE_READY_PATTERN,			/**< psys is ready					*/
 } ia_css_psys_state_t;
 
+extern struct ia_css_syscom_context *psys_syscom;
+
 /*! Print the syscom creation descriptor to file/stream
 
  @param	config[in]				Psys syscom descriptor

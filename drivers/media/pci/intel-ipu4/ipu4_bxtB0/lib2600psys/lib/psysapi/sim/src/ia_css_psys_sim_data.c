@@ -19,8 +19,7 @@
 
 static unsigned int ia_css_psys_ran_seed;
 
-void ia_css_psys_ran_set_seed(
-    const unsigned int      seed)
+void ia_css_psys_ran_set_seed(const unsigned int seed)
 {
 	ia_css_psys_ran_seed = seed;
 
@@ -35,8 +34,7 @@ static unsigned int ia_css_psys_ran_int (void)
 	return ia_css_psys_ran_seed;
 }
 
-unsigned int ia_css_psys_ran_var(
-    const unsigned int      bit_depth)
+unsigned int ia_css_psys_ran_var(const unsigned int bit_depth)
 {
 	unsigned int	out;
 	unsigned int	tmp;
@@ -46,17 +44,16 @@ unsigned int ia_css_psys_ran_var(
 	tmp = ia_css_psys_ran_int();
 
 	if (bit_depth > 32) {
-	    out = tmp;
+		out = tmp;
 	} else if (bit_depth == 0) {
-	    out = 0;
+		out = 0;
 	} else {
-	    out = (unsigned short)(tmp >> (32 - bit_depth));
+		out = (unsigned short)(tmp >> (32 - bit_depth));
 	}
 	return out;
 }
 
-unsigned int ia_css_psys_ran_val(
-    const unsigned int      range)
+unsigned int ia_css_psys_ran_val(const unsigned int range)
 {
 	unsigned int	out;
 	unsigned int	tmp;
@@ -73,9 +70,8 @@ unsigned int ia_css_psys_ran_val(
 	return out;
 }
 
-unsigned int ia_css_psys_ran_interval(
-    const unsigned int      lo,
-    const unsigned int      hi)
+unsigned int ia_css_psys_ran_interval(const unsigned int lo,
+				const unsigned int hi)
 {
 	unsigned int	out;
 	unsigned int	tmp;

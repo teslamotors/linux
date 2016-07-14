@@ -21,22 +21,29 @@
 
 /**
  * struct ia_css_isys_buffer_partition_comm - buffer partition information
- * @num_gda_pages: Number of virtual gda pages available for each virtual stream
+ * @num_gda_pages: Number of virtual gda pages available for each
+ *	           virtual stream
  */
 struct ia_css_isys_buffer_partition_comm {
 	aligned_uint32(unsigned int, num_gda_pages[STREAM_ID_MAX]);
 };
 
 /**
- * struct ia_css_isys_fw_config - contains the parts from ia_css_isys_device_cfg_data
+ * struct ia_css_isys_fw_config - contains the parts from
+ *				  ia_css_isys_device_cfg_data
  * we need to transfer to the cell
- * @num_send_queues: Number of send queues per queue type(N_IA_CSS_ISYS_QUEUE_TYPE)
- * @num_recv_queues: Number of receive queues per queue type(N_IA_CSS_ISYS_QUEUE_TYPE)
+ * @num_send_queues: Number of send queues per queue
+ *		     type(N_IA_CSS_ISYS_QUEUE_TYPE)
+ * @num_recv_queues: Number of receive queues per queue
+ *		     type(N_IA_CSS_ISYS_QUEUE_TYPE)
  */
 struct ia_css_isys_fw_config {
-	aligned_struct(struct ia_css_isys_buffer_partition_comm, buffer_partition);
-	aligned_uint32(unsigned int, num_send_queues[N_IA_CSS_ISYS_QUEUE_TYPE]);
-	aligned_uint32(unsigned int, num_recv_queues[N_IA_CSS_ISYS_QUEUE_TYPE]);
+	aligned_struct(struct ia_css_isys_buffer_partition_comm,
+			buffer_partition);
+	aligned_uint32(unsigned int,
+			num_send_queues[N_IA_CSS_ISYS_QUEUE_TYPE]);
+	aligned_uint32(unsigned int,
+			num_recv_queues[N_IA_CSS_ISYS_QUEUE_TYPE]);
 };
 
 /**
@@ -67,9 +74,12 @@ struct frame_format_info {
 	aligned_uint32(unsigned int, bits_per_raw_pix);
 	aligned_uint32(unsigned int, bits_per_ddr_raw_pixel);
 	aligned_uint32(unsigned int, plane_count);
-	aligned_uint32(unsigned int, plane_horz_divider[PIN_PLANES_MAX]);	/* Number to divide with the bits_per_raw_pix to get the plane's bpp */
-	aligned_uint32(unsigned int, plane_vert_divider[PIN_PLANES_MAX]);	/* Number to divice the frame height to get the plane's line count */
-	aligned_uint32(unsigned int, bits_per_raw_pixel_component);		/* Used by STR2MMIO/STR2VEC to know how to handle the data after the PF */
+	/* Number to divide with the bits_per_raw_pix to get the plane's bpp */
+	aligned_uint32(unsigned int, plane_horz_divider[PIN_PLANES_MAX]);
+	/* Number to divice the frame height to get the plane's line count */
+	aligned_uint32(unsigned int, plane_vert_divider[PIN_PLANES_MAX]);
+/* Used by STR2MMIO/STR2VEC to know how to handle the data after the PF */
+	aligned_uint32(unsigned int, bits_per_raw_pixel_component);
 	aligned_uint32(unsigned int, bits_per_ddr_raw_pixel_component);
 };
 
@@ -110,8 +120,9 @@ struct ia_css_isys_param_pin_comm {
  * @input_res: input resolution
  * @bits_per_pix: native bits per pixel
  * @dt: mipi data type
- * @mipi_store_mode: defines if legacy long packet header will be stored or discarded
- *                   if discarded, output pin pin type for this input pin can only be MIPI
+ * @mipi_store_mode: defines if legacy long packet header will be stored or
+ *		     hdiscarded if discarded, output pin pin type for this
+ *		     input pin can only be MIPI
  */
 struct ia_css_isys_input_pin_info_comm {
 	aligned_struct(struct ia_css_isys_resolution_comm, input_res);
@@ -124,17 +135,28 @@ struct ia_css_isys_input_pin_info_comm {
  * struct ia_css_isys_isa_cfg_comm. Describes the ISA cfg
  */
 struct ia_css_isys_isa_cfg_comm {
-	aligned_struct(struct ia_css_isys_resolution_comm, isa_res[N_IA_CSS_ISYS_RESOLUTION_INFO]);
-	aligned_uint32(unsigned int, blc_enabled);		/* acc id 0, set if process required */
-	aligned_uint32(unsigned int, lsc_enabled);		/* acc id 1, set if process required */
-	aligned_uint32(unsigned int, dpc_enabled);		/* acc id 2, set if process required */
-	aligned_uint32(unsigned int, downscaler_enabled);	/* acc id 3, set if process required */
-	aligned_uint32(unsigned int, awb_enabled);		/* acc id 4, set if process required */
-	aligned_uint32(unsigned int, af_enabled);		/* acc id 5, set if process required */
-	aligned_uint32(unsigned int, ae_enabled);		/* acc id 6, set if process required */
-	aligned_enum(enum ia_css_isys_type_paf, paf_type);	/* acc id 7, disabled, or type of paf enabled */
-	aligned_uint32(unsigned int, send_irq_stats_ready);	/* Send irq for any statistics buffers which got completed */
-	aligned_uint32(unsigned int, send_resp_stats_ready);	/* Send response for any statistics buffers which got completed */
+	aligned_struct(struct ia_css_isys_resolution_comm,
+			isa_res[N_IA_CSS_ISYS_RESOLUTION_INFO]);
+	/* acc id 0, set if process required */
+	aligned_uint32(unsigned int, blc_enabled);
+	/* acc id 1, set if process required */
+	aligned_uint32(unsigned int, lsc_enabled);
+	/* acc id 2, set if process required */
+	aligned_uint32(unsigned int, dpc_enabled);
+	/* acc id 3, set if process required */
+	aligned_uint32(unsigned int, downscaler_enabled);
+	/* acc id 4, set if process required */
+	aligned_uint32(unsigned int, awb_enabled);
+	/* acc id 5, set if process required */
+	aligned_uint32(unsigned int, af_enabled);
+	/* acc id 6, set if process required */
+	aligned_uint32(unsigned int, ae_enabled);
+	/* acc id 7, disabled, or type of paf enabled */
+	aligned_enum(enum ia_css_isys_type_paf, paf_type);
+	/* Send irq for any statistics buffers which got completed */
+	aligned_uint32(unsigned int, send_irq_stats_ready);
+	/* Send response for any statistics buffers which got completed */
+	aligned_uint32(unsigned int, send_resp_stats_ready);
 };
 
  /**
@@ -159,20 +181,29 @@ struct ia_css_isys_cropping_comm {
  * maximum number of input pins which can be cropped,
  * it is directly mapped to the HW devices
  * @send_irq_sof_discarded: send irq on discarded frame sof response
- *		- if '1' it will override the send_resp_sof_discarded and send the response
- *		- if '0' the send_resp_sof_discarded will determine whether to send the response
+ *		- if '1' it will override the send_resp_sof_discarded and send
+ *		  the response
+ *		- if '0' the send_resp_sof_discarded will determine whether to
+ *		  send the response
  * @send_irq_eof_discarded: send irq on discarded frame eof response
- *		- if '1' it will override the send_resp_eof_discarded and send the response
- *		- if '0' the send_resp_eof_discarded will determine whether to send the response
- * @send_resp_sof_discarded: send response for discarded frame sof detected, used only when send_irq_sof_discarded is '0'
- * @send_resp_eof_discarded: send response for discarded frame eof detected, used only when send_irq_eof_discarded is '0'
+ *		- if '1' it will override the send_resp_eof_discarded and send
+ *		  the response
+ *		- if '0' the send_resp_eof_discarded will determine whether to
+ *		  send the response
+ * @send_resp_sof_discarded: send response for discarded frame sof detected,
+ *			     used only when send_irq_sof_discarded is '0'
+ * @send_resp_eof_discarded: send response for discarded frame eof detected,
+ *			     used only when send_irq_eof_discarded is '0'
  * @the rest: input/output pin descriptors
  */
 struct ia_css_isys_stream_cfg_data_comm {
 	aligned_struct(struct ia_css_isys_isa_cfg_comm, isa_cfg);
-	aligned_struct(struct ia_css_isys_cropping_comm, crop[N_IA_CSS_ISYS_CROPPING_LOCATION]);
-	aligned_struct(struct ia_css_isys_input_pin_info_comm, input_pins[MAX_IPINS]);
-	aligned_struct(struct ia_css_isys_output_pin_info_comm, output_pins[MAX_OPINS]);
+	aligned_struct(struct ia_css_isys_cropping_comm,
+			crop[N_IA_CSS_ISYS_CROPPING_LOCATION]);
+	aligned_struct(struct ia_css_isys_input_pin_info_comm,
+			input_pins[MAX_IPINS]);
+	aligned_struct(struct ia_css_isys_output_pin_info_comm,
+			output_pins[MAX_OPINS]);
 	aligned_uint32(unsigned int, send_irq_sof_discarded);
 	aligned_uint32(unsigned int, send_irq_eof_discarded);
 	aligned_uint32(unsigned int, send_resp_sof_discarded);
@@ -190,16 +221,23 @@ struct ia_css_isys_stream_cfg_data_comm {
  * @output_pins: output pin addresses
  * @process_group_light: process_group_light buffer address
  * @send_irq_sof: send irq on frame sof response
- *		- if '1' it will override the send_resp_sof and send the response
- *		- if '0' the send_resp_sof will determine whether to send the response
+ *		- if '1' it will override the send_resp_sof and send the
+ *		  response
+ *		- if '0' the send_resp_sof will determine whether to send the
+ *		  response
  * @send_irq_eof: send irq on frame eof response
- *		- if '1' it will override the send_resp_eof and send the response
- *		- if '0' the send_resp_eof will determine whether to send the response
- * @send_resp_sof: send response for frame sof detected, used only when send_irq_sof is '0'
- * @send_resp_eof: send response for frame eof detected, used only when send_irq_eof is '0'
+ *		- if '1' it will override the send_resp_eof and send the
+ *		  response
+ *		- if '0' the send_resp_eof will determine whether to send the
+ *		  response
+ * @send_resp_sof: send response for frame sof detected, used only when
+ *		   send_irq_sof is '0'
+ * @send_resp_eof: send response for frame eof detected, used only when
+ *		   send_irq_eof is '0'
  */
 struct ia_css_isys_frame_buff_set_comm {
-	aligned_struct(struct ia_css_isys_output_pin_payload_comm, output_pins[MAX_OPINS]);
+	aligned_struct(struct ia_css_isys_output_pin_payload_comm,
+			output_pins[MAX_OPINS]);
 	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
 	aligned_uint32(unsigned int, send_irq_sof);
 	aligned_uint32(unsigned int, send_irq_eof);
@@ -210,7 +248,8 @@ struct ia_css_isys_frame_buff_set_comm {
 /**
  * struct ia_css_isys_error_info_comm
  * @error: error code if something went wrong
- * @error_details: depending on error code, it may contain additional error info
+ * @error_details: depending on error code, it may contain additional
+ * error info
  */
 struct ia_css_isys_error_info_comm {
 	aligned_int32(enum ia_css_isys_error, error);
@@ -220,7 +259,8 @@ struct ia_css_isys_error_info_comm {
 /**
  * struct ia_css_isys_proxy_error_info_comm
  * @proxy_error: error code if something went wrong
- * @proxy_error_details: depending on error code, it may contain additional error info
+ * @proxy_error_details: depending on error code, it may contain additional
+ *			 error info
  */
 struct ia_css_isys_proxy_error_info_comm {
 	aligned_enum(enum ia_css_proxy_error, error);
@@ -241,7 +281,7 @@ struct ia_css_isys_resp_info_comm {
 	aligned_struct(struct ia_css_isys_output_pin_payload_comm, pin);
 	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
 	aligned_struct(struct ia_css_isys_error_info_comm, error_info);
-	aligned_uint64(ia_css_return_token, buf_id);	/* Used internally only */
+	aligned_uint64(ia_css_return_token, buf_id);/* Used internally only */
 	aligned_uint32(unsigned int, stream_handle);
 	aligned_uint32(unsigned int, timestamp[2]);
 	aligned_uint32(unsigned int, pin_id);
@@ -258,7 +298,8 @@ struct ia_css_isys_proxy_resp_info_comm {
  * struct ia_css_proxy_write_queue_token
  * @request_id: update id for the specific proxy write request
  * @region_index: Region id for the proxy write request
- * @offset: Offset of the write request according to the base address of the region
+ * @offset: Offset of the write request according to the base address of the
+ *	    region
  * @value: Value that is requested to be written with the proxy write request
  */
 struct ia_css_proxy_write_queue_token {
@@ -291,7 +332,8 @@ struct send_queue_token {
  * struct proxy_resp_queue_token
  */
 struct proxy_resp_queue_token {
-	aligned_struct(struct ia_css_isys_proxy_resp_info_comm, proxy_resp_info);
+	aligned_struct(struct ia_css_isys_proxy_resp_info_comm,
+			proxy_resp_info);
 };
 
 /**

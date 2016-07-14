@@ -755,53 +755,53 @@
 	}
 
 #define IA_CSS_TRACE_DYNAMIC_DEFINE_CONFIG_FUNC_IMPL(module) \
-	void IA_CSS_TRACE_CAT(module, _trace_configure)(const int argc, const char *const *const argv) \
-	{ \
-		int i = 1; \
-		const char *levels = 0; \
-		\
-		while (i < argc) { \
-			if (!strcmp(argv[i], "-" #module "_trace")) { \
-				++i; \
+void IA_CSS_TRACE_CAT(module, _trace_configure)(const int argc, const char *const *const argv) \
+{ \
+	int i = 1; \
+	const char *levels = 0; \
+	\
+	while (i < argc) { \
+		if (!strcmp(argv[i], "-" #module "_trace")) { \
+			++i; \
+			\
+			if (i < argc) { \
+				levels = argv[i]; \
 				\
-				if (i < argc) { \
-					levels = argv[i]; \
+				while (*levels) { \
+					switch (*levels++) { \
+					case 'a': \
+						IA_CSS_TRACE_CAT(module, _trace_assert_enable)(); \
+						break; \
 					\
-					while (*levels) { \
-						switch (*levels++) { \
-						case 'a': \
-							IA_CSS_TRACE_CAT(module, _trace_assert_enable)(); \
-							break; \
-						\
-						case 'e': \
-							IA_CSS_TRACE_CAT(module, _trace_error_enable)(); \
-							break; \
-						\
-						case 'w': \
-							IA_CSS_TRACE_CAT(module, _trace_warning_enable)(); \
-							break; \
-						\
-						case 'i': \
-							IA_CSS_TRACE_CAT(module, _trace_info_enable)(); \
-							break; \
-						\
-						case 'd': \
-							IA_CSS_TRACE_CAT(module, _trace_debug_enable)(); \
-							break; \
-						\
-						case 'v': \
-							IA_CSS_TRACE_CAT(module, _trace_verbose_enable)(); \
-							break; \
-						\
-						default: \
-							break; \
-						} \
+					case 'e': \
+						IA_CSS_TRACE_CAT(module, _trace_error_enable)(); \
+						break; \
+					\
+					case 'w': \
+						IA_CSS_TRACE_CAT(module, _trace_warning_enable)(); \
+						break; \
+					\
+					case 'i': \
+						IA_CSS_TRACE_CAT(module, _trace_info_enable)(); \
+						break; \
+					\
+					case 'd': \
+						IA_CSS_TRACE_CAT(module, _trace_debug_enable)(); \
+						break; \
+					\
+					case 'v': \
+						IA_CSS_TRACE_CAT(module, _trace_verbose_enable)(); \
+						break; \
+					\
+					default: \
+						break; \
 					} \
 				} \
 			} \
-			\
-			++i; \
 		} \
-	}
+		\
+		++i; \
+	} \
+}
 
 #endif /* __IA_CSS_TRACE_H__ */
