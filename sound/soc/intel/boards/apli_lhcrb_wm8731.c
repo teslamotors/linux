@@ -67,15 +67,11 @@ static struct snd_soc_ops apli_lfcrb_wm8731_ops = {
 };
 
 static const struct snd_kcontrol_new apli_controls[] = {
-	SOC_DAPM_PIN_SWITCH("SSP2 Speaker"),
-	SOC_DAPM_PIN_SWITCH("SSP2 Mic"),
 	SOC_DAPM_PIN_SWITCH("Headphone Jack"),
 	SOC_DAPM_PIN_SWITCH("Mic Jack"),
 };
 
 static const struct snd_soc_dapm_widget apli_widgets[] = {
-	SND_SOC_DAPM_SPK("SSP2 Speaker", NULL),
-	SND_SOC_DAPM_MIC("SSP2 Mic", NULL),
 	SND_SOC_DAPM_SPK("SSP4 Speaker", NULL),
 	SND_SOC_DAPM_MIC("SSP4 Mic", NULL),
 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
