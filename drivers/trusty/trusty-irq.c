@@ -631,8 +631,6 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	for (irq = 0; irq >= 0;)
 		irq = trusty_irq_init_one(is, irq, false);
 
-	irq_register_done();
-
 	is->cpu_notifier.notifier_call = trusty_irq_cpu_notify;
 	ret = register_hotcpu_notifier(&is->cpu_notifier);
 	if (ret) {
