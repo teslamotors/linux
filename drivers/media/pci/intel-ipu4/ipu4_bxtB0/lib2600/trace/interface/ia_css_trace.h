@@ -667,21 +667,26 @@
 */
 
 #define IA_CSS_TRACE_DYNAMIC_DECLARE_IMPL(module) \
-	void IA_CSS_TRACE_CAT(module, _trace_assert_enable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_assert_disable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_error_enable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_error_disable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_warning_enable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_warning_disable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_info_enable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_info_disable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_debug_enable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_debug_disable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_verbose_enable)(void); \
-	void IA_CSS_TRACE_CAT(module, _trace_verbose_disable)(void);
+	do { \
+		void IA_CSS_TRACE_CAT(module, _trace_assert_enable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_assert_disable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_error_enable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_error_disable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_warning_enable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_warning_disable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_info_enable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_info_disable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_debug_enable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_debug_disable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_verbose_enable)(void); \
+		void IA_CSS_TRACE_CAT(module, _trace_verbose_disable)(void); \
+	} while (0)
 
 #define IA_CSS_TRACE_DYNAMIC_DECLARE_CONFIG_FUNC_IMPL(module) \
-	void IA_CSS_TRACE_CAT(module, _trace_configure)(int argc, const char *const *argv);
+	do { \
+		void IA_CSS_TRACE_CAT(module, _trace_configure)\
+			(int argc, const char *const *argv); \
+	} while (0)
 
 #include "platform_support.h"
 #include "type_support.h"

@@ -40,7 +40,7 @@ static __inline void ia_css_sleep(void)
 #include <linux/string.h>
 #include <linux/delay.h>
 
-#define CSS_ALIGN(d, a) d __attribute__((aligned(a)))
+#define CSS_ALIGN(d, a) d __aligned(a)
 
 STORAGE_CLASS_INLINE void ia_css_sleep(void)
 {
