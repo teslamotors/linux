@@ -1147,6 +1147,14 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		vb->v4l2_buf.field = V4L2_FIELD_NONE;
+		/*
+		 * Use "reserved" field to pass csi2 index and vc.
+		 * May need to change to other approach.
+		 */
+		vb->v4l2_buf.reserved &= 0xFFFFFF00;
+		if (ip->csi2)
+			vb->v4l2_buf.reserved |= ip->csi2->index << 4;
+		vb->v4l2_buf.reserved |= ip->vc;
 #else
 		to_vb2_v4l2_buffer(vb)->field = V4L2_FIELD_NONE;
 #endif
