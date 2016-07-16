@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -43,8 +43,10 @@
  *             #define NCI_DMA_TRACE_LEVEL_ASSERT IA_CSS_TRACE_LEVEL_DISABLED
  *             #define NCI_DMA_TRACE_LEVEL_ERROR  IA_CSS_TRACE_LEVEL_ENABLED
  */
-#define IA_CSS_TRACE_LEVEL_DISABLED 0	/**< Disables the corresponding trace level. */
-#define IA_CSS_TRACE_LEVEL_ENABLED  1	/**< Enables the corresponding trace level. */
+/**< Disables the corresponding trace level. */
+#define IA_CSS_TRACE_LEVEL_DISABLED 0
+/**< Enables the corresponding trace level. */
+#define IA_CSS_TRACE_LEVEL_ENABLED  1
 
 /**
  * STEP 3: Define IA_CSS_TRACE_PRINT_FILE_LINE to have file name and line printed with every log message.
@@ -766,46 +768,46 @@ void IA_CSS_TRACE_CAT(module, _trace_configure)(const int argc, const char *cons
 	const char *levels = 0; \
 	\
 	while (i < argc) { \
-		if (!strcmp(argv[i], "-" #module "_trace")) { \
-			++i; \
-			\
-			if (i < argc) { \
-				levels = argv[i]; \
-				\
-				while (*levels) { \
-					switch (*levels++) { \
-					case 'a': \
-						IA_CSS_TRACE_CAT(module, _trace_assert_enable)(); \
-						break; \
-					\
-					case 'e': \
-						IA_CSS_TRACE_CAT(module, _trace_error_enable)(); \
-						break; \
-					\
-					case 'w': \
-						IA_CSS_TRACE_CAT(module, _trace_warning_enable)(); \
-						break; \
-					\
-					case 'i': \
-						IA_CSS_TRACE_CAT(module, _trace_info_enable)(); \
-						break; \
-					\
-					case 'd': \
-						IA_CSS_TRACE_CAT(module, _trace_debug_enable)(); \
-						break; \
-					\
-					case 'v': \
-						IA_CSS_TRACE_CAT(module, _trace_verbose_enable)(); \
-						break; \
-					\
-					default: \
-						break; \
-					} \
-				} \
-			} \
-		} \
-		\
+	if (!strcmp(argv[i], "-" #module "_trace")) { \
 		++i; \
+		\
+		if (i < argc) { \
+			levels = argv[i]; \
+			\
+		while (*levels) { \
+		switch (*levels++) { \
+		case 'a': \
+			IA_CSS_TRACE_CAT(module, _trace_assert_enable)(); \
+			break; \
+			\
+		case 'e': \
+			IA_CSS_TRACE_CAT(module, _trace_error_enable)(); \
+			break; \
+			\
+		case 'w': \
+			IA_CSS_TRACE_CAT(module, _trace_warning_enable)(); \
+			break; \
+			\
+		case 'i': \
+			IA_CSS_TRACE_CAT(module, _trace_info_enable)(); \
+			break; \
+			\
+		case 'd': \
+			IA_CSS_TRACE_CAT(module, _trace_debug_enable)(); \
+			break; \
+			\
+		case 'v': \
+			IA_CSS_TRACE_CAT(module, _trace_verbose_enable)(); \
+			break; \
+			\
+		default: \
+			break; \
+		} \
+		} \
+		} \
+	} \
+	\
+	++i; \
 	} \
 }
 

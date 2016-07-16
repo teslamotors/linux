@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,7 +31,8 @@ regmem_load_32(unsigned int mem_address, unsigned int reg, unsigned int ssid);
 
 STORAGE_CLASS_INLINE
 void
-regmem_store_32(unsigned int mem_address, unsigned int reg, unsigned int value, unsigned int ssid);
+regmem_store_32(unsigned int mem_address, unsigned int reg, unsigned int value,
+		unsigned int ssid);
 
 #ifdef __VIED_CELL
 #include "regmem_access_cell.h"

@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -88,7 +88,8 @@ int ia_css_param_terminal_manifest_init(
 	}
 
 	param_terminal->param_manifest_section_desc_count = section_count;
-	param_terminal->param_manifest_section_desc_offset = sizeof(ia_css_param_terminal_manifest_t);
+	param_terminal->param_manifest_section_desc_offset = sizeof(
+				ia_css_param_terminal_manifest_t);
 
 	return 0;
 }
@@ -228,19 +229,21 @@ int ia_css_program_terminal_manifest_init(
 		kernel_fragment_seq_info_section_count;
 	program_terminal->kernel_fragment_sequencer_info_manifest_info_offset =
 		sizeof(ia_css_program_terminal_manifest_t) +
-		fragment_param_section_count*sizeof(ia_css_fragment_param_manifest_section_desc_t);
+		fragment_param_section_count*sizeof(
+			ia_css_fragment_param_manifest_section_desc_t);
 
 	return 0;
 }
 
 ia_css_fragment_param_manifest_section_desc_t *
-	ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc(
-		const ia_css_program_terminal_manifest_t *program_terminal_manifest,
-		const unsigned int section_index
+ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc(
+	const ia_css_program_terminal_manifest_t *program_terminal_manifest,
+	const unsigned int section_index
 )
 {
-	ia_css_fragment_param_manifest_section_desc_t *fragment_param_manifest_section_base,
-		*fragment_param_manifest_section = NULL;
+	ia_css_fragment_param_manifest_section_desc_t
+	*fragment_param_manifest_section_base,
+	*fragment_param_manifest_section = NULL;
 
 	verifjmpexit(program_terminal_manifest != NULL);
 

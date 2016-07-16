@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -54,7 +54,8 @@ ipu_device_cell_memory_address(const unsigned int cell_id, const unsigned int me
 }
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_databus_memory_address(const unsigned int cell_id, const unsigned int mem_id)
+ipu_device_cell_databus_memory_address(const unsigned int cell_id,
+				       const unsigned int mem_id)
 {
 	assert(cell_id < NUM_CELLS);
 	assert(mem_id < ipu_device_cell_num_memories(cell_id));
@@ -84,13 +85,16 @@ ipu_device_cell_master_num_segments(const unsigned int cell_id, const unsigned i
 }
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_master_segment_size(const unsigned int cell_id, const unsigned int master_id)
+ipu_device_cell_master_segment_size(const unsigned int cell_id,
+				    const unsigned int master_id)
 {
-	return 1u << (IA_CSS_CELL_MASTER_ADDRESS_WIDTH - ipu_device_cell_master_segment_bits(cell_id, master_id));
+	return 1u << (IA_CSS_CELL_MASTER_ADDRESS_WIDTH -
+		      ipu_device_cell_master_segment_bits(cell_id, master_id));
 }
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_master_stride(const unsigned int cell_id, const unsigned int master_id)
+ipu_device_cell_master_stride(const unsigned int cell_id,
+			      const unsigned int master_id)
 {
 	assert(cell_id < NUM_CELLS);
 	assert(master_id < ipu_device_cell_num_masters(cell_id));

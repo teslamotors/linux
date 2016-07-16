@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,7 +23,8 @@
 
 
 ia_css_input_buffer
-ia_css_input_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid, unsigned int size)
+ia_css_input_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
+			  unsigned int size)
 {
 	ia_css_input_buffer b;
 
@@ -65,7 +66,8 @@ ia_css_input_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid, unsigned int 
 
 
 void
-ia_css_input_buffer_free(vied_subsystem_t sid, vied_memory_t mid, ia_css_input_buffer b)
+ia_css_input_buffer_free(vied_subsystem_t sid, vied_memory_t mid,
+			 ia_css_input_buffer b)
 {
 	assert(b->state == buffer_unmapped);
 #ifndef HRT_HW

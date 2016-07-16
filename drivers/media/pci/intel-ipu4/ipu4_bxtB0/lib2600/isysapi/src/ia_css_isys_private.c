@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -154,7 +154,8 @@ STORAGE_CLASS_INLINE int get_stream_cfg_buff_slot(
 	int stream_cfg_buff_counter
 ) {
 	NOT_USED(ctx);
-	return (stream_handle * STREAM_CFG_BUFS_PER_MSG_QUEUE) + stream_cfg_buff_counter;
+	return (stream_handle * STREAM_CFG_BUFS_PER_MSG_QUEUE) +
+	       stream_cfg_buff_counter;
 }
 
 STORAGE_CLASS_INLINE int get_next_frame_buff_slot(
@@ -163,7 +164,8 @@ STORAGE_CLASS_INLINE int get_next_frame_buff_slot(
 	int next_frame_buff_counter
 ) {
 	NOT_USED(ctx);
-	return (stream_handle * NEXT_FRAME_BUFS_PER_MSG_QUEUE) + next_frame_buff_counter;
+	return (stream_handle * NEXT_FRAME_BUFS_PER_MSG_QUEUE) +
+	       next_frame_buff_counter;
 }
 
 STORAGE_CLASS_INLINE void free_comm_buff_shared_mem(
@@ -304,19 +306,25 @@ int ia_css_isys_destr_comm_buff_queue(
 }
 
 
-STORAGE_CLASS_INLINE void resolution_host_to_css(const struct ia_css_isys_resolution *resolution_host, struct ia_css_isys_resolution_comm *resolution_css)
+STORAGE_CLASS_INLINE void resolution_host_to_css(
+		const struct ia_css_isys_resolution *resolution_host,
+		struct ia_css_isys_resolution_comm *resolution_css)
 {
 	resolution_css->width = resolution_host->width;
 	resolution_css->height = resolution_host->height;
 }
 
-STORAGE_CLASS_INLINE void output_pin_payload_host_to_css(const struct ia_css_isys_output_pin_payload *output_pin_payload_host, struct ia_css_isys_output_pin_payload_comm *output_pin_payload_css)
+STORAGE_CLASS_INLINE void output_pin_payload_host_to_css(
+	const struct ia_css_isys_output_pin_payload *output_pin_payload_host,
+	struct ia_css_isys_output_pin_payload_comm *output_pin_payload_css)
 {
 	output_pin_payload_css->out_buf_id = output_pin_payload_host->out_buf_id;
 	output_pin_payload_css->addr = output_pin_payload_host->addr;
 }
 
-STORAGE_CLASS_INLINE void output_pin_info_host_to_css(const struct ia_css_isys_output_pin_info *output_pin_info_host, struct ia_css_isys_output_pin_info_comm *output_pin_info_css)
+STORAGE_CLASS_INLINE void output_pin_info_host_to_css(
+	const struct ia_css_isys_output_pin_info *output_pin_info_host,
+	struct ia_css_isys_output_pin_info_comm *output_pin_info_css)
 {
 	output_pin_info_css->input_pin_id = output_pin_info_host->input_pin_id;
 	resolution_host_to_css(&output_pin_info_host->output_res, &output_pin_info_css->output_res);
@@ -333,13 +341,17 @@ STORAGE_CLASS_INLINE void output_pin_info_host_to_css(const struct ia_css_isys_o
 	output_pin_info_css->ft_info = ft_info_per_frame_format_type[output_pin_info_host->ft];
 }
 
-STORAGE_CLASS_INLINE void param_pin_host_to_css(const struct ia_css_isys_param_pin *param_pin_host, struct ia_css_isys_param_pin_comm *param_pin_css)
+STORAGE_CLASS_INLINE void param_pin_host_to_css(
+	const struct ia_css_isys_param_pin *param_pin_host,
+	struct ia_css_isys_param_pin_comm *param_pin_css)
 {
 	param_pin_css->param_buf_id = param_pin_host->param_buf_id;
 	param_pin_css->addr = param_pin_host->addr;
 }
 
-STORAGE_CLASS_INLINE void input_pin_info_host_to_css(const struct ia_css_isys_input_pin_info *input_pin_info_host, struct ia_css_isys_input_pin_info_comm *input_pin_info_css)
+STORAGE_CLASS_INLINE void input_pin_info_host_to_css(
+	const struct ia_css_isys_input_pin_info *input_pin_info_host,
+	struct ia_css_isys_input_pin_info_comm *input_pin_info_css)
 {
 	resolution_host_to_css(&input_pin_info_host->input_res, &input_pin_info_css->input_res);
 	assert(input_pin_info_host->dt < N_IA_CSS_ISYS_MIPI_DATA_TYPE);
@@ -352,7 +364,9 @@ STORAGE_CLASS_INLINE void input_pin_info_host_to_css(const struct ia_css_isys_in
 	input_pin_info_css->bits_per_pix = ia_css_isys_extracted_bits_per_pixel_per_mipi_data_type[input_pin_info_host->dt];
 }
 
-STORAGE_CLASS_INLINE void isa_cfg_host_to_css(const struct ia_css_isys_isa_cfg *isa_cfg_host, struct ia_css_isys_isa_cfg_comm *isa_cfg_css)
+STORAGE_CLASS_INLINE void isa_cfg_host_to_css(
+		const struct ia_css_isys_isa_cfg *isa_cfg_host,
+		struct ia_css_isys_isa_cfg_comm *isa_cfg_css)
 {
 	unsigned int i;
 
@@ -371,15 +385,20 @@ STORAGE_CLASS_INLINE void isa_cfg_host_to_css(const struct ia_css_isys_isa_cfg *
 	isa_cfg_css->send_resp_stats_ready = isa_cfg_host->send_irq_stats_ready ? 1 : isa_cfg_host->send_resp_stats_ready;
 }
 
-STORAGE_CLASS_INLINE void cropping_host_to_css(const struct ia_css_isys_cropping *cropping_host, struct ia_css_isys_cropping_comm *cropping_css)
+STORAGE_CLASS_INLINE void cropping_host_to_css(
+		const struct ia_css_isys_cropping *cropping_host,
+		struct ia_css_isys_cropping_comm *cropping_css)
 {
 	cropping_css->top_offset = cropping_host->top_offset;
 	cropping_css->left_offset = cropping_host->left_offset;
 	cropping_css->bottom_offset = cropping_host->bottom_offset;
 	cropping_css->right_offset = cropping_host->right_offset;
+
 }
 
-STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(const struct ia_css_isys_stream_cfg_data *stream_cfg_data_host, struct ia_css_isys_stream_cfg_data_comm *stream_cfg_data_css)
+STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(
+		const struct ia_css_isys_stream_cfg_data *stream_cfg_data_host,
+		struct ia_css_isys_stream_cfg_data_comm *stream_cfg_data_css)
 {
 	unsigned int i;
 
@@ -389,11 +408,13 @@ STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(const struct ia_css_isys_st
 	stream_cfg_data_css->compfmt = stream_cfg_data_host->compfmt;
 	switch (stream_cfg_data_host->isl_use) {
 	case IA_CSS_ISYS_USE_SINGLE_ISA:
-		isa_cfg_host_to_css(&stream_cfg_data_host->isa_cfg, &stream_cfg_data_css->isa_cfg);
+		isa_cfg_host_to_css(&stream_cfg_data_host->isa_cfg,
+				    &stream_cfg_data_css->isa_cfg);
 	/* deliberate fall-through */
 	case IA_CSS_ISYS_USE_SINGLE_DUAL_ISL:
 		for (i = 0; i < N_IA_CSS_ISYS_CROPPING_LOCATION; i++) {
-			cropping_host_to_css(&stream_cfg_data_host->crop[i], &stream_cfg_data_css->crop[i]);
+			cropping_host_to_css(&stream_cfg_data_host->crop[i],
+					     &stream_cfg_data_css->crop[i]);
 		}
 		break;
 	case IA_CSS_ISYS_USE_NO_ISL_NO_ISA:
@@ -416,9 +437,12 @@ STORAGE_CLASS_INLINE int stream_cfg_data_host_to_css(const struct ia_css_isys_st
 		verifret(stream_cfg_data_css->output_pins[i].ft_info.bits_per_raw_pix, EINVAL);
 	}
 	return 0;
+
 }
 
-STORAGE_CLASS_INLINE void frame_buff_set_host_to_css(const struct ia_css_isys_frame_buff_set *frame_buff_set_host, struct ia_css_isys_frame_buff_set_comm *frame_buff_set_css)
+STORAGE_CLASS_INLINE void frame_buff_set_host_to_css(
+		const struct ia_css_isys_frame_buff_set *frame_buff_set_host,
+		struct ia_css_isys_frame_buff_set_comm *frame_buff_set_css)
 {
 	int i;
 
@@ -444,19 +468,26 @@ STORAGE_CLASS_INLINE void buffer_partition_host_to_css(const struct ia_css_isys_
 	}
 }
 
-STORAGE_CLASS_INLINE void output_pin_payload_css_to_host(const struct ia_css_isys_output_pin_payload_comm *output_pin_payload_css, struct ia_css_isys_output_pin_payload *output_pin_payload_host)
+STORAGE_CLASS_INLINE void output_pin_payload_css_to_host(
+	const struct ia_css_isys_output_pin_payload_comm *output_pin_payload_css,
+	struct ia_css_isys_output_pin_payload *output_pin_payload_host)
 {
 	output_pin_payload_host->out_buf_id = output_pin_payload_css->out_buf_id;
 	output_pin_payload_host->addr = output_pin_payload_css->addr;
 }
 
-STORAGE_CLASS_INLINE void param_pin_css_to_host(const struct ia_css_isys_param_pin_comm *param_pin_css, struct ia_css_isys_param_pin *param_pin_host)
+STORAGE_CLASS_INLINE void param_pin_css_to_host(
+	const struct ia_css_isys_param_pin_comm *param_pin_css,
+	struct ia_css_isys_param_pin *param_pin_host)
 {
 	param_pin_host->param_buf_id = param_pin_css->param_buf_id;
 	param_pin_host->addr = param_pin_css->addr;
+
 }
 
-STORAGE_CLASS_INLINE void resp_info_css_to_host(const struct ia_css_isys_resp_info_comm *resp_info_css, struct ia_css_isys_resp_info *resp_info_host)
+STORAGE_CLASS_INLINE void resp_info_css_to_host(
+		const struct ia_css_isys_resp_info_comm *resp_info_css,
+		struct ia_css_isys_resp_info *resp_info_host)
 {
 	resp_info_host->type = resp_info_css->type;
 	resp_info_host->timestamp[0] = resp_info_css->timestamp[0];
@@ -648,7 +679,8 @@ int ia_css_isys_extract_proxy_response(
 
 	preceived_response->request_id = token->proxy_resp_info.request_id;
 	preceived_response->error = token->proxy_resp_info.error_info.error;
-	preceived_response->error_details = token->proxy_resp_info.error_info.error_details;
+	preceived_response->error_details =
+		token->proxy_resp_info.error_info.error_details;
 
 	return 0;
 }

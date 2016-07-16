@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -188,7 +188,8 @@ EXIT:
 	return fragment_grid_desc;
 }
 
-ia_css_frame_grid_param_section_desc_t *ia_css_spatial_param_terminal_get_frame_grid_param_section_desc(
+ia_css_frame_grid_param_section_desc_t
+*ia_css_spatial_param_terminal_get_frame_grid_param_section_desc(
 	const ia_css_spatial_param_terminal_t *spatial_param_terminal,
 	const unsigned int section_index
 )
@@ -255,13 +256,15 @@ unsigned int ia_css_sliced_param_terminal_get_descriptor_size(
 	descriptor_size =
 		sizeof(ia_css_sliced_param_terminal_t) +
 		nof_fragments*sizeof(ia_css_fragment_slice_desc_t) +
-		nof_slices_total*nof_slice_param_sections*sizeof(ia_css_fragment_param_section_desc_t);
+		nof_slices_total*nof_slice_param_sections*sizeof(
+			ia_css_fragment_param_section_desc_t);
 
 EXIT:
 	return descriptor_size;
 }
 
-ia_css_fragment_slice_desc_t *ia_css_sliced_param_terminal_get_fragment_slice_desc(
+ia_css_fragment_slice_desc_t
+*ia_css_sliced_param_terminal_get_fragment_slice_desc(
 	const ia_css_sliced_param_terminal_t *sliced_param_terminal,
 	const unsigned int fragment_index
 )
@@ -277,7 +280,8 @@ EXIT:
 	return fragment_slice_desc;
 }
 
-ia_css_slice_param_section_desc_t *ia_css_sliced_param_terminal_get_slice_param_section_desc(
+ia_css_slice_param_section_desc_t
+*ia_css_sliced_param_terminal_get_slice_param_section_desc(
 	const ia_css_sliced_param_terminal_t *sliced_param_terminal,
 	const unsigned int fragment_index,
 	const unsigned int slice_index,
@@ -338,11 +342,12 @@ int ia_css_sliced_param_terminal_create(
 		/* Error handling not required at this point since everything has been constructed/validated just above */
 		fragment_slice_desc->slice_count = nof_slices[fragment_index];
 		fragment_slice_desc->slice_section_desc_offset =
-			sliced_param_terminal->fragment_slice_desc_offset +
-			(nof_fragments * sizeof(ia_css_fragment_slice_desc_t)) +
-			(nof_slices_total * nof_slice_param_sections * sizeof(ia_css_slice_param_section_desc_t));
-		nof_slices_total += nof_slices[fragment_index];
-	}
+sliced_param_terminal->fragment_slice_desc_offset +
+(nof_fragments * sizeof(ia_css_fragment_slice_desc_t)) +
+(nof_slices_total * nof_slice_param_sections * sizeof(
+	 ia_css_slice_param_section_desc_t));
+nof_slices_total += nof_slices[fragment_index];
+}
 
 	return 0;
 }
@@ -382,15 +387,17 @@ EXIT:
 	return fragment_param_section_desc;
 }
 
-ia_css_kernel_fragment_sequencer_info_desc_t *ia_css_program_terminal_get_kernel_fragment_sequencer_info_desc(
+ia_css_kernel_fragment_sequencer_info_desc_t
+*ia_css_program_terminal_get_kernel_fragment_sequencer_info_desc(
 	const ia_css_program_terminal_t *program_terminal,
 	const unsigned int fragment_index,
 	const unsigned int info_index,
 	const unsigned int nof_kernel_fragment_sequencer_infos
 )
 {
-	ia_css_kernel_fragment_sequencer_info_desc_t *kernel_fragment_sequencer_info_desc_base,
-		*kernel_fragment_sequencer_info_desc = NULL;
+	ia_css_kernel_fragment_sequencer_info_desc_t
+	*kernel_fragment_sequencer_info_desc_base,
+	*kernel_fragment_sequencer_info_desc = NULL;
 
 	verifjmpexit(program_terminal != NULL);
 	if (nof_kernel_fragment_sequencer_infos > 0) {
@@ -461,7 +468,8 @@ int ia_css_program_terminal_get_command_base_offset(
 }
 
 uint16_t *ia_css_program_terminal_get_line_count(
-	const ia_css_kernel_fragment_sequencer_command_desc_t *kernel_fragment_sequencer_command_desc_base,
+	const ia_css_kernel_fragment_sequencer_command_desc_t
+	*kernel_fragment_sequencer_command_desc_base,
 	const unsigned int set_count
 )
 {

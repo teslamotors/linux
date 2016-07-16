@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,7 +21,8 @@ struct sys_queue;
 struct port_env;
 
 void
-recv_port_open(struct recv_port *p, const struct sys_queue *q, const struct port_env *env);
+recv_port_open(struct recv_port *p, const struct sys_queue *q,
+	       const struct port_env *env);
 
 unsigned int
 recv_port_available(const struct recv_port *p);

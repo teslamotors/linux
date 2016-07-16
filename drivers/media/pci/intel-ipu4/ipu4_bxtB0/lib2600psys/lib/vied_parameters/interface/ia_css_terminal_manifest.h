@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -91,9 +91,9 @@ int ia_css_program_terminal_manifest_init(
 );
 
 ia_css_fragment_param_manifest_section_desc_t *
-	ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc(
-		const ia_css_program_terminal_manifest_t *program_terminal_manifest,
-		const unsigned int section_index
+ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc(
+	const ia_css_program_terminal_manifest_t *program_terminal_manifest,
+	const unsigned int section_index
 );
 
 ia_css_kernel_fragment_sequencer_info_manifest_desc_t *

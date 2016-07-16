@@ -1,6 +1,6 @@
 /*
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,7 +19,8 @@
 
 /** @file ia_css_psys_terminal_manifest.h
  *
- * Define the methods on the terminal manifest object that are not part of a single interface
+ * Define the methods on the terminal manifest object that are not part of a
+ * single interface
  */
 
 #include <ia_css_psys_manifest_types.h>
@@ -28,15 +29,16 @@
 
 #include <ia_css_psys_terminal_manifest.hsys.user.h>
 
-#include <ia_css_program_group_data.h>			/* ia_css_frame_format_bitmap_t */
-#include <ia_css_kernel_bitmap.h>				/* ia_css_kernel_bitmap_t */
+#include <ia_css_program_group_data.h>	/* ia_css_frame_format_bitmap_t */
+#include <ia_css_kernel_bitmap.h>	/* ia_css_kernel_bitmap_t */
 
-#include <type_support.h>						/* size_t */
+#include <type_support.h>		/* size_t */
 #include "ia_css_terminal_manifest.h"
 #include "ia_css_terminal_manifest_base_types.h"
 
 
-/*! Check if the terminal manifest object specifies a spatial param terminal type
+/*! Check if the terminal manifest object specifies a spatial param terminal
+ * type
 
  @param	manifest[in]			terminal manifest object
 
@@ -54,7 +56,8 @@ extern bool ia_css_is_terminal_manifest_spatial_parameter_terminal(
 extern bool ia_css_is_terminal_manifest_program_terminal(
 	const ia_css_terminal_manifest_t		*manifest);
 
-/*! Check if the terminal manifest object specifies a (cached) parameter terminal type
+/*! Check if the terminal manifest object specifies a (cached) parameter
+ * terminal type
 
  @param	manifest[in]			terminal manifest object
 
@@ -63,7 +66,8 @@ extern bool ia_css_is_terminal_manifest_program_terminal(
 extern bool ia_css_is_terminal_manifest_parameter_terminal(
 	const ia_css_terminal_manifest_t		*manifest);
 
-/*! Check if the terminal manifest object specifies a (sliced) parameter terminal type
+/*! Check if the terminal manifest object specifies a (sliced) parameter
+ * terminal type
 
  @param	manifest[in]			terminal manifest object
 
@@ -90,7 +94,8 @@ extern bool ia_css_is_terminal_manifest_data_terminal(
 extern size_t ia_css_terminal_manifest_get_size(
 	const ia_css_terminal_manifest_t		*manifest);
 
-/*! Get the (pointer to) the program group manifest parent of the terminal manifest object
+/*! Get the (pointer to) the program group manifest parent of the terminal
+ * manifest object
 
  @param	manifest[in]			terminal manifest object
 
@@ -99,10 +104,12 @@ extern size_t ia_css_terminal_manifest_get_size(
 extern ia_css_program_group_manifest_t *ia_css_terminal_manifest_get_parent(
 	const ia_css_terminal_manifest_t		*manifest);
 
-/*! Set the (pointer to) the program group manifest parent of the terminal manifest object
+/*! Set the (pointer to) the program group manifest parent of the terminal
+ * manifest object
 
  @param	manifest[in]			terminal manifest object
- @param	terminal_offset[in]		this terminal's offset from program_group_manifest base address.
+ @param	terminal_offset[in]		this terminal's offset from
+					program_group_manifest base address.
 
  @return < 0 on invalid arguments
  */
@@ -114,8 +121,9 @@ extern int ia_css_terminal_manifest_set_parent_offset(
 
  @param	manifest[in]			terminal manifest object
 
- @return terminal type, limit value (IA_CSS_N_TERMINAL_TYPES) on invalid manifest argument
- */
+ @return terminal type, limit value (IA_CSS_N_TERMINAL_TYPES) on invalid
+	manifest argument
+*/
 extern ia_css_terminal_type_t ia_css_terminal_manifest_get_type(
 	const ia_css_terminal_manifest_t		*manifest);
 
@@ -155,9 +163,10 @@ extern ia_css_terminal_ID_t ia_css_terminal_manifest_get_ID(
  @param	manifest[in]			(data) terminal manifest object
 
  @return frame format bitmap, 0 on invalid manifest argument
- */
-extern ia_css_frame_format_bitmap_t ia_css_data_terminal_manifest_get_frame_format_bitmap(
-	const ia_css_data_terminal_manifest_t		*manifest);
+*/
+extern ia_css_frame_format_bitmap_t
+	ia_css_data_terminal_manifest_get_frame_format_bitmap(
+		const ia_css_data_terminal_manifest_t		*manifest);
 
 /*! Set the chosen frame type for the (data) terminal manifest object
 
@@ -195,9 +204,10 @@ extern int ia_css_data_terminal_manifest_set_compression_support(
  @param	manifest[in]			(data) terminal manifest object
 
  @return connection bitmap, 0 on invalid manifest argument
- */
-extern ia_css_connection_bitmap_t ia_css_data_terminal_manifest_get_connection_bitmap(
-	const ia_css_data_terminal_manifest_t		*manifest);
+*/
+extern ia_css_connection_bitmap_t
+	ia_css_data_terminal_manifest_get_connection_bitmap(
+		const ia_css_data_terminal_manifest_t		*manifest);
 
 /*! Get the kernel dependency of the (data) terminal manifest object
 
@@ -238,8 +248,8 @@ extern int ia_css_data_terminal_manifest_set_kernel_bitmap_unique(
  @return < 0 on invalid manifest argument
  */
 extern int ia_css_data_terminal_manifest_set_min_size(
-	ia_css_data_terminal_manifest_t			*manifest,
-	const uint16_t					min_size[IA_CSS_N_DATA_DIMENSION]);
+	ia_css_data_terminal_manifest_t *manifest,
+	const uint16_t min_size[IA_CSS_N_DATA_DIMENSION]);
 
 /*! Set the max size of the (data) terminal manifest object
 
@@ -249,8 +259,8 @@ extern int ia_css_data_terminal_manifest_set_min_size(
   @return < 0 on invalid manifest argument
   */
 extern int ia_css_data_terminal_manifest_set_max_size(
-	ia_css_data_terminal_manifest_t			*manifest,
-	const uint16_t					max_size[IA_CSS_N_DATA_DIMENSION]);
+	ia_css_data_terminal_manifest_t *manifest,
+	const uint16_t max_size[IA_CSS_N_DATA_DIMENSION]);
 
 /*! Get the min size of the (data) terminal manifest object
 
@@ -260,8 +270,8 @@ extern int ia_css_data_terminal_manifest_set_max_size(
  @return < 0 on invalid manifest argument
  */
 extern int ia_css_data_terminal_manifest_get_min_size(
-	const ia_css_data_terminal_manifest_t		*manifest,
-	uint16_t					min_size[IA_CSS_N_DATA_DIMENSION]);
+	const ia_css_data_terminal_manifest_t *manifest,
+	uint16_t min_size[IA_CSS_N_DATA_DIMENSION]);
 
 /*! Get the max size of the (data) terminal manifest object
 
@@ -271,8 +281,8 @@ extern int ia_css_data_terminal_manifest_get_min_size(
  @return < 0 on invalid manifest argument
  */
 extern int ia_css_data_terminal_manifest_get_max_size(
-	const ia_css_data_terminal_manifest_t		*manifest,
-	uint16_t					max_size[IA_CSS_N_DATA_DIMENSION]);
+	const ia_css_data_terminal_manifest_t *manifest,
+	uint16_t max_size[IA_CSS_N_DATA_DIMENSION]);
 
 /*! Set the min fragment size of the (data) terminal manifest object
 
@@ -282,8 +292,8 @@ extern int ia_css_data_terminal_manifest_get_max_size(
  @return < 0 on invalid manifest argument
  */
 extern int ia_css_data_terminal_manifest_set_min_fragment_size(
-	ia_css_data_terminal_manifest_t			*manifest,
-	const uint16_t					min_size[IA_CSS_N_DATA_DIMENSION]);
+	ia_css_data_terminal_manifest_t *manifest,
+	const uint16_t min_size[IA_CSS_N_DATA_DIMENSION]);
 
 /*! Set the max fragment size of the (data) terminal manifest object
 
@@ -293,8 +303,8 @@ extern int ia_css_data_terminal_manifest_set_min_fragment_size(
   @return < 0 on invalid manifest argument
   */
 extern int ia_css_data_terminal_manifest_set_max_fragment_size(
-	ia_css_data_terminal_manifest_t			*manifest,
-	const uint16_t					max_size[IA_CSS_N_DATA_DIMENSION]);
+	ia_css_data_terminal_manifest_t *manifest,
+	const uint16_t max_size[IA_CSS_N_DATA_DIMENSION]);
 
 /*! Get the min fragment size of the (data) terminal manifest object
 
@@ -304,8 +314,8 @@ extern int ia_css_data_terminal_manifest_set_max_fragment_size(
  @return < 0 on invalid manifest argument
  */
 extern int ia_css_data_terminal_manifest_get_min_fragment_size(
-	const ia_css_data_terminal_manifest_t		*manifest,
-	uint16_t					min_size[IA_CSS_N_DATA_DIMENSION]);
+	const ia_css_data_terminal_manifest_t *manifest,
+	uint16_t min_size[IA_CSS_N_DATA_DIMENSION]);
 
 /*! Get the max fragment size of the (data) terminal manifest object
 
@@ -315,7 +325,7 @@ extern int ia_css_data_terminal_manifest_get_min_fragment_size(
  @return < 0 on invalid manifest argument
  */
 extern int ia_css_data_terminal_manifest_get_max_fragment_size(
-	const ia_css_data_terminal_manifest_t		*manifest,
-	uint16_t					max_size[IA_CSS_N_DATA_DIMENSION]);
+	const ia_css_data_terminal_manifest_t *manifest,
+	uint16_t max_size[IA_CSS_N_DATA_DIMENSION]);
 
 #endif /* __IA_CSS_PSYS_TERMINAL_MANIFEST_H_INCLUDED__ */

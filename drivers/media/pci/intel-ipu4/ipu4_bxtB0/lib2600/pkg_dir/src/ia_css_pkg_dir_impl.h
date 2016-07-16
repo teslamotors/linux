@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,8 +24,7 @@
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
 const ia_css_pkg_dir_entry_t *ia_css_pkg_dir_get_entry(
 	const ia_css_pkg_dir_t *pkg_dir,
-	uint32_t index
-)
+	uint32_t index)
 {
 	struct ia_css_pkg_dir_entry *pkg_dir_header;
 
@@ -54,7 +53,8 @@ EXIT:
 }
 
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
-uint32_t ia_css_pkg_dir_get_num_entries(const ia_css_pkg_dir_entry_t *pkg_dir_header)
+uint32_t ia_css_pkg_dir_get_num_entries(
+		const ia_css_pkg_dir_entry_t *pkg_dir_header)
 {
 	uint32_t size;
 
@@ -75,7 +75,8 @@ ia_css_pkg_dir_get_version(const ia_css_pkg_dir_entry_t *pkg_dir_header)
 	return pkg_dir_header->version;
 }
 
-uint16_t ia_css_pkg_dir_set_version(ia_css_pkg_dir_entry_t *pkg_dir_header, enum ia_css_pkg_dir_version version)
+uint16_t ia_css_pkg_dir_set_version(ia_css_pkg_dir_entry_t *pkg_dir_header,
+				    enum ia_css_pkg_dir_version version)
 {
 	if (pkg_dir_header != NULL) {
 		pkg_dir_header->version = version;
@@ -85,7 +86,8 @@ uint16_t ia_css_pkg_dir_set_version(ia_css_pkg_dir_entry_t *pkg_dir_header, enum
 }
 
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
-uint32_t ia_css_pkg_dir_get_size_in_bytes(const ia_css_pkg_dir_entry_t *pkg_dir_header)
+uint32_t ia_css_pkg_dir_get_size_in_bytes(
+		const ia_css_pkg_dir_entry_t *pkg_dir_header)
 {
 	if (pkg_dir_header == NULL) {
 		assert(NULL == "ia_css_pkg_dir_get_size_in_bytes");
@@ -96,7 +98,8 @@ uint32_t ia_css_pkg_dir_get_size_in_bytes(const ia_css_pkg_dir_entry_t *pkg_dir_
 }
 
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
-uint32_t ia_css_pkg_dir_entry_get_address_lo(const ia_css_pkg_dir_entry_t *entry)
+uint32_t ia_css_pkg_dir_entry_get_address_lo(
+		const ia_css_pkg_dir_entry_t *entry)
 {
 
 	if (entry == NULL) {
@@ -108,7 +111,8 @@ uint32_t ia_css_pkg_dir_entry_get_address_lo(const ia_css_pkg_dir_entry_t *entry
 }
 
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
-uint32_t ia_css_pkg_dir_entry_get_address_hi(const ia_css_pkg_dir_entry_t *entry)
+uint32_t ia_css_pkg_dir_entry_get_address_hi(
+		const ia_css_pkg_dir_entry_t *entry)
 {
 
 	if (entry == NULL) {
@@ -157,14 +161,18 @@ uint8_t ia_css_pkg_dir_entry_get_type(const ia_css_pkg_dir_entry_t *entry)
 
 
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
-void *ia_css_pkg_dir_get_entry_address(const ia_css_pkg_dir_t *pkg_dir, uint32_t index)
+void *ia_css_pkg_dir_get_entry_address(const ia_css_pkg_dir_t *pkg_dir,
+				       uint32_t index)
 {
 	void *entry_blob = NULL;
-	const ia_css_pkg_dir_entry_t *pkg_dir_entry = ia_css_pkg_dir_get_entry(pkg_dir, index-1);
+	const ia_css_pkg_dir_entry_t *pkg_dir_entry =
+			ia_css_pkg_dir_get_entry(pkg_dir, index-1);
 
-	if ((pkg_dir_entry != NULL) && (ia_css_pkg_dir_entry_get_size(pkg_dir_entry) > 0)) {
+	if ((pkg_dir_entry != NULL) &&
+	    (ia_css_pkg_dir_entry_get_size(pkg_dir_entry) > 0)) {
 		assert(ia_css_pkg_dir_entry_get_address_hi(pkg_dir_entry) == 0);
-		entry_blob = (void *)((char *)pkg_dir + ia_css_pkg_dir_entry_get_address_lo(pkg_dir_entry));
+		entry_blob = (void *)((char *)pkg_dir +
+			    ia_css_pkg_dir_entry_get_address_lo(pkg_dir_entry));
 	}
 	return entry_blob;
 }

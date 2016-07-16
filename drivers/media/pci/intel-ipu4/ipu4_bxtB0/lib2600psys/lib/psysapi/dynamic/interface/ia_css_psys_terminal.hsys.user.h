@@ -1,6 +1,6 @@
 /*
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -22,8 +22,8 @@
  * Define the methods on the terminal object: Hsys user interface
  */
 
-#include <ia_css_program_group_data.h>		/* ia_css_frame_t */
-#include <ia_css_program_group_param.h>		/* ia_css_program_group_param_t */
+#include <ia_css_program_group_data.h>	/* ia_css_frame_t */
+#include <ia_css_program_group_param.h>	/* ia_css_program_group_param_t */
 
 #include <ia_css_psys_process_types.h>
 #include <ia_css_psys_manifest_types.h>
@@ -58,7 +58,7 @@ extern size_t ia_css_sizeof_terminal(
  @return NULL on error
  */
 extern ia_css_terminal_t *ia_css_terminal_create(
-	void									*raw_mem,
+	void *raw_mem,
 	const ia_css_terminal_manifest_t		*manifest,
 	const ia_css_terminal_param_t			*terminal_param,
 	ia_css_kernel_bitmap_t				enable_bitmap);
@@ -70,7 +70,7 @@ extern ia_css_terminal_t *ia_css_terminal_create(
  @return NULL
  */
 extern ia_css_terminal_t *ia_css_terminal_destroy(
-	ia_css_terminal_t						*terminal);
+	ia_css_terminal_t *terminal);
 
 /*! Print the terminal object to file/stream
 
@@ -81,7 +81,7 @@ extern ia_css_terminal_t *ia_css_terminal_destroy(
  */
 extern int ia_css_terminal_print(
 	const ia_css_terminal_t					*terminal,
-	void									*fid);
+	void *fid);
 
 /*! Get the (pointer to) the frame object in the terminal object
 
@@ -105,11 +105,12 @@ extern ia_css_frame_descriptor_t *ia_css_data_terminal_get_frame_descriptor(
 
  @param	terminal[in]			terminal object
 
- @return the pointer to the fragment descriptor, NULL on error
- */
-extern ia_css_fragment_descriptor_t *ia_css_data_terminal_get_fragment_descriptor(
-	const ia_css_data_terminal_t		*dterminal,
-	const unsigned int			fragment_index);
+@return the pointer to the fragment descriptor, NULL on error
+*/
+extern ia_css_fragment_descriptor_t
+	*ia_css_data_terminal_get_fragment_descriptor(
+		const ia_css_data_terminal_t		*dterminal,
+		const unsigned int			fragment_index);
 
 /*! Get the number of fragments on the terminal
 

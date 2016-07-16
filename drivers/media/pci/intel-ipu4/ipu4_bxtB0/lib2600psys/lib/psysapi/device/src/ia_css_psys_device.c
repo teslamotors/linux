@@ -1,6 +1,6 @@
 /*
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -27,12 +27,14 @@
 #define IA_CSS_PSYS_CMD_QUEUE_SIZE		0x20
 #define IA_CSS_PSYS_EVENT_QUEUE_SIZE		0x40
 
-static struct ia_css_syscom_queue_config ia_css_psys_cmd_queue_cfg[IA_CSS_N_PSYS_CMD_QUEUE_ID] = {
+static struct ia_css_syscom_queue_config
+	ia_css_psys_cmd_queue_cfg[IA_CSS_N_PSYS_CMD_QUEUE_ID] = {
 	{IA_CSS_PSYS_CMD_QUEUE_SIZE, IA_CSS_PSYS_CMD_BITS/8},
 	{IA_CSS_PSYS_CMD_QUEUE_SIZE, IA_CSS_PSYS_CMD_BITS/8}
 };
 
-static struct ia_css_syscom_queue_config ia_css_psys_event_queue_cfg[IA_CSS_N_PSYS_EVENT_QUEUE_ID] = {
+static struct ia_css_syscom_queue_config
+	ia_css_psys_event_queue_cfg[IA_CSS_N_PSYS_EVENT_QUEUE_ID] = {
 	{IA_CSS_PSYS_EVENT_QUEUE_SIZE, IA_CSS_PSYS_EVENT_BITS/8},
 };
 
@@ -41,10 +43,10 @@ struct ia_css_syscom_context	*psys_syscom;
 static bool external_alloc = true;
 
 int ia_css_psys_config_print(
-	const struct ia_css_syscom_config		*config,
-	void									*fh)
+	const struct ia_css_syscom_config *config,
+	void *fh)
 {
-	int	retval = -1;
+	int retval = -1;
 
 	NOT_USED(fh);
 
@@ -55,7 +57,8 @@ int ia_css_psys_config_print(
 	retval = 0;
 EXIT:
 	if (retval != 0) {
-		IA_CSS_TRACE_1(PSYSAPI_DEVICE, ERROR, "ia_css_frame_print failed (%i)\n", retval);
+		IA_CSS_TRACE_1(PSYSAPI_DEVICE, ERROR,
+			"ia_css_frame_print failed (%i)\n", retval);
 	}
 	return retval;
 }
@@ -75,7 +78,8 @@ int ia_css_psys_print(
 	retval = 0;
 EXIT:
 	if (retval != 0) {
-		IA_CSS_TRACE_1(PSYSAPI_DEVICE, ERROR, "ia_css_psys_print failed (%i)\n", retval);
+		IA_CSS_TRACE_1(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_print failed (%i)\n", retval);
 	}
 	return retval;
 }
@@ -99,7 +103,8 @@ size_t ia_css_sizeof_psys(
 {
 	size_t	size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_sizeof_psys(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_sizeof_psys(): enter:\n");
 
 	NOT_USED(config);
 
@@ -130,7 +135,9 @@ struct ia_css_syscom_context *ia_css_psys_open(
 	 * where this open is called, and which virtual memory handles
 	 * we see here.
 	 */
-	/* context = ia_css_syscom_open(get_virtual_memory_handle(vied_psys_ID), buffer, config); */
+	/* context = ia_css_syscom_open(get_virtual_memory_handle(vied_psys_ID),
+	 * buffer, config);
+	 */
 	context = ia_css_syscom_open(config, NULL);
 	if (context == NULL)
 		goto EXIT;
@@ -139,14 +146,16 @@ struct ia_css_syscom_context *ia_css_psys_open(
 	/* Configure SPC icache prefetching and start SPC */
 	server_config = (ia_css_psys_server_init_t *)config->specific_addr;
 	IA_CSS_TRACE_1(PSYSAPI_DEVICE, INFO, "SPC prefetch: %d\n",
-		server_config->icache_prefetch_sp);
-	ia_css_cell_start_prefetch(config->ssid, SPC0, server_config->icache_prefetch_sp);
+		       server_config->icache_prefetch_sp);
+	ia_css_cell_start_prefetch(config->ssid, SPC0,
+				   server_config->icache_prefetch_sp);
 
 	for (i = 0; i < IA_CSS_N_PSYS_CMD_QUEUE_ID; i++) {
 		int retval;
 
 		do {
-			retval = ia_css_syscom_send_port_open(context, (unsigned int)i);
+			retval = ia_css_syscom_send_port_open(context,
+							      (unsigned int)i);
 		} while (retval == ERROR_BUSY);
 		verifexit(retval == 0, EINVAL);
 	}
@@ -155,7 +164,8 @@ struct ia_css_syscom_context *ia_css_psys_open(
 		int retval;
 
 		do {
-			retval = ia_css_syscom_recv_port_open(context, (unsigned int)i);
+			retval = ia_css_syscom_recv_port_open(context,
+							      (unsigned int)i);
 		} while (retval == ERROR_BUSY);
 		verifexit(retval == 0, EINVAL);
 	}
@@ -173,14 +183,16 @@ bool ia_css_psys_open_is_ready(
 	int retval = -1;
 	bool ready = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_open_is_ready(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO,
+		"ia_css_psys_open_is_ready(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
 	retval = 0;
 	ready = 1;
 EXIT:
 	if (retval != 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_open_is_ready failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_open_is_ready failed\n");
 	}
 	return ready;
 }
@@ -190,7 +202,8 @@ struct ia_css_syscom_context *ia_css_psys_close(
 	struct ia_css_syscom_context *context)
 {
 	/* Success: return NULL, Error: return context pointer value
-	 * Intention is to change return type to int (errno), see commented values.
+	 * Intention is to change return type to int (errno),
+	 * see commented values.
 	 */
 
 	unsigned int i;
@@ -213,7 +226,8 @@ struct ia_css_syscom_context *ia_css_psys_close(
 	if (ia_css_syscom_close(context) != 0)
 		return context; /* EBUSY */
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_close(): leave: OK\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO,
+		"ia_css_psys_close(): leave: OK\n");
 	return NULL;
 }
 
@@ -229,14 +243,16 @@ int ia_css_psys_release(
 	if (ia_css_syscom_release(context, force) != 0)
 		return EBUSY;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_release(): leave: OK\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO,
+		"ia_css_psys_release(): leave: OK\n");
 	return 0;
 }
 
 ia_css_psys_state_t ia_css_psys_check_state(
 	struct ia_css_syscom_context			*context)
 {
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_check_state(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_psys_check_state(): enter:\n");
 
 	NOT_USED(context);
 
@@ -252,10 +268,12 @@ bool ia_css_is_psys_cmd_queue_full(
 	int	num_tokens;
 	int				retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_is_psys_cmd_queue_full(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_is_psys_cmd_queue_full(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
-	num_tokens = ia_css_syscom_send_port_available(context, (unsigned int)id);
+	num_tokens = ia_css_syscom_send_port_available(context,
+						       (unsigned int)id);
 	verifexit(num_tokens >= 0, EINVAL);
 
 	is_full = (num_tokens == 0);
@@ -263,7 +281,8 @@ bool ia_css_is_psys_cmd_queue_full(
 EXIT:
 	if (retval != 0) {
 		is_full = true;
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_is_psys_cmd_queue_full failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_is_psys_cmd_queue_full failed\n");
 	}
 	return is_full;
 }
@@ -276,17 +295,20 @@ bool ia_css_is_psys_cmd_queue_not_full(
 	int	num_tokens;
 	int				retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_is_psys_cmd_queue_not_full(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_is_psys_cmd_queue_not_full(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
-	num_tokens = ia_css_syscom_send_port_available(context, (unsigned int)id);
+	num_tokens = ia_css_syscom_send_port_available(context,
+						       (unsigned int)id);
 	verifexit(num_tokens >= 0, EINVAL);
 
 	is_not_full = (num_tokens != 0);
 	retval = 0;
 EXIT:
 	if (retval != 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_is_psys_cmd_queue_not_full failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_is_psys_cmd_queue_not_full failed\n");
 	}
 	return is_not_full;
 }
@@ -300,16 +322,19 @@ bool ia_css_has_psys_cmd_queue_N_space(
 	int	num_tokens;
 	int				retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_has_psys_cmd_queue_N_space(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_has_psys_cmd_queue_N_space(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
-	num_tokens = ia_css_syscom_send_port_available(context, (unsigned int)id);
+	num_tokens = ia_css_syscom_send_port_available(context,
+						       (unsigned int)id);
 	verifexit(num_tokens >= 0, EINVAL);
 
 	has_N_space = ((unsigned int)num_tokens >= N);
 EXIT:
 	if (retval != 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_has_psys_cmd_queue_N_space failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_has_psys_cmd_queue_N_space failed\n");
 	}
 	return has_N_space;
 }
@@ -321,16 +346,19 @@ int ia_css_psys_cmd_queue_get_available_space(
 	int				N_space = -1;
 	int	num_tokens;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_cmd_queue_get_available_space(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_psys_cmd_queue_get_available_space(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
-	num_tokens = ia_css_syscom_send_port_available(context, (unsigned int)id);
+	num_tokens = ia_css_syscom_send_port_available(context,
+						       (unsigned int)id);
 	verifexit(num_tokens >= 0, EINVAL);
 
 	N_space = (int)(num_tokens);
 EXIT:
 	if (N_space < 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_cmd_queue_get_available_space failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_cmd_queue_get_available_space failed\n");
 	}
 	return N_space;
 }
@@ -341,11 +369,14 @@ bool ia_css_any_psys_event_queue_not_empty(
 	ia_css_psys_event_queue_ID_t	i;
 	bool	any_msg = false;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_any_psys_event_queue_not_empty(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_any_psys_event_queue_not_empty(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
-	for (i = (ia_css_psys_event_queue_ID_t)0; i < IA_CSS_N_PSYS_EVENT_QUEUE_ID; i++) {
-		any_msg = any_msg || ia_css_is_psys_event_queue_not_empty(context, i);
+	for (i = (ia_css_psys_event_queue_ID_t)0;
+		i < IA_CSS_N_PSYS_EVENT_QUEUE_ID; i++) {
+		any_msg =
+		    any_msg || ia_css_is_psys_event_queue_not_empty(context, i);
 	}
 
 EXIT:
@@ -360,10 +391,12 @@ bool ia_css_is_psys_event_queue_empty(
 	int	num_tokens;
 	int				retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_is_psys_event_queue_empty(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_is_psys_event_queue_empty(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
-	num_tokens = ia_css_syscom_recv_port_available(context, (unsigned int)id);
+	num_tokens = ia_css_syscom_recv_port_available(context,
+						       (unsigned int)id);
 	verifexit(num_tokens >= 0, EINVAL);
 
 	is_empty = (num_tokens == 0);
@@ -371,7 +404,8 @@ bool ia_css_is_psys_event_queue_empty(
 EXIT:
 	if (retval != 0) {
 		is_empty = true;
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_is_psys_event_queue_empty failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			       "ia_css_is_psys_event_queue_empty failed\n");
 	}
 	return is_empty;
 }
@@ -384,17 +418,20 @@ bool ia_css_is_psys_event_queue_not_empty(
 	int	num_tokens;
 	int				retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_is_psys_event_queue_not_empty(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_is_psys_event_queue_not_empty(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
-	num_tokens = ia_css_syscom_recv_port_available(context, (unsigned int)id);
+	num_tokens = ia_css_syscom_recv_port_available(context,
+			(unsigned int)id);
 	verifexit(num_tokens >= 0, EINVAL);
 
 	is_not_empty = (num_tokens != 0);
 	retval = 0;
 EXIT:
 	if (retval != 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_is_psys_event_queue_not_empty failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_is_psys_event_queue_not_empty failed\n");
 	}
 	return is_not_empty;
 }
@@ -408,17 +445,20 @@ bool ia_css_has_psys_event_queue_N_msgs(
 	int	num_tokens;
 	int				retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_has_psys_event_queue_N_msgs(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_has_psys_event_queue_N_msgs(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
-	num_tokens = ia_css_syscom_recv_port_available(context, (unsigned int)id);
+	num_tokens = ia_css_syscom_recv_port_available(context,
+						       (unsigned int)id);
 	verifexit(num_tokens >= 0, EINVAL);
 
 	has_N_msgs = ((unsigned int)num_tokens >= N);
 	retval = 0;
 EXIT:
 	if (retval != 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_has_psys_event_queue_N_msgs failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_has_psys_event_queue_N_msgs failed\n");
 	}
 	return has_N_msgs;
 }
@@ -430,16 +470,19 @@ int ia_css_psys_event_queue_get_available_msgs(
 	int				N_msgs = -1;
 	int	num_tokens;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_event_queue_get_available_msgs(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_psys_event_queue_get_available_msgs(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
-	num_tokens = ia_css_syscom_recv_port_available(context, (unsigned int)id);
+	num_tokens = ia_css_syscom_recv_port_available(context,
+						       (unsigned int)id);
 	verifexit(num_tokens >= 0, EINVAL);
 
 	N_msgs = (int)(num_tokens);
 EXIT:
 	if (N_msgs < 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_event_queue_get_available_msgs failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_event_queue_get_available_msgs failed\n");
 	}
 	return N_msgs;
 }
@@ -447,11 +490,12 @@ EXIT:
 int ia_css_psys_cmd_queue_send(
 	struct ia_css_syscom_context			*context,
 	ia_css_psys_cmd_queue_ID_t		id,
-	const void								*cmd_msg_buffer)
+	const void *cmd_msg_buffer)
 {
 	int	count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_cmd_queue_send(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_psys_cmd_queue_send(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
 	verifexit(context != NULL, EINVAL);
@@ -459,12 +503,14 @@ int ia_css_psys_cmd_queue_send(
 	verifexit(ia_css_is_psys_cmd_queue_not_full(context, id), EBUSY);
 	verifexit(cmd_msg_buffer != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_send_port_transfer(context, (unsigned int)id, cmd_msg_buffer) >= 0, EBUSY);
+	verifexit(ia_css_syscom_send_port_transfer(context, (unsigned int)id,
+			cmd_msg_buffer) >= 0, EBUSY);
 
 	count = 1;
 EXIT:
 	if (count == 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_cmd_queue_send failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_cmd_queue_send failed\n");
 	}
 	return count;
 }
@@ -472,24 +518,28 @@ EXIT:
 int ia_css_psys_cmd_queue_send_N(
 	struct ia_css_syscom_context			*context,
 	ia_css_psys_cmd_queue_ID_t		id,
-	const void								*cmd_msg_buffer,
+	const void *cmd_msg_buffer,
 	const unsigned int						N)
 {
-	struct ia_css_psys_cmd_s	*cmd_msg_buffer_loc = (struct ia_css_psys_cmd_s *)cmd_msg_buffer;
+	struct ia_css_psys_cmd_s *cmd_msg_buffer_loc =
+				     (struct ia_css_psys_cmd_s *)cmd_msg_buffer;
 	int	count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_cmd_queue_send_N(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_psys_cmd_queue_send_N(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
 	for (count = 0; count < (int)N; count++) {
-		int	count_loc = ia_css_psys_cmd_queue_send(context, id, (void *)(&cmd_msg_buffer_loc[count]));
+		int count_loc = ia_css_psys_cmd_queue_send(context, id,
+					(void *)(&cmd_msg_buffer_loc[count]));
 
 		verifexit(count_loc == 1, EINVAL);
 	}
 
 EXIT:
 	if ((unsigned int) count < N) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_cmd_queue_send_N failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_cmd_queue_send_N failed\n");
 	}
 	return count;
 }
@@ -497,23 +547,26 @@ EXIT:
 int ia_css_psys_event_queue_receive(
 	struct ia_css_syscom_context			*context,
 	ia_css_psys_event_queue_ID_t			id,
-	void									*event_msg_buffer)
+	void *event_msg_buffer)
 {
 	int	count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_event_queue_receive(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_psys_event_queue_receive(): enter:\n");
 
 	verifexit(context != NULL, EINVAL);
 	/* The ~empty check fails on send queues */
 	verifexit(ia_css_is_psys_event_queue_not_empty(context, id), EBUSY);
 	verifexit(event_msg_buffer != NULL, EINVAL);
 
-	verifexit(ia_css_syscom_recv_port_transfer(context, (unsigned int)id, event_msg_buffer) >= 0, EBUSY);
+	verifexit(ia_css_syscom_recv_port_transfer(context, (unsigned int)id,
+			event_msg_buffer) >= 0, EBUSY);
 
 	count = 1;
 EXIT:
 	if (count == 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_event_queue_receive failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_event_queue_receive failed\n");
 	}
 	return count;
 }
@@ -521,25 +574,28 @@ EXIT:
 int ia_css_psys_event_queue_receive_N(
 	struct ia_css_syscom_context			*context,
 	ia_css_psys_event_queue_ID_t		id,
-	void									*event_msg_buffer,
+	void *event_msg_buffer,
 	const unsigned int						N)
 {
 	struct ia_css_psys_event_s	*event_msg_buffer_loc;
 	int	count;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_event_queue_receive_N(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		       "ia_css_psys_event_queue_receive_N(): enter:\n");
 
 	event_msg_buffer_loc = (struct ia_css_psys_event_s *)event_msg_buffer;
 
 	for (count = 0; count < (int)N; count++) {
-		int	count_loc = ia_css_psys_event_queue_receive(context, id, (void *)(&event_msg_buffer_loc[count]));
+		int	count_loc = ia_css_psys_event_queue_receive(context, id,
+				    (void *)(&event_msg_buffer_loc[count]));
 
 		verifexit(count_loc == 1, EINVAL);
 	}
 
 EXIT:
 	if ((unsigned int) count < N) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_event_queue_receive_N failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_event_queue_receive_N failed\n");
 	}
 	return count;
 }
@@ -549,13 +605,15 @@ size_t ia_css_psys_get_size(
 {
 	size_t	size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_get_size(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		"ia_css_psys_get_size(): enter:\n");
 
 	verifexit(context != NULL, EINVAL);
 	/* How can I query the context ? */
 EXIT:
 	if (size == 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_size failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_get_size failed\n");
 	}
 	return size;
 }
@@ -566,7 +624,8 @@ unsigned int ia_css_psys_get_cmd_queue_count(
 	unsigned int	count = 0;
 	int			retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_get_cmd_queue_count(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		       "ia_css_psys_get_cmd_queue_count(): enter:\n");
 
 	verifexit(context != NULL, EINVAL);
 	/* How can I query the context ? */
@@ -575,7 +634,8 @@ unsigned int ia_css_psys_get_cmd_queue_count(
 	retval = 0;
 EXIT:
 	if (retval != 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_cmd_queue_count failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_get_cmd_queue_count failed\n");
 	}
 	return count;
 }
@@ -586,7 +646,8 @@ unsigned int ia_css_psys_get_event_queue_count(
 	unsigned int	count = 0;
 	int				retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_get_event_queue_count(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		       "ia_css_psys_get_event_queue_count(): enter:\n");
 
 	verifexit(context != NULL, EINVAL);
 	/* How can I query the context ? */
@@ -595,7 +656,8 @@ unsigned int ia_css_psys_get_event_queue_count(
 	retval = 0;
 EXIT:
 	if (retval != 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_event_queue_count failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_get_event_queue_count failed\n");
 	}
 	return count;
 }
@@ -606,7 +668,8 @@ size_t ia_css_psys_get_cmd_queue_size(
 {
 	size_t	queue_size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_get_cmd_queue_size(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		       "ia_css_psys_get_cmd_queue_size(): enter:\n");
 
 	verifexit(context != NULL, EINVAL);
 	/* How can I query the context ? */
@@ -614,7 +677,8 @@ size_t ia_css_psys_get_cmd_queue_size(
 	queue_size = ia_css_psys_cmd_queue_cfg[id].queue_size;
 EXIT:
 	if (queue_size == 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_cmd_queue_size failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_get_cmd_queue_size failed\n");
 	}
 	return queue_size;
 }
@@ -625,7 +689,8 @@ size_t ia_css_psys_get_event_queue_size(
 {
 	size_t	queue_size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_get_event_queue_size(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		       "ia_css_psys_get_event_queue_size(): enter:\n");
 
 	verifexit(context != NULL, EINVAL);
 	/* How can I query the context ? */
@@ -633,7 +698,8 @@ size_t ia_css_psys_get_event_queue_size(
 	queue_size = ia_css_psys_event_queue_cfg[id].queue_size;
 EXIT:
 	if (queue_size == 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_event_queue_size failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_get_event_queue_size failed\n");
 	}
 	return queue_size;
 }
@@ -644,7 +710,8 @@ size_t ia_css_psys_get_cmd_msg_size(
 {
 	size_t	msg_size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_get_cmd_msg_size(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		       "ia_css_psys_get_cmd_msg_size(): enter:\n");
 
 	verifexit(context != NULL, EINVAL);
 	/* How can I query the context ? */
@@ -652,7 +719,8 @@ size_t ia_css_psys_get_cmd_msg_size(
 	msg_size = ia_css_psys_cmd_queue_cfg[id].token_size;
 EXIT:
 	if (msg_size == 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_cmd_msg_size failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_get_cmd_msg_size failed\n");
 	}
 	return msg_size;
 }
@@ -663,7 +731,8 @@ size_t ia_css_psys_get_event_msg_size(
 {
 	size_t	msg_size = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE, "ia_css_psys_get_event_msg_size(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, VERBOSE,
+		       "ia_css_psys_get_event_msg_size(): enter:\n");
 
 	verifexit(context != NULL, EINVAL);
 	/* How can I query the context ? */
@@ -671,7 +740,8 @@ size_t ia_css_psys_get_event_msg_size(
 	msg_size = ia_css_psys_event_queue_cfg[id].token_size;
 EXIT:
 	if (msg_size == 0) {
-		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR, "ia_css_psys_get_cmd_msg_size failed\n");
+		IA_CSS_TRACE_0(PSYSAPI_DEVICE, ERROR,
+			"ia_css_psys_get_cmd_msg_size failed\n");
 	}
 	return msg_size;
 }

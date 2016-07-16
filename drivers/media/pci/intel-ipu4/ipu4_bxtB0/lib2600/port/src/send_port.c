@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,7 +29,8 @@
 #endif
 
 void
-send_port_open(struct send_port *p, const struct sys_queue *q, const struct port_env *env)
+send_port_open(struct send_port *p, const struct sys_queue *q,
+	       const struct port_env *env)
 {
 	p->mmid		= env->mmid;
 	p->ssid		= env->ssid;

@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -88,7 +88,8 @@ ia_css_cell_set_start_bit(unsigned int ssid, unsigned int cell_id)
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cell_set_run_bit(unsigned int ssid, unsigned int cell_id, unsigned int value)
+ia_css_cell_set_run_bit(unsigned int ssid, unsigned int cell_id,
+			unsigned int value)
 {
 	unsigned int reg;
 
@@ -103,7 +104,8 @@ ia_css_cell_start(unsigned int ssid, unsigned int cell_id)
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cell_start_prefetch(unsigned int ssid, unsigned int cell_id, bool prefetch)
+ia_css_cell_start_prefetch(unsigned int ssid, unsigned int cell_id,
+			   bool prefetch)
 {
 	unsigned int reg = 0;
 
@@ -153,8 +155,9 @@ ia_css_cell_set_master_segment_info_bits(unsigned int ssid, unsigned int cell,
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cell_set_master_segment_info_override_bits(unsigned int ssid, unsigned int cell,
-	unsigned int master, unsigned int segment, unsigned int value)
+ia_css_cell_set_master_segment_info_override_bits(unsigned int ssid,
+		unsigned int cell,
+		unsigned int master, unsigned int segment, unsigned int value)
 {
 	unsigned int addr;
 
@@ -169,8 +172,9 @@ ia_css_cell_set_master_segment_info_override_bits(unsigned int ssid, unsigned in
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cell_set_master_segment_base_address(unsigned int ssid, unsigned int cell,
-	unsigned int master, unsigned int segment, unsigned int value)
+ia_css_cell_set_master_segment_base_address(unsigned int ssid,
+		unsigned int cell,
+		unsigned int master, unsigned int segment, unsigned int value)
 
 {
 	unsigned int addr;

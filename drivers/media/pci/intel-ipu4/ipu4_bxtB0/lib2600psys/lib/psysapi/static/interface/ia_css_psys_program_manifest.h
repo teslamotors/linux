@@ -1,6 +1,6 @@
 /*
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,18 +19,19 @@
 
 /** @file ia_css_psys_program_manifest.h
  *
- * Define the methods on the program manifest object that are not part of a single interface
+ * Define the methods on the program manifest object that are not part of a
+ * single interface
  */
 
 #include <ia_css_psys_manifest_types.h>
 
-#include <type_support.h>						/* uint8_t */
+#include <type_support.h>			/* uint8_t */
 
 #include <ia_css_psys_program_manifest.sim.h>
 
 #include <ia_css_psys_program_manifest.hsys.user.h>
 
-#include <ia_css_kernel_bitmap.h>				/* ia_css_kernel_bitmap_t */
+#include <ia_css_kernel_bitmap.h>		/* ia_css_kernel_bitmap_t */
 
 /*
  * Resources needs
@@ -78,7 +79,8 @@ extern int ia_css_program_manifest_set_program_ID(
 	ia_css_program_manifest_t			*manifest,
 	ia_css_program_ID_t id);
 
-/*! Get the (pointer to) the program group manifest parent of the program manifest object
+/*! Get the (pointer to) the program group manifest parent of the program
+ * manifest object
 
  @param	manifest[in]			program manifest object
 
@@ -87,10 +89,12 @@ extern int ia_css_program_manifest_set_program_ID(
 extern ia_css_program_group_manifest_t *ia_css_program_manifest_get_parent(
 	const ia_css_program_manifest_t			*manifest);
 
-/*! Set the (pointer to) the program group manifest parent of the program manifest object
+/*! Set the (pointer to) the program group manifest parent of the program
+ * manifest object
 
  @param	manifest[in]			program manifest object
- @param	program_offset[in]		this program's offset from program_group_manifest's base address.
+ @param	program_offset[in]		this program's offset from
+					program_group_manifest's base address.
 
  @return < 0 on invalid manifest argument
  */
@@ -102,8 +106,9 @@ extern int ia_css_program_manifest_set_parent_offset(
 
  @param	manifest[in]			program manifest object
 
- @return program type, limit value (IA_CSS_N_PROGRAM_TYPES) on invalid manifest argument
- */
+ @return program type, limit value (IA_CSS_N_PROGRAM_TYPES) on invalid manifest
+	argument
+*/
 extern ia_css_program_type_t ia_css_program_manifest_get_type(
 	const ia_css_program_manifest_t			*manifest);
 
@@ -236,7 +241,8 @@ extern int ia_css_program_manifest_set_kernel_bitmap(
 	ia_css_program_manifest_t			*manifest,
 	const ia_css_kernel_bitmap_t			kernel_bitmap);
 
-/*! Get the number of programs this programs depends on from the program group manifest object
+/*! Get the number of programs this programs depends on from the program group
+ * manifest object
 
  @param	manifest[in]			program manifest object
 
@@ -250,8 +256,9 @@ extern uint8_t ia_css_program_manifest_get_program_dependency_count(
 
  @param	manifest[in]			program manifest object
 
- @return program dependency, IA_CSS_PROGRAM_INVALID_DEPENDENCY on invalid arguments
- */
+ @return program dependency,
+	IA_CSS_PROGRAM_INVALID_DEPENDENCY on invalid arguments
+	*/
 extern uint8_t ia_css_program_manifest_get_program_dependency(
 	const ia_css_program_manifest_t			*manifest,
 	const unsigned int				index);
@@ -268,7 +275,8 @@ extern int ia_css_program_manifest_set_program_dependency(
 	const uint8_t					program_dependency,
 	const unsigned int				index);
 
-/*! Get the number of terminals this programs depends on from the program group manifest object
+/*! Get the number of terminals this programs depends on from the program group
+ * manifest object
 
  @param	manifest[in]			program manifest object
 

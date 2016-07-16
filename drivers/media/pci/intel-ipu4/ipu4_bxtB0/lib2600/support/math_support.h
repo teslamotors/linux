@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -53,9 +53,11 @@
 
 /* The ORIG_BITS th bit is the sign bit */
 /* Sign extends a ORIG_BITS bits long signed number to a 64-bit signed number */
-/* By type casting it can relimited to any valid type-size (32-bit signed or 16-bit or 8-bit) */
+/* By type casting it can relimited to any valid type-size
+ * (32-bit signed or 16-bit or 8-bit)
+ */
 /* By masking it can be transformed to any arbitrary bit size */
-#define SIGN_EXTEND(VAL, ORIG_BITS)	((~(((VAL)&(1ULL<<((ORIG_BITS)-1)))-1))|(VAL))
+#define SIGN_EXTEND(VAL, ORIG_BITS) ((~(((VAL)&(1ULL<<((ORIG_BITS)-1)))-1))|(VAL))
 
 /* for preprocessor and array sizing use MIN and MAX
    otherwise use min and max */
@@ -70,7 +72,9 @@
 #define CEIL_DIV(a, b)		((b) ? (((a) + (b) - 1) / (b)) : 0)
 /* Align a to the upper multiple of b */
 #define CEIL_MUL(a, b)		(CEIL_DIV(a, b) * (b))
-/* Align a to the upper multiple of b - fast implementation for cases when b=pow(2,n) */
+/* Align a to the upper multiple of b - fast implementation
+ * for cases when b=pow(2,n)
+ */
 #define CEIL_MUL2(a, b)		(((a) + (b) - 1) & ~((b) - 1))
 /* integer round-up division of a with pow(2,b) */
 #define CEIL_SHIFT(a, b)	(((a) + (1UL << (b)) - 1) >> (b))
@@ -123,7 +127,8 @@ STORAGE_CLASS_INLINE unsigned int umin(unsigned int a, unsigned int b)
 	return MIN(a, b);
 }
 
-STORAGE_CLASS_INLINE unsigned int uclip(unsigned int a, unsigned int b, unsigned int c)
+STORAGE_CLASS_INLINE unsigned int uclip(unsigned int a, unsigned int b,
+					unsigned int c)
 {
 	return umin(umax(a, b), c);
 }
@@ -163,12 +168,14 @@ STORAGE_CLASS_INLINE unsigned int uabs_dif(unsigned int a, unsigned int b)
 	return ABS_DIF(a, b);
 }
 
-STORAGE_CLASS_INLINE unsigned int round_half_down_div(unsigned int a, unsigned int b)
+STORAGE_CLASS_INLINE unsigned int round_half_down_div(unsigned int a,
+		unsigned int b)
 {
 	return ROUND_HALF_DOWN_DIV(a, b);
 }
 
-STORAGE_CLASS_INLINE unsigned int round_half_down_mul(unsigned int a, unsigned int b)
+STORAGE_CLASS_INLINE unsigned int round_half_down_mul(unsigned int a,
+		unsigned int b)
 {
 	return ROUND_HALF_DOWN_MUL(a, b);
 }

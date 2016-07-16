@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,7 +23,8 @@ unsigned int sys_queue_buf_size(unsigned int size, unsigned int token_size)
 }
 
 void
-sys_queue_init(struct sys_queue *q, unsigned int size, unsigned int token_size, struct sys_queue_res *res)
+sys_queue_init(struct sys_queue *q, unsigned int size, unsigned int token_size,
+	       struct sys_queue_res *res)
 {
 	unsigned int buf_size;
 

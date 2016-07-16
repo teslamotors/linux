@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,34 +25,43 @@ STORAGE_CLASS_INLINE unsigned int
 ipu_device_cell_num_memories(const unsigned int cell_id);
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_memory_size(const unsigned int cell_id, const unsigned int mem_id);
+ipu_device_cell_memory_size(const unsigned int cell_id,
+			    const unsigned int mem_id);
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_memory_address(const unsigned int cell_id, const unsigned int mem_id);
+ipu_device_cell_memory_address(const unsigned int cell_id,
+			       const unsigned int mem_id);
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_databus_memory_address(const unsigned int cell_id, const unsigned int mem_id);
+ipu_device_cell_databus_memory_address(const unsigned int cell_id,
+				       const unsigned int mem_id);
 
 STORAGE_CLASS_INLINE unsigned int
 ipu_device_cell_num_masters(const unsigned int cell_id);
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_master_segment_bits(const unsigned int cell_id, const unsigned int master_id);
+ipu_device_cell_master_segment_bits(const unsigned int cell_id,
+				    const unsigned int master_id);
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_master_num_segments(const unsigned int cell_id, const unsigned int master_id);
+ipu_device_cell_master_num_segments(const unsigned int cell_id,
+				    const unsigned int master_id);
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_master_segment_size(const unsigned int cell_id, const unsigned int master_id);
+ipu_device_cell_master_segment_size(const unsigned int cell_id,
+				    const unsigned int master_id);
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_master_stride(const unsigned int cell_id, const unsigned int master_id);
+ipu_device_cell_master_stride(const unsigned int cell_id,
+			      const unsigned int master_id);
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_master_base_reg(const unsigned int cell_id, const unsigned int master_id);
+ipu_device_cell_master_base_reg(const unsigned int cell_id,
+				const unsigned int master_id);
 
 STORAGE_CLASS_INLINE unsigned int
-ipu_device_cell_master_info_reg(const unsigned int cell_id, const unsigned int master_id);
+ipu_device_cell_master_info_reg(const unsigned int cell_id,
+				const unsigned int master_id);
 
 STORAGE_CLASS_INLINE unsigned int
 ipu_device_cell_icache_align(unsigned int cell_id);

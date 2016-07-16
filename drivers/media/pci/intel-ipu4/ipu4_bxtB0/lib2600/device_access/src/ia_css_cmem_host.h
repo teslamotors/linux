@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,7 +31,8 @@ ia_css_cmem_load_32(unsigned int ssid, ia_css_cmem_address_t address)
 }
 
 STORAGE_CLASS_INLINE uint32_t
-ia_css_cond_cmem_load_32(bool cond, unsigned int ssid, ia_css_cmem_address_t address)
+ia_css_cond_cmem_load_32(bool cond, unsigned int ssid,
+			 ia_css_cmem_address_t address)
 {
 	/* Address has to be word aligned */
 	assert(0 == address % 4);
@@ -43,7 +44,8 @@ ia_css_cond_cmem_load_32(bool cond, unsigned int ssid, ia_css_cmem_address_t add
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cmem_store_32(unsigned int ssid, ia_css_cmem_address_t address, uint32_t data)
+ia_css_cmem_store_32(unsigned int ssid, ia_css_cmem_address_t address,
+		     uint32_t data)
 {
 	/* Address has to be word aligned */
 	assert(0 == address % 4);
@@ -51,7 +53,8 @@ ia_css_cmem_store_32(unsigned int ssid, ia_css_cmem_address_t address, uint32_t 
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cond_cmem_store_32(bool cond, unsigned int ssid, ia_css_cmem_address_t address, uint32_t data)
+ia_css_cond_cmem_store_32(bool cond, unsigned int ssid,
+			  ia_css_cmem_address_t address, uint32_t data)
 {
 	/* Address has to be word aligned */
 	assert(0 == address % 4);
@@ -60,13 +63,15 @@ ia_css_cond_cmem_store_32(bool cond, unsigned int ssid, ia_css_cmem_address_t ad
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cmem_load(unsigned int ssid, ia_css_cmem_address_t address, void *data, unsigned int size)
+ia_css_cmem_load(unsigned int ssid, ia_css_cmem_address_t address, void *data,
+		 unsigned int size)
 {
 	vied_subsystem_load(ssid, address, data, size);
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cmem_store(unsigned int ssid, ia_css_cmem_address_t address, const void *data, unsigned int size)
+ia_css_cmem_store(unsigned int ssid, ia_css_cmem_address_t address,
+		  const void *data, unsigned int size)
 {
 	uint32_t *data32 = (uint32_t *)data;
 	uint32_t end = address + size;
@@ -83,7 +88,8 @@ ia_css_cmem_store(unsigned int ssid, ia_css_cmem_address_t address, const void *
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cmem_zero(unsigned int ssid, ia_css_cmem_address_t address, unsigned int size)
+ia_css_cmem_zero(unsigned int ssid, ia_css_cmem_address_t address,
+		 unsigned int size)
 {
 	uint32_t end = address + size;
 

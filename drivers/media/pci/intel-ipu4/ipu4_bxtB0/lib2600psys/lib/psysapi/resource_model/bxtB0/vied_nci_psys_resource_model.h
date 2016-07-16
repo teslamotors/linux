@@ -1,6 +1,6 @@
 /*
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -231,7 +231,8 @@ struct vied_nci_resource_spec_int_mem_s {
 	vied_nci_resource_size_t	offset;
 };
 
-typedef struct vied_nci_resource_spec_int_mem_s vied_nci_resource_spec_int_mem_t;
+typedef struct vied_nci_resource_spec_int_mem_s
+	vied_nci_resource_spec_int_mem_t;
 
 /* resource spec for external (remote) memory */
 struct vied_nci_resource_spec_ext_mem_s {
@@ -240,7 +241,8 @@ struct vied_nci_resource_spec_ext_mem_s {
 	vied_nci_resource_size_t	offset;
 };
 
-typedef struct vied_nci_resource_spec_ext_mem_s vied_nci_resource_spec_ext_mem_t;
+typedef struct vied_nci_resource_spec_ext_mem_s
+	vied_nci_resource_spec_ext_mem_t;
 
 /* resource spec for device channel */
 struct vied_nci_resource_spec_dev_chn_s {
@@ -249,7 +251,8 @@ struct vied_nci_resource_spec_dev_chn_s {
 	vied_nci_resource_size_t	offset;
 };
 
-typedef struct vied_nci_resource_spec_dev_chn_s vied_nci_resource_spec_dev_chn_t;
+typedef struct vied_nci_resource_spec_dev_chn_s
+	vied_nci_resource_spec_dev_chn_t;
 
 /* resource spec for all contigious resources */
 struct vied_nci_resource_spec_s {
@@ -263,8 +266,10 @@ typedef struct vied_nci_resource_spec_s vied_nci_resource_spec_t;
 extern const vied_nci_cell_type_ID_t vied_nci_cell_type[VIED_NCI_N_CELL_ID];
 extern const vied_nci_mem_type_ID_t vied_nci_mem_type[VIED_NCI_N_MEM_ID];
 extern const uint16_t vied_nci_N_cell_mem[VIED_NCI_N_CELL_TYPE_ID];
-extern const vied_nci_mem_type_ID_t vied_nci_cell_mem_type[VIED_NCI_N_CELL_TYPE_ID][VIED_NCI_N_MEM_TYPE_ID];
-extern const vied_nci_mem_ID_t vied_nci_cell_mem[VIED_NCI_N_CELL_ID][VIED_NCI_N_MEM_TYPE_ID];
+extern const vied_nci_mem_type_ID_t
+	vied_nci_cell_mem_type[VIED_NCI_N_CELL_TYPE_ID][VIED_NCI_N_MEM_TYPE_ID];
+extern const vied_nci_mem_ID_t
+	vied_nci_cell_mem[VIED_NCI_N_CELL_ID][VIED_NCI_N_MEM_TYPE_ID];
 extern const uint16_t vied_nci_mem_size[VIED_NCI_N_MEM_ID];
 extern const uint16_t vied_nci_mem_element_size[VIED_NCI_N_MEM_TYPE_ID];
 extern const uint16_t vied_nci_mem_word_size[VIED_NCI_N_DATA_MEM_TYPE_ID];

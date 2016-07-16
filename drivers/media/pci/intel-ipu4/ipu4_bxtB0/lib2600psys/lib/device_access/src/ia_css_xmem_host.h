@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -43,19 +43,22 @@ ia_css_xmem_load_32(unsigned int mmid, ia_css_xmem_address_t address)
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_xmem_load(unsigned int mmid, ia_css_xmem_address_t address, void *data, unsigned int size)
+ia_css_xmem_load(unsigned int mmid, ia_css_xmem_address_t address, void *data,
+		 unsigned int size)
 {
 	shared_memory_load(mmid, address, data, size);
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_xmem_store_8(unsigned int mmid, ia_css_xmem_address_t address, uint8_t value)
+ia_css_xmem_store_8(unsigned int mmid, ia_css_xmem_address_t address,
+		    uint8_t value)
 {
 	shared_memory_store_8(mmid, address, value);
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_xmem_store_16(unsigned int mmid, ia_css_xmem_address_t address, uint16_t value)
+ia_css_xmem_store_16(unsigned int mmid, ia_css_xmem_address_t address,
+		     uint16_t value)
 {
 	/* Address has to be half-word aligned */
 	assert(0 == (uintptr_t) address % 2);
@@ -63,7 +66,8 @@ ia_css_xmem_store_16(unsigned int mmid, ia_css_xmem_address_t address, uint16_t 
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_xmem_store_32(unsigned int mmid, ia_css_xmem_address_t address, uint32_t value)
+ia_css_xmem_store_32(unsigned int mmid, ia_css_xmem_address_t address,
+		     uint32_t value)
 {
 	/* Address has to be word aligned */
 	assert(0 == (uintptr_t) address % 4);
@@ -71,7 +75,8 @@ ia_css_xmem_store_32(unsigned int mmid, ia_css_xmem_address_t address, uint32_t 
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_xmem_store(unsigned int mmid, ia_css_xmem_address_t address, const void *data, unsigned int bytes)
+ia_css_xmem_store(unsigned int mmid, ia_css_xmem_address_t address,
+		  const void *data, unsigned int bytes)
 {
 	shared_memory_store(mmid, address, data, bytes);
 }

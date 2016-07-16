@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,16 +29,20 @@ STORAGE_CLASS_INLINE uint32_t
 ia_css_cmem_load_32(unsigned int ssid, ia_css_cmem_address_t address);
 
 STORAGE_CLASS_INLINE void
-ia_css_cmem_store_32(unsigned int ssid, ia_css_cmem_address_t address, uint32_t value);
+ia_css_cmem_store_32(unsigned int ssid, ia_css_cmem_address_t address,
+		     uint32_t value);
 
 STORAGE_CLASS_INLINE void
-ia_css_cmem_load(unsigned int ssid, ia_css_cmem_address_t address, void *data, unsigned int size);
+ia_css_cmem_load(unsigned int ssid, ia_css_cmem_address_t address, void *data,
+		 unsigned int size);
 
 STORAGE_CLASS_INLINE void
-ia_css_cmem_store(unsigned int ssid, ia_css_cmem_address_t address, const void *data, unsigned int size);
+ia_css_cmem_store(unsigned int ssid, ia_css_cmem_address_t address,
+		  const void *data, unsigned int size);
 
 STORAGE_CLASS_INLINE void
-ia_css_cmem_zero(unsigned int ssid, ia_css_cmem_address_t address, unsigned int size);
+ia_css_cmem_zero(unsigned int ssid, ia_css_cmem_address_t address,
+		 unsigned int size);
 
 STORAGE_CLASS_INLINE ia_css_cmem_address_t
 ia_css_cmem_get_cmem_addr_from_dmem(unsigned int base_addr, void *p);

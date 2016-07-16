@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -823,7 +823,8 @@ int ia_css_isys_proxy_handle_write_response(
 	int retval = 0;
 	int packets;
 
-	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_PROXY_HANDLE_WRITE_RESPONSE\n");
+	IA_CSS_TRACE_0(ISYSAPI, VERBOSE,
+		       "ENTRY IA_CSS_ISYS_PROXY_HANDLE_WRITE_RESPONSE\n");
 	verifret(received_response != NULL, EFAULT);
 
 	packets = ia_css_syscom_recv_port_available(ctx->sys, 0);
@@ -839,7 +840,8 @@ int ia_css_isys_proxy_handle_write_response(
 	retval = ia_css_isys_extract_proxy_response(&token, received_response);
 	verifret(retval == 0, retval);
 
-	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "LEAVE IA_CSS_ISYS_PROXY_HANDLE_WRITE_RESPONSE\n");
+	IA_CSS_TRACE_0(ISYSAPI, VERBOSE,
+		       "LEAVE IA_CSS_ISYS_PROXY_HANDLE_WRITE_RESPONSE\n");
 
 	return 0;
 }

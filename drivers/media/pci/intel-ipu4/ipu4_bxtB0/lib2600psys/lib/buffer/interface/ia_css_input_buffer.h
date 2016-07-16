@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2016, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -43,7 +43,8 @@
 
 typedef struct ia_css_buffer_s *ia_css_input_buffer; /* input buffer handle */
 typedef void *ia_css_input_buffer_cpu_address; /* CPU virtual address */
-typedef ia_css_buffer_address    ia_css_input_buffer_css_address; /* CSS virtual address */
+/* CSS virtual address */
+typedef ia_css_buffer_address ia_css_input_buffer_css_address;
 
 #endif /* __IA_CSS_INPUT_BUFFER_H__ */
 
