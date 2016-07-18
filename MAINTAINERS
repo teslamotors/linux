@@ -11572,6 +11572,7 @@ F:	drivers/char/rpmb/*
 F:	include/uapi/linux/rpmb.h
 F:	include/linux/rpmb.h
 F:	Documentation/ABI/testing/sysfs-class-rpmb
+F:	Documentation/rpmb.rst
 F:	tools/rpmb/
 
 RTL2830 MEDIA DRIVER
