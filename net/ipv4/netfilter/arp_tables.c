@@ -363,11 +363,12 @@ static inline bool unconditional(const struct arpt_entry *e)
 }
 
 static bool find_jump_target(const struct xt_table_info *t,
+			     const void *entry0,
 			     const struct arpt_entry *target)
 {
 	struct arpt_entry *iter;
 
-	xt_entry_foreach(iter, t->entries, t->size) {
+	xt_entry_foreach(iter, entry0, t->size) {
 		 if (iter == target)
 			return true;
 	}
@@ -469,7 +470,7 @@ static int mark_source_chains(const struct xt_table_info *newinfo,
 						 pos, newpos);
 					e = (struct arpt_entry *)
 						(entry0 + newpos);
-					if (!find_jump_target(newinfo, e))
+					if (!find_jump_target(newinfo, entry0, e))
 						return 0;
 				} else {
 					/* ... this is a fallthru */
