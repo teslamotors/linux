@@ -803,6 +803,9 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 					  struct intel_ipu4_psys_kcmd *kcmd,
 					  int error)
 {
+	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority,
+		ia_css_process_group_get_program_group_ID(kcmd->kpg->pg));
+
 	if (kcmd->state == KCMD_STATE_RUNNING) {
 		intel_ipu4_psys_free_resources(
 			&kcmd->resource_alloc,
@@ -824,7 +827,6 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 	kcmd->ev.id = kcmd->id;
 	kcmd->ev.issue_id = kcmd->issue_id;
 	kcmd->ev.error = error;
-	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority);
 
 	if (kcmd->constraint.min_freq)
 		intel_ipu4_buttress_remove_psys_constraint(psys->adev->isp,
@@ -878,8 +880,6 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	 */
 	int ret;
 
-	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority);
-
 	if (early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
 		memcpy(kcmd->pg_user, kcmd->kpg->pg, kcmd->kpg->pg_size);
 
@@ -899,6 +899,10 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	ret = -ia_css_process_group_disown(kcmd->kpg->pg);
 	if (ret)
 		goto error;
+
+	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority,
+		ia_css_process_group_get_program_group_ID(kcmd->kpg->pg));
+
 	switch (kcmd->state) {
 	case KCMD_STATE_RUNNING:
 		psys->active_kcmds++;

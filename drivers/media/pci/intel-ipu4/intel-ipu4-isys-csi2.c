@@ -836,7 +836,7 @@ static void intel_ipu4_isys_csi2_sof_event(struct intel_ipu4_isys_csi2 *csi2)
 		atomic_inc_return(&ip->sequence) - 1;
 	spin_unlock_irqrestore(&csi2->isys->lock, flags);
 
-	trace_ipu4_sof_seqid(ev.u.frame_sync.frame_sequence);
+	trace_ipu4_sof_seqid(ev.u.frame_sync.frame_sequence, csi2->index, 0);
 	dev_dbg(&csi2->isys->adev->dev, "%s csi2-%i sequence %i\n", __func__,
 		csi2->index, ev.u.frame_sync.frame_sequence);
 	v4l2_event_queue(vdev, &ev);

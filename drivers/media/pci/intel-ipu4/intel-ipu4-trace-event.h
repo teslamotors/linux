@@ -20,15 +20,21 @@
 #include <linux/tracepoint.h>
 
 TRACE_EVENT(ipu4_sof_seqid,
-		TP_PROTO(unsigned int seqid),
-		TP_ARGS(seqid),
+		TP_PROTO(unsigned int seqid, unsigned int csiport,
+			unsigned int csivc),
+		TP_ARGS(seqid, csiport, csivc),
 		TP_STRUCT__entry(
 			__field(unsigned int, seqid)
+			__field(unsigned int, csiport)
+			__field(unsigned int, csivc)
 		),
 		TP_fast_assign(
 			__entry->seqid = seqid;
+			__entry->csiport = csiport;
+			__entry->csivc = csivc;
 		),
-		TP_printk("seqid<%u>", __entry->seqid)
+		TP_printk("seqid<%u>,csiport<%u>,csivc<%u>", __entry->seqid,
+			__entry->csiport, __entry->csivc)
 );
 
 TRACE_EVENT(ipu4_perf_reg,
@@ -47,23 +53,26 @@ TRACE_EVENT(ipu4_perf_reg,
 
 TRACE_EVENT(ipu4_pg_kcmd,
 		TP_PROTO(const char *func, unsigned int id,
-			unsigned long long issue_id, unsigned int pri),
-		TP_ARGS(func, id, issue_id, pri),
+			unsigned long long issue_id, unsigned int pri,
+			unsigned int pg_id),
+		TP_ARGS(func, id, issue_id, pri, pg_id),
 		TP_STRUCT__entry(
 			__field(const char *, func)
 			__field(unsigned int, id)
 			__field(unsigned long long, issue_id)
 			__field(unsigned int, pri)
+			__field(unsigned int, pg_id)
 		),
 		TP_fast_assign(
 			__entry->func = func;
 			__entry->id = id;
 			__entry->issue_id = issue_id;
 			__entry->pri = pri;
+			__entry->pri = pg_id;
 		),
-		TP_printk("pg-kcmd: func=%s,id=%u,issue_id=0x%llx,pri=%u",
-			__entry->func, __entry->id,
-			__entry->issue_id, __entry->pri)
+		TP_printk("pg-kcmd: func=%s,id=%u,issue_id=0x%llx,pri=%u,pg_id=%d",
+			__entry->func, __entry->id, __entry->issue_id,
+			__entry->pri, __entry->pg_id)
 );
 
 #endif
