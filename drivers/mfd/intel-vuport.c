@@ -31,11 +31,15 @@ static struct property_entry reg_properties[] = {
 	{ },
 };
 
+static const struct property_set reg_properties_pset = {
+	.properties = reg_properties,
+};
+
 static const struct mfd_cell intel_vuport_mfd_cells[] = {
 	{ .name = "extcon-usb-gpio", },
 	{
 		.name = "reg-fixed-voltage",
-		.properties = reg_properties,
+		.pset = &reg_properties_pset,
 	},
 	{ .name = "intel-mux-gpio", },
 };
