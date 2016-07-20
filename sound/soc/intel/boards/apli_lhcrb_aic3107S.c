@@ -75,6 +75,10 @@ static const struct snd_kcontrol_new apli_controls[] = {
 static const struct snd_soc_dapm_widget apli_widgets[] = {
 	SND_SOC_DAPM_SPK("SSP1 Speaker", NULL),
 	SND_SOC_DAPM_MIC("SSP1 Mic", NULL),
+	SND_SOC_DAPM_SPK("SSP2 Speaker", NULL),
+	SND_SOC_DAPM_MIC("SSP2 Mic", NULL),
+	SND_SOC_DAPM_SPK("SSP4 Speaker", NULL),
+	SND_SOC_DAPM_MIC("SSP4 Mic", NULL),
 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
 	SND_SOC_DAPM_LINE("Line In", NULL),
