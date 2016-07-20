@@ -1503,6 +1503,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 	} else {
 		close_streaming_firmware(av);
 		av->ip.stream_id = 0;
+		av->ip.vc = 0;
 	}
 
 	if (state)
@@ -1620,6 +1621,7 @@ int intel_ipu4_isys_video_init(struct intel_ipu4_isys_video *av,
 	spin_lock_init(&av->ip.short_packet_queue_lock);
 	av->ip.isys = av->isys;
 	av->ip.stream_id = 0;
+	av->ip.vc = 0;
 
 	if (pad_flags & MEDIA_PAD_FL_SINK) {
 		/* data_offset is available only for multi-plane buffers */
