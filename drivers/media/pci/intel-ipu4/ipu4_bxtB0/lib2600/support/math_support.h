@@ -182,8 +182,10 @@ STORAGE_CLASS_INLINE unsigned int round_half_down_mul(unsigned int a,
 
 STORAGE_CLASS_INLINE unsigned int ceil_pow2(uint32_t a)
 {
+	unsigned int retval = 0;
+
 	if (IS_POWER2(a)) {
-		return (unsigned int)a;
+		retval =  (unsigned int)a;
 	} else {
 		unsigned int v = a;
 
@@ -192,8 +194,9 @@ STORAGE_CLASS_INLINE unsigned int ceil_pow2(uint32_t a)
 		v |= v>>4;
 		v |= v>>8;
 		v |= v>>16;
-		return (unsigned int)(v+1);
+		retval =  (unsigned int)(v+1);
 	}
+	return retval;
 }
 
 STORAGE_CLASS_INLINE unsigned int floor_log2(uint32_t a)

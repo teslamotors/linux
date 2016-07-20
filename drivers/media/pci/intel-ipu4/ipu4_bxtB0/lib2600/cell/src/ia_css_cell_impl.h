@@ -27,38 +27,49 @@
 STORAGE_CLASS_INLINE unsigned int
 ia_css_cell_regs_addr(unsigned int cell_id)
 {
-	return ipu_device_cell_memory_address(cell_id, 0); /* mem_id 0 is for registers */
+	 /* mem_id 0 is for registers */
+	return ipu_device_cell_memory_address(cell_id, 0);
 }
 
 STORAGE_CLASS_INLINE unsigned int
 ia_css_cell_dmem_addr(unsigned int cell_id)
 {
-	return ipu_device_cell_memory_address(cell_id, 1); /* mem_id 1 is for DMEM */
+	/* mem_id 1 is for DMEM */
+	return ipu_device_cell_memory_address(cell_id, 1);
 }
 
 STORAGE_CLASS_INLINE void
 ia_css_cell_mem_store_32(unsigned int ssid, unsigned int cell_id,
 	unsigned int mem_id, unsigned int addr, unsigned int value)
 {
-	ia_css_cmem_store_32(ssid, ipu_device_cell_memory_address(cell_id, mem_id) + addr, value);
+	ia_css_cmem_store_32(
+		ssid, ipu_device_cell_memory_address(
+			cell_id, mem_id) + addr, value);
 }
 
 STORAGE_CLASS_INLINE unsigned int
-ia_css_cell_mem_load_32(unsigned int ssid, unsigned int cell_id, unsigned int mem_id, unsigned int addr)
+ia_css_cell_mem_load_32(unsigned int ssid, unsigned int cell_id,
+			unsigned int mem_id, unsigned int addr)
 {
-	return ia_css_cmem_load_32(ssid, ipu_device_cell_memory_address(cell_id, mem_id) + addr);
+	return ia_css_cmem_load_32(
+		ssid, ipu_device_cell_memory_address(cell_id, mem_id) + addr);
 }
 
 STORAGE_CLASS_INLINE unsigned int
 ia_css_cell_get_stat_ctrl(unsigned int ssid, unsigned int cell_id)
 {
-	return ia_css_cmem_load_32(ssid, ia_css_cell_regs_addr(cell_id) + IPU_DEVICE_CELL_STAT_CTRL_REG_ADDRESS);
+	return ia_css_cmem_load_32(
+		ssid, ia_css_cell_regs_addr(cell_id) +
+		      IPU_DEVICE_CELL_STAT_CTRL_REG_ADDRESS);
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cell_set_stat_ctrl(unsigned int ssid, unsigned int cell_id, unsigned int value)
+ia_css_cell_set_stat_ctrl(unsigned int ssid, unsigned int cell_id,
+			unsigned int value)
 {
-	ia_css_cmem_store_32(ssid, ia_css_cell_regs_addr(cell_id) + IPU_DEVICE_CELL_STAT_CTRL_REG_ADDRESS, value);
+	ia_css_cmem_store_32(
+		ssid, ia_css_cell_regs_addr(cell_id) +
+		      IPU_DEVICE_CELL_STAT_CTRL_REG_ADDRESS, value);
 }
 
 STORAGE_CLASS_INLINE unsigned int
@@ -67,15 +78,19 @@ ia_css_cell_is_ready(unsigned int ssid, unsigned int cell_id)
 	unsigned int reg;
 
 	reg = ia_css_cell_get_stat_ctrl(ssid, cell_id);
-	return (reg & (1 << IPU_DEVICE_CELL_STAT_CTRL_READY_BIT)) &&	/* READY must be 1 */
-		((~reg) & (1 << IPU_DEVICE_CELL_STAT_CTRL_START_BIT));	/* START must be 0 */
+	/* READY must be 1, START must be 0 */
+	return (reg & (1 << IPU_DEVICE_CELL_STAT_CTRL_READY_BIT)) &&
+		((~reg) & (1 << IPU_DEVICE_CELL_STAT_CTRL_START_BIT));
 }
 
 STORAGE_CLASS_INLINE void
-ia_css_cell_set_start_pc(unsigned int ssid, unsigned int cell_id, unsigned int pc)
+ia_css_cell_set_start_pc(unsigned int ssid, unsigned int cell_id,
+			unsigned int pc)
 {
 	/* set start PC */
-	ia_css_cmem_store_32(ssid, ia_css_cell_regs_addr(cell_id) + IPU_DEVICE_CELL_START_PC_REG_ADDRESS, pc);
+	ia_css_cmem_store_32(
+		ssid, ia_css_cell_regs_addr(cell_id) +
+		      IPU_DEVICE_CELL_START_PC_REG_ADDRESS, pc);
 }
 
 STORAGE_CLASS_INLINE void
@@ -115,7 +130,9 @@ ia_css_cell_start_prefetch(unsigned int ssid, unsigned int cell_id,
 	/* Invalidate the icache */
 	reg |= (1 << IPU_DEVICE_CELL_STAT_CTRL_INVALIDATE_ICACHE_BIT);
 	/* Optionally enable prefetching */
-	reg |= ((prefetch == 1) ? (1 << IPU_DEVICE_CELL_STAT_CTRL_ICACHE_ENABLE_PREFETCH_BIT) : 0);
+	reg |= ((prefetch == 1) ?
+		(1 << IPU_DEVICE_CELL_STAT_CTRL_ICACHE_ENABLE_PREFETCH_BIT) :
+		0);
 
 	/* store into register */
 	ia_css_cell_set_stat_ctrl(ssid, cell_id, reg);
@@ -130,9 +147,12 @@ ia_css_cell_wait(unsigned int ssid, unsigned int cell_id)
 };
 
 STORAGE_CLASS_INLINE void
-ia_css_cell_set_icache_base_address(unsigned int ssid, unsigned int cell_id, unsigned int value)
+ia_css_cell_set_icache_base_address(unsigned int ssid, unsigned int cell_id,
+				    unsigned int value)
 {
-	ia_css_cmem_store_32(ssid, ia_css_cell_regs_addr(cell_id) + IPU_DEVICE_CELL_ICACHE_BASE_REG_ADDRESS, value);
+	ia_css_cmem_store_32(
+		ssid, ia_css_cell_regs_addr(cell_id) +
+		      IPU_DEVICE_CELL_ICACHE_BASE_REG_ADDRESS, value);
 }
 
 /* master port configuration */

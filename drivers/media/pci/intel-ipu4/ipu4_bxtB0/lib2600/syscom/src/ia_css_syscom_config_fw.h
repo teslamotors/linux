@@ -18,14 +18,19 @@
 #include "type_support.h"
 
 enum {
-	SYSCOM_STATE_UNINIT	= 0x57A7E000,	/* Program load or explicit host setting should init to this */
-	SYSCOM_STATE_READY	= 0x57A7E001,	/* SP Syscom sets this when it is ready for use */
-	SYSCOM_STATE_INACTIVE	= 0x57A7E002	/* SP Syscom sets this when no more syscom accesses will happen */
+	/* Program load or explicit host setting should init to this */
+	SYSCOM_STATE_UNINIT	= 0x57A7E000,
+	/* SP Syscom sets this when it is ready for use */
+	SYSCOM_STATE_READY	= 0x57A7E001,
+	/* SP Syscom sets this when no more syscom accesses will happen */
+	SYSCOM_STATE_INACTIVE	= 0x57A7E002
 };
 
 enum {
-	SYSCOM_COMMAND_UNINIT	= 0x57A7F000,	/* Program load or explicit host setting should init to this */
-	SYSCOM_COMMAND_INACTIVE = 0x57A7F001	/* Host Syscom requests syscom to become inactive */
+	/* Program load or explicit host setting should init to this */
+	SYSCOM_COMMAND_UNINIT	= 0x57A7F000,
+	/* Host Syscom requests syscom to become inactive */
+	SYSCOM_COMMAND_INACTIVE = 0x57A7F001
 };
 
 /* firmware config: data that sent from the host to SP via DDR */

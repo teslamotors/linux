@@ -46,16 +46,24 @@ typedef __register struct {
 } vied_nci_acb_process_cmd_t;
 
 typedef struct {
-	vied_nci_acb_port_t in_select;	/* 0 = ISP, 1 = Acc */
-	vied_nci_acb_port_t out_select;	/* 0 = ISP, 1 = Acc */
-	uint32_t ignore_line_num;		/* When set, Ack will be sent only when Eof arrives */
-	uint32_t fork_acb_output;		/* Fork adapter to enable streaming to both output (next acb out and isp out) */
+	/* 0 = ISP, 1 = Acc */
+	vied_nci_acb_port_t in_select;
+	/* 0 = ISP, 1 = Acc */
+	vied_nci_acb_port_t out_select;
+	/* When set, Ack will be sent only when Eof arrives */
+	uint32_t ignore_line_num;
+	/* Fork adapter to enable streaming to both output
+	 * (next acb out and isp out)
+	 */
+	uint32_t fork_acb_output;
 } vied_nci_acb_route_t;
 
 typedef struct {
 	/* ACB_FRAME_SIZE */
-	uint32_t frame_width;			/* For the FRAGMENT to process, just in ISYS frame == fragment */
-	uint32_t frame_height;			/* For the FRAGMENT to process, just in ISYS frame == fragment */
+	/* For the FRAGMENT to process, just in ISYS frame == fragment */
+	uint32_t frame_width;
+	/* For the FRAGMENT to process, just in ISYS frame == fragment */
+	uint32_t frame_height;
 	/* ACB_ACB_SCALE */
 	uint32_t scale_mult;
 	uint32_t scale_nf;

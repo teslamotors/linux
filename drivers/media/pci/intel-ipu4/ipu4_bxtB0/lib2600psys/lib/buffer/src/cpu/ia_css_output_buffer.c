@@ -30,9 +30,8 @@ ia_css_output_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
 
 	/* allocate buffer container */
 	b = ia_css_cpu_mem_alloc(sizeof(*b));
-	if (b == NULL) {
+	if (b == NULL)
 		return NULL;
-	}
 
 	b->mem = shared_memory_alloc(mid, size);
 	if (b->mem == 0) {
@@ -52,7 +51,9 @@ ia_css_output_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
 		return NULL;
 	}
 #else
-	/* on hw / real platform we can use the pointer from shared memory alloc */
+	/* on hw / real platform we can use the pointer from
+	 * shared memory alloc
+	 */
 	b->cpu_address = (void *)HOST_ADDRESS(b->mem);
 #endif
 

@@ -125,14 +125,16 @@ ia_css_syscom_size_intern(
 	size->input_buffer = 0;
 	for (i = 0; i < cfg->num_input_queues; i++) {
 		size->input_buffer +=
-			sys_queue_buf_size(cfg->input[i].queue_size, cfg->input[i].token_size);
+			sys_queue_buf_size(cfg->input[i].queue_size,
+					cfg->input[i].token_size);
 	}
 
 	/* accumulate outut queue buffer sizes */
 	size->output_buffer = 0;
 	for (i = 0; i < cfg->num_output_queues; i++) {
 		size->output_buffer +=
-			sys_queue_buf_size(cfg->output[i].queue_size, cfg->output[i].token_size);
+			sys_queue_buf_size(cfg->output[i].queue_size,
+					cfg->output[i].token_size);
 	}
 }
 
@@ -143,7 +145,8 @@ ia_css_syscom_size_extern(
 {
 	/* convert syscom internal size struct into external size struct */
 
-	e->cpu = i->context + i->input_queue + i->output_queue + i->input_port + i->output_port;
+	e->cpu = i->context + i->input_queue + i->output_queue +
+		 i->input_port + i->output_port;
 	e->shm = i->fw_config + i->input_queue + i->output_queue + i->specific;
 	e->ibuf = i->input_buffer;
 	e->obuf = i->output_buffer;
@@ -262,10 +265,12 @@ ia_css_syscom_open(
 
 	/* assign buffer pointers */
 	ctx = ia_css_syscom_assign_buf(&size_intern, buf);
-	ctx->free_buf = !buf_extern; /* only need to free internally allocated buffers */
+	/* only need to free internally allocated buffers */
+	ctx->free_buf = !buf_extern;
 
 	ctx->cell_regs_addr = cfg->regs_addr;
-	ctx->cell_dmem_addr = cfg->dmem_addr; /* regmem is at cell_dmem_addr + REGMEM_OFFSET */
+	/* regmem is at cell_dmem_addr + REGMEM_OFFSET */
+	ctx->cell_dmem_addr = cfg->dmem_addr;
 
 	ctx->num_input_queues		= cfg->num_input_queues;
 	ctx->num_output_queues		= cfg->num_output_queues;
@@ -282,7 +287,8 @@ ia_css_syscom_open(
 	res.vied_address = ctx->ibuf_vied_addr;
 	for (i = 0; i < cfg->num_input_queues; i++) {
 		sys_queue_init(ctx->input_queue + i,
-			cfg->input[i].queue_size, cfg->input[i].token_size, &res);
+			cfg->input[i].queue_size,
+			cfg->input[i].token_size, &res);
 	}
 
 	/* initialize output queues */
@@ -290,25 +296,39 @@ ia_css_syscom_open(
 	res.vied_address = ctx->obuf_vied_addr;
 	for (i = 0; i < cfg->num_output_queues; i++) {
 		sys_queue_init(ctx->output_queue + i,
-			cfg->output[i].queue_size, cfg->output[i].token_size, &res);
+			cfg->output[i].queue_size,
+			cfg->output[i].token_size, &res);
 	}
 
 	/* fill shared queue structs */
-	shared_memory_store(cfg->mmid, ctx->input_queue_host_addr, ctx->input_queue, cfg->num_input_queues * sizeof(struct sys_queue));
-	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(ctx->input_queue_host_addr), cfg->num_input_queues * sizeof(struct sys_queue));
-	shared_memory_store(cfg->mmid, ctx->output_queue_host_addr, ctx->output_queue, cfg->num_output_queues * sizeof(struct sys_queue));
-	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(ctx->output_queue_host_addr), cfg->num_output_queues * sizeof(struct sys_queue));
+	shared_memory_store(cfg->mmid, ctx->input_queue_host_addr,
+			    ctx->input_queue,
+			    cfg->num_input_queues * sizeof(struct sys_queue));
+	ia_css_cpu_mem_cache_flush(
+		(void *)HOST_ADDRESS(ctx->input_queue_host_addr),
+		cfg->num_input_queues * sizeof(struct sys_queue));
+	shared_memory_store(cfg->mmid, ctx->output_queue_host_addr,
+			    ctx->output_queue,
+			    cfg->num_output_queues * sizeof(struct sys_queue));
+	ia_css_cpu_mem_cache_flush(
+		(void *)HOST_ADDRESS(ctx->output_queue_host_addr),
+		cfg->num_output_queues * sizeof(struct sys_queue));
 
 	/* Zero the queue buffers. Is this really needed?  */
 	shared_memory_zero(cfg->mmid, buf->ibuf_host, size.ibuf);
-	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(buf->ibuf_host), size.ibuf);
+	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(buf->ibuf_host),
+				   size.ibuf);
 	shared_memory_zero(cfg->mmid, buf->obuf_host, size.obuf);
-	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(buf->obuf_host), size.obuf);
+	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(buf->obuf_host),
+				   size.obuf);
 
 	/* copy firmware specific data */
 	if (cfg->specific_addr && cfg->specific_size) {
-		shared_memory_store(cfg->mmid, ctx->specific_host_addr, cfg->specific_addr, cfg->specific_size);
-		ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(ctx->specific_host_addr), cfg->specific_size);
+		shared_memory_store(cfg->mmid, ctx->specific_host_addr,
+				    cfg->specific_addr, cfg->specific_size);
+		ia_css_cpu_mem_cache_flush(
+			(void *)HOST_ADDRESS(ctx->specific_host_addr),
+			cfg->specific_size);
 	}
 
 	fw_cfg.num_input_queues  = cfg->num_input_queues;
@@ -318,15 +338,20 @@ ia_css_syscom_open(
 	fw_cfg.specific_addr     = ctx->specific_vied_addr;
 	fw_cfg.specific_size     = cfg->specific_size;
 
-	shared_memory_store(cfg->mmid, ctx->config_host_addr, &fw_cfg, sizeof(struct ia_css_syscom_config_fw));
-	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(ctx->config_host_addr), sizeof(struct ia_css_syscom_config_fw));
+	shared_memory_store(cfg->mmid, ctx->config_host_addr,
+			    &fw_cfg, sizeof(struct ia_css_syscom_config_fw));
+	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(ctx->config_host_addr),
+				    sizeof(struct ia_css_syscom_config_fw));
 
 	/* store syscom uninitialized state */
-	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG, SYSCOM_STATE_UNINIT, cfg->ssid);
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG,
+			SYSCOM_STATE_UNINIT, cfg->ssid);
 	/* store syscom uninitialized command */
-	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_COMMAND_REG, SYSCOM_COMMAND_UNINIT, cfg->ssid);
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_COMMAND_REG,
+			SYSCOM_COMMAND_UNINIT, cfg->ssid);
 	/* store firmware configuration address */
-	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_CONFIG_REG, ctx->config_vied_addr, cfg->ssid);
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_CONFIG_REG,
+			ctx->config_vied_addr, cfg->ssid);
 
 	return ctx;
 }
@@ -338,13 +363,16 @@ ia_css_syscom_close(
 ) {
 	int state;
 
-	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG, ctx->env.ssid);
+	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG,
+				ctx->env.ssid);
 	if (state != SYSCOM_STATE_READY) {
-		return ERROR_BUSY; /* SPC is not ready to handle close request yet */
+		/* SPC is not ready to handle close request yet */
+		return ERROR_BUSY;
 	}
 
 	/* set close request flag */
-	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_COMMAND_REG, SYSCOM_COMMAND_INACTIVE, ctx->env.ssid);
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_COMMAND_REG,
+			SYSCOM_COMMAND_INACTIVE, ctx->env.ssid);
 
 	return 0;
 }
@@ -356,7 +384,8 @@ ia_css_syscom_free(struct ia_css_syscom_context *ctx)
 	shared_memory_free(ctx->env.mmid, ctx->ibuf_host_addr);
 	shared_memory_unmap(ctx->env.ssid, ctx->env.mmid, ctx->obuf_vied_addr);
 	shared_memory_free(ctx->env.mmid, ctx->obuf_host_addr);
-	shared_memory_unmap(ctx->env.ssid, ctx->env.mmid, ctx->config_vied_addr);
+	shared_memory_unmap(ctx->env.ssid, ctx->env.mmid,
+			    ctx->config_vied_addr);
 	shared_memory_free(ctx->env.mmid, ctx->config_host_addr);
 	ia_css_cpu_mem_free(ctx);
 }
@@ -394,13 +423,16 @@ int ia_css_syscom_send_port_open(
 	verifret(port < ctx->num_input_queues, ERROR_INVALID_PARAMETER);
 
 	/* check if SP syscom is ready to open the queue */
-	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG, ctx->env.ssid);
+	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG,
+			       ctx->env.ssid);
 	if (state != SYSCOM_STATE_READY) {
-		return ERROR_BUSY; /* SPC is not ready to handle messages yet */
+		/* SPC is not ready to handle messages yet */
+		return ERROR_BUSY;
 	}
 
 	/* initialize the port */
-	send_port_open(ctx->send_port + port, ctx->input_queue + port, &(ctx->env));
+	send_port_open(ctx->send_port + port,
+		       ctx->input_queue + port, &(ctx->env));
 
 	return 0;
 }
@@ -454,13 +486,16 @@ int ia_css_syscom_recv_port_open(
 	verifret(port < ctx->num_output_queues, ERROR_INVALID_PARAMETER);
 
 	/* check if SP syscom is ready to open the queue */
-	state = regmem_load_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG, ctx->env.ssid);
+	state = regmem_load_32(ctx->cell_dmem_addr,
+				SYSCOM_STATE_REG, ctx->env.ssid);
 	if (state != SYSCOM_STATE_READY) {
-		return ERROR_BUSY; /* SPC is not ready to handle messages yet */
+		/* SPC is not ready to handle messages yet */
+		return ERROR_BUSY;
 	}
 
 	/* initialize the port */
-	recv_port_open(ctx->recv_port + port, ctx->output_queue + port, &(ctx->env));
+	recv_port_open(ctx->recv_port + port,
+		       ctx->output_queue + port, &(ctx->env));
 
 	return 0;
 }

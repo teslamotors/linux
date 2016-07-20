@@ -21,7 +21,8 @@
 #endif
 
 /* Calculate the  total bytes for pow(2) byte alignment */
-#define tot_bytes_for_pow2_align(pow2, cur_bytes)	((cur_bytes + (pow2 - 1)) & ~(pow2 - 1))
+#define tot_bytes_for_pow2_align(pow2, cur_bytes) \
+	((cur_bytes + (pow2 - 1)) & ~(pow2 - 1))
 
 /* Display the macro value given a string */
 #define _STR(x) #x

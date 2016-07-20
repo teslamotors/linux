@@ -26,20 +26,25 @@ extern void FwTracePrintPRINT(const char *fmt, ...);
 extern void FwTracePrintPERROR(const char *fmt, ...);
 extern void FwTracePrintPDEBUG(const char *fmt, ...);
 
-#define PWARN(format, ...)		FwTracePrintPWARN(format, __VA_ARGS__)
-#define PRINT(format, ...)		FwTracePrintPRINT(format, __VA_ARGS__)
-#define PERROR(format, ...)		FwTracePrintPERROR(format, __VA_ARGS__)
-#define PDEBUG(format, ...)		FwTracePrintPDEBUG(format, __VA_ARGS__)
+#define PWARN(format, ...)	FwTracePrintPWARN(format, __VA_ARGS__)
+#define PRINT(format, ...)	FwTracePrintPRINT(format, __VA_ARGS__)
+#define PERROR(format, ...)	FwTracePrintPERROR(format, __VA_ARGS__)
+#define PDEBUG(format, ...)	FwTracePrintPDEBUG(format, __VA_ARGS__)
 
 #else
 /* Windows usermode compilation */
 #include <stdio.h>
 
-/* To change the defines below, communicate with Windows team first to ensure they will not get flooded with prints */
-#define PWARN(format, ...)			/* This is temporary workaround to avoid flooding userspace Windows driver with prints */
-#define PRINT(format, ...)			/* This is temporary workaround to avoid flooding userspace Windows driver with prints */
-#define PERROR(format, ...)			printf("error: " format, __VA_ARGS__)
-#define PDEBUG(format, ...)			/* This is temporary workaround to avoid flooding userspace Windows driver with prints */
+/* To change the defines below, communicate with Windows team first
+ * to ensure they will not get flooded with prints
+ */
+/* This is temporary workaround to avoid flooding userspace
+ * Windows driver with prints
+ */
+#define PWARN(format, ...)
+#define PRINT(format, ...)
+#define PERROR(format, ...)	printf("error: " format, __VA_ARGS__)
+#define PDEBUG(format, ...)
 
 #endif /* _KERNEL_MODE */
 
@@ -61,18 +66,18 @@ extern void FwTracePrintPDEBUG(const char *fmt, ...);
 #include <linux/printk.h>
 
 
-#define PWARN(format, arguments...)		pr_debug(format, ##arguments)
-#define PRINT(format, arguments...)		pr_debug(format, ##arguments)
-#define PERROR(format, arguments...)		pr_debug(format, ##arguments)
-#define PDEBUG(format, arguments...)		pr_debug(format, ##arguments)
+#define PWARN(format, arguments...)	pr_debug(format, ##arguments)
+#define PRINT(format, arguments...)	pr_debug(format, ##arguments)
+#define PERROR(format, arguments...)	pr_debug(format, ##arguments)
+#define PDEBUG(format, arguments...)	pr_debug(format, ##arguments)
 
 #else
 #include <stdio.h>
 
-#define PWARN(format, arguments...)		printf("warning: ", ##arguments)
-#define PRINT(format, arguments...)		printf(format, ##arguments)
-#define PERROR(format, arguments...)		printf("error: " format, ##arguments)
-#define PDEBUG(format, arguments...)		printf("debug: " format, ##arguments)
+#define PWARN(format, arguments...)	printf("warning: ", ##arguments)
+#define PRINT(format, arguments...)	printf(format, ##arguments)
+#define PERROR(format, arguments...)	printf("error: " format, ##arguments)
+#define PDEBUG(format, arguments...)	printf("debug: " format, ##arguments)
 
 #define PRINTSTRING(str) printf("%s", str)
 

@@ -23,9 +23,9 @@ void ia_css_psys_ran_set_seed(const unsigned int seed)
 {
 	ia_css_psys_ran_seed = seed;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_set_seed(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE,
+		"ia_css_psys_ran_set_seed(): enter:\n");
 
-	return;
 }
 
 static unsigned int ia_css_psys_ran_int (void)

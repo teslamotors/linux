@@ -88,10 +88,13 @@ int ia_css_client_pkg_get_prog_bin_entry_offset_size(
 	verifjmpexit(NULL != offset);
 	verifjmpexit(NULL != size);
 
-	client_pkg_header = (struct ia_css_client_pkg_header_s *)((uint8_t *)client_pkg);
-	pkg_prog_list = (struct ia_css_client_pkg_prog_list_s *)((uint8_t *)client_pkg +
+	client_pkg_header =
+		(struct ia_css_client_pkg_header_s *)((uint8_t *)client_pkg);
+	pkg_prog_list =
+		(struct ia_css_client_pkg_prog_list_s *)((uint8_t *)client_pkg +
 		client_pkg_header->prog_list_offset);
-	pkg_prog_bin_entry = (struct ia_css_client_pkg_prog_s *)((uint8_t *)pkg_prog_list +
+	pkg_prog_bin_entry =
+		(struct ia_css_client_pkg_prog_s *)((uint8_t *)pkg_prog_list +
 		sizeof(struct ia_css_client_pkg_prog_list_s));
 	pkg_prog_bin_entry += pkg_prog_list->prog_desc_count;
 
@@ -102,8 +105,8 @@ int ia_css_client_pkg_get_prog_bin_entry_offset_size(
 			ret_val = 0;
 			break;
 		} else if (0 == pkg_prog_bin_entry->prog_size) {
-			/* We can have a variable number of program descriptors. The first non-valid one
-			* will have size set to 0
+			/* We can have a variable number of program descriptors.
+			 * The first non-valid one will have size set to 0
 			*/
 			break;
 		}
@@ -129,10 +132,13 @@ int ia_css_client_pkg_get_prog_desc_entry_offset_size(
 	verifjmpexit(NULL != offset);
 	verifjmpexit(NULL != size);
 
-	client_pkg_header = (struct ia_css_client_pkg_header_s *)((uint8_t *)client_pkg);
-	pkg_prog_list = (struct ia_css_client_pkg_prog_list_s *)((uint8_t *)client_pkg +
+	client_pkg_header =
+		(struct ia_css_client_pkg_header_s *)((uint8_t *)client_pkg);
+	pkg_prog_list =
+		(struct ia_css_client_pkg_prog_list_s *)((uint8_t *)client_pkg +
 		client_pkg_header->prog_list_offset);
-	pkg_prog_desc_entry = (struct ia_css_client_pkg_prog_s *)((uint8_t *)pkg_prog_list +
+	pkg_prog_desc_entry =
+		(struct ia_css_client_pkg_prog_s *)((uint8_t *)pkg_prog_list +
 		sizeof(struct ia_css_client_pkg_prog_list_s));
 
 	for (i = 0; i < pkg_prog_list->prog_desc_count; i++) {
@@ -142,8 +148,8 @@ int ia_css_client_pkg_get_prog_desc_entry_offset_size(
 			ret_val = 0;
 			break;
 		} else if (0 == pkg_prog_desc_entry->prog_size) {
-			/* We can have a variable number of program descriptors. The first non-valid one
-			* will have size set to 0
+			/* We can have a variable number of program descriptors.
+			 * The first non-valid one will have size set to 0
 			*/
 			break;
 		}

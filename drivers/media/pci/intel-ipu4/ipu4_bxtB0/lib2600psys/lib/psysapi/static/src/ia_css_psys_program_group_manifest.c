@@ -116,7 +116,7 @@ size_t ia_css_sizeof_program_group_manifest(
 			break;
 		default:
 			IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING,
-			"ia_css_sizeof_program_group_manifest invalid argument\n");
+				"ia_css_sizeof_program_group_manifest invalid argument\n");
 		}
 	}
 
@@ -171,9 +171,13 @@ bool ia_css_is_program_group_manifest_valid(
 		"ia_css_is_program_group_manifest_valid(): enter:\n");
 
 	verifexit(manifest != NULL, EINVAL);
-	verifexit(ia_css_program_group_manifest_get_size(manifest) != 0, EINVAL);
-	verifexit(ia_css_program_group_manifest_get_alignment(manifest) != 0, EINVAL);
-	verifexit(ia_css_program_group_manifest_get_program_group_ID(manifest) != 0, EINVAL);
+	verifexit(ia_css_program_group_manifest_get_size(manifest) != 0,
+		EINVAL);
+	verifexit(ia_css_program_group_manifest_get_alignment(manifest) != 0,
+		EINVAL);
+	verifexit(
+	    ia_css_program_group_manifest_get_program_group_ID(manifest) != 0,
+		EINVAL);
 
 	terminal_count =
 		ia_css_program_group_manifest_get_terminal_count(manifest);
@@ -191,73 +195,124 @@ bool ia_css_is_program_group_manifest_valid(
 
 /* Check the kernel bitmaps for terminals */
 	for (i = 0; i < (int)terminal_count; i++) {
-		ia_css_terminal_manifest_t *terminal_manifest_i = ia_css_program_group_manifest_get_terminal_manifest(manifest, i);
-		bool is_parameter_in = (IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN == ia_css_terminal_manifest_get_type(terminal_manifest_i));
-		bool is_parameter_out = (IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT == ia_css_terminal_manifest_get_type(terminal_manifest_i));
-		bool is_data = ia_css_is_terminal_manifest_data_terminal(terminal_manifest_i);
-		bool is_program = ia_css_is_terminal_manifest_program_terminal(terminal_manifest_i);
-		bool is_spatial_param = ia_css_is_terminal_manifest_spatial_parameter_terminal(terminal_manifest_i);
+		ia_css_terminal_manifest_t *terminal_manifest_i =
+			ia_css_program_group_manifest_get_terminal_manifest(
+				manifest, i);
+		bool is_parameter_in =
+			(IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN ==
+			ia_css_terminal_manifest_get_type(
+				terminal_manifest_i));
+		bool is_parameter_out =
+			(IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT ==
+			ia_css_terminal_manifest_get_type(
+				terminal_manifest_i));
+		bool is_data =
+			ia_css_is_terminal_manifest_data_terminal(
+				terminal_manifest_i);
+		bool is_program =
+			ia_css_is_terminal_manifest_program_terminal(
+				terminal_manifest_i);
+		bool is_spatial_param =
+			ia_css_is_terminal_manifest_spatial_parameter_terminal(
+				terminal_manifest_i);
 
 		if (is_parameter_in) {
-/* There can be only one cached in parameter terminal it serves kernels,
- * not programs
- */
+			/* There can be only one cached in parameter terminal
+			 * it serves kernels, not programs
+			 */
 			verifexit(!has_parameter_terminal_in, EINVAL);
 			has_parameter_terminal_in = is_parameter_in;
 		} else if (is_parameter_out) {
-/* There can be only one cached out parameter terminal it serves kernels,
- * not programs
- */
+			/* There can be only one cached out parameter terminal
+			 * it serves kernels, not programs
+			 */
 			verifexit(!has_parameter_terminal_out, EINVAL);
 			has_parameter_terminal_out = is_parameter_out;
 		} else if (is_data) {
-			ia_css_data_terminal_manifest_t *dterminal_manifest_i = (ia_css_data_terminal_manifest_t *)terminal_manifest_i;
-			ia_css_kernel_bitmap_t terminal_bitmap_i = ia_css_data_terminal_manifest_get_kernel_bitmap(dterminal_manifest_i);
-/* A terminal must depend on kernels that are a subset of the total, correction,
- * it can only depend on one kernel
- */
-			verifexit(!ia_css_is_kernel_bitmap_empty(terminal_bitmap_i), EINVAL);
-			verifexit(ia_css_is_kernel_bitmap_subset(total_bitmap, terminal_bitmap_i), EINVAL);
-			verifexit(ia_css_is_kernel_bitmap_onehot(terminal_bitmap_i), EINVAL);
+			ia_css_data_terminal_manifest_t *dterminal_manifest_i =
+				(ia_css_data_terminal_manifest_t *)
+				terminal_manifest_i;
+			ia_css_kernel_bitmap_t terminal_bitmap_i =
+				ia_css_data_terminal_manifest_get_kernel_bitmap(
+					dterminal_manifest_i);
+			/* A terminal must depend on kernels that are a subset
+			 * of the total, correction, it can only depend on one
+			 * kernel
+			 */
+			verifexit(!ia_css_is_kernel_bitmap_empty(
+					terminal_bitmap_i), EINVAL);
+			verifexit(ia_css_is_kernel_bitmap_subset(
+					total_bitmap, terminal_bitmap_i),
+					EINVAL);
+			verifexit(ia_css_is_kernel_bitmap_onehot(
+					terminal_bitmap_i), EINVAL);
 		} else if (is_program) {
 			verifexit(!has_program_terminal, EINVAL);
 			verifexit(terminal_manifest_i, EINVAL);
 			has_program_terminal = is_program;
 			has_program_terminal_sequencer_info =
-				(((ia_css_program_terminal_manifest_t *)terminal_manifest_i)->kernel_fragment_sequencer_info_manifest_info_count != 0);
+				(((ia_css_program_terminal_manifest_t *)
+				terminal_manifest_i)->
+			kernel_fragment_sequencer_info_manifest_info_count !=
+			 0);
 		} else {
-			const ia_css_spatial_param_terminal_manifest_t *spatial_param_man =
-				(const ia_css_spatial_param_terminal_manifest_t *)terminal_manifest_i;
+			const ia_css_spatial_param_terminal_manifest_t
+				*spatial_param_man =
+			(const ia_css_spatial_param_terminal_manifest_t *)
+				terminal_manifest_i;
 			verifexit(spatial_param_man, EINVAL);
 			verifexit(is_spatial_param, EINVAL);
 			ia_css_kernel_bitmap_t terminal_bitmap = 0;
 
-			terminal_bitmap = ia_css_kernel_bitmap_set(terminal_bitmap,
-						spatial_param_man->kernel_id);
-			verifexit(!ia_css_is_kernel_bitmap_empty(terminal_bitmap), EINVAL);
-			verifexit(ia_css_is_kernel_bitmap_subset(total_bitmap, terminal_bitmap), EINVAL);
+			terminal_bitmap =
+				ia_css_kernel_bitmap_set(terminal_bitmap,
+				spatial_param_man->kernel_id);
+			verifexit(!ia_css_is_kernel_bitmap_empty(
+					terminal_bitmap), EINVAL);
+			verifexit(ia_css_is_kernel_bitmap_subset(
+					total_bitmap, terminal_bitmap), EINVAL);
 		}
 	}
 
 /* Check the kernel bitmaps for programs */
 	for (i = 0; i < (int)program_count; i++) {
 		int		j;
-		ia_css_program_manifest_t *program_manifest_i = ia_css_program_group_manifest_get_program_manifest(manifest, i);
-		ia_css_program_type_t program_type_i = ia_css_program_manifest_get_type(program_manifest_i);
-		ia_css_kernel_bitmap_t program_bitmap_i = ia_css_program_manifest_get_kernel_bitmap(program_manifest_i);
-		uint8_t program_dependency_count_i = ia_css_program_manifest_get_program_dependency_count(program_manifest_i);
-		uint8_t terminal_dependency_count_i = ia_css_program_manifest_get_terminal_dependency_count(program_manifest_i);
-		uint8_t program_dependency_i0 = ia_css_program_manifest_get_program_dependency(program_manifest_i, 0);
-		bool is_sub_i = ia_css_is_program_manifest_subnode_program_type(program_manifest_i);
-		bool is_exclusive_sub_i = (program_type_i == IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB);
-		bool is_virtual_sub_i = (program_type_i == IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB);
-		bool is_super_i = ia_css_is_program_manifest_supernode_program_type(program_manifest_i);
+		ia_css_program_manifest_t *program_manifest_i =
+			ia_css_program_group_manifest_get_program_manifest(
+				manifest, i);
+		ia_css_program_type_t program_type_i =
+			ia_css_program_manifest_get_type(program_manifest_i);
+		ia_css_kernel_bitmap_t program_bitmap_i =
+			ia_css_program_manifest_get_kernel_bitmap(
+				program_manifest_i);
+		uint8_t program_dependency_count_i =
+			ia_css_program_manifest_get_program_dependency_count(
+				program_manifest_i);
+		uint8_t terminal_dependency_count_i =
+			ia_css_program_manifest_get_terminal_dependency_count(
+				program_manifest_i);
+		uint8_t program_dependency_i0 =
+			ia_css_program_manifest_get_program_dependency(
+				program_manifest_i, 0);
+		bool is_sub_i =
+			ia_css_is_program_manifest_subnode_program_type(
+				program_manifest_i);
+		bool is_exclusive_sub_i =
+			(program_type_i == IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB);
+		bool is_virtual_sub_i =
+			(program_type_i == IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB);
+		bool is_super_i =
+			ia_css_is_program_manifest_supernode_program_type(
+				program_manifest_i);
 
 /* A program must have kernels that are a subset of the total */
-		verifexit(!ia_css_is_kernel_bitmap_empty(program_bitmap_i), EINVAL);
-		verifexit(ia_css_is_kernel_bitmap_subset(total_bitmap, program_bitmap_i), EINVAL);
+		verifexit(!ia_css_is_kernel_bitmap_empty(
+				program_bitmap_i), EINVAL);
+		verifexit(ia_css_is_kernel_bitmap_subset(
+				total_bitmap, program_bitmap_i), EINVAL);
 		verifexit((program_type_i != IA_CSS_N_PROGRAM_TYPES), EINVAL);
-		verifexit((program_dependency_count_i + terminal_dependency_count_i) != 0, EINVAL);
+		verifexit((program_dependency_count_i +
+			   terminal_dependency_count_i) != 0, EINVAL);
 /*
  * Checks for subnodes
  * - Parallel subnodes cannot depend on terminals
@@ -271,59 +326,109 @@ bool ia_css_is_program_group_manifest_valid(
  */
 		if (is_sub_i) {
 			/* Subnode */
-			ia_css_program_manifest_t	*program_manifest_k = ia_css_program_group_manifest_get_program_manifest(manifest, program_dependency_i0);
-			ia_css_program_type_t		program_type_k = ia_css_program_manifest_get_type(program_manifest_k);
-			ia_css_kernel_bitmap_t		program_bitmap_k = ia_css_program_manifest_get_kernel_bitmap(program_manifest_k);
+			ia_css_program_manifest_t *program_manifest_k =
+			ia_css_program_group_manifest_get_program_manifest(
+				manifest, program_dependency_i0);
+			ia_css_program_type_t program_type_k =
+				ia_css_program_manifest_get_type(
+					program_manifest_k);
+			ia_css_kernel_bitmap_t program_bitmap_k =
+				ia_css_program_manifest_get_kernel_bitmap(
+					program_manifest_k);
 
 			verifexit(program_dependency_count_i == 1, EINVAL);
 			if (is_exclusive_sub_i || is_virtual_sub_i) {
-				verifexit(terminal_dependency_count_i <= ia_css_program_manifest_get_terminal_dependency_count(program_manifest_k), EINVAL);
+				verifexit(terminal_dependency_count_i <=
+			ia_css_program_manifest_get_terminal_dependency_count(
+				program_manifest_k), EINVAL);
 			} else{
-				verifexit(terminal_dependency_count_i == 0, EINVAL);
+				verifexit(terminal_dependency_count_i == 0,
+						 EINVAL);
 			}
 			verifexit(program_type_k ==
-					(is_exclusive_sub_i?IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUPER :
-					is_virtual_sub_i?IA_CSS_PROGRAM_TYPE_VIRTUAL_SUPER : IA_CSS_PROGRAM_TYPE_PARALLEL_SUPER), EINVAL);
-			verifexit(!ia_css_is_kernel_bitmap_equal(program_bitmap_k, program_bitmap_i), EINVAL);
-			verifexit(ia_css_is_kernel_bitmap_subset(program_bitmap_k, program_bitmap_i), EINVAL);
+				(is_exclusive_sub_i ?
+					IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUPER :
+				is_virtual_sub_i ?
+					IA_CSS_PROGRAM_TYPE_VIRTUAL_SUPER :
+					IA_CSS_PROGRAM_TYPE_PARALLEL_SUPER),
+					EINVAL);
+			verifexit(!ia_css_is_kernel_bitmap_equal(
+					program_bitmap_k, program_bitmap_i),
+					EINVAL);
+			verifexit(ia_css_is_kernel_bitmap_subset(
+					program_bitmap_k, program_bitmap_i),
+					EINVAL);
 		} else {
 			/* Singular or Supernode */
 			int	k;
 
 			for (k = 0; k < program_dependency_count_i; k++) {
-				uint8_t	program_dependency_k = ia_css_program_manifest_get_program_dependency(program_manifest_i, k);
-				ia_css_program_manifest_t	*program_manifest_k = ia_css_program_group_manifest_get_program_manifest(manifest, (int)program_dependency_k);
-				ia_css_program_type_t		program_type_k	= ia_css_program_manifest_get_type(program_manifest_k);
-				ia_css_kernel_bitmap_t		program_bitmap_k = ia_css_program_manifest_get_kernel_bitmap(program_manifest_k);
+				uint8_t	program_dependency_k =
+				ia_css_program_manifest_get_program_dependency(
+					program_manifest_i, k);
+				ia_css_program_manifest_t *program_manifest_k =
+			ia_css_program_group_manifest_get_program_manifest(
+				manifest, (int)program_dependency_k);
+				ia_css_program_type_t program_type_k =
+				ia_css_program_manifest_get_type(
+					program_manifest_k);
+				ia_css_kernel_bitmap_t program_bitmap_k =
+				ia_css_program_manifest_get_kernel_bitmap(
+					program_manifest_k);
 
-				verifexit(program_dependency_k < program_count, EINVAL);
-				verifexit((program_type_k != IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
-						  (program_type_k != IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB), EINVAL);
-				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || ia_css_is_kernel_bitmap_intersection_empty(program_bitmap_i, program_bitmap_k), EINVAL);
+				verifexit(program_dependency_k <
+					  program_count, EINVAL);
+				verifexit((program_type_k !=
+					IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
+					(program_type_k !=
+					IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB),
+					EINVAL);
+				verifexit(USE_SIMPLIFIED_GRAPH_MODEL ||
+				ia_css_is_kernel_bitmap_intersection_empty(
+					program_bitmap_i, program_bitmap_k),
+					EINVAL);
 			}
 		}
 
 /* Check for relations */
 		for (j = 0; j < (int)program_count; j++) {
 			int	k;
-			ia_css_program_manifest_t	*program_manifest_j = ia_css_program_group_manifest_get_program_manifest(manifest, j);
-			ia_css_program_type_t		program_type_j	= ia_css_program_manifest_get_type(program_manifest_j);
-			ia_css_kernel_bitmap_t		program_bitmap_j = ia_css_program_manifest_get_kernel_bitmap(program_manifest_j);
-			uint8_t						program_dependency_count_j = ia_css_program_manifest_get_program_dependency_count(program_manifest_j);
-			uint8_t						program_dependency_j0 = ia_css_program_manifest_get_program_dependency(program_manifest_j, 0);
-			bool						is_sub_j = ia_css_is_program_manifest_subnode_program_type(program_manifest_j);
-			bool						is_super_j = ia_css_is_program_manifest_supernode_program_type(program_manifest_j);
-			bool						is_virtual_sub_j = (program_type_j == IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB);
-			bool						is_j_subset_i = ia_css_is_kernel_bitmap_subset(program_bitmap_i, program_bitmap_j);
-			bool						is_i_subset_j = ia_css_is_kernel_bitmap_subset(program_bitmap_j, program_bitmap_i);
+			ia_css_program_manifest_t *program_manifest_j =
+			ia_css_program_group_manifest_get_program_manifest(
+				manifest, j);
+			ia_css_program_type_t program_type_j =
+			ia_css_program_manifest_get_type(program_manifest_j);
+			ia_css_kernel_bitmap_t program_bitmap_j =
+			ia_css_program_manifest_get_kernel_bitmap(
+				program_manifest_j);
+			uint8_t program_dependency_count_j =
+			ia_css_program_manifest_get_program_dependency_count(
+				program_manifest_j);
+			uint8_t program_dependency_j0 =
+			ia_css_program_manifest_get_program_dependency(
+				program_manifest_j, 0);
+			bool is_sub_j =
+			ia_css_is_program_manifest_subnode_program_type(
+				program_manifest_j);
+			bool is_super_j =
+			ia_css_is_program_manifest_supernode_program_type(
+				program_manifest_j);
+			bool is_virtual_sub_j =
+			(program_type_j == IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB);
+			bool is_j_subset_i =
+			ia_css_is_kernel_bitmap_subset(
+				program_bitmap_i, program_bitmap_j);
+			bool is_i_subset_j =
+			ia_css_is_kernel_bitmap_subset(
+				program_bitmap_j, program_bitmap_i);
 
 /* Test below would fail for i==j */
-			if (i == j) {
+			if (i == j)
 				continue;
-			}
 
 /* Empty sets are always subsets, but meaningless */
-			verifexit(!ia_css_is_kernel_bitmap_empty(program_bitmap_j), EINVAL);
+			verifexit(!ia_css_is_kernel_bitmap_empty(
+					program_bitmap_j), EINVAL);
 
 /*
  * Checks for mutual subnodes
@@ -332,43 +437,75 @@ bool ia_css_is_program_group_manifest_valid(
  * Checks for subnodes
  * - Subnodes must have a subset of kernels
  */
-			if (((program_type_i == IA_CSS_PROGRAM_TYPE_PARALLEL_SUB) && (program_type_j == IA_CSS_PROGRAM_TYPE_PARALLEL_SUB)) ||
-				((program_type_i == IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) && (program_type_j == IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB)) ||
-				((program_type_i == IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB) && (program_type_j == IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB))) {
+			if (((program_type_i ==
+			      IA_CSS_PROGRAM_TYPE_PARALLEL_SUB) &&
+			     (program_type_j ==
+			      IA_CSS_PROGRAM_TYPE_PARALLEL_SUB)) ||
+			    ((program_type_i ==
+			      IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
+			     (program_type_j ==
+			      IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB)) ||
+			    ((program_type_i ==
+			      IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB) &&
+			     (program_type_j ==
+			      IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB))) {
 
-				verifexit(program_dependency_count_j == 1, EINVAL);
+				verifexit(program_dependency_count_j == 1,
+					EINVAL);
 				verifexit(program_dependency_i0 != i, EINVAL);
 				verifexit(program_dependency_j0 != i, EINVAL);
 
-				if (program_dependency_i0 == program_dependency_j0) {
+				if (program_dependency_i0 ==
+				    program_dependency_j0) {
 					verifexit(is_sub_i, EINVAL);
 /* Subnodes are subsets, not for virtual nodes */
 					if (!is_virtual_sub_i)
-						verifexit(((is_j_subset_i || is_i_subset_j)), EINVAL);
-/* That must be equal for parallel subnodes, must be unequal for exlusive and virtual subnodes */
-					verifexit(((is_j_subset_i && is_i_subset_j) ^ (is_exclusive_sub_i | is_virtual_sub_i)), EINVAL);
+						verifexit(
+							((is_j_subset_i ||
+							  is_i_subset_j)),
+							EINVAL);
+/* That must be equal for parallel subnodes,
+ * must be unequal for exlusive and virtual subnodes
+ */
+					verifexit(
+					((is_j_subset_i && is_i_subset_j) ^
+					 (is_exclusive_sub_i |
+					  is_virtual_sub_i)), EINVAL);
 
 				}
 				if (is_j_subset_i || is_i_subset_j) {
-					verifexit(program_dependency_i0 == program_dependency_j0, EINVAL);
+					verifexit(program_dependency_i0 ==
+						program_dependency_j0, EINVAL);
 				}
 			}
 
-			if (((program_type_i == IA_CSS_PROGRAM_TYPE_PARALLEL_SUPER) && (program_type_j == IA_CSS_PROGRAM_TYPE_PARALLEL_SUB)) ||
-				((program_type_i == IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUPER) && (program_type_j == IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB)) ||
-				((program_type_i == IA_CSS_PROGRAM_TYPE_VIRTUAL_SUPER) && (program_type_j == IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB))) {
+			if (((program_type_i ==
+			      IA_CSS_PROGRAM_TYPE_PARALLEL_SUPER) &&
+			    (program_type_j ==
+			     IA_CSS_PROGRAM_TYPE_PARALLEL_SUB)) ||
+			    ((program_type_i ==
+			      IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUPER) &&
+			    (program_type_j ==
+			     IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB)) ||
+			    ((program_type_i ==
+			      IA_CSS_PROGRAM_TYPE_VIRTUAL_SUPER) &&
+			    (program_type_j ==
+			     IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB))) {
 
-				verifexit(program_dependency_count_j == 1, EINVAL);
+				verifexit(program_dependency_count_j == 1,
+						EINVAL);
 				verifexit(!is_i_subset_j, EINVAL);
 
 				if (program_dependency_j0 == i) {
-					verifexit(program_dependency_i0 != program_dependency_j0, EINVAL);
+					verifexit(program_dependency_i0 !=
+						program_dependency_j0, EINVAL);
 					verifexit(is_super_i, EINVAL);
 					verifexit(is_j_subset_i, EINVAL);
 
 				}
 				if (is_j_subset_i) {
-					verifexit(program_dependency_j0 == i, EINVAL);
+					verifexit(program_dependency_j0 == i,
+						EINVAL);
 				}
 			}
 
@@ -379,15 +516,24 @@ bool ia_css_is_program_group_manifest_valid(
  *   unless a subnode
  */
 			for (k = 0; k < (int)program_dependency_count_j; k++) {
-				uint8_t	program_dependency_k = ia_css_program_manifest_get_program_dependency(program_manifest_j, k);
+				uint8_t	program_dependency_k =
+				ia_css_program_manifest_get_program_dependency(
+					program_manifest_j, k);
 
-				verifexit((program_dependency_k < program_count), EINVAL);
+				verifexit((program_dependency_k <
+					   program_count), EINVAL);
 				if (program_dependency_k == i) {
 					/* program[j] depends on program[i] */
 					verifexit((i != j), EINVAL);
-					verifexit((program_type_i != IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
-							(program_type_i != IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB), EINVAL);
-					verifexit(USE_SIMPLIFIED_GRAPH_MODEL || (ia_css_is_kernel_bitmap_intersection_empty(program_bitmap_i, program_bitmap_j) ^ is_sub_j), EINVAL);
+					verifexit((program_type_i !=
+					IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
+					(program_type_i !=
+					IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB),
+					EINVAL);
+					verifexit(USE_SIMPLIFIED_GRAPH_MODEL ||
+				(ia_css_is_kernel_bitmap_intersection_empty(
+				program_bitmap_i, program_bitmap_j) ^ is_sub_j),
+				EINVAL);
 				}
 			}
 
@@ -397,65 +543,86 @@ bool ia_css_is_program_group_manifest_valid(
  *   correct supernode
  * - We do not (yet) detect if programs properly depend on all parallel nodes
  */
-			if (!ia_css_is_kernel_bitmap_intersection_empty(program_bitmap_i, program_bitmap_j)) {
+			if (!ia_css_is_kernel_bitmap_intersection_empty(
+				program_bitmap_i, program_bitmap_j)) {
 				/* This test will pass if the program manifest*/
 				/* is NULL, but that's no concern here */
-				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || !ia_css_is_program_manifest_singular_program_type(program_manifest_i), EINVAL);
-				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || !ia_css_is_program_manifest_singular_program_type(program_manifest_j), EINVAL);
+				verifexit(USE_SIMPLIFIED_GRAPH_MODEL ||
+			!ia_css_is_program_manifest_singular_program_type(
+				program_manifest_i), EINVAL);
+				verifexit(USE_SIMPLIFIED_GRAPH_MODEL ||
+			!ia_css_is_program_manifest_singular_program_type(
+				program_manifest_j), EINVAL);
 				if (!is_virtual_sub_j)
-					verifexit(USE_SIMPLIFIED_GRAPH_MODEL || (is_j_subset_i || is_i_subset_j), EINVAL);
+					verifexit(USE_SIMPLIFIED_GRAPH_MODEL ||
+					(is_j_subset_i || is_i_subset_j),
+					EINVAL);
 				if (is_super_i) {
 					verifexit(is_sub_j, EINVAL);
-					verifexit(program_dependency_j0 == i, EINVAL);
+					verifexit(program_dependency_j0 == i,
+						  EINVAL);
 				}
 				if (is_super_j) {
 					verifexit(is_sub_i, EINVAL);
-					verifexit(program_dependency_i0 == j, EINVAL);
+					verifexit(program_dependency_i0 == j,
+						  EINVAL);
 				}
 			}
 		}
-		check_bitmap = ia_css_kernel_bitmap_union(check_bitmap, program_bitmap_i);
+		check_bitmap = ia_css_kernel_bitmap_union(
+					check_bitmap, program_bitmap_i);
 /* A terminal can be bound to only a single (of multiple concurrent) program(s),
  * i.e. the one that holds the iterator to control it
  */
-/* Only singular and super nodes can depend on a terminal. This loop accumulates
- * all terminal dependencies over all programs */
+/* Only singular and super nodes can depend on a terminal.
+ * This loop accumulates all terminal dependencies over all programs
+ */
 		for (j = 0; j < (int)terminal_dependency_count_i; j++) {
-			uint8_t	terminal_dependency = ia_css_program_manifest_get_terminal_dependency(program_manifest_i, j);
+			uint8_t terminal_dependency =
+			       ia_css_program_manifest_get_terminal_dependency(
+					program_manifest_i, j);
 
 			verifexit(terminal_dependency < terminal_count, EINVAL);
-			if ((program_type_i != IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
-				(program_type_i != IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB)) {
+			if ((program_type_i !=
+			     IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
+			    (program_type_i !=
+			     IA_CSS_PROGRAM_TYPE_VIRTUAL_SUB)) {
 				/* If the subnode always came after the */
 				/* supernode we could check for presence */
-				terminal_bitmap = vied_nci_bit_mask_set_unique(terminal_bitmap, terminal_dependency);
-				verifexit(USE_SIMPLIFIED_GRAPH_MODEL || !vied_nci_is_bitmap_empty(terminal_bitmap), EINVAL);
+				terminal_bitmap =
+					 vied_nci_bit_mask_set_unique(
+						terminal_bitmap,
+						 terminal_dependency);
+				verifexit(USE_SIMPLIFIED_GRAPH_MODEL ||
+					  !vied_nci_is_bitmap_empty(
+						terminal_bitmap), EINVAL);
 			}
 		}
 	}
-	verifexit(ia_css_is_kernel_bitmap_equal(total_bitmap, check_bitmap), EINVAL);
+	verifexit(ia_css_is_kernel_bitmap_equal(
+			total_bitmap, check_bitmap), EINVAL);
 
-	terminal_bitmap_weight = vied_nci_bitmap_compute_weight(terminal_bitmap);
+	terminal_bitmap_weight =
+		vied_nci_bitmap_compute_weight(terminal_bitmap);
 	verifexit(terminal_bitmap_weight >= 0, EINVAL);
-	if (has_parameter_terminal_in || has_parameter_terminal_out || has_program_terminal) {
+	if (has_parameter_terminal_in ||
+	    has_parameter_terminal_out ||
+	    has_program_terminal) {
 		int skip_terminal_count = 0;
 
-		if (has_parameter_terminal_in) {
+		if (has_parameter_terminal_in)
 			skip_terminal_count++;
-		}
-		if (has_parameter_terminal_out) {
+		if (has_parameter_terminal_out)
 			skip_terminal_count++;
-		}
-		if (has_program_terminal) {
+		if (has_program_terminal)
 			skip_terminal_count++;
-		}
-		if (has_program_terminal_sequencer_info) {
+		if (has_program_terminal_sequencer_info)
 			skip_terminal_count--;
-		}
-		verifexit(USE_SIMPLIFIED_GRAPH_MODEL || (terminal_bitmap_weight == (terminal_count - skip_terminal_count)), EINVAL);
-	} else {
+		verifexit(USE_SIMPLIFIED_GRAPH_MODEL ||
+			 (terminal_bitmap_weight ==
+			 (terminal_count - skip_terminal_count)), EINVAL);
+	} else
 		verifexit((terminal_bitmap_weight == terminal_count), EINVAL);
-	}
 
 	is_valid = true;
 EXIT:
@@ -507,7 +674,8 @@ int ia_css_program_group_manifest_set_program_group_ID(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_group_manifest_set_program_group_ID(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
+		"ia_css_program_group_manifest_set_program_group_ID(): enter:\n");
 
 	if (manifest != NULL) {
 		manifest->ID = id;
@@ -525,7 +693,8 @@ int ia_css_program_group_manifest_set_alignment(
 {
 	int	retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_group_manifest_set_alignment(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
+		"ia_css_program_group_manifest_set_alignment(): enter:\n");
 
 	if (manifest != NULL) {
 		manifest->alignment = alignment;
@@ -542,7 +711,8 @@ uint8_t ia_css_program_group_manifest_get_alignment(
 {
 	uint8_t	alignment = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_group_manifest_get_alignment(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
+		"ia_css_program_group_manifest_get_alignment(): enter:\n");
 
 	if (manifest != NULL) {
 		alignment = manifest->alignment;
@@ -565,7 +735,8 @@ int ia_css_program_group_manifest_set_kernel_bitmap(
 {
 	int retval = -1;
 
-	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_group_manifest_set_kernel_bitmap(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
+		"ia_css_program_group_manifest_set_kernel_bitmap(): enter:\n");
 
 	if (manifest != NULL) {
 		manifest->kernel_bitmap = bitmap;
@@ -582,7 +753,8 @@ ia_css_kernel_bitmap_t ia_css_program_group_manifest_get_kernel_bitmap(
 {
 	ia_css_kernel_bitmap_t	bitmap = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_group_manifest_get_kernel_bitmap(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
+		"ia_css_program_group_manifest_get_kernel_bitmap(): enter:\n");
 
 	if (manifest != NULL) {
 		bitmap = manifest->kernel_bitmap;
@@ -626,7 +798,8 @@ ia_css_program_manifest_t *ia_css_program_group_manifest_get_program_manifest(
 	unsigned int i;
 
 	IA_CSS_TRACE_2(PSYSAPI_STATIC, VERBOSE,
-		"ia_css_program_group_manifest_get_program_manifest(%p,%d): enter:\n", manifest, program_index);
+		"ia_css_program_group_manifest_get_program_manifest(%p,%d): enter:\n",
+		manifest, program_index);
 
 	program_count =
 		ia_css_program_group_manifest_get_program_count(manifest);
@@ -639,8 +812,8 @@ ia_css_program_manifest_t *ia_css_program_group_manifest_get_program_manifest(
 	if (program_index < program_count) {
 		program_manifest = (uint8_t *)prg_manifest_base;
 		for (i = 0; i < program_index; i++) {
-			program_manifest +=
-			  ((ia_css_program_manifest_t *)program_manifest)->size;
+			program_manifest += ((ia_css_program_manifest_t *)
+					    program_manifest)->size;
 		}
 	}
 
@@ -662,9 +835,12 @@ ia_css_data_terminal_manifest_t
 	ia_css_terminal_manifest_t	*terminal_manifest;
 
 	IA_CSS_TRACE_2(PSYSAPI_STATIC, VERBOSE,
-		"ia_css_program_group_manifest_get_data_terminal_manifest(%p, %d): enter:\n", manifest, (int)terminal_index);
+		"ia_css_program_group_manifest_get_data_terminal_manifest(%p, %d): enter:\n",
+		manifest, (int)terminal_index);
 
-	terminal_manifest = ia_css_program_group_manifest_get_terminal_manifest(manifest, terminal_index);
+	terminal_manifest =
+		ia_css_program_group_manifest_get_terminal_manifest(manifest,
+			terminal_index);
 
 	verifexit(ia_css_is_terminal_manifest_data_terminal(terminal_manifest),
 			EINVAL);
@@ -681,15 +857,19 @@ ia_css_param_terminal_manifest_t
 	const ia_css_program_group_manifest_t	*manifest,
 	const unsigned int			terminal_index)
 {
-	ia_css_param_terminal_manifest_t	*param_terminal_manifest = NULL;
-	ia_css_terminal_manifest_t		*terminal_manifest;
+	ia_css_param_terminal_manifest_t *param_terminal_manifest = NULL;
+	ia_css_terminal_manifest_t *terminal_manifest;
 
 	IA_CSS_TRACE_2(PSYSAPI_STATIC, VERBOSE,
-			"ia_css_program_group_manifest_get_param_terminal_manifest(%p, %d): enter:\n", manifest, (int)terminal_index);
+		"ia_css_program_group_manifest_get_param_terminal_manifest(%p, %d): enter:\n",
+		manifest, (int)terminal_index);
 
-	terminal_manifest = ia_css_program_group_manifest_get_terminal_manifest(manifest, terminal_index);
+	terminal_manifest =
+		ia_css_program_group_manifest_get_terminal_manifest(manifest,
+			terminal_index);
 
-	verifexit(ia_css_is_terminal_manifest_parameter_terminal(terminal_manifest), EINVAL);
+	verifexit(ia_css_is_terminal_manifest_parameter_terminal(
+			terminal_manifest), EINVAL);
 	param_terminal_manifest =
 		(ia_css_param_terminal_manifest_t *)terminal_manifest;
 EXIT:
@@ -701,17 +881,20 @@ ia_css_spatial_param_terminal_manifest_t
 	const ia_css_program_group_manifest_t	*manifest,
 	const unsigned int			terminal_index)
 {
-	ia_css_spatial_param_terminal_manifest_t	*spatial_param_terminal_manifest = NULL;
-	ia_css_terminal_manifest_t	*terminal_manifest;
+	ia_css_spatial_param_terminal_manifest_t
+		*spatial_param_terminal_manifest = NULL;
+	ia_css_terminal_manifest_t *terminal_manifest;
 
 	IA_CSS_TRACE_2(PSYSAPI_STATIC, VERBOSE,
-			"ia_css_program_group_manifest_get_spatial_param_terminal_manifest(%p, %d): enter:\n", manifest, (int)terminal_index);
+		"ia_css_program_group_manifest_get_spatial_param_terminal_manifest(%p, %d): enter:\n",
+		manifest, (int)terminal_index);
 
 	terminal_manifest =
 		ia_css_program_group_manifest_get_terminal_manifest(manifest,
 			terminal_index);
 
-	verifexit(ia_css_is_terminal_manifest_spatial_parameter_terminal(terminal_manifest), EINVAL);
+	verifexit(ia_css_is_terminal_manifest_spatial_parameter_terminal(
+			terminal_manifest), EINVAL);
 
 	spatial_param_terminal_manifest =
 		(ia_css_spatial_param_terminal_manifest_t *)terminal_manifest;
@@ -724,17 +907,20 @@ ia_css_sliced_param_terminal_manifest_t
 	const ia_css_program_group_manifest_t	*manifest,
 	const unsigned int			terminal_index)
 {
-	ia_css_sliced_param_terminal_manifest_t	*sliced_param_terminal_manifest = NULL;
-	ia_css_terminal_manifest_t	*terminal_manifest;
+	ia_css_sliced_param_terminal_manifest_t
+		*sliced_param_terminal_manifest = NULL;
+	ia_css_terminal_manifest_t *terminal_manifest;
 
 	IA_CSS_TRACE_2(PSYSAPI_STATIC, VERBOSE,
-			"ia_css_program_group_manifest_get_sliced_param_terminal_manifest(%p, %d): enter:\n", manifest, (int)terminal_index);
+		"ia_css_program_group_manifest_get_sliced_param_terminal_manifest(%p, %d): enter:\n",
+		manifest, (int)terminal_index);
 
 	terminal_manifest =
 		ia_css_program_group_manifest_get_terminal_manifest(manifest,
 			terminal_index);
 
-	verifexit(ia_css_is_terminal_manifest_sliced_terminal(terminal_manifest), EINVAL);
+	verifexit(ia_css_is_terminal_manifest_sliced_terminal(
+			terminal_manifest), EINVAL);
 
 	sliced_param_terminal_manifest =
 		(ia_css_sliced_param_terminal_manifest_t *)terminal_manifest;
@@ -752,13 +938,15 @@ ia_css_program_terminal_manifest_t
 	ia_css_terminal_manifest_t *terminal_manifest;
 
 	IA_CSS_TRACE_2(PSYSAPI_STATIC, VERBOSE,
-		       "ia_css_program_group_manifest_get_program_terminal_manifest(%p, %d): enter:\n", manifest, (int)terminal_index);
+		"ia_css_program_group_manifest_get_program_terminal_manifest(%p, %d): enter:\n",
+		manifest, (int)terminal_index);
 
 	terminal_manifest =
 		ia_css_program_group_manifest_get_terminal_manifest(manifest,
 			terminal_index);
 
-	verifexit(ia_css_is_terminal_manifest_program_terminal(terminal_manifest), EINVAL);
+	verifexit(ia_css_is_terminal_manifest_program_terminal(
+			terminal_manifest), EINVAL);
 
 	program_terminal_manifest =
 		(ia_css_program_terminal_manifest_t *)terminal_manifest;
@@ -777,7 +965,8 @@ ia_css_terminal_manifest_t *ia_css_program_group_manifest_get_terminal_manifest(
 	uint32_t offset;
 
 	IA_CSS_TRACE_2(PSYSAPI_STATIC, VERBOSE,
-			"ia_css_program_group_manifest_get_terminal_manifest(%p,%d): enter:\n", manifest, (int)terminal_index);
+		"ia_css_program_group_manifest_get_terminal_manifest(%p,%d): enter:\n",
+		manifest, (int)terminal_index);
 
 	verifexit(manifest != NULL, EINVAL);
 
@@ -793,7 +982,8 @@ ia_css_terminal_manifest_t *ia_css_program_group_manifest_get_terminal_manifest(
 	while (i < terminal_index) {
 		offset =
 		 (uint32_t)ia_css_terminal_manifest_get_size(terminal_manifest);
-		terminal_manifest = (ia_css_terminal_manifest_t *)((char *)terminal_manifest + offset);
+		terminal_manifest = (ia_css_terminal_manifest_t *)
+				    ((char *)terminal_manifest + offset);
 		i++;
 	}
 EXIT:
@@ -822,7 +1012,8 @@ uint8_t ia_css_program_group_manifest_get_terminal_count(
 {
 	uint8_t	terminal_count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_group_manifest_get_terminal_count(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
+		"ia_css_program_group_manifest_get_terminal_count(): enter:\n");
 
 	if (manifest != NULL) {
 		terminal_count = manifest->terminal_count;
@@ -918,22 +1109,33 @@ void ia_css_program_group_manifest_init(
 			(ia_css_terminal_manifest_t *)terminal_manifest_base;
 
 		ia_css_terminal_manifest_set_parent_offset(
-				(ia_css_terminal_manifest_t *)terminal_manifest_base,
+				(ia_css_terminal_manifest_t *)
+				terminal_manifest_base,
 				offset);
 		switch (terminal_type[i]) {
 		case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN:
-			result = ia_css_param_terminal_manifest_init((ia_css_param_terminal_manifest_t *)term_manifest, cached_in_param_section_count);
+			result = ia_css_param_terminal_manifest_init(
+				(ia_css_param_terminal_manifest_t *)
+				term_manifest,
+				cached_in_param_section_count);
 			if (0 == result) {
-				terminal_size = ia_css_param_terminal_manifest_get_size(cached_in_param_section_count);
+				terminal_size =
+				ia_css_param_terminal_manifest_get_size(
+					cached_in_param_section_count);
 			} else {
 				IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
 					"ia_css_param_terminal_manifest_init failed in cached in terminal\n");
 			}
 			break;
 		case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT:
-			result = ia_css_param_terminal_manifest_init((ia_css_param_terminal_manifest_t *)term_manifest, cached_out_param_section_count);
+			result = ia_css_param_terminal_manifest_init(
+				(ia_css_param_terminal_manifest_t *)
+				term_manifest,
+				cached_out_param_section_count);
 			if (0 == result) {
-				terminal_size = ia_css_param_terminal_manifest_get_size(cached_out_param_section_count);
+				terminal_size =
+				ia_css_param_terminal_manifest_get_size(
+					cached_out_param_section_count);
 			} else {
 				IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
 					"ia_css_param_terminal_manifest_init failed\n");
@@ -941,10 +1143,14 @@ void ia_css_program_group_manifest_init(
 			break;
 		case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN:
 		case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT:
-			result = ia_css_spatial_param_terminal_manifest_init((ia_css_spatial_param_terminal_manifest_t *)term_manifest,
+			result = ia_css_spatial_param_terminal_manifest_init(
+				(ia_css_spatial_param_terminal_manifest_t *)
+				term_manifest,
 				spatial_param_section_count[j]);
 			if (0 == result) {
-				terminal_size = ia_css_spatial_param_terminal_manifest_get_size(spatial_param_section_count[j]);
+				terminal_size =
+			ia_css_spatial_param_terminal_manifest_get_size(
+				spatial_param_section_count[j]);
 				j++;
 			} else {
 				IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
@@ -952,11 +1158,16 @@ void ia_css_program_group_manifest_init(
 			}
 			break;
 		case IA_CSS_TERMINAL_TYPE_PROGRAM:
-			result = ia_css_program_terminal_manifest_init((ia_css_program_terminal_manifest_t *)term_manifest,
-				fragment_param_section_count, kernel_fragment_seq_count);
-			if (0 == result) {
-				terminal_size = ia_css_program_terminal_manifest_get_size(fragment_param_section_count,
+			result = ia_css_program_terminal_manifest_init(
+				(ia_css_program_terminal_manifest_t *)
+				term_manifest,
+				fragment_param_section_count,
 				kernel_fragment_seq_count);
+			if (0 == result) {
+				terminal_size =
+				ia_css_program_terminal_manifest_get_size(
+					fragment_param_section_count,
+					kernel_fragment_seq_count);
 			} else {
 				IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
 					"ia_css_program_terminal_manifest_init failed in program terminal\n");
@@ -967,9 +1178,14 @@ void ia_css_program_group_manifest_init(
 			terminal_size = sizeof(ia_css_data_terminal_manifest_t);
 			break;
 		case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_IN:
-			result = ia_css_sliced_param_terminal_manifest_init((ia_css_sliced_param_terminal_manifest_t *)term_manifest, sliced_in_param_section_count[m]);
+			result = ia_css_sliced_param_terminal_manifest_init(
+				(ia_css_sliced_param_terminal_manifest_t *)
+				term_manifest,
+				sliced_in_param_section_count[m]);
 			if (0 == result) {
-				terminal_size = ia_css_sliced_param_terminal_manifest_get_size(sliced_in_param_section_count[m]);
+				terminal_size =
+			ia_css_sliced_param_terminal_manifest_get_size(
+				sliced_in_param_section_count[m]);
 				m++;
 			} else {
 				IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
@@ -977,9 +1193,14 @@ void ia_css_program_group_manifest_init(
 			}
 			break;
 		case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT:
-			result = ia_css_sliced_param_terminal_manifest_init((ia_css_sliced_param_terminal_manifest_t *)term_manifest, sliced_out_param_section_count[n]);
+			result = ia_css_sliced_param_terminal_manifest_init(
+				(ia_css_sliced_param_terminal_manifest_t *)
+				term_manifest,
+				sliced_out_param_section_count[n]);
 			if (0 == result) {
-				terminal_size = ia_css_sliced_param_terminal_manifest_get_size(sliced_out_param_section_count[n]);
+				terminal_size =
+				ia_css_sliced_param_terminal_manifest_get_size(
+					sliced_out_param_section_count[n]);
 				n++;
 			} else {
 				IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
@@ -1042,7 +1263,8 @@ int ia_css_program_group_manifest_print(
 		"%d program manifests\n", (int)program_count);
 	for (i = 0; i < (int)program_count; i++) {
 		ia_css_program_manifest_t *program_manifest =
-		ia_css_program_group_manifest_get_program_manifest(manifest, i);
+			ia_css_program_group_manifest_get_program_manifest(
+				manifest, i);
 
 		retval = ia_css_program_manifest_print(program_manifest, fid);
 		verifjmpexit(retval == 0);
@@ -1050,35 +1272,49 @@ int ia_css_program_group_manifest_print(
 	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 		"%d terminal manifests\n", (int)terminal_count);
 	for (i = 0; i < (int)terminal_count; i++) {
-		ia_css_terminal_manifest_t	*terminal_manifest = ia_css_program_group_manifest_get_terminal_manifest(manifest, i);
+		ia_css_terminal_manifest_t *terminal_manifest =
+			ia_css_program_group_manifest_get_terminal_manifest(
+				manifest, i);
 
-		retval = ia_css_terminal_manifest_print(terminal_manifest, fid);
+		retval = ia_css_terminal_manifest_print(
+				terminal_manifest, fid);
 		verifjmpexit(retval == 0);
 	}
 
-	struct ia_css_psys_private_pg_data *priv_data = (struct ia_css_psys_private_pg_data *)ia_css_program_group_manifest_get_private_data(manifest);
+	struct ia_css_psys_private_pg_data *priv_data =
+		(struct ia_css_psys_private_pg_data *)
+		ia_css_program_group_manifest_get_private_data(manifest);
+	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
+		"private_data_offset %d\n", manifest->private_data_offset);
 
-	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "private_data_offset %d \n", manifest->private_data_offset);
-
-	for (i = 0; i < IPU_DEVICE_GP_PSA_MUX_NUM_MUX; i ++) {
-		IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO, "PSA MUX id %d mux val %d\n",i, priv_data->psa_mux_conf[i]);
+	for (i = 0; i < IPU_DEVICE_GP_PSA_MUX_NUM_MUX; i++) {
+		IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
+			"PSA MUX id %d mux val %d\n", i,
+			priv_data->psa_mux_conf[i]);
 
 	}
 
-	for (i = 0; i < IPU_DEVICE_GP_ISA_STATIC_MUX_NUM_MUX; i ++) {
-		IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO, "ISA MUX id %d mux val %d\n",i, priv_data->isa_mux_conf[i]);
+	for (i = 0; i < IPU_DEVICE_GP_ISA_STATIC_MUX_NUM_MUX; i++) {
+		IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
+			"ISA MUX id %d mux val %d\n", i,
+			priv_data->isa_mux_conf[i]);
 
 	}
 
-	for (i = 0; i < IPU_DEVICE_ACB_NUM_ACB; i ++) {
+	for (i = 0; i < IPU_DEVICE_ACB_NUM_ACB; i++) {
 
-		if(priv_data->acb_route[i].in_select != VIED_NCI_ACB_PORT_INVALID) {
+		if (priv_data->acb_route[i].in_select !=
+		   VIED_NCI_ACB_PORT_INVALID) {
 
-			assert(priv_data->acb_route[i].in_select != VIED_NCI_ACB_PORT_INVALID &&
-				priv_data->acb_route[i].out_select != VIED_NCI_ACB_PORT_INVALID);
+			assert(priv_data->acb_route[i].in_select !=
+				VIED_NCI_ACB_PORT_INVALID &&
+				priv_data->acb_route[i].out_select !=
+				VIED_NCI_ACB_PORT_INVALID);
 
-			IA_CSS_TRACE_3(PSYSAPI_STATIC, INFO, "Route Cell id %d In %d Out %d\n",i, priv_data->acb_route[i].in_select, priv_data->acb_route[i].out_select);
-
+			IA_CSS_TRACE_3(PSYSAPI_STATIC, INFO,
+				"Route Cell id %d In %d Out %d\n", i,
+				priv_data->acb_route[i].in_select,
+				priv_data->acb_route[i].out_select);
 		}
 
 	}

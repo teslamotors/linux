@@ -1,19 +1,33 @@
-# 
+/*
+ * Copyright (c) 2013--2016 Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License version
+ * 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+ 
 
-LOGICAL_FW_INPUT_SYSTEM         = input_system_system
-LOGICAL_FW_PROCESSING_SYSTEM    = processing_system_system
-LOGICAL_FW_IPU_SYSTEM           = css_broxton_system
-LOGICAL_FW_ISP_SYSTEM           = isp2601_default_system
-SP_CONTROL_CELL                 = sp2601_control
-SP_PROXY_CELL                   = sp2601_proxy
-SP_FP_CELL                      = sp2601_fp
-ISP_CELL                        = isp2601
+LOGICAL_FW_INPUT_SYSTEM          = input_system_system
+LOGICAL_FW_PROCESSING_SYSTEM     = processing_system_system
+LOGICAL_FW_IPU_SYSTEM            = css_broxton_system
+LOGICAL_FW_ISP_SYSTEM            = isp2601_default_system
+SP_CONTROL_CELL                  = sp2601_control
+SP_PROXY_CELL                    = sp2601_proxy
+SP_FP_CELL                       = sp2601_fp
+ISP_CELL                         = isp2601
 # The non-capital define isp2601 is used in the sdk, in order to distinguish
 # between different isp versions the ISP_CELL_IDENTIFIER define is added.
-ISP_CELL_IDENTIFIER             = ISP2601
-HAS_IPFD                        = 1
-HAS_STR2MMIO_IN_ISL_NONSOC_PATH = 0
-HAS_PIXEL_FORMATTER_IN_ISYS	= 1
-DLI_SYSTEM                      = hive_isp_css_2600_system
-USE_REG_DUMP			= 1
-RESOURCE_MANAGER_VERSION        = v1
+ISP_CELL_IDENTIFIER              = ISP2601
+HAS_IPFD                         = 1
+HAS_STR2MMIO_IN_ISL_NONSOC_PATH  = 0
+HAS_PIXEL_FORMATTER_IN_ISYS      = 1
+DLI_SYSTEM                       = hive_isp_css_2600_system
+USE_REG_DUMP                     = 1
+RESOURCE_MANAGER_VERSION         = v1
+OFS_SCALER_1_4K_TILEY_422_SUPPORT= 1

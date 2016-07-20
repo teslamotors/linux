@@ -30,8 +30,10 @@ struct ia_css_syscom_context {
 	unsigned int num_input_queues;
 	unsigned int num_output_queues;
 
-	struct sys_queue *input_queue;  /* array of input queues (from host to SP) */
-	struct sys_queue *output_queue; /* array of output queues (from SP to host) */
+	/* array of input queues (from host to SP) */
+	struct sys_queue *input_queue;
+	/* array of output queues (from SP to host) */
+	struct sys_queue *output_queue;
 
 	struct send_port *send_port;
 	struct recv_port *recv_port;

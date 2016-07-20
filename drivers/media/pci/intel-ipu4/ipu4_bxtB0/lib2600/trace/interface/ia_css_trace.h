@@ -29,15 +29,20 @@
  *         Example:
  *             #define NCI_DMA_TRACE_METHOD IA_CSS_TRACE_METHOD_NATIVE
  */
-#define IA_CSS_TRACE_METHOD_NATIVE  1	/**< Use whatever method of tracing that best suits the platform this code is compiled for. */
-#define IA_CSS_TRACE_METHOD_TRACE   2	/**< Use the Tracing NCI. */
+
+/**< Use whatever method of tracing that best suits the platform
+ * this code is compiled for.
+ */
+#define IA_CSS_TRACE_METHOD_NATIVE  1
+/**< Use the Tracing NCI. */
+#define IA_CSS_TRACE_METHOD_TRACE   2
 
 /**
  * STEP 2: Define {Module Name}_TRACE_LEVEL_{Level} to one of the following.
  *         Where:
  *             {Module Name} is the name of the targeted module.
  *             {Level}, in decreasing order of severity, is one of the
- *                 following values: {ASSERT, ERROR, WARNING, INFO, DEBUG, VERBOSE}.
+ *             following values: {ASSERT, ERROR, WARNING, INFO, DEBUG, VERBOSE}.
  *
  *         Example:
  *             #define NCI_DMA_TRACE_LEVEL_ASSERT IA_CSS_TRACE_LEVEL_DISABLED
@@ -49,7 +54,8 @@
 #define IA_CSS_TRACE_LEVEL_ENABLED  1
 
 /**
- * STEP 3: Define IA_CSS_TRACE_PRINT_FILE_LINE to have file name and line printed with every log message.
+ * STEP 3: Define IA_CSS_TRACE_PRINT_FILE_LINE to have file name and
+ * line printed with every log message.
  *
  *	   Example:
  *	       #define IA_CSS_TRACE_PRINT_FILE_LINE
@@ -368,8 +374,9 @@
 		IA_CSS_TRACE_FILE_PRINT_COMMAND; \
 		PRINT(IA_CSS_TRACE_FORMAT_AUG_NATIVE(severity, module, format),  ## arguments); \
 	} while (0)
-	/* TODO: In case Host Side tracing is needed to be mapped to the Tunit, the following
-	 * "IA_CSS_TRACE_TRACE" needs to be modified from PRINT to vied_nci_tunit_print function calls
+	/* TODO: In case Host Side tracing is needed to be mapped to the
+	 * Tunit, the following "IA_CSS_TRACE_TRACE" needs to be modified from
+	 * PRINT to vied_nci_tunit_print function calls
 	*/
 	#define IA_CSS_TRACE_TRACE(severity, module, format, arguments ...) \
 	do { \
@@ -385,8 +392,9 @@
 			IA_CSS_TRACE_FILE_PRINT_COMMAND; \
 			PRINT(IA_CSS_TRACE_FORMAT_AUG_NATIVE(severity, module, format),  __VA_ARGS__); \
 		} while (0)
-	/* TODO: In case Host Side tracing is needed to be mapped to the Tunit, the following
-	 * "IA_CSS_TRACE_TRACE" needs to be modified from PRINT to vied_nci_tunit_print function calls
+	/* TODO: In case Host Side tracing is needed to be mapped to the
+	 * Tunit, the following "IA_CSS_TRACE_TRACE" needs to be modified from
+	 * PRINT to vied_nci_tunit_print function calls
 	*/
 	#define IA_CSS_TRACE_TRACE(severity, module, format, ...) \
 		do { \
@@ -768,45 +776,50 @@ void IA_CSS_TRACE_CAT(module, _trace_configure)(const int argc, const char *cons
 	const char *levels = 0; \
 	\
 	while (i < argc) { \
-	if (!strcmp(argv[i], "-" #module "_trace")) { \
-		++i; \
+		if (!strcmp(argv[i], "-" #module "_trace")) { \
+			++i; \
+			\
+			if (i < argc) { \
+				levels = argv[i]; \
+				\
+				while (*levels) { \
+					switch (*levels++) { \
+					case 'a': \
+						IA_CSS_TRACE_CAT \
+					(module, _trace_assert_enable)(); \
+						break; \
+						\
+					case 'e': \
+						IA_CSS_TRACE_CAT \
+					(module, _trace_error_enable)(); \
+						break; \
+						\
+					case 'w': \
+						IA_CSS_TRACE_CAT \
+					(module, _trace_warning_enable)(); \
+						break; \
+						\
+					case 'i': \
+						IA_CSS_TRACE_CAT \
+					(module, _trace_info_enable)(); \
+						break; \
+						\
+					case 'd': \
+						IA_CSS_TRACE_CAT \
+					(module, _trace_debug_enable)(); \
+						break; \
+						\
+					case 'v': \
+						IA_CSS_TRACE_CAT \
+					(module, _trace_verbose_enable)(); \
+						break; \
+						\
+					default: \
+					} \
+				} \
+			} \
+		} \
 		\
-		if (i < argc) { \
-			levels = argv[i]; \
-			\
-		while (*levels) { \
-		switch (*levels++) { \
-		case 'a': \
-			IA_CSS_TRACE_CAT(module, _trace_assert_enable)(); \
-			break; \
-			\
-		case 'e': \
-			IA_CSS_TRACE_CAT(module, _trace_error_enable)(); \
-			break; \
-			\
-		case 'w': \
-			IA_CSS_TRACE_CAT(module, _trace_warning_enable)(); \
-			break; \
-			\
-		case 'i': \
-			IA_CSS_TRACE_CAT(module, _trace_info_enable)(); \
-			break; \
-			\
-		case 'd': \
-			IA_CSS_TRACE_CAT(module, _trace_debug_enable)(); \
-			break; \
-			\
-		case 'v': \
-			IA_CSS_TRACE_CAT(module, _trace_verbose_enable)(); \
-			break; \
-			\
-		default: \
-			break; \
-		} \
-		} \
-		} \
-	} \
-	\
 	++i; \
 	} \
 }

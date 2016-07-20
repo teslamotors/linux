@@ -15,7 +15,8 @@
 #ifndef __BUFFER_H__
 #define __BUFFER_H__
 
-#include "type_support.h" /* workaround: needed because <vied/shared_memory_map.h> uses size_t */
+/* workaround: needed because <vied/shared_memory_map.h> uses size_t */
+#include "type_support.h"
 #include "vied/shared_memory_map.h"
 
 typedef enum {
@@ -24,15 +25,19 @@ typedef enum {
 				/* input  buffer: cpu has write access */
 	buffer_read,		/* input  buffer: css has read access */
 				/* output buffer: cpu has read access */
-	buffer_cpu,		/* shared buffer: cpu has read and write access */
-	buffer_css		/* shared buffer: css has read and write access */
+	buffer_cpu,		/* shared buffer: cpu has read/write access */
+	buffer_css		/* shared buffer: css has read/write access */
 } buffer_state;
 
 struct ia_css_buffer_s {
-	unsigned int		size;		/* number of bytes bytes allocated */
-	host_virtual_address_t	mem;		/* allocated virtual memory object */
-	vied_virtual_address_t	css_address;	/* virtual address to be used on css/firmware */
-	void *cpu_address;	/* virtual address to be used on cpu/host */
+	/* number of bytes bytes allocated */
+	unsigned int		size;
+	/* allocated virtual memory object */
+	host_virtual_address_t	mem;
+	/* virtual address to be used on css/firmware */
+	vied_virtual_address_t	css_address;
+	/* virtual address to be used on cpu/host */
+	void *cpu_address;
 	buffer_state		state;
 };
 

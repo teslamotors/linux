@@ -17,26 +17,40 @@
 
 #include <vied/shared_memory_access.h>
 
-/* syscom size struct, output of ia_css_syscom_size, input for (external) allocation */
+/* syscom size struct, output of ia_css_syscom_size,
+ * input for (external) allocation
+ */
 struct ia_css_syscom_size {
-	unsigned int cpu;  /* Size of host buffer */
-	unsigned int shm;  /* Size of shared config buffer        (host to cell) */
-	unsigned int ibuf; /* Size of shared input queue buffers  (host to cell) */
-	unsigned int obuf; /* Size of shared output queue buffers (cell to host) */
+	/* Size of host buffer */
+	unsigned int cpu;
+	 /* Size of shared config buffer        (host to cell) */
+	unsigned int shm;
+	/* Size of shared input queue buffers  (host to cell) */
+	unsigned int ibuf;
+	/* Size of shared output queue buffers (cell to host) */
+	unsigned int obuf;
 };
 
-/* syscom buffer struct, output of (external) allocation, input for ia_css_syscom_open */
+/* syscom buffer struct, output of (external) allocation,
+ * input for ia_css_syscom_open
+ */
 struct ia_css_syscom_buf {
 	char *cpu; /* host buffer */
 
-	host_virtual_address_t shm_host; /* shared memory buffer host address */
-	vied_virtual_address_t shm_cell; /* shared memory buffer cell address */
+	/* shared memory buffer host address */
+	host_virtual_address_t shm_host;
+	/* shared memory buffer cell address */
+	vied_virtual_address_t shm_cell;
 
-	host_virtual_address_t ibuf_host; /* input queue shared buffer host address */
-	vied_virtual_address_t ibuf_cell; /* input queue shared buffer cell address */
+	/* input queue shared buffer host address */
+	host_virtual_address_t ibuf_host;
+	/* input queue shared buffer cell address */
+	vied_virtual_address_t ibuf_cell;
 
-	host_virtual_address_t obuf_host; /* output queue shared buffer host address */
-	vied_virtual_address_t obuf_cell; /* output queue shared buffer cell address */
+	/* output queue shared buffer host address */
+	host_virtual_address_t obuf_host;
+	 /* output queue shared buffer cell address */
+	vied_virtual_address_t obuf_cell;
 };
 
 struct ia_css_syscom_queue_config {

@@ -48,14 +48,17 @@ struct ia_css_driver_sys_config {
  * This should contain the driver specified info for proxy write queues
  */
 struct ia_css_driver_proxy_config {
-	unsigned int proxy_write_queue_size;	/* max # tokens per PROXY send/recv queue. Proxy queues are used for write access purpose */
+	/* max # tokens per PROXY send/recv queue.
+	 * Proxy queues are used for write access purpose
+	 */
+	unsigned int proxy_write_queue_size;
 };
 
  /**
  * struct ia_css_isys_device_cfg_data - ISYS device configuration data
  * @driver_sys
- * @buffer_partition: Information required for the virtual SRAM space partition of
- * the streams.
+ * @buffer_partition: Information required for the virtual SRAM
+ * space partition of the streams.
  */
 struct ia_css_isys_device_cfg_data {
 	struct ia_css_driver_sys_config driver_sys;
@@ -118,8 +121,9 @@ struct ia_css_isys_param_pin {
  * struct ia_css_isys_input_pin_info
  * @input_res: input resolution
  * @dt: mipi data type
- * @mipi_store_mode: defines if legacy long packet header will be stored or discarded
- *                   if discarded, output pin pin type for this input pin can only be MIPI
+ * @mipi_store_mode: defines if legacy long packet header will be stored or
+ *		     discarded if discarded, output pin pin type for this
+ *		     input pin can only be MIPI
  */
 struct ia_css_isys_input_pin_info {
 	struct ia_css_isys_resolution input_res;
@@ -131,20 +135,33 @@ struct ia_css_isys_input_pin_info {
  * struct ia_css_isys_isa_cfg. Describes the ISA cfg
  */
 struct ia_css_isys_isa_cfg {
-	/* Following sets resolution information neeed by the IS GP registers */
-	/* For index IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED, it is needed when there is RAW_NS pin */
-	/* For index IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED, it is needed when there is RAW_S pin */
+	/* Following sets resolution information neeed by the IS GP registers,
+	 * For index IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED,
+	 * it is needed when there is RAW_NS pin
+	 * For index IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED,
+	 * it is needed when there is RAW_S pin
+	 */
 	struct ia_css_isys_resolution isa_res[N_IA_CSS_ISYS_RESOLUTION_INFO];
-	unsigned int blc_enabled;		/* acc id 0, set if process required */
-	unsigned int lsc_enabled;		/* acc id 1, set if process required */
-	unsigned int dpc_enabled;		/* acc id 2, set if process required */
-	unsigned int downscaler_enabled;	/* acc id 3, set if process required */
-	unsigned int awb_enabled;		/* acc id 4, set if process required */
-	unsigned int af_enabled;		/* acc id 5, set if process required */
-	unsigned int ae_enabled;		/* acc id 6, set if process required */
-	enum ia_css_isys_type_paf paf_type;	/* acc id 7, disabled, or type of paf enabled*/
-	unsigned int send_irq_stats_ready;	/* Send irq for any statistics buffers which got completed */
-	unsigned int send_resp_stats_ready;	/* Send response for any statistics buffers which got completed */
+	/* acc id 0, set if process required */
+	unsigned int blc_enabled;
+	/* acc id 1, set if process required */
+	unsigned int lsc_enabled;
+	/* acc id 2, set if process required */
+	unsigned int dpc_enabled;
+	/* acc id 3, set if process required */
+	unsigned int downscaler_enabled;
+	/* acc id 4, set if process required */
+	unsigned int awb_enabled;
+	/* acc id 5, set if process required */
+	unsigned int af_enabled;
+	/* acc id 6, set if process required */
+	unsigned int ae_enabled;
+	/* acc id 7, disabled, or type of paf enabled*/
+	enum ia_css_isys_type_paf paf_type;
+	/* Send irq for any statistics buffers which got completed */
+	unsigned int send_irq_stats_ready;
+	/* Send response for any statistics buffers which got completed */
+	unsigned int send_resp_stats_ready;
 };
 
 /**
@@ -174,13 +191,19 @@ struct ia_css_isys_cropping {
  * maximum number of input pins which can be cropped,
  * it is directly mapped to the HW devices
  * @send_irq_sof_discarded: send irq on discarded frame sof response
- *		- if '1' it will override the send_resp_sof_discarded and send the response
- *		- if '0' the send_resp_sof_discarded will determine whether to send the response
+ *		- if '1' it will override the send_resp_sof_discarded and send
+ *		  the response
+ *		- if '0' the send_resp_sof_discarded will determine whether to
+ *		  send the response
  * @send_irq_eof_discarded: send irq on discarded frame eof response
- *		- if '1' it will override the send_resp_eof_discarded and send the response
- *		- if '0' the send_resp_eof_discarded will determine whether to send the response
- * @send_resp_sof_discarded: send response for discarded frame sof detected, used only when send_irq_sof_discarded is '0'
- * @send_resp_eof_discarded: send response for discarded frame eof detected, used only when send_irq_eof_discarded is '0'
+ *		- if '1' it will override the send_resp_eof_discarded and send
+ *		  the response
+ *		- if '0' the send_resp_eof_discarded will determine whether to
+ *		  send the response
+ * @send_resp_sof_discarded: send response for discarded frame sof detected,
+ *			     used only when send_irq_sof_discarded is '0'
+ * @send_resp_eof_discarded: send response for discarded frame eof detected,
+ *			     used only when send_irq_eof_discarded is '0'
  * @the rest: input/output pin descriptors
  */
 struct ia_css_isys_stream_cfg_data {
@@ -205,13 +228,19 @@ struct ia_css_isys_stream_cfg_data {
  * @output_pins: output pin addresses
  * @process_group_light: process_group_light buffer address
  * @send_irq_sof: send irq on frame sof response
- *		- if '1' it will override the send_resp_sof and send the response
- *		- if '0' the send_resp_sof will determine whether to send the response
+ *		- if '1' it will override the send_resp_sof and send
+ *		  the response
+ *		- if '0' the send_resp_sof will determine whether to send
+ *		  the response
  * @send_irq_eof: send irq on frame eof response
- *		- if '1' it will override the send_resp_eof and send the response
- *		- if '0' the send_resp_eof will determine whether to send the response
- * @send_resp_sof: send response for frame sof detected, used only when send_irq_sof is '0'
- * @send_resp_eof: send response for frame eof detected, used only when send_irq_eof is '0'
+ *		- if '1' it will override the send_resp_eof and send
+ *		  the response
+ *		- if '0' the send_resp_eof will determine whether to send
+ *		  the response
+ * @send_resp_sof: send response for frame sof detected,
+ *		   used only when send_irq_sof is '0'
+ * @send_resp_eof: send response for frame eof detected,
+ *		   used only when send_irq_eof is '0'
  */
 struct ia_css_isys_frame_buff_set {
 	struct ia_css_isys_output_pin_payload output_pins[MAX_OPINS];
@@ -228,11 +257,17 @@ struct ia_css_isys_frame_buff_set {
  * @stream_handle: stream id the response corresponds to
  * @timestamp: Time information for event if available
  * @error: error code if something went wrong
- * @error_details: depending on error code, it may contain additional error info
- * @pin: this var is valid for pin event related responses, contains pin addresses
- * @pin_id: this var is valid for pin event related responses, contains pin id that the pin payload corresponds to
- * @process_group_light: this var is valid for stats ready related responses, contains process group addresses
- * @acc_id: this var is valid for stats ready related responses, contains accelerator id that finished producing all related statistics
+ * @error_details: depending on error code, it may contain additional
+ *		   error info
+ * @pin: this var is valid for pin event related responses,
+ *	 contains pin addresses
+ * @pin_id: this var is valid for pin event related responses,
+ *	    contains pin id that the pin payload corresponds to
+ * @process_group_light: this var is valid for stats ready related responses,
+ *			 contains process group addresses
+ * @acc_id: this var is valid for stats ready related responses,
+ *	    contains accelerator id that finished producing
+ *	    all related statistics
  */
 struct ia_css_isys_resp_info {
 	enum ia_css_isys_resp_type type;
@@ -248,7 +283,8 @@ struct ia_css_isys_resp_info {
 
 /**
  * struct ia_css_proxy_write_req_val
- * @request_id: Unique identifier for the write request (in case multiple write requests are issued for same register)
+ * @request_id: Unique identifier for the write request
+ *		(in case multiple write requests are issued for same register)
  * @region_index: region id for the write request
  * @offset: Offset to the specific register within the region
  * @value: Value to be written to register
@@ -262,10 +298,12 @@ struct ia_css_proxy_write_req_val {
 
 /**
  * struct ia_css_proxy_write_req_resp
- * @request_id: Unique identifier for the write request (in case multiple write requests are issued for same register)
+ * @request_id: Unique identifier for the write request
+ *		(in case multiple write requests are issued for same register)
  * @error: error code if something went wrong
- * @error_details: error detail includes either offset or region index information
- *					which caused proxy request to be rejected (invalid access request)
+ * @error_details: error detail includes either offset or region index
+ *		   information which caused proxy request to be rejected
+ *		   (invalid access request)
  */
 struct ia_css_proxy_write_req_resp {
 	uint32_t request_id;
