@@ -20,9 +20,10 @@
 
 struct tdf8532_priv {
 	struct i2c_client *i2c;
-};
 
-static u8 packet_id;
+	/* Fine to wrap back to 0 */
+	u8 packet_id;
+};
 
 static int tdf8532_dai_startup(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
@@ -44,7 +45,8 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	struct snd_soc_codec *codec = dai->codec;
 	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(codec);
 
-	unsigned char data[6] = {0x02, packet_id++, 0x03, 0x80, 0x1A, 0x01};
+	unsigned char data[6] = {0x02, (tdf8532->packet_id)++, 0x03,
+					0x80, 0x1A, 0x01};
 
 	dev_dbg(codec->dev, "%s: cmd = %d\n", __func__, cmd);
 
@@ -85,7 +87,8 @@ static int tdf8532_mute(struct snd_soc_dai *dai, int mute)
 {
 	int ret;
 	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(dai->codec);
-	unsigned char data[] = {0x02, packet_id++, 0x03, 0x80, MUTE, 0x1F};
+	unsigned char data[] = {0x02, (tdf8532->packet_id)++, 0x03,
+					0x80, MUTE, 0x1F};
 
 	if (!mute)
 		data[4] = UNMUTE;
@@ -100,15 +103,17 @@ static int tdf8532_mute(struct snd_soc_dai *dai, int mute)
 	return 0;
 }
 
-static int tdf8532_set_fast_mute(struct i2c_client *i2c)
+static int tdf8532_set_fast_mute(struct tdf8532_priv *tdf8532)
 {
 	int ret;
 	unsigned char data[] = {
-		0x02, packet_id++, 0x06, 0x80, 0x18, 0x03, 0x01, 0x02, 0x00};
+		0x02, (tdf8532->packet_id)++, 0x06,
+			0x80, 0x18, 0x03, 0x01, 0x02, 0x00};
 
-	ret = i2c_master_send(i2c, data, ARRAY_SIZE(data));
+	ret = i2c_master_send(tdf8532->i2c, data, ARRAY_SIZE(data));
 
-	dev_dbg(&i2c->dev, "%s:i2c master send returned :%d\n", __func__, ret);
+	dev_dbg(&tdf8532->i2c->dev,
+			"%s:i2c master send returned :%d\n", __func__, ret);
 
 	return ret;
 }
@@ -153,9 +158,11 @@ static int tdf8532_i2c_probe(struct i2c_client *i2c,
 		return -ENOMEM;
 
 	tdf8532->i2c = i2c;
+	tdf8532->packet_id = 0;
+
 	i2c_set_clientdata(i2c, tdf8532);
 
-	ret = tdf8532_set_fast_mute(i2c);
+	ret = tdf8532_set_fast_mute(tdf8532);
 
 	if (ret < 0)
 		dev_err(&i2c->dev, "Failed to set fast mute option: %d\n", ret);
