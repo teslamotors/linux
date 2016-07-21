@@ -421,9 +421,9 @@
 
 	#define IA_CSS_TRACE_MODULE_SEVERITY_PRINT(module, severity) \
 		do { \
+			IA_CSS_TRACE_FILE_PRINT_COMMAND; \
 			OP___printstring("["module"]:["severity"]:") VOLATILE; \
 		} while (0)
-
 	#define IA_CSS_TRACE_MSG_NATIVE(severity, module, format) \
 		do { \
 			IA_CSS_TRACE_FILE_PRINT_COMMAND; \

@@ -25,12 +25,18 @@
 #define SIZE_OF_PARAM_TERMINAL_MANIFEST_SEC_STRUCT_IN_BITS \
 	(4*IA_CSS_UINT32_T_BITS)
 
-/* ==================== Cached Param Terminal Manifest - START ==================== */
+/* =============== Cached Param Terminal Manifest - START ============== */
 struct ia_css_param_manifest_section_desc_s {
-	uint32_t					kernel_id;		/**< Indication of the kernel this parameter belongs to */
-	uint32_t					mem_type_id;		/**< Memory targeted by this section (Register MMIO Interface/DMEM/VMEM/GMEM etc) */
-	uint32_t					region_id;		/**< Region id within the specified memory */
-	uint32_t					max_mem_size;		/**< Maximum size of the related parameter region */
+	/* Indication of the kernel this parameter belongs to */
+	uint32_t kernel_id;
+	/* Memory targeted by this section
+	 * (Register MMIO Interface/DMEM/VMEM/GMEM etc)
+	 */
+	uint32_t mem_type_id;
+	/* Region id within the specified memory */
+	uint32_t region_id;
+	/* Maximum size of the related parameter region */
+	uint32_t max_mem_size;
 };
 
 #define N_PADDING_UINT8_IN_PARAM_TERMINAL_MAN_STRUCT 4
@@ -39,34 +45,57 @@ struct ia_css_param_manifest_section_desc_s {
 	+ (2*IA_CSS_UINT16_T_BITS) \
 	+ (N_PADDING_UINT8_IN_PARAM_TERMINAL_MAN_STRUCT * IA_CSS_UINT8_T_BITS))
 
-struct ia_css_param_terminal_manifest_s {									/**< Frame constant parameters terminal manifest */
-	ia_css_terminal_manifest_t			base;							/**< Parameter terminal manifest base */
-	uint16_t					param_manifest_section_desc_count;			/**< Number of cached parameter sections, coming from manifest but also shared by the terminal */
-	uint16_t					param_manifest_section_desc_offset;			/**< Points to the variable array of struct ia_css_param_section_desc_s */
-	uint8_t						padding[N_PADDING_UINT8_IN_PARAM_TERMINAL_MAN_STRUCT];	/**< align to 64 */
+/* Frame constant parameters terminal manifest */
+struct ia_css_param_terminal_manifest_s {
+	/* Parameter terminal manifest base */
+	ia_css_terminal_manifest_t base;
+	/* Number of cached parameter sections, coming from manifest
+	 * but also shared by the terminal
+	 */
+	uint16_t param_manifest_section_desc_count;
+	/* Points to the variable array of struct ia_css_param_section_desc_s */
+	uint16_t param_manifest_section_desc_offset;
+	/* align to 64 */
+	uint8_t padding[N_PADDING_UINT8_IN_PARAM_TERMINAL_MAN_STRUCT];
 };
-/* ==================== Cached Param Terminal Manifest - End ==================== */
+/* ================= Cached Param Terminal Manifest - End ================ */
 
 
-/* ==================== Spatial Param Terminal Manifest - START ==================== */
+/* ================= Spatial Param Terminal Manifest - START ============= */
 
 #define SIZE_OF_FRAG_GRID_MAN_STRUCT_IN_BITS \
 	((IA_CSS_N_DATA_DIMENSION*IA_CSS_UINT16_T_BITS) \
 	+ (IA_CSS_N_DATA_DIMENSION*IA_CSS_UINT16_T_BITS))
 
 struct ia_css_fragment_grid_manifest_desc_s {
-	uint16_t					min_fragment_grid_dimension[IA_CSS_N_DATA_DIMENSION];	/**< Min resolution width/height of the spatial parameters for the fragment measured in compute units */
-	uint16_t					max_fragment_grid_dimension[IA_CSS_N_DATA_DIMENSION];	/**< Max resolution width/height of the spatial parameters for the fragment measured in compute units */
+	/* Min resolution width/height of the spatial parameters
+	 * for the fragment measured in compute units
+	 */
+	uint16_t min_fragment_grid_dimension[IA_CSS_N_DATA_DIMENSION];
+	/* Max resolution width/height of the spatial parameters
+	 * for the fragment measured in compute units
+	 */
+	uint16_t max_fragment_grid_dimension[IA_CSS_N_DATA_DIMENSION];
 };
 
 #define SIZE_OF_FRAME_GRID_PARAM_MAN_SEC_STRUCT_IN_BITS \
 	(4*IA_CSS_UINT32_T_BITS)
 
 struct ia_css_frame_grid_param_manifest_section_desc_s {
-	uint32_t					mem_type_id;		/**< Memory space targeted by this section (Register MMIO Interface/DMEM/VMEM/GMEM etc) */
-	uint32_t					region_id;		/**< Region id within the specified memory space */
-	uint32_t					elem_size;		/**< size in bytes of each compute unit for the specified memory space and region */
-	uint32_t					max_mem_size;		/**< Maximum buffer total size allowed for this frame of parameters */
+	/* Memory space targeted by this section
+	 * (Register MMIO Interface/DMEM/VMEM/GMEM etc)
+	 */
+	uint32_t mem_type_id;
+	/* Region id within the specified memory space */
+	uint32_t region_id;
+	/* size in bytes of each compute unit for
+	 * the specified memory space and region
+	 */
+	uint32_t elem_size;
+	/* Maximum buffer total size allowed for
+	 * this frame of parameters
+	 */
+	uint32_t max_mem_size;
 };
 
 #define SIZE_OF_FRAME_GRID_MAN_STRUCT_IN_BITS \
@@ -74,8 +103,14 @@ struct ia_css_frame_grid_param_manifest_section_desc_s {
 	+ (IA_CSS_N_DATA_DIMENSION*IA_CSS_UINT16_T_BITS))
 
 struct ia_css_frame_grid_manifest_desc_s {
-	uint16_t					min_frame_grid_dimension[IA_CSS_N_DATA_DIMENSION];	/**< Min resolution width/height of the spatial parameters for the frame measured in compute units */
-	uint16_t					max_frame_grid_dimension[IA_CSS_N_DATA_DIMENSION];	/**< Max resolution width/height of the spatial parameters for the frame measured in compute units */
+	/* Min resolution width/height of the spatial parameters for
+	 * the frame measured in compute units
+	 */
+	uint16_t min_frame_grid_dimension[IA_CSS_N_DATA_DIMENSION];
+	/* Max resolution width/height of the spatial parameters for
+	 * the frame measured in compute units
+	 */
+	uint16_t max_frame_grid_dimension[IA_CSS_N_DATA_DIMENSION];
 };
 
 #define N_PADDING_UINT8_IN_SPATIAL_PARAM_TERM_MAN_STRUCT 4
@@ -85,21 +120,41 @@ struct ia_css_frame_grid_manifest_desc_s {
 	+ (SIZE_OF_FRAG_GRID_MAN_STRUCT_IN_BITS) \
 	+ (2*IA_CSS_UINT32_T_BITS) \
 	+ (2*IA_CSS_UINT16_T_BITS) \
-	+ (N_PADDING_UINT8_IN_SPATIAL_PARAM_TERM_MAN_STRUCT * IA_CSS_UINT8_T_BITS))
+	+ (N_PADDING_UINT8_IN_SPATIAL_PARAM_TERM_MAN_STRUCT * \
+	IA_CSS_UINT8_T_BITS))
 
 struct ia_css_spatial_param_terminal_manifest_s {
-	ia_css_terminal_manifest_t			base;				/**< Spatial Parameter terminal manifest base */
-	ia_css_frame_grid_manifest_desc_t		frame_grid_desc;		/**< Contains limits for the frame spatial parameters */
-	ia_css_fragment_grid_manifest_desc_t		common_fragment_grid_desc;	/**< Constains limits for the fragment spatial parameters - COMMON AMONG FRAGMENTS */
-	uint32_t					kernel_id;			/**< Indication of the kernel this spatial parameter terminal belongs to, SHOULD MATCH TO INDEX AND BE USED ONLY FOR CHECK */
-	uint32_t					compute_units_p_elem;		/**< Groups together compute units in order to achieve alignment requirements for transfes and to achieve canonical frame representation */
-	uint16_t					frame_grid_param_manifest_section_desc_count;	/**< Number of frame spatial parameter sections, they are set in slice-steps through frame processing */
-	uint16_t					frame_grid_param_manifest_section_desc_offset;	/**< Points to the variable array of ia_css_frame_spatial_param_manifest_section_desc_t */
-	uint8_t						padding[N_PADDING_UINT8_IN_SPATIAL_PARAM_TERM_MAN_STRUCT];	/**< align to 64 */
+	/* Spatial Parameter terminal manifest base */
+	ia_css_terminal_manifest_t base;
+	/* Contains limits for the frame spatial parameters */
+	ia_css_frame_grid_manifest_desc_t frame_grid_desc;
+	/* Constains limits for the fragment spatial parameters
+	 * - COMMON AMONG FRAGMENTS
+	 */
+	ia_css_fragment_grid_manifest_desc_t common_fragment_grid_desc;
+	/* Indication of the kernel this spatial parameter terminal belongs to,
+	 * SHOULD MATCH TO INDEX AND BE USED ONLY FOR CHECK
+	 */
+	uint32_t kernel_id;
+	/* Groups together compute units in order to achieve alignment
+	 * requirements for transfes and to achieve canonical frame
+	 * representation
+	 */
+	uint32_t compute_units_p_elem;
+	/* Number of frame spatial parameter sections, they are set
+	 * in slice-steps through frame processing
+	 */
+	uint16_t frame_grid_param_manifest_section_desc_count;
+	/* Points to the variable array of
+	 * ia_css_frame_spatial_param_manifest_section_desc_t
+	 */
+	uint16_t frame_grid_param_manifest_section_desc_offset;
+	/* align to 64 */
+	uint8_t padding[N_PADDING_UINT8_IN_SPATIAL_PARAM_TERM_MAN_STRUCT];
 };
-/* ==================== Spatial Param Terminal Manifest - END ==================== */
+/* ================= Spatial Param Terminal Manifest - END ================ */
 
-/* ==================== Sliced Param Terminal Manifest - START ==================== */
+/* ================= Sliced Param Terminal Manifest - START =============== */
 
 #define N_PADDING_UINT8_IN_SLICED_TERMINAL_MAN_SECTION_STRUCT (4)
 
@@ -108,10 +163,16 @@ struct ia_css_spatial_param_terminal_manifest_s {
 	+ (N_PADDING_UINT8_IN_PARAM_TERMINAL_MAN_STRUCT * IA_CSS_UINT8_T_BITS))
 
 struct ia_css_sliced_param_manifest_section_desc_s {
-	uint32_t					mem_type_id;		/**< Memory targeted by this section (Register MMIO Interface/DMEM/VMEM/GMEM etc) */
-	uint32_t					region_id;		/**< Region id within the specified memory */
-	uint32_t					max_mem_size;		/**< Maximum size of the related parameter region */
-	uint8_t						padding[N_PADDING_UINT8_IN_SLICED_TERMINAL_MAN_SECTION_STRUCT];	/**< align to 64 */
+	/* Memory targeted by this section
+	 * (Register MMIO Interface/DMEM/VMEM/GMEM etc)
+	 */
+	uint32_t mem_type_id;
+	/* Region id within the specified memory */
+	uint32_t region_id;
+	/* Maximum size of the related parameter region */
+	uint32_t max_mem_size;
+	/* align to 64 */
+	uint8_t padding[N_PADDING_UINT8_IN_SLICED_TERMINAL_MAN_SECTION_STRUCT];
 };
 
 #define SIZE_OF_SLICED_TERMINAL_MANIFEST_STRUCT_IN_BITS \
@@ -119,40 +180,68 @@ struct ia_css_sliced_param_manifest_section_desc_s {
 	+ (IA_CSS_UINT32_T_BITS) \
 	+ (2*IA_CSS_UINT16_T_BITS))
 
-struct ia_css_sliced_param_terminal_manifest_s {					/**< Frame constant parameters terminal manifest */
-	ia_css_terminal_manifest_t	base;						/**< Spatial Parameter terminal base */
-	uint32_t			kernel_id;					/**< Kernel identifier */
-	uint16_t			sliced_param_section_count;			/**< Number of the array elements sliced_param_section_offset points to */
-	uint16_t			sliced_param_section_offset;			/**< Points to array of ia_css_sliced_param_manifest_section_desc_s which constain info for the slicing of the parameters */
+/* Frame constant parameters terminal manifest */
+struct ia_css_sliced_param_terminal_manifest_s {
+	/* Spatial Parameter terminal base */
+	ia_css_terminal_manifest_t base;
+	/* Kernel identifier */
+	uint32_t kernel_id;
+	/* Number of the array elements sliced_param_section_offset points to */
+	uint16_t sliced_param_section_count;
+	/* Points to array of ia_css_sliced_param_manifest_section_desc_s
+	 * which constain info for the slicing of the parameters
+	 */
+	uint16_t sliced_param_section_offset;
 };
-/* ==================== Slice Param Terminal Manifest - End ==================== */
+/* ================= Slice Param Terminal Manifest - End =============== */
 
-/* ==================== Program Terminal Manifest - START ==================== */
+/* ================= Program Terminal Manifest - START ================= */
 
 #define SIZE_OF_FRAG_PARAM_MAN_SEC_STRUCT_IN_BITS \
 	(4*IA_CSS_UINT32_T_BITS)
 
-struct ia_css_fragment_param_manifest_section_desc_s {				/**< Fragment constant parameters manifest */
-	uint32_t			kernel_id;		/**< Indication of the kernel this parameter belongs to */
-	uint32_t			mem_type_id;		/**< Memory targeted by this section (Register MMIO Interface/DMEM/VMEM/GMEM etc) */
-	uint32_t			region_id;		/**< Region id within the specified memory space */
-	uint32_t			max_mem_size;		/**< Maximum size of the related parameter region */
+/* Fragment constant parameters manifest */
+struct ia_css_fragment_param_manifest_section_desc_s {
+	/* Indication of the kernel this parameter belongs to */
+	uint32_t kernel_id;
+	/* Memory targeted by this section
+	 * (Register MMIO Interface/DMEM/VMEM/GMEM etc)
+	 */
+	uint32_t mem_type_id;
+	/* Region id within the specified memory space */
+	uint32_t region_id;
+	/* Maximum size of the related parameter region */
+	uint32_t max_mem_size;
 };
 
 #define SIZE_OF_KERNEL_FRAG_SEQ_INFO_MAN_STRUCT_IN_BITS \
 	(10*IA_CSS_N_DATA_DIMENSION*IA_CSS_UINT16_T_BITS)
 
 struct ia_css_kernel_fragment_sequencer_info_manifest_desc_s {
-	uint16_t	min_fragment_grid_slice_dimension[IA_CSS_N_DATA_DIMENSION];				/**< Slice dimensions */
-	uint16_t	max_fragment_grid_slice_dimension[IA_CSS_N_DATA_DIMENSION];				/**< Slice dimensions */
-	uint16_t	min_fragment_grid_slice_count[IA_CSS_N_DATA_DIMENSION];					/**< Nof slices */
-	uint16_t	max_fragment_grid_slice_count[IA_CSS_N_DATA_DIMENSION];					/**< Nof slices */
-	uint16_t	min_fragment_grid_point_decimation_factor[IA_CSS_N_DATA_DIMENSION];			/**< Grid point decimation factor */
-	uint16_t	max_fragment_grid_point_decimation_factor[IA_CSS_N_DATA_DIMENSION];			/**< Grid point decimation factor */
-	int16_t		min_fragment_grid_overlay_on_fragment_pixel_topleft_index[IA_CSS_N_DATA_DIMENSION];	/**< Relative position of grid origin to pixel origin */
-	int16_t		max_fragment_grid_overlay_on_fragment_pixel_topleft_index[IA_CSS_N_DATA_DIMENSION];	/**< Relative position of grid origin to pixel origin */
-	int16_t		min_fragment_grid_overlay_on_fragment_pixel_dimension[IA_CSS_N_DATA_DIMENSION];		/**< Dimension of grid */
-	int16_t		max_fragment_grid_overlay_on_fragment_pixel_dimension[IA_CSS_N_DATA_DIMENSION];		/**< Dimension of grid */
+	/* Slice dimensions */
+	uint16_t min_fragment_grid_slice_dimension[IA_CSS_N_DATA_DIMENSION];
+	/* Slice dimensions */
+	uint16_t max_fragment_grid_slice_dimension[IA_CSS_N_DATA_DIMENSION];
+	/* Nof slices */
+	uint16_t min_fragment_grid_slice_count[IA_CSS_N_DATA_DIMENSION];
+	/* Nof slices */
+	uint16_t max_fragment_grid_slice_count[IA_CSS_N_DATA_DIMENSION];
+	/* Grid point decimation factor */
+	uint16_t
+	min_fragment_grid_point_decimation_factor[IA_CSS_N_DATA_DIMENSION];
+	/* Grid point decimation factor */
+	uint16_t
+	max_fragment_grid_point_decimation_factor[IA_CSS_N_DATA_DIMENSION];
+	/* Relative position of grid origin to pixel origin */
+	int16_t min_fragment_grid_overlay_on_fragment_pixel_topleft_index[IA_CSS_N_DATA_DIMENSION];
+	/* Relative position of grid origin to pixel origin */
+	int16_t max_fragment_grid_overlay_on_fragment_pixel_topleft_index[IA_CSS_N_DATA_DIMENSION];
+	/* Dimension of grid */
+	int16_t
+min_fragment_grid_overlay_on_fragment_pixel_dimension[IA_CSS_N_DATA_DIMENSION];
+	/* Dimension of grid */
+	int16_t
+max_fragment_grid_overlay_on_fragment_pixel_dimension[IA_CSS_N_DATA_DIMENSION];
 };
 
 #define N_PADDING_UINT8_IN_PROGRAM_TERM_MAN_STRUCT 2
@@ -163,14 +252,19 @@ struct ia_css_kernel_fragment_sequencer_info_manifest_desc_s {
 	+ (N_PADDING_UINT8_IN_PROGRAM_TERM_MAN_STRUCT * IA_CSS_UINT8_T_BITS))
 
 struct ia_css_program_terminal_manifest_s {
-	ia_css_terminal_manifest_t	base;
-	uint32_t			sequencer_info_kernel_id;				/**< Connection manager passes seq info as single blob at the moment */
-	uint16_t			max_kernel_fragment_sequencer_command_desc;		/**< Maximum number of command secriptors supported by the program group */
-	uint16_t			fragment_param_manifest_section_desc_count;
-	uint16_t			fragment_param_manifest_section_desc_offset;
-	uint16_t			kernel_fragment_sequencer_info_manifest_info_count;
-	uint16_t			kernel_fragment_sequencer_info_manifest_info_offset;
-	uint8_t				padding[N_PADDING_UINT8_IN_PROGRAM_TERM_MAN_STRUCT];	/**< align to 64 */
+	ia_css_terminal_manifest_t base;
+	/* Connection manager passes seq info as single blob at the moment */
+	uint32_t sequencer_info_kernel_id;
+	/* Maximum number of command secriptors supported
+	 * by the program group
+	 */
+	uint16_t max_kernel_fragment_sequencer_command_desc;
+	uint16_t fragment_param_manifest_section_desc_count;
+	uint16_t fragment_param_manifest_section_desc_offset;
+	uint16_t kernel_fragment_sequencer_info_manifest_info_count;
+	uint16_t kernel_fragment_sequencer_info_manifest_info_offset;
+	/* align to 64 */
+	uint8_t padding[N_PADDING_UINT8_IN_PROGRAM_TERM_MAN_STRUCT];
 };
 /* ==================== Program Terminal Manifest - END ==================== */
 

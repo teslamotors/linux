@@ -136,29 +136,43 @@ ipu_device_isp3_mem_databus_address[IPU_DEVICE_ISP2600_NUM_MEMORIES] = {
 	ISP3_VMEM_DBUS_ADDRESS			/* vmem databus addr */
 };
 
-static const struct
-ipu_device_cell_properties_s ipu_device_cell_properties[NUM_CELLS] = {
-	{ &ipu_device_sp2600_control_properties,
-	   ipu_device_spc0_mem_address,
-	   ipu_device_spc0_mem_databus_address },
-	{ &ipu_device_sp2600_proxy_properties,
-	   ipu_device_spp0_mem_address,
-	   ipu_device_spp0_mem_databus_address },
-	{ &ipu_device_sp2600_proxy_properties,
-	   ipu_device_spp1_mem_address,
-	   ipu_device_spp1_mem_databus_address },
-	{ &ipu_device_isp2600_properties,
-	   ipu_device_isp0_mem_address,
-	   ipu_device_isp0_mem_databus_address },
-	{ &ipu_device_isp2600_properties,
-	   ipu_device_isp1_mem_address,
-	   ipu_device_isp1_mem_databus_address },
-	{ &ipu_device_isp2600_properties,
-	   ipu_device_isp2_mem_address,
-	   ipu_device_isp2_mem_databus_address },
-	{ &ipu_device_isp2600_properties,
-	   ipu_device_isp3_mem_address,
-	   ipu_device_isp3_mem_databus_address }
+static const struct ipu_device_cell_properties_s
+ipu_device_cell_properties[NUM_CELLS] = {
+	{
+		&ipu_device_sp2600_control_properties,
+		ipu_device_spc0_mem_address,
+		ipu_device_spc0_mem_databus_address
+	},
+	{
+		&ipu_device_sp2600_proxy_properties,
+		ipu_device_spp0_mem_address,
+		ipu_device_spp0_mem_databus_address
+	},
+	{
+		&ipu_device_sp2600_proxy_properties,
+		ipu_device_spp1_mem_address,
+		ipu_device_spp1_mem_databus_address
+	},
+	{
+		&ipu_device_isp2600_properties,
+		ipu_device_isp0_mem_address,
+		ipu_device_isp0_mem_databus_address
+	},
+	{
+		&ipu_device_isp2600_properties,
+		ipu_device_isp1_mem_address,
+		ipu_device_isp1_mem_databus_address
+	},
+	{
+		&ipu_device_isp2600_properties,
+		ipu_device_isp2_mem_address,
+		ipu_device_isp2_mem_databus_address
+	},
+	{
+		&ipu_device_isp2600_properties,
+		ipu_device_isp3_mem_address,
+		ipu_device_isp3_mem_databus_address
+	}
 };
 
 #ifdef C_RUN

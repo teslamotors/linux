@@ -38,7 +38,8 @@ ia_css_cpu_mem_alloc(unsigned int size)
 STORAGE_CLASS_INLINE void*
 ia_css_cpu_mem_alloc_page_aligned(unsigned int size)
 {
-	return ia_css_cpu_mem_alloc(size); /* todo: align to page size */
+	/* todo: align to page size */
+	return ia_css_cpu_mem_alloc(size);
 }
 
 STORAGE_CLASS_INLINE void
@@ -50,13 +51,15 @@ ia_css_cpu_mem_protect(void *ptr, unsigned int size, int prot)
 STORAGE_CLASS_INLINE void*
 ia_css_cpu_mem_copy(void *dst, const void *src, unsigned int size)
 {
-	return memcpy(dst, src, size); /* available in kernel in linux/string.h */
+	/* available in kernel in linux/string.h */
+	return memcpy(dst, src, size);
 }
 
 STORAGE_CLASS_INLINE void*
 ia_css_cpu_mem_set_zero(void *dst, unsigned int size)
 {
-	return memset(dst, 0, size); /* available in kernel in linux/string.h */
+	/* available in kernel in linux/string.h */
+	return memset(dst, 0, size);
 }
 
 STORAGE_CLASS_INLINE void
@@ -108,14 +111,15 @@ ia_css_cpu_mem_alloc_page_aligned(unsigned int size)
 {
 	unsigned int buffer_size = size;
 
-	/* Currently hrt_malloc calls Windows ExAllocatePoolWithTag() routine to request
-	   system memory. If the number of bytes is equal or bigger than the page size, then the
-	   returned address is page aligned, but if it's smaller it's not necessarily page-aligned
-	   We agreed with Windows team that we allocate a full page if it's less than page size
+	/* Currently hrt_malloc calls Windows ExAllocatePoolWithTag() routine
+	 * to request system memory. If the number of bytes is equal or bigger
+	 * than the page size, then the returned address is page aligned,
+	 * but if it's smaller it's not necessarily page-aligned We agreed
+	 * with Windows team that we allocate a full page
+	 * if it's less than page size
 	*/
-	if (buffer_size < CSS_PAGE_SIZE) {
+	if (buffer_size < CSS_PAGE_SIZE)
 		buffer_size = CSS_PAGE_SIZE;
-	}
 
 	return ia_css_cpu_mem_alloc(buffer_size);
 }
