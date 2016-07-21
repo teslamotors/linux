@@ -26,7 +26,7 @@
 #include <sound/pcm_params.h>
 #include "../../codecs/wm8731.h"
 
-static int apli_lfcrb_wm8731_startup(struct snd_pcm_substream *substream)
+static int apli_lhcrb_wm8731_startup(struct snd_pcm_substream *substream)
 {
 	int ret;
 	static unsigned int rates[] = { 48000 };
@@ -62,8 +62,8 @@ static int apli_lfcrb_wm8731_startup(struct snd_pcm_substream *substream)
 	return ret;
 }
 
-static struct snd_soc_ops apli_lfcrb_wm8731_ops = {
-	.startup = apli_lfcrb_wm8731_startup,
+static struct snd_soc_ops apli_lhcrb_wm8731_ops = {
+	.startup = apli_lhcrb_wm8731_startup,
 };
 
 static const struct snd_kcontrol_new apli_controls[] = {
@@ -145,7 +145,7 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
-		.ops = &apli_lfcrb_wm8731_ops,
+		.ops = &apli_lhcrb_wm8731_ops,
 	},
 	{
 		.name = "SSP2 Capture Port",
@@ -159,7 +159,7 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
-		.ops = &apli_lfcrb_wm8731_ops,
+		.ops = &apli_lhcrb_wm8731_ops,
 	},
 	{
 		.name = "SSP4 Playback Port",
@@ -173,7 +173,7 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST
 			, SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
-		.ops = &apli_lfcrb_wm8731_ops,
+		.ops = &apli_lhcrb_wm8731_ops,
 	},
 	{
 		.name = "SSP4 Capture Port",
@@ -187,7 +187,7 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
-		.ops = &apli_lfcrb_wm8731_ops,
+		.ops = &apli_lhcrb_wm8731_ops,
 	},
 	/* Back End DAI links */
 	{
@@ -257,7 +257,7 @@ static struct platform_driver apli_audio = {
 	.probe = apli_audio_probe,
 	.remove = apli_audio_remove,
 	.driver = {
-		.name = "lfcrb_wm8731_i2s",
+		.name = "lhcrb_wm8731_i2s",
 	},
 };
 
@@ -266,4 +266,4 @@ module_platform_driver(apli_audio)
 /* Module information */
 MODULE_DESCRIPTION("Intel Audio WM8731 Machine driver for APL-I LH CRB");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("platform:lfcrb_wm8731_i2s");
+MODULE_ALIAS("platform:lhcrb_wm8731_i2s");

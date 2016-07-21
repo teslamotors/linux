@@ -66,4 +66,4 @@ module_exit(apli_lhcrb_wm8731_i2c_exit);
 
 MODULE_DESCRIPTION("Intel Apolo Lake-I Leaf Hill ASoC Machine Driver Init");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("platform:lfcrb_wm8731_i2s");
+MODULE_ALIAS("platform:lhcrb_wm8731_i2s");
