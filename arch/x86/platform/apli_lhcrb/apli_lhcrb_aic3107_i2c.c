@@ -66,5 +66,5 @@ module_exit(apli_lhcrb_aic3107_i2c_exit);
 
 MODULE_DESCRIPTION("Intel Apollo Lake-I Leaf Hill ASoC Machine Driver Init");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("platform:lfcrb_aic3107M_i2s");
-MODULE_ALIAS("platform:lfcrb_aic3107S_i2s");
+MODULE_ALIAS("platform:lhcrb_aic3107M_i2s");
+MODULE_ALIAS("platform:lhcrb_aic3107S_i2s");
