@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  *
@@ -26,6 +26,7 @@
 #include "crl_adv7481_hdmi_configuration.h"
 #include "crl_adv7481_eval_configuration.h"
 #include "crl_imx185_configuration.h"
+#include "crl_ov10635_configuration.h"
 
 static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-SONY214A:00", "imx214", &imx214_crl_configuration },
@@ -41,6 +42,7 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "ADV7481_EVAL", "adv7481_eval", &adv7481_eval_crl_configuration },
 	{ "ADV7481B_EVAL", "adv7481b_eval", &adv7481b_eval_crl_configuration },
 	{ "SONY318A", "imx318", &imx318_crl_configuration },
+	{ "OV10635", "ov10635", &ov10635_crl_configuration },
 };
 
 /*
