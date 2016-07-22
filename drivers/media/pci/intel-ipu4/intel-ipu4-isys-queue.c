@@ -236,11 +236,9 @@ static void buf_finish(struct vb2_buffer *vb)
 		if (done) {
 			media_device_request_complete(&av->isys->media_dev,
 						      ib->req);
-			if (vb->state == VB2_BUF_STATE_PREPARED) {
-				mutex_lock(&av->isys->stream_mutex);
-				list_del(&ireq->head);
-				mutex_unlock(&av->isys->stream_mutex);
-			}
+			mutex_lock(&av->isys->stream_mutex);
+			list_del(&ireq->head);
+			mutex_unlock(&av->isys->stream_mutex);
 		}
 		media_device_request_put(ib->req);
 		ib->req = NULL;
@@ -583,7 +581,7 @@ intel_ipu4_isys_next_queued_request(struct intel_ipu4_isys_pipeline *ip)
 		if (!is_ours || WARN_ON(is_others))
 			continue;
 
-		list_del(&ireq->head);
+		list_del_init(&ireq->head);
 
 		return ireq;
 	}
@@ -1215,6 +1213,7 @@ struct media_device_request *intel_ipu4_isys_req_alloc(
 
 	INIT_LIST_HEAD(&ireq->buffers);
 	spin_lock_init(&ireq->lock);
+	INIT_LIST_HEAD(&ireq->head);
 
 	return &ireq->req;
 }
