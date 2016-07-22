@@ -235,8 +235,7 @@ int ia_css_program_group_param_set_kernel_enable_bitmap(
 		retval = 0;
 	} else {
 		IA_CSS_TRACE_1(PSYSAPI_PARAM, ERROR,
-			"ia_css_program_group_param_set_kernel_enable_bitmap failed (%i)\n",
-			retval);
+			"ia_css_program_group_param_set_kernel_enable_bitmap failed (%i)\n", retval);
 	}
 	return retval;
 }
@@ -272,8 +271,7 @@ int ia_css_program_param_set_kernel_enable_bitmap(
 		retval = 0;
 	} else {
 		IA_CSS_TRACE_1(PSYSAPI_PARAM, ERROR,
-			"ia_css_program_param_set_kernel_enable_bitmap failed (%i)\n",
-			retval);
+			"ia_css_program_param_set_kernel_enable_bitmap failed (%i)\n", retval);
 	}
 	return retval;
 }
@@ -355,8 +353,7 @@ int ia_css_terminal_param_set_frame_format_type(
 		retval = 0;
 	} else {
 		IA_CSS_TRACE_1(PSYSAPI_PARAM, ERROR,
-			"ia_css_terminal_param_set_frame_format_type failed (%i)\n",
-			retval);
+			"ia_css_terminal_param_set_frame_format_type failed (%i)\n", retval);
 	}
 	return retval;
 }
@@ -410,10 +407,8 @@ int ia_css_terminal_param_get_dimensions(
 		"ia_css_terminal_param_get_dimensions(): enter:\n");
 
 	if (param != NULL) {
-		dimensions[IA_CSS_COL_DIMENSION] =
-			param->dimensions[IA_CSS_COL_DIMENSION];
-		dimensions[IA_CSS_ROW_DIMENSION] =
-			param->dimensions[IA_CSS_ROW_DIMENSION];
+		dimensions[IA_CSS_COL_DIMENSION] = param->dimensions[IA_CSS_COL_DIMENSION];
+		dimensions[IA_CSS_ROW_DIMENSION] = param->dimensions[IA_CSS_ROW_DIMENSION];
 		retval = 0;
 	} else {
 		IA_CSS_TRACE_1(PSYSAPI_PARAM, ERROR,
@@ -596,10 +591,9 @@ int ia_css_program_group_param_init(
 	offset = blob->terminal_param_offset;
 
 	for (i = 0; i < terminal_count; i++) {
-		ia_css_terminal_param_init(
-			(ia_css_terminal_param_t *)param_base,
-			offset,
-			frame_format_types[i]);
+		ia_css_terminal_param_init((ia_css_terminal_param_t *)param_base,
+					offset,
+					frame_format_types[i]);
 
 		offset += sizeof(ia_css_terminal_param_t);
 		param_base += sizeof(ia_css_terminal_param_t);

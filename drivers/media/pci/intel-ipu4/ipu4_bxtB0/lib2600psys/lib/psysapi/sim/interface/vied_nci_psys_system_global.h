@@ -23,17 +23,17 @@
  * Key system types
  */
 /* Subsystem internal physical address */
-#define VIED_ADDRESS_BITS 32
+#define VIED_ADDRESS_BITS					32
 
-/* typedef uint32_t vied_address_t; */
+/* typedef uint32_t							vied_address_t; */
 
 /* Subsystem internal virtual address */
 
 /* Subsystem internal data bus */
-#define VIED_DATA_BITS 32
-typedef uint32_t vied_data_t;
+#define VIED_DATA_BITS						32
+typedef uint32_t							vied_data_t;
 
-#define VIED_NULL ((vied_vaddress_t)0)
+#define VIED_NULL							((vied_vaddress_t)0)
 
 extern vied_nci_resource_bitmap_t vied_nci_bit_mask(
 	const unsigned					index);

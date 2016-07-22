@@ -71,34 +71,10 @@ enum ipu_device_sp2600_fp_masters {
 
 static const struct ipu_device_cell_master_properties_s
 ipu_device_sp2600_fp_masters[IPU_DEVICE_SP2600_FP_NUM_MASTERS] = {
-	{
-		0,
-		0xC,
-		IPU_DEVICE_SP2600_FP_ICACHE_BASE,
-		IPU_DEVICE_SP2600_FP_ICACHE_INFO,
-		IPU_DEVICE_SP2600_FP_ICACHE_INFO_OVERRIDE
-	},
-	{
-		0,
-		0xC,
-		IPU_DEVICE_SP2600_FP_QMEM_BASE,
-		0xFFFFFFFF,
-		0xFFFFFFFF
-	},
-	{
-		3,
-		0xC,
-		IPU_DEVICE_SP2600_FP_CMEM_BASE,
-		IPU_DEVICE_SP2600_FP_CMEM_INFO,
-		IPU_DEVICE_SP2600_FP_CMEM_INFO_OVERRIDE
-	},
-	{
-		2,
-		0xC,
-		IPU_DEVICE_SP2600_FP_XMEM_BASE,
-		IPU_DEVICE_SP2600_FP_XMEM_INFO,
-		IPU_DEVICE_SP2600_FP_XMEM_INFO_OVERRIDE
-	}
+	{0, 0xC, IPU_DEVICE_SP2600_FP_ICACHE_BASE, IPU_DEVICE_SP2600_FP_ICACHE_INFO, IPU_DEVICE_SP2600_FP_ICACHE_INFO_OVERRIDE},
+	{0, 0xC, IPU_DEVICE_SP2600_FP_QMEM_BASE,   0xFFFFFFFF, 0xFFFFFFFF},
+	{3, 0xC, IPU_DEVICE_SP2600_FP_CMEM_BASE,   IPU_DEVICE_SP2600_FP_CMEM_INFO, IPU_DEVICE_SP2600_FP_CMEM_INFO_OVERRIDE},
+	{2, 0xC, IPU_DEVICE_SP2600_FP_XMEM_BASE,   IPU_DEVICE_SP2600_FP_XMEM_INFO, IPU_DEVICE_SP2600_FP_XMEM_INFO_OVERRIDE}
 };
 
 enum ipu_device_sp2600_fp_stall_bits {
@@ -111,10 +87,8 @@ enum ipu_device_sp2600_fp_stall_bits {
 	IPU_DEVICE_SP2600_FP_NUM_STALL_BITS
 };
 
-/* 32 bits per instruction */
-#define IPU_DEVICE_SP2600_FP_ICACHE_WORD_SIZE 4
-/* 32 instructions per burst */
-#define IPU_DEVICE_SP2600_FP_ICACHE_BURST_SIZE 32
+#define IPU_DEVICE_SP2600_FP_ICACHE_WORD_SIZE 4    /* 32 bits per instruction */
+#define IPU_DEVICE_SP2600_FP_ICACHE_BURST_SIZE 32  /* 32 instructions per burst */
 
 static const struct ipu_device_cell_count_s ipu_device_sp2600_fp_count = {
 	IPU_DEVICE_SP2600_FP_NUM_MEMORIES,
@@ -123,13 +97,17 @@ static const struct ipu_device_cell_count_s ipu_device_sp2600_fp_count = {
 	IPU_DEVICE_SP2600_FP_ICACHE_WORD_SIZE * IPU_DEVICE_SP2600_FP_ICACHE_BURST_SIZE
 };
 
-static const unsigned int
-ipu_device_sp2600_fp_reg_offset[/* CELL_NUM_REGS */] = {
+static const unsigned int ipu_device_sp2600_fp_reg_offset[/* CELL_NUM_REGS */] = {
 	0x0, 0x4, 0x10, 0x9C, 0xA0
 };
 
-static const struct ipu_device_cell_type_properties_s
-ipu_device_sp2600_fp_properties = {
+/*
+   static const char *sp2600_fp_stall_bit_name[IPU_DEVICE_SP2600_FP_NUM_STALL_BITS] = {
+   "icache", "dmem", "qmem", "cmem", "xmem", "dmem1"
+   };
+ */
+
+static const struct ipu_device_cell_type_properties_s ipu_device_sp2600_fp_properties = {
 	&ipu_device_sp2600_fp_count,
 	ipu_device_sp2600_fp_masters,
 	ipu_device_sp2600_fp_reg_offset,

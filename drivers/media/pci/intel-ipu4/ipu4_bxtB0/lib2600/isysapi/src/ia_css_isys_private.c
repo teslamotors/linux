@@ -210,7 +210,7 @@ int ia_css_isys_constr_comm_buff_queue(
 	ctx->isys_comm_buffer_queue.pnext_frame_buff_id = (ia_css_shared_buffer *)ia_css_cpu_mem_alloc(ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG] * NEXT_FRAME_BUFS_PER_MSG_QUEUE * sizeof(ia_css_shared_buffer));
 	if (ctx->isys_comm_buffer_queue.pnext_frame_buff_id == NULL) {
 		ia_css_cpu_mem_free(ctx->isys_comm_buffer_queue.pstream_cfg_buff_id);
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	for (stream_handle = 0; stream_handle < (int)ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG]; stream_handle++) {
@@ -248,7 +248,7 @@ SHARED_BUFF_ALLOC_FAILURE:
 		stream_cfg_buff_counter,
 		next_frame_buff_counter);
 
-	return -EFAULT;
+	return EFAULT;
 }
 
 
@@ -531,7 +531,7 @@ int ia_css_isys_constr_fw_stream_cfg(
 
 	stream_cfg_cpu_addr = ia_css_shared_buffer_cpu_map(*pbuf_stream_cfg_id);
 	if (stream_cfg_cpu_addr == (ia_css_shared_buffer_cpu_address)NULL) {
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	retval = stream_cfg_data_host_to_css(stream_cfg, stream_cfg_cpu_addr);
@@ -544,7 +544,7 @@ int ia_css_isys_constr_fw_stream_cfg(
 
 	stream_cfg_css_addr = ia_css_shared_buffer_css_map(*pbuf_stream_cfg_id);
 	if (stream_cfg_css_addr == (ia_css_shared_buffer_css_address)0) {
-		return -EFAULT;
+		return EFAULT;
 	}
 	ia_css_shared_buffer_css_update(ctx->mmid, *pbuf_stream_cfg_id);
 
@@ -593,7 +593,7 @@ int ia_css_isys_constr_fw_next_frame(
 	/* map it in cpu */
 	next_frame_cpu_addr = ia_css_shared_buffer_cpu_map(*pbuf_next_frame_id);
 	if (next_frame_cpu_addr == (ia_css_shared_buffer_cpu_address)NULL) {
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	frame_buff_set_host_to_css(next_frame, next_frame_cpu_addr);
@@ -604,7 +604,7 @@ int ia_css_isys_constr_fw_next_frame(
 	/* map it to css */
 	next_frame_css_addr = ia_css_shared_buffer_css_map(*pbuf_next_frame_id);
 	if (next_frame_css_addr == (ia_css_shared_buffer_css_address)0) {
-		return -EFAULT;
+		return EFAULT;
 	}
 	ia_css_shared_buffer_css_update(ctx->mmid, *pbuf_next_frame_id);
 

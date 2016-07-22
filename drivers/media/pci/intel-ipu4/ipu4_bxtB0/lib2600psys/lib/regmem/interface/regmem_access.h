@@ -18,22 +18,19 @@
 #include "storage_class.h"
 
 enum regmem_id {
-	/* pass pkg_dir address to SPC in non-secure mode */
-	PKG_DIR_ADDR_REG	= 0,
-	/* pass syscom configuration to SPC */
-	SYSCOM_CONFIG_REG	= 1,
-	/* syscom state - modified by SP */
-	SYSCOM_STATE_REG	= 2,
-	/* syscom commands - modified by the host */
-	SYSCOM_COMMAND_REG	= 3,
-	/* first syscom queue pointer register */
-	SYSCOM_QPR_BASE_REG	= 4
+	PKG_DIR_ADDR_REG	= 0,	/* pass pkg_dir address to SPC in non-secure mode */
+	SYSCOM_CONFIG_REG	= 1,	/* pass syscom configuration to SPC */
+	SYSCOM_STATE_REG	= 2,	/* syscom state - modified by SP */
+	SYSCOM_COMMAND_REG	= 3,	/* syscom commands - modified by the host */
+	SYSCOM_QPR_BASE_REG	= 4	/* first syscom queue pointer register */
 };
 
-STORAGE_CLASS_INLINE unsigned int
+STORAGE_CLASS_INLINE
+unsigned int
 regmem_load_32(unsigned int mem_address, unsigned int reg, unsigned int ssid);
 
-STORAGE_CLASS_INLINE void
+STORAGE_CLASS_INLINE
+void
 regmem_store_32(unsigned int mem_address, unsigned int reg, unsigned int value,
 		unsigned int ssid);
 

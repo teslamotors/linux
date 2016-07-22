@@ -201,7 +201,7 @@ int ia_css_isys_device_open(
 	ctx->sys = ia_css_syscom_open(&sys, NULL);
 	if (!ctx->sys)	{
 		ia_css_cpu_mem_free(ctx);
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE,

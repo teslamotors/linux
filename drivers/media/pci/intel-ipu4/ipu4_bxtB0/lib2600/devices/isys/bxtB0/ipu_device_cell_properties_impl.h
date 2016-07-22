@@ -38,11 +38,8 @@ ipu_device_spc0_databus_mem_address[IPU_DEVICE_SP2600_CONTROL_NUM_MEMORIES] = {
 
 static const struct
 ipu_device_cell_properties_s ipu_device_cell_properties[NUM_CELLS] = {
-	{
-		&ipu_device_sp2600_control_properties,
-		ipu_device_spc0_mem_address,
-		ipu_device_spc0_databus_mem_address
-	}
+	{&ipu_device_sp2600_control_properties, ipu_device_spc0_mem_address,
+	  ipu_device_spc0_databus_mem_address}
 };
 
 #ifdef C_RUN

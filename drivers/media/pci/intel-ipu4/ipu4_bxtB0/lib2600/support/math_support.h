@@ -57,8 +57,7 @@
  * (32-bit signed or 16-bit or 8-bit)
  */
 /* By masking it can be transformed to any arbitrary bit size */
-#define SIGN_EXTEND(VAL, ORIG_BITS) \
-((~(((VAL)&(1ULL<<((ORIG_BITS)-1)))-1))|(VAL))
+#define SIGN_EXTEND(VAL, ORIG_BITS) ((~(((VAL)&(1ULL<<((ORIG_BITS)-1)))-1))|(VAL))
 
 /* for preprocessor and array sizing use MIN and MAX
    otherwise use min and max */

@@ -75,41 +75,11 @@ enum ipu_device_isp2600_masters {
 
 static const struct ipu_device_cell_master_properties_s
 ipu_device_isp2600_masters[IPU_DEVICE_ISP2600_NUM_MASTERS] = {
-	{
-		0,
-		0xC,
-		IPU_DEVICE_ISP2600_ICACHE_BASE,
-		IPU_DEVICE_ISP2600_ICACHE_INFO,
-		IPU_DEVICE_ISP2600_ICACHE_INFO_OVERRIDE
-	},
-	{
-		0,
-		0xC,
-		IPU_DEVICE_ISP2600_QMEM_BASE,
-		0xFFFFFFFF,
-		0xFFFFFFFF
-	},
-	{
-		3,
-		0xC,
-		IPU_DEVICE_ISP2600_CMEM_BASE,
-		0xFFFFFFFF,
-		0xFFFFFFFF
-	},
-	{
-		2,
-		0xC,
-		IPU_DEVICE_ISP2600_XMEM_BASE,
-		IPU_DEVICE_ISP2600_XMEM_INFO,
-		IPU_DEVICE_ISP2600_XMEM_INFO_OVERRIDE
-	},
-	{
-		3,
-		0xC,
-		IPU_DEVICE_ISP2600_XVMEM_BASE,
-		0xFFFFFFFF,
-		0xFFFFFFFF
-	}
+	{0, 0xC, IPU_DEVICE_ISP2600_ICACHE_BASE, IPU_DEVICE_ISP2600_ICACHE_INFO, IPU_DEVICE_ISP2600_ICACHE_INFO_OVERRIDE},
+	{0, 0xC, IPU_DEVICE_ISP2600_QMEM_BASE,   0xFFFFFFFF, 0xFFFFFFFF},
+	{3, 0xC, IPU_DEVICE_ISP2600_CMEM_BASE,   0xFFFFFFFF, 0xFFFFFFFF},
+	{2, 0xC, IPU_DEVICE_ISP2600_XMEM_BASE,   IPU_DEVICE_ISP2600_XMEM_INFO, IPU_DEVICE_ISP2600_XMEM_INFO_OVERRIDE},
+	{3, 0xC, IPU_DEVICE_ISP2600_XVMEM_BASE,   0xFFFFFFFF, 0xFFFFFFFF}
 };
 
 enum ipu_device_isp2600_stall_bits {
@@ -132,16 +102,20 @@ static const struct ipu_device_cell_count_s ipu_device_isp2600_count = {
 	IPU_DEVICE_ISP2600_NUM_MEMORIES,
 	IPU_DEVICE_ISP2600_NUM_MASTERS,
 	IPU_DEVICE_ISP2600_NUM_STALL_BITS,
-	IPU_DEVICE_ISP2600_ICACHE_WORD_SIZE *
-	IPU_DEVICE_ISP2600_ICACHE_BURST_SIZE
+	IPU_DEVICE_ISP2600_ICACHE_WORD_SIZE * IPU_DEVICE_ISP2600_ICACHE_BURST_SIZE
 };
 
 static const unsigned int ipu_device_isp2600_reg_offset[/* CELL_NUM_REGS */] = {
 	0x0, 0x4, 0x10, 0x130, 0x134
 };
 
-static const struct ipu_device_cell_type_properties_s
-ipu_device_isp2600_properties = {
+/*
+   static const char *isp2600_stall_bit_name[IPU_DEVICE_ISP2600_NUM_STALL_BITS] = {
+   "icache0", "icache1", "dmem", "qmem", "cmem", "xmem", "bamem", "vmem", "xvmem"
+   };
+ */
+
+static const struct ipu_device_cell_type_properties_s ipu_device_isp2600_properties = {
 	&ipu_device_isp2600_count,
 	ipu_device_isp2600_masters,
 	ipu_device_isp2600_reg_offset,

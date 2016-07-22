@@ -145,11 +145,11 @@ int ia_css_param_terminal_create(
 )
 {
 	if (param_terminal == NULL) {
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	if (terminal_offset > (1<<15)) {
-		return -EINVAL;
+		return EINVAL;
 	}
 
 	param_terminal->base.terminal_type = is_input_terminal ? IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN : IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT;
@@ -216,11 +216,11 @@ int ia_css_spatial_param_terminal_create(
 )
 {
 	if (spatial_param_terminal == NULL) {
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	if (terminal_offset > (1<<15)) {
-		return -EINVAL;
+		return EINVAL;
 	}
 
 	spatial_param_terminal->base.terminal_type = is_input_terminal ? IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN : IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT;
@@ -321,11 +321,11 @@ int ia_css_sliced_param_terminal_create(
 	unsigned int nof_slices_total = 0;
 
 	if (sliced_param_terminal == NULL) {
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	if (terminal_offset > (1<<15)) {
-		return -EINVAL;
+		return EINVAL;
 	}
 
 	sliced_param_terminal->base.terminal_type = is_input_terminal ? IA_CSS_TERMINAL_TYPE_PARAM_SLICED_IN : IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT;
@@ -422,11 +422,11 @@ int ia_css_program_terminal_create(
 )
 {
 	if (program_terminal == NULL) {
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	if (terminal_offset > (1<<15)) {
-		return -EINVAL;
+		return EINVAL;
 	}
 
 	program_terminal->base.terminal_type = IA_CSS_TERMINAL_TYPE_PROGRAM;
@@ -450,13 +450,13 @@ int ia_css_program_terminal_get_command_base_offset(
 )
 {
 	if (command_desc_offset == NULL) {
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	*command_desc_offset = 0;
 
 	if (program_terminal == NULL) {
-		return -EFAULT;
+		return EFAULT;
 	}
 
 	*command_desc_offset =
