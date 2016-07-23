@@ -30,6 +30,14 @@ config X86_64
 	select MODULES_USE_ELF_RELA
 	select X86_DEV_DMA_OPS
 
+# Enable SPI node for APL-I
+config APL_SPI_BRD
+	bool "PCI mode SPI support on APL"
+	depends on X86_INTEL_LPSS
+	---help---
+	  This option is needed if were to use Intel Apollo Lake SPI
+	  in PCI mode.
+
 #
 # Arch settings
 #
