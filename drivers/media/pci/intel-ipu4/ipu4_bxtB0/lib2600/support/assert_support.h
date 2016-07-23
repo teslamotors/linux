@@ -138,6 +138,7 @@
 #ifdef C_RUN
 #define compile_time_assert(cond) OP___assert(cond)
 #else
+#include "storage_class.h"
 extern void _compile_time_assert(void);
 STORAGE_CLASS_INLINE void compile_time_assert(unsigned cond)
 {
