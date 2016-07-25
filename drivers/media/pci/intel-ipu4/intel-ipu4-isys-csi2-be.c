@@ -77,11 +77,11 @@ static int __subdev_link_validate(
 {
 	struct intel_ipu4_isys_pipeline *ip =
 		container_of(sd->entity.pipe,
-			     struct intel_ipu4_isys_pipeline, pipe);
+			struct intel_ipu4_isys_pipeline, pipe);
 
 	ip->csi2_be = to_intel_ipu4_isys_csi2_be(sd);
-	return intel_ipu4_isys_subdev_link_validate(sd, link, source_fmt,
-			sink_fmt);
+	return intel_ipu4_isys_subdev_link_validate(sd, link,
+						source_fmt, sink_fmt);
 }
 
 static int get_supported_code_index(uint32_t code)
@@ -96,8 +96,8 @@ static int get_supported_code_index(uint32_t code)
 }
 
 static int ipu4_isys_csi2_be_set_sel(struct v4l2_subdev *sd,
-				      struct v4l2_subdev_pad_config *cfg,
-				      struct v4l2_subdev_selection *sel)
+				struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_selection *sel)
 {
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 	struct media_pad *pad = &asd->sd.entity.pads[sel->pad];
@@ -107,7 +107,7 @@ static int ipu4_isys_csi2_be_set_sel(struct v4l2_subdev *sd,
 	    asd->valid_tgts[CSI2_BE_PAD_SOURCE].crop) {
 		struct v4l2_mbus_framefmt *ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg, sel->pad, 0,
-						   sel->which);
+						sel->which);
 		struct v4l2_rect *r = __intel_ipu4_isys_get_selection(
 			sd, cfg, sel->target, CSI2_BE_PAD_SINK, sel->which);
 
@@ -118,12 +118,12 @@ static int ipu4_isys_csi2_be_set_sel(struct v4l2_subdev *sd,
 
 			/* Non-bayer formats can't pe padded at all */
 			sel->r.width = clamp(sel->r.width,
-					     INTEL_IPU4_ISYS_MIN_WIDTH,
-					     r->width);
+					INTEL_IPU4_ISYS_MIN_WIDTH,
+					r->width);
 		} else {
 			sel->r.width = clamp(sel->r.width,
-					     INTEL_IPU4_ISYS_MIN_WIDTH,
-					     INTEL_IPU4_ISYS_MAX_WIDTH);
+					INTEL_IPU4_ISYS_MIN_WIDTH,
+					INTEL_IPU4_ISYS_MAX_WIDTH);
 		}
 
 		/*
@@ -131,9 +131,9 @@ static int ipu4_isys_csi2_be_set_sel(struct v4l2_subdev *sd,
 		 * restricted by sink pad resolution.
 		 */
 		sel->r.height = clamp(sel->r.height, INTEL_IPU4_ISYS_MIN_HEIGHT,
-				      r->height);
+					r->height);
 		*__intel_ipu4_isys_get_selection(sd, cfg, sel->target, sel->pad,
-						 sel->which) = sel->r;
+						sel->which) = sel->r;
 		intel_ipu4_isys_subdev_fmt_propagate(
 			sd, cfg, NULL, &sel->r,
 			INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SOURCE_CROP,
@@ -172,7 +172,7 @@ static void csi2_be_set_ffmt(struct v4l2_subdev *sd,
 {
 	struct v4l2_mbus_framefmt *ffmt =
 		__intel_ipu4_isys_get_ffmt(sd, cfg, fmt->pad, fmt->stream,
-					   fmt->which);
+					fmt->which);
 
 	switch (fmt->pad) {
 	case CSI2_BE_PAD_SINK:
@@ -188,8 +188,8 @@ static void csi2_be_set_ffmt(struct v4l2_subdev *sd,
 	case CSI2_BE_PAD_SOURCE: {
 		struct v4l2_mbus_framefmt *sink_ffmt =
 			__intel_ipu4_isys_get_ffmt(sd, cfg,
-						   CSI2_BE_PAD_SINK,
-						   fmt->stream, fmt->which);
+						CSI2_BE_PAD_SINK,
+						fmt->stream, fmt->which);
 		struct v4l2_rect *r =
 			__intel_ipu4_isys_get_selection(
 				sd, cfg, V4L2_SEL_TGT_CROP,
@@ -222,8 +222,7 @@ static void csi2_be_set_ffmt(struct v4l2_subdev *sd,
 	}
 }
 
-void intel_ipu4_isys_csi2_be_cleanup(
-				struct intel_ipu4_isys_csi2_be *csi2_be)
+void intel_ipu4_isys_csi2_be_cleanup(struct intel_ipu4_isys_csi2_be *csi2_be)
 {
 	v4l2_device_unregister_subdev(&csi2_be->asd.sd);
 	intel_ipu4_isys_subdev_cleanup(&csi2_be->asd);
@@ -231,7 +230,7 @@ void intel_ipu4_isys_csi2_be_cleanup(
 }
 
 int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
-				 struct intel_ipu4_isys *isys)
+				struct intel_ipu4_isys *isys)
 {
 	struct v4l2_subdev_format fmt = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,

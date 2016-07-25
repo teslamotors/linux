@@ -144,7 +144,7 @@ static int intel_ipu4_pipeline_pm_use_count(struct media_entity *entity)
  * Return 0 on success or a negative error code on failure.
  */
 static int intel_ipu4_pipeline_pm_power_one(struct media_entity *entity,
-					 int change)
+					int change)
 {
 	struct v4l2_subdev *subdev;
 	int ret;
@@ -168,16 +168,19 @@ static int intel_ipu4_pipeline_pm_power_one(struct media_entity *entity,
 }
 
 /*
- * intel_ipu4_pipeline_pm_power - Apply power change to all entities in a pipeline
+ * intel_ipu4_pipeline_pm_power - Apply power change to all entities
+ * in a pipeline
  * @entity: The entity
  * @change: Use count change
  *
- * Walk the pipeline to update the use count and the power state of all non-node
+ * Walk the pipeline to update the use count and the power state of
+ * all non-node
  * entities.
  *
  * Return 0 on success or a negative error code on failure.
  */
-static int intel_ipu4_pipeline_pm_power(struct media_entity *entity, int change)
+static int intel_ipu4_pipeline_pm_power(struct media_entity *entity,
+					int change)
 {
 	struct media_entity_graph graph;
 	struct media_entity *first = entity;
@@ -222,8 +225,8 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity, int change)
  * @entity: The entity
  * @use: Use (1) or stop using (0) the entity
  *
- * Update the use count of all entities in the pipeline and power entities on or
- * off accordingly.
+ * Update the use count of all entities in the pipeline and power entities
+ * on or off accordingly.
  *
  * Return 0 on success or a negative error code on failure. Powering entities
  * off is assumed to never fail. No failure can occur when the use parameter is
@@ -266,7 +269,8 @@ int intel_ipu4_pipeline_pm_use(struct media_entity *entity, int use)
  * intel_ipu4_pipeline_link_notify - Link management notification callback
  * @link: The link
  * @flags: New link flags that will be applied
- * @notification: The link's state change notification type (MEDIA_DEV_NOTIFY_*)
+ * @notification: The link's state change notification type
+ * (MEDIA_DEV_NOTIFY_*)
  *
  * React to link management on powered pipelines by updating the use count of
  * all entities in the source and sink sides of the link. Entities are powered
@@ -312,7 +316,8 @@ static int intel_ipu4_pipeline_link_notify(struct media_link *link, u32 flags,
 /* END adapted code from drivers/media/platform/omap3isp/isp.c */
 #endif /* < v4.6 */
 
-static int isys_determine_legacy_csi_lane_configuration(struct intel_ipu4_isys *isys)
+static int isys_determine_legacy_csi_lane_configuration(
+					struct intel_ipu4_isys *isys)
 {
 	const struct csi_lane_cfg {
 		u32 reg_value;
@@ -360,7 +365,8 @@ static int isys_determine_legacy_csi_lane_configuration(struct intel_ipu4_isys *
 }
 
 
-static int isys_determine_csi_combo_lane_configuration(struct intel_ipu4_isys *isys)
+static int isys_determine_csi_combo_lane_configuration(
+					struct intel_ipu4_isys *isys)
 {
 	const struct csi_lane_cfg {
 		u32 reg_value;
@@ -382,10 +388,12 @@ static int isys_determine_csi_combo_lane_configuration(struct intel_ipu4_isys *i
 	for (i = 0; i < ARRAY_SIZE(csi_lanes_to_cfg); i++) {
 		for (j = 0; j <  INTEL_IPU4_ISYS_MAX_CSI2_COMBO_PORTS; j++) {
 			/* Port with no sensor can be handled as don't care */
-			if (!isys->csi2[j + INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS].nlanes)
+			if (!isys->csi2[j +
+				INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS].nlanes)
 				continue;
 			if (csi_lanes_to_cfg[i].port_lanes[j] !=
-			    isys->csi2[j + INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS].nlanes)
+				isys->csi2[j +
+				INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS].nlanes)
 				break;
 		}
 
@@ -445,7 +453,8 @@ static struct i2c_client *isys_find_i2c_subdev(struct i2c_adapter *adapter,
 
 static struct v4l2_subdev *register_acpi_i2c_subdev(
 	struct v4l2_device *v4l2_dev,
-	struct intel_ipu4_isys_subdev_info *sd_info, struct i2c_client *client)
+	struct intel_ipu4_isys_subdev_info *sd_info,
+	struct i2c_client *client)
 {
 	struct i2c_board_info *info = &sd_info->i2c.board_info;
 	struct v4l2_subdev *sd;
@@ -515,8 +524,8 @@ skip_unregister_subdev:
 }
 
 static int isys_register_ext_subdev(struct intel_ipu4_isys *isys,
-				    struct intel_ipu4_isys_subdev_info *sd_info,
-				    bool acpi_only)
+				struct intel_ipu4_isys_subdev_info *sd_info,
+				bool acpi_only)
 {
 	struct i2c_adapter *adapter =
 		i2c_get_adapter(sd_info->i2c.i2c_adapter_id);
@@ -1167,6 +1176,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
 	struct intel_ipu4_isys *isys;
 	struct intel_ipu4_device *isp = adev->isp;
+
 	const struct firmware *uninitialized_var(fw);
 	int rval = 0;
 
@@ -1357,7 +1367,9 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 	if (resp.error == IA_CSS_ISYS_ERROR_STREAM_IN_SUSPENSION)
 		/* Suspension is kind of special case: not enough buffers */
 		dev_dbg(&adev->dev,
-			"hostlib: error resp %02d %s, stream %u, error SUSPENSION, details %d, timestamp 0x%16.16llx, pin %d\n",
+			"hostlib: error resp %02d %s, \
+			stream %u, error SUSPENSION, details %d, \
+			timestamp 0x%16.16llx, pin %d\n",
 			resp.type,
 			fw_msg[resp_type_to_index(resp.type)].msg,
 			resp.stream_handle,
@@ -1366,7 +1378,9 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			ts : 0, resp.pin_id);
 	else if (resp.error)
 		dev_dbg(&adev->dev,
-			"hostlib: error resp %02d %s, stream %u, error %d, details %d, timestamp 0x%16.16llx, pin %d\n",
+			"hostlib: error resp %02d %s, \
+			stream %u, error %d, details %d, \
+			timestamp 0x%16.16llx, pin %d\n",
 			resp.type,
 			fw_msg[resp_type_to_index(resp.type)].msg,
 			resp.stream_handle,
@@ -1375,7 +1389,8 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			ts : 0, resp.pin_id);
 	else
 		dev_dbg(&adev->dev,
-			"hostlib: resp %02d %s, stream %u, timestamp 0x%16.16llx, pin %d\n",
+			"hostlib: resp %02d %s, stream %u, \
+			timestamp 0x%16.16llx, pin %d\n",
 			resp.type,
 			fw_msg[resp_type_to_index(resp.type)].msg,
 			resp.stream_handle,
@@ -1472,8 +1487,8 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 		pipe->seq[pipe->seq_index].timestamp = ts;
 		dev_dbg(&adev->dev,
 			"sof: handle %d: (index %u), timestamp 0x%16.16llx\n",
-			resp.stream_handle, pipe->seq[pipe->seq_index].sequence,
-			ts);
+			resp.stream_handle,
+			pipe->seq[pipe->seq_index].sequence, ts);
 		pipe->seq_index = (pipe->seq_index + 1)
 			% INTEL_IPU4_ISYS_MAX_PARALLEL_SOF;
 		break;

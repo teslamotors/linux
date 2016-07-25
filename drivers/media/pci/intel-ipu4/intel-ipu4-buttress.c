@@ -117,7 +117,8 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 		if (val & ENTRY) {
 			if (val & EXIT) {
 				dev_dbg(&isp->pdev->dev,
-					"%s: IPC_PEER_COMP_ACTIONS_RST_PHASE1 & IPC_PEER_COMP_ACTIONS_RST_PHASE2\n",
+					"%s:IPC_PEER_COMP_ACTIONS_RST_PHASE1 & \
+					IPC_PEER_COMP_ACTIONS_RST_PHASE2\n",
 					__func__);
 				/*
 				 * 1) Clear-by-1 CSR bits
@@ -133,7 +134,8 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 				tout_jfs = jiffies + msecs_to_jiffies(tout);
 				continue;
 			} else {
-				dev_dbg(&isp->pdev->dev, "%s: IPC_PEER_COMP_ACTIONS_RST_PHASE1\n",
+				dev_dbg(&isp->pdev->dev,
+					"%s: IPC_PEER_COMP_ACTIONS_RST_PHASE1\n",
 					__func__);
 				/*
 				 * 1) Clear-by-1 CSR bits
@@ -150,7 +152,8 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 				continue;
 			}
 		} else if (val & EXIT) {
-			dev_dbg(&isp->pdev->dev, "%s: IPC_PEER_COMP_ACTIONS_RST_PHASE2\n",
+			dev_dbg(&isp->pdev->dev,
+				"%s: IPC_PEER_COMP_ACTIONS_RST_PHASE2\n",
 				__func__);
 			/*
 			 * Clear-by-1 CSR bit
@@ -170,16 +173,18 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 			writel(1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT,
 			       isp->base + DB0_IN(ipc));
 
-			writel(BUTTRESS_IU2CSECSR_IPC_PEER_DEASSERTED_REG_VALID_REQ
-			       | BUTTRESS_IU2CSECSR_IPC_PEER_ACKED_REG_VALID |
-			       BUTTRESS_IU2CSECSR_IPC_PEER_ASSERTED_REG_VALID_REQ |
-			       QUERY, isp->base + CSR_IN(ipc));
+			writel(
+			BUTTRESS_IU2CSECSR_IPC_PEER_DEASSERTED_REG_VALID_REQ |
+			BUTTRESS_IU2CSECSR_IPC_PEER_ACKED_REG_VALID |
+			BUTTRESS_IU2CSECSR_IPC_PEER_ASSERTED_REG_VALID_REQ |
+			QUERY, isp->base + CSR_IN(ipc));
 
 			writel(EXIT, isp->base + CSR_OUT(ipc));
 
 			return 0;
 		} else if (val & QUERY) {
-			dev_dbg(&isp->pdev->dev, "%s: IPC_PEER_QUERIED_IP_COMP_ACTIONS_RST_PHASE\n",
+			dev_dbg(&isp->pdev->dev,
+				"%s: IPC_PEER_QUERIED_IP_COMP_ACTIONS_RST_PHASE\n",
 				__func__);
 			/*
 			 * 1) Clear-by-1 CSR bit
@@ -230,7 +235,8 @@ static int intel_ipu4_buttress_ipc_validity_open(
 			__func__, val);
 
 		if (val & BUTTRESS_IU2CSECSR_IPC_PEER_ACKED_REG_VALID) {
-			dev_dbg(&isp->pdev->dev, "%s: Validity ack received from peer\n",
+			dev_dbg(&isp->pdev->dev,
+				"%s: Validity ack received from peer\n",
 				__func__);
 			return 0;
 		}
@@ -332,8 +338,10 @@ irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 
 	dev_dbg(&isp->pdev->dev, "isr: Buttress interrupt handler\n");
 
-	trace_ipu4_perf_reg(BUTTRESS_REG_IS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_IS_FREQ_CTL));
-	trace_ipu4_perf_reg(BUTTRESS_REG_PS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_PS_FREQ_CTL));
+	trace_ipu4_perf_reg(BUTTRESS_REG_IS_FREQ_CTL,
+		readl(isp->base + BUTTRESS_REG_IS_FREQ_CTL));
+	trace_ipu4_perf_reg(BUTTRESS_REG_PS_FREQ_CTL,
+		readl(isp->base + BUTTRESS_REG_PS_FREQ_CTL));
 
 	irq_status = readl(isp->base + BUTTRESS_REG_ISR_ENABLED_STATUS);
 	if (!irq_status)
@@ -464,7 +472,8 @@ int intel_ipu4_buttress_power(
 		* currently psys driver not enable, so Hardcode to power psys
 		*/
 		if (is_intel_ipu5_hw_glv_a0(isp))
-			writel(0x80000880, isp->base + BUTTRESS_REG_PS_FREQ_CTL);
+			writel(0x80000880,
+				isp->base + BUTTRESS_REG_PS_FREQ_CTL);
 	}
 
 	writel(val, isp->base + ctrl->freq_ctl);
@@ -474,7 +483,8 @@ int intel_ipu4_buttress_power(
 		usleep_range(10, 40);
 		val = readl(isp->base + BUTTRESS_REG_PWR_STATE);
 		if ((val & ctrl->pwr_sts_mask) == pwr_sts) {
-			dev_dbg(&isp->pdev->dev, "Rail state successfully changed\n");
+			dev_dbg(&isp->pdev->dev,
+				"Rail state successfully changed\n");
 			goto out;
 		}
 	} while (!time_after(jiffies, tout_jfs));
@@ -498,8 +508,10 @@ out:
 
 	ctrl->started = !ret && on;
 
-	trace_ipu4_perf_reg(BUTTRESS_REG_IS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_IS_FREQ_CTL));
-	trace_ipu4_perf_reg(BUTTRESS_REG_PS_FREQ_CTL, readl(isp->base + BUTTRESS_REG_PS_FREQ_CTL));
+	trace_ipu4_perf_reg(BUTTRESS_REG_IS_FREQ_CTL,
+		readl(isp->base + BUTTRESS_REG_IS_FREQ_CTL));
+	trace_ipu4_perf_reg(BUTTRESS_REG_PS_FREQ_CTL,
+		readl(isp->base + BUTTRESS_REG_PS_FREQ_CTL));
 
 	mutex_unlock(&isp->buttress.power_mutex);
 
@@ -632,7 +644,7 @@ void intel_ipu4_buttress_add_psys_constraint(
 
 	if (constraint->min_freq > b->psys_min_freq) {
 		isp->buttress.psys_min_freq = min(constraint->min_freq,
-						  b->psys_fused_freqs.max_freq);
+						b->psys_fused_freqs.max_freq);
 		intel_ipu4_buttress_set_psys_freq(isp, b->psys_min_freq);
 	}
 	mutex_unlock(&isp->buttress.cons_mutex);
@@ -1078,6 +1090,7 @@ static long intel_ipu4_buttress_clk_round_rate(
 
 	for (i = 0; i < ARRAY_SIZE(sensor_clk_freqs); i++) {
 		long diff = sensor_clk_freqs[i].rate - rate;
+
 		if (0 == diff)
 			return rate;
 
@@ -1436,8 +1449,11 @@ int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val)
 		 */
 		if (retry < INTEL_IPU4_BUTTRESS_TSC_RETRY - 1)
 			dev_err(&isp->pdev->dev,
-				"failure: tsc_hi = %u, tsc_chk %u, tsc_lo_1 = %u"
-				", tsc_lo_2 = %u, tsc_lo_3 = %u",
+				"failure: tsc_hi = %u, \
+				tsc_chk %u, \
+				tsc_lo_1 = %u, \
+				tsc_lo_2 = %u, \
+				tsc_lo_3 = %u",
 				tsc_hi, tsc_chk, tsc_lo_1, tsc_lo_2, tsc_lo_3);
 	} while (retry--);
 

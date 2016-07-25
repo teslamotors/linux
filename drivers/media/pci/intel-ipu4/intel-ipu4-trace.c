@@ -315,7 +315,8 @@ static int validate_register_range(u32 base, u32 reg,
 	return -EINVAL;
 }
 
-static int update_register_cache(struct intel_ipu4_device *isp, u32 reg, u32 value)
+static int update_register_cache(struct intel_ipu4_device *isp,
+					u32 reg, u32 value)
 {
 	struct intel_ipu4_trace *dctrl = isp->trace;
 	const struct intel_ipu4_trace_block *blocks;
@@ -746,7 +747,8 @@ static const struct file_operations intel_ipu4_gettrace_fops = {
 };
 
 int intel_ipu4_trace_init(struct intel_ipu4_device *isp, void __iomem *base,
-		       struct device *dev, struct intel_ipu4_trace_block *blocks)
+				struct device *dev,
+				struct intel_ipu4_trace_block *blocks)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_trace *trace = isp->trace;

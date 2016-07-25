@@ -57,21 +57,22 @@ struct intel_ipu4_psys_manifest32 {
 } __packed;
 
 static int get_intel_ipu4_psys_command32(struct intel_ipu4_psys_command *kp,
-				      struct intel_ipu4_psys_command32 __user *up)
+				struct intel_ipu4_psys_command32 __user *up)
 {
 	compat_uptr_t pgm, bufs;
 
-	if (!access_ok(VERIFY_READ, up, sizeof(struct intel_ipu4_psys_buffer32)) ||
-	    get_user(kp->issue_id, &up->issue_id) ||
-	    get_user(kp->id, &up->id) ||
-	    get_user(kp->priority, &up->priority) ||
-	    get_user(pgm, &up->pg_manifest) ||
-	    get_user(bufs, &up->buffers) ||
-	    get_user(kp->pg, &up->pg) ||
-	    get_user(kp->pg_manifest_size, &up->pg_manifest_size) ||
-	    get_user(kp->bufcount, &up->bufcount) ||
-	    get_user(kp->min_psys_freq, &up->min_psys_freq))
-		return -EFAULT;
+	if (!access_ok(VERIFY_READ, up,
+		sizeof(struct intel_ipu4_psys_buffer32)) ||
+		get_user(kp->issue_id, &up->issue_id) ||
+		get_user(kp->id, &up->id) ||
+		get_user(kp->priority, &up->priority) ||
+		get_user(pgm, &up->pg_manifest) ||
+		get_user(bufs, &up->buffers) ||
+		get_user(kp->pg, &up->pg) ||
+		get_user(kp->pg_manifest_size, &up->pg_manifest_size) ||
+		get_user(kp->bufcount, &up->bufcount) ||
+		get_user(kp->min_psys_freq, &up->min_psys_freq))
+			return -EFAULT;
 
 	kp->pg_manifest = compat_ptr(pgm);
 	kp->buffers = compat_ptr(bufs);
@@ -80,16 +81,17 @@ static int get_intel_ipu4_psys_command32(struct intel_ipu4_psys_command *kp,
 }
 
 static int get_intel_ipu4_psys_buffer32(struct intel_ipu4_psys_buffer *kp,
-				     struct intel_ipu4_psys_buffer32 __user *up)
+				struct intel_ipu4_psys_buffer32 __user *up)
 {
 	compat_uptr_t ptr;
 
-	if (!access_ok(VERIFY_READ, up, sizeof(struct intel_ipu4_psys_buffer32)) ||
-	    get_user(kp->len, &up->len) ||
-	    get_user(ptr, &up->userptr) ||
-	    get_user(kp->fd, &up->fd) ||
-	    get_user(kp->flags, &up->flags))
-		return -EFAULT;
+	if (!access_ok(VERIFY_READ, up,
+		sizeof(struct intel_ipu4_psys_buffer32)) ||
+		get_user(kp->len, &up->len) ||
+		get_user(ptr, &up->userptr) ||
+		get_user(kp->fd, &up->fd) ||
+		get_user(kp->flags, &up->flags))
+			return -EFAULT;
 
 	kp->userptr = compat_ptr(ptr);
 
@@ -117,11 +119,12 @@ static int get_intel_ipu4_psys_manifest32(struct intel_ipu4_psys_manifest *kp,
 {
 	compat_uptr_t ptr;
 
-	if (!access_ok(VERIFY_READ, up, sizeof(struct intel_ipu4_psys_manifest32)) ||
-	    get_user(kp->index, &up->index) ||
-	    get_user(kp->size, &up->size) ||
-	    get_user(ptr, &up->manifest))
-		return -EFAULT;
+	if (!access_ok(VERIFY_READ, up,
+		sizeof(struct intel_ipu4_psys_manifest32)) ||
+		get_user(kp->index, &up->index) ||
+		get_user(kp->size, &up->size) ||
+		get_user(ptr, &up->manifest))
+			return -EFAULT;
 
 	kp->manifest = compat_ptr(ptr);
 
@@ -146,8 +149,10 @@ static int put_intel_ipu4_psys_manifest32(struct intel_ipu4_psys_manifest *kp,
 #define INTEL_IPU4_IOC_GETBUF32 _IOWR('A', 4, struct intel_ipu4_psys_buffer32)
 #define INTEL_IPU4_IOC_PUTBUF32 _IOWR('A', 5, struct intel_ipu4_psys_buffer32)
 #define INTEL_IPU4_IOC_QCMD32 _IOWR('A', 6, struct intel_ipu4_psys_command32)
-#define INTEL_IPU4_IOC_CMD_CANCEL32 _IOWR('A', 8, struct intel_ipu4_psys_command32)
-#define INTEL_IPU4_IOC_GET_MANIFEST32 _IOWR('A', 9, struct intel_ipu4_psys_manifest32)
+#define INTEL_IPU4_IOC_CMD_CANCEL32 \
+	_IOWR('A', 8, struct intel_ipu4_psys_command32)
+#define INTEL_IPU4_IOC_GET_MANIFEST32 \
+	_IOWR('A', 9, struct intel_ipu4_psys_manifest32)
 
 long intel_ipu4_psys_compat_ioctl32(struct file *file, unsigned int cmd,
 					unsigned long arg)

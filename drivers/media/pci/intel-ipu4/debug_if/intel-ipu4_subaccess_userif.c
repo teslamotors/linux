@@ -65,7 +65,8 @@ static struct class *iunit_fpga_class;
 static struct cdev *iunit_fpga_cdev;
 
 /*local fops prototypes.*/
-static long isys_fops_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+static long isys_fops_ioctl(struct file *filp, unsigned int cmd,
+					unsigned long arg);
 static int iunit_fpga_cdev_open(struct inode *inode, struct file *filp);
 static int iunit_fpga_cdev_close(struct inode *inode, struct file *filp);
 
@@ -126,14 +127,20 @@ static int iunit_fpga_cdev_close(struct inode *inode, struct file *filp)
 
 /* sub system access store ioctl implementation*/
 
-static int isys_ioctl_do_subsystem_access_store(struct vied_subsystem_access_req *sadata)
+static int isys_ioctl_do_subsystem_access_store(
+				struct vied_subsystem_access_req *sadata)
 {
 	int ret = 0;
+
 	switch (sadata->size) {
 	case sizeof(uint8_t): {
 		uint8_t data;
-		if (copy_from_user(&data, (void *__user)(sadata->user_buffer), sadata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)sadata->user_buffer);
+
+		if (copy_from_user(&data, (void *__user)(sadata->user_buffer),
+			sadata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)sadata->user_buffer);
 			ret = -EFAULT;
 		}
 		vied_subsystem_store_8(sadata->dev, sadata->reg_off, data);
@@ -141,8 +148,12 @@ static int isys_ioctl_do_subsystem_access_store(struct vied_subsystem_access_req
 	break;
 	case sizeof(uint16_t): {
 		uint16_t data;
-		if (copy_from_user(&data, (void *__user)(sadata->user_buffer), sadata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)sadata->user_buffer);
+
+		if (copy_from_user(&data, (void *__user)(sadata->user_buffer),
+			sadata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)sadata->user_buffer);
 			ret = -EFAULT;
 		}
 		vied_subsystem_store_16(sadata->dev, sadata->reg_off, data);
@@ -150,8 +161,12 @@ static int isys_ioctl_do_subsystem_access_store(struct vied_subsystem_access_req
 	break;
 	case sizeof(uint32_t): {
 		uint32_t data;
-		if (copy_from_user(&data, (void *__user)(sadata->user_buffer), sadata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)sadata->user_buffer);
+
+		if (copy_from_user(&data, (void *__user)(sadata->user_buffer),
+			sadata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)sadata->user_buffer);
 			ret = -EFAULT;
 		}
 		vied_subsystem_store_32(sadata->dev, sadata->reg_off, data);
@@ -159,15 +174,23 @@ static int isys_ioctl_do_subsystem_access_store(struct vied_subsystem_access_req
 	break;
 	default: {
 		void *buffer = kzalloc(sadata->size, GFP_KERNEL);
+
 		if (!buffer) {
-			iunit_err("%s:couldn't allocate kernel buffer\n", __func__);
+			iunit_err("%s:couldn't allocate kernel buffer\n",
+				__func__);
 			ret = -ENOMEM;
 		} else {
-			if (copy_from_user(buffer, (void *__user)(sadata->user_buffer), sadata->size)) {
-				iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)sadata->user_buffer);
+			if (copy_from_user(buffer,
+				(void *__user)(sadata->user_buffer),
+				sadata->size)) {
+				iunit_err("%s: isys ioctl Error- \
+					bad user space add %p\n\n",
+					__func__,
+					(void *__user)sadata->user_buffer);
 				ret = -EFAULT;
 			}
-			vied_subsystem_store(sadata->dev, sadata->reg_off, buffer, sadata->size);
+			vied_subsystem_store(sadata->dev,
+				sadata->reg_off, buffer, sadata->size);
 			kfree(buffer);
 		}
 	}
@@ -178,31 +201,48 @@ static int isys_ioctl_do_subsystem_access_store(struct vied_subsystem_access_req
 
 /*  sub system access load ioctl implementation*/
 
-static int isys_ioctl_do_subsystem_access_load(struct vied_subsystem_access_req *sadata)
+static int isys_ioctl_do_subsystem_access_load(
+				struct vied_subsystem_access_req *sadata)
 {
 	int ret = 0;
+
 	switch (sadata->size) {
 	case sizeof(uint8_t): {
-		uint8_t data = vied_subsystem_load_8(sadata->dev, sadata->reg_off);
-		if (copy_to_user((void *__user)(sadata->user_buffer), &data, sadata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)sadata->user_buffer);
+		uint8_t data = vied_subsystem_load_8(sadata->dev,
+			sadata->reg_off);
+
+		if (copy_to_user((void *__user)(sadata->user_buffer),
+			&data, sadata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)sadata->user_buffer);
 			ret = -EFAULT;
 		}
 	}
 	break;
 	case sizeof(uint16_t): {
-		uint16_t data = vied_subsystem_load_16(sadata->dev, sadata->reg_off);
-		if (copy_to_user((void *__user)(sadata->user_buffer), &data, sadata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)sadata->user_buffer);
+		uint16_t data = vied_subsystem_load_16(sadata->dev,
+			sadata->reg_off);
+
+		if (copy_to_user((void *__user)(sadata->user_buffer),
+			&data, sadata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)sadata->user_buffer);
 			ret = -EFAULT;
 		}
 
 	}
 	break;
 	case sizeof(uint32_t): {
-		uint32_t data = vied_subsystem_load_32(sadata->dev, sadata->reg_off);
-		if (copy_to_user((void *__user)(sadata->user_buffer), &data, sadata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)sadata->user_buffer);
+		uint32_t data = vied_subsystem_load_32(sadata->dev,
+			sadata->reg_off);
+
+		if (copy_to_user((void *__user)(sadata->user_buffer),
+			&data, sadata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)sadata->user_buffer);
 			ret = -EFAULT;
 		}
 	}
@@ -210,13 +250,22 @@ static int isys_ioctl_do_subsystem_access_load(struct vied_subsystem_access_req 
 	default:
 	{
 		void *buffer = kzalloc(sadata->size, GFP_KERNEL);
+
 		if (!buffer) {
-			iunit_err("%s:couldn't allocate kernel buffer\n", __func__);
+			iunit_err("%s:couldn't allocate kernel buffer\n",
+				__func__);
 			ret = -ENOMEM;
 		} else {
-			vied_subsystem_load(sadata->dev, sadata->reg_off, buffer, sadata->size);
-			if (copy_to_user((void *__user)(sadata->user_buffer), buffer, sadata->size)) {
-				iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)sadata->user_buffer);
+			vied_subsystem_load(sadata->dev,
+				sadata->reg_off,
+				buffer,
+				sadata->size);
+			if (copy_to_user((void *__user)(sadata->user_buffer),
+				buffer, sadata->size)) {
+				iunit_err("%s: isys ioctl Error- \
+					bad user space add %p\n\n",
+					__func__,
+					(void *__user)sadata->user_buffer);
 				ret = -EFAULT;
 			}
 			kfree(buffer);
@@ -229,15 +278,21 @@ static int isys_ioctl_do_subsystem_access_load(struct vied_subsystem_access_req 
 
 /* shared memory store ioctl implementation*/
 
-static int isys_ioctl_do_shared_mem_access_store(struct vied_shared_memory_access_req *smdata)
+static int isys_ioctl_do_shared_mem_access_store(
+				struct vied_shared_memory_access_req *smdata)
 {
 	int ret = 0;
 
 	switch (smdata->size) {
 	case sizeof(uint8_t): {
 		uint8_t data;
-		if (copy_from_user(&data, (void *__user)(smdata->user_buffer), smdata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)smdata->user_buffer);
+
+		if (copy_from_user(&data, (void *__user)(smdata->user_buffer),
+			smdata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__,
+				(void *__user)smdata->user_buffer);
 			ret = -EFAULT;
 		}
 		shared_memory_store_8(smdata->idm, smdata->va, data);
@@ -245,8 +300,12 @@ static int isys_ioctl_do_shared_mem_access_store(struct vied_shared_memory_acces
 	break;
 	case sizeof(uint16_t): {
 		uint16_t data;
-		if (copy_from_user(&data, (void *__user)(smdata->user_buffer), smdata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)smdata->user_buffer);
+
+		if (copy_from_user(&data, (void *__user)(smdata->user_buffer),
+			smdata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)smdata->user_buffer);
 			ret = -EFAULT;
 		}
 		shared_memory_store_16(smdata->idm, smdata->va, data);
@@ -254,8 +313,12 @@ static int isys_ioctl_do_shared_mem_access_store(struct vied_shared_memory_acces
 	break;
 	case sizeof(uint32_t): {
 		uint32_t data;
-		if (copy_from_user(&data, (void *__user)(smdata->user_buffer), smdata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)smdata->user_buffer);
+
+		if (copy_from_user(&data, (void *__user)(smdata->user_buffer),
+			smdata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+			__func__, (void *__user)smdata->user_buffer);
 			ret = -EFAULT;
 		}
 		shared_memory_store_32(smdata->idm, smdata->va, data);
@@ -265,19 +328,27 @@ static int isys_ioctl_do_shared_mem_access_store(struct vied_shared_memory_acces
 	default:
 	{
 		void *buffer;
+
 		if (smdata->size <= PAGE_SIZE)
 			buffer = kzalloc(smdata->size, GFP_KERNEL);
 		else
 			buffer = vmalloc_32(PAGE_ALIGN(smdata->size));
 		if (!buffer) {
-			iunit_err("%s:couldn't allocate kernel buffer\n", __func__);
+			iunit_err("%s:couldn't allocate kernel buffer\n",
+				__func__);
 			ret = -ENOMEM;
 		} else {
-			if (copy_from_user(buffer, (void *__user)(smdata->user_buffer), smdata->size)) {
-				iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)smdata->user_buffer);
+			if (copy_from_user(buffer,
+				(void *__user)(smdata->user_buffer),
+				smdata->size)) {
+				iunit_err("%s: isys ioctl Error- \
+					bad user space add %p\n\n",
+					__func__,
+					(void *__user)smdata->user_buffer);
 				ret = -EFAULT;
 			}
-			shared_memory_store(smdata->idm, smdata->va, buffer, smdata->size);
+			shared_memory_store(smdata->idm, smdata->va,
+				buffer, smdata->size);
 			if (smdata->size <= PAGE_SIZE)
 				kfree(buffer);
 			else
@@ -291,49 +362,69 @@ static int isys_ioctl_do_shared_mem_access_store(struct vied_shared_memory_acces
 
 /* shared memory load ioctl implementation*/
 
-static int isys_ioctl_do_shared_mem_access_load(struct vied_shared_memory_access_req *smdata)
+static int isys_ioctl_do_shared_mem_access_load(
+				struct vied_shared_memory_access_req *smdata)
 {
 	int ret = 0;
+
 	switch (smdata->size) {
 	case sizeof(uint8_t): {
 		uint8_t data = shared_memory_load_8(smdata->idm, smdata->va);
 
-		if (copy_to_user((void *__user)(smdata->user_buffer), &data, smdata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)smdata->user_buffer);
+		if (copy_to_user((void *__user)(smdata->user_buffer), &data,
+			smdata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)smdata->user_buffer);
 			ret = -EFAULT;
 		}
 	}
 	break;
 	case sizeof(uint16_t): {
 		uint16_t data = shared_memory_load_16(smdata->idm, smdata->va);
-		if (copy_to_user((void *__user)(smdata->user_buffer), &data, smdata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)smdata->user_buffer);
+
+		if (copy_to_user((void *__user)(smdata->user_buffer), &data,
+			smdata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)smdata->user_buffer);
 			ret = -EFAULT;
 		}
 	}
 	break;
 	case sizeof(uint32_t): {
 		uint32_t data = shared_memory_load_32(smdata->idm, smdata->va);
-		if (copy_to_user((void *__user)(smdata->user_buffer), &data, smdata->size)) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)smdata->user_buffer);
+
+		if (copy_to_user((void *__user)(smdata->user_buffer), &data,
+			smdata->size)) {
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)smdata->user_buffer);
 			ret = -EFAULT;
 		}
 	}
 	break;
 	default: {
 		void *buffer;
+
 		if (smdata->size <= PAGE_SIZE)
 			buffer = kzalloc(smdata->size, GFP_KERNEL);
 		else
 			buffer = vmalloc_32(PAGE_ALIGN(smdata->size));
 
 		if (!buffer) {
-			iunit_err("%s:couldn't allocate kernel buffer\n", __func__);
+			iunit_err("%s:couldn't allocate kernel buffer\n",
+				__func__);
 			ret = -ENOMEM;
 		} else {
-			shared_memory_load(smdata->idm, smdata->va, buffer, smdata->size);
-			if (copy_to_user((void *__user)(smdata->user_buffer), buffer, smdata->size)) {
-				iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)smdata->user_buffer);
+			shared_memory_load(smdata->idm, smdata->va,
+				buffer, smdata->size);
+			if (copy_to_user((void *__user)(smdata->user_buffer),
+				buffer, smdata->size)) {
+				iunit_err("%s: isys ioctl Error- \
+					bad user space add %p\n\n",
+					__func__,
+					(void *__user)smdata->user_buffer);
 				ret = -EFAULT;
 			}
 			if (smdata->size <= PAGE_SIZE)
@@ -351,86 +442,111 @@ static int isys_ioctl_do_shared_mem_access_load(struct vied_shared_memory_access
 static int isys_execute_ioctl(unsigned int cmd, void *__user user_data)
 {
 	int ret  = 0;
+
 	switch (cmd) {
 	case VIED_SUBACCESS_IOC_SUBSYSTEM_LOAD: {
 		struct vied_subsystem_access_req sadata;
+
 		iunit_dbg("case VIED_SUBACCESS_IOC_SUBSYSTEM_LOAD:\n");
 		if (copy_from_user(&sadata, user_data, sizeof(sadata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
 		ret = isys_ioctl_do_subsystem_access_load(&sadata);
 		if (ret)
-			iunit_err("%s: subsystem access error (0x%x)\n", __func__, ret);
+			iunit_err("%s: subsystem access error (0x%x)\n",
+				__func__, ret);
 	}
 	break;
 	case VIED_SUBACCESS_IOC_SUBSYSTEM_STORE: {
 		struct vied_subsystem_access_req sadata;
+
 		iunit_dbg(" case VIED_SUBACCESS_IOC_SUBSYSTEM_STORE:\n");
 		if (copy_from_user(&sadata, user_data, sizeof(sadata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
 		ret = isys_ioctl_do_subsystem_access_store(&sadata);
 		if (ret)
-			iunit_err("%s: subsystem access error (0x%x)\n", __func__, ret);
+			iunit_err("%s: subsystem access error (0x%x)\n",
+				__func__, ret);
 	}
 	break;
 	case VIED_SUBACCESS_IOC_SHARED_MEM_LOAD: {
 		struct vied_shared_memory_access_req smdata;
+
 		iunit_dbg(" case VIED_SUBACCESS_IOC_SHARED_MEM_LOAD\n");
 		if (copy_from_user(&smdata, user_data, sizeof(smdata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
 		ret = isys_ioctl_do_shared_mem_access_load(&smdata);
 		if (ret)
-			iunit_err("%s: shared memory access error (0x%x)\n", __func__, ret);
+			iunit_err("%s: shared memory access error (0x%x)\n",
+				__func__, ret);
 	}
 	break;
 	case VIED_SUBACCESS_IOC_SHARED_MEM_STORE:
 	{
 		struct vied_shared_memory_access_req smdata;
+
 		iunit_dbg(" case VIED_SUBACCESS_IOC_SHARED_MEM_STORE:\n");
 		if (copy_from_user(&smdata, user_data, sizeof(smdata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n\n", __func__, (void *__user)user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n\n",
+				__func__, (void *__user)user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
 		ret = isys_ioctl_do_shared_mem_access_store(&smdata);
 		if (ret)
-			iunit_err("%s: shared memory access error (0x%x)\n", __func__, ret);
+			iunit_err("%s: shared memory access error (0x%x)\n",
+				__func__, ret);
 	}
 	break;
 	case VIED_SUBACCESS_IOC_MEMORY_MAP_INITIALIZE: {
 		struct vied_shared_memory_map_req smapdata;
+
 		iunit_dbg("case VIED_SUBACCESS_IOC_MEMORY_MAP_INITIALIZE:\n");
 		if (copy_from_user(&smapdata, user_data, sizeof(smapdata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, (void *__user)user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, (void *__user)user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
 		smapdata.retval = shared_memory_map_initialize(smapdata.id,
-								smapdata.idm,
-								smapdata.mmu_ps,
-								smapdata.mmu_pnrs,
-								smapdata.ddr_addr,
-								NULL,
-								NULL);
+							smapdata.idm,
+							smapdata.mmu_ps,
+							smapdata.mmu_pnrs,
+							smapdata.ddr_addr,
+							NULL,
+							NULL);
 		if (copy_to_user(user_data, &smapdata, sizeof(smapdata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, user_data);
 			ret = -EFAULT;
 		}
 	}
 	break;
 	case VIED_SUBACCESS_IOC_MEMORY_MAP: {
 		struct vied_shared_memory_map_req smapdata;
+
 		iunit_dbg("case VIED_SUBACCESS_IOC_MEMORY_MAP:\n");
 		if (copy_from_user(&smapdata, user_data, sizeof(smapdata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, (void *__user)user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, (void *__user)user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
@@ -438,7 +554,9 @@ static int isys_execute_ioctl(unsigned int cmd, void *__user user_data)
 							smapdata.idm,
 							smapdata.host_va);
 		if (copy_to_user(user_data, &smapdata, sizeof(smapdata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, user_data);
 			ret = -EFAULT;
 		}
 	}
@@ -446,43 +564,60 @@ static int isys_execute_ioctl(unsigned int cmd, void *__user user_data)
 	case VIED_SUBACCESS_IOC_MEMORY_ALLOC_INITIALIZE:
 	{
 		struct vied_shared_memory_alloc_req smadata;
+
 		iunit_dbg("case VIED_SUBACCESS_IOC_MEMORY_ALLOC_INITIALIZE:\n");
 		if (copy_from_user(&smadata, user_data, sizeof(smadata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
-		smadata.retval = shared_memory_allocation_initialize(smadata.idm,
-									smadata.host_ddr_addr,
-									smadata.memory_size,
-									smadata.ps);
+		smadata.retval = shared_memory_allocation_initialize(
+							smadata.idm,
+							smadata.host_ddr_addr,
+							smadata.memory_size,
+							smadata.ps);
 		if (copy_to_user(user_data, &smadata, sizeof(smadata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, user_data);
 			ret = -EFAULT;
 		}
 	}
 	break;
 	case VIED_SUBACCESS_IOC_MEMORY_ALLOC: {
 		struct vied_shared_memory_alloc_req smadata;
+
 		iunit_dbg("case VIED_SUBACCESS_IOC_MEMORY_ALLOC:\n");
 		if (copy_from_user(&smadata, user_data, sizeof(smadata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, (void *__user)user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, (void *__user)user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
-		iunit_dbg("%s alloc_size(%ld)\a", __func__, smadata.alloc_size);
-		smadata.host_va = shared_memory_alloc(smadata.idm, smadata.alloc_size);
+		iunit_dbg("%s alloc_size(%ld)\a",
+			__func__,
+			smadata.alloc_size);
+		smadata.host_va = shared_memory_alloc(smadata.idm,
+					smadata.alloc_size);
 		iunit_dbg("%s host_va(0x%lx)\n", __func__, smadata.host_va);
 		if (copy_to_user(user_data, &smadata, sizeof(smadata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, user_data);
 			ret = -EFAULT;
 		}
 	}
 	break;
 	case VIED_SUBACCESS_IOC_MEMORY_FREE: {
 		struct vied_shared_memory_alloc_req smadata;
+
 		if (copy_from_user(&smadata, user_data, sizeof(smadata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, (void *__user)user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, (void *__user)user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
@@ -491,9 +626,12 @@ static int isys_execute_ioctl(unsigned int cmd, void *__user user_data)
 	break;
 	case VIED_SUBACCESS_IOC_MEMORY_ALLOC_UNINITIALIZE: {
 		struct vied_shared_memory_alloc_req smadata;
+
 		iunit_dbg("case VIED_SUBACCESS_IOC_MEMORY_ALLOC_UNINITIALIZE:\n");
 		if (copy_from_user(&smadata, user_data, sizeof(smadata))) {
-			iunit_err("%s: isys ioctl Error- bad user space add %p\n", __func__, (void *__user)user_data);
+			iunit_err("%s: isys ioctl Error- \
+				bad user space add %p\n",
+				__func__, (void *__user)user_data);
 			ret = -EFAULT;
 			goto exit;
 		}
@@ -510,7 +648,8 @@ exit:
 }
 
 /* for user space ioctl access*/
-static long isys_fops_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long isys_fops_ioctl(struct file *filp, unsigned int cmd,
+					unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	int ret = 0;
@@ -518,14 +657,16 @@ static long isys_fops_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 	mutex_lock(&giunit_userif_data->isys_lock);
 	iunit_dbg("%s: Enter\n\n", __func__);
 	if (giunit_userif_data->device_busy == 0) {
-		iunit_err("%s: isys ioctl Error- device not open\n\n", __func__);
+		iunit_err("%s: isys ioctl Error- \
+			device not open\n\n", __func__);
 		ret = -ENODEV;
 		goto exit;
 	}
 	ret = isys_execute_ioctl(cmd, argp);
 exit:
 	mutex_unlock(&giunit_userif_data->isys_lock);
-	iunit_dbg("%s: isys ioctl %s\n", __func__, (ret == 0) ? "Success" : "Failed");
+	iunit_dbg("%s: isys ioctl %s\n", __func__,
+		(ret == 0) ? "Success" : "Failed");
 	return ret;
 }
 
@@ -542,13 +683,15 @@ static int __init vied_subaccess_userif_init(void)
 	iunit_fpga_class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (IS_ERR(iunit_fpga_class)) {
 		err = PTR_ERR(iunit_fpga_class);
-		iunit_err("%s:couldn't create device class err=%x\n\n", __func__, err);
+		iunit_err("%s:couldn't create device class err=%x\n\n",
+			__func__, err);
 		goto out;
 	}
 	/* Allocate major no for character drv */
 	err = alloc_chrdev_region(&dev, 0, 1, DEVICE_NAME);
 	if (err) {
-		iunit_err("%s: couldn't allocate major no=%x\n\n", __func__, err);
+		iunit_err("%s: couldn't allocate major no=%x\n\n",
+			__func__, err);
 		goto err_alloc_chrdev;
 	}
 	/* Retrive major no for character drv*/
@@ -564,14 +707,21 @@ static int __init vied_subaccess_userif_init(void)
 	iunit_fpga_cdev->owner = THIS_MODULE;
 	iunit_fpga_cdev->ops = &isys_fops;
 
-	/* add the character drv into kernel cgar dev infratsructure. for ref counting.*/
+	/*
+	 * add the character drv into kernel cgar dev infratsructure.
+	 * for ref counting.
+	 */
 	err = cdev_add(iunit_fpga_cdev, MKDEV(cdev_major, 0), 1);
 	if (err) {
 		iunit_err("%s:Unable to add cdev..err=%d\n\n", __func__, err);
 		goto err_add_cdev;
 	}
-	/* create the device node /dev/<*> for char dev for user space access using udev */
-	iunit_fpga_device = device_create(iunit_fpga_class, NULL, MKDEV(cdev_major, 0), 0, "iunitfpga%d", 0);
+	/*
+	 * create the device node /dev/<*> for char dev for user space
+	 * access using udev
+	 */
+	iunit_fpga_device = device_create(iunit_fpga_class, NULL,
+		MKDEV(cdev_major, 0), 0, "iunitfpga%d", 0);
 	if (IS_ERR(iunit_fpga_device)) {
 		iunit_err("%s: Could not create dev node\n", __func__);
 		goto err_create_device;

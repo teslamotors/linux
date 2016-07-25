@@ -25,6 +25,6 @@ struct intel_ipu4_dma_mapping {
 	struct kref ref;
 };
 
-extern struct dma_map_ops intel_ipu4_dma_ops;
+extern const struct dma_map_ops intel_ipu4_dma_ops;
 
 #endif /* INTEL_IPU4_DMA_H */

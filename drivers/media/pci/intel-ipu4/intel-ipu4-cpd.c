@@ -84,10 +84,11 @@ intel_ipu4_cpd_metadata_get_cmpnt(
 	return &cmpnts[idx];
 }
 
-static u32 intel_ipu4_cpd_metadata_cmpnt_version(struct intel_ipu4_device *isp,
-					    const void *metadata,
-					    unsigned metadata_size,
-					    u8 idx)
+static u32 intel_ipu4_cpd_metadata_cmpnt_version(
+					struct intel_ipu4_device *isp,
+					const void *metadata,
+					unsigned metadata_size,
+					u8 idx)
 {
 	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnt =
 		intel_ipu4_cpd_metadata_get_cmpnt(
@@ -99,10 +100,11 @@ static u32 intel_ipu4_cpd_metadata_cmpnt_version(struct intel_ipu4_device *isp,
 	return cmpnt->ver;
 }
 
-static int intel_ipu4_cpd_metadata_get_cmpnt_id(struct intel_ipu4_device *isp,
-				       const void *metadata,
-				       unsigned metadata_size,
-				       u8 idx)
+static int intel_ipu4_cpd_metadata_get_cmpnt_id(
+					struct intel_ipu4_device *isp,
+					const void *metadata,
+					unsigned metadata_size,
+					u8 idx)
 {
 	const struct intel_ipu4_cpd_metadata_cmpnt *cmpnt =
 		intel_ipu4_cpd_metadata_get_cmpnt(

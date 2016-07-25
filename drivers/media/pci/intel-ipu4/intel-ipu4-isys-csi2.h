@@ -107,23 +107,25 @@ struct intel_ipu4_isys_csi2_timing {
  */
 __packed struct intel_ipu4_isys_mipi_packet_header {
 	uint32_t word_count : 16,
-		 dtype : 13,
-		 sync : 2,
-		 stype : 1;
+		dtype : 13,
+		sync : 2,
+		stype : 1;
 	uint32_t sid : 4,
-		 port_id : 4,
-		 reserved : 23,
-		 odd_even : 1;
+		port_id : 4,
+		reserved : 23,
+		odd_even : 1;
 };
 
 #define to_intel_ipu4_isys_csi2(sd)					\
-	container_of(to_intel_ipu4_isys_subdev(sd), struct intel_ipu4_isys_csi2, asd)
+	container_of(to_intel_ipu4_isys_subdev(sd), \
+	struct intel_ipu4_isys_csi2, asd)
 
 int intel_ipu4_isys_csi2_calc_timing(struct intel_ipu4_isys_csi2 *csi2,
-				  struct intel_ipu4_isys_csi2_timing *timing,
-				  uint32_t accinv);
-int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ipu4_isys *isys,
-		      void __iomem *base, unsigned int index);
+				struct intel_ipu4_isys_csi2_timing *timing,
+				uint32_t accinv);
+int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
+	struct intel_ipu4_isys *isys,
+	void __iomem *base, unsigned int index);
 void intel_ipu4_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2);
 void intel_ipu4_isys_csi2_isr(struct intel_ipu4_isys_csi2 *csi2);
 struct intel_ipu4_isys_buffer *intel_ipu4_isys_csi2_get_short_packet_buffer(

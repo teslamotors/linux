@@ -53,13 +53,14 @@ struct intel_ipu4_isys_tpg {
 	struct v4l2_ctrl *pixel_rate;
 };
 
-#define to_intel_ipu4_isys_tpg(sd)					\
-	container_of(to_intel_ipu4_isys_subdev(sd), struct intel_ipu4_isys_tpg, asd)
+#define to_intel_ipu4_isys_tpg(sd)		\
+	container_of(to_intel_ipu4_isys_subdev(sd), \
+	struct intel_ipu4_isys_tpg, asd)
 
 int intel_ipu4_isys_tpg_init(struct intel_ipu4_isys_tpg *tpg,
-			     struct intel_ipu4_isys *isys,
-			     void __iomem *base, void __iomem *sel,
-			     unsigned int index);
+					struct intel_ipu4_isys *isys,
+					void __iomem *base, void __iomem *sel,
+					unsigned int index);
 void intel_ipu4_isys_tpg_cleanup(struct intel_ipu4_isys_tpg *tpg);
 void intel_ipu4_isys_tpg_isr(struct intel_ipu4_isys_tpg *tpg);
 

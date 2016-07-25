@@ -197,13 +197,15 @@ static int force_suspend_set(void *data, u64 val)
 		}
 		ret = pci_set_power_state(isp->pdev, PCI_D3hot);
 		if (ret) {
-			dev_err(&isp->pdev->dev, "Failed to suspend IUnit PCI device\n");
+			dev_err(&isp->pdev->dev,
+				"Failed to suspend IUnit PCI device\n");
 			return ret;
 		}
 	} else {
 		ret = pci_set_power_state(isp->pdev, PCI_D0);
 		if (ret) {
-			dev_err(&isp->pdev->dev, "Failed to suspend IUnit PCI device\n");
+			dev_err(&isp->pdev->dev,
+				"Failed to suspend IUnit PCI device\n");
 			return ret;
 		}
 		ret = resume_intel_ipu4_bus_device(isp->isys_iommu);
@@ -389,12 +391,12 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu4 = {
 		.nr_mmus = 2,
 		.mmu_hw = {
 			{
-			 .offset = INTEL_IPU4_BXT_B0_ISYS_IOMMU0_OFFSET,
-			 .info_bits =
-				 INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
-			 .nr_l1streams = 0,
-			 .nr_l2streams = 0,
-			 .insert_read_before_invalidate = true,
+			.offset = INTEL_IPU4_BXT_B0_ISYS_IOMMU0_OFFSET,
+			.info_bits =
+				INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
+			.nr_l1streams = 0,
+			.nr_l2streams = 0,
+			.insert_read_before_invalidate = true,
 			},
 			{
 			 .offset = INTEL_IPU4_BXT_B0_ISYS_IOMMU1_OFFSET,
@@ -423,12 +425,12 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu4 = {
 		.nr_mmus = 3,
 		.mmu_hw = {
 			{
-			 .offset = INTEL_IPU4_BXT_B0_PSYS_IOMMU0_OFFSET,
-			 .info_bits =
-				 INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
-			 .nr_l1streams = 0,
-			 .nr_l2streams = 0,
-			 .insert_read_before_invalidate = true,
+			.offset = INTEL_IPU4_BXT_B0_PSYS_IOMMU0_OFFSET,
+			.info_bits =
+				INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
+			.nr_l1streams = 0,
+			.nr_l2streams = 0,
+			.insert_read_before_invalidate = true,
 			},
 			{
 			 .offset = INTEL_IPU4_BXT_B0_PSYS_IOMMU1_OFFSET,
@@ -653,7 +655,8 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 
 	phys = pci_resource_start(pdev, INTEL_IPU4_PCI_BAR);
 
-	rval = pcim_iomap_regions(pdev, 1 << INTEL_IPU4_PCI_BAR, pci_name(pdev));
+	rval = pcim_iomap_regions(pdev,
+		1 << INTEL_IPU4_PCI_BAR, pci_name(pdev));
 	if (rval) {
 		dev_err(&pdev->dev, "Failed to I/O memory remapping (%d)\n",
 			rval);

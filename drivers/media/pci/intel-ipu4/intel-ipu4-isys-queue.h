@@ -148,7 +148,8 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin(
 	struct vb2_buffer *vb, struct ia_css_isys_frame_buff_set *set);
 void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 	struct ia_css_isys_frame_buff_set *set,
-	struct intel_ipu4_isys_pipeline *ip, struct intel_ipu4_isys_buffer_list *bl);
+	struct intel_ipu4_isys_pipeline *ip,
+	struct intel_ipu4_isys_buffer_list *bl);
 int intel_ipu4_isys_link_fmt_validate(struct intel_ipu4_isys_queue *aq);
 
 void intel_ipu4_isys_buf_calc_sequence_time(struct intel_ipu4_isys_buffer *ib,

@@ -46,13 +46,12 @@ struct intel_ipu4_bus_device {
 
 struct intel_ipu4_bus_driver {
 	struct device_driver	drv;
-	char			wanted[20];
-	int			(*probe)(struct intel_ipu4_bus_device *adev);
-	void			(*remove)(struct intel_ipu4_bus_device *adev);
-	irqreturn_t		(*isr)(struct intel_ipu4_bus_device *adev);
-	irqreturn_t		(*isr_threaded)
-					(struct intel_ipu4_bus_device *adev);
-	bool			wake_isr_thread;
+	char		wanted[20];
+	int		(*probe)(struct intel_ipu4_bus_device *adev);
+	void		(*remove)(struct intel_ipu4_bus_device *adev);
+	irqreturn_t	(*isr)(struct intel_ipu4_bus_device *adev);
+	irqreturn_t	(*isr_threaded)(struct intel_ipu4_bus_device *adev);
+	bool		wake_isr_thread;
 };
 
 #define to_intel_ipu4_bus_driver(_drv) \
@@ -74,9 +73,10 @@ int intel_ipu4_bus_set_iommu(struct iommu_ops *ops);
 
 #define module_intel_ipu4_bus_driver(drv)			\
 	module_driver(drv, intel_ipu4_bus_register_driver, \
-		      intel_ipu4_bus_unregister_driver)
+		intel_ipu4_bus_unregister_driver)
 
-#define intel_ipu4_bus_set_drvdata(adev, data) dev_set_drvdata(&(adev)->dev, data)
+#define intel_ipu4_bus_set_drvdata(adev, data)	\
+	dev_set_drvdata(&(adev)->dev, data)
 #define intel_ipu4_bus_get_drvdata(adev) dev_get_drvdata(&(adev)->dev)
 
 #endif

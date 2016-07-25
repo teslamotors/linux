@@ -220,13 +220,13 @@ out_free_iova:
 }
 
 static void intel_ipu4_dma_free(struct device *dev, size_t size, void *vaddr,
-			     dma_addr_t dma_handle, struct dma_attrs *attrs)
+				dma_addr_t dma_handle, struct dma_attrs *attrs)
 {
 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
 	struct vm_struct *area = find_vm_area(vaddr);
 	struct iova *iova = find_iova(&mmu->dmap->iovad,
-				      dma_handle >> PAGE_SHIFT);
+				dma_handle >> PAGE_SHIFT);
 
 	if (WARN_ON(!area))
 		return;
@@ -239,7 +239,7 @@ static void intel_ipu4_dma_free(struct device *dev, size_t size, void *vaddr,
 	size = PAGE_ALIGN(size);
 
 	iommu_unmap(mmu->dmap->domain, iova->pfn_lo << PAGE_SHIFT,
-		    (iova->pfn_hi - iova->pfn_lo + 1) << PAGE_SHIFT);
+		(iova->pfn_hi - iova->pfn_lo + 1) << PAGE_SHIFT);
 
 	__free_iova(&mmu->dmap->iovad, iova);
 
@@ -251,8 +251,8 @@ static void intel_ipu4_dma_free(struct device *dev, size_t size, void *vaddr,
 }
 
 static int intel_ipu4_dma_mmap(struct device *dev, struct vm_area_struct *vma,
-			    void *addr, dma_addr_t iova, size_t size,
-			    struct dma_attrs *attrs)
+			void *addr, dma_addr_t iova, size_t size,
+			struct dma_attrs *attrs)
 {
 	struct vm_struct *area = find_vm_area(addr);
 	size_t count = PAGE_ALIGN(size) >> PAGE_SHIFT;
@@ -269,19 +269,20 @@ static int intel_ipu4_dma_mmap(struct device *dev, struct vm_area_struct *vma,
 
 	for (i = 0; i < count; i++)
 		vm_insert_page(vma, vma->vm_start + (i << PAGE_SHIFT),
-			       area->pages[i]);
+			area->pages[i]);
 
 	return 0;
 }
 
-static void intel_ipu4_dma_unmap_sg(struct device *dev, struct scatterlist *sglist,
-				 int nents, enum dma_data_direction dir,
-				 struct dma_attrs *attrs)
+static void intel_ipu4_dma_unmap_sg(struct device *dev,
+				struct scatterlist *sglist,
+				int nents, enum dma_data_direction dir,
+				struct dma_attrs *attrs)
 {
 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
 	struct iova *iova = find_iova(&mmu->dmap->iovad,
-				      sg_dma_address(sglist) >> PAGE_SHIFT);
+				sg_dma_address(sglist) >> PAGE_SHIFT);
 
 	if (!nents)
 		return;
@@ -331,7 +332,8 @@ static int intel_ipu4_dma_map_sg(struct device *dev, struct scatterlist *sglist,
 		int rval;
 
 		dev_dbg(dev,
-			"dmamap details: mapping entry %d: iova 0x%8.8x, physical 0x%16.16llx\n",
+			"dmamap details: mapping entry %d: iova 0x%8.8x, \
+			physical 0x%16.16llx\n",
 			i, iova_addr << PAGE_SHIFT, page_to_phys(sg_page(sg)));
 		rval = iommu_map(mmu->dmap->domain, iova_addr << PAGE_SHIFT,
 				 page_to_phys(sg_page(sg)),
@@ -384,7 +386,7 @@ static int intel_ipu4_dma_get_sgtable(struct device *dev, struct sg_table *sgt,
 	return ret;
 }
 
-struct dma_map_ops intel_ipu4_dma_ops = {
+const struct dma_map_ops intel_ipu4_dma_ops = {
 	.alloc = intel_ipu4_dma_alloc,
 	.free = intel_ipu4_dma_free,
 	.mmap = intel_ipu4_dma_mmap,

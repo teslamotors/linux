@@ -38,7 +38,8 @@ int intel_ipu4_trace_debugfs_add(struct intel_ipu4_device *isp,
 			      struct dentry *dir);
 void intel_ipu4_trace_release(struct intel_ipu4_device *isp);
 int intel_ipu4_trace_init(struct intel_ipu4_device *isp, void __iomem *base,
-		       struct device *dev, struct intel_ipu4_trace_block *blocks);
+		       struct device *dev,
+		       struct intel_ipu4_trace_block *blocks);
 void intel_ipu4_trace_restore(struct device *dev);
 void intel_ipu4_trace_uninit(struct device *dev);
 void intel_ipu4_trace_stop(struct device *dev);

@@ -19,9 +19,10 @@
 #include <ia_css_output_buffer_cpu.h>
 #include <ia_css_shared_buffer_cpu.h>
 
-void csslib_dump_isys_stream_cfg(struct device *dev, struct ia_css_isys_stream_cfg_data *stream_cfg);
+void csslib_dump_isys_stream_cfg(struct device *dev,
+		struct ia_css_isys_stream_cfg_data *stream_cfg);
 void csslib_dump_isys_frame_buff_set(struct device *dev,
-				     struct ia_css_isys_frame_buff_set *buf,
-				     unsigned int outputs);
+		struct ia_css_isys_frame_buff_set *buf,
+		unsigned int outputs);
 
 #endif

@@ -142,10 +142,8 @@ static int64_t intel_ipu4_isys_tpg_rate(struct intel_ipu4_isys_tpg *tpg,
 	switch (tpg->isys->pdata->type) {
 	case INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA:
 		return MIPI_GEN_PPC * INTEL_IPU4_ISYS_FREQ_BXT_FPGA;
-		break;
 	case INTEL_IPU4_ISYS_TYPE_INTEL_IPU4:
 		return MIPI_GEN_PPC * INTEL_IPU4_ISYS_FREQ_BXT;
-		break;
 	default:
 		return MIPI_GEN_PPC; /* SLE, right? :-) */
 	}

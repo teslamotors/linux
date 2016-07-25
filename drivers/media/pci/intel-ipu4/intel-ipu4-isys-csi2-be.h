@@ -66,11 +66,13 @@ struct intel_ipu4_isys_csi2_be_soc {
 	struct intel_ipu4_isys_video av[NR_OF_CSI2_BE_SOC_SOURCE_PADS];
 };
 
-#define to_intel_ipu4_isys_csi2_be(sd)				\
-	container_of(to_intel_ipu4_isys_subdev(sd), struct intel_ipu4_isys_csi2_be, asd)
+#define to_intel_ipu4_isys_csi2_be(sd)	\
+	container_of(to_intel_ipu4_isys_subdev(sd), \
+	struct intel_ipu4_isys_csi2_be, asd)
 
-#define to_intel_ipu4_isys_csi2_be_soc(sd)				\
-	container_of(to_intel_ipu4_isys_subdev(sd), struct intel_ipu4_isys_csi2_be_soc, asd)
+#define to_intel_ipu4_isys_csi2_be_soc(sd)	\
+	container_of(to_intel_ipu4_isys_subdev(sd), \
+	struct intel_ipu4_isys_csi2_be_soc, asd)
 
 int intel_ipu4_isys_csi2_be_init(
 				struct intel_ipu4_isys_csi2_be *csi2_be,
@@ -78,7 +80,7 @@ int intel_ipu4_isys_csi2_be_init(
 int intel_ipu4_isys_csi2_be_soc_init(
 				struct intel_ipu4_isys_csi2_be_soc *csi2_be_soc,
 				struct intel_ipu4_isys *isys);
-void intel_ipu4_isys_csi2_be_cleanup( struct intel_ipu4_isys_csi2_be *csi2_be);
+void intel_ipu4_isys_csi2_be_cleanup(struct intel_ipu4_isys_csi2_be *csi2_be);
 void intel_ipu4_isys_csi2_be_soc_cleanup(
 				struct intel_ipu4_isys_csi2_be_soc *csi2_be);
 void intel_ipu4_isys_csi2_be_isr(struct intel_ipu4_isys_csi2_be *csi2_be);

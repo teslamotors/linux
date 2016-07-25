@@ -652,7 +652,8 @@ int intel_ipu4_isys_subdev_set_sel(struct v4l2_subdev *sd,
 	case V4L2_SEL_TGT_COMPOSE:
 		if (pad->flags & MEDIA_PAD_FL_SINK) {
 			r = __intel_ipu4_isys_get_selection(
-				sd, cfg, V4L2_SEL_TGT_CROP, sel->pad, sel->which);
+				sd, cfg, V4L2_SEL_TGT_CROP,
+				sel->pad, sel->which);
 			tgt = INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SINK_COMPOSE;
 		} else {
 			r = __intel_ipu4_isys_get_selection(
@@ -738,8 +739,8 @@ int intel_ipu4_isys_subdev_enum_mbus_code(
  * Besides validating the link, figure out the external pad and the
  * ISYS library source.
  */
-int intel_ipu4_isys_subdev_link_validate(
-	struct v4l2_subdev *sd, struct media_link *link,
+int intel_ipu4_isys_subdev_link_validate(struct v4l2_subdev *sd,
+	struct media_link *link,
 	struct v4l2_subdev_format *source_fmt,
 	struct v4l2_subdev_format *sink_fmt)
 {
@@ -747,7 +748,7 @@ int intel_ipu4_isys_subdev_link_validate(
 		media_entity_to_v4l2_subdev(link->source->entity);
 	struct intel_ipu4_isys_pipeline *ip =
 		container_of(sd->entity.pipe,
-			     struct intel_ipu4_isys_pipeline, pipe);
+			struct intel_ipu4_isys_pipeline, pipe);
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 
 	if (source_sd->owner != THIS_MODULE) {
@@ -772,10 +773,11 @@ int intel_ipu4_isys_subdev_link_validate(
 		ip->isl_mode = asd->isl_mode;
 
 	return v4l2_subdev_link_validate_default(sd, link, source_fmt,
-						 sink_fmt);
+						sink_fmt);
 }
 
-int intel_ipu4_isys_subdev_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+int intel_ipu4_isys_subdev_open(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh)
 {
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 	unsigned int i;
@@ -818,7 +820,8 @@ int intel_ipu4_isys_subdev_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *f
 	return 0;
 }
 
-int intel_ipu4_isys_subdev_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+int intel_ipu4_isys_subdev_close(struct v4l2_subdev *sd,
+					struct v4l2_subdev_fh *fh)
 {
 	return 0;
 }

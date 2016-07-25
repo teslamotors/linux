@@ -38,8 +38,10 @@ static int queue_setup(struct vb2_queue *q,
 		       unsigned int *num_buffers, unsigned int *num_planes,
 		       unsigned int sizes[], void *alloc_ctxs[])
 {
-	struct intel_ipu4_isys_queue *aq = vb2_queue_to_intel_ipu4_isys_queue(q);
-	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
+	struct intel_ipu4_isys_queue *aq =
+		vb2_queue_to_intel_ipu4_isys_queue(q);
+	struct intel_ipu4_isys_video *av =
+		intel_ipu4_isys_queue_to_video(aq);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	const struct v4l2_format *fmt = __fmt;
 	const struct intel_ipu4_isys_pixelformat *pfmt;
@@ -84,8 +86,10 @@ static int queue_setup(struct vb2_queue *q,
 
 void intel_ipu4_isys_queue_lock(struct vb2_queue *q)
 {
-	struct intel_ipu4_isys_queue *aq = vb2_queue_to_intel_ipu4_isys_queue(q);
-	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
+	struct intel_ipu4_isys_queue *aq =
+		vb2_queue_to_intel_ipu4_isys_queue(q);
+	struct intel_ipu4_isys_video *av =
+		intel_ipu4_isys_queue_to_video(aq);
 
 	dev_dbg(&av->isys->adev->dev, "%s: queue lock\n", av->vdev.name);
 	mutex_lock(&av->mutex);
@@ -93,8 +97,10 @@ void intel_ipu4_isys_queue_lock(struct vb2_queue *q)
 
 void intel_ipu4_isys_queue_unlock(struct vb2_queue *q)
 {
-	struct intel_ipu4_isys_queue *aq = vb2_queue_to_intel_ipu4_isys_queue(q);
-	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
+	struct intel_ipu4_isys_queue *aq =
+		vb2_queue_to_intel_ipu4_isys_queue(q);
+	struct intel_ipu4_isys_video *av =
+		intel_ipu4_isys_queue_to_video(aq);
 
 	dev_dbg(&av->isys->adev->dev, "%s: queue unlock\n", av->vdev.name);
 	mutex_unlock(&av->mutex);
@@ -263,8 +269,8 @@ static void buf_cleanup(struct vb2_buffer *vb)
  * are removed from the buffer list.
  */
 void intel_ipu4_isys_buffer_list_queue(struct intel_ipu4_isys_buffer_list *bl,
-				    unsigned long op_flags,
-				    enum vb2_buffer_state state)
+				unsigned long op_flags,
+				enum vb2_buffer_state state)
 {
 	struct intel_ipu4_isys_buffer *ib, *ib_safe;
 	unsigned long flags;
@@ -311,8 +317,10 @@ void intel_ipu4_isys_buffer_list_queue(struct intel_ipu4_isys_buffer_list *bl,
 				list_add(&ib->head, &ip->short_packet_active);
 			else if (op_flags &
 				INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING)
-				list_add(&ib->head, &ip->short_packet_incoming);
-			spin_unlock_irqrestore(&ip->short_packet_queue_lock, flags);
+				list_add(&ib->head,
+					&ip->short_packet_incoming);
+			spin_unlock_irqrestore(&ip->short_packet_queue_lock,
+				flags);
 		} else {
 			WARN_ON(1);
 			return;
@@ -320,7 +328,8 @@ void intel_ipu4_isys_buffer_list_queue(struct intel_ipu4_isys_buffer_list *bl,
 
 		if (first) {
 			dev_dbg(&av->isys->adev->dev,
-				"queue buffer list %p op_flags %lx, state %d, %d buffers\n",
+				"queue buffer list %p op_flags %lx, \
+				state %d, %d buffers\n",
 				bl, op_flags, state, bl->nbufs);
 			first = false;
 		}
@@ -393,7 +402,7 @@ static void flush_firmware_streamon_fail(struct intel_ipu4_isys_pipeline *ip)
  * are returned to their queues.
  */
 static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
-			   struct intel_ipu4_isys_buffer_list *bl)
+			struct intel_ipu4_isys_buffer_list *bl)
 {
 	struct intel_ipu4_isys_queue *aq;
 	struct intel_ipu4_isys_buffer *ib;
@@ -435,7 +444,8 @@ static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
 	}
 
 	list_for_each_entry(ib, &bl->head, head) {
-		struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
+		struct vb2_buffer *vb =
+			intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 		struct intel_ipu4_isys_queue *aq =
 			vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 
@@ -493,7 +503,8 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin(
  */
 void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 	struct ia_css_isys_frame_buff_set *set,
-	struct intel_ipu4_isys_pipeline *ip, struct intel_ipu4_isys_buffer_list *bl)
+	struct intel_ipu4_isys_pipeline *ip,
+	struct intel_ipu4_isys_buffer_list *bl)
 {
 	struct intel_ipu4_isys_buffer *ib;
 
@@ -560,7 +571,8 @@ intel_ipu4_isys_next_queued_request(struct intel_ipu4_isys_pipeline *ip)
 			struct vb2_buffer *vb =
 				intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 			struct intel_ipu4_isys_queue *aq =
-				vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
+				vb2_queue_to_intel_ipu4_isys_queue(
+					vb->vb2_queue);
 			struct intel_ipu4_isys_video *av =
 				intel_ipu4_isys_queue_to_video(aq);
 
@@ -742,7 +754,7 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 	 * have queued them ourselves to the active queue.
 	 */
 	intel_ipu4_isys_buffer_list_queue(&bl,
-				       INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
+		INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
 
 	rval = intel_ipu4_lib_call(
 		stream_capture_indication, av->isys, ip->stream_handle, &buf);
@@ -825,14 +837,16 @@ static void return_buffers(struct intel_ipu4_isys_queue *aq,
 		struct intel_ipu4_isys_buffer *ib =
 			list_first_entry(&aq->incoming,
 					 struct intel_ipu4_isys_buffer, head);
-		struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
+		struct vb2_buffer *vb =
+			intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 
 		list_del(&ib->head);
 		spin_unlock_irqrestore(&aq->lock, flags);
 
 		vb2_buffer_done(vb, state);
 
-		dev_dbg(&av->isys->adev->dev, "%s: stop_streaming incoming %u\n",
+		dev_dbg(&av->isys->adev->dev,
+			"%s: stop_streaming incoming %u\n",
 			intel_ipu4_isys_queue_to_video(
 				vb2_queue_to_intel_ipu4_isys_queue(
 					vb->vb2_queue))->vdev.name,
@@ -853,15 +867,17 @@ static void return_buffers(struct intel_ipu4_isys_queue *aq,
 	while (!list_empty(&aq->active)) {
 		struct intel_ipu4_isys_buffer *ib =
 			list_first_entry(&aq->active,
-					 struct intel_ipu4_isys_buffer, head);
-		struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
+				struct intel_ipu4_isys_buffer, head);
+		struct vb2_buffer *vb =
+			intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 
 		list_del(&ib->head);
 		spin_unlock_irqrestore(&aq->lock, flags);
 
 		vb2_buffer_done(vb, state);
 
-		dev_warn(&av->isys->adev->dev, "%s: cleaning active queue %u\n",
+		dev_warn(&av->isys->adev->dev,
+			"%s: cleaning active queue %u\n",
 			intel_ipu4_isys_queue_to_video(
 				vb2_queue_to_intel_ipu4_isys_queue(
 					vb->vb2_queue))->vdev.name,
@@ -886,7 +902,8 @@ static void return_buffers(struct intel_ipu4_isys_queue *aq,
 
 static int start_streaming(struct vb2_queue *q, unsigned int count)
 {
-	struct intel_ipu4_isys_queue *aq = vb2_queue_to_intel_ipu4_isys_queue(q);
+	struct intel_ipu4_isys_queue *aq =
+		vb2_queue_to_intel_ipu4_isys_queue(q);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 	struct intel_ipu4_isys_video *pipe_av;
 	struct intel_ipu4_isys_pipeline *ip;
@@ -971,7 +988,8 @@ out_return_buffers:
 
 static void stop_streaming(struct vb2_queue *q)
 {
-	struct intel_ipu4_isys_queue *aq = vb2_queue_to_intel_ipu4_isys_queue(q);
+	struct intel_ipu4_isys_queue *aq =
+		vb2_queue_to_intel_ipu4_isys_queue(q);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
@@ -1014,7 +1032,8 @@ static unsigned int get_sof_sequence_by_timestamp(
 	for (i = 0; i < INTEL_IPU4_ISYS_MAX_PARALLEL_SOF; i++)
 		if (time == ip->seq[i].timestamp) {
 			dev_dbg(&isys->adev->dev,
-				"sof: using sequence number %u for timestamp 0x%16.16llx\n",
+				"sof: using sequence number %u for timestamp \
+				0x%16.16llx\n",
 				ip->seq[i].sequence, time);
 			return ip->seq[i].sequence;
 		}

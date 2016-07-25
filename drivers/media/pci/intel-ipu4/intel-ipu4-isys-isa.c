@@ -132,8 +132,8 @@ const struct intel_ipu4_isys_pixelformat *isa_config_try_fmt_vid_out_mplane(
 	return pfmt;
 }
 
-static int isa_config_vidioc_s_fmt_vid_out_mplane(struct file *file, void *fh,
-						  struct v4l2_format *f)
+static int isa_config_vidioc_s_fmt_vid_out_mplane(struct file *file,
+						void *fh, struct v4l2_format *f)
 {
 	struct intel_ipu4_isys_video *av = video_drvdata(file);
 
@@ -146,8 +146,8 @@ static int isa_config_vidioc_s_fmt_vid_out_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int isa_config_vidioc_try_fmt_vid_out_mplane(struct file *file, void *fh,
-						    struct v4l2_format *f)
+static int isa_config_vidioc_try_fmt_vid_out_mplane(struct file *file,
+						void *fh, struct v4l2_format *f)
 {
 	struct intel_ipu4_isys_video *av = video_drvdata(file);
 
@@ -160,10 +160,12 @@ static const struct v4l2_ioctl_ops isa_config_ioctl_ops = {
 	.vidioc_enum_fmt_vid_cap = intel_ipu4_isys_vidioc_enum_fmt,
 	.vidioc_g_fmt_vid_out_mplane = isa_config_vidioc_g_fmt_vid_out_mplane,
 	.vidioc_s_fmt_vid_out_mplane = isa_config_vidioc_s_fmt_vid_out_mplane,
-	.vidioc_try_fmt_vid_out_mplane = isa_config_vidioc_try_fmt_vid_out_mplane,
+	.vidioc_try_fmt_vid_out_mplane =
+		isa_config_vidioc_try_fmt_vid_out_mplane,
 	.vidioc_g_fmt_vid_cap_mplane = isa_config_vidioc_g_fmt_vid_out_mplane,
 	.vidioc_s_fmt_vid_cap_mplane = isa_config_vidioc_s_fmt_vid_out_mplane,
-	.vidioc_try_fmt_vid_cap_mplane = isa_config_vidioc_try_fmt_vid_out_mplane,
+	.vidioc_try_fmt_vid_cap_mplane =
+		isa_config_vidioc_try_fmt_vid_out_mplane,
 	.vidioc_reqbufs = vb2_ioctl_reqbufs,
 	.vidioc_create_bufs = vb2_ioctl_create_bufs,
 	.vidioc_prepare_buf = vb2_ioctl_prepare_buf,
@@ -503,13 +505,20 @@ static void isa_prepare_firmware_stream_cfg_param(
 		unsigned int *cfg;
 		unsigned int bit;
 	} opts[] = {
-		{ &cfg->isa_cfg.blc_enabled, V4L2_INTEL_IPU4_ISA_EN_BLC, },
-		{ &cfg->isa_cfg.lsc_enabled, V4L2_INTEL_IPU4_ISA_EN_LSC, },
-		{ &cfg->isa_cfg.dpc_enabled, V4L2_INTEL_IPU4_ISA_EN_DPC, },
-		{ &cfg->isa_cfg.downscaler_enabled, V4L2_INTEL_IPU4_ISA_EN_SCALER, },
-		{ &cfg->isa_cfg.awb_enabled, V4L2_INTEL_IPU4_ISA_EN_AWB, },
-		{ &cfg->isa_cfg.af_enabled, V4L2_INTEL_IPU4_ISA_EN_AF, },
-		{ &cfg->isa_cfg.ae_enabled, V4L2_INTEL_IPU4_ISA_EN_AE, },
+		{ &cfg->isa_cfg.blc_enabled,
+			V4L2_INTEL_IPU4_ISA_EN_BLC, },
+		{ &cfg->isa_cfg.lsc_enabled,
+			V4L2_INTEL_IPU4_ISA_EN_LSC, },
+		{ &cfg->isa_cfg.dpc_enabled,
+			V4L2_INTEL_IPU4_ISA_EN_DPC, },
+		{ &cfg->isa_cfg.downscaler_enabled,
+			V4L2_INTEL_IPU4_ISA_EN_SCALER, },
+		{ &cfg->isa_cfg.awb_enabled,
+			V4L2_INTEL_IPU4_ISA_EN_AWB, },
+		{ &cfg->isa_cfg.af_enabled,
+			V4L2_INTEL_IPU4_ISA_EN_AF, },
+		{ &cfg->isa_cfg.ae_enabled,
+			V4L2_INTEL_IPU4_ISA_EN_AE, },
 	};
 	unsigned int i;
 
@@ -643,7 +652,8 @@ static int isa_import_pg(struct vb2_buffer *vb)
 		}
 
 		dev_dbg(&av->isys->adev->dev,
-			"terminal: parsing terminal %u, size %u, capture %u / %u\n",
+			"terminal: parsing terminal %u, \
+			size %u, capture %u / %u\n",
 			i, t->size, capture, is_capture_terminal(t));
 
 		if (capture != is_capture_terminal(t))
@@ -657,7 +667,8 @@ static int isa_import_pg(struct vb2_buffer *vb)
 		if (rval)
 			return rval;
 
-		dev_dbg(&av->isys->adev->dev, "terminal: offset 0x%x, address 0x%8.8x\n",
+		dev_dbg(&av->isys->adev->dev,
+			"terminal: offset 0x%x, address 0x%8.8x\n",
 			*iova, (uint32_t)addr + *iova);
 
 		if (addr + *iova < addr) {
@@ -734,7 +745,8 @@ static void isa_config_prepare_frame_buff_set_one(
 	for (i = 0; i < pg->terminal_count; i++) {
 		struct ia_css_terminal *t = to_ia_css_terminal(pg, i), *ct;
 
-		dev_dbg(dev, "terminal: parsing %u, size %u, capture %u / %u\n",
+		dev_dbg(dev,
+			"terminal: parsing %u, size %u, capture %u / %u\n",
 			i, t->size, capture, is_capture_terminal(t));
 
 		if (capture != is_capture_terminal(t))
@@ -748,7 +760,8 @@ static void isa_config_prepare_frame_buff_set_one(
 
 		ct = to_ia_css_terminal(cpg, *terminal_count);
 
-		dev_dbg(dev, "terminal: copying terminal %p to %p (%u bytes)\n",
+		dev_dbg(dev,
+			"terminal: copying terminal %p to %p (%u bytes)\n",
 			t, ct, t->size);
 		memcpy(ct, t, t->size);
 
@@ -794,7 +807,7 @@ static void isa_config_prepare_frame_buff_set(struct vb2_buffer *__vb)
 		isa_buf = vb2_buffer_to_intel_ipu4_isys_isa_buffer(vb[i]);
 		pg[i] = isa_buf->pgl.pg;
 		addr[i] = vb2_dma_contig_plane_dma_addr(vb[i],
-							ISA_CFG_BUF_PLANE_DATA);
+						ISA_CFG_BUF_PLANE_DATA);
 
 		dma_sync_single_for_device(&av->isys->adev->dev,
 					   addr[i],
@@ -803,7 +816,9 @@ static void isa_config_prepare_frame_buff_set(struct vb2_buffer *__vb)
 					   DMA_TO_DEVICE);
 
 		dev_dbg(&av->isys->adev->dev,
-			"terminal: queue %u, plane 0: vaddr %p, dma_addr %pad program group size %u program group terminals %u\n",
+			"terminal: queue %u, plane 0: vaddr %p, \
+			dma_addr %pad program group size %u \
+			program group terminals %u\n",
 			       i, pg[i], &addr[i],
 			       pg[i]->size, pg[i]->terminal_count);
 	}
@@ -975,7 +990,8 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 		isa_config_prepare_frame_buff_set;
 	isa->av_config.aq.fill_frame_buff_set_pin =
 		isa_config_fill_frame_buff_set_pin;
-	isa->av_config.aq.link_fmt_validate = intel_ipu4_isys_link_fmt_validate;
+	isa->av_config.aq.link_fmt_validate =
+		intel_ipu4_isys_link_fmt_validate;
 	isa->av_config.aq.vbq.io_modes = VB2_MMAP;
 	isa->av_config.aq.vbq.buf_struct_size =
 		sizeof(struct intel_ipu4_isys_isa_buffer);

@@ -32,11 +32,12 @@ struct intel_ipu4_isys_iomem_filter;
 struct iommu_domain;
 struct firmware;
 
-int intel_ipu4_wrapper_register_buffer(dma_addr_t iova, void *addr, size_t bytes);
+int intel_ipu4_wrapper_register_buffer(dma_addr_t iova,
+		void *addr, size_t bytes);
 void intel_ipu4_wrapper_unregister_buffer(dma_addr_t iova);
 
 void intel_ipu4_wrapper_init(void __iomem *basepsys, void __iomem *baseisys,
-			  unsigned int flags);
+			unsigned int flags);
 void intel_ipu4_wrapper_set_device(struct device *dev, int mmid);
 
 int intel_ipu4_wrapper_add_shared_memory_buffer(int mmid, void *addr,

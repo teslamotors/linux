@@ -168,6 +168,7 @@ void intel_ipu4_isys_csi2_be_soc_cleanup(
 				struct intel_ipu4_isys_csi2_be_soc *csi2_be_soc)
 {
 	int i;
+
 	v4l2_device_unregister_subdev(&csi2_be_soc->asd.sd);
 	intel_ipu4_isys_subdev_cleanup(&csi2_be_soc->asd);
 	for (i = 0; i < NR_OF_CSI2_BE_SOC_STREAMS; i++)
@@ -191,7 +192,8 @@ int intel_ipu4_isys_csi2_be_soc_init(
 	csi2_be_soc->asd.sd.entity.ops = &csi2_be_soc_entity_ops;
 	csi2_be_soc->asd.isys = isys;
 
-	rval = intel_ipu4_isys_subdev_init(&csi2_be_soc->asd, &csi2_be_soc_sd_ops, 0,
+	rval = intel_ipu4_isys_subdev_init(&csi2_be_soc->asd,
+			&csi2_be_soc_sd_ops, 0,
 			NR_OF_CSI2_BE_SOC_PADS, NR_OF_CSI2_BE_SOC_STREAMS,
 			NR_OF_CSI2_BE_SOC_SOURCE_PADS,
 			NR_OF_CSI2_BE_SOC_SINK_PADS, 0);
@@ -292,6 +294,7 @@ fail:
 	return rval;
 }
 
-void intel_ipu4_isys_csi2_be_soc_isr(struct intel_ipu4_isys_csi2_be_soc *csi2_be_soc)
+void intel_ipu4_isys_csi2_be_soc_isr(
+				struct intel_ipu4_isys_csi2_be_soc *csi2_be_soc)
 {
 }

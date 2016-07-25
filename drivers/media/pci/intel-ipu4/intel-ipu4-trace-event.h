@@ -70,7 +70,8 @@ TRACE_EVENT(ipu4_pg_kcmd,
 			__entry->pri = pri;
 			__entry->pri = pg_id;
 		),
-		TP_printk("pg-kcmd: func=%s,id=%u,issue_id=0x%llx,pri=%u,pg_id=%d",
+		TP_printk("pg-kcmd: func=%s,id=%u, \
+			issue_id=0x%llx,pri=%u,pg_id=%d",
 			__entry->func, __entry->id, __entry->issue_id,
 			__entry->pri, __entry->pg_id)
 );

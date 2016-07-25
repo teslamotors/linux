@@ -189,7 +189,7 @@ static int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys)
 
 	do {
 		usleep_range(INTEL_IPU4_ISYS_OPEN_TIMEOUT_US,
-			     INTEL_IPU4_ISYS_OPEN_TIMEOUT_US + 10);
+			INTEL_IPU4_ISYS_OPEN_TIMEOUT_US + 10);
 		rval = intel_ipu4_lib_call(device_open_ready, isys);
 		if (!rval)
 			break;
@@ -379,8 +379,9 @@ const struct intel_ipu4_isys_pixelformat *intel_ipu4_isys_get_pixelformat(
 	struct intel_ipu4_isys_video *av, uint32_t pixelformat)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct media_pad *pad = av->vdev.entity.pads[0].flags & MEDIA_PAD_FL_SOURCE ?
-		      av->vdev.entity.links[0].sink : av->vdev.entity.links[0].source;
+	struct media_pad *pad =
+		av->vdev.entity.pads[0].flags & MEDIA_PAD_FL_SOURCE ?
+		av->vdev.entity.links[0].sink : av->vdev.entity.links[0].source;
 #else
 	struct media_pad *pad = other_pad(&av->vdev.entity.pads[0]);
 #endif
@@ -449,8 +450,9 @@ int intel_ipu4_isys_vidioc_enum_fmt(struct file *file, void *fh,
 {
 	struct intel_ipu4_isys_video *av = video_drvdata(file);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct media_pad *pad = av->vdev.entity.pads[0].flags & MEDIA_PAD_FL_SOURCE ?
-		      av->vdev.entity.links[0].sink : av->vdev.entity.links[0].source;
+	struct media_pad *pad =
+		av->vdev.entity.pads[0].flags & MEDIA_PAD_FL_SOURCE ?
+		av->vdev.entity.links[0].sink : av->vdev.entity.links[0].source;
 #else
 	struct media_pad *pad = other_pad(&av->vdev.entity.pads[0]);
 #endif
@@ -1109,7 +1111,8 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	}
 
 	reinit_completion(&ip->stream_open_completion);
-	rval = intel_ipu4_lib_call(stream_open, av->isys, ip->stream_handle, &stream_cfg);
+	rval = intel_ipu4_lib_call(stream_open, av->isys,
+		ip->stream_handle, &stream_cfg);
 	if (rval < 0) {
 		dev_err(dev, "can't open stream (%d)\n", rval);
 		goto out_put_stream_handle;
@@ -1173,7 +1176,8 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 out_stream_close:
 	reinit_completion(&ip->stream_close_completion);
 
-	rvalout = intel_ipu4_lib_call(stream_close, av->isys, ip->stream_handle);
+	rvalout = intel_ipu4_lib_call(stream_close,
+		av->isys, ip->stream_handle);
 	if (rvalout < 0) {
 		dev_dbg(dev, "can't close stream (%d)\n", rvalout);
 	} else {

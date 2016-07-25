@@ -95,11 +95,11 @@ struct intel_ipu4_isys_subdev {
 	void (*ctrl_init)(struct v4l2_subdev *sd);
 	void (*set_ffmt)(struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
-			 struct v4l2_subdev_fh *cfg,
+			struct v4l2_subdev_fh *cfg,
 #else
-			 struct v4l2_subdev_pad_config *cfg,
+			struct v4l2_subdev_pad_config *cfg,
 #endif
-			 struct v4l2_subdev_format *fmt);
+			struct v4l2_subdev_format *fmt);
 	struct {
 		bool crop;
 		bool compose;
@@ -138,18 +138,18 @@ void intel_ipu4_isys_subdev_fmt_propagate(struct v4l2_subdev *sd,
 
 void intel_ipu4_isys_subdev_set_ffmt_default(struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
-					     struct v4l2_subdev_fh *cfg,
+					struct v4l2_subdev_fh *cfg,
 #else
-					     struct v4l2_subdev_pad_config *cfg,
+					struct v4l2_subdev_pad_config *cfg,
 #endif
-					     struct v4l2_subdev_format *fmt);
+					struct v4l2_subdev_format *fmt);
 int __intel_ipu4_isys_subdev_set_ffmt(struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
-				   struct v4l2_subdev_fh *cfg,
+				struct v4l2_subdev_fh *cfg,
 #else
-				   struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_pad_config *cfg,
 #endif
-				   struct v4l2_subdev_format *fmt);
+				struct v4l2_subdev_format *fmt);
 struct v4l2_rect *__intel_ipu4_isys_get_selection(
 	struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
@@ -160,24 +160,24 @@ struct v4l2_rect *__intel_ipu4_isys_get_selection(
 	unsigned int target, unsigned int pad, unsigned int which);
 int intel_ipu4_isys_subdev_set_ffmt(struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
-				 struct v4l2_subdev_fh *cfg,
+				struct v4l2_subdev_fh *cfg,
 #else
-				 struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_pad_config *cfg,
 #endif
-				 struct v4l2_subdev_format *fmt);
+				struct v4l2_subdev_format *fmt);
 int intel_ipu4_isys_subdev_get_ffmt(struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
-				 struct v4l2_subdev_fh *cfg,
+				struct v4l2_subdev_fh *cfg,
 #else
-				 struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_pad_config *cfg,
 #endif
-				 struct v4l2_subdev_format *fmt);
+				struct v4l2_subdev_format *fmt);
 int intel_ipu4_isys_subdev_get_sel(struct v4l2_subdev *sd,
-				   struct v4l2_subdev_pad_config *cfg,
-				   struct v4l2_subdev_selection *sel);
+				struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_selection *sel);
 int intel_ipu4_isys_subdev_set_sel(struct v4l2_subdev *sd,
-				   struct v4l2_subdev_pad_config *cfg,
-				   struct v4l2_subdev_selection *sel);
+				struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_selection *sel);
 int intel_ipu4_isys_subdev_enum_mbus_code(
 	struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
@@ -191,21 +191,22 @@ int intel_ipu4_isys_subdev_link_validate(
 	struct v4l2_subdev_format *source_fmt,
 	struct v4l2_subdev_format *sink_fmt);
 
-int intel_ipu4_isys_subdev_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh);
+int intel_ipu4_isys_subdev_open(struct v4l2_subdev *sd,
+	struct v4l2_subdev_fh *fh);
 int intel_ipu4_isys_subdev_close(struct v4l2_subdev *sd,
-			      struct v4l2_subdev_fh *fh);
+	struct v4l2_subdev_fh *fh);
 int intel_ipu4_isys_subdev_init(struct intel_ipu4_isys_subdev *asd,
-			     struct v4l2_subdev_ops *ops, unsigned int nr_ctrls,
-			     unsigned int num_pads, unsigned int num_streams,
-			     unsigned int num_source, unsigned int num_sink,
-			     unsigned int sd_flags);
+	struct v4l2_subdev_ops *ops, unsigned int nr_ctrls,
+	unsigned int num_pads, unsigned int num_streams,
+	unsigned int num_source, unsigned int num_sink,
+	unsigned int sd_flags);
 void intel_ipu4_isys_subdev_cleanup(struct intel_ipu4_isys_subdev *asd);
 int intel_ipu4_isys_subdev_get_frame_desc(struct v4l2_subdev *sd,
-					struct v4l2_mbus_frame_desc *desc);
+	struct v4l2_mbus_frame_desc *desc);
 int intel_ipu4_isys_subdev_set_routing(struct v4l2_subdev *sd,
-				      struct v4l2_subdev_routing *route);
+	struct v4l2_subdev_routing *route);
 int intel_ipu4_isys_subdev_get_routing(struct v4l2_subdev *sd,
-				       struct v4l2_subdev_routing *route);
+	struct v4l2_subdev_routing *route);
 bool intel_ipu4_isys_subdev_has_route(struct media_entity *entity,
-				      unsigned int pad0, unsigned int pad1);
+	unsigned int pad0, unsigned int pad1);
 #endif /* INTEL_IPU4_ISYS_SUBDEV_H */

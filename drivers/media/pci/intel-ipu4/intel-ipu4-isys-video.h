@@ -79,6 +79,7 @@ struct intel_ipu4_isys_pipeline {
 	struct completion stream_stop_completion;
 	struct completion capture_ack_completion;
 	struct intel_ipu4_isys *isys;
+
 	void (*capture_done[INTEL_IPU4_NUM_CAPTURE_DONE])
 		(struct intel_ipu4_isys_pipeline *ip,
 		 struct ia_css_isys_resp_info *resp);

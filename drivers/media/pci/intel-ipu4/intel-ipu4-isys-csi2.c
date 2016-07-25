@@ -384,7 +384,8 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 
 	/*Do not configure timings on FPGA*/
 	if (csi2->isys->pdata->type != INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA) {
-		rval = intel_ipu4_isys_csi2_calc_timing(csi2, &timing, CSI2_ACCINV);
+		rval = intel_ipu4_isys_csi2_calc_timing(csi2,
+			&timing, CSI2_ACCINV);
 		if (rval)
 			return rval;
 
@@ -395,9 +396,9 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 
 		for (i = 0; i < nlanes; i++) {
 			writel(timing.dtermen,
-				csi2->base + CSI2_REG_CSI_RX_DLY_CNT_TERMEN_DLANE(i));
+			csi2->base + CSI2_REG_CSI_RX_DLY_CNT_TERMEN_DLANE(i));
 			writel(timing.dsettle,
-				csi2->base + CSI2_REG_CSI_RX_DLY_CNT_SETTLE_DLANE(i));
+			csi2->base + CSI2_REG_CSI_RX_DLY_CNT_SETTLE_DLANE(i));
 		}
 	}
 	writel(CSI2_CSI_RX_CONFIG_DISABLE_BYTE_CLK_GATING |
@@ -667,6 +668,7 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 void intel_ipu4_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2)
 {
 	int i;
+
 	v4l2_device_unregister_subdev(&csi2->asd.sd);
 	intel_ipu4_isys_subdev_cleanup(&csi2->asd);
 	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++)
@@ -674,8 +676,10 @@ void intel_ipu4_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2)
 	intel_ipu4_isys_video_cleanup(&csi2->av_meta);
 }
 
-int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2, struct intel_ipu4_isys *isys,
-		      void __iomem *base, unsigned int index)
+int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
+				struct intel_ipu4_isys *isys,
+				void __iomem *base,
+				unsigned int index)
 {
 	struct v4l2_subdev_format fmt = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,

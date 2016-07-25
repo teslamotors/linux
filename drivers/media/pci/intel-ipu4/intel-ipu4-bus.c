@@ -239,7 +239,8 @@ static struct iommu_group *intel_ipu4_bus_get_group(struct device *dev)
 static int intel_ipu4_bus_probe(struct device *dev)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
-	struct intel_ipu4_bus_driver *adrv = to_intel_ipu4_bus_driver(dev->driver);
+	struct intel_ipu4_bus_driver *adrv =
+		to_intel_ipu4_bus_driver(dev->driver);
 	struct iommu_group *group = NULL;
 	int rval;
 
@@ -293,7 +294,8 @@ out_err:
 static int intel_ipu4_bus_remove(struct device *dev)
 {
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
-	struct intel_ipu4_bus_driver *adrv = to_intel_ipu4_bus_driver(dev->driver);
+	struct intel_ipu4_bus_driver *adrv =
+		to_intel_ipu4_bus_driver(dev->driver);
 
 	if (adrv->remove)
 		adrv->remove(adev);

@@ -312,8 +312,9 @@ static void intel_ipu4_dma_buf_detach(struct dma_buf *dbuf,
 {
 }
 
-static struct sg_table *intel_ipu4_dma_buf_map(struct dma_buf_attachment *attach,
-					    enum dma_data_direction dir)
+static struct sg_table *intel_ipu4_dma_buf_map(
+					struct dma_buf_attachment *attach,
+					enum dma_data_direction dir)
 {
 	struct intel_ipu4_psys_kbuffer *kbuf = attach->priv;
 	DEFINE_DMA_ATTRS(attrs);
@@ -335,8 +336,8 @@ static struct sg_table *intel_ipu4_dma_buf_map(struct dma_buf_attachment *attach
 
 	/* initial cache flush to avoid writing dirty pages for buffers which
 	 * are later marked as INTEL_IPU4_BUFFER_FLAG_NO_FLUSH */
-	dma_sync_sg_for_device(attach->dev, kbuf->sgt->sgl, kbuf->sgt->orig_nents,
-			       DMA_BIDIRECTIONAL);
+	dma_sync_sg_for_device(attach->dev, kbuf->sgt->sgl,
+			kbuf->sgt->orig_nents, DMA_BIDIRECTIONAL);
 
 	return kbuf->sgt;
 }
@@ -362,7 +363,8 @@ static void *intel_ipu4_dma_buf_kmap(struct dma_buf *dbuf, unsigned long pgnum)
 	return NULL;
 }
 
-static void *intel_ipu4_dma_buf_kmap_atomic(struct dma_buf *dbuf, unsigned long pgnum)
+static void *intel_ipu4_dma_buf_kmap_atomic(struct dma_buf *dbuf,
+					unsigned long pgnum)
 {
 	return NULL;
 }
@@ -382,7 +384,7 @@ static void intel_ipu4_dma_buf_release(struct dma_buf *buf)
 }
 
 int intel_ipu4_dma_buf_begin_cpu_access(struct dma_buf *dma_buf, size_t start,
-				     size_t len, enum dma_data_direction dir)
+					size_t len, enum dma_data_direction dir)
 {
 	return -ENOTTY;
 }
@@ -662,8 +664,8 @@ static void intel_ipu4_dumppg(
 		ia_css_process_t *process =
 			ia_css_process_group_get_process(pg, p);
 
-		dev_dbg(dev, "%s pgid %i process %i cell %i dev_chn: "
-			"ext0 %i ext1r %i ext1w %i int %i ipfd %i isa %i\n",
+		dev_dbg(dev, "%s pgid %i process %i cell %i dev_chn: \
+			ext0 %i ext1r %i ext1w %i int %i ipfd %i isa %i\n",
 			__func__, pgid, p,
 			ia_css_process_get_cell(process),
 			ia_css_process_get_dev_chn(process,
@@ -804,7 +806,8 @@ static void intel_ipu4_psys_kcmd_run(struct intel_ipu4_psys *psys)
 
 	if (ret != -ENOSPC || !psys->active_kcmds) {
 		dev_err(&psys->adev->dev,
-			"kcmd %p failed to alloc resources (running (%d, psys->active_kcmds = %d))\n",
+			"kcmd %p failed to alloc resources \
+			(running (%d, psys->active_kcmds = %d))\n",
 			kcmd, ret, psys->active_kcmds);
 		intel_ipu4_psys_kcmd_abort(psys, kcmd, ret);
 		return;
@@ -1723,8 +1726,8 @@ static void psys_setup_hw(struct intel_ipu4_psys *psys)
 {
 	void __iomem *base = psys->pdata->base;
 	void *psys_iommu0_ctrl = base +
-				 psys->pdata->ipdata->hw_variant.mmu_hw[0].offset +
-				 INTEL_IPU4_BXT_PSYS_MMU0_CTRL_OFFSET;
+			psys->pdata->ipdata->hw_variant.mmu_hw[0].offset +
+			INTEL_IPU4_BXT_PSYS_MMU0_CTRL_OFFSET;
 	u32 irqs;
 	unsigned int i;
 
@@ -1939,7 +1942,7 @@ static int cpd_fw_reload(struct intel_ipu4_device *isp)
 			psys->pkg_dir_dma_addr,
 			psys->pkg_dir_size);
 	if (rval)
-		 goto out_free_pkg_dir;
+		goto out_free_pkg_dir;
 
 	isp->pkg_dir = psys->pkg_dir;
 	isp->pkg_dir_dma_addr = psys->pkg_dir_dma_addr;
@@ -2516,9 +2519,10 @@ static struct intel_ipu4_bus_driver intel_ipu4_psys_driver = {
 static int __init intel_ipu4_psys_init(void)
 {
 	int rval = alloc_chrdev_region(&intel_ipu4_psys_dev_t, 0,
-				   INTEL_IPU4_PSYS_NUM_DEVICES, INTEL_IPU4_PSYS_NAME);
+			INTEL_IPU4_PSYS_NUM_DEVICES, INTEL_IPU4_PSYS_NAME);
 	if (rval) {
-		pr_err("can't alloc intel_ipu4 psys chrdev region (%d)\n", rval);
+		pr_err("can't alloc intel_ipu4 psys chrdev region (%d)\n",
+			rval);
 		return rval;
 	}
 
@@ -2533,7 +2537,8 @@ static int __init intel_ipu4_psys_init(void)
 	return rval;
 
 out_bus_register:
-	unregister_chrdev_region(intel_ipu4_psys_dev_t, INTEL_IPU4_PSYS_NUM_DEVICES);
+	unregister_chrdev_region(intel_ipu4_psys_dev_t,
+			INTEL_IPU4_PSYS_NUM_DEVICES);
 
 	return rval;
 }
@@ -2542,7 +2547,8 @@ static void __exit intel_ipu4_psys_exit(void)
 {
 	intel_ipu4_bus_unregister_driver(&intel_ipu4_psys_driver);
 	bus_unregister(&intel_ipu4_psys_bus);
-	unregister_chrdev_region(intel_ipu4_psys_dev_t, INTEL_IPU4_PSYS_NUM_DEVICES);
+	unregister_chrdev_region(intel_ipu4_psys_dev_t,
+			INTEL_IPU4_PSYS_NUM_DEVICES);
 }
 
 module_init(intel_ipu4_psys_init);

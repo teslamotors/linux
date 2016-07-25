@@ -516,14 +516,14 @@ static size_t l2_unmap(struct iommu_domain *domain, unsigned long iova,
 	return unmapped << ISP_PAGE_SHIFT;
 }
 
-static size_t intel_ipu4_mmu_unmap(struct iommu_domain *domain, unsigned long iova,
-				size_t size)
+static size_t intel_ipu4_mmu_unmap(struct iommu_domain *domain,
+					unsigned long iova, size_t size)
 {
 	return l2_unmap(domain, iova, 0, size);
 }
 
 static phys_addr_t intel_ipu4_mmu_iova_to_phys(struct iommu_domain *domain,
-					    dma_addr_t iova)
+					dma_addr_t iova)
 {
 	struct intel_ipu4_mmu_domain *adom = to_intel_ipu4_mmu_domain(domain);
 	uint32_t *l2_pt = TBL_VIRT_ADDR(adom->pgtbl[iova >> ISP_L1PT_SHIFT]);

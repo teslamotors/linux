@@ -197,9 +197,8 @@ void vied_subsystem_store(vied_subsystem_t ssid,
 		size -= sizeof(uint16_t), dst += sizeof(uint16_t),
 			data += sizeof(uint16_t);
 	}
-	if (size) {
+	if (size)
 		writeb(*(uint8_t *)data, dst);
-	}
 
 }
 EXPORT_SYMBOL_GPL(vied_subsystem_store);
@@ -255,7 +254,10 @@ void vied_subsystem_access_initialize(vied_subsystem_t system)
 }
 EXPORT_SYMBOL_GPL(vied_subsystem_access_initialize);
 
-/*Shared memory access codes written by Dash Biswait, copied from FPGA environment*/
+/*
+ * Shared memory access codes written by Dash Biswait,
+ * copied from FPGA environment
+ */
 
 /**
  * \brief Initialize the shared memory interface administration on the host.
@@ -264,7 +266,9 @@ EXPORT_SYMBOL_GPL(vied_subsystem_access_initialize);
  * \param memory_size: size of ddr memory in bytes
  * \param ps: size of page in bytes (for instance 4096)
  */
-int shared_memory_allocation_initialize(vied_memory_t mmid, vied_physical_address_t host_ddr_addr, size_t memory_size, size_t ps)
+int shared_memory_allocation_initialize(vied_memory_t mmid,
+		vied_physical_address_t host_ddr_addr,
+		size_t memory_size, size_t ps)
 {
 	return 0;
 }
@@ -289,7 +293,11 @@ EXPORT_SYMBOL_GPL(shared_memory_allocation_uninitialize);
  * \param inv_tlb: invalidate tbl
  * \param sbt: set l1 base address
  */
-int shared_memory_map_initialize(vied_subsystem_t ssid, vied_memory_t mmid, size_t mmu_ps, size_t mmu_pnrs, vied_physical_address_t ddr_addr, shared_memory_invalidate_mmu_tlb inv_tlb, shared_memory_set_page_table_base_address sbt)
+int shared_memory_map_initialize(vied_subsystem_t ssid, vied_memory_t mmid,
+		size_t mmu_ps, size_t mmu_pnrs,
+		vied_physical_address_t ddr_addr,
+		shared_memory_invalidate_mmu_tlb inv_tlb,
+		shared_memory_set_page_table_base_address sbt)
 {
 	return 0;
 }
@@ -297,7 +305,6 @@ EXPORT_SYMBOL_GPL(shared_memory_map_initialize);
 
 /**
  * \brief De-initialize the shared memory interface administration on the host.
- *
  */
 void shared_memory_map_uninitialize(vied_subsystem_t ssid, vied_memory_t mmid)
 {
@@ -307,7 +314,8 @@ EXPORT_SYMBOL_GPL(shared_memory_map_uninitialize);
 static uint8_t alloc_cookie;
 
 /**
- * \brief Allocate (DDR) shared memory space and return a host virtual address. Returns NULL when insufficient memory available
+ * \brief Allocate (DDR) shared memory space and return a host virtual address.
+ * \Returns NULL when insufficient memory available
  */
 host_virtual_address_t shared_memory_alloc(vied_memory_t mmid, size_t bytes)
 {
@@ -379,9 +387,11 @@ void shared_memory_free(vied_memory_t mmid, host_virtual_address_t addr)
 EXPORT_SYMBOL_GPL(shared_memory_free);
 
 /**
- * \brief Convert a host virtual address to a CSS virtual address and update the MMU.
+ * \brief Convert a host virtual address to a CSS virtual address and
+ * \update the MMU.
  */
-vied_virtual_address_t shared_memory_map(vied_subsystem_t ssid, vied_memory_t mmid, host_virtual_address_t addr)
+vied_virtual_address_t shared_memory_map(vied_subsystem_t ssid,
+		vied_memory_t mmid, host_virtual_address_t addr)
 {
 	struct wrapper_base *mine = get_mem_sub_system(mmid);
 	struct my_css_memory_buffer_item *buf = NULL;
@@ -409,13 +419,15 @@ EXPORT_SYMBOL_GPL(shared_memory_map);
 /**
  * \brief Free a CSS virtual address and update the MMU.
  */
-void shared_memory_unmap(vied_subsystem_t ssid, vied_memory_t mmid, vied_virtual_address_t addr)
+void shared_memory_unmap(vied_subsystem_t ssid,
+		vied_memory_t mmid, vied_virtual_address_t addr)
 {
 }
 EXPORT_SYMBOL_GPL(shared_memory_unmap);
 
 /**
- * \brief Store a byte into (DDR) shared memory space using a host virtual address
+ * \brief Store a byte into (DDR) shared memory space using a host
+ * \virtual address
  */
 void shared_memory_store_8(vied_memory_t mmid, host_virtual_address_t addr,
 			   uint8_t data)
@@ -431,7 +443,8 @@ void shared_memory_store_8(vied_memory_t mmid, host_virtual_address_t addr,
 EXPORT_SYMBOL_GPL(shared_memory_store_8);
 
 /**
- * \brief Store a 16-bit word into (DDR) shared memory space using a host virtual address
+ * \brief Store a 16-bit word into (DDR) shared memory space using a host
+ * \virtual address
  */
 void shared_memory_store_16(vied_memory_t mmid, host_virtual_address_t addr,
 			    uint16_t data)
@@ -447,7 +460,8 @@ void shared_memory_store_16(vied_memory_t mmid, host_virtual_address_t addr,
 EXPORT_SYMBOL_GPL(shared_memory_store_16);
 
 /**
- * \brief Store a 32-bit word into (DDR) shared memory space using a host virtual address
+ * \brief Store a 32-bit word into (DDR) shared memory space using a host
+ * \virtual address
  */
 void shared_memory_store_32(vied_memory_t mmid, host_virtual_address_t addr,
 			    uint32_t data)
@@ -463,7 +477,8 @@ void shared_memory_store_32(vied_memory_t mmid, host_virtual_address_t addr,
 EXPORT_SYMBOL_GPL(shared_memory_store_32);
 
 /**
- * \brief Store a number of bytes into (DDR) shared memory space using a host virtual address
+ * \brief Store a number of bytes into (DDR) shared memory space using a host
+ * \virtual address
  */
 void shared_memory_store(vied_memory_t mmid, host_virtual_address_t addr,
 			 const void *data, size_t bytes)
@@ -490,7 +505,8 @@ void shared_memory_store(vied_memory_t mmid, host_virtual_address_t addr,
 EXPORT_SYMBOL_GPL(shared_memory_store);
 
 /**
- * \brief Set a number of bytes of (DDR) shared memory space to 0 using a host virtual address
+ * \brief Set a number of bytes of (DDR) shared memory space to 0 using a host
+ * \virtual address
  */
 void shared_memory_zero(vied_memory_t mmid, host_virtual_address_t addr,
 			size_t bytes)
@@ -505,7 +521,8 @@ void shared_memory_zero(vied_memory_t mmid, host_virtual_address_t addr,
 EXPORT_SYMBOL_GPL(shared_memory_zero);
 
 /**
- * \brief Load a byte from (DDR) shared memory space using a host virtual address
+ * \brief Load a byte from (DDR) shared memory space using a host
+ * \virtual address
  */
 uint8_t shared_memory_load_8(vied_memory_t mmid, host_virtual_address_t addr)
 {
@@ -522,7 +539,8 @@ uint8_t shared_memory_load_8(vied_memory_t mmid, host_virtual_address_t addr)
 EXPORT_SYMBOL_GPL(shared_memory_load_8);
 
 /**
- * \brief Load a 16-bit word from (DDR) shared memory space using a host virtual address
+ * \brief Load a 16-bit word from (DDR) shared memory space using a host
+ * \virtual address
  */
 uint16_t shared_memory_load_16(vied_memory_t mmid, host_virtual_address_t addr)
 {
@@ -539,7 +557,8 @@ uint16_t shared_memory_load_16(vied_memory_t mmid, host_virtual_address_t addr)
 EXPORT_SYMBOL_GPL(shared_memory_load_16);
 
 /**
- * \brief Load a 32-bit word from (DDR) shared memory space using a host virtual address
+ * \brief Load a 32-bit word from (DDR) shared memory space using a host
+ * \virtual address
  */
 uint32_t shared_memory_load_32(vied_memory_t mmid, host_virtual_address_t addr)
 {
@@ -556,7 +575,8 @@ uint32_t shared_memory_load_32(vied_memory_t mmid, host_virtual_address_t addr)
 EXPORT_SYMBOL_GPL(shared_memory_load_32);
 
 /**
- * \brief Load a number of bytes from (DDR) shared memory space using a host virtual address
+ * \brief Load a number of bytes from (DDR) shared memory space using a host
+ * \virtual address
  */
 void shared_memory_load(vied_memory_t mmid, host_virtual_address_t addr,
 			void *data, size_t bytes)
@@ -600,7 +620,8 @@ void intel_ipu4_wrapper_set_device(struct device *dev, int mmid)
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_set_device);
 
-int intel_ipu4_wrapper_register_buffer(dma_addr_t iova, void *addr, size_t bytes)
+int intel_ipu4_wrapper_register_buffer(dma_addr_t iova,
+		void *addr, size_t bytes)
 {
 	return 0;
 }
