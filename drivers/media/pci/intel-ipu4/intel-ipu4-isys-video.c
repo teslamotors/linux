@@ -1469,7 +1469,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 		dev_dbg(dev, "set stream: s_stream %s (ext)\n",
 			ip->external->entity->name);
 		if (ip->csi2 &&
-			ip->csi2->remote_streams == ip->csi2->stream_count)
+			ip->csi2->remote_streams == ip->isys->stream_opened)
 			rval = v4l2_subdev_call(
 					media_entity_to_v4l2_subdev(
 						ip->external->entity),
