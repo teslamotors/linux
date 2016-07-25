@@ -398,13 +398,6 @@ config SND_SOC_INTEL_BXT_GPMRB_MACH
 	   Say Y if you have such a device
 	   If unsure select "N".
 
-config SND_SOC_BXT_GPMRB_MACH_BIOS
-	bool "Select to enable BXT GPMRB Audio with BIOS"
-	default n
-	help
-	   This is a config define to enable Pin audio ownership workaround for BIOS
-	   version BXTI_IFWI_X64_R_2015_10_13_1544 or BXTI_IFWI_X64_D_2015_10_13_1544
-
 endif ## SND_SOC_INTEL_SKYLAKE
 
 if SND_SOC_INTEL_SKYLAKE || SND_SOC_SOF_CANNONLAKE
