@@ -21,6 +21,7 @@
 
 #include <media/intel-ipu4-isys.h>
 #include "../../../../include/media/crlmodule.h"
+#include "../../../../include/media/ti964.h"
 #include "../../pci/intel-ipu4/intel-ipu4.h"
 
 #define IMX185_LANES		4
@@ -36,7 +37,7 @@
 #define ADV7481B_I2C_ADDRESS	0xe2
 
 #define VIDEO_AGGRE_LANES	4
-#define VIDEO_AGGRE_I2C_ADDRESS	0x3d
+#define VIDEO_AGGRE_I2C_ADDRESS	0x3b
 #define VIDEO_AGGRE_B_I2C_ADDRESS	0x3c
 
 #define GPIO_BASE		422
@@ -241,6 +242,72 @@ static struct intel_ipu4_isys_subdev_info video_aggre_b_stub_sd = {
 };
 #endif
 
+#ifdef CONFIG_VIDEO_TI964
+#define TI964_I2C_ADAPTER	0
+#define TI964_I2C_ADDRESS	0x3d
+#define TI964_LANES		4
+
+static struct intel_ipu4_isys_csi2_config ti964_csi2_cfg = {
+	.nlanes = TI964_LANES,
+	.port = 0,
+};
+
+struct ti964_subdev_i2c_info ti964_subdevs[] = {
+#ifdef CONFIG_INTEL_IPU4_OV10635
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635A_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635B_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635C_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635D_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	},
+#endif
+};
+
+static struct ti964_pdata ti964_pdata = {
+	.subdev_info = ti964_subdevs,
+	.subdev_num = ARRAY_SIZE(ti964_subdevs),
+	.reset_gpio = 485,
+};
+
+static struct intel_ipu4_isys_subdev_info ti964_sd = {
+	.csi2 = &ti964_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 .type = "ti964",
+			 .addr = TI964_I2C_ADDRESS,
+			 .platform_data = &ti964_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	}
+};
+#endif
+
 /*
  * Map buttress output sensor clocks to sensors -
  * this should be coming from ACPI
@@ -274,6 +341,9 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
 #ifdef CONFIG_VIDEO_AGGREGATOR_STUB
 		&video_aggre_stub_sd,
 		&video_aggre_b_stub_sd,
+#endif
+#ifdef CONFIG_VIDEO_TI964
+		&ti964_sd,
 #endif
 		NULL,
 	},
