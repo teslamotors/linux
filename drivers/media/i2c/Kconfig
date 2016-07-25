@@ -724,6 +724,13 @@ config VIDEO_M52790
 
 	 To compile this driver as a module, choose M here: the
 	 module will be called m52790.
+
+config VIDEO_TI964
+	tristate "TI964 video aggregator"
+        depends on VIDEO_V4L2 && I2C
+	---help---
+	TI964 video aggregator driver
+
 endmenu
 
 menu "Sensors used on soc_camera driver"

@@ -82,3 +82,4 @@ obj-$(CONFIG_VIDEO_LM3643) += lm3643.o
 obj-$(CONFIG_VIDEO_DW9714) += dw9714.o
 obj-$(CONFIG_VIDEO_BU64295) += bu64295.o
 obj-$(CONFIG_VIDEO_CRLMODULE) += crlmodule/
+obj-$(CONFIG_VIDEO_TI964) += ti964.o
