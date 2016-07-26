@@ -26,8 +26,16 @@
 #define REG_DUMP_TRACE_METHOD IA_CSS_TRACE_METHOD_NATIVE
 #define REG_DUMP_TRACE_LEVEL_VERBOSE IA_CSS_TRACE_LEVEL_ENABLED
 
+#ifdef USE_SSID_BUTTRESS
+/* For IPU5 regdump uses an rdl-file which contains the register addresses as seen from the host;
+ * these addresses already contain the ISYS or PSYS offset.
+ * This means that for IPU5 we need to use the SSID of the buttress instead.
+ */
+#define REG_DUMP_READ_REGISTER(addr)    vied_subsystem_load_32(IPU_DEVICE_BUTTRESS, addr)
+#else
 /* SSID value is defined in test makefiles as either isys0 or psys0 */
 #define REG_DUMP_READ_REGISTER(addr)    vied_subsystem_load_32(SSID, addr)
+#endif
 
 #define REG_DUMP_PRINT_0(...)     EXPAND_VA_ARGS(IA_CSS_TRACE_0(REG_DUMP, VERBOSE, __VA_ARGS__))
 #define REG_DUMP_PRINT_1(...)     EXPAND_VA_ARGS(IA_CSS_TRACE_1(REG_DUMP, VERBOSE, __VA_ARGS__))
