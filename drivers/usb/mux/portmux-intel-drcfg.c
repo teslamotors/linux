@@ -31,6 +31,14 @@ struct intel_mux_drcfg {
 	struct portmux_dev *pdev;
 };
 
+static int usb0_init_state = -1;
+module_param(usb0_init_state, int, S_IRUGO);
+MODULE_PARM_DESC(usb0_init_state, "APL USB port 0 init state 0:device, 1:host");
+
+static int usb0_auto_role = -1;
+module_param(usb0_auto_role, int, S_IRUGO);
+MODULE_PARM_DESC(usb0_auto_role, "APL USB port 0 automatic role switching");
+
 static inline int intel_mux_drcfg_switch(struct device *dev, bool host)
 {
 	u32 data;
@@ -38,11 +46,17 @@ static inline int intel_mux_drcfg_switch(struct device *dev, bool host)
 
 	mux = dev_get_drvdata(dev);
 
+	if (usb0_auto_role == 1) {
+		dev_info(dev, "USB port 0 mux is in automatic role mode.\n");
+		return 0;
+	}
+
 	/* Check and set mux to SW controlled mode */
 	data = readl(mux->regs + INTEL_MUX_CFG0);
 	if (!(data & CFG0_SW_IDPIN_EN)) {
 		data |= CFG0_SW_IDPIN_EN;
 		writel(data, mux->regs + INTEL_MUX_CFG0);
+		dev_dbg(dev, "Set SW_IDPIN_EN bit\n");
 	}
 
 	/*
@@ -106,10 +120,14 @@ static int intel_mux_drcfg_probe(struct platform_device *pdev)
 	mux->desc.dev = dev;
 	mux->desc.name = "intel-mux-drcfg";
 	mux->desc.ops = &drcfg_ops;
-	mux->desc.initial_state =
-			!!(readl(mux->regs + INTEL_MUX_CFG1) & CFG1_MODE);
+	mux->desc.initial_state = (usb0_init_state == -1) ?
+			!!(readl(mux->regs + INTEL_MUX_CFG1) & CFG1_MODE) :
+			(usb0_init_state ? 1 : 0);
 	dev_set_drvdata(dev, mux);
 	mux->pdev = portmux_register(&mux->desc);
+
+	if (usb0_auto_role == 1)
+		writel(0x800, mux->regs + INTEL_MUX_CFG0);
 
 	return PTR_ERR_OR_ZERO(mux->pdev);
 }
