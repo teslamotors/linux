@@ -355,7 +355,8 @@ static ssize_t adv_hdmi_cable_connected_show(struct device *dev, struct device_a
 		interlaced = 'i';
 	}
 
-	return sprintf(buf, "%dx%d%c", hdmi_res_width, hdmi_res_height, interlaced);
+	return snprintf(buf, PAGE_SIZE, "%dx%d%c",
+				hdmi_res_width, hdmi_res_height, interlaced);
 }
 static DEVICE_ATTR(hdmi_cable_connected, S_IRUGO, adv_hdmi_cable_connected_show, NULL);
 

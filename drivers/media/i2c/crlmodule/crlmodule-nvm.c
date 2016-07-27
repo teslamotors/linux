@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2016 Intel Corporation.
  *
  * Author: Tommi Franttila <tommi.franttila@intel.com>
  *
@@ -26,7 +26,7 @@ static ssize_t crlmodule_sysfs_nvm_read(struct device *dev,
 	struct v4l2_subdev *subdev = i2c_get_clientdata(to_i2c_client(dev));
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
 
-	memcpy(buf, sensor->nvm_data, sensor->nvm_size);
+	memcpy(buf, sensor->nvm_data, min(PAGE_SIZE, sensor->nvm_size));
 	return sensor->nvm_size;
 }
 

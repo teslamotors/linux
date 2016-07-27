@@ -225,7 +225,7 @@ static int read_acpi_block(struct device *dev, char *id, void *data, u32 size)
 		goto err;
 	}
 
-	memcpy(data, obj->buffer.pointer, obj->buffer.length);
+	memcpy(data, obj->buffer.pointer, min(size, obj->buffer.length));
 	buffer_length = obj->buffer.length;
 	kfree(buffer.pointer);
 
