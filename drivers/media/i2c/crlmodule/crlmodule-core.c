@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  *
@@ -2058,7 +2058,6 @@ static int crlmodule_identify_module(struct v4l2_subdev *subdev)
 		}
 		snprintf(temp, sensor->sensor_ds->id_regs[i].width, "0x%x ",
 			 val);
-		strcat(id_string, temp);
 		snprintf(id_string, sensor->sensor_ds->id_regs[i].width,
 			 "%s 0x%x ", temp, val);
 
