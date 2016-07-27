@@ -55,6 +55,7 @@
 #define INTEL_IPU4_HW_BXT_P_A0		0x5a88 /* BXTP A0 Iunit=BXT B0 Iunit */
 
 #define INTEL_IPU4_HW_BXT_C0_REV	0xc
+#define INTEL_IPU5_HW_GLV_A0		0x5a19
 
 /* processing system frequency: 25Mhz x ratio, Legal values [8,32] */
 #define PS_FREQ_CTL_DEFAULT_RATIO_B0	0x12
@@ -90,6 +91,7 @@
  */
 #define INTEL_IPU4_MEDIA_DEV_MODEL_IPU4A	"ipu4/Broxton A"
 #define INTEL_IPU4_MEDIA_DEV_MODEL_IPU4B	"ipu4/Broxton B"
+#define INTEL_IPU4_MEDIA_DEV_MODEL_IPU5A	"ipu5/GLV A"
 
 struct pci_dev;
 struct list_head;
@@ -124,12 +126,15 @@ struct intel_ipu4_device {
  */
 #if defined CONFIG_VIDEO_INTEL_IPU4_FPGA	\
 	|| defined CONFIG_VIDEO_INTEL_IPU4_ISYS_FPGA	\
-	|| defined CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA
+	|| defined CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA	\
+	|| defined CONFIG_VIDEO_INTEL_IPU5_FPGA
 
 #define is_intel_ipu4_hw_bxt_b0(isp) IS_BUILTIN(IPU_STEP_BXTB0)
 #define is_intel_ipu4_hw_bxt_c0(isp) IS_BUILTIN(IPU_STEP_BXTC0)
 
-#define is_intel_ipu4_hw_bxt_fpga(isp) 1
+#define is_intel_ipu_hw_fpga(isp) 1
+
+#define is_intel_ipu5_hw_glv_a0(isp) IS_BUILTIN(IPU_STEP_GLVA0)
 
 #else
 #define is_intel_ipu4_hw_bxt_b0(isp)		\
@@ -144,12 +149,16 @@ struct intel_ipu4_device {
 	((isp)->pdev->device == INTEL_IPU4_HW_BXT_B0 &&		\
 	 (isp)->pdev->revision == INTEL_IPU4_HW_BXT_C0_REV)
 
-#define is_intel_ipu4_hw_bxt_fpga(isp) 0
+#define is_intel_ipu_hw_fpga(isp) 0
+
+#define is_intel_ipu5_hw_glv_a0(isp)		\
+	((isp)->pdev->device == INTEL_IPU5_HW_GLV_A0)
+
 #endif
 
 #define intel_ipu4_media_ctl_dev_model(isp)			\
 	(is_intel_ipu4_hw_bxt_b0(isp) ?				\
-	INTEL_IPU4_MEDIA_DEV_MODEL_IPU4B : INTEL_IPU4_MEDIA_DEV_MODEL_IPU4A)
+	INTEL_IPU4_MEDIA_DEV_MODEL_IPU4B : INTEL_IPU4_MEDIA_DEV_MODEL_IPU5A)
 
 int intel_ipu4_fw_authenticate(void *data, u64 val);
 void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,

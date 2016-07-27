@@ -565,7 +565,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 		return -EINVAL;
 	}
 
-	if (is_intel_ipu4_hw_bxt_fpga(isp))
+	if (is_intel_ipu_hw_fpga(isp))
 		dma_mask = 32;
 
 	isys_base = isp->base + isys_ipdata->hw_variant.offset;
@@ -660,7 +660,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 			pdev, &isp->isys_iommu->dev, &isp->isys_iommu->dev,
 			isys_base, isys_ipdata,
 			pdev->dev.platform_data,
-			0, is_intel_ipu4_hw_bxt_fpga(isp) ?
+			0, is_intel_ipu_hw_fpga(isp) ?
 			INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA :
 			INTEL_IPU4_ISYS_TYPE_INTEL_IPU4);
 		rval = PTR_ERR(isp->isys);
@@ -692,7 +692,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 		isp->psys = intel_ipu4_psys_init(
 			pdev, &isp->psys_iommu->dev,
 			&isp->psys_iommu->dev, psys_base, psys_ipdata, 0,
-			is_intel_ipu4_hw_bxt_fpga(isp) ?
+			is_intel_ipu_hw_fpga(isp) ?
 			INTEL_IPU4_PSYS_TYPE_INTEL_IPU4_FPGA :
 			INTEL_IPU4_PSYS_TYPE_INTEL_IPU4);
 		rval = PTR_ERR(isp->psys);
@@ -786,10 +786,14 @@ static const struct pci_device_id intel_ipu4_pci_tbl[] = {
 #if defined CONFIG_VIDEO_INTEL_IPU4_FPGA		\
 	|| defined CONFIG_VIDEO_INTEL_IPU4_ISYS_FPGA	\
 	|| defined CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
+	PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0),
+#else
+#if defined CONFIG_VIDEO_INTEL_IPU5
+	PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU5_HW_GLV_A0),
 #else
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_P_A0)},
+#endif
 #endif
 	{0,}
 };

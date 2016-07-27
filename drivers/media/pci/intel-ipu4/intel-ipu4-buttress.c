@@ -480,11 +480,11 @@ int intel_ipu4_buttress_power(
 	 * Also in FPGA case don't report time out. Depending on FPGA version
 	 * the PM state transition may or may not work.
 	 */
-	if (!is_intel_ipu4_hw_bxt_fpga(isp))
+	if (!is_intel_ipu_hw_fpga(isp))
 		ret = -ETIMEDOUT;
 
 out:
-	if (is_intel_ipu4_hw_bxt_fpga(isp))
+	if (is_intel_ipu_hw_fpga(isp))
 		intel_ipu4_buttress_disable_secure_touch(isp);
 
 	ctrl->started = !ret && on;
@@ -497,7 +497,7 @@ out:
 	return ret;
 }
 
-#if is_intel_ipu4_hw_bxt_fpga()
+#if is_intel_ipu_hw_fpga()
 static bool secure_mode_enable;
 #else
 static bool secure_mode_enable = 1;
@@ -546,7 +546,7 @@ bool intel_ipu4_buttress_get_secure_mode(struct intel_ipu4_device *isp)
 {
 	u32 val;
 
-	if (is_intel_ipu4_hw_bxt_fpga(isp))
+	if (is_intel_ipu_hw_fpga(isp))
 		return 0;
 
 	val = readl(isp->base + BUTTRESS_REG_SECURITY_CTL);
@@ -558,7 +558,7 @@ static bool intel_ipu4_buttress_auth_done(struct intel_ipu4_device *isp)
 {
 	u32 val;
 
-	if (is_intel_ipu4_hw_bxt_fpga(isp))
+	if (is_intel_ipu_hw_fpga(isp))
 		return 0;
 
 	val = readl(isp->base + BUTTRESS_REG_SECURITY_CTL);
@@ -935,7 +935,7 @@ int intel_ipu4_buttress_start_tsc_sync(struct intel_ipu4_device *isp)
 {
 	unsigned int i;
 
-	if (is_intel_ipu4_hw_bxt_fpga(isp))
+	if (is_intel_ipu_hw_fpga(isp))
 		return 0;
 
 	for (i = 0; i < BUTTRESS_TSC_SYNC_RESET_TRIAL_MAX; i++) {

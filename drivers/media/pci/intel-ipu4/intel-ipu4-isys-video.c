@@ -179,7 +179,7 @@ static int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys)
  */
 static int intel_ipu4_poll_for_events(struct intel_ipu4_isys_video *av)
 {
-	return is_intel_ipu4_hw_bxt_fpga(av->isys->adev->isp);
+	return is_intel_ipu_hw_fpga(av->isys->adev->isp);
 }
 
 static int video_open(struct file *file)
