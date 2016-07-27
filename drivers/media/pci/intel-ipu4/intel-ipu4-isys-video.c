@@ -33,6 +33,7 @@
 #include "intel-ipu4-isys.h"
 #include "intel-ipu4-isys-video.h"
 #include "intel-ipu4-regs.h"
+#include "intel-ipu5-regs.h"
 #include "intel-ipu4-trace.h"
 #include "intel-ipu4-wrapper.h"
 #include "isysapi/interface/ia_css_isysapi_fw_types.h"

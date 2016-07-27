@@ -25,6 +25,7 @@
 #include "intel-ipu4-isys.h"
 #include "intel-ipu4-isys-csi2.h"
 #include "intel-ipu4-isys-csi2-reg.h"
+#include "intel-ipu5-isys-csi2-reg.h"
 #include "intel-ipu4-isys-subdev.h"
 #include "intel-ipu4-isys-video.h"
 /* for IA_CSS_ISYS_PIN_TYPE_RAW_NS */

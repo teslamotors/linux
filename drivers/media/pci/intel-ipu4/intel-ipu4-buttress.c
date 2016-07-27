@@ -31,6 +31,7 @@
 #include "intel-ipu4-bus.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-buttress-regs.h"
+#include "intel-ipu5-buttress-regs.h"
 #include "intel-ipu4-cpd.h"
 #define CREATE_TRACE_POINTS
 #include "intel-ipu4-trace-event.h"
@@ -1206,6 +1207,12 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 
 	intel_ipu4_buttress_read_psys_fused_freqs(isp);
 	isp->buttress.psys_min_freq = b->psys_fused_freqs.efficient_freq;
+
+	if (is_intel_ipu5_hw_glv_a0(isp)) {
+		dev_info(&isp->pdev->dev,
+			"ipu5 does not support buttress sensor clk\n");
+		return 0;
+	}
 
 	clk_data_parent = intel_ipu4_buttress_sensor_pll_data;
 
