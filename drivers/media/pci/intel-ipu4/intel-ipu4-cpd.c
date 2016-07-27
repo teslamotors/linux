@@ -417,7 +417,10 @@ int intel_ipu4_cpd_validate_cpd_file(struct intel_ipu4_device *isp,
 	const struct intel_ipu4_cpd_hdr *hdr = cpd_file;
 	struct intel_ipu4_cpd_ent *ent;
 	int rval;
-
+	if (is_intel_ipu5_hw_glv_a0(isp)) {
+		dev_info(&isp->pdev->dev, "Now do not validata cpd file for ipu5 due to cpd not ready\n");
+		return 0;
+	}
 	rval = intel_ipu4_cpd_validate_cpd(isp, cpd_file,
 					   cpd_file_size,
 					   cpd_file_size);

@@ -46,6 +46,10 @@
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-wrapper.h"
 #include "isysapi/interface/ia_css_isysapi.h"
+#include "vied/vied/shared_memory_map.h"
+#include "vied/vied/shared_memory_access.h"
+#include "pkg_dir/interface/ia_css_pkg_dir_types.h"
+#include "pkg_dir/interface/ia_css_pkg_dir.h"
 
 /* Trace block definitions for isys */
 static struct intel_ipu4_trace_block isys_trace_blocks[] = {
@@ -1078,6 +1082,69 @@ err:
 	return -ENOMEM;
 }
 
+static int isys_load_pkg_dir(struct intel_ipu4_isys *isys)
+{
+	host_virtual_address_t pkg_dir_host_address;
+	vied_virtual_address_t pkg_dir_vied_address;
+	struct ia_css_cell_program_s prog;
+	host_virtual_address_t pg_host_address;
+	vied_virtual_address_t pg_vied_address;
+	unsigned int pg_offset;
+	int rval = 0;
+
+	dev_info(&isys->adev->dev, "isys binary file name: %s\n",
+		 isys->pdata->ipdata->hw_variant.fw_filename);
+
+	rval = request_firmware(
+		&isys->fw,
+		isys->pdata->ipdata->hw_variant.fw_filename,
+		&isys->adev->dev);
+	if (rval) {
+		dev_err(&isys->adev->dev, "Requesting isys firmware failed\n");
+		return -ENOMEM;
+	}
+
+	pkg_dir_host_address = shared_memory_alloc(ISYS_MMID, isys->fw->size);
+	if (!pkg_dir_host_address) {
+		dev_err(&isys->adev->dev, "Failed to alloc pkg host memory\n");
+		return -ENOMEM;
+	}
+	shared_memory_store(ISYS_MMID, pkg_dir_host_address,
+		(const void *)isys->fw->data, isys->fw->size);
+	pkg_dir_vied_address =
+		shared_memory_map(ISYS_SSID, ISYS_MMID, pkg_dir_host_address);
+	if (!pkg_dir_vied_address) {
+		dev_err(&isys->adev->dev, "Failed to map pkg vied memory\n");
+		shared_memory_free(ISYS_MMID, pkg_dir_host_address);
+		return -ENOMEM;
+	}
+
+	pg_offset = ia_css_pkg_dir_entry_get_address_lo(
+		ia_css_pkg_dir_get_entry(
+		(ia_css_pkg_dir_entry_t *)pkg_dir_host_address, 1));
+	pg_host_address = pkg_dir_host_address + pg_offset;
+	pg_vied_address = pkg_dir_vied_address + pg_offset;
+	shared_memory_load(ISYS_MMID, pg_host_address,
+		&prog, sizeof(struct ia_css_cell_program_s));
+	writel(pg_vied_address + prog.blob_offset + prog.icache_source,
+		isys->pdata->base + INTEL_IPU4_PSYS_REG_SPC_ICACHE_BASE);
+	writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
+		isys->pdata->base +
+		INTEL_IPU4_REG_PSYS_INFO_SEG_0_CONFIG_ICACHE_MASTER);
+	writel(prog.start[1],
+		isys->pdata->base + INTEL_IPU4_PSYS_REG_SPC_START_PC);
+	writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
+		isys->pdata->base +
+		INTEL_IPU4_REG_PSYS_INFO_SEG_0_CONFIG_ICACHE_MASTER);
+	writel(pkg_dir_vied_address,
+		isys->pdata->base + INTEL_IPU4_DMEM_OFFSET);
+
+	isys->pkg_dir = pkg_dir_host_address;
+	isys->pkg_dir_size = isys->fw->size;
+	isys->pkg_dir_dma_addr = pkg_dir_vied_address;
+	return 0;
+}
+
 static int isys_probe(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
@@ -1088,10 +1155,12 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	trace_printk("B|%d|TMWK\n", current->pid);
 
-	/* Has the domain been attached? */
-	if (!mmu || !isp->pkg_dir_dma_addr) {
-		trace_printk("E|TMWK\n");
-		return -EPROBE_DEFER;
+	if (!is_intel_ipu5_hw_glv_a0(isp)) {
+		/* Has the domain been attached? */
+		if (!mmu || !isp->pkg_dir_dma_addr) {
+			trace_printk("E|TMWK\n");
+			return -EPROBE_DEFER;
+		}
 	}
 
 	intel_ipu4_wrapper_set_device(&adev->dev, ISYS_MMID);
@@ -1126,36 +1195,43 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 #endif
 
 	if (!isp->secure_mode) {
-		fw = isp->cpd_fw;
+		if (is_intel_ipu5_hw_glv_a0(isp)) {
+			int ret;
 
-		rval = intel_ipu4_buttress_map_fw_image(
-			adev, fw, &isys->fw_sgt);
-		if (rval)
-			goto release_firmware;
+			ret = isys_load_pkg_dir(isys);
+			if (ret < 0)
+				goto release_firmware;
+		} else {
+			fw = isp->cpd_fw;
 
-		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-			ISYS_MMID, (void *)fw->data,
-			sg_dma_address(isys->fw_sgt.sgl),
-			fw->size);
-		if (rval)
-			goto unmap_fw_image;
+			rval = intel_ipu4_buttress_map_fw_image(
+				adev, fw, &isys->fw_sgt);
+			if (rval)
+				goto release_firmware;
 
-		isys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
-			adev, isp->cpd_fw->data,
-			sg_dma_address(isys->fw_sgt.sgl),
-			&isys->pkg_dir_dma_addr,
-			&isys->pkg_dir_size);
-		if (isys->pkg_dir == NULL) {
-			rval = -ENOMEM;
-			goto  remove_shared_buffer;
+			rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+				ISYS_MMID, (void *)fw->data,
+				sg_dma_address(isys->fw_sgt.sgl),
+				fw->size);
+			if (rval)
+				goto unmap_fw_image;
+
+			isys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
+				adev, isp->cpd_fw->data,
+				sg_dma_address(isys->fw_sgt.sgl),
+				&isys->pkg_dir_dma_addr,
+				&isys->pkg_dir_size);
+			if (isys->pkg_dir == NULL) {
+				rval = -ENOMEM;
+				goto  remove_shared_buffer;
+			}
+			rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+				ISYS_MMID, (void *)isys->pkg_dir,
+				isys->pkg_dir_dma_addr,
+				isys->pkg_dir_size);
+			if (rval)
+				goto out_free_pkg_dir;
 		}
-		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-			ISYS_MMID, (void *)isys->pkg_dir,
-			isys->pkg_dir_dma_addr,
-			isys->pkg_dir_size);
-		if (rval)
-			goto out_free_pkg_dir;
-
 	}
 
 	/* Debug fs failure is not fatal. */

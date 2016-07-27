@@ -322,6 +322,12 @@ void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
 		const ia_css_pkg_dir_entry_t *entry;
 		u32 server_addr;
 
+		if (is_intel_ipu5_hw_glv_a0(isp)) {
+			dev_warn(&isp->pdev->dev,
+				"Not config spc here for ipu5, W/A does this at isys probe\n");
+			return;
+		}
+
 		entry = ia_css_pkg_dir_get_entry(
 			(ia_css_pkg_dir_entry_t *)pkg_dir, pkg_dir_idx);
 
