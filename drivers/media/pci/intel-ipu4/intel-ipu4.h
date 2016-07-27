@@ -30,6 +30,11 @@
 #define INTEL_IPU4_CPD_FIRMWARE_B0	"ipu4_cpd_b0.bin"
 #define INTEL_IPU4_PSYS_FIRMWARE_B0	"ipu4_psys_bxt_fw_b0.bin"
 
+#define INTEL_IPU5_ISYS_FIRMWARE_A0	"ipu5_glv_fw_a0_pkg_dir.bin"
+#define INTEL_IPU5_CPD_FIRMWARE_A0	"ipu5_glv_fw_a0_pkg_dir.bin"
+#define INTEL_IPU5_PSYS_FIRMWARE_A0	"ipu5_glv_fw_a0_pkg_dir.bin"
+
+
 /*
  * Details of the PCI device ID and revisions of the BXT HW supported
  *
@@ -62,6 +67,7 @@
 
 /* input system frequency: 1600Mhz / divisor. Legal values [2,8] */
 #define IS_FREQ_CTL_DIVISOR_B0		0x4
+#define IS_FREQ_CTL_DIVISOR_GLVA0		0x6
 
 #define INTEL_IPU4_ISYS_NUM_STREAMS_B0		4 /* Max 6 */
 

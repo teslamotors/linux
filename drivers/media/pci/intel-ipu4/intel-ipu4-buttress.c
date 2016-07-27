@@ -451,12 +451,20 @@ int intel_ipu4_buttress_power(
 	if (!on) {
 		val = 0;
 		pwr_sts = ctrl->pwr_sts_off << ctrl->pwr_sts_shift;
+		if (is_intel_ipu5_hw_glv_a0(isp))
+			writel(0, isp->base + BUTTRESS_REG_PS_FREQ_CTL);
 	} else {
 		val = 1 << BUTTRESS_FREQ_CTL_START_SHIFT
 			| ctrl->divisor
 			| ctrl->qos_floor << BUTTRESS_FREQ_CTL_QOS_FLOOR_SHIFT;
 
 		pwr_sts = ctrl->pwr_sts_on << ctrl->pwr_sts_shift;
+		/*
+		* W/A for ipu5 isys capture
+		* currently psys driver not enable, so Hardcode to power psys
+		*/
+		if (is_intel_ipu5_hw_glv_a0(isp))
+			writel(0x80000880, isp->base + BUTTRESS_REG_PS_FREQ_CTL);
 	}
 
 	writel(val, isp->base + ctrl->freq_ctl);

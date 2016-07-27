@@ -174,9 +174,14 @@ static void intel_ipu4_isys_tpg_init_controls(struct v4l2_subdev *sd)
 {
 	struct intel_ipu4_isys_tpg *tpg = to_intel_ipu4_isys_tpg(sd);
 
-	tpg->hblank = v4l2_ctrl_new_std(
-		&tpg->asd.ctrl_handler, &intel_ipu4_isys_tpg_ctrl_ops,
-		V4L2_CID_HBLANK, 8, 65535, 1, 1024);
+	if (is_intel_ipu_hw_fpga(tpg->isys->adev->isp))
+		tpg->hblank = v4l2_ctrl_new_std(
+			&tpg->asd.ctrl_handler, &intel_ipu4_isys_tpg_ctrl_ops,
+			V4L2_CID_HBLANK, 8, 65535, 1, 16384);
+	else
+		tpg->hblank = v4l2_ctrl_new_std(
+			&tpg->asd.ctrl_handler, &intel_ipu4_isys_tpg_ctrl_ops,
+			V4L2_CID_HBLANK, 8, 65535, 1, 1024);
 
 	tpg->vblank = v4l2_ctrl_new_std(
 		&tpg->asd.ctrl_handler, &intel_ipu4_isys_tpg_ctrl_ops,

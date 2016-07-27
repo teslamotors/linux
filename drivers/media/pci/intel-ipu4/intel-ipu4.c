@@ -26,10 +26,12 @@
 #include "intel-ipu4.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-buttress-regs.h"
+#include "intel-ipu5-buttress-regs.h"
 #include "intel-ipu4-cpd.h"
 #include "intel-ipu4-pdata.h"
 #include "intel-ipu4-bus.h"
 #include "intel-ipu4-regs.h"
+#include "intel-ipu5-regs.h"
 #include "intel-ipu4-trace.h"
 #include "intel-ipu4-wrapper.h"
 
@@ -461,6 +463,101 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu4 = {
 	},
 };
 
+static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu5 = {
+	.csi2 = {
+		.nports = INTEL_IPU4_ISYS_MAX_CSI2_PORTS,
+		.offsets = { 0x68200, 0x68300, 0x6a200, 0x6a300, 0x6C200, 0x6C300},
+	},
+	.tpg = {
+		.ntpgs = 2,
+		.offsets = { INTEL_IPU5_GLV_A0_TPG0_ADDR_OFFSET,
+			     INTEL_IPU5_GLV_A0_TPG1_ADDR_OFFSET },
+		.sels = { INTEL_IPU5_GLV_GP0OFFSET +
+			  INTEL_IPU5_GPREG_MIPI_PKT_GEN0_SEL,
+			  INTEL_IPU5_GLV_GP1OFFSET +
+			  INTEL_IPU5_GPREG_MIPI_PKT_GEN1_SEL },
+	},
+	.hw_variant = {
+		.offset = INTEL_IPU5_GLV_A0_ISYS_OFFSET,
+		.nr_mmus = 2,
+		.mmu_hw = {
+			{
+			 .offset = INTEL_IPU5_GLV_A0_ISYS_IOMMU0_OFFSET,
+			 .info_bits =
+				 INTEL_IPU5_INFO_REQUEST_DESTINATION_PRIMARY,
+			 .nr_l1streams = 0,
+			 .nr_l2streams = 0,
+			 .insert_read_before_invalidate = true,
+			},
+			{
+			 .offset = INTEL_IPU5_GLV_A0_ISYS_IOMMU1_OFFSET,
+			 .info_bits = INTEL_IPU4_INFO_STREAM_ID_SET(0),
+			 .nr_l1streams = INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS,
+			 .l1_block_sz = { 8, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 },
+			 .l1_zlw_en = { 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+			 .l1_zlw_1d_mode = { 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+			 .l1_ins_zlw_ahead_pages = { 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+			 .l1_zlw_2d_mode = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+			 .nr_l2streams = INTEL_IPU4_MMU_MAX_TLB_L2_STREAMS,
+			 .l2_block_sz = { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+			 .insert_read_before_invalidate = false,
+			 .zlw_invalidate = false,
+			},
+		},
+		.cdc_fifos = 3,
+		.cdc_fifo_threshold = {6, 8, 2},
+		.fw_filename = INTEL_IPU5_ISYS_FIRMWARE_A0,
+	},
+	.num_parallel_streams = INTEL_IPU4_ISYS_NUM_STREAMS_B0,
+	.isys_dma_overshoot =  INTEL_IPU4_ISYS_OVERALLOC_MIN,
+};
+
+static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu5 = {
+	.hw_variant = {
+		.offset = INTEL_IPU5_GLV_A0_PSYS_OFFSET,
+		.nr_mmus = 3,
+		.mmu_hw = {
+			{
+			 .offset = INTEL_IPU5_GLV_A0_PSYS_IOMMU0_OFFSET,
+			 .info_bits =
+				 INTEL_IPU5_INFO_REQUEST_DESTINATION_PRIMARY,
+			 .nr_l1streams = 0,
+			 .nr_l2streams = 0,
+			 .insert_read_before_invalidate = true,
+			},
+			{
+			 .offset = INTEL_IPU5_GLV_A0_PSYS_IOMMU1_OFFSET,
+			 .info_bits = INTEL_IPU5_INFO_STREAM_ID_SET(0),
+			 .nr_l1streams = INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS,
+			 .l1_block_sz = { 0, 0, 0, 0, 10, 8, 10, 8, 0, 4, 4, 12, 0, 0, 0, 8 },
+			 .l1_zlw_en = { 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0 },
+			 .l1_zlw_1d_mode = { 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0 },
+			 .l1_ins_zlw_ahead_pages = { 0, 0, 0, 0, 3, 3, 3, 3, 0, 3, 1, 3, 0, 0, 0, 0 },
+			 .l1_zlw_2d_mode = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+			 .nr_l2streams = INTEL_IPU4_MMU_MAX_TLB_L2_STREAMS,
+			 .l2_block_sz = { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+			 .insert_read_before_invalidate = false,
+			 .zlw_invalidate = false,
+			},
+			{
+			 .offset = INTEL_IPU5_GLV_A0_PSYS_IOMMU1R_OFFSET,
+			 .info_bits = INTEL_IPU5_INFO_STREAM_ID_SET(0),
+			 .nr_l1streams = INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS,
+			 .l1_block_sz = { 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 16, 12, 12, 16 },
+			 .l1_zlw_en = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1 },
+			 .l1_zlw_1d_mode = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1 },
+			 .l1_ins_zlw_ahead_pages = { 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0 },
+			 .l1_zlw_2d_mode = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1 },
+			 .nr_l2streams = INTEL_IPU4_MMU_MAX_TLB_L2_STREAMS,
+			 .l2_block_sz = { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+			 .insert_read_before_invalidate = false,
+			 .zlw_invalidate = false,
+			},
+		},
+		.fw_filename = INTEL_IPU5_PSYS_FIRMWARE_A0,
+	},
+};
+
 /*
  * This is meant only as reference for initialising the buttress control,
  * because the different HW stepping can have different initial values
@@ -491,6 +588,26 @@ static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_ipu4 = {
 	.freq_ctl = BUTTRESS_REG_PS_FREQ_CTL,
 	.pwr_sts_shift = BUTTRESS_PWR_STATE_PS_PWR_FSM_SHIFT,
 	.pwr_sts_mask = BUTTRESS_PWR_STATE_PS_PWR_FSM_MASK,
+	.pwr_sts_on = BUTTRESS_PWR_STATE_PS_PWR_FSM_PS_PWR_UP,
+	.pwr_sts_off = BUTTRESS_PWR_STATE_PS_PWR_FSM_IDLE,
+};
+
+static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_ipu5 = {
+	.divisor = IS_FREQ_CTL_DIVISOR_GLVA0,
+	.qos_floor = 0,
+	.freq_ctl = BUTTRESS_REG_IS_FREQ_CTL,
+	.pwr_sts_shift = IPU5_BUTTRESS_PWR_STATE_IS_PWR_FSM_SHIFT,
+	.pwr_sts_mask = IPU5_BUTTRESS_PWR_STATE_IS_PWR_FSM_MASK,
+	.pwr_sts_on = BUTTRESS_PWR_STATE_IS_PWR_FSM_IS_RDY,
+	.pwr_sts_off = BUTTRESS_PWR_STATE_IS_PWR_FSM_IDLE,
+};
+
+static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_ipu5 = {
+	.divisor = PS_FREQ_CTL_DEFAULT_RATIO_B0,
+	.qos_floor = PS_FREQ_CTL_DEFAULT_RATIO_B0,
+	.freq_ctl = BUTTRESS_REG_PS_FREQ_CTL,
+	.pwr_sts_shift = IPU5_BUTTRESS_PWR_STATE_PS_PWR_FSM_SHIFT,
+	.pwr_sts_mask = IPU5_BUTTRESS_PWR_STATE_PS_PWR_FSM_MASK,
 	.pwr_sts_on = BUTTRESS_PWR_STATE_PS_PWR_FSM_PS_PWR_UP,
 	.pwr_sts_off = BUTTRESS_PWR_STATE_PS_PWR_FSM_IDLE,
 };
@@ -565,6 +682,12 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 		isys_buttress_ctrl = &isys_buttress_ctrl_ipu4;
 		psys_buttress_ctrl = &psys_buttress_ctrl_ipu4;
 		cpd_filename = INTEL_IPU4_CPD_FIRMWARE_B0;
+	} else if (is_intel_ipu5_hw_glv_a0(isp)) {
+		isys_ipdata = &isys_ipdata_ipu5;
+		psys_ipdata = &psys_ipdata_ipu5;
+		isys_buttress_ctrl = &isys_buttress_ctrl_ipu5;
+		psys_buttress_ctrl = &psys_buttress_ctrl_ipu5;
+		cpd_filename = INTEL_IPU5_CPD_FIRMWARE_A0;
 	} else {
 		dev_err(&pdev->dev, "Not supported device\n");
 		trace_printk("E|TMWK\n");
