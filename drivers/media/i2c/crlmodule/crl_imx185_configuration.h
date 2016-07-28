@@ -1099,6 +1099,72 @@ static struct crl_dynamic_register_access imx185_llp_regs[] = {
 	}
 };
 
+/* ctrl-val == 1 ? 1 * 0x02 : 0 * 0x02 -> 2 and 0 */
+static struct crl_arithmetic_ops imx185_wdr_switch_r300c_ops[] = {
+	{
+		.op = CRL_MULTIPLY,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 0x02,
+	}
+};
+
+/* ctrl-val == 1 ? (1 * 0x04 + 0x1) : (0 * 0x04 + 0x1) -> 0x05 and 0x01 */
+static struct crl_arithmetic_ops imx185_wdr_switch_r300f_ops[] = {
+	{
+		.op = CRL_MULTIPLY,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 0x04,
+	},
+	{
+		.op = CRL_ADD,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 0x01,
+	}
+};
+
+/* ctrl-val == 1 ? (0x39 - 1 * 0x01) : (0x39 - 0 * 0x01) -> 0x38 and 0x39 */
+static struct crl_arithmetic_ops imx185_wdr_switch_r3010_ops[] = {
+	{
+		.op = CRL_MULTIPLY,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 0x01,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 0x39,
+	}
+};
+
+/* ctrl-val == 1 ? (0x50 - 1 * 0x41) : (0x50 - 0 * 0x41) -> 0x0f and 0x50 */
+static struct crl_arithmetic_ops imx185_wdr_switch_r3012_ops[] = {
+	{
+		.op = CRL_MULTIPLY,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 0x41,
+	},
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST,
+		.operand.entity_val = 0x50,
+	}
+};
+
+static struct crl_dynamic_register_access imx185_wdr_switch_regs[] = {
+	{ 0x300c, CRL_REG_LEN_08BIT, 0xff,
+		ARRAY_SIZE(imx185_wdr_switch_r300c_ops),
+		imx185_wdr_switch_r300c_ops, 0 },
+	{ 0x300f, CRL_REG_LEN_08BIT, 0xff,
+		ARRAY_SIZE(imx185_wdr_switch_r300f_ops),
+		imx185_wdr_switch_r300f_ops, 0 },
+	{ 0x3010, CRL_REG_LEN_08BIT, 0xff,
+		ARRAY_SIZE(imx185_wdr_switch_r3010_ops),
+		imx185_wdr_switch_r3010_ops, 0 },
+	{ 0x3012, CRL_REG_LEN_08BIT, 0xff,
+		ARRAY_SIZE(imx185_wdr_switch_r3012_ops),
+		imx185_wdr_switch_r3012_ops, 0 },
+};
+
 /* Needed for acpi support for runtime detection */
 static struct crl_sensor_detect_config imx185_sensor_detect_regset[] = {
 	{
@@ -1603,6 +1669,26 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 		.ctrl = 0,
 		.regs_items = 0,
 		.regs = 0,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_BINNER,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_SENSOR_WDR_SWITCH,
+		.name = "CRL_CID_SENSOR_WDR_SWITCH",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = 1,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx185_wdr_switch_regs),
+		.regs = imx185_wdr_switch_regs,
 		.dep_items = 0,
 		.dep_ctrls = 0,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,

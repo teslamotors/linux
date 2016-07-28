@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -31,5 +31,8 @@
 #define CRL_CID_IMX230_HDR_MODE		(V4L2_CID_CRLMODULE_BASE + 5)
 #define CRL_CID_IMX230_HDR_ET_RATIO	(V4L2_CID_CRLMODULE_BASE + 6)
 #define CRL_CID_IMX230_HDR_ZIGZAG	(V4L2_CID_CRLMODULE_BASE + 7)
+
+/* Switch sensor WDR mode on-the-fly */
+#define CRL_CID_SENSOR_WDR_SWITCH	(V4L2_CID_CRLMODULE_BASE + 8)
 
 #endif /* UAPI_LINUX_CRLMODULE_H */
