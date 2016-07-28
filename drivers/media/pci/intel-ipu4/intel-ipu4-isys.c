@@ -674,7 +674,8 @@ static void isys_unregister_subdevices(struct intel_ipu4_isys *isys)
 	intel_ipu4_isys_csi2_be_cleanup(&isys->csi2_be);
 	intel_ipu4_isys_csi2_be_soc_cleanup(&isys->csi2_be_soc);
 
-	intel_ipu4_isys_isa_cleanup(&isys->isa);
+	if (is_intel_ipu4_hw_bxt_b0(isys->adev->isp))
+		intel_ipu4_isys_isa_cleanup(&isys->isa);
 
 	for (i = 0; i < tpg->ntpgs; i++)
 		intel_ipu4_isys_tpg_cleanup(&isys->tpg[i]);
@@ -729,11 +730,13 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		goto fail;
 	}
 
-	rval = intel_ipu4_isys_isa_init(&isys->isa, isys, NULL);
-	if (rval) {
-		dev_info(&isys->adev->dev,
-			 "can't register isa device\n");
-		goto fail;
+	if (is_intel_ipu4_hw_bxt_b0(isys->adev->isp)) {
+		rval = intel_ipu4_isys_isa_init(&isys->isa, isys, NULL);
+		if (rval) {
+			dev_info(&isys->adev->dev,
+				 "can't register isa device\n");
+			goto fail;
+		}
 	}
 
 	for (i = 0; i < csi2->nports; i++) {
@@ -789,16 +792,18 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		}
 	}
 
-	rval = media_create_pad_link(
-		&isys->csi2_be.asd.sd.entity,
-		CSI2_BE_PAD_SOURCE, &isys->isa.asd.sd.entity, ISA_PAD_SINK,
-		0);
-	if (rval) {
-		dev_info(&isys->adev->dev,
-			 "can't create link between CSI2 raw be and ISA\n");
-		goto fail;
+	if (is_intel_ipu4_hw_bxt_b0(isys->adev->isp)) {
+		rval = media_create_pad_link(
+			&isys->csi2_be.asd.sd.entity,
+			CSI2_BE_PAD_SOURCE,
+			&isys->isa.asd.sd.entity, ISA_PAD_SINK,
+			0);
+		if (rval) {
+			dev_info(&isys->adev->dev,
+				 "can't create link between CSI2 raw be and ISA\n");
+			goto fail;
+		}
 	}
-
 	return 0;
 
 fail:
