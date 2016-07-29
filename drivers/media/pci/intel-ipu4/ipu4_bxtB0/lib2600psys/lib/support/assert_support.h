@@ -15,7 +15,8 @@
 #ifndef __ASSERT_SUPPORT_H_INCLUDED__
 #define __ASSERT_SUPPORT_H_INCLUDED__
 
-/* This file provides support for run-time assertions and compile-time assertions.
+/* This file provides support for run-time assertions
+ * and compile-time assertions.
  *
  * Run-time asstions are provided via the following syntax:
  *     assert(condition)
@@ -24,7 +25,8 @@
  * Compile time assertions are provided via the following syntax:
  *     COMPILATION_ERROR_IF(condition);
  * A compile-time assertion will fail to compile if the condition is false.
- * The condition must be constant, such that it can be evaluated at compile time.
+ * The condition must be constant, such that it can be evaluated
+ * at compile time.
  *
  * OP___assert is deprecated.
  */
@@ -35,7 +37,9 @@
  * should not depend on assert to function (actually the assert
  * could be disabled in a release build) it was decided to
  * disable the assert for KW scans (by defining NDEBUG)
- * see also: http://www.klocwork.com/products/documentation/current/Tuning_C/C%2B%2B_analysis#Assertions
+ * see also:
+ * http://www.klocwork.com/products/documentation/current/
+ * Tuning_C/C%2B%2B_analysis#Assertions
  */
 #define NDEBUG
 #endif /* __KLOCWORK__ */
@@ -53,15 +57,18 @@
  *     (void) 1; // C statement with no effect
  *
  * example:
- *  COMPILATION_ERROR_IF( sizeof(struct host_sp_queues) != SIZE_OF_HOST_SP_QUEUES_STRUCT);
+ *  COMPILATION_ERROR_IF( sizeof(struct host_sp_queues) !=
+ *			SIZE_OF_HOST_SP_QUEUES_STRUCT);
  *
  * verify that the macro indeed triggers a compilation error with your compiler:
- *  COMPILATION_ERROR_IF( sizeof(struct host_sp_queues) != (sizeof(struct host_sp_queues)+1) );
+ *  COMPILATION_ERROR_IF( sizeof(struct host_sp_queues) !=
+ *			(sizeof(struct host_sp_queues)+1) );
  *
- * Not all compilers will trigger an error with this macro; use a search engine to search for
- * BUILD_BUG_ON to find other methods.
+ * Not all compilers will trigger an error with this macro;
+ * use a search engine to search for BUILD_BUG_ON to find other methods.
  */
-#define COMPILATION_ERROR_IF(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
+#define COMPILATION_ERROR_IF(condition) \
+((void)sizeof(char[1 - 2*!!(condition)]))
 
 /* Compile time assertion */
 #ifndef CT_ASSERT

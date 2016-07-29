@@ -67,23 +67,6 @@ struct ia_css_isys_output_pin_payload_comm {
 };
 
 /**
- * struct frame_format_info
- * This is not coming though ISYS API, but it is info extraction from the ft
- */
-struct frame_format_info {
-	aligned_uint32(unsigned int, bits_per_raw_pix);
-	aligned_uint32(unsigned int, bits_per_ddr_raw_pixel);
-	aligned_uint32(unsigned int, plane_count);
-	/* Number to divide with the bits_per_raw_pix to get the plane's bpp */
-	aligned_uint32(unsigned int, plane_horz_divider[PIN_PLANES_MAX]);
-	/* Number to divice the frame height to get the plane's line count */
-	aligned_uint32(unsigned int, plane_vert_divider[PIN_PLANES_MAX]);
-/* Used by STR2MMIO/STR2VEC to know how to handle the data after the PF */
-	aligned_uint32(unsigned int, bits_per_raw_pixel_component);
-	aligned_uint32(unsigned int, bits_per_ddr_raw_pixel_component);
-};
-
-/**
  * struct ia_css_isys_output_pin_info_comm
  * @input_pin_id: input pin id/index which is source of
  *	the data for this output pin
@@ -96,7 +79,6 @@ struct frame_format_info {
  */
 struct ia_css_isys_output_pin_info_comm {
 	aligned_struct(struct ia_css_isys_resolution_comm, output_res);
-	aligned_struct(struct frame_format_info, ft_info);
 	aligned_uint32(unsigned int, input_pin_id);
 	aligned_uint32(unsigned int, stride);
 	aligned_uint32(unsigned int, watermark_in_lines);
@@ -308,7 +290,6 @@ struct ia_css_proxy_write_queue_token {
 	aligned_uint32(uint32_t, offset);
 	aligned_uint32(uint32_t, value);
 };
-
 
 /* From here on type defines not coming from the ISYSAPI interface */
 

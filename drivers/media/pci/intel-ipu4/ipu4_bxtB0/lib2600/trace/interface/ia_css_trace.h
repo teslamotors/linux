@@ -42,7 +42,8 @@
  *         Where:
  *             {Module Name} is the name of the targeted module.
  *             {Level}, in decreasing order of severity, is one of the
- *             following values: {ASSERT, ERROR, WARNING, INFO, DEBUG, VERBOSE}.
+ *             following values:
+ *             {ASSERT, ERROR, WARNING, INFO, DEBUG, VERBOSE}.
  *
  *         Example:
  *             #define NCI_DMA_TRACE_LEVEL_ASSERT IA_CSS_TRACE_LEVEL_DISABLED
@@ -53,6 +54,12 @@
 /**< Enables the corresponding trace level. */
 #define IA_CSS_TRACE_LEVEL_ENABLED  1
 
+/*
+ * Used in macro definition with do-while loop
+ * for removing checkpatch warnings
+ */
+#define IA_CSS_TRACE_FILE_DUMMY_DEFINE
+
 /**
  * STEP 3: Define IA_CSS_TRACE_PRINT_FILE_LINE to have file name and
  * line printed with every log message.
@@ -60,7 +67,6 @@
  *	   Example:
  *	       #define IA_CSS_TRACE_PRINT_FILE_LINE
  */
-
 
 /*
 ** Interface
@@ -98,8 +104,8 @@
 	IA_CSS_TRACE_IMPL(module, 2, severity, format, a1, a2)
 
 /**
- * Logs a message with three arguments if the targeted severity level is enabled
- * at compile-time.
+ * Logs a message with three arguments if the targeted severity level
+ * is enabled at compile-time.
  * @see IA_CSS_TRACE_0
  */
 #define IA_CSS_TRACE_3(module, severity, format, a1, a2, a3) \
@@ -130,12 +136,13 @@
 	IA_CSS_TRACE_IMPL(module, 6, severity, format, a1, a2, a3, a4, a5, a6)
 
 /**
- * Logs a message with seven arguments if the targeted severity level is enabled
- * at compile-time.
+ * Logs a message with seven arguments if the targeted severity level
+ * is enabled at compile-time.
  * @see IA_CSS_TRACE_0
  */
 #define IA_CSS_TRACE_7(module, severity, format, a1, a2, a3, a4, a5, a6, a7) \
-	IA_CSS_TRACE_IMPL(module, 7, severity, format, a1, a2, a3, a4, a5, a6, a7)
+	IA_CSS_TRACE_IMPL(module, 7, severity, format, \
+					a1, a2, a3, a4, a5, a6, a7)
 
 /*
 ** Dynamic
@@ -204,8 +211,8 @@
 	IA_CSS_TRACE_DYNAMIC_IMPL(module, 2, severity, format, a1, a2)
 
 /**
- * Logs a message with three arguments if the targeted severity level is enabled
- * both at compile-time, and run-time.
+ * Logs a message with three arguments if the targeted severity level
+ * is enabled both at compile-time, and run-time.
  * @see IA_CSS_TRACE_DYNAMIC_0
  */
 #define IA_CSS_TRACE_DYNAMIC_3(module, severity, format, a1, a2, a3) \
@@ -225,24 +232,28 @@
  * @see IA_CSS_TRACE_DYNAMIC_0
  */
 #define IA_CSS_TRACE_DYNAMIC_5(module, severity, format, a1, a2, a3, a4, a5) \
-	IA_CSS_TRACE_DYNAMIC_IMPL(module, 5, severity, format, a1, a2, a3, a4, a5)
+	IA_CSS_TRACE_DYNAMIC_IMPL(module, 5, severity, format, \
+						a1, a2, a3, a4, a5)
 
 /**
  * Logs a message with six arguments if the targeted severity level is enabled
  * both at compile-time, and run-time.
  * @see IA_CSS_TRACE_DYNAMIC_0
  */
-#define IA_CSS_TRACE_DYNAMIC_6(module, severity, format, a1, a2, a3, a4, a5, a6) \
-	IA_CSS_TRACE_DYNAMIC_IMPL(module, 6, severity, format, a1, a2, a3, a4, a5, a6)
+#define IA_CSS_TRACE_DYNAMIC_6(module, severity, format, \
+						a1, a2, a3, a4, a5, a6) \
+	IA_CSS_TRACE_DYNAMIC_IMPL(module, 6, severity, format, \
+						a1, a2, a3, a4, a5, a6)
 
 /**
- * Logs a message with seven arguments if the targeted severity level is enabled
- * both at compile-time, and run-time.
+ * Logs a message with seven arguments if the targeted severity level
+ * is enabled both at compile-time, and run-time.
  * @see IA_CSS_TRACE_DYNAMIC_0
  */
-#define IA_CSS_TRACE_DYNAMIC_7(module, severity, format, a1, a2, a3, a4, a5, a6, a7) \
-	IA_CSS_TRACE_DYNAMIC_IMPL(module, 7, severity, format, a1, a2, a3, a4, a5, a6, a7)
-
+#define IA_CSS_TRACE_DYNAMIC_7(module, severity, format, \
+						a1, a2, a3, a4, a5, a6, a7) \
+	IA_CSS_TRACE_DYNAMIC_IMPL(module, 7, severity, format, \
+						a1, a2, a3, a4, a5, a6, a7)
 
 /*
 ** Implementation
@@ -251,7 +262,6 @@
 /* CAT */
 #define IA_CSS_TRACE_CAT_IMPL(a, b) a ## b
 #define IA_CSS_TRACE_CAT(a, b) IA_CSS_TRACE_CAT_IMPL(a, b)
-
 
 /* Bridge */
 #if defined(__HIVECC) || defined(__GNUC__)
@@ -300,10 +310,13 @@
 	)
 
 /* Bridge */
-#define IA_CSS_TRACE_DYNAMIC_IMPL(module, argument_count, severity, arguments ...) \
+#define IA_CSS_TRACE_DYNAMIC_IMPL(module, argument_count, severity, \
+							arguments ...) \
 	do { \
-		if (IA_CSS_TRACE_CAT(IA_CSS_TRACE_CAT(module, _trace_level_), severity)) { \
-			IA_CSS_TRACE_IMPL(module, argument_count, severity, ## arguments); \
+		if (IA_CSS_TRACE_CAT(IA_CSS_TRACE_CAT(module, _trace_level_), \
+							severity)) { \
+			IA_CSS_TRACE_IMPL(module, argument_count, severity, \
+							## arguments); \
 		} \
 	} while (0)
 #elif defined(_MSC_VER)
@@ -354,8 +367,10 @@
 /* Bridge */
 #define IA_CSS_TRACE_DYNAMIC_IMPL(module, argument_count, severity, ...) \
 	do { \
-		if (IA_CSS_TRACE_CAT(IA_CSS_TRACE_CAT(module, _trace_level_), severity)) { \
-			IA_CSS_TRACE_IMPL(module, argument_count, severity, __VA_ARGS__); \
+		if (IA_CSS_TRACE_CAT(IA_CSS_TRACE_CAT(module, _trace_level_), \
+							severity)) { \
+			IA_CSS_TRACE_IMPL(module, argument_count, severity, \
+							__VA_ARGS__); \
 		} \
 	} while (0)
 #endif
@@ -372,7 +387,8 @@
 	#define IA_CSS_TRACE_NATIVE(severity, module, format, arguments ...) \
 	do { \
 		IA_CSS_TRACE_FILE_PRINT_COMMAND; \
-		PRINT(IA_CSS_TRACE_FORMAT_AUG_NATIVE(severity, module, format),  ## arguments); \
+		PRINT(IA_CSS_TRACE_FORMAT_AUG_NATIVE(severity, module, \
+						format),  ## arguments); \
 	} while (0)
 	/* TODO: In case Host Side tracing is needed to be mapped to the
 	 * Tunit, the following "IA_CSS_TRACE_TRACE" needs to be modified from
@@ -381,7 +397,8 @@
 	#define IA_CSS_TRACE_TRACE(severity, module, format, arguments ...) \
 	do { \
 		IA_CSS_TRACE_FILE_PRINT_COMMAND; \
-		PRINT(IA_CSS_TRACE_FORMAT_AUG_TRACE(severity, module, format),  ## arguments); \
+		PRINT(IA_CSS_TRACE_FORMAT_AUG_TRACE(severity, module, \
+						format),  ## arguments); \
 	} while (0)
 
 #elif defined(_MSC_VER)
@@ -390,7 +407,8 @@
 	#define IA_CSS_TRACE_NATIVE(severity, module, format, ...) \
 		do { \
 			IA_CSS_TRACE_FILE_PRINT_COMMAND; \
-			PRINT(IA_CSS_TRACE_FORMAT_AUG_NATIVE(severity, module, format),  __VA_ARGS__); \
+			PRINT(IA_CSS_TRACE_FORMAT_AUG_NATIVE(severity, \
+					module, format),  __VA_ARGS__); \
 		} while (0)
 	/* TODO: In case Host Side tracing is needed to be mapped to the
 	 * Tunit, the following "IA_CSS_TRACE_TRACE" needs to be modified from
@@ -399,7 +417,8 @@
 	#define IA_CSS_TRACE_TRACE(severity, module, format, ...) \
 		do { \
 			IA_CSS_TRACE_FILE_PRINT_COMMAND; \
-			PRINT(IA_CSS_TRACE_FORMAT_AUG_TRACE(severity, module, format),  __VA_ARGS__); \
+			PRINT(IA_CSS_TRACE_FORMAT_AUG_TRACE(severity, \
+					module, format),  __VA_ARGS__); \
 		} while (0)
 #else
 	#error Unsupported platform!
@@ -421,13 +440,16 @@
 
 	#define IA_CSS_TRACE_MODULE_SEVERITY_PRINT(module, severity) \
 		do { \
-			OP___printstring("["module"]:["severity"]:") VOLATILE; \
+			IA_CSS_TRACE_FILE_DUMMY_DEFINE; \
+			OP___printstring("["module"]:["severity"]:") \
+			VOLATILE; \
 		} while (0)
 
 	#define IA_CSS_TRACE_MSG_NATIVE(severity, module, format) \
 		do { \
 			IA_CSS_TRACE_FILE_PRINT_COMMAND; \
-			OP___printstring("["module"]:["severity"]: "format) VOLATILE; \
+			OP___printstring("["module"]:["severity"]: "format) \
+			VOLATILE; \
 		} while (0)
 
 	#define IA_CSS_TRACE_ARG_NATIVE(module, severity, i, value) \
@@ -460,7 +482,8 @@
 			IA_CSS_TRACE_ARG_NATIVE(module, severity, 3, a3); \
 		} while (0)
 
-	#define IA_CSS_TRACE_NATIVE_4(severity, module, format, a1, a2, a3, a4) \
+	#define IA_CSS_TRACE_NATIVE_4(severity, module, format, \
+						a1, a2, a3, a4) \
 		do { \
 			IA_CSS_TRACE_MSG_NATIVE(severity, module, format); \
 			IA_CSS_TRACE_ARG_NATIVE(module, severity, 1, a1); \
@@ -469,7 +492,8 @@
 			IA_CSS_TRACE_ARG_NATIVE(module, severity, 4, a4); \
 		} while (0)
 
-	#define IA_CSS_TRACE_NATIVE_5(severity, module, format, a1, a2, a3, a4, a5) \
+	#define IA_CSS_TRACE_NATIVE_5(severity, module, format, \
+						a1, a2, a3, a4, a5) \
 		do { \
 			IA_CSS_TRACE_MSG_NATIVE(severity, module, format); \
 			IA_CSS_TRACE_ARG_NATIVE(module, severity, 1, a1); \
@@ -479,7 +503,8 @@
 			IA_CSS_TRACE_ARG_NATIVE(module, severity, 5, a5); \
 		} while (0)
 
-	#define IA_CSS_TRACE_NATIVE_6(severity, module, format, a1, a2, a3, a4, a5, a6) \
+	#define IA_CSS_TRACE_NATIVE_6(severity, module, format, \
+						a1, a2, a3, a4, a5, a6) \
 		do { \
 			IA_CSS_TRACE_MSG_NATIVE(severity, module, format); \
 			IA_CSS_TRACE_ARG_NATIVE(module, severity, 1, a1); \
@@ -490,7 +515,8 @@
 			IA_CSS_TRACE_ARG_NATIVE(module, severity, 6, a6); \
 		} while (0)
 
-	#define IA_CSS_TRACE_NATIVE_7(severity, module, format, a1, a2, a3, a4, a5, a6, a7) \
+	#define IA_CSS_TRACE_NATIVE_7(severity, module, format, \
+						a1, a2, a3, a4, a5, a6, a7) \
 		do { \
 			IA_CSS_TRACE_MSG_NATIVE(severity, module, format); \
 			IA_CSS_TRACE_ARG_NATIVE(module, severity, 1, a1); \
@@ -511,42 +537,54 @@
 		"[" module "]" format " : PID = %x : Timestamp = %d : PC = %x"
 
 	#define IA_CSS_TRACE_TRACE_0(severity, module, format) \
-		vied_nci_tunit_print(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
+		vied_nci_tunit_print(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, \
+								module), \
 			severity)
 
 	#define IA_CSS_TRACE_TRACE_1(severity, module, format, a1) \
-		vied_nci_tunit_print1i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
+		vied_nci_tunit_print1i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, \
+								module), \
 			severity, a1)
 
 	#define IA_CSS_TRACE_TRACE_2(severity, module, format, a1, a2) \
-		vied_nci_tunit_print2i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
+		vied_nci_tunit_print2i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, \
+								module), \
 			severity, a1, a2)
 
 	#define IA_CSS_TRACE_TRACE_3(severity, module, format, a1, a2, a3) \
-		vied_nci_tunit_print3i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
+		vied_nci_tunit_print3i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, \
+								module), \
 			severity, a1, a2, a3)
 
 	#define IA_CSS_TRACE_TRACE_4(severity, module, format, a1, a2, a3, a4) \
-		vied_nci_tunit_print4i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
+		vied_nci_tunit_print4i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, \
+								module), \
 			severity, a1, a2, a3, a4)
 
-	#define IA_CSS_TRACE_TRACE_5(severity, module, format, a1, a2, a3, a4, a5) \
-		vied_nci_tunit_print5i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
+	#define IA_CSS_TRACE_TRACE_5(severity, module, format, \
+						a1, a2, a3, a4, a5) \
+		vied_nci_tunit_print5i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, \
+								module), \
 			severity, a1, a2, a3, a4, a5)
 
-	#define IA_CSS_TRACE_TRACE_6(severity, module, format, a1, a2, a3, a4, a5, a6) \
-		vied_nci_tunit_print6i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
+	#define IA_CSS_TRACE_TRACE_6(severity, module, format, \
+						a1, a2, a3, a4, a5, a6) \
+		vied_nci_tunit_print6i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, \
+								module), \
 			severity, a1, a2, a3, a4, a5, a6)
 
-	#define IA_CSS_TRACE_TRACE_7(severity, module, format, a1, a2, a3, a4, a5, a6, a7) \
-		vied_nci_tunit_print7i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, module), \
+	#define IA_CSS_TRACE_TRACE_7(severity, module, format, \
+						a1, a2, a3, a4, a5, a6, a7) \
+		vied_nci_tunit_print7i(IA_CSS_TRACE_AUG_FORMAT_TRACE(format, \
+								module), \
 			severity, a1, a2, a3, a4, a5, a6, a7)
 
 #elif defined(IA_CSS_TRACE_PLATFORM_HOST)
 	#include "print_support.h"
 
 	#ifdef IA_CSS_TRACE_PRINT_FILE_LINE
-		#define IA_CSS_TRACE_FILE_PRINT_COMMAND PRINT("%s:%d:\n", __FILE__, __LINE__)
+		#define IA_CSS_TRACE_FILE_PRINT_COMMAND \
+				PRINT("%s:%d:\n", __FILE__, __LINE__)
 	#else
 		#define IA_CSS_TRACE_FILE_PRINT_COMMAND
 	#endif
@@ -566,17 +604,24 @@
 	#define IA_CSS_TRACE_NATIVE_3(severity, module, format, a1, a2, a3) \
 		IA_CSS_TRACE_NATIVE(severity, module, format, a1, a2, a3)
 
-	#define IA_CSS_TRACE_NATIVE_4(severity, module, format, a1, a2, a3, a4) \
+	#define IA_CSS_TRACE_NATIVE_4(severity, module, format, \
+						a1, a2, a3, a4) \
 		IA_CSS_TRACE_NATIVE(severity, module, format, a1, a2, a3, a4)
 
-	#define IA_CSS_TRACE_NATIVE_5(severity, module, format, a1, a2, a3, a4, a5) \
-		IA_CSS_TRACE_NATIVE(severity, module, format, a1, a2, a3, a4, a5)
+	#define IA_CSS_TRACE_NATIVE_5(severity, module, format, \
+						a1, a2, a3, a4, a5) \
+		IA_CSS_TRACE_NATIVE(severity, module, format, \
+						a1, a2, a3, a4, a5)
 
-	#define IA_CSS_TRACE_NATIVE_6(severity, module, format, a1, a2, a3, a4, a5, a6) \
-		IA_CSS_TRACE_NATIVE(severity, module, format, a1, a2, a3, a4, a5, a6)
+	#define IA_CSS_TRACE_NATIVE_6(severity, module, format, \
+						a1, a2, a3, a4, a5, a6) \
+		IA_CSS_TRACE_NATIVE(severity, module, format, \
+						a1, a2, a3, a4, a5, a6)
 
-	#define IA_CSS_TRACE_NATIVE_7(severity, module, format, a1, a2, a3, a4, a5, a6, a7) \
-		IA_CSS_TRACE_NATIVE(severity, module, format, a1, a2, a3, a4, a5, a6, a7)
+	#define IA_CSS_TRACE_NATIVE_7(severity, module, format, \
+						a1, a2, a3, a4, a5, a6, a7) \
+		IA_CSS_TRACE_NATIVE(severity, module, format, \
+						a1, a2, a3, a4, a5, a6, a7)
 
 	#define IA_CSS_TRACE_FORMAT_AUG_TRACE(severity, module, format) \
 			"["module"]:["severity"]: "format
@@ -593,18 +638,24 @@
 	#define IA_CSS_TRACE_TRACE_3(severity, module, format, a1, a2, a3) \
 		IA_CSS_TRACE_TRACE(severity, module, format, a1, a2, a3)
 
-	#define IA_CSS_TRACE_TRACE_4(severity, module, format, a1, a2, a3, a4) \
+	#define IA_CSS_TRACE_TRACE_4(severity, module, format, \
+						a1, a2, a3, a4) \
 		IA_CSS_TRACE_TRACE(severity, module, format, a1, a2, a3, a4)
 
-	#define IA_CSS_TRACE_TRACE_5(severity, module, format, a1, a2, a3, a4, a5) \
-		IA_CSS_TRACE_TRACE(severity, module, format, a1, a2, a3, a4, a5)
+	#define IA_CSS_TRACE_TRACE_5(severity, module, format, \
+						a1, a2, a3, a4, a5) \
+		IA_CSS_TRACE_TRACE(severity, module, format, \
+						a1, a2, a3, a4, a5)
 
-	#define IA_CSS_TRACE_TRACE_6(severity, module, format, a1, a2, a3, a4, a5, a6) \
-		IA_CSS_TRACE_TRACE(severity, module, format, a1, a2, a3, a4, a5, a6)
+	#define IA_CSS_TRACE_TRACE_6(severity, module, format, \
+						a1, a2, a3, a4, a5, a6) \
+		IA_CSS_TRACE_TRACE(severity, module, format, \
+						a1, a2, a3, a4, a5, a6)
 
-	#define IA_CSS_TRACE_TRACE_7(severity, module, format, a1, a2, a3, a4, a5, a6, a7) \
-		IA_CSS_TRACE_TRACE(severity, module, format, a1, a2, a3, a4, a5, a6, a7)
-
+	#define IA_CSS_TRACE_TRACE_7(severity, module, format, \
+						a1, a2, a3, a4, a5, a6, a7) \
+		IA_CSS_TRACE_TRACE(severity, module, format, \
+						a1, a2, a3, a4, a5, a6, a7)
 #endif
 
 /* Disabled */
@@ -614,9 +665,12 @@
 #define IA_CSS_TRACE_2_1_0(severity, module, format, arg1, arg2)
 #define IA_CSS_TRACE_3_1_0(severity, module, format, arg1, arg2, arg3)
 #define IA_CSS_TRACE_4_1_0(severity, module, format, arg1, arg2, arg3, arg4)
-#define IA_CSS_TRACE_5_1_0(severity, module, format, arg1, arg2, arg3, arg4, arg5)
-#define IA_CSS_TRACE_6_1_0(severity, module, format, arg1, arg2, arg3, arg4, arg5, arg6)
-#define IA_CSS_TRACE_7_1_0(severity, module, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+#define IA_CSS_TRACE_5_1_0(severity, module, format, arg1, arg2, arg3, arg4, \
+							arg5)
+#define IA_CSS_TRACE_6_1_0(severity, module, format, arg1, arg2, arg3, arg4, \
+							arg5, arg6)
+#define IA_CSS_TRACE_7_1_0(severity, module, format, arg1, arg2, arg3, arg4, \
+							arg5, arg6, arg7)
 
 /* Enabled */
 /* Legend: IA_CSS_TRACE_{Argument Count}_{Backend ID}_{Enabled} */
@@ -638,9 +692,6 @@
 #define IA_CSS_TRACE_SEVERITY_DEBUG_1   "Debug"
 #define IA_CSS_TRACE_SEVERITY_VERBOSE_1 "Verbose"
 
-
-
-
 /* Disabled */
 /* Legend: IA_CSS_TRACE_{Argument Count}_{Backend ID}_{Enabled} */
 #define IA_CSS_TRACE_0_2_0(severity, module, format)
@@ -648,9 +699,12 @@
 #define IA_CSS_TRACE_2_2_0(severity, module, format, arg1, arg2)
 #define IA_CSS_TRACE_3_2_0(severity, module, format, arg1, arg2, arg3)
 #define IA_CSS_TRACE_4_2_0(severity, module, format, arg1, arg2, arg3, arg4)
-#define IA_CSS_TRACE_5_2_0(severity, module, format, arg1, arg2, arg3, arg4, arg5)
-#define IA_CSS_TRACE_6_2_0(severity, module, format, arg1, arg2, arg3, arg4, arg5, arg6)
-#define IA_CSS_TRACE_7_2_0(severity, module, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+#define IA_CSS_TRACE_5_2_0(severity, module, format, arg1, arg2, arg3, arg4, \
+							arg5)
+#define IA_CSS_TRACE_6_2_0(severity, module, format, arg1, arg2, arg3, arg4, \
+							arg5, arg6)
+#define IA_CSS_TRACE_7_2_0(severity, module, format, arg1, arg2, arg3, arg4, \
+							arg5, arg6, arg7)
 
 /* Enabled */
 /* Legend: IA_CSS_TRACE_{Argument Count}_{Backend ID}_{Enabled} */
@@ -694,6 +748,7 @@
 
 #define IA_CSS_TRACE_DYNAMIC_DECLARE_CONFIG_FUNC_IMPL(module) \
 	do { \
+		IA_CSS_TRACE_FILE_DUMMY_DEFINE; \
 		void IA_CSS_TRACE_CAT(module, _trace_configure)\
 			(int argc, const char *const *argv); \
 	} while (0)
@@ -770,7 +825,8 @@
 	}
 
 #define IA_CSS_TRACE_DYNAMIC_DEFINE_CONFIG_FUNC_IMPL(module) \
-void IA_CSS_TRACE_CAT(module, _trace_configure)(const int argc, const char *const *const argv) \
+void IA_CSS_TRACE_CAT(module, _trace_configure)(const int argc, \
+				const char *const *const argv) \
 { \
 	int i = 1; \
 	const char *levels = 0; \

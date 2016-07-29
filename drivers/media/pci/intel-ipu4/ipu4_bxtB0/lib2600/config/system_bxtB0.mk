@@ -10,8 +10,7 @@
  # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  # more details.
- #
- 
+ # 
 
 LOGICAL_FW_INPUT_SYSTEM          = input_system_system
 LOGICAL_FW_PROCESSING_SYSTEM     = processing_system_system

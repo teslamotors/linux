@@ -26,10 +26,14 @@ enum ipu_device_gp_id {
 };
 
 enum ipu_device_gp_psa_mux_id {
-	IPU_DEVICE_GP_PSA_STILLS_MODE_MUX = 0,	/* Post RYNR/CCN	0-To ACM (Video)	1-To Demosaic (Stills)*/
-	IPU_DEVICE_GP_PSA_V2S_RGB_4_DEMUX,		/* Post Vec2Str 4	0-To GTC		1-To ACM  */
-	IPU_DEVICE_GP_PSA_S2V_RGB_F_MUX,		/* Post DM and pre ACM	0-CCM/ACM		1-DM Componenet Splitter */
-	IPU_DEVICE_GP_PSA_ACM_DEMUX,		/* Pre ACM/CCM		0-To CCM/ACM		1-To str2vec id_f */
+	/* Post RYNR/CCN: 0-To ACM (Video), 1-To Demosaic (Stills)*/
+	IPU_DEVICE_GP_PSA_STILLS_MODE_MUX = 0,
+	/* Post Vec2Str 4: 0-To GTC, 1-To ACM  */
+	IPU_DEVICE_GP_PSA_V2S_RGB_4_DEMUX,
+	/* Post DM and pre ACM	0-CCM/ACM: 1-DM Componenet Splitter */
+	IPU_DEVICE_GP_PSA_S2V_RGB_F_MUX,
+	/* Pre ACM/CCM: 0-To CCM/ACM, 1-To str2vec id_f */
+	IPU_DEVICE_GP_PSA_ACM_DEMUX,
 	IPU_DEVICE_GP_PSA_MUX_NUM_MUX
 };
 
@@ -55,9 +59,9 @@ enum ipu_device_gp_isl_mux_id {
 	IPU_DEVICE_GP_ISL_MUX_NUM_MUX
 };
 
-#define IPU_DEVICE_GP_MAX_NUM MAX4((uint32_t)IPU_DEVICE_GP_PSA_MUX_NUM_MUX,      \
-	(uint32_t)IPU_DEVICE_GP_ISA_STATIC_MUX_NUM_MUX,                           \
-	(uint32_t)IPU_DEVICE_GP_ISA_RUNTIME_MUX_NUM_MUX,                          \
+#define IPU_DEVICE_GP_MAX_NUM MAX4((uint32_t)IPU_DEVICE_GP_PSA_MUX_NUM_MUX, \
+	(uint32_t)IPU_DEVICE_GP_ISA_STATIC_MUX_NUM_MUX,                     \
+	(uint32_t)IPU_DEVICE_GP_ISA_RUNTIME_MUX_NUM_MUX,                    \
 	(uint32_t)IPU_DEVICE_GP_ISL_MUX_NUM_MUX)
 
 #endif /* _IPU_DEVICE_GP_DEVICES_H_ */

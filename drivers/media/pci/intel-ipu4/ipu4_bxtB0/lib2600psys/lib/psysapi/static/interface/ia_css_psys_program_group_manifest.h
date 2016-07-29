@@ -43,7 +43,7 @@
  @return size, 0 on invalid argument
  */
 extern size_t ia_css_program_group_manifest_get_size(
-	const ia_css_program_group_manifest_t	*manifest);
+	const ia_css_program_group_manifest_t *manifest);
 
 /*! Get the program group ID of the program group manifest object
 
@@ -52,8 +52,8 @@ extern size_t ia_css_program_group_manifest_get_size(
  @return program group ID, IA_CSS_PROGRAM_GROUP_INVALID_ID on invalid argument
 */
 extern ia_css_program_group_ID_t
-	ia_css_program_group_manifest_get_program_group_ID(
-		const ia_css_program_group_manifest_t	*manifest);
+ia_css_program_group_manifest_get_program_group_ID(
+	const ia_css_program_group_manifest_t *manifest);
 
 /*! Set the program group ID of the program group manifest object
 
@@ -64,8 +64,8 @@ extern ia_css_program_group_ID_t
  @return 0 on success, -1 on invalid manifest argument
  */
 extern int ia_css_program_group_manifest_set_program_group_ID(
-	ia_css_program_group_manifest_t		*manifest,
-	ia_css_program_group_ID_t		id);
+	ia_css_program_group_manifest_t *manifest,
+	ia_css_program_group_ID_t id);
 
 /*! Get the storage alignment constraint of the program group binary data
 
@@ -75,7 +75,7 @@ extern int ia_css_program_group_manifest_set_program_group_ID(
 	argument
 */
 extern uint8_t ia_css_program_group_manifest_get_alignment(
-	const ia_css_program_group_manifest_t	*manifest);
+	const ia_css_program_group_manifest_t *manifest);
 
 /*! Set the storage alignment constraint of the program group binary data
 
@@ -85,7 +85,7 @@ extern uint8_t ia_css_program_group_manifest_get_alignment(
  @return < 0 on invalid manifest argument
  */
 extern int ia_css_program_group_manifest_set_alignment(
-	ia_css_program_group_manifest_t		*manifest,
+	ia_css_program_group_manifest_t *manifest,
 	const uint8_t alignment);
 
 /*! Get the kernel enable bitmap of the program group
@@ -94,8 +94,9 @@ extern int ia_css_program_group_manifest_set_alignment(
 
  @return bitmap, 0 on invalid manifest argument
  */
-extern ia_css_kernel_bitmap_t ia_css_program_group_manifest_get_kernel_bitmap(
-	const ia_css_program_group_manifest_t	*manifest);
+extern ia_css_kernel_bitmap_t
+ia_css_program_group_manifest_get_kernel_bitmap(
+	const ia_css_program_group_manifest_t *manifest);
 
 /*! Set the kernel enable bitmap of the program group
 
@@ -105,8 +106,8 @@ extern ia_css_kernel_bitmap_t ia_css_program_group_manifest_get_kernel_bitmap(
  @return < 0 on invalid manifest argument
  */
 extern int ia_css_program_group_manifest_set_kernel_bitmap(
-	ia_css_program_group_manifest_t		*manifest,
-	const ia_css_kernel_bitmap_t		bitmap);
+	ia_css_program_group_manifest_t *manifest,
+	const ia_css_kernel_bitmap_t bitmap);
 
 /*! Get the number of programs in the program group manifest object
 
@@ -115,7 +116,7 @@ extern int ia_css_program_group_manifest_set_kernel_bitmap(
  @return program count, 0 on invalid manifest argument
  */
 extern uint8_t ia_css_program_group_manifest_get_program_count(
-	const ia_css_program_group_manifest_t	*manifest);
+	const ia_css_program_group_manifest_t *manifest);
 
 /*! Get the number of terminals in the program group manifest object
 
@@ -124,7 +125,7 @@ extern uint8_t ia_css_program_group_manifest_get_program_count(
  @return terminal count, 0 on invalid manifest argument
  */
 extern uint8_t ia_css_program_group_manifest_get_terminal_count(
-	const ia_css_program_group_manifest_t	*manifest);
+	const ia_css_program_group_manifest_t *manifest);
 
 /*! Get the (pointer to) private data blob in the manifest
 
@@ -133,7 +134,7 @@ extern uint8_t ia_css_program_group_manifest_get_terminal_count(
  @return private data blob, NULL on invalid manifest argument
  */
 extern void *ia_css_program_group_manifest_get_private_data(
-	const ia_css_program_group_manifest_t	*manifest);
+	const ia_css_program_group_manifest_t *manifest);
 
 /*! Get the (pointer to) indexed program manifest in the program group manifest
  * object
@@ -143,10 +144,10 @@ extern void *ia_css_program_group_manifest_get_private_data(
 
  @return program manifest, NULL on invalid arguments
  */
-extern ia_css_program_manifest_t
-	*ia_css_program_group_manifest_get_program_manifest(
-		const ia_css_program_group_manifest_t	*manifest,
-		const unsigned int			program_index);
+extern ia_css_program_manifest_t *
+ia_css_program_group_manifest_get_program_manifest(
+	const ia_css_program_group_manifest_t *manifest,
+	const unsigned int program_index);
 
 /*! Get the (pointer to) indexed terminal manifest in the program group
  * manifest object
@@ -156,10 +157,10 @@ extern ia_css_program_manifest_t
 
  @return terminal manifest, NULL on invalid arguments
  */
-extern ia_css_terminal_manifest_t
-	*ia_css_program_group_manifest_get_terminal_manifest(
-		const ia_css_program_group_manifest_t	*manifest,
-		const unsigned int			terminal_index);
+extern ia_css_terminal_manifest_t *
+ia_css_program_group_manifest_get_terminal_manifest(
+	const ia_css_program_group_manifest_t *manifest,
+	const unsigned int terminal_index);
 
 /*! Get the (pointer to) indexed data terminal manifest in the program group
  * manifest object
@@ -169,10 +170,10 @@ extern ia_css_terminal_manifest_t
 
  @return data terminal manifest, NULL on invalid arguments
  */
-extern ia_css_data_terminal_manifest_t
-	*ia_css_program_group_manifest_get_data_terminal_manifest(
-		const ia_css_program_group_manifest_t	*manifest,
-		const unsigned int			terminal_index);
+extern ia_css_data_terminal_manifest_t *
+ia_css_program_group_manifest_get_data_terminal_manifest(
+	const ia_css_program_group_manifest_t *manifest,
+	const unsigned int terminal_index);
 
 /*! Get the (pointer to) indexed parameter terminal manifest in the program
  * group manifest object
@@ -182,10 +183,10 @@ extern ia_css_data_terminal_manifest_t
 
  @return parameter terminal manifest, NULL on invalid arguments
  */
-extern ia_css_param_terminal_manifest_t
-	*ia_css_program_group_manifest_get_param_terminal_manifest(
-		const ia_css_program_group_manifest_t	*manifest,
-		const unsigned int			terminal_index);
+extern ia_css_param_terminal_manifest_t *
+ia_css_program_group_manifest_get_param_terminal_manifest(
+	const ia_css_program_group_manifest_t *manifest,
+	const unsigned int terminal_index);
 
 /*! Get the (pointer to) indexed spatial param terminal manifest in the program
  * group manifest object
@@ -195,10 +196,10 @@ extern ia_css_param_terminal_manifest_t
 
  @return spatial param terminal manifest, NULL on invalid arguments
  */
-extern ia_css_spatial_param_terminal_manifest_t
-	*ia_css_program_group_manifest_get_spatial_param_terminal_manifest(
-		const ia_css_program_group_manifest_t	*manifest,
-		const unsigned int			terminal_index);
+extern ia_css_spatial_param_terminal_manifest_t *
+ia_css_program_group_manifest_get_spatial_param_terminal_manifest(
+	const ia_css_program_group_manifest_t *manifest,
+	const unsigned int terminal_index);
 
 /*! Get the (pointer to) indexed sliced param terminal manifest in the program
  * group manifest object
@@ -208,23 +209,23 @@ extern ia_css_spatial_param_terminal_manifest_t
 
  @return sliced param terminal manifest, NULL on invalid arguments
  */
-ia_css_sliced_param_terminal_manifest_t
-	*ia_css_program_group_manifest_get_sliced_param_terminal_manifest(
-		const ia_css_program_group_manifest_t	*manifest,
-		const unsigned int			terminal_index);
+ia_css_sliced_param_terminal_manifest_t *
+ia_css_program_group_manifest_get_sliced_param_terminal_manifest(
+	const ia_css_program_group_manifest_t *manifest,
+	const unsigned int terminal_index);
 
 /*! Get the (pointer to) indexed program terminal manifest in the program group
  * manifest object
 
-  @parammanifest[in]program group manifest object
-  @paramprogram_index[in]index of the terminal manifest object
+ @parammanifest[in]program group manifest object
+ @paramprogram_index[in]index of the terminal manifest object
 
-@return program terminal manifest, NULL on invalid arguments
-	*/
-	extern ia_css_program_terminal_manifest_t
-	*ia_css_program_group_manifest_get_program_terminal_manifest(
-		const ia_css_program_group_manifest_t	*manifest,
-		const unsigned int			terminal_index);
+ @return program terminal manifest, NULL on invalid arguments
+ */
+extern ia_css_program_terminal_manifest_t *
+ia_css_program_group_manifest_get_program_terminal_manifest(
+	const ia_css_program_group_manifest_t *manifest,
+	const unsigned int terminal_index);
 
 /*!	initialize program group manifest
 
@@ -254,18 +255,18 @@ ia_css_sliced_param_terminal_manifest_t
  @return none;
  */
 extern void ia_css_program_group_manifest_init(
-	ia_css_program_group_manifest_t		*blob,
-	const uint8_t				program_count,
-	const uint8_t				terminal_count,
-	const uint8_t				*program_dependencies,
-	const uint8_t				*terminal_dependencies,
-	const ia_css_terminal_type_t		*terminal_type,
-	const uint16_t				cached_in_param_section_count,
-	const uint16_t				cached_out_param_section_count,
-	const uint16_t				*spatial_param_section_count,
-	const uint16_t				fragment_param_section_count,
-	const uint16_t				*sliced_in_param_section_count,
-	const uint16_t				*sliced_out_param_section_count,
-	const uint16_t				kernel_fragment_seq_count);
+	ia_css_program_group_manifest_t *blob,
+	const uint8_t program_count,
+	const uint8_t terminal_count,
+	const uint8_t *program_dependencies,
+	const uint8_t *terminal_dependencies,
+	const ia_css_terminal_type_t *terminal_type,
+	const uint16_t cached_in_param_section_count,
+	const uint16_t cached_out_param_section_count,
+	const uint16_t *spatial_param_section_count,
+	const uint16_t fragment_param_section_count,
+	const uint16_t *sliced_in_param_section_count,
+	const uint16_t *sliced_out_param_section_count,
+	const uint16_t kernel_fragment_seq_count);
 #endif /* __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H_INCLUDED__ */
 

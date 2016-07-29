@@ -70,10 +70,34 @@ enum ipu_device_sp2600_proxy_masters {
 
 static const struct ipu_device_cell_master_properties_s
 ipu_device_sp2600_proxy_masters[IPU_DEVICE_SP2600_PROXY_NUM_MASTERS] = {
-	{0, 0xC, IPU_DEVICE_SP2600_PROXY_ICACHE_BASE, IPU_DEVICE_SP2600_PROXY_ICACHE_INFO, IPU_DEVICE_SP2600_PROXY_ICACHE_INFO_OVERRIDE},
-	{0, 0xC, IPU_DEVICE_SP2600_PROXY_QMEM_BASE,   0xFFFFFFFF, 0xFFFFFFFF},
-	{2, 0xC, IPU_DEVICE_SP2600_PROXY_CMEM_BASE,   IPU_DEVICE_SP2600_PROXY_CMEM_INFO, IPU_DEVICE_SP2600_PROXY_CMEM_INFO_OVERRIDE},
-	{2, 0xC, IPU_DEVICE_SP2600_PROXY_XMEM_BASE,   IPU_DEVICE_SP2600_PROXY_XMEM_INFO, IPU_DEVICE_SP2600_PROXY_XMEM_INFO_OVERRIDE}
+	{
+		0,
+		0xC,
+		IPU_DEVICE_SP2600_PROXY_ICACHE_BASE,
+		IPU_DEVICE_SP2600_PROXY_ICACHE_INFO,
+		IPU_DEVICE_SP2600_PROXY_ICACHE_INFO_OVERRIDE
+	},
+	{
+		0,
+		0xC,
+		IPU_DEVICE_SP2600_PROXY_QMEM_BASE,
+		0xFFFFFFFF,
+		0xFFFFFFFF
+	},
+	{
+		2,
+		0xC,
+		IPU_DEVICE_SP2600_PROXY_CMEM_BASE,
+		IPU_DEVICE_SP2600_PROXY_CMEM_INFO,
+		IPU_DEVICE_SP2600_PROXY_CMEM_INFO_OVERRIDE
+	},
+	{
+		2,
+		0xC,
+		IPU_DEVICE_SP2600_PROXY_XMEM_BASE,
+		IPU_DEVICE_SP2600_PROXY_XMEM_INFO,
+		IPU_DEVICE_SP2600_PROXY_XMEM_INFO_OVERRIDE
+	}
 };
 
 enum ipu_device_sp2600_proxy_stall_bits {
@@ -85,8 +109,10 @@ enum ipu_device_sp2600_proxy_stall_bits {
 	IPU_DEVICE_SP2600_PROXY_NUM_STALL_BITS
 };
 
-#define IPU_DEVICE_SP2600_PROXY_ICACHE_WORD_SIZE 4    /* 32 bits per instruction */
-#define IPU_DEVICE_SP2600_PROXY_ICACHE_BURST_SIZE 32  /* 32 instructions per burst */
+/* 32 bits per instruction */
+#define IPU_DEVICE_SP2600_PROXY_ICACHE_WORD_SIZE 4
+/* 32 instructions per burst */
+#define IPU_DEVICE_SP2600_PROXY_ICACHE_BURST_SIZE 32
 
 static const struct ipu_device_cell_count_s ipu_device_sp2600_proxy_count = {
 	IPU_DEVICE_SP2600_PROXY_NUM_MEMORIES,
@@ -101,13 +127,8 @@ ipu_device_sp2600_proxy_reg_offset[/* CELL_NUM_REGS */] = {
 	0x0, 0x4, 0x10, 0xCC, 0xD0
 };
 
-/*
-   static const char *sp2600_proxy_stall_bit_name[IPU_DEVICE_SP2600_PROXY_NUM_STALL_BITS] = {
-   "icache", "dmem", "qmem", "cmem", "xmem"
-   };
- */
-
-static const struct ipu_device_cell_type_properties_s ipu_device_sp2600_proxy_properties = {
+static const struct ipu_device_cell_type_properties_s
+ipu_device_sp2600_proxy_properties = {
 	&ipu_device_sp2600_proxy_count,
 	ipu_device_sp2600_proxy_masters,
 	ipu_device_sp2600_proxy_reg_offset,

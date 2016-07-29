@@ -237,11 +237,11 @@ int ia_css_psys_release(
 	bool force)
 {
 	if (context == NULL)
-		return EFAULT;
+		return -EFAULT;
 
 	/* try to free resources */
 	if (ia_css_syscom_release(context, force) != 0)
-		return EBUSY;
+		return -EBUSY;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO,
 		"ia_css_psys_release(): leave: OK\n");

@@ -108,14 +108,15 @@ ia_css_cpu_mem_alloc_page_aligned(unsigned int size)
 {
 	unsigned int buffer_size = size;
 
-	/* Currently hrt_malloc calls Windows ExAllocatePoolWithTag() routine to request
-	   system memory. If the number of bytes is equal or bigger than the page size, then the
-	   returned address is page aligned, but if it's smaller it's not necessarily page-aligned
-	   We agreed with Windows team that we allocate a full page if it's less than page size
+	/* Currently hrt_malloc calls Windows ExAllocatePoolWithTag() routine
+	 * to request system memory. If the number of bytes is equal or bigger
+	 * than the page size, then the returned address is page aligned,
+	 * but if it's smaller it's not necessarily page-aligned We agreed
+	 * with Windows team that we allocate a full page
+	 * if it's less than page size
 	*/
-	if (buffer_size < CSS_PAGE_SIZE) {
+	if (buffer_size < CSS_PAGE_SIZE)
 		buffer_size = CSS_PAGE_SIZE;
-	}
 
 	return ia_css_cpu_mem_alloc(buffer_size);
 }

@@ -166,7 +166,8 @@ int ia_css_program_manifest_set_parent_offset(
 EXIT:
 	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR,
-			"ia_css_program_manifest_set_parent_offset failed (%i)\n", retval);
+			"ia_css_program_manifest_set_parent_offset failed (%i)\n",
+			retval);
 	}
 	return retval;
 }
@@ -238,7 +239,8 @@ int ia_css_program_manifest_set_kernel_bitmap(
 		retval = 0;
 	} else {
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR,
-			"ia_css_program_manifest_set_kernel_bitmap failed (%i)\n", retval);
+			"ia_css_program_manifest_set_kernel_bitmap failed (%i)\n",
+			retval);
 	}
 	return retval;
 }
@@ -312,7 +314,8 @@ int ia_css_program_manifest_set_cell_type_ID(
 		retval = 0;
 	} else {
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR,
-			"ia_css_program_manifest_set_cell_type_ID failed (%i)\n", retval);
+			"ia_css_program_manifest_set_cell_type_ID failed (%i)\n",
+			retval);
 	}
 	return retval;
 }
@@ -388,8 +391,11 @@ int ia_css_program_manifest_set_int_mem_size(
 		*/
 		for (mem_index = 0; mem_index < VIED_NCI_N_MEM_TYPE_ID;
 		     mem_index++) {
-			if ((int)mem_type_id == (int)vied_nci_cell_type_get_mem_type(cell_type_id, mem_index)) {
-				manifest->int_mem_size[mem_index] = int_mem_size;
+			if ((int)mem_type_id ==
+				(int)vied_nci_cell_type_get_mem_type(
+					cell_type_id, mem_index)) {
+				manifest->int_mem_size[mem_index] =
+					int_mem_size;
 				retval = 0;
 			}
 		}
@@ -515,10 +521,13 @@ uint8_t ia_css_program_manifest_get_program_dependency(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_program_manifest_get_program_dependency(): enter:\n");
 
-	program_dependency_count = ia_css_program_manifest_get_program_dependency_count(manifest);
+	program_dependency_count =
+		ia_css_program_manifest_get_program_dependency_count(manifest);
 
 	if (index < program_dependency_count) {
-		program_dep_ptr = (uint8_t *)((uint8_t *)manifest + manifest->program_dependency_offset +
+		program_dep_ptr =
+			(uint8_t *)((uint8_t *)manifest +
+				manifest->program_dependency_offset +
 				index * sizeof(uint8_t));
 		program_dependency = *program_dep_ptr;
 	} else {
@@ -529,9 +538,9 @@ uint8_t ia_css_program_manifest_get_program_dependency(
 }
 
 int ia_css_program_manifest_set_program_dependency(
-	ia_css_program_manifest_t			*manifest,
-	const uint8_t					program_dependency,
-	const unsigned int				index)
+	ia_css_program_manifest_t	*manifest,
+	const uint8_t			program_dependency,
+	const unsigned int		index)
 {
 	int	retval = -1;
 	uint8_t *program_dep_ptr;
@@ -569,7 +578,8 @@ uint8_t ia_css_program_manifest_get_terminal_dependency_count(
 {
 	uint8_t	terminal_dependency_count = 0;
 
-	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_manifest_get_terminal_dependency_count(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
+		"ia_css_program_manifest_get_terminal_dependency_count(): enter:\n");
 
 	if (manifest != NULL) {
 		terminal_dependency_count = manifest->terminal_dependency_count;
@@ -589,7 +599,8 @@ uint8_t ia_css_program_manifest_get_terminal_dependency(
 	uint8_t terminal_dependency_count =
 		ia_css_program_manifest_get_terminal_dependency_count(manifest);
 
-	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE, "ia_css_program_manifest_get_terminal_dependency(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
+		"ia_css_program_manifest_get_terminal_dependency(): enter:\n");
 
 	if (index < terminal_dependency_count) {
 		terminal_dep_ptr = (uint8_t *)((uint8_t *)manifest +
@@ -628,7 +639,8 @@ int ia_css_program_manifest_set_terminal_dependency(
 
 	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR,
-			"ia_css_program_manifest_set_terminal_dependency failed (%i)\n", retval);
+			"ia_css_program_manifest_set_terminal_dependency failed (%i)\n",
+			retval);
 	}
 	return retval;
 }
@@ -694,9 +706,9 @@ void ia_css_program_manifest_init(
 		"ia_css_program_manifest_init(): enter:\n");
 
 	/*TODO: add assert*/
-	if (!blob) {
+	if (!blob)
 		return;
-	}
+
 	blob->ID = 1;
 	blob->program_dependency_count = program_dependency_count;
 	blob->terminal_dependency_count = terminal_dependency_count;
@@ -798,11 +810,14 @@ int ia_css_program_manifest_print(
 			"program_dependencies[%d] {\n",
 			program_dependency_count);
 		for (i = 0; i < (int)program_dependency_count - 1; i++) {
-			prog_dep = ia_css_program_manifest_get_program_dependency(manifest, i);
+			prog_dep =
+			ia_css_program_manifest_get_program_dependency(
+				manifest, i);
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 				"\t %4d,\n", prog_dep);
 		}
-		prog_dep = ia_css_program_manifest_get_program_dependency(manifest, i);
+		prog_dep =
+		ia_css_program_manifest_get_program_dependency(manifest, i);
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "\t %4d }\n", prog_dep);
 		(void)prog_dep;
 	}
@@ -820,7 +835,9 @@ int ia_css_program_manifest_print(
 			"terminal_dependencies[%d] {\n",
 			terminal_dependency_count);
 		for (i = 0; i < (int)terminal_dependency_count - 1; i++) {
-			term_dep = ia_css_program_manifest_get_terminal_dependency(manifest, i);
+			term_dep =
+			ia_css_program_manifest_get_terminal_dependency(
+				manifest, i);
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 				"\t %4d,\n", term_dep);
 		}

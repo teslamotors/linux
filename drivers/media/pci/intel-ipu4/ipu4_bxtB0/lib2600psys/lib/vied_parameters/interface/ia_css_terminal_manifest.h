@@ -16,23 +16,34 @@
 #define __IA_CSS_TERMINAL_MANIFEST_H__
 
 
-typedef struct ia_css_program_terminal_manifest_s			ia_css_program_terminal_manifest_t;
-typedef struct ia_css_fragment_param_manifest_section_desc_s		ia_css_fragment_param_manifest_section_desc_t;
-typedef struct ia_css_kernel_fragment_sequencer_info_manifest_desc_s	ia_css_kernel_fragment_sequencer_info_manifest_desc_t;
+typedef struct ia_css_program_terminal_manifest_s
+	ia_css_program_terminal_manifest_t;
+typedef struct ia_css_fragment_param_manifest_section_desc_s
+	ia_css_fragment_param_manifest_section_desc_t;
+typedef struct ia_css_kernel_fragment_sequencer_info_manifest_desc_s
+	ia_css_kernel_fragment_sequencer_info_manifest_desc_t;
 
-typedef struct ia_css_sliced_param_terminal_manifest_s			ia_css_sliced_param_terminal_manifest_t;
-typedef struct ia_css_sliced_param_manifest_section_desc_s		ia_css_sliced_param_manifest_section_desc_t;
+typedef struct ia_css_sliced_param_terminal_manifest_s
+	ia_css_sliced_param_terminal_manifest_t;
+typedef struct ia_css_sliced_param_manifest_section_desc_s
+	ia_css_sliced_param_manifest_section_desc_t;
 
-typedef struct ia_css_spatial_param_terminal_manifest_s			ia_css_spatial_param_terminal_manifest_t;
-typedef struct ia_css_frame_grid_manifest_desc_s			ia_css_frame_grid_manifest_desc_t;
-typedef struct ia_css_frame_grid_param_manifest_section_desc_s		ia_css_frame_grid_param_manifest_section_desc_t;
-typedef struct ia_css_fragment_grid_manifest_desc_s			ia_css_fragment_grid_manifest_desc_t;
+typedef struct ia_css_spatial_param_terminal_manifest_s
+	ia_css_spatial_param_terminal_manifest_t;
+typedef struct ia_css_frame_grid_manifest_desc_s
+	ia_css_frame_grid_manifest_desc_t;
+typedef struct ia_css_frame_grid_param_manifest_section_desc_s
+	ia_css_frame_grid_param_manifest_section_desc_t;
+typedef struct ia_css_fragment_grid_manifest_desc_s
+	ia_css_fragment_grid_manifest_desc_t;
 
-typedef struct ia_css_param_terminal_manifest_s				ia_css_param_terminal_manifest_t;
-typedef struct ia_css_param_manifest_section_desc_s			ia_css_param_manifest_section_desc_t;
+typedef struct ia_css_param_terminal_manifest_s
+	ia_css_param_terminal_manifest_t;
+typedef struct ia_css_param_manifest_section_desc_s
+	ia_css_param_manifest_section_desc_t;
 
-typedef struct ia_css_terminal_manifest_s				ia_css_terminal_manifest_t;
-
+typedef struct ia_css_terminal_manifest_s
+	ia_css_terminal_manifest_t;
 
 unsigned int ia_css_param_terminal_manifest_get_size(
 	const unsigned int nof_sections
@@ -44,9 +55,9 @@ int ia_css_param_terminal_manifest_init(
 );
 
 ia_css_param_manifest_section_desc_t *
-	ia_css_param_terminal_manifest_get_param_manifest_section_desc(
-		const ia_css_param_terminal_manifest_t *param_terminal_manifest,
-		const unsigned int section_index
+ia_css_param_terminal_manifest_get_param_manifest_section_desc(
+	const ia_css_param_terminal_manifest_t *param_terminal_manifest,
+	const unsigned int section_index
 );
 
 unsigned int ia_css_spatial_param_terminal_manifest_get_size(
@@ -59,9 +70,10 @@ int ia_css_spatial_param_terminal_manifest_init(
 );
 
 ia_css_frame_grid_param_manifest_section_desc_t *
-	ia_css_spatial_param_terminal_manifest_get_frame_grid_param_manifest_section_desc(
-		const ia_css_spatial_param_terminal_manifest_t *spatial_param_terminal_manifest,
-		const unsigned int section_index
+ia_css_spatial_param_terminal_manifest_get_frame_grid_param_manifest_section_desc(
+	const ia_css_spatial_param_terminal_manifest_t *
+		spatial_param_terminal_manifest,
+	const unsigned int section_index
 );
 
 unsigned int ia_css_sliced_param_terminal_manifest_get_size(
@@ -74,9 +86,10 @@ int ia_css_sliced_param_terminal_manifest_init(
 );
 
 ia_css_sliced_param_manifest_section_desc_t *
-	ia_css_sliced_param_terminal_manifest_get_sliced_param_manifest_section_desc(
-		const ia_css_sliced_param_terminal_manifest_t *sliced_param_terminal_manifest,
-		const unsigned int section_index
+ia_css_sliced_param_get_sliced_param_manifest_section_desc(
+	const ia_css_sliced_param_terminal_manifest_t *
+		sliced_param_terminal_manifest,
+	const unsigned int section_index
 );
 
 unsigned int ia_css_program_terminal_manifest_get_size(
@@ -97,9 +110,9 @@ ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc(
 );
 
 ia_css_kernel_fragment_sequencer_info_manifest_desc_t *
-	ia_css_program_terminal_manifest_get_kernel_fragment_sequencer_info_manifest_section_desc(
-		const ia_css_program_terminal_manifest_t *program_terminal_manifest,
-		const unsigned int info_index
+ia_css_program_get_kernel_fragment_sequencer_info_manifest_desc(
+	const ia_css_program_terminal_manifest_t *program_terminal_manifest,
+	const unsigned int info_index
 );
 
 #endif /* __IA_CSS_TERMINAL_MANIFEST_H__ */

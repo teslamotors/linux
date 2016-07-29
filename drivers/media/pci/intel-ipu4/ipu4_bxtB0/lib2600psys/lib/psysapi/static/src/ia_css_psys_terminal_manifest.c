@@ -15,7 +15,7 @@
 
 #include <ia_css_psys_terminal_manifest.h>
 
-#include <ia_css_program_group_data.h>	/* Data object types on the terminals */
+#include <ia_css_program_group_data.h> /* Data object types on the terminals */
 #include <ia_css_program_group_param_types.h>	/* Kernel enable bitmap */
 
 #include "ia_css_psys_program_group_private.h"
@@ -70,9 +70,9 @@ static const char *terminal_type_strings[IA_CSS_N_TERMINAL_TYPES + 1] = {
 #endif
 
 bool ia_css_is_terminal_manifest_spatial_parameter_terminal(
-	const ia_css_terminal_manifest_t		*manifest)
+	const ia_css_terminal_manifest_t *manifest)
 {
-	ia_css_terminal_type_t	terminal_type;
+	ia_css_terminal_type_t terminal_type;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_is_terminal_manifest_parameter_terminal(): enter:\n");
@@ -84,9 +84,9 @@ bool ia_css_is_terminal_manifest_spatial_parameter_terminal(
 }
 
 bool ia_css_is_terminal_manifest_program_terminal(
-	const ia_css_terminal_manifest_t		*manifest)
+	const ia_css_terminal_manifest_t *manifest)
 {
-	ia_css_terminal_type_t	terminal_type;
+	ia_css_terminal_type_t terminal_type;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_is_terminal_manifest_parameter_terminal(): enter:\n");
@@ -97,10 +97,10 @@ bool ia_css_is_terminal_manifest_program_terminal(
 }
 
 bool ia_css_is_terminal_manifest_parameter_terminal(
-	const ia_css_terminal_manifest_t		*manifest)
+	const ia_css_terminal_manifest_t *manifest)
 {
-/* will return an error value on error */
-	ia_css_terminal_type_t	terminal_type;
+	/* will return an error value on error */
+	ia_css_terminal_type_t terminal_type;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_is_terminal_manifest_parameter_terminal(): enter:\n");
@@ -112,10 +112,10 @@ bool ia_css_is_terminal_manifest_parameter_terminal(
 }
 
 bool ia_css_is_terminal_manifest_data_terminal(
-	const ia_css_terminal_manifest_t		*manifest)
+	const ia_css_terminal_manifest_t *manifest)
 {
-/* will return an error value on error */
-	ia_css_terminal_type_t	terminal_type;
+	/* will return an error value on error */
+	ia_css_terminal_type_t terminal_type;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_is_terminal_manifest_data_terminal(): enter:\n");
@@ -127,9 +127,9 @@ bool ia_css_is_terminal_manifest_data_terminal(
 }
 
 bool ia_css_is_terminal_manifest_sliced_terminal(
-	const ia_css_terminal_manifest_t		*manifest)
+	const ia_css_terminal_manifest_t *manifest)
 {
-	ia_css_terminal_type_t	terminal_type;
+	ia_css_terminal_type_t terminal_type;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_is_terminal_manifest_sliced_terminal(): enter:\n");
@@ -141,9 +141,9 @@ bool ia_css_is_terminal_manifest_sliced_terminal(
 }
 
 size_t ia_css_terminal_manifest_get_size(
-	const ia_css_terminal_manifest_t		*manifest)
+	const ia_css_terminal_manifest_t *manifest)
 {
-	size_t	size = 0;
+	size_t size = 0;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_terminal_manifest_get_size(): enter:\n");
@@ -152,15 +152,15 @@ size_t ia_css_terminal_manifest_get_size(
 		size = manifest->size;
 	} else {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING,
-			"ia_css_terminal_manifest_get_size invalid argument\n");
+			"ia_css_terminal_manifest_get_size: invalid argument\n");
 	}
 	return size;
 }
 
 ia_css_terminal_type_t ia_css_terminal_manifest_get_type(
-	const ia_css_terminal_manifest_t		*manifest)
+	const ia_css_terminal_manifest_t *manifest)
 {
-	ia_css_terminal_type_t	terminal_type = IA_CSS_N_TERMINAL_TYPES;
+	ia_css_terminal_type_t terminal_type = IA_CSS_N_TERMINAL_TYPES;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_terminal_manifest_get_type(): enter:\n");
@@ -169,16 +169,16 @@ ia_css_terminal_type_t ia_css_terminal_manifest_get_type(
 		terminal_type = manifest->terminal_type;
 	} else {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING,
-			"ia_css_terminal_manifest_get_type invalid argument\n");
+			"ia_css_terminal_manifest_get_type: invalid argument\n");
 	}
 	return terminal_type;
 }
 
 int ia_css_terminal_manifest_set_type(
-	ia_css_terminal_manifest_t			*manifest,
-	const ia_css_terminal_type_t			terminal_type)
+	ia_css_terminal_manifest_t *manifest,
+	const ia_css_terminal_type_t terminal_type)
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_terminal_manifest_set_type(): enter:\n");
@@ -188,16 +188,17 @@ int ia_css_terminal_manifest_set_type(
 		retval = 0;
 	} else {
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR,
-		     "ia_css_terminal_manifest_set_type failed (%i)\n", retval);
+			"ia_css_terminal_manifest_set_type failed (%i)\n",
+			retval);
 	}
 	return retval;
 }
 
 int ia_css_terminal_manifest_set_ID(
-	ia_css_terminal_manifest_t			*manifest,
-	const ia_css_terminal_ID_t			ID)
+	ia_css_terminal_manifest_t *manifest,
+	const ia_css_terminal_ID_t ID)
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_terminal_manifest_set_ID(): enter:\n");
@@ -214,7 +215,7 @@ int ia_css_terminal_manifest_set_ID(
 }
 
 ia_css_terminal_ID_t ia_css_terminal_manifest_get_ID(
-	const ia_css_terminal_manifest_t		*manifest)
+	const ia_css_terminal_manifest_t *manifest)
 {
 	ia_css_terminal_ID_t retval;
 
@@ -231,9 +232,8 @@ ia_css_terminal_ID_t ia_css_terminal_manifest_get_ID(
 	return retval;
 }
 
-
 ia_css_program_group_manifest_t *ia_css_terminal_manifest_get_parent(
-	const ia_css_terminal_manifest_t		*manifest)
+	const ia_css_terminal_manifest_t *manifest)
 {
 	ia_css_program_group_manifest_t	*parent = NULL;
 	char *base;
@@ -251,10 +251,10 @@ EXIT:
 }
 
 int ia_css_terminal_manifest_set_parent_offset(
-	ia_css_terminal_manifest_t			*manifest,
-	int32_t						terminal_offset)
+	ia_css_terminal_manifest_t *manifest,
+	int32_t terminal_offset)
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_terminal_manifest_set_parent_offset(): enter:\n");
@@ -268,7 +268,7 @@ int ia_css_terminal_manifest_set_parent_offset(
 EXIT:
 	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR,
-		     "ia_css_terminal_manifest_set_parent_offset failed (%i)\n",
+			"ia_css_terminal_manifest_set_parent_offset failed (%i)\n",
 			retval);
 	}
 	return retval;
@@ -276,12 +276,12 @@ EXIT:
 
 ia_css_frame_format_bitmap_t
 ia_css_data_terminal_manifest_get_frame_format_bitmap(
-	const ia_css_data_terminal_manifest_t		*manifest)
+	const ia_css_data_terminal_manifest_t *manifest)
 {
-	ia_css_frame_format_bitmap_t	bitmap = 0;
+	ia_css_frame_format_bitmap_t bitmap = 0;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
-	   "ia_css_data_terminal_manifest_get_frame_format_bitmap(): enter:\n");
+		"ia_css_data_terminal_manifest_get_frame_format_bitmap(): enter:\n");
 
 	if (manifest != NULL) {
 		bitmap = manifest->frame_format_bitmap;
@@ -293,13 +293,13 @@ ia_css_data_terminal_manifest_get_frame_format_bitmap(
 }
 
 int ia_css_data_terminal_manifest_set_frame_format_bitmap(
-	ia_css_data_terminal_manifest_t			*manifest,
-	ia_css_frame_format_bitmap_t			bitmap)
+	ia_css_data_terminal_manifest_t *manifest,
+	ia_css_frame_format_bitmap_t bitmap)
 {
 	int ret = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
-	   "ia_css_data_terminal_manifest_set_frame_format_bitmap(): enter:\n");
+		"ia_css_data_terminal_manifest_set_frame_format_bitmap(): enter:\n");
 
 	if (manifest != NULL) {
 		manifest->frame_format_bitmap = bitmap;
@@ -314,12 +314,12 @@ int ia_css_data_terminal_manifest_set_frame_format_bitmap(
 }
 
 bool ia_css_data_terminal_manifest_can_support_compression(
-	const ia_css_data_terminal_manifest_t		*manifest)
+	const ia_css_data_terminal_manifest_t *manifest)
 {
 	bool compression_support = false;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
-	   "ia_css_data_terminal_manifest_get_compression_support(): enter:\n");
+		"ia_css_data_terminal_manifest_get_compression_support(): enter:\n");
 
 	if (manifest != NULL) {
 		/* compression_support is used boolean encoded in uint8_t.
@@ -336,13 +336,13 @@ bool ia_css_data_terminal_manifest_can_support_compression(
 }
 
 int ia_css_data_terminal_manifest_set_compression_support(
-	ia_css_data_terminal_manifest_t			*manifest,
-	bool						compression_support)
+	ia_css_data_terminal_manifest_t *manifest,
+	bool compression_support)
 {
 	int ret = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
-	   "ia_css_data_terminal_manifest_set_compression_support(): enter:\n");
+		"ia_css_data_terminal_manifest_set_compression_support(): enter:\n");
 
 	if (manifest != NULL) {
 		manifest->compression_support =
@@ -358,9 +358,9 @@ int ia_css_data_terminal_manifest_set_compression_support(
 }
 
 ia_css_connection_bitmap_t ia_css_data_terminal_manifest_get_connection_bitmap(
-	const ia_css_data_terminal_manifest_t	*manifest)
+	const ia_css_data_terminal_manifest_t *manifest)
 {
-	ia_css_connection_bitmap_t	connection_bitmap = 0;
+	ia_css_connection_bitmap_t connection_bitmap = 0;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_get_connection_bitmap(): enter:\n");
@@ -381,9 +381,9 @@ ia_css_connection_bitmap_t ia_css_data_terminal_manifest_get_connection_bitmap(
   */
 #if !defined(__HIVECC)
 ia_css_kernel_bitmap_t ia_css_data_terminal_manifest_get_kernel_bitmap(
-	const ia_css_data_terminal_manifest_t	*manifest)
+	const ia_css_data_terminal_manifest_t *manifest)
 {
-	ia_css_kernel_bitmap_t	kernel_bitmap = 0;
+	ia_css_kernel_bitmap_t kernel_bitmap = 0;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_get_kernel_bitmap(): enter:\n");
@@ -392,16 +392,16 @@ ia_css_kernel_bitmap_t ia_css_data_terminal_manifest_get_kernel_bitmap(
 		kernel_bitmap = manifest->kernel_bitmap;
 	} else {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, WARNING,
-			"ia_css_data_terminal_manifest_get_kernel_bitmap invalid argument\n");
+			"ia_css_data_terminal_manifest_get_kernel_bitmap: invalid argument\n");
 	}
 	return kernel_bitmap;
 }
 
 int ia_css_data_terminal_manifest_set_kernel_bitmap(
-	ia_css_data_terminal_manifest_t			*manifest,
-	const ia_css_kernel_bitmap_t			kernel_bitmap)
+	ia_css_data_terminal_manifest_t	*manifest,
+	const ia_css_kernel_bitmap_t kernel_bitmap)
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_set_kernel_bitmap(): enter:\n");
@@ -411,7 +411,7 @@ int ia_css_data_terminal_manifest_set_kernel_bitmap(
 		retval = 0;
 	} else {
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR,
-			"ia_css_data_terminal_manifest_set_kernel_bitmap failed (%i)\n",
+			"ia_css_data_terminal_manifest_set_kernel_bitmap: failed (%i)\n",
 			retval);
 	}
 
@@ -419,13 +419,13 @@ int ia_css_data_terminal_manifest_set_kernel_bitmap(
 }
 
 int ia_css_data_terminal_manifest_set_kernel_bitmap_unique(
-	ia_css_data_terminal_manifest_t			*manifest,
-	const unsigned int				index)
+	ia_css_data_terminal_manifest_t *manifest,
+	const unsigned int index)
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
-	  "ia_css_data_terminal_manifest_set_kernel_bitmap_unique(): enter:\n");
+		"ia_css_data_terminal_manifest_set_kernel_bitmap_unique(): enter:\n");
 
 	if (manifest != NULL) {
 		ia_css_kernel_bitmap_t kernel_bitmap =
@@ -450,9 +450,9 @@ EXIT:
 
 int ia_css_data_terminal_manifest_set_min_size(
 	ia_css_data_terminal_manifest_t	*manifest,
-	const uint16_t			min_size[IA_CSS_N_DATA_DIMENSION])
+	const uint16_t min_size[IA_CSS_N_DATA_DIMENSION])
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_set_min_size(): enter:\n");
@@ -468,16 +468,16 @@ int ia_css_data_terminal_manifest_set_min_size(
 EXIT:
 	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
-			"ia_css_data_terminal_manifest_set_min_size invalid argument\n");
+			"ia_css_data_terminal_manifest_set_min_size: invalid argument\n");
 	}
 	return retval;
 }
 
 int ia_css_data_terminal_manifest_set_max_size(
 	ia_css_data_terminal_manifest_t	*manifest,
-	const uint16_t			max_size[IA_CSS_N_DATA_DIMENSION])
+	const uint16_t max_size[IA_CSS_N_DATA_DIMENSION])
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_set_max_size(): enter:\n");
@@ -493,7 +493,7 @@ int ia_css_data_terminal_manifest_set_max_size(
 EXIT:
 	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
-			"ia_css_data_terminal_manifest_set_max_size invalid argument\n");
+			"ia_css_data_terminal_manifest_set_max_size: invalid argument\n");
 	}
 	return retval;
 }
@@ -502,7 +502,7 @@ int ia_css_data_terminal_manifest_get_min_size(
 	const ia_css_data_terminal_manifest_t *manifest,
 	uint16_t min_size[IA_CSS_N_DATA_DIMENSION])
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_get_min_size(): enter:\n");
@@ -518,7 +518,7 @@ int ia_css_data_terminal_manifest_get_min_size(
 EXIT:
 	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
-			"ia_css_data_terminal_manifest_get_min_size invalid argument\n");
+			"ia_css_data_terminal_manifest_get_min_size: invalid argument\n");
 	}
 	return retval;
 }
@@ -527,7 +527,7 @@ int ia_css_data_terminal_manifest_get_max_size(
 	const ia_css_data_terminal_manifest_t *manifest,
 	uint16_t max_size[IA_CSS_N_DATA_DIMENSION])
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_get_max_size(): enter:\n");
@@ -543,16 +543,16 @@ int ia_css_data_terminal_manifest_get_max_size(
 EXIT:
 	if (NULL == manifest) {
 		IA_CSS_TRACE_0(PSYSAPI_STATIC, ERROR,
-			"ia_css_data_terminal_manifest_get_max_size invalid argument\n");
+			"ia_css_data_terminal_manifest_get_max_size: invalid argument\n");
 	}
 	return retval;
 }
 
 int ia_css_data_terminal_manifest_set_min_fragment_size(
 	ia_css_data_terminal_manifest_t	*manifest,
-	const uint16_t			min_size[IA_CSS_N_DATA_DIMENSION])
+	const uint16_t min_size[IA_CSS_N_DATA_DIMENSION])
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_set_min_fragment_size(): enter:\n");
@@ -575,12 +575,12 @@ EXIT:
 
 int ia_css_data_terminal_manifest_set_max_fragment_size(
 	ia_css_data_terminal_manifest_t	*manifest,
-	const uint16_t			max_size[IA_CSS_N_DATA_DIMENSION])
+	const uint16_t max_size[IA_CSS_N_DATA_DIMENSION])
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
-	     "ia_css_data_terminal_manifest_set_max_fragment_size(): enter:\n");
+		"ia_css_data_terminal_manifest_set_max_fragment_size(): enter:\n");
 
 	verifexit(manifest != NULL, EINVAL);
 
@@ -602,10 +602,10 @@ int ia_css_data_terminal_manifest_get_min_fragment_size(
 	const ia_css_data_terminal_manifest_t *manifest,
 	uint16_t min_size[IA_CSS_N_DATA_DIMENSION])
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
-	     "ia_css_data_terminal_manifest_get_min_fragment_size(): enter:\n");
+		"ia_css_data_terminal_manifest_get_min_fragment_size(): enter:\n");
 
 	verifexit(manifest != NULL, EINVAL);
 
@@ -627,10 +627,10 @@ int ia_css_data_terminal_manifest_get_max_fragment_size(
 	const ia_css_data_terminal_manifest_t *manifest,
 	uint16_t max_size[IA_CSS_N_DATA_DIMENSION])
 {
-	int	retval = -1;
+	int retval = -1;
 
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
-	     "ia_css_data_terminal_manifest_get_max_fragment_size(): enter:\n");
+		"ia_css_data_terminal_manifest_get_max_fragment_size(): enter:\n");
 
 	verifexit(manifest != NULL, EINVAL);
 
@@ -659,7 +659,7 @@ int ia_css_terminal_manifest_print(
 	const ia_css_terminal_manifest_t *manifest,
 	void *fid)
 {
-	int	retval = -1;
+	int retval = -1;
 	ia_css_terminal_type_t terminal_type =
 		ia_css_terminal_manifest_get_type(manifest);
 
@@ -670,7 +670,7 @@ int ia_css_terminal_manifest_print(
 	NOT_USED(fid);
 
 	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sizeof(manifest) = %d\n",
-		       (int)ia_css_terminal_manifest_get_size(manifest));
+		(int)ia_css_terminal_manifest_get_size(manifest));
 
 	PRINT("typeof(manifest) = %s\n", terminal_type_strings[terminal_type]);
 
@@ -686,7 +686,7 @@ int ia_css_terminal_manifest_print(
 			"sections(manifest) = %d\n", (int)section_count);
 		for (i = 0; i < section_count; i++) {
 			const ia_css_param_manifest_section_desc_t *manifest =
-		ia_css_param_terminal_manifest_get_param_manifest_section_desc(
+			ia_css_param_terminal_manifest_get_param_manifest_section_desc(
 			pterminal_manifest, i);
 			verifjmpexit(manifest != NULL);
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
@@ -702,7 +702,7 @@ int ia_css_terminal_manifest_print(
 				(int)manifest->region_id);
 		}
 	} else if (terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_SLICED_IN ||
-		   terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT) {
+		terminal_type == IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT) {
 		ia_css_sliced_param_terminal_manifest_t
 		*sliced_terminal_manifest =
 			(ia_css_sliced_param_terminal_manifest_t *)manifest;
@@ -722,21 +722,22 @@ int ia_css_terminal_manifest_print(
 			"section_count = %d\n", (int)section_count);
 
 		for (section_idx = 0; section_idx < section_count;
-		     section_idx++) {
+			section_idx++) {
 			ia_css_sliced_param_manifest_section_desc_t
 				*sliced_param_manifest_section_desc;
 
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 				"section %d\n", (int)section_idx);
 			sliced_param_manifest_section_desc =
-ia_css_sliced_param_terminal_manifest_get_sliced_param_manifest_section_desc(
-	sliced_terminal_manifest, section_idx);
+		ia_css_sliced_param_get_sliced_param_manifest_section_desc(
+				sliced_terminal_manifest, section_idx);
 			verifjmpexit(sliced_param_manifest_section_desc !=
 				NULL);
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 				"mem_type_id = %d\n",
 			(int)sliced_param_manifest_section_desc->mem_type_id);
-			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "region_id = %d\n",
+			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
+				"region_id = %d\n",
 			(int)sliced_param_manifest_section_desc->region_id);
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 				"max_mem_size = %d\n",
@@ -769,92 +770,107 @@ ia_css_sliced_param_terminal_manifest_get_sliced_param_manifest_section_desc(
 			"max_kernel_fragment_sequencer_command_desc = %d\n",
 			(int)max_kernel_fragment_sequencer_command_desc);
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
-		    "kernel_fragment_sequencer_info_manifest_info_count = %d\n",
-		     (int)kernel_fragment_sequencer_info_manifest_info_count);
+			"kernel_fragment_sequencer_info_manifest_info_count = %d\n",
+			(int)
+			kernel_fragment_sequencer_info_manifest_info_count);
 
 		for (seq_info_idx = 0; seq_info_idx <
-		     kernel_fragment_sequencer_info_manifest_info_count;
-		     seq_info_idx++) {
+			kernel_fragment_sequencer_info_manifest_info_count;
+				seq_info_idx++) {
 			ia_css_kernel_fragment_sequencer_info_manifest_desc_t
 				*sequencer_info_manifest_desc;
 
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 				"sequencer info %d\n", (int)seq_info_idx);
-			sequencer_info_manifest_desc = ia_css_program_terminal_manifest_get_kernel_fragment_sequencer_info_manifest_section_desc(program_terminal_manifest, seq_info_idx);
+			sequencer_info_manifest_desc =
+		ia_css_program_get_kernel_fragment_sequencer_info_manifest_desc
+				(program_terminal_manifest, seq_info_idx);
 			verifjmpexit(sequencer_info_manifest_desc != NULL);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
-			     "min_fragment_grid_slice_dimension[] = {%d, %d}\n",
+				"min_fragment_grid_slice_dimension[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-		min_fragment_grid_slice_dimension[IA_CSS_COL_DIMENSION],
+				min_fragment_grid_slice_dimension[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-		min_fragment_grid_slice_dimension[IA_CSS_ROW_DIMENSION]);
+				min_fragment_grid_slice_dimension[
+						IA_CSS_ROW_DIMENSION]);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
 				"max_fragment_grid_slice_dimension[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-		max_fragment_grid_slice_dimension[IA_CSS_COL_DIMENSION],
+				max_fragment_grid_slice_dimension[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-		max_fragment_grid_slice_dimension[IA_CSS_ROW_DIMENSION]);
+				max_fragment_grid_slice_dimension[
+						IA_CSS_ROW_DIMENSION]);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
 				"min_fragment_grid_slice_count[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-		min_fragment_grid_slice_count[IA_CSS_COL_DIMENSION],
+				min_fragment_grid_slice_count[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-		min_fragment_grid_slice_count[IA_CSS_ROW_DIMENSION]);
+				min_fragment_grid_slice_count[
+						IA_CSS_ROW_DIMENSION]);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
 				"max_fragment_grid_slice_count[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-		max_fragment_grid_slice_count[IA_CSS_COL_DIMENSION],
+				max_fragment_grid_slice_count[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-		max_fragment_grid_slice_count[IA_CSS_ROW_DIMENSION]);
+				max_fragment_grid_slice_count[
+						IA_CSS_ROW_DIMENSION]);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
 				"min_fragment_grid_point_decimation_factor[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-	min_fragment_grid_point_decimation_factor[IA_CSS_COL_DIMENSION],
+				min_fragment_grid_point_decimation_factor[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-	min_fragment_grid_point_decimation_factor[IA_CSS_ROW_DIMENSION]);
+				min_fragment_grid_point_decimation_factor[
+						IA_CSS_ROW_DIMENSION]);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
 				"max_fragment_grid_point_decimation_factor[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-	max_fragment_grid_point_decimation_factor[IA_CSS_COL_DIMENSION],
+				max_fragment_grid_point_decimation_factor[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-	max_fragment_grid_point_decimation_factor[IA_CSS_ROW_DIMENSION]);
+				max_fragment_grid_point_decimation_factor[
+						IA_CSS_ROW_DIMENSION]);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
-				"min_fragment_grid_overlay_on_fragment_pixel_topleft_index[] = {%d, %d}\n",
+				"min_fragment_grid_overlay_on_pixel_topleft_index[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-	min_fragment_grid_overlay_on_fragment_pixel_topleft_index[
-		IA_CSS_COL_DIMENSION],
+			min_fragment_grid_overlay_pixel_topleft_index[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-	min_fragment_grid_overlay_on_fragment_pixel_topleft_index[
-		IA_CSS_ROW_DIMENSION]);
+			min_fragment_grid_overlay_pixel_topleft_index[
+						IA_CSS_ROW_DIMENSION]);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
-				"max_fragment_grid_overlay_on_fragment_pixel_topleft_index[] = {%d, %d}\n",
+				"max_fragment_grid_overlay_on_pixel_topleft_index[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-	max_fragment_grid_overlay_on_fragment_pixel_topleft_index[
-		IA_CSS_COL_DIMENSION],
+			max_fragment_grid_overlay_pixel_topleft_index[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-	max_fragment_grid_overlay_on_fragment_pixel_topleft_index[
-		IA_CSS_ROW_DIMENSION]);
+			max_fragment_grid_overlay_pixel_topleft_index[
+						IA_CSS_ROW_DIMENSION]);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
-				"min_fragment_grid_overlay_on_fragment_pixel_dimension[] = {%d, %d}\n",
+				"min_fragment_grid_overlay_on_pixel_dimension[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-	min_fragment_grid_overlay_on_fragment_pixel_dimension[
-		IA_CSS_COL_DIMENSION],
+				min_fragment_grid_overlay_pixel_dimension[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-	min_fragment_grid_overlay_on_fragment_pixel_dimension[
-		IA_CSS_ROW_DIMENSION]);
+				min_fragment_grid_overlay_pixel_dimension[
+						IA_CSS_ROW_DIMENSION]);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,
-				"max_fragment_grid_overlay_on_fragment_pixel_dimension[] = {%d, %d}\n",
+				"max_fragment_grid_overlay_on_pixel_dimension[] = {%d, %d}\n",
 				(int)sequencer_info_manifest_desc->
-	max_fragment_grid_overlay_on_fragment_pixel_dimension[
-		IA_CSS_COL_DIMENSION],
+				max_fragment_grid_overlay_pixel_dimension[
+						IA_CSS_COL_DIMENSION],
 				(int)sequencer_info_manifest_desc->
-	max_fragment_grid_overlay_on_fragment_pixel_dimension[
-		IA_CSS_ROW_DIMENSION]);
+				max_fragment_grid_overlay_pixel_dimension[
+						IA_CSS_ROW_DIMENSION]);
 		}
 	} else if (terminal_type < IA_CSS_N_TERMINAL_TYPES) {
 		ia_css_data_terminal_manifest_t *dterminal_manifest =
 			(ia_css_data_terminal_manifest_t *)manifest;
-		int	i;
+		int i;
 
 		NOT_USED(dterminal_manifest);
 
@@ -921,7 +937,8 @@ ia_css_sliced_param_terminal_manifest_get_sliced_param_manifest_section_desc(
 EXIT:
 	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, ERROR,
-			"ia_css_terminal_manifest_print failed (%i)\n", retval);
+			"ia_css_terminal_manifest_print failed (%i)\n",
+			retval);
 	}
 	return retval;
 }

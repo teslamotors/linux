@@ -23,55 +23,84 @@ STORAGE_CLASS_INLINE void __dummy_check_alignment(void)
 {
 
 	COMPILATION_ERROR_IF(
-		SIZE_OF_PARAM_TERMINAL_MANIFEST_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_param_terminal_manifest_t)));
+		SIZE_OF_PARAM_TERMINAL_MANIFEST_STRUCT_IN_BITS !=
+			(CHAR_BIT * sizeof(ia_css_param_terminal_manifest_t)));
 
-	COMPILATION_ERROR_IF(0 != sizeof(ia_css_param_terminal_manifest_t)%sizeof(uint64_t));
-
-	COMPILATION_ERROR_IF(
-		SIZE_OF_PARAM_TERMINAL_MANIFEST_SEC_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_param_manifest_section_desc_t)));
-
-	COMPILATION_ERROR_IF(0 != sizeof(ia_css_param_manifest_section_desc_t)%sizeof(uint64_t));
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_param_terminal_manifest_t) % sizeof(uint64_t));
 
 	COMPILATION_ERROR_IF(
-		SIZE_OF_SPATIAL_PARAM_TERM_MAN_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_spatial_param_terminal_manifest_t)));
+		SIZE_OF_PARAM_TERMINAL_MANIFEST_SEC_STRUCT_IN_BITS !=
+		(CHAR_BIT * sizeof(ia_css_param_manifest_section_desc_t)));
 
-	COMPILATION_ERROR_IF(0 != sizeof(ia_css_spatial_param_terminal_manifest_t)%sizeof(uint64_t));
-
-	COMPILATION_ERROR_IF(
-		SIZE_OF_FRAME_GRID_PARAM_MAN_SEC_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_frame_grid_param_manifest_section_desc_t)));
-
-	COMPILATION_ERROR_IF(0 != sizeof(ia_css_frame_grid_param_manifest_section_desc_t)%sizeof(uint64_t));
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_param_manifest_section_desc_t) %
+			sizeof(uint64_t));
 
 	COMPILATION_ERROR_IF(
-		SIZE_OF_PROG_TERM_MAN_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_program_terminal_manifest_t)));
+		SIZE_OF_SPATIAL_PARAM_TERM_MAN_STRUCT_IN_BITS !=
+		(CHAR_BIT * sizeof(ia_css_spatial_param_terminal_manifest_t)));
 
-	COMPILATION_ERROR_IF(0 != sizeof(ia_css_program_terminal_manifest_t)%sizeof(uint64_t));
-
-	COMPILATION_ERROR_IF(
-		SIZE_OF_FRAG_PARAM_MAN_SEC_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_fragment_param_manifest_section_desc_t)));
-
-	COMPILATION_ERROR_IF(0 != sizeof(ia_css_fragment_param_manifest_section_desc_t)%sizeof(uint64_t));
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_spatial_param_terminal_manifest_t) %
+			sizeof(uint64_t));
 
 	COMPILATION_ERROR_IF(
-		SIZE_OF_KERNEL_FRAG_SEQ_INFO_MAN_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_kernel_fragment_sequencer_info_manifest_desc_t)));
+		SIZE_OF_FRAME_GRID_PARAM_MAN_SEC_STRUCT_IN_BITS !=
+		(CHAR_BIT * sizeof(
+			ia_css_frame_grid_param_manifest_section_desc_t)));
 
-	COMPILATION_ERROR_IF(0 != sizeof(ia_css_kernel_fragment_sequencer_info_manifest_desc_t)%sizeof(uint64_t));
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_frame_grid_param_manifest_section_desc_t) %
+			sizeof(uint64_t));
 
 	COMPILATION_ERROR_IF(
-		SIZE_OF_PARAM_TERMINAL_MANIFEST_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_sliced_param_terminal_manifest_t)));
+		SIZE_OF_PROG_TERM_MAN_STRUCT_IN_BITS !=
+		(CHAR_BIT * sizeof(ia_css_program_terminal_manifest_t)));
 
-	COMPILATION_ERROR_IF(0 != sizeof(ia_css_sliced_param_terminal_manifest_t)%sizeof(uint64_t));
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_program_terminal_manifest_t)%sizeof(uint64_t));
 
 	COMPILATION_ERROR_IF(
-		SIZE_OF_PARAM_TERMINAL_MANIFEST_SEC_STRUCT_IN_BITS != (CHAR_BIT * sizeof(ia_css_sliced_param_manifest_section_desc_t)));
+		SIZE_OF_FRAG_PARAM_MAN_SEC_STRUCT_IN_BITS !=
+		(CHAR_BIT * sizeof(
+			ia_css_fragment_param_manifest_section_desc_t)));
 
-	COMPILATION_ERROR_IF(0 != sizeof(ia_css_sliced_param_manifest_section_desc_t)%sizeof(uint64_t));
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_fragment_param_manifest_section_desc_t) %
+			sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_KERNEL_FRAG_SEQ_INFO_MAN_STRUCT_IN_BITS !=
+		(CHAR_BIT * sizeof(
+			ia_css_kernel_fragment_sequencer_info_manifest_desc_t))
+		);
+
+	COMPILATION_ERROR_IF(0 != sizeof(
+		ia_css_kernel_fragment_sequencer_info_manifest_desc_t) %
+			sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_PARAM_TERMINAL_MANIFEST_STRUCT_IN_BITS !=
+		(CHAR_BIT * sizeof(ia_css_sliced_param_terminal_manifest_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_sliced_param_terminal_manifest_t) %
+			sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_PARAM_TERMINAL_MANIFEST_SEC_STRUCT_IN_BITS !=
+		(CHAR_BIT * sizeof
+			(ia_css_sliced_param_manifest_section_desc_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_sliced_param_manifest_section_desc_t) %
+			sizeof(uint64_t));
 }
 
 /* Parameter Terminal */
 unsigned int ia_css_param_terminal_manifest_get_size(
-	const unsigned int nof_sections
-)
+	const unsigned int nof_sections)
 {
 
 	return sizeof(ia_css_param_terminal_manifest_t) +
@@ -80,11 +109,10 @@ unsigned int ia_css_param_terminal_manifest_get_size(
 
 int ia_css_param_terminal_manifest_init(
 	ia_css_param_terminal_manifest_t *param_terminal,
-	const uint16_t section_count
-)
+	const uint16_t section_count)
 {
 	if (param_terminal == NULL) {
-		return EFAULT;
+		return -EFAULT;
 	}
 
 	param_terminal->param_manifest_section_desc_count = section_count;
@@ -95,19 +123,23 @@ int ia_css_param_terminal_manifest_init(
 }
 
 ia_css_param_manifest_section_desc_t *
-	ia_css_param_terminal_manifest_get_param_manifest_section_desc(
-		const ia_css_param_terminal_manifest_t *param_terminal_manifest,
-		const unsigned int section_index
-)
+ia_css_param_terminal_manifest_get_param_manifest_section_desc(
+	const ia_css_param_terminal_manifest_t *param_terminal_manifest,
+	const unsigned int section_index)
 {
-	ia_css_param_manifest_section_desc_t *param_manifest_section_base, *param_manifest_section_desc = NULL;
+	ia_css_param_manifest_section_desc_t *param_manifest_section_base;
+	ia_css_param_manifest_section_desc_t *param_manifest_section_desc =
+									NULL;
 
 	verifjmpexit(param_terminal_manifest != NULL);
 
-	param_manifest_section_base = (ia_css_param_manifest_section_desc_t *)(((const char *)param_terminal_manifest)
+	param_manifest_section_base =
+		(ia_css_param_manifest_section_desc_t *)
+		(((const char *)param_terminal_manifest)
 		+ param_terminal_manifest->param_manifest_section_desc_offset);
 
-	param_manifest_section_desc = &(param_manifest_section_base[section_index]);
+	param_manifest_section_desc =
+		&(param_manifest_section_base[section_index]);
 
 EXIT:
 	return param_manifest_section_desc;
@@ -115,42 +147,50 @@ EXIT:
 
 /* Spatial Parameter Terminal */
 unsigned int ia_css_spatial_param_terminal_manifest_get_size(
-	const unsigned int nof_frame_param_sections
-)
+	const unsigned int nof_frame_param_sections)
 {
 	return sizeof(ia_css_spatial_param_terminal_manifest_t) +
-		nof_frame_param_sections*sizeof(ia_css_frame_grid_param_manifest_section_desc_t);
+		nof_frame_param_sections * sizeof(
+			ia_css_frame_grid_param_manifest_section_desc_t);
 }
 
 int ia_css_spatial_param_terminal_manifest_init(
 	ia_css_spatial_param_terminal_manifest_t *spatial_param_terminal,
-	const uint16_t section_count
-)
+	const uint16_t section_count)
 {
 	if (spatial_param_terminal == NULL) {
-		return EFAULT;
+		return -EFAULT;
 	}
 
-	spatial_param_terminal->frame_grid_param_manifest_section_desc_count = section_count;
-	spatial_param_terminal->frame_grid_param_manifest_section_desc_offset =
+	spatial_param_terminal->
+		frame_grid_param_manifest_section_desc_count = section_count;
+	spatial_param_terminal->
+		frame_grid_param_manifest_section_desc_offset =
 		sizeof(ia_css_spatial_param_terminal_manifest_t);
 
 	return 0;
 }
 
 ia_css_frame_grid_param_manifest_section_desc_t *
-	ia_css_spatial_param_terminal_manifest_get_frame_grid_param_manifest_section_desc(
-		const ia_css_spatial_param_terminal_manifest_t *spatial_param_terminal_manifest,
-		const unsigned int section_index
-)
+ia_css_spatial_param_terminal_manifest_get_frame_grid_param_manifest_section_desc(
+	const ia_css_spatial_param_terminal_manifest_t *
+		spatial_param_terminal_manifest,
+	const unsigned int section_index)
 {
-	ia_css_frame_grid_param_manifest_section_desc_t *frame_param_manifest_section_base, *frame_param_manifest_section_desc = NULL;
+	ia_css_frame_grid_param_manifest_section_desc_t *
+		frame_param_manifest_section_base;
+	ia_css_frame_grid_param_manifest_section_desc_t *
+		frame_param_manifest_section_desc = NULL;
 
 	verifjmpexit(spatial_param_terminal_manifest != NULL);
 
-	frame_param_manifest_section_base = (ia_css_frame_grid_param_manifest_section_desc_t *)(((const char *)spatial_param_terminal_manifest) +
-					spatial_param_terminal_manifest->frame_grid_param_manifest_section_desc_offset);
-	frame_param_manifest_section_desc = &(frame_param_manifest_section_base[section_index]);
+	frame_param_manifest_section_base =
+		(ia_css_frame_grid_param_manifest_section_desc_t *)
+		(((const char *)spatial_param_terminal_manifest) +
+			spatial_param_terminal_manifest->
+			frame_grid_param_manifest_section_desc_offset);
+	frame_param_manifest_section_desc =
+		&(frame_param_manifest_section_base[section_index]);
 
 EXIT:
 	return frame_param_manifest_section_desc;
@@ -158,20 +198,19 @@ EXIT:
 
 /* Sliced Terminal */
 unsigned int ia_css_sliced_param_terminal_manifest_get_size(
-	const unsigned int nof_slice_param_sections
-)
+	const unsigned int nof_slice_param_sections)
 {
 	return sizeof(ia_css_spatial_param_terminal_manifest_t) +
-		nof_slice_param_sections*sizeof(ia_css_sliced_param_manifest_section_desc_t);
+		nof_slice_param_sections *
+		sizeof(ia_css_sliced_param_manifest_section_desc_t);
 }
 
 int ia_css_sliced_param_terminal_manifest_init(
 	ia_css_sliced_param_terminal_manifest_t *sliced_param_terminal,
-	const uint16_t section_count
-)
+	const uint16_t section_count)
 {
 	if (sliced_param_terminal == NULL) {
-		return EFAULT;
+		return -EFAULT;
 	}
 
 	sliced_param_terminal->sliced_param_section_count = section_count;
@@ -182,18 +221,25 @@ int ia_css_sliced_param_terminal_manifest_init(
 }
 
 ia_css_sliced_param_manifest_section_desc_t *
-	ia_css_sliced_param_terminal_manifest_get_sliced_param_manifest_section_desc(
-		const ia_css_sliced_param_terminal_manifest_t *sliced_param_terminal_manifest,
-		const unsigned int section_index
-)
+ia_css_sliced_param_get_sliced_param_manifest_section_desc(
+	const ia_css_sliced_param_terminal_manifest_t *
+		sliced_param_terminal_manifest,
+	const unsigned int section_index)
 {
-	ia_css_sliced_param_manifest_section_desc_t *sliced_param_manifest_section_base, *sliced_param_manifest_section_desc = NULL;
+	ia_css_sliced_param_manifest_section_desc_t *
+		sliced_param_manifest_section_base;
+	ia_css_sliced_param_manifest_section_desc_t *
+		sliced_param_manifest_section_desc = NULL;
 
 	verifjmpexit(sliced_param_terminal_manifest != NULL);
 
-	sliced_param_manifest_section_base = (ia_css_sliced_param_manifest_section_desc_t *)(((const char *)sliced_param_terminal_manifest) +
-					sliced_param_terminal_manifest->sliced_param_section_offset);
-	sliced_param_manifest_section_desc = &(sliced_param_manifest_section_base[section_index]);
+	sliced_param_manifest_section_base =
+		(ia_css_sliced_param_manifest_section_desc_t *)
+		(((const char *)sliced_param_terminal_manifest) +
+			sliced_param_terminal_manifest->
+			sliced_param_section_offset);
+	sliced_param_manifest_section_desc =
+		&(sliced_param_manifest_section_base[section_index]);
 
 EXIT:
 	return sliced_param_manifest_section_desc;
@@ -202,22 +248,22 @@ EXIT:
 /* Program Terminal */
 unsigned int ia_css_program_terminal_manifest_get_size(
 	const unsigned int nof_fragment_param_sections,
-	const unsigned int nof_kernel_fragment_sequencer_infos
-)
+	const unsigned int nof_kernel_fragment_sequencer_infos)
 {
 	return sizeof(ia_css_program_terminal_manifest_t) +
-		nof_fragment_param_sections*sizeof(ia_css_fragment_param_manifest_section_desc_t) +
-		nof_kernel_fragment_sequencer_infos*sizeof(ia_css_kernel_fragment_sequencer_info_manifest_desc_t);
+		nof_fragment_param_sections *
+		sizeof(ia_css_fragment_param_manifest_section_desc_t) +
+		nof_kernel_fragment_sequencer_infos *
+		sizeof(ia_css_kernel_fragment_sequencer_info_manifest_desc_t);
 }
 
 int ia_css_program_terminal_manifest_init(
 	ia_css_program_terminal_manifest_t *program_terminal,
 	const uint16_t fragment_param_section_count,
-	const uint16_t kernel_fragment_seq_info_section_count
-)
+	const uint16_t kernel_fragment_seq_info_section_count)
 {
 	if (program_terminal == NULL) {
-		return EFAULT;
+		return -EFAULT;
 	}
 
 	program_terminal->fragment_param_manifest_section_desc_count =
@@ -238,8 +284,7 @@ int ia_css_program_terminal_manifest_init(
 ia_css_fragment_param_manifest_section_desc_t *
 ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc(
 	const ia_css_program_terminal_manifest_t *program_terminal_manifest,
-	const unsigned int section_index
-)
+	const unsigned int section_index)
 {
 	ia_css_fragment_param_manifest_section_desc_t
 	*fragment_param_manifest_section_base,
@@ -247,31 +292,39 @@ ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc(
 
 	verifjmpexit(program_terminal_manifest != NULL);
 
-	fragment_param_manifest_section_base = (ia_css_fragment_param_manifest_section_desc_t *)(((const char *)program_terminal_manifest) +
-		program_terminal_manifest->fragment_param_manifest_section_desc_offset);
-	fragment_param_manifest_section = &(fragment_param_manifest_section_base[section_index]);
+	fragment_param_manifest_section_base =
+		(ia_css_fragment_param_manifest_section_desc_t *)
+		(((const char *)program_terminal_manifest) +
+		program_terminal_manifest->
+		fragment_param_manifest_section_desc_offset);
+	fragment_param_manifest_section =
+		&(fragment_param_manifest_section_base[section_index]);
 
 EXIT:
 	return fragment_param_manifest_section;
 }
 
 ia_css_kernel_fragment_sequencer_info_manifest_desc_t *
-	ia_css_program_terminal_manifest_get_kernel_fragment_sequencer_info_manifest_section_desc(
-		const ia_css_program_terminal_manifest_t *program_terminal_manifest,
-		const unsigned int info_index
-)
+ia_css_program_get_kernel_fragment_sequencer_info_manifest_desc(
+	const ia_css_program_terminal_manifest_t *program_terminal_manifest,
+	const unsigned int info_index)
 {
-	ia_css_kernel_fragment_sequencer_info_manifest_desc_t *kernel_manifest_fragment_sequencer_info_manifest_desc_base,
-		*kernel_manifest_fragment_sequencer_info_manifest_desc = NULL;
+	ia_css_kernel_fragment_sequencer_info_manifest_desc_t *
+		kernel_manifest_fragment_sequencer_info_manifest_desc_base;
+	ia_css_kernel_fragment_sequencer_info_manifest_desc_t *
+		kernel_manifest_fragment_sequencer_info_manifest_desc = NULL;
 
 	verifjmpexit(program_terminal_manifest != NULL);
 
 	kernel_manifest_fragment_sequencer_info_manifest_desc_base =
-		(ia_css_kernel_fragment_sequencer_info_manifest_desc_t *)(((const char *)program_terminal_manifest) +
-		program_terminal_manifest->kernel_fragment_sequencer_info_manifest_info_offset);
+		(ia_css_kernel_fragment_sequencer_info_manifest_desc_t *)
+		(((const char *)program_terminal_manifest) +
+		program_terminal_manifest->
+		kernel_fragment_sequencer_info_manifest_info_offset);
 
 	kernel_manifest_fragment_sequencer_info_manifest_desc =
-		&(kernel_manifest_fragment_sequencer_info_manifest_desc_base[info_index]);
+		&(kernel_manifest_fragment_sequencer_info_manifest_desc_base[
+				info_index]);
 
 EXIT:
 	return kernel_manifest_fragment_sequencer_info_manifest_desc;

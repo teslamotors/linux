@@ -31,13 +31,18 @@
 
 /* tentative; co-design with ISP algorithm */
 struct ia_css_program_group_param_s {
-	ia_css_kernel_bitmap_t				kernel_enable_bitmap;						/**< The enable bits for each individual kernel */
-	uint32_t							size;										/**< Size of this structure */
-	uint32_t		program_param_offset;
-	uint32_t		terminal_param_offset;
-	uint16_t							fragment_count;								/**< Number of (explicit) fragments to use in a frame */
-	uint8_t								program_count;								/**< Number of active programs */
-	uint8_t								terminal_count;								/**< Number of active terminals */
+	/* The enable bits for each individual kernel */
+	ia_css_kernel_bitmap_t kernel_enable_bitmap;
+	/* Size of this structure */
+	uint32_t size;
+	uint32_t program_param_offset;
+	uint32_t terminal_param_offset;
+	/* Number of (explicit) fragments to use in a frame */
+	uint16_t fragment_count;
+	/* Number of active programs */
+	uint8_t program_count;
+	/* Number of active terminals */
+	uint8_t terminal_count;
 };
 
 #define SIZE_OF_PROGRAM_PARAM_STRUCT_IN_BITS \
@@ -47,9 +52,12 @@ struct ia_css_program_group_param_s {
 
 /* private */
 struct ia_css_program_param_s {
-	ia_css_kernel_bitmap_t				kernel_enable_bitmap;						/**< What to use this one for ? */
-	uint32_t							size;										/**< Size of this structure */
-	int32_t		parent_offset; /**< offset to add to reach parent. This is negative value.*/
+	/* What to use this one for ? */
+	ia_css_kernel_bitmap_t kernel_enable_bitmap;
+	/* Size of this structure */
+	uint32_t size;
+	/* offset to add to reach parent. This is negative value.*/
+	int32_t parent_offset;
 };
 
 #define SIZE_OF_TERMINAL_PARAM_STRUCT_IN_BITS \
