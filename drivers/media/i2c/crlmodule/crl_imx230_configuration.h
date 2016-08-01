@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  *
@@ -765,6 +765,62 @@ static struct crl_register_write_rep imx230_mode_3280x2460_scale[] = {
 	{ 0x31E4, CRL_REG_LEN_08BIT, 0x02 },
 };
 
+static struct crl_register_write_rep imx230_mode_3336x2502_scale[] = {
+	{ 0x0344, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0345, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0346, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0347, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0348, CRL_REG_LEN_08BIT, 0x14 },
+	{ 0x0349, CRL_REG_LEN_08BIT, 0xDF },
+	{ 0x034A, CRL_REG_LEN_08BIT, 0x0F },
+	{ 0x034B, CRL_REG_LEN_08BIT, 0xAF },
+	{ 0x0381, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0383, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0385, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0387, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0901, CRL_REG_LEN_08BIT, 0x11 },
+	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
+	{ 0x034C, CRL_REG_LEN_08BIT, 0x0D },
+	{ 0x034D, CRL_REG_LEN_08BIT, 0x08 },
+	{ 0x034E, CRL_REG_LEN_08BIT, 0x09 },
+	{ 0x034F, CRL_REG_LEN_08BIT, 0xC6 },
+	{ 0x0401, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x0404, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0405, CRL_REG_LEN_08BIT, 0x19 },
+	{ 0x0408, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0409, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x040A, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x040B, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x040C, CRL_REG_LEN_08BIT, 0x14 },
+	{ 0x040D, CRL_REG_LEN_08BIT, 0xE0 },
+	{ 0x040E, CRL_REG_LEN_08BIT, 0x0F },
+	{ 0x040F, CRL_REG_LEN_08BIT, 0xB0 },
+	{ 0x3A22, CRL_REG_LEN_08BIT, 0x20 }, /* DPC2D settings */
+	{ 0x3A23, CRL_REG_LEN_08BIT, 0x14 },
+	{ 0x3A24, CRL_REG_LEN_08BIT, 0xE0 },
+	{ 0x3A25, CRL_REG_LEN_08BIT, 0x0f },
+	{ 0x3A26, CRL_REG_LEN_08BIT, 0xB0 },
+	{ 0x3A2F, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3A30, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3A31, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x3A32, CRL_REG_LEN_08BIT, 0xC0 },
+	{ 0x3A33, CRL_REG_LEN_08BIT, 0x14 },
+	{ 0x3A34, CRL_REG_LEN_08BIT, 0xDF },
+	{ 0x3A35, CRL_REG_LEN_08BIT, 0x0f },
+	{ 0x3A36, CRL_REG_LEN_08BIT, 0xAF },
+	{ 0x3A37, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3A38, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3A39, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3006, CRL_REG_LEN_08BIT, 0x01 }, /* HDR settings */
+	{ 0x3007, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x31E0, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x31E1, CRL_REG_LEN_08BIT, 0xFF },
+	{ 0x31E4, CRL_REG_LEN_08BIT, 0x02 },
+};
+
 static struct crl_register_write_rep imx230_mode_2672x1504[] = {
 	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0221, CRL_REG_LEN_08BIT, 0x11 },
@@ -1280,6 +1336,24 @@ static struct crl_subdev_rect_rep imx230_3264x2448_s_rects[] = {
 	},
 };
 
+static struct crl_subdev_rect_rep imx230_3336x2502_s_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect = { 0, 0, 5344, 4016 },
+		.out_rect = { 0, 0, 5344, 4016 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect = { 0, 0, 5344, 4016 },
+		.out_rect = { 0, 0, 5344, 4016 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect = { 0, 0, 5344, 4016 },
+		.out_rect = { 0, 0, 3336, 2502 },
+	},
+};
+
 static struct crl_subdev_rect_rep imx230_3264x2448_c_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
@@ -1488,6 +1562,21 @@ static struct crl_mode_rep imx230_modes[] = {
 		.ctrl_data = 0,
 		.mode_regs_items = ARRAY_SIZE(imx230_mode_3264x2448_scale),
 		.mode_regs = imx230_mode_3264x2448_scale,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(imx230_3336x2502_s_rects),
+		.sd_rects = imx230_3336x2502_s_rects,
+		.binn_hor = 1,
+		.binn_vert = 1,
+		.scale_m = 25,
+		.width = 3336,
+		.height = 2502,
+		.min_llp = 6024,
+		.min_fll = 4106,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = ARRAY_SIZE(imx230_mode_3336x2502_scale),
+		.mode_regs = imx230_mode_3336x2502_scale,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(imx230_3264x2448_c_rects),
