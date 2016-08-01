@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  *
@@ -471,6 +471,18 @@ static struct crl_register_write_rep ov8858_mode_1920x1440_crop[] = {
 	{ 0x4601, CRL_REG_LEN_08BIT, 0xef },
 };
 
+static struct crl_register_write_rep ov8858_mode_1984x1116_crop[] = {
+	{ 0x382d, CRL_REG_LEN_08BIT, 0xa0 },
+	{ 0x3808, CRL_REG_LEN_08BIT, 0x07 },/* h_output_size high*/
+	{ 0x3809, CRL_REG_LEN_08BIT, 0xC0 },/* h_output_size low */
+	{ 0x380A, CRL_REG_LEN_08BIT, 0x04 },/* v_output_size high */
+	{ 0x380B, CRL_REG_LEN_08BIT, 0x5C },/* v_output_size low */
+	{ 0x4022, CRL_REG_LEN_08BIT, 0x07 },
+	{ 0x4023, CRL_REG_LEN_08BIT, 0x20 },
+	{ 0x4600, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x4601, CRL_REG_LEN_08BIT, 0xef },
+};
+
 static struct crl_register_write_rep ov8858_streamon_regs[] = {
 	{ 0x0100, CRL_REG_LEN_08BIT, 0x01 }
 };
@@ -843,6 +855,42 @@ static struct crl_subdev_rect_rep ov8858_1920x1440_rects_crop[] = {
 	},
 };
 
+static struct crl_subdev_rect_rep ov8858_1984x1116_rects_crop[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 3264,
+		.in_rect.height = 2448,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 3264,
+		.out_rect.height = 2448,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 3264,
+		.in_rect.height = 2448,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 3264,
+		.out_rect.height = 2448,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 3264,
+		.in_rect.height = 2448,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1984,
+		.out_rect.height = 1116,
+	},
+};
+
 static struct crl_mode_rep ov8858_modes[] = {
 	{
 		.sd_rects_items = ARRAY_SIZE(ov8858_8m_rects_native),
@@ -934,6 +982,22 @@ static struct crl_mode_rep ov8858_modes[] = {
 		.mode_regs_items = ARRAY_SIZE(ov8858_mode_1920x1440_crop),
 		.mode_regs = ov8858_mode_1920x1440_crop,
 	},
+	{
+		.sd_rects_items = ARRAY_SIZE(ov8858_1984x1116_rects_crop),
+		.sd_rects = ov8858_1984x1116_rects_crop,
+		.binn_hor = 1,
+		.binn_vert = 1,
+		.scale_m = 1,
+		.width = 1984,
+		.height = 1116,
+		.min_llp = 3880,
+		.min_fll = 1120,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = ARRAY_SIZE(ov8858_mode_1984x1116_crop),
+		.mode_regs = ov8858_mode_1984x1116_crop,
+	},
+
 };
 
 static struct crl_sensor_subdev_config ov8858_sensor_subdevs[] = {
