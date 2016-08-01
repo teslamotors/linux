@@ -27,6 +27,5 @@ HAS_IPFD                         = 1
 HAS_STR2MMIO_IN_ISL_NONSOC_PATH  = 0
 HAS_PIXEL_FORMATTER_IN_ISYS      = 1
 DLI_SYSTEM                       = hive_isp_css_2600_system
-USE_REG_DUMP                     = 1
 RESOURCE_MANAGER_VERSION         = v1
 OFS_SCALER_1_4K_TILEY_422_SUPPORT= 1

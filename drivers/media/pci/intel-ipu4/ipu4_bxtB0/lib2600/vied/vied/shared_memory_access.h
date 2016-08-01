@@ -34,7 +34,7 @@ typedef enum {
  * \brief Virtual address of (DDR) shared memory space as seen from the VIED subsystem
  */
 #if  defined(C_RUN) || defined(crun_hostlib)
-typedef int* vied_virtual_address_t;
+typedef char* vied_virtual_address_t;
 #else
 typedef uint32_t vied_virtual_address_t;
 #endif
@@ -43,7 +43,7 @@ typedef uint32_t vied_virtual_address_t;
  * \brief Virtual address of (DDR) shared memory space as seen from the host
  */
 #if  defined(C_RUN) || defined(crun_hostlib)
-typedef int* host_virtual_address_t;
+typedef char* host_virtual_address_t;
 #else
 typedef unsigned long long host_virtual_address_t;
 #endif
