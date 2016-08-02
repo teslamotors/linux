@@ -533,20 +533,19 @@ int cnl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 	cnl->boot_complete = false;
 	init_waitqueue_head(&cnl->boot_wait);
 
+	ret = cnl_load_base_firmware(sst);
+	if (ret < 0) {
+		dev_err(dev, "Load base fw failed: %d", ret);
+		return ret;
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(cnl_sst_dsp_init);
 
 int cnl_sst_init_fw(struct device *dev, struct skl_sst *ctx)
 {
-	int ret;
 	struct sst_dsp *sst = ctx->dsp;
-
-	ret = ctx->dsp->fw_ops.load_fw(sst);
-	if (ret < 0) {
-		dev_err(dev, "load base fw failed: %d", ret);
-		return ret;
-	}
 
 	skl_dsp_init_core_state(sst);
 
