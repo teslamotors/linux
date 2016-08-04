@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  * Copyright (C) ON Semiconductor
  *
  * This program is free software; you can redistribute it and/or
@@ -57,14 +57,20 @@ static void lc898122_gyoutsignal(struct lc898122_device *lc898122_dev)
 	struct i2c_client *client = lc898122_dev->client;
 
 	if (lc898122_dev->state.flags & LC898122_USE_INVENSENSE) {
-		RegWriteA(client, LC898122_GRADR0, LC898122_INVENSENSE_GYROX_INI);
-		RegWriteA(client, LC898122_GRADR1, LC898122_INVENSENSE_GYROY_INI);
+		RegWriteA(client, LC898122_GRADR0,
+			LC898122_INVENSENSE_GYROX_INI);
+		RegWriteA(client, LC898122_GRADR1,
+			LC898122_INVENSENSE_GYROY_INI);
 	} else if (lc898122_dev->state.flags & LC898122_USE_STMICRO_L3G4IS) {
-		RegWriteA(client, LC898122_GRADR0, LC898122_STMICRO_GYROX_INI);
-		RegWriteA(client, LC898122_GRADR1, LC898122_STMICRO_GYROY_INI);
+		RegWriteA(client, LC898122_GRADR0,
+			LC898122_STMICRO_GYROX_INI);
+		RegWriteA(client, LC898122_GRADR1,
+			LC898122_STMICRO_GYROY_INI);
 	} else if (lc898122_dev->state.flags & LC898122_USE_PANASONIC) {
-		RegWriteA(client, LC898122_GRADR0, LC898122_PANASONIC_GYROX_INI);
-		RegWriteA(client, LC898122_GRADR1, LC898122_PANASONIC_GYROY_INI);
+		RegWriteA(client, LC898122_GRADR0,
+			LC898122_PANASONIC_GYROX_INI);
+		RegWriteA(client, LC898122_GRADR1,
+			LC898122_PANASONIC_GYROY_INI);
 	} else {
 		/* ERROR */
 	}
@@ -86,7 +92,8 @@ void lc898122_accwait(struct lc898122_device *lc898122_dev, u8 UcTrgDat)
 	}
 }
 
-void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev, u8 UcSelMode)
+void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev,
+			u8 UcSelMode)
 {
 	struct i2c_client *client = lc898122_dev->client;
 	u8	UcRamIni;
@@ -98,7 +105,8 @@ void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev, u8 UcSelMode
 			RegWriteA(client, LC898122_GRSEL, 0x01);
 
 			RegReadA(client, LC898122_GRINI, &UcGrini);
-			RegWriteA(client, LC898122_GRINI, (UcGrini | LC898122_SLOWMODE));
+			RegWriteA(client, LC898122_GRINI, (UcGrini |
+				LC898122_SLOWMODE));
 
 			RegWriteA(client, LC898122_GRADR0, 0x6B);
 			RegWriteA(client, LC898122_GRACC, 0x01);
@@ -144,7 +152,8 @@ void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev, u8 UcSelMode
 			lc898122_accwait(lc898122_dev, 0x10);
 
 			RegReadA(client, LC898122_GRINI, &UcGrini);
-			RegWriteA(client, LC898122_GRINI, (UcGrini & ~LC898122_SLOWMODE));
+			RegWriteA(client, LC898122_GRINI,
+				(UcGrini & ~LC898122_SLOWMODE));
 
 			lc898122_gyoutsignal(lc898122_dev);
 
@@ -152,7 +161,9 @@ void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev, u8 UcSelMode
 
 			RegWriteA(client, LC898122_WC_EQON, 0x01);
 
-			lc898122_cleargyro(lc898122_dev, 0x007F,  LC898122_CLR_FRAM1);
+			lc898122_cleargyro(lc898122_dev,
+				0x007F,
+				LC898122_CLR_FRAM1);
 		}
 	} else {
 		if (UcSelMode == ON) {
@@ -172,7 +183,8 @@ void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev, u8 UcSelMode
 			msleep(50);
 
 			RegWriteA(client, LC898122_WC_EQON, 0x01);
-			lc898122_cleargyro(lc898122_dev, 0x007F,  LC898122_CLR_FRAM1);
+			lc898122_cleargyro(lc898122_dev, 0x007F,
+				LC898122_CLR_FRAM1);
 		}
 	}
 }
@@ -234,7 +246,9 @@ void lc898122_GyOutSignalCont(struct lc898122_device *lc898122_dev)
 }
 
 
-void lc898122_BsyWit(struct lc898122_device *lc898122_dev, u16	UsTrgAdr, u8	UcTrgDat)
+void lc898122_BsyWit(struct lc898122_device *lc898122_dev,
+	u16 UsTrgAdr,
+	u8 UcTrgDat)
 {
 	struct i2c_client *client = lc898122_dev->client;
 	u8 UcFlgVal;
@@ -371,7 +385,8 @@ void lc898122_settregaf(struct lc898122_device *lc898122_dev, u16 UsTregAf)
 		RamWriteA(client, LC898122_TREG_H, (UsTregAf << 6));
 }
 
-void lc898122_autogaincontrol(struct lc898122_device *lc898122_dev, u8 UcModeSw)
+void lc898122_autogaincontrol(struct lc898122_device *lc898122_dev,
+	u8 UcModeSw)
 {
 	struct i2c_client *client = lc898122_dev->client;
 
@@ -379,7 +394,8 @@ void lc898122_autogaincontrol(struct lc898122_device *lc898122_dev, u8 UcModeSw)
 		RegWriteA(client, LC898122_WG_ADJGANGXATO, 0xA0);
 		RegWriteA(client, LC898122_WG_ADJGANGYATO, 0xA0);
 		RamWrite32A(client, LC898122_GANADR, LC898122_XMAXGAIN);
-		RamWrite32A(client, LC898122_GANADR | 0x0100,  LC898122_YMAXGAIN);
+		RamWrite32A(client, LC898122_GANADR |
+			0x0100,  LC898122_YMAXGAIN);
 	} else {
 		RegWriteA(client, LC898122_WG_ADJGANGXATO, 0xA3);
 		RegWriteA(client, LC898122_WG_ADJGANGYATO, 0xA3);
@@ -594,17 +610,20 @@ static void lc898122_init_dgyro(struct lc898122_device *lc898122_dev)
 	} else if (lc898122_dev->state.flags & LC898122_USE_INVENSENSE) {
 
 		RegReadA(client, LC898122_GRINI, &UcGrini);
-		RegWriteA(client, LC898122_GRINI, (UcGrini | LC898122_SLOWMODE));
+		RegWriteA(client, LC898122_GRINI, (UcGrini |
+			LC898122_SLOWMODE));
 		RegWriteA(client, LC898122_GRADR0, 0x6A);
 		RegWriteA(client, LC898122_GSETDT, 0x10);
 		RegWriteA(client, LC898122_GRACC, 0x10);
 		lc898122_accwait(lc898122_dev, 0x10);
 		RegWriteA(client, LC898122_GRADR0, 0x1B);
-		RegWriteA(client, LC898122_GSETDT, (LC898122_INVENSENSE_FS_SEL << 3));
+		RegWriteA(client, LC898122_GSETDT,
+			(LC898122_INVENSENSE_FS_SEL << 3));
 		RegWriteA(client, LC898122_GRACC, 0x10);
 		lc898122_accwait(lc898122_dev, 0x10);
 		RegReadA(client, LC898122_GRINI, &UcGrini);
-		RegWriteA(client, LC898122_GRINI, (UcGrini & ~LC898122_SLOWMODE));
+		RegWriteA(client, LC898122_GRINI,
+			(UcGrini & ~LC898122_SLOWMODE));
 
 	} else if (lc898122_dev->state.flags & LC898122_USE_PANASONIC) {
 
@@ -1058,9 +1077,11 @@ static void lc898122_init_gyro(struct lc898122_device *lc898122_dev)
 
 		RegWriteA(client, LC898122_WG_LEVADD, (u8) LC898122_MONADR);
 		if (lc898122_dev->state.flags & LC898122_EXTCLK_ALL)
-			RegWriteA(client, LC898122_WG_LEVTMR, LC898122_TIMEBSE_EXT);
+			RegWriteA(client, LC898122_WG_LEVTMR,
+				LC898122_TIMEBSE_EXT);
 		else
-			RegWriteA(client, LC898122_WG_LEVTMR, LC898122_TIMEBSE);
+			RegWriteA(client, LC898122_WG_LEVTMR,
+				LC898122_TIMEBSE);
 		RegWriteA(client, LC898122_WG_LEVTMRLOW, LC898122_TIMELOW);
 		RegWriteA(client, LC898122_WG_LEVTMRHGH, LC898122_TIMEHGH);
 		RegWriteA(client, LC898122_WG_ADJGANADD, (u8) LC898122_GANADR);
@@ -1094,7 +1115,9 @@ static void lc898122_init_filters(struct lc898122_device *lc898122_dev)
 
 	index = 0;
 	while (pFilReg[index].UsRegAdd != 0xFFFF) {
-		RegWriteA(client, pFilReg[index].UsRegAdd, pFilReg[index].UcRegDat);
+		RegWriteA(client,
+			pFilReg[index].UsRegAdd,
+			pFilReg[index].UcRegDat);
 		index++;
 	}
 	if (lc898122_dev->state.flags & LC898122_XY_SIMU_SET)
@@ -1102,7 +1125,9 @@ static void lc898122_init_filters(struct lc898122_device *lc898122_dev)
 
 	index = 0;
 	while (pFilRam[index].UsRamAdd != 0xFFFF) {
-		RamWrite32A(client, pFilRam[index].UsRamAdd, pFilRam[index].UlRamDat);
+		RamWrite32A(client,
+			pFilRam[index].UsRamAdd,
+			pFilRam[index].UlRamDat);
 		index++;
 	}
 

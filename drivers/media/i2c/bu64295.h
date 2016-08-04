@@ -40,6 +40,7 @@ enum bu64295_vcm_mode {
 #define BU64295_SR_P8		0x1
 #define BU64295_RF_81HZ		0x7F
 
-#define VCM_VAL(ps, en, addr, mode, data) (u16)((ps << 15) | (en << 14) | (addr << 11) | (mode << 10) | (data & 0x3FF))
+#define VCM_VAL(ps, en, addr, mode, data) (u16)((ps << 15) |        \
+		(en << 14) | (addr << 11) | (mode << 10) | (data & 0x3FF))
 
 #endif

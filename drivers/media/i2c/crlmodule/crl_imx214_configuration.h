@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  *
@@ -673,7 +673,8 @@ static struct crl_sensor_detect_config imx214_sensor_detect_regset[] = {
 	},
 };
 
-const s64 imx214_op_sys_clock[] =  { 504000000, 504000000, 600000000, 600000000};
+const s64 imx214_op_sys_clock[] =  { 504000000, 504000000, 600000000,
+					600000000};
 
 static struct crl_pll_configuration imx214_pll_configurations[] = {
 	{
@@ -1173,7 +1174,8 @@ static struct crl_v4l2_ctrl imx214_v4l2_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max = ARRAY_SIZE(imx214_pll_configurations) - 1,
+		.data.v4l2_int_menu.max =
+			ARRAY_SIZE(imx214_pll_configurations) - 1,
 		.data.v4l2_int_menu.menu = imx214_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  *
@@ -388,8 +388,8 @@ struct crl_mode_rep {
 	/*
 	 * Minimum and maximum value for line length pixels and frame length
 	 * lines are added for modes. This facilitates easy handling of
-	 * modes which binning skipping and affects the calculation of vblank and
-	 * hblank values.
+	 * modes which binning skipping and affects the calculation of
+	 * vblank and hblank values.
 	 *
 	 * The blank values are limited based on the following logic
 	 *

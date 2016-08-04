@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -139,7 +139,8 @@ static int dw9714_probe(struct i2c_client *client,
 	struct dw9714_device *dw9714_dev;
 	int rval;
 
-	dw9714_dev = devm_kzalloc(&client->dev, sizeof(*dw9714_dev), GFP_KERNEL);
+	dw9714_dev = devm_kzalloc(&client->dev, sizeof(*dw9714_dev),
+				GFP_KERNEL);
 
 	if (dw9714_dev == NULL)
 		return -ENOMEM;
@@ -148,7 +149,8 @@ static int dw9714_probe(struct i2c_client *client,
 
 	v4l2_i2c_subdev_init(&dw9714_dev->subdev_vcm, client, &dw9714_ops);
 	dw9714_dev->subdev_vcm.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
-	snprintf(dw9714_dev->subdev_vcm.name, sizeof(dw9714_dev->subdev_vcm.name),
+	snprintf(dw9714_dev->subdev_vcm.name,
+		sizeof(dw9714_dev->subdev_vcm.name),
 		DW9714_NAME " %d-%4.4x", i2c_adapter_id(client->adapter),
 		client->addr);
 
@@ -180,8 +182,8 @@ err_cleanup:
 static int dw9714_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct dw9714_device *dw9714_dev = container_of(sd, struct dw9714_device,
-							subdev_vcm);
+	struct dw9714_device *dw9714_dev = container_of(sd,
+			struct dw9714_device, subdev_vcm);
 	dw9714_subdev_cleanup(dw9714_dev);
 	return 0;
 }

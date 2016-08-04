@@ -22,26 +22,42 @@ static struct crl_register_write_rep adv7481_hdmi_onetime_init_regset[] = {
 	{0xFF, CRL_REG_LEN_08BIT, 0xFF, 0xE0},
 	{0x00, CRL_REG_LEN_DELAY, 0x05, 0x00},
 	{0x01, CRL_REG_LEN_08BIT, 0x76, 0xE0}, /* ADI Required Write */
-	{0x05, CRL_REG_LEN_08BIT, 0x96, 0xE0}, /* Setting Vid_Std to 1600x1200(UXGA)@60 */
-	{0xF2, CRL_REG_LEN_08BIT, 0x01, 0xE0}, /* Enable I2C Read Auto-Increment */
-	{0xF3, CRL_REG_LEN_08BIT, 0x4C, 0xE0}, /* DPLL Map Address Set to 0x4C */
-	{0xF4, CRL_REG_LEN_08BIT, 0x44, 0xE0}, /* CP Map Address Set to 0x44 */
-	{0xF5, CRL_REG_LEN_08BIT, 0x68, 0xE0}, /* HDMI RX Map Address Set to 0x68 */
-	{0xF6, CRL_REG_LEN_08BIT, 0x6C, 0xE0}, /* EDID Map Address Set to 0x6C */
-	{0xF7, CRL_REG_LEN_08BIT, 0x64, 0xE0}, /* HDMI RX Repeater Map Address Set to 0x64 */
-	{0xF8, CRL_REG_LEN_08BIT, 0x62, 0xE0}, /* HDMI RX Infoframe Map Address Set to 0x62 */
-	{0xF9, CRL_REG_LEN_08BIT, 0xF0, 0xE0}, /* CBUS Map Address Set to 0xF0 */
-	{0xFA, CRL_REG_LEN_08BIT, 0x82, 0xE0}, /* CEC Map Address Set to 0x82 */
-	{0xFB, CRL_REG_LEN_08BIT, 0xF2, 0xE0}, /* SDP Main Map Address Set to 0xF2 */
-	{0xFC, CRL_REG_LEN_08BIT, 0x90, 0xE0}, /* CSI-TXB Map Address Set to 0x90 */
-	{0xFD, CRL_REG_LEN_08BIT, 0x94, 0xE0}, /* CSI-TXA Map Address Set to 0x94 */
-	{0x00, CRL_REG_LEN_08BIT, 0x40, 0xE0}, /* Disable chip powerdown & Enable HDMI Rx block */
+	{0x05, CRL_REG_LEN_08BIT, 0x96, 0xE0}, /* Setting Vid_Std to
+					1600x1200(UXGA)@60 */
+	{0xF2, CRL_REG_LEN_08BIT, 0x01, 0xE0}, /* Enable I2C Read
+					Auto-Increment */
+	{0xF3, CRL_REG_LEN_08BIT, 0x4C, 0xE0}, /* DPLL Map Address
+					Set to 0x4C */
+	{0xF4, CRL_REG_LEN_08BIT, 0x44, 0xE0}, /* CP Map Address
+					Set to 0x44 */
+	{0xF5, CRL_REG_LEN_08BIT, 0x68, 0xE0}, /* HDMI RX Map Address
+					Set to 0x68 */
+	{0xF6, CRL_REG_LEN_08BIT, 0x6C, 0xE0}, /* EDID Map Address
+					Set to 0x6C */
+	{0xF7, CRL_REG_LEN_08BIT, 0x64, 0xE0}, /* HDMI RX Repeater Map Address
+					Set to 0x64 */
+	{0xF8, CRL_REG_LEN_08BIT, 0x62, 0xE0}, /* HDMI RX Infoframe Map Address
+					Set to 0x62 */
+	{0xF9, CRL_REG_LEN_08BIT, 0xF0, 0xE0}, /* CBUS Map Address
+					Set to 0xF0 */
+	{0xFA, CRL_REG_LEN_08BIT, 0x82, 0xE0}, /* CEC Map Address
+					Set to 0x82 */
+	{0xFB, CRL_REG_LEN_08BIT, 0xF2, 0xE0}, /* SDP Main Map Address
+					Set to 0xF2 */
+	{0xFC, CRL_REG_LEN_08BIT, 0x90, 0xE0}, /* CSI-TXB Map Address
+					Set to 0x90 */
+	{0xFD, CRL_REG_LEN_08BIT, 0x94, 0xE0}, /* CSI-TXA Map Address
+					Set to 0x94 */
+	{0x00, CRL_REG_LEN_08BIT, 0x40, 0xE0}, /* Disable chip powerdown &
+					Enable HDMI Rx block */
 
 	{0x40, CRL_REG_LEN_08BIT, 0xC3, 0x64}, /* Enable HDCP 1.1 Repeater */
 	{0x69, CRL_REG_LEN_08BIT, 0x00, 0x64}, /* KSV List not ready port A */
 	{0x77, CRL_REG_LEN_08BIT, 0x08, 0x64}, /* Clear KSV List */
-	{0x78, CRL_REG_LEN_08BIT, 0x01, 0x64}, /* KSV_LIST_READY_CLR_A: Clears the BCAPS ready bit */
-	{0x68, CRL_REG_LEN_08BIT, 0x00, 0x64}, /* Disable dual ksv list for port A */
+	{0x78, CRL_REG_LEN_08BIT, 0x01, 0x64}, /* KSV_LIST_READY_CLR_A:
+					Clears the BCAPS ready bit */
+	{0x68, CRL_REG_LEN_08BIT, 0x00, 0x64}, /* Disable dual ksv list
+					for port A */
 	{0x41, CRL_REG_LEN_08BIT, 0x00, 0x64}, /* Reset b-status (1) */
 	{0x42, CRL_REG_LEN_08BIT, 0x00, 0x64}, /* Reset b-status (2) */
 	{0x91, CRL_REG_LEN_08BIT, 0x08, 0xE0}, /* AKSV Update Clear */
@@ -66,8 +82,10 @@ static struct crl_register_write_rep adv7481_hdmi_onetime_init_regset[] = {
 	{0xBE, CRL_REG_LEN_08BIT, 0x00, 0x68}, /* ADI Required Write */
 	{0x6C, CRL_REG_LEN_08BIT, 0x01, 0x68}, /* HPA Manual Enable */
 	{0xF8, CRL_REG_LEN_08BIT, 0x01, 0x68}, /* HPA Asserted */
-	{0x0F, CRL_REG_LEN_08BIT, 0x00, 0x68}, /* Audio Mute Spee d Set to Fastest (Smallest Step Size) */
-	{0x0E, CRL_REG_LEN_08BIT, 0xFF, 0xE0}, /* LLC/PIX/AUD/SPI PINS TRISTATED */
+	{0x0F, CRL_REG_LEN_08BIT, 0x00, 0x68}, /* Audio Mute Speed
+					Set to Fastest (Smallest Step Size) */
+	{0x0E, CRL_REG_LEN_08BIT, 0xFF, 0xE0}, /* LLC/PIX/AUD/SPI PINS
+					TRISTATED */
 
 	{0x74, CRL_REG_LEN_08BIT, 0x43, 0xE0}, /* Enable interrupts */
 	{0x75, CRL_REG_LEN_08BIT, 0x43, 0xE0},
@@ -145,38 +163,53 @@ static struct crl_register_write_rep adv7481_hdmi_onetime_init_regset[] = {
 
 static struct crl_register_write_rep adv7481_hdmi_mode_rgb565[] = {
 	{0x04, CRL_REG_LEN_08BIT, 0x02, 0xE0}, /* RGB Out of CP */
-	{0x12, CRL_REG_LEN_08BIT, 0xF0, 0xE0}, /* CSC Depends on ip Packets - SDR 444 */
-	{0x17, CRL_REG_LEN_08BIT, 0xB8, 0xE0}, /* Configure for RGB565 & Luma & Chroma Values Can Reach 254d */
+	{0x12, CRL_REG_LEN_08BIT, 0xF0, 0xE0}, /* CSC Depends on ip Packets -
+					SDR 444 */
+	{0x17, CRL_REG_LEN_08BIT, 0xB8, 0xE0}, /* Configure for RGB565 & Luma &
+					Chroma Values Can Reach 254d */
 	{0x03, CRL_REG_LEN_08BIT, 0x86, 0xE0}, /* CP-Insert_AV_Code */
 	{0x7C, CRL_REG_LEN_08BIT, 0x00, 0x44}, /* ADI Required Write */
-	{0x0C, CRL_REG_LEN_08BIT, 0xE0, 0xE0}, /* Enable LLC_DLL & Double LLC Timing */
-	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED AUD Outputs Enabled */
-	{0x10, CRL_REG_LEN_08BIT, 0xA0, 0xE0}, /* Enable 4-lane CSI Tx & Pixel Port */
+	{0x0C, CRL_REG_LEN_08BIT, 0xE0, 0xE0}, /* Enable LLC_DLL &
+					Double LLC Timing */
+	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED
+					AUD Outputs Enabled */
+	{0x10, CRL_REG_LEN_08BIT, 0xA0, 0xE0}, /* Enable 4-lane CSI Tx &
+					Pixel Port */
 	{0x7E, CRL_REG_LEN_08BIT, 0x98, 0x94}, /* ADI Required Write */
 };
 
 static struct crl_register_write_rep adv7481_hdmi_mode_rgb888[] = {
 	{0x04, CRL_REG_LEN_08BIT, 0x02, 0xE0}, /* RGB Out of CP */
-	{0x12, CRL_REG_LEN_08BIT, 0xF0, 0xE0}, /* CSC Depends on ip Packets - SDR 444 */
-	{0x17, CRL_REG_LEN_08BIT, 0x80, 0xE0}, /* Luma & Chroma Values Can Reach 254d */
+	{0x12, CRL_REG_LEN_08BIT, 0xF0, 0xE0}, /* CSC Depends on ip Packets -
+					SDR 444 */
+	{0x17, CRL_REG_LEN_08BIT, 0x80, 0xE0}, /* Luma & Chroma Values Can
+					Reach 254d */
 	{0x03, CRL_REG_LEN_08BIT, 0x86, 0xE0}, /* CP-Insert_AV_Code */
 	{0x7C, CRL_REG_LEN_08BIT, 0x00, 0x44}, /* ADI Required Write */
-	{0x0C, CRL_REG_LEN_08BIT, 0xE0, 0xE0}, /* Enable LLC_DLL & Double LLC Timing */
-	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED AUD Outputs Enabled */
-	{0x10, CRL_REG_LEN_08BIT, 0xA0, 0xE0}, /* Enable 4-lane CSI Tx & Pixel Port */
+	{0x0C, CRL_REG_LEN_08BIT, 0xE0, 0xE0}, /* Enable LLC_DLL &
+					Double LLC Timing */
+	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED
+					AUD Outputs Enabled */
+	{0x10, CRL_REG_LEN_08BIT, 0xA0, 0xE0}, /* Enable 4-lane CSI Tx &
+					Pixel Port */
 	{0x7E, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* ADI Required Write */
 };
 
 
 static struct crl_register_write_rep adv7481_hdmi_mode_yuv[] = {
 	{0x04, CRL_REG_LEN_08BIT, 0x00, 0xE0}, /* YCrCb output */
-	{0x12, CRL_REG_LEN_08BIT, 0xF2, 0xE0}, /* CSC Depends on ip Packets - SDR422 set */
-	{0x17, CRL_REG_LEN_08BIT, 0x80, 0xE0}, /* Luma & Chroma Values Can Reach 254d */
+	{0x12, CRL_REG_LEN_08BIT, 0xF2, 0xE0}, /* CSC Depends on ip Packets -
+					SDR422 set */
+	{0x17, CRL_REG_LEN_08BIT, 0x80, 0xE0}, /* Luma & Chroma Values Can
+					Reach 254d */
 	{0x03, CRL_REG_LEN_08BIT, 0x86, 0xE0}, /* CP-Insert_AV_Code */
 	{0x7C, CRL_REG_LEN_08BIT, 0x00, 0x44}, /* ADI Required Write */
-	{0x0C, CRL_REG_LEN_08BIT, 0xE0, 0xE0}, /* Enable LLC_DLL & Doub le LLC Timing */
-	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED AUD Outputs Enabled */
-	{0x10, CRL_REG_LEN_08BIT, 0xA0, 0xE0}, /* Enable 4-lane CSI Tx & Pixel Port */
+	{0x0C, CRL_REG_LEN_08BIT, 0xE0, 0xE0}, /* Enable LLC_DLL &
+					Double LLC Timing */
+	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED
+					AUD Outputs Enabled */
+	{0x10, CRL_REG_LEN_08BIT, 0xA0, 0xE0}, /* Enable 4-lane CSI Tx &
+					Pixel Port */
 	{0x00, CRL_REG_LEN_08BIT, 0x84, 0x94}, /* Enable 4-lane MIPI */
 	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
 	{0xDB, CRL_REG_LEN_08BIT, 0x10, 0x94}, /* ADI Required Write */
@@ -193,7 +226,9 @@ static struct crl_register_write_rep adv7481_hdmi_powerup_regset[] = {
 	{0x72, CRL_REG_LEN_08BIT, 0x11, 0x94}, /* ADI Required Write */
 	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* i2c_dphy_pwdn - 1'b0 */
 	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94}, /* ADI Required Write */
-	{0x1E, CRL_REG_LEN_08BIT, 0xC0, 0x94}, /* ADI Required Write, transmit only Frame Start/End packets */
+	{0x1E, CRL_REG_LEN_08BIT, 0xC0, 0x94}, /* ADI Required Write,
+						transmit only
+						Frame Start/End packets */
 	{0xDA, CRL_REG_LEN_08BIT, 0x01, 0x94}, /* i2c_mipi_pll_en - 1'b1 */
 };
 
@@ -210,7 +245,8 @@ static struct crl_register_write_rep adv7481_hdmi_streamoff_regs[] = {
 	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94}, /* ADI Recommended Write */
 	{0x1E, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* Reset the clock Lane */
 	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94},
-	{0xDA, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* i2c_mipi_pll_en - 1'b0 Disable MIPI PLL */
+	{0xDA, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* i2c_mipi_pll_en -
+					1'b0 Disable MIPI PLL */
 	{0xC1, CRL_REG_LEN_08BIT, 0x3B, 0x94},
 };
 
@@ -227,7 +263,7 @@ static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 		.ctrl_data = 0,
 		.pll_regs_items = 0,
 		.pll_regs = NULL,
-        },
+	},
 	{
 		.input_clk = 24000000,
 		.op_sys_clk = 445500000,
@@ -571,7 +607,8 @@ static struct crl_v4l2_ctrl adv7481_hdmi_v4l2_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max = ARRAY_SIZE(adv7481_hdmi_pll_configurations) - 1,
+		.data.v4l2_int_menu.max =
+			ARRAY_SIZE(adv7481_hdmi_pll_configurations) - 1,
 		.data.v4l2_int_menu.menu = adv7481_hdmi_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
@@ -626,7 +663,8 @@ static struct crl_sensor_configuration adv7481_hdmi_crl_configuration = {
 	.sensor_init = adv7481_sensor_init,
 	.sensor_cleanup = adv7481_sensor_cleanup,
 
-	.onetime_init_regs_items = ARRAY_SIZE(adv7481_hdmi_onetime_init_regset),
+	.onetime_init_regs_items =
+		ARRAY_SIZE(adv7481_hdmi_onetime_init_regset),
 	.onetime_init_regs = adv7481_hdmi_onetime_init_regset,
 
 	.powerup_regs_items = ARRAY_SIZE(adv7481_hdmi_powerup_regset),

@@ -805,6 +805,7 @@ static int as3638_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 	struct as3638_flash *flash = subdev_led_to_as3638_flash(subdev_led,
 								led_no);
 	int rval = 0;
+
 	dev_dbg(flash->dev, "open LED%d\n", led_no + 1);
 
 	pm_runtime_get_sync(flash->dev);
@@ -1028,7 +1029,8 @@ static int as3638_resume(struct device *dev)
 	if (flash->current_led == AS3638_NO_LED)
 		return 0;
 
-	rval = v4l2_ctrl_handler_setup(&flash->ctrls_led[flash->current_led].handler);
+	rval = v4l2_ctrl_handler_setup(
+			&flash->ctrls_led[flash->current_led].handler);
 
 	return rval;
 }

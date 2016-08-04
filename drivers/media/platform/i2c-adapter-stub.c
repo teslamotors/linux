@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2015 Intel Corporation.
+ * Copyright (c) 2013--2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -111,7 +111,9 @@ static int __init stub_init(void)
 {
 	int rval;
 
-	stub_platform_device = platform_device_register_simple(STUB_ADAPTER_NAME, -1, NULL, 0);
+	stub_platform_device =
+		platform_device_register_simple(STUB_ADAPTER_NAME,
+						-1, NULL, 0);
 
 	rval = platform_driver_register(&stub_platform_driver);
 	if (rval) {

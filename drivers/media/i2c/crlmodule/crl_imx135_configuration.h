@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  * Author: Jouni Ukkonen <jouni.ukkonen@intel.com>
@@ -391,7 +391,8 @@ static struct crl_mode_rep imx135_modes[] = {
 		.mode_regs = imx135_mode_13M,
 	},
 	{
-		.sd_rects_items = ARRAY_SIZE(imx135_mode_1936M_binn_scale_rects),
+		.sd_rects_items =
+			ARRAY_SIZE(imx135_mode_1936M_binn_scale_rects),
 		.sd_rects = imx135_mode_1936M_binn_scale_rects,
 		.binn_hor = 2,
 		.binn_vert = 2,
@@ -542,7 +543,8 @@ static struct crl_v4l2_ctrl imx135_v4l2_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max = ARRAY_SIZE(imx135_pll_configurations) - 1,
+		.data.v4l2_int_menu.max =
+			ARRAY_SIZE(imx135_pll_configurations) - 1,
 		.data.v4l2_int_menu.menu = imx135_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,

@@ -833,9 +833,9 @@ static struct crl_csi_data_fmt imx318_crl_csi_data_fmt[] = {
 };
 
 static const s64 imx318_op_sys_clock[] =  { 582000000,
-										    582000000,
-										    960000000,
-										    960000000, };
+						582000000,
+						960000000,
+						960000000, };
 
 static struct crl_v4l2_ctrl imx318_vl42_ctrls[] = {
 	{
@@ -846,7 +846,8 @@ static struct crl_v4l2_ctrl imx318_vl42_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max = ARRAY_SIZE(imx318_pll_configurations) - 1,
+		.data.v4l2_int_menu.max =
+			ARRAY_SIZE(imx318_pll_configurations) - 1,
 		.data.v4l2_int_menu.menu = imx318_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,

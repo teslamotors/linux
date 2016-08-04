@@ -80,7 +80,8 @@ static struct crl_register_write_rep ov8858_powerup_regset[] = {
 	{ 0x3505, CRL_REG_LEN_08BIT, 0x80 },/* gain conversation option */
 	/*
 	 * [10:7] are integer gain, [6:0] are fraction gain. For example:
-	 * 0x80 is 1x gain, CRL_REG_LEN_08BIT, 0x100 is 2x gain, CRL_REG_LEN_08BIT, 0x1C0 is 3.5x gain
+	 * 0x80 is 1x gain, CRL_REG_LEN_08BIT, 0x100 is 2x gain,
+	 * CRL_REG_LEN_08BIT, 0x1C0 is 3.5x gain
 	 */
 	{ 0x3508, CRL_REG_LEN_08BIT, 0x02 },/* long gain = 0x0200 */
 	{ 0x3509, CRL_REG_LEN_08BIT, 0x00 },/* long gain = 0x0200 */

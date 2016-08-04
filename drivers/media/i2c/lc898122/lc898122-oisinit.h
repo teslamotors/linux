@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  * Copyright (C) ON Semiconductor
  *
  * This program is free software; you can redistribute it and/or
@@ -362,8 +362,10 @@ void lc898122_SetPanTiltMode(struct lc898122_device *lc898122_dev,
 void lc898122_IniPtMovMod(struct lc898122_device *lc898122_dev, u8 UcPtMod);
 void lc898122_driversw(struct lc898122_device *lc898122_dev, u8 UcDrvSw);
 void lc898122_afdriversw(struct lc898122_device *lc898122_dev, u8 UcDrvSw);
-void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev, u8 UcSelMode);
+void lc898122_selectgyrosleep(struct lc898122_device *lc898122_dev,
+		u8 UcSelMode);
 void lc898122_GyOutSignalCont(struct lc898122_device *lc898122_dev);
-void lc898122_SrvCon(struct lc898122_device *lc898122_dev, u8 UcDirSel, u8 UcSwcCon);
+void lc898122_SrvCon(struct lc898122_device *lc898122_dev, u8 UcDirSel,
+		u8 UcSwcCon);
 
 #endif

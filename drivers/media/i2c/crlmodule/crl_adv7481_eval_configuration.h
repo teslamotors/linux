@@ -1,6 +1,6 @@
 
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  *
  * Author: Jianxu Zheng <jian.xu.zheng@intel.com>
  *
@@ -406,7 +406,8 @@ static struct crl_v4l2_ctrl adv7481_eval_v4l2_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max = ARRAY_SIZE(adv7481_eval_pll_configurations) - 1,
+		.data.v4l2_int_menu.max =
+			ARRAY_SIZE(adv7481_eval_pll_configurations) - 1,
 		.data.v4l2_int_menu.menu = adv7481_eval_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,

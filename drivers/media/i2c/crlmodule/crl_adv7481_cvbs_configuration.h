@@ -1,6 +1,6 @@
 
 /*
- * Copyright (c) 2015 Intel Corporation. All Rights Reserved.
+ * Copyright (c) 2015--2016 Intel Corporation. All Rights Reserved.
  *
  * Author: Jianxu Zheng <jian.xu.zheng@intel.com>
  *
@@ -21,7 +21,8 @@
 #include "crlmodule-sensor-ds.h"
 
 static struct crl_register_write_rep adv7481_cvbs_powerup_regset[] = {
-	{0x0E, CRL_REG_LEN_08BIT, 0xFF, 0xE0}, /* LLC/PIX/AUD/SPI PINS TRISTATED */
+	{0x0E, CRL_REG_LEN_08BIT, 0xFF, 0xE0}, /* LLC/PIX/AUD/
+					SPI PINS TRISTATED */
 	{0x0F, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* Exit Power Down Mode */
 	{0x52, CRL_REG_LEN_08BIT, 0xCD, 0xF2}, /* ADI Required Write */
 	{0x00, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* INSEL = CVBS in on Ain 1 */
@@ -32,12 +33,16 @@ static struct crl_register_write_rep adv7481_cvbs_powerup_regset[] = {
 	{0x80, CRL_REG_LEN_08BIT, 0x51, 0xF2}, /* ADI Required Write */
 	{0x81, CRL_REG_LEN_08BIT, 0x51, 0xF2}, /* ADI Required Write */
 	{0x82, CRL_REG_LEN_08BIT, 0x68, 0xF2}, /* ADI Required Write */
-	{0x03, CRL_REG_LEN_08BIT, 0x42, 0xF2}, /* Tri-S Output Drivers, PwrDwn 656 pads */
-	{0x04, CRL_REG_LEN_08BIT, 0x07, 0xF2}, /* Power-up INTRQ pad, & Enable SFL */
+	{0x03, CRL_REG_LEN_08BIT, 0x42, 0xF2}, /* Tri-S Output Drivers,
+					PwrDwn 656 pads */
+	{0x04, CRL_REG_LEN_08BIT, 0x07, 0xF2}, /* Power-up INTRQ pad,
+					& Enable SFL */
 	{0x13, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
 	{0x17, CRL_REG_LEN_08BIT, 0x41, 0xF2}, /* Select SH1 */
 	{0x31, CRL_REG_LEN_08BIT, 0x12, 0xF2}, /* ADI Required Write */
-	{0x10, CRL_REG_LEN_08BIT, 0x70, 0xE0}, /* Enable 1-Lane MIPI Tx, enable pixel output and route SD through Pixel port */
+	{0x10, CRL_REG_LEN_08BIT, 0x70, 0xE0}, /* Enable 1-Lane MIPI Tx,
+					enable pixel output and route
+					SD through Pixel port */
 	{0x00, CRL_REG_LEN_08BIT, 0x81, 0x90}, /* Enable 1-lane MIPI */
 	{0x00, CRL_REG_LEN_08BIT, 0xA1, 0x90}, /* Set Auto DPHY Timing */
 	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* ADI Required Write */
@@ -65,7 +70,8 @@ static struct crl_register_write_rep adv7481_cvbs_streamoff_regs[] = {
 	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x90}, /* ADI Recommended Write */
 	{0x1E, CRL_REG_LEN_08BIT, 0x00, 0x90}, /* Reset the clock Lane */
 	{0x00, CRL_REG_LEN_08BIT, 0x81, 0x90},
-	{0xDA, CRL_REG_LEN_08BIT, 0x00, 0x90}, /* i2c_mipi_pll_en - 1'b0 Disable MIPI PLL */
+	{0xDA, CRL_REG_LEN_08BIT, 0x00, 0x90}, /* i2c_mipi_pll_en -
+					1'b0 Disable MIPI PLL */
 	{0xC1, CRL_REG_LEN_08BIT, 0x3B, 0x90},
 };
 
@@ -187,7 +193,8 @@ static struct crl_v4l2_ctrl adv7481_cvbs_v4l2_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max = ARRAY_SIZE(adv7481_cvbs_pll_configurations) - 1,
+		.data.v4l2_int_menu.max =
+			ARRAY_SIZE(adv7481_cvbs_pll_configurations) - 1,
 		.data.v4l2_int_menu.menu = adv7481_cvbs_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
@@ -238,7 +245,8 @@ static struct crl_sensor_configuration adv7481_cvbs_crl_configuration = {
 	.sensor_init = NULL,
 	.sensor_cleanup = NULL,
 
-	.onetime_init_regs_items = 0,	/* one time initialization is done by HDMI part */
+	/* one time initialization is done by HDMI part */
+	.onetime_init_regs_items = 0,
 	.onetime_init_regs = NULL,
 
 	.powerup_regs_items = ARRAY_SIZE(adv7481_cvbs_powerup_regset),

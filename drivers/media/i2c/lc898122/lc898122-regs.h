@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  * Copyright (C) ON Semiconductor
  *
  * This program is free software; you can redistribute it and/or
@@ -371,7 +371,8 @@
 #define		LC898122_GRFLG1				0x02B9
 #define		LC898122_DGSTAT0			0x02C1
 #define		LC898122_DGSTAT1			0x02C2
-#define		LC898122_VRREG				0x02D0	/* USE TEST REG */
+/* USE TEST REG */
+#define		LC898122_VRREG				0x02D0
 
 /* Open AF Register */
 
@@ -388,9 +389,12 @@
 
 #define		LC898122_TREG_H				0x0380
 #define		LC898122_TREG_L				0x0381
-#define		LC898122_RWEXD1_L			0x0396	/* 2Byte access */
-#define		LC898122_RWEXD2_L			0x0398	/* 2Byte access */
-#define		LC898122_RWEXD3_L			0x039A	/* 2Byte access */
+/* 2Byte access */
+#define		LC898122_RWEXD1_L			0x0396
+/* 2Byte access */
+#define		LC898122_RWEXD2_L			0x0398
+/* 2Byte access */
+#define		LC898122_RWEXD3_L			0x039A
 
 /* FILTER COEFFICIENT RAM */
 #define		LC898122_gx45g				0x1000

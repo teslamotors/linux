@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  *
  * Author: Jianxu Zheng <jian.xu.zheng@intel.com>
  *
@@ -49,7 +49,8 @@ static struct crlmodule_platform_data imx185_pdata = {
 	.xshutdown = GPIO_BASE + 71,
 	.lanes = IMX185_LANES,
 	.ext_clk = 27000000,
-	.op_sys_clock = (uint64_t []){ 55687500, 111375000, 111375000, 222750000 },
+	.op_sys_clock = (uint64_t []){ 55687500, 111375000,
+					111375000, 222750000 },
 	.module_name = "IMX185"
 };
 

@@ -22,14 +22,17 @@
 #include "crlmodule.h"
 #include "crlmodule-regs.h"
 
-#define CREATE_ATTRIBUTE(attr)\
-	if (device_create_file(&client->dev, &attr) != 0) {             \
-		dev_err(&client->dev, "ADV7481 couldn't register %s sysfs entry.\n",   \
-				#attr);                                 \
-	}                                                               \
+#define CREATE_ATTRIBUTE(attr)	\
+	{	\
+		if (device_create_file(&client->dev, &attr) != 0) {	\
+			dev_err(&client->dev,	\
+			"ADV7481 couldn't register %s sysfs entry.\n",	\
+			#attr);	\
+		}	\
+	}
 
-#define REMOVE_ATTRIBUTE(attr)                                          \
-	device_remove_file(&client->dev, &attr);
+#define REMOVE_ATTRIBUTE(attr)	\
+	device_remove_file(&client->dev, &attr)
 
 /* Size of the mondello KSV buffer in bytes */
 #define ADV7481_KSV_BUFFER_SIZE    0x80
@@ -105,7 +108,10 @@ struct v4l2_adv7481_bcaps {
 	};
 };
 
-static int adv_i2c_write(struct i2c_client *client, u16 i2c_addr, u16 reg, u8 val)
+static int adv_i2c_write(struct i2c_client *client,
+			u16 i2c_addr,
+			u16 reg,
+			u8 val)
 {
 	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
@@ -113,7 +119,10 @@ static int adv_i2c_write(struct i2c_client *client, u16 i2c_addr, u16 reg, u8 va
 	return crlmodule_write_reg(sensor, i2c_addr, reg, 1, 0xFF, val);
 }
 
-static int adv_i2c_read(struct i2c_client *client, u16 i2c_addr, u16 reg, u32 *val)
+static int adv_i2c_read(struct i2c_client *client,
+			u16 i2c_addr,
+			u16 reg,
+			u32 *val)
 {
 	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
@@ -143,14 +152,18 @@ static long adv_write_bksv(struct i2c_client *client,
 	/* Clear BCAPS KSV list ready */
 	ret = adv_i2c_write(client, 0x64, 0x78, 0x01);
 	if (ret) {
-		dev_err(&client->dev, "%s: Error clearing BCAPS KSV list ready!\n", __func__);
+		dev_err(&client->dev,
+			"%s: Error clearing BCAPS KSV list ready!\n",
+			__func__);
 		return ret;
 	}
 
 	/* KSV_LIST_READY_PORT_A KSV list not ready */
 	ret = adv_i2c_write(client, 0x64, 0x69, 0x00);
 	if (ret) {
-		dev_err(&client->dev, "%s: Error clearing KSV_LIST_READY_PORT_A register!\n", __func__);
+		dev_err(&client->dev,
+			"%s: Error clearing KSV_LIST_READY_PORT_A register!\n",
+			__func__);
 		return ret;
 	}
 
@@ -159,16 +172,24 @@ static long adv_write_bksv(struct i2c_client *client,
 	for (k = 0; k < ADV7481_MAX_DEVICES; ++k) {
 		unsigned int j = k * ADV7481_KSV_SIZE;
 		struct crl_register_write_rep adv_ksv_cmd[] = {
-			{0x80 + j, CRL_REG_LEN_08BIT, dev_info->ksv[j + 0], 0x64},
-			{0x81 + j, CRL_REG_LEN_08BIT, dev_info->ksv[j + 1], 0x64},
-			{0x82 + j, CRL_REG_LEN_08BIT, dev_info->ksv[j + 2], 0x64},
-			{0x83 + j, CRL_REG_LEN_08BIT, dev_info->ksv[j + 3], 0x64},
-			{0x84 + j, CRL_REG_LEN_08BIT, dev_info->ksv[j + 4], 0x64},
+			{0x80 + j, CRL_REG_LEN_08BIT,
+				dev_info->ksv[j + 0], 0x64},
+			{0x81 + j, CRL_REG_LEN_08BIT,
+				dev_info->ksv[j + 1], 0x64},
+			{0x82 + j, CRL_REG_LEN_08BIT,
+				dev_info->ksv[j + 2], 0x64},
+			{0x83 + j, CRL_REG_LEN_08BIT,
+				dev_info->ksv[j + 3], 0x64},
+			{0x84 + j, CRL_REG_LEN_08BIT,
+				dev_info->ksv[j + 4], 0x64},
 		};
-		ret = crlmodule_write_regs(sensor, adv_ksv_cmd, ARRAY_SIZE(adv_ksv_cmd));
+		ret = crlmodule_write_regs(sensor, adv_ksv_cmd,
+					ARRAY_SIZE(adv_ksv_cmd));
 
 		if (ret) {
-			dev_err(&client->dev, "%s: Error while writing BKSV list!\n", __func__);
+			dev_err(&client->dev,
+				"%s: Error while writing BKSV list!\n",
+				__func__);
 			return ret;
 		}
 	}
@@ -177,7 +198,9 @@ static long adv_write_bksv(struct i2c_client *client,
 	ret = adv_i2c_read(client, 0x64, 0x42, &reg);
 
 	if (ret) {
-		dev_err(&client->dev, "%s: Error reading bstatus register!\n", __func__);
+		dev_err(&client->dev,
+			"%s: Error reading bstatus register!\n",
+			__func__);
 		return ret;
 	}
 
@@ -188,18 +211,24 @@ static long adv_write_bksv(struct i2c_client *client,
 		(dev_info->bstatus.bstatus[1] & 0x0F) | (reg & 0xF0);
 	{
 		struct crl_register_write_rep adv_cmd[] = {
-			{0x41, CRL_REG_LEN_08BIT, dev_info->bstatus.bstatus[0], 0x64},
-			{0x42, CRL_REG_LEN_08BIT, dev_info->bstatus.bstatus[1], 0x64},
-			{0x69, CRL_REG_LEN_08BIT, 0x01, 0x64},  /* KSV_LIST_READY_PORT_A */
+			{0x41, CRL_REG_LEN_08BIT,
+				dev_info->bstatus.bstatus[0], 0x64},
+			{0x42, CRL_REG_LEN_08BIT,
+				dev_info->bstatus.bstatus[1], 0x64},
+			/* KSV_LIST_READY_PORT_A */
+			{0x69, CRL_REG_LEN_08BIT, 0x01, 0x64},
 		};
 
-		ret = crlmodule_write_regs(sensor, adv_cmd, ARRAY_SIZE(adv_cmd));
+		ret = crlmodule_write_regs(sensor, adv_cmd,
+				ARRAY_SIZE(adv_cmd));
 	}
 
 	return ret;
 }
 
-static ssize_t adv_bcaps_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t adv_bcaps_show(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
 {
 	u32 val;
 	int ret;
@@ -221,17 +250,20 @@ static DEVICE_ATTR(bcaps, S_IRUGO, adv_bcaps_show, NULL);
 /*
  * Writes provided BKSV value from user space to chip.
  * BKSV should be formatted as v4l2_adv7481_dev_info struct,
- * it does basic validation and checks if provided buffer size matches size of v4l2_adv7481_dev_info struct.
- * In case of error return EIO.
+ * it does basic validation and checks if provided buffer size matches
+ * size of v4l2_adv7481_dev_info struct. In case of error return EIO.
  */
-static ssize_t adv_bksv_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t adv_bksv_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf,
+			size_t count)
 {
 	int ret;
 	struct v4l2_adv7481_dev_info dev_info;
 	struct i2c_client *client = container_of(dev, struct i2c_client, dev);
 
 	dev_dbg(&client->dev, "%s\n", __func__);
-	if (count != sizeof (struct v4l2_adv7481_dev_info))
+	if (count != sizeof(struct v4l2_adv7481_dev_info))
 		return -EIO;
 
 	dev_info  = *((struct v4l2_adv7481_dev_info *) buf);
@@ -252,7 +284,7 @@ static DEVICE_ATTR(bksv, S_IWUSR | S_IWGRP, NULL, adv_bksv_store);
  */
 static void adv_hpa_assert(struct work_struct *work)
 {
-	irq_task_t *task = (irq_task_t*) work;
+	irq_task_t *task = (irq_task_t *) work;
 	struct i2c_client *client = task->client;
 
 	adv_i2c_write(client, 0x68, 0xF8, 0x01);
@@ -267,9 +299,9 @@ static void adv_hpa_reset_callback(unsigned long data)
 {
 	irq_task_t *task = NULL;
 
-	task = (irq_task_t*) kmalloc(sizeof(irq_task_t), GFP_ATOMIC);
+	task = (irq_task_t *) kmalloc(sizeof(irq_task_t), GFP_ATOMIC);
 	if (task) {
-		INIT_WORK( (struct work_struct *) task, adv_hpa_assert);
+		INIT_WORK((struct work_struct *) task, adv_hpa_assert);
 		task->client = (struct i2c_client *) data;
 		queue_work(irq_workqueue, (struct work_struct *)task);
 	}
@@ -277,9 +309,10 @@ static void adv_hpa_reset_callback(unsigned long data)
 
 /*
  * Reauthenticates HDCP by disabling hot plug detection for 2 seconds.
- * It can be triggered by user space by writing any value to "reauthenticate" attribute.
- * After that time connected source will automatically ask for HDCP authentication once again.
- * To prevent sleep, timer is used to delay enabling of hot plug by 2 seconds.
+ * It can be triggered by user space by writing any value to "reauthenticate"
+ * attribute. After that time connected source will automatically ask for HDCP
+ * authentication once again. To prevent sleep, timer is used to delay enabling
+ * of hot plug by 2 seconds.
  * In case that previous reauthentication is not completed, returns EBUSY.
  * In case of error returns EIO.
  */
@@ -312,7 +345,8 @@ static ssize_t adv_reauthenticate_store(struct device *dev,
 	ret = adv_i2c_write(client, 0x64, 0x69, 0x00);
 	if (ret != 0) {
 		dev_err(&client->dev,
-		 "%s: Error clearing KSV_LIST_READY_PORT_A register!\n", __func__);
+		 "%s: Error clearing KSV_LIST_READY_PORT_A register!\n",
+		 __func__);
 		mutex_unlock(&hot_plug_reset_lock);
 		return -EIO;
 	}
@@ -331,11 +365,16 @@ static ssize_t adv_reauthenticate_store(struct device *dev,
 	return count;
 }
 
-/* Declares reauthenticate attribute that will be exposed to user space via sysfs */
-static DEVICE_ATTR(reauthenticate, S_IWUSR | S_IWGRP, NULL, adv_reauthenticate_store);
+/* Declares reauthenticate attribute that will be exposed
+ * to user space via sysfs
+ */
+static DEVICE_ATTR(reauthenticate, S_IWUSR | S_IWGRP, NULL,
+			adv_reauthenticate_store);
 
 /* Dummy show to prevent WARN when registering aksv attribute */
-static ssize_t adv_aksv_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t adv_aksv_show(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
 {
 	(void) dev;
 	(void) attr;
@@ -344,27 +383,36 @@ static ssize_t adv_aksv_show(struct device *dev, struct device_attribute *attr, 
 	return -EIO;
 }
 
-/* Declares aksv attribute that will be exposed to user space via sysfs, to notify about AKSV events */
+/* Declares aksv attribute that will be exposed to user space via sysfs,
+  * to notify about AKSV events.
+  */
 static DEVICE_ATTR(aksv, S_IRUGO, adv_aksv_show, NULL);
 
 
-static ssize_t adv_hdmi_cable_connected_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t adv_hdmi_cable_connected_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
 {
 	char interlaced = 'p';
+
 	if (hdmi_res_interlaced) {
 		interlaced = 'i';
 	}
 
 	return snprintf(buf, PAGE_SIZE, "%dx%d%c",
-				hdmi_res_width, hdmi_res_height, interlaced);
+			hdmi_res_width, hdmi_res_height, interlaced);
 }
-static DEVICE_ATTR(hdmi_cable_connected, S_IRUGO, adv_hdmi_cable_connected_show, NULL);
+static DEVICE_ATTR(hdmi_cable_connected, S_IRUGO,
+			adv_hdmi_cable_connected_show, NULL);
 
-static ssize_t adv_bstatus_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t adv_bstatus_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
 {
 	u32 b0, b1;
 	int ret;
-	struct i2c_client* client = container_of(dev, struct i2c_client, dev);
+	struct i2c_client *client = container_of(dev, struct i2c_client, dev);
+
 	dev_dbg(&client->dev, "Getting bstatus\n");
 	ret = adv_i2c_read(client, 0x64, 0x41, &b0);
 	if (ret != 0) {
@@ -394,8 +442,8 @@ static void adv_isr_bh(struct work_struct *work)
 	u32 raw_value;
 	u32 temp[3];
 	int ret = 0;
-
 	struct crl_register_read_rep reg;
+
 	reg.address = 0x90;
 	reg.len = CRL_REG_LEN_08BIT;
 	reg.mask = 0xFF;
@@ -407,7 +455,8 @@ static void adv_isr_bh(struct work_struct *work)
 	ret = adv_i2c_read(client, 0xE0, 0x90, &interrupt_st);
 
 	if (interrupt_st & 0x08 /*ADV7481_AKSV_UPDATE_A_ST*/) {
-		dev_dbg(&client->dev, "%s: ADV7481 ISR: AKSV_UPDATE_A_ST: 0x%x\n",
+		dev_dbg(&client->dev,
+			"%s: ADV7481 ISR: AKSV_UPDATE_A_ST: 0x%x\n",
 			__func__, interrupt_st);
 
 		/* Notify user space about AKSV event */
@@ -424,8 +473,8 @@ static void adv_isr_bh(struct work_struct *work)
 	ret = adv_i2c_read(client, 0xE0, 0x72, &interrupt_st);
 
 	/* If any of CABLE_DET_A_ST, V_LOCKED_A_ST and DE_REGEN_LCK_A_ST
-	 * interrupts was set, get updated values of CABLE_DET_RAW, V_LOCKED_RAW
-	 * and DE_REGEN_LCK_RAW
+	 * interrupts was set, get updated values of CABLE_DET_RAW,
+	 * V_LOCKED_RAW and DE_REGEN_LCK_RAW
 	 */
 	if (interrupt_st) {
 		ret = adv_i2c_read(client, 0xE0, 0x71, &raw_value);
@@ -438,22 +487,29 @@ static void adv_isr_bh(struct work_struct *work)
 
 		/* HDMI cable is connected */
 		if (raw_value & ADV7481_CABLE_DET_A_ST) {
-			dev_dbg(&client->dev, "%s: ADV7481 ISR: HDMI cable connected\n", __func__);
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: HDMI cable connected\n",
+				__func__);
 			ret = adv_i2c_write(client, 0xE0, 0x10, 0xA1);
-		}
-		else {
-			dev_dbg(&client->dev, "%s: ADV7481 ISR: HDMI cable disconnected\n", __func__);
+		} else {
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: HDMI cable disconnected\n",
+				__func__);
 		}
 	}
 
 	/* Check V_LOCKED_A_ST interrupt */
-	if((interrupt_st & ADV7481_V_LOCKED_A_ST)) {
+	if ((interrupt_st & ADV7481_V_LOCKED_A_ST)) {
 		/* Clear interrupt bit */
 		ret = adv_i2c_write(client, 0xE0, 0x73, 0x02);
-		/* Vertical sync filter has been locked, resolution height can be read */
+		/* Vertical sync filter has been locked,
+		  * resolution height can be read
+		  */
 		if (raw_value & ADV7481_V_LOCKED_A_ST) {
-			dev_dbg(&client->dev, "%s: ADV7481 ISR: Vertical Sync Filter Locked\n", __func__);
-			reg.dev_i2c_addr = 0x68; //HDMI_RX_MAP;
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: Vertical Sync Filter Locked\n",
+				__func__);
+			reg.dev_i2c_addr = 0x68; /* HDMI_RX_MAP; */
 			reg.address = 0x09;
 			adv_i2c_read(client, 0x68, 0x09, &temp[0]);
 			adv_i2c_read(client, 0x68, 0x0A, &temp[1]);
@@ -464,8 +520,7 @@ static void adv_isr_bh(struct work_struct *work)
 			if (temp[2] & 0x20) {
 				hdmi_res_height = hdmi_res_height << 1;
 				hdmi_res_interlaced = 1;
-			}
-			else {
+			} else {
 				hdmi_res_interlaced = 0;
 			}
 
@@ -474,27 +529,34 @@ static void adv_isr_bh(struct work_struct *work)
 			 * notify user space about new resolution
 			 */
 			if (hdmi_res_width) {
-				sysfs_notify(&client->dev.kobj, NULL, "hdmi_cable_connected");
+				sysfs_notify(&client->dev.kobj, NULL,
+					"hdmi_cable_connected");
 			}
-		}
-		else {
-			dev_dbg(&client->dev, "%s: ADV7481 ISR: Vertical Sync Filter Lost\n", __func__);
+		} else {
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: Vertical Sync Filter Lost\n",
+				__func__);
 			hdmi_res_height = 0;
 			/* Notify user space about losing resolution */
 			if (!hdmi_res_width) {
-				sysfs_notify(&client->dev.kobj, NULL, "hdmi_cable_connected");
+				sysfs_notify(&client->dev.kobj, NULL,
+					"hdmi_cable_connected");
 			}
 		}
 	}
 
 	/* Check DE_REGEN_A_ST interrupt */
-	if((interrupt_st & ADV7481_DE_REGEN_A_ST)) {
+	if ((interrupt_st & ADV7481_DE_REGEN_A_ST)) {
 		/* Clear interrupt bit */
 		ret = adv_i2c_write(client, 0xE0, 0x73, 0x01);
 
-		/* DE regeneration has been locked, resolution height can be read */
+		/* DE regeneration has been locked,
+		  * resolution height can be read
+		  */
 		if (raw_value & ADV7481_DE_REGEN_A_ST) {
-			dev_dbg(&client->dev, "%s: ADV7481 ISR: DE Regeneration Locked\n", __func__);
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: DE Regeneration Locked\n",
+				__func__);
 			reg.dev_i2c_addr = 0x68; /* HDMI_RX_MAP; */
 			reg.address = 0x07;
 			adv_i2c_read(client, 0x68, 0x07, &temp[0]);
@@ -509,14 +571,15 @@ static void adv_isr_bh(struct work_struct *work)
 				sysfs_notify(&client->dev.kobj, NULL,
 				 "hdmi_cable_connected");
 			}
-		}
-		else {
-			dev_dbg(&client->dev, "%s: ADV7481 ISR: DE Regeneration\
-			 Lost\n", __func__);
+		} else {
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: DE Regeneration\Lost\n",
+				__func__);
 			hdmi_res_width = 0;
 			/* Notfiy user space about losing resolution */
 			if (!hdmi_res_height) {
-				sysfs_notify(&client->dev.kobj, NULL, "hdmi_cable_connected");
+				sysfs_notify(&client->dev.kobj, NULL,
+					"hdmi_cable_connected");
 			}
 		}
 	}
@@ -527,15 +590,15 @@ static irq_handler_t adv7481_irq_handler(unsigned int irq, void *dev_id,
 					 struct pt_regs *regs)
 {
 	irq_task_t *task = NULL;
-	struct i2c_client *client = (struct i2c_client*)dev_id;
+	struct i2c_client *client = (struct i2c_client *)dev_id;
 
 	dev_dbg(&client->dev, "%s: Interrupt in ADV7481\n", __func__);
 
-	task = (irq_task_t*) kmalloc(sizeof(irq_task_t), GFP_ATOMIC);
+	task = (irq_task_t *) kmalloc(sizeof(irq_task_t), GFP_ATOMIC);
 	if (task) {
-		INIT_WORK( (struct work_struct*) task, adv_isr_bh);
+		INIT_WORK((struct work_struct *) task, adv_isr_bh);
 		task->client = client;
-		queue_work(irq_workqueue, (struct work_struct*)task);
+		queue_work(irq_workqueue, (struct work_struct *)task);
 	}
 
 	return IRQ_HANDLED;
@@ -563,12 +626,17 @@ static int register_gpio_irq(struct i2c_client *client)
 			__func__, ADV7481_irq_pin);
 		return -ENODEV;
 	} else {
-		dev_dbg(&client->dev, "%s: GPIO %d is valid.\n", __func__, ADV7481_irq_pin);
+		dev_dbg(&client->dev,
+			"%s: GPIO %d is valid.\n",
+			__func__,
+			ADV7481_irq_pin);
 	}
 
 	res = gpio_request(ADV7481_irq_pin, "ADV7481 Interrupt");
 	if (res) {
-		dev_err(&client->dev, "%s: ADV7481 GPIO pin request failed!\n", __func__);
+		dev_err(&client->dev,
+			"%s: ADV7481 GPIO pin request failed!\n",
+			__func__);
 		return -ENODEV;
 	}
 
@@ -580,7 +648,9 @@ static int register_gpio_irq(struct i2c_client *client)
 			  "adv7481_irq_handler",
 			  client);
 
-	dev_dbg(&client->dev, "%s: GPIO register GPIO IRQ result: %d\n", __func__, res);
+	dev_dbg(&client->dev,
+		"%s: GPIO register GPIO IRQ result: %d\n",
+		__func__, res);
 
 	return res;
 }

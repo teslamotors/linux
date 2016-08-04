@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2015 Intel Corporation.
+ * Copyright (c) 2013--2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -160,7 +160,8 @@ static int stub_get_mbus_formats(struct stub_sensor *sensor)
 static int stub_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 {
 	struct stub_sensor *sensor = to_stub_sensor(subdev);
-	u32 mbus_code = sensor_csi_data_formats[sensor_pixel_order(sensor)].code;
+	u32 mbus_code =
+		sensor_csi_data_formats[sensor_pixel_order(sensor)].code;
 	struct v4l2_mbus_framefmt *try_fmt =
 		v4l2_subdev_get_try_format(subdev, fh->pad, 0);
 

@@ -174,7 +174,8 @@ static struct crl_register_write_rep imx185_powerup_standby[] = {
 
 static struct crl_register_write_rep imx185_1312_728_27MHZ_CROPPING[] = {
 	/* 0x02h */
-	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 ADBIT: 10/12 , raw 10 */
+	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 ADBIT:
+						10/12 , raw 10 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x60},	/* mode selection */
 	{0x301D, CRL_REG_LEN_08BIT, 0x08},
 	{0x301E, CRL_REG_LEN_08BIT, 0x02},

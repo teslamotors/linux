@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -236,11 +236,14 @@ static int lc898122_adjust_af_parameters(struct lc898122_device *lc898122_dev)
 	RamWrite32A(client, LC898122_gxzoom,
 		(lc898122_dev->buf[GYRO_GAIN_X3] << 24) |
 		(lc898122_dev->buf[GYRO_GAIN_X2] << 16) |
-		(lc898122_dev->buf[GYRO_GAIN_X1] << 8) | (lc898122_dev->buf[GYRO_GAIN_X0]));
+		(lc898122_dev->buf[GYRO_GAIN_X1] << 8) |
+		(lc898122_dev->buf[GYRO_GAIN_X0]));
 
-	RamWrite32A(client, LC898122_gyzoom, lc898122_dev->buf[GYRO_GAIN_Y3] << 24 |
+	RamWrite32A(client, LC898122_gyzoom,
+		lc898122_dev->buf[GYRO_GAIN_Y3] << 24 |
 		lc898122_dev->buf[GYRO_GAIN_Y2] << 16 |
-		lc898122_dev->buf[GYRO_GAIN_Y1] << 8 | lc898122_dev->buf[GYRO_GAIN_Y0]);
+		lc898122_dev->buf[GYRO_GAIN_Y1] << 8 |
+		lc898122_dev->buf[GYRO_GAIN_Y0]);
 
 	/*SET VCM DAC OFFSET */
 	lc898122_SetDOFSTDAF(lc898122_dev, lc898122_dev->buf[VCM_DAC_OFFSET]);
@@ -308,7 +311,8 @@ static int lc898122_eeprom_read(struct lc898122_device *lc898122_dev, u8 *buf)
 	return 0;
 }
 
-static int lc898122_open(struct v4l2_subdev *subdev_vcm, struct v4l2_subdev_fh *fh)
+static int lc898122_open(struct v4l2_subdev *subdev_vcm,
+			struct v4l2_subdev_fh *fh)
 {
 	struct lc898122_device *lc898122_dev = to_lc898122_sensor(subdev_vcm);
 	struct i2c_client *client = lc898122_dev->client;
@@ -325,7 +329,8 @@ static int lc898122_open(struct v4l2_subdev *subdev_vcm, struct v4l2_subdev_fh *
 	return 0;
 }
 
-static int lc898122_close(struct v4l2_subdev *subdev_vcm, struct v4l2_subdev_fh *fh)
+static int lc898122_close(struct v4l2_subdev *subdev_vcm,
+			struct v4l2_subdev_fh *fh)
 {
 	struct lc898122_device *lc898122_dev = to_lc898122_sensor(subdev_vcm);
 
@@ -347,7 +352,8 @@ static int lc898122_t_focus_vcm(struct lc898122_device *lc898122_dev, u16 val)
 	return 0;
 }
 
-static int lc898122_set_stabilization(struct lc898122_device *lc898122_dev, int val)
+static int lc898122_set_stabilization(struct lc898122_device *lc898122_dev,
+			int val)
 {
 	/*
 	* Val is coming from user space, which indicates
@@ -434,7 +440,8 @@ static int lc898122_probe(struct i2c_client *client,
 	struct lc898122_platform_data *pdata;
 	int rval;
 
-	lc898122_dev = devm_kzalloc(&client->dev, sizeof(*lc898122_dev), GFP_KERNEL);
+	lc898122_dev = devm_kzalloc(&client->dev, sizeof(*lc898122_dev),
+				GFP_KERNEL);
 
 	if (lc898122_dev == NULL)
 		return -ENOMEM;
@@ -458,7 +465,8 @@ static int lc898122_probe(struct i2c_client *client,
 
 	lc898122_dev->subdev_vcm.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	lc898122_dev->subdev_vcm.internal_ops = &lc898122_internal_ops;
-	snprintf(lc898122_dev->subdev_vcm.name, sizeof(lc898122_dev->subdev_vcm.name),
+	snprintf(lc898122_dev->subdev_vcm.name,
+		sizeof(lc898122_dev->subdev_vcm.name),
 		LC898122_NAME " %d-%4.4x", i2c_adapter_id(client->adapter),
 		client->addr);
 
@@ -507,8 +515,8 @@ err_cleanup:
 static int lc898122_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct lc898122_device *lc898122_dev = container_of(sd, struct lc898122_device,
-							subdev_vcm);
+	struct lc898122_device *lc898122_dev = container_of(sd,
+		struct lc898122_device, subdev_vcm);
 
 	lc898122_subdev_cleanup(lc898122_dev);
 	if (lc898122_dev->sensor_dev)

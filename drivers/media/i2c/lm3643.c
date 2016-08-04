@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -300,7 +300,8 @@ static int lm3643_get_ctrl(struct v4l2_ctrl *ctrl)
 	if (rval < 0)
 		return rval;
 
-	dev_dbg(flash->dev, "Flags1 = 0x%x, Flags2 = 0x%x\n", reg_val1, reg_val2);
+	dev_dbg(flash->dev, "Flags1 = 0x%x, Flags2 = 0x%x\n", reg_val1,
+			reg_val2);
 	ctrl->val = 0;
 	if (reg_val1 & FAULT_TIMEOUT)
 		ctrl->val |= V4L2_FLASH_FAULT_TIMEOUT;
@@ -376,13 +377,15 @@ static int lm3643_set_ctrl(struct v4l2_ctrl *ctrl)
 		rval = regmap_update_bits(flash->regmap,
 					  LED1_FLASH_BR_REG,
 					  MASK_FLASH_BR,
-					  LM3643_FLASH_BRT_mA_TO_REG(ctrl->val));
+					  LM3643_FLASH_BRT_mA_TO_REG(
+						  ctrl->val));
 		break;
 	case V4L2_CID_FLASH_TORCH_INTENSITY:
 		rval = regmap_update_bits(flash->regmap,
 					  LED1_TORCH_BR_REG,
 					  MASK_TORCH_BR,
-					  LM3643_TORCH_BRT_mA_TO_REG(ctrl->val));
+					  LM3643_TORCH_BRT_mA_TO_REG(
+						  ctrl->val));
 		break;
 	case V4L2_CID_FLASH_FAULT:
 		break;
@@ -573,14 +576,16 @@ static int lm3643_init_device(struct lm3643_flash *flash)
 	rval = regmap_update_bits(flash->regmap,
 				  LED1_FLASH_BR_REG,
 				  MASK_FLASH_BR,
-				  LM3643_FLASH_BRT_mA_TO_REG(flash->pdata->flash_max_brightness));
+				  LM3643_FLASH_BRT_mA_TO_REG(
+					flash->pdata->flash_max_brightness));
 	if (rval < 0)
 		return rval;
 
 	rval = regmap_update_bits(flash->regmap,
 				  LED1_TORCH_BR_REG,
 				  MASK_TORCH_BR,
-				  LM3643_TORCH_BRT_mA_TO_REG(flash->pdata->torch_max_brightness));
+				  LM3643_TORCH_BRT_mA_TO_REG(
+					flash->pdata->torch_max_brightness));
 	if (rval < 0)
 		return rval;
 

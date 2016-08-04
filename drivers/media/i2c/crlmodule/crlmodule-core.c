@@ -128,8 +128,8 @@ static int __crlmodule_get_ctrl_value(struct crl_sensor *sensor,
 	}
 
 	dev_dbg(&client->dev, "%s ctrl_id: 0x%x desc: %s val: %d\n",
-			       __func__, id,
-			       sensor->v4l2_ctrl_bank[i].name, *val);
+			__func__, id,
+			sensor->v4l2_ctrl_bank[i].name, *val);
 	return 0;
 }
 
@@ -137,7 +137,7 @@ static int __crlmodule_get_ctrl_value(struct crl_sensor *sensor,
  * Finds the v4l2 ctrl based on the control id
  */
 static struct v4l2_ctrl *__crlmodule_get_v4l2_ctrl(struct crl_sensor *sensor,
-						   u32 id)
+						u32 id)
 {
 	unsigned int i;
 
@@ -151,8 +151,8 @@ static struct v4l2_ctrl *__crlmodule_get_v4l2_ctrl(struct crl_sensor *sensor,
  * Grab / Release controls based on the ctrl update context
  */
 static void __crlmodule_grab_v4l2_ctrl(struct crl_sensor *sensor,
-				       enum crl_v4l2ctrl_update_context ctxt,
-				       bool action)
+				enum crl_v4l2ctrl_update_context ctxt,
+				bool action)
 {
 	struct crl_v4l2_ctrl *crl_ctrl;
 	unsigned int i;
@@ -212,14 +212,14 @@ static int __crlmodule_update_pll_index(struct crl_sensor *sensor)
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	const struct crl_pll_configuration *pll_config;
 	const struct crl_csi_data_fmt *fmts =
-		     &sensor->sensor_ds->csi_fmts[sensor->fmt_index];
+		&sensor->sensor_ds->csi_fmts[sensor->fmt_index];
 	u32 link_freq;
 	unsigned int i;
 
 	link_freq = sensor->link_freq->qmenu_int[sensor->link_freq->val];
 
 	dev_dbg(&client->dev, "%s PLL Items: %d link_freq: %d\n", __func__,
-			      sensor->sensor_ds->pll_config_items, link_freq);
+			sensor->sensor_ds->pll_config_items, link_freq);
 
 	for (i = 0; i < sensor->sensor_ds->pll_config_items; i++) {
 		pll_config = &sensor->sensor_ds->pll_configs[i];
@@ -232,7 +232,8 @@ static int __crlmodule_update_pll_index(struct crl_sensor *sensor)
 
 		/* if pll_config->csi_lanes == 0, lanes do not matter */
 		if (pll_config->csi_lanes)
-			if (sensor->platform_data->lanes != pll_config->csi_lanes)
+			if (sensor->platform_data->lanes !=
+					pll_config->csi_lanes)
 				continue;
 
 		/* PLL config must match to bpps*/
@@ -242,24 +243,26 @@ static int __crlmodule_update_pll_index(struct crl_sensor *sensor)
 		/* Check if there are any dynamic compare items */
 		if (sensor->ext_ctrl_impacts_pll_selection &&
 		    !__crlmodule_compare_ctrl_specific_data(sensor,
-						     pll_config->comp_items,
-						     pll_config->ctrl_data))
+						pll_config->comp_items,
+						pll_config->ctrl_data))
 			continue;
 
 		/* Found PLL index */
 		dev_dbg(&client->dev, "%s Found PLL index: %d for freq: %d\n",
-				      __func__, i, link_freq);
+				__func__, i, link_freq);
 
 		sensor->pll_index = i;
 
 		/* Update the control values for pixelrate_pa and csi */
-		__v4l2_ctrl_s_ctrl_int64(sensor->pixel_rate_pa, pll_config->pixel_rate_pa);
-		__v4l2_ctrl_s_ctrl_int64(sensor->pixel_rate_csi, pll_config->pixel_rate_csi);
+		__v4l2_ctrl_s_ctrl_int64(sensor->pixel_rate_pa,
+				pll_config->pixel_rate_pa);
+		__v4l2_ctrl_s_ctrl_int64(sensor->pixel_rate_csi,
+				pll_config->pixel_rate_csi);
 		return 0;
 	}
 
 	dev_err(&client->dev, "%s no configuration found for freq: %d\n",
-			      __func__, link_freq);
+			__func__, link_freq);
 	return -EINVAL;
 }
 
@@ -267,9 +270,9 @@ static int __crlmodule_update_pll_index(struct crl_sensor *sensor)
  * Perform the action for the dependency control
  */
 static void __crlmodule_dep_ctrl_perform_action(
-					  struct crl_sensor *sensor,
-					  struct crl_dep_ctrl_provision *prov,
-					  u32 *val, u32 *dep_val)
+					struct crl_sensor *sensor,
+					struct crl_dep_ctrl_provision *prov,
+					u32 *val, u32 *dep_val)
 {
 	enum crl_dep_ctrl_condition cond;
 	unsigned int i;
@@ -327,8 +330,8 @@ static void __crlmodule_dep_ctrl_perform_action(
  * Parse the dynamic entity based on the Operand type
  */
 static int __crlmodule_parse_dynamic_entity(struct crl_sensor *sensor,
-					    struct crl_dynamic_entity entity,
-					    u32 *val)
+					struct crl_dynamic_entity entity,
+					u32 *val)
 {
 	switch (entity.entity_type) {
 	case CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST:
@@ -336,10 +339,10 @@ static int __crlmodule_parse_dynamic_entity(struct crl_sensor *sensor,
 		return 0;
 	case CRL_DYNAMIC_VAL_OPERAND_TYPE_VAR_REF:
 		return __crlmodule_get_variable_ref(sensor,
-						    entity.entity_val, val);
+						entity.entity_val, val);
 	case CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL:
 		return __crlmodule_get_ctrl_value(sensor,
-						  entity.entity_val, val);
+						entity.entity_val, val);
 	case CRL_DYNAMIC_VAL_OPERAND_TYPE_REG_VAL: {
 		struct crl_register_read_rep reg;
 
@@ -358,10 +361,10 @@ static int __crlmodule_parse_dynamic_entity(struct crl_sensor *sensor,
 }
 
 static int __crlmodule_calc_dynamic_entity_values(
-					   struct crl_sensor *sensor,
-					   unsigned int ops_items,
-					   struct crl_arithmetic_ops *ops_arr,
-					   unsigned int *val)
+					struct crl_sensor *sensor,
+					unsigned int ops_items,
+					struct crl_arithmetic_ops *ops_arr,
+					unsigned int *val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	unsigned int i;
@@ -371,12 +374,12 @@ static int __crlmodule_calc_dynamic_entity_values(
 		struct crl_arithmetic_ops *ops = &ops_arr[i];
 		u32 operand;
 		int ret = __crlmodule_parse_dynamic_entity(sensor, ops->operand,
-							   &operand);
+							&operand);
 		if (ret) {
 			dev_dbg(&client->dev,
-				   "%s failed to parse dynamic entity: %d %d\n",
-				   __func__, ops->operand.entity_type,
-				   ops->operand.entity_val);
+				"%s failed to parse dynamic entity: %d %d\n",
+				__func__, ops->operand.entity_type,
+				ops->operand.entity_val);
 			return ret;
 		}
 
@@ -763,13 +766,15 @@ static int crlmodule_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VBLANK:
 	case V4L2_CID_HBLANK:
 		if (sensor->blanking_ctrl_not_use) {
-			dev_info(&client->dev, "%s Blanking controls are not used \
-			in this configuration, setting them has no effect\n", __func__);
+			dev_info(&client->dev, "%s Blanking controls are \
+			not used in this configuration, setting them has \
+			no effect\n", __func__);
 			/* Disable control*/
 			v4l2_ctrl_activate(ctrl, false);
 
 		} else {
-			ret = __crlmodule_update_blanking(sensor, crl_ctrl, ctrl);
+			ret = __crlmodule_update_blanking(sensor,
+					crl_ctrl, ctrl);
 		}
 		goto out;
 
@@ -863,7 +868,6 @@ static struct v4l2_ctrl_handler *__crlmodule_get_sd_ctrl_handler(
 	case CRL_SUBDEV_TYPE_SCALER:
 	case CRL_SUBDEV_TYPE_BINNER:
 		return &sensor->src->ctrl_handler;
-		break;
 
 	case CRL_SUBDEV_TYPE_PIXEL_ARRAY:
 		if (sensor->pixel_array)
@@ -1029,7 +1033,8 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 			cfg.name = crl_ctrl->name;
 			cfg.type = crl_ctrl->v4l2_type;
 			if ((crl_ctrl->v4l2_type == V4L2_CTRL_TYPE_INTEGER) ||
-				(crl_ctrl->v4l2_type == V4L2_CTRL_TYPE_INTEGER64)) {
+				(crl_ctrl->v4l2_type ==
+				 V4L2_CTRL_TYPE_INTEGER64)) {
 				cfg.max = crl_ctrl->data.std_data.max;
 				cfg.min =  crl_ctrl->data.std_data.min;
 				cfg.step  = crl_ctrl->data.std_data.step;
@@ -1037,18 +1042,21 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 				cfg.qmenu = 0;
 				cfg.elem_size = 0;
 			} else if (crl_ctrl->v4l2_type == V4L2_CTRL_TYPE_MENU) {
-				cfg.max = crl_ctrl->data.v4l2_menu_items.size - 1;
+				cfg.max = crl_ctrl->data.v4l2_menu_items.size
+					- 1;
 				cfg.min =  0;
 				cfg.step  = 0;
 				cfg.def = 0;
 				cfg.qmenu = crl_ctrl->data.v4l2_menu_items.menu;
 				cfg.elem_size = 0;
 			} else {
-				dev_dbg(&client->dev, "%s Custom Control: type %d\n",
-								 __func__, crl_ctrl->v4l2_type);
+				dev_dbg(&client->dev,
+					"%s Custom Control: type %d\n",
+					__func__, crl_ctrl->v4l2_type);
 				continue;
 			}
-			crl_ctrl->ctrl = v4l2_ctrl_new_custom(ctrl_handler, &cfg, NULL);
+			crl_ctrl->ctrl = v4l2_ctrl_new_custom(ctrl_handler,
+					&cfg, NULL);
 			break;
 		case CRL_V4L2_CTRL_TYPE_BOOLEAN:
 		case CRL_V4L2_CTRL_TYPE_BUTTON:
@@ -1067,17 +1075,17 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 		 * Blank controls are disabled if framesize controls exists.
 		 */
 		if (crl_ctrl->ctrl_id == V4L2_CID_FRAME_LENGTH_LINES ||
-		    crl_ctrl->ctrl_id == V4L2_CID_LINE_LENGTH_PIXELS)
-		    sensor->blanking_ctrl_not_use = 1;
+			crl_ctrl->ctrl_id == V4L2_CID_LINE_LENGTH_PIXELS)
+			sensor->blanking_ctrl_not_use = 1;
 
 		if (crl_ctrl->ctrl_id == CRL_CID_SENSOR_MODE)
 			sensor->direct_mode_in_use = 1;
 
 		/* Save mandatory control references - link_freq in src sd */
 		if (crl_ctrl->ctrl_id == V4L2_CID_LINK_FREQ &&
-		    (crl_ctrl->sd_type == CRL_SUBDEV_TYPE_SCALER ||
-		     crl_ctrl->sd_type == CRL_SUBDEV_TYPE_BINNER))
-		     sensor->link_freq = crl_ctrl->ctrl;
+			(crl_ctrl->sd_type == CRL_SUBDEV_TYPE_SCALER ||
+			crl_ctrl->sd_type == CRL_SUBDEV_TYPE_BINNER))
+			sensor->link_freq = crl_ctrl->ctrl;
 
 		/* Save mandatory control references - pixel_rate_pa PA sd */
 		if (crl_ctrl->ctrl_id == V4L2_CID_PIXEL_RATE &&
@@ -1086,8 +1094,8 @@ static int crlmodule_init_controls(struct crl_sensor *sensor)
 
 		/* Save mandatory control references - pixel_rate_csi src sd */
 		if (crl_ctrl->ctrl_id == V4L2_CID_PIXEL_RATE &&
-		    (crl_ctrl->sd_type == CRL_SUBDEV_TYPE_SCALER ||
-		     crl_ctrl->sd_type == CRL_SUBDEV_TYPE_BINNER))
+			(crl_ctrl->sd_type == CRL_SUBDEV_TYPE_SCALER ||
+			crl_ctrl->sd_type == CRL_SUBDEV_TYPE_BINNER))
 			sensor->pixel_rate_csi = crl_ctrl->ctrl;
 
 		crl_ctrl->ctrl->flags |= crl_ctrl->flags;
@@ -1140,7 +1148,8 @@ static int __crlmodule_update_hblank(struct crl_sensor *sensor,
 				      struct v4l2_ctrl *hblank)
 {
 	const struct crl_mode_rep *mode = sensor->current_mode;
-	const struct crl_sensor_limits *limits = sensor->sensor_ds->sensor_limits;
+	const struct crl_sensor_limits *limits =
+		sensor->sensor_ds->sensor_limits;
 	unsigned int width = sensor->pixel_array->crop[CRL_PA_PAD_SRC].width;
 	unsigned int min_llp, max_llp;
 
@@ -1169,7 +1178,8 @@ static int __crlmodule_update_vblank(struct crl_sensor *sensor,
 				      struct v4l2_ctrl *vblank)
 {
 	const struct crl_mode_rep *mode = sensor->current_mode;
-	const struct crl_sensor_limits *limits = sensor->sensor_ds->sensor_limits;
+	const struct crl_sensor_limits *limits =
+		sensor->sensor_ds->sensor_limits;
 	unsigned int height = sensor->pixel_array->crop[CRL_PA_PAD_SRC].height;
 	unsigned int min_fll, max_fll;
 
@@ -1200,8 +1210,10 @@ static void crlmodule_update_framesize(struct crl_sensor *sensor)
 	struct v4l2_ctrl *llength;
 	struct v4l2_ctrl *flength;
 
-	llength = __crlmodule_get_v4l2_ctrl(sensor, V4L2_CID_LINE_LENGTH_PIXELS);
-	flength = __crlmodule_get_v4l2_ctrl(sensor, V4L2_CID_FRAME_LENGTH_LINES);
+	llength = __crlmodule_get_v4l2_ctrl(sensor,
+			V4L2_CID_LINE_LENGTH_PIXELS);
+	flength = __crlmodule_get_v4l2_ctrl(sensor,
+			V4L2_CID_FRAME_LENGTH_LINES);
 
 	if (llength) {
 		llength->minimum = mode->min_llp;
@@ -1262,11 +1274,12 @@ static void crlmodule_update_mode_bysel(struct crl_sensor *sensor)
 			continue;
 
 		if (sensor->pixel_array) {
-			dev_dbg(&client->dev, "%s Compare PA out rect\n", __func__);
+			dev_dbg(&client->dev, "%s Compare PA out rect\n",
+					__func__);
 			if (!__crlmodule_rect_matches(client,
 				&sensor->pixel_array->crop[CRL_PA_PAD_SRC],
 				&this->sd_rects[CRL_SD_PA_INDEX].out_rect))
-			continue;
+				continue;
 		}
 		if (sensor->binner) {
 			dev_dbg(&client->dev, "%s binning hor: %d vs. %d\n",
@@ -1452,7 +1465,8 @@ static int __crlmodule_get_format(struct v4l2_subdev *subdev,
 	struct v4l2_rect *r;
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		fmt->format = *v4l2_subdev_get_try_format(subdev, cfg, fmt->pad);
+		fmt->format = *v4l2_subdev_get_try_format(subdev, cfg,
+				fmt->pad);
 		return 0;
 	}
 
@@ -1465,7 +1479,8 @@ static int __crlmodule_get_format(struct v4l2_subdev *subdev,
 	fmt->format.height = r->height;
 	fmt->format.code =
 		sensor->sensor_ds->csi_fmts[sensor->fmt_index].code;
-	fmt->format.field = (ssd->field == V4L2_FIELD_ANY) ? V4L2_FIELD_NONE : ssd->field;
+	fmt->format.field = (ssd->field == V4L2_FIELD_ANY) ?
+		V4L2_FIELD_NONE : ssd->field;
 	return 0;
 }
 
@@ -1714,7 +1729,7 @@ static int crlmodule_set_compose(struct v4l2_subdev *subdev,
 					   sel->r.height;
 	} else {
 		sensor->scale_m = crops[CRL_PAD_SINK]->width *
-				 sensor->sensor_ds->sensor_limits->scaler_m_min /
+			sensor->sensor_ds->sensor_limits->scaler_m_min /
 				 sel->r.width;
 	}
 
@@ -2268,7 +2283,8 @@ static void crlmodule_undo_poweron_entities(
 			clk_disable_unprepare(sensor->xclk);
 			break;
 		default:
-			dev_err(&client->dev, "%s Invalid power type\n", __func__);
+			dev_err(&client->dev, "%s Invalid power type\n",
+					__func__);
 			break;
 		}
 
@@ -2291,7 +2307,8 @@ static int __crlmodule_powerup_sequence(struct crl_sensor *sensor)
 
 		switch (entity->type) {
 		case CRL_POWER_ETY_GPIO_FROM_PDATA:
-			gpio_set_value(sensor->platform_data->xshutdown, entity->val);
+			gpio_set_value(sensor->platform_data->xshutdown,
+					entity->val);
 			break;
 		case CRL_POWER_ETY_GPIO_CUSTOM:
 			gpio_set_value(entity->ent_number, entity->val);
@@ -2299,28 +2316,33 @@ static int __crlmodule_powerup_sequence(struct crl_sensor *sensor)
 		case CRL_POWER_ETY_REGULATOR_FRAMEWORK:
 			rval = regulator_enable(entity->regulator_priv);
 			if (rval) {
-				dev_err(&client->dev, "Failed to enable regulator: %d\n",
-						rval);
+				dev_err(&client->dev,
+					"Failed to enable regulator: %d\n",
+					rval);
 				devm_regulator_put(entity->regulator_priv);
 				entity->regulator_priv = NULL;
 				goto error;
 			}
 			break;
 		case CRL_POWER_ETY_CLK_FRAMEWORK:
-			rval = clk_set_rate(sensor->xclk, sensor->platform_data->ext_clk);
+			rval = clk_set_rate(sensor->xclk,
+					sensor->platform_data->ext_clk);
 			if (rval < 0) {
 				dev_err(&client->dev,
 				"unable to set clock freq to %u\n",
 				sensor->platform_data->ext_clk);
 				goto error;
 			}
-			if (clk_get_rate(sensor->xclk) != sensor->platform_data->ext_clk)
+			if (clk_get_rate(sensor->xclk) !=
+					sensor->platform_data->ext_clk)
 					dev_warn(&client->dev,
-						"warning: unable to set accurate clock freq %u\n",
+						"warning: unable to set \
+						accurate clock freq %u\n",
 						sensor->platform_data->ext_clk);
 			rval = clk_prepare_enable(sensor->xclk);
 			if (rval) {
-				dev_err(&client->dev, "Failed to enable clock: %d\n", rval);
+				dev_err(&client->dev, "Failed to enable \
+						clock: %d\n", rval);
 				goto error;
 			}
 			break;
@@ -2328,7 +2350,6 @@ static int __crlmodule_powerup_sequence(struct crl_sensor *sensor)
 			dev_err(&client->dev, "Invalid power type\n");
 			rval = -ENODEV;
 			goto error;
-			break;
 		}
 
 		if (entity->delay)
@@ -2550,6 +2571,7 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 
 	for (idx = 0; idx < sensor->sensor_ds->power_items; idx++) {
 		int rval;
+
 		entity = &sensor->pwr_entity[idx];
 
 		switch (entity->type) {
@@ -2557,8 +2579,9 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 			if (devm_gpio_request_one(&client->dev,
 				sensor->platform_data->xshutdown, 0,
 				"CRL xshutdown") != 0) {
-				dev_err(&client->dev, "unable to acquire xshutdown %d\n",
-				sensor->platform_data->xshutdown);
+				dev_err(&client->dev,
+					"unable to acquire xshutdown %d\n",
+					sensor->platform_data->xshutdown);
 				return -ENODEV;
 			}
 		break;
@@ -2566,18 +2589,20 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 			if (devm_gpio_request_one(&client->dev,
 				entity->ent_number, 0,
 				"CRL Custom") != 0) {
-				dev_err(&client->dev, "unable to acquire custom gpio %d\n",
-				entity->ent_number);
+				dev_err(&client->dev,
+					"unable to acquire custom gpio %d\n",
+					entity->ent_number);
 				return -ENODEV;
 			}
 		break;
 		case CRL_POWER_ETY_REGULATOR_FRAMEWORK:
-			entity->regulator_priv = devm_regulator_get(&client->dev,
-			entity->ent_name);
+			entity->regulator_priv = devm_regulator_get(
+					&client->dev, entity->ent_name);
 			if (IS_ERR(entity->regulator_priv)) {
-				dev_err(&client->dev, "Failed to get regulator: %s\n",
-				entity->ent_name);
-				entity->regulator_priv = NULL;
+				dev_err(&client->dev,
+					"Failed to get regulator: %s\n",
+					entity->ent_name);
+					entity->regulator_priv = NULL;
 				return -ENODEV;
 			}
 			rval = regulator_set_voltage(entity->regulator_priv,
@@ -2592,7 +2617,8 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 		case CRL_POWER_ETY_CLK_FRAMEWORK:
 			sensor->xclk = devm_clk_get(&client->dev, NULL);
 			if (IS_ERR(sensor->xclk)) {
-				dev_err(&client->dev, "Cannot get sensor clk\n");
+				dev_err(&client->dev,
+					"Cannot get sensor clk\n");
 				return -ENODEV;
 			}
 		break;
@@ -2637,8 +2663,9 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 		rval = sensor->sensor_ds->sensor_init(client);
 
 		if (rval) {
-			dev_err(&client->dev, "%s failed to run sensor specific init\n",
-				      __func__);
+			dev_err(&client->dev,
+				"%s failed to run sensor specific init\n",
+				__func__);
 			return -ENODEV;
 		}
 	}
@@ -2976,5 +3003,6 @@ module_i2c_driver(crlmodule_i2c_driver);
 MODULE_AUTHOR("Vinod Govindapillai <vinod.govindapillai@intel.com>");
 MODULE_AUTHOR("Jouni Ukkonen <jouni.ukkonen@intel.com>");
 MODULE_AUTHOR("Tommi Franttila <tommi.franttila@intel.com>");
-MODULE_DESCRIPTION("Generic driver for common register list based camera sensor modules");
+MODULE_DESCRIPTION("Generic driver for common register list based \
+			camera sensor modules");
 MODULE_LICENSE("GPL");

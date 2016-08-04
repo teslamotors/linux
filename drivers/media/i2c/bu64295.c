@@ -85,9 +85,11 @@ static int bu64295_init_vcm_params(struct bu64295_device *bu64295_device)
 	return ret;
 }
 
-static int bu64295_open(struct v4l2_subdev *subdev_vcm, struct v4l2_subdev_fh *fh)
+static int bu64295_open(struct v4l2_subdev *subdev_vcm,
+		struct v4l2_subdev_fh *fh)
 {
-	struct bu64295_device *bu64295_device = to_bu64295_vcm_via_subdev(subdev_vcm);
+	struct bu64295_device *bu64295_device =
+		to_bu64295_vcm_via_subdev(subdev_vcm);
 	struct i2c_client *client = bu64295_device->client;
 	int ret;
 
@@ -98,7 +100,8 @@ static int bu64295_open(struct v4l2_subdev *subdev_vcm, struct v4l2_subdev_fh *f
 	return ret;
 }
 
-static int bu64295_close(struct v4l2_subdev *subdev_vcm, struct v4l2_subdev_fh *fh)
+static int bu64295_close(struct v4l2_subdev *subdev_vcm,
+		struct v4l2_subdev_fh *fh)
 {
 	return 0;
 }

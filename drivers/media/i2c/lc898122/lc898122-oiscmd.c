@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  * Copyright (C) ON Semiconductor
  *
  * This program is free software; you can redistribute it and/or
@@ -38,7 +38,8 @@ void lc898122_ClrMeasFil(struct lc898122_device *lc898122_dev);
 u8 lc898122_TstActMov(struct lc898122_device *lc898122_dev, u8);
 
 void lc898122_StbOnn(struct lc898122_device *lc898122_dev);
-void lc898122_StbOnnN(struct lc898122_device *lc898122_dev, u8 UcStbY, u8 UcStbX);
+void lc898122_StbOnnN(struct lc898122_device *lc898122_dev, u8 UcStbY,
+		u8 UcStbX);
 void lc898122_SetGcf(struct lc898122_device *lc898122_dev, u8	UcSetNum);
 
 
@@ -416,12 +417,15 @@ void lc898122_S2cPro(struct lc898122_device *lc898122_dev, u8 uc_mode)
 		RamWrite32A(client, LC898122_gxh1c, DIFIL_S2);
 		RamWrite32A(client, LC898122_gyh1c, DIFIL_S2);
 	} else {
-		RamWrite32A(client, LC898122_gxh1c, lc898122_dev->state.UlH1Coefval);
-		RamWrite32A(client, LC898122_gyh1c, lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gxh1c,
+				lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gyh1c,
+				lc898122_dev->state.UlH1Coefval);
 		RegWriteA(client, LC898122_WG_SHTON, 0x00);
 
 		if (lc898122_dev->state.flags & LC898122_H1COEF_CHANGER)
-			lc898122_SetH1cMod(lc898122_dev, lc898122_dev->state.UcH1LvlMod);
+			lc898122_SetH1cMod(lc898122_dev,
+					lc898122_dev->state.UcH1LvlMod);
 	}
 }
 
@@ -525,10 +529,13 @@ void lc898122_SetSinWavePara(struct lc898122_device *lc898122_dev,
 
 	if (lc898122_dev->state.flags & LC898122_USE_SINLPF) {
 		if (((lc898122_dev->state.flags & LC898122_ACCEPTANCE) &&
-		     ((UcMethodVal == LC898122_CIRCWAVE) || (UcMethodVal == LC898122_SINEWAVE))) ||
+		     ((UcMethodVal == LC898122_CIRCWAVE) ||
+		      (UcMethodVal == LC898122_SINEWAVE))) ||
 		    (!(lc898122_dev->state.flags & LC898122_ACCEPTANCE) &&
-		     ((UcMethodVal != LC898122_XHALWAVE) && (UcMethodVal != LC898122_YHALWAVE)))) {
-			lc898122_MesFil(lc898122_dev, LC898122_NOISE);			/* LPF */
+		     ((UcMethodVal != LC898122_XHALWAVE) &&
+		      (UcMethodVal != LC898122_YHALWAVE)))) {
+			lc898122_MesFil(lc898122_dev, LC898122_NOISE);
+			/* LPF */
 		}
 	}
 
@@ -544,10 +551,13 @@ void lc898122_SetSinWavePara(struct lc898122_device *lc898122_dev,
 
 	if (lc898122_dev->state.flags & LC898122_USE_SINLPF) {
 		if (((lc898122_dev->state.flags & LC898122_ACCEPTANCE) &&
-		     ((UcMethodVal == LC898122_CIRCWAVE) || (UcMethodVal == LC898122_SINEWAVE) ||
-		      (UcMethodVal == LC898122_XACTTEST) || (UcMethodVal == LC898122_YACTTEST))) ||
+		     ((UcMethodVal == LC898122_CIRCWAVE) ||
+		      (UcMethodVal == LC898122_SINEWAVE) ||
+		      (UcMethodVal == LC898122_XACTTEST) ||
+		      (UcMethodVal == LC898122_YACTTEST))) ||
 		    !((lc898122_dev->state.flags & LC898122_ACCEPTANCE) &&
-		      (UcMethodVal != LC898122_XHALWAVE) && (UcMethodVal != LC898122_YHALWAVE))) {
+		      (UcMethodVal != LC898122_XHALWAVE) &&
+		      (UcMethodVal != LC898122_YHALWAVE))) {
 			RegWriteA(client, LC898122_WC_DPON, 0x00);
 			RegWriteA(client, LC898122_WC_DPO1ADD0, 0x00);
 			RegWriteA(client, LC898122_WC_DPO1ADD1, 0x00);
@@ -560,8 +570,10 @@ void lc898122_SetSinWavePara(struct lc898122_device *lc898122_dev,
 
 			lc898122_RamAccFixMod(lc898122_dev, ON);
 
-			RamWriteA(client, LC898122_SXOFFZ1, lc898122_dev->state.UsCntXof);
-			RamWriteA(client, LC898122_SYOFFZ1, lc898122_dev->state.UsCntYof);
+			RamWriteA(client, LC898122_SXOFFZ1,
+					lc898122_dev->state.UsCntXof);
+			RamWriteA(client, LC898122_SYOFFZ1,
+					lc898122_dev->state.UsCntYof);
 
 			lc898122_RamAccFixMod(lc898122_dev, OFF);
 
@@ -578,26 +590,40 @@ void lc898122_SetSinWavePara(struct lc898122_device *lc898122_dev,
 		RegReadA(client, LC898122_WH_EQSWY, &UcEqSwY);
 
 		if (((lc898122_dev->state.flags & LC898122_ACCEPTANCE) &&
-		     ((UcMethodVal == LC898122_CIRCWAVE) || (UcMethodVal == LC898122_SINEWAVE))) ||
+		     ((UcMethodVal == LC898122_CIRCWAVE) ||
+		      (UcMethodVal == LC898122_SINEWAVE))) ||
 		    (!(lc898122_dev->state.flags & LC898122_ACCEPTANCE) &&
-		     ((UcMethodVal != LC898122_XHALWAVE) && (UcMethodVal != LC898122_YHALWAVE)))) {
+		     ((UcMethodVal != LC898122_XHALWAVE) &&
+		      (UcMethodVal != LC898122_YHALWAVE)))) {
 
 			if (lc898122_dev->state.flags & LC898122_USE_SINLPF) {
-				RegWriteA(client, LC898122_WC_DPI1ADD0,  (u8)LC898122_MES1BZ2);
-				RegWriteA(client, LC898122_WC_DPI1ADD1,  (u8)((LC898122_MES1BZ2 >> 8) & 0x0001));
-				RegWriteA(client, LC898122_WC_DPI2ADD0,  (u8)LC898122_MES2BZ2);
-				RegWriteA(client, LC898122_WC_DPI2ADD1,  (u8)((LC898122_MES2BZ2 >> 8) & 0x0001));
-				RegWriteA(client, LC898122_WC_DPO1ADD0, (u8)LC898122_SXOFFZ1);
-				RegWriteA(client, LC898122_WC_DPO1ADD1, (u8)((LC898122_SXOFFZ1 >> 8) & 0x0001));
-				RegWriteA(client, LC898122_WC_DPO2ADD0, (u8)LC898122_SYOFFZ1);
-				RegWriteA(client, LC898122_WC_DPO2ADD1, (u8)((LC898122_SYOFFZ1 >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_DPI1ADD0,
+					(u8)LC898122_MES1BZ2);
+				RegWriteA(client, LC898122_WC_DPI1ADD1,
+					(u8)((LC898122_MES1BZ2 >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_DPI2ADD0,
+					(u8)LC898122_MES2BZ2);
+				RegWriteA(client, LC898122_WC_DPI2ADD1,
+					(u8)((LC898122_MES2BZ2 >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_DPO1ADD0,
+					(u8)LC898122_SXOFFZ1);
+				RegWriteA(client, LC898122_WC_DPO1ADD1,
+					(u8)((LC898122_SXOFFZ1 >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_DPO2ADD0,
+					(u8)LC898122_SYOFFZ1);
+				RegWriteA(client, LC898122_WC_DPO2ADD1,
+					(u8)((LC898122_SYOFFZ1 >> 8) & 0x0001));
 
-				RegWriteA(client, LC898122_WC_MES1ADD0,  (u8)LC898122_SINXZ);
-				RegWriteA(client, LC898122_WC_MES1ADD1,  (u8)((LC898122_SINXZ >> 8) & 0x0001));
-				RegWriteA(client, LC898122_WC_MES2ADD0,  (u8)LC898122_SINYZ);
-				RegWriteA(client, LC898122_WC_MES2ADD1,  (u8)((LC898122_SINYZ >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_MES1ADD0,
+					(u8)LC898122_SINXZ);
+				RegWriteA(client, LC898122_WC_MES1ADD1,
+					(u8)((LC898122_SINXZ >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_MES2ADD0,
+					(u8)LC898122_SINYZ);
+				RegWriteA(client, LC898122_WC_MES2ADD1,
+					(u8)((LC898122_SINYZ >> 8) & 0x0001));
 
-				RegWriteA(client, LC898122_WC_DPON,     0x03);
+				RegWriteA(client, LC898122_WC_DPON, 0x03);
 
 				UcEqSwX &= ~LC898122_EQSINSW;
 				UcEqSwY &= ~LC898122_EQSINSW;
@@ -606,19 +632,30 @@ void lc898122_SetSinWavePara(struct lc898122_device *lc898122_dev,
 				UcEqSwY |= 0x08;
 			}
 		} else if ((lc898122_dev->state.flags & LC898122_ACCEPTANCE) &&
-			   ((UcMethodVal == LC898122_XACTTEST) || (UcMethodVal == LC898122_YACTTEST))) {
-			RegWriteA(client, LC898122_WC_DPI2ADD0,  (u8)LC898122_MES2BZ2);
-			RegWriteA(client, LC898122_WC_DPI2ADD1,  (u8)((LC898122_MES2BZ2 >> 8) & 0x0001));
+			   ((UcMethodVal == LC898122_XACTTEST) ||
+			    (UcMethodVal == LC898122_YACTTEST))) {
+			RegWriteA(client, LC898122_WC_DPI2ADD0,
+				(u8)LC898122_MES2BZ2);
+			RegWriteA(client, LC898122_WC_DPI2ADD1,
+				(u8)((LC898122_MES2BZ2 >> 8) & 0x0001));
 			if (UcMethodVal == LC898122_XACTTEST) {
-				RegWriteA(client, LC898122_WC_DPO2ADD0, (u8)LC898122_SXOFFZ1);
-				RegWriteA(client, LC898122_WC_DPO2ADD1, (u8)((LC898122_SXOFFZ1 >> 8) & 0x0001));
-				RegWriteA(client, LC898122_WC_MES2ADD0,  (u8)LC898122_SINXZ);
-				RegWriteA(client, LC898122_WC_MES2ADD1,  (u8)((LC898122_SINXZ >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_DPO2ADD0,
+					(u8)LC898122_SXOFFZ1);
+				RegWriteA(client, LC898122_WC_DPO2ADD1,
+					(u8)((LC898122_SXOFFZ1 >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_MES2ADD0,
+					(u8)LC898122_SINXZ);
+				RegWriteA(client, LC898122_WC_MES2ADD1,
+					(u8)((LC898122_SINXZ >> 8) & 0x0001));
 			} else {
-				RegWriteA(client, LC898122_WC_DPO2ADD0, (u8)LC898122_SYOFFZ1);
-				RegWriteA(client, LC898122_WC_DPO2ADD1, (u8)((LC898122_SYOFFZ1 >> 8) & 0x0001));
-				RegWriteA(client, LC898122_WC_MES2ADD0,  (u8)LC898122_SINYZ);
-				RegWriteA(client, LC898122_WC_MES2ADD1,  (u8)((LC898122_SINYZ >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_DPO2ADD0,
+					(u8)LC898122_SYOFFZ1);
+				RegWriteA(client, LC898122_WC_DPO2ADD1,
+					(u8)((LC898122_SYOFFZ1 >> 8) & 0x0001));
+				RegWriteA(client, LC898122_WC_MES2ADD0,
+					(u8)LC898122_SINYZ);
+				RegWriteA(client, LC898122_WC_MES2ADD1,
+					(u8)((LC898122_SINYZ >> 8) & 0x0001));
 			}
 
 			RegWriteA(client, LC898122_WC_DPON, 0x02);
@@ -911,7 +948,8 @@ void lc898122_StbOnn(struct lc898122_device *lc898122_dev)
 	}
 }
 
-void lc898122_StbOnnN(struct lc898122_device *lc898122_dev, u8 UcStbY, u8 UcStbX)
+void lc898122_StbOnnN(struct lc898122_device *lc898122_dev, u8 UcStbY,
+		u8 UcStbX)
 {
 	struct i2c_client *client = lc898122_dev->client;
 
@@ -960,8 +998,10 @@ void lc898122_OptCen(struct lc898122_device *lc898122_dev, u8 UcOptmode,
 	case LC898122_VAL_FIX:
 		lc898122_dev->state.UsCntXof = UsOptXval;
 		lc898122_dev->state.UsCntYof = UsOptYval;
-		RamWriteA(client, LC898122_SXOFFZ1, lc898122_dev->state.UsCntXof);
-		RamWriteA(client, LC898122_SYOFFZ1, lc898122_dev->state.UsCntYof);
+		RamWriteA(client, LC898122_SXOFFZ1,
+				lc898122_dev->state.UsCntXof);
+		RamWriteA(client, LC898122_SYOFFZ1,
+				lc898122_dev->state.UsCntYof);
 		break;
 	case LC898122_VAL_SPC:
 		RamReadA(client, LC898122_SXOFFZ1, &UsOptXval);
@@ -1137,7 +1177,8 @@ void lc898122_SetGcf(struct lc898122_device *lc898122_dev, u8 UcSetNum)
 		lc898122_SetH1cMod(lc898122_dev, UcSetNum);
 }
 
-void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
+void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev,
+		u8	UcSetNum)
 {
 	struct i2c_client *client = lc898122_dev->client;
 
@@ -1178,10 +1219,12 @@ void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
 		RamWrite32A(client, LC898122_gylmt6L, MINLMT);
 		RamWrite32A(client, LC898122_gylmt6H, MAXLMT);
 
-		RamWrite32A(client, LC898122_gxhc_tmp,	lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gxhc_tmp,
+				lc898122_dev->state.UlH1Coefval);
 		RamWrite32A(client, LC898122_gxmg, CHGCOEF);
 
-		RamWrite32A(client, LC898122_gyhc_tmp,	lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gyhc_tmp,
+				lc898122_dev->state.UlH1Coefval);
 		RamWrite32A(client, LC898122_gymg,		CHGCOEF);
 
 		RegWriteA(client, LC898122_WG_HCHR, 0x12);
@@ -1200,8 +1243,10 @@ void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
 		RamWrite32A(client, LC898122_gxmg, CHGCOEF_MOV);
 		RamWrite32A(client, LC898122_gymg, CHGCOEF_MOV);
 
-		RamWrite32A(client, LC898122_gxhc_tmp, lc898122_dev->state.UlH1Coefval);
-		RamWrite32A(client, LC898122_gyhc_tmp, lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gxhc_tmp,
+				lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gyhc_tmp,
+				lc898122_dev->state.UlH1Coefval);
 
 		RegWriteA(client, LC898122_WG_HCHR, 0x12);
 		break;
@@ -1217,8 +1262,10 @@ void lc898122_SetH1cMod(struct lc898122_device *lc898122_dev, u8	UcSetNum)
 		RamWrite32A(client, LC898122_gxmg,	CHGCOEF);
 		RamWrite32A(client, LC898122_gymg,	CHGCOEF);
 
-		RamWrite32A(client, LC898122_gxhc_tmp, lc898122_dev->state.UlH1Coefval);
-		RamWrite32A(client, LC898122_gyhc_tmp, lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gxhc_tmp,
+				lc898122_dev->state.UlH1Coefval);
+		RamWrite32A(client, LC898122_gyhc_tmp,
+				lc898122_dev->state.UlH1Coefval);
 
 		RegWriteA(client, LC898122_WG_HCHR, 0x12);
 		break;
@@ -1257,7 +1304,8 @@ void lc898122_SetDOFSTDAF(struct lc898122_device *lc898122_dev, u8 ucSetDat)
 	if (lc898122_dev->state.UcCvrCod == LC898122_CVER122) {
 		RegReadA(client, LC898122_DRVFC3AF, &ucRegDat);
 		RegWriteA(client, LC898122_DRVFC4AF, (ucSetDat & 0x18) << 3);
-		RegWriteA(client, LC898122_DRVFC3AF, (ucRegDat & 0x70) | (ucSetDat & 0x07));
+		RegWriteA(client, LC898122_DRVFC3AF,
+				(ucRegDat & 0x70) | (ucSetDat & 0x07));
 	} else {
 		RegWriteA(client, LC898122_DRVFC4AF, ucSetDat << 3);
 	}
@@ -1284,10 +1332,13 @@ u8 lc898122_TstActMov(struct lc898122_device *lc898122_dev, u8 UcDirSel)
 
 	if (!UcDirSel) {
 		RegWriteA(client, LC898122_WC_MES1ADD0,  (u8)LC898122_SXINZ1);
-		RegWriteA(client, LC898122_WC_MES1ADD1,  (u8)((LC898122_SXINZ1 >> 8) & 0x0001));
+		RegWriteA(client, LC898122_WC_MES1ADD1,
+				(u8)((LC898122_SXINZ1 >> 8) & 0x0001));
 	} else {
-		RegWriteA(client, LC898122_WC_MES1ADD0,  (u8)LC898122_SYINZ1);
-		RegWriteA(client, LC898122_WC_MES1ADD1,  (u8)((LC898122_SYINZ1 >> 8) & 0x0001));
+		RegWriteA(client, LC898122_WC_MES1ADD0,
+				(u8)LC898122_SYINZ1);
+		RegWriteA(client, LC898122_WC_MES1ADD1,
+				(u8)((LC898122_SYINZ1 >> 8) & 0x0001));
 	}
 
 	RegWriteA(client, LC898122_WC_MESSINMODE, 0x00);
@@ -1357,9 +1408,11 @@ u8 lc898122_RunGea(struct lc898122_device *lc898122_dev)
 
 		if (UcCnt > 0) {
 			if ((short)UsGxoVal[0] > (short)UsGxoVal[UcCnt])
-				UsDif = (u16)((short)UsGxoVal[0] - (short)UsGxoVal[UcCnt]);
+				UsDif = (u16)((short)UsGxoVal[0] -
+						(short)UsGxoVal[UcCnt]);
 			else
-				UsDif = (u16)((short)UsGxoVal[UcCnt] - (short)UsGxoVal[0]);
+				UsDif = (u16)((short)UsGxoVal[UcCnt] -
+						(short)UsGxoVal[0]);
 
 			if (UsDif > LC898122_GEA_DIF_HIG)
 				UcXHigCnt++;
@@ -1368,9 +1421,11 @@ u8 lc898122_RunGea(struct lc898122_device *lc898122_dev)
 				UcXLowCnt++;
 
 			if ((short)UsGyoVal[0] > (short)UsGyoVal[UcCnt])
-				UsDif = (u16)((short)UsGyoVal[0] - (short)UsGyoVal[UcCnt]);
+				UsDif = (u16)((short)UsGyoVal[0] -
+						(short)UsGyoVal[UcCnt]);
 			else
-				UsDif = (u16)((short)UsGyoVal[UcCnt] - (short)UsGyoVal[0]);
+				UsDif = (u16)((short)UsGyoVal[UcCnt] -
+						(short)UsGyoVal[0]);
 
 			if (UsDif > LC898122_GEA_DIF_HIG)
 				UcYHigCnt++;

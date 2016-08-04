@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  *
@@ -19,8 +19,8 @@
 #include "crlmodule-nvm.h"
 #include "crlmodule-regs.h"
 
-static int crlmodule_i2c_read(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 reg,
-			      u8 len, u32 *val)
+static int crlmodule_i2c_read(struct crl_sensor *sensor, u16 dev_i2c_addr,
+				u16 reg, u8 len, u32 *val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	struct i2c_msg msg[2];
@@ -214,7 +214,8 @@ int crlmodule_write_regs(struct crl_sensor *sensor,
 		if (regs[i].len & CRL_REG_READ_AND_UPDATE) {
 			ret = crlmodule_i2c_read(sensor, regs[i].dev_i2c_addr,
 				      regs[i].address,
-				      regs[i].len & CRL_REG_LEN_READ_MASK, &val);
+				      regs[i].len & CRL_REG_LEN_READ_MASK,
+				      &val);
 			if (ret)
 				return ret;
 			val |= regs[i].val;
