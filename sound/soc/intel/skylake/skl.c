@@ -659,6 +659,7 @@ static const struct hdac_bus_ops bus_core_ops = {
 	.get_response = snd_hdac_bus_get_response,
 };
 
+#if 1
 static int skl_i915_init(struct hdac_bus *bus)
 {
 	int err;
@@ -677,6 +678,7 @@ static int skl_i915_init(struct hdac_bus *bus)
 
 	return err;
 }
+#endif
 
 static void skl_probe_work(struct work_struct *work)
 {
