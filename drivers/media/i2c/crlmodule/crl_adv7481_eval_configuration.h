@@ -20,7 +20,6 @@
 
 #include "crlmodule-sensor-ds.h"
 
-static const s64 adv7481_eval_op_sys_clock[] =  {400000000, };
 
 struct crl_ctrl_data_pair ctrl_data_lanes[] = {
 	{
@@ -411,9 +410,8 @@ static struct crl_v4l2_ctrl adv7481_eval_v4l2_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max =
-			ARRAY_SIZE(adv7481_eval_pll_configurations) - 1,
-		.data.v4l2_int_menu.menu = adv7481_eval_op_sys_clock,
+		.data.v4l2_int_menu.max = 0,
+		.data.v4l2_int_menu.menu = 0,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.regs_items = 0,
@@ -496,7 +494,6 @@ static struct crl_sensor_configuration adv7481_eval_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(adv7481_eval_pll_configurations),
 	.pll_configs = adv7481_eval_pll_configurations,
-	.op_sys_clk = adv7481_eval_op_sys_clock,
 
 	.modes_items = ARRAY_SIZE(adv7481_eval_modes),
 	.modes = adv7481_eval_modes,
@@ -532,7 +529,6 @@ static struct crl_sensor_configuration adv7481b_eval_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(adv7481_eval_pll_configurations),
 	.pll_configs = adv7481_eval_pll_configurations,
-	.op_sys_clk = adv7481_eval_op_sys_clock,
 
 	.modes_items = ARRAY_SIZE(adv7481_eval_modes),
 	.modes = adv7481_eval_modes,
