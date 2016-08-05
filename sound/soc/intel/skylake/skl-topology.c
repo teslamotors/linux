@@ -1822,12 +1822,11 @@ struct skl_sdw_caps_cfg {
  * The port can have multiple settings so pick based on the PCM
  * parameters
  */
-#define SDW_MAX_MASTERS	4
 static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 				struct skl_module_cfg *mconfig,
 				struct skl_pipe_params *params)
 {
-	int i;
+	int i, j;
 	struct nhlt_specific_cfg *cfg;
 	struct skl_sdw_caps_cfg *sdw_cfg;
 	struct skl *skl = get_skl_ctx(dai->dev);
@@ -1849,12 +1848,14 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 			+ (2 * (sizeof(u32))));
 
 		sdw_cfg->count = mconfig->sdw_agg.num_masters;
+		j = 0;
 		for (i = 0; i < SDW_MAX_MASTERS; i++) {
 			if (mconfig->sdw_agg.agg_data[i].ch_mask) {
-				sdw_cfg->data[i].ch_mask =
+				sdw_cfg->data[j].ch_mask =
 					mconfig->sdw_agg.agg_data[i].ch_mask;
-				sdw_cfg->data[i].alh_stream_num =
+				sdw_cfg->data[j].alh_stream_num =
 					mconfig->sdw_agg.agg_data[i].alh_stream_num;
+				j++;
 			}
 		}
 		sdw_cfg->count = mconfig->sdw_agg.num_masters;
