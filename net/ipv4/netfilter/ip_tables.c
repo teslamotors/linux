@@ -439,11 +439,12 @@ ipt_do_table(struct sk_buff *skb,
 }
 
 static bool find_jump_target(const struct xt_table_info *t,
+			     const void *entry0,
 			     const struct ipt_entry *target)
 {
 	struct ipt_entry *iter;
 
-	xt_entry_foreach(iter, t->entries, t->size) {
+	xt_entry_foreach(iter, entry0, t->size) {
 		 if (iter == target)
 			return true;
 	}
@@ -549,7 +550,7 @@ mark_source_chains(const struct xt_table_info *newinfo,
 						 pos, newpos);
 					e = (struct ipt_entry *)
 						(entry0 + newpos);
-					if (!find_jump_target(newinfo, e))
+					if (!find_jump_target(newinfo, entry0, e))
 						return 0;
 				} else {
 					/* ... this is a fallthru */
