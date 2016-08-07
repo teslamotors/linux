@@ -37,6 +37,38 @@ void rpmb_dev_put(struct rpmb_dev *rdev)
 EXPORT_SYMBOL_GPL(rpmb_dev_put);
 
 /**
+ * rpmb_cmd_fixup - fixup rpmb command
+ *
+ * @rdev: rpmb device
+ * @cmds: rpmb command list
+ * @ncmds: number of commands
+ *
+ */
+static void rpmb_cmd_fixup(struct rpmb_dev *rdev,
+			   struct rpmb_cmd *cmds, u32 ncmds)
+{
+	int i;
+
+	if (RPMB_TYPE_HW(rdev->ops->type) != RPMB_TYPE_EMMC)
+		return;
+
+	/* Fixup RPMB_READ_DATA specific to eMMC
+	 * The block count of the RPMB read operation is not indicated
+	 * in the original RPMB Data Read Request packet.
+	 * This is different then implementation for other protocol
+	 * standards.
+	 */
+	for (i = 0; i < ncmds; i++) {
+		struct rpmb_frame_jdec *frame = cmds[i].frames;
+
+		if (frame->req_resp == cpu_to_be16(RPMB_READ_DATA)) {
+			dev_dbg(&rdev->dev, "Fixing up READ_DATA frame to block_count=0\n");
+			frame->block_count = 0;
+		}
+	}
+}
+
+/**
  * rpmb_cmd_seq - send RPMB command sequence
  *
  * @rdev: rpmb device
@@ -58,6 +90,7 @@ int rpmb_cmd_seq(struct rpmb_dev *rdev, struct rpmb_cmd *cmds, u32 ncmds)
 	mutex_lock(&rdev->lock);
 	err = -EOPNOTSUPP;
 	if (rdev->ops && rdev->ops->cmd_seq) {
+		rpmb_cmd_fixup(rdev, cmds, ncmds);
 		err = rdev->ops->cmd_seq(rdev->dev.parent, rdev->target,
 					 cmds, ncmds);
 	}
