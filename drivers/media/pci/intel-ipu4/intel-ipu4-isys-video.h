@@ -133,6 +133,7 @@ struct intel_ipu4_isys_video {
 	container_of(__aq, struct intel_ipu4_isys_video, aq)
 
 extern const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts[];
+extern const struct intel_ipu4_isys_pixelformat intel_ipu5_isys_pfmts[];
 extern const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_be_soc[];
 extern const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_packed[];
 
