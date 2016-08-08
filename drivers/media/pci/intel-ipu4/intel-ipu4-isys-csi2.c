@@ -349,6 +349,10 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 	dev_dbg(&csi2->isys->adev->dev, "csi2 s_stream %d\n", enable);
 
 	if (!enable) {
+		csi2->stream_count--;
+		if (csi2->stream_count)
+			return 0;
+
 		intel_ipu4_isys_csi2_error(csi2);
 		writel(0, csi2->base + CSI2_REG_CSI_RX_CONFIG);
 		writel(0, csi2->base + CSI2_REG_CSI_RX_ENABLE);
@@ -358,8 +362,12 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 		writel(0, csi2->base + CSI2_REG_CSI2S2M_IRQ_ENABLE);
 		writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_MASK);
 		writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
-		csi2->stream_count--;
 
+		return 0;
+	}
+
+	if (csi2->stream_count) {
+		csi2->stream_count++;
 		return 0;
 	}
 
