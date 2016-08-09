@@ -66,6 +66,8 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "INT3474", "ov2740", &ov2740_crl_configuration },
 	{ "MAGNA", "magna", &magna_crl_configuration },
 	{ "AR023Z", "ar023z", &ar023z_crl_configuration },
+	{ "i2c-ADV7481A:00", "adv7481_hdmi", &adv7481_hdmi_crl_configuration },
+	{ "i2c-ADV7481B:00", "adv7481_cvbs", &adv7481_cvbs_crl_configuration },
 };
 
 /*
