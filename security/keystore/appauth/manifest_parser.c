@@ -153,7 +153,8 @@ int mf_init_file_list_ctx(const uint8_t *mf,
 }
 
 const char *mf_get_next_file(const uint8_t *mf,
-	struct mf_files_ctx *ctx, uint8_t *digest_algo_id, uint8_t **digest)
+	struct mf_files_ctx *ctx, uint8_t *digest_algo_id, uint8_t **digest,
+	uint32_t *size)
 {
 	if (ctx && ctx->num_files_left > 0 && ctx->bytes_left > 0 &&
 			ctx->next_file && digest_algo_id && digest) {
@@ -165,12 +166,13 @@ const char *mf_get_next_file(const uint8_t *mf,
 
 		if (strlen(filename) + 1 == filenamelen) {
 			size_t entry_size;
+			*size = *((uint32_t *) (ctx->next_file + filenamelen + 1));
 			*digest_algo_id =
-			*((uint8_t *)(ctx->next_file + filenamelen + 1));
-			*digest = ctx->next_file + filenamelen + 2;
+			*((uint8_t *)(ctx->next_file + filenamelen + 5));
+			*digest = ctx->next_file + filenamelen + 6;
 			if (*digest_algo_id >= sizeof(digest_len))
 				return NULL;
-			entry_size = 1 + filenamelen + 1 +
+			entry_size = 1 + filenamelen + 5 +
 				digest_len[*digest_algo_id];
 			ctx->num_files_left--;
 			ctx->bytes_left -= entry_size;

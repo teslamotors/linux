@@ -43,6 +43,7 @@
 #define  manifest_default_hash_algo  HASH_ALGO_SHA1
 #define  default_sig_hash_algo HASH_ALGO_SHA256
 #define  KEYID_MAX_LEN 64
+#define  MAX_FILE_SIZE (64 * 1024 * 1024)
 
 #define DEBUG_APP_AUTH
 

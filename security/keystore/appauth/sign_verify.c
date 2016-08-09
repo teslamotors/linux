@@ -15,6 +15,8 @@
  *
  */
 #include <linux/kernel.h>
+#include <linux/rtc.h>
+#include <linux/time.h>
 #include <security/manifest.h>
 #include "app_auth.h"
 #include "manifest_verify.h"
@@ -134,6 +136,54 @@ static int calc_shash(appauth_digest *hash, const char *data, int len)
 }
 
 /**
+ * Verify certificate validity.
+ *
+ * @param cert         - X509 certificate.
+ *
+ * @return 0,if success or error code.
+ */
+static int verify_cert_validity(struct x509_certificate *cert)
+{
+	struct timeval time;
+	struct rtc_time tm;
+	time64_t t, t_from, t_to;
+
+	do_gettimeofday(&time);
+	rtc_time_to_tm(time.tv_sec, &tm);
+
+#ifdef DEBUG_APP_AUTH
+	ks_debug("DEBUG_APPAUTH: Cert valid from: %04ld-%02d-%02d %02d:%02d:%02d\n",
+		cert->valid_from.tm_year + 1900, cert->valid_from.tm_mon + 1,
+		cert->valid_from.tm_mday, cert->valid_from.tm_hour,
+		cert->valid_from.tm_min,  cert->valid_from.tm_sec);
+	ks_debug("DEBUG_APPAUTH: Cert valid to: %04ld-%02d-%02d %02d:%02d:%02d\n",
+		cert->valid_to.tm_year + 1900, cert->valid_to.tm_mon + 1,
+		cert->valid_to.tm_mday, cert->valid_to.tm_hour,
+		cert->valid_to.tm_min,  cert->valid_to.tm_sec);
+	ks_debug("DEBUG_APPAUTH: Current time: %04ld-%02d-%02d %02d:%02d:%02d\n",
+		tm.tm_year + 1900, tm.tm_mon + 1,
+		tm.tm_mday, tm.tm_hour,
+		tm.tm_min, tm.tm_sec);
+#endif
+
+	t = mktime64(tm.tm_year, tm.tm_mon, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec);
+	t_from = mktime64(cert->valid_from.tm_year, cert->valid_from.tm_mon,
+		cert->valid_from.tm_mday,
+		cert->valid_from.tm_hour, cert->valid_from.tm_min,
+		cert->valid_from.tm_sec);
+	t_to = mktime64(cert->valid_to.tm_year, cert->valid_to.tm_mon,
+		cert->valid_to.tm_mday,
+		cert->valid_to.tm_hour, cert->valid_to.tm_min,
+		cert->valid_to.tm_sec);
+
+	if (t < t_from || t > t_to)
+		return -EFAULT;
+
+	return 0;
+}
+
+/**
  * Verifies the signature on the data using the certificate
  *
  * @param sig          - contain the signature.
@@ -169,6 +219,10 @@ int verify_manifest(const char *sig, const char *cert, const char *data,
 		x509_free_certificate(x509cert);
 		return -KEY_RETRIEVE_ERROR;
 	}
+
+	res = verify_cert_validity(x509cert);
+	if (res)
+		return -CERTIFICATE_EXPIRED;
 
 	hash.algo = default_sig_hash_algo;
 	if (calc_shash(&hash, data, data_len) < 0) {

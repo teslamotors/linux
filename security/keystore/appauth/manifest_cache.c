@@ -76,14 +76,14 @@ int mf_find_in_cache(const char *app_name)
 	list_for_each_safe(pos, q, &mf_cache) {
 		item = list_entry(pos, struct mf_cache_entry, list);
 		if (!strcmp(app_name, item->app_name)) {
-			int delta = ktime_ms_delta(ktime_get(), item->expiry);
+			long long delta = ktime_ms_delta(ktime_get(), item->expiry);
 
 			if (delta >= 0) {
 				list_del(pos);
 				kzfree(item);
 				return -ESRCH;
 			} else
-				return (-delta + 999) / 1000;
+				return (int) ((-delta + 999) / 1000);
 		}
 	}
 
@@ -149,13 +149,13 @@ void mf_dump_cache(void)
 {
 	struct list_head *pos;
 	struct mf_cache_entry *item;
-	int delta;
+	long long delta;
 
 	list_for_each(pos, &mf_cache) {
 		item = list_entry(pos, struct mf_cache_entry, list);
 		delta = ktime_ms_delta(ktime_get(), item->expiry);
 		pr_info(KBUILD_MODNAME ": cache: app=%s ttl=%d sec\n",
-				item->app_name, (-delta + 999) / 1000);
+				item->app_name, (int) ((-delta + 999) / 1000));
 	}
 }
 

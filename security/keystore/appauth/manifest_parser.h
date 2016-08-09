@@ -150,11 +150,13 @@ int mf_init_file_list_ctx(const uint8_t *mf,
  * @ctx: pointer to the context variable
  * @digest_algo_id: pointer to a variable filled with digest algorithm id
  * @digest: pointer to a buffer filled with file digest
+ * @size: pointer to uint32 filled with file size
  *
  * Returns: file name (path) or NULL if no (more) files.
  */
 const char *mf_get_next_file(const uint8_t *mf,
-	struct mf_files_ctx *ctx, uint8_t *digest_algo_id, uint8_t **digest);
+	struct mf_files_ctx *ctx, uint8_t *digest_algo_id, uint8_t **digest,
+	uint32_t *size);
 
 /**
  * mf_get_data() - Get data

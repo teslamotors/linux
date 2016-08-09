@@ -35,6 +35,7 @@ static int check_signature_and_caps(char *manifest_buf, uint16_t caps)
 	const char *sig = 0, *cert = 0, *data = 0;
 	size_t sig_len = 0, cert_len = 0, data_len = 0;
 	const struct mf_app_data *app_data = NULL;
+	int res = 0;
 
 	cert = mf_get_certificate(manifest_buf, &cert_len);
 	if (!cert) {
@@ -75,11 +76,12 @@ static int check_signature_and_caps(char *manifest_buf, uint16_t caps)
 		return -CAPS_FAILURE;
 	}
 
-	if (verify_manifest(sig, cert, data, sig_len, cert_len, data_len) < 0) {
+	res = verify_manifest(sig, cert, data, sig_len, cert_len, data_len);
+	if (res < 0) {
 #ifdef DEBUG_APP_AUTH
-		ks_err("DEBUG_APPAUTH: verify_manifest() failed\n");
+		ks_err("DEBUG_APPAUTH: verify_manifest() failed (res=%d)\n", res);
 #endif
-		return -SIGNATURE_FAILURE;
+		return res;
 	}
 #ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: verify_manifest() succedded\n");
@@ -102,6 +104,7 @@ static const char *verify_exe_name(char *manifest_buf)
 	uint8_t *digest = 0;
 	char *buf = 0;
 	bool exe_found = false;
+	uint32_t size = 0;
 
 	mf_init_file_list_ctx(manifest_buf, &ctx);
 
@@ -113,9 +116,10 @@ static const char *verify_exe_name(char *manifest_buf)
 #endif
 	while (1) {
 		filename = mf_get_next_file(manifest_buf, &ctx,
-					&digest_algo_id, &digest);
+					&digest_algo_id, &digest, &size);
 		if (!filename)
 			break;
+
 #ifdef DEBUG_APP_AUTH
 		ks_debug("DEBUG_APPAUTH: mf_get_next_file: filename = %s\n",
 								filename);
@@ -146,15 +150,20 @@ static int verify_file_hashes(char *manifest_buf)
 	const char *filename = 0;
 	uint8_t digest_algo_id;
 	uint8_t *digest = 0;
+	uint32_t size = 0;
 	int ret = 0;
 
 	mf_init_file_list_ctx(manifest_buf, &ctx);
 
 	while (1) {
 		filename = mf_get_next_file(manifest_buf, &ctx,
-					&digest_algo_id, &digest);
+					&digest_algo_id, &digest, &size);
 		if (!filename)
 			break;
+		if (size > MAX_FILE_SIZE) {
+			ret = -FILE_TOO_BIG;
+			break;
+		}
 #ifdef DEBUG_APP_AUTH
 		ks_debug("DEBUG_APPAUTH: mf_get_next_file: filename = %s\n",
 								filename);

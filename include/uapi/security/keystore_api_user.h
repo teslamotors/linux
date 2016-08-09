@@ -36,6 +36,72 @@
  */
 
 /**
+ * DOC: Configuration
+ *
+ * The following configuration options are related to keystore:
+ *
+ * KEYSTORE (default = n)
+ * The option enables keystore.
+ *
+ * KEYSTORE_DEVICE_AND_USER_SEED (default)
+ * KEYSTORE_DEVICE_SEED_ONLY
+ * KEYSTORE_USER_SEED_ONLY
+ * The option enables user and/or device seed. Should not be changed
+ * without a good reason.
+ *
+ * KEYSTORE_SEED_SIZE_64 (default)
+ * KEYSTORE_SEED_SIZE_32
+ * The option determines the seed size. Should match the bootloader settings.
+ *
+ * KEYSTORE_OEM_KEY_USAGE_BIT (default = 47)
+ * The option informs keystore which usage bit is associated with
+ * the OEM key in the manifest passed from the bootloader.
+ *
+ * KEYSTORE_OEM_KEY_IDENTIFIER (default = "OEM: Keystore: 00")
+ * Keystore looks for the OEM key identified by this option in the keyring
+ * named ".manifest_keyring".
+ *
+ * APPLICATION_AUTH (default = n)
+ * The option enables authentication of keystore clients and other
+ * applications using a signed manifest. If enabled, keystore clients
+ * must provide a valid and signed manifest otherwise client
+ * registration fails.
+ *
+ * APPLICATION_AUTH_MANIFEST_ROOT (default = "/opt/ias/etc/manifest")
+ * The option specifies the root directory for signed manifests of
+ * keystore clients. For example, a manifest for /opt/ias/bin/ksutil
+ * application should be located in the file
+ * /opt/ias/etc/manifest/opt/ias/bin/ksutil.manifest
+ *
+ * KEYSTORE_TESTMODE (default = n)
+ * The option compiles a set of test functions which run diagnostics
+ * such as checking of crypto self-consistency (encrypt/decrypt)
+ * and format conversion. Provides an API to run a series of
+ * tests triggered from user-space.
+ *
+ * KEYSTORE_TEST_MIGRATION (default = n)
+ * The option compiles additional functions available to keystore
+ * for testing the backup and migration functions on a single machine.
+ * These are not necessary for keystore operation, but allow the migration
+ * step iteself to be performed natively instead of on a host machine.
+ *
+ * KEYSTORE_DEBUG (default = n)
+ * The option enables additional debug prints, hexdumps during keystore
+ * operation. It includes hexdump of sensitive cryptographic data structures
+ * such as public keys and for this reason should not be enabled in production.
+ *
+ * KEYSTORE_SECURE_BOOT_IGNORE (default = n)
+ * The option should not be enabled for production as applications
+ * will wrongly assume a secure environment.
+ *
+ * KEYSTORE_HARD_CODED_SEED (default = n)
+ * The option sets the keystore SEED a to fixed values instead of using
+ * values passed via the kernel command line. This is only for testing
+ * purposes and should not be used for production.
+ *
+ */
+
+/**
  * DOC: Key Wrapping
  *
  * The main function of keystore is to wrap keys (encrypt) from an application.
