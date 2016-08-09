@@ -43,6 +43,7 @@ struct intel_ipu4_psys {
 	bool icache_prefetch_sp;
 	bool icache_prefetch_isp;
 	spinlock_t power_lock;
+	spinlock_t pgs_lock;
 	struct list_head fhs;
 	struct list_head pgs;
 	struct list_head started_kcmds_list;
@@ -52,7 +53,10 @@ struct intel_ipu4_psys {
 	struct ia_css_syscom_config *syscom_config;
 	struct ia_css_psys_server_init *server_init;
 	struct task_struct *isr_thread;
+	struct task_struct *sched_cmd_thread;
 	struct work_struct watchdog_work;
+	wait_queue_head_t sched_cmd_wq;
+	atomic_t wakeup_sched_thread_count;
 	struct dentry *debugfsdir;
 
 	/* Resources needed to be managed for process groups */
@@ -71,6 +75,7 @@ struct intel_ipu4_psys {
 
 struct intel_ipu4_psys_fh {
 	struct intel_ipu4_psys *psys;
+	struct mutex mutex;  /* Protects bufmap & kcmds fields */
 	struct list_head list;
 	struct list_head bufmap;
 	struct list_head kcmds[INTEL_IPU4_PSYS_CMD_PRIORITY_NUM];
@@ -130,6 +135,7 @@ struct intel_ipu4_psys_kbuffer {
 	struct dma_buf_attachment *db_attach;
 	struct dma_buf *dbuf;
 	struct intel_ipu4_psys *psys;
+	struct intel_ipu4_psys_fh *fh;
 };
 
 #define inode_to_intel_ipu4_psys(inode) \
