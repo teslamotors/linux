@@ -8437,19 +8437,19 @@ static struct crl_sensor_limits ov10635_sensor_limits = {
 static struct crl_flip_data ov10635_flip_configurations[] = {
 	{
 		.flip = CRL_FLIP_DEFAULT_NONE,
-		.pixel_order = CRL_PIXEL_ORDER_RGGB,
+		.pixel_order = CRL_PIXEL_ORDER_IGNORE,
 	},
 	{
 		.flip = CRL_FLIP_HFLIP,
-		.pixel_order = CRL_PIXEL_ORDER_GRBG,
+		.pixel_order = CRL_PIXEL_ORDER_IGNORE,
 	},
 	{
 		.flip = CRL_FLIP_VFLIP,
-		.pixel_order = CRL_PIXEL_ORDER_GBRG,
+		.pixel_order = CRL_PIXEL_ORDER_IGNORE,
 	},
 	{
 		.flip = CRL_FLIP_HFLIP_VFLIP,
-		.pixel_order = CRL_PIXEL_ORDER_BGGR,
+		.pixel_order = CRL_PIXEL_ORDER_IGNORE,
 	}
 };
 
@@ -8468,59 +8468,17 @@ static struct crl_register_write_rep ov10635_raw_regs[] = {
 static struct crl_csi_data_fmt ov10635_crl_csi_data_fmt[] = {
 	{
 		.code = MEDIA_BUS_FMT_YUYV8_1X16,
-		.pixel_order = CRL_PIXEL_ORDER_RGGB,
+		.pixel_order = CRL_PIXEL_ORDER_IGNORE,
 		.bits_per_pixel = 16,
 		.regs_items = ARRAY_SIZE(ov10635_yuyv_regs),
 		.regs = ov10635_yuyv_regs,
 	},
 	{
 		.code = MEDIA_BUS_FMT_UYVY8_1X16,
-		.pixel_order = CRL_PIXEL_ORDER_RGGB,
+		.pixel_order = CRL_PIXEL_ORDER_IGNORE,
 		.bits_per_pixel = 16,
 		.regs_items = ARRAY_SIZE(ov10635_uyvy_regs),
 		.regs = ov10635_uyvy_regs,
-	},
-	{
-		.code = MEDIA_BUS_FMT_YUYV10_1X20,
-		.pixel_order = CRL_PIXEL_ORDER_GBRG,
-		.bits_per_pixel = 20,
-		.regs_items = ARRAY_SIZE(ov10635_yuyv_regs),
-		.regs = ov10635_yuyv_regs,
-	},
-	{
-		.code = MEDIA_BUS_FMT_UYVY10_1X20,
-		.pixel_order = CRL_PIXEL_ORDER_GBRG,
-		.bits_per_pixel = 20,
-		.regs_items = ARRAY_SIZE(ov10635_uyvy_regs),
-		.regs = ov10635_uyvy_regs,
-	},
-	{
-		.code = MEDIA_BUS_FMT_SGRBG10_1X10,
-		.pixel_order = CRL_PIXEL_ORDER_GRBG,
-		.bits_per_pixel = 10,
-		.regs_items = ARRAY_SIZE(ov10635_raw_regs),
-		.regs = ov10635_raw_regs,
-	},
-	{
-		.code = MEDIA_BUS_FMT_SRGGB10_1X10,
-		.pixel_order = CRL_PIXEL_ORDER_RGGB,
-		.bits_per_pixel = 10,
-		.regs_items = ARRAY_SIZE(ov10635_raw_regs),
-		.regs = ov10635_raw_regs,
-	},
-	{
-		.code = MEDIA_BUS_FMT_SBGGR10_1X10,
-		.pixel_order = CRL_PIXEL_ORDER_BGGR,
-		.bits_per_pixel = 10,
-		.regs_items = ARRAY_SIZE(ov10635_raw_regs),
-		.regs = ov10635_raw_regs,
-	},
-	{
-		.code = MEDIA_BUS_FMT_SGBRG10_1X10,
-		.pixel_order = CRL_PIXEL_ORDER_GBRG,
-		.bits_per_pixel = 10,
-		.regs_items = ARRAY_SIZE(ov10635_raw_regs),
-		.regs = ov10635_raw_regs,
 	},
 };
 

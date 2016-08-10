@@ -603,6 +603,10 @@ static int __crlmodule_update_flip_info(struct crl_sensor *sensor,
 		return -EINVAL;
 	}
 
+	/* Skip format re-selection if pixel order is unrelated to flipping. */
+	if (new_order == CRL_PIXEL_ORDER_IGNORE)
+		return 0;
+
 	/*
 	 * Flip changes only pixel order. So check if the supported format list
 	 * has any format with new pixel order and current bits per pixel

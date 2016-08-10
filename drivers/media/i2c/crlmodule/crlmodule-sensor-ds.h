@@ -47,6 +47,7 @@
 #define CRL_PIXEL_ORDER_RGGB			1
 #define CRL_PIXEL_ORDER_BGGR			2
 #define CRL_PIXEL_ORDER_GBRG			3
+#define CRL_PIXEL_ORDER_IGNORE			255
 
 /* Flag to notify configuration selction imact from V4l2 Ctrls */
 #define CRL_IMPACTS_NO_IMPACT			0
