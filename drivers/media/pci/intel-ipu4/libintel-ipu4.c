@@ -26,9 +26,6 @@ EXPORT_SYMBOL_GPL(ia_css_isys_stream_stop);
 EXPORT_SYMBOL_GPL(ia_css_isys_stream_flush);
 EXPORT_SYMBOL_GPL(ia_css_isys_stream_capture_indication);
 EXPORT_SYMBOL_GPL(ia_css_isys_stream_handle_response);
-EXPORT_SYMBOL_GPL(ia_css_pkg_dir_entry_get_address_lo);
-EXPORT_SYMBOL_GPL(ia_css_pkg_dir_get_entry);
-
 
 void csslib_dump_isys_stream_cfg(struct device *dev, struct ia_css_isys_stream_cfg_data *stream_cfg)
 {
