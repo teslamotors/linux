@@ -29,30 +29,6 @@ config VIDEO_INTEL_IPU4_PSYS_FPGA
 
 endchoice
 
-config VIDEO_INTEL_IPU5
-	tristate "Intel intel-ipu5 driver"
-	depends on ACPI
-	select IOMMU_API
-	select IOMMU_IOVA
-	select X86_DEV_DMA_OPS if X86
-	select VIDEOBUF2_DMA_CONTIG
-	select PHYS_ADDR_T_64BIT
-	select COMMON_CLK
-	default n if VIDEO_INTEL_IPU4
-	---help---
-	Say Y here!
-
-choice
-	prompt "intel-ipu5 hardware type"
-	depends on VIDEO_INTEL_IPU5
-	default VIDEO_INTEL_IPU5_FPGA
-
-config VIDEO_INTEL_IPU5_FPGA
-	bool "Compile for FPGA"
-
-endchoice
-
-
 config VIDEO_INTEL_IPU4_DEBUG
 	tristate "User space interface for firmware testing"
 	depends on VIDEO_INTEL_IPU4
