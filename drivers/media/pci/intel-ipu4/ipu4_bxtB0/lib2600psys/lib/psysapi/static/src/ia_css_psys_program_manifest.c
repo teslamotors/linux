@@ -15,18 +15,14 @@
 
 #include <ia_css_psys_program_manifest.h>
 #include <ia_css_psys_program_group_manifest.h>
-
-#include <ia_css_program_group_param_types.h>	/* Kernel enable bitmap */
+#include <ia_css_kernel_bitmap.h> /* for ia_css_kernel_bitmap_t, ia_css_kernel_bitmap_print */
 
 #include <vied_nci_psys_system_global.h>
 #include "ia_css_psys_program_group_private.h"
-
-#include <type_support.h>
-#include <error_support.h>
-#include <print_support.h>
-#include <misc_support.h>
-
 #include "ia_css_psys_static_trace.h"
+
+#include <error_support.h>
+#include <misc_support.h>
 
 size_t ia_css_sizeof_program_manifest(
 	const uint8_t program_dependency_count,

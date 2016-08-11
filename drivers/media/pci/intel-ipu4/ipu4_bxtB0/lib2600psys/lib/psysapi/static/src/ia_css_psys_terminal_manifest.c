@@ -15,18 +15,15 @@
 
 #include <ia_css_psys_terminal_manifest.h>
 
-#include <ia_css_program_group_data.h> /* Data object types on the terminals */
-#include <ia_css_program_group_param_types.h>	/* Kernel enable bitmap */
+#include <ia_css_program_group_data.h>	/* Data object types on the terminals */
+#include <ia_css_kernel_bitmap.h>	/* for ia_css_kernel_bitmap_t, ia_css_kernel_bitmap_clear, ia_css_... */
 
 #include "ia_css_psys_program_group_private.h"
 #include "ia_css_terminal_manifest.h"
 #include "ia_css_terminal_manifest_types.h"
 
-#include <type_support.h>
 #include <error_support.h>
 #include <print_support.h>
-#include <math_support.h>		/* MIN() */
-#include <assert_support.h>
 #include <misc_support.h>
 #include "ia_css_psys_static_trace.h"
 

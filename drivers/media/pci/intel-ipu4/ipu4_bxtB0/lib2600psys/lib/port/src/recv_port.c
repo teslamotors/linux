@@ -16,7 +16,6 @@
 #include "recv_port.h"
 
 /* used: */
-#include "queue.h"
 #include "queue_struct.h"
 #include "recv_port_struct.h"
 #include "port_env_struct.h"

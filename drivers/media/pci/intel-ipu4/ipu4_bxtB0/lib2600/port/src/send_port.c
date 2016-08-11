@@ -16,7 +16,6 @@
 #include "send_port.h"
 
 /* used: */
-#include "queue.h"
 #include "queue_struct.h"
 #include "send_port_struct.h"
 #include "port_env_struct.h"

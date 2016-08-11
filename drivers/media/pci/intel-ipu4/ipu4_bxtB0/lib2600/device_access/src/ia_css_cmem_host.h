@@ -15,11 +15,10 @@
 #ifndef _IA_CSS_CMEM_HOST_H_
 #define _IA_CSS_CMEM_HOST_H_
 
-#include "ia_css_cmem.h"
+/* This file is an inline implementation for the interface ia_css_cmem.h
+ * and should only be included there. */
 
-#include <vied/vied_subsystem_access.h>
 #include "assert_support.h"
-#include "type_support.h"
 #include "misc_support.h"
 
 STORAGE_CLASS_INLINE uint32_t

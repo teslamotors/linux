@@ -12,14 +12,9 @@
  * more details.
 */
 
-
 #include <ia_css_kernel_bitmap.h>
-
 #include <type_support.h>
-#include <error_support.h>
-#include <print_support.h>
 #include <misc_support.h>
-
 #include "ia_css_psys_kernel_trace.h"
 
 static int ia_css_kernel_bitmap_compute_weight(

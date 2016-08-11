@@ -13,14 +13,12 @@
 */
 
 
+#include "ia_css_input_buffer_cpu.h"
 #include "ia_css_buffer.h"
 #include "vied/shared_memory_access.h"
 #include "vied/shared_memory_map.h"
 #include "cpu_mem_support.h"
 #include "assert_support.h"
-
-#include "ia_css_input_buffer_cpu.h"
-
 
 ia_css_input_buffer
 ia_css_input_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,

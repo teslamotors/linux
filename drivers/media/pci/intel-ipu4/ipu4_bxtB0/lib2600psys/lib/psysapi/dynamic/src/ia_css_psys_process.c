@@ -19,7 +19,6 @@
 #include <ia_css_psys_program_manifest.h>
 
 #include <error_support.h>
-#include <print_support.h>
 #include <misc_support.h>
 #include <assert_support.h>
 

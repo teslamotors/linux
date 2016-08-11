@@ -197,15 +197,23 @@ extern int ia_css_isys_stream_flush(
  * at the address specified in ia_css_isys_output_pin_payload
  * These ptrs should no longer be accessed by any other
  * code until (ia_css_isys_output_pin) gets handed
- * back to the driver  via the response mechansim
+ * back to the driver via the response mechanism
  * ia_css_isys_stream_handle_response()
  * the driver is responsible for providing valid
  * ia_css_isys_output_pin* or ia_css_isys_output_pin*
- * Pointers set to NULL will simply not be used by the ISYS
+ * Pointers set to NULL will simply not be used by the ISYS, and this
+ * refers specifically the following cases:
+ * - output pins from SOC path if the same datatype is also passed into ISAPF
+ *   path or it has active MIPI output (not NULL)
+ * - full resolution pin from ISA (but not when bypassing ISA)
+ * - scaled pin from ISA (bypassing ISA for scaled pin is impossible)
+ * - output pins from MIPI path but only when the same datatype is also
+ *   either forwarded to the ISAPF path based on the stream configuration
+ *   (it is ok if the second output pin of this datatype is also skipped)
+ *   or it has an active SOC output (not NULL)
  *
  * Return: int type error code (errno.h)
  */
-
 extern int ia_css_isys_stream_capture_indication(
 	HANDLE context,
 	const unsigned int stream_handle,

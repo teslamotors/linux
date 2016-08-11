@@ -14,8 +14,6 @@
 
 #include "ia_css_client_pkg.h"
 #include "ia_css_client_pkg_types.h"
-#include "type_support.h"
-#include "misc_support.h"
 #include "error_support.h"
 
 int ia_css_client_pkg_get_prog_list_offset_size(

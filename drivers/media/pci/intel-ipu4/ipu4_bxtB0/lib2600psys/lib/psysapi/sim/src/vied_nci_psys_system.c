@@ -15,10 +15,8 @@
 
 #include <vied_nci_psys_system_global.h>
 
-#include <type_support.h>
-#include <assert_support.h>
-
 #include "ia_css_psys_sim_trace.h"
+#include <assert_support.h>
 
 /* Use vied_bits instead, however for test purposes we uses explicit type
  * checking

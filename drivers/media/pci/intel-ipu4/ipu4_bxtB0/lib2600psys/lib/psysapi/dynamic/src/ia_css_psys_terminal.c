@@ -24,10 +24,9 @@
 #include <ia_css_psys_process_group.h>
 
 #include <type_support.h>
-#include <error_support.h>
-#include <assert_support.h>
-#include <print_support.h>
-#include <misc_support.h>
+#include <error_support.h>	/* for verifexit, verifjmpexit */
+#include <assert_support.h>	/* for COMPILATION_ERROR_IF */
+#include <misc_support.h>	/* for NOT_USED */
 #include "ia_css_terminal_types.h"
 #include "ia_css_terminal_manifest_types.h"
 #include "ia_css_psys_dynamic_trace.h"

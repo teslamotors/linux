@@ -17,21 +17,16 @@
 
 #include <ia_css_psys_program_manifest.h>
 #include <ia_css_psys_terminal_manifest.h>
-
-#include <ia_css_program_group_param.h>
 #include <ia_css_kernel_bitmap.h>
 #include "ia_css_psys_program_group_private.h"
 #include "ia_css_terminal_manifest_types.h"
-#include <type_support.h>
+#include "ia_css_psys_private_pg_data.h"
+#include <vied_nci_psys_system_global.h>	/* Safer bit mask functions */
+#include "ia_css_psys_static_trace.h"
+
 #include <error_support.h>
-#include <print_support.h>
 #include <assert_support.h>
 #include <misc_support.h>
-#include "ia_css_psys_private_pg_data.h"
-
-#include <vied_nci_psys_system_global.h>	/* Safer bit mask functions */
-
-#include "ia_css_psys_static_trace.h"
 
 /*
  * We need to refactor those files in order to

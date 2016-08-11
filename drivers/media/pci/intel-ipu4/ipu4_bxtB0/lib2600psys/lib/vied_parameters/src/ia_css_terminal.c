@@ -12,8 +12,8 @@
  * more details.
 */
 
-#include "ia_css_terminal_types.h"
 #include "ia_css_terminal.h"
+#include "ia_css_terminal_types.h"
 #include "error_support.h"
 #include "assert_support.h"
 #include "storage_class.h"

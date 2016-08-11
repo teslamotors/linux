@@ -14,13 +14,10 @@
 
 
 #include "ia_css_program_group_data.h"
-
-#include <error_support.h>
-#include <assert_support.h>
-#include <print_support.h>
-#include <misc_support.h>
-
 #include "ia_css_psys_data_trace.h"
+#include <error_support.h>	/* for verifexit */
+#include <assert_support.h>
+#include <misc_support.h>	/* for NOT_USED */
 
 int ia_css_frame_print(
 	const ia_css_frame_t *frame, void *fid)
