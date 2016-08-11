@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -18,6 +18,7 @@
 #define V4L2_CID_INTEL_IPU4_BASE	(V4L2_CID_USER_BASE + 0x1080)
 
 #define V4L2_CID_INTEL_IPU4_ISA_EN	(V4L2_CID_INTEL_IPU4_BASE + 1)
+#define V4L2_CID_INTEL_IPU4_STORE_CSI2_HEADER	(V4L2_CID_INTEL_IPU4_BASE + 2)
 
 #define V4L2_INTEL_IPU4_ISA_EN_BLC	(1 << 0)
 #define V4L2_INTEL_IPU4_ISA_EN_LSC	(1 << 1)

@@ -91,6 +91,8 @@ struct intel_ipu4_isys_csi2 {
 
 	unsigned int remote_streams;
 	unsigned int stream_count;
+
+	struct v4l2_ctrl *store_csi2_header;
 };
 
 struct intel_ipu4_isys_csi2_timing {

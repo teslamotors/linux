@@ -151,6 +151,11 @@ const struct intel_ipu4_isys_pixelformat
 *intel_ipu4_isys_video_try_fmt_vid_mplane_default(
 	struct intel_ipu4_isys_video *av, struct v4l2_pix_format_mplane *mpix);
 
+const struct intel_ipu4_isys_pixelformat
+*intel_ipu4_isys_video_try_fmt_vid_mplane(
+	struct intel_ipu4_isys_video *av, struct v4l2_pix_format_mplane *mpix,
+	int store_csi2_header);
+
 void intel_ipu4_isys_prepare_firmware_stream_cfg_default(
 	struct intel_ipu4_isys_video *av,
 	struct ia_css_isys_stream_cfg_data *cfg);

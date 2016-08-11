@@ -45,6 +45,8 @@ void csslib_dump_isys_stream_cfg(struct device *dev,
 		dev_dbg(dev, "Input pin %d\n", i);
 		dev_dbg(dev, "Mipi data type %d\n",
 			stream_cfg->input_pins[i].dt);
+		dev_dbg(dev, "Mipi store mode %d\n",
+			stream_cfg->input_pins[i].mipi_store_mode);
 		dev_dbg(dev, "Input res width %d\n",
 			stream_cfg->input_pins[i].input_res.width);
 		dev_dbg(dev, "Input res height %d\n",

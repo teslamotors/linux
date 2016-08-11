@@ -479,6 +479,21 @@ static int csi2_link_validate(struct media_link *link)
 	if (rval)
 		return rval;
 
+	if (!v4l2_ctrl_g_ctrl(csi2->store_csi2_header)) {
+		for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++) {
+			struct media_pad *remote_pad =
+				media_entity_remote_pad(
+				&csi2->asd.pad[CSI2_PAD_SOURCE(i)]);
+
+			if (remote_pad && (remote_pad->entity->type &
+			    MEDIA_ENT_TYPE_MASK) == MEDIA_ENT_T_V4L2_SUBDEV) {
+				dev_err(&csi2->isys->adev->dev,
+					"CSI2 BE requires CSI2 headers.\n");
+				return -EINVAL;
+			}
+		}
+	}
+
 	rval = v4l2_subdev_call(
 		media_entity_to_v4l2_subdev(link->source->entity), pad,
 		get_routing, &routing);
@@ -665,6 +680,17 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 	BUG_ON(1);
 }
 
+static const struct intel_ipu4_isys_pixelformat *csi2_try_fmt(
+	struct intel_ipu4_isys_video *av, struct v4l2_pix_format_mplane *mpix)
+{
+	struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(
+				 av->vdev.entity.links[0].source->entity);
+	struct intel_ipu4_isys_csi2 *csi2 = to_intel_ipu4_isys_csi2(sd);
+
+	return intel_ipu4_isys_video_try_fmt_vid_mplane(av, mpix,
+		v4l2_ctrl_g_ctrl(csi2->store_csi2_header));
+}
+
 void intel_ipu4_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2)
 {
 	int i;
@@ -674,6 +700,24 @@ void intel_ipu4_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2)
 	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++)
 		intel_ipu4_isys_video_cleanup(&csi2->av[i]);
 	intel_ipu4_isys_video_cleanup(&csi2->av_meta);
+}
+
+static void csi_ctrl_init(struct v4l2_subdev *sd)
+{
+	struct intel_ipu4_isys_csi2 *csi2 = to_intel_ipu4_isys_csi2(sd);
+
+	static const struct v4l2_ctrl_config cfg = {
+		.id = V4L2_CID_INTEL_IPU4_STORE_CSI2_HEADER,
+		.name = "Store CSI-2 Headers",
+		.type = V4L2_CTRL_TYPE_BOOLEAN,
+		.min = 0,
+		.max = 1,
+		.step = 1,
+		.def = 1,
+	};
+
+	csi2->store_csi2_header = v4l2_ctrl_new_custom(
+		&csi2->asd.ctrl_handler, &cfg, NULL);
 }
 
 int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
@@ -700,6 +744,7 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
 	csi2->index = index;
 
 	csi2->asd.sd.entity.ops = &csi2_entity_ops;
+	csi2->asd.ctrl_init = csi_ctrl_init;
 	csi2->asd.isys = isys;
 	init_completion(&csi2->eof_completion);
 	csi2->remote_streams = 1;
@@ -766,8 +811,7 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
 		csi2->av[i].isys = isys;
 		csi2->av[i].aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_MIPI;
 		csi2->av[i].pfmts = intel_ipu4_isys_pfmts_packed;
-		csi2->av[i].try_fmt_vid_mplane =
-			intel_ipu4_isys_video_try_fmt_vid_mplane_default;
+		csi2->av[i].try_fmt_vid_mplane = csi2_try_fmt;
 		csi2->av[i].prepare_firmware_stream_cfg =
 			intel_ipu4_isys_prepare_firmware_stream_cfg_default;
 		csi2->av[i].packed = true;
@@ -798,8 +842,7 @@ int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
 	csi2->av_meta.isys = isys;
 	csi2->av_meta.aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_MIPI;
 	csi2->av_meta.pfmts = csi2_meta_pfmts;
-	csi2->av_meta.try_fmt_vid_mplane =
-		intel_ipu4_isys_video_try_fmt_vid_mplane_default;
+	csi2->av_meta.try_fmt_vid_mplane = csi2_try_fmt;
 	csi2->av_meta.prepare_firmware_stream_cfg =
 		csi2_meta_prepare_firmware_stream_cfg_default;
 	csi2->av_meta.packed = true;

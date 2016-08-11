@@ -509,6 +509,14 @@ const struct intel_ipu4_isys_pixelformat
 *intel_ipu4_isys_video_try_fmt_vid_mplane_default(
 	struct intel_ipu4_isys_video *av, struct v4l2_pix_format_mplane *mpix)
 {
+	return intel_ipu4_isys_video_try_fmt_vid_mplane(av, mpix, 0);
+}
+
+const struct intel_ipu4_isys_pixelformat
+*intel_ipu4_isys_video_try_fmt_vid_mplane(
+	struct intel_ipu4_isys_video *av, struct v4l2_pix_format_mplane *mpix,
+	int store_csi2_header)
+{
 	const struct intel_ipu4_isys_pixelformat *pfmt =
 		intel_ipu4_isys_get_pixelformat(av, mpix->pixelformat);
 
@@ -518,10 +526,13 @@ const struct intel_ipu4_isys_pixelformat
 	if (!av->packed)
 		mpix->plane_fmt[0].bytesperline =
 			mpix->width * DIV_ROUND_UP(pfmt->bpp, BITS_PER_BYTE);
-	else
+	else if (store_csi2_header)
 		mpix->plane_fmt[0].bytesperline = DIV_ROUND_UP(
 			av->line_header_length + av->line_footer_length
 			+ (unsigned int)mpix->width * pfmt->bpp, BITS_PER_BYTE);
+	else
+		mpix->plane_fmt[0].bytesperline = DIV_ROUND_UP(
+			(unsigned int)mpix->width * pfmt->bpp, BITS_PER_BYTE);
 
 	mpix->plane_fmt[0].bytesperline = ALIGN(mpix->plane_fmt[0].bytesperline,
 						av->isys->line_align);
@@ -1044,6 +1055,10 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	stream_cfg.input_pins[0].input_res.height = source_fmt.format.height;
 	stream_cfg.input_pins[0].dt =
 		intel_ipu4_isys_mbus_code_to_mipi(source_fmt.format.code);
+
+	if (ip->csi2 && !v4l2_ctrl_g_ctrl(ip->csi2->store_csi2_header))
+		stream_cfg.input_pins[0].mipi_store_mode =
+			IA_CSS_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER;
 
 	/*
 	 * Only CSI2-BE has the capability to do crop,
