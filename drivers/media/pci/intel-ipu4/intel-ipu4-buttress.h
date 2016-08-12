@@ -49,14 +49,18 @@ struct intel_ipu4_buttress {
 	spinlock_t tsc_lock;
 	struct clk *clk_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS];
 	struct clk *pll_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_PLL_CKS];
-	struct completion cse_ipc_complete;
-	struct completion ish_ipc_complete;
+	struct completion send_cse_ipc_complete;
+	struct completion send_ish_ipc_complete;
+	struct completion recv_cse_ipc_complete;
+	struct completion recv_ish_ipc_complete;
 	struct list_head constraints;
 	struct intel_ipu4_buttress_fused_freqs psys_fused_freqs;
 	unsigned int psys_min_freq;
 	u8 psys_force_ratio;
 	bool force_suspend;
 	bool ps_started;
+	u32 cse_ipc_recv_data;
+	u32 ish_ipc_recv_data;
 };
 
 struct intel_ipu4_buttress_sensor_clk_freq {

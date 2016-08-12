@@ -276,7 +276,7 @@ static int intel_ipu4_buttress_ipc_send(
 	mutex_lock(&b->ipc_mutex);
 
 	ipc_complete = ipc == INTEL_IPU4_BUTTRESS_IPC_CSE ?
-		&b->cse_ipc_complete : &b->ish_ipc_complete;
+		&b->send_cse_ipc_complete : &b->send_ish_ipc_complete;
 
 	init_completion(ipc_complete);
 
@@ -467,26 +467,30 @@ irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 			dev_dbg(&isp->pdev->dev,
 				"BUTTRESS_ISR_IPC_FROM_CSE_IS_WAITING\n");
 			intel_ipu4_buttress_ipc_recv(isp,
-					INTEL_IPU4_BUTTRESS_IPC_CSE, NULL);
+					INTEL_IPU4_BUTTRESS_IPC_CSE,
+					&b->cse_ipc_recv_data);
+			complete(&b->recv_cse_ipc_complete);
 		}
 
 		if (irq_status & BUTTRESS_ISR_IPC_FROM_ISH_IS_WAITING) {
 			dev_dbg(&isp->pdev->dev,
-				"BUTTRESS_ISR_IPC_FROM_CSE_IS_WAITING\n");
+				"BUTTRESS_ISR_IPC_FROM_ISH_IS_WAITING\n");
 			intel_ipu4_buttress_ipc_recv(isp,
-					INTEL_IPU4_BUTTRESS_IPC_ISH, NULL);
+					INTEL_IPU4_BUTTRESS_IPC_ISH,
+					&b->ish_ipc_recv_data);
+			complete(&b->recv_ish_ipc_complete);
 		}
 
 		if (irq_status & BUTTRESS_ISR_IPC_EXEC_DONE_BY_CSE) {
 			dev_dbg(&isp->pdev->dev,
 				"BUTTRESS_ISR_IPC_EXEC_DONE_BY_CSE\n");
-			complete(&b->cse_ipc_complete);
+			complete(&b->send_cse_ipc_complete);
 		}
 
 		if (irq_status & BUTTRESS_ISR_IPC_EXEC_DONE_BY_ISH) {
 			dev_dbg(&isp->pdev->dev,
 				"BUTTRESS_ISR_IPC_EXEC_DONE_BY_CSE\n");
-			complete(&b->ish_ipc_complete);
+			complete(&b->send_ish_ipc_complete);
 		}
 
 		if (irq_status & BUTTRESS_ISR_SAI_VIOLATION) {
@@ -1804,8 +1808,10 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 	mutex_init(&b->cons_mutex);
 	mutex_init(&b->ipc_mutex);
 	spin_lock_init(&b->tsc_lock);
-	init_completion(&b->ish_ipc_complete);
-	init_completion(&b->cse_ipc_complete);
+	init_completion(&b->send_ish_ipc_complete);
+	init_completion(&b->send_cse_ipc_complete);
+	init_completion(&b->recv_ish_ipc_complete);
+	init_completion(&b->recv_cse_ipc_complete);
 
 	INIT_LIST_HEAD(&b->constraints);
 
