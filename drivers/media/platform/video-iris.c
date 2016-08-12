@@ -167,6 +167,7 @@ static int camera_iris_probe(struct platform_device *pdev)
 	if (IS_ERR(iris->camera_pwm.pwm)) {
 		dev_err(&pdev->dev,
 			"Unable to request PWM for camera iris!\n");
+		rval = -ENODEV;
 		goto out_unregister_v4l2dev;
 	}
 
