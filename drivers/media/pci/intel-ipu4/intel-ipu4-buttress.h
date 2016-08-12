@@ -76,6 +76,13 @@ struct intel_ipu4_buttress_constraint {
 	unsigned int min_freq;
 };
 
+struct intel_ipu4_ipc_buttress_bulk_msg {
+	u32 cmd;
+	u32 expected_resp;
+	bool require_resp;
+	u8 cmd_size;
+};
+
 int intel_ipu4_buttress_map_fw_image(struct intel_ipu4_bus_device *sys,
 				     const struct firmware *fw,
 				     struct sg_table *sgt);
@@ -105,5 +112,9 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp);
 void intel_ipu4_buttress_exit(struct intel_ipu4_device *isp);
 void intel_ipu4_buttress_csi_port_config(struct intel_ipu4_device *isp,
 					u32 legacy, u32 combo);
-
+int intel_ipu4_buttress_ipc_send_bulk(
+	struct intel_ipu4_device *isp,
+	enum intel_ipu4_buttress_ipc_domain ipc,
+	struct intel_ipu4_ipc_buttress_bulk_msg *msgs,
+	u32 size);
 #endif /* INTEL_IPU4_BUTTRESS_H */

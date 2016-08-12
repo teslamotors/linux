@@ -50,6 +50,7 @@
 #define BUTTRESS_CSE_FWRESET_TIMEOUT		100
 
 #define BUTTRESS_IPC_TX_TIMEOUT			1000
+#define BUTTRESS_IPC_RX_TIMEOUT			1000
 #define BUTTRESS_IPC_VALIDITY_TIMEOUT		1000
 
 #define BUTTRESS_POWER_TIMEOUT			1000
@@ -308,6 +309,89 @@ out:
 	intel_ipu4_buttress_ipc_validity_close(isp, ipc);
 	return ret;
 }
+
+int intel_ipu4_buttress_ipc_send_bulk(
+	struct intel_ipu4_device *isp,
+	enum intel_ipu4_buttress_ipc_domain ipc,
+	struct intel_ipu4_ipc_buttress_bulk_msg *msgs,
+	u32 size)
+{
+	struct intel_ipu4_buttress *b = &isp->buttress;
+	struct completion *send_ipc_complete;
+	struct completion *recv_ipc_complete;
+	u32 *recv_data;
+	u32 val;
+	int ret;
+	int tout;
+	unsigned int i;
+
+	if (ipc == INTEL_IPU4_BUTTRESS_IPC_CSE) {
+		send_ipc_complete = &b->send_cse_ipc_complete;
+		recv_ipc_complete = &b->recv_cse_ipc_complete;
+		recv_data = &b->cse_ipc_recv_data;
+	} else {
+		send_ipc_complete = &b->send_ish_ipc_complete;
+		recv_ipc_complete = &b->recv_ish_ipc_complete;
+		recv_data = &b->ish_ipc_recv_data;
+	}
+
+	ret = intel_ipu4_buttress_ipc_validity_open(isp, ipc);
+	if (ret) {
+		dev_err(&isp->pdev->dev, "IPC validity open failed\n");
+		goto out;
+	}
+
+	for (i = 0; i < size; i++) {
+		init_completion(send_ipc_complete);
+		if (msgs[i].require_resp)
+			init_completion(recv_ipc_complete);
+
+		dev_dbg(&isp->pdev->dev, "bulk IPC command: 0x%x\n",
+			msgs[i].cmd);
+		writel(msgs[i].cmd, isp->base + DATA0_OUT(ipc));
+
+		val = 1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT | msgs[i].cmd_size;
+
+		writel(val, isp->base + DB0_OUT(ipc));
+
+		tout = wait_for_completion_timeout(send_ipc_complete,
+					msecs_to_jiffies(
+						BUTTRESS_IPC_TX_TIMEOUT));
+		if (!tout) {
+			dev_err(&isp->pdev->dev, "send IPC response timeout\n");
+			ret = -ETIMEDOUT;
+			goto out;
+		}
+
+		if (!msgs[i].require_resp)
+			continue;
+
+		tout = wait_for_completion_timeout(recv_ipc_complete,
+					msecs_to_jiffies(
+						BUTTRESS_IPC_RX_TIMEOUT));
+		if (!tout) {
+			dev_err(&isp->pdev->dev, "recv IPC response timeout\n");
+			ret = -ETIMEDOUT;
+			goto out;
+		}
+
+		if (*recv_data != msgs[i].expected_resp) {
+			dev_err(&isp->pdev->dev,
+				"expected resp: 0x%x, IPC response: 0x%x ",
+				msgs[i].expected_resp,
+				*recv_data);
+			ret = -EIO;
+			goto out;
+		}
+	}
+
+	dev_dbg(&isp->pdev->dev, "bulk IPC commands completed\n");
+
+out:
+	intel_ipu4_buttress_ipc_validity_close(isp, ipc);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_buttress_ipc_send_bulk);
 
 static irqreturn_t intel_ipu4_buttress_call_isr(
 					struct intel_ipu4_bus_device *adev)
