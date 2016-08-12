@@ -273,6 +273,8 @@ static int intel_ipu4_buttress_ipc_send(
 	u32 val;
 	int ret;
 
+	mutex_lock(&b->ipc_mutex);
+
 	ipc_complete = ipc == INTEL_IPU4_BUTTRESS_IPC_CSE ?
 		&b->cse_ipc_complete : &b->ish_ipc_complete;
 
@@ -307,6 +309,7 @@ static int intel_ipu4_buttress_ipc_send(
 	ret = -ETIMEDOUT;
 out:
 	intel_ipu4_buttress_ipc_validity_close(isp, ipc);
+	mutex_unlock(&b->ipc_mutex);
 	return ret;
 }
 
@@ -334,6 +337,8 @@ int intel_ipu4_buttress_ipc_send_bulk(
 		recv_ipc_complete = &b->recv_ish_ipc_complete;
 		recv_data = &b->ish_ipc_recv_data;
 	}
+
+	mutex_lock(&b->ipc_mutex);
 
 	ret = intel_ipu4_buttress_ipc_validity_open(isp, ipc);
 	if (ret) {
@@ -389,6 +394,7 @@ int intel_ipu4_buttress_ipc_send_bulk(
 
 out:
 	intel_ipu4_buttress_ipc_validity_close(isp, ipc);
+	mutex_unlock(&b->ipc_mutex);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_buttress_ipc_send_bulk);
@@ -1796,6 +1802,7 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 	mutex_init(&b->power_mutex);
 	mutex_init(&b->auth_mutex);
 	mutex_init(&b->cons_mutex);
+	mutex_init(&b->ipc_mutex);
 	spin_lock_init(&b->tsc_lock);
 	init_completion(&b->ish_ipc_complete);
 	init_completion(&b->cse_ipc_complete);
@@ -1856,6 +1863,7 @@ err_mutex_destroy:
 	mutex_destroy(&b->power_mutex);
 	mutex_destroy(&b->auth_mutex);
 	mutex_destroy(&b->cons_mutex);
+	mutex_destroy(&b->ipc_mutex);
 
 	return rval;
 }
@@ -1878,4 +1886,5 @@ void intel_ipu4_buttress_exit(struct intel_ipu4_device *isp)
 	mutex_destroy(&b->power_mutex);
 	mutex_destroy(&b->auth_mutex);
 	mutex_destroy(&b->cons_mutex);
+	mutex_destroy(&b->ipc_mutex);
 }

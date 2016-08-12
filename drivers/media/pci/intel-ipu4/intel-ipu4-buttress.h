@@ -45,7 +45,7 @@ struct intel_ipu4_buttress_fused_freqs {
 };
 
 struct intel_ipu4_buttress {
-	struct mutex power_mutex, auth_mutex, cons_mutex;
+	struct mutex power_mutex, auth_mutex, cons_mutex, ipc_mutex;
 	spinlock_t tsc_lock;
 	struct clk *clk_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS];
 	struct clk *pll_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_PLL_CKS];
