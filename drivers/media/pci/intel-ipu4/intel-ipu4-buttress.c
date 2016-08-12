@@ -69,8 +69,10 @@
 			 BUTTRESS_REG_CSE2IUDB0 : BUTTRESS_REG_ISH2IUDB0)
 #define DB0_OUT(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
 			 BUTTRESS_REG_IU2CSEDB0 : BUTTRESS_REG_IU2ISHDB0)
-#define DATA0(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
+#define DATA0_OUT(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
 			 BUTTRESS_REG_IU2CSEDATA0 : BUTTRESS_REG_IU2ISHDATA0)
+#define DATA0_IN(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
+			 BUTTRESS_REG_CSE2IUDATA0 : BUTTRESS_REG_ISH2IUDATA0)
 
 const struct intel_ipu4_buttress_sensor_clk_freq sensor_clk_freqs[] = {
 	{ 6750000, BUTTRESS_SENSOR_CLK_FREQ_6P75MHZ },
@@ -170,7 +172,7 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 			 */
 			writel(EXIT, isp->base + CSR_IN(ipc));
 
-			writel(1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT,
+			writel(0 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT,
 			       isp->base + DB0_IN(ipc));
 
 			writel(
@@ -256,14 +258,14 @@ static void intel_ipu4_buttress_ipc_recv(
 	u32 *ipc_msg)
 {
 	if (ipc_msg)
-		*ipc_msg = readl(isp->base + DATA0(ipc));
-	writel(0, isp->base + DB0_OUT(ipc));
+		*ipc_msg = readl(isp->base + DATA0_IN(ipc));
+	writel(0, isp->base + DB0_IN(ipc));
 }
 
 static int intel_ipu4_buttress_ipc_send(
 	struct intel_ipu4_device *isp,
 	enum intel_ipu4_buttress_ipc_domain ipc,
-	u32 ipc_msg)
+	u32 ipc_msg, u32 size)
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
 	struct completion *ipc_complete;
@@ -281,9 +283,9 @@ static int intel_ipu4_buttress_ipc_send(
 		goto out;
 	}
 
-	writel(ipc_msg, isp->base + DATA0(ipc));
+	writel(ipc_msg, isp->base + DATA0_OUT(ipc));
 
-	val = 1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT | 1;
+	val = 1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT | size;
 
 	writel(val, isp->base + DB0_OUT(ipc));
 
@@ -830,7 +832,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	dev_info(&isp->pdev->dev, "Sending BOOT_LOAD to CSE\n");
 	rval = intel_ipu4_buttress_ipc_send(
 		isp, INTEL_IPU4_BUTTRESS_IPC_CSE,
-		BUTTRESS_IU2CSEDATA0_IPC_BOOT_LOAD);
+		BUTTRESS_IU2CSEDATA0_IPC_BOOT_LOAD, 1);
 	if (rval) {
 		dev_err(&isp->pdev->dev, "CSE boot_load failed\n");
 		goto iunit_power_off;
@@ -886,7 +888,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	dev_info(&isp->pdev->dev, "Sending AUTHENTICATE_RUN to CSE\n");
 	rval = intel_ipu4_buttress_ipc_send(
 		isp, INTEL_IPU4_BUTTRESS_IPC_CSE,
-		BUTTRESS_IU2CSEDATA0_IPC_AUTHENTICATE_RUN);
+		BUTTRESS_IU2CSEDATA0_IPC_AUTHENTICATE_RUN, 1);
 	if (rval) {
 		dev_err(&isp->pdev->dev, "CSE authenticate_run failed\n");
 		goto iunit_power_off;
