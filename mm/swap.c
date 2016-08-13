@@ -43,7 +43,7 @@ int page_cluster;
 
 static DEFINE_PER_CPU(struct pagevec, lru_add_pvec);
 static DEFINE_PER_CPU(struct pagevec, lru_rotate_pvecs);
-static DEFINE_PER_CPU(struct pagevec, lru_deactivate_pvecs);
+static DEFINE_PER_CPU(struct pagevec, lru_deactivate_file_pvecs);
 
 static DEFINE_LOCAL_IRQ_LOCK(rotate_lock);
 static DEFINE_LOCAL_IRQ_LOCK(swapvec_lock);
@@ -479,7 +479,7 @@ void rotate_reclaimable_page(struct page *page)
 		page_cache_get(page);
 		local_lock_irqsave(rotate_lock, flags);
 		pvec = this_cpu_ptr(&lru_rotate_pvecs);
-		if (!pagevec_add(pvec, page))
+		if (!pagevec_add(pvec, page) || PageCompound(page))
 			pagevec_move_tail(pvec);
 		local_unlock_irqrestore(rotate_lock, flags);
 	}
@@ -536,7 +536,7 @@ void activate_page(struct page *page)
 						       activate_page_pvecs);
 
 		page_cache_get(page);
-		if (!pagevec_add(pvec, page))
+		if (!pagevec_add(pvec, page) || PageCompound(page))
 			pagevec_lru_move_fn(pvec, __activate_page, NULL);
 		put_locked_var(swapvec_lock, activate_page_pvecs);
 	}
@@ -628,9 +628,8 @@ static void __lru_cache_add(struct page *page)
 	struct pagevec *pvec = &get_locked_var(swapvec_lock, lru_add_pvec);
 
 	page_cache_get(page);
-	if (!pagevec_space(pvec))
+	if (!pagevec_add(pvec, page) || PageCompound(page))
 		__pagevec_lru_add(pvec);
-	pagevec_add(pvec, page);
 	put_locked_var(swapvec_lock, lru_add_pvec);
 }
 
@@ -748,7 +747,7 @@ void lru_cache_add_active_or_unevictable(struct page *page,
  * be write it out by flusher threads as this is much more effective
  * than the single-page writeout from reclaim.
  */
-static void lru_deactivate_fn(struct page *page, struct lruvec *lruvec,
+static void lru_deactivate_file_fn(struct page *page, struct lruvec *lruvec,
 			      void *arg)
 {
 	int lru, file;
@@ -822,37 +821,37 @@ void lru_add_drain_cpu(int cpu)
 #endif
 	}
 
-	pvec = &per_cpu(lru_deactivate_pvecs, cpu);
+	pvec = &per_cpu(lru_deactivate_file_pvecs, cpu);
 	if (pagevec_count(pvec))
-		pagevec_lru_move_fn(pvec, lru_deactivate_fn, NULL);
+		pagevec_lru_move_fn(pvec, lru_deactivate_file_fn, NULL);
 
 	activate_page_drain(cpu);
 }
 
 /**
- * deactivate_page - forcefully deactivate a page
+ * deactivate_file_page - forcefully deactivate a file page
  * @page: page to deactivate
  *
  * This function hints the VM that @page is a good reclaim candidate,
  * for example if its invalidation fails due to the page being dirty
  * or under writeback.
  */
-void deactivate_page(struct page *page)
+void deactivate_file_page(struct page *page)
 {
 	/*
-	 * In a workload with many unevictable page such as mprotect, unevictable
-	 * page deactivation for accelerating reclaim is pointless.
+	 * In a workload with many unevictable page such as mprotect,
+	 * unevictable page deactivation for accelerating reclaim is pointless.
 	 */
 	if (PageUnevictable(page))
 		return;
 
 	if (likely(get_page_unless_zero(page))) {
 		struct pagevec *pvec = &get_locked_var(swapvec_lock,
-						       lru_deactivate_pvecs);
+						       lru_deactivate_file_pvecs);
 
 		if (!pagevec_add(pvec, page))
-			pagevec_lru_move_fn(pvec, lru_deactivate_fn, NULL);
-		put_locked_var(swapvec_lock, lru_deactivate_pvecs);
+			pagevec_lru_move_fn(pvec, lru_deactivate_file_fn, NULL);
+		put_locked_var(swapvec_lock, lru_deactivate_file_pvecs);
 	}
 }
 
@@ -902,7 +901,7 @@ void lru_add_drain_all(void)
 	for_each_online_cpu(cpu) {
 		if (pagevec_count(&per_cpu(lru_add_pvec, cpu)) ||
 		    pagevec_count(&per_cpu(lru_rotate_pvecs, cpu)) ||
-		    pagevec_count(&per_cpu(lru_deactivate_pvecs, cpu)) ||
+		    pagevec_count(&per_cpu(lru_deactivate_file_pvecs, cpu)) ||
 		    need_activate_page_drain(cpu))
 			remote_lru_add_drain(cpu, &has_work);
 	}
