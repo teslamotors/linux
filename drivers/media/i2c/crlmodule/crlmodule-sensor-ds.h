@@ -280,6 +280,63 @@ struct crl_dep_ctrl_provision {
 	struct crl_dep_ctrl_cond_action *action;
 };
 
+/*
+ * Multiple set of register lists can be written to
+ * the sensor configuration based on the control's value
+ * struct crl_dep_reg_list introduces a provision for this
+ * purpose.
+ *
+ * struct crl_dep_reg_list *dep_regs;
+ *
+ * In dep_regs, a "condition" and "value" is added which is
+ * compared with ctrl->val and the register list that is to
+ * be written to the sensor.
+ *
+ * Example: For a v4l2_ctrl, if we need to set
+ * reg_list A when ctrl->val > 60
+ * reg_list B when ctrl->val < 60
+ * and reg_list C when ctrl->val == 60
+ *
+ * So dep_regs block should be like this in the sensor
+ * specific configuration file:
+ *
+ * dep_regs = {
+ *	{
+ *	reg_condition =	CRL_DEP_CTRL_CONDITION_GREATER,
+ *	cond_value = { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 60 },
+ *	no_of_items = sizeof(A)
+ *	regs = A
+ *	},
+ *	{
+ *	reg_condition = CRL_DEP_CTRL_CONDITION_LESSER,
+ *	cond_value = { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 60 },
+ *	no_of_items = sizeof(B)
+ *	regs = B
+ *	},
+ *	{
+ *	reg_condition = CRL_DEP_CTRL_CONDITION_EQUAL,
+ *	cond_value = { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 60 },
+ *	no_of_items = sizeof(B)
+ *	regs = C
+ *	},
+ * }
+ * cond_value is defined as dynamic entity, which can be a constant,
+ * another control value or a reference to the pre-defined set of variables
+ * or a register value.
+ *
+ * CRL driver will execute the above dep_regs in the same order
+ * as it is written. care must be taken for eample in the cases
+ * like, ctrl->val > 60, reg_list A. and if ctrl_val > 80,
+ * reg_list D etc.
+ */
+
+struct crl_dep_reg_list {
+	enum crl_dep_ctrl_condition reg_cond;
+	struct crl_dynamic_entity cond_value;
+	unsigned int no_of_items;
+	struct crl_dynamic_register_access *regs;
+};
+
 struct crl_sensor_limits {
 	unsigned int x_addr_max;
 	unsigned int y_addr_max;
@@ -352,6 +409,8 @@ struct crl_v4l2_ctrl {
 	unsigned int dep_items;
 	struct crl_dep_ctrl_provision *dep_ctrls;
 	enum v4l2_ctrl_type v4l2_type;
+	unsigned int crl_ctrl_dep_reg_list; /* contains no. of dep_regs */
+	struct crl_dep_reg_list *dep_regs;
 };
 
 struct crl_pll_configuration {

@@ -535,6 +535,44 @@ static int __crlmodule_handle_dependency_ctrl(
 	return 0;
 }
 
+/*
+ * Perform the action for the dependent register lists
+ */
+static int __crlmodule_handle_dependency_regs(
+			struct crl_sensor *sensor,
+			struct crl_v4l2_ctrl *crl_ctrl,
+			unsigned int val)
+{
+	unsigned int i;
+	int ret;
+
+	for (i = 0; i < crl_ctrl->crl_ctrl_dep_reg_list; i++) {
+		enum crl_dep_ctrl_condition condition;
+		u32 dep_val;
+
+		ret = __crlmodule_parse_dynamic_entity(sensor,
+					crl_ctrl->dep_regs[i].cond_value, &dep_val);
+		if (ret)
+			return ret;
+
+		if (val > dep_val)
+			condition = CRL_DEP_CTRL_CONDITION_GREATER;
+		else if (val < dep_val)
+			condition = CRL_DEP_CTRL_CONDITION_LESSER;
+		else
+			condition = CRL_DEP_CTRL_CONDITION_EQUAL;
+
+		/*
+		 * Compare the condition to the register specific
+		 * condition.
+		 */
+		if (condition == crl_ctrl->dep_regs[i].reg_cond)
+			return __crlmodule_update_dynamic_regs(sensor,
+					crl_ctrl->dep_regs[i].regs, val);
+	}
+
+	return 0;
+}
 
 static int crlmodule_get_fmt_index(struct crl_sensor *sensor,
 				   u8 pixel_order, u8 bpp)
@@ -794,6 +832,11 @@ static int crlmodule_set_ctrl(struct v4l2_ctrl *ctrl)
 	}
 
 	ret = __crlmodule_update_dynamic_regs(sensor, crl_ctrl, ctrl->val);
+	if (ret)
+		goto out;
+
+	ret = __crlmodule_handle_dependency_regs(sensor, crl_ctrl,
+						ctrl->val);
 
 out:
 	/*
@@ -803,7 +846,6 @@ out:
 	if (!ret && crl_ctrl)
 		__crlmodule_handle_dependency_ctrl(sensor, crl_ctrl, &ctrl->val,
 					     CRL_DEP_CTRL_ACTION_TYPE_DEP_CTRL);
-
 	return ret;
 }
 
