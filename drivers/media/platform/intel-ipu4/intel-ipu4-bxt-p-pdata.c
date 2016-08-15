@@ -372,5 +372,5 @@ static void ipu4_quirk(struct pci_dev *pci_dev)
 	pci_dev->dev.platform_data = &pdata;
 }
 
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_P_A0,
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_P,
 			ipu4_quirk);

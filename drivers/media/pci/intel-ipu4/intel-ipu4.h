@@ -53,13 +53,18 @@
  * SOC		C0	0x1a88		0x0c
  *
  * BXT-P:
- * SOC		A0	0x5a88		??
+ * SOC		A0	0x5a88		0x03  BXTP A0 Iunit=BXT B0 Iunit
+ * SOC		B1	0x5a88		0x0a
  */
 
 #define INTEL_IPU4_HW_BXT_B0		0x1a88
-#define INTEL_IPU4_HW_BXT_P_A0		0x5a88 /* BXTP A0 Iunit=BXT B0 Iunit */
-
+#define INTEL_IPU4_HW_BXT_B1_REV	0x7
 #define INTEL_IPU4_HW_BXT_C0_REV	0xc
+
+#define INTEL_IPU4_HW_BXT_P		0x5a88
+#define INTEL_IPU4_HW_BXT_P_A0_REV	0x3
+#define INTEL_IPU4_HW_BXT_P_B1_REV	0xa
+
 #define INTEL_IPU5_HW_A0		0x5a19
 
 /* processing system frequency: 25Mhz x ratio, Legal values [8,32] */
@@ -145,7 +150,7 @@ struct intel_ipu4_device {
 #else
 #define is_intel_ipu4_hw_bxt_b0(isp)		\
 	((isp)->pdev->device == INTEL_IPU4_HW_BXT_B0 ||		\
-	 (isp)->pdev->device == INTEL_IPU4_HW_BXT_P_A0)
+	 (isp)->pdev->device == INTEL_IPU4_HW_BXT_P)
 
 /*
  * Use C0 stepping only for C0 specific code. Otherwise use B0 stepping.

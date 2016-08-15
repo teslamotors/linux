@@ -924,7 +924,7 @@ static const struct pci_device_id intel_ipu4_pci_tbl[] = {
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU5_HW_A0)},
 #else
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_P_A0)},
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_P)},
 #endif
 #endif
 	{0,}
