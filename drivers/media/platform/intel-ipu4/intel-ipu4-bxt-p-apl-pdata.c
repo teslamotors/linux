@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.
+ * Copyright (c) 2015--2016 Intel Corporation.
  *
  * Author: Samu Onkalo <samu.onkalo@intel.com>
  *
