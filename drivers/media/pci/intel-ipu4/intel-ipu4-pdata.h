@@ -223,9 +223,33 @@ struct intel_ipu4_isys_csi2_pdata {
 #define INTEL_IPU4_PSYS_TYPE_INTEL_IPU4 \
 	INTEL_IPU4_ISYS_TYPE_INTEL_IPU4
 
+struct intel_ipu4_combo_receiver_params {
+	u8 CrcVal;
+	u8 DrcVal;
+	u8 DrcVal_combined;
+	u8 CtleVal;
+};
+
+struct intel_ipu4_receiver_electrical_params {
+	u64 min_freq;
+	u64 max_freq;
+	unsigned short	device; /* PCI DEVICE ID */
+	u8 revision;		/* PCI REVISION */
+	/* base settings at first receiver power on */
+	u8 RcompVal_combo;
+	u8 RcompVal_legacy;
+
+	/* Combo per receiver settings */
+	struct intel_ipu4_combo_receiver_params ports[2];
+};
+
 struct intel_ipu4_isys_internal_csi2_pdata {
 	unsigned int nports;
 	unsigned int offsets[INTEL_IPU4_ISYS_MAX_CSI2_PORTS];
+	struct intel_ipu4_receiver_electrical_params *evparams;
+	u32 evsetmask0;
+	u32 evsetmask1;
+	unsigned char evlanecombine[INTEL_IPU4_ISYS_MAX_CSI2_PORTS];
 };
 
 struct intel_ipu4_isys_internal_tpg_pdata {

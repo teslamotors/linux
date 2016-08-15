@@ -372,10 +372,71 @@ void intel_ipu4_configure_vc_mechanism(struct intel_ipu4_device *isp)
 	writel(val, isp->base + BUTTRESS_REG_BTRS_CTRL);
 }
 
+static struct intel_ipu4_receiver_electrical_params ipu4_ev_params[] = {
+	/* For B1 stepping we just has one set of values */
+	{ 0, 2500000000, INTEL_IPU4_HW_BXT_B0, INTEL_IPU4_HW_BXT_B1_REV,
+	  .RcompVal_combo = 20,
+	  .RcompVal_legacy = 20,
+	  .ports[0].CrcVal = 23,
+	  .ports[0].DrcVal = 44,
+	  .ports[0].DrcVal_combined = 44,
+	  .ports[0].CtleVal = 4,
+	  .ports[1].CrcVal = 23,
+	  .ports[1].DrcVal = 44,
+	  .ports[1].DrcVal_combined = 44,
+	  .ports[1].CtleVal = 4
+	},
+
+	{ 0, 1500000000, INTEL_IPU4_HW_BXT_B0, INTEL_IPU4_HW_BXT_C0_REV,
+	  .RcompVal_combo = 11,
+	  .RcompVal_legacy = 11,
+	  .ports[0].CrcVal = 18,
+	  .ports[0].DrcVal = 29,
+	  .ports[0].DrcVal_combined = 29,
+	  .ports[0].CtleVal = 4,
+	  .ports[1].CrcVal = 18,
+	  .ports[1].DrcVal = 29,
+	  .ports[1].DrcVal_combined = 31,
+	  .ports[1].CtleVal = 4
+	},
+
+	{ 1500000000, 2500000000, INTEL_IPU4_HW_BXT_B0,
+				  INTEL_IPU4_HW_BXT_C0_REV,
+	  .RcompVal_combo = 11,
+	  .RcompVal_legacy = 11,
+	  .ports[0].CrcVal = 0,
+	  .ports[0].DrcVal = 0,
+	  .ports[0].DrcVal_combined = 0,
+	  .ports[0].CtleVal = 8,
+	  .ports[1].CrcVal = 0,
+	  .ports[1].DrcVal = 0,
+	  .ports[1].DrcVal_combined = 0,
+	  .ports[1].CtleVal = 8
+	},
+
+	{ 0, 1500000000, INTEL_IPU4_HW_BXT_P, INTEL_IPU4_HW_BXT_P_B1_REV,
+	  .RcompVal_combo = 11,
+	  .RcompVal_legacy = 11,
+	  .ports[0].CrcVal = 18,
+	  .ports[0].DrcVal = 29,
+	  .ports[0].DrcVal_combined = 29,
+	  .ports[0].CtleVal = 4,
+	  .ports[1].CrcVal = 18,
+	  .ports[1].DrcVal = 29,
+	  .ports[1].DrcVal_combined = 31,
+	  .ports[1].CtleVal = 4
+	},
+	{ },
+};
+
 static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu4 = {
 	.csi2 = {
 		.nports = INTEL_IPU4_ISYS_MAX_CSI2_PORTS,
 		.offsets = { 0x64000, 0x65000, 0x66000, 0x67000, 0x6C000, 0x6C800},
+		.evparams = ipu4_ev_params,
+		.evlanecombine = { 0, 0, 0, 0, 2, 0},
+		.evsetmask0 = 1 << 4, /* CSI port 4  */
+		.evsetmask1 = 1 << 5, /* CSI port 5 */
 	},
 	.tpg = {
 		.ntpgs = 2,
