@@ -79,19 +79,19 @@ static inline bool media_entity_enum_test(struct media_entity_enum *ent_enum,
 
 #ifndef MEDIA_IOC_REQUEST_CMD
 
-struct __packed ((packed)) media_request_cmd {
+struct __packed media_request_cmd {
 	__u32 cmd;
 	__u32 request;
 	__u32 flags;
 };
 
-struct __packed ((packed)) media_event_request_complete {
+struct __packed media_event_request_complete {
 	__u32 id;
 };
 
 #define MEDIA_EVENT_TYPE_REQUEST_COMPLETE	1
 
-struct __packed ((packed)) media_event {
+struct __packed media_event {
 	__u32 type;
 	__u32 sequence;
 	__u32 reserved[4];
