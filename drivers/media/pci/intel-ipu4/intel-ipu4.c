@@ -326,7 +326,7 @@ void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
 		const ia_css_pkg_dir_entry_t *entry;
 		u32 server_addr;
 
-		if (is_intel_ipu5_hw_glv_a0(isp)) {
+		if (is_intel_ipu5_hw_a0(isp)) {
 			dev_warn(&isp->pdev->dev,
 				"Not config spc here for ipu5, W/A does this at isys probe\n");
 			return;
@@ -472,19 +472,19 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu5 = {
 	},
 	.tpg = {
 		.ntpgs = 2,
-		.offsets = { INTEL_IPU5_GLV_A0_TPG0_ADDR_OFFSET,
-			     INTEL_IPU5_GLV_A0_TPG1_ADDR_OFFSET },
-		.sels = { INTEL_IPU5_GLV_GP0OFFSET +
+		.offsets = { INTEL_IPU5_A0_TPG0_ADDR_OFFSET,
+			     INTEL_IPU5_A0_TPG1_ADDR_OFFSET },
+		.sels = { INTEL_IPU5_GP0OFFSET +
 			  INTEL_IPU5_GPREG_MIPI_PKT_GEN0_SEL,
-			  INTEL_IPU5_GLV_GP1OFFSET +
+			  INTEL_IPU5_GP1OFFSET +
 			  INTEL_IPU5_GPREG_MIPI_PKT_GEN1_SEL },
 	},
 	.hw_variant = {
-		.offset = INTEL_IPU5_GLV_A0_ISYS_OFFSET,
+		.offset = INTEL_IPU5_A0_ISYS_OFFSET,
 		.nr_mmus = 2,
 		.mmu_hw = {
 			{
-			 .offset = INTEL_IPU5_GLV_A0_ISYS_IOMMU0_OFFSET,
+			 .offset = INTEL_IPU5_A0_ISYS_IOMMU0_OFFSET,
 			 .info_bits =
 				 INTEL_IPU5_INFO_REQUEST_DESTINATION_PRIMARY,
 			 .nr_l1streams = 0,
@@ -492,7 +492,7 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu5 = {
 			 .insert_read_before_invalidate = true,
 			},
 			{
-			 .offset = INTEL_IPU5_GLV_A0_ISYS_IOMMU1_OFFSET,
+			 .offset = INTEL_IPU5_A0_ISYS_IOMMU1_OFFSET,
 			 .info_bits = INTEL_IPU4_INFO_STREAM_ID_SET(0),
 			 .nr_l1streams = INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS,
 			 .l1_block_sz = { 8, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 },
@@ -516,11 +516,11 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu5 = {
 
 static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu5 = {
 	.hw_variant = {
-		.offset = INTEL_IPU5_GLV_A0_PSYS_OFFSET,
+		.offset = INTEL_IPU5_A0_PSYS_OFFSET,
 		.nr_mmus = 3,
 		.mmu_hw = {
 			{
-			 .offset = INTEL_IPU5_GLV_A0_PSYS_IOMMU0_OFFSET,
+			 .offset = INTEL_IPU5_A0_PSYS_IOMMU0_OFFSET,
 			 .info_bits =
 				 INTEL_IPU5_INFO_REQUEST_DESTINATION_PRIMARY,
 			 .nr_l1streams = 0,
@@ -528,7 +528,7 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu5 = {
 			 .insert_read_before_invalidate = true,
 			},
 			{
-			 .offset = INTEL_IPU5_GLV_A0_PSYS_IOMMU1_OFFSET,
+			 .offset = INTEL_IPU5_A0_PSYS_IOMMU1_OFFSET,
 			 .info_bits = INTEL_IPU5_INFO_STREAM_ID_SET(0),
 			 .nr_l1streams = INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS,
 			 .l1_block_sz = { 0, 0, 0, 0, 10, 8, 10, 8, 0, 4, 4, 12, 0, 0, 0, 8 },
@@ -542,7 +542,7 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu5 = {
 			 .zlw_invalidate = false,
 			},
 			{
-			 .offset = INTEL_IPU5_GLV_A0_PSYS_IOMMU1R_OFFSET,
+			 .offset = INTEL_IPU5_A0_PSYS_IOMMU1R_OFFSET,
 			 .info_bits = INTEL_IPU5_INFO_STREAM_ID_SET(0),
 			 .nr_l1streams = INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS,
 			 .l1_block_sz = { 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 16, 12, 12, 16 },
@@ -595,7 +595,7 @@ static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_ipu4 = {
 };
 
 static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_ipu5 = {
-	.divisor = IS_FREQ_CTL_DIVISOR_GLVA0,
+	.divisor = IS_FREQ_CTL_DIVISOR_IPU5_A0,
 	.qos_floor = 0,
 	.freq_ctl = BUTTRESS_REG_IS_FREQ_CTL,
 	.pwr_sts_shift = IPU5_BUTTRESS_PWR_STATE_IS_PWR_FSM_SHIFT,
@@ -685,7 +685,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 		isys_buttress_ctrl = &isys_buttress_ctrl_ipu4;
 		psys_buttress_ctrl = &psys_buttress_ctrl_ipu4;
 		cpd_filename = INTEL_IPU4_CPD_FIRMWARE_B0;
-	} else if (is_intel_ipu5_hw_glv_a0(isp)) {
+	} else if (is_intel_ipu5_hw_a0(isp)) {
 		isys_ipdata = &isys_ipdata_ipu5;
 		psys_ipdata = &psys_ipdata_ipu5;
 		isys_buttress_ctrl = &isys_buttress_ctrl_ipu5;
@@ -920,8 +920,8 @@ static const struct pci_device_id intel_ipu4_pci_tbl[] = {
 	|| defined CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
 #else
-#if defined IPU_STEP_GLVA0
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU5_HW_GLV_A0)},
+#if defined IPU_STEP_IPU5A0
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU5_HW_A0)},
 #else
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_P_A0)},

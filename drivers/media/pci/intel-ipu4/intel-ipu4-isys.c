@@ -1183,7 +1183,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	trace_printk("B|%d|TMWK\n", current->pid);
 
-	if (!is_intel_ipu5_hw_glv_a0(isp)) {
+	if (!is_intel_ipu5_hw_a0(isp)) {
 		/* Has the domain been attached? */
 		if (!mmu || !isp->pkg_dir_dma_addr) {
 			trace_printk("E|TMWK\n");
@@ -1223,7 +1223,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 #endif
 
 	if (!isp->secure_mode) {
-		if (is_intel_ipu5_hw_glv_a0(isp)) {
+		if (is_intel_ipu5_hw_a0(isp)) {
 			int ret;
 
 			ret = isys_load_pkg_dir(isys);

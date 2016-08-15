@@ -459,7 +459,7 @@ int intel_ipu4_buttress_power(
 	if (!on) {
 		val = 0;
 		pwr_sts = ctrl->pwr_sts_off << ctrl->pwr_sts_shift;
-		if (is_intel_ipu5_hw_glv_a0(isp))
+		if (is_intel_ipu5_hw_a0(isp))
 			writel(0, isp->base + BUTTRESS_REG_PS_FREQ_CTL);
 	} else {
 		val = 1 << BUTTRESS_FREQ_CTL_START_SHIFT
@@ -471,7 +471,7 @@ int intel_ipu4_buttress_power(
 		* W/A for ipu5 isys capture
 		* currently psys driver not enable, so Hardcode to power psys
 		*/
-		if (is_intel_ipu5_hw_glv_a0(isp))
+		if (is_intel_ipu5_hw_a0(isp))
 			writel(0x80000880,
 				isp->base + BUTTRESS_REG_PS_FREQ_CTL);
 	}
@@ -1233,7 +1233,7 @@ static int intel_ipu4_buttress_clk_init(struct intel_ipu4_device *isp)
 	intel_ipu4_buttress_read_psys_fused_freqs(isp);
 	isp->buttress.psys_min_freq = b->psys_fused_freqs.efficient_freq;
 
-	if (is_intel_ipu5_hw_glv_a0(isp)) {
+	if (is_intel_ipu5_hw_a0(isp)) {
 		dev_info(&isp->pdev->dev,
 			"ipu5 does not support buttress sensor clk\n");
 		return 0;

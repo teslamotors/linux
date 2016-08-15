@@ -30,9 +30,9 @@
 #define INTEL_IPU4_CPD_FIRMWARE_B0	"ipu4_cpd_b0.bin"
 #define INTEL_IPU4_PSYS_FIRMWARE_B0	"ipu4_psys_bxt_fw_b0.bin"
 
-#define INTEL_IPU5_ISYS_FIRMWARE_A0	"ipu5_glv_fw_a0_pkg_dir.bin"
-#define INTEL_IPU5_CPD_FIRMWARE_A0	"ipu5_glv_fw_a0_pkg_dir.bin"
-#define INTEL_IPU5_PSYS_FIRMWARE_A0	"ipu5_glv_fw_a0_pkg_dir.bin"
+#define INTEL_IPU5_ISYS_FIRMWARE_A0	"ipu5_fw_a0_pkg_dir.bin"
+#define INTEL_IPU5_CPD_FIRMWARE_A0	"ipu5_fw_a0_pkg_dir.bin"
+#define INTEL_IPU5_PSYS_FIRMWARE_A0	"ipu5_fw_a0_pkg_dir.bin"
 
 
 /*
@@ -60,14 +60,14 @@
 #define INTEL_IPU4_HW_BXT_P_A0		0x5a88 /* BXTP A0 Iunit=BXT B0 Iunit */
 
 #define INTEL_IPU4_HW_BXT_C0_REV	0xc
-#define INTEL_IPU5_HW_GLV_A0		0x5a19
+#define INTEL_IPU5_HW_A0		0x5a19
 
 /* processing system frequency: 25Mhz x ratio, Legal values [8,32] */
 #define PS_FREQ_CTL_DEFAULT_RATIO_B0	0x12
 
 /* input system frequency: 1600Mhz / divisor. Legal values [2,8] */
 #define IS_FREQ_CTL_DIVISOR_B0		0x4
-#define IS_FREQ_CTL_DIVISOR_GLVA0		0x6
+#define IS_FREQ_CTL_DIVISOR_IPU5_A0		0x6
 
 #define INTEL_IPU4_ISYS_NUM_STREAMS_B0		4 /* Max 6 */
 
@@ -97,7 +97,7 @@
  */
 #define INTEL_IPU4_MEDIA_DEV_MODEL_IPU4A	"ipu4/Broxton A"
 #define INTEL_IPU4_MEDIA_DEV_MODEL_IPU4B	"ipu4/Broxton B"
-#define INTEL_IPU4_MEDIA_DEV_MODEL_IPU5A	"ipu5/GLV A"
+#define INTEL_IPU4_MEDIA_DEV_MODEL_IPU5A	"ipu5/A"
 
 struct pci_dev;
 struct list_head;
@@ -140,7 +140,7 @@ struct intel_ipu4_device {
 
 #define is_intel_ipu_hw_fpga(isp) 1
 
-#define is_intel_ipu5_hw_glv_a0(isp) IS_BUILTIN(IPU_STEP_GLVA0)
+#define is_intel_ipu5_hw_a0(isp) IS_BUILTIN(IPU_STEP_IPU5A0)
 
 #else
 #define is_intel_ipu4_hw_bxt_b0(isp)		\
@@ -157,8 +157,8 @@ struct intel_ipu4_device {
 
 #define is_intel_ipu_hw_fpga(isp) 0
 
-#define is_intel_ipu5_hw_glv_a0(isp)		\
-	((isp)->pdev->device == INTEL_IPU5_HW_GLV_A0)
+#define is_intel_ipu5_hw_a0(isp)		\
+	((isp)->pdev->device == INTEL_IPU5_HW_A0)
 
 #endif
 
