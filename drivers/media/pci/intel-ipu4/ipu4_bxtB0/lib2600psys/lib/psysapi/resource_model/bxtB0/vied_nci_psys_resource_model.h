@@ -183,15 +183,6 @@ typedef enum {
 #define VIED_NCI_PMEM3_MAX_SIZE		(0x0500)
 
 /*
- * Memory element sizes
- */
-#define VIED_NCI_GMEM_TYPE_MAX_SIZE		(512)
-#define VIED_NCI_DMEM_TYPE_MAX_SIZE		(32)
-#define VIED_NCI_VMEM_TYPE_MAX_SIZE		(512)
-#define VIED_NCI_BAMEM_TYPE_MAX_SIZE		(512)
-#define VIED_NCI_PMEM_TYPE_MAX_SIZE		(512)
-
-/*
  * Number of channels per device
  */
 #define VIED_NCI_DEV_CHN_DMA_EXT0_MAX_SIZE		(30)
@@ -271,7 +262,6 @@ extern const vied_nci_mem_type_ID_t
 extern const vied_nci_mem_ID_t
 	vied_nci_cell_mem[VIED_NCI_N_CELL_ID][VIED_NCI_N_MEM_TYPE_ID];
 extern const uint16_t vied_nci_mem_size[VIED_NCI_N_MEM_ID];
-extern const uint16_t vied_nci_mem_element_size[VIED_NCI_N_MEM_TYPE_ID];
 extern const uint16_t vied_nci_mem_word_size[VIED_NCI_N_DATA_MEM_TYPE_ID];
 extern const uint16_t vied_nci_dev_chn_size[VIED_NCI_N_DEV_CHN_ID];
 

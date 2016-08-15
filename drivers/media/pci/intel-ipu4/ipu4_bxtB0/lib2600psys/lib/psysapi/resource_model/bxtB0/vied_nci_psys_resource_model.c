@@ -286,17 +286,6 @@ const uint16_t vied_nci_mem_size[VIED_NCI_N_MEM_ID] = {
 };
 
 /*
- * Memory sizes by mem type ID
- */
-const uint16_t vied_nci_mem_element_size[VIED_NCI_N_MEM_TYPE_ID] = {
-	VIED_NCI_GMEM_TYPE_MAX_SIZE,
-	VIED_NCI_DMEM_TYPE_MAX_SIZE,
-	VIED_NCI_VMEM_TYPE_MAX_SIZE,
-	VIED_NCI_BAMEM_TYPE_MAX_SIZE,
-	VIED_NCI_PMEM_TYPE_MAX_SIZE
-};
-
-/*
  * Memory word sizes by mem type ID
  */
 const uint16_t vied_nci_mem_word_size[VIED_NCI_N_DATA_MEM_TYPE_ID] = {
