@@ -562,15 +562,15 @@ int intel_ipu4_isys_subdev_set_routing(struct v4l2_subdev *sd,
 			bitmap_set(asd->stream[t->source_pad].streams_stat,
 				   t->source_stream, 1);
 			if (!(t->flags & V4L2_SUBDEV_ROUTE_FL_SOURCE))
-				bitmap_set(asd->stream[t->sink_pad].streams_stat
-					   , t->sink_stream, 1);
+				bitmap_set(asd->stream[t->sink_pad]
+					.streams_stat, t->sink_stream, 1);
 			asd->route[j].flags |= V4L2_SUBDEV_ROUTE_FL_ACTIVE;
-		} else if (!t->flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE) {
-			bitmap_set(asd->stream[t->source_pad].streams_stat,
-				   t->source_stream, 0);
+		} else if (!(t->flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE)) {
+			bitmap_clear(asd->stream[t->source_pad].streams_stat,
+				   t->source_stream, 1);
 			if (!(t->flags & V4L2_SUBDEV_ROUTE_FL_SOURCE))
-				bitmap_set(asd->stream[t->sink_pad].streams_stat
-					   , t->sink_stream, 0);
+				bitmap_clear(asd->stream[t->sink_pad]
+					.streams_stat, t->sink_stream, 1);
 			asd->route[j].flags &= (~V4L2_SUBDEV_ROUTE_FL_ACTIVE);
 		}
 	}
