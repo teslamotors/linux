@@ -250,8 +250,6 @@ static struct crl_register_write_rep adv7481_hdmi_streamoff_regs[] = {
 	{0xC1, CRL_REG_LEN_08BIT, 0x3B, 0x94},
 };
 
-static const s64 adv7481_hdmi_op_sys_clock[] =  {297000000, 445500000};
-
 static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 	{
 		.input_clk = 24000000,
@@ -275,6 +273,31 @@ static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 		.pll_regs_items = 0,
 		.pll_regs = NULL,
 	 },
+	/* 28.636 input clock */
+	{
+		.input_clk = 286363636,
+		.op_sys_clk = 297000000,
+		.bitsperpixel = 16,
+		.pixel_rate_csi = 148500000,
+		.pixel_rate_pa = 297000000,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.csi_lanes = 4,
+		.pll_regs_items = 0,
+		.pll_regs = NULL,
+	},
+	{
+		.input_clk = 286363636,
+		.op_sys_clk = 148500000,
+		.bitsperpixel = 16,
+		.pixel_rate_csi = 74250000,
+		.pixel_rate_pa = 148500000,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.csi_lanes = 4,
+		.pll_regs_items = 0,
+		.pll_regs = NULL,
+	},
 };
 
 static struct crl_subdev_rect_rep adv7481_hdmi_1080p_rects[] = {
@@ -311,15 +334,15 @@ static struct crl_subdev_rect_rep adv7481_hdmi_720p_rects[] = {
 		.in_rect.height = 1080,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
-		.out_rect.width = 1920,
-		.out_rect.height = 1080,
+		.out_rect.width = 1280,
+		.out_rect.height = 720,
 	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
 		.in_rect.left = 0,
 		.in_rect.top = 0,
-		.in_rect.width = 1920,
-		.in_rect.height = 1080,
+		.in_rect.width = 1280,
+		.in_rect.height = 720,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
 		.out_rect.width = 1280,
@@ -606,16 +629,7 @@ static struct crl_v4l2_ctrl adv7481_hdmi_v4l2_ctrls[] = {
 		.ctrl_id = V4L2_CID_LINK_FREQ,
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
-		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max =
-			ARRAY_SIZE(adv7481_hdmi_pll_configurations) - 1,
-		.data.v4l2_int_menu.menu = adv7481_hdmi_op_sys_clock,
-		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
-		.regs_items = 0,
-		.regs = 0,
-		.dep_items = 0,
-		.dep_ctrls = 0,
 	},
 	{
 		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
@@ -683,7 +697,6 @@ static struct crl_sensor_configuration adv7481_hdmi_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(adv7481_hdmi_pll_configurations),
 	.pll_configs = adv7481_hdmi_pll_configurations,
-	.op_sys_clk = adv7481_hdmi_op_sys_clock,
 
 	.modes_items = ARRAY_SIZE(adv7481_hdmi_modes),
 	.modes = adv7481_hdmi_modes,

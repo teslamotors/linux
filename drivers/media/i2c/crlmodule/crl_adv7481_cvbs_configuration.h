@@ -75,15 +75,14 @@ static struct crl_register_write_rep adv7481_cvbs_streamoff_regs[] = {
 	{0xC1, CRL_REG_LEN_08BIT, 0x3B, 0x90},
 };
 
-static const s64 adv7481_cvbs_op_sys_clock[] =  {400000000, 130000000};
 
 static struct crl_pll_configuration adv7481_cvbs_pll_configurations[] = {
 	{
 		.input_clk = 286363636,
-		.op_sys_clk = 400000000,
+		.op_sys_clk = 216000000,
 		.bitsperpixel = 16,
-		.pixel_rate_csi = 200000000,
-		.pixel_rate_pa = 200000000,
+		.pixel_rate_csi = 27000000,
+		.pixel_rate_pa = 27000000,
 		.comp_items = 0,
 		.ctrl_data = 0,
 		.csi_lanes = 1,
@@ -192,16 +191,8 @@ static struct crl_v4l2_ctrl adv7481_cvbs_v4l2_ctrls[] = {
 		.ctrl_id = V4L2_CID_LINK_FREQ,
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
-		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max =
-			ARRAY_SIZE(adv7481_cvbs_pll_configurations) - 1,
-		.data.v4l2_int_menu.menu = adv7481_cvbs_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
-		.regs_items = 0,
-		.regs = 0,
-		.dep_items = 0,
-		.dep_ctrls = 0,
 	},
 	{
 		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
@@ -265,7 +256,6 @@ static struct crl_sensor_configuration adv7481_cvbs_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(adv7481_cvbs_pll_configurations),
 	.pll_configs = adv7481_cvbs_pll_configurations,
-	.op_sys_clk = adv7481_cvbs_op_sys_clock,
 
 	.modes_items = ARRAY_SIZE(adv7481_cvbs_modes),
 	.modes = adv7481_cvbs_modes,
