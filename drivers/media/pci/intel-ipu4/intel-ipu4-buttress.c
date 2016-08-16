@@ -252,55 +252,6 @@ static void intel_ipu4_buttress_ipc_recv(
 	writel(0, isp->base + ipc->db0_in);
 }
 
-static int intel_ipu4_buttress_ipc_send(
-	struct intel_ipu4_device *isp,
-	enum intel_ipu4_buttress_ipc_domain ipc_domain,
-	u32 ipc_msg, u32 size)
-{
-	struct intel_ipu4_buttress *b = &isp->buttress;
-	struct intel_ipu4_buttress_ipc *ipc;
-	u32 val;
-	int ret;
-
-	ipc = ipc_domain == INTEL_IPU4_BUTTRESS_IPC_CSE ? &b->cse : &b->ish;
-
-	mutex_lock(&b->ipc_mutex);
-
-	init_completion(&ipc->send_complete);
-
-	ret = intel_ipu4_buttress_ipc_validity_open(isp, ipc);
-	if (ret) {
-		dev_err(&isp->pdev->dev, "IPC validity open failed\n");
-		goto out;
-	}
-
-	writel(ipc_msg, isp->base + ipc->data0_out);
-
-	val = 1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT | size;
-
-	writel(val, isp->base + ipc->db0_out);
-
-	/*
-	 * TODO: How long we should wait?
-	 */
-	ret = wait_for_completion_timeout(&ipc->send_complete,
-					  msecs_to_jiffies(
-						  BUTTRESS_IPC_TX_TIMEOUT));
-	if (ret) {
-		dev_dbg(&isp->pdev->dev, "IPC response received\n");
-		ret = 0;
-		goto out;
-	}
-
-	dev_err(&isp->pdev->dev, "IPC timeout\n");
-
-	ret = -ETIMEDOUT;
-out:
-	intel_ipu4_buttress_ipc_validity_close(isp, ipc);
-	mutex_unlock(&b->ipc_mutex);
-	return ret;
-}
-
 int intel_ipu4_buttress_ipc_send_bulk(
 	struct intel_ipu4_device *isp,
 	enum intel_ipu4_buttress_ipc_domain ipc_domain,
@@ -376,6 +327,19 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_buttress_ipc_send_bulk);
+
+static int intel_ipu4_buttress_ipc_send(
+	struct intel_ipu4_device *isp,
+	enum intel_ipu4_buttress_ipc_domain ipc_domain,
+	u32 ipc_msg, u32 size)
+{
+	struct intel_ipu4_ipc_buttress_bulk_msg msg = {
+		.cmd = ipc_msg,
+		.cmd_size = size,
+	};
+
+	return intel_ipu4_buttress_ipc_send_bulk(isp, ipc_domain, &msg, 1);
+}
 
 static irqreturn_t intel_ipu4_buttress_call_isr(
 					struct intel_ipu4_bus_device *adev)
