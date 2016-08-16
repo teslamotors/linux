@@ -44,23 +44,31 @@ struct intel_ipu4_buttress_fused_freqs {
 	unsigned int efficient_freq;
 };
 
+struct intel_ipu4_buttress_ipc {
+	struct completion send_complete;
+	struct completion recv_complete;
+	u32 recv_data;
+	u32 csr_out;
+	u32 csr_in;
+	u32 db0_in;
+	u32 db0_out;
+	u32 data0_out;
+	u32 data0_in;
+};
+
 struct intel_ipu4_buttress {
 	struct mutex power_mutex, auth_mutex, cons_mutex, ipc_mutex;
 	spinlock_t tsc_lock;
 	struct clk *clk_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_SENS_CKS];
 	struct clk *pll_sensor[INTEL_IPU4_BUTTRESS_NUM_OF_PLL_CKS];
-	struct completion send_cse_ipc_complete;
-	struct completion send_ish_ipc_complete;
-	struct completion recv_cse_ipc_complete;
-	struct completion recv_ish_ipc_complete;
+	struct intel_ipu4_buttress_ipc cse;
+	struct intel_ipu4_buttress_ipc ish;
 	struct list_head constraints;
 	struct intel_ipu4_buttress_fused_freqs psys_fused_freqs;
 	unsigned int psys_min_freq;
 	u8 psys_force_ratio;
 	bool force_suspend;
 	bool ps_started;
-	u32 cse_ipc_recv_data;
-	u32 ish_ipc_recv_data;
 };
 
 struct intel_ipu4_buttress_sensor_clk_freq {
@@ -118,7 +126,7 @@ void intel_ipu4_buttress_csi_port_config(struct intel_ipu4_device *isp,
 					u32 legacy, u32 combo);
 int intel_ipu4_buttress_ipc_send_bulk(
 	struct intel_ipu4_device *isp,
-	enum intel_ipu4_buttress_ipc_domain ipc,
+	enum intel_ipu4_buttress_ipc_domain ipc_domain,
 	struct intel_ipu4_ipc_buttress_bulk_msg *msgs,
 	u32 size);
 #endif /* INTEL_IPU4_BUTTRESS_H */

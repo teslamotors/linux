@@ -62,19 +62,6 @@
 #define BUTTRESS_MIN_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 8)
 #define BUTTRESS_MAX_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 32)
 
-#define CSR_OUT(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
-			 BUTTRESS_REG_IU2CSECSR : BUTTRESS_REG_IU2ISHCSR)
-#define CSR_IN(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
-			 BUTTRESS_REG_CSE2IUCSR : BUTTRESS_REG_ISH2IUCSR)
-#define DB0_IN(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
-			 BUTTRESS_REG_CSE2IUDB0 : BUTTRESS_REG_ISH2IUDB0)
-#define DB0_OUT(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
-			 BUTTRESS_REG_IU2CSEDB0 : BUTTRESS_REG_IU2ISHDB0)
-#define DATA0_OUT(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
-			 BUTTRESS_REG_IU2CSEDATA0 : BUTTRESS_REG_IU2ISHDATA0)
-#define DATA0_IN(ipc)	((ipc) == INTEL_IPU4_BUTTRESS_IPC_CSE ?		\
-			 BUTTRESS_REG_CSE2IUDATA0 : BUTTRESS_REG_ISH2IUDATA0)
-
 const struct intel_ipu4_buttress_sensor_clk_freq sensor_clk_freqs[] = {
 	{ 6750000, BUTTRESS_SENSOR_CLK_FREQ_6P75MHZ },
 	{ 8000000, BUTTRESS_SENSOR_CLK_FREQ_8MHZ },
@@ -97,25 +84,25 @@ static const u32 intel_ipu4_adev_irq_mask[] = {
 };
 
 static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
-				  enum intel_ipu4_buttress_ipc_domain ipc)
+					 struct intel_ipu4_buttress_ipc *ipc)
 {
 	unsigned long tout_jfs;
 	unsigned tout = 500;
 	u32 val = 0;
 
 	/* Clear-by-1 CSR (all bits), corresponding internal states. */
-	val = readl(isp->base + CSR_IN(ipc));
-	writel(val, isp->base + CSR_IN(ipc));
+	val = readl(isp->base + ipc->csr_in);
+	writel(val, isp->base + ipc->csr_in);
 
 	/* Set peer CSR bit IPC_PEER_COMP_ACTIONS_RST_PHASE1 */
-	writel(ENTRY, isp->base + CSR_OUT(ipc));
+	writel(ENTRY, isp->base + ipc->csr_out);
 
 	/*
 	* How long we should wait here?
 	*/
 	tout_jfs = jiffies + msecs_to_jiffies(tout);
 	do {
-		val = readl(isp->base + CSR_IN(ipc));
+		val = readl(isp->base + ipc->csr_in);
 		dev_dbg(&isp->pdev->dev, "%s: csr_in = %x\n", __func__, val);
 		if (val & ENTRY) {
 			if (val & EXIT) {
@@ -130,9 +117,9 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 				 * 2) Set peer CSR bit
 				 * IPC_PEER_QUERIED_IP_COMP_ACTIONS_RST_PHASE.
 				 */
-				writel(ENTRY | EXIT, isp->base + CSR_IN(ipc));
+				writel(ENTRY | EXIT, isp->base + ipc->csr_in);
 
-				writel(QUERY, isp->base + CSR_OUT(ipc));
+				writel(QUERY, isp->base + ipc->csr_out);
 
 				tout_jfs = jiffies + msecs_to_jiffies(tout);
 				continue;
@@ -147,9 +134,9 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 				 * 2) Set peer CSR bit
 				 * IPC_PEER_COMP_ACTIONS_RST_PHASE1.
 				 */
-				writel(ENTRY | QUERY, isp->base + CSR_IN(ipc));
+				writel(ENTRY | QUERY, isp->base + ipc->csr_in);
 
-				writel(ENTRY, isp->base + CSR_OUT(ipc));
+				writel(ENTRY, isp->base + ipc->csr_out);
 
 				tout_jfs = jiffies + msecs_to_jiffies(tout);
 				continue;
@@ -171,18 +158,18 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 			 * 3) Set peer CSR bit
 			 * IPC_PEER_COMP_ACTIONS_RST_PHASE2.
 			 */
-			writel(EXIT, isp->base + CSR_IN(ipc));
+			writel(EXIT, isp->base + ipc->csr_in);
 
 			writel(0 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT,
-			       isp->base + DB0_IN(ipc));
+			       isp->base + ipc->db0_in);
 
 			writel(
 			BUTTRESS_IU2CSECSR_IPC_PEER_DEASSERTED_REG_VALID_REQ |
 			BUTTRESS_IU2CSECSR_IPC_PEER_ACKED_REG_VALID |
 			BUTTRESS_IU2CSECSR_IPC_PEER_ASSERTED_REG_VALID_REQ |
-			QUERY, isp->base + CSR_IN(ipc));
+			QUERY, isp->base + ipc->csr_in);
 
-			writel(EXIT, isp->base + CSR_OUT(ipc));
+			writel(EXIT, isp->base + ipc->csr_out);
 
 			return 0;
 		} else if (val & QUERY) {
@@ -195,9 +182,9 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 			 * 2) Set peer CSR bit
 			 * IPC_PEER_COMP_ACTIONS_RST_PHASE1
 			 */
-			writel(QUERY, isp->base + CSR_IN(ipc));
+			writel(QUERY, isp->base + ipc->csr_in);
 
-			writel(ENTRY, isp->base + CSR_OUT(ipc));
+			writel(ENTRY, isp->base + ipc->csr_out);
 
 			tout_jfs = jiffies + msecs_to_jiffies(tout);
 		}
@@ -210,15 +197,17 @@ static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 }
 
 static void intel_ipu4_buttress_ipc_validity_close(
-	struct intel_ipu4_device *isp, enum intel_ipu4_buttress_ipc_domain ipc)
+	struct intel_ipu4_device *isp,
+	struct intel_ipu4_buttress_ipc *ipc)
 {
 	/* Set bit 5 in CSE CSR */
 	writel(BUTTRESS_IU2CSECSR_IPC_PEER_DEASSERTED_REG_VALID_REQ,
-	       isp->base + CSR_OUT(ipc));
+	       isp->base + ipc->csr_out);
 }
 
 static int intel_ipu4_buttress_ipc_validity_open(
-	struct intel_ipu4_device *isp, enum intel_ipu4_buttress_ipc_domain ipc)
+	struct intel_ipu4_device *isp,
+	struct intel_ipu4_buttress_ipc *ipc)
 {
 	unsigned long tout_jfs;
 	unsigned int tout = BUTTRESS_IPC_VALIDITY_TIMEOUT;
@@ -226,14 +215,14 @@ static int intel_ipu4_buttress_ipc_validity_open(
 
 	/* Set bit 3 in CSE CSR */
 	writel(BUTTRESS_IU2CSECSR_IPC_PEER_ASSERTED_REG_VALID_REQ,
-	       isp->base + CSR_OUT(ipc));
+	       isp->base + ipc->csr_out);
 
 	/*
 	* How long we should wait here?
 	*/
 	tout_jfs = jiffies + msecs_to_jiffies(tout);
 	do {
-		val = readl(isp->base + CSR_IN(ipc));
+		val = readl(isp->base + ipc->csr_in);
 		dev_dbg(&isp->pdev->dev, "%s: CSE/ISH2IUCSR = %x\n",
 			__func__, val);
 
@@ -255,30 +244,29 @@ static int intel_ipu4_buttress_ipc_validity_open(
 
 static void intel_ipu4_buttress_ipc_recv(
 	struct intel_ipu4_device *isp,
-	enum intel_ipu4_buttress_ipc_domain ipc,
+	struct intel_ipu4_buttress_ipc *ipc,
 	u32 *ipc_msg)
 {
 	if (ipc_msg)
-		*ipc_msg = readl(isp->base + DATA0_IN(ipc));
-	writel(0, isp->base + DB0_IN(ipc));
+		*ipc_msg = readl(isp->base + ipc->data0_in);
+	writel(0, isp->base + ipc->db0_in);
 }
 
 static int intel_ipu4_buttress_ipc_send(
 	struct intel_ipu4_device *isp,
-	enum intel_ipu4_buttress_ipc_domain ipc,
+	enum intel_ipu4_buttress_ipc_domain ipc_domain,
 	u32 ipc_msg, u32 size)
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
-	struct completion *ipc_complete;
+	struct intel_ipu4_buttress_ipc *ipc;
 	u32 val;
 	int ret;
 
+	ipc = ipc_domain == INTEL_IPU4_BUTTRESS_IPC_CSE ? &b->cse : &b->ish;
+
 	mutex_lock(&b->ipc_mutex);
 
-	ipc_complete = ipc == INTEL_IPU4_BUTTRESS_IPC_CSE ?
-		&b->send_cse_ipc_complete : &b->send_ish_ipc_complete;
-
-	init_completion(ipc_complete);
+	init_completion(&ipc->send_complete);
 
 	ret = intel_ipu4_buttress_ipc_validity_open(isp, ipc);
 	if (ret) {
@@ -286,16 +274,16 @@ static int intel_ipu4_buttress_ipc_send(
 		goto out;
 	}
 
-	writel(ipc_msg, isp->base + DATA0_OUT(ipc));
+	writel(ipc_msg, isp->base + ipc->data0_out);
 
 	val = 1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT | size;
 
-	writel(val, isp->base + DB0_OUT(ipc));
+	writel(val, isp->base + ipc->db0_out);
 
 	/*
 	 * TODO: How long we should wait?
 	 */
-	ret = wait_for_completion_timeout(ipc_complete,
+	ret = wait_for_completion_timeout(&ipc->send_complete,
 					  msecs_to_jiffies(
 						  BUTTRESS_IPC_TX_TIMEOUT));
 	if (ret) {
@@ -315,28 +303,18 @@ out:
 
 int intel_ipu4_buttress_ipc_send_bulk(
 	struct intel_ipu4_device *isp,
-	enum intel_ipu4_buttress_ipc_domain ipc,
+	enum intel_ipu4_buttress_ipc_domain ipc_domain,
 	struct intel_ipu4_ipc_buttress_bulk_msg *msgs,
 	u32 size)
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
-	struct completion *send_ipc_complete;
-	struct completion *recv_ipc_complete;
-	u32 *recv_data;
+	struct intel_ipu4_buttress_ipc *ipc;
 	u32 val;
 	int ret;
 	int tout;
 	unsigned int i;
 
-	if (ipc == INTEL_IPU4_BUTTRESS_IPC_CSE) {
-		send_ipc_complete = &b->send_cse_ipc_complete;
-		recv_ipc_complete = &b->recv_cse_ipc_complete;
-		recv_data = &b->cse_ipc_recv_data;
-	} else {
-		send_ipc_complete = &b->send_ish_ipc_complete;
-		recv_ipc_complete = &b->recv_ish_ipc_complete;
-		recv_data = &b->ish_ipc_recv_data;
-	}
+	ipc = ipc_domain == INTEL_IPU4_BUTTRESS_IPC_CSE ? &b->cse : &b->ish;
 
 	mutex_lock(&b->ipc_mutex);
 
@@ -347,19 +325,19 @@ int intel_ipu4_buttress_ipc_send_bulk(
 	}
 
 	for (i = 0; i < size; i++) {
-		init_completion(send_ipc_complete);
+		init_completion(&ipc->send_complete);
 		if (msgs[i].require_resp)
-			init_completion(recv_ipc_complete);
+			init_completion(&ipc->recv_complete);
 
 		dev_dbg(&isp->pdev->dev, "bulk IPC command: 0x%x\n",
 			msgs[i].cmd);
-		writel(msgs[i].cmd, isp->base + DATA0_OUT(ipc));
+		writel(msgs[i].cmd, isp->base + ipc->data0_out);
 
 		val = 1 << BUTTRESS_IU2CSEDB0_BUSY_SHIFT | msgs[i].cmd_size;
 
-		writel(val, isp->base + DB0_OUT(ipc));
+		writel(val, isp->base + ipc->db0_out);
 
-		tout = wait_for_completion_timeout(send_ipc_complete,
+		tout = wait_for_completion_timeout(&ipc->send_complete,
 					msecs_to_jiffies(
 						BUTTRESS_IPC_TX_TIMEOUT));
 		if (!tout) {
@@ -371,7 +349,7 @@ int intel_ipu4_buttress_ipc_send_bulk(
 		if (!msgs[i].require_resp)
 			continue;
 
-		tout = wait_for_completion_timeout(recv_ipc_complete,
+		tout = wait_for_completion_timeout(&ipc->recv_complete,
 					msecs_to_jiffies(
 						BUTTRESS_IPC_RX_TIMEOUT));
 		if (!tout) {
@@ -380,11 +358,11 @@ int intel_ipu4_buttress_ipc_send_bulk(
 			goto out;
 		}
 
-		if (*recv_data != msgs[i].expected_resp) {
+		if (ipc->recv_data != msgs[i].expected_resp) {
 			dev_err(&isp->pdev->dev,
 				"expected resp: 0x%x, IPC response: 0x%x ",
 				msgs[i].expected_resp,
-				*recv_data);
+				ipc->recv_data);
 			ret = -EIO;
 			goto out;
 		}
@@ -467,30 +445,30 @@ irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 			dev_dbg(&isp->pdev->dev,
 				"BUTTRESS_ISR_IPC_FROM_CSE_IS_WAITING\n");
 			intel_ipu4_buttress_ipc_recv(isp,
-					INTEL_IPU4_BUTTRESS_IPC_CSE,
-					&b->cse_ipc_recv_data);
-			complete(&b->recv_cse_ipc_complete);
+						     &b->cse,
+						     &b->cse.recv_data);
+			complete(&b->cse.recv_complete);
 		}
 
 		if (irq_status & BUTTRESS_ISR_IPC_FROM_ISH_IS_WAITING) {
 			dev_dbg(&isp->pdev->dev,
 				"BUTTRESS_ISR_IPC_FROM_ISH_IS_WAITING\n");
 			intel_ipu4_buttress_ipc_recv(isp,
-					INTEL_IPU4_BUTTRESS_IPC_ISH,
-					&b->ish_ipc_recv_data);
-			complete(&b->recv_ish_ipc_complete);
+						     &b->ish,
+						     &b->ish.recv_data);
+			complete(&b->ish.recv_complete);
 		}
 
 		if (irq_status & BUTTRESS_ISR_IPC_EXEC_DONE_BY_CSE) {
 			dev_dbg(&isp->pdev->dev,
 				"BUTTRESS_ISR_IPC_EXEC_DONE_BY_CSE\n");
-			complete(&b->send_cse_ipc_complete);
+			complete(&b->cse.send_complete);
 		}
 
 		if (irq_status & BUTTRESS_ISR_IPC_EXEC_DONE_BY_ISH) {
 			dev_dbg(&isp->pdev->dev,
 				"BUTTRESS_ISR_IPC_EXEC_DONE_BY_CSE\n");
-			complete(&b->send_ish_ipc_complete);
+			complete(&b->ish.send_complete);
 		}
 
 		if (irq_status & BUTTRESS_ISR_SAI_VIOLATION) {
@@ -911,8 +889,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	  * Before communicate with CSE, do a rpc reset to prepare
 	  * CSE
 	  */
-	rval = intel_ipu4_buttress_ipc_reset(
-		isp, INTEL_IPU4_BUTTRESS_IPC_CSE);
+	rval = intel_ipu4_buttress_ipc_reset(isp, &b->cse);
 	if (rval) {
 		dev_err(&isp->pdev->dev, "IPC reset protocol failed!\n");
 		goto iunit_power_off;
@@ -1808,10 +1785,24 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 	mutex_init(&b->cons_mutex);
 	mutex_init(&b->ipc_mutex);
 	spin_lock_init(&b->tsc_lock);
-	init_completion(&b->send_ish_ipc_complete);
-	init_completion(&b->send_cse_ipc_complete);
-	init_completion(&b->recv_ish_ipc_complete);
-	init_completion(&b->recv_cse_ipc_complete);
+	init_completion(&b->ish.send_complete);
+	init_completion(&b->cse.send_complete);
+	init_completion(&b->ish.recv_complete);
+	init_completion(&b->cse.recv_complete);
+
+	b->cse.csr_in  = BUTTRESS_REG_CSE2IUCSR;
+	b->cse.csr_out = BUTTRESS_REG_IU2CSECSR;
+	b->cse.db0_in  = BUTTRESS_REG_CSE2IUDB0;
+	b->cse.db0_out = BUTTRESS_REG_IU2CSEDB0;
+	b->cse.data0_in  = BUTTRESS_REG_CSE2IUDATA0;
+	b->cse.data0_out = BUTTRESS_REG_IU2CSEDATA0;
+
+	b->ish.csr_in  = BUTTRESS_REG_ISH2IUCSR;
+	b->ish.csr_out = BUTTRESS_REG_IU2ISHCSR;
+	b->ish.db0_in  = BUTTRESS_REG_ISH2IUDB0;
+	b->ish.db0_out = BUTTRESS_REG_IU2ISHDB0;
+	b->ish.data0_in  = BUTTRESS_REG_ISH2IUDATA0;
+	b->ish.data0_out = BUTTRESS_REG_IU2ISHDATA0;
 
 	INIT_LIST_HEAD(&b->constraints);
 
