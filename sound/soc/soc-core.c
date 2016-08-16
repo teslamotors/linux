@@ -1487,10 +1487,10 @@ static int soc_probe_component(struct snd_soc_card *card,
 	struct snd_soc_dapm_context *dapm = snd_soc_component_get_dapm(component);
 	struct snd_soc_dai *dai;
 	int ret;
-
+#if 0
 	if (!strcmp(component->name, "snd-soc-dummy"))
 		return 0;
-
+#endif
 	if (component->card) {
 		if (component->card != card) {
 			dev_err(component->dev,
