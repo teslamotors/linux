@@ -726,7 +726,7 @@ int ia_css_terminal_manifest_print(
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 				"section %d\n", (int)section_idx);
 			sliced_param_manifest_section_desc =
-		ia_css_sliced_param_get_sliced_param_manifest_section_desc(
+		ia_css_sliced_param_terminal_manifest_get_sliced_prm_sct_desc(
 				sliced_terminal_manifest, section_idx);
 			verifjmpexit(sliced_param_manifest_section_desc !=
 				NULL);
@@ -780,7 +780,7 @@ int ia_css_terminal_manifest_print(
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 				"sequencer info %d\n", (int)seq_info_idx);
 			sequencer_info_manifest_desc =
-		ia_css_program_get_kernel_fragment_sequencer_info_manifest_desc
+		ia_css_program_terminal_manifest_get_kernel_frgmnt_seq_info_desc
 				(program_terminal_manifest, seq_info_idx);
 			verifjmpexit(sequencer_info_manifest_desc != NULL);
 			IA_CSS_TRACE_2(PSYSAPI_STATIC, INFO,

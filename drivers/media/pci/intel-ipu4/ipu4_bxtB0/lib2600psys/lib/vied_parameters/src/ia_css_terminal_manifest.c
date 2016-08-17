@@ -221,7 +221,7 @@ int ia_css_sliced_param_terminal_manifest_init(
 }
 
 ia_css_sliced_param_manifest_section_desc_t *
-ia_css_sliced_param_get_sliced_param_manifest_section_desc(
+ia_css_sliced_param_terminal_manifest_get_sliced_prm_sct_desc(
 	const ia_css_sliced_param_terminal_manifest_t *
 		sliced_param_terminal_manifest,
 	const unsigned int section_index)
@@ -305,7 +305,7 @@ EXIT:
 }
 
 ia_css_kernel_fragment_sequencer_info_manifest_desc_t *
-ia_css_program_get_kernel_fragment_sequencer_info_manifest_desc(
+ia_css_program_terminal_manifest_get_kernel_frgmnt_seq_info_desc(
 	const ia_css_program_terminal_manifest_t *program_terminal_manifest,
 	const unsigned int info_index)
 {

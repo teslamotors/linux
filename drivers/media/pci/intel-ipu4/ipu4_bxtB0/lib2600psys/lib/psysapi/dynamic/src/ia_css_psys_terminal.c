@@ -1399,7 +1399,7 @@ STORAGE_CLASS_INLINE bool ia_css_is_program_terminal_valid(
 					frag_seq_info_count);
 			verifjmpexit(term_seq_info_desc != NULL);
 			man_seq_info_desc =
-		ia_css_program_get_kernel_fragment_sequencer_info_manifest_desc
+		ia_css_program_terminal_manifest_get_kernel_frgmnt_seq_info_desc
 					(prog_term_man, seq_idx);
 			verifjmpexit(man_seq_info_desc != NULL);
 
@@ -1623,7 +1623,7 @@ STORAGE_CLASS_INLINE bool ia_css_is_sliced_terminal_valid(
 					slice_section_desc;
 
 				slice_man_section_desc =
-		ia_css_sliced_param_get_sliced_param_manifest_section_desc(
+		ia_css_sliced_param_terminal_manifest_get_sliced_prm_sct_desc(
 						sliced_term_man, section_idx);
 				slice_section_desc =
 		ia_css_sliced_param_terminal_get_slice_param_section_desc(
