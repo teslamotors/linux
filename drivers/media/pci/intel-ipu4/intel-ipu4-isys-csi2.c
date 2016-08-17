@@ -199,6 +199,9 @@ static int csi2_ev_correction_params(struct intel_ipu4_isys_csi2 *csi2,
 	if (!ev_params)
 		return 0;
 
+	if (csi2->isys->csi2_cse_ipc_not_supported)
+		return 0;
+
 	rval = get_link_freq(csi2, &link_freq);
 	if (rval)
 		return rval;
@@ -352,10 +355,13 @@ static int csi2_ev_correction_params(struct intel_ipu4_isys_csi2 *csi2,
 						  val);
 	}
 
-	intel_ipu4_buttress_ipc_send_bulk(isp,
-					  INTEL_IPU4_BUTTRESS_IPC_CSE,
-					  messages,
-					  nbr_msgs);
+	rval = intel_ipu4_buttress_ipc_send_bulk(isp,
+						 INTEL_IPU4_BUTTRESS_IPC_CSE,
+						 messages,
+						 nbr_msgs);
+
+	if (rval == -ENODEV)
+		csi2->isys->csi2_cse_ipc_not_supported = true;
 
 	kfree(messages);
 	return 0;

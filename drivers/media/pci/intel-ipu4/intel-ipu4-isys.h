@@ -117,6 +117,7 @@ struct intel_ipu4_isys {
 	struct task_struct *isr_thread;
 	bool reset_needed;
 	bool icache_prefetch;
+	bool csi2_cse_ipc_not_supported;
 	unsigned int video_opened;
 	unsigned int stream_opened;
 	struct dentry *debugfsdir;
