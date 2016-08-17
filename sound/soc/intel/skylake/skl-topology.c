@@ -249,6 +249,11 @@ static void skl_tplg_update_params(struct skl_module_fmt *fmt,
 	if (fixup & SKL_CH_FIXUP_MASK) {
 		fmt->channels = params->ch;
 		skl_tplg_update_chmap(fmt, fmt->channels);
+		if (fmt->channels == 1)
+			fmt->ch_cfg = SKL_CH_CFG_MONO;
+		else if (fmt->channels == 2)
+			fmt->ch_cfg = SKL_CH_CFG_STEREO;
+
 	}
 	if (fixup & SKL_FMT_FIXUP_MASK) {
 		fmt->valid_bit_depth = skl_get_bit_depth(params->s_fmt);
