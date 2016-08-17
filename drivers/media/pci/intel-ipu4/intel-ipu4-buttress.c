@@ -309,6 +309,14 @@ int intel_ipu4_buttress_ipc_send_bulk(
 			goto out;
 		}
 
+		if (ipc->nack_mask &&
+		    (ipc->recv_data & ipc->nack_mask) == ipc->nack) {
+			dev_err(&isp->pdev->dev,
+				"IPC NACK for cmd 0x%x\n", msgs[i].cmd);
+			ret = -ENODEV;
+			goto out;
+		}
+
 		if (ipc->recv_data != msgs[i].expected_resp) {
 			dev_err(&isp->pdev->dev,
 				"expected resp: 0x%x, IPC response: 0x%x ",
@@ -1754,6 +1762,8 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 	init_completion(&b->ish.recv_complete);
 	init_completion(&b->cse.recv_complete);
 
+	b->cse.nack = BUTTRESS_CSE2IUDATA0_IPC_NACK;
+	b->cse.nack_mask = BUTTRESS_CSE2IUDATA0_IPC_NACK_MASK;
 	b->cse.csr_in  = BUTTRESS_REG_CSE2IUCSR;
 	b->cse.csr_out = BUTTRESS_REG_IU2CSECSR;
 	b->cse.db0_in  = BUTTRESS_REG_CSE2IUDB0;

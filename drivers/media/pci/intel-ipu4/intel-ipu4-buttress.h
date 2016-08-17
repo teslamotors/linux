@@ -47,6 +47,8 @@ struct intel_ipu4_buttress_fused_freqs {
 struct intel_ipu4_buttress_ipc {
 	struct completion send_complete;
 	struct completion recv_complete;
+	u32 nack;
+	u32 nack_mask;
 	u32 recv_data;
 	u32 csr_out;
 	u32 csr_in;
