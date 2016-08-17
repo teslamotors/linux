@@ -27,7 +27,7 @@
 
 #define SDW_CNL_PM_TIMEOUT	3000 /* ms */
 
-#define CNL_SDW_MAX_PORTS				15
+#define CNL_SDW_MAX_PORTS				9
 
 /* Maximum number hardware tries to send command if the command failed */
 #define CNL_SDW_MAX_CMD_RETRIES			15
@@ -119,7 +119,9 @@ struct cnl_sdw_port *cnl_sdw_alloc_port(struct sdw_master *mstr, int ch_count,
 				enum sdw_data_direction direction,
 				enum cnl_sdw_pdi_stream_type stream_type);
 void cnl_sdw_free_port(struct sdw_master *mstr, int port_num);
-
-
+int cnl_sdw_get_master_caps(struct device *dev,
+				struct sdw_master_capabilities *m_cap);
+int cnl_sdw_get_master_dev_caps(struct device *dev,
+		struct sdw_master_capabilities *m_cap, int dev_port_num);
 #endif
 
