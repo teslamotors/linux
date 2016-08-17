@@ -583,7 +583,12 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 			 */
 			cnl_sdw_get_master_dev_caps(dev, map_data, j);
 			/* Both Tx and Rx */
-			dpn_cap->dpn_type = map_data->sdw_dpn_cap->dpn_type;
+			/* WORKAROUND: hard code for SDW1 */
+			if (j == 1)
+				dpn_cap->dpn_type = SDW_FULL_DP;
+			else
+				dpn_cap->dpn_type =
+					map_data->sdw_dpn_cap->dpn_type;
 			dpn_cap->port_direction = 0x3;
 			dpn_cap->port_number = j;
 			dpn_cap->max_word_length = 32;
