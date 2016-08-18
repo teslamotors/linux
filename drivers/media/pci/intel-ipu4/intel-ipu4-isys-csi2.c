@@ -22,6 +22,7 @@
 
 #include "intel-ipu4.h"
 #include "intel-ipu4-bus.h"
+#include "intel-ipu4-buttress.h"
 #include "intel-ipu4-isys.h"
 #include "intel-ipu4-isys-csi2.h"
 #include "intel-ipu4-isys-csi2-reg.h"
@@ -35,6 +36,13 @@
 #define CREATE_TRACE_POINTS
 #include "intel-ipu4-trace-event.h"
 
+/* IPU4 BXT / BXTP CSE IPC commands */
+#define CSE_IPC_CMDPHYWRITEL	   35
+#define CSE_IPC_CMDPHYWRITEH	   36
+#define CSE_IPC_CMDLEGACYPHYWRITEL 39
+#define CSE_IPC_CMDLEGACYPHYWRITEH 40
+
+#define NBR_BULK_MSGS              30 /* Space reservation for IPC messages */
 
 static const uint32_t csi2_supported_codes_pad_sink[] = {
 	MEDIA_BUS_FMT_RGB565_1X16,
@@ -133,6 +141,223 @@ static int get_link_freq(struct intel_ipu4_isys_csi2 *csi2,
 	if (!qm.value)
 		return -EINVAL;
 	*link_freq = qm.value;
+	return 0;
+}
+
+static u32 build_cse_ipc_commands(
+	struct intel_ipu4_ipc_buttress_bulk_msg *target, u32 nbr_msgs,
+	u32 opcodel, u32 reg, u32 data)
+{
+	struct intel_ipu4_ipc_buttress_bulk_msg *msgs = &target[nbr_msgs];
+	u32 opcodeh = opcodel == CSE_IPC_CMDPHYWRITEL ?
+		CSE_IPC_CMDPHYWRITEH : CSE_IPC_CMDLEGACYPHYWRITEH;
+
+	/*
+	 * Writing of 32 bits consist of 2 16 bit IPC messages to CSE.
+	 * Messages must be in low-high order and nothing else between
+	 * them.
+	 * Register is in bits 8..15 as index (register value divided by 4)
+	 */
+	msgs->cmd = opcodel | (reg << (8 - 2)) | ((data & 0xffff) << 16);
+	msgs->expected_resp = opcodel;
+	msgs->require_resp = true;
+	msgs->cmd_size = 4;
+	msgs++;
+
+	msgs->cmd = opcodeh | (reg << (8 - 2)) | (data & 0xffff0000);
+	msgs->expected_resp = opcodeh;
+	msgs->require_resp = true;
+	msgs->cmd_size = 4;
+
+	nbr_msgs += 2;
+
+	/* Hits only if code change introduces too many new IPC messages */
+	BUG_ON(nbr_msgs > NBR_BULK_MSGS);
+
+	return nbr_msgs;
+}
+
+static int csi2_ev_correction_params(struct intel_ipu4_isys_csi2 *csi2,
+			      unsigned int lanes)
+{
+	struct intel_ipu4_device *isp = csi2->isys->adev->isp;
+	struct intel_ipu4_ipc_buttress_bulk_msg *messages;
+	const struct intel_ipu4_receiver_electrical_params *ev_params;
+	const struct intel_ipu4_isys_internal_csi2_pdata *csi2_pdata;
+
+	__s64 link_freq;
+	unsigned int i;
+	u32 val;
+	u32 nbr_msgs = 0;
+	int rval;
+	bool conf_set0;
+	bool conf_set1;
+	bool conf_combined = false;
+
+	csi2_pdata = &csi2->isys->pdata->ipdata->csi2;
+	ev_params = csi2_pdata->evparams;
+	if (!ev_params)
+		return 0;
+
+	rval = get_link_freq(csi2, &link_freq);
+	if (rval)
+		return rval;
+
+	i = 0;
+	while (ev_params[i].device) {
+		if (ev_params[i].device == isp->pdev->device &&
+		    ev_params[i].revision == isp->pdev->revision &&
+		    ev_params[i].min_freq < link_freq &&
+		    ev_params[i].max_freq >= link_freq)
+			break;
+		i++;
+	}
+
+	if (!ev_params[i].device) {
+		dev_info(&csi2->isys->adev->dev,
+			 "No rcomp value override for this HW revision\n");
+		return 0;
+	}
+
+	messages = kcalloc(NBR_BULK_MSGS, sizeof(*messages), GFP_KERNEL);
+	if (!messages)
+		return -ENOMEM;
+
+	conf_set0 = csi2_pdata->evsetmask0 & (1 << csi2->index);
+	conf_set1 = csi2_pdata->evsetmask1 & (1 << csi2->index);
+	if (csi2_pdata->evlanecombine[csi2->index]) {
+		conf_combined =
+			lanes > csi2_pdata->evlanecombine[csi2->index] ? 1 : 0;
+	}
+	conf_set1 |= conf_combined;
+
+	/*
+	 * Note: There is no way to make R-M-W to these. Possible non-zero reset
+	 * default is OR'd with the values
+	 */
+	val = 1 << CSI2_SB_CSI_RCOMP_CONTROL_LEGACY_OVR_ENABLE_PORT1_SHIFT |
+		1 << CSI2_SB_CSI_RCOMP_CONTROL_LEGACY_OVR_ENABLE_PORT2_SHIFT |
+		1 << CSI2_SB_CSI_RCOMP_CONTROL_LEGACY_OVR_ENABLE_PORT3_SHIFT |
+		1 << CSI2_SB_CSI_RCOMP_CONTROL_LEGACY_OVR_ENABLE_PORT4_SHIFT |
+		1 << CSI2_SB_CSI_RCOMP_CONTROL_LEGACY_OVR_ENABLE_SHIFT |
+		ev_params[i].RcompVal_legacy <<
+		CSI2_SB_CSI_RCOMP_CONTROL_LEGACY_OVR_CODE_SHIFT;
+
+	nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+				      CSE_IPC_CMDLEGACYPHYWRITEL,
+				      CSI2_SB_CSI_RCOMP_CONTROL_LEGACY,
+				      val);
+
+	val = 2 << CSI2_SB_CSI_RCOMP_UPDATE_MODE_SHIFT |
+		1 << CSI2_SB_CSI_RCOMP_OVR_ENABLE_SHIFT |
+		ev_params[i].RcompVal_combo << CSI2_SB_CSI_RCOMP_OVR_CODE_SHIFT;
+
+	nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+				      CSE_IPC_CMDPHYWRITEL,
+				      CSI2_SB_CSI_RCOMP_CONTROL_COMBO,
+				      val);
+
+	if (conf_set0) {
+		val = 0x380078 | ev_params[i].ports[0].CtleVal <<
+			CSI2_SB_CPHY0_RX_CONTROL1_EQ_LANE0_SHIFT;
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_CPHY0_RX_CONTROL1,
+						  val);
+
+		val = 0x10000 | ev_params[i].ports[0].CrcVal <<
+			CSI2_SB_CPHY0_DLL_OVRD_CRCDC_FSM_DLANE0_SHIFT |
+			1 << CSI2_SB_CPHY0_DLL_OVRD_LDEN_CRCDC_FSM_DLANE0_SHIFT;
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_CPHY0_DLL_OVRD,
+						  val);
+	}
+
+	if (conf_set1) {
+		val = 0x380078 | ev_params[i].ports[1].CtleVal <<
+			CSI2_SB_CPHY2_RX_CONTROL1_EQ_LANE1_SHIFT;
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_CPHY2_RX_CONTROL1,
+						  val);
+
+		val = 0x10000 | ev_params[i].ports[1].CrcVal <<
+			CSI2_SB_CPHY2_DLL_OVRD_CRCDC_FSM_DLANE1_SHIFT |
+			1 << CSI2_SB_CPHY2_DLL_OVRD_LDEN_CRCDC_FSM_DLANE1_SHIFT;
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_CPHY2_DLL_OVRD,
+						  val);
+	}
+
+	mutex_lock(&csi2->isys->mutex);
+	/* This register is shared between two receivers */
+	val = csi2->isys->csi2_rx_ctrl_cached;
+	if (conf_set0) {
+		val &= ~CSI2_SB_DPHY0_RX_CNTRL_SKEWCAL_CR_SEL_DLANE01_MASK;
+		if (ev_params[i].ports[0].DrcVal)
+			val |=
+			    CSI2_SB_DPHY0_RX_CNTRL_SKEWCAL_CR_SEL_DLANE01_MASK;
+	}
+
+	if (conf_set1) {
+		val &= ~CSI2_SB_DPHY0_RX_CNTRL_SKEWCAL_CR_SEL_DLANE23_MASK;
+		if (ev_params[i].ports[1].DrcVal)
+			val |=
+			    CSI2_SB_DPHY0_RX_CNTRL_SKEWCAL_CR_SEL_DLANE23_MASK;
+	}
+	csi2->isys->csi2_rx_ctrl_cached = val;
+
+	nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+				      CSE_IPC_CMDPHYWRITEL,
+				      CSI2_SB_DPHY0_RX_CNTRL,
+				      val);
+	mutex_unlock(&csi2->isys->mutex);
+
+	if (conf_set0) {
+		/* Write value with FSM disabled */
+		val = (conf_combined ?
+		       ev_params[i].ports[0].DrcVal_combined :
+		       ev_params[i].ports[0].DrcVal) <<
+			CSI2_SB_DPHY0_DLL_OVRD_DRC_FSM_OVRD_SHIFT;
+
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_DPHY0_DLL_OVRD,
+						  val);
+
+		/* Write value with FSM enabled */
+		val |= 1 << CSI2_SB_DPHY1_DLL_OVRD_LDEN_DRC_FSM_SHIFT;
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_DPHY0_DLL_OVRD,
+						  val);
+	}
+
+	if (conf_set1) {
+		val = (conf_combined ?
+		       ev_params[i].ports[1].DrcVal_combined :
+		       ev_params[i].ports[1].DrcVal) <<
+			CSI2_SB_DPHY0_DLL_OVRD_DRC_FSM_OVRD_SHIFT;
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_DPHY1_DLL_OVRD,
+						  val);
+
+		val |= 1 << CSI2_SB_DPHY1_DLL_OVRD_LDEN_DRC_FSM_SHIFT;
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_DPHY1_DLL_OVRD,
+						  val);
+	}
+
+	intel_ipu4_buttress_ipc_send_bulk(isp,
+					  INTEL_IPU4_BUTTRESS_IPC_CSE,
+					  messages,
+					  nbr_msgs);
+
+	kfree(messages);
 	return 0;
 }
 
@@ -401,6 +626,8 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 			&timing, CSI2_ACCINV);
 		if (rval)
 			return rval;
+
+		csi2_ev_correction_params(csi2, nlanes);
 
 		writel(timing.ctermen,
 			csi2->base + CSI2_REG_CSI_RX_DLY_CNT_TERMEN_CLANE);

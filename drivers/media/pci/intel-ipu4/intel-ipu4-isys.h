@@ -76,6 +76,7 @@ struct task_struct;
  * @power: Is ISYS powered on or not?
  * @isr_bits: Which bits does the ISR handle?
  * @power_lock: Serialise access to power (power state in general)
+ * @csi2_rx_ctrl_cached: cached shared value between all CSI2 receivers
  * @lock: serialise access to pipes
  * @pipes: pipelines per stream ID
  * @ssi: ssi library private pointer
@@ -106,6 +107,7 @@ struct intel_ipu4_isys {
 	int power;
 	spinlock_t power_lock;
 	u32 isr_csi2_bits;
+	u32 csi2_rx_ctrl_cached;
 	spinlock_t lock;
 	struct intel_ipu4_isys_pipeline *pipes[INTEL_IPU4_ISYS_MAX_STREAMS];
 	void *ssi;
