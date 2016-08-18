@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
  *
@@ -106,6 +106,7 @@ struct crl_sensor {
 
 	struct clk *xclk;
 	struct crl_power_seq_entity *pwr_entity;
+	unsigned int irq;
 
 	u8 *nvm_data;
 	u16 nvm_size;

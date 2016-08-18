@@ -17,6 +17,7 @@
 #ifndef __CRLMODULE_SENSOR_DS_H_
 #define __CRLMODULE_SENSOR_DS_H_
 
+#include <linux/irqreturn.h>
 #include "crlmodule.h"
 
 #define CRL_SUBDEVS				3
@@ -592,6 +593,14 @@ struct crl_sensor_configuration {
 
 	sensor_specific_init sensor_init;
 	sensor_specific_cleanup sensor_cleanup;
+	/*
+	 * Irq handlers for threaded irq. These are needed if driver need to
+	 * handle gpio interrupt. crl_threaded_irq_fn is then mandatory. Irq
+	 * pin configuration is in platform data.
+	 */
+	irqreturn_t (*crl_irq_fn)(int irq, void *sensor_struct);
+	irqreturn_t (*crl_threaded_irq_fn)(int irq, void *sensor_struct);
+	const bool irq_in_use;
 };
 
 struct crlmodule_sensors {

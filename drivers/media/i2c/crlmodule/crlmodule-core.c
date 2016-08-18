@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
+#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
@@ -2683,6 +2684,43 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 	return 0;
 }
 
+static int crl_request_gpio_irq(struct crl_sensor *sensor)
+{
+	int rval;
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
+	int irq_pin = sensor->platform_data->crl_irq_pin;
+
+	if (!gpio_is_valid(irq_pin)) {
+		dev_err(&client->dev, "%s: GPIO pin %d is invalid!\n",
+			__func__, irq_pin);
+		return -ENODEV;
+	}
+	dev_dbg(&client->dev,
+			"%s: IRQ GPIO %d is valid.\n", __func__, irq_pin);
+
+	rval = devm_gpio_request(&client->dev, irq_pin,
+				 sensor->platform_data->irq_pin_name);
+	if (rval) {
+		dev_err(&client->dev,
+			"%s:IRQ GPIO pin request failed!\n", __func__);
+		return rval;
+	}
+
+	gpio_direction_input(irq_pin);
+	sensor->irq = gpio_to_irq(irq_pin);
+	rval = devm_request_threaded_irq(&client->dev, sensor->irq,
+					 sensor->sensor_ds->crl_irq_fn,
+					 sensor->sensor_ds->crl_threaded_irq_fn,
+					 sensor->platform_data->irq_pin_flags,
+					 sensor->platform_data->irq_pin_name,
+					 sensor);
+
+	dev_dbg(&client->dev, "%s: GPIO register GPIO IRQ result: %d\n",
+		__func__, rval);
+
+	return rval;
+}
+
 static int crlmodule_registered(struct v4l2_subdev *subdev)
 {
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
@@ -2694,11 +2732,17 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 	if (rval)
 		return -ENODEV;
 
-
 	/* Power up the sensor */
 	if (pm_runtime_get_sync(&client->dev) < 0) {
 		pm_runtime_put(&client->dev);
 		return -ENODEV;
+	}
+
+	/* init GPIO IRQ */
+	if (sensor->sensor_ds->irq_in_use == true) {
+		rval = crl_request_gpio_irq(sensor);
+		if (rval)
+			return -ENODEV;
 	}
 
 	/* one time init */
