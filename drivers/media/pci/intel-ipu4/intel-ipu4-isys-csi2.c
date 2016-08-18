@@ -99,6 +99,43 @@ static struct v4l2_subdev_internal_ops csi2_sd_internal_ops = {
 	.close = intel_ipu4_isys_subdev_close,
 };
 
+static int get_link_freq(struct intel_ipu4_isys_csi2 *csi2,
+		      __s64 *link_freq)
+{
+	struct intel_ipu4_isys_pipeline *pipe =
+		container_of(csi2->asd.sd.entity.pipe,
+			     struct intel_ipu4_isys_pipeline, pipe);
+	struct v4l2_subdev *ext_sd =
+		media_entity_to_v4l2_subdev(pipe->external->entity);
+	struct v4l2_ext_control c = { .id = V4L2_CID_LINK_FREQ, };
+	struct v4l2_ext_controls cs = { .count = 1,
+					.controls = &c, };
+	struct v4l2_querymenu qm = { .id = c.id, };
+	int rval;
+
+	rval = v4l2_g_ext_ctrls(ext_sd->ctrl_handler, &cs);
+	if (rval) {
+		dev_info(&csi2->isys->adev->dev, "can't get link frequency\n");
+		return rval;
+	}
+
+	qm.index = c.value;
+
+	rval = v4l2_querymenu(ext_sd->ctrl_handler, &qm);
+	if (rval) {
+		dev_info(&csi2->isys->adev->dev, "can't get menu item\n");
+		return rval;
+	}
+
+	dev_dbg(&csi2->isys->adev->dev, "%s: link frequency %lld\n", __func__,
+		qm.value);
+
+	if (!qm.value)
+		return -EINVAL;
+	*link_freq = qm.value;
+	return 0;
+}
+
 static int get_frame_desc_entry_by_dt(struct v4l2_subdev *sd,
 				      struct v4l2_mbus_frame_desc_entry *entry,
 				      u8 data_type)
@@ -273,54 +310,30 @@ static uint32_t calc_timing(int32_t a, int32_t b, int64_t link_freq,
 
 int intel_ipu4_isys_csi2_calc_timing(struct intel_ipu4_isys_csi2 *csi2,
 				  struct intel_ipu4_isys_csi2_timing *timing,
-				  uint32_t accinv)
+				     uint32_t accinv)
 {
-	struct intel_ipu4_isys_pipeline *pipe =
-		container_of(csi2->asd.sd.entity.pipe,
-			     struct intel_ipu4_isys_pipeline, pipe);
-	struct v4l2_subdev *ext_sd =
-		media_entity_to_v4l2_subdev(pipe->external->entity);
-	struct v4l2_ext_control c = { .id = V4L2_CID_LINK_FREQ, };
-	struct v4l2_ext_controls cs = { .count = 1,
-					.controls = &c, };
-	struct v4l2_querymenu qm = { .id = c.id, };
+	__s64 link_freq;
 	int rval;
 
-	rval = v4l2_g_ext_ctrls(ext_sd->ctrl_handler, &cs);
-	if (rval) {
-		dev_info(&csi2->isys->adev->dev, "can't get link frequency\n");
+	rval = get_link_freq(csi2, &link_freq);
+	if (rval)
 		return rval;
-	}
-
-	qm.index = c.value;
-
-	rval = v4l2_querymenu(ext_sd->ctrl_handler, &qm);
-	if (rval) {
-		dev_info(&csi2->isys->adev->dev, "can't get menu item\n");
-		return rval;
-	}
-
-	dev_dbg(&csi2->isys->adev->dev, "%s: link frequency %lld\n", __func__,
-		qm.value);
-
-	if (!qm.value)
-		return -EINVAL;
 
 	timing->ctermen = calc_timing(
 		CSI2_CSI_RX_DLY_CNT_TERMEN_CLANE_A,
-		CSI2_CSI_RX_DLY_CNT_TERMEN_CLANE_B, qm.value, accinv);
+		CSI2_CSI_RX_DLY_CNT_TERMEN_CLANE_B, link_freq, accinv);
 	timing->csettle = calc_timing(
 		CSI2_CSI_RX_DLY_CNT_SETTLE_CLANE_A,
-		CSI2_CSI_RX_DLY_CNT_SETTLE_CLANE_B, qm.value, accinv);
+		CSI2_CSI_RX_DLY_CNT_SETTLE_CLANE_B, link_freq, accinv);
 	dev_dbg(&csi2->isys->adev->dev, "ctermen %u\n", timing->ctermen);
 	dev_dbg(&csi2->isys->adev->dev, "csettle %u\n", timing->csettle);
 
 	timing->dtermen = calc_timing(
 		CSI2_CSI_RX_DLY_CNT_TERMEN_DLANE_A,
-		CSI2_CSI_RX_DLY_CNT_TERMEN_DLANE_B, qm.value, accinv);
+		CSI2_CSI_RX_DLY_CNT_TERMEN_DLANE_B, link_freq, accinv);
 	timing->dsettle = calc_timing(
 		CSI2_CSI_RX_DLY_CNT_SETTLE_DLANE_A,
-		CSI2_CSI_RX_DLY_CNT_SETTLE_DLANE_B, qm.value, accinv);
+		CSI2_CSI_RX_DLY_CNT_SETTLE_DLANE_B, link_freq, accinv);
 	dev_dbg(&csi2->isys->adev->dev, "dtermen %u\n", timing->dtermen);
 	dev_dbg(&csi2->isys->adev->dev, "dsettle %u\n", timing->dsettle);
 

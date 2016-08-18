@@ -122,9 +122,6 @@ __packed struct intel_ipu4_isys_mipi_packet_header {
 	container_of(to_intel_ipu4_isys_subdev(sd), \
 	struct intel_ipu4_isys_csi2, asd)
 
-int intel_ipu4_isys_csi2_calc_timing(struct intel_ipu4_isys_csi2 *csi2,
-				struct intel_ipu4_isys_csi2_timing *timing,
-				uint32_t accinv);
 int intel_ipu4_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
 	struct intel_ipu4_isys *isys,
 	void __iomem *base, unsigned int index);
