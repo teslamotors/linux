@@ -11,8 +11,8 @@
 #  more details.
 #
 
-IPU_STEP = glvA0
-ccflags-y += -DIPU_STEP_GLVA0
+IPU_STEP = ipu5A0
+ccflags-y += -DIPU_STEP_IPU5A0
 include $(srctree)/$(src)/../Makefile.common
 include $(srctree)/$(src)/../Makefile.lib2600.ipu5
 
