@@ -12,5 +12,5 @@
 #
 
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= ipu4_bxtB0/
-obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= ipu5p1_glvA0/
+obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= ipu5A0/
 obj-$(CONFIG_VIDEO_INTEL_IPU4_DEBUG)	+= debug_if/

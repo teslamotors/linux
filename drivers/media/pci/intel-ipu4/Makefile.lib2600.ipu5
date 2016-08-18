@@ -2,6 +2,8 @@ LIB2600_LIBRARY = lib2600
 
 PROGRAMS = isys_fw
 SYSTEM = input_system_system
+CSS_IPU_STEP = glvA0
+
 include $(srctree)/$(src)/../gencfg.mk
 
 include $(srctree)/$(src)/../Makefile.link
@@ -54,8 +56,8 @@ INCLUDES := \
 	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/vied \
 	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/interface \
 	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/src \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/isys/$(IPU_STEP) \
-	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/input_system_system/$(IPU_STEP) \
+	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/isys/$(CSS_IPU_STEP) \
+	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/devices/input_system_system/$(CSS_IPU_STEP) \
 	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/bxt_isys_fw_binaries \
 	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/pkg_dir/interface \
 	-I$(srctree)/$(src)/$(LIB2600_LIBRARY)/pkg_dir/src \

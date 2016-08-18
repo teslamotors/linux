@@ -2,7 +2,7 @@ ifndef IPU_STEP
   $(error No IPU_STEP was defined. Stopping.)
 endif
 
-ifeq ($(IPU_STEP),glvA0)
+ifeq ($(IPU_STEP),ipu5A0)
 intel-ipu-mod-$(IPU_STEP)-objs			+= ../intel-ipu4.$(IPU_STEP).lnk.o ../intel-ipu4-bus.$(IPU_STEP).lnk.o ../intel-ipu4-dma.$(IPU_STEP).lnk.o ../intel-ipu4-buttress.$(IPU_STEP).lnk.o ../intel-ipu4-trace.$(IPU_STEP).lnk.o ../intel-ipu4-cpd.$(IPU_STEP).lnk.o
 obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= intel-ipu-mod-$(IPU_STEP).o
 intel-ipu-mmu-$(IPU_STEP)-objs		+= ../intel-ipu4-mmu.$(IPU_STEP).lnk.o
