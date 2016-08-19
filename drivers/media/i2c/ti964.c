@@ -459,12 +459,18 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 	}
 
 	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
-		rval = v4l2_subdev_call(
-			va->sub_devs[i], video, s_stream, enable);
+		struct media_pad *remote_pad =
+			media_entity_remote_pad(&va->pad[i]);
+		struct v4l2_subdev *sd;
+
+		if (!remote_pad)
+			continue;
+		sd = media_entity_to_v4l2_subdev(remote_pad->entity);
+		rval = v4l2_subdev_call(sd, video, s_stream, enable);
 		if (rval) {
 			dev_err(va->sd.dev,
 				"Failed to set stream for %s. enable = %d\n",
-				va->sub_devs[i]->name, enable);
+				sd->name, enable);
 			return rval;
 		}
 	}
