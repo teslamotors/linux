@@ -8254,11 +8254,11 @@ static struct crl_dynamic_register_access ov10635_v_flip_regs[] = {
 /* Needed for acpi support for runtime detection */
 static struct crl_sensor_detect_config ov10635_sensor_detect_regset[] = {
 	{
-		.reg = { 0x300B, CRL_REG_LEN_08BIT, 0x000000ff },
+		.reg = { 0x300A, CRL_REG_LEN_08BIT, 0x000000ff },
 		.width = 8,
 	},
 	{
-		.reg = { 0x300A, CRL_REG_LEN_08BIT, 0x000000ff },
+		.reg = { 0x300B, CRL_REG_LEN_08BIT, 0x000000ff },
 		.width = 8,
 	}
 };
