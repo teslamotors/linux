@@ -370,33 +370,36 @@ static int ti964_open(struct v4l2_subdev *subdev,
 static int ti964_registered(struct v4l2_subdev *subdev)
 {
 	struct ti964 *va = to_ti964(subdev);
-	int i, j, rval;
+	int i, j, k, l, rval;
 
-	for (i = 0; i < min(va->pdata->subdev_num, va->nsinks); i++) {
+	for (i = 0, k = 0; i < va->pdata->subdev_num; i++) {
 		struct ti964_subdev_i2c_info *info =
 			&va->pdata->subdev_info[i];
-		struct i2c_adapter *adapter =
-			i2c_get_adapter(info->i2c_adapter_id);
+		struct i2c_adapter *adapter;
 
-		va->sub_devs[i] = v4l2_i2c_new_subdev_board(
+		if (k >= va->nsinks)
+			break;
+
+		adapter = i2c_get_adapter(info->i2c_adapter_id);
+		va->sub_devs[k] = v4l2_i2c_new_subdev_board(
 			va->sd.v4l2_dev, adapter,
 			&info->board_info, 0);
 		i2c_put_adapter(adapter);
-		if (!va->sub_devs[i]) {
+		if (!va->sub_devs[k]) {
 			dev_err(va->sd.dev,
 				"can't create new i2c subdev %d-%04x\n",
 				info->i2c_adapter_id,
 				info->board_info.addr);
-			return -EINVAL;
+			continue;
 		}
 
-		for (j = 0; j < va->sub_devs[i]->entity.num_pads; j++) {
-			if (va->sub_devs[i]->entity.pads[j].flags &
+		for (j = 0; j < va->sub_devs[k]->entity.num_pads; j++) {
+			if (va->sub_devs[k]->entity.pads[j].flags &
 				MEDIA_PAD_FL_SOURCE)
 				break;
 		}
 
-		if (j == va->sub_devs[i]->entity.num_pads) {
+		if (j == va->sub_devs[k]->entity.num_pads) {
 			dev_warn(va->sd.dev,
 				"no source pad in subdev %d-%04x\n",
 				info->i2c_adapter_id,
@@ -404,15 +407,19 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 			return -ENOENT;
 		}
 
-		rval = media_entity_create_link(&va->sub_devs[i]->entity, j,
-			&va->sd.entity, i, 0);
-		if (rval) {
-			dev_err(va->sd.dev,
-				"can't create link to subdev %d-%04x\n",
-				info->i2c_adapter_id,
-				info->board_info.addr);
-			return -EINVAL;
+		for (l = 0; l < va->nsinks; l++) {
+			rval = media_entity_create_link(
+				&va->sub_devs[k]->entity, j,
+				&va->sd.entity, l, 0);
+			if (rval) {
+				dev_err(va->sd.dev,
+					"can't create link to %d-%04x\n",
+					info->i2c_adapter_id,
+					info->board_info.addr);
+				return -EINVAL;
+			}
 		}
+		k++;
 	}
 
 	return 0;
