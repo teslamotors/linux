@@ -258,6 +258,22 @@ static struct crlmodule_platform_data ov10635_pdata = {
 };
 #endif
 
+#ifdef CONFIG_INTEL_IPU4_OV10640
+#define OV10640_LANES           4
+#define OV10640A_I2C_ADDRESS    0x61
+#define OV10640B_I2C_ADDRESS    0x62
+#define OV10640C_I2C_ADDRESS    0x63
+#define OV10640D_I2C_ADDRESS    0x64
+
+static struct crlmodule_platform_data ov10640_pdata = {
+	.lanes = OV10640_LANES,
+	.ext_clk = 12000000,
+	.op_sys_clock = (uint64_t []){ 392000000 },
+	.module_name = "OV10640",
+	.id_string = "0xa6 0x40"
+};
+#endif
+
 #ifdef CONFIG_VIDEO_TI964
 #define TI964_I2C_ADAPTER	0
 #define TI964_I2C_ADDRESS	0x3d
@@ -299,6 +315,40 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 			.type = CRLMODULE_NAME,
 			.addr = OV10635D_I2C_ADDRESS,
 			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	},
+#endif
+#ifdef CONFIG_INTEL_IPU4_OV10640
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640A_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640B_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640C_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640D_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 	},
