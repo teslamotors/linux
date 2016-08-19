@@ -46,8 +46,6 @@
 #define ADV7481_V_LOCKED_A_ST 0x02
 #define ADV7481_DE_REGEN_A_ST 0x01
 
-static int ADV7481_irq_pin;
-
 /*
  * Prevents executing another hot plug reset until current one will finish
  */
@@ -58,8 +56,13 @@ static unsigned int in_hot_plug_reset;
  * This timer is used to assert HPA bit again after that time without blocking.
  */
 static struct timer_list hot_plug_reset_timer;
-
 static struct workqueue_struct *irq_workqueue;
+typedef struct {
+	struct work_struct work;
+	struct i2c_client *client;
+} irq_task_t;
+
+
 static int hdmi_res_width;
 static int hdmi_res_height;
 static int hdmi_res_interlaced;
@@ -67,10 +70,7 @@ static int hdmi_cable_connected;
 
 static DEFINE_MUTEX(hot_plug_reset_lock);
 
-typedef struct {
-	struct work_struct work;
-	struct i2c_client *client;
-} irq_task_t;
+
 
 /* ADV7481 HDCP B-status register */
 struct v4l2_adv7481_bstatus {
@@ -433,10 +433,10 @@ static ssize_t adv_bstatus_show(struct device *dev,
 }
 static DEVICE_ATTR(bstatus, S_IRUGO, adv_bstatus_show, NULL);
 
-static void adv_isr_bh(struct work_struct *work)
+irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 {
-	irq_task_t *task = (irq_task_t *) work;
-	struct i2c_client *client = task->client;
+	struct crl_sensor *sensor = sensor_struct;
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 
 	u32 interrupt_st;
 	u32 raw_value;
@@ -583,83 +583,12 @@ static void adv_isr_bh(struct work_struct *work)
 			}
 		}
 	}
-	kfree(work);
-}
-
-static irq_handler_t adv7481_irq_handler(unsigned int irq, void *dev_id,
-					 struct pt_regs *regs)
-{
-	irq_task_t *task = NULL;
-	struct i2c_client *client = (struct i2c_client *)dev_id;
-
-	dev_dbg(&client->dev, "%s: Interrupt in ADV7481\n", __func__);
-
-	task = (irq_task_t *) kmalloc(sizeof(irq_task_t), GFP_ATOMIC);
-	if (task) {
-		INIT_WORK((struct work_struct *) task, adv_isr_bh);
-		task->client = client;
-		queue_work(irq_workqueue, (struct work_struct *)task);
-	}
-
 	return IRQ_HANDLED;
-}
-
-static int unregister_gpio_irq(void)
-{
-	gpio_free(ADV7481_irq_pin);
-	return 0;
-}
-
-
-static int register_gpio_irq(struct i2c_client *client)
-{
-	int res = 0;
-	unsigned int irq;
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
-	struct crl_sensor *sensor = ssd->sensor;
-
-	ADV7481_irq_pin = sensor->platform_data->crl_irq_pin;
-
-	if (!gpio_is_valid(ADV7481_irq_pin)) {
-		dev_err(&client->dev, "%s: ADV7481 GPIO pin %d is invalid!\n",
-			__func__, ADV7481_irq_pin);
-		return -ENODEV;
-	} else {
-		dev_dbg(&client->dev,
-			"%s: GPIO %d is valid.\n",
-			__func__,
-			ADV7481_irq_pin);
-	}
-
-	res = gpio_request(ADV7481_irq_pin, "ADV7481 Interrupt");
-	if (res) {
-		dev_err(&client->dev,
-			"%s: ADV7481 GPIO pin request failed!\n",
-			__func__);
-		return -ENODEV;
-	}
-
-	gpio_direction_input(ADV7481_irq_pin);
-	irq = gpio_to_irq(ADV7481_irq_pin);
-	res = request_irq(irq,
-			  (irq_handler_t)adv7481_irq_handler,
-			  IRQF_TRIGGER_RISING,
-			  "adv7481_irq_handler",
-			  client);
-
-	dev_dbg(&client->dev,
-		"%s: GPIO register GPIO IRQ result: %d\n",
-		__func__, res);
-
-	return res;
 }
 
 int adv7481_sensor_init(struct i2c_client *client)
 {
 	dev_dbg(&client->dev, "%s ADV7481_sensor_init\n", __func__);
-	irq_workqueue = create_workqueue("adv7481_irq_workqueue");
-	register_gpio_irq(client);
 	setup_timer(&hot_plug_reset_timer, adv_hpa_reset_callback,
 	 (unsigned long) client);
 
@@ -676,14 +605,7 @@ int adv7481_sensor_init(struct i2c_client *client)
 int adv7481_sensor_cleanup(struct i2c_client *client)
 {
 	dev_dbg(&client->dev, "%s: ADV7481_sensor_cleanup\n", __func__);
-	if (irq_workqueue != NULL) {
-		free_irq(gpio_to_irq(ADV7481_irq_pin), client);
-		unregister_gpio_irq();
-		del_timer(&hot_plug_reset_timer);
-		flush_workqueue(irq_workqueue);
-		destroy_workqueue(irq_workqueue);
-		irq_workqueue = NULL;
-	}
+	del_timer(&hot_plug_reset_timer);
 	REMOVE_ATTRIBUTE(dev_attr_bstatus);
 	REMOVE_ATTRIBUTE(dev_attr_reauthenticate);
 	REMOVE_ATTRIBUTE(dev_attr_bksv);

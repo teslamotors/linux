@@ -69,6 +69,8 @@ static struct crlmodule_platform_data adv7481_hdmi_pdata = {
 	.lanes = ADV7481_HDMI_LANES,
 	.module_name = "ADV7481 HDMI",
 	.crl_irq_pin = GPIO_BASE + 22,
+	.irq_pin_flags = (IRQF_TRIGGER_RISING | IRQF_ONESHOT),
+	.irq_pin_name = "ADV7481_HDMI_IRQ",
 };
 
 static struct intel_ipu4_isys_csi2_config adv7481_hdmi_csi2_cfg = {

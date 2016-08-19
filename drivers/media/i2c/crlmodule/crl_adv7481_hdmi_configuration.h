@@ -17,6 +17,7 @@
 #define __CRLMODULE_ADV7481_HDMI_CONFIGURATION_H_
 
 #include "crlmodule-sensor-ds.h"
+irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct);
 
 static struct crl_register_write_rep adv7481_hdmi_onetime_init_regset[] = {
 	{0xFF, CRL_REG_LEN_08BIT, 0xFF, 0xE0},
@@ -712,6 +713,10 @@ static struct crl_sensor_configuration adv7481_hdmi_crl_configuration = {
 
 	.csi_fmts_items = ARRAY_SIZE(adv7481_hdmi_crl_csi_data_fmt),
 	.csi_fmts = adv7481_hdmi_crl_csi_data_fmt,
+
+	.irq_in_use = true,
+	.crl_irq_fn = NULL,
+	.crl_threaded_irq_fn = crl_adv7481_threaded_irq_fn,
 
 	.addr_len = CRL_ADDR_7BIT,
 };
