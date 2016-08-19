@@ -2085,9 +2085,9 @@ static int crlmodule_identify_module(struct v4l2_subdev *subdev)
 {
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
-	unsigned int size = 0;
+	unsigned int size = 0, pos;
 	char *id_string;
-	char *temp;
+	const char *expect_id;
 	int i, ret;
 	u32 val;
 
@@ -2098,6 +2098,7 @@ static int crlmodule_identify_module(struct v4l2_subdev *subdev)
 	if (!size)
 		return 0;
 
+	expect_id = sensor->platform_data->id_string;
 	/* Create string variabel to append module ID */
 	id_string = kzalloc(size, GFP_KERNEL);
 	if (!id_string)
@@ -2112,27 +2113,33 @@ static int crlmodule_identify_module(struct v4l2_subdev *subdev)
 		if (ret)
 			goto out;
 
-		temp = kzalloc(sensor->sensor_ds->id_regs[i].width, GFP_KERNEL);
-		if (!temp) {
-			ret = -ENOMEM;
-			goto out;
-		}
-		snprintf(temp, sensor->sensor_ds->id_regs[i].width, "0x%x ",
-			 val);
-		snprintf(id_string, sensor->sensor_ds->id_regs[i].width,
-			 "%s 0x%x ", temp, val);
-
-		kfree(temp);
+		if (i)
+			pos += snprintf(id_string + pos, size - pos, " 0x%x", val);
+		else
+			pos = snprintf(id_string, size, "0x%x", val);
+		if (pos >= size)
+			break;
 	}
 
-	/* TODO! Check here if this module in the supported list
+	/* Check here if this module in the supported list
 	 * Ideally the module manufacturer and id should be in platform
 	 * data or ACPI and here the driver should read the value from the
 	 * register and check if this matches to any in the supported
-	 * platform data */
+	 * platform data
+	 */
+	if (expect_id &&
+	   (strnlen(id_string, size) != strnlen(expect_id, size + 1) ||
+	    strncmp(id_string, expect_id, size))) {
+		dev_err(&client->dev,
+			"Sensor detection failed: expect \"%s\" actual \"%s\"",
+			expect_id, id_string);
+		ret = -ENODEV;
+	}
 
 out:
-	dev_dbg(&client->dev, "%s module: %s", __func__, id_string);
+	dev_dbg(&client->dev, "%s module: %s expected id: %s\n",
+		__func__, id_string,
+		(expect_id) ? expect_id : "not specified");
 	kfree(id_string);
 	if (ret)
 		dev_err(&client->dev, "sensor detection failed\n");
