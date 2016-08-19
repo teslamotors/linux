@@ -122,6 +122,23 @@ static struct regmap_config ti964_reg_config16 = {
 	.reg_format_endian = REGMAP_ENDIAN_BIG,
 };
 
+static int ti964_reg_set_bit(struct ti964 *va, unsigned char reg,
+	unsigned char bit, unsigned char val)
+{
+	int ret;
+	unsigned int reg_val;
+
+	ret = regmap_read(va->regmap8, reg, &reg_val);
+	if (ret)
+		return ret;
+	if (val)
+		reg_val |= 1 << bit;
+	else
+		reg_val &= ~(1 << bit);
+
+	return regmap_write(va->regmap8, reg, reg_val);
+}
+
 static int ti964_get_routing(struct v4l2_subdev *sd,
 				   struct v4l2_subdev_routing *route)
 {
@@ -457,6 +474,15 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 
 		if (!remote_pad)
 			continue;
+		/* Enable RX port fordwarding. */
+		rval = ti964_reg_set_bit(va, TI964_FWD_CTL1, i + 4, !enable);
+		if (rval) {
+			dev_err(va->sd.dev,
+				"Failed to forward RX port%d. enable = %d\n",
+				i, enable);
+			return rval;
+		}
+		/* Stream on sensor. */
 		sd = media_entity_to_v4l2_subdev(remote_pad->entity);
 		rval = v4l2_subdev_call(sd, video, s_stream, enable);
 		if (rval) {

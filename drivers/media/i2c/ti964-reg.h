@@ -34,7 +34,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0x1a, 0x2},
 	{0x1b, 0xa}, /* Frame sync low time. */
 	{0x1c, 0xd3},
-	{0x20, 0x0}, /* Enable all RX ports forwarding. */
 	{0x21, 0x43}, /* Enable best effort mode. */
 	{0xb0, 0x10},
 	{0xb1, 0x14},
@@ -93,6 +92,7 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 
 #define TI964_DEVID		0
 #define TI964_RESET		0x1
+#define TI964_FWD_CTL1		0x20
 #define TI964_IND_ACC_DATA	0xb2
 #define TI964_CSI_CTL		0x33
 
