@@ -117,6 +117,11 @@ struct crl_sensor {
 	 * at the moment.
 	 */
 	const struct firmware *msr_list;
+	/*
+	 * Pointer to store sensor specific data structure, that
+	 * can be used for example in interrupt specific code.
+	 */
+	void *sensor_specific_data;
 };
 
 #define to_crlmodule_subdev(_sd)				\
