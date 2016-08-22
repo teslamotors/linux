@@ -471,6 +471,7 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 		struct media_pad *remote_pad =
 			media_entity_remote_pad(&va->pad[i]);
 		struct v4l2_subdev *sd;
+		u8 bpp;
 
 		if (!remote_pad)
 			continue;
@@ -489,6 +490,31 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 			dev_err(va->sd.dev,
 				"Failed to set stream for %s. enable = %d\n",
 				sd->name, enable);
+			return rval;
+		}
+		/* Select RX port. */
+		rval = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
+				(i << 4) + (1 << i));
+		if (rval) {
+			dev_err(va->sd.dev, "Failed to select RX port.\n");
+			return rval;
+		}
+		/* Set RX port mode. */
+		bpp = ti964_validate_csi_data_format(
+			va->ffmts[i][0].code)->width;
+		rval = regmap_write(va->regmap8, TI964_PORT_CONFIG,
+			(bpp == 12) ?
+			TI964_FPD3_RAW12_75MHz : TI964_FPD3_RAW10_100MHz);
+		if (rval) {
+			dev_err(va->sd.dev, "Failed to set port config.\n");
+			return rval;
+		}
+		/* RAW8 and YUV422 need to enable RAW10 bit mode. */
+		rval = regmap_write(va->regmap8, TI964_PORT_CONFIG2,
+			(bpp == 8 || bpp == 16) ?
+			TI964_RAW10_8BIT : TI964_RAW10_NORMAL);
+		if (rval) {
+			dev_err(va->sd.dev, "Failed to set port config2.\n");
 			return rval;
 		}
 	}

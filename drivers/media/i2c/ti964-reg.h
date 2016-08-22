@@ -93,10 +93,18 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 #define TI964_DEVID		0
 #define TI964_RESET		0x1
 #define TI964_FWD_CTL1		0x20
+#define TI964_RX_PORT_SEL	0x4c
+#define TI964_PORT_CONFIG	0x6d
+#define TI964_PORT_CONFIG2	0x7c
 #define TI964_IND_ACC_DATA	0xb2
 #define TI964_CSI_CTL		0x33
 
 #define TI964_POWER_ON		0x1
 #define TI964_POWER_OFF		0x20
+#define TI964_FPD3_RAW10_100MHz	0x7f
+#define TI964_FPD3_RAW12_50MHz	0x7d
+#define TI964_FPD3_RAW12_75MHz	0x7e
+#define TI964_RAW10_NORMAL	0x1
+#define TI964_RAW10_8BIT	0x81
 
 #endif
