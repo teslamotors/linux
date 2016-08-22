@@ -357,6 +357,7 @@ static const struct skl_dsp_fw_ops cnl_fw_ops = {
 	.set_state_D3 = cnl_set_dsp_D3,
 	.load_fw = cnl_load_base_firmware,
 	.get_fw_errcode = cnl_get_errno,
+	.load_library = bxt_load_library,
 };
 
 static struct sst_ops cnl_ops = {
@@ -546,9 +547,18 @@ EXPORT_SYMBOL_GPL(cnl_sst_dsp_init);
 int cnl_sst_init_fw(struct device *dev, struct skl_sst *ctx)
 {
 	struct sst_dsp *sst = ctx->dsp;
+	int ret;
 
 	skl_dsp_init_core_state(sst);
 
+	if (ctx->lib_count > 1) {
+		ret = sst->fw_ops.load_library(sst, ctx->lib_info,
+						ctx->lib_count);
+		if (ret) {
+			dev_err(dev, "Load Library failed: %#x", ret);
+			return ret;
+		}
+	}
 	ctx->is_first_boot = false;
 
 	return 0;

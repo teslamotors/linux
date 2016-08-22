@@ -240,6 +240,7 @@ int skl_sst_init_fw(struct device *dev, struct skl_sst *ctx);
 int bxt_sst_init_fw(struct device *dev, struct skl_sst *ctx);
 void skl_sst_dsp_cleanup(struct device *dev, struct skl_sst *ctx);
 void bxt_sst_dsp_cleanup(struct device *dev, struct skl_sst *ctx);
+int bxt_load_library(struct sst_dsp *ctx, struct skl_lib_info *linfo, int lib_count);
 
 int snd_skl_parse_uuids(struct sst_dsp *ctx, const struct firmware *fw,
 				unsigned int offset, int index);
