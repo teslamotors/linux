@@ -19,17 +19,18 @@
 
 /** @file ia_css_psys_terminal.h
  *
- * Define the methods on the terminal object that are not part of a single interface
+ * Define the methods on the terminal object that are not part of
+ * a single interface
  */
 
-#include <ia_css_program_group_data.h>		/* ia_css_frame_t */
-#include <ia_css_program_group_param.h>		/* ia_css_program_group_param_t */
+#include <ia_css_program_group_data.h>	/* ia_css_frame_t */
+#include <ia_css_program_group_param.h>	/* ia_css_program_group_param_t */
 
 #include <ia_css_psys_process_types.h>
 #include <ia_css_psys_manifest_types.h>
 
-#include <type_support.h>					/* bool */
-#include <print_support.h>					/* FILE */
+#include <type_support.h>		/* bool */
+#include <print_support.h>		/* FILE */
 #include "ia_css_terminal.h"
 #include "ia_css_terminal_manifest_base_types.h"
 /*
@@ -72,8 +73,8 @@ extern ia_css_terminal_type_t ia_css_terminal_get_type(
  @return < 0 on error
  */
 extern int ia_css_terminal_set_type(
-	ia_css_terminal_t						*terminal,
-	const ia_css_terminal_type_t			terminal_type);
+	ia_css_terminal_t		*terminal,
+	const ia_css_terminal_type_t	terminal_type);
 
 /*! Get the index of the terminal manifest object
 
@@ -92,8 +93,8 @@ extern uint16_t ia_css_terminal_get_terminal_manifest_index(
  @return < 0 on error
  */
 extern int ia_css_terminal_set_terminal_manifest_index(
-	ia_css_terminal_t						*terminal,
-	const uint16_t							tm_index);
+	ia_css_terminal_t	*terminal,
+	const uint16_t		tm_index);
 
 /*! Get id of the terminal object
 
@@ -120,7 +121,7 @@ uint8_t ia_css_data_terminal_get_kernel_id(
  @return buffer type, limit value on error
  */
 extern ia_css_connection_type_t ia_css_data_terminal_get_connection_type(
-	const ia_css_data_terminal_t					*dterminal);
+	const ia_css_data_terminal_t	*dterminal);
 
 /*! Set the connection type of the terminal object
 
@@ -145,14 +146,14 @@ extern ia_css_process_group_t *ia_css_terminal_get_parent(
 
 /*! Set the (pointer to) the process group parent of the terminal object
 
- @param	terminal[in]			terminal object
- @param	parent[in]				(pointer to the) process group parent object
+ @param	terminal[in]	terminal object
+ @param	parent[in]	(pointer to the) process group parent object
 
  @return < 0 on error
  */
 extern int ia_css_terminal_set_parent(
-	ia_css_terminal_t						*terminal,
-	ia_css_process_group_t					*parent);
+	ia_css_terminal_t	*terminal,
+	ia_css_process_group_t	*parent);
 
 /*! Boolean test if the terminal object type is valid
 

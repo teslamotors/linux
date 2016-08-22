@@ -27,8 +27,10 @@
 
 #include <ia_css_psys_manifest_types.h>
 
-#include <ia_css_program_group_data.h>		/* Data object types on the terminals */
-#include <ia_css_program_group_param.h>		/* Parameter objects for process group creation */
+/* Data object types on the terminals */
+#include <ia_css_program_group_data.h>
+/* Parameter objects for process group creation */
+#include <ia_css_program_group_param.h>
 
 /* private */
 typedef enum ia_css_process_group_cmd {
@@ -88,10 +90,10 @@ typedef enum ia_css_process_state {
 } ia_css_process_state_t;
 
 /* public */
-typedef struct ia_css_process_group_s			ia_css_process_group_t;
-typedef struct ia_css_process_s					ia_css_process_t;
+typedef struct ia_css_process_group_s	ia_css_process_group_t;
+typedef struct ia_css_process_s		ia_css_process_t;
 
-typedef struct ia_css_data_terminal_s				ia_css_data_terminal_t;
+typedef struct ia_css_data_terminal_s	ia_css_data_terminal_t;
 
 #endif /* __IA_CSS_PSYS_PROCESS_TYPES_H_INCLUDED__ */
 

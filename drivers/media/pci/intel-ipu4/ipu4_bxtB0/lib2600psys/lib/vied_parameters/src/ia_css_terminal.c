@@ -18,10 +18,8 @@
 #include "assert_support.h"
 #include "storage_class.h"
 
-
 STORAGE_CLASS_INLINE void __dummy_check_alignment(void)
 {
-
 	COMPILATION_ERROR_IF(
 		SIZE_OF_PARAM_TERMINAL_STRUCT_BITS !=
 			(CHAR_BIT * sizeof(ia_css_param_terminal_t)));
@@ -198,7 +196,6 @@ int ia_css_param_terminal_create(
 	return 0;
 }
 
-
 /* Spatial Param Terminal */
 unsigned int ia_css_spatial_param_terminal_get_descriptor_size(
 	const unsigned int nof_frame_param_sections,
@@ -285,7 +282,6 @@ int ia_css_spatial_param_terminal_create(
 
 	return 0;
 }
-
 
 /* Sliced terminal */
 unsigned int ia_css_sliced_param_terminal_get_descriptor_size(
@@ -439,6 +435,34 @@ unsigned int ia_css_program_terminal_get_descriptor_size(
 }
 
 ia_css_fragment_param_section_desc_t *
+ia_css_program_terminal_get_frgmnt_prm_sct_desc(
+	const ia_css_program_terminal_t *program_terminal,
+	const unsigned int fragment_index,
+	const unsigned int section_index,
+	const unsigned int nof_fragment_param_sections)
+{
+	ia_css_fragment_param_section_desc_t *
+		fragment_param_section_desc_base;
+	ia_css_fragment_param_section_desc_t *
+		fragment_param_section_desc = NULL;
+
+	verifjmpexit(program_terminal != NULL);
+	verifjmpexit(section_index < nof_fragment_param_sections);
+
+	fragment_param_section_desc_base =
+		(ia_css_fragment_param_section_desc_t *)
+			(((const char *)program_terminal) +
+			program_terminal->fragment_param_section_desc_offset);
+	fragment_param_section_desc =
+		&(fragment_param_section_desc_base[(fragment_index *
+			nof_fragment_param_sections) + section_index]);
+
+EXIT:
+	return fragment_param_section_desc;
+}
+
+/* Keep old function name before Windows/Android change name */
+ia_css_fragment_param_section_desc_t *
 ia_css_program_terminal_get_fragment_param_section_desc(
 	const ia_css_program_terminal_t *program_terminal,
 	const unsigned int fragment_index,
@@ -466,15 +490,46 @@ EXIT:
 }
 
 ia_css_kernel_fragment_sequencer_info_desc_t *
+ia_css_program_terminal_get_kernel_frgmnt_seq_info_desc(
+	const ia_css_program_terminal_t *program_terminal,
+	const unsigned int fragment_index,
+	const unsigned int info_index,
+	const unsigned int nof_kernel_fragment_sequencer_infos)
+{
+	ia_css_kernel_fragment_sequencer_info_desc_t *
+		kernel_fragment_sequencer_info_desc_base;
+	ia_css_kernel_fragment_sequencer_info_desc_t *
+		kernel_fragment_sequencer_info_desc = NULL;
+
+	verifjmpexit(program_terminal != NULL);
+	if (nof_kernel_fragment_sequencer_infos > 0) {
+		verifjmpexit(info_index < nof_kernel_fragment_sequencer_infos);
+	}
+
+	kernel_fragment_sequencer_info_desc_base =
+		(ia_css_kernel_fragment_sequencer_info_desc_t *)
+		(((const char *)program_terminal) +
+		program_terminal->kernel_fragment_sequencer_info_desc_offset);
+	kernel_fragment_sequencer_info_desc =
+		&(kernel_fragment_sequencer_info_desc_base[(fragment_index *
+			nof_kernel_fragment_sequencer_infos) + info_index]);
+
+EXIT:
+	return kernel_fragment_sequencer_info_desc;
+}
+
+/* Keep old function name before Windows/Android change name */
+ia_css_kernel_fragment_sequencer_info_desc_t *
 ia_css_program_terminal_get_kernel_fragment_sequencer_info_desc(
 	const ia_css_program_terminal_t *program_terminal,
 	const unsigned int fragment_index,
 	const unsigned int info_index,
 	const unsigned int nof_kernel_fragment_sequencer_infos)
 {
-	ia_css_kernel_fragment_sequencer_info_desc_t
-	*kernel_fragment_sequencer_info_desc_base,
-	*kernel_fragment_sequencer_info_desc = NULL;
+	ia_css_kernel_fragment_sequencer_info_desc_t *
+		kernel_fragment_sequencer_info_desc_base;
+	ia_css_kernel_fragment_sequencer_info_desc_t *
+		kernel_fragment_sequencer_info_desc = NULL;
 
 	verifjmpexit(program_terminal != NULL);
 	if (nof_kernel_fragment_sequencer_infos > 0) {

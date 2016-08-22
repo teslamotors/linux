@@ -328,7 +328,8 @@ int ia_css_fragment_descriptor_print(
 		IA_CSS_TRACE_1(PSYSAPI_DATA, INFO,
 			"\t%4d,\n", fragment_descriptor->offset[i]);
 	}
-	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\t%4d }\n", fragment_descriptor->offset[i]);
+	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO, "\t%4d }\n",
+		fragment_descriptor->offset[i]);
 
 	retval = 0;
 EXIT:

@@ -16,16 +16,19 @@
 #define __IA_CSS_CPD_METADATA_TYPES_H__
 
 /** @file
- * This file contains data structures related to generation of metadata file extension
+ * This file contains data structures related to generation of
+ * metadata file extension
  */
 #include <type_support.h>
 
 /* As per v0.2 manifest document
- Header = Extension Type (4) + Extension Length (4) + iUnit Image Type (4) + Reserved (16)
+ * Header = Extension Type (4) + Extension Length (4) +
+ *	iUnit Image Type (4) + Reserved (16)
  */
 #define IPU_METADATA_HEADER_RSVD_SIZE		16
 #define IPU_METADATA_HEADER_FIELDS_SIZE		12
-#define IPU_METADATA_HEADER_SIZE (IPU_METADATA_HEADER_FIELDS_SIZE + IPU_METADATA_HEADER_RSVD_SIZE)
+#define IPU_METADATA_HEADER_SIZE \
+	(IPU_METADATA_HEADER_FIELDS_SIZE + IPU_METADATA_HEADER_RSVD_SIZE)
 
 /* iUnit metadata extension tpye value */
 #define IPU_METADATA_EXTENSION_TYPE		16
@@ -78,9 +81,13 @@ typedef struct {
 	uint32_t version;
 	/**< SHA 256 Hash Key for component */
 	uint8_t  sha2_hash[IPU_METADATA_HASH_KEY_SIZE];
-	/**< component sp entry point - Only valid for btldr/psys/isys server component */
+	/**< component sp entry point
+	 * - Only valid for btldr/psys/isys server component
+	 */
 	uint32_t entry_point;
-	/**< component icache base address - Only valid for btldr/psys/isys server component */
+	/**< component icache base address
+	 * - Only valid for btldr/psys/isys server component
+	 */
 	uint32_t icache_base_offset;
 	/**< Resevred - must be 0 */
 	uint8_t  attributes[IPU_METADATA_ATTRIBUTE_SIZE];
@@ -89,9 +96,13 @@ typedef struct {
 /** Data structure for Metadata File Extension Header
  */
 typedef struct {
-	/**< Specifies the binary image type - could be bootloader or main firmware */
+	/**< Specifies the binary image type
+	 * - could be bootloader or main firmware
+	 */
 	ia_css_cpd_metadata_image_type_t image_type;
-	/**< Number of components available in metadata file extension (For btldr always 1) */
+	/**< Number of components available in metadata file extension
+	 * (For btldr always 1)
+	 */
 	uint32_t component_count;
 	/**< Component specific information */
 	ia_css_cpd_metadata_component_t *components;

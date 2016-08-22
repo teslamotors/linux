@@ -28,7 +28,9 @@ struct ia_css_pkg_dir_entry {
 typedef void ia_css_pkg_dir_t;
 typedef struct ia_css_pkg_dir_entry ia_css_pkg_dir_entry_t;
 
-/* The version field of the pkg_dir header defines if entries contain offsets or pointers */
+/* The version field of the pkg_dir header defines
+ * if entries contain offsets or pointers
+ */
 /* This is temporary, until all pkg_dirs use pointers */
 enum ia_css_pkg_dir_version {
 	IA_CSS_PKG_DIR_POINTER,

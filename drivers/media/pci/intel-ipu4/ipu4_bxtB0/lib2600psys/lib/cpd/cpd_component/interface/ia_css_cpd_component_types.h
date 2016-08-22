@@ -41,18 +41,34 @@ enum ia_css_cpd_component_platform_type {
 
 /** Module Data (components) Header
  * Following data structure has been created using FAS section 5.25
- * Open : Should we add padding at the end of module directory (the component must be 512 aligned)
+ * Open : Should we add padding at the end of module directory
+ * (the component must be 512 aligned)
  */
 typedef struct {
-	uint32_t				header_size;
-	unsigned int				endianness; /**< Specifies endianness of the binary data */
-	uint32_t				fw_pkg_date; /**< fw_pkg_date is current date stored in 'binary decimal' representation e.g. 538248729 (0x20150619) */
-	uint32_t				hive_sdk_date; /**< hive_sdk_date is date of HIVE_SDK stored in 'binary decimal' representation */
-	uint32_t				compiler_date; /**< compiler_date is date of ptools stored in 'binary decimal' representation */
-	unsigned int				target_platform_type; /**< UNSCHED / SCHED / TARGET / CRUN */
-	uint8_t					system_version[SIZE_OF_SYSTEM_VERSION];/**< specifies the system version stored as string e.g. BXTA0_IPU4'\0' */
-	uint8_t					fw_arch_version[SIZE_OF_FW_ARCH_VERSION]; /**< specifies fw architecture version e.g. for BXT CSS3.0'\0' */
-	uint8_t					rsvd[2];
+	uint32_t	header_size;
+	/**< Specifies endianness of the binary data */
+	unsigned int	endianness;
+	/**< fw_pkg_date is current date stored in 'binary decimal'
+	 * representation e.g. 538248729 (0x20150619)
+	 */
+	uint32_t	fw_pkg_date;
+	/**< hive_sdk_date is date of HIVE_SDK stored in
+	 * 'binary decimal' representation
+	 */
+	uint32_t	hive_sdk_date;
+	/**< compiler_date is date of ptools stored in
+	 * 'binary decimal' representation
+	 */
+	uint32_t	compiler_date;
+	/**< UNSCHED / SCHED / TARGET / CRUN */
+	unsigned int	target_platform_type;
+	/**< specifies the system version stored as string
+	 * e.g. BXTA0_IPU4'\0'
+	 */
+	uint8_t		system_version[SIZE_OF_SYSTEM_VERSION];
+	/**< specifies fw architecture version e.g. for BXT CSS3.0'\0' */
+	uint8_t		fw_arch_version[SIZE_OF_FW_ARCH_VERSION];
+	uint8_t		rsvd[2];
 } ia_css_header_component_t;
 
 /** Module Data Directory  = Directory Header + Directory Entry (0..n)
@@ -72,7 +88,8 @@ typedef struct {
 /** Module Date Directory Entry
  */
 typedef struct {
-	uint8_t		entry_name[SIZE_OF_COMPONENT_NAME]; /**< character string describing the component name */
+	/**< character string describing the component name */
+	uint8_t		entry_name[SIZE_OF_COMPONENT_NAME];
 	uint32_t	offset;
 	uint32_t	length;
 	uint32_t	rsvd; /**< Must be 0 */

@@ -39,8 +39,7 @@
 
  @return < 0 on error
  */
-extern int ia_css_process_acquire(
-	ia_css_process_t						*process);
+extern int ia_css_process_acquire(ia_css_process_t *process);
 
 /*! Release the resources specificed in process object
 
@@ -48,8 +47,7 @@ extern int ia_css_process_acquire(
 
  @return < 0 on error
  */
-extern int ia_css_process_release(
-	ia_css_process_t						*process);
+extern int ia_css_process_release(ia_css_process_t *process);
 
 
 #endif /* __IA_CSS_PSYS_PROCESS_PSYS_H_INCLUDED__ */

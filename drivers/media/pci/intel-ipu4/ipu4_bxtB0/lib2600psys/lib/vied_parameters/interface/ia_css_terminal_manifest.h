@@ -56,6 +56,13 @@ int ia_css_param_terminal_manifest_init(
 );
 
 ia_css_param_manifest_section_desc_t *
+ia_css_param_terminal_manifest_get_prm_sct_desc(
+	const ia_css_param_terminal_manifest_t *param_terminal_manifest,
+	const unsigned int section_index
+);
+
+/* Keep old function name before Windows/Android change name */
+ia_css_param_manifest_section_desc_t *
 ia_css_param_terminal_manifest_get_param_manifest_section_desc(
 	const ia_css_param_terminal_manifest_t *param_terminal_manifest,
 	const unsigned int section_index
@@ -70,6 +77,14 @@ int ia_css_spatial_param_terminal_manifest_init(
 	const uint16_t section_count
 );
 
+ia_css_frame_grid_param_manifest_section_desc_t *
+ia_css_spatial_param_terminal_manifest_get_frm_grid_prm_sct_desc(
+	const ia_css_spatial_param_terminal_manifest_t *
+		spatial_param_terminal_manifest,
+	const unsigned int section_index
+);
+
+/* Keep old function name before Windows/Android change name */
 ia_css_frame_grid_param_manifest_section_desc_t *
 ia_css_spatial_param_terminal_manifest_get_frame_grid_param_manifest_section_desc(
 	const ia_css_spatial_param_terminal_manifest_t *
@@ -104,6 +119,13 @@ int ia_css_program_terminal_manifest_init(
 	const uint16_t kernel_fragment_seq_info_section_count
 );
 
+ia_css_fragment_param_manifest_section_desc_t *
+ia_css_program_terminal_manifest_get_frgmnt_prm_sct_desc(
+	const ia_css_program_terminal_manifest_t *program_terminal_manifest,
+	const unsigned int section_index
+);
+
+/* Keep old function name before Windows/Android change name */
 ia_css_fragment_param_manifest_section_desc_t *
 ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc(
 	const ia_css_program_terminal_manifest_t *program_terminal_manifest,

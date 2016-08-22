@@ -47,7 +47,8 @@ int ia_css_pkg_dir_verify_header(const ia_css_pkg_dir_entry_t *pkg_dir_header)
 	verifjmpexit(pkg_dir_header != NULL);
 
 	return ((pkg_dir_header->address[0] == PKG_DIR_MAGIC_VAL_0)
-		&& (pkg_dir_header->address[1] == PKG_DIR_MAGIC_VAL_1)) ? 0 : -1;
+		&& (pkg_dir_header->address[1] == PKG_DIR_MAGIC_VAL_1)) ?
+		0 : -1;
 EXIT:
 	return -1;
 }

@@ -140,6 +140,15 @@ extern unsigned int ia_css_program_terminal_get_descriptor_size(
 );
 
 extern ia_css_fragment_param_section_desc_t *
+ia_css_program_terminal_get_frgmnt_prm_sct_desc(
+	const ia_css_program_terminal_t *program_terminal,
+	const unsigned int fragment_index,
+	const unsigned int section_index,
+	const unsigned int nof_fragment_param_sections
+);
+
+/* Keep old function name before Windows/Android change name */
+extern ia_css_fragment_param_section_desc_t *
 ia_css_program_terminal_get_fragment_param_section_desc(
 	const ia_css_program_terminal_t *program_terminal,
 	const unsigned int fragment_index,
@@ -147,6 +156,15 @@ ia_css_program_terminal_get_fragment_param_section_desc(
 	const unsigned int nof_fragment_param_sections
 );
 
+extern ia_css_kernel_fragment_sequencer_info_desc_t *
+ia_css_program_terminal_get_kernel_frgmnt_seq_info_desc(
+	const ia_css_program_terminal_t *program_terminal,
+	const unsigned int fragment_index,
+	const unsigned int info_index,
+	const unsigned int nof_kernel_fragment_sequencer_infos
+);
+
+/* Keep old function name before Windows/Android change name */
 extern ia_css_kernel_fragment_sequencer_info_desc_t *
 ia_css_program_terminal_get_kernel_fragment_sequencer_info_desc(
 	const ia_css_program_terminal_t *program_terminal,

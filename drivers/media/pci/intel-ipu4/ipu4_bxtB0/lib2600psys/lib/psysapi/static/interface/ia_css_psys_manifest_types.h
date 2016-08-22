@@ -19,7 +19,8 @@
 
 /** @file ia_css_psys_manifest_types.h
  *
- * The types belonging to the terminal/program/program group manifest static module
+ * The types belonging to the terminal/program/
+ * program group manifest static module
  */
 
 /* vied_nci_resource_id_t, vied_nci_resource_size_t */

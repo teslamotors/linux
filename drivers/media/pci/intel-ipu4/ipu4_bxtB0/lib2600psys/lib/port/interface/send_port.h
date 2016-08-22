@@ -29,7 +29,8 @@ struct port_env;
  * Open a send port on a queue. After the port is opened, tokens can be sent
  */
 void
-send_port_open(struct send_port *p, const struct sys_queue *q, const struct port_env *env);
+send_port_open(struct send_port *p, const struct sys_queue *q,
+		const struct port_env *env);
 
 /*
  * Determine how many tokens can be sent
@@ -38,7 +39,8 @@ unsigned int
 send_port_available(const struct send_port *p);
 
 /*
- * Send a token via a send port. The function returns the number of tokens that have been sent:
+ * Send a token via a send port. The function returns the number of
+ * tokens that have been sent:
  * 1: the token was accepted
  * 0: the token was not accepted (full queue)
  * The size of a token is determined at initialization.

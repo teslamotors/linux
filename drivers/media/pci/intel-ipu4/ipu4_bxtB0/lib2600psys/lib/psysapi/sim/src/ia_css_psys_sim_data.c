@@ -77,7 +77,8 @@ unsigned int ia_css_psys_ran_interval(const unsigned int lo,
 	unsigned int	tmp;
 	unsigned int	range = hi - lo;
 
-	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "ia_css_psys_ran_interval(): enter:\n");
+	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE,
+		"ia_css_psys_ran_interval(): enter:\n");
 
 	tmp = ia_css_psys_ran_int();
 

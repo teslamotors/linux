@@ -18,10 +18,8 @@
 #include "assert_support.h"
 #include "storage_class.h"
 
-
 STORAGE_CLASS_INLINE void __dummy_check_alignment(void)
 {
-
 	COMPILATION_ERROR_IF(
 		SIZE_OF_PARAM_TERMINAL_MANIFEST_STRUCT_IN_BITS !=
 			(CHAR_BIT * sizeof(ia_css_param_terminal_manifest_t)));
@@ -123,13 +121,37 @@ int ia_css_param_terminal_manifest_init(
 }
 
 ia_css_param_manifest_section_desc_t *
+ia_css_param_terminal_manifest_get_prm_sct_desc(
+	const ia_css_param_terminal_manifest_t *param_terminal_manifest,
+	const unsigned int section_index)
+{
+	ia_css_param_manifest_section_desc_t *param_manifest_section_base;
+	ia_css_param_manifest_section_desc_t *
+		param_manifest_section_desc = NULL;
+
+	verifjmpexit(param_terminal_manifest != NULL);
+
+	param_manifest_section_base =
+		(ia_css_param_manifest_section_desc_t *)
+		(((const char *)param_terminal_manifest)
+		+ param_terminal_manifest->param_manifest_section_desc_offset);
+
+	param_manifest_section_desc =
+		&(param_manifest_section_base[section_index]);
+
+EXIT:
+	return param_manifest_section_desc;
+}
+
+/* Keep old function name before Windows/Android change name */
+ia_css_param_manifest_section_desc_t *
 ia_css_param_terminal_manifest_get_param_manifest_section_desc(
 	const ia_css_param_terminal_manifest_t *param_terminal_manifest,
 	const unsigned int section_index)
 {
 	ia_css_param_manifest_section_desc_t *param_manifest_section_base;
-	ia_css_param_manifest_section_desc_t *param_manifest_section_desc =
-									NULL;
+	ia_css_param_manifest_section_desc_t *
+		param_manifest_section_desc = NULL;
 
 	verifjmpexit(param_terminal_manifest != NULL);
 
@@ -171,6 +193,32 @@ int ia_css_spatial_param_terminal_manifest_init(
 	return 0;
 }
 
+ia_css_frame_grid_param_manifest_section_desc_t *
+ia_css_spatial_param_terminal_manifest_get_frm_grid_prm_sct_desc(
+	const ia_css_spatial_param_terminal_manifest_t *
+		spatial_param_terminal_manifest,
+	const unsigned int section_index)
+{
+	ia_css_frame_grid_param_manifest_section_desc_t *
+		frame_param_manifest_section_base;
+	ia_css_frame_grid_param_manifest_section_desc_t *
+		frame_param_manifest_section_desc = NULL;
+
+	verifjmpexit(spatial_param_terminal_manifest != NULL);
+
+	frame_param_manifest_section_base =
+		(ia_css_frame_grid_param_manifest_section_desc_t *)
+		(((const char *)spatial_param_terminal_manifest) +
+			spatial_param_terminal_manifest->
+			frame_grid_param_manifest_section_desc_offset);
+	frame_param_manifest_section_desc =
+		&(frame_param_manifest_section_base[section_index]);
+
+EXIT:
+	return frame_param_manifest_section_desc;
+}
+
+/* Keep old function name before Windows/Android change name */
 ia_css_frame_grid_param_manifest_section_desc_t *
 ia_css_spatial_param_terminal_manifest_get_frame_grid_param_manifest_section_desc(
 	const ia_css_spatial_param_terminal_manifest_t *
@@ -282,13 +330,39 @@ int ia_css_program_terminal_manifest_init(
 }
 
 ia_css_fragment_param_manifest_section_desc_t *
+ia_css_program_terminal_manifest_get_frgmnt_prm_sct_desc(
+	const ia_css_program_terminal_manifest_t *program_terminal_manifest,
+	const unsigned int section_index)
+{
+	ia_css_fragment_param_manifest_section_desc_t *
+		fragment_param_manifest_section_base;
+	ia_css_fragment_param_manifest_section_desc_t *
+		fragment_param_manifest_section = NULL;
+
+	verifjmpexit(program_terminal_manifest != NULL);
+
+	fragment_param_manifest_section_base =
+		(ia_css_fragment_param_manifest_section_desc_t *)
+		(((const char *)program_terminal_manifest) +
+		program_terminal_manifest->
+		fragment_param_manifest_section_desc_offset);
+	fragment_param_manifest_section =
+		&(fragment_param_manifest_section_base[section_index]);
+
+EXIT:
+	return fragment_param_manifest_section;
+}
+
+/* Keep old function name before Windows/Android change name */
+ia_css_fragment_param_manifest_section_desc_t *
 ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc(
 	const ia_css_program_terminal_manifest_t *program_terminal_manifest,
 	const unsigned int section_index)
 {
-	ia_css_fragment_param_manifest_section_desc_t
-	*fragment_param_manifest_section_base,
-	*fragment_param_manifest_section = NULL;
+	ia_css_fragment_param_manifest_section_desc_t *
+		fragment_param_manifest_section_base;
+	ia_css_fragment_param_manifest_section_desc_t *
+		fragment_param_manifest_section = NULL;
 
 	verifjmpexit(program_terminal_manifest != NULL);
 

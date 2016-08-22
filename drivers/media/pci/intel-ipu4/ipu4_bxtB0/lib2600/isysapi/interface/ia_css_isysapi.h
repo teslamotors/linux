@@ -271,8 +271,10 @@ extern int ia_css_isys_device_release(
 /**
  * ia_css_isys_proxy_write_req() - issue a isys proxy write request
  * @context : device handle output parameter
- * Purpose: Issues a write request for the regions that are exposed by proxy interface
- * Can be called any time between ia_css_isys_device_open ia_css_isys_device_close
+ * Purpose: Issues a write request for the regions that are exposed
+ *	by proxy interface
+ * Can be called any time between ia_css_isys_device_open
+ * ia_css_isys_device_close
  *
  * Return:  int type error code (errno.h)
  */
@@ -282,7 +284,8 @@ extern int ia_css_isys_proxy_write_req(
 );
 
 /**
- * ia_css_isys_proxy_handle_write_response() - Handles isys proxy write request responses
+ * ia_css_isys_proxy_handle_write_response()
+ * - Handles isys proxy write request responses
  * @context : device handle output parameter
  * Purpose: Handling the responses that are created by FW upon the completion
  * proxy interface write request

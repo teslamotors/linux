@@ -249,13 +249,15 @@ extern bool ia_css_is_psys_event_queue_not_empty(
 	struct ia_css_syscom_context *context,
 	ia_css_psys_event_queue_ID_t id);
 
-/*!Indicate if the designated event queue in the Psys syscom object holds N items
+/*!Indicate if the designated event queue
+ * in the Psys syscom object holds N items
 
  @param	context[in]	Psys syscom object
  @param	id[in]		Psys syscom event queue ID
  @param	N[in]		Number of messages
 
- @return false if the event queue has insufficient messages available or on error
+ @return false if the event queue has insufficient messages
+	available or on error
 */
 extern bool ia_css_has_psys_event_queue_N_msgs(
 	struct ia_css_syscom_context *context,

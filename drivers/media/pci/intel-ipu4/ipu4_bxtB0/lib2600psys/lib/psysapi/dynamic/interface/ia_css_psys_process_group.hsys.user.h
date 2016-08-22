@@ -22,7 +22,7 @@
  * Define the methods on the process group object: Hsys user interface
  */
 
-#include <ia_css_program_group_param.h>		/* ia_css_program_group_param_t */
+#include <ia_css_program_group_param.h>	/* ia_css_program_group_param_t */
 
 #include <ia_css_psys_process_types.h>
 #include <ia_css_psys_manifest_types.h>
@@ -53,9 +53,9 @@ extern size_t ia_css_sizeof_process_group(
  @return NULL on error
  */
 extern ia_css_process_group_t *ia_css_process_group_create(
-	void									*process_grp_mem,
+	void					*process_grp_mem,
 	const ia_css_program_group_manifest_t	*manifest,
-	const ia_css_program_group_param_t		*param);
+	const ia_css_program_group_param_t	*param);
 
 /*! Destroy (the storage of) the process group object
 
@@ -74,8 +74,8 @@ extern ia_css_process_group_t *ia_css_process_group_destroy(
  @return < 0 on error
  */
 extern int ia_css_process_group_print(
-	const ia_css_process_group_t			*process_group,
-	void									*fid);
+	const ia_css_process_group_t		*process_group,
+	void					*fid);
 
 /*
  * Commands
@@ -105,9 +105,9 @@ extern int ia_css_process_group_submit(
  @return true if the process group is correct, false on error
  */
 extern bool ia_css_is_process_group_valid(
-	const ia_css_process_group_t			*process_group,
+	const ia_css_process_group_t		*process_group,
 	const ia_css_program_group_manifest_t	*manifest,
-	const ia_css_program_group_param_t		*param);
+	const ia_css_program_group_param_t	*param);
 
 /*! Boolean test if the process group preconditions for submit are satisfied
 
@@ -128,9 +128,10 @@ extern bool ia_css_can_process_group_submit(
  */
 extern uint32_t ia_css_process_group_compute_cycle_count(
 	const ia_css_program_group_manifest_t	*manifest,
-	const ia_css_program_group_param_t		*param);
+	const ia_css_program_group_param_t	*param);
 
-/*! Compute the number of processes required for executing the process group object
+/*! Compute the number of processes required for
+ * executing the process group object
 
  @param	manifest[in]			program group manifest
  @param	param[in]				program group parameters
@@ -141,7 +142,8 @@ extern uint8_t ia_css_process_group_compute_process_count(
 	const ia_css_program_group_manifest_t	*manifest,
 	const ia_css_program_group_param_t		*param);
 
-/*! Compute the number of terminals required for executing the process group object
+/*! Compute the number of terminals required for
+ * executing the process group object
 
  @param	manifest[in]			program group manifest
  @param	param[in]				program group parameters

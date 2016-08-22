@@ -53,9 +53,9 @@ extern size_t ia_css_sizeof_process(
  @return NULL on error
  */
 extern ia_css_process_t *ia_css_process_create(
-	void									*raw_mem,
-	const ia_css_program_manifest_t			*manifest,
-	const ia_css_program_param_t			*param);
+	void				*raw_mem,
+	const ia_css_program_manifest_t	*manifest,
+	const ia_css_program_param_t	*param);
 
 /*! Destroy (the storage of) the process object
 
@@ -64,7 +64,7 @@ extern ia_css_process_t *ia_css_process_create(
  @return NULL
  */
 extern ia_css_process_t *ia_css_process_destroy(
-	ia_css_process_t						*process);
+	ia_css_process_t	*process);
 
 /*
  * Access functions
@@ -78,7 +78,7 @@ extern ia_css_process_t *ia_css_process_destroy(
  @return < 0 on error
  */
 extern int ia_css_process_print(
-	const ia_css_process_t					*process,
-	void									*fid);
+	const ia_css_process_t	*process,
+	void			*fid);
 
 #endif /* __IA_CSS_PSYS_PROCESS_HSYS_USER_H_INCLUDED__ */

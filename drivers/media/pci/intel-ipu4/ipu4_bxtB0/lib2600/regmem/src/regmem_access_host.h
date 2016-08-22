@@ -25,18 +25,18 @@
 #include "regmem_const.h"
 #include <vied/vied_subsystem_access.h>
 
-STORAGE_CLASS_INLINE
-unsigned int
+STORAGE_CLASS_INLINE unsigned int
 regmem_load_32(unsigned int mem_addr, unsigned int reg, unsigned int ssid)
 {
 	return vied_subsystem_load_32(ssid, mem_addr + REGMEM_OFFSET + (4*reg));
 }
 
-STORAGE_CLASS_INLINE
-void
-regmem_store_32(unsigned int mem_addr, unsigned int reg, unsigned int value, unsigned int ssid)
+STORAGE_CLASS_INLINE void
+regmem_store_32(unsigned int mem_addr, unsigned int reg,
+	unsigned int value, unsigned int ssid)
 {
-	vied_subsystem_store_32(ssid, mem_addr + REGMEM_OFFSET + (4*reg), value);
+	vied_subsystem_store_32(ssid, mem_addr + REGMEM_OFFSET + (4*reg),
+		value);
 }
 
 #endif

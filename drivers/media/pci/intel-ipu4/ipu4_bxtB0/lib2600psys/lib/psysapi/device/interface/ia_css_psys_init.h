@@ -20,13 +20,18 @@
 /* Init parameters passed to the fw on device open (non secure mode) */
 typedef struct ia_css_psys_server_init {
 	/* These members are used in PSS only and will be removed */
-	unsigned long long	host_ddr_pkg_dir;		/* Shared memory host address of pkg dir */
-	vied_vaddress_t		ddr_pkg_dir_address;		/* Address of pkg_dir structure in DDR */
-	uint32_t		pkg_dir_size;			/* Size of Package dir in DDR */
+	/* Shared memory host address of pkg dir */
+	unsigned long long	host_ddr_pkg_dir;
+	/* Address of pkg_dir structure in DDR */
+	vied_vaddress_t		ddr_pkg_dir_address;
+	/* Size of Package dir in DDR */
+	uint32_t		pkg_dir_size;
 
 	/* Prefetch configiration */
-	uint32_t icache_prefetch_sp;  /* enable prefetching on SPC, SPP0 and SPP1 */
-	uint32_t icache_prefetch_isp; /* enable prefetching on ISP0..N */
+	/* enable prefetching on SPC, SPP0 and SPP1 */
+	uint32_t icache_prefetch_sp;
+	/* enable prefetching on ISP0..N */
+	uint32_t icache_prefetch_isp;
 } ia_css_psys_server_init_t;
 
 #endif /* __IA_CSS_PSYS_INIT_H_INCLUDED__  */

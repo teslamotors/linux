@@ -15,8 +15,10 @@
 
 #include <ia_css_psys_terminal_manifest.h>
 
-#include <ia_css_program_group_data.h>	/* Data object types on the terminals */
-#include <ia_css_kernel_bitmap.h>	/* for ia_css_kernel_bitmap_t, ia_css_kernel_bitmap_clear, ia_css_... */
+/* Data object types on the terminals */
+#include <ia_css_program_group_data.h>
+/* for ia_css_kernel_bitmap_t, ia_css_kernel_bitmap_clear, ia_css_... */
+#include <ia_css_kernel_bitmap.h>
 
 #include "ia_css_psys_program_group_private.h"
 #include "ia_css_terminal_manifest.h"
@@ -683,7 +685,7 @@ int ia_css_terminal_manifest_print(
 			"sections(manifest) = %d\n", (int)section_count);
 		for (i = 0; i < section_count; i++) {
 			const ia_css_param_manifest_section_desc_t *manifest =
-			ia_css_param_terminal_manifest_get_param_manifest_section_desc(
+		ia_css_param_terminal_manifest_get_param_manifest_section_desc(
 			pterminal_manifest, i);
 			verifjmpexit(manifest != NULL);
 			IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,

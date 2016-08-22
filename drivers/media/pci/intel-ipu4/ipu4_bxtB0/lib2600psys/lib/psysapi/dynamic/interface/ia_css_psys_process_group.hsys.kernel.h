@@ -86,8 +86,8 @@ extern uint16_t ia_css_process_group_get_fragment_limit(
  @return < 0 on error
  */
 extern int ia_css_process_group_set_fragment_limit(
-	ia_css_process_group_t					*process_group,
-	const uint16_t							fragment_limit);
+	ia_css_process_group_t				*process_group,
+	const uint16_t					fragment_limit);
 
 /*! Clear the fragment progress limit of the process group
 
@@ -208,12 +208,13 @@ extern int ia_css_process_group_disown(
  @return < 0 on error
  */
 extern int ia_css_process_group_attach_buffer(
-	ia_css_process_group_t					*process_group,
-	vied_vaddress_t							buffer,
-	const ia_css_buffer_state_t				buffer_state,
-	const unsigned int						terminal_index);
+	ia_css_process_group_t			*process_group,
+	vied_vaddress_t				buffer,
+	const ia_css_buffer_state_t		buffer_state,
+	const unsigned int			terminal_index);
 
-/*! Get (unregister) the data buffer on the indexed terminal of the process group
+/*! Get (unregister) the data buffer on the indexed terminal of
+ * the process group
 
  @param	process_group[in]		process group object
  @param	terminal_index[in]		index of the terminal
@@ -226,8 +227,8 @@ extern int ia_css_process_group_attach_buffer(
  @return VIED_NULL on error
  */
 extern vied_vaddress_t ia_css_process_group_detach_buffer(
-	ia_css_process_group_t					*process_group,
-	const unsigned int						terminal_index);
+	ia_css_process_group_t			*process_group,
+	const unsigned int			terminal_index);
 
 /*! Set (register) a data buffer to the indexed terminal in the process group
 
@@ -245,12 +246,13 @@ extern vied_vaddress_t ia_css_process_group_detach_buffer(
  @return < 0 on error
  */
 extern int ia_css_process_group_attach_stream(
-	ia_css_process_group_t					*process_group,
-	uint32_t								stream,
-	const ia_css_buffer_state_t				buffer_state,
-	const unsigned int						terminal_index);
+	ia_css_process_group_t			*process_group,
+	uint32_t				stream,
+	const ia_css_buffer_state_t		buffer_state,
+	const unsigned int			terminal_index);
 
-/*! Get (unregister) the stream handle on the indexed terminal of the process group
+/*! Get (unregister) the stream handle on the indexed terminal of
+ * the process group
 
  @param	process_group[in]		process group object
  @param	terminal_index[in]		index of the terminal
@@ -263,14 +265,15 @@ extern int ia_css_process_group_attach_stream(
  @return 0 on error
  */
 extern uint32_t ia_css_process_group_detach_stream(
-	ia_css_process_group_t					*process_group,
-	const unsigned int						terminal_index);
+	ia_css_process_group_t			*process_group,
+	const unsigned int			terminal_index);
 
 /*
  * Sequencing resources
  */
 
-/*! Set a(n artificial) blocking resource (barrier) in the process group resource map
+/*! Set a(n artificial) blocking resource (barrier) in
+ * the process group resource map
 
  @param	process_group[in]		process group object
  @param	barrier_index[in]		index of the barrier
@@ -284,7 +287,8 @@ extern int ia_css_process_group_set_barrier(
 	ia_css_process_group_t					*process_group,
 	const vied_nci_barrier_ID_t				barrier_index);
 
-/*! Clear a previously set blocking resource (barrier) in the process group resource map
+/*! Clear a previously set blocking resource (barrier) in
+ * the process group resource map
 
  @param	process_group[in]		process group object
  @param	barrier_index[in]		index of the barrier

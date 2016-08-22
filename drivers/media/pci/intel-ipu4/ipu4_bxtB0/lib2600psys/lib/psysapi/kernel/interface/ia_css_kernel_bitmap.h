@@ -26,8 +26,8 @@
 #include <type_support.h>
 
 
-#define IA_CSS_KERNEL_BITMAP_BITS				64
-typedef uint64_t								ia_css_kernel_bitmap_t;
+#define IA_CSS_KERNEL_BITMAP_BITS 64
+typedef uint64_t ia_css_kernel_bitmap_t;
 
 
 /*! Print the bits of a kernel bitmap
@@ -35,8 +35,8 @@ typedef uint64_t								ia_css_kernel_bitmap_t;
  @return < 0 on error
  */
 extern int ia_css_kernel_bitmap_print(
-	const ia_css_kernel_bitmap_t			bitmap,
-	void									*fid);
+	const ia_css_kernel_bitmap_t	bitmap,
+	void				*fid);
 
 /*! Create an empty kernel bitmap
 
@@ -129,7 +129,8 @@ extern ia_css_kernel_bitmap_t ia_css_kernel_bitmap_shift(
 extern bool ia_css_is_kernel_bitmap_onehot(
 	const ia_css_kernel_bitmap_t			bitmap);
 
-/*! Create the union of a kernel bitmap with a onehot bitmap with a bit set at index
+/*! Create the union of a kernel bitmap with a onehot bitmap
+ * with a bit set at index
 
  @return bitmap[index] |= 1
  */

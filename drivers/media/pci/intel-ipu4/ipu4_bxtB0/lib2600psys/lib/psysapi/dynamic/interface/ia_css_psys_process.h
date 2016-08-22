@@ -228,7 +228,7 @@ extern uint8_t ia_css_process_get_terminal_dependency(
 extern ia_css_kernel_bitmap_t ia_css_process_get_kernel_bitmap(
 	const ia_css_process_t *process);
 
-/*! Get the device channel id-n resource allocation offset of the the process object
+/*! Get the device channel id-n resource allocation offset of the process object
 
  @param	process[in]	process object
  @param	dev_chn_id[in]	channel id
@@ -251,7 +251,8 @@ vied_nci_mem_ID_t ia_css_process_get_ext_mem_id(
 	const vied_nci_mem_type_ID_t mem_type);
 
 
-/*! Sets the device channel id-n resource allocation offset of the the process object
+/*! Sets the device channel id-n resource allocation offset of
+ * the process object
 
  @param	process[in]	process object
  @param	dev_chn_id[in]	channel id

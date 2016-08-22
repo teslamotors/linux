@@ -36,8 +36,7 @@
 
  @return < 0 on error
  */
-extern int ia_css_process_clear_all(
-	ia_css_process_t						*process);
+extern int ia_css_process_clear_all(ia_css_process_t *process);
 
 /*! Set the cell ID resource specification
 
@@ -56,8 +55,7 @@ extern int ia_css_process_set_cell(
 
  @return < 0 on error
  */
-extern int ia_css_process_clear_cell(
-	ia_css_process_t						*process);
+extern int ia_css_process_clear_cell(ia_css_process_t *process);
 
 /*! Set the memory resource (offset) specification for a memory
  that belongs to the cell that is assigned to the process
@@ -71,9 +69,9 @@ extern int ia_css_process_clear_cell(
  @return < 0 on error
  */
 extern int ia_css_process_set_int_mem(
-	ia_css_process_t						*process,
-	const	vied_nci_mem_type_ID_t				mem_type_id,
-	const vied_nci_resource_size_t			offset);
+	ia_css_process_t		*process,
+	const	vied_nci_mem_type_ID_t	mem_type_id,
+	const vied_nci_resource_size_t	offset);
 
 /*! Clear the memory resource (offset) specification for a memory
  type that belongs to the cell that is assigned to the process
@@ -86,8 +84,8 @@ extern int ia_css_process_set_int_mem(
  @return < 0 on error
  */
 extern int ia_css_process_clear_int_mem(
-	ia_css_process_t						*process,
-	const vied_nci_mem_type_ID_t			mem_type_id);
+	ia_css_process_t		*process,
+	const vied_nci_mem_type_ID_t	mem_type_id);
 
 /*! Set the memory resource (offset) specification for a memory
  that does not belong to the cell that is assigned to the process
@@ -101,9 +99,9 @@ extern int ia_css_process_clear_int_mem(
  @return < 0 on error
  */
 extern int ia_css_process_set_ext_mem(
-	ia_css_process_t						*process,
-	const vied_nci_mem_ID_t					mem_id,
-	const vied_nci_resource_size_t			offset);
+	ia_css_process_t		*process,
+	const vied_nci_mem_ID_t		mem_id,
+	const vied_nci_resource_size_t	offset);
 
 /*! Clear the memory resource (offset) specification for a memory
  type that does not belong to the cell that is assigned to the process
@@ -116,8 +114,8 @@ extern int ia_css_process_set_ext_mem(
  @return < 0 on error
  */
 extern int ia_css_process_clear_ext_mem(
-	ia_css_process_t						*process,
-	const vied_nci_mem_type_ID_t			mem_type_id);
+	ia_css_process_t		*process,
+	const vied_nci_mem_type_ID_t	mem_type_id);
 
 /*! Set a device channel resource (offset) specification
 
@@ -128,9 +126,9 @@ extern int ia_css_process_clear_ext_mem(
  @return < 0 on error
  */
 extern int ia_css_process_set_dev_chn(
-	ia_css_process_t						*process,
-	const vied_nci_dev_chn_ID_t				dev_chn_id,
-	const vied_nci_resource_size_t			offset);
+	ia_css_process_t		*process,
+	const vied_nci_dev_chn_ID_t	dev_chn_id,
+	const vied_nci_resource_size_t	offset);
 
 /*! Clear a device channel resource (offset) specification
 
@@ -140,7 +138,7 @@ extern int ia_css_process_set_dev_chn(
  @return < 0 on error
  */
 extern int ia_css_process_clear_dev_chn(
-	ia_css_process_t						*process,
-	const vied_nci_dev_chn_ID_t				dev_chn_id);
+	ia_css_process_t		*process,
+	const vied_nci_dev_chn_ID_t	dev_chn_id);
 
 #endif /* __IA_CSS_PSYS_PROCESS_HSYS_KERNEL_H_INCLUDED__ */

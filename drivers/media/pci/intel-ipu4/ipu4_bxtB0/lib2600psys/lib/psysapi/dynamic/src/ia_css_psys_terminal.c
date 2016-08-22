@@ -282,7 +282,7 @@ ia_css_terminal_t *ia_css_terminal_create(
 					pterminal, i);
 			const ia_css_param_manifest_section_desc_t *
 				man_section =
-				ia_css_param_terminal_manifest_get_param_manifest_section_desc(
+		ia_css_param_terminal_manifest_get_param_manifest_section_desc(
 			(const ia_css_param_terminal_manifest_t *)manifest, i);
 
 			verifjmpexit(man_section != NULL);
@@ -328,11 +328,11 @@ ia_css_terminal_t *ia_css_terminal_create(
 		for (i = 0; i < fragment_count; i++) {
 			for (j = 0; j < section_count; j++) {
 				ia_css_fragment_param_section_desc_t *section =
-				ia_css_program_terminal_get_fragment_param_section_desc(
+			ia_css_program_terminal_get_fragment_param_section_desc(
 					prog_terminal, i, j, section_count);
 			const ia_css_fragment_param_manifest_section_desc_t *
 			man_section =
-			ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc
+ia_css_program_terminal_manifest_get_fragment_param_manifest_section_desc
 				(prog_terminal_man, j);
 
 				verifjmpexit(man_section != NULL);
@@ -344,7 +344,7 @@ ia_css_terminal_t *ia_css_terminal_create(
 			}
 
 			sequencer_info_desc_base =
-			ia_css_program_terminal_get_kernel_fragment_sequencer_info_desc(
+		ia_css_program_terminal_get_kernel_fragment_sequencer_info_desc(
 					prog_terminal, i, 0,
 					manifest_info_count);
 
@@ -1394,7 +1394,7 @@ STORAGE_CLASS_INLINE bool ia_css_is_program_terminal_valid(
 			man_seq_info_desc;
 
 			term_seq_info_desc =
-			ia_css_program_terminal_get_kernel_fragment_sequencer_info_desc(
+		ia_css_program_terminal_get_kernel_fragment_sequencer_info_desc(
 					prog_term, frag_idx, seq_idx,
 					frag_seq_info_count);
 			verifjmpexit(term_seq_info_desc != NULL);

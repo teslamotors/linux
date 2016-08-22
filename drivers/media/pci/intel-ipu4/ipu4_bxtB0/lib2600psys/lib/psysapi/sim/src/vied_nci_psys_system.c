@@ -364,7 +364,8 @@ vied_nci_mem_type_ID_t vied_nci_cell_get_mem_type(
 
 	if ((cell_id < VIED_NCI_N_CELL_ID) &&
 	    (mem_index < VIED_NCI_N_MEM_TYPE_ID)) {
-		mem_type = vied_nci_cell_mem_type[vied_nci_cell_get_type(cell_id)][mem_index];
+		mem_type = vied_nci_cell_mem_type[
+				vied_nci_cell_get_type(cell_id)][mem_index];
 	}
 
 	return mem_type;

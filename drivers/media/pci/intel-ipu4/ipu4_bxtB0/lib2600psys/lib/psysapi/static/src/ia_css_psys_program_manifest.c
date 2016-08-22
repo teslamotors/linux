@@ -15,7 +15,8 @@
 
 #include <ia_css_psys_program_manifest.h>
 #include <ia_css_psys_program_group_manifest.h>
-#include <ia_css_kernel_bitmap.h> /* for ia_css_kernel_bitmap_t, ia_css_kernel_bitmap_print */
+/* for ia_css_kernel_bitmap_t, ia_css_kernel_bitmap_print */
+#include <ia_css_kernel_bitmap.h>
 
 #include <vied_nci_psys_system_global.h>
 #include "ia_css_psys_program_group_private.h"

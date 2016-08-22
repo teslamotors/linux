@@ -30,9 +30,11 @@ unsigned int
 sys_queue_buf_size(unsigned int size, unsigned int token_size);
 
 /*
- * initialize a queue that can hold at least 'size' tokens of 'token_size' bytes.
+ * initialize a queue that can hold at least 'size' tokens of
+ * 'token_size' bytes.
  */
 void
-sys_queue_init(struct sys_queue *q, unsigned int size, unsigned int token_size, struct sys_queue_res *res);
+sys_queue_init(struct sys_queue *q, unsigned int size,
+		unsigned int token_size, struct sys_queue_res *res);
 
 #endif /*__QUEUE_H__*/

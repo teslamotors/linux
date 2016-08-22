@@ -25,8 +25,9 @@ const ia_css_pkg_dir_entry_t *ia_css_pkg_dir_get_entry(
 	uint32_t index
 );
 
-/* User is expected to call the verify function manually, other functions do not call it
-   internally */
+/* User is expected to call the verify function manually,
+ * other functions do not call it internally
+ */
 IA_CSS_PKG_DIR_STORAGE_CLASS_H
 int ia_css_pkg_dir_verify_header(
 	const ia_css_pkg_dir_entry_t *pkg_dir_header

@@ -50,7 +50,8 @@ ia_css_cpu_mem_protect(void *ptr, unsigned int size, int prot)
 STORAGE_CLASS_INLINE void*
 ia_css_cpu_mem_copy(void *dst, const void *src, unsigned int size)
 {
-	return memcpy(dst, src, size); /* available in kernel in linux/string.h */
+	/* available in kernel in linux/string.h */
+	return memcpy(dst, src, size);
 }
 
 STORAGE_CLASS_INLINE void*

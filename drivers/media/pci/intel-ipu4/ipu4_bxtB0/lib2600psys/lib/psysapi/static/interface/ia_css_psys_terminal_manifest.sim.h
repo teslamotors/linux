@@ -29,7 +29,7 @@
 
 /*! Create (the storage for) the terminal manifest object
 
- @param	terminal_type[in]		type of the terminal manifest {parameter, data}
+ @param	terminal_type[in]	type of the terminal manifest {parameter, data}
 
  @return NULL on error
  */

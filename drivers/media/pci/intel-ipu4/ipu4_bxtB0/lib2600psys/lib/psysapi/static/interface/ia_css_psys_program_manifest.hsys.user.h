@@ -32,7 +32,7 @@
  @return < 0 on error
  */
 extern int ia_css_program_manifest_print(
-	const ia_css_program_manifest_t			*manifest,
-	void									*fid);
+	const ia_css_program_manifest_t	*manifest,
+	void				*fid);
 
 #endif /* __IA_CSS_PSYS_PROGRAM_MANIFEST_HSYS_USER_H_INCLUDED__ */

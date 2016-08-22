@@ -16,7 +16,8 @@
 #define IA_CSS_CLIENT_PKG_H_
 
 #include "type_support.h"
-#include "ia_css_client_pkg_types.h"  /* for ia_css_client_pkg_header_s (ptr only), ia_css_client_pkg_t */
+/* for ia_css_client_pkg_header_s (ptr only), ia_css_client_pkg_t */
+#include "ia_css_client_pkg_types.h"
 
 int ia_css_client_pkg_get_pg_manifest_offset_size(
 	const struct ia_css_client_pkg_header_s *client_pkg_header,

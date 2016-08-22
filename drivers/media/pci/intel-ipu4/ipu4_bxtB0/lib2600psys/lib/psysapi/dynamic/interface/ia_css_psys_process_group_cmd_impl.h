@@ -36,41 +36,65 @@
 	+ (N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT * 8))
 
 struct ia_css_process_group_s {
-	uint64_t							token;											/**< User (callback) token / user context reference, zero is an error value */
-	uint64_t							private_token;									/**< private token / context reference, zero is an error value */
-	uint32_t							size;											/**< Size of this structure */
-	uint32_t							pg_load_start_ts;								/**< The timestamp when PG load starts */
-	uint32_t							pg_load_cycles;									/**< PG load time in cycles */
-	uint32_t							pg_init_cycles;									/**< PG init time in cycles */
-	uint32_t							pg_processing_cycles;								/**< PG processing time in cycles */
-	ia_css_program_group_ID_t			ID;												/**< Referal ID to program group FW */
-	ia_css_process_group_state_t		state;											/**< State of the process group FSM */
-	vied_vaddress_t						ipu_virtual_address;							/**< Virtual address of process group in IPU */
-	vied_nci_resource_bitmap_t			resource_bitmap;								/**< Bitmap of the compute resources used by the process group  */
-	uint16_t							fragment_count;									/**< Number of fragments offered on each terminal */
-	uint16_t							fragment_state;									/**< Current fragment of processing */
-	uint16_t							fragment_limit;									/**< Watermark to control fragment processing */
-	uint16_t							processes_offset;								/**< Array[process_count] of process addresses in this process group */
-	uint16_t							terminals_offset;								/**< Array[terminal_count] of terminal addresses on this process group */
-	uint8_t								process_count;									/**< Parameter dependent number of processes in this process group */
-	uint8_t								terminal_count;									/**< Parameter dependent number of terminals on this process group */
-	uint8_t								subgraph_count;									/**< Parameter dependent number of independent subgraphs in this process group */
-	uint8_t								padding[N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT];									/**< Padding for 64bit alignment */
+	/**< User (callback) token / user context reference,
+	 * zero is an error value
+	 */
+	uint64_t token;
+	/**< private token / context reference, zero is an error value */
+	uint64_t private_token;
+	/**< Size of this structure */
+	uint32_t size;
+	/**< The timestamp when PG load starts */
+	uint32_t pg_load_start_ts;
+	/**< PG load time in cycles */
+	uint32_t pg_load_cycles;
+	/**< PG init time in cycles */
+	uint32_t pg_init_cycles;
+	/**< PG processing time in cycles */
+	uint32_t pg_processing_cycles;
+	/**< Referral ID to program group FW */
+	ia_css_program_group_ID_t ID;
+	/**< State of the process group FSM */
+	ia_css_process_group_state_t state;
+	/**< Virtual address of process group in IPU */
+	vied_vaddress_t ipu_virtual_address;
+	/**< Bitmap of the compute resources used by the process group  */
+	vied_nci_resource_bitmap_t resource_bitmap;
+	/**< Number of fragments offered on each terminal */
+	uint16_t fragment_count;
+	/**< Current fragment of processing */
+	uint16_t fragment_state;
+	/**< Watermark to control fragment processing */
+	uint16_t fragment_limit;
+	/*< Array[process_count] of process addresses in this process group */
+	uint16_t processes_offset;
+	/*< Array[terminal_count] of terminal addresses on this process group */
+	uint16_t terminals_offset;
+	/**< Parameter dependent number of processes in this process group */
+	uint8_t process_count;
+	/**< Parameter dependent number of terminals on this process group */
+	uint8_t terminal_count;
+	/**< Parameter dependent number of independent subgraphs in
+	 * this process group
+	 */
+	uint8_t subgraph_count;
+	/**< Padding for 64bit alignment */
+	uint8_t padding[N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT];
 };
 
 /*! Callback after process group is created. Implementations can provide
  * suitable actions needed when process group is created.
 
- @param	process_group[in]				process group object
+ @param	process_group[in]			process group object
  @param	program_group_manifest[in]		program group manifest
  @param	program_group_param[in]			program group parameters
 
  @return 0 on success and non-zero on failure
  */
 extern int ia_css_process_group_on_create(
-	ia_css_process_group_t					*process_group,
+	ia_css_process_group_t			*process_group,
 	const ia_css_program_group_manifest_t	*program_group_manifest,
-	const ia_css_program_group_param_t		*program_group_param);
+	const ia_css_program_group_param_t	*program_group_param);
 
 /*! Callback before process group is about to be destoyed. Any implementation
  * specific cleanups can be done here.
@@ -94,7 +118,7 @@ extern int ia_css_process_group_on_destroy(
  @return < 0 on error
  */
 extern int ia_css_process_group_exec_cmd(
-	ia_css_process_group_t					*process_group,
+	ia_css_process_group_t				*process_group,
 	const ia_css_process_group_cmd_t		cmd);
 
 

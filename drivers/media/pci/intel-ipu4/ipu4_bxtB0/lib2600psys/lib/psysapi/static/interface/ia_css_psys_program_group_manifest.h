@@ -145,6 +145,12 @@ extern void *ia_css_program_group_manifest_get_private_data(
  @return program manifest, NULL on invalid arguments
  */
 extern ia_css_program_manifest_t *
+ia_css_program_group_manifest_get_prgrm_mnfst(
+	const ia_css_program_group_manifest_t *manifest,
+	const unsigned int program_index);
+
+/* Keep old function name before Windows/Android change name */
+extern ia_css_program_manifest_t *
 ia_css_program_group_manifest_get_program_manifest(
 	const ia_css_program_group_manifest_t *manifest,
 	const unsigned int program_index);
@@ -157,6 +163,12 @@ ia_css_program_group_manifest_get_program_manifest(
 
  @return terminal manifest, NULL on invalid arguments
  */
+extern ia_css_terminal_manifest_t *
+ia_css_program_group_manifest_get_term_mnfst(
+	const ia_css_program_group_manifest_t *manifest,
+	const unsigned int terminal_index);
+
+/* Keep old function name before Windows/Android change name */
 extern ia_css_terminal_manifest_t *
 ia_css_program_group_manifest_get_terminal_manifest(
 	const ia_css_program_group_manifest_t *manifest,

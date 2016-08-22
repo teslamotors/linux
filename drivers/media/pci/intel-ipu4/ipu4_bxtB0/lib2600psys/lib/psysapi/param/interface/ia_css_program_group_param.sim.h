@@ -37,7 +37,7 @@
  @return NULL on error
  */
 extern ia_css_program_group_param_t *ia_css_program_group_param_create(
-	const unsigned int						specification,
+	const unsigned int			specification,
 	const ia_css_program_group_manifest_t	*manifest);
 
 /*! Destroy the program group parameter object
@@ -49,31 +49,34 @@ extern ia_css_program_group_param_t *ia_css_program_group_param_create(
 extern ia_css_program_group_param_t *ia_css_program_group_param_destroy(
 	ia_css_program_group_param_t			*param);
 
-/*! Compute the size of storage required for allocating the program group parameter object
+/*! Compute the size of storage required for allocating
+ * the program group parameter object
 
- @param	program_count[in]			Number of programs in the process group
- @param	terminal_count[in]			Number of terminals on the process group
- @param	fragment_count[in]			Number of fragments on the terminals of the process group
+ @param	program_count[in]	Number of programs in the process group
+ @param	terminal_count[in]	Number of terminals on the process group
+ @param	fragment_count[in]	Number of fragments on the terminals of
+				the process group
 
  @return 0 on error
  */
 size_t ia_css_sizeof_program_group_param(
-	const uint8_t							program_count,
-	const uint8_t							terminal_count,
-	const uint16_t							fragment_count);
+	const uint8_t	program_count,
+	const uint8_t	terminal_count,
+	const uint16_t	fragment_count);
 
 /*! Allocate (the store of) a program group parameter object
 
- @param	program_count[in]			Number of programs in the process group
- @param	terminal_count[in]			Number of terminals on the process group
- @param	fragment_count[in]			Number of fragments on the terminals of the process group
+ @param	program_count[in]	Number of programs in the process group
+ @param	terminal_count[in]	Number of terminals on the process group
+ @param	fragment_count[in]	Number of fragments on the terminals of
+				the process group
 
  @return program group parameter pointer, NULL on error
  */
 extern ia_css_program_group_param_t *ia_css_program_group_param_alloc(
-	const uint8_t							program_count,
-	const uint8_t							terminal_count,
-	const uint16_t							fragment_count);
+	const uint8_t	program_count,
+	const uint8_t	terminal_count,
+	const uint16_t	fragment_count);
 
 /*! Free (the store of) a program group parameter object
 
@@ -86,14 +89,14 @@ extern ia_css_program_group_param_t *ia_css_program_group_param_free(
 
 /*! Print the program group parameter object to file/stream
 
- @param	param[in]					program group parameter object
- @param	fid[out]					file/stream handle
+ @param	param[in]	program group parameter object
+ @param	fid[out]	file/stream handle
 
  @return < 0 on error
  */
 extern int ia_css_program_group_param_print(
-	const ia_css_program_group_param_t		*param,
-	void									*fid);
+	const ia_css_program_group_param_t	*param,
+	void					*fid);
 
 /*! Allocate (the store of) a program parameter object
 
@@ -103,7 +106,7 @@ extern ia_css_program_param_t *ia_css_program_param_alloc(void);
 
 /*! Free (the store of) a program parameter object
 
- @param	param[in]					program parameter object
+ @param	param[in]	program parameter object
 
  @return NULL
  */
@@ -118,8 +121,8 @@ extern ia_css_program_param_t *ia_css_program_param_free(
  @return < 0 on error
  */
 extern int ia_css_program_param_print(
-	const ia_css_program_param_t			*param,
-	void									*fid);
+	const ia_css_program_param_t	*param,
+	void				*fid);
 
 /*! Allocate (the store of) a terminal parameter object
 
@@ -129,7 +132,7 @@ extern ia_css_terminal_param_t *ia_css_terminal_param_alloc(void);
 
 /*! Free (the store of) a terminal parameter object
 
- @param	param[in]					terminal parameter object
+ @param	param[in]	terminal parameter object
 
  @return NULL
  */
@@ -138,13 +141,13 @@ extern ia_css_terminal_param_t *ia_css_terminal_param_free(
 
 /*! Print the terminal parameter object to file/stream
 
- @param	param[in]					terminal parameter object
- @param	fid[out]					file/stream handle
+ @param	param[in]	terminal parameter object
+ @param	fid[out]	file/stream handle
 
  @return < 0 on error
  */
 extern int ia_css_terminal_param_print(
-	const ia_css_terminal_param_t			*param,
-	void									*fid);
+	const ia_css_terminal_param_t	*param,
+	void				*fid);
 
 #endif /* __IA_CSS_PROGRAM_GROUP_PARAM_SIM_H_INCLUDED__  */

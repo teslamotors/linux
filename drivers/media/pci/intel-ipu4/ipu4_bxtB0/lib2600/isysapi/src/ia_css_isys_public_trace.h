@@ -23,24 +23,32 @@
 
 #include "ia_css_isys_private.h"
 /**
- * print_handle_context - formatted print function for struct ia_css_isys_context *ctx variable
+ * print_handle_context - formatted print function for
+ * struct ia_css_isys_context *ctx variable
  */
 int print_handle_context(struct ia_css_isys_context *ctx);
 
 /**
- * print_device_config_data - formatted print function for struct ia_css_isys_device_cfg_data *config variable
+ * print_device_config_data - formatted print function for
+ * struct ia_css_isys_device_cfg_data *config variable
  */
 int print_device_config_data(const struct ia_css_isys_device_cfg_data *config);
 /**
- * print_stream_config_data - formatted print function for ia_css_isys_stream_cfg_data stream_cfg variable
+ * print_stream_config_data - formatted print function for
+ * ia_css_isys_stream_cfg_data stream_cfg variable
  */
-int print_stream_config_data(const struct ia_css_isys_stream_cfg_data *stream_cfg);
+int print_stream_config_data(
+	const struct ia_css_isys_stream_cfg_data *stream_cfg);
 /**
- * print_isys_frame_buff_set - formatted print function for struct ia_css_isys_frame_buff_set *next_frame variable
+ * print_isys_frame_buff_set - formatted print function for
+ * struct ia_css_isys_frame_buff_set *next_frame variable
  */
-int print_isys_frame_buff_set(const struct ia_css_isys_frame_buff_set *next_frame, const unsigned int nof_output_pins);
+int print_isys_frame_buff_set(
+	const struct ia_css_isys_frame_buff_set *next_frame,
+	const unsigned int nof_output_pins);
 /**
- * print_isys_isys_resp_info - formatted print function for struct ia_css_isys_frame_buff_set *next_frame variable
+ * print_isys_isys_resp_info - formatted print function for
+ * struct ia_css_isys_frame_buff_set *next_frame variable
  */
 int print_isys_resp_info(struct ia_css_isys_resp_info *received_response);
 

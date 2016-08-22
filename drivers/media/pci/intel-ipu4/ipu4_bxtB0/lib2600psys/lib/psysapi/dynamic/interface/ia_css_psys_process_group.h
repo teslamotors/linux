@@ -19,7 +19,8 @@
 
 /** @file ia_css_psys_process_group.h
  *
- * Define the methods on the process object that are not part of a single interface
+ * Define the methods on the process object that are not part of
+ * a single interface
  */
 
 #include <ia_css_psys_process_types.h>

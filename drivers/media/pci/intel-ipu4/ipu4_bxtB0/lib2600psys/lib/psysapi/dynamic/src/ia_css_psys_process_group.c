@@ -203,7 +203,7 @@ static bool ia_css_process_group_is_terminal_enabled(
 		for (section = 0; section < param_term_man->
 				param_manifest_section_desc_count; section++) {
 			section_desc =
-				ia_css_param_terminal_manifest_get_param_manifest_section_desc(
+		ia_css_param_terminal_manifest_get_param_manifest_section_desc(
 						param_term_man, section);
 			verifjmpexit(section_desc != NULL);
 			term_kernel_bitmap = ia_css_kernel_bitmap_set(
@@ -268,7 +268,7 @@ size_t ia_css_sizeof_process_group(
 	for (i = 0; i < (int)ia_css_program_group_manifest_get_program_count(
 				manifest); i++) {
 		ia_css_program_manifest_t *program_manifest =
-			ia_css_program_group_manifest_get_program_manifest(manifest, i);
+		ia_css_program_group_manifest_get_program_manifest(manifest, i);
 		ia_css_program_param_t *program_param =
 			ia_css_program_group_param_get_program_param(param, i);
 
@@ -469,7 +469,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 					program_manifest, prog_dep_index);
 				const ia_css_program_manifest_t *
 				dep_prg_manifest =
-				ia_css_program_group_manifest_get_program_manifest(
+			ia_css_program_group_manifest_get_program_manifest(
 					manifest, dep_prog_idx);
 				ia_css_program_ID_t id =
 				ia_css_program_manifest_get_program_ID(
@@ -1212,7 +1212,7 @@ bool ia_css_is_process_group_valid(
 			ia_css_program_manifest_t *p_manifest = NULL;
 
 			p_manifest =
-				ia_css_program_group_manifest_get_program_manifest(
+			ia_css_program_group_manifest_get_program_manifest(
 						pg_manifest, prog_idx);
 			if (prog_id ==
 				ia_css_program_manifest_get_program_ID(
