@@ -13,12 +13,13 @@
  */
 
 #include <linux/device.h>
+#include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
-#include <linux/gpio.h>
-#include <linux/workqueue.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
+#include <linux/workqueue.h>
+
 #include "crlmodule.h"
 #include "crlmodule-regs.h"
 
@@ -46,29 +47,19 @@
 #define ADV7481_V_LOCKED_A_ST 0x02
 #define ADV7481_DE_REGEN_A_ST 0x01
 
-/*
- * Prevents executing another hot plug reset until current one will finish
- */
-static unsigned int in_hot_plug_reset;
 
-/*
- * When hot plug reset is executed, HPA bit is deasserted for 2 seconds.
- * This timer is used to assert HPA bit again after that time without blocking.
- */
-static struct timer_list hot_plug_reset_timer;
-static struct workqueue_struct *irq_workqueue;
-typedef struct {
-	struct work_struct work;
-	struct i2c_client *client;
-} irq_task_t;
+struct crl_adv7481_hdmi {
+	unsigned int in_hot_plug_reset;
+	int hdmi_res_width;
+	int hdmi_res_height;
+	int hdmi_res_interlaced;
+	int hdmi_cable_connected;
+	struct delayed_work work;
+	struct mutex hot_plug_reset_lock;
+	struct i2c_client *client
+};
 
 
-static int hdmi_res_width;
-static int hdmi_res_height;
-static int hdmi_res_interlaced;
-static int hdmi_cable_connected;
-
-static DEFINE_MUTEX(hot_plug_reset_lock);
 
 
 
@@ -116,7 +107,8 @@ static int adv_i2c_write(struct i2c_client *client,
 	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
 
-	return crlmodule_write_reg(sensor, i2c_addr, reg, 1, 0xFF, val);
+	return crlmodule_write_reg(sensor, i2c_addr, reg,
+					 CRL_REG_LEN_08BIT, 0xFF, val);
 }
 
 static int adv_i2c_read(struct i2c_client *client,
@@ -284,27 +276,13 @@ static DEVICE_ATTR(bksv, S_IWUSR | S_IWGRP, NULL, adv_bksv_store);
  */
 static void adv_hpa_assert(struct work_struct *work)
 {
-	irq_task_t *task = (irq_task_t *) work;
-	struct i2c_client *client = task->client;
+
+	struct crl_adv7481_hdmi *adv7481_hdmi
+		 = container_of(work, struct crl_adv7481_hdmi, work.work);
+	struct i2c_client *client = adv7481_hdmi->client;
 
 	adv_i2c_write(client, 0x68, 0xF8, 0x01);
-	in_hot_plug_reset = 0;
-	kfree(work);
-}
-
-/*
- * Handles hpa timer interrupt, defers enalbing of HPA to adv_hpa_assert
- */
-static void adv_hpa_reset_callback(unsigned long data)
-{
-	irq_task_t *task = NULL;
-
-	task = (irq_task_t *) kmalloc(sizeof(irq_task_t), GFP_ATOMIC);
-	if (task) {
-		INIT_WORK((struct work_struct *) task, adv_hpa_assert);
-		task->client = (struct i2c_client *) data;
-		queue_work(irq_workqueue, (struct work_struct *)task);
-	}
+	adv7481_hdmi->in_hot_plug_reset = 0;
 }
 
 /*
@@ -321,14 +299,20 @@ static ssize_t adv_reauthenticate_store(struct device *dev,
 					  const char *buf, size_t count)
 {
 	int ret;
-	struct i2c_client *client = container_of(dev, struct i2c_client, dev);
+	struct crl_adv7481_hdmi *adv7481_hdmi;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
+	struct crl_sensor *sensor = ssd->sensor;
+
+	adv7481_hdmi = sensor->sensor_specific_data;
 
 	dev_dbg(&client->dev, "%s\n", __func__);
 
-	mutex_lock(&hot_plug_reset_lock);
+	mutex_lock(&adv7481_hdmi->hot_plug_reset_lock);
 
-	if (in_hot_plug_reset) {
-		mutex_unlock(&hot_plug_reset_lock);
+	if (adv7481_hdmi->in_hot_plug_reset) {
+		mutex_unlock(&adv7481_hdmi->hot_plug_reset_lock);
 		return -EBUSY;
 	}
 
@@ -337,7 +321,7 @@ static ssize_t adv_reauthenticate_store(struct device *dev,
 	if (ret != 0) {
 		dev_err(&client->dev,
 		 "%s: Error clearing BCAPS KSV list ready!\n", __func__);
-		mutex_unlock(&hot_plug_reset_lock);
+		mutex_unlock(&adv7481_hdmi->hot_plug_reset_lock);
 		return -EIO;
 	}
 
@@ -347,21 +331,21 @@ static ssize_t adv_reauthenticate_store(struct device *dev,
 		dev_err(&client->dev,
 		 "%s: Error clearing KSV_LIST_READY_PORT_A register!\n",
 		 __func__);
-		mutex_unlock(&hot_plug_reset_lock);
+		mutex_unlock(&adv7481_hdmi->hot_plug_reset_lock);
 		return -EIO;
 	}
 
 	ret = adv_i2c_write(client, 0x68, 0xF8, 0x00);
 
 	if (ret != 0) {
-		mutex_unlock(&hot_plug_reset_lock);
+		mutex_unlock(&adv7481_hdmi->hot_plug_reset_lock);
 		return -EIO;
 	}
 
-	in_hot_plug_reset = 1;
-	mod_timer(&hot_plug_reset_timer, jiffies + msecs_to_jiffies(2000));
+	adv7481_hdmi->in_hot_plug_reset = 1;
+	schedule_delayed_work(&adv7481_hdmi->work, msecs_to_jiffies(2000));
 
-	mutex_unlock(&hot_plug_reset_lock);
+	mutex_unlock(&adv7481_hdmi->hot_plug_reset_lock);
 	return count;
 }
 
@@ -393,14 +377,22 @@ static ssize_t adv_hdmi_cable_connected_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
+	struct crl_adv7481_hdmi *adv7481_hdmi;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
+	struct crl_sensor *sensor = ssd->sensor;
+
+	adv7481_hdmi = sensor->sensor_specific_data;
+
 	char interlaced = 'p';
 
-	if (hdmi_res_interlaced) {
+	if (adv7481_hdmi->hdmi_res_interlaced)
 		interlaced = 'i';
-	}
 
 	return snprintf(buf, PAGE_SIZE, "%dx%d%c",
-			hdmi_res_width, hdmi_res_height, interlaced);
+			adv7481_hdmi->hdmi_res_width,
+			 adv7481_hdmi->hdmi_res_height, interlaced);
 }
 static DEVICE_ATTR(hdmi_cable_connected, S_IRUGO,
 			adv_hdmi_cable_connected_show, NULL);
@@ -443,7 +435,9 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 	u32 temp[3];
 	int ret = 0;
 	struct crl_register_read_rep reg;
+	struct crl_adv7481_hdmi *adv7481_hdmi;
 
+	adv7481_hdmi = sensor->sensor_specific_data;
 	reg.address = 0x90;
 	reg.len = CRL_REG_LEN_08BIT;
 	reg.mask = 0xFF;
@@ -516,29 +510,31 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 			adv_i2c_read(client, 0x68, 0x0B, &temp[2]);
 
 			temp[0] = temp[0] & 0x1F;
-			hdmi_res_height = (temp[0]<<8) + temp[1];
+			adv7481_hdmi->hdmi_res_height =
+						 (temp[0] << 8) + temp[1];
 			if (temp[2] & 0x20) {
-				hdmi_res_height = hdmi_res_height << 1;
-				hdmi_res_interlaced = 1;
+				adv7481_hdmi->hdmi_res_height =
+					 adv7481_hdmi->hdmi_res_height << 1;
+				adv7481_hdmi->hdmi_res_interlaced = 1;
 			} else {
-				hdmi_res_interlaced = 0;
+				adv7481_hdmi->hdmi_res_interlaced = 0;
 			}
 
 			/*
 			 * If resolution width was already read,
 			 * notify user space about new resolution
 			 */
-			if (hdmi_res_width) {
+			if (adv7481_hdmi->hdmi_res_width) {
 				sysfs_notify(&client->dev.kobj, NULL,
 					"hdmi_cable_connected");
 			}
 		} else {
 			dev_dbg(&client->dev,
-				"%s: ADV7481 ISR: Vertical Sync Filter Lost\n",
+				"%s: ADV7481 ISR: Vertical Sync Filte Lost\n",
 				__func__);
-			hdmi_res_height = 0;
+			adv7481_hdmi->hdmi_res_height = 0;
 			/* Notify user space about losing resolution */
-			if (!hdmi_res_width) {
+			if (!adv7481_hdmi->hdmi_res_width) {
 				sysfs_notify(&client->dev.kobj, NULL,
 					"hdmi_cable_connected");
 			}
@@ -563,21 +559,21 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 			adv_i2c_read(client, 0x68, 0x08, &temp[1]);
 
 			temp[0] = temp[0] & 0x1F;
-			hdmi_res_width = (temp[0] << 8) + temp[1];
+			adv7481_hdmi->hdmi_res_width = (temp[0] << 8) + temp[1];
 
 			/* If resolution height was already read back,
 			     notify user space about new resolution */
-			if (hdmi_res_height) {
+			if (adv7481_hdmi->hdmi_res_height) {
 				sysfs_notify(&client->dev.kobj, NULL,
 				 "hdmi_cable_connected");
 			}
 		} else {
 			dev_dbg(&client->dev,
-				"%s: ADV7481 ISR: DE Regeneration\Lost\n",
+				"%s: ADV7481 ISR: DE Regeneration Lost\n",
 				__func__);
-			hdmi_res_width = 0;
+			adv7481_hdmi->hdmi_res_width = 0;
 			/* Notfiy user space about losing resolution */
-			if (!hdmi_res_height) {
+			if (!adv7481_hdmi->hdmi_res_height) {
 				sysfs_notify(&client->dev.kobj, NULL,
 					"hdmi_cable_connected");
 			}
@@ -588,9 +584,22 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 
 int adv7481_sensor_init(struct i2c_client *client)
 {
+	struct crl_adv7481_hdmi *adv7481_hdmi;
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
+	struct crl_sensor *sensor = ssd->sensor;
+
+	adv7481_hdmi = devm_kzalloc(&client->dev,
+		 sizeof(*adv7481_hdmi), GFP_KERNEL);
+
+	if (!adv7481_hdmi)
+		return -ENOMEM;
+
+	sensor->sensor_specific_data = adv7481_hdmi;
+	adv7481_hdmi->client = client;
+	mutex_init(&adv7481_hdmi->hot_plug_reset_lock);
+	INIT_DELAYED_WORK(&adv7481_hdmi->work, adv_hpa_assert);
 	dev_dbg(&client->dev, "%s ADV7481_sensor_init\n", __func__);
-	setup_timer(&hot_plug_reset_timer, adv_hpa_reset_callback,
-	 (unsigned long) client);
 
 	CREATE_ATTRIBUTE(dev_attr_hdmi_cable_connected);
 	CREATE_ATTRIBUTE(dev_attr_bcaps);
@@ -604,8 +613,15 @@ int adv7481_sensor_init(struct i2c_client *client)
 
 int adv7481_sensor_cleanup(struct i2c_client *client)
 {
+	struct crl_adv7481_hdmi *adv7481_hdmi;
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
+	struct crl_sensor *sensor = ssd->sensor;
+
+	adv7481_hdmi = sensor->sensor_specific_data;
+
 	dev_dbg(&client->dev, "%s: ADV7481_sensor_cleanup\n", __func__);
-	del_timer(&hot_plug_reset_timer);
+	cancel_delayed_work_sync(&adv7481_hdmi->work);
 	REMOVE_ATTRIBUTE(dev_attr_bstatus);
 	REMOVE_ATTRIBUTE(dev_attr_reauthenticate);
 	REMOVE_ATTRIBUTE(dev_attr_bksv);
