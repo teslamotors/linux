@@ -237,6 +237,12 @@ static int intel_ipu4_isys_tpg_set_ffmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
+const struct intel_ipu4_isys_pixelformat *intel_ipu4_isys_tpg_try_fmt(
+	struct intel_ipu4_isys_video *av, struct v4l2_pix_format_mplane *mpix)
+{
+	return intel_ipu4_isys_video_try_fmt_vid_mplane(av, mpix, 1);
+}
+
 static const struct v4l2_subdev_pad_ops tpg_sd_pad_ops = {
 	.get_fmt = intel_ipu4_isys_subdev_get_ffmt,
 	.set_fmt = intel_ipu4_isys_tpg_set_ffmt,
@@ -312,8 +318,7 @@ int intel_ipu4_isys_tpg_init(struct intel_ipu4_isys_tpg *tpg,
 	tpg->av.isys = isys;
 	tpg->av.aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_MIPI;
 	tpg->av.pfmts = intel_ipu4_isys_pfmts_packed;
-	tpg->av.try_fmt_vid_mplane =
-		intel_ipu4_isys_video_try_fmt_vid_mplane_default;
+	tpg->av.try_fmt_vid_mplane = intel_ipu4_isys_tpg_try_fmt;
 	tpg->av.prepare_firmware_stream_cfg =
 		intel_ipu4_isys_prepare_firmware_stream_cfg_default;
 	tpg->av.packed = true;
