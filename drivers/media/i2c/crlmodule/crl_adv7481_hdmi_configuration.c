@@ -23,30 +23,16 @@
 #include "crlmodule.h"
 #include "crlmodule-regs.h"
 
-#define CREATE_ATTRIBUTE(attr)	\
-	{	\
-		if (device_create_file(&client->dev, &attr) != 0) {	\
-			dev_err(&client->dev,	\
-			"ADV7481 couldn't register %s sysfs entry.\n",	\
-			#attr);	\
-		}	\
-	}
-
-#define REMOVE_ATTRIBUTE(attr)	\
-	device_remove_file(&client->dev, &attr)
-
 /* Size of the mondello KSV buffer in bytes */
-#define ADV7481_KSV_BUFFER_SIZE    0x80
+#define ADV7481_KSV_BUFFER_SIZE		0x80
 /* Size of a single KSV */
-#define ADV7481_KSV_SIZE           0x05
+#define ADV7481_KSV_SIZE		0x05
 /* Max number of devices (MAX_MONDELO_KSV_SIZE / HDCP_KSV_SIZE */
-#define ADV7481_MAX_DEVICES        0x19
-
-#define ADV7481_AKSV_UPDATE_A_ST 0x08
-#define ADV7481_CABLE_DET_A_ST 0x40
-#define ADV7481_V_LOCKED_A_ST 0x02
-#define ADV7481_DE_REGEN_A_ST 0x01
-
+#define ADV7481_MAX_DEVICES		0x19
+#define ADV7481_AKSV_UPDATE_A_ST	0x08
+#define ADV7481_CABLE_DET_A_ST		0x40
+#define ADV7481_V_LOCKED_A_ST		0x02
+#define ADV7481_DE_REGEN_A_ST		0x01
 
 struct crl_adv7481_hdmi {
 	unsigned int in_hot_plug_reset;
@@ -58,10 +44,6 @@ struct crl_adv7481_hdmi {
 	struct mutex hot_plug_reset_lock;
 	struct i2c_client *client
 };
-
-
-
-
 
 /* ADV7481 HDCP B-status register */
 struct v4l2_adv7481_bstatus {
@@ -582,6 +564,20 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 	return IRQ_HANDLED;
 }
 
+static struct attribute *adv7481_attributes[] = {
+	&dev_attr_bstatus.attr,
+	&dev_attr_hdmi_cable_connected.attr,
+	&dev_attr_aksv.attr,
+	&dev_attr_reauthenticate.attr,
+	&dev_attr_bksv.attr,
+	&dev_attr_bcaps.attr,
+	NULL
+};
+
+static const struct attribute_group adv7481_attr_group = {
+	.attrs = adv7481_attributes,
+};
+
 int adv7481_sensor_init(struct i2c_client *client)
 {
 	struct crl_adv7481_hdmi *adv7481_hdmi;
@@ -601,14 +597,8 @@ int adv7481_sensor_init(struct i2c_client *client)
 	INIT_DELAYED_WORK(&adv7481_hdmi->work, adv_hpa_assert);
 	dev_dbg(&client->dev, "%s ADV7481_sensor_init\n", __func__);
 
-	CREATE_ATTRIBUTE(dev_attr_hdmi_cable_connected);
-	CREATE_ATTRIBUTE(dev_attr_bcaps);
-	CREATE_ATTRIBUTE(dev_attr_aksv);
-	CREATE_ATTRIBUTE(dev_attr_bksv);
-	CREATE_ATTRIBUTE(dev_attr_reauthenticate);
-	CREATE_ATTRIBUTE(dev_attr_bstatus);
+	return sysfs_create_group(&client->dev.kobj, &adv7481_attr_group);
 
-	return 0;
 }
 
 int adv7481_sensor_cleanup(struct i2c_client *client)
@@ -622,11 +612,6 @@ int adv7481_sensor_cleanup(struct i2c_client *client)
 
 	dev_dbg(&client->dev, "%s: ADV7481_sensor_cleanup\n", __func__);
 	cancel_delayed_work_sync(&adv7481_hdmi->work);
-	REMOVE_ATTRIBUTE(dev_attr_bstatus);
-	REMOVE_ATTRIBUTE(dev_attr_reauthenticate);
-	REMOVE_ATTRIBUTE(dev_attr_bksv);
-	REMOVE_ATTRIBUTE(dev_attr_aksv);
-	REMOVE_ATTRIBUTE(dev_attr_bcaps);
-	REMOVE_ATTRIBUTE(dev_attr_hdmi_cable_connected);
+	sysfs_remove_group(&client->dev.kobj, &adv7481_attr_group);
 	return 0;
 }
