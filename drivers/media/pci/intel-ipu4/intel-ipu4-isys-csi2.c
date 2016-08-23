@@ -446,7 +446,7 @@ static const struct v4l2_subdev_core_ops csi2_sd_core_ops = {
 };
 
 struct intel_ipu4_isys_pixelformat csi2_meta_pfmts[] = {
-	{ V4L2_FMT_INTEL_IPU4_ISYS_META, 8, 8, MEDIA_BUS_FMT_FIXED, 0 },
+	{ V4L2_FMT_INTEL_IPU4_ISYS_META, 8, 8, 0, MEDIA_BUS_FMT_FIXED, 0 },
 	{ },
 };
 

@@ -62,7 +62,7 @@ static const uint32_t isa_supported_codes_pad_source[] = {
 
 /* ISA configuration */
 struct intel_ipu4_isys_pixelformat isa_config_pfmts[] = {
-	{ V4L2_FMT_INTEL_IPU4_ISA_CFG, 8, 8, MEDIA_BUS_FMT_FIXED, 0 },
+	{ V4L2_FMT_INTEL_IPU4_ISA_CFG, 8, 8, 0, MEDIA_BUS_FMT_FIXED, 0 },
 	{ },
 };
 

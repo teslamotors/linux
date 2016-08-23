@@ -37,6 +37,7 @@ struct intel_ipu4_isys_pixelformat {
 	uint32_t pixelformat;
 	uint32_t bpp;
 	uint32_t bpp_packed;
+	uint32_t bpp_planar;
 	uint32_t code;
 	uint32_t css_pixelformat;
 };
