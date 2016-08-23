@@ -511,7 +511,7 @@ static int cnl_ipc_init(struct device *dev, struct skl_sst *cnl)
 static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 			void __iomem *mmio_base, int irq)
 {
-	struct sdw_master_capabilities *m_cap;
+	struct sdw_master_capabilities *m_cap, *map_data;
 	struct sdw_mstr_dp0_capabilities *dp0_cap;
 	struct sdw_mstr_dpn_capabilities *dpn_cap;
 	struct sdw_master *master;
@@ -542,10 +542,21 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 		master[i].dev.platform_data = p_data;
 		m_cap = &master[i].mstr_capabilities;
 		dp0_cap = &m_cap->sdw_dp0_cap;
+		map_data = kzalloc(sizeof(*m_cap), GFP_KERNEL);
+		if (!map_data)
+			return -ENOMEM;
+		/* This function retrieves the data for SoundWire controller */
+		cnl_sdw_get_master_caps(dev, map_data);
 		master[i].nr = i;
 		master[i].timeout = -1;
 		master[i].retries = CNL_SDW_MAX_CMD_RETRIES;
-		m_cap->base_clk_freq = 9.6 * 1000 * 1000;
+		m_cap->base_clk_freq = map_data->base_clk_freq;
+		/* TODO: Frequency is not read correctly in ACPI code */
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
+		m_cap->base_clk_freq = 9600000;
+#else
+		m_cap->base_clk_freq = 12000000;
+#endif
 		strcpy(master[i].name, "cnl_sdw_mstr");
 		m_cap->highphy_capable = false;
 		m_cap->monitor_handover_supported = false;
@@ -562,7 +573,17 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 			return -ENOMEM;
 		for (j = 0; j < m_cap->num_data_ports; j++) {
 			dpn_cap = &m_cap->sdw_dpn_cap[j];
+			map_data->sdw_dpn_cap = kzalloc(sizeof(*dpn_cap),
+								GFP_KERNEL);
+			if (!map_data->sdw_dpn_cap)
+				return -ENOMEM;
+			/*
+			 * This function retrieves the data
+			 * for SoundWire devices.
+			 */
+			cnl_sdw_get_master_dev_caps(dev, map_data, j);
 			/* Both Tx and Rx */
+			dpn_cap->dpn_type = map_data->sdw_dpn_cap->dpn_type;
 			dpn_cap->port_direction = 0x3;
 			dpn_cap->port_number = j;
 			dpn_cap->max_word_length = 32;
@@ -588,7 +609,9 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 			dpn_cap->block_packing_mode_mask =
 				SDW_PORT_BLK_PKG_MODE_BLK_PER_PORT |
 				SDW_PORT_BLK_PKG_MODE_BLK_PER_CH;
+			kfree(map_data->sdw_dpn_cap);
 		}
+		kfree(map_data);
 		master[i].link_sync_mask = 0x0;
 		switch (i) {
 		case 0:
