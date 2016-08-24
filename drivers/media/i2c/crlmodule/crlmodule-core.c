@@ -192,7 +192,7 @@ static bool __crlmodule_compare_ctrl_specific_data(
 
 		/* Compare the value from the sensor definition file config */
 		if (val != ctrl_val[i].data) {
-			dev_err(&client->dev,
+			dev_dbg(&client->dev,
 				"%s ctrl_id: 0x%x value not match %d != %d\n",
 				__func__, ctrl_val[i].ctrl_id, val,
 				ctrl_val[i].data);
