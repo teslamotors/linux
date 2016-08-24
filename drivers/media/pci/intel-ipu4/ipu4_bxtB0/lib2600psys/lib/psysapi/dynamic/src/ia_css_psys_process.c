@@ -481,7 +481,7 @@ vied_nci_mem_ID_t ia_css_process_get_ext_mem_id(
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 			"ia_css_process_get_ext_mem(): enter:\n");
 
-		if (process != NULL && mem_type < VIED_NCI_N_MEM_TYPE_ID) {
+		if (process != NULL && mem_type < VIED_NCI_N_DATA_MEM_TYPE_ID) {
 			return process->ext_mem_id[mem_type];
 	} else {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR,
@@ -972,7 +972,7 @@ vied_nci_resource_size_t ia_css_process_get_ext_mem_offset(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_get_ext_mem_offset(): enter:\n");
 
-	if (process == NULL || mem_type_id >= VIED_NCI_N_MEM_TYPE_ID) {
+	if (process == NULL || mem_type_id >= VIED_NCI_N_DATA_MEM_TYPE_ID) {
 		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR,
 			"ia_css_process_get_ext_mem_offset invalid argument\n");
 	} else {
