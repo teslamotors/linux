@@ -118,7 +118,7 @@ intel_ipu4_psys_get_program_manifest_by_process(
 	for (i = 0; i < programs; i++) {
 		ia_css_program_ID_t program_id;
 		ia_css_program_manifest_t *pm =
-			ia_css_program_group_manifest_get_program_manifest(
+			ia_css_program_group_manifest_get_prgrm_mnfst(
 								pg_manifest, i);
 		if (!pm)
 			continue;
