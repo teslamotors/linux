@@ -253,7 +253,8 @@ static struct crlmodule_platform_data ov10635_pdata = {
         .lanes = OV10635_LANES,
         .ext_clk = 12000000,
         .op_sys_clock = (uint64_t []){ 392000000 },
-        .module_name = "OV10635"
+        .module_name = "OV10635",
+	.id_string = "0xa6 0x35"
 };
 #endif
 
