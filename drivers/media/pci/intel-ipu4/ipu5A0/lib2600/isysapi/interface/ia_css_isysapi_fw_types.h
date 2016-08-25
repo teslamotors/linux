@@ -17,7 +17,7 @@
 
 
 /* Max number of Input/Output Pins */
-#define MAX_IPINS (6)
+#define MAX_IPINS (4)
 /* worst case is ISA use where a single input pin produces:
 * Mipi output, NS Pixel Output, and Scaled Pixel Output.
 * This is how the 2 is calculated

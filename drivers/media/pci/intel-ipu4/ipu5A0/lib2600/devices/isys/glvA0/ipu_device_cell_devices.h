@@ -13,7 +13,8 @@
  */
 
 /*
- * TODO: IPU5_SDK Verify that this file is correct when IPU5 SDK has been released.
+ * TODO: IPU5_SDK Verify that this file is correct
+ * when IPU5 SDK has been released.
  */
 
 #ifndef _IPU_DEVICE_CELL_DEVICES_H

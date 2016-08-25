@@ -15,9 +15,7 @@ IPU_STEP = ipu5A0
 ccflags-y += -DIPU_STEP_IPU5A0
 include $(srctree)/$(src)/../Makefile.common
 include $(srctree)/$(src)/../Makefile.lib2600.ipu5
-
-# ignore psys for isys only fw release package
-# include $(srctree)/$(src)/../Makefile.lib2600psys
+include $(srctree)/$(src)/../Makefile.lib2600psys.ipu5
 
 ccflags-y += -I$(srctree)/$(src)/../../../../../include/
 ccflags-y += -I$(srctree)/$(src)/../

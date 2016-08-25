@@ -24,7 +24,8 @@
 typedef unsigned long long ia_css_return_token;
 
 STORAGE_CLASS_INLINE void
-ia_css_return_token_copy(ia_css_return_token *to, const ia_css_return_token *from)
+ia_css_return_token_copy(ia_css_return_token *to,
+			 const ia_css_return_token *from)
 {
 	/* copy a return token on VIED processor */
 	int *dst = (int *)to;

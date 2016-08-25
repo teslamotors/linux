@@ -1,0 +1,9 @@
+# note: this file only defines INCLUDES paths for lib2600psys
+include $(srctree)/$(src)/Makefile.ipu5psys_inc
+
+IPU_PSYSLIB_ROOT = $(srctree)/$(src)/lib2600psys/lib
+HOST_DEFINES += -DPSYS_SERVER_ON_SPC
+
+ccflags-y += $(IPU_PSYSLIB_INC) $(HOST_DEFINES)
+
+obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= lib2600psys/
