@@ -156,9 +156,9 @@ STORAGE_CLASS_INLINE int get_next_frame_buff_slot(
 
 STORAGE_CLASS_INLINE void free_comm_buff_shared_mem(
 	struct ia_css_isys_context *ctx,
-	int stream_handle,		/* used also as local var */
-	int stream_cfg_buff_counter,	/* used also as local var */
-	int next_frame_buff_counter)	/* used also as local var */
+	int stream_handle,
+	int stream_cfg_buff_counter,
+	int next_frame_buff_counter)
 {
 	int buff_slot;
 
@@ -675,23 +675,21 @@ int ia_css_isys_constr_fw_stream_cfg(
 
 	stream_cfg_cpu_addr =
 		ia_css_shared_buffer_cpu_map(*pbuf_stream_cfg_id);
-	if (stream_cfg_cpu_addr == (ia_css_shared_buffer_cpu_address)NULL) {
+	if (stream_cfg_cpu_addr == (ia_css_shared_buffer_cpu_address)NULL)
 		return -EFAULT;
-	}
 
 	retval = stream_cfg_data_host_to_css(stream_cfg, stream_cfg_cpu_addr);
 
 	ia_css_shared_buffer_cpu_unmap(*pbuf_stream_cfg_id);
 
-	if (retval) {
+	if (retval)
 		return retval;
-	}
 
 	stream_cfg_css_addr =
 		ia_css_shared_buffer_css_map(*pbuf_stream_cfg_id);
-	if (stream_cfg_css_addr == (ia_css_shared_buffer_css_address)0) {
+	if (stream_cfg_css_addr == (ia_css_shared_buffer_css_address)0)
 		return -EFAULT;
-	}
+
 	ia_css_shared_buffer_css_update(ctx->mmid, *pbuf_stream_cfg_id);
 
 	*pstream_cfg_fw = stream_cfg_css_addr;
@@ -769,9 +767,8 @@ int ia_css_isys_constr_fw_next_frame(
 	/* map it in cpu */
 	next_frame_cpu_addr =
 		ia_css_shared_buffer_cpu_map(*pbuf_next_frame_id);
-	if (next_frame_cpu_addr == (ia_css_shared_buffer_cpu_address)NULL) {
+	if (next_frame_cpu_addr == (ia_css_shared_buffer_cpu_address)NULL)
 		return -EFAULT;
-	}
 
 	frame_buff_set_host_to_css(next_frame, next_frame_cpu_addr);
 
@@ -781,9 +778,9 @@ int ia_css_isys_constr_fw_next_frame(
 	/* map it to css */
 	next_frame_css_addr =
 		ia_css_shared_buffer_css_map(*pbuf_next_frame_id);
-	if (next_frame_css_addr == (ia_css_shared_buffer_css_address)0) {
+	if (next_frame_css_addr == (ia_css_shared_buffer_css_address)0)
 		return -EFAULT;
-	}
+
 	ia_css_shared_buffer_css_update(ctx->mmid, *pbuf_next_frame_id);
 
 	*pnext_frame_fw = next_frame_css_addr;

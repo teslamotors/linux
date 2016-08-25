@@ -28,9 +28,9 @@ vied_nci_resource_bitmap_t vied_nci_bit_mask(
 
 	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE, "vied_nci_bit_mask(): enter:\n");
 
-	if (index < VIED_NCI_RESOURCE_BITMAP_BITS) {
+	if (index < VIED_NCI_RESOURCE_BITMAP_BITS)
 		bit_mask = (vied_nci_resource_bitmap_t)1 << index;
-	}
+
 	return bit_mask;
 }
 
@@ -70,9 +70,9 @@ vied_nci_resource_bitmap_t vied_nci_bitmap_set_unique(
 	IA_CSS_TRACE_0(PSYSAPI_SIM, VERBOSE,
 		"vied_nci_bitmap_set_unique(): enter:\n");
 
-	if ((bitmap & bit_mask) == 0) {
+	if ((bitmap & bit_mask) == 0)
 		ret = bitmap | bit_mask;
-	}
+
 	return ret;
 }
 
@@ -88,9 +88,9 @@ vied_nci_resource_bitmap_t vied_nci_bit_mask_set_unique(
 
 	bit_mask = vied_nci_bit_mask(index);
 
-	if (((bitmap & bit_mask) == 0) && (bit_mask != 0)) {
+	if (((bitmap & bit_mask) == 0) && (bit_mask != 0))
 		ret = bitmap | bit_mask;
-	}
+
 	return ret;
 }
 
@@ -346,9 +346,8 @@ uint16_t vied_nci_cell_get_mem_count(
 
 	cell_type = vied_nci_cell_get_type(cell_id);
 
-	if (cell_type < VIED_NCI_N_CELL_TYPE_ID) {
+	if (cell_type < VIED_NCI_N_CELL_TYPE_ID)
 		mem_count = vied_nci_N_cell_mem[cell_type];
-	}
 
 	return mem_count;
 }

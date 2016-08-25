@@ -35,11 +35,10 @@ ia_css_cond_cmem_load_32(bool cond, unsigned int ssid,
 {
 	/* Address has to be word aligned */
 	assert(0 == address % 4);
-	if (cond) {
+	if (cond)
 		return vied_subsystem_load_32(ssid, address);
-	} else {
+	else
 		return 0;
-	}
 }
 
 STORAGE_CLASS_INLINE void

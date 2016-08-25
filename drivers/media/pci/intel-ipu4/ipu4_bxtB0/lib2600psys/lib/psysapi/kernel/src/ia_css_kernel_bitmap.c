@@ -141,9 +141,9 @@ ia_css_kernel_bitmap_t ia_css_kernel_bit_mask(
 		"ia_css_kernel_bit_mask(): enter:\n");
 
 	bit_mask = ia_css_kernel_bitmap_clear();
-	if (index < IA_CSS_KERNEL_BITMAP_BITS) {
+	if (index < IA_CSS_KERNEL_BITMAP_BITS)
 		bit_mask = (ia_css_kernel_bitmap_t)1 << index;
-	}
+
 	return bit_mask;
 }
 

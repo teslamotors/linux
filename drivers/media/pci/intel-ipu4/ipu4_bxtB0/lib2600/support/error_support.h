@@ -25,11 +25,11 @@
 /* #define IA_CSS_EINVAL 1 */
 /* #define IA_CSS_EFAULT 2 */
 
-#define verifret(cond, error_type)   \
-do {                                \
-	if (!(cond)) {                   \
-		return error_type;          \
-	}                               \
+#define verifret(cond, error_type) \
+do {                               \
+	if (!(cond)) {             \
+		return error_type; \
+	}                          \
 } while (0)
 
 #define verifjmp(cond, error_tag)    \

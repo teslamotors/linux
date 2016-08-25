@@ -240,15 +240,14 @@ ia_css_syscom_open(
 	struct sys_queue_res res;
 
 	/* error handling */
-	if (cfg == NULL) {
+	if (cfg == NULL)
 		return NULL;
-	}
+
 	/* check members of cfg: TBD */
 
 	/* Check if SP is in valid state */
-	if (!ia_css_cell_is_ready(cfg->ssid, SPC0)) {
+	if (!ia_css_cell_is_ready(cfg->ssid, SPC0))
 		return NULL;	/* NULL means error */
-	}
 
 	ia_css_syscom_size_intern(cfg, &size_intern);
 	ia_css_syscom_size_extern(&size_intern, &size);
@@ -397,9 +396,8 @@ ia_css_syscom_release(
 ) {
 	/* check if release is forced, an verify cell state if it is not */
 	if (!force) {
-		if (!ia_css_cell_is_ready(ctx->env.ssid, SPC0)) {
+		if (!ia_css_cell_is_ready(ctx->env.ssid, SPC0))
 			return ERROR_BUSY;
-		}
 	}
 
 	/* Reset the regmem idx */

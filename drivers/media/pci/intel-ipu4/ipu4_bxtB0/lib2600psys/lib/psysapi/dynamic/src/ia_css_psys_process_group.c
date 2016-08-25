@@ -1280,9 +1280,8 @@ bool ia_css_can_process_group_submit(
 		/* FAS allows for attaching NULL buffers to satisfy SDF,
 		* but only if l-Scheduler is embedded
 		*/
-		if (buffer == VIED_NULL) {
+		if (buffer == VIED_NULL)
 			break;
-		}
 
 		/* buffer_state is applicable only for data terminals*/
 		if (ia_css_is_terminal_data_terminal(terminal) == true) {
@@ -1389,9 +1388,8 @@ bool ia_css_can_process_group_start(
 			break;
 		}
 
-		if (!ok) {
+		if (!ok)
 			break;
-		}
 	}
 	/* Only true if no check failed */
 	can_start = (i == terminal_count);

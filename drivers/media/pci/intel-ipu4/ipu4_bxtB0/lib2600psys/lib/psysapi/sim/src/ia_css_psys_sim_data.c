@@ -43,13 +43,13 @@ unsigned int ia_css_psys_ran_var(const unsigned int bit_depth)
 
 	tmp = ia_css_psys_ran_int();
 
-	if (bit_depth > 32) {
+	if (bit_depth > 32)
 		out = tmp;
-	} else if (bit_depth == 0) {
+	else if (bit_depth == 0)
 		out = 0;
-	} else {
+	else
 		out = (unsigned short)(tmp >> (32 - bit_depth));
-	}
+
 	return out;
 }
 
@@ -62,11 +62,11 @@ unsigned int ia_css_psys_ran_val(const unsigned int range)
 
 	tmp = ia_css_psys_ran_int();
 
-	if (range > 1) {
+	if (range > 1)
 		out = tmp % range;
-	} else {
+	else
 		out = 0;
-	}
+
 	return out;
 }
 
@@ -82,10 +82,10 @@ unsigned int ia_css_psys_ran_interval(const unsigned int lo,
 
 	tmp = ia_css_psys_ran_int();
 
-	if ((range > 1) && (lo < hi)) {
+	if ((range > 1) && (lo < hi))
 		out = lo + (tmp % range);
-	} else {
+	else
 		out = 0;
-	}
+
 	return out;
 }
