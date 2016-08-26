@@ -68,7 +68,7 @@ MODULE_PARM_DESC(enable_concurrency,
 
 #define INTEL_IPU4_PSYS_NUM_DEVICES		4
 #define INTEL_IPU4_PSYS_WORK_QUEUE		system_power_efficient_wq
-#define INTEL_IPU4_PSYS_AUTOSUSPEND_DELAY	0
+#define INTEL_IPU4_PSYS_AUTOSUSPEND_DELAY	2000
 
 #ifdef CONFIG_PM
 static int psys_runtime_pm_resume(struct device *dev);
@@ -460,7 +460,6 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 
 		if (IS_ERR(psys->isr_thread)) {
 			mutex_unlock(&psys->mutex);
-			pm_runtime_put(&psys->adev->dev);
 			return PTR_ERR(psys->isr_thread);
 		}
 
@@ -905,6 +904,7 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	ret = pm_runtime_get_sync(&psys->adev->dev);
 	if (ret < 0) {
 		dev_err(&psys->adev->dev, "failed to power on PSYS\n");
+		intel_ipu4_psys_kcmd_complete(psys, kcmd, -EIO);
 		pm_runtime_put_noidle(&psys->adev->dev);
 		return ret;
 	}
@@ -1777,6 +1777,16 @@ static int psys_runtime_pm_resume(struct device *dev)
 		WARN(1, "%s called before probing. skipping.\n", __func__);
 		return 0;
 	}
+	/*
+	 * In runtime autosuspend mode, if the psys is in power on state, no
+	 * need to resume again.
+	 */
+	spin_lock_irqsave(&psys->power_lock, flags);
+	if (psys->power) {
+		spin_unlock_irqrestore(&psys->power_lock, flags);
+		return 0;
+	}
+	spin_unlock_irqrestore(&psys->power_lock, flags);
 
 	if (!intel_ipu4_buttress_auth_done(adev->isp)) {
 		dev_err(dev, "%s: not yet authenticated, skipping\n", __func__);
@@ -2361,6 +2371,8 @@ static void intel_ipu4_psys_remove(struct intel_ipu4_bus_device *adev)
 		kthread_stop(psys->sched_cmd_thread);
 		psys->sched_cmd_thread = NULL;
 	}
+
+	pm_runtime_dont_use_autosuspend(&psys->adev->dev);
 
 	mutex_lock(&intel_ipu4_psys_mutex);
 
