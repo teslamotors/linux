@@ -1187,6 +1187,7 @@ static void intel_ipu4_psys_watchdog_work(struct work_struct *work)
 	return;
 
 stop_failed:
+	mutex_unlock(&fh->mutex);
 	intel_ipu4_psys_reset(psys);
 	mutex_unlock(&psys->mutex);
 }
