@@ -17,6 +17,8 @@ endif
 
 IPU_STEP = ipu5A0
 ccflags-y += -DIPU_STEP_IPU5A0
+
+include $(srcpath)/$(src)/../Makefile.link
 include $(srcpath)/$(src)/../Makefile.common
 include $(srcpath)/$(src)/../Makefile.lib2600.ipu5
 include $(srcpath)/$(src)/../Makefile.lib2600psys.ipu5

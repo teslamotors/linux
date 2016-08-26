@@ -10,8 +10,6 @@ IPU_ISYSLIB_ROOT = $(srcpath)/$(src)/$(IPU_ISYSLIB_ROOT_REL)
 include $(srcpath)/$(src)/Makefile.ipu4isys_inc
 include $(srcpath)/$(src)/Makefile.ipu4isys_src
 
-include $(srcpath)/$(src)/../Makefile.link
-
 lib2600-mod-$(IPU_STEP)-objs := \
 	../libintel-ipu4.$(IPU_STEP).lnk.o \
 	../libintel-checker.$(IPU_STEP).lnk.o \

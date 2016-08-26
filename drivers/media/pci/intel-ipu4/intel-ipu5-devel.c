@@ -17,6 +17,7 @@
 #include <linux/module.h>
 
 #include "intel-ipu4.h"
+#include "intel-ipu4-cpd.h"
 #include "intel-ipu4-isys.h"
 #include "intel-ipu4-wrapper.h"
 #include "intel-ipu4-regs.h"
@@ -25,8 +26,6 @@
 #include "isysapi/interface/ia_css_isysapi.h"
 #include "vied/vied/shared_memory_map.h"
 #include "vied/vied/shared_memory_access.h"
-#include "pkg_dir/interface/ia_css_pkg_dir_types.h"
-#include "pkg_dir/interface/ia_css_pkg_dir.h"
 
 int intel_ipu5_isys_load_pkg_dir(struct intel_ipu4_isys *isys)
 {
@@ -106,10 +105,7 @@ void intel_ipu5_pkg_dir_configure_spc(struct intel_ipu4_device *isp,
 	if (!pkg_dir_vied_address)
 		dev_err(&isp->pdev->dev, "invalid pkg_dir_vied_address\n");
 
-	pg_offset = ia_css_pkg_dir_entry_get_address_lo(
-		ia_css_pkg_dir_get_entry(
-			(ia_css_pkg_dir_entry_t *)pkg_dir_host_address,
-			pkg_dir_idx));
+	pg_offset = intel_ipu4_cpd_pkg_dir_get_address(pkg_dir, pkg_dir_idx);
 
 	pg_host_address = (u64)pkg_dir_host_address + pg_offset;
 	shared_memory_load(pkg_dir_idx, (host_virtual_address_t)pg_host_address,

@@ -17,6 +17,8 @@ endif
 
 IPU_STEP = bxtB0
 ccflags-y += -DIPU_STEP_BXTB0 -DIPU_STEP_BXTC0
+
+include $(srcpath)/$(src)/../Makefile.link
 include $(srcpath)/$(src)/../Makefile.common
 include $(srcpath)/$(src)/../Makefile.lib2600
 include $(srcpath)/$(src)/../Makefile.lib2600psys
