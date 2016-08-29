@@ -53,6 +53,14 @@
 
 #define ISYS_PM_QOS_VALUE	300
 
+/*
+ * The param was passed from module to indicate if port
+ * could be optimized.
+ */
+static bool csi2_port_optimized;
+module_param(csi2_port_optimized, bool, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(csi2_port_optimized, "IPU4 CSI2 port optimization");
+
 /* Trace block definitions for isys */
 static struct intel_ipu4_trace_block isys_trace_blocks[] = {
 	{
@@ -708,13 +716,41 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		&isys->pdata->ipdata->tpg;
 	const struct intel_ipu4_isys_internal_csi2_pdata *csi2 =
 		&isys->pdata->ipdata->csi2;
+	struct intel_ipu4_isys_subdev_pdata *spdata = isys->pdata->spdata;
+	struct intel_ipu4_isys_subdev_info **sd_info;
+	DECLARE_BITMAP(csi2_enable, 32);
 	unsigned int i, j, k;
 	int rval;
 
 	BUG_ON(csi2->nports > INTEL_IPU4_ISYS_MAX_CSI2_PORTS);
 	BUG_ON(tpg->ntpgs > INTEL_IPU4_ISYS_MAX_TPGS);
 
+	/*
+	 * Here is somewhat a workaround, let each platform decide
+	 * if csi2 port can be optimized, which means only registered
+	 * port from pdata would be enabled.
+	 */
+	if (csi2_port_optimized && spdata) {
+		bitmap_zero(csi2_enable, 32);
+		for (sd_info = spdata->subdevs; *sd_info; sd_info++) {
+			if ((*sd_info)->csi2) {
+				i = (*sd_info)->csi2->port;
+				if (i >= csi2->nports) {
+					dev_warn(&isys->adev->dev,
+						"invalid csi2 port %u\n", i);
+					continue;
+				}
+				bitmap_set(csi2_enable, i, 1);
+			}
+		}
+	} else {
+		bitmap_fill(csi2_enable, 32);
+	}
+
 	for (i = 0; i < csi2->nports; i++) {
+		if (!test_bit(i, csi2_enable))
+			continue;
+
 		rval = intel_ipu4_isys_csi2_init(
 			&isys->csi2[i], isys,
 			isys->pdata->base + csi2->offsets[i], i);
@@ -758,6 +794,9 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 	}
 
 	for (i = 0; i < csi2->nports; i++) {
+		if (!test_bit(i, csi2_enable))
+			continue;
+
 		for (j = CSI2_PAD_SOURCE(0);
 		     j < (NR_OF_CSI2_SOURCE_PADS + CSI2_PAD_SOURCE(0)); j++) {
 			rval = media_entity_create_link(

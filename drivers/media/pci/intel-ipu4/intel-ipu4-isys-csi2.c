@@ -941,11 +941,15 @@ void intel_ipu4_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2)
 {
 	int i;
 
+	if (!csi2->isys)
+		return;
+
 	v4l2_device_unregister_subdev(&csi2->asd.sd);
 	intel_ipu4_isys_subdev_cleanup(&csi2->asd);
 	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++)
 		intel_ipu4_isys_video_cleanup(&csi2->av[i]);
 	intel_ipu4_isys_video_cleanup(&csi2->av_meta);
+	csi2->isys = NULL;
 }
 
 static void csi_ctrl_init(struct v4l2_subdev *sd)
