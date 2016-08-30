@@ -66,6 +66,14 @@ enum {
 	VERIFY_API_CALL
 };
 
+enum {
+	TYPE_MANIFEST_NAME = 1,
+	TYPE_MANIFEST_DATA,
+	TYPE_MANIFEST_PUBLIC_KEY,
+	TYPE_MANIFEST_CERTIFICATE,
+	TYPE_MANIFEST_SIGNATURE
+};
+
 /**
  *
  * struct mf_app_data - Application data

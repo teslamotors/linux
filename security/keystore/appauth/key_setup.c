@@ -17,13 +17,14 @@
 
 #include "app_auth.h"
 
+#ifdef CONFIG_KEYSTORE_DEBUG
 /**
  * Prints the mpi variable as hex bytes.
  *
  * @param a    - mpi variable.
  *
  */
-void print_mpi(MPI a)
+static void print_mpi(MPI a)
 {
 	int sign = 0;
 	unsigned int nbytes = 0;
@@ -35,7 +36,6 @@ void print_mpi(MPI a)
 	kfree(buf);
 }
 
-#ifdef DEBUG_APP_AUTH
 /**
  * Prints the public key components in hex form.
  *
@@ -49,60 +49,9 @@ void debug_public_key(struct public_key *key)
 	ks_debug("DEBUG_APPAUTH: key->rsa.n\n");
 	print_mpi(key->rsa.n);
 }
-
-/**
- * Prints the character array.
- *
- * @param p      - string to be printed.
- * @param len    - length of the string.
- *
- */
-void print_string(unsigned char *p, int len)
+#else
+void debug_public_key(struct public_key *key)
 {
-	int i = 0;
-
-	for (i = 0; i < len; i++)
-		ks_err("%d ", p[i]);
-	ks_err("\n");
-}
-
-/**
- * Prints the key id in hex form.
- *
- * @param id    -  key id to be printed.
- *
- */
-void print_kid(struct asymmetric_key_id *id)
-{
-	unsigned short len = 0;
-
-	if (!id) {
-		ks_err("DEBUG_APPAUTH: kid is null\n");
-		return;
-	}
-
-	ks_debug("DEBUG_APPAUTH: kid len = %d\n", id->len);
-	len = id->len;
-
-	print_string((unsigned char *)(id->data), len);
-}
-
-/**
- * Prints the key id in hex form.
- *
- * @param id    -  key id to be printed.
- *
- */
-void print_key_id(struct asymmetric_key_id *id)
-{
-	int asn_len = 0;
-
-	if (((id->data)[0]) == 0x31) {
-		asn_len = 2 + ((id->data)[1]);
-		ks_debug("DEBUG_APPAUTH: asn_len = %d\n", asn_len);
-		print_string((unsigned char *)((id->data) + asn_len),
-							id->len - asn_len);
-	}
 }
 #endif
 
@@ -124,9 +73,7 @@ static char *get_exe_path(char *buf, int buflen)
 
 	mm = get_task_mm(current);
 	if (!mm) {
-#ifdef DEBUG_APP_AUTH
 		ks_info(KBUILD_MODNAME ": %s error get_task_mm\n", __func__);
-#endif
 		goto out;
 	}
 
@@ -172,15 +119,11 @@ char *get_exe_name(char **buf)
 
 		/* check if it was an error */
 		if (f_path && IS_ERR(f_path)) {
-#ifdef DEBUG_APP_AUTH
 			/* error case, do not register */
 			ks_err(KBUILD_MODNAME "get_exe_name() failed\n");
-#endif
 			return NULL;
 		}
-#ifdef DEBUG_APP_AUTH
 		ks_debug(KBUILD_MODNAME "absolute path of exe: %s\n", f_path);
-#endif
 	} else
 		return NULL;
 

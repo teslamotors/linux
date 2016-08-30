@@ -36,10 +36,8 @@ struct crypto_shash *appauth_alloc_tfm(enum hash_algo algo)
 	tfm = crypto_alloc_shash(hash_algo_name[algo], 0, 0);
 	if (IS_ERR(tfm)) {
 		rc = PTR_ERR(tfm);
-#ifdef DEBUG_APP_AUTH
 		ks_err("Can not allocate %s (reason: %d)\n",
 				hash_algo_name[algo], rc);
-#endif
 	}
 
 	return tfm;
@@ -109,16 +107,12 @@ static int appauth_calc_file_hash_tfm(struct file *file,
 
 	rc = crypto_shash_init(shash);
 	if (rc != 0) {
-#ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: crypto_shash_init() failed\n");
-#endif
 		return -HASH_FAILURE;
 	}
 
 	i_size = i_size_read(file_inode(file));
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: file size = %lld\n", i_size);
-#endif
 
 	if (i_size == 0)
 		goto out;
@@ -150,9 +144,7 @@ static int appauth_calc_file_hash_tfm(struct file *file,
 		if (rc)
 			break;
 	}
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: count = %d\n", count);
-#endif
 	if (read)
 		file->f_mode &= ~FMODE_READ;
 	kfree(file_buf);
@@ -180,14 +172,10 @@ static int appauth_calc_file_shash(struct file *file, appauth_digest *hash)
 
 	tfm = appauth_alloc_tfm(hash->algo);
 	if (IS_ERR(tfm)) {
-#ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: appauth_alloc_tfm failed\n");
-#endif
 		return -HASH_FAILURE;
 	}
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: appauth_alloc_tfm succeeded\n");
-#endif
 	ret = appauth_calc_file_hash_tfm(file, hash, tfm);
 
 	appauth_free_tfm(tfm);
@@ -209,17 +197,13 @@ static int process_file(struct file *file, appauth_digest *hash)
 	struct inode *inode = file_inode(file);
 	int result = 0;
 
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: appauth_calc_file_shash() started\n");
 	ks_debug("DEBUG_APPAUTH: calling mutex_lock\n");
-#endif
 	mutex_lock(&(inode->i_mutex));
 	result = appauth_calc_file_shash(file, hash);
 	mutex_unlock(&(inode->i_mutex));
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: appauth_calc_file_shash() finished\n");
 	keystore_hexdump("", hash->digest, hash_digest_size[hash->algo]);
-#endif
 	return result;
 }
 
@@ -265,23 +249,17 @@ int compute_file_hash(const char *filename, uint8_t *digest,
 	file = filp_open(filename,  O_RDONLY, 0);
 
 	if (IS_ERR(file)) {
-#ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: filp_open failed\n");
-#endif
 		return -EBADF;
 	}
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: filp_open succeeded\n");
-#endif
 	hash.algo = convert_hash_id(digest_algo_id);
 	ret = process_file(file, &hash);
 	filp_close(file, NULL);
 	if (ret < 0)
 		return ret;
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: digest read from manifest:\n");
 	keystore_hexdump("", digest, hash_digest_size[hash.algo]);
-#endif
 	if (!memcmp(hash.digest, digest, hash_digest_size[hash.algo]))
 		return 0;
 

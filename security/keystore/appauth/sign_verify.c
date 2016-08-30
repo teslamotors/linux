@@ -48,9 +48,7 @@ static int verify_manifest_signature(struct public_key *key, appauth_digest *has
 	struct public_key_signature pks;
 	int ret = -ENOMEM;
 
-#ifdef DEBUG_APP_AUTH
 	debug_public_key(key);
-#endif
 	memset(&pks, 0, sizeof(pks));
 
 	pks.pkey_algo = PKEY_ALGO_RSA;
@@ -59,10 +57,8 @@ static int verify_manifest_signature(struct public_key *key, appauth_digest *has
 	pks.digest_size = hash->len;
 	pks.nr_mpi = 1;
 	pks.rsa.s = mpi_read_raw_data(sig, sig_len);
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: digest value\n");
 	keystore_hexdump("", pks.digest, pks.digest_size);
-#endif
 	if (pks.rsa.s)
 		ret = public_key_verify_signature(key, &pks);
 	return ret;
@@ -92,9 +88,7 @@ static int calc_hash_tfm(appauth_digest *hash,
 
 	rc = crypto_shash_init(shash);
 	if (rc != 0) {
-#ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: crypto_shash_init() failed\n");
-#endif
 		return rc;
 	}
 
@@ -120,14 +114,10 @@ static int calc_shash(appauth_digest *hash, const char *data, int len)
 
 	tfm = appauth_alloc_tfm(hash->algo);
 	if (IS_ERR(tfm)) {
-#ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: appauth_alloc_tfm failed\n");
-#endif
 		return PTR_ERR(tfm);
 	}
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: appauth_alloc_tfm succeeded\n");
-#endif
 	rc = calc_hash_tfm(hash, tfm, data, len);
 
 	appauth_free_tfm(tfm);
@@ -151,7 +141,6 @@ static int verify_cert_validity(struct x509_certificate *cert)
 	do_gettimeofday(&time);
 	rtc_time_to_tm(time.tv_sec, &tm);
 
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: Cert valid from: %04ld-%02d-%02d %02d:%02d:%02d\n",
 		cert->valid_from.tm_year + 1900, cert->valid_from.tm_mon + 1,
 		cert->valid_from.tm_mday, cert->valid_from.tm_hour,
@@ -164,7 +153,6 @@ static int verify_cert_validity(struct x509_certificate *cert)
 		tm.tm_year + 1900, tm.tm_mon + 1,
 		tm.tm_mday, tm.tm_hour,
 		tm.tm_min, tm.tm_sec);
-#endif
 
 	t = mktime64(tm.tm_year, tm.tm_mon, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -205,9 +193,7 @@ int verify_manifest(const char *sig, const char *cert, const char *data,
 	res = verify_self_signed_cert_against_manifest(cert, cert_len,
 		ATTESTATION_KEY_USAGE_BIT);
 	if (res != 0) {
-#ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: Certificate Verification Failed (%d)\n", res);
-#endif
 		return -CERTIFICATE_FAILURE;
 	}
 
@@ -231,15 +217,11 @@ int verify_manifest(const char *sig, const char *cert, const char *data,
 	}
 
 	if (verify_manifest_signature(x509cert->pub, &hash, sig, sig_len) != 0) {
-#ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: Signature Verification Failed\n");
-#endif
 		x509_free_certificate(x509cert);
 		return -SIGNATURE_FAILURE;
 	}
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: Signature Verification is SUCCESS\n");
-#endif
 	x509_free_certificate(x509cert);
 	return 0;
 }

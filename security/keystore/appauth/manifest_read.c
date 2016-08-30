@@ -32,12 +32,15 @@ static int appauth_read_buf(struct file *file, char **manifest_buf)
 	int manifest_len = 0;
 
 	i_size = i_size_read(file_inode(file));
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: file size = %lld\n", i_size);
-#endif
 
 	if (i_size == 0)
 		goto out;
+
+	if (i_size >= MANIFEST_MAX_LEN) {
+		manifest_len = -1;
+		goto out;
+	}
 
 	*manifest_buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!(*manifest_buf))
@@ -50,9 +53,7 @@ static int appauth_read_buf(struct file *file, char **manifest_buf)
 
 	manifest_len = appauth_kernel_read(file, offset,
 					*manifest_buf, PAGE_SIZE);
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: manifest_len = %d\n", manifest_len);
-#endif
 	if (read)
 		file->f_mode &= ~FMODE_READ;
 out:
@@ -84,9 +85,8 @@ int read_file(struct file *file, char **manifest_buf)
 {
 	struct inode *inode = file_inode(file);
 	int manifest_len = 0;
-#ifdef DEBUG_APP_AUTH
+
 	ks_debug("DEBUG_APPAUTH: calling mutex_lock\n");
-#endif
 	mutex_lock(&(inode->i_mutex));
 	manifest_len = appauth_read_buf(file, manifest_buf);
 	mutex_unlock(&(inode->i_mutex));
@@ -109,14 +109,10 @@ int read_manifest(const char *filename, char **manifest_buf, int *manifest_len)
 
 	file = filp_open(filename,  O_RDONLY, 0);
 	if (IS_ERR(file)) {
-#ifdef DEBUG_APP_AUTH
 		ks_err("DEBUG_APPAUTH: filp_open failed\n");
-#endif
 		return -EBADF;
 	}
-#ifdef DEBUG_APP_AUTH
 	ks_debug("DEBUG_APPAUTH: filp_open succeeded\n");
-#endif
 	*manifest_len = read_file(file, manifest_buf);
 	filp_close(file, NULL);
 	return 0;

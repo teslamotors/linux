@@ -43,9 +43,10 @@
 #define  manifest_default_hash_algo  HASH_ALGO_SHA1
 #define  default_sig_hash_algo HASH_ALGO_SHA256
 #define  KEYID_MAX_LEN 64
+/* maximum size of any files in the application */
 #define  MAX_FILE_SIZE (64 * 1024 * 1024)
-
-#define DEBUG_APP_AUTH
+/* maximum length of the application manifest file */
+#define  MANIFEST_MAX_LEN 5000
 
 typedef struct a {
 	int algo;
@@ -63,15 +64,7 @@ int read_manifest(const char *filename, char **manifest_buf, int *manifest_len);
 
 char *get_exe_name(char **buf);
 
-#ifdef DEBUG_APP_AUTH
-void print_kid(struct asymmetric_key_id *id);
-
-void print_string(unsigned char *p, int len);
-
 void debug_public_key(struct public_key *key);
-
-void print_mpi(MPI a);
-#endif
 
 void appauth_free_buf(char **manifest_buf);
 
@@ -82,4 +75,6 @@ const char *get_keyid_from_cert(struct x509_certificate *cert);
 
 int verify_manifest(const char *sig, const char *cert, const char *data,
 				int sig_len, int cert_len, int data_len);
+
+int manifest_sanity_check(char *manifest_buf, uint16_t manifest_len);
 #endif /* _APP_AUTH_H_ */

@@ -69,4 +69,5 @@ keystore-$(CONFIG_APPLICATION_AUTH) +=\
 	appauth/manifest_parser.o\
 	appauth/manifest_read.o\
 	appauth/manifest_verify.o\
-	appauth/sign_verify.o
+	appauth/sign_verify.o \
+	appauth/manifest_sanity_check.o
