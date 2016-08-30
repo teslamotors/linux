@@ -55,17 +55,13 @@ int keystore_test_aes_siv(void)
 	uint8_t output[sizeof(result)];
 	int res;
 
-#ifdef DEBUG_TRACE
 	ks_info(KBUILD_MODNAME ": keystore_test_aes_siv\n");
-#endif
 
 	memset(output, 0, sizeof(output));
 
-#ifdef DEBUG_TRACE
 	keystore_hexdump("KEY       ", key, sizeof(key));
 	keystore_hexdump("AD        ", ad, sizeof(ad));
 	keystore_hexdump("PLAINTEXT ", plaintext, sizeof(plaintext));
-#endif
 
 	/* test encryption */
 	res = keystore_aes_siv_crypt(1, key, sizeof(key), plaintext,
@@ -96,9 +92,7 @@ int keystore_test_aes_siv(void)
 			     plaintext, sizeof(plaintext)))
 		return -1;
 
-#ifdef DEBUG_TRACE
 	ks_info(KBUILD_MODNAME ":   OK!\n");
-#endif
 
 	return 0;
 }

@@ -50,10 +50,13 @@ int show_and_compare(const char *name1, const void *ptr1, const char *name2,
 {
 	int res = memcmp(ptr1, ptr2, size);
 
+	ks_debug(KBUILD_MODNAME " Comparing buffers %s and %s\n", name1, name2);
 	keystore_hexdump(name1, ptr1, size);
 	if (res) {
+		ks_debug(KBUILD_MODNAME " Buffers differ!\n");
 		keystore_hexdump(name2, ptr2, size);
-		ks_info(KBUILD_MODNAME ":   ERROR!\n");
+	} else {
+		ks_debug(KBUILD_MODNAME " Buffers are identical.\n");
 	}
 
 	return res ? -1 : 0;

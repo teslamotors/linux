@@ -61,7 +61,7 @@ void aes_siv_dbl(void *ptr)
  * as are necessary.
  */
 void aes_siv_pad(const void *x, unsigned int x_size, void *output,
-		unsigned int output_size)
+		 unsigned int output_size)
 {
 	uint8_t *out = (uint8_t *) output;
 
@@ -77,20 +77,29 @@ void aes_siv_pad(const void *x, unsigned int x_size, void *output,
  * where len(A) >= len(B), means xoring a string B onto the end of
  * string A -- i.e., leftmost(A, len(A)-len(B)) || (rightmost(A, len(B)) xor B).
  */
-void aes_siv_xorend(const void *a_ptr, unsigned int a_size, const void *b_ptr,
-	       unsigned int b_size, void *output)
+int aes_siv_xorend(const void *a_ptr, unsigned int a_size,
+		    const void *b_ptr, unsigned int b_size,
+		    void *output)
 {
 	const uint8_t *a = (const uint8_t *) a_ptr;
 	const uint8_t *b = (const uint8_t *) b_ptr;
 	uint8_t *o = (uint8_t *) output;
-	unsigned int diff = a_size - b_size;
+	unsigned int diff = 0;
 
-	/* XOR b_size bytes starting from LSB */
+	if (a_size < b_size)
+		return -EINVAL;
+	diff = a_size - b_size;
+
+	/* Copy first bytes into output buffer */
+	memcpy(o, a, diff);
+
+	/* Perfrom XOR on last diff bytes */
+	o += diff;
+	a += diff;
 	while (b_size--)
 		*o++ = *a++ ^ *b++;
 
-	/* copy the rest from A */
-	memcpy(o, a, diff);
+	return 0;
 }
 
 /**
@@ -171,11 +180,13 @@ int aes_siv_s2v(const void *key, unsigned int key_size,
 	if (last_string.size >= AES_BLOCK_SIZE) {
 		uint32_t t[BYTES_TO_DWORDS(last_string.size)];
 
-		/* T = Sn ... */
-		memcpy(t, last_string.data, last_string.size);
-
 		/* T = ... xorend D */
-		aes_siv_xor(t, d, t);
+		res = aes_siv_xorend(last_string.data, last_string.size,
+				     d, sizeof(d), t);
+		if (res) {
+			ks_err(KBUILD_MODNAME ": xorend returned %d\n", res);
+			return res;
+		}
 
 		/* return V = AES-CMAC(K, T) */
 		res = keystore_calc_mac("cmac(aes)", key, key_size,

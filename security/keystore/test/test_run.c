@@ -24,6 +24,10 @@ struct keystore_test tests[] = {
 		.run  = keystore_test_aes_siv_steps
 	},
 	{
+		.name = "AES SIV Steps with Nonce",
+		.run  = keystore_test_aes_siv_nonce
+	},
+	{
 		.name = "AES_SIV",
 		.run  = keystore_test_aes_siv
 	},

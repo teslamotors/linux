@@ -45,6 +45,13 @@ int keystore_test_aes_siv(void);
 int keystore_test_aes_siv_steps(void);
 
 /**
+ * Test the AES_SIV helper functions including nonce.
+ *
+ * @return 0 if OK or negative error code (see errno).
+ */
+int keystore_test_aes_siv_nonce(void);
+
+/**
  * Test the CMAC (AES-128).
  *
  * @return 0 if OK or negative error code (see errno).
