@@ -732,6 +732,10 @@ int intel_setup_gmbus(struct drm_i915_private *dev_priv)
 		if (!intel_gmbus_is_valid_pin(dev_priv, pin))
 			continue;
 
+		if (IS_BROXTON(dev_priv) && (pin == GMBUS_PIN_3_BXT) &&
+		    (i915_modparams.tsd_init & TSD_INIT_SKIP_PIN_MISC))
+			continue;
+
 		bus = &dev_priv->gmbus[pin];
 
 		bus->adapter.owner = THIS_MODULE;

@@ -352,3 +352,10 @@ MODULE_PARM_DESC(domain_scaler_owner, "scaler owners for each domain and for\n"
 
 i915_param_named(fpreempt_timeout, uint, 0600,
 	"Wait time in msecs before forcing a preemption with reset (0:never force [default])");
+
+module_param_named_unsafe(tsd_init, i915_modparams.tsd_init, uint, 0400);
+MODULE_PARM_DESC(tsd_init,
+		 "Mark initialization sections for skip or delay"
+		 "(0x02 - acpi video delay, 0x04 - skip GBUS MISC pin registration,"
+		 " 0x08 - plane delay, 0x10 - DDI port A delay, 0x20 - DDI port B delay,"
+		 " 0x40 - DDI port C delay, 0x80 - MIPI DSI delay)");

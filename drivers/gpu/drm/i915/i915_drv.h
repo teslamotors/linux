@@ -2729,6 +2729,8 @@ struct drm_i915_private {
 		struct platform_device *platdev;
 		int	irq;
 	} lpe_audio;
+	/* experimental delayed intitialization */
+	struct delayed_work tsd_init;
 
 	/*
 	 * NOTE: This is the dri1/ums dungeon, don't add stuff here. Your patch

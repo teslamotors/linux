@@ -1285,6 +1285,14 @@ hdmi_to_dig_port(struct intel_hdmi *intel_hdmi)
 	return container_of(intel_hdmi, struct intel_digital_port, hdmi);
 }
 
+#define TSD_INIT_DELAY_REGISTER 0x02
+#define TSD_INIT_SKIP_PIN_MISC  0x04
+#define TSD_INIT_SKIP_PLANE     0x08
+#define TSD_INIT_DELAY_DDI_A    0x10
+#define TSD_INIT_DELAY_DDI_B    0x20
+#define TSD_INIT_DELAY_DDI_C    0x40
+#define TSD_INIT_DELAY_DSI      0x80
+
 /* intel_fifo_underrun.c */
 bool intel_set_cpu_fifo_underrun_reporting(struct drm_i915_private *dev_priv,
 					   enum pipe pipe, bool enable);

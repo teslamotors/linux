@@ -14327,11 +14327,15 @@ static void intel_setup_outputs(struct drm_i915_private *dev_priv)
 		 * DDI_BUF_CTL_A or SFUSE_STRAP registers, find another way to
 		 * detect the ports.
 		 */
-		intel_ddi_init(dev_priv, PORT_A);
-		intel_ddi_init(dev_priv, PORT_B);
-		intel_ddi_init(dev_priv, PORT_C);
+		if (!(i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_A))
+			intel_ddi_init(dev_priv, PORT_A);
+		if (!(i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_B))
+			intel_ddi_init(dev_priv, PORT_B);
+		if (!(i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_C))
+			intel_ddi_init(dev_priv, PORT_C);
 
-		intel_dsi_init(dev_priv);
+		if (!(i915_modparams.tsd_init & TSD_INIT_DELAY_DSI))
+			intel_dsi_init(dev_priv);
 	} else if (HAS_DDI(dev_priv)) {
 		int found;
 
@@ -15351,6 +15355,8 @@ int intel_modeset_init(struct drm_device *dev)
 		if (!crtc->active)
 			continue;
 
+		if (i915_modparams.tsd_init & TSD_INIT_SKIP_PLANE)
+			continue;
 		/*
 		 * Note that reserving the BIOS fb up front prevents us
 		 * from stuffing other stolen allocations like the ring
