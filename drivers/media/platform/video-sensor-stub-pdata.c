@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -31,6 +31,13 @@ static struct intel_ipu4_isys_csi2_config stub_csi2_cfg[] = {
 	},
 };
 
+static struct intel_ipu4_isys_csi2_config stub_csi2_cfg_ipu5[] = {
+	{
+		.nlanes = 2,
+		.port = 0,
+	},
+};
+
 static struct intel_ipu4_isys_subdev_info stub_sd[] = {
 	{
 		.csi2 = &stub_csi2_cfg[0],
@@ -52,10 +59,29 @@ static struct intel_ipu4_isys_subdev_info stub_sd[] = {
 	}
 };
 
+static struct intel_ipu4_isys_subdev_info stub_sd_ipu5[] = {
+	{
+		.csi2 = &stub_csi2_cfg_ipu5[0],
+		.i2c = {
+			.board_info = {
+				I2C_BOARD_INFO(SENSOR_STUB_NAME, 0x7C),
+			},
+			.i2c_adapter_id = 0,
+		}
+	},
+};
+
 static struct intel_ipu4_isys_subdev_pdata pdata = {
 	.subdevs = (struct intel_ipu4_isys_subdev_info *[]) {
 		&stub_sd[0],
 		&stub_sd[1],
+		NULL,
+	},
+};
+
+static struct intel_ipu4_isys_subdev_pdata pdata_ipu5 = {
+	.subdevs = (struct intel_ipu4_isys_subdev_info *[]) {
+		&stub_sd_ipu5[0],
 		NULL,
 	},
 };
@@ -66,6 +92,12 @@ static void intel_ipu4_quirk(struct pci_dev *pci_dev)
 	pci_dev->dev.platform_data = &pdata;
 }
 
+static void intel_ipu5_quirk(struct pci_dev *pci_dev)
+{
+	pr_info("Sensor Stub platform data PCI quirk hack for IPU5\n");
+	pci_dev->dev.platform_data = &pdata_ipu5;
+}
+
 /* BXT ISYS FPGA */
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x9488, intel_ipu4_quirk);
 /* BXT A0 */
@@ -74,4 +106,6 @@ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x4008, intel_ipu4_quirk);
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x5a88, intel_ipu4_quirk);
 /* BXT FPGA. ISYS & PSYS */
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x0a88, intel_ipu4_quirk);
+/* IPU5 A0 */
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x5a19, intel_ipu5_quirk);
 
