@@ -37,6 +37,7 @@ struct intel_ipu4_isys;
 #define NR_OF_CSI2_SINK_PADS		1
 #define NR_OF_CSI2_SOURCE_PADS		(NR_OF_CSI2_PADS - 2)
 #define NR_OF_CSI2_STREAMS		4
+#define NR_OF_CSI2_VC			4
 
 #define INTEL_IPU4_ISYS_CSI2_SENSOR_CFG_LANE_CLOCK	0
 #define INTEL_IPU4_ISYS_CSI2_SENSOR_CFG_LANE_DATA(n)	((n) + 1)
@@ -88,8 +89,8 @@ struct intel_ipu4_isys_csi2 {
 	unsigned int nlanes;
 	unsigned int index;
 	atomic_t sof_sequence;
-	bool in_frame;
-	bool wait_for_sync;
+	bool in_frame[NR_OF_CSI2_VC];
+	bool wait_for_sync[NR_OF_CSI2_VC];
 
 	unsigned int remote_streams;
 	unsigned int stream_count;
