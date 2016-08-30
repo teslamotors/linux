@@ -71,7 +71,7 @@ enum ipu_device_gp_isa_value {
 	IPU_DEVICE_GP_ISA_PAF_STR_PORT0 = 0,
 	IPU_DEVICE_GP_ISA_PAF_STR_PORT1 = 1,
 
-	/* Needed only for glv */
+	/* Needed only for IPU5 */
 	/* scaler port block options */
 	IPU_DEVICE_GP_ISA_SCALER_PORT_UNBLOCK = 0,
 	IPU_DEVICE_GP_ISA_SCALER_PORT_BLOCK = 1,
@@ -100,8 +100,9 @@ enum ipu_device_gp_psa_value {
 	/* PSA_V2S_RGB_4_DEMUX */
 	IPU_DEVICE_GP_PSA_DEMUX_POST_V2S_RGB_4_TO_GTM = 0,
 	IPU_DEVICE_GP_PSA_DEMUX_POST_V2S_RGB_4_TO_ACM = 1,
-	/* Defines needed for glv. For details see diagram in section 2.2.2 of
-	 * IPU5 general fixed function MAS. Choose between pixel stream and
+	/* Defines needed for IPU5.
+	 * For details see diagram in section 2.2.2 of IPU5 general
+	 * fixed function MAS. Choose between pixel stream and
 	 * delta stream as BNLM output (gpreg 1)
 	 */
 	IPU_DEVICE_GP_PSA_1_NOISE_MUX_BNLM_PIXELS = 0,

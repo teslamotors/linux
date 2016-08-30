@@ -39,6 +39,7 @@ VIED_PARAMETERS_PSA_UTILS_HOST_FILES += $(MODULES_DIR)/vied_parameters/support/$
 VIED_PARAMETERS_UTILS_HOST_CPPFLAGS = $(VIED_PARAMETERS_SUPPORT_CPPFLAGS)
 
 VIED_PARAMETERS_ISA_UTILS_HOST_FILES = $(MODULES_DIR)/vied_parameters/support/ia_css_isys_parameter_utils.c
+VIED_PARAMETERS_ISA_UTILS_HOST_FILES += $(MODULES_DIR)/vied_parameters/support/$(IPU_SYSVER)/ia_css_isys_parameter_utils_dep.c
 
 VIED_PARAMETERS_PRINT_CPPFLAGS += -I$(VIED_PARAMETERS_DIR)/print/interface
 VIED_PARAMETERS_PRINT_FILES    += $(VIED_PARAMETERS_DIR)/print/src/ia_css_terminal_print.c
