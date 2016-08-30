@@ -484,6 +484,14 @@ struct intel_ipu4_isys_pixelformat csi2_meta_pfmts[] = {
 
 #define DIV_SHIFT	8
 
+static void intel_ipu4_isys_register_errors(struct intel_ipu4_isys_csi2 *csi2)
+{
+	u32 status = readl(csi2->base + CSI2_REG_CSIRX_IRQ_STATUS);
+
+	writel(status, csi2->base + CSI2_REG_CSIRX_IRQ_CLEAR);
+	csi2->receiver_errors |= status;
+}
+
 static void intel_ipu4_isys_csi2_error(struct intel_ipu4_isys_csi2 *csi2)
 {
 	/*
@@ -513,9 +521,12 @@ static void intel_ipu4_isys_csi2_error(struct intel_ipu4_isys_csi2 *csi2)
 		{ "Inter-frame short packet discarded", true },
 		{ "Inter-frame long packet discarded", true },
 	};
-	u32 status = csi2->receiver_errors;
+	u32 status;
 	unsigned int i;
 
+	/* Register errors once more in case of error interrupts are disabled */
+	intel_ipu4_isys_register_errors(csi2);
+	status = csi2->receiver_errors;
 	csi2->receiver_errors = 0;
 
 	for (i = 0; i < ARRAY_SIZE(errors); i++) {
@@ -657,8 +668,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 
 
 	/* SOF enabled from CSI2PART register in B0 */
-	csi2part = CSI2_IRQ_FS_VC(0) | CSI2_IRQ_FE_VC(0) |
-		   CSI2_CSI2PART_IRQ_CSIRX_B0;
+	csi2part = CSI2_IRQ_FS_VC(0) | CSI2_IRQ_FE_VC(0);
 
 
 	/* Enable csi2 receiver error interrupts */
@@ -1180,14 +1190,6 @@ void intel_ipu4_isys_csi2_wait_last_eof(struct intel_ipu4_isys_csi2 *csi2)
 		dev_err(&csi2->isys->adev->dev,
 			"csi2-%d: timeout at sync to eof\n", csi2->index);
 	csi2->wait_for_sync = false;
-}
-
-static void intel_ipu4_isys_register_errors(struct intel_ipu4_isys_csi2 *csi2)
-{
-	u32 status = readl(csi2->base + CSI2_REG_CSIRX_IRQ_STATUS);
-
-	writel(status, csi2->base + CSI2_REG_CSIRX_IRQ_CLEAR);
-	csi2->receiver_errors |= status;
 }
 
 void intel_ipu4_isys_csi2_isr(struct intel_ipu4_isys_csi2 *csi2)
