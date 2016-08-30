@@ -85,6 +85,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.gvt_emulate_hdmi = true,
 	.domain_scaler_owner = 0x21100,
 	.enable_guc_critical_logging = false,
+	.tsd_delay = 2000,
 };
 
 i915_param_named(modeset, int, 0400,
@@ -359,3 +360,6 @@ MODULE_PARM_DESC(tsd_init,
 		 "(0x02 - acpi video delay, 0x04 - skip GBUS MISC pin registration,"
 		 " 0x08 - plane delay, 0x10 - DDI port A delay, 0x20 - DDI port B delay,"
 		 " 0x40 - DDI port C delay, 0x80 - MIPI DSI delay)");
+
+module_param_named_unsafe(tsd_delay, i915_modparams.tsd_delay, int, 0400);
+MODULE_PARM_DESC(tsd_delay, "Delay in ms to wait before finishing initialization.");
