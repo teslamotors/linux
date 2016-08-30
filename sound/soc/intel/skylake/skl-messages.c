@@ -60,6 +60,8 @@ static int skl_free_dma_buf(struct device *dev, struct snd_dma_buffer *dmab)
 }
 
 #define ENABLE_LOGS		6
+#define FW_LOGGING_AGING_TIMER_PERIOD 100
+#define FW_LOG_FIFO_FULL_TIMER_PERIOD 100
 
 /* set firmware logging state via IPC */
 int skl_dsp_enable_logging(struct sst_generic_ipc *ipc, int core, int enable)
@@ -67,6 +69,9 @@ int skl_dsp_enable_logging(struct sst_generic_ipc *ipc, int core, int enable)
 	struct skl_log_state_msg log_msg;
 	struct skl_ipc_large_config_msg msg = {0};
 	int ret = 0;
+
+	log_msg.aging_timer_period = FW_LOGGING_AGING_TIMER_PERIOD;
+	log_msg.fifo_full_timer_period = FW_LOG_FIFO_FULL_TIMER_PERIOD;
 
 	log_msg.core_mask = (1 << core);
 	log_msg.logs_core[core].enable = enable;
@@ -77,6 +82,33 @@ int skl_dsp_enable_logging(struct sst_generic_ipc *ipc, int core, int enable)
 
 	ret = skl_ipc_set_large_config(ipc, &msg, (u32 *)&log_msg);
 
+	return ret;
+}
+
+#define SYSTEM_TIME		20
+
+/* set system time to DSP via IPC */
+int skl_dsp_set_system_time(struct skl_sst *skl_sst)
+{
+	struct sst_generic_ipc *ipc = &skl_sst->ipc;
+	struct SystemTime sys_time_msg;
+	struct skl_ipc_large_config_msg msg = {0};
+	struct timeval tv;
+	u64 sys_time;
+	u64 mask = 0x00000000FFFFFFFF;
+	int ret;
+
+	do_gettimeofday(&tv);
+
+	/* DSP firmware expects UTC time in micro seconds */
+	sys_time = tv.tv_sec*1000*1000 + tv.tv_usec;
+	sys_time_msg.val_l = sys_time & mask;
+	sys_time_msg.val_u = (sys_time & (~mask)) >> 32;
+
+	msg.large_param_id = SYSTEM_TIME;
+	msg.param_data_size = sizeof(sys_time_msg);
+
+	ret = skl_ipc_set_large_config(ipc, &msg, (u32 *)&sys_time_msg);
 	return ret;
 }
 

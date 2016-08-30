@@ -822,6 +822,12 @@ static int skl_trace_compr_set_params(struct snd_compr_stream *stream,
 		return ret;
 	}
 
+	ret = skl_dsp_set_system_time(skl_sst);
+	if (ret < 0) {
+		dev_err(sst->dev, "Set system time to dsp firmware failed: %d\n", ret);
+		return ret;
+	}
+
 	skl_dsp_get_log_buff(sst, core);
 	sst->trace_wind.flags |= BIT(core);
 	ret = skl_dsp_enable_logging(ipc, core, 1);

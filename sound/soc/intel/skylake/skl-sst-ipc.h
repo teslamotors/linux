@@ -27,6 +27,7 @@ struct sst_generic_ipc;
 
 #define NO_OF_INJECTOR 6
 #define NO_OF_EXTRACTOR 8
+#define FW_REG_SZ 1024
 
 enum skl_ipc_pipeline_state {
 	PPL_INVALID_STATE =	0,
@@ -329,11 +330,56 @@ struct skl_log_state {
 };
 
 struct skl_log_state_msg {
+	uint32_t  aging_timer_period;
+	uint32_t  fifo_full_timer_period;
+
 	u32	core_mask;
 	struct	skl_log_state logs_core[2];
 };
 
-#define SKL_IPC_BOOT_MSECS		3000
+struct SystemTime {
+	uint32_t  val_l;
+	uint32_t  val_u;
+};
+
+struct fw_version {
+	u16 major;
+	u16 minor;
+	u16 hotfix;
+	u16 build;
+} __packed;
+
+struct sw_version {
+	u16 major;
+	u16 minor;
+	u16 hotfix;
+	u16 build;
+} __packed;
+
+struct skl_dsp_core_dump {
+	u16 type0;
+	u16 length0;
+	u32 crash_dump_ver;
+	u16 bus_dev_id;
+	u16 cavs_hw_version;
+	struct fw_version fw_ver;
+	struct sw_version sw_ver;
+	u16 type2;
+	u16 length2;
+	u32 fwreg[FW_REG_SZ];
+} __packed;
+
+struct skl_module_notify {
+	u32 unique_id;
+	u32 event_id;
+	u32 event_data_size;
+	u32 event_data[0];
+} __packed;
+
+/* Timeout values in milliseconds for response from FW */
+#define SKL_IPC_BOOT_MSECS              3000
+#define SKL_IPC_LOAD_LIB_TIMEOUT        3000
+#define SKL_IPC_DEFAULT_TIMEOUT         300
 
 #define SKL_IPC_D3_MASK	0
 #define SKL_IPC_D0_MASK	3
@@ -387,6 +433,7 @@ int skl_ipc_set_d0ix(struct sst_generic_ipc *ipc,
 int skl_ipc_check_D0i0(struct sst_dsp *dsp, bool state);
 
 int skl_dsp_enable_logging(struct sst_generic_ipc *ipc, int core, int enable);
+int skl_dsp_set_system_time(struct skl_sst *skl_sst);
 
 void skl_ipc_int_enable(struct sst_dsp *dsp);
 void skl_ipc_op_int_enable(struct sst_dsp *ctx);
