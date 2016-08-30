@@ -431,6 +431,50 @@ static ssize_t gt_min_freq_mhz_store(struct device *kdev,
 	return ret ?: count;
 }
 
+#define YES_NO(cond) (cond) ? "Yes" : "No"
+
+static ssize_t kick_delayed_init_show(struct device *kdev,
+				      struct device_attribute *attr, char *buf)
+{
+	/*
+	struct drm_minor *minor = dev_to_drm_minor(kdev);
+	struct drm_device *dev = minor->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	*/
+
+	return snprintf(buf, PAGE_SIZE,
+			"delay initialization by:    %d ms\n"
+			"driver registration         %s\n"
+			"GMBUS MISC pin registration %s\n"
+			"DDI Port A initialization   %s\n"
+			"DDI Port B initialization   %s\n"
+			"DDI Port C initialization   %s\n"
+			"MIPI DSI initialization     %s\n"
+			"Abort on first use          %s\n",
+			i915_modparams.tsd_delay,
+			YES_NO(i915_modparams.tsd_init & TSD_INIT_DELAY_REGISTER),
+			YES_NO(i915_modparams.tsd_init & TSD_INIT_SKIP_PIN_MISC),
+			YES_NO(i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_A),
+			YES_NO(i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_B),
+			YES_NO(i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_C),
+			YES_NO(i915_modparams.tsd_init & TSD_INIT_DELAY_DSI),
+			YES_NO(i915_modparams.tsd_init & TSD_INIT_ABORT_ON_USE)
+			);
+}
+
+static ssize_t kick_delayed_init_store(struct device *kdev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count)
+{
+	struct drm_minor *minor = dev_get_drvdata(kdev);
+        struct drm_i915_private *dev_priv = to_i915(minor->dev);
+
+	flush_delayed_work(&dev_priv->tsd_init);
+
+	return count;
+}
+
+
 static DEVICE_ATTR(gt_act_freq_mhz, S_IRUGO, gt_act_freq_mhz_show, NULL);
 static DEVICE_ATTR(gt_cur_freq_mhz, S_IRUGO, gt_cur_freq_mhz_show, NULL);
 static DEVICE_ATTR(gt_boost_freq_mhz, S_IRUGO | S_IWUSR, gt_boost_freq_mhz_show, gt_boost_freq_mhz_store);
@@ -443,6 +487,8 @@ static ssize_t gt_rp_mhz_show(struct device *kdev, struct device_attribute *attr
 static DEVICE_ATTR(gt_RP0_freq_mhz, S_IRUGO, gt_rp_mhz_show, NULL);
 static DEVICE_ATTR(gt_RP1_freq_mhz, S_IRUGO, gt_rp_mhz_show, NULL);
 static DEVICE_ATTR(gt_RPn_freq_mhz, S_IRUGO, gt_rp_mhz_show, NULL);
+static DEVICE_ATTR(kick_delayed_init, S_IRUGO | S_IWUSR,
+		   kick_delayed_init_show, kick_delayed_init_store);
 
 /* For now we have a static number of RP states */
 static ssize_t gt_rp_mhz_show(struct device *kdev, struct device_attribute *attr, char *buf)
@@ -471,6 +517,7 @@ static const struct attribute *gen6_attrs[] = {
 	&dev_attr_gt_RP0_freq_mhz.attr,
 	&dev_attr_gt_RP1_freq_mhz.attr,
 	&dev_attr_gt_RPn_freq_mhz.attr,
+	&dev_attr_kick_delayed_init.attr,
 	NULL,
 };
 
