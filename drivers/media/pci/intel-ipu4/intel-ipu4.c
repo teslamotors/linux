@@ -32,6 +32,7 @@
 #include "intel-ipu4-bus.h"
 #include "intel-ipu4-regs.h"
 #include "intel-ipu5-regs.h"
+#include "intel-ipu5-isys-csi2-reg.h"
 #include "intel-ipu4-trace.h"
 #include "intel-ipu4-wrapper.h"
 
@@ -528,8 +529,13 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu4 = {
 
 static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu5 = {
 	.csi2 = {
-		.nports = INTEL_IPU4_ISYS_MAX_CSI2_PORTS,
-		.offsets = { 0x68200, 0x68300, 0x6a200, 0x6a300, 0x6C200, 0x6C300},
+		.nports = 6,
+		.offsets = { INTEL_IPU5_CSI_REG_TOP0_RX_A_ADDR_OFFSET,
+			INTEL_IPU5_CSI_REG_TOP0_RX_B_ADDR_OFFSET,
+			INTEL_IPU5_CSI_REG_TOP0_CPHY_RX_0_ADDR_OFFSET,
+			INTEL_IPU5_CSI_REG_TOP0_CPHY_RX_1_ADDR_OFFSET,
+			INTEL_IPU5_CSI_REG_TOP1_RX_A_ADDR_OFFSET,
+			INTEL_IPU5_CSI_REG_TOP1_RX_B_ADDR_OFFSET,},
 	},
 	.tpg = {
 		.ntpgs = 2,
@@ -666,8 +672,8 @@ static const struct intel_ipu4_buttress_ctrl isys_buttress_ctrl_ipu5 = {
 };
 
 static const struct intel_ipu4_buttress_ctrl psys_buttress_ctrl_ipu5 = {
-	.divisor = PS_FREQ_CTL_DEFAULT_RATIO_B0,
-	.qos_floor = PS_FREQ_CTL_DEFAULT_RATIO_B0,
+	.divisor = PS_FREQ_CTL_DEFAULT_RATIO_IPU5_A0,
+	.qos_floor = PS_FREQ_CTL_DEFAULT_QOS_FLOOR_RATIO_IPU5_A0,
 	.freq_ctl = BUTTRESS_REG_PS_FREQ_CTL,
 	.pwr_sts_shift = IPU5_BUTTRESS_PWR_STATE_PS_PWR_FSM_SHIFT,
 	.pwr_sts_mask = IPU5_BUTTRESS_PWR_STATE_PS_PWR_FSM_MASK,

@@ -70,6 +70,14 @@
 /* processing system frequency: 25Mhz x ratio, Legal values [8,32] */
 #define PS_FREQ_CTL_DEFAULT_RATIO_B0	0x12
 
+/*
+* TODO: tuning these 2 IPU5 PS_FREQ default values
+* setting default values following the ipu5 FPGA release report now;
+* and these values should be tuned when enabling PS and on silicon
+*/
+#define PS_FREQ_CTL_DEFAULT_RATIO_IPU5_A0	0x80
+#define PS_FREQ_CTL_DEFAULT_QOS_FLOOR_RATIO_IPU5_A0	0x0708
+
 /* input system frequency: 1600Mhz / divisor. Legal values [2,8] */
 #define IS_FREQ_CTL_DIVISOR_B0		0x4
 #define IS_FREQ_CTL_DIVISOR_IPU5_A0		0x6

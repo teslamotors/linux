@@ -524,6 +524,9 @@ static void intel_ipu4_isys_csi2_error(struct intel_ipu4_isys_csi2 *csi2)
 	u32 status;
 	unsigned int i;
 
+	if (is_intel_ipu5_hw_a0(csi2->isys->adev->isp))
+		return;
+
 	/* Register errors once more in case of error interrupts are disabled */
 	intel_ipu4_isys_register_errors(csi2);
 	status = csi2->receiver_errors;
@@ -612,12 +615,18 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 		writel(0, csi2->base + CSI2_REG_CSI_RX_CONFIG);
 		writel(0, csi2->base + CSI2_REG_CSI_RX_ENABLE);
 
-		/* Disable interrupts */
-		writel(0, csi2->base + CSI2_REG_CSI2S2M_IRQ_MASK);
-		writel(0, csi2->base + CSI2_REG_CSI2S2M_IRQ_ENABLE);
-		writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_MASK);
-		writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
-
+		if (is_intel_ipu4_hw_bxt_b0(csi2->isys->adev->isp)) {
+			/* Disable interrupts */
+			writel(0, csi2->base + CSI2_REG_CSI2S2M_IRQ_MASK);
+			writel(0, csi2->base + CSI2_REG_CSI2S2M_IRQ_ENABLE);
+			writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_MASK);
+			writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
+		} else {
+			/*
+			* TODO: IPU5 IRQ
+			* So far csi2 irq regs not define and not enable on ipu5
+			*/
+		}
 		return 0;
 	}
 
@@ -638,24 +647,46 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 	}
 
 	/*Do not configure timings on FPGA*/
-	if (csi2->isys->pdata->type != INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA) {
+	if (csi2->isys->pdata->type !=
+		INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA) {
 		rval = intel_ipu4_isys_csi2_calc_timing(csi2,
 			&timing, CSI2_ACCINV);
 		if (rval)
 			return rval;
+		if (is_intel_ipu4_hw_bxt_b0(csi2->isys->adev->isp)) {
+			csi2_ev_correction_params(csi2, nlanes);
 
-		csi2_ev_correction_params(csi2, nlanes);
+			writel(timing.ctermen,
+				csi2->base +
+					CSI2_REG_CSI_RX_DLY_CNT_TERMEN_CLANE);
+			writel(timing.csettle,
+				csi2->base +
+					CSI2_REG_CSI_RX_DLY_CNT_SETTLE_CLANE);
 
-		writel(timing.ctermen,
-			csi2->base + CSI2_REG_CSI_RX_DLY_CNT_TERMEN_CLANE);
-		writel(timing.csettle,
-			csi2->base + CSI2_REG_CSI_RX_DLY_CNT_SETTLE_CLANE);
+			for (i = 0; i < nlanes; i++) {
+				writel(timing.dtermen,
+				csi2->base +
+				CSI2_REG_CSI_RX_DLY_CNT_TERMEN_DLANE(i));
+				writel(timing.dsettle,
+				csi2->base +
+				CSI2_REG_CSI_RX_DLY_CNT_SETTLE_DLANE(i));
+			}
+		} else {
+			writel(timing.ctermen,
+				csi2->base +
+				INTEL_IPU5_CSI_REG_RX_DLY_CNT_TERMEN_CLANE);
+			writel(timing.csettle,
+				csi2->base +
+				INTEL_IPU5_CSI_REG_RX_DLY_CNT_SETTLE_CLANE);
 
-		for (i = 0; i < nlanes; i++) {
-			writel(timing.dtermen,
-			csi2->base + CSI2_REG_CSI_RX_DLY_CNT_TERMEN_DLANE(i));
-			writel(timing.dsettle,
-			csi2->base + CSI2_REG_CSI_RX_DLY_CNT_SETTLE_DLANE(i));
+			for (i = 0; i < nlanes; i++) {
+				writel(timing.dtermen,
+					csi2->base +
+				INTEL_IPU5_CSI_REG_RX_DLY_CNT_TERMEN_DLANE(i));
+				writel(timing.dsettle,
+					csi2->base +
+				INTEL_IPU5_CSI_REG_RX_DLY_CNT_SETTLE_DLANE(i));
+			}
 		}
 	}
 	writel(CSI2_CSI_RX_CONFIG_DISABLE_BYTE_CLK_GATING |
@@ -663,32 +694,36 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 		csi2->base + CSI2_REG_CSI_RX_CONFIG);
 
 	writel(nlanes, csi2->base + CSI2_REG_CSI_RX_NOF_ENABLED_LANES);
+	writel(CSI2_CSI_RX_ENABLE_ENABLE,
+		csi2->base + CSI2_REG_CSI_RX_ENABLE);
 
-	writel(CSI2_CSI_RX_ENABLE_ENABLE, csi2->base + CSI2_REG_CSI_RX_ENABLE);
+	if (is_intel_ipu4_hw_bxt_b0(csi2->isys->adev->isp)) {
+		/* SOF enabled from CSI2PART register in B0 */
+		csi2part = CSI2_IRQ_FS_VC(0) | CSI2_IRQ_FE_VC(0);
 
+		/* Enable csi2 receiver error interrupts */
+		csi2csirx = BIT(CSI2_CSIRX_NUM_ERRORS) - 1;
+		writel(csi2csirx, csi2->base + CSI2_REG_CSIRX_IRQ_EDGE);
+		writel(0, csi2->base + CSI2_REG_CSIRX_IRQ_LEVEL_NOT_PULSE);
+		writel(csi2csirx, csi2->base + CSI2_REG_CSIRX_IRQ_CLEAR);
+		writel(csi2csirx, csi2->base + CSI2_REG_CSIRX_IRQ_MASK);
+		writel(csi2csirx, csi2->base + CSI2_REG_CSIRX_IRQ_ENABLE);
 
-	/* SOF enabled from CSI2PART register in B0 */
-	csi2part = CSI2_IRQ_FS_VC(0) | CSI2_IRQ_FE_VC(0);
-
-
-	/* Enable csi2 receiver error interrupts */
-	csi2csirx = BIT(CSI2_CSIRX_NUM_ERRORS) - 1;
-	writel(csi2csirx, csi2->base + CSI2_REG_CSIRX_IRQ_EDGE);
-	writel(0, csi2->base + CSI2_REG_CSIRX_IRQ_LEVEL_NOT_PULSE);
-	writel(csi2csirx, csi2->base + CSI2_REG_CSIRX_IRQ_CLEAR);
-	writel(csi2csirx, csi2->base + CSI2_REG_CSIRX_IRQ_MASK);
-	writel(csi2csirx, csi2->base + CSI2_REG_CSIRX_IRQ_ENABLE);
-
-	/* Enable csi2 error and SOF-related irqs */
-	writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_EDGE);
-	writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_LEVEL_NOT_PULSE);
-	writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_CLEAR);
-	writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_MASK);
-	writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
+		/* Enable csi2 error and SOF-related irqs */
+		writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_EDGE);
+		writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_LEVEL_NOT_PULSE);
+		writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_CLEAR);
+		writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_MASK);
+		writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
+	} else {
+		/*
+		* TODO: IPU5 IRQ
+		* So far csi2 irq regs not define and not enable on ipu5
+		*/
+	}
 
 	ip->has_sof = true;
 	csi2->stream_count++;
-
 	return 0;
 }
 
