@@ -1826,6 +1826,7 @@ static int psys_runtime_pm_resume(struct device *dev)
 		dev_err(&psys->adev->dev, "psys library open ready failed\n");
 		ia_css_psys_close(psys->dev_ctx);
 		ia_css_psys_release(psys->dev_ctx, 1);
+		psys->dev_ctx = NULL;
 		return -ENODEV;
 	}
 
@@ -1864,7 +1865,7 @@ static int psys_runtime_pm_suspend(struct device *dev)
 		goto out;
 	}
 	do {
-		r = -ia_css_psys_release(psys->dev_ctx, 0);
+		r = ia_css_psys_release(psys->dev_ctx, 0);
 		if (r && r != -EBUSY) {
 			dev_dbg(dev, "psys library release failed\n");
 			break;
@@ -1873,6 +1874,7 @@ static int psys_runtime_pm_suspend(struct device *dev)
 	} while (r && --retry);
 
 out:
+	psys->dev_ctx = NULL;
 	psys_syscom = NULL;
 	intel_ipu4_trace_stop(&psys->adev->dev);
 	return 0;
