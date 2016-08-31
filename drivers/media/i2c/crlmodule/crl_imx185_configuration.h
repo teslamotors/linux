@@ -297,8 +297,9 @@ static struct crl_register_write_rep imx185_1312_728_27MHZ_CROPPING[] = {
 
 static struct crl_register_write_rep imx185_1952_1096_27MHZ[] = {
 	/* 0x02h */
-	{0x3005, CRL_REG_LEN_08BIT, 0x00},	/* ADBIT: 10/12 */
+	{0x3005, CRL_REG_LEN_08BIT, 0x01},	/* ADBIT: 10/12 */
 	{0x3007, CRL_REG_LEN_08BIT, 0x10},	/* 1080p mode */
+	{0x300A, CRL_REG_LEN_08BIT, 0xF0},
 	{0x301D, CRL_REG_LEN_08BIT, 0x08},
 	{0x301E, CRL_REG_LEN_08BIT, 0x02},
 	{0x3048, CRL_REG_LEN_08BIT, 0x33},
