@@ -450,7 +450,7 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 	start_thread = list_empty(&psys->fhs) && (psys->pdata->type ==
 					INTEL_IPU4_PSYS_TYPE_INTEL_IPU4_FPGA);
 
-	list_add(&fh->list, &psys->fhs);
+	list_add_tail(&fh->list, &psys->fhs);
 	if (start_thread) {
 		static const struct sched_param param = {
 			.sched_priority = MAX_USER_RT_PRIO/2,
