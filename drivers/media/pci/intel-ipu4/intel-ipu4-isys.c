@@ -44,6 +44,7 @@
 #include "intel-ipu4-regs.h"
 #include "intel-ipu5-regs.h"
 #include "intel-ipu4-buttress.h"
+#include "intel-ipu4-buttress-regs.h"
 #include "intel-ipu4-wrapper.h"
 #include "isysapi/interface/ia_css_isysapi.h"
 #include "vied/vied/shared_memory_map.h"
@@ -418,6 +419,73 @@ static int isys_determine_csi_combo_lane_configuration(
 	}
 	dev_err(&isys->adev->dev,
 		"Unsupported CSI2-combo lane configuration\n");
+	return 0;
+}
+
+static int isys_determine_csi_combo_lane_configuration_ipu5(
+					struct intel_ipu4_isys *isys)
+{
+	const struct csi_lane_cfg {
+		u8 reg_value;
+		u8 port_lanes[INTEL_IPU5_ISYS_MAX_CSI2_COMBO_PORTS];
+	} csi_lanes_to_cfg[] = {
+		{ 0x1f, { 0, 0, 0, 0 } }, /* no sensor defaults here*/
+		{ 0x00, { 0, 0, 4, 0 } }, /* Dphy0, Dphy1, Cphy0, Cphy1*/
+		{ 0x01, { 0, 0, 3, 0 } },
+		{ 0x02, { 0, 0, 2, 0 } },
+		{ 0x03, { 0, 0, 1, 0 } },
+		{ 0x04, { 0, 0, 3, 1 } },
+		{ 0x05, { 0, 0, 2, 1 } },
+		{ 0x06, { 0, 0, 1, 1 } },
+		{ 0x08, { 0, 0, 2, 2 } },
+		{ 0x09, { 0, 0, 1, 2 } },
+		{ 0x10, { 4, 0, 0, 0 } },
+		{ 0x11, { 3, 0, 0, 0 } },
+		{ 0x12, { 2, 0, 0, 0 } },
+		{ 0x13, { 1, 0, 0, 0 } },
+		{ 0x14, { 3, 1, 0, 0 } },
+		{ 0x15, { 2, 1, 0, 0 } },
+		{ 0x16, { 1, 1, 0, 0 } },
+		{ 0x18, { 2, 2, 0, 0 } },
+		{ 0x19, { 1, 2, 0, 0 } },
+	};
+	u8 i, j, top_num;
+
+	for (top_num = 0; top_num < INTEL_IPU5_ISYS_COMBO_PHY_NUM; top_num++) {
+		for (i = 0; i < ARRAY_SIZE(csi_lanes_to_cfg); i++) {
+			for (j = 0; j <
+				INTEL_IPU5_ISYS_MAX_CSI2_COMBO_PORTS; j++) {
+				if (!isys->csi2[j + top_num *
+				INTEL_IPU5_ISYS_MAX_CSI2_COMBO_PORTS].nlanes)
+					continue;
+				/*
+				* if current lanes number of port can not
+				* match within csi_lanes_to_cfg[i], switch
+				* to csi_lanes_to_cfg[i+1]
+				*/
+				if (csi_lanes_to_cfg[i].port_lanes[j] !=
+					isys->csi2[j + top_num *
+				INTEL_IPU5_ISYS_MAX_CSI2_COMBO_PORTS].nlanes)
+					break;
+			}
+
+			if (j < INTEL_IPU5_ISYS_MAX_CSI2_COMBO_PORTS)
+				continue;
+
+			isys->combo_port_cfg |=
+				csi_lanes_to_cfg[i].reg_value <<
+				(top_num *
+				BUTTRESS_CSI2_PORT_CONFIG_SHIFT_IPU5A0);
+			dev_dbg(&isys->adev->dev,
+				"Combo port lane configuration value 0x%x\n",
+				isys->combo_port_cfg);
+			break;
+		}
+		if (i == ARRAY_SIZE(csi_lanes_to_cfg))
+			dev_err(&isys->adev->dev,
+				"Unsupported CSI2-combo lane configuration on top %d\n",
+						top_num);
+	}
 	return 0;
 }
 
@@ -928,14 +996,19 @@ static int isys_register_devices(struct intel_ipu4_isys *isys)
 
 	isys_register_ext_subdevs(isys);
 
-	rval = isys_determine_legacy_csi_lane_configuration(isys);
-	if (rval)
-		goto out_isys_unregister_subdevices;
+	if (is_intel_ipu4_hw_bxt_b0(isys->adev->isp)) {
+		rval = isys_determine_legacy_csi_lane_configuration(isys);
+		if (rval)
+			goto out_isys_unregister_subdevices;
 
-	rval = isys_determine_csi_combo_lane_configuration(isys);
-	if (rval)
-		goto out_isys_unregister_subdevices;
-
+		rval = isys_determine_csi_combo_lane_configuration(isys);
+		if (rval)
+			goto out_isys_unregister_subdevices;
+	} else {
+		rval = isys_determine_csi_combo_lane_configuration_ipu5(isys);
+		if (rval)
+			goto out_isys_unregister_subdevices;
+	}
 #ifndef CONFIG_PM
 	intel_ipu4_buttress_csi_port_config(isys->adev->isp,
 					    isys->legacy_port_cfg,
