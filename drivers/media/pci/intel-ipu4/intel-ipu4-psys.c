@@ -2175,8 +2175,6 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 
 	intel_ipu4_bus_set_drvdata(adev, psys);
 
-	psys->pdata = adev->pdata;
-
 	rval = intel_ipu4_psys_resource_pool_init(&psys->resource_pool_started);
 	if (rval < 0) {
 		dev_err(&psys->dev,

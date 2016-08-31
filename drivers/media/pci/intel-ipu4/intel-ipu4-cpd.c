@@ -18,9 +18,7 @@
 #include "intel-ipu4.h"
 #include "intel-ipu4-cpd.h"
 
-#ifndef IPU_STEP_BXTA0
 #include <ia_css_fw_pkg_release.h>
-#endif
 
 /* 15 entries + header*/
 #define MAX_PKG_DIR_ENT_CNT		16
@@ -355,7 +353,6 @@ static int intel_ipu4_cpd_validate_moduledata(struct intel_ipu4_device *isp,
 		return -EINVAL;
 	}
 
-#ifndef IPU_STEP_BXTA0
 	if (IA_CSS_FW_PKG_RELEASE != mod_hdr->fw_pkg_date) {
 		dev_err(&isp->pdev->dev,
 			"Moduledata and library version mismatch (%x != %x)\n",
@@ -364,7 +361,6 @@ static int intel_ipu4_cpd_validate_moduledata(struct intel_ipu4_device *isp,
 	}
 
 	dev_info(&isp->pdev->dev, "CSS release: %x\n", IA_CSS_FW_PKG_RELEASE);
-#endif
 
 	rval = intel_ipu4_cpd_validate_cpd(isp, moduledata +
 					   mod_hdr->hdr_len,
