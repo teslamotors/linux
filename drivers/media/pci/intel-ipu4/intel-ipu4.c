@@ -1009,8 +1009,16 @@ static int intel_ipu4_resume(struct device *dev)
 	return 0;
 }
 
+static int intel_ipu4_runtime_resume(struct device *dev)
+{
+	return 0;
+}
+
 static const struct dev_pm_ops intel_ipu4_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(&intel_ipu4_suspend, &intel_ipu4_resume)
+	SET_RUNTIME_PM_OPS(&intel_ipu4_suspend, /* Same as in suspend flow */
+			   &intel_ipu4_runtime_resume,
+			   NULL)
 };
 
 #define INTEL_IPU4_PM (&intel_ipu4_pm_ops)
