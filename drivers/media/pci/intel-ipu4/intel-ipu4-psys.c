@@ -1389,23 +1389,25 @@ static long intel_ipu4_ioctl_dqevent(struct intel_ipu4_psys_event *event,
 				  unsigned int f_flags)
 {
 	struct intel_ipu4_psys *psys = fh->psys;
-	struct intel_ipu4_psys_kcmd *kcmd;
+	struct intel_ipu4_psys_kcmd *kcmd = NULL;
 	int rval;
 
 	dev_dbg(&psys->adev->dev, "IOC_DQEVENT\n");
 
 	if (!(f_flags & O_NONBLOCK)) {
 		rval = wait_event_interruptible(fh->wait,
-			intel_ipu4_get_completed_kcmd(psys, fh) != NULL);
+			kcmd = intel_ipu4_get_completed_kcmd(psys, fh));
 		if (rval == -ERESTARTSYS)
 			return rval;
 	}
 
 	mutex_lock(&fh->mutex);
-	kcmd = __intel_ipu4_get_completed_kcmd(psys, fh);
-	if (kcmd == NULL) {
-		mutex_unlock(&fh->mutex);
-		return -ENODATA;
+	if (!kcmd) {
+		kcmd = __intel_ipu4_get_completed_kcmd(psys, fh);
+		if (kcmd == NULL) {
+			mutex_unlock(&fh->mutex);
+			return -ENODATA;
+		}
 	}
 
 	*event = kcmd->ev;
