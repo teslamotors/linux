@@ -1155,8 +1155,9 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 	debugfs_remove_recursive(isys->debugfsdir);
 
 	intel_ipu4_trace_uninit(&adev->dev);
-	pm_qos_remove_request(&isys->pm_qos);
 	isys_unregister_devices(isys);
+	pm_qos_remove_request(&isys->pm_qos);
+
 	if (!isp->secure_mode) {
 		intel_ipu4_wrapper_remove_shared_memory_buffer(
 			ISYS_MMID, isys->pkg_dir);
@@ -1380,12 +1381,12 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	intel_ipu4_trace_init(adev->isp, isys->pdata->base, &adev->dev,
 			      isys_trace_blocks);
 
+	pm_qos_add_request(&isys->pm_qos, PM_QOS_CPU_DMA_LATENCY,
+			   PM_QOS_DEFAULT_VALUE);
+
 	rval = isys_register_devices(isys);
 	if (rval)
 		goto out_remove_pkg_dir_shared_buffer;
-
-	pm_qos_add_request(&isys->pm_qos, PM_QOS_CPU_DMA_LATENCY,
-			   PM_QOS_DEFAULT_VALUE);
 
 	trace_printk("E|TMWK\n");
 	return 0;
