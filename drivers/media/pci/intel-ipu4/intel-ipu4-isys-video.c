@@ -662,7 +662,8 @@ static bool is_external(struct intel_ipu4_isys_video *av,
 	if (sd->owner != THIS_MODULE)
 		return true;
 
-	for (i = 0; i < INTEL_IPU4_ISYS_MAX_TPGS && av->isys->tpg[i].isys; i++)
+	for (i = 0; i < av->isys->pdata->ipdata->tpg.ntpgs
+		&& av->isys->tpg[i].isys; i++)
 		if (entity == &av->isys->tpg[i].asd.sd.entity)
 			return true;
 

@@ -430,23 +430,39 @@ static struct intel_ipu4_receiver_electrical_params ipu4_ev_params[] = {
 	{ },
 };
 
+static unsigned int ipu4_csi_offsets[] = {
+	0x64000, 0x65000, 0x66000, 0x67000, 0x6C000, 0x6C800
+};
+
+static unsigned char ipu4_csi_evlanecombine[] = {
+	0, 0, 0, 0, 2, 0
+};
+
+static unsigned int ipu4_tpg_offsets[] = {
+	INTEL_IPU4_BXT_B0_TPG0_ADDR_OFFSET,
+	INTEL_IPU4_BXT_B0_TPG1_ADDR_OFFSET
+};
+
+static unsigned int ipu4_tpg_sels[] = {
+	INTEL_IPU4_BXT_GPOFFSET +
+	INTEL_IPU4_GPREG_MIPI_PKT_GEN0_SEL,
+	INTEL_IPU4_BXT_COMBO_GPOFFSET +
+	INTEL_IPU4_GPREG_MIPI_PKT_GEN1_SEL
+};
+
 static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu4 = {
 	.csi2 = {
-		.nports = INTEL_IPU4_ISYS_MAX_CSI2_PORTS,
-		.offsets = { 0x64000, 0x65000, 0x66000, 0x67000, 0x6C000, 0x6C800},
+		.nports = ARRAY_SIZE(ipu4_csi_offsets),
+		.offsets = ipu4_csi_offsets,
 		.evparams = ipu4_ev_params,
-		.evlanecombine = { 0, 0, 0, 0, 2, 0},
+		.evlanecombine = ipu4_csi_evlanecombine,
 		.evsetmask0 = 1 << 4, /* CSI port 4  */
 		.evsetmask1 = 1 << 5, /* CSI port 5 */
 	},
 	.tpg = {
-		.ntpgs = 2,
-		.offsets = { INTEL_IPU4_BXT_B0_TPG0_ADDR_OFFSET,
-			     INTEL_IPU4_BXT_B0_TPG1_ADDR_OFFSET },
-		.sels = { INTEL_IPU4_BXT_GPOFFSET +
-			  INTEL_IPU4_GPREG_MIPI_PKT_GEN0_SEL,
-			  INTEL_IPU4_BXT_COMBO_GPOFFSET +
-			  INTEL_IPU4_GPREG_MIPI_PKT_GEN1_SEL },
+		.ntpgs = ARRAY_SIZE(ipu4_tpg_offsets),
+		.offsets = ipu4_tpg_offsets,
+		.sels = ipu4_tpg_sels,
 	},
 	.hw_variant = {
 		.offset = INTEL_IPU4_BXT_B0_ISYS_OFFSET,
@@ -527,24 +543,45 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu4 = {
 	},
 };
 
+static unsigned int ipu5_csi_offsets[] = {
+	INTEL_IPU5_CSI_REG_TOP0_RX_A_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP0_RX_B_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP0_CPHY_RX_0_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP0_CPHY_RX_1_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP1_RX_A_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP1_RX_B_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP1_CPHY_RX_0_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP1_CPHY_RX_1_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP2_RX_A_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP2_RX_B_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP2_CPHY_RX_0_ADDR_OFFSET,
+	INTEL_IPU5_CSI_REG_TOP2_CPHY_RX_1_ADDR_OFFSET
+};
+
+static unsigned int ipu5_tpg_offsets[] = {
+	INTEL_IPU5_A0_TPG0_ADDR_OFFSET,
+	INTEL_IPU5_A0_TPG1_ADDR_OFFSET,
+	INTEL_IPU5_A0_TPG2_ADDR_OFFSET
+};
+
+static unsigned int ipu5_tpg_sels[] = {
+	INTEL_IPU5_GP0OFFSET +
+	INTEL_IPU5_GPREG_MIPI_PKT_GEN0_SEL,
+	INTEL_IPU5_GP1OFFSET +
+	INTEL_IPU5_GPREG_MIPI_PKT_GEN1_SEL,
+	INTEL_IPU5_GP2OFFSET +
+	INTEL_IPU5_GPREG_MIPI_PKT_GEN2_SEL
+};
+
 static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu5 = {
 	.csi2 = {
-		.nports = 6,
-		.offsets = { INTEL_IPU5_CSI_REG_TOP0_RX_A_ADDR_OFFSET,
-			INTEL_IPU5_CSI_REG_TOP0_RX_B_ADDR_OFFSET,
-			INTEL_IPU5_CSI_REG_TOP0_CPHY_RX_0_ADDR_OFFSET,
-			INTEL_IPU5_CSI_REG_TOP0_CPHY_RX_1_ADDR_OFFSET,
-			INTEL_IPU5_CSI_REG_TOP1_RX_A_ADDR_OFFSET,
-			INTEL_IPU5_CSI_REG_TOP1_RX_B_ADDR_OFFSET,},
+		.nports = ARRAY_SIZE(ipu5_csi_offsets),
+		.offsets = ipu5_csi_offsets,
 	},
 	.tpg = {
-		.ntpgs = 2,
-		.offsets = { INTEL_IPU5_A0_TPG0_ADDR_OFFSET,
-			     INTEL_IPU5_A0_TPG1_ADDR_OFFSET },
-		.sels = { INTEL_IPU5_GP0OFFSET +
-			  INTEL_IPU5_GPREG_MIPI_PKT_GEN0_SEL,
-			  INTEL_IPU5_GP1OFFSET +
-			  INTEL_IPU5_GPREG_MIPI_PKT_GEN1_SEL },
+		.ntpgs = ARRAY_SIZE(ipu5_tpg_offsets),
+		.offsets = ipu5_tpg_offsets,
+		.sels = ipu5_tpg_sels,
 	},
 	.hw_variant = {
 		.offset = INTEL_IPU5_A0_ISYS_OFFSET,

@@ -619,7 +619,7 @@ static int isys_register_ext_subdev(struct intel_ipu4_isys *isys,
 	if (sd_info->csi2) {
 		dev_info(&isys->adev->dev, "sensor device on CSI port: %d\n",
 			sd_info->csi2->port);
-		if (sd_info->csi2->port >= INTEL_IPU4_ISYS_MAX_CSI2_PORTS ||
+		if (sd_info->csi2->port >= isys->pdata->ipdata->csi2.nports ||
 		    !isys->csi2[sd_info->csi2->port].isys) {
 			dev_warn(&isys->adev->dev, "invalid csi2 port %u\n",
 				 sd_info->csi2->port);
@@ -787,9 +787,6 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 	unsigned int i, j, k;
 	int rval;
 
-	BUG_ON(csi2->nports > INTEL_IPU4_ISYS_MAX_CSI2_PORTS);
-	BUG_ON(tpg->ntpgs > INTEL_IPU4_ISYS_MAX_TPGS);
-
 	/*
 	 * Here is somewhat a workaround, let each platform decide
 	 * if csi2 port can be optimized, which means only registered
@@ -812,6 +809,13 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		bitmap_fill(csi2_enable, 32);
 	}
 
+	isys->csi2 = devm_kcalloc(&isys->adev->dev, csi2->nports,
+		sizeof(*isys->csi2), GFP_KERNEL);
+	if (!isys->csi2) {
+		rval = -ENOMEM;
+		goto fail;
+	}
+
 	for (i = 0; i < csi2->nports; i++) {
 		if (!test_bit(i, csi2_enable))
 			continue;
@@ -824,6 +828,13 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 
 		isys->isr_csi2_bits |=
 				INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i);
+	}
+
+	isys->tpg = devm_kcalloc(&isys->adev->dev, tpg->ntpgs,
+		sizeof(*isys->tpg), GFP_KERNEL);
+	if (!isys->tpg) {
+		rval = -ENOMEM;
+		goto fail;
 	}
 
 	for (i = 0; i < tpg->ntpgs; i++) {

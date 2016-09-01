@@ -33,22 +33,9 @@
 
 #define INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS	4
 #define INTEL_IPU4_ISYS_MAX_CSI2_COMBO_PORTS	2
-#define INTEL_IPU4_ISYS_MAX_CSI2_PORTS		\
-	(INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS + \
-	INTEL_IPU4_ISYS_MAX_CSI2_COMBO_PORTS)
 
 #define INTEL_IPU5_ISYS_COMBO_PHY_NUM	3
 #define INTEL_IPU5_ISYS_MAX_CSI2_COMBO_PORTS	4
-#define INTEL_IPU5_ISYS_MAX_CSI2_PORTS		\
-	(INTEL_IPU5_ISYS_MAX_CSI2_COMBO_PORTS * \
-	INTEL_IPU5_ISYS_COMBO_PHY_NUM)
-
-/*
- * ipu4 has two port-independent ones TPGs.
- */
-#define INTEL_IPU4_ISYS_MAX_TPGS		2
-
-#define INTEL_IPU4_ISYS_MAX_CSI2BE		2
 
 /*
  * To maximize the IOSF utlization, IPU need to send requests in bursts.
@@ -252,17 +239,17 @@ struct intel_ipu4_receiver_electrical_params {
 
 struct intel_ipu4_isys_internal_csi2_pdata {
 	unsigned int nports;
-	unsigned int offsets[INTEL_IPU4_ISYS_MAX_CSI2_PORTS];
+	unsigned int *offsets;
 	struct intel_ipu4_receiver_electrical_params *evparams;
 	u32 evsetmask0;
 	u32 evsetmask1;
-	unsigned char evlanecombine[INTEL_IPU4_ISYS_MAX_CSI2_PORTS];
+	unsigned char *evlanecombine;
 };
 
 struct intel_ipu4_isys_internal_tpg_pdata {
 	unsigned int ntpgs;
-	unsigned int offsets[INTEL_IPU4_ISYS_MAX_TPGS];
-	unsigned int sels[INTEL_IPU4_ISYS_MAX_TPGS];
+	unsigned int *offsets;
+	unsigned int *sels;
 };
 
 /*
