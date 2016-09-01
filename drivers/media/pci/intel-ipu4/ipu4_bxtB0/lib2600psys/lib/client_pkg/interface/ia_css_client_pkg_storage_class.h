@@ -12,9 +12,17 @@
  * more details.
 */
 
-#ifdef _INLINE_CLIENT_PKG_
+#ifndef IA_CSS_CLIENT_PKG_STORAGE_CLASS_H_
+#define IA_CSS_CLIENT_PKG_STORAGE_CLASS_H_
+
 #include "storage_class.h"
-STORAGE_CLASS_INLINE int __ia_css_client_pkg_avoid_warning_on_empty_file(void) { return 0; }
-#else /* _INLINE_CLIENT_PKG_ */
-#include "ia_css_client_pkg_impl.h"
-#endif /* _INLINE_CLIENT_PKG_ */
+
+#ifndef _INLINE_CLIENT_PKG_
+#define IA_CSS_CLIENT_PKG_STORAGE_CLASS_H STORAGE_CLASS_EXTERN
+#define IA_CSS_CLIENT_PKG_STORAGE_CLASS_C
+#else
+#define IA_CSS_CLIENT_PKG_STORAGE_CLASS_H STORAGE_CLASS_INLINE
+#define IA_CSS_CLIENT_PKG_STORAGE_CLASS_C STORAGE_CLASS_INLINE
+#endif
+
+#endif /* IA_CSS_CLIENT_PKG_STORAGE_CLASS_H_ */

@@ -69,6 +69,7 @@ EXIT:
 	return 0;
 }
 
+IA_CSS_PKG_DIR_STORAGE_CLASS_C
 enum ia_css_pkg_dir_version
 ia_css_pkg_dir_get_version(const ia_css_pkg_dir_entry_t *pkg_dir_header)
 {
@@ -76,6 +77,7 @@ ia_css_pkg_dir_get_version(const ia_css_pkg_dir_entry_t *pkg_dir_header)
 	return pkg_dir_header->version;
 }
 
+IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint16_t ia_css_pkg_dir_set_version(ia_css_pkg_dir_entry_t *pkg_dir_header,
 				    enum ia_css_pkg_dir_version version)
 {
@@ -90,8 +92,9 @@ IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint32_t ia_css_pkg_dir_get_size_in_bytes(
 		const ia_css_pkg_dir_entry_t *pkg_dir_header)
 {
+	assert(pkg_dir_header != NULL);
+
 	if (pkg_dir_header == NULL) {
-		assert(NULL == "ia_css_pkg_dir_get_size_in_bytes");
 		return 0;
 	}
 
@@ -102,9 +105,9 @@ IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint32_t ia_css_pkg_dir_entry_get_address_lo(
 		const ia_css_pkg_dir_entry_t *entry)
 {
+	assert(entry != NULL);
 
 	if (entry == NULL) {
-		assert(NULL == "ia_css_pkg_dir_entry_get_addresss");
 		return 0;
 	}
 
@@ -115,9 +118,9 @@ IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint32_t ia_css_pkg_dir_entry_get_address_hi(
 		const ia_css_pkg_dir_entry_t *entry)
 {
+	assert(entry != NULL);
 
 	if (entry == NULL) {
-		assert(NULL == "ia_css_pkg_dir_entry_get_addresss");
 		return 0;
 	}
 
@@ -127,9 +130,9 @@ uint32_t ia_css_pkg_dir_entry_get_address_hi(
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint32_t ia_css_pkg_dir_entry_get_size(const ia_css_pkg_dir_entry_t *entry)
 {
+	assert(entry != NULL);
 
 	if (entry == NULL) {
-		assert(NULL == "ia_css_pkg_dir_entry_get_size");
 		return 0;
 	}
 
@@ -139,9 +142,9 @@ uint32_t ia_css_pkg_dir_entry_get_size(const ia_css_pkg_dir_entry_t *entry)
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint16_t ia_css_pkg_dir_entry_get_version(const ia_css_pkg_dir_entry_t *entry)
 {
+	assert(entry != NULL);
 
 	if (entry == NULL) {
-		assert(NULL == "ia_css_pkg_dir_entry_get_version");
 		return 0;
 	}
 
@@ -151,9 +154,9 @@ uint16_t ia_css_pkg_dir_entry_get_version(const ia_css_pkg_dir_entry_t *entry)
 IA_CSS_PKG_DIR_STORAGE_CLASS_C
 uint8_t ia_css_pkg_dir_entry_get_type(const ia_css_pkg_dir_entry_t *entry)
 {
+	assert(entry != NULL);
 
 	if (entry == NULL) {
-		assert(NULL == "ia_css_pkg_dir_entry_get_type");
 		return 0;
 	}
 

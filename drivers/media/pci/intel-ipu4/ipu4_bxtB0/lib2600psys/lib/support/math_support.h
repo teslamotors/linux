@@ -224,6 +224,37 @@ udiv2_small_i(uint32_t a, uint32_t b)
 	return a >> (b-1);
 }
 
+/* optimized divide for small results
+ * a will be divided by b
+ * outbits is the number if bits needed for the result
+ * the smaller the cheaper the function will be.
+ * if the result doesn't fit in the number of output bits
+ * the result is incorrect and the function will assert
+ */
+STORAGE_CLASS_INLINE unsigned int
+udiv_medium(uint32_t a, uint32_t b, unsigned outbits)
+{
+	int bit;
+	unsigned res = 0;
+	unsigned mask;
+
+	for (bit = outbits-1 ; bit >= 0; bit--) {
+		mask = 1<<bit;
+		if (a >= (b<<bit)) {
+			res |= mask; /* set the bit */
+			a = a - (b<<bit);
+		}
+#ifdef __HIVECC
+#pragma hivecc unroll
+#endif
+	}
+	/* check if the remainder is smaller than the divisor.
+	 * if not we didn't produce enough output bits
+	 */
+	assert(a < b);
+	return res;
+}
+
 #if !defined(__VIED_CELL)
 /*
  * For SP and ISP, SDK provides the definition of OP_std_modadd.
