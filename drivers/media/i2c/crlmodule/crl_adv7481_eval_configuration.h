@@ -136,6 +136,31 @@ static struct crl_subdev_rect_rep adv7481_eval_VGA_rects[] = {
 	},
 };
 
+static struct crl_subdev_rect_rep adv7481_eval_WVGA_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1920,
+		.in_rect.height = 1080,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1920,
+		.out_rect.height = 1080,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1920,
+		.in_rect.height = 1080,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 800,
+		.out_rect.height = 480,
+	},
+};
+
 static struct crl_subdev_rect_rep adv7481_eval_1080i_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
@@ -259,6 +284,19 @@ static struct crl_mode_rep adv7481_eval_modes[] = {
 		.height = 720,
 		.comp_items = 1,
 		.ctrl_data = &ctrl_data_lanes[0],
+		.mode_regs_items = 0,
+		.mode_regs = NULL,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(adv7481_eval_WVGA_rects),
+		.sd_rects = adv7481_eval_WVGA_rects,
+		.binn_hor = 2,
+		.binn_vert = 2,
+		.scale_m = 1,
+		.width = 800,
+		.height = 480,
+		.comp_items = 1,
+		.ctrl_data = &ctrl_data_lanes[2],
 		.mode_regs_items = 0,
 		.mode_regs = NULL,
 	},
