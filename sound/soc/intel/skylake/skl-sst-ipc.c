@@ -53,8 +53,8 @@
 #define IPC_MSG_DIR(x)			(((x) & IPC_MSG_DIR_MASK) \
 					<< IPC_MSG_DIR_SHIFT)
 /* Global Notification Message */
-#define IPC_GLB_NOTIFY_CORE_SHIFT	15
-#define IPC_GLB_NOTIFY_CORE_MASK	0x1
+#define IPC_GLB_NOTIFY_CORE_SHIFT	12
+#define IPC_GLB_NOTIFY_CORE_MASK	0xF
 #define IPC_GLB_NOTIFY_CORE_ID(x)	(((x) >> IPC_GLB_NOTIFY_CORE_SHIFT) \
 					& IPC_GLB_NOTIFY_CORE_MASK)
 #define IPC_GLB_NOTIFY_TYPE_SHIFT	16
@@ -356,8 +356,9 @@ static void
 skl_process_log_buffer(struct sst_dsp *sst, struct skl_ipc_header header)
 {
 	int core, size;
-	u32 *ptr, avail;
+	u32 *ptr;
 	u8 *base;
+	u32 write, read;
 
 #if defined(CONFIG_SND_SOC_INTEL_CNL_FPGA)
 	core = 0;
@@ -383,11 +384,21 @@ skl_process_log_buffer(struct sst_dsp *sst, struct skl_ipc_header header)
 	base = (u8 *)sst->trace_wind.addr;
 	/* move to the source dsp tracing window */
 	base += (core * size);
-	ptr = (u32 *)sst->trace_wind.dsp_wps[core];
-	avail = *ptr;
-	if (avail < size/2)
-		base += size/2;
-	skl_dsp_write_log(sst, (void __iomem *)base, core, size/2);
+	ptr = (u32 *) base;
+	read = ptr[0];
+	write = ptr[1];
+	if (write > read) {
+		skl_dsp_write_log(sst, (void __iomem *)(base + 8 + read),
+					core, (write - read));
+		/* read pointer */
+		ptr[0] += write - read;
+	} else {
+		skl_dsp_write_log(sst, (void __iomem *) (base + 8 + read),
+					core, size - read);
+		skl_dsp_write_log(sst, (void __iomem *) (base + 8),
+					core, write);
+		ptr[0] = write;
+	}
 	skl_dsp_put_log_buff(sst, core);
 }
 
