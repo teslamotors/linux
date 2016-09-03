@@ -11,4 +11,4 @@
 * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 * more details.
 */
-#define IA_CSS_FW_PKG_RELEASE  0x20160901 
+#define IA_CSS_FW_PKG_RELEASE  0x20160903 
