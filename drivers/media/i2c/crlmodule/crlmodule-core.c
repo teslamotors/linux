@@ -569,7 +569,7 @@ static int __crlmodule_handle_dependency_regs(
 		 */
 		if (condition == crl_ctrl->dep_regs[i].reg_cond)
 			return __crlmodule_update_dynamic_regs(sensor,
-					crl_ctrl->dep_regs[i].regs, val);
+					crl_ctrl, val);
 	}
 
 	return 0;
