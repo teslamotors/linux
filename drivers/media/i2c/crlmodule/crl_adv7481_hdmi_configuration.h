@@ -258,10 +258,6 @@ static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 594000000,
 		.pixel_rate_pa = 594000000,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.pll_regs_items = 0,
-		.pll_regs = NULL,
 	},
 	{
 		.input_clk = 24000000,
@@ -269,10 +265,6 @@ static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 		.bitsperpixel = 24,
 		.pixel_rate_csi = 891000000,
 		.pixel_rate_pa = 891000000,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.pll_regs_items = 0,
-		.pll_regs = NULL,
 	 },
 	/* 28.636 input clock */
 	{
@@ -281,11 +273,7 @@ static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 148500000,
 		.pixel_rate_pa = 297000000,
-		.comp_items = 0,
-		.ctrl_data = 0,
 		.csi_lanes = 4,
-		.pll_regs_items = 0,
-		.pll_regs = NULL,
 	},
 	{
 		.input_clk = 286363636,
@@ -293,11 +281,8 @@ static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 74250000,
 		.pixel_rate_pa = 148500000,
-		.comp_items = 0,
-		.ctrl_data = 0,
 		.csi_lanes = 4,
-		.pll_regs_items = 0,
-		.pll_regs = NULL,
+
 	},
 };
 
@@ -483,10 +468,6 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 1920,
 		.height = 1080,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.mode_regs_items = NULL,
-		.mode_regs = 0,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_720p_rects),
@@ -496,10 +477,6 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 1280,
 		.height = 720,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.mode_regs_items = NULL,
-		.mode_regs = 0,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_VGA_rects),
@@ -509,10 +486,6 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 640,
 		.height = 480,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.mode_regs_items = NULL,
-		.mode_regs = 0,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_1080i_rects),
@@ -522,10 +495,6 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 1920,
 		.height = 540,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.mode_regs_items = NULL,
-		.mode_regs = 0,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_480p_rects),
@@ -535,10 +504,6 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 720,
 		.height = 480,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.mode_regs_items = NULL,
-		.mode_regs = 0,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_576p_rects),
@@ -548,10 +513,6 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 720,
 		.height = 576,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.mode_regs_items = NULL,
-		.mode_regs = 0,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_576i_rects),
@@ -561,10 +522,6 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 720,
 		.height = 288,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.mode_regs_items = 0,
-		.mode_regs = NULL,
 	},
 };
 
@@ -645,10 +602,7 @@ static struct crl_v4l2_ctrl adv7481_hdmi_v4l2_ctrls[] = {
 		.data.std_data.def = 0,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
-		.regs_items = 0,
-		.regs = 0,
-		.dep_items = 0,
-		.dep_ctrls = 0,
+
 	},
 	{
 		.sd_type = CRL_SUBDEV_TYPE_BINNER,
@@ -663,10 +617,6 @@ static struct crl_v4l2_ctrl adv7481_hdmi_v4l2_ctrls[] = {
 		.data.std_data.def = 0,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
-		.regs_items = 0,
-		.regs = 0,
-		.dep_items = 0,
-		.dep_ctrls = 0,
 	},
 };
 
@@ -687,9 +637,6 @@ static struct crl_sensor_configuration adv7481_hdmi_crl_configuration = {
 
 	.poweroff_regs_items = ARRAY_SIZE(adv7481_hdmi_streamoff_regs),
 	.poweroff_regs = adv7481_hdmi_streamoff_regs,
-
-	.id_reg_items = 0,
-	.id_regs = NULL,
 
 	.subdev_items = ARRAY_SIZE(adv7481_hdmi_sensor_subdevs),
 	.subdevs = adv7481_hdmi_sensor_subdevs,

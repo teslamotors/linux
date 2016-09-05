@@ -42,7 +42,7 @@ struct crl_adv7481_hdmi {
 	int hdmi_cable_connected;
 	struct delayed_work work;
 	struct mutex hot_plug_reset_lock;
-	struct i2c_client *client
+	struct i2c_client *client;
 };
 
 /* ADV7481 HDCP B-status register */
@@ -364,10 +364,8 @@ static ssize_t adv_hdmi_cable_connected_show(struct device *dev,
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
 	struct crl_sensor *sensor = ssd->sensor;
-
-	adv7481_hdmi = sensor->sensor_specific_data;
-
 	char interlaced = 'p';
+	adv7481_hdmi = sensor->sensor_specific_data;
 
 	if (adv7481_hdmi->hdmi_res_interlaced)
 		interlaced = 'i';

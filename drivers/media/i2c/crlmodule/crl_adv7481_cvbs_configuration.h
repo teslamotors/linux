@@ -83,11 +83,7 @@ static struct crl_pll_configuration adv7481_cvbs_pll_configurations[] = {
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 27000000,
 		.pixel_rate_pa = 27000000,
-		.comp_items = 0,
-		.ctrl_data = 0,
 		.csi_lanes = 1,
-		.pll_regs_items = 0,
-		.pll_regs = NULL,
 	 },
 	 {
 		.input_clk = 24000000,
@@ -95,10 +91,7 @@ static struct crl_pll_configuration adv7481_cvbs_pll_configurations[] = {
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 130000000,
 		.pixel_rate_pa = 130000000,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.pll_regs_items = 0,
-		.pll_regs = NULL,
+		.csi_lanes = 1,
 	 },
 };
 
@@ -136,10 +129,6 @@ static struct crl_mode_rep adv7481_cvbs_modes[] = {
 		.scale_m = 1,
 		.width = 720,
 		.height = 240,
-		.comp_items = 0,
-		.ctrl_data = 0,
-		.mode_regs_items = NULL,
-		.mode_regs = 0,
 	},
 };
 
@@ -178,8 +167,6 @@ static struct crl_csi_data_fmt adv7481_cvbs_crl_csi_data_fmt[] = {
 		.code = MEDIA_BUS_FMT_UYVY8_1X16,
 		.pixel_order = CRL_PIXEL_ORDER_GRBG,
 		.bits_per_pixel = 16,
-		.regs_items = 0,
-		.regs = NULL,
 	},
 };
 
@@ -191,7 +178,6 @@ static struct crl_v4l2_ctrl adv7481_cvbs_v4l2_ctrls[] = {
 		.ctrl_id = V4L2_CID_LINK_FREQ,
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
-		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 	},
 	{
@@ -205,12 +191,7 @@ static struct crl_v4l2_ctrl adv7481_cvbs_v4l2_ctrls[] = {
 		.data.std_data.max = 0,
 		.data.std_data.step = 1,
 		.data.std_data.def = 0,
-		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
-		.regs_items = 0,
-		.regs = 0,
-		.dep_items = 0,
-		.dep_ctrls = 0,
 	},
 	{
 		.sd_type = CRL_SUBDEV_TYPE_BINNER,
@@ -223,31 +204,19 @@ static struct crl_v4l2_ctrl adv7481_cvbs_v4l2_ctrls[] = {
 		.data.std_data.max = 0,
 		.data.std_data.step = 1,
 		.data.std_data.def = 0,
-		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
-		.regs_items = 0,
-		.regs = 0,
-		.dep_items = 0,
-		.dep_ctrls = 0,
 	},
 };
 
 static struct crl_sensor_configuration adv7481_cvbs_crl_configuration = {
-	.sensor_init = NULL,
-	.sensor_cleanup = NULL,
 
 	/* one time initialization is done by HDMI part */
-	.onetime_init_regs_items = 0,
-	.onetime_init_regs = NULL,
 
 	.powerup_regs_items = ARRAY_SIZE(adv7481_cvbs_powerup_regset),
 	.powerup_regs = adv7481_cvbs_powerup_regset,
 
 	.poweroff_regs_items = ARRAY_SIZE(adv7481_cvbs_streamoff_regs),
 	.poweroff_regs = adv7481_cvbs_streamoff_regs,
-
-	.id_reg_items = 0,
-	.id_regs = NULL,
 
 	.subdev_items = ARRAY_SIZE(adv7481_cvbs_sensor_subdevs),
 	.subdevs = adv7481_cvbs_sensor_subdevs,
