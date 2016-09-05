@@ -187,55 +187,6 @@ int crlmodule_read_reg(struct crl_sensor *sensor,
 				  reg.len, val);
 }
 
-int crlmodule_write_regs(struct crl_sensor *sensor,
-			 const struct crl_register_write_rep *regs, int len)
-{
-	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
-	unsigned int i;
-	int ret;
-	u32 val;
-
-	for (i = 0; i < len; i++) {
-		/*
-		 * Sensor setting sequence may need some delay.
-		 * delay value is specified by reg.val field
-		 */
-		if (regs[i].len == CRL_REG_LEN_DELAY) {
-			msleep(regs[i].val);
-			continue;
-		}
-		/*
-		 * If the same register is being used for two settings, updating
-		 * one value should not overwrite the other one. Such registers
-		 * must be marked as CRL_REG_READ_AND_UPDATE. For such registers
-		 * first read the register and update it
-		 */
-		val = regs[i].val;
-		if (regs[i].len & CRL_REG_READ_AND_UPDATE) {
-			ret = crlmodule_i2c_read(sensor, regs[i].dev_i2c_addr,
-				      regs[i].address,
-				      regs[i].len & CRL_REG_LEN_READ_MASK,
-				      &val);
-			if (ret)
-				return ret;
-			val |= regs[i].val;
-		}
-
-		ret = crlmodule_i2c_write(sensor, regs[i].dev_i2c_addr,
-					  regs[i].address,
-					  regs[i].len & CRL_REG_LEN_READ_MASK,
-					  val);
-		if (ret < 0) {
-			dev_err(&client->dev,
-				"error %d writing reg 0x%4.4x, val 0x%2.2x",
-				ret, regs[i].address, regs[i].val);
-			return ret;
-		}
-	};
-
-	return 0;
-}
-
 int crlmodule_write_reg(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 reg,
 			u8 len, u32 mask, u32 val)
 {
@@ -269,8 +220,6 @@ int crlmodule_write_reg(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 reg,
 		tmp = val2 & ~mask;
 		tmp |= val & mask;
 		val = tmp;
-	} else {
-		val &= mask;
 	}
 
 	ret = crlmodule_i2c_write(sensor, dev_i2c_addr, reg,
@@ -281,6 +230,26 @@ int crlmodule_write_reg(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 reg,
 			ret, reg, val);
 		return ret;
 	}
+
+	return 0;
+}
+
+int crlmodule_write_regs(struct crl_sensor *sensor,
+			 const struct crl_register_write_rep *regs, int len)
+{
+	unsigned int i;
+	int ret;
+
+	for (i = 0; i < len; i++) {
+		ret = crlmodule_write_reg(sensor,
+					regs[i].dev_i2c_addr,
+					regs[i].address,
+					regs[i].len,
+					regs[i].mask,
+					regs[i].val);
+		if (ret < 0)
+			return ret;
+	};
 
 	return 0;
 }

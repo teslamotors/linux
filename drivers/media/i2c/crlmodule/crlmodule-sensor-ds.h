@@ -189,6 +189,7 @@ struct crl_register_write_rep {
 	u8 len;
 	u32 val;
 	u16 dev_i2c_addr;
+	u32 mask;
 };
 
 struct crl_register_read_rep {
