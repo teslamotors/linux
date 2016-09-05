@@ -68,12 +68,13 @@ static bool test_migration;
 
 #if defined(CONFIG_KEYSTORE_DISABLE_DEVICE_SEED)
 static bool device_seed_active;
-static bool user_seed_active = 1;
-#elif defined(CONFIG_KEYSTORE_DISABLE_USER_SEED)
-static bool device_seed_active = 1;
-static bool user_seed_active;
 #else
 static bool device_seed_active = 1;
+#endif
+
+#if defined(CONFIG_KEYSTORE_DISABLE_USER_SEED)
+static bool user_seed_active;
+#else
 static bool user_seed_active = 1;
 #endif
 

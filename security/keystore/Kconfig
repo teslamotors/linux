@@ -1,8 +1,25 @@
 config KEYSTORE
 	bool "Generic Keystore"
 	default n
-	select SECURE_BOOT
 	select ABL_UTILS
+	help
+		An IVI system deals with various keys that need to be stored
+		securely on the platform. Some of the keys are stored in
+		specific embedded hardware but others are required by
+		algorithms running on Linux. The keystore is designed to
+		provide a secure storage solution for such keys. Applications
+		interface is through the char device ioctls on /dev/keystore.
+
+		If in doubt, say "N".
+
+choice
+	prompt "Keystore Module Type"
+	default KEYSTORE_FULL
+	depends on KEYSTORE
+
+config KEYSTORE_FULL
+	bool "Keystore full-functionality"
+	select SECURE_BOOT
 	select MANIFEST
         select CRYPTO
 	select CRYPTO_AES
@@ -23,18 +40,53 @@ config KEYSTORE
 	select CRYPTO_SHA256
 	select CRYPTO_SHA512
 	help
-		An IVI system deals with various keys that need to be stored
-		securely on the platform. Some of the keys are stored in
-		specific embedded hardware but others are required by
-		algorithms running on Linux. The keystore is designed to
-		provide a secure storage solution for such keys. Applications
-		interface is through the char device ioctls on /dev/keystore.
+		This option chooses the default keystore configuration which
+		is intended for production linux kernels.
 
-	  	If in doubt, say "N".
+		This is the default implementation choice. Choose this one
+		unless you have a good reason not to.
+
+config KEYSTORE_SEED_WIPE
+	bool "Keystore delete SEEDs"
+	help
+		This option will create a keystore kernel module which deletes
+		the user and device SEED values provided by the bootloader and
+		exits. No normal keystore functionality is available.
+
+		This option should be seleted when building an Emergency Linux
+		kernel (ELK) or recovery image on a system which also uses
+		keystore on the production (normal) image. This will prevent
+		the SEED values being leaked on booting to the recovery image.
+endchoice
+
+choice
+        prompt "Keystore SEED size"
+        default KEYSTORE_SEED_SIZE_64
+        depends on KEYSTORE
+
+config KEYSTORE_SEED_SIZE_32
+        bool "32-bytes"
+        help
+                Set the SEED size to 32-bytes. This should
+                match the size of the SEED provided by the
+                bootloader.
+
+                If unsure, select "N".
+
+config KEYSTORE_SEED_SIZE_64
+        bool "64-bytes"
+        help
+                Set the SEED size to 64-bytes. This should
+                match the size of the SEED provided by the
+                bootloader.
+
+                If unsure, select "N".
+
+endchoice
 
 choice
         prompt "Keystore seed type"
-        depends on KEYSTORE
+        depends on KEYSTORE_FULL
         default KEYSTORE_DEVICE_AND_USER_SEED
         help
           This option allows select which seed types are available in
@@ -65,34 +117,9 @@ config KEYSTORE_USER_SEED_ONLY
 
 endchoice
 
-choice
-        prompt "Keystore SEED size"
-        default KEYSTORE_SEED_SIZE_64
-        depends on KEYSTORE
-
-config KEYSTORE_SEED_SIZE_32
-        bool "32-bytes"
-        help
-                Set the SEED size to 32-bytes. This should
-                match the size of the SEED provided by the
-                bootloader.
-
-                If unsure, select "N".
-
-config KEYSTORE_SEED_SIZE_64
-        bool "64-bytes"
-        help
-                Set the SEED size to 64-bytes. This should
-                match the size of the SEED provided by the
-                bootloader.
-
-                If unsure, select "N".
-
-endchoice
-
 config KEYSTORE_OEM_KEY_USAGE_BIT
-	int "OEM Key usage bit"
-	depends on KEYSTORE
+	int "Keystore OEM Manifest Key usage bit"
+	depends on KEYSTORE_FULL
 	default 47
 	help
 		Sets the key manifest usage bit to use when
@@ -100,8 +127,8 @@ config KEYSTORE_OEM_KEY_USAGE_BIT
 		are sent from the OEM.
 
 config KEYSTORE_OEM_KEY_IDENTIFIER
-	string "OEM Kernel Keyring Identifier"
-	depends on KEYSTORE
+	string "Keystore OEM Kernel Keyring Identifier"
+	depends on KEYSTORE_FULL
 	default "OEM: Keystore: 00"
 	help
 		The key identifier for the OEM public key used to
@@ -110,7 +137,7 @@ config KEYSTORE_OEM_KEY_IDENTIFIER
 
 config APPLICATION_AUTH
 	bool "Application Auth using signed manifest"
-	depends on KEYSTORE
+	depends on KEYSTORE_FULL
         default n
 	help
 		Enables authentication of keystore clients and other
@@ -126,8 +153,8 @@ config APPLICATION_AUTH_MANIFEST_ROOT
 		auth clients.
 
 config KEYSTORE_TESTMODE
-	bool "Enable Diagnostic Tests"
-	depends on KEYSTORE
+	bool "Keystore Enable Diagnostic Tests"
+	depends on KEYSTORE_FULL
         default n
 	help
 		Compiles a set of test functions which run diagnostics
@@ -138,8 +165,8 @@ config KEYSTORE_TESTMODE
                 If unsure, select "N".
 
 config KEYSTORE_TEST_MIGRATION
-	bool "Migration Test Functions enabled"
-	depends on KEYSTORE
+	bool "Keystore Migration Test Functions enabled"
+	depends on KEYSTORE_FULL
         default n
 	help
                 Makes additional functions available to keystore for testing
@@ -151,7 +178,7 @@ config KEYSTORE_TEST_MIGRATION
                 If unsure, select "N".
 
 config KEYSTORE_DEBUG
-	bool "Enable additional debug messages for Keystore (DANGEROUS!)"
+	bool "Keystore enable additional debug messages (DANGEROUS!)"
 	depends on KEYSTORE
         default n
 	help
@@ -165,8 +192,8 @@ config KEYSTORE_DEBUG
                 If unsure, select "N".
 
 config KEYSTORE_SECURE_BOOT_IGNORE
-	bool "Ignore Secure Boot Status (DANGEROUS!)"
-	depends on KEYSTORE
+	bool "Keystore Ignore Secure Boot Status (DANGEROUS!)"
+	depends on KEYSTORE_FULL
 	default n
 	help
 		Check this option to ignore secure boot status when
@@ -178,8 +205,8 @@ config KEYSTORE_SECURE_BOOT_IGNORE
                 If unsure, select "N".
 
 config KEYSTORE_HARD_CODED_SEED
-	bool "Hard-coded SEEDs and Keys (DANGEROUS!)"
-	depends on KEYSTORE
+	bool "Keystore Hard-coded SEEDs and Keys (DANGEROUS!)"
+	depends on KEYSTORE_FULL
         default n
 	help
                 Sets the keystore SEED a to fixed values instead

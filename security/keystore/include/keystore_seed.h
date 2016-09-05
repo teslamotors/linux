@@ -18,6 +18,7 @@
 #define _KEYSTORE_SEED_H_
 
 #include <linux/types.h>
+#include <security/keystore_api_user.h>
 #include <security/abl_cmdline.h>
 
 #if   defined(CONFIG_KEYSTORE_SEED_SIZE_64)

@@ -93,10 +93,9 @@ static int keystore_copy_seeds(struct seed_offset *offset)
 int keystore_fill_seeds(void)
 {
 	int res = 0;
-	unsigned int indx = 0;
 	struct seed_offset s_off;
-
 #ifdef CONFIG_KEYSTORE_HARD_CODED_SEED
+	unsigned int indx = 0;
 
 	ks_warn(KBUILD_MODNAME ": Using hardcoded SEEDs for key generation!\n");
 	ks_warn(KBUILD_MODNAME ": Keys wrapped with keystore will not be secure!\n");

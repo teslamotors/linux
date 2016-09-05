@@ -75,11 +75,11 @@ static inline int show_and_compare(const char *name1, const void *ptr1,
 
 #define ks_debug(...) pr_debug(__VA_ARGS__)
 
-#define FUNC_BEGIN   ks_info(KBUILD_MODNAME ": %s() BEGIN\n", __func__)
-#define FUNC_END     ks_info(KBUILD_MODNAME ": %s() END\n", __func__)
-#define FUNC_RES(x)  ks_info(KBUILD_MODNAME ": %s() END, res=%ld\n", __func__, \
-			     (long)(x))
-#define SHOW_LINE    ks_info(KBUILD_MODNAME ": %s:%u\n", __func__, __LINE__)
+#define FUNC_BEGIN   ks_debug(KBUILD_MODNAME ": %s() BEGIN\n", __func__)
+#define FUNC_END     ks_debug(KBUILD_MODNAME ": %s() END\n", __func__)
+#define FUNC_RES(x)  ks_debug(KBUILD_MODNAME ": %s() END, res=%ld\n", \
+			      __func__, (long)(x))
+#define SHOW_LINE    ks_debug(KBUILD_MODNAME ": %s:%u\n", __func__, __LINE__)
 
 #else
 

@@ -4,11 +4,24 @@
 #
 
 ccflags-y += -Isecurity/keystore/include -Isecurity/keystore/crypto
+ccflags-$(CONFIG_KEYSTORE_DEVICE_SEED_ONLY) += -DKEYSTORE_DISABLE_USER_SEED
+ccflags-$(CONFIG_KEYSTORE_USER_SEED_ONLY) += -DKEYSTORE_DISABLE_DEVICE_SEED
+# If we are just wiping seeds, disable both seeds
+ccflags-$(CONFIG_KEYSTORE_SEED_WIPE) += -DKEYSTORE_DISABLE_USER_SEED -DKEYSTORE_DISABLE_DEVICE_SEED
 
 # Keystore module
 obj-$(CONFIG_KEYSTORE) := keystore.o
 
+# Files common to keystore (full) and the seed wiper
 keystore-y :=\
+	seed.o
+
+# If we are just wiping the seeds, we only need one file
+keystore-$(CONFIG_KEYSTORE_SEED_WIPE) +=\
+	seed_wipe.o
+
+# Otherwise, select the full file list
+keystore-$(CONFIG_KEYSTORE_FULL) +=\
 	keystore_kmod.o\
 	api_kernel.o\
 	api_kernel_migration.o\
@@ -16,11 +29,10 @@ keystore-y :=\
 	context.o\
 	context_safe.o\
 	ioctls.o\
-	operations.o\
-	seed.o
+	operations.o
 
 # ECC library
-keystore-y +=\
+keystore-$(CONFIG_KEYSTORE_FULL) +=\
 	crypto/ecc/ecc.o\
 	crypto/ecc/ecies.o\
 	crypto/ecc/kdf_x963.o\
@@ -30,15 +42,15 @@ keystore-y +=\
 	crypto/ecc/ecc_keys.o
 
 # Hash functions
-keystore-y +=\
+keystore-$(CONFIG_KEYSTORE_FULL) +=\
 	crypto/mac/mac.o
 
 # Random numbers
-keystore-y +=\
+keystore-$(CONFIG_KEYSTORE_FULL) +=\
 	crypto/rand/rdrand.o
 
 # AES library
-keystore-y +=\
+keystore-$(CONFIG_KEYSTORE_FULL) +=\
 	crypto/aes/aes_utils.o\
 	crypto/aes/aes_ccm.o\
 	crypto/aes/aes_gcm.o\
