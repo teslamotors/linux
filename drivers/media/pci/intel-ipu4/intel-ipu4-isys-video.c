@@ -1041,6 +1041,8 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	struct intel_ipu4_isys_video *isl_av = NULL;
 	struct intel_ipu4_isys_request *ireq = NULL;
 	struct v4l2_subdev_format source_fmt = {0};
+	struct v4l2_subdev *be_sd = NULL;
+	struct media_pad *source_pad = media_entity_remote_pad(&av->pad);
 	int rval, rvalout, tout;
 
 	rval = get_external_facing_format(ip, &source_fmt);
@@ -1057,12 +1059,17 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 			IA_CSS_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER;
 
 	/*
-	 * Only CSI2-BE has the capability to do crop,
-	 * so get the crop info from csi2-be.
+	 * Only CSI2-BE and SOC BE has the capability to do crop,
+	 * so get the crop info from csi2-be or csi2-be-soc.
 	 */
-	if (ip->csi2_be != NULL &&
-	    !v4l2_subdev_call(&ip->csi2_be->asd.sd,
-		pad, get_selection, NULL, &sel_fmt)) {
+	if (ip->csi2_be)
+		be_sd = &ip->csi2_be->asd.sd;
+	else if (ip->csi2_be_soc)
+		be_sd = &ip->csi2_be_soc->asd.sd;
+	if (source_pad)
+		sel_fmt.pad = source_pad->index;
+	if (be_sd != NULL &&
+	    !v4l2_subdev_call(be_sd, pad, get_selection, NULL, &sel_fmt)) {
 		stream_cfg.crop[0].left_offset = sel_fmt.r.left;
 		stream_cfg.crop[0].top_offset = sel_fmt.r.top;
 		stream_cfg.crop[0].right_offset = sel_fmt.r.left +

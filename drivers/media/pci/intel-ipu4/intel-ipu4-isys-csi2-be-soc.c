@@ -102,10 +102,61 @@ static int __subdev_link_validate(
 			sink_fmt);
 }
 
+static int ipu4_isys_csi2_be_soc_set_sel(struct v4l2_subdev *sd,
+				struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_selection *sel)
+{
+	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
+	struct media_pad *pad = &asd->sd.entity.pads[sel->pad];
+
+	if (sel->target == V4L2_SEL_TGT_CROP &&
+	    pad->flags & MEDIA_PAD_FL_SOURCE &&
+	    asd->valid_tgts[sel->pad].crop) {
+		struct v4l2_rect *r;
+		unsigned int sink_pad;
+		int i;
+
+		for (i = 0; i < asd->nstreams; i++) {
+			if (!asd->route[i].flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE)
+				continue;
+			if (asd->route[i].source == sel->pad) {
+				sink_pad = asd->route[i].sink;
+				break;
+			}
+		}
+		if (i == asd->nstreams) {
+			dev_dbg(&asd->isys->adev->dev, "No sink pad routed.\n");
+			return -EINVAL;
+		}
+		r = __intel_ipu4_isys_get_selection(
+			sd, cfg, sel->target, sink_pad, sel->which);
+
+		/* Cropping is not supported by SoC BE.
+		 * Only horizontal padding is allowed.
+		 */
+		sel->r.top = r->top;
+		sel->r.left = r->left;
+		sel->r.width = clamp(sel->r.width, r->width,
+				     INTEL_IPU4_ISYS_MAX_WIDTH);
+		sel->r.height = r->height;
+
+		*__intel_ipu4_isys_get_selection(sd, cfg, sel->target, sel->pad,
+						sel->which) = sel->r;
+		intel_ipu4_isys_subdev_fmt_propagate(
+			sd, cfg, NULL, &sel->r,
+			INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SOURCE_CROP,
+			sel->pad, sel->which);
+		return 0;
+	}
+	return -EINVAL;
+}
+
 static const struct v4l2_subdev_pad_ops csi2_be_soc_sd_pad_ops = {
 	.link_validate = __subdev_link_validate,
 	.get_fmt = intel_ipu4_isys_subdev_get_ffmt,
 	.set_fmt = intel_ipu4_isys_subdev_set_ffmt,
+	.get_selection = intel_ipu4_isys_subdev_get_sel,
+	.set_selection = ipu4_isys_csi2_be_soc_set_sel,
 	.enum_mbus_code = intel_ipu4_isys_subdev_enum_mbus_code,
 	.set_routing = intel_ipu4_isys_subdev_set_routing,
 	.get_routing = intel_ipu4_isys_subdev_get_routing,
@@ -144,8 +195,10 @@ static void csi2_be_soc_set_ffmt(struct v4l2_subdev *sd,
 	} else if (sd->entity.pads[fmt->pad].flags & MEDIA_PAD_FL_SOURCE) {
 		struct intel_ipu4_isys_subdev *asd =
 					to_intel_ipu4_isys_subdev(sd);
+		unsigned int sink_pad = 0;
 		struct v4l2_mbus_framefmt *sink_ffmt;
-		int i, sink_pad = 0;
+		struct v4l2_rect *r;
+		int i;
 
 		for (i = 0; i < asd->nsinks; i++)
 			if (media_entity_has_route(&sd->entity, fmt->pad, i))
@@ -155,10 +208,12 @@ static void csi2_be_soc_set_ffmt(struct v4l2_subdev *sd,
 
 		sink_ffmt = __intel_ipu4_isys_get_ffmt(sd, cfg, sink_pad,
 				fmt->stream, fmt->which);
+		r = __intel_ipu4_isys_get_selection(
+				sd, cfg, V4L2_SEL_TGT_CROP,
+				fmt->pad, fmt->which);
 
-		/* TODO: support multiple stream selection? */
-		ffmt->width = sink_ffmt->width;
-		ffmt->height = sink_ffmt->height;
+		ffmt->width = r->width;
+		ffmt->height = r->height;
 		ffmt->code = sink_ffmt->code;
 		ffmt->field = sink_ffmt->field;
 	}
@@ -204,8 +259,11 @@ int intel_ipu4_isys_csi2_be_soc_init(
 		csi2_be_soc->asd.pad[i].flags = MEDIA_PAD_FL_SINK;
 
 	for (i = CSI2_BE_SOC_PAD_SOURCE(0);
-	     i < NR_OF_CSI2_BE_SOC_SOURCE_PADS + CSI2_BE_SOC_PAD_SOURCE(0); i++)
+	     i < NR_OF_CSI2_BE_SOC_SOURCE_PADS + CSI2_BE_SOC_PAD_SOURCE(0);
+	     i++) {
 		csi2_be_soc->asd.pad[i].flags = MEDIA_PAD_FL_SOURCE;
+		csi2_be_soc->asd.valid_tgts[i].crop = true;
+	}
 
 	BUILD_BUG_ON(ARRAY_SIZE(csi2_be_soc_supported_codes) !=
 						NR_OF_CSI2_BE_SOC_PADS);
