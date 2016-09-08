@@ -1717,6 +1717,18 @@ void intel_ipu4_buttress_csi_port_config(struct intel_ipu4_device *isp,
 }
 EXPORT_SYMBOL(intel_ipu4_buttress_csi_port_config);
 
+int intel_ipu4_buttress_restore(struct intel_ipu4_device *isp)
+{
+	struct intel_ipu4_buttress *b = &isp->buttress;
+
+	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_CLEAR);
+	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_ENABLE);
+	writel(b->wdt_cached_value, isp->base + BUTTRESS_REG_WDT);
+
+	return 0;
+}
+EXPORT_SYMBOL(intel_ipu4_buttress_restore);
+
 int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
@@ -1766,6 +1778,7 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 	dev_info(&isp->pdev->dev, "IPU4 in %s mode\n",
 			isp->secure_mode ? "secure" : "non-secure");
 
+	b->wdt_cached_value = readl(isp->base + BUTTRESS_REG_WDT);
 	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_CLEAR);
 	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_ENABLE);
 

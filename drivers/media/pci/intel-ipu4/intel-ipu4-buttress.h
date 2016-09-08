@@ -68,6 +68,7 @@ struct intel_ipu4_buttress {
 	struct list_head constraints;
 	struct intel_ipu4_buttress_fused_freqs psys_fused_freqs;
 	unsigned int psys_min_freq;
+	u32 wdt_cached_value;
 	u8 psys_force_ratio;
 	bool force_suspend;
 	bool ps_started;
@@ -126,6 +127,8 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp);
 void intel_ipu4_buttress_exit(struct intel_ipu4_device *isp);
 void intel_ipu4_buttress_csi_port_config(struct intel_ipu4_device *isp,
 					u32 legacy, u32 combo);
+int intel_ipu4_buttress_restore(struct intel_ipu4_device *isp);
+
 int intel_ipu4_buttress_ipc_send_bulk(
 	struct intel_ipu4_device *isp,
 	enum intel_ipu4_buttress_ipc_domain ipc_domain,
