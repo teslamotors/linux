@@ -20,10 +20,24 @@
 #else
 #include <errno.h>
 #endif
+#include <assert_support.h>
 
 /* OS-independent definition of IA_CSS errno values */
 /* #define IA_CSS_EINVAL 1 */
 /* #define IA_CSS_EFAULT 2 */
+
+#ifdef __HIVECC
+#define ERR_EMBEDDED 1
+#else
+#define ERR_EMBEDDED 0
+#endif
+
+#if ERR_EMBEDDED
+#define DECLARE_ERRVAL
+#else
+#define DECLARE_ERRVAL \
+	int _errval = 0;
+#endif
 
 #define verifret(cond, error_type) \
 do {                               \
@@ -46,9 +60,31 @@ do {                               \
 	}                          \
 } while (0)
 
-#define verifjmpexit(cond)         \
+#if ERR_EMBEDDED
+#define verifexitval(cond, error_tag) \
+do {                               \
+	assert(cond);		   \
+} while (0)
+#else
+#define verifexitval(cond, error_tag) \
 do {                               \
 	if (!(cond)) {              \
+		_errval = (error_tag); \
+		goto EXIT;         \
+	}                          \
+} while (0)
+#endif
+
+#if ERR_EMBEDDED
+#define haserror(error_tag) (0)
+#else
+#define haserror(error_tag) \
+	_errval == (error_tag)
+#endif
+
+#define verifjmpexit(cond)         \
+do {                               \
+	if (!(cond)) {             \
 		goto EXIT;         \
 	}                          \
 } while (0)

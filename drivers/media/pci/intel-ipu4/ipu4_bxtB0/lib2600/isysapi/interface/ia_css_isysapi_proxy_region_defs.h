@@ -95,15 +95,18 @@ struct ia_css_proxy_write_region_description ipu4p_a0_reg_write_desc[N_IPU4P_A0_
  * can be accessed (for writing purpose) through the proxy interface
  */
 enum ipu4p_b0_ia_css_proxy_write_region {
+	IPU4P_B0_IA_CSS_PROXY_WRITE_REGION_GDA_IWAKE_THRESHOLD = 0,
+	IPU4P_B0_IA_CSS_PROXY_WRITE_REGION_GDA_ENABLE_IWAKE,
 	N_IPU4P_B0_IA_CSS_PROXY_WRITE_REGION
 };
 
-#define IPU4P_B0_NO_PROXY_WRITE_REGION_AVAILABLE
-
-#ifndef IPU4P_B0_NO_PROXY_WRITE_REGION_AVAILABLE
 struct ia_css_proxy_write_region_description ipu4p_b0_reg_write_desc[N_IPU4P_B0_IA_CSS_PROXY_WRITE_REGION] = {
-}
-#endif /*IPU4P_A0_NO_PROXY_WRITE_REGION_AVAILABLE*/
+	/* base_addr, offset */
+		/*input_system_unis_logic_gda_iwake_threshold*/
+	{0x78010, 4}, /*IPU4P_B0_IA_CSS_PROXY_WRITE_REGION_GDA_IWAKE_THRESHOLD*/
+		/*input_system_unis_logic_gda_enable_iwake*/
+	{0x78018, 4} /*IPU4P_B0_IA_CSS_PROXY_WRITE_REGION_GDA_ENABLE_IWAKE*/
+};
 
 #endif /*defined(IPU4P_B0_PROXY_INT)*/
 
