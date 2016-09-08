@@ -151,9 +151,9 @@ int ecies_decrypt(uint8_t *msg, uint32_t *msglen,
 
 	/* sanity checks and validate we're using the same curve and params */
 	if (!msg || !prvkey || !cipher ||
-			(cipher->dhkeylen < 2 * NUM_ECC_BYTES + 1) ||
-			/*(cipher->maclen < ctx->tag_size) ||*/
-			(cipher->curve != ECC_CURVE) || (cipher->dhkey[0] != 4))
+	    (cipher->dhkeylen < 2 * NUM_ECC_BYTES + 1) ||
+	    /*(cipher->maclen < ctx->tag_size) ||*/
+	    (cipher->curve != ECC_CURVE) || (cipher->dhkey[0] != 4))
 		return -1;
 
 	/* recover eph. pubkey */

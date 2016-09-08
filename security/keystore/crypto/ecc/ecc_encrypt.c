@@ -64,6 +64,9 @@ static int hextoInt(const void *buf, int start)
  */
 static unsigned int get_serialized_cipher_size(const ecc_cipher_t *cipher)
 {
+	if (!cipher)
+		return 0;
+
 	return (uint32_t)sizeof(struct transport_format) +
 		cipher->dhkeylen + cipher->maclen + cipher->textlen;
 }

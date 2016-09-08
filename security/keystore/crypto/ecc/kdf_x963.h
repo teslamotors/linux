@@ -28,7 +28,5 @@
 /*#define X963_SHA1*/
 /*#define X963_SHA256 */
 
-void native2string(uint8_t *p_bytes, uint32_t *p_native, uint32_t len);
-
 int kdf_x963(uint8_t *key, uint32_t keylen, uint8_t *rand, uint32_t randlen,
 	     uint8_t *shared, uint32_t sharedlen);

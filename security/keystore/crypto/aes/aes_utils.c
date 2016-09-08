@@ -21,25 +21,23 @@
 
 #include "aes_utils.h"
 
-/**
- * Allocate a buffer and optionally initialize with contents of a data block.
- *
- * @param sg The pointer to scatter-gather structure.
- * @param data The pointer to the initializing data (NULL if no initialization needed).
- * @param buflen The size of the buffer to allocate in bytes.
- * @param datalen The size of initialization data (not used if data = NULL).
- */
 void *alloc_and_init_sg(struct scatterlist *sg, const void *data,
-		size_t buflen, size_t datalen)
+			size_t buflen, size_t datalen)
 {
-	void *ptr = kzalloc(buflen, GFP_KERNEL);
+	void *ptr = NULL;
 
-	if (ptr) {
-		if (data)
-			memcpy(ptr, data, datalen);
+	if (!sg || (data && (datalen > buflen)))
+		return NULL;
 
-		sg_init_one(sg, ptr, buflen);
-	}
+	ptr = kzalloc(buflen, GFP_KERNEL);
+	if (!ptr)
+		return NULL;
+
+	if (data)
+		memcpy(ptr, data, datalen);
+
+	sg_init_one(sg, ptr, buflen);
+
 	return ptr;
 }
 

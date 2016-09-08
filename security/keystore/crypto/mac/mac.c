@@ -23,19 +23,6 @@
 #include "keystore_mac.h"
 #include "keystore_debug.h"
 
-/**
- * Calculate SHA-256 HMAC or AES-128 CMAC.
- *
- * @param alg_name Algorithm name ("hmac(sha256)" or "cmac(aes)").
- * @param key Pointer to the key.
- * @param klen Key size in bytes.
- * @param data_in Pointer to the data block.
- * @param dlen Data block size in bytes.
- * @param hash_out Pointer to the output buffer.
- * @param outlen Output buffer size in bytes.
- *
- * @return 0 if OK or negative error code (see errno).
- */
 int keystore_calc_mac(const char *alg_name, const char *key, size_t klen,
 		      const char *data_in, size_t dlen,
 		      char *hash_out, size_t outlen)
@@ -45,6 +32,9 @@ int keystore_calc_mac(const char *alg_name, const char *key, size_t klen,
 	struct ahash_request *req;
 	void *hash_buf;
 	int rc;
+
+	if (!alg_name || !key || !data_in || !hash_out)
+		return -EFAULT;
 
 	memset(hash_out, 0, outlen);
 

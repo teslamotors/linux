@@ -24,10 +24,14 @@ int keystore_test_genkey_aes(void)
 
 	app_key = generate_new_key(spec, &app_key_size);
 
-	if (keystore_assert(app_key != NULL))
+	if (keystore_assert(app_key != NULL)) {
+		res = -ENOKEY;
 		goto exit;
-	if (keystore_assert(app_key_size == 32))
+	}
+	if (keystore_assert(app_key_size == 32)) {
+		res = -E2BIG;
 		goto free_key;
+	}
 
 free_key:
 	kfree(app_key);
@@ -44,10 +48,16 @@ int keystore_test_genkey_ecc(void)
 
 	app_key = generate_new_key(spec, &app_key_size);
 
-	if (keystore_assert(app_key != NULL))
+	if (keystore_assert(app_key != NULL)) {
+		res = -ENOKEY;
 		goto exit;
-	if (keystore_assert(app_key_size == 208))
+	}
+	if (keystore_assert(
+		    app_key_size == sizeof(struct ias_keystore_ecc_keypair))
+		) {
+		res = -E2BIG;
 		goto free_key;
+	}
 
 free_key:
 	kfree(app_key);
@@ -75,16 +85,20 @@ int keystore_test_wrap_unwrap(void)
 	keystore_get_rdrand(client_key, sizeof(client_key));
 
 	app_key = generate_new_key(spec, &app_key_size);
-	if (keystore_assert(app_key != NULL))
+	if (keystore_assert(app_key != NULL)) {
+		res = -ENOKEY;
 		goto exit;
+	}
 
 	res = wrapped_key_size(app_key_size, &wrapped_size);
 	if (keystore_assert(res == 0))
 		goto free_key;
 
 	wrapped_key = kmalloc(wrapped_size, GFP_KERNEL);
-	if (keystore_assert(wrapped_key != NULL))
+	if (keystore_assert(wrapped_key != NULL)) {
+		res = -ENOMEM;
 		goto free_key;
+	}
 
 	res = wrap_key(client_key, app_key, app_key_size, spec, wrapped_key);
 	if (keystore_assert(res == 0))
@@ -93,12 +107,16 @@ int keystore_test_wrap_unwrap(void)
 	res = unwrapped_key_size(wrapped_size, &unwrapped_size);
 	if (keystore_assert(res == 0))
 		goto free_key;
-	if (keystore_assert(app_key_size == unwrapped_size))
+	if (keystore_assert(app_key_size == unwrapped_size)) {
+		res = -E2BIG;
 		goto free_key;
+	}
 
 	unwrapped_key = kmalloc(unwrapped_size, GFP_KERNEL);
-	if (keystore_assert(unwrapped_key != NULL))
+	if (keystore_assert(unwrapped_key != NULL)) {
+		res = -ENOMEM;
 		goto free_key;
+	}
 
 	res = unwrap_key(client_key, wrapped_key, wrapped_size,
 			 &unwrap_spec, unwrapped_key);

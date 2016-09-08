@@ -22,17 +22,24 @@
 #include <linux/module.h>
 #include <linux/scatterlist.h>
 
-#define DBGLINE pr_info(KBUILD_MODNAME " %s:%u\n", __func__, __LINE__)
-
 /**
- * Allocate a buffer and optionally initialize with contents of a data block.
+ * alloc_and_init_sg() - Allocate a buffer and optionally initialize.
  *
- * @param sg The pointer to scatter-gather structure.
- * @param data The pointer to the initializing data (NULL if no initialization needed).
- * @param buflen The size of the buffer to allocate in bytes.
- * @param datalen The size of initialization data (not used if data = NULL).
+ * @sg: The pointer to scatter-gather structure.
+ * @data: The pointer to the initializing data
+ *        (NULL if no initialization needed).
+ * @buflen: The size of the buffer to allocate in bytes.
+ * @datalen: The size of initialization data (not used if data = NULL).
+ *
+ * Allocate a new buffer of length @buflen.
+ * If the @data is not NULL and @datalen < @buflen, copy @data into the buffer.
+ * Initialise scatter-gather structure with the new buffer.
+ *
+ * Returns: A pointer to the newly allocated buffer if successful. Will return
+ * NULL if the memory allocation fails, if NULL input pointers are provided, or
+ * if @data is non-NULL and @datalen > @buflen.
  */
 void *alloc_and_init_sg(struct scatterlist *sg, const void *data, size_t buflen,
-		size_t datalen);
+			size_t datalen);
 
 #endif /* _KEYSTORE_HELPERS_H_ */

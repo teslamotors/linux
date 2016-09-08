@@ -26,6 +26,9 @@ void string2native(uint32_t *p_native, uint8_t *p_bytes, uint32_t len)
 {
 	uint32_t i;
 
+	if (!p_native || !p_bytes)
+		return;
+
 	for (i = 0; i < len; ++i) {
 		uint8_t *p_digit = p_bytes + 4 * (len - 1 - i);
 
@@ -39,6 +42,9 @@ void string2native(uint32_t *p_native, uint8_t *p_bytes, uint32_t len)
 void native2string(uint8_t *p_bytes, uint32_t *p_native, uint32_t len)
 {
 	uint32_t i;
+
+	if (!p_native || !p_bytes)
+		return;
 
 	for (i = 0; i < len; ++i) {
 		uint8_t *p_digit = p_bytes + 4 * (len - 1 - i);

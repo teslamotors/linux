@@ -78,7 +78,10 @@ static int calc_hash_tfm(appauth_digest *hash,
 				struct crypto_shash *tfm,
 				const char *data, int len)
 {
-	int rc;
+	int rc = 0;
+
+	if (!hash || !tfm || !data)
+		return -EFAULT;
 
 	SHASH_DESC_ON_STACK(shash, tfm);
 	shash->tfm = tfm;
@@ -109,8 +112,11 @@ static int calc_hash_tfm(appauth_digest *hash,
  */
 static int calc_shash(appauth_digest *hash, const char *data, int len)
 {
-	struct crypto_shash *tfm;
-	int rc;
+	struct crypto_shash *tfm = NULL;
+	int rc = 0;
+
+	if (!hash || !data)
+		return -EFAULT;
 
 	tfm = appauth_alloc_tfm(hash->algo);
 	if (IS_ERR(tfm)) {

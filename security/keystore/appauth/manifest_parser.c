@@ -133,10 +133,10 @@ int mf_init_file_list_ctx(const uint8_t *mf,
 			ctx->bytes_left = len - 8 - data->app_name_len;
 			ctx->next_file =
 			(uint8_t *) (data->app_name + data->app_name_len);
-			ks_debug("DEBUG_APPAUTH: num_files_left = %d ",
-						ctx->num_files_left);
-			ks_debug("DEBUG_APPAUTH: bytes_left = %d",
-						ctx->bytes_left\n);
+			ks_debug("DEBUG_APPAUTH: num_files_left = %d\n",
+				 ctx->num_files_left);
+			ks_debug("DEBUG_APPAUTH: bytes_left = %d\n",
+				 ctx->bytes_left);
 			return ctx->num_files_left;
 		}
 	}
@@ -155,9 +155,9 @@ const char *mf_get_next_file(const uint8_t *mf,
 
 		if (strlen(filename) + 1 == filenamelen) {
 			size_t entry_size;
-			*size = *((uint32_t *) (ctx->next_file + filenamelen + 1));
+			*size =	*((uint32_t *)(ctx->next_file + filenamelen + 1));
 			*digest_algo_id =
-			*((uint8_t *)(ctx->next_file + filenamelen + 5));
+				*((uint8_t *)(ctx->next_file + filenamelen + 5));
 			*digest = ctx->next_file + filenamelen + 6;
 			if (*digest_algo_id >= sizeof(digest_len))
 				return NULL;

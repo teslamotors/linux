@@ -117,6 +117,9 @@ int keyspec_to_wrapped_keysize(enum keystore_key_spec keyspec,
 	int res = 0;
 	unsigned int unwrapped_size;
 
+	if (!keysize)
+		return -EFAULT;
+
 	res = keyspec_to_keysize(keyspec, &unwrapped_size);
 	if (res)
 		return res;

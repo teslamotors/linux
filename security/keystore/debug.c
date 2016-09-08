@@ -48,7 +48,12 @@ void keystore_hexdump(const char *txt, const void *ptr, unsigned int size)
 int show_and_compare(const char *name1, const void *ptr1, const char *name2,
 		const void *ptr2, unsigned int size)
 {
-	int res = memcmp(ptr1, ptr2, size);
+	int res = 0;
+
+	if (!name1 || !ptr1 || !name2 || !ptr2)
+		return -EFAULT;
+
+	res = memcmp(ptr1, ptr2, size);
 
 	ks_debug(KBUILD_MODNAME " Comparing buffers %s and %s\n", name1, name2);
 	keystore_hexdump(name1, ptr1, size);

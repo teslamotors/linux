@@ -27,7 +27,7 @@
  */
 struct crypto_shash *appauth_alloc_tfm(enum hash_algo algo)
 {
-	struct crypto_shash *tfm = 0;
+	struct crypto_shash *tfm = NULL;
 	int rc;
 
 	if (algo < 0 || algo >= HASH_ALGO__LAST)
@@ -62,7 +62,7 @@ void appauth_free_tfm(struct crypto_shash *tfm)
  * @param addr         - address of the buffer.
  * @param count        - size of the buffer .
  *
- * @return 0,if success or error code.
+ * @return 0 if success or error code.
  */
 int appauth_kernel_read(struct file *file, loff_t offset,
 				char *addr, unsigned long count)
@@ -89,7 +89,7 @@ int appauth_kernel_read(struct file *file, loff_t offset,
  * @param hash         - pointer to appauth_digest.
  * @param tfm          - pointer to crypto shash structure.
  *
- * @return 0,if success or error code.
+ * @return 0 if success or error code.
  */
 static int appauth_calc_file_hash_tfm(struct file *file,
 		appauth_digest *hash, struct crypto_shash *tfm)
@@ -97,6 +97,9 @@ static int appauth_calc_file_hash_tfm(struct file *file,
 	loff_t i_size, offset = 0;
 	char *file_buf;
 	int rc, read = 0, count = 0;
+
+	if (!file || !hash || !tfm)
+		return -EFAULT;
 
 	SHASH_DESC_ON_STACK(shash, tfm);
 
@@ -163,12 +166,15 @@ out:
  * @param file         - file structure.
  * @param hash         - pointer to appauth_digest.
  *
- * @return 0,if success or error code (see enum APP_AUTH_ERROR).
+ * @return 0 if success or error code (see enum APP_AUTH_ERROR).
  */
 static int appauth_calc_file_shash(struct file *file, appauth_digest *hash)
 {
 	struct crypto_shash *tfm;
 	int ret = 0;
+
+	if (!file || !hash)
+		return -EFAULT;
 
 	tfm = appauth_alloc_tfm(hash->algo);
 	if (IS_ERR(tfm)) {
@@ -190,7 +196,7 @@ static int appauth_calc_file_shash(struct file *file, appauth_digest *hash)
  * @param file         - file structure.
  * @param hash         - pointer to appauth_digest.
  *
- * @return 0,if success or error code (see enum APP_AUTH_ERROR).
+ * @return 0 if success or error code (see enum APP_AUTH_ERROR).
  */
 static int process_file(struct file *file, appauth_digest *hash)
 {

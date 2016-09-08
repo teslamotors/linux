@@ -42,11 +42,6 @@
 #define KEYSTORE_VERSION_PATCH 1
 
 /**
- * KEYSTORE_MAJOR - "/dev/keystore" char device major number
- */
-#define KEYSTORE_MAJOR               40
-
-/**
  * KEYSTORE_CLIENT_TICKET_SIZE - client_ticket size in bytes
  */
 #define KEYSTORE_CLIENT_TICKET_SIZE   8

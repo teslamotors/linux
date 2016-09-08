@@ -65,6 +65,9 @@ int kdf_x963(uint8_t *key, uint32_t keylen, uint8_t *rand, uint32_t randlen,
 	/* simplified length checks to avoid overflows & bignum */
 	uint32_t MAXINT = -1;
 
+	if (!key || !rand || (!shared && sharedlen))
+		return -1;
+
 	if ((randlen + sharedlen + 4) >= hashmaxlen)
 		return -1;
 

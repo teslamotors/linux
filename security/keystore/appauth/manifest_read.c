@@ -23,7 +23,7 @@
  * @param file         - pointer to the file structure for the manifest file.
  * @param manifest_buf - contain the entire manifest file content.
  *
- * @return 0,if success or error code.
+ * @return 0 if success or error code.
  */
 static int appauth_read_buf(struct file *file, char **manifest_buf)
 {
@@ -79,7 +79,7 @@ void appauth_free_buf(char **manifest_buf)
  * @param file         - pointer to the file structure for the manifest file.
  * @param manifest_buf - contain the entire manifest file content.
  *
- * @return 0,if success or error code (see enum APP_AUTH_ERROR).
+ * @return 0 if success or error code (see enum APP_AUTH_ERROR).
  */
 int read_file(struct file *file, char **manifest_buf)
 {
@@ -101,7 +101,7 @@ int read_file(struct file *file, char **manifest_buf)
  * @param manifest_buf - contain the entire manifest file content.
  * @param manifest_len - manifest file length.
  *
- * @return 0,if success or error code.
+ * @return 0 if success or error code.
  */
 int read_manifest(const char *filename, char **manifest_buf, int *manifest_len)
 {

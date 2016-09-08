@@ -44,6 +44,11 @@ int keystore_register(enum keystore_seed_type seed_type, uint8_t *client_ticket)
 
 	FUNC_BEGIN;
 
+	if (!client_ticket) {
+		res = -EFAULT;
+		goto exit;
+	}
+
 	/*
 	 * Check for secure boot status.
 	 *
@@ -60,11 +65,6 @@ int keystore_register(enum keystore_seed_type seed_type, uint8_t *client_ticket)
 		goto exit;
 	}
 #endif
-
-	if (!client_ticket) {
-		res = -EFAULT;
-		goto exit;
-	}
 
 	/* Calculate the Client ID */
 #ifdef CONFIG_APPLICATION_AUTH
