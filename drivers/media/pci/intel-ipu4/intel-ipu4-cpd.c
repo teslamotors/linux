@@ -268,7 +268,7 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_bus_device *adev,
 
 	return pkg_dir;
 }
-EXPORT_SYMBOL(intel_ipu4_cpd_create_pkg_dir);
+EXPORT_SYMBOL_GPL(intel_ipu4_cpd_create_pkg_dir);
 
 void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_bus_device *adev,
 				 u64 *pkg_dir,
@@ -277,7 +277,7 @@ void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_bus_device *adev,
 {
 	dma_free_attrs(&adev->dev, pkg_dir_size, pkg_dir, dma_addr, NULL);
 }
-EXPORT_SYMBOL(intel_ipu4_cpd_free_pkg_dir);
+EXPORT_SYMBOL_GPL(intel_ipu4_cpd_free_pkg_dir);
 
 u32 intel_ipu4_cpd_get_pg_icache_base(struct intel_ipu4_device *isp,
 				      u8 idx,
@@ -290,7 +290,7 @@ u32 intel_ipu4_cpd_get_pg_icache_base(struct intel_ipu4_device *isp,
 	return intel_ipu4_cpd_metadata_get_cmpnt_icache_base_offs(
 		isp, cpd_file + metadata->offset, metadata->len, idx);
 }
-EXPORT_SYMBOL(intel_ipu4_cpd_get_pg_icache_base);
+EXPORT_SYMBOL_GPL(intel_ipu4_cpd_get_pg_icache_base);
 
 u32 intel_ipu4_cpd_get_pg_entry_point(struct intel_ipu4_device *isp,
 				      u8 idx,
@@ -303,7 +303,7 @@ u32 intel_ipu4_cpd_get_pg_entry_point(struct intel_ipu4_device *isp,
 	return intel_ipu4_cpd_metadata_get_cmpnt_entry_point(
 		isp, cpd_file + metadata->offset, metadata->len, idx);
 }
-EXPORT_SYMBOL(intel_ipu4_cpd_get_pg_entry_point);
+EXPORT_SYMBOL_GPL(intel_ipu4_cpd_get_pg_entry_point);
 
 static int intel_ipu4_cpd_validate_cpd(struct intel_ipu4_device *isp,
 				       const void *cpd,
