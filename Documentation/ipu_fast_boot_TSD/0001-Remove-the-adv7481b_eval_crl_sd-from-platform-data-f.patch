@@ -1,0 +1,25 @@
+From 2cedfc2ef6e8f97baa6e72b018c41989396fc3f8 Mon Sep 17 00:00:00 2001
+From: Yang Haiping <haipingx.yang@intel.com>
+Date: Wed, 20 Jul 2016 05:44:51 -0400
+Subject: [PATCH] Remove the adv7481b_eval_crl_sd from platform data for IVI
+
+Signed-off-by: Yang Haiping <haipingx.yang@intel.com>
+---
+ drivers/media/platform/intel-ipu4/intel-ipu4-bxt-p-pdata.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/media/platform/intel-ipu4/intel-ipu4-bxt-p-pdata.c b/drivers/media/platform/intel-ipu4/intel-ipu4-bxt-p-pdata.c
+index 6e08584..6aca86b 100644
+--- a/drivers/media/platform/intel-ipu4/intel-ipu4-bxt-p-pdata.c
++++ b/drivers/media/platform/intel-ipu4/intel-ipu4-bxt-p-pdata.c
+@@ -268,7 +268,6 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
+ #endif
+ #ifdef CONFIG_INTEL_IPU4_ADV7481_EVAL
+ 		&adv7481_eval_crl_sd,
+-		&adv7481b_eval_crl_sd,
+ #endif
+ #ifdef CONFIG_VIDEO_AGGREGATOR_STUB
+ 		&video_aggre_stub_sd,
+-- 
+1.9.1
+
