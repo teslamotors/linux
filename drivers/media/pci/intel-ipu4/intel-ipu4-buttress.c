@@ -874,12 +874,12 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 
 	tout_jfs = jiffies + msecs_to_jiffies(BUTTRESS_CSE_BOOTLOAD_TIMEOUT);
 	do {
-		data = readl(isp->base + BUTTRESS_REG_CSE_ACTION);
-		data &= BUTTRESS_CSE_ACTION_MASK;
-		if (data == BUTTRESS_CSE_ACTION_SETUP_DONE) {
+		data = readl(isp->base + BUTTRESS_REG_SECURITY_CTL);
+		data &= BUTTRESS_SECURITY_CTL_FW_SETUP_MASK;
+		if (data == BUTTRESS_SECURITY_CTL_FW_SETUP_DONE) {
 			dev_dbg(&isp->pdev->dev, "CSE boot_load done\n");
 			break;
-		} else if (data == BUTTRESS_CSE_ACTION_BASE_AUTH_FAILED) {
+		} else if (data == BUTTRESS_SECURITY_CTL_AUTH_FAILED) {
 			dev_err(&isp->pdev->dev, "CSE boot_load failed\n");
 			rval = -EINVAL;
 			goto iunit_power_off;
@@ -887,7 +887,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		usleep_range(500, 1000);
 	} while (!time_after(jiffies, tout_jfs));
 
-	if (data != BUTTRESS_CSE_ACTION_SETUP_DONE) {
+	if (data != BUTTRESS_SECURITY_CTL_FW_SETUP_DONE) {
 		dev_err(&isp->pdev->dev, "CSE boot_load timed out\n");
 		rval = -ETIMEDOUT;
 		goto iunit_power_off;
@@ -931,12 +931,12 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 	tout_jfs = jiffies + msecs_to_jiffies(
 		BUTTRESS_CSE_AUTHENTICATE_TIMEOUT);
 	do {
-		data = readl(isp->base + BUTTRESS_REG_CSE_ACTION);
-		data &= BUTTRESS_CSE_ACTION_MASK;
-		if (data == BUTTRESS_CSE_ACTION_BASE_AUTH_DONE) {
+		data = readl(isp->base + BUTTRESS_REG_SECURITY_CTL);
+		data &= BUTTRESS_SECURITY_CTL_FW_SETUP_MASK;
+		if (data == BUTTRESS_SECURITY_CTL_AUTH_DONE) {
 			dev_dbg(&isp->pdev->dev, "CSE authenticate_run done\n");
 			break;
-		} else if (data == BUTTRESS_CSE_ACTION_BASE_AUTH_FAILED) {
+		} else if (data == BUTTRESS_SECURITY_CTL_AUTH_FAILED) {
 			dev_err(&isp->pdev->dev, "CSE authenticate_run failed\n");
 			rval = -EINVAL;
 			goto iunit_power_off;
@@ -944,7 +944,7 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 		usleep_range(500, 1000);
 	} while (!time_after(jiffies, tout_jfs));
 
-	if (data != BUTTRESS_CSE_ACTION_BASE_AUTH_DONE) {
+	if (data != BUTTRESS_SECURITY_CTL_AUTH_DONE) {
 		dev_err(&isp->pdev->dev, "CSE authenticate_run timed out\n");
 		rval = -ETIMEDOUT;
 		goto iunit_power_off;
