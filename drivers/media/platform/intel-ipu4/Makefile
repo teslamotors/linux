@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2010 - 2015, Intel Corporation.
+#  Copyright (c) 2010 - 2016, Intel Corporation.
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms and conditions of the GNU General Public License,
@@ -11,7 +11,11 @@
 #  more details.
 #
 
-ccflags-y += -I$(srctree)/$(src)/../../../../include/
+ifneq ($(EXTERNAL_BUILD), 1)
+srcpath := $(srctree)
+endif
+
+ccflags-y += -I$(srcpath)/$(src)/../../../../include/
 
 obj-$(CONFIG_INTEL_IPU4_BXT_RVP_PDATA)	+= intel-ipu4-bxt-rvp-pdata.o
 obj-$(CONFIG_INTEL_IPU4_BXT_RVP_PDATA)	+= intel-ipu4-bxt-p-apl-pdata.o

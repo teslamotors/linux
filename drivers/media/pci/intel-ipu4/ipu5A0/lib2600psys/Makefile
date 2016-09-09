@@ -11,15 +11,19 @@
 #  more details.
 #
 
-include $(srctree)/$(src)/../Makefile.ipu5psys_src
-include $(srctree)/$(src)/../Makefile.ipu5psys_inc
+ifneq ($(EXTERNAL_BUILD), 1)
+srcpath := $(srctree)
+endif
+
+include $(srcpath)/$(src)/../Makefile.ipu5psys_src
+include $(srcpath)/$(src)/../Makefile.ipu5psys_inc
 
 SSID        = 0
 MMID        = 0
 IPU_SYSVER  = ipu5A0
 
 IPU_PSYSLIB_ROOT_REL = lib
-IPU_PSYSLIB_ROOT = $(srctree)/$(src)/$(IPU_PSYSLIB_ROOT_REL)
+IPU_PSYSLIB_ROOT = $(srcpath)/$(src)/$(IPU_PSYSLIB_ROOT_REL)
 
 IPU_PSYSLIB_SRC += libcsspsys2600.o
 

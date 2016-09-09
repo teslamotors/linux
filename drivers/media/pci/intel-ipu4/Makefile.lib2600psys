@@ -1,7 +1,11 @@
-# note: this file only defines INCLUDES paths for lib2600psys
-include $(srctree)/$(src)/Makefile.ipu4psys_inc
+ifneq ($(EXTERNAL_BUILD), 1)
+srcpath := $(srctree)
+endif
 
-IPU_PSYSLIB_ROOT = $(srctree)/$(src)/lib2600psys/lib
+# note: this file only defines INCLUDES paths for lib2600psys
+include $(srcpath)/$(src)/Makefile.ipu4psys_inc
+
+IPU_PSYSLIB_ROOT = $(srcpath)/$(src)/lib2600psys/lib
 HOST_DEFINES += -DPSYS_SERVER_ON_SPC
 
 ccflags-y += $(IPU_PSYSLIB_INC) $(HOST_DEFINES)

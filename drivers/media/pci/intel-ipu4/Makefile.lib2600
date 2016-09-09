@@ -1,12 +1,16 @@
+ifneq ($(EXTERNAL_BUILD), 1)
+srcpath := $(srctree)
+endif
+
 PROGRAMS = isys_fw
 SYSTEM = input_system_system
 IPU_ISYSLIB_ROOT_REL = lib2600
-IPU_ISYSLIB_ROOT = $(srctree)/$(src)/$(IPU_ISYSLIB_ROOT_REL)
+IPU_ISYSLIB_ROOT = $(srcpath)/$(src)/$(IPU_ISYSLIB_ROOT_REL)
 
-include $(srctree)/$(src)/Makefile.ipu4isys_inc
-include $(srctree)/$(src)/Makefile.ipu4isys_src
+include $(srcpath)/$(src)/Makefile.ipu4isys_inc
+include $(srcpath)/$(src)/Makefile.ipu4isys_src
 
-include $(srctree)/$(src)/../Makefile.link
+include $(srcpath)/$(src)/../Makefile.link
 
 lib2600-mod-$(IPU_STEP)-objs := \
 	../libintel-ipu4.$(IPU_STEP).lnk.o \
@@ -15,8 +19,8 @@ lib2600-mod-$(IPU_STEP)-objs := \
 obj-$(CONFIG_VIDEO_INTEL_IPU4)	+= lib2600-mod-$(IPU_STEP).o
 
 INCLUDES := \
-	-I$(srctree)/$(src)/$(IPU_ISYSLIB_ROOT_REL) \
-	-I$(srctree)/$(src) \
+	-I$(srcpath)/$(src)/$(IPU_ISYSLIB_ROOT_REL) \
+	-I$(srcpath)/$(src) \
 	$(IPU_ISYSLIB_INC)
 
 DEFINES:= -D__HOST__ -D__KERNEL__ -DISYS_FPGA -DPSYS_FPGA
