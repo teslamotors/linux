@@ -1200,8 +1200,14 @@ static void stop_queue(struct request_queue *q)
 {
 	if (!q->mq_ops)
 		old_stop_queue(q);
-	else
+	else {
+		spin_lock_irq(q->queue_lock);
+		queue_flag_set(QUEUE_FLAG_STOPPED, q);
+		spin_unlock_irq(q->queue_lock);
+
+		blk_mq_cancel_requeue_work(q);
 		blk_mq_stop_hw_queues(q);
+	}
 }
 
 static void old_start_queue(struct request_queue *q)
@@ -1218,8 +1224,10 @@ static void start_queue(struct request_queue *q)
 {
 	if (!q->mq_ops)
 		old_start_queue(q);
-	else
+	else {
+		queue_flag_clear_unlocked(QUEUE_FLAG_STOPPED, q);
 		blk_mq_start_stopped_hw_queues(q, true);
+	}
 }
 
 static void dm_done(struct request *clone, int error, bool mapped)
@@ -2139,7 +2147,7 @@ static void dm_request_fn(struct request_queue *q)
 	goto out;
 
 delay_and_out:
-	blk_delay_queue(q, HZ / 100);
+	blk_delay_queue(q, 10);
 out:
 	dm_put_live_table(md, srcu_idx);
 }
@@ -2731,6 +2739,17 @@ static int dm_mq_queue_rq(struct blk_mq_hw_ctx *hctx,
 	}
 	dm_put_live_table(md, srcu_idx);
 
+	/*
+	 * On suspend dm_stop_queue() handles stopping the blk-mq
+	 * request_queue BUT: even though the hw_queues are marked
+	 * BLK_MQ_S_STOPPED at that point there is still a race that
+	 * is allowing block/blk-mq.c to call ->queue_rq against a
+	 * hctx that it really shouldn't.  The following check guards
+	 * against this rarity (albeit _not_ race-free).
+	 */
+	if (unlikely(test_bit(BLK_MQ_S_STOPPED, &hctx->state)))
+		return BLK_MQ_RQ_QUEUE_BUSY;
+
 	if (ti->type->busy && ti->type->busy(ti))
 		return BLK_MQ_RQ_QUEUE_BUSY;
 
@@ -3130,7 +3149,8 @@ static void unlock_fs(struct mapped_device *md)
  * Caller must hold md->suspend_lock
  */
 static int __dm_suspend(struct mapped_device *md, struct dm_table *map,
-			unsigned suspend_flags, int interruptible)
+			unsigned suspend_flags, int interruptible,
+			int dmf_suspended_flag)
 {
 	bool do_lockfs = suspend_flags & DM_SUSPEND_LOCKFS_FLAG;
 	bool noflush = suspend_flags & DM_SUSPEND_NOFLUSH_FLAG;
@@ -3197,6 +3217,8 @@ static int __dm_suspend(struct mapped_device *md, struct dm_table *map,
 	 * to finish.
 	 */
 	r = dm_wait_for_completion(md, interruptible);
+	if (!r)
+		set_bit(dmf_suspended_flag, &md->flags);
 
 	if (noflush)
 		clear_bit(DMF_NOFLUSH_SUSPENDING, &md->flags);
@@ -3258,11 +3280,9 @@ retry:
 
 	map = rcu_dereference_protected(md->map, lockdep_is_held(&md->suspend_lock));
 
-	r = __dm_suspend(md, map, suspend_flags, TASK_INTERRUPTIBLE);
+	r = __dm_suspend(md, map, suspend_flags, TASK_INTERRUPTIBLE, DMF_SUSPENDED);
 	if (r)
 		goto out_unlock;
-
-	set_bit(DMF_SUSPENDED, &md->flags);
 
 	dm_table_postsuspend_targets(map);
 
@@ -3357,9 +3377,8 @@ static void __dm_internal_suspend(struct mapped_device *md, unsigned suspend_fla
 	 * would require changing .presuspend to return an error -- avoid this
 	 * until there is a need for more elaborate variants of internal suspend.
 	 */
-	(void) __dm_suspend(md, map, suspend_flags, TASK_UNINTERRUPTIBLE);
-
-	set_bit(DMF_SUSPENDED_INTERNALLY, &md->flags);
+	(void) __dm_suspend(md, map, suspend_flags, TASK_UNINTERRUPTIBLE,
+			    DMF_SUSPENDED_INTERNALLY);
 
 	dm_table_postsuspend_targets(map);
 }
