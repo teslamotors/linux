@@ -26,11 +26,14 @@
 #define INTEL_IPU4_PSYS_PG_MAX_SIZE 2048
 #define INTEL_IPU4_MAX_PSYS_CMD_BUFFERS 32
 #define INTEL_IPU4_PSYS_CMD_TIMEOUT_MS_FPGA (60000*15)
-#define INTEL_IPU4_PSYS_CMD_TIMEOUT_MS_SOC 10000
+#define INTEL_IPU4_PSYS_CMD_TIMEOUT_MS_SOC 2000
 #define INTEL_IPU4_PSYS_OPEN_TIMEOUT_US	   50
-#define INTEL_IPU4_PSYS_OPEN_RETRY (1000000 / INTEL_IPU4_PSYS_OPEN_TIMEOUT_US)
+#define INTEL_IPU4_PSYS_OPEN_RETRY (10000 / INTEL_IPU4_PSYS_OPEN_TIMEOUT_US)
 #define INTEL_IPU4_PSYS_EVENT_CMD_COMPLETE IA_CSS_PSYS_EVENT_TYPE_SUCCESS
 #define INTEL_IPU4_PSYS_EVENT_FRAGMENT_COMPLETE IA_CSS_PSYS_EVENT_TYPE_SUCCESS
+#define INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US   50
+#define INTEL_IPU4_PSYS_CLOSE_TIMEOUT \
+	(100000 / INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US)
 
 struct task_struct;
 
@@ -92,16 +95,20 @@ struct intel_ipu4_psys_pg {
 	struct list_head list;
 };
 
+enum intel_ipu4_psys_cmd_state {
+	KCMD_STATE_NEW,
+	KCMD_STATE_START_PREPARED,
+	KCMD_STATE_STARTED,
+	KCMD_STATE_RUN_PREPARED,
+	KCMD_STATE_RUNNING,
+	KCMD_STATE_COMPLETE
+};
+
 struct intel_ipu4_psys_kcmd {
 	struct intel_ipu4_psys_fh *fh;
 	struct list_head list;
 	struct list_head started_list;
-	enum {
-		KCMD_STATE_NEW,
-		KCMD_STATE_STARTED,
-		KCMD_STATE_RUNNING,
-		KCMD_STATE_COMPLETE
-	} state;
+	enum intel_ipu4_psys_cmd_state state;
 	void *pg_manifest;
 	size_t pg_manifest_size;
 	struct intel_ipu4_psys_kbuffer **kbufs;

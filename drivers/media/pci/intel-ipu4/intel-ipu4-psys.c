@@ -840,24 +840,34 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority,
 		ia_css_process_group_get_program_group_ID(kcmd->kpg->pg));
 
-	if (kcmd->state == KCMD_STATE_RUNNING) {
+	switch (kcmd->state) {
+	case KCMD_STATE_RUNNING:
 		if (try_to_del_timer_sync(&kcmd->watchdog) < 0) {
 			dev_err(&psys->adev->dev,
 				"could not cancel kcmd timer\n");
 			return;
 		}
+		/* Fall through on purpose */
+	case KCMD_STATE_RUN_PREPARED:
 		intel_ipu4_psys_free_resources(
 			&kcmd->resource_alloc,
 			&psys->resource_pool_running);
 		if (psys->started_kcmds)
 			intel_ipu4_psys_kcmd_run(psys);
-		psys->active_kcmds--;
-	} else if (kcmd->state == KCMD_STATE_STARTED) {
+		if (kcmd->state == KCMD_STATE_RUNNING)
+			psys->active_kcmds--;
+		break;
+	case KCMD_STATE_STARTED:
+		psys->started_kcmds--;
+		list_del(&kcmd->started_list);
+		/* Fall through on purpose */
+	case KCMD_STATE_START_PREPARED:
 		intel_ipu4_psys_free_resources(
 			&kcmd->resource_alloc,
 			&psys->resource_pool_started);
-		psys->started_kcmds--;
-		list_del(&kcmd->started_list);
+		break;
+	default:
+		break;
 	}
 
 	kcmd->ev.type = INTEL_IPU4_PSYS_EVENT_TYPE_CMD_COMPLETE;
@@ -872,8 +882,11 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 	if (!early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
 		memcpy(kcmd->pg_user, kcmd->kpg->pg, kcmd->kpg->pg_size);
 
-	pm_runtime_mark_last_busy(&psys->adev->dev);
-	pm_runtime_put_autosuspend(&psys->adev->dev);
+	if ((kcmd->state == KCMD_STATE_RUNNING) ||
+	    (kcmd->state == KCMD_STATE_STARTED)) {
+		pm_runtime_mark_last_busy(&psys->adev->dev);
+		pm_runtime_put_autosuspend(&psys->adev->dev);
+	}
 
 	kcmd->state = KCMD_STATE_COMPLETE;
 
@@ -908,7 +921,7 @@ static int intel_ipu4_psys_kcmd_abort(struct intel_ipu4_psys *psys,
  * with an error.
  */
 static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
-				    struct intel_ipu4_psys_kcmd *kcmd)
+				      struct intel_ipu4_psys_kcmd *kcmd)
 {
 	/*
 	 * Found a runnable PG. Move queue to the list tail for round-robin
@@ -928,6 +941,17 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 		intel_ipu4_psys_kcmd_complete(psys, kcmd, -EIO);
 		pm_runtime_put_noidle(&psys->adev->dev);
 		return ret;
+	}
+
+	switch (kcmd->state) {
+	case KCMD_STATE_RUN_PREPARED:
+		kcmd->state = KCMD_STATE_RUNNING;
+		break;
+	case KCMD_STATE_START_PREPARED:
+		kcmd->state = KCMD_STATE_STARTED;
+		break;
+	default:
+		break;
 	}
 
 	if (early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
@@ -975,7 +999,6 @@ error:
 	dev_err(&psys->adev->dev,
 		"failed to start process group\n");
 	intel_ipu4_psys_kcmd_complete(psys, kcmd, -EIO);
-	pm_runtime_put_autosuspend(&psys->adev->dev);
 	return ret;
 }
 
@@ -997,7 +1020,7 @@ static int intel_ipu4_psys_kcmd_queue(struct intel_ipu4_psys *psys,
 			&kcmd->resource_alloc,
 			&psys->resource_pool_running);
 		if (!ret) {
-			kcmd->state = KCMD_STATE_RUNNING;
+			kcmd->state = KCMD_STATE_RUN_PREPARED;
 			return intel_ipu4_psys_kcmd_start(psys, kcmd);
 		}
 
@@ -1006,6 +1029,8 @@ static int intel_ipu4_psys_kcmd_queue(struct intel_ipu4_psys *psys,
 				"kcmd %p failed to alloc resources (running)\n",
 				kcmd);
 			intel_ipu4_psys_kcmd_complete(psys, kcmd, ret);
+			/* kcmd_complete doesn't handle PM for KCMD_STATE_NEW */
+			pm_runtime_put(&psys->adev->dev);
 			return -EINVAL;
 		}
 	}
@@ -1016,7 +1041,7 @@ static int intel_ipu4_psys_kcmd_queue(struct intel_ipu4_psys *psys,
 						 &kcmd->resource_alloc,
 						 &psys->resource_pool_started);
 	if (!ret) {
-		kcmd->state = KCMD_STATE_STARTED;
+		kcmd->state = KCMD_STATE_START_PREPARED;
 		return intel_ipu4_psys_kcmd_start(psys, kcmd);
 	}
 
@@ -1025,6 +1050,8 @@ static int intel_ipu4_psys_kcmd_queue(struct intel_ipu4_psys *psys,
 			"kcmd %p failed to alloc resources (started)\n",
 			kcmd);
 		intel_ipu4_psys_kcmd_complete(psys, kcmd, ret);
+		/* kcmd_complete doesn't handle PM for KCMD_STATE_NEW */
+		pm_runtime_put(&psys->adev->dev);
 		ret = -EINVAL;
 	}
 	return ret;
@@ -1125,9 +1152,12 @@ static void intel_ipu4_psys_flush_kcmds(struct intel_ipu4_psys *psys, int error)
 		mutex_lock(&fh->mutex);
 		for (p = 0; p < INTEL_IPU4_PSYS_CMD_PRIORITY_NUM; p++) {
 			fh->new_kcmd_tail[p] = NULL;
-			list_for_each_entry(kcmd, &fh->kcmds[p], list)
+			list_for_each_entry(kcmd, &fh->kcmds[p], list) {
+				if (kcmd->state == KCMD_STATE_COMPLETE)
+					continue;
 				intel_ipu4_psys_kcmd_complete(psys, kcmd,
 							      error);
+			}
 		}
 		mutex_unlock(&fh->mutex);
 	}
@@ -1147,9 +1177,11 @@ static void intel_ipu4_psys_reset(struct intel_ipu4_psys *psys)
 	pm_runtime_dont_use_autosuspend(&psys->adev->dev);
 	r = pm_runtime_get_sync(d);
 	if (r < 0) {
+		pm_runtime_put_noidle(d);
 		dev_err(&psys->adev->dev, "power management failed\n");
 		return;
 	}
+
 	intel_ipu4_psys_flush_kcmds(psys, -EIO);
 	flush_workqueue(pm_wq);
 	r = pm_runtime_put_sync(d);	/* Turn big red power knob off here */
@@ -1873,7 +1905,7 @@ static int psys_runtime_pm_suspend(struct device *dev)
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
 	unsigned long flags;
-	unsigned int retry = 20000;
+	unsigned int retry = INTEL_IPU4_PSYS_CLOSE_TIMEOUT;
 	int r;
 
 	if (!psys) {
@@ -1900,7 +1932,8 @@ static int psys_runtime_pm_suspend(struct device *dev)
 			dev_dbg(dev, "psys library release failed\n");
 			break;
 		}
-		usleep_range(100, 500);
+		usleep_range(INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US,
+			     INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US + 10);
 	} while (r && --retry);
 
 out:
@@ -2542,6 +2575,7 @@ static int intel_ipu4_psys_isr_run(void *data)
 		}
 #endif
 		intel_ipu4_psys_handle_events(psys);
+
 		pm_runtime_put(&psys->adev->dev);
 		mutex_unlock(&psys->mutex);
 	}
