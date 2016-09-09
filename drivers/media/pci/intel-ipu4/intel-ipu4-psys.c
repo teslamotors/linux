@@ -770,9 +770,11 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 		if (!kcmd->kbufs[i] || !kcmd->kbufs[i]->sgt ||
 		    kcmd->kbufs[i]->len < kcmd->buffers[i].bytes_used)
 			goto error;
-		if (kcmd->kbufs[i]->flags &
-		    INTEL_IPU4_BUFFER_FLAG_NO_FLUSH ||
-		    prevfd == kcmd->buffers[i].fd)
+		if ((kcmd->kbufs[i]->flags &
+		    INTEL_IPU4_BUFFER_FLAG_NO_FLUSH) ||
+		    (kcmd->buffers[i].flags &
+		    INTEL_IPU4_BUFFER_FLAG_NO_FLUSH) ||
+		    (prevfd == kcmd->buffers[i].fd))
 			continue;
 
 		prevfd = kcmd->buffers[i].fd;

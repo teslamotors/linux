@@ -46,7 +46,8 @@ struct intel_ipu4_psys_dma_buf {
 	int fd;
 	uint32_t data_offset;
 	uint32_t bytes_used;
-	uint32_t reserved[2];
+	uint32_t flags;
+	uint32_t reserved;
 } __attribute__ ((packed));
 
 /**
