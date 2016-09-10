@@ -359,8 +359,8 @@ int ia_css_isys_stream_open(
 	crop[IA_CSS_ISYS_CROPPING_LOCATION_PRE_ISA].left_offset +
 	OUTPUT_MAX_WIDTH, EINVAL);
 	}
-	verifret(stream_cfg->nof_input_pins < MAX_IPINS, EINVAL);
-	verifret(stream_cfg->nof_output_pins < MAX_OPINS, EINVAL);
+	verifret(stream_cfg->nof_input_pins <= MAX_IPINS, EINVAL);
+	verifret(stream_cfg->nof_output_pins <= MAX_OPINS, EINVAL);
 	for (i = 0; i < stream_cfg->nof_input_pins; i++) {
 		/* Verify input pin */
 		verifret(

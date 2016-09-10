@@ -72,19 +72,19 @@ struct ia_css_isys_output_pin_payload_comm {
  *	the data for this output pin
  * @output_res: output pin resolution
  * @stride: output stride in Bytes (not valid for statistics)
- * @pt: pin type
- * @ft: frame format type
  * @watermark_in_lines: pin watermark level in lines
  * @send_irq: assert if pin event should trigger irq
+ * @pt: pin type
+ * @ft: frame format type
  */
 struct ia_css_isys_output_pin_info_comm {
 	aligned_struct(struct ia_css_isys_resolution_comm, output_res);
-	aligned_uint32(unsigned int, input_pin_id);
 	aligned_uint32(unsigned int, stride);
 	aligned_uint32(unsigned int, watermark_in_lines);
-	aligned_uint32(unsigned int, send_irq);
-	aligned_enum(enum ia_css_isys_pin_type, pt);
-	aligned_enum(enum ia_css_isys_frame_format_type, ft);
+	aligned_uint8(unsigned int, send_irq);
+	aligned_uint8(unsigned int, input_pin_id);
+	aligned_uint8(enum ia_css_isys_pin_type, pt);
+	aligned_uint8(enum ia_css_isys_frame_format_type, ft);
 };
 
 /**
@@ -100,18 +100,69 @@ struct ia_css_isys_param_pin_comm {
 /**
  * struct ia_css_isys_input_pin_info_comm
  * @input_res: input resolution
- * @bits_per_pix: native bits per pixel
  * @dt: mipi data type
  * @mipi_store_mode: defines if legacy long packet header will be stored or
  *		     hdiscarded if discarded, output pin pin type for this
  *		     input pin can only be MIPI
+ * @bits_per_pix: native bits per pixel
  */
 struct ia_css_isys_input_pin_info_comm {
 	aligned_struct(struct ia_css_isys_resolution_comm, input_res);
-	aligned_uint32(unsigned int, bits_per_pix);
-	aligned_enum(enum ia_css_isys_mipi_data_type, dt);
-	aligned_enum(enum ia_css_isys_mipi_store_mode, mipi_store_mode);
+	aligned_uint8(enum ia_css_isys_mipi_data_type, dt);
+	aligned_uint8(enum ia_css_isys_mipi_store_mode, mipi_store_mode);
+	aligned_uint8(unsigned int, bits_per_pix);
 };
+
+/**
+ * ISA configuration fields, definition and macros
+ */
+#define ISA_CFG_FIELD_BLC_EN_LEN 			1
+#define ISA_CFG_FIELD_BLC_EN_SHIFT 			0
+
+#define ISA_CFG_FIELD_LSC_EN_LEN 			1
+#define ISA_CFG_FIELD_LSC_EN_SHIFT 			1
+
+#define ISA_CFG_FIELD_DPC_EN_LEN 			1
+#define ISA_CFG_FIELD_DPC_EN_SHIFT 			2
+
+#define ISA_CFG_FIELD_DOWNSCALER_EN_LEN 		1
+#define ISA_CFG_FIELD_DOWNSCALER_EN_SHIFT 		3
+
+#define ISA_CFG_FIELD_AWB_EN_LEN 			1
+#define ISA_CFG_FIELD_AWB_EN_SHIFT 			4
+
+#define ISA_CFG_FIELD_AF_EN_LEN				1
+#define ISA_CFG_FIELD_AF_EN_SHIFT			5
+
+#define ISA_CFG_FIELD_AE_EN_LEN 			1
+#define ISA_CFG_FIELD_AE_EN_SHIFT 			6
+
+#define ISA_CFG_FIELD_PAF_TYPE_LEN 			8
+#define ISA_CFG_FIELD_PAF_TYPE_SHIFT 			7
+
+#define ISA_CFG_FIELD_SEND_IRQ_STATS_READY_LEN 		1
+#define ISA_CFG_FIELD_SEND_IRQ_STATS_READY_SHIFT 	15
+
+#define ISA_CFG_FIELD_SEND_RESP_STATS_READY_LEN 	1
+#define ISA_CFG_FIELD_SEND_RESP_STATS_READY_SHIFT 	16
+
+/* Helper macros */
+#define ISA_CFG_GET_MASK_FROM_LEN(len)			((1 << (len)) - 1)
+#define ISA_CFG_GET_MASK_FROM_TAG(tag)			\
+	(ISA_CFG_GET_MASK_FROM_LEN(ISA_CFG_FIELD_##tag##_LEN))
+#define ISA_CFG_GET_SHIFT_FROM_TAG(tag)			\
+	(ISA_CFG_FIELD_##tag##_SHIFT)
+/* Get/Set macros */
+#define ISA_CFG_FIELD_GET(tag, word)			\
+	(						\
+	 ((word) >> (ISA_CFG_GET_SHIFT_FROM_TAG(tag))) &\
+	 ISA_CFG_GET_MASK_FROM_TAG(tag)			\
+	)
+#define ISA_CFG_FIELD_SET(tag, word, value)		\
+	word |= (					\
+	 ((value) & ISA_CFG_GET_MASK_FROM_TAG(tag)) <<	\
+	 ISA_CFG_GET_SHIFT_FROM_TAG(tag)		\
+	)
 
 /**
  * struct ia_css_isys_isa_cfg_comm. Describes the ISA cfg
@@ -119,26 +170,7 @@ struct ia_css_isys_input_pin_info_comm {
 struct ia_css_isys_isa_cfg_comm {
 	aligned_struct(struct ia_css_isys_resolution_comm,
 			isa_res[N_IA_CSS_ISYS_RESOLUTION_INFO]);
-	/* acc id 0, set if process required */
-	aligned_uint32(unsigned int, blc_enabled);
-	/* acc id 1, set if process required */
-	aligned_uint32(unsigned int, lsc_enabled);
-	/* acc id 2, set if process required */
-	aligned_uint32(unsigned int, dpc_enabled);
-	/* acc id 3, set if process required */
-	aligned_uint32(unsigned int, downscaler_enabled);
-	/* acc id 4, set if process required */
-	aligned_uint32(unsigned int, awb_enabled);
-	/* acc id 5, set if process required */
-	aligned_uint32(unsigned int, af_enabled);
-	/* acc id 6, set if process required */
-	aligned_uint32(unsigned int, ae_enabled);
-	/* acc id 7, disabled, or type of paf enabled */
-	aligned_enum(enum ia_css_isys_type_paf, paf_type);
-	/* Send irq for any statistics buffers which got completed */
-	aligned_uint32(unsigned int, send_irq_stats_ready);
-	/* Send response for any statistics buffers which got completed */
-	aligned_uint32(unsigned int, send_resp_stats_ready);
+	aligned_uint32(/* multi-field packing */, cfg_fields);
 };
 
  /**
@@ -154,14 +186,15 @@ struct ia_css_isys_cropping_comm {
  /**
  * struct ia_css_isys_stream_cfg_data_comm
  * ISYS stream configuration data structure
- * @src: Stream source index e.g. MIPI_generator_0, CSI2-rx_1
- * @vc: MIPI Virtual Channel (up to 4 virtual per physical channel)
- * @isl_use: indicates whether stream requires ISL and how
- * @compfmt: de-compression setting for User Defined Data
  * @isa_cfg: details about what ACCs are active if ISA is used
  * @crop: defines cropping resolution for the
  * maximum number of input pins which can be cropped,
  * it is directly mapped to the HW devices
+ * @input_pins: input pin descriptors
+ * @output_pins: output pin descriptors
+ * @compfmt: de-compression setting for User Defined Data
+ * @nof_input_pins: number of input pins
+ * @nof_output_pins: number of output pins
  * @send_irq_sof_discarded: send irq on discarded frame sof response
  *		- if '1' it will override the send_resp_sof_discarded and send
  *		  the response
@@ -176,7 +209,9 @@ struct ia_css_isys_cropping_comm {
  *			     used only when send_irq_sof_discarded is '0'
  * @send_resp_eof_discarded: send response for discarded frame eof detected,
  *			     used only when send_irq_eof_discarded is '0'
- * @the rest: input/output pin descriptors
+ * @src: Stream source index e.g. MIPI_generator_0, CSI2-rx_1
+ * @vc: MIPI Virtual Channel (up to 4 virtual per physical channel)
+ * @isl_use: indicates whether stream requires ISL and how
  */
 struct ia_css_isys_stream_cfg_data_comm {
 	aligned_struct(struct ia_css_isys_isa_cfg_comm, isa_cfg);
@@ -186,16 +221,16 @@ struct ia_css_isys_stream_cfg_data_comm {
 			input_pins[MAX_IPINS]);
 	aligned_struct(struct ia_css_isys_output_pin_info_comm,
 			output_pins[MAX_OPINS]);
-	aligned_uint32(unsigned int, send_irq_sof_discarded);
-	aligned_uint32(unsigned int, send_irq_eof_discarded);
-	aligned_uint32(unsigned int, send_resp_sof_discarded);
-	aligned_uint32(unsigned int, send_resp_eof_discarded);
-	aligned_uint32(unsigned int, nof_input_pins);
-	aligned_uint32(unsigned int, nof_output_pins);
 	aligned_uint32(unsigned int, compfmt);
-	aligned_enum(enum ia_css_isys_stream_source, src);
-	aligned_enum(enum ia_css_isys_mipi_vc, vc);
-	aligned_enum(enum ia_css_isys_isl_use, isl_use);
+	aligned_uint8(unsigned int, nof_input_pins);
+	aligned_uint8(unsigned int, nof_output_pins);
+	aligned_uint8(unsigned int, send_irq_sof_discarded);
+	aligned_uint8(unsigned int, send_irq_eof_discarded);
+	aligned_uint8(unsigned int, send_resp_sof_discarded);
+	aligned_uint8(unsigned int, send_resp_eof_discarded);
+	aligned_uint8(enum ia_css_isys_stream_source, src);
+	aligned_uint8(enum ia_css_isys_mipi_vc, vc);
+	aligned_uint8(enum ia_css_isys_isl_use, isl_use);
 };
 
 /**
@@ -221,10 +256,10 @@ struct ia_css_isys_frame_buff_set_comm {
 	aligned_struct(struct ia_css_isys_output_pin_payload_comm,
 			output_pins[MAX_OPINS]);
 	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
-	aligned_uint32(unsigned int, send_irq_sof);
-	aligned_uint32(unsigned int, send_irq_eof);
-	aligned_uint32(unsigned int, send_resp_sof);
-	aligned_uint32(unsigned int, send_resp_eof);
+	aligned_uint8(unsigned int, send_irq_sof);
+	aligned_uint8(unsigned int, send_irq_eof);
+	aligned_uint8(unsigned int, send_resp_sof);
+	aligned_uint8(unsigned int, send_resp_eof);
 };
 
 /**
@@ -234,8 +269,35 @@ struct ia_css_isys_frame_buff_set_comm {
  * error info
  */
 struct ia_css_isys_error_info_comm {
-	aligned_int32(enum ia_css_isys_error, error);
+	aligned_enum(enum ia_css_isys_error, error);
 	aligned_uint32(unsigned int, error_details);
+};
+
+/**
+ * struct ia_css_isys_resp_info_comm
+ * @pin: this var is only valid for pin event related responses,
+ *	contains pin addresses
+ * @process_group_light: this var is valid for stats ready related responses,
+ *			 contains process group addresses
+ * @error_info: error information from the FW
+ * @timestamp: Time information for event if available
+ * @stream_handle: stream id the response corresponds to
+ * @type: response type
+ * @pin_id: pin id that the pin payload corresponds to
+ * @acc_id: this var is valid for stats ready related responses,
+ *	    contains accelerator id that finished producing
+ *	    all related statistics
+ */
+struct ia_css_isys_resp_info_comm {
+	aligned_uint64(ia_css_return_token, buf_id); /* Used internally only */
+	aligned_struct(struct ia_css_isys_output_pin_payload_comm, pin);
+	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
+	aligned_struct(struct ia_css_isys_error_info_comm, error_info);
+	aligned_uint32(unsigned int, timestamp[2]);
+	aligned_uint8(unsigned int, stream_handle);
+	aligned_uint8(enum ia_css_isys_resp_type, type);
+	aligned_uint8(unsigned int, pin_id);
+	aligned_uint8(unsigned int, acc_id);
 };
 
 /**
@@ -250,27 +312,11 @@ struct ia_css_isys_proxy_error_info_comm {
 };
 
 /**
- * struct ia_css_isys_resp_info_comm
- * @type: response type
- * @stream_handle: stream id the response corresponds to
- * @timestamp: Time information for event if available
- * @error_info: error information from the FW
- * @pin: this var is only valid for pin event related responses,
- *	contains pin addresses
- * @pin_id: pin id that the pin payload corresponds to
+ * struct ia_css_isys_proxy_resp_info_comm
+ * @request_id: Unique identifier for the write request
+ *		(in case multiple write requests are issued for same register)
+ * @error_info: details in struct definition
  */
-struct ia_css_isys_resp_info_comm {
-	aligned_struct(struct ia_css_isys_output_pin_payload_comm, pin);
-	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
-	aligned_struct(struct ia_css_isys_error_info_comm, error_info);
-	aligned_uint64(ia_css_return_token, buf_id);/* Used internally only */
-	aligned_uint32(unsigned int, stream_handle);
-	aligned_uint32(unsigned int, timestamp[2]);
-	aligned_uint32(unsigned int, pin_id);
-	aligned_uint32(unsigned int, acc_id);
-	aligned_enum(enum ia_css_isys_resp_type, type);
-};
-
 struct ia_css_isys_proxy_resp_info_comm {
 	aligned_uint32(uint32_t, request_id);
 	aligned_struct(struct ia_css_isys_proxy_error_info_comm, error_info);
@@ -304,9 +350,9 @@ struct resp_queue_token {
  * struct send_queue_token
  */
 struct send_queue_token {
-	aligned_enum(enum ia_css_isys_send_type, send_type);
-	aligned_uint32(ia_css_input_buffer_css_address, payload);
 	aligned_uint64(ia_css_return_token, buf_handle);
+	aligned_uint32(ia_css_input_buffer_css_address, payload);
+	aligned_enum(enum ia_css_isys_send_type, send_type);
 };
 
 /**
