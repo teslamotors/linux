@@ -27,6 +27,9 @@
 #define IMX185_LANES		4
 #define IMX185_I2C_ADDRESS	0x1a
 
+#define IMX274_LANES		4
+#define IMX274_I2C_ADDRESS	0x1a
+
 #define OV13860_LANES		2
 #define OV13860_I2C_ADDRESS	0x10
 #define BU64295_VCM_ADDR	0x0c
@@ -65,7 +68,34 @@ static struct intel_ipu4_isys_subdev_info imx185_crl_sd = {
 	.i2c = {
 		.board_info = {
 			 I2C_BOARD_INFO(CRLMODULE_NAME, IMX185_I2C_ADDRESS),
-			 .platform_data = &imx185_pdata,
+			.platform_data = &imx185_pdata,
+		},
+		.i2c_adapter_id = 2,
+	}
+};
+#endif
+
+#ifdef CONFIG_INTEL_IPU4_IMX274
+/*
+* The following imx274 platform data is for Leaf Hill board(BXT-P).
+*/
+static struct crlmodule_platform_data imx274_pdata = {
+	.xshutdown = GPIO_BASE + 71,
+	.lanes = IMX274_LANES,
+	.ext_clk = 24000000,
+	.op_sys_clock = (uint64_t []){720000000},
+	.module_name = "IMX274"
+};
+static struct intel_ipu4_isys_csi2_config imx274_csi2_cfg = {
+	.nlanes = IMX274_LANES,
+	.port = 0,
+};
+static struct intel_ipu4_isys_subdev_info imx274_crl_sd = {
+	.csi2 = &imx274_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			I2C_BOARD_INFO(CRLMODULE_NAME, IMX274_I2C_ADDRESS),
+			.platform_data = &imx274_pdata
 		},
 		.i2c_adapter_id = 2,
 	}
@@ -391,6 +421,9 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
 	.subdevs = (struct intel_ipu4_isys_subdev_info *[]) {
 #ifdef CONFIG_INTEL_IPU4_IMX185
 		&imx185_crl_sd,
+#endif
+#ifdef CONFIG_INTEL_IPU4_IMX274
+		&imx274_crl_sd,
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV13860
 		&ov13860_crl_sd,
