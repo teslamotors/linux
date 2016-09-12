@@ -31,6 +31,12 @@ config INTEL_IPU4_OV10635
 	---help---
 	Omnivision 1MP camera sensor
 
+config INTEL_IPU4_IMX274
+	bool "Compile platform data for IMX274 camera sensor"
+	depends on INTEL_IPU4_BXT_P_PDATA
+	---help---
+	Sony 14MP camera sensor is enabled for HDR function.
+
 config INTEL_IPU4_OV10640
 	bool "Compile platform data for OV10640"
 	---help---
@@ -45,3 +51,4 @@ config INTEL_IPU4_ADV7481_EVAL
 	bool "Compile platform data for ADV7481 evaluation board"
 	---help---
 	HDMI2MIPI convertor device ADV7481 eval board
+
