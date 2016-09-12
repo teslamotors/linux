@@ -1890,17 +1890,19 @@ EXPORT_SYMBOL_GPL(serial8250_handle_irq);
 
 static int serial8250_default_handle_irq(struct uart_port *port)
 {
-	struct uart_8250_port *up = up_to_u8250p(port);
 	unsigned int iir;
-	int ret;
 
-	serial8250_rpm_get(up);
+	/*
+	 * The IRQ might be shared with other peripherals so we must first
+	 * check that are we RPM suspended or not. If we are we assume that
+	 * the IRQ was not for us (we shouldn't be RPM suspended when the
+	 * interrupt is enabled).
+	 */
+	if (pm_runtime_suspended(port->dev))
+		return 0;
 
 	iir = serial_port_in(port, UART_IIR);
-	ret = serial8250_handle_irq(port, iir);
-
-	serial8250_rpm_put(up);
-	return ret;
+	return serial8250_handle_irq(port, iir);
 }
 
 /*
