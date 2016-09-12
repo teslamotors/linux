@@ -140,38 +140,14 @@ static int calc_shash(appauth_digest *hash, const char *data, int len)
  */
 static int verify_cert_validity(struct x509_certificate *cert)
 {
-	struct timeval time;
-	struct rtc_time tm;
-	time64_t t, t_from, t_to;
+	struct timespec64 ts;
 
-	do_gettimeofday(&time);
-	rtc_time_to_tm(time.tv_sec, &tm);
+	getnstimeofday64(&ts);
 
-	ks_debug("DEBUG_APPAUTH: Cert valid from: %04ld-%02d-%02d %02d:%02d:%02d\n",
-		cert->valid_from.tm_year + 1900, cert->valid_from.tm_mon + 1,
-		cert->valid_from.tm_mday, cert->valid_from.tm_hour,
-		cert->valid_from.tm_min,  cert->valid_from.tm_sec);
-	ks_debug("DEBUG_APPAUTH: Cert valid to: %04ld-%02d-%02d %02d:%02d:%02d\n",
-		cert->valid_to.tm_year + 1900, cert->valid_to.tm_mon + 1,
-		cert->valid_to.tm_mday, cert->valid_to.tm_hour,
-		cert->valid_to.tm_min,  cert->valid_to.tm_sec);
-	ks_debug("DEBUG_APPAUTH: Current time: %04ld-%02d-%02d %02d:%02d:%02d\n",
-		tm.tm_year + 1900, tm.tm_mon + 1,
-		tm.tm_mday, tm.tm_hour,
-		tm.tm_min, tm.tm_sec);
+	ks_debug("DEBUG_APPAUTH: Cert validity period: %lld-%lld, current time: %lld\n",
+		cert->valid_from, cert->valid_to, ts.tv_sec);
 
-	t = mktime64(tm.tm_year, tm.tm_mon, tm.tm_mday,
-		tm.tm_hour, tm.tm_min, tm.tm_sec);
-	t_from = mktime64(cert->valid_from.tm_year, cert->valid_from.tm_mon,
-		cert->valid_from.tm_mday,
-		cert->valid_from.tm_hour, cert->valid_from.tm_min,
-		cert->valid_from.tm_sec);
-	t_to = mktime64(cert->valid_to.tm_year, cert->valid_to.tm_mon,
-		cert->valid_to.tm_mday,
-		cert->valid_to.tm_hour, cert->valid_to.tm_min,
-		cert->valid_to.tm_sec);
-
-	if (t < t_from || t > t_to)
+	if (ts.tv_sec < cert->valid_from || ts.tv_sec > cert->valid_to)
 		return -EFAULT;
 
 	return 0;
@@ -205,7 +181,7 @@ int verify_manifest(const char *sig, const char *cert, const char *data,
 
 	x509cert = x509_cert_parse((void *)cert, cert_len);
 	if (!x509cert)
-			return NULL;
+			return -CERTIFICATE_FAILURE;
 
 	if (!x509cert->pub) {
 		x509_free_certificate(x509cert);
