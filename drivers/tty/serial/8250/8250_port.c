@@ -585,16 +585,12 @@ EXPORT_SYMBOL_GPL(serial8250_clear_and_reinit_fifos);
 
 void serial8250_rpm_get(struct uart_8250_port *p)
 {
-	if (!(p->capabilities & UART_CAP_RPM))
-		return;
 	pm_runtime_get_sync(p->port.dev);
 }
 EXPORT_SYMBOL_GPL(serial8250_rpm_get);
 
 void serial8250_rpm_put(struct uart_8250_port *p)
 {
-	if (!(p->capabilities & UART_CAP_RPM))
-		return;
 	pm_runtime_mark_last_busy(p->port.dev);
 	pm_runtime_put_autosuspend(p->port.dev);
 }
@@ -678,9 +674,6 @@ void serial8250_rpm_get_tx(struct uart_8250_port *p)
 {
 	unsigned char rpm_active;
 
-	if (!(p->capabilities & UART_CAP_RPM))
-		return;
-
 	rpm_active = xchg(&p->rpm_tx_active, 1);
 	if (rpm_active)
 		return;
@@ -696,9 +689,6 @@ EXPORT_SYMBOL_GPL(serial8250_rpm_get_tx);
 void serial8250_rpm_put_tx(struct uart_8250_port *p)
 {
 	unsigned char rpm_active;
-
-	if (!(p->capabilities & UART_CAP_RPM))
-		return;
 
 	rpm_active = xchg(&p->rpm_tx_active, 0);
 	if (!rpm_active)
@@ -1809,8 +1799,6 @@ void serial8250_tx_chars(struct uart_8250_port *up)
 	 * HW can go idle. So we get here once again with empty FIFO and disable
 	 * the interrupt and RPM in __stop_tx()
 	 */
-	if (uart_circ_empty(xmit) && !(up->capabilities & UART_CAP_RPM))
-		__stop_tx(up);
 }
 EXPORT_SYMBOL_GPL(serial8250_tx_chars);
 
