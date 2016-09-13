@@ -43,4 +43,5 @@ int intel_ipu4_trace_init(struct intel_ipu4_device *isp, void __iomem *base,
 void intel_ipu4_trace_restore(struct device *dev);
 void intel_ipu4_trace_uninit(struct device *dev);
 void intel_ipu4_trace_stop(struct device *dev);
+int intel_ipu4_trace_get_timer(struct device *dev, u64 *timer);
 #endif

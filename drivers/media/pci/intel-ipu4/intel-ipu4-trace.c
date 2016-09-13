@@ -81,6 +81,8 @@ static struct trace_register_range trace_sig2cio_range_template[] = {
 #define MAX_TRACE_REGISTERS		200
 #define TRACE_CONF_DUMP_BUFFER_SIZE	(MAX_TRACE_REGISTERS * 2 * 32)
 
+#define INTEL_IPU4_TRACE_TIME_RETRY	5
+
 struct config_value {
 	u32 reg;
 	u32 value;
@@ -124,6 +126,41 @@ struct intel_ipu4_trace {
 	struct intel_ipu4_subsystem_trace_config isys;
 	struct intel_ipu4_subsystem_trace_config psys;
 };
+
+int intel_ipu4_trace_get_timer(struct device *dev, u64 *timer)
+{
+	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
+	struct intel_ipu4_subsystem_trace_config *sys = adev->trace_cfg;
+	struct intel_ipu4_trace_block *blocks;
+	void __iomem *addr = NULL;
+	uint32_t time_hi1, time_hi2, time_lo, retry;
+
+	if (!sys)
+		return -ENODEV;
+	/* Find trace unit base address */
+	blocks = sys->blocks;
+	while (blocks->type != INTEL_IPU4_TRACE_BLOCK_END) {
+		if (blocks->type == INTEL_IPU4_TRACE_BLOCK_TUN) {
+			addr = sys->base + blocks->offset;
+			break;
+		}
+		blocks++;
+	}
+	if (!addr)
+		return -ENODEV;
+
+	for (retry = 0; retry < INTEL_IPU4_TRACE_TIME_RETRY; retry++) {
+		time_hi1 = readl(addr + TRACE_REG_TUN_LOCAL_TIMER1);
+		time_lo = readl(addr + TRACE_REG_TUN_LOCAL_TIMER0);
+		time_hi2 = readl(addr + TRACE_REG_TUN_LOCAL_TIMER1);
+		*timer = (((u64) time_hi1) << 32) | time_lo;
+		if (time_hi1 == time_hi2)
+			return 0;
+	}
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_trace_get_timer);
 
 void __intel_ipu4_trace_restore(struct device *dev)
 {
