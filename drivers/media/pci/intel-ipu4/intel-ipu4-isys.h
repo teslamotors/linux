@@ -144,6 +144,10 @@ struct intel_ipu4_isys {
 	struct list_head requests;
 	struct pm_qos_request pm_qos;
 	unsigned int short_packet_source;
+	struct intel_ipu4_isys_csi2_monitor_message *short_packet_trace_buffer;
+	dma_addr_t short_packet_trace_buffer_dma_addr;
+	bool short_packet_tracing_enabled;
+	struct mutex short_packet_tracing_mutex;
 };
 
 extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;

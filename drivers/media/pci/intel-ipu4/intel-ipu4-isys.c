@@ -1180,6 +1180,18 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 
 	mutex_destroy(&isys->stream_mutex);
 	mutex_destroy(&isys->mutex);
+
+	if (isys->short_packet_source ==
+	    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
+		struct dma_attrs attrs;
+
+		init_dma_attrs(&attrs);
+		dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+		dma_free_attrs(&adev->dev,
+			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+			isys->short_packet_trace_buffer,
+			isys->short_packet_trace_buffer_dma_addr, &attrs);
+	}
 }
 
 static int intel_ipu4_isys_icache_prefetch_get(void *data, u64 *val)
@@ -1238,6 +1250,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	const struct firmware *uninitialized_var(fw);
 	int rval = 0;
+	struct dma_attrs attrs;
 
 	trace_printk("B|%d|TMWK\n", current->pid);
 
@@ -1258,12 +1271,21 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	}
 
 	/* For BXT B0/C0 and BXT-P, short packet is captured from T-Unit. */
-	if (is_intel_ipu4_hw_bxt_b0(isp))
+	if (is_intel_ipu4_hw_bxt_b0(isp)) {
 		isys->short_packet_source =
 			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT;
-	else
+		mutex_init(&isys->short_packet_tracing_mutex);
+		init_dma_attrs(&attrs);
+		dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+		isys->short_packet_trace_buffer = dma_alloc_attrs(&adev->dev,
+			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+			&isys->short_packet_trace_buffer_dma_addr, GFP_KERNEL, &attrs);
+		if (!isys->short_packet_trace_buffer)
+			return -ENOMEM;
+	} else {
 		isys->short_packet_source =
 			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER;
+	}
 
 	isys->adev = adev;
 	isys->pdata = adev->pdata;
@@ -1371,6 +1393,15 @@ release_firmware:
 	mutex_destroy(&isys->mutex);
 	mutex_destroy(&isys->stream_mutex);
 	mutex_destroy(&isys->lib_mutex);
+
+	if (isys->short_packet_source ==
+	    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
+		mutex_destroy(&isys->short_packet_tracing_mutex);
+		dma_free_attrs(&adev->dev,
+			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+			isys->short_packet_trace_buffer,
+			isys->short_packet_trace_buffer_dma_addr, &attrs);
+	}
 
 	return rval;
 }

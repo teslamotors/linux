@@ -29,6 +29,8 @@
 #include "intel-ipu5-isys-csi2-reg.h"
 #include "intel-ipu4-isys-subdev.h"
 #include "intel-ipu4-isys-video.h"
+#include "intel-ipu4-regs.h"
+#include "intel-ipu4-trace-regs.h"
 /* for IA_CSS_ISYS_PIN_TYPE_RAW_NS */
 #include "isysapi/interface/ia_css_isysapi_fw_types.h"
 #include "isysapi/interface/ia_css_isysapi_types.h"
@@ -585,6 +587,94 @@ int intel_ipu4_isys_csi2_calc_timing(struct intel_ipu4_isys_csi2 *csi2,
 	return 0;
 }
 
+static int intel_ipu4_isys_csi2_configure_tunit(
+	struct intel_ipu4_isys_csi2 *csi2, unsigned int vc, bool enable)
+{
+	struct intel_ipu4_isys *isys = csi2->isys;
+	void __iomem *isys_base = isys->pdata->base;
+	void __iomem *tunit_base = isys_base + TRACE_REG_IS_TRACE_UNIT_BASE;
+	void __iomem *csi2_tm_base;
+	void __iomem *event_mask_reg;
+	unsigned int reg_val, trace_addr;
+
+	if (csi2->index >= INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS) {
+		csi2_tm_base = isys->pdata->base + TRACE_REG_CSI2_3PH_TM_BASE;
+		trace_addr = TRACE_REG_CSI2_3PH_TM_TRACE_ADDRESS_VAL;
+		event_mask_reg = csi2_tm_base +
+			TRACE_REG_CSI2_3PH_TM_TRACE_DDR_EN_REG_IDX_Pn(
+			csi2->index);
+	} else {
+		csi2_tm_base = isys->pdata->base + TRACE_REG_CSI2_TM_BASE;
+		trace_addr = TRACE_REG_CSI2_TM_TRACE_ADDRESS_VAL;
+		event_mask_reg = csi2_tm_base +
+			TRACE_REG_CSI2_TM_TRACE_DDR_EN_REG_IDX_Pn(
+			csi2->index);
+	}
+
+	if (!enable) {
+		mutex_lock(&isys->short_packet_tracing_mutex);
+		if (isys->short_packet_tracing_enabled) {
+			writel(0, event_mask_reg);
+			writel(0, csi2_tm_base +
+				TRACE_REG_CSI2_TM_OVERALL_ENABLE_REG_IDX);
+			writel(0, tunit_base + TRACE_REG_TUN_DDR_ENABLE);
+		}
+		isys->short_packet_tracing_enabled = false;
+		mutex_unlock(&isys->short_packet_tracing_mutex);
+		return 0;
+	}
+
+	mutex_lock(&isys->short_packet_tracing_mutex);
+	if (isys->short_packet_tracing_enabled) {
+		mutex_unlock(&isys->short_packet_tracing_mutex);
+		dev_err(&isys->adev->dev,
+			"Multiple interlaced streams is not allowed.\n");
+		return -EBUSY;
+	}
+	isys->short_packet_tracing_enabled = true;
+	mutex_unlock(&isys->short_packet_tracing_mutex);
+
+	/* ring buffer base */
+	writel(isys->short_packet_trace_buffer_dma_addr,
+	       tunit_base + TRACE_REG_TUN_DRAM_BASE_ADDR);
+
+	/* ring buffer end */
+	writel(isys->short_packet_trace_buffer_dma_addr +
+	       INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE -
+	       INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MSG_SIZE,
+	       tunit_base + TRACE_REG_TUN_DRAM_END_ADDR);
+
+	/* Infobits for ddr trace */
+	writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
+	       tunit_base + TRACE_REG_TUN_DDR_INFO_VAL);
+
+	/* Remove reset from trace timers */
+	writel(TRACE_REG_GPREG_TRACE_TIMER_RST_OFF,
+		isys_base + TRACE_REG_IS_GPREG_TRACE_TIMER_RST_N);
+
+	/* Reset CSI2 monitor */
+	writel(1, csi2_tm_base + TRACE_REG_CSI2_TM_RESET_REG_IDX);
+
+	/* Set trace address register. */
+	writel(trace_addr, csi2_tm_base +
+		TRACE_REG_CSI2_TM_TRACE_ADDRESS_REG_IDX);
+	writel(TRACE_REG_CSI2_TM_TRACE_HEADER_VAL, csi2_tm_base +
+		TRACE_REG_CSI2_TM_TRACE_HEADER_REG_IDX);
+
+	/* Enable DDR trace. */
+	writel(1, tunit_base + TRACE_REG_TUN_DDR_ENABLE);
+
+	/* Enable trace for CSI2 port. */
+	reg_val = readl(event_mask_reg);
+	reg_val |= TRACE_CSI2_TM_EVENT_FS(vc);
+	writel(reg_val, event_mask_reg);
+
+	/* Enable CSI2 receiver monitor */
+	writel(1, csi2_tm_base + TRACE_REG_CSI2_TM_OVERALL_ENABLE_REG_IDX);
+
+	return 0;
+}
+
 #define CSI2_ACCINV	8
 
 static int set_stream(struct v4l2_subdev *sd, int enable)
@@ -621,6 +711,9 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 			writel(0, csi2->base + CSI2_REG_CSI2S2M_IRQ_ENABLE);
 			writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_MASK);
 			writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
+			if (ip->interlaced && ip->isys->short_packet_source ==
+				INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT)
+				intel_ipu4_isys_csi2_configure_tunit(csi2, ip->vc, 0);
 		} else {
 			/*
 			* TODO: IPU5 IRQ
@@ -719,6 +812,12 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 		writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_CLEAR);
 		writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_MASK);
 		writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
+		if (ip->interlaced && ip->isys->short_packet_source ==
+			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
+			rval = intel_ipu4_isys_csi2_configure_tunit(csi2, ip->vc, 1);
+			if (rval)
+				return rval;
+		}
 	} else {
 		/*
 		* TODO: IPU5 IRQ

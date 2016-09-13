@@ -65,6 +65,11 @@ struct intel_ipu4_isys;
 	(INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH * \
 	INTEL_IPU4_ISYS_SHORT_PACKET_PKT_LINES(num_lines) * \
 	INTEL_IPU4_ISYS_SHORT_PACKET_UNITSIZE)
+#define INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MSG_NUMBER	256
+#define INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MSG_SIZE	16
+#define INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE \
+	(INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MSG_NUMBER * \
+	INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MSG_SIZE)
 #define INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER	0
 #define INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT		1
 
@@ -119,6 +124,39 @@ __packed struct intel_ipu4_isys_mipi_packet_header {
 		port_id : 4,
 		reserved : 23,
 		odd_even : 1;
+};
+
+/*
+ * This structure defines the trace message content
+ * for CSI2 receiver monitor messages.
+ */
+__packed struct intel_ipu4_isys_csi2_monitor_message {
+	uint64_t fe : 1,
+		 fs : 1,
+		 pe : 1,
+		 ps : 1,
+		 le : 1,
+		 ls : 1,
+		 reserved1 : 2,
+		 sequence : 2,
+		 reserved2 : 2,
+		 flash_shutter : 4,
+		 error_cause : 12,
+		 fifo_overrun : 1,
+		 crc_error : 2,
+		 reserved3 : 1,
+		 timestamp_l : 16,
+		 port : 4,
+		 vc : 2,
+		 reserved4 : 2,
+		 frame_sync : 4,
+		 reserved5 : 4;
+	uint64_t reserved6 : 3,
+		 cmd : 2,
+		 reserved7 : 1,
+		 monitor_id : 7,
+		 reserved8 : 1,
+		 timestamp_h : 50;
 };
 
 #define to_intel_ipu4_isys_csi2(sd)					\
