@@ -24,11 +24,20 @@ static struct crl_register_write_rep adv7481_cvbs_powerup_regset[] = {
 	{0x0E, CRL_REG_LEN_08BIT, 0xFF, 0xE0}, /* LLC/PIX/AUD/
 					SPI PINS TRISTATED */
 	{0x0F, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* Exit Power Down Mode */
-	{0x52, CRL_REG_LEN_08BIT, 0xCD, 0xF2}, /* ADI Required Write */
-	{0x00, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* INSEL = CVBS in on Ain 1 */
+	{0x52, CRL_REG_LEN_08BIT, 0xC0, 0xF2}, /* ADI Required Write */
+	{0x00, CRL_REG_LEN_08BIT, 0x0E, 0xF2}, /* INSEL = CVBS in on Ain 1 */
 	{0x0E, CRL_REG_LEN_08BIT, 0x80, 0xF2}, /* ADI Required Write */
 	{0x9C, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
 	{0x9C, CRL_REG_LEN_08BIT, 0xFF, 0xF2}, /* ADI Required Write */
+	{0x0E, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
+	{0x5A, CRL_REG_LEN_08BIT, 0x90, 0xF2}, /* ADI Required Write */
+	{0x60, CRL_REG_LEN_08BIT, 0xA0, 0xF2}, /* ADI Required Write */
+	{0x00, CRL_REG_LEN_DELAY, 0x19, 0x00}, /* Delay 25*/
+	{0x60, CRL_REG_LEN_08BIT, 0xB0, 0xF2}, /* ADI Required Write */
+	{0x5F, CRL_REG_LEN_08BIT, 0xA8, 0xF2},
+	{0x0E, CRL_REG_LEN_08BIT, 0x80, 0xF2}, /* ADI Required Write */
+	{0xB6, CRL_REG_LEN_08BIT, 0x08, 0xF2}, /* ADI Required Write */
+	{0xC0, CRL_REG_LEN_08BIT, 0xA0, 0xF2}, /* ADI Required Write */
 	{0x0E, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
 	{0x80, CRL_REG_LEN_08BIT, 0x51, 0xF2}, /* ADI Required Write */
 	{0x81, CRL_REG_LEN_08BIT, 0x51, 0xF2}, /* ADI Required Write */
