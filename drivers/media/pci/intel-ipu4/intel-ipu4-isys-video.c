@@ -867,6 +867,13 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
 	int rval;
 	size_t buf_size;
 
+	INIT_LIST_HEAD(&ip->pending_interlaced_bufs);
+	ip->cur_field = V4L2_FIELD_TOP;
+
+	if (ip->isys->short_packet_source ==
+		INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT)
+		return 0;
+
 	rval = get_external_facing_format(ip, &source_fmt);
 	if (rval)
 		return rval;
@@ -879,10 +886,8 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
 	/* Initialize short packet queue. */
 	INIT_LIST_HEAD(&ip->short_packet_incoming);
 	INIT_LIST_HEAD(&ip->short_packet_active);
-	INIT_LIST_HEAD(&ip->pending_interlaced_bufs);
 	init_dma_attrs(&attrs);
 	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
-	ip->cur_field = V4L2_FIELD_TOP;
 
 	ip->short_packet_bufs =
 		kzalloc(sizeof(struct intel_ipu4_isys_private_buffer) *
@@ -1119,7 +1124,8 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 		__av->prepare_firmware_stream_cfg(__av, &stream_cfg);
 	}
 
-	if (ip->interlaced)
+	if (ip->interlaced && ip->isys->short_packet_source ==
+		INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER)
 		csi_short_packet_prepare_firmware_stream_cfg(ip, &stream_cfg);
 
 	csslib_dump_isys_stream_cfg(dev, &stream_cfg);
@@ -1311,7 +1317,8 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	if (!state) {
 		ip = to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 
-		if (ip->interlaced)
+		if (ip->interlaced && isys->short_packet_source ==
+			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER)
 			short_packet_queue_destroy(ip);
 		media_entity_pipeline_stop(&av->vdev.entity);
 		media_entity_enum_cleanup(&ip->entity_enum);

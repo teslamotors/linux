@@ -1257,6 +1257,14 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 		return -ENOMEM;
 	}
 
+	/* For BXT B0/C0 and BXT-P, short packet is captured from T-Unit. */
+	if (is_intel_ipu4_hw_bxt_b0(isp))
+		isys->short_packet_source =
+			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT;
+	else
+		isys->short_packet_source =
+			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER;
+
 	isys->adev = adev;
 	isys->pdata = adev->pdata;
 

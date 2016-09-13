@@ -454,7 +454,8 @@ static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
 	}
 
 	/* Get short packet buffer. */
-	if (ip->interlaced) {
+	if (ip->interlaced && ip->isys->short_packet_source ==
+	    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER) {
 		spin_lock_irqsave(&ip->short_packet_queue_lock, flags);
 		ib = intel_ipu4_isys_csi2_get_short_packet_buffer(ip);
 		if (!ib) {

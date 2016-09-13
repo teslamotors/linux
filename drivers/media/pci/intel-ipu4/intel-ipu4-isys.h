@@ -98,6 +98,7 @@ struct task_struct;
  * @pkg_dir: host pointer to pkg_dir
  * @pkg_dir_dma_addr: I/O virtual address for pkg_dir
  * @pkg_dir_size: size of pkg_dir in bytes
+ * @short_packet_source: select short packet capture mode
  */
 struct intel_ipu4_isys {
 	struct media_device media_dev;
@@ -142,6 +143,7 @@ struct intel_ipu4_isys {
 
 	struct list_head requests;
 	struct pm_qos_request pm_qos;
+	unsigned int short_packet_source;
 };
 
 extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;

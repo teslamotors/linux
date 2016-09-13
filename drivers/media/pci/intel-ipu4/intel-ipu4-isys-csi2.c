@@ -730,7 +730,8 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 static void csi2_capture_done(struct intel_ipu4_isys_pipeline *ip,
 			      struct ia_css_isys_resp_info *info)
 {
-	if (ip->interlaced) {
+	if (ip->interlaced && ip->isys->short_packet_source ==
+	    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER) {
 		struct intel_ipu4_isys_buffer *ib;
 		unsigned long flags;
 
@@ -1272,27 +1273,33 @@ intel_ipu4_isys_csi2_get_short_packet_buffer(
 unsigned int intel_ipu4_isys_csi2_get_current_field(
 	struct intel_ipu4_isys_pipeline *ip)
 {
-	struct intel_ipu4_isys_buffer *short_packet_ib =
-		list_last_entry(&ip->short_packet_active,
-		struct intel_ipu4_isys_buffer, head);
-	struct intel_ipu4_isys_private_buffer *pb =
-		intel_ipu4_isys_buffer_to_private_buffer(
-		short_packet_ib);
-	struct intel_ipu4_isys_mipi_packet_header *ph =
-		(struct intel_ipu4_isys_mipi_packet_header *)
-		pb->buffer;
 	struct intel_ipu4_isys_video *av =
 		container_of(ip, struct intel_ipu4_isys_video, ip);
-	unsigned int field;
+	struct intel_ipu4_isys *isys = av->isys;
+	unsigned int field = V4L2_FIELD_TOP;
 
-	/* Check if the first SOF packet is received. */
-	if ((ph->dtype & INTEL_IPU4_ISYS_SHORT_PACKET_DTYPE_MASK) != 0)
-		dev_warn(&av->isys->adev->dev,
-			"First short packet is not SOF.\n");
-	field = (ph->word_count % 2) ? V4L2_FIELD_TOP : V4L2_FIELD_BOTTOM;
-	dev_dbg(&av->isys->adev->dev,
-		"Interlaced field ready. frame_num = %d field = %d\n",
-		ph->word_count, field);
+	if (isys->short_packet_source ==
+	    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER) {
+		struct intel_ipu4_isys_buffer *short_packet_ib =
+			list_last_entry(&ip->short_packet_active,
+			struct intel_ipu4_isys_buffer, head);
+		struct intel_ipu4_isys_private_buffer *pb =
+			intel_ipu4_isys_buffer_to_private_buffer(
+			short_packet_ib);
+		struct intel_ipu4_isys_mipi_packet_header *ph =
+			(struct intel_ipu4_isys_mipi_packet_header *)
+			pb->buffer;
+
+		/* Check if the first SOF packet is received. */
+		if ((ph->dtype & INTEL_IPU4_ISYS_SHORT_PACKET_DTYPE_MASK) != 0)
+			dev_warn(&isys->adev->dev,
+				"First short packet is not SOF.\n");
+		field = (ph->word_count % 2) ?
+			V4L2_FIELD_TOP : V4L2_FIELD_BOTTOM;
+		dev_dbg(&isys->adev->dev,
+			"Interlaced field ready. frame_num = %d field = %d\n",
+			ph->word_count, field);
+	}
 
 	return field;
 }
