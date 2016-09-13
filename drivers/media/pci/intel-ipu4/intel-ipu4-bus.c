@@ -129,8 +129,35 @@ static int bus_pm_runtime_resume(struct device *dev)
 	rval = bus_for_each_dev(&intel_ipu4_bus, NULL, dev,
 				bus_pm_resume_child_dev);
 	if (rval) {
-		dev_err(dev, "failed to resume child device\n");
-		goto out_err;
+		dev_err(dev, "failed to resume child device - reset it\n");
+
+		rval = pm_generic_runtime_suspend(dev);
+		dev_dbg(dev, "%s: suspend %d\n", __func__, rval);
+
+		rval = intel_ipu4_buttress_power(dev, adev->ctrl, false);
+		dev_dbg(dev, "%s: buttress power down %d\n", __func__, rval);
+		if (rval)
+			return rval;
+
+		usleep_range(1000, 1100);
+
+		rval = intel_ipu4_buttress_power(dev, adev->ctrl, true);
+		dev_dbg(dev, "%s: buttress power up %d\n", __func__, rval);
+		if (rval)
+			return rval;
+
+		rval = pm_generic_runtime_resume(dev);
+		dev_dbg(dev, "%s: re-resume %d\n", __func__, rval);
+		if (rval)
+			goto out_err;
+
+		rval = bus_for_each_dev(&intel_ipu4_bus, NULL, dev,
+					bus_pm_resume_child_dev);
+
+		if (rval) {
+			dev_err(dev, "resume retry failed\n");
+			goto out_err;
+		}
 	}
 
 	return 0;
