@@ -835,72 +835,76 @@ static int get_external_facing_format(struct intel_ipu4_isys_pipeline *ip,
 		get_fmt, NULL, format);
 }
 
-static void short_packet_queue_destroy(struct intel_ipu4_isys_video *av)
+static void short_packet_queue_destroy(struct intel_ipu4_isys_pipeline *ip)
 {
+	struct intel_ipu4_isys_video *av =
+		container_of(ip, struct intel_ipu4_isys_video, ip);
 	struct dma_attrs attrs;
 	unsigned int i;
 
 	init_dma_attrs(&attrs);
 	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
-	if (!av->ip.short_packet_bufs)
+	if (!ip->short_packet_bufs)
 		return;
 	for (i = 0; i < INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM; i++) {
-		if (av->ip.short_packet_bufs[i].buffer)
+		if (ip->short_packet_bufs[i].buffer)
 			dma_free_attrs(&av->isys->adev->dev,
-				av->ip.short_packet_buffer_size,
-				av->ip.short_packet_bufs[i].buffer,
-				av->ip.short_packet_bufs[i].dma_addr, &attrs);
+				ip->short_packet_buffer_size,
+				ip->short_packet_bufs[i].buffer,
+				ip->short_packet_bufs[i].dma_addr, &attrs);
 	}
-	kfree(av->ip.short_packet_bufs);
-	av->ip.short_packet_bufs = NULL;
+	kfree(ip->short_packet_bufs);
+	ip->short_packet_bufs = NULL;
 }
 
-static int short_packet_queue_setup(struct intel_ipu4_isys_video *av)
+static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
 {
+	struct intel_ipu4_isys_video *av =
+		container_of(ip, struct intel_ipu4_isys_video, ip);
 	struct v4l2_subdev_format source_fmt = {0};
 	struct dma_attrs attrs;
 	unsigned int i;
 	int rval;
 	size_t buf_size;
 
-	rval = get_external_facing_format(&av->ip, &source_fmt);
+	rval = get_external_facing_format(ip, &source_fmt);
 	if (rval)
 		return rval;
 	buf_size =
 		INTEL_IPU4_ISYS_SHORT_PACKET_BUF_SIZE(source_fmt.format.height);
-	av->ip.short_packet_buffer_size = buf_size;
-	av->ip.num_short_packet_lines = INTEL_IPU4_ISYS_SHORT_PACKET_PKT_LINES(
+	ip->short_packet_buffer_size = buf_size;
+	ip->num_short_packet_lines = INTEL_IPU4_ISYS_SHORT_PACKET_PKT_LINES(
 		source_fmt.format.height);
 
 	/* Initialize short packet queue. */
-	INIT_LIST_HEAD(&av->ip.short_packet_incoming);
-	INIT_LIST_HEAD(&av->ip.short_packet_active);
-	INIT_LIST_HEAD(&av->ip.pending_interlaced_bufs);
+	INIT_LIST_HEAD(&ip->short_packet_incoming);
+	INIT_LIST_HEAD(&ip->short_packet_active);
+	INIT_LIST_HEAD(&ip->pending_interlaced_bufs);
 	init_dma_attrs(&attrs);
 	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
-	av->ip.cur_field = V4L2_FIELD_TOP;
+	ip->cur_field = V4L2_FIELD_TOP;
 
-	av->ip.short_packet_bufs =
+	ip->short_packet_bufs =
 		kzalloc(sizeof(struct intel_ipu4_isys_private_buffer) *
 		INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM, GFP_KERNEL);
-	if (!av->ip.short_packet_bufs)
+	if (!ip->short_packet_bufs)
 		return -ENOMEM;
 
 	for (i = 0; i < INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM; i++) {
 		struct intel_ipu4_isys_private_buffer *buf =
-			&av->ip.short_packet_bufs[i];
+			&ip->short_packet_bufs[i];
 		buf->index = (unsigned int) i;
-		buf->ip = &av->ip;
+		buf->ip = ip;
 		buf->ib.type = INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER;
 		buf->bytesused = buf_size;
 		buf->buffer = dma_alloc_attrs(
 			&av->isys->adev->dev, buf_size,
 			&buf->dma_addr, GFP_KERNEL, &attrs);
 		if (!buf->buffer) {
-			short_packet_queue_destroy(av);
+			short_packet_queue_destroy(ip);
 			return -ENOMEM;
 		}
-		list_add(&buf->ib.head, &av->ip.short_packet_incoming);
+		list_add(&buf->ib.head, &ip->short_packet_incoming);
 	}
 
 	return 0;
@@ -1293,7 +1297,8 @@ void intel_ipu4_isys_video_add_capture_done(
 int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 					 unsigned int state)
 {
-	struct device *dev = &av->isys->adev->dev;
+	struct intel_ipu4_isys *isys = av->isys;
+	struct device *dev = &isys->adev->dev;
 	struct intel_ipu4_isys_pipeline *ip;
 	struct media_entity_graph graph;
 	struct media_entity *entity;
@@ -1307,9 +1312,7 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 		ip = to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 
 		if (ip->interlaced)
-			short_packet_queue_destroy(
-				container_of(ip,
-					     struct intel_ipu4_isys_video, ip));
+			short_packet_queue_destroy(ip);
 		media_entity_pipeline_stop(&av->vdev.entity);
 		media_entity_enum_cleanup(&ip->entity_enum);
 		return 0;
@@ -1367,10 +1370,10 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 	media_entity_graph_walk_cleanup(&graph);
 
 	if (ip->interlaced) {
-		rval = short_packet_queue_setup(av);
+		rval = short_packet_queue_setup(ip);
 		if (rval) {
-			dev_err(&av->isys->adev->dev,
-				"Failed to setup short packet queue.\n");
+			dev_err(&isys->adev->dev,
+				"Failed to setup short packet buffer.\n");
 			goto out_pipeline_stop;
 		}
 	}
