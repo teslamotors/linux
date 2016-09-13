@@ -878,6 +878,7 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
 			av->isys->short_packet_trace_buffer_dma_addr,
 			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
 			DMA_BIDIRECTIONAL);
+		ip->short_packet_trace_index = 0;
 		return 0;
 	}
 

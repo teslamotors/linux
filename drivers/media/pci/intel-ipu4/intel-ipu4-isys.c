@@ -1547,6 +1547,11 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			struct list_head list;
 			unsigned long flags;
 
+			if (pipe->isys->short_packet_source ==
+			    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT)
+				pipe->cur_field =
+					intel_ipu4_isys_csi2_get_current_field(
+					pipe, &resp);
 			/*
 			 * Move the pending buffers to a local temp list.
 			 * Then we do not need to handle the lock during

@@ -1222,7 +1222,7 @@ void intel_ipu4_isys_queue_short_packet_ready(
 	dev_dbg(&isys->adev->dev, "receive short packet buffer %8.8x\n",
 		info->pin.addr);
 	spin_lock_irqsave(&ip->short_packet_queue_lock, flags);
-	ip->cur_field = intel_ipu4_isys_csi2_get_current_field(ip);
+	ip->cur_field = intel_ipu4_isys_csi2_get_current_field(ip, info);
 	spin_unlock_irqrestore(&ip->short_packet_queue_lock, flags);
 }
 

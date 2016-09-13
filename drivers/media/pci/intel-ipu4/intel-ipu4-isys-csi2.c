@@ -1395,7 +1395,8 @@ intel_ipu4_isys_csi2_get_short_packet_buffer(
 }
 
 unsigned int intel_ipu4_isys_csi2_get_current_field(
-	struct intel_ipu4_isys_pipeline *ip)
+	struct intel_ipu4_isys_pipeline *ip,
+	struct ia_css_isys_resp_info *info)
 {
 	struct intel_ipu4_isys_video *av =
 		container_of(ip, struct intel_ipu4_isys_video, ip);
@@ -1423,6 +1424,52 @@ unsigned int intel_ipu4_isys_csi2_get_current_field(
 		dev_dbg(&isys->adev->dev,
 			"Interlaced field ready. frame_num = %d field = %d\n",
 			ph->word_count, field);
+	} else {
+		/*
+		 * Find the nearest message that has matched msg type,
+		 * port id, virtual channel and packet type.
+		 */
+		unsigned int i = ip->short_packet_trace_index;
+		bool msg_matched = false;
+		unsigned int monitor_id;
+
+		if (ip->csi2->index >=
+			INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS)
+			monitor_id = TRACE_REG_CSI2_3PH_TM_MONITOR_ID;
+		else
+			monitor_id = TRACE_REG_CSI2_TM_MONITOR_ID;
+
+		dma_sync_single_for_cpu(&isys->adev->dev,
+			isys->short_packet_trace_buffer_dma_addr,
+			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+			DMA_BIDIRECTIONAL);
+
+		do {
+			struct intel_ipu4_isys_csi2_monitor_message msg =
+				isys->short_packet_trace_buffer[i];
+
+			i = (i + 1) %
+				INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MSG_NUMBER;
+
+			if (msg.cmd == TRACE_REG_CMD_TYPE_D64MTS &&
+			    msg.monitor_id == monitor_id &&
+			    msg.fs == 1 &&
+			    msg.port == ip->csi2->index &&
+			    msg.vc == ip->vc) {
+				field = (msg.sequence % 2) ?
+					V4L2_FIELD_TOP : V4L2_FIELD_BOTTOM;
+				ip->short_packet_trace_index = i;
+				msg_matched = true;
+				dev_dbg(&isys->adev->dev,
+					"Interlaced field ready. field = %d\n",
+					field);
+				break;
+			}
+		} while (i != ip->short_packet_trace_index);
+		if (!msg_matched)
+			/* We have walked through the whole buffer. */
+			dev_dbg(&isys->adev->dev,
+				"No matched trace message found.\n");
 	}
 
 	return field;

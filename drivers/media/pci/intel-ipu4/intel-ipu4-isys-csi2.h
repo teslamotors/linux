@@ -171,7 +171,8 @@ void intel_ipu4_isys_csi2_isr(struct intel_ipu4_isys_csi2 *csi2);
 struct intel_ipu4_isys_buffer *intel_ipu4_isys_csi2_get_short_packet_buffer(
 	struct intel_ipu4_isys_pipeline *ip);
 unsigned int intel_ipu4_isys_csi2_get_current_field(
-	struct intel_ipu4_isys_pipeline *ip);
+	struct intel_ipu4_isys_pipeline *ip,
+	struct ia_css_isys_resp_info *info);
 void intel_ipu4_isys_csi2_wait_last_eof(struct intel_ipu4_isys_csi2 *csi2);
 
 #endif /* INTEL_IPU4_ISYS_CSI2_H */
