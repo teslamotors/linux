@@ -79,6 +79,7 @@
 #define PS_FREQ_CTL_DEFAULT_QOS_FLOOR_RATIO_IPU5_A0	0x0708
 
 /* input system frequency: 1600Mhz / divisor. Legal values [2,8] */
+#define IS_FREQ_SOURCE			1600000000
 #define IS_FREQ_CTL_DIVISOR_B0		0x4
 #define IS_FREQ_CTL_DIVISOR_IPU5_A0		0x6
 

@@ -148,6 +148,8 @@ struct intel_ipu4_isys {
 	dma_addr_t short_packet_trace_buffer_dma_addr;
 	bool short_packet_tracing_enabled;
 	struct mutex short_packet_tracing_mutex;
+	u64 tsc_timer_base;
+	u64 tunit_timer_base;
 };
 
 extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;

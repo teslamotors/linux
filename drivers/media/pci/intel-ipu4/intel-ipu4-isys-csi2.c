@@ -46,6 +46,9 @@
 
 #define NBR_BULK_MSGS              30 /* Space reservation for IPC messages */
 
+#define CSI2_UPDATE_TIME_TRY_NUM   3
+#define CSI2_UPDATE_TIME_MAX_DIFF  20
+
 static const uint32_t csi2_supported_codes_pad_sink[] = {
 	MEDIA_BUS_FMT_RGB565_1X16,
 	MEDIA_BUS_FMT_RGB888_1X24,
@@ -587,6 +590,49 @@ int intel_ipu4_isys_csi2_calc_timing(struct intel_ipu4_isys_csi2 *csi2,
 	return 0;
 }
 
+static u64 tunit_time_to_us(struct intel_ipu4_isys *isys, u64 time)
+{
+	struct intel_ipu4_bus_device *adev =
+		to_intel_ipu4_bus_device(isys->adev->iommu);
+	u64 isys_clk = IS_FREQ_SOURCE / adev->ctrl->divisor / 1000000;
+
+	return time / isys_clk;
+}
+
+static int update_timer_base(struct intel_ipu4_isys *isys)
+{
+	int rval, i;
+	u64 time;
+
+	for (i = 0; i < CSI2_UPDATE_TIME_TRY_NUM; i++) {
+		rval = intel_ipu4_trace_get_timer(&isys->adev->dev, &time);
+		if (rval) {
+			dev_err(&isys->adev->dev,
+				"Failed to read Tunit timer.\n");
+			return rval;
+		}
+		rval = intel_ipu4_buttress_tsc_read(isys->adev->isp,
+			&isys->tsc_timer_base);
+		if (rval) {
+			dev_err(&isys->adev->dev,
+				"Failed to read TSC timer.\n");
+			return rval;
+		}
+		rval = intel_ipu4_trace_get_timer(&isys->adev->dev,
+			&isys->tunit_timer_base);
+		if (rval) {
+			dev_err(&isys->adev->dev,
+				"Failed to read Tunit timer.\n");
+			return rval;
+		}
+		if (tunit_time_to_us(isys, isys->tunit_timer_base - time) <
+		    CSI2_UPDATE_TIME_MAX_DIFF)
+			return 0;
+	}
+	dev_dbg(&isys->adev->dev, "Timer base values may not be accurate.\n");
+	return 0;
+}
+
 static int intel_ipu4_isys_csi2_configure_tunit(
 	struct intel_ipu4_isys_csi2 *csi2, unsigned int vc, bool enable)
 {
@@ -672,7 +718,7 @@ static int intel_ipu4_isys_csi2_configure_tunit(
 	/* Enable CSI2 receiver monitor */
 	writel(1, csi2_tm_base + TRACE_REG_CSI2_TM_OVERALL_ENABLE_REG_IDX);
 
-	return 0;
+	return update_timer_base(isys);
 }
 
 #define CSI2_ACCINV	8
@@ -1394,6 +1440,43 @@ intel_ipu4_isys_csi2_get_short_packet_buffer(
 	return ib;
 }
 
+static u64 tsc_time_to_tunit_time(struct intel_ipu4_isys *isys,
+	u64 tsc_base, u64 tunit_base, u64 tsc_time)
+{
+	struct intel_ipu4_bus_device *adev =
+		to_intel_ipu4_bus_device(isys->adev->iommu);
+	u64 isys_clk = IS_FREQ_SOURCE / adev->ctrl->divisor / 100000;
+	u64 tsc_clk = INTEL_IPU4_BUTTRESS_TSC_CLK / 100000;
+
+	return (tsc_time - tsc_base) * isys_clk / tsc_clk + tunit_base;
+}
+
+/* Extract the timestamp from trace message.
+ * The timestamp in the traces message contains two parts.
+ * The lower part contains bit0 ~ 15 of the total 64bit timestamp.
+ * The higher part contains bit14 ~ 63 of the 64bit timestamp.
+ * These two parts are sampled at different time.
+ * Two overlaped bits are used to identify if there's roll overs
+ * in the lower part during the two samples.
+ * If the two overlapped bits do not match, a fix is needed to
+ * handle the roll over.
+ */
+static u64 extract_time_from_short_packet_msg(
+	struct intel_ipu4_isys_csi2_monitor_message *msg)
+
+{
+	u64 time_h = msg->timestamp_h << 14;
+	u64 time_l = msg->timestamp_l;
+	u64 time_h_ovl = time_h & 0xc000;
+	u64 time_h_h = time_h & (~0xffff);
+
+	/* Fix possible roll overs. */
+	if (time_h_ovl >= (time_l & 0xc000))
+		return time_h_h | time_l;
+	else
+		return (time_h_h - 0x10000) | time_l;
+}
+
 unsigned int intel_ipu4_isys_csi2_get_current_field(
 	struct intel_ipu4_isys_pipeline *ip,
 	struct ia_css_isys_resp_info *info)
@@ -1447,6 +1530,15 @@ unsigned int intel_ipu4_isys_csi2_get_current_field(
 		do {
 			struct intel_ipu4_isys_csi2_monitor_message msg =
 				isys->short_packet_trace_buffer[i];
+			u64 sof_time = tsc_time_to_tunit_time(isys,
+				isys->tsc_timer_base, isys->tunit_timer_base,
+				(((u64) info->timestamp[1]) << 32) |
+				info->timestamp[0]);
+			u64 trace_time = extract_time_from_short_packet_msg(&msg);
+			u64 delta_time_us = tunit_time_to_us(isys,
+				(sof_time > trace_time) ?
+				sof_time - trace_time :
+				trace_time - sof_time);
 
 			i = (i + 1) %
 				INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MSG_NUMBER;
@@ -1455,7 +1547,9 @@ unsigned int intel_ipu4_isys_csi2_get_current_field(
 			    msg.monitor_id == monitor_id &&
 			    msg.fs == 1 &&
 			    msg.port == ip->csi2->index &&
-			    msg.vc == ip->vc) {
+			    msg.vc == ip->vc &&
+			    delta_time_us <
+			    INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MAX_TIMESHIFT) {
 				field = (msg.sequence % 2) ?
 					V4L2_FIELD_TOP : V4L2_FIELD_BOTTOM;
 				ip->short_packet_trace_index = i;
