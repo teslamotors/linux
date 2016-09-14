@@ -431,6 +431,8 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 		return rval;
 	}
 
+	pm_runtime_use_autosuspend(&psys->adev->dev);
+
 	fh = kzalloc(sizeof(*fh), GFP_KERNEL);
 	if (!fh)
 		return -ENOMEM;
@@ -544,6 +546,10 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 	}
 
 	list_del(&fh->list);
+
+	/* disable runtime autosuspend for the last fh */
+	if (list_empty(&psys->fhs))
+		pm_runtime_dont_use_autosuspend(&psys->adev->dev);
 
 	mutex_unlock(&fh->mutex);
 	mutex_unlock(&psys->mutex);
