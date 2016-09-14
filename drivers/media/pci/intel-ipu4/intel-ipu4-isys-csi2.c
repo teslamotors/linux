@@ -860,6 +860,8 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 		writel(csi2part, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
 		if (ip->interlaced && ip->isys->short_packet_source ==
 			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
+			writel(CSI2_RX_SYNC_COUNTER_EXTERNAL,
+				csi2->base + CSI2_REG_CSI_RX_SYNC_COUNTER_SEL);
 			rval = intel_ipu4_isys_csi2_configure_tunit(csi2, ip->vc, 1);
 			if (rval)
 				return rval;
