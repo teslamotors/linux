@@ -72,57 +72,6 @@ static struct wrapper_base *get_sub_system(int ssid)
 	BUG();
 }
 
-int intel_ipu4_wrapper_add_shared_memory_buffer(int mmid, void *addr,
-						dma_addr_t dma_addr,
-						size_t size)
-{
-	struct wrapper_base *mine = get_mem_sub_system(mmid);
-	struct my_css_memory_buffer_item *buf;
-	unsigned long flags;
-
-	might_sleep();
-
-	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	buf->bytes = size;
-	buf->addr = addr;
-	buf->iova = dma_addr;
-
-	spin_lock_irqsave(&mine->lock, flags);
-	list_add(&buf->list, &mine->buffers);
-	spin_unlock_irqrestore(&mine->lock, flags);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_add_shared_memory_buffer);
-
-int intel_ipu4_wrapper_remove_shared_memory_buffer(int mmid, void *addr)
-{
-	struct wrapper_base *mine = get_mem_sub_system(mmid);
-	struct my_css_memory_buffer_item *buf = NULL;
-	unsigned long flags;
-
-	might_sleep();
-
-	spin_lock_irqsave(&mine->lock, flags);
-	list_for_each_entry(buf, &mine->buffers, list) {
-		if (buf->addr != addr)
-			continue;
-
-		dev_dbg(mine->dev, "found it!\n");
-		list_del(&buf->list);
-		spin_unlock_irqrestore(&mine->lock, flags);
-		kfree(buf);
-		return 0;
-	}
-	dev_warn(mine->dev, "Can't find mem object %p\n", addr);
-	spin_unlock_irqrestore(&mine->lock, flags);
-	return -ENODEV;
-}
-EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_remove_shared_memory_buffer);
-
 /*
  * Subsystem access functions to access IUNIT MMIO space
  */
@@ -298,10 +247,9 @@ static uint8_t alloc_cookie;
 u64 shared_memory_alloc(int mmid, size_t bytes)
 {
 	struct wrapper_base *mine = get_mem_sub_system(mmid);
+	struct my_css_memory_buffer_item *buf;
 	dma_addr_t dma_addr;
-	void *addr;
-	size_t size;
-	int rval;
+	unsigned long flags;
 
 	dev_dbg(mine->dev, "%s: in, size: %zu\n", __func__, bytes);
 
@@ -310,21 +258,25 @@ u64 shared_memory_alloc(int mmid, size_t bytes)
 
 	might_sleep();
 
-	/*alloc using intel_ipu4 dma driver*/
-	size = PAGE_ALIGN(bytes);
-
-	addr = dma_alloc_attrs(mine->dev, size, &dma_addr, GFP_KERNEL, NULL);
-	if (!addr)
+	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
+	if (!buf)
 		return 0;
 
-	rval = intel_ipu4_wrapper_add_shared_memory_buffer(mmid, addr,
-							   dma_addr, size);
-	if (rval) {
-		dma_free_attrs(mine->dev, size, addr, dma_addr, NULL);
+	/*alloc using intel_ipu4 dma driver*/
+	buf->bytes = PAGE_ALIGN(bytes);
+
+	buf->addr = dma_alloc_attrs(mine->dev, buf->bytes, &buf->iova,
+				    GFP_KERNEL, NULL);
+	if (!buf->addr) {
+		kfree(buf);
 		return 0;
 	}
 
-	return (unsigned long)addr;
+	spin_lock_irqsave(&mine->lock, flags);
+	list_add(&buf->list, &mine->buffers);
+	spin_unlock_irqrestore(&mine->lock, flags);
+
+	return (unsigned long)buf->addr;
 }
 EXPORT_SYMBOL_GPL(shared_memory_alloc);
 
@@ -604,18 +556,6 @@ void intel_ipu4_wrapper_init(int mmid, struct device *dev,
 	sys->sys_base = base;
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_init);
-
-int intel_ipu4_wrapper_register_buffer(dma_addr_t iova,
-		void *addr, size_t bytes)
-{
-	return 0;
-}
-EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_register_buffer);
-
-void intel_ipu4_wrapper_unregister_buffer(dma_addr_t iova)
-{
-}
-EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_unregister_buffer);
 
 module_init(init_wrapper);
 module_exit(exit_wrapper);
