@@ -57,6 +57,8 @@ static bool csi2_port_optimized;
 module_param(csi2_port_optimized, bool, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(csi2_port_optimized, "IPU4 CSI2 port optimization");
 
+static const struct intel_ipu4_isys_fw_ctrl *api_ops;
+
 /* Trace block definitions for isys */
 static struct intel_ipu4_trace_block isys_trace_blocks_ipu4[] = {
 	{
@@ -144,6 +146,25 @@ static struct intel_ipu4_trace_block isys_trace_blocks_ipu5A0[] = {
 		.type = INTEL_IPU4_TRACE_BLOCK_END,
 	}
 };
+
+void intel_ipu4_isys_register_ext_library(
+	const struct intel_ipu4_isys_fw_ctrl *ops)
+{
+	api_ops = ops;
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_isys_register_ext_library);
+
+void intel_ipu4_isys_unregister_ext_library(void)
+{
+	api_ops = NULL;
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_isys_unregister_ext_library);
+
+const struct intel_ipu4_isys_fw_ctrl *intel_ipu4_isys_get_api_ops(void)
+{
+	return api_ops;
+}
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 /*
  * BEGIN adapted code from drivers/media/platform/omap3isp/isp.c.
@@ -1369,17 +1390,17 @@ struct isys_fw_msgs *intel_ipu4_get_fw_msg_buf(
 
 void intel_ipu4_cleanup_fw_msg_bufs(struct intel_ipu4_isys *isys)
 {
-	struct isys_fw_msgs  *fwmsg;
+	struct isys_fw_msgs  *fwmsg, *fwmsg0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&isys->listlock, flags);
-	list_for_each_entry(fwmsg, &isys->framebuflist_fw, head)
+	list_for_each_entry_safe(fwmsg, fwmsg0, &isys->framebuflist_fw, head)
 		list_move(&fwmsg->head, &isys->framebuflist);
 	spin_unlock_irqrestore(&isys->listlock, flags);
 }
 
-static void put_fw_mgs_buffer(struct intel_ipu4_isys *isys,
-			      u64 data)
+void intel_ipu4_put_fw_mgs_buffer(struct intel_ipu4_isys *isys,
+		       u64 data)
 {
 	struct isys_fw_msgs *msg;
 	u64 *ptr = (u64 *)data;
@@ -1392,6 +1413,7 @@ static void put_fw_mgs_buffer(struct intel_ipu4_isys *isys,
 	list_move(&msg->head, &isys->framebuflist);
 	spin_unlock(&isys->listlock);
 }
+EXPORT_SYMBOL_GPL(intel_ipu4_put_fw_mgs_buffer);
 
 static int isys_probe(struct intel_ipu4_bus_device *adev)
 {
@@ -1447,6 +1469,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	mutex_init(&isys->mutex);
 	mutex_init(&isys->stream_mutex);
+	mutex_init(&isys->lib_mutex);
 
 	spin_lock_init(&isys->listlock);
 	INIT_LIST_HEAD(&isys->framebuflist);
@@ -1642,7 +1665,7 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 
 	switch (resp->type) {
 	case IPU_FW_ISYS_RESP_TYPE_STREAM_OPEN_DONE:
-		put_fw_mgs_buffer(intel_ipu4_bus_get_drvdata(adev),
+		intel_ipu4_put_fw_mgs_buffer(intel_ipu4_bus_get_drvdata(adev),
 				  resp->buf_id);
 		complete(&pipe->stream_open_completion);
 		break;
@@ -1653,7 +1676,7 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 		complete(&pipe->stream_start_completion);
 		break;
 	case IPU_FW_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK:
-		put_fw_mgs_buffer(intel_ipu4_bus_get_drvdata(adev),
+		intel_ipu4_put_fw_mgs_buffer(intel_ipu4_bus_get_drvdata(adev),
 				  resp->buf_id);
 		complete(&pipe->stream_start_completion);
 		break;
@@ -1673,7 +1696,7 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 				resp->stream_handle, resp->pin_id);
 		break;
 	case IPU_FW_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK:
-		put_fw_mgs_buffer(intel_ipu4_bus_get_drvdata(adev),
+		intel_ipu4_put_fw_mgs_buffer(intel_ipu4_bus_get_drvdata(adev),
 				  resp->buf_id);
 		complete(&pipe->capture_ack_completion);
 		break;

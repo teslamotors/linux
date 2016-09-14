@@ -18,7 +18,9 @@ endif
 IPU_STEP = bxtB0
 ccflags-y += -DIPU_STEP_BXTB0 -DIPU_STEP_BXTC0
 include $(srcpath)/$(src)/../Makefile.common
+include $(srcpath)/$(src)/../Makefile.lib2600
 include $(srcpath)/$(src)/../Makefile.lib2600psys
 ccflags-y += -I$(srcpath)/$(src)/../../../../../include/
 ccflags-y += -I$(srcpath)/$(src)/../
+
 ccflags-y += -DPARAMETER_INTERFACE_V2

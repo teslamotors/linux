@@ -13,171 +13,391 @@
 
 #include <linux/module.h>
 #include <linux/device.h>
-#include "libintel-ipu4.h"
+#include <linux/delay.h>
+#include "intel-ipu4-isys.h"
+#include "intel-ipu4-wrapper.h"
+#include <ia_css_isysapi.h>
 
-EXPORT_SYMBOL_GPL(ipu_fw_isys_device_open);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_device_open_ready);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_device_close);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_device_release);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_open);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_close);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_start);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_stop);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_flush);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_capture_indication);
-EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_handle_response);
+#define intel_ipu4_lib_call_notrace_unlocked(func, isys, ...)		\
+	({								\
+		int rval;						\
+									\
+		rval = -ia_css_isys_##func((isys)->fwcom, ##__VA_ARGS__); \
+									\
+		rval;							\
+	})
 
-void csslib_dump_isys_stream_cfg(struct device *dev,
-				struct ipu_fw_isys_stream_cfg_data *stream_cfg)
+#define intel_ipu4_lib_call_notrace(func, isys, ...)		\
+	({							\
+		int rval;					\
+								\
+		mutex_lock(&(isys)->lib_mutex);			\
+								\
+		rval = intel_ipu4_lib_call_notrace_unlocked(	\
+			func, isys, ##__VA_ARGS__);		\
+								\
+		mutex_unlock(&(isys)->lib_mutex);		\
+								\
+		rval;						\
+	})
+
+#define intel_ipu4_lib_call(func, isys, ...)				\
+	({								\
+		int rval;						\
+		dev_dbg(&(isys)->adev->dev, "hostlib: libcall %s\n", #func); \
+		rval = intel_ipu4_lib_call_notrace(func, isys, ##__VA_ARGS__); \
+									\
+		rval;							\
+	})
+
+static int wrapper_init_done;
+
+static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys);
+
+static int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys,
+					unsigned int num_streams)
 {
-	int i;
+	int retry = INTEL_IPU4_ISYS_OPEN_RETRY;
+	unsigned int i;
 
-	dev_dbg(dev, "---------------------------\n");
-	dev_dbg(dev, "IPU_FW_ISYS_STREAM_CFG_DATA\n");
-	dev_dbg(dev, "---------------------------\n");
+	struct ia_css_isys_device_cfg_data isys_cfg = {
+		.driver_sys = {
+			.ssid = ISYS_SSID,
+			.mmid = ISYS_MMID,
+			.num_send_queues = clamp_t(
+				unsigned int, num_streams, 1,
+				INTEL_IPU4_ISYS_NUM_STREAMS_B0),
+			.num_recv_queues = INTEL_IPU4_ISYS_NUM_RECV_QUEUE,
+			.send_queue_size = INTEL_IPU4_ISYS_SIZE_SEND_QUEUE,
+			.recv_queue_size = INTEL_IPU4_ISYS_SIZE_RECV_QUEUE,
+			.icache_prefetch = isys->icache_prefetch,
+		},
+	};
+	struct device *dev = &isys->adev->dev;
+	int rval;
 
-	dev_dbg(dev, "Source %d\n", stream_cfg->src);
-	dev_dbg(dev, "VC %d\n", stream_cfg->vc);
-	dev_dbg(dev, "Nof input pins %d\n", stream_cfg->nof_input_pins);
-	dev_dbg(dev, "Nof output pins %d\n", stream_cfg->nof_output_pins);
-
-	for (i = 0; i < stream_cfg->nof_input_pins; i++) {
-		dev_dbg(dev, "Input pin %d\n", i);
-		dev_dbg(dev, "Mipi data type %d\n",
-			stream_cfg->input_pins[i].dt);
-		dev_dbg(dev, "Mipi store mode %d\n",
-			stream_cfg->input_pins[i].mipi_store_mode);
-		dev_dbg(dev, "Input res width %d\n",
-			stream_cfg->input_pins[i].input_res.width);
-		dev_dbg(dev, "Input res height %d\n",
-			stream_cfg->input_pins[i].input_res.height);
+	if (!wrapper_init_done) {
+		wrapper_init_done = true;
+		intel_ipu4_wrapper_set_device(dev, ISYS_MMID);
 	}
 
-	for (i = 0; i < N_IPU_FW_ISYS_CROPPING_LOCATION; i++) {
-		dev_dbg(dev, "Crop info %d\n", i);
-		dev_dbg(dev, "Crop.top_offset %d\n",
-			stream_cfg->crop[i].top_offset);
-		dev_dbg(dev, "Crop.left_offset %d\n",
-			stream_cfg->crop[i].left_offset);
-		dev_dbg(dev, "Crop.bottom_offset %d\n",
-			stream_cfg->crop[i].bottom_offset);
-		dev_dbg(dev, "Crop.right_offset %d\n",
-			stream_cfg->crop[i].right_offset);
-		dev_dbg(dev, "----------------\n");
+	/*
+	 * SRAM partitioning. Initially equal partitioning is set
+	 * TODO: Fine tune the partitining based on the stream pixel load
+	 */
+	for (i = 0; i < min(INTEL_IPU4_NOF_SRAM_BLOCKS_MAX,
+			    NOF_SRAM_BLOCKS_MAX); i++) {
+		if (i < isys_cfg.driver_sys.num_send_queues)
+			isys_cfg.buffer_partition.num_gda_pages[i] =
+				(INTEL_IPU4_DEVICE_GDA_NR_PAGES *
+				 INTEL_IPU4_DEVICE_GDA_VIRT_FACTOR) /
+				isys_cfg.driver_sys.num_send_queues;
+		else
+			isys_cfg.buffer_partition.num_gda_pages[i] = 0;
 	}
 
-	for (i = 0; i < stream_cfg->nof_output_pins; i++) {
-		dev_dbg(dev, "Output pin %d\n", i);
-
-		dev_dbg(dev, "Output input pin id %d\n",
-			stream_cfg->output_pins[i].input_pin_id);
-
-		dev_dbg(dev, "Output res width %d\n",
-			stream_cfg->output_pins[i].output_res.width);
-		dev_dbg(dev, "Output res height %d\n",
-			stream_cfg->output_pins[i].output_res.height);
-
-		dev_dbg(dev, "Stride type %d\n",
-			stream_cfg->output_pins[i].stride);
-		dev_dbg(dev, "Pin type %d\n",
-			stream_cfg->output_pins[i].pt);
-		dev_dbg(dev, "Ft %d\n",
-			stream_cfg->output_pins[i].ft);
-
-		dev_dbg(dev, "Watermar in lines %d\n",
-			stream_cfg->output_pins[i].watermark_in_lines);
-		dev_dbg(dev, "Send irq %d\n",
-			stream_cfg->output_pins[i].send_irq);
-		dev_dbg(dev, "----------------\n");
+	rval = -ia_css_isys_device_open(&isys->fwcom, &isys_cfg);
+	if (rval < 0) {
+		dev_err(dev, "isys device open failed %d\n", rval);
+		return rval;
 	}
 
-	dev_dbg(dev, "Isl_use %d\n", stream_cfg->isl_use);
-	switch (stream_cfg->isl_use) {
-	case IPU_FW_ISYS_USE_SINGLE_ISA:
-		dev_dbg(dev, "ISA cfg:\n");
-		dev_dbg(dev, "blc_enabled %d\n",
-			stream_cfg->isa_cfg.blc_enabled);
-		dev_dbg(dev, "lsc_enabled %d\n",
-			stream_cfg->isa_cfg.lsc_enabled);
-		dev_dbg(dev, "dpc_enabled %d\n",
-			stream_cfg->isa_cfg.dpc_enabled);
-		dev_dbg(dev, "downscaler_enabled %d\n",
-			stream_cfg->isa_cfg.downscaler_enabled);
-		dev_dbg(dev, "awb_enabled %d\n",
-			stream_cfg->isa_cfg.awb_enabled);
-		dev_dbg(dev, "af_enabled %d\n",
-			stream_cfg->isa_cfg.af_enabled);
-		dev_dbg(dev, "ae_enabled %d\n",
-			stream_cfg->isa_cfg.ae_enabled);
+	do {
+		usleep_range(INTEL_IPU4_ISYS_OPEN_TIMEOUT_US,
+			     INTEL_IPU4_ISYS_OPEN_TIMEOUT_US + 10);
+		rval = intel_ipu4_lib_call(device_open_ready, isys);
+		if (!rval)
+			break;
+		retry--;
+	} while (retry > 0);
+
+	if (!retry && rval) {
+		dev_err(dev, "isys device open ready failed %d\n", rval);
+		intel_ipu4_isys_library_close(isys);
+	}
+
+	return rval;
+}
+
+static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys)
+{
+	struct device *dev = &isys->adev->dev;
+	int timeout = INTEL_IPU4_ISYS_TURNOFF_TIMEOUT;
+	int rval;
+
+	/*
+	 * Ask library to stop the isys fw. Actual close takes
+	 * some time as the FW must stop its actions including code fetch
+	 * to SP icache.
+	 */
+	rval = intel_ipu4_lib_call(device_close, isys);
+	if (rval)
+		dev_err(dev, "Device close failure: %d\n", rval);
+
+	/* release probably fails if the close failed. Let's try still */
+	do {
+		usleep_range(INTEL_IPU4_ISYS_TURNOFF_DELAY_US,
+			     2 * INTEL_IPU4_ISYS_TURNOFF_DELAY_US);
+		rval = intel_ipu4_lib_call_notrace(device_release, isys, 0);
+		timeout--;
+	} while (rval != 0 && timeout);
+
+	if (!rval)
+		isys->fwcom = NULL; /* No further actions needed */
+	else
+		dev_err(dev, "Device release time out %d\n", rval);
+	return rval;
+}
+
+static void intel_ipu4_isys_library_cleanup(struct intel_ipu4_isys *isys)
+{
+	intel_ipu4_lib_call(device_release, isys, 1);
+	isys->fwcom = NULL;
+}
+
+static struct ipu_fw_isys_resp_info_abi *intel_ipu4_isys_api_get_resp(
+	void *context, unsigned int queue,
+	struct ipu_fw_isys_resp_info_abi *response)
+{
+	struct ia_css_isys_resp_info apiresp;
+	int rval;
+
+	rval = -ia_css_isys_stream_handle_response(context, &apiresp);
+	if (rval < 0)
+		return NULL;
+
+	response->buf_id = 0;
+	response->type = apiresp.type;
+	response->timestamp[0] = apiresp.timestamp[0];
+	response->timestamp[1] = apiresp.timestamp[1];
+	response->stream_handle = apiresp.stream_handle;
+	response->error_info.error = apiresp.error;
+	response->error_info.error_details = apiresp.error_details;
+	response->pin.out_buf_id = apiresp.pin.out_buf_id;
+	response->pin.addr = apiresp.pin.addr;
+	response->pin_id = apiresp.pin_id;
+	response->process_group_light.param_buf_id =
+		apiresp.process_group_light.param_buf_id;
+	response->process_group_light.addr =
+		apiresp.process_group_light.addr;
+	response->acc_id = apiresp.acc_id;
+
+	return response;
+}
+
+static void intel_ipu4_isys_api_put_resp(void *context, unsigned int queue)
+{
+	/* Nothing to do here really */
+}
+
+static int intel_ipu4_isys_api_simple_cmd(struct intel_ipu4_isys *isys,
+					  const unsigned int stream_handle,
+					  enum ipu_fw_isys_send_type send_type)
+{
+	int rval;
+
+	switch (send_type) {
+	case IPU_FW_ISYS_SEND_TYPE_STREAM_START:
+		rval = intel_ipu4_lib_call(stream_start, isys, stream_handle,
+					   NULL);
 		break;
-	case IPU_FW_ISYS_USE_SINGLE_DUAL_ISL:
-	case IPU_FW_ISYS_USE_NO_ISL_NO_ISA:
+	case IPU_FW_ISYS_SEND_TYPE_STREAM_FLUSH:
+		rval = intel_ipu4_lib_call(stream_flush, isys, stream_handle);
+		break;
+	case IPU_FW_ISYS_SEND_TYPE_STREAM_CLOSE:
+		rval = intel_ipu4_lib_call(stream_close, isys, stream_handle);
+		break;
 	default:
-		break;
+		BUG();
 	}
-
+	return rval;
 }
-EXPORT_SYMBOL_GPL(csslib_dump_isys_stream_cfg);
 
-void csslib_dump_isys_frame_buff_set(struct device *dev,
-				     struct ipu_fw_isys_frame_buff_set *buf,
-				     unsigned int outputs)
+static void resolution_abi_to_api(const struct ipu_fw_isys_resolution_abi *abi,
+				  struct ia_css_isys_resolution *api)
+{
+	api->width = abi->width;
+	api->height = abi->height;
+}
+
+static void output_pin_payload_abi_to_api(
+	struct ipu_fw_isys_output_pin_payload_abi *abi,
+	struct ia_css_isys_output_pin_payload *api)
+{
+	api->out_buf_id = abi->out_buf_id;
+	api->addr = abi->addr;
+}
+
+static void output_pin_info_abi_to_api(
+	struct ipu_fw_isys_output_pin_info_abi *abi,
+	struct ia_css_isys_output_pin_info *api)
+{
+	api->input_pin_id = abi->input_pin_id;
+	resolution_abi_to_api(&abi->output_res, &api->output_res);
+	api->stride = abi->stride;
+	api->pt = abi->pt;
+	api->watermark_in_lines = abi->watermark_in_lines;
+	api->send_irq = abi->send_irq;
+	api->ft = abi->ft;
+	api->online = abi->online;
+}
+
+static void param_pin_abi_to_api(struct ipu_fw_isys_param_pin_abi *abi,
+				 struct ia_css_isys_param_pin *api)
+{
+	api->param_buf_id = abi->param_buf_id;
+	api->addr = abi->addr;
+}
+
+static void input_pin_info_abi_to_api(
+	struct ipu_fw_isys_input_pin_info_abi *abi,
+	struct ia_css_isys_input_pin_info *api)
+{
+	resolution_abi_to_api(&abi->input_res, &api->input_res);
+	api->dt = abi->dt;
+	api->mipi_store_mode = abi->mipi_store_mode;
+}
+
+static void isa_cfg_abi_to_api(const struct ipu_fw_isys_isa_cfg_abi *abi,
+			       struct ia_css_isys_isa_cfg *api)
+{
+	unsigned int i;
+
+	for (i = 0; i < min(N_IPU_FW_ISYS_RESOLUTION_INFO,
+			    N_IA_CSS_ISYS_RESOLUTION_INFO); i++)
+		resolution_abi_to_api(&abi->isa_res[i], &api->isa_res[i]);
+
+	api->blc_enabled = abi->cfg.blc;
+	api->lsc_enabled = abi->cfg.lsc;
+	api->dpc_enabled = abi->cfg.dpc;
+	api->downscaler_enabled = abi->cfg.downscaler;
+	api->awb_enabled = abi->cfg.awb;
+	api->af_enabled = abi->cfg.af;
+	api->ae_enabled = abi->cfg.ae;
+	api->paf_type = abi->cfg.paf;
+	api->send_irq_stats_ready = abi->cfg.send_irq_stats_ready;
+	api->send_resp_stats_ready = abi->cfg.send_irq_stats_ready;
+}
+
+static void cropping_abi_to_api(struct ipu_fw_isys_cropping_abi *abi,
+				struct ia_css_isys_cropping *api)
+{
+	api->top_offset = abi->top_offset;
+	api->left_offset = abi->left_offset;
+	api->bottom_offset = abi->bottom_offset;
+	api->right_offset = abi->right_offset;
+}
+
+static void stream_cfg_abi_to_api(struct ipu_fw_isys_stream_cfg_data_abi *abi,
+				  struct ia_css_isys_stream_cfg_data *api)
+{
+	unsigned int i;
+
+	api->src = abi->src;
+	api->vc = abi->vc;
+	api->isl_use = abi->isl_use;
+	api->compfmt = abi->compfmt;
+	isa_cfg_abi_to_api(&abi->isa_cfg, &api->isa_cfg);
+	for (i = 0; i < min(N_IPU_FW_ISYS_CROPPING_LOCATION,
+			    N_IA_CSS_ISYS_CROPPING_LOCATION); i++)
+		cropping_abi_to_api(&abi->crop[i], &api->crop[i]);
+
+	api->send_irq_sof_discarded = abi->send_irq_sof_discarded;
+	api->send_irq_eof_discarded = abi->send_irq_eof_discarded;
+	api->send_resp_sof_discarded = abi->send_irq_sof_discarded;
+	api->send_resp_eof_discarded = abi->send_irq_eof_discarded;
+	api->nof_input_pins = abi->nof_input_pins;
+	api->nof_output_pins = abi->nof_output_pins;
+	for (i = 0; i < abi->nof_input_pins; i++)
+		input_pin_info_abi_to_api(&abi->input_pins[i],
+					  &api->input_pins[i]);
+
+	for (i = 0; i < abi->nof_output_pins; i++)
+		output_pin_info_abi_to_api(&abi->output_pins[i],
+					   &api->output_pins[i]);
+}
+
+static void frame_buff_set_abi_to_api(
+	struct ipu_fw_isys_frame_buff_set_abi *abi,
+	struct ia_css_isys_frame_buff_set *api)
 {
 	int i;
 
-	dev_dbg(dev, "--------------------------\n");
-	dev_dbg(dev, "IPU_FW_ISYS_FRAME_BUFF_SET\n");
-	dev_dbg(dev, "--------------------------\n");
+	for (i = 0; i < min(INTEL_IPU4_MAX_OPINS, MAX_OPINS); i++)
+		output_pin_payload_abi_to_api(&abi->output_pins[i],
+					      &api->output_pins[i]);
 
-	for (i = 0; i < outputs; i++) {
-		dev_dbg(dev, "Output pin %d\n", i);
-		dev_dbg(dev, "out_buf_id %llu\n",
-			buf->output_pins[i].out_buf_id);
-		dev_dbg(dev, "addr 0x%x\n", buf->output_pins[i].addr);
+	param_pin_abi_to_api(&abi->process_group_light,
+			     &api->process_group_light);
 
-		dev_dbg(dev, "----------------\n");
-	}
-
-#ifdef PARAMETER_INTERFACE_V2
-	dev_dbg(dev, "process_group_light.addr 0x%x\n",
-		buf->process_group_light.addr);
-	dev_dbg(dev, "process_group_light.param_buf_id %llu\n",
-		buf->process_group_light.param_buf_id);
-#else
-	dev_dbg(dev, "blc_param.param_buf_id %llu\n",
-		buf->blc_param.param_buf_id);
-	dev_dbg(dev, "blc_param.addr 0x%x\n", buf->blc_param.addr);
-
-	dev_dbg(dev, "lsc_param.param_buf_id %llu\n",
-		buf->lsc_param.param_buf_id);
-	dev_dbg(dev, "lsc_param.addr 0x%x\n", buf->lsc_param.addr);
-
-	dev_dbg(dev, "dpc_param.param_buf_id %llu\n",
-		buf->dpc_param.param_buf_id);
-	dev_dbg(dev, "dpc_param.addr 0x%x\n", buf->dpc_param.addr);
-
-	dev_dbg(dev, "ids_param.param_buf_id %llu\n",
-		buf->ids_param.param_buf_id);
-	dev_dbg(dev, "ids_param.addr 0x%x\n", buf->ids_param.addr);
-
-	dev_dbg(dev, "awb_param.param_buf_id %llu\n",
-		buf->awb_param.param_buf_id);
-	dev_dbg(dev, "awb_param.addr 0x%x\n", buf->awb_param.addr);
-
-	dev_dbg(dev, "af_param.param_buf_id %llu\n",
-		buf->af_param.param_buf_id);
-	dev_dbg(dev, "af_param.addr 0x%x\n", buf->af_param.addr);
-
-	dev_dbg(dev, "ae_param.param_buf_id %llu\n",
-		buf->ae_param.param_buf_id);
-	dev_dbg(dev, "ae_param.addr 0x%x\n", buf->ae_param.addr);
-#endif
-
-	dev_dbg(dev, "send_irq_sof 0x%x\n", buf->send_irq_sof);
-	dev_dbg(dev, "send_irq_eof 0x%x\n", buf->send_irq_eof);
+	api->send_irq_sof = abi->send_irq_sof;
+	api->send_irq_eof = abi->send_irq_eof;
 }
-EXPORT_SYMBOL_GPL(csslib_dump_isys_frame_buff_set);
+
+static int intel_ipu4_isys_api_complex_cmd(struct intel_ipu4_isys *isys,
+					   const unsigned int stream_handle,
+					   void *cpu_mapped_buf,
+					   dma_addr_t dma_mapped_buf,
+					   size_t size,
+					   enum ipu_fw_isys_send_type send_type)
+{
+	union {
+		struct ia_css_isys_stream_cfg_data stream_cfg;
+		struct ia_css_isys_frame_buff_set buf;
+	} param;
+	int rval;
+
+	memset(&param, 0, sizeof(param));
+
+	switch (send_type) {
+	case IPU_FW_ISYS_SEND_TYPE_STREAM_CAPTURE:
+		frame_buff_set_abi_to_api(cpu_mapped_buf,
+					  &param.buf);
+		rval = intel_ipu4_lib_call(stream_capture_indication,
+					   isys, stream_handle, &param.buf);
+		break;
+	case IPU_FW_ISYS_SEND_TYPE_STREAM_OPEN:
+		stream_cfg_abi_to_api(cpu_mapped_buf, &param.stream_cfg);
+		rval = intel_ipu4_lib_call(stream_open, isys, stream_handle,
+					   &param.stream_cfg);
+		break;
+	case IPU_FW_ISYS_SEND_TYPE_STREAM_START_AND_CAPTURE:
+		frame_buff_set_abi_to_api(cpu_mapped_buf,
+					  &param.buf);
+		rval = intel_ipu4_lib_call(stream_start, isys, stream_handle,
+					   &param.buf);
+		break;
+	default:
+		BUG();
+	}
+	intel_ipu4_put_fw_mgs_buffer(isys, (u64)cpu_mapped_buf);
+
+	return rval;
+}
+
+static const struct intel_ipu4_isys_fw_ctrl api_ops = {
+	.fw_init = intel_ipu4_isys_library_init,
+	.fw_close = intel_ipu4_isys_library_close,
+	.fw_force_clean = intel_ipu4_isys_library_cleanup,
+	.simple_cmd = intel_ipu4_isys_api_simple_cmd,
+	.complex_cmd = intel_ipu4_isys_api_complex_cmd,
+	.get_response = intel_ipu4_isys_api_get_resp,
+	.put_response = intel_ipu4_isys_api_put_resp,
+};
+
+static int __init library_init(void)
+{
+	intel_ipu4_isys_register_ext_library(&api_ops);
+	return 0;
+}
+
+static void __exit library_exit(void)
+{
+	intel_ipu4_isys_unregister_ext_library();
+}
+
+module_init(library_init);
+module_exit(library_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Intel intel_ipu4 library");
-

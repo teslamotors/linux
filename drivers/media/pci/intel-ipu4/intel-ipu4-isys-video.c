@@ -158,6 +158,7 @@ static int video_open(struct file *file)
 	struct intel_ipu4_bus_device *adev =
 		to_intel_ipu4_bus_device(&isys->adev->dev);
 	struct intel_ipu4_device *isp = adev->isp;
+	const struct intel_ipu4_isys_fw_ctrl *ops;
 	int rval;
 
 	mutex_lock(&isys->mutex);
@@ -203,6 +204,16 @@ static int video_open(struct file *file)
 	intel_ipu4_configure_spc(adev->isp, IA_CSS_PKG_DIR_ISYS_INDEX,
 				 isys->pdata->base, isys->pkg_dir,
 				 isys->pkg_dir_dma_addr);
+
+	/* Check do we have an external library or do we use native ABI */
+	ops = intel_ipu4_isys_get_api_ops();
+	if (ops) {
+		dev_dbg(&isys->adev->dev, "using external host library");
+		isys->fwctrl = ops;
+	} else {
+		dev_dbg(&isys->adev->dev, "using native abi control");
+		intel_ipu4_abi_init(isys);
+	}
 
 	/*
 	 * Buffers could have been left to wrong queue at last closure.

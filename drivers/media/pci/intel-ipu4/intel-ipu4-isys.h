@@ -117,6 +117,7 @@ struct intel_ipu4_isys_fw_ctrl {
  * @lock: serialise access to pipes
  * @pipes: pipelines per stream ID
  * @fwcom: fw communication layer private pointer
+ *         or optional external library private pointer
  * @line_align: line alignment in memory
  * @legacy_port_cfg: lane mappings for legacy CSI-2 ports
  * @combo_port_cfg: lane mappings for D/C-PHY ports
@@ -125,6 +126,7 @@ struct intel_ipu4_isys_fw_ctrl {
  * @video_opened: total number of opened file handles on video nodes
  * @mutex: serialise access isys video open/release related operations
  * @stream_mutex: serialise stream start and stop, queueing requests
+ * @lib_mutex: optional external library mutex
  * @pdata: platform data pointer
  * @csi2: CSI-2 receivers
  * @tpg: test pattern generators
@@ -162,6 +164,7 @@ struct intel_ipu4_isys {
 	struct dentry *debugfsdir;
 	struct mutex mutex;
 	struct mutex stream_mutex;
+	struct mutex lib_mutex;
 
 	struct intel_ipu4_isys_pdata *pdata;
 
@@ -207,7 +210,13 @@ struct isys_fw_msgs {
 
 struct isys_fw_msgs *intel_ipu4_get_fw_msg_buf(
 	struct intel_ipu4_isys_pipeline *ip);
+void intel_ipu4_put_fw_mgs_buffer(struct intel_ipu4_isys *isys,
+		       u64 data);
 void intel_ipu4_cleanup_fw_msg_bufs(struct intel_ipu4_isys *isys);
+void intel_ipu4_isys_register_ext_library(
+	const struct intel_ipu4_isys_fw_ctrl *ops);
+void intel_ipu4_isys_unregister_ext_library(void);
+const struct intel_ipu4_isys_fw_ctrl *intel_ipu4_isys_get_api_ops(void);
 
 extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;
 
