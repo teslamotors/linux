@@ -62,7 +62,7 @@ EXPORT_SYMBOL_GPL(ia_css_process_group_get_process_count);
 EXPORT_SYMBOL_GPL(ia_css_program_group_manifest_get_program_count);
 EXPORT_SYMBOL_GPL(ia_css_program_manifest_get_program_ID);
 EXPORT_SYMBOL_GPL(ia_css_program_manifest_get_dev_chn_size);
-EXPORT_SYMBOL_GPL(ia_css_program_group_manifest_get_program_manifest);
+EXPORT_SYMBOL_GPL(ia_css_program_group_manifest_get_prgrm_mnfst);
 EXPORT_SYMBOL_GPL(ia_css_process_get_program_ID);
 EXPORT_SYMBOL_GPL(ia_css_process_get_cell);
 EXPORT_SYMBOL_GPL(ia_css_process_set_cell);
