@@ -31,11 +31,11 @@
 #include "intel-ipu4-cpd.h"
 #include "intel-ipu4-pdata.h"
 #include "intel-ipu4-bus.h"
+#include "intel-ipu4-mmu.h"
 #include "intel-ipu4-regs.h"
 #include "intel-ipu5-regs.h"
 #include "intel-ipu5-isys-csi2-reg.h"
 #include "intel-ipu4-trace.h"
-#include "intel-ipu4-wrapper.h"
 #include "intel-ipu5-devel.h"
 
 #define INTEL_IPU4_PCI_BAR		0
@@ -737,7 +737,6 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	const struct intel_ipu4_isys_internal_pdata *isys_ipdata;
 	const struct intel_ipu4_psys_internal_pdata *psys_ipdata;
 	unsigned int dma_mask = 39;
-	unsigned int wrapper_flags = 0;
 	const char *cpd_filename;
 	int rval;
 
@@ -861,8 +860,6 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 		dev_err(&isp->pdev->dev, "Failed to validate cpd\n");
 		goto out_intel_ipu4_bus_del_devices;
 	}
-
-	intel_ipu4_wrapper_init(psys_base, isys_base, wrapper_flags);
 
 	rval = intel_ipu4_trace_add(isp);
 	if (rval)

@@ -36,9 +36,8 @@ int intel_ipu4_wrapper_register_buffer(dma_addr_t iova,
 		void *addr, size_t bytes);
 void intel_ipu4_wrapper_unregister_buffer(dma_addr_t iova);
 
-void intel_ipu4_wrapper_init(void __iomem *basepsys, void __iomem *baseisys,
-			unsigned int flags);
-void intel_ipu4_wrapper_set_device(struct device *dev, int mmid);
+void intel_ipu4_wrapper_init(int mmid, struct device *dev,
+			     void __iomem *base);
 
 int intel_ipu4_wrapper_add_shared_memory_buffer(int mmid, void *addr,
 						dma_addr_t dma_addr,

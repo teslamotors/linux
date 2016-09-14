@@ -44,7 +44,6 @@
 #include "intel-ipu5-regs.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-buttress-regs.h"
-#include "intel-ipu4-wrapper.h"
 #include "intel-ipu5-devel.h"
 
 #define ISYS_PM_QOS_VALUE	300

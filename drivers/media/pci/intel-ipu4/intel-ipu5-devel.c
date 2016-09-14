@@ -19,7 +19,6 @@
 #include "intel-ipu4.h"
 #include "intel-ipu4-cpd.h"
 #include "intel-ipu4-isys.h"
-#include "intel-ipu4-wrapper.h"
 #include "intel-ipu4-regs.h"
 #include "intel-ipu5-devel.h"
 #include "intel-ipu5-regs.h"
@@ -45,13 +44,6 @@ int intel_ipu5_isys_load_pkg_dir(struct intel_ipu4_isys *isys)
 		isys->adev, fw, &isys->fw_sgt);
 	if (rval)
 		dev_err(&isys->adev->dev, "map_fw_image failed\n");
-
-	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-		ISYS_SSID, (void *)fw->data,
-		sg_dma_address(isys->fw_sgt.sgl),
-		fw->size);
-	if (rval)
-		dev_err(&isys->adev->dev, "add_shared_buffer failed\n");
 
 	pkg_dir_host_address = (u64 *)fw->data;
 	dev_dbg(&isys->adev->dev, "pkg_dir_host_addr 0x%lx\n",

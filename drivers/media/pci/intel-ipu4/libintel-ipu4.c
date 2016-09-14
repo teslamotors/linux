@@ -79,7 +79,8 @@ static int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys,
 
 	if (!wrapper_init_done) {
 		wrapper_init_done = true;
-		intel_ipu4_wrapper_set_device(dev, ISYS_MMID);
+		intel_ipu4_wrapper_init(ISYS_MMID, &isys->adev->dev,
+					isys->pdata->base);
 	}
 
 	/*

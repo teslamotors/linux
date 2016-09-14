@@ -20,6 +20,9 @@
 #include "intel-ipu4.h"
 #include "intel-ipu4-pdata.h"
 
+#define ISYS_MMID 1
+#define PSYS_MMID 0
+
 struct pci_dev;
 
 /*

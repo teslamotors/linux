@@ -33,7 +33,6 @@ struct wrapper_base {
 	struct list_head buffers;
 	uint32_t css_map_done;
 	struct device *dev;
-	unsigned int flags;
 };
 
 struct wrapper_base isys;
@@ -46,19 +45,6 @@ struct my_css_memory_buffer_item {
 	size_t bytes;
 	struct dma_attrs attrs;
 };
-
-/*
- * Css2600 driver set base address for css use
- */
-void intel_ipu4_wrapper_init(void __iomem *basepsys, void __iomem *baseisys,
-			  unsigned int flags)
-{
-	isys.sys_base = baseisys;
-	psys.sys_base = basepsys;
-	isys.flags = flags;
-	psys.flags = flags;
-}
-EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_init);
 
 unsigned long long get_hrt_base_address(void)
 {
@@ -602,13 +588,22 @@ int init_wrapper(void)
 	return 0;
 }
 
-void intel_ipu4_wrapper_set_device(struct device *dev, int mmid)
+int exit_wrapper(void)
 {
-	struct wrapper_base *mine = get_mem_sub_system(mmid);
-
-	mine->dev = dev;
 }
-EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_set_device);
+
+/*
+ * Wrapper driver set base address for library use
+ */
+void intel_ipu4_wrapper_init(int mmid, struct device *dev,
+			     void __iomem *base)
+{
+	struct wrapper_base *sys = get_mem_sub_system(mmid);
+
+	sys->dev = dev;
+	sys->sys_base = base;
+}
+EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_init);
 
 int intel_ipu4_wrapper_register_buffer(dma_addr_t iova,
 		void *addr, size_t bytes)
@@ -623,6 +618,7 @@ void intel_ipu4_wrapper_unregister_buffer(dma_addr_t iova)
 EXPORT_SYMBOL_GPL(intel_ipu4_wrapper_unregister_buffer);
 
 module_init(init_wrapper);
+module_exit(exit_wrapper);
 MODULE_AUTHOR("Jouni Ukkonen <jouni.ukkonen@intel.com>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("CSS wrapper");

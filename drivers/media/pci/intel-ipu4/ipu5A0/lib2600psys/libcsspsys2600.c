@@ -25,6 +25,7 @@
 #include "../../intel-ipu4-psys-abi.h"
 #include "../../intel-ipu4-resources.h"
 #include "../../intel-ipu4-wrapper.h"
+#include "../../intel-ipu4-mmu.h"
 
 /*Implement SMIF/Vied subsystem access here */
 
@@ -226,6 +227,9 @@ static int libcsspsys2600_open(struct intel_ipu4_psys *psys)
 {
 	bool opened;
 	int retry = INTEL_IPU4_PSYS_OPEN_RETRY;
+
+	intel_ipu4_wrapper_init(PSYS_MMID, &psys->adev->dev,
+				psys->pdata->base);
 
 	server_init->icache_prefetch_sp = psys->icache_prefetch_sp;
 	server_init->icache_prefetch_isp = psys->icache_prefetch_isp;
