@@ -15,6 +15,7 @@
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/dma-mapping.h>
 #include <linux/firmware.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
@@ -45,7 +46,6 @@
 #include "intel-ipu4-buttress-regs.h"
 #include "intel-ipu4-wrapper.h"
 #include "intel-ipu5-devel.h"
-#include "isysapi/interface/ia_css_isysapi.h"
 
 #define ISYS_PM_QOS_VALUE	300
 
@@ -1223,22 +1223,29 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
 	struct intel_ipu4_device *isp = adev->isp;
+	struct isys_fw_msgs *fwmsg, *safe;
 
 	dev_info(&adev->dev, "removed\n");
 	debugfs_remove_recursive(isys->debugfsdir);
+
+	list_for_each_entry_safe(fwmsg, safe, &isys->framebuflist, head) {
+		dma_free_attrs(&adev->dev, sizeof(struct isys_fw_msgs),
+			       fwmsg, fwmsg->dma_addr, NULL);
+	}
+
+	list_for_each_entry_safe(fwmsg, safe, &isys->framebuflist_fw, head) {
+		dma_free_attrs(&adev->dev, sizeof(struct isys_fw_msgs),
+			       fwmsg, fwmsg->dma_addr, NULL);
+	}
 
 	intel_ipu4_trace_uninit(&adev->dev);
 	isys_unregister_devices(isys);
 	pm_qos_remove_request(&isys->pm_qos);
 
 	if (!isp->secure_mode) {
-		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_MMID, isys->pkg_dir);
 		intel_ipu4_cpd_free_pkg_dir(adev, isys->pkg_dir,
 					    isys->pkg_dir_dma_addr,
 					    isys->pkg_dir_size);
-		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_MMID, (void *)isys->fw->data);
 		intel_ipu4_buttress_unmap_fw_image(adev, &isys->fw_sgt);
 		release_firmware(isys->fw);
 	}
@@ -1307,6 +1314,85 @@ err:
 	return -ENOMEM;
 }
 
+static int alloc_fw_msg_buffers(struct intel_ipu4_isys *isys, int amount)
+{
+	dma_addr_t dma_addr;
+	struct isys_fw_msgs *addr;
+	unsigned int i;
+	unsigned long flags;
+
+	for (i = 0; i < amount; i++) {
+		addr = dma_alloc_attrs(&isys->adev->dev,
+				       sizeof(struct isys_fw_msgs),
+				       &dma_addr, GFP_KERNEL, NULL);
+		addr->dma_addr = dma_addr;
+
+		spin_lock_irqsave(&isys->listlock, flags);
+		list_add(&addr->head, &isys->framebuflist);
+		spin_unlock_irqrestore(&isys->listlock, flags);
+	}
+	return 0;
+}
+
+struct isys_fw_msgs *intel_ipu4_get_fw_msg_buf(
+	struct intel_ipu4_isys_pipeline *ip)
+{
+	struct intel_ipu4_isys_video *pipe_av =
+		container_of(ip, struct intel_ipu4_isys_video, ip);
+	struct intel_ipu4_isys *isys;
+	struct isys_fw_msgs  *msg;
+	unsigned long flags;
+
+	isys = pipe_av->isys;
+
+	spin_lock_irqsave(&isys->listlock, flags);
+	if (list_empty(&isys->framebuflist)) {
+		spin_unlock_irqrestore(&isys->listlock, flags);
+		dev_dbg(&isys->adev->dev, "Frame list empty - Allocate more");
+
+		alloc_fw_msg_buffers(isys, 5);
+
+		spin_lock_irqsave(&isys->listlock, flags);
+		if (list_empty(&isys->framebuflist)) {
+			dev_err(&isys->adev->dev, "Frame list empty");
+			spin_unlock_irqrestore(&isys->listlock, flags);
+			return NULL;
+		}
+	}
+	msg = list_last_entry(&isys->framebuflist, struct isys_fw_msgs, head);
+	list_move(&msg->head, &isys->framebuflist_fw);
+	spin_unlock_irqrestore(&isys->listlock, flags);
+	memset(&msg->fw_msg.dummy, 0, sizeof(msg->fw_msg));
+
+	return msg;
+}
+
+void intel_ipu4_cleanup_fw_msg_bufs(struct intel_ipu4_isys *isys)
+{
+	struct isys_fw_msgs  *fwmsg;
+	unsigned long flags;
+
+	spin_lock_irqsave(&isys->listlock, flags);
+	list_for_each_entry(fwmsg, &isys->framebuflist_fw, head)
+		list_move(&fwmsg->head, &isys->framebuflist);
+	spin_unlock_irqrestore(&isys->listlock, flags);
+}
+
+static void put_fw_mgs_buffer(struct intel_ipu4_isys *isys,
+			      u64 data)
+{
+	struct isys_fw_msgs *msg;
+	u64 *ptr = (u64 *)data;
+
+	if (!ptr)
+		return;
+
+	spin_lock(&isys->listlock);
+	msg = container_of(ptr, struct isys_fw_msgs, fw_msg.dummy);
+	list_move(&msg->head, &isys->framebuflist);
+	spin_unlock(&isys->listlock);
+}
+
 static int isys_probe(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
@@ -1326,8 +1412,6 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 			return -EPROBE_DEFER;
 		}
 	}
-
-	intel_ipu4_wrapper_set_device(&adev->dev, ISYS_MMID);
 
 	isys = devm_kzalloc(&adev->dev, sizeof(*isys), GFP_KERNEL);
 	if (!isys) {
@@ -1363,10 +1447,14 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	mutex_init(&isys->mutex);
 	mutex_init(&isys->stream_mutex);
-	mutex_init(&isys->lib_mutex);
+
+	spin_lock_init(&isys->listlock);
+	INIT_LIST_HEAD(&isys->framebuflist);
+	INIT_LIST_HEAD(&isys->framebuflist_fw);
 
 	dev_info(&adev->dev, "isys probe %p %p\n", adev, &adev->dev);
 	intel_ipu4_bus_set_drvdata(adev, isys);
+	intel_ipu4_abi_init(isys);
 
 	isys->line_align = INTEL_IPU4_ISYS_2600_MEM_LINE_ALIGN;
 	isys->icache_prefetch = is_intel_ipu4_hw_bxt_c0(isp);
@@ -1390,13 +1478,6 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 			if (rval)
 				goto release_firmware;
 
-			rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-				ISYS_MMID, (void *)fw->data,
-				sg_dma_address(isys->fw_sgt.sgl),
-				fw->size);
-			if (rval)
-				goto unmap_fw_image;
-
 			isys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
 				adev, isp->cpd_fw->data,
 				sg_dma_address(isys->fw_sgt.sgl),
@@ -1406,12 +1487,6 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 				rval = -ENOMEM;
 				goto  remove_shared_buffer;
 			}
-			rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-				ISYS_MMID, (void *)isys->pkg_dir,
-				isys->pkg_dir_dma_addr,
-				isys->pkg_dir_size);
-			if (rval)
-				goto out_free_pkg_dir;
 		}
 	}
 
@@ -1428,6 +1503,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	pm_qos_add_request(&isys->pm_qos, PM_QOS_CPU_DMA_LATENCY,
 			   PM_QOS_DEFAULT_VALUE);
+	alloc_fw_msg_buffers(isys, 20);
 
 	rval = isys_register_devices(isys);
 	if (rval)
@@ -1438,18 +1514,10 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 out_remove_pkg_dir_shared_buffer:
 	if (!isp->secure_mode)
-		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_MMID, isys->pkg_dir);
-out_free_pkg_dir:
-	if (!isp->secure_mode)
 		intel_ipu4_cpd_free_pkg_dir(adev, isys->pkg_dir,
 					    isys->pkg_dir_dma_addr,
 					    isys->pkg_dir_size);
 remove_shared_buffer:
-	if (!isp->secure_mode)
-		intel_ipu4_wrapper_remove_shared_memory_buffer(
-			ISYS_MMID, (void *)fw->data);
-unmap_fw_image:
 	if (!isp->secure_mode)
 		intel_ipu4_buttress_unmap_fw_image(
 			adev, &isys->fw_sgt);
@@ -1462,7 +1530,6 @@ release_firmware:
 
 	mutex_destroy(&isys->mutex);
 	mutex_destroy(&isys->stream_mutex);
-	mutex_destroy(&isys->lib_mutex);
 
 	if (isys->short_packet_source ==
 	    INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT) {
@@ -1483,21 +1550,21 @@ struct fwmsg {
 };
 
 static const struct fwmsg fw_msg[] = {
-	{ IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE,    "STREAM_OPEN_DONE", 0 },
-	{ IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK,    "STREAM_CLOSE_ACK", 0 },
-	{ IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK,    "STREAM_START_ACK", 0 },
-	{ IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK,
+	{ IPU_FW_ISYS_RESP_TYPE_STREAM_OPEN_DONE,    "STREAM_OPEN_DONE", 0 },
+	{ IPU_FW_ISYS_RESP_TYPE_STREAM_CLOSE_ACK,    "STREAM_CLOSE_ACK", 0 },
+	{ IPU_FW_ISYS_RESP_TYPE_STREAM_START_ACK,    "STREAM_START_ACK", 0 },
+	{ IPU_FW_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK,
 	  "STREAM_START_AND_CAPTURE_ACK", 0 },
-	{ IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK,     "STREAM_STOP_ACK", 0 },
-	{ IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK,    "STREAM_FLUSH_ACK", 0 },
-	{ IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY,      "PIN_DATA_READY", 1 },
-	{ IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK,  "STREAM_CAPTURE_ACK", 0 },
-	{ IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE,
+	{ IPU_FW_ISYS_RESP_TYPE_STREAM_STOP_ACK,     "STREAM_STOP_ACK", 0 },
+	{ IPU_FW_ISYS_RESP_TYPE_STREAM_FLUSH_ACK,    "STREAM_FLUSH_ACK", 0 },
+	{ IPU_FW_ISYS_RESP_TYPE_PIN_DATA_READY,      "PIN_DATA_READY", 1 },
+	{ IPU_FW_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK,  "STREAM_CAPTURE_ACK", 0 },
+	{ IPU_FW_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE,
 	  "STREAM_START_AND_CAPTURE_DONE", 1 },
-	{ IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE, "STREAM_CAPTURE_DONE", 1 },
-	{ IA_CSS_ISYS_RESP_TYPE_FRAME_SOF,           "FRAME_SOF", 1 },
-	{ IA_CSS_ISYS_RESP_TYPE_FRAME_EOF,           "FRAME_EOF", 1 },
-	{ IA_CSS_ISYS_RESP_TYPE_STATS_DATA_READY,    "STATS_READY", 1 },
+	{ IPU_FW_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE, "STREAM_CAPTURE_DONE", 1 },
+	{ IPU_FW_ISYS_RESP_TYPE_FRAME_SOF,           "FRAME_SOF", 1 },
+	{ IPU_FW_ISYS_RESP_TYPE_FRAME_EOF,           "FRAME_EOF", 1 },
+	{ IPU_FW_ISYS_RESP_TYPE_STATS_DATA_READY,    "STATS_READY", 1 },
 	{ -1, "UNKNOWN MESSAGE", 0 },
 };
 
@@ -1515,103 +1582,103 @@ static int resp_type_to_index(int type)
 static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
-	struct ia_css_isys_resp_info resp;
+	struct ipu_fw_isys_resp_info_abi resp_data;
+	struct ipu_fw_isys_resp_info_abi *resp;
 	struct intel_ipu4_isys_pipeline *pipe;
 	u64 ts;
-	int rval;
 	unsigned int i;
 
-	if (!isys->ssi)
+	if (!isys->fwcom)
 		return 0;
 
-	rval = intel_ipu4_lib_call_notrace_unlocked(stream_handle_response,
-						    isys, &resp);
-	if (rval < 0)
-		return rval;
+	resp = isys->fwctrl->get_response(isys->fwcom, ISYS_MSG_INDEX,
+					  &resp_data);
+	if (!resp)
+		return 1;
 
-	ts = (u64)resp.timestamp[1] << 32 | resp.timestamp[0];
+	ts = (u64)resp->timestamp[1] << 32 | resp->timestamp[0];
 
-
-	if (resp.error == IA_CSS_ISYS_ERROR_STREAM_IN_SUSPENSION)
+	if (resp->error_info.error == IPU_FW_ISYS_ERROR_STREAM_IN_SUSPENSION)
 		/* Suspension is kind of special case: not enough buffers */
 		dev_dbg(&adev->dev,
-			"hostlib: error resp %02d %s, \
-			stream %u, error SUSPENSION, details %d, \
-			timestamp 0x%16.16llx, pin %d\n",
-			resp.type,
-			fw_msg[resp_type_to_index(resp.type)].msg,
-			resp.stream_handle,
-			resp.error_details,
-			fw_msg[resp_type_to_index(resp.type)].valid_ts ?
-			ts : 0, resp.pin_id);
-	else if (resp.error)
+			"hostlib: error resp %02d %s, stream %u, error SUSPENSION, details %d, timestamp 0x%16.16llx, pin %d\n",
+			resp->type,
+			fw_msg[resp_type_to_index(resp->type)].msg,
+			resp->stream_handle,
+			resp->error_info.error_details,
+			fw_msg[resp_type_to_index(resp->type)].valid_ts ?
+			ts : 0, resp->pin_id);
+	else if (resp->error_info.error)
 		dev_dbg(&adev->dev,
-			"hostlib: error resp %02d %s, \
-			stream %u, error %d, details %d, \
-			timestamp 0x%16.16llx, pin %d\n",
-			resp.type,
-			fw_msg[resp_type_to_index(resp.type)].msg,
-			resp.stream_handle,
-			resp.error, resp.error_details,
-			fw_msg[resp_type_to_index(resp.type)].valid_ts ?
-			ts : 0, resp.pin_id);
+			"hostlib: error resp %02d %s, stream %u, error %d, details %d, timestamp 0x%16.16llx, pin %d\n",
+			resp->type,
+			fw_msg[resp_type_to_index(resp->type)].msg,
+			resp->stream_handle,
+			resp->error_info.error, resp->error_info.error_details,
+			fw_msg[resp_type_to_index(resp->type)].valid_ts ?
+			ts : 0, resp->pin_id);
 	else
 		dev_dbg(&adev->dev,
-			"hostlib: resp %02d %s, stream %u, \
-			timestamp 0x%16.16llx, pin %d\n",
-			resp.type,
-			fw_msg[resp_type_to_index(resp.type)].msg,
-			resp.stream_handle,
-			fw_msg[resp_type_to_index(resp.type)].valid_ts ?
-			ts : 0, resp.pin_id);
+			"hostlib: resp %02d %s, stream %u, timestamp 0x%16.16llx, pin %d\n",
+			resp->type,
+			fw_msg[resp_type_to_index(resp->type)].msg,
+			resp->stream_handle,
+			fw_msg[resp_type_to_index(resp->type)].valid_ts ?
+			ts : 0, resp->pin_id);
 
-	if (resp.stream_handle >= INTEL_IPU4_ISYS_MAX_STREAMS) {
+	if (resp->stream_handle >= INTEL_IPU4_ISYS_MAX_STREAMS) {
 		dev_err(&adev->dev, "bad stream handle %u\n",
-			resp.stream_handle);
-		return 0;
+			resp->stream_handle);
+		goto leave;
 	}
 
-	pipe = isys->pipes[resp.stream_handle];
+	pipe = isys->pipes[resp->stream_handle];
 	if (!pipe) {
 		dev_err(&adev->dev, "no pipeline for stream %u\n",
-			resp.stream_handle);
-		return 0;
+			resp->stream_handle);
+		goto leave;
 	}
-	pipe->error = resp.error;
+	pipe->error = resp->error_info.error;
 
-	switch (resp.type) {
-	case IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE:
+	switch (resp->type) {
+	case IPU_FW_ISYS_RESP_TYPE_STREAM_OPEN_DONE:
+		put_fw_mgs_buffer(intel_ipu4_bus_get_drvdata(adev),
+				  resp->buf_id);
 		complete(&pipe->stream_open_completion);
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_STREAM_CLOSE_ACK:
+	case IPU_FW_ISYS_RESP_TYPE_STREAM_CLOSE_ACK:
 		complete(&pipe->stream_close_completion);
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_ACK:
+	case IPU_FW_ISYS_RESP_TYPE_STREAM_START_ACK:
 		complete(&pipe->stream_start_completion);
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK:
+	case IPU_FW_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK:
+		put_fw_mgs_buffer(intel_ipu4_bus_get_drvdata(adev),
+				  resp->buf_id);
 		complete(&pipe->stream_start_completion);
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_STREAM_STOP_ACK:
+	case IPU_FW_ISYS_RESP_TYPE_STREAM_STOP_ACK:
 		complete(&pipe->stream_stop_completion);
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_STREAM_FLUSH_ACK:
+	case IPU_FW_ISYS_RESP_TYPE_STREAM_FLUSH_ACK:
 		complete(&pipe->stream_stop_completion);
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_PIN_DATA_READY:
-		if (resp.pin_id <  INTEL_IPU4_ISYS_OUTPUT_PINS &&
-		    pipe->output_pins[resp.pin_id].pin_ready)
-			pipe->output_pins[resp.pin_id].pin_ready(pipe, &resp);
+	case IPU_FW_ISYS_RESP_TYPE_PIN_DATA_READY:
+		if (resp->pin_id <  INTEL_IPU4_ISYS_OUTPUT_PINS &&
+		    pipe->output_pins[resp->pin_id].pin_ready)
+			pipe->output_pins[resp->pin_id].pin_ready(pipe, resp);
 		else
 			dev_err(&adev->dev,
 				"%d:No data pin ready handler for pin id %d\n",
-				resp.stream_handle, resp.pin_id);
+				resp->stream_handle, resp->pin_id);
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK:
+	case IPU_FW_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK:
+		put_fw_mgs_buffer(intel_ipu4_bus_get_drvdata(adev),
+				  resp->buf_id);
 		complete(&pipe->capture_ack_completion);
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE:
-	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE:
+	case IPU_FW_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_DONE:
+	case IPU_FW_ISYS_RESP_TYPE_STREAM_CAPTURE_DONE:
 		if (pipe->interlaced) {
 			struct intel_ipu4_isys_buffer *ib, *ib_safe;
 			struct list_head list;
@@ -1621,7 +1688,7 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			    INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT)
 				pipe->cur_field =
 					intel_ipu_isys_csi2_get_current_field(
-					pipe, &resp);
+					pipe, resp);
 			/*
 			 * Move the pending buffers to a local temp list.
 			 * Then we do not need to handle the lock during
@@ -1652,29 +1719,33 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 		}
 		for (i = 0; i < INTEL_IPU4_NUM_CAPTURE_DONE; i++)
 			if (pipe->capture_done[i])
-				pipe->capture_done[i](pipe, &resp);
+				pipe->capture_done[i](pipe, resp);
+
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_FRAME_SOF:
+	case IPU_FW_ISYS_RESP_TYPE_FRAME_SOF:
 		pipe->seq[pipe->seq_index].sequence =
 			atomic_read(&pipe->sequence) - 1;
 		pipe->seq[pipe->seq_index].timestamp = ts;
 		dev_dbg(&adev->dev,
 			"sof: handle %d: (index %u), timestamp 0x%16.16llx\n",
-			resp.stream_handle,
-			pipe->seq[pipe->seq_index].sequence, ts);
+			resp->stream_handle,
+			pipe->seq[pipe->seq_index].sequence,
+			ts);
 		pipe->seq_index = (pipe->seq_index + 1)
 			% INTEL_IPU4_ISYS_MAX_PARALLEL_SOF;
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_FRAME_EOF:
+	case IPU_FW_ISYS_RESP_TYPE_FRAME_EOF:
 		break;
-	case IA_CSS_ISYS_RESP_TYPE_STATS_DATA_READY:
+	case IPU_FW_ISYS_RESP_TYPE_STATS_DATA_READY:
 		break;
 	default:
 		dev_err(&adev->dev, "%d:unknown response type %u\n",
-			resp.stream_handle, resp.type);
+			resp->stream_handle, resp->type);
 		break;
 	}
 
+leave:
+	isys->fwctrl->put_response(isys->fwcom, ISYS_MSG_INDEX);
 	return 0;
 }
 
@@ -1739,7 +1810,7 @@ static void isys_isr_poll(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
 
-	if (!isys->ssi) {
+	if (!isys->fwcom) {
 		dev_dbg(&isys->adev->dev,
 			"got interrupt but device not configured yet\n");
 		return;

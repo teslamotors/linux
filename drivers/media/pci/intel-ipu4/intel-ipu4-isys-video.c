@@ -27,7 +27,6 @@
 #include <media/v4l2-mc.h>
 #endif
 
-#include "libintel-ipu4.h"
 #include "intel-ipu4-bus.h"
 #include "intel-ipu4-cpd.h"
 #include "intel-ipu4-isys.h"
@@ -35,9 +34,8 @@
 #include "intel-ipu4-regs.h"
 #include "intel-ipu5-regs.h"
 #include "intel-ipu4-trace.h"
-#include "intel-ipu4-wrapper.h"
-#include "isysapi/interface/ia_css_isysapi_fw_types.h"
-#include "isysapi/interface/ia_css_isysapi.h"
+#include "intel-ipu4-isys-fw-msgs.h"
+#include "intel-ipu4-fw-com.h"
 #include <ia_css_pkg_dir.h>
 #include <ia_css_pkg_dir_iunit.h>
 #include <ia_css_pkg_dir_types.h>
@@ -60,149 +58,89 @@ MODULE_PARM_DESC(num_stream_support, "IPU4 project support number of stream");
 
 const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts[] = {
 	/* YUV vector format */
-	{ V4L2_PIX_FMT_YUYV420_V32, 24, 24, 0, MEDIA_BUS_FMT_YUYV12_1X24, IA_CSS_ISYS_FRAME_FORMAT_YUV420_16 },
+	{ V4L2_PIX_FMT_YUYV420_V32, 24, 24, 0, MEDIA_BUS_FMT_YUYV12_1X24, IPU_FW_ISYS_FRAME_FORMAT_YUV420_16 },
 	/* Raw bayer vector formats. */
-	{ V4L2_PIX_FMT_SBGGR12V32, 16, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGBRG12V32, 16, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGRBG12V32, 16, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SRGGB12V32, 16, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SBGGR10V32, 16, 10, 0, MEDIA_BUS_FMT_SBGGR10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGBRG10V32, 16, 10, 0, MEDIA_BUS_FMT_SGBRG10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGRBG10V32, 16, 10, 0, MEDIA_BUS_FMT_SGRBG10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SRGGB10V32, 16, 10, 0, MEDIA_BUS_FMT_SRGGB10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SBGGR8_16V32, 16, 8, 0, MEDIA_BUS_FMT_SBGGR8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGBRG8_16V32, 16, 8, 0, MEDIA_BUS_FMT_SGBRG8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGRBG8_16V32, 16, 8, 0, MEDIA_BUS_FMT_SGRBG8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SRGGB8_16V32, 16, 8, 0, MEDIA_BUS_FMT_SRGGB8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_FMT_INTEL_IPU4_ISYS_META, 8, 8, 0, MEDIA_BUS_FMT_FIXED, IA_CSS_ISYS_MIPI_DATA_TYPE_EMBEDDED },
+	{ V4L2_PIX_FMT_SBGGR12V32, 16, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG12V32, 16, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG12V32, 16, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB12V32, 16, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SBGGR10V32, 16, 10, 0, MEDIA_BUS_FMT_SBGGR10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG10V32, 16, 10, 0, MEDIA_BUS_FMT_SGBRG10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG10V32, 16, 10, 0, MEDIA_BUS_FMT_SGRBG10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB10V32, 16, 10, 0, MEDIA_BUS_FMT_SRGGB10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SBGGR8_16V32, 16, 8, 0, MEDIA_BUS_FMT_SBGGR8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG8_16V32, 16, 8, 0, MEDIA_BUS_FMT_SGBRG8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG8_16V32, 16, 8, 0, MEDIA_BUS_FMT_SGRBG8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB8_16V32, 16, 8, 0, MEDIA_BUS_FMT_SRGGB8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_FMT_INTEL_IPU4_ISYS_META, 8, 8, 0, MEDIA_BUS_FMT_FIXED, IPU_FW_ISYS_MIPI_DATA_TYPE_EMBEDDED },
 	{ }
 };
 
 const struct intel_ipu4_isys_pixelformat intel_ipu5_isys_pfmts[] = {
-	{ V4L2_PIX_FMT_SBGGR12, 16, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGBRG12, 16, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGRBG12, 16, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SRGGB12, 16, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SBGGR10, 16, 10, 0, MEDIA_BUS_FMT_SBGGR10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGBRG10, 16, 10, 0, MEDIA_BUS_FMT_SGBRG10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGRBG10, 16, 10, 0, MEDIA_BUS_FMT_SGRBG10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SRGGB10, 16, 10, 0, MEDIA_BUS_FMT_SRGGB10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SBGGR8, 8, 8, 0, MEDIA_BUS_FMT_SBGGR8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_PIX_FMT_SGBRG8, 8, 8, 0, MEDIA_BUS_FMT_SGBRG8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_PIX_FMT_SGRBG8, 8, 8, 0, MEDIA_BUS_FMT_SGRBG8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_PIX_FMT_SRGGB8, 8, 8, 0, MEDIA_BUS_FMT_SRGGB8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_FMT_INTEL_IPU4_ISYS_META, 8, 8, 0, MEDIA_BUS_FMT_FIXED, IA_CSS_ISYS_MIPI_DATA_TYPE_EMBEDDED },
+	{ V4L2_PIX_FMT_SBGGR12, 16, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG12, 16, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG12, 16, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB12, 16, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SBGGR10, 16, 10, 0, MEDIA_BUS_FMT_SBGGR10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG10, 16, 10, 0, MEDIA_BUS_FMT_SGBRG10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG10, 16, 10, 0, MEDIA_BUS_FMT_SGRBG10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB10, 16, 10, 0, MEDIA_BUS_FMT_SRGGB10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SBGGR8, 8, 8, 0, MEDIA_BUS_FMT_SBGGR8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SGBRG8, 8, 8, 0, MEDIA_BUS_FMT_SGBRG8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SGRBG8, 8, 8, 0, MEDIA_BUS_FMT_SGRBG8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SRGGB8, 8, 8, 0, MEDIA_BUS_FMT_SRGGB8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_FMT_INTEL_IPU4_ISYS_META, 8, 8, 0, MEDIA_BUS_FMT_FIXED, IPU_FW_ISYS_MIPI_DATA_TYPE_EMBEDDED },
 	{ }
 };
 
 const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_be_soc[] = {
-	{ V4L2_PIX_FMT_UYVY, 16, 16, 0, MEDIA_BUS_FMT_UYVY8_1X16, IA_CSS_ISYS_FRAME_FORMAT_UYVY },
-	{ V4L2_PIX_FMT_YUYV, 16, 16, 0, MEDIA_BUS_FMT_YUYV8_1X16, IA_CSS_ISYS_FRAME_FORMAT_YUYV },
-	{ V4L2_PIX_FMT_NV16, 16, 16, 8, MEDIA_BUS_FMT_YUYV8_1X16, IA_CSS_ISYS_FRAME_FORMAT_NV16 },
-	{ V4L2_PIX_FMT_XRGB32, 32, 32, 0, MEDIA_BUS_FMT_RGB565_1X16, IA_CSS_ISYS_FRAME_FORMAT_RGBA888 },
-	{ V4L2_PIX_FMT_XBGR32, 32, 32, 0, MEDIA_BUS_FMT_RGB888_1X24, IA_CSS_ISYS_FRAME_FORMAT_RGBA888 },
+	{ V4L2_PIX_FMT_UYVY, 16, 16, 0, MEDIA_BUS_FMT_UYVY8_1X16, IPU_FW_ISYS_FRAME_FORMAT_UYVY },
+	{ V4L2_PIX_FMT_YUYV, 16, 16, 0, MEDIA_BUS_FMT_YUYV8_1X16, IPU_FW_ISYS_FRAME_FORMAT_YUYV },
+	{ V4L2_PIX_FMT_NV16, 16, 16, 8, MEDIA_BUS_FMT_YUYV8_1X16, IPU_FW_ISYS_FRAME_FORMAT_NV16 },
+	{ V4L2_PIX_FMT_XRGB32, 32, 32, 0, MEDIA_BUS_FMT_RGB565_1X16, IPU_FW_ISYS_FRAME_FORMAT_RGBA888 },
+	{ V4L2_PIX_FMT_XBGR32, 32, 32, 0, MEDIA_BUS_FMT_RGB888_1X24, IPU_FW_ISYS_FRAME_FORMAT_RGBA888 },
 	/* Raw bayer formats. */
-	{ V4L2_PIX_FMT_SBGGR12, 16, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGBRG12, 16, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGRBG12, 16, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SRGGB12, 16, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SBGGR10, 16, 10, 0, MEDIA_BUS_FMT_SBGGR10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGBRG10, 16, 10, 0, MEDIA_BUS_FMT_SGBRG10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SGRBG10, 16, 10, 0, MEDIA_BUS_FMT_SGRBG10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SRGGB10, 16, 10, 0, MEDIA_BUS_FMT_SRGGB10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW16 },
-	{ V4L2_PIX_FMT_SBGGR8, 8, 8, 0, MEDIA_BUS_FMT_SBGGR8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_PIX_FMT_SGBRG8, 8, 8, 0, MEDIA_BUS_FMT_SGBRG8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_PIX_FMT_SGRBG8, 8, 8, 0, MEDIA_BUS_FMT_SGRBG8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_PIX_FMT_SRGGB8, 8, 8, 0, MEDIA_BUS_FMT_SRGGB8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SBGGR12, 16, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG12, 16, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG12, 16, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB12, 16, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SBGGR10, 16, 10, 0, MEDIA_BUS_FMT_SBGGR10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG10, 16, 10, 0, MEDIA_BUS_FMT_SGBRG10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG10, 16, 10, 0, MEDIA_BUS_FMT_SGRBG10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB10, 16, 10, 0, MEDIA_BUS_FMT_SRGGB10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SBGGR8, 8, 8, 0, MEDIA_BUS_FMT_SBGGR8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SGBRG8, 8, 8, 0, MEDIA_BUS_FMT_SGBRG8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SGRBG8, 8, 8, 0, MEDIA_BUS_FMT_SGRBG8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SRGGB8, 8, 8, 0, MEDIA_BUS_FMT_SRGGB8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
 	{ }
 };
 
 const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_packed[] = {
-	{ V4L2_PIX_FMT_UYVY, 16, 16, 0, MEDIA_BUS_FMT_UYVY8_1X16, IA_CSS_ISYS_FRAME_FORMAT_UYVY },
-	{ V4L2_PIX_FMT_YUYV, 16, 16, 0, MEDIA_BUS_FMT_YUYV8_1X16, IA_CSS_ISYS_FRAME_FORMAT_YUYV },
-	{ V4L2_PIX_FMT_RGB565, 16, 16, 0, MEDIA_BUS_FMT_RGB565_1X16, IA_CSS_ISYS_FRAME_FORMAT_RGB565 },
-	{ V4L2_PIX_FMT_BGR24, 24, 24, 0, MEDIA_BUS_FMT_RGB888_1X24, IA_CSS_ISYS_FRAME_FORMAT_RGBA888 },
+	{ V4L2_PIX_FMT_UYVY, 16, 16, 0, MEDIA_BUS_FMT_UYVY8_1X16, IPU_FW_ISYS_FRAME_FORMAT_UYVY },
+	{ V4L2_PIX_FMT_YUYV, 16, 16, 0, MEDIA_BUS_FMT_YUYV8_1X16, IPU_FW_ISYS_FRAME_FORMAT_YUYV },
+	{ V4L2_PIX_FMT_RGB565, 16, 16, 0, MEDIA_BUS_FMT_RGB565_1X16, IPU_FW_ISYS_FRAME_FORMAT_RGB565 },
+	{ V4L2_PIX_FMT_BGR24, 24, 24, 0, MEDIA_BUS_FMT_RGB888_1X24, IPU_FW_ISYS_FRAME_FORMAT_RGBA888 },
 #ifndef V4L2_PIX_FMT_SBGGR12P
-	{ V4L2_PIX_FMT_SBGGR12, 12, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW12 },
-	{ V4L2_PIX_FMT_SGBRG12, 12, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW12 },
-	{ V4L2_PIX_FMT_SGRBG12, 12, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW12 },
-	{ V4L2_PIX_FMT_SRGGB12, 12, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SBGGR12, 12, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SGBRG12, 12, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SGRBG12, 12, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SRGGB12, 12, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
 #else /* V4L2_PIX_FMT_SBGGR12P */
-	{ V4L2_PIX_FMT_SBGGR12P, 12, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW12 },
-	{ V4L2_PIX_FMT_SGBRG12P, 12, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW12 },
-	{ V4L2_PIX_FMT_SGRBG12P, 12, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW12 },
-	{ V4L2_PIX_FMT_SRGGB12P, 12, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IA_CSS_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SBGGR12P, 12, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SGBRG12P, 12, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SGRBG12P, 12, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SRGGB12P, 12, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
 #endif /* V4L2_PIX_FMT_SBGGR12P */
-	{ V4L2_PIX_FMT_SBGGR10P, 10, 10, 0, MEDIA_BUS_FMT_SBGGR10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW10 },
-	{ V4L2_PIX_FMT_SGBRG10P, 10, 10, 0, MEDIA_BUS_FMT_SGBRG10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW10 },
-	{ V4L2_PIX_FMT_SGRBG10P, 10, 10, 0, MEDIA_BUS_FMT_SGRBG10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW10 },
-	{ V4L2_PIX_FMT_SRGGB10P, 10, 10, 0, MEDIA_BUS_FMT_SRGGB10_1X10, IA_CSS_ISYS_FRAME_FORMAT_RAW10 },
-	{ V4L2_PIX_FMT_SBGGR8, 8, 8, 0, MEDIA_BUS_FMT_SBGGR8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_PIX_FMT_SGBRG8, 8, 8, 0, MEDIA_BUS_FMT_SGBRG8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_PIX_FMT_SGRBG8, 8, 8, 0, MEDIA_BUS_FMT_SGRBG8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
-	{ V4L2_PIX_FMT_SRGGB8, 8, 8, 0, MEDIA_BUS_FMT_SRGGB8_1X8, IA_CSS_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SBGGR10P, 10, 10, 0, MEDIA_BUS_FMT_SBGGR10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW10 },
+	{ V4L2_PIX_FMT_SGBRG10P, 10, 10, 0, MEDIA_BUS_FMT_SGBRG10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW10 },
+	{ V4L2_PIX_FMT_SGRBG10P, 10, 10, 0, MEDIA_BUS_FMT_SGRBG10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW10 },
+	{ V4L2_PIX_FMT_SRGGB10P, 10, 10, 0, MEDIA_BUS_FMT_SRGGB10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW10 },
+	{ V4L2_PIX_FMT_SBGGR8, 8, 8, 0, MEDIA_BUS_FMT_SBGGR8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SGBRG8, 8, 8, 0, MEDIA_BUS_FMT_SGBRG8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SGRBG8, 8, 8, 0, MEDIA_BUS_FMT_SGRBG8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
+	{ V4L2_PIX_FMT_SRGGB8, 8, 8, 0, MEDIA_BUS_FMT_SRGGB8_1X8, IPU_FW_ISYS_FRAME_FORMAT_RAW8 },
 	{ }
 };
-
-static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys);
-
-static int intel_ipu4_isys_library_init(struct intel_ipu4_isys *isys)
-{
-	int retry = INTEL_IPU4_ISYS_OPEN_RETRY;
-	unsigned int i;
-
-	struct ia_css_isys_device_cfg_data isys_cfg = {
-		.driver_sys = {
-			.ssid = ISYS_SSID,
-			.mmid = ISYS_MMID,
-			.num_send_queues = clamp_t(
-				unsigned int, num_stream_support, 1,
-				INTEL_IPU4_ISYS_NUM_STREAMS_B0),
-			.num_recv_queues = 1,
-			.send_queue_size = 40,
-			.recv_queue_size = 40,
-			.icache_prefetch = isys->icache_prefetch,
-		},
-	};
-	struct device *dev = &isys->adev->dev;
-	int rval;
-
-	/*
-	 * SRAM partitioning. Initially equal partitioning is set
-	 * TODO: Fine tune the partitining based on the stream pixel load
-	 */
-	for (i = 0; i < NOF_SRAM_BLOCKS_MAX; i++) {
-		if (i < isys_cfg.driver_sys.num_send_queues)
-			isys_cfg.buffer_partition.num_gda_pages[i] =
-				(INTEL_IPU4_DEVICE_GDA_NR_PAGES *
-				 INTEL_IPU4_DEVICE_GDA_VIRT_FACTOR) /
-				 isys_cfg.driver_sys.num_send_queues;
-		else
-			isys_cfg.buffer_partition.num_gda_pages[i] = 0;
-	}
-
-	rval = -ia_css_isys_device_open(&isys->ssi, &isys_cfg);
-	if (rval < 0) {
-		dev_err(dev, "isys device open failed %d\n", rval);
-		return rval;
-	}
-
-	do {
-		usleep_range(INTEL_IPU4_ISYS_OPEN_TIMEOUT_US,
-			INTEL_IPU4_ISYS_OPEN_TIMEOUT_US + 10);
-		rval = intel_ipu4_lib_call(device_open_ready, isys);
-		if (!rval)
-			break;
-		retry--;
-	} while (retry > 0);
-
-	if (!retry && rval) {
-		dev_err(dev, "isys device open ready failed %d\n", rval);
-		intel_ipu4_isys_library_close(isys);
-	}
-
-	return rval;
-}
 
 /**
  * Returns true if device does not support real interrupts and
@@ -266,14 +204,19 @@ static int video_open(struct file *file)
 				 isys->pdata->base, isys->pkg_dir,
 				 isys->pkg_dir_dma_addr);
 
-	if (isys->ssi) {
+	/*
+	 * Buffers could have been left to wrong queue at last closure.
+	 * Move them now back to empty buffer queue.
+	 */
+	intel_ipu4_cleanup_fw_msg_bufs(isys);
+
+	if (isys->fwcom) {
 		/*
 		 * Something went wrong in previous shutdown. As we are now
 		 * restarting isys we can safely delete old context.
 		 */
 		dev_err(&isys->adev->dev, "Clearing old context\n");
-		intel_ipu4_lib_call(device_release, isys, 1);
-		isys->ssi = NULL;
+		isys->fwctrl->fw_force_clean(isys);
 	}
 
 	if (intel_ipu4_poll_for_events(av)) {
@@ -295,7 +238,7 @@ static int video_open(struct file *file)
 
 	if (isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA ||
 	    isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4) {
-		rval = intel_ipu4_isys_library_init(av->isys);
+		rval = av->isys->fwctrl->fw_init(av->isys, num_stream_support);
 		if (rval < 0)
 			goto out_lib_init;
 	}
@@ -338,8 +281,8 @@ static int video_release(struct file *file)
 		if (intel_ipu4_poll_for_events(av))
 			kthread_stop(av->isys->isr_thread);
 
-		intel_ipu4_isys_library_close(av->isys);
-		if (av->isys->ssi) {
+		av->isys->fwctrl->fw_close(av->isys);
+		if (av->isys->fwcom) {
 			av->isys->reset_needed = true;
 			ret = -EIO;
 		}
@@ -797,36 +740,6 @@ static void put_stream_handle(struct intel_ipu4_isys_video *av)
 	spin_unlock_irqrestore(&av->isys->lock, flags);
 }
 
-static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys)
-{
-	struct device *dev = &isys->adev->dev;
-	int timeout = INTEL_IPU4_ISYS_TURNOFF_TIMEOUT;
-	int rval;
-
-	/*
-	 * Ask library to stop the isys fw. Actual close takes
-	 * some time as the FW must stop its actions including code fetch
-	 * to SP icache.
-	*/
-	rval = intel_ipu4_lib_call(device_close, isys);
-	if (rval)
-		dev_err(dev, "Device close failure: %d\n", rval);
-
-	/* release probably fails if the close failed. Let's try still */
-	do {
-		usleep_range(INTEL_IPU4_ISYS_TURNOFF_DELAY_US,
-			2 * INTEL_IPU4_ISYS_TURNOFF_DELAY_US);
-		rval = intel_ipu4_lib_call_notrace(device_release, isys, 0);
-		timeout--;
-	} while (rval != 0 && timeout);
-
-	if (!rval)
-		isys->ssi = NULL; /* No further actions needed */
-	else
-		dev_err(dev, "Device release time out %d\n", rval);
-	return rval;
-}
-
 static int get_external_facing_format(struct intel_ipu4_isys_pipeline *ip,
 				      struct v4l2_subdev_format *format)
 {
@@ -935,13 +848,13 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
 
 void csi_short_packet_prepare_firmware_stream_cfg(
 	struct intel_ipu4_isys_pipeline *ip,
-	struct ia_css_isys_stream_cfg_data *cfg)
+	struct ipu_fw_isys_stream_cfg_data_abi *cfg)
 {
 	int input_pin = cfg->nof_input_pins++;
 	int output_pin = cfg->nof_output_pins++;
-	struct ia_css_isys_input_pin_info *input_info =
+	struct ipu_fw_isys_input_pin_info_abi *input_info =
 		&cfg->input_pins[input_pin];
-	struct ia_css_isys_output_pin_info *output_info =
+	struct ipu_fw_isys_output_pin_info_abi *output_info =
 		&cfg->output_pins[output_pin];
 
 	/*
@@ -969,13 +882,13 @@ void csi_short_packet_prepare_firmware_stream_cfg(
 
 void intel_ipu4_isys_prepare_firmware_stream_cfg_default(
 	struct intel_ipu4_isys_video *av,
-	struct ia_css_isys_stream_cfg_data *cfg)
+	struct ipu_fw_isys_stream_cfg_data_abi *cfg)
 {
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 
 	struct intel_ipu4_isys_queue *aq = &av->aq;
-	struct ia_css_isys_output_pin_info *pin_info;
+	struct ipu_fw_isys_output_pin_info_abi *pin_info;
 	int pin = cfg->nof_output_pins++;
 
 	aq->fw_output = pin;
@@ -1045,7 +958,7 @@ static unsigned int get_comp_format(u32 code)
 }
 
 
-/* Create stream and start it using the CSS library API. */
+/* Create stream and start it using the CSS FW ABI. */
 static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 				 struct intel_ipu4_isys_buffer_list *bl)
 {
@@ -1057,13 +970,9 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 		.target = V4L2_SEL_TGT_CROP,
 		.pad = CSI2_BE_PAD_SOURCE,
 	};
-	struct ia_css_isys_stream_cfg_data stream_cfg = {
-		.src = ip->source,
-		.vc = 0,
-		.isl_use = ip->isl_mode,
-		.nof_input_pins = 1,
-	};
-	struct ia_css_isys_frame_buff_set buf = { };
+	struct ipu_fw_isys_stream_cfg_data_abi *stream_cfg;
+	struct isys_fw_msgs *msg = NULL;
+	struct ipu_fw_isys_frame_buff_set_abi *buf = NULL;
 	struct intel_ipu4_isys_queue *aq;
 	struct intel_ipu4_isys_video *isl_av = NULL;
 	struct intel_ipu4_isys_request *ireq = NULL;
@@ -1075,15 +984,26 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	rval = get_external_facing_format(ip, &source_fmt);
 	if (rval)
 		return rval;
-	stream_cfg.compfmt = get_comp_format(source_fmt.format.code);
-	stream_cfg.input_pins[0].input_res.width = source_fmt.format.width;
-	stream_cfg.input_pins[0].input_res.height = source_fmt.format.height;
-	stream_cfg.input_pins[0].dt =
+
+	msg = intel_ipu4_get_fw_msg_buf(ip);
+	if (!msg)
+		return -ENOMEM;
+
+	stream_cfg = to_stream_cfg_msg_buf(msg);
+	stream_cfg->compfmt = get_comp_format(source_fmt.format.code);
+	stream_cfg->input_pins[0].input_res.width = source_fmt.format.width;
+	stream_cfg->input_pins[0].input_res.height = source_fmt.format.height;
+	stream_cfg->input_pins[0].dt =
 		intel_ipu4_isys_mbus_code_to_mipi(source_fmt.format.code);
 
 	if (ip->csi2 && !v4l2_ctrl_g_ctrl(ip->csi2->store_csi2_header))
-		stream_cfg.input_pins[0].mipi_store_mode =
-			IA_CSS_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER;
+		stream_cfg->input_pins[0].mipi_store_mode =
+			IPU_FW_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER;
+
+	stream_cfg->src = ip->source;
+	stream_cfg->vc = 0;
+	stream_cfg->isl_use = ip->isl_mode;
+	stream_cfg->nof_input_pins = 1;
 
 	/*
 	 * Only CSI2-BE and SOC BE has the capability to do crop,
@@ -1098,16 +1018,16 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	}
 	if (be_sd != NULL &&
 	    !v4l2_subdev_call(be_sd, pad, get_selection, NULL, &sel_fmt)) {
-		stream_cfg.crop[0].left_offset = sel_fmt.r.left;
-		stream_cfg.crop[0].top_offset = sel_fmt.r.top;
-		stream_cfg.crop[0].right_offset = sel_fmt.r.left +
+		stream_cfg->crop[0].left_offset = sel_fmt.r.left;
+		stream_cfg->crop[0].top_offset = sel_fmt.r.top;
+		stream_cfg->crop[0].right_offset = sel_fmt.r.left +
 			sel_fmt.r.width;
-		stream_cfg.crop[0].bottom_offset = sel_fmt.r.top +
+		stream_cfg->crop[0].bottom_offset = sel_fmt.r.top +
 			sel_fmt.r.height;
 
 	} else {
-		stream_cfg.crop[0].right_offset = source_fmt.format.width;
-		stream_cfg.crop[0].bottom_offset = source_fmt.format.height;
+		stream_cfg->crop[0].right_offset = source_fmt.format.width;
+		stream_cfg->crop[0].bottom_offset = source_fmt.format.height;
 	}
 
 	/*
@@ -1140,16 +1060,16 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 		struct intel_ipu4_isys_video *__av =
 			intel_ipu4_isys_queue_to_video(aq);
 
-		__av->prepare_firmware_stream_cfg(__av, &stream_cfg);
+		__av->prepare_firmware_stream_cfg(__av, stream_cfg);
 	}
 
 	if (ip->interlaced && ip->isys->short_packet_source ==
 		INTEL_IPU_ISYS_SHORT_PACKET_FROM_RECEIVER)
-		csi_short_packet_prepare_firmware_stream_cfg(ip, &stream_cfg);
+		csi_short_packet_prepare_firmware_stream_cfg(ip, stream_cfg);
 
-	csslib_dump_isys_stream_cfg(dev, &stream_cfg);
+	fw_dump_isys_stream_cfg(dev, stream_cfg);
 
-	ip->nr_output_pins = stream_cfg.nof_output_pins;
+	ip->nr_output_pins = stream_cfg->nof_output_pins;
 
 	rval = get_stream_handle(av);
 	if (rval) {
@@ -1158,12 +1078,21 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	}
 
 	reinit_completion(&ip->stream_open_completion);
-	rval = intel_ipu4_lib_call(stream_open, av->isys,
-		ip->stream_handle, &stream_cfg);
+
+	intel_ipu4_isys_set_fw_params(stream_cfg);
+
+	rval = av->isys->fwctrl->complex_cmd(av->isys,
+					     ip->stream_handle,
+					     stream_cfg,
+					     to_dma_addr(msg),
+					     sizeof(*msg),
+					     IPU_FW_ISYS_SEND_TYPE_STREAM_OPEN);
+
 	if (rval < 0) {
 		dev_err(dev, "can't open stream (%d)\n", rval);
 		goto out_put_stream_handle;
 	}
+
 	get_stream_opened(av);
 
 	tout = wait_for_completion_timeout(&ip->stream_open_completion,
@@ -1182,23 +1111,41 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 
 	ireq = intel_ipu4_isys_next_queued_request(ip);
 
+	if (bl || ireq) {
+		msg = intel_ipu4_get_fw_msg_buf(ip);
+		if (!msg) {
+			rval = -ENOMEM;
+			goto out_put_stream_opened;
+		}
+		buf = to_frame_msg_buf(msg);
+	}
+
 	if (bl) {
-		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
-			&buf, ip, bl);
+		intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set(
+			buf, ip, bl);
 		intel_ipu4_isys_buffer_list_queue(
 			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
-		csslib_dump_isys_frame_buff_set(dev, &buf,
-						stream_cfg.nof_output_pins);
 	} else if (ireq) {
 		intel_ipu4_isys_req_prepare(&av->isys->media_dev,
-					    ireq, ip, &buf);
-		csslib_dump_isys_frame_buff_set(dev, &buf,
-						stream_cfg.nof_output_pins);
+					    ireq, ip, buf);
 	}
 
 	reinit_completion(&ip->stream_start_completion);
-	rval = intel_ipu4_lib_call(stream_start, av->isys, ip->stream_handle,
-				   (bl || ireq) ? &buf : NULL);
+
+	if (bl || ireq) {
+		fw_dump_isys_frame_buff_set(dev, buf,
+					    stream_cfg->nof_output_pins);
+		rval = av->isys->fwctrl->complex_cmd(av->isys,
+				ip->stream_handle,
+				buf, to_dma_addr(msg),
+				sizeof(*buf),
+				IPU_FW_ISYS_SEND_TYPE_STREAM_START_AND_CAPTURE);
+	} else {
+		rval = av->isys->fwctrl->simple_cmd(av->isys,
+				ip->stream_handle,
+				IPU_FW_ISYS_SEND_TYPE_STREAM_START);
+	}
+
 	if (rval < 0) {
 		dev_err(dev, "can't start streaming (%d)\n", rval);
 		goto out_stream_close;
@@ -1223,8 +1170,9 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 out_stream_close:
 	reinit_completion(&ip->stream_close_completion);
 
-	rvalout = intel_ipu4_lib_call(stream_close,
-		av->isys, ip->stream_handle);
+	rvalout = av->isys->fwctrl->simple_cmd(av->isys,
+					ip->stream_handle,
+					IPU_FW_ISYS_SEND_TYPE_STREAM_CLOSE);
 	if (rvalout < 0) {
 		dev_dbg(dev, "can't close stream (%d)\n", rvalout);
 	} else {
@@ -1254,7 +1202,11 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 	int rval, tout;
 
 	reinit_completion(&ip->stream_stop_completion);
-	rval = intel_ipu4_lib_call(stream_flush, av->isys, ip->stream_handle);
+
+	rval = av->isys->fwctrl->simple_cmd(av->isys,
+				ip->stream_handle,
+				IPU_FW_ISYS_SEND_TYPE_STREAM_FLUSH);
+
 	if (rval < 0) {
 		dev_err(dev, "can't stop stream (%d)\n", rval);
 	} else {
@@ -1277,7 +1229,10 @@ static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
 	int rval, tout;
 
 	reinit_completion(&ip->stream_close_completion);
-	rval = intel_ipu4_lib_call(stream_close, av->isys, ip->stream_handle);
+
+	rval = av->isys->fwctrl->simple_cmd(av->isys,
+					  ip->stream_handle,
+					  IPU_FW_ISYS_SEND_TYPE_STREAM_CLOSE);
 	if (rval < 0) {
 		dev_err(dev, "can't close stream (%d)\n", rval);
 	} else {
@@ -1297,7 +1252,7 @@ static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
 void intel_ipu4_isys_video_add_capture_done(
 	struct intel_ipu4_isys_pipeline *ip,
 	void (*capture_done)(struct intel_ipu4_isys_pipeline *ip,
-			     struct ia_css_isys_resp_info *resp))
+			     struct ipu_fw_isys_resp_info_abi *resp))
 {
 	unsigned int i;
 

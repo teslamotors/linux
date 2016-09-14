@@ -28,9 +28,6 @@
 #include "intel-ipu5-isys-csi2.h"
 #include "intel-ipu4-isys-subdev.h"
 #include "intel-ipu4-isys-video.h"
-/* for IA_CSS_ISYS_PIN_TYPE_RAW_NS */
-#include "isysapi/interface/ia_css_isysapi_fw_types.h"
-#include "isysapi/interface/ia_css_isysapi_types.h"
 
 #define CREATE_TRACE_POINTS
 #include "intel-ipu4-trace-event.h"
@@ -158,12 +155,12 @@ static int get_frame_desc_entry_by_dt(struct v4l2_subdev *sd,
 
 static void csi2_meta_prepare_firmware_stream_cfg_default(
 	struct intel_ipu4_isys_video *av,
-	struct ia_css_isys_stream_cfg_data *cfg)
+	struct ipu_fw_isys_stream_cfg_data_abi *cfg)
 {
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 	struct intel_ipu4_isys_queue *aq = &av->aq;
-	struct ia_css_isys_output_pin_info *pin_info;
+	struct ipu_fw_isys_output_pin_info_abi *pin_info;
 	struct v4l2_mbus_frame_desc_entry entry;
 	int pin = cfg->nof_output_pins++;
 	int inpin = cfg->nof_input_pins++;
@@ -357,7 +354,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 }
 
 static void csi2_capture_done(struct intel_ipu4_isys_pipeline *ip,
-			      struct ia_css_isys_resp_info *info)
+			      struct ipu_fw_isys_resp_info_abi *info)
 {
 	if (ip->interlaced && ip->isys->short_packet_source ==
 	    INTEL_IPU_ISYS_SHORT_PACKET_FROM_RECEIVER) {
@@ -691,7 +688,7 @@ int intel_ipu_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
 		csi2->asd.pad[i].flags = MEDIA_PAD_FL_SOURCE;
 
 	csi2->asd.pad[CSI2_PAD_META].flags = MEDIA_PAD_FL_SOURCE;
-	csi2->asd.source = IA_CSS_ISYS_STREAM_SRC_CSI2_PORT0 + index;
+	csi2->asd.source = IPU_FW_ISYS_STREAM_SRC_CSI2_PORT0 + index;
 	csi2->asd.supported_codes = csi2_supported_codes;
 	csi2->asd.set_ffmt = csi2_set_ffmt;
 
@@ -736,7 +733,7 @@ int intel_ipu_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
 			 INTEL_IPU4_ISYS_ENTITY_PREFIX " CSI-2 %u capture %d",
 			 index, i);
 		csi2->av[i].isys = isys;
-		csi2->av[i].aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_MIPI;
+		csi2->av[i].aq.css_pin_type = IPU_FW_ISYS_PIN_TYPE_MIPI;
 		csi2->av[i].pfmts = intel_ipu4_isys_pfmts_packed;
 		csi2->av[i].try_fmt_vid_mplane = csi2_try_fmt;
 		csi2->av[i].prepare_firmware_stream_cfg =
@@ -748,7 +745,7 @@ int intel_ipu_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
 			INTEL_IPU4_ISYS_CSI2_LONG_PACKET_FOOTER_SIZE;
 		csi2->av[i].aq.buf_prepare = intel_ipu4_isys_buf_prepare;
 		csi2->av[i].aq.fill_frame_buff_set_pin =
-		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin;
+		intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set_pin;
 		csi2->av[i].aq.link_fmt_validate =
 			intel_ipu4_isys_link_fmt_validate;
 		csi2->av[i].aq.vbq.buf_struct_size =
@@ -767,7 +764,7 @@ int intel_ipu_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
 	snprintf(csi2->av_meta.vdev.name, sizeof(csi2->av_meta.vdev.name),
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " CSI-2 %u meta", index);
 	csi2->av_meta.isys = isys;
-	csi2->av_meta.aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_MIPI;
+	csi2->av_meta.aq.css_pin_type = IPU_FW_ISYS_PIN_TYPE_MIPI;
 	csi2->av_meta.pfmts = csi2_meta_pfmts;
 	csi2->av_meta.try_fmt_vid_mplane = csi2_try_fmt;
 	csi2->av_meta.prepare_firmware_stream_cfg =
@@ -779,7 +776,7 @@ int intel_ipu_isys_csi2_init(struct intel_ipu4_isys_csi2 *csi2,
 		INTEL_IPU4_ISYS_CSI2_LONG_PACKET_FOOTER_SIZE;
 	csi2->av_meta.aq.buf_prepare = intel_ipu4_isys_buf_prepare;
 	csi2->av_meta.aq.fill_frame_buff_set_pin =
-		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin;
+		intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set_pin;
 	csi2->av_meta.aq.link_fmt_validate = intel_ipu4_isys_link_fmt_validate;
 
 	rval = intel_ipu4_isys_video_init(
@@ -915,7 +912,7 @@ intel_ipu_isys_csi2_get_short_packet_buffer(
 
 unsigned int intel_ipu_isys_csi2_get_current_field(
 	struct intel_ipu4_isys_pipeline *ip,
-	struct ia_css_isys_resp_info *info)
+	struct ipu_fw_isys_resp_info_abi *info)
 {
 	unsigned int field = V4L2_FIELD_TOP;
 

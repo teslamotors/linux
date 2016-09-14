@@ -29,9 +29,10 @@
 #define INTEL_IPU4_ISYS_MAX_PARALLEL_SOF 2
 
 struct intel_ipu4_isys;
-struct ia_css_isys_stream_cfg_data;
+struct ipu_fw_isys_stream_cfg_data;
 struct intel_ipu4_isys_csi2_be_raw;
 struct intel_ipu4_isys_csi2_be_soc;
+struct ipu_fw_isys_stream_cfg_data_abi;
 
 struct intel_ipu4_isys_pixelformat {
 	uint32_t pixelformat;
@@ -49,7 +50,7 @@ struct sequence_info {
 
 struct output_pin_data {
 	void (*pin_ready)(struct intel_ipu4_isys_pipeline *ip,
-			  struct ia_css_isys_resp_info *info);
+			  struct ipu_fw_isys_resp_info_abi *info);
 	struct intel_ipu4_isys_queue *aq;
 };
 
@@ -83,7 +84,7 @@ struct intel_ipu4_isys_pipeline {
 
 	void (*capture_done[INTEL_IPU4_NUM_CAPTURE_DONE])
 		(struct intel_ipu4_isys_pipeline *ip,
-		 struct ia_css_isys_resp_info *resp);
+		 struct ipu_fw_isys_resp_info_abi *resp);
 	struct output_pin_data output_pins[INTEL_IPU4_ISYS_OUTPUT_PINS];
 	bool has_sof;
 	bool interlaced;
@@ -129,7 +130,7 @@ struct intel_ipu4_isys_video {
 		struct v4l2_pix_format_mplane *mpix);
 	void (*prepare_firmware_stream_cfg)(
 		struct intel_ipu4_isys_video *av,
-		struct ia_css_isys_stream_cfg_data *cfg);
+		struct ipu_fw_isys_stream_cfg_data_abi *cfg);
 };
 
 #define intel_ipu4_isys_queue_to_video(__aq) \
@@ -160,7 +161,7 @@ const struct intel_ipu4_isys_pixelformat
 
 void intel_ipu4_isys_prepare_firmware_stream_cfg_default(
 	struct intel_ipu4_isys_video *av,
-	struct ia_css_isys_stream_cfg_data *cfg);
+	struct ipu_fw_isys_stream_cfg_data_abi *cfg);
 int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 					 unsigned int state);
 int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
@@ -174,6 +175,6 @@ void intel_ipu4_isys_video_cleanup(struct intel_ipu4_isys_video *av);
 void intel_ipu4_isys_video_add_capture_done(
 	struct intel_ipu4_isys_pipeline *ip,
 	void (*capture_done)(struct intel_ipu4_isys_pipeline *ip,
-			     struct ia_css_isys_resp_info *resp));
+			     struct ipu_fw_isys_resp_info_abi *resp));
 
 #endif /* INTEL_IPU4_ISYS_VIDEO_H */

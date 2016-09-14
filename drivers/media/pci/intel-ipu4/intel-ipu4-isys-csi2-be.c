@@ -25,8 +25,6 @@
 #include "intel-ipu4-isys-csi2-be.h"
 #include "intel-ipu4-isys-subdev.h"
 #include "intel-ipu4-isys-video.h"
-/* for IA_CSS_ISYS_PIN_TYPE_RAW_NS */
-#include "isysapi/interface/ia_css_isysapi_fw_types.h"
 
 /*
  * Raw bayer format pixel order MUST BE MAINTAINED in groups of four codes.
@@ -282,7 +280,7 @@ int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " CSI2 BE");
 	snprintf(csi2_be->av.vdev.name, sizeof(csi2_be->av.vdev.name),
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " CSI2 BE capture");
-	csi2_be->av.aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_RAW_NS;
+	csi2_be->av.aq.css_pin_type = IPU_FW_ISYS_PIN_TYPE_RAW_NS;
 	v4l2_set_subdevdata(&csi2_be->asd.sd, &csi2_be->asd);
 	rval = v4l2_device_register_subdev(&isys->v4l2_dev, &csi2_be->asd.sd);
 	if (rval) {
@@ -303,7 +301,7 @@ int intel_ipu4_isys_csi2_be_init(struct intel_ipu4_isys_csi2_be *csi2_be,
 		intel_ipu4_isys_prepare_firmware_stream_cfg_default;
 	csi2_be->av.aq.buf_prepare = intel_ipu4_isys_buf_prepare;
 	csi2_be->av.aq.fill_frame_buff_set_pin =
-		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin;
+		intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set_pin;
 	csi2_be->av.aq.link_fmt_validate = intel_ipu4_isys_link_fmt_validate;
 	csi2_be->av.aq.vbq.buf_struct_size =
 		sizeof(struct intel_ipu4_isys_video_buffer);

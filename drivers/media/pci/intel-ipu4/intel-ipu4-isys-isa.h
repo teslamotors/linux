@@ -25,8 +25,8 @@
 #include "intel-ipu4-isys-video.h"
 
 struct intel_ipu4_isys;
-struct ia_css_isys_frame_buff_set;
-struct ia_css_isys_stream_cfg_data;
+struct ipu_fw_isys_frame_buff_set_abi;
+struct ipu_fw_isys_stream_cfg_data;
 
 #define ISA_PAD_SINK			0
 #define ISA_PAD_SOURCE			1

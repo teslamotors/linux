@@ -15,25 +15,25 @@
 #include <linux/device.h>
 #include "libintel-ipu4.h"
 
-EXPORT_SYMBOL_GPL(ia_css_isys_device_open);
-EXPORT_SYMBOL_GPL(ia_css_isys_device_open_ready);
-EXPORT_SYMBOL_GPL(ia_css_isys_device_close);
-EXPORT_SYMBOL_GPL(ia_css_isys_device_release);
-EXPORT_SYMBOL_GPL(ia_css_isys_stream_open);
-EXPORT_SYMBOL_GPL(ia_css_isys_stream_close);
-EXPORT_SYMBOL_GPL(ia_css_isys_stream_start);
-EXPORT_SYMBOL_GPL(ia_css_isys_stream_stop);
-EXPORT_SYMBOL_GPL(ia_css_isys_stream_flush);
-EXPORT_SYMBOL_GPL(ia_css_isys_stream_capture_indication);
-EXPORT_SYMBOL_GPL(ia_css_isys_stream_handle_response);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_device_open);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_device_open_ready);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_device_close);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_device_release);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_open);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_close);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_start);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_stop);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_flush);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_capture_indication);
+EXPORT_SYMBOL_GPL(ipu_fw_isys_stream_handle_response);
 
 void csslib_dump_isys_stream_cfg(struct device *dev,
-				struct ia_css_isys_stream_cfg_data *stream_cfg)
+				struct ipu_fw_isys_stream_cfg_data *stream_cfg)
 {
 	int i;
 
 	dev_dbg(dev, "---------------------------\n");
-	dev_dbg(dev, "IA_CSS_ISYS_STREAM_CFG_DATA\n");
+	dev_dbg(dev, "IPU_FW_ISYS_STREAM_CFG_DATA\n");
 	dev_dbg(dev, "---------------------------\n");
 
 	dev_dbg(dev, "Source %d\n", stream_cfg->src);
@@ -53,7 +53,7 @@ void csslib_dump_isys_stream_cfg(struct device *dev,
 			stream_cfg->input_pins[i].input_res.height);
 	}
 
-	for (i = 0; i < N_IA_CSS_ISYS_CROPPING_LOCATION; i++) {
+	for (i = 0; i < N_IPU_FW_ISYS_CROPPING_LOCATION; i++) {
 		dev_dbg(dev, "Crop info %d\n", i);
 		dev_dbg(dev, "Crop.top_offset %d\n",
 			stream_cfg->crop[i].top_offset);
@@ -93,7 +93,7 @@ void csslib_dump_isys_stream_cfg(struct device *dev,
 
 	dev_dbg(dev, "Isl_use %d\n", stream_cfg->isl_use);
 	switch (stream_cfg->isl_use) {
-	case IA_CSS_ISYS_USE_SINGLE_ISA:
+	case IPU_FW_ISYS_USE_SINGLE_ISA:
 		dev_dbg(dev, "ISA cfg:\n");
 		dev_dbg(dev, "blc_enabled %d\n",
 			stream_cfg->isa_cfg.blc_enabled);
@@ -110,8 +110,8 @@ void csslib_dump_isys_stream_cfg(struct device *dev,
 		dev_dbg(dev, "ae_enabled %d\n",
 			stream_cfg->isa_cfg.ae_enabled);
 		break;
-	case IA_CSS_ISYS_USE_SINGLE_DUAL_ISL:
-	case IA_CSS_ISYS_USE_NO_ISL_NO_ISA:
+	case IPU_FW_ISYS_USE_SINGLE_DUAL_ISL:
+	case IPU_FW_ISYS_USE_NO_ISL_NO_ISA:
 	default:
 		break;
 	}
@@ -120,13 +120,13 @@ void csslib_dump_isys_stream_cfg(struct device *dev,
 EXPORT_SYMBOL_GPL(csslib_dump_isys_stream_cfg);
 
 void csslib_dump_isys_frame_buff_set(struct device *dev,
-				     struct ia_css_isys_frame_buff_set *buf,
+				     struct ipu_fw_isys_frame_buff_set *buf,
 				     unsigned int outputs)
 {
 	int i;
 
 	dev_dbg(dev, "--------------------------\n");
-	dev_dbg(dev, "IA_CSS_ISYS_FRAME_BUFF_SET\n");
+	dev_dbg(dev, "IPU_FW_ISYS_FRAME_BUFF_SET\n");
 	dev_dbg(dev, "--------------------------\n");
 
 	for (i = 0; i < outputs; i++) {

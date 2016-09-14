@@ -197,7 +197,7 @@ struct intel_ipu4_isys_buffer *intel_ipu_isys_csi2_get_short_packet_buffer(
 	struct intel_ipu4_isys_pipeline *ip);
 unsigned int intel_ipu_isys_csi2_get_current_field(
 	struct intel_ipu4_isys_pipeline *ip,
-	struct ia_css_isys_resp_info *info);
+	struct ipu_fw_isys_resp_info_abi *info);
 void intel_ipu_isys_csi2_sof_event(struct intel_ipu4_isys_csi2 *csi2,
 					   unsigned int vc);
 void intel_ipu_isys_csi2_eof_event(struct intel_ipu4_isys_csi2 *csi2,

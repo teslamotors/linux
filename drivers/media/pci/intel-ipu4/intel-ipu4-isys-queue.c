@@ -27,9 +27,6 @@
 #include "intel-ipu4-isys.h"
 #include "intel-ipu-isys-csi2-common.h"
 #include "intel-ipu4-isys-video.h"
-#include "isysapi/interface/ia_css_isysapi_types.h"
-#include "isysapi/interface/ia_css_isysapi.h"
-#include "libintel-ipu4.h"
 
 static int queue_setup(struct vb2_queue *q,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
@@ -486,8 +483,8 @@ failed_no_buffer:
 	return -ENODATA;
 }
 
-void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin(
-	struct vb2_buffer *vb, struct ia_css_isys_frame_buff_set *set)
+void intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set_pin(
+	struct vb2_buffer *vb, struct ipu_fw_isys_frame_buff_set_abi *set)
 {
 	struct intel_ipu4_isys_queue *aq =
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
@@ -503,11 +500,11 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin(
 }
 
 /*
- * Convert a buffer list to a isys library framebuffer set. The
+ * Convert a buffer list to a isys fw ABI framebuffer set. The
  * buffer list is not modified.
  */
-void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
-	struct ia_css_isys_frame_buff_set *set,
+void intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set(
+	struct ipu_fw_isys_frame_buff_set_abi *set,
 	struct intel_ipu4_isys_pipeline *ip,
 	struct intel_ipu4_isys_buffer_list *bl)
 {
@@ -516,6 +513,7 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 	WARN_ON(!bl->nbufs);
 
 	set->send_irq_sof = 1;
+	set->send_resp_sof = 1;
 
 	list_for_each_entry(ib, &bl->head, head) {
 		if (ib->type == INTEL_IPU4_ISYS_VIDEO_BUFFER) {
@@ -530,7 +528,7 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 		} else if (ib->type == INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER) {
 			struct intel_ipu4_isys_private_buffer *pb =
 				intel_ipu4_isys_buffer_to_private_buffer(ib);
-			struct ia_css_isys_output_pin_payload *output_pin =
+			struct ipu_fw_isys_output_pin_payload_abi *output_pin =
 				&set->output_pins[ip->short_packet_output_pin];
 
 			output_pin->addr = pb->dma_addr;
@@ -544,7 +542,8 @@ void intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
 static void intel_ipu4_isys_req_dispatch(
 	struct media_device *mdev, struct intel_ipu4_isys_request *ireq,
 	struct intel_ipu4_isys_pipeline *ip,
-	struct ia_css_isys_frame_buff_set *set);
+	struct ipu_fw_isys_frame_buff_set_abi *set,
+	dma_addr_t dma_addr);
 
 struct intel_ipu4_isys_request *
 intel_ipu4_isys_next_queued_request(struct intel_ipu4_isys_pipeline *ip)
@@ -629,12 +628,21 @@ static int intel_ipu4_isys_stream_start(struct intel_ipu4_isys_pipeline *ip,
 	dev_dbg(&pipe_av->isys->adev->dev, "dispatching queued requests\n");
 
 	while ((ireq = intel_ipu4_isys_next_queued_request(ip))) {
-		struct ia_css_isys_frame_buff_set set = { .send_irq_sof = 1, };
+		struct ipu_fw_isys_frame_buff_set_abi *set;
+		struct isys_fw_msgs *msg;
 
-		intel_ipu4_isys_req_prepare(mdev, ireq, ip, &set);
-		csslib_dump_isys_frame_buff_set(&pipe_av->isys->adev->dev, &set,
+		msg = intel_ipu4_get_fw_msg_buf(ip);
+		if (!msg)
+			/* TODO: A PROPER CLEAN UP */
+			return -ENOMEM;
+
+		set = to_frame_msg_buf(msg);
+
+		intel_ipu4_isys_req_prepare(mdev, ireq, ip, set);
+		fw_dump_isys_frame_buff_set(&pipe_av->isys->adev->dev, set,
 						ip->nr_output_pins);
-		intel_ipu4_isys_req_dispatch(mdev, ireq, ip, &set);
+		intel_ipu4_isys_req_dispatch(mdev, ireq, ip, set,
+					     to_dma_addr(msg));
 	}
 
 	dev_dbg(&pipe_av->isys->adev->dev,
@@ -645,22 +653,33 @@ static int intel_ipu4_isys_stream_start(struct intel_ipu4_isys_pipeline *ip,
 	bl = &__bl;
 
 	do {
-		struct ia_css_isys_frame_buff_set buf = { };
+		struct ipu_fw_isys_frame_buff_set_abi *buf = NULL;
+		struct isys_fw_msgs *msg;
 
 		rval = buffer_list_get(ip, bl);
 		if (rval)
 			break;
 
-		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
-			&buf, ip, bl);
+		msg = intel_ipu4_get_fw_msg_buf(ip);
+		if (!msg)
+			/* TODO: PROPER CLEANUP */
+			return -ENOMEM;
+
+		buf = to_frame_msg_buf(msg);
+
+		intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set(
+			buf, ip, bl);
 
 		intel_ipu4_isys_buffer_list_queue(
 			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
 
-		rval = intel_ipu4_lib_call(
-			stream_capture_indication, pipe_av->isys,
-			ip->stream_handle, &buf);
-		/* FIXME: return failed capture request buffers */
+		rval = pipe_av->isys->fwctrl->complex_cmd(
+			pipe_av->isys,
+			ip->stream_handle,
+			buf,
+			to_dma_addr(msg),
+			sizeof(*buf),
+			IPU_FW_ISYS_SEND_TYPE_STREAM_CAPTURE);
 	} while (!WARN_ON(rval));
 
 	return 0;
@@ -687,7 +706,10 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 	struct intel_ipu4_isys_buffer_list bl;
-	struct ia_css_isys_frame_buff_set buf = { };
+
+	struct ipu_fw_isys_frame_buff_set_abi *buf = NULL;
+	struct isys_fw_msgs *msg;
+
 	struct intel_ipu4_isys_video *pipe_av =
 		container_of(ip, struct intel_ipu4_isys_video, ip);
 	unsigned long flags;
@@ -697,10 +719,11 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 	dev_dbg(&av->isys->adev->dev, "buffer: %s: buf_queue %u\n",
 		av->vdev.name,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
-		vb->v4l2_buf.index);
+		vb->v4l2_buf.index
 #else
-		vb->index);
+		vb->index
 #endif
+		);
 
 	for (i = 0; i < vb->num_planes; i++)
 		dev_dbg(&av->isys->adev->dev, "iova: plane %u iova 0x%x\n", i,
@@ -740,8 +763,15 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 		goto out;
 	}
 
-	intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set(
-		&buf, ip, &bl);
+	msg = intel_ipu4_get_fw_msg_buf(ip);
+	if (!msg) {
+		rval = -ENOMEM;
+		goto out;
+	}
+	buf = to_frame_msg_buf(msg);
+
+	intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set(
+		buf, ip, &bl);
 
 	if (!ip->streaming) {
 		dev_dbg(&av->isys->adev->dev,
@@ -760,10 +790,13 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 	 * have queued them ourselves to the active queue.
 	 */
 	intel_ipu4_isys_buffer_list_queue(&bl,
-		INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
+				INTEL_IPU4_ISYS_BUFFER_LIST_FL_ACTIVE, 0);
 
-	rval = intel_ipu4_lib_call(
-		stream_capture_indication, av->isys, ip->stream_handle, &buf);
+	rval = pipe_av->isys->fwctrl->complex_cmd(pipe_av->isys,
+				     ip->stream_handle,
+				     buf,
+				     to_dma_addr(msg), sizeof(*buf),
+				     IPU_FW_ISYS_SEND_TYPE_STREAM_CAPTURE);
 	/*
 	 * FIXME: mark the buffers in the buffer list if the queue
 	 * operation fails.
@@ -1028,7 +1061,7 @@ static void stop_streaming(struct vb2_queue *q)
 
 static unsigned int get_sof_sequence_by_timestamp(
 	struct intel_ipu4_isys_pipeline *ip,
-	struct ia_css_isys_resp_info *info)
+	struct ipu_fw_isys_resp_info_abi *info)
 {
 	struct intel_ipu4_isys *isys =
 		container_of(ip, struct intel_ipu4_isys_video, ip)->isys;
@@ -1055,7 +1088,7 @@ static unsigned int get_sof_sequence_by_timestamp(
 }
 
 static u64 get_sof_ns_delta(struct intel_ipu4_isys_video *av,
-			struct ia_css_isys_resp_info *info)
+			struct ipu_fw_isys_resp_info_abi *info)
 {
 	struct intel_ipu4_bus_device *adev =
 		to_intel_ipu4_bus_device(&av->isys->adev->dev);
@@ -1072,7 +1105,7 @@ static u64 get_sof_ns_delta(struct intel_ipu4_isys_video *av,
 }
 
 void intel_ipu4_isys_buf_calc_sequence_time(struct intel_ipu4_isys_buffer *ib,
-					struct ia_css_isys_resp_info *info)
+					struct ipu_fw_isys_resp_info_abi *info)
 {
 	struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
@@ -1133,7 +1166,7 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib)
 }
 
 void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
-				     struct ia_css_isys_resp_info *info)
+				     struct ipu_fw_isys_resp_info_abi *info)
 {
 	struct intel_ipu4_isys *isys =
 		container_of(ip, struct intel_ipu4_isys_video, ip)->isys;
@@ -1214,7 +1247,7 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 
 void intel_ipu4_isys_queue_short_packet_ready(
 	struct intel_ipu4_isys_pipeline *ip,
-	struct ia_css_isys_resp_info *info)
+	struct ipu_fw_isys_resp_info_abi *info)
 {
 	struct intel_ipu4_isys *isys =
 		container_of(ip, struct intel_ipu4_isys_video, ip)->isys;
@@ -1254,7 +1287,7 @@ struct media_device_request *intel_ipu4_isys_req_alloc(
 void intel_ipu4_isys_req_prepare(struct media_device *mdev,
 				 struct intel_ipu4_isys_request *ireq,
 				 struct intel_ipu4_isys_pipeline *ip,
-				 struct ia_css_isys_frame_buff_set *set)
+				 struct ipu_fw_isys_frame_buff_set_abi *set)
 {
 	struct intel_ipu4_isys *isys =
 		container_of(ip, struct intel_ipu4_isys_video, ip)->isys;
@@ -1263,6 +1296,9 @@ void intel_ipu4_isys_req_prepare(struct media_device *mdev,
 	unsigned long flags;
 
 	dev_dbg(&isys->adev->dev, "preparing request %u\n", req->id);
+
+	set->send_irq_sof = 1;
+	set->send_resp_sof = 1;
 
 	spin_lock_irqsave(&ireq->lock, flags);
 
@@ -1289,14 +1325,21 @@ void intel_ipu4_isys_req_prepare(struct media_device *mdev,
 static void intel_ipu4_isys_req_dispatch(
 	struct media_device *mdev, struct intel_ipu4_isys_request *ireq,
 	struct intel_ipu4_isys_pipeline *ip,
-	struct ia_css_isys_frame_buff_set *set)
+	struct ipu_fw_isys_frame_buff_set_abi *set,
+	dma_addr_t dma_addr)
 {
 	struct intel_ipu4_isys_video *pipe_av =
 		container_of(ip, struct intel_ipu4_isys_video, ip);
+	int rval;
 
-	WARN_ON(intel_ipu4_lib_call(
-			stream_capture_indication, pipe_av->isys,
-			ip->stream_handle, set) < 0);
+	rval = pipe_av->isys->fwctrl->complex_cmd(
+		pipe_av->isys,
+		ip->stream_handle,
+		set,
+		dma_addr, sizeof(*set),
+		IPU_FW_ISYS_SEND_TYPE_STREAM_CAPTURE);
+
+	WARN_ON(rval);
 }
 
 int intel_ipu4_isys_req_queue(struct media_device *mdev,
@@ -1362,7 +1405,16 @@ int intel_ipu4_isys_req_queue(struct media_device *mdev,
 	ip = to_intel_ipu4_isys_pipeline(pipe);
 
 	if (pipe && ip->streaming) {
-		struct ia_css_isys_frame_buff_set set = { .send_irq_sof = 1, };
+		struct isys_fw_msgs *msg;
+		struct ipu_fw_isys_frame_buff_set_abi *set;
+
+		msg = intel_ipu4_get_fw_msg_buf(ip);
+		if (!msg) {
+			rval = -ENOMEM;
+			goto out_mutex_unlock;
+		}
+
+		set = to_frame_msg_buf(msg);
 
 		if (no_pipe) {
 			dev_dbg(&isys->adev->dev,
@@ -1374,10 +1426,11 @@ int intel_ipu4_isys_req_queue(struct media_device *mdev,
 
 		dev_dbg(&isys->adev->dev,
 			"request has a pipeline, dispatching\n");
-		intel_ipu4_isys_req_prepare(mdev, ireq, ip, &set);
-		csslib_dump_isys_frame_buff_set(&isys->adev->dev, &set,
+		intel_ipu4_isys_req_prepare(mdev, ireq, ip, set);
+		fw_dump_isys_frame_buff_set(&isys->adev->dev, set,
 						ip->nr_output_pins);
-		intel_ipu4_isys_req_dispatch(mdev, ireq, ip, &set);
+		intel_ipu4_isys_req_dispatch(mdev, ireq, ip, set,
+					     to_dma_addr(msg));
 	} else {
 		dev_dbg(&isys->adev->dev,
 			"%s: adding request %u to the mdev queue\n", __func__,

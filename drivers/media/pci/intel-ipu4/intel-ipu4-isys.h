@@ -29,6 +29,7 @@
 #include "intel-ipu4-isys-tpg.h"
 #include "intel-ipu4-isys-video.h"
 #include "intel-ipu4-pdata.h"
+#include "intel-ipu4-isys-fw-msgs.h"
 
 #define INTEL_IPU4_ISYS_ENTITY_PREFIX		"Intel IPU4"
 
@@ -37,6 +38,16 @@
 /* for TPG */
 #define INTEL_IPU4_ISYS_FREQ_BXT_FPGA		25000000UL
 #define INTEL_IPU4_ISYS_FREQ_BXT		533000000UL
+
+/*
+ * Current message queue configuration. These must be big enough
+ * so that they never gets full. Queues are located in system memory
+ */
+#define INTEL_IPU4_ISYS_SIZE_RECV_QUEUE 40
+#define INTEL_IPU4_ISYS_SIZE_SEND_QUEUE 40
+#define INTEL_IPU4_ISYS_SIZE_PROXY_RECV_QUEUE 5
+#define INTEL_IPU4_ISYS_SIZE_PROXY_SEND_QUEUE 5
+#define INTEL_IPU4_ISYS_NUM_RECV_QUEUE 1
 
 /*
  * Device close takes some time from last ack message to actual stopping
@@ -67,6 +78,32 @@
 
 struct task_struct;
 
+struct intel_ipu4_isys_fw_ctrl {
+	int (*fw_init)(struct intel_ipu4_isys *isys,
+		       unsigned int num_streams);
+	int (*fw_close)(struct intel_ipu4_isys *isys);
+	void (*fw_force_clean)(struct intel_ipu4_isys *isys);
+	int (*simple_cmd)(struct intel_ipu4_isys *isys,
+			  const unsigned int stream_handle,
+			  enum ipu_fw_isys_send_type send_type);
+	int (*complex_cmd)(struct intel_ipu4_isys *isys,
+			   const unsigned int stream_handle,
+			   void *cpu_mapped_buf,
+			   dma_addr_t dma_mapped_buf,
+			   size_t size,
+			   enum ipu_fw_isys_send_type send_type);
+	int (*fw_proxy_cmd)(struct intel_ipu4_isys *isys,
+			    unsigned int req_id,
+			    unsigned int index,
+			    unsigned int offset,
+			    u32 value);
+	struct ipu_fw_isys_resp_info_abi *(*get_response)(
+		void *context, unsigned int queue,
+		struct ipu_fw_isys_resp_info_abi *response);
+	void (*put_response)(
+		void *context, unsigned int queue);
+};
+
 /*
  * struct intel_ipu4_isys
  *
@@ -79,7 +116,7 @@ struct task_struct;
  * @csi2_rx_ctrl_cached: cached shared value between all CSI2 receivers
  * @lock: serialise access to pipes
  * @pipes: pipelines per stream ID
- * @ssi: ssi library private pointer
+ * @fwcom: fw communication layer private pointer
  * @line_align: line alignment in memory
  * @legacy_port_cfg: lane mappings for legacy CSI-2 ports
  * @combo_port_cfg: lane mappings for D/C-PHY ports
@@ -104,6 +141,7 @@ struct intel_ipu4_isys {
 	struct media_device media_dev;
 	struct v4l2_device v4l2_dev;
 	struct intel_ipu4_bus_device *adev;
+	const struct  intel_ipu4_isys_fw_ctrl *fwctrl;
 
 	int power;
 	spinlock_t power_lock;
@@ -111,7 +149,7 @@ struct intel_ipu4_isys {
 	u32 csi2_rx_ctrl_cached;
 	spinlock_t lock;
 	struct intel_ipu4_isys_pipeline *pipes[INTEL_IPU4_ISYS_MAX_STREAMS];
-	void *ssi;
+	void *fwcom;
 	unsigned int line_align;
 	u32 legacy_port_cfg;
 	u32 combo_port_cfg;
@@ -124,7 +162,6 @@ struct intel_ipu4_isys {
 	struct dentry *debugfsdir;
 	struct mutex mutex;
 	struct mutex stream_mutex;
-	struct mutex lib_mutex;
 
 	struct intel_ipu4_isys_pdata *pdata;
 
@@ -150,40 +187,28 @@ struct intel_ipu4_isys {
 	struct mutex short_packet_tracing_mutex;
 	u64 tsc_timer_base;
 	u64 tunit_timer_base;
+	spinlock_t listlock;
+	struct list_head framebuflist;
+	struct list_head framebuflist_fw;
 };
 
+struct isys_fw_msgs {
+	union {
+		u64 dummy;
+		struct ipu_fw_isys_frame_buff_set_abi frame;
+		struct ipu_fw_isys_stream_cfg_data_abi stream;
+	} fw_msg;
+	struct list_head head;
+	dma_addr_t dma_addr;
+};
+#define to_frame_msg_buf(a) (&(a)->fw_msg.frame)
+#define to_stream_cfg_msg_buf(a) (&(a)->fw_msg.stream)
+#define to_dma_addr(a) ((a)->dma_addr)
+
+struct isys_fw_msgs *intel_ipu4_get_fw_msg_buf(
+	struct intel_ipu4_isys_pipeline *ip);
+void intel_ipu4_cleanup_fw_msg_bufs(struct intel_ipu4_isys *isys);
+
 extern const struct v4l2_ioctl_ops intel_ipu4_isys_ioctl_ops;
-
-#define intel_ipu4_lib_call_notrace_unlocked(func, isys, ...)		\
-	({								\
-		 int rval;						\
-									\
-		 rval = -ia_css_isys_##func((isys)->ssi, ##__VA_ARGS__);\
-									\
-		 rval;							\
-	})
-
-#define intel_ipu4_lib_call_notrace(func, isys, ...)			\
-	({								\
-		 int rval;						\
-									\
-		 mutex_lock(&(isys)->lib_mutex);			\
-									\
-		 rval = intel_ipu4_lib_call_notrace_unlocked(		\
-			 func, isys, ##__VA_ARGS__);			\
-									\
-		 mutex_unlock(&(isys)->lib_mutex);			\
-									\
-		 rval;							\
-	})
-
-#define intel_ipu4_lib_call(func, isys, ...)				\
-	({								\
-		 int rval;						\
-		 dev_dbg(&(isys)->adev->dev, "hostlib: libcall %s\n", #func);\
-		 rval = intel_ipu4_lib_call_notrace(func, isys, ##__VA_ARGS__);\
-									\
-		 rval;							\
-	})
 
 #endif /* INTEL_IPU4_ISYS_H */

@@ -272,6 +272,7 @@ struct intel_ipu4_isys_internal_pdata {
 	struct intel_ipu4_hw_variants hw_variant;
 	u32 num_parallel_streams;
 	u32 isys_dma_overshoot;
+	u32 dmem_offset;
 };
 
 struct intel_ipu4_isys_pdata {

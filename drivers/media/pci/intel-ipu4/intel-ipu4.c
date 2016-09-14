@@ -38,8 +38,6 @@
 #include "intel-ipu4-wrapper.h"
 #include "intel-ipu5-devel.h"
 
-/* for IA_CSS_ISYS_STREAM_SRC_MIPIGEN_PORT0 */
-#include <ia_css_isysapi_fw_types.h>
 #include <ia_css_pkg_dir_types.h>
 #include <ia_css_pkg_dir.h>
 #include <ia_css_pkg_dir_iunit.h>
@@ -498,6 +496,7 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu4 = {
 	},
 	.num_parallel_streams = INTEL_IPU4_ISYS_NUM_STREAMS_B0,
 	.isys_dma_overshoot =  INTEL_IPU4_ISYS_OVERALLOC_MIN,
+	.dmem_offset = 0x8000,
 };
 
 static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu4 = {

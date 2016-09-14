@@ -33,7 +33,7 @@ struct ipu_fw_isys_buffer_partition_abi {
 };
 
 /**
- * struct ipu_fw_isys_fw_config - contains the parts from ia_css_isys_device_cfg_data
+ * struct ipu_fw_isys_fw_config - contains the parts from ipu_fw_isys_device_cfg_data
  * we need to transfer to the cell
  */
 struct ipu_fw_isys_fw_config {
@@ -80,6 +80,7 @@ struct ipu_fw_isys_output_pin_info_abi {
 	uint8_t input_pin_id;
 	uint8_t pt;
 	uint8_t ft;
+	uint8_t online;
 };
 
 /**

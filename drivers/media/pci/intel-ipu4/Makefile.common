@@ -2,6 +2,8 @@ ifndef IPU_STEP
   $(error No IPU_STEP was defined. Stopping.)
 endif
 
+include $(srctree)/$(src)/../Makefile.link
+
 ifeq ($(IPU_STEP),ipu5A0)
 intel-ipu-mod-$(IPU_STEP)-objs			+= ../intel-ipu4.$(IPU_STEP).lnk.o ../intel-ipu4-bus.$(IPU_STEP).lnk.o ../intel-ipu4-dma.$(IPU_STEP).lnk.o ../intel-ipu4-buttress.$(IPU_STEP).lnk.o ../intel-ipu4-trace.$(IPU_STEP).lnk.o ../intel-ipu4-cpd.$(IPU_STEP).lnk.o ../intel-ipu5-devel.$(IPU_STEP).lnk.o
 
@@ -47,6 +49,7 @@ intel-ipu4-isys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-isys.$(IPU_STEP).lnk.o .
 					   ../intel-ipu4-isys-compat-defs.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-csi2-be-soc.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-csi2-be.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-fw-msgs.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-isa.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-video.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-queue.$(IPU_STEP).lnk.o \

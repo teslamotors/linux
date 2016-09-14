@@ -737,7 +737,7 @@ int intel_ipu4_isys_subdev_enum_mbus_code(
 
 /*
  * Besides validating the link, figure out the external pad and the
- * ISYS library source.
+ * ISYS FW ABI source.
  */
 int intel_ipu4_isys_subdev_link_validate(struct v4l2_subdev *sd,
 	struct media_link *link,

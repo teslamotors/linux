@@ -31,9 +31,6 @@
 #include "intel-ipu4-isys-isa.h"
 #include "intel-ipu4-isys-subdev.h"
 #include "intel-ipu4-isys-video.h"
-/* for IA_CSS_ISYS_PIN_TYPE_RAW_NS */
-#include "isysapi/interface/ia_css_isysapi_fw_types.h"
-#include "isysapi/interface/ia_css_isysapi_types.h"
 
 static const uint32_t isa_supported_codes_pad_sink[] = {
 	MEDIA_BUS_FMT_SBGGR12_1X12,
@@ -323,7 +320,7 @@ static struct v4l2_ctrl_ops isa_ctrl_ops = {
 };
 
 static void isa_capture_done(struct intel_ipu4_isys_pipeline *ip,
-			     struct ia_css_isys_resp_info *info)
+			     struct ipu_fw_isys_resp_info_abi *info)
 {
 	struct intel_ipu4_isys_isa *isa = &ip->isys->isa;
 	struct intel_ipu4_isys_queue *aq = &isa->av_config.aq;
@@ -455,7 +452,7 @@ static void isa_config_buf_cleanup(struct vb2_buffer *vb)
 
 static void isa_prepare_firmware_stream_cfg(
 	struct intel_ipu4_isys_video *av,
-	struct ia_css_isys_stream_cfg_data *cfg)
+	struct ipu_fw_isys_stream_cfg_data_abi *cfg)
 {
 #ifdef IPU_STEP_BXTB0
 	struct v4l2_rect *r;
@@ -464,13 +461,13 @@ static void isa_prepare_firmware_stream_cfg(
 	if (av == &av->isys->isa.av) {
 		pad = ISA_PAD_SOURCE;
 		cropping_location =
-			IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED;
-		res_info = IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED;
+			IPU_FW_ISYS_CROPPING_LOCATION_POST_ISA_NONSCALED;
+		res_info = IPU_FW_ISYS_RESOLUTION_INFO_POST_ISA_NONSCALED;
 	} else if (av == &av->isys->isa.av_scaled) {
 		pad = ISA_PAD_SOURCE_SCALED;
 		cropping_location =
-			IA_CSS_ISYS_CROPPING_LOCATION_POST_ISA_SCALED;
-		res_info = IA_CSS_ISYS_RESOLUTION_INFO_POST_ISA_SCALED;
+			IPU_FW_ISYS_CROPPING_LOCATION_POST_ISA_SCALED;
+		res_info = IPU_FW_ISYS_RESOLUTION_INFO_POST_ISA_SCALED;
 	} else {
 		BUG();
 	}
@@ -496,37 +493,29 @@ static void isa_prepare_firmware_stream_cfg(
 
 static void isa_prepare_firmware_stream_cfg_param(
 	struct intel_ipu4_isys_video *av,
-	struct ia_css_isys_stream_cfg_data *cfg)
+	struct ipu_fw_isys_stream_cfg_data_abi *cfg)
 {
 	struct intel_ipu4_isys_isa *isa = &av->isys->isa;
 	struct intel_ipu4_isys_pipeline *ip =
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
-	struct {
-		unsigned int *cfg;
-		unsigned int bit;
-	} opts[] = {
-		{ &cfg->isa_cfg.blc_enabled,
-			V4L2_INTEL_IPU4_ISA_EN_BLC, },
-		{ &cfg->isa_cfg.lsc_enabled,
-			V4L2_INTEL_IPU4_ISA_EN_LSC, },
-		{ &cfg->isa_cfg.dpc_enabled,
-			V4L2_INTEL_IPU4_ISA_EN_DPC, },
-		{ &cfg->isa_cfg.downscaler_enabled,
-			V4L2_INTEL_IPU4_ISA_EN_SCALER, },
-		{ &cfg->isa_cfg.awb_enabled,
-			V4L2_INTEL_IPU4_ISA_EN_AWB, },
-		{ &cfg->isa_cfg.af_enabled,
-			V4L2_INTEL_IPU4_ISA_EN_AF, },
-		{ &cfg->isa_cfg.ae_enabled,
-			V4L2_INTEL_IPU4_ISA_EN_AE, },
-	};
-	unsigned int i;
 
-	for (i = 0; i < ARRAY_SIZE(opts); i++)
-		*opts[i].cfg = (bool)(isa->isa_en->val & opts[i].bit);
+	cfg->isa_cfg.cfg.blc =
+		!!(isa->isa_en->val & V4L2_INTEL_IPU4_ISA_EN_BLC);
+	cfg->isa_cfg.cfg.lsc =
+		!!(isa->isa_en->val & V4L2_INTEL_IPU4_ISA_EN_LSC);
+	cfg->isa_cfg.cfg.dpc =
+		!!(isa->isa_en->val & V4L2_INTEL_IPU4_ISA_EN_DPC);
+	cfg->isa_cfg.cfg.downscaler =
+		!!(isa->isa_en->val & V4L2_INTEL_IPU4_ISA_EN_SCALER);
+	cfg->isa_cfg.cfg.awb =
+		!!(isa->isa_en->val & V4L2_INTEL_IPU4_ISA_EN_AWB);
+	cfg->isa_cfg.cfg.af =
+		!!(isa->isa_en->val & V4L2_INTEL_IPU4_ISA_EN_AF);
+	cfg->isa_cfg.cfg.ae =
+		!!(isa->isa_en->val & V4L2_INTEL_IPU4_ISA_EN_AE);
 
-	cfg->isa_cfg.send_irq_stats_ready = 1;
-	cfg->isa_cfg.send_resp_stats_ready = 1;
+	cfg->isa_cfg.cfg.send_irq_stats_ready = 1;
+	cfg->isa_cfg.cfg.send_resp_stats_ready = 1;
 
 	intel_ipu4_isys_video_add_capture_done(ip, isa_capture_done);
 }
@@ -534,9 +523,9 @@ static void isa_prepare_firmware_stream_cfg_param(
 static bool is_capture_terminal(struct ia_css_terminal *t)
 {
 	switch (t->terminal_type) {
-	case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT:
-	case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT:
-	case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT:
+	case IPU_FW_TERMINAL_TYPE_PARAM_CACHED_OUT:
+	case IPU_FW_TERMINAL_TYPE_PARAM_SPATIAL_OUT:
+	case IPU_FW_TERMINAL_TYPE_PARAM_SLICED_OUT:
 		return true;
 	default:
 		return false;
@@ -548,28 +537,28 @@ static int isa_terminal_get_iova(struct device *dev, struct ia_css_terminal *t,
 				 uint32_t **iova)
 {
 	switch (t->terminal_type) {
-	case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN:
-	case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT: {
+	case IPU_FW_TERMINAL_TYPE_PARAM_CACHED_IN:
+	case IPU_FW_TERMINAL_TYPE_PARAM_CACHED_OUT: {
 		struct ia_css_param_terminal *tpterm = (void *)t;
 
 		*iova = &tpterm->param_payload.buffer;
 		break;
 	}
-	case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN:
-	case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT: {
+	case IPU_FW_TERMINAL_TYPE_PARAM_SPATIAL_IN:
+	case IPU_FW_TERMINAL_TYPE_PARAM_SPATIAL_OUT: {
 		struct ia_css_spatial_param_terminal *tpterm = (void *)t;
 
 		*iova = &tpterm->param_payload.buffer;
 		break;
 	}
-	case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_IN:
-	case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT: {
+	case IPU_FW_TERMINAL_TYPE_PARAM_SLICED_IN:
+	case IPU_FW_TERMINAL_TYPE_PARAM_SLICED_OUT: {
 		struct ia_css_sliced_param_terminal *tpterm = (void *)t;
 
 		*iova = &tpterm->param_payload.buffer;
 		break;
 	}
-	case IA_CSS_TERMINAL_TYPE_PROGRAM: {
+	case IPU_FW_TERMINAL_TYPE_PROGRAM: {
 		struct ia_css_program_terminal *tpterm = (void *)t;
 
 		*iova = &tpterm->param_payload.buffer;
@@ -856,7 +845,7 @@ static void isa_config_prepare_frame_buff_set(struct vb2_buffer *__vb)
 }
 
 static void isa_config_fill_frame_buff_set_pin(
-	struct vb2_buffer *vb, struct ia_css_isys_frame_buff_set *set)
+	struct vb2_buffer *vb, struct ipu_fw_isys_frame_buff_set_abi *set)
 {
 	struct intel_ipu4_isys_isa_buffer *isa_buf =
 		vb2_buffer_to_intel_ipu4_isys_isa_buffer(vb);
@@ -954,7 +943,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 	snprintf(isa->av.vdev.name, sizeof(isa->av.vdev.name),
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " ISA capture");
 	isa->av.isys = isys;
-	isa->av.aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_RAW_NS;
+	isa->av.aq.css_pin_type = IPU_FW_ISYS_PIN_TYPE_RAW_NS;
 	isa->av.pfmts = intel_ipu4_isys_pfmts;
 	isa->av.try_fmt_vid_mplane =
 		intel_ipu4_isys_video_try_fmt_vid_mplane_default;
@@ -962,7 +951,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 		isa_prepare_firmware_stream_cfg;
 	isa->av.aq.buf_prepare = intel_ipu4_isys_buf_prepare;
 	isa->av.aq.fill_frame_buff_set_pin =
-		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin;
+		intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set_pin;
 	isa->av.aq.link_fmt_validate = intel_ipu4_isys_link_fmt_validate;
 	isa->av.aq.vbq.buf_struct_size =
 		sizeof(struct intel_ipu4_isys_video_buffer);
@@ -1034,7 +1023,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 	snprintf(isa->av_scaled.vdev.name, sizeof(isa->av_scaled.vdev.name),
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " ISA scaled capture");
 	isa->av_scaled.isys = isys;
-	isa->av_scaled.aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_RAW_S;
+	isa->av_scaled.aq.css_pin_type = IPU_FW_ISYS_PIN_TYPE_RAW_S;
 	isa->av_scaled.pfmts = isa->av.pfmts;
 	isa->av_scaled.try_fmt_vid_mplane =
 		intel_ipu4_isys_video_try_fmt_vid_mplane_default;
@@ -1042,7 +1031,7 @@ int intel_ipu4_isys_isa_init(struct intel_ipu4_isys_isa *isa,
 		isa_prepare_firmware_stream_cfg;
 	isa->av_scaled.aq.buf_prepare = intel_ipu4_isys_buf_prepare;
 	isa->av_scaled.aq.fill_frame_buff_set_pin =
-		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin;
+		intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set_pin;
 	isa->av_scaled.aq.link_fmt_validate = intel_ipu4_isys_link_fmt_validate;
 	isa->av_scaled.aq.vbq.buf_struct_size =
 		sizeof(struct intel_ipu4_isys_video_buffer);

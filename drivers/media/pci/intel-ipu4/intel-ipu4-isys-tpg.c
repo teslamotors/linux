@@ -27,8 +27,6 @@
 #include "intel-ipu4-isys-tpg.h"
 #include "intel-ipu4-isys-tpg-reg.h"
 #include "intel-ipu4-isys-video.h"
-/* for IA_CSS_ISYS_PIN_TYPE_MIPI */
-#include "isysapi/interface/ia_css_isysapi_fw_types.h"
 
 /*
 + * PPC is 4 pixels for clock for RAW8, RAW10 and RAW12.
@@ -333,7 +331,7 @@ int intel_ipu4_isys_tpg_init(struct intel_ipu4_isys_tpg *tpg,
 
 	tpg->asd.pad[TPG_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 
-	tpg->asd.source = IA_CSS_ISYS_STREAM_SRC_MIPIGEN_PORT0 + index;
+	tpg->asd.source = IPU_FW_ISYS_STREAM_SRC_MIPIGEN_PORT0 + index;
 	tpg->asd.supported_codes = tpg_supported_codes;
 	tpg->asd.set_ffmt = tpg_set_ffmt;
 	intel_ipu4_isys_subdev_set_ffmt(&tpg->asd.sd, NULL, &fmt);
@@ -351,7 +349,7 @@ int intel_ipu4_isys_tpg_init(struct intel_ipu4_isys_tpg *tpg,
 	snprintf(tpg->av.vdev.name, sizeof(tpg->av.vdev.name),
 		 INTEL_IPU4_ISYS_ENTITY_PREFIX " TPG %u capture", index);
 	tpg->av.isys = isys;
-	tpg->av.aq.css_pin_type = IA_CSS_ISYS_PIN_TYPE_MIPI;
+	tpg->av.aq.css_pin_type = IPU_FW_ISYS_PIN_TYPE_MIPI;
 	tpg->av.pfmts = intel_ipu4_isys_pfmts_packed;
 	tpg->av.try_fmt_vid_mplane = intel_ipu4_isys_tpg_try_fmt;
 	tpg->av.prepare_firmware_stream_cfg =
@@ -363,7 +361,7 @@ int intel_ipu4_isys_tpg_init(struct intel_ipu4_isys_tpg *tpg,
 		INTEL_IPU4_ISYS_CSI2_LONG_PACKET_FOOTER_SIZE;
 	tpg->av.aq.buf_prepare = intel_ipu4_isys_buf_prepare;
 	tpg->av.aq.fill_frame_buff_set_pin =
-		intel_ipu4_isys_buffer_list_to_ia_css_isys_frame_buff_set_pin;
+		intel_ipu4_isys_buffer_list_to_ipu_fw_isys_frame_buff_set_pin;
 	tpg->av.aq.link_fmt_validate = intel_ipu4_isys_link_fmt_validate;
 	tpg->av.aq.vbq.buf_struct_size =
 		sizeof(struct intel_ipu4_isys_video_buffer);
