@@ -79,7 +79,7 @@ do {                               \
 #define haserror(error_tag) (0)
 #else
 #define haserror(error_tag) \
-	_errval == (error_tag)
+	(_errval == (error_tag))
 #endif
 
 #define verifjmpexit(cond)         \
