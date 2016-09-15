@@ -27,22 +27,20 @@
 #define DW9714_NAME             "dw9714"
 
 #define IMX214_LANES		4
-#define IMX214_I2C_ADDRESS	0x1a
+#define IMX214_I2C_ADDRESS	0x10
 
 #define OV5670_LANES		2
-#define OV5670_I2C_ADDRESS	0x10
+#define OV5670_I2C_ADDRESS	0x36
 
 #define GPIO_BASE		429
 
 static struct intel_ipu4_isys_csi2_config imx214_csi2_cfg = {
 	.nlanes = IMX214_LANES,
-	/* TODO: Update port for GT HW needed 0 -> 4 */
 	.port = 0,
 };
 
 static struct crlmodule_platform_data imx214_pdata = {
-	/* TODO: Update for GT HW needed 65 -> 71 */
-	.xshutdown = GPIO_BASE + 65,
+	.xshutdown = GPIO_BASE + 73,
 	.lanes = IMX214_LANES,
 	.ext_clk = 24000000,
 	.module_name = "IMX214",
@@ -55,18 +53,17 @@ static struct intel_ipu4_isys_subdev_info imx214_sd = {
 			 I2C_BOARD_INFO(CRLMODULE_NAME, IMX214_I2C_ADDRESS),
 			 .platform_data = &imx214_pdata,
 		},
-		/* TODO: Update for GT HW needed 1 -> 3 */
-		.i2c_adapter_id = 1,
+		.i2c_adapter_id = 8,
 	},
 };
 
 static struct intel_ipu4_isys_csi2_config ov5670_csi2_cfg = {
 	.nlanes = OV5670_LANES,
-	.port = 0,
+	.port = 4,
 };
 
 static struct crlmodule_platform_data ov5670_pdata = {
-	.xshutdown = GPIO_BASE + 63,
+	.xshutdown = GPIO_BASE + 69,
 	.lanes = OV5670_LANES,
 	.ext_clk = 24000000,
 	.module_name = "OV5670"
@@ -79,7 +76,7 @@ static struct intel_ipu4_isys_subdev_info ov5670_sd = {
 			 I2C_BOARD_INFO(CRLMODULE_NAME, OV5670_I2C_ADDRESS),
 			 .platform_data = &ov5670_pdata,
 		},
-		.i2c_adapter_id = 4,
+		.i2c_adapter_id = 7,
 	},
 };
 
@@ -88,7 +85,7 @@ static struct intel_ipu4_isys_subdev_info dw9714_sd = {
 		.board_info = {
 			I2C_BOARD_INFO(DW9714_NAME,  DW9714_VCM_ADDR),
 		},
-		.i2c_adapter_id = 1,
+		.i2c_adapter_id = 8,
 	}
 };
 
@@ -97,21 +94,16 @@ static struct intel_ipu4_isys_subdev_info dw9714_sd = {
  * this should be coming from ACPI
  */
 static struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
-	/* TODO: Update for GT HW needed (imx214):
-	 * 1-001a -> 3-001a
-	 * OSC_CLK_OUT0 -> OSC_CLK_OUT2
-	 */
-	{ CLKDEV_INIT("1-001a", NULL, NULL), "OSC_CLK_OUT0" },  /* imx214 */
-	{ CLKDEV_INIT("4-0010",  NULL, NULL), "OSC_CLK_OUT0" }, /* ov5670 */
+	{ CLKDEV_INIT("8-0010", NULL, NULL), "OSC_CLK_OUT0" },  /* imx214 */
+	{ CLKDEV_INIT("7-0036",  NULL, NULL), "OSC_CLK_OUT2" }, /* ov5670 */
 	{ CLKDEV_INIT(NULL, NULL, NULL), NULL }
 };
 
 static struct intel_ipu4_isys_subdev_pdata pdata = {
 	.subdevs = (struct intel_ipu4_isys_subdev_info *[]) {
 		&imx214_sd,
-		/* TODO: Take into use when GT HW available */
-		/* &ov5670_sd, */
 		&dw9714_sd,
+		&ov5670_sd,
 		NULL,
 	},
 	.clk_map = clk_mapping,
