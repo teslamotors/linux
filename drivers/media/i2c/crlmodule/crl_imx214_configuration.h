@@ -96,7 +96,6 @@ static struct crl_register_write_rep imx214_powerup_regset[] = {
 	{ 0x0100, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0136, CRL_REG_LEN_08BIT, 0x18 }, /*24Mhz*/
 	{ 0x0137, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x0350, CRL_REG_LEN_08BIT, 0x00 }, /* Enable/disable Long exposure*/
 	{ 0x0101, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0105, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x0138, CRL_REG_LEN_08BIT, 0x01 },
