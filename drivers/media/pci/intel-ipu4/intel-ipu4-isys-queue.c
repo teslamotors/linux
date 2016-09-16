@@ -661,6 +661,7 @@ static int intel_ipu4_isys_stream_start(struct intel_ipu4_isys_pipeline *ip,
 	return 0;
 
 out_requeue:
+	mutex_unlock(&pipe_av->isys->stream_mutex);
 	if (bl && bl->nbufs)
 		intel_ipu4_isys_buffer_list_queue(
 			bl, INTEL_IPU4_ISYS_BUFFER_LIST_FL_INCOMING |
