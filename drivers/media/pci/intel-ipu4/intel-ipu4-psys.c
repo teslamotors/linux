@@ -373,14 +373,17 @@ static void intel_ipu4_dma_buf_release(struct dma_buf *buf)
 {
 	struct intel_ipu4_psys_kbuffer *kbuf = buf->priv;
 
+	if (!kbuf)
+		return;
+
 	dev_dbg(&kbuf->psys->adev->dev, "releasing buffer %d\n", kbuf->fd);
 
 	mutex_lock(&kbuf->fh->mutex);
 	list_del(&kbuf->list);
 	mutex_unlock(&kbuf->fh->mutex);
-	dma_buf_put(buf);
 	intel_ipu4_psys_put_userpages(kbuf);
 	kfree(kbuf);
+	buf->priv = NULL;
 }
 
 int intel_ipu4_dma_buf_begin_cpu_access(struct dma_buf *dma_buf, size_t start,
@@ -536,6 +539,8 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 	/* clean up buffers */
 	list_for_each_entry_safe(kbuf, kbuf0, &fh->bufmap, list) {
 		list_del(&kbuf->list);
+		if (kbuf->dbuf)
+			kbuf->dbuf->priv = NULL;
 		intel_ipu4_psys_put_userpages(kbuf);
 		kfree(kbuf);
 	}
@@ -1525,15 +1530,21 @@ static long intel_ipu4_psys_unmapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 	dma_buf_unmap_attachment(kbuf->db_attach, kbuf->sgt, DMA_BIDIRECTIONAL);
 
 	dma_buf_detach(kbuf->dbuf, kbuf->db_attach);
-
-	dma_buf_put(kbuf->dbuf);
-
-	if (!kbuf->userptr) {
+	/*
+	 * dma_buf_put decreases refcount of the buffer. If refcount reaches
+	 * zero, dma_buf_release will be called. So the mutex is released
+	 * firstly.
+	 */
+	if (kbuf->userptr) {
+		mutex_unlock(&fh->mutex);
+		dma_buf_put(kbuf->dbuf);
+	} else {
 		list_del(&kbuf->list);
+		mutex_unlock(&fh->mutex);
+		dma_buf_put(kbuf->dbuf);
 		kfree(kbuf);
 	}
 
-	mutex_unlock(&fh->mutex);
 	dev_dbg(&psys->adev->dev, "IOC_UNMAPBUF: fd %d\n", fd);
 
 	return 0;
