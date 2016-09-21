@@ -74,7 +74,7 @@ static void apl_noacpi_pm_power_off(void)
 
 	outl(val, acpi_cr_base + PM1_CNT);
 
-	asm volatile("sti; hlt" : : : "memory");
+	asm volatile("cli; hlt" : : : "memory");
 }
 
 /**
