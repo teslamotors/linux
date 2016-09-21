@@ -425,6 +425,9 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 
 	dev_dbg(&client->dev, "%s\n", __func__);
 
+	if (!adv7481_hdmi)
+		return IRQ_HANDLED;
+
 	/* AKSV_UPDATE_A_ST: check interrupt status */
 	ret = adv_i2c_read(client, 0xE0, 0x90, &interrupt_st);
 
@@ -616,7 +619,10 @@ int adv7481_sensor_cleanup(struct i2c_client *client)
 		return 0;
 
 	dev_dbg(&client->dev, "%s: ADV7481_sensor_cleanup\n", __func__);
-	cancel_delayed_work_sync(&adv7481_hdmi->work);
+	devm_free_irq(&client->dev, sensor->irq, sensor);
+	if (adv7481_hdmi)
+		cancel_delayed_work_sync(&adv7481_hdmi->work);
+
 	sysfs_remove_group(&client->dev.kobj, &adv7481_attr_group);
 	return 0;
 }
