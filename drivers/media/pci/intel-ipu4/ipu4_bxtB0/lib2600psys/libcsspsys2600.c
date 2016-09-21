@@ -99,7 +99,7 @@ static int libcsspsys2600_terminal_set(struct ia_css_terminal *terminal,
 	ia_css_terminal_type_t type;
 	u32 buffer_state;
 
-	type = ia_css_terminal_get_type((ia_css_process_group_t *)terminal);
+	type = ia_css_terminal_get_type((ia_css_terminal_t *)terminal);
 
 	switch (type) {
 	case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN:
@@ -249,6 +249,7 @@ static int libcsspsys2600_open(struct intel_ipu4_psys *psys)
 		dev_err(&psys->adev->dev,
 			"psys library open ready failed\n");
 		ia_css_psys_close(psys_syscom);
+		ia_css_psys_release(psys_syscom, 1);
 		psys_syscom = NULL;
 		return -ENODEV;
 	}
@@ -258,10 +259,30 @@ static int libcsspsys2600_open(struct intel_ipu4_psys *psys)
 
 static int libcsspsys2600_close(struct intel_ipu4_psys *psys)
 {
-	if (psys_syscom) {
-		ia_css_psys_close(psys_syscom);
-		psys_syscom = NULL;
+	int rval;
+	unsigned int retry = INTEL_IPU4_PSYS_CLOSE_TIMEOUT;
+
+	if (!psys_syscom)
+		return 0;
+
+	if (ia_css_psys_close(psys_syscom)) {
+		dev_err(&psys->adev->dev,
+			"psys library close ready failed\n");
+		return 0;
 	}
+
+	do {
+		rval = ia_css_psys_release(psys_syscom, 0);
+		if (rval && rval != -EBUSY) {
+			dev_dbg(&psys->adev->dev, "psys library release failed\n");
+			break;
+		}
+		usleep_range(INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US,
+			     INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US + 10);
+	} while (rval && --retry);
+
+	psys_syscom = NULL;
+
 	return 0;
 }
 
