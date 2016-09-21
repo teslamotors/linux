@@ -380,14 +380,25 @@ irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 
 	dev_dbg(&isp->pdev->dev, "isr: Buttress interrupt handler\n");
 
+	pm_runtime_get(&isp->pdev->dev);
+
+	if (!pm_runtime_active(&isp->pdev->dev)) {
+		irq_status = readl(isp->base + BUTTRESS_REG_ISR_ENABLED_STATUS);
+		writel(irq_status, isp->base + BUTTRESS_REG_ISR_CLEAR);
+		pm_runtime_put(&isp->pdev->dev);
+		return IRQ_HANDLED;
+	}
+
 	trace_ipu4_perf_reg(BUTTRESS_REG_IS_FREQ_CTL,
 		readl(isp->base + BUTTRESS_REG_IS_FREQ_CTL));
 	trace_ipu4_perf_reg(BUTTRESS_REG_PS_FREQ_CTL,
 		readl(isp->base + BUTTRESS_REG_PS_FREQ_CTL));
 
 	irq_status = readl(isp->base + BUTTRESS_REG_ISR_ENABLED_STATUS);
-	if (!irq_status)
+	if (!irq_status) {
+		pm_runtime_put(&isp->pdev->dev);
 		return IRQ_NONE;
+	}
 
 	do {
 		writel(irq_status, isp->base + BUTTRESS_REG_ISR_CLEAR);
@@ -455,6 +466,8 @@ irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 	if (disable_irqs)
 		writel(BUTTRESS_IRQS & ~disable_irqs,
 		       isp->base + BUTTRESS_REG_ISR_ENABLE);
+
+	pm_runtime_put(&isp->pdev->dev);
 
 	return ret;
 }
