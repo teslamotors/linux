@@ -114,6 +114,20 @@
 #elif defined(__KERNEL__)
 #include <linux/bug.h>
 
+#ifndef KERNEL_ASSERT_TO_BUG
+#ifndef KERNEL_ASSERT_TO_BUG_ON
+#ifndef KERNEL_ASSERT_TO_WARN_ON
+#ifndef KERNEL_ASSERT_TO_WARN_ON_INF_LOOP
+#ifndef KERNEL_ASSERT_UNDEFINED
+/* Default */
+#define KERNEL_ASSERT_TO_BUG
+#endif /*KERNEL_ASSERT_UNDEFINED*/
+#endif /*KERNEL_ASSERT_TO_WARN_ON_INF_LOOP*/
+#endif /*KERNEL_ASSERT_TO_WARN_ON*/
+#endif /*KERNEL_ASSERT_TO_BUG_ON*/
+#endif /*KERNEL_ASSERT_TO_BUG*/
+
+#ifdef KERNEL_ASSERT_TO_BUG
 /* TODO: it would be cleaner to use this:
  * #define assert(cnd) BUG_ON(cnd)
  * but that causes many compiler warnings (==errors) under Android
@@ -125,6 +139,29 @@
 			BUG();                                          \
 		}                                                       \
 	} while (0)
+#endif /*KERNEL_ASSERT_TO_BUG*/
+
+#ifdef KERNEL_ASSERT_TO_BUG_ON
+#define assert(cnd) BUG_ON(!(cnd))
+#endif /*KERNEL_ASSERT_TO_BUG_ON*/
+
+#ifdef KERNEL_ASSERT_TO_WARN_ON
+#define assert(cnd) WARN_ON(!(cnd))
+#endif /*KERNEL_ASSERT_TO_WARN_ON*/
+
+#ifdef KERNEL_ASSERT_TO_WARN_ON_INF_LOOP
+#define assert(cnd)							\
+	do {								\
+		WARN_ON(!(cnd));					\
+		if (!(cnd)) {						\
+			for (;;) {}					\
+		}							\
+	} while (0)
+#endif /*KERNEL_ASSERT_TO_WARN_ON_INF_LOOP*/
+
+#ifdef KERNEL_ASSERT_UNDEFINED
+#include KERNEL_ASSERT_DEFINITION_FILESTRING
+#endif /*KERNEL_ASSERT_UNDEFINED*/
 
 #elif defined(__FIST__) || defined(__GNUC__)
 

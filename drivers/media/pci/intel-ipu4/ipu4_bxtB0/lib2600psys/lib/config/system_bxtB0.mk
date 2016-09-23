@@ -24,8 +24,13 @@ ISP_CELL                         = isp2601
 # between different isp versions the ISP_CELL_IDENTIFIER define is added.
 ISP_CELL_IDENTIFIER              = ISP2601
 HAS_IPFD                         = 1
-HAS_STR2MMIO_IN_ISL_NONSOC_PATH  = 0
-HAS_PIXEL_FORMATTER_IN_ISYS      = 1
+HAS_S2M_IN_ISYS_ISL_NONSOC_PATH  = 0
+HAS_S2V_IN_ISYS_ISL_NONSOC_PATH  = 1
+# ISL-IS non-SoC path has ISA without PAF and DPC-Pext support for IPU4-B0
+HAS_ISA_IN_ISYS_ISL              = 1
+HAS_PAF_IN_ISYS_ISL              = 0
+HAS_DPC_PEXT_IN_ISYS_ISL         = 0
+
 DLI_SYSTEM                       = hive_isp_css_2600_system
 RESOURCE_MANAGER_VERSION         = v1
 OFS_SCALER_1_4K_TILEY_422_SUPPORT= 1

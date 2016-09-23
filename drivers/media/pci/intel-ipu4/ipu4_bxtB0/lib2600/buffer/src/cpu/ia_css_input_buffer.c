@@ -18,11 +18,13 @@
 #include "vied/shared_memory_access.h"
 #include "vied/shared_memory_map.h"
 #include "cpu_mem_support.h"
-#include "assert_support.h"
+
 
 ia_css_input_buffer
-ia_css_input_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
-			  unsigned int size)
+ia_css_input_buffer_alloc(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	unsigned int size)
 {
 	ia_css_input_buffer b;
 
@@ -64,11 +66,17 @@ ia_css_input_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
 }
 
 
-void
-ia_css_input_buffer_free(vied_subsystem_t sid, vied_memory_t mid,
-			 ia_css_input_buffer b)
+ia_css_input_buffer
+ia_css_input_buffer_free(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	ia_css_input_buffer b)
 {
-	assert(b->state == buffer_unmapped);
+	if (b == NULL)
+		return NULL;
+	if (b->state != buffer_unmapped)
+		return NULL;
+
 #ifndef HRT_HW
 	/* only free if we actually allocated it separately */
 	ia_css_cpu_mem_free(b->cpu_address);
@@ -76,6 +84,8 @@ ia_css_input_buffer_free(vied_subsystem_t sid, vied_memory_t mid,
 	shared_memory_unmap(sid, mid, b->css_address);
 	shared_memory_free(mid, b->mem);
 	ia_css_cpu_mem_free(b);
+
+	return b;
 }
 
 
@@ -84,9 +94,10 @@ ia_css_input_buffer_cpu_map(ia_css_input_buffer b)
 {
 	if (b == NULL)
 		return NULL;
+	if (b->state != buffer_unmapped)
+		return NULL;
 
 	/* map input buffer to CPU address space, acquire write access */
-	assert(b->state == buffer_unmapped);
 	b->state = buffer_write;
 
 	/* return pre-mapped buffer */
@@ -94,16 +105,19 @@ ia_css_input_buffer_cpu_map(ia_css_input_buffer b)
 }
 
 
-void
+ia_css_input_buffer_cpu_address
 ia_css_input_buffer_cpu_unmap(ia_css_input_buffer b)
 {
 	if (b == NULL)
-		return;
+		return NULL;
+	if (b->state != buffer_write)
+		return NULL;
 
 	/* unmap input buffer from CPU address space, release write access */
-
-	assert(b->state == buffer_write);
 	b->state = buffer_unmapped;
+
+	/* return pre-mapped buffer */
+	return b->cpu_address;
 }
 
 
@@ -112,12 +126,14 @@ ia_css_input_buffer_css_map(vied_memory_t mid, ia_css_input_buffer b)
 {
 	if (b == NULL)
 		return 0;
+	if (b->state != buffer_unmapped)
+		return 0;
 
 	/* map input buffer to CSS address space, acquire read access */
-
-	assert(b->state == buffer_unmapped);
 	b->state = buffer_read;
 
+	/* now flush the cache */
+	ia_css_cpu_mem_cache_flush(b->cpu_address, b->size);
 #ifndef HRT_HW
 	/* only copy in case of simulation, otherwise it should just work */
 	/* copy data from CPU address space to CSS address space */
@@ -125,21 +141,24 @@ ia_css_input_buffer_css_map(vied_memory_t mid, ia_css_input_buffer b)
 #else
 	(void)mid;
 #endif
-	/* now flush the cache */
-	ia_css_cpu_mem_cache_flush(b->cpu_address, b->size);
 
 	return (ia_css_input_buffer_css_address)b->css_address;
 }
 
 
-void
+ia_css_input_buffer_css_address
 ia_css_input_buffer_css_unmap(ia_css_input_buffer b)
 {
-	/* unmap input buffer from CSS address space, release read access */
+	if (b == NULL)
+		return 0;
+	if (b->state != buffer_read)
+		return 0;
 
-	assert(b->state == buffer_read);
+	/* unmap input buffer from CSS address space, release read access */
 	b->state = buffer_unmapped;
 
 	/* input buffer only, no need to invalidate cache */
+
+	return (ia_css_input_buffer_css_address)b->css_address;
 }
 

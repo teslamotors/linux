@@ -25,7 +25,6 @@
 #include "type_support.h"
 #include "error_support.h"
 #include "ia_css_isysapi_trace.h"
-#include "assert_support.h"
 #include "misc_support.h"
 #include "cpu_mem_support.h"
 #include "storage_class.h"
@@ -205,7 +204,7 @@ int ia_css_isys_constr_comm_buff_queue(
 	int next_frame_buff_counter;
 	int buff_slot;
 
-	assert(ctx != NULL);
+	verifret(ctx, EFAULT);	/* Host Consistency */
 
 	ctx->isys_comm_buffer_queue.pstream_cfg_buff_id =
 		(ia_css_shared_buffer *)
@@ -225,7 +224,7 @@ int ia_css_isys_constr_comm_buff_queue(
 	if (ctx->isys_comm_buffer_queue.pnext_frame_buff_id == NULL) {
 		ia_css_cpu_mem_free(
 			ctx->isys_comm_buffer_queue.pstream_cfg_buff_id);
-		return -EFAULT;
+		verifret(0, EFAULT);	/* return EFAULT; equivalent */
 	}
 
 	for (stream_handle = 0; stream_handle <
@@ -291,7 +290,7 @@ SHARED_BUFF_ALLOC_FAILURE:
 		stream_cfg_buff_counter,
 		next_frame_buff_counter);
 
-	return -EFAULT;
+	verifret(0, EFAULT);	/* return EFAULT; equivalent */
 }
 
 /*
@@ -303,24 +302,19 @@ int ia_css_isys_force_unmap_comm_buff_queue(
 	int stream_handle;
 	int buff_slot;
 
-	assert(ctx != NULL);
+	verifret(ctx, EFAULT);	/* Host Consistency */
 
 	IA_CSS_TRACE_0(ISYSAPI, WARNING,
 			"ia_css_isys_force_unmap_comm_buff_queue() called\n");
 	for (stream_handle = 0; stream_handle <
 			(int)ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG];
 					stream_handle++) {
-		assert((ctx->isys_comm_buffer_queue.
-			stream_cfg_queue_head[stream_handle] -
-			ctx->isys_comm_buffer_queue.
-				stream_cfg_queue_tail[stream_handle]) <=
-					STREAM_CFG_BUFS_PER_MSG_QUEUE);
-		/* For some reason queue is more than full */
+		/* Host-FW Consistency */
 		verifret((ctx->isys_comm_buffer_queue.
 			stream_cfg_queue_head[stream_handle] -
 			ctx->isys_comm_buffer_queue.
 				stream_cfg_queue_tail[stream_handle]) <=
-					STREAM_CFG_BUFS_PER_MSG_QUEUE, EFAULT);
+					STREAM_CFG_BUFS_PER_MSG_QUEUE, EPROTO);
 		for (; ctx->isys_comm_buffer_queue.
 			stream_cfg_queue_tail[stream_handle] <
 			ctx->isys_comm_buffer_queue.
@@ -340,17 +334,12 @@ int ia_css_isys_force_unmap_comm_buff_queue(
 				ctx->isys_comm_buffer_queue.
 					pstream_cfg_buff_id[buff_slot]);
 		}
-		assert((ctx->isys_comm_buffer_queue.
-				next_frame_queue_head[stream_handle] -
-				ctx->isys_comm_buffer_queue.
-				next_frame_queue_tail[stream_handle]) <=
-					NEXT_FRAME_BUFS_PER_MSG_QUEUE);
-		/* For some reason queue is more than full */
+		/* Host-FW Consistency */
 		verifret((ctx->isys_comm_buffer_queue.
 				next_frame_queue_head[stream_handle] -
 				ctx->isys_comm_buffer_queue.
 				next_frame_queue_tail[stream_handle]) <=
-					NEXT_FRAME_BUFS_PER_MSG_QUEUE, EFAULT);
+					NEXT_FRAME_BUFS_PER_MSG_QUEUE, EPROTO);
 		for (; ctx->isys_comm_buffer_queue.
 			next_frame_queue_tail[stream_handle] <
 			ctx->isys_comm_buffer_queue.
@@ -381,7 +370,7 @@ int ia_css_isys_force_unmap_comm_buff_queue(
 int ia_css_isys_destr_comm_buff_queue(
 	struct ia_css_isys_context *ctx)
 {
-	assert(ctx != NULL);
+	verifret(ctx, EFAULT);	/* Host Consistency */
 
 	free_comm_buff_shared_mem(
 		ctx,
@@ -425,12 +414,6 @@ STORAGE_CLASS_INLINE void output_pin_info_host_to_css(
 	output_pin_info_css->watermark_in_lines =
 			output_pin_info_host->watermark_in_lines;
 	output_pin_info_css->send_irq = output_pin_info_host->send_irq;
-	assert(output_pin_info_host->ft < N_IA_CSS_ISYS_FRAME_FORMAT);
-	if (output_pin_info_host->ft >= N_IA_CSS_ISYS_FRAME_FORMAT) {
-		IA_CSS_TRACE_0(ISYSAPI, ERROR,
-			"output_pin_info_host->ft out of range\n");
-		return;
-	}
 	output_pin_info_css->ft = output_pin_info_host->ft;
 }
 
@@ -449,7 +432,6 @@ STORAGE_CLASS_INLINE void input_pin_info_host_to_css(
 	resolution_host_to_css(
 			&input_pin_info_host->input_res,
 			&input_pin_info_css->input_res);
-	assert(input_pin_info_host->dt < N_IA_CSS_ISYS_MIPI_DATA_TYPE);
 	if (input_pin_info_host->dt >= N_IA_CSS_ISYS_MIPI_DATA_TYPE) {
 		IA_CSS_TRACE_0(ISYSAPI, ERROR,
 			"input_pin_info_host->dt out of range\n");
@@ -658,46 +640,44 @@ int ia_css_isys_constr_fw_stream_cfg(
 	unsigned int wrap_compensation;
 	const unsigned int wrap_condition = 0xFFFFFFFF;
 
-	assert(ctx != NULL);
-	assert(pstream_cfg_fw != NULL);
-	assert(pbuf_stream_cfg_id != NULL);
-	assert(stream_cfg != NULL);
+	verifret(ctx, EFAULT);	/* Host Consistency */
+	verifret(pstream_cfg_fw, EFAULT);	/* Host Consistency */
+	verifret(pbuf_stream_cfg_id, EFAULT);	/* Host Consistency */
+	verifret(stream_cfg, EFAULT);	/* Host Consistency */
 
-	assert((ctx->isys_comm_buffer_queue.
-			stream_cfg_queue_head[stream_handle] -
-			ctx->isys_comm_buffer_queue.
-			stream_cfg_queue_tail[stream_handle]) <
-				STREAM_CFG_BUFS_PER_MSG_QUEUE);
-	/* For some reason queue is full */
+	/* Host-FW Consistency */
 	verifret((ctx->isys_comm_buffer_queue.
 			stream_cfg_queue_head[stream_handle] -
 			ctx->isys_comm_buffer_queue.
 			stream_cfg_queue_tail[stream_handle]) <
-				STREAM_CFG_BUFS_PER_MSG_QUEUE, EFAULT);
+				STREAM_CFG_BUFS_PER_MSG_QUEUE, EPROTO);
 	buff_slot = get_stream_cfg_buff_slot(ctx, stream_handle,
 			ctx->isys_comm_buffer_queue.
 			stream_cfg_queue_head[stream_handle] %
 				STREAM_CFG_BUFS_PER_MSG_QUEUE);
 	*pbuf_stream_cfg_id =
 		ctx->isys_comm_buffer_queue.pstream_cfg_buff_id[buff_slot];
-	assert(*pbuf_stream_cfg_id);
+	/* Host-FW Consistency */
+	verifret(*pbuf_stream_cfg_id, EADDRNOTAVAIL);
 
 	stream_cfg_cpu_addr =
 		ia_css_shared_buffer_cpu_map(*pbuf_stream_cfg_id);
-	if (stream_cfg_cpu_addr == (ia_css_shared_buffer_cpu_address)NULL)
-		return -EFAULT;
+	/* Host-FW Consistency */
+	verifret(stream_cfg_cpu_addr, EADDRINUSE);
 
 	retval = stream_cfg_data_host_to_css(stream_cfg, stream_cfg_cpu_addr);
-
-	ia_css_shared_buffer_cpu_unmap(*pbuf_stream_cfg_id);
-
 	if (retval)
 		return retval;
 
+	stream_cfg_cpu_addr =
+		ia_css_shared_buffer_cpu_unmap(*pbuf_stream_cfg_id);
+	/* Host Consistency */
+	verifret(stream_cfg_cpu_addr, EADDRINUSE);
+
 	stream_cfg_css_addr =
 		ia_css_shared_buffer_css_map(*pbuf_stream_cfg_id);
-	if (stream_cfg_css_addr == (ia_css_shared_buffer_css_address)0)
-		return -EFAULT;
+	/* Host Consistency */
+	verifret(stream_cfg_css_addr, EADDRINUSE);
 
 	ia_css_shared_buffer_css_update(ctx->mmid, *pbuf_stream_cfg_id);
 
@@ -754,10 +734,10 @@ int ia_css_isys_constr_fw_next_frame(
 	unsigned int wrap_compensation;
 	const unsigned int wrap_condition = 0xFFFFFFFF;
 
-	assert(ctx != NULL);
-	assert(pnext_frame_fw != (ia_css_shared_buffer_css_address *)NULL);
-	assert(next_frame != NULL);
-	assert(pbuf_next_frame_id != NULL);
+	verifret(ctx, EFAULT);	/* Host Consistency */
+	verifret(pnext_frame_fw, EFAULT);	/* Host Consistency */
+	verifret(next_frame, EFAULT);	/* Host Consistency */
+	verifret(pbuf_next_frame_id, EFAULT);	/* Host Consistency */
 
 	/* For some reason responses are not dequeued in time */
 	verifret((ctx->isys_comm_buffer_queue.
@@ -771,24 +751,28 @@ int ia_css_isys_constr_fw_next_frame(
 					NEXT_FRAME_BUFS_PER_MSG_QUEUE);
 	*pbuf_next_frame_id =
 		ctx->isys_comm_buffer_queue.pnext_frame_buff_id[buff_slot];
-	assert(*pbuf_next_frame_id);
+	/* Host-FW Consistency */
+	verifret(*pbuf_next_frame_id, EADDRNOTAVAIL);
 
 	/* map it in cpu */
 	next_frame_cpu_addr =
 		ia_css_shared_buffer_cpu_map(*pbuf_next_frame_id);
-	if (next_frame_cpu_addr == (ia_css_shared_buffer_cpu_address)NULL)
-		return -EFAULT;
+	/* Host-FW Consistency */
+	verifret(next_frame_cpu_addr, EADDRINUSE);
 
 	frame_buff_set_host_to_css(next_frame, next_frame_cpu_addr);
 
 	/* unmap the buffer from cpu */
-	ia_css_shared_buffer_cpu_unmap(*pbuf_next_frame_id);
+	next_frame_cpu_addr =
+		ia_css_shared_buffer_cpu_unmap(*pbuf_next_frame_id);
+	/* Host Consistency */
+	verifret(next_frame_cpu_addr, EADDRINUSE);
 
 	/* map it to css */
 	next_frame_css_addr =
 		ia_css_shared_buffer_css_map(*pbuf_next_frame_id);
-	if (next_frame_css_addr == (ia_css_shared_buffer_css_address)0)
-		return -EFAULT;
+	/* Host Consistency */
+	verifret(next_frame_css_addr, EADDRINUSE);
 
 	ia_css_shared_buffer_css_update(ctx->mmid, *pbuf_next_frame_id);
 
@@ -839,66 +823,61 @@ int ia_css_isys_extract_fw_response(
 	struct ia_css_isys_resp_info *received_response)
 {
 	int buff_slot;
+	unsigned int css_address;
 
-	assert(ctx != NULL);
-	assert(token != NULL);
-	assert(received_response != NULL);
+	verifret(ctx, EFAULT);	/* Host Consistency */
+	verifret(token, EFAULT);	/* Host Consistency */
+	verifret(received_response, EFAULT);	/* Host Consistency */
 
 	resp_info_css_to_host(&(token->resp_info), received_response);
 
 	switch (token->resp_info.type) {
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_OPEN_DONE:
-		ia_css_shared_buffer_css_unmap(
-			(ia_css_shared_buffer)
-				HOST_ADDRESS(token->resp_info.buf_id));
-		/* For some reason queue is empty */
+		/* Host-FW Consistency */
 		verifret((ctx->isys_comm_buffer_queue.
 			stream_cfg_queue_head[token->resp_info.stream_handle] -
 			ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[
-				token->resp_info.stream_handle]) > 0, EFAULT);
+				token->resp_info.stream_handle]) > 0, EPROTO);
 		buff_slot = get_stream_cfg_buff_slot(ctx,
 				token->resp_info.stream_handle,
 				ctx->isys_comm_buffer_queue.
 				stream_cfg_queue_tail[
 					token->resp_info.stream_handle] %
 						STREAM_CFG_BUFS_PER_MSG_QUEUE);
-		assert((ia_css_shared_buffer)HOST_ADDRESS(
-				token->resp_info.buf_id) ==
-				ctx->isys_comm_buffer_queue.
-					pstream_cfg_buff_id[buff_slot]);
 		verifret((ia_css_shared_buffer)HOST_ADDRESS(
 				token->resp_info.buf_id) ==
 				ctx->isys_comm_buffer_queue.
-					pstream_cfg_buff_id[buff_slot], EFAULT);
+					pstream_cfg_buff_id[buff_slot], EIO);
 		ctx->isys_comm_buffer_queue.stream_cfg_queue_tail[
 					token->resp_info.stream_handle]++;
+		css_address = ia_css_shared_buffer_css_unmap(
+			(ia_css_shared_buffer)
+				HOST_ADDRESS(token->resp_info.buf_id));
+		verifret(css_address, EADDRINUSE);
 		break;
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_START_AND_CAPTURE_ACK:
 	case IA_CSS_ISYS_RESP_TYPE_STREAM_CAPTURE_ACK:
-		ia_css_shared_buffer_css_unmap(
-			(ia_css_shared_buffer)
-				HOST_ADDRESS(token->resp_info.buf_id));
-		/* For some reason queue is empty */
+		/* Host-FW Consistency */
 		verifret((ctx->isys_comm_buffer_queue.
 			next_frame_queue_head[token->resp_info.stream_handle] -
 			ctx->isys_comm_buffer_queue.next_frame_queue_tail[
-				token->resp_info.stream_handle]) > 0, EFAULT);
+				token->resp_info.stream_handle]) > 0, EPROTO);
 		buff_slot = get_next_frame_buff_slot(ctx,
 				token->resp_info.stream_handle,
 				ctx->isys_comm_buffer_queue.
 				next_frame_queue_tail[
 					token->resp_info.stream_handle] %
 						NEXT_FRAME_BUFS_PER_MSG_QUEUE);
-		assert((ia_css_shared_buffer)HOST_ADDRESS(
-				token->resp_info.buf_id) ==
-				ctx->isys_comm_buffer_queue.
-					pnext_frame_buff_id[buff_slot]);
 		verifret((ia_css_shared_buffer)HOST_ADDRESS(
 				token->resp_info.buf_id) ==
 				ctx->isys_comm_buffer_queue.
-					pnext_frame_buff_id[buff_slot], EFAULT);
+					pnext_frame_buff_id[buff_slot], EIO);
 		ctx->isys_comm_buffer_queue.next_frame_queue_tail[
 					token->resp_info.stream_handle]++;
+		css_address = ia_css_shared_buffer_css_unmap(
+			(ia_css_shared_buffer)
+				HOST_ADDRESS(token->resp_info.buf_id));
+		verifret(css_address, EADDRINUSE);
 		break;
 	default:
 		break;
@@ -914,8 +893,8 @@ int ia_css_isys_extract_proxy_response(
 	const struct proxy_resp_queue_token *token,
 	struct ia_css_proxy_write_req_resp *preceived_response)
 {
-	assert(token != NULL);
-	assert(preceived_response != NULL);
+	verifret(token, EFAULT);	/* Host Consistency */
+	verifret(preceived_response, EFAULT);	/* Host Consistency */
 
 	preceived_response->request_id = token->proxy_resp_info.request_id;
 	preceived_response->error = token->proxy_resp_info.error_info.error;
@@ -928,7 +907,7 @@ int ia_css_isys_extract_proxy_response(
 /*
  * ia_css_isys_prepare_param()
  */
-void ia_css_isys_prepare_param(
+int ia_css_isys_prepare_param(
 	struct ia_css_isys_fw_config *isys_fw_cfg,
 	const struct ia_css_isys_buffer_partition *buf_partition,
 	const unsigned int num_send_queues[],
@@ -936,10 +915,10 @@ void ia_css_isys_prepare_param(
 {
 	unsigned int i;
 
-	assert(isys_fw_cfg != NULL);
-	assert(buf_partition != NULL);
-	assert(num_send_queues != NULL);
-	assert(num_recv_queues != NULL);
+	verifret(isys_fw_cfg, EFAULT);	/* Host Consistency */
+	verifret(buf_partition, EFAULT);	/* Host Consistency */
+	verifret(num_send_queues, EFAULT);	/* Host Consistency */
+	verifret(num_recv_queues, EFAULT);	/* Host Consistency */
 
 	buffer_partition_host_to_css(buf_partition,
 			&isys_fw_cfg->buffer_partition);
@@ -947,5 +926,7 @@ void ia_css_isys_prepare_param(
 		isys_fw_cfg->num_send_queues[i] = num_send_queues[i];
 		isys_fw_cfg->num_recv_queues[i] = num_recv_queues[i];
 	}
+
+	return 0;
 }
 

@@ -20,11 +20,17 @@
 #define IDM				0
 
 void
-buffer_load(buffer_address address, void *data, unsigned int size,
-	    unsigned int mm_id);
+buffer_load(
+	buffer_address address,
+	void *data,
+	unsigned int size,
+	unsigned int mm_id);
 
 void
-buffer_store(buffer_address address, const void *data, unsigned int size,
-	     unsigned int mm_id);
+buffer_store(
+	buffer_address address,
+	const void *data,
+	unsigned int size,
+	unsigned int mm_id);
 
 #endif /* __BUFFER_ACCESS_H_INCLUDED__ */

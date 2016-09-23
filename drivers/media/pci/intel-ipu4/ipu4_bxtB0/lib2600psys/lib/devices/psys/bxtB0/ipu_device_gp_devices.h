@@ -30,7 +30,7 @@ enum ipu_device_gp_psa_mux_id {
 	IPU_DEVICE_GP_PSA_STILLS_MODE_MUX = 0,
 	/* Post Vec2Str 4: 0-To GTC, 1-To ACM  */
 	IPU_DEVICE_GP_PSA_V2S_RGB_4_DEMUX,
-	/* Post DM and pre ACM	0-CCM/ACM: 1-DM Componenet Splitter */
+	/* Post DM and pre ACM	0-CCM/ACM: 1-DM Component Splitter */
 	IPU_DEVICE_GP_PSA_S2V_RGB_F_MUX,
 	/* Pre ACM/CCM: 0-To CCM/ACM, 1-To str2vec id_f */
 	IPU_DEVICE_GP_PSA_ACM_DEMUX,

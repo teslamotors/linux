@@ -63,7 +63,7 @@ typedef struct {
 	/**< UNSCHED / SCHED / TARGET / CRUN */
 	unsigned int	target_platform_type;
 	/**< specifies the system version stored as string
-	 * e.g. BXTA0_IPU4'\0'
+	 * e.g. BXTB0_IPU4'\0'
 	 */
 	uint8_t		system_version[SIZE_OF_SYSTEM_VERSION];
 	/**< specifies fw architecture version e.g. for BXT CSS3.0'\0' */

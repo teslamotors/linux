@@ -24,7 +24,6 @@
 
 #include "error_support.h"
 #include "cpu_mem_support.h"
-#include "assert_support.h"
 
 #include "queue_struct.h"
 #include "send_port_struct.h"

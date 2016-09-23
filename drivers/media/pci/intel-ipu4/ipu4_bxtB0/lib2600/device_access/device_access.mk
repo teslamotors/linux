@@ -41,9 +41,6 @@ endif
 ifeq "$(IPU_SYSVER)" "glvA0"
 	DEVICE_ACCESS_VERSION=v3
 endif
-ifeq "$(IPU_SYSVER)" "bxtA0"
-	DEVICE_ACCESS_VERSION=v1
-endif
 ifeq "$(IPU_SYSVER)" "bxtB0"
 	DEVICE_ACCESS_VERSION=v2
 endif

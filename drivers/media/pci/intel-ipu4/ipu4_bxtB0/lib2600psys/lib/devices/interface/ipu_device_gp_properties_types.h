@@ -82,11 +82,6 @@ enum ipu_device_gp_isa_value {
 };
 
 enum ipu_device_gp_psa_value {
-	/* Defines needed for bxtA0 */
-	/* choose and route pixel stream from DM in RGB MUX */
-	IPU_DEVICE_GP_PSA_RGB_S2V_MUX21_ROUTE_FROM_DM = 0,
-	/* choose and route pixel stream from CCM in RGB MUX */
-	IPU_DEVICE_GP_PSA_RGB_S2V_MUX21_ROUTE_FROM_CCM = 1,
 	/* Defines needed for bxtB0 */
 	/* PSA_STILLS_MODE_MUX */
 	IPU_DEVICE_GP_PSA_MUX_POST_RYNR_ROUTE_WO_DM  = 0,
@@ -133,6 +128,10 @@ enum ipu_device_gp_psa_value {
 	/* choose to use XNR5 or bypass it (gpreg 6) */
 	IPU_DEVICE_GP_PSA_3_MUX_USE_XNR5 = 0,
 	IPU_DEVICE_GP_PSA_3_MUX_BP_XNR5 = 1,
+	/* choose which input to use for the BNLM acc */
+	IPU_DEVICE_GP_PSA_1_BNLM_IN_MUX_V2S = 0,
+	IPU_DEVICE_GP_PSA_1_BNLM_IN_MUX_ISA_DOWNSCALED = 1,
+	IPU_DEVICE_GP_PSA_1_BNLM_IN_MUX_ISA_UNSCALED = 2,
 	IPU_DEVICE_GP_PSA_CONF_INVALID = 0xFF
 };
 

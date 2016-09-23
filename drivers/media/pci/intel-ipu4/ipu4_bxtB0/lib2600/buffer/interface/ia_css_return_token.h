@@ -16,7 +16,7 @@
 #define __IA_CSS_RETURN_TOKEN__
 
 #include "storage_class.h"
-#include "assert_support.h"
+#include "assert_support.h"	/* For CT_ASSERT */
 
 /* ia_css_return_token: data item of exacly 8 bytes (64 bits)
  * which can be used to pass a return token back to the host

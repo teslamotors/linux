@@ -47,7 +47,6 @@
  */
 #include "type_support.h"
 #include "error_support.h"
-#include "assert_support.h"
 #include "cpu_mem_support.h"
 #include "math_support.h"
 #include "misc_support.h"
@@ -517,7 +516,6 @@ stream_cfg->output_pins[i].output_res.width, EINVAL);
 	retval = ia_css_isys_constr_fw_stream_cfg(ctx, stream_handle,
 			&stream_cfg_fw, &buf_stream_cfg_id, stream_cfg);
 	verifret(retval == 0, retval);
-	assert(stream_cfg_fw != 0);
 	token.payload = stream_cfg_fw;
 	token.buf_handle = HOST_ADDRESS(buf_stream_cfg_id);
 	retval = ia_css_syscom_send_port_transfer(ctx->sys,
@@ -654,7 +652,6 @@ int ia_css_isys_stream_start(
 		retval = ia_css_isys_constr_fw_next_frame(ctx, stream_handle,
 				&next_frame_fw, &buf_next_frame_id, next_frame);
 		verifret(retval == 0, retval);
-		assert(next_frame_fw != 0);
 		token.payload = next_frame_fw;
 		token.buf_handle = HOST_ADDRESS(buf_next_frame_id);
 	} else {
@@ -851,7 +848,6 @@ int ia_css_isys_stream_capture_indication(
 		retval = ia_css_isys_constr_fw_next_frame(ctx, stream_handle,
 				&next_frame_fw, &buf_next_frame_id, next_frame);
 		verifret(retval == 0, retval);
-		assert(next_frame_fw != 0);
 		token.payload = next_frame_fw;
 		token.buf_handle = HOST_ADDRESS(buf_next_frame_id);
 	}

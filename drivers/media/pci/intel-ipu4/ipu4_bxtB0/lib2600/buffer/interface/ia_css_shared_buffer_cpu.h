@@ -19,29 +19,33 @@
 #include "ia_css_shared_buffer.h"
 
 ia_css_shared_buffer
-ia_css_shared_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
-			   unsigned int size);
+ia_css_shared_buffer_alloc(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	unsigned int size);
 
-void
-ia_css_shared_buffer_free(vied_subsystem_t sid, vied_memory_t mid,
-			  ia_css_shared_buffer i);
+ia_css_shared_buffer
+ia_css_shared_buffer_free(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	ia_css_shared_buffer b);
 
 ia_css_shared_buffer_cpu_address
-ia_css_shared_buffer_cpu_map(ia_css_shared_buffer i);
+ia_css_shared_buffer_cpu_map(ia_css_shared_buffer b);
 
-void
-ia_css_shared_buffer_cpu_unmap(ia_css_shared_buffer i);
+ia_css_shared_buffer_cpu_address
+ia_css_shared_buffer_cpu_unmap(ia_css_shared_buffer b);
 
 ia_css_shared_buffer_css_address
-ia_css_shared_buffer_css_map(ia_css_shared_buffer i);
+ia_css_shared_buffer_css_map(ia_css_shared_buffer b);
 
-void
-ia_css_shared_buffer_css_unmap(ia_css_shared_buffer i);
+ia_css_shared_buffer_css_address
+ia_css_shared_buffer_css_unmap(ia_css_shared_buffer b);
 
-void
-ia_css_shared_buffer_css_update(vied_memory_t mid, ia_css_shared_buffer i);
+ia_css_shared_buffer
+ia_css_shared_buffer_css_update(vied_memory_t mid, ia_css_shared_buffer b);
 
-void
-ia_css_shared_buffer_cpu_update(vied_memory_t mid, ia_css_shared_buffer i);
+ia_css_shared_buffer
+ia_css_shared_buffer_cpu_update(vied_memory_t mid, ia_css_shared_buffer b);
 
 #endif /*__IA_CSS_SHARED_BUFFER_CPU_H__*/
