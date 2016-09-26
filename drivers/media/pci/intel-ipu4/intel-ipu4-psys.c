@@ -52,6 +52,7 @@
 #include "intel-ipu4-wrapper.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-regs.h"
+#include "intel-ipu5-regs.h"
 #define CREATE_TRACE_POINTS
 #include "intel-ipu4-trace-event.h"
 
@@ -82,6 +83,16 @@ static int psys_runtime_pm_suspend(struct device *dev);
 #define pm_runtime_put_sync(d)			0
 #define pm_runtime_put_noidle(d)		0
 #define pm_runtime_put_autosuspend(d)		0
+#endif
+
+#ifdef CONFIG_VIDEO_INTEL_IPU5_FPGA
+#define null_loop  do { } while (0)
+#define pm_runtime_use_autosuspend(d)  null_loop
+#define pm_runtime_set_autosuspend_delay(d, f)  null_loop
+#define pm_runtime_dont_use_autosuspend(d)      null_loop
+#define pm_runtime_put(d)                       null_loop
+#define pm_runtime_put_sync(d)                  0
+#define pm_runtime_put_autosuspend(d)           null_loop
 #endif
 
 static dev_t intel_ipu4_psys_dev_t;
@@ -1827,6 +1838,22 @@ static void psys_setup_hw(struct intel_ipu4_psys *psys)
 		       base + INTEL_IPU4_REG_PSYS_CDC_THRESHOLD(i));
 }
 
+static void ipu5_psys_setup_hw(struct intel_ipu4_psys *psys)
+{
+	void __iomem *base = psys->pdata->base;
+	void *psys_iommu0_ctrl = base +
+			psys->pdata->ipdata->hw_variant.mmu_hw[0].offset +
+			INTEL_IPU5_PSYS_MMU0_CTRL_OFFSET;
+
+	/* Configure PSYS info bits */
+	writel(INTEL_IPU5_INFO_REQUEST_DESTINATION_PRIMARY,
+		    psys_iommu0_ctrl);
+	set_sp_info_bits(base + INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL);
+	set_sp_info_bits(base + INTEL_IPU5_PSYS_REG_SPP0_STATUS_CTRL);
+	set_sp_info_bits(base + INTEL_IPU5_PSYS_REG_SPP1_STATUS_CTRL);
+	set_isp_info_bits(base + INTEL_IPU5_PSYS_REG_ISP0_STATUS_CTRL);
+}
+
 #ifdef CONFIG_PM
 static int psys_runtime_pm_resume(struct device *dev)
 {
@@ -1858,7 +1885,10 @@ static int psys_runtime_pm_resume(struct device *dev)
 		return 0;
 	}
 
-	psys_setup_hw(psys);
+	if (is_intel_ipu5_hw_a0(psys->adev->isp))
+		ipu5_psys_setup_hw(psys);
+	else
+		psys_setup_hw(psys);
 
 	intel_ipu4_trace_restore(&psys->adev->dev);
 
@@ -2287,21 +2317,32 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	if (rval)
 		goto out_unmap_fw_image;
 
-	psys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
-		adev, fw->data,
-		sg_dma_address(psys->fw_sgt.sgl),
-		&psys->pkg_dir_dma_addr,
-		&psys->pkg_dir_size);
-	if (psys->pkg_dir == NULL) {
-		rval = -ENOMEM;
-		goto  out_remove_shared_buffer;
+	if (is_intel_ipu5_hw_a0(isp)) {
+		if (!fw->data || !sg_dma_address(psys->fw_sgt.sgl)) {
+			dev_err(&adev->dev, "firmware load failed\n");
+			rval = -ENOMEM;
+			goto  out_remove_shared_buffer;
+		}
+		psys->pkg_dir = (u64 *)fw->data;
+		psys->pkg_dir_dma_addr = sg_dma_address(psys->fw_sgt.sgl);
+		psys->pkg_dir_size = fw->size;
+	} else {
+		psys->pkg_dir = intel_ipu4_cpd_create_pkg_dir(
+			adev, fw->data,
+			sg_dma_address(psys->fw_sgt.sgl),
+			&psys->pkg_dir_dma_addr,
+			&psys->pkg_dir_size);
+		if (psys->pkg_dir == NULL) {
+			rval = -ENOMEM;
+			goto  out_remove_shared_buffer;
+		}
+		rval = intel_ipu4_wrapper_add_shared_memory_buffer(
+			PSYS_MMID, (void *)psys->pkg_dir,
+			psys->pkg_dir_dma_addr,
+			psys->pkg_dir_size);
+		if (rval)
+			goto out_free_pkg_dir;
 	}
-	rval = intel_ipu4_wrapper_add_shared_memory_buffer(
-		PSYS_MMID, (void *)psys->pkg_dir,
-		psys->pkg_dir_dma_addr,
-		psys->pkg_dir_size);
-	if (rval)
-		goto out_free_pkg_dir;
 
 	psys->server_init->ddr_pkg_dir_address = 0;
 	psys->server_init->host_ddr_pkg_dir = 0;
@@ -2333,12 +2374,22 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 		sizeof(struct ia_css_psys_server_init);
 	psys->syscom_config->ssid = PSYS_SSID;
 	psys->syscom_config->mmid = PSYS_MMID;
-	psys->syscom_config->regs_addr =
-		ipu_device_cell_memory_address(
-			SPC0, IPU_DEVICE_SP2600_CONTROL_REGS);
-	psys->syscom_config->dmem_addr =
-		ipu_device_cell_memory_address(
-			SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM);
+
+	if (is_intel_ipu5_hw_a0(isp)) {
+		psys->syscom_config->regs_addr =
+			INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL;
+		psys->syscom_config->dmem_addr =
+			INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL
+			+INTEL_IPU5_DMEM_OFFSET;
+	} else {
+		psys->syscom_config->regs_addr =
+			ipu_device_cell_memory_address(
+				SPC0, IPU_DEVICE_SP2600_CONTROL_REGS);
+		psys->syscom_config->dmem_addr =
+			ipu_device_cell_memory_address(
+				SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM);
+	}
+
 	caps.pg_count = ia_css_pkg_dir_get_num_entries(
 		(const ia_css_pkg_dir_entry_t *)isp->pkg_dir);
 	dev_info(&adev->dev, "pkg_dir entry count:%d\n", caps.pg_count);

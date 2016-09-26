@@ -36,6 +36,7 @@
 #include "intel-ipu5-isys-csi2-reg.h"
 #include "intel-ipu4-trace.h"
 #include "intel-ipu4-wrapper.h"
+#include "intel-ipu5-devel.h"
 
 /* for IA_CSS_ISYS_STREAM_SRC_MIPIGEN_PORT0 */
 #include <ia_css_isysapi_fw_types.h>
@@ -329,8 +330,9 @@ void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
 		u32 server_addr;
 
 		if (is_intel_ipu5_hw_a0(isp)) {
-			dev_warn(&isp->pdev->dev,
-				"Not config spc here for ipu5, W/A does this at isys probe\n");
+			intel_ipu5_pkg_dir_configure_spc(isp, pkg_dir_idx,
+							 base, pkg_dir,
+							 pkg_dir_dma_addr);
 			return;
 		}
 

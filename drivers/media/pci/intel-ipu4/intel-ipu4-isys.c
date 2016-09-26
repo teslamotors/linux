@@ -46,7 +46,7 @@
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-buttress-regs.h"
 #include "intel-ipu4-wrapper.h"
-#include "intel-ipu5-isys-devel.h"
+#include "intel-ipu5-devel.h"
 #include "isysapi/interface/ia_css_isysapi.h"
 
 #define ISYS_PM_QOS_VALUE	300
