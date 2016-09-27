@@ -98,6 +98,8 @@ struct intel_ipu4_ipc_buttress_bulk_msg {
 	u8 cmd_size;
 };
 
+int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
+				  struct intel_ipu4_buttress_ipc *ipc);
 int intel_ipu4_buttress_map_fw_image(struct intel_ipu4_bus_device *sys,
 				     const struct firmware *fw,
 				     struct sg_table *sgt);

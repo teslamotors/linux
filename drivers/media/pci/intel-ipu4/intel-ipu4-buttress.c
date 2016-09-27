@@ -83,7 +83,7 @@ static const u32 intel_ipu4_adev_irq_mask[] = {
 	BUTTRESS_ISR_IS_IRQ, BUTTRESS_ISR_PS_IRQ
 };
 
-static int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
+int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 					 struct intel_ipu4_buttress_ipc *ipc)
 {
 	unsigned long tout_jfs;
@@ -847,16 +847,6 @@ int intel_ipu4_buttress_authenticate(struct intel_ipu4_device *isp)
 
 	data = (u32)(isp->pkg_dir_dma_addr >> 32);
 	writel(data, isp->base + BUTTRESS_REG_FW_SOURCE_BASE_HI);
-
-	/*
-	  * Before communicate with CSE, do a rpc reset to prepare
-	  * CSE
-	  */
-	rval = intel_ipu4_buttress_ipc_reset(isp, &b->cse);
-	if (rval) {
-		dev_err(&isp->pdev->dev, "IPC reset protocol failed!\n");
-		goto iunit_power_off;
-	}
 
 	/*
 	 * Write boot_load into IU2CSEDATA0
@@ -1803,7 +1793,11 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 		goto err_remove_max_freq_file;
 	}
 
-	return rval;
+	rval = intel_ipu4_buttress_ipc_reset(isp, &b->cse);
+	if (rval)
+		dev_err(&isp->pdev->dev, "IPC reset protocol failed!\n");
+
+	return 0;
 
 err_remove_max_freq_file:
 	device_remove_file(&isp->pdev->dev,

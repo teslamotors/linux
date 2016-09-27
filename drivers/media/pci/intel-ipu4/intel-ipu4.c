@@ -994,6 +994,8 @@ static int intel_ipu4_resume(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct intel_ipu4_device *isp = pci_get_drvdata(pdev);
+	struct intel_ipu4_buttress *b = &isp->buttress;
+	int rval;
 
 	/* Configure the arbitration mechanisms for VC requests */
 	intel_ipu4_configure_vc_mechanism(isp);
@@ -1005,6 +1007,10 @@ static int intel_ipu4_resume(struct device *dev)
 
 	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_CLEAR);
 	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_ENABLE);
+
+	rval = intel_ipu4_buttress_ipc_reset(isp, &b->cse);
+	if (rval)
+		dev_err(&isp->pdev->dev, "IPC reset protocol failed!\n");
 
 	return 0;
 }
