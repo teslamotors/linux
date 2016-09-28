@@ -71,6 +71,7 @@ static struct trace_register_range trace_sig2cio_range_template[] = {
 
 #define LINE_MAX_LEN			128
 #define MEMORY_RING_BUFFER_SIZE		(SZ_1M * 10)
+#define TRACE_MESSAGE_SIZE		16
 /*
  * It looks that the trace unit sometimes writes outside the given buffer.
  * To avoid memory corruption one extra page is reserved at the end
@@ -219,8 +220,8 @@ void __intel_ipu4_trace_restore(struct device *dev)
 	       addr + TRACE_REG_TUN_DRAM_BASE_ADDR);
 
 	/* ring buffer end */
-	writel(mapped_trace_buffer + MEMORY_RING_BUFFER_SIZE,
-	       addr + TRACE_REG_TUN_DRAM_END_ADDR);
+	writel(mapped_trace_buffer + MEMORY_RING_BUFFER_SIZE -
+	       TRACE_MESSAGE_SIZE, addr + TRACE_REG_TUN_DRAM_END_ADDR);
 
 	/* Infobits for ddr trace */
 	writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
