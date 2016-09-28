@@ -14,6 +14,7 @@ include $(srcpath)/$(src)/../Makefile.link
 
 lib2600-mod-$(IPU_STEP)-objs := \
 	../libintel-ipu4.$(IPU_STEP).lnk.o \
+	../libintel-checker.$(IPU_STEP).lnk.o \
 	$(IPU_ISYSLIB_SRC)
 
 obj-$(CONFIG_VIDEO_INTEL_IPU4)	+= lib2600-mod-$(IPU_STEP).o

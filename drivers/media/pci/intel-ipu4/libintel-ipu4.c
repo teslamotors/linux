@@ -17,6 +17,7 @@
 #include "intel-ipu4-isys.h"
 #include "intel-ipu4-wrapper.h"
 #include <ia_css_isysapi.h>
+#include "libintel-checker.h"
 
 #define intel_ipu4_lib_call_notrace_unlocked(func, isys, ...)		\
 	({								\
@@ -387,6 +388,7 @@ static const struct intel_ipu4_isys_fw_ctrl api_ops = {
 
 static int __init library_init(void)
 {
+	intel_ipu4_isys_abi_checker();
 	intel_ipu4_isys_register_ext_library(&api_ops);
 	return 0;
 }
