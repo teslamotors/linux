@@ -31,6 +31,8 @@ HAS_ISA_IN_ISYS_ISL              = 1
 HAS_PAF_IN_ISYS_ISL              = 0
 HAS_DPC_PEXT_IN_ISYS_ISL         = 0
 
+HAS_MIPIBE_IN_PSYS_ISL           = 1
+
 DLI_SYSTEM                       = hive_isp_css_2600_system
 RESOURCE_MANAGER_VERSION         = v1
 OFS_SCALER_1_4K_TILEY_422_SUPPORT= 1
