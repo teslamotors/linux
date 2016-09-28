@@ -66,16 +66,16 @@ ia_css_shared_buffer_alloc(
 }
 
 
-ia_css_shared_buffer
+void
 ia_css_shared_buffer_free(
 	vied_subsystem_t sid,
 	vied_memory_t mid,
 	ia_css_shared_buffer b)
 {
 	if (b == NULL)
-		return NULL;
+		return;
 	if (b->state != buffer_unmapped)
-		return NULL;
+		return;
 
 #ifndef HRT_HW
 	/* only free if we actually allocated it separately */
@@ -84,8 +84,6 @@ ia_css_shared_buffer_free(
 	shared_memory_unmap(sid, mid, b->css_address);
 	shared_memory_free(mid, b->mem);
 	ia_css_cpu_mem_free(b);
-
-	return b;
 }
 
 

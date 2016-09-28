@@ -24,7 +24,7 @@ ia_css_output_buffer_alloc(
 	vied_memory_t mid,
 	unsigned int size);
 
-ia_css_output_buffer
+void
 ia_css_output_buffer_free(
 	vied_subsystem_t sid,
 	vied_memory_t mid,

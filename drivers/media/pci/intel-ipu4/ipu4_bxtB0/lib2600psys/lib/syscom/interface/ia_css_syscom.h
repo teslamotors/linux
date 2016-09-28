@@ -25,10 +25,10 @@
 
 #include "ia_css_syscom_config.h"
 
-#define ERROR_INVALID_PARAMETER	-1
-#define ERROR_BAD_ADDRESS		-2
-#define ERROR_BUSY				-3
-#define ERROR_NO_MEMORY			-4
+#define ERROR_INVALID_PARAMETER		(-1)
+#define ERROR_BAD_ADDRESS		(-2)
+#define ERROR_BUSY			(-3)
+#define ERROR_NO_MEMORY			(-4)
 
 struct ia_css_syscom_context;
 
