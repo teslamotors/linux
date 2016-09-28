@@ -418,3 +418,17 @@ int intel_ipu4_bus_set_iommu(struct iommu_ops *ops)
 	return bus_set_iommu(&intel_ipu4_bus, ops);
 }
 EXPORT_SYMBOL(intel_ipu4_bus_set_iommu);
+
+static int flr_rpm_recovery(struct device *dev, void *p)
+{
+	dev_dbg(dev, "FLR recovery call");
+	dev->power.runtime_error = 0;
+	return 0;
+}
+
+int intel_ipu4_bus_flr_recovery(void)
+{
+	bus_for_each_dev(&intel_ipu4_bus, NULL, NULL,
+			 flr_rpm_recovery);
+}
+EXPORT_SYMBOL(intel_ipu4_bus_flr_recovery);

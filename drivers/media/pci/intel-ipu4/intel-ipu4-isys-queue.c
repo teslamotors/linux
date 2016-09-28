@@ -168,6 +168,9 @@ static int buf_prepare(struct vb2_buffer *vb)
 #endif /* ! MEDIA_IOC_REQUEST_CMD */
 	int rval;
 
+	if (av->isys->adev->isp->flr_done)
+		return -EIO;
+
 	if (request) {
 		ib->req = media_device_request_find(&av->isys->media_dev,
 						    request);

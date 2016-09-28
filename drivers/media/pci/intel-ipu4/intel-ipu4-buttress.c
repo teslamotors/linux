@@ -450,7 +450,7 @@ irqreturn_t intel_ipu4_buttress_isr(int irq, void *isp_ptr)
 		}
 
 		irq_status = readl(isp->base + BUTTRESS_REG_ISR_ENABLED_STATUS);
-	} while (irq_status);
+	} while (irq_status && !isp->flr_done);
 
 	if (disable_irqs)
 		writel(BUTTRESS_IRQS & ~disable_irqs,
@@ -498,6 +498,10 @@ int intel_ipu4_buttress_power(
 	int ret = 0;
 
 	if (!ctrl)
+		return 0;
+
+	/* Until FLR completion nothing is expected to work */
+	if (isp->flr_done)
 		return 0;
 
 	mutex_lock(&isp->buttress.power_mutex);

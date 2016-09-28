@@ -17,6 +17,7 @@
 #include <linux/interrupt.h>
 #include <linux/firmware.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/pci.h>
 #include <linux/pm_qos.h>
 #include <linux/pm_runtime.h>
@@ -980,13 +981,41 @@ static void intel_ipu4_pci_remove(struct pci_dev *pdev)
 	release_firmware(isp->cpd_fw);
 }
 
+static void intel_ipu4_pci_reset_notify(struct pci_dev *pdev, bool prepare)
+{
+	struct intel_ipu4_device *isp = pci_get_drvdata(pdev);
+
+	if (prepare) {
+		dev_err(&pdev->dev, "FLR prepare\n");
+		pm_runtime_forbid(&isp->pdev->dev);
+		isp->flr_done = true;
+		return;
+	}
+
+	intel_ipu4_buttress_restore(isp);
+	if (isp->secure_mode)
+		intel_ipu4_buttress_reset_authentication(isp);
+
+	intel_ipu4_bus_flr_recovery();
+	isp->ipc_reinit = true;
+	pm_runtime_allow(&isp->pdev->dev);
+
+	dev_err(&pdev->dev, "FLR completed\n");
+}
+
 #ifdef CONFIG_PM
+
 /*
  * PCI base driver code requires driver to provide these to enable
  * PCI device level PM state transitions (D0<->D3)
  */
 static int intel_ipu4_suspend(struct device *dev)
 {
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct intel_ipu4_device *isp = pci_get_drvdata(pdev);
+
+	isp->flr_done = false;
+
 	return 0;
 }
 
@@ -1005,8 +1034,7 @@ static int intel_ipu4_resume(struct device *dev)
 	dev_info(dev, "IPU4 in %s mode\n",
 			isp->secure_mode ? "secure" : "non-secure");
 
-	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_CLEAR);
-	writel(BUTTRESS_IRQS, isp->base + BUTTRESS_REG_ISR_ENABLE);
+	intel_ipu4_buttress_restore(isp);
 
 	rval = intel_ipu4_buttress_ipc_reset(isp, &b->cse);
 	if (rval)
@@ -1017,6 +1045,23 @@ static int intel_ipu4_resume(struct device *dev)
 
 static int intel_ipu4_runtime_resume(struct device *dev)
 {
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct intel_ipu4_device *isp = pci_get_drvdata(pdev);
+	int rval;
+
+	intel_ipu4_configure_vc_mechanism(isp);
+	intel_ipu4_buttress_restore(isp);
+
+	if (isp->ipc_reinit) {
+		struct intel_ipu4_buttress *b = &isp->buttress;
+
+		isp->ipc_reinit = false;
+		rval = intel_ipu4_buttress_ipc_reset(isp, &b->cse);
+		if (rval)
+			dev_err(&isp->pdev->dev,
+				"IPC reset protocol failed!\n");
+	}
+
 	return 0;
 }
 
@@ -1048,6 +1093,10 @@ static const struct pci_device_id intel_ipu4_pci_tbl[] = {
 	{0,}
 };
 
+static const struct pci_error_handlers pci_err_handlers = {
+	.reset_notify = intel_ipu4_pci_reset_notify,
+};
+
 static struct pci_driver intel_ipu4_pci_driver = {
 	.name = INTEL_IPU4_NAME,
 	.id_table = intel_ipu4_pci_tbl,
@@ -1056,6 +1105,7 @@ static struct pci_driver intel_ipu4_pci_driver = {
 	.driver = {
 		.pm = INTEL_IPU4_PM,
 	},
+	.err_handler = &pci_err_handlers,
 };
 
 static int __init intel_ipu4_init(void)

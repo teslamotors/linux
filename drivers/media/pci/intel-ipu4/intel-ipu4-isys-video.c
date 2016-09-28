@@ -211,7 +211,7 @@ static int video_open(struct file *file)
 	int rval;
 
 	mutex_lock(&isys->mutex);
-	if (isys->reset_needed) {
+	if (isys->reset_needed || isp->flr_done) {
 		mutex_unlock(&isys->mutex);
 		dev_warn(&isys->adev->dev, "isys power cycle required\n");
 		return -EIO;

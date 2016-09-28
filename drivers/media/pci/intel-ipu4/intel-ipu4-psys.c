@@ -428,6 +428,9 @@ static int intel_ipu4_psys_open(struct inode *inode, struct file *file)
 	bool start_thread;
 	int i, rval;
 
+	if (isp->flr_done)
+		return -EIO;
+
 	rval = intel_ipu4_buttress_authenticate(isp);
 	if (rval) {
 		dev_err(&psys->adev->dev, "FW authentication failed\n");
@@ -914,6 +917,11 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	 */
 	int ret;
 
+	if (psys->adev->isp->flr_done) {
+		intel_ipu4_psys_kcmd_complete(psys, kcmd, -EIO);
+		return -EIO;
+	}
+
 	ret = pm_runtime_get_sync(&psys->adev->dev);
 	if (ret < 0) {
 		dev_err(&psys->adev->dev, "failed to power on PSYS\n");
@@ -1221,6 +1229,9 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 	unsigned int i;
 	size_t pg_size;
 	int ret = -ENOMEM;
+
+	if (psys->adev->isp->flr_done)
+		return -EIO;
 
 	mutex_lock(&fh->mutex);
 	kcmd = intel_ipu4_psys_copy_cmd(cmd, fh);

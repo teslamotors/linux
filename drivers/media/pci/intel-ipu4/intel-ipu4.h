@@ -133,6 +133,8 @@ struct intel_ipu4_device {
 	void __iomem *base;
 	struct dentry *intel_ipu4_dir;
 	struct intel_ipu4_trace *trace;
+	bool flr_done;
+	bool ipc_reinit;
 	bool secure_mode;
 
 	int (*isys_fw_reload)(struct intel_ipu4_device *isp);

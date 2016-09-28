@@ -79,4 +79,6 @@ int intel_ipu4_bus_set_iommu(struct iommu_ops *ops);
 	dev_set_drvdata(&(adev)->dev, data)
 #define intel_ipu4_bus_get_drvdata(adev) dev_get_drvdata(&(adev)->dev)
 
+int intel_ipu4_bus_flr_recovery(void);
+
 #endif

@@ -1622,7 +1622,8 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 		status |= readl(isys->pdata->base +
 				INTEL_IPU4_REG_ISYS_UNISPART_IRQ_STATUS);
 	} while (status & (isys->isr_csi2_bits
-			   | INTEL_IPU4_ISYS_UNISPART_IRQ_SW));
+			   | INTEL_IPU4_ISYS_UNISPART_IRQ_SW) &&
+		 !isys->adev->isp->flr_done);
 
 	spin_unlock(&isys->power_lock);
 	return IRQ_HANDLED;
