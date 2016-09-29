@@ -38,7 +38,10 @@ static struct crl_register_write_rep adv7481_cvbs_powerup_regset[] = {
 	{0x0E, CRL_REG_LEN_08BIT, 0x80, 0xF2}, /* ADI Required Write */
 	{0xB6, CRL_REG_LEN_08BIT, 0x08, 0xF2}, /* ADI Required Write */
 	{0xC0, CRL_REG_LEN_08BIT, 0xA0, 0xF2}, /* ADI Required Write */
-	{0x0E, CRL_REG_LEN_08BIT, 0x01, 0xF2}, /* ADI Required Write */
+	{0xD9, CRL_REG_LEN_08BIT, 0x44, 0xF2},
+	{0x0E, CRL_REG_LEN_08BIT, 0x40, 0xF2},
+	{0xE0, CRL_REG_LEN_08BIT, 0x01, 0xF2}, /* Fast Lock enable*/
+	{0x0E, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
 	{0x80, CRL_REG_LEN_08BIT, 0x51, 0xF2}, /* ADI Required Write */
 	{0x81, CRL_REG_LEN_08BIT, 0x51, 0xF2}, /* ADI Required Write */
 	{0x82, CRL_REG_LEN_08BIT, 0x68, 0xF2}, /* ADI Required Write */
