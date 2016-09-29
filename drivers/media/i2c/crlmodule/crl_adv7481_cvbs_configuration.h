@@ -49,7 +49,8 @@ static struct crl_register_write_rep adv7481_cvbs_powerup_regset[] = {
 	{0x13, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
 	{0x17, CRL_REG_LEN_08BIT, 0x41, 0xF2}, /* Select SH1 */
 	{0x31, CRL_REG_LEN_08BIT, 0x12, 0xF2}, /* ADI Required Write */
-	{0x10, CRL_REG_LEN_08BIT, 0x70, 0xE0}, /* Enable 1-Lane MIPI Tx,
+	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x70, 0xE0, 0x70 },
+	 /* Enable 1-Lane MIPI Tx,
 					enable pixel output and route
 					SD through Pixel port */
 	{0x00, CRL_REG_LEN_08BIT, 0x81, 0x90}, /* Enable 1-lane MIPI */
@@ -251,6 +252,7 @@ static struct crl_sensor_configuration adv7481_cvbs_crl_configuration = {
 	.csi_fmts = adv7481_cvbs_crl_csi_data_fmt,
 
 	.addr_len = CRL_ADDR_7BIT,
+	.i2c_mutex_in_use = true,
 };
 
 #endif  /* __CRLMODULE_ADV7481_CVBS_CONFIGURATION_H_ */

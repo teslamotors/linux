@@ -174,8 +174,8 @@ static struct crl_register_write_rep adv7481_hdmi_mode_rgb565[] = {
 					Double LLC Timing */
 	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED
 					AUD Outputs Enabled */
-	{0x10, CRL_REG_LEN_08BIT, 0xA0, 0xE0}, /* Enable 4-lane CSI Tx &
-					Pixel Port */
+	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
+	 /* Enable 4-lane CSI TXB & Pixel Port */
 	{0x7E, CRL_REG_LEN_08BIT, 0x98, 0x94}, /* ADI Required Write */
 };
 
@@ -191,8 +191,8 @@ static struct crl_register_write_rep adv7481_hdmi_mode_rgb888[] = {
 					Double LLC Timing */
 	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED
 					AUD Outputs Enabled */
-	{0x10, CRL_REG_LEN_08BIT, 0xA0, 0xE0}, /* Enable 4-lane CSI Tx &
-					Pixel Port */
+	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
+	 /* Enable 4-lane CSI TXB & Pixel Port */
 	{0x7E, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* ADI Required Write */
 };
 
@@ -209,8 +209,8 @@ static struct crl_register_write_rep adv7481_hdmi_mode_yuv[] = {
 					Double LLC Timing */
 	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED
 					AUD Outputs Enabled */
-	{0x10, CRL_REG_LEN_08BIT, 0xA0, 0xE0}, /* Enable 4-lane CSI Tx &
-					Pixel Port */
+	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
+	 /* Enable 4-lane CSI TXB & Pixel Port */
 	{0x00, CRL_REG_LEN_08BIT, 0x84, 0x94}, /* Enable 4-lane MIPI */
 	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
 	{0xDB, CRL_REG_LEN_08BIT, 0x10, 0x94}, /* ADI Required Write */
@@ -666,6 +666,7 @@ static struct crl_sensor_configuration adv7481_hdmi_crl_configuration = {
 	.crl_threaded_irq_fn = crl_adv7481_threaded_irq_fn,
 
 	.addr_len = CRL_ADDR_7BIT,
+	.i2c_mutex_in_use = true,
 };
 
 #endif  /* __CRLMODULE_ADV7481_HDMI_CONFIGURATION_H_ */
