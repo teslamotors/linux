@@ -21,3 +21,6 @@
 
 # Activate loading params and storing stats DDR<->REGs with DMA
 PSYS_USE_ISA_DMA                 = 1
+
+# Used in ISA module
+PSYS_ISL_DPC_DPC_V2              = 0
