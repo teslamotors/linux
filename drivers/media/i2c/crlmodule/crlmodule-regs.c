@@ -19,6 +19,8 @@
 #include "crlmodule-nvm.h"
 #include "crlmodule-regs.h"
 
+static DEFINE_MUTEX(crl_i2c_mutex);
+
 static int crlmodule_i2c_read(struct crl_sensor *sensor, u16 dev_i2c_addr,
 				u16 reg, u8 len, u32 *val)
 {
@@ -209,13 +211,24 @@ int crlmodule_write_reg(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 reg,
 	 * must be marked as CRL_REG_READ_AND_UPDATE. For such registers
 	 * first read the register and update it
 	 */
+
 	if (len & CRL_REG_READ_AND_UPDATE) {
 		u32 tmp;
+		/* Some rare cases 2 different devices can
+		 * make i2c accesses to same physical i2c address,
+		 * those read modify writes must be protected by static
+		 * mutex
+		 */
+		if (sensor->sensor_ds->i2c_mutex_in_use)
+			mutex_lock(&crl_i2c_mutex);
 
 		ret = crlmodule_i2c_read(sensor, dev_i2c_addr, reg,
 					 len & CRL_REG_LEN_READ_MASK, &val2);
-		if (ret)
+		if (ret) {
+			if (sensor->sensor_ds->i2c_mutex_in_use)
+				mutex_unlock(&crl_i2c_mutex);
 			return ret;
+		}
 
 		tmp = val2 & ~mask;
 		tmp |= val & mask;
@@ -224,6 +237,11 @@ int crlmodule_write_reg(struct crl_sensor *sensor, u16 dev_i2c_addr, u16 reg,
 
 	ret = crlmodule_i2c_write(sensor, dev_i2c_addr, reg,
 				  len & CRL_REG_LEN_READ_MASK, val);
+
+	if ((sensor->sensor_ds->i2c_mutex_in_use)
+			&& (len & CRL_REG_READ_AND_UPDATE))
+		mutex_unlock(&crl_i2c_mutex);
+
 	if (ret < 0) {
 		dev_err(&client->dev,
 			"error %d writing reg 0x%4.4x, val 0x%2.2x",

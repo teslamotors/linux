@@ -603,6 +603,7 @@ struct crl_sensor_configuration {
 	irqreturn_t (*crl_irq_fn)(int irq, void *sensor_struct);
 	irqreturn_t (*crl_threaded_irq_fn)(int irq, void *sensor_struct);
 	const bool irq_in_use;
+	const bool i2c_mutex_in_use;
 };
 
 struct crlmodule_sensors {
