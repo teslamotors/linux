@@ -67,50 +67,6 @@ uint8_t hardcode_manifest[] = {
 	0x27, 0x8d, 0x77, 0xfd, 0x23, 0xc6, 0x65, 0x1a
 };
 
-uint8_t cert_der[] = {
-	0x30, 0x82, 0x01, 0xce, 0x30, 0x82, 0x01, 0x37, 0xa0, 0x03, 0x02, 0x01,
-	0x02, 0x02, 0x09, 0x00, 0x94, 0x83, 0x94, 0xb8, 0xe5, 0x92, 0x02, 0x75,
-	0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
-	0x05, 0x05, 0x00, 0x30, 0x21, 0x31, 0x0c, 0x30, 0x0a, 0x06, 0x03, 0x55,
-	0x04, 0x0a, 0x0c, 0x03, 0x4f, 0x45, 0x4d, 0x31, 0x11, 0x30, 0x0f, 0x06,
-	0x03, 0x55, 0x04, 0x03, 0x0c, 0x08, 0x4b, 0x65, 0x79, 0x73, 0x74, 0x6f,
-	0x72, 0x65, 0x30, 0x1e, 0x17, 0x0d, 0x31, 0x36, 0x30, 0x36, 0x30, 0x31,
-	0x31, 0x34, 0x34, 0x30, 0x31, 0x33, 0x5a, 0x17, 0x0d, 0x32, 0x36, 0x30,
-	0x36, 0x30, 0x32, 0x31, 0x34, 0x34, 0x30, 0x31, 0x33, 0x5a, 0x30, 0x21,
-	0x31, 0x0c, 0x30, 0x0a, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x0c, 0x03, 0x4f,
-	0x45, 0x4d, 0x31, 0x11, 0x30, 0x0f, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c,
-	0x08, 0x4b, 0x65, 0x79, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x30, 0x81, 0x9f,
-	0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
-	0x01, 0x05, 0x00, 0x03, 0x81, 0x8d, 0x00, 0x30, 0x81, 0x89, 0x02, 0x81,
-	0x81, 0x00, 0xf1, 0x5e, 0x3a, 0xfd, 0x2c, 0x94, 0xd6, 0x4b, 0xc9, 0x8d,
-	0x08, 0x6f, 0x68, 0xf5, 0xd1, 0x88, 0x87, 0xf2, 0x18, 0x71, 0xc1, 0x3a,
-	0x18, 0xff, 0x8b, 0x67, 0x29, 0xa5, 0x5c, 0x8c, 0xb6, 0xe5, 0x7b, 0x54,
-	0xf3, 0x19, 0xcd, 0x89, 0x6e, 0xc2, 0x93, 0xa1, 0xa2, 0x16, 0x73, 0xc6,
-	0x2c, 0x89, 0xb6, 0x87, 0xda, 0xb0, 0x30, 0x65, 0x9c, 0x36, 0xf5, 0xd3,
-	0xfd, 0x17, 0x31, 0x4c, 0x67, 0x98, 0x59, 0x62, 0xff, 0x84, 0xde, 0x53,
-	0x89, 0xba, 0xd6, 0xd1, 0x0c, 0xcd, 0xcb, 0xe0, 0xf6, 0x5b, 0xe5, 0x45,
-	0x0e, 0x03, 0x43, 0xd3, 0xf4, 0x72, 0x7f, 0x30, 0xd8, 0x82, 0x88, 0xf1,
-	0xd7, 0x4c, 0x58, 0x96, 0x0d, 0xcb, 0x2f, 0xff, 0x1f, 0xa7, 0x68, 0x9c,
-	0x62, 0x50, 0x14, 0x5c, 0x20, 0xed, 0x82, 0x38, 0x8a, 0xaf, 0x93, 0xf3,
-	0x1b, 0xfd, 0x26, 0x84, 0x6b, 0x33, 0xbe, 0x96, 0xec, 0xb5, 0x02, 0x03,
-	0x01, 0x00, 0x01, 0xa3, 0x0e, 0x30, 0x0c, 0x30, 0x0a, 0x06, 0x03, 0x55,
-	0x1d, 0x0e, 0x04, 0x03, 0x04, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x2a,
-	0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x05, 0x05, 0x00, 0x03, 0x81,
-	0x81, 0x00, 0xaa, 0xdc, 0x25, 0x7b, 0xba, 0x07, 0xd8, 0xf9, 0xf5, 0xf8,
-	0xa5, 0xc8, 0x2d, 0xf3, 0x94, 0x81, 0x5c, 0x37, 0xf5, 0x09, 0x34, 0x85,
-	0x26, 0x9a, 0xc4, 0xe1, 0x09, 0xa0, 0x66, 0xf3, 0x9d, 0x51, 0xe2, 0x5d,
-	0x76, 0xd7, 0x47, 0xf4, 0xa3, 0x49, 0x3e, 0x9b, 0x53, 0x86, 0xb6, 0xa1,
-	0x27, 0x90, 0x25, 0x6e, 0xf7, 0x2d, 0x20, 0x34, 0x44, 0xb6, 0x04, 0x5f,
-	0x40, 0xea, 0xc8, 0xdd, 0xc5, 0x9e, 0xb0, 0x2e, 0xcb, 0x48, 0x37, 0xba,
-	0xe4, 0x4d, 0xc3, 0x54, 0xe6, 0x05, 0x32, 0xfd, 0x41, 0x7e, 0xf9, 0xa6,
-	0x03, 0x8e, 0x73, 0xb2, 0x92, 0xe2, 0xe8, 0xec, 0xc9, 0xbe, 0xff, 0x33,
-	0x6d, 0x8b, 0x0c, 0x7f, 0xce, 0x14, 0x56, 0xfe, 0xb4, 0xf4, 0xf7, 0xcb,
-	0xf5, 0x23, 0x51, 0x62, 0x89, 0x51, 0xe0, 0x1c, 0xe5, 0x7b, 0xd2, 0x5f,
-	0x30, 0xe9, 0xa3, 0x80, 0x03, 0xfc, 0x7d, 0x99, 0x72, 0xb1
-};
-
-size_t cert_der_len = 466;
-
 #endif
 
 struct cred *manifest_keyring_cred;
@@ -482,59 +438,129 @@ static struct x509_certificate *x509_parse_self_signed_cert(
 	return cert;
 }
 
+int check_usage_bits(uint32_t *required, uint32_t *available)
+{
+	int i;
 
-struct key *get_verified_pubkey_from_keyring(char *keyid,
+	if (!required || !available)
+		return -EFAULT;
+
+	for (i = 0; i < MANIFEST_USAGE_SIZE; i++)
+		if ((required[i] & available[i]) != required[i])
+			return -EACCES;
+
+	return 0;
+}
+
+/**
+ * get_verified_pubkey_from_keyring() - Get key from .manifest_keyring
+ * and check usage bits. All non-zero bits in @required_usage_bits must also
+ * present in manifest usage bits for the given key.
+ * Result of the function is the key or -ENOKEY if the requested
+ * key is not present in the keyring or -ESRCH if the usage bits
+ * do not match.
+ *
+ * @id: Key id (char *) in .manifest_keyring.
+ * @required_usage_bits: Usage bit mask (4 * uint32_t)
+ *
+ * Returns: Pointer to the key if ok or an error pointer.
+ */
+static struct key *get_verified_pubkey_from_keyring(char *id,
 					     uint32_t *required_usage_bits)
 {
 	struct key *pubkey;
-	int i, j, res = 0;
-	uint8_t digest[SHA256_HASH_SIZE];
+	int res = 0;
+	char hexprefix[MANIFEST_SKID_PREFIX_LEN * 2 + 1];
+	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
+	const char *ptr;
 
-	if (!keyid || !required_usage_bits)
+	if (!id || !required_usage_bits)
 		return ERR_PTR(-EFAULT);
 
-	pubkey = request_asymmetric_key(keyid);
+	pubkey = request_asymmetric_key(id);
+	if (IS_ERR(pubkey))
+		return ERR_CAST(pubkey);
+
+	if (!pubkey->payload.data || !pubkey->description)
+		return ERR_PTR(-EFAULT);
+
+	memset(hexprefix, 0, sizeof(hexprefix));
+	bin2hex(hexprefix, MANIFEST_SKID_PREFIX,
+					   MANIFEST_SKID_PREFIX_LEN);
+	ptr = strstr(pubkey->description, hexprefix);
+	if (ptr) {
+		res = hex2bin((char *) usage_bits,
+					  ptr + MANIFEST_SKID_PREFIX_LEN * 2,
+					  MANIFEST_SKID_USAGE_LEN);
+		if (res) {
+			pr_err(KBUILD_MODNAME ":Missing or invalid usage bits hex in key %s\n",
+					pubkey->description);
+			return ERR_PTR(-EINVAL);
+		}
+		if (!check_usage_bits(required_usage_bits, usage_bits))
+			return pubkey;
+	} else {
+		pr_err(KBUILD_MODNAME ":Invalid key description: %s\n",
+				pubkey->description);
+		return ERR_PTR(-EINVAL);
+	}
+
+	return ERR_PTR(-ESRCH);
+}
+
+/**
+ * get_verified_pubkey_from_keyring_by_keyid() - Get key from .manifest_keyring
+ * and check usage bits. All non-zero bits in @required_usage_bits must also
+ * present in manifest usage bits for the given key.
+ * Result of the function is the key or -ENOKEY if the requested
+ * key is not present in the keyring or -ESRCH if the usage bits
+ * do not match.
+ *
+ * @kid: Key id (struct asymmetric_key_id *) in .manifest_keyring.
+ * @required_usage_bits: Usage bit mask (4 * uint32_t)
+ *
+ * Returns: Pointer to the key if ok or an error pointer.
+ */
+static struct key *get_verified_pubkey_from_keyring_by_keyid(
+					     const struct asymmetric_key_id *kid,
+					     uint32_t *required_usage_bits)
+{
+	struct key *pubkey;
+	int res = 0;
+	char hexprefix[MANIFEST_SKID_PREFIX_LEN * 2 + 1];
+	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
+	const char *ptr;
+
+	if (!kid || !required_usage_bits)
+		return ERR_PTR(-EFAULT);
+
+	pubkey = x509_request_asymmetric_key(get_manifest_keyring(),
+							  kid, false);
 	if (IS_ERR(pubkey))
 		return ERR_CAST(pubkey);
 
 	if (!pubkey->payload.data)
 		return ERR_PTR(-EFAULT);
 
-	res = calc_pubkey_digest(pubkey->payload.data, digest);
-	if (res < 0)
-		return ERR_PTR(res);
-
-	debug_hexdump("KEY DIGEST", digest, sizeof(digest));
-
-	for (i = 0; i < key_manifest_extension_data.n_entries; i++) {
-		const struct key_manifest_entry *entry =
-			&key_manifest_extension_data.entries[i];
-
-		if (entry->header->hash_algo != SHA256_HASH_ALGO ||
-		    entry->header->hash_size != SHA256_HASH_SIZE)
-			continue;
-
-		debug_hexdump("KEY(n) DIGEST", entry->hash, sizeof(digest));
-
-		if (memcmp(digest, entry->hash, sizeof(digest)) == 0) {
-			uint8_t usage_ok = 1;
-
-			debug_hexdump("USAGE BITS", entry->header->usage,
-				      sizeof(((struct key_manifest_entry_hdr *)0)->usage));
-
-			debug_hexdump("REQUIRED BITS", required_usage_bits,
-				      sizeof(((struct key_manifest_entry_hdr *)0)->usage));
-
-			for (j = 0; j < MANIFEST_USAGE_SIZE; j++)
-				if ((required_usage_bits[j] & entry->header->usage[j])
-				    != required_usage_bits[j]) {
-					usage_ok = 0;
-					break;
-				}
-
-			if (usage_ok)
-				return pubkey;
+	memset(hexprefix, 0, sizeof(hexprefix));
+	bin2hex(hexprefix, MANIFEST_SKID_PREFIX,
+					   MANIFEST_SKID_PREFIX_LEN);
+	ptr = strstr(pubkey->description, hexprefix);
+	if (ptr) {
+		res = hex2bin((char *) usage_bits,
+					  ptr + MANIFEST_SKID_PREFIX_LEN * 2,
+					  MANIFEST_SKID_USAGE_LEN);
+		if (res) {
+			pr_err(KBUILD_MODNAME ":Missing or invalid usage bits hex in key %s\n",
+					pubkey->description);
+			return ERR_PTR(-EINVAL);
 		}
+		if (!check_usage_bits(required_usage_bits, usage_bits))
+			return pubkey;
+	} else {
+		pr_err(KBUILD_MODNAME ":Invalid key description: %s\n",
+				pubkey->description);
+		return ERR_PTR(-EINVAL);
 	}
 
 	return ERR_PTR(-ESRCH);
@@ -609,37 +635,20 @@ const struct key_manifest_extension *get_key_manifest_extension_data(void)
 	return &key_manifest_extension_data;
 }
 
-int verify_self_signed_cert_against_manifest(const void *cert_data,
-					     size_t cert_datalen,
-					     unsigned int usage_bit)
+int verify_x509_cert_against_manifest(struct x509_certificate *cert,
+					     uint32_t *required_usage_bits)
 {
-	int i, j, res = 0;
-	struct x509_certificate *cert;
+	int i, res = 0;
 	uint8_t digest[SHA256_HASH_SIZE];
-	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
-	unsigned int usage_word, usage_sub_bit;
 
-	if (!cert_data || !cert_datalen)
+	if (!cert)
 		return -EFAULT;
-
-	cert = x509_parse_self_signed_cert(cert_data, cert_datalen);
-	if (IS_ERR(cert))
-		return PTR_ERR(cert);
 
 	res = calc_pubkey_digest(cert->pub, digest);
 	if (res < 0)
 		return res;
 
 	debug_hexdump("KEY DIGEST", digest, sizeof(digest));
-
-	memset(usage_bits, 0, sizeof(usage_bits));
-
-	usage_word = usage_bit /
-		(sizeof(((struct key_manifest_entry_hdr *)0)->usage[0]) * 8);
-	usage_sub_bit = usage_bit %
-		(sizeof(((struct key_manifest_entry_hdr *)0)->usage[0]) * 8);
-
-	usage_bits[usage_word] = (0x1 << usage_sub_bit);
 
 	for (i = 0; i < key_manifest_extension_data.n_entries; i++) {
 		const struct key_manifest_entry *entry =
@@ -652,22 +661,14 @@ int verify_self_signed_cert_against_manifest(const void *cert_data,
 		debug_hexdump("KEY(n) DIGEST", entry->hash, sizeof(digest));
 
 		if (memcmp(digest, entry->hash, sizeof(digest)) == 0) {
-			uint8_t usage_ok = 1;
-
 			debug_hexdump("USAGE BITS", entry->header->usage,
-			      sizeof(((struct key_manifest_entry_hdr *)0)->usage));
+				      sizeof(((struct key_manifest_entry_hdr *)0)->usage));
 
-			debug_hexdump("REQUIRED BITS", usage_bits,
-			      sizeof(((struct key_manifest_entry_hdr *)0)->usage));
+			debug_hexdump("REQUIRED BITS", required_usage_bits,
+				      sizeof(((struct key_manifest_entry_hdr *)0)->usage));
 
-			for (j = 0; j < MANIFEST_USAGE_SIZE; j++)
-				if ((usage_bits[j] & entry->header->usage[j])
-				    != usage_bits[j]) {
-					usage_ok = 0;
-					break;
-				}
-
-			if (usage_ok)
+			if (!check_usage_bits(required_usage_bits,
+					entry->header->usage))
 				return 0;
 		}
 	}
@@ -675,65 +676,40 @@ int verify_self_signed_cert_against_manifest(const void *cert_data,
 	return -ESRCH;
 }
 
-
-#ifdef CONFIG_MANIFEST_HARDCODE
-
-static void dump_pubkey(struct key *pubkey)
+int verify_x509_cert_against_manifest_keyring(
+					     struct x509_certificate *cert,
+					     unsigned int usage_bit)
 {
-	const struct public_key *pk;
-	uint8_t *buf_n, *buf_e;
-	unsigned len_n = 0;
-	unsigned len_e = 0;
-	int sign = 0;
-
-	pk = pubkey->payload.data;
-	buf_n = (uint8_t *) mpi_get_buffer(pk->rsa.n, &len_n, &sign);
-	buf_e = (uint8_t *) mpi_get_buffer(pk->rsa.e, &len_e, &sign);
-
-	debug_hexdump("PUBKEY.N", buf_n, len_n);
-	debug_hexdump("PUBKEY.E", buf_e, len_e);
-
-	kfree(buf_n);
-	kfree(buf_e);
-}
-
-void hardcoded_manifest_test(void)
-{
-	uint32_t usage_bits[4] = { 0, 0, 0, 0 };
 	struct key *pubkey;
-	char *keyid;
-	int res;
+	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
+	unsigned int usage_word;
+	unsigned int usage_sub_bit;
 
-	keyid = "OEM: backup: 01020304";
-	pubkey = get_verified_pubkey_from_keyring(keyid, usage_bits);
-	if (!IS_ERR(pubkey)) {
-		pr_info(KBUILD_MODNAME ": get_verified_pubkey_from_keyring(\"%s\") OK\n",
-			   keyid);
-		dump_pubkey(pubkey);
-	} else
-		pr_err(KBUILD_MODNAME ": get_verified_pubkey_from_keyring(\"%s\")=%ld\n",
-			   keyid, PTR_ERR(pubkey));
+	if (!cert)
+		return -EFAULT;
 
-	keyid = "Intel: 00";
-	pubkey = get_verified_pubkey_from_keyring(keyid, usage_bits);
-	if (!IS_ERR(pubkey)) {
-		pr_info(KBUILD_MODNAME ": get_verified_pubkey_from_keyring(\"%s\") OK\n",
-			   keyid);
-		dump_pubkey(pubkey);
-	} else
-		pr_err(KBUILD_MODNAME ": get_verified_pubkey_from_keyring(\"%s\")=%ld\n",
-			   keyid, PTR_ERR(pubkey));
+	if (!cert->akid_skid)
+		return -EINVAL;
 
-	keyid = "OEM: Keystore: 00";
-	res = verify_self_signed_cert_against_manifest(cert_der, cert_der_len, 40);
-	if (!res)
-		pr_info(KBUILD_MODNAME ": verify_self_signed_cert_against_manifest OK\n");
-	else
-		pr_err(KBUILD_MODNAME ": verify_self_signed_cert_against_manifest=%d\n",
-			res);
+	/* Set the usage bits */
+	memset(usage_bits, 0, sizeof(usage_bits));
+
+	usage_word = usage_bit /
+		(sizeof(((struct key_manifest_entry_hdr *)0)->usage[0]) * 8);
+	usage_sub_bit = usage_bit %
+		(sizeof(((struct key_manifest_entry_hdr *)0)->usage[0]) * 8);
+
+	if (usage_word >= MANIFEST_USAGE_SIZE)
+		return -EINVAL;
+
+	usage_bits[usage_word] = (0x1 << usage_sub_bit);
+
+	pubkey = get_verified_pubkey_from_keyring_by_keyid(cert->akid_skid, usage_bits);
+	if (IS_ERR(pubkey))
+		return PTR_ERR(pubkey);
+
+	return 0;
 }
-
-#endif
 
 static int __init manifest_init(void)
 {
@@ -811,6 +787,8 @@ static int __init manifest_init(void)
 		res = PTR_ERR(keyring);
 		goto err2;
 	}
+
+	set_bit(KEY_FLAG_TRUSTED_ONLY, &keyring->flags);
 
 	manifest_keyring_cred = cred;
 	manifest_keyring = keyring;

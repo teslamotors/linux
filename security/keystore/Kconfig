@@ -129,7 +129,7 @@ config KEYSTORE_OEM_KEY_USAGE_BIT
 config KEYSTORE_OEM_KEY_IDENTIFIER
 	string "Keystore OEM Kernel Keyring Identifier"
 	depends on KEYSTORE_FULL
-	default "OEM: Keystore: 00"
+	default "OEM: Keystore: 4f454d4b4559000000000080000000000000000000004b657973746f7265"
 	help
 		The key identifier for the OEM public key used to
 		verify data (e.g. backup and migration keys) which

@@ -44,6 +44,15 @@
 #define KEY_USAGE_ISH               41
 /* Bits 42 - 127 are reserved for future OEM usage */
 
+/* SKID related constants */
+#define MANIFEST_SKID_PREFIX        "OEMKEY"
+#define MANIFEST_SKID_PREFIX_LEN    6
+#define MANIFEST_SKID_USAGE_LEN     16
+
+/* Forward declaration is sufficient here. It is used because the struct
+   is defined out of include/, in crypto/asymmetric_keys/x509_parser.h */
+struct x509_certificate;
+
 /**
  * struct manifest_version - Manifest version
  *
@@ -189,6 +198,17 @@ struct key_manifest_extension {
 } __packed;
 
 /**
+ * get_manifest_keyring() - Get manifest keyring.
+ *
+ * Returns: manifest keyring.
+ */
+extern struct key *manifest_keyring;
+static inline struct key *get_manifest_keyring(void)
+{
+	return manifest_keyring;
+}
+
+/**
  * get_manifest_data() - Get parsed manifest data.
  *
  * Returns: parsed manifest data.
@@ -201,23 +221,6 @@ const struct manifest *get_manifest_data(void);
  * Returns: parsed manifest data.
  */
 const struct key_manifest_extension *get_key_manifest_extension_data(void);
-
-/**
- * get_verified_pubkey_from_keyring() - Get key from .manifest_keyring
- * and verify against the manifest key list and associated usage bits.
- * All non-zero bits in @required_usage_bits must also present in manifest
- * usage bits for the given key.
- * Result of the function is the verified key or -ENOKEY if the requested
- * key is not present in the keyring or -ESRCH if the hash of the key
- * is not present in the manifest.
- *
- * @keyid: Key id in .manifest_keyring to be verified.
- * @required_usage_bits: Usage bit mask (4 * uint32_t)
- *
- * Returns: Pointer to the key if ok or an error pointer.
- */
-struct key *get_verified_pubkey_from_keyring(char *keyid,
-	uint32_t *required_usage_bits);
 
 /**
  * manifest_key_verify_digest() - Check if a digest has been
@@ -237,23 +240,43 @@ int manifest_key_verify_digest(void *digest, unsigned int digest_size,
 			       char *keyid, unsigned int usage_bit);
 
 /**
- * verify_self_signed_cert_against_manifest() - Check if a X509
- * certificate (in DER format) is self signed and its public key
- * is among the manifest keys with a specific usage bit set.
+ * check_usage_bits() - Check if all required usage bits
+ * are among available usage bit set.
  *
- * @cert_data: X509 certificate to be verified (in DER format)
- * @digest_size: Size of the certificate
+ * @required: The required usage bit set.
+ * @available: The available (provided) usage bit set.
+ *
+ * Returns: 0 if verified OK or negative error code (see errno).
+ */
+int check_usage_bits(uint32_t *required, uint32_t *available);
+
+/**
+ * verify_x509_cert_against_manifest() - Check if the public key
+ * of a X509 certificate is among the manifest keys with a specific
+ * usage bit set.
+ *
+ * @cert: X509 certificate to be verified
+ * @required_usage_bits: The usage bits to check against
+ *
+ * Returns: 0 if verified OK or negative error code (see errno).
+ */
+int verify_x509_cert_against_manifest(struct x509_certificate *cert,
+					     uint32_t *required_usage_bits);
+
+/**
+ * verify_x509_cert_against_manifest_keyring() - Check if the
+ * certificate is signed by a key present in the
+ * manifest keyring and matches the requested usage bits
+ * with a specific usage bit set.
+ *
+ * @cert: X509 certificate to be verified
  * @usage_bit: The usage bit to check against
  *
  * Returns: 0 if verified OK or negative error code (see errno).
  */
-int verify_self_signed_cert_against_manifest(const void *cert_data,
-					     size_t cert_datalen,
+int verify_x509_cert_against_manifest_keyring(
+					     struct x509_certificate *cert,
 					     unsigned int usage_bit);
 
-
-#ifdef CONFIG_MANIFEST_HARDCODE
-void hardcoded_manifest_test(void);
-#endif
 
 #endif /* _MANIFEST_H_ */

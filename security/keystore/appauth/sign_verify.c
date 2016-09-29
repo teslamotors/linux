@@ -154,7 +154,7 @@ static int verify_cert_validity(struct x509_certificate *cert)
 }
 
 /**
- * Verifies the signature on the data using the certificate
+ * Verifies the certificate and then the signature of the manifest data
  *
  * @param sig          - contain the signature.
  * @param cert         - contain the certificate.
@@ -163,47 +163,58 @@ static int verify_cert_validity(struct x509_certificate *cert)
  * @param cert_len     - length of the certificate.
  * @param data_len     - length of the data.
  *
- * @return 0,if success or error code (see enum APP_AUTH_ERROR).
+ * @return 0 if success or error code (see enum APP_AUTH_ERROR).
  */
 int verify_manifest(const char *sig, const char *cert, const char *data,
 			int sig_len, int cert_len, int data_len)
 {
 	struct x509_certificate *x509cert = NULL;
 	appauth_digest hash;
-	int res;
+	int res = 0;
 
-	res = verify_self_signed_cert_against_manifest(cert, cert_len,
-		ATTESTATION_KEY_USAGE_BIT);
-	if (res != 0) {
-		ks_err("DEBUG_APPAUTH: Certificate Verification Failed (%d)\n", res);
+	x509cert = x509_cert_parse((void *)cert, cert_len);
+	if (!x509cert) {
+		ks_err("Manifest cert parse failed\n");
 		return -CERTIFICATE_FAILURE;
 	}
 
-	x509cert = x509_cert_parse((void *)cert, cert_len);
-	if (!x509cert)
-			return -CERTIFICATE_FAILURE;
-
 	if (!x509cert->pub) {
-		x509_free_certificate(x509cert);
-		return -KEY_RETRIEVE_ERROR;
+		ks_err("Invalid manifest cert\n");
+		res = -CERTIFICATE_FAILURE;
+		goto exit;
+	}
+
+	res = verify_x509_cert_against_manifest_keyring(
+		x509cert, ATTESTATION_KEY_USAGE_BIT);
+	if (res != 0) {
+		ks_err("Manifest cert verification failed (%d)\n", res);
+		res = -CERTIFICATE_FAILURE;
+		goto exit;
 	}
 
 	res = verify_cert_validity(x509cert);
-	if (res)
-		return -CERTIFICATE_EXPIRED;
+	if (res != 0) {
+		ks_err("Manifest cert validity check failed (%d)\n", res);
+		res = -CERTIFICATE_EXPIRED;
+		goto exit;
+	}
 
 	hash.algo = default_sig_hash_algo;
 	if (calc_shash(&hash, data, data_len) < 0) {
-		x509_free_certificate(x509cert);
-		return -SIGNATURE_FAILURE;
+		ks_err("Manifest signature calculation failed\n");
+		res = -SIGNATURE_FAILURE;
+		goto exit;
 	}
 
 	if (verify_manifest_signature(x509cert->pub, &hash, sig, sig_len) != 0) {
-		ks_err("DEBUG_APPAUTH: Signature Verification Failed\n");
-		x509_free_certificate(x509cert);
-		return -SIGNATURE_FAILURE;
+		ks_err("Manifest signature verification failed\n");
+		res = -SIGNATURE_FAILURE;
+		goto exit;
 	}
-	ks_debug("DEBUG_APPAUTH: Signature Verification is SUCCESS\n");
+	ks_debug("DEBUG_APPAUTH: Signature verification OK\n");
+
+exit:
 	x509_free_certificate(x509cert);
-	return 0;
+	return res;
 }
+

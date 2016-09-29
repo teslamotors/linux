@@ -189,6 +189,9 @@ int manifest_sanity_check(char *manifest_buf, uint16_t manifest_len)
 	++buf;
 	len = *((uint16_t *)buf);
 	ks_debug("DEBUG_APPAUTH: length retrieved = %d\n", len);
+	if (len + 3 != manifest_len)
+		return -1;
+
 	buf += 2;
 	max_len = manifest_len - 3;
 
