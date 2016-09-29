@@ -36,7 +36,8 @@
  */
 enum device_state {
 	IA_CSS_ISYS_DEVICE_STATE_IDLE = 0,
-	IA_CSS_ISYS_DEVICE_STATE_CONFIGURED
+	IA_CSS_ISYS_DEVICE_STATE_CONFIGURED = 1,
+	IA_CSS_ISYS_DEVICE_STATE_READY = 2
 };
 #endif /* VERIFY_DEVSTATE */
 
@@ -143,7 +144,7 @@ extern int ia_css_isys_extract_proxy_response(
 /**
  * ia_css_isys_prepare_param()
  */
-extern void ia_css_isys_prepare_param(
+extern int ia_css_isys_prepare_param(
 	struct ia_css_isys_fw_config *isys_fw_cfg,
 	const struct ia_css_isys_buffer_partition *buf_partition,
 	const unsigned int num_send_queues[],

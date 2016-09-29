@@ -19,7 +19,7 @@ LOGICAL_FW_ISP_SYSTEM            = idsp_system
 SP_CONTROL_CELL                  = sp_control
 SP_PROXY_CELL                    = sp_proxy
 ISP_CELL                         = idsp
-# The non-capital define idsp is used in the sdk, in order to distinguish
+# The non-capital define isp2601 is used in the sdk, in order to distinguish
 # between different isp versions the ISP_CELL_IDENTIFIER define is added.
 ISP_CELL_IDENTIFIER              = IDSP
 
@@ -28,13 +28,21 @@ ISP_CELL_IDENTIFIER              = IDSP
 # The other path can handle up to 8 streams for SoC sensors and additional raw
 # sensors (the soc path),
 # In IPU5 the nonsoc path has str2mmio devices instead of s2v devices
-HAS_STR2MMIO_IN_ISL_NONSOC_PATH = 1
-HAS_PIXEL_FORMATTER_IN_ISYS     = 0
-HAS_OFS_OUT_CONVERTER           = 1
-HAS_ISL_PIFCONV	= 1
+HAS_S2M_IN_ISYS_ISL_NONSOC_PATH  = 1
+HAS_S2V_IN_ISYS_ISL_NONSOC_PATH  = 0
+# ISL-IS non-SoC path doesn't have ISA in IPU5-A0
+HAS_ISA_IN_ISYS_ISL              = 0
+HAS_PAF_IN_ISYS_ISL              = 0
+HAS_DPC_PEXT_IN_ISYS_ISL         = 0
+
+HAS_ISL_PIFCONV                  = 1
+HAS_OFS_OUT_CONVERTER            = 1
+
+HAS_MIPIBE_IN_PSYS_ISL           = 0
 
 DLI_SYSTEM                       ?= ipu5_system
 HOST_CPPFLAGS                    += -DHAS_BUTTRESS
 OFS_OUTPUT_TO_TRANSFER_VMEM      = 1
 RESOURCE_MANAGER_VERSION         = v3
 PROGDESC_ACC_SYMBOLS_VERSION     = v2
+

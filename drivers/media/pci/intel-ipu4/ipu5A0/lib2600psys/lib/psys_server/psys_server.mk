@@ -26,9 +26,7 @@ PSYS_SERVER_WATCHDOG_ENABLE ?= 0
 PSYS_SERVER_INTERFACE=$(PSYS_SERVER_DIR)/interface
 PSYS_SERVER_SOURCES=$(PSYS_SERVER_DIR)/src
 
-ifeq ($(IPU_SYSVER), bxtA0)
-	PSYS_SERVER_VERSION=v1
-else ifeq ($(IPU_SYSVER), bxtB0)
+ifeq ($(IPU_SYSVER), bxtB0)
 	PSYS_SERVER_VERSION=v2
 else ifeq ($(IPU_SYSVER), $(filter $(IPU_SYSVER), cnlA0 cnlB0))
 	PSYS_SERVER_VERSION=v3
@@ -59,6 +57,7 @@ PSYS_SERVER_SUPPORT_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_server_config.c
 # Include those to build the release firmware. Otherwise replace by test code.
 PSYS_SERVER_RELEASE_FW_FILES = $(PSYS_SERVER_SOURCES)/psys_server.c
 PSYS_SERVER_RELEASE_FW_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_proxy.c
+PSYS_SERVER_RELEASE_FW_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_server_dev_access.c
 PSYS_SERVER_RELEASE_FW_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_server_terminal_load.c
 PSYS_SERVER_RELEASE_FW_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_server_event.c
 PSYS_SERVER_RELEASE_FW_FILES += $(PSYS_SERVER_SOURCES)/ia_css_psys_server_remote_obj_access.c
@@ -79,9 +78,7 @@ ifeq ($(PSYS_SERVER_WATCHDOG_ENABLE), 1)
 	PSYS_SERVER_FW_CPPFLAGS += -DPSYS_SERVER_WATCHDOG_DEBUG
 endif
 
-ifeq ($(IPU_SYSVER), bxtA0)
-	PSYS_SERVER_FW_CPPFLAGS += -DBXT_A0_HW
-else ifeq ($(IPU_SYSVER), bxtB0)
+ifeq ($(IPU_SYSVER), bxtB0)
 	PSYS_SERVER_FW_CPPFLAGS += -DBXT_B0_HW
 else ifeq ($(IPU_SYSVER), cnlA0)
 	PSYS_SERVER_FW_CPPFLAGS += -DCNL_A0_HW

@@ -43,9 +43,16 @@ struct ia_css_buffer_s {
 
 typedef struct ia_css_buffer_s *ia_css_buffer_t;
 
-ia_css_buffer_t	ia_css_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
-				    unsigned int size);
-void		ia_css_buffer_free(vied_subsystem_t sid, vied_memory_t mid,
-				   ia_css_buffer_t b);
+ia_css_buffer_t
+ia_css_buffer_alloc(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	unsigned int size);
+
+void
+ia_css_buffer_free(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	ia_css_buffer_t b);
 
 #endif /*__BUFFER_H__*/

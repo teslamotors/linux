@@ -13,18 +13,18 @@
 */
 
 
+#include "ia_css_output_buffer_cpu.h"
 #include "ia_css_buffer.h"
 #include "vied/shared_memory_access.h"
 #include "vied/shared_memory_map.h"
 #include "cpu_mem_support.h"
-#include "assert_support.h"
-
-#include "ia_css_output_buffer_cpu.h"
 
 
 ia_css_output_buffer
-ia_css_output_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
-			   unsigned int size)
+ia_css_output_buffer_alloc(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	unsigned int size)
 {
 	ia_css_output_buffer b;
 
@@ -67,10 +67,15 @@ ia_css_output_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
 
 
 void
-ia_css_output_buffer_free(vied_subsystem_t sid, vied_memory_t mid,
-			  ia_css_output_buffer b)
+ia_css_output_buffer_free(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	ia_css_output_buffer b)
 {
-	assert(b->state == buffer_unmapped);
+	if (b == NULL)
+		return;
+	if (b->state != buffer_unmapped)
+		return;
 
 #ifndef HRT_HW
 	/* only free if we actually allocated it separately */
@@ -85,31 +90,42 @@ ia_css_output_buffer_free(vied_subsystem_t sid, vied_memory_t mid,
 ia_css_output_buffer_css_address
 ia_css_output_buffer_css_map(ia_css_output_buffer b)
 {
-	/* map output buffer to CSS address space, acquire write access */
+	if (b == NULL)
+		return 0;
+	if (b->state != buffer_unmapped)
+		return 0;
 
-	assert(b->state == buffer_unmapped);
+	/* map output buffer to CSS address space, acquire write access */
 	b->state = buffer_write;
 
 	return (ia_css_output_buffer_css_address)b->css_address;
 }
 
 
-void
+ia_css_output_buffer_css_address
 ia_css_output_buffer_css_unmap(ia_css_output_buffer b)
 {
-	/* unmap output buffer from CSS address space, release write access */
+	if (b == NULL)
+		return 0;
+	if (b->state != buffer_write)
+		return 0;
 
-	assert(b->state == buffer_write);
+	/* unmap output buffer from CSS address space, release write access */
 	b->state = buffer_unmapped;
+
+	return (ia_css_output_buffer_css_address)b->css_address;
 }
 
 
 ia_css_output_buffer_cpu_address
 ia_css_output_buffer_cpu_map(vied_memory_t mid, ia_css_output_buffer b)
 {
-	/* map output buffer to CPU address space, acquire read access */
+	if (b == NULL)
+		return NULL;
+	if (b->state != buffer_unmapped)
+		return NULL;
 
-	assert(b->state == buffer_unmapped);
+	/* map output buffer to CPU address space, acquire read access */
 	b->state = buffer_read;
 
 #ifndef HRT_HW
@@ -126,17 +142,19 @@ ia_css_output_buffer_cpu_map(vied_memory_t mid, ia_css_output_buffer b)
 }
 
 
-void
+ia_css_output_buffer_cpu_address
 ia_css_output_buffer_cpu_unmap(ia_css_output_buffer b)
 {
-	/* unmap output buffer from CPU address space, release read access */
-
 	if (b == NULL)
-		return;
+		return NULL;
+	if (b->state != buffer_read)
+		return NULL;
 
-	assert(b->state == buffer_read);
+	/* unmap output buffer from CPU address space, release read access */
 	b->state = buffer_unmapped;
 
 	/* output only, no need to flush cache */
+
+	return b->cpu_address;
 }
 

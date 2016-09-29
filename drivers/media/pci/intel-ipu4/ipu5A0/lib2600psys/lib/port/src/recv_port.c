@@ -12,19 +12,18 @@
  * more details.
 */
 
-/* implemented: */
 #include "recv_port.h"
+#include "port_env_struct.h"     /* for port_env                        */
+#include "queue_struct.h"        /* for sys_queue                       */
+#include "recv_port_struct.h"    /* for recv_port                       */
+#include "buffer_access.h"       /* for buffer_load, buffer_address     */
+#include "regmem_access.h"       /* for regmem_load_32, regmem_store_32 */
+#include "storage_class.h"       /* for STORAGE_CLASS_INLINE            */
+#include "math_support.h"        /* for OP_std_modadd                   */
+#include "type_support.h"        /* for HOST_ADDRESS                    */
 
-/* used: */
-#include "queue_struct.h"
-#include "recv_port_struct.h"
-#include "port_env_struct.h"
-#include "regmem_access.h"
-#include "buffer_access.h"
-#include "storage_class.h"
-#include "math_support.h"
 #ifndef __VIED_CELL
-#include "cpu_mem_support.h"
+#include "cpu_mem_support.h"     /* for ia_css_cpu_mem_cache_invalidate */
 #endif
 
 void

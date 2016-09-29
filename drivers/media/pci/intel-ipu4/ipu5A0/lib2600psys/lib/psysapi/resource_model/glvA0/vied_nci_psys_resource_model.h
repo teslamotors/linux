@@ -115,7 +115,7 @@ typedef enum {
 #define VIED_NCI_N_ACC_OSA_MEM		0
 #define VIED_NCI_N_GDC_MEM		0
 
-#define VIED_NCI_N_VP_CELL		4
+#define VIED_NCI_N_VP_CELL		1
 #define VIED_NCI_N_ACC_CELL		12
 
 /*

@@ -33,6 +33,14 @@
 #undef MAX
 #endif
 
+#ifndef UINT16_MAX
+#define UINT16_MAX       (0xffffUL)
+#endif
+
+#ifndef UINT32_MAX
+#define UINT32_MAX       (0xffffffffUL)
+#endif
+
 #define IS_ODD(a) ((a) & 0x1)
 #define IS_EVEN(a) (!IS_ODD(a))
 #define IS_POWER2(a) (!((a)&((a)-1)))

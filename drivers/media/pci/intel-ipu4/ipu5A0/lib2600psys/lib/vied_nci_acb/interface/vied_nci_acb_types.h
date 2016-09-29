@@ -58,7 +58,7 @@ typedef struct {
 	uint32_t fork_acb_output;
 } vied_nci_acb_route_t;
 
-typedef struct {
+typedef __register struct {
 	/* ACB_FRAME_SIZE */
 	/* For the FRAGMENT to process, just in ISYS frame == fragment */
 	uint32_t frame_width;
@@ -69,7 +69,7 @@ typedef struct {
 	uint32_t scale_nf;
 } vied_nci_acb_control_config_t;
 
-typedef struct {
+typedef __register struct {
 	vied_nci_acb_control_config_t ctrl;
 	uint32_t event_queue_address;
 	uint32_t ack_pid;

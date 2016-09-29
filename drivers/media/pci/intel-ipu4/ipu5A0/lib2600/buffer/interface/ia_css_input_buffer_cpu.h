@@ -19,24 +19,28 @@
 #include "ia_css_input_buffer.h"
 
 ia_css_input_buffer
-ia_css_input_buffer_alloc(vied_subsystem_t sid, vied_memory_t mid,
-			  unsigned int size);
+ia_css_input_buffer_alloc(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	unsigned int size);
 
 void
-ia_css_input_buffer_free(vied_subsystem_t sid, vied_memory_t mid,
-			 ia_css_input_buffer buf);
+ia_css_input_buffer_free(
+	vied_subsystem_t sid,
+	vied_memory_t mid,
+	ia_css_input_buffer b);
 
 ia_css_input_buffer_cpu_address
-ia_css_input_buffer_cpu_map(ia_css_input_buffer buf);
+ia_css_input_buffer_cpu_map(ia_css_input_buffer b);
 
-void
-ia_css_input_buffer_cpu_unmap(ia_css_input_buffer buf);
+ia_css_input_buffer_cpu_address
+ia_css_input_buffer_cpu_unmap(ia_css_input_buffer b);
 
 ia_css_input_buffer_css_address
-ia_css_input_buffer_css_map(vied_memory_t mid, ia_css_input_buffer buf);
+ia_css_input_buffer_css_map(vied_memory_t mid, ia_css_input_buffer b);
 
-void
-ia_css_input_buffer_css_unmap(ia_css_input_buffer buf);
+ia_css_input_buffer_css_address
+ia_css_input_buffer_css_unmap(ia_css_input_buffer b);
 
 
 #endif /* __IA_CSS_INPUT_BUFFER_CPU_H__ */

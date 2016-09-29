@@ -22,7 +22,6 @@ enum ipu_device_gp_id {
 	IPU_DEVICE_GP_ISA_STATIC,
 	IPU_DEVICE_GP_ISA_RUNTIME,
 	IPU_DEVICE_GP_ISL,
-	IPU_DEVICE_GP_PSA_BLOCKER,
 	IPU_DEVICE_GP_NUM_GP
 };
 
@@ -37,6 +36,7 @@ enum ipu_device_gp_id {
  * or isa_ps_system.rdl).
  */
 enum ipu_device_gp_psa_mux_id {
+	/* Mux/demuxes */
 	/* 0 - BNLM output pixel stream; 1 - BNLM output delta stream */
 	IPU_DEVICE_GP_PSA_1_NOISE_MUX = 0,
 	/* 0 - To XNR; 1 - WB/DM */
@@ -50,7 +50,12 @@ enum ipu_device_gp_psa_mux_id {
 	/* 0 - v2s_1 output; 1 - ISA downscaled stream;
 	 * 2 - ISA original sized stream
 	 */
-	IPU_DEVICE_GP_LBFF_V2S_1_OUTPUT_MUX,
+	IPU_DEVICE_GP_PSA_1_BNLM_IN_MUX,
+	/* Device blockers */
+	IPU_DEVICE_GP_PSA_1_BNLM_PIXEL_STRM_BLK,
+	IPU_DEVICE_GP_PSA_1_BNLM_DELTA_STRM_BLK,
+	IPU_DEVICE_GP_PSA_2_VCSC_IN_BLK,
+	IPU_DEVICE_GP_PSA_2_XNR5_BP_BLK,
 	IPU_DEVICE_GP_PSA_MUX_NUM_MUX
 };
 
@@ -94,14 +99,6 @@ enum ipu_device_gp_isa_runtime_mux_id {
 enum ipu_device_gp_isl_mux_id {
 	IPU_DEVICE_GP_ISL_MIPI_BE_MUX = 0,
 	IPU_DEVICE_GP_ISL_MUX_NUM_MUX
-};
-
-enum ipu_device_gp_psa_blocker_id {
-	IPU_DEVICE_GP_PSA_1_BNLM_PIXEL_STRM_BLOCK_EN,
-	IPU_DEVICE_GP_PSA_1_BNLM_DELTA_STRM_BLOCK_EN,
-	IPU_DEVICE_GP_PSA_2_VCSC_IN_BLOCK_EN,
-	IPU_DEVICE_GP_PSA_2_XNR5_BP_BLOCK_EN,
-	IPU_DEVICE_GP_PSA_BLOCKER_NUM
 };
 
 /* The value below is the largest *MUX_NUM_MUX of the mux enums. */

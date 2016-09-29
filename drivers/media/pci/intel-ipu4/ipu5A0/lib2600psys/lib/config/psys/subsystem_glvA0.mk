@@ -19,3 +19,5 @@
 # should be defined under "devices" or should be taken from the SDK.
 ############################################################################
 
+# Activate loading params and storing stats DDR<->REGs with DMA, it does not work in HSS due to unknown reasons.
+PSYS_USE_ISA_DMA                 = 0
