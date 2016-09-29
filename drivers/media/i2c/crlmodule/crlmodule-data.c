@@ -29,6 +29,7 @@
 #include "crl_ov10635_configuration.h"
 #include "crl_ov10640_configuration.h"
 #include "crl_imx274_configuration.h"
+#include "crl_ov5670_configuration.h"
 
 static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-SONY214A:00", "imx214", &imx214_crl_configuration },
@@ -46,7 +47,8 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "SONY318A", "imx318", &imx318_crl_configuration },
 	{ "OV10635", "ov10635", &ov10635_crl_configuration },
 	{ "OV10640", "ov10640", &ov10640_crl_configuration },
-	{ "IMX274", "imx274", &imx274_crl_configuration},
+	{ "IMX274", "imx274", &imx274_crl_configuration },
+	{ "OV5670", "ov5670", &ov5670_crl_configuration },
 };
 
 /*
