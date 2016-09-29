@@ -528,11 +528,11 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 static struct crl_sensor_subdev_config adv7481_hdmi_sensor_subdevs[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
-		.name = "adv7481 hdmi binner",
+		.name = "adv7481-hdmi binner",
 	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
-		.name = "adv7481 hdmi pixel array",
+		.name = "adv7481-hdmi pixel array",
 	},
 };
 

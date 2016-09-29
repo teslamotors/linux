@@ -148,11 +148,11 @@ static struct crl_mode_rep adv7481_cvbs_modes[] = {
 static struct crl_sensor_subdev_config adv7481_cvbs_sensor_subdevs[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
-		.name = "adv7481 cvbs binner",
+		.name = "adv7481-cvbs binner",
 	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
-		.name = "adv7481 cvbs pixel array",
+		.name = "adv7481-cvbs pixel array",
 	},
 };
 
