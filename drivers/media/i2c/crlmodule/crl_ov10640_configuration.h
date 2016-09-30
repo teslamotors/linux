@@ -96,11 +96,11 @@ static struct crl_register_write_rep ov10640_1280_1080_HDR[] = {
 	{0x3074, CRL_REG_LEN_08BIT, 0x00},
 	{0x3075, CRL_REG_LEN_08BIT, 0x00},
 	{0x3076, CRL_REG_LEN_08BIT, 0x00},
-	{0x3077, CRL_REG_LEN_08BIT, 0x02},
+	{0x3077, CRL_REG_LEN_08BIT, 0x03},
 	{0x3078, CRL_REG_LEN_08BIT, 0x05},
 	{0x3079, CRL_REG_LEN_08BIT, 0x07},
 	{0x307a, CRL_REG_LEN_08BIT, 0x04},
-	{0x307b, CRL_REG_LEN_08BIT, 0x41},
+	{0x307b, CRL_REG_LEN_08BIT, 0x3d},
 	{0x307c, CRL_REG_LEN_08BIT, 0x05},
 	{0x307d, CRL_REG_LEN_08BIT, 0x00},
 	{0x307e, CRL_REG_LEN_08BIT, 0x04},
@@ -112,7 +112,7 @@ static struct crl_register_write_rep ov10640_1280_1080_HDR[] = {
 	{0x3084, CRL_REG_LEN_08BIT, 0x00},
 	{0x3085, CRL_REG_LEN_08BIT, 0x04},
 	{0x3086, CRL_REG_LEN_08BIT, 0x00},
-	{0x3087, CRL_REG_LEN_08BIT, 0x04},
+	{0x3087, CRL_REG_LEN_08BIT, 0x02},
 	{0x3088, CRL_REG_LEN_08BIT, 0x00},
 	{0x3089, CRL_REG_LEN_08BIT, 0x40},
 	{0x308d, CRL_REG_LEN_08BIT, 0x92},
@@ -1255,11 +1255,11 @@ static struct crl_register_write_rep ov10640_1280_1080_LONG_RAW[] = {
 	{0x3074, CRL_REG_LEN_08BIT, 0x00},
 	{0x3075, CRL_REG_LEN_08BIT, 0x00},
 	{0x3076, CRL_REG_LEN_08BIT, 0x00},
-	{0x3077, CRL_REG_LEN_08BIT, 0x02},
+	{0x3077, CRL_REG_LEN_08BIT, 0x03},
 	{0x3078, CRL_REG_LEN_08BIT, 0x05},
 	{0x3079, CRL_REG_LEN_08BIT, 0x07},
 	{0x307a, CRL_REG_LEN_08BIT, 0x04},
-	{0x307b, CRL_REG_LEN_08BIT, 0x41},
+	{0x307b, CRL_REG_LEN_08BIT, 0x3d},
 	{0x307c, CRL_REG_LEN_08BIT, 0x05},
 	{0x307d, CRL_REG_LEN_08BIT, 0x00},
 	{0x307e, CRL_REG_LEN_08BIT, 0x04},
@@ -1271,7 +1271,7 @@ static struct crl_register_write_rep ov10640_1280_1080_LONG_RAW[] = {
 	{0x3084, CRL_REG_LEN_08BIT, 0x00},
 	{0x3085, CRL_REG_LEN_08BIT, 0x04},
 	{0x3086, CRL_REG_LEN_08BIT, 0x00},
-	{0x3087, CRL_REG_LEN_08BIT, 0x04},
+	{0x3087, CRL_REG_LEN_08BIT, 0x02},
 	{0x3088, CRL_REG_LEN_08BIT, 0x00},
 	{0x3089, CRL_REG_LEN_08BIT, 0x40},
 	{0x308d, CRL_REG_LEN_08BIT, 0x92},
@@ -2468,19 +2468,19 @@ static struct crl_sensor_limits ov10640_sensor_limits = {
 static struct crl_flip_data ov10640_flip_configurations[] = {
 	{
 		.flip = CRL_FLIP_DEFAULT_NONE,
-		.pixel_order = CRL_PIXEL_ORDER_BGGR,
-	},
-	{
-		.flip = CRL_FLIP_HFLIP,
-		.pixel_order = CRL_PIXEL_ORDER_GBRG,
-	},
-	{
-		.flip = CRL_FLIP_VFLIP,
 		.pixel_order = CRL_PIXEL_ORDER_GRBG,
 	},
 	{
-		.flip = CRL_FLIP_HFLIP_VFLIP,
+		.flip = CRL_FLIP_HFLIP,
 		.pixel_order = CRL_PIXEL_ORDER_RGGB,
+	},
+	{
+		.flip = CRL_FLIP_VFLIP,
+		.pixel_order = CRL_PIXEL_ORDER_BGGR,
+	},
+	{
+		.flip = CRL_FLIP_HFLIP_VFLIP,
+		.pixel_order = CRL_PIXEL_ORDER_GBRG,
 	}
 };
 
