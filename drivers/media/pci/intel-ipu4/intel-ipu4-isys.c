@@ -60,7 +60,7 @@ module_param(csi2_port_optimized, bool, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(csi2_port_optimized, "IPU4 CSI2 port optimization");
 
 /* Trace block definitions for isys */
-static struct intel_ipu4_trace_block isys_trace_blocks[] = {
+static struct intel_ipu4_trace_block isys_trace_blocks_ipu4[] = {
 	{
 		.offset = TRACE_REG_IS_TRACE_UNIT_BASE,
 		.type = INTEL_IPU4_TRACE_BLOCK_TUN,
@@ -100,10 +100,52 @@ static struct intel_ipu4_trace_block isys_trace_blocks[] = {
 		.type = INTEL_IPU4_TRACE_SIG2CIOS,
 	},
 	{
+		.offset = TRACE_REG_IS_GPREG_TRACE_TIMER_RST_N,
+		.type = INTEL_IPU4_TRACE_TIMER_RST,
+	},
+	{
 		.type = INTEL_IPU4_TRACE_BLOCK_END,
 	}
 };
 
+static struct intel_ipu4_trace_block isys_trace_blocks_ipu5A0[] = {
+	{
+		.offset = INTEL_IPU5_TRACE_REG_IS_TRACE_UNIT_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TUN,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_IS_SP_EVQ_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TM,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_IS_SP_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_IS_ISL_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_IS_MMU_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_CSI2_TM_BASE,
+		.type = INTEL_IPU4_TRACE_CSI2,
+	},
+	{
+		/* Note! this covers all 11 blocks */
+		.offset = INTEL_IPU5_TRACE_REG_CSI2_SIG2SIO_GRn_BASE(0),
+		.type = INTEL_IPU4_TRACE_SIG2CIOS,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_IS_GPREG_TRACE_TIMER_RST_N,
+		.type = INTEL_IPU4_TRACE_TIMER_RST,
+	},
+	{
+		.type = INTEL_IPU4_TRACE_BLOCK_END,
+	}
+};
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 /*
  * BEGIN adapted code from drivers/media/platform/omap3isp/isp.c.
@@ -1353,8 +1395,13 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	/* Debug fs failure is not fatal. */
 	intel_ipu4_isys_init_debugfs(isys);
 
-	intel_ipu4_trace_init(adev->isp, isys->pdata->base, &adev->dev,
-			      isys_trace_blocks);
+	if (is_intel_ipu5_hw_a0(isp))
+		intel_ipu4_trace_init(adev->isp, isys->pdata->base, &adev->dev,
+				isys_trace_blocks_ipu5A0);
+	else
+		intel_ipu4_trace_init(adev->isp, isys->pdata->base, &adev->dev,
+				isys_trace_blocks_ipu4);
+
 
 	pm_qos_add_request(&isys->pm_qos, PM_QOS_CPU_DMA_LATENCY,
 			   PM_QOS_DEFAULT_VALUE);

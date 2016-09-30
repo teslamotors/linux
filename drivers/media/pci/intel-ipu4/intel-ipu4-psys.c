@@ -101,7 +101,7 @@ static DEFINE_MUTEX(intel_ipu4_psys_mutex);
 
 extern struct ia_css_syscom_context *psys_syscom;
 
-static struct intel_ipu4_trace_block psys_trace_blocks[] = {
+static struct intel_ipu4_trace_block psys_trace_blocks_ipu4[] = {
 
 	{
 		.offset = TRACE_REG_PS_TRACE_UNIT_BASE,
@@ -172,9 +172,84 @@ static struct intel_ipu4_trace_block psys_trace_blocks[] = {
 		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
 	},
 	{
+		.offset = TRACE_REG_PS_GPREG_TRACE_TIMER_RST_N,
+		.type = INTEL_IPU4_TRACE_TIMER_RST,
+	},
+	{
 		.type = INTEL_IPU4_TRACE_BLOCK_END,
 	}
 };
+
+static struct intel_ipu4_trace_block psys_trace_blocks_ipu5A0[] = {
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_TRACE_UNIT_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TUN,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_SPC_EVQ_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TM,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_SPP0_EVQ_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TM,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_SPP1_EVQ_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TM,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_ISP0_EVQ_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TM,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_ISP1_EVQ_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TM,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_ISP2_EVQ_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_TM,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_SPC_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_SPP0_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_SPP1_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_MMU_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_ISL_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_ISP0_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_ISP1_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_ISP2_GPC_BASE,
+		.type = INTEL_IPU4_TRACE_BLOCK_GPC,
+	},
+	{
+		.offset = INTEL_IPU5_TRACE_REG_PS_GPREG_TRACE_TIMER_RST_N,
+		.type = INTEL_IPU4_TRACE_TIMER_RST,
+	},
+	{
+		.type = INTEL_IPU4_TRACE_BLOCK_END,
+	}
+};
+
 
 static int intel_ipu4_psys_isr_run(void *data);
 
@@ -2225,8 +2300,12 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	psys->pdata = adev->pdata;
 	psys->icache_prefetch_sp = is_intel_ipu4_hw_bxt_c0(isp);
 
-	intel_ipu4_trace_init(adev->isp, psys->pdata->base, &adev->dev,
-			      psys_trace_blocks);
+	if (is_intel_ipu5_hw_a0(isp))
+		intel_ipu4_trace_init(adev->isp, psys->pdata->base, &adev->dev,
+			      psys_trace_blocks_ipu5A0);
+	else
+		intel_ipu4_trace_init(adev->isp, psys->pdata->base, &adev->dev,
+			      psys_trace_blocks_ipu4);
 
 	cdev_init(&psys->cdev, &intel_ipu4_psys_fops);
 	psys->cdev.owner = intel_ipu4_psys_fops.owner;
