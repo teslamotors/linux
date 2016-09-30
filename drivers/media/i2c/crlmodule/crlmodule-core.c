@@ -2921,6 +2921,15 @@ static int crlmodule_runtime_suspend(struct device *dev)
 	return 0;
 }
 
+static int crlmodule_runtime_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct crl_sensor *sensor = to_crlmodule_sensor(sd);
+
+	return __crlmodule_powerup_sequence(sensor);
+}
+
 static int crlmodule_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -2931,18 +2940,10 @@ static int crlmodule_suspend(struct device *dev)
 	if (sensor->streaming)
 		crlmodule_stop_streaming(sensor);
 
-	crlmodule_undo_poweron_entities(sensor,
+	if (sensor->power_count > 0)
+		crlmodule_undo_poweron_entities(sensor,
 					sensor->sensor_ds->power_items - 1);
 	return 0;
-}
-
-static int crlmodule_runtime_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct crl_sensor *sensor = to_crlmodule_sensor(sd);
-
-	return __crlmodule_powerup_sequence(sensor);
 }
 
 static int crlmodule_resume(struct device *dev)
@@ -2951,26 +2952,25 @@ static int crlmodule_resume(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
 	struct crl_sensor *sensor = ssd->sensor;
-	int rval;
+	int rval = 0;
 
-	rval = __crlmodule_powerup_sequence(sensor);
-	if (!rval && sensor->power_count)
-		rval = crlmodule_run_poweron_init(sensor);
+	if (sensor->power_count > 0) {
+		rval = __crlmodule_powerup_sequence(sensor);
+		if (!rval)
+			rval = crlmodule_run_poweron_init(sensor);
+	}
+
 	if (!rval && sensor->streaming)
 		rval = crlmodule_start_streaming(sensor);
 
 	return rval;
 }
-
 #else
-
 #define crlmodule_runtime_suspend	NULL
 #define crlmodule_runtime_resume	NULL
 #define crlmodule_suspend	NULL
 #define crlmodule_resume	NULL
-
 #endif /* CONFIG_PM */
-
 
 static int crlmodule_probe(struct i2c_client *client,
 			   const struct i2c_device_id *devid)
