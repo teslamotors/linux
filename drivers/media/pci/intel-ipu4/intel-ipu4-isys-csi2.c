@@ -602,7 +602,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 	struct intel_ipu4_isys_csi2_timing timing;
 	unsigned int i, nlanes;
 	int rval;
-	u32 csi2csirx, csi2part;
+	u32 csi2csirx;
 
 	dev_dbg(&csi2->isys->adev->dev, "csi2 s_stream %d\n", enable);
 
@@ -700,6 +700,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 		csi2->base + CSI2_REG_CSI_RX_ENABLE);
 
 	if (is_intel_ipu4_hw_bxt_b0(csi2->isys->adev->isp)) {
+		u32 csi2part = 0;
 		/* SOF of VC0-VC3 enabled from CSI2PART register in B0 */
 		for (i = 0; i < NR_OF_CSI2_VC; i++)
 			csi2part |= CSI2_IRQ_FS_VC(i) | CSI2_IRQ_FE_VC(i);
