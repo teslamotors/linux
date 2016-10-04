@@ -27,6 +27,8 @@
 #include <ia_css_psys_process_types.h>
 #include <ia_css_psys_manifest_types.h>
 
+#include "ia_css_psys_dynamic_storage_class.h"
+
 #include <type_support.h>					/* uint8_t */
 
 /*
@@ -73,7 +75,8 @@ extern ia_css_process_group_t *ia_css_process_group_destroy(
 
  @return < 0 on error
  */
-extern int ia_css_process_group_print(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_print(
 	const ia_css_process_group_t		*process_group,
 	void					*fid);
 
@@ -104,7 +107,8 @@ extern int ia_css_process_group_submit(
 
  @return true if the process group is correct, false on error
  */
-extern bool ia_css_is_process_group_valid(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+bool ia_css_is_process_group_valid(
 	const ia_css_process_group_t		*process_group,
 	const ia_css_program_group_manifest_t	*manifest,
 	const ia_css_program_group_param_t	*param);
@@ -115,7 +119,8 @@ extern bool ia_css_is_process_group_valid(
 
  @return true if the process group can be submitted
  */
-extern bool ia_css_can_process_group_submit(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+bool ia_css_can_process_group_submit(
 	const ia_css_process_group_t			*process_group);
 
 
@@ -126,7 +131,8 @@ extern bool ia_css_can_process_group_submit(
 
  @return 0 on error
  */
-extern uint32_t ia_css_process_group_compute_cycle_count(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint32_t ia_css_process_group_compute_cycle_count(
 	const ia_css_program_group_manifest_t	*manifest,
 	const ia_css_program_group_param_t	*param);
 

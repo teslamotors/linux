@@ -15,6 +15,8 @@
 #ifndef __IA_CSS_PROGRAM_GROUP_DATA_H_INCLUDED__
 #define __IA_CSS_PROGRAM_GROUP_DATA_H_INCLUDED__
 
+#include "ia_css_psys_data_storage_class.h"
+
 /*! \file */
 
 /** @file ia_css_program_group_data.h
@@ -236,7 +238,8 @@ struct ia_css_fragment_descriptor_s {
 
  @return < 0 on error
  */
-extern int ia_css_frame_print(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+int ia_css_frame_print(
 	const ia_css_frame_t *frame, void *fid);
 
 /*! Get the data buffer handle from the frame object
@@ -245,7 +248,8 @@ extern int ia_css_frame_print(
 
 @return buffer pointer, VIED_NULL on error
 */
-extern const vied_vaddress_t *ia_css_frame_get_buffer_host_virtual_address(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+const vied_vaddress_t *ia_css_frame_get_buffer_host_virtual_address(
 	const ia_css_frame_t *frame);
 
 /*! Get the data buffer handle from the frame object
@@ -254,7 +258,8 @@ extern const vied_vaddress_t *ia_css_frame_get_buffer_host_virtual_address(
 
  @return buffer pointer, VIED_NULL on error
  */
-extern vied_vaddress_t ia_css_frame_get_buffer(const ia_css_frame_t *frame);
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+vied_vaddress_t ia_css_frame_get_buffer(const ia_css_frame_t *frame);
 
 /*! Set the data buffer handle on the frame object
 
@@ -263,7 +268,8 @@ extern vied_vaddress_t ia_css_frame_get_buffer(const ia_css_frame_t *frame);
 
  @return < 0 on error
  */
-extern int ia_css_frame_set_buffer(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+int ia_css_frame_set_buffer(
 	ia_css_frame_t *frame, vied_vaddress_t buffer);
 
 /*! Set the data buffer size on the frame object
@@ -273,7 +279,8 @@ extern int ia_css_frame_set_buffer(
 
  @return < 0 on error
  */
-extern int ia_css_frame_set_data_bytes(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+int ia_css_frame_set_data_bytes(
 	ia_css_frame_t *frame, unsigned size);
 
 /*! Get the data buffer state from the frame object
@@ -282,7 +289,8 @@ extern int ia_css_frame_set_data_bytes(
 
  @return buffer state, limit value on error
  */
-extern ia_css_buffer_state_t ia_css_frame_get_buffer_state(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+ia_css_buffer_state_t ia_css_frame_get_buffer_state(
 	const ia_css_frame_t *frame);
 
 /*! Set the data buffer state of the frame object
@@ -292,7 +300,8 @@ extern ia_css_buffer_state_t ia_css_frame_get_buffer_state(
 
  @return < 0 on error
  */
-extern int ia_css_frame_set_buffer_state(ia_css_frame_t *frame,
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+int ia_css_frame_set_buffer_state(ia_css_frame_t *frame,
 	const ia_css_buffer_state_t buffer_state);
 
 /*! Get the data pointer state from the frame object
@@ -301,7 +310,8 @@ extern int ia_css_frame_set_buffer_state(ia_css_frame_t *frame,
 
  @return pointer state, limit value on error
  */
-extern ia_css_pointer_state_t ia_css_frame_get_pointer_state(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+ia_css_pointer_state_t ia_css_frame_get_pointer_state(
 	const ia_css_frame_t *frame);
 
 /*! Set the data pointer state of the frame object
@@ -311,7 +321,8 @@ extern ia_css_pointer_state_t ia_css_frame_get_pointer_state(
 
  @return < 0 on error
  */
-extern int ia_css_frame_set_pointer_state(ia_css_frame_t *frame,
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+int ia_css_frame_set_pointer_state(ia_css_frame_t *frame,
 	const ia_css_pointer_state_t pointer_state);
 
 /*! Print the frame decriptor object to file/stream
@@ -321,7 +332,8 @@ extern int ia_css_frame_set_pointer_state(ia_css_frame_t *frame,
 
  @return < 0 on error
  */
-extern int ia_css_frame_descriptor_print(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+int ia_css_frame_descriptor_print(
 	const ia_css_frame_descriptor_t *frame_descriptor, void *fid);
 
 /*! Print the fragment decriptor object to file/stream
@@ -331,7 +343,8 @@ extern int ia_css_frame_descriptor_print(
 
  @return < 0 on error
  */
-extern int ia_css_fragment_descriptor_print(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+int ia_css_fragment_descriptor_print(
 	const ia_css_fragment_descriptor_t *fragment_descriptor, void *fid);
 
 /*! Compute the bitmap for the frame format type
@@ -340,21 +353,24 @@ extern int ia_css_fragment_descriptor_print(
 
  @return 0 on error
  */
-extern ia_css_frame_format_bitmap_t ia_css_frame_format_bit_mask(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+ia_css_frame_format_bitmap_t ia_css_frame_format_bit_mask(
 	const ia_css_frame_format_type_t frame_format_type);
 
 /*! clear frame format bitmap
 
  @return cleared bitmap
  */
-extern ia_css_frame_format_bitmap_t ia_css_frame_format_bitmap_clear(void);
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+ia_css_frame_format_bitmap_t ia_css_frame_format_bitmap_clear(void);
 
 
 /*! Compute the size of storage required for the data descriptor object
  * on a terminal
  *@param       plane_count[in]	The number of data planes in the buffer
  */
-extern size_t ia_css_sizeof_frame_descriptor(
+IA_CSS_PSYS_DATA_STORAGE_CLASS_H
+size_t ia_css_sizeof_frame_descriptor(
 		const uint8_t plane_count);
 /*! Compute the size of storage required for the kernel parameter descriptor
  * object on a terminal
@@ -365,5 +381,9 @@ extern size_t ia_css_sizeof_frame_descriptor(
  */
 extern size_t ia_css_sizeof_kernel_param_descriptor(
 	const uint16_t section_count);
+
+#ifdef _IA_CSS_PSYS_DATA_INLINE_
+#include "ia_css_program_group_data_impl.h"
+#endif /* _IA_CSS_PSYS_DATA_INLINE_ */
 
 #endif /* __IA_CSS_PROGRAM_GROUP_DATA_H_INCLUDED__  */

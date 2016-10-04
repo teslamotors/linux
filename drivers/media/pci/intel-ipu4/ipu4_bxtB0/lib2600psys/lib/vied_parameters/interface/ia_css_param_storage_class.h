@@ -1,4 +1,4 @@
-/*
+/**
 * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2016, Intel Corporation.
  *
@@ -12,15 +12,17 @@
  * more details.
 */
 
-#include "ia_css_psys_data_storage_class.h"
+#ifndef __IA_CSS_PARAM_STORAGE_CLASS_H__
+#define __IA_CSS_PARAM_STORAGE_CLASS_H__
 
-/*
- * Functions to possibly inline
- */
+#include "storage_class.h"
 
-#ifdef _IA_CSS_PSYS_DATA_INLINE_
-STORAGE_CLASS_INLINE int
-__ia_css_program_group_data_avoid_warning_on_empty_file(void) { return 0; }
-#else /* _IA_CSS_PSYS_DATA_INLINE_ */
-#include "ia_css_program_group_data_impl.h"
-#endif /* _IA_CSS_PSYS_DATA_INLINE_ */
+#ifndef _INLINE_PARAMETERS_
+#define IA_CSS_PARAMETERS_STORAGE_CLASS_H STORAGE_CLASS_EXTERN
+#define IA_CSS_PARAMETERS_STORAGE_CLASS_C
+#else
+#define IA_CSS_PARAMETERS_STORAGE_CLASS_H STORAGE_CLASS_INLINE
+#define IA_CSS_PARAMETERS_STORAGE_CLASS_C STORAGE_CLASS_INLINE
+#endif
+
+#endif /* __IA_CSS_PARAM_STORAGE_CLASS_H__ */

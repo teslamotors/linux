@@ -12,70 +12,21 @@
  * more details.
 */
 
+#include "ia_css_psys_process.h"
+#include "ia_css_psys_dynamic_storage_class.h"
+#include "ia_css_psys_process_private_types.h"
 
-#include <ia_css_psys_process.h>
+/*
+ * Functions to possibly inline
+ */
 
-#include <ia_css_psys_process_group.h>
-#include <ia_css_psys_program_manifest.h>
+#ifndef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#include "ia_css_psys_process_impl.h"
+#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
 
-#include <error_support.h>
-#include <misc_support.h>
-#include <assert_support.h>
-
-#include <vied_nci_psys_system_global.h>
-
-#include "ia_css_psys_dynamic_trace.h"
-
-#define	N_UINT32_IN_PROCESS_STRUCT				1
-#define	N_UINT16_IN_PROCESS_STRUCT				3
-#define	N_UINT8_IN_PROCESS_STRUCT				2
-
-#define SIZE_OF_PROCESS_STRUCT_BITS \
-	(IA_CSS_KERNEL_BITMAP_BITS	\
-	+ (N_UINT32_IN_PROCESS_STRUCT * 32) \
-	+ IA_CSS_PROGRAM_ID_BITS \
-	+ IA_CSS_PROCESS_STATE_BITS \
-	+ (N_UINT16_IN_PROCESS_STRUCT * 16) \
-	+ (VIED_NCI_N_MEM_TYPE_ID * VIED_NCI_RESOURCE_SIZE_BITS) \
-	+ (VIED_NCI_N_DATA_MEM_TYPE_ID * VIED_NCI_RESOURCE_SIZE_BITS) \
-	+ (VIED_NCI_N_DEV_CHN_ID * VIED_NCI_RESOURCE_SIZE_BITS) \
-	+ VIED_NCI_RESOURCE_ID_BITS \
-	+ (VIED_NCI_N_MEM_TYPE_ID * VIED_NCI_RESOURCE_ID_BITS) \
-	+ (VIED_NCI_N_DATA_MEM_TYPE_ID * VIED_NCI_RESOURCE_ID_BITS) \
-	+ (N_UINT8_IN_PROCESS_STRUCT * 8) \
-	+ (N_PADDING_UINT8_IN_PROCESS_STRUCT * 8))
-
-struct ia_css_process_s {
-	/**< Indicate which kernels lead to this process being used */
-	ia_css_kernel_bitmap_t kernel_bitmap;
-	uint32_t size; /**< Size of this structure */
-	ia_css_program_ID_t ID; /**< Referal ID to a specific program FW */
-	/**< State of the process FSM dependent on the parent FSM */
-	ia_css_process_state_t state;
-	int16_t parent_offset; /**< Reference to the process group */
-	/**< Array[dependency_count] of ID's of the cells that provide input */
-	uint16_t cell_dependencies_offset;
-	/*< Array[terminal_dependency_count] of indices of connected terminals*/
-	uint16_t terminal_dependencies_offset;
-	/**< (internal) Memory allocation offset given to this process */
-	vied_nci_resource_size_t int_mem_offset[VIED_NCI_N_MEM_TYPE_ID];
-	/**< (external) Memory allocation offset given to this process */
-	vied_nci_resource_size_t ext_mem_offset[VIED_NCI_N_DATA_MEM_TYPE_ID];
-	/**< Device channel allocation offset given to this process */
-	vied_nci_resource_size_t dev_chn_offset[VIED_NCI_N_DEV_CHN_ID];
-	/**< (mandatory) specification of a cell to be used by this process */
-	vied_nci_resource_id_t cell_id;
-	/**< (internal) Memory ID; This is redundant, derived from cell_id */
-	vied_nci_resource_id_t int_mem_id[VIED_NCI_N_MEM_TYPE_ID];
-	/**< (external) Memory ID */
-	vied_nci_resource_id_t ext_mem_id[VIED_NCI_N_DATA_MEM_TYPE_ID];
-	/**< Number of processes (mapped on cells) this process depends on */
-	uint8_t cell_dependency_count;
-	/**< Number of terminals this process depends on */
-	uint8_t terminal_dependency_count;
-	/**< Padding bytes for 64bit alignment*/
-	uint8_t padding[N_PADDING_UINT8_IN_PROCESS_STRUCT];
-};
+/*
+ * Functions not to inline
+ */
 
 /* This source file is created with the intention of sharing and
  * compiled for host and firmware. Since there is no native 64bit
@@ -339,23 +290,6 @@ EXIT:
 	return retval;
 }
 
-vied_nci_cell_ID_t ia_css_process_get_cell(
-	const ia_css_process_t					*process)
-{
-	vied_nci_cell_ID_t	cell_id = VIED_NCI_N_CELL_ID;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		"ia_css_process_get_cell(): enter:\n");
-
-	if (process != NULL) {
-		cell_id = (vied_nci_cell_ID_t)(process->cell_id);
-	} else {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-			       "ia_css_process_get_cell invalid argument\n");
-	}
-	return cell_id;
-}
-
 int ia_css_process_set_int_mem(
 	ia_css_process_t				*process,
 	const vied_nci_mem_type_ID_t			mem_type_id,
@@ -474,22 +408,6 @@ EXIT:
 return retval;
 }
 
-vied_nci_mem_ID_t ia_css_process_get_ext_mem_id(
-	const ia_css_process_t		*process,
-	const vied_nci_mem_type_ID_t	mem_type)
-	{
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-			"ia_css_process_get_ext_mem(): enter:\n");
-
-		if (process != NULL && mem_type < VIED_NCI_N_DATA_MEM_TYPE_ID) {
-			return process->ext_mem_id[mem_type];
-	} else {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR,
-			"ia_css_process_get_ext_mem invalid argument\n");
-		return IA_CSS_PROCESS_INVALID_OFFSET;
-	}
-}
-
 int ia_css_process_set_ext_mem(
 	ia_css_process_t *process,
 	const vied_nci_mem_ID_t mem_id,
@@ -596,23 +514,6 @@ EXIT:
 			"ia_css_process_clear_ext_mem failed (%i)\n", retval);
 	}
 	return retval;
-}
-
-vied_nci_resource_size_t ia_css_process_get_dev_chn(
-	const ia_css_process_t		*process,
-	const vied_nci_dev_chn_ID_t	dev_chn_id)
-{
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-i		"ia_css_process_get_dev_chn(): enter:\n");
-
-	if (process == NULL || dev_chn_id >= VIED_NCI_N_DEV_CHN_ID) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR,
-			"ia_css_process_get_dev_chn(): invalid arguments\n");
-		return IA_CSS_PROCESS_INVALID_OFFSET;
-	}
-
-	return process->dev_chn_offset[dev_chn_id];
 }
 
 int ia_css_process_set_dev_chn(
@@ -944,137 +845,6 @@ EXIT:
 	return retval;
 }
 
-vied_nci_resource_size_t ia_css_process_get_int_mem_offset(
-	const ia_css_process_t				*process,
-	const vied_nci_mem_type_ID_t			mem_id)
-{
-	vied_nci_resource_size_t int_mem_offset = IA_CSS_PROCESS_INVALID_OFFSET;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		"ia_css_process_get_int_mem_offset(): enter:\n");
-
-	if (process == NULL || mem_id >= VIED_NCI_N_MEM_TYPE_ID) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR,
-			"ia_css_process_get_int_mem_offset invalid argument\n");
-	} else {
-		int_mem_offset = process->int_mem_offset[mem_id];
-	}
-
-	return int_mem_offset;
-}
-
-vied_nci_resource_size_t ia_css_process_get_ext_mem_offset(
-	const ia_css_process_t				*process,
-	const vied_nci_mem_type_ID_t			mem_type_id)
-{
-	vied_nci_resource_size_t ext_mem_offset = IA_CSS_PROCESS_INVALID_OFFSET;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		"ia_css_process_get_ext_mem_offset(): enter:\n");
-
-	if (process == NULL || mem_type_id >= VIED_NCI_N_DATA_MEM_TYPE_ID) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR,
-			"ia_css_process_get_ext_mem_offset invalid argument\n");
-	} else {
-		ext_mem_offset = process->ext_mem_offset[mem_type_id];
-	}
-
-	return ext_mem_offset;
-}
-
-size_t ia_css_process_get_size(
-	const ia_css_process_t					*process)
-{
-	size_t	size = 0;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		"ia_css_process_get_size(): enter:\n");
-
-	if (process != NULL) {
-		size = process->size;
-	} else {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-			       "ia_css_process_get_size invalid argument\n");
-	}
-	return size;
-}
-
-ia_css_process_state_t ia_css_process_get_state(
-	const ia_css_process_t					*process)
-{
-	ia_css_process_state_t	state = IA_CSS_N_PROCESS_STATES;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		       "ia_css_process_get_state(): enter:\n");
-
-	if (process != NULL) {
-		state = process->state;
-	} else {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-			       "ia_css_process_get_state invalid argument\n");
-	}
-	return state;
-}
-
-int ia_css_process_set_state(
-	ia_css_process_t					*process,
-	ia_css_process_state_t				state)
-{
-	int retval = -1;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		       "ia_css_process_set_state(): enter:\n");
-	verifexit(process != NULL, EINVAL);
-
-	process->state = state;
-	retval = 0;
-EXIT:
-	if (NULL == process) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-			"ia_css_process_set_state invalid argument\n");
-	}
-
-	return retval;
-}
-
-uint8_t ia_css_process_get_cell_dependency_count(
-	const ia_css_process_t					*process)
-{
-	uint8_t	cell_dependency_count = 0;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		       "ia_css_process_get_cell_dependency_count(): enter:\n");
-
-	verifexit(process != NULL, EINVAL);
-	cell_dependency_count = process->cell_dependency_count;
-
-EXIT:
-	if (NULL == process) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-		"ia_css_process_get_cell_dependency_count invalid argument\n");
-	}
-	return cell_dependency_count;
-}
-
-uint8_t ia_css_process_get_terminal_dependency_count(
-	const ia_css_process_t					*process)
-{
-	uint8_t	terminal_dependency_count = 0;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		"ia_css_process_get_terminal_dependency_count(): enter:\n");
-
-	verifexit(process != NULL, EINVAL);
-	terminal_dependency_count = process->terminal_dependency_count;
-
-EXIT:
-	if (NULL == process) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-			"ia_css_process_get_terminal_dependency_count invalid argument process\n");
-	}
-	return terminal_dependency_count;
-}
-
 int ia_css_process_set_parent(
 	ia_css_process_t					*process,
 	ia_css_process_group_t					*parent)
@@ -1101,72 +871,6 @@ EXIT:
 	return retval;
 }
 
-ia_css_process_group_t *ia_css_process_get_parent(
-	const ia_css_process_t					*process)
-{
-	ia_css_process_group_t	*parent = NULL;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		"ia_css_process_get_parent(): enter:\n");
-
-	verifexit(process != NULL, EINVAL);
-
-	parent =
-	(ia_css_process_group_t *) ((char *)process + process->parent_offset);
-
-EXIT:
-	if (NULL == process) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-			"ia_css_process_get_parent invalid argument process\n");
-	}
-	return parent;
-}
-
-ia_css_program_ID_t ia_css_process_get_program_ID(
-	const ia_css_process_t					*process)
-{
-	ia_css_program_ID_t		id = 0;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		       "ia_css_process_get_program_ID(): enter:\n");
-
-	verifexit(process != NULL, EINVAL);
-
-	id = process->ID;
-
-EXIT:
-	if (NULL == process) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-		    "ia_css_process_get_program_ID invalid argument process\n");
-	}
-	return id;
-}
-
-vied_nci_resource_id_t ia_css_process_get_cell_dependency(
-	const ia_css_process_t *process,
-	const unsigned int cell_num)
-{
-	vied_nci_resource_id_t cell_dependency =
-		IA_CSS_PROCESS_INVALID_DEPENDENCY;
-	vied_nci_resource_id_t *cell_dep_ptr = NULL;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		"ia_css_process_get_cell_dependency(): enter:\n");
-	verifexit(process != NULL, EINVAL);
-	if (cell_num < process->cell_dependency_count) {
-		cell_dep_ptr =
-			(vied_nci_resource_id_t *)
-			((char *)process + process->cell_dependencies_offset);
-		cell_dependency = *(cell_dep_ptr + cell_num);
-	} else {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-		       "ia_css_process_get_cell_dependency invalid argument\n");
-	}
-
-EXIT:
-	return cell_dependency;
-}
-
 int ia_css_process_set_cell_dependency(
 	const ia_css_process_t					*process,
 	const unsigned int					dep_index,
@@ -1190,26 +894,6 @@ EXIT:
 	return retval;
 }
 
-uint8_t ia_css_process_get_terminal_dependency(
-	const ia_css_process_t					*process,
-	const unsigned int					terminal_num)
-{
-	uint8_t *ter_dep_ptr = NULL;
-	uint8_t ter_dep = IA_CSS_PROCESS_INVALID_DEPENDENCY;
-
-	verifexit(process != NULL, EINVAL);
-	verifexit(terminal_num < process->terminal_dependency_count, EINVAL);
-
-	ter_dep_ptr = (uint8_t *) ((char *)process +
-				   process->terminal_dependencies_offset);
-
-	ter_dep = *(ter_dep_ptr + terminal_num);
-
-EXIT:
-	return ter_dep;
-}
-
-
 int ia_css_process_set_terminal_dependency(
 	const ia_css_process_t				*process,
 	const unsigned int				dep_index,
@@ -1232,27 +916,6 @@ int ia_css_process_set_terminal_dependency(
 	retval = 0;
 EXIT:
 	return retval;
-}
-
-
-ia_css_kernel_bitmap_t ia_css_process_get_kernel_bitmap(
-	const ia_css_process_t					*process)
-{
-	ia_css_kernel_bitmap_t		bitmap = 0;
-
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
-		       "ia_css_process_get_kernel_bitmap(): enter:\n");
-
-	verifexit(process != NULL, EINVAL);
-
-	bitmap = process->kernel_bitmap;
-
-EXIT:
-	if (NULL == process) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, WARNING,
-		 "ia_css_process_get_kernel_bitmap invalid argument process\n");
-	}
-	return bitmap;
 }
 
 int ia_css_process_cmd(
@@ -1321,53 +984,3 @@ EXIT:
 	return retval;
 }
 
-bool ia_css_is_process_valid(
-	const ia_css_process_t		*process,
-	const ia_css_program_manifest_t	*p_manifest)
-{
-	bool invalid_flag = false;
-	ia_css_program_ID_t prog_id;
-	ia_css_kernel_bitmap_t prog_kernel_bitmap;
-
-	verifjmpexit(NULL != process);
-	verifjmpexit(NULL != p_manifest);
-
-	prog_id = ia_css_process_get_program_ID(process);
-	verifjmpexit(prog_id ==
-		ia_css_program_manifest_get_program_ID(p_manifest));
-
-	prog_kernel_bitmap =
-		ia_css_program_manifest_get_kernel_bitmap(p_manifest);
-
-	invalid_flag = (process->size <= process->cell_dependencies_offset) ||
-		   (process->size <= process->terminal_dependencies_offset) ||
-		   !ia_css_is_kernel_bitmap_subset(prog_kernel_bitmap,
-						   process->kernel_bitmap);
-
-	if (ia_css_has_program_manifest_fixed_cell(p_manifest)) {
-		vied_nci_cell_ID_t cell_id;
-
-		cell_id = ia_css_program_manifest_get_cell_ID(p_manifest);
-		invalid_flag = invalid_flag ||
-			    (cell_id != (vied_nci_cell_ID_t)(process->cell_id));
-	}
-	invalid_flag = invalid_flag ||
-		((process->cell_dependency_count +
-		  process->terminal_dependency_count) == 0) ||
-		(process->cell_dependency_count !=
-	ia_css_program_manifest_get_program_dependency_count(p_manifest)) ||
-		(process->terminal_dependency_count !=
-	ia_css_program_manifest_get_terminal_dependency_count(p_manifest));
-
-	/* TODO: to be removed once all PGs pass validation */
-	if (invalid_flag == true) {
-		IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO,
-			"ia_css_is_process_valid(): false\n");
-	}
-	return (!invalid_flag);
-
-EXIT:
-	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR,
-		"ia_css_is_process_valid() invalid argument\n");
-	return false;
-}

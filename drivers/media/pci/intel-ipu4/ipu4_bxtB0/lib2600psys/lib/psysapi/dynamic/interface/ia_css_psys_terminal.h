@@ -31,8 +31,10 @@
 
 #include <type_support.h>		/* bool */
 #include <print_support.h>		/* FILE */
+#include "ia_css_psys_dynamic_storage_class.h"
 #include "ia_css_terminal.h"
 #include "ia_css_terminal_manifest_base_types.h"
+
 /*
  * Creation
  */
@@ -44,7 +46,8 @@
 
  @return true if the terminal is input, false otherwise or on error
  */
-extern bool ia_css_is_terminal_input(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+bool ia_css_is_terminal_input(
 	const ia_css_terminal_t					*terminal);
 
 /*! Get the stored size of the terminal object
@@ -53,7 +56,8 @@ extern bool ia_css_is_terminal_input(
 
  @return size, 0 on error
  */
-extern size_t ia_css_terminal_get_size(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+size_t ia_css_terminal_get_size(
 	const ia_css_terminal_t					*terminal);
 
 /*! Get the type of the terminal object
@@ -62,7 +66,8 @@ extern size_t ia_css_terminal_get_size(
 
  @return the type of the terminal, limit value on error
  */
-extern ia_css_terminal_type_t ia_css_terminal_get_type(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_terminal_type_t ia_css_terminal_get_type(
 	const ia_css_terminal_t					*terminal);
 
 /*! Set the type of the terminal object
@@ -72,7 +77,8 @@ extern ia_css_terminal_type_t ia_css_terminal_get_type(
 
  @return < 0 on error
  */
-extern int ia_css_terminal_set_type(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_terminal_set_type(
 	ia_css_terminal_t		*terminal,
 	const ia_css_terminal_type_t	terminal_type);
 
@@ -82,7 +88,8 @@ extern int ia_css_terminal_set_type(
 
  @return the index of the terminal manifest object, limit value on error
  */
-extern uint16_t ia_css_terminal_get_terminal_manifest_index(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint16_t ia_css_terminal_get_terminal_manifest_index(
 	const ia_css_terminal_t					*terminal);
 
 /*! Set the index of the terminal manifest object
@@ -92,7 +99,8 @@ extern uint16_t ia_css_terminal_get_terminal_manifest_index(
 
  @return < 0 on error
  */
-extern int ia_css_terminal_set_terminal_manifest_index(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_terminal_set_terminal_manifest_index(
 	ia_css_terminal_t	*terminal,
 	const uint16_t		tm_index);
 
@@ -102,6 +110,7 @@ extern int ia_css_terminal_set_terminal_manifest_index(
 
  @return id of terminal
  */
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
 ia_css_terminal_ID_t ia_css_terminal_get_ID(
 	const ia_css_terminal_t			*terminal);
 
@@ -111,6 +120,7 @@ ia_css_terminal_ID_t ia_css_terminal_get_ID(
 
  @return kernel id of terminal
  */
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
 uint8_t ia_css_data_terminal_get_kernel_id(
 	const ia_css_data_terminal_t			*dterminal);
 
@@ -120,7 +130,8 @@ uint8_t ia_css_data_terminal_get_kernel_id(
 
  @return buffer type, limit value on error
  */
-extern ia_css_connection_type_t ia_css_data_terminal_get_connection_type(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_connection_type_t ia_css_data_terminal_get_connection_type(
 	const ia_css_data_terminal_t	*dterminal);
 
 /*! Set the connection type of the terminal object
@@ -130,7 +141,8 @@ extern ia_css_connection_type_t ia_css_data_terminal_get_connection_type(
 
  @return < 0 on error
  */
-extern int ia_css_data_terminal_set_connection_type(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_data_terminal_set_connection_type(
 	ia_css_data_terminal_t				*dterminal,
 	const ia_css_connection_type_t			connection_type);
 
@@ -141,7 +153,8 @@ extern int ia_css_data_terminal_set_connection_type(
 
  @return the pointer to the parent, NULL on error
  */
-extern ia_css_process_group_t *ia_css_terminal_get_parent(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_process_group_t *ia_css_terminal_get_parent(
 	const ia_css_terminal_t					*terminal);
 
 /*! Set the (pointer to) the process group parent of the terminal object
@@ -151,7 +164,8 @@ extern ia_css_process_group_t *ia_css_terminal_get_parent(
 
  @return < 0 on error
  */
-extern int ia_css_terminal_set_parent(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_terminal_set_parent(
 	ia_css_terminal_t	*terminal,
 	ia_css_process_group_t	*parent);
 
@@ -162,8 +176,13 @@ extern int ia_css_terminal_set_parent(
 
  @return true if the process terminal object is correct, false on error
  */
-extern bool ia_css_is_terminal_valid(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+bool ia_css_is_terminal_valid(
 	const ia_css_terminal_t		 *terminal,
 	const ia_css_terminal_manifest_t *terminal_manifest);
+
+#ifdef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#include "ia_css_psys_terminal_impl.h"
+#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
 
 #endif /* __IA_CSS_PSYS_TERMINAL_H_INCLUDED__ */

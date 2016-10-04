@@ -21,8 +21,10 @@ IPU_PSYSLIB_INC = \
 	-I$(IPU_PSYSLIB_ROOT)/psys_private_pg/interface \
 	-I$(IPU_PSYSLIB_ROOT)/psys_server/interface \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/data/interface \
+	-I$(IPU_PSYSLIB_ROOT)/psysapi/data/src \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/device/interface \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/dynamic/interface \
+	-I$(IPU_PSYSLIB_ROOT)/psysapi/dynamic/src \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/interface \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/kernel/interface \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/param/interface \
@@ -30,7 +32,9 @@ IPU_PSYSLIB_INC = \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/psys_server_manifest/bxtB0 \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/resource_model/bxtB0 \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/sim/interface \
+	-I$(IPU_PSYSLIB_ROOT)/psysapi/sim/src \
 	-I$(IPU_PSYSLIB_ROOT)/psysapi/static/interface \
+	-I$(IPU_PSYSLIB_ROOT)/psysapi/static/src \
 	-I$(IPU_PSYSLIB_ROOT)/reg_dump/src/psys/bxtB0_gen_reg_dump \
 	-I$(IPU_PSYSLIB_ROOT)/regmem/interface \
 	-I$(IPU_PSYSLIB_ROOT)/regmem/src \
@@ -40,4 +44,5 @@ IPU_PSYSLIB_INC = \
 	-I$(IPU_PSYSLIB_ROOT)/vied \
 	-I$(IPU_PSYSLIB_ROOT)/vied/vied/ \
 	-I$(IPU_PSYSLIB_ROOT)/vied_nci_acb/interface \
-	-I$(IPU_PSYSLIB_ROOT)/vied_parameters/interface
+	-I$(IPU_PSYSLIB_ROOT)/vied_parameters/interface \
+	-I$(IPU_PSYSLIB_ROOT)/vied_parameters/src

@@ -15,6 +15,8 @@
 #ifndef __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H_INCLUDED__
 #define __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H_INCLUDED__
 
+#include "ia_css_psys_static_storage_class.h"
+
 /*! \file */
 
 /** @file ia_css_psys_program_group_manifest.h
@@ -42,7 +44,8 @@
 
  @return size, 0 on invalid argument
  */
-extern size_t ia_css_program_group_manifest_get_size(
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+size_t ia_css_program_group_manifest_get_size(
 	const ia_css_program_group_manifest_t *manifest);
 
 /*! Get the program group ID of the program group manifest object
@@ -51,7 +54,8 @@ extern size_t ia_css_program_group_manifest_get_size(
 
  @return program group ID, IA_CSS_PROGRAM_GROUP_INVALID_ID on invalid argument
 */
-extern ia_css_program_group_ID_t
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+ia_css_program_group_ID_t
 ia_css_program_group_manifest_get_program_group_ID(
 	const ia_css_program_group_manifest_t *manifest);
 
@@ -63,7 +67,8 @@ ia_css_program_group_manifest_get_program_group_ID(
 
  @return 0 on success, -1 on invalid manifest argument
  */
-extern int ia_css_program_group_manifest_set_program_group_ID(
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+int ia_css_program_group_manifest_set_program_group_ID(
 	ia_css_program_group_manifest_t *manifest,
 	ia_css_program_group_ID_t id);
 
@@ -74,7 +79,8 @@ extern int ia_css_program_group_manifest_set_program_group_ID(
  @return alignment, IA_CSS_PROGRAM_GROUP_INVALID_ALIGNMENT on invalid manifest
 	argument
 */
-extern uint8_t ia_css_program_group_manifest_get_alignment(
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+uint8_t ia_css_program_group_manifest_get_alignment(
 	const ia_css_program_group_manifest_t *manifest);
 
 /*! Set the storage alignment constraint of the program group binary data
@@ -84,7 +90,8 @@ extern uint8_t ia_css_program_group_manifest_get_alignment(
 
  @return < 0 on invalid manifest argument
  */
-extern int ia_css_program_group_manifest_set_alignment(
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+int ia_css_program_group_manifest_set_alignment(
 	ia_css_program_group_manifest_t *manifest,
 	const uint8_t alignment);
 
@@ -115,7 +122,8 @@ extern int ia_css_program_group_manifest_set_kernel_bitmap(
 
  @return program count, 0 on invalid manifest argument
  */
-extern uint8_t ia_css_program_group_manifest_get_program_count(
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+uint8_t ia_css_program_group_manifest_get_program_count(
 	const ia_css_program_group_manifest_t *manifest);
 
 /*! Get the number of terminals in the program group manifest object
@@ -124,7 +132,8 @@ extern uint8_t ia_css_program_group_manifest_get_program_count(
 
  @return terminal count, 0 on invalid manifest argument
  */
-extern uint8_t ia_css_program_group_manifest_get_terminal_count(
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+uint8_t ia_css_program_group_manifest_get_terminal_count(
 	const ia_css_program_group_manifest_t *manifest);
 
 /*! Get the (pointer to) private data blob in the manifest
@@ -133,7 +142,8 @@ extern uint8_t ia_css_program_group_manifest_get_terminal_count(
 
  @return private data blob, NULL on invalid manifest argument
  */
-extern void *ia_css_program_group_manifest_get_private_data(
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+void *ia_css_program_group_manifest_get_private_data(
 	const ia_css_program_group_manifest_t *manifest);
 
 /*! Get the (pointer to) indexed program manifest in the program group manifest
@@ -144,13 +154,15 @@ extern void *ia_css_program_group_manifest_get_private_data(
 
  @return program manifest, NULL on invalid arguments
  */
-extern ia_css_program_manifest_t *
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+ia_css_program_manifest_t *
 ia_css_program_group_manifest_get_prgrm_mnfst(
 	const ia_css_program_group_manifest_t *manifest,
 	const unsigned int program_index);
 
 /* Keep old function name before Windows/Android change name */
-extern ia_css_program_manifest_t *
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+ia_css_program_manifest_t *
 ia_css_program_group_manifest_get_program_manifest(
 	const ia_css_program_group_manifest_t *manifest,
 	const unsigned int program_index);
@@ -163,13 +175,15 @@ ia_css_program_group_manifest_get_program_manifest(
 
  @return terminal manifest, NULL on invalid arguments
  */
-extern ia_css_terminal_manifest_t *
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+ia_css_terminal_manifest_t *
 ia_css_program_group_manifest_get_term_mnfst(
 	const ia_css_program_group_manifest_t *manifest,
 	const unsigned int terminal_index);
 
 /* Keep old function name before Windows/Android change name */
-extern ia_css_terminal_manifest_t *
+STORAGE_CLASS_EXTERN
+ia_css_terminal_manifest_t *
 ia_css_program_group_manifest_get_terminal_manifest(
 	const ia_css_program_group_manifest_t *manifest,
 	const unsigned int terminal_index);
@@ -182,7 +196,8 @@ ia_css_program_group_manifest_get_terminal_manifest(
 
  @return data terminal manifest, NULL on invalid arguments
  */
-extern ia_css_data_terminal_manifest_t *
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+ia_css_data_terminal_manifest_t *
 ia_css_program_group_manifest_get_data_terminal_manifest(
 	const ia_css_program_group_manifest_t *manifest,
 	const unsigned int terminal_index);
@@ -195,7 +210,8 @@ ia_css_program_group_manifest_get_data_terminal_manifest(
 
  @return parameter terminal manifest, NULL on invalid arguments
  */
-extern ia_css_param_terminal_manifest_t *
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+ia_css_param_terminal_manifest_t *
 ia_css_program_group_manifest_get_param_terminal_manifest(
 	const ia_css_program_group_manifest_t *manifest,
 	const unsigned int terminal_index);
@@ -208,7 +224,8 @@ ia_css_program_group_manifest_get_param_terminal_manifest(
 
  @return spatial param terminal manifest, NULL on invalid arguments
  */
-extern ia_css_spatial_param_terminal_manifest_t *
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+ia_css_spatial_param_terminal_manifest_t *
 ia_css_program_group_manifest_get_spatial_param_terminal_manifest(
 	const ia_css_program_group_manifest_t *manifest,
 	const unsigned int terminal_index);
@@ -221,6 +238,7 @@ ia_css_program_group_manifest_get_spatial_param_terminal_manifest(
 
  @return sliced param terminal manifest, NULL on invalid arguments
  */
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
 ia_css_sliced_param_terminal_manifest_t *
 ia_css_program_group_manifest_get_sliced_param_terminal_manifest(
 	const ia_css_program_group_manifest_t *manifest,
@@ -234,7 +252,8 @@ ia_css_program_group_manifest_get_sliced_param_terminal_manifest(
 
  @return program terminal manifest, NULL on invalid arguments
  */
-extern ia_css_program_terminal_manifest_t *
+IA_CSS_PSYS_STATIC_STORAGE_CLASS_H
+ia_css_program_terminal_manifest_t *
 ia_css_program_group_manifest_get_program_terminal_manifest(
 	const ia_css_program_group_manifest_t *manifest,
 	const unsigned int terminal_index);
@@ -280,5 +299,10 @@ extern void ia_css_program_group_manifest_init(
 	const uint16_t *sliced_in_param_section_count,
 	const uint16_t *sliced_out_param_section_count,
 	const uint16_t kernel_fragment_seq_count);
+
+#ifdef _IA_CSS_PSYS_STATIC_INLINE_
+#include "ia_css_psys_program_group_manifest_impl.h"
+#endif /* _IA_CSS_PSYS_STATIC_INLINE_ */
+
 #endif /* __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H_INCLUDED__ */
 

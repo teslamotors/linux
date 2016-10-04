@@ -24,6 +24,7 @@
  */
 
 #include <ia_css_psys_process_types.h>
+#include <ia_css_psys_dynamic_storage_class.h>
 
 #include <type_support.h>					/* uint8_t */
 
@@ -59,7 +60,8 @@
 
  @return the fragment count, 0 on error
  */
-extern uint16_t ia_css_process_group_get_fragment_count(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint16_t ia_css_process_group_get_fragment_count(
 	const ia_css_process_group_t		*process_group);
 
 
@@ -70,7 +72,8 @@ extern uint16_t ia_css_process_group_get_fragment_count(
 
  @return -1 on error
  */
-extern int ia_css_process_group_get_fragment_state(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_get_fragment_state(
 	const ia_css_process_group_t		*process_group,
 	uint16_t				*fragment_state);
 
@@ -81,7 +84,8 @@ extern int ia_css_process_group_get_fragment_state(
 
  @return -1 on error
   */
-extern int ia_css_process_group_set_fragment_state(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_set_fragment_state(
 	ia_css_process_group_t			*process_group,
 	uint16_t				fragment_state);
 
@@ -91,7 +95,8 @@ extern int ia_css_process_group_set_fragment_state(
 
  @return the process count, 0 on error
  */
-extern uint8_t ia_css_process_group_get_process_count(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint8_t ia_css_process_group_get_process_count(
 	const ia_css_process_group_t		*process_group);
 
 /*! Get the number of terminals on the process group
@@ -103,7 +108,8 @@ extern uint8_t ia_css_process_group_get_process_count(
 
  @return the terminal count, 0 on error
  */
-extern uint8_t ia_css_process_group_get_terminal_count(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint8_t ia_css_process_group_get_terminal_count(
 	const ia_css_process_group_t		*process_group);
 
 /*! Get the PG load start timestamp
@@ -112,7 +118,8 @@ extern uint8_t ia_css_process_group_get_terminal_count(
 
  @return PG load start timestamp, 0 on error
  */
-extern uint32_t ia_css_process_group_get_pg_load_start_ts(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint32_t ia_css_process_group_get_pg_load_start_ts(
 	const ia_css_process_group_t			*process_group);
 
 /*! Get the PG load time in cycles
@@ -121,7 +128,8 @@ extern uint32_t ia_css_process_group_get_pg_load_start_ts(
 
  @return PG load time in cycles, 0 on error
  */
-extern uint32_t ia_css_process_group_get_pg_load_cycles(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint32_t ia_css_process_group_get_pg_load_cycles(
 	const ia_css_process_group_t			*process_group);
 
 /*! Get the PG init time in cycles
@@ -130,7 +138,8 @@ extern uint32_t ia_css_process_group_get_pg_load_cycles(
 
  @return PG init time in cycles, 0 on error
  */
-extern uint32_t ia_css_process_group_get_pg_init_cycles(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint32_t ia_css_process_group_get_pg_init_cycles(
 	const ia_css_process_group_t			*process_group);
 
 /*! Get the PG processing time in cycles
@@ -139,7 +148,8 @@ extern uint32_t ia_css_process_group_get_pg_init_cycles(
 
  @return PG processing time in cycles, 0 on error
  */
-extern uint32_t ia_css_process_group_get_pg_processing_cycles(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint32_t ia_css_process_group_get_pg_processing_cycles(
 	const ia_css_process_group_t			*process_group);
 
 
@@ -150,7 +160,8 @@ extern uint32_t ia_css_process_group_get_pg_processing_cycles(
 
  @return the pointer to the terminal, NULL on error
  */
-extern ia_css_terminal_t *ia_css_process_group_get_terminal(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_terminal_t *ia_css_process_group_get_terminal(
 	const ia_css_process_group_t		*process_group,
 	const unsigned int			terminal_index);
 
@@ -161,7 +172,8 @@ extern ia_css_terminal_t *ia_css_process_group_get_terminal(
 
  @return the pointer to the process, NULL on error
  */
-extern ia_css_process_t *ia_css_process_group_get_process(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_process_t *ia_css_process_group_get_process(
 	const ia_css_process_group_t		*process_group,
 	const unsigned int			process_index);
 
@@ -171,7 +183,8 @@ extern ia_css_process_t *ia_css_process_group_get_process(
 
  @return size, 0 on error
  */
-extern size_t ia_css_process_group_get_size(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+size_t ia_css_process_group_get_size(
 	const ia_css_process_group_t		*process_group);
 
 /*! Get the state of the the process group object
@@ -180,7 +193,8 @@ extern size_t ia_css_process_group_get_size(
 
  @return state, limit value on error
  */
-extern ia_css_process_group_state_t ia_css_process_group_get_state(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_process_group_state_t ia_css_process_group_get_state(
 	const ia_css_process_group_t		*process_group);
 
 /*! Get the unique ID of program group used by the process group object
@@ -189,7 +203,8 @@ extern ia_css_process_group_state_t ia_css_process_group_get_state(
 
  @return ID, 0 on error
  */
-extern ia_css_program_group_ID_t ia_css_process_group_get_program_group_ID(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_program_group_ID_t ia_css_process_group_get_program_group_ID(
 	const ia_css_process_group_t		*process_group);
 
 /*! Get the resource bitmap of the process group
@@ -198,7 +213,8 @@ extern ia_css_program_group_ID_t ia_css_process_group_get_program_group_ID(
 
  @return the reource bitmap
  */
-extern vied_nci_resource_bitmap_t ia_css_process_group_get_resource_bitmap(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+vied_nci_resource_bitmap_t ia_css_process_group_get_resource_bitmap(
 	const ia_css_process_group_t		*process_group);
 
 /*! Set the resource bitmap of the process group
@@ -208,7 +224,8 @@ extern vied_nci_resource_bitmap_t ia_css_process_group_get_resource_bitmap(
 
  @return < 0 on error
  */
-extern int ia_css_process_group_set_resource_bitmap(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_set_resource_bitmap(
 	ia_css_process_group_t			*process_group,
 	const vied_nci_resource_bitmap_t	resource_bitmap);
 
@@ -219,7 +236,8 @@ extern int ia_css_process_group_set_resource_bitmap(
 
  @return -1 on error
  */
-extern int ia_css_process_group_get_ipu_vaddress(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_get_ipu_vaddress(
 	const ia_css_process_group_t		*process_group,
 	vied_vaddress_t			*ipu_vaddress);
 
@@ -230,8 +248,13 @@ extern int ia_css_process_group_get_ipu_vaddress(
 
  @return -1 on error
  */
-extern int ia_css_process_group_set_ipu_vaddress(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_set_ipu_vaddress(
 	ia_css_process_group_t			*process_group,
 	vied_vaddress_t			ipu_vaddress);
+
+#ifdef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#include "ia_css_psys_process_group_impl.h"
+#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
 
 #endif /* __IA_CSS_PSYS_PROCESS_GROUP_H_INCLUDED__ */

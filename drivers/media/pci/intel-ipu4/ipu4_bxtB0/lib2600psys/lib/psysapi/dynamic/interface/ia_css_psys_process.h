@@ -24,6 +24,7 @@
  */
 
 #include <ia_css_psys_process_types.h>
+#include <ia_css_psys_dynamic_storage_class.h>
 
 #include <vied_nci_psys_system_global.h>
 
@@ -67,7 +68,8 @@ extern int ia_css_process_cmd(
  @return internal memory offset,
 	IA_CSS_PROCESS_INVALID_OFFSET on invalid argument(s)
 */
-extern vied_nci_resource_size_t ia_css_process_get_int_mem_offset(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+vied_nci_resource_size_t ia_css_process_get_int_mem_offset(
 	const ia_css_process_t *process,
 	const vied_nci_mem_type_ID_t mem_id);
 
@@ -80,7 +82,8 @@ extern vied_nci_resource_size_t ia_css_process_get_int_mem_offset(
  @return external memory offset,
 	IA_CSS_PROCESS_INVALID_OFFSET on invalid argument(s)
 */
-extern vied_nci_resource_size_t ia_css_process_get_ext_mem_offset(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+vied_nci_resource_size_t ia_css_process_get_ext_mem_offset(
 	const ia_css_process_t *process,
 	const vied_nci_mem_type_ID_t mem_type_id);
 
@@ -91,7 +94,8 @@ extern vied_nci_resource_size_t ia_css_process_get_ext_mem_offset(
 
  @return size, 0 on invalid argument
  */
-extern size_t ia_css_process_get_size(const ia_css_process_t *process);
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+size_t ia_css_process_get_size(const ia_css_process_t *process);
 
 /*! Get the (pointer to) the process group parent of the process object
 
@@ -99,7 +103,8 @@ extern size_t ia_css_process_get_size(const ia_css_process_t *process);
 
  @return the pointer to the parent, NULL on invalid argument
  */
-extern ia_css_process_group_t *ia_css_process_get_parent(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_process_group_t *ia_css_process_get_parent(
 	const ia_css_process_t *process);
 
 /*! Set the (pointer to) the process group parent of the process object
@@ -119,7 +124,8 @@ extern int ia_css_process_set_parent(
 
  @return ID, 0 on invalid argument
  */
-extern ia_css_program_ID_t ia_css_process_get_program_ID(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_program_ID_t ia_css_process_get_program_ID(
 	const ia_css_process_t *process);
 
 /*! Get the state of the process object
@@ -128,7 +134,8 @@ extern ia_css_program_ID_t ia_css_process_get_program_ID(
 
  @return state, limit value (IA_CSS_N_PROCESS_STATES) on invalid argument
  */
-extern ia_css_process_state_t ia_css_process_get_state(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_process_state_t ia_css_process_get_state(
 	const ia_css_process_t *process);
 
 /*! Set the state of the process object
@@ -138,7 +145,8 @@ extern ia_css_process_state_t ia_css_process_get_state(
 
  @return < 0 on invalid argument
  */
-extern int ia_css_process_set_state(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_set_state(
 	ia_css_process_t *process,
 	ia_css_process_state_t state);
 
@@ -148,7 +156,8 @@ extern int ia_css_process_set_state(
 
  @return cell ID, limit value (VIED_NCI_N_CELL_ID) on invalid argument
  */
-extern vied_nci_cell_ID_t ia_css_process_get_cell(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+vied_nci_cell_ID_t ia_css_process_get_cell(
 	const ia_css_process_t *process);
 
 /*! Get the number of cells the process object depends on
@@ -157,7 +166,8 @@ extern vied_nci_cell_ID_t ia_css_process_get_cell(
 
  @return number of cells
  */
-extern uint8_t ia_css_process_get_cell_dependency_count(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint8_t ia_css_process_get_cell_dependency_count(
 	const ia_css_process_t *process);
 
 /*! Get the number of terminals the process object depends on
@@ -166,7 +176,8 @@ extern uint8_t ia_css_process_get_cell_dependency_count(
 
  @return number of terminals
  */
-extern uint8_t ia_css_process_get_terminal_dependency_count(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint8_t ia_css_process_get_terminal_dependency_count(
 	const ia_css_process_t *process);
 
 /*! Set n-th cell dependency of a process object
@@ -190,7 +201,8 @@ extern int ia_css_process_set_cell_dependency(
  @return n-th cell dependency,
 	IA_CSS_PROCESS_INVALID_DEPENDENCY on invalid argument(s)
 */
-extern vied_nci_resource_id_t ia_css_process_get_cell_dependency(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+vied_nci_resource_id_t ia_css_process_get_cell_dependency(
 	const ia_css_process_t *process,
 	const unsigned int cell_num);
 
@@ -215,7 +227,8 @@ extern int ia_css_process_set_terminal_dependency(
  @return n-th terminal dependency,
 	IA_CSS_PROCESS_INVALID_DEPENDENCY on invalid argument(s)
 */
-extern uint8_t ia_css_process_get_terminal_dependency(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint8_t ia_css_process_get_terminal_dependency(
 	const ia_css_process_t *process,
 	const unsigned int terminal_num);
 
@@ -225,7 +238,8 @@ extern uint8_t ia_css_process_get_terminal_dependency(
 
  @return process kernel bitmap
  */
-extern ia_css_kernel_bitmap_t ia_css_process_get_kernel_bitmap(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_kernel_bitmap_t ia_css_process_get_kernel_bitmap(
 	const ia_css_process_t *process);
 
 /*! Get the device channel id-n resource allocation offset of the process object
@@ -235,6 +249,7 @@ extern ia_css_kernel_bitmap_t ia_css_process_get_kernel_bitmap(
 
  @return resource offset, IA_CSS_PROCESS_INVALID_OFFSET on invalid argument(s)
  */
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
 vied_nci_resource_size_t ia_css_process_get_dev_chn(
 	const ia_css_process_t *process,
 	const vied_nci_dev_chn_ID_t dev_chn_id);
@@ -246,6 +261,7 @@ vied_nci_resource_size_t ia_css_process_get_dev_chn(
 
  @return resource offset, IA_CSS_PROCESS_INVALID_OFFSET on invalid argument(s)
  */
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
 vied_nci_mem_ID_t ia_css_process_get_ext_mem_id(
 	const ia_css_process_t *process,
 	const vied_nci_mem_type_ID_t mem_type);
@@ -272,8 +288,13 @@ int ia_css_process_set_dev_chn(
 
  @return true if the process object is correct, false on error
  */
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
 bool ia_css_is_process_valid(
 	const ia_css_process_t *process,
 	const ia_css_program_manifest_t *p_manifest);
+
+#ifdef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#include "ia_css_psys_process_impl.h"
+#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
 
 #endif /* __IA_CSS_PSYS_PROCESS_H_INCLUDED__ */

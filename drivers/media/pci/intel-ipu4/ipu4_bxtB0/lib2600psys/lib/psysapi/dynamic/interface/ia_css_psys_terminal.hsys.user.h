@@ -29,6 +29,7 @@
 #include <ia_css_psys_manifest_types.h>
 
 #include <type_support.h>					/* bool */
+#include "ia_css_psys_dynamic_storage_class.h"
 #include "ia_css_terminal.h"
 #include "ia_css_terminal_manifest.h"
 #include "ia_css_kernel_bitmap.h"
@@ -79,7 +80,8 @@ extern ia_css_terminal_t *ia_css_terminal_destroy(
 
  @return < 0 on error
  */
-extern int ia_css_terminal_print(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_terminal_print(
 	const ia_css_terminal_t					*terminal,
 	void *fid);
 
@@ -89,7 +91,8 @@ extern int ia_css_terminal_print(
 
  @return the pointer to the frame, NULL on error
  */
-extern ia_css_frame_t *ia_css_data_terminal_get_frame(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_frame_t *ia_css_data_terminal_get_frame(
 	const ia_css_data_terminal_t		*terminal);
 
 /*! Get the (pointer to) the frame descriptor object in the terminal object
@@ -98,7 +101,8 @@ extern ia_css_frame_t *ia_css_data_terminal_get_frame(
 
  @return the pointer to the frame descriptor, NULL on error
  */
-extern ia_css_frame_descriptor_t *ia_css_data_terminal_get_frame_descriptor(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_frame_descriptor_t *ia_css_data_terminal_get_frame_descriptor(
 	const ia_css_data_terminal_t		*dterminal);
 
 /*! Get the (pointer to) the fragment descriptor object in the terminal object
@@ -107,7 +111,8 @@ extern ia_css_frame_descriptor_t *ia_css_data_terminal_get_frame_descriptor(
 
 @return the pointer to the fragment descriptor, NULL on error
 */
-extern ia_css_fragment_descriptor_t
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+ia_css_fragment_descriptor_t
 	*ia_css_data_terminal_get_fragment_descriptor(
 		const ia_css_data_terminal_t		*dterminal,
 		const unsigned int			fragment_index);
@@ -118,7 +123,8 @@ extern ia_css_fragment_descriptor_t
 
  @return the fragment count, 0 on error
  */
-extern uint16_t ia_css_data_terminal_get_fragment_count(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint16_t ia_css_data_terminal_get_fragment_count(
 	const ia_css_data_terminal_t		*dterminal);
 
 /*! Get the number of section on the (param)terminal
@@ -137,7 +143,8 @@ extern uint16_t ia_css_param_terminal_compute_section_count(
 
  @return the plane count, 1(default) on error
  */
-extern uint8_t ia_css_data_terminal_compute_plane_count(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint8_t ia_css_data_terminal_compute_plane_count(
 	const ia_css_terminal_manifest_t		*manifest,
 	const ia_css_program_group_param_t		*param);
 
@@ -147,7 +154,8 @@ extern uint8_t ia_css_data_terminal_compute_plane_count(
 
  @return true on success, false on error
  */
-extern bool ia_css_is_terminal_parameter_terminal(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+bool ia_css_is_terminal_parameter_terminal(
 	const ia_css_terminal_t					*terminal);
 
 /*! check if given terminal is program terminal.
@@ -156,7 +164,8 @@ extern bool ia_css_is_terminal_parameter_terminal(
 
  @return true on success, false on error
  */
-extern bool ia_css_is_terminal_program_terminal(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+bool ia_css_is_terminal_program_terminal(
 	const ia_css_terminal_t					*terminal);
 
 /*! check if given terminal is spatial parameter terminal.
@@ -165,7 +174,8 @@ extern bool ia_css_is_terminal_program_terminal(
 
  @return true on success, false on error
  */
-extern bool ia_css_is_terminal_spatial_parameter_terminal(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+bool ia_css_is_terminal_spatial_parameter_terminal(
 	const ia_css_terminal_t					*terminal);
 
 /*! check if given terminal is data terminal.
@@ -174,16 +184,8 @@ extern bool ia_css_is_terminal_spatial_parameter_terminal(
 
  @return true on success, false on error
  */
-extern bool ia_css_is_terminal_data_terminal(
-	const ia_css_terminal_t					*terminal);
-
-/*! check if given terminal is spatial paramter terminal.
-
- @param	terminal[in]			(base)terminal object
-
- @return true on success, false on error
- */
-extern bool ia_css_is_terminal_spatial_param_terminal(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+bool ia_css_is_terminal_data_terminal(
 	const ia_css_terminal_t					*terminal);
 
 /*! obtain buffer out of terminal(both data & param terminals can call this)
@@ -192,7 +194,8 @@ extern bool ia_css_is_terminal_spatial_param_terminal(
 
  @return vied address of buffer stored in terminal
  */
-extern vied_vaddress_t  ia_css_terminal_get_buffer(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+vied_vaddress_t  ia_css_terminal_get_buffer(
 		const ia_css_terminal_t *terminal);
 
 /*!store a buffer in the terminal.
@@ -202,6 +205,7 @@ extern vied_vaddress_t  ia_css_terminal_get_buffer(
 
  @return vied address of buffer stored in terminal
  */
-extern int ia_css_terminal_set_buffer(ia_css_terminal_t *terminal,
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_terminal_set_buffer(ia_css_terminal_t *terminal,
 				vied_vaddress_t buffer);
 #endif /* __IA_CSS_PSYS_TERMINAL_HSYS_USER_H_INCLUDED__ */

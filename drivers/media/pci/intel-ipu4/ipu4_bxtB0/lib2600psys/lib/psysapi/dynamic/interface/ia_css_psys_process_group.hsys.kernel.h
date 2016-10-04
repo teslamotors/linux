@@ -66,7 +66,8 @@ extern int ia_css_process_group_set_token(
 
  @return 0 on error
  */
-extern uint16_t ia_css_process_group_get_fragment_limit(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint16_t ia_css_process_group_get_fragment_limit(
 	const ia_css_process_group_t				*process_group);
 
 /*! Set the new fragment progress limit of the process group
@@ -85,7 +86,8 @@ extern uint16_t ia_css_process_group_get_fragment_limit(
 
  @return < 0 on error
  */
-extern int ia_css_process_group_set_fragment_limit(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_set_fragment_limit(
 	ia_css_process_group_t				*process_group,
 	const uint16_t					fragment_limit);
 
@@ -97,7 +99,8 @@ extern int ia_css_process_group_set_fragment_limit(
 
  @return < 0 on error
  */
-extern int ia_css_process_group_clear_fragment_limit(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_clear_fragment_limit(
 	ia_css_process_group_t					*process_group);
 
 /*
@@ -207,7 +210,8 @@ extern int ia_css_process_group_disown(
 
  @return < 0 on error
  */
-extern int ia_css_process_group_attach_buffer(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_attach_buffer(
 	ia_css_process_group_t			*process_group,
 	vied_vaddress_t				buffer,
 	const ia_css_buffer_state_t		buffer_state,
@@ -226,7 +230,8 @@ extern int ia_css_process_group_attach_buffer(
 
  @return VIED_NULL on error
  */
-extern vied_vaddress_t ia_css_process_group_detach_buffer(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+vied_vaddress_t ia_css_process_group_detach_buffer(
 	ia_css_process_group_t			*process_group,
 	const unsigned int			terminal_index);
 
@@ -245,7 +250,8 @@ extern vied_vaddress_t ia_css_process_group_detach_buffer(
 
  @return < 0 on error
  */
-extern int ia_css_process_group_attach_stream(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_attach_stream(
 	ia_css_process_group_t			*process_group,
 	uint32_t				stream,
 	const ia_css_buffer_state_t		buffer_state,
@@ -264,7 +270,8 @@ extern int ia_css_process_group_attach_stream(
 
  @return 0 on error
  */
-extern uint32_t ia_css_process_group_detach_stream(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+uint32_t ia_css_process_group_detach_stream(
 	ia_css_process_group_t			*process_group,
 	const unsigned int			terminal_index);
 
@@ -283,7 +290,8 @@ extern uint32_t ia_css_process_group_detach_stream(
 
  @return < 0 on error
  */
-extern int ia_css_process_group_set_barrier(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_set_barrier(
 	ia_css_process_group_t					*process_group,
 	const vied_nci_barrier_ID_t				barrier_index);
 
@@ -297,7 +305,8 @@ extern int ia_css_process_group_set_barrier(
 
  @return < 0 on error
  */
-extern int ia_css_process_group_clear_barrier(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+int ia_css_process_group_clear_barrier(
 	ia_css_process_group_t					*process_group,
 	const vied_nci_barrier_ID_t				barrier_index);
 
@@ -307,7 +316,8 @@ extern int ia_css_process_group_clear_barrier(
 
  @return true if the process group can be started
  */
-extern bool ia_css_can_process_group_start(
+IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
+bool ia_css_can_process_group_start(
 	const ia_css_process_group_t			*process_group);
 
 #endif /* __IA_CSS_PSYS_PROCESS_GROUP_HSYS_KERNEL_H_INCLUDED__ */

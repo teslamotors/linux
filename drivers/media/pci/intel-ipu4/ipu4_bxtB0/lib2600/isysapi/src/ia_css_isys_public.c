@@ -77,13 +77,12 @@ int ia_css_isys_device_open(
 	 * if tracing level = VERBOSE.
 	 */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_DEVICE_OPEN\n");
-
-	verifret(config != NULL, EFAULT);
-
 	/* Printing configuration information if tracing level = VERBOSE. */
 #if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
 	print_device_config_data(config);
 #endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
+
+	verifret(config != NULL, EFAULT);
 
 	/* Runtime check for # of send and recv MSG queues */
 	verifret(config->driver_sys.num_send_queues <=
@@ -231,6 +230,25 @@ int ia_css_isys_device_open(
 		return retval;
 	}
 
+	/* Open the ports for all the proxy send queues */
+	for (i = 0; i < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY];
+	     i++) {
+		do {
+			retval = ia_css_syscom_send_port_open(ctx->sys, i);
+		} while (retval == ERROR_BUSY);
+		verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
+		verifret(retval == 0, EINVAL);
+	}
+
+	/* Open the ports for all the recv queues (MSG + PROXY) */
+	for (i = 0; i < sys.num_output_queues; i++) {
+		do {
+			retval = ia_css_syscom_recv_port_open(ctx->sys, i);
+		} while (retval == ERROR_BUSY);
+		verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
+		verifret(retval == 0, EINVAL);
+	}
+
 #if (VERIFY_DEVSTATE != 0)
 	ctx->dev_state = IA_CSS_ISYS_DEVICE_STATE_CONFIGURED;
 #endif /* VERIFY_DEVSTATE */
@@ -256,8 +274,6 @@ int ia_css_isys_device_open(
 int ia_css_isys_device_open_ready(HANDLE context)
 {
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
-	unsigned int i;
-	int retval;
 
 	/* Printing "ENTRY IA_CSS_ISYS_DEVICE_OPEN"
 	 * if tracing level = VERBOSE.
@@ -265,41 +281,6 @@ int ia_css_isys_device_open_ready(HANDLE context)
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_DEVICE_OPEN\n");
 
 	verifret(ctx, EFAULT);
-
-	/* Printing device handle context information
-	 * if tracing level = VERBOSE.
-	 */
-#if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
-	print_handle_context(ctx);
-#endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
-
-#if (VERIFY_DEVSTATE != 0)
-	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
-#endif /* VERIFY_DEVSTATE */
-
-	/* Open the ports for all the proxy send queues */
-	for (i = 0; i < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY];
-	     i++) {
-		retval = ia_css_syscom_send_port_open(ctx->sys, i);
-		verifret(retval != ERROR_BUSY, EBUSY);
-		verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
-		verifret(retval == 0, EINVAL);
-	}
-
-	/* Open the ports for all the recv queues (MSG + PROXY) */
-	for (i = 0;
-	     i < (ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY] +
-		  ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG]);
-	     i++) {
-		retval = ia_css_syscom_recv_port_open(ctx->sys, i);
-		verifret(retval != ERROR_BUSY, EBUSY);
-		verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
-		verifret(retval == 0, EINVAL);
-	}
-
-#if (VERIFY_DEVSTATE != 0)
-	ctx->dev_state = IA_CSS_ISYS_DEVICE_STATE_READY;
-#endif /* VERIFY_DEVSTATE */
 
 	/* Printing "LEAVE IA_CSS_ISYS_DEVICE_OPEN_READY" message
 	 * if tracing level = VERBOSE.
@@ -329,10 +310,7 @@ int ia_css_isys_stream_open(
 	 * if tracing level = VERBOSE.
 	 */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_STREAM_OPEN\n");
-
-	verifret(ctx, EFAULT);
-
-	/* Printing stream configuration and device handle context information
+	/* Printing device configuration and device handle context information
 	 * if tracing level = VERBOSE.
 	 */
 #if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
@@ -341,7 +319,7 @@ int ia_css_isys_stream_open(
 #endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
 
 #if (VERIFY_DEVSTATE != 0)
-	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_READY, EPERM);
+	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
 #endif /* VERIFY_DEVSTATE */
 
 	verifret(stream_handle < STREAM_ID_MAX, EINVAL);
@@ -526,7 +504,6 @@ stream_cfg->output_pins[i].output_res.width, EINVAL);
 	 */
 	retval = ia_css_syscom_send_port_open(ctx->sys,
 			(N_MAX_PROXY_SEND_QUEUES + stream_handle));
-	verifret(retval != ERROR_BUSY, EBUSY);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval == 0, EINVAL);
 
@@ -575,10 +552,7 @@ int ia_css_isys_stream_close(
 	 * if tracing level = VERBOSE.
 	 */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_STREAM_CLOSE\n");
-
-	verifret(ctx, EFAULT);
-
-	/* Printing device handle context information
+	/* Printing device configuration and device handle context information
 	 * if tracing level = VERBOSE.
 	 */
 #if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
@@ -586,7 +560,7 @@ int ia_css_isys_stream_close(
 #endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
 
 #if (VERIFY_DEVSTATE != 0)
-	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_READY, EPERM);
+	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
 #endif /* VERIFY_DEVSTATE */
 
 	verifret(stream_handle < STREAM_ID_MAX, EINVAL);
@@ -647,10 +621,7 @@ int ia_css_isys_stream_start(
 	 * if tracing level = VERBOSE.
 	 */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_STREAM_START\n");
-
-	verifret(ctx, EFAULT);
-
-	/* Printing frame configuration and device handle context information
+	/* Printing device configuration and device handle context information
 	 * if tracing level = VERBOSE.
 	 */
 #if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
@@ -660,7 +631,7 @@ int ia_css_isys_stream_start(
 #endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
 
 #if (VERIFY_DEVSTATE != 0)
-	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_READY, EPERM);
+	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
 #endif /* VERIFY_DEVSTATE */
 
 	verifret(stream_handle < STREAM_ID_MAX, EINVAL);
@@ -721,18 +692,16 @@ int ia_css_isys_stream_stop(
 	 */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_STREAM_STOP\n");
 
-	verifret(ctx, EFAULT);
+#if (VERIFY_DEVSTATE != 0)
+	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
+#endif /* VERIFY_DEVSTATE */
 
-	/* Printing device handle context information
+	/* Printing device configuration and device handle context information
 	 * if tracing level = VERBOSE.
 	 */
 #if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
 	print_handle_context(ctx);
 #endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
-
-#if (VERIFY_DEVSTATE != 0)
-	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_READY, EPERM);
-#endif /* VERIFY_DEVSTATE */
 
 	verifret(stream_handle < STREAM_ID_MAX, EINVAL);
 	verifret(stream_handle <
@@ -784,18 +753,16 @@ int ia_css_isys_stream_flush(
 	 */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_STREAM_FLUSH\n");
 
-	verifret(ctx, EFAULT);
+#if (VERIFY_DEVSTATE != 0)
+	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
+#endif /* VERIFY_DEVSTATE */
 
-	/* Printing device handle context information
+	/* Printing device configuration and device handle context information
 	 * if tracing level = VERBOSE.
 	 */
 #if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
 	print_handle_context(ctx);
 #endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
-
-#if (VERIFY_DEVSTATE != 0)
-	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_READY, EPERM);
-#endif /* VERIFY_DEVSTATE */
 
 	verifret(stream_handle < STREAM_ID_MAX, EINVAL);
 	verifret(stream_handle <
@@ -851,9 +818,11 @@ int ia_css_isys_stream_capture_indication(
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE,
 		"ENTRY IA_CSS_ISYS_STREAM_CAPTURE_INDICATION\n");
 
-	verifret(ctx, EFAULT);
+#if (VERIFY_DEVSTATE != 0)
+	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
+#endif /* VERIFY_DEVSTATE */
 
-	/* Printing frame configuration and device handle context information
+	/* Printing device configuration and device handle context information
 	 *if tracing level = VERBOSE.
 	 */
 #if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
@@ -861,10 +830,6 @@ int ia_css_isys_stream_capture_indication(
 	print_isys_frame_buff_set(next_frame,
 		ctx->stream_nof_output_pins[stream_handle]);
 #endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
-
-#if (VERIFY_DEVSTATE != 0)
-	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_READY, EPERM);
-#endif /* VERIFY_DEVSTATE */
 
 	verifret(stream_handle < STREAM_ID_MAX, EINVAL);
 	verifret(stream_handle <
@@ -913,23 +878,8 @@ int ia_css_isys_stream_handle_response(
 	int packets;
 	struct resp_queue_token token;
 
-	/* Printing "ENTRY IA_CSS_ISYS_STREAM_HANDLE_RESPONSE" message
-	 * if tracing level = VERBOSE.
-	 */
-	IA_CSS_TRACE_0(ISYSAPI, VERBOSE,
-		"ENTRY IA_CSS_ISYS_STREAM_HANDLE_RESPONSE\n");
-
-	verifret(ctx, EFAULT);
-
-	/* Printing device handle context information
-	 * if tracing level = VERBOSE.
-	 */
-#if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
-	print_handle_context(ctx);
-#endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
-
 #if (VERIFY_DEVSTATE != 0)
-	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_READY, EPERM);
+	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
 #endif /* VERIFY_DEVSTATE */
 
 	verifret(received_response != NULL, EFAULT);
@@ -940,6 +890,12 @@ int ia_css_isys_stream_handle_response(
 	verifret(packets >= 0, EINVAL);
 	verifret(packets > 0, EPERM);
 
+	/* Printing "ENTRY IA_CSS_ISYS_STREAM_HANDLE_RESPONSE" message
+	 * if tracing level = VERBOSE.
+	 */
+	IA_CSS_TRACE_0(ISYSAPI, VERBOSE,
+		"ENTRY IA_CSS_ISYS_STREAM_HANDLE_RESPONSE\n");
+
 	retval = ia_css_syscom_recv_port_transfer(
 			ctx->sys, N_MAX_PROXY_RECV_QUEUES, &token);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
@@ -948,11 +904,12 @@ int ia_css_isys_stream_handle_response(
 			ctx, &token, received_response);
 	verifret(retval == 0, retval);
 
-	/* Printing received response information
+	/* Printing device configuration and device handle context information
 	 * if tracing level = VERBOSE.
 	 */
 #if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
 	print_isys_resp_info(received_response);
+	print_handle_context(ctx);
 #endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
 
 	verifret(received_response->type < N_IA_CSS_ISYS_RESP_TYPE, EINVAL);
@@ -995,17 +952,8 @@ int ia_css_isys_device_close(HANDLE context)
 	 */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_DEVICE_CLOSE\n");
 
-	verifret(ctx, EFAULT);
-
-	/* Printing device handle context information
-	 * if tracing level = VERBOSE.
-	 */
-#if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
-	print_handle_context(ctx);
-#endif /* ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG */
-
 #if (VERIFY_DEVSTATE != 0)
-	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_READY, EPERM);
+	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
 #endif /* VERIFY_DEVSTATE */
 
 	nof_recv_queues = ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG] +
@@ -1037,10 +985,6 @@ int ia_css_isys_device_close(HANDLE context)
 	retval = ia_css_syscom_close(ctx->sys);
 	verifret(retval == 0, EBUSY);
 
-#if (VERIFY_DEVSTATE != 0)
-	ctx->dev_state = IA_CSS_ISYS_DEVICE_STATE_CONFIGURED;
-#endif /* VERIFY_DEVSTATE */
-
 	/* Printing "LEAVE IA_CSS_ISYS_DEVICE_CLOSE" message
 	 * if tracing level = VERBOSE.
 	 */
@@ -1058,14 +1002,12 @@ int ia_css_isys_device_release(HANDLE context, unsigned int force)
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *)context;
 	int retval = 0;
 
-	/* Printing "ENTRY IA_CSS_ISYS_DEVICE_RELEASE" message
+	/* Printing "ENTRY IA_CSS_ISYS_DEVICE_CLOSE" message
 	 * if tracing level = VERBOSE.
 	 */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_DEVICE_RELEASE\n");
 
-	verifret(ctx, EFAULT);
-
-	/* Printing device handle context information
+	/* Printing device configuration and device handle context information
 	 * if tracing level = VERBOSE.
 	 */
 #if ISYSAPI_TRACE_CONFIG == ISYSAPI_TRACE_LOG_LEVEL_DEBUG
@@ -1088,11 +1030,7 @@ int ia_css_isys_device_release(HANDLE context, unsigned int force)
 	ia_css_isys_destr_comm_buff_queue(ctx);
 	ia_css_cpu_mem_free(ctx);
 
-#if (VERIFY_DEVSTATE != 0)
-	ctx->dev_state = IA_CSS_ISYS_DEVICE_STATE_IDLE;
-#endif /* VERIFY_DEVSTATE */
-
-	/* Printing "LEAVE IA_CSS_ISYS_DEVICE_RELEASE" message
+	/* Printing "LEAVE IA_CSS_ISYS_DEVICE_CLOSE" message
 	 * if tracing level = VERBOSE.
 	 */
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "LEAVE IA_CSS_ISYS_DEVICE_RELEASE\n");
@@ -1114,7 +1052,6 @@ int ia_css_isys_proxy_write_req(
 	int retval = 0;
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE, "ENTRY IA_CSS_ISYS_PROXY_WRITE_REQ\n");
-	verifret(ctx, EFAULT);
 	verifret(write_req_val != NULL, EFAULT);
 
 	packets = ia_css_syscom_send_port_available(ctx->sys, 0);
@@ -1151,7 +1088,6 @@ int ia_css_isys_proxy_handle_write_response(
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE,
 		       "ENTRY IA_CSS_ISYS_PROXY_HANDLE_WRITE_RESPONSE\n");
-	verifret(ctx, EFAULT);
 	verifret(received_response != NULL, EFAULT);
 
 	packets = ia_css_syscom_recv_port_available(ctx->sys, 0);
