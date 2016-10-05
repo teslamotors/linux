@@ -64,6 +64,12 @@ static struct intel_ipu4_isys_csi2_config ov5670_csi2_cfg = {
 
 static struct crlmodule_platform_data ov5670_pdata = {
 	.xshutdown = GPIO_BASE + 69,
+	.custom_gpio[0] = {
+		.name = "ov5670 pwdn",
+		.number = GPIO_BASE + 68,
+		.val = 1,
+		.undo_val = 0,
+	},
 	.lanes = OV5670_LANES,
 	.ext_clk = 24000000,
 	.module_name = "OV5670"

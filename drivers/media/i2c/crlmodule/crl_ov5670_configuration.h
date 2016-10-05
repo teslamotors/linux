@@ -1000,13 +1000,10 @@ static const struct crl_power_seq_entity ov5670_power_items[] = {
 		.val = 1,
 		.delay = 10700,
 	},
-	/* PWDN to high */
 	{
-		.type = CRL_POWER_ETY_GPIO_CUSTOM,
-		.ent_number = (429+68),
-		.val = 1,
-		.undo_val = 0,
+		.type = CRL_POWER_ETY_GPIO_FROM_PDATA_BY_NUMBER,
 	},
+
 };
 
 static struct crl_sensor_configuration ov5670_crl_configuration = {
