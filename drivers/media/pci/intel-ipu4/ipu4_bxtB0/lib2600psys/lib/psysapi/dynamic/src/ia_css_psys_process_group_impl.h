@@ -30,7 +30,6 @@
 #include <ia_css_program_group_data.h>
 #include <type_support.h>
 #include <error_support.h>
-#include <assert_support.h>
 #include <misc_support.h>
 
 #include "ia_css_psys_dynamic_trace.h"

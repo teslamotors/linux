@@ -404,7 +404,7 @@ EXIT:
 	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR,
 			"ia_css_process_clear_int_mem failed (%i)\n", retval);
-}
+	}
 return retval;
 }
 
@@ -470,8 +470,8 @@ EXIT:
 	if (retval != 0) {
 		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR,
 			"ia_css_process_set_ext_mem failed (%i)\n", retval);
-}
-return retval;
+	}
+	return retval;
 }
 
 int ia_css_process_clear_ext_mem(

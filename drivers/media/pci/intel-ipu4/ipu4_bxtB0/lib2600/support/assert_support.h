@@ -150,12 +150,14 @@
 #endif /*KERNEL_ASSERT_TO_WARN_ON*/
 
 #ifdef KERNEL_ASSERT_TO_WARN_ON_INF_LOOP
-#define assert(cnd)							\
-	do {								\
-		WARN_ON(!(cnd));					\
-		if (!(cnd)) {						\
-			for (;;) {}					\
-		}							\
+#define assert(cnd)                                                     \
+	do {                                                            \
+		int not_cnd = !(cnd);                                   \
+		WARN_ON(not_cnd);                                       \
+		if (not_cnd) {                                          \
+			for (;;) {                                      \
+			}                                               \
+		}                                                       \
 	} while (0)
 #endif /*KERNEL_ASSERT_TO_WARN_ON_INF_LOOP*/
 

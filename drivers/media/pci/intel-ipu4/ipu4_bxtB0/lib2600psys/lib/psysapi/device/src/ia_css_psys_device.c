@@ -18,7 +18,6 @@
 #include "ia_css_psys_init.h"
 
 #include <error_support.h>
-#include <assert_support.h>
 #include <print_support.h>
 #include <misc_support.h>
 

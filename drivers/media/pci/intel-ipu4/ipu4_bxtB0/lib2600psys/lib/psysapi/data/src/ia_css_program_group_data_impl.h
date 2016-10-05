@@ -18,7 +18,7 @@
 #include "ia_css_program_group_data.h"
 #include "ia_css_psys_data_trace.h"
 #include <error_support.h>	/* for verifexit */
-#include <assert_support.h>
+#include <assert_support.h>	/* for COMPILATION_ERROR_IF */
 #include <misc_support.h>	/* for NOT_USED */
 
 IA_CSS_PSYS_DATA_STORAGE_CLASS_C
@@ -237,7 +237,7 @@ int ia_css_frame_descriptor_print(
 	IA_CSS_TRACE_0(PSYSAPI_DATA, INFO,
 		"ia_css_frame_descriptor_print(): enter:\n");
 
-	assert(IA_CSS_N_DATA_DIMENSION > 0);
+	COMPILATION_ERROR_IF(IA_CSS_N_DATA_DIMENSION <= 0);
 
 	verifexit(frame_descriptor != NULL, EINVAL);
 
@@ -283,7 +283,7 @@ int ia_css_frame_descriptor_print(
 	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO,
 		"\t%4d }\n", frame_descriptor->dimension[i]);
 
-	assert(0 <= IA_CSS_N_DATA_DIMENSION - 2);
+	COMPILATION_ERROR_IF(0 > (IA_CSS_N_DATA_DIMENSION - 2));
 	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO,
 		"\tstride[%d] = {\n", IA_CSS_N_DATA_DIMENSION - 1);
 	for (i = 0; i < (int)IA_CSS_N_DATA_DIMENSION - 2; i++) {
