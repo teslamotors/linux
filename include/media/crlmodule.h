@@ -23,6 +23,15 @@
 
 #define CRLMODULE_NAME		"crlmodule"
 
+#define CRL_MAX_CUSTOM_GPIO_AMOUNT 3
+
+struct crl_custom_gpio {
+	char name[16];
+	int number;
+	unsigned int val;
+	unsigned int undo_val;
+};
+
 struct crlmodule_platform_data {
 	unsigned short i2c_addr;
 	unsigned short i2c_adapter;
@@ -33,6 +42,7 @@ struct crlmodule_platform_data {
 	const s64 *op_sys_clock;
 
 	int xshutdown;			/* gpio */
+	const struct crl_custom_gpio custom_gpio[CRL_MAX_CUSTOM_GPIO_AMOUNT];
 	char module_name[16]; /* module name from ACPI */
 	int crl_irq_pin;
 	unsigned int irq_pin_flags;

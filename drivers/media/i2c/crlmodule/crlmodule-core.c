@@ -2302,6 +2302,45 @@ static int crlmodule_run_poweron_init(struct crl_sensor *sensor)
 	return rval;
 }
 
+static int custom_gpio_request(struct crl_sensor *sensor)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
+	int i;
+
+	for (i = 0; i < CRL_MAX_CUSTOM_GPIO_AMOUNT; i++) {
+		if (sensor->platform_data->custom_gpio[i].name[0] == '\0')
+			break;
+		if (devm_gpio_request_one(
+			    &client->dev,
+			    sensor->platform_data->custom_gpio[i].number, 0,
+			    sensor->platform_data->custom_gpio[i].name) != 0) {
+			dev_err(&client->dev,
+				"unable to acquire %s %d\n",
+				sensor->platform_data->custom_gpio[i].name,
+				sensor->platform_data->custom_gpio[i].number);
+			return -ENODEV;
+		}
+	}
+	return 0;
+}
+
+static void custom_gpio_ctrl(struct crl_sensor *sensor, bool set)
+{
+	int i;
+	unsigned int val;
+
+	for (i = 0; i < CRL_MAX_CUSTOM_GPIO_AMOUNT; i++) {
+		if (sensor->platform_data->custom_gpio[i].name[0] == '\0')
+			break;
+		if (set)
+			val = sensor->platform_data->custom_gpio[i].val;
+		else
+			val = sensor->platform_data->custom_gpio[i].undo_val;
+
+		gpio_set_value(
+			sensor->platform_data->custom_gpio[i].number, val);
+	}
+}
 
 /*
  * This function handles sensor power up routine failure because of any failed
@@ -2326,6 +2365,9 @@ static void crlmodule_undo_poweron_entities(
 		case CRL_POWER_ETY_GPIO_FROM_PDATA:
 			gpio_set_value(sensor->platform_data->xshutdown,
 						   entity->undo_val);
+			break;
+		case CRL_POWER_ETY_GPIO_FROM_PDATA_BY_NUMBER:
+			custom_gpio_ctrl(sensor, false);
 			break;
 		case CRL_POWER_ETY_GPIO_CUSTOM:
 			gpio_set_value(entity->ent_number, entity->undo_val);
@@ -2363,6 +2405,9 @@ static int __crlmodule_powerup_sequence(struct crl_sensor *sensor)
 		case CRL_POWER_ETY_GPIO_FROM_PDATA:
 			gpio_set_value(sensor->platform_data->xshutdown,
 					entity->val);
+			break;
+		case CRL_POWER_ETY_GPIO_FROM_PDATA_BY_NUMBER:
+			custom_gpio_ctrl(sensor, true);
 			break;
 		case CRL_POWER_ETY_GPIO_CUSTOM:
 			gpio_set_value(entity->ent_number, entity->val);
@@ -2409,6 +2454,7 @@ static int __crlmodule_powerup_sequence(struct crl_sensor *sensor)
 		if (entity->delay)
 			usleep_range(entity->delay, entity->delay + 10);
 	}
+
 	return 0;
 error:
 	dev_err(&client->dev, "Error:Power sequece failed\n");
@@ -2638,7 +2684,12 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 					sensor->platform_data->xshutdown);
 				return -ENODEV;
 			}
-		break;
+			break;
+		case CRL_POWER_ETY_GPIO_FROM_PDATA_BY_NUMBER:
+			rval = custom_gpio_request(sensor);
+			if (rval < 0)
+				return rval;
+			break;
 		case CRL_POWER_ETY_GPIO_CUSTOM:
 			if (devm_gpio_request_one(&client->dev,
 				entity->ent_number, 0,
@@ -2648,7 +2699,7 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 					entity->ent_number);
 				return -ENODEV;
 			}
-		break;
+			break;
 		case CRL_POWER_ETY_REGULATOR_FRAMEWORK:
 			entity->regulator_priv = devm_regulator_get(
 					&client->dev, entity->ent_name);
@@ -2667,7 +2718,7 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 				dev_info(&client->dev,
 					"Failed to set voltage %s %d\n",
 					entity->ent_name, entity->val);
-		break;
+			break;
 		case CRL_POWER_ETY_CLK_FRAMEWORK:
 			sensor->xclk = devm_clk_get(&client->dev, NULL);
 			if (IS_ERR(sensor->xclk)) {
@@ -2675,12 +2726,13 @@ static int __init_power_resources(struct v4l2_subdev *subdev)
 					"Cannot get sensor clk\n");
 				return -ENODEV;
 			}
-		break;
+			break;
 		default:
 			dev_err(&client->dev, "Invalid Power item\n");
 			return -ENODEV;
 		}
 	}
+
 	return 0;
 }
 
