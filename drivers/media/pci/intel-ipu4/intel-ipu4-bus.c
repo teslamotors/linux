@@ -449,7 +449,18 @@ EXPORT_SYMBOL(intel_ipu4_bus_set_iommu);
 static int flr_rpm_recovery(struct device *dev, void *p)
 {
 	dev_dbg(dev, "FLR recovery call");
-	dev->power.runtime_error = 0;
+	/*
+	 * We are not necessarily going through device from child to
+	 * parent. runtime PM refuses to change state for parent if the child
+	 * is still active. At FLR (full reset for whole IPU) that doesn't
+	 * matter. Everything has been power gated by HW during the FLR cycle
+	 * and we are just cleaning up SW state. Thus, ignore child during
+	 * set_suspended.
+	 */
+	pm_suspend_ignore_children(dev, true);
+	pm_runtime_set_suspended(dev);
+	pm_suspend_ignore_children(dev, false);
+
 	return 0;
 }
 
@@ -457,5 +468,6 @@ int intel_ipu4_bus_flr_recovery(void)
 {
 	bus_for_each_dev(&intel_ipu4_bus, NULL, NULL,
 			 flr_rpm_recovery);
+	return 0;
 }
 EXPORT_SYMBOL(intel_ipu4_bus_flr_recovery);
