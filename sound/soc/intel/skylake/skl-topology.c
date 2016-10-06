@@ -4874,7 +4874,7 @@ static void skl_tplg_set_pipe_type(struct skl *skl, struct skl_pipe *pipe)
 }
 
 /* This will be read from topology manifest, currently defined here */
-#define SKL_MAX_MCPS 30000000
+#define SKL_MAX_MCPS 350000000
 #define SKL_FW_MAX_MEM 1000000
 
 /*
