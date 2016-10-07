@@ -50,4 +50,8 @@ enum dw9714_vcm_mode {
 #define VCM_VAL(data, s) (u16)((data) << 4 | (s))
 #define DIRECT_VCM VCM_DLC_MCLK(0, 0)
 
+struct dw9714_platform_data {
+	int gpio_xsd;
+};
+
 #endif

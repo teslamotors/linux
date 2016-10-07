@@ -18,11 +18,12 @@
 #include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
+#include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
-#include "dw9714.h"
+#include "../../../include/media/dw9714.h"
 
 /* dw9714 device structure */
 struct dw9714_device {
@@ -30,6 +31,7 @@ struct dw9714_device {
 	struct i2c_client *client;
 	struct v4l2_ctrl_handler ctrls_vcm;
 	struct v4l2_subdev subdev_vcm;
+	struct dw9714_platform_data *pdata;
 };
 
 #define to_dw9714_vcm(_ctrl)	\
@@ -131,12 +133,43 @@ static void dw9714_subdev_cleanup(struct dw9714_device *dw9714_dev)
 	media_entity_cleanup(&dw9714_dev->subdev_vcm.entity);
 }
 
+static int dw9714_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+{
+	struct dw9714_device *dw9714_dev = container_of(sd,
+			struct dw9714_device, subdev_vcm);
+	struct device *dev = &dw9714_dev->client->dev;
+	int rval;
+
+	rval = pm_runtime_get_sync(dev);
+	dev_dbg(dev, "%s rval = %d\n", __func__, rval);
+
+	return rval;
+}
+
+static int dw9714_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+{
+	struct dw9714_device *dw9714_dev = container_of(sd,
+			struct dw9714_device, subdev_vcm);
+	struct device *dev = &dw9714_dev->client->dev;
+
+	dev_dbg(dev, "%s\n", __func__);
+	pm_runtime_put(dev);
+
+	return 0;
+}
+
+static const struct v4l2_subdev_internal_ops dw9714_int_ops = {
+	.open = dw9714_open,
+	.close = dw9714_close,
+};
+
 static const struct v4l2_subdev_ops dw9714_ops = { };
 
 static int dw9714_probe(struct i2c_client *client,
 			 const struct i2c_device_id *devid)
 {
 	struct dw9714_device *dw9714_dev;
+	struct dw9714_platform_data *pdata = dev_get_platdata(&client->dev);
 	int rval;
 
 	dw9714_dev = devm_kzalloc(&client->dev, sizeof(*dw9714_dev),
@@ -145,10 +178,23 @@ static int dw9714_probe(struct i2c_client *client,
 	if (dw9714_dev == NULL)
 		return -ENOMEM;
 
+	if (pdata) {
+		dw9714_dev->pdata = pdata;
+		if (devm_gpio_request_one(&client->dev,
+					  dw9714_dev->pdata->gpio_xsd, 0,
+					  "dw9714 xsd") != 0) {
+			dev_err(&client->dev,
+				"unable to acquire xshutdown %d\n",
+				dw9714_dev->pdata->gpio_xsd);
+			return -ENODEV;
+		}
+	}
 	dw9714_dev->client = client;
 
 	v4l2_i2c_subdev_init(&dw9714_dev->subdev_vcm, client, &dw9714_ops);
 	dw9714_dev->subdev_vcm.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	dw9714_dev->subdev_vcm.internal_ops = &dw9714_int_ops;
+
 	snprintf(dw9714_dev->subdev_vcm.name,
 		sizeof(dw9714_dev->subdev_vcm.name),
 		DW9714_NAME " %d-%4.4x", i2c_adapter_id(client->adapter),
@@ -171,6 +217,9 @@ static int dw9714_probe(struct i2c_client *client,
 	dw9714_dev->subdev_vcm.entity.function = MEDIA_ENT_F_LENS;
 #endif
 	dw9714_dev->vcm_mode = DW9714_DIRECT;
+
+	pm_runtime_enable(&client->dev);
+
 	return 0;
 
 err_cleanup:
@@ -184,9 +233,52 @@ static int dw9714_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct dw9714_device *dw9714_dev = container_of(sd,
 			struct dw9714_device, subdev_vcm);
+
+	pm_runtime_disable(&client->dev);
 	dw9714_subdev_cleanup(dw9714_dev);
+
 	return 0;
 }
+
+#ifdef CONFIG_PM
+
+static int dw9714_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct dw9714_device *dw9714_dev = container_of(sd,
+			struct dw9714_device, subdev_vcm);
+
+	dev_dbg(&client->dev, "%s\n", __func__);
+	if (dw9714_dev->pdata)
+		gpio_set_value(dw9714_dev->pdata->gpio_xsd, 0);
+
+	return 0;
+}
+
+static int dw9714_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct dw9714_device *dw9714_dev = container_of(sd,
+			struct dw9714_device, subdev_vcm);
+	int rval;
+
+	if (dw9714_dev->pdata)
+		gpio_set_value(dw9714_dev->pdata->gpio_xsd, 1);
+
+	/* restore v4l2 control values */
+	rval = v4l2_ctrl_handler_setup(&dw9714_dev->ctrls_vcm);
+	dev_dbg(&client->dev, "%s rval = %d\n", __func__, rval);
+	return rval;
+}
+
+#else
+
+#define dw9714_suspend	NULL
+#define dw9714_resume	NULL
+
+#endif /* CONFIG_PM */
 
 static const struct i2c_device_id dw9714_id_table[] = {
 	{ DW9714_NAME, 0 },
@@ -194,9 +286,17 @@ static const struct i2c_device_id dw9714_id_table[] = {
 };
 MODULE_DEVICE_TABLE(i2c, dw9714_id_table);
 
+static const struct dev_pm_ops dw9714_pm_ops = {
+	.suspend	= dw9714_suspend,
+	.resume		= dw9714_resume,
+	.runtime_suspend = dw9714_suspend,
+	.runtime_resume = dw9714_resume,
+};
+
 static struct i2c_driver dw9714_i2c_driver = {
 	.driver		= {
 		.name	= DW9714_NAME,
+		.pm = &dw9714_pm_ops,
 	},
 	.probe		= dw9714_probe,
 	.remove		= dw9714_remove,
@@ -206,5 +306,6 @@ static struct i2c_driver dw9714_i2c_driver = {
 module_i2c_driver(dw9714_i2c_driver);
 
 MODULE_AUTHOR("Jouni Ukkonen <jouni.ukkonen@intel.com>");
+MODULE_AUTHOR("Tommi Franttila <tommi.franttila@intel.com>");
 MODULE_DESCRIPTION("DW9714 VCM driver");
 MODULE_LICENSE("GPL");
