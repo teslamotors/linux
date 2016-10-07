@@ -27,7 +27,6 @@
 
 /* dw9714 device structure */
 struct dw9714_device {
-	enum dw9714_vcm_mode vcm_mode;
 	struct i2c_client *client;
 	struct v4l2_ctrl_handler ctrls_vcm;
 	struct v4l2_subdev subdev_vcm;
@@ -67,27 +66,10 @@ static int dw9714_t_focus_vcm(struct dw9714_device *dw9714_dev, u16 val)
 {
 	struct i2c_client *client = dw9714_dev->client;
 	int ret = -EINVAL;
-	u8 s = 0;
 
-	/*
-	 * For different mode, VCM_PROTECTION_OFF/ON required by the
-	 * control procedure. For DW9714_DIRECT/DLC mode, slew value is
-	 * VCM_DEFAULT_S(0).
-	 */
 	dev_dbg(&client->dev, "Setting new value VCM: %d\n", val);
-	switch (dw9714_dev->vcm_mode) {
-	case DW9714_DIRECT:
-		ret = dw9714_i2c_write(client,
-					VCM_VAL(val, VCM_DEFAULT_S));
-		break;
-	case DW9714_LSC:
-		ret = dw9714_i2c_write(client, VCM_VAL(val, s));
-		break;
-	case DW9714_DLC:
-		ret = dw9714_i2c_write(client,
-					VCM_VAL(val, VCM_DEFAULT_S));
-		break;
-	}
+	ret = dw9714_i2c_write(client,
+			       VCM_VAL(val, VCM_DEFAULT_S));
 	return ret;
 }
 
@@ -216,7 +198,6 @@ static int dw9714_probe(struct i2c_client *client,
 #else
 	dw9714_dev->subdev_vcm.entity.function = MEDIA_ENT_F_LENS;
 #endif
-	dw9714_dev->vcm_mode = DW9714_DIRECT;
 
 	pm_runtime_enable(&client->dev);
 
