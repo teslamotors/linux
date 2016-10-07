@@ -114,5 +114,22 @@ static void ipu4_quirk(struct pci_dev *pci_dev)
 	pci_dev->dev.platform_data = &pdata;
 }
 
+static int __init intel_ipu4_pdata_init(void)
+{
+	struct pci_dev *pdev;
+
+	/* BXT B0 / C0 */
+	pdev = pci_get_device(PCI_VENDOR_ID_INTEL, 0x1a88, NULL);
+	if (pdev)
+		pdev->dev.platform_data = &pdata;
+
+	return 0;
+}
+
+module_init(intel_ipu4_pdata_init);
+
 /* BXT B0 PCI id is 0x1a88 */
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x1a88, ipu4_quirk);
+
+MODULE_AUTHOR("Intel");
+MODULE_LICENSE("GPL");

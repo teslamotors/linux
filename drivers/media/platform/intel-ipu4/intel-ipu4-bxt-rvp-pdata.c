@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014--2015 Intel Corporation.
+ * Copyright (c) 2014--2016 Intel Corporation.
  *
  * Author: Sakari Ailus <sakari.ailus@linux.intel.com>
  *
@@ -181,7 +181,23 @@ static void ipu4_quirk(struct pci_dev *pci_dev)
 	pci_dev->dev.platform_data = &pdata;
 }
 
+static int __init intel_ipu4_pdata_init(void)
+{
+	struct pci_dev *pdev;
+
+	/* BXT B0 / C0 */
+	pdev = pci_get_device(PCI_VENDOR_ID_INTEL, 0x1a88, NULL);
+	if (pdev)
+		pdev->dev.platform_data = &pdata;
+
+	return 0;
+}
+
+module_init(intel_ipu4_pdata_init);
+
 /* BXT A0 PCI id is 0x4008 */
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x4008, ipu4_quirk);
 /* BXT B0 */
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x1a88, ipu4_quirk);
+MODULE_AUTHOR("Intel");
+MODULE_LICENSE("GPL");

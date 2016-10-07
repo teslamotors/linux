@@ -1,5 +1,5 @@
 config INTEL_IPU4_BXT_RVP_PDATA
-	bool "Enable built in platform data for Broxton RVP"
+	tristate "Enable built in platform data for Broxton RVP"
 	---help---
 	Pre-ACPI system platform data is compiled inside kernel
 
@@ -13,7 +13,7 @@ config INTEL_IPU4_BXT_GP_PDATA
 	Pre-ACPI system platform data is compiled inside kernel
 
 config INTEL_IPU4_BXT_GT_PDATA
-	bool "Enable built in platform data for Broxton-GT"
+	tristate "Enable built in platform data for Broxton-GT"
 	---help---
 	Pre-ACPI system platform data is compiled inside kernel
 
