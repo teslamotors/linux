@@ -116,7 +116,6 @@ struct ia_css_syscom_context *ia_css_psys_open(
 {
 	struct ia_css_syscom_context *context;
 	ia_css_psys_server_init_t *server_config;
-	int i;
 
 	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_open(): enter:\n");
 
@@ -149,26 +148,6 @@ struct ia_css_syscom_context *ia_css_psys_open(
 	ia_css_cell_start_prefetch(config->ssid, SPC0,
 				   server_config->icache_prefetch_sp);
 
-	for (i = 0; i < IA_CSS_N_PSYS_CMD_QUEUE_ID; i++) {
-		int retval;
-
-		do {
-			retval = ia_css_syscom_send_port_open(context,
-							      (unsigned int)i);
-		} while (retval == ERROR_BUSY);
-		verifexit(retval == 0, EINVAL);
-	}
-
-	for (i = 0; i < IA_CSS_N_PSYS_EVENT_QUEUE_ID; i++) {
-		int retval;
-
-		do {
-			retval = ia_css_syscom_recv_port_open(context,
-							      (unsigned int)i);
-		} while (retval == ERROR_BUSY);
-		verifexit(retval == 0, EINVAL);
-	}
-
 	return context;
 
 EXIT:
@@ -181,12 +160,41 @@ bool ia_css_psys_open_is_ready(
 {
 	int retval = -1;
 	bool ready = 0;
+	unsigned int i;
+	int syscom_retval;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO,
-		"ia_css_psys_open_is_ready(): enter:\n");
 	verifexit(context != NULL, EINVAL);
 
+	for (i = 0; i < IA_CSS_N_PSYS_CMD_QUEUE_ID; i++) {
+		syscom_retval = ia_css_syscom_send_port_open(context, i);
+		if (syscom_retval != 0) {
+			if (syscom_retval == ERROR_BUSY) {
+				/* Do not print error */
+				retval = 0;
+			}
+			/* Not ready yet */
+			goto EXIT;
+		}
+	}
+
+	for (i = 0; i < IA_CSS_N_PSYS_EVENT_QUEUE_ID; i++) {
+		syscom_retval = ia_css_syscom_recv_port_open(context, i);
+		if (syscom_retval != 0) {
+			if (syscom_retval == ERROR_BUSY) {
+				/* Do not print error */
+				retval = 0;
+			}
+			/* Not ready yet */
+			goto EXIT;
+		}
+	}
+
+	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO,
+		"ia_css_psys_open_is_ready(): complete:\n");
+
+	/* If this point reached, do not print error */
 	retval = 0;
+	/* If this point reached, ready */
 	ready = 1;
 EXIT:
 	if (retval != 0) {

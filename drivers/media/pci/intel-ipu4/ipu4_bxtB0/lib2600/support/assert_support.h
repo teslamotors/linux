@@ -133,11 +133,11 @@
  * but that causes many compiler warnings (==errors) under Android
  * because it seems that the BUG_ON() macro is not seen as a check by
  * gcc like the BUG() macro is. */
-#define assert(cnd)                                                     \
-	do {                                                            \
-		if (!(cnd)) {                                           \
-			BUG();                                          \
-		}                                                       \
+#define assert(cnd)							\
+	do {								\
+		if (!(cnd)) {						\
+			BUG();						\
+		}							\
 	} while (0)
 #endif /*KERNEL_ASSERT_TO_BUG*/
 
@@ -150,14 +150,14 @@
 #endif /*KERNEL_ASSERT_TO_WARN_ON*/
 
 #ifdef KERNEL_ASSERT_TO_WARN_ON_INF_LOOP
-#define assert(cnd)                                                     \
-	do {                                                            \
-		int not_cnd = !(cnd);                                   \
-		WARN_ON(not_cnd);                                       \
-		if (not_cnd) {                                          \
-			for (;;) {                                      \
-			}                                               \
-		}                                                       \
+#define assert(cnd)							\
+	do {								\
+		int not_cnd = !(cnd);					\
+		WARN_ON(not_cnd);					\
+		if (not_cnd) {						\
+			for (;;) {					\
+			}						\
+		}							\
 	} while (0)
 #endif /*KERNEL_ASSERT_TO_WARN_ON_INF_LOOP*/
 

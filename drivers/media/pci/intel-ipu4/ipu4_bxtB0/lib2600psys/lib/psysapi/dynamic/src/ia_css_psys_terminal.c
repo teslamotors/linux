@@ -14,6 +14,7 @@
 
 #include "ia_css_psys_dynamic_storage_class.h"
 #include "ia_css_psys_terminal_private_types.h"
+#include "ia_css_terminal_types.h"
 
 /*
  * Functions to possibly inline
@@ -22,6 +23,99 @@
 #ifndef _IA_CSS_PSYS_DYNAMIC_INLINE_
 #include "ia_css_psys_terminal_impl.h"
 #endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
+
+STORAGE_CLASS_INLINE void __terminal_dummy_check_alignment(void)
+{
+	COMPILATION_ERROR_IF(
+		SIZE_OF_PARAM_TERMINAL_STRUCT_BITS !=
+			(CHAR_BIT * sizeof(ia_css_param_terminal_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_param_terminal_t) % sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_PARAM_SEC_STRUCT_BITS !=
+			(CHAR_BIT * sizeof(ia_css_param_section_desc_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_param_section_desc_t) % sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_SPATIAL_PARAM_TERM_STRUCT_BITS !=
+			(CHAR_BIT * sizeof(ia_css_spatial_param_terminal_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_spatial_param_terminal_t) % sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_FRAME_GRID_PARAM_SEC_STRUCT_BITS !=
+			(CHAR_BIT * sizeof(
+				ia_css_frame_grid_param_section_desc_t)));
+
+	COMPILATION_ERROR_IF(0 != sizeof(
+		ia_css_frame_grid_param_section_desc_t) % sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_FRAG_GRID_STRUCT_BITS !=
+			(CHAR_BIT * sizeof(ia_css_fragment_grid_desc_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_fragment_grid_desc_t) % sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_SLICED_PARAM_TERM_STRUCT_BITS !=
+			(CHAR_BIT * sizeof(ia_css_sliced_param_terminal_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_sliced_param_terminal_t)%sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_FRAGMENT_SLICE_DESC_STRUCT_BITS !=
+			(CHAR_BIT * sizeof(ia_css_fragment_slice_desc_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_fragment_slice_desc_t)%sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_SLICE_PARAM_SECTION_DESC_STRUCT_BITS !=
+			(CHAR_BIT * sizeof(
+				ia_css_slice_param_section_desc_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_slice_param_section_desc_t)%sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_PROG_TERM_STRUCT_BITS !=
+			(CHAR_BIT * sizeof(ia_css_program_terminal_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_program_terminal_t)%sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_FRAG_SEQ_INFO_STRUCT_BITS !=
+		(CHAR_BIT * sizeof(
+			ia_css_kernel_fragment_sequencer_info_desc_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_kernel_fragment_sequencer_info_desc_t) %
+						sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_FRAG_SEQ_COMMANDS_STRUCT_BITS !=
+		(CHAR_BIT * sizeof(
+			ia_css_kernel_fragment_sequencer_command_desc_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_kernel_fragment_sequencer_command_desc_t) %
+						sizeof(uint64_t));
+
+	COMPILATION_ERROR_IF(
+		SIZE_OF_FRAG_PARAM_SEC_STRUCT_BITS !=
+		(CHAR_BIT * sizeof(ia_css_fragment_param_section_desc_t)));
+
+	COMPILATION_ERROR_IF(0 !=
+		sizeof(ia_css_fragment_param_section_desc_t)%sizeof(uint64_t));
+}
 
 /*
  * Functions not to inline
