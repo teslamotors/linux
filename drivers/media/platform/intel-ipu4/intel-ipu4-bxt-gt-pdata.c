@@ -21,6 +21,7 @@
 
 #include <media/intel-ipu4-isys.h>
 #include "../../../../include/media/crlmodule.h"
+#include "../../../../include/media/dw9714.h"
 
 /* DW9714 lens driver definitions */
 #define DW9714_VCM_ADDR         0x0c
@@ -86,10 +87,15 @@ static struct intel_ipu4_isys_subdev_info ov5670_sd = {
 	},
 };
 
+static struct dw9714_platform_data  dw9714_pdata = {
+	.gpio_xsd = GPIO_BASE + 72,
+};
+
 static struct intel_ipu4_isys_subdev_info dw9714_sd = {
 	.i2c = {
 		.board_info = {
 			I2C_BOARD_INFO(DW9714_NAME,  DW9714_VCM_ADDR),
+			.platform_data = &dw9714_pdata,
 		},
 		.i2c_adapter_id = 8,
 	}
