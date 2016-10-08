@@ -82,6 +82,13 @@ do {                               \
 	(_errval == (error_tag))
 #endif
 
+#if ERR_EMBEDDED
+#define noerror() (1)
+#else
+#define noerror() \
+	(_errval == 0)
+#endif
+
 #define verifjmpexit(cond)         \
 do {                               \
 	if (!(cond)) {             \
