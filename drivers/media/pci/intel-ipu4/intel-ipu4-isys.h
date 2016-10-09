@@ -146,7 +146,7 @@ struct intel_ipu4_isys {
 	unsigned int short_packet_source;
 	struct intel_ipu4_isys_csi2_monitor_message *short_packet_trace_buffer;
 	dma_addr_t short_packet_trace_buffer_dma_addr;
-	bool short_packet_tracing_enabled;
+	unsigned int short_packet_tracing_count;
 	struct mutex short_packet_tracing_mutex;
 	u64 tsc_timer_base;
 	u64 tunit_timer_base;

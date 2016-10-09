@@ -872,12 +872,6 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
 
 	if (ip->isys->short_packet_source ==
 		INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
-		memset(ip->isys->short_packet_trace_buffer, 0,
-			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE);
-		dma_sync_single_for_device(&av->isys->adev->dev,
-			av->isys->short_packet_trace_buffer_dma_addr,
-			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
-			DMA_BIDIRECTIONAL);
 		ip->short_packet_trace_index = 0;
 		return 0;
 	}

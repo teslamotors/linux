@@ -634,91 +634,99 @@ static int update_timer_base(struct intel_ipu4_isys *isys)
 }
 
 static int intel_ipu4_isys_csi2_configure_tunit(
-	struct intel_ipu4_isys_csi2 *csi2, unsigned int vc, bool enable)
+	struct intel_ipu4_isys_csi2 *csi2, bool enable)
 {
 	struct intel_ipu4_isys *isys = csi2->isys;
 	void __iomem *isys_base = isys->pdata->base;
 	void __iomem *tunit_base = isys_base + TRACE_REG_IS_TRACE_UNIT_BASE;
-	void __iomem *csi2_tm_base;
-	void __iomem *event_mask_reg;
-	unsigned int reg_val, trace_addr;
-
-	if (csi2->index >= INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS) {
-		csi2_tm_base = isys->pdata->base + TRACE_REG_CSI2_3PH_TM_BASE;
-		trace_addr = TRACE_REG_CSI2_3PH_TM_TRACE_ADDRESS_VAL;
-		event_mask_reg = csi2_tm_base +
-			TRACE_REG_CSI2_3PH_TM_TRACE_DDR_EN_REG_IDX_Pn(
-			csi2->index);
-	} else {
-		csi2_tm_base = isys->pdata->base + TRACE_REG_CSI2_TM_BASE;
-		trace_addr = TRACE_REG_CSI2_TM_TRACE_ADDRESS_VAL;
-		event_mask_reg = csi2_tm_base +
-			TRACE_REG_CSI2_TM_TRACE_DDR_EN_REG_IDX_Pn(
-			csi2->index);
-	}
-
-	if (!enable) {
-		mutex_lock(&isys->short_packet_tracing_mutex);
-		if (isys->short_packet_tracing_enabled) {
-			writel(0, event_mask_reg);
-			writel(0, csi2_tm_base +
-				TRACE_REG_CSI2_TM_OVERALL_ENABLE_REG_IDX);
-			writel(0, tunit_base + TRACE_REG_TUN_DDR_ENABLE);
-		}
-		isys->short_packet_tracing_enabled = false;
-		mutex_unlock(&isys->short_packet_tracing_mutex);
-		return 0;
-	}
+	int i, j, ret = 0;
 
 	mutex_lock(&isys->short_packet_tracing_mutex);
-	if (isys->short_packet_tracing_enabled) {
-		mutex_unlock(&isys->short_packet_tracing_mutex);
-		dev_err(&isys->adev->dev,
-			"Multiple interlaced streams is not allowed.\n");
-		return -EBUSY;
+	if (!enable) {
+		isys->short_packet_tracing_count--;
+		if (isys->short_packet_tracing_count == 0)
+			writel(0, tunit_base + TRACE_REG_TUN_DDR_ENABLE);
+		goto out_release_mutex;
 	}
-	isys->short_packet_tracing_enabled = true;
-	mutex_unlock(&isys->short_packet_tracing_mutex);
+
+	isys->short_packet_tracing_count++;
+	if (isys->short_packet_tracing_count > 1)
+		goto out_release_mutex;
+
+	memset(isys->short_packet_trace_buffer, 0,
+		INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE);
+	dma_sync_single_for_device(&isys->adev->dev,
+		isys->short_packet_trace_buffer_dma_addr,
+		INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+		DMA_BIDIRECTIONAL);
 
 	/* ring buffer base */
 	writel(isys->short_packet_trace_buffer_dma_addr,
-	       tunit_base + TRACE_REG_TUN_DRAM_BASE_ADDR);
+		tunit_base + TRACE_REG_TUN_DRAM_BASE_ADDR);
 
 	/* ring buffer end */
 	writel(isys->short_packet_trace_buffer_dma_addr +
-	       INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE -
-	       INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MSG_SIZE,
-	       tunit_base + TRACE_REG_TUN_DRAM_END_ADDR);
+		INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE -
+		INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_MSG_SIZE,
+		tunit_base + TRACE_REG_TUN_DRAM_END_ADDR);
 
 	/* Infobits for ddr trace */
 	writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
-	       tunit_base + TRACE_REG_TUN_DDR_INFO_VAL);
+		tunit_base + TRACE_REG_TUN_DDR_INFO_VAL);
 
 	/* Remove reset from trace timers */
 	writel(TRACE_REG_GPREG_TRACE_TIMER_RST_OFF,
 		isys_base + TRACE_REG_IS_GPREG_TRACE_TIMER_RST_N);
 
-	/* Reset CSI2 monitor */
-	writel(1, csi2_tm_base + TRACE_REG_CSI2_TM_RESET_REG_IDX);
+	/* Reset CSI2 monitors */
+	writel(1, isys->pdata->base + TRACE_REG_CSI2_TM_BASE +
+		TRACE_REG_CSI2_TM_RESET_REG_IDX);
+	writel(1, isys->pdata->base + TRACE_REG_CSI2_3PH_TM_BASE +
+		TRACE_REG_CSI2_TM_RESET_REG_IDX);
 
 	/* Set trace address register. */
-	writel(trace_addr, csi2_tm_base +
+	writel(TRACE_REG_CSI2_TM_TRACE_ADDRESS_VAL,
+		isys->pdata->base + TRACE_REG_CSI2_TM_BASE +
 		TRACE_REG_CSI2_TM_TRACE_ADDRESS_REG_IDX);
-	writel(TRACE_REG_CSI2_TM_TRACE_HEADER_VAL, csi2_tm_base +
+	writel(TRACE_REG_CSI2_TM_TRACE_HEADER_VAL,
+		isys->pdata->base + TRACE_REG_CSI2_TM_BASE +
+		TRACE_REG_CSI2_TM_TRACE_HEADER_REG_IDX);
+	writel(TRACE_REG_CSI2_3PH_TM_TRACE_ADDRESS_VAL,
+		isys->pdata->base + TRACE_REG_CSI2_3PH_TM_BASE +
+		TRACE_REG_CSI2_TM_TRACE_ADDRESS_REG_IDX);
+	writel(TRACE_REG_CSI2_TM_TRACE_HEADER_VAL,
+		isys->pdata->base + TRACE_REG_CSI2_3PH_TM_BASE +
 		TRACE_REG_CSI2_TM_TRACE_HEADER_REG_IDX);
 
 	/* Enable DDR trace. */
 	writel(1, tunit_base + TRACE_REG_TUN_DDR_ENABLE);
 
 	/* Enable trace for CSI2 port. */
-	reg_val = readl(event_mask_reg);
-	reg_val |= TRACE_CSI2_TM_EVENT_FS(vc);
-	writel(reg_val, event_mask_reg);
+	for (i = 0; i < INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS +
+	     INTEL_IPU4_ISYS_MAX_CSI2_COMBO_PORTS; i++) {
+		void __iomem *event_mask_reg =
+			(i < INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS) ?
+			isys->pdata->base + TRACE_REG_CSI2_TM_BASE +
+			TRACE_REG_CSI2_TM_TRACE_DDR_EN_REG_IDX_Pn(i) :
+			isys->pdata->base + TRACE_REG_CSI2_3PH_TM_BASE +
+			TRACE_REG_CSI2_3PH_TM_TRACE_DDR_EN_REG_IDX_Pn(i);
+
+		writel(INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_EVENT_MASK,
+			event_mask_reg);
+	}
 
 	/* Enable CSI2 receiver monitor */
-	writel(1, csi2_tm_base + TRACE_REG_CSI2_TM_OVERALL_ENABLE_REG_IDX);
+	writel(1, isys->pdata->base + TRACE_REG_CSI2_TM_BASE +
+		TRACE_REG_CSI2_TM_OVERALL_ENABLE_REG_IDX);
+	writel(1, isys->pdata->base + TRACE_REG_CSI2_3PH_TM_BASE +
+		TRACE_REG_CSI2_TM_OVERALL_ENABLE_REG_IDX);
 
-	return update_timer_base(isys);
+	ret = update_timer_base(isys);
+
+out_release_mutex:
+	mutex_unlock(&isys->short_packet_tracing_mutex);
+
+	return ret;
 }
 
 #define CSI2_ACCINV	8
@@ -759,7 +767,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 			writel(0, csi2->base + CSI2_REG_CSI2PART_IRQ_ENABLE);
 			if (ip->interlaced && ip->isys->short_packet_source ==
 				INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT)
-				intel_ipu4_isys_csi2_configure_tunit(csi2, ip->vc, 0);
+				intel_ipu4_isys_csi2_configure_tunit(csi2, 0);
 		} else {
 			/*
 			* TODO: IPU5 IRQ
@@ -862,7 +870,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
 			writel(CSI2_RX_SYNC_COUNTER_EXTERNAL,
 				csi2->base + CSI2_REG_CSI_RX_SYNC_COUNTER_SEL);
-			rval = intel_ipu4_isys_csi2_configure_tunit(csi2, ip->vc, 1);
+			rval = intel_ipu4_isys_csi2_configure_tunit(csi2, 1);
 			if (rval)
 				return rval;
 		}
