@@ -55,9 +55,9 @@
 #define INTEL_IPU4_ISYS_CSI2_LONG_PACKET_FOOTER_SIZE	32
 
 /*
- * For B0/1: FW support max 6 streams
+ * For B0/1: FW support max 8 streams
  */
-#define INTEL_IPU4_ISYS_MAX_STREAMS		6
+#define INTEL_IPU4_ISYS_MAX_STREAMS		8
 
 
 #define INTEL_IPU4_ISYS_MIN_WIDTH		1U

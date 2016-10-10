@@ -83,7 +83,7 @@
 #define IS_FREQ_CTL_DIVISOR_B0		0x4
 #define IS_FREQ_CTL_DIVISOR_IPU5_A0		0x6
 
-#define INTEL_IPU4_ISYS_NUM_STREAMS_B0		4 /* Max 6 */
+#define INTEL_IPU4_ISYS_NUM_STREAMS_B0		8 /* Max 8 */
 
 /*
  * ISYS DMA can overshoot. For higher resolutions over allocation is one line
