@@ -601,8 +601,8 @@ static int ti964_register_subdev(struct ti964 *va)
 	struct i2c_client *client = v4l2_get_subdevdata(&va->sd);
 
 	v4l2_subdev_init(&va->sd, &ti964_sd_ops);
-	snprintf(va->sd.name, sizeof(va->sd.name), "TI964 0x%x",
-		 client->addr);
+	snprintf(va->sd.name, sizeof(va->sd.name), "TI964 %d-%4.4x",
+		i2c_adapter_id(client->adapter), client->addr);
 
 	va->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
 			V4L2_SUBDEV_FL_HAS_SUBSTREAMS;
