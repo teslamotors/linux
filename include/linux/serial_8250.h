@@ -102,6 +102,7 @@ struct uart_8250_port {
 	bool			fifo_bug;	/* min RX trigger if enabled */
 	unsigned int		tx_loadsz;	/* transmit fifo load size */
 	unsigned char		acr;
+	unsigned char		efr;
 	unsigned char		fcr;
 	unsigned char		ier;
 	unsigned char		lcr;
@@ -110,6 +111,9 @@ struct uart_8250_port {
 	unsigned char		mcr_force;	/* mask of forced bits */
 	unsigned char		cur_iotype;	/* Running I/O type */
 	unsigned int		rpm_tx_active;
+	unsigned int		baud;
+	unsigned int		quot;
+	unsigned int		frac;
 	unsigned char		canary;		/* non-zero during system sleep
 						 *   if no_console_suspend
 						 */
@@ -150,6 +154,7 @@ extern int early_serial_setup(struct uart_port *port);
 
 extern int early_serial8250_setup(struct earlycon_device *device,
 					 const char *options);
+void serial8250_do_restore_context(struct uart_port *port);
 extern void serial8250_do_set_termios(struct uart_port *port,
 		struct ktermios *termios, struct ktermios *old);
 extern void serial8250_do_set_ldisc(struct uart_port *port,
