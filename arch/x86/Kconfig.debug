@@ -415,7 +415,17 @@ config FRAME_POINTER
 	depends on !UNWINDER_ORC && !UNWINDER_GUESS
 	bool
 
-menu "Intel Apollo Lake  - Fastboot support"
+menu "Intel Apollo Lake  - ABL/Fastboot support"
+
+config ABL_SUPPORT
+	bool "Intel Automotive Bootloader support"
+	default y
+	---help---
+	  Using the Intel ABL (Automotive Bootloader) within your system,
+	  its recommended to enalbe this option.
+	  This will enable several ABL or fast-boot specific options.
+
+	  If unsure, say N.
 
 config FASTBOOT_PCI_PROBE
 	bool "Resort PCI device probing"
@@ -429,7 +439,7 @@ config FASTBOOT_PCI_PROBE
 
 config FASTBOOT_FW_LOAD
 	bool "Enable fast-load firmware support over ABL"
-	depends on FW_LOADER
+	depends on ABL_SUPPORT && FW_LOADER
 	---help---
 	  Enalbe a specific Firmware loading mechanism over the Intel ABL
 	  (Automotive Boot Loader).
@@ -438,6 +448,29 @@ config FASTBOOT_FW_LOAD
 	  into the multiboot iasImage format. Also needs to be mentioned inside
 	  the kernel cmdline.txt in the format: "<name>=%s@%a".
 	  e.g.:	i915/bxt_dmc_ver1.bin=%s@%a
+
+	  If unsure, say N.
+
+config ABL_PARAM
+	bool "Expose ABL cmdline parameter"
+	default y
+	depends on ABL_SUPPORT
+	---help---
+	  This small interface reads the command line parameters forwarded by the ABL
+	  at boot time and exposes them to sysfs.
+	  Actually, it's listing all entries given as: "ABL."
+	  e.g.: /sys/kernel/abl/version
+
+	  If unsure, say N.
+
+config ABL_PARAM_MAX
+	int "Max number of ABL cmdline parameter"
+	default 32
+	depends on ABL_PARAM
+	---help---
+	  This specifies the maximum number of command line parameters
+	  from ABL used for static array.
+	  It's not possible to use dynamic allocation in early stage of the code.
 
 	  If unsure, say N.
 
