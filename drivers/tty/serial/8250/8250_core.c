@@ -844,7 +844,6 @@ static int serial8250_probe(struct platform_device *dev)
 		uart.port.set_termios	= p->set_termios;
 		uart.port.set_ldisc	= p->set_ldisc;
 		uart.port.get_mctrl	= p->get_mctrl;
-		uart.port.pm		= p->pm;
 		uart.port.dev		= &dev->dev;
 		uart.port.irqflags	|= irqflag;
 		ret = serial8250_register_8250_port(&uart);

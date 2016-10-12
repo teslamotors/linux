@@ -28,26 +28,6 @@
 
 #include <prom.h>
 
-static void alchemy_8250_pm(struct uart_port *port, unsigned int state,
-			    unsigned int old_state)
-{
-#ifdef CONFIG_SERIAL_8250
-	switch (state) {
-	case 0:
-		alchemy_uart_enable(CPHYSADDR(port->membase));
-		serial8250_do_pm(port, state, old_state);
-		break;
-	case 3:		/* power off */
-		serial8250_do_pm(port, state, old_state);
-		alchemy_uart_disable(CPHYSADDR(port->membase));
-		break;
-	default:
-		serial8250_do_pm(port, state, old_state);
-		break;
-	}
-#endif
-}
-
 #define PORT(_base, _irq)					\
 	{							\
 		.mapbase	= _base,			\
@@ -57,7 +37,6 @@ static void alchemy_8250_pm(struct uart_port *port, unsigned int state,
 		.flags		= UPF_SKIP_TEST | UPF_IOREMAP | \
 				  UPF_FIXED_TYPE,		\
 		.type		= PORT_16550A,			\
-		.pm		= alchemy_8250_pm,		\
 	}
 
 static struct plat_serial8250_port au1x00_uart_data[][4] __initdata = {

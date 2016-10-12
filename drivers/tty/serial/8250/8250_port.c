@@ -2780,16 +2780,6 @@ void serial8250_do_pm(struct uart_port *port, unsigned int state,
 }
 EXPORT_SYMBOL(serial8250_do_pm);
 
-static void
-serial8250_pm(struct uart_port *port, unsigned int state,
-	      unsigned int oldstate)
-{
-	if (port->pm)
-		port->pm(port, state, oldstate);
-	else
-		serial8250_do_pm(port, state, oldstate);
-}
-
 static unsigned int serial8250_port_size(struct uart_8250_port *pt)
 {
 	if (pt->port.mapsize)
@@ -3101,7 +3091,6 @@ static const struct uart_ops serial8250_pops = {
 	.shutdown	= serial8250_shutdown,
 	.set_termios	= serial8250_set_termios,
 	.set_ldisc	= serial8250_set_ldisc,
-	.pm		= serial8250_pm,
 	.type		= serial8250_type,
 	.release_port	= serial8250_release_port,
 	.request_port	= serial8250_request_port,
