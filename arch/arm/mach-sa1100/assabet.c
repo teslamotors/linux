@@ -541,21 +541,6 @@ fixup_assabet(struct tag *tags, char **cmdline)
 		printk("Neponset expansion board detected\n");
 }
 
-
-static void assabet_uart_pm(struct uart_port *port, u_int state, u_int oldstate)
-{
-	if (port->mapbase == _Ser1UTCR0) {
-		if (state)
-			ASSABET_BCR_clear(ASSABET_BCR_RS232EN |
-					  ASSABET_BCR_COM_RTS |
-					  ASSABET_BCR_COM_DTR);
-		else
-			ASSABET_BCR_set(ASSABET_BCR_RS232EN |
-					ASSABET_BCR_COM_RTS |
-					ASSABET_BCR_COM_DTR);
-	}
-}
-
 /*
  * Assabet uses COM_RTS and COM_DTR for both UART1 (com port)
  * and UART3 (radio module).  We only handle them for UART1 here.
@@ -614,7 +599,6 @@ static u_int assabet_get_mctrl(struct uart_port *port)
 static struct sa1100_port_fns assabet_port_fns __initdata = {
 	.set_mctrl	= assabet_set_mctrl,
 	.get_mctrl	= assabet_get_mctrl,
-	.pm		= assabet_uart_pm,
 };
 
 static struct map_desc assabet_io_desc[] __initdata = {
