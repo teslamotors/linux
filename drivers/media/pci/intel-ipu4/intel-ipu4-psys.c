@@ -806,7 +806,9 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 
 	INIT_LIST_HEAD(&kcmd->list);
 
+	mutex_lock(&fh->mutex);
 	kpgbuf = intel_ipu4_psys_lookup_kbuffer(fh, cmd->pg);
+	mutex_unlock(&fh->mutex);
 	if (!kpgbuf || !kpgbuf->sgt)
 		goto error;
 
@@ -854,8 +856,10 @@ intel_ipu4_psys_copy_cmd(struct intel_ipu4_psys_command *cmd,
 		goto error;
 
 	for (i = 0; i < kcmd->nbuffers; i++) {
+		mutex_lock(&fh->mutex);
 		kcmd->kbufs[i] =
 			intel_ipu4_psys_lookup_kbuffer(fh, kcmd->buffers[i].fd);
+		mutex_unlock(&fh->mutex);
 		if (!kcmd->kbufs[i] || !kcmd->kbufs[i]->sgt ||
 		    kcmd->kbufs[i]->len < kcmd->buffers[i].bytes_used)
 			goto error;
@@ -1351,12 +1355,9 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 	if (psys->adev->isp->flr_done)
 		return -EIO;
 
-	mutex_lock(&fh->mutex);
 	kcmd = intel_ipu4_psys_copy_cmd(cmd, fh);
-	if (!kcmd) {
-		mutex_unlock(&fh->mutex);
+	if (!kcmd)
 		return -EINVAL;
-	}
 
 	kcmd->state = KCMD_STATE_NEW;
 	kcmd->fh = fh;
@@ -1469,6 +1470,8 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 	}
 
 	init_completion(&kcmd->cmd_complete);
+
+	mutex_lock(&fh->mutex);
 	list_add_tail(&kcmd->list, &fh->kcmds[cmd->priority]);
 	if (fh->new_kcmd_tail[cmd->priority] == NULL) {
 		fh->new_kcmd_tail[cmd->priority] = kcmd;
@@ -1485,7 +1488,6 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 
 error:
 	intel_ipu4_psys_kcmd_free(kcmd);
-	mutex_unlock(&fh->mutex);
 
 	return ret;
 }
