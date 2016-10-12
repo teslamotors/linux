@@ -46,6 +46,18 @@ static unsigned int  num_stream_support = INTEL_IPU4_ISYS_NUM_STREAMS_B0;
 module_param(num_stream_support, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(num_stream_support, "IPU4 project support number of stream");
 
+#ifndef V4L2_PIX_FMT_SBGGR14V32
+/*
+ * Non-vectorized 14bit definitions have been upstreamed.
+ * To keep various versions of the ipu4 builds compileable use local
+ * definitions when global one's doesn't exists.
+ */
+#define V4L2_PIX_FMT_SBGGR14V32         v4l2_fourcc('b', 'V', '0', 'M')
+#define V4L2_PIX_FMT_SGBRG14V32         v4l2_fourcc('b', 'V', '0', 'N')
+#define V4L2_PIX_FMT_SGRBG14V32         v4l2_fourcc('b', 'V', '0', 'O')
+#define V4L2_PIX_FMT_SRGGB14V32         v4l2_fourcc('b', 'V', '0', 'P')
+#endif
+
 const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts[] = {
 	/* YUV vector format */
 	{ V4L2_PIX_FMT_YUYV420_V32, 24, 24, 0, MEDIA_BUS_FMT_YUYV12_1X24, IA_CSS_ISYS_FRAME_FORMAT_YUV420_16 },
