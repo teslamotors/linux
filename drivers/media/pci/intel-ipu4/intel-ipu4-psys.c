@@ -1565,6 +1565,7 @@ static long intel_ipu4_psys_mapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 {
 	struct intel_ipu4_psys *psys = fh->psys;
 	struct intel_ipu4_psys_kbuffer *kbuf;
+	struct dma_buf *dbuf;
 	int ret;
 
 	mutex_lock(&fh->mutex);
@@ -1588,8 +1589,12 @@ static long intel_ipu4_psys_mapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 
 	kbuf->dbuf = dma_buf_get(fd);
 	if (IS_ERR(kbuf->dbuf)) {
-		ret = -EINVAL;
-		goto error;
+		if (!kbuf->userptr) {
+			list_del(&kbuf->list);
+			kfree(kbuf);
+		}
+		mutex_unlock(&fh->mutex);
+		return -EINVAL;
 	}
 
 	if (kbuf->len == 0)
@@ -1635,13 +1640,14 @@ error_vunmap:
 error_detach:
 	dma_buf_detach(kbuf->dbuf, kbuf->db_attach);
 error_put:
-	dma_buf_put(kbuf->dbuf);
-error:
+	dbuf = kbuf->dbuf;
 	if (!kbuf->userptr) {
 		list_del(&kbuf->list);
 		kfree(kbuf);
 	}
 	mutex_unlock(&fh->mutex);
+
+	dma_buf_put(dbuf);
 
 	return ret;
 }
