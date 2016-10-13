@@ -340,12 +340,18 @@ static struct crlmodule_platform_data ov10640_pdata = {
 
 #ifdef CONFIG_VIDEO_TI964
 #define TI964_I2C_ADAPTER	0
+#define TI964_I2C_ADAPTER_2	7
 #define TI964_I2C_ADDRESS	0x3d
 #define TI964_LANES		4
 
 static struct intel_ipu4_isys_csi2_config ti964_csi2_cfg = {
 	.nlanes = TI964_LANES,
 	.port = 0,
+};
+
+static struct intel_ipu4_isys_csi2_config ti964_csi2_cfg_2 = {
+	.nlanes = TI964_LANES,
+	.port = 4,
 };
 
 struct ti964_subdev_i2c_info ti964_subdevs[] = {
@@ -419,6 +425,43 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 #endif
 };
 
+struct ti964_subdev_i2c_info ti964_subdevs_2[] = {
+#ifdef CONFIG_INTEL_IPU4_OV10635
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635A_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635B_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635C_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635D_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
+	},
+#endif
+};
+
 static struct ti964_pdata ti964_pdata = {
 	.subdev_info = ti964_subdevs,
 	.subdev_num = ARRAY_SIZE(ti964_subdevs),
@@ -434,6 +477,24 @@ static struct intel_ipu4_isys_subdev_info ti964_sd = {
 			 .platform_data = &ti964_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
+	}
+};
+
+static struct ti964_pdata ti964_pdata_2 = {
+	.subdev_info = ti964_subdevs_2,
+	.subdev_num = ARRAY_SIZE(ti964_subdevs_2),
+	.reset_gpio = 488,
+};
+
+static struct intel_ipu4_isys_subdev_info ti964_sd_2 = {
+	.csi2 = &ti964_csi2_cfg_2,
+	.i2c = {
+		.board_info = {
+			 .type = "ti964",
+			 .addr = TI964_I2C_ADDRESS,
+			 .platform_data = &ti964_pdata_2,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 	}
 };
 #endif
@@ -481,6 +542,7 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
 #endif
 #ifdef CONFIG_VIDEO_TI964
 		&ti964_sd,
+		&ti964_sd_2,
 #endif
 		NULL,
 	},
