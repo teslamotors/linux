@@ -1401,6 +1401,39 @@ out_enum_cleanup:
 	return rval;
 }
 
+static int perform_skew_cal(struct intel_ipu4_isys_pipeline *ip)
+{
+	int rval;
+
+	/* TO BE DONE for ipu5 */
+	if (!is_intel_ipu4_hw_bxt_b0(ip->isys->adev->isp))
+		return 0;
+
+	intel_ipu4_csi_set_skew_cal(ip->csi2, true);
+
+	rval = v4l2_subdev_call(
+		media_entity_to_v4l2_subdev(ip->external->entity),
+		video, s_stream, true);
+
+	if (rval)
+		goto turn_off_skew_cal;
+
+	/* TODO: do we have a better way available than waiting for a while ? */
+	msleep(50);
+
+	rval = v4l2_subdev_call(
+		media_entity_to_v4l2_subdev(ip->external->entity),
+		video, s_stream, false);
+
+turn_off_skew_cal:
+	intel_ipu4_csi_set_skew_cal(ip->csi2, false);
+
+	/* TODO: do we have a better way available than waiting for a while ? */
+	msleep(50);
+
+	return rval;
+}
+
 int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 				     unsigned int state,
 				     struct intel_ipu4_isys_buffer_list *bl)
@@ -1492,6 +1525,9 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 
 	/* Oh crap */
 	if (state) {
+		if (intel_ipu4_skew_cal_required(ip->csi2))
+			perform_skew_cal(ip);
+
 		rval = start_stream_firmware(av, bl);
 		if (rval)
 			goto out_media_entity_stop_streaming;

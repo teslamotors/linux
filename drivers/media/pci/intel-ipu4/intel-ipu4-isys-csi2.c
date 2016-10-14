@@ -747,6 +747,7 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 	unsigned int i, nlanes;
 	int rval;
 	u32 csi2csirx;
+	u32 val;
 
 	dev_dbg(&csi2->isys->adev->dev, "csi2 s_stream %d\n", enable);
 
@@ -756,7 +757,12 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 			return 0;
 
 		intel_ipu4_isys_csi2_error(csi2);
-		writel(0, csi2->base + CSI2_REG_CSI_RX_CONFIG);
+
+		val = readl(csi2->base + CSI2_REG_CSI_RX_CONFIG);
+		val &= ~(CSI2_CSI_RX_CONFIG_DISABLE_BYTE_CLK_GATING |
+			 CSI2_CSI_RX_CONFIG_RELEASE_LP11);
+		writel(val, csi2->base + CSI2_REG_CSI_RX_CONFIG);
+
 		writel(0, csi2->base + CSI2_REG_CSI_RX_ENABLE);
 
 		if (is_intel_ipu4_hw_bxt_b0(csi2->isys->adev->isp)) {
@@ -838,9 +844,11 @@ static int set_stream(struct v4l2_subdev *sd, int enable)
 			}
 		}
 	}
-	writel(CSI2_CSI_RX_CONFIG_DISABLE_BYTE_CLK_GATING |
-		CSI2_CSI_RX_CONFIG_RELEASE_LP11,
-		csi2->base + CSI2_REG_CSI_RX_CONFIG);
+
+	val = readl(csi2->base + CSI2_REG_CSI_RX_CONFIG);
+	val |= CSI2_CSI_RX_CONFIG_DISABLE_BYTE_CLK_GATING |
+		CSI2_CSI_RX_CONFIG_RELEASE_LP11;
+	writel(val, csi2->base + CSI2_REG_CSI_RX_CONFIG);
 
 	writel(nlanes, csi2->base + CSI2_REG_CSI_RX_NOF_ENABLED_LANES);
 	writel(CSI2_CSI_RX_ENABLE_ENABLE,
@@ -1579,3 +1587,40 @@ unsigned int intel_ipu4_isys_csi2_get_current_field(
 	return field;
 }
 
+bool intel_ipu4_skew_cal_required(struct intel_ipu4_isys_csi2 *csi2)
+{
+	__s64 link_freq;
+	int rval;
+
+	if (!csi2)
+		return false;
+
+	/* Not yet ? */
+	if (csi2->remote_streams != csi2->stream_count)
+		return false;
+
+	rval = get_link_freq(csi2, &link_freq);
+	if (rval)
+		return false;
+
+	if (link_freq <= INTEL_IPU4_SKEW_CAL_LIMIT_HZ)
+		return false;
+
+	return true;
+}
+
+int intel_ipu4_csi_set_skew_cal(struct intel_ipu4_isys_csi2 *csi2, int enable)
+{
+	u32 val;
+
+	val = readl(csi2->base + CSI2_REG_CSI_RX_CONFIG);
+
+	if (enable)
+		val |= CSI2_CSI_RX_CONFIG_SKEWCAL_ENABLE;
+	else
+		val &= ~CSI2_CSI_RX_CONFIG_SKEWCAL_ENABLE;
+
+	writel(val, csi2->base + CSI2_REG_CSI_RX_CONFIG);
+
+	return 0;
+}

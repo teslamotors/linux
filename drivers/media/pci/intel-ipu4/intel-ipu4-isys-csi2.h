@@ -78,6 +78,8 @@ struct intel_ipu4_isys;
 #define INTEL_IPU4_EOF_TIMEOUT 1000
 #define INTEL_IPU4_EOF_TIMEOUT_JIFFIES msecs_to_jiffies(INTEL_IPU4_EOF_TIMEOUT)
 
+#define INTEL_IPU4_SKEW_CAL_LIMIT_HZ (1500000000ul / 2)
+
 /*
  * struct intel_ipu4_isys_csi2
  *
@@ -176,5 +178,8 @@ unsigned int intel_ipu4_isys_csi2_get_current_field(
 	struct intel_ipu4_isys_pipeline *ip,
 	struct ia_css_isys_resp_info *info);
 void intel_ipu4_isys_csi2_wait_last_eof(struct intel_ipu4_isys_csi2 *csi2);
+bool intel_ipu4_skew_cal_required(struct intel_ipu4_isys_csi2 *csi2);
+int intel_ipu4_csi_set_skew_cal(struct intel_ipu4_isys_csi2 *csi2,
+				int enable);
 
 #endif /* INTEL_IPU4_ISYS_CSI2_H */
