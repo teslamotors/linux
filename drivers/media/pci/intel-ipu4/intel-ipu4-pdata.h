@@ -217,6 +217,8 @@ struct intel_ipu4_isys_csi2_pdata {
 #define INTEL_IPU4_PSYS_TYPE_INTEL_IPU4 \
 	INTEL_IPU4_ISYS_TYPE_INTEL_IPU4
 
+#define INTEL_IPU4_EV_AUTO 0xff
+
 struct intel_ipu4_combo_receiver_params {
 	u8 CrcVal;
 	u8 DrcVal;

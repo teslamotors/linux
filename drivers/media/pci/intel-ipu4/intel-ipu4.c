@@ -378,7 +378,7 @@ void intel_ipu4_configure_vc_mechanism(struct intel_ipu4_device *isp)
 
 static struct intel_ipu4_receiver_electrical_params ipu4_ev_params[] = {
 	/* For B1 stepping we just has one set of values */
-	{ 0, 2500000000, INTEL_IPU4_HW_BXT_B0, INTEL_IPU4_HW_BXT_B1_REV,
+	{ 0, 2500000000ul / 2, INTEL_IPU4_HW_BXT_B0, INTEL_IPU4_HW_BXT_B1_REV,
 	  .RcompVal_combo = 20,
 	  .RcompVal_legacy = 20,
 	  .ports[0].CrcVal = 23,
@@ -391,7 +391,7 @@ static struct intel_ipu4_receiver_electrical_params ipu4_ev_params[] = {
 	  .ports[1].CtleVal = 4
 	},
 
-	{ 0, 1500000000, INTEL_IPU4_HW_BXT_B0, INTEL_IPU4_HW_BXT_C0_REV,
+	{ 0, 1500000000ul / 2, INTEL_IPU4_HW_BXT_B0, INTEL_IPU4_HW_BXT_C0_REV,
 	  .RcompVal_combo = 11,
 	  .RcompVal_legacy = 11,
 	  .ports[0].CrcVal = 18,
@@ -404,21 +404,21 @@ static struct intel_ipu4_receiver_electrical_params ipu4_ev_params[] = {
 	  .ports[1].CtleVal = 4
 	},
 
-	{ 1500000000, 2500000000, INTEL_IPU4_HW_BXT_B0,
+	{ 1500000000ul / 2, 2500000000ul / 2, INTEL_IPU4_HW_BXT_B0,
 				  INTEL_IPU4_HW_BXT_C0_REV,
 	  .RcompVal_combo = 11,
 	  .RcompVal_legacy = 11,
-	  .ports[0].CrcVal = 0,
-	  .ports[0].DrcVal = 0,
-	  .ports[0].DrcVal_combined = 0,
+	  .ports[0].CrcVal = INTEL_IPU4_EV_AUTO,
+	  .ports[0].DrcVal = INTEL_IPU4_EV_AUTO,
+	  .ports[0].DrcVal_combined = INTEL_IPU4_EV_AUTO,
 	  .ports[0].CtleVal = 8,
-	  .ports[1].CrcVal = 0,
-	  .ports[1].DrcVal = 0,
-	  .ports[1].DrcVal_combined = 0,
+	  .ports[1].CrcVal = INTEL_IPU4_EV_AUTO,
+	  .ports[1].DrcVal = INTEL_IPU4_EV_AUTO,
+	  .ports[1].DrcVal_combined = INTEL_IPU4_EV_AUTO,
 	  .ports[1].CtleVal = 8
 	},
 
-	{ 0, 1500000000, INTEL_IPU4_HW_BXT_P, INTEL_IPU4_HW_BXT_P_B1_REV,
+	{ 0, 1500000000ul / 2, INTEL_IPU4_HW_BXT_P, INTEL_IPU4_HW_BXT_P_B1_REV,
 	  .RcompVal_combo = 11,
 	  .RcompVal_legacy = 11,
 	  .ports[0].CrcVal = 18,
