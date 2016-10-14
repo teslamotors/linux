@@ -230,10 +230,6 @@ static int video_open(struct file *file)
 		return rval;
 	}
 
-	intel_ipu4_configure_spc(adev->isp, IA_CSS_PKG_DIR_ISYS_INDEX,
-				 isys->pdata->base, isys->pkg_dir,
-				 isys->pkg_dir_dma_addr);
-
 	rval = v4l2_fh_open(file);
 	if (rval)
 		goto out_power_down;
@@ -253,6 +249,10 @@ static int video_open(struct file *file)
 		mutex_unlock(&isys->mutex);
 		return 0;
 	}
+
+	intel_ipu4_configure_spc(adev->isp, IA_CSS_PKG_DIR_ISYS_INDEX,
+				 isys->pdata->base, isys->pkg_dir,
+				 isys->pkg_dir_dma_addr);
 
 	if (isys->ssi) {
 		/*
