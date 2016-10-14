@@ -272,10 +272,12 @@ static int csi2_ev_correction_params(struct intel_ipu4_isys_csi2 *csi2,
 						  CSE_IPC_CMDPHYWRITEL,
 						  CSI2_SB_CPHY0_RX_CONTROL1,
 						  val);
+		val = 0x10000;
+		if (ev_params[i].ports[0].CrcVal != INTEL_IPU4_EV_AUTO)
+			val |= ev_params[i].ports[0].CrcVal <<
+				CSI2_SB_CPHY0_DLL_OVRD_CRCDC_FSM_DLANE0_SHIFT |
+				CSI2_SB_CPHY0_DLL_OVRD_LDEN_CRCDC_FSM_DLANE0;
 
-		val = 0x10000 | ev_params[i].ports[0].CrcVal <<
-			CSI2_SB_CPHY0_DLL_OVRD_CRCDC_FSM_DLANE0_SHIFT |
-			1 << CSI2_SB_CPHY0_DLL_OVRD_LDEN_CRCDC_FSM_DLANE0_SHIFT;
 		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
 						  CSE_IPC_CMDPHYWRITEL,
 						  CSI2_SB_CPHY0_DLL_OVRD,
@@ -290,9 +292,12 @@ static int csi2_ev_correction_params(struct intel_ipu4_isys_csi2 *csi2,
 						  CSI2_SB_CPHY2_RX_CONTROL1,
 						  val);
 
-		val = 0x10000 | ev_params[i].ports[1].CrcVal <<
-			CSI2_SB_CPHY2_DLL_OVRD_CRCDC_FSM_DLANE1_SHIFT |
-			1 << CSI2_SB_CPHY2_DLL_OVRD_LDEN_CRCDC_FSM_DLANE1_SHIFT;
+		val = 0x10000;
+		if (ev_params[i].ports[1].CrcVal != INTEL_IPU4_EV_AUTO)
+			val |= ev_params[i].ports[1].CrcVal <<
+				CSI2_SB_CPHY2_DLL_OVRD_CRCDC_FSM_DLANE1_SHIFT |
+				CSI2_SB_CPHY2_DLL_OVRD_LDEN_CRCDC_FSM_DLANE1;
+
 		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
 						  CSE_IPC_CMDPHYWRITEL,
 						  CSI2_SB_CPHY2_DLL_OVRD,
@@ -304,14 +309,14 @@ static int csi2_ev_correction_params(struct intel_ipu4_isys_csi2 *csi2,
 	val = csi2->isys->csi2_rx_ctrl_cached;
 	if (conf_set0) {
 		val &= ~CSI2_SB_DPHY0_RX_CNTRL_SKEWCAL_CR_SEL_DLANE01_MASK;
-		if (ev_params[i].ports[0].DrcVal)
+		if (ev_params[i].ports[0].DrcVal != INTEL_IPU4_EV_AUTO)
 			val |=
 			    CSI2_SB_DPHY0_RX_CNTRL_SKEWCAL_CR_SEL_DLANE01_MASK;
 	}
 
 	if (conf_set1) {
 		val &= ~CSI2_SB_DPHY0_RX_CNTRL_SKEWCAL_CR_SEL_DLANE23_MASK;
-		if (ev_params[i].ports[1].DrcVal)
+		if (ev_params[i].ports[1].DrcVal != INTEL_IPU4_EV_AUTO)
 			val |=
 			    CSI2_SB_DPHY0_RX_CNTRL_SKEWCAL_CR_SEL_DLANE23_MASK;
 	}
@@ -323,7 +328,7 @@ static int csi2_ev_correction_params(struct intel_ipu4_isys_csi2 *csi2,
 				      val);
 	mutex_unlock(&csi2->isys->mutex);
 
-	if (conf_set0) {
+	if (conf_set0 && ev_params[i].ports[0].DrcVal != INTEL_IPU4_EV_AUTO) {
 		/* Write value with FSM disabled */
 		val = (conf_combined ?
 		       ev_params[i].ports[0].DrcVal_combined :
@@ -341,9 +346,15 @@ static int csi2_ev_correction_params(struct intel_ipu4_isys_csi2 *csi2,
 						  CSE_IPC_CMDPHYWRITEL,
 						  CSI2_SB_DPHY0_DLL_OVRD,
 						  val);
+	} else if (conf_set0 &&
+		   ev_params[i].ports[0].DrcVal == INTEL_IPU4_EV_AUTO) {
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_DPHY0_DLL_OVRD,
+						  0);
 	}
 
-	if (conf_set1) {
+	if (conf_set1 && ev_params[i].ports[1].DrcVal != INTEL_IPU4_EV_AUTO) {
 		val = (conf_combined ?
 		       ev_params[i].ports[1].DrcVal_combined :
 		       ev_params[i].ports[1].DrcVal) <<
@@ -358,6 +369,12 @@ static int csi2_ev_correction_params(struct intel_ipu4_isys_csi2 *csi2,
 						  CSE_IPC_CMDPHYWRITEL,
 						  CSI2_SB_DPHY1_DLL_OVRD,
 						  val);
+	} else if (conf_set1 &&
+		   ev_params[i].ports[1].DrcVal == INTEL_IPU4_EV_AUTO) {
+		nbr_msgs = build_cse_ipc_commands(messages, nbr_msgs,
+						  CSE_IPC_CMDPHYWRITEL,
+						  CSI2_SB_DPHY1_DLL_OVRD,
+						  0);
 	}
 
 	rval = intel_ipu4_buttress_ipc_send_bulk(isp,
