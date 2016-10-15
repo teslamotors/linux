@@ -44,6 +44,13 @@ extern int ia_css_kernel_bitmap_print(
  */
 extern ia_css_kernel_bitmap_t ia_css_kernel_bitmap_clear(void);
 
+/*! Creates the complement of a kernel bitmap
+ * @param	bitmap[in] kernel bitmap
+ * @return ~bitmap
+ */
+extern ia_css_kernel_bitmap_t ia_css_kernel_bitmap_complement(
+	const ia_css_kernel_bitmap_t bitmap);
+
 /*! Create the union of two kernel bitmaps
 
  @param	bitmap0[in]					kernel bitmap 0
@@ -129,6 +136,13 @@ extern ia_css_kernel_bitmap_t ia_css_kernel_bitmap_shift(
 extern bool ia_css_is_kernel_bitmap_onehot(
 	const ia_css_kernel_bitmap_t			bitmap);
 
+/*! Checks whether a specific kernel bit is set
+ * @return bitmap[index] == 1
+ */
+extern int ia_css_is_kernel_bitmap_set(
+	const ia_css_kernel_bitmap_t	bitmap,
+	const unsigned int		index);
+
 /*! Create the union of a kernel bitmap with a onehot bitmap
  * with a bit set at index
 
@@ -137,6 +151,27 @@ extern bool ia_css_is_kernel_bitmap_onehot(
 extern ia_css_kernel_bitmap_t ia_css_kernel_bitmap_set(
 	const ia_css_kernel_bitmap_t			bitmap,
 	const unsigned int						index);
+
+/*! Creates kernel bitmap using a uint64 value.
+ * @return bitmap with the same bits set as in value (provided that width of bitmap is sufficient).
+ */
+extern ia_css_kernel_bitmap_t ia_css_kernel_bitmap_create_from_uint64(
+	const uint64_t	value);
+
+/*! Converts an ia_css_kernel_bitmap_t type to uint64_t. Note that if
+ *  ia_css_kernel_bitmap_t contains more then 64 bits, only the lowest 64 bits
+ *  are returned.
+ *  @return uint64_t representation of value
+*/
+extern uint64_t ia_css_kernel_bitmap_to_uint64(
+	const ia_css_kernel_bitmap_t value);
+
+/*! Creates a kernel bitmap with the bit at index 'index' removed.
+ * @return ~(1 << index) & bitmap
+ */
+extern ia_css_kernel_bitmap_t ia_css_kernel_bitmap_unset(
+	const ia_css_kernel_bitmap_t	bitmap,
+	const unsigned int		index);
 
 /*! Set a previously clear field of a kernel bitmap at index
 

@@ -20,9 +20,6 @@
 static int ia_css_kernel_bitmap_compute_weight(
 	const ia_css_kernel_bitmap_t			bitmap);
 
-static int ia_css_kernel_bitmap_get_lsb(
-	const ia_css_kernel_bitmap_t			bitmap);
-
 bool ia_css_is_kernel_bitmap_intersection_empty(
 	const ia_css_kernel_bitmap_t			bitmap0,
 	const ia_css_kernel_bitmap_t			bitmap1)
@@ -81,6 +78,14 @@ ia_css_kernel_bitmap_t ia_css_kernel_bitmap_clear(void)
 	return 0;
 }
 
+ia_css_kernel_bitmap_t ia_css_kernel_bitmap_complement(
+	const ia_css_kernel_bitmap_t bitmap)
+{
+	IA_CSS_TRACE_0(PSYSAPI_KERNEL, VERBOSE,
+		"ia_css_kernel_bitmap_complement(): enter:\n");
+	return ~bitmap;
+}
+
 ia_css_kernel_bitmap_t ia_css_kernel_bitmap_union(
 	const ia_css_kernel_bitmap_t			bitmap0,
 	const ia_css_kernel_bitmap_t			bitmap1)
@@ -110,6 +115,36 @@ ia_css_kernel_bitmap_t ia_css_kernel_bitmap_set(
 
 	bit_mask = ia_css_kernel_bit_mask(index);
 	return ia_css_kernel_bitmap_union(bitmap, bit_mask);
+}
+
+ia_css_kernel_bitmap_t ia_css_kernel_bitmap_create_from_uint64(
+	const uint64_t value)
+{
+	IA_CSS_TRACE_0(PSYSAPI_KERNEL, VERBOSE,
+		"ia_css_kernel_bitmap_create_from_uint64(): enter:\n");
+	return (ia_css_kernel_bitmap_t)value;
+}
+
+uint64_t ia_css_kernel_bitmap_to_uint64(
+	const ia_css_kernel_bitmap_t value)
+{
+	IA_CSS_TRACE_0(PSYSAPI_KERNEL, VERBOSE,
+		"ia_css_kernel_bitmap_to_uint64(): enter:\n");
+	return (uint64_t)value;
+}
+
+ia_css_kernel_bitmap_t ia_css_kernel_bitmap_unset(
+	const ia_css_kernel_bitmap_t	bitmap,
+	const unsigned int		index)
+{
+	ia_css_kernel_bitmap_t result;
+
+	IA_CSS_TRACE_0(PSYSAPI_KERNEL, VERBOSE,
+		"ia_css_kernel_bitmap_unset(): enter:\n");
+
+	result = ia_css_kernel_bit_mask(index);
+	result = ia_css_kernel_bitmap_complement(result);
+	return ia_css_kernel_bitmap_intersection(bitmap, result);
 }
 
 ia_css_kernel_bitmap_t ia_css_kernel_bitmap_set_unique(
@@ -163,19 +198,22 @@ static int ia_css_kernel_bitmap_compute_weight(
 	/* In fact; do not need the iterator "i" */
 	for (i = 0; (i < IA_CSS_KERNEL_BITMAP_BITS) &&
 		    !ia_css_is_kernel_bitmap_empty(loc_bitmap); i++) {
-		weight += ia_css_kernel_bitmap_get_lsb(loc_bitmap);
+		weight += ia_css_is_kernel_bitmap_set(loc_bitmap, 0);
 		loc_bitmap = ia_css_kernel_bitmap_shift(loc_bitmap);
 	}
 
 	return weight;
 }
 
-static int ia_css_kernel_bitmap_get_lsb(
-	const ia_css_kernel_bitmap_t			bitmap)
+int ia_css_is_kernel_bitmap_set(
+	const ia_css_kernel_bitmap_t	bitmap,
+	const unsigned int				index)
 {
+	ia_css_kernel_bitmap_t x;
 	IA_CSS_TRACE_0(PSYSAPI_KERNEL, VERBOSE,
-		       "ia_css_kernel_bitmap_get_lsb(): enter:\n");
-	return bitmap & 0x01;
+		       "ia_css_is_kernel_bitmap_set(): enter:\n");
+	x = ia_css_kernel_bitmap_intersection(bitmap, ia_css_kernel_bit_mask(index));
+	return !ia_css_is_kernel_bitmap_empty(x);
 }
 
 ia_css_kernel_bitmap_t ia_css_kernel_bitmap_shift(
@@ -208,7 +246,7 @@ int ia_css_kernel_bitmap_print(
 	IA_CSS_TRACE_0(PSYSAPI_KERNEL, INFO, "kernel bitmap {\n");
 	for (i = 0; (i < IA_CSS_KERNEL_BITMAP_BITS) &&
 		    !ia_css_is_kernel_bitmap_empty(loc_bitmap); i++) {
-		/* ia_css_kernel_bitmap_get_lsb(loc_bitmap);*/
+		/* ia_css_is_kernel_bitmap_set(loc_bitmap, 0);*/
 		bit = loc_bitmap & 0x1;
 		/*ia_css_kernel_bitmap_shift(loc_bitmap);*/
 		loc_bitmap = loc_bitmap >> 1;
