@@ -263,20 +263,21 @@ int mei_irq_read_handler(struct mei_device *dev,
 	struct mei_cl *cl;
 	int ret;
 
-	if (!dev->rd_msg_hdr) {
-		dev->rd_msg_hdr = mei_read_hdr(dev);
+	if (!dev->rd_msg_hdr[0]) {
+		dev->rd_msg_hdr[0] = mei_read_hdr(dev);
 		(*slots)--;
 		dev_dbg(dev->dev, "slots =%08x.\n", *slots);
 
-		ret = hdr_is_valid(dev->rd_msg_hdr);
+		ret = hdr_is_valid(dev->rd_msg_hdr[0]);
 		if (ret) {
 			dev_err(dev->dev, "corrupted message header 0x%08X\n",
-				dev->rd_msg_hdr);
+				dev->rd_msg_hdr[0]);
 			goto end;
 		}
+		dev_dbg(dev->dev, "slots = %08x.\n", *slots);
 	}
 
-	mei_hdr = (struct mei_msg_hdr *)&dev->rd_msg_hdr;
+	mei_hdr = (struct mei_msg_hdr *)dev->rd_msg_hdr;
 	dev_dbg(dev->dev, MEI_HDR_FMT, MEI_HDR_PRM(mei_hdr));
 
 	if (mei_slots2data(*slots) < mei_hdr->length) {
@@ -317,7 +318,7 @@ int mei_irq_read_handler(struct mei_device *dev,
 			goto reset_slots;
 		}
 		dev_err(dev->dev, "no destination client found 0x%08X\n",
-				dev->rd_msg_hdr);
+				dev->rd_msg_hdr[0]);
 		ret = -EBADMSG;
 		goto end;
 	}
@@ -327,9 +328,8 @@ int mei_irq_read_handler(struct mei_device *dev,
 
 reset_slots:
 	/* reset the number of slots and header */
+	memset(dev->rd_msg_hdr, 0, sizeof(dev->rd_msg_hdr));
 	*slots = mei_count_full_read_slots(dev);
-	dev->rd_msg_hdr = 0;
-
 	if (*slots == -EOVERFLOW) {
 		/* overflow - reset */
 		dev_err(dev->dev, "resetting due to slots overflow.\n");

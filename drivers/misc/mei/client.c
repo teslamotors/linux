@@ -1560,6 +1560,7 @@ int mei_cl_irq_write(struct mei_cl *cl, struct mei_cl_cb *cb,
 	mei_hdr.host_addr = mei_cl_host_addr(cl);
 	mei_hdr.me_addr = mei_cl_me_id(cl);
 	mei_hdr.reserved = 0;
+	mei_hdr.dma_ring = 0;
 	mei_hdr.internal = cb->internal;
 
 	if (slots >= msg_slots) {
@@ -1652,6 +1653,7 @@ int mei_cl_write(struct mei_cl *cl, struct mei_cl_cb *cb)
 	mei_hdr.me_addr = mei_cl_me_id(cl);
 	mei_hdr.reserved = 0;
 	mei_hdr.msg_complete = 0;
+	mei_hdr.dma_ring = 0;
 	mei_hdr.internal = cb->internal;
 
 	rets = mei_cl_tx_flow_ctrl_creds(cl);
