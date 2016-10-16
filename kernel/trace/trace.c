@@ -2513,17 +2513,17 @@ get_total_entries(struct trace_buffer *buf,
 
 static void print_lat_help_header(struct seq_file *m)
 {
-	seq_puts(m, "#                   _--------=> CPU#              \n");
-	seq_puts(m, "#                  / _-------=> irqs-off          \n");
-	seq_puts(m, "#                 | / _------=> need-resched      \n");
-	seq_puts(m, "#                 || / _-----=> need-resched_lazy \n");
-	seq_puts(m, "#                 ||| / _----=> hardirq/softirq   \n");
-	seq_puts(m, "#                 |||| / _---=> preempt-depth     \n");
-	seq_puts(m, "#                 ||||| / _--=> preempt-lazy-depth\n");
-	seq_puts(m, "#                 |||||| / _-=> migrate-disable   \n");
-	seq_puts(m, "#                 ||||||| /     delay             \n");
-	seq_puts(m, "#  cmd     pid    |||||||| time  |   caller       \n");
-	seq_puts(m, "#     \\   /      ||||||||  \\   |   /            \n");
+	seq_puts(m, "#                  _--------=> CPU#              \n"
+		    "#                 / _-------=> irqs-off          \n"
+		    "#                | / _------=> need-resched      \n"
+		    "#                || / _-----=> need-resched_lazy \n"
+		    "#                ||| / _----=> hardirq/softirq   \n"
+		    "#                |||| / _---=> preempt-depth     \n"
+		    "#                ||||| / _--=> preempt-lazy-depth\n"
+		    "#                |||||| / _-=> migrate-disable   \n"
+		    "#                ||||||| /     delay             \n"
+		    "# cmd     pid    |||||||| time   |  caller       \n"
+		    "#     \\   /      ||||||||   \\    |  /            \n");
 }
 
 static void print_event_info(struct trace_buffer *buf, struct seq_file *m)
