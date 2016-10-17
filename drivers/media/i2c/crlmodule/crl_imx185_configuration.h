@@ -81,8 +81,6 @@ static struct crl_register_write_rep imx185_pll_222mbps[] = {
 	{0x3009, CRL_REG_LEN_08BIT, 0x02},	/* frame speed */
 	{0x300A, CRL_REG_LEN_08BIT, 0x3C},
 	{0x300C, CRL_REG_LEN_08BIT, 0x00},
-	{0x3018, CRL_REG_LEN_08BIT, 0x65},
-	{0x3019, CRL_REG_LEN_08BIT, 0x04},
 	{0x301b, CRL_REG_LEN_08BIT, 0x98},
 	{0x301c, CRL_REG_LEN_08BIT, 0x08},
 	{0x300F, CRL_REG_LEN_08BIT, 0x01},
@@ -431,8 +429,6 @@ static struct crl_register_write_rep imx185_1952_1096_BUILD_IN_WDR_27MHZ[] = {
 	{0x300F, CRL_REG_LEN_08BIT, 0x05},
 	{0x3010, CRL_REG_LEN_08BIT, 0x38},
 	{0x3012, CRL_REG_LEN_08BIT, 0x0F},
-	{0x3018, CRL_REG_LEN_08BIT, 0x65},
-	{0x3019, CRL_REG_LEN_08BIT, 0x04},
 	{0x301B, CRL_REG_LEN_08BIT, 0x98},
 	{0x301C, CRL_REG_LEN_08BIT, 0x08},
 	{0x301D, CRL_REG_LEN_08BIT, 0x08},
@@ -973,6 +969,13 @@ static struct crl_arithmetic_ops imx185_fll_msb_ops[] = {
 	}
 };
 
+static struct crl_arithmetic_ops imx185_llp_msb_ops[] = {
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 8,
+	}
+};
+
 static struct crl_arithmetic_ops imx185_fll_hsb_ops[] = {
 	{
 		.op = CRL_BITWISE_RSHIFT,
@@ -1090,11 +1093,18 @@ static struct crl_dynamic_register_access imx185_fll_regs[] = {
 static struct crl_dynamic_register_access imx185_llp_regs[] = {
 	{
 		.address = 0x301b,
-		.len = CRL_REG_LEN_16BIT,
+		.len = CRL_REG_LEN_08BIT,
 		.ops_items = 0,
 		.ops = 0,
-		.mask = 0xffff,
-	}
+		.mask = 0xff,
+	},
+	{
+		.address = 0x301c,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx185_llp_msb_ops),
+		.ops = imx185_llp_msb_ops,
+		.mask = 0xff,
+	},
 };
 
 /* ctrl-val == 1 ? 1 * 0x02 : 0 * 0x02 -> 2 and 0 */
@@ -1178,10 +1188,10 @@ static struct crl_sensor_detect_config imx185_sensor_detect_regset[] = {
 static struct crl_pll_configuration imx185_pll_configurations[] = {
 	{
 		.input_clk = 27000000,
-		.op_sys_clk = 55687500,
+		.op_sys_clk = 56250000,
 		.bitsperpixel = 10,
-		.pixel_rate_csi = 44550000,
-		.pixel_rate_pa = 44550000, /* pixel_rate = MIPICLK*2 *4/10 */
+		.pixel_rate_csi = 45000000,
+		.pixel_rate_pa = 45000000, /* pixel_rate = MIPICLK*2 *4/10 */
 		.csi_lanes = 4,
 		.comp_items = 0,
 		.ctrl_data = 0,
@@ -1190,10 +1200,10 @@ static struct crl_pll_configuration imx185_pll_configurations[] = {
 	},
 	{
 		.input_clk = 27000000,
-		.op_sys_clk = 111375000,
+		.op_sys_clk = 112500000,
 		.bitsperpixel = 10,
-		.pixel_rate_csi = 89100000,
-		.pixel_rate_pa = 89100000,
+		.pixel_rate_csi = 90000000,
+		.pixel_rate_pa = 90000000,
 		.csi_lanes = 4,
 		.comp_items = 0,
 		.ctrl_data = 0,
@@ -1202,10 +1212,10 @@ static struct crl_pll_configuration imx185_pll_configurations[] = {
 	},
 	{
 		.input_clk = 27000000,
-		.op_sys_clk = 111375000,
+		.op_sys_clk = 112500000,
 		.bitsperpixel = 12,
-		.pixel_rate_csi = 74250000,
-		.pixel_rate_pa = 74250000,
+		.pixel_rate_csi = 75000000,
+		.pixel_rate_pa = 75000000,
 		.csi_lanes = 4,
 		.comp_items = 0,
 		.ctrl_data = 0,
@@ -1214,10 +1224,10 @@ static struct crl_pll_configuration imx185_pll_configurations[] = {
 	},
 	{
 		.input_clk = 27000000,
-		.op_sys_clk = 222750000,
+		.op_sys_clk = 225000000,
 		.bitsperpixel = 12,
-		.pixel_rate_csi = 148500000,
-		.pixel_rate_pa = 148500000,
+		.pixel_rate_csi = 150000000,
+		.pixel_rate_pa = 150000000,
 		.csi_lanes = 4,
 		.comp_items = 0,
 		.ctrl_data = 0,
@@ -1621,7 +1631,7 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 		.data.std_data.min = 720,
 		.data.std_data.max = IMX185_VMAX,
 		.data.std_data.step = 1,
-		.data.std_data.def = 0x465,
+		.data.std_data.def = 0x547,
 		.flags = V4L2_CTRL_FLAG_UPDATE,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.ctrl = 0,
@@ -1641,7 +1651,7 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 		.data.std_data.min = 0x898,
 		.data.std_data.max = IMX185_HMAX,
 		.data.std_data.step = 1,
-		.data.std_data.def = 0x898,
+		.data.std_data.def = 0x8ac,
 		.flags = V4L2_CTRL_FLAG_UPDATE,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.ctrl = 0,
