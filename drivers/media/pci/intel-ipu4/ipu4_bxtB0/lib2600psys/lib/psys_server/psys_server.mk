@@ -16,6 +16,7 @@
 
 # TODO: IPU5_SDK Verify that IPU5 changes are correct when IPU5 SDK has been released.
 
+include $(MODULES_DIR)/config/system_$(IPU_SYSVER).mk
 include $(MODULES_DIR)/config/$(SUBSYSTEM)/subsystem_$(IPU_SYSVER).mk
 
 PSYS_SERVER_DIR=$${MODULES_DIR}/psys_server

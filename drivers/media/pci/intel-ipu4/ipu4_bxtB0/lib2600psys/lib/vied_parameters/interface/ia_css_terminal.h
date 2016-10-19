@@ -16,33 +16,8 @@
 #define __IA_CSS_TERMINAL_H__
 
 #include "type_support.h"
+#include "ia_css_terminal_types.h"
 #include "ia_css_param_storage_class.h"
-
-typedef struct ia_css_program_terminal_s ia_css_program_terminal_t;
-typedef struct ia_css_fragment_param_section_desc_s
-	ia_css_fragment_param_section_desc_t;
-typedef struct ia_css_kernel_fragment_sequencer_info_desc_s
-	ia_css_kernel_fragment_sequencer_info_desc_t;
-typedef struct ia_css_kernel_fragment_sequencer_command_desc_s
-	ia_css_kernel_fragment_sequencer_command_desc_t;
-
-typedef struct ia_css_sliced_param_terminal_s ia_css_sliced_param_terminal_t;
-typedef struct ia_css_fragment_slice_desc_s ia_css_fragment_slice_desc_t;
-typedef struct ia_css_slice_param_section_desc_s
-	ia_css_slice_param_section_desc_t;
-
-typedef struct ia_css_spatial_param_terminal_s ia_css_spatial_param_terminal_t;
-typedef struct ia_css_frame_grid_desc_s ia_css_frame_grid_desc_t;
-typedef struct ia_css_frame_grid_param_section_desc_s
-	ia_css_frame_grid_param_section_desc_t;
-typedef struct ia_css_fragment_grid_desc_s ia_css_fragment_grid_desc_t;
-
-typedef struct ia_css_param_terminal_s ia_css_param_terminal_t;
-typedef struct ia_css_param_section_desc_s ia_css_param_section_desc_t;
-
-typedef struct ia_css_param_payload_s ia_css_param_payload_t;
-typedef struct ia_css_terminal_s ia_css_terminal_t;
-
 
 IA_CSS_PARAMETERS_STORAGE_CLASS_H
 unsigned int ia_css_param_in_terminal_get_descriptor_size(

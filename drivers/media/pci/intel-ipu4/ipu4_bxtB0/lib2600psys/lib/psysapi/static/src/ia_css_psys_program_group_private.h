@@ -15,10 +15,12 @@
 #ifndef _IA_CSS_PSYS_PROGRAM_GROUP_PRIVATE_H_
 #define _IA_CSS_PSYS_PROGRAM_GROUP_PRIVATE_H_
 
-#include "ia_css_psys_program_group_manifest.h"
-#include "ia_css_psys_program_manifest.h"
-#include "ia_css_psys_terminal_manifest.h"
-#include "type_support.h"
+#include "ia_css_psys_manifest_types.h"
+#include "ia_css_terminal_manifest_types.h"
+#include "ia_css_kernel_bitmap.h"
+#include "ia_css_program_group_data.h"
+#include "vied_nci_psys_resource_model.h"
+#include <type_support.h>
 #include <math_support.h>
 #include <platform_support.h>
 

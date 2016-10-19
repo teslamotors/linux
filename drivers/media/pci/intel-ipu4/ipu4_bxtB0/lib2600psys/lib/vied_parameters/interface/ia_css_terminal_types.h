@@ -15,11 +15,34 @@
 #ifndef __IA_CSS_TERMINAL_TYPES_H__
 #define __IA_CSS_TERMINAL_TYPES_H__
 
-#include "ia_css_terminal_defs.h"
-#include "ia_css_terminal.h"
 #include "type_support.h"
-#include "ia_css_terminal_base_types.h"
 #include "ia_css_base_types.h"
+#include "ia_css_terminal_base_types.h"
+
+typedef struct ia_css_program_terminal_s ia_css_program_terminal_t;
+typedef struct ia_css_fragment_param_section_desc_s
+	ia_css_fragment_param_section_desc_t;
+typedef struct ia_css_kernel_fragment_sequencer_info_desc_s
+	ia_css_kernel_fragment_sequencer_info_desc_t;
+typedef struct ia_css_kernel_fragment_sequencer_command_desc_s
+	ia_css_kernel_fragment_sequencer_command_desc_t;
+
+typedef struct ia_css_sliced_param_terminal_s ia_css_sliced_param_terminal_t;
+typedef struct ia_css_fragment_slice_desc_s ia_css_fragment_slice_desc_t;
+typedef struct ia_css_slice_param_section_desc_s
+	ia_css_slice_param_section_desc_t;
+
+typedef struct ia_css_spatial_param_terminal_s ia_css_spatial_param_terminal_t;
+typedef struct ia_css_frame_grid_desc_s ia_css_frame_grid_desc_t;
+typedef struct ia_css_frame_grid_param_section_desc_s
+	ia_css_frame_grid_param_section_desc_t;
+typedef struct ia_css_fragment_grid_desc_s ia_css_fragment_grid_desc_t;
+
+typedef struct ia_css_param_terminal_s ia_css_param_terminal_t;
+typedef struct ia_css_param_section_desc_s ia_css_param_section_desc_t;
+
+typedef struct ia_css_param_payload_s ia_css_param_payload_t;
+typedef struct ia_css_terminal_s ia_css_terminal_t;
 
 /* =================== Generic Parameter Payload - START =================== */
 #define N_PADDING_UINT8_IN_PARAM_PAYLOAD_STRUCT	4
