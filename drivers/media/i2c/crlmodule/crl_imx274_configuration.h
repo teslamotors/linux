@@ -655,6 +655,27 @@ static struct crl_arithmetic_ops imx274_shr_msb_ops[] = {
 	}
 };
 
+static struct crl_arithmetic_ops imx274_shs1_msb_ops[] = {
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 8,
+	}
+};
+
+static struct crl_arithmetic_ops imx274_shs2_msb_ops[] = {
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 8,
+	}
+};
+
+static struct crl_arithmetic_ops imx274_rhs1_msb_ops[] = {
+	{
+		.op = CRL_BITWISE_RSHIFT,
+		.operand.entity_val = 8,
+	}
+};
+
 static struct crl_dynamic_register_access imx274_v_flip_regs[] = {
 	{
 		.address = 0x301A,
@@ -700,6 +721,57 @@ static struct crl_dynamic_register_access imx274_shr_regs[] = {
 	},
 };
 
+static struct crl_dynamic_register_access imx274_shs1_regs[] = {
+	{
+		.address = 0x302E,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xff,
+	},
+	{
+		.address = 0x302F,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx274_shs1_msb_ops),
+		.ops = imx274_shs1_msb_ops,
+		.mask = 0xff,
+	},
+};
+
+static struct crl_dynamic_register_access imx274_shs2_regs[] = {
+	{
+		.address = 0x3030,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xff,
+	},
+	{
+		.address = 0x3031,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx274_shs2_msb_ops),
+		.ops = imx274_shs2_msb_ops,
+		.mask = 0xff,
+	},
+};
+
+static struct crl_dynamic_register_access imx274_rhs1_regs[] = {
+	{
+		.address = 0x3032,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xff,
+	},
+	{
+		.address = 0x3033,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(imx274_rhs1_msb_ops),
+		.ops = imx274_rhs1_msb_ops,
+		.mask = 0xff,
+	},
+};
+
 static struct crl_dynamic_register_access imx274_fll_regs[] = {
 	/*
 	 * Use 8bits access since 24bits or 32bits access will fail
@@ -737,6 +809,7 @@ static struct crl_dynamic_register_access imx274_llp_regs[] = {
 		.mask = 0xffff,
 	}
 };
+
 
 static struct crl_sensor_detect_config imx274_sensor_detect_regset[] = {
 	{
@@ -1169,6 +1242,66 @@ static struct crl_v4l2_ctrl imx274_v4l2_ctrls[] = {
 		.regs = imx274_shr_regs,
 		.dep_items = 0,
 		.dep_ctrls = 0,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_EXPOSURE_SHS1,
+		.name = "CRL_CID_EXPOSURE_SHS1",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = IMX274_MAX_SHS1, /* Use SHR range*/
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x06,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx274_shs1_regs),
+		.regs = imx274_shs1_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_EXPOSURE_SHS2,
+		.name = "CRL_CID_EXPOSURE_SHS2",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = IMX274_MAX_SHS1, /* Use SHR range*/
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x38,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx274_shs2_regs),
+		.regs = imx274_shs2_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_EXPOSURE_RHS1,
+		.name = "CRL_CID_EXPOSURE_RHS1",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = IMX274_MAX_SHS1, /* Use SHR range*/
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x32,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(imx274_rhs1_regs),
+		.regs = imx274_rhs1_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
 	},
 	{
 		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
