@@ -8,7 +8,9 @@ intel-ipu-mod-$(IPU_STEP)-objs			+= ../intel-ipu4.$(IPU_STEP).lnk.o ../intel-ipu
 obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= intel-ipu-mod-$(IPU_STEP).o
 intel-ipu-mmu-$(IPU_STEP)-objs		+= ../intel-ipu4-mmu.$(IPU_STEP).lnk.o
 obj-$(CONFIG_VIDEO_INTEL_IPU5)		+= intel-ipu-mmu-$(IPU_STEP).o
-intel-ipu-isys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-isys.$(IPU_STEP).lnk.o ../intel-ipu4-isys-csi2.$(IPU_STEP).lnk.o \
+intel-ipu-isys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-isys.$(IPU_STEP).lnk.o ../intel-ipu-isys-csi2-common.$(IPU_STEP).lnk.o \
+					   ../intel-ipu5-isys-csi2.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-csi2.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-compat-defs.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-csi2-be-soc.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-csi2-be.$(IPU_STEP).lnk.o \
@@ -31,7 +33,9 @@ obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= intel-ipu4-mod-$(IPU_STEP).o
 intel-ipu4-mmu-$(IPU_STEP)-objs		+= ../intel-ipu4-mmu.$(IPU_STEP).lnk.o
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= intel-ipu4-mmu-$(IPU_STEP).o
 ifndef CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA
-intel-ipu4-isys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-isys.$(IPU_STEP).lnk.o ../intel-ipu4-isys-csi2.$(IPU_STEP).lnk.o \
+intel-ipu4-isys-mod-$(IPU_STEP)-objs			+= ../intel-ipu4-isys.$(IPU_STEP).lnk.o ../intel-ipu-isys-csi2-common.$(IPU_STEP).lnk.o \
+					   ../intel-ipu5-isys-csi2.$(IPU_STEP).lnk.o \
+					   ../intel-ipu4-isys-csi2.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-compat-defs.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-csi2-be-soc.$(IPU_STEP).lnk.o \
 					   ../intel-ipu4-isys-csi2-be.$(IPU_STEP).lnk.o \

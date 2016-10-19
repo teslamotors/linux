@@ -23,7 +23,7 @@
 
 #include "intel-ipu4.h"
 #include "intel-ipu4-isys-compat-defs.h"
-#include "intel-ipu4-isys-csi2.h"
+#include "intel-ipu-isys-csi2-common.h"
 #include "intel-ipu4-isys-csi2-be.h"
 #include "intel-ipu4-isys-isa.h"
 #include "intel-ipu4-isys-tpg.h"

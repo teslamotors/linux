@@ -25,7 +25,7 @@
 #include "intel-ipu4-bus.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-isys.h"
-#include "intel-ipu4-isys-csi2.h"
+#include "intel-ipu-isys-csi2-common.h"
 #include "intel-ipu4-isys-video.h"
 #include "isysapi/interface/ia_css_isysapi_types.h"
 #include "isysapi/interface/ia_css_isysapi.h"
@@ -459,9 +459,9 @@ static int buffer_list_get(struct intel_ipu4_isys_pipeline *ip,
 
 	/* Get short packet buffer. */
 	if (ip->interlaced && ip->isys->short_packet_source ==
-	    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER) {
+	    INTEL_IPU_ISYS_SHORT_PACKET_FROM_RECEIVER) {
 		spin_lock_irqsave(&ip->short_packet_queue_lock, flags);
-		ib = intel_ipu4_isys_csi2_get_short_packet_buffer(ip);
+		ib = intel_ipu_isys_csi2_get_short_packet_buffer(ip);
 		if (!ib) {
 			spin_unlock_irqrestore(&ip->short_packet_queue_lock,
 					       flags);
@@ -1223,7 +1223,7 @@ void intel_ipu4_isys_queue_short_packet_ready(
 	dev_dbg(&isys->adev->dev, "receive short packet buffer %8.8x\n",
 		info->pin.addr);
 	spin_lock_irqsave(&ip->short_packet_queue_lock, flags);
-	ip->cur_field = intel_ipu4_isys_csi2_get_current_field(ip, info);
+	ip->cur_field = intel_ipu_isys_csi2_get_current_field(ip, info);
 	spin_unlock_irqrestore(&ip->short_packet_queue_lock, flags);
 }
 

@@ -858,7 +858,7 @@ static void short_packet_queue_destroy(struct intel_ipu4_isys_pipeline *ip)
 	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
 	if (!ip->short_packet_bufs)
 		return;
-	for (i = 0; i < INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM; i++) {
+	for (i = 0; i < INTEL_IPU_ISYS_SHORT_PACKET_BUFFER_NUM; i++) {
 		if (ip->short_packet_bufs[i].buffer)
 			dma_free_attrs(&av->isys->adev->dev,
 				ip->short_packet_buffer_size,
@@ -883,7 +883,7 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
 	ip->cur_field = V4L2_FIELD_TOP;
 
 	if (ip->isys->short_packet_source ==
-		INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
+		INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT) {
 		ip->short_packet_trace_index = 0;
 		return 0;
 	}
@@ -892,9 +892,9 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
 	if (rval)
 		return rval;
 	buf_size =
-		INTEL_IPU4_ISYS_SHORT_PACKET_BUF_SIZE(source_fmt.format.height);
+		INTEL_IPU_ISYS_SHORT_PACKET_BUF_SIZE(source_fmt.format.height);
 	ip->short_packet_buffer_size = buf_size;
-	ip->num_short_packet_lines = INTEL_IPU4_ISYS_SHORT_PACKET_PKT_LINES(
+	ip->num_short_packet_lines = INTEL_IPU_ISYS_SHORT_PACKET_PKT_LINES(
 		source_fmt.format.height);
 
 	/* Initialize short packet queue. */
@@ -905,11 +905,11 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
 
 	ip->short_packet_bufs =
 		kzalloc(sizeof(struct intel_ipu4_isys_private_buffer) *
-		INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM, GFP_KERNEL);
+		INTEL_IPU_ISYS_SHORT_PACKET_BUFFER_NUM, GFP_KERNEL);
 	if (!ip->short_packet_bufs)
 		return -ENOMEM;
 
-	for (i = 0; i < INTEL_IPU4_ISYS_SHORT_PACKET_BUFFER_NUM; i++) {
+	for (i = 0; i < INTEL_IPU_ISYS_SHORT_PACKET_BUFFER_NUM; i++) {
 		struct intel_ipu4_isys_private_buffer *buf =
 			&ip->short_packet_bufs[i];
 		buf->index = (unsigned int) i;
@@ -941,11 +941,11 @@ void csi_short_packet_prepare_firmware_stream_cfg(
 		&cfg->output_pins[output_pin];
 
 	/*
-	 * Setting dt as INTEL_IPU4_ISYS_SHORT_PACKET_GENERAL_DT will cause
+	 * Setting dt as INTEL_IPU_ISYS_SHORT_PACKET_GENERAL_DT will cause
 	 * MIPI receiver to receive all MIPI short packets.
 	 */
-	input_info->dt = INTEL_IPU4_ISYS_SHORT_PACKET_GENERAL_DT;
-	input_info->input_res.width = INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH;
+	input_info->dt = INTEL_IPU_ISYS_SHORT_PACKET_GENERAL_DT;
+	input_info->input_res.width = INTEL_IPU_ISYS_SHORT_PACKET_WIDTH;
 	input_info->input_res.height = ip->num_short_packet_lines;
 
 	ip->output_pins[output_pin].pin_ready =
@@ -954,12 +954,12 @@ void csi_short_packet_prepare_firmware_stream_cfg(
 	ip->short_packet_output_pin = output_pin;
 
 	output_info->input_pin_id = input_pin;
-	output_info->output_res.width = INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH;
+	output_info->output_res.width = INTEL_IPU_ISYS_SHORT_PACKET_WIDTH;
 	output_info->output_res.height = ip->num_short_packet_lines;
-	output_info->stride = INTEL_IPU4_ISYS_SHORT_PACKET_WIDTH *
-			      INTEL_IPU4_ISYS_SHORT_PACKET_UNITSIZE;
-	output_info->pt = INTEL_IPU4_ISYS_SHORT_PACKET_PT;
-	output_info->ft = INTEL_IPU4_ISYS_SHORT_PACKET_FT;
+	output_info->stride = INTEL_IPU_ISYS_SHORT_PACKET_WIDTH *
+			      INTEL_IPU_ISYS_SHORT_PACKET_UNITSIZE;
+	output_info->pt = INTEL_IPU_ISYS_SHORT_PACKET_PT;
+	output_info->ft = INTEL_IPU_ISYS_SHORT_PACKET_FT;
 	output_info->send_irq = 1;
 }
 
@@ -1140,7 +1140,7 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	}
 
 	if (ip->interlaced && ip->isys->short_packet_source ==
-		INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER)
+		INTEL_IPU_ISYS_SHORT_PACKET_FROM_RECEIVER)
 		csi_short_packet_prepare_firmware_stream_cfg(ip, &stream_cfg);
 
 	csslib_dump_isys_stream_cfg(dev, &stream_cfg);
@@ -1333,7 +1333,7 @@ int intel_ipu4_isys_video_prepare_streaming(struct intel_ipu4_isys_video *av,
 		ip = to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 
 		if (ip->interlaced && isys->short_packet_source ==
-			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER)
+			INTEL_IPU_ISYS_SHORT_PACKET_FROM_RECEIVER)
 			short_packet_queue_destroy(ip);
 		media_entity_pipeline_stop(&av->vdev.entity);
 		media_entity_enum_cleanup(&ip->entity_enum);
@@ -1418,11 +1418,7 @@ static int perform_skew_cal(struct intel_ipu4_isys_pipeline *ip)
 {
 	int rval;
 
-	/* TO BE DONE for ipu5 */
-	if (!is_intel_ipu4_hw_bxt_b0(ip->isys->adev->isp))
-		return 0;
-
-	intel_ipu4_csi_set_skew_cal(ip->csi2, true);
+	intel_ipu_csi_set_skew_cal(ip->csi2, true);
 
 	rval = v4l2_subdev_call(
 		media_entity_to_v4l2_subdev(ip->external->entity),
@@ -1439,7 +1435,7 @@ static int perform_skew_cal(struct intel_ipu4_isys_pipeline *ip)
 		video, s_stream, false);
 
 turn_off_skew_cal:
-	intel_ipu4_csi_set_skew_cal(ip->csi2, false);
+	intel_ipu_csi_set_skew_cal(ip->csi2, false);
 
 	/* TODO: do we have a better way available than waiting for a while ? */
 	msleep(50);
@@ -1487,7 +1483,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 				v4l2_subdev_call(media_entity_to_v4l2_subdev(
 						ip->external->entity),
 						video, s_stream, state);
-				intel_ipu4_isys_csi2_wait_last_eof(ip->csi2);
+				intel_ipu_isys_csi2_wait_last_eof(ip->csi2);
 			}
 		} else {
 			v4l2_subdev_call(media_entity_to_v4l2_subdev(
@@ -1538,7 +1534,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 
 	/* Oh crap */
 	if (state) {
-		if (intel_ipu4_skew_cal_required(ip->csi2))
+		if (intel_ipu_skew_cal_required(ip->csi2))
 			perform_skew_cal(ip);
 
 		rval = start_stream_firmware(av, bl);

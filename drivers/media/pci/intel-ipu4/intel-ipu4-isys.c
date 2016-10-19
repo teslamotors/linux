@@ -36,9 +36,7 @@
 #include "intel-ipu4-mmu.h"
 #include "intel-ipu4-dma.h"
 #include "intel-ipu4-isys.h"
-#include "intel-ipu4-isys-csi2.h"
-#include "intel-ipu4-isys-csi2-reg.h"
-#include "intel-ipu5-isys-csi2-reg.h"
+#include "intel-ipu-isys-csi2-common.h"
 #include "intel-ipu4-isys-tpg.h"
 #include "intel-ipu4-isys-video.h"
 #include "intel-ipu4-regs.h"
@@ -814,7 +812,7 @@ static void isys_unregister_subdevices(struct intel_ipu4_isys *isys)
 		intel_ipu4_isys_tpg_cleanup(&isys->tpg[i]);
 
 	for (i = 0; i < csi2->nports; i++)
-		intel_ipu4_isys_csi2_cleanup(&isys->csi2[i]);
+		intel_ipu_isys_csi2_cleanup(&isys->csi2[i]);
 }
 
 static int isys_register_subdevices(struct intel_ipu4_isys *isys)
@@ -862,7 +860,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		if (!test_bit(i, csi2_enable))
 			continue;
 
-		rval = intel_ipu4_isys_csi2_init(
+		rval = intel_ipu_isys_csi2_init(
 			&isys->csi2[i], isys,
 			isys->pdata->base + csi2->offsets[i], i);
 		if (rval)
@@ -1158,7 +1156,7 @@ static int isys_runtime_pm_resume(struct device *dev)
 	spin_unlock_irqrestore(&isys->power_lock, flags);
 
 	if (isys->short_packet_source ==
-		INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
+		INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT) {
 		mutex_lock(&isys->short_packet_tracing_mutex);
 		isys->short_packet_tracing_count = 0;
 		mutex_unlock(&isys->short_packet_tracing_mutex);
@@ -1230,13 +1228,13 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
 	mutex_destroy(&isys->mutex);
 
 	if (isys->short_packet_source ==
-	    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
+	    INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT) {
 		struct dma_attrs attrs;
 
 		init_dma_attrs(&attrs);
 		dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
 		dma_free_attrs(&adev->dev,
-			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+			INTEL_IPU_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
 			isys->short_packet_trace_buffer,
 			isys->short_packet_trace_buffer_dma_addr, &attrs);
 	}
@@ -1321,18 +1319,18 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 	/* For BXT B0/C0 and BXT-P, short packet is captured from T-Unit. */
 	if (is_intel_ipu4_hw_bxt_b0(isp)) {
 		isys->short_packet_source =
-			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT;
+			INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT;
 		mutex_init(&isys->short_packet_tracing_mutex);
 		init_dma_attrs(&attrs);
 		dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
 		isys->short_packet_trace_buffer = dma_alloc_attrs(&adev->dev,
-			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+			INTEL_IPU_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
 			&isys->short_packet_trace_buffer_dma_addr, GFP_KERNEL, &attrs);
 		if (!isys->short_packet_trace_buffer)
 			return -ENOMEM;
 	} else {
 		isys->short_packet_source =
-			INTEL_IPU4_ISYS_SHORT_PACKET_FROM_RECEIVER;
+			INTEL_IPU_ISYS_SHORT_PACKET_FROM_RECEIVER;
 	}
 
 	isys->adev = adev;
@@ -1448,10 +1446,10 @@ release_firmware:
 	mutex_destroy(&isys->lib_mutex);
 
 	if (isys->short_packet_source ==
-	    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
+	    INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT) {
 		mutex_destroy(&isys->short_packet_tracing_mutex);
 		dma_free_attrs(&adev->dev,
-			INTEL_IPU4_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+			INTEL_IPU_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
 			isys->short_packet_trace_buffer,
 			isys->short_packet_trace_buffer_dma_addr, &attrs);
 	}
@@ -1601,9 +1599,9 @@ static int isys_isr_one(struct intel_ipu4_bus_device *adev)
 			unsigned long flags;
 
 			if (pipe->isys->short_packet_source ==
-			    INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT)
+			    INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT)
 				pipe->cur_field =
-					intel_ipu4_isys_csi2_get_current_field(
+					intel_ipu_isys_csi2_get_current_field(
 					pipe, &resp);
 			/*
 			 * Move the pending buffers to a local temp list.
@@ -1685,7 +1683,7 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 			for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
 				if (status &
 				 INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i))
-					intel_ipu4_isys_csi2_isr(
+					intel_ipu_isys_csi2_isr(
 						&isys->csi2[i]);
 			}
 		}
