@@ -234,7 +234,7 @@ udiv2_small_i(uint32_t a, uint32_t b)
 
 /* optimized divide for small results
  * a will be divided by b
- * outbits is the number if bits needed for the result
+ * outbits is the number of bits needed for the result
  * the smaller the cheaper the function will be.
  * if the result doesn't fit in the number of output bits
  * the result is incorrect and the function will assert
