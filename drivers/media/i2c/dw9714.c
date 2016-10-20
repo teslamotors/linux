@@ -15,6 +15,7 @@
  */
 
 
+#include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
@@ -31,6 +32,7 @@ struct dw9714_device {
 	struct v4l2_ctrl_handler ctrls_vcm;
 	struct v4l2_subdev subdev_vcm;
 	struct dw9714_platform_data *pdata;
+	u16 current_val;
 };
 
 #define to_dw9714_vcm(_ctrl)	\
@@ -68,6 +70,8 @@ static int dw9714_t_focus_vcm(struct dw9714_device *dw9714_dev, u16 val)
 	int ret = -EINVAL;
 
 	dev_dbg(&client->dev, "Setting new value VCM: %d\n", val);
+	dw9714_dev->current_val = val;
+
 	ret = dw9714_i2c_write(client,
 			       VCM_VAL(val, VCM_DEFAULT_S));
 	return ret;
@@ -229,8 +233,19 @@ static int dw9714_suspend(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct dw9714_device *dw9714_dev = container_of(sd,
 			struct dw9714_device, subdev_vcm);
+	int ret, val;
 
-	dev_dbg(&client->dev, "%s\n", __func__);
+	dev_dbg(dev, "%s\n", __func__);
+
+	for (val = dw9714_dev->current_val & ~(DW9714_CTRL_STEPS - 1);
+	     val >= 0 ; val -= DW9714_CTRL_STEPS) {
+		ret = dw9714_i2c_write(client,
+				       VCM_VAL((u16)val, VCM_DEFAULT_S));
+		if (ret)
+			dev_err(dev, "%s I2C failure: %d", __func__, ret);
+		usleep_range(DW9714_CTRL_DELAY_US, DW9714_CTRL_DELAY_US + 10);
+	}
+
 	if (dw9714_dev->pdata)
 		gpio_set_value(dw9714_dev->pdata->gpio_xsd, 0);
 
@@ -243,15 +258,25 @@ static int dw9714_resume(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct dw9714_device *dw9714_dev = container_of(sd,
 			struct dw9714_device, subdev_vcm);
-	int rval;
+	int ret, val;
 
 	if (dw9714_dev->pdata)
 		gpio_set_value(dw9714_dev->pdata->gpio_xsd, 1);
 
+	for (val = dw9714_dev->current_val % DW9714_CTRL_STEPS;
+	     val < dw9714_dev->current_val + DW9714_CTRL_STEPS - 1;
+	     val += DW9714_CTRL_STEPS) {
+		ret = dw9714_i2c_write(client,
+				       VCM_VAL((u16)val, VCM_DEFAULT_S));
+		if (ret)
+			dev_err(dev, "%s I2C failure: %d", __func__, ret);
+		usleep_range(DW9714_CTRL_DELAY_US, DW9714_CTRL_DELAY_US + 10);
+	}
+
 	/* restore v4l2 control values */
-	rval = v4l2_ctrl_handler_setup(&dw9714_dev->ctrls_vcm);
-	dev_dbg(&client->dev, "%s rval = %d\n", __func__, rval);
-	return rval;
+	ret = v4l2_ctrl_handler_setup(&dw9714_dev->ctrls_vcm);
+	dev_dbg(dev, "%s rval = %d\n", __func__, ret);
+	return ret;
 }
 
 #else

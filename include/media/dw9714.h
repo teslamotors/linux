@@ -22,6 +22,8 @@
 #define DW9714_NAME		"dw9714"
 
 #define DW9714_MAX_FOCUS_POS	1023
+#define DW9714_CTRL_STEPS	16 /* Keep this value power of 2 */
+#define DW9714_CTRL_DELAY_US	1000
 
 #define VCM_DEFAULT_S 0x0
 #define VCM_VAL(data, s) (u16)((data) << 4 | (s))
