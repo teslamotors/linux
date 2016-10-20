@@ -199,6 +199,8 @@ static void intel_ipu4_isys_abi_fw_cleanup(struct intel_ipu4_isys *isys)
 static void start_sp(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+	void __iomem *spc_regs_base = isys->pdata->base +
+		isys->pdata->ipdata->hw_variant.spc_offset;
 	u32 val = 0;
 
 	val |= INTEL_IPU4_ISYS_SPC_STATUS_START |
@@ -206,14 +208,16 @@ static void start_sp(struct intel_ipu4_bus_device *adev)
 		INTEL_IPU4_ISYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
 	val |= isys->icache_prefetch ?
 		INTEL_IPU4_ISYS_SPC_STATUS_ICACHE_PREFETCH : 0;
-	writel(val, isys->pdata->base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
+	writel(val, spc_regs_base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
 }
 
 static int query_sp(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+	void __iomem *spc_regs_base = isys->pdata->base +
+		isys->pdata->ipdata->hw_variant.spc_offset;
 	u32 val =
-		readl(isys->pdata->base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
+		readl(spc_regs_base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
 
 	/* return true when READY == 1, START == 0 */
 	val &= INTEL_IPU4_ISYS_SPC_STATUS_READY |
@@ -243,7 +247,6 @@ static int intel_ipu4_isys_abi_fw_init(struct intel_ipu4_isys *isys,
 		 num_out_message_queues + ISYS_NBR_PROXY_QUEUES,
 		.input = input_queue_cfg,
 		.output = output_queue_cfg,
-		.dmem_addr = 0x00000,
 		.cell_start = start_sp,
 		.cell_ready = query_sp,
 	};
@@ -271,7 +274,7 @@ static int intel_ipu4_isys_abi_fw_init(struct intel_ipu4_isys *isys,
 			isys_fw_cfg.buffer_partition.num_gda_pages[i] = 0;
 	}
 
-	fwcom.dmem_addr = isys->pdata->ipdata->dmem_offset;
+	fwcom.dmem_addr = isys->pdata->ipdata->hw_variant.dmem_offset;
 	fwcom.specific_addr = &isys_fw_cfg;
 	fwcom.specific_size = sizeof(isys_fw_cfg);
 

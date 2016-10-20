@@ -184,6 +184,7 @@ struct intel_ipu4_device {
 
 int intel_ipu4_fw_authenticate(void *data, u64 val);
 void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
+			      const struct intel_ipu4_hw_variants *hw_variant,
 			      int pkg_dir_idx, void __iomem *base, u64 *pkg_dir,
 			      dma_addr_t pkg_dir_dma_addr);
 void intel_ipu4_configure_vc_mechanism(struct intel_ipu4_device *isp);

@@ -78,9 +78,10 @@ int intel_ipu5_isys_load_pkg_dir(struct intel_ipu4_isys *isys)
 EXPORT_SYMBOL(intel_ipu5_isys_load_pkg_dir);
 
 void intel_ipu5_pkg_dir_configure_spc(struct intel_ipu4_device *isp,
-				      int pkg_dir_idx, void __iomem *base,
-				      u64 *pkg_dir,
-				      dma_addr_t pkg_dir_dma_addr)
+			const struct intel_ipu4_hw_variants *hw_variant,
+			int pkg_dir_idx, void __iomem *base,
+			u64 *pkg_dir,
+			dma_addr_t pkg_dir_dma_addr)
 {
 	u64 *pkg_dir_host_address;
 	u64 pkg_dir_vied_address;
@@ -91,9 +92,11 @@ void intel_ipu5_pkg_dir_configure_spc(struct intel_ipu4_device *isp,
 
 	void *__iomem spc_base;
 
-	val = readl(base + INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL);
+	val = readl(base + hw_variant->spc_offset +
+		    INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL);
 	val |= INTEL_IPU5_PSYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
-	writel(val, base + INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL);
+	writel(val, base + hw_variant->spc_offset +
+	       INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL);
 
 	pkg_dir_host_address = pkg_dir;
 	if (!pkg_dir_host_address)
@@ -133,7 +136,7 @@ void intel_ipu5_pkg_dir_configure_spc(struct intel_ipu4_device *isp,
 		     spc_base +
 		     INTEL_IPU5_REG_PSYS_INFO_SEG_0_CONFIG_ICACHE_MASTER);
 	writel(pkg_dir_vied_address,
-		     spc_base + INTEL_IPU5_DMEM_OFFSET);
+	       base + hw_variant->dmem_offset);
 }
 
 MODULE_AUTHOR("Samu Onkalo <samu.onkalo@intel.com>");

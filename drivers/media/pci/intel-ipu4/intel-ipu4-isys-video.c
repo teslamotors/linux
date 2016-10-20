@@ -199,6 +199,7 @@ static int video_open(struct file *file)
 	}
 
 	intel_ipu4_configure_spc(adev->isp,
+				 &isys->pdata->ipdata->hw_variant,
 				 INTEL_IPU4_CPD_PKG_DIR_ISYS_SERVER_IDX,
 				 isys->pdata->base, isys->pkg_dir,
 				 isys->pkg_dir_dma_addr);

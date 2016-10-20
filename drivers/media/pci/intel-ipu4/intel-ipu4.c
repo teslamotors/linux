@@ -307,23 +307,27 @@ int intel_ipu4_pci_config_setup(struct pci_dev *dev)
 }
 
 void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
+			      const struct intel_ipu4_hw_variants *hw_variant,
 			      int pkg_dir_idx, void __iomem *base, u64 *pkg_dir,
 			      dma_addr_t pkg_dir_dma_addr)
 {
 	u32 val;
+	void __iomem *dmem_base = base + hw_variant->dmem_offset;
+	void __iomem *spc_regs_base = base + hw_variant->spc_offset;
 
-	val = readl(base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
+	val = readl(spc_regs_base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
 	val |= INTEL_IPU4_PSYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
-	writel(val, base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
+	writel(val, spc_regs_base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
 
 	if (isp->secure_mode) {
-		writel(INTEL_IPU4_PKG_DIR_IMR_OFFSET,
-		       base + INTEL_IPU4_DMEM_OFFSET);
+		writel(INTEL_IPU4_PKG_DIR_IMR_OFFSET, dmem_base);
 	} else {
 		u32 server_addr;
 
 		if (is_intel_ipu5_hw_a0(isp)) {
-			intel_ipu5_pkg_dir_configure_spc(isp, pkg_dir_idx,
+			intel_ipu5_pkg_dir_configure_spc(isp,
+							 hw_variant,
+							 pkg_dir_idx,
 							 base, pkg_dir,
 							 pkg_dir_dma_addr);
 			return;
@@ -335,15 +339,15 @@ void intel_ipu4_configure_spc(struct intel_ipu4_device *isp,
 		writel(server_addr + intel_ipu4_cpd_get_pg_icache_base(
 			       isp, pkg_dir_idx, isp->cpd_fw->data,
 			       isp->cpd_fw->size),
-		       base + INTEL_IPU4_PSYS_REG_SPC_ICACHE_BASE);
+		       spc_regs_base + INTEL_IPU4_PSYS_REG_SPC_ICACHE_BASE);
 		writel(intel_ipu4_cpd_get_pg_entry_point(isp, pkg_dir_idx,
 							 isp->cpd_fw->data,
 							 isp->cpd_fw->size),
-		       base + INTEL_IPU4_PSYS_REG_SPC_START_PC);
+		       spc_regs_base + INTEL_IPU4_PSYS_REG_SPC_START_PC);
 		writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY,
-		       base +
+		       spc_regs_base +
 		       INTEL_IPU4_REG_PSYS_INFO_SEG_0_CONFIG_ICACHE_MASTER);
-		writel(pkg_dir_dma_addr, base + INTEL_IPU4_DMEM_OFFSET);
+		writel(pkg_dir_dma_addr, dmem_base);
 	}
 }
 EXPORT_SYMBOL(intel_ipu4_configure_spc);
@@ -486,10 +490,11 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu4 = {
 			},
 		},
 		.fw_filename = INTEL_IPU4_ISYS_FIRMWARE_B0,
+		.dmem_offset = INTEL_IPU4_ISYS_DMEM_OFFSET,
+		.spc_offset = INTEL_IPU4_ISYS_SPC_OFFSET,
 	},
 	.num_parallel_streams = INTEL_IPU4_ISYS_NUM_STREAMS_B0,
 	.isys_dma_overshoot =  INTEL_IPU4_ISYS_OVERALLOC_MIN,
-	.dmem_offset = 0x8000,
 };
 
 static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu4 = {
@@ -535,6 +540,8 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu4 = {
 			},
 		},
 		.fw_filename = INTEL_IPU4_PSYS_FIRMWARE_B0,
+		.dmem_offset = INTEL_IPU4_PSYS_DMEM_OFFSET,
+		.spc_offset = INTEL_IPU4_PSYS_SPC_OFFSET,
 	},
 };
 
@@ -608,6 +615,8 @@ static const struct intel_ipu4_isys_internal_pdata isys_ipdata_ipu5 = {
 		.cdc_fifos = 3,
 		.cdc_fifo_threshold = {6, 8, 2},
 		.fw_filename = INTEL_IPU5_ISYS_FIRMWARE_A0,
+		.dmem_offset = INTEL_IPU5_ISYS_DMEM_OFFSET,
+		.spc_offset = INTEL_IPU5_ISYS_SPC_OFFSET,
 	},
 	.num_parallel_streams = INTEL_IPU4_ISYS_NUM_STREAMS_B0,
 	.isys_dma_overshoot =  INTEL_IPU4_ISYS_OVERALLOC_MIN,
@@ -656,6 +665,8 @@ static const struct intel_ipu4_psys_internal_pdata psys_ipdata_ipu5 = {
 			},
 		},
 		.fw_filename = INTEL_IPU5_PSYS_FIRMWARE_A0,
+		.dmem_offset = INTEL_IPU5_PSYS_DMEM_OFFSET,
+		.spc_offset = INTEL_IPU5_PSYS_SPC_OFFSET,
 	},
 };
 

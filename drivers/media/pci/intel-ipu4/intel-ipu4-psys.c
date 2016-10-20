@@ -1847,6 +1847,8 @@ static void set_isp_info_bits(void *base)
 static void psys_setup_hw(struct intel_ipu4_psys *psys)
 {
 	void __iomem *base = psys->pdata->base;
+	void __iomem *spc_regs_base =
+		base + psys->pdata->ipdata->hw_variant.spc_offset;
 	void *psys_iommu0_ctrl = base +
 			psys->pdata->ipdata->hw_variant.mmu_hw[0].offset +
 			INTEL_IPU4_BXT_PSYS_MMU0_CTRL_OFFSET;
@@ -1856,13 +1858,13 @@ static void psys_setup_hw(struct intel_ipu4_psys *psys)
 	/* Configure PSYS info bits */
 	writel(INTEL_IPU4_INFO_REQUEST_DESTINATION_PRIMARY, psys_iommu0_ctrl);
 
-	set_sp_info_bits(base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
-	set_sp_info_bits(base + INTEL_IPU4_PSYS_REG_SPP0_STATUS_CTRL);
-	set_sp_info_bits(base + INTEL_IPU4_PSYS_REG_SPP1_STATUS_CTRL);
-	set_isp_info_bits(base + INTEL_IPU4_PSYS_REG_ISP0_STATUS_CTRL);
-	set_isp_info_bits(base + INTEL_IPU4_PSYS_REG_ISP1_STATUS_CTRL);
-	set_isp_info_bits(base + INTEL_IPU4_PSYS_REG_ISP2_STATUS_CTRL);
-	set_isp_info_bits(base + INTEL_IPU4_PSYS_REG_ISP3_STATUS_CTRL);
+	set_sp_info_bits(spc_regs_base + INTEL_IPU4_PSYS_REG_SPC_STATUS_CTRL);
+	set_sp_info_bits(spc_regs_base + INTEL_IPU4_PSYS_REG_SPP0_STATUS_CTRL);
+	set_sp_info_bits(spc_regs_base + INTEL_IPU4_PSYS_REG_SPP1_STATUS_CTRL);
+	set_isp_info_bits(spc_regs_base + INTEL_IPU4_PSYS_REG_ISP0_STATUS_CTRL);
+	set_isp_info_bits(spc_regs_base + INTEL_IPU4_PSYS_REG_ISP1_STATUS_CTRL);
+	set_isp_info_bits(spc_regs_base + INTEL_IPU4_PSYS_REG_ISP2_STATUS_CTRL);
+	set_isp_info_bits(spc_regs_base + INTEL_IPU4_PSYS_REG_ISP3_STATUS_CTRL);
 
 	/* Enable FW interrupt #0 */
 	writel(0, base + INTEL_IPU4_REG_PSYS_GPDEV_FWIRQ(0));
@@ -1887,6 +1889,8 @@ static void psys_setup_hw(struct intel_ipu4_psys *psys)
 static void ipu5_psys_setup_hw(struct intel_ipu4_psys *psys)
 {
 	void __iomem *base = psys->pdata->base;
+	void __iomem *spc_regs_base =
+		base + psys->pdata->ipdata->hw_variant.spc_offset;
 	void *psys_iommu0_ctrl = base +
 			psys->pdata->ipdata->hw_variant.mmu_hw[0].offset +
 			INTEL_IPU5_PSYS_MMU0_CTRL_OFFSET;
@@ -1894,10 +1898,10 @@ static void ipu5_psys_setup_hw(struct intel_ipu4_psys *psys)
 	/* Configure PSYS info bits */
 	writel(INTEL_IPU5_INFO_REQUEST_DESTINATION_PRIMARY,
 		    psys_iommu0_ctrl);
-	set_sp_info_bits(base + INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL);
-	set_sp_info_bits(base + INTEL_IPU5_PSYS_REG_SPP0_STATUS_CTRL);
-	set_sp_info_bits(base + INTEL_IPU5_PSYS_REG_SPP1_STATUS_CTRL);
-	set_isp_info_bits(base + INTEL_IPU5_PSYS_REG_ISP0_STATUS_CTRL);
+	set_sp_info_bits(spc_regs_base + INTEL_IPU5_PSYS_REG_SPC_STATUS_CTRL);
+	set_sp_info_bits(spc_regs_base + INTEL_IPU5_PSYS_REG_SPP0_STATUS_CTRL);
+	set_sp_info_bits(spc_regs_base + INTEL_IPU5_PSYS_REG_SPP1_STATUS_CTRL);
+	set_isp_info_bits(spc_regs_base + INTEL_IPU5_PSYS_REG_ISP0_STATUS_CTRL);
 }
 
 #ifdef CONFIG_PM
@@ -1937,6 +1941,7 @@ static int psys_runtime_pm_resume(struct device *dev)
 
 	intel_ipu4_configure_spc(
 		adev->isp,
+		&psys->pdata->ipdata->hw_variant,
 		INTEL_IPU4_CPD_PKG_DIR_PSYS_SERVER_IDX,
 		psys->pdata->base, psys->pkg_dir,
 		psys->pkg_dir_dma_addr);
@@ -2201,6 +2206,8 @@ static int intel_ipu4_psys_sched_cmd(void *ptr)
 static void start_sp(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
+	void __iomem *spc_regs_base = psys->pdata->base +
+		psys->pdata->ipdata->hw_variant.spc_offset;
 	u32 val = 0;
 
 	val |= INTEL_IPU4_ISYS_SPC_STATUS_START |
@@ -2208,14 +2215,16 @@ static void start_sp(struct intel_ipu4_bus_device *adev)
 		INTEL_IPU4_ISYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
 	val |= psys->icache_prefetch_sp ?
 		INTEL_IPU4_ISYS_SPC_STATUS_ICACHE_PREFETCH : 0;
-	writel(val, psys->pdata->base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
+	writel(val, spc_regs_base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
 }
 
 static int query_sp(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_psys *psys = intel_ipu4_bus_get_drvdata(adev);
+	void __iomem *spc_regs_base = psys->pdata->base +
+		psys->pdata->ipdata->hw_variant.spc_offset;
 	u32 val =
-		readl(psys->pdata->base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
+		readl(spc_regs_base + INTEL_IPU4_ISYS_REG_SPC_STATUS_CTRL);
 
 	/* return true when READY == 1, START == 0 */
 	val &= INTEL_IPU4_ISYS_SPC_STATUS_READY |
@@ -2248,13 +2257,14 @@ static int intel_ipu4_psys_fw_init(struct intel_ipu4_psys *psys)
 		.num_output_queues = IA_CSS_N_PSYS_EVENT_QUEUE_ID,
 		.input = ia_css_psys_cmd_queue_cfg,
 		.output = ia_css_psys_event_queue_cfg,
-		.dmem_addr = INTEL_IPU4_DMEM_OFFSET,
 		.specific_addr = &server_init,
 		.specific_size = sizeof(server_init),
 		.cell_start = start_sp,
 		.cell_ready = query_sp,
 	};
 	int rval;
+
+	fwcom.dmem_addr = psys->pdata->ipdata->hw_variant.dmem_offset;
 
 	rval = intel_ipu4_buttress_authenticate(psys->adev->isp);
 	if (rval) {
