@@ -299,7 +299,7 @@ static int intel_ipu4_psys_get_userpages(struct intel_ipu4_psys_kbuffer *kbuf)
 	else
 		pages = vzalloc(array_size);
 	if (!pages)
-		goto error;
+		goto free_sgt;
 
 	down_read(&current->mm->mmap_sem);
 	vma = find_vma(current->mm, start);
@@ -307,6 +307,15 @@ static int intel_ipu4_psys_get_userpages(struct intel_ipu4_psys_kbuffer *kbuf)
 		ret = -EFAULT;
 		goto error_up_read;
 	}
+
+	if (vma->vm_end < start + kbuf->len) {
+		dev_err(&kbuf->psys->adev->dev,
+			"vma at %lu is too small for %lu bytes\n",
+			start, kbuf->len);
+		ret = -EFAULT;
+		goto error_up_read;
+	}
+
 	/*
 	 * For buffers from Gralloc, VM_PFNMAP is expected,
 	 * but VM_IO is set. Possibly bug in Gralloc.
@@ -359,7 +368,7 @@ error:
 		kfree(pages);
 	else
 		vfree(pages);
-
+free_sgt:
 	kfree(sgt);
 
 	dev_dbg(&kbuf->psys->adev->dev, "failed to get userpages:%d\n", ret);
@@ -372,9 +381,14 @@ static void intel_ipu4_psys_put_userpages(struct intel_ipu4_psys_kbuffer *kbuf)
 	if (!kbuf->userptr || !kbuf->sgt)
 		return;
 
-	if (!kbuf->vma_is_io)
-		while (kbuf->npages)
-			put_page(kbuf->pages[--kbuf->npages]);
+	if (!kbuf->vma_is_io) {
+		int i = kbuf->npages;
+
+		while (--i >= 0) {
+			set_page_dirty_lock(kbuf->pages[i]);
+			put_page(kbuf->pages[i]);
+		}
+	}
 
 	if (is_vmalloc_addr(kbuf->pages))
 		vfree(kbuf->pages);
@@ -464,12 +478,8 @@ static void intel_ipu4_dma_buf_release(struct dma_buf *buf)
 
 	dev_dbg(&kbuf->psys->adev->dev, "releasing buffer %d\n", kbuf->fd);
 
-	mutex_lock(&kbuf->fh->mutex);
-	list_del(&kbuf->list);
-	mutex_unlock(&kbuf->fh->mutex);
 	intel_ipu4_psys_put_userpages(kbuf);
 	kfree(kbuf);
-	buf->priv = NULL;
 }
 
 int intel_ipu4_dma_buf_begin_cpu_access(struct dma_buf *dma_buf, size_t start,
@@ -628,10 +638,22 @@ static int intel_ipu4_psys_release(struct inode *inode, struct file *file)
 	/* clean up buffers */
 	list_for_each_entry_safe(kbuf, kbuf0, &fh->bufmap, list) {
 		list_del(&kbuf->list);
-		if (kbuf->dbuf)
-			kbuf->dbuf->priv = NULL;
-		intel_ipu4_psys_put_userpages(kbuf);
-		kfree(kbuf);
+		/* Unmap and release buffers */
+		if ((kbuf->dbuf) && (kbuf->db_attach)) {
+			struct dma_buf *dbuf;
+
+			dma_buf_vunmap(kbuf->dbuf, kbuf->kaddr);
+			dma_buf_unmap_attachment(kbuf->db_attach,
+					kbuf->sgt, DMA_BIDIRECTIONAL);
+			dma_buf_detach(kbuf->dbuf, kbuf->db_attach);
+			dbuf = kbuf->dbuf;
+			kbuf->dbuf = NULL;
+			kbuf->db_attach = NULL;
+			dma_buf_put(dbuf);
+		} else {
+			intel_ipu4_psys_put_userpages(kbuf);
+			kfree(kbuf);
+		}
 	}
 
 	if (list_empty(&psys->fhs) && psys->isr_thread) {
@@ -1587,6 +1609,11 @@ static long intel_ipu4_psys_mapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 		list_add_tail(&kbuf->list, &fh->bufmap);
 	}
 
+	if (kbuf->sgt) {
+		dev_dbg(&psys->adev->dev, "has been mapped!\n");
+		goto mapbuf_end;
+	}
+
 	kbuf->dbuf = dma_buf_get(fd);
 	if (IS_ERR(kbuf->dbuf)) {
 		if (!kbuf->userptr) {
@@ -1621,14 +1648,14 @@ static long intel_ipu4_psys_mapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 	kbuf->kaddr = dma_buf_vmap(kbuf->dbuf);
 	if (!kbuf->kaddr) {
 		ret = -EINVAL;
-		goto error_detach;
+		goto error_unmap;
 	}
 
 	ret = intel_ipu4_wrapper_register_buffer(kbuf->dma_addr, kbuf->kaddr,
 					      kbuf->len);
 	if (ret)
 		goto error_vunmap;
-
+mapbuf_end:
 	mutex_unlock(&fh->mutex);
 
 	dev_dbg(&psys->adev->dev, "IOC_MAPBUF: mapped fd %d\n", fd);
@@ -1637,16 +1664,19 @@ static long intel_ipu4_psys_mapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 
 error_vunmap:
 	dma_buf_vunmap(kbuf->dbuf, kbuf->kaddr);
+error_unmap:
+	dma_buf_unmap_attachment(kbuf->db_attach,
+				kbuf->sgt, DMA_BIDIRECTIONAL);
 error_detach:
 	dma_buf_detach(kbuf->dbuf, kbuf->db_attach);
 error_put:
+	list_del(&kbuf->list);
 	dbuf = kbuf->dbuf;
-	if (!kbuf->userptr) {
-		list_del(&kbuf->list);
-		kfree(kbuf);
-	}
-	mutex_unlock(&fh->mutex);
 
+	if (!kbuf->userptr)
+		kfree(kbuf);
+
+	mutex_unlock(&fh->mutex);
 	dma_buf_put(dbuf);
 
 	return ret;
@@ -1656,6 +1686,7 @@ static long intel_ipu4_psys_unmapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 {
 	struct intel_ipu4_psys_kbuffer *kbuf;
 	struct intel_ipu4_psys *psys = fh->psys;
+	struct dma_buf *dmabuf;
 
 	mutex_lock(&fh->mutex);
 	kbuf = intel_ipu4_psys_lookup_kbuffer(fh, fd);
@@ -1669,20 +1700,19 @@ static long intel_ipu4_psys_unmapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 	dma_buf_unmap_attachment(kbuf->db_attach, kbuf->sgt, DMA_BIDIRECTIONAL);
 
 	dma_buf_detach(kbuf->dbuf, kbuf->db_attach);
-	/*
-	 * dma_buf_put decreases refcount of the buffer. If refcount reaches
-	 * zero, dma_buf_release will be called. So the mutex is released
-	 * firstly.
-	 */
-	if (kbuf->userptr) {
-		mutex_unlock(&fh->mutex);
-		dma_buf_put(kbuf->dbuf);
-	} else {
-		list_del(&kbuf->list);
-		mutex_unlock(&fh->mutex);
-		dma_buf_put(kbuf->dbuf);
+
+	dmabuf = kbuf->dbuf;
+
+	kbuf->db_attach = NULL;
+	kbuf->dbuf = NULL;
+
+	list_del(&kbuf->list);
+
+	if (!kbuf->userptr)
 		kfree(kbuf);
-	}
+
+	mutex_unlock(&fh->mutex);
+	dma_buf_put(dmabuf);
 
 	dev_dbg(&psys->adev->dev, "IOC_UNMAPBUF: fd %d\n", fd);
 
