@@ -1157,9 +1157,12 @@ static int isys_runtime_pm_resume(struct device *dev)
 	isys->power = 1;
 	spin_unlock_irqrestore(&isys->power_lock, flags);
 
-	mutex_lock(&isys->short_packet_tracing_mutex);
-	isys->short_packet_tracing_count = 0;
-	mutex_unlock(&isys->short_packet_tracing_mutex);
+	if (isys->short_packet_source ==
+		INTEL_IPU4_ISYS_SHORT_PACKET_FROM_TUNIT) {
+		mutex_lock(&isys->short_packet_tracing_mutex);
+		isys->short_packet_tracing_count = 0;
+		mutex_unlock(&isys->short_packet_tracing_mutex);
+	}
 	isys_setup_hw(isys);
 
 	return 0;
