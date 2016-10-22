@@ -178,7 +178,7 @@
 #ifndef PIPE_GENERATION
 /* Deprecated OP___assert, this is still used in ~1000 places
  * in the code. This will be removed over time.
- * The implemenation for the pipe generation tool is in see support.isp.h */
+ * The implementation for the pipe generation tool is in see support.isp.h */
 #define OP___assert(cnd) assert(cnd)
 
 #ifdef C_RUN

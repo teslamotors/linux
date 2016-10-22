@@ -101,11 +101,11 @@ enum ipu4p_b0_ia_css_proxy_write_region {
 };
 
 struct ia_css_proxy_write_region_description ipu4p_b0_reg_write_desc[N_IPU4P_B0_IA_CSS_PROXY_WRITE_REGION] = {
-	/* base_addr, offset */
+	/* base_addr, max_offset */
 		/*input_system_unis_logic_gda_iwake_threshold*/
-	{0x78010, 4}, /*IPU4P_B0_IA_CSS_PROXY_WRITE_REGION_GDA_IWAKE_THRESHOLD*/
+	{0x78014, 4}, /*IPU4P_B0_IA_CSS_PROXY_WRITE_REGION_GDA_IWAKE_THRESHOLD*/
 		/*input_system_unis_logic_gda_enable_iwake*/
-	{0x78018, 4} /*IPU4P_B0_IA_CSS_PROXY_WRITE_REGION_GDA_ENABLE_IWAKE*/
+	{0x7801C, 4} /*IPU4P_B0_IA_CSS_PROXY_WRITE_REGION_GDA_ENABLE_IWAKE*/
 };
 
 #endif /*defined(IPU4P_B0_PROXY_INT)*/
