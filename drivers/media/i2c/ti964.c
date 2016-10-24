@@ -475,23 +475,6 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 
 		if (!remote_pad)
 			continue;
-		/* Enable RX port fordwarding. */
-		rval = ti964_reg_set_bit(va, TI964_FWD_CTL1, i + 4, !enable);
-		if (rval) {
-			dev_err(va->sd.dev,
-				"Failed to forward RX port%d. enable = %d\n",
-				i, enable);
-			return rval;
-		}
-		/* Stream on sensor. */
-		sd = media_entity_to_v4l2_subdev(remote_pad->entity);
-		rval = v4l2_subdev_call(sd, video, s_stream, enable);
-		if (rval) {
-			dev_err(va->sd.dev,
-				"Failed to set stream for %s. enable = %d\n",
-				sd->name, enable);
-			return rval;
-		}
 		/* Select RX port. */
 		rval = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
 				(i << 4) + (1 << i));
@@ -515,6 +498,23 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 			TI964_RAW10_8BIT : TI964_RAW10_NORMAL);
 		if (rval) {
 			dev_err(va->sd.dev, "Failed to set port config2.\n");
+			return rval;
+		}
+		/* Stream on sensor. */
+		sd = media_entity_to_v4l2_subdev(remote_pad->entity);
+		rval = v4l2_subdev_call(sd, video, s_stream, enable);
+		if (rval) {
+			dev_err(va->sd.dev,
+				"Failed to set stream for %s. enable = %d\n",
+				sd->name, enable);
+			return rval;
+		}
+		/* Enable RX port fordwarding. */
+		rval = ti964_reg_set_bit(va, TI964_FWD_CTL1, i + 4, !enable);
+		if (rval) {
+			dev_err(va->sd.dev,
+				"Failed to forward RX port%d. enable = %d\n",
+				i, enable);
 			return rval;
 		}
 	}
