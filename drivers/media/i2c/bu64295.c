@@ -196,6 +196,12 @@ static int bu64295_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, bu64295_dev);
 	bu64295_dev->client = client;
 
+	rval = bu64295_init_vcm_params(bu64295_dev);
+	if (rval) {
+		dev_err(&client->dev, "bu64295 init failed\n");
+		return -ENODEV;
+	}
+
 	v4l2_i2c_subdev_init(&bu64295_dev->subdev_vcm, client, &bu64295_ops);
 	bu64295_dev->subdev_vcm.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	bu64295_dev->subdev_vcm.internal_ops = &bu64295_internal_ops;
