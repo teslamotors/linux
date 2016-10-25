@@ -1288,7 +1288,11 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	 * should be coming from CLT based on endpoints to be supported
 	 */
 	.name = "SDW Pin",
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
 	.id = SDW_BE_DAI_ID_MSTR0,
+#else
+	.id = SDW_BE_DAI_ID_MSTR1,
+#endif
 	.ops = &skl_sdw_dai_ops,
 	.playback = {
 		.stream_name = "SDW Tx",
@@ -1310,7 +1314,11 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	 * should be coming from CLT based on endpoints to be supported
 	 */
 	.name = "SDW10 Pin",
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
 	.id = SDW_BE_DAI_ID_MSTR0,
+#else
+	.id = SDW_BE_DAI_ID_MSTR1,
+#endif
 	.ops = &skl_sdw_dai_ops,
 	.playback = {
 		.stream_name = "SDW Tx10",
