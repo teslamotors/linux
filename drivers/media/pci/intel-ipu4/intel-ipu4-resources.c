@@ -30,6 +30,8 @@
 /*
  * Cell types by cell IDs
  */
+#if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4)
+
 static const u32 vied_nci_cell_types[VIED_NCI_N_CELL_ID] = {
 	VIED_NCI_SP_CTRL_TYPE_ID,
 	VIED_NCI_SP_SERVER_TYPE_ID,
@@ -49,6 +51,26 @@ static const u32 vied_nci_cell_types[VIED_NCI_N_CELL_ID] = {
 	VIED_NCI_GDC_TYPE_ID,
 	VIED_NCI_GDC_TYPE_ID
 };
+
+#elif IS_ENABLED(CONFIG_VIDEO_INTEL_IPU5)
+
+static const u32 vied_nci_cell_types[VIED_NCI_N_CELL_ID] = {
+	VIED_NCI_SP_CTRL_TYPE_ID,
+	VIED_NCI_SP_SERVER_TYPE_ID,
+	VIED_NCI_SP_SERVER_TYPE_ID,
+	VIED_NCI_VP_TYPE_ID,
+	VIED_NCI_ACC_ISA_TYPE_ID,
+	VIED_NCI_ACC_PSA_TYPE_ID,
+	VIED_NCI_ACC_PSA_TYPE_ID,
+	VIED_NCI_ACC_PSA_TYPE_ID,
+	VIED_NCI_ACC_PSA_TYPE_ID,
+	VIED_NCI_ACC_PSA_TYPE_ID,
+	VIED_NCI_ACC_PSA_TYPE_ID,
+	VIED_NCI_ACC_OSA_TYPE_ID,
+	VIED_NCI_GDC_TYPE_ID
+};
+
+#endif
 
 /********** Generic resource handling **********/
 
@@ -116,14 +138,14 @@ void intel_ipu4_resource_cleanup(struct intel_ipu4_resource *res)
 /* Process group resource sizes */
 static const u16
 		intel_ipu4_num_dev_channels[VIED_NCI_N_DEV_CHN_ID] = {
-	30,		/* VIED_NCI_DEV_CHN_DMA_EXT0_ID */
-	0,		/* VIED_NCI_DEV_CHN_GDC_ID */
-	30,		/* VIED_NCI_DEV_CHN_DMA_EXT1_READ_ID */
-	20,		/* VIED_NCI_DEV_CHN_DMA_EXT1_WRITE_ID */
-	2,		/* VIED_NCI_DEV_CHN_DMA_INTERNAL_ID */
-	5,		/* VIED_NCI_DEV_CHN_DMA_IPFD_ID */
-	2,		/* VIED_NCI_DEV_CHN_DMA_ISA_ID */
-	0,		/* VIED_NCI_DEV_CHN_DMA_FW_ID */
+	VIED_NCI_DEV_CHN_DMA_EXT0_MAX_SIZE,
+	VIED_NCI_DEV_CHN_GDC_MAX_SIZE,
+	VIED_NCI_DEV_CHN_DMA_EXT1_READ_MAX_SIZE,
+	VIED_NCI_DEV_CHN_DMA_EXT1_WRITE_MAX_SIZE,
+	VIED_NCI_DEV_CHN_DMA_INTERNAL_MAX_SIZE,
+	VIED_NCI_DEV_CHN_DMA_IPFD_MAX_SIZE,
+	VIED_NCI_DEV_CHN_DMA_ISA_MAX_SIZE,
+	VIED_NCI_DEV_CHN_DMA_FW_MAX_SIZE
 };
 
 static struct ia_css_program_manifest *intel_ipu4_resource_get_program_manifest(
