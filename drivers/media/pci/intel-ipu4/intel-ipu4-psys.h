@@ -124,7 +124,6 @@ struct intel_ipu4_psys_kcmd {
 	struct intel_ipu4_psys_resource_alloc resource_alloc;
 	struct intel_ipu4_psys_event ev;
 	struct timer_list watchdog;
-	struct completion cmd_complete;
 };
 
 struct intel_ipu4_psys_kbuffer {

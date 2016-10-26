@@ -1002,7 +1002,6 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 
 	kcmd->state = KCMD_STATE_COMPLETE;
 
-	complete(&kcmd->cmd_complete);
 	wake_up_interruptible(&kcmd->fh->wait);
 }
 
@@ -1490,8 +1489,6 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 		ret = -EIO;
 		goto error;
 	}
-
-	init_completion(&kcmd->cmd_complete);
 
 	mutex_lock(&fh->mutex);
 	list_add_tail(&kcmd->list, &fh->kcmds[cmd->priority]);
