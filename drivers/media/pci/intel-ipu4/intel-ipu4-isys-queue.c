@@ -134,7 +134,8 @@ int intel_ipu4_isys_buf_prepare(struct vb2_buffer *vb)
 	if (av->mpix.plane_fmt[0].sizeimage > vb2_plane_size(vb, 0))
 		return -EINVAL;
 
-	vb2_set_plane_payload(vb, 0, av->mpix.plane_fmt[0].sizeimage);
+	vb2_set_plane_payload(vb, 0, av->mpix.plane_fmt[0].bytesperline *
+			      av->mpix.height);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	vb->v4l2_planes[0].data_offset = av->line_header_length / BITS_PER_BYTE;
 #else
