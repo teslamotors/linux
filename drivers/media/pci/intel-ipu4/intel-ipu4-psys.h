@@ -142,6 +142,7 @@ struct intel_ipu4_psys_kbuffer {
 	struct dma_buf *dbuf;
 	struct intel_ipu4_psys *psys;
 	struct intel_ipu4_psys_fh *fh;
+	bool valid; /* True when buffer is usable */
 };
 
 #define inode_to_intel_ipu4_psys(inode) \

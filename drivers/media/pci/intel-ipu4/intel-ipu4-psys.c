@@ -275,6 +275,19 @@ static struct intel_ipu4_psys_kbuffer *intel_ipu4_psys_lookup_kbuffer(
 	return NULL;
 }
 
+static struct intel_ipu4_psys_kbuffer *intel_ipu4_psys_lookup_kbuffer_by_kaddr(
+			struct intel_ipu4_psys_fh *fh, void *kaddr)
+{
+	struct intel_ipu4_psys_kbuffer *kbuffer;
+
+	list_for_each_entry(kbuffer, &fh->bufmap, list) {
+		if (kbuffer->kaddr == kaddr)
+			return kbuffer;
+	}
+
+	return NULL;
+}
+
 static int intel_ipu4_psys_get_userpages(struct intel_ipu4_psys_kbuffer *kbuf)
 {
 	struct vm_area_struct *vma;
@@ -991,8 +1004,19 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 		intel_ipu4_buttress_remove_psys_constraint(psys->adev->isp,
 							   &kcmd->constraint);
 
-	if (!early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg)
-		memcpy(kcmd->pg_user, kcmd->kpg->pg, kcmd->kpg->pg_size);
+	if (!early_pg_transfer && kcmd->pg_user && kcmd->kpg->pg) {
+		struct intel_ipu4_psys_kbuffer *kbuf;
+
+		kbuf = intel_ipu4_psys_lookup_kbuffer_by_kaddr(kcmd->fh,
+							       kcmd->pg_user);
+
+		if (kbuf && kbuf->valid)
+			memcpy(kcmd->pg_user,
+			       kcmd->kpg->pg, kcmd->kpg->pg_size);
+		else
+			dev_dbg(&psys->adev->dev,
+				"Skipping already unmapped buffer\n");
+	}
 
 	if ((kcmd->state == KCMD_STATE_RUNNING) ||
 	    (kcmd->state == KCMD_STATE_STARTED)) {
@@ -1653,6 +1677,9 @@ static long intel_ipu4_psys_mapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 	if (ret)
 		goto error_vunmap;
 mapbuf_end:
+
+	kbuf->valid = true;
+
 	mutex_unlock(&fh->mutex);
 
 	dev_dbg(&psys->adev->dev, "IOC_MAPBUF: mapped fd %d\n", fd);
@@ -1692,6 +1719,9 @@ static long intel_ipu4_psys_unmapbuf(int fd, struct intel_ipu4_psys_fh *fh)
 		mutex_unlock(&fh->mutex);
 		return -EINVAL;
 	}
+
+	/* From now on it is not safe to use this kbuffer */
+	kbuf->valid = false;
 
 	dma_buf_vunmap(kbuf->dbuf, kbuf->kaddr);
 	dma_buf_unmap_attachment(kbuf->db_attach, kbuf->sgt, DMA_BIDIRECTIONAL);
