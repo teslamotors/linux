@@ -124,6 +124,7 @@ static int ipu4_isys_csi2_be_soc_set_sel(struct v4l2_subdev *sd,
 				break;
 			}
 		}
+
 		if (i == asd->nstreams) {
 			dev_dbg(&asd->isys->adev->dev, "No sink pad routed.\n");
 			return -EINVAL;

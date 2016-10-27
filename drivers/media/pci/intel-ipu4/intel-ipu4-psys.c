@@ -310,7 +310,7 @@ static int intel_ipu4_psys_get_userpages(struct intel_ipu4_psys_kbuffer *kbuf)
 
 	if (vma->vm_end < start + kbuf->len) {
 		dev_err(&kbuf->psys->adev->dev,
-			"vma at %lu is too small for %lu bytes\n",
+			"vma at %lu is too small for %llu bytes\n",
 			start, kbuf->len);
 		ret = -EFAULT;
 		goto error_up_read;
@@ -2274,7 +2274,7 @@ err:
 static int intel_ipu4_psys_sched_cmd(void *ptr)
 {
 	struct intel_ipu4_psys *psys = ptr;
-	size_t pending;
+	size_t pending = 0;
 
 	while (1) {
 		wait_event_interruptible(psys->sched_cmd_wq,

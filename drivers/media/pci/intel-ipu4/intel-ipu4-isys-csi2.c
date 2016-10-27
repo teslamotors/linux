@@ -656,7 +656,7 @@ static int intel_ipu4_isys_csi2_configure_tunit(
 	struct intel_ipu4_isys *isys = csi2->isys;
 	void __iomem *isys_base = isys->pdata->base;
 	void __iomem *tunit_base = isys_base + TRACE_REG_IS_TRACE_UNIT_BASE;
-	int i, j, ret = 0;
+	int i, ret = 0;
 
 	mutex_lock(&isys->short_packet_tracing_mutex);
 	if (!enable) {
