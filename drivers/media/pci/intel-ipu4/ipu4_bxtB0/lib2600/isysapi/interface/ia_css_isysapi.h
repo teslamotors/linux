@@ -85,7 +85,7 @@ extern int ia_css_isys_stream_open(
  * ia_css_isys_stream_close() - close virtual stream
  * @ stream_handle: stream identifier
  * release ISYS resources by freeing up stream HW resources
- * ouput pin buffers ownership is returned to the driver
+ * output pin buffers ownership is returned to the driver
  * Return: int type error code (errno.h)
  */
 extern int ia_css_isys_stream_close(
@@ -117,7 +117,7 @@ extern int ia_css_isys_stream_close(
  * the driver and is no longer accesses by iSYS
  * next_frame contains a collection of
  * ia_css_isys_output_pin * and ia_css_isys_input_pin *
- * which point to the frame's "ouput/input pin info & data buffers",
+ * which point to the frame's "output/input pin info & data buffers",
  *
  * Upon the ia_css_isys_stream_start() call,
  * ia_css_isys_output_pin* or ia_css_isys_input_pin*
@@ -187,7 +187,7 @@ extern int ia_css_isys_stream_flush(
  * the driver and is no longer accesses by iSYS
  * next_frame contains a collection of
  * ia_css_isys_output_pin * and ia_css_isys_input_pin *
- * which point to the frame's "ouput/input pin info & data buffers",
+ * which point to the frame's "output/input pin info & data buffers",
  *
  * Upon the ia_css_isys_stream_capture_indication() call,
  * ia_css_isys_output_pin* or ia_css_isys_input_pin*

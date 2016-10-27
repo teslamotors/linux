@@ -245,7 +245,7 @@ struct vied_nci_resource_spec_dev_chn_s {
 typedef struct vied_nci_resource_spec_dev_chn_s
 	vied_nci_resource_spec_dev_chn_t;
 
-/* resource spec for all contigious resources */
+/* resource spec for all contiguous resources */
 struct vied_nci_resource_spec_s {
 	vied_nci_resource_spec_int_mem_t int_mem[VIED_NCI_N_MEM_TYPE_ID];
 	vied_nci_resource_spec_ext_mem_t ext_mem[VIED_NCI_N_DATA_MEM_TYPE_ID];

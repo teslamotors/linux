@@ -78,8 +78,8 @@ struct ia_css_isys_resolution {
 
 /**
  * struct ia_css_isys_output_pin_payload
- * @out_buf_id: Points to ouput pin buffer - buffer identifier
- * @addr: Points to ouput pin buffer - CSS Virtual Address
+ * @out_buf_id: Points to output pin buffer - buffer identifier
+ * @addr: Points to output pin buffer - CSS Virtual Address
  */
 struct ia_css_isys_output_pin_payload {
 	ia_css_return_token out_buf_id;

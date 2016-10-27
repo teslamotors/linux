@@ -325,7 +325,7 @@ IA_CSS_PSYS_DATA_STORAGE_CLASS_H
 int ia_css_frame_set_pointer_state(ia_css_frame_t *frame,
 	const ia_css_pointer_state_t pointer_state);
 
-/*! Print the frame decriptor object to file/stream
+/*! Print the frame descriptor object to file/stream
 
  @param	frame_descriptor[in]	frame descriptor object
  @param	fid[out]		file/stream handle
@@ -336,7 +336,7 @@ IA_CSS_PSYS_DATA_STORAGE_CLASS_H
 int ia_css_frame_descriptor_print(
 	const ia_css_frame_descriptor_t *frame_descriptor, void *fid);
 
-/*! Print the fragment decriptor object to file/stream
+/*! Print the fragment descriptor object to file/stream
 
  @param	fragment_descriptor[in]	fragment descriptor object
  @param	fid[out]		file/stream handle
