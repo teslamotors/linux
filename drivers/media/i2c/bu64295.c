@@ -55,7 +55,7 @@ static int bu64295_i2c_write(struct i2c_client *client, u16 data)
 	} while (retry--);
 
 	if (ret != num_msg) {
-		dev_err(&client->dev, "I2C write(0x%0x) failed\n", &msg.addr);
+		dev_err(&client->dev, "I2C write(0x%4.4x) failed\n", msg.addr);
 		return -EIO;
 	}
 
