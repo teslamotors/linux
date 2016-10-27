@@ -1430,6 +1430,70 @@ static int rt700_clock_config(struct device *dev, struct alc700 *alc700)
 	return 0;
 }
 
+static int rt700_create_bra_block(struct sdw_slave *slave)
+{
+	struct sdw_bra_block bra_block;
+	u8 *value;
+	int ret = 0;
+
+	/* Fill bra data structure */
+	bra_block.slave_addr = slave->slv_addr->slv_number;
+	bra_block.cmd = 0; /* Read command */
+	bra_block.num_bytes = 36; /* 36 bytes */
+	bra_block.reg_offset = 0x0000;
+
+	value = kzalloc(bra_block.num_bytes, GFP_KERNEL);
+	if (!value)
+		return -ENOMEM;
+
+	/* Memset with some fixed pattern */
+	memset(value, 0xAB, bra_block.num_bytes);
+	bra_block.values = value;
+
+	pr_info("SDW: BRA: slv_addr:%d, cmd:%d, num_bytes:%d, reg_offset:0x%x\n",
+			bra_block.slave_addr,
+			bra_block.cmd,
+			bra_block.num_bytes,
+			bra_block.reg_offset);
+
+	print_hex_dump(KERN_DEBUG, "SDW: BRA: CODEC BUFFER:", DUMP_PREFIX_OFFSET, 8, 4,
+			bra_block.values, bra_block.num_bytes, false);
+
+
+	ret = sdw_slave_xfer_bra_block(slave->mstr, &bra_block);
+	if (ret) {
+		dev_err(&slave->dev, "SDW: BRA transfer failed\n");
+		kfree(bra_block.values);
+		return ret;
+	}
+
+	print_hex_dump(KERN_DEBUG, "SDW: BRA: CODEC BUFFER RCVD:", DUMP_PREFIX_OFFSET, 8, 4,
+			bra_block.values, bra_block.num_bytes, false);
+
+	pr_info("SDW: BRA: Transfer successful\n");
+
+	/* Free up memory */
+	kfree(bra_block.values);
+
+	return ret;
+}
+
+static ssize_t rt700_bra_trigger(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+
+	struct rt700_priv *rt700 = dev_get_drvdata(dev);
+
+	pm_runtime_get_sync(dev);
+
+	rt700_create_bra_block(rt700->sdw);
+
+	pm_runtime_put_sync(dev);
+
+	return 0;
+}
+static DEVICE_ATTR(bra_trigger, 0444, rt700_bra_trigger, NULL);
+
 int rt700_probe(struct device *dev, struct regmap *regmap,
 					struct sdw_slave *slave)
 {
@@ -1545,6 +1609,15 @@ int rt700_probe(struct device *dev, struct regmap *regmap,
 			"Failed to create hda_reg sysfs files: %d\n", ret);
 		return ret;
 	}
+
+	/* create sysfs entry */
+	ret = device_create_file(dev, &dev_attr_bra_trigger);
+	if (ret < 0)
+		return ret;
+
+	pm_runtime_get_sync(&rt700->sdw->mstr->dev);
+	pm_runtime_mark_last_busy(&rt700->sdw->mstr->dev);
+	pm_runtime_put_sync_autosuspend(&rt700->sdw->mstr->dev);
 
 	pm_runtime_set_autosuspend_delay(&slave->dev, 3000);
 	pm_runtime_use_autosuspend(&slave->dev);
