@@ -58,7 +58,8 @@ static struct crlmodule_platform_data imx185_pdata = {
 	.ext_clk = 27000000,
 	.op_sys_clock = (uint64_t []){ 55687500, 111375000,
 					111375000, 222750000 },
-	.module_name = "IMX185"
+	.module_name = "IMX185",
+	.id_string = "0x1 0x85",
 };
 
 static struct intel_ipu4_isys_csi2_config imx185_csi2_cfg = {
@@ -87,7 +88,8 @@ static struct crlmodule_platform_data imx274_pdata = {
 	.lanes = IMX274_LANES,
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){720000000},
-	.module_name = "IMX274"
+	.module_name = "IMX274",
+	.id_string = "0x6 0x9",
 };
 
 static struct intel_ipu4_isys_csi2_config imx274_csi2_cfg = {

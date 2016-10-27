@@ -740,11 +740,11 @@ static struct crl_dynamic_register_access imx274_llp_regs[] = {
 
 static struct crl_sensor_detect_config imx274_sensor_detect_regset[] = {
 	{
-		.reg = { 0x35BC, CRL_REG_LEN_08BIT, 0x000000ff },
+		.reg = { 0x30F8, CRL_REG_LEN_08BIT, 0x000000ff },
 		.width = 7,
 	},
 	{
-		.reg = { 0x35BB, CRL_REG_LEN_08BIT, 0x000000ff },
+		.reg = { 0x30F9, CRL_REG_LEN_08BIT, 0x000000ff },
 		.width = 7,
 	},
 };
