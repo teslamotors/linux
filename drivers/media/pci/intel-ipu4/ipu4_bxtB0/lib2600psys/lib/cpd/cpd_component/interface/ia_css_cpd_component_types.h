@@ -31,14 +31,6 @@ enum ia_css_cpd_component_endianness {
 	IA_CSS_CPD_COMP_BIG_ENDIAN
 };
 
-enum ia_css_cpd_component_platform_type {
-	IA_CSS_CPD_COMP_CRUN,
-	IA_CSS_CPD_COMP_UNSCHED,
-	IA_CSS_CPD_COMP_SCHED,
-	IA_CSS_CPD_COMP_TARGET,
-	IA_CSS_CPD_COMP_MAX_PLATFORM_TYPE
-};
-
 /** Module Data (components) Header
  * Following data structure has been created using FAS section 5.25
  * Open : Should we add padding at the end of module directory

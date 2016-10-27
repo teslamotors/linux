@@ -47,15 +47,26 @@
 #endif
 #endif
 
+enum hive_method_id {
+	HIVE_METHOD_ID_CRUN,
+	HIVE_METHOD_ID_UNSCHED,
+	HIVE_METHOD_ID_SCHED,
+	HIVE_METHOD_ID_TARGET
+};
+
 /* Derive METHOD */
 #if defined(C_RUN)
 	#define HIVE_METHOD "crun"
+	#define HIVE_METHOD_ID HIVE_METHOD_ID_CRUN
 #elif defined(HRT_UNSCHED)
 	#define HIVE_METHOD "unsched"
+	#define HIVE_METHOD_ID HIVE_METHOD_ID_UNSCHED
 #elif defined(HRT_SCHED)
 	#define HIVE_METHOD "sched"
+	#define HIVE_METHOD_ID HIVE_METHOD_ID_SCHED
 #else
 	#define HIVE_METHOD "target"
+	#define HIVE_METHOD_ID HIVE_METHOD_ID_TARGET
 	#define HRT_TARGET 1
 #endif
 
