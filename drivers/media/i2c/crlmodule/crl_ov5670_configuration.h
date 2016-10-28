@@ -391,6 +391,13 @@ static struct crl_arithmetic_ops ov5670_vflip_ops[] = {
 	},
 };
 
+static struct crl_arithmetic_ops ov5670_swap_flip_ops[] = {
+	{
+		.op = CRL_BITWISE_LSHIFT,
+		.operand.entity_val = 5,
+	},
+};
+
 static struct crl_arithmetic_ops ov5670_hflip_ops[] = {
 	{
 		.op = CRL_BITWISE_LSHIFT,
@@ -419,6 +426,13 @@ static struct crl_dynamic_register_access ov5670_v_flip_regs[] = {
 		.ops_items = ARRAY_SIZE(ov5670_vflip_ops),
 		.ops = ov5670_vflip_ops,
 		.mask = 0x2,
+	},
+	{
+		.address = 0x450B,
+		.len = CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE,
+		.ops_items = ARRAY_SIZE(ov5670_swap_flip_ops),
+		.ops = ov5670_swap_flip_ops,
+		.mask = 0x20,
 	},
 };
 
