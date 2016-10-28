@@ -87,7 +87,7 @@ static struct intel_ipu4_psys_kcmd *libcsspsys2600_pg_rcv(
 
 	kcmd = (struct intel_ipu4_psys_kcmd *)event.token;
 	*status = event.status;
-	return kcmd;
+	return kcmd ? kcmd : ERR_PTR(-EIO);
 }
 
 static int libcsspsys2600_terminal_set(struct ia_css_terminal *terminal,

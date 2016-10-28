@@ -117,7 +117,7 @@ struct intel_ipu4_psys_kcmd *intel_ipu4_psys_abi_rcv_kcmd(
 	*status = event->status;
 	kcmd = (struct intel_ipu4_psys_kcmd *)event->token;
 	intel_ipu4_recv_put_token(psys->fwcom, 0);
-	return kcmd;
+	return kcmd ? kcmd : ERR_PTR(-EIO);
 }
 
 int intel_ipu4_psys_abi_terminal_set(struct ia_css_terminal *terminal,

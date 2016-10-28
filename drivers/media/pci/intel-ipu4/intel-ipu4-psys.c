@@ -2601,8 +2601,8 @@ static void intel_ipu4_psys_handle_events(struct intel_ipu4_psys *psys)
 
 	kcmd = intel_ipu4_psys_abi_rcv_kcmd(psys, &status);
 
-	do {
-		if (!kcmd) {
+	while (kcmd) {
+		if (IS_ERR(kcmd)) {
 			dev_err(&psys->adev->dev,
 				"no token received, command unknown\n");
 			/* Release power so that reset can power-cycle it */
@@ -2623,7 +2623,7 @@ static void intel_ipu4_psys_handle_events(struct intel_ipu4_psys *psys)
 		wake_up_interruptible(&psys->sched_cmd_wq);
 
 		kcmd = intel_ipu4_psys_abi_rcv_kcmd(psys, &status);
-	} while (kcmd);
+	}
 }
 
 static irqreturn_t psys_isr_threaded(struct intel_ipu4_bus_device *adev)
