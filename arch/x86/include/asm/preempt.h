@@ -111,7 +111,8 @@ static __always_inline bool should_resched(void)
 #ifdef CONFIG_PREEMPT_LAZY
 	u32 tmp;
 
-	if (!raw_cpu_read_4(__preempt_count))
+	tmp = raw_cpu_read_4(__preempt_count);
+	if (!tmp)
 		return true;
 
 	/* preempt count == 0 ? */
