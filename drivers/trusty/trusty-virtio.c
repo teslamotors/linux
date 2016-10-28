@@ -206,22 +206,23 @@ static void trusty_virtio_reset(struct virtio_device *vdev)
 	dev_dbg(&vdev->dev, "reset vdev_id=%d\n", tvdev->notifyid);
 	trusty_std_call32(tctx->dev->parent, SMC_SC_VDEV_RESET,
 			  tvdev->notifyid, 0, 0);
+	vdev->config->set_status(vdev, 0);
 }
 
 static u64 trusty_virtio_get_features(struct virtio_device *vdev)
 {
 	struct trusty_vdev *tvdev = vdev_to_tvdev(vdev);
-	return tvdev->vdev_descr->dfeatures;
+	return ((u64)tvdev->vdev_descr->dfeatures) & 0x00000000FFFFFFFFULL;
 }
 
 static int trusty_virtio_finalize_features(struct virtio_device *vdev)
 {
 	struct trusty_vdev *tvdev = vdev_to_tvdev(vdev);
-	
+
 	/* Make sure we don't have any features > 32 bits! */
 	BUG_ON((u32)vdev->features != vdev->features);
 
-	tvdev->vdev_descr->gfeatures = vdev->features;
+	tvdev->vdev_descr->gfeatures = (u32)(vdev->features);
 	return 0;
 }
 
@@ -381,6 +382,12 @@ static const struct virtio_config_ops trusty_virtio_config_ops = {
 	.bus_name = trusty_virtio_bus_name,
 };
 
+void virtio_vdev_release(struct device *dev)
+{
+	dev_dbg(dev, "%s() is called\n", __func__);
+	return;
+}
+
 static int trusty_virtio_add_device(struct trusty_ctx *tctx,
 				    struct fw_rsc_vdev *vdev_descr,
 				    struct fw_rsc_vdev_vring *vr_descr,
@@ -400,6 +407,7 @@ static int trusty_virtio_add_device(struct trusty_ctx *tctx,
 	/* setup vdev */
 	tvdev->tctx = tctx;
 	tvdev->vdev.dev.parent = tctx->dev;
+	tvdev->vdev.dev.release = virtio_vdev_release;
 	tvdev->vdev.id.device  = vdev_descr->id;
 	tvdev->vdev.config = &trusty_virtio_config_ops;
 	tvdev->vdev_descr = vdev_descr;
@@ -677,6 +685,7 @@ static const struct of_device_id trusty_of_match[] = {
 	{
 		.compatible = "android,trusty-virtio-v1",
 	},
+	{},
 };
 
 MODULE_DEVICE_TABLE(of, trusty_of_match);

@@ -29,7 +29,7 @@ config TRUSTY_FIQ_ARM64
 	default y
 
 config TRUSTY_LOG
-	tristate
+	tristate "Trusty Log support"
 	depends on TRUSTY
 	default y
 

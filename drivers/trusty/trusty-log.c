@@ -11,6 +11,7 @@
  * GNU General Public License for more details.
  *
  */
+#include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/trusty/smcall.h>
 #include <linux/trusty/trusty.h>
@@ -272,3 +273,4 @@ static struct platform_driver trusty_log_driver = {
 };
 
 module_platform_driver(trusty_log_driver);
+MODULE_LICENSE("GPL");

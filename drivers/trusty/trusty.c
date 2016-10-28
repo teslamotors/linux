@@ -12,7 +12,6 @@
  *
  */
 
-#include <asm/compiler.h>
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -20,10 +19,13 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/stat.h>
+#include <linux/smp.h>
 #include <linux/string.h>
 #include <linux/trusty/smcall.h>
 #include <linux/trusty/sm_err.h>
 #include <linux/trusty/trusty.h>
+
+#define TRUSTY_VMCALL_SMC 0x74727500
 
 struct trusty_state {
 	struct mutex smc_lock;
@@ -33,56 +35,57 @@ struct trusty_state {
 	u32 api_version;
 };
 
-#ifdef CONFIG_ARM64
-#define SMC_ARG0		"x0"
-#define SMC_ARG1		"x1"
-#define SMC_ARG2		"x2"
-#define SMC_ARG3		"x3"
-#define SMC_ARCH_EXTENSION	""
-#define SMC_REGISTERS_TRASHED	"x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", \
-				"x12", "x13", "x14", "x15", "x16", "x17"
-#else
-#define SMC_ARG0		"r0"
-#define SMC_ARG1		"r1"
-#define SMC_ARG2		"r2"
-#define SMC_ARG3		"r3"
-#define SMC_ARCH_EXTENSION	".arch_extension sec\n"
-#define SMC_REGISTERS_TRASHED	"ip"
-#endif
+struct trusty_smc_interface {
+	struct device *dev;
+	ulong args[5];
+};
 
 static inline ulong smc(ulong r0, ulong r1, ulong r2, ulong r3)
 {
-	register ulong _r0 asm(SMC_ARG0) = r0;
-	register ulong _r1 asm(SMC_ARG1) = r1;
-	register ulong _r2 asm(SMC_ARG2) = r2;
-	register ulong _r3 asm(SMC_ARG3) = r3;
-
-	asm volatile(
-		__asmeq("%0", SMC_ARG0)
-		__asmeq("%1", SMC_ARG1)
-		__asmeq("%2", SMC_ARG2)
-		__asmeq("%3", SMC_ARG3)
-		__asmeq("%4", SMC_ARG0)
-		__asmeq("%5", SMC_ARG1)
-		__asmeq("%6", SMC_ARG2)
-		__asmeq("%7", SMC_ARG3)
-		SMC_ARCH_EXTENSION
-		"smc	#0"	/* switch to secure world */
-		: "=r" (_r0), "=r" (_r1), "=r" (_r2), "=r" (_r3)
-		: "r" (_r0), "r" (_r1), "r" (_r2), "r" (_r3)
-		: SMC_REGISTERS_TRASHED);
-	return _r0;
+	__asm__ __volatile__(
+	"vmcall; \n"
+	:"=D"(r0)
+	:"a"(TRUSTY_VMCALL_SMC), "D"(r0), "S"(r1), "d"(r2), "b"(r3)
+	);
+	return r0;
 }
 
-s32 trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
+static void trusty_fast_call32_remote(void *args)
 {
+	struct trusty_smc_interface *p_args = args;
+	struct device *dev = p_args->dev;
+	ulong smcnr = p_args->args[0];
+	ulong a0 = p_args->args[1];
+	ulong a1 = p_args->args[2];
+	ulong a2 = p_args->args[3];
 	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
 
 	BUG_ON(!s);
 	BUG_ON(!SMC_IS_FASTCALL(smcnr));
 	BUG_ON(SMC_IS_SMC64(smcnr));
 
-	return smc(smcnr, a0, a1, a2);
+	p_args->args[4] = smc(smcnr, a0, a1, a2);
+}
+
+s32 trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
+{
+	int cpu = 0;
+	int ret = 0;
+	struct trusty_smc_interface s;
+	s.dev = dev;
+	s.args[0] = smcnr;
+	s.args[1] = a0;
+	s.args[2] = a1;
+	s.args[3] = a2;
+	s.args[4] = 0;
+
+	ret = smp_call_function_single(cpu, trusty_fast_call32_remote, (void *)&s, 1);
+
+	if (ret) {
+		pr_err("%s: smp_call_function_single failed: %d\n", __func__, ret);
+	}
+
+	return s.args[4];
 }
 EXPORT_SYMBOL(trusty_fast_call32);
 
@@ -122,21 +125,59 @@ static ulong trusty_std_call_inner(struct device *dev, ulong smcnr,
 	return ret;
 }
 
+static void trusty_std_call_inner_wrapper_remote(void *args)
+{
+	struct trusty_smc_interface *p_args = args;
+	struct device *dev = p_args->dev;
+	ulong smcnr = p_args->args[0];
+	ulong a0 = p_args->args[1];
+	ulong a1 = p_args->args[2];
+	ulong a2 = p_args->args[3];
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+	ulong ret;
+	unsigned long flags;
+
+	local_irq_save(flags);
+	atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_PREPARE,
+					   NULL);
+	ret = trusty_std_call_inner(dev, smcnr, a0, a1, a2);
+	atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_RETURNED,
+					   NULL);
+	local_irq_restore(flags);
+
+	p_args->args[4] = ret;
+}
+
+static ulong trusty_std_call_inner_wrapper(struct device *dev, ulong smcnr,
+				   ulong a0, ulong a1, ulong a2)
+{
+	int cpu = 0;
+	int ret = 0;
+	struct trusty_smc_interface s;
+	s.dev = dev;
+	s.args[0] = smcnr;
+	s.args[1] = a0;
+	s.args[2] = a1;
+	s.args[3] = a2;
+	s.args[4] = 0;
+
+	ret = smp_call_function_single(cpu, trusty_std_call_inner_wrapper_remote, (void *)&s, 1);
+
+	if (ret) {
+		pr_err("%s: smp_call_function_single failed: %d\n", __func__, ret);
+	}
+
+	return s.args[4];
+}
+
 static ulong trusty_std_call_helper(struct device *dev, ulong smcnr,
 				    ulong a0, ulong a1, ulong a2)
 {
 	ulong ret;
 	int sleep_time = 1;
-	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
 
 	while (true) {
-		local_irq_disable();
-		atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_PREPARE,
-					   NULL);
-		ret = trusty_std_call_inner(dev, smcnr, a0, a1, a2);
-		atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_RETURNED,
-					   NULL);
-		local_irq_enable();
+		ret = trusty_std_call_inner_wrapper(dev, smcnr, a0, a1, a2);
 
 		if ((int)ret != SM_ERR_BUSY)
 			break;
@@ -173,6 +214,9 @@ static void trusty_std_call_cpu_idle(struct trusty_state *s)
 	}
 }
 
+/* must set CONFIG_DEBUG_ATOMIC_SLEEP=n
+** otherwise mutex_lock() will fail and crash
+*/
 s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
 	int ret;
@@ -230,6 +274,7 @@ EXPORT_SYMBOL(trusty_call_notifier_unregister);
 
 static int trusty_remove_child(struct device *dev, void *data)
 {
+	dev_dbg(dev, "%s() is called()\n", __func__);
 	platform_device_unregister(to_platform_device(dev));
 	return 0;
 }
@@ -265,6 +310,8 @@ static void trusty_init_version(struct trusty_state *s, struct device *dev)
 	version_str_len = ret;
 
 	s->version_str = kmalloc(version_str_len + 1, GFP_KERNEL);
+	if (!s->version_str)
+		goto err_get_size;
 	for (i = 0; i < version_str_len; i++) {
 		ret = trusty_fast_call32(dev, SMC_FC_GET_VERSION_STR, i, 0, 0);
 		if (ret < 0)
@@ -344,15 +391,8 @@ static int trusty_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_api_version;
 
-	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "Failed to add children: %d\n", ret);
-		goto err_add_children;
-	}
-
 	return 0;
 
-err_add_children:
 err_api_version:
 	if (s->version_str) {
 		device_remove_file(&pdev->dev, &dev_attr_trusty_version);
@@ -368,6 +408,8 @@ err_allocate_state:
 static int trusty_remove(struct platform_device *pdev)
 {
 	struct trusty_state *s = platform_get_drvdata(pdev);
+
+	dev_dbg(&(pdev->dev), "%s() is called\n", __func__);
 
 	device_for_each_child(&pdev->dev, NULL, trusty_remove_child);
 	mutex_destroy(&s->smc_lock);
@@ -394,15 +436,101 @@ static struct platform_driver trusty_driver = {
 	},
 };
 
+void	trusty_dev_release(struct device *dev)
+{
+	dev_dbg(dev, "%s() is called()\n", __func__);
+	return;
+}
+
+static struct device_node trusty_irq_node = {
+	.name = "trusty-irq",
+	.sibling = NULL,
+};
+
+static struct device_node trusty_virtio_node = {
+	.name = "trusty-virtio",
+	.sibling = &trusty_irq_node,
+};
+
+static struct device_node trusty_log_node = {
+	.name = "trusty-log",
+	.sibling = &trusty_virtio_node,
+};
+
+
+static struct device_node trusty_node = {
+	.name = "trusty",
+	.child = &trusty_log_node,
+};
+
+static struct platform_device trusty_platform_dev = {
+	.name = "trusty",
+	.id   = -1,
+	.num_resources = 0,
+	.dev = {
+		.release = trusty_dev_release,
+		.of_node = &trusty_node,
+	},
+};
+static struct platform_device trusty_platform_dev_log = {
+	.name = "trusty-log",
+	.id   = -1,
+	.num_resources = 0,
+	.dev = {
+		.release = trusty_dev_release,
+		.parent = &trusty_platform_dev.dev,
+		.of_node = &trusty_log_node,
+	},
+};
+
+static struct platform_device trusty_platform_dev_virtio = {
+	.name = "trusty-virtio",
+	.id   = -1,
+	.num_resources = 0,
+	.dev = {
+		.release = trusty_dev_release,
+		.parent = &trusty_platform_dev.dev,
+		.of_node = &trusty_virtio_node,
+	},
+};
+
+static struct platform_device trusty_platform_dev_irq = {
+	.name = "trusty-irq",
+	.id   = -1,
+	.num_resources = 0,
+	.dev = {
+		.release = trusty_dev_release,
+		.parent = &trusty_platform_dev.dev,
+		.of_node = &trusty_irq_node,
+	},
+};
+
+static struct platform_device *trusty_devices[] __initdata = {
+	&trusty_platform_dev,
+	&trusty_platform_dev_log,
+	&trusty_platform_dev_virtio,
+	&trusty_platform_dev_irq
+};
 static int __init trusty_driver_init(void)
 {
+	int ret = 0;
+
+	ret = platform_add_devices(trusty_devices, ARRAY_SIZE(trusty_devices));
+	if (ret) {
+		printk(KERN_ERR "%s(): platform_add_devices() failed, ret %d\n", __func__, ret);
+		return ret;
+	}
 	return platform_driver_register(&trusty_driver);
 }
 
 static void __exit trusty_driver_exit(void)
 {
 	platform_driver_unregister(&trusty_driver);
+	platform_device_unregister(&trusty_platform_dev);
 }
 
 subsys_initcall(trusty_driver_init);
 module_exit(trusty_driver_exit);
+
+MODULE_LICENSE("GPL");
+

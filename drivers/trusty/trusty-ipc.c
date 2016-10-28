@@ -33,6 +33,8 @@
 
 #define MAX_DEVICES			4
 
+#define VIRTIO_ID_TRUSTY_IPC   13 /* virtio trusty ipc */
+
 #define REPLY_TIMEOUT			5000
 #define TXBUF_TIMEOUT			15000
 
@@ -172,7 +174,10 @@ static int _match_data(int id, void *p, void *data)
 
 static void *_alloc_shareable_mem(size_t sz, phys_addr_t *ppa, gfp_t gfp)
 {
-	return alloc_pages_exact(sz, gfp);
+	void *buf_va;
+	buf_va = alloc_pages_exact(sz, gfp);
+	*ppa = virt_to_phys(buf_va);
+	return buf_va;
 }
 
 static void _free_shareable_mem(size_t sz, void *va, phys_addr_t pa)
@@ -1597,7 +1602,7 @@ static void tipc_virtio_remove(struct virtio_device *vdev)
 	_cleanup_vq(vds->txvq);
 	_free_msg_buf_list(&vds->free_buf_list);
 
-	vdev->config->del_vqs(vds->vdev);
+	vdev->config->del_vqs(vdev);
 
 	kref_put(&vds->refcount, _free_vds);
 }
