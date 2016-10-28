@@ -1085,12 +1085,13 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	 * Only CSI2-BE and SOC BE has the capability to do crop,
 	 * so get the crop info from csi2-be or csi2-be-soc.
 	 */
-	if (ip->csi2_be)
+	if (ip->csi2_be) {
 		be_sd = &ip->csi2_be->asd.sd;
-	else if (ip->csi2_be_soc)
+	} else if (ip->csi2_be_soc) {
 		be_sd = &ip->csi2_be_soc->asd.sd;
-	if (source_pad)
-		sel_fmt.pad = source_pad->index;
+		if (source_pad)
+			sel_fmt.pad = source_pad->index;
+	}
 	if (be_sd != NULL &&
 	    !v4l2_subdev_call(be_sd, pad, get_selection, NULL, &sel_fmt)) {
 		stream_cfg.crop[0].left_offset = sel_fmt.r.left;
