@@ -139,6 +139,10 @@
 #define MEI_DEV_ID_CNP_H_2    0xA361  /* Cannon Point H 2 */
 #define MEI_DEV_ID_CNP_H_4    0xA364  /* Cannon Point H 4 (iTouch) */
 
+#define MEI_DEV_ID_ICP_LP     0x34E0  /* Ice Lake Point LP */
+#define MEI_DEV_ID_ICP_N      0x38E0  /* Ice Lake Point N */
+#define MEI_DEV_ID_ICP_H      0x3DE0  /* Ice Lake Point H */
+
 /*
  * MEI HW Section
  */
