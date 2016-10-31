@@ -314,12 +314,42 @@ static struct crl_register_write_rep ov5670_mode_1944[] = {
 	{ 0x4601, CRL_REG_LEN_08BIT, 0x03 },
 };
 
+static struct crl_register_write_rep ov5670_mode_1940[] = {
+	/* Auto size function in use, cropping from the centre of the image */
+	{ 0x3808, CRL_REG_LEN_08BIT, 0x0a },
+	{ 0x3809, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x380a, CRL_REG_LEN_08BIT, 0x07 },
+	{ 0x380b, CRL_REG_LEN_08BIT, 0x94 },
+	{ 0x3821, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x3815, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x382b, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x4601, CRL_REG_LEN_08BIT, 0x03 },
+};
+
 static struct crl_register_write_rep ov5670_mode_1458[] = {
 	/* Auto size function in use, cropping from the centre of the image */
 	{ 0x3808, CRL_REG_LEN_08BIT, 0x0a },
 	{ 0x3809, CRL_REG_LEN_08BIT, 0x20 },
 	{ 0x380a, CRL_REG_LEN_08BIT, 0x05 },
 	{ 0x380b, CRL_REG_LEN_08BIT, 0xB2 },
+	{ 0x3821, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x3815, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x382b, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x4601, CRL_REG_LEN_08BIT, 0x03 },
+};
+
+static struct crl_register_write_rep ov5670_mode_1456[] = {
+	/* Auto size function in use, cropping from the centre of the image */
+	{ 0x3808, CRL_REG_LEN_08BIT, 0x0a },
+	{ 0x3809, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x380a, CRL_REG_LEN_08BIT, 0x05 },
+	{ 0x380b, CRL_REG_LEN_08BIT, 0xB0 },
 	{ 0x3821, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x3815, CRL_REG_LEN_08BIT, 0x01 },
@@ -536,6 +566,24 @@ static struct crl_subdev_rect_rep ov5670_1944_rects[] = {
 	},
 };
 
+static struct crl_subdev_rect_rep ov5670_1940_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect = { 0, 0, 2592, 1944 },
+		.out_rect = { 16, 2, 2560, 1940 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect = { 0, 0, 2560, 1940 },
+		.out_rect = { 0, 0, 2560, 1940 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect = { 0, 0, 2560, 1940 },
+		.out_rect = { 0, 0, 2560, 1940 },
+	},
+};
+
 static struct crl_subdev_rect_rep ov5670_1458_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
@@ -553,6 +601,25 @@ static struct crl_subdev_rect_rep ov5670_1458_rects[] = {
 		.out_rect = { 0, 0, 2592, 1458 },
 	},
 };
+
+static struct crl_subdev_rect_rep ov5670_1456_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect = { 0, 0, 2592, 1944 },
+		.out_rect = { 16, 244, 2560, 1456 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect = { 0, 0, 2560, 1456 },
+		.out_rect = { 0, 0, 2560, 1456 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect = { 0, 0, 2560, 1456 },
+		.out_rect = { 0, 0, 2560, 1456 },
+	},
+};
+
 static struct crl_subdev_rect_rep ov5670_1080_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
@@ -606,6 +673,21 @@ static struct crl_mode_rep ov5670_modes[] = {
 		.mode_regs = ov5670_mode_1944,
 	},
 	{
+		.sd_rects_items = ARRAY_SIZE(ov5670_1940_rects),
+		.sd_rects = ov5670_1940_rects,
+		.binn_hor = 1,
+		.binn_vert = 1,
+		.scale_m = 1,
+		.width = 2560,
+		.height = 1940,
+		.min_llp = 3360,
+		.min_fll = 1972,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = ARRAY_SIZE(ov5670_mode_1940),
+		.mode_regs = ov5670_mode_1940,
+	},
+	{
 		.sd_rects_items = ARRAY_SIZE(ov5670_1458_rects),
 		.sd_rects = ov5670_1458_rects,
 		.binn_hor = 1,
@@ -619,6 +701,21 @@ static struct crl_mode_rep ov5670_modes[] = {
 		.ctrl_data = 0,
 		.mode_regs_items = ARRAY_SIZE(ov5670_mode_1458),
 		.mode_regs = ov5670_mode_1458,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(ov5670_1456_rects),
+		.sd_rects = ov5670_1456_rects,
+		.binn_hor = 1,
+		.binn_vert = 1,
+		.scale_m = 1,
+		.width = 2560,
+		.height = 1456,
+		.min_llp = 3360,
+		.min_fll = 1488,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = ARRAY_SIZE(ov5670_mode_1456),
+		.mode_regs = ov5670_mode_1456,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(ov5670_1080_rects),
@@ -656,15 +753,15 @@ static struct crl_sensor_subdev_config ov5670_sensor_subdevs[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
 		.name = "ov5670 scaler",
-	 },
+	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
 		.name = "ov5670 binner",
-	 },
+	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.name = "ov5670 pixel array",
-	 },
+	},
 };
 
 static struct crl_sensor_limits ov5670_sensor_limits = {
