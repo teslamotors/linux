@@ -258,7 +258,15 @@ static struct iommu_group *intel_ipu4_bus_get_group(struct device *dev)
 
 	iommu_group_set_iommudata(group, mmu, free_dma_mapping);
 
+	/*
+	 * Turn mmu on and off synchronously. Otherwise it may still be on
+	 * at psys / isys probing phase and that may cause problems on
+	 * develoment environments. Mostly required in FPGA
+	 * environments but doesn't really hurt in real SOC.
+	 */
+	pm_runtime_get_sync(aiommu);
 	mmu->set_mapping(mmu, dmap);
+	pm_runtime_put_sync(aiommu);
 
 	return group;
 }
