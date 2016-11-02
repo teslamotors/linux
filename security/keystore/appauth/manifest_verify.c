@@ -174,6 +174,9 @@ int verify_manifest_file(char *manifest_file_path,
 
 	ret = read_manifest(manifest_file_path, &manifest_buf,
 					&manifest_len);
+	if (ret == -EILSEQ)
+		ret = -FILE_TOO_BIG;
+
 	if (ret < 0)
 		goto out;
 

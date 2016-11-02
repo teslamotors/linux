@@ -115,5 +115,9 @@ int read_manifest(const char *filename, char **manifest_buf, int *manifest_len)
 	ks_debug("DEBUG_APPAUTH: filp_open succeeded\n");
 	*manifest_len = read_file(file, manifest_buf);
 	filp_close(file, NULL);
+	if (*manifest_len < 0) {
+		ks_err("DEBUG_APPAUTH: manifest read_file failed (manifest file too big)\n");
+		return -EILSEQ;
+	}
 	return 0;
 }

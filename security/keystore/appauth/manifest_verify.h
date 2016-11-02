@@ -17,8 +17,10 @@
 #ifndef _MANIFEST_VERIFY_H_
 #define _MANIFEST_VERIFY_H_
 
+#include "manifest_parser.h"
+
 #define MANIFEST_CACHE_TTL		300
-#define MANIFEST_DEFAULT_CAPS		0
+#define MANIFEST_DEFAULT_CAPS		(CAPABILITY_KEYSTORE)
 
 enum APP_AUTH_ERROR {
 	NO_ERROR,
