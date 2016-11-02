@@ -326,7 +326,7 @@ static struct crl_register_write_rep ov5670_mode_1940[] = {
 	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x382b, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x4601, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x4601, CRL_REG_LEN_08BIT, 0x00 },
 };
 
 static struct crl_register_write_rep ov5670_mode_1458[] = {
@@ -356,7 +356,7 @@ static struct crl_register_write_rep ov5670_mode_1456[] = {
 	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x382b, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
-	{ 0x4601, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x4601, CRL_REG_LEN_08BIT, 0x00 },
 };
 
 static struct crl_register_write_rep ov5670_mode_1152[] = {
