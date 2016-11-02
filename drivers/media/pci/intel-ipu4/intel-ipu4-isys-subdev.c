@@ -272,7 +272,7 @@ void intel_ipu4_isys_subdev_fmt_propagate(
 						     pad, which);
 		return;
 	case INTEL_IPU4_ISYS_SUBDEV_PROP_TGT_SINK_COMPOSE:
-		if (pad)
+		if (WARN_ON(sd->entity.pads[pad].flags & MEDIA_PAD_FL_SOURCE))
 			return;
 
 		/* 1:n and 1:1 case: only propagate to the first source pad */
