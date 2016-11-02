@@ -543,6 +543,32 @@ static int intel_ipu4_acpi_get_sensor_data(struct device *dev,
 	return 0;
 }
 
+static int get_custom_gpios(struct device *dev,
+			    struct crlmodule_platform_data *pdata)
+{
+	int i, ret, c = gpiod_count(dev, NULL) - 1;
+
+	for (i = 0; i < c; i++) {
+		ret = snprintf(pdata->custom_gpio[i].name,
+			       sizeof(pdata->custom_gpio[i].name),
+			       "custom_gpio%d", i);
+		if (ret < 0 || ret >=  sizeof(pdata->custom_gpio[i].name)) {
+			dev_err(dev, "Failed to set custom gpio name\n");
+			return -EINVAL;
+		}
+		/* First GPIO is xshutdown */
+		pdata->custom_gpio[i].number = get_sensor_gpio(dev, i + 1);
+		if (pdata->custom_gpio[i].number < 0) {
+			dev_err(dev, "unable to get custom gpio number\n");
+			return -ENODEV;
+		}
+		pdata->custom_gpio[i].val = 1;
+		pdata->custom_gpio[i].undo_val = 0;
+	}
+
+	return 0;
+}
+
 static int get_crlmodule_pdata(struct i2c_client *client,
 			       struct ipu4_camera_module_data *data,
 			       struct ipu4_i2c_helper *helper,
@@ -570,8 +596,14 @@ static int get_crlmodule_pdata(struct i2c_client *client,
 	data->pdata = pdata;
 	/* sensor.dev may here point to sensor or dependent device */
 	pdata->xshutdown = get_sensor_gpio(sensor.dev, 0);
-	if (pdata->xshutdown < 0)
-		return -ENODEV;
+	if (pdata->xshutdown < 0) {
+		rval = pdata->xshutdown;
+		goto err_free_pdata;
+	}
+
+	rval = get_custom_gpios(sensor.dev, pdata);
+	if (rval)
+		goto err_free_pdata;
 
 	pdata->lanes = data->csi2.nlanes;
 	pdata->ext_clk = data->ext_clk;
@@ -588,6 +620,11 @@ static int get_crlmodule_pdata(struct i2c_client *client,
 		 i2c[1].bus, i2c[1].addr, vcm);
 
 	return add_new_i2c(i2c[1].addr, i2c[1].bus, 0, vcm, vcm_pdata);
+
+err_free_pdata:
+	kfree(pdata);
+	data->pdata = NULL;
+	return rval;
 }
 
 static int get_smiapp_pdata(struct i2c_client *client,
@@ -741,6 +778,7 @@ static const struct ipu4_acpi_devices supported_devices[] = {
 	{ "INT3477",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0,
 	  ov8858regulators },
 	{ "INT3471",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
+	{ "OV5670AA",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
 	{ "SONY214A", CRLMODULE_NAME, get_crlmodule_pdata, "dw9714", 0 },
 	{ "SONY132A", SMIAPP_NAME,    get_smiapp_pdata, imx132_op_clocks,
 	  sizeof(imx132_op_clocks) },
@@ -769,6 +807,7 @@ static const struct acpi_device_id ipu4_acpi_match[] = {
 	{ "AMS3638", 0 },
 	{ "SONY214A", 0 },
 	{ "SONY132A", 0 },
+	{ "OV5670AA", 0 },
 	{},
 };
 
