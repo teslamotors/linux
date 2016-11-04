@@ -525,7 +525,8 @@ const struct intel_ipu4_isys_pixelformat
 
 	if (!av->packed)
 		mpix->plane_fmt[0].bytesperline =
-			mpix->width * DIV_ROUND_UP(pfmt->bpp, BITS_PER_BYTE);
+			mpix->width * DIV_ROUND_UP(pfmt->bpp_planar ?
+			pfmt->bpp_planar : pfmt->bpp, BITS_PER_BYTE);
 	else if (store_csi2_header)
 		mpix->plane_fmt[0].bytesperline = DIV_ROUND_UP(
 			av->line_header_length + av->line_footer_length
@@ -536,7 +537,10 @@ const struct intel_ipu4_isys_pixelformat
 
 	mpix->plane_fmt[0].bytesperline = ALIGN(mpix->plane_fmt[0].bytesperline,
 						av->isys->line_align);
-
+	if (pfmt->bpp_planar)
+		mpix->plane_fmt[0].bytesperline =
+			mpix->plane_fmt[0].bytesperline *
+			pfmt->bpp / pfmt->bpp_planar;
 	/*
 	 * (height + 1) * bytesperline due to a hardware issue: the DMA unit
 	 * is a power of two, and a line should be transferred as few units
