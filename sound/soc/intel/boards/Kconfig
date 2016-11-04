@@ -342,9 +342,11 @@ config SND_SOC_SDW_AGGM1M2
 	help
 	  Say Y to enable SoundWire aggregation on Master1 and Master2.
 
-config SND_SOC_INTEL_BXT_ULL_MACH
-        tristate "Reference ASoC Machine driver for BXT ULL machine"
+config SND_SOC_INTEL_BXT_ANC_MACH
+        tristate "Reference ASoC Machine driver for BXT with ANC loop"
         depends on X86 && ACPI && I2C
+        select SND_SOC_RT298
+        select SND_SOC_DMIC
         select SND_SOC_COMPRESS
         help
            This adds support for ASoC machine driver for Broxton ULL GP MRB platform
