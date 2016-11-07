@@ -7673,7 +7673,7 @@ static struct crl_register_write_rep ov10635_640_480_YUV_HDR[] = {
 
 static struct crl_dynamic_register_access ov10635_h_flip_regs[] = {
 	{
-		.address = 0x300c,
+		.address = 0x381d,
 		.len = CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE,
 		.ops_items = 0,
 		.ops = 0,
@@ -7683,11 +7683,11 @@ static struct crl_dynamic_register_access ov10635_h_flip_regs[] = {
 
 static struct crl_dynamic_register_access ov10635_v_flip_regs[] = {
 	{
-		.address = 0x300c,
+		.address = 0x381c,
 		.len = CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE,
 		.ops_items = 0,
 		.ops = 0,
-		.mask = 0xc,
+		.mask = 0xc0,
 	}
 };
 
