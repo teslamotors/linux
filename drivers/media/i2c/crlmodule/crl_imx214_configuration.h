@@ -17,6 +17,7 @@
 #ifndef __CRLMODULE_imx214_CONFIGURATION_H_
 #define __CRLMODULE_imx214_CONFIGURATION_H_
 
+#include "crlmodule-nvm.h"
 #include "crlmodule-sensor-ds.h"
 
 static struct crl_register_write_rep imx214_pll_1080mbps[] = {
@@ -1373,6 +1374,12 @@ static struct crl_power_seq_entity imx214_power_items[] = {
 	},
 };
 
+static struct crl_nvm_blob imx214_nvm_blobs[] = {
+	{ 0x50, 0x00, 0x100 },
+	{ 0x51, 0x00, 0x100 },
+	{ 0x52, 0x00, 0x20  },
+};
+
 struct crl_sensor_configuration imx214_crl_configuration = {
 
 	.power_items = ARRAY_SIZE(imx214_power_items),
@@ -1414,6 +1421,12 @@ struct crl_sensor_configuration imx214_crl_configuration = {
 
 	.flip_items = ARRAY_SIZE(imx214_flip_configurations),
 	.flip_data = imx214_flip_configurations,
+
+	.crl_nvm_info.nvm_flags = CRL_NVM_ADDR_MODE_8BIT,
+	.crl_nvm_info.nvm_preop_regs_items = 0,
+	.crl_nvm_info.nvm_postop_regs_items = 0,
+	.crl_nvm_info.nvm_blobs_items = ARRAY_SIZE(imx214_nvm_blobs),
+	.crl_nvm_info.nvm_config = imx214_nvm_blobs,
 };
 
 
