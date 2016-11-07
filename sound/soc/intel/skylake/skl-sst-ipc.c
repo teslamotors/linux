@@ -394,7 +394,7 @@ skl_process_log_buffer(struct sst_dsp *sst, struct skl_ipc_header header)
 		ptr[0] += write - read;
 	} else {
 		skl_dsp_write_log(sst, (void __iomem *) (base + 8 + read),
-					core, size - read);
+					core, size - 8 - read);
 		skl_dsp_write_log(sst, (void __iomem *) (base + 8),
 					core, write);
 		ptr[0] = write;
