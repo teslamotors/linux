@@ -31,6 +31,7 @@
 #include "intel_drv.h"
 #include "../../../platform/x86/intel_ips.h"
 #include <linux/module.h>
+#include <linux/notifier.h>
 #include <drm/drm_atomic_helper.h>
 
 #if IS_ENABLED(CONFIG_DRM_I915_GVT)
@@ -39,6 +40,8 @@
 
 #define GEN9_TURBO_DISABLED    0
 #define GEN9_TURBO_ENABLED     1
+
+static BLOCKING_NOTIFIER_HEAD(i915_freq_notifier_list);
 
 /**
  * DOC: RC6
@@ -6281,6 +6284,9 @@ static int gen6_set_rps(struct drm_i915_private *dev_priv, u8 val)
 				   GEN6_FREQUENCY(val) |
 				   GEN6_OFFSET(0) |
 				   GEN6_AGGRESSIVE_TURBO);
+
+		blocking_notifier_call_chain(&i915_freq_notifier_list,
+					     (unsigned long)val, NULL);
 	}
 
 	/* Make sure we continue to get interrupts
@@ -7907,6 +7913,26 @@ void intel_gpu_tfm_teardown(void)
 	i915_tfm_dev = NULL;
 	mutex_unlock(&i915_tfm_lock);
 }
+
+/**
+ * Register a notifier callback for gpu frequency changes.
+ * @nb: pointer to the notifier block for the callback
+ */
+int i915_register_freq_notify(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&i915_freq_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(i915_register_freq_notify);
+
+/**
+ * Unregister a notifier from the gpu freqency change callback.
+ * @nb: pointer to the notifier block for the callback
+ */
+int i915_unregister_freq_notify(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&i915_freq_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(i915_unregister_freq_notify);
 
 /**
  * i915_gpu_disable_turbo - disable grahics turbo
