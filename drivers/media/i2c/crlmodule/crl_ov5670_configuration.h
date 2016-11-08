@@ -1008,7 +1008,7 @@ static struct crl_v4l2_ctrl ov5670_v4l2_ctrls[] = {
 };
 
 #define ov5670_OTP_START_ADDR 0x7010
-#define ov5670_OTP_END_ADDR 0x7186
+#define ov5670_OTP_END_ADDR 0x7063
 
 #define ov5670_OTP_LEN (ov5670_OTP_END_ADDR - ov5670_OTP_START_ADDR + 1)
 #define ov5670_OTP_L_ADDR(x) (x & 0xff)
@@ -1021,7 +1021,7 @@ static struct crl_register_write_rep ov5670_nvm_preop_regset[] = {
 	{ 0x3D84, CRL_REG_LEN_08BIT, 0xC0 },
 	/* Manual OTP start address for access */
 	{ 0x3D88, CRL_REG_LEN_08BIT, ov5670_OTP_H_ADDR(ov5670_OTP_START_ADDR)},
-	{ 0x0D89, CRL_REG_LEN_08BIT, ov5670_OTP_L_ADDR(ov5670_OTP_START_ADDR)},
+	{ 0x3D89, CRL_REG_LEN_08BIT, ov5670_OTP_L_ADDR(ov5670_OTP_START_ADDR)},
 	/* Manual OTP end address for access */
 	{ 0x3D8A, CRL_REG_LEN_08BIT, ov5670_OTP_H_ADDR(ov5670_OTP_END_ADDR)},
 	{ 0x3D8B, CRL_REG_LEN_08BIT, ov5670_OTP_L_ADDR(ov5670_OTP_END_ADDR)},
