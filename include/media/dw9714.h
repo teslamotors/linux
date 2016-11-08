@@ -29,7 +29,8 @@
 #define VCM_VAL(data, s) (u16)((data) << 4 | (s))
 
 struct dw9714_platform_data {
-	int gpio_xsd;
+	struct device *sensor_dev;
+	int gpio_xsd; /* Should be < 0 if not used */
 };
 
 #endif

@@ -39,6 +39,7 @@
 #include <media/i2c/smiapp.h>
 #endif
 #include <media/lc898122.h>
+#include <media/dw9714.h>
 
 #define HID_BUFFER_SIZE 32
 #define VCM_BUFFER_SIZE 32
@@ -272,6 +273,18 @@ static void *get_dsdt_vcm(struct device *dev, char *vcm, char *second)
 			lc_pdata->sensor_device = dev;
 		pdata = lc_pdata;
 		strlcpy(vcm, LC898122_NAME, VCM_BUFFER_SIZE);
+	} else if (!strcasecmp(vcm, DW9714_NAME)) {
+		struct dw9714_platform_data *dw_pdata;
+
+		dev_dbg(dev, "Setting up voice coil motor dw9714");
+		dw_pdata = kzalloc(sizeof(struct dw9714_platform_data),
+				   GFP_KERNEL);
+		if (dw_pdata) {
+			dw_pdata->sensor_dev = dev;
+			dw_pdata->gpio_xsd = -ENODEV;
+		}
+		pdata = dw_pdata;
+		strlcpy(vcm, DW9714_NAME, VCM_BUFFER_SIZE);
 	}
 	return pdata;
 }

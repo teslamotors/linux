@@ -166,7 +166,7 @@ static int dw9714_probe(struct i2c_client *client,
 
 	if (pdata) {
 		dw9714_dev->pdata = pdata;
-		if (devm_gpio_request_one(&client->dev,
+		if (pdata->gpio_xsd >= 0 && devm_gpio_request_one(&client->dev,
 					  dw9714_dev->pdata->gpio_xsd, 0,
 					  "dw9714 xsd") != 0) {
 			dev_err(&client->dev,
@@ -175,6 +175,7 @@ static int dw9714_probe(struct i2c_client *client,
 			return -ENODEV;
 		}
 	}
+
 	dw9714_dev->client = client;
 
 	v4l2_i2c_subdev_init(&dw9714_dev->subdev_vcm, client, &dw9714_ops);
@@ -246,8 +247,12 @@ static int dw9714_suspend(struct device *dev)
 		usleep_range(DW9714_CTRL_DELAY_US, DW9714_CTRL_DELAY_US + 10);
 	}
 
-	if (dw9714_dev->pdata)
-		gpio_set_value(dw9714_dev->pdata->gpio_xsd, 0);
+	if (dw9714_dev->pdata) {
+		if (dw9714_dev->pdata->gpio_xsd >= 0)
+			gpio_set_value(dw9714_dev->pdata->gpio_xsd, 0);
+		if (dw9714_dev->pdata->sensor_dev)
+			pm_runtime_put(dw9714_dev->pdata->sensor_dev);
+	}
 
 	return 0;
 }
@@ -260,8 +265,16 @@ static int dw9714_resume(struct device *dev)
 			struct dw9714_device, subdev_vcm);
 	int ret, val;
 
-	if (dw9714_dev->pdata)
-		gpio_set_value(dw9714_dev->pdata->gpio_xsd, 1);
+	if (dw9714_dev->pdata) {
+		if (dw9714_dev->pdata->sensor_dev) {
+			ret = pm_runtime_get_sync(
+				dw9714_dev->pdata->sensor_dev);
+			if (ret < 0)
+				goto out;
+		}
+		if (dw9714_dev->pdata->gpio_xsd >= 0)
+			gpio_set_value(dw9714_dev->pdata->gpio_xsd, 1);
+	}
 
 	for (val = dw9714_dev->current_val % DW9714_CTRL_STEPS;
 	     val < dw9714_dev->current_val + DW9714_CTRL_STEPS - 1;
@@ -275,6 +288,7 @@ static int dw9714_resume(struct device *dev)
 
 	/* restore v4l2 control values */
 	ret = v4l2_ctrl_handler_setup(&dw9714_dev->ctrls_vcm);
+ out:
 	dev_dbg(dev, "%s rval = %d\n", __func__, ret);
 	return ret;
 }
