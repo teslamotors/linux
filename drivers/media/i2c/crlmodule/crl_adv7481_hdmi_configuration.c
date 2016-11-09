@@ -608,6 +608,13 @@ int adv7481_sensor_cleanup(struct i2c_client *client)
 
 	adv7481_hdmi = sensor->sensor_specific_data;
 
+	/*
+	 * This can be NULL if crlmodule_registered call failed before
+	 * sensor_init call.
+	 */
+	if (!adv7481_hdmi)
+		return 0;
+
 	dev_dbg(&client->dev, "%s: ADV7481_sensor_cleanup\n", __func__);
 	cancel_delayed_work_sync(&adv7481_hdmi->work);
 	sysfs_remove_group(&client->dev.kobj, &adv7481_attr_group);
