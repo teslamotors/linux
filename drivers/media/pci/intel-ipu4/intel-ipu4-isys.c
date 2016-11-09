@@ -1191,9 +1191,28 @@ static int isys_runtime_pm_suspend(struct device *dev)
 	return 0;
 }
 
+static int isys_suspend(struct device *dev)
+{
+	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+
+	/* If stream is open, refuse to suspend */
+	if (isys->stream_opened)
+		return -EBUSY;
+
+	return 0;
+}
+
+static int isys_resume(struct device *dev)
+{
+	return 0;
+}
+
 static const struct dev_pm_ops isys_pm_ops = {
 	.runtime_suspend = isys_runtime_pm_suspend,
 	.runtime_resume = isys_runtime_pm_resume,
+	.suspend = isys_suspend,
+	.resume = isys_resume,
 };
 #define ISYS_PM_OPS (&isys_pm_ops)
 #else
