@@ -96,6 +96,7 @@ struct ia_css_isys_output_pin_payload {
  * @ft: frame format type
  * @watermark_in_lines: pin watermark level in lines
  * @send_irq: assert if pin event should trigger irq
+ * @online: make it possible to connect online
  */
 struct ia_css_isys_output_pin_info {
 	unsigned int input_pin_id;
@@ -105,6 +106,7 @@ struct ia_css_isys_output_pin_info {
 	enum ia_css_isys_frame_format_type ft;
 	unsigned int watermark_in_lines;
 	unsigned int send_irq;
+	unsigned int online;
 };
 
 /**

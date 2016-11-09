@@ -76,6 +76,7 @@ struct ia_css_isys_output_pin_payload_comm {
  * @send_irq: assert if pin event should trigger irq
  * @pt: pin type
  * @ft: frame format type
+ * @online: make it possible to connect online
  */
 struct ia_css_isys_output_pin_info_comm {
 	aligned_struct(struct ia_css_isys_resolution_comm, output_res);
@@ -85,6 +86,7 @@ struct ia_css_isys_output_pin_info_comm {
 	aligned_uint8(unsigned int, input_pin_id);
 	aligned_uint8(enum ia_css_isys_pin_type, pt);
 	aligned_uint8(enum ia_css_isys_frame_format_type, ft);
+	aligned_uint8(unsigned int, online);
 };
 
 /**

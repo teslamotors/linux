@@ -415,6 +415,7 @@ STORAGE_CLASS_INLINE void output_pin_info_host_to_css(
 			output_pin_info_host->watermark_in_lines;
 	output_pin_info_css->send_irq = output_pin_info_host->send_irq;
 	output_pin_info_css->ft = output_pin_info_host->ft;
+	output_pin_info_css->online = output_pin_info_host->online;
 }
 
 STORAGE_CLASS_INLINE void param_pin_host_to_css(

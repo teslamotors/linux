@@ -246,6 +246,9 @@ udiv_medium(uint32_t a, uint32_t b, unsigned outbits)
 	unsigned res = 0;
 	unsigned mask;
 
+#ifdef VOLCANO
+#pragma ipu unroll
+#endif
 	for (bit = outbits-1 ; bit >= 0; bit--) {
 		mask = 1<<bit;
 		if (a >= (b<<bit)) {
