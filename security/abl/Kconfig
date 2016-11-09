@@ -2,9 +2,7 @@ config ABL_UTILS
 	bool "Automotive Bootloader Utilities"
 	default n
 	help
-		Enables reading command line parameters passed by the bootloader
-		at boot time. The Automotive Bootloader (ABL) passes the
-		location of the OEM public RSA key and two SEED values used
-		by keystore to derive client keys.
+		Provides helper functions to copy data from physical
+		memory locations into kernel memory space.
 
                 If in doubt, select "N".

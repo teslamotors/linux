@@ -23,6 +23,7 @@
 #include <linux/random.h>
 
 #include <security/abl_cmdline.h>
+#include <soc/apl/abl.h>
 #include <security/keystore_api_user.h>
 #include "keystore_debug.h"
 #include "keystore_seed.h"
@@ -116,7 +117,7 @@ int keystore_fill_seeds(void)
 	/* Get keys and seeds offsets from cmdline
 	 * - ikey, okey, keysize, dseed and useed.
 	 */
-	res = get_seed_offsets(&s_off);
+	res = get_apl_seed_offsets(&s_off);
 	if (res) {
 		ks_err(KBUILD_MODNAME
 		       ": d/u-seed info missing in cmdline\n");

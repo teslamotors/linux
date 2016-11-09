@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/cred.h>
 #include <security/abl_cmdline.h>
+#include <soc/apl/abl.h>
 #include <security/manifest.h>
 #include "../../crypto/asymmetric_keys/x509_parser.h"
 
@@ -746,7 +747,7 @@ static int __init manifest_init(void)
 	manifest.size = 0;
 #ifndef CONFIG_MANIFEST_HARDCODE
 	/* Get key manifest offset from cmdline */
-	res = get_manifest_offset(&moff);
+	res = get_apl_manifest_offsets(&moff);
 	if (res) {
 		pr_err(KBUILD_MODNAME
 		       ": Key manifest info missing in cmdline\n");
