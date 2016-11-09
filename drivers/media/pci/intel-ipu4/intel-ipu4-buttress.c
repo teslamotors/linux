@@ -589,11 +589,15 @@ void intel_ipu4_buttress_set_secure_mode(struct intel_ipu4_device *isp)
 	 * HACK to disable possible secure mode. This can be
 	 * reverted when CSE is disabling the secure mode
 	 */
-	val = readl(isp->base + BUTTRESS_REG_SECURITY_CTL);
+	read = readl(isp->base + BUTTRESS_REG_SECURITY_CTL);
+
 	if (secure_mode_enable)
-		val |= 1 << BUTTRESS_SECURITY_CTL_FW_SECURE_MODE_SHIFT;
+		val = read |= 1 << BUTTRESS_SECURITY_CTL_FW_SECURE_MODE_SHIFT;
 	else
-		val &= ~(1 << BUTTRESS_SECURITY_CTL_FW_SECURE_MODE_SHIFT);
+		val = read & ~(1 << BUTTRESS_SECURITY_CTL_FW_SECURE_MODE_SHIFT);
+
+	if (val == read)
+		return;
 
 	writel(val, isp->base + BUTTRESS_REG_SECURITY_CTL);
 
