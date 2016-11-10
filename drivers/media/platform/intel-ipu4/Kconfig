@@ -57,3 +57,8 @@ config INTEL_IPU4_IMX290
 	depends on INTEL_IPU4_BXT_P_PDATA
 	---help---
 	"Sony 8MB camera sensor is enabled for HDR function"
+
+config INTEL_IPU5_FPGA_PDATA
+	bool "Enable built in platform data for ipu5 fpga"
+	---help---
+	Pre-ACPI system platform data is compiled inside kernel

@@ -23,3 +23,4 @@ obj-$(CONFIG_INTEL_IPU4_BXT_GP_PDATA)   += intel-ipu4-bxt-gp-pdata.o
 obj-$(CONFIG_INTEL_IPU4_BXT_P_PDATA)   += intel-ipu4-bxt-p-pdata.o
 obj-$(CONFIG_INTEL_IPU4_BXT_GT_PDATA)   += intel-ipu4-bxt-gt-pdata.o
 obj-$(CONFIG_VIDEO_INTEL_IPU4)		+= intel-ipu4-acpi.o
+obj-$(CONFIG_INTEL_IPU5_FPGA_PDATA)   += intel-ipu5-fpga-pdata.o

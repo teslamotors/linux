@@ -65,7 +65,7 @@
 #define INTEL_IPU4_HW_BXT_P_A0_REV	0x3
 #define INTEL_IPU4_HW_BXT_P_B1_REV	0xa
 
-#define INTEL_IPU5_HW_A0		0x5a19
+#define INTEL_IPU5_HW_FPGA_A0		0x5a19
 
 /* processing system frequency: 25Mhz x ratio, Legal values [8,32] */
 #define PS_FREQ_CTL_DEFAULT_RATIO_B0	0x12
@@ -174,7 +174,7 @@ struct intel_ipu4_device {
 #define is_intel_ipu_hw_fpga(isp) 0
 
 #define is_intel_ipu5_hw_a0(isp)		\
-	((isp)->pdev->device == INTEL_IPU5_HW_A0)
+	((isp)->pdev->device == INTEL_IPU5_HW_FPGA_A0)
 
 #endif
 
