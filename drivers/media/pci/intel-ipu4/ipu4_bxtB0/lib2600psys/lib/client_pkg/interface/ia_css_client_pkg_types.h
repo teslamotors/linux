@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef IA_CSS_CLIENT_PKG_TYPES_H_
-#define IA_CSS_CLIENT_PKG_TYPES_H_
+#ifndef __IA_CSS_CLIENT_PKG_TYPES_H
+#define __IA_CSS_CLIENT_PKG_TYPES_H
 
 #include "type_support.h"
 
@@ -41,4 +41,4 @@ struct ia_css_client_pkg_prog_list_s {
 	uint32_t prog_bin_count;
 };
 
-#endif /* IA_CSS_CLIENT_PKG_TYPES_H_ */
+#endif /* __IA_CSS_CLIENT_PKG_TYPES_H */

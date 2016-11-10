@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef IA_CSS_CLIENT_PKG_H_
-#define IA_CSS_CLIENT_PKG_H_
+#ifndef __IA_CSS_CLIENT_PKG_H
+#define __IA_CSS_CLIENT_PKG_H
 
 #include "type_support.h"
 #include "ia_css_client_pkg_storage_class.h"
@@ -56,4 +56,4 @@ int ia_css_client_pkg_get_prog_desc_entry_offset_size(
 #include "ia_css_client_pkg_impl.h"
 #endif
 
-#endif /* IA_CSS_CLIENT_PKG_H_ */
+#endif /* __IA_CSS_CLIENT_PKG_H */

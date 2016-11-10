@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef IA_CSS_CLIENT_PKG_IMPL_H_
-#define IA_CSS_CLIENT_PKG_IMPL_H_
+#ifndef __IA_CSS_CLIENT_PKG_IMPL_H
+#define __IA_CSS_CLIENT_PKG_IMPL_H
 
 #include "ia_css_client_pkg.h"
 #include "ia_css_client_pkg_types.h"
@@ -165,4 +165,4 @@ EXIT:
 	return ret_val;
 }
 
-#endif /* IA_CSS_CLIENT_PKG_IMPL_H_ */
+#endif /* __IA_CSS_CLIENT_PKG_IMPL_H */
