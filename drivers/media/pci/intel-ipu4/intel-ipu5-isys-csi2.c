@@ -11,12 +11,89 @@
  * GNU General Public License for more details.
  *
  */
-
+#include <media/intel-ipu4-isys.h>
 #include "intel-ipu4.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-isys.h"
 #include "intel-ipu5-isys-csi2-reg.h"
 #include "intel-ipu5-isys-csi2.h"
+
+
+/*
+* just for rx_a/b and cphy_rx_0/1 addr map
+* dphy: dphy port? if true, FRAME_LONG_PACKET_DISCARDED in irq_ctrl2,
+* and use it to choose vc field
+* irq_num: numbers of valid irq
+*/
+struct intel_ipu5_csi_irq_info_map {
+	bool dphy;
+	u32 irq_num;
+	unsigned int irq_base;
+	unsigned int irq_base_ctrl2;
+};
+
+static struct intel_ipu5_csi_irq_info_map irq_info_map[] = {
+	{
+		.dphy = true,
+		.irq_num = CSI_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_A_EDGE,
+		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_A_EDGE,
+	},
+	{
+		.dphy = true,
+		.irq_num = CSI_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_B_EDGE,
+		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_B_EDGE,
+	},
+	{
+		.irq_num = CSI_CPHY_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_A_EDGE,
+	},
+	{
+		.irq_num = CSI_CPHY_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_B_EDGE,
+	},
+	{
+		.dphy = true,
+		.irq_num = CSI_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_A_EDGE,
+		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_A_EDGE,
+	},
+	{
+		.dphy = true,
+		.irq_num = CSI_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_B_EDGE,
+		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_B_EDGE,
+	},
+	{
+		.irq_num = CSI_CPHY_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_A_EDGE,
+	},
+	{
+		.irq_num = CSI_CPHY_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_B_EDGE,
+	},
+	{
+		.dphy = true,
+		.irq_num = CSI_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_A_EDGE,
+		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_A_EDGE,
+	},
+	{
+		.dphy = true,
+		.irq_num = CSI_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_B_EDGE,
+		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_B_EDGE,
+	},
+	{
+		.irq_num = CSI_CPHY_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_A_EDGE,
+	},
+	{
+		.irq_num = CSI_CPHY_RX_NUM_IRQ,
+		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_B_EDGE,
+	},
+};
 
 struct intel_ipu_isys_csi2_ops csi2_funcs_ipu5 = {
 	.set_stream = intel_ipu5_isys_csi2_set_stream,
@@ -46,9 +123,16 @@ int intel_ipu5_isys_csi2_set_stream(struct v4l2_subdev *sd,
 	unsigned int nlanes, int enable)
 {
 	struct intel_ipu4_isys_csi2 *csi2 = to_intel_ipu4_isys_csi2(sd);
-	unsigned int i;
-	u32 val;
+	struct intel_ipu4_isys_pipeline *ip =
+		container_of(sd->entity.pipe,
+			     struct intel_ipu4_isys_pipeline, pipe);
+	struct intel_ipu4_isys_csi2_config *cfg =
+		v4l2_get_subdev_hostdata(
+			media_entity_to_v4l2_subdev(ip->external->entity));
+	unsigned int i, port;
+	u32 val, csi_irqs;
 
+	port = cfg->port;
 	if (!enable) {
 		intel_ipu5_isys_csi2_error(csi2);
 		val = readl(csi2->base + INTEL_IPU5_CSI_REG_RX_CTL);
@@ -57,10 +141,19 @@ int intel_ipu5_isys_csi2_set_stream(struct v4l2_subdev *sd,
 		writel(val, csi2->base + INTEL_IPU5_CSI_REG_RX_CTL);
 		writel(0, csi2->base + INTEL_IPU5_CSI_REG_RX_ENABLE);
 
-		/*
-		* TODO: IPU5 IRQ
-		* So far csi2 irq regs not define and not enable on ipu5
-		*/
+		/* Disable interrupts */
+		writel(0, csi2->base + irq_info_map[port].irq_base +
+			INTEL_IPU5_CSI_REG_IRQ_MASK_OFFSET);
+		writel(0, csi2->base + irq_info_map[port].irq_base +
+			INTEL_IPU5_CSI_REG_IRQ_ENABLE_OFFSET);
+		if (irq_info_map[port].dphy) {
+			writel(0,
+				csi2->base + irq_info_map[port].irq_base_ctrl2 +
+				INTEL_IPU5_CSI_REG_IRQ_MASK_OFFSET);
+			writel(0,
+				csi2->base + irq_info_map[port].irq_base_ctrl2 +
+				INTEL_IPU5_CSI_REG_IRQ_ENABLE_OFFSET);
+		}
 		return 0;
 	}
 
@@ -93,10 +186,41 @@ int intel_ipu5_isys_csi2_set_stream(struct v4l2_subdev *sd,
 	writel(INTEL_IPU5_CSI_REG_RX_ENABLE_ENABLE,
 		csi2->base + INTEL_IPU5_CSI_REG_RX_ENABLE);
 
+	/* enable all related irq */
+	csi_irqs = BIT(irq_info_map[port].irq_num) - 1;
+	writel(csi_irqs, csi2->base + irq_info_map[port].irq_base);
+	writel(csi_irqs, csi2->base + irq_info_map[port].irq_base +
+		INTEL_IPU5_CSI_REG_IRQ_MASK_OFFSET);
+	writel(csi_irqs, csi2->base + irq_info_map[port].irq_base +
+		INTEL_IPU5_CSI_REG_IRQ_CLEAR_OFFSET);
+	writel(csi_irqs, csi2->base + irq_info_map[port].irq_base +
+		INTEL_IPU5_CSI_REG_IRQ_ENABLE_OFFSET);
+	writel(csi_irqs, csi2->base + irq_info_map[port].irq_base +
+		INTEL_IPU5_CSI_REG_IRQ_PULSE_OFFSET);
 	/*
-	* TODO: IPU5 IRQ
-	* So far csi2 irq regs not define and not enable on ipu5
+	* enable irq of FRAME_LONG_PACKET_DISCARDED when dphy,
+	* because this error bit is located in ctrl2 register
 	*/
+	if (irq_info_map[port].dphy) {
+		csi_irqs = readl(csi2->base +
+			irq_info_map[port].irq_base_ctrl2 +
+			INTEL_IPU5_CSI_REG_IRQ_ENABLE_OFFSET);
+		csi_irqs |= CSI_RX_INTER_FRAME_LONG_PACKET_DISCARDED;
+		writel(csi_irqs,
+			csi2->base + irq_info_map[port].irq_base_ctrl2);
+		writel(csi_irqs,
+			csi2->base + irq_info_map[port].irq_base_ctrl2 +
+			INTEL_IPU5_CSI_REG_IRQ_MASK_OFFSET);
+		writel(csi_irqs,
+			csi2->base + irq_info_map[port].irq_base_ctrl2 +
+			INTEL_IPU5_CSI_REG_IRQ_CLEAR_OFFSET);
+		writel(csi_irqs,
+			csi2->base + irq_info_map[port].irq_base_ctrl2 +
+			INTEL_IPU5_CSI_REG_IRQ_ENABLE_OFFSET);
+		writel(csi_irqs,
+			csi2->base + irq_info_map[port].irq_base_ctrl2 +
+			INTEL_IPU5_CSI_REG_IRQ_PULSE_OFFSET);
+	}
 
 	return 0;
 }

@@ -370,7 +370,7 @@ static void csi2_capture_done(struct intel_ipu4_isys_pipeline *ip,
 		spin_unlock_irqrestore(&ip->short_packet_queue_lock, flags);
 	}
 	if (ip->csi2) {
-		if (ip->csi2->csi2_ops && ip->csi2->csi2_ops->set_stream)
+		if (ip->csi2->csi2_ops && ip->csi2->csi2_ops->csi2_error)
 			ip->csi2->csi2_ops->csi2_error(ip->csi2);
 	}
 }

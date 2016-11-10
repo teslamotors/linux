@@ -582,9 +582,6 @@ void intel_ipu4_isys_csi2_isr(struct intel_ipu4_isys_csi2 *csi2)
 	if (status & CSI2_CSI2PART_IRQ_CSIRX_B0)
 		intel_ipu4_isys_register_errors(csi2);
 
-	/*
-	* TODO: these below could separate to common?
-	*/
 	for (i = 0; i < NR_OF_CSI2_VC; i++) {
 		if ((status & CSI2_IRQ_FS_VC(i)))
 			intel_ipu_isys_csi2_sof_event(csi2, i);
