@@ -18,80 +18,166 @@
 #include "intel-ipu5-isys-csi2-reg.h"
 #include "intel-ipu5-isys-csi2.h"
 
+struct intel_ipu5_csi2_error {
+	const char *error_string;
+	bool is_info_only;
+};
 
 /*
 * just for rx_a/b and cphy_rx_0/1 addr map
 * dphy: dphy port? if true, FRAME_LONG_PACKET_DISCARDED in irq_ctrl2,
 * and use it to choose vc field
+* irq_error_mask: used when checking the error happening
 * irq_num: numbers of valid irq
 */
 struct intel_ipu5_csi_irq_info_map {
 	bool dphy;
+	u32 irq_error_mask;
 	u32 irq_num;
 	unsigned int irq_base;
 	unsigned int irq_base_ctrl2;
+	struct intel_ipu5_csi2_error *errors;
+};
+
+/*
+ * Strings corresponding to CSI-2 receiver errors are here.
+ * Corresponding macros are defined in the header file.
+ */
+static struct intel_ipu5_csi2_error dphy_rx_errors[] = {
+	{ "Single packet header error corrected", true },
+	{ "Multiple packet header errors detected", true },
+	{ "Payload checksum (CRC) error", true },
+	{ "FIFO overflow", false },
+	{ "Reserved short packet data type detected", true },
+	{ "Reserved long packet data type detected", true },
+	{ "Incomplete long packet detected", false },
+	{ "Frame sync error", false },
+	{ "Line sync error", false },
+	{ "DPHY recoverable synchronization error", true },
+	{ "DPHY non-recoverable synchronization error", false },
+	{ "Escape mode error", true },
+	{ "Escape mode trigger event", true },
+	{ "Escape mode ultra-low power state for data lane(s)", true },
+	{ "Escape mode ultra-low power state exit for clock lane", true },
+	{ "Inter-frame short packet discarded", true },
+	{ "Inter-frame long packet discarded", true },
+};
+
+static struct intel_ipu5_csi2_error cphy_rx_errors[] = {
+	{ "Packet header error corrected", true },
+	{ "Payload checksum (CRC) error", true },
+	{ "FIFO overflow", false },
+	{ "Reserved short packet data type detected", true },
+	{ "Reserved long packet data type detected", true },
+	{ "Incomplete long packet detected", false },
+	{ "Frame sync error", false },
+	{ "Line sync error", false },
+	{ "SOT missing synchronization0 error", true },
+	{ "SOT missing synchronization1 error", false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ NULL, false },
+	{ "Inter-frame short packet discarded", true },
+	{ "Inter-frame long packet discarded", true },
 };
 
 static struct intel_ipu5_csi_irq_info_map irq_info_map[] = {
 	{
 		.dphy = true,
+		.irq_error_mask = CSI_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_A_EDGE,
 		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_A_EDGE,
+		.errors = dphy_rx_errors,
 	},
 	{
 		.dphy = true,
+		.irq_error_mask = CSI_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_B_EDGE,
 		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_B_EDGE,
+		.errors = dphy_rx_errors,
 	},
 	{
+		.irq_error_mask = CSI_CPHY_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_CPHY_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_A_EDGE,
+		.errors = cphy_rx_errors,
 	},
 	{
+		.irq_error_mask = CSI_CPHY_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_CPHY_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_B_EDGE,
+		.errors = cphy_rx_errors,
 	},
 	{
 		.dphy = true,
+		.irq_error_mask = CSI_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_A_EDGE,
 		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_A_EDGE,
+		.errors = dphy_rx_errors,
 	},
 	{
 		.dphy = true,
+		.irq_error_mask = CSI_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_B_EDGE,
 		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_B_EDGE,
+		.errors = dphy_rx_errors,
 	},
 	{
+		.irq_error_mask = CSI_CPHY_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_CPHY_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_A_EDGE,
+		.errors = cphy_rx_errors,
 	},
 	{
+		.irq_error_mask = CSI_CPHY_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_CPHY_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_B_EDGE,
+		.errors = cphy_rx_errors,
 	},
 	{
 		.dphy = true,
+		.irq_error_mask = CSI_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_A_EDGE,
 		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_A_EDGE,
+		.errors = dphy_rx_errors,
 	},
 	{
 		.dphy = true,
+		.irq_error_mask = CSI_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL0_B_EDGE,
 		.irq_base_ctrl2 = INTEL_IPU5_CSI_REG_IRQ_CTRL2_B_EDGE,
+		.errors = dphy_rx_errors,
 	},
 	{
+		.irq_error_mask = CSI_CPHY_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_CPHY_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_A_EDGE,
+		.errors = cphy_rx_errors,
 	},
 	{
+		.irq_error_mask = CSI_CPHY_RX_ERROR_IRQ_MASK,
 		.irq_num = CSI_CPHY_RX_NUM_IRQ,
 		.irq_base = INTEL_IPU5_CSI_REG_IRQ_CTRL1_B_EDGE,
+		.errors = cphy_rx_errors,
 	},
 };
 
@@ -106,16 +192,92 @@ struct intel_ipu_isys_csi2_ops csi2_funcs_ipu5 = {
 
 static void intel_ipu5_isys_register_errors(struct intel_ipu4_isys_csi2 *csi2)
 {
+	struct intel_ipu4_isys_pipeline *pipe =
+		container_of(csi2->asd.sd.entity.pipe,
+			     struct intel_ipu4_isys_pipeline, pipe);
+	struct intel_ipu4_isys_csi2_config *cfg =
+		v4l2_get_subdev_hostdata(
+			media_entity_to_v4l2_subdev(pipe->external->entity));
+	u32 irq;
+
+	irq = readl(csi2->base + irq_info_map[cfg->port].irq_base +
+		INTEL_IPU5_CSI_REG_IRQ_STATUS_OFFSET);
+
+	if (irq & irq_info_map[cfg->port].irq_error_mask) {
+		writel(irq & irq_info_map[cfg->port].irq_error_mask,
+			csi2->base + irq_info_map[cfg->port].irq_base +
+			INTEL_IPU5_CSI_REG_IRQ_CLEAR_OFFSET);
+		csi2->receiver_errors |=
+			irq & irq_info_map[cfg->port].irq_error_mask;
+	}
+
 	/*
-	* TODO: IPU5 IRQ
+	* special handler for dphy FRAME_LONG_PACKET_DISCARDED
+	* because this error bit is located in ctrl2 register, not in
+	* ctrl0 dphy irq register; when this error occur,
+	* we put it to highest bit
 	*/
+	if (irq_info_map[cfg->port].dphy) {
+		u32 irq_ctrl2;
+
+		irq_ctrl2 = readl(csi2->base +
+			irq_info_map[cfg->port].irq_base_ctrl2 +
+			INTEL_IPU5_CSI_REG_IRQ_STATUS_OFFSET);
+		if (irq_ctrl2 & CSI_RX_INTER_FRAME_LONG_PACKET_DISCARDED) {
+			writel(irq_ctrl2 &
+				CSI_RX_INTER_FRAME_LONG_PACKET_DISCARDED,
+				csi2->base +
+				irq_info_map[cfg->port].irq_base_ctrl2 +
+				INTEL_IPU5_CSI_REG_IRQ_CLEAR_OFFSET);
+			csi2->receiver_errors |=
+				(irq_info_map[cfg->port].irq_error_mask + 1);
+		}
+	}
 }
 
 void intel_ipu5_isys_csi2_error(struct intel_ipu4_isys_csi2 *csi2)
 {
-	/*
-	* TODO: IPU5 IRQ
-	*/
+	struct intel_ipu4_isys_pipeline *pipe =
+		container_of(csi2->asd.sd.entity.pipe,
+			     struct intel_ipu4_isys_pipeline, pipe);
+	struct intel_ipu4_isys_csi2_config *cfg =
+		v4l2_get_subdev_hostdata(
+			media_entity_to_v4l2_subdev(pipe->external->entity));
+	struct intel_ipu5_csi2_error *errors;
+	u32 status;
+	unsigned int i;
+
+	/* Register errors once more in case of error interrupts are disabled */
+	intel_ipu5_isys_register_errors(csi2);
+	status = csi2->receiver_errors;
+	csi2->receiver_errors = 0;
+	errors = irq_info_map[cfg->port].errors;
+
+	for (i = 0; i < irq_info_map[cfg->port].irq_num; i++) {
+		if (status & BIT(i) & irq_info_map[cfg->port].irq_error_mask) {
+			if (errors[i].is_info_only)
+				dev_dbg(&csi2->isys->adev->dev,
+					"csi2-%i info: %s\n",
+					csi2->index, errors[i].error_string);
+			else
+				dev_err_ratelimited(&csi2->isys->adev->dev,
+					"csi2-%i error: %s\n",
+					csi2->index, errors[i].error_string);
+		}
+	}
+
+	if (irq_info_map[cfg->port].dphy) {
+		if (status & (irq_info_map[cfg->port].irq_error_mask + 1)) {
+			if (errors[CSI_RX_NUM_ERRORS_IN_CTRL0].is_info_only)
+				dev_dbg(&csi2->isys->adev->dev,
+				"csi2-%i info: %s\n", csi2->index,
+			errors[CSI_RX_NUM_ERRORS_IN_CTRL0].error_string);
+			else
+				dev_err_ratelimited(&csi2->isys->adev->dev,
+				"csi2-%i error: %s\n", csi2->index,
+			errors[CSI_RX_NUM_ERRORS_IN_CTRL0].error_string);
+		}
+	}
 }
 
 int intel_ipu5_isys_csi2_set_stream(struct v4l2_subdev *sd,
