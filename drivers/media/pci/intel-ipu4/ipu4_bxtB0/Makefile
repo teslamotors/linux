@@ -20,8 +20,10 @@ ccflags-y += -DIPU_STEP_BXTB0 -DIPU_STEP_BXTC0
 
 include $(srcpath)/$(src)/../Makefile.link
 include $(srcpath)/$(src)/../Makefile.common
+ifdef CONFIG_VIDEO_INTEL_IPU_FW_LIB
 include $(srcpath)/$(src)/../Makefile.lib2600
 include $(srcpath)/$(src)/../Makefile.lib2600psys
+endif
 ccflags-y += -I$(srcpath)/$(src)/../../../../../include/
 ccflags-y += -I$(srcpath)/$(src)/../
 

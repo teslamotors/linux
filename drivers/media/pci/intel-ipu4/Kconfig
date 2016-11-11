@@ -52,6 +52,8 @@ config VIDEO_INTEL_IPU5_FPGA
 
 endchoice
 
+config VIDEO_INTEL_IPU_FW_LIB
+	bool "Compile firmware library"
 
 config VIDEO_INTEL_IPU4_DEBUG
 	tristate "User space interface for firmware testing"
