@@ -317,8 +317,8 @@ static struct intel_ipu4_isys_subdev_info video_aggre_b_stub_sd = {
 
 static struct crlmodule_platform_data ov10635_pdata = {
 	.lanes = OV10635_LANES,
-	.ext_clk = 12000000,
-	.op_sys_clock = (uint64_t []){ 392000000 },
+	.ext_clk = 24000000,
+	.op_sys_clock = (uint64_t []){ 400000000 },
 	.module_name = "OV10635",
 	.id_string = "0xa6 0x35"
 };
@@ -333,8 +333,8 @@ static struct crlmodule_platform_data ov10635_pdata = {
 
 static struct crlmodule_platform_data ov10640_pdata = {
 	.lanes = OV10640_LANES,
-	.ext_clk = 12000000,
-	.op_sys_clock = (uint64_t []){ 392000000 },
+	.ext_clk = 24000000,
+	.op_sys_clock = (uint64_t []){ 400000000 },
 	.module_name = "OV10640",
 	.id_string = "0xa6 0x40"
 };

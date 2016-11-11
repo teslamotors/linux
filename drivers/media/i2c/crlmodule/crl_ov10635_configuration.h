@@ -7705,8 +7705,8 @@ static struct crl_sensor_detect_config ov10635_sensor_detect_regset[] = {
 
 static struct crl_pll_configuration ov10635_pll_configurations[] = {
 	{
-		.input_clk = 12000000,
-		.op_sys_clk = 392000000,
+		.input_clk = 24000000,
+		.op_sys_clk = 400000000,
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 529000000,
 		.pixel_rate_pa = 529000000, /* pixel_rate = MIPICLK*2 *4/12 */
@@ -7717,8 +7717,8 @@ static struct crl_pll_configuration ov10635_pll_configurations[] = {
 		.pll_regs = NULL,
 	},
 	{
-		.input_clk = 12000000,
-		.op_sys_clk = 392000000,
+		.input_clk = 24000000,
+		.op_sys_clk = 400000000,
 		.bitsperpixel = 10,
 		.pixel_rate_csi = 529000000,
 		.pixel_rate_pa = 529000000, /* pixel_rate = MIPICLK*2 *4/12 */
@@ -7729,8 +7729,8 @@ static struct crl_pll_configuration ov10635_pll_configurations[] = {
 		.pll_regs = NULL,
 	},
 	{
-		.input_clk = 12000000,
-		.op_sys_clk = 392000000,
+		.input_clk = 24000000,
+		.op_sys_clk = 400000000,
 		.bitsperpixel = 20,
 		.pixel_rate_csi = 529000000,
 		.pixel_rate_pa = 529000000, /* pixel_rate = MIPICLK*2 *4/12 */

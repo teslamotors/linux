@@ -26,8 +26,8 @@
 #define OV10640_VMAX			131071
 #define OV10640_MAX_SHS1		(OV10640_VMAX - 2)
 
-/* 111Mbps for ov10640 720p 30fps */
-static struct crl_register_write_rep ov10640_pll_794mbps[] = {
+/* 800Mbps for ov10640 1280x1080 30fps */
+static struct crl_register_write_rep ov10640_pll_800mbps[] = {
 	{0x3000, CRL_REG_LEN_08BIT, 0x03},
 	{0x3001, CRL_REG_LEN_08BIT, 0x48},
 	{0x3002, CRL_REG_LEN_08BIT, 0x07},
@@ -2491,16 +2491,16 @@ static struct crl_sensor_detect_config ov10640_sensor_detect_regset[] = {
 
 static struct crl_pll_configuration ov10640_pll_configurations[] = {
 	{
-		.input_clk = 12000000,
-		.op_sys_clk = 392000000,
+		.input_clk = 24000000,
+		.op_sys_clk = 400000000,
 		.bitsperpixel = 12,
 		.pixel_rate_csi = 72000000, /* Ignore the value here, no use */
 		.pixel_rate_pa = 72000000, /* pixel_rate = MIPICLK*2 *4/12 */
 		.csi_lanes = 4,
 		.comp_items = 0,
 		.ctrl_data = 0,
-		.pll_regs_items = ARRAY_SIZE(ov10640_pll_794mbps),
-		.pll_regs = ov10640_pll_794mbps,
+		.pll_regs_items = ARRAY_SIZE(ov10640_pll_800mbps),
+		.pll_regs = ov10640_pll_800mbps,
 	}
 };
 
