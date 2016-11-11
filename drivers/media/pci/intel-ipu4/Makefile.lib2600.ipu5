@@ -13,7 +13,7 @@ include $(srcpath)/$(src)/Makefile.ipu5isys_src
 include $(srcpath)/$(src)/../Makefile.link
 
 lib2600-mod-$(IPU_STEP)-objs := \
-	../libintel-ipu4.$(IPU_STEP).lnk.o \
+	../libintel-ipu5.$(IPU_STEP).lnk.o \
 	../libintel-checker.$(IPU_STEP).lnk.o \
 	$(IPU_ISYSLIB_SRC)
 
