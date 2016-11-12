@@ -788,6 +788,9 @@ static int ti964_remove(struct i2c_client *client)
 	struct ti964 *va = to_ti964(subdev);
 	int i;
 
+	if (!va)
+		return 0;
+
 	mutex_destroy(&va->mutex);
 	v4l2_ctrl_handler_free(&va->ctrl_handler);
 	v4l2_device_unregister_subdev(&va->sd);
