@@ -24,34 +24,13 @@
 #include "../../../../include/media/ti964.h"
 #include "../../pci/intel-ipu4/intel-ipu4.h"
 
+#define GPIO_BASE		422
+
+
+#ifdef CONFIG_INTEL_IPU4_IMX185
 #define IMX185_LANES		4
 #define IMX185_I2C_ADDRESS	0x1a
 
-#define IMX274_LANES		4
-#define IMX274_I2C_ADDRESS	0x1a
-
-#define IMX290_LANES		4
-#define IMX290_I2C_ADDRESS	0x1a
-
-#define OV13860_LANES		2
-#define OV13860_I2C_ADDRESS	0x10
-#define BU64295_VCM_ADDR	0x0c
-#define BU64295_NAME		"bu64295"
-
-#define ADV7481_LANES		4
-#define ADV7481_I2C_ADDRESS	0xe0
-#define ADV7481B_I2C_ADDRESS	0xe2
-
-#define VIDEO_AGGRE_LANES	4
-#define VIDEO_AGGRE_I2C_ADDRESS	0x3b
-#define VIDEO_AGGRE_B_I2C_ADDRESS	0x3c
-
-#define GPIO_BASE		422
-
-#ifdef CONFIG_INTEL_IPU4_IMX185
-/*
- * The following imx185 platform data is for Leaf Hill board(BXT-P).
- */
 static struct crlmodule_platform_data imx185_pdata = {
 	.xshutdown = GPIO_BASE + 71,
 	.lanes = IMX185_LANES,
@@ -80,9 +59,10 @@ static struct intel_ipu4_isys_subdev_info imx185_crl_sd = {
 #endif
 
 #ifdef CONFIG_INTEL_IPU4_IMX274
-/*
-* The following imx274 platform data is for Leaf Hill board(BXT-P).
-*/
+
+#define IMX274_LANES		4
+#define IMX274_I2C_ADDRESS	0x1a
+
 static struct crlmodule_platform_data imx274_pdata = {
 	.xshutdown = GPIO_BASE + 71,
 	.lanes = IMX274_LANES,
@@ -110,9 +90,10 @@ static struct intel_ipu4_isys_subdev_info imx274_crl_sd = {
 #endif
 
 #ifdef CONFIG_INTEL_IPU4_IMX290
-/*
-* The following imx290 platform data is for Leaf Hill board(BXT-P).
-*/
+
+#define IMX290_LANES		4
+#define IMX290_I2C_ADDRESS	0x1a
+
 static struct crlmodule_platform_data imx290_pdata = {
 	.xshutdown = GPIO_BASE + 71,
 	.lanes = IMX290_LANES,
@@ -123,7 +104,7 @@ static struct crlmodule_platform_data imx290_pdata = {
 
 static struct intel_ipu4_isys_csi2_config imx290_csi2_cfg = {
 	.nlanes = IMX290_LANES,
-	.port = 0,	/*Need to be change*/
+	.port = 0,
 };
 
 static struct intel_ipu4_isys_subdev_info imx290_crl_sd = {
@@ -139,9 +120,10 @@ static struct intel_ipu4_isys_subdev_info imx290_crl_sd = {
 #endif
 
 #ifdef CONFIG_INTEL_IPU4_OV13860
-/*
- * The following ov13860 platform data is for Leaf Hill board(BXT-P).
- */
+
+#define OV13860_LANES		2
+#define OV13860_I2C_ADDRESS	0x10
+
 static struct crlmodule_platform_data ov13860_pdata = {
 	.xshutdown = GPIO_BASE + 71,
 	.lanes = OV13860_LANES,
@@ -169,6 +151,10 @@ static struct intel_ipu4_isys_subdev_info ov13860_crl_sd = {
 #endif
 
 #ifdef CONFIG_VIDEO_BU64295
+
+#define BU64295_VCM_ADDR	0x0c
+#define BU64295_NAME		"bu64295"
+
 static struct intel_ipu4_isys_subdev_info bu64295_sd = {
 	.i2c = {
 		.board_info = {
@@ -180,14 +166,14 @@ static struct intel_ipu4_isys_subdev_info bu64295_sd = {
 #endif
 
 #ifdef CONFIG_INTEL_IPU4_ADV7481
-/*
- * The following adv7481 platform data is for Leaf Hill board(BXT-P).
- */
+
+#define ADV7481_LANES		4
+#define ADV7481_I2C_ADDRESS	0xe0
+#define ADV7481B_I2C_ADDRESS	0xe2
+
 static struct crlmodule_platform_data adv7481_pdata = {
-	/* FIXME: may need to revisit */
 	.xshutdown = GPIO_BASE + 63,
 	.lanes = ADV7481_LANES,
-	/* FIXME: may need to revisit */
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){600000000},
 	.module_name = "ADV7481"
@@ -213,15 +199,14 @@ static struct intel_ipu4_isys_subdev_info adv7481_crl_sd = {
 #endif
 
 #ifdef CONFIG_INTEL_IPU4_ADV7481_EVAL
-/*
- * The following adv7481 evaluation board platform data is
- * for Leaf Hill board(BXT-P).
- */
+
+#define ADV7481_LANES		4
+#define ADV7481_I2C_ADDRESS	0xe0
+#define ADV7481B_I2C_ADDRESS	0xe2
+
 static struct crlmodule_platform_data adv7481_eval_pdata = {
-	/* FIXME: may need to revisit */
 	.xshutdown = GPIO_BASE + 63,
 	.lanes = ADV7481_LANES,
-	/* FIXME: may need to revisit */
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){600000000},
 	.module_name = "ADV7481_EVAL"
@@ -246,10 +231,8 @@ static struct intel_ipu4_isys_subdev_info adv7481_eval_crl_sd = {
 };
 
 static struct crlmodule_platform_data adv7481b_eval_pdata = {
-	/* FIXME: may need to revisit */
 	.xshutdown = GPIO_BASE + 63,
 	.lanes = ADV7481_LANES,
-	/* FIXME: may need to revisit */
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){600000000},
 	.module_name = "ADV7481B_EVAL"
@@ -275,6 +258,11 @@ static struct intel_ipu4_isys_subdev_info adv7481b_eval_crl_sd = {
 #endif
 
 #ifdef CONFIG_VIDEO_AGGREGATOR_STUB
+
+#define VIDEO_AGGRE_LANES	4
+#define VIDEO_AGGRE_I2C_ADDRESS	0x3b
+#define VIDEO_AGGRE_B_I2C_ADDRESS	0x3c
+
 static struct intel_ipu4_isys_csi2_config video_aggre_csi2_cfg = {
 	.nlanes = VIDEO_AGGRE_LANES,
 	.port = 0,
@@ -427,7 +415,6 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 #endif
 };
 
-
 struct ti964_subdev_i2c_info ti964_subdevs_2[] = {
 #ifdef CONFIG_INTEL_IPU4_OV10635
 	{
@@ -468,7 +455,7 @@ struct ti964_subdev_i2c_info ti964_subdevs_2[] = {
 static struct ti964_pdata ti964_pdata = {
 	.subdev_info = ti964_subdevs,
 	.subdev_num = ARRAY_SIZE(ti964_subdevs),
-	.reset_gpio = 485,
+	.reset_gpio = GPIO_BASE + 63,
 };
 
 static struct intel_ipu4_isys_subdev_info ti964_sd = {
@@ -486,7 +473,7 @@ static struct intel_ipu4_isys_subdev_info ti964_sd = {
 static struct ti964_pdata ti964_pdata_2 = {
 	.subdev_info = ti964_subdevs_2,
 	.subdev_num = ARRAY_SIZE(ti964_subdevs_2),
-	.reset_gpio = 488,
+	.reset_gpio = GPIO_BASE + 66,
 };
 
 static struct intel_ipu4_isys_subdev_info ti964_sd_2 = {
