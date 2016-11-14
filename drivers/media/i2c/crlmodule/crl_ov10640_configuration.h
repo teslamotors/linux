@@ -41,6 +41,14 @@ static struct crl_register_write_rep ov10640_powerup_standby[] = {
 	{OV10640_REG_RESET, CRL_REG_LEN_08BIT, 0x01},
 };
 
+static struct crl_power_seq_entity ov10640_power_items[] = {
+	{
+		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
+		.val = 1,
+		.undo_val = 0,
+	},
+};
+
 static struct crl_register_write_rep ov10640_1280_1080_HDR[] = {
 	{0x328a, CRL_REG_LEN_08BIT, 0x11},
 	{0x313f, CRL_REG_LEN_08BIT, 0x80},
@@ -3964,6 +3972,9 @@ struct crl_sensor_configuration ov10640_crl_configuration = {
 
 	.poweroff_regs_items = 0,
 	.poweroff_regs = 0,
+
+	.power_items = ARRAY_SIZE(ov10640_power_items),
+	.power_entities = ov10640_power_items,
 
 	.id_reg_items = ARRAY_SIZE(ov10640_sensor_detect_regset),
 	.id_regs = ov10640_sensor_detect_regset,
