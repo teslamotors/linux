@@ -22,6 +22,7 @@
 #include <media/media-device.h>
 #include <media/media-entity.h>
 #include <media/ti964.h>
+#include <media/crlmodule.h>
 #include <media/v4l2-device.h>
 #include <media/videobuf2-core.h>
 
@@ -38,6 +39,7 @@ struct ti964 {
 	struct v4l2_ctrl_handler ctrl_handler;
 	struct ti964_pdata *pdata;
 	struct ti964_subdev sub_devs[NR_OF_VA_SINK_PADS];
+	struct crlmodule_platform_data subdev_pdata[NR_OF_VA_SINK_PADS];
 	const char *name;
 
 	struct mutex mutex;
@@ -391,11 +393,21 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 	for (i = 0, k = 0; i < va->pdata->subdev_num; i++) {
 		struct ti964_subdev_info *info =
 			&va->pdata->subdev_info[i];
+		struct crlmodule_platform_data *pdata =
+			(struct crlmodule_platform_data *)
+			info->board_info.platform_data;
 		struct i2c_adapter *adapter;
 
 		if (k >= va->nsinks)
 			break;
 
+		/*
+		 * The sensors should not share the same pdata structure.
+		 * Clone the pdata for each sensor.
+		 */
+		memcpy(&va->subdev_pdata[k], pdata, sizeof(*pdata));
+		va->subdev_pdata[k].xshutdown = va->gc.base + info->rx_port;
+		info->board_info.platform_data = &va->subdev_pdata[k];
 		adapter = i2c_get_adapter(info->i2c_adapter_id);
 		va->sub_devs[k].sd = v4l2_i2c_new_subdev_board(
 			va->sd.v4l2_dev, adapter,
