@@ -7823,6 +7823,14 @@ static struct crl_register_write_rep ov10635_poweroff_regs[] = {
 	{OV10635_REG_RESET, CRL_REG_LEN_08BIT, 0x01},
 };
 
+static struct crl_power_seq_entity ov10635_power_items[] = {
+	{
+		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
+		.val = 0,
+		.undo_val = 1,
+	},
+};
+
 static struct crl_mode_rep ov10635_modes[] = {
 	{
 		.sd_rects_items = ARRAY_SIZE(ov10635_1280_800_rects),
@@ -8023,6 +8031,9 @@ struct crl_sensor_configuration ov10635_crl_configuration = {
 
 	.poweroff_regs_items = ARRAY_SIZE(ov10635_poweroff_regs),
 	.poweroff_regs = ov10635_poweroff_regs,
+
+	.power_items = ARRAY_SIZE(ov10635_power_items),
+	.power_entities = ov10635_power_items,
 
 	.id_reg_items = ARRAY_SIZE(ov10635_sensor_detect_regset),
 	.id_regs = ov10635_sensor_detect_regset,
