@@ -1392,7 +1392,7 @@ static void crlmodule_update_mode_bysel(struct crl_sensor *sensor)
 	if (i >= sensor->sensor_ds->modes_items) {
 		i = sensor->sensor_ds->fail_safe_mode_index;
 		this = &sensor->sensor_ds->modes[i];
-		dev_info(&client->dev,
+		dev_dbg(&client->dev,
 			 "%s no matching mode, set to default: %d\n",
 			 __func__, i);
 	}
