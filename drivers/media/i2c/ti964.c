@@ -63,6 +63,8 @@ struct ti964 {
 	unsigned int nstreams;
 	unsigned int npads;
 
+	struct gpio_chip gc;
+
 	struct v4l2_ctrl *link_freq;
 	struct v4l2_ctrl *test_pattern;
 };
@@ -703,6 +705,41 @@ static int ti964_init(struct ti964 *va)
 	return 0;
 }
 
+static void ti964_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
+{
+	struct i2c_client *client = to_i2c_client(chip->dev);
+	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
+	struct ti964 *va = to_ti964(subdev);
+	unsigned int reg_val;
+	int ret;
+
+	if (gpio >= NR_OF_VA_SINK_PADS)
+		return;
+
+	ret = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
+			  (gpio << 4) + (1 << gpio));
+	if (ret) {
+		dev_dbg(chip->dev, "Failed to select RX port.\n");
+		return;
+	}
+	ret = regmap_read(va->regmap8, TI964_BC_GPIO_CTL0, &reg_val);
+	if (ret) {
+		dev_dbg(chip->dev, "Failed to read gpio status.\n");
+		return;
+	}
+	reg_val &= ~TI964_GPIO1_MASK;
+	reg_val |= value ? TI964_GPIO_HIGH : TI964_GPIO_LOW;
+	ret = regmap_write(va->regmap8, TI964_BC_GPIO_CTL0, reg_val);
+	if (ret)
+		dev_dbg(chip->dev, "Failed to set gpio.\n");
+}
+
+static int ti964_gpio_direction_output(struct gpio_chip *chip,
+				       unsigned gpio, int level)
+{
+	return 0;
+}
+
 static int ti964_probe(struct i2c_client *client,
 			const struct i2c_device_id *devid)
 {
@@ -798,6 +835,24 @@ static int ti964_probe(struct i2c_client *client,
 		return rval;
 	}
 
+	/*
+	 * TI964 has several back channel GPIOs.
+	 * We export GPIO1 with the GPIO chip to control
+	 * sensor power and reset pin.
+	 */
+	va->gc.dev = &client->dev;
+	va->gc.owner = THIS_MODULE;
+	va->gc.label = "TI964 GPIO";
+	va->gc.ngpio = NR_OF_VA_SINK_PADS;
+	va->gc.base = -1;
+	va->gc.set = ti964_gpio_set;
+	va->gc.direction_output = ti964_gpio_direction_output;
+	rval = gpiochip_add(&va->gc);
+	if (rval) {
+		dev_err(&client->dev, "Failed to add gpio chip!\n");
+		return -EIO;
+	}
+
 	return 0;
 }
 
@@ -824,6 +879,8 @@ static int ti964_remove(struct i2c_client *client)
 		}
 		va->sub_devs[i].sd = NULL;
 	}
+
+	gpiochip_remove(&va->gc);
 
 	return 0;
 }
