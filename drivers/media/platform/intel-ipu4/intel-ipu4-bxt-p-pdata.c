@@ -308,7 +308,12 @@ static struct crlmodule_platform_data ov10635_pdata = {
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){ 400000000 },
 	.module_name = "OV10635",
-	.id_string = "0xa6 0x35"
+	.id_string = "0xa6 0x35",
+	/*
+	 * The pin number of xshutdown will be determined
+	 * and replaced inside TI964 driver.
+	 */
+	.xshutdown = 0,
 };
 #endif
 
@@ -324,7 +329,12 @@ static struct crlmodule_platform_data ov10640_pdata = {
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){ 400000000 },
 	.module_name = "OV10640",
-	.id_string = "0xa6 0x40"
+	.id_string = "0xa6 0x40",
+	/*
+	 * The pin number of xshutdown will be determined
+	 * and replaced inside TI964 driver.
+	 */
+	.xshutdown = 0,
 };
 #endif
 
@@ -344,7 +354,7 @@ static struct intel_ipu4_isys_csi2_config ti964_csi2_cfg_2 = {
 	.port = 4,
 };
 
-struct ti964_subdev_i2c_info ti964_subdevs[] = {
+struct ti964_subdev_info ti964_subdevs[] = {
 #ifdef CONFIG_INTEL_IPU4_OV10635
 	{
 		.board_info = {
@@ -353,6 +363,7 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 			.platform_data = &ov10635_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
+		.rx_port = 0,
 	},
 	{
 		.board_info = {
@@ -361,6 +372,7 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 			.platform_data = &ov10635_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
+		.rx_port = 1,
 	},
 	{
 		.board_info = {
@@ -369,6 +381,7 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 			.platform_data = &ov10635_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
+		.rx_port = 2,
 	},
 	{
 		.board_info = {
@@ -377,6 +390,7 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 			.platform_data = &ov10635_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
+		.rx_port = 3,
 	},
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV10640
@@ -387,6 +401,7 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 			.platform_data = &ov10640_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
+		.rx_port = 0,
 	},
 	{
 		.board_info = {
@@ -395,6 +410,7 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 			.platform_data = &ov10640_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
+		.rx_port = 1,
 	},
 	{
 		.board_info = {
@@ -403,6 +419,7 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 			.platform_data = &ov10640_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
+		.rx_port = 2,
 	},
 	{
 		.board_info = {
@@ -411,11 +428,12 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 			.platform_data = &ov10640_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
+		.rx_port = 3,
 	},
 #endif
 };
 
-struct ti964_subdev_i2c_info ti964_subdevs_2[] = {
+struct ti964_subdev_info ti964_subdevs_2[] = {
 #ifdef CONFIG_INTEL_IPU4_OV10635
 	{
 		.board_info = {
@@ -424,6 +442,7 @@ struct ti964_subdev_i2c_info ti964_subdevs_2[] = {
 			.platform_data = &ov10635_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
+		.rx_port = 0,
 	},
 	{
 		.board_info = {
@@ -432,6 +451,7 @@ struct ti964_subdev_i2c_info ti964_subdevs_2[] = {
 			.platform_data = &ov10635_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
+		.rx_port = 1,
 	},
 	{
 		.board_info = {
@@ -440,6 +460,7 @@ struct ti964_subdev_i2c_info ti964_subdevs_2[] = {
 			.platform_data = &ov10635_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
+		.rx_port = 2,
 	},
 	{
 		.board_info = {
@@ -448,6 +469,7 @@ struct ti964_subdev_i2c_info ti964_subdevs_2[] = {
 			.platform_data = &ov10635_pdata,
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
+		.rx_port = 3,
 	},
 #endif
 };

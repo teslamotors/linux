@@ -47,14 +47,15 @@ struct ti964_csi_data_format {
 	u8 mipi_dt_code;
 };
 
-struct ti964_subdev_i2c_info {
+struct ti964_subdev_info {
 	struct i2c_board_info board_info;
 	int i2c_adapter_id;
+	unsigned int rx_port;
 };
 
 struct ti964_pdata {
 	unsigned int subdev_num;
-	struct ti964_subdev_i2c_info *subdev_info;
+	struct ti964_subdev_info *subdev_info;
 	unsigned int reset_gpio;
 };
 
