@@ -51,6 +51,7 @@ static struct crl_register_write_rep ov5670_powerup_regset[] = {
 	{ 0x301c, CRL_REG_LEN_08BIT, 0xf0 },
 	{ 0x301d, CRL_REG_LEN_08BIT, 0xf0 },
 	{ 0x301e, CRL_REG_LEN_08BIT, 0xf0 },
+	{ 0x3021, CRL_REG_LEN_08BIT, 0x03 },
 	{ 0x3030, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x3031, CRL_REG_LEN_08BIT, 0x0a },
 	{ 0x303c, CRL_REG_LEN_08BIT, 0xff },
@@ -394,7 +395,12 @@ static struct crl_register_write_rep ov5670_streamon_regs[] = {
 };
 
 static struct crl_register_write_rep ov5670_streamoff_regs[] = {
-	{ 0x0100, CRL_REG_LEN_08BIT, 0x00 }
+	/* MIPI stream off when current frame finish */
+	{ 0x4202, CRL_REG_LEN_08BIT, 0x0f },
+	/* Wait to finish the current frame */
+	{ 0x0000, CRL_REG_LEN_DELAY, 0x40 },
+	/* Sensor to standby */
+	{ 0x0100, CRL_REG_LEN_08BIT, 0x00 },
 };
 
 static struct crl_register_write_rep ov5670_data_fmt_width10[] = {
