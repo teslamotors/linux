@@ -27,12 +27,17 @@
 
 #include "ti964-reg.h"
 
+struct ti964_subdev {
+	struct v4l2_subdev *sd;
+	unsigned int rx_port;
+};
+
 struct ti964 {
 	struct v4l2_subdev sd;
 	struct media_pad pad[NR_OF_VA_PADS];
 	struct v4l2_ctrl_handler ctrl_handler;
 	struct ti964_pdata *pdata;
-	struct v4l2_subdev *sub_devs[NR_OF_VA_SINK_PADS];
+	struct ti964_subdev sub_devs[NR_OF_VA_SINK_PADS];
 	const char *name;
 
 	struct mutex mutex;
@@ -382,7 +387,7 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 	int i, j, k, l, rval;
 
 	for (i = 0, k = 0; i < va->pdata->subdev_num; i++) {
-		struct ti964_subdev_i2c_info *info =
+		struct ti964_subdev_info *info =
 			&va->pdata->subdev_info[i];
 		struct i2c_adapter *adapter;
 
@@ -390,25 +395,26 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 			break;
 
 		adapter = i2c_get_adapter(info->i2c_adapter_id);
-		va->sub_devs[k] = v4l2_i2c_new_subdev_board(
+		va->sub_devs[k].sd = v4l2_i2c_new_subdev_board(
 			va->sd.v4l2_dev, adapter,
 			&info->board_info, 0);
 		i2c_put_adapter(adapter);
-		if (!va->sub_devs[k]) {
+		if (!va->sub_devs[k].sd) {
 			dev_err(va->sd.dev,
 				"can't create new i2c subdev %d-%04x\n",
 				info->i2c_adapter_id,
 				info->board_info.addr);
 			continue;
 		}
+		va->sub_devs[k].rx_port = info->rx_port;
 
-		for (j = 0; j < va->sub_devs[k]->entity.num_pads; j++) {
-			if (va->sub_devs[k]->entity.pads[j].flags &
+		for (j = 0; j < va->sub_devs[k].sd->entity.num_pads; j++) {
+			if (va->sub_devs[k].sd->entity.pads[j].flags &
 				MEDIA_PAD_FL_SOURCE)
 				break;
 		}
 
-		if (j == va->sub_devs[k]->entity.num_pads) {
+		if (j == va->sub_devs[k].sd->entity.num_pads) {
 			dev_warn(va->sd.dev,
 				"no source pad in subdev %d-%04x\n",
 				info->i2c_adapter_id,
@@ -418,7 +424,7 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 
 		for (l = 0; l < va->nsinks; l++) {
 			rval = media_entity_create_link(
-				&va->sub_devs[k]->entity, j,
+				&va->sub_devs[k].sd->entity, j,
 				&va->sd.entity, l, 0);
 			if (rval) {
 				dev_err(va->sd.dev,
@@ -445,7 +451,7 @@ static int ti964_set_power(struct v4l2_subdev *subdev, int on)
 static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 {
 	struct ti964 *va = to_ti964(subdev);
-	int i, rval;
+	int i, j, rval;
 
 	dev_dbg(va->sd.dev, "TI964 set stream. enable=%d\n", enable);
 	if (v4l2_ctrl_g_ctrl(va->test_pattern)) {
@@ -470,14 +476,26 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
 		struct media_pad *remote_pad =
 			media_entity_remote_pad(&va->pad[i]);
+		unsigned int rx_id;
 		struct v4l2_subdev *sd;
 		u8 bpp;
 
 		if (!remote_pad)
 			continue;
+		/* Find TI964 subdev. */
+		sd = media_entity_to_v4l2_subdev(remote_pad->entity);
+		for (j = 0; j < NR_OF_VA_SINK_PADS; j++) {
+			if (va->sub_devs[j].sd == sd)
+				break;
+		}
+		if (j == NR_OF_VA_SINK_PADS) {
+			dev_err(va->sd.dev, "Cannot find TI964 subdev.\n");
+			continue;
+		}
 		/* Select RX port. */
+		rx_id = va->sub_devs[j].rx_port;
 		rval = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
-				(i << 4) + (1 << i));
+				(rx_id << 4) + (1 << rx_id));
 		if (rval) {
 			dev_err(va->sd.dev, "Failed to select RX port.\n");
 			return rval;
@@ -501,7 +519,6 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 			return rval;
 		}
 		/* Stream on sensor. */
-		sd = media_entity_to_v4l2_subdev(remote_pad->entity);
 		rval = v4l2_subdev_call(sd, video, s_stream, enable);
 		if (rval) {
 			dev_err(va->sd.dev,
@@ -510,7 +527,7 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 			return rval;
 		}
 		/* Enable RX port fordwarding. */
-		rval = ti964_reg_set_bit(va, TI964_FWD_CTL1, i + 4, !enable);
+		rval = ti964_reg_set_bit(va, TI964_FWD_CTL1, rx_id + 4, !enable);
 		if (rval) {
 			dev_err(va->sd.dev,
 				"Failed to forward RX port%d. enable = %d\n",
@@ -799,13 +816,13 @@ static int ti964_remove(struct i2c_client *client)
 	media_entity_cleanup(&va->sd.entity);
 
 	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
-		if (va->sub_devs[i]) {
+		if (va->sub_devs[i].sd) {
 			struct i2c_client *sub_client =
-				v4l2_get_subdevdata(va->sub_devs[i]);
+				v4l2_get_subdevdata(va->sub_devs[i].sd);
 
 			i2c_unregister_device(sub_client);
 		}
-		va->sub_devs[i] = NULL;
+		va->sub_devs[i].sd = NULL;
 	}
 
 	return 0;
