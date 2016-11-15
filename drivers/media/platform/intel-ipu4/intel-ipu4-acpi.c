@@ -249,6 +249,21 @@ static struct ipu4_camera_module_data *add_device_to_list(
 	return cam_device;
 }
 
+static int get_sensor_gpio(struct device *dev, int index)
+{
+	struct gpio_desc *gpiod_gpio;
+	int gpio;
+
+	gpiod_gpio = gpiod_get_index(dev, NULL, index, GPIOD_ASIS);
+	if (IS_ERR(gpiod_gpio)) {
+		dev_err(dev, "No gpio from index %d\n", index);
+		return -ENODEV;
+	}
+	gpio = desc_to_gpio(gpiod_gpio);
+	gpiod_put(gpiod_gpio);
+	return gpio;
+}
+
 static void *get_dsdt_vcm(struct device *dev, char *vcm, char *second)
 {
 	void *pdata = NULL;
@@ -281,7 +296,10 @@ static void *get_dsdt_vcm(struct device *dev, char *vcm, char *second)
 				   GFP_KERNEL);
 		if (dw_pdata) {
 			dw_pdata->sensor_dev = dev;
-			dw_pdata->gpio_xsd = -ENODEV;
+			if (gpiod_count(dev, NULL) > 1)
+				dw_pdata->gpio_xsd = get_sensor_gpio(dev, 1);
+			else
+				dw_pdata->gpio_xsd = -ENODEV;
 		}
 		pdata = dw_pdata;
 		strlcpy(vcm, DW9714_NAME, VCM_BUFFER_SIZE);
@@ -322,21 +340,6 @@ static int get_i2c_info(struct device *dev, struct ipu4_i2c_info *i2c, int size)
 static int match_depend(struct device *dev, void *data)
 {
 	return (dev && dev->fwnode == data) ? 1 : 0;
-}
-
-static int get_sensor_gpio(struct device *dev, int index)
-{
-	struct gpio_desc *gpiod_gpio;
-	int gpio;
-
-	gpiod_gpio = gpiod_get_index(dev, NULL, index, GPIOD_ASIS);
-	if (IS_ERR(gpiod_gpio)) {
-		dev_err(dev, "No gpio from index %d\n", index);
-		return -ENODEV;
-	}
-	gpio = desc_to_gpio(gpiod_gpio);
-	gpiod_put(gpiod_gpio);
-	return gpio;
 }
 
 #define MAX_CONSUMERS 1
