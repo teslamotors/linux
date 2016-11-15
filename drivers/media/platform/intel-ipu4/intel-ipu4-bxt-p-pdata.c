@@ -309,17 +309,17 @@ static struct intel_ipu4_isys_subdev_info video_aggre_b_stub_sd = {
 #endif
 
 #ifdef CONFIG_INTEL_IPU4_OV10635
-#define OV10635_LANES           4
-#define OV10635A_I2C_ADDRESS    0x61
-#define OV10635B_I2C_ADDRESS    0x62
-#define OV10635C_I2C_ADDRESS    0x63
-#define OV10635D_I2C_ADDRESS    0x64
+#define OV10635_LANES		4
+#define OV10635A_I2C_ADDRESS	0x61
+#define OV10635B_I2C_ADDRESS	0x62
+#define OV10635C_I2C_ADDRESS	0x63
+#define OV10635D_I2C_ADDRESS	0x64
 
 static struct crlmodule_platform_data ov10635_pdata = {
-        .lanes = OV10635_LANES,
-        .ext_clk = 12000000,
-        .op_sys_clock = (uint64_t []){ 392000000 },
-        .module_name = "OV10635",
+	.lanes = OV10635_LANES,
+	.ext_clk = 12000000,
+	.op_sys_clock = (uint64_t []){ 392000000 },
+	.module_name = "OV10635",
 	.id_string = "0xa6 0x35"
 };
 #endif
@@ -427,6 +427,7 @@ struct ti964_subdev_i2c_info ti964_subdevs[] = {
 #endif
 };
 
+
 struct ti964_subdev_i2c_info ti964_subdevs_2[] = {
 #ifdef CONFIG_INTEL_IPU4_OV10635
 	{
@@ -500,7 +501,6 @@ static struct intel_ipu4_isys_subdev_info ti964_sd_2 = {
 	}
 };
 #endif
-
 
 /*
  * Map buttress output sensor clocks to sensors -
