@@ -798,6 +798,9 @@ static int intel_ipu4_mmu_probe(struct intel_ipu4_bus_device *adev)
 	dev_info(&adev->dev, "MMU: %d, allocated page for trash: 0x%p\n",
 			     mmu->mmid, mmu->trash_page);
 
+	pm_runtime_allow(&adev->dev);
+	pm_runtime_enable(&adev->dev);
+
 	/*
 	 * FIXME: We can't unload this --- bus_set_iommu() will
 	 * register a notifier which must stay until the devices are

@@ -392,9 +392,6 @@ struct intel_ipu4_bus_device *intel_ipu4_bus_add_device(
 		return ERR_PTR(rval);
 	}
 
-	pm_runtime_allow(&adev->dev);
-	pm_runtime_enable(&adev->dev);
-
 	mutex_lock(&intel_ipu4_bus_mutex);
 	list_add(&adev->list, &isp->devices);
 	mutex_unlock(&intel_ipu4_bus_mutex);

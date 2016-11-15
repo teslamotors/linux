@@ -1571,6 +1571,9 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 			   PM_QOS_DEFAULT_VALUE);
 	alloc_fw_msg_buffers(isys, 20);
 
+	pm_runtime_allow(&adev->dev);
+	pm_runtime_enable(&adev->dev);
+
 	rval = isys_register_devices(isys);
 	if (rval)
 		goto out_remove_pkg_dir_shared_buffer;

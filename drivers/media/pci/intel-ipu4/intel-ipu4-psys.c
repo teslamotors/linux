@@ -2428,6 +2428,9 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 	strlcpy(caps.dev_model, intel_ipu4_media_ctl_dev_model(isp),
 		sizeof(caps.dev_model));
 
+	pm_runtime_allow(&adev->dev);
+	pm_runtime_enable(&adev->dev);
+
 	pm_runtime_set_autosuspend_delay(&psys->adev->dev,
 					 INTEL_IPU4_PSYS_AUTOSUSPEND_DELAY);
 	pm_runtime_use_autosuspend(&psys->adev->dev);
