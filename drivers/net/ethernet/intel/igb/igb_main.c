@@ -3248,6 +3248,11 @@ static int igb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		}
 	}
 	pm_runtime_put_noidle(&pdev->dev);
+
+	/* Initialize run time pm parameters */
+	pm_suspend_ignore_children(&pdev->dev, 1);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, IGB_AUTOSUSPEND_DELAY_MS);
+	pm_runtime_use_autosuspend(&pdev->dev);
 	return 0;
 
 err_register:
@@ -3754,8 +3759,11 @@ static int __igb_open(struct net_device *netdev, bool resuming)
 
 	netif_tx_start_all_queues(netdev);
 
-	if (!resuming)
-		pm_runtime_put(&pdev->dev);
+	/* schedule runtime suspend from open */
+	if (!resuming) {
+		pm_runtime_mark_last_busy(&pdev->dev);
+		pm_runtime_put_autosuspend(&pdev->dev);
+	}
 
 	/* start the watchdog. */
 	hw->mac.get_link_status = 1;
