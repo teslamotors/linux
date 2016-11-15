@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_TERMINAL_DEFS_H__
-#define __IA_CSS_TERMINAL_DEFS_H__
+#ifndef __IA_CSS_TERMINAL_DEFS_H
+#define __IA_CSS_TERMINAL_DEFS_H
 
 
 #include "type_support.h"
@@ -84,4 +84,4 @@ typedef enum ia_css_dimension {
 
 #define IA_CSS_N_COMMAND_COUNT (4)
 
-#endif /*__IA_CSS_TERMINAL_DEFS_H__*/
+#endif /* __IA_CSS_TERMINAL_DEFS_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _BUFFER_TYPE_
-#define _BUFFER_TYPE_
+#ifndef __BUFFER_TYPE_H
+#define __BUFFER_TYPE_H
 
 /* portable access to buffers in DDR */
 
@@ -26,4 +26,4 @@ typedef unsigned int buffer_address;
 typedef host_virtual_address_t buffer_address;
 #endif
 
-#endif
+#endif /* __BUFFER_TYPE_H */

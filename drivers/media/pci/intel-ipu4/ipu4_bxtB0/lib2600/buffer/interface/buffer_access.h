@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __BUFFER_ACCESS_H_INCLUDED__
-#define __BUFFER_ACCESS_H_INCLUDED__
+#ifndef __BUFFER_ACCESS_H
+#define __BUFFER_ACCESS_H
 
 #include "buffer_type.h"
 /* #def to keep consistent the buffer load interfaces for host and css */
@@ -33,4 +33,4 @@ buffer_store(
 	unsigned int size,
 	unsigned int mm_id);
 
-#endif /* __BUFFER_ACCESS_H_INCLUDED__ */
+#endif /* __BUFFER_ACCESS_H */

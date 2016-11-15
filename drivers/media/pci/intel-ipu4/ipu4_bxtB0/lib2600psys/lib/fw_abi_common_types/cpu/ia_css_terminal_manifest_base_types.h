@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_TERMINAL_MANIFEST_BASE_TYPES_H__
-#define __IA_CSS_TERMINAL_MANIFEST_BASE_TYPES_H__
+#ifndef __IA_CSS_TERMINAL_MANIFEST_BASE_TYPES_H
+#define __IA_CSS_TERMINAL_MANIFEST_BASE_TYPES_H
 
 #include "ia_css_terminal_defs.h"
 
@@ -34,7 +34,10 @@ struct ia_css_terminal_manifest_s {
 	uint8_t						padding[N_PADDING_UINT8_IN_TERMINAL_MAN_STRUCT];
 };
 
+typedef struct ia_css_terminal_manifest_s
+	ia_css_terminal_manifest_t;
+
 /* ==================== Base Terminal Manifest - END ==================== */
 
-#endif /* __IA_CSS_TERMINAL_MANIFEST_BASE_TYPES_H__ */
+#endif /* __IA_CSS_TERMINAL_MANIFEST_BASE_TYPES_H */
 

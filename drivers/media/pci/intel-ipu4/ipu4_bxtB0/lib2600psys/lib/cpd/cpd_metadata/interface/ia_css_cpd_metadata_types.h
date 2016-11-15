@@ -12,8 +12,8 @@
 * more details.
  */
 
-#ifndef __IA_CSS_CPD_METADATA_TYPES_H__
-#define __IA_CSS_CPD_METADATA_TYPES_H__
+#ifndef __IA_CSS_CPD_METADATA_TYPES_H
+#define __IA_CSS_CPD_METADATA_TYPES_H
 
 /** @file
  * This file contains data structures related to generation of
@@ -108,4 +108,4 @@ typedef struct {
 	ia_css_cpd_metadata_component_t *components;
 } ia_css_cpd_metadata_desc_t;
 
-#endif /* __IA_CSS_CPD_METADATA_TYPES_H__ */
+#endif /* __IA_CSS_CPD_METADATA_TYPES_H */

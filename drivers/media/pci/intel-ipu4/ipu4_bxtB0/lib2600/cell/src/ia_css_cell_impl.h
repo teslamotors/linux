@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_CELL_IMPL_H_
-#define _IA_CSS_CELL_IMPL_H_
+#ifndef __IA_CSS_CELL_IMPL_H
+#define __IA_CSS_CELL_IMPL_H
 
 #include "ia_css_cell.h"
 
@@ -269,4 +269,4 @@ ia_css_cell_set_master_base_address(unsigned int ssid, unsigned int cell,
 	}
 }
 
-#endif
+#endif /* __IA_CSS_CELL_IMPL_H */

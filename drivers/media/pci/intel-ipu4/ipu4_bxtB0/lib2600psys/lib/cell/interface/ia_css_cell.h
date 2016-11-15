@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_CELL_H_
-#define _IA_CSS_CELL_H_
+#ifndef __IA_CSS_CELL_H
+#define __IA_CSS_CELL_H
 
 #include "storage_class.h"
 #include "type_support.h"
@@ -109,4 +109,4 @@ ia_css_cell_wait(unsigned int ssid, unsigned int cell_id);
 /* include inline implementation */
 #include "ia_css_cell_impl.h"
 
-#endif /* _IA_CSS_CELL_H_ */
+#endif /* __IA_CSS_CELL_H */

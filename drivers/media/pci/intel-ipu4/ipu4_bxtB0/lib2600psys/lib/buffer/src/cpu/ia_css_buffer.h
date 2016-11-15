@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __BUFFER_H__
-#define __BUFFER_H__
+#ifndef __IA_CSS_BUFFER_H
+#define __IA_CSS_BUFFER_H
 
 /* workaround: needed because <vied/shared_memory_map.h> uses size_t */
 #include "type_support.h"
@@ -55,4 +55,4 @@ ia_css_buffer_free(
 	vied_memory_t mid,
 	ia_css_buffer_t b);
 
-#endif /*__BUFFER_H__*/
+#endif /*__IA_CSS_BUFFER_H */

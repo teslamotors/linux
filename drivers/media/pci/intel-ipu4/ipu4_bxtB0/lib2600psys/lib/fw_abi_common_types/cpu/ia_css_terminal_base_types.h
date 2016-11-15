@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_TERMINAL_BASE_TYPES_H__
-#define __IA_CSS_TERMINAL_BASE_TYPES_H__
+#ifndef __IA_CSS_TERMINAL_BASE_TYPES_H
+#define __IA_CSS_TERMINAL_BASE_TYPES_H
 
 
 #include "type_support.h"
@@ -39,5 +39,5 @@ struct ia_css_terminal_s {						/**< Base terminal */
 };
 /* ==================== Base Terminal - END ==================== */
 
-#endif /* __IA_CSS_TERMINAL_BASE_TYPES_H__ */
+#endif /* __IA_CSS_TERMINAL_BASE_TYPES_H */
 

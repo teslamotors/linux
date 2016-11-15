@@ -12,8 +12,8 @@
 * more details.
  */
 
-#ifndef __IA_CSS_CPD_COMPONENT_TYPES_H__
-#define __IA_CSS_CPD_COMPONENT_TYPES_H__
+#ifndef __IA_CSS_CPD_COMPONENT_TYPES_H
+#define __IA_CSS_CPD_COMPONENT_TYPES_H
 
 /** @file
  * This file contains datastructure related to generation of CPD file
@@ -87,4 +87,4 @@ typedef struct {
 	uint32_t	rsvd; /**< Must be 0 */
 } ia_css_directory_entry_component_t;
 
-#endif /* __IA_CSS_CPD_COMPONENT_TYPES_H__ */
+#endif /* __IA_CSS_CPD_COMPONENT_TYPES_H */

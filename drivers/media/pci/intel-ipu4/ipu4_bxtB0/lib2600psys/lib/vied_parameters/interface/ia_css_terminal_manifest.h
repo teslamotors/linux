@@ -17,35 +17,7 @@
 
 #include "type_support.h"
 #include "ia_css_param_storage_class.h"
-
-typedef struct ia_css_program_terminal_manifest_s
-	ia_css_program_terminal_manifest_t;
-typedef struct ia_css_fragment_param_manifest_section_desc_s
-	ia_css_fragment_param_manifest_section_desc_t;
-typedef struct ia_css_kernel_fragment_sequencer_info_manifest_desc_s
-	ia_css_kernel_fragment_sequencer_info_manifest_desc_t;
-
-typedef struct ia_css_sliced_param_terminal_manifest_s
-	ia_css_sliced_param_terminal_manifest_t;
-typedef struct ia_css_sliced_param_manifest_section_desc_s
-	ia_css_sliced_param_manifest_section_desc_t;
-
-typedef struct ia_css_spatial_param_terminal_manifest_s
-	ia_css_spatial_param_terminal_manifest_t;
-typedef struct ia_css_frame_grid_manifest_desc_s
-	ia_css_frame_grid_manifest_desc_t;
-typedef struct ia_css_frame_grid_param_manifest_section_desc_s
-	ia_css_frame_grid_param_manifest_section_desc_t;
-typedef struct ia_css_fragment_grid_manifest_desc_s
-	ia_css_fragment_grid_manifest_desc_t;
-
-typedef struct ia_css_param_terminal_manifest_s
-	ia_css_param_terminal_manifest_t;
-typedef struct ia_css_param_manifest_section_desc_s
-	ia_css_param_manifest_section_desc_t;
-
-typedef struct ia_css_terminal_manifest_s
-	ia_css_terminal_manifest_t;
+#include "ia_css_terminal_manifest_types.h"
 
 IA_CSS_PARAMETERS_STORAGE_CLASS_H
 unsigned int ia_css_param_terminal_manifest_get_size(

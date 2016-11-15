@@ -17,7 +17,6 @@
 
 
 #include "ia_css_terminal_defs.h"
-#include "ia_css_terminal_manifest.h"
 #include "type_support.h"
 #include "ia_css_base_types.h"
 #include "ia_css_terminal_manifest_base_types.h"
@@ -38,6 +37,10 @@ struct ia_css_param_manifest_section_desc_s {
 	/* Maximum size of the related parameter region */
 	uint32_t max_mem_size;
 };
+
+typedef struct ia_css_param_manifest_section_desc_s
+	ia_css_param_manifest_section_desc_t;
+
 
 #define N_PADDING_UINT8_IN_PARAM_TERMINAL_MAN_STRUCT 4
 #define SIZE_OF_PARAM_TERMINAL_MANIFEST_STRUCT_IN_BITS \
@@ -62,6 +65,9 @@ struct ia_css_param_terminal_manifest_s {
 	/* align to 64 */
 	uint8_t padding[N_PADDING_UINT8_IN_PARAM_TERMINAL_MAN_STRUCT];
 };
+
+typedef struct ia_css_param_terminal_manifest_s
+	ia_css_param_terminal_manifest_t;
 /* ================= Cached Param Terminal Manifest - End ================ */
 
 
@@ -81,6 +87,9 @@ struct ia_css_fragment_grid_manifest_desc_s {
 	 */
 	uint16_t max_fragment_grid_dimension[IA_CSS_N_DATA_DIMENSION];
 };
+
+typedef struct ia_css_fragment_grid_manifest_desc_s
+	ia_css_fragment_grid_manifest_desc_t;
 
 #define SIZE_OF_FRAME_GRID_PARAM_MAN_SEC_STRUCT_IN_BITS \
 	(4*IA_CSS_UINT32_T_BITS)
@@ -102,6 +111,9 @@ struct ia_css_frame_grid_param_manifest_section_desc_s {
 	uint32_t max_mem_size;
 };
 
+typedef struct ia_css_frame_grid_param_manifest_section_desc_s
+	ia_css_frame_grid_param_manifest_section_desc_t;
+
 #define SIZE_OF_FRAME_GRID_MAN_STRUCT_IN_BITS \
 	((IA_CSS_N_DATA_DIMENSION*IA_CSS_UINT16_T_BITS) \
 	+ (IA_CSS_N_DATA_DIMENSION*IA_CSS_UINT16_T_BITS))
@@ -116,6 +128,9 @@ struct ia_css_frame_grid_manifest_desc_s {
 	 */
 	uint16_t max_frame_grid_dimension[IA_CSS_N_DATA_DIMENSION];
 };
+
+typedef struct ia_css_frame_grid_manifest_desc_s
+	ia_css_frame_grid_manifest_desc_t;
 
 #define N_PADDING_UINT8_IN_SPATIAL_PARAM_TERM_MAN_STRUCT 4
 #define SIZE_OF_SPATIAL_PARAM_TERM_MAN_STRUCT_IN_BITS \
@@ -161,6 +176,10 @@ struct ia_css_spatial_param_terminal_manifest_s {
 	/* align to 64 */
 	uint8_t padding[N_PADDING_UINT8_IN_SPATIAL_PARAM_TERM_MAN_STRUCT];
 };
+
+typedef struct ia_css_spatial_param_terminal_manifest_s
+	ia_css_spatial_param_terminal_manifest_t;
+
 /* ================= Spatial Param Terminal Manifest - END ================ */
 
 /* ================= Sliced Param Terminal Manifest - START =============== */
@@ -185,6 +204,9 @@ struct ia_css_sliced_param_manifest_section_desc_s {
 	uint8_t padding[N_PADDING_UINT8_IN_SLICED_TERMINAL_MAN_SECTION_STRUCT];
 };
 
+typedef struct ia_css_sliced_param_manifest_section_desc_s
+	ia_css_sliced_param_manifest_section_desc_t;
+
 #define SIZE_OF_SLICED_TERMINAL_MANIFEST_STRUCT_IN_BITS \
 	((SIZE_OF_TERMINAL_MANIFEST_STRUCT_IN_BITS) \
 	+ (IA_CSS_UINT32_T_BITS) \
@@ -207,6 +229,10 @@ struct ia_css_sliced_param_terminal_manifest_s {
 	 */
 	uint16_t sliced_param_section_offset;
 };
+
+typedef struct ia_css_sliced_param_terminal_manifest_s
+	ia_css_sliced_param_terminal_manifest_t;
+
 /* ================= Slice Param Terminal Manifest - End =============== */
 
 /* ================= Program Terminal Manifest - START ================= */
@@ -227,6 +253,9 @@ struct ia_css_fragment_param_manifest_section_desc_s {
 	/* Maximum size of the related parameter region */
 	uint32_t max_mem_size;
 };
+
+typedef struct ia_css_fragment_param_manifest_section_desc_s
+	ia_css_fragment_param_manifest_section_desc_t;
 
 #define SIZE_OF_KERNEL_FRAG_SEQ_INFO_MAN_STRUCT_IN_BITS \
 	(10*IA_CSS_N_DATA_DIMENSION*IA_CSS_UINT16_T_BITS)
@@ -260,6 +289,9 @@ struct ia_css_kernel_fragment_sequencer_info_manifest_desc_s {
 	max_fragment_grid_overlay_pixel_dimension[IA_CSS_N_DATA_DIMENSION];
 };
 
+typedef struct ia_css_kernel_fragment_sequencer_info_manifest_desc_s
+	ia_css_kernel_fragment_sequencer_info_manifest_desc_t;
+
 #define N_PADDING_UINT8_IN_PROGRAM_TERM_MAN_STRUCT 2
 #define SIZE_OF_PROG_TERM_MAN_STRUCT_IN_BITS \
 	((SIZE_OF_TERMINAL_MANIFEST_STRUCT_IN_BITS) \
@@ -282,6 +314,10 @@ struct ia_css_program_terminal_manifest_s {
 	/* align to 64 */
 	uint8_t padding[N_PADDING_UINT8_IN_PROGRAM_TERM_MAN_STRUCT];
 };
+
+typedef struct ia_css_program_terminal_manifest_s
+	ia_css_program_terminal_manifest_t;
+
 /* ==================== Program Terminal Manifest - END ==================== */
 
 #endif /*__IA_CSS_TERMINAL_MANIFEST_TYPES_H__*/

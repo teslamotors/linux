@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_SHARED_BUFFER_H__
-#define __IA_CSS_SHARED_BUFFER_H__
+#ifndef __IA_CSS_SHARED_BUFFER_H
+#define __IA_CSS_SHARED_BUFFER_H
 
 /* Shared Buffers */
 /* A CSS shared buffer is a buffer in DDR that can be read and written by the
@@ -29,4 +29,4 @@ typedef struct ia_css_buffer_s *ia_css_shared_buffer;
 typedef void *ia_css_shared_buffer_cpu_address;
 typedef ia_css_buffer_address	ia_css_shared_buffer_css_address;
 
-#endif /*__IA_CSS_SHARED_BUFFER_H__*/
+#endif /*__IA_CSS_SHARED_BUFFER_H*/

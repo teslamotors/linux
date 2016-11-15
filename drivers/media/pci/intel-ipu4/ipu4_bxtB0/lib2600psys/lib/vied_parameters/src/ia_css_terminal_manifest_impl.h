@@ -16,7 +16,6 @@
 #define __IA_CSS_TERMINAL_MANIFEST_IMPL_H__
 
 #include "ia_css_terminal_manifest.h"
-#include "ia_css_terminal_manifest_types.h"
 #include "error_support.h"
 #include "assert_support.h"
 #include "storage_class.h"

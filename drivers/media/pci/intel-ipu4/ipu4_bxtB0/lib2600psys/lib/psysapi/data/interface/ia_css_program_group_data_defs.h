@@ -139,9 +139,6 @@ typedef enum ia_css_frame_format_type {
 	/* 16 bit YUV 420, YYUVYY vector interleaved */
 	IA_CSS_DATA_FORMAT_YYUVYY_VECTORIZED,
 
-	/* 8 bit packed NV12 planar format. Data is stored in 2 planes, Y and UV */
-	IA_CSS_DATA_FORMAT_NV12_PACKED,
-
 	IA_CSS_N_FRAME_FORMAT_TYPES
 } ia_css_frame_format_type_t;
 

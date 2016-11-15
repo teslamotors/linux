@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_INPUT_BUFFER_H__
-#define __IA_CSS_INPUT_BUFFER_H__
+#ifndef __IA_CSS_INPUT_BUFFER_H
+#define __IA_CSS_INPUT_BUFFER_H
 
 
 /* Input Buffers */
@@ -48,5 +48,5 @@ typedef void *ia_css_input_buffer_cpu_address; /* CPU virtual address */
 /* CSS virtual address */
 typedef ia_css_buffer_address ia_css_input_buffer_css_address;
 
-#endif /* __IA_CSS_INPUT_BUFFER_H__ */
+#endif /* __IA_CSS_INPUT_BUFFER_H */
 

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_BUFFER_H__
-#define __IA_CSS_BUFFER_H__
+#ifndef __IA_CSS_BUFFER_ADDRESS_H
+#define __IA_CSS_BUFFER_ADDRESS_H
 
 #include "type_support.h"
 
@@ -21,5 +21,5 @@ typedef uint32_t ia_css_buffer_address; /* CSS virtual address */
 
 #define ia_css_buffer_address_null ((ia_css_buffer_address)0)
 
-#endif /* __IA_CSS_BUFFER_H__ */
+#endif /* __IA_CSS_BUFFER_ADDRESS_H */
 

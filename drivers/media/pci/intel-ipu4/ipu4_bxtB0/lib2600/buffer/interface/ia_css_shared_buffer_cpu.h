@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_SHARED_BUFFER_CPU_H__
-#define __IA_CSS_SHARED_BUFFER_CPU_H__
+#ifndef __IA_CSS_SHARED_BUFFER_CPU_H
+#define __IA_CSS_SHARED_BUFFER_CPU_H
 
 #include "vied/shared_memory_map.h"
 #include "ia_css_shared_buffer.h"
@@ -48,4 +48,4 @@ ia_css_shared_buffer_css_update(vied_memory_t mid, ia_css_shared_buffer b);
 ia_css_shared_buffer
 ia_css_shared_buffer_cpu_update(vied_memory_t mid, ia_css_shared_buffer b);
 
-#endif /*__IA_CSS_SHARED_BUFFER_CPU_H__*/
+#endif /*__IA_CSS_SHARED_BUFFER_CPU_H */

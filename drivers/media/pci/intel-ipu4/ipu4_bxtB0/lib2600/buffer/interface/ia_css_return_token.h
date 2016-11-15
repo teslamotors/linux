@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_RETURN_TOKEN__
-#define __IA_CSS_RETURN_TOKEN__
+#ifndef __IA_CSS_RETURN_TOKEN_H
+#define __IA_CSS_RETURN_TOKEN_H
 
 #include "storage_class.h"
 #include "assert_support.h"	/* For CT_ASSERT */
@@ -51,4 +51,4 @@ STORAGE_CLASS_INLINE void _check_return_token_size(void)
 	CT_ASSERT(sizeof(ia_css_return_token) == 8);
 }
 
-#endif /* __IA_CSS_RETURN_TOKEN__ */
+#endif /* __IA_CSS_RETURN_TOKEN_H */

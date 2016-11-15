@@ -12,13 +12,13 @@
 * more details.
 */
 
-#ifndef __IA_CSS_BASE_TYPES_H__
-#define __IA_CSS_BASE_TYPES_H__
+#ifndef __IA_CSS_BASE_TYPES_H
+#define __IA_CSS_BASE_TYPES_H
 
 #include "type_support.h"
 
 #define VIED_VADDRESS_BITS				32
 typedef uint32_t vied_vaddress_t;
 
-#endif /* __IA_CSS_BASE_TYPES_H__ */
+#endif /* __IA_CSS_BASE_TYPES_H */
 
