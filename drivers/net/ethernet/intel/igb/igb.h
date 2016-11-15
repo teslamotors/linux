@@ -43,6 +43,9 @@ struct igb_adapter;
 
 #define E1000_PCS_CFG_IGN_SD	1
 
+/* Runtime PM defines */
+#define IGB_AUTOSUSPEND_DELAY_MS	1500
+
 /* Interrupt defines */
 #define IGB_START_ITR		648 /* ~6000 ints/sec */
 #define IGB_4K_ITR		980
