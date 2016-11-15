@@ -665,13 +665,8 @@ static int ti964_init(struct ti964 *va)
 	int i, rval;
 	unsigned int val;
 
-	if (devm_gpio_request_one(va->sd.dev, reset_gpio, 0,
-				  "ti964 reset") != 0) {
-		dev_err(va->sd.dev, "Unable to acquire gpio %d\n", reset_gpio);
-		return -ENODEV;
-	}
 	gpio_set_value(reset_gpio, 1);
-	dev_dbg(va->sd.dev, "Setting gpio %d to 1.\n", reset_gpio);
+	dev_dbg(va->sd.dev, "Setting reset gpio %d to 1.\n", reset_gpio);
 
 	rval = regmap_read(va->regmap8, TI964_DEVID, &val);
 	if (rval) {
@@ -773,6 +768,13 @@ static int ti964_probe(struct i2c_client *client,
 		return rval;
 	}
 
+	if (devm_gpio_request_one(va->sd.dev, va->pdata->reset_gpio, 0,
+				  "ti964 reset") != 0) {
+		dev_err(va->sd.dev, "Unable to acquire gpio %d\n",
+			va->pdata->reset_gpio);
+		return -ENODEV;
+	}
+
 	rval = ti964_init(va);
 	if (rval) {
 		dev_err(&client->dev, "Failed to init TI964!\n");
@@ -809,15 +811,40 @@ static int ti964_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int ti964_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static int ti964_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
+	struct ti964 *va = to_ti964(subdev);
+
+	return ti964_init(va);
+}
+#else
+#define ti964_suspend	NULL
+#define ti964_resume	NULL
+#endif /* CONFIG_PM */
+
 static const struct i2c_device_id ti964_id_table[] = {
 	{ TI964_NAME, 0 },
 	{ },
 };
 MODULE_DEVICE_TABLE(i2c, ti964_id_table);
 
+static const struct dev_pm_ops ti964_pm_ops = {
+	.suspend = ti964_suspend,
+	.resume = ti964_resume,
+};
+
 static struct i2c_driver ti964_i2c_driver = {
 	.driver = {
 		.name = TI964_NAME,
+		.pm = &ti964_pm_ops,
 	},
 	.probe	= ti964_probe,
 	.remove	= ti964_remove,
