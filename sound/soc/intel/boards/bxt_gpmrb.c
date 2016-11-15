@@ -209,6 +209,47 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.nonatomic = 1,
 		.dynamic = 1,
 	},
+	/* Trace Buffer & Probing DAI links */
+	{
+		.name = "Bxt Trace Buffer0",
+		.stream_name = "Core 0 Trace Buffer",
+		.cpu_dai_name = "TraceBuffer0 Pin",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "0000:00:0e.0",
+		.capture_only = true,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = "Bxt Trace Buffer1",
+		.stream_name = "Core 1 Trace Buffer",
+		.cpu_dai_name = "TraceBuffer1 Pin",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "0000:00:0e.0",
+		.capture_only = true,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = "Bxt Compress Probe playback",
+		.stream_name = "Probe Playback",
+		.cpu_dai_name = "Compress Probe0 Pin",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "0000:00:0e.0",
+		.init = NULL,
+		.nonatomic = 1,
+	},
+	{
+		.name = "Bxt Compress Probe capture",
+		.stream_name = "Probe Capture",
+		.cpu_dai_name = "Compress Probe1 Pin",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "0000:00:0e.0",
+		.init = NULL,
+		.nonatomic = 1,
+	},
 	/* Back End DAI links */
 	{
 		/* SSP0 - BT */
