@@ -2187,11 +2187,15 @@ void igb_down(struct igb_adapter *adapter)
 	struct e1000_hw *hw = &adapter->hw;
 	u32 tctl, rctl;
 	int i;
-
+	struct pci_dev *pdev = adapter->pdev;
 	/* signal that we're down so the interrupt handler does not
 	 * reschedule our watchdog timer
 	 */
-	set_bit(__IGB_DOWN, &adapter->state);
+	/* While in suspend state the i210 FW is not doing Link Down
+	 * so no need to set state to __IGB_DOWN
+	 */
+	if (!(pdev->dev.power.runtime_status == RPM_SUSPENDING))
+		set_bit(__IGB_DOWN, &adapter->state);
 
 	/* disable receives in the hardware */
 	rctl = rd32(E1000_RCTL);
@@ -2200,8 +2204,14 @@ void igb_down(struct igb_adapter *adapter)
 
 	igb_nfc_filter_exit(adapter);
 
-	netif_carrier_off(netdev);
-	netif_tx_stop_all_queues(netdev);
+	/* for supporting runtime pm based on activity monitoring
+	 * do not stop the queue so that apps can continue using
+	 * the net device as they are not aware of runtime suspend
+	 */
+	if (!(pdev->dev.power.runtime_status == RPM_SUSPENDING)) {
+		netif_carrier_off(netdev);
+		netif_tx_stop_all_queues(netdev);
+	}
 
 	/* disable transmits in the hardware */
 	tctl = rd32(E1000_TCTL);
@@ -2213,7 +2223,11 @@ void igb_down(struct igb_adapter *adapter)
 
 	igb_irq_disable(adapter);
 
-	adapter->flags &= ~IGB_FLAG_NEED_LINK_UPDATE;
+	/* While in suspend state the i210 FW is not doing Link Down
+	 * so no need to clear flag IGB_FLAG_NEED_LINK_UPDATE
+	 */
+	if (!(pdev->dev.power.runtime_status == RPM_SUSPENDING))
+		adapter->flags &= ~IGB_FLAG_NEED_LINK_UPDATE;
 
 	for (i = 0; i < adapter->num_q_vectors; i++) {
 		if (adapter->q_vector[i]) {
@@ -8527,7 +8541,12 @@ static int __igb_shutdown(struct pci_dev *pdev, bool *enable_wake,
 	bool wake;
 
 	rtnl_lock();
-	netif_device_detach(netdev);
+	/* For supporting runtime pm based on activity monitoring
+	 * do not disconnect net device from stack while entering
+	 * runtime suspend
+	 */
+	if (!runtime)
+		netif_device_detach(netdev);
 
 	if (netif_running(netdev))
 		__igb_close(netdev, true);
