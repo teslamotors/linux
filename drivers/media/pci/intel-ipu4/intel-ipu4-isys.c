@@ -887,8 +887,12 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
 		if (rval)
 			goto fail;
 
-		isys->isr_csi2_bits |=
+		if (is_intel_ipu4_hw_bxt_b0(isys->adev->isp))
+			isys->isr_csi2_bits |=
 				INTEL_IPU4_ISYS_UNISPART_IRQ_CSI2_B0(i);
+		else
+			isys->isr_csi2_bits |=
+				INTEL_IPU5_ISYS_UNISPART_IRQ_CSI2_A0(i);
 	}
 
 	isys->tpg = devm_kcalloc(&isys->adev->dev, tpg->ntpgs,
@@ -1115,7 +1119,7 @@ static void isys_unregister_devices(struct intel_ipu4_isys *isys)
 #endif
 }
 
-static void isys_setup_hw(struct intel_ipu4_isys *isys)
+static void isys_setup_hw_ipu4(struct intel_ipu4_isys *isys)
 {
 	void __iomem *base = isys->pdata->base;
 	u32 irqs;
@@ -1144,6 +1148,46 @@ static void isys_setup_hw(struct intel_ipu4_isys *isys)
 	for (i = 0; i < isys->pdata->ipdata->hw_variant.cdc_fifos; i++)
 		writel(isys->pdata->ipdata->hw_variant.cdc_fifo_threshold[i],
 		       base + INTEL_IPU4_REG_ISYS_CDC_THRESHOLD(i));
+}
+
+static void isys_setup_hw_ipu5(struct intel_ipu4_isys *isys)
+{
+	void __iomem *base = isys->pdata->base;
+	u32 irqs = 0;
+	unsigned int i, j, k;
+
+	/*
+	* TODO: set sw_irq bit to enable isr
+	*/
+	/* Enable irqs for all MIPI busses */
+	for (i = 0; i < INTEL_IPU5_ISYS_COMBO_PHY_NUM; i++)
+		for (j = 0; j < INTEL_IPU5_CSI_PIPE_NUM_PER_TOP; j++)
+			for (k = 0; k < INTEL_IPU5_CSI_IRQ_NUM_PER_PIPE; k++)
+				irqs |= INTEL_IPU5_ISYS_CSI_TOP_IRQ_A0(k +
+				(i * INTEL_IPU5_CSI_PIPE_NUM_PER_TOP + j) *
+				INTEL_IPU5_CSI_IRQ_NUM_PER_PIPE);
+
+	writel(irqs, base + INTEL_IPU5_REG_ISYS_CSI_TOP_IRQ_EDGE);
+	writel(irqs, base + INTEL_IPU5_REG_ISYS_CSI_TOP_IRQ_LEVEL_NOT_PULSE);
+	writel(irqs, base + INTEL_IPU5_REG_ISYS_CSI_TOP_IRQ_CLEAR);
+	writel(irqs, base + INTEL_IPU5_REG_ISYS_CSI_TOP_IRQ_MASK);
+	writel(irqs, base + INTEL_IPU5_REG_ISYS_CSI_TOP_IRQ_ENABLE);
+
+	writel(0, base + INTEL_IPU5_REG_ISYS_UNISPART_SW_IRQ_REG);
+	writel(0, base + INTEL_IPU5_REG_ISYS_UNISPART_SW_IRQ_MUX_REG);
+
+	/* Write CDC FIFO threshold values for isys */
+	for (i = 0; i < isys->pdata->ipdata->hw_variant.cdc_fifos; i++)
+		writel(isys->pdata->ipdata->hw_variant.cdc_fifo_threshold[i],
+		base + INTEL_IPU5_REG_ISYS_CDC_THRESHOLD(i));
+}
+
+static void isys_setup_hw(struct intel_ipu4_isys *isys)
+{
+	if (is_intel_ipu4_hw_bxt_b0(isys->adev->isp))
+		isys_setup_hw_ipu4(isys);
+	else
+		isys_setup_hw_ipu5(isys);
 }
 
 #ifdef CONFIG_PM
@@ -1772,17 +1816,11 @@ leave:
 	return 0;
 }
 
-static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
+static void isys_isr_ipu4(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
 	void __iomem *base = isys->pdata->base;
 	u32 status;
-
-	spin_lock(&isys->power_lock);
-	if (!isys->power) {
-		spin_unlock(&isys->power_lock);
-		return IRQ_NONE;
-	}
 
 	status = readl(isys->pdata->base +
 		       INTEL_IPU4_REG_ISYS_UNISPART_IRQ_STATUS);
@@ -1824,6 +1862,79 @@ static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
 	} while (status & (isys->isr_csi2_bits
 			   | INTEL_IPU4_ISYS_UNISPART_IRQ_SW) &&
 		 !isys->adev->isp->flr_done);
+}
+
+static void isys_isr_ipu5(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+	void __iomem *base = isys->pdata->base;
+	u32 status_csi, status_sw;
+
+	status_csi = readl(isys->pdata->base +
+		       INTEL_IPU5_REG_ISYS_CSI_TOP_IRQ_STATUS);
+	status_sw = readl(isys->pdata->base +
+		       INTEL_IPU5_REG_ISYS_UNISPART_IRQ_STATUS);
+
+	do {
+		writel(status_csi, isys->pdata->base +
+		       INTEL_IPU5_REG_ISYS_CSI_TOP_IRQ_CLEAR);
+		writel(INTEL_IPU5_ISYS_UNISPART_IRQ_SW,
+			isys->pdata->base +
+			INTEL_IPU5_REG_ISYS_UNISPART_IRQ_CLEAR);
+
+		if (isys->isr_csi2_bits & status_csi) {
+			unsigned int i;
+
+			for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
+				if (status_csi &
+					INTEL_IPU5_ISYS_UNISPART_IRQ_CSI2_A0(i))
+					intel_ipu_isys_csi2_isr(
+						&isys->csi2[i]);
+			}
+		}
+
+		writel(0, base + INTEL_IPU5_REG_ISYS_UNISPART_SW_IRQ_REG);
+
+		/*
+		 * Handle a single FW event per checking the CSI-2
+		 * receiver SOF status. This is done in order to avoid
+		 * the case where events arrive to the event queue and
+		 * one of them is a SOF event which then could be
+		 * handled before the SOF interrupt. This would pose
+		 * issues in sequence numbering which is based on SOF
+		 * interrupts, always assumed to arrive before FW SOF
+		 * events.
+		 */
+		/* TODO:check sw_irq bit then call isr_one() */
+		if (!isys_isr_one(adev))
+			status_sw = INTEL_IPU5_ISYS_UNISPART_IRQ_SW;
+		else
+			status_sw = 0;
+
+		status_csi = readl(isys->pdata->base +
+			INTEL_IPU5_REG_ISYS_CSI_TOP_IRQ_STATUS);
+		status_sw |= readl(isys->pdata->base +
+			INTEL_IPU5_REG_ISYS_UNISPART_IRQ_STATUS);
+	} while (((status_csi & isys->isr_csi2_bits) ||
+		(status_sw & INTEL_IPU5_ISYS_UNISPART_IRQ_SW)) &&
+		 !isys->adev->isp->flr_done);
+
+}
+
+static irqreturn_t isys_isr(struct intel_ipu4_bus_device *adev)
+{
+	struct intel_ipu4_isys *isys = intel_ipu4_bus_get_drvdata(adev);
+
+	spin_lock(&isys->power_lock);
+	if (!isys->power) {
+		spin_unlock(&isys->power_lock);
+		return IRQ_NONE;
+	}
+
+	if (is_intel_ipu4_hw_bxt_b0(adev->isp))
+		isys_isr_ipu4(adev);
+	else
+		isys_isr_ipu5(adev);
 
 	spin_unlock(&isys->power_lock);
 	return IRQ_HANDLED;
@@ -1838,9 +1949,13 @@ static void isys_isr_poll(struct intel_ipu4_bus_device *adev)
 			"got interrupt but device not configured yet\n");
 		return;
 	}
+	mutex_lock(&isys->mutex);
+	if (is_intel_ipu5_hw_a0(adev->isp))
+		isys_isr_ipu5(adev);
+	else
+		isys_isr_ipu4(adev);
 
-	while (!isys_isr_one(adev))
-		;
+	mutex_unlock(&isys->mutex);
 }
 
 int intel_ipu4_isys_isr_run(void *ptr)

@@ -66,7 +66,6 @@
 /* Broxton ISYS registers */
 /* Isys DMA CIO info register */
 #define INTEL_IPU4_REG_ISYS_INFO_CIO_DMA0(a)		(0x81810 + (a) * 0x40)
-#define INTEL_IPU4_REG_ISYS_INFO_CIO_DMA0(a)		(0x81810 + (a) * 0x40)
 #define INTEL_IPU4_REG_ISYS_INFO_CIO_DMA1(a)		(0x93010 + (a) * 0x40)
 #define INTEL_IPU4_REG_ISYS_INFO_CIO_DMA_IS(a)		(0xb0610 + (a) * 0x40)
 #define INTEL_IPU4_ISYS_NUM_OF_DMA0_CHANNELS		16

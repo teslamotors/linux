@@ -389,9 +389,42 @@ int intel_ipu5_isys_csi2_set_stream(struct v4l2_subdev *sd,
 
 void intel_ipu5_isys_csi2_isr(struct intel_ipu4_isys_csi2 *csi2)
 {
-	/*
-	* TODO: IPU5 IRQ enable
-	*/
+	struct intel_ipu4_isys_pipeline *pipe =
+		container_of(csi2->asd.sd.entity.pipe,
+			     struct intel_ipu4_isys_pipeline, pipe);
+	struct intel_ipu4_isys_csi2_config *cfg =
+		v4l2_get_subdev_hostdata(
+			media_entity_to_v4l2_subdev(pipe->external->entity));
+
+	u32 status;
+	unsigned int i;
+
+	intel_ipu5_isys_register_errors(csi2);
+
+	status = readl(csi2->base + irq_info_map[cfg->port].irq_base +
+			INTEL_IPU5_CSI_REG_IRQ_STATUS_OFFSET);
+
+	writel(status, csi2->base + irq_info_map[cfg->port].irq_base +
+		INTEL_IPU5_CSI_REG_IRQ_CLEAR_OFFSET);
+
+	for (i = 0; i < NR_OF_CSI2_VC; i++) {
+		if (irq_info_map[cfg->port].dphy) {
+			if (status & INTEL_IPU5_CSI_RX_IRQ_FS_VC(i))
+				intel_ipu_isys_csi2_sof_event(csi2, i);
+
+			if (status & INTEL_IPU5_CSI_RX_IRQ_FE_VC(i))
+				intel_ipu_isys_csi2_eof_event(csi2, i);
+		} else {
+			if (status & INTEL_IPU5_CSI_CPHY_RX_IRQ_FS_VC(i))
+				intel_ipu_isys_csi2_sof_event(csi2, i);
+
+			if (status & INTEL_IPU5_CSI_CPHY_RX_IRQ_FE_VC(i))
+				intel_ipu_isys_csi2_eof_event(csi2, i);
+		}
+	}
+
+	return;
+
 }
 
 unsigned int intel_ipu5_isys_csi2_get_current_field(
