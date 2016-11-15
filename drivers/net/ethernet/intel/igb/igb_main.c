@@ -3716,7 +3716,8 @@ static int __igb_open(struct net_device *netdev, bool resuming)
 	if (!resuming)
 		pm_runtime_get_sync(&pdev->dev);
 
-	netif_carrier_off(netdev);
+	if (!(pdev->dev.power.runtime_status == RPM_RESUMING))
+		netif_carrier_off(netdev);
 
 	/* allocate transmit descriptors */
 	err = igb_setup_all_tx_resources(adapter);
@@ -3741,16 +3742,22 @@ static int __igb_open(struct net_device *netdev, bool resuming)
 	if (err)
 		goto err_req_irq;
 
-	/* Notify the stack of the actual queue counts. */
-	err = netif_set_real_num_tx_queues(adapter->netdev,
-					   adapter->num_tx_queues);
-	if (err)
-		goto err_set_queues;
+	/* Notify the stack of the actual queue counts.
+	 * If this function is called during runtime resume,
+	 * do not set the number of queues again as we are
+	 * not stopping the queues during runtime suspend.
+	 */
+	if (!(pdev->dev.power.runtime_status == RPM_RESUMING)) {
+		err = netif_set_real_num_tx_queues(adapter->netdev,
+						   adapter->num_tx_queues);
+		if (err)
+			goto err_set_queues;
 
-	err = netif_set_real_num_rx_queues(adapter->netdev,
-					   adapter->num_rx_queues);
-	if (err)
-		goto err_set_queues;
+		err = netif_set_real_num_rx_queues(adapter->netdev,
+						   adapter->num_rx_queues);
+		if (err)
+			goto err_set_queues;
+	}
 
 	/* From here on the code is the same as igb_up() */
 	clear_bit(__IGB_DOWN, &adapter->state);
@@ -3771,7 +3778,11 @@ static int __igb_open(struct net_device *netdev, bool resuming)
 		wr32(E1000_CTRL_EXT, reg_data);
 	}
 
-	netif_tx_start_all_queues(netdev);
+	/* In runtime suspend we are not stopping the queues
+	 * hence we do not need to start again.
+	 */
+	if (!(pdev->dev.power.runtime_status == RPM_RESUMING))
+		netif_tx_start_all_queues(netdev);
 
 	/* schedule runtime suspend from open */
 	if (!resuming) {
@@ -8712,7 +8723,11 @@ static int __maybe_unused igb_runtime_suspend(struct device *dev)
 
 static int __maybe_unused igb_runtime_resume(struct device *dev)
 {
-	return igb_resume(dev);
+	int ret;
+
+	ret = igb_resume(dev);
+	pm_runtime_mark_last_busy(dev);
+	return ret;
 }
 
 static void igb_shutdown(struct pci_dev *pdev)
