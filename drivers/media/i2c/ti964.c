@@ -33,6 +33,7 @@ struct ti964_subdev {
 	unsigned short rx_port;
 	unsigned short phy_i2c_addr;
 	unsigned short alias_i2c_addr;
+	char sd_name[16];
 };
 
 struct ti964 {
@@ -469,6 +470,8 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		va->sub_devs[k].rx_port = info->rx_port;
 		va->sub_devs[k].phy_i2c_addr = info->phy_i2c_addr;
 		va->sub_devs[k].alias_i2c_addr = info->board_info.addr;
+		strncpy(va->sub_devs[k].sd_name,
+					va->subdev_pdata[k].module_name, 16);
 
 		for (j = 0; j < va->sub_devs[k].sd->entity.num_pads; j++) {
 			if (va->sub_devs[k].sd->entity.pads[j].flags &
@@ -510,6 +513,118 @@ static int ti964_set_power(struct v4l2_subdev *subdev, int on)
 			   (on) ? TI964_POWER_ON : TI964_POWER_OFF);
 }
 
+static bool ti964_broadcast_mode(struct v4l2_subdev *subdev)
+{
+	struct ti964 *va = to_ti964(subdev);
+	struct v4l2_subdev_format fmt = { 0 };
+	struct v4l2_subdev *sd;
+	char *sd_name = NULL;
+	bool first = true;
+	unsigned int h = 0, w = 0, code = 0;
+	bool single_stream = true;
+	int i, rval;
+
+	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+		struct media_pad *remote_pad =
+			media_entity_remote_pad(&va->pad[i]);
+
+		if (!remote_pad)
+			continue;
+
+		sd = media_entity_to_v4l2_subdev(remote_pad->entity);
+		fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+		fmt.pad = remote_pad->index;
+		fmt.stream = 0;
+
+		rval = v4l2_subdev_call(sd, pad, get_fmt, NULL, &fmt);
+		if (rval)
+			return false;
+
+		if (first) {
+			sd_name = va->sub_devs[i].sd_name;
+			h = fmt.format.height;
+			w = fmt.format.width;
+			code = fmt.format.code;
+			first = false;
+		} else {
+			if (strncmp(sd_name, va->sub_devs[i].sd_name, 16))
+				return false;
+
+			if (h != fmt.format.height || w != fmt.format.width
+				|| code != fmt.format.code)
+				return false;
+
+			single_stream = false;
+		}
+	}
+
+	if (single_stream)
+		return false;
+
+	return true;
+}
+
+static int ti964_tp_set_stream(struct v4l2_subdev *subdev, int enable)
+{
+	struct ti964 *va = to_ti964(subdev);
+	int i, rval;
+
+	dev_dbg(va->sd.dev, "TI964 starts to stream test pattern.\n");
+	for (i = 0; i < ARRAY_SIZE(ti964_tp_settings); i++) {
+		rval = regmap_write(va->regmap8,
+			ti964_tp_settings[i].reg,
+			ti964_tp_settings[i].val);
+		if (rval) {
+			dev_err(va->sd.dev, "Register write error.\n");
+			return rval;
+		}
+	}
+
+	rval = regmap_write(va->regmap8, TI964_IND_ACC_DATA, enable);
+	if (rval) {
+		dev_err(va->sd.dev, "Register write error.\n");
+		return rval;
+	}
+
+	return 0;
+}
+
+static int ti964_rx_port_config(struct ti964 *va, int sink, int rx_port)
+{
+	int rval;
+	u8 bpp;
+
+	/* Select RX port. */
+	rval = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
+			(rx_port << 4) + (1 << rx_port));
+	if (rval) {
+		dev_err(va->sd.dev, "Failed to select RX port.\n");
+		return rval;
+	}
+
+	/* Set RX port mode. */
+	bpp = ti964_validate_csi_data_format(
+		va->ffmts[sink][0].code)->width;
+	rval = regmap_write(va->regmap8, TI964_PORT_CONFIG,
+		(bpp == 12) ?
+		TI964_FPD3_RAW12_75MHz : TI964_FPD3_RAW10_100MHz);
+	if (rval) {
+		dev_err(va->sd.dev, "Failed to set port config.\n");
+		return rval;
+	}
+
+	/* RAW8 and YUV422 need to enable RAW10 bit mode. */
+	rval = regmap_write(va->regmap8, TI964_PORT_CONFIG2,
+		(bpp == 8 || bpp == 16) ?
+		TI964_RAW10_8BIT : TI964_RAW10_NORMAL);
+	if (rval) {
+		dev_err(va->sd.dev, "Failed to set port config2.\n");
+		return rval;
+	}
+
+	return 0;
+}
+
 static int ti964_map_subdevs_addr(struct ti964 *va)
 {
 	unsigned short rx_port, phy_i2c_addr, alias_i2c_addr;
@@ -537,92 +652,122 @@ static int ti964_map_subdevs_addr(struct ti964 *va)
 	return 0;
 }
 
+static int ti964_find_subdev_index(struct ti964 *va, struct v4l2_subdev *sd)
+{
+	int i;
+
+	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+		if (va->sub_devs[i].sd == sd)
+			return i;
+	}
+
+	WARN_ON(1);
+
+	return -EINVAL;
+}
+
 static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 {
 	struct ti964 *va = to_ti964(subdev);
+	struct v4l2_subdev *sd;
 	int i, j, rval;
+	bool broadcast;
+	unsigned int rx_port;
+	int sd_idx = -1;
+	DECLARE_BITMAP(rx_port_enabled, 32);
 
-	dev_dbg(va->sd.dev, "TI964 set stream. enable=%d\n", enable);
-	if (v4l2_ctrl_g_ctrl(va->test_pattern)) {
-		dev_dbg(va->sd.dev, "TI964 starts to stream test pattern.\n");
-		for (i = 0; i < ARRAY_SIZE(ti964_tp_settings); i++) {
-			rval = regmap_write(va->regmap8,
-				ti964_tp_settings[i].reg,
-				ti964_tp_settings[i].val);
-			if (rval) {
-				dev_err(va->sd.dev, "Register write error.\n");
-				return rval;
-			}
-		}
-		rval = regmap_write(va->regmap8, TI964_IND_ACC_DATA, enable);
-		if (rval) {
-			dev_err(va->sd.dev, "Register write error.\n");
-			return rval;
-		}
-		return 0;
-	}
+	dev_dbg(va->sd.dev, "TI964 set stream, enable %d\n", enable);
 
+	if (v4l2_ctrl_g_ctrl(va->test_pattern))
+		return ti964_tp_set_stream(subdev, enable);
+
+	broadcast = ti964_broadcast_mode(subdev);
+	if (enable)
+		dev_info(va->sd.dev, "TI964 in %s mode",
+			broadcast ? "broadcast" : "non broadcast");
+
+	bitmap_zero(rx_port_enabled, 32);
 	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
 		struct media_pad *remote_pad =
 			media_entity_remote_pad(&va->pad[i]);
-		unsigned int rx_id;
-		struct v4l2_subdev *sd;
-		u8 bpp;
 
 		if (!remote_pad)
 			continue;
-		/* Find TI964 subdev. */
+
+		/* Find ti964 subdev */
 		sd = media_entity_to_v4l2_subdev(remote_pad->entity);
-		for (j = 0; j < NR_OF_VA_SINK_PADS; j++) {
-			if (va->sub_devs[j].sd == sd)
-				break;
-		}
-		if (j == NR_OF_VA_SINK_PADS) {
-			dev_err(va->sd.dev, "Cannot find TI964 subdev.\n");
-			continue;
-		}
-		/* Select RX port. */
-		rx_id = va->sub_devs[j].rx_port;
-		rval = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
-				(rx_id << 4) + (1 << rx_id));
-		if (rval) {
-			dev_err(va->sd.dev, "Failed to select RX port.\n");
+		j = ti964_find_subdev_index(va, sd);
+		if (j < 0)
+			return -EINVAL;
+		rx_port = va->sub_devs[j].rx_port;
+		rval = ti964_rx_port_config(va, i, rx_port);
+		if (rval < 0)
 			return rval;
+
+		bitmap_set(rx_port_enabled, rx_port, 1);
+
+		if (broadcast && sd_idx == -1) {
+			sd_idx = j;
+		} else if (broadcast) {
+			rval = ti964_map_alias_i2c_addr(va, rx_port,
+				va->sub_devs[sd_idx].alias_i2c_addr << 1);
+			if (rval < 0)
+				return rval;
+		} else {
+			/* Stream on/off sensor */
+			rval = v4l2_subdev_call(sd, video, s_stream, enable);
+			if (rval) {
+				dev_err(va->sd.dev,
+					"Failed to set stream for %s, enable  %d\n",
+					sd->name, enable);
+				return rval;
+			}
+
+			/* RX port fordward */
+			rval = ti964_reg_set_bit(va, TI964_FWD_CTL1,
+						rx_port + 4, !enable);
+			if (rval) {
+				dev_err(va->sd.dev,
+					"Failed to forward RX port%d. enable %d\n",
+					i, enable);
+				return rval;
+			}
+
 		}
-		/* Set RX port mode. */
-		bpp = ti964_validate_csi_data_format(
-			va->ffmts[i][0].code)->width;
-		rval = regmap_write(va->regmap8, TI964_PORT_CONFIG,
-			(bpp == 12) ?
-			TI964_FPD3_RAW12_75MHz : TI964_FPD3_RAW10_100MHz);
-		if (rval) {
-			dev_err(va->sd.dev, "Failed to set port config.\n");
-			return rval;
-		}
-		/* RAW8 and YUV422 need to enable RAW10 bit mode. */
-		rval = regmap_write(va->regmap8, TI964_PORT_CONFIG2,
-			(bpp == 8 || bpp == 16) ?
-			TI964_RAW10_8BIT : TI964_RAW10_NORMAL);
-		if (rval) {
-			dev_err(va->sd.dev, "Failed to set port config2.\n");
-			return rval;
-		}
-		/* Stream on sensor. */
+	}
+
+	if (broadcast) {
+		sd = va->sub_devs[sd_idx].sd;
 		rval = v4l2_subdev_call(sd, video, s_stream, enable);
 		if (rval) {
 			dev_err(va->sd.dev,
-				"Failed to set stream for %s. enable = %d\n",
+				"Failed to set stream for %s. enable  %d\n",
 				sd->name, enable);
 			return rval;
 		}
-		/* Enable RX port fordwarding. */
-		rval = ti964_reg_set_bit(va, TI964_FWD_CTL1, rx_id + 4, !enable);
-		if (rval) {
-			dev_err(va->sd.dev,
-				"Failed to forward RX port%d. enable = %d\n",
-				i, enable);
-			return rval;
+
+		for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+			if (!test_bit(i, rx_port_enabled))
+				continue;
+
+			/* RX port fordward */
+			rval = ti964_reg_set_bit(va, TI964_FWD_CTL1,
+						i + 4, !enable);
+			if (rval) {
+				dev_err(va->sd.dev,
+					"Failed to forward RX port%d. enable %d\n",
+					i, enable);
+				return rval;
+			}
 		}
+
+		/*
+		 * Restore each subdev i2c address as we may
+		 * touch it later.
+		*/
+		rval = ti964_map_subdevs_addr(va);
+		if (rval)
+			return rval;
 	}
 
 	return 0;
