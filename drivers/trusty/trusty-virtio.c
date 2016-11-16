@@ -320,7 +320,7 @@ static struct virtqueue *_find_vq(struct virtio_device *vdev,
 	/* da field is only 32 bit wide. Use previously unused 'reserved' field
 	 * to store top 32 bits of 64-bit address
 	 */
-	tvr->vr_descr->reserved = (u32)(pa >> 32);
+	tvr->vr_descr->pa = (u32)(pa >> 32);
 
 	dev_info(&vdev->dev, "vring%d: va(pa)  %p(%llx) qsz %d notifyid %d\n",
 		 id, tvr->vaddr, (u64)tvr->paddr, tvr->elem_num, tvr->notifyid);
