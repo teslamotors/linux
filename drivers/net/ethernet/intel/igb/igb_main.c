@@ -8659,7 +8659,7 @@ static int __igb_shutdown(struct pci_dev *pdev, bool *enable_wake,
 	struct igb_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
 	u32 ctrl, rctl, status;
-	u32 wufc = runtime ? E1000_WUFC_LNKC : adapter->wol;
+	u32 wufc = runtime ? (E1000_WUFC_LNKC | E1000_WUFC_EX) : adapter->wol;
 	bool wake;
 
 	rtnl_lock();
@@ -8679,7 +8679,11 @@ static int __igb_shutdown(struct pci_dev *pdev, bool *enable_wake,
 	rtnl_unlock();
 
 	status = rd32(E1000_STATUS);
-	if (status & E1000_STATUS_LU)
+
+	/* For runtime PM based on activity, we need
+	 * notification on Link Removal to indicate Link Down.
+	 */
+	if (!runtime && (status & E1000_STATUS_LU))
 		wufc &= ~E1000_WUFC_LNKC;
 
 	if (wufc) {
@@ -8692,7 +8696,12 @@ static int __igb_shutdown(struct pci_dev *pdev, bool *enable_wake,
 			rctl |= E1000_RCTL_MPE;
 			wr32(E1000_RCTL, rctl);
 		}
-
+		/* Enable wake on unicast for runtime pm based on activity */
+		if (wufc & E1000_WUFC_EX) {
+			rctl = rd32(E1000_RCTL);
+			rctl |= E1000_RCTL_UPE;
+			wr32(E1000_RCTL, rctl);
+		}
 		ctrl = rd32(E1000_CTRL);
 		ctrl |= E1000_CTRL_ADVD3WUC;
 		wr32(E1000_CTRL, ctrl);
