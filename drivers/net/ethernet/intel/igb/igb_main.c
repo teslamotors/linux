@@ -148,6 +148,7 @@ static void igb_set_rx_mode(struct net_device *);
 static void igb_update_phy_info(unsigned long);
 static void igb_watchdog(unsigned long);
 static void igb_watchdog_task(struct work_struct *);
+static void igb_rpm_xmit_task(struct work_struct *);
 static netdev_tx_t igb_xmit_frame(struct sk_buff *skb, struct net_device *);
 static void igb_get_stats64(struct net_device *dev,
 			    struct rtnl_link_stats64 *stats);
@@ -3046,7 +3047,7 @@ static int igb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	INIT_WORK(&adapter->reset_task, igb_reset_task);
 	INIT_WORK(&adapter->watchdog_task, igb_watchdog_task);
-
+	INIT_WORK(&adapter->rpm_xmit_task, igb_rpm_xmit_task);
 	/* Initialize link properties that are user-changeable */
 	adapter->fc_autoneg = true;
 	hw->mac.autoneg = true;
@@ -3632,7 +3633,8 @@ static int igb_sw_init(struct igb_adapter *adapter)
 				  VLAN_HLEN;
 	adapter->min_frame_size = ETH_ZLEN + ETH_FCS_LEN;
 
-	spin_lock_init(&adapter->nfc_lock);
+	adapter->igb_tx_pending = 0;
+	spin_lock_init(&adapter->rpm_txlock);
 	spin_lock_init(&adapter->stats64_lock);
 #ifdef CONFIG_PCI_IOV
 	switch (hw->mac.type) {
@@ -5498,10 +5500,12 @@ static void igb_tx_ctxtdesc(struct igb_ring *tx_ring,
 	struct e1000_adv_tx_context_desc *context_desc;
 	u16 i = tx_ring->next_to_use;
 	struct timespec64 ts;
+	struct igb_adapter *adapter = netdev_priv(tx_ring->netdev);
 
 	context_desc = IGB_TX_CTXTDESC(tx_ring, i);
 
 	i++;
+	adapter->igb_tx_pending++;
 	tx_ring->next_to_use = (i < tx_ring->count) ? i : 0;
 
 	/* set bits to identify this as an advanced context descriptor */
@@ -5762,12 +5766,13 @@ static int igb_tx_map(struct igb_ring *tx_ring,
 	struct igb_tx_buffer *tx_buffer;
 	union e1000_adv_tx_desc *tx_desc;
 	struct skb_frag_struct *frag;
+	struct igb_adapter *adapter = netdev_priv(tx_ring->netdev);
 	dma_addr_t dma;
 	unsigned int data_len, size;
 	u32 tx_flags = first->tx_flags;
 	u32 cmd_type = igb_tx_cmd_type(skb, tx_flags);
 	u16 i = tx_ring->next_to_use;
-
+	u32 count = 0;
 	tx_desc = IGB_TX_DESC(tx_ring, i);
 
 	igb_tx_olinfo_status(tx_ring, tx_desc, tx_flags, skb->len - hdr_len);
@@ -5795,6 +5800,7 @@ static int igb_tx_map(struct igb_ring *tx_ring,
 
 			i++;
 			tx_desc++;
+			count++;
 			if (i == tx_ring->count) {
 				tx_desc = IGB_TX_DESC(tx_ring, 0);
 				i = 0;
@@ -5814,6 +5820,7 @@ static int igb_tx_map(struct igb_ring *tx_ring,
 
 		i++;
 		tx_desc++;
+		count++;
 		if (i == tx_ring->count) {
 			tx_desc = IGB_TX_DESC(tx_ring, 0);
 			i = 0;
@@ -5856,6 +5863,7 @@ static int igb_tx_map(struct igb_ring *tx_ring,
 
 	tx_ring->next_to_use = i;
 
+	adapter->igb_tx_pending += count;
 	/* Make sure there is space in the ring for the next send. */
 	igb_maybe_stop_tx(tx_ring, DESC_NEEDED);
 
@@ -6001,10 +6009,32 @@ static inline struct igb_ring *igb_tx_queue_mapping(struct igb_adapter *adapter,
 	return adapter->tx_ring[r_idx];
 }
 
+/* We cannot invoke resume from igb_xmit_frame as this function is getting
+ * called under a spinlock, and pm_runtime_get_sync flow is calling msleep
+ * in pci driver code, hence causing "BUG: scheduling while atomic:"
+ * so using this work task to invoke resume
+ */
+static void igb_rpm_xmit_task(struct work_struct *work)
+{
+	struct igb_adapter *adapter = container_of(work,
+						   struct igb_adapter,
+						   rpm_xmit_task);
+	struct net_device *netdev = adapter->netdev;
+	struct pci_dev *pdev = adapter->pdev;
+
+	pm_runtime_get_sync(&pdev->dev);
+
+	if (netif_queue_stopped(netdev))
+		netif_tx_wake_all_queues(netdev);
+	pm_runtime_put_noidle(&pdev->dev);
+}
+
 static netdev_tx_t igb_xmit_frame(struct sk_buff *skb,
 				  struct net_device *netdev)
 {
 	struct igb_adapter *adapter = netdev_priv(netdev);
+	struct pci_dev *pdev = adapter->pdev;
+	netdev_tx_t netdev_status = NETDEV_TX_OK;
 
 	/* The minimum packet size with TCTL.PSP set is 17 so pad the skb
 	 * in order to meet this minimum size requirement.
@@ -6012,7 +6042,19 @@ static netdev_tx_t igb_xmit_frame(struct sk_buff *skb,
 	if (skb_put_padto(skb, 17))
 		return NETDEV_TX_OK;
 
-	return igb_xmit_frame_ring(skb, igb_tx_queue_mapping(adapter, skb));
+	if (!adapter->igb_tx_pending) {
+		if (!pm_runtime_active(&pdev->dev)) {
+			netif_tx_stop_all_queues(netdev);
+				schedule_work(&adapter->rpm_xmit_task);
+			return NETDEV_TX_BUSY;
+		}
+		pm_runtime_get_noresume(&pdev->dev);
+	}
+	spin_lock(&adapter->rpm_txlock);
+	netdev_status = igb_xmit_frame_ring(skb,
+					    igb_tx_queue_mapping(adapter, skb));
+	spin_unlock(&adapter->rpm_txlock);
+	return netdev_status;
 }
 
 /**
@@ -7603,11 +7645,15 @@ static bool igb_clean_tx_irq(struct igb_q_vector *q_vector, int napi_budget)
 	unsigned int total_bytes = 0, total_packets = 0;
 	unsigned int budget = q_vector->tx.work_limit;
 	unsigned int i = tx_ring->next_to_clean;
+	union e1000_adv_tx_desc *eop_desc_temp = NULL;
+	unsigned int count = 0;
+	struct pci_dev *pdev = adapter->pdev;
 
 	if (test_bit(__IGB_DOWN, &adapter->state))
 		return true;
 
 	tx_buffer = &tx_ring->tx_buffer_info[i];
+	eop_desc_temp = tx_buffer->next_to_watch;
 	tx_desc = IGB_TX_DESC(tx_ring, i);
 	i -= tx_ring->count;
 
@@ -7649,6 +7695,7 @@ static bool igb_clean_tx_irq(struct igb_q_vector *q_vector, int napi_budget)
 			tx_buffer++;
 			tx_desc++;
 			i++;
+			count++;
 			if (unlikely(!i)) {
 				i -= tx_ring->count;
 				tx_buffer = tx_ring->tx_buffer_info;
@@ -7754,7 +7801,18 @@ static bool igb_clean_tx_irq(struct igb_q_vector *q_vector, int napi_budget)
 			u64_stats_update_end(&tx_ring->tx_syncp);
 		}
 	}
-
+/* schedule suspend if tx pending count is zero */
+	if (eop_desc_temp) {
+		spin_lock(&adapter->rpm_txlock);
+		adapter->igb_tx_pending -= count;
+		if (!adapter->igb_tx_pending) {
+			spin_unlock(&adapter->rpm_txlock);
+			pm_runtime_mark_last_busy(&pdev->dev);
+			pm_runtime_put_sync_autosuspend(&pdev->dev);
+		} else {
+			spin_unlock(&adapter->rpm_txlock);
+		}
+	}
 	return !!budget;
 }
 
@@ -8761,6 +8819,13 @@ static int __maybe_unused igb_runtime_idle(struct device *dev)
 
 static int __maybe_unused igb_runtime_suspend(struct device *dev)
 {
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct net_device *netdev = pci_get_drvdata(pdev);
+	struct igb_adapter *adapter = netdev_priv(netdev);
+
+	if (adapter->igb_tx_pending)
+		return -EBUSY;
+
 	return __igb_shutdown(to_pci_dev(dev), NULL, 1);
 }
 
