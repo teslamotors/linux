@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IPU_DEVICE_CELL_PROPERTIES_FUNC_H_
-#define _IPU_DEVICE_CELL_PROPERTIES_FUNC_H_
+#ifndef __IPU_DEVICE_CELL_PROPERTIES_FUNC_H
+#define __IPU_DEVICE_CELL_PROPERTIES_FUNC_H
 
 /* define properties for all cells uses in ISYS */
 
@@ -161,4 +161,4 @@ ipu_device_cell_id_crun(int cell_id)
 }
 #endif
 
-#endif /* _IPU_DEVICE_CELL_PROPERTIES_FUNC_H_ */
+#endif /* __IPU_DEVICE_CELL_PROPERTIES_FUNC_H */

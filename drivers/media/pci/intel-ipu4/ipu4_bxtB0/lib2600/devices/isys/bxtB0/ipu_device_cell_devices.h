@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IPU_DEVICE_CELL_DEVICES_H
-#define _IPU_DEVICE_CELL_DEVICES_H
+#ifndef __IPU_DEVICE_CELL_DEVICES_H
+#define __IPU_DEVICE_CELL_DEVICES_H
 
 /* define cell instances in ISYS */
 
@@ -24,4 +24,4 @@ enum ipu_device_isys_cell_id {
 	NUM_CELLS
 };
 
-#endif /* _IPU_DEVICE_CELL_DEVICES_H_ */
+#endif /* __IPU_DEVICE_CELL_DEVICES_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IPU_DEVICE_GP_PROPERTIES_TYPES_H__
-#define __IPU_DEVICE_GP_PROPERTIES_TYPES_H__
+#ifndef __IPU_DEVICE_GP_PROPERTIES_TYPES_H
+#define __IPU_DEVICE_GP_PROPERTIES_TYPES_H
 
 enum ipu_device_gp_isa_value {
 	/* ISA_MUX_SEL options */
@@ -142,4 +142,4 @@ enum ipu_device_gp_isl_value {
 	IPU_DEVICE_GP_ISL_CSI_BE_BYPASS
 };
 
-#endif /* __IPU_DEVICE_GP_PROPERTIES_TYPES_H__ */
+#endif /* __IPU_DEVICE_GP_PROPERTIES_TYPES_H */

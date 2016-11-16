@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IPU_DEVICE_GP_DEVICES_H_
-#define _IPU_DEVICE_GP_DEVICES_H_
+#ifndef __IPU_DEVICE_GP_DEVICES_H
+#define __IPU_DEVICE_GP_DEVICES_H
 #include "math_support.h"
 #include "type_support.h"
 
@@ -64,4 +64,4 @@ enum ipu_device_gp_isl_mux_id {
 	(uint32_t)IPU_DEVICE_GP_ISA_RUNTIME_MUX_NUM_MUX,                    \
 	(uint32_t)IPU_DEVICE_GP_ISL_MUX_NUM_MUX)
 
-#endif /* _IPU_DEVICE_GP_DEVICES_H_ */
+#endif /* __IPU_DEVICE_GP_DEVICES_H */

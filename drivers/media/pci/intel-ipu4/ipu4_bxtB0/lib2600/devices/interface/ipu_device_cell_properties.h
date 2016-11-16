@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IPU_DEVICE_CELL_PROPERTIES_H_
-#define _IPU_DEVICE_CELL_PROPERTIES_H_
+#ifndef __IPU_DEVICE_CELL_PROPERTIES_H
+#define __IPU_DEVICE_CELL_PROPERTIES_H
 
 #include "storage_class.h"
 #include "ipu_device_cell_type_properties.h"
@@ -73,4 +73,4 @@ ipu_device_cell_id_crun(int cell_id);
 
 #include "ipu_device_cell_properties_func.h"
 
-#endif /* _IPU_DEVICE_CELL_PROPERTIES_H_ */
+#endif /* __IPU_DEVICE_CELL_PROPERTIES_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __BUTTRESS_PROPERTIES_STRUCT_H__
-#define __BUTTRESS_PROPERTIES_STRUCT_H__
+#ifndef __IPU_DEVICE_BUTTRESS_PROPERTIES_STRUCT_H
+#define __IPU_DEVICE_BUTTRESS_PROPERTIES_STRUCT_H
 
 /* Destination values for master port 0 and bitfield "request_dest" */
 enum cio_M0_btrs_dest {
@@ -65,4 +65,4 @@ union cio_M1_t {
 };
 
 
-#endif /* __BUTTRESS_PROPERTIES_STRUCT_H__ */
+#endif /* __IPU_DEVICE_BUTTRESS_PROPERTIES_STRUCT_H */

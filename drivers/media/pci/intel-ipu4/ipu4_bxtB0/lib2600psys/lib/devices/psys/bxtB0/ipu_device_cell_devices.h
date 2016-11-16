@@ -12,8 +12,8 @@
 * more details.
  */
 
-#ifndef _IPU_DEVICE_CELL_DEVICES_H_
-#define _IPU_DEVICE_CELL_DEVICES_H_
+#ifndef __IPU_DEVICE_CELL_DEVICES_H
+#define __IPU_DEVICE_CELL_DEVICES_H
 
 #define SPC0_CELL  processing_system_sp_cluster_sp_cluster_logic_spc_tile_sp
 #define SPP0_CELL  processing_system_sp_cluster_sp_cluster_logic_spp_tile0_sp
@@ -34,4 +34,4 @@ enum ipu_device_psys_cell_id {
 	NUM_CELLS
 };
 
-#endif /* _IPU_DEVICE_CELL_DEVICES_H_ */
+#endif /* __IPU_DEVICE_CELL_DEVICES_H */

@@ -12,8 +12,8 @@
 * more details.
  */
 
-#ifndef _IPU_DEVICE_ACB_DEVICES_H_
-#define _IPU_DEVICE_ACB_DEVICES_H_
+#ifndef __IPU_DEVICE_ACB_DEVICES_H
+#define __IPU_DEVICE_ACB_DEVICES_H
 
 enum ipu_device_acb_id {
 	/* PSA accelerators */
@@ -40,4 +40,4 @@ enum ipu_device_acb_id {
 #define IPU_DEVICE_ACB_NUM_ISA_ACB \
 	(IPU_DEVICE_ACB_NUM_ACB - IPU_DEVICE_ACB_NUM_PSA_ACB)
 
-#endif /*  _IPU_DEVICE_ACB_DEVICES_H_ */
+#endif /* __IPU_DEVICE_ACB_DEVICES_H */

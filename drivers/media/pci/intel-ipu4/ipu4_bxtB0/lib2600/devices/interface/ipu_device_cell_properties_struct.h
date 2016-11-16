@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IPU_DEVICE_CELL_PROPERTIES_STRUCT_H_
-#define _IPU_DEVICE_CELL_PROPERTIES_STRUCT_H_
+#ifndef __IPU_DEVICE_CELL_PROPERTIES_STRUCT_H
+#define __IPU_DEVICE_CELL_PROPERTIES_STRUCT_H
 
 /* definitions for all cell types */
 
@@ -48,4 +48,4 @@ struct ipu_device_cell_properties_s {
 	/* const cell_master_port_properties_s* master_port_properties; */
 };
 
-#endif /* _IPU_DEVICE_CELL_PROPERTIES_STRUCT_H_ */
+#endif /* __IPU_DEVICE_CELL_PROPERTIES_STRUCT_H */

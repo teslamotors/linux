@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IPU_DEVICE_SP2600_CONTROL_PROPERTIES_IMPL_H_
-#define _IPU_DEVICE_SP2600_CONTROL_PROPERTIES_IMPL_H_
+#ifndef __IPU_DEVICE_SP2600_CONTROL_PROPERTIES_IMPL_H
+#define __IPU_DEVICE_SP2600_CONTROL_PROPERTIES_IMPL_H
 
 /* sp2600_control definition */
 
@@ -133,4 +133,4 @@ ipu_device_sp2600_control_properties = {
 	ipu_device_sp2600_control_mem_size
 };
 
-#endif /* _IPU_DEVICE_SP2600_CONTROL_PROPERTIES_IMPL_H_ */
+#endif /* __IPU_DEVICE_SP2600_CONTROL_PROPERTIES_IMPL_H */

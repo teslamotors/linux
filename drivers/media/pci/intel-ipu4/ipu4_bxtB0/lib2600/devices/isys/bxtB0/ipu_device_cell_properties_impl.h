@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IPU_DEVICE_CELL_PROPERTIES_IMPL_H_
-#define _IPU_DEVICE_CELL_PROPERTIES_IMPL_H_
+#ifndef __IPU_DEVICE_CELL_PROPERTIES_IMPL_H
+#define __IPU_DEVICE_CELL_PROPERTIES_IMPL_H
 
 /* define properties for all cells uses in ISYS */
 
@@ -54,4 +54,4 @@ static const int ipu_device_map_cell_id_to_crun_proc_id[NUM_CELLS] = {
 
 #endif
 
-#endif /* _IPU_DEVICE_CELL_PROPERTIES_IMPL_H_ */
+#endif /* __IPU_DEVICE_CELL_PROPERTIES_IMPL_H */

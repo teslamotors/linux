@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IPU_DEVICE_ISP2600_PROPERTIES_IMPL_H_
-#define _IPU_DEVICE_ISP2600_PROPERTIES_IMPL_H_
+#ifndef __IPU_DEVICE_ISP2600_PROPERTIES_IMPL_H
+#define __IPU_DEVICE_ISP2600_PROPERTIES_IMPL_H
 
 /* isp2600 definition */
 
@@ -148,4 +148,4 @@ ipu_device_isp2600_properties = {
 	ipu_device_isp2600_mem_size
 };
 
-#endif /* _IPU_DEVICE_ISP2600_PROPERTIES_IMPL_H_ */
+#endif /* __IPU_DEVICE_ISP2600_PROPERTIES_IMPL_H */

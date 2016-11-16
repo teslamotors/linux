@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IPU_DEVICE_GP_PROPERTIES_H_
-#define _IPU_DEVICE_GP_PROPERTIES_H_
+#ifndef __IPU_DEVICE_GP_PROPERTIES_H
+#define __IPU_DEVICE_GP_PROPERTIES_H
 
 #include "storage_class.h"
 #include "ipu_device_gp_properties_types.h"
@@ -23,4 +23,4 @@ ipu_device_gp_mux_addr(const unsigned int device_id, const unsigned int mux_id);
 
 #include "ipu_device_gp_properties_func.h"
 
-#endif /* _IPU_DEVICE_GP_PROPERTIES_H_ */
+#endif /* __IPU_DEVICE_GP_PROPERTIES_H */

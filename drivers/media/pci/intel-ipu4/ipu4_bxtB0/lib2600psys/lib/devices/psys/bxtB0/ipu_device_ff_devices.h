@@ -12,8 +12,8 @@
 * more details.
  */
 
-#ifndef _IPU_DEVICE_FF_DEVICES_H_
-#define _IPU_DEVICE_FF_DEVICES_H_
+#ifndef __IPU_DEVICE_FF_DEVICES_H
+#define __IPU_DEVICE_FF_DEVICES_H
 
 enum ipu_device_ff_id {
 	/* PSA fixed functions */
@@ -52,4 +52,4 @@ enum ipu_device_ff_id {
 #define IPU_DEVICE_FF_NUM_ISA_FF \
 	(IPU_DEVICE_FF_NUM_FF - IPU_DEVICE_FF_NUM_PSA_FF)
 
-#endif /*  _IPU_DEVICE_FF_DEVICES_H_ */
+#endif /* __IPU_DEVICE_FF_DEVICES_H */
