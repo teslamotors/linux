@@ -50,6 +50,8 @@ struct intel_ipu4_isys_tpg {
 
 	struct v4l2_ctrl *hblank;
 	struct v4l2_ctrl *vblank;
+	struct v4l2_ctrl *llp;
+	struct v4l2_ctrl *fll;
 	struct v4l2_ctrl *pixel_rate;
 };
 

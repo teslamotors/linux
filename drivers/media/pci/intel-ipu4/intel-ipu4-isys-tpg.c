@@ -14,6 +14,7 @@
 
 #include <linux/device.h>
 #include <linux/module.h>
+#include <linux/crlmodule.h>
 
 #include <media/media-entity.h>
 #include <media/v4l2-device.h>
@@ -117,12 +118,24 @@ static int intel_ipu4_isys_tpg_s_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_HBLANK:
-		writel(tpg->asd.ffmt[TPG_PAD_SOURCE][0].width + ctrl->val,
+		writel(ctrl->val,
 		       tpg->base + MIPI_GEN_REG_SYNG_HBLANK_CYC);
 		break;
 	case V4L2_CID_VBLANK:
-		writel(tpg->asd.ffmt[TPG_PAD_SOURCE][0].height + ctrl->val,
+		writel(ctrl->val,
 		       tpg->base + MIPI_GEN_REG_SYNG_VBLANK_CYC);
+		break;
+	case V4L2_CID_LINE_LENGTH_PIXELS:
+		if (ctrl->val > tpg->asd.ffmt[TPG_PAD_SOURCE][0].width)
+			writel(ctrl->val -
+				tpg->asd.ffmt[TPG_PAD_SOURCE][0].width,
+				tpg->base + MIPI_GEN_REG_SYNG_HBLANK_CYC);
+		break;
+	case V4L2_CID_FRAME_LENGTH_LINES:
+		if (ctrl->val > tpg->asd.ffmt[TPG_PAD_SOURCE][0].height)
+			writel(ctrl->val -
+				tpg->asd.ffmt[TPG_PAD_SOURCE][0].height,
+				tpg->base + MIPI_GEN_REG_SYNG_VBLANK_CYC);
 		break;
 	case V4L2_CID_TEST_PATTERN:
 		writel(ctrl->val, tpg->base + MIPI_GEN_REG_TPG_MODE);
@@ -171,6 +184,15 @@ static struct v4l2_ctrl_config tpg_mode = {
 static void intel_ipu4_isys_tpg_init_controls(struct v4l2_subdev *sd)
 {
 	struct intel_ipu4_isys_tpg *tpg = to_intel_ipu4_isys_tpg(sd);
+	struct v4l2_ctrl_config cfg = {
+		.ops = &intel_ipu4_isys_tpg_ctrl_ops,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.max = 65535,
+		.min =  8,
+		.step  = 1,
+		.qmenu = 0,
+		.elem_size = 0,
+	};
 
 	if (is_intel_ipu_hw_fpga(tpg->isys->adev->isp))
 		tpg->hblank = v4l2_ctrl_new_std(
@@ -184,6 +206,19 @@ static void intel_ipu4_isys_tpg_init_controls(struct v4l2_subdev *sd)
 	tpg->vblank = v4l2_ctrl_new_std(
 		&tpg->asd.ctrl_handler, &intel_ipu4_isys_tpg_ctrl_ops,
 		V4L2_CID_VBLANK, 8, 65535, 1, 1024);
+
+	cfg.id = V4L2_CID_LINE_LENGTH_PIXELS;
+	cfg.name = "Line Length Pixels";
+	if (is_intel_ipu_hw_fpga(tpg->isys->adev->isp))
+		cfg.def = 16384 + 4096;
+	else
+		cfg.def = 1024 + 4096;
+	tpg->llp = v4l2_ctrl_new_custom(&tpg->asd.ctrl_handler, &cfg, NULL);
+
+	cfg.id = V4L2_CID_FRAME_LENGTH_LINES;
+	cfg.name = "Frame Length Lines";
+	cfg.def = 1024 + 3072;
+	tpg->fll = v4l2_ctrl_new_custom(&tpg->asd.ctrl_handler, &cfg, NULL);
 
 	tpg->pixel_rate = v4l2_ctrl_new_std(
 		&tpg->asd.ctrl_handler, &intel_ipu4_isys_tpg_ctrl_ops,
@@ -289,7 +324,7 @@ int intel_ipu4_isys_tpg_init(struct intel_ipu4_isys_tpg *tpg,
 	tpg->asd.ctrl_init = intel_ipu4_isys_tpg_init_controls;
 	tpg->asd.isys = isys;
 
-	rval = intel_ipu4_isys_subdev_init(&tpg->asd, &tpg_sd_ops, 3,
+	rval = intel_ipu4_isys_subdev_init(&tpg->asd, &tpg_sd_ops, 5,
 				NR_OF_TPG_PADS, NR_OF_TPG_STREAMS,
 				NR_OF_TPG_SOURCE_PADS, NR_OF_TPG_SINK_PADS,
 				0);
