@@ -291,9 +291,9 @@ int intel_ipu4_buttress_ipc_send_bulk(
 	}
 
 	for (i = 0; i < size; i++) {
-		init_completion(&ipc->send_complete);
+		reinit_completion(&ipc->send_complete);
 		if (msgs[i].require_resp)
-			init_completion(&ipc->recv_complete);
+			reinit_completion(&ipc->recv_complete);
 
 		dev_dbg(&isp->pdev->dev, "bulk IPC command: 0x%x\n",
 			msgs[i].cmd);
