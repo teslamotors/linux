@@ -83,7 +83,7 @@ struct intel_ipu4_isys;
 #define CSI2_CSI_RX_DLY_CNT_SETTLE_DLANE_A		85
 #define CSI2_CSI_RX_DLY_CNT_SETTLE_DLANE_B		-2
 
-#define INTEL_IPU_EOF_TIMEOUT 1000
+#define INTEL_IPU_EOF_TIMEOUT 300
 #define INTEL_IPU_EOF_TIMEOUT_JIFFIES msecs_to_jiffies(INTEL_IPU_EOF_TIMEOUT)
 
 struct intel_ipu_isys_csi2_ops {
