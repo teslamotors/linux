@@ -298,6 +298,7 @@ static struct intel_ipu4_isys_subdev_info video_aggre_b_stub_sd = {
 
 #ifdef CONFIG_INTEL_IPU4_OV10635
 #define OV10635_LANES		4
+#define OV10635_I2C_PHY_ADDR	0x60 /* 0x30 for 7bit addr */
 #define OV10635A_I2C_ADDRESS	0x61
 #define OV10635B_I2C_ADDRESS	0x62
 #define OV10635C_I2C_ADDRESS	0x63
@@ -319,6 +320,7 @@ static struct crlmodule_platform_data ov10635_pdata = {
 
 #ifdef CONFIG_INTEL_IPU4_OV10640
 #define OV10640_LANES           4
+#define OV10640_I2C_PHY_ADDR	0x60 /* 0x30 for 7bit addr */
 #define OV10640A_I2C_ADDRESS    0x61
 #define OV10640B_I2C_ADDRESS    0x62
 #define OV10640C_I2C_ADDRESS    0x63
@@ -364,6 +366,7 @@ struct ti964_subdev_info ti964_subdevs[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 0,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
 	},
 	{
 		.board_info = {
@@ -373,6 +376,7 @@ struct ti964_subdev_info ti964_subdevs[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 1,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
 	},
 	{
 		.board_info = {
@@ -382,6 +386,7 @@ struct ti964_subdev_info ti964_subdevs[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 2,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
 	},
 	{
 		.board_info = {
@@ -391,6 +396,7 @@ struct ti964_subdev_info ti964_subdevs[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 3,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
 	},
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV10640
@@ -402,6 +408,7 @@ struct ti964_subdev_info ti964_subdevs[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 0,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
 	},
 	{
 		.board_info = {
@@ -411,6 +418,7 @@ struct ti964_subdev_info ti964_subdevs[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 1,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
 	},
 	{
 		.board_info = {
@@ -420,6 +428,7 @@ struct ti964_subdev_info ti964_subdevs[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 2,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
 	},
 	{
 		.board_info = {
@@ -429,6 +438,7 @@ struct ti964_subdev_info ti964_subdevs[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 3,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
 	},
 #endif
 };
@@ -443,6 +453,7 @@ struct ti964_subdev_info ti964_subdevs_2[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 0,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
 	},
 	{
 		.board_info = {
@@ -452,6 +463,7 @@ struct ti964_subdev_info ti964_subdevs_2[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 1,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
 	},
 	{
 		.board_info = {
@@ -461,6 +473,7 @@ struct ti964_subdev_info ti964_subdevs_2[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 2,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
 	},
 	{
 		.board_info = {
@@ -470,6 +483,7 @@ struct ti964_subdev_info ti964_subdevs_2[] = {
 		},
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 3,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
 	},
 #endif
 };
