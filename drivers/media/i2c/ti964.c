@@ -31,6 +31,7 @@
 struct ti964_subdev {
 	struct v4l2_subdev *sd;
 	unsigned int rx_port;
+	unsigned short phy_i2c_addr;
 };
 
 struct ti964 {
@@ -146,6 +147,19 @@ static int ti964_reg_set_bit(struct ti964 *va, unsigned char reg,
 		reg_val &= ~(1 << bit);
 
 	return regmap_write(va->regmap8, reg, reg_val);
+}
+
+static int ti964_map_i2c_addr(struct ti964 *va, unsigned int rx_port,
+			      unsigned short addr)
+{
+	int ret;
+
+	ret = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
+		(rx_port << 4) + (1 << rx_port));
+	if (ret)
+		return ret;
+
+	return regmap_write(va->regmap8, TI964_SLAVE_ID0, addr);
 }
 
 static int ti964_get_routing(struct v4l2_subdev *sd,
@@ -408,6 +422,13 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		memcpy(&va->subdev_pdata[k], pdata, sizeof(*pdata));
 		va->subdev_pdata[k].xshutdown = va->gc.base + info->rx_port;
 		info->board_info.platform_data = &va->subdev_pdata[k];
+
+		/* Map I2C address. */
+		rval = ti964_map_i2c_addr(va, info->rx_port,
+			info->phy_i2c_addr);
+		if (rval)
+			return rval;
+
 		adapter = i2c_get_adapter(info->i2c_adapter_id);
 		va->sub_devs[k].sd = v4l2_i2c_new_subdev_board(
 			va->sd.v4l2_dev, adapter,
@@ -421,6 +442,7 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 			continue;
 		}
 		va->sub_devs[k].rx_port = info->rx_port;
+		va->sub_devs[k].phy_i2c_addr = info->phy_i2c_addr;
 
 		for (j = 0; j < va->sub_devs[k].sd->entity.num_pads; j++) {
 			if (va->sub_devs[k].sd->entity.pads[j].flags &
@@ -710,6 +732,12 @@ static int ti964_init(struct ti964 *va)
 		rval = regmap_write(va->regmap8,
 			ti964_init_settings[i].reg,
 			ti964_init_settings[i].val);
+		if (rval)
+			return rval;
+	}
+
+	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+		rval = ti964_map_i2c_addr(va, i, va->sub_devs[i].phy_i2c_addr);
 		if (rval)
 			return rval;
 	}
