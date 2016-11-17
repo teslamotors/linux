@@ -3237,6 +3237,9 @@ static void serial8250_console_restore(struct uart_8250_port *up)
  *	any possible real use of the port...
  *
  *	The console_lock must be held when we get here.
+ *
+ *	Doing runtime PM is a really bad idea for the kernel console.
+ *	Thus we assume that the function called when device is powered on.
  */
 void serial8250_console_write(struct uart_8250_port *up, const char *s,
 			      unsigned int count)
@@ -3247,8 +3250,6 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
 	int locked = 1;
 
 	touch_nmi_watchdog();
-
-	serial8250_rpm_get(up);
 
 	if (port->sysrq)
 		locked = 0;
@@ -3294,7 +3295,6 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
 
 	if (locked)
 		spin_unlock_irqrestore(&port->lock, flags);
-	serial8250_rpm_put(up);
 }
 
 static unsigned int probe_baud(struct uart_port *port)
@@ -3318,6 +3318,7 @@ int serial8250_console_setup(struct uart_port *port, char *options, bool probe)
 	int bits = 8;
 	int parity = 'n';
 	int flow = 'n';
+	int ret;
 
 	if (!port->iobase && !port->membase)
 		return -ENODEV;
@@ -3327,7 +3328,18 @@ int serial8250_console_setup(struct uart_port *port, char *options, bool probe)
 	else if (probe)
 		baud = probe_baud(port);
 
-	return uart_set_options(port, port->cons, baud, parity, bits, flow);
+	ret = uart_set_options(port, port->cons, baud, parity, bits, flow);
+
+	if (port->dev)
+		pm_runtime_get_noresume(port->dev);
+
+	return ret;
+}
+
+void serial8250_console_exit(struct uart_port *port)
+{
+	if (port->dev)
+		pm_runtime_put_noidle(port->dev);
 }
 
 #endif /* CONFIG_SERIAL_8250_CONSOLE */
