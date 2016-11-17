@@ -60,6 +60,8 @@
 
 #define BUTTRESS_CSE_IPC_RESET_RETRY	4
 
+#define BUTTRESS_IPC_CMD_SEND_RETRY	1
+
 #define BUTTRESS_PS_FREQ_STEP		25U
 #define BUTTRESS_MIN_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 8)
 #define BUTTRESS_MAX_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 32)
@@ -278,7 +280,7 @@ int intel_ipu4_buttress_ipc_send_bulk(
 	u32 val;
 	int ret;
 	int tout;
-	unsigned int i;
+	unsigned int i, retry = BUTTRESS_IPC_CMD_SEND_RETRY;
 
 	ipc = ipc_domain == INTEL_IPU4_BUTTRESS_IPC_CSE ? &b->cse : &b->ish;
 
@@ -308,9 +310,21 @@ int intel_ipu4_buttress_ipc_send_bulk(
 						BUTTRESS_IPC_TX_TIMEOUT));
 		if (!tout) {
 			dev_err(&isp->pdev->dev, "send IPC response timeout\n");
-			ret = -ETIMEDOUT;
-			goto out;
+			if (!retry--) {
+				ret = -ETIMEDOUT;
+				goto out;
+			}
+
+			/*
+			 * WORKAROUND: Sometimes CSE is not
+			 * responding on first try, try again.
+			 */
+			writel(0, isp->base + ipc->db0_out);
+			i--;
+			continue;
 		}
+
+		retry = BUTTRESS_IPC_CMD_SEND_RETRY;
 
 		if (!msgs[i].require_resp)
 			continue;
