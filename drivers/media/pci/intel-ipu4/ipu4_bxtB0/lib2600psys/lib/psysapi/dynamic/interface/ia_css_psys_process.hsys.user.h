@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_HSYS_USER_H_INCLUDED__
-#define __IA_CSS_PSYS_PROCESS_HSYS_USER_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROCESS_HSYS_USER_H
+#define __IA_CSS_PSYS_PROCESS_HSYS_USER_H
 
 /*! \file */
 
@@ -81,4 +81,4 @@ extern int ia_css_process_print(
 	const ia_css_process_t	*process,
 	void			*fid);
 
-#endif /* __IA_CSS_PSYS_PROCESS_HSYS_USER_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROCESS_HSYS_USER_H */

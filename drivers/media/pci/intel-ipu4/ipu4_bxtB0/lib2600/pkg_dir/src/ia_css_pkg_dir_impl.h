@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_PKG_DIR_ACCESS_IMPL_H_
-#define _IA_CSS_PKG_DIR_ACCESS_IMPL_H_
+#ifndef __IA_CSS_PKG_DIR_IMPL_H
+#define __IA_CSS_PKG_DIR_IMPL_H
 
 #include "ia_css_pkg_dir.h"
 #include "ia_css_pkg_dir_int.h"
@@ -198,5 +198,5 @@ void *ia_css_pkg_dir_get_entry_address(const ia_css_pkg_dir_t *pkg_dir,
 	return entry_blob;
 }
 
-#endif /* _IA_CSS_PKG_DIR_ACCESS_IMPL_H_ */
+#endif /* __IA_CSS_PKG_DIR_IMPL_H */
 

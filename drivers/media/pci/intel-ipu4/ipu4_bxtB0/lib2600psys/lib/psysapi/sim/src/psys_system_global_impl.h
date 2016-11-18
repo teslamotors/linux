@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __PSYS_SYSTEM_GLOBAL_IMPL_H_INCLUDED__
-#define __PSYS_SYSTEM_GLOBAL_IMPL_H_INCLUDED__
+#ifndef __PSYS_SYSTEM_GLOBAL_IMPL_H
+#define __PSYS_SYSTEM_GLOBAL_IMPL_H
 
 #include <vied_nci_psys_system_global.h>
 
@@ -432,4 +432,4 @@ vied_nci_mem_type_ID_t vied_nci_cell_type_get_mem_type(
 	return mem_type;
 }
 
-#endif /* __PSYS_SYSTEM_GLOBAL_IMPL_H_INCLUDED__ */
+#endif /* __PSYS_SYSTEM_GLOBAL_IMPL_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H_INCLUDED__
-#define __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H
+#define __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H
 
 #include "ia_css_psys_static_storage_class.h"
 
@@ -304,5 +304,5 @@ extern void ia_css_program_group_manifest_init(
 #include "ia_css_psys_program_group_manifest_impl.h"
 #endif /* _IA_CSS_PSYS_STATIC_INLINE_ */
 
-#endif /* __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H */
 

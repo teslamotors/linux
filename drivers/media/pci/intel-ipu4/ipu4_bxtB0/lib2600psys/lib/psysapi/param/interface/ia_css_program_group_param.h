@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PROGRAM_GROUP_PARAM_H_INCLUDED__
-#define __IA_CSS_PROGRAM_GROUP_PARAM_H_INCLUDED__
+#ifndef __IA_CSS_PROGRAM_GROUP_PARAM_H
+#define __IA_CSS_PROGRAM_GROUP_PARAM_H
 
 /*! \file */
 
@@ -270,7 +270,7 @@ extern int ia_css_terminal_param_set_stride(
 	ia_css_terminal_param_t	*terminal_param,
 	const uint32_t stride);
 
-#endif /* __IA_CSS_PROGRAM_GROUP_PARAM_H_INCLUDED__  */
+#endif /* __IA_CSS_PROGRAM_GROUP_PARAM_H */
 
 
 

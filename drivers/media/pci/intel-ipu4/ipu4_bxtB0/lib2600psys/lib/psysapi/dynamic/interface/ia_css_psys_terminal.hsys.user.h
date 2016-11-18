@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_TERMINAL_HSYS_USER_H_INCLUDED__
-#define __IA_CSS_PSYS_TERMINAL_HSYS_USER_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_TERMINAL_HSYS_USER_H
+#define __IA_CSS_PSYS_TERMINAL_HSYS_USER_H
 
 /*! \file */
 
@@ -208,4 +208,4 @@ vied_vaddress_t  ia_css_terminal_get_buffer(
 IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_H
 int ia_css_terminal_set_buffer(ia_css_terminal_t *terminal,
 				vied_vaddress_t buffer);
-#endif /* __IA_CSS_PSYS_TERMINAL_HSYS_USER_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_TERMINAL_HSYS_USER_H */

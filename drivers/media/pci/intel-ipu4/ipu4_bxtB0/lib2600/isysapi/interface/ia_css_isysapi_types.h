@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_ISYSAPI_TYPES_H__
-#define __IA_CSS_ISYSAPI_TYPES_H__
+#ifndef __IA_CSS_ISYSAPI_TYPES_H
+#define __IA_CSS_ISYSAPI_TYPES_H
 
 #include "ia_css_isysapi_fw_types.h"
 
@@ -314,4 +314,4 @@ struct ia_css_proxy_write_req_resp {
 };
 
 
-#endif /*__IA_CSS_ISYSAPI_TYPES_H__*/
+#endif /* __IA_CSS_ISYSAPI_TYPES_H */

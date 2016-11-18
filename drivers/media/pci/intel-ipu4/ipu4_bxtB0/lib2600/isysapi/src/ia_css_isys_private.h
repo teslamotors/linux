@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_ISYS_PRIVATE_H__
-#define __IA_CSS_ISYS_PRIVATE_H__
+#ifndef __IA_CSS_ISYS_PRIVATE_H
+#define __IA_CSS_ISYS_PRIVATE_H
 
 
 #include "type_support.h"
@@ -151,4 +151,4 @@ extern int ia_css_isys_prepare_param(
 	const unsigned int num_recv_queues[]
 );
 
-#endif /*__IA_CSS_ISYS_PRIVATE_H_INCLUDED__*/
+#endif /* __IA_CSS_ISYS_PRIVATE_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __RECV_PORT_STRUCT_H__
-#define __RECV_PORT_STRUCT_H__
+#ifndef __RECV_PORT_STRUCT_H
+#define __RECV_PORT_STRUCT_H
 
 #include "buffer_type.h"
 
@@ -29,4 +29,4 @@ struct recv_port {
 	unsigned int mem_addr;	/* address of memory containing regmem */
 };
 
-#endif /*__RECV_PORT_STRUCT_H__*/
+#endif /* __RECV_PORT_STRUCT_H */

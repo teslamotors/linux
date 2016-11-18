@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_GROUP_IMPL_H_INCLUDED__
-#define __IA_CSS_PSYS_PROCESS_GROUP_IMPL_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROCESS_GROUP_IMPL_H
+#define __IA_CSS_PSYS_PROCESS_GROUP_IMPL_H
 
 #include <ia_css_psys_process_group.h>
 #include "ia_css_psys_process_group_cmd_impl.h"
@@ -1161,4 +1161,4 @@ EXIT:
 	return retval;
 }
 
-#endif /* __IA_CSS_PSYS_PROCESS_IMPL_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROCESS_GROUP_IMPL_H */

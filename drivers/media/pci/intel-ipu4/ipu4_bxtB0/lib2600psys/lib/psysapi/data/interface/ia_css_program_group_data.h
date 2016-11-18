@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PROGRAM_GROUP_DATA_H_INCLUDED__
-#define __IA_CSS_PROGRAM_GROUP_DATA_H_INCLUDED__
+#ifndef __IA_CSS_PROGRAM_GROUP_DATA_H
+#define __IA_CSS_PROGRAM_GROUP_DATA_H
 
 #include "ia_css_psys_data_storage_class.h"
 
@@ -386,4 +386,4 @@ extern size_t ia_css_sizeof_kernel_param_descriptor(
 #include "ia_css_program_group_data_impl.h"
 #endif /* _IA_CSS_PSYS_DATA_INLINE_ */
 
-#endif /* __IA_CSS_PROGRAM_GROUP_DATA_H_INCLUDED__  */
+#endif /* __IA_CSS_PROGRAM_GROUP_DATA_H */

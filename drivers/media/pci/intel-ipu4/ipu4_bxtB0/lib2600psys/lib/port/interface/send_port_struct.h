@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __SEND_PORT_STRUCT_H__
-#define __SEND_PORT_STRUCT_H__
+#ifndef __SEND_PORT_STRUCT_H
+#define __SEND_PORT_STRUCT_H
 
 #include "buffer_type.h"
 
@@ -29,4 +29,4 @@ struct send_port {
 	unsigned int mem_addr;
 };
 
-#endif /*__SEND_PORT_STRUCT_H__*/
+#endif /* __SEND_PORT_STRUCT_H */

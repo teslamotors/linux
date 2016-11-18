@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_PRIVATE_TYPES_H_INCLUDED__
-#define __IA_CSS_PSYS_PROCESS_PRIVATE_TYPES_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROCESS_PRIVATE_TYPES_H
+#define __IA_CSS_PSYS_PROCESS_PRIVATE_TYPES_H
 
 #include "ia_css_psys_process_types.h"
 
@@ -68,4 +68,4 @@ struct ia_css_process_s {
 	uint8_t padding[N_PADDING_UINT8_IN_PROCESS_STRUCT];
 };
 
-#endif /* __IA_CSS_PSYS_PROCESS_PRIVATE_TYPES_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROCESS_PRIVATE_TYPES_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_TERMINAL_MANIFEST_H_INCLUDED__
-#define __IA_CSS_PSYS_TERMINAL_MANIFEST_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_TERMINAL_MANIFEST_H
+#define __IA_CSS_PSYS_TERMINAL_MANIFEST_H
 
 /*! \file */
 
@@ -328,4 +328,4 @@ extern int ia_css_data_terminal_manifest_get_max_fragment_size(
 	const ia_css_data_terminal_manifest_t *manifest,
 	uint16_t max_size[IA_CSS_N_DATA_DIMENSION]);
 
-#endif /* __IA_CSS_PSYS_TERMINAL_MANIFEST_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_TERMINAL_MANIFEST_H */

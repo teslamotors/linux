@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_ISYSAPI_PROXY_REGIONS_DEFS_H__
-#define __IA_CSS_ISYSAPI_PROXY_REGIONS_DEFS_H__
+#ifndef __IA_CSS_ISYSAPI_PROXY_REGION_DEFS_H
+#define __IA_CSS_ISYSAPI_PROXY_REGION_DEFS_H
 
 #include "ia_css_isysapi_proxy_region_types.h"
 
@@ -133,4 +133,4 @@ struct ia_css_proxy_write_region_description ipu5_a0_reg_write_desc[N_IPU5_A0_IA
 
 #endif /*defined(IPU5_A0_PROXY_INT)*/
 
-#endif /*__IA_CSS_ISYSAPI_PROXY_REGIONS_DEFS_H__*/
+#endif /* __IA_CSS_ISYSAPI_PROXY_REGION_DEFS_H */

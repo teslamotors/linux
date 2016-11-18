@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROGRAM_MANIFEST_H_INCLUDED__
-#define __IA_CSS_PSYS_PROGRAM_MANIFEST_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROGRAM_MANIFEST_H
+#define __IA_CSS_PSYS_PROGRAM_MANIFEST_H
 
 /*! \file */
 
@@ -334,4 +334,4 @@ extern bool ia_css_is_program_manifest_supernode_program_type(
 extern bool ia_css_is_program_manifest_singular_program_type(
 	const ia_css_program_manifest_t			*manifest);
 
-#endif /* __IA_CSS_PSYS_PROGRAM_MANIFEST_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROGRAM_MANIFEST_H */

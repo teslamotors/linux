@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_PKG_DIR_INT_H_
-#define _IA_CSS_PKG_DIR_INT_H_
+#ifndef __IA_CSS_PKG_DIR_INT_H
+#define __IA_CSS_PKG_DIR_INT_H
 
 /*
  *	Package Dir structure as specified in CSE FAS
@@ -46,5 +46,5 @@
 #define PKG_DIR_MAGIC_VAL_1	(('_' << 24) | ('I' << 16) | ('U' << 8) | 'P')
 #define PKG_DIR_MAGIC_VAL_0	(('K' << 24) | ('D' << 16) | ('R' << 8) | '_')
 
-#endif /* _IA_CSS_PKG_DIR_INT_H_ */
+#endif /* __IA_CSS_PKG_DIR_INT_H */
 

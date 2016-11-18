@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __PSYS_SYSTEM_GLOBAL_H_INCLUDED__
-#define __PSYS_SYSTEM_GLOBAL_H_INCLUDED__
+#ifndef __VIED_NCI_PSYS_SYSTEM_GLOBAL_H
+#define __VIED_NCI_PSYS_SYSTEM_GLOBAL_H
 
 #include <type_support.h>
 #include "ia_css_base_types.h"
@@ -161,4 +161,4 @@ vied_nci_mem_type_ID_t vied_nci_cell_type_get_mem_type(
 #include "psys_system_global_impl.h"
 #endif /* _IA_CSS_PSYS_SIM_INLINE_ */
 
-#endif /* __PSYS_SYSTEM_GLOBAL_H_INCLUDED__ */
+#endif /* __VIED_NCI_PSYS_SYSTEM_GLOBAL_H */

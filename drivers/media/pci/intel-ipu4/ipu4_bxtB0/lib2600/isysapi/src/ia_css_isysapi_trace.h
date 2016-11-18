@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef IA_CSS_ISYSAPI_TRACE_H
-#define IA_CSS_ISYSAPI_TRACE_H
+#ifndef __IA_CSS_ISYSAPI_TRACE_H
+#define __IA_CSS_ISYSAPI_TRACE_H
 
 #include "ia_css_trace.h"
 
@@ -76,4 +76,4 @@
 	#error "ISYSAPI_TRACE_CONFIG not defined"
 #endif
 
-#endif /* IA_CSS_ISYSAPI_TRACE_H */
+#endif /* __IA_CSS_ISYSAPI_TRACE_H */

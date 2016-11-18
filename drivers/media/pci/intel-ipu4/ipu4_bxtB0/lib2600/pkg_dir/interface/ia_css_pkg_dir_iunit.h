@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_PKG_DIR_IUNIT_H_
-#define _IA_CSS_PKG_DIR_IUNIT_H_
+#ifndef __IA_CSS_PKG_DIR_IUNIT_H
+#define __IA_CSS_PKG_DIR_IUNIT_H
 
 /* In bootflow, pkg_dir only supports upto 16 entries in pkg_dir
  * pkg_dir_header + Psys_server pg + Isys_server pg + 13 Client pg
@@ -43,5 +43,5 @@ enum ia_css_pkg_dir_index {
 	IA_CSS_PKG_DIR_CLIENT_0   = 2
 };
 
-#endif /* _IA_CSS_PKG_DIR_IUNIT_H_ */
+#endif /* __IA_CSS_PKG_DIR_IUNIT_H */
 

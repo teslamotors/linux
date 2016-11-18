@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_GROUP_HSYS_USER_H_INCLUDED__
-#define __IA_CSS_PSYS_PROCESS_GROUP_HSYS_USER_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROCESS_GROUP_HSYS_USER_H
+#define __IA_CSS_PSYS_PROCESS_GROUP_HSYS_USER_H
 
 /*! \file */
 
@@ -183,4 +183,4 @@ extern int ia_css_process_group_set_private_token(
 	ia_css_process_group_t					*process_group,
 	const uint64_t							token);
 
-#endif /* __IA_CSS_PSYS_PROCESS_GROUP_HSYS_USER_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROCESS_GROUP_HSYS_USER_H */

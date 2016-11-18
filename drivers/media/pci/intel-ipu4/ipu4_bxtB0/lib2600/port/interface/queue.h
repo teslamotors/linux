@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __SYS_QUEUE_H__
-#define __SYS_QUEUE_H__
+#ifndef __QUEUE_H
+#define __QUEUE_H
 
 #include "queue_struct.h"
 #include "port_env_struct.h"
@@ -37,4 +37,4 @@ void
 sys_queue_init(struct sys_queue *q, unsigned int size,
 		unsigned int token_size, struct sys_queue_res *res);
 
-#endif /*__QUEUE_H__*/
+#endif /* __QUEUE_H */

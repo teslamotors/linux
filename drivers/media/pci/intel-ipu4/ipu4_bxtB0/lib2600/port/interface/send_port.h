@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __SEND_PORT_H__
-#define __SEND_PORT_H__
+#ifndef __SEND_PORT_H
+#define __SEND_PORT_H
 
 
 /*
@@ -49,4 +49,4 @@ unsigned int
 send_port_transfer(const struct send_port *p, const void *data);
 
 
-#endif /*__SEND_PORT_H__*/
+#endif /* __SEND_PORT_H */

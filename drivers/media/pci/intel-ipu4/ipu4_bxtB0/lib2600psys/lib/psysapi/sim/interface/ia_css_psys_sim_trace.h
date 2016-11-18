@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYSAPI_SIM_TRACE_H_INCLUDED__
-#define __IA_CSS_PSYSAPI_SIM_TRACE_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_SIM_TRACE_H
+#define __IA_CSS_PSYS_SIM_TRACE_H
 
 #include "ia_css_psysapi_trace.h"
 
@@ -92,4 +92,4 @@
 	#define PSYSAPI_SIM_TRACE_LEVEL_VERBOSE	PSYSAPI_TRACE_LEVEL_VERBOSE
 #endif
 
-#endif /* __IA_CSS_PSYSAPI_SIM_TRACE_H_INCLUDED__  */
+#endif /* __IA_CSS_PSYSAPI_SIM_TRACE_H */

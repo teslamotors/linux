@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_PSYS_PROGRAM_GROUP_PRIVATE_H_
-#define _IA_CSS_PSYS_PROGRAM_GROUP_PRIVATE_H_
+#ifndef __IA_CSS_PSYS_PROGRAM_GROUP_PRIVATE_H
+#define __IA_CSS_PSYS_PROGRAM_GROUP_PRIVATE_H
 
 #include "ia_css_psys_manifest_types.h"
 #include "ia_css_terminal_manifest_types.h"
@@ -150,4 +150,4 @@ extern void ia_css_program_manifest_init(
 	const uint8_t	program_dependency_count,
 	const uint8_t	terminal_dependency_count);
 
-#endif /* _IA_CSS_PSYS_PROGRAM_GROUP_PRIVATE_H_ */
+#endif /* __IA_CSS_PSYS_PROGRAM_GROUP_PRIVATE_H */

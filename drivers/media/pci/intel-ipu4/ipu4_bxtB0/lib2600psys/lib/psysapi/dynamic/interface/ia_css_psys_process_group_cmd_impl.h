@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_GROUP_CMD_IMPL_H_
-#define __IA_CSS_PSYS_PROCESS_GROUP_CMD_IMPL_H_
+#ifndef __IA_CSS_PSYS_PROCESS_GROUP_CMD_IMPL_H
+#define __IA_CSS_PSYS_PROCESS_GROUP_CMD_IMPL_H
 
 #include "type_support.h"
 #include "ia_css_psys_process_group.h"
@@ -122,4 +122,4 @@ extern int ia_css_process_group_exec_cmd(
 	const ia_css_process_group_cmd_t		cmd);
 
 
-#endif /* __IA_CSS_PSYS_PROCESS_GROUP_CMD_IMPL_H_ */
+#endif /* __IA_CSS_PSYS_PROCESS_GROUP_CMD_IMPL_H */

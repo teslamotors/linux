@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_TERMINAL_PRIVATE_TYPES_H_INCLUDED__
-#define __IA_CSS_PSYS_TERMINAL_PRIVATE_TYPES_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_TERMINAL_PRIVATE_TYPES_H
+#define __IA_CSS_PSYS_TERMINAL_PRIVATE_TYPES_H
 
 #include "ia_css_terminal_types.h"
 #include "ia_css_program_group_data.h"
@@ -72,4 +72,4 @@ struct ia_css_data_terminal_s {
 	uint8_t padding[N_PADDING_UINT8_IN_DATA_TERMINAL_STRUCT];
 };
 
-#endif /* __IA_CSS_PSYS_TERMINAL_PRIVATE_TYPES_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_TERMINAL_PRIVATE_TYPES_H */

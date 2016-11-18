@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_PKG_DIR_STORAGE_CLASS_H_
-#define _IA_CSS_PKG_DIR_STORAGE_CLASS_H_
+#ifndef __IA_CSS_PKG_DIR_STORAGE_CLASS_H
+#define __IA_CSS_PKG_DIR_STORAGE_CLASS_H
 
 
 #include "storage_class.h"
@@ -26,5 +26,5 @@
 #define IA_CSS_PKG_DIR_STORAGE_CLASS_C STORAGE_CLASS_INLINE
 #endif
 
-#endif /* _IA_CSS_PKG_DIR_STORAGE_CLASS_H_ */
+#endif /* __IA_CSS_PKG_DIR_STORAGE_CLASS_H */
 

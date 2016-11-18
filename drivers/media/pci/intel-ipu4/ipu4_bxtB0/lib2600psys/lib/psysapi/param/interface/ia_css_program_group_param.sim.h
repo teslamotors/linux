@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PROGRAM_GROUP_PARAM_SIM_H_INCLUDED__
-#define __IA_CSS_PROGRAM_GROUP_PARAM_SIM_H_INCLUDED__
+#ifndef __IA_CSS_PROGRAM_GROUP_PARAM_SIM_H
+#define __IA_CSS_PROGRAM_GROUP_PARAM_SIM_H
 
 /*! \file */
 
@@ -150,4 +150,4 @@ extern int ia_css_terminal_param_print(
 	const ia_css_terminal_param_t	*param,
 	void				*fid);
 
-#endif /* __IA_CSS_PROGRAM_GROUP_PARAM_SIM_H_INCLUDED__  */
+#endif /* __IA_CSS_PROGRAM_GROUP_PARAM_SIM_H */

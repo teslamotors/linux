@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_HSYS_USER_H_INCLUDED__
-#define __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_HSYS_USER_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_HSYS_USER_H
+#define __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_HSYS_USER_H
 
 /*! \file */
 
@@ -66,7 +66,7 @@ extern int ia_css_program_group_manifest_write(
 extern bool ia_css_is_program_group_manifest_valid(
 	const ia_css_program_group_manifest_t *manifest);
 
-#endif /* __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_HSYS_USER_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_HSYS_USER_H */
 
 
 

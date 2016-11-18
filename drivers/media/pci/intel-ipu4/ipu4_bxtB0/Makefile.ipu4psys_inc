@@ -2,6 +2,8 @@ IPU_PSYSLIB_INC = \
 	-I$(IPU_PSYSLIB_ROOT)/buffer/interface \
 	-I$(IPU_PSYSLIB_ROOT)/cell/interface \
 	-I$(IPU_PSYSLIB_ROOT)/cell/src \
+	-I$(IPU_PSYSLIB_ROOT)/client_pkg/interface \
+	-I$(IPU_PSYSLIB_ROOT)/client_pkg/src \
 	-I$(IPU_PSYSLIB_ROOT)/cpd/ \
 	-I$(IPU_PSYSLIB_ROOT)/cpd/cpd_component/interface \
 	-I$(IPU_PSYSLIB_ROOT)/cpd/cpd_metadata/interface \
@@ -13,6 +15,8 @@ IPU_PSYSLIB_INC = \
 	-I$(IPU_PSYSLIB_ROOT)/devices/src \
 	-I$(IPU_PSYSLIB_ROOT)/fw_abi_common_types \
 	-I$(IPU_PSYSLIB_ROOT)/fw_abi_common_types/cpu \
+	-I$(IPU_PSYSLIB_ROOT)/pkg_dir/interface \
+	-I$(IPU_PSYSLIB_ROOT)/pkg_dir/src \
 	-I$(IPU_PSYSLIB_ROOT)/port/interface \
 	-I$(IPU_PSYSLIB_ROOT)/psys_private_pg/interface \
 	-I$(IPU_PSYSLIB_ROOT)/psys_server/interface \

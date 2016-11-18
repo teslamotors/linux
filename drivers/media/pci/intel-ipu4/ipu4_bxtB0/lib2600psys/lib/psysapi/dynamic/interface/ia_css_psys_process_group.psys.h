@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_GROUP_PSYS_H_INCLUDED__
-#define __IA_CSS_PSYS_PROCESS_GROUP_PSYS_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROCESS_GROUP_PSYS_H
+#define __IA_CSS_PSYS_PROCESS_GROUP_PSYS_H
 
 /*! \file */
 
@@ -57,4 +57,4 @@ extern int ia_css_process_group_stop(
 	ia_css_process_group_t					*process_group);
 
 
-#endif /* __IA_CSS_PSYS_PROCESS_GROUP_PSYS_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROCESS_GROUP_PSYS_H */

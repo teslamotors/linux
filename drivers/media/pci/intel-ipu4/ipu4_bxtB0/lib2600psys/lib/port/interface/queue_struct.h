@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __SYS_QUEUE_STRUCT_H__
-#define __SYS_QUEUE_STRUCT_H__
+#ifndef __QUEUE_STRUCT_H
+#define __QUEUE_STRUCT_H
 
 /* queue description, shared between sender and receiver */
 
@@ -44,4 +44,4 @@ struct sys_queue_res {
 	unsigned int reg;
 };
 
-#endif /*__QUEUE_STRUCT_H__*/
+#endif /* __QUEUE_STRUCT_H */

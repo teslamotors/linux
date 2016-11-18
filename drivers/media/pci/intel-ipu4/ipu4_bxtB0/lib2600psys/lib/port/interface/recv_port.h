@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __RECV_PORT_H__
-#define __RECV_PORT_H__
+#ifndef __RECV_PORT_H
+#define __RECV_PORT_H
 
 
 struct recv_port;
@@ -31,4 +31,4 @@ unsigned int
 recv_port_transfer(const struct recv_port *p, void *data);
 
 
-#endif /*__RECV_PORT_H__*/
+#endif /* __RECV_PORT_H */

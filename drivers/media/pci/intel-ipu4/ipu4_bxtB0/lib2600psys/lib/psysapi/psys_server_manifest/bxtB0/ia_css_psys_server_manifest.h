@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_SERVER_MANIFEST_H_INCLUDED__
-#define __IA_CSS_PSYS_SERVER_MANIFEST_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_SERVER_MANIFEST_H
+#define __IA_CSS_PSYS_SERVER_MANIFEST_H
 
 #include "vied_nci_psys_resource_model.h"
 
@@ -26,4 +26,4 @@
 
 extern const vied_nci_resource_spec_t psys_server_manifest;
 
-#endif /* __IA_CSS_PSYS_SERVER_MANIFEST_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_SERVER_MANIFEST_H */

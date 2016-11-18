@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __PORT_ENV_STRUCT_H__
-#define __PORT_ENV_STRUCT_H__
+#ifndef __PORT_ENV_STRUCT_H
+#define __PORT_ENV_STRUCT_H
 
 struct port_env {
 	unsigned int mmid;
@@ -21,4 +21,4 @@ struct port_env {
 	unsigned int mem_addr;
 };
 
-#endif /*__PORT_ENV_STRUCT_H__*/
+#endif /* __PORT_ENV_STRUCT_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_HSYS_KERNEL_H_INCLUDED__
-#define __IA_CSS_PSYS_PROCESS_HSYS_KERNEL_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROCESS_HSYS_KERNEL_H
+#define __IA_CSS_PSYS_PROCESS_HSYS_KERNEL_H
 
 /*! \file */
 
@@ -141,4 +141,4 @@ extern int ia_css_process_clear_dev_chn(
 	ia_css_process_t		*process,
 	const vied_nci_dev_chn_ID_t	dev_chn_id);
 
-#endif /* __IA_CSS_PSYS_PROCESS_HSYS_KERNEL_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROCESS_HSYS_KERNEL_H */

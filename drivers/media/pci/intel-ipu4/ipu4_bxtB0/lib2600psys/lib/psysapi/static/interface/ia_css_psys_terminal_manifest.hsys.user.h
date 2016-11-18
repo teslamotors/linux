@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_TERMINAL_MANIFEST_HSYS_USER_H_INCLUDED__
-#define __IA_CSS_PSYS_TERMINAL_MANIFEST_HSYS_USER_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_TERMINAL_MANIFEST_HSYS_USER_H
+#define __IA_CSS_PSYS_TERMINAL_MANIFEST_HSYS_USER_H
 
 /*! \file */
 
@@ -35,4 +35,4 @@ extern int ia_css_terminal_manifest_print(
 	const ia_css_terminal_manifest_t	*manifest,
 	void					*fid);
 
-#endif /* __IA_CSS_PSYS_TERMINAL_MANIFEST_HSYS_USER_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_TERMINAL_MANIFEST_HSYS_USER_H */

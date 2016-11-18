@@ -12,12 +12,12 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYSAPI_H_INCLUDED__
-#define __IA_CSS_PSYSAPI_H_INCLUDED__
+#ifndef __IA_CSS_PSYSAPI_H
+#define __IA_CSS_PSYSAPI_H
 
 #include <ia_css_psys_process.hsys.user.h>
 #include <ia_css_psys_process.hsys.kernel.h>
 #include <ia_css_psys_process_group.hsys.user.h>
 #include <ia_css_psys_process_group.hsys.kernel.h>
 
-#endif /* __IA_CSS_PSYSAPI_H_INCLUDED__  */
+#endif /* __IA_CSS_PSYSAPI_H */

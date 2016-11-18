@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PROGRAM_GROUP_DATA_DEFS__
-#define __IA_CSS_PROGRAM_GROUP_DATA_DEFS__
+#ifndef __IA_CSS_PROGRAM_GROUP_DATA_DEFS_H
+#define __IA_CSS_PROGRAM_GROUP_DATA_DEFS_H
 
 
 /*
@@ -143,4 +143,4 @@ typedef enum ia_css_frame_format_type {
 } ia_css_frame_format_type_t;
 
 
-#endif /* __IA_CSS_PROGRAM_GROUP_DATA_DEFS__ */
+#endif /* __IA_CSS_PROGRAM_GROUP_DATA_DEFS_H */

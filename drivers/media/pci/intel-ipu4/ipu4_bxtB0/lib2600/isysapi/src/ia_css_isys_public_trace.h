@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef IA_CSS_ISYSAPI_PUBLIC_TRACE_H
-#define IA_CSS_ISYSAPI_PUBLIC_TRACE_H
+#ifndef __IA_CSS_ISYS_PUBLIC_TRACE_H
+#define __IA_CSS_ISYS_PUBLIC_TRACE_H
 
 #include "ia_css_isysapi_trace.h"
 
@@ -52,4 +52,4 @@ int print_isys_frame_buff_set(
  */
 int print_isys_resp_info(struct ia_css_isys_resp_info *received_response);
 
-#endif /* IA_CSS_ISYSAPI_PUBLIC_TRACE_H */
+#endif /* __IA_CSS_ISYS_PUBLIC_TRACE_H */

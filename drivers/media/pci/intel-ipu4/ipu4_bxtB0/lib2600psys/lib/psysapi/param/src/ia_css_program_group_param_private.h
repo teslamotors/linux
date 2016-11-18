@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_PROGRAM_GROUP_PARAM_PRIVATE_H_
-#define _IA_CSS_PROGRAM_GROUP_PARAM_PRIVATE_H_
+#ifndef __IA_CSS_PROGRAM_GROUP_PARAM_PRIVATE_H
+#define __IA_CSS_PROGRAM_GROUP_PARAM_PRIVATE_H
 
 #include <ia_css_program_group_param.h>
 #include <ia_css_psys_manifest_types.h>
@@ -72,4 +72,4 @@ struct ia_css_program_param_s {
 	+ IA_CSS_UINT8_T_BITS \
 	+ (IA_CSS_UINT8_T_BITS * 1))
 
-#endif /*_IA_CSS_PROGRAM_GROUP_PARAM_PRIVATE_H_*/
+#endif /* __IA_CSS_PROGRAM_GROUP_PARAM_PRIVATE_H */

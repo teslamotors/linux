@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PROGRAM_GROUP_DATA_IMPL_H_INCLUDED__
-#define __IA_CSS_PROGRAM_GROUP_DATA_IMPL_H_INCLUDED__
+#ifndef __IA_CSS_PROGRAM_GROUP_DATA_IMPL_H
+#define __IA_CSS_PROGRAM_GROUP_DATA_IMPL_H
 
 #include "ia_css_program_group_data.h"
 #include "ia_css_psys_data_trace.h"
@@ -403,4 +403,4 @@ EXIT:
 	return size;
 }
 
-#endif /* __IA_CSS_PROGRAM_GROUP_DATA_IMPL_H_INCLUDED__  */
+#endif /* __IA_CSS_PROGRAM_GROUP_DATA_IMPL_H */

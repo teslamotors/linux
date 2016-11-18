@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_TYPES_H_INCLUDED__
-#define __IA_CSS_PSYS_PROCESS_TYPES_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROCESS_TYPES_H
+#define __IA_CSS_PSYS_PROCESS_TYPES_H
 
 /*! \file */
 
@@ -95,7 +95,7 @@ typedef struct ia_css_process_s		ia_css_process_t;
 
 typedef struct ia_css_data_terminal_s	ia_css_data_terminal_t;
 
-#endif /* __IA_CSS_PSYS_PROCESS_TYPES_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROCESS_TYPES_H */
 
 
 

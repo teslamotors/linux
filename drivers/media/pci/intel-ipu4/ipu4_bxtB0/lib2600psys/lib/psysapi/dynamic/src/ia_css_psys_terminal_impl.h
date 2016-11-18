@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_TERMINAL_IMPL_H_INCLUDED__
-#define __IA_CSS_PSYS_TERMINAL_IMPL_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_TERMINAL_IMPL_H
+#define __IA_CSS_PSYS_TERMINAL_IMPL_H
 
 #include <ia_css_psys_terminal.h>
 
@@ -1372,4 +1372,4 @@ EXIT:
 	return is_valid;
 }
 
-#endif /* __IA_CSS_PSYS_TERMINAL_IMPL_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_TERMINAL_IMPL_H */

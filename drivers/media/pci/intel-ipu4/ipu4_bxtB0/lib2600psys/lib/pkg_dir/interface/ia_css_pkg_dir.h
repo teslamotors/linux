@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_PKG_DIR_H_
-#define _IA_CSS_PKG_DIR_H_
+#ifndef __IA_CSS_PKG_DIR_H
+#define __IA_CSS_PKG_DIR_H
 
 #include "ia_css_pkg_dir_storage_class.h"
 #include "ia_css_pkg_dir_types.h"
@@ -96,5 +96,5 @@ void *ia_css_pkg_dir_get_entry_address(
 
 #endif
 
-#endif /* _IA_CSS_PKG_DIR_H_ */
+#endif /* __IA_CSS_PKG_DIR_H */
 

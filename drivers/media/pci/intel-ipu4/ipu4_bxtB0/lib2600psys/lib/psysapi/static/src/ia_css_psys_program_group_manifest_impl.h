@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_IMPL_H_INCLUDED__
-#define __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_IMPL_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_IMPL_H
+#define __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_IMPL_H
 
 #include <ia_css_psys_program_group_manifest.h>
 #include <ia_css_psys_program_manifest.h>
@@ -429,4 +429,4 @@ uint8_t ia_css_program_group_manifest_get_terminal_count(
 	return terminal_count;
 }
 
-#endif /* __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_IMPL_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_IMPL_H */

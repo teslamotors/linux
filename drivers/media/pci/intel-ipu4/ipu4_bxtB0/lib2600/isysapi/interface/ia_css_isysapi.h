@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_ISYSAPI_H__
-#define __IA_CSS_ISYSAPI_H__
+#ifndef __IA_CSS_ISYSAPI_H
+#define __IA_CSS_ISYSAPI_H
 
 /**
  * errno.h specified error codes to be used
@@ -297,4 +297,4 @@ extern int ia_css_isys_proxy_handle_write_response(
 	struct ia_css_proxy_write_req_resp *received_response
 );
 
-#endif /*__IA_CSS_ISYSAPI_H__ */
+#endif /* __IA_CSS_ISYSAPI_H */

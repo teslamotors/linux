@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_TRANSPORT_H_INCLUDED__
-#define __IA_CSS_PSYS_TRANSPORT_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_TRANSPORT_H
+#define __IA_CSS_PSYS_TRANSPORT_H
 
 #include <vied_nci_psys_system_global.h>	/* vied_vaddress_t */
 
@@ -98,4 +98,4 @@ struct ia_css_psys_buffer_s {
 	vied_vaddress_t	*isp_buffer;
 };
 
-#endif
+#endif /* __IA_CSS_PSYS_TRANSPORT_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_MANIFEST_TYPES_H_INCLUDED__
-#define __IA_CSS_PSYS_MANIFEST_TYPES_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_MANIFEST_TYPES_H
+#define __IA_CSS_PSYS_MANIFEST_TYPES_H
 
 /*! \file */
 
@@ -88,4 +88,4 @@ typedef struct ia_css_data_terminal_manifest_s
 ia_css_data_terminal_manifest_t;
 
 
-#endif /* __IA_CSS_PSYS_MANIFEST_TYPES_H_INCLUDED__  */
+#endif /* __IA_CSS_PSYS_MANIFEST_TYPES_H */

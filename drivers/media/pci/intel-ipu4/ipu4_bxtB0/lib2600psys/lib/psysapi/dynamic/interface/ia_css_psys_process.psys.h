@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_PSYS_H_INCLUDED__
-#define __IA_CSS_PSYS_PROCESS_PSYS_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROCESS_PSYS_H
+#define __IA_CSS_PSYS_PROCESS_PSYS_H
 
 /*! \file */
 
@@ -50,4 +50,4 @@ extern int ia_css_process_acquire(ia_css_process_t *process);
 extern int ia_css_process_release(ia_css_process_t *process);
 
 
-#endif /* __IA_CSS_PSYS_PROCESS_PSYS_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROCESS_PSYS_H */

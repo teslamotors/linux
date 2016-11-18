@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __VIED_NCI_PSYS_RESOURCE_MODEL_H_INCLUDED__
-#define __VIED_NCI_PSYS_RESOURCE_MODEL_H_INCLUDED__
+#ifndef __VIED_NCI_PSYS_RESOURCE_MODEL_H
+#define __VIED_NCI_PSYS_RESOURCE_MODEL_H
 
 #include "type_support.h"
 
@@ -265,4 +265,4 @@ extern const uint16_t vied_nci_mem_size[VIED_NCI_N_MEM_ID];
 extern const uint16_t vied_nci_mem_word_size[VIED_NCI_N_DATA_MEM_TYPE_ID];
 extern const uint16_t vied_nci_dev_chn_size[VIED_NCI_N_DEV_CHN_ID];
 
-#endif /* __VIED_NCI_PSYS_RESOURCE_MODEL_H_INCLUDED__ */
+#endif /* __VIED_NCI_PSYS_RESOURCE_MODEL_H */

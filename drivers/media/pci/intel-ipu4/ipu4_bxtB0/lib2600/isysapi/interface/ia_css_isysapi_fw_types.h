@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_ISYSAPI_FW_TYPES_H__
-#define __IA_CSS_ISYSAPI_FW_TYPES_H__
+#ifndef __IA_CSS_ISYSAPI_FW_TYPES_H
+#define __IA_CSS_ISYSAPI_FW_TYPES_H
 
 
 /* Max number of Input/Output Pins */
@@ -472,4 +472,4 @@ enum ia_css_proxy_error {
 	N_IA_CSS_PROXY_ERROR
 };
 
-#endif /*__IA_CSS_ISYSAPI_FW_TYPES_H__*/
+#endif /* __IA_CSS_ISYSAPI_FW_TYPES_H */

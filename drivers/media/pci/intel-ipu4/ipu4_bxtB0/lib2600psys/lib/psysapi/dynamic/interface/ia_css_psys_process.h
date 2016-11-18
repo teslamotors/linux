@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROCESS_H_INCLUDED__
-#define __IA_CSS_PSYS_PROCESS_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROCESS_H
+#define __IA_CSS_PSYS_PROCESS_H
 
 /*! \file */
 
@@ -297,4 +297,4 @@ bool ia_css_is_process_valid(
 #include "ia_css_psys_process_impl.h"
 #endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
 
-#endif /* __IA_CSS_PSYS_PROCESS_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROCESS_H */

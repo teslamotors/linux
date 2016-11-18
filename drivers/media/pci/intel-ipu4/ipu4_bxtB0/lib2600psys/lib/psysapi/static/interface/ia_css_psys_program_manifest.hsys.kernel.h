@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROGRAM_MANIFEST_HSYS_KERNEL_H_INCLUDED__
-#define __IA_CSS_PSYS_PROGRAM_MANIFEST_HSYS_KERNEL_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROGRAM_MANIFEST_HSYS_KERNEL_H
+#define __IA_CSS_PSYS_PROGRAM_MANIFEST_HSYS_KERNEL_H
 
 /*! \file */
 
@@ -93,4 +93,4 @@ extern vied_nci_resource_size_t ia_css_program_manifest_get_dev_chn_size(
 	const ia_css_program_manifest_t			*manifest,
 	const vied_nci_dev_chn_ID_t				dev_chn_id);
 
-#endif /* __IA_CSS_PSYS_PROGRAM_MANIFEST_HSYS_KERNEL_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROGRAM_MANIFEST_HSYS_KERNEL_H */

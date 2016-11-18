@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_INIT_H_INCLUDED__
-#define __IA_CSS_PSYS_INIT_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_INIT_H
+#define __IA_CSS_PSYS_INIT_H
 
 #include <vied_nci_psys_system_global.h>	/* vied_vaddress_t */
 
@@ -34,4 +34,4 @@ typedef struct ia_css_psys_server_init {
 	uint32_t icache_prefetch_isp;
 } ia_css_psys_server_init_t;
 
-#endif /* __IA_CSS_PSYS_INIT_H_INCLUDED__  */
+#endif /* __IA_CSS_PSYS_INIT_H */

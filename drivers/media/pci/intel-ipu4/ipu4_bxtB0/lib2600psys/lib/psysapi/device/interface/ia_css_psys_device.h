@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_DEVICE_H_INCLUDED__
-#define __IA_CSS_PSYS_DEVICE_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_DEVICE_H
+#define __IA_CSS_PSYS_DEVICE_H
 
 #include "ia_css_psys_init.h"
 #include "ia_css_psys_transport.h"
@@ -443,4 +443,4 @@ extern size_t ia_css_psys_get_event_msg_size(
 	const struct ia_css_syscom_context *context,
 	ia_css_psys_event_queue_ID_t id);
 
-#endif /* __IA_CSS_PSYS_DEVICE_H_INCLUDED__  */
+#endif /* __IA_CSS_PSYS_DEVICE_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_SIM_DATA_H_INCLUDED__
-#define __IA_CSS_PSYS_SIM_DATA_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_SIM_DATA_H
+#define __IA_CSS_PSYS_SIM_DATA_H
 
 /*! Set the seed if the random number generator
 
@@ -47,7 +47,7 @@ extern unsigned int ia_css_psys_ran_val(const unsigned int range);
 extern unsigned int ia_css_psys_ran_interval(const unsigned int lo,
 					const unsigned int hi);
 
-#endif /* __IA_CSS_PSYS_SIM_DATA_H_INCLUDED__  */
+#endif /* __IA_CSS_PSYS_SIM_DATA_H */
 
 
 

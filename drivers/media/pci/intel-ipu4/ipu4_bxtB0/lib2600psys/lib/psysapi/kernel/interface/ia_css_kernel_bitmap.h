@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_KERNEL_BITMAP_H_INCLUDED__
-#define __IA_CSS_KERNEL_BITMAP_H_INCLUDED__
+#ifndef __IA_CSS_KERNEL_BITMAP_H
+#define __IA_CSS_KERNEL_BITMAP_H
 
 /*! \file */
 
@@ -194,4 +194,4 @@ extern ia_css_kernel_bitmap_t ia_css_kernel_bit_mask(
  */
 extern ia_css_kernel_bitmap_t ia_css_kernel_ran_bitmap(void);
 
-#endif /* __IA_CSS_KERNEL_BITMAP_H_INCLUDED__  */
+#endif /* __IA_CSS_KERNEL_BITMAP_H */

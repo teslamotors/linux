@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYSAPI_TRACE_H_INCLUDED__
-#define __IA_CSS_PSYSAPI_TRACE_H_INCLUDED__
+#ifndef __IA_CSS_PSYSAPI_TRACE_H
+#define __IA_CSS_PSYSAPI_TRACE_H
 
 #include "ia_css_trace.h"
 
@@ -75,4 +75,4 @@
 /* Overriding submodules in PSYSAPI with a specific tracing level */
 /* #define PSYSAPI_DYNAMIC_TRACING_OVERRIDE TRACE_LOG_LEVEL_VERBOSE */
 
-#endif /* __IA_CSS_PSYSAPI_TRACE_H_INCLUDED__  */
+#endif /* __IA_CSS_PSYSAPI_TRACE_H */

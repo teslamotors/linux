@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PSYS_PROGRAM_MANIFEST_SIM_H_INCLUDED__
-#define __IA_CSS_PSYS_PROGRAM_MANIFEST_SIM_H_INCLUDED__
+#ifndef __IA_CSS_PSYS_PROGRAM_MANIFEST_SIM_H
+#define __IA_CSS_PSYS_PROGRAM_MANIFEST_SIM_H
 
 /*! \file */
 
@@ -58,4 +58,4 @@ extern ia_css_program_manifest_t *ia_css_program_manifest_alloc(
 extern ia_css_program_manifest_t *ia_css_program_manifest_free(
 	ia_css_program_manifest_t *manifest);
 
-#endif /* __IA_CSS_PSYS_PROGRAM_MANIFEST_SIM_H_INCLUDED__ */
+#endif /* __IA_CSS_PSYS_PROGRAM_MANIFEST_SIM_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_ISYS_FW_BRIDGED_TYPES_H__
-#define __IA_CSS_ISYS_FW_BRIDGED_TYPES_H__
+#ifndef __IA_CSS_ISYS_FW_BRIDGED_TYPES_H
+#define __IA_CSS_ISYS_FW_BRIDGED_TYPES_H
 
 #include "platform_support.h"
 
@@ -375,4 +375,4 @@ struct proxy_send_queue_token {
 	aligned_uint32(uint32_t, value);
 };
 
-#endif /*__IA_CSS_ISYS_FW_BRIDGED_TYPES_H__*/
+#endif /* __IA_CSS_ISYS_FW_BRIDGED_TYPES_H */

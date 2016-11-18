@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_ISYS_PROXY_REGION_TYPES_H__
-#define __IA_CSS_ISYS_PROXY_REGION_TYPES_H__
+#ifndef __IA_CSS_ISYSAPI_PROXY_REGION_TYPES_H
+#define __IA_CSS_ISYSAPI_PROXY_REGION_TYPES_H
 
 
 struct ia_css_proxy_write_region_description {
@@ -21,4 +21,4 @@ struct ia_css_proxy_write_region_description {
 	uint32_t offset;
 };
 
-#endif /*__IA_CSS_ISYS_PROXY_REGION_TYPES_H__*/
+#endif /* __IA_CSS_ISYSAPI_PROXY_REGION_TYPES_H */

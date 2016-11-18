@@ -12,10 +12,10 @@
 * more details.
 */
 
-#ifndef __IA_CSS_ISYSAPI_FW_VERSION_H__
-#define __IA_CSS_ISYSAPI_FW_VERSION_H__
+#ifndef __IA_CSS_ISYSAPI_FW_VERSION_H
+#define __IA_CSS_ISYSAPI_FW_VERSION_H
 
 /* ISYSAPI FW VERSION is taken from Makefile for FW tests */
 #define BXT_FW_RELEASE_VERSION ISYS_FIRMWARE_VERSION
 
-#endif /* __IA_CSS_ISYSAPI_FW_VERSION_H__ */
+#endif /* __IA_CSS_ISYSAPI_FW_VERSION_H */
