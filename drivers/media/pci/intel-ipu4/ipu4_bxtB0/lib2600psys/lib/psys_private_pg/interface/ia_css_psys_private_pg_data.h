@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_PSYS_PRIVATE_PG_DATA_H_
-#define _IA_CSS_PSYS_PRIVATE_PG_DATA_H_
+#ifndef __IA_CSS_PSYS_PRIVATE_PG_DATA_H
+#define __IA_CSS_PSYS_PRIVATE_PG_DATA_H
 
 #include "ipu_device_acb_devices.h"
 #include "ipu_device_gp_devices.h"
@@ -28,5 +28,5 @@ struct ia_css_psys_private_pg_data {
 	uint8_t isa_mux_conf[IPU_DEVICE_GP_ISA_STATIC_MUX_NUM_MUX];
 };
 
-#endif /* _IA_CSS_PSYS_PRIVATE_PG_DATA_H_ */
+#endif /* __IA_CSS_PSYS_PRIVATE_PG_DATA_H */
 

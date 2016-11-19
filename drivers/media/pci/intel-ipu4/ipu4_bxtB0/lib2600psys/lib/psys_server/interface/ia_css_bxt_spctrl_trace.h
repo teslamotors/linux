@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_BXT_SPCTRL_TRACE_H_INCLUDED__
-#define __IA_CSS_BXT_SPCTRL_TRACE_H_INCLUDED__
+#ifndef __IA_CSS_BXT_SPCTRL_TRACE_H
+#define __IA_CSS_BXT_SPCTRL_TRACE_H
 
 #include "ia_css_trace.h"
 
@@ -104,4 +104,4 @@
 /* Overriding submodules in BXT_SPCTRL with a specific tracing level */
 /* #define BXT_SPCTRL_DYNAMIC_TRACING_OVERRIDE TRACE_LOG_LEVEL_VERBOSE */
 
-#endif /* __IA_CSS_BXT_SPCTRL_TRACE_H_INCLUDED__  */
+#endif /* __IA_CSS_BXT_SPCTRL_TRACE_H */

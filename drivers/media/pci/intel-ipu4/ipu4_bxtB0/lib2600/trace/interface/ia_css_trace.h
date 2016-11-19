@@ -14,8 +14,8 @@
 
 /*! \file */
 
-#ifndef __IA_CSS_TRACE_H__
-#define __IA_CSS_TRACE_H__
+#ifndef __IA_CSS_TRACE_H
+#define __IA_CSS_TRACE_H
 
 /*
 ** Configurations
@@ -880,4 +880,4 @@ void IA_CSS_TRACE_CAT(module, _trace_configure)(const int argc, \
 	} \
 }
 
-#endif /* __IA_CSS_TRACE_H__ */
+#endif /* __IA_CSS_TRACE_H */
