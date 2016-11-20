@@ -27,8 +27,19 @@
 
 #define MAXCLOCKFREQ		6
 
-#define MAXCLOCKFREQ           6
+#ifdef CONFIG_SND_SOC_SVFPGA
+/* For PDM Capture, frameshape used is 50x10 */
+int rows[MAX_NUM_ROWS] = {50, 100, 48, 60, 64, 72, 75, 80, 90,
+		     96, 125, 144, 147, 120, 128, 150,
+		     160, 180, 192, 200, 240, 250, 256};
 
+int cols[MAX_NUM_COLS] = {10, 2, 4, 6, 8, 12, 14, 16};
+
+int clock_freq[MAXCLOCKFREQ] = {19200000, 19200000,
+				19200000, 19200000,
+				19200000, 19200000};
+
+#else
 /* TBD: Currently we are using 100x2 as frame shape. to be removed later */
 int rows[MAX_NUM_ROWS] = {100, 48, 50, 60, 64, 72, 75, 80, 90,
 		     96, 125, 144, 147, 120, 128, 150,
@@ -44,7 +55,7 @@ int cols[MAX_NUM_COLS] = {2, 4, 6, 8, 10, 12, 14, 16};
 int clock_freq[MAXCLOCKFREQ] = {9600000, 9600000,
 				9600000, 9600000,
 				9600000, 9600000};
-
+#endif
 
 struct sdw_num_to_col sdw_num_col_mapping[MAX_NUM_COLS] = {
 	{0, 2}, {1, 4}, {2, 6}, {3, 8}, {4, 10}, {5, 12}, {6, 14}, {7, 16},
@@ -104,20 +115,27 @@ int sdw_mstr_bw_init(struct sdw_bus *sdw_bs)
 	sdw_bs->bandwidth = 0;
 	sdw_bs->system_interval = 0;
 	sdw_bs->frame_freq = 0;
-	/* TBD: Base Clock frequency should be read from
-	 * master capabilities
-	 * Currenly hardcoding to 9.6MHz
-	 */
-	sdw_bs->clk_freq = 9.6*1000*1000;
 	sdw_bs->clk_state = SDW_CLK_STATE_ON;
 
 	/* TBD: to be removed later */
 	/* Assumption is these should be already filled */
 	sdw_mstr_cap = &sdw_bs->mstr->mstr_capabilities;
-	sdw_mstr_cap->base_clk_freq = 9.6 * 1000 * 1000;
 	sdw_mstr_cap->monitor_handover_supported = false;
 	sdw_mstr_cap->highphy_capable = false;
 
+#ifdef CONFIG_SND_SOC_SVFPGA
+	/* TBD: For PDM capture to be removed later */
+	sdw_bs->clk_freq = 9.6 * 1000 * 1000 * 2;
+	sdw_mstr_cap->base_clk_freq = 9.6 * 1000 * 1000 * 2;
+#else
+	/* TBD: Base Clock frequency should be read from
+	 * master capabilities
+	 * Currenly hardcoding to 9.6MHz
+	 */
+	sdw_bs->clk_freq = 9.6 * 1000 * 1000;
+	sdw_mstr_cap->base_clk_freq = 9.6 * 1000 * 1000;
+
+#endif
 	return 0;
 }
 EXPORT_SYMBOL_GPL(sdw_mstr_bw_init);
@@ -201,8 +219,24 @@ int sdw_cfg_slv_params(struct sdw_bus *mstr_bs,
 	u8 wbuf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 	u8 wbuf1[2] = {0, 0};
 	u8 rbuf[1] = {0};
-	u8 rbuf1[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-	u8 rbuf2[2] = {0, 0};
+
+
+#ifdef CONFIG_SND_SOC_SVFPGA
+	/*
+	 * The below hardcoding is required
+	 * for running PDM capture with SV conora card
+	 * because the transport params of card is not
+	 * same as master parameters. Also not all
+	 * standard registers are valid.
+	 */
+	t_slv_params->blockgroupcontrol_valid = false;
+	t_slv_params->sample_interval = 50;
+	t_slv_params->offset1 = 0;
+	t_slv_params->offset2 = 0;
+	t_slv_params->hstart = 1;
+	t_slv_params->hstop = 6;
+	p_slv_params->word_length = 30;
+#endif
 
 	/* Program slave alternate bank with all transport parameters */
 	/* DPN_BlockCtrl2 */
@@ -259,7 +293,11 @@ int sdw_cfg_slv_params(struct sdw_bus *mstr_bs,
 
 	wr_msg.ssp_tag = 0x0;
 	wr_msg.flag = SDW_MSG_FLAG_WRITE;
+#ifdef CONFIG_SND_SOC_SVFPGA
+	wr_msg.len = (5 + (1 * (t_slv_params->blockgroupcontrol_valid)));
+#else
 	wr_msg.len = (7 + (1 * (t_slv_params->blockgroupcontrol_valid)));
+#endif
 	wr_msg.slave_addr = slv_rt->slave->slv_number;
 	wr_msg.buf = &wbuf[0 + (1 * (!t_slv_params->blockgroupcontrol_valid))];
 	wr_msg.addr_page1 = 0x0;
@@ -981,10 +1019,16 @@ int sdw_compute_sys_interval(struct sdw_bus *sdw_mstr_bs,
 			 * One port per bus runtime structure
 			 */
 			/* Calculate sample interval */
+#ifdef CONFIG_SND_SOC_SVFPGA
+			t_params->sample_interval =
+				((sdw_mstr_bs->clk_freq/
+				  sdw_mstr_bs_rt->stream_params.rate));
+#else
 			t_params->sample_interval =
 				((sdw_mstr_bs->clk_freq/
 				  sdw_mstr_bs_rt->stream_params.rate) * 2);
 
+#endif
 			/* Only BlockPerPort supported */
 			t_params->blockpackingmode = 0;
 			t_params->lanecontrol = 0;
@@ -1106,8 +1150,12 @@ int sdw_compute_hstart_hstop(struct sdw_bus *sdw_mstr_bs, int sel_col)
 			 */
 
 			t_params->hstop = hstop;
+#ifdef CONFIG_SND_SOC_SVFPGA
+			/* For PDM capture, 0th col is also used */
+			t_params->hstart = 0;
+#else
 			t_params->hstart = hstop - hwidth + 1;
-
+#endif
 
 			/*
 			 * TBD: perform this when you have 2 ports
@@ -1234,12 +1282,17 @@ int sdw_compute_blk_subblk_offset(struct sdw_bus *sdw_mstr_bs)
 				hstart1 = hstart2 = t_params->hstart;
 				hstop1  = hstop2 = t_params->hstop;
 				/* TBD: Verify this condition */
+#ifdef CONFIG_SND_SOC_SVFPGA
+				block_offset = 1;
+#else
 				block_offset = 0;
+#endif
 			} else {
 
 				hstart1 = t_params->hstart;
 				hstop1 = t_params->hstop;
 
+#ifndef CONFIG_SND_SOC_SVFPGA
 				/* hstart/stop not same */
 				if ((hstart1 != hstart2) &&
 					(hstop1 != hstop2)) {
@@ -1249,8 +1302,7 @@ int sdw_compute_blk_subblk_offset(struct sdw_bus *sdw_mstr_bs)
 					/* TBD: Harcoding to 0, to be removed*/
 					block_offset = 0;
 				}
-
-#if 0
+#else
 				if ((hstart1 != hstart2) &&
 					(hstop1 != hstop2)) {
 					block_offset = 1;
@@ -1481,14 +1533,15 @@ int sdw_cfg_bs_params(struct sdw_bus *sdw_mstr_bs,
 		banktouse = !banktouse;
 
 		/*
-		 * TBD: Currently harcoded SSP interval to 24,
+		 * TBD: Currently harcoded SSP interval to 50,
 		 * computed value to be taken from system_interval in
 		 * bus data structure.
 		 * Add error check.
 		 */
 		if (ops->mstr_ops->set_ssp_interval)
 			ops->mstr_ops->set_ssp_interval(sdw_mstr_bs->mstr,
-					24, banktouse); /* hardcoding to 24 */
+					50, banktouse);
+
 		/*
 		 * Configure Clock
 		 * TBD: Add error check
