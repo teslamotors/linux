@@ -210,6 +210,29 @@ static int sdw_slv_probe(struct device *dev)
 	return ret;
 }
 
+
+int sdw_slave_get_bus_params(struct sdw_slave *sdw_slv,
+			     struct sdw_bus_params *params)
+{
+	struct sdw_bus *bus;
+	struct sdw_master *mstr = sdw_slv->mstr;
+
+	list_for_each_entry(bus, &sdw_core.bus_list, bus_node) {
+		if (bus->mstr == mstr)
+			break;
+	}
+	if (!bus)
+		return -EFAULT;
+
+	params->num_rows = bus->row;
+	params->num_cols = bus->col;
+	params->bus_clk_freq = bus->clk_freq >> 1;
+	params->bank = bus->active_bank;
+
+	return 0;
+}
+EXPORT_SYMBOL(sdw_slave_get_bus_params);
+
 static int sdw_mstr_remove(struct device *dev)
 {
 	const struct sdw_mstr_driver *sdrv = to_sdw_mstr_driver(dev->driver);
@@ -373,17 +396,19 @@ static int sdw_pm_resume(struct device *dev)
 		return sdw_legacy_resume(dev);
 }
 
-static const struct dev_pm_ops soundwire_pm = {
-	.suspend = sdw_pm_suspend,
-	.resume = sdw_pm_resume,
-	.runtime_suspend = pm_generic_runtime_suspend,
-	.runtime_resume = pm_generic_runtime_resume,
-};
-
 #else
 #define sdw_pm_suspend		NULL
 #define sdw_pm_resume		NULL
+#endif /* CONFIG_PM_SLEEP */
+
+static const struct dev_pm_ops soundwire_pm = {
+	.suspend = sdw_pm_suspend,
+	.resume = sdw_pm_resume,
+#ifdef CONFIG_PM
+	.runtime_suspend = pm_generic_runtime_suspend,
+	.runtime_resume = pm_generic_runtime_resume,
 #endif
+};
 
 struct bus_type sdw_bus_type = {
 	.name		= "soundwire",
@@ -404,6 +429,8 @@ static struct static_key sdw_trace_msg = STATIC_KEY_INIT_FALSE;
 int sdw_transfer_trace_reg(void)
 {
 	static_key_slow_inc(&sdw_trace_msg);
+
+	return 0;
 }
 
 void sdw_transfer_trace_unreg(void)
@@ -835,7 +862,7 @@ out:
 EXPORT_SYMBOL_GPL(sdw_slave_transfer);
 
 static int sdw_handle_dp0_interrupts(struct sdw_master *mstr,
-			struct sdw_slave *sdw_slv)
+			struct sdw_slave *sdw_slv, u8 *status)
 {
 	int ret = 0;
 	struct sdw_msg rd_msg, wr_msg;
@@ -886,8 +913,8 @@ static int sdw_handle_dp0_interrupts(struct sdw_master *mstr,
 			SDW_DP0_INTSTAT_IMPDEF2_MASK |
 			SDW_DP0_INTSTAT_IMPDEF3_MASK;
 	if (rd_msg.buf[0] & impl_def_mask) {
-		/* TODO: Handle implementation defined mask ready */
 		wr_msg.buf[0] |= impl_def_mask;
+		*status = wr_msg.buf[0];
 	}
 	ret = sdw_slave_transfer(mstr, &wr_msg, 1);
 	if (ret != 1) {
@@ -901,15 +928,20 @@ out:
 }
 
 static int sdw_handle_port_interrupt(struct sdw_master *mstr,
-		struct sdw_slave *sdw_slv, int port_num)
+		struct sdw_slave *sdw_slv, int port_num,
+		u8 *status)
 {
 	int ret = 0;
 	struct sdw_msg rd_msg, wr_msg;
 	u8 rbuf[1], wbuf[1];
 	int impl_def_mask = 0;
 
-	if (port_num == 0)
-		ret = sdw_handle_dp0_interrupts(mstr, sdw_slv);
+/*
+	 * Handle the Data port0 interrupt separately since the interrupt
+	 * mask and stat register is different than other DPn registers
+	 */
+	if (port_num == 0 && sdw_slv->sdw_slv_cap.sdw_dp0_supported)
+		return sdw_handle_dp0_interrupts(mstr, sdw_slv, status);
 
 	/* Create message for reading the port interrupts */
 	wr_msg.ssp_tag = 0;
@@ -953,6 +985,7 @@ static int sdw_handle_port_interrupt(struct sdw_master *mstr,
 	if (rd_msg.buf[0] & impl_def_mask) {
 		/* TODO: Handle implementation defined mask ready */
 		wr_msg.buf[0] |= impl_def_mask;
+		*status = wr_msg.buf[0];
 	}
 	/* Clear and Ack the interrupt */
 	ret = sdw_slave_transfer(mstr, &wr_msg, 1);
@@ -972,6 +1005,10 @@ static int sdw_handle_slave_alerts(struct sdw_master *mstr,
 	u8 rbuf[3], wbuf[1];
 	int i, ret = 0;
 	int cs_port_mask, cs_port_register, cs_port_start, cs_ports;
+	struct sdw_impl_def_intr_stat *intr_status;
+	struct sdw_portn_intr_stat *portn_stat;
+	u8 port_status[15] = {0};
+	u8 control_port_stat = 0;
 
 
 	/* Read Instat 1, Instat 2 and Instat 3 registers */
@@ -1027,55 +1064,521 @@ static int sdw_handle_slave_alerts(struct sdw_master *mstr,
 		dev_err(&mstr->dev, "Bus clash error detected\n");
 		wr_msg.buf[0] |= SDW_SCP_INTCLEAR1_BUS_CLASH_MASK;
 	}
-	/* Handle Port interrupts from Instat_1 registers */
+	/* Handle implementation defined mask */
+	if (rd_msg[0].buf[0] & SDW_SCP_INTSTAT1_IMPL_DEF_MASK) {
+		wr_msg.buf[0] |= SDW_SCP_INTCLEAR1_IMPL_DEF_MASK;
+		control_port_stat = (rd_msg[0].buf[0] &
+				SDW_SCP_INTSTAT1_IMPL_DEF_MASK);
+	}
+
+	/* Handle Cascaded Port interrupts from Instat_1 registers */
+
+	/* Number of port status bits in this register */
 	cs_ports = 4;
+	/* Port number starts at in this register */
 	cs_port_start = 0;
+	/* Bit mask for the starting port intr status */
 	cs_port_mask = 0x08;
+	/* Bit mask for the starting port intr status */
 	cs_port_register = 0;
-	for (i = cs_port_start; i < cs_port_start + cs_ports; i++) {
+
+	/* Look for cascaded port interrupts, if found handle port
+	 * interrupts. Do this for all the Int_stat registers.
+	 */
+	for (i = cs_port_start; i < cs_port_start + cs_ports &&
+		i <= sdw_slv->sdw_slv_cap.num_of_sdw_ports; i++) {
 		if (rd_msg[cs_port_register].buf[0] & cs_port_mask) {
 			ret += sdw_handle_port_interrupt(mstr,
-						sdw_slv, cs_port_start + i);
+						sdw_slv, i, &port_status[i]);
 		}
 		cs_port_mask = cs_port_mask << 1;
 	}
-	/* Handle interrupts from instat_2 register */
+
+	/*
+	 * Handle cascaded interrupts from instat_2 register,
+	 * if no cascaded interrupt from SCP2 cascade move to SCP3
+	 */
 	if (!(rd_msg[0].buf[0] & SDW_SCP_INTSTAT1_SCP2_CASCADE_MASK))
 		goto handle_instat_3_register;
+
+
 	cs_ports = 7;
 	cs_port_start = 4;
 	cs_port_mask = 0x1;
 	cs_port_register = 1;
-	for (i = cs_port_start; i < cs_port_start + cs_ports; i++) {
+	for (i = cs_port_start; i < cs_port_start + cs_ports &&
+		i <= sdw_slv->sdw_slv_cap.num_of_sdw_ports; i++) {
+
 		if (rd_msg[cs_port_register].buf[0] & cs_port_mask) {
+
 			ret += sdw_handle_port_interrupt(mstr,
-						sdw_slv, cs_port_start + i);
+						sdw_slv, i, &port_status[i]);
 		}
 		cs_port_mask = cs_port_mask << 1;
 	}
-handle_instat_3_register:
 
+	/*
+	 * Handle cascaded interrupts from instat_2 register,
+	 * if no cascaded interrupt from SCP2 cascade move to impl_def intrs
+	 */
+handle_instat_3_register:
 	if (!(rd_msg[1].buf[0] & SDW_SCP_INTSTAT2_SCP3_CASCADE_MASK))
-		goto handle_instat_3_register;
+		goto handle_impl_def_interrupts;
+
 	cs_ports = 4;
 	cs_port_start = 11;
 	cs_port_mask = 0x1;
 	cs_port_register = 2;
-	for (i = cs_port_start; i < cs_port_start + cs_ports; i++) {
+
+	for (i = cs_port_start; i < cs_port_start + cs_ports &&
+		i <= sdw_slv->sdw_slv_cap.num_of_sdw_ports; i++) {
+
 		if (rd_msg[cs_port_register].buf[0] & cs_port_mask) {
+
 			ret += sdw_handle_port_interrupt(mstr,
-						sdw_slv, cs_port_start + i);
+						sdw_slv, i, &port_status[i]);
 		}
 		cs_port_mask = cs_port_mask << 1;
 	}
-	/* Ack the IntStat 1 interrupts */
+
+handle_impl_def_interrupts:
+
+	/*
+	 * If slave has not registered for implementation defined
+	 * interrupts, dont read it.
+	 */
+	if (!sdw_slv->driver->handle_impl_def_interrupts)
+		goto ack_interrupts;
+
+	intr_status = kzalloc(sizeof(*intr_status), GFP_KERNEL);
+
+	portn_stat = kzalloc((sizeof(*portn_stat)) *
+				sdw_slv->sdw_slv_cap.num_of_sdw_ports,
+				GFP_KERNEL);
+
+	intr_status->portn_stat = portn_stat;
+	intr_status->control_port_stat = control_port_stat;
+
+	/* Update the implementation defined status to Slave */
+	for (i = 1; i < sdw_slv->sdw_slv_cap.num_of_sdw_ports; i++) {
+
+		intr_status->portn_stat[i].status = port_status[i];
+		intr_status->portn_stat[i].num = i;
+	}
+
+	intr_status->port0_stat = port_status[0];
+	intr_status->control_port_stat = wr_msg.buf[0];
+
+	ret = sdw_slv->driver->handle_impl_def_interrupts(sdw_slv,
+							intr_status);
+	if (ret)
+		dev_err(&mstr->dev, "Implementation defined interrupt handling failed\n");
+
+	kfree(portn_stat);
+	kfree(intr_status);
+
+ack_interrupts:
+	/* Ack the interrupts */
 	ret = sdw_slave_transfer(mstr, &wr_msg, 1);
 	if (ret != 1) {
 		ret = -EINVAL;
 		dev_err(&mstr->dev, "Register transfer failed\n");
-		goto out;
 	}
 out:
+	return 0;
+}
+
+int sdw_en_intr(struct sdw_slave *sdw_slv, int port_num, int mask)
+{
+
+	struct sdw_msg rd_msg, wr_msg;
+	u8 buf;
+	int ret;
+	struct sdw_master *mstr = sdw_slv->mstr;
+
+	rd_msg.addr = wr_msg.addr = SDW_DPN_INTMASK +
+			(SDW_NUM_DATA_PORT_REGISTERS * port_num);
+
+	/* Create message for enabling the interrupts */
+	wr_msg.ssp_tag = 0;
+	wr_msg.flag = SDW_MSG_FLAG_WRITE;
+	wr_msg.len = 1;
+	wr_msg.buf = &buf;
+	wr_msg.slave_addr = sdw_slv->slv_number;
+	wr_msg.addr_page1 = 0x0;
+	wr_msg.addr_page2 = 0x0;
+
+	/* Create message for reading the interrupts  for DP0 interrupts*/
+	rd_msg.ssp_tag = 0;
+	rd_msg.flag = SDW_MSG_FLAG_READ;
+	rd_msg.len = 1;
+	rd_msg.buf = &buf;
+	rd_msg.slave_addr = sdw_slv->slv_number;
+	rd_msg.addr_page1 = 0x0;
+	rd_msg.addr_page2 = 0x0;
+	ret = sdw_slave_transfer(mstr, &rd_msg, 1);
+	if (ret != 1) {
+		dev_err(&mstr->dev, "DPn Intr mask read failed for slave %x\n",
+						sdw_slv->slv_number);
+		return -EINVAL;
+	}
+
+	buf |= mask;
+
+	/* Set the port ready and Test fail interrupt mask as well */
+	buf |= SDW_DPN_INTSTAT_TEST_FAIL_MASK;
+	buf |= SDW_DPN_INTSTAT_PORT_READY_MASK;
+	ret = sdw_slave_transfer(mstr, &wr_msg, 1);
+	if (ret != 1) {
+		dev_err(&mstr->dev, "DPn Intr mask write failed for slave %x\n",
+						sdw_slv->slv_number);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int sdw_en_scp_intr(struct sdw_slave *sdw_slv, int mask)
+{
+	struct sdw_msg rd_msg, wr_msg;
+	u8 buf = 0;
+	int ret;
+	struct sdw_master *mstr = sdw_slv->mstr;
+	u16 reg_addr;
+
+	reg_addr = SDW_SCP_INTMASK1;
+
+	rd_msg.addr = wr_msg.addr = reg_addr;
+
+	/* Create message for reading the interrupt mask */
+	rd_msg.ssp_tag = 0;
+	rd_msg.flag = SDW_MSG_FLAG_READ;
+	rd_msg.len = 1;
+	rd_msg.buf = &buf;
+	rd_msg.slave_addr = sdw_slv->slv_number;
+	rd_msg.addr_page1 = 0x0;
+	rd_msg.addr_page2 = 0x0;
+	ret = sdw_slave_transfer(mstr, &rd_msg, 1);
+	if (ret != 1) {
+		dev_err(&mstr->dev, "SCP Intr mask read failed for slave %x\n",
+				sdw_slv->slv_number);
+		return -EINVAL;
+	}
+
+	/* Enable the Slave defined interrupts. */
+	buf |= mask;
+
+	/* Set the port ready and Test fail interrupt mask as well */
+	buf |= SDW_SCP_INTMASK1_BUS_CLASH_MASK;
+	buf |= SDW_SCP_INTMASK1_PARITY_MASK;
+
+	/* Create message for enabling the interrupts */
+	wr_msg.ssp_tag = 0;
+	wr_msg.flag = SDW_MSG_FLAG_WRITE;
+	wr_msg.len = 1;
+	wr_msg.buf = &buf;
+	wr_msg.slave_addr = sdw_slv->slv_number;
+	wr_msg.addr_page1 = 0x0;
+	wr_msg.addr_page2 = 0x0;
+	ret = sdw_slave_transfer(mstr, &wr_msg, 1);
+	if (ret != 1) {
+		dev_err(&mstr->dev, "SCP Intr mask write failed for slave %x\n",
+				sdw_slv->slv_number);
+		return -EINVAL;
+	}
+
+	/* Return if DP0 is not present */
+	if (!sdw_slv->sdw_slv_cap.sdw_dp0_supported)
+		return 0;
+
+
+	reg_addr = SDW_DP0_INTMASK;
+	rd_msg.addr = wr_msg.addr = reg_addr;
+	mask = sdw_slv->sdw_slv_cap.sdw_dp0_cap->imp_def_intr_mask;
+	buf = 0;
+
+	/* Create message for reading the interrupt mask */
+	/* Create message for reading the interrupt mask */
+	rd_msg.ssp_tag = 0;
+	rd_msg.flag = SDW_MSG_FLAG_READ;
+	rd_msg.len = 1;
+	rd_msg.buf = &buf;
+	rd_msg.slave_addr = sdw_slv->slv_number;
+	rd_msg.addr_page1 = 0x0;
+	rd_msg.addr_page2 = 0x0;
+	ret = sdw_slave_transfer(mstr, &rd_msg, 1);
+	if (ret != 1) {
+		dev_err(&mstr->dev, "DP0 Intr mask read failed for slave %x\n",
+				sdw_slv->slv_number);
+		return -EINVAL;
+	}
+
+	/* Enable the Slave defined interrupts. */
+	buf |= mask;
+
+	/* Set the port ready and Test fail interrupt mask as well */
+	buf |= SDW_DP0_INTSTAT_TEST_FAIL_MASK;
+	buf |= SDW_DP0_INTSTAT_PORT_READY_MASK;
+	buf |= SDW_DP0_INTSTAT_BRA_FAILURE_MASK;
+
+	wr_msg.ssp_tag = 0;
+	wr_msg.flag = SDW_MSG_FLAG_WRITE;
+	wr_msg.len = 1;
+	wr_msg.buf = &buf;
+	wr_msg.slave_addr = sdw_slv->slv_number;
+	wr_msg.addr_page1 = 0x0;
+	wr_msg.addr_page2 = 0x0;
+
+	ret = sdw_slave_transfer(mstr, &wr_msg, 1);
+	if (ret != 1) {
+		dev_err(&mstr->dev, "DP0 Intr mask write failed for slave %x\n",
+				sdw_slv->slv_number);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int sdw_prog_slv(struct sdw_slave *sdw_slv)
+{
+
+	struct sdw_slv_capabilities *cap;
+	int ret, i;
+	struct sdw_slv_dpn_capabilities *dpn_cap;
+	struct sdw_master *mstr = sdw_slv->mstr;
+
+	if (!sdw_slv->slave_cap_updated)
+		return 0;
+	cap = &sdw_slv->sdw_slv_cap;
+
+	/* Enable DP0 and SCP interrupts */
+	ret = sdw_en_scp_intr(sdw_slv, cap->scp_impl_def_intr_mask);
+
+	/* Failure should never happen, even if it happens we continue */
+	if (ret)
+		dev_err(&mstr->dev, "SCP program failed\n");
+
+	for (i = 0; i < cap->num_of_sdw_ports; i++) {
+		dpn_cap = &cap->sdw_dpn_cap[i];
+		ret = sdw_en_intr(sdw_slv, (i + 1),
+					dpn_cap->imp_def_intr_mask);
+
+		if (ret)
+			break;
+	}
+	return ret;
+}
+
+
+static void sdw_send_slave_status(struct sdw_slave *slave,
+				enum sdw_slave_status *status)
+{
+	struct sdw_slave_driver *slv_drv = slave->driver;
+
+	if (slv_drv && slv_drv->update_slv_status)
+		slv_drv->update_slv_status(slave, status);
+}
+
+static int sdw_wait_for_deprepare(struct sdw_slave *slave)
+{
+	int ret;
+	struct sdw_msg msg;
+	u8 buf[1] = {0};
+	int timeout = 0;
+	struct sdw_master *mstr = slave->mstr;
+
+	/* Create message to read clock stop status, its broadcast message. */
+	buf[0] = 0xFF;
+
+	msg.ssp_tag = 0;
+	msg.flag = SDW_MSG_FLAG_READ;
+	msg.len = 1;
+	msg.buf = &buf[0];
+	msg.slave_addr = slave->slv_number;
+	msg.addr_page1 = 0x0;
+	msg.addr_page2 = 0x0;
+	msg.addr = SDW_SCP_STAT;
+	/*
+	 * Read the ClockStopNotFinished bit from the SCP_Stat register
+	 * of particular Slave to make sure that clock stop prepare is done
+	 */
+	do {
+		/*
+		 * Ideally this should not fail, but even if it fails
+		 * in exceptional situation, we go ahead for clock stop
+		 */
+		ret = sdw_slave_transfer_nopm(mstr, &msg, 1);
+
+		if (ret != 1) {
+			WARN_ONCE(1, "Clock stop status read failed\n");
+			break;
+		}
+
+		if (!(buf[0] & SDW_SCP_STAT_CLK_STP_NF_MASK))
+			break;
+
+		/*
+		 * TODO: Need to find from spec what is requirement.
+		 * Since we are in suspend we should not sleep for more
+		 * Ideally Slave should be ready to stop clock in less than
+		 * few ms.
+		 * So sleep less and increase loop time. This is not
+		 * harmful, since if Slave is ready loop will terminate.
+		 *
+		 */
+		msleep(2);
+		timeout++;
+
+	} while (timeout != 500);
+
+	if (!(buf[0] & SDW_SCP_STAT_CLK_STP_NF_MASK))
+
+		dev_info(&mstr->dev, "Clock stop prepare done\n");
+	else
+		WARN_ONCE(1, "Clk stp deprepare failed for slave %d\n",
+			slave->slv_number);
+
+	return -EINVAL;
+}
+
+static void sdw_prep_slave_for_clk_stp(struct sdw_master *mstr,
+			struct sdw_slave *slave,
+			enum sdw_clk_stop_mode clock_stop_mode,
+			bool prep)
+{
+	bool wake_en;
+	struct sdw_slv_capabilities *cap;
+	u8 buf[1] = {0};
+	struct sdw_msg msg;
+	int ret;
+
+	cap = &slave->sdw_slv_cap;
+
+	/* Set the wakeup enable based on Slave capability */
+	wake_en = !cap->wake_up_unavailable;
+
+	if (prep) {
+		/* Even if its simplified clock stop prepare,
+		 * setting prepare bit wont harm
+		 */
+		buf[0] |= (1 << SDW_SCP_SYSTEMCTRL_CLK_STP_PREP_SHIFT);
+		buf[0] |= clock_stop_mode <<
+			SDW_SCP_SYSTEMCTRL_CLK_STP_MODE_SHIFT;
+		buf[0] |= wake_en << SDW_SCP_SYSTEMCTRL_WAKE_UP_EN_SHIFT;
+	} else
+		buf[0] = 0;
+
+	msg.ssp_tag = 0;
+	msg.flag = SDW_MSG_FLAG_WRITE;
+	msg.len = 1;
+	msg.buf = &buf[0];
+	msg.slave_addr = slave->slv_number;
+	msg.addr_page1 = 0x0;
+	msg.addr_page2 = 0x0;
+	msg.addr = SDW_SCP_SYSTEMCTRL;
+
+	/*
+	 * We are calling NOPM version of the transfer API, because
+	 * Master controllers calls this from the suspend handler,
+	 * so if we call the normal transfer API, it tries to resume
+	 * controller, which result in deadlock
+	 */
+
+	ret = sdw_slave_transfer_nopm(mstr, &msg, 1);
+	/* We should continue even if it fails for some Slave */
+	if (ret != 1)
+		WARN_ONCE(1, "Clock Stop prepare failed for slave %d\n",
+				slave->slv_number);
+}
+
+static int sdw_check_for_prep_bit(struct sdw_slave *slave)
+{
+	u8 buf[1] = {0};
+	struct sdw_msg msg;
+	int ret;
+	struct sdw_master *mstr = slave->mstr;
+
+	msg.ssp_tag = 0;
+	msg.flag = SDW_MSG_FLAG_READ;
+	msg.len = 1;
+	msg.buf = &buf[0];
+	msg.slave_addr = slave->slv_number;
+	msg.addr_page1 = 0x0;
+	msg.addr_page2 = 0x0;
+	msg.addr = SDW_SCP_SYSTEMCTRL;
+
+	ret = sdw_slave_transfer_nopm(mstr, &msg, 1);
+	/* We should continue even if it fails for some Slave */
+	if (ret != 1) {
+		dev_err(&mstr->dev, "SCP_SystemCtrl read failed for Slave %d\n",
+				slave->slv_number);
+		return -EINVAL;
+
+	}
+	return (buf[0] & SDW_SCP_SYSTEMCTRL_CLK_STP_PREP_MASK);
+
+}
+
+static int sdw_slv_deprepare_clk_stp1(struct sdw_slave *slave)
+{
+	struct sdw_slv_capabilities *cap;
+	int ret;
+	struct sdw_master *mstr = slave->mstr;
+
+	cap = &slave->sdw_slv_cap;
+
+	/*
+	 * Slave might have enumerated 1st time or from clock stop mode 1
+	 * return if Slave doesn't require deprepare
+	 */
+	if (!cap->clk_stp1_deprep_required)
+		return 0;
+
+	/*
+	 * If Slave requires de-prepare after exiting from Clock Stop
+	 * mode 1, than check for ClockStopPrepare bit in SystemCtrl register
+	 * if its 1, de-prepare Slave from clock stop prepare, else
+	 * return
+	 */
+	ret = sdw_check_for_prep_bit(slave);
+	/* If prepare bit is not set, return without error */
+	if (!ret)
+		return 0;
+
+	/* If error in reading register, return with error */
+	if (ret < 0)
+		return ret;
+
+	/*
+	 * Call the pre clock stop prepare, if Slave requires.
+	 */
+	if (slave->driver && slave->driver->pre_clk_stop_prep) {
+		ret = slave->driver->pre_clk_stop_prep(slave,
+				cap->clock_stop1_mode_supported, false);
+		if (ret) {
+			dev_warn(&mstr->dev, "Pre de-prepare failed for Slave %d\n",
+				slave->slv_number);
+			return ret;
+		}
+	}
+
+	sdw_prep_slave_for_clk_stp(slave->mstr, slave,
+				cap->clock_stop1_mode_supported, false);
+
+	/* Make sure NF = 0 for deprepare to complete */
+	ret = sdw_wait_for_deprepare(slave);
+
+	/* Return in de-prepare unsuccessful */
+	if (ret)
+		return ret;
+
+	if (slave->driver && slave->driver->post_clk_stop_prep) {
+		ret = slave->driver->post_clk_stop_prep(slave,
+				cap->clock_stop1_mode_supported, false);
+
+		if (ret)
+			dev_err(&mstr->dev, "Post de-prepare failed for Slave %d\n",
+				slave->slv_number);
+	}
+
 	return ret;
 }
 
@@ -1087,6 +1590,7 @@ static void handle_slave_status(struct kthread_work *work)
 		container_of(work, struct sdw_bus, kwork);
 	struct sdw_master *mstr = bus->mstr;
 	unsigned long flags;
+	bool slave_present = 0;
 
 	/* Handle the new attached slaves to the bus. Register new slave
 	 * to the bus.
@@ -1101,16 +1605,20 @@ static void handle_slave_status(struct kthread_work *work)
 				dev_err(&mstr->dev, "Registering new slave failed\n");
 		}
 		for (i = 1; i <= SOUNDWIRE_MAX_DEVICES; i++) {
+			slave_present = false;
 			if (status->status[i] == SDW_SLAVE_STAT_NOT_PRESENT &&
-				mstr->sdw_addr[i].assigned == true)
+				mstr->sdw_addr[i].assigned == true) {
 				/* Logical address was assigned to slave, but
 				 * now its down, so mark it as not present
 				 */
 				mstr->sdw_addr[i].status =
 					SDW_SLAVE_STAT_NOT_PRESENT;
+				slave_present = true;
+			}
 
 			else if (status->status[i] == SDW_SLAVE_STAT_ALERT &&
 				mstr->sdw_addr[i].assigned == true) {
+				ret = 0;
 				/* Handle slave alerts */
 				mstr->sdw_addr[i].status = SDW_SLAVE_STAT_ALERT;
 				ret = sdw_handle_slave_alerts(mstr,
@@ -1118,13 +1626,35 @@ static void handle_slave_status(struct kthread_work *work)
 				if (ret)
 					dev_err(&mstr->dev, "Handle slave alert failed for Slave %d\n", i);
 
+				slave_present = true;
 
 
 			} else if (status->status[i] ==
 					SDW_SLAVE_STAT_ATTACHED_OK &&
-				mstr->sdw_addr[i].assigned == true)
-					mstr->sdw_addr[i].status =
+					mstr->sdw_addr[i].assigned == true) {
+
+				sdw_prog_slv(mstr->sdw_addr[i].slave);
+
+				mstr->sdw_addr[i].status =
 						SDW_SLAVE_STAT_ATTACHED_OK;
+				ret = sdw_slv_deprepare_clk_stp1(
+						mstr->sdw_addr[i].slave);
+
+				/*
+				 * If depreparing Slave fails, no need to
+				 * reprogram Slave, this should never happen
+				 * in ideal case.
+				 */
+				if (ret)
+					continue;
+				slave_present = true;
+			}
+
+			if (!slave_present)
+				continue;
+
+			sdw_send_slave_status(mstr->sdw_addr[i].slave,
+					&mstr->sdw_addr[i].status);
 		}
 		spin_lock_irqsave(&bus->spinlock, flags);
 		list_del(&status->node);
@@ -1355,6 +1885,106 @@ void sdw_del_master_controller(struct sdw_master *mstr)
 }
 EXPORT_SYMBOL_GPL(sdw_del_master_controller);
 
+/**
+ * sdw_slave_xfer_bra_block: Transfer the data block using the BTP/BRA
+ *				protocol.
+ * @mstr: SoundWire Master Master
+ * @block: Data block to be transferred.
+ */
+int sdw_slave_xfer_bra_block(struct sdw_master *mstr,
+				struct sdw_bra_block *block)
+{
+	struct sdw_bus *sdw_mstr_bs = NULL;
+	struct sdw_mstr_driver *ops = NULL;
+	int ret;
+
+	/*
+	 * This API will be called by slave/codec
+	 * when it needs to xfer firmware to
+	 * its memory or perform bulk read/writes of registers.
+	 */
+
+	/*
+	 * Acquire core lock
+	 * TODO: Acquire Master lock inside core lock
+	 * similar way done in upstream. currently
+	 * keeping it as core lock
+	 */
+	mutex_lock(&sdw_core.core_lock);
+
+	/* Get master data structure */
+	list_for_each_entry(sdw_mstr_bs, &sdw_core.bus_list, bus_node) {
+		/* Match master structure pointer */
+		if (sdw_mstr_bs->mstr != mstr)
+			continue;
+
+		break;
+	}
+
+	/*
+	 * Here assumption is made that complete SDW bandwidth is used
+	 * by BRA. So bus will return -EBUSY if any active stream
+	 * is running on given master.
+	 * TODO: In final implementation extra bandwidth will be always
+	 * allocated for BRA. In that case all the computation of clock,
+	 * frame shape, transport parameters for DP0 will be done
+	 * considering BRA feature.
+	 */
+	if (!list_empty(&mstr->mstr_rt_list)) {
+
+		/*
+		 * Currently not allowing BRA when any
+		 * active stream on master, returning -EBUSY
+		 */
+
+		/* Release lock */
+		mutex_unlock(&sdw_core.core_lock);
+		return -EBUSY;
+	}
+
+	/* Get master driver ops */
+	ops = sdw_mstr_bs->mstr->driver;
+
+	/*
+	 * Check whether Master is supporting bulk transfer. If not, then
+	 * bus will use alternate method of performing BRA request using
+	 * normal register read/write API.
+	 * TODO: Currently if Master is not supporting BRA transfers, bus
+	 * returns error. Bus driver to extend support for normal register
+	 * read/write as alternate method.
+	 */
+	if (!ops->mstr_ops->xfer_bulk)
+		return -EINVAL;
+
+	/* Data port Programming (ON) */
+	ret = sdw_bus_bra_xport_config(sdw_mstr_bs, block, true);
+	if (ret < 0) {
+		dev_err(&mstr->dev, "BRA: Xport parameter config failed ret=%d\n", ret);
+		goto error;
+	}
+
+	/* Bulk Setup */
+	ret = ops->mstr_ops->xfer_bulk(mstr, block);
+	if (ret < 0) {
+		dev_err(&mstr->dev, "BRA: Transfer failed ret=%d\n", ret);
+		goto error;
+	}
+
+	/* Data port Programming  (OFF) */
+	ret = sdw_bus_bra_xport_config(sdw_mstr_bs, block, false);
+	if (ret < 0) {
+		dev_err(&mstr->dev, "BRA: Xport parameter de-config failed ret=%d\n", ret);
+		goto error;
+	}
+
+error:
+	/* Release lock */
+	mutex_unlock(&sdw_core.core_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(sdw_slave_xfer_bra_block);
+
 /*
  * An sdw_driver is used with one or more sdw_slave (slave) nodes to access
  * sdw slave chips, on a bus instance associated with some sdw_master.
@@ -1432,6 +2062,7 @@ int sdw_register_slave_capabilities(struct sdw_slave *sdw,
 	struct sdw_slv_dpn_capabilities *slv_dpn_cap, *dpn_cap;
 	struct port_audio_mode_properties *prop, *slv_prop;
 	int i, j;
+	int ret = 0;
 
 	slv_cap = &sdw->sdw_slv_cap;
 
@@ -1441,6 +2072,8 @@ int sdw_register_slave_capabilities(struct sdw_slave *sdw,
 	slv_cap->clock_stop1_mode_supported = cap->clock_stop1_mode_supported;
 	slv_cap->simplified_clock_stop_prepare =
 				cap->simplified_clock_stop_prepare;
+	slv_cap->scp_impl_def_intr_mask = cap->scp_impl_def_intr_mask;
+
 	slv_cap->highphy_capable = cap->highphy_capable;
 	slv_cap->paging_supported  = cap->paging_supported;
 	slv_cap->bank_delay_support = cap->bank_delay_support;
@@ -1554,6 +2187,9 @@ int sdw_register_slave_capabilities(struct sdw_slave *sdw,
 						prop->ch_prepare_behavior;
 		}
 	}
+	ret = sdw_prog_slv(sdw);
+	if (ret)
+		return ret;
 	sdw->slave_cap_updated = true;
 	return 0;
 }
@@ -1717,10 +2353,23 @@ static void sdw_release_mstr_stream(struct sdw_master *mstr,
 			struct sdw_runtime *sdw_rt)
 {
 	struct sdw_mstr_runtime *mstr_rt, *__mstr_rt;
+	struct sdw_port_runtime *port_rt, *__port_rt, *first_port_rt = NULL;
 
 	list_for_each_entry_safe(mstr_rt, __mstr_rt, &sdw_rt->mstr_rt_list,
 			mstr_sdw_node) {
 		if (mstr_rt->mstr == mstr) {
+
+			/* Get first runtime node from port list */
+			first_port_rt = list_first_entry(&mstr_rt->port_rt_list,
+						struct sdw_port_runtime,
+						port_node);
+
+			/* Release Master port resources */
+			list_for_each_entry_safe(port_rt, __port_rt,
+				&mstr_rt->port_rt_list, port_node)
+				list_del(&port_rt->port_node);
+
+			kfree(first_port_rt);
 			list_del(&mstr_rt->mstr_sdw_node);
 			if (mstr_rt->direction == SDW_DATA_DIR_OUT)
 				sdw_rt->tx_ref_count--;
@@ -1738,10 +2387,23 @@ static void sdw_release_slave_stream(struct sdw_slave *slave,
 			struct sdw_runtime *sdw_rt)
 {
 	struct sdw_slave_runtime *slv_rt, *__slv_rt;
+	struct sdw_port_runtime *port_rt, *__port_rt, *first_port_rt = NULL;
 
 	list_for_each_entry_safe(slv_rt, __slv_rt, &sdw_rt->slv_rt_list,
 			slave_sdw_node) {
 		if (slv_rt->slave == slave) {
+
+			/* Get first runtime node from port list */
+			first_port_rt = list_first_entry(&slv_rt->port_rt_list,
+						struct sdw_port_runtime,
+						port_node);
+
+			/* Release Slave port resources */
+			list_for_each_entry_safe(port_rt, __port_rt,
+				&slv_rt->port_rt_list, port_node)
+				list_del(&port_rt->port_node);
+
+			kfree(first_port_rt);
 			list_del(&slv_rt->slave_sdw_node);
 			if (slv_rt->direction == SDW_DATA_DIR_OUT)
 				sdw_rt->tx_ref_count--;
@@ -1911,7 +2573,6 @@ int sdw_config_stream(struct sdw_master *mstr,
 	} else
 		sdw_rt->rx_ref_count++;
 
-	/* SRK: check with hardik */
 	sdw_rt->type = stream_config->type;
 	sdw_rt->stream_state  = SDW_STATE_CONFIG_STREAM;
 
@@ -1941,6 +2602,142 @@ out:
 }
 EXPORT_SYMBOL_GPL(sdw_config_stream);
 
+/**
+ * sdw_chk_slv_dpn_caps - Return success
+ * -EINVAL - In case of error
+ *
+ * This function checks all slave port capabilities
+ * for given stream parameters. If any of parameters
+ * is not supported in port capabilities, it returns
+ * error.
+ */
+int sdw_chk_slv_dpn_caps(struct sdw_slv_dpn_capabilities *dpn_cap,
+		struct sdw_stream_params *strm_prms)
+{
+	struct port_audio_mode_properties *mode_prop =
+		dpn_cap->mode_properties;
+	int ret = 0, i, value;
+
+	/* Check Sampling frequency */
+	if (mode_prop->num_sampling_freq_configs) {
+		for (i = 0; i < mode_prop->num_sampling_freq_configs; i++) {
+
+			value = mode_prop->sampling_freq_config[i];
+			if (strm_prms->rate == value)
+				break;
+		}
+
+		if (i == mode_prop->num_sampling_freq_configs)
+			return -EINVAL;
+
+	} else {
+
+		if ((strm_prms->rate < mode_prop->min_sampling_frequency)
+				|| (strm_prms->rate >
+				mode_prop->max_sampling_frequency))
+			return -EINVAL;
+	}
+
+	/* check for bit rate */
+	if (dpn_cap->num_word_length) {
+		for (i = 0; i < dpn_cap->num_word_length; i++) {
+
+			value = dpn_cap->word_length_buffer[i];
+			if (strm_prms->bps == value)
+				break;
+		}
+
+		if (i == dpn_cap->num_word_length)
+			return -EINVAL;
+
+	} else {
+
+		if ((strm_prms->bps < dpn_cap->min_word_length)
+				|| (strm_prms->bps > dpn_cap->max_word_length))
+			return -EINVAL;
+	}
+
+	/* check for number of channels */
+	if (dpn_cap->num_ch_supported) {
+		for (i = 0; i < dpn_cap->num_ch_supported; i++) {
+
+			value = dpn_cap->ch_supported[i];
+			if (strm_prms->bps == value)
+				break;
+		}
+
+		if (i == dpn_cap->num_ch_supported)
+			return -EINVAL;
+
+	} else {
+
+		if ((strm_prms->channel_count < dpn_cap->min_ch_num)
+			|| (strm_prms->channel_count > dpn_cap->max_ch_num))
+			return -EINVAL;
+	}
+
+	return ret;
+}
+
+/**
+ * sdw_chk_mstr_dpn_caps - Return success
+ * -EINVAL - In case of error
+ *
+ * This function checks all master port capabilities
+ * for given stream parameters. If any of parameters
+ * is not supported in port capabilities, it returns
+ * error.
+ */
+int sdw_chk_mstr_dpn_caps(struct sdw_mstr_dpn_capabilities *dpn_cap,
+		struct sdw_stream_params *strm_prms)
+{
+
+	int ret = 0, i, value;
+
+	/* check for bit rate */
+	if (dpn_cap->num_word_length) {
+		for (i = 0; i < dpn_cap->num_word_length; i++) {
+
+			value = dpn_cap->word_length_buffer[i];
+			if (strm_prms->bps == value)
+				break;
+		}
+
+		if (i == dpn_cap->num_word_length)
+			return -EINVAL;
+
+	} else {
+
+		if ((strm_prms->bps < dpn_cap->min_word_length)
+			|| (strm_prms->bps > dpn_cap->max_word_length)) {
+			return -EINVAL;
+		}
+
+
+	}
+
+	/* check for number of channels */
+	if (dpn_cap->num_ch_supported) {
+		for (i = 0; i < dpn_cap->num_ch_supported; i++) {
+
+			value = dpn_cap->ch_supported[i];
+			if (strm_prms->bps == value)
+				break;
+		}
+
+		if (i == dpn_cap->num_ch_supported)
+			return -EINVAL;
+
+	} else {
+
+		if ((strm_prms->channel_count < dpn_cap->min_ch_num)
+			|| (strm_prms->channel_count > dpn_cap->max_ch_num))
+			return -EINVAL;
+	}
+
+	return ret;
+}
+
 static int sdw_mstr_port_configuration(struct sdw_master *mstr,
 			struct sdw_runtime *sdw_rt,
 			struct sdw_port_config *port_config)
@@ -1949,6 +2746,9 @@ static int sdw_mstr_port_configuration(struct sdw_master *mstr,
 	struct sdw_port_runtime *port_rt;
 	int found = 0;
 	int i;
+	int ret = 0, pn = 0;
+	struct sdw_mstr_dpn_capabilities *dpn_cap =
+		mstr->mstr_capabilities.sdw_dpn_cap;
 
 	list_for_each_entry(mstr_rt, &sdw_rt->mstr_rt_list, mstr_sdw_node) {
 		if (mstr_rt->mstr == mstr) {
@@ -1960,16 +2760,35 @@ static int sdw_mstr_port_configuration(struct sdw_master *mstr,
 		dev_err(&mstr->dev, "Master not found for this port\n");
 		return -EINVAL;
 	}
+
 	port_rt = kzalloc((sizeof(struct sdw_port_runtime)) *
 			port_config->num_ports, GFP_KERNEL);
 	if (!port_rt)
 		return -EINVAL;
+
+	if (!dpn_cap)
+		return -EINVAL;
+	/*
+	 * Note: Here the assumption the configuration is not
+	 * received for 0th port.
+	 */
 	for (i = 0; i < port_config->num_ports; i++) {
 		port_rt[i].channel_mask = port_config->port_cfg[i].ch_mask;
-		port_rt[i].port_num = port_config->port_cfg[i].port_num;
+		port_rt[i].port_num = pn = port_config->port_cfg[i].port_num;
+
+		/* Perform capability check for master port */
+		ret = sdw_chk_mstr_dpn_caps(&dpn_cap[pn],
+				&mstr_rt->stream_params);
+		if (ret < 0) {
+			dev_err(&mstr->dev,
+				"Master capabilities check failed\n");
+			return -EINVAL;
+		}
+
 		list_add_tail(&port_rt[i].port_node, &mstr_rt->port_rt_list);
 	}
-	return 0;
+
+	return ret;
 }
 
 static int sdw_slv_port_configuration(struct sdw_slave *slave,
@@ -1978,8 +2797,10 @@ static int sdw_slv_port_configuration(struct sdw_slave *slave,
 {
 	struct sdw_slave_runtime *slv_rt;
 	struct sdw_port_runtime *port_rt;
-	int found = 0;
-	int i;
+	struct sdw_slv_dpn_capabilities *dpn_cap =
+		slave->sdw_slv_cap.sdw_dpn_cap;
+	int found = 0, ret = 0;
+	int i, pn;
 
 	list_for_each_entry(slv_rt, &sdw_rt->slv_rt_list, slave_sdw_node) {
 		if (slv_rt->slave == slave) {
@@ -1991,6 +2812,12 @@ static int sdw_slv_port_configuration(struct sdw_slave *slave,
 		dev_err(&slave->mstr->dev, "Slave not found for this port\n");
 		return -EINVAL;
 	}
+
+	if (!slave->slave_cap_updated) {
+		dev_err(&slave->mstr->dev, "Slave capabilities not updated\n");
+		return -EINVAL;
+	}
+
 	port_rt = kzalloc((sizeof(struct sdw_port_runtime)) *
 			port_config->num_ports, GFP_KERNEL);
 	if (!port_rt)
@@ -1998,10 +2825,21 @@ static int sdw_slv_port_configuration(struct sdw_slave *slave,
 
 	for (i = 0; i < port_config->num_ports; i++) {
 		port_rt[i].channel_mask = port_config->port_cfg[i].ch_mask;
-		port_rt[i].port_num = port_config->port_cfg[i].port_num;
+		port_rt[i].port_num = pn = port_config->port_cfg[i].port_num;
+
+		/* Perform capability check for master port */
+		ret = sdw_chk_slv_dpn_caps(&dpn_cap[pn],
+				&slv_rt->stream_params);
+		if (ret < 0) {
+			dev_err(&slave->mstr->dev,
+				"Slave capabilities check failed\n");
+			return -EINVAL;
+		}
+
 		list_add_tail(&port_rt[i].port_node, &slv_rt->port_rt_list);
 	}
-	return 0;
+
+	return ret;
 }
 
 /**
@@ -2034,7 +2872,6 @@ int sdw_config_port(struct sdw_master *mstr,
 	struct sdw_runtime *sdw_rt = NULL;
 	struct sdw_stream_tag *stream = NULL;
 
-
 	for (i = 0; i < SDW_NUM_STREAM_TAGS; i++) {
 		if (stream_tags[i].stream_tag == stream_tag) {
 			sdw_rt = stream_tags[i].sdw_rt;
@@ -2042,10 +2879,12 @@ int sdw_config_port(struct sdw_master *mstr,
 			break;
 		}
 	}
+
 	if (!sdw_rt) {
 		dev_err(&mstr->dev, "Invalid stream tag\n");
 		return -EINVAL;
 	}
+
 	if (static_key_false(&sdw_trace_msg)) {
 		int i;
 
@@ -2054,13 +2893,16 @@ int sdw_config_port(struct sdw_master *mstr,
 				&port_config->port_cfg[i], stream_tag);
 		}
 	}
+
 	mutex_lock(&stream->stream_lock);
+
 	if (!slave)
 		ret = sdw_mstr_port_configuration(mstr, sdw_rt, port_config);
 	else
 		ret = sdw_slv_port_configuration(slave, sdw_rt, port_config);
 
 	mutex_unlock(&stream->stream_lock);
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(sdw_config_port);
@@ -2072,9 +2914,6 @@ int sdw_prepare_and_enable(int stream_tag, bool enable)
 	struct sdw_stream_tag *stream_tags = sdw_core.stream_tags;
 	struct sdw_stream_tag *stream = NULL;
 
-	/* TBD: SRK, Check with hardik whether both locks needed
-	 * stream and core??
-	 */
 	mutex_lock(&sdw_core.core_lock);
 
 	for (i = 0; i < SDW_NUM_STREAM_TAGS; i++) {
@@ -2194,126 +3033,356 @@ int sdw_wait_for_slave_enumeration(struct sdw_master *mstr,
 }
 EXPORT_SYMBOL_GPL(sdw_wait_for_slave_enumeration);
 
-int sdw_prepare_for_clock_change(struct sdw_master *mstr, bool stop,
-			enum sdw_clk_stop_mode *clck_stop_mode)
+static enum sdw_clk_stop_mode sdw_get_clk_stp_mode(struct sdw_slave *slave)
 {
-	int i;
+	enum sdw_clk_stop_mode clock_stop_mode = SDW_CLOCK_STOP_MODE_0;
+	struct sdw_slv_capabilities *cap = &slave->sdw_slv_cap;
+
+	if (!slave->driver)
+		return clock_stop_mode;
+	/*
+	 * Get the dynamic value of clock stop from Slave driver
+	 * if supported, else use the static value from
+	 * capabilities register. Update the capabilities also
+	 * if we have new dynamic value.
+	 */
+	if (slave->driver->get_dyn_clk_stp_mod) {
+		clock_stop_mode = slave->driver->get_dyn_clk_stp_mod(slave);
+
+		if (clock_stop_mode == SDW_CLOCK_STOP_MODE_1)
+			cap->clock_stop1_mode_supported = true;
+		else
+			cap->clock_stop1_mode_supported = false;
+	} else
+		clock_stop_mode = cap->clock_stop1_mode_supported;
+
+	return clock_stop_mode;
+}
+
+/**
+ * sdw_master_stop_clock: Stop the clock. This function broadcasts the SCP_CTRL
+ *			register with clock_stop_now bit set.
+ *
+ * @mstr: Master handle for which clock has to be stopped.
+ *
+ * Returns 0 on success, appropriate error code on failure.
+ */
+int sdw_master_stop_clock(struct sdw_master *mstr)
+{
+	int ret = 0, i;
 	struct sdw_msg msg;
 	u8 buf[1] = {0};
-	struct sdw_slave *slave;
-	enum sdw_clk_stop_mode clock_stop_mode;
-	int timeout = 0;
-	int ret = 0;
-	int slave_dev_present = 0;
+	enum sdw_clk_stop_mode mode;
 
-	/*  Find if all slave support clock stop mode1 if all slaves support
-	 *  clock stop mode1 use mode1 else use mode0
+	/* Send Broadcast message to the SCP_ctrl register with
+	 * clock stop now. If none of the Slaves are attached, then there
+	 * may not be ACK, flag the error about ACK not recevied but
+	 * clock will be still stopped.
+	 */
+	msg.ssp_tag = 0;
+	msg.flag = SDW_MSG_FLAG_WRITE;
+	msg.len = 1;
+	msg.buf = &buf[0];
+	msg.slave_addr = SDW_SLAVE_BDCAST_ADDR;
+	msg.addr_page1 = 0x0;
+	msg.addr_page2 = 0x0;
+	msg.addr = SDW_SCP_CTRL;
+	buf[0] |= 0x1 << SDW_SCP_CTRL_CLK_STP_NOW_SHIFT;
+	ret = sdw_slave_transfer_nopm(mstr, &msg, 1);
+
+	/* Even if broadcast fails, we stop the clock and flag error */
+	if (ret != 1)
+		dev_err(&mstr->dev, "ClockStopNow Broadcast message failed\n");
+
+	/*
+	 * Mark all Slaves as un-attached which are entering clock stop
+	 * mode1
 	 */
 	for (i = 1; i <= SOUNDWIRE_MAX_DEVICES; i++) {
-		if (mstr->sdw_addr[i].assigned &&
-		mstr->sdw_addr[i].status != SDW_SLAVE_STAT_NOT_PRESENT) {
-			slave_dev_present = 1;
-			slave = mstr->sdw_addr[i].slave;
-			clock_stop_mode &=
-				slave->sdw_slv_cap.clock_stop1_mode_supported;
-			if (!clock_stop_mode)
-				break;
+
+		if (!mstr->sdw_addr[i].assigned)
+			continue;
+
+		/* Get clock stop mode for all Slaves */
+		mode  = sdw_get_clk_stp_mode(mstr->sdw_addr[i].slave);
+		if (mode == SDW_CLOCK_STOP_MODE_0)
+			continue;
+
+		/* If clock stop mode 1, mark Slave as not present */
+		mstr->sdw_addr[i].status = SDW_SLAVE_STAT_NOT_PRESENT;
 		}
-	}
-	if (stop) {
-		*clck_stop_mode = clock_stop_mode;
-		dev_info(&mstr->dev, "Entering Clock stop mode %x\n",
-						clock_stop_mode);
-	}
-	/* Slaves might have removed power during its suspend
-	 * in that case no need to do clock stop prepare
-	 * and return from here
-	 */
-	if (!slave_dev_present)
-		return 0;
-	/* Prepare for the clock stop mode. For simplified clock stop
-	 * prepare only mode is to be set, For others set the ClockStop
-	 * Prepare bit in SCP_SystemCtrl register. For all the other slaves
-	 * set the clock stop prepare bit. For all slave set the clock
-	 * stop mode based on what we got in earlier loop
-	 */
-	for (i = 1; i <= SOUNDWIRE_MAX_DEVICES; i++) {
+	return 0;
+}
+EXPORT_SYMBOL_GPL(sdw_master_stop_clock);
+
+static struct sdw_slave *get_slave_for_prep_deprep(struct sdw_master *mstr,
+					int *slave_index)
+{
+	int i;
+
+	for (i = *slave_index; i <= SOUNDWIRE_MAX_DEVICES; i++) {
 		if (mstr->sdw_addr[i].assigned != true)
 			continue;
+
 		if (mstr->sdw_addr[i].status == SDW_SLAVE_STAT_NOT_PRESENT)
 			continue;
-		slave = mstr->sdw_addr[i].slave;
-		msg.ssp_tag = 0;
-		slave = mstr->sdw_addr[i].slave;
 
-		if (stop) {
-			/* Even if its simplified clock stop prepare
-			 * setting prepare bit wont harm
-			 */
-			buf[0] |= (1 << SDW_SCP_SYSTEMCTRL_CLK_STP_PREP_SHIFT);
-			buf[0] |= clock_stop_mode <<
-				SDW_SCP_SYSTEMCTRL_CLK_STP_MODE_SHIFT;
-		}
-		msg.flag = SDW_MSG_FLAG_WRITE;
-		msg.addr = SDW_SCP_SYSTEMCTRL;
-		msg.len = 1;
-		msg.buf = buf;
-		msg.slave_addr = i;
-		msg.addr_page1 = 0x0;
-		msg.addr_page2 = 0x0;
-		ret = sdw_slave_transfer_nopm(mstr, &msg, 1);
-		if (ret != 1) {
-			dev_err(&mstr->dev, "Clock Stop prepare failed\n");
-			return -EBUSY;
-		}
+		*slave_index = i + 1;
+		return mstr->sdw_addr[i].slave;
 	}
+	return NULL;
+}
+
+/*
+ * Wait till clock stop prepare/deprepare is finished. Prepare for all
+ * mode, De-prepare only for the Slaves resuming from clock stop mode 0
+ */
+static void sdw_wait_for_clk_prep(struct sdw_master *mstr)
+{
+	int ret;
+	struct sdw_msg msg;
+	u8 buf[1] = {0};
+	int timeout = 0;
+
+	/* Create message to read clock stop status, its broadcast message. */
+	msg.ssp_tag = 0;
+	msg.flag = SDW_MSG_FLAG_READ;
+	msg.len = 1;
+	msg.buf = &buf[0];
+	msg.slave_addr = SDW_SLAVE_BDCAST_ADDR;
+	msg.addr_page1 = 0x0;
+	msg.addr_page2 = 0x0;
+	msg.addr = SDW_SCP_STAT;
+	buf[0] = 0xFF;
 	/*
-	 * Once clock stop prepare bit is set, broadcast the message to read
-	 * ClockStop_NotFinished bit from SCP_Stat, till we read it as 11
-	 * we dont exit loop. We wait for definite time before retrying
-	 * if its simple clock stop it will be always 1, while for other
-	 * they will driver 0 on bus so we wont get 1. In total we are
-	 * waiting 1 sec before we timeout.
+	 * Once all the Slaves are written with prepare bit,
+	 * we go ahead and broadcast the read message for the
+	 * SCP_STAT register to read the ClockStopNotFinished bit
+	 * Read till we get this a 0. Currently we have timeout of 1sec
+	 * before giving up. Even if its not read as 0 after timeout,
+	 * controller can stop the clock after warning.
 	 */
 	do {
-		buf[0] = 0xFF;
-		msg.ssp_tag = 0;
-		msg.flag = SDW_MSG_FLAG_READ;
-		msg.addr = SDW_SCP_STAT;
-		msg.len = 1;
-		msg.buf = buf;
-		msg.slave_addr = 15;
-		msg.addr_page1 = 0x0;
-		msg.addr_page2 = 0x0;
+		/*
+		 * Ideally this should not fail, but even if it fails
+		 * in exceptional situation, we go ahead for clock stop
+		 */
 		ret = sdw_slave_transfer_nopm(mstr, &msg, 1);
-		if (ret != 1)
-			goto prepare_failed;
+
+		if (ret != 1) {
+			WARN_ONCE(1, "Clock stop status read failed\n");
+			break;
+		}
 
 		if (!(buf[0] & SDW_SCP_STAT_CLK_STP_NF_MASK))
-				break;
-		msleep(100);
+			break;
+
+		/*
+		 * TODO: Need to find from spec what is requirement.
+		 * Since we are in suspend we should not sleep for more
+		 * Ideally Slave should be ready to stop clock in less than
+		 * few ms.
+		 * So sleep less and increase loop time. This is not
+		 * harmful, since if Slave is ready loop will terminate.
+		 *
+		 */
+		msleep(2);
 		timeout++;
-	} while (timeout != 11);
-	/* If we are trying to stop and prepare failed its not ok
-	 */
-	if (!(buf[0] & SDW_SCP_STAT_CLK_STP_NF_MASK)) {
+
+	} while (timeout != 500);
+
+	if (!(buf[0] & SDW_SCP_STAT_CLK_STP_NF_MASK))
+
 		dev_info(&mstr->dev, "Clock stop prepare done\n");
-		return 0;
-	/* If we are trying to resume and  un-prepare failes its ok
-	 * since codec might be down during suspned and will
-	 * start afresh after resuming
+	else
+		WARN_ONCE(1, "Some Slaves prepare un-successful\n");
+}
+
+/**
+ * sdw_master_prep_for_clk_stop: Prepare all the Slaves for clock stop.
+ *			Iterate through each of the enumerated Slave.
+ *			Prepare each Slave according to the clock stop
+ *			mode supported by Slave. Use dynamic value from
+ *			Slave callback if registered, else use static values
+ *			from Slave capabilities registered.
+ *			1. Get clock stop mode for each Slave.
+ *			2. Call pre_prepare callback of each Slave if
+ *			registered.
+ *			3. Prepare each Slave for clock stop
+ *			4. Broadcast the Read message to make sure
+ *			all Slaves are prepared for clock stop.
+ *			5. Call post_prepare callback of each Slave if
+ *			registered.
+ *
+ * @mstr: Master handle for which clock state has to be changed.
+ *
+ * Returns 0
+ */
+int sdw_master_prep_for_clk_stop(struct sdw_master *mstr)
+{
+	struct sdw_slv_capabilities *cap;
+	enum sdw_clk_stop_mode clock_stop_mode;
+	int ret = 0;
+	struct sdw_slave *slave = NULL;
+	int slv_index = 1;
+
+	/*
+	 * Get all the Slaves registered to the master driver for preparing
+	 * for clock stop. Start from Slave with logical address as 1.
 	 */
-	} else if (!stop) {
-		dev_info(&mstr->dev, "Some Slaves un-prepare un-successful\n");
-		return 0;
+	while ((slave = get_slave_for_prep_deprep(mstr, &slv_index)) != NULL) {
+
+		cap = &slave->sdw_slv_cap;
+
+		clock_stop_mode = sdw_get_clk_stp_mode(slave);
+
+		/*
+		 * Call the pre clock stop prepare, if Slave requires.
+		 */
+		if (slave->driver && slave->driver->pre_clk_stop_prep) {
+			ret = slave->driver->pre_clk_stop_prep(slave,
+						clock_stop_mode, true);
+
+			/* If it fails we still continue */
+			if (ret)
+				dev_warn(&mstr->dev, "Pre prepare failed for Slave %d\n",
+						slave->slv_number);
+		}
+
+		sdw_prep_slave_for_clk_stp(mstr, slave, clock_stop_mode, true);
 	}
 
-prepare_failed:
-	dev_err(&mstr->dev, "Clock Stop prepare failed\n");
-	return -EBUSY;
+	/* Wait till prepare for all Slaves is finished */
+	/*
+	 * We should continue even if the prepare fails. Clock stop
+	 * prepare failure on Slaves, should not impact the broadcasting
+	 * of ClockStopNow.
+	 */
+	sdw_wait_for_clk_prep(mstr);
 
+	slv_index = 1;
+	while ((slave = get_slave_for_prep_deprep(mstr, &slv_index)) != NULL) {
+
+		cap = &slave->sdw_slv_cap;
+
+		clock_stop_mode = sdw_get_clk_stp_mode(slave);
+
+		if (slave->driver && slave->driver->post_clk_stop_prep) {
+			ret = slave->driver->post_clk_stop_prep(slave,
+							clock_stop_mode,
+							true);
+			/*
+			 * Even if Slave fails we continue with other
+			 * Slaves. This should never happen ideally.
+			 */
+			if (ret)
+				dev_err(&mstr->dev, "Post prepare failed for Slave %d\n",
+					slave->slv_number);
+		}
+	}
+
+	return 0;
 }
-EXPORT_SYMBOL_GPL(sdw_prepare_for_clock_change);
+EXPORT_SYMBOL_GPL(sdw_master_prep_for_clk_stop);
+
+/**
+ * sdw_mstr_deprep_after_clk_start: De-prepare all the Slaves
+ *		exiting clock stop mode 0 after clock resumes. Clock
+ *		is already resumed before this. De-prepare all the Slaves
+ *		which were earlier in ClockStop mode0. De-prepare for the
+ *		Slaves which were there in ClockStop mode1 is done after
+ *		they enumerated back. Its not done here as part of master
+ *		getting resumed.
+ *		1. Get clock stop mode for each Slave its exiting from
+ *		2. Call pre_prepare callback of each Slave exiting from
+ *		clock stop mode 0.
+ *		3. De-Prepare each Slave exiting from Clock Stop mode0
+ *		4. Broadcast the Read message to make sure
+ *		all Slaves are de-prepared for clock stop.
+ *		5. Call post_prepare callback of each Slave exiting from
+ *		clock stop mode0
+ *
+ *
+ * @mstr: Master handle
+ *
+ * Returns 0
+ */
+int sdw_mstr_deprep_after_clk_start(struct sdw_master *mstr)
+{
+	struct sdw_slv_capabilities *cap;
+	enum sdw_clk_stop_mode clock_stop_mode;
+	int ret = 0;
+	struct sdw_slave *slave = NULL;
+	/* We are preparing for stop */
+	bool stop = false;
+	int slv_index = 1;
+
+	while ((slave = get_slave_for_prep_deprep(mstr, &slv_index)) != NULL) {
+
+		cap = &slave->sdw_slv_cap;
+
+		/* Get the clock stop mode from which Slave is exiting */
+		clock_stop_mode = sdw_get_clk_stp_mode(slave);
+
+		/*
+		 * Slave is exiting from Clock stop mode 1, De-prepare
+		 * is optional based on capability, and it has to be done
+		 * after Slave is enumerated. So nothing to be done
+		 * here.
+		 */
+		if (clock_stop_mode == SDW_CLOCK_STOP_MODE_1)
+			continue;
+		/*
+		 * Call the pre clock stop prepare, if Slave requires.
+		 */
+		if (slave->driver && slave->driver->pre_clk_stop_prep)
+			ret = slave->driver->pre_clk_stop_prep(slave,
+						clock_stop_mode, false);
+
+		/* If it fails we still continue */
+		if (ret)
+			dev_warn(&mstr->dev, "Pre de-prepare failed for Slave %d\n",
+					slave->slv_number);
+
+		sdw_prep_slave_for_clk_stp(mstr, slave, clock_stop_mode, false);
+	}
+
+	/*
+	 * Wait till prepare is finished for all the Slaves.
+	 */
+	sdw_wait_for_clk_prep(mstr);
+
+	slv_index = 1;
+	while ((slave = get_slave_for_prep_deprep(mstr, &slv_index)) != NULL) {
+
+		cap = &slave->sdw_slv_cap;
+
+		clock_stop_mode = sdw_get_clk_stp_mode(slave);
+
+		/*
+		 * Slave is exiting from Clock stop mode 1, De-prepare
+		 * is optional based on capability, and it has to be done
+		 * after Slave is enumerated.
+		 */
+		if (clock_stop_mode == SDW_CLOCK_STOP_MODE_1)
+			continue;
+
+		if (slave->driver && slave->driver->post_clk_stop_prep)
+			ret = slave->driver->post_clk_stop_prep(slave,
+							clock_stop_mode,
+							stop);
+			/*
+			 * Even if Slave fails we continue with other
+			 * Slaves. This should never happen ideally.
+			 */
+			if (ret)
+				dev_err(&mstr->dev, "Post de-prepare failed for Slave %d\n",
+					slave->slv_number);
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(sdw_mstr_deprep_after_clk_start);
+
 
 struct sdw_master *sdw_get_master(int nr)
 {

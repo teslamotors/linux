@@ -516,7 +516,7 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 	struct sdw_mstr_dpn_capabilities *dpn_cap;
 	struct sdw_master *master;
 	struct cnl_sdw_data *p_data;
-	int ret = 0, i, j;
+	int ret = 0, i, j, k, wl = 0;
 	/* TODO: This number 4 should come from ACPI */
 #if defined(CONFIG_SDW_MAXIM_SLAVE) || defined(CONFIG_SND_SOC_MXFPGA)
 	dsp->num_sdw_controllers = 3;
@@ -561,14 +561,20 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 		if (!m_cap->sdw_dpn_cap)
 			return -ENOMEM;
 		for (j = 0; j < m_cap->num_data_ports; j++) {
-			dpn_cap = &m_cap->sdw_dpn_cap[i];
+			dpn_cap = &m_cap->sdw_dpn_cap[j];
 			/* Both Tx and Rx */
 			dpn_cap->port_direction = 0x3;
-			dpn_cap->port_number = i;
+			dpn_cap->port_number = j;
 			dpn_cap->max_word_length = 32;
 			dpn_cap->min_word_length = 1;
-			dpn_cap->num_word_length = 0;
-			dpn_cap->word_length_buffer = NULL;
+			dpn_cap->num_word_length = 4;
+
+			dpn_cap->word_length_buffer =
+					kzalloc(((sizeof(unsigned int)) *
+					dpn_cap->num_word_length), GFP_KERNEL);
+			for (k = 0; k < dpn_cap->num_word_length; k++)
+				dpn_cap->word_length_buffer[k] = wl = wl + 8;
+			wl = 0;
 			dpn_cap->dpn_type = SDW_FULL_DP;
 			dpn_cap->min_ch_num = 1;
 			dpn_cap->max_ch_num = 8;

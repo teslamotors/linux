@@ -150,7 +150,7 @@ static int cnl_svfpga_codec_fixup(struct snd_soc_pcm_runtime *rtd,
 	pr_debug("Invoked %s for dailink %s\n", __func__, rtd->dai_link->name);
 	slot_width = 24;
 	rate->min = rate->max = 48000;
-	channels->min = channels->max = 1;
+	channels->min = channels->max = 2;
 	snd_mask_none(hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT));
 	snd_mask_set(hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT),
 						SNDRV_PCM_FORMAT_S16_LE);

@@ -34,16 +34,14 @@
 #define SDW_STATE_INIT_STREAM_TAG	    0x1
 #define SDW_STATE_ALLOC_STREAM              0x2
 #define SDW_STATE_CONFIG_STREAM             0x3
-#define SDW_STATE_COMPUTE_STREAM	    0x4
-#define SDW_STATE_PREPARE_STREAM            0x5
-#define SDW_STATE_ENABLE_STREAM             0x6
-#define SDW_STATE_DISABLE_STREAM            0x7
-#define SDW_STATE_UNPREPARE_STREAM          0x8
-#define SDW_STATE_UNCOMPUTE_STREAM	    0x9
-#define SDW_STATE_RELEASE_STREAM            0xa
-#define SDW_STATE_FREE_STREAM               0xb
-#define SDW_STATE_FREE_STREAM_TAG           0xc
-#define SDW_STATE_ONLY_XPORT_STREAM	    0xd
+#define SDW_STATE_PREPARE_STREAM            0x4
+#define SDW_STATE_ENABLE_STREAM             0x5
+#define SDW_STATE_DISABLE_STREAM            0x6
+#define SDW_STATE_UNPREPARE_STREAM          0x7
+#define SDW_STATE_RELEASE_STREAM            0x8
+#define SDW_STATE_FREE_STREAM               0x9
+#define SDW_STATE_FREE_STREAM_TAG           0xA
+#define SDW_STATE_ONLY_XPORT_STREAM	    0xB
 
 #define SDW_STATE_INIT_RT		0x1
 #define SDW_STATE_CONFIG_RT		0x2
@@ -52,6 +50,8 @@
 #define SDW_STATE_DISABLE_RT		0x5
 #define SDW_STATE_UNPREPARE_RT		0x6
 #define SDW_STATE_RELEASE_RT		0x7
+
+#define SDW_SLAVE_BDCAST_ADDR		15
 
 struct sdw_runtime;
 /* Defined in sdw.c, used by multiple files of module */
@@ -76,9 +76,31 @@ enum sdw_clk_state {
 	SDW_CLK_STATE_ON = 1,
 };
 
+enum sdw_update_bs_state {
+	SDW_UPDATE_BS_PRE,
+	SDW_UPDATE_BS_BNKSWTCH,
+	SDW_UPDATE_BS_POST,
+	SDW_UPDATE_BS_BNKSWTCH_WAIT,
+	SDW_UPDATE_BS_DIS_CHN,
+};
+
+enum sdw_port_en_state {
+	SDW_PORT_STATE_PREPARE,
+	SDW_PORT_STATE_ENABLE,
+	SDW_PORT_STATE_DISABLE,
+	SDW_PORT_STATE_UNPREPARE,
+};
+
 struct port_chn_en_state {
 	bool is_activate;
 	bool is_bank_sw;
+};
+
+struct temp_elements {
+	int rate;
+	int full_bw;
+	int payload_bw;
+	int hwidth;
 };
 
 struct sdw_stream_tag {
@@ -153,6 +175,10 @@ struct sdw_mstr_runtime {
 	unsigned int	stream_bw;
 	 /* State of runtime structure */
 	int rt_state;
+	int hstart;
+	int hstop;
+	int block_offset;
+	int sub_block_offset;
 };
 
 struct sdw_runtime {
@@ -185,8 +211,10 @@ struct sdw_bus {
 	unsigned int	clk_state;
 	unsigned int	active_bank;
 	unsigned int	clk_freq;
+	unsigned int	clk_div;
 	/* Bus total Bandwidth. Initialize and reset to zero */
 	unsigned int	bandwidth;
+	unsigned int	stream_interval; /* Stream Interval */
 	unsigned int	system_interval; /* Bus System Interval */
 	unsigned int	frame_freq;
 	unsigned int	col;
@@ -239,6 +267,8 @@ int sdw_bus_bw_init(void);
 int sdw_mstr_bw_init(struct sdw_bus *sdw_bs);
 int sdw_bus_calc_bw(struct sdw_stream_tag *stream_tag, bool enable);
 int sdw_bus_calc_bw_dis(struct sdw_stream_tag *stream_tag, bool unprepare);
+int sdw_bus_bra_xport_config(struct sdw_bus *sdw_mstr_bs,
+	struct sdw_bra_block *block, bool enable);
 int sdw_chn_enable(void);
 void sdw_unlock_mstr(struct sdw_master *mstr);
 int sdw_trylock_mstr(struct sdw_master *mstr);

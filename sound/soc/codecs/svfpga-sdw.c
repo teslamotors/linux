@@ -79,7 +79,7 @@ static int svfpga_register_sdw_capabilties(struct sdw_slave *sdw,
 				dpn_cap->num_audio_modes), GFP_KERNEL);
 		for (j = 0; j < dpn_cap->num_audio_modes; j++) {
 			prop = &dpn_cap->mode_properties[j];
-			prop->max_frequency = 16000000;
+			prop->max_frequency = 19200000;
 			prop->min_frequency = 1000000;
 			prop->num_freq_configs = 0;
 			prop->freq_supported = NULL;

@@ -1,5 +1,6 @@
 menuconfig SDW
 	tristate "SoundWire bus support"
+	depends on CRC8
 	help
 	  SoundWire interface is typically used for transporting data
 	  related to audio functions.

@@ -260,8 +260,9 @@ static int sdw_config_update(struct cnl_sdw *sdw)
 {
 	struct cnl_sdw_data *data = &sdw->data;
 	struct sdw_master *mstr = sdw->mstr;
-
+	int sync_reg, syncgo_mask;
 	volatile int config_update = 0;
+	volatile int sync_update = 0;
 	/* Try 10 times before giving up on configuration update */
 	int timeout = 10;
 	int config_updated = 0;
@@ -271,6 +272,44 @@ static int sdw_config_update(struct cnl_sdw *sdw)
 	/* Bit is self-cleared when configuration gets updated. */
 	cnl_sdw_reg_writel(data->sdw_regs,  SDW_CNL_MCP_CONFIGUPDATE,
 			config_update);
+
+	/*
+	 * Set SYNCGO bit for Master(s) running in aggregated mode
+	 * (MMModeEN = 1). This action causes all gSyncs of all Master IPs
+	 * to be unmasked and asserted at the currently active gSync rate.
+	 * The initialization-pending Master IP SoundWire bus clock will
+	 * start up synchronizing to gSync, leading to bus reset entry,
+	 * subsequent exit, and 1st Frame generation aligning to gSync.
+	 * Note that this is done in order to overcome hardware bug related
+	 * to mis-alignment of gSync and frame.
+	 */
+	if (mstr->link_sync_mask) {
+		sync_reg = cnl_sdw_reg_readl(data->sdw_shim,  SDW_CNL_SYNC);
+		sync_reg |= (CNL_SYNC_SYNCGO_MASK << CNL_SYNC_SYNCGO_SHIFT);
+		cnl_sdw_reg_writel(data->sdw_shim, SDW_CNL_SYNC, sync_reg);
+		syncgo_mask = (CNL_SYNC_SYNCGO_MASK << CNL_SYNC_SYNCGO_SHIFT);
+
+		do {
+			sync_update = cnl_sdw_reg_readl(data->sdw_shim,
+								SDW_CNL_SYNC);
+			if ((sync_update & syncgo_mask) == 0)
+				break;
+
+			msleep(20);
+			timeout--;
+
+		}  while (timeout);
+
+		if ((sync_update & syncgo_mask) != 0) {
+			dev_err(&mstr->dev, "Failed to set sync go\n");
+			return -EIO;
+		}
+
+		/* Reset timeout */
+		timeout = 10;
+	}
+
+	/* Wait for config update bit to be self cleared */
 	do {
 		config_update = cnl_sdw_reg_readl(data->sdw_regs,
 				SDW_CNL_MCP_CONFIGUPDATE);
@@ -369,12 +408,10 @@ static int sdw_pdm_pdi_init(struct cnl_sdw *sdw)
 	int pdm_cap, pdm_ch_count, total_pdm_streams;
 	int pdm_cap_offset = SDW_CNL_PDMSCAP +
 			(data->inst_id * SDW_CNL_PDMSCAP_REG_OFFSET);
-
-	pdm_cap = cnl_sdw_reg_readw(data->sdw_regs, pdm_cap_offset);
+	pdm_cap = cnl_sdw_reg_readw(data->sdw_shim, pdm_cap_offset);
 	sdw->num_pdm_streams = (pdm_cap >> CNL_PDMSCAP_BSS_SHIFT) &
 			CNL_PDMSCAP_BSS_MASK;
-	/* Zero based value in register */
-	sdw->num_pdm_streams++;
+
 	sdw->pdm_streams = devm_kzalloc(&mstr->dev,
 		sdw->num_pdm_streams * sizeof(struct cnl_sdw_pdi_stream),
 		GFP_KERNEL);
@@ -383,8 +420,7 @@ static int sdw_pdm_pdi_init(struct cnl_sdw *sdw)
 
 	sdw->num_in_pdm_streams = (pdm_cap >> CNL_PDMSCAP_ISS_SHIFT) &
 			CNL_PDMSCAP_ISS_MASK;
-	/* Zero based value in register */
-	sdw->num_in_pdm_streams++;
+
 	sdw->in_pdm_streams = devm_kzalloc(&mstr->dev,
 		sdw->num_in_pdm_streams * sizeof(struct cnl_sdw_pdi_stream),
 		GFP_KERNEL);
@@ -395,7 +431,6 @@ static int sdw_pdm_pdi_init(struct cnl_sdw *sdw)
 	sdw->num_out_pdm_streams = (pdm_cap >> CNL_PDMSCAP_OSS_SHIFT) &
 			CNL_PDMSCAP_OSS_MASK;
 	/* Zero based value in register */
-	sdw->num_out_pdm_streams++;
 	sdw->out_pdm_streams = devm_kzalloc(&mstr->dev,
 		sdw->num_out_pdm_streams * sizeof(struct cnl_sdw_pdi_stream),
 		GFP_KERNEL);
@@ -443,15 +478,13 @@ static int sdw_port_pdi_init(struct cnl_sdw *sdw)
 	return ret;
 }
 
-static int sdw_init(struct cnl_sdw *sdw)
+static int sdw_init(struct cnl_sdw *sdw, bool is_first_init)
 {
 	struct sdw_master *mstr = sdw->mstr;
 	struct cnl_sdw_data *data = &sdw->data;
-	int mcp_config, mcp_control, sync_reg;
-
+	int mcp_config, mcp_control, sync_reg, mcp_clockctrl;
 	volatile int sync_update = 0;
-	/* Try 10 times before timing out */
-	int timeout = 10;
+	int timeout = 10; /* Try 10 times before timing out */
 	int ret = 0;
 
 	/* Power up the link controller */
@@ -465,9 +498,11 @@ static int sdw_init(struct cnl_sdw *sdw)
 	/* Switch the ownership to Master IP from glue logic */
 	sdw_switch_to_mip(sdw);
 
-	/* Set the Sync period to default */
+	/* Set SyncPRD period */
 	sync_reg = cnl_sdw_reg_readl(data->sdw_shim,  SDW_CNL_SYNC);
 	sync_reg |= (SDW_CNL_DEFAULT_SYNC_PERIOD << CNL_SYNC_SYNCPRD_SHIFT);
+
+	/* Set SyncPU bit */
 	sync_reg |= (0x1 << CNL_SYNC_SYNCCPU_SHIFT);
 	cnl_sdw_reg_writel(data->sdw_shim, SDW_CNL_SYNC, sync_reg);
 
@@ -484,6 +519,39 @@ static int sdw_init(struct cnl_sdw *sdw)
 		return -EINVAL;
 	}
 
+	/*
+	 * Set CMDSYNC bit based on Master ID
+	 * Note that this bit is set only for the Master which will be
+	 * running in aggregated mode (MMModeEN = 1). By doing
+	 * this the gSync to Master IP to be masked inactive.
+	 * Note that this is done in order to overcome hardware bug related
+	 * to mis-alignment of gSync and frame.
+	 */
+	if (mstr->link_sync_mask) {
+
+		sync_reg = cnl_sdw_reg_readl(data->sdw_shim,  SDW_CNL_SYNC);
+		sync_reg |= (1 << (data->inst_id + CNL_SYNC_CMDSYNC_SHIFT));
+		cnl_sdw_reg_writel(data->sdw_shim, SDW_CNL_SYNC, sync_reg);
+	}
+
+	/* Set clock divider to default value in default bank */
+	mcp_clockctrl = cnl_sdw_reg_readl(data->sdw_regs,
+				SDW_CNL_MCP_CLOCKCTRL0);
+	mcp_clockctrl |= SDW_CNL_DEFAULT_CLK_DIVIDER;
+	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_CLOCKCTRL0,
+							mcp_clockctrl);
+
+	/* Set the Frame shape init to default value */
+	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_FRAMESHAPEINIT,
+						SDW_CNL_DEFAULT_FRAME_SHAPE);
+
+
+	/* Set the SSP interval to default value for both banks */
+	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_SSPCTRL0,
+					SDW_CNL_DEFAULT_SSP_INTERVAL);
+	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_SSPCTRL1,
+					SDW_CNL_DEFAULT_SSP_INTERVAL);
+
 	/* Set command acceptance mode. This is required because when
 	 * Master broadcasts the clock_stop command to slaves, slaves
 	 * might be already suspended, so this return NO ACK, in that
@@ -495,7 +563,6 @@ static int sdw_init(struct cnl_sdw *sdw)
 			MCP_CONTROL_CMDACCEPTMODE_SHIFT);
 	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_CONTROL, mcp_control);
 
-	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_FRAMESHAPEINIT, 0x48);
 
 	mcp_config = cnl_sdw_reg_readl(data->sdw_regs, SDW_CNL_MCP_CONFIG);
 	/* Set Max cmd retry to 15 times */
@@ -541,22 +608,19 @@ static int sdw_init(struct cnl_sdw *sdw)
 			MCP_CONFIG_OPERATIONMODE_SHIFT);
 
 	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_CONFIG, mcp_config);
-	/* Set the SSP interval to 32 for both banks */
-	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_SSPCTRL0,
-					SDW_CNL_DEFAULT_SSP_INTERVAL);
-	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_SSPCTRL1,
-					SDW_CNL_DEFAULT_SSP_INTERVAL);
 
 	/* Initialize the phy control registers. */
 	sdw_init_phyctrl(sdw);
 
-	/* Initlaize the ports */
-	ret = sdw_port_pdi_init(sdw);
-	if (ret) {
-		dev_err(&mstr->dev, "SoundWire controller init failed %d\n",
+	if (is_first_init) {
+		/* Initlaize the ports */
+		ret = sdw_port_pdi_init(sdw);
+		if (ret) {
+			dev_err(&mstr->dev, "SoundWire controller init failed %d\n",
 				data->inst_id);
-		sdw_power_down_link(sdw);
-		return ret;
+			sdw_power_down_link(sdw);
+			return ret;
+		}
 	}
 
 	/* Lastly enable interrupts */
@@ -604,7 +668,7 @@ static int sdw_alloc_pcm_stream(struct cnl_sdw *sdw,
 	pdi_stream->h_ch_num = ch_cnt - 1;
 	ch_map_offset = SDW_CNL_PCMSCHM +
 			(SDW_CNL_PCMSCHM_REG_OFFSET * mstr->nr) +
-			(0x2 * pdi_stream->pdi_num);
+			(SDW_PCM_STRM_START_INDEX * pdi_stream->pdi_num);
 	if (port->direction == SDW_DATA_DIR_IN)
 		pdi_ch_map |= (CNL_PCMSYCM_DIR_MASK << CNL_PCMSYCM_DIR_SHIFT);
 	else
@@ -1134,10 +1198,758 @@ static enum sdw_command_response cnl_sdw_xfer_msg(struct sdw_master *mstr,
 	return ret;
 }
 
+static void cnl_sdw_bra_prep_crc(u8 *txdata_buf,
+		struct sdw_bra_block *block, int data_offset, int addr_offset)
+{
+
+	int addr = addr_offset;
+
+	txdata_buf[addr++] = sdw_bus_compute_crc8((block->values + data_offset),
+					block->num_bytes);
+	txdata_buf[addr++] = 0x0;
+	txdata_buf[addr++] = 0x0;
+	txdata_buf[addr] |= ((0x2 & SDW_BRA_SOP_EOP_PDI_MASK)
+					<< SDW_BRA_SOP_EOP_PDI_SHIFT);
+}
+
+static void cnl_sdw_bra_prep_data(u8 *txdata_buf,
+		struct sdw_bra_block *block, int data_offset, int addr_offset)
+{
+
+	int i;
+	int addr = addr_offset;
+
+	for (i = 0; i < block->num_bytes; i += 2) {
+
+		txdata_buf[addr++] = block->values[i + data_offset];
+		if ((block->num_bytes - 1) - i)
+			txdata_buf[addr++] = block->values[i + data_offset + 1];
+		else
+			txdata_buf[addr++] = 0;
+
+		txdata_buf[addr++] = 0;
+		txdata_buf[addr++] = 0;
+	}
+}
+
+static void cnl_sdw_bra_prep_hdr(u8 *txdata_buf,
+		struct sdw_bra_block *block, int rolling_id, int offset)
+{
+
+	u8 tmp_hdr[6] = {0, 0, 0, 0, 0, 0};
+	u8 temp = 0x0;
+
+	/*
+	 * 6 bytes header
+	 * 1st byte: b11001010
+	 *		b11: Header is active
+	 *		b0010: Device number 2 is selected
+	 *		b1: Write operation
+	 *		b0: MSB of BRA_NumBytes is 0
+	 * 2nd byte: LSB of number of bytes
+	 * 3rd byte to 6th byte: Slave register offset
+	 */
+	temp |= (SDW_BRA_HDR_ACTIVE & SDW_BRA_HDR_ACTIVE_MASK) <<
+						SDW_BRA_HDR_ACTIVE_SHIFT;
+	temp |= (block->slave_addr & SDW_BRA_HDR_SLV_ADDR_MASK) <<
+						SDW_BRA_HDR_SLV_ADDR_SHIFT;
+	temp |= (block->cmd & SDW_BRA_HDR_RD_WR_MASK) <<
+						SDW_BRA_HDR_RD_WR_SHIFT;
+
+	if (block->num_bytes > SDW_BRA_HDR_MSB_BYTE_CHK)
+		temp |= (SDW_BRA_HDR_MSB_BYTE_SET & SDW_BRA_HDR_MSB_BYTE_MASK);
+	else
+		temp |= (SDW_BRA_HDR_MSB_BYTE_UNSET &
+						SDW_BRA_HDR_MSB_BYTE_MASK);
+
+	txdata_buf[offset + 0] = tmp_hdr[0] = temp;
+	txdata_buf[offset + 1] = tmp_hdr[1] = block->num_bytes;
+	txdata_buf[offset + 3] |= ((SDW_BRA_SOP_EOP_PDI_STRT_VALUE &
+					SDW_BRA_SOP_EOP_PDI_MASK) <<
+					SDW_BRA_SOP_EOP_PDI_SHIFT);
+
+	txdata_buf[offset + 3] |= ((rolling_id & SDW_BRA_ROLLINGID_PDI_MASK)
+					<< SDW_BRA_ROLLINGID_PDI_SHIFT);
+
+	txdata_buf[offset + 4] = tmp_hdr[2] = ((block->reg_offset &
+					SDW_BRA_HDR_SLV_REG_OFF_MASK24)
+					>> SDW_BRA_HDR_SLV_REG_OFF_SHIFT24);
+
+	txdata_buf[offset + 5] = tmp_hdr[3] = ((block->reg_offset &
+					SDW_BRA_HDR_SLV_REG_OFF_MASK16)
+					>> SDW_BRA_HDR_SLV_REG_OFF_SHIFT16);
+
+	txdata_buf[offset + 8] = tmp_hdr[4] = ((block->reg_offset &
+					SDW_BRA_HDR_SLV_REG_OFF_MASK8)
+					>> SDW_BRA_HDR_SLV_REG_OFF_SHIFT8);
+
+	txdata_buf[offset + 9] = tmp_hdr[5] = (block->reg_offset &
+						SDW_BRA_HDR_SLV_REG_OFF_MASK0);
+
+	/* CRC check */
+	txdata_buf[offset + 0xc] = sdw_bus_compute_crc8(tmp_hdr,
+							SDW_BRA_HEADER_SIZE);
+
+	if (!block->cmd)
+		txdata_buf[offset + 0xf] = ((SDW_BRA_SOP_EOP_PDI_END_VALUE &
+						SDW_BRA_SOP_EOP_PDI_MASK) <<
+						SDW_BRA_SOP_EOP_PDI_SHIFT);
+}
+
+static void cnl_sdw_bra_pdi_tx_config(struct sdw_master *mstr,
+					struct cnl_sdw *sdw, bool enable)
+{
+	struct cnl_sdw_pdi_stream tx_pdi_stream;
+	unsigned int tx_ch_map_offset, port_ctrl_offset, tx_pdi_config_offset;
+	unsigned int port_ctrl = 0, tx_pdi_config = 0, tx_stream_config;
+	int tx_pdi_ch_map = 0;
+
+	if (enable) {
+		/* DP0 PORT CTRL REG */
+		port_ctrl_offset =  SDW_CNL_PORTCTRL + (SDW_BRA_PORT_ID *
+						SDW_CNL_PORT_REG_OFFSET);
+
+		port_ctrl &= ~(PORTCTRL_PORT_DIRECTION_MASK <<
+					PORTCTRL_PORT_DIRECTION_SHIFT);
+
+		port_ctrl |= ((SDW_BRA_BULK_ENABLE & SDW_BRA_BLK_EN_MASK) <<
+				SDW_BRA_BLK_EN_SHIFT);
+
+		port_ctrl |= ((SDW_BRA_BPT_PAYLOAD_TYPE &
+						SDW_BRA_BPT_PYLD_TY_MASK) <<
+						SDW_BRA_BPT_PYLD_TY_SHIFT);
+
+		cnl_sdw_reg_writel(sdw->data.sdw_regs, port_ctrl_offset,
+								port_ctrl);
+
+		/* PDI0 Programming */
+		tx_pdi_stream.l_ch_num = 0;
+		tx_pdi_stream.h_ch_num = 0xF;
+		tx_pdi_stream.pdi_num = SDW_BRA_PDI_TX_ID;
+		/* TODO: Remove hardcoding */
+		tx_pdi_stream.sdw_pdi_num = mstr->nr * 16 +
+						tx_pdi_stream.pdi_num + 3;
+
+		/* SNDWxPCMS2CM SHIM REG */
+		tx_ch_map_offset =  SDW_CNL_CTLS2CM +
+			(SDW_CNL_PCMSCHM_REG_OFFSET * mstr->nr);
+
+		tx_pdi_ch_map |= (tx_pdi_stream.sdw_pdi_num &
+						CNL_PCMSYCM_STREAM_MASK) <<
+						CNL_PCMSYCM_STREAM_SHIFT;
+
+		tx_pdi_ch_map |= (tx_pdi_stream.l_ch_num &
+						CNL_PCMSYCM_LCHAN_MASK) <<
+						CNL_PCMSYCM_LCHAN_SHIFT;
+
+		tx_pdi_ch_map |= (tx_pdi_stream.h_ch_num &
+						CNL_PCMSYCM_HCHAN_MASK) <<
+						CNL_PCMSYCM_HCHAN_SHIFT;
+
+		cnl_sdw_reg_writew(sdw->data.sdw_shim, tx_ch_map_offset,
+				tx_pdi_ch_map);
+
+		/* TX PDI0 CONFIG REG BANK 0 */
+		tx_pdi_config_offset =  (SDW_CNL_PDINCONFIG0 +
+						(tx_pdi_stream.pdi_num * 16));
+
+		tx_pdi_config |= ((SDW_BRA_PORT_ID &
+					PDINCONFIG_PORT_NUMBER_MASK) <<
+					PDINCONFIG_PORT_NUMBER_SHIFT);
+
+		tx_pdi_config |= (SDW_BRA_CHN_MASK <<
+					PDINCONFIG_CHANNEL_MASK_SHIFT);
+
+		tx_pdi_config |= (SDW_BRA_SOFT_RESET <<
+					PDINCONFIG_PORT_SOFT_RESET_SHIFT);
+
+		cnl_sdw_reg_writel(sdw->data.sdw_regs,
+				tx_pdi_config_offset, tx_pdi_config);
+
+		/* ALH STRMzCFG REG */
+		tx_stream_config = cnl_sdw_reg_readl(sdw->data.alh_base,
+					(tx_pdi_stream.sdw_pdi_num *
+					ALH_CNL_STRMZCFG_OFFSET));
+
+		tx_stream_config |= (CNL_STRMZCFG_DMAT_VAL &
+						CNL_STRMZCFG_DMAT_MASK) <<
+						CNL_STRMZCFG_DMAT_SHIFT;
+
+		tx_stream_config |=  (0x0 & CNL_STRMZCFG_CHAN_MASK) <<
+						CNL_STRMZCFG_CHAN_SHIFT;
+
+		cnl_sdw_reg_writel(sdw->data.alh_base,
+					(tx_pdi_stream.sdw_pdi_num *
+					ALH_CNL_STRMZCFG_OFFSET),
+					tx_stream_config);
+
+
+	} else {
+
+		/*
+		 * TODO: There is official workaround which needs to be
+		 * performed for PDI config register. The workaround
+		 * is to perform SoftRst twice in order to clear
+		 * PDI fifo contents.
+		 */
+
+	}
+}
+
+static void cnl_sdw_bra_pdi_rx_config(struct sdw_master *mstr,
+					struct cnl_sdw *sdw, bool enable)
+{
+
+	struct cnl_sdw_pdi_stream rx_pdi_stream;
+	unsigned int rx_ch_map_offset, rx_pdi_config_offset, rx_stream_config;
+	unsigned int rx_pdi_config = 0;
+	int rx_pdi_ch_map = 0;
+
+	if (enable) {
+
+		/* RX PDI1 Configuration */
+		rx_pdi_stream.l_ch_num = 0;
+		rx_pdi_stream.h_ch_num = 0xF;
+		rx_pdi_stream.pdi_num = SDW_BRA_PDI_RX_ID;
+		rx_pdi_stream.sdw_pdi_num = mstr->nr * 16 +
+						rx_pdi_stream.pdi_num + 3;
+
+		/* SNDWxPCMS3CM SHIM REG */
+		rx_ch_map_offset = SDW_CNL_CTLS3CM +
+				(SDW_CNL_PCMSCHM_REG_OFFSET * mstr->nr);
+
+		rx_pdi_ch_map |= (rx_pdi_stream.sdw_pdi_num &
+						CNL_PCMSYCM_STREAM_MASK) <<
+						CNL_PCMSYCM_STREAM_SHIFT;
+
+		rx_pdi_ch_map |= (rx_pdi_stream.l_ch_num &
+						CNL_PCMSYCM_LCHAN_MASK) <<
+						CNL_PCMSYCM_LCHAN_SHIFT;
+
+		rx_pdi_ch_map |= (rx_pdi_stream.h_ch_num &
+						CNL_PCMSYCM_HCHAN_MASK) <<
+						CNL_PCMSYCM_HCHAN_SHIFT;
+
+		cnl_sdw_reg_writew(sdw->data.sdw_shim, rx_ch_map_offset,
+				rx_pdi_ch_map);
+
+		/* RX PDI1 CONFIG REG */
+		rx_pdi_config_offset =  (SDW_CNL_PDINCONFIG0 +
+				(rx_pdi_stream.pdi_num * 16));
+
+		rx_pdi_config |= ((SDW_BRA_PORT_ID &
+						PDINCONFIG_PORT_NUMBER_MASK) <<
+						PDINCONFIG_PORT_NUMBER_SHIFT);
+
+		rx_pdi_config |= (SDW_BRA_CHN_MASK <<
+						PDINCONFIG_CHANNEL_MASK_SHIFT);
+
+		rx_pdi_config |= (SDW_BRA_SOFT_RESET <<
+					PDINCONFIG_PORT_SOFT_RESET_SHIFT);
+
+		cnl_sdw_reg_writel(sdw->data.sdw_regs,
+				rx_pdi_config_offset, rx_pdi_config);
+
+
+		/* ALH STRMzCFG REG */
+		rx_stream_config = cnl_sdw_reg_readl(sdw->data.alh_base,
+						(rx_pdi_stream.sdw_pdi_num *
+						ALH_CNL_STRMZCFG_OFFSET));
+
+		rx_stream_config |= (CNL_STRMZCFG_DMAT_VAL &
+						CNL_STRMZCFG_DMAT_MASK) <<
+						CNL_STRMZCFG_DMAT_SHIFT;
+
+		rx_stream_config |=  (0 & CNL_STRMZCFG_CHAN_MASK) <<
+						CNL_STRMZCFG_CHAN_SHIFT;
+
+		cnl_sdw_reg_writel(sdw->data.alh_base,
+						(rx_pdi_stream.sdw_pdi_num *
+						ALH_CNL_STRMZCFG_OFFSET),
+						rx_stream_config);
+
+	} else {
+
+		/*
+		 * TODO: There is official workaround which needs to be
+		 * performed for PDI config register. The workaround
+		 * is to perform SoftRst twice in order to clear
+		 * PDI fifo contents.
+		 */
+
+	}
+}
+
+static void cnl_sdw_bra_pdi_config(struct sdw_master *mstr, bool enable)
+{
+	struct cnl_sdw *sdw;
+
+	/* Get driver data for master */
+	sdw = sdw_master_get_drvdata(mstr);
+
+	/* PDI0 configuration */
+	cnl_sdw_bra_pdi_tx_config(mstr, sdw, enable);
+
+	/* PDI1 configuration */
+	cnl_sdw_bra_pdi_rx_config(mstr, sdw, enable);
+}
+
+static int cnl_sdw_bra_verify_footer(u8 *rx_buf, int offset)
+{
+	int ret = 0;
+	u8 ftr_response;
+	u8 ack_nack = 0;
+	u8 ftr_result = 0;
+
+	ftr_response = rx_buf[offset];
+
+	/*
+	 * ACK/NACK check
+	 * NACK+ACK value from target:
+	 * 00 -> Ignored
+	 * 01 -> OK
+	 * 10 -> Failed (Header CRC check failed)
+	 * 11 -> Reserved
+	 * NACK+ACK values at Target or initiator
+	 * 00 -> Ignored
+	 * 01 -> OK
+	 * 10 -> Abort (Header cannot be trusted)
+	 * 11 -> Abort (Header cannot be trusted)
+	 */
+	ack_nack = ((ftr_response > SDW_BRA_FTR_RESP_ACK_SHIFT) &
+						SDW_BRA_FTR_RESP_ACK_MASK);
+	if (ack_nack == SDW_BRA_ACK_NAK_IGNORED) {
+		pr_info("BRA Packet Ignored\n");
+		ret = -EINVAL;
+	} else if (ack_nack == SDW_BRA_ACK_NAK_OK)
+		pr_info("BRA: Packet OK\n");
+	else if (ack_nack == SDW_BRA_ACK_NAK_FAILED_ABORT) {
+		pr_info("BRA: Packet Failed/Reserved\n");
+		return -EINVAL;
+	} else if (ack_nack == SDW_BRA_ACK_NAK_RSVD_ABORT) {
+		pr_info("BRA: Packet Reserved/Abort\n");
+		return -EINVAL;
+	}
+
+	/*
+	 * BRA footer result check
+	 * Writes:
+	 * 0 -> Good. Target accepted write payload
+	 * 1 -> Bad. Target did not accept write payload
+	 * Reads:
+	 * 0 -> Good. Target completed read operation successfully
+	 * 1 -> Bad. Target failed to complete read operation successfully
+	 */
+	ftr_result = (ftr_response > SDW_BRA_FTR_RESP_RES_SHIFT) >
+						SDW_BRA_FTR_RESP_RES_MASK;
+	if (ftr_result == SDW_BRA_FTR_RESULT_BAD) {
+		pr_info("BRA: Read/Write operation failed on target side\n");
+		/* Error scenario */
+		return -EINVAL;
+	}
+
+	pr_info("BRA: Read/Write operation complete on target side\n");
+
+	return ret;
+}
+
+static int cnl_sdw_bra_verify_hdr(u8 *rx_buf, int offset, bool *chk_footer,
+	int roll_id)
+{
+	int ret = 0;
+	u8 hdr_response, rolling_id;
+	u8 ack_nack = 0;
+	u8 not_ready = 0;
+
+	/* Match rolling ID */
+	hdr_response = rx_buf[offset];
+	rolling_id = rx_buf[offset + SDW_BRA_ROLLINGID_PDI_INDX];
+
+	rolling_id = (rolling_id & SDW_BRA_ROLLINGID_PDI_MASK);
+	if (roll_id != rolling_id) {
+		pr_info("BRA: Rolling ID doesn't match, returning error\n");
+		return -EINVAL;
+	}
+
+	/*
+	 * ACK/NACK check
+	 * NACK+ACK value from target:
+	 * 00 -> Ignored
+	 * 01 -> OK
+	 * 10 -> Failed (Header CRC check failed)
+	 * 11 -> Reserved
+	 * NACK+ACK values at Target or initiator
+	 * 00 -> Ignored
+	 * 01 -> OK
+	 * 10 -> Abort (Header cannot be trusted)
+	 * 11 -> Abort (Header cannot be trusted)
+	 */
+	ack_nack = ((hdr_response > SDW_BRA_HDR_RESP_ACK_SHIFT) &
+						SDW_BRA_HDR_RESP_ACK_MASK);
+	if (ack_nack == SDW_BRA_ACK_NAK_IGNORED) {
+		pr_info("BRA: Packet Ignored rolling_id:%d\n", rolling_id);
+		ret = -EINVAL;
+	} else if (ack_nack == SDW_BRA_ACK_NAK_OK)
+		pr_info("BRA: Packet OK rolling_id:%d\n", rolling_id);
+	else if (ack_nack == SDW_BRA_ACK_NAK_FAILED_ABORT) {
+		pr_info("BRA: Packet Failed/Abort rolling_id:%d\n", rolling_id);
+		return -EINVAL;
+	} else if (ack_nack == SDW_BRA_ACK_NAK_RSVD_ABORT) {
+		pr_info("BRA: Packet Reserved/Abort rolling_id:%d\n", rolling_id);
+		return -EINVAL;
+	}
+
+	/* BRA not ready check */
+	not_ready = (hdr_response > SDW_BRA_HDR_RESP_NRDY_SHIFT) >
+						SDW_BRA_HDR_RESP_NRDY_MASK;
+	if (not_ready == SDW_BRA_TARGET_NOT_READY) {
+		pr_info("BRA: Target not ready for read/write operation rolling_id:%d\n",
+								rolling_id);
+		chk_footer = false;
+		return -EBUSY;
+	}
+
+	pr_info("BRA: Target ready for read/write operation rolling_id:%d\n", rolling_id);
+	return ret;
+}
+
+static void cnl_sdw_bra_remove_data_padding(u8 *src_buf, u8 *dst_buf,
+						u8 size) {
+
+	int i;
+
+	for (i = 0; i < size/2; i++) {
+
+		*dst_buf++ = *src_buf++;
+		*dst_buf++ = *src_buf++;
+		src_buf++;
+		src_buf++;
+	}
+}
+
+
+static int cnl_sdw_bra_check_data(struct sdw_master *mstr,
+	struct sdw_bra_block *block, struct bra_info *info) {
+
+	int offset = 0, rolling_id = 0, tmp_offset = 0;
+	int rx_crc_comp = 0, rx_crc_rvd = 0;
+	int i, ret;
+	bool chk_footer = true;
+	int rx_buf_size = info->rx_block_size;
+	u8 *rx_buf = info->rx_ptr;
+	u8 *tmp_buf = NULL;
+
+	/* TODO: Remove below hex dump print */
+	print_hex_dump(KERN_DEBUG, "BRA RX DATA:", DUMP_PREFIX_OFFSET, 8, 4,
+			     rx_buf, rx_buf_size, false);
+
+	/* Allocate temporary buffer in case of read request */
+	if (!block->cmd) {
+		tmp_buf = kzalloc(block->num_bytes, GFP_KERNEL);
+		if (!tmp_buf) {
+			ret = -ENOMEM;
+			goto error;
+		}
+	}
+
+	/*
+	 * TODO: From the response header and footer there is no mention of
+	 * read or write packet so controller needs to keep transmit packet
+	 * information in order to verify rx packet. Also the current
+	 * approach used for error mechanism is any of the packet response
+	 * is not success, just report the whole transfer failed to Slave.
+	 */
+
+	/*
+	 * Verification of response packet for one known
+	 * hardcoded configuration. This needs to be extended
+	 * once we have dynamic algorithm integrated.
+	 */
+
+	/* 2 valid read response */
+	for (i = 0; i < info->valid_packets; i++) {
+
+
+		pr_info("BRA: Verifying packet number:%d with rolling id:%d\n",
+						info->packet_info[i].packet_num,
+						rolling_id);
+		chk_footer = true;
+		ret = cnl_sdw_bra_verify_hdr(rx_buf, offset, &chk_footer,
+								rolling_id);
+		if (ret < 0) {
+			dev_err(&mstr->dev, "BRA: Header verification failed for packet number:%d\n",
+					info->packet_info[i].packet_num);
+			goto error;
+		}
+
+		/* Increment offset for header response */
+		offset = offset + SDW_BRA_HEADER_RESP_SIZE_PDI;
+
+		if (!block->cmd) {
+
+			/* Remove PDI padding for data */
+			cnl_sdw_bra_remove_data_padding(&rx_buf[offset],
+					&tmp_buf[tmp_offset],
+					info->packet_info[i].num_data_bytes);
+
+			/* Increment offset for consumed data */
+			offset = offset +
+				(info->packet_info[i].num_data_bytes * 2);
+
+			rx_crc_comp = sdw_bus_compute_crc8(&tmp_buf[tmp_offset],
+					info->packet_info[i].num_data_bytes);
+
+			/* Match Data CRC */
+			rx_crc_rvd = rx_buf[offset];
+			if (rx_crc_comp != rx_crc_rvd) {
+				ret = -EINVAL;
+				dev_err(&mstr->dev, "BRA: Data CRC doesn't match for packet number:%d\n",
+					info->packet_info[i].packet_num);
+				goto error;
+			}
+
+			/* Increment destination buffer with copied data */
+			tmp_offset = tmp_offset +
+					info->packet_info[i].num_data_bytes;
+
+			/* Increment offset for CRC */
+			offset = offset + SDW_BRA_DATA_CRC_SIZE_PDI;
+		}
+
+		if (chk_footer) {
+			ret = cnl_sdw_bra_verify_footer(rx_buf, offset);
+			if (ret < 0) {
+				ret = -EINVAL;
+				dev_err(&mstr->dev, "BRA: Footer verification failed for packet number:%d\n",
+					info->packet_info[i].packet_num);
+				goto error;
+			}
+
+		}
+
+		/* Increment offset for footer response */
+		offset = offset + SDW_BRA_HEADER_RESP_SIZE_PDI;
+
+		/* Increment rolling id for next packet */
+		rolling_id++;
+		if (rolling_id > 0xF)
+			rolling_id = 0;
+	}
+
+	/*
+	 * No need to check for dummy responses from codec
+	 * Assumption made here is that dummy packets are
+	 * added in 1ms buffer only after valid packets.
+	 */
+
+	/* Copy data to codec buffer in case of read request */
+	if (!block->cmd)
+		memcpy(block->values, tmp_buf, block->num_bytes);
+
+error:
+	/* Free up temp buffer allocated in case of read request */
+	if (!block->cmd)
+		kfree(tmp_buf);
+
+	/* Free up buffer allocated in cnl_sdw_bra_data_ops */
+	kfree(info->tx_ptr);
+	kfree(info->rx_ptr);
+	kfree(info->packet_info);
+
+	return ret;
+}
+
+static int cnl_sdw_bra_data_ops(struct sdw_master *mstr,
+		struct sdw_bra_block *block, struct bra_info *info)
+{
+
+	struct sdw_bra_block tmp_block;
+	int i;
+	int tx_buf_size = 384, rx_buf_size = 1152;
+	u8 *tx_buf = NULL, *rx_buf = NULL;
+	int rolling_id = 0, total_bytes = 0, offset = 0, reg_offset = 0;
+	int dummy_read = 0x0000;
+	int ret;
+
+	/*
+	 * TODO: Run an algorithm here to identify the buffer size
+	 * for TX and RX buffers + number of dummy packets (read
+	 * or write) to be added for to align buffers.
+	 */
+
+	info->tx_block_size = tx_buf_size;
+	info->tx_ptr = tx_buf = kzalloc(tx_buf_size, GFP_KERNEL);
+	if (!tx_buf) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	info->rx_block_size = rx_buf_size;
+	info->rx_ptr = rx_buf = kzalloc(rx_buf_size, GFP_KERNEL);
+	if (!rx_buf) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	/* Fill valid packets transferred per millisecond buffer */
+	info->valid_packets = 2;
+	info->packet_info = kcalloc(info->valid_packets,
+			sizeof(*info->packet_info),
+			GFP_KERNEL);
+	if (!info->packet_info) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	/*
+	 * Below code performs packet preparation for one known
+	 * configuration.
+	 * 1. 2 Valid Read request with 18 bytes each.
+	 * 2. 22 dummy read packets with 18 bytes each.
+	 */
+	for (i = 0; i < info->valid_packets; i++) {
+		tmp_block.slave_addr = block->slave_addr;
+		tmp_block.cmd = block->cmd; /* Read Request */
+		tmp_block.num_bytes = 18;
+		tmp_block.reg_offset = block->reg_offset + reg_offset;
+		tmp_block.values = NULL;
+		reg_offset += tmp_block.num_bytes;
+
+		cnl_sdw_bra_prep_hdr(tx_buf, &tmp_block, rolling_id, offset);
+		/* Total Header size: Header + Header CRC size on PDI */
+		offset += SDW_BRA_HEADER_TOTAL_SZ_PDI;
+
+		if (block->cmd) {
+			/*
+			 * PDI data preparation in case of write request
+			 * Assumption made here is data size from codec will
+			 * be always an even number.
+			 */
+			cnl_sdw_bra_prep_data(tx_buf, &tmp_block,
+					total_bytes, offset);
+			offset += tmp_block.num_bytes * 2;
+
+			/* Data CRC */
+			cnl_sdw_bra_prep_crc(tx_buf, &tmp_block,
+					total_bytes, offset);
+			offset += SDW_BRA_DATA_CRC_SIZE_PDI;
+		}
+
+		total_bytes += tmp_block.num_bytes;
+		rolling_id++;
+
+		/* Fill packet info data structure */
+		info->packet_info[i].packet_num = i + 1;
+		info->packet_info[i].num_data_bytes = tmp_block.num_bytes;
+	}
+
+	/* Prepare dummy packets */
+	for (i = 0; i < 22; i++) {
+		tmp_block.slave_addr = block->slave_addr;
+		tmp_block.cmd = 0; /* Read request */
+		tmp_block.num_bytes = 18;
+		tmp_block.reg_offset = dummy_read++;
+		tmp_block.values = NULL;
+
+		cnl_sdw_bra_prep_hdr(tx_buf, &tmp_block, rolling_id, offset);
+
+		/* Total Header size: RD header + RD header CRC size on PDI */
+		offset += SDW_BRA_HEADER_TOTAL_SZ_PDI;
+
+		total_bytes += tmp_block.num_bytes;
+		rolling_id++;
+	}
+
+	/* TODO: Remove below hex dump print */
+	print_hex_dump(KERN_DEBUG, "BRA PDI VALID TX DATA:",
+			DUMP_PREFIX_OFFSET, 8, 4, tx_buf, tx_buf_size, false);
+
+	return 0;
+
+error:
+	kfree(info->tx_ptr);
+	kfree(info->rx_ptr);
+	kfree(info->packet_info);
+
+	return ret;
+}
+
 static int cnl_sdw_xfer_bulk(struct sdw_master *mstr,
 	struct sdw_bra_block *block)
 {
-	return 0;
+	struct cnl_sdw *sdw = sdw_master_get_platdata(mstr);
+	struct cnl_sdw_data *data = &sdw->data;
+	struct cnl_bra_operation *ops = data->bra_data->bra_ops;
+	struct bra_info info;
+	int ret;
+
+	/*
+	 * 1. PDI Configuration
+	 * 2. Prepare BRA packets including CRC calculation.
+	 * 3. Configure TX and RX DMA in one shot mode.
+	 * 4. Configure TX and RX Pipeline.
+	 * 5. Run TX and RX DMA.
+	 * 6. Run TX and RX pipelines.
+	 * 7. Wait on completion for RX buffer.
+	 * 8. Match TX and RX buffer packets and check for errors.
+	 */
+
+	/* Memset bra_info data structure */
+	memset(&info, 0x0, sizeof(info));
+
+	/* Fill master number in bra info data structure */
+	info.mstr_num = mstr->nr;
+
+	/* PDI Configuration (ON) */
+	cnl_sdw_bra_pdi_config(mstr, true);
+
+	/* Prepare TX buffer */
+	ret = cnl_sdw_bra_data_ops(mstr, block, &info);
+	if (ret < 0) {
+		dev_err(&mstr->dev, "BRA: Request packet(s) creation failed\n");
+		goto out;
+	}
+
+	/* Pipeline Setup  (ON) */
+	ret = ops->bra_platform_setup(data->bra_data->drv_data, true, &info);
+	if (ret < 0) {
+		dev_err(&mstr->dev, "BRA: Pipeline setup failed\n");
+		goto out;
+	}
+
+	/* Trigger START host DMA and pipeline */
+	ret = ops->bra_platform_xfer(data->bra_data->drv_data, true, &info);
+	if (ret < 0) {
+		dev_err(&mstr->dev, "BRA: Pipeline start failed\n");
+		goto out;
+	}
+
+	/* Trigger STOP host DMA and pipeline */
+	ret = ops->bra_platform_xfer(data->bra_data->drv_data, false, &info);
+	if (ret < 0) {
+		dev_err(&mstr->dev, "BRA: Pipeline stop failed\n");
+		goto out;
+	}
+
+	/* Pipeline Setup  (OFF) */
+	ret = ops->bra_platform_setup(data->bra_data->drv_data, false, &info);
+	if (ret < 0) {
+		dev_err(&mstr->dev, "BRA: Pipeline de-setup failed\n");
+		goto out;
+	}
+
+	/* Verify RX buffer */
+	ret = cnl_sdw_bra_check_data(mstr, block, &info);
+	if (ret < 0) {
+		dev_err(&mstr->dev, "BRA: Response packet(s) incorrect\n");
+		goto out;
+	}
+
+	/* PDI Configuration (OFF) */
+	cnl_sdw_bra_pdi_config(mstr, false);
+
+out:
+	return ret;
 }
 
 static int cnl_sdw_mon_handover(struct sdw_master *mstr,
@@ -1179,7 +1991,7 @@ static int cnl_sdw_set_ssp_interval(struct sdw_master *mstr,
 }
 
 static int cnl_sdw_set_clock_freq(struct sdw_master *mstr,
-			int cur_clk_freq, int bank)
+			int cur_clk_div, int bank)
 {
 	struct cnl_sdw *sdw = sdw_master_get_drvdata(mstr);
 	struct cnl_sdw_data *data = &sdw->data;
@@ -1189,11 +2001,7 @@ static int cnl_sdw_set_clock_freq(struct sdw_master *mstr,
 	/* TODO: Retrieve divider value or get value directly from calling
 	 * function
 	 */
-#ifdef CONFIG_SND_SOC_SVFPGA
-	int divider = ((9600000 * 2/cur_clk_freq) - 1);
-#else
-	int divider = ((9600000/cur_clk_freq) - 1);
-#endif
+	int divider = (cur_clk_div - 1);
 
 	if (bank) {
 		mcp_clockctrl_offset = SDW_CNL_MCP_CLOCKCTRL1;
@@ -1419,7 +2227,7 @@ static int cnl_sdw_probe(struct sdw_master *mstr,
 	sdw_master_set_drvdata(mstr, sdw);
 	init_completion(&sdw->tx_complete);
 	mutex_init(&sdw->stream_lock);
-	ret = sdw_init(sdw);
+	ret = sdw_init(sdw, true);
 	if (ret) {
 		dev_err(&mstr->dev, "SoundWire controller init failed %d\n",
 				data->inst_id);
@@ -1466,8 +2274,6 @@ static int cnl_sdw_remove(struct sdw_master *mstr)
 #ifdef CONFIG_PM
 static int cnl_sdw_runtime_suspend(struct device *dev)
 {
-	enum  sdw_clk_stop_mode clock_stop_mode;
-
 	int volatile mcp_stat;
 	int mcp_control;
 	int timeout = 0;
@@ -1493,12 +2299,12 @@ static int cnl_sdw_runtime_suspend(struct device *dev)
 	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_CONTROL, mcp_control);
 
 	/* Prepare all the slaves for clock stop */
-	ret = sdw_prepare_for_clock_change(sdw->mstr, 1, &clock_stop_mode);
+	ret = sdw_master_prep_for_clk_stop(sdw->mstr);
 	if (ret)
 		return ret;
 
 	/* Call bus function to broadcast the clock stop now */
-	ret = sdw_stop_clock(sdw->mstr, clock_stop_mode);
+	ret = sdw_master_stop_clock(sdw->mstr);
 	if (ret)
 		return ret;
 	/* Wait for clock to be stopped, we are waiting at max 1sec now */
@@ -1534,12 +2340,9 @@ out:
 
 static int cnl_sdw_clock_stop_exit(struct cnl_sdw *sdw)
 {
-	u16 wake_en, wake_sts, ioctl;
-	int volatile mcp_control;
-	int timeout = 0;
+	u16 wake_en, wake_sts;
+	int ret;
 	struct cnl_sdw_data *data = &sdw->data;
-	int ioctl_offset = SDW_CNL_IOCTL + (data->inst_id *
-					SDW_CNL_IOCTL_REG_OFFSET);
 
 	/* Disable the wake up interrupt */
 	wake_en = cnl_sdw_reg_readw(data->sdw_shim,
@@ -1557,41 +2360,10 @@ static int cnl_sdw_clock_stop_exit(struct cnl_sdw *sdw)
 	wake_sts |= (0x1 << data->inst_id);
 	cnl_sdw_reg_writew(data->sdw_shim, SDW_CNL_SNDWWAKESTS_REG_OFFSET,
 				wake_sts);
-
-	ioctl = cnl_sdw_reg_readw(data->sdw_shim, ioctl_offset);
-	ioctl |= CNL_IOCTL_DO_MASK << CNL_IOCTL_DO_SHIFT;
-	cnl_sdw_reg_writew(data->sdw_shim,  ioctl_offset, ioctl);
-	ioctl |= CNL_IOCTL_DOE_MASK << CNL_IOCTL_DOE_SHIFT;
-	cnl_sdw_reg_writew(data->sdw_shim,  ioctl_offset, ioctl);
-	/* Switch control back to master */
-	sdw_switch_to_mip(sdw);
-
-	mcp_control = cnl_sdw_reg_readl(data->sdw_regs,
-					SDW_CNL_MCP_CONTROL);
-	mcp_control &= ~(MCP_CONTROL_BLOCKWAKEUP_MASK <<
-				MCP_CONTROL_BLOCKWAKEUP_SHIFT);
-	mcp_control |= (MCP_CONTROL_CLOCKSTOPCLEAR_MASK <<
-				MCP_CONTROL_CLOCKSTOPCLEAR_SHIFT);
-	cnl_sdw_reg_writel(data->sdw_regs, SDW_CNL_MCP_CONTROL, mcp_control);
-	/*
-	 * Wait for timeout to be clear to successful enabling of the clock
-	 * We will wait for 1sec before giving up
-	 */
-	while (timeout != 10) {
-		mcp_control = cnl_sdw_reg_readl(data->sdw_regs,
-					SDW_CNL_MCP_CONTROL);
-		if ((mcp_control & (MCP_CONTROL_CLOCKSTOPCLEAR_MASK <<
-				MCP_CONTROL_CLOCKSTOPCLEAR_SHIFT)) == 0)
-			break;
-		msleep(1000);
-		timeout++;
-	}
-	mcp_control = cnl_sdw_reg_readl(data->sdw_regs,
-					SDW_CNL_MCP_CONTROL);
-	if ((mcp_control & (MCP_CONTROL_CLOCKSTOPCLEAR_MASK <<
-			MCP_CONTROL_CLOCKSTOPCLEAR_SHIFT)) != 0) {
-		dev_err(&sdw->mstr->dev, "Clop Stop Exit failed\n");
-		return -EBUSY;
+	ret = sdw_init(sdw, false);
+	if (ret < 0) {
+		pr_err("sdw_init fail: %d\n", ret);
+		return ret;
 	}
 
 	dev_info(&sdw->mstr->dev, "Exit from clock stop successful\n");
@@ -1627,13 +2399,14 @@ static int cnl_sdw_runtime_resume(struct device *dev)
 	dev_info(&mstr->dev, "Exit from clock stop successful\n");
 
 	/* Prepare all the slaves to comeout of clock stop */
-	ret = sdw_prepare_for_clock_change(sdw->mstr, 0, NULL);
+	ret = sdw_mstr_deprep_after_clk_start(sdw->mstr);
 	if (ret)
 		return ret;
 
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int cnl_sdw_sleep_resume(struct device *dev)
 {
 	return cnl_sdw_runtime_resume(dev);
@@ -1642,7 +2415,15 @@ static int cnl_sdw_sleep_suspend(struct device *dev)
 {
 	return cnl_sdw_runtime_suspend(dev);
 }
-#endif
+#else
+#define cnl_sdw_sleep_suspend NULL
+#define cnl_sdw_sleep_resume NULL
+#endif /* CONFIG_PM_SLEEP */
+#else
+#define cnl_sdw_runtime_suspend NULL
+#define cnl_sdw_runtime_resume NULL
+#endif /* CONFIG_PM */
+
 
 static const struct dev_pm_ops cnl_sdw_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(cnl_sdw_sleep_suspend, cnl_sdw_sleep_resume)

@@ -73,6 +73,33 @@ struct cnl_sdw_port {
 	struct cnl_sdw_pdi_stream *pdi_stream;
 };
 
+struct bra_packet_info {
+	u8 packet_num;
+	u8 num_data_bytes;
+};
+
+struct bra_info {
+	unsigned int mstr_num;
+	u8 *tx_ptr;
+	u8 *rx_ptr;
+	unsigned int tx_block_size;
+	unsigned int rx_block_size;
+	u8 valid_packets;
+	struct bra_packet_info *packet_info;
+};
+
+struct cnl_bra_operation {
+	int (*bra_platform_setup)(void *context, bool is_enable,
+						struct bra_info *info);
+	int (*bra_platform_xfer)(void *context, bool is_enable,
+						struct bra_info *info);
+};
+
+struct cnl_sdw_bra_cfg {
+	void *drv_data;
+	struct cnl_bra_operation *bra_ops;
+};
+
 struct cnl_sdw_data {
 	/* SoundWire IP registers per instance */
 	void __iomem *sdw_regs;
@@ -84,6 +111,8 @@ struct cnl_sdw_data {
 	int irq;
 	/* Instance id */
 	int inst_id;
+	/* BRA data pointer */
+	struct cnl_sdw_bra_cfg *bra_data;
 };
 
 struct cnl_sdw_port *cnl_sdw_alloc_port(struct sdw_master *mstr, int ch_count,

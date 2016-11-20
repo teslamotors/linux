@@ -60,6 +60,66 @@
 #define SDW_PORT_ENCODING_TYPE_SIGN_MAGNITUDE	0x2
 #define SDW_PORT_ENCODING_TYPE_IEEE_32_FLOAT	0x4
 
+#define SDW_BRA_PORT_ID			0
+#define SDW_BRA_CHN_MASK		0x1
+
+#define SDW_BRA_HEADER_SIZE		6 /* In bytes */
+#define SDW_BRA_HEADER_CRC_SIZE		1 /* In bytes */
+#define SDW_BRA_DATA_CRC_SIZE		1 /* In bytes */
+#define SDW_BRA_HEADER_RESP_SIZE	1 /* In bytes */
+#define SDW_BRA_FOOTER_RESP_SIZE	1 /* In bytes */
+#define SDW_BRA_PADDING_SZ		1 /* In bytes */
+#define SDW_BRA_HEADER_TOTAL_SZ		8 /* In bytes */
+
+#define SDW_BRA_BPT_PAYLOAD_TYPE	0x0
+#define SDW_BRA_BPT_PYLD_TY_MASK	0xFF3FFFFF
+#define SDW_BRA_BPT_PYLD_TY_SHIFT	22
+
+#define SDW_BRA_HDR_ACTIVE		0x3
+#define SDW_BRA_HDR_ACTIVE_SHIFT	6
+#define SDW_BRA_HDR_ACTIVE_MASK		0x3F
+
+#define SDW_BRA_HDR_SLV_ADDR_SHIFT	2
+#define SDW_BRA_HDR_SLV_ADDR_MASK	0xC3
+
+#define SDW_BRA_HDR_RD_WR_SHIFT		1
+#define SDW_BRA_HDR_RD_WR_MASK		0xFD
+
+#define SDW_BRA_HDR_MSB_BYTE_SET	1
+#define SDW_BRA_HDR_MSB_BYTE_UNSET	0
+#define SDW_BRA_HDR_MSB_BYTE_CHK	255
+#define SDW_BRA_HDR_MSB_BYTE_MASK	0xFE
+#define SDW_BRA_HDR_MSB_BYTE_SHIFT	0
+
+#define SDW_BRA_HDR_SLV_REG_OFF_SHIFT0	0
+#define SDW_BRA_HDR_SLV_REG_OFF_MASK0	0xFF
+#define SDW_BRA_HDR_SLV_REG_OFF_SHIFT8	8
+#define SDW_BRA_HDR_SLV_REG_OFF_MASK8	0xFF00
+#define SDW_BRA_HDR_SLV_REG_OFF_SHIFT16	16
+#define SDW_BRA_HDR_SLV_REG_OFF_MASK16	0xFF0000
+#define SDW_BRA_HDR_SLV_REG_OFF_SHIFT24	24
+#define SDW_BRA_HDR_SLV_REG_OFF_MASK24	0xFF000000
+
+#define SDW_BRA_HDR_RESP_ACK_SHIFT	3
+#define SDW_BRA_HDR_RESP_NRDY_SHIFT	5
+#define SDW_BRA_FTR_RESP_ACK_SHIFT	2
+#define SDW_BRA_FTR_RESP_RES_SHIFT	4
+#define SDW_BRA_HDR_RESP_ACK_MASK	0x3
+#define SDW_BRA_HDR_RESP_NRDY_MASK	0x1
+#define SDW_BRA_FTR_RESP_ACK_MASK	0x3
+#define SDW_BRA_FTR_RESP_RES_MASK	0x1
+
+#define SDW_BRA_TARGET_READY		0
+#define SDW_BRA_TARGET_NOT_READY	1
+
+#define SDW_BRA_ACK_NAK_IGNORED		0
+#define SDW_BRA_ACK_NAK_OK		1
+#define SDW_BRA_ACK_NAK_FAILED_ABORT	2
+#define SDW_BRA_ACK_NAK_RSVD_ABORT	3
+
+#define SDW_BRA_FTR_RESULT_GOOD		0
+#define SDW_BRA_FTR_RESULT_BAD		1
+
 /* enum sdw_driver_type: There are different driver callbacks for slave and
  *			master. This is to differentiate between slave driver
  *			and master driver. Bus driver binds master driver to
@@ -420,6 +480,14 @@ struct sdw_slv_dp0_capabilities {
  *			the Port15 alias
  *			0: Command_Ignored
  *			1: Command_OK, Data is OR of all registers
+ * @scp_impl_def_intr_mask: Implementation defined interrupt for Slave control
+ *			port
+ * @clk_stp1_deprep_required: De-prepare is required after exiting the clock
+ *                      stop mode 1. Noramlly exit from clock stop 1 is like
+ *                      hard reset, so de-prepare shouldn't be required but
+ *                      some Slave requires de-prepare after exiting from
+ *                      clock stop 1. Mark as true if Slave requires
+ *                      deprepare after exiting from clock stop mode 1.
  * @sdw_dp0_supported: DP0 is supported by Slave.
  * @sdw_dp0_cap: Data Port 0 Capabilities of the Slave.
  * @num_of_sdw_ports: Number of SoundWire Data ports present. The representation
@@ -436,6 +504,8 @@ struct sdw_slv_capabilities {
 	bool paging_supported;
 	bool bank_delay_support;
 	unsigned int port_15_read_behavior;
+	u8 scp_impl_def_intr_mask;
+	bool clk_stp1_deprep_required;
 	bool sdw_dp0_supported;
 	struct sdw_slv_dp0_capabilities *sdw_dp0_cap;
 	int num_of_sdw_ports;
@@ -493,6 +563,40 @@ struct sdw_bus_params {
 	int bus_clk_freq;
 	int bank;
 };
+
+/** struct sdw_portn_intr_stat: Implementation defined interrupt
+ *			status for slave ports other than port 0
+ *
+ * num:	Port number for which status is reported.
+ * status: status of the implementation defined interrupts
+ */
+struct sdw_portn_intr_stat {
+	int num;
+	u8 status;
+};
+
+/** struct sdw_impl_def_intr_stat: Implementation define interrupt
+ *			status for slave.
+ *
+ * control_port_stat: Implementation defined interrupt status mask
+ *			for control ports. Mask Bits are exactly
+ *			same as defined in MIPI Spec 1.0
+ * port0_stat:	Implementation defined interrupt status mask
+ *			for port 0. Mask bits are exactly same as defined
+ *			in MIPI spec 1.0.
+ * num_ports:		Number of ports in slave other than port 0.
+ * portn_stat:	Implementation defined status for slave ports
+ *			other than port0. Mask bits are exactly same
+ *			as defined in MIPI spec 1.0. Array size is
+ *			same as number of ports in Slave.
+ */
+struct sdw_impl_def_intr_stat {
+	u8 control_port_stat;
+	u8 port0_stat;
+	int num_ports;
+	struct sdw_portn_intr_stat *portn_stat;
+};
+
 
 /**
  * struct sdw_slave_driver: Manage SoundWire generic/Slave device driver
@@ -569,7 +673,7 @@ struct sdw_slave_driver {
 	int (*resume)(struct sdw_slave *swdev);
 	struct device_driver driver;
 	int (*handle_impl_def_interrupts)(struct sdw_slave *swdev,
-		unsigned int intr_status_mask);
+		struct sdw_impl_def_intr_stat *intr_status);
 	int (*handle_bus_changes)(struct sdw_slave *swdev,
 			struct sdw_bus_params *params);
 	int (*handle_pre_port_prepare)(struct sdw_slave *swdev,
@@ -580,6 +684,13 @@ struct sdw_slave_driver {
 			int port, int ch_mask, int bank);
 	int (*handle_post_port_unprepare)(struct sdw_slave *swdev,
 			int port, int ch_mask, int bank);
+	int (*pre_clk_stop_prep)(struct sdw_slave *sdwdev,
+			enum sdw_clk_stop_mode mode, bool stop);
+	int (*post_clk_stop_prep)(struct sdw_slave *sdwdev,
+			enum sdw_clk_stop_mode mode, bool stop);
+	enum sdw_clk_stop_mode (*get_dyn_clk_stp_mod)(struct sdw_slave *swdev);
+	void (*update_slv_status)(struct sdw_slave *swdev,
+			enum sdw_slave_status *status);
 	const struct sdw_slave_id *id_table;
 };
 #define to_sdw_slave_driver(d) container_of(d, struct sdw_slave_driver, driver)
@@ -1298,6 +1409,15 @@ struct sdw_master *sdw_get_master(int nr);
  */
 void sdw_put_master(struct sdw_master *mstr);
 
+/**
+ * sdw_slave_xfer_bra_block: Transfer the data block using the BTP/BRA
+ *				protocol.
+ * @mstr: SoundWire Master Master
+ * @block: Data block to be transferred.
+ */
+int sdw_slave_xfer_bra_block(struct sdw_master *mstr,
+				struct sdw_bra_block *block);
+
 
 /**
  * module_sdw_slave_driver() - Helper macro for registering a sdw Slave driver
@@ -1311,19 +1431,50 @@ void sdw_put_master(struct sdw_master *mstr);
 	module_driver(__sdw_slave_driver, sdw_slave_driver_register, \
 			sdw_slave_driver_unregister)
 /**
- * sdw_prepare_for_clock_change: Prepare all the Slaves for clock stop or
- *		clock start. Prepares Slaves based on what they support
- *		simplified clock stop or normal clock stop based on
- *		their capabilities registered to slave driver.
+ * sdw_master_prep_for_clk_stop: Prepare all the Slaves for clock stop.
+ *			Iterate through each of the enumerated Slave.
+ *			Prepare each Slave according to the clock stop
+ *			mode supported by Slave. Use dynamic value from
+ *			Slave callback if registered, else use static values
+ *			from Slave capabilities registered.
+ *			1. Get clock stop mode for each Slave.
+ *			2. Call pre_prepare callback of each Slave if
+ *			registered.
+ *			3. Prepare each Slave for clock stop
+ *			4. Broadcast the Read message to make sure
+ *			all Slaves are prepared for clock stop.
+ *			5. Call post_prepare callback of each Slave if
+ *			registered.
+ *
  * @mstr: Master handle for which clock state has to be changed.
- * @start: Prepare for starting or stopping the clock
- * @clk_stop_mode: Bus used which clock mode, if bus finds all the Slaves
- *		on the bus to be supported clock stop mode1 it prepares
- *		all the Slaves for mode1 else it will prepare all the
- *		Slaves for mode0.
+ *
+ * Returns 0
  */
-int sdw_prepare_for_clock_change(struct sdw_master *mstr, bool start,
-			enum sdw_clk_stop_mode *clck_stop_mode);
+int sdw_master_prep_for_clk_stop(struct sdw_master *mstr);
+
+/**
+ * sdw_mstr_deprep_after_clk_start: De-prepare all the Slaves
+ *		exiting clock stop mode 0 after clock resumes. Clock
+ *		is already resumed before this. De-prepare all the Slaves
+ *		which were earlier in ClockStop mode0. De-prepare for the
+ *		Slaves which were there in ClockStop mode1 is done after
+ *		they enumerated back. Its not done here as part of master
+ *		getting resumed.
+ *		1. Get clock stop mode for each Slave its exiting from
+ *		2. Call pre_prepare callback of each Slave exiting from
+ *		clock stop mode 0.
+ *		3. De-Prepare each Slave exiting from Clock Stop mode0
+ *		4. Broadcast the Read message to make sure
+ *		all Slaves are de-prepared for clock stop.
+ *		5. Call post_prepare callback of each Slave exiting from
+ *		clock stop mode0
+ *
+ *
+ * @mstr: Master handle
+ *
+ * Returns 0
+ */
+int sdw_mstr_deprep_after_clk_start(struct sdw_master *mstr);
 
 /**
  * sdw_wait_for_slave_enumeration: Wait till all the slaves are enumerated.
@@ -1341,13 +1492,14 @@ int sdw_wait_for_slave_enumeration(struct sdw_master *mstr,
 			struct sdw_slave *slave);
 
 /**
- * sdw_stop_clock: Stop the clock. This function broadcasts the SCP_CTRL
+ * sdw_master_stop_clock: Stop the clock. This function broadcasts the SCP_CTRL
  *			register with clock_stop_now bit set.
+ *
  * @mstr: Master handle for which clock has to be stopped.
- * @clk_stop_mode: Bus used which clock mode.
+ *
+ * Returns 0 on success, appropriate error code on failure.
  */
-
-int sdw_stop_clock(struct sdw_master *mstr, enum sdw_clk_stop_mode mode);
+int sdw_master_stop_clock(struct sdw_master *mstr);
 
 /* Return the adapter number for a specific adapter */
 static inline int sdw_master_id(struct sdw_master *mstr)
@@ -1376,5 +1528,30 @@ static inline void sdw_slave_set_drvdata(struct sdw_slave *slv,
 {
 	dev_set_drvdata(&slv->dev, data);
 }
+
+static inline void *sdw_master_get_platdata(const struct sdw_master *mstr)
+{
+	return dev_get_platdata(&mstr->dev);
+}
+
+/**
+ * sdw_slave_get_bus_params: Get the current bus params. Some Slaves
+ *			requires bus params at the probe to program its
+ *			registers based on bus params. This API provides
+ *			current bus params
+ *
+ * @sdw_slv: Slave handle
+ * @params: Bus params
+ */
+int sdw_slave_get_bus_params(struct sdw_slave *sdw_slv,
+					struct sdw_bus_params *params);
+/**
+ * sdw_bus_compute_crc8: SoundWire bus helper function to compute crc8.
+ *			This API uses crc8 helper functions internally.
+ *
+ * @values: Data buffer.
+ * @num_bytes: Number of bytes.
+ */
+u8 sdw_bus_compute_crc8(u8 *values, u8 num_bytes);
 
 #endif /*  _LINUX_SDW_BUS_H */
