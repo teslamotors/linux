@@ -117,12 +117,6 @@ int sdw_mstr_bw_init(struct sdw_bus *sdw_bs)
 	sdw_bs->frame_freq = 0;
 	sdw_bs->clk_state = SDW_CLK_STATE_ON;
 
-	/* TBD: to be removed later */
-	/* Assumption is these should be already filled */
-	sdw_mstr_cap = &sdw_bs->mstr->mstr_capabilities;
-	sdw_mstr_cap->monitor_handover_supported = false;
-	sdw_mstr_cap->highphy_capable = false;
-
 #ifdef CONFIG_SND_SOC_SVFPGA
 	/* TBD: For PDM capture to be removed later */
 	sdw_bs->clk_freq = 9.6 * 1000 * 1000 * 2;
@@ -718,27 +712,10 @@ int sdw_cfg_mstr_activate_disable(struct sdw_bus *mstr_bs,
 	if ((chn_en->is_activate) || (chn_en->is_bank_sw))
 		banktouse = !banktouse;
 
-
-	/* 1. Master port enable_ch_pre */
-	if (ops->mstr_port_ops->dpn_port_activate_ch_pre) {
-		ret = ops->mstr_port_ops->dpn_port_activate_ch_pre
-			(mstr_bs->mstr, &activate_ch, banktouse);
-		if (ret < 0)
-			return ret;
-	}
-
 	/* 2. Master port enable */
 	if (ops->mstr_port_ops->dpn_port_activate_ch) {
 		ret = ops->mstr_port_ops->dpn_port_activate_ch(mstr_bs->mstr,
 				&activate_ch, banktouse);
-		if (ret < 0)
-			return ret;
-	}
-
-	/* 3. Master port enable_ch_post */
-	if (ops->mstr_port_ops->dpn_port_activate_ch_post) {
-		ret = ops->mstr_port_ops->dpn_port_activate_ch_post
-			(mstr_bs->mstr, &activate_ch, banktouse);
 		if (ret < 0)
 			return ret;
 	}
