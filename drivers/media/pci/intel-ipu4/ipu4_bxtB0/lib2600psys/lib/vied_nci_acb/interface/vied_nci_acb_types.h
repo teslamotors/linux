@@ -12,8 +12,8 @@
 * more details.
  */
 
-#ifndef __VIED_NCI_ISA_ACB_TYPES_H__
-#define __VIED_NCI_ISA_ACB_TYPES_H__
+#ifndef __VIED_NCI_ACB_TYPES_H
+#define __VIED_NCI_ACB_TYPES_H
 
 #include "type_support.h"
 #include "storage_class.h"
@@ -78,4 +78,4 @@ typedef __register struct {
 } vied_nci_acb_config_t;
 
 
-#endif /*__VIED_NCI_ISA_ACB_TYPES_H__*/
+#endif /* __VIED_NCI_ACB_TYPES_H */

@@ -23,6 +23,7 @@ PKG_DIR_CPPFLAGS	= -I$(PKG_DIR_INTERFACE)
 PKG_DIR_CPPFLAGS	+= -I$(PKG_DIR_SOURCES)
 PKG_DIR_CPPFLAGS	+= -I$${MODULES_DIR}/../isp/kernels/io_ls/common
 PKG_DIR_CPPFLAGS	+= -I$${MODULES_DIR}/fw_abi_common_types/ipu
+PKG_DIR_CPPFLAGS	+= -I$${MODULES_DIR}/fw_abi_common_types/ipu/$(FW_ABI_IPU_TYPES_VERSION)
 
 PKG_DIR_CREATE_FILES	= $(PKG_DIR_DIR)/src/ia_css_pkg_dir_create.c
 PKG_DIR_UPDATE_FILES    = $(PKG_DIR_DIR)/src/ia_css_pkg_dir_update.c
