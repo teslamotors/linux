@@ -82,7 +82,7 @@ static const struct v4l2_ctrl_config camera_iris_controls[] = {
 		.max = CAMERA_MAX_DUTY,
 		.min =  0,
 		.step  = 1,
-		.def = 0,
+		.def = CAMERA_MAX_DUTY,
 	}
 };
 
