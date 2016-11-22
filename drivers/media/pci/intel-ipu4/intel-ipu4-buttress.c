@@ -86,9 +86,12 @@ static const u32 intel_ipu4_adev_irq_mask[] = {
 int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 					 struct intel_ipu4_buttress_ipc *ipc)
 {
+	struct intel_ipu4_buttress *b = &isp->buttress;
 	unsigned long tout_jfs;
 	unsigned tout = 500;
 	u32 val = 0;
+
+	mutex_lock(&b->ipc_mutex);
 
 	/* Clear-by-1 CSR (all bits), corresponding internal states. */
 	val = readl(isp->base + ipc->csr_in);
@@ -171,6 +174,8 @@ int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 
 			writel(EXIT, isp->base + ipc->csr_out);
 
+			mutex_unlock(&b->ipc_mutex);
+
 			return 0;
 		} else if (val & QUERY) {
 			dev_dbg(&isp->pdev->dev,
@@ -190,6 +195,8 @@ int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 		}
 		usleep_range(100, 500);
 	} while (!time_after(jiffies, tout_jfs));
+
+	mutex_unlock(&b->ipc_mutex);
 
 	dev_err(&isp->pdev->dev, "Timed out while waiting for CSE!\n");
 
