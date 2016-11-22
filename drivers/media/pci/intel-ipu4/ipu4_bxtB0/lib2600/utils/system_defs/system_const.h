@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __SYSTEM_CONST_H__
-#define __SYSTEM_CONST_H__
+#ifndef __SYSTEM_CONST_H
+#define __SYSTEM_CONST_H
 
 /* The values included in this file should have been
  * taken from system/device properties which
@@ -23,4 +23,4 @@
 #define XMEM_WIDTH				(512)
 #define MG_PPC					(4)
 
-#endif
+#endif /* __SYSTEM_CONST_H */

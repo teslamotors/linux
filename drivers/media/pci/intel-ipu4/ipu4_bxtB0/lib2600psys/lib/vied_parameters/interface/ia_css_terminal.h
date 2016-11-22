@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_TERMINAL_H__
-#define __IA_CSS_TERMINAL_H__
+#ifndef __IA_CSS_TERMINAL_H
+#define __IA_CSS_TERMINAL_H
 
 #include "type_support.h"
 #include "ia_css_terminal_types.h"
@@ -196,4 +196,4 @@ uint16_t *ia_css_program_terminal_get_line_count(
 #include "ia_css_terminal_impl.h"
 #endif /* _INLINE_PARAMETERS_ */
 
-#endif /* __IA_CSS_TERMINAL_H__ */
+#endif /* __IA_CSS_TERMINAL_H */

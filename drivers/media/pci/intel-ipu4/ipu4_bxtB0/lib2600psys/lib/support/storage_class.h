@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __STORAGE_CLASS_H_INCLUDED__
-#define __STORAGE_CLASS_H_INCLUDED__
+#ifndef __STORAGE_CLASS_H
+#define __STORAGE_CLASS_H
 
 #define STORAGE_CLASS_EXTERN \
 extern
@@ -48,4 +48,4 @@ static inline
 #endif
 #endif
 
-#endif /* __STORAGE_CLASS_H_INCLUDED__ */
+#endif /* __STORAGE_CLASS_H */

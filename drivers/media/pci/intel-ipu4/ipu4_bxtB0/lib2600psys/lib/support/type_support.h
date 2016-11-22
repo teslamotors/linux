@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __TYPE_SUPPORT_H_INCLUDED__
-#define __TYPE_SUPPORT_H_INCLUDED__
+#ifndef __TYPE_SUPPORT_H
+#define __TYPE_SUPPORT_H
 
 /* Per the DLI spec, types are in "type_support.h" and
  * "platform_support.h" is for unclassified/to be refactored
@@ -77,4 +77,4 @@ typedef unsigned long long uint64_t;
 typedef void *HANDLE;
 #endif
 
-#endif /* __TYPE_SUPPORT_H_INCLUDED__ */
+#endif /* __TYPE_SUPPORT_H */

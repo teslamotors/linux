@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __MATH_SUPPORT_H__
-#define __MATH_SUPPORT_H__
+#ifndef __MATH_SUPPORT_H
+#define __MATH_SUPPORT_H
 
 #include "storage_class.h" /* for STORAGE_CLASS_INLINE */
 #include "type_support.h"
@@ -294,4 +294,4 @@ STORAGE_CLASS_INLINE unsigned int OP_asp_slor(int a, int b, int c)
 #define clamp(a, min_val, max_val) MIN(MAX((a), (min_val)), (max_val))
 #endif /* !defined(__KERNEL__) */
 
-#endif /*__MATH_SUPPORT_H__*/
+#endif /* __MATH_SUPPORT_H */

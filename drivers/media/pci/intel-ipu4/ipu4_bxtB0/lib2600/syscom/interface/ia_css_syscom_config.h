@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_SYSCOM_CONFIG_H__
-#define __IA_CSS_SYSCOM_CONFIG_H__
+#ifndef __IA_CSS_SYSCOM_CONFIG_H
+#define __IA_CSS_SYSCOM_CONFIG_H
 
 #include <vied/shared_memory_access.h>
 
@@ -87,5 +87,5 @@ struct ia_css_syscom_config {
 	unsigned int specific_size;
 };
 
-#endif /*__IA_CSS_SYSCOM_CONFIG_H__*/
+#endif /* __IA_CSS_SYSCOM_CONFIG_H */
 

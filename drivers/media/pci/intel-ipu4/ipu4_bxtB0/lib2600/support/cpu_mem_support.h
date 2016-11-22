@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __CPU_MEM_SUPPORT_H_INCLUDED__
-#define __CPU_MEM_SUPPORT_H_INCLUDED__
+#ifndef __CPU_MEM_SUPPORT_H
+#define __CPU_MEM_SUPPORT_H
 
 #include "storage_class.h"
 
@@ -225,4 +225,4 @@ ia_css_cpu_mem_cache_invalidate(void *ptr, unsigned int size)
 
 #endif
 
-#endif /* __CPU_MEM_SUPPORT_H_INCLUDED__ */
+#endif /* __CPU_MEM_SUPPORT_H */

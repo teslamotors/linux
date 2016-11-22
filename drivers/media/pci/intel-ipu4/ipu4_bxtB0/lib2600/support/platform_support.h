@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __PLATFORM_SUPPORT_H_INCLUDED__
-#define __PLATFORM_SUPPORT_H_INCLUDED__
+#ifndef __PLATFORM_SUPPORT_H
+#define __PLATFORM_SUPPORT_H
 
 #include "storage_class.h"
 
@@ -97,4 +97,4 @@ STORAGE_CLASS_INLINE void ia_css_sleep(void)
 #define aligned_enum(enum_type, obj)	CSS_ALIGN(uint32_t obj, 4)
 #define aligned_struct(struct_type, obj)	struct_type obj
 
-#endif /* __PLATFORM_SUPPORT_H_INCLUDED__ */
+#endif /* __PLATFORM_SUPPORT_H */

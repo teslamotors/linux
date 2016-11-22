@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __MISC_SUPPORT_H_INCLUDED__
-#define __MISC_SUPPORT_H_INCLUDED__
+#ifndef __MISC_SUPPORT_H
+#define __MISC_SUPPORT_H
 
 /* suppress compiler warnings on unused variables */
 #ifndef NOT_USED
@@ -70,4 +70,4 @@ enum hive_method_id {
 	#define HRT_TARGET 1
 #endif
 
-#endif /* __MISC_SUPPORT_H_INCLUDED__ */
+#endif /* __MISC_SUPPORT_H */

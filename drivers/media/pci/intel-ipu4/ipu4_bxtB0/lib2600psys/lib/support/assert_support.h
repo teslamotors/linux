@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __ASSERT_SUPPORT_H_INCLUDED__
-#define __ASSERT_SUPPORT_H_INCLUDED__
+#ifndef __ASSERT_SUPPORT_H
+#define __ASSERT_SUPPORT_H
 
 /* This file provides support for run-time assertions
  * and compile-time assertions.
@@ -195,4 +195,4 @@ STORAGE_CLASS_INLINE void compile_time_assert(unsigned cond)
 #endif
 #endif /* PIPE_GENERATION */
 
-#endif /* __ASSERT_SUPPORT_H_INCLUDED__ */
+#endif /* __ASSERT_SUPPORT_H */

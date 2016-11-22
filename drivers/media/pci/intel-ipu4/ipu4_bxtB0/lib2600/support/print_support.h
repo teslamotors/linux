@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __PRINT_SUPPORT_H_INCLUDED__
-#define __PRINT_SUPPORT_H_INCLUDED__
+#ifndef __PRINT_SUPPORT_H
+#define __PRINT_SUPPORT_H
 
 #if defined(_MSC_VER)
 #ifdef _KERNEL_MODE
@@ -83,4 +83,4 @@ extern void FwTracePrintPDEBUG(const char *fmt, ...);
 
 #endif
 
-#endif /* __PRINT_SUPPORT_H_INCLUDED__ */
+#endif /* __PRINT_SUPPORT_H */

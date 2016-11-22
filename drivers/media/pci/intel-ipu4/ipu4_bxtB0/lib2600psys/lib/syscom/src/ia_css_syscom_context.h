@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_SYSCOM_CONTEXT_H__
-#define __IA_CSS_SYSCOM_CONTEXT_H__
+#ifndef __IA_CSS_SYSCOM_CONTEXT_H
+#define __IA_CSS_SYSCOM_CONTEXT_H
 
 #include <vied/shared_memory_access.h>
 
@@ -56,4 +56,4 @@ struct ia_css_syscom_context {
 	vied_virtual_address_t obuf_vied_addr;
 };
 
-#endif /*__IA_CSS_SYSCOM_CONTEXT_H__*/
+#endif /* __IA_CSS_SYSCOM_CONTEXT_H */

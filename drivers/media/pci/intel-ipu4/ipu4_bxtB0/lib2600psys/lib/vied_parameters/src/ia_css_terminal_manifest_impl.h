@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_TERMINAL_MANIFEST_IMPL_H__
-#define __IA_CSS_TERMINAL_MANIFEST_IMPL_H__
+#ifndef __IA_CSS_TERMINAL_MANIFEST_IMPL_H
+#define __IA_CSS_TERMINAL_MANIFEST_IMPL_H
 
 #include "ia_css_terminal_manifest.h"
 #include "error_support.h"
@@ -422,4 +422,4 @@ EXIT:
 	return kernel_manifest_fragment_sequencer_info_manifest_desc;
 }
 
-#endif /* __IA_CSS_TERMINAL_MANIFEST_IMPL_H__ */
+#endif /* __IA_CSS_TERMINAL_MANIFEST_IMPL_H */

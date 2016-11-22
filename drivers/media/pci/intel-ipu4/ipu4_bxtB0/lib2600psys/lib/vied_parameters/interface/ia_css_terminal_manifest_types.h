@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_TERMINAL_MANIFEST_TYPES_H__
-#define __IA_CSS_TERMINAL_MANIFEST_TYPES_H__
+#ifndef __IA_CSS_TERMINAL_MANIFEST_TYPES_H
+#define __IA_CSS_TERMINAL_MANIFEST_TYPES_H
 
 
 #include "ia_css_terminal_defs.h"
@@ -320,4 +320,4 @@ typedef struct ia_css_program_terminal_manifest_s
 
 /* ==================== Program Terminal Manifest - END ==================== */
 
-#endif /*__IA_CSS_TERMINAL_MANIFEST_TYPES_H__*/
+#endif /* __IA_CSS_TERMINAL_MANIFEST_TYPES_H */

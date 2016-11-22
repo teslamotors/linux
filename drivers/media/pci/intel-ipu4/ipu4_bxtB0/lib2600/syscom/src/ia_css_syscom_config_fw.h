@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_SYSCOM_CONFIG_FW_H__
-#define __IA_CSS_SYSCOM_CONFIG_FW_H__
+#ifndef __IA_CSS_SYSCOM_CONFIG_FW_H
+#define __IA_CSS_SYSCOM_CONFIG_FW_H
 
 #include "type_support.h"
 
@@ -48,4 +48,4 @@ struct ia_css_syscom_config_fw {
 	unsigned int specific_size;
 };
 
-#endif /*__IA_CSS_SYSCOM_CONFIG_FW_H__*/
+#endif /* __IA_CSS_SYSCOM_CONFIG_FW_H */

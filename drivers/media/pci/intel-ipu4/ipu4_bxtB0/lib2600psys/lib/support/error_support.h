@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __ERROR_SUPPORT_H_INCLUDED__
-#define __ERROR_SUPPORT_H_INCLUDED__
+#ifndef __ERROR_SUPPORT_H
+#define __ERROR_SUPPORT_H
 
 #if defined(__KERNEL__)
 #include <linux/errno.h>
@@ -104,4 +104,4 @@ do {                               \
 	}                          \
 } while (0)
 
-#endif /* __ERROR_SUPPORT_H_INCLUDED__ */
+#endif /* __ERROR_SUPPORT_H */

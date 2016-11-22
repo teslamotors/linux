@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_PARAM_STORAGE_CLASS_H__
-#define __IA_CSS_PARAM_STORAGE_CLASS_H__
+#ifndef __IA_CSS_PARAM_STORAGE_CLASS_H
+#define __IA_CSS_PARAM_STORAGE_CLASS_H
 
 #include "storage_class.h"
 
@@ -25,4 +25,4 @@
 #define IA_CSS_PARAMETERS_STORAGE_CLASS_C STORAGE_CLASS_INLINE
 #endif
 
-#endif /* __IA_CSS_PARAM_STORAGE_CLASS_H__ */
+#endif /* __IA_CSS_PARAM_STORAGE_CLASS_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_TERMINAL_IMPL_H__
-#define __IA_CSS_TERMINAL_IMPL_H__
+#ifndef __IA_CSS_TERMINAL_IMPL_H
+#define __IA_CSS_TERMINAL_IMPL_H
 
 #include "ia_css_terminal.h"
 #include "ia_css_terminal_types.h"
@@ -551,4 +551,4 @@ EXIT:
 	return line_count;
 }
 
-#endif /* __IA_CSS_TERMINAL_IMPL_H__ */
+#endif /* __IA_CSS_TERMINAL_IMPL_H */

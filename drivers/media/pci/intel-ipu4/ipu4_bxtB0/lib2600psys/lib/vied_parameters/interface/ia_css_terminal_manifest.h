@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_TERMINAL_MANIFEST_H__
-#define __IA_CSS_TERMINAL_MANIFEST_H__
+#ifndef __IA_CSS_TERMINAL_MANIFEST_H
+#define __IA_CSS_TERMINAL_MANIFEST_H
 
 #include "type_support.h"
 #include "ia_css_param_storage_class.h"
@@ -131,4 +131,4 @@ ia_css_program_terminal_manifest_get_kernel_frgmnt_seq_info_desc(
 #include "ia_css_terminal_manifest_impl.h"
 #endif /* _INLINE_PARAMETERS_ */
 
-#endif /* __IA_CSS_TERMINAL_MANIFEST_H__ */
+#endif /* __IA_CSS_TERMINAL_MANIFEST_H */

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef __IA_CSS_SYSCOM_H__
-#define __IA_CSS_SYSCOM_H__
+#ifndef __IA_CSS_SYSCOM_H
+#define __IA_CSS_SYSCOM_H
 
 
 /*
@@ -206,4 +206,4 @@ ia_css_syscom_recv_port_transfer(
 	void *token
 );
 
-#endif /* __IA_CSS_SYSCOM_H__*/
+#endif /* __IA_CSS_SYSCOM_H */
