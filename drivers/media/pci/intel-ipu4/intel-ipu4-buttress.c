@@ -58,6 +58,8 @@
 #define INTEL_IPU4_BUTTRESS_TSC_LIMIT	500 /* 26 us @ 19.2 MHz */
 #define INTEL_IPU4_BUTTRESS_TSC_RETRY	10
 
+#define BUTTRESS_CSE_IPC_RESET_RETRY	4
+
 #define BUTTRESS_PS_FREQ_STEP		25U
 #define BUTTRESS_MIN_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 8)
 #define BUTTRESS_MAX_FORCE_PS_FREQ	(BUTTRESS_PS_FREQ_STEP * 32)
@@ -1750,7 +1752,7 @@ EXPORT_SYMBOL(intel_ipu4_buttress_restore);
 int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
-	int rval;
+	int rval, ipc_reset_retry = BUTTRESS_CSE_IPC_RESET_RETRY;
 
 	mutex_init(&b->power_mutex);
 	mutex_init(&b->auth_mutex);
@@ -1821,11 +1823,22 @@ int intel_ipu4_buttress_init(struct intel_ipu4_device *isp)
 		goto err_remove_max_freq_file;
 	}
 
-	rval = intel_ipu4_buttress_ipc_reset(isp, &b->cse);
-	if (rval)
-		dev_err(&isp->pdev->dev, "IPC reset protocol failed!\n");
+	/*
+	 * We want to retry couple of time in case CSE initialization
+	 * is delayed for reason or another.
+	 */
+	do {
+		rval = intel_ipu4_buttress_ipc_reset(isp, &b->cse);
+		if (rval) {
+			dev_err(&isp->pdev->dev,
+				"IPC reset protocol failed, retry!\n");
+		} else {
+			dev_dbg(&isp->pdev->dev, "IPC reset completed!\n");
+			return 0;
+		}
+	} while (ipc_reset_retry--);
 
-	return 0;
+	dev_err(&isp->pdev->dev, "IPC reset protocol failed\n");
 
 err_remove_max_freq_file:
 	device_remove_file(&isp->pdev->dev,
