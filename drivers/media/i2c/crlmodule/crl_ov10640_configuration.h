@@ -73,7 +73,6 @@ static struct crl_register_write_rep ov10640_1280_1080_HDR[] = {
 	{0x3061, CRL_REG_LEN_08BIT, 0xf0},
 	{0x308c, CRL_REG_LEN_08BIT, 0x03},
 	{0x308f, CRL_REG_LEN_08BIT, 0x10},
-	{0x3090, CRL_REG_LEN_08BIT, 0x00},
 	{0x3091, CRL_REG_LEN_08BIT, 0x00},
 	{0x30eb, CRL_REG_LEN_08BIT, 0x00},
 	{0x30a3, CRL_REG_LEN_08BIT, 0x08},
@@ -1228,7 +1227,6 @@ static struct crl_register_write_rep ov10640_1280_1080_LONG_RAW[] = {
 	{0x3061, CRL_REG_LEN_08BIT, 0xf0},
 	{0x308c, CRL_REG_LEN_08BIT, 0x03},
 	{0x308f, CRL_REG_LEN_08BIT, 0x10},
-	{0x3090, CRL_REG_LEN_08BIT, 0x00},
 	{0x3091, CRL_REG_LEN_08BIT, 0x00},
 	{0x30eb, CRL_REG_LEN_08BIT, 0x00},
 	{0x30a3, CRL_REG_LEN_08BIT, 0x08},
@@ -2383,7 +2381,6 @@ static struct crl_register_write_rep ov10640_1280_1088_LONG_RAW[] = {
 	{0x3061, CRL_REG_LEN_08BIT, 0xf0},
 	{0x308c, CRL_REG_LEN_08BIT, 0x03},
 	{0x308f, CRL_REG_LEN_08BIT, 0x10},
-	{0x3090, CRL_REG_LEN_08BIT, 0x00},
 	{0x3091, CRL_REG_LEN_08BIT, 0x00},
 	{0x30eb, CRL_REG_LEN_08BIT, 0x00},
 	{0x30a3, CRL_REG_LEN_08BIT, 0x08},
@@ -3522,23 +3519,37 @@ static struct crl_register_write_rep ov10640_streamoff_regs[] = {
 	{OV10640_REG_STREAM, CRL_REG_LEN_08BIT, 0x00},
 };
 
+static struct crl_arithmetic_ops ov10640_ls2_ops[] = {
+	{
+		.op = CRL_BITWISE_LSHIFT,
+		.operand.entity_val = 2,
+	}
+};
+
 static struct crl_dynamic_register_access ov10640_h_flip_regs[] = {
 	{
-		.address = 0x3128,
+		.address = 0x3090,
 		.len = CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE,
-		.ops_items = 0,
-		.ops = 0,
-		.mask = 0x1,
+		.ops_items = ARRAY_SIZE(ov10640_ls2_ops),
+		.ops = ov10640_ls2_ops,
+		.mask = 0x04,
+	}
+};
+
+static struct crl_arithmetic_ops ov10640_ls3_ops[] = {
+	{
+		.op = CRL_BITWISE_LSHIFT,
+		.operand.entity_val = 3,
 	}
 };
 
 static struct crl_dynamic_register_access ov10640_v_flip_regs[] = {
 	{
-		.address = 0x3128,
+		.address = 0x3090,
 		.len = CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE,
-		.ops_items = 0,
-		.ops = 0,
-		.mask = 0x2,
+		.ops_items = ARRAY_SIZE(ov10640_ls3_ops),
+		.ops = ov10640_ls3_ops,
+		.mask = 0x08,
 	}
 };
 
