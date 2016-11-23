@@ -360,3 +360,15 @@ config SND_SOC_INTEL_CNL_SVFPGA_MACH
 	This adds support for ASoC machine driver for cnl and SVFPGA. This will
 	create an alsa sound card.  Say Y if you have such a device If unsure
 	select "N".
+
+config SND_SOC_INTEL_CNL_RT274_MACH
+        tristate "ASoC Audio driver for CNL with RT274 in I2S Mode"
+	select SND_SOC_RT274
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_DMIC
+	select SND_SOC_COMPRESS
+        help
+	This adds support for ASoC machine driver for CNL and codec RT274. This
+	will create an alsa sound card.  Say Y if you have such a device If
+	unsure select "N".
