@@ -338,8 +338,6 @@ struct crl_pll_configuration imx132_pll_configurations[] = {
 	},
 };
 
-const s64 imx132_op_sys_clock[] =  { 312000000 };
-
 struct crl_sensor_limits imx132_sensor_limits = {
 	.x_addr_min = 0,
 	.y_addr_min = 0,
@@ -501,9 +499,8 @@ struct crl_v4l2_ctrl imx132_v4l2_ctrls[] = {
 		.name = "V4L2_CID_LINK_FREQ",
 		.type = CRL_V4L2_CTRL_TYPE_MENU_INT,
 		.data.v4l2_int_menu.def = 0,
-		.data.v4l2_int_menu.max =
-			ARRAY_SIZE(imx132_pll_configurations) - 1,
-		.data.v4l2_int_menu.menu = imx132_op_sys_clock,
+		.data.v4l2_int_menu.max = 0,
+		.data.v4l2_int_menu.menu = 0,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.regs_items = 0,
@@ -692,7 +689,6 @@ struct crl_sensor_configuration imx132_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(imx132_pll_configurations),
 	.pll_configs = imx132_pll_configurations,
-	.op_sys_clk = imx132_op_sys_clock,
 
 	.modes_items = ARRAY_SIZE(imx132_modes),
 	.modes = imx132_modes,
