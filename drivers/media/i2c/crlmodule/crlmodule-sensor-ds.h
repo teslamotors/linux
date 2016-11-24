@@ -558,7 +558,6 @@ struct crl_sensor_configuration {
 
 	const unsigned int pll_config_items;
 	const struct crl_pll_configuration *pll_configs;
-	const s64 *op_sys_clk;
 
 	const unsigned int modes_items;
 	const struct crl_mode_rep *modes;
