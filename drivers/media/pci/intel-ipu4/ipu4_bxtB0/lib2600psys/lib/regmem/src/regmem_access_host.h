@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _REGMEM_ACCESS_HOST_H_
-#define _REGMEM_ACCESS_HOST_H_
+#ifndef __REGMEM_ACCESS_HOST_H
+#define __REGMEM_ACCESS_HOST_H
 
 #include "regmem_access.h" /* implemented interface */
 
@@ -39,4 +39,4 @@ regmem_store_32(unsigned int mem_addr, unsigned int reg,
 		value);
 }
 
-#endif
+#endif /* __REGMEM_ACCESS_HOST_H */

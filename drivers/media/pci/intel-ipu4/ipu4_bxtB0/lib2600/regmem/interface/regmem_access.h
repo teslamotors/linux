@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _REGMEM_ACCESS_H_
-#define _REGMEM_ACCESS_H_
+#ifndef __REGMEM_ACCESS_H
+#define __REGMEM_ACCESS_H
 
 #include "storage_class.h"
 
@@ -43,4 +43,4 @@ regmem_store_32(unsigned int mem_address, unsigned int reg, unsigned int value,
 #include "regmem_access_host.h"
 #endif
 
-#endif /*_REGMEM_ACCESS_H_*/
+#endif /* __REGMEM_ACCESS_H */
