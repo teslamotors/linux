@@ -50,7 +50,7 @@ struct ti964_csi_data_format {
 struct ti964_subdev_info {
 	struct i2c_board_info board_info;
 	int i2c_adapter_id;
-	unsigned int rx_port;
+	unsigned short rx_port;
 	unsigned short phy_i2c_addr;
 };
 

@@ -44,7 +44,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0x4c, 0x1}, /* Select RX port 0 */
 	{0x58, 0x58},
 	{0x5c, 0x18}, /* TI913 alias addr 0xc */
-	{0x65, 0xc2}, /* OV10635 alias addr 0x61 */
 	{0x6d, 0x7f},
 	{0x6e, 0x8a},
 	{0x70, 0x1e}, /* YUV422_8 */
@@ -53,7 +52,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0x4c, 0x12}, /* Select RX port 1 */
 	{0x58, 0x58},
 	{0x5c, 0x1a}, /* TI913 alias addr 0xd */
-	{0x65, 0xc4}, /* OV10635 alias addr 0x62 */
 	{0x6d, 0x7f},
 	{0x6e, 0x8a},
 	{0x70, 0x5e}, /* YUV422_8 */
@@ -62,7 +60,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0x4c, 0x24}, /* Select RX port 2*/
 	{0x58, 0x58},
 	{0x5c, 0x1c}, /* TI913 alias addr 0xe */
-	{0x65, 0xc6}, /* OV10635 alias addr 0x63 */
 	{0x6d, 0x7f},
 	{0x6e, 0x8a},
 	{0x70, 0x9e}, /* YUV422_8 */
@@ -71,7 +68,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0x4c, 0x38}, /* Select RX port3 */
 	{0x58, 0x58},
 	{0x5c, 0x1e}, /* TI913 alias addr 0xf */
-	{0x65, 0xc8}, /* OV10635 alias addr 0x64 */
 	{0x6d, 0x7f},
 	{0x6e, 0x8a},
 	{0x70, 0xde}, /* YUV422_8 */
@@ -91,6 +87,7 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 #define TI964_FWD_CTL1		0x20
 #define TI964_RX_PORT_SEL	0x4c
 #define TI964_SLAVE_ID0		0x5d
+#define TI964_SLAVE_ALIAS_ID0	0x65
 #define TI964_PORT_CONFIG	0x6d
 #define TI964_BC_GPIO_CTL0	0x6e
 #define TI964_PORT_CONFIG2	0x7c
