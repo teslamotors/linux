@@ -93,6 +93,12 @@ int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 	unsigned tout = 500;
 	u32 val = 0;
 
+	if (is_intel_ipu_hw_fpga(isp)) {
+		dev_info(&isp->pdev->dev,
+			"ipu5 FPGA does not support ipc now\n");
+		return 0;
+	}
+
 	mutex_lock(&b->ipc_mutex);
 
 	/* Clear-by-1 CSR (all bits), corresponding internal states. */
