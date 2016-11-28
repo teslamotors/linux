@@ -40,7 +40,7 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0xb2, 0x1f},
 	{0xb3, 0x8},
 	{0x32, 0x1}, /* Select CSI port 0 */
-	{0x33, 0x0}, /* 4 lanes, non-cont clk */
+	{0x33, 0x1}, /* 4 lanes, non-cont clk */
 	{0x4c, 0x1}, /* Select RX port 0 */
 	{0x58, 0x58},
 	{0x5c, 0x18}, /* TI913 alias addr 0xc */
@@ -92,7 +92,6 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 #define TI964_BC_GPIO_CTL0	0x6e
 #define TI964_PORT_CONFIG2	0x7c
 #define TI964_IND_ACC_DATA	0xb2
-#define TI964_CSI_CTL		0x33
 
 #define TI964_POWER_ON		0x1
 #define TI964_POWER_OFF		0x20

@@ -624,11 +624,6 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 			return rval;
 		}
 	}
-	rval = regmap_write(va->regmap8, TI964_CSI_CTL, enable);
-	if (rval) {
-		dev_err(va->sd.dev, "Register write error.\n");
-		return rval;
-	}
 
 	return 0;
 }
