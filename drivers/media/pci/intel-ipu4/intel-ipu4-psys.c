@@ -36,7 +36,6 @@
 #include "intel-ipu4-bus.h"
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-cpd.h"
-#include "intel-ipu4-psys-abi-defs.h"
 #include "intel-ipu4-psys-abi.h"
 #include "intel-ipu4-psys.h"
 #include "intel-ipu4-buttress.h"
@@ -1401,7 +1400,7 @@ static int intel_ipu4_psys_kcmd_new(struct intel_ipu4_psys_command *cmd,
 	}
 
 	for (i = 0; i < kcmd->nbuffers; i++) {
-		struct ia_css_terminal *terminal;
+		struct ipu_fw_psys_terminal *terminal;
 		u32 buffer;
 
 		terminal = intel_ipu4_psys_abi_pg_get_terminal(kcmd, i);
@@ -2205,16 +2204,16 @@ static int query_sp(struct intel_ipu4_bus_device *adev)
 static int intel_ipu4_psys_fw_init(struct intel_ipu4_psys *psys)
 {
 	struct ia_css_syscom_queue_config ia_css_psys_cmd_queue_cfg[] = {
-		{ IA_CSS_PSYS_CMD_QUEUE_SIZE, sizeof(struct ia_css_psys_cmd) },
-		{ IA_CSS_PSYS_CMD_QUEUE_SIZE, sizeof(struct ia_css_psys_cmd) }
+		{ IPU_FW_PSYS_CMD_QUEUE_SIZE, sizeof(struct ipu_fw_psys_cmd) },
+		{ IPU_FW_PSYS_CMD_QUEUE_SIZE, sizeof(struct ipu_fw_psys_cmd) }
 	};
 
 	struct ia_css_syscom_queue_config ia_css_psys_event_queue_cfg[] = {
-		{ IA_CSS_PSYS_EVENT_QUEUE_SIZE,
-		  sizeof(struct ia_css_psys_event) }
+		{ IPU_FW_PSYS_EVENT_QUEUE_SIZE,
+		  sizeof(struct ipu_fw_psys_event) }
 	};
 
-	struct ia_css_psys_srv_init server_init = {
+	struct ipu_fw_psys_srv_init server_init = {
 		.ddr_pkg_dir_address = 0,
 		.host_ddr_pkg_dir = 0,
 		.pkg_dir_size = 0,
@@ -2222,8 +2221,8 @@ static int intel_ipu4_psys_fw_init(struct intel_ipu4_psys *psys)
 		.icache_prefetch_isp = psys->icache_prefetch_isp,
 	};
 	struct intel_ipu4_fw_com_cfg fwcom = {
-		.num_input_queues = IA_CSS_N_PSYS_CMD_QUEUE_ID,
-		.num_output_queues = IA_CSS_N_PSYS_EVENT_QUEUE_ID,
+		.num_input_queues = IPU_FW_PSYS_N_PSYS_CMD_QUEUE_ID,
+		.num_output_queues = IPU_FW_PSYS_N_PSYS_EVENT_QUEUE_ID,
 		.input = ia_css_psys_cmd_queue_cfg,
 		.output = ia_css_psys_event_queue_cfg,
 		.specific_addr = &server_init,

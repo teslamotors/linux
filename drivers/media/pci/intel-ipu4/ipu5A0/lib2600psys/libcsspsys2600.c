@@ -21,8 +21,8 @@
 #include <uapi/linux/intel-ipu4-psys.h>
 
 #include "../../intel-ipu4.h"
-#include "../../intel-ipu4-psys.h"
 #include "../../intel-ipu4-psys-abi.h"
+#include "../../intel-ipu4-psys.h"
 #include "../../intel-ipu4-resources.h"
 #include "../../intel-ipu4-wrapper.h"
 #include "../../intel-ipu4-mmu.h"

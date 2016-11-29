@@ -20,7 +20,6 @@
 
 #include <uapi/linux/intel-ipu4-psys.h>
 
-#include "intel-ipu4-psys-abi-defs.h"
 #include "intel-ipu4-psys-abi.h"
 #include "intel-ipu4-psys.h"
 #include "intel-ipu4-resources.h"
@@ -32,42 +31,42 @@
  */
 #if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU4)
 
-static const u32 vied_nci_cell_types[VIED_NCI_N_CELL_ID] = {
-	VIED_NCI_SP_CTRL_TYPE_ID,
-	VIED_NCI_SP_SERVER_TYPE_ID,
-	VIED_NCI_SP_SERVER_TYPE_ID,
-	VIED_NCI_VP_TYPE_ID,
-	VIED_NCI_VP_TYPE_ID,
-	VIED_NCI_VP_TYPE_ID,
-	VIED_NCI_VP_TYPE_ID,
-	VIED_NCI_ACC_ISA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_OSA_TYPE_ID,
-	VIED_NCI_GDC_TYPE_ID,
-	VIED_NCI_GDC_TYPE_ID
+static const u32 vied_nci_cell_types[IPU_FW_PSYS_N_CELL_ID] = {
+	IPU_FW_PSYS_SP_CTRL_TYPE_ID,
+	IPU_FW_PSYS_SP_SERVER_TYPE_ID,
+	IPU_FW_PSYS_SP_SERVER_TYPE_ID,
+	IPU_FW_PSYS_VP_TYPE_ID,
+	IPU_FW_PSYS_VP_TYPE_ID,
+	IPU_FW_PSYS_VP_TYPE_ID,
+	IPU_FW_PSYS_VP_TYPE_ID,
+	IPU_FW_PSYS_ACC_ISA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_OSA_TYPE_ID,
+	IPU_FW_PSYS_GDC_TYPE_ID,
+	IPU_FW_PSYS_GDC_TYPE_ID
 };
 
 #elif IS_ENABLED(CONFIG_VIDEO_INTEL_IPU5)
 
-static const u32 vied_nci_cell_types[VIED_NCI_N_CELL_ID] = {
-	VIED_NCI_SP_CTRL_TYPE_ID,
-	VIED_NCI_SP_SERVER_TYPE_ID,
-	VIED_NCI_SP_SERVER_TYPE_ID,
-	VIED_NCI_VP_TYPE_ID,
-	VIED_NCI_ACC_ISA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_PSA_TYPE_ID,
-	VIED_NCI_ACC_OSA_TYPE_ID,
-	VIED_NCI_GDC_TYPE_ID
+static const u32 vied_nci_cell_types[IPU_FW_PSYS_N_CELL_ID] = {
+	IPU_FW_PSYS_SP_CTRL_TYPE_ID,
+	IPU_FW_PSYS_SP_SERVER_TYPE_ID,
+	IPU_FW_PSYS_SP_SERVER_TYPE_ID,
+	IPU_FW_PSYS_VP_TYPE_ID,
+	IPU_FW_PSYS_ACC_ISA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_OSA_TYPE_ID,
+	IPU_FW_PSYS_GDC_TYPE_ID
 };
 
 #endif
@@ -137,46 +136,47 @@ void intel_ipu4_resource_cleanup(struct intel_ipu4_resource *res)
 
 /* Process group resource sizes */
 static const u16
-		intel_ipu4_num_dev_channels[VIED_NCI_N_DEV_CHN_ID] = {
-	VIED_NCI_DEV_CHN_DMA_EXT0_MAX_SIZE,
-	VIED_NCI_DEV_CHN_GDC_MAX_SIZE,
-	VIED_NCI_DEV_CHN_DMA_EXT1_READ_MAX_SIZE,
-	VIED_NCI_DEV_CHN_DMA_EXT1_WRITE_MAX_SIZE,
-	VIED_NCI_DEV_CHN_DMA_INTERNAL_MAX_SIZE,
-	VIED_NCI_DEV_CHN_DMA_IPFD_MAX_SIZE,
-	VIED_NCI_DEV_CHN_DMA_ISA_MAX_SIZE,
-	VIED_NCI_DEV_CHN_DMA_FW_MAX_SIZE
+		intel_ipu4_num_dev_channels[IPU_FW_PSYS_N_DEV_CHN_ID] = {
+	IPU_FW_PSYS_DEV_CHN_DMA_EXT0_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_GDC_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_EXT1_READ_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_EXT1_WRITE_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_INTERNAL_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_IPFD_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_ISA_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_FW_MAX_SIZE
 };
 
-static struct ia_css_program_manifest *intel_ipu4_resource_get_program_manifest(
-	const struct ia_css_program_group_manifest *manifest,
+static struct ipu_fw_psys_program_manifest *
+intel_ipu4_resource_get_program_manifest(
+	const struct ipu_fw_psys_program_group_manifest *manifest,
 	const unsigned int program_index)
 {
-	struct ia_css_program_manifest *prg_manifest_base;
+	struct ipu_fw_psys_program_manifest *prg_manifest_base;
 	u8 *program_manifest = NULL;
 	u8 program_count;
 	unsigned int i;
 
 	program_count = manifest->program_count;
 
-	prg_manifest_base = (struct ia_css_program_manifest *)
+	prg_manifest_base = (struct ipu_fw_psys_program_manifest *)
 		((char *)manifest +
 		manifest->program_manifest_offset);
 	if (program_index < program_count) {
 		program_manifest = (u8 *)prg_manifest_base;
 		for (i = 0; i < program_index; i++)
 			program_manifest +=
-				((struct ia_css_program_manifest *)
+				((struct ipu_fw_psys_program_manifest *)
 				 program_manifest)->size;
 	}
 
-	return (struct ia_css_program_manifest *)program_manifest;
+	return (struct ipu_fw_psys_program_manifest *)program_manifest;
 }
 
-static struct ia_css_program_manifest *
+static struct ipu_fw_psys_program_manifest *
 intel_ipu4_psys_get_program_manifest_by_process(
-	const struct ia_css_program_group_manifest *pg_manifest,
-	struct ia_css_process *process)
+	const struct ipu_fw_psys_program_group_manifest *pg_manifest,
+	struct ipu_fw_psys_process *process)
 {
 	u32 process_id = process->ID;
 	int programs = pg_manifest->program_count;
@@ -184,7 +184,7 @@ intel_ipu4_psys_get_program_manifest_by_process(
 
 	for (i = 0; i < programs; i++) {
 		u32 program_id;
-		struct ia_css_program_manifest *pm =
+		struct ipu_fw_psys_program_manifest *pm =
 			intel_ipu4_resource_get_program_manifest(
 				pg_manifest, i);
 		if (!pm)
@@ -203,7 +203,7 @@ int intel_ipu4_psys_resource_pool_init(
 
 	pool->cells = 0;
 
-	for (i = 0; i < VIED_NCI_N_DEV_CHN_ID; i++) {
+	for (i = 0; i < IPU_FW_PSYS_N_DEV_CHN_ID; i++) {
 		ret = intel_ipu4_resource_init(&pool->dev_channels[i], i,
 					       intel_ipu4_num_dev_channels[i]);
 		if (ret)
@@ -222,7 +222,7 @@ void intel_ipu4_psys_resource_pool_cleanup(
 {
 	u32 i;
 
-	for (i = 0; i < VIED_NCI_N_DEV_CHN_ID; i++)
+	for (i = 0; i < IPU_FW_PSYS_N_DEV_CHN_ID; i++)
 		intel_ipu4_resource_cleanup(&pool->dev_channels[i]);
 }
 
@@ -234,9 +234,9 @@ void intel_ipu4_psys_resource_alloc_init(
 }
 
 static int intel_ipu4_psys_allocate_one_resource(const struct device *dev,
-			struct ia_css_process *process,
+			struct ipu_fw_psys_process *process,
 			struct intel_ipu4_resource *resource,
-			struct ia_css_program_manifest *pm,
+			struct ipu_fw_psys_program_manifest *pm,
 			u32 resource_id,
 			struct intel_ipu4_psys_resource_alloc *alloc)
 {
@@ -270,7 +270,7 @@ static int intel_ipu4_psys_allocate_one_resource(const struct device *dev,
  * are not allocated at all, or some other error on other conditions.
  */
 int intel_ipu4_psys_allocate_resources(const struct device *dev,
-			struct ia_css_process_group *pg,
+			struct ipu_fw_psys_process_group *pg,
 			void *pg_manifest,
 			struct intel_ipu4_psys_resource_alloc *alloc,
 			struct intel_ipu4_psys_resource_pool *pool)
@@ -283,9 +283,10 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 
 	for (i = 0; i < processes; i++) {
 		u32 cell;
-		struct ia_css_process *process = (struct ia_css_process *)
+		struct ipu_fw_psys_process *process =
+			(struct ipu_fw_psys_process *)
 			((char *)pg + process_offset_table[i]);
-		struct ia_css_program_manifest *pm;
+		struct ipu_fw_psys_program_manifest *pm;
 
 		if (process == NULL) {
 			dev_err(dev, "can not get process\n");
@@ -301,17 +302,17 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 			goto free_out;
 		}
 
-		if ((pm->cell_id != VIED_NCI_N_CELL_ID &&
-		     pm->cell_type_id != VIED_NCI_N_CELL_ID)) {
+		if ((pm->cell_id != IPU_FW_PSYS_N_CELL_ID &&
+		     pm->cell_type_id != IPU_FW_PSYS_N_CELL_ID)) {
 			cell = process->cell_id;
 		} else {
 			/* Find a free cell of desired type */
 			u32 type = pm->cell_type_id;
-			for (cell = 0; cell < VIED_NCI_N_CELL_ID; cell++)
+			for (cell = 0; cell < IPU_FW_PSYS_N_CELL_ID; cell++)
 				if (vied_nci_cell_types[cell] == type &&
 				    ((pool->cells | cells) & (1 << cell)) == 0)
 					break;
-			if (cell >= VIED_NCI_N_CELL_ID) {
+			if (cell >= IPU_FW_PSYS_N_CELL_ID) {
 				dev_dbg(dev, "no free cells of right type\n");
 				ret = -ENOSPC;
 				goto free_out;
@@ -326,7 +327,7 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 			goto free_out;
 		}
 
-		for (res_id = 0; res_id < VIED_NCI_N_DEV_CHN_ID; res_id++) {
+		for (res_id = 0; res_id < IPU_FW_PSYS_N_DEV_CHN_ID; res_id++) {
 			ret = intel_ipu4_psys_allocate_one_resource(dev,
 				process, &pool->dev_channels[res_id],
 				pm, res_id, alloc);
@@ -340,9 +341,10 @@ int intel_ipu4_psys_allocate_resources(const struct device *dev,
 
 free_out:
 	for (; i >= 0; i--) {
-		struct ia_css_process *process = (struct ia_css_process *)
+		struct ipu_fw_psys_process *process =
+			(struct ipu_fw_psys_process *)
 			((char *)pg + process_offset_table[i]);
-		struct ia_css_program_manifest *pm;
+		struct ipu_fw_psys_program_manifest *pm;
 
 		if (process == NULL)
 			break;
@@ -350,8 +352,8 @@ free_out:
 						pg_manifest, process);
 		if (pm == NULL)
 			break;
-		if ((pm->cell_id != VIED_NCI_N_CELL_ID &&
-		     pm->cell_type_id != VIED_NCI_N_CELL_ID))
+		if ((pm->cell_id != IPU_FW_PSYS_N_CELL_ID &&
+		     pm->cell_type_id != IPU_FW_PSYS_N_CELL_ID))
 			continue;
 		pg->resource_bitmap &= ~(1 << process->cell_id);
 		process->cell_id = 0;

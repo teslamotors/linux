@@ -43,7 +43,7 @@ void intel_ipu4_resource_cleanup(struct intel_ipu4_resource *res);
 
 #define INTEL_IPU4_MAX_RESOURCES 32
 
-struct ia_css_program_group_manifest {
+struct ipu_fw_psys_program_group_manifest {
 	u64 kernel_bitmap;
 	u32 ID;
 	u32 program_manifest_offset;
@@ -58,7 +58,7 @@ struct ia_css_program_group_manifest {
 	u8 reserved[1];
 };
 
-struct ia_css_program_manifest {
+struct ipu_fw_psys_program_manifest {
 	u64 kernel_bitmap;
 	u32 ID;
 	u32 program_type;
@@ -66,9 +66,9 @@ struct ia_css_program_manifest {
 	u32 program_dependency_offset;
 	u32 terminal_dependency_offset;
 	u16 size;
-	u16 int_mem_size[VIED_NCI_N_MEM_TYPE_ID];
-	u16 ext_mem_size[VIED_NCI_N_DATA_MEM_TYPE_ID];
-	u16 dev_chn_size[VIED_NCI_N_DEV_CHN_ID];
+	u16 int_mem_size[IPU_FW_PSYS_N_MEM_TYPE_ID];
+	u16 ext_mem_size[IPU_FW_PSYS_N_DATA_MEM_TYPE_ID];
+	u16 dev_chn_size[IPU_FW_PSYS_N_DEV_CHN_ID];
 	u8 cell_id;
 	u8 cell_type_id;
 	u8 program_dependency_count;
@@ -85,7 +85,7 @@ struct ia_css_program_manifest {
  */
 struct intel_ipu4_psys_resource_pool {
 	u32 cells;	/* Bitmask of cells allocated */
-	struct intel_ipu4_resource dev_channels[VIED_NCI_N_DEV_CHN_ID];
+	struct intel_ipu4_resource dev_channels[IPU_FW_PSYS_N_DEV_CHN_ID];
 };
 
 /*
@@ -100,7 +100,7 @@ struct intel_ipu4_psys_resource_alloc {
 	int resources;
 };
 
-struct ia_css_process_group;
+struct ipu_fw_psys_process_group;
 
 int intel_ipu4_psys_resource_pool_init(
 				struct intel_ipu4_psys_resource_pool *pool);
@@ -112,7 +112,7 @@ void intel_ipu4_psys_resource_alloc_init(
 				struct intel_ipu4_psys_resource_alloc *alloc);
 
 int intel_ipu4_psys_allocate_resources(const struct device *dev,
-			       struct ia_css_process_group *pg,
+			       struct ipu_fw_psys_process_group *pg,
 			       void *pg_manifest,
 			       struct intel_ipu4_psys_resource_alloc *alloc,
 			       struct intel_ipu4_psys_resource_pool *pool);

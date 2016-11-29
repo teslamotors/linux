@@ -17,7 +17,6 @@
 #include <uapi/linux/intel-ipu4-psys.h>
 
 #include "intel-ipu4-fw-com.h"
-#include "intel-ipu4-psys-abi-defs.h"
 #include "intel-ipu4-psys-abi.h"
 #include "intel-ipu4-psys.h"
 
@@ -40,13 +39,13 @@ int intel_ipu4_psys_abi_pg_start(struct intel_ipu4_psys_kcmd *kcmd)
 {
 	if (ext_abi)
 		return ext_abi->pg_start(kcmd);
-	kcmd->kpg->pg->state = IA_CSS_PROCESS_GROUP_STARTED;
+	kcmd->kpg->pg->state = IPU_FW_PSYS_PROCESS_GROUP_STARTED;
 	return 0;
 }
 
 int intel_ipu4_psys_abi_pg_disown(struct intel_ipu4_psys_kcmd *kcmd)
 {
-	struct ia_css_psys_cmd *psys_cmd;
+	struct ipu_fw_psys_cmd *psys_cmd;
 	int ret = 0;
 
 	if (ext_abi)
@@ -59,7 +58,7 @@ int intel_ipu4_psys_abi_pg_disown(struct intel_ipu4_psys_kcmd *kcmd)
 		ret = -ENODATA;
 		goto out;
 	}
-	psys_cmd->command = IA_CSS_PROCESS_GROUP_CMD_START;
+	psys_cmd->command = IPU_FW_PSYS_PROCESS_GROUP_CMD_START;
 	psys_cmd->msg = 0;
 	psys_cmd->process_group = kcmd->kpg->pg->ipu_virtual_address;
 	intel_ipu4_send_put_token(kcmd->fh->psys->fwcom, 0);
@@ -70,7 +69,7 @@ out:
 
 int intel_ipu4_psys_abi_pg_abort(struct intel_ipu4_psys_kcmd *kcmd)
 {
-	struct ia_css_psys_cmd *psys_cmd;
+	struct ipu_fw_psys_cmd *psys_cmd;
 	int ret = 0;
 
 	if (ext_abi)
@@ -83,7 +82,7 @@ int intel_ipu4_psys_abi_pg_abort(struct intel_ipu4_psys_kcmd *kcmd)
 		ret = -ENODATA;
 		goto out;
 	}
-	psys_cmd->command = IA_CSS_PROCESS_GROUP_CMD_STOP;
+	psys_cmd->command = IPU_FW_PSYS_PROCESS_GROUP_CMD_STOP;
 	psys_cmd->msg = 0;
 	psys_cmd->process_group = kcmd->kpg->pg->ipu_virtual_address;
 	intel_ipu4_send_put_token(kcmd->fh->psys->fwcom, 0);
@@ -96,7 +95,7 @@ int intel_ipu4_psys_abi_pg_submit(struct intel_ipu4_psys_kcmd *kcmd)
 {
 	if (ext_abi)
 		return ext_abi->pg_submit(kcmd);
-	kcmd->kpg->pg->state = IA_CSS_PROCESS_GROUP_BLOCKED;
+	kcmd->kpg->pg->state = IPU_FW_PSYS_PROCESS_GROUP_BLOCKED;
 	return 0;
 }
 
@@ -104,7 +103,7 @@ struct intel_ipu4_psys_kcmd *intel_ipu4_psys_abi_rcv_kcmd(
 	struct intel_ipu4_psys *psys,
 	u32 *status)
 {
-	struct ia_css_psys_event *event;
+	struct ipu_fw_psys_event *event;
 	struct intel_ipu4_psys_kcmd *kcmd;
 
 	if (ext_abi)
@@ -120,7 +119,7 @@ struct intel_ipu4_psys_kcmd *intel_ipu4_psys_abi_rcv_kcmd(
 	return kcmd ? kcmd : ERR_PTR(-EIO);
 }
 
-int intel_ipu4_psys_abi_terminal_set(struct ia_css_terminal *terminal,
+int intel_ipu4_psys_abi_terminal_set(struct ipu_fw_psys_terminal *terminal,
 				     int terminal_idx,
 				     struct intel_ipu4_psys_kcmd *kcmd,
 				     u32 buffer,
@@ -136,23 +135,23 @@ int intel_ipu4_psys_abi_terminal_set(struct ia_css_terminal *terminal,
 	type = terminal->terminal_type;
 
 	switch (type) {
-	case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN:
-	case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT:
-	case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN:
-	case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT:
-	case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_IN:
-	case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT:
-	case IA_CSS_TERMINAL_TYPE_PROGRAM:
-		buffer_state = IA_CSS_BUFFER_UNDEFINED;
+	case IPU_FW_PSYS_TERMINAL_TYPE_PARAM_CACHED_IN:
+	case IPU_FW_PSYS_TERMINAL_TYPE_PARAM_CACHED_OUT:
+	case IPU_FW_PSYS_TERMINAL_TYPE_PARAM_SPATIAL_IN:
+	case IPU_FW_PSYS_TERMINAL_TYPE_PARAM_SPATIAL_OUT:
+	case IPU_FW_PSYS_TERMINAL_TYPE_PARAM_SLICED_IN:
+	case IPU_FW_PSYS_TERMINAL_TYPE_PARAM_SLICED_OUT:
+	case IPU_FW_PSYS_TERMINAL_TYPE_PROGRAM:
+		buffer_state = IPU_FW_PSYS_BUFFER_UNDEFINED;
 		break;
-	case IA_CSS_TERMINAL_TYPE_PARAM_STREAM:
-	case IA_CSS_TERMINAL_TYPE_DATA_IN:
-	case IA_CSS_TERMINAL_TYPE_STATE_IN:
-		buffer_state = IA_CSS_BUFFER_FULL;
+	case IPU_FW_PSYS_TERMINAL_TYPE_PARAM_STREAM:
+	case IPU_FW_PSYS_TERMINAL_TYPE_DATA_IN:
+	case IPU_FW_PSYS_TERMINAL_TYPE_STATE_IN:
+		buffer_state = IPU_FW_PSYS_BUFFER_FULL;
 		break;
-	case IA_CSS_TERMINAL_TYPE_DATA_OUT:
-	case IA_CSS_TERMINAL_TYPE_STATE_OUT:
-		buffer_state = IA_CSS_BUFFER_EMPTY;
+	case IPU_FW_PSYS_TERMINAL_TYPE_DATA_OUT:
+	case IPU_FW_PSYS_TERMINAL_TYPE_STATE_OUT:
+		buffer_state = IPU_FW_PSYS_BUFFER_EMPTY;
 		break;
 	default:
 		dev_err(&kcmd->fh->psys->adev->dev,
@@ -160,17 +159,17 @@ int intel_ipu4_psys_abi_terminal_set(struct ia_css_terminal *terminal,
 		return -EAGAIN;
 	}
 
-	if (type == IA_CSS_TERMINAL_TYPE_DATA_IN ||
-	    type == IA_CSS_TERMINAL_TYPE_DATA_OUT) {
-		struct ia_css_data_terminal *dterminal =
-			(struct ia_css_data_terminal *)terminal;
-		dterminal->connection_type = IA_CSS_CONNECTION_MEMORY;
+	if (type == IPU_FW_PSYS_TERMINAL_TYPE_DATA_IN ||
+	    type == IPU_FW_PSYS_TERMINAL_TYPE_DATA_OUT) {
+		struct ipu_fw_psys_data_terminal *dterminal =
+			(struct ipu_fw_psys_data_terminal *)terminal;
+		dterminal->connection_type = IPU_FW_PSYS_CONNECTION_MEMORY;
 		dterminal->frame.data_bytes = size;
 		dterminal->frame.data = buffer;
 		dterminal->frame.buffer_state = buffer_state;
 	} else {
-		struct ia_css_param_terminal *pterminal =
-			(struct ia_css_param_terminal *) terminal;
+		struct ipu_fw_psys_param_terminal *pterminal =
+			(struct ipu_fw_psys_param_terminal *) terminal;
 		pterminal->param_payload.buffer = buffer;
 	}
 	return 0;
@@ -180,7 +179,7 @@ void intel_ipu4_psys_abi_pg_dump(struct intel_ipu4_psys *psys,
 				 struct intel_ipu4_psys_kcmd *kcmd,
 				 const char *note)
 {
-	struct ia_css_process_group *pg = kcmd->kpg->pg;
+	struct ipu_fw_psys_process_group *pg = kcmd->kpg->pg;
 	u32 pgid = pg->ID;
 	uint8_t processes = pg->process_count;
 	u16 *process_offset_table = (u16 *)pg + pg->processes_offset;
@@ -195,22 +194,23 @@ void intel_ipu4_psys_abi_pg_dump(struct intel_ipu4_psys *psys,
 		__func__, note, pgid, processes);
 
 	for (p = 0; p < processes; p++) {
-		struct ia_css_process *process = (struct ia_css_process *)
+		struct ipu_fw_psys_process *process =
+			(struct ipu_fw_psys_process *)
 			((char *)pg + process_offset_table[p]);
 
 		dev_dbg(&psys->adev->dev,
 			"%s pgid %i process %i cell %i dev_chn: ext0 %i ext1r %i ext1w %i int %i ipfd %i isa %i\n",
 			__func__, pgid, p, process->cell_id,
-			process->dev_chn_offset[VIED_NCI_DEV_CHN_DMA_EXT0_ID],
+			process->dev_chn_offset[IPU_FW_PSYS_DEV_CHN_DMA_EXT0_ID],
 			process->dev_chn_offset[
-				VIED_NCI_DEV_CHN_DMA_EXT1_READ_ID],
+				IPU_FW_PSYS_DEV_CHN_DMA_EXT1_READ_ID],
 			process->dev_chn_offset[
-				VIED_NCI_DEV_CHN_DMA_EXT1_WRITE_ID],
+				IPU_FW_PSYS_DEV_CHN_DMA_EXT1_WRITE_ID],
 			process->dev_chn_offset[
-				VIED_NCI_DEV_CHN_DMA_INTERNAL_ID],
+				IPU_FW_PSYS_DEV_CHN_DMA_INTERNAL_ID],
 			process->dev_chn_offset[
-				VIED_NCI_DEV_CHN_DMA_IPFD_ID],
-			process->dev_chn_offset[VIED_NCI_DEV_CHN_DMA_ISA_ID]);
+				IPU_FW_PSYS_DEV_CHN_DMA_IPFD_ID],
+			process->dev_chn_offset[IPU_FW_PSYS_DEV_CHN_DMA_ISA_ID]);
 	}
 }
 
@@ -241,11 +241,11 @@ int intel_ipu4_psys_abi_pg_set_ipu_vaddress(struct intel_ipu4_psys_kcmd *kcmd,
 	kcmd->kpg->pg->ipu_virtual_address = vaddress;
 	return 0;
 }
-struct ia_css_terminal *intel_ipu4_psys_abi_pg_get_terminal(
+struct ipu_fw_psys_terminal *intel_ipu4_psys_abi_pg_get_terminal(
 	struct intel_ipu4_psys_kcmd *kcmd,
 	int index)
 {
-	struct ia_css_terminal *terminal;
+	struct ipu_fw_psys_terminal *terminal;
 	u16 *terminal_offset_table;
 
 	if (ext_abi)
@@ -254,7 +254,7 @@ struct ia_css_terminal *intel_ipu4_psys_abi_pg_get_terminal(
 	terminal_offset_table =
 		(uint16_t *) ((char *)kcmd->kpg->pg +
 			      kcmd->kpg->pg->terminals_offset);
-	terminal = (struct ia_css_terminal *)
+	terminal = (struct ipu_fw_psys_terminal *)
 		((char *)kcmd->kpg->pg + terminal_offset_table[index]);
 	return terminal;
 }

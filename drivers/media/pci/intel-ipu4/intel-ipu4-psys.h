@@ -29,8 +29,8 @@
 #define INTEL_IPU4_PSYS_CMD_TIMEOUT_MS_SOC 2000
 #define INTEL_IPU4_PSYS_OPEN_TIMEOUT_US	   50
 #define INTEL_IPU4_PSYS_OPEN_RETRY (10000 / INTEL_IPU4_PSYS_OPEN_TIMEOUT_US)
-#define INTEL_IPU4_PSYS_EVENT_CMD_COMPLETE IA_CSS_PSYS_EVENT_TYPE_SUCCESS
-#define INTEL_IPU4_PSYS_EVENT_FRAGMENT_COMPLETE IA_CSS_PSYS_EVENT_TYPE_SUCCESS
+#define INTEL_IPU4_PSYS_EVENT_CMD_COMPLETE IPU_FW_PSYS_EVENT_TYPE_SUCCESS
+#define INTEL_IPU4_PSYS_EVENT_FRAGMENT_COMPLETE IPU_FW_PSYS_EVENT_TYPE_SUCCESS
 #define INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US   50
 #define INTEL_IPU4_PSYS_CLOSE_TIMEOUT \
 	(100000 / INTEL_IPU4_PSYS_CLOSE_TIMEOUT_US)
@@ -89,7 +89,7 @@ struct intel_ipu4_psys_fh {
 };
 
 struct intel_ipu4_psys_pg {
-	struct ia_css_process_group *pg;
+	struct ipu_fw_psys_process_group *pg;
 	size_t size;
 	size_t pg_size;
 	dma_addr_t pg_dma_addr;
@@ -115,7 +115,7 @@ struct intel_ipu4_psys_kcmd {
 	struct intel_ipu4_psys_kbuffer **kbufs;
 	struct intel_ipu4_psys_dma_buf *buffers;
 	size_t nbuffers;
-	struct ia_css_process_group *pg_user;
+	struct ipu_fw_psys_process_group *pg_user;
 	struct intel_ipu4_psys_pg *kpg;
 	uint32_t id;
 	uint64_t issue_id;
