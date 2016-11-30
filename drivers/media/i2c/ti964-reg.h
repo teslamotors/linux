@@ -40,7 +40,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0xb2, 0x1f},
 	{0xb3, 0x8},
 	{0x32, 0x1}, /* Select CSI port 0 */
-	{0x33, 0x1}, /* 4 lanes, non-cont clk */
 	{0x4c, 0x1}, /* Select RX port 0 */
 	{0x58, 0x58},
 	{0x5c, 0x18}, /* TI913 alias addr 0xc */
@@ -84,6 +83,7 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 
 #define TI964_DEVID		0
 #define TI964_RESET		0x1
+#define TI964_CSI_PLL_CTL	0x1f
 #define TI964_FWD_CTL1		0x20
 #define TI964_RX_PORT_SEL	0x4c
 #define TI964_SLAVE_ID0		0x5d
@@ -92,6 +92,7 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 #define TI964_BC_GPIO_CTL0	0x6e
 #define TI964_PORT_CONFIG2	0x7c
 #define TI964_IND_ACC_DATA	0xb2
+#define TI964_CSI_CTL           0x33
 
 #define TI964_POWER_ON		0x1
 #define TI964_POWER_OFF		0x20
@@ -103,5 +104,9 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 #define TI964_GPIO_HIGH		0x90
 #define TI964_GPIO_LOW		0x80
 #define TI964_GPIO1_MASK	0xf0
+#define TI964_MIPI_800MBPS	0x2
+#define TI964_MIPI_1600MBPS	0x0
+#define TI964_CSI_ENABLE	0x1
+#define TI964_CSI_SKEWCAL	0x40
 
 #endif

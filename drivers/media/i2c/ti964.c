@@ -76,6 +76,12 @@ struct ti964 {
 
 #define to_ti964(_sd) container_of(_sd, struct ti964, sd)
 
+static const s64 ti964_op_sys_clock[] =  {400000000, 800000000};
+static const u8 ti964_op_sys_clock_reg_val[] = {
+	TI964_MIPI_800MBPS,
+	TI964_MIPI_1600MBPS
+};
+
 /*
  * Order matters.
  *
@@ -510,9 +516,25 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 static int ti964_set_power(struct v4l2_subdev *subdev, int on)
 {
 	struct ti964 *va = to_ti964(subdev);
+	int ret;
+	u8 val;
 
-	return regmap_write(va->regmap8, TI964_RESET,
+	ret = regmap_write(va->regmap8, TI964_RESET,
 			   (on) ? TI964_POWER_ON : TI964_POWER_OFF);
+	if (ret || !on)
+		return ret;
+
+	/* Configure MIPI clock bsaed on control value. */
+	ret = regmap_write(va->regmap8, TI964_CSI_PLL_CTL,
+			    ti964_op_sys_clock_reg_val[
+			    v4l2_ctrl_g_ctrl(va->link_freq)]);
+	if (ret)
+		return ret;
+	val = TI964_CSI_ENABLE;
+	/* Enable skew calculation when 1.6Gbps output is enabled. */
+	if (v4l2_ctrl_g_ctrl(va->link_freq))
+		val |= TI964_CSI_SKEWCAL;
+	return regmap_write(va->regmap8, TI964_CSI_CTL, val);
 }
 
 static bool ti964_broadcast_mode(struct v4l2_subdev *subdev)
@@ -807,7 +829,6 @@ static const struct v4l2_ctrl_ops ti964_ctrl_ops = {
 	.s_ctrl = ti964_s_ctrl,
 };
 
-static const s64 ti964_op_sys_clock[] =  {400000000, };
 static const struct v4l2_ctrl_config ti964_controls[] = {
 	{
 		.ops = &ti964_ctrl_ops,
