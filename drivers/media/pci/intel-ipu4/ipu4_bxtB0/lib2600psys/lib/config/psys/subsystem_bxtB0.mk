@@ -27,3 +27,5 @@ PSYS_ISL_DPC_DPC_V2              = 0
 
 # Assume OFS will be running concurrently with IPF, and prioritize according to rates of services on devproxy
 CONCURRENT_OFS_IPF_PRIORITY_OPTIMIZATION_ENABLED	= 1
+
+HAS_GMEM						= 1

@@ -515,7 +515,7 @@ ia_css_terminal_param_init(ia_css_terminal_param_t *terminal_param,
 
 	terminal_param->size = sizeof(ia_css_terminal_param_t);
 	/* parent is at negative offset from current program.*/
-	terminal_param->parent_offset = -offset;
+	terminal_param->parent_offset = -((int32_t)offset);
 	/*TODO: Kernel_bitmap setting. ?*/
 	terminal_param->frame_format_type = frame_format_type;
 
