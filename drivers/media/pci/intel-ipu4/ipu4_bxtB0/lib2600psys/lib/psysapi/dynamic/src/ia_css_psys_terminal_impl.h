@@ -34,6 +34,42 @@
 #include "ia_css_terminal_manifest_types.h"
 #include "ia_css_psys_dynamic_trace.h"
 
+STORAGE_CLASS_INLINE int ia_css_data_terminal_print(const ia_css_terminal_t *terminal,
+	void *fid) {
+
+	DECLARE_ERRVAL
+	int retval = -1;
+	int i;
+	ia_css_data_terminal_t *dterminal = (ia_css_data_terminal_t *)terminal;
+	uint16_t fragment_count =
+		ia_css_data_terminal_get_fragment_count(dterminal);
+	verifexitval(fragment_count != 0, EINVAL);
+
+	retval = ia_css_frame_descriptor_print(
+		ia_css_data_terminal_get_frame_descriptor(dterminal),
+		fid);
+	verifexitval(retval == 0, EINVAL);
+
+	retval = ia_css_frame_print(
+		ia_css_data_terminal_get_frame(dterminal), fid);
+	verifexitval(retval == 0, EINVAL);
+
+	for (i = 0; i < (int)fragment_count; i++) {
+		retval = ia_css_fragment_descriptor_print(
+			ia_css_data_terminal_get_fragment_descriptor(
+				dterminal, i), fid);
+		verifexitval(retval == 0, EINVAL);
+	}
+
+	retval = 0;
+EXIT:
+	if (!noerror()) {
+		IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, ERROR,
+			"ia_css_terminal_print failed (%i)\n", retval);
+	}
+	return retval;
+}
+
 IA_CSS_PSYS_DYNAMIC_STORAGE_CLASS_C
 int ia_css_terminal_print(
 	const ia_css_terminal_t *terminal,
@@ -41,18 +77,12 @@ int ia_css_terminal_print(
 {
 	DECLARE_ERRVAL
 	int retval = -1;
-	int i;
-	bool is_data = false;
-	uint16_t fragment_count = 0;
-
-	NOT_USED(fid);
+	ia_css_terminal_type_t term_type = ia_css_terminal_get_type(terminal);
 
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO,
 		"ia_css_terminal_print(): enter:\n");
 
 	verifexitval(terminal != NULL, EFAULT);
-
-	is_data = ia_css_is_terminal_data_terminal(terminal);
 
 	IA_CSS_TRACE_4(PSYSAPI_DYNAMIC, INFO,
 		"\tTerminal %p sizeof %d, typeof %d, parent %p\n",
@@ -61,30 +91,14 @@ int ia_css_terminal_print(
 		(int)ia_css_terminal_get_type(terminal),
 		(void *)ia_css_terminal_get_parent(terminal));
 
-	if (is_data) {
-		ia_css_data_terminal_t *dterminal =
-			(ia_css_data_terminal_t *)terminal;
-
-		fragment_count =
-			ia_css_data_terminal_get_fragment_count(dterminal);
-		verifexitval(fragment_count != 0, EINVAL);
-		retval = ia_css_frame_descriptor_print(
-			ia_css_data_terminal_get_frame_descriptor(dterminal),
-			fid);
-		verifexitval(retval == 0, EINVAL);
-		retval = ia_css_frame_print(
-			ia_css_data_terminal_get_frame(dterminal), fid);
-		verifexitval(retval == 0, EINVAL);
-		for (i = 0; i < (int)fragment_count; i++) {
-			retval = ia_css_fragment_descriptor_print(
-				ia_css_data_terminal_get_fragment_descriptor(
-					dterminal, i), fid);
-			verifexitval(retval == 0, EINVAL);
-		}
-	} else {
-		/*TODO:
-		 * FIXME print param terminal sections.
-		 */
+	switch (term_type) {
+	case IA_CSS_TERMINAL_TYPE_DATA_IN:
+	case IA_CSS_TERMINAL_TYPE_DATA_OUT:
+		ia_css_data_terminal_print(terminal, fid);
+	break;
+	default:
+		/* other terminal prints are currently not supported */
+	break;
 	}
 
 	retval = 0;
