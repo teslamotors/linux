@@ -180,23 +180,6 @@ static struct crl_register_write_rep adv7481_hdmi_mode_rgb565[] = {
 	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
 	 /* Enable 4-lane CSI TXB & Pixel Port */
 	{0x7E, CRL_REG_LEN_08BIT, 0x98, 0x94}, /* ADI Required Write */
-	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
-	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
-	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
-	{0x72, CRL_REG_LEN_08BIT, 0x11, 0x94},
-	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x94},
-	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94},
-	{0x1E, CRL_REG_LEN_08BIT, 0x80, 0x94},
-	{0xDA, CRL_REG_LEN_08BIT, 0x01, 0x94},
-	{0x00, CRL_REG_LEN_08BIT, 0x24, 0x94},
-	{0xC1, CRL_REG_LEN_08BIT, 0x2B, 0x94},
-	{0x31, CRL_REG_LEN_08BIT, 0x80, 0x94},
-	{0xC9, CRL_REG_LEN_08BIT, 0x2D, 0x44},
-	{0x05, CRL_REG_LEN_08BIT, 0x5E, 0xE0},
-	{0x03, CRL_REG_LEN_08BIT, 0x86, 0xE0},
-	{0x00, CRL_REG_LEN_08BIT, 0x00, 0xE0},
-	{0x04, CRL_REG_LEN_08BIT, 0x80, 0xE0},
-	{0x37, CRL_REG_LEN_08BIT, 0x81, 0x44},
 };
 
 static struct crl_register_write_rep adv7481_hdmi_mode_rgb888[] = {
@@ -212,25 +195,11 @@ static struct crl_register_write_rep adv7481_hdmi_mode_rgb888[] = {
 	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED
 					AUD Outputs Enabled */
 	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
+	{0x00, CRL_REG_LEN_08BIT, 0x84, 0x94}, /* Enable 4-lane MIPI */
+	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
+	{0xDB, CRL_REG_LEN_08BIT, 0x10, 0x94}, /* ADI Required Write */
 	 /* Enable 4-lane CSI TXB & Pixel Port */
-	{0x7E, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* ADI Required Write */
-	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
-	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
-	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
-	{0x72, CRL_REG_LEN_08BIT, 0x11, 0x94},
-	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x94},
-	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94},
-	{0x1E, CRL_REG_LEN_08BIT, 0x80, 0x94},
-	{0xDA, CRL_REG_LEN_08BIT, 0x01, 0x94},
-	{0x00, CRL_REG_LEN_08BIT, 0x24, 0x94},
-	{0xC1, CRL_REG_LEN_08BIT, 0x2B, 0x94},
-	{0x31, CRL_REG_LEN_08BIT, 0x80, 0x94},
-	{0xC9, CRL_REG_LEN_08BIT, 0x2D, 0x44},
-	{0x05, CRL_REG_LEN_08BIT, 0x5E, 0xE0},
-	{0x03, CRL_REG_LEN_08BIT, 0x86, 0xE0},
-	{0x00, CRL_REG_LEN_08BIT, 0x00, 0xE0},
-	{0x04, CRL_REG_LEN_08BIT, 0x80, 0xE0},
-	{0x37, CRL_REG_LEN_08BIT, 0x81, 0x44},
+	{0x7E, CRL_REG_LEN_08BIT, 0x1B, 0x94}, /* ADI Required Write */
 };
 
 
@@ -252,6 +221,9 @@ static struct crl_register_write_rep adv7481_hdmi_mode_yuv[] = {
 	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
 	{0xDB, CRL_REG_LEN_08BIT, 0x10, 0x94}, /* ADI Required Write */
 	{0x7E, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* ADI Required Write */
+};
+
+static struct crl_register_write_rep adv7481_hdmi_mode_1080p[] = {
 	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
 	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
 	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
@@ -267,7 +239,67 @@ static struct crl_register_write_rep adv7481_hdmi_mode_yuv[] = {
 	{0x05, CRL_REG_LEN_08BIT, 0x5E, 0xE0},
 	{0x03, CRL_REG_LEN_08BIT, 0x86, 0xE0},
 	{0x00, CRL_REG_LEN_08BIT, 0x00, 0xE0},
-	{0x04, CRL_REG_LEN_08BIT, 0x80, 0xE0},
+	{0x04, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x80, 0xE0, 0xFD},
+	{0x37, CRL_REG_LEN_08BIT, 0x81, 0x44},
+};
+
+static struct crl_register_write_rep adv7481_hdmi_mode_1080i[] = {
+	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
+	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
+	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
+	{0x72, CRL_REG_LEN_08BIT, 0x11, 0x94},
+	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x94},
+	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94},
+	{0x1E, CRL_REG_LEN_08BIT, 0x80, 0x94},
+	{0xDA, CRL_REG_LEN_08BIT, 0x01, 0x94},
+	{0x00, CRL_REG_LEN_08BIT, 0x24, 0x94},
+	{0xC1, CRL_REG_LEN_08BIT, 0x2B, 0x94},
+	{0x31, CRL_REG_LEN_08BIT, 0x80, 0x94},
+	{0xC9, CRL_REG_LEN_08BIT, 0x2D, 0x44},
+	{0x05, CRL_REG_LEN_08BIT, 0x54, 0xE0},
+	{0x03, CRL_REG_LEN_08BIT, 0x86, 0xE0},
+	{0x00, CRL_REG_LEN_08BIT, 0x00, 0xE0},
+	{0x04, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x80, 0xE0, 0xFD},
+	{0x37, CRL_REG_LEN_08BIT, 0x81, 0x44},
+};
+
+static struct crl_register_write_rep adv7481_hdmi_mode_480p[] = {
+	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
+	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
+	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
+	{0x72, CRL_REG_LEN_08BIT, 0x11, 0x94},
+	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x94},
+	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94},
+	{0x1E, CRL_REG_LEN_08BIT, 0x80, 0x94},
+	{0xDA, CRL_REG_LEN_08BIT, 0x01, 0x94},
+	{0x00, CRL_REG_LEN_08BIT, 0x24, 0x94},
+	{0xC1, CRL_REG_LEN_08BIT, 0x2B, 0x94},
+	{0x31, CRL_REG_LEN_08BIT, 0x80, 0x94},
+	{0xC9, CRL_REG_LEN_08BIT, 0x2D, 0x44},
+	{0x05, CRL_REG_LEN_08BIT, 0x4A, 0xE0},
+	{0x03, CRL_REG_LEN_08BIT, 0x86, 0xE0},
+	{0x00, CRL_REG_LEN_08BIT, 0x00, 0xE0},
+	{0x04, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x80, 0xE0, 0xFD},
+	{0x37, CRL_REG_LEN_08BIT, 0x81, 0x44},
+};
+
+static struct crl_register_write_rep adv7481_hdmi_mode_480i[] = {
+	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
+	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
+	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
+	{0x72, CRL_REG_LEN_08BIT, 0x11, 0x94},
+	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x94},
+	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94},
+	{0x1E, CRL_REG_LEN_08BIT, 0x80, 0x94},
+	{0xDA, CRL_REG_LEN_08BIT, 0x01, 0x94},
+	{0x00, CRL_REG_LEN_08BIT, 0x24, 0x94},
+	{0xC1, CRL_REG_LEN_08BIT, 0x2B, 0x94},
+	{0x31, CRL_REG_LEN_08BIT, 0x80, 0x94},
+	{0xC9, CRL_REG_LEN_08BIT, 0x2D, 0x44},
+	{0x05, CRL_REG_LEN_08BIT, 0x40, 0xE0},
+	{0x03, CRL_REG_LEN_08BIT, 0x86, 0xE0},
+	{0x00, CRL_REG_LEN_08BIT, 0x00, 0xE0},
+	{0x04, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x80, 0xE0, 0xFD},
 	{0x37, CRL_REG_LEN_08BIT, 0x81, 0x44},
 };
 
@@ -381,15 +413,15 @@ static struct crl_subdev_rect_rep adv7481_hdmi_720p_rects[] = {
 		.in_rect.height = 1080,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
-		.out_rect.width = 1280,
-		.out_rect.height = 720,
+		.out_rect.width = 1920,
+		.out_rect.height = 1080,
 	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
 		.in_rect.left = 0,
 		.in_rect.top = 0,
-		.in_rect.width = 1280,
-		.in_rect.height = 720,
+		.in_rect.width = 1920,
+		.in_rect.height = 1080,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
 		.out_rect.width = 1280,
@@ -471,6 +503,32 @@ static struct crl_subdev_rect_rep adv7481_hdmi_480p_rects[] = {
 		.out_rect.height = 480,
 	},
 };
+
+static struct crl_subdev_rect_rep adv7481_hdmi_480i_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1920,
+		.in_rect.height = 1080,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1920,
+		.out_rect.height = 1080,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 1920,
+		.in_rect.height = 1080,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 720,
+		.out_rect.height = 240,
+	},
+};
+
 static struct crl_subdev_rect_rep adv7481_hdmi_576p_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
@@ -529,6 +587,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 1920,
 		.height = 1080,
+		.mode_regs_items = ARRAY_SIZE(adv7481_hdmi_mode_1080p),
+		.mode_regs = adv7481_hdmi_mode_1080p,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_720p_rects),
@@ -556,6 +616,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 1920,
 		.height = 540,
+		.mode_regs_items = ARRAY_SIZE(adv7481_hdmi_mode_1080i),
+		.mode_regs = adv7481_hdmi_mode_1080i,
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_480p_rects),
@@ -565,7 +627,22 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 720,
 		.height = 480,
+		.mode_regs_items = ARRAY_SIZE(adv7481_hdmi_mode_480p),
+		.mode_regs = adv7481_hdmi_mode_480p,
 	},
+
+	{
+		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_480i_rects),
+		.sd_rects = adv7481_hdmi_480i_rects,
+		.binn_hor = 2,
+		.binn_vert = 4,
+		.scale_m = 1,
+		.width = 720,
+		.height = 240,
+		.mode_regs_items = ARRAY_SIZE(adv7481_hdmi_mode_480i),
+		.mode_regs = adv7481_hdmi_mode_480i,
+	},
+
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_576p_rects),
 		.sd_rects = adv7481_hdmi_576p_rects,
