@@ -418,6 +418,7 @@ int ia_css_process_set_ext_mem(
 	vied_nci_cell_ID_t	cell_id;
 	ia_css_process_group_state_t	parent_state;
 	ia_css_process_state_t	state;
+	vied_nci_mem_type_ID_t mem_type_id;
 
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_set_ext_mem(): enter:\n");
@@ -445,16 +446,15 @@ int ia_css_process_set_ext_mem(
 		   (parent_state == IA_CSS_PROCESS_GROUP_RUNNING)), EINVAL);
 	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
 
-/* Check that the memory actually exists, "vied_nci_has_cell_mem_of_id()"
- * will return false on error
- */
-	if (((!vied_nci_has_cell_mem_of_id(cell_id, mem_id) &&
-		(vied_nci_mem_get_type(mem_id) != VIED_NCI_PMEM_TYPE_ID)) ||
-		(vied_nci_mem_get_type(mem_id) == VIED_NCI_GMEM_TYPE_ID)) &&
-		(mem_id < VIED_NCI_N_MEM_ID)) {
+	/* Check that the memory actually exists, "vied_nci_has_cell_mem_of_id()"
+	* will return false on error
+	*/
 
-		vied_nci_mem_type_ID_t mem_type_id =
-			vied_nci_mem_get_type(mem_id);
+	mem_type_id = vied_nci_mem_get_type(mem_id);
+	if (((!vied_nci_has_cell_mem_of_id(cell_id, mem_id) &&
+		(mem_type_id != VIED_NCI_PMEM_TYPE_ID))
+		|| vied_nci_mem_is_ext_type(mem_type_id)) &&
+		(mem_id < VIED_NCI_N_MEM_ID)) {
 
 		verifexit(mem_type_id < VIED_NCI_N_DATA_MEM_TYPE_ID, EINVAL);
 		process->ext_mem_id[mem_type_id] = mem_id;

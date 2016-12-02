@@ -16,6 +16,7 @@
 #define __VIED_NCI_PSYS_RESOURCE_MODEL_H
 
 #include "type_support.h"
+#include "storage_class.h"
 
 /* The amount of padding bytes needed to make
  * ia_css_process_s structure 64 bit aligned
@@ -264,5 +265,11 @@ extern const vied_nci_mem_ID_t
 extern const uint16_t vied_nci_mem_size[VIED_NCI_N_MEM_ID];
 extern const uint16_t vied_nci_mem_word_size[VIED_NCI_N_DATA_MEM_TYPE_ID];
 extern const uint16_t vied_nci_dev_chn_size[VIED_NCI_N_DEV_CHN_ID];
+
+STORAGE_CLASS_INLINE
+uint32_t vied_nci_mem_is_ext_type(const vied_nci_mem_type_ID_t mem_type_id)
+{
+	return((mem_type_id == VIED_NCI_GMEM_TYPE_ID));
+}
 
 #endif /* __VIED_NCI_PSYS_RESOURCE_MODEL_H */
