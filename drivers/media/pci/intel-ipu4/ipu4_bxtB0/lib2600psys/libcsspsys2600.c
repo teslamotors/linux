@@ -27,6 +27,121 @@
 #include "../../intel-ipu4-wrapper.h"
 #include "../../intel-ipu4-mmu.h"
 
+#include <ia_css_psys_process_group_cmd_impl.h>
+#include <ia_css_psys_process_private_types.h>
+#include <ia_css_psys_init.h>
+#include <ia_css_psys_transport.h>
+#include <ia_css_terminal_base_types.h>
+#include <ia_css_terminal_types.h>
+#include <ia_css_program_group_param_types.h>
+#include <ia_css_psys_terminal_private_types.h>
+#include <ia_css_program_group_data.h>
+
+#define BASIC_ABI_CHECK
+
+#ifndef BASIC_ABI_CHECK
+#define ABI_CHECK(a, b, field)					\
+	{								\
+	if (offsetof(typeof(*a), field) != offsetof(typeof(*b), field))	\
+		pr_err("intel_ipu4 psys ABI mismatch %s\n",		\
+		       __stringify(field));		    \
+	}
+#else
+#define ABI_CHECK(a, b, field) { }
+#endif
+
+#define SIZE_OF_CHECK(a, b) \
+	{		    \
+	if (sizeof(*a) != sizeof(*b))\
+		pr_err("intel_ipu4 psys ABI size of mismatch %s\n",	\
+		       __stringify(a));					\
+	}								\
+
+static void abi_sanity_checker(void)
+{
+	struct ipu_fw_psys_process_group *ipu_fw_psys_pg;
+	struct ia_css_process_group_s *ia_css_pg;
+
+	struct ipu_fw_psys_process *ipu_fw_psys_ps;
+	struct ia_css_process_s *ia_css_ps;
+
+	struct ipu_fw_psys_srv_init *ipu_fw_psys_init;
+	struct ia_css_psys_server_init *ia_css_psys_init;
+
+	struct ipu_fw_psys_cmd *ipu_fw_psys_cmd;
+	struct ia_css_psys_cmd_s *ia_css_psys_cmd;
+
+	struct ipu_fw_psys_event *ipu_fw_psys_event;
+	struct ia_css_psys_event_s *ia_css_psys_event;
+
+	struct ipu_fw_psys_terminal *ipu_fw_psys_terminal;
+	struct ia_css_terminal_s *ia_css_terminal;
+
+	struct ipu_fw_psys_param_terminal *ipu_fw_psys_param_terminal;
+	struct ia_css_param_terminal_s *ia_css_param_terminal;
+
+	struct ipu_fw_psys_param_payload *ipu_fw_psys_param_payload;
+	struct ia_css_param_payload_s *ia_css_param_payload;
+
+	struct ipu_fw_psys_data_terminal *ipu_fw_psys_data_terminal;
+	struct ia_css_data_terminal_s *ia_css_data_terminal;
+
+	struct ipu_fw_psys_frame *ipu_fw_psys_frame;
+	struct ia_css_frame_s *ia_css_frame;
+
+	struct ipu_fw_psys_frame_descriptor *ipu_fw_psys_frame_descriptor;
+	struct ia_css_frame_descriptor_s *ia_css_frame_descriptor;
+
+	struct ipu_fw_psys_stream *ipu_fw_psys_stream;
+	struct ia_css_stream_s *ia_css_stream;
+
+	SIZE_OF_CHECK(ipu_fw_psys_pg, ia_css_pg);
+	ABI_CHECK(ipu_fw_psys_pg, ia_css_pg, ID);
+	ABI_CHECK(ipu_fw_psys_pg, ia_css_pg, process_count);
+	ABI_CHECK(ipu_fw_psys_pg, ia_css_pg, processes_offset);
+
+	SIZE_OF_CHECK(ipu_fw_psys_ps, ia_css_ps);
+	ABI_CHECK(ipu_fw_psys_ps, ia_css_ps, ID);
+	ABI_CHECK(ipu_fw_psys_ps, ia_css_ps, dev_chn_offset);
+	ABI_CHECK(ipu_fw_psys_ps, ia_css_ps, cell_id);
+
+	SIZE_OF_CHECK(ipu_fw_psys_init, ia_css_psys_init);
+	ABI_CHECK(ipu_fw_psys_init, ia_css_psys_init, icache_prefetch_sp);
+	ABI_CHECK(ipu_fw_psys_init, ia_css_psys_init, icache_prefetch_isp);
+
+	SIZE_OF_CHECK(ipu_fw_psys_cmd, ia_css_psys_cmd);
+	ABI_CHECK(ipu_fw_psys_cmd, ia_css_psys_cmd, command);
+	ABI_CHECK(ipu_fw_psys_cmd, ia_css_psys_cmd, msg);
+	ABI_CHECK(ipu_fw_psys_cmd, ia_css_psys_cmd, process_group);
+
+	SIZE_OF_CHECK(ipu_fw_psys_event, ia_css_psys_event);
+	ABI_CHECK(ipu_fw_psys_event, ia_css_psys_event, status);
+	ABI_CHECK(ipu_fw_psys_event, ia_css_psys_event, token);
+
+	SIZE_OF_CHECK(ipu_fw_psys_terminal, ia_css_terminal);
+	ABI_CHECK(ipu_fw_psys_terminal, ia_css_terminal, terminal_type);
+
+	SIZE_OF_CHECK(ipu_fw_psys_param_terminal, ia_css_param_terminal);
+	ABI_CHECK(ipu_fw_psys_param_terminal, ia_css_param_terminal,
+		  param_payload);
+
+	SIZE_OF_CHECK(ipu_fw_psys_param_payload, ia_css_param_payload);
+	ABI_CHECK(ipu_fw_psys_param_payload, ia_css_param_payload, buffer);
+
+	SIZE_OF_CHECK(ipu_fw_psys_data_terminal, ia_css_data_terminal);
+	ABI_CHECK(ipu_fw_psys_data_terminal, ia_css_data_terminal, frame);
+	ABI_CHECK(ipu_fw_psys_data_terminal, ia_css_data_terminal,
+		  connection_type);
+
+	SIZE_OF_CHECK(ipu_fw_psys_frame, ia_css_frame);
+	ABI_CHECK(ipu_fw_psys_frame, ia_css_frame, data_bytes);
+	ABI_CHECK(ipu_fw_psys_frame, ia_css_frame, data);
+	ABI_CHECK(ipu_fw_psys_frame, ia_css_frame, buffer_state);
+
+	SIZE_OF_CHECK(ipu_fw_psys_frame_descriptor, ia_css_frame_descriptor);
+	SIZE_OF_CHECK(ipu_fw_psys_stream, ia_css_stream);
+}
+
 /*Implement SMIF/Vied subsystem access here */
 
 unsigned long long _hrt_master_port_subsystem_base_address;
@@ -351,6 +466,9 @@ static int __init libcsspsys2600_init(void)
 		ipu_device_cell_memory_address(
 			SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM);
 	intel_ipu4_psys_abi_init_ext(&abi);
+
+	abi_sanity_checker();
+
 	return 0;
 
 out_syscom_config_free:
