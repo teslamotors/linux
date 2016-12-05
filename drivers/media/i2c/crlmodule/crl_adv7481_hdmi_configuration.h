@@ -21,7 +21,7 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct);
 
 static struct crl_register_write_rep adv7481_hdmi_onetime_init_regset[] = {
 	{0xFF, CRL_REG_LEN_08BIT, 0xFF, 0xE0},
-	{0x00, CRL_REG_LEN_DELAY, 0x05, 0x00},
+	{0x00, CRL_REG_LEN_DELAY, 0x14, 0x00},
 	{0x01, CRL_REG_LEN_08BIT, 0x76, 0xE0}, /* ADI Required Write */
 	{0x05, CRL_REG_LEN_08BIT, 0x96, 0xE0}, /* Setting Vid_Std to
 					1600x1200(UXGA)@60 */
