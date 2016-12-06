@@ -35,6 +35,7 @@
 /* D0I3C Register fields */
 #define AZX_REG_VS_D0I3C_CIP      0x1 /* Command in progress */
 #define AZX_REG_VS_D0I3C_I3       0x4 /* D0i3 enable */
+#define AZX_EM2_DUM_MASK		(1 << 23)
 
 struct skl_dsp_resource {
 	u32 max_mcps;
