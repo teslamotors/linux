@@ -8929,13 +8929,10 @@ static int __maybe_unused igb_resume(struct device *dev)
 
 static int __maybe_unused igb_runtime_idle(struct device *dev)
 {
-	struct pci_dev *pdev = to_pci_dev(dev);
-	struct net_device *netdev = pci_get_drvdata(pdev);
-	struct igb_adapter *adapter = netdev_priv(netdev);
-
-	if (!igb_has_link(adapter))
-		pm_schedule_suspend(dev, MSEC_PER_SEC * 5);
-
+	/* suspending even when cable is connected for rtd3
+	 * support
+	 */
+	pm_request_autosuspend(dev);
 	return -EBUSY;
 }
 
