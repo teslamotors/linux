@@ -281,7 +281,7 @@ struct ipu_fw_psys_process {
 /* ia_css_psys_init.h */
 struct ipu_fw_psys_srv_init {
 	void *host_ddr_pkg_dir;
-	dma_addr_t ddr_pkg_dir_address;
+	u32 ddr_pkg_dir_address;
 	u32 pkg_dir_size;
 
 	u32 icache_prefetch_sp;
@@ -303,7 +303,7 @@ struct __packed ipu_fw_psys_event {
 	u64 token;
 };
 
-/* ia_css_program_group_param_types.h */
+/* ia_css_terminal_base_types.h */
 struct ipu_fw_psys_terminal {
 	u32 terminal_type;
 	s16 parent_offset;
@@ -320,6 +320,7 @@ struct ipu_fw_psys_param_payload {
 	u8 padding[IPU_FW_PSYS_N_PADDING_UINT8_IN_PARAM_PAYLOAD_STRUCT];
 };
 
+/* ia_css_program_group_param_types.h */
 struct ipu_fw_psys_param_terminal {
 	struct ipu_fw_psys_terminal base;
 	struct ipu_fw_psys_param_payload param_payload;
@@ -354,7 +355,7 @@ struct ipu_fw_psys_stream {
 	u64 dummy;
 };
 
-/* ia_css_psys_terminal.c */
+/* ia_css_psys_terminal_private_types.h */
 struct ipu_fw_psys_data_terminal {
 	struct ipu_fw_psys_terminal base;
 	struct ipu_fw_psys_frame_descriptor frame_descriptor;
