@@ -300,9 +300,9 @@ extern void ia_css_program_group_manifest_init(
 	const uint16_t *sliced_out_param_section_count,
 	const uint16_t kernel_fragment_seq_count);
 
-#ifdef _IA_CSS_PSYS_STATIC_INLINE_
+#ifdef __IA_CSS_PSYS_STATIC_INLINE__
 #include "ia_css_psys_program_group_manifest_impl.h"
-#endif /* _IA_CSS_PSYS_STATIC_INLINE_ */
+#endif /* __IA_CSS_PSYS_STATIC_INLINE__ */
 
 #endif /* __IA_CSS_PSYS_PROGRAM_GROUP_MANIFEST_H */
 

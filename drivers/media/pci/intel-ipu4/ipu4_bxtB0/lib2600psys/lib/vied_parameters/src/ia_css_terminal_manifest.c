@@ -12,9 +12,9 @@
 * more details.
 */
 
-#ifdef _INLINE_PARAMETERS_
+#ifdef __INLINE_PARAMETERS__
 #include "storage_class.h"
 STORAGE_CLASS_INLINE int __ia_css_param_avoid_warning_on_empty_file(void) { return 0; }
-#else /* _INLINE_PARAMETERS_ */
+#else /* __INLINE_PARAMETERS__ */
 #include "ia_css_terminal_manifest_impl.h"
-#endif /* _INLINE_PARAMETERS_ */
+#endif /* __INLINE_PARAMETERS__ */

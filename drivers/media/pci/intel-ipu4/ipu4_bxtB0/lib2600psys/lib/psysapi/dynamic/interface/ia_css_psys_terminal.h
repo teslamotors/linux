@@ -181,8 +181,8 @@ bool ia_css_is_terminal_valid(
 	const ia_css_terminal_t		 *terminal,
 	const ia_css_terminal_manifest_t *terminal_manifest);
 
-#ifdef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#ifdef __IA_CSS_PSYS_DYNAMIC_INLINE__
 #include "ia_css_psys_terminal_impl.h"
-#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
+#endif /* __IA_CSS_PSYS_DYNAMIC_INLINE__ */
 
 #endif /* __IA_CSS_PSYS_TERMINAL_H */

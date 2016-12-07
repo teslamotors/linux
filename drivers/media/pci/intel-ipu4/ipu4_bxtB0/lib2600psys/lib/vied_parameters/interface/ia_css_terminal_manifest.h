@@ -127,8 +127,8 @@ ia_css_program_terminal_manifest_get_kernel_frgmnt_seq_info_desc(
 	const unsigned int info_index
 );
 
-#ifdef _INLINE_PARAMETERS_
+#ifdef __INLINE_PARAMETERS__
 #include "ia_css_terminal_manifest_impl.h"
-#endif /* _INLINE_PARAMETERS_ */
+#endif /* __INLINE_PARAMETERS__ */
 
 #endif /* __IA_CSS_TERMINAL_MANIFEST_H */

@@ -157,8 +157,8 @@ vied_nci_mem_type_ID_t vied_nci_cell_type_get_mem_type(
 	const vied_nci_cell_type_ID_t	cell_type_id,
 	const uint16_t					mem_index);
 
-#ifdef _IA_CSS_PSYS_SIM_INLINE_
+#ifdef __IA_CSS_PSYS_SIM_INLINE__
 #include "psys_system_global_impl.h"
-#endif /* _IA_CSS_PSYS_SIM_INLINE_ */
+#endif /* __IA_CSS_PSYS_SIM_INLINE__ */
 
 #endif /* __VIED_NCI_PSYS_SYSTEM_GLOBAL_H */

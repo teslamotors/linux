@@ -90,7 +90,7 @@ void *ia_css_pkg_dir_get_entry_address(
 	uint32_t index
 );
 
-#ifdef _IA_CSS_PKG_DIR_INLINE_
+#ifdef __IA_CSS_PKG_DIR_INLINE__
 
 #include "ia_css_pkg_dir_impl.h"
 

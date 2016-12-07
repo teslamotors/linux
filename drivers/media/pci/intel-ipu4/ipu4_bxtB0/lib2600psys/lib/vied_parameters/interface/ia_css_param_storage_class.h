@@ -17,7 +17,7 @@
 
 #include "storage_class.h"
 
-#ifndef _INLINE_PARAMETERS_
+#ifndef __INLINE_PARAMETERS__
 #define IA_CSS_PARAMETERS_STORAGE_CLASS_H STORAGE_CLASS_EXTERN
 #define IA_CSS_PARAMETERS_STORAGE_CLASS_C
 #else

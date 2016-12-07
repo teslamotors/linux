@@ -19,9 +19,9 @@
  * Functions to possibly inline
  */
 
-#ifndef _IA_CSS_PSYS_STATIC_INLINE_
+#ifndef __IA_CSS_PSYS_STATIC_INLINE__
 #include "ia_css_psys_program_group_manifest_impl.h"
-#endif /* _IA_CSS_PSYS_STATIC_INLINE_ */
+#endif /* __IA_CSS_PSYS_STATIC_INLINE__ */
 
 /*
  * Functions not to inline

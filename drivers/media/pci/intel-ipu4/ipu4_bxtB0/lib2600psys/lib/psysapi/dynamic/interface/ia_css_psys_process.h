@@ -293,8 +293,8 @@ bool ia_css_is_process_valid(
 	const ia_css_process_t *process,
 	const ia_css_program_manifest_t *p_manifest);
 
-#ifdef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#ifdef __IA_CSS_PSYS_DYNAMIC_INLINE__
 #include "ia_css_psys_process_impl.h"
-#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
+#endif /* __IA_CSS_PSYS_DYNAMIC_INLINE__ */
 
 #endif /* __IA_CSS_PSYS_PROCESS_H */

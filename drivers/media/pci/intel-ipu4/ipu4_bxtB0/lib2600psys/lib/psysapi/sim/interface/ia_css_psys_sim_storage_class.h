@@ -17,7 +17,7 @@
 
 #include "storage_class.h"
 
-#ifndef _IA_CSS_PSYS_SIM_INLINE_
+#ifndef __IA_CSS_PSYS_SIM_INLINE__
 #define IA_CSS_PSYS_SIM_STORAGE_CLASS_H STORAGE_CLASS_EXTERN
 #define IA_CSS_PSYS_SIM_STORAGE_CLASS_C
 #else

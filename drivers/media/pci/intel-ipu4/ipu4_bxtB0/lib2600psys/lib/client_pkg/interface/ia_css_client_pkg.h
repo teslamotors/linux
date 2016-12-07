@@ -52,7 +52,7 @@ int ia_css_client_pkg_get_prog_desc_entry_offset_size(
 	uint32_t *offset,
 	uint32_t *size);
 
-#ifdef _INLINE_CLIENT_PKG_
+#ifdef __INLINE_CLIENT_PKG__
 #include "ia_css_client_pkg_impl.h"
 #endif
 

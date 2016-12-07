@@ -20,9 +20,9 @@
  * Functions to possibly inline
  */
 
-#ifndef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#ifndef __IA_CSS_PSYS_DYNAMIC_INLINE__
 #include "ia_css_psys_terminal_impl.h"
-#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
+#endif /* __IA_CSS_PSYS_DYNAMIC_INLINE__ */
 
 STORAGE_CLASS_INLINE void __terminal_dummy_check_alignment(void)
 {

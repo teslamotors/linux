@@ -18,7 +18,7 @@
 
 #include "storage_class.h"
 
-#ifndef _IA_CSS_PKG_DIR_INLINE_
+#ifndef __IA_CSS_PKG_DIR_INLINE__
 #define IA_CSS_PKG_DIR_STORAGE_CLASS_H STORAGE_CLASS_EXTERN
 #define IA_CSS_PKG_DIR_STORAGE_CLASS_C
 #else

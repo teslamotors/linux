@@ -19,9 +19,9 @@
  * Functions to possibly inline
  */
 
-#ifndef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#ifndef __IA_CSS_PSYS_DYNAMIC_INLINE__
 #include "ia_css_psys_process_group_impl.h"
-#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
+#endif /* __IA_CSS_PSYS_DYNAMIC_INLINE__ */
 
 /*
  * Functions not to inline

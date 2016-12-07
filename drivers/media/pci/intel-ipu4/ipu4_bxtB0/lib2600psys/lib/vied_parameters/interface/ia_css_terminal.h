@@ -192,8 +192,8 @@ uint16_t *ia_css_program_terminal_get_line_count(
 	const unsigned int set_count
 );
 
-#ifdef _INLINE_PARAMETERS_
+#ifdef __INLINE_PARAMETERS__
 #include "ia_css_terminal_impl.h"
-#endif /* _INLINE_PARAMETERS_ */
+#endif /* __INLINE_PARAMETERS__ */
 
 #endif /* __IA_CSS_TERMINAL_H */

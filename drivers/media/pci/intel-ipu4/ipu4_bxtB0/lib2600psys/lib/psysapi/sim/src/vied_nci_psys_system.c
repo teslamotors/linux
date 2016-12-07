@@ -18,9 +18,9 @@
  * Functions to possibly inline
  */
 
-#ifdef _IA_CSS_PSYS_SIM_INLINE_
+#ifdef __IA_CSS_PSYS_SIM_INLINE__
 STORAGE_CLASS_INLINE int
 __ia_css_psys_system_global_avoid_warning_on_empty_file(void) { return 0; }
-#else /* _IA_CSS_PSYS_SIM_INLINE_ */
+#else /* __IA_CSS_PSYS_SIM_INLINE__ */
 #include "psys_system_global_impl.h"
-#endif /* _IA_CSS_PSYS_SIM_INLINE_ */
+#endif /* __IA_CSS_PSYS_SIM_INLINE__ */

@@ -12,7 +12,7 @@
 * more details.
 */
 
-#ifdef _IA_CSS_PKG_DIR_INLINE_
+#ifdef __IA_CSS_PKG_DIR_INLINE__
 
 #include "storage_class.h"
 

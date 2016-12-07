@@ -253,8 +253,8 @@ int ia_css_process_group_set_ipu_vaddress(
 	ia_css_process_group_t			*process_group,
 	vied_vaddress_t			ipu_vaddress);
 
-#ifdef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#ifdef __IA_CSS_PSYS_DYNAMIC_INLINE__
 #include "ia_css_psys_process_group_impl.h"
-#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
+#endif /* __IA_CSS_PSYS_DYNAMIC_INLINE__ */
 
 #endif /* __IA_CSS_PSYS_PROCESS_GROUP_H */

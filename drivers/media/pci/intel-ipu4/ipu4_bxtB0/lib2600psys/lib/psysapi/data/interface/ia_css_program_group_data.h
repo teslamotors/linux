@@ -382,8 +382,8 @@ size_t ia_css_sizeof_frame_descriptor(
 extern size_t ia_css_sizeof_kernel_param_descriptor(
 	const uint16_t section_count);
 
-#ifdef _IA_CSS_PSYS_DATA_INLINE_
+#ifdef __IA_CSS_PSYS_DATA_INLINE__
 #include "ia_css_program_group_data_impl.h"
-#endif /* _IA_CSS_PSYS_DATA_INLINE_ */
+#endif /* __IA_CSS_PSYS_DATA_INLINE__ */
 
 #endif /* __IA_CSS_PROGRAM_GROUP_DATA_H */
