@@ -1068,6 +1068,10 @@ static struct crl_register_write_rep imx230_data_fmt_width8[] = {
 	{ 0x0112, CRL_REG_LEN_16BIT, 0x0808 }
 };
 
+static struct crl_register_write_rep imx230_data_fmt_width14[] = {
+	{ 0x0112, CRL_REG_LEN_16BIT, 0x0e0e }
+};
+
 static struct crl_arithmetic_ops imx230_vflip_ops[] = {
 	{
 		.op = CRL_BITWISE_LSHIFT,
@@ -1810,6 +1814,34 @@ static struct crl_csi_data_fmt imx230_crl_csi_data_fmt[] = {
 		.regs_items = 1,
 		.bits_per_pixel = 8,
 		.regs = imx230_data_fmt_width8,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SGRBG14_1X14,
+		.pixel_order = CRL_PIXEL_ORDER_GRBG,
+		.regs_items = 1,
+		.bits_per_pixel = 14,
+		.regs = imx230_data_fmt_width14,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SRGGB14_1X14,
+		.pixel_order = CRL_PIXEL_ORDER_RGGB,
+		.regs_items = 1,
+		.bits_per_pixel = 14,
+		.regs = imx230_data_fmt_width14,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SBGGR14_1X14,
+		.pixel_order = CRL_PIXEL_ORDER_BGGR,
+		.regs_items = 1,
+		.bits_per_pixel = 14,
+		.regs = imx230_data_fmt_width14,
+	},
+	{
+		.code = MEDIA_BUS_FMT_SGBRG14_1X14,
+		.pixel_order = CRL_PIXEL_ORDER_GBRG,
+		.regs_items = 1,
+		.bits_per_pixel = 14,
+		.regs = imx230_data_fmt_width14,
 	},
 };
 
