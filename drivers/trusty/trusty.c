@@ -401,7 +401,7 @@ static void trusty_init_version(struct trusty_state *s, struct device *dev)
 	}
 	s->version_str[i] = '\0';
 
-	dev_info(dev, "trusty version: %s\n", s->version_str);
+	dev_info(dev, "trusty version: Built: %s\n", s->version_str);
 
 	ret = device_create_file(dev, &dev_attr_trusty_version);
 	if (ret)
