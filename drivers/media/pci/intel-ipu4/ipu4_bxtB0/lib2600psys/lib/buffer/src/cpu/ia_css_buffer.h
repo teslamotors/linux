@@ -55,4 +55,4 @@ ia_css_buffer_free(
 	vied_memory_t mid,
 	ia_css_buffer_t b);
 
-#endif /*__IA_CSS_BUFFER_H */
+#endif /* __IA_CSS_BUFFER_H */

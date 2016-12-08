@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_XMEM_HOST_H_
-#define _IA_CSS_XMEM_HOST_H_
+#ifndef __IA_CSS_XMEM_HOST_H
+#define __IA_CSS_XMEM_HOST_H
 
 #include "ia_css_xmem.h"
 #include <vied/shared_memory_access.h>
@@ -81,4 +81,4 @@ ia_css_xmem_store(unsigned int mmid, ia_css_xmem_address_t address,
 	shared_memory_store(mmid, address, data, bytes);
 }
 
-#endif /* _IA_CSS_XMEM_HOST_H_ */
+#endif /* __IA_CSS_XMEM_HOST_H */

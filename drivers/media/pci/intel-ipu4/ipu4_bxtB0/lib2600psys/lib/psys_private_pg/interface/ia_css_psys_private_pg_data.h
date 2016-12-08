@@ -23,7 +23,7 @@
 #define PRIV_CONF_INVALID	0xFF
 
 struct ia_css_psys_private_pg_data {
-	vied_nci_acb_route_t acb_route[IPU_DEVICE_ACB_NUM_ACB];
+	nci_acb_route_t acb_route[IPU_DEVICE_ACB_NUM_ACB];
 	uint8_t psa_mux_conf[IPU_DEVICE_GP_PSA_MUX_NUM_MUX];
 	uint8_t isa_mux_conf[IPU_DEVICE_GP_ISA_STATIC_MUX_NUM_MUX];
 };

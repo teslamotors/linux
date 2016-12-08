@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_CMEM_HOST_H_
-#define _IA_CSS_CMEM_HOST_H_
+#ifndef __IA_CSS_CMEM_HOST_H
+#define __IA_CSS_CMEM_HOST_H
 
 /* This file is an inline implementation for the interface ia_css_cmem.h
  * and should only be included there. */
@@ -107,4 +107,4 @@ ia_css_cmem_get_cmem_addr_from_dmem(unsigned int base_addr, void *p)
 	return (ia_css_cmem_address_t)(uintptr_t)p;
 }
 
-#endif
+#endif /* __IA_CSS_CMEM_HOST_H */

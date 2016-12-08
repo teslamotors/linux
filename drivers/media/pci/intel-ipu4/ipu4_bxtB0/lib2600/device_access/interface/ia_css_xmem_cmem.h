@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_XMEM_CMEM_H_
-#define _IA_CSS_XMEM_CMEM_H_
+#ifndef __IA_CSS_XMEM_CMEM_H
+#define __IA_CSS_XMEM_CMEM_H
 
 #include "ia_css_cmem.h"
 #include "ia_css_xmem.h"
@@ -32,4 +32,4 @@ ia_css_xmem_to_cmem_copy(
 /* include inline implementation */
 #include "ia_css_xmem_cmem_impl.h"
 
-#endif /* _IA_CSS_XMEM_CMEM_H_ */
+#endif /* __IA_CSS_XMEM_CMEM_H */

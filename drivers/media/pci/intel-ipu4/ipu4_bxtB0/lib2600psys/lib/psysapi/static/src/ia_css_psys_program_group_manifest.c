@@ -965,12 +965,12 @@ int ia_css_program_group_manifest_print(
 	for (i = 0; i < IPU_DEVICE_ACB_NUM_ACB; i++) {
 
 		if (priv_data->acb_route[i].in_select !=
-			VIED_NCI_ACB_PORT_INVALID) {
+			NCI_ACB_PORT_INVALID) {
 
 			assert(priv_data->acb_route[i].in_select !=
-				VIED_NCI_ACB_PORT_INVALID &&
+				NCI_ACB_PORT_INVALID &&
 				priv_data->acb_route[i].out_select !=
-				VIED_NCI_ACB_PORT_INVALID);
+				NCI_ACB_PORT_INVALID);
 
 			IA_CSS_TRACE_3(PSYSAPI_STATIC, INFO,
 				"Route Cell id %d In %d Out %d\n", i,

@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_CMEM_H_
-#define _IA_CSS_CMEM_H_
+#ifndef __IA_CSS_CMEM_H
+#define __IA_CSS_CMEM_H
 
 #include "type_support.h"
 #include "storage_class.h"
@@ -55,4 +55,4 @@ ia_css_cmem_get_cmem_addr_from_dmem(unsigned int base_addr, void *p);
 #include "ia_css_cmem_host.h"
 #endif
 
-#endif
+#endif /* __IA_CSS_CMEM_H */

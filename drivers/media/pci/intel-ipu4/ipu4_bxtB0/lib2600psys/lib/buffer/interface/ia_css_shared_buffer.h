@@ -29,4 +29,4 @@ typedef struct ia_css_buffer_s *ia_css_shared_buffer;
 typedef void *ia_css_shared_buffer_cpu_address;
 typedef ia_css_buffer_address	ia_css_shared_buffer_css_address;
 
-#endif /*__IA_CSS_SHARED_BUFFER_H*/
+#endif /* __IA_CSS_SHARED_BUFFER_H */

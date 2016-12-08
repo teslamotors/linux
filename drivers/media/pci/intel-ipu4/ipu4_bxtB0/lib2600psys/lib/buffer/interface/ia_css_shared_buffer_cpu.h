@@ -48,4 +48,4 @@ ia_css_shared_buffer_css_update(vied_memory_t mid, ia_css_shared_buffer b);
 ia_css_shared_buffer
 ia_css_shared_buffer_cpu_update(vied_memory_t mid, ia_css_shared_buffer b);
 
-#endif /*__IA_CSS_SHARED_BUFFER_CPU_H */
+#endif /* __IA_CSS_SHARED_BUFFER_CPU_H */

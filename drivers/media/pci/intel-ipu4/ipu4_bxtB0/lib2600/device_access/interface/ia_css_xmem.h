@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_XMEM_H_
-#define _IA_CSS_XMEM_H_
+#ifndef __IA_CSS_XMEM_H
+#define __IA_CSS_XMEM_H
 
 #include "type_support.h"
 #include "storage_class.h"
@@ -62,4 +62,4 @@ ia_css_xmem_store(unsigned int mmid, ia_css_xmem_address_t address,
 #include "ia_css_xmem_host.h"
 #endif
 
-#endif /* _IA_CSS_XMEM_H_ */
+#endif /* __IA_CSS_XMEM_H */
