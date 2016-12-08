@@ -29,6 +29,9 @@
 #include <linux/trusty/sm_err.h>
 #include <linux/trusty/trusty.h>
 
+#define IRQ_VECTOR_OFFSET 0x30
+#define IRQ_FOR_LK_TIMER 1
+
 struct trusty_irq {
 	struct trusty_irq_state *is;
 	struct hlist_node node;
@@ -223,7 +226,9 @@ irqreturn_t trusty_irq_handler(int irq, void *data)
 		__func__, irq, trusty_irq->irq, smp_processor_id(),
 		trusty_irq->enable);
 
-	set_pending_intr_to_lk(irq+0x30);
+	WARN_ON(irq != IRQ_FOR_LK_TIMER);
+
+	set_pending_intr_to_lk(irq+IRQ_VECTOR_OFFSET);
 
 	if (trusty_irq->percpu) {
 		disable_percpu_irq(irq);
@@ -528,10 +533,13 @@ static int trusty_irq_init_one(struct trusty_irq_state *is,
 	if (irq < 0)
 		return irq;
 	dev_info(is->dev, "irq from lk = %d\n", irq);
+
+	WARN_ON(irq-IRQ_VECTOR_OFFSET != IRQ_FOR_LK_TIMER);
+
 	if (per_cpu)
-		ret = trusty_irq_init_per_cpu_irq(is, irq-0x30);
+		ret = trusty_irq_init_per_cpu_irq(is, irq-IRQ_VECTOR_OFFSET);
 	else
-		ret = trusty_irq_init_normal_irq(is, irq-0x30);
+		ret = trusty_irq_init_normal_irq(is, irq-IRQ_VECTOR_OFFSET);
 
 	if (ret) {
 		dev_warn(is->dev,
