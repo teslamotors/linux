@@ -1173,31 +1173,121 @@ static struct crl_dynamic_register_access imx230_llp_regs[] = {
 	},
 };
 
-/*
- * HDR mode on -> ctrl value 1.
- * 0x0220 to 0x01 and 0x3000 to 0x00
- * HDR mode off -> ctrl value 0
- * 0x0220 to 0x00 and 0x3000 to 0x74
- *
- * NOTE! 0x3000 to 0x74 is based on the existing mode details. If any mode need
- * any another value than 0x74, then a separate control would be needed.
- *
- * TODO! Replace this when the dpendency register block is enabled
- */
-static struct crl_arithmetic_ops imx230_hdr_mode_ops[] = {
-	{ CRL_BITWISE_COMPLEMENT, { 0, 0 } },
-	{ CRL_BITWISE_AND, { 0, 1 } },
-	{ CRL_MULTIPLY, { 0, 0x74 } },
-};
-
-static struct crl_dynamic_register_access imx230_hdr_mode_regs[] = {
-	{ 0x0220, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
-	{ 0x3000, CRL_REG_LEN_08BIT, 0xff, ARRAY_SIZE(imx230_hdr_mode_ops),
-					   imx230_hdr_mode_ops, 0 },
-};
-
 static struct crl_dynamic_register_access imx230_hdr_et_ratio_regs[] = {
 	{ 0x0222, CRL_REG_LEN_08BIT, 0xff, 0, NULL, 0 },
+};
+
+static struct crl_register_write_rep imx230_hdr_mode_off[] = {
+	{ 0x0220, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x3000, CRL_REG_LEN_08BIT, 0x74 },
+	{ 0x3007, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x31e0, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x31e4, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x30b4, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b5, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b6, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b7, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b8, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b9, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30ba, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30bb, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30bc, CRL_REG_LEN_08BIT, 0x00 },
+};
+
+/* HDR Type3 ZIGZAG */
+static struct crl_register_write_rep imx230_hdr_mode_type3[] = {
+	/*
+	 * 0x220 HDR control register
+	 * bit 0: 0:HDR Disable 1:HDR enable *1-> below
+	 * bit 1: 0:Combined gain 1:separate gain *1-> below
+	 * bit 5: 0:Use ET Ratio 1:Short exposure by direct control *0-> below
+	 */
+	{ 0x0220, CRL_REG_LEN_08BIT, 0x03 },
+	/* Enable ATR 0x3000 bit 0 */
+	{ 0x3000, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x3007, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x31e0, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x31e4, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x30b4, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x30b5, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x30b6, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x30b7, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x30b8, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x30b9, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x30ba, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x30bb, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x30bc, CRL_REG_LEN_08BIT, 0x01 },
+};
+
+/* HDR Type2 */
+static struct crl_register_write_rep imx230_hdr_mode_type2[] = {
+	/*
+	 * 0x220 HDR control register
+	 * bit 0: 0:HDR Disable 1:HDR enable *1-> below
+	 * bit 1: 0:Combined gain 1:separate gain *1-> below
+	 * bit 5: 0:Use ET Ratio 1:Short exposure by direct control *0-> below
+	 */
+	{ 0x0220, CRL_REG_LEN_08BIT, 0x03 },
+	/* Disable ATR for Type 2 0x3000 bit 0 */
+	{ 0x3000, CRL_REG_LEN_08BIT, 0x74 },
+	{ 0x3007, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x31e0, CRL_REG_LEN_08BIT, 0x3f },
+	{ 0x31e4, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x30b4, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b5, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b6, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b7, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b8, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b9, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30ba, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30bb, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30bc, CRL_REG_LEN_08BIT, 0x00 },
+};
+
+/* HDR Type1 */
+static struct crl_register_write_rep imx230_hdr_mode_type1[] = {
+	/*
+	 * 0x220 HDR control register
+	 * bit 0: 0:HDR Disable 1:HDR enable *1-> below
+	 * bit 1: 0:Combined gain 1:separate gain *1-> below
+	 * bit 5: 0:Use ET Ratio 1:Short exposure by direct control *0-> below
+	 */
+	{ 0x0220, CRL_REG_LEN_08BIT, 0x03 },
+	/* ATR is enabled 0x3000 bit 0 */
+	{ 0x3000, CRL_REG_LEN_08BIT, 0x75 },
+	{ 0x3007, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x31e0, CRL_REG_LEN_08BIT, 0x3f },
+	{ 0x31e4, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x30b4, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b5, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b6, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b7, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b8, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30b9, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30ba, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30bb, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x30bc, CRL_REG_LEN_08BIT, 0x00 },
+};
+
+/*
+ * IMX230 HDR types
+ * Type 1 10bit output after HDR and ATR blocks
+ * Type 2 14bit RAW after HDR block
+ * Type 3 10bit ZIGZAG pattern
+ */
+static struct crl_dep_reg_list imx230_hdr_types_regs[] = {
+	{ CRL_DEP_CTRL_CONDITION_EQUAL,
+	  { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 0 },
+	  ARRAY_SIZE(imx230_hdr_mode_off), imx230_hdr_mode_off, 0, 0 },
+	{ CRL_DEP_CTRL_CONDITION_EQUAL,
+	  { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 1 },
+	  ARRAY_SIZE(imx230_hdr_mode_type1), imx230_hdr_mode_type1, 0, 0 },
+	{ CRL_DEP_CTRL_CONDITION_EQUAL,
+	  { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 2 },
+	  ARRAY_SIZE(imx230_hdr_mode_type2), imx230_hdr_mode_type2, 0, 0 },
+	{ CRL_DEP_CTRL_CONDITION_EQUAL,
+	  { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 3 },
+	  ARRAY_SIZE(imx230_hdr_mode_type3), imx230_hdr_mode_type3, 0, 0 },
 };
 
 static struct crl_sensor_detect_config imx230_sensor_detect_regset[] = {
@@ -1845,6 +1935,13 @@ static struct crl_csi_data_fmt imx230_crl_csi_data_fmt[] = {
 	},
 };
 
+static const char * const imx132_hdr_types[] = {
+	"HDR Off",
+	"HDR Type1",
+	"HDR Type2",
+	"HDRC Type3",
+};
+
 static struct crl_v4l2_ctrl imx230_vl42_ctrls[] = {
 	{
 		.sd_type = CRL_SUBDEV_TYPE_SCALER,
@@ -2058,26 +2155,6 @@ static struct crl_v4l2_ctrl imx230_vl42_ctrls[] = {
 		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.op_type = CRL_V4L2_CTRL_SET_OP,
 		.context = SENSOR_IDLE, /* Cannot be set when streaming? */
-		.ctrl_id = CRL_CID_IMX230_HDR_MODE,
-		.name = "imx230 HDR mode",
-		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
-		.data.std_data.min = 0,
-		.data.std_data.max = 1,
-		.data.std_data.step = 1,
-		.data.std_data.def = 0,
-		.flags = V4L2_CTRL_FLAG_UPDATE,
-		.impact = CRL_IMPACTS_NO_IMPACT,
-		.ctrl = 0,
-		.regs_items = ARRAY_SIZE(imx230_hdr_mode_regs),
-		.regs = imx230_hdr_mode_regs,
-		.dep_items = 0,
-		.dep_ctrls = 0,
-		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
-	},
-	{
-		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
-		.op_type = CRL_V4L2_CTRL_SET_OP,
-		.context = SENSOR_IDLE, /* Cannot be set when streaming? */
 		.ctrl_id = CRL_CID_IMX230_HDR_ET_RATIO,
 		.name = "imx230 HDR ET Ratio",
 		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
@@ -2093,6 +2170,26 @@ static struct crl_v4l2_ctrl imx230_vl42_ctrls[] = {
 		.dep_items = 0,
 		.dep_ctrls = 0,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_IDLE,
+		.ctrl_id = CRL_CID_IMX230_HDR_MODE,
+		.name = "imx230 HDR mode",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.v4l2_menu_items.menu = imx132_hdr_types,
+		.data.v4l2_menu_items.size = ARRAY_SIZE(imx132_hdr_types),
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = 0,
+		.regs = 0,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_MENU,
+		.crl_ctrl_dep_reg_list = ARRAY_SIZE(imx230_hdr_types_regs),
+		.dep_regs = imx230_hdr_types_regs,
 	},
 };
 
