@@ -41,6 +41,27 @@ static struct crl_register_write_rep imx230_pll_1500mbps[] = {
 	{ 0x0808, CRL_REG_LEN_08BIT, 0x01 },
 };
 
+/* PLL settings for CSI lanes: 4, RAW14 output */
+static struct crl_register_write_rep imx230_pll_4_14_1500mbps[] = {
+	{ 0x0301, CRL_REG_LEN_08BIT, 0x04 },
+	{ 0x0303, CRL_REG_LEN_08BIT, 0x02 },
+	{ 0x0305, CRL_REG_LEN_08BIT, 0x04 },
+	{ 0x0306, CRL_REG_LEN_08BIT, 0x00 },
+	{ 0x0307, CRL_REG_LEN_08BIT, 0xc8 },
+	{ 0x0309, CRL_REG_LEN_08BIT, 0x0e },
+	{ 0x030B, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x030D, CRL_REG_LEN_08BIT, 0x0F },
+	{ 0x030E, CRL_REG_LEN_08BIT, 0x03 },
+	{ 0x030F, CRL_REG_LEN_08BIT, 0xa9 },
+	{ 0x0310, CRL_REG_LEN_08BIT, 0x01 },
+	{ 0x0114, CRL_REG_LEN_08BIT, 0x03 }, /* Mipi settings, 4 lane */
+	{ 0x0820, CRL_REG_LEN_08BIT, 0x17 }, /*Data rate setting*/
+	{ 0x0821, CRL_REG_LEN_08BIT, 0x6c },
+	{ 0x0822, CRL_REG_LEN_08BIT, 0xcc },
+	{ 0x0823, CRL_REG_LEN_08BIT, 0xcc },
+	{ 0x0808, CRL_REG_LEN_08BIT, 0x01 },
+};
+
 static struct crl_register_write_rep imx230_pll_2_10_1500mbps[] = {
 	{ 0x0301, CRL_REG_LEN_08BIT, 0x04 },
 	{ 0x0303, CRL_REG_LEN_08BIT, 0x02 },
@@ -1335,6 +1356,18 @@ static struct crl_pll_configuration imx230_pll_configurations[] = {
 		.ctrl_data = 0,
 		.pll_regs_items = ARRAY_SIZE(imx230_pll_1500mbps),
 		.pll_regs = imx230_pll_1500mbps,
+	},
+	{
+		.input_clk = 24000000,
+		.op_sys_clk = 749600000,
+		.bitsperpixel = 14,
+		.pixel_rate_csi = 428342900,
+		.pixel_rate_pa = 600000000,
+		.csi_lanes = 4,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.pll_regs_items = ARRAY_SIZE(imx230_pll_4_14_1500mbps),
+		.pll_regs = imx230_pll_4_14_1500mbps,
 	},
 	{
 		.input_clk = 24000000,
