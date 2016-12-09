@@ -203,59 +203,22 @@ static ulong trusty_std_call_inner(struct device *dev, ulong smcnr,
 	return ret;
 }
 
-static void trusty_std_call_inner_wrapper_remote(void *args)
-{
-	struct trusty_smc_interface *p_args = args;
-	struct device *dev = p_args->dev;
-	ulong smcnr = p_args->args[0];
-	ulong a0 = p_args->args[1];
-	ulong a1 = p_args->args[2];
-	ulong a2 = p_args->args[3];
-	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
-	ulong ret;
-	unsigned long flags;
-
-	local_irq_save(flags);
-	atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_PREPARE,
-					   NULL);
-	ret = trusty_std_call_inner(dev, smcnr, a0, a1, a2);
-	atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_RETURNED,
-					   NULL);
-	local_irq_restore(flags);
-
-	p_args->args[4] = ret;
-}
-
-static ulong trusty_std_call_inner_wrapper(struct device *dev, ulong smcnr,
-				   ulong a0, ulong a1, ulong a2)
-{
-	int cpu = 0;
-	int ret = 0;
-	struct trusty_smc_interface s;
-	s.dev = dev;
-	s.args[0] = smcnr;
-	s.args[1] = a0;
-	s.args[2] = a1;
-	s.args[3] = a2;
-	s.args[4] = 0;
-
-	ret = smp_call_function_single(cpu, trusty_std_call_inner_wrapper_remote, (void *)&s, 1);
-
-	if (ret) {
-		pr_err("%s: smp_call_function_single failed: %d\n", __func__, ret);
-	}
-
-	return s.args[4];
-}
-
 static ulong trusty_std_call_helper(struct device *dev, ulong smcnr,
 				    ulong a0, ulong a1, ulong a2)
 {
 	ulong ret;
 	int sleep_time = 1;
+	unsigned long flags;
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
 
 	while (true) {
-		ret = trusty_std_call_inner_wrapper(dev, smcnr, a0, a1, a2);
+		local_irq_save(flags);
+		atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_PREPARE,
+					   NULL);
+		ret = trusty_std_call_inner(dev, smcnr, a0, a1, a2);
+		atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_RETURNED,
+					   NULL);
+		local_irq_restore(flags);
 
 		if ((int)ret != SM_ERR_BUSY)
 			break;
@@ -292,13 +255,33 @@ static void trusty_std_call_cpu_idle(struct trusty_state *s)
 	}
 }
 
-/* must set CONFIG_DEBUG_ATOMIC_SLEEP=n
-** otherwise mutex_lock() will fail and crash
-*/
-s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
+
+struct trusty_std_call32_args {
+        struct device *dev;
+        u32 smcnr;
+        u32 a0;
+        u32 a1;
+        u32 a2;
+};
+
+static long trusty_std_call32_work(void *args)
 {
 	int ret;
-	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+	struct device *dev;
+	u32 smcnr, a0, a1, a2;
+	struct trusty_state *s;
+	struct trusty_std_call32_args *work_args;
+
+	BUG_ON(!args);
+
+	work_args = args;
+	dev = work_args->dev;
+	s = platform_get_drvdata(to_platform_device(dev));
+
+	smcnr = work_args->smcnr;
+	a0 = work_args->a0;
+	a1 = work_args->a1;
+	a2 = work_args->a2;
 
 	BUG_ON(SMC_IS_FASTCALL(smcnr));
 	BUG_ON(SMC_IS_SMC64(smcnr));
@@ -334,6 +317,22 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 
 	return ret;
 }
+
+s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
+{
+	const int cpu = 0;
+	struct trusty_std_call32_args args = {
+		.dev = dev,
+		.smcnr = smcnr,
+		.a0 = a0,
+		.a1 = a1,
+		.a2 = a2,
+	};
+
+	/* bind cpu 0 for now since trusty OS is running on physical cpu #0*/
+	return work_on_cpu(cpu, trusty_std_call32_work, (void *) &args);
+}
+
 EXPORT_SYMBOL(trusty_std_call32);
 
 int trusty_call_notifier_register(struct device *dev, struct notifier_block *n)
