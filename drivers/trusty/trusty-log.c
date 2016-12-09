@@ -26,6 +26,8 @@
 #define TRUSTY_LOG_SIZE (PAGE_SIZE * 2)
 #define TRUSTY_LINE_BUFFER_SIZE 256
 
+static uint64_t g_vmm_debug_buf;
+
 struct trusty_log_state {
 	struct device *dev;
 	struct device *trusty_dev;
@@ -135,6 +137,72 @@ static int trusty_log_panic_notify(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+static void trusty_vmm_dump_header(struct deadloop_dump *dump)
+{
+	struct dump_header *header;
+
+	if (!dump)
+		return;
+
+	header = &(dump->header);
+	pr_info("VMM version = %s\n", header->vmm_version);
+	pr_info("Signature = %s\n", header->signature);
+	pr_info("Error_info = %s\n", header->error_info);
+	pr_info("Cpuid = %d\n", header->cpuid);
+}
+
+static void trusty_vmm_dump_data(struct deadloop_dump *dump)
+{
+	struct dump_data *dump_data;
+	int i;
+
+	if (!dump)
+		return;
+
+	dump_data = &(dump->data);
+
+	for (i = 0; i < dump_data->length; i++)
+		pr_info("%c", dump_data->data[i]);
+}
+
+static int trusty_vmm_panic_notify(struct notifier_block *nb,
+				   unsigned long action, void *data)
+{
+	struct deadloop_dump *dump_info;
+
+	if (g_vmm_debug_buf) {
+		dump_info = (struct deadloop_dump *)g_vmm_debug_buf;
+
+		if (dump_info->is_valid) {
+			pr_info("trusty-vmm panic start!\n");
+			trusty_vmm_dump_header(dump_info);
+			trusty_vmm_dump_data(dump_info);
+			pr_info("trusty-vmm panic dump end!\n");
+		}
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block trusty_vmm_panic_nb = {
+	.notifier_call = trusty_vmm_panic_notify,
+	.priority = 0,
+};
+
+#define TRUSTY_VMCALL_DUMP_INIT  0x74727507
+static int trusty_vmm_dump_init(void *gva)
+{
+	int ret = -1;
+
+	__asm__ __volatile__(
+		"vmcall"
+		: "=a"(ret)
+		: "a"(TRUSTY_VMCALL_DUMP_INIT), "D"(gva)
+	);
+
+	return ret;
+}
+
 static bool trusty_supports_logging(struct device *device)
 {
 	int result;
@@ -164,6 +232,7 @@ static int trusty_log_probe(struct platform_device *pdev)
 	struct trusty_log_state *s;
 	int result;
 	phys_addr_t pa;
+	struct deadloop_dump *dump;
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 	if (!trusty_supports_logging(pdev->dev.parent)) {
@@ -216,10 +285,45 @@ static int trusty_log_probe(struct platform_device *pdev)
 			"failed to register panic notifier\n");
 		goto error_panic_notifier;
 	}
+
+	/* allocate debug buffer for vmm panic dump */
+	g_vmm_debug_buf = get_zeroed_page(GFP_KERNEL);
+	if (!g_vmm_debug_buf) {
+		result = -ENOMEM;
+		goto error_alloc_vmm;
+	}
+
+	dump = (struct deadloop_dump *)g_vmm_debug_buf;
+	dump->version_of_this_struct = VMM_DUMP_VERSION;
+	dump->size_of_this_struct = sizeof(struct deadloop_dump);
+	dump->is_valid = false;
+
+	/* shared the buffer to vmm by VMCALL */
+	result = trusty_vmm_dump_init(dump);
+	if (result < 0) {
+		dev_err(&pdev->dev,
+			"failed to share the dump buffer to VMM\n");
+		goto error_vmm_panic_notifier;
+	}
+
+	/* register the panic notifier for vmm */
+	result = atomic_notifier_chain_register(&panic_notifier_list,
+				&trusty_vmm_panic_nb);
+	if (result < 0) {
+		dev_err(&pdev->dev,
+			"failed to register vmm panic notifier\n");
+		goto error_vmm_panic_notifier;
+	}
+
 	platform_set_drvdata(pdev, s);
 
 	return 0;
 
+error_vmm_panic_notifier:
+	free_page(g_vmm_debug_buf);
+error_alloc_vmm:
+	atomic_notifier_chain_unregister(&panic_notifier_list,
+			&s->panic_notifier);
 error_panic_notifier:
 	trusty_call_notifier_unregister(s->trusty_dev, &s->call_notifier);
 error_call_notifier:
@@ -242,6 +346,8 @@ static int trusty_log_remove(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	atomic_notifier_chain_unregister(&panic_notifier_list,
+					&trusty_vmm_panic_nb);
+	atomic_notifier_chain_unregister(&panic_notifier_list,
 					 &s->panic_notifier);
 	trusty_call_notifier_unregister(s->trusty_dev, &s->call_notifier);
 
@@ -253,6 +359,7 @@ static int trusty_log_remove(struct platform_device *pdev)
 	}
 	__free_pages(s->log_pages, get_order(TRUSTY_LOG_SIZE));
 	kfree(s);
+	free_page(g_vmm_debug_buf);
 
 	return 0;
 }
