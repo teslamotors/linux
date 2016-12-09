@@ -738,6 +738,10 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 	}
 
 	if (broadcast) {
+		if (sd_idx < 0) {
+			dev_err(va->sd.dev, "No sensor connected!\n");
+			return -ENODEV;
+		}
 		sd = va->sub_devs[sd_idx].sd;
 		rval = v4l2_subdev_call(sd, video, s_stream, enable);
 		if (rval) {
