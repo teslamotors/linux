@@ -57,6 +57,7 @@ struct trusty_irq_state {
 	struct trusty_irq_irqset __percpu *percpu_irqs;
 	struct notifier_block trusty_call_notifier;
 	struct notifier_block cpu_notifier;
+	struct workqueue_struct *wq;
 };
 
 #define TRUSTY_VMCALL_PENDING_INTR 0x74727505
@@ -239,7 +240,7 @@ irqreturn_t trusty_irq_handler(int irq, void *data)
 	}
 	spin_unlock(&is->normal_irqs_lock);
 
-	schedule_work_on(raw_smp_processor_id(), &trusty_irq_work->work);
+	queue_work_on(raw_smp_processor_id(), is->wq, &trusty_irq_work->work);
 
 	dev_dbg(is->dev, "%s: irq %d done\n", __func__, irq);
 
@@ -588,6 +589,12 @@ static int trusty_irq_probe(struct platform_device *pdev)
 		goto err_alloc_is;
 	}
 
+	is->wq = alloc_workqueue("trusty-irq-wq", WQ_CPU_INTENSIVE, 0);
+	if (!is->wq) {
+		ret = -ENOMEM;
+		goto err_alloc_wq;
+	}
+
 	is->dev = &pdev->dev;
 	is->trusty_dev = is->dev->parent;
 	is->irq_work = alloc_percpu(struct trusty_irq_work);
@@ -668,6 +675,8 @@ err_alloc_pending_percpu_irqs:
 	}
 	free_percpu(is->irq_work);
 err_alloc_irq_work:
+	destroy_workqueue(is->wq);
+err_alloc_wq:
 	kfree(is);
 err_alloc_is:
 	return ret;
@@ -704,6 +713,7 @@ static int trusty_irq_remove(struct platform_device *pdev)
 		flush_work(&trusty_irq_work->work);
 	}
 	free_percpu(is->irq_work);
+	destroy_workqueue(is->wq);
 	kfree(is);
 
 	return 0;

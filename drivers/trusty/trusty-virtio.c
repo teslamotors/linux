@@ -46,6 +46,8 @@ struct trusty_ctx {
 	struct notifier_block	call_notifier;
 	struct list_head	vdev_list;
 	struct mutex		mlock; /* protects vdev_list */
+	struct workqueue_struct	*kick_wq;
+	struct workqueue_struct	*check_wq;
 };
 
 struct trusty_vring {
@@ -97,7 +99,7 @@ static int trusty_call_notify(struct notifier_block *nb,
 		return NOTIFY_DONE;
 
 	tctx = container_of(nb, struct trusty_ctx, call_notifier);
-	schedule_work(&tctx->check_vqs);
+	queue_work(tctx->check_wq, &tctx->check_vqs);
 
 	return NOTIFY_OK;
 }
@@ -143,7 +145,7 @@ static bool trusty_virtio_notify(struct virtqueue *vq)
 	struct trusty_ctx *tctx = tvdev->tctx;
 
 	atomic_set(&tvr->needs_kick, 1);
-	schedule_work(&tctx->kick_vqs);
+	queue_work(tctx->kick_wq, &tctx->kick_vqs);
 
 	return true;
 }
@@ -641,6 +643,21 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 	INIT_WORK(&tctx->kick_vqs, kick_vqs);
 	platform_set_drvdata(pdev, tctx);
 
+	tctx->check_wq = alloc_workqueue("trusty-check-wq", WQ_UNBOUND, 0);
+	if (!tctx->check_wq) {
+		ret = -ENODEV;
+		dev_err(&pdev->dev, "Failed create trusty-check-wq\n");
+		goto err_create_check_wq;
+	}
+
+	tctx->kick_wq = alloc_workqueue("trusty-kick-wq",
+					WQ_UNBOUND | WQ_CPU_INTENSIVE, 0);
+	if (!tctx->kick_wq) {
+		ret = -ENODEV;
+		dev_err(&pdev->dev, "Failed create trusty-kick-wq\n");
+		goto err_create_kick_wq;
+	}
+
 	ret = trusty_virtio_add_devices(tctx);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to add virtio devices\n");
@@ -651,6 +668,10 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 	return 0;
 
 err_add_devices:
+	destroy_workqueue(tctx->kick_wq);
+err_create_kick_wq:
+	destroy_workqueue(tctx->check_wq);
+err_create_check_wq:
 	kfree(tctx);
 	return ret;
 }
@@ -669,6 +690,10 @@ static int trusty_virtio_remove(struct platform_device *pdev)
 	/* remove virtio devices */
 	trusty_virtio_remove_devices(tctx);
 	cancel_work_sync(&tctx->kick_vqs);
+
+	/* destroy workqueues */
+	destroy_workqueue(tctx->kick_wq);
+	destroy_workqueue(tctx->check_wq);
 
 	/* notify remote that shared area goes away */
 	trusty_virtio_stop(tctx, tctx->shared_va, tctx->shared_sz);
