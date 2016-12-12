@@ -19,6 +19,22 @@
 #include "crlmodule-sensor-ds.h"
 irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct);
 
+struct crl_ctrl_data_pair hdmi_ctrl_data_lanes[] = {
+	{
+		.ctrl_id = V4L2_CID_MIPI_LANES,
+		.data = 4,
+	},
+	{
+		.ctrl_id = V4L2_CID_MIPI_LANES,
+		.data = 2,
+	},
+	{
+		.ctrl_id = V4L2_CID_MIPI_LANES,
+		.data = 1,
+	},
+};
+
+
 static struct crl_register_write_rep adv7481_hdmi_onetime_init_regset[] = {
 	{0xFF, CRL_REG_LEN_08BIT, 0xFF, 0xE0},
 	{0x00, CRL_REG_LEN_DELAY, 0x14, 0x00},
@@ -174,10 +190,7 @@ static struct crl_register_write_rep adv7481_hdmi_mode_rgb565[] = {
 					Double LLC Timing */
 	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED
 					AUD Outputs Enabled */
-	{0x00, CRL_REG_LEN_08BIT, 0x84, 0x94}, /* Enable 4-lane MIPI */
-	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
 	{0xDB, CRL_REG_LEN_08BIT, 0x10, 0x94}, /* ADI Required Write */
-	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
 	 /* Enable 4-lane CSI TXB & Pixel Port */
 	{0x7E, CRL_REG_LEN_08BIT, 0x98, 0x94}, /* ADI Required Write */
 };
@@ -194,11 +207,7 @@ static struct crl_register_write_rep adv7481_hdmi_mode_rgb888[] = {
 					Double LLC Timing */
 	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0}, /* LLC/PIX/SPI PINS TRISTATED
 					AUD Outputs Enabled */
-	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
-	{0x00, CRL_REG_LEN_08BIT, 0x84, 0x94}, /* Enable 4-lane MIPI */
-	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
 	{0xDB, CRL_REG_LEN_08BIT, 0x10, 0x94}, /* ADI Required Write */
-	 /* Enable 4-lane CSI TXB & Pixel Port */
 	{0x7E, CRL_REG_LEN_08BIT, 0x1B, 0x94}, /* ADI Required Write */
 };
 
@@ -224,6 +233,9 @@ static struct crl_register_write_rep adv7481_hdmi_mode_yuv[] = {
 };
 
 static struct crl_register_write_rep adv7481_hdmi_mode_1080p[] = {
+	{0x00, CRL_REG_LEN_08BIT, 0x84, 0x94}, /* Enable 4-lane MIPI */
+	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
+	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
 	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
 	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
 	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
@@ -244,6 +256,9 @@ static struct crl_register_write_rep adv7481_hdmi_mode_1080p[] = {
 };
 
 static struct crl_register_write_rep adv7481_hdmi_mode_1080i[] = {
+	{0x00, CRL_REG_LEN_08BIT, 0x84, 0x94}, /* Enable 4-lane MIPI */
+	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
+	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
 	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
 	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
 	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
@@ -264,6 +279,9 @@ static struct crl_register_write_rep adv7481_hdmi_mode_1080i[] = {
 };
 
 static struct crl_register_write_rep adv7481_hdmi_mode_480p[] = {
+	{0x00, CRL_REG_LEN_08BIT, 0x84, 0x94}, /* Enable 4-lane MIPI */
+	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
+	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
 	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
 	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
 	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
@@ -284,6 +302,9 @@ static struct crl_register_write_rep adv7481_hdmi_mode_480p[] = {
 };
 
 static struct crl_register_write_rep adv7481_hdmi_mode_480i[] = {
+	{0x00, CRL_REG_LEN_08BIT, 0x81, 0x94}, /* Enable 1-lane MIPI */
+	{0x00, CRL_REG_LEN_08BIT, 0xA1, 0x94}, /* Set Auto DPHY Timing */
+	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0, 0xA0},
 	{0xD6, CRL_REG_LEN_08BIT, 0x07, 0x94},
 	{0xC4, CRL_REG_LEN_08BIT, 0x0A, 0x94},
 	{0x71, CRL_REG_LEN_08BIT, 0x33, 0x94},
@@ -292,7 +313,7 @@ static struct crl_register_write_rep adv7481_hdmi_mode_480i[] = {
 	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94},
 	{0x1E, CRL_REG_LEN_08BIT, 0x80, 0x94},
 	{0xDA, CRL_REG_LEN_08BIT, 0x01, 0x94},
-	{0x00, CRL_REG_LEN_08BIT, 0x24, 0x94},
+	{0x00, CRL_REG_LEN_08BIT, 0x21, 0x94},
 	{0xC1, CRL_REG_LEN_08BIT, 0x2B, 0x94},
 	{0x31, CRL_REG_LEN_08BIT, 0x80, 0x94},
 	{0xC9, CRL_REG_LEN_08BIT, 0x2D, 0x44},
@@ -313,15 +334,15 @@ static struct crl_register_write_rep adv7481_hdmi_powerup_regset[] = {
 	{0x72, CRL_REG_LEN_08BIT, 0x11, 0x94}, /* ADI Required Write */
 	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* i2c_dphy_pwdn - 1'b0 */
 	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94}, /* ADI Required Write */
-	{0x1E, CRL_REG_LEN_08BIT, 0xC0, 0x94}, /* ADI Required Write,
-						transmit only
-						Frame Start/End packets */
+	{0x1E, CRL_REG_LEN_08BIT, 0xC0, 0x94},
+	/* ADI Required Write, transmit only Frame Start/End packets */
 	{0xDA, CRL_REG_LEN_08BIT, 0x01, 0x94}, /* i2c_mipi_pll_en - 1'b1 */
 };
 
 static struct crl_register_write_rep adv7481_hdmi_streamon_regs[] = {
 	{0x00, CRL_REG_LEN_DELAY, 0x02, 0x00},
-	{0x00, CRL_REG_LEN_08BIT, 0x24, 0x94}, /* Power-up CSI-TX */
+	{0x00, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x21, 0x94, 0xF8},
+	/* Power-up CSI-TX */
 	{0x00, CRL_REG_LEN_DELAY, 0x01, 0x00},
 	{0xC1, CRL_REG_LEN_08BIT, 0x2B, 0x94}, /* ADI recommended setting */
 	{0x00, CRL_REG_LEN_DELAY, 0x01, 0x00},
@@ -331,9 +352,9 @@ static struct crl_register_write_rep adv7481_hdmi_streamon_regs[] = {
 static struct crl_register_write_rep adv7481_hdmi_streamoff_regs[] = {
 	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x94}, /* ADI Recommended Write */
 	{0x1E, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* Reset the clock Lane */
-	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94},
-	{0xDA, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* i2c_mipi_pll_en -
-					1'b0 Disable MIPI PLL */
+	{0x00, CRL_REG_LEN_08BIT, 0xA1, 0x94},
+	{0xDA, CRL_REG_LEN_08BIT, 0x00, 0x94},
+	/* i2c_mipi_pll_en -1'b0 Disable MIPI PLL */
 	{0xC1, CRL_REG_LEN_08BIT, 0x3B, 0x94},
 };
 
@@ -351,7 +372,7 @@ static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 		.bitsperpixel = 24,
 		.pixel_rate_csi = 891000000,
 		.pixel_rate_pa = 891000000,
-	 },
+	},
 	/* 28.636 input clock */
 	{
 		.input_clk = 286363636,
@@ -359,7 +380,6 @@ static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 148500000,
 		.pixel_rate_pa = 297000000,
-		.csi_lanes = 4,
 	},
 	{
 		.input_clk = 286363636,
@@ -367,7 +387,6 @@ static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 		.bitsperpixel = 24,
 		.pixel_rate_csi = 148500000,
 		.pixel_rate_pa = 297000000,
-		.csi_lanes = 4,
 	},
 	{
 		.input_clk = 286363636,
@@ -589,6 +608,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.height = 1080,
 		.mode_regs_items = ARRAY_SIZE(adv7481_hdmi_mode_1080p),
 		.mode_regs = adv7481_hdmi_mode_1080p,
+		.comp_items = 1,
+		.ctrl_data = &hdmi_ctrl_data_lanes[0],
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_720p_rects),
@@ -598,6 +619,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 1280,
 		.height = 720,
+		.comp_items = 1,
+		.ctrl_data = &hdmi_ctrl_data_lanes[0],
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_VGA_rects),
@@ -607,6 +630,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 640,
 		.height = 480,
+		.comp_items = 1,
+		.ctrl_data = &hdmi_ctrl_data_lanes[0],
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_1080i_rects),
@@ -618,6 +643,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.height = 540,
 		.mode_regs_items = ARRAY_SIZE(adv7481_hdmi_mode_1080i),
 		.mode_regs = adv7481_hdmi_mode_1080i,
+		.comp_items = 1,
+		.ctrl_data = &hdmi_ctrl_data_lanes[0],
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_480p_rects),
@@ -629,6 +656,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.height = 480,
 		.mode_regs_items = ARRAY_SIZE(adv7481_hdmi_mode_480p),
 		.mode_regs = adv7481_hdmi_mode_480p,
+		.comp_items = 1,
+		.ctrl_data = &hdmi_ctrl_data_lanes[0],
 	},
 
 	{
@@ -641,6 +670,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.height = 240,
 		.mode_regs_items = ARRAY_SIZE(adv7481_hdmi_mode_480i),
 		.mode_regs = adv7481_hdmi_mode_480i,
+		.comp_items = 1,
+		.ctrl_data = &hdmi_ctrl_data_lanes[2],
 	},
 
 	{
@@ -651,6 +682,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 720,
 		.height = 576,
+		.comp_items = 1,
+		.ctrl_data = &hdmi_ctrl_data_lanes[0],
 	},
 	{
 		.sd_rects_items = ARRAY_SIZE(adv7481_hdmi_576i_rects),
@@ -660,6 +693,8 @@ static struct crl_mode_rep adv7481_hdmi_modes[] = {
 		.scale_m = 1,
 		.width = 720,
 		.height = 288,
+		.comp_items = 1,
+		.ctrl_data = &hdmi_ctrl_data_lanes[2],
 	},
 };
 
@@ -740,7 +775,25 @@ static struct crl_v4l2_ctrl adv7481_hdmi_v4l2_ctrls[] = {
 		.data.std_data.def = 0,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
-
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_BINNER,
+		.op_type = CRL_V4L2_CTRL_GET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_MIPI_LANES,
+		.name = "V4L2_CID_MIPI_LANES",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 1,
+		.data.std_data.max = 4,
+		.data.std_data.step = 1,
+		.data.std_data.def = 4,
+		.flags = 0,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.regs_items = 0,
+		.regs = 0,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
 	},
 	{
 		.sd_type = CRL_SUBDEV_TYPE_BINNER,
