@@ -307,20 +307,26 @@ struct crl_dep_ctrl_provision {
  *	{
  *	reg_condition =	CRL_DEP_CTRL_CONDITION_GREATER,
  *	cond_value = { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 60 },
- *	no_of_items = sizeof(A)
- *	regs = A
+ *	no_direct_regs = sizeof(X)
+ *	direct_regs = X
+ *	no_dyn_items = sizeof(A)
+ *	dyn_regs = A
  *	},
  *	{
  *	reg_condition = CRL_DEP_CTRL_CONDITION_LESSER,
  *	cond_value = { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 60 },
- *	no_of_items = sizeof(B)
- *	regs = B
+ *	no_direct_regs = 0
+ *	direct_regs = 0
+ *	no_dyn_items = sizeof(B)
+ *	dyn_regs = B
  *	},
  *	{
  *	reg_condition = CRL_DEP_CTRL_CONDITION_EQUAL,
  *	cond_value = { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 60 },
- *	no_of_items = sizeof(B)
- *	regs = C
+ *	no_direct_regs = sizeof(Z)
+ *	direct_regs = Z
+ *	no_dyn_items = size(C)
+ *	dyn_regs = C
  *	},
  * }
  * cond_value is defined as dynamic entity, which can be a constant,
@@ -336,8 +342,10 @@ struct crl_dep_ctrl_provision {
 struct crl_dep_reg_list {
 	enum crl_dep_ctrl_condition reg_cond;
 	struct crl_dynamic_entity cond_value;
-	unsigned int no_of_items;
-	struct crl_dynamic_register_access *regs;
+	unsigned int no_direct_regs;
+	struct crl_register_write_rep *direct_regs;
+	unsigned int no_dyn_items;
+	struct crl_dynamic_register_access *dyn_regs;
 };
 
 struct crl_sensor_limits {

@@ -436,35 +436,102 @@ static int __crlmodule_calc_dynamic_entity_values(
  * R4001 = val and R4002 = val or
  * R2800 = FLL - val and R2802 = LLP - val
  */
+static int __crlmodule_parse_and_write_dynamic_reg(struct crl_sensor *sensor,
+					struct crl_dynamic_register_access *reg,
+					unsigned int val)
+{
+	int ret;
+
+	/*
+	 * Get the value associated with the dynamic entity. "val" might
+	 * change after this call based on the arithmetic operations added for
+	 * this group
+	 */
+	ret = __crlmodule_calc_dynamic_entity_values(sensor, reg->ops_items,
+							reg->ops, &val);
+	if (ret)
+		return ret;
+
+	/* Now ready to write the value */
+	return crlmodule_write_reg(sensor, reg->dev_i2c_addr, reg->address,
+					reg->len, reg->mask, val);
+}
+
 static int __crlmodule_update_dynamic_regs(struct crl_sensor *sensor,
 					struct crl_v4l2_ctrl *crl_ctrl,
 					unsigned int val)
 {
 	unsigned int i;
+	int ret;
 
 	for (i = 0; i < crl_ctrl->regs_items; i++) {
-		struct crl_dynamic_register_access *reg = &crl_ctrl->regs[i];
 		/*
-		 * Each register group must start from the initial value, not
-		 * as a continuation of the previous calculations. The sensor
-		 * configurations must take care of this restriction.
+		* Each register group must start from the initial value, not
+		* as a continuation of the previous calculations. The sensor
+		* configurations must take care of this restriction.
+		*/
+		ret = __crlmodule_parse_and_write_dynamic_reg(sensor,
+						&crl_ctrl->regs[i], val);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+/*
+ * Perform the action for the dependent register lists
+ */
+static int __crlmodule_handle_dependency_regs(
+			struct crl_sensor *sensor,
+			struct crl_v4l2_ctrl *crl_ctrl,
+			unsigned int val)
+{
+	unsigned int i;
+	int ret;
+
+	for (i = 0; i < crl_ctrl->crl_ctrl_dep_reg_list; i++) {
+		struct crl_dep_reg_list *list = &crl_ctrl->dep_regs[i];
+		enum crl_dep_ctrl_condition condition;
+		unsigned int j;
+		u32 dep_val;
+
+		/* Parse the condition value */
+		ret = __crlmodule_parse_dynamic_entity(sensor, list->cond_value,
+							&dep_val);
+		if (ret)
+			return ret;
+
+		/* Get the kind of condition for this value */
+		if (val > dep_val)
+			condition = CRL_DEP_CTRL_CONDITION_GREATER;
+		else if (val < dep_val)
+			condition = CRL_DEP_CTRL_CONDITION_LESSER;
+		else
+			condition = CRL_DEP_CTRL_CONDITION_EQUAL;
+
+		/*
+		 * Compare the register list specific condition and if matching
+		 * write the corresponding register lists to the sensor.
 		 */
-		u32 val_t = val;
-		int ret;
+		if (condition == list->reg_cond) {
+			/* Handle the direct registers if any */
+			if (list->no_direct_regs && list->direct_regs) {
+				ret = crlmodule_write_regs(sensor,
+				       list->direct_regs, list->no_direct_regs);
+				if (ret)
+					return ret;
+			}
 
-		/* Get the value associated with the dynamic entity */
-		ret = __crlmodule_calc_dynamic_entity_values(sensor,
-							     reg->ops_items,
-							     reg->ops, &val_t);
-		if (ret)
-			return ret;
-
-		/* Now ready to write the value */
-		ret = crlmodule_write_reg(sensor, reg->dev_i2c_addr,
-					reg->address, reg->len,
-					reg->mask, val_t);
-		if (ret)
-			return ret;
+			/* Handle the dynamic registers if any */
+			for (j = 0; j < list->no_dyn_items; j++) {
+				ret = __crlmodule_parse_and_write_dynamic_reg(
+					sensor, &list->dyn_regs[j], val);
+				if (ret)
+					return ret;
+			}
+			break;
+		}
 	}
 
 	return 0;
@@ -522,54 +589,23 @@ static int __crlmodule_handle_dependency_ctrl(
 				continue;
 
 			dep_crl_ctrl = &sensor->v4l2_ctrl_bank[idx];
-			dev_dbg(&client->dev,
-				"%s crl_ctrl: 0x%p 0x%p\n", __func__,
-				&sensor->v4l2_ctrl_bank[idx],
-				dep_crl_ctrl);
 
+			/* Update the dynamic registers for the dep control */
 			ret = __crlmodule_update_dynamic_regs(sensor,
 							dep_crl_ctrl, dep_val);
 			if (ret)
-				continue;
+				dev_info(&client->dev,
+					"%s dynamic reg update failed for %s\n",
+					__func__, dep_crl_ctrl->name);
+
+			/* Handle dependened register lists for dep control */
+			ret = __crlmodule_handle_dependency_regs(sensor,
+							dep_crl_ctrl, dep_val);
+			if (ret)
+				dev_info(&client->dev,
+					"%s handle dep regs failed for %s\n",
+					__func__, dep_crl_ctrl->name);
 		}
-	}
-	return 0;
-}
-
-/*
- * Perform the action for the dependent register lists
- */
-static int __crlmodule_handle_dependency_regs(
-			struct crl_sensor *sensor,
-			struct crl_v4l2_ctrl *crl_ctrl,
-			unsigned int val)
-{
-	unsigned int i;
-	int ret;
-
-	for (i = 0; i < crl_ctrl->crl_ctrl_dep_reg_list; i++) {
-		enum crl_dep_ctrl_condition condition;
-		u32 dep_val;
-
-		ret = __crlmodule_parse_dynamic_entity(sensor,
-					crl_ctrl->dep_regs[i].cond_value, &dep_val);
-		if (ret)
-			return ret;
-
-		if (val > dep_val)
-			condition = CRL_DEP_CTRL_CONDITION_GREATER;
-		else if (val < dep_val)
-			condition = CRL_DEP_CTRL_CONDITION_LESSER;
-		else
-			condition = CRL_DEP_CTRL_CONDITION_EQUAL;
-
-		/*
-		 * Compare the condition to the register specific
-		 * condition.
-		 */
-		if (condition == crl_ctrl->dep_regs[i].reg_cond)
-			return __crlmodule_update_dynamic_regs(sensor,
-					crl_ctrl, val);
 	}
 
 	return 0;
