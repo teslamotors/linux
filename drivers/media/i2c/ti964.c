@@ -470,9 +470,10 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		va->sub_devs[k].rx_port = info->rx_port;
 		va->sub_devs[k].phy_i2c_addr = info->phy_i2c_addr;
 		va->sub_devs[k].alias_i2c_addr = info->board_info.addr;
-		strncpy(va->sub_devs[k].sd_name,
+		memcpy(va->sub_devs[k].sd_name,
 				va->subdev_pdata[k].module_name,
-				sizeof(va->sub_devs[k].sd_name) - 1);
+				min(sizeof(va->sub_devs[k].sd_name) - 1,
+				sizeof(va->subdev_pdata[k].module_name) - 1));
 
 		for (j = 0; j < va->sub_devs[k].sd->entity.num_pads; j++) {
 			if (va->sub_devs[k].sd->entity.pads[j].flags &
