@@ -31,6 +31,32 @@
 #define CSI2_UPDATE_TIME_TRY_NUM   3
 #define CSI2_UPDATE_TIME_MAX_DIFF  20
 
+static unsigned int intel_ipu4_isys_csi2_fatal_errors[] = {
+	CSI2_CSIRX_FIFO_OVERFLOW,
+	CSI2_CSIRX_FRAME_SYNC_ERROR,
+	CSI2_CSIRX_DPHY_NONRECOVERABLE_SYNC_ERROR
+};
+
+static int intel_ipu4_isys_csi2_is_fatal_error(unsigned int error)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(intel_ipu4_isys_csi2_fatal_errors); ++i)
+		if (error & intel_ipu4_isys_csi2_fatal_errors[i])
+			return 1;
+	return 0;
+}
+
+static void trigger_error(struct intel_ipu4_isys_csi2 *csi2)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&csi2->isys->lock, flags);
+	if (csi2->wdt_enable)
+		queue_work(csi2->wdt_wq, &csi2->wdt_work);
+	spin_unlock_irqrestore(&csi2->isys->lock, flags);
+}
+
 struct intel_ipu_isys_csi2_ops csi2_funcs_ipu4 = {
 	.set_stream = intel_ipu4_isys_csi2_set_stream,
 	.csi2_isr = intel_ipu4_isys_csi2_isr,
@@ -324,6 +350,13 @@ void intel_ipu4_isys_csi2_error(struct intel_ipu4_isys_csi2 *csi2)
 	intel_ipu4_isys_register_errors(csi2);
 	status = csi2->receiver_errors;
 	csi2->receiver_errors = 0;
+
+	if (intel_ipu4_isys_csi2_is_fatal_error(status)) {
+		dev_err_ratelimited(&csi2->isys->adev->dev,
+					"csi2-%i received fatal error\n",
+					csi2->index);
+		trigger_error(csi2);
+	}
 
 	for (i = 0; i < ARRAY_SIZE(errors); i++) {
 		if (status & BIT(i)) {
@@ -735,4 +768,82 @@ int intel_ipu4_csi_set_skew_cal(struct intel_ipu4_isys_csi2 *csi2, int enable)
 	writel(val, csi2->base + CSI2_REG_CSI_RX_CONFIG);
 
 	return 0;
+}
+
+static void eof_wdt_handler(struct work_struct *w)
+{
+	unsigned long flags;
+	int tout;
+	struct intel_ipu4_isys_csi2 *csi2;
+	struct intel_ipu4_isys_pipeline *ip;
+	struct intel_ipu4_isys_queue *aq;
+
+	if (!w)
+		return;
+
+	csi2 = container_of(w, struct intel_ipu4_isys_csi2, wdt_work);
+
+	if (!(csi2 && csi2->isys))
+		return;
+
+	spin_lock_irqsave(&csi2->isys->lock, flags);
+	if (csi2->wdt_enable) {
+		dev_err_ratelimited(&csi2->isys->adev->dev,
+				"csi2-%i non recoverable error\n",
+				csi2->index);
+		ip = to_intel_ipu4_isys_pipeline(csi2->asd.sd.entity.pipe);
+		list_for_each_entry(aq, &ip->queues, node) {
+			vb2_queue_error(&aq->vbq);
+			wake_up_interruptible(&aq->vbq.owner->wait);
+		}
+		csi2->isys->csi2_in_error_state = 1;
+	}
+	spin_unlock_irqrestore(&csi2->isys->lock, flags);
+}
+
+static void eof_timer_handler(unsigned long data)
+{
+	struct intel_ipu4_isys_csi2 *csi2 =
+		(struct intel_ipu4_isys_csi2 *) data;
+	trigger_error(csi2);
+}
+
+void intel_ipu4_isys_csi2_start_wdt(
+	struct intel_ipu4_isys_csi2 *csi2,
+	unsigned int timeout)
+{
+	unsigned long flags;
+
+	if (!csi2->wdt_wq)
+		csi2->wdt_wq = create_singlethread_workqueue("eof_wdt");
+
+	if (!csi2->wdt_wq)
+		return;
+
+	INIT_WORK(&csi2->wdt_work, eof_wdt_handler);
+	spin_lock_irqsave(&csi2->isys->lock, flags);
+	csi2->eof_wdt_timeout = msecs_to_jiffies(timeout);
+	setup_timer(&csi2->eof_timer,
+			eof_timer_handler,
+			(unsigned long) csi2);
+	mod_timer(&csi2->eof_timer, jiffies + csi2->eof_wdt_timeout);
+	csi2->wdt_enable = true;
+	spin_unlock_irqrestore(&csi2->isys->lock, flags);
+}
+
+void intel_ipu4_isys_csi2_stop_wdt(
+	struct intel_ipu4_isys_csi2 *csi2)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&csi2->isys->lock, flags);
+	csi2->wdt_enable = false;
+	spin_unlock_irqrestore(&csi2->isys->lock, flags);
+
+	del_timer_sync(&csi2->eof_timer);
+	if (csi2->wdt_wq) {
+		flush_workqueue(csi2->wdt_wq);
+		destroy_workqueue(csi2->wdt_wq);
+		csi2->wdt_wq = NULL;
+	}
 }

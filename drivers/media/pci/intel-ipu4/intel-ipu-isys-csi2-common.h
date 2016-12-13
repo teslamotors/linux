@@ -17,6 +17,9 @@
 
 #include <media/media-entity.h>
 #include <media/v4l2-device.h>
+#include <linux/workqueue.h>
+#include <linux/mutex.h>
+#include <linux/timer.h>
 
 #include "intel-ipu4-isys-queue.h"
 #include "intel-ipu4-isys-subdev.h"
@@ -124,6 +127,12 @@ struct intel_ipu4_isys_csi2 {
 
 	struct v4l2_ctrl *store_csi2_header;
 	struct intel_ipu_isys_csi2_ops *csi2_ops;
+
+	struct timer_list eof_timer;
+	struct work_struct wdt_work;
+	struct workqueue_struct *wdt_wq;
+	unsigned long eof_wdt_timeout;
+	int wdt_enable;
 };
 
 struct intel_ipu4_isys_csi2_timing {
@@ -205,6 +214,12 @@ void intel_ipu_isys_csi2_eof_event(struct intel_ipu4_isys_csi2 *csi2,
 void intel_ipu_isys_csi2_wait_last_eof(struct intel_ipu4_isys_csi2 *csi2);
 bool intel_ipu_skew_cal_required(struct intel_ipu4_isys_csi2 *csi2);
 int intel_ipu_csi_set_skew_cal(struct intel_ipu4_isys_csi2 *csi2, int enable);
+void intel_ipu4_isys_csi2_start_wdt(
+	struct intel_ipu4_isys_csi2 *csi2,
+	unsigned int timeout);
+void intel_ipu4_isys_csi2_stop_wdt(
+	struct intel_ipu4_isys_csi2 *csi2);
+
 
 #endif /* INTEL_IPU_ISYS_CSI2_COMMON_H */
 

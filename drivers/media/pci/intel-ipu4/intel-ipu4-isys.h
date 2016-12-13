@@ -165,6 +165,7 @@ struct intel_ipu4_isys {
 	bool csi2_cse_ipc_not_supported;
 	unsigned int video_opened;
 	unsigned int stream_opened;
+	unsigned int csi2_in_error_state;
 	struct dentry *debugfsdir;
 	struct mutex mutex;
 	struct mutex stream_mutex;

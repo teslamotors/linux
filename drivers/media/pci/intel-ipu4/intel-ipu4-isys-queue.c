@@ -1154,7 +1154,9 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib)
 {
 	struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 
-	vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
+	vb2_buffer_done(vb, vb->vb2_queue->error ?
+		 VB2_BUF_STATE_ERROR :
+		 VB2_BUF_STATE_DONE);
 }
 
 void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,

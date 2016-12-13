@@ -41,6 +41,14 @@ static unsigned int  num_stream_support = INTEL_IPU4_ISYS_NUM_STREAMS_B0;
 module_param(num_stream_support, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(num_stream_support, "IPU4 project support number of stream");
 
+static bool csi_watchdog_enable = 1;
+module_param(csi_watchdog_enable, bool, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(csi_watchdog_enable, "IPU4 CSI watchdog enable");
+
+static unsigned int csi_watchdog_timeout = 500;
+module_param(csi_watchdog_timeout, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(csi_watchdog_timeout, "IPU4 CSI watchdog timeout");
+
 #ifndef V4L2_PIX_FMT_SBGGR14V32
 /*
  * Non-vectorized 14bit definitions have been upstreamed.
@@ -212,6 +220,7 @@ static int video_open(struct file *file)
 
 	mutex_lock(&isys->mutex);
 
+	isys->csi2_in_error_state = 0;
 	if (isys->video_opened++) {
 		/* Already open */
 		mutex_unlock(&isys->mutex);
@@ -1214,7 +1223,7 @@ out_stream_close:
 		dev_dbg(dev, "can't close stream (%d)\n", rvalout);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_close_completion,
-				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
+				av->isys->csi2_in_error_state ? 0 : INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
 		if (!tout)
 			dev_err(dev, "stream close time out\n");
 		else if (ip->error)
@@ -1254,7 +1263,7 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 		dev_err(dev, "can't stop stream (%d)\n", rval);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_stop_completion,
-				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
+				av->isys->csi2_in_error_state ? 0 : INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
 		if (!tout)
 			dev_err(dev, "stream stop time out\n");
 		else if (ip->error)
@@ -1280,7 +1289,7 @@ static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
 		dev_err(dev, "can't close stream (%d)\n", rval);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_close_completion,
-				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
+				av->isys->csi2_in_error_state ? 0 : INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
 		if (!tout)
 			dev_err(dev, "stream close time out\n");
 		else if (ip->error)
@@ -1475,6 +1484,9 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 	}
 
 	if (!state) {
+		if (csi_watchdog_enable)
+			intel_ipu4_isys_csi2_stop_wdt(ip->csi2);
+
 		stop_streaming_firmware(av);
 
 		/* stop external sub-device now. */
@@ -1565,6 +1577,10 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 					video, s_stream, state);
 		if (rval)
 			goto out_media_entity_stop_streaming_firmware;
+
+		if (csi_watchdog_enable)
+			intel_ipu4_isys_csi2_start_wdt(ip->csi2,
+					csi_watchdog_timeout);
 	} else {
 		close_streaming_firmware(av);
 		av->ip.stream_id = 0;
