@@ -32,6 +32,7 @@
 #include "crl_ov5670_configuration.h"
 #include "crl_imx290_configuration.h"
 #include "crl_pixter_stub_configuration.h"
+#include "crl_imx135_ipu5_FPGA_configuration.h"
 
 static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-SONY214A:00", "imx214", &imx214_crl_configuration },
@@ -54,6 +55,7 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "OV5670", "ov5670", &ov5670_crl_configuration },
 	{ "IMX290", "imx290", &imx290_crl_configuration},
 	{ "PIXTER_STUB", "pixter_stub", &pixter_stub_crl_configuration},
+	{ "IMX135_IPU5", "imx135", &imx135_ipu5_fpga_crl_configuration},
 };
 
 /*
