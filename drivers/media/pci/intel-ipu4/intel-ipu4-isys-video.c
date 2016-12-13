@@ -1503,7 +1503,8 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 
 	/* Oh crap */
 	if (state) {
-		if (intel_ipu_skew_cal_required(ip->csi2))
+		if (intel_ipu_skew_cal_required(ip->csi2) &&
+		    ip->csi2->remote_streams == ip->csi2->stream_count)
 			perform_skew_cal(ip);
 
 		rval = start_stream_firmware(av, bl);
