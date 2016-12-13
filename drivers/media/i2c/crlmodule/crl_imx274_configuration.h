@@ -648,21 +648,60 @@ static struct crl_arithmetic_ops imx274_ana_msb_ops[] = {
 	}
 };
 
+static struct crl_arithmetic_ops imx274_shr_lsb_ops[] = {
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	}
+};
+
 static struct crl_arithmetic_ops imx274_shr_msb_ops[] = {
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	},
 	{
 		.op = CRL_BITWISE_RSHIFT,
 		.operand.entity_val = 8,
+	}
+};
+
+static struct crl_arithmetic_ops imx274_shs1_lsb_ops[] = {
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = CRL_CID_EXPOSURE_RHS1,
 	}
 };
 
 static struct crl_arithmetic_ops imx274_shs1_msb_ops[] = {
 	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = CRL_CID_EXPOSURE_RHS1,
+	},
+	{
 		.op = CRL_BITWISE_RSHIFT,
 		.operand.entity_val = 8,
 	}
 };
 
+static struct crl_arithmetic_ops imx274_shs2_lsb_ops[] = {
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	}
+};
+
 static struct crl_arithmetic_ops imx274_shs2_msb_ops[] = {
+	{
+		.op = CRL_SUBTRACT,
+		.operand.entity_type = CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL,
+		.operand.entity_val = V4L2_CID_FRAME_LENGTH_LINES,
+	},
 	{
 		.op = CRL_BITWISE_RSHIFT,
 		.operand.entity_val = 8,
@@ -708,8 +747,8 @@ static struct crl_dynamic_register_access imx274_shr_regs[] = {
 	{
 		.address = 0x300C,
 		.len = CRL_REG_LEN_08BIT,
-		.ops_items = 0,
-		.ops = 0,
+		.ops_items = ARRAY_SIZE(imx274_shr_lsb_ops),
+		.ops = imx274_shr_lsb_ops,
 		.mask = 0xff,
 	},
 	{
@@ -725,8 +764,8 @@ static struct crl_dynamic_register_access imx274_shs1_regs[] = {
 	{
 		.address = 0x302E,
 		.len = CRL_REG_LEN_08BIT,
-		.ops_items = 0,
-		.ops = 0,
+		.ops_items = ARRAY_SIZE(imx274_shs1_lsb_ops),
+		.ops = imx274_shs1_lsb_ops,
 		.mask = 0xff,
 	},
 	{
@@ -742,8 +781,8 @@ static struct crl_dynamic_register_access imx274_shs2_regs[] = {
 	{
 		.address = 0x3030,
 		.len = CRL_REG_LEN_08BIT,
-		.ops_items = 0,
-		.ops = 0,
+		.ops_items = ARRAY_SIZE(imx274_shs2_lsb_ops),
+		.ops = imx274_shs2_lsb_ops,
 		.mask = 0xff,
 	},
 	{
