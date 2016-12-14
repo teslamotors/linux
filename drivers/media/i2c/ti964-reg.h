@@ -101,8 +101,11 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 #define TI964_FPD3_RAW12_75MHz	0x7e
 #define TI964_RAW10_NORMAL	0x1
 #define TI964_RAW10_8BIT	0x81
-#define TI964_GPIO_HIGH		0x90
-#define TI964_GPIO_LOW		0x80
+#define TI964_GPIO0_HIGH	0x09
+#define TI964_GPIO0_LOW		0x08
+#define TI964_GPIO1_HIGH	0x90
+#define TI964_GPIO1_LOW		0x80
+#define TI964_GPIO0_MASK	0x0f
 #define TI964_GPIO1_MASK	0xf0
 #define TI964_MIPI_800MBPS	0x2
 #define TI964_MIPI_1600MBPS	0x0

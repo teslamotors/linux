@@ -441,7 +441,20 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		 * Clone the pdata for each sensor.
 		 */
 		memcpy(&va->subdev_pdata[k], pdata, sizeof(*pdata));
-		va->subdev_pdata[k].xshutdown = va->gc.base + info->rx_port;
+		if (va->subdev_pdata[k].xshutdown != 0 &&
+			va->subdev_pdata[k].xshutdown != 1) {
+			dev_err(va->sd.dev, "xshutdown(%d) must be 0 or 1 to connect.\n",
+				va->subdev_pdata[k].xshutdown);
+			return -EINVAL;
+		}
+
+		/*
+		 * Change the gpio value to have xshutdown
+		 * and rx port included, so in gpio_set those
+		 * can be caculated from it.
+		 */
+		va->subdev_pdata[k].xshutdown += va->gc.base +
+					info->rx_port * NR_OF_GPIOS_PER_PORT;
 		info->board_info.platform_data = &va->subdev_pdata[k];
 
 		if (!info->phy_i2c_addr || !info->board_info.addr) {
@@ -969,13 +982,17 @@ static void ti964_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
 	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
 	struct ti964 *va = to_ti964(subdev);
 	unsigned int reg_val;
+	int rx_port, gpio_port;
 	int ret;
 
-	if (gpio >= NR_OF_VA_SINK_PADS)
+	if (gpio >= NR_OF_VA_GPIOS)
 		return;
 
+	rx_port = gpio / NR_OF_GPIOS_PER_PORT;
+	gpio_port = gpio % NR_OF_GPIOS_PER_PORT;
+
 	ret = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
-			  (gpio << 4) + (1 << gpio));
+			  (rx_port << 4) + (1 << rx_port));
 	if (ret) {
 		dev_dbg(chip->dev, "Failed to select RX port.\n");
 		return;
@@ -985,8 +1002,15 @@ static void ti964_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
 		dev_dbg(chip->dev, "Failed to read gpio status.\n");
 		return;
 	}
-	reg_val &= ~TI964_GPIO1_MASK;
-	reg_val |= value ? TI964_GPIO_HIGH : TI964_GPIO_LOW;
+
+	if (gpio_port == 0) {
+		reg_val &= ~TI964_GPIO0_MASK;
+		reg_val |= value ? TI964_GPIO0_HIGH : TI964_GPIO0_LOW;
+	} else {
+		reg_val &= ~TI964_GPIO1_MASK;
+		reg_val |= value ? TI964_GPIO1_HIGH : TI964_GPIO1_LOW;
+	}
+
 	ret = regmap_write(va->regmap8, TI964_BC_GPIO_CTL0, reg_val);
 	if (ret)
 		dev_dbg(chip->dev, "Failed to set gpio.\n");
@@ -1095,13 +1119,12 @@ static int ti964_probe(struct i2c_client *client,
 
 	/*
 	 * TI964 has several back channel GPIOs.
-	 * We export GPIO1 with the GPIO chip to control
-	 * sensor power and reset pin.
+	 * We export GPIO0 and GPIO1 to control reset or fsin.
 	 */
 	va->gc.dev = &client->dev;
 	va->gc.owner = THIS_MODULE;
 	va->gc.label = "TI964 GPIO";
-	va->gc.ngpio = NR_OF_VA_SINK_PADS;
+	va->gc.ngpio = NR_OF_VA_GPIOS;
 	va->gc.base = -1;
 	va->gc.set = ti964_gpio_set;
 	va->gc.direction_output = ti964_gpio_direction_output;
