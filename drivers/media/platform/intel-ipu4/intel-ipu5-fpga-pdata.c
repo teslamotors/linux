@@ -28,6 +28,9 @@
 #define PIXTER_STUB_LANES	4
 #define PIXTER_STUB_I2C_ADDRESS	0x7D
 
+#define IMX135_LANES		4
+#define IMX135_I2C_ADDRESS	0x10
+
 static struct crlmodule_platform_data pixter_stub_pdata = {
 	.xshutdown = GPIO_BASE + 64,
 	.lanes = PIXTER_STUB_LANES,
@@ -51,14 +54,48 @@ static struct intel_ipu4_isys_subdev_info pixter_stub_crl_sd = {
 	}
 };
 
+#ifdef CONFIG_INTEL_IPU5_IMX135
+/*
+ * The following imx135 platform data is for ipu5.
+ */
+static struct crlmodule_platform_data imx135_pdata = {
+	.xshutdown = GPIO_BASE + 71,
+	.lanes = IMX135_LANES,
+	.ext_clk = 24000000,
+	.op_sys_clock = (uint64_t []){ 168000000 },
+	.module_name = "IMX135_IPU5",
+	.id_string = "0x0 0x135",
+};
+
+static struct intel_ipu4_isys_csi2_config imx135_csi2_cfg = {
+	.nlanes = IMX135_LANES,
+	.port = 0,
+};
+
+static struct intel_ipu4_isys_subdev_info imx135_crl_sd = {
+	.csi2 = &imx135_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 I2C_BOARD_INFO(CRLMODULE_NAME, IMX135_I2C_ADDRESS),
+			.platform_data = &imx135_pdata,
+		},
+		.i2c_adapter_id = 0,
+	}
+};
+#endif
+
 static struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
 	{ CLKDEV_INIT("1-007d",  NULL, NULL), "OSC_CLK_OUT0" },
+	{ CLKDEV_INIT("0-0010",  NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT(NULL, NULL, NULL), NULL }
 };
 
 static struct intel_ipu4_isys_subdev_pdata pdata = {
 	.subdevs = (struct intel_ipu4_isys_subdev_info *[]) {
 		&pixter_stub_crl_sd,
+#ifdef CONFIG_INTEL_IPU5_IMX135
+		&imx135_crl_sd,
+#endif
 		NULL,
 	},
 	.clk_map = clk_mapping,
