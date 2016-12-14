@@ -23,10 +23,13 @@
 #include <linux/pm_runtime.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
+#include "../common/sst-dsp.h"
+#include "../common/sst-dsp-priv.h"
 #include "skl.h"
 #include "skl-topology.h"
 #include "skl-sst-ipc.h"
 #include "skl-compress.h"
+#include "skl-probe.h"
 
 #define USE_SPIB 0
 
@@ -199,7 +202,7 @@ int skl_probe_compr_ack(struct snd_compr_stream *substream, size_t bytes,
 {
 	struct hdac_ext_bus *ebus = dev_get_drvdata(dai->dev);
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
-	u64 new_spib_pos;
+	u64 __maybe_unused new_spib_pos;
 	struct snd_compr_runtime *runtime = substream->runtime;
 	u64 spib_pos = div64_u64(runtime->total_bytes_available,
 				    runtime->buffer_size);

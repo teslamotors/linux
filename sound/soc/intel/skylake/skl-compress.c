@@ -25,6 +25,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include "skl.h"
+#include "skl-compress.h"
 inline
 struct hdac_ext_stream *get_hdac_ext_compr_stream(struct snd_compr_stream *stream)
 {
@@ -61,11 +62,8 @@ void skl_set_compr_runtime_buffer(struct snd_compr_stream *substream,
 int skl_compr_malloc_pages(struct snd_compr_stream *substream,
 					struct hdac_ext_bus *ebus, size_t size)
 {
-	struct snd_compr_runtime *runtime;
 	struct snd_dma_buffer *dmab = NULL;
 	struct skl *skl = ebus_to_skl(ebus);
-
-	runtime = substream->runtime;
 
 	dmab = kzalloc(sizeof(*dmab), GFP_KERNEL);
 	if (!dmab)

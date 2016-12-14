@@ -639,6 +639,8 @@ static ssize_t adsp_control_write(struct file *file,
 	}
 
 	err = kstrtouint(buf, 10, &dsp_property);
+	if (err)
+		return -EINVAL;
 
 	if ((dsp_property == DMA_CONTROL) || (dsp_property == ENABLE_LOGS)) {
 		dev_err(d->dev, "invalid input !! not readable\n");
@@ -648,6 +650,9 @@ static ssize_t adsp_control_write(struct file *file,
 
 	if (tx_param == 1) {
 		err = kstrtouint(id, 10, &tx_param_id);
+		if (err)
+			return -EINVAL;
+
 		tx_data = (tx_param_id << 8) | dsp_property;
 	}
 
