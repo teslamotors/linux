@@ -313,8 +313,10 @@ static struct crlmodule_platform_data ov10635_pdata = {
 	/*
 	 * The pin number of xshutdown will be determined
 	 * and replaced inside TI964 driver.
+	 * The number here stands for which GPIO to connect with.
+	 * 1 means to connect sensor xshutdown to GPIO1
 	 */
-	.xshutdown = 0,
+	.xshutdown = 1,
 };
 #endif
 
@@ -335,8 +337,10 @@ static struct crlmodule_platform_data ov10640_pdata = {
 	/*
 	 * The pin number of xshutdown will be determined
 	 * and replaced inside TI964 driver.
+	 * The number here stands for which GPIO to connect with.
+	 * 1 means to connect sensor xshutdown to GPIO1
 	 */
-	.xshutdown = 0,
+	.xshutdown = 1,
 };
 #endif
 
