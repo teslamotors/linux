@@ -338,7 +338,6 @@ static struct crl_register_write_rep imx230_mode_2k2k[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x22 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x0A }, /*Output*/
 	{ 0x034D, CRL_REG_LEN_08BIT, 0x70 },
@@ -403,7 +402,6 @@ static struct crl_register_write_rep imx230_mode_4k2k[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x0F },
 	{ 0x034D, CRL_REG_LEN_08BIT, 0x2E },
@@ -461,7 +459,6 @@ static struct crl_register_write_rep imx230_mode_uhd_crop[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x0F },
 	{ 0x034D, CRL_REG_LEN_08BIT, 0x00 },
@@ -519,7 +516,6 @@ static struct crl_register_write_rep imx230_mode_full_4_3[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x14 },
 	{ 0x034D, CRL_REG_LEN_08BIT, 0xE0 },
@@ -576,7 +572,6 @@ static struct crl_register_write_rep imx230_mode_full_16_9[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x14 },
 	{ 0x034D, CRL_REG_LEN_08BIT, 0xE0 },
@@ -632,7 +627,6 @@ static struct crl_register_write_rep imx230_mode_3264x2448_crop[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x0C },
 	{ 0x034D, CRL_REG_LEN_08BIT, 0xC0 },
@@ -688,7 +682,6 @@ static struct crl_register_write_rep imx230_mode_3264x2448_scale[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x0C },
 	{ 0x034D, CRL_REG_LEN_08BIT, 0xC0 },
@@ -744,7 +737,6 @@ static struct crl_register_write_rep imx230_mode_3280x2460_scale[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x0C },
 	{ 0x034D, CRL_REG_LEN_08BIT, 0xD0 },
@@ -800,7 +792,6 @@ static struct crl_register_write_rep imx230_mode_3336x2502_scale[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x0D },
 	{ 0x034D, CRL_REG_LEN_08BIT, 0x08 },
@@ -862,7 +853,6 @@ static struct crl_register_write_rep imx230_mode_2672x1504[] = {
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x22 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x3000, CRL_REG_LEN_08BIT, 0x74 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x0A },
 	{ 0x034D, CRL_REG_LEN_08BIT, 0x70 },
@@ -918,7 +908,6 @@ static struct crl_register_write_rep imx230_mode_1940x1092[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x22 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x07 } /*1920 x 1080*/,
 	{ 0x034D, CRL_REG_LEN_08BIT, 0x94 },
@@ -975,7 +964,6 @@ static struct crl_register_write_rep imx230_mode_1440[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x22 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x0A },  /* 2560 x 1440 */
 	{ 0x034D, CRL_REG_LEN_08BIT, 0x00 },
@@ -1032,7 +1020,6 @@ static struct crl_register_write_rep imx230_mode_720[] = {
 	{ 0x0900, CRL_REG_LEN_08BIT, 0x01 },
 	{ 0x0901, CRL_REG_LEN_08BIT, 0x44 },
 	{ 0x0902, CRL_REG_LEN_08BIT, 0x00 },
-	{ 0x3001, CRL_REG_LEN_08BIT, 0x00 },
 	{ 0x305C, CRL_REG_LEN_08BIT, 0x11 },
 	{ 0x034C, CRL_REG_LEN_08BIT, 0x05 } /* 1296 x 736 */,
 	{ 0x034D, CRL_REG_LEN_08BIT, 0x10 },
@@ -1309,6 +1296,60 @@ static struct crl_dep_reg_list imx230_hdr_types_regs[] = {
 	{ CRL_DEP_CTRL_CONDITION_EQUAL,
 	  { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 3 },
 	  ARRAY_SIZE(imx230_hdr_mode_type3), imx230_hdr_mode_type3, 0, 0 },
+};
+
+/* PDAF ON -> 0X3121 = 1 when HDR is off and 0x3121 = 0 when HDR is on */
+static struct crl_arithmetic_ops imx230_reg3121_pdaf_on[] = {
+	{ CRL_ASSIGNMENT,
+	 { CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL, CRL_CID_IMX230_HDR_MODE } },
+	{ CRL_BITWISE_COMPLEMENT, { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 0 } },
+	{ CRL_BITWISE_AND, { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 1 } },
+};
+
+/* PDAF ON -> 0X3001 = 0 when HDR is off and 0x3001 = 1 when HDR is on */
+static struct crl_arithmetic_ops imx230_reg3001_pdaf_on[] = {
+	{ CRL_ASSIGNMENT,
+	 { CRL_DYNAMIC_VAL_OPERAND_TYPE_CTRL_VAL, CRL_CID_IMX230_HDR_MODE } },
+	{ CRL_BITWISE_AND, { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 1 } },
+};
+
+/* 0x3001 and 0x3121 behaves differently when HDR is ON or OFF */
+static struct crl_dynamic_register_access imx230_pdaf_on[] = {
+	{ 0x3121, CRL_REG_LEN_08BIT, 0xff,
+		ARRAY_SIZE(imx230_reg3121_pdaf_on), imx230_reg3121_pdaf_on, 0 },
+	{ 0x3001, CRL_REG_LEN_08BIT, 0xff,
+		ARRAY_SIZE(imx230_reg3001_pdaf_on), imx230_reg3001_pdaf_on, 0 },
+	{ 0x3123, CRL_REG_LEN_08BIT, 0xff, 0, 0, 0 },
+};
+
+/* All the following registers are set to 0 when PDAF is Off*/
+static struct crl_dynamic_register_access imx230_pdaf_off[] = {
+	{ 0x3121, CRL_REG_LEN_08BIT, 0xff, 0, 0, 0 },
+	{ 0x3001, CRL_REG_LEN_08BIT, 0xff, 0, 0, 0 },
+	{ 0x3123, CRL_REG_LEN_08BIT, 0xff, 0, 0, 0 },
+};
+
+/*
+ * There are two different registers to enable/disable PDAF with HDR On and Off
+ *
+ * PDAF On, HDR Off -> 0x3121: 1, 0x3001: 0, 0x3123: 1
+ * PDAF Off, HDR Off-> 0x3121: 0, 0x3001: 0, 0x3123: 0
+ * PDAF Off, HDR On -> 0x3121: 0, 0x3001: 0, 0x3123: 0
+ * PDAF On, HDR On  -> 0x3121: 0, 0x3001: 1, 0x3123: 1
+ */
+static struct crl_dep_reg_list imx230_pdaf_ctrl_regs[] = {
+	{ CRL_DEP_CTRL_CONDITION_EQUAL,
+	  { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 1 }, 0, 0,
+	  ARRAY_SIZE(imx230_pdaf_on), imx230_pdaf_on },
+	{ CRL_DEP_CTRL_CONDITION_EQUAL,
+	  { CRL_DYNAMIC_VAL_OPERAND_TYPE_CONST, 0 }, 0, 0,
+	  ARRAY_SIZE(imx230_pdaf_off), imx230_pdaf_off },
+};
+
+/* PDAF enable controls are dependent on HDR on or OFF */
+struct crl_dep_ctrl_provision imx230_hdr_dep_controls[] = {
+	/* Self update PDAF settins after change in HDR settings */
+	{ CRL_CID_SENSOR_PDAF, CRL_DEP_CTRL_ACTION_TYPE_DEP_CTRL, 0, 0 },
 };
 
 static struct crl_sensor_detect_config imx230_sensor_detect_regset[] = {
@@ -2218,11 +2259,33 @@ static struct crl_v4l2_ctrl imx230_vl42_ctrls[] = {
 		.ctrl = 0,
 		.regs_items = 0,
 		.regs = 0,
-		.dep_items = 0,
-		.dep_ctrls = 0,
+		.dep_items = ARRAY_SIZE(imx230_hdr_dep_controls),
+		.dep_ctrls = imx230_hdr_dep_controls,
 		.v4l2_type = V4L2_CTRL_TYPE_MENU,
 		.crl_ctrl_dep_reg_list = ARRAY_SIZE(imx230_hdr_types_regs),
 		.dep_regs = imx230_hdr_types_regs,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_SENSOR_PDAF,
+		.name = "CRL_CID_SENSOR_PDAF",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = 1,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0,
+		.flags = 0,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = 0,
+		.regs = NULL,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+		.crl_ctrl_dep_reg_list = ARRAY_SIZE(imx230_pdaf_ctrl_regs),
+		.dep_regs = imx230_pdaf_ctrl_regs,
 	},
 };
 
