@@ -31,6 +31,7 @@
 struct ti964_subdev {
 	struct v4l2_subdev *sd;
 	unsigned short rx_port;
+	unsigned short fsin_gpio;
 	unsigned short phy_i2c_addr;
 	unsigned short alias_i2c_addr;
 	char sd_name[16];
@@ -181,6 +182,49 @@ static int ti964_map_alias_i2c_addr(struct ti964 *va, unsigned short rx_port,
 		return rval;
 
 	return regmap_write(va->regmap8, TI964_SLAVE_ALIAS_ID0, addr);
+}
+
+static int ti964_fsin_gpio_init(struct ti964 *va, unsigned short rx_port,
+					unsigned short fsin_gpio)
+{
+	int rval;
+	int reg_val;
+
+	rval = regmap_read(va->regmap8, TI964_FS_CTL, &reg_val);
+	if (rval) {
+		dev_dbg(va->sd.dev, "Failed to read gpio status.\n");
+		return rval;
+	}
+
+	if (!reg_val & TI964_FSIN_ENABLE) {
+		dev_dbg(va->sd.dev, "FSIN not enabled, skip config FSIN GPIO.\n");
+		return 0;
+	}
+
+	rval = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
+		(rx_port << 4) + (1 << rx_port));
+	if (rval)
+		return rval;
+
+	rval = regmap_read(va->regmap8, TI964_BC_GPIO_CTL0, &reg_val);
+	if (rval) {
+		dev_dbg(va->sd.dev, "Failed to read gpio status.\n");
+		return rval;
+	}
+
+	if (fsin_gpio == 0) {
+		reg_val &= ~TI964_GPIO0_MASK;
+		reg_val |= TI964_GPIO0_FSIN;
+	} else {
+		reg_val &= ~TI964_GPIO1_MASK;
+		reg_val |= TI964_GPIO1_FSIN;
+	}
+
+	rval = regmap_write(va->regmap8, TI964_BC_GPIO_CTL0, reg_val);
+	if (rval)
+		dev_dbg(va->sd.dev, "Failed to set gpio.\n");
+
+	return rval;
 }
 
 static int ti964_get_routing(struct v4l2_subdev *sd,
@@ -448,6 +492,9 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 			return -EINVAL;
 		}
 
+		/* If 0 is xshutdown, then 1 would be FSIN, vice versa. */
+		va->sub_devs[k].fsin_gpio = 1 - va->subdev_pdata[k].xshutdown;
+
 		/*
 		 * Change the gpio value to have xshutdown
 		 * and rx port included, so in gpio_set those
@@ -471,6 +518,12 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		/* Map 7bit ALIAS I2C address. */
 		rval = ti964_map_alias_i2c_addr(va, info->rx_port,
 				info->board_info.addr << 1);
+		if (rval)
+			return rval;
+
+		/* Config FSIN GPIO */
+		rval = ti964_fsin_gpio_init(va, info->rx_port,
+				va->sub_devs[k].fsin_gpio);
 		if (rval)
 			return rval;
 
@@ -972,6 +1025,13 @@ static int ti964_init(struct ti964 *va)
 	rval = ti964_map_subdevs_addr(va);
 	if (rval)
 		return rval;
+
+	for (i = 0; i < NR_OF_TI964_SINK_PADS; i++) {
+		rval = ti964_fsin_gpio_init(va, va->sub_devs[i].rx_port,
+					va->sub_devs[i].fsin_gpio);
+		if (rval)
+			return rval;
+	}
 
 	return 0;
 }

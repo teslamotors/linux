@@ -44,7 +44,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0x58, 0x58},
 	{0x5c, 0x18}, /* TI913 alias addr 0xc */
 	{0x6d, 0x7f},
-	{0x6e, 0x8a},
 	{0x70, 0x1e}, /* YUV422_8 */
 	{0x7c, 0x81}, /* Use RAW10 8bit mode */
 	{0xd2, 0x84},
@@ -52,7 +51,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0x58, 0x58},
 	{0x5c, 0x1a}, /* TI913 alias addr 0xd */
 	{0x6d, 0x7f},
-	{0x6e, 0x8a},
 	{0x70, 0x5e}, /* YUV422_8 */
 	{0x7c, 0x81}, /* Use RAW10 8bit mode */
 	{0xd2, 0x84},
@@ -60,7 +58,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0x58, 0x58},
 	{0x5c, 0x1c}, /* TI913 alias addr 0xe */
 	{0x6d, 0x7f},
-	{0x6e, 0x8a},
 	{0x70, 0x9e}, /* YUV422_8 */
 	{0x7c, 0x81}, /* Use RAW10 8bit mode */
 	{0xd2, 0x84},
@@ -68,7 +65,6 @@ static const struct ti964_register_write ti964_init_settings[] = {
 	{0x58, 0x58},
 	{0x5c, 0x1e}, /* TI913 alias addr 0xf */
 	{0x6d, 0x7f},
-	{0x6e, 0x8a},
 	{0x70, 0xde}, /* YUV422_8 */
 	{0x7c, 0x81}, /* Use RAW10 8bit mode */
 	{0xd2, 0x84},
@@ -81,9 +77,10 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 	{0xb1, 0x01},
 };
 
-#define TI964_DEVID		0
+#define TI964_DEVID		0x0
 #define TI964_RESET		0x1
 #define TI964_CSI_PLL_CTL	0x1f
+#define TI964_FS_CTL		0x18
 #define TI964_FWD_CTL1		0x20
 #define TI964_RX_PORT_SEL	0x4c
 #define TI964_SLAVE_ID0		0x5d
@@ -105,11 +102,14 @@ static const struct ti964_register_write ti964_tp_settings[] = {
 #define TI964_GPIO0_LOW		0x08
 #define TI964_GPIO1_HIGH	0x90
 #define TI964_GPIO1_LOW		0x80
+#define TI964_GPIO0_FSIN	0x0a
+#define TI964_GPIO1_FSIN	0xa0
 #define TI964_GPIO0_MASK	0x0f
 #define TI964_GPIO1_MASK	0xf0
 #define TI964_MIPI_800MBPS	0x2
 #define TI964_MIPI_1600MBPS	0x0
 #define TI964_CSI_ENABLE	0x1
 #define TI964_CSI_SKEWCAL	0x40
+#define TI964_FSIN_ENABLE	0x1
 
 #endif
