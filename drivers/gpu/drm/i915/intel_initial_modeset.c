@@ -38,6 +38,7 @@
  * elapshed time before user space starts.
  */
 
+#include <linux/firmware.h>
 #include "intel_drv.h"
 #include "i915_drv.h"
 
@@ -112,6 +113,176 @@ static bool attach_crtc(struct drm_device *dev, struct drm_encoder *encoder,
 	}
 
 	return false;
+}
+
+static struct drm_framebuffer *
+intel_splash_screen_fb(struct drm_device *dev,
+		       struct splash_screen_info *splash_info)
+{
+	struct drm_framebuffer *fb;
+	struct drm_mode_fb_cmd2 mode_cmd = {0};
+
+	if (splash_info->obj == NULL)
+		return NULL;
+
+	mode_cmd.width = splash_info->width;
+	mode_cmd.height = splash_info->height;
+
+	mode_cmd.pitches[0] = splash_info->pitch;
+	mode_cmd.pixel_format = DRM_FORMAT_C8;
+
+	mutex_lock(&dev->struct_mutex);
+	fb = intel_framebuffer_create(splash_info->obj, &mode_cmd);
+	mutex_unlock(&dev->struct_mutex);
+
+	return fb;
+}
+
+static bool shared_image(struct drm_i915_private *dev_priv,
+			 char *image,
+			 struct splash_screen_info *info)
+{
+	struct splash_screen_info *splash_info;
+
+	list_for_each_entry(splash_info, &dev_priv->splash_list, link) {
+		if (strcmp(splash_info->image_name, image) == 0) {
+			info->image_name = NULL;
+			info->fw = NULL;
+			info->obj = splash_info->obj;
+			return true;
+		}
+	}
+	return false;
+}
+
+static struct splash_screen_info *match_splash_info(
+					struct drm_i915_private *dev_priv,
+					char* name)
+{
+	struct splash_screen_info *splash_info, *info = NULL;
+	list_for_each_entry(splash_info, &dev_priv->splash_list, link) {
+		if (strcmp(splash_info->connector_name, name) == 0)
+			info = splash_info;
+	}
+	return info;
+}
+
+static void intel_splash_screen_init(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = to_i915(dev);
+	struct splash_screen_info *splash_info = NULL;
+	char *splash_dup = NULL;
+	char *splash_str = NULL;
+	char *sep;
+	u32 fw_npages;
+	char *splash = i915_modparams.splash;
+
+	INIT_LIST_HEAD(&dev_priv->splash_list);
+
+	if (!splash)
+		return;
+
+	splash_dup = kstrdup(splash, GFP_KERNEL);
+	if (!splash_dup)
+		goto fail;
+	splash_str = splash_dup;
+
+	/*
+	 * The loop condition find the connector name portion of the
+	 * string.  Once we have that, we parse the following fields
+	 * from the string:
+	 *  Image data file name, image data width, image data height,
+	 *  crtc rectangle (x, y, w, h).
+	 * Then the loop condition will execute again to get the next
+	 * connector name.
+	 */
+	while ((sep = strchr(splash_str, ':'))) {
+		splash_info = kzalloc(sizeof(struct splash_screen_info),
+				      GFP_KERNEL);
+		if (splash_info == NULL)
+			goto fail;
+
+		*sep = '\0';
+		splash_info->connector_name = kstrdup(splash_str, GFP_KERNEL);
+		if (!splash_info->connector_name)
+			goto fail;
+		splash_str = sep + 1;
+
+		/*
+		 * Pull firmware file name from string and check to see
+		 * if this image has been previously loaded.  request
+		 * firmware only needs to be called once for each file.
+		 */
+		sep = strchr(splash_str, ':');
+		if (sep == NULL)
+			goto fail;
+
+		*sep = '\0';
+
+		if (!shared_image(dev_priv, splash_str, splash_info)) {
+			splash_info->image_name = kstrdup(splash_str,
+							  GFP_KERNEL);
+			if (!splash_info->image_name)
+				goto fail;
+			request_firmware(&splash_info->fw, splash_str,
+					 &dev_priv->drm.pdev->dev);
+			if (splash_info->fw == NULL)
+				goto fail;
+		}
+		splash_str = sep + 1;
+
+		/* Pull splash screen width, height, crtc */
+		sscanf(splash_str, "%d,%d,%d,%d,%d,%d,%d",
+					&splash_info->width,
+					&splash_info->height,
+					&splash_info->pitch,
+					&splash_info->crtc_x,
+					&splash_info->crtc_y,
+					&splash_info->crtc_w,
+					&splash_info->crtc_h);
+
+		/* Only do this we haven't mapped this firmware image before */
+		if (splash_info->fw) {
+			/*
+			 * If splash image is baked into the kernel, we just get
+			 * a pointer.  Otherwise we'll get a list of pages.
+			 */
+			fw_npages = DIV_ROUND_UP_ULL(splash_info->fw->size,
+						     PAGE_SIZE);
+			if (splash_info->fw->pages == NULL)
+				splash_info->obj = i915_gem_object_create_splash(
+					dev_priv,
+					splash_info->fw->data,
+					fw_npages);
+			else
+				splash_info->obj = i915_gem_object_create_splash_pages(
+					dev_priv,
+					splash_info->fw->pages, fw_npages);
+		}
+
+		list_add_tail(&splash_info->link, &dev_priv->splash_list);
+
+		/* move to the next entry, break if reaching the end */
+		splash_str = strchr(splash_str, ':');
+		if(splash_str != NULL)
+			splash_str += 1;
+		else
+			break;
+	}
+
+	kfree(splash_dup);
+	return;
+
+fail:
+	/* Clean up failed entry data */
+	if (splash_info) {
+		release_firmware(splash_info->fw);
+		kfree(splash_info->connector_name);
+		kfree(splash_info->image_name);
+	}
+	kfree(splash_info);
+	kfree(splash_dup);
+	return;
 }
 
 static struct drm_display_mode *get_modeline(struct drm_i915_private *dev_priv,
@@ -209,12 +380,18 @@ static int update_connector_state(struct drm_atomic_state *state,
 }
 
 static int update_primary_plane_state(struct drm_atomic_state *state,
+				      struct splash_screen_info *splash_info,
 				      struct drm_crtc *crtc,
-				      struct drm_display_mode *mode,
-				      struct drm_framebuffer *fb)
+				      struct drm_display_mode *mode)
 {
 	int hdisplay, vdisplay;
 	struct drm_plane_state *primary_state;
+	struct drm_property_blob *blob = NULL;
+	struct drm_color_lut *blob_data;
+	struct drm_crtc_state *crtc_state;
+	struct drm_device *dev = crtc->dev;
+	uint32_t i, palette_size;
+	const char *palette_data;
 	int ret;
 
 	primary_state = drm_atomic_get_plane_state(state, crtc->primary);
@@ -222,18 +399,77 @@ static int update_primary_plane_state(struct drm_atomic_state *state,
 	if (ret)
 		return ret;
 	drm_mode_get_hv_timing(mode, &hdisplay, &vdisplay);
-	drm_atomic_set_fb_for_plane(primary_state, fb);
-	primary_state->crtc_x = 0;
-	primary_state->crtc_y = 0;
-	primary_state->crtc_w = hdisplay;
-	primary_state->crtc_h = vdisplay;
+	drm_atomic_set_fb_for_plane(primary_state, splash_info->fb);
+
+	primary_state->crtc_x = splash_info->crtc_x;
+	primary_state->crtc_y = splash_info->crtc_y;
+	primary_state->crtc_w = (splash_info->crtc_w) ?
+		splash_info->crtc_w : hdisplay;
+	primary_state->crtc_h = (splash_info->crtc_h) ?
+		splash_info->crtc_h : vdisplay;
+
 	primary_state->src_x = 0 << 16;
 	primary_state->src_y = 0 << 16;
-	primary_state->src_w = hdisplay << 16;
-	primary_state->src_h = vdisplay << 16;
+	primary_state->src_w = ((splash_info->width) ?
+		splash_info->width : hdisplay) << 16;
+	primary_state->src_h = ((splash_info->height) ?
+		splash_info->height : vdisplay) << 16;
 	primary_state->rotation = DRM_MODE_ROTATE_0;
 
+	crtc_state = drm_atomic_get_crtc_state(state, crtc);
+
+	/* Color palette is appended after image data, it uses 24-bits for each index entry */
+	palette_size = (splash_info->fw->size - (splash_info->width * splash_info->height)) / 3;
+	printk("Splash size %ld, palette size %d\n", splash_info->fw->size, palette_size);
+	if (0 == palette_size) {
+		DRM_ERROR("Splash image does not contain color palette data\n");
+		return -1;
+	}
+
+	if (palette_size > 256) {
+		DRM_ERROR("Splash image color palette too big\n");
+		return -1;
+	}
+
+	/* i915 expects that palette color will be of 256 size */
+	blob = drm_property_create_blob(dev, sizeof(struct drm_color_lut) * 256, NULL);
+
+	if (IS_ERR(blob)) {
+		blob = NULL;
+		return -1;
+	}
+
+	palette_data = &splash_info->fw->data[splash_info->width * splash_info->height];
+
+	blob_data = (struct drm_color_lut *) blob->data;
+	for (i = 0; i < palette_size; i++) {
+		blob_data[i].red = (*palette_data++) << 8;
+		blob_data[i].green = (*palette_data++) << 8;
+		blob_data[i].blue = (*palette_data++) << 8;
+	}
+
+	drm_atomic_crtc_set_property(crtc, crtc_state, state->dev->mode_config.gamma_lut_property, blob->base.id);
+
 	return 0;
+}
+
+static void create_splash_fb(struct drm_device *dev,
+				struct splash_screen_info *splash)
+{
+	struct splash_screen_info *splash_info;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	splash->fb = intel_splash_screen_fb(dev, splash);
+	if (IS_ERR(splash->fb))
+		splash->fb = NULL;
+
+	if (splash->fb)
+		list_for_each_entry(splash_info, &dev_priv->splash_list, link)
+			if (splash->obj == splash_info->obj &&
+			    splash != splash_info) {
+				splash_info->fb = splash->fb;
+				drm_framebuffer_reference(splash_info->fb);
+			}
 }
 
 static int update_atomic_state(struct drm_device *dev,
@@ -241,9 +477,10 @@ static int update_atomic_state(struct drm_device *dev,
 			       struct drm_connector *connector,
 			       struct drm_display_mode *mode)
 {
-	struct drm_framebuffer *fb = NULL;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_crtc *crtc;
 	int ret;
+	struct splash_screen_info *splash_info;
 
 	if (get_encoder(connector))
 		crtc = get_encoder(connector)->crtc;
@@ -259,11 +496,18 @@ static int update_atomic_state(struct drm_device *dev,
 	if (ret)
 		return ret;
 
-	/* Set up primary plane if a framebuffer is allocated */
-	if (fb) {
-		ret = update_primary_plane_state(state, crtc, mode, fb);
-		if (ret)
-			return ret;
+	/* set up primary plane if a splash screen is requested */
+	splash_info = match_splash_info(dev_priv, connector->name);
+	if (splash_info) {
+		if (splash_info->fb == NULL)
+			create_splash_fb(dev, splash_info);
+		if (splash_info->fb) {
+			ret = update_primary_plane_state(state,
+							 splash_info,
+							 crtc, mode);
+			if (ret)
+				return ret;
+		}
 	}
 
 	return 0;
@@ -317,6 +561,8 @@ static void modeset_config_fn(struct work_struct *work)
 	struct drm_display_mode *connector_mode[20];
 	struct drm_encoder *encoder;
 	struct drm_display_mode *mode;
+
+	intel_splash_screen_init(dev);
 
 	memset(connector_mode, 0, sizeof(connector_mode));
 	mutex_lock(&dev->mode_config.mutex);
@@ -481,7 +727,18 @@ retry:
 void intel_initial_mode_config_fini(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
+	struct splash_screen_info *splash_info, *tmp;
 
 	flush_work(&dev_priv->initial_modeset_work);
 	initial_mode_destroy(dev);
+
+	list_for_each_entry_safe(splash_info, tmp,
+				 &dev_priv->splash_list, link) {
+		if (splash_info->fb)
+			drm_framebuffer_unreference(splash_info->fb);
+		release_firmware(splash_info->fw);
+		kfree(splash_info->connector_name);
+		kfree(splash_info->image_name);
+		kfree(splash_info);
+	}
 }

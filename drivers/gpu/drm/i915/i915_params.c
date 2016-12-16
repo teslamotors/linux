@@ -78,6 +78,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.disable_gvt_fw_loading = true,
 	.gvt_workload_priority = 0,
 	.enable_initial_modeset = false,
+	.splash = NULL,
 };
 
 i915_param_named(modeset, int, 0400,
@@ -258,3 +259,6 @@ MODULE_PARM_DESC(gvt_workload_priority,
 module_param_named_unsafe(enable_initial_modeset, i915_modparams.enable_initial_modeset, bool, 0400);
 MODULE_PARM_DESC(enable_initial_modeset,
 		 "Do initial modeset (default : false)");
+
+i915_param_named_unsafe(splash, charp, 0400,
+	"Load a splash screen binary image for a specific display splash=<connector>:<image>:w,h,pitch,crtc_x,crtc_y,crtc_w,crtc_h");

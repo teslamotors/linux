@@ -54,6 +54,7 @@
 	func(int, edp_vswing); \
 	func(int, reset); \
 	func(unsigned int, inject_load_failure); \
+	func(char *, splash); \
 	/* leave bools at the end to not create holes */ \
 	func(bool, alpha_support); \
 	func(bool, enable_cmd_parser); \
