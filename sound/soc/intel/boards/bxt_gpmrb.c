@@ -31,7 +31,9 @@ static const struct snd_kcontrol_new broxton_controls[] = {
 
 static const struct snd_soc_dapm_widget broxton_widgets[] = {
 	SND_SOC_DAPM_SPK("Speaker", NULL),
-	SND_SOC_DAPM_MIC("DiranaCp", NULL),
+	SND_SOC_DAPM_MIC("DiranaTunerCp", NULL),
+	SND_SOC_DAPM_MIC("DiranaAuxCp", NULL),
+	SND_SOC_DAPM_MIC("DiranaMicCp", NULL),
 	SND_SOC_DAPM_HP("DiranaPb", NULL),
 	SND_SOC_DAPM_MIC("HdmiIn", NULL),
 	SND_SOC_DAPM_MIC("TestPinCp", NULL),
@@ -48,8 +50,14 @@ static const struct snd_soc_dapm_route broxton_gpmrb_map[] = {
 	{ "Speaker", NULL, "ssp4 Tx"},
 	{ "ssp4 Tx", NULL, "codec0_out"},
 
-	{ "dirana_in", NULL, "ssp2 Rx"},
-	{ "ssp2 Rx", NULL, "DiranaCp"},
+	{ "tuner_in", NULL, "ssp2 Rx"},
+	{ "ssp2 Rx", NULL, "DiranaTunerCp"},
+
+	{ "aux_in", NULL, "ssp2 Rx"},
+	{ "ssp2 Rx", NULL, "DiranaAuxCp"},
+
+	{ "mic_in", NULL, "ssp2 Rx"},
+	{ "ssp2 Rx", NULL, "DiranaMicCp"},
 
 	{ "DiranaPb", NULL, "ssp2 Tx"},
 	{ "ssp2 Tx", NULL, "dirana_out"},
