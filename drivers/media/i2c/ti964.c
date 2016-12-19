@@ -38,11 +38,11 @@ struct ti964_subdev {
 
 struct ti964 {
 	struct v4l2_subdev sd;
-	struct media_pad pad[NR_OF_VA_PADS];
+	struct media_pad pad[NR_OF_TI964_PADS];
 	struct v4l2_ctrl_handler ctrl_handler;
 	struct ti964_pdata *pdata;
-	struct ti964_subdev sub_devs[NR_OF_VA_SINK_PADS];
-	struct crlmodule_platform_data subdev_pdata[NR_OF_VA_SINK_PADS];
+	struct ti964_subdev sub_devs[NR_OF_TI964_SINK_PADS];
+	struct crlmodule_platform_data subdev_pdata[NR_OF_TI964_SINK_PADS];
 	const char *name;
 
 	struct mutex mutex;
@@ -50,7 +50,7 @@ struct ti964 {
 	struct regmap *regmap8;
 	struct regmap *regmap16;
 
-	struct v4l2_mbus_framefmt *ffmts[NR_OF_VA_PADS];
+	struct v4l2_mbus_framefmt *ffmts[NR_OF_TI964_PADS];
 	struct rect *crop;
 	struct rect *compose;
 
@@ -222,7 +222,7 @@ static int ti964_set_routing(struct v4l2_subdev *sd,
 		    t->source_stream > va->nstreams - 1)
 			continue;
 
-		if (t->source_pad != VA_PAD_SOURCE)
+		if (t->source_pad != TI964_PAD_SOURCE)
 			continue;
 
 		for (j = 0; j < va->nstreams; j++) {
@@ -312,7 +312,7 @@ static int ti964_get_frame_desc(struct v4l2_subdev *sd,
 
 	for (i = 0; i < min_t(int, va->nstreams, desc->num_entries); i++) {
 		struct v4l2_mbus_framefmt *ffmt =
-			&va->ffmts[i][VA_PAD_SOURCE];
+			&va->ffmts[i][TI964_PAD_SOURCE];
 		const struct ti964_csi_data_format *csi_format =
 			ti964_validate_csi_data_format(ffmt->code);
 
@@ -406,7 +406,7 @@ static int ti964_open(struct v4l2_subdev *subdev,
 
 	struct v4l2_subdev_format fmt = {
 		.which = V4L2_SUBDEV_FORMAT_TRY,
-		.pad = VA_PAD_SOURCE,
+		.pad = TI964_PAD_SOURCE,
 		.format = {
 			.width = TI964_MAX_WIDTH,
 			.height = TI964_MAX_HEIGHT,
@@ -561,7 +561,7 @@ static bool ti964_broadcast_mode(struct v4l2_subdev *subdev)
 	bool single_stream = true;
 	int i, rval;
 
-	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+	for (i = 0; i < NR_OF_TI964_SINK_PADS; i++) {
 		struct media_pad *remote_pad =
 			media_entity_remote_pad(&va->pad[i]);
 
@@ -667,7 +667,7 @@ static int ti964_map_subdevs_addr(struct ti964 *va)
 	unsigned short rx_port, phy_i2c_addr, alias_i2c_addr;
 	int i, rval;
 
-	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+	for (i = 0; i < NR_OF_TI964_SINK_PADS; i++) {
 		rx_port = va->sub_devs[i].rx_port;
 		phy_i2c_addr = va->sub_devs[i].phy_i2c_addr;
 		alias_i2c_addr = va->sub_devs[i].alias_i2c_addr;
@@ -693,7 +693,7 @@ static int ti964_find_subdev_index(struct ti964 *va, struct v4l2_subdev *sd)
 {
 	int i;
 
-	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+	for (i = 0; i < NR_OF_TI964_SINK_PADS; i++) {
 		if (va->sub_devs[i].sd == sd)
 			return i;
 	}
@@ -724,7 +724,7 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 			broadcast ? "broadcast" : "non broadcast");
 
 	bitmap_zero(rx_port_enabled, 32);
-	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+	for (i = 0; i < NR_OF_TI964_SINK_PADS; i++) {
 		struct media_pad *remote_pad =
 			media_entity_remote_pad(&va->pad[i]);
 
@@ -787,7 +787,7 @@ static int ti964_set_stream(struct v4l2_subdev *subdev, int enable)
 			return rval;
 		}
 
-		for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+		for (i = 0; i < NR_OF_TI964_SINK_PADS; i++) {
 			if (!test_bit(i, rx_port_enabled))
 				continue;
 
@@ -929,9 +929,9 @@ static int ti964_register_subdev(struct ti964 *va)
 
 	for (i = 0; i < va->nsinks; i++)
 		va->pad[i].flags = MEDIA_PAD_FL_SINK;
-	va->pad[VA_PAD_SOURCE].flags =
+	va->pad[TI964_PAD_SOURCE].flags =
 		MEDIA_PAD_FL_SOURCE | MEDIA_PAD_FL_MULTIPLEX;
-	rval = media_entity_init(&va->sd.entity, NR_OF_VA_PADS, va->pad, 0);
+	rval = media_entity_init(&va->sd.entity, NR_OF_TI964_PADS, va->pad, 0);
 	if (rval) {
 		dev_err(va->sd.dev,
 			"Failed to init media entity for ti964!\n");
@@ -985,7 +985,7 @@ static void ti964_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
 	int rx_port, gpio_port;
 	int ret;
 
-	if (gpio >= NR_OF_VA_GPIOS)
+	if (gpio >= NR_OF_TI964_GPIOS)
 		return;
 
 	rx_port = gpio / NR_OF_GPIOS_PER_PORT;
@@ -1037,10 +1037,10 @@ static int ti964_probe(struct i2c_client *client,
 
 	va->pdata = client->dev.platform_data;
 
-	va->nsources = NR_OF_VA_SOURCE_PADS;
-	va->nsinks = NR_OF_VA_SINK_PADS;
-	va->npads = NR_OF_VA_PADS;
-	va->nstreams = NR_OF_VA_STREAMS;
+	va->nsources = NR_OF_TI964_SOURCE_PADS;
+	va->nsinks = NR_OF_TI964_SINK_PADS;
+	va->npads = NR_OF_TI964_PADS;
+	va->nstreams = NR_OF_TI964_STREAMS;
 
 	va->crop = devm_kcalloc(&client->dev, va->npads,
 				sizeof(struct v4l2_rect), GFP_KERNEL);
@@ -1073,13 +1073,13 @@ static int ti964_probe(struct i2c_client *client,
 
 	for (i = 0; i < va->nstreams; i++) {
 		va->route[i].sink = i;
-		va->route[i].source = VA_PAD_SOURCE;
+		va->route[i].source = TI964_PAD_SOURCE;
 		va->route[i].flags = 0;
 	}
 
 	for (i = 0; i < va->nsinks; i++) {
 		va->stream[i].stream_id[0] = i;
-		va->stream[VA_PAD_SOURCE].stream_id[i] = i;
+		va->stream[TI964_PAD_SOURCE].stream_id[i] = i;
 	}
 
 	va->regmap8 = devm_regmap_init_i2c(client,
@@ -1124,7 +1124,7 @@ static int ti964_probe(struct i2c_client *client,
 	va->gc.dev = &client->dev;
 	va->gc.owner = THIS_MODULE;
 	va->gc.label = "TI964 GPIO";
-	va->gc.ngpio = NR_OF_VA_GPIOS;
+	va->gc.ngpio = NR_OF_TI964_GPIOS;
 	va->gc.base = -1;
 	va->gc.set = ti964_gpio_set;
 	va->gc.direction_output = ti964_gpio_direction_output;
@@ -1151,7 +1151,7 @@ static int ti964_remove(struct i2c_client *client)
 	v4l2_device_unregister_subdev(&va->sd);
 	media_entity_cleanup(&va->sd.entity);
 
-	for (i = 0; i < NR_OF_VA_SINK_PADS; i++) {
+	for (i = 0; i < NR_OF_TI964_SINK_PADS; i++) {
 		if (va->sub_devs[i].sd) {
 			struct i2c_client *sub_client =
 				v4l2_get_subdevdata(va->sub_devs[i].sd);
