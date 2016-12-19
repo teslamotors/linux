@@ -51,8 +51,7 @@ static const struct snd_pcm_hardware azx_pcm_hw = {
 	.formats =		SNDRV_PCM_FMTBIT_S16_LE |
 				SNDRV_PCM_FMTBIT_S32_LE |
 				SNDRV_PCM_FMTBIT_S24_LE, /* TODO Add constraints to other machine drivers */
-	.rates =		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_32000 |
-				SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_8000, /* TODO Add constraints to other machine drivers */
+	.rates =		SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
 	.rate_min =		8000,
 	.rate_max =		48000,
 	.channels_min =		1,
@@ -124,6 +123,31 @@ static enum hdac_ext_stream_type skl_get_host_stream_type(struct hdac_ext_bus *e
 	else
 		return HDAC_EXT_STREAM_TYPE_COUPLED;
 }
+
+static unsigned int rates[] = {
+       8000,
+       11025,
+       12000,
+       16000,
+       22050,
+       24000,
+       32000,
+       44100,
+       48000,
+       64000,
+       88200,
+       96000,
+       128000,
+       176400,
+       192000,
+};
+
+static struct snd_pcm_hw_constraint_list hw_rates = {
+       .count = ARRAY_SIZE(rates),
+       .list = rates,
+       .mask = 0,
+};
+
 
 /*
  * check if the stream opened is marked as ignore_suspend by machine, if so
@@ -248,6 +272,11 @@ static int skl_pcm_open(struct snd_pcm_substream *substream,
 		return -EBUSY;
 
 	skl_set_pcm_constrains(ebus, runtime);
+
+	snd_pcm_hw_constraint_list(runtime, 0,
+			SNDRV_PCM_HW_PARAM_RATE,
+                                     &hw_rates);
+
 
 	/*
 	 * disable WALLCLOCK timestamps for capture streams
@@ -949,8 +978,7 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 		.stream_name = "System Playback",
 		.channels_min = HDA_MONO,
 		.channels_max = HDA_STEREO,
-		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_32000 |
-			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_8000,
+		.rates = SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE |
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE,
 		.sig_bits = 32,
