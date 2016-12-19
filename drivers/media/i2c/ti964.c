@@ -1040,7 +1040,11 @@ static int ti964_init(struct ti964 *va)
 
 static void ti964_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	struct i2c_client *client = to_i2c_client(chip->dev);
+#else
+	struct i2c_client *client = to_i2c_client(chip->parent);
+#endif
 	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
 	struct ti964 *va = to_ti964(subdev);
 	unsigned int reg_val;
@@ -1056,12 +1060,12 @@ static void ti964_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
 	ret = regmap_write(va->regmap8, TI964_RX_PORT_SEL,
 			  (rx_port << 4) + (1 << rx_port));
 	if (ret) {
-		dev_dbg(chip->dev, "Failed to select RX port.\n");
+		dev_dbg(&client->dev, "Failed to select RX port.\n");
 		return;
 	}
 	ret = regmap_read(va->regmap8, TI964_BC_GPIO_CTL0, &reg_val);
 	if (ret) {
-		dev_dbg(chip->dev, "Failed to read gpio status.\n");
+		dev_dbg(&client->dev, "Failed to read gpio status.\n");
 		return;
 	}
 
@@ -1075,7 +1079,7 @@ static void ti964_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
 
 	ret = regmap_write(va->regmap8, TI964_BC_GPIO_CTL0, reg_val);
 	if (ret)
-		dev_dbg(chip->dev, "Failed to set gpio.\n");
+		dev_dbg(&client->dev, "Failed to set gpio.\n");
 }
 
 static int ti964_gpio_direction_output(struct gpio_chip *chip,
@@ -1183,7 +1187,11 @@ static int ti964_probe(struct i2c_client *client,
 	 * TI964 has several back channel GPIOs.
 	 * We export GPIO0 and GPIO1 to control reset or fsin.
 	 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	va->gc.dev = &client->dev;
+#else
+	va->gc.parent = &client->dev;
+#endif
 	va->gc.owner = THIS_MODULE;
 	va->gc.label = "TI964 GPIO";
 	va->gc.ngpio = NR_OF_TI964_GPIOS;
