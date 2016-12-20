@@ -17,6 +17,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/wait.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 
 #include <media/media-device.h>
@@ -1005,6 +1006,7 @@ static int ti964_init(struct ti964 *va)
 	unsigned int val;
 
 	gpio_set_value(reset_gpio, 1);
+	usleep_range(1500, 2000);
 	dev_dbg(va->sd.dev, "Setting reset gpio %d to 1.\n", reset_gpio);
 
 	rval = regmap_read(va->regmap8, TI964_DEVID, &val);
