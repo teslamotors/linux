@@ -3457,6 +3457,7 @@ static void igb_remove(struct pci_dev *pdev)
 	struct e1000_hw *hw = &adapter->hw;
 
 	pm_runtime_get_noresume(&pdev->dev);
+	pm_runtime_forbid(&pdev->dev);
 #ifdef CONFIG_IGB_HWMON
 	igb_sysfs_exit(adapter);
 #endif
