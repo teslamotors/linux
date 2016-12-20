@@ -43,9 +43,9 @@ size_t ia_css_sizeof_program_group_param(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, VERBOSE,
 		"ia_css_sizeof_program_group_param(): enter:\n");
 
-	verifexit(program_count != 0, EINVAL);
-	verifexit(terminal_count != 0, EINVAL);
-	verifexit(fragment_count != 0, EINVAL);
+	verifexit(program_count != 0);
+	verifexit(terminal_count != 0);
+	verifexit(fragment_count != 0);
 
 	size += sizeof(ia_css_program_group_param_t);
 	size += program_count * fragment_count * sizeof(ia_css_program_param_t);
@@ -103,12 +103,12 @@ ia_css_program_param_t *ia_css_program_group_param_get_program_param(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, VERBOSE,
 		"ia_css_program_group_param_get_program_param(): enter:\n");
 
-	verifexit(param != NULL, ENOBUFS);
+	verifexit(param != NULL);
 
 	program_count =
 		(int)ia_css_program_group_param_get_program_count(param);
 
-	verifexit(i < program_count, EINVAL);
+	verifexit(i < program_count);
 
 	program_param_base = (ia_css_program_param_t *)
 			(((char *)param) + param->program_param_offset);
@@ -152,12 +152,12 @@ ia_css_terminal_param_t *ia_css_program_group_param_get_terminal_param(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, VERBOSE,
 		"ia_css_program_group_param_get_terminal_param(): enter:\n");
 
-	verifexit(param != NULL, ENOBUFS);
+	verifexit(param != NULL);
 
 	program_count =
 		(int)ia_css_program_group_param_get_terminal_count(param);
 
-	verifexit(i < program_count, EINVAL);
+	verifexit(i < program_count);
 
 	terminal_param_base = (ia_css_terminal_param_t *)
 			(((char *)param) + param->terminal_param_offset);
@@ -287,8 +287,8 @@ ia_css_kernel_bitmap_t ia_css_program_param_get_kernel_enable_bitmap(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, VERBOSE,
 		"ia_css_program_param_get_kernel_enable_bitmap(): enter:\n");
 
-	verifexit(program_param != NULL, EINVAL);
-	verifexit(program_param->parent_offset != 0, EINVAL);
+	verifexit(program_param != NULL);
+	verifexit(program_param->parent_offset != 0);
 
 	base = (char *)((char *)program_param + program_param->parent_offset);
 	bitmap = ((ia_css_program_group_param_t *)base)->kernel_enable_bitmap;
@@ -309,8 +309,8 @@ ia_css_kernel_bitmap_t ia_css_terminal_param_get_kernel_enable_bitmap(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, VERBOSE,
 		"ia_css_terminal_param_get_kernel_enable_bitmap(): enter:\n");
 
-	verifexit(param != NULL, EINVAL);
-	verifexit(param->parent_offset != 0, EINVAL);
+	verifexit(param != NULL);
+	verifexit(param->parent_offset != 0);
 
 	base = (char *)((char *)param + param->parent_offset);
 	bitmap = ((ia_css_program_group_param_t *)base)->kernel_enable_bitmap;
@@ -330,7 +330,7 @@ ia_css_frame_format_type_t ia_css_terminal_param_get_frame_format_type(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, VERBOSE,
 		"ia_css_terminal_param_get_frame_format_type(): enter:\n");
 
-	verifexit(param != NULL, EINVAL);
+	verifexit(param != NULL);
 
 	ft = param->frame_format_type;
 EXIT:
@@ -369,7 +369,7 @@ uint8_t ia_css_terminal_param_get_bpp(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, VERBOSE,
 		       "ia_css_terminal_param_get_bpp(): enter:\n");
 
-	verifexit(param != NULL, EINVAL);
+	verifexit(param != NULL);
 
 	bpp = param->bpp;
 
@@ -450,7 +450,7 @@ int ia_css_terminal_param_set_stride(
 {
 	int retval = -1;
 
-	verifexit(param != NULL, EINVAL);
+	verifexit(param != NULL);
 	param->stride = stride;
 	retval = 0;
 
@@ -463,7 +463,7 @@ uint32_t ia_css_terminal_param_get_stride(
 {
 	uint32_t stride = 0;
 
-	verifexit(param != NULL, EINVAL);
+	verifexit(param != NULL);
 	stride = param->stride;
 
 EXIT:
@@ -480,7 +480,7 @@ static int ia_css_program_param_init(
 	COMPILATION_ERROR_IF(
 		SIZE_OF_PROGRAM_PARAM_STRUCT_IN_BITS !=
 				(CHAR_BIT * sizeof(ia_css_program_param_t)));
-	verifexit(program_param != NULL, EINVAL);
+	verifexit(program_param != NULL);
 
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, INFO,
 		"ia_css_program_param_init(): enter:\n");
@@ -508,7 +508,7 @@ ia_css_terminal_param_init(ia_css_terminal_param_t *terminal_param,
 	COMPILATION_ERROR_IF(
 		SIZE_OF_TERMINAL_PARAM_STRUCT_IN_BITS !=
 			(CHAR_BIT * sizeof(ia_css_terminal_param_t)));
-	verifexit(terminal_param != NULL, EINVAL);
+	verifexit(terminal_param != NULL);
 
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, INFO,
 		"ia_css_terminal_param_init(): enter:\n");
@@ -538,7 +538,7 @@ ia_css_terminal_param_get_parent(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, VERBOSE,
 		       "ia_css_terminal_param_get_parent(): enter:\n");
 
-	verifexit(NULL != param, EINVAL);
+	verifexit(NULL != param);
 
 	base = (char *)((char *)param + param->parent_offset);
 
@@ -572,8 +572,8 @@ int ia_css_program_group_param_init(
 
 	assert(blob != 0);
 
-	verifexit(blob != NULL, EINVAL);
-	verifexit(frame_format_types != NULL, EINVAL);
+	verifexit(blob != NULL);
+	verifexit(frame_format_types != NULL);
 
 	blob->program_count = program_count;
 	blob->fragment_count = fragment_count;
@@ -629,7 +629,7 @@ int ia_css_program_group_param_print(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, INFO,
 		       "ia_css_program_group_param_print(): enter:\n");
 
-	verifexit(param != NULL, EINVAL);
+	verifexit(param != NULL);
 	NOT_USED(fid);
 
 	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO,
@@ -640,7 +640,7 @@ int ia_css_program_group_param_print(
 	terminal_count = ia_css_program_group_param_get_terminal_count(param);
 
 	bitmap = ia_css_program_group_param_get_kernel_enable_bitmap(param);
-	verifexit(ia_css_kernel_bitmap_print(bitmap, fid) == 0, EINVAL);
+	verifexit(ia_css_kernel_bitmap_print(bitmap, fid) == 0);
 
 	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO,
 		"%d program params\n", (int)program_count);
@@ -679,7 +679,7 @@ int ia_css_terminal_param_print(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, INFO,
 		"ia_css_terminal_param_print(): enter:\n");
 
-	verifexit(param != NULL, EINVAL);
+	verifexit(param != NULL);
 	NOT_USED(fid);
 
 	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO,
@@ -708,14 +708,14 @@ int ia_css_program_param_print(
 	IA_CSS_TRACE_0(PSYSAPI_PARAM, INFO,
 		"ia_css_program_param_print(): enter:\n");
 
-	verifexit(param != NULL, EINVAL);
+	verifexit(param != NULL);
 	NOT_USED(fid);
 
 	IA_CSS_TRACE_1(PSYSAPI_PARAM, INFO, "sizeof(program_param) = %d\n",
 		       (int)ia_css_program_param_get_size(param));
 
 	bitmap = ia_css_program_param_get_kernel_enable_bitmap(param);
-	verifexit(ia_css_kernel_bitmap_print(bitmap, fid) == 0, EINVAL);
+	verifexit(ia_css_kernel_bitmap_print(bitmap, fid) == 0);
 
 	retval = 0;
 EXIT:

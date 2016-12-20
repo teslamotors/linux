@@ -134,10 +134,16 @@ bool ia_css_is_terminal_input(
 	case IA_CSS_TERMINAL_TYPE_STATE_IN:		/* Fall through */
 	case IA_CSS_TERMINAL_TYPE_PARAM_STREAM:		/* Fall through */
 	case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_IN:
+	case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_IN:
+	case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_IN:
+	case IA_CSS_TERMINAL_TYPE_PROGRAM:
 		is_input = true;
 		break;
 	case IA_CSS_TERMINAL_TYPE_DATA_OUT:		/* Fall through */
 	case IA_CSS_TERMINAL_TYPE_STATE_OUT:
+	case IA_CSS_TERMINAL_TYPE_PARAM_CACHED_OUT:
+	case IA_CSS_TERMINAL_TYPE_PARAM_SLICED_OUT:
+	case IA_CSS_TERMINAL_TYPE_PARAM_SPATIAL_OUT:
 		is_input = false;
 		break;
 	default:

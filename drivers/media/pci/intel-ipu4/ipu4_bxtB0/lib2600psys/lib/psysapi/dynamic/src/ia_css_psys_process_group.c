@@ -83,8 +83,7 @@ static bool ia_css_process_group_is_program_enabled(
 			ia_css_program_group_manifest_get_program_manifest(
 					prog_group_manifest, super_prog_idx);
 
-				verifexit(super_program_manifest != NULL,
-						EINVAL);
+				verifexit(super_program_manifest != NULL);
 				if (((program_type ==
 					IA_CSS_PROGRAM_TYPE_EXCLUSIVE_SUB) &&
 					(ia_css_program_manifest_get_type(
@@ -97,7 +96,7 @@ static bool ia_css_process_group_is_program_enabled(
 					IA_CSS_PROGRAM_TYPE_VIRTUAL_SUPER))) {
 					IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, ERROR,
 						"ia_css_process_group_is_program_enabled(): Error\n");
-					verifexit(0, EINVAL);
+					verifexit(0);
 				}
 
 				super_program_bitmap =
@@ -230,8 +229,8 @@ size_t ia_css_sizeof_process_group(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_sizeof_process_group(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(param != NULL, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(param != NULL);
 
 	COMPILATION_ERROR_IF(
 		SIZE_OF_PROCESS_GROUP_STRUCT_BITS !=
@@ -245,8 +244,8 @@ size_t ia_css_sizeof_process_group(
 	terminal_count =
 		ia_css_process_group_compute_terminal_count(manifest, param);
 
-	verifexit(process_count != 0, EINVAL);
-	verifexit(terminal_count != 0, EINVAL);
+	verifexit(process_count != 0);
+	verifexit(terminal_count != 0);
 
 	size += sizeof(ia_css_process_group_t);
 
@@ -268,14 +267,14 @@ size_t ia_css_sizeof_process_group(
 
 		if (ia_css_process_group_is_program_enabled(
 					program_manifest, enable_bitmap)) {
-			verifexit(process_num < process_count, EINVAL);
+			verifexit(process_num < process_count);
 			size += ia_css_sizeof_process(
 					program_manifest, program_param);
 			process_num++;
 		}
 	}
 
-	verifexit(process_num == process_count, EINVAL);
+	verifexit(process_num == process_count);
 
 	for (i = 0; i < (int)ia_css_program_group_manifest_get_terminal_count(
 				manifest); i++) {
@@ -325,10 +324,10 @@ ia_css_process_group_t *ia_css_process_group_create(
 		"ia_css_process_group_create(process_grp_mem %p, manifest %p, group_param %p): enter:\n",
 		process_grp_mem, manifest, param);
 
-	verifexit(process_grp_mem != NULL, EINVAL);
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(param != NULL, EINVAL);
-	verifexit(ia_css_is_program_group_manifest_valid(manifest), EINVAL);
+	verifexit(process_grp_mem != NULL);
+	verifexit(manifest != NULL);
+	verifexit(param != NULL);
+	verifexit(ia_css_is_program_group_manifest_valid(manifest));
 
 	process_group = (ia_css_process_group_t	*)process_grp_mem;
 	ia_css_cpu_mem_set_zero(process_group, size);
@@ -365,7 +364,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 
 	/* Set default */
 	verifexit(ia_css_process_group_set_fragment_limit(
-				process_group, fragment_count) == 0, EINVAL);
+				process_group, fragment_count) == 0);
 
 	/* Set process group terminal dependency list */
 	/* This list is used during creating the process dependency list */
@@ -378,7 +377,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 			ia_css_program_group_manifest_get_terminal_manifest(
 					manifest, i);
 
-		verifexit(NULL != t_manifest, EINVAL);
+		verifexit(NULL != t_manifest);
 		if (ia_css_process_group_is_terminal_enabled(
 					t_manifest, enable_bitmap)) {
 			ia_css_terminal_t *terminal = NULL;
@@ -386,19 +385,18 @@ ia_css_process_group_t *ia_css_process_group_create(
 				ia_css_program_group_param_get_terminal_param(
 						param, i);
 
-			verifexit(NULL != terminal_param, EINVAL);
+			verifexit(NULL != terminal_param);
 			terminal_tab_ptr[terminal_num] =
 				(uint16_t)(process_grp_raw_ptr -
 						(char *)process_group);
 			terminal = ia_css_terminal_create(
 					process_grp_raw_ptr, t_manifest,
 					terminal_param, enable_bitmap);
-			verifexit(terminal != NULL, ENOBUFS);
+			verifexit(terminal != NULL);
 			verifexit((ia_css_terminal_set_parent(
-					terminal, process_group) == 0),
-					EINVAL);
+					terminal, process_group) == 0));
 			verifexit((ia_css_terminal_set_terminal_manifest_index(
-					terminal, i) == 0), EINVAL);
+					terminal, i) == 0));
 			IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO,
 				"ia_css_process_group_create: terminal_manifest_index %d\n",
 				i);
@@ -408,7 +406,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 			terminal_num++;
 		}
 	}
-	verifexit(terminal_num == terminal_count, EINVAL);
+	verifexit(terminal_num == terminal_count);
 
 	process_num = 0;
 	for (i = 0; i < (int)ia_css_program_group_manifest_get_program_count(
@@ -425,7 +423,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 		if (ia_css_process_group_is_program_enabled(
 					program_manifest, enable_bitmap)) {
 
-			verifexit(process_num < process_count, EINVAL);
+			verifexit(process_num < process_count);
 
 			process_tab_ptr[process_num] =
 				(uint16_t)(process_grp_raw_ptr -
@@ -434,7 +432,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 					process_grp_raw_ptr,
 					program_manifest,
 					program_param);
-			verifexit(process != NULL, ENOBUFS);
+			verifexit(process != NULL);
 
 			ia_css_process_set_parent(process, process_group);
 			if (ia_css_has_program_manifest_fixed_cell(
@@ -469,7 +467,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 				ia_css_program_manifest_get_program_ID(
 						dep_prg_manifest);
 
-				verifexit(id != 0, EINVAL);
+				verifexit(id != 0);
 				for (proc_dep_index = 0;
 						proc_dep_index < process_num;
 						proc_dep_index++) {
@@ -505,9 +503,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 				ia_css_program_manifest_get_terminal_dependency
 					(program_manifest, term_dep_index);
 
-				verifexit(pm_term_index <
-						manifest_terminal_count,
-						EINVAL);
+				verifexit(pm_term_index < manifest_terminal_count);
 				IA_CSS_TRACE_2(PSYSAPI_DYNAMIC, INFO,
 					"ia_css_process_group_create(): term_dep_index: %d, pm_term_index: %d\n",
 					term_dep_index, pm_term_index);
@@ -535,7 +531,7 @@ ia_css_process_group_t *ia_css_process_group_create(
 			}
 		}
 	}
-	verifexit(process_num == process_count, EINVAL);
+	verifexit(process_num == process_count);
 
 	process_group->size =
 		(uint32_t)ia_css_sizeof_process_group(manifest, param);
@@ -548,10 +544,10 @@ ia_css_process_group_t *ia_css_process_group_create(
 	process_group->pg_init_cycles       = 0;
 	process_group->pg_processing_cycles = 0;
 
-	verifexit(process_group->ID != 0, EINVAL);
+	verifexit(process_group->ID != 0);
 
 	ret = ia_css_process_group_on_create(process_group, manifest, param);
-	verifexit(ret == 0, EINVAL);
+	verifexit(ret == 0);
 
 	process_group->state = IA_CSS_PROCESS_GROUP_READY;
 	retval = 0;
@@ -684,7 +680,7 @@ extern uint64_t ia_css_process_group_get_token(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_group_get_token(): enter:\n");
 
-	verifexit(process_group != NULL, EINVAL);
+	verifexit(process_group != NULL);
 
 	token = process_group->token;
 
@@ -705,8 +701,8 @@ int ia_css_process_group_set_token(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_group_set_token(): enter:\n");
 
-	verifexit(process_group != NULL, EINVAL);
-	verifexit(token != 0, EINVAL);
+	verifexit(process_group != NULL);
+	verifexit(token != 0);
 
 	process_group->token = token;
 
@@ -732,7 +728,7 @@ extern uint64_t ia_css_process_group_get_private_token(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_group_get_private_token(): enter:\n");
 
-	verifexit(process_group != NULL, EINVAL);
+	verifexit(process_group != NULL);
 
 	token = process_group->private_token;
 
@@ -753,8 +749,8 @@ int ia_css_process_group_set_private_token(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_group_set_private_token(): enter:\n");
 
-	verifexit(process_group != NULL, EINVAL);
-	verifexit(token != 0, EINVAL);
+	verifexit(process_group != NULL);
+	verifexit(token != 0);
 
 	process_group->private_token = token;
 
@@ -784,18 +780,17 @@ uint8_t ia_css_process_group_compute_process_count(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_group_compute_process_count(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(param != NULL, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(param != NULL);
 
 	total_bitmap =
 		ia_css_program_group_manifest_get_kernel_bitmap(manifest);
 	enable_bitmap =
 		ia_css_program_group_param_get_kernel_enable_bitmap(param);
 
-	verifexit(ia_css_is_program_group_manifest_valid(manifest), EINVAL);
-	verifexit(ia_css_is_kernel_bitmap_subset(total_bitmap, enable_bitmap),
-								EINVAL);
-	verifexit(!ia_css_is_kernel_bitmap_empty(enable_bitmap), EINVAL);
+	verifexit(ia_css_is_program_group_manifest_valid(manifest));
+	verifexit(ia_css_is_kernel_bitmap_subset(total_bitmap, enable_bitmap));
+	verifexit(!ia_css_is_kernel_bitmap_empty(enable_bitmap));
 
 	for (i = 0; i <
 		(int)ia_css_program_group_manifest_get_program_count(manifest);
@@ -848,18 +843,17 @@ uint8_t ia_css_process_group_compute_terminal_count(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_group_compute_terminal_count(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(param != NULL, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(param != NULL);
 
 	total_bitmap =
 		ia_css_program_group_manifest_get_kernel_bitmap(manifest);
 	enable_bitmap =
 		ia_css_program_group_param_get_kernel_enable_bitmap(param);
 
-	verifexit(ia_css_is_program_group_manifest_valid(manifest), EINVAL);
-	verifexit(ia_css_is_kernel_bitmap_subset(total_bitmap, enable_bitmap),
-								EINVAL);
-	verifexit(!ia_css_is_kernel_bitmap_empty(enable_bitmap), EINVAL);
+	verifexit(ia_css_is_program_group_manifest_valid(manifest));
+	verifexit(ia_css_is_kernel_bitmap_subset(total_bitmap, enable_bitmap));
+	verifexit(!ia_css_is_kernel_bitmap_empty(enable_bitmap));
 
 	for (i = 0; i <
 		(int)ia_css_program_group_manifest_get_terminal_count(

@@ -240,7 +240,7 @@ ia_css_program_group_manifest_t *ia_css_terminal_manifest_get_parent(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_terminal_manifest_get_parent(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	base = (char *)((char *)manifest + manifest->parent_offset);
 
@@ -258,7 +258,7 @@ int ia_css_terminal_manifest_set_parent_offset(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_terminal_manifest_set_parent_offset(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	/* parent is at negative offset away from current terminal offset*/
 	manifest->parent_offset = -terminal_offset;
@@ -431,9 +431,9 @@ int ia_css_data_terminal_manifest_set_kernel_bitmap_unique(
 					ia_css_kernel_bitmap_clear();
 
 		kernel_bitmap = ia_css_kernel_bitmap_set(kernel_bitmap, index);
-		verifexit(kernel_bitmap != 0, EINVAL);
+		verifexit(kernel_bitmap != 0);
 		verifexit(ia_css_data_terminal_manifest_set_kernel_bitmap(
-				manifest, kernel_bitmap) == 0, EINVAL);
+				manifest, kernel_bitmap) == 0);
 		retval = 0;
 	}
 
@@ -456,7 +456,7 @@ int ia_css_data_terminal_manifest_set_min_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_set_min_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	manifest->min_size[IA_CSS_COL_DIMENSION] =
 		min_size[IA_CSS_COL_DIMENSION];
@@ -481,7 +481,7 @@ int ia_css_data_terminal_manifest_set_max_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_set_max_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	manifest->max_size[IA_CSS_COL_DIMENSION] =
 		max_size[IA_CSS_COL_DIMENSION];
@@ -506,7 +506,7 @@ int ia_css_data_terminal_manifest_get_min_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_get_min_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	min_size[IA_CSS_COL_DIMENSION] =
 		manifest->min_size[IA_CSS_COL_DIMENSION];
@@ -531,7 +531,7 @@ int ia_css_data_terminal_manifest_get_max_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_get_max_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	max_size[IA_CSS_COL_DIMENSION] =
 		manifest->max_size[IA_CSS_COL_DIMENSION];
@@ -556,7 +556,7 @@ int ia_css_data_terminal_manifest_set_min_fragment_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_set_min_fragment_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	manifest->min_fragment_size[IA_CSS_COL_DIMENSION] =
 		min_size[IA_CSS_COL_DIMENSION];
@@ -581,7 +581,7 @@ int ia_css_data_terminal_manifest_set_max_fragment_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_set_max_fragment_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	manifest->max_fragment_size[IA_CSS_COL_DIMENSION] =
 		max_size[IA_CSS_COL_DIMENSION];
@@ -606,7 +606,7 @@ int ia_css_data_terminal_manifest_get_min_fragment_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_get_min_fragment_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	min_size[IA_CSS_COL_DIMENSION] =
 		manifest->min_fragment_size[IA_CSS_COL_DIMENSION];
@@ -631,7 +631,7 @@ int ia_css_data_terminal_manifest_get_max_fragment_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_data_terminal_manifest_get_max_fragment_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	max_size[IA_CSS_COL_DIMENSION] =
 		manifest->max_fragment_size[IA_CSS_COL_DIMENSION];
@@ -665,7 +665,7 @@ int ia_css_terminal_manifest_print(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, INFO,
 		"ia_css_terminal_manifest_print(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 	NOT_USED(fid);
 
 	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sizeof(manifest) = %d\n",
@@ -875,7 +875,7 @@ int ia_css_terminal_manifest_print(
 
 		verifexit(ia_css_kernel_bitmap_print(
 			ia_css_data_terminal_manifest_get_kernel_bitmap(
-				dterminal_manifest), fid) == 0, EINVAL);
+				dterminal_manifest), fid) == 0);
 		IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO,
 			"formats(manifest) = %04x\n",
 		(int)ia_css_data_terminal_manifest_get_frame_format_bitmap(

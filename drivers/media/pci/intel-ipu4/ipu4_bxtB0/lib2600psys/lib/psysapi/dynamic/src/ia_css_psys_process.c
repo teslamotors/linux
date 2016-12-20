@@ -55,8 +55,8 @@ size_t ia_css_sizeof_process(
 
 	COMPILATION_ERROR_IF(0 != sizeof(ia_css_process_t)%sizeof(uint64_t));
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(param != NULL, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(param != NULL);
 
 	size += sizeof(ia_css_process_t);
 
@@ -95,12 +95,12 @@ ia_css_process_t *ia_css_process_create(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO,
 		"ia_css_process_create(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(param != NULL, EINVAL);
-	verifexit(process_raw_ptr != NULL, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(param != NULL);
+	verifexit(process_raw_ptr != NULL);
 
 	process = (ia_css_process_t *) process_raw_ptr;
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	process->kernel_bitmap =
 		ia_css_program_manifest_get_kernel_bitmap(manifest);
@@ -113,7 +113,7 @@ ia_css_process_t *ia_css_process_create(
 
 	/* A process requires at least one input or output */
 	verifexit((program_dependency_count +
-		   terminal_dependency_count) != 0, EINVAL);
+		   terminal_dependency_count) != 0);
 
 	process_raw_ptr += sizeof(ia_css_process_t);
 	if (program_dependency_count != 0) {
@@ -136,14 +136,14 @@ ia_css_process_t *ia_css_process_create(
 
 	process->ID = ia_css_program_manifest_get_program_ID(manifest);
 
-	verifexit(process->ID != 0, EINVAL);
+	verifexit(process->ID != 0);
 
 	process->cell_dependency_count = program_dependency_count;
 	process->terminal_dependency_count = terminal_dependency_count;
 
 	process->parent_offset = 0;
 
-	verifexit(ia_css_process_clear_all(process) == 0, EINVAL);
+	verifexit(ia_css_process_clear_all(process) == 0);
 
 	process->state = IA_CSS_PROCESS_READY;
 	retval = 0;
@@ -187,11 +187,11 @@ int ia_css_process_set_cell(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_set_cell(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	parent = ia_css_process_get_parent(process);
 
-	verifexit(parent != NULL, EINVAL);
+	verifexit(parent != NULL);
 
 	parent_state = ia_css_process_group_get_state(parent);
 	state = ia_css_process_get_state(process);
@@ -208,20 +208,20 @@ int ia_css_process_set_cell(
 		 * while its parent state is READY (the ready state is set at
 		 * the end of ia_css_process_group_create)
 		 */
-		(parent_state == IA_CSS_PROCESS_GROUP_READY)), EINVAL);
-	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+		(parent_state == IA_CSS_PROCESS_GROUP_READY)));
+	verifexit(state == IA_CSS_PROCESS_READY);
 
 /* Some programs are mapped on a fixed cell, thus check is not secure,
  * but it will detect a preset, the process manager will do the secure check
  */
 	verifexit(ia_css_process_get_cell(process) ==
-		  VIED_NCI_N_CELL_ID, EINVAL);
+		  VIED_NCI_N_CELL_ID);
 
 	bit_mask = vied_nci_cell_bit_mask(cell_id);
 	resource_bitmap = ia_css_process_group_get_resource_bitmap(parent);
 
-	verifexit(bit_mask != 0, EINVAL);
-	verifexit(vied_nci_is_bitmap_clear(bit_mask, resource_bitmap), EINVAL);
+	verifexit(bit_mask != 0);
+	verifexit(vied_nci_is_bitmap_clear(bit_mask, resource_bitmap));
 
 	process->cell_id = (vied_nci_resource_id_t)cell_id;
 	resource_bitmap = vied_nci_bitmap_set(resource_bitmap, bit_mask);
@@ -253,25 +253,25 @@ int ia_css_process_clear_cell(
 
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_clear_cell(): enter:\n");
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	cell_id = ia_css_process_get_cell(process);
 	parent = ia_css_process_get_parent(process);
 
-	verifexit(parent != NULL, EINVAL);
+	verifexit(parent != NULL);
 
 	parent_state = ia_css_process_group_get_state(parent);
 	state = ia_css_process_get_state(process);
 
 	verifexit(((parent_state == IA_CSS_PROCESS_GROUP_BLOCKED)
-		   || (parent_state == IA_CSS_PROCESS_GROUP_STARTED)), EINVAL);
-	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+		   || (parent_state == IA_CSS_PROCESS_GROUP_STARTED)));
+	verifexit(state == IA_CSS_PROCESS_READY);
 
 	bit_mask = vied_nci_cell_bit_mask(cell_id);
 	resource_bitmap = ia_css_process_group_get_resource_bitmap(parent);
 
-	verifexit(bit_mask != 0, EINVAL);
-	verifexit(vied_nci_is_bitmap_set(bit_mask, resource_bitmap), EINVAL);
+	verifexit(bit_mask != 0);
+	verifexit(vied_nci_is_bitmap_set(bit_mask, resource_bitmap));
 
 	process->cell_id = (vied_nci_resource_id_t)VIED_NCI_N_CELL_ID;
 	resource_bitmap = vied_nci_bitmap_clear(resource_bitmap, bit_mask);
@@ -304,8 +304,8 @@ int ia_css_process_set_int_mem(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_set_int_mem(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
-	verifexit(mem_type_id < VIED_NCI_N_MEM_TYPE_ID, EINVAL);
+	verifexit(process != NULL);
+	verifexit(mem_type_id < VIED_NCI_N_MEM_TYPE_ID);
 
 	parent = ia_css_process_get_parent(process);
 	cell_id = ia_css_process_get_cell(process);
@@ -318,8 +318,8 @@ int ia_css_process_set_int_mem(
 	*/
 	verifexit(((parent_state == IA_CSS_PROCESS_GROUP_BLOCKED) ||
 		   (parent_state == IA_CSS_PROCESS_GROUP_STARTED) ||
-		   (parent_state == IA_CSS_PROCESS_GROUP_RUNNING)), EINVAL);
-	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+		   (parent_state == IA_CSS_PROCESS_GROUP_RUNNING)));
+	verifexit(state == IA_CSS_PROCESS_READY);
 
 	if (vied_nci_is_cell_mem_of_type(cell_id, mem_type_id, mem_type_id)) {
 		vied_nci_mem_ID_t mem_id =
@@ -351,8 +351,8 @@ int ia_css_process_clear_int_mem(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_clear_int_mem(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
-	verifexit(mem_type_id < VIED_NCI_N_MEM_TYPE_ID, EINVAL);
+	verifexit(process != NULL);
+	verifexit(mem_type_id < VIED_NCI_N_MEM_TYPE_ID);
 
 	parent = ia_css_process_get_parent(process);
 	cell_id = ia_css_process_get_cell(process);
@@ -362,14 +362,14 @@ int ia_css_process_clear_int_mem(
 	 * IA_CSS_N_PROCESS_GROUP_STATES so it will be filtered anyway later.
 	*/
 
-	/* verifexit(parent != NULL, EINVAL); */
+	/* verifexit(parent != NULL); */
 
 	parent_state = ia_css_process_group_get_state(parent);
 	state = ia_css_process_get_state(process);
 
 	verifexit(((parent_state == IA_CSS_PROCESS_GROUP_BLOCKED)
-		   || (parent_state == IA_CSS_PROCESS_GROUP_STARTED)), EINVAL);
-	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+		   || (parent_state == IA_CSS_PROCESS_GROUP_STARTED)));
+	verifexit(state == IA_CSS_PROCESS_READY);
 
 /* We could just clear the field, but lets check the state for
  * consistency first
@@ -423,7 +423,7 @@ int ia_css_process_set_ext_mem(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_set_ext_mem(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	parent = ia_css_process_get_parent(process);
 	cell_id = ia_css_process_get_cell(process);
@@ -433,7 +433,7 @@ int ia_css_process_set_ext_mem(
 	 * IA_CSS_N_PROCESS_GROUP_STATES so it will be filtered anyway later.
 	*/
 
-	/* verifexit(parent != NULL, EINVAL); */
+	/* verifexit(parent != NULL); */
 
 	parent_state = ia_css_process_group_get_state(parent);
 	state = ia_css_process_get_state(process);
@@ -443,8 +443,8 @@ int ia_css_process_set_ext_mem(
 	*/
 	verifexit(((parent_state == IA_CSS_PROCESS_GROUP_BLOCKED) ||
 		   (parent_state == IA_CSS_PROCESS_GROUP_STARTED) ||
-		   (parent_state == IA_CSS_PROCESS_GROUP_RUNNING)), EINVAL);
-	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+		   (parent_state == IA_CSS_PROCESS_GROUP_RUNNING)));
+	verifexit(state == IA_CSS_PROCESS_READY);
 
 	/* Check that the memory actually exists, "vied_nci_has_cell_mem_of_id()"
 	* will return false on error
@@ -456,7 +456,7 @@ int ia_css_process_set_ext_mem(
 		|| vied_nci_mem_is_ext_type(mem_type_id)) &&
 		(mem_id < VIED_NCI_N_MEM_ID)) {
 
-		verifexit(mem_type_id < VIED_NCI_N_DATA_MEM_TYPE_ID, EINVAL);
+		verifexit(mem_type_id < VIED_NCI_N_DATA_MEM_TYPE_ID);
 		process->ext_mem_id[mem_type_id] = mem_id;
 		process->ext_mem_offset[mem_type_id] = offset;
 		retval = 0;
@@ -486,19 +486,19 @@ int ia_css_process_clear_ext_mem(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_clear_ext_mem(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
-	verifexit(mem_type_id < VIED_NCI_N_DATA_MEM_TYPE_ID, EINVAL);
+	verifexit(process != NULL);
+	verifexit(mem_type_id < VIED_NCI_N_DATA_MEM_TYPE_ID);
 
 	parent = ia_css_process_get_parent(process);
 	state = ia_css_process_get_state(process);
 
-	verifexit(parent != NULL, EINVAL);
-	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+	verifexit(parent != NULL);
+	verifexit(state == IA_CSS_PROCESS_READY);
 
 	parent_state = ia_css_process_group_get_state(parent);
 
 	verifexit(((parent_state == IA_CSS_PROCESS_GROUP_BLOCKED) ||
-		   (parent_state == IA_CSS_PROCESS_GROUP_STARTED)), EINVAL);
+		   (parent_state == IA_CSS_PROCESS_GROUP_STARTED)));
 
 	process->ext_mem_id[mem_type_id] = VIED_NCI_N_MEM_ID;
 	process->ext_mem_offset[mem_type_id] = IA_CSS_PROCESS_INVALID_OFFSET;
@@ -529,8 +529,8 @@ int ia_css_process_set_dev_chn(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_set_dev_chn(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
-	verifexit(dev_chn_id <= VIED_NCI_N_DEV_CHN_ID, EINVAL);
+	verifexit(process != NULL);
+	verifexit(dev_chn_id <= VIED_NCI_N_DEV_CHN_ID);
 
 	parent = ia_css_process_get_parent(process);
 	state = ia_css_process_get_state(process);
@@ -542,8 +542,8 @@ int ia_css_process_set_dev_chn(
 	*/
 	verifexit(((parent_state == IA_CSS_PROCESS_GROUP_BLOCKED) ||
 		   (parent_state == IA_CSS_PROCESS_GROUP_STARTED) ||
-		   (parent_state == IA_CSS_PROCESS_GROUP_RUNNING)), EINVAL);
-	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+		   (parent_state == IA_CSS_PROCESS_GROUP_RUNNING)));
+	verifexit(state == IA_CSS_PROCESS_READY);
 
 	process->dev_chn_offset[dev_chn_id] = offset;
 
@@ -572,7 +572,7 @@ int ia_css_process_clear_dev_chn(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_clear_dev_chn(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	parent = ia_css_process_get_parent(process);
 
@@ -581,16 +581,16 @@ int ia_css_process_clear_dev_chn(
 	 * IA_CSS_N_PROCESS_GROUP_STATES so it will be filtered anyway later.
 	*/
 
-	/* verifexit(parent != NULL, EINVAL); */
+	/* verifexit(parent != NULL); */
 
 	parent_state = ia_css_process_group_get_state(parent);
 	state = ia_css_process_get_state(process);
 
 	verifexit(((parent_state == IA_CSS_PROCESS_GROUP_BLOCKED)
-		   || (parent_state == IA_CSS_PROCESS_GROUP_STARTED)), EINVAL);
-	verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+		   || (parent_state == IA_CSS_PROCESS_GROUP_STARTED)));
+	verifexit(state == IA_CSS_PROCESS_READY);
 
-	verifexit(dev_chn_id <= VIED_NCI_N_DEV_CHN_ID, EINVAL);
+	verifexit(dev_chn_id <= VIED_NCI_N_DEV_CHN_ID);
 
 	process->dev_chn_offset[dev_chn_id] = IA_CSS_PROCESS_INVALID_OFFSET;
 
@@ -620,7 +620,7 @@ int ia_css_process_clear_all(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_clear_all(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	parent = ia_css_process_get_parent(process);
 	state = ia_css_process_get_state(process);
@@ -630,15 +630,15 @@ int ia_css_process_clear_all(
 	 * IA_CSS_N_PROCESS_GROUP_STATES so it will be filtered anyway later.
 	*/
 
-	/* verifexit(parent != NULL, EINVAL); */
+	/* verifexit(parent != NULL); */
 
 	parent_state = ia_css_process_group_get_state(parent);
 
 /* Resource clear can only be called in excluded states contrary to set */
 	verifexit((parent_state != IA_CSS_PROCESS_GROUP_RUNNING) ||
-		   (parent_state == IA_CSS_N_PROCESS_GROUP_STATES), EINVAL);
+		   (parent_state == IA_CSS_N_PROCESS_GROUP_STATES));
 	verifexit((state == IA_CSS_PROCESS_CREATED) ||
-		  (state == IA_CSS_PROCESS_READY), EINVAL);
+		  (state == IA_CSS_PROCESS_READY));
 
 	for (dev_chn_index = 0; dev_chn_index < VIED_NCI_N_DEV_CHN_ID;
 		dev_chn_index++) {
@@ -680,7 +680,7 @@ int ia_css_process_acquire(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_acquire(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	retval = 0;
 EXIT:
@@ -703,7 +703,7 @@ int ia_css_process_release(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO,
 		"ia_css_process_release(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	retval = 0;
 EXIT:
@@ -731,7 +731,7 @@ int ia_css_process_print(const ia_css_process_t *process, void *fid)
 	IA_CSS_TRACE_1(PSYSAPI_DYNAMIC, INFO,
 		"ia_css_process_print(process %p): enter:\n", process);
 
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	IA_CSS_TRACE_6(PSYSAPI_DYNAMIC, INFO,
 	"\tprocess %p, sizeof %d, programID %d, state %d, parent %p, cell %d\n",
@@ -748,7 +748,7 @@ int ia_css_process_print(const ia_css_process_t *process, void *fid)
 			(vied_nci_mem_ID_t)(process->int_mem_id[mem_index]);
 
 		verifexit(((mem_id == vied_nci_cell_get_mem(cell_id, mem_index))
-			|| (mem_id == VIED_NCI_N_MEM_ID)), EINVAL);
+			|| (mem_id == VIED_NCI_N_MEM_ID)));
 
 		IA_CSS_TRACE_4(PSYSAPI_DYNAMIC, INFO,
 			"\tinternal index %d, type %d, id %d offset 0x%x\n",
@@ -764,7 +764,7 @@ int ia_css_process_print(const ia_css_process_t *process, void *fid)
 			(vied_nci_mem_ID_t)(process->ext_mem_id[mem_index]);
 
 		verifexit((vied_nci_has_cell_mem_of_id(cell_id, mem_id) ||
-			  (mem_id == VIED_NCI_N_MEM_ID)), EINVAL);
+			  (mem_id == VIED_NCI_N_MEM_ID)));
 
 		IA_CSS_TRACE_4(PSYSAPI_DYNAMIC, INFO,
 			"\texternal index %d, type %d, id %d offset 0x%x\n",
@@ -854,8 +854,8 @@ int ia_css_process_set_parent(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		       "ia_css_process_set_parent(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
-	verifexit(parent != NULL, EINVAL);
+	verifexit(process != NULL);
+	verifexit(parent != NULL);
 
 	process->parent_offset = (uint16_t) ((char *)parent - (char *)process);
 	retval = 0;
@@ -881,7 +881,7 @@ int ia_css_process_set_cell_dependency(
 
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_set_cell_dependency(): enter:\n");
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	process_dep_ptr =
 		(uint8_t *)process + process->cell_dependencies_offset +
@@ -904,9 +904,8 @@ int ia_css_process_set_terminal_dependency(
 
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_process_set_terminal_dependency(): enter:\n");
-	verifexit(process != NULL, EINVAL);
-	verifexit(ia_css_process_get_terminal_dependency_count(process) >
-		  dep_index, EINVAL);
+	verifexit(process != NULL);
+	verifexit(ia_css_process_get_terminal_dependency_count(process) > dep_index);
 
 	terminal_dep_ptr =
 		(uint8_t *)process + process->terminal_dependencies_offset +
@@ -927,42 +926,42 @@ int ia_css_process_cmd(
 
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, INFO, "ia_css_process_cmd(): enter:\n");
 
-	verifexit(process != NULL, EINVAL);
+	verifexit(process != NULL);
 
 	state = ia_css_process_get_state(process);
 
-	verifexit(state != IA_CSS_PROCESS_ERROR, EINVAL);
-	verifexit(state < IA_CSS_N_PROCESS_STATES, EINVAL);
+	verifexit(state != IA_CSS_PROCESS_ERROR);
+	verifexit(state < IA_CSS_N_PROCESS_STATES);
 
 	switch (cmd) {
 	case IA_CSS_PROCESS_CMD_NOP:
 		break;
 	case IA_CSS_PROCESS_CMD_ACQUIRE:
-		verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+		verifexit(state == IA_CSS_PROCESS_READY);
 		break;
 	case IA_CSS_PROCESS_CMD_RELEASE:
-		verifexit(state == IA_CSS_PROCESS_READY, EINVAL);
+		verifexit(state == IA_CSS_PROCESS_READY);
 		break;
 	case IA_CSS_PROCESS_CMD_START:
 		verifexit((state == IA_CSS_PROCESS_READY)
-			  || (state == IA_CSS_PROCESS_STOPPED), EINVAL);
+			  || (state == IA_CSS_PROCESS_STOPPED));
 		process->state = IA_CSS_PROCESS_STARTED;
 		break;
 	case IA_CSS_PROCESS_CMD_LOAD:
-		verifexit(state == IA_CSS_PROCESS_STARTED, EINVAL);
+		verifexit(state == IA_CSS_PROCESS_STARTED);
 		process->state = IA_CSS_PROCESS_RUNNING;
 		break;
 	case IA_CSS_PROCESS_CMD_STOP:
 		verifexit((state == IA_CSS_PROCESS_RUNNING)
-			  || (state == IA_CSS_PROCESS_SUSPENDED), EINVAL);
+			  || (state == IA_CSS_PROCESS_SUSPENDED));
 		process->state = IA_CSS_PROCESS_STOPPED;
 		break;
 	case IA_CSS_PROCESS_CMD_SUSPEND:
-		verifexit(state == IA_CSS_PROCESS_RUNNING, EINVAL);
+		verifexit(state == IA_CSS_PROCESS_RUNNING);
 		process->state = IA_CSS_PROCESS_SUSPENDED;
 		break;
 	case IA_CSS_PROCESS_CMD_RESUME:
-		verifexit(state == IA_CSS_PROCESS_SUSPENDED, EINVAL);
+		verifexit(state == IA_CSS_PROCESS_SUSPENDED);
 		process->state = IA_CSS_PROCESS_RUNNING;
 		break;
 	case IA_CSS_N_PROCESS_CMDS:	/* Fall through */

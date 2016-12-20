@@ -133,7 +133,7 @@ void *ia_css_program_group_manifest_get_private_data(
 		"ia_css_program_group_manifest_get_private_data(%p): enter:\n",
 		manifest);
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	private_data = (void *)((const char *)manifest +
 				manifest->private_data_offset);
@@ -163,8 +163,8 @@ ia_css_program_group_manifest_get_prgrm_mnfst(
 	program_count =
 		ia_css_program_group_manifest_get_program_count(manifest);
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(program_index < program_count, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(program_index < program_count);
 
 	prg_manifest_base = (ia_css_program_manifest_t *)((char *)manifest +
 		manifest->program_manifest_offset);
@@ -203,8 +203,8 @@ ia_css_program_group_manifest_get_program_manifest(
 	program_count =
 		ia_css_program_group_manifest_get_program_count(manifest);
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(program_index < program_count, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(program_index < program_count);
 
 	prg_manifest_base = (ia_css_program_manifest_t *)((char *)manifest +
 		manifest->program_manifest_offset);
@@ -241,8 +241,7 @@ ia_css_program_group_manifest_get_data_terminal_manifest(
 		ia_css_program_group_manifest_get_terminal_manifest(manifest,
 			terminal_index);
 
-	verifexit(ia_css_is_terminal_manifest_data_terminal(terminal_manifest),
-			EINVAL);
+	verifexit(ia_css_is_terminal_manifest_data_terminal(terminal_manifest));
 
 	data_terminal_manifest =
 		(ia_css_data_terminal_manifest_t *)terminal_manifest;
@@ -268,7 +267,7 @@ ia_css_program_group_manifest_get_param_terminal_manifest(
 			terminal_index);
 
 	verifexit(ia_css_is_terminal_manifest_parameter_terminal(
-			terminal_manifest), EINVAL);
+			terminal_manifest));
 	param_terminal_manifest =
 		(ia_css_param_terminal_manifest_t *)terminal_manifest;
 EXIT:
@@ -294,7 +293,7 @@ ia_css_program_group_manifest_get_spatial_param_terminal_manifest(
 			terminal_index);
 
 	verifexit(ia_css_is_terminal_manifest_spatial_parameter_terminal(
-			terminal_manifest), EINVAL);
+			terminal_manifest));
 
 	spatial_param_terminal_manifest =
 		(ia_css_spatial_param_terminal_manifest_t *)terminal_manifest;
@@ -321,7 +320,7 @@ ia_css_program_group_manifest_get_sliced_param_terminal_manifest(
 			terminal_index);
 
 	verifexit(ia_css_is_terminal_manifest_sliced_terminal(
-			terminal_manifest), EINVAL);
+			terminal_manifest));
 
 	sliced_param_terminal_manifest =
 		(ia_css_sliced_param_terminal_manifest_t *)terminal_manifest;
@@ -347,7 +346,7 @@ ia_css_program_group_manifest_get_program_terminal_manifest(
 			terminal_index);
 
 	verifexit(ia_css_is_terminal_manifest_program_terminal(
-			terminal_manifest), EINVAL);
+			terminal_manifest));
 
 	program_terminal_manifest =
 		(ia_css_program_terminal_manifest_t *)terminal_manifest;
@@ -371,12 +370,12 @@ ia_css_program_group_manifest_get_term_mnfst(
 		"ia_css_program_group_manifest_get_term_mnfst(%p,%d): enter:\n",
 		manifest, (int)terminal_index);
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	terminal_count =
 		ia_css_program_group_manifest_get_terminal_count(manifest);
 
-	verifexit(terminal_index < terminal_count, EINVAL);
+	verifexit(terminal_index < terminal_count);
 
 	terminal_manifest_base =
 		(ia_css_terminal_manifest_t *)((char *)manifest +

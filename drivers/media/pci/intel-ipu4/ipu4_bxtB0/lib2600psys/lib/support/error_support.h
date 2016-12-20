@@ -53,7 +53,7 @@ do {                                \
 	}                               \
 } while (0)
 
-#define verifexit(cond, error_tag)  \
+#define verifexit(cond)  \
 do {                               \
 	if (!(cond)) {              \
 		goto EXIT;         \

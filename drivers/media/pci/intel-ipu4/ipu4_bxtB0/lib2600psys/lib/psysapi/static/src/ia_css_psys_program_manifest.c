@@ -53,7 +53,7 @@ bool ia_css_has_program_manifest_fixed_cell(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		       "ia_css_has_program_manifest_fixed_cell(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	cell_id = ia_css_program_manifest_get_cell_ID(manifest);
 	cell_type_id = ia_css_program_manifest_get_cell_type_ID(manifest);
@@ -132,7 +132,7 @@ ia_css_program_group_manifest_t *ia_css_program_manifest_get_parent(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_program_manifest_get_parent(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	base = (char *)((char *)manifest + manifest->parent_offset);
 
@@ -154,7 +154,7 @@ int ia_css_program_manifest_set_parent_offset(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_program_manifest_set_parent_offset(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	/* parent is at negative offset away from current program offset*/
 	manifest->parent_offset = -program_offset;
@@ -250,7 +250,7 @@ vied_nci_cell_ID_t ia_css_program_manifest_get_cell_ID(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_program_manifest_get_cell_ID(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	cell_id = (vied_nci_cell_ID_t)(manifest->cell_id);
 EXIT:
@@ -287,7 +287,7 @@ vied_nci_cell_type_ID_t ia_css_program_manifest_get_cell_type_ID(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_program_manifest_get_cell_type_ID(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 
 	cell_type_id = (vied_nci_cell_type_ID_t)(manifest->cell_type_id);
 EXIT:
@@ -328,8 +328,8 @@ vied_nci_resource_size_t ia_css_program_manifest_get_int_mem_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_program_manifest_get_int_mem_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(mem_type_id < VIED_NCI_N_MEM_TYPE_ID, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(mem_type_id < VIED_NCI_N_MEM_TYPE_ID);
 
 	if (ia_css_has_program_manifest_fixed_cell(manifest)) {
 		vied_nci_cell_ID_t cell_id =
@@ -415,8 +415,8 @@ vied_nci_resource_size_t ia_css_program_manifest_get_ext_mem_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		       "ia_css_program_manifest_get_ext_mem_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(mem_type_id < VIED_NCI_N_DATA_MEM_TYPE_ID, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(mem_type_id < VIED_NCI_N_DATA_MEM_TYPE_ID);
 
 	ext_mem_size = manifest->ext_mem_size[mem_type_id];
 EXIT:
@@ -457,8 +457,8 @@ vied_nci_resource_size_t ia_css_program_manifest_get_dev_chn_size(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, VERBOSE,
 		"ia_css_program_manifest_get_dev_chn_size(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(dev_chn_id < VIED_NCI_N_DEV_CHN_ID, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(dev_chn_id < VIED_NCI_N_DEV_CHN_ID);
 
 	dev_chn_size = manifest->dev_chn_size[dev_chn_id];
 EXIT:
@@ -739,7 +739,7 @@ int ia_css_program_manifest_print(
 	IA_CSS_TRACE_0(PSYSAPI_STATIC, INFO,
 		       "ia_css_program_manifest_print(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 	NOT_USED(fid);
 
 	IA_CSS_TRACE_1(PSYSAPI_STATIC, INFO, "sizeof(manifest) = %d\n",
@@ -748,7 +748,7 @@ int ia_css_program_manifest_print(
 		(int)ia_css_program_manifest_get_program_ID(manifest));
 
 	bitmap = ia_css_program_manifest_get_kernel_bitmap(manifest);
-	verifexit(ia_css_kernel_bitmap_print(bitmap, fid) == 0, EINVAL);
+	verifexit(ia_css_kernel_bitmap_print(bitmap, fid) == 0);
 
 	if (ia_css_has_program_manifest_fixed_cell(manifest)) {
 		vied_nci_cell_ID_t cell_id =
