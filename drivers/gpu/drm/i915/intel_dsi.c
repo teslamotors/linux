@@ -658,6 +658,23 @@ static void vlv_dsi_clear_device_ready(struct intel_encoder *encoder)
 	}
 }
 
+static void bxt_dsi_clear_device_ready(struct intel_encoder *encoder)
+{
+	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
+	struct intel_dsi *intel_dsi = enc_to_intel_dsi(&encoder->base);
+	enum port port;
+
+	/*
+	 * Reset the DSI Device ready first for both ports
+	 * and then port control registers for both ports
+	 */
+	for_each_dsi_port(port, intel_dsi->ports)
+		I915_WRITE(MIPI_DEVICE_READY(port), 0);
+
+	for_each_dsi_port(port, intel_dsi->ports)
+		I915_WRITE(BXT_MIPI_PORT_CTRL(port), 0);
+}
+
 static void intel_dsi_port_enable(struct intel_encoder *encoder)
 {
 	struct drm_device *dev = encoder->base.dev;
@@ -927,9 +944,10 @@ static void intel_dsi_clear_device_ready(struct intel_encoder *encoder)
 {
 	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
 
-	if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv) ||
-	    IS_BROXTON(dev_priv))
+	if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv))
 		vlv_dsi_clear_device_ready(encoder);
+	else if (IS_BROXTON(dev_priv))
+		bxt_dsi_clear_device_ready(encoder);
 	else if (IS_GEMINILAKE(dev_priv))
 		glk_dsi_clear_device_ready(encoder);
 }
@@ -949,8 +967,10 @@ static void intel_dsi_post_disable(struct intel_encoder *encoder,
 		for_each_dsi_port(port, intel_dsi->ports)
 			wait_for_dsi_fifo_empty(intel_dsi, port);
 
-		intel_dsi_port_disable(encoder);
-		usleep_range(2000, 5000);
+		if (!IS_BROXTON(dev_priv)) {
+			intel_dsi_port_disable(encoder);
+			usleep_range(2000, 5000);
+		}
 	}
 
 	intel_dsi_unprepare(encoder);
@@ -1594,7 +1614,8 @@ static void intel_dsi_unprepare(struct intel_encoder *encoder)
 			I915_WRITE(MIPI_DEVICE_READY(port), 0x0);
 
 			intel_dsi_reset_clocks(encoder, port);
-			I915_WRITE(MIPI_EOT_DISABLE(port), CLOCKSTOP);
+			if (intel_dsi->clock_stop)
+				I915_WRITE(MIPI_EOT_DISABLE(port), CLOCKSTOP);
 
 			val = I915_READ(MIPI_DSI_FUNC_PRG(port));
 			val &= ~VID_MODE_FORMAT_MASK;
