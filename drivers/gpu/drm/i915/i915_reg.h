@@ -1753,6 +1753,13 @@ enum i915_power_well_id {
 #define CHV_TX_DW14(ch, lane) _TXLANE(ch, lane, 0xb8)
 #define   DPIO_UPAR_SHIFT		30
 
+/* BXT DSI Regulator registers */
+#define BXT_DSI_CFG                    _MMIO(0x160020)
+#define   STRAP_SELECT                 (1 << 0)
+
+#define BXT_DSI_TXCNTRL                _MMIO(0x160054)
+#define   HS_IO_CONTROL_SELECT         0x0
+
 /* BXT PHY registers */
 #define _BXT_PHY0_BASE			0x6C000
 #define _BXT_PHY1_BASE			0x162000
