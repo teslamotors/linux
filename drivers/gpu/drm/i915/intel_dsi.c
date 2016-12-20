@@ -819,6 +819,16 @@ static void intel_dsi_pre_enable(struct intel_encoder *encoder,
 		val = I915_READ(DSPCLK_GATE_D);
 		val |= DPOUNIT_CLOCK_GATE_DISABLE;
 		I915_WRITE(DSPCLK_GATE_D, val);
+	} else if (IS_BROXTON(dev_priv)) {
+		u32 val;
+
+		/* Power up the DSI regulator */
+		val = I915_READ(BXT_P_CR_GT_DISP_PWRON);
+		val |= MIPIO_RST_CTRL;
+		I915_WRITE(BXT_P_CR_GT_DISP_PWRON, val);
+
+		I915_WRITE(BXT_DSI_CFG, STRAP_SELECT);
+		I915_WRITE(BXT_DSI_TXCNTRL, HS_IO_CONTROL_SELECT);
 	}
 
 	if (!IS_GEMINILAKE(dev_priv))
