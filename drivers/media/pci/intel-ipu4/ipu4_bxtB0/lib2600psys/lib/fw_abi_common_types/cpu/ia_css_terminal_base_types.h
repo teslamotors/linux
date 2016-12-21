@@ -19,14 +19,14 @@
 #include "type_support.h"
 #include "ia_css_terminal_defs.h"
 
-#define	N_UINT16_IN_TERMINAL_STRUCT	3
-#define N_PADDING_UINT8_IN_TERMINAL_STRUCT 5
+#define N_UINT16_IN_TERMINAL_STRUCT		3
+#define N_PADDING_UINT8_IN_TERMINAL_STRUCT	5
 
-#define	SIZE_OF_TERMINAL_STRUCT_BITS \
+#define SIZE_OF_TERMINAL_STRUCT_BITS \
 	(IA_CSS_TERMINAL_TYPE_BITS \
 	+ IA_CSS_TERMINAL_ID_BITS  \
-	+ (N_UINT16_IN_TERMINAL_STRUCT * 16) \
-	+ (N_PADDING_UINT8_IN_TERMINAL_STRUCT * 8))
+	+ N_UINT16_IN_TERMINAL_STRUCT * IA_CSS_UINT16_T_BITS \
+	+ N_PADDING_UINT8_IN_TERMINAL_STRUCT * IA_CSS_UINT8_T_BITS)
 
 /* ==================== Base Terminal - START ==================== */
 struct ia_css_terminal_s {						/**< Base terminal */

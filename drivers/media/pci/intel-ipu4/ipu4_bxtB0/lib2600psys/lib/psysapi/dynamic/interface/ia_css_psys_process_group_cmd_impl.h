@@ -18,22 +18,22 @@
 #include "type_support.h"
 #include "ia_css_psys_process_group.h"
 
-#define	N_UINT64_IN_PROCESS_GROUP_STRUCT			2
-#define	N_UINT32_IN_PROCESS_GROUP_STRUCT			5
-#define	N_UINT16_IN_PROCESS_GROUP_STRUCT			5
-#define	N_UINT8_IN_PROCESS_GROUP_STRUCT				3
-#define	N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT		7
+#define N_UINT64_IN_PROCESS_GROUP_STRUCT	2
+#define N_UINT32_IN_PROCESS_GROUP_STRUCT	5
+#define N_UINT16_IN_PROCESS_GROUP_STRUCT	5
+#define N_UINT8_IN_PROCESS_GROUP_STRUCT		3
+#define N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT	7
 
 #define SIZE_OF_PROCESS_GROUP_STRUCT_BITS \
-	((N_UINT64_IN_PROCESS_GROUP_STRUCT * 64) \
-	+ (N_UINT32_IN_PROCESS_GROUP_STRUCT * 32) \
+	(N_UINT64_IN_PROCESS_GROUP_STRUCT * IA_CSS_UINT64_T_BITS \
+	+ N_UINT32_IN_PROCESS_GROUP_STRUCT * IA_CSS_UINT32_T_BITS \
 	+ IA_CSS_PROGRAM_GROUP_ID_BITS \
 	+ IA_CSS_PROCESS_GROUP_STATE_BITS \
 	+ VIED_VADDRESS_BITS \
 	+ VIED_NCI_RESOURCE_BITMAP_BITS \
-	+ (N_UINT16_IN_PROCESS_GROUP_STRUCT * 16) \
-	+ (N_UINT8_IN_PROCESS_GROUP_STRUCT * 8) \
-	+ (N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT * 8))
+	+ N_UINT16_IN_PROCESS_GROUP_STRUCT * IA_CSS_UINT16_T_BITS \
+	+ N_UINT8_IN_PROCESS_GROUP_STRUCT * IA_CSS_UINT8_T_BITS \
+	+ N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT * IA_CSS_UINT8_T_BITS)
 
 struct ia_css_process_group_s {
 	/**< User (callback) token / user context reference,
@@ -66,9 +66,9 @@ struct ia_css_process_group_s {
 	uint16_t fragment_state;
 	/**< Watermark to control fragment processing */
 	uint16_t fragment_limit;
-	/*< Array[process_count] of process addresses in this process group */
+	/**< Array[process_count] of process addresses in this process group */
 	uint16_t processes_offset;
-	/*< Array[terminal_count] of terminal addresses on this process group */
+	/**< Array[terminal_count] of terminal addresses on this process group */
 	uint16_t terminals_offset;
 	/**< Parameter dependent number of processes in this process group */
 	uint8_t process_count;

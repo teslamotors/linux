@@ -45,9 +45,11 @@ typedef struct ia_css_param_payload_s ia_css_param_payload_t;
 typedef struct ia_css_terminal_s ia_css_terminal_t;
 
 /* =================== Generic Parameter Payload - START =================== */
+#define N_UINT64_IN_PARAM_PAYLOAD_STRUCT	1
 #define N_PADDING_UINT8_IN_PARAM_PAYLOAD_STRUCT	4
+
 #define IA_CSS_PARAM_PAYLOAD_STRUCT_BITS \
-	(IA_CSS_UINT64_T_BITS \
+	(N_UINT64_IN_PARAM_PAYLOAD_STRUCT * IA_CSS_UINT64_T_BITS \
 	+ VIED_VADDRESS_BITS \
 	+ N_PADDING_UINT8_IN_PARAM_PAYLOAD_STRUCT * IA_CSS_UINT8_T_BITS)
 
@@ -69,8 +71,10 @@ struct ia_css_param_payload_s {
 
 
 /* ==================== Cached Param Terminal - START ==================== */
+#define N_UINT32_IN_PARAM_SEC_STRUCT 2
+
 #define SIZE_OF_PARAM_SEC_STRUCT_BITS \
-	(2*IA_CSS_UINT32_T_BITS)
+	(N_UINT32_IN_PARAM_SEC_STRUCT * IA_CSS_UINT32_T_BITS)
 
 /* Frame constant parameters section */
 struct ia_css_param_section_desc_s {
@@ -80,11 +84,13 @@ struct ia_css_param_section_desc_s {
 	uint32_t mem_size;
 };
 
-#define N_PADDING_UINT8_IN_PARAM_TERMINAL_STRUCT 6
+#define N_UINT16_IN_PARAM_TERMINAL_STRUCT		1
+#define N_PADDING_UINT8_IN_PARAM_TERMINAL_STRUCT	6
+
 #define SIZE_OF_PARAM_TERMINAL_STRUCT_BITS \
 	(SIZE_OF_TERMINAL_STRUCT_BITS \
 	+ IA_CSS_PARAM_PAYLOAD_STRUCT_BITS \
-	+ IA_CSS_UINT16_T_BITS \
+	+ N_UINT16_IN_PARAM_TERMINAL_STRUCT * IA_CSS_UINT16_T_BITS \
 	+ N_PADDING_UINT8_IN_PARAM_TERMINAL_STRUCT * IA_CSS_UINT8_T_BITS)
 
 /* Frame constant parameters terminal */
@@ -101,8 +107,10 @@ struct ia_css_param_terminal_s {
 
 
 /* ==================== Spatial Param Terminal - START ==================== */
+#define N_UINT16_IN_FRAG_GRID_STRUCT (2 * IA_CSS_N_DATA_DIMENSION)
+
 #define SIZE_OF_FRAG_GRID_STRUCT_BITS \
-	(2*IA_CSS_N_DATA_DIMENSION*IA_CSS_UINT16_T_BITS)
+	(N_UINT16_IN_FRAG_GRID_STRUCT * IA_CSS_UINT16_T_BITS)
 
 struct ia_css_fragment_grid_desc_s {
 	/*
@@ -117,10 +125,12 @@ struct ia_css_fragment_grid_desc_s {
 	uint16_t fragment_grid_dimension[IA_CSS_N_DATA_DIMENSION];
 };
 
-#define N_PADDING_UINT8_IN_FRAME_GRID_PARAM_SEC_STRUCT 4
+#define N_UINT32_IN_FRAME_GRID_PARAM_SEC_STRUCT		3
+#define N_PADDING_UINT8_IN_FRAME_GRID_PARAM_SEC_STRUCT	4
+
 #define SIZE_OF_FRAME_GRID_PARAM_SEC_STRUCT_BITS \
-	((3*IA_CSS_UINT32_T_BITS) \
-	+ (N_PADDING_UINT8_IN_FRAME_GRID_PARAM_SEC_STRUCT*IA_CSS_UINT8_T_BITS))
+	(N_UINT32_IN_FRAME_GRID_PARAM_SEC_STRUCT * IA_CSS_UINT32_T_BITS \
+	+ N_PADDING_UINT8_IN_FRAME_GRID_PARAM_SEC_STRUCT * IA_CSS_UINT8_T_BITS)
 
 /*
  * A plane of parameters with spatial aspect
@@ -139,10 +149,12 @@ struct ia_css_frame_grid_param_section_desc_s {
 	uint8_t  padding[N_PADDING_UINT8_IN_FRAME_GRID_PARAM_SEC_STRUCT];
 };
 
+#define N_UINT16_IN_FRAME_GRID_STRUCT_STRUCT IA_CSS_N_DATA_DIMENSION
 #define N_PADDING_UINT8_IN_FRAME_GRID_STRUCT 4
+
 #define SIZE_OF_FRAME_GRID_STRUCT_BITS \
-	((IA_CSS_N_DATA_DIMENSION*IA_CSS_UINT16_T_BITS) \
-	+ (N_PADDING_UINT8_IN_FRAME_GRID_STRUCT*IA_CSS_UINT8_T_BITS))
+	(N_UINT16_IN_FRAME_GRID_STRUCT_STRUCT * IA_CSS_UINT16_T_BITS \
+	+ N_PADDING_UINT8_IN_FRAME_GRID_STRUCT * IA_CSS_UINT8_T_BITS)
 
 struct ia_css_frame_grid_desc_s {
 	/* Resolution width/height of the frame of
@@ -152,12 +164,15 @@ struct ia_css_frame_grid_desc_s {
 	uint8_t padding[N_PADDING_UINT8_IN_FRAME_GRID_STRUCT];
 };
 
+#define N_UINT32_IN_SPATIAL_PARAM_TERM_STRUCT 1
+#define N_UINT16_IN_SPATIAL_PARAM_TERM_STRUCT 2
+
 #define SIZE_OF_SPATIAL_PARAM_TERM_STRUCT_BITS \
 	(SIZE_OF_TERMINAL_STRUCT_BITS \
 	+ IA_CSS_PARAM_PAYLOAD_STRUCT_BITS \
 	+ SIZE_OF_FRAME_GRID_STRUCT_BITS \
-	+ IA_CSS_UINT32_T_BITS \
-	+ (2*IA_CSS_UINT16_T_BITS))
+	+ N_UINT32_IN_SPATIAL_PARAM_TERM_STRUCT * IA_CSS_UINT32_T_BITS \
+	+ N_UINT16_IN_SPATIAL_PARAM_TERM_STRUCT * IA_CSS_UINT16_T_BITS)
 
 struct ia_css_spatial_param_terminal_s {
 	/* Spatial Parameter terminal base */
@@ -183,8 +198,10 @@ struct ia_css_spatial_param_terminal_s {
 
 
 /* ==================== Sliced Param Terminal - START ==================== */
+#define N_UINT32_IN_SLICE_PARAM_SECTION_DESC_STRUCT 2
+
 #define SIZE_OF_SLICE_PARAM_SECTION_DESC_STRUCT_BITS \
-	(2*IA_CSS_UINT32_T_BITS)
+	(N_UINT32_IN_SLICE_PARAM_SECTION_DESC_STRUCT * IA_CSS_UINT32_T_BITS)
 
 /* A Slice of parameters ready to be trasferred from/to registers */
 struct ia_css_slice_param_section_desc_s {
@@ -194,10 +211,12 @@ struct ia_css_slice_param_section_desc_s {
 	uint32_t mem_size;
 };
 
-#define N_PADDING_UINT8_FRAGMENT_SLICE_DESC_STRUCT 4
+#define N_UINT16_IN_FRAGMENT_SLICE_DESC_STRUCT		2
+#define N_PADDING_UINT8_FRAGMENT_SLICE_DESC_STRUCT	4
+
 #define SIZE_OF_FRAGMENT_SLICE_DESC_STRUCT_BITS \
-	((2*IA_CSS_UINT16_T_BITS) \
-	+ (N_PADDING_UINT8_FRAGMENT_SLICE_DESC_STRUCT*IA_CSS_UINT8_T_BITS))
+	(N_UINT16_IN_FRAGMENT_SLICE_DESC_STRUCT * IA_CSS_UINT16_T_BITS \
+	+ N_PADDING_UINT8_FRAGMENT_SLICE_DESC_STRUCT * IA_CSS_UINT8_T_BITS)
 
 struct ia_css_fragment_slice_desc_s {
 	/*
@@ -210,13 +229,16 @@ struct ia_css_fragment_slice_desc_s {
 	uint8_t padding[N_PADDING_UINT8_FRAGMENT_SLICE_DESC_STRUCT];
 };
 
-#define N_PADDING_UINT8_SLICED_PARAM_TERMINAL_STRUCT 2
+#define N_UINT32_IN_SLICED_PARAM_TERMINAL_STRUCT	1
+#define N_UINT16_IN_SLICED_PARAM_TERMINAL_STRUCT	1
+#define N_PADDING_UINT8_SLICED_PARAM_TERMINAL_STRUCT	2
+
 #define SIZE_OF_SLICED_PARAM_TERM_STRUCT_BITS \
 	(SIZE_OF_TERMINAL_STRUCT_BITS \
 	+ IA_CSS_PARAM_PAYLOAD_STRUCT_BITS \
-	+ IA_CSS_UINT32_T_BITS \
-	+ IA_CSS_UINT16_T_BITS \
-	+ (N_PADDING_UINT8_SLICED_PARAM_TERMINAL_STRUCT*IA_CSS_UINT8_T_BITS))
+	+ N_UINT32_IN_SLICED_PARAM_TERMINAL_STRUCT * IA_CSS_UINT32_T_BITS \
+	+ N_UINT16_IN_SLICED_PARAM_TERMINAL_STRUCT * IA_CSS_UINT16_T_BITS \
+	+ N_PADDING_UINT8_SLICED_PARAM_TERMINAL_STRUCT * IA_CSS_UINT8_T_BITS)
 
 struct ia_css_sliced_param_terminal_s {
 	/* Spatial Parameter terminal base */
@@ -237,9 +259,10 @@ struct ia_css_sliced_param_terminal_s {
 
 /* ==================== Program Terminal - START ==================== */
 
-#define N_PADDING_UINT8_IN_FRAG_PARAM_SEC_STRUCT 4
+#define N_UINT32_IN_FRAG_PARAM_SEC_STRUCT 2
+
 #define SIZE_OF_FRAG_PARAM_SEC_STRUCT_BITS \
-	(2*IA_CSS_UINT32_T_BITS)
+	(N_UINT32_IN_FRAG_PARAM_SEC_STRUCT * IA_CSS_UINT32_T_BITS)
 
 /* Fragment constant parameters section */
 struct ia_css_fragment_param_section_desc_s {
@@ -249,8 +272,10 @@ struct ia_css_fragment_param_section_desc_s {
 	uint32_t mem_size;
 };
 
+#define N_UINT16_IN_FRAG_SEQ_COMMAND_STRUCT IA_CSS_N_COMMAND_COUNT
+
 #define SIZE_OF_FRAG_SEQ_COMMANDS_STRUCT_BITS \
-	(4*IA_CSS_UINT16_T_BITS)
+	(N_UINT16_IN_FRAG_SEQ_COMMAND_STRUCT * IA_CSS_UINT16_T_BITS)
 
 /* 4 commands packe together to save memory space */
 struct ia_css_kernel_fragment_sequencer_command_desc_s {
@@ -258,9 +283,10 @@ struct ia_css_kernel_fragment_sequencer_command_desc_s {
 	uint16_t line_count[IA_CSS_N_COMMAND_COUNT];
 };
 
+#define N_UINT16_IN_FRAG_SEQ_INFO_STRUCT (5 * IA_CSS_N_DATA_DIMENSION + 2)
+
 #define SIZE_OF_FRAG_SEQ_INFO_STRUCT_BITS \
-	((5*IA_CSS_UINT16_T_BITS*IA_CSS_N_DATA_DIMENSION) \
-	+ (2*IA_CSS_UINT16_T_BITS))
+	(N_UINT16_IN_FRAG_SEQ_INFO_STRUCT * IA_CSS_UINT16_T_BITS)
 
 struct ia_css_kernel_fragment_sequencer_info_desc_s {
 	/* Slice dimensions */
@@ -285,12 +311,14 @@ struct ia_css_kernel_fragment_sequencer_info_desc_s {
 	uint16_t command_desc_offset;
 };
 
-#define N_PADDING_UINT8_IN_PROG_TERM_STRUCT 4
+#define N_UINT16_IN_PROG_TERM_STRUCT		2
+#define N_PADDING_UINT8_IN_PROG_TERM_STRUCT	4
+
 #define SIZE_OF_PROG_TERM_STRUCT_BITS \
 	(SIZE_OF_TERMINAL_STRUCT_BITS \
 	+ IA_CSS_PARAM_PAYLOAD_STRUCT_BITS \
-	+ (2*IA_CSS_UINT16_T_BITS) \
-	+ (N_PADDING_UINT8_IN_PROG_TERM_STRUCT*IA_CSS_UINT8_T_BITS))
+	+ N_UINT16_IN_PROG_TERM_STRUCT * IA_CSS_UINT16_T_BITS \
+	+ N_PADDING_UINT8_IN_PROG_TERM_STRUCT*IA_CSS_UINT8_T_BITS)
 
 struct ia_css_program_terminal_s {
 	/* Program terminal base */
