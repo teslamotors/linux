@@ -196,7 +196,7 @@ static struct intel_ipu4_psys_kcmd *libcsspsys2600_pg_rcv(
 	return kcmd ? kcmd : ERR_PTR(-EIO);
 }
 
-static int libcsspsys2600_terminal_set(struct ia_css_terminal *terminal,
+static int libcsspsys2600_terminal_set(struct ipu_fw_psys_terminal *terminal,
 				       int terminal_idx,
 				       struct intel_ipu4_psys_kcmd *kcmd,
 				       vied_vaddress_t buffer,
