@@ -55,6 +55,13 @@
 		       __stringify(a));					\
 	}
 
+#define SIZE_CHECK(a, b)						\
+	{								\
+		if ((a) != (b))				\
+		pr_err("intel_ipu4 psys ABI size mismatch %s\n",	\
+		       __stringify(a));					\
+	}
+
 static void abi_sanity_checker(void)
 {
 	struct ipu_fw_psys_process_group *ipu_fw_psys_pg;
@@ -122,6 +129,7 @@ static void abi_sanity_checker(void)
 
 	SIZE_OF_CHECK(ipu_fw_psys_frame_descriptor, ia_css_frame_descriptor);
 	SIZE_OF_CHECK(ipu_fw_psys_stream, ia_css_stream);
+	SIZE_CHECK(IPU_FW_PSYS_N_CELL_ID, VIED_NCI_N_CELL_ID);
 }
 
 /*Implement SMIF/Vied subsystem access here */
