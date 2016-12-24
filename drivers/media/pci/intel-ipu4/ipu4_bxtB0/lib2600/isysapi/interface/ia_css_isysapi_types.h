@@ -16,6 +16,7 @@
 #define __IA_CSS_ISYSAPI_TYPES_H
 
 #include "ia_css_isysapi_fw_types.h"
+#include "type_support.h"
 
 #include "ia_css_return_token.h"
 #include "ia_css_output_buffer.h"
@@ -97,6 +98,9 @@ struct ia_css_isys_output_pin_payload {
  * @watermark_in_lines: pin watermark level in lines
  * @send_irq: assert if pin event should trigger irq
  * @online: make it possible to connect online
+ * @link_id: identifies PPG to connect to, link_id = 0 implies offline
+ *           while link_id > 0 implies buffer_chasing or online mode
+ *           can be entered.
  */
 struct ia_css_isys_output_pin_info {
 	unsigned int input_pin_id;
@@ -107,6 +111,7 @@ struct ia_css_isys_output_pin_info {
 	unsigned int watermark_in_lines;
 	unsigned int send_irq;
 	unsigned int online;
+	enum ia_css_isys_link_id link_id;
 };
 
 /**
@@ -243,6 +248,7 @@ struct ia_css_isys_stream_cfg_data {
  *		   used only when send_irq_sof is '0'
  * @send_resp_eof: send response for frame eof detected,
  *		   used only when send_irq_eof is '0'
+ * @frame_counter: frame number associated with this buffer set.
  */
 struct ia_css_isys_frame_buff_set {
 	struct ia_css_isys_output_pin_payload output_pins[MAX_OPINS];
@@ -251,6 +257,7 @@ struct ia_css_isys_frame_buff_set {
 	unsigned int send_irq_eof;
 	unsigned int send_resp_sof;
 	unsigned int send_resp_eof;
+	uint8_t      frame_counter;
 };
 
 /**
@@ -270,6 +277,9 @@ struct ia_css_isys_frame_buff_set {
  * @acc_id: this var is valid for stats ready related responses,
  *	    contains accelerator id that finished producing
  *	    all related statistics
+ * @frame_counter: valid for STREAM_START_AND_CAPTURE_DONE,
+ *             STREAM_CAPTURE_DONE and STREAM_CAPTURE_DISCARDED
+ * @written_direct: indicates if frame was written direct (online mode) or to DDR.
  */
 struct ia_css_isys_resp_info {
 	enum ia_css_isys_resp_type type;
@@ -281,6 +291,8 @@ struct ia_css_isys_resp_info {
 	unsigned int pin_id;
 	struct ia_css_isys_param_pin process_group_light;
 	unsigned int acc_id;
+	uint8_t      frame_counter;
+	uint8_t      written_direct;
 };
 
 /**

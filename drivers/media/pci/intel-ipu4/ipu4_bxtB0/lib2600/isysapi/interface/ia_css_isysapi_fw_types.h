@@ -472,4 +472,14 @@ enum ia_css_proxy_error {
 	N_IA_CSS_PROXY_ERROR
 };
 
-#endif /* __IA_CSS_ISYSAPI_FW_TYPES_H */
+/*
+ * enum ia_css_isys_link_id. Lists the link ids used by the FW for On The Fly feature
+ */
+enum ia_css_isys_link_id {
+	IA_CSS_ISYS_LINK_OFFLINE = 0,
+	IA_CSS_ISYS_LINK_MAIN_OUTPUT  = 1,
+	IA_CSS_ISYS_LINK_PDAF_OUTPUT  = 2,
+	N_IA_CSS_ISYS_LINK_ID
+};
+
+#endif /*__IA_CSS_ISYSAPI_FW_TYPES_H */

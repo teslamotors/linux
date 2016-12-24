@@ -77,6 +77,9 @@ struct ia_css_isys_output_pin_payload_comm {
  * @pt: pin type
  * @ft: frame format type
  * @online: make it possible to connect online
+ * @link_id: identifies PPG to connect to, link_id = 0 implies offline
+ *           while link_id > 0 implies buffer_chasing or online mode
+ *           can be entered.
  */
 struct ia_css_isys_output_pin_info_comm {
 	aligned_struct(struct ia_css_isys_resolution_comm, output_res);
@@ -87,6 +90,7 @@ struct ia_css_isys_output_pin_info_comm {
 	aligned_uint8(enum ia_css_isys_pin_type, pt);
 	aligned_uint8(enum ia_css_isys_frame_format_type, ft);
 	aligned_uint8(unsigned int, online);
+	aligned_uint8(enum ia_css_isys_link_id, link_id);
 };
 
 /**
@@ -253,6 +257,7 @@ struct ia_css_isys_stream_cfg_data_comm {
  *		   send_irq_sof is '0'
  * @send_resp_eof: send response for frame eof detected, used only when
  *		   send_irq_eof is '0'
+ * @frame_counter: frame number associated with this buffer set.
  */
 struct ia_css_isys_frame_buff_set_comm {
 	aligned_struct(struct ia_css_isys_output_pin_payload_comm,
@@ -262,6 +267,7 @@ struct ia_css_isys_frame_buff_set_comm {
 	aligned_uint8(unsigned int, send_irq_eof);
 	aligned_uint8(unsigned int, send_resp_sof);
 	aligned_uint8(unsigned int, send_resp_eof);
+	aligned_uint8(unsigned int, frame_counter);
 };
 
 /**
@@ -289,7 +295,12 @@ struct ia_css_isys_error_info_comm {
  * @acc_id: this var is valid for stats ready related responses,
  *	    contains accelerator id that finished producing
  *	    all related statistics
+ * @frame_counter: valid for STREAM_START_AND_CAPTURE_DONE,
+ *             STREAM_CAPTURE_DONE and STREAM_CAPTURE_DISCARDED,
+ * @written_direct: indicates if frame was written direct (online mode) or not.
+ *
  */
+
 struct ia_css_isys_resp_info_comm {
 	aligned_uint64(ia_css_return_token, buf_id); /* Used internally only */
 	aligned_struct(struct ia_css_isys_output_pin_payload_comm, pin);
@@ -300,6 +311,8 @@ struct ia_css_isys_resp_info_comm {
 	aligned_uint8(enum ia_css_isys_resp_type, type);
 	aligned_uint8(unsigned int, pin_id);
 	aligned_uint8(unsigned int, acc_id);
+	aligned_uint8(unsigned int, frame_counter);
+	aligned_uint8(unsigned int, written_direct);
 };
 
 /**

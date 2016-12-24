@@ -357,17 +357,21 @@ int print_isys_resp_info(struct ia_css_isys_resp_info *received_response)
 		received_response->stream_handle,
 		received_response->timestamp[0],
 		received_response->timestamp[1]);
-	IA_CSS_TRACE_5(ISYSAPI, VERBOSE,
+	IA_CSS_TRACE_7(ISYSAPI, VERBOSE,
 		"\tia_css_isys_resp_info.error = %d\n"
 		"\t\t\tia_css_isys_resp_info.error_details = %d\n"
 		"\t\t\tia_css_isys_resp_info.pin.out_buf_id = %016llxu\n"
 		"\t\t\tia_css_isys_resp_info.pin.addr = %016llxu\n"
-		"\t\t\tia_css_isys_resp_info.pin_id = %d\n",
+		"\t\t\tia_css_isys_resp_info.pin_id = %d\n"
+		"\t\t\tia_css_isys_resp_info.frame_counter = %d\n,"
+		"\t\t\tia_css_isys_resp_info.written_direct = %d\n",
 		received_response->error,
 		received_response->error_details,
 		(unsigned long long)received_response->pin.out_buf_id,
 		(unsigned long long)received_response->pin.addr,
-		received_response->pin_id);
+		received_response->pin_id,
+		received_response->frame_counter,
+		received_response->written_direct);
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE,
 		"------------------------------------------------------\n");
 

@@ -415,7 +415,7 @@ STORAGE_CLASS_INLINE void output_pin_info_host_to_css(
 			output_pin_info_host->watermark_in_lines;
 	output_pin_info_css->send_irq = output_pin_info_host->send_irq;
 	output_pin_info_css->ft = output_pin_info_host->ft;
-	output_pin_info_css->online = output_pin_info_host->online;
+	output_pin_info_css->link_id = output_pin_info_host->link_id;
 }
 
 STORAGE_CLASS_INLINE void param_pin_host_to_css(
@@ -572,6 +572,8 @@ STORAGE_CLASS_INLINE void frame_buff_set_host_to_css(
 	frame_buff_set_css->send_resp_eof =
 			frame_buff_set_host->send_irq_eof ?
 				1 : frame_buff_set_host->send_resp_eof;
+	frame_buff_set_css->frame_counter =
+			frame_buff_set_host->frame_counter;
 }
 
 STORAGE_CLASS_INLINE void buffer_partition_host_to_css(
@@ -622,6 +624,8 @@ STORAGE_CLASS_INLINE void resp_info_css_to_host(
 	param_pin_css_to_host(&resp_info_css->process_group_light,
 				&resp_info_host->process_group_light);
 	resp_info_host->acc_id = resp_info_css->acc_id;
+	resp_info_host->frame_counter = resp_info_css->frame_counter;
+	resp_info_host->written_direct = resp_info_css->written_direct;
 }
 
 /*
