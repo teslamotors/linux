@@ -20,6 +20,7 @@
 #include <linux/fs.h>
 #include <linux/interrupt.h>
 #include <linux/intel-ishtp-clients.h>
+#include <linux/sched/signal.h>
 #include <linux/ioctl.h>
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
@@ -668,6 +669,7 @@ static void ishtp_cl_reset_handler(struct work_struct *work)
 
 	cl = ishtp_cl_misc->cl;
 	if (cl) {
+		ishtp_cl_unlink(cl);
 		ishtp_cl_flush_queues(cl);
 		ishtp_cl_free(cl);
 
