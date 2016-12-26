@@ -395,6 +395,9 @@ struct intel_ipu4_psys_abi {
 				   dma_addr_t vaddress);
 	void (*pg_set_token)(struct intel_ipu4_psys_kcmd *kcmd,
 					    u64 token);
+	int (*pg_get_load_cycles)(struct intel_ipu4_psys_kcmd *kcmd);
+	int (*pg_get_init_cycles)(struct intel_ipu4_psys_kcmd *kcmd);
+	int (*pg_get_processing_cycles)(struct intel_ipu4_psys_kcmd *kcmd);
 	void *(*pg_get_terminal)(
 		struct intel_ipu4_psys_kcmd *kcmd,
 		int index);
@@ -408,6 +411,9 @@ int intel_ipu4_psys_abi_pg_start(struct intel_ipu4_psys_kcmd *kcmd);
 int intel_ipu4_psys_abi_pg_disown(struct intel_ipu4_psys_kcmd *kcmd);
 int intel_ipu4_psys_abi_pg_abort(struct intel_ipu4_psys_kcmd *kcmd);
 int intel_ipu4_psys_abi_pg_submit(struct intel_ipu4_psys_kcmd *kcmd);
+int intel_ipu4_psys_abi_pg_load_cycles(struct intel_ipu4_psys_kcmd *kcmd);
+int intel_ipu4_psys_abi_pg_init_cycles(struct intel_ipu4_psys_kcmd *kcmd);
+int intel_ipu4_psys_abi_pg_processing_cycles(struct intel_ipu4_psys_kcmd *kcmd);
 struct intel_ipu4_psys_kcmd *intel_ipu4_psys_abi_rcv_kcmd(
 	struct intel_ipu4_psys *psys,
 	u32 *status);

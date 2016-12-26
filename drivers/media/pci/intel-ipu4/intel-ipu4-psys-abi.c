@@ -43,6 +43,30 @@ int intel_ipu4_psys_abi_pg_start(struct intel_ipu4_psys_kcmd *kcmd)
 	return 0;
 }
 
+
+int intel_ipu4_psys_abi_pg_load_cycles(struct intel_ipu4_psys_kcmd *kcmd)
+{
+	if (ext_abi)
+		return ext_abi->pg_get_load_cycles(kcmd);
+	return 0;
+}
+
+
+int intel_ipu4_psys_abi_pg_init_cycles(struct intel_ipu4_psys_kcmd *kcmd)
+{
+	if (ext_abi)
+		return ext_abi->pg_get_init_cycles(kcmd);
+	return 0;
+}
+
+
+int intel_ipu4_psys_abi_pg_processing_cycles(struct intel_ipu4_psys_kcmd *kcmd)
+{
+	if (ext_abi)
+		return ext_abi->pg_get_processing_cycles(kcmd);
+	return 0;
+}
+
 int intel_ipu4_psys_abi_pg_disown(struct intel_ipu4_psys_kcmd *kcmd)
 {
 	struct ipu_fw_psys_cmd *psys_cmd;

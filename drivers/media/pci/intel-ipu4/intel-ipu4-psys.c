@@ -917,7 +917,10 @@ static void intel_ipu4_psys_kcmd_complete(struct intel_ipu4_psys *psys,
 					  int error)
 {
 	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority,
-			   intel_ipu4_psys_abi_pg_get_id(kcmd));
+		intel_ipu4_psys_abi_pg_get_id(kcmd),
+		intel_ipu4_psys_abi_pg_load_cycles(kcmd),
+		intel_ipu4_psys_abi_pg_init_cycles(kcmd),
+		intel_ipu4_psys_abi_pg_processing_cycles(kcmd));
 
 	switch (kcmd->state) {
 	case KCMD_STATE_RUNNING:
@@ -1074,7 +1077,10 @@ static int intel_ipu4_psys_kcmd_start(struct intel_ipu4_psys *psys,
 	}
 
 	trace_ipu4_pg_kcmd(__func__, kcmd->id, kcmd->issue_id, kcmd->priority,
-		intel_ipu4_psys_abi_pg_get_id(kcmd));
+		intel_ipu4_psys_abi_pg_get_id(kcmd),
+		intel_ipu4_psys_abi_pg_load_cycles(kcmd),
+		intel_ipu4_psys_abi_pg_init_cycles(kcmd),
+		intel_ipu4_psys_abi_pg_processing_cycles(kcmd));
 
 	switch (kcmd->state) {
 	case KCMD_STATE_RUNNING:

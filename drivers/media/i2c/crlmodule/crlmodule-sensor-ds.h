@@ -20,13 +20,6 @@
 #include <linux/irqreturn.h>
 #include "crlmodule.h"
 
-#define CRL_SUBDEVS				3
-
-/* Index for subdevs in any structure with multiple SDs */
-#define CRL_SD_PA_INDEX				0
-#define CRL_SD_BINNER_INDEX			1
-#define CRL_SD_SCALER_INDEX			2
-
 #define CRL_REG_LEN_08BIT			1
 #define CRL_REG_LEN_16BIT			2
 #define CRL_REG_LEN_24BIT			3

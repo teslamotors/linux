@@ -1336,11 +1336,25 @@ static int crlmodule_update_frame_blanking(struct crl_sensor *sensor)
 	return 0;
 }
 
+static int __crlmodule_rect_index(enum crl_subdev_type type,
+				  struct crl_mode_rep *mode)
+{
+	int i;
+
+	for (i = 0; i < mode->sd_rects_items; i++) {
+		if (type == mode->sd_rects[i].subdev_type)
+			return i;
+	}
+
+	return -1;
+}
+
 static void crlmodule_update_mode_bysel(struct crl_sensor *sensor)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	const struct crl_mode_rep *this;
 	unsigned int i;
+	int rect_index;
 
 	dev_dbg(&client->dev, "%s look for w: %d, h: %d, in [%d] modes\n",
 			      __func__, sensor->src->crop[CRL_PAD_SRC].width,
@@ -1359,9 +1373,14 @@ static void crlmodule_update_mode_bysel(struct crl_sensor *sensor)
 		if (sensor->pixel_array) {
 			dev_dbg(&client->dev, "%s Compare PA out rect\n",
 					__func__);
+			rect_index =
+			__crlmodule_rect_index(CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+					this);
+			if (rect_index < 0)
+				continue;
 			if (!__crlmodule_rect_matches(client,
 				&sensor->pixel_array->crop[CRL_PA_PAD_SRC],
-				&this->sd_rects[CRL_SD_PA_INDEX].out_rect))
+				&this->sd_rects[rect_index].out_rect))
 				continue;
 		}
 		if (sensor->binner) {
@@ -1380,15 +1399,20 @@ static void crlmodule_update_mode_bysel(struct crl_sensor *sensor)
 				continue;
 
 			dev_dbg(&client->dev, "%s binner in rect\n", __func__);
+			rect_index =
+				__crlmodule_rect_index(CRL_SUBDEV_TYPE_BINNER,
+					this);
+			if (rect_index < 0)
+				continue;
 			if (!__crlmodule_rect_matches(client,
 				&sensor->binner->crop[CRL_PAD_SINK],
-				&this->sd_rects[CRL_SD_BINNER_INDEX].in_rect))
+				&this->sd_rects[rect_index].in_rect))
 				continue;
 
 			dev_dbg(&client->dev, "%s binner out rect\n", __func__);
 			if (!__crlmodule_rect_matches(client,
 				&sensor->binner->crop[CRL_PAD_SRC],
-				&this->sd_rects[CRL_SD_BINNER_INDEX].out_rect))
+				&this->sd_rects[rect_index].out_rect))
 				continue;
 		}
 
@@ -1399,16 +1423,22 @@ static void crlmodule_update_mode_bysel(struct crl_sensor *sensor)
 			if (sensor->scale_m != this->scale_m)
 				continue;
 
+			rect_index =
+				__crlmodule_rect_index(CRL_SUBDEV_TYPE_SCALER,
+					this);
+			if (rect_index < 0)
+				continue;
+
 			dev_dbg(&client->dev, "%s scaler in rect\n", __func__);
 			if (!__crlmodule_rect_matches(client,
 				&sensor->scaler->crop[CRL_PAD_SINK],
-				&this->sd_rects[CRL_SD_SCALER_INDEX].in_rect))
+				&this->sd_rects[rect_index].in_rect))
 				continue;
 
 			dev_dbg(&client->dev, "%s scaler out rect\n", __func__);
 			if (!__crlmodule_rect_matches(client,
 				&sensor->scaler->crop[CRL_PAD_SRC],
-				&this->sd_rects[CRL_SD_SCALER_INDEX].out_rect))
+				&this->sd_rects[rect_index].out_rect))
 				continue;
 		}
 
@@ -1453,7 +1483,7 @@ static void crlmodule_update_mode_v4l2ctrl(struct crl_sensor *sensor)
 		if (CRL_SUBDEV_TYPE_PIXEL_ARRAY ==
 		 this->sd_rects[i].subdev_type) {
 			sensor->pixel_array->crop[CRL_PA_PAD_SRC] =
-			 this->sd_rects[CRL_SD_PA_INDEX].out_rect;
+			 this->sd_rects[i].out_rect;
 		}
 
 		if (CRL_SUBDEV_TYPE_BINNER ==

@@ -53,11 +53,11 @@ static struct crl_subdev_rect_rep pixter_stub_720p_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
 		.in_rect = { 0, 0, 100000, 100000 },
-		.out_rect = { 0, 0, 1280, 736 },
+		.out_rect = { 0, 0, 1280, 720 },
 	},
 };
 
-static struct crl_subdev_rect_rep pixter_stub_1088p_rects[] = {
+static struct crl_subdev_rect_rep pixter_stub_1080p_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect = { 0, 0, 100000, 100000 },
@@ -66,7 +66,85 @@ static struct crl_subdev_rect_rep pixter_stub_1088p_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
 		.in_rect = { 0, 0, 100000, 100000 },
-		.out_rect = { 0, 0, 1920, 1088 },
+		.out_rect = { 0, 0, 1920, 1080 },
+	},
+};
+
+static struct crl_subdev_rect_rep pixter_stub_1440p_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 100000, 100000 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 2560, 1440 },
+	},
+};
+
+static struct crl_subdev_rect_rep pixter_stub_1836p_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 100000, 100000 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 3264, 1836 },
+	},
+};
+
+static struct crl_subdev_rect_rep pixter_stub_1920p_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 100000, 100000 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 2560, 1920 },
+	},
+};
+
+static struct crl_subdev_rect_rep pixter_stub_2304p_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 100000, 100000 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 4096, 2304 },
+	},
+};
+
+static struct crl_subdev_rect_rep pixter_stub_2448p_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 100000, 100000 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 3264, 2448 },
+	},
+};
+
+static struct crl_subdev_rect_rep pixter_stub_13m_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 100000, 100000 },
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.in_rect = { 0, 0, 100000, 100000 },
+		.out_rect = { 0, 0, 4096, 3072 },
 	},
 };
 
@@ -76,7 +154,7 @@ static struct crl_mode_rep pixter_stub_modes[] = {
 		.sd_rects = pixter_stub_720p_rects,
 		.scale_m = 78,
 		.width = 1280,
-		.height = 736,
+		.height = 720,
 		.min_llp = 6024,
 		.min_fll = 1660,
 		.comp_items = 0,
@@ -85,13 +163,91 @@ static struct crl_mode_rep pixter_stub_modes[] = {
 		.mode_regs = NULL,
 	},
 	{
-		.sd_rects_items = ARRAY_SIZE(pixter_stub_1088p_rects),
-		.sd_rects = pixter_stub_1088p_rects,
+		.sd_rects_items = ARRAY_SIZE(pixter_stub_1080p_rects),
+		.sd_rects = pixter_stub_1080p_rects,
 		.scale_m = 52,
 		.width = 1920,
-		.height = 1088,
+		.height = 1080,
 		.min_llp = 6024,
 		.min_fll = 1660,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = 0,
+		.mode_regs = NULL,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(pixter_stub_1440p_rects),
+		.sd_rects = pixter_stub_1440p_rects,
+		.scale_m = 39,
+		.width = 2560,
+		.height = 1440,
+		.min_llp = 6024,
+		.min_fll = 1660,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = 0,
+		.mode_regs = NULL,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(pixter_stub_1836p_rects),
+		.sd_rects = pixter_stub_1836p_rects,
+		.scale_m = 30,
+		.width = 3264,
+		.height = 1836,
+		.min_llp = 6024,
+		.min_fll = 1900,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = 0,
+		.mode_regs = NULL,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(pixter_stub_1920p_rects),
+		.sd_rects = pixter_stub_1920p_rects,
+		.scale_m = 39,
+		.width = 2560,
+		.height = 1920,
+		.min_llp = 6024,
+		.min_fll = 2000,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = 0,
+		.mode_regs = NULL,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(pixter_stub_2304p_rects),
+		.sd_rects = pixter_stub_2304p_rects,
+		.scale_m = 24,
+		.width = 4096,
+		.height = 2304,
+		.min_llp = 6024,
+		.min_fll = 2400,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = 0,
+		.mode_regs = NULL,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(pixter_stub_2448p_rects),
+		.sd_rects = pixter_stub_2448p_rects,
+		.scale_m = 30,
+		.width = 3264,
+		.height = 2448,
+		.min_llp = 6024,
+		.min_fll = 2600,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.mode_regs_items = 0,
+		.mode_regs = NULL,
+	},
+	{
+		.sd_rects_items = ARRAY_SIZE(pixter_stub_13m_rects),
+		.sd_rects = pixter_stub_13m_rects,
+		.scale_m = 24,
+		.width = 4096,
+		.height = 3072,
+		.min_llp = 6024,
+		.min_fll = 3200,
 		.comp_items = 0,
 		.ctrl_data = 0,
 		.mode_regs_items = 0,

@@ -325,6 +325,24 @@ int libcsspsys2600_pg_set_ipu_vaddress(struct intel_ipu4_psys_kcmd *kcmd,
 						     kcmd->kpg->pg, vaddress);
 }
 
+int libcsspsys2600_pg_get_load_cycles(struct intel_ipu4_psys_kcmd *kcmd)
+{
+	return ia_css_process_group_get_pg_load_cycles(
+		(ia_css_process_group_t *)kcmd->kpg->pg);
+}
+
+int libcsspsys2600_pg_get_init_cycles(struct intel_ipu4_psys_kcmd *kcmd)
+{
+	return ia_css_process_group_get_pg_init_cycles(
+		(ia_css_process_group_t *)kcmd->kpg->pg);
+}
+
+int libcsspsys2600_pg_get_processing_cycles(struct intel_ipu4_psys_kcmd *kcmd)
+{
+	return ia_css_process_group_get_pg_processing_cycles(
+		(ia_css_process_group_t *)kcmd->kpg->pg);
+}
+
 void *libcsspsys2600_pg_get_terminal(struct intel_ipu4_psys_kcmd *kcmd,
 							 int index)
 {
@@ -420,6 +438,9 @@ struct intel_ipu4_psys_abi abi = {
 	.pg_set_ipu_vaddress = libcsspsys2600_pg_set_ipu_vaddress,
 	.pg_get_terminal = libcsspsys2600_pg_get_terminal,
 	.pg_set_token = libcsspsys2600_pg_set_token,
+	.pg_get_load_cycles = libcsspsys2600_pg_get_load_cycles,
+	.pg_get_init_cycles = libcsspsys2600_pg_get_init_cycles,
+	.pg_get_processing_cycles = libcsspsys2600_pg_get_processing_cycles,
 	.open = libcsspsys2600_open,
 	.close = libcsspsys2600_close,
 };
