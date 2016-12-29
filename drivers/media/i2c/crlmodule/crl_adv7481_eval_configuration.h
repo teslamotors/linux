@@ -525,7 +525,7 @@ static struct crl_sensor_configuration adv7481_eval_crl_configuration = {
 	.id_reg_items = 0,
 	.id_regs = NULL,
 
-	.subdev_items = 0,
+	.subdev_items = ARRAY_SIZE(adv7481_eval_sensor_subdevs),
 	.subdevs = adv7481_eval_sensor_subdevs,
 
 	.sensor_limits = &adv7481_eval_sensor_limits,
@@ -560,7 +560,7 @@ static struct crl_sensor_configuration adv7481b_eval_crl_configuration = {
 	.id_reg_items = 0,
 	.id_regs = NULL,
 
-	.subdev_items = 0,
+	.subdev_items = ARRAY_SIZE(adv7481b_eval_sensor_subdevs),
 	.subdevs = adv7481b_eval_sensor_subdevs,
 
 	.sensor_limits = &adv7481_eval_sensor_limits,

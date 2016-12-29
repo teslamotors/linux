@@ -591,7 +591,7 @@ static struct crl_sensor_configuration pixter_stub_crl_configuration = {
 	.id_reg_items = 0,
 	.id_regs = NULL,
 
-	.subdev_items = 0,
+	.subdev_items = ARRAY_SIZE(pixter_stub_sensor_subdevs),
 	.subdevs = pixter_stub_sensor_subdevs,
 
 	.sensor_limits = &pixter_stub_sensor_limits,
