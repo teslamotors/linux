@@ -8657,6 +8657,7 @@ static int __maybe_unused igb_resume(struct device *dev)
 	struct igb_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
 	u32 err, val;
+	int status;
 
 	pci_set_power_state(pdev, PCI_D0);
 	pci_restore_state(pdev);
@@ -8693,14 +8694,24 @@ static int __maybe_unused igb_resume(struct device *dev)
 
 	wr32(E1000_WUS, ~0);
 
-	rtnl_lock();
-	if (!err && netif_running(netdev))
-		err = __igb_open(netdev, true);
+	if (!(pdev->dev.power.runtime_status == RPM_RESUMING)) {
+		rtnl_lock();
+		if (!err && netif_running(netdev))
+			err = __igb_open(netdev, true);
 
-	if (!err)
-		netif_device_attach(netdev);
-	rtnl_unlock();
+		if (!err)
+			netif_device_attach(netdev);
+		rtnl_unlock();
+	} else {
+		status = rtnl_trylock();
+		if (!err && netif_running(netdev))
+			err = __igb_open(netdev, true);
 
+		if (!err)
+			netif_device_attach(netdev);
+		if (status)
+			rtnl_unlock();
+	}
 	return err;
 }
 
