@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Intel Corporation.
+ * Copyright (c) 2016-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -24,7 +24,7 @@ struct intel_ipu4_isys;
 #if IS_ENABLED(CONFIG_VIDEO_INTEL_IPU5)
 
 int intel_ipu5_isys_load_pkg_dir(struct intel_ipu4_isys *isys);
-void intel_ipu5_pkg_dir_configure_spc(struct intel_ipu4_device *isp,
+static void intel_ipu5_pkg_dir_configure_spc(struct intel_ipu4_device *isp,
 			const struct intel_ipu4_hw_variants *hw_variant,
 			int pkg_dir_idx, void __iomem *base,
 			u64 *pkg_dir,
@@ -36,7 +36,7 @@ static int intel_ipu5_isys_load_pkg_dir(struct intel_ipu4_isys *isys)
 {
 	return 0;
 }
-void intel_ipu5_pkg_dir_configure_spc(struct intel_ipu4_device *isp,
+static void intel_ipu5_pkg_dir_configure_spc(struct intel_ipu4_device *isp,
 				const struct intel_ipu4_hw_variants *hw_variant,
 				int pkg_dir_idx, void __iomem *base,
 				u64 *pkg_dir,

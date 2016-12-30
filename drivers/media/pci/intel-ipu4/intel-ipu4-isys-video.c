@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2016 Intel Corporation.
+ * Copyright (c) 2013--2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -648,7 +648,8 @@ static bool is_external(struct intel_ipu4_isys_video *av,
 
 	sd = media_entity_to_v4l2_subdev(entity);
 
-	if (sd->owner != THIS_MODULE)
+	if (strncmp(sd->name, INTEL_IPU4_ISYS_ENTITY_PREFIX,
+		strlen(INTEL_IPU4_ISYS_ENTITY_PREFIX)) != 0)
 		return true;
 
 	for (i = 0; i < av->isys->pdata->ipdata->tpg.ntpgs
@@ -776,8 +777,9 @@ static int get_external_facing_format(struct intel_ipu4_isys_pipeline *ip,
 	struct intel_ipu4_isys_video *av =
 		container_of(ip, struct intel_ipu4_isys_video, ip);
 	struct media_pad *external_facing =
-		(media_entity_to_v4l2_subdev(ip->external->entity)->owner
-		== THIS_MODULE)
+		(strncmp(media_entity_to_v4l2_subdev(ip->external->entity)->name,
+		INTEL_IPU4_ISYS_ENTITY_PREFIX,
+		strlen(INTEL_IPU4_ISYS_ENTITY_PREFIX)) == 0)
 		? ip->external : media_entity_remote_pad(ip->external);
 
 	if (WARN_ON(!external_facing)) {
@@ -1503,7 +1505,9 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 			continue;
 
 		/* Don't start truly external devices quite yet. */
-		if (media_entity_to_v4l2_subdev(entity)->owner != THIS_MODULE
+		if (strncmp(media_entity_to_v4l2_subdev(entity)->name,
+			INTEL_IPU4_ISYS_ENTITY_PREFIX,
+			strlen(INTEL_IPU4_ISYS_ENTITY_PREFIX)) != 0
 		    || ip->external->entity == entity)
 			continue;
 

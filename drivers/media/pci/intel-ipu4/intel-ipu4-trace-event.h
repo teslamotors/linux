@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015--2016 Intel Corporation.
+ * Copyright (c) 2015--2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -19,6 +19,7 @@
 
 #include <linux/tracepoint.h>
 
+#ifdef IPU4_SOF_SEQID_TRACE
 TRACE_EVENT(ipu4_sof_seqid,
 		TP_PROTO(unsigned int seqid, unsigned int csiport,
 			unsigned int csivc),
@@ -36,7 +37,9 @@ TRACE_EVENT(ipu4_sof_seqid,
 		TP_printk("seqid<%u>,csiport<%u>,csivc<%u>", __entry->seqid,
 			__entry->csiport, __entry->csivc)
 );
+#endif
 
+#ifdef IPU4_PERF_REG_TRACE
 TRACE_EVENT(ipu4_perf_reg,
 		TP_PROTO(unsigned int addr, unsigned int val),
 		TP_ARGS(addr, val),
@@ -50,7 +53,9 @@ TRACE_EVENT(ipu4_perf_reg,
 		),
 		TP_printk("addr=%u,val=%u", __entry->addr, __entry->val)
 );
+#endif
 
+#ifdef IPU4_PG_KCMD_TRACE
 TRACE_EVENT(ipu4_pg_kcmd,
 		TP_PROTO(const char *func, unsigned int id,
 			unsigned long long issue_id, unsigned int pri,
@@ -84,7 +89,7 @@ TRACE_EVENT(ipu4_pg_kcmd,
 			__entry->pri, __entry->pg_id, __entry->load_cycles,
 			__entry->init_cycles, __entry->processing_cycles)
 );
-
+#endif
 #endif
 
 #undef TRACE_INCLUDE_PATH

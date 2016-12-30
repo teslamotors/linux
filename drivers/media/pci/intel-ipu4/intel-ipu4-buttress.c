@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2016 Intel Corporation.
+ * Copyright (c) 2013--2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -34,6 +34,7 @@
 #include "intel-ipu5-buttress-regs.h"
 #include "intel-ipu4-cpd.h"
 #define CREATE_TRACE_POINTS
+#define IPU4_PERF_REG_TRACE
 #include "intel-ipu4-trace-event.h"
 
 #define BOOTLOADER_STATUS_OFFSET	0x8000

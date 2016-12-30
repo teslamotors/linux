@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Intel Corporation.
+ * Copyright (c) 2016-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -20,7 +20,7 @@
 #include "intel-ipu4-psys-abi.h"
 #include "intel-ipu4-psys.h"
 
-struct intel_ipu4_psys_abi *ext_abi;
+static struct intel_ipu4_psys_abi *ext_abi;
 
 void intel_ipu4_psys_abi_init_ext(struct intel_ipu4_psys_abi *abi)
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2016 Intel Corporation.
+ * Copyright (c) 2013--2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -30,6 +30,7 @@
 #include "intel-ipu4-isys-video.h"
 
 #define CREATE_TRACE_POINTS
+#define IPU4_SOF_SEQID_TRACE
 #include "intel-ipu4-trace-event.h"
 
 static const uint32_t csi2_supported_codes_pad_sink[] = {

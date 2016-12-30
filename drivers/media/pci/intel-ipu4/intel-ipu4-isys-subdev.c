@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2016 Intel Corporation.
+ * Copyright (c) 2013--2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -765,7 +765,8 @@ int intel_ipu4_isys_subdev_link_validate(struct v4l2_subdev *sd,
 			struct intel_ipu4_isys_pipeline, pipe);
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 
-	if (source_sd->owner != THIS_MODULE) {
+	if (strncmp(source_sd->name, INTEL_IPU4_ISYS_ENTITY_PREFIX,
+		strlen(INTEL_IPU4_ISYS_ENTITY_PREFIX)) != 0) {
 		/*
 		 * source_sd isn't ours --- sd must be the external
 		 * sub-device.

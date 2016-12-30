@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2016 Intel Corporation.
+ * Copyright (c) 2013--2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -42,6 +42,7 @@
 #include "intel-ipu4-regs.h"
 #include "intel-ipu5-regs.h"
 #define CREATE_TRACE_POINTS
+#define IPU4_PG_KCMD_TRACE
 #include "intel-ipu4-trace-event.h"
 #include "intel-ipu4-isys-fw-msgs.h"
 #include "intel-ipu4-fw-com.h"
