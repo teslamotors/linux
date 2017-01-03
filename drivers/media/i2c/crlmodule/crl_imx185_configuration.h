@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Intel Corporation.
+ * Copyright (c) 2017 Intel Corporation.
  *
  * Author: Shuguang Gong <shuguang.gong@intel.com>
  *
@@ -1631,7 +1631,7 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 		.data.std_data.min = 720,
 		.data.std_data.max = IMX185_VMAX,
 		.data.std_data.step = 1,
-		.data.std_data.def = 0x547,
+		.data.std_data.def = 0x465,
 		.flags = V4L2_CTRL_FLAG_UPDATE,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.ctrl = 0,
@@ -1651,7 +1651,7 @@ static struct crl_v4l2_ctrl imx185_v4l2_ctrls[] = {
 		.data.std_data.min = 0x898,
 		.data.std_data.max = IMX185_HMAX,
 		.data.std_data.step = 1,
-		.data.std_data.def = 0x8ac,
+		.data.std_data.def = 0x898,
 		.flags = V4L2_CTRL_FLAG_UPDATE,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.ctrl = 0,
