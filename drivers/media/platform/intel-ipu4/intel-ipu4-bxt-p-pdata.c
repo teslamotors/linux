@@ -605,6 +605,7 @@ static struct intel_ipu4_isys_subdev_pdata pdata = {
 #endif
 #ifdef CONFIG_INTEL_IPU4_ADV7481_EVAL
 		&adv7481_eval_crl_sd,
+		&adv7481b_eval_crl_sd,
 #endif
 #ifdef CONFIG_VIDEO_AGGREGATOR_STUB
 		&video_aggre_stub_sd,
