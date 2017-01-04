@@ -1318,17 +1318,17 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	.ops = &skl_sdw_dai_ops,
 	.playback = {
 		.stream_name = "SDW Tx10",
-		.channels_min = HDA_STEREO,
+		.channels_min = HDA_MONO,
 		.channels_max = HDA_STEREO,
 		.rates = SNDRV_PCM_RATE_48000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 	},
 	.capture = {
 		.stream_name = "SDW Rx10",
-		.channels_min = HDA_STEREO,
+		.channels_min = HDA_MONO,
 		.channels_max = HDA_STEREO,
 		.rates = SNDRV_PCM_RATE_48000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 	},
 },
 {
@@ -1369,6 +1369,32 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	},
 
 },
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+{
+	/*
+	 * Currently adding 1 playback and 1 capture pin, ideally it
+	 * should be coming from CLT based on endpoints to be supported
+	 */
+	.name = "SDW2 Pin",
+	.id = SDW_BE_DAI_ID_MSTR2,
+	.ops = &skl_sdw_dai_ops,
+	.playback = {
+		.stream_name = "SDW2 Tx",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_STEREO,
+		.rates = SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+	},
+	.capture = {
+		.stream_name = "SDW2 Rx",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_STEREO,
+		.rates = SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+	},
+
+},
+#endif
 {
 	/* Currently adding 1 playback and 1 capture pin, ideally it
 	 * should be coming from CLT based on endpoints to be supported
