@@ -100,6 +100,21 @@ static int get_reg_offset(struct insn *insn, struct pt_regs *regs,
 	return regoff[regno];
 }
 
+/**
+ * insn_get_modrm_rm_off() - Obtain register in r/m part of ModRM byte
+ * @insn:	Instruction structure containing the ModRM byte
+ * @regs:	Structure with register values as seen when entering kernel mode
+ *
+ * Return: The register indicated by the r/m part of the ModRM byte. The
+ * register is obtained as an offset from the base of pt_regs. In specific
+ * cases, the returned value can be -EDOM to indicate that the particular value
+ * of ModRM does not refer to a register and shall be ignored.
+ */
+int insn_get_modrm_rm_off(struct insn *insn, struct pt_regs *regs)
+{
+	return get_reg_offset(insn, regs, REG_TYPE_RM);
+}
+
 /*
  * return the address being referenced be instruction
  * for rm=3 returning the content of the rm reg
