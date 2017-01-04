@@ -252,7 +252,11 @@ static int rt700_register_sdw_capabilties(struct sdw_slave *sdw,
 		dpn_cap->dpn_grouping = SDW_BLOCKGROUPCOUNT_1;
 		dpn_cap->prepare_ch = SDW_SIMPLIFIED_CP_SM;
 		dpn_cap->imp_def_intr_mask = 0; /* bit 0: Test Fail */
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+		dpn_cap->min_ch_num = 1;
+#else
 		dpn_cap->min_ch_num = 2;
+#endif
 		dpn_cap->max_ch_num = 2;
 		dpn_cap->num_ch_supported = 0;
 		dpn_cap->ch_supported = NULL;
@@ -316,7 +320,7 @@ static int rt700_sdw_probe(struct sdw_slave *sdw,
 	ret = sdw_slave_get_bus_params(sdw, alc700_priv->params);
 	if (ret)
 		return -EFAULT;
-	return rt700_probe(&sdw->dev, regmap, sdw);
+	return rt700_probe(&sdw->dev, regmap, sdw, sdw_id->driver_data);
 }
 
 static int rt700_sdw_remove(struct sdw_slave *sdw)
@@ -341,7 +345,15 @@ static const struct sdw_slave_id rt700_id[] = {
 	{"15:02:5d:07:01:00", 0},
 	{"16:02:5d:07:01:00", 0},
 	{"17:02:5d:07:01:00", 0},
+#ifndef CONFIG_SND_SOC_INTEL_CNL_FPGA
+#ifndef CONFIG_SND_SOC_SDW_AGGM1M2
 	{"10:02:5d:07:00:01", 0},
+#else
+	{"10:02:5d:07:00:01", 1},
+	{"10:02:5d:07:01:02", 2},
+	{"10:02:5d:07:01:03", 3},
+#endif
+#endif
 	{}
 };
 

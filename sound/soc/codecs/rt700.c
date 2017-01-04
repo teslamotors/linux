@@ -849,6 +849,39 @@ static const struct snd_kcontrol_new rt700_snd_controls[] = {
 			    rt700_set_amp_gain_get, rt700_set_amp_gain_put),
 };
 
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+static const struct snd_kcontrol_new rt700_2_snd_controls[] = {
+	SOC_DOUBLE_R_EXT_TLV("DAC Front_2 Playback Volume", RT700_SET_GAIN_DAC1_H,
+			    RT700_SET_GAIN_DAC1_L, RT700_DIR_OUT_SFT, 0x7f, 0,
+			    rt700_set_amp_gain_get, rt700_set_amp_gain_put,
+			    out_vol_tlv),
+	SOC_DOUBLE_R_EXT("ADC 08_2 Capture Switch", RT700_SET_GAIN_ADC2_H,
+			    RT700_SET_GAIN_ADC2_L, RT700_DIR_IN_SFT, 1, 1,
+			    rt700_set_amp_gain_get, rt700_set_amp_gain_put),
+	SOC_DOUBLE_R_EXT("ADC 09_2 Capture Switch", RT700_SET_GAIN_ADC1_H,
+			    RT700_SET_GAIN_ADC1_L, RT700_DIR_IN_SFT, 1, 1,
+			    rt700_set_amp_gain_get, rt700_set_amp_gain_put),
+	SOC_DOUBLE_R_EXT_TLV("ADC 08_2 Capture Volume", RT700_SET_GAIN_ADC2_H,
+			    RT700_SET_GAIN_ADC2_L, RT700_DIR_IN_SFT, 0x7f, 0,
+			    rt700_set_amp_gain_get, rt700_set_amp_gain_put,
+			    out_vol_tlv),
+	SOC_DOUBLE_R_EXT_TLV("ADC 09_2 Capture Volume", RT700_SET_GAIN_ADC1_H,
+			    RT700_SET_GAIN_ADC1_L, RT700_DIR_IN_SFT, 0x7f, 0,
+			    rt700_set_amp_gain_get, rt700_set_amp_gain_put,
+			    out_vol_tlv),
+	SOC_DOUBLE_R_EXT_TLV("AMIC_2 Volume", RT700_SET_GAIN_AMIC_H,
+			    RT700_SET_GAIN_AMIC_L, RT700_DIR_IN_SFT, 3, 0,
+			    rt700_set_amp_gain_get, rt700_set_amp_gain_put,
+			    mic_vol_tlv),
+	SOC_DOUBLE_R_EXT("Speaker Playback_2 Switch", RT700_SET_GAIN_SPK_H,
+			    RT700_SET_GAIN_SPK_L, RT700_DIR_OUT_SFT, 1, 1,
+			    rt700_set_amp_gain_get, rt700_set_amp_gain_put),
+	SOC_DOUBLE_R_EXT("Headphone Playback_2 Switch", RT700_SET_GAIN_HP_H,
+			    RT700_SET_GAIN_HP_L, RT700_DIR_OUT_SFT, 1, 1,
+			    rt700_set_amp_gain_get, rt700_set_amp_gain_put),
+};
+#endif
+
 static int rt700_mux_get(struct snd_kcontrol *kcontrol,
 		      struct snd_ctl_elem_value *ucontrol)
 {
@@ -920,11 +953,28 @@ static const char * const adc_mux_text[] = {
 	"DMIC",
 };
 
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+static const char * const adc_mux_2_text[] = {
+	"MIC2_2",
+	"LINE1_2",
+	"LINE2_2",
+	"DMIC",
+};
+#endif
+
 static const SOC_ENUM_SINGLE_DECL(
 	rt700_adc22_enum, RT700_MIXER_IN1, 0, adc_mux_text);
 
 static const SOC_ENUM_SINGLE_DECL(
 	rt700_adc23_enum, RT700_MIXER_IN2, 0, adc_mux_text);
+
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+static const SOC_ENUM_SINGLE_DECL(
+	rt700_adc22_2_enum, RT700_MIXER_IN1, 0, adc_mux_2_text);
+
+static const SOC_ENUM_SINGLE_DECL(
+	rt700_adc23_2_enum, RT700_MIXER_IN2, 0, adc_mux_2_text);
+#endif
 
 static const struct snd_kcontrol_new rt700_adc22_mux =
 	SOC_DAPM_ENUM_EXT("ADC 22 Mux", rt700_adc22_enum,
@@ -933,6 +983,15 @@ static const struct snd_kcontrol_new rt700_adc22_mux =
 static const struct snd_kcontrol_new rt700_adc23_mux =
 	SOC_DAPM_ENUM_EXT("ADC 23 Mux", rt700_adc23_enum,
 			rt700_mux_get, rt700_mux_put);
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+static const struct snd_kcontrol_new rt700_adc22_mux_2 =
+	SOC_DAPM_ENUM_EXT("ADC 22 Mux_2", rt700_adc22_2_enum,
+			rt700_mux_get, rt700_mux_put);
+
+static const struct snd_kcontrol_new rt700_adc23_mux_2 =
+	SOC_DAPM_ENUM_EXT("ADC 23 Mux_2", rt700_adc23_2_enum,
+			rt700_mux_get, rt700_mux_put);
+#endif
 
 static const char * const out_mux_text[] = {
 	"Front",
@@ -970,6 +1029,32 @@ static const struct snd_soc_dapm_widget rt700_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_OUT("DP4TX", "DP4 Capture", 0, SND_SOC_NOPM, 0, 0),
 };
 
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+static const struct snd_soc_dapm_widget rt700_2_dapm_widgets[] = {
+	SND_SOC_DAPM_OUTPUT("HP_2"),
+	SND_SOC_DAPM_OUTPUT("SPK_2"),
+	SND_SOC_DAPM_INPUT("DMIC1_2"),
+	SND_SOC_DAPM_INPUT("DMIC2_2"),
+	SND_SOC_DAPM_INPUT("MIC2_2"),
+	SND_SOC_DAPM_INPUT("LINE1_2"),
+	SND_SOC_DAPM_INPUT("LINE2_2"),
+	SND_SOC_DAPM_DAC("DAC Front_2", NULL, RT700_SET_STREAMID_DAC1, 4, 0),
+	SND_SOC_DAPM_DAC("DAC Surround_2", NULL, RT700_SET_STREAMID_DAC2, 4, 0),
+	SND_SOC_DAPM_MUX("HPO Mux_2", SND_SOC_NOPM, 0, 0, &rt700_hp_mux),
+	SND_SOC_DAPM_PGA("SPK PGA_2", SND_SOC_NOPM, 0, 0,       NULL, 0),
+	SND_SOC_DAPM_ADC("ADC 09_2", NULL, RT700_SET_STREAMID_ADC1, 4, 0),
+	SND_SOC_DAPM_ADC("ADC 08_2", NULL, RT700_SET_STREAMID_ADC2, 4, 0),
+	SND_SOC_DAPM_MUX("ADC 22 Mux_2", SND_SOC_NOPM, 0, 0,
+		&rt700_adc22_mux_2),
+	SND_SOC_DAPM_MUX("ADC 23 Mux_2", SND_SOC_NOPM, 0, 0,
+		&rt700_adc23_mux_2),
+	SND_SOC_DAPM_AIF_IN("DP1RX_2", "DP1 Playback2", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_IN("DP3RX_2", "DP3 Playback2", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("DP2TX_2", "DP2 Capture2", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("DP4TX_2", "DP4 Capture2", 0, SND_SOC_NOPM, 0, 0),
+};
+#endif
+
 static const struct snd_soc_dapm_route rt700_audio_map[] = {
 	{"DAC Front", NULL, "DP1RX"},
 	{"DAC Surround", NULL, "DP3RX"},
@@ -991,6 +1076,30 @@ static const struct snd_soc_dapm_route rt700_audio_map[] = {
 	{"SPK PGA", NULL, "DAC Front"},
 	{"SPK", NULL, "SPK PGA"},
 };
+
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+static const struct snd_soc_dapm_route rt700_2_audio_map[] = {
+	{"DAC Front_2", NULL, "DP1RX_2"},
+	{"DAC Surround_2", NULL, "DP3RX_2"},
+	{"DP2TX_2", NULL, "ADC 09_2"},
+	{"DP4TX_2", NULL, "ADC 08_2"},
+	{"ADC 09_2", NULL, "ADC 22 Mux_2"},
+	{"ADC 08_2", NULL, "ADC 23 Mux_2"},
+	{"ADC 22 Mux_2", "DMIC", "DMIC1_2"},
+	{"ADC 22 Mux_2", "LINE1_2", "LINE1_2"},
+	{"ADC 22 Mux_2", "LINE2_2", "LINE2_2"},
+	{"ADC 22 Mux_2", "MIC2_2", "MIC2_2"},
+	{"ADC 23 Mux_2", "DMIC", "DMIC2_2"},
+	{"ADC 23 Mux_2", "LINE1_2", "LINE1_2"},
+	{"ADC 23 Mux_2", "LINE2_2", "LINE2_2"},
+	{"ADC 23 Mux_2", "MIC2_2", "MIC2_2"},
+	{"HPO Mux_2", "Front", "DAC Front_2"},
+	{"HPO Mux_2", "Surround", "DAC Surround_2"},
+	{"HP_2", NULL, "HPO Mux_2"},
+	{"SPK PGA_2", NULL, "DAC Front_2"},
+	{"SPK_2", NULL, "SPK PGA_2"},
+};
+#endif
 
 static int rt700_set_bias_level(struct snd_soc_codec *codec,
 					enum snd_soc_bias_level level)
@@ -1032,6 +1141,20 @@ static const struct snd_soc_codec_driver soc_codec_dev_rt700 = {
 		.num_dapm_routes = ARRAY_SIZE(rt700_audio_map),
 	},
 };
+
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+static const struct snd_soc_codec_driver soc_codec_dev_rt700_2 = {
+	.set_bias_level = rt700_set_bias_level,
+	.component_driver = {
+		.controls = rt700_2_snd_controls,
+		.num_controls = ARRAY_SIZE(rt700_2_snd_controls),
+		.dapm_widgets = rt700_2_dapm_widgets,
+		.num_dapm_widgets = ARRAY_SIZE(rt700_2_dapm_widgets),
+		.dapm_routes = rt700_2_audio_map,
+		.num_dapm_routes = ARRAY_SIZE(rt700_2_audio_map),
+	},
+};
+#endif
 
 static int rt700_program_stream_tag(struct snd_pcm_substream *substream,
 			struct snd_soc_dai *dai, int stream_tag)
@@ -1208,14 +1331,14 @@ static struct snd_soc_dai_driver rt700_dai[] = {
 		.id = RT700_AIF1,
 		.playback = {
 			.stream_name = "DP1 Playback",
-			.channels_min = 2,
+			.channels_min = 1,
 			.channels_max = 2,
 			.rates = RT700_STEREO_RATES,
 			.formats = RT700_FORMATS,
 		},
 		.capture = {
 			.stream_name = "DP2 Capture",
-			.channels_min = 2,
+			.channels_min = 1,
 			.channels_max = 2,
 			.rates = RT700_STEREO_RATES,
 			.formats = RT700_FORMATS,
@@ -1227,14 +1350,14 @@ static struct snd_soc_dai_driver rt700_dai[] = {
 		.id = RT700_AIF2,
 		.playback = {
 			.stream_name = "DP3 Playback",
-			.channels_min = 2,
+			.channels_min = 1,
 			.channels_max = 2,
 			.rates = RT700_STEREO_RATES,
 			.formats = RT700_FORMATS,
 		},
 		.capture = {
 			.stream_name = "DP4 Capture",
-			.channels_min = 2,
+			.channels_min = 1,
 			.channels_max = 2,
 			.rates = RT700_STEREO_RATES,
 			.formats = RT700_FORMATS,
@@ -1242,6 +1365,49 @@ static struct snd_soc_dai_driver rt700_dai[] = {
 		.ops = &rt700_ops,
 	},
 };
+
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+static struct snd_soc_dai_driver rt700_2_dai[] = {
+	{
+		.name = "rt700-aif1_2",
+		.id = RT700_AIF1,
+		.playback = {
+			.stream_name = "DP1 Playback2",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = RT700_STEREO_RATES,
+			.formats = RT700_FORMATS,
+		},
+		.capture = {
+			.stream_name = "DP2 Capture2",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = RT700_STEREO_RATES,
+			.formats = RT700_FORMATS,
+		},
+		.ops = &rt700_ops,
+	},
+	{
+		.name = "rt700-aif2_2",
+		.id = RT700_AIF2,
+		.playback = {
+			.stream_name = "DP3 Playback2",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = RT700_STEREO_RATES,
+			.formats = RT700_FORMATS,
+		},
+		.capture = {
+			.stream_name = "DP4 Capture2",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = RT700_STEREO_RATES,
+			.formats = RT700_FORMATS,
+		},
+		.ops = &rt700_ops,
+	},
+};
+#endif
 
 static ssize_t rt700_index_cmd_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
@@ -1536,7 +1702,8 @@ static ssize_t rt700_bra_trigger(struct device *dev,
 static DEVICE_ATTR(bra_trigger, 0444, rt700_bra_trigger, NULL);
 
 int rt700_probe(struct device *dev, struct regmap *regmap,
-					struct sdw_slave *slave)
+					struct sdw_slave *slave,
+					kernel_ulong_t driver_data)
 {
 	struct rt700_priv *rt700;
 	struct alc700 *alc700 = dev_get_drvdata(dev);
@@ -1553,8 +1720,18 @@ int rt700_probe(struct device *dev, struct regmap *regmap,
 	rt700->regmap = regmap;
 	rt700->sdw = slave;
 
+#ifndef CONFIG_SND_SOC_SDW_AGGM1M2
 	ret =  snd_soc_register_codec(dev,
 		&soc_codec_dev_rt700, rt700_dai, ARRAY_SIZE(rt700_dai));
+#else
+	if (driver_data == 1) {
+		ret =  snd_soc_register_codec(dev,
+			&soc_codec_dev_rt700, rt700_dai, ARRAY_SIZE(rt700_dai));
+	} else if (driver_data == 2) {
+		ret =  snd_soc_register_codec(dev,
+			&soc_codec_dev_rt700_2, rt700_2_dai, ARRAY_SIZE(rt700_2_dai));
+	}
+#endif
 	dev_info(&slave->dev, "%s\n", __func__);
 
 	/* Enable clock before setting */

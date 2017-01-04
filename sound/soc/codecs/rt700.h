@@ -152,7 +152,8 @@ enum {
 };
 
 int rt700_probe(struct device *dev, struct regmap *regmap,
-					struct sdw_slave *slave);
+					struct sdw_slave *slave,
+					kernel_ulong_t driver_data);
 int rt700_remove(struct device *dev);
 int hda_to_sdw(unsigned int nid, unsigned int verb, unsigned int payload,
 		unsigned int *sdw_addr_h, unsigned int *sdw_data_h,
