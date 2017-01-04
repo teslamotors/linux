@@ -44,13 +44,24 @@ struct cnl_rt700_mc_private {
 	int bt_mode;
 };
 
+#ifndef CONFIG_SND_SOC_SDW_AGGM1M2
 static const struct snd_soc_dapm_widget cnl_rt700_widgets[] = {
 	SND_SOC_DAPM_HP("Headphones", NULL),
 	SND_SOC_DAPM_MIC("AMIC", NULL),
 	SND_SOC_DAPM_MIC("SoC DMIC", NULL),
 	SND_SOC_DAPM_SPK("Speaker", NULL),
 };
+#else
+static const struct snd_soc_dapm_widget cnl_rt700_widgets[] = {
+	SND_SOC_DAPM_HP("Headphones", NULL),
+	SND_SOC_DAPM_HP("Headphones_2", NULL),
+	SND_SOC_DAPM_MIC("AMIC", NULL),
+	SND_SOC_DAPM_MIC("AMIC_2", NULL),
+	SND_SOC_DAPM_MIC("SoC DMIC", NULL),
+};
+#endif
 
+#ifndef CONFIG_SND_SOC_SDW_AGGM1M2
 static const struct snd_soc_dapm_route cnl_rt700_map[] = {
 	/*Headphones*/
 	{ "Headphones", NULL, "HP" },
@@ -72,12 +83,46 @@ static const struct snd_soc_dapm_route cnl_rt700_map[] = {
 	{"dmic01_hifi", NULL, "DMIC01 Rx"},
 
 };
+#else
+static const struct snd_soc_dapm_route cnl_rt700_map[] = {
+	/*Headphones*/
+	{ "Headphones", NULL, "HP" },
+	{ "Headphones_2", NULL, "HP_2" },
+	{ "MIC2", NULL, "AMIC" },
+	{ "MIC2_2", NULL, "AMIC_2" },
 
+	/* SWM map link the SWM outs to codec AIF */
+	{ "DP1 Playback", NULL, "SDW Tx10"},
+	{ "SDW Tx10", NULL, "sdw_codec0_out"},
+	{ "DP1 Playback2", NULL, "SDW2 Tx"},
+	{ "SDW2 Tx", NULL, "sdw_codec0_out"},
+
+	{ "sdw_codec0_in", NULL, "SDW Rx10" },
+	{ "SDW Rx10", NULL, "DP2 Capture" },
+	{"sdw_codec0_in", NULL, "SDW2 Rx"},
+	{"SDW2 Rx", NULL, "DP2 Capture2"},
+
+	{"DMic", NULL, "SoC DMIC"},
+	{"DMIC01 Rx", NULL, "Capture"},
+	{"dmic01_hifi", NULL, "DMIC01 Rx"},
+
+};
+#endif
+
+#ifndef CONFIG_SND_SOC_SDW_AGGM1M2
 static const struct snd_kcontrol_new cnl_rt700_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Headphones"),
 	SOC_DAPM_PIN_SWITCH("AMIC"),
 	SOC_DAPM_PIN_SWITCH("Speaker"),
 };
+#else
+static const struct snd_kcontrol_new cnl_rt700_controls[] = {
+	SOC_DAPM_PIN_SWITCH("Headphones"),
+	SOC_DAPM_PIN_SWITCH("Headphones_2"),
+	SOC_DAPM_PIN_SWITCH("AMIC"),
+	SOC_DAPM_PIN_SWITCH("AMIC_2"),
+};
+#endif
 
 
 static int cnl_rt700_codec_fixup(struct snd_soc_pcm_runtime *rtd,
@@ -94,7 +139,12 @@ static int cnl_rt700_codec_fixup(struct snd_soc_pcm_runtime *rtd,
 	pr_debug("Invoked %s for dailink %s\n", __func__, rtd->dai_link->name);
 	slot_width = 24;
 	rate->min = rate->max = 48000;
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+	channels->min = 1;
+	channels->max = 2;
+#else
 	channels->min = channels->max = 2;
+#endif
 	snd_mask_none(hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT));
 	snd_mask_set(hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT),
 						SNDRV_PCM_FORMAT_S24_LE);
@@ -121,7 +171,7 @@ static const struct snd_soc_pcm_stream cnl_rt700_dai_params = {
 	.formats = SNDRV_PCM_FMTBIT_S24_LE,
 	.rate_min = 48000,
 	.rate_max = 48000,
-	.channels_min = 4,
+	.channels_min = 1,
 	.channels_max = 4,
 };
 
@@ -133,6 +183,7 @@ static const char pname[] = "0000:00:1f.3";
 static const char cname[] = "sdw-slave1-10:02:5d:07:00:01";
 #endif
 struct snd_soc_dai_link cnl_rt700_msic_dailink[] = {
+#ifndef CONFIG_SND_SOC_SDW_AGGM1M2
 	{
 		.name = "SDW0-Codec",
 		.cpu_dai_name = "SDW Pin",
@@ -145,18 +196,37 @@ struct snd_soc_dai_link cnl_rt700_msic_dailink[] = {
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,
 	},
+#endif
 	{
 		.name = "SDW1-Codec",
 		.cpu_dai_name = "SDW10 Pin",
 		.platform_name = pname,
 		.codec_name = cname,
+#ifndef CONFIG_SND_SOC_SDW_AGGM1M2
 		.codec_dai_name = "rt700-aif2",
+#else
+		.codec_dai_name = "rt700-aif1",
+#endif
 		.be_hw_params_fixup = cnl_rt700_codec_fixup,
 		.ignore_suspend = 1,
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,
 	},
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+	{
+		.name = "SDW2-Codec",
+		.cpu_dai_name = "SDW2 Pin",
+		.platform_name = pname,
+		.codec_name = "sdw-slave2-10:02:5d:07:01:02",
+		.codec_dai_name = "rt700-aif1_2",
+		.be_hw_params_fixup = cnl_rt700_codec_fixup,
+		.ignore_suspend = 1,
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.dpcm_capture = 1,
+	},
+#endif
 	{
 		.name = "dmic01",
 		.cpu_dai_name = "DMIC01 Pin",
