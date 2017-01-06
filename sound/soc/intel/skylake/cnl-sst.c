@@ -526,11 +526,7 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 	struct cnl_bra_operation *p_ptr = ptr;
 	int ret = 0, i, j, k, wl = 0;
 	/* TODO: This number 4 should come from ACPI */
-#if defined(CONFIG_SDW_MAXIM_SLAVE) || defined(CONFIG_SND_SOC_MXFPGA)
-	dsp->num_sdw_controllers = 3;
-#else
 	dsp->num_sdw_controllers = 4;
-#endif
 	master = devm_kzalloc(dev,
 			(sizeof(*master) * dsp->num_sdw_controllers),
 			GFP_KERNEL);
@@ -636,18 +632,18 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 		switch (i) {
 		case 0:
 			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_0_BASE;
-#ifdef CONFIG_SND_SOC_MXFPGA
-			master[i].link_sync_mask = 0x1;
-#endif
 			break;
 		case 1:
 			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_1_BASE;
-#ifdef CONFIG_SND_SOC_MXFPGA
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
 			master[i].link_sync_mask = 0x2;
 #endif
 			break;
 		case 2:
 			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_2_BASE;
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
+			master[i].link_sync_mask = 0x4;
+#endif
 			break;
 		case 3:
 			p_data->sdw_regs = mmio_base + CNL_SDW_LINK_3_BASE;

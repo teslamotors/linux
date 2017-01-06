@@ -47,7 +47,7 @@ struct sdw_dma_data {
 	int mstr_nr;
 };
 
-#ifdef CONFIG_SND_SOC_MXFPGA
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
 char uuid_playback[] = "Agg_p";
 char uuid_capture[] = "Agg_c";
 #endif
@@ -102,7 +102,7 @@ int cnl_sdw_startup(struct snd_pcm_substream *substream,
 	dma->mstr_nr = sdw_ctrl_nr;
 	snd_soc_dai_set_dma_data(dai, substream, dma);
 
-#ifdef CONFIG_SND_SOC_MXFPGA
+#ifdef CONFIG_SND_SOC_SDW_AGGM1M2
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		uuid = uuid_playback;
 	else
