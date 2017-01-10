@@ -623,16 +623,41 @@ int rt700_jack_detect(struct rt700_priv *rt700, bool *hp, bool *mic)
 }
 EXPORT_SYMBOL(rt700_jack_detect);
 
+static void rt700_get_gain(struct rt700_priv *rt700, unsigned int addr_h,
+	unsigned int addr_l, unsigned int val_h,
+	unsigned int *r_val, unsigned int *l_val)
+{
+	/* R Channel */
+	regmap_write(rt700->regmap, addr_h, val_h);
+	pr_debug("%s write %04x %02x\n", __func__, addr_h, val_h);
+	regmap_write(rt700->regmap, addr_l, 0);
+	pr_debug("%s write %04x %02x\n", __func__, addr_l, 0);
+	regmap_read(rt700->regmap, RT700_READ_HDA_0, r_val);
+	pr_debug("%s read %04x %02x\n", __func__, RT700_READ_HDA_0, *r_val);
+
+	/* L Channel */
+	val_h |= 0x20;
+	regmap_write(rt700->regmap, addr_h, val_h);
+	pr_debug("%s write %04x %02x\n", __func__, addr_h, val_h);
+	regmap_write(rt700->regmap, addr_l, 0);
+	pr_debug("%s write %04x %02x\n", __func__, addr_l, 0);
+	regmap_read(rt700->regmap, RT700_READ_HDA_0, l_val);
+	pr_debug("%s read %04x %02x\n", __func__, RT700_READ_HDA_0, *l_val);
+}
+
 /* For Verb-Set Amplifier Gain (Verb ID = 3h) */
 static int rt700_set_amp_gain_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_dapm_context *dapm =
+		snd_soc_component_get_dapm(component);
 	struct soc_mixer_control *mc =
 		(struct soc_mixer_control *)kcontrol->private_value;
 	struct rt700_priv *rt700 = snd_soc_component_get_drvdata(component);
-	unsigned int addr_h, addr_l, val_h, val_l;
+	unsigned int addr_h, addr_l, val_h, val_ll, val_lr;
 	unsigned int read_ll, read_rl;
+	int i;
 
 
 	/* Can't use update bit function, so read the original value first */
@@ -642,76 +667,107 @@ static int rt700_set_amp_gain_put(struct snd_kcontrol *kcontrol,
 		val_h = 0x80;
 	else /* input */
 		val_h = 0x0;
-	/* R Channel */
-	regmap_write(rt700->regmap, addr_h, val_h);
-	pr_debug("%s write %04x %02x\n", __func__, addr_h, val_h);
-	regmap_write(rt700->regmap, addr_l, 0);
-	pr_debug("%s write %04x %02x\n", __func__, addr_l, 0);
-	regmap_read(rt700->regmap, RT700_READ_HDA_0, &read_rl);
-	pr_debug("%s read %04x %02x\n", __func__, RT700_READ_HDA_0, read_rl);
 
-	/* L Channel */
-	val_h |= 0x20;
-	regmap_write(rt700->regmap, addr_h, val_h);
-	pr_debug("%s write %04x %02x\n", __func__, addr_h, val_h);
-	regmap_write(rt700->regmap, addr_l, 0);
-	pr_debug("%s write %04x %02x\n", __func__, addr_l, 0);
-	regmap_read(rt700->regmap, RT700_READ_HDA_0, &read_ll);
-	pr_debug("%s read %04x %02x\n", __func__, RT700_READ_HDA_0, read_ll);
-
+	rt700_get_gain(rt700, addr_h, addr_l, val_h, &read_rl, &read_ll);
 
 	/* Now set value */
 	addr_h = mc->reg;
 	addr_l = mc->rreg;
 
-	/*pr_debug("%s val = %d, %d\n", ucontrol->value.integer.value[0],
-					ucontrol->value.integer.value[1]);*/
 	pr_debug("%s val = %d, %d\n", __func__, ucontrol->value.integer.value[0],
-					ucontrol->value.integer.value[1]);
-	/* L Channel */
-	val_h = (1 << mc->shift) | (1 << 5);
+			ucontrol->value.integer.value[1]);
 
+	/* L Channel */
 	if (mc->invert) {
 		/* for mute */
-		val_l = (mc->max - ucontrol->value.integer.value[0]) << 7;
+		val_ll = (mc->max - ucontrol->value.integer.value[0]) << 7;
 		/* keep gain */
 		read_ll = read_ll & 0x7f;
-		val_l |= read_ll;
+		val_ll |= read_ll;
 	} else {
 		/* for gain */
-		val_l = ((ucontrol->value.integer.value[0]) & mc->max);
+		val_ll = ((ucontrol->value.integer.value[0]) & 0x7f);
+		if (val_ll > mc->max)
+			val_ll = mc->max;
 		/* keep mute status */
 		read_ll = read_ll & 0x80;
-		val_l |= read_ll;
+		val_ll |= read_ll;
 	}
-
-	regmap_write(rt700->regmap, addr_h, val_h);
-	pr_debug("%s write %04x %02x\n", __func__, addr_h, val_h);
-	regmap_write(rt700->regmap, addr_l, val_l);
-	pr_debug("%s write %04x %02x\n", __func__, addr_l, val_l);
 
 	/* R Channel */
-	val_h = (1 << mc->shift) | (1 << 4);
-
 	if (mc->invert) {
+		regmap_write(rt700->regmap,
+				RT700_SET_AUDIO_POWER_STATE, AC_PWRST_D0);
 		/* for mute */
-		val_l = (mc->max - ucontrol->value.integer.value[1]) << 7;
+		val_lr = (mc->max - ucontrol->value.integer.value[1]) << 7;
 		/* keep gain */
 		read_rl = read_rl & 0x7f;
-		val_l |= read_rl;
+		val_lr |= read_rl;
 	} else {
 		/* for gain */
-		val_l = ((ucontrol->value.integer.value[1]) & mc->max);
+		val_lr = ((ucontrol->value.integer.value[1]) & 0x7f);
+		if (val_lr > mc->max)
+			val_lr = mc->max;
 		/* keep mute status */
 		read_rl = read_rl & 0x80;
-		val_l |= read_rl;
+		val_lr |= read_rl;
 	}
-	val_h = (1 << mc->shift) | (1 << 4);
-	regmap_write(rt700->regmap, addr_h, val_h);
-	pr_debug("%s write %04x %02x\n", __func__, addr_h, val_h);
-	regmap_write(rt700->regmap, addr_l, val_l);
-	pr_debug("%s write %04x %02x\n", __func__, addr_l, val_l);
 
+	for (i = 0; i < 3; i++) { /* retry 3 times at most */
+		pr_debug("%s i=%d\n", __func__, i);
+		addr_h = mc->reg;
+		addr_l = mc->rreg;
+		if (val_ll == val_lr) {
+			/* Set both L/R channels at the same time */
+			val_h = (1 << mc->shift) | (3 << 4);
+			regmap_write(rt700->regmap, addr_h, val_h);
+			pr_debug("%s write %04x %02x\n",
+						__func__, addr_h, val_h);
+			regmap_write(rt700->regmap, addr_l, val_ll);
+			pr_debug("%s write %04x %02x\n",
+						__func__, addr_l, val_ll);
+
+		} else {
+			/* Lch*/
+			val_h = (1 << mc->shift) | (1 << 5);
+			regmap_write(rt700->regmap, addr_h, val_h);
+			pr_debug("%s write %04x %02x\n",
+						__func__, addr_h, val_h);
+			regmap_write(rt700->regmap, addr_l, val_ll);
+			pr_debug("%s write %04x %02x\n",
+						__func__, addr_l, val_ll);
+
+			/* Rch */
+			val_h = (1 << mc->shift) | (1 << 4);
+			regmap_write(rt700->regmap, addr_h, val_h);
+			pr_debug("%s write %04x %02x\n",
+						__func__, addr_h, val_h);
+			regmap_write(rt700->regmap, addr_l, val_lr);
+			pr_debug("%s write %04x %02x\n",
+						__func__, addr_l, val_lr);
+
+		}
+		/* check result */
+		addr_h = (mc->reg + 0x2000) | 0x800;
+		addr_l = (mc->rreg + 0x2000) | 0x800;
+		if (mc->shift == RT700_DIR_OUT_SFT) /* output */
+			val_h = 0x80;
+		else /* input */
+			val_h = 0x0;
+
+		rt700_get_gain(rt700, addr_h, addr_l, val_h,
+							&read_rl, &read_ll);
+		if (read_rl == val_lr && read_ll == val_ll) {
+			pr_debug("write command successful\n");
+			break;
+		}
+
+		pr_warn("write command unsuccessful, retry\n");
+	}
+
+	if (dapm->bias_level <= SND_SOC_BIAS_STANDBY)
+		regmap_write(rt700->regmap,
+				RT700_SET_AUDIO_POWER_STATE, AC_PWRST_D3);
 	return 0;
 }
 
@@ -731,22 +787,8 @@ static int rt700_set_amp_gain_get(struct snd_kcontrol *kcontrol,
 		val_h = 0x80;
 	else /* input */
 		val_h = 0x0;
-	/* R Channel */
-	regmap_write(rt700->regmap, addr_h, val_h);
-	pr_debug("%s write %04x %02x\n", __func__, addr_h, val_h);
-	regmap_write(rt700->regmap, addr_l, 0);
-	pr_debug("%s write %04x %02x\n", __func__, addr_l, 0);
-	regmap_read(rt700->regmap, RT700_READ_HDA_0, &read_rl);
-	pr_debug("%s read %04x %02x\n", __func__, RT700_READ_HDA_0, read_rl);
 
-	/* L Channel */
-	val_h |= 0x20;
-	regmap_write(rt700->regmap, addr_h, val_h);
-	pr_debug("%s write %04x %02x\n", __func__, addr_h, val_h);
-	regmap_write(rt700->regmap, addr_l, 0);
-	pr_debug("%s write %04x %02x\n", __func__, addr_l, 0);
-	regmap_read(rt700->regmap, RT700_READ_HDA_0, &read_ll);
-	pr_debug("%s read %04x %02x\n", __func__, RT700_READ_HDA_0, read_ll);
+	rt700_get_gain(rt700, addr_h, addr_l, val_h, &read_rl, &read_ll);
 
 	if (mc->invert) {
 		/* for mute status */
@@ -954,10 +996,14 @@ static int rt700_set_bias_level(struct snd_soc_codec *codec,
 					enum snd_soc_bias_level level)
 {
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+	struct rt700_priv *rt700 = snd_soc_codec_get_drvdata(codec);
+	unsigned int sdw_data_0;
 
+	pr_debug("%s level=%d\n", __func__, level);
 	switch (level) {
 	case SND_SOC_BIAS_PREPARE:
 		if (SND_SOC_BIAS_STANDBY == dapm->bias_level) {
+			pm_runtime_get_sync(&rt700->sdw->mstr->dev);
 			snd_soc_write(codec,
 				RT700_SET_AUDIO_POWER_STATE, AC_PWRST_D0);
 		}
@@ -965,6 +1011,7 @@ static int rt700_set_bias_level(struct snd_soc_codec *codec,
 
 	case SND_SOC_BIAS_STANDBY:
 		snd_soc_write(codec, RT700_SET_AUDIO_POWER_STATE, AC_PWRST_D3);
+		pm_runtime_put_sync_autosuspend(&rt700->sdw->mstr->dev);
 		break;
 
 	default:
@@ -1377,12 +1424,6 @@ static ssize_t rt700_hda_cmd_store(struct device *dev,
 			sdw_data_3, sdw_data_2, sdw_data_1, sdw_data_0);
 	}
 
-	/* Enable Jack Detection */
-	regmap_write(rt700->regmap,  RT700_SET_MIC2_UNSOLICITED_ENABLE, 0x82);
-	regmap_write(rt700->regmap,  RT700_SET_HP_UNSOLICITED_ENABLE, 0x81);
-	rt700_index_write(rt700->regmap, 0x10, 0x2420);
-	rt700_index_write(rt700->regmap, 0x19, 0x2e11);
-
 	return count;
 }
 
@@ -1516,6 +1557,9 @@ int rt700_probe(struct device *dev, struct regmap *regmap,
 		&soc_codec_dev_rt700, rt700_dai, ARRAY_SIZE(rt700_dai));
 	dev_info(&slave->dev, "%s\n", __func__);
 
+	/* Enable clock before setting */
+	pm_runtime_get_sync(&rt700->sdw->mstr->dev);
+
 	/* Set Tx route */
 	/* Filter 02: index 91[13:12] 07[3] */
 	/* Filter 03: index 5f[15:14] 07[4] */
@@ -1615,7 +1659,6 @@ int rt700_probe(struct device *dev, struct regmap *regmap,
 	if (ret < 0)
 		return ret;
 
-	pm_runtime_get_sync(&rt700->sdw->mstr->dev);
 	pm_runtime_mark_last_busy(&rt700->sdw->mstr->dev);
 	pm_runtime_put_sync_autosuspend(&rt700->sdw->mstr->dev);
 
