@@ -1061,6 +1061,8 @@ static const struct sst_acpi_mach sst_cnl_devdata[] = {
 static struct sst_acpi_mach sst_icl_devdata[] = {
 #if IS_ENABLED(CONFIG_SND_SOC_RT700)
 	{ "dummy", "icl_rt700", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
+#elif IS_ENABLED(CONFIG_SND_SOC_WM5110)
+	{ "dummy", "icl_wm8281", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
 #else
 	{ "dummy", "icl_rt274", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
 #endif
