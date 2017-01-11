@@ -154,15 +154,28 @@ static void trusty_vmm_dump_header(struct deadloop_dump *dump)
 static void trusty_vmm_dump_data(struct deadloop_dump *dump)
 {
 	struct dump_data *dump_data;
-	int i;
+	char *p, *pstr;
 
 	if (!dump)
 		return;
 
 	dump_data = &(dump->data);
 
-	for (i = 0; i < dump_data->length; i++)
-		pr_info("%c", dump_data->data[i]);
+	pstr = (char *)dump_data->data;
+	for (p = pstr; p < ((char *)dump_data->data + dump_data->length); p++) {
+		if (*p == '\r') {
+			*p = 0x00;
+		} else if (*p == '\n') {
+			*p = 0x00;
+			pr_info("%s\n", pstr);
+			pstr = (char *)(p + 1);
+		}
+	}
+	/* dump the characters in the last line */
+	if ((pstr - (char *)(dump_data->data)) < dump_data->length) {
+		*p = 0x00;
+		pr_info("%s\n", pstr);
+	}
 }
 
 static int trusty_vmm_panic_notify(struct notifier_block *nb,
@@ -287,7 +300,7 @@ static int trusty_log_probe(struct platform_device *pdev)
 	}
 
 	/* allocate debug buffer for vmm panic dump */
-	g_vmm_debug_buf = get_zeroed_page(GFP_KERNEL);
+	g_vmm_debug_buf = __get_free_pages(GFP_KERNEL | __GFP_ZERO, 2);
 	if (!g_vmm_debug_buf) {
 		result = -ENOMEM;
 		goto error_alloc_vmm;
