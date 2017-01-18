@@ -37,6 +37,9 @@
 #include "gvt.h"
 #endif
 
+#define GEN9_TURBO_DISABLED    0
+#define GEN9_TURBO_ENABLED     1
+
 /**
  * DOC: RC6
  *
@@ -6257,6 +6260,10 @@ static u32 gen6_rps_pm_mask(struct drm_i915_private *dev_priv, u8 val)
  * update the GEN6_RP_INTERRUPT_LIMITS register accordingly. */
 static int gen6_set_rps(struct drm_i915_private *dev_priv, u8 val)
 {
+	if ((dev_priv->tfm_enabled == GEN9_TURBO_DISABLED) &&
+	    (val > dev_priv->rps.rp1_freq))
+		val = dev_priv->rps.rp1_freq;
+
 	/* min/max delay may still have been modified so be sure to
 	 * write the limits value.
 	 */
@@ -7880,6 +7887,135 @@ void intel_gpu_ips_teardown(void)
 	i915_mch_dev = NULL;
 	spin_unlock_irq(&mchdev_lock);
 }
+
+static struct mutex i915_tfm_lock;
+static struct drm_i915_private *i915_tfm_dev;
+
+void intel_gpu_tfm_init(struct drm_i915_private *dev_priv)
+{
+	mutex_init(&i915_tfm_lock);
+
+	mutex_lock(&i915_tfm_lock);
+	i915_tfm_dev = dev_priv;
+	i915_tfm_dev->tfm_enabled = GEN9_TURBO_ENABLED;
+	mutex_unlock(&i915_tfm_lock);
+}
+
+void intel_gpu_tfm_teardown(void)
+{
+	mutex_lock(&i915_tfm_lock);
+	i915_tfm_dev = NULL;
+	mutex_unlock(&i915_tfm_lock);
+}
+
+/**
+ * i915_gpu_disable_turbo - disable grahics turbo
+ *
+ * Restrict the GPU frequencies to only those below the tfm limit.
+ */
+bool i915_gpu_disable_turbo(void)
+{
+	bool ret = false;
+
+	mutex_lock(&i915_tfm_lock);
+
+	if (!i915_tfm_dev)
+		goto out_unlock;
+
+	if (i915_tfm_dev->tfm_enabled == GEN9_TURBO_DISABLED)
+		goto out_unlock;
+
+	i915_tfm_dev->tfm_enabled = GEN9_TURBO_DISABLED;
+	ret = true;
+
+	/* If the current freq > rp1, clamp it down */
+	if (i915_tfm_dev->rps.cur_freq > i915_tfm_dev->rps.rp1_freq) {
+		intel_runtime_pm_get(i915_tfm_dev);
+		mutex_lock(&i915_tfm_dev->pcu_lock);
+
+		gen6_set_rps(i915_tfm_dev, i915_tfm_dev->rps.rp1_freq);
+
+		mutex_unlock(&i915_tfm_dev->pcu_lock);
+		intel_runtime_pm_put(i915_tfm_dev);
+	}
+
+out_unlock:
+	mutex_unlock(&i915_tfm_lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(i915_gpu_disable_turbo);
+
+/**
+ * i915_gpu_enable_turbo - enable graphics turbo
+ *
+ * Allow GPU to use frequencies up to softmax (I.E. remove clamping
+ * to RP1 that was set by the i915_tfm_turbo_disable() function.
+ */
+bool i915_gpu_enable_turbo(void)
+{
+	bool ret = false;
+
+	mutex_lock(&i915_tfm_lock);
+
+	if (!i915_tfm_dev)
+		goto out_unlock;
+
+	if (i915_tfm_dev->tfm_enabled == GEN9_TURBO_ENABLED)
+		goto out_unlock;
+
+	ret = true;
+	i915_tfm_dev->tfm_enabled = GEN9_TURBO_ENABLED;
+
+out_unlock:
+	mutex_unlock(&i915_tfm_lock);
+	return ret;
+
+}
+EXPORT_SYMBOL_GPL(i915_gpu_enable_turbo);
+
+/**
+ * Return the GPU frequency, in KHz.
+ */
+int i915_gpu_pstate2freq(int pstate)
+{
+	int ret = -1;
+
+	mutex_lock(&i915_tfm_lock);
+
+	if (!i915_tfm_dev)
+		goto out_unlock;
+
+	/* (val * GT_FREQUENCY_MULTIPLIER / GEN9_FREQ_SCALER) * 1000 */
+	ret = intel_gpu_freq(i915_tfm_dev, pstate) * 1000;
+
+out_unlock:
+	mutex_unlock(&i915_tfm_lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(i915_gpu_pstate2freq);
+
+/**
+ * Return the maximum pstate (or frequency opcode) available on the
+ * platform.
+ */
+int i915_gpu_get_max_pstate(void)
+{
+	int ret = 0;
+
+	mutex_lock(&i915_tfm_lock);
+
+	if (!i915_tfm_dev)
+		goto out_unlock;
+
+	ret = i915_tfm_dev->rps.rp0_freq;
+
+out_unlock:
+	mutex_unlock(&i915_tfm_lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(i915_gpu_get_max_pstate);
+
+
 
 static void intel_init_emon(struct drm_i915_private *dev_priv)
 {
