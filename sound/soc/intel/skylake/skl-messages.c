@@ -327,7 +327,24 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 	struct skl_pipe *host_cpr_pipe = NULL;
 	struct skl_pipe_params host_cpr_params, link_cpr_params;
 	struct skl_module_cfg host_cpr_cfg, link_cpr_cfg;
+	struct skl_module host_cpr_mod, link_cpr_mod;
 	int ret;
+	struct skl_module_fmt *in_fmt, *out_fmt;
+	u8 guid[16] = { 131, 12, 160, 155, 18, 202, 131,
+			74, 148, 60, 31, 162, 232, 47, 157, 218 };
+
+	link_cpr_cfg.module = &link_cpr_mod;
+	host_cpr_cfg.module = &host_cpr_mod;
+
+	/*
+	 * To get the pvt id, UUID of the module config is
+	 * necessary. Hence hardocde this to the UUID fof copier
+	 * module
+	 */
+	memcpy(&host_cpr_cfg.guid, &guid, 16);
+	memcpy(&link_cpr_cfg.guid, &guid, 16);
+	in_fmt = &host_cpr_cfg.module->formats[0].inputs[0].fmt;
+	out_fmt = &host_cpr_cfg.module->formats[0].outputs[0].fmt;
 
 	/* Playback pipeline */
 	host_cpr_pipe = kzalloc(sizeof(struct skl_pipe), GFP_KERNEL);
@@ -336,6 +353,10 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 		goto error;
 	}
 
+	host_cpr_cfg.fmt_idx = 0;
+	host_cpr_cfg.res_idx = 0;
+	link_cpr_cfg.fmt_idx = 0;
+	link_cpr_cfg.res_idx = 0;
 	bra_data->pb_pipe = host_cpr_pipe;
 
 	host_cpr_pipe->p_params = &host_cpr_params;
@@ -364,54 +385,59 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 	host_cpr_cfg.id.module_id = 4;
 #endif
 	host_cpr_cfg.id.instance_id = 1;
-	host_cpr_cfg.mcps = 100000;
-	host_cpr_cfg.mem_pages = 0;
-	host_cpr_cfg.ibs = 384;
-	host_cpr_cfg.obs = 384;
+	host_cpr_cfg.id.pvt_id = skl_get_pvt_id(ctx,
+		(uuid_le *)host_cpr_cfg.guid, host_cpr_cfg.id.instance_id);
+	if (host_cpr_cfg.id.pvt_id < 0)
+		return -EINVAL;
+
+	host_cpr_cfg.module->resources[0].cps = 100000;
+	host_cpr_cfg.module->resources[0].is_pages = 0;
+	host_cpr_cfg.module->resources[0].ibs = 384;
+	host_cpr_cfg.module->resources[0].obs = 384;
 	host_cpr_cfg.core_id = 0;
-	host_cpr_cfg.max_in_queue = 1;
-	host_cpr_cfg.max_out_queue = 1;
-	host_cpr_cfg.is_loadable = 0;
+	host_cpr_cfg.module->max_input_pins = 1;
+	host_cpr_cfg.module->max_output_pins = 1;
+	host_cpr_cfg.module->loadable = 0;
 	host_cpr_cfg.domain = 0;
 	host_cpr_cfg.m_type = SKL_MODULE_TYPE_COPIER;
 	host_cpr_cfg.dev_type = SKL_DEVICE_HDAHOST;
 	host_cpr_cfg.hw_conn_type = SKL_CONN_SOURCE;
 	host_cpr_cfg.formats_config.caps_size = 0;
-	host_cpr_cfg.dma_buffer_size = 2;
+	host_cpr_cfg.module->resources[0].dma_buffer_size = 2;
 	host_cpr_cfg.pdi_type = 0;
 	host_cpr_cfg.converter = 0;
 	host_cpr_cfg.vbus_id = 0;
 	host_cpr_cfg.sdw_agg_enable = 0;
 	host_cpr_cfg.formats_config.caps_size = 0;
 
-	host_cpr_cfg.in_fmt[0].channels = 1;
-	host_cpr_cfg.in_fmt[0].s_freq = 96000;
-	host_cpr_cfg.in_fmt[0].bit_depth = 32;
-	host_cpr_cfg.in_fmt[0].valid_bit_depth = 24;
-	host_cpr_cfg.in_fmt[0].ch_cfg = 0;
-	host_cpr_cfg.in_fmt[0].interleaving_style = 0;
-	host_cpr_cfg.in_fmt[0].sample_type = 0;
-	host_cpr_cfg.in_fmt[0].ch_map = 0xFFFFFFF1;
+	in_fmt->channels = 1;
+	in_fmt->s_freq = 96000;
+	in_fmt->bit_depth = 32;
+	in_fmt->valid_bit_depth = 24;
+	in_fmt->ch_cfg = 0;
+	in_fmt->interleaving_style = 0;
+	in_fmt->sample_type = 0;
+	in_fmt->ch_map = 0xFFFFFFF1;
 
-	host_cpr_cfg.out_fmt[0].channels = 1;
-	host_cpr_cfg.out_fmt[0].s_freq = 96000;
-	host_cpr_cfg.out_fmt[0].bit_depth = 32;
-	host_cpr_cfg.out_fmt[0].valid_bit_depth = 24;
-	host_cpr_cfg.out_fmt[0].ch_cfg = 0;
-	host_cpr_cfg.out_fmt[0].interleaving_style = 0;
-	host_cpr_cfg.out_fmt[0].sample_type = 0;
-	host_cpr_cfg.out_fmt[0].ch_map = 0xFFFFFFF1;
+	out_fmt->channels = 1;
+	out_fmt->s_freq = 96000;
+	out_fmt->bit_depth = 32;
+	out_fmt->valid_bit_depth = 24;
+	out_fmt->ch_cfg = 0;
+	out_fmt->interleaving_style = 0;
+	out_fmt->sample_type = 0;
+	out_fmt->ch_map = 0xFFFFFFF1;
 
-	host_cpr_cfg.m_in_pin = kcalloc(host_cpr_cfg.max_in_queue,
-					sizeof(host_cpr_cfg.m_in_pin),
+	host_cpr_cfg.m_in_pin = kcalloc(host_cpr_cfg.module->max_input_pins,
+					sizeof(*host_cpr_cfg.m_in_pin),
 					GFP_KERNEL);
 	if (!host_cpr_cfg.m_in_pin) {
 		ret =  -ENOMEM;
 		goto error;
 	}
 
-	host_cpr_cfg.m_out_pin = kcalloc(host_cpr_cfg.max_out_queue,
-					sizeof(host_cpr_cfg.m_out_pin),
+	host_cpr_cfg.m_out_pin = kcalloc(host_cpr_cfg.module->max_output_pins,
+					sizeof(*host_cpr_cfg.m_out_pin),
 					GFP_KERNEL);
 	if (!host_cpr_cfg.m_out_pin) {
 		ret =  -ENOMEM;
@@ -440,6 +466,11 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 			sizeof(struct skl_pipe_params));
 
 	link_cpr_cfg.id.instance_id = 2;
+	link_cpr_cfg.id.pvt_id = skl_get_pvt_id(ctx,
+		(uuid_le *)link_cpr_cfg.guid, link_cpr_cfg.id.instance_id);
+	if (link_cpr_cfg.id.pvt_id < 0)
+		return -EINVAL;
+
 	link_cpr_cfg.dev_type = SKL_DEVICE_SDW;
 #if IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
 	link_cpr_cfg.sdw_stream_num = 0x3;
@@ -448,16 +479,16 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 #endif
 	link_cpr_cfg.hw_conn_type = SKL_CONN_SOURCE;
 
-	link_cpr_cfg.m_in_pin = kcalloc(link_cpr_cfg.max_in_queue,
-					sizeof(link_cpr_cfg.m_in_pin),
+	link_cpr_cfg.m_in_pin = kcalloc(link_cpr_cfg.module->max_input_pins,
+					sizeof(*link_cpr_cfg.m_in_pin),
 					GFP_KERNEL);
 	if (!link_cpr_cfg.m_in_pin) {
 		ret =  -ENOMEM;
 		goto error;
 	}
 
-	link_cpr_cfg.m_out_pin = kcalloc(link_cpr_cfg.max_out_queue,
-					sizeof(link_cpr_cfg.m_out_pin),
+	link_cpr_cfg.m_out_pin = kcalloc(link_cpr_cfg.module->max_output_pins,
+					sizeof(*link_cpr_cfg.m_out_pin),
 					GFP_KERNEL);
 	if (!link_cpr_cfg.m_out_pin) {
 		ret =  -ENOMEM;
@@ -529,8 +560,26 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 	struct bra_conf *bra_data = &ctx->bra_pipe_data[mstr_num];
 	struct skl_pipe *link_cpr_pipe = NULL;
 	struct skl_pipe_params link_cpr_params, host_cpr_params;
+	struct skl_module host_cpr_mod, link_cpr_mod;
 	struct skl_module_cfg link_cpr_cfg, host_cpr_cfg;
 	int ret;
+	struct skl_module_fmt *in_fmt, *out_fmt;
+	u8 guid[16] = { 131, 12, 160, 155, 18, 202, 131,
+			74, 148, 60, 31, 162, 232, 47, 157, 218 };
+
+	link_cpr_cfg.module = &link_cpr_mod;
+	host_cpr_cfg.module = &host_cpr_mod;
+
+
+	/*
+	 * To get the pvt id, UUID of the module config is
+	 * necessary. Hence hardocde this to the UUID fof copier
+	 * module
+	 */
+	memcpy(&host_cpr_cfg.guid, &guid, 16);
+	memcpy(&link_cpr_cfg.guid, &guid, 16);
+	in_fmt = &link_cpr_cfg.module->formats[0].inputs[0].fmt;
+	out_fmt = &link_cpr_cfg.module->formats[0].outputs[0].fmt;
 
 	/* Capture Pipeline */
 	link_cpr_pipe = kzalloc(sizeof(struct skl_pipe), GFP_KERNEL);
@@ -539,6 +588,10 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 		goto error;
 	}
 
+	link_cpr_cfg.fmt_idx = 0;
+	link_cpr_cfg.res_idx = 0;
+	host_cpr_cfg.fmt_idx = 0;
+	host_cpr_cfg.res_idx = 0;
 	bra_data->cp_pipe = link_cpr_pipe;
 	link_cpr_pipe->p_params = &link_cpr_params;
 	link_cpr_cfg.pipe = link_cpr_pipe;
@@ -567,14 +620,19 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 	link_cpr_cfg.id.module_id = 4;
 #endif
 	link_cpr_cfg.id.instance_id = 3;
-	link_cpr_cfg.mcps = 100000;
-	link_cpr_cfg.mem_pages = 0;
-	link_cpr_cfg.ibs = 1152;
-	link_cpr_cfg.obs = 1152;
+	link_cpr_cfg.id.pvt_id = skl_get_pvt_id(ctx,
+		(uuid_le *)link_cpr_cfg.guid, link_cpr_cfg.id.instance_id);
+	if (link_cpr_cfg.id.pvt_id < 0)
+		return -EINVAL;
+
+	link_cpr_cfg.module->resources[0].cps = 100000;
+	link_cpr_cfg.module->resources[0].is_pages = 0;
+	link_cpr_cfg.module->resources[0].ibs = 1152;
+	link_cpr_cfg.module->resources[0].obs = 1152;
 	link_cpr_cfg.core_id = 0;
-	link_cpr_cfg.max_in_queue = 1;
-	link_cpr_cfg.max_out_queue = 1;
-	link_cpr_cfg.is_loadable = 0;
+	link_cpr_cfg.module->max_input_pins = 1;
+	link_cpr_cfg.module->max_output_pins = 1;
+	link_cpr_cfg.module->loadable = 0;
 	link_cpr_cfg.domain = 0;
 	link_cpr_cfg.m_type = SKL_MODULE_TYPE_COPIER;
 	link_cpr_cfg.dev_type = SKL_DEVICE_SDW;
@@ -586,7 +644,7 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 	link_cpr_cfg.hw_conn_type = SKL_CONN_SINK;
 
 	link_cpr_cfg.formats_config.caps_size = 0;
-	link_cpr_cfg.dma_buffer_size = 2;
+	link_cpr_cfg.module->resources[0].dma_buffer_size = 2;
 	link_cpr_cfg.pdi_type = 0;
 	link_cpr_cfg.converter = 0;
 	link_cpr_cfg.vbus_id = 0;
@@ -608,34 +666,34 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 #endif
 	link_cpr_cfg.formats_config.caps[3] = 0x1;
 
-	link_cpr_cfg.in_fmt[0].channels = 6;
-	link_cpr_cfg.in_fmt[0].s_freq = 48000;
-	link_cpr_cfg.in_fmt[0].bit_depth = 32;
-	link_cpr_cfg.in_fmt[0].valid_bit_depth = 24;
-	link_cpr_cfg.in_fmt[0].ch_cfg = 8;
-	link_cpr_cfg.in_fmt[0].interleaving_style = 0;
-	link_cpr_cfg.in_fmt[0].sample_type = 0;
-	link_cpr_cfg.in_fmt[0].ch_map = 0xFF657120;
+	in_fmt->channels = 6;
+	in_fmt->s_freq = 48000;
+	in_fmt->bit_depth = 32;
+	in_fmt->valid_bit_depth = 24;
+	in_fmt->ch_cfg = 8;
+	in_fmt->interleaving_style = 0;
+	in_fmt->sample_type = 0;
+	in_fmt->ch_map = 0xFF657120;
 
-	link_cpr_cfg.out_fmt[0].channels = 6;
-	link_cpr_cfg.out_fmt[0].s_freq = 48000;
-	link_cpr_cfg.out_fmt[0].bit_depth = 32;
-	link_cpr_cfg.out_fmt[0].valid_bit_depth = 24;
-	link_cpr_cfg.out_fmt[0].ch_cfg = 8;
-	link_cpr_cfg.out_fmt[0].interleaving_style = 0;
-	link_cpr_cfg.out_fmt[0].sample_type = 0;
-	link_cpr_cfg.out_fmt[0].ch_map = 0xFF657120;
+	out_fmt->channels = 6;
+	out_fmt->s_freq = 48000;
+	out_fmt->bit_depth = 32;
+	out_fmt->valid_bit_depth = 24;
+	out_fmt->ch_cfg = 8;
+	out_fmt->interleaving_style = 0;
+	out_fmt->sample_type = 0;
+	out_fmt->ch_map = 0xFF657120;
 
-	link_cpr_cfg.m_in_pin = kcalloc(link_cpr_cfg.max_in_queue,
-					sizeof(link_cpr_cfg.m_in_pin),
+	link_cpr_cfg.m_in_pin = kcalloc(link_cpr_cfg.module->max_input_pins,
+					sizeof(*link_cpr_cfg.m_in_pin),
 					GFP_KERNEL);
 	if (!link_cpr_cfg.m_in_pin) {
 		ret =  -ENOMEM;
 		goto error;
 	}
 
-	link_cpr_cfg.m_out_pin = kcalloc(link_cpr_cfg.max_out_queue,
-					sizeof(link_cpr_cfg.m_out_pin),
+	link_cpr_cfg.m_out_pin = kcalloc(link_cpr_cfg.module->max_output_pins,
+					sizeof(*link_cpr_cfg.m_out_pin),
 					GFP_KERNEL);
 	if (!link_cpr_cfg.m_out_pin) {
 		ret =  -ENOMEM;
@@ -664,21 +722,26 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 			sizeof(struct skl_pipe_params));
 
 	host_cpr_cfg.id.instance_id = 4;
+	host_cpr_cfg.id.pvt_id = skl_get_pvt_id(ctx,
+		(uuid_le *)host_cpr_cfg.guid, host_cpr_cfg.id.instance_id);
+	if (host_cpr_cfg.id.pvt_id < 0)
+		return -EINVAL;
+
 	host_cpr_cfg.dev_type = SKL_DEVICE_HDAHOST;
 	host_cpr_cfg.hw_conn_type = SKL_CONN_SINK;
 	link_cpr_params.host_dma_id = (bra_data->cp_stream_tag - 1);
 	host_cpr_params.host_dma_id = (bra_data->cp_stream_tag - 1);
 	host_cpr_cfg.formats_config.caps_size = 0;
-	host_cpr_cfg.m_in_pin = kcalloc(host_cpr_cfg.max_in_queue,
-					sizeof(host_cpr_cfg.m_in_pin),
+	host_cpr_cfg.m_in_pin = kcalloc(host_cpr_cfg.module->max_input_pins,
+					sizeof(*host_cpr_cfg.m_in_pin),
 					GFP_KERNEL);
 	if (!host_cpr_cfg.m_in_pin) {
 		ret =  -ENOMEM;
 		goto error;
 	}
 
-	host_cpr_cfg.m_out_pin = kcalloc(host_cpr_cfg.max_out_queue,
-					sizeof(host_cpr_cfg.m_out_pin),
+	host_cpr_cfg.m_out_pin = kcalloc(host_cpr_cfg.module->max_output_pins,
+					sizeof(*host_cpr_cfg.m_out_pin),
 					GFP_KERNEL);
 	if (!host_cpr_cfg.m_out_pin) {
 		ret =  -ENOMEM;
