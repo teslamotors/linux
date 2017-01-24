@@ -4534,6 +4534,36 @@ DEFINE_SIMPLE_ATTRIBUTE(i915_min_freq_fops,
 			i915_min_freq_get, i915_min_freq_set,
 			"%llu\n");
 
+static int i915_turbo_status_get(void *data, u64 *val)
+{
+	struct drm_device *dev = data;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (!IS_BROXTON(dev_priv))
+		return -ENODEV;
+
+	*val = dev_priv->tfm_enabled;
+
+	return 0;
+}
+
+static int i915_turbo_status_set(void *data, u64 val)
+{
+	struct drm_device *dev = data;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	DRM_DEBUG_DRIVER("Setting GPU turbo to %s\n",
+			 val ? "disable" : "enable");
+
+	dev_priv->tfm_enabled = val;
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(i915_turbo_status_fops,
+			i915_turbo_status_get, i915_turbo_status_set,
+			"%llu\n");
+
 static int
 i915_cache_sharing_get(void *data, u64 *val)
 {
@@ -4953,7 +4983,8 @@ static const struct i915_debugfs_files {
 	{"i915_dp_test_type", &i915_displayport_test_type_fops},
 	{"i915_dp_test_active", &i915_displayport_test_active_fops},
 	{"i915_guc_log_control", &i915_guc_log_control_fops},
-	{"i915_hpd_storm_ctl", &i915_hpd_storm_ctl_fops}
+	{"i915_hpd_storm_ctl", &i915_hpd_storm_ctl_fops},
+	{"i915_turbo_status", &i915_turbo_status_fops}
 };
 
 int i915_debugfs_register(struct drm_i915_private *dev_priv)
