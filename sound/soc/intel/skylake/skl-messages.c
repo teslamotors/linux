@@ -1164,6 +1164,7 @@ int skl_free_dsp(struct skl *skl)
 	/* disable  ppcap interrupt */
 	snd_hdac_ext_bus_ppcap_int_enable(&skl->ebus, false);
 
+	skl_module_sysfs_exit(skl->skl_sst);
 	ctx->dsp_ops->cleanup(bus->dev, ctx);
 
 	kfree(ctx->cores.state);

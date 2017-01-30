@@ -244,6 +244,9 @@ struct skl_sst {
 
 	/* firmware configuration information */
 	struct skl_fw_property_info fw_property;
+
+	/* sysfs for module info */
+	struct skl_sysfs_tree *sysfs_tree;
 };
 
 struct skl_ipc_init_instance_msg {

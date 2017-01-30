@@ -1901,6 +1901,9 @@ static int skl_platform_soc_probe(struct snd_soc_platform *platform)
 		skl->skl_sst->update_d0i3c = skl_update_d0i3c;
 		skl_dsp_enable_notification(skl->skl_sst, false);
 		skl_get_probe_widget(platform, skl);
+
+		/* create sysfs to list modules downloaded by driver */
+		skl_module_sysfs_init(skl->skl_sst, &platform->dev->kobj);
 	}
 	pm_runtime_mark_last_busy(platform->dev);
 	pm_runtime_put_autosuspend(platform->dev);

@@ -23,10 +23,34 @@
 
 
 #define UUID_STR_SIZE 37
-#define DEFAULT_HASH_SHA256_LEN 32
 
 /* FW Extended Manifest Header id = $AE1 */
 #define SKL_EXT_MANIFEST_HEADER_MAGIC   0x31454124
+
+#define UUID_ATTR_RO(_name) \
+	struct uuid_attribute uuid_attr_##_name = __ATTR_RO(_name)
+
+struct skl_sysfs_tree {
+	struct kobject *dsp_kobj;
+	struct kobject *modules_kobj;
+	struct skl_sysfs_module **mod_obj;
+};
+
+struct skl_sysfs_module {
+	struct kobject kobj;
+	struct uuid_module *uuid_mod;
+	struct list_head *module_list;
+	int fw_ops_load_mod;
+};
+
+struct uuid_attribute {
+	struct attribute	attr;
+	ssize_t (*show)(struct skl_sysfs_module *modinfo_obj,
+			struct uuid_attribute *attr, char *buf);
+	ssize_t (*store)(struct skl_sysfs_module *modinfo_obj,
+			struct uuid_attribute *attr, const char *buf,
+			size_t count);
+};
 
 struct UUID {
 	u8 id[16];
@@ -314,6 +338,7 @@ int snd_skl_parse_uuids(struct sst_dsp *ctx, const struct firmware *fw,
 			kfree(module);
 			return -ENOMEM;
 		}
+		memcpy(&module->hash, mod_entry->hash1, sizeof(module->hash));
 
 		list_add_tail(&module->list, &skl->uuid_list);
 
@@ -656,3 +681,198 @@ err:
 	kfree(ipc_data);
 	return ret;
 }
+
+static ssize_t uuid_attr_show(struct kobject *kobj, struct attribute *attr,
+				char *buf)
+{
+	struct uuid_attribute *uuid_attr =
+		container_of(attr, struct uuid_attribute, attr);
+	struct skl_sysfs_module *modinfo_obj =
+		container_of(kobj, struct skl_sysfs_module, kobj);
+
+	if (uuid_attr->show)
+		return uuid_attr->show(modinfo_obj, uuid_attr, buf);
+
+	return 0;
+}
+
+static const struct sysfs_ops uuid_sysfs_ops = {
+	.show	= uuid_attr_show,
+};
+
+static void uuid_release(struct kobject *kobj)
+{
+	struct skl_sysfs_module *modinfo_obj =
+		container_of(kobj, struct skl_sysfs_module, kobj);
+
+	kfree(modinfo_obj);
+}
+
+static struct kobj_type uuid_ktype = {
+	.release        = uuid_release,
+	.sysfs_ops	= &uuid_sysfs_ops,
+};
+
+static ssize_t loaded_show(struct skl_sysfs_module *modinfo_obj,
+				struct uuid_attribute *attr, char *buf)
+{
+	struct skl_module_table *module_list;
+
+	if ((!modinfo_obj->fw_ops_load_mod) ||
+		(modinfo_obj->fw_ops_load_mod &&
+		!modinfo_obj->uuid_mod->is_loadable))
+		return sprintf(buf, "%d\n", true);
+
+	if (list_empty(modinfo_obj->module_list))
+		return sprintf(buf, "%d\n", false);
+
+	list_for_each_entry(module_list, modinfo_obj->module_list, list) {
+		if (module_list->mod_info->mod_id
+					== modinfo_obj->uuid_mod->id)
+			return sprintf(buf, "%d\n", module_list->usage_cnt);
+	}
+
+	return sprintf(buf, "%d\n", false);
+}
+
+static ssize_t hash_show(struct skl_sysfs_module *modinfo_obj,
+				struct uuid_attribute *attr, char *buf)
+{
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < DEFAULT_HASH_SHA256_LEN; i++)
+		ret += sprintf(buf + ret, "%d ",
+					modinfo_obj->uuid_mod->hash[i]);
+	ret += sprintf(buf + ret, "\n");
+
+	return ret;
+}
+
+
+static ssize_t id_show(struct skl_sysfs_module *modinfo_obj,
+				struct uuid_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", modinfo_obj->uuid_mod->id);
+}
+
+static UUID_ATTR_RO(loaded);
+static UUID_ATTR_RO(hash);
+static UUID_ATTR_RO(id);
+
+static struct attribute *modules_attrs[] = {
+	&uuid_attr_loaded.attr,
+	&uuid_attr_hash.attr,
+	&uuid_attr_id.attr,
+	NULL,
+};
+
+static const struct attribute_group uuid_group = {
+	.attrs = modules_attrs,
+};
+
+static void free_uuid_node(struct kobject *kobj,
+			     const struct attribute_group *group)
+{
+	if (kobj) {
+		sysfs_remove_group(kobj, group);
+		kobject_put(kobj);
+	}
+}
+
+void skl_module_sysfs_exit(struct skl_sst *ctx)
+{
+	struct skl_sysfs_tree *tree = ctx->sysfs_tree;
+	struct skl_sysfs_module **m;
+
+	if (!tree)
+		return;
+
+	if (tree->mod_obj) {
+		for (m = tree->mod_obj; *m; m++)
+			free_uuid_node(&(*m)->kobj, &uuid_group);
+		kfree(tree->mod_obj);
+	}
+
+	if (tree->modules_kobj)
+		kobject_put(tree->modules_kobj);
+
+	if (tree->dsp_kobj)
+		kobject_put(tree->dsp_kobj);
+
+	kfree(tree);
+	ctx->sysfs_tree = NULL;
+}
+EXPORT_SYMBOL_GPL(skl_module_sysfs_exit);
+
+int skl_module_sysfs_init(struct skl_sst *ctx, struct kobject *kobj)
+{
+	struct uuid_module *module;
+	struct skl_sysfs_module *modinfo_obj;
+	char *uuid_name;
+	int count = 0;
+	int max_mod = 0;
+	int ret = 0;
+
+	if (list_empty(&ctx->uuid_list))
+		return 0;
+
+	ctx->sysfs_tree = kzalloc(sizeof(*ctx->sysfs_tree), GFP_KERNEL);
+	if (!ctx->sysfs_tree) {
+		ret = -ENOMEM;
+		goto err_sysfs_exit;
+	}
+
+	ctx->sysfs_tree->dsp_kobj = kobject_create_and_add("dsp", kobj);
+	if (!ctx->sysfs_tree->dsp_kobj)
+		goto err_sysfs_exit;
+
+	ctx->sysfs_tree->modules_kobj = kobject_create_and_add("modules",
+						ctx->sysfs_tree->dsp_kobj);
+	if (!ctx->sysfs_tree->modules_kobj)
+		goto err_sysfs_exit;
+
+	list_for_each_entry(module, &ctx->uuid_list, list)
+		max_mod++;
+
+	ctx->sysfs_tree->mod_obj = kcalloc(max_mod + 1,
+			sizeof(*ctx->sysfs_tree->mod_obj), GFP_KERNEL);
+	if (!ctx->sysfs_tree->mod_obj) {
+		ret = -ENOMEM;
+		goto err_sysfs_exit;
+	}
+
+	list_for_each_entry(module, &ctx->uuid_list, list) {
+		modinfo_obj = kzalloc(sizeof(*modinfo_obj), GFP_KERNEL);
+		if (!modinfo_obj) {
+			ret = -ENOMEM;
+			goto err_sysfs_exit;
+		}
+
+		uuid_name = kasprintf(GFP_KERNEL, "%pUL", &module->uuid);
+		ret = kobject_init_and_add(&modinfo_obj->kobj, &uuid_ktype,
+				ctx->sysfs_tree->modules_kobj, uuid_name);
+		if (ret < 0)
+			goto err_sysfs_exit;
+
+		ret = sysfs_create_group(&modinfo_obj->kobj, &uuid_group);
+		if (ret < 0)
+			goto err_sysfs_exit;
+
+		modinfo_obj->uuid_mod = module;
+		modinfo_obj->module_list = &ctx->dsp->module_list;
+		modinfo_obj->fw_ops_load_mod =
+				(ctx->dsp->fw_ops.load_mod == NULL) ? 0 : 1;
+
+		ctx->sysfs_tree->mod_obj[count] = modinfo_obj;
+		count++;
+	}
+
+	return 0;
+
+err_sysfs_exit:
+	 skl_module_sysfs_exit(ctx);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(skl_module_sysfs_init);
