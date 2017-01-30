@@ -885,7 +885,7 @@ static int yaffs_setattr(struct dentry *dentry, struct iattr *attr)
 #endif
 
 	if (error == 0)
-		error = inode_change_ok(inode, attr);
+		error = setattr_prepare(dentry, attr);
 	if (error == 0) {
 		int result;
 		if (!error) {
