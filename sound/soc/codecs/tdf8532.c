@@ -18,50 +18,73 @@
 #include <sound/soc.h>
 #include <sound/tlv.h>
 #include <sound/pcm_params.h>
+#include "tdf8532.h"
 
-struct tdf8532_priv {
-	struct i2c_client *i2c;
-
-	/* Fine to wrap back to 0 */
-	u8 packet_id;
-};
-
-static int tdf8532_cmd_send(struct tdf8532_priv *dev_data, char *cmd_packet,
-		u16 len)
+static int __tdf8532_build_pkt(struct tdf8532_priv *dev_data, va_list valist,
+					u8 *payload)
 {
-	int ret;
-	u8 packet_id;
+	int param;
+	u8 len;
+	u8 *cmd_payload;
+	const u8 cmd_offset = 3;
 
-	packet_id = (len > 1) ? cmd_packet[1] : 0;
+	payload[HEADER_TYPE] = MSG_TYPE_STX;
+	payload[HEADER_PKTID] = dev_data->pkt_id;
 
-	ret = i2c_master_send(dev_data->i2c, cmd_packet, len);
+	cmd_payload = &(payload[cmd_offset]);
 
-	if (ret < 0) {
-		dev_err(&(dev_data->i2c->dev),
-			"i2c send packet(%u) returned: %d\n", packet_id, ret);
-		return ret;
+	param = va_arg(valist, int);
+	len = 0;
+
+	while (param != END) {
+		cmd_payload[len] = param;
+		len++;
+		param = va_arg(valist, int);
 	}
 
+	payload[HEADER_LEN] = len;
 
-	dev_dbg(&(dev_data->i2c->dev),
-			"i2c send packet(%u) returned: %d\n", packet_id, ret);
+	return len + cmd_offset;
+}
 
-	return 0;
+/* Use macro instead */
+static int __tdf8532_single_write(struct tdf8532_priv *dev_data,
+					int dummy, ...)
+{
+	va_list valist;
+	u8 len;
+	u8 payload[255];
+	int ret = 0;
+	struct device *dev = &(dev_data->i2c->dev);
+
+	va_start(valist, dummy);
+
+	len = __tdf8532_build_pkt(dev_data, valist, payload);
+
+	va_end(valist);
+
+	print_hex_dump_debug("tdf8532-codec: Tx:", DUMP_PREFIX_NONE, 32, 1,
+				payload, len, false);
+	ret = i2c_master_send(dev_data->i2c, payload, len);
+
+	if (ret < 0)
+		dev_err(dev, "i2c send packet returned: %d\n", ret);
+
+	dev_data->pkt_id++;
+
+	return ret;
 }
 
 static void tdf8532_dai_shutdown(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
 {
+	int ret;
 	struct snd_soc_codec *codec = dai->codec;
 	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(codec);
 
-	/*disconnect clock*/
-	unsigned char data[] = {0x02, (tdf8532->packet_id)++, 0x03,
-					0x80, 0x1A, 0x00};
-
 	dev_dbg(codec->dev, "%s\n", __func__);
 
-	tdf8532_cmd_send(tdf8532, data, ARRAY_SIZE(data));
+	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_DISCONNECT);
 }
 
 static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
@@ -71,18 +94,15 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	struct snd_soc_codec *codec = dai->codec;
 	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(codec);
 
-	/*enable or disable 4 channels*/
-	unsigned char data[] = {0x02, (tdf8532->packet_id)++, 0x03,
-					0x80, 0x00, 0x0F};
-
 	dev_dbg(codec->dev, "%s: cmd = %d\n", __func__, cmd);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 	case SNDRV_PCM_TRIGGER_RESUME:
-		data[4] = 0x26;
-		ret = tdf8532_cmd_send(tdf8532, data, ARRAY_SIZE(data));
+		ret = tdf8532_amp_write(tdf8532, SET_CHNL_ENABLE,
+						CHNL_MASK(tdf8532->channels));
+
 		break;
 
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
@@ -91,16 +111,15 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 		/* WA on unexpected codec down during S3
 		 SNDRV_PCM_TRIGGER_STOP fails so skip set ret */
 		tdf8532_stop_play(tdf8532);
-		data[4] = 0x27;
-		ret = tdf8532_cmd_send(tdf8532, data, ARRAY_SIZE(data));
-
+		ret = tdf8532_amp_write(tdf8532, SET_CHNL_DISABLE,
+						CHNL_MASK(tdf8532->channels));
 		/*delay 300ms to allow state change to occur*/
 		/*TODO: add state check to wait for state change*/
 		mdelay(300);
 		break;
 	}
 
-	return tdf8532_cmd_send(tdf8532, data, ARRAY_SIZE(data));
+	return ret;
 }
 
 static int tdf8532_dai_prepare(struct snd_pcm_substream *substream,
@@ -109,33 +128,24 @@ static int tdf8532_dai_prepare(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = dai->codec;
 	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(codec);
 
-	/*attach clock*/
-	unsigned char data[] = {0x02, (tdf8532->packet_id)++, 0x03,
-					0x80, 0x1A, 0x01};
-
 	dev_dbg(codec->dev, "%s\n", __func__);
 
-	return tdf8532_cmd_send(tdf8532, data, ARRAY_SIZE(data));
+	return tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_CONNECT);
 }
-
-
-#define MUTE 0x42
-#define UNMUTE 0x43
 
 static int tdf8532_mute(struct snd_soc_dai *dai, int mute)
 {
+	struct snd_soc_codec *codec = dai->codec;
 	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(dai->codec);
-	unsigned char data[] = {0x02, (tdf8532->packet_id)++, 0x03,
-					0x80, MUTE, 0x1F};
 
-	if (!mute)
-		data[4] = UNMUTE;
+	dev_dbg(codec->dev, "%s\n", __func__);
+
+	if (mute)
+		return tdf8532_amp_write(tdf8532, SET_CHNL_MUTE,
+						CHNL_MASK(CHNL_MAX));
 	else
-		data[4] = MUTE;
-
-	dev_dbg(&(tdf8532->i2c->dev), "%s\n", __func__);
-
-	return tdf8532_cmd_send(tdf8532, data, ARRAY_SIZE(data));
+		return tdf8532_amp_write(tdf8532, SET_CHNL_UNMUTE,
+						CHNL_MASK(CHNL_MAX));
 }
 
 static const struct snd_soc_dai_ops tdf8532_dai_ops = {
@@ -163,31 +173,36 @@ static struct snd_soc_dai_driver tdf8532_dai[] = {
 
 
 static int tdf8532_i2c_probe(struct i2c_client *i2c,
-		const struct i2c_device_id *id)
+				const struct i2c_device_id *id)
 {
 	int ret;
-	struct tdf8532_priv *tdf8532;
+	struct tdf8532_priv *dev_data;
+	struct device *dev = &(i2c->dev);
 
 	dev_dbg(&i2c->dev, "%s\n", __func__);
 
-	tdf8532 = devm_kzalloc(&i2c->dev, sizeof(*tdf8532),
-			GFP_KERNEL);
+	dev_data = devm_kzalloc(dev, sizeof(struct tdf8532_priv), GFP_KERNEL);
 
-	if (NULL == tdf8532)
-		return -ENOMEM;
+	if (!dev_data) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
-	tdf8532->i2c = i2c;
-	tdf8532->packet_id = 0;
+	dev_data->i2c = i2c;
+	dev_data->pkt_id = 0;
+	dev_data->channels = 4;
 
-	i2c_set_clientdata(i2c, tdf8532);
+	i2c_set_clientdata(i2c, dev_data);
 
 	ret = snd_soc_register_codec(&i2c->dev, &soc_codec_tdf8532,
-			tdf8532_dai, ARRAY_SIZE(tdf8532_dai));
-	if (ret != 0)
+					tdf8532_dai, ARRAY_SIZE(tdf8532_dai));
+	if (ret != 0) {
 		dev_err(&i2c->dev, "Failed to register codec: %d\n", ret);
+		goto out;
+	}
 
+out:
 	return ret;
-
 }
 
 static int tdf8532_i2c_remove(struct i2c_client *i2c)
