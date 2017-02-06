@@ -209,8 +209,10 @@ static int cnl_load_base_firmware(struct sst_dsp *ctx)
 {
 	struct firmware stripped_fw;
 	struct skl_sst *cnl = ctx->thread_context;
+	struct skl_fw_property_info fw_property;
 	int ret;
 
+	fw_property.memory_reclaimed = -1;
 	if (!ctx->fw) {
 		ret = request_firmware(&ctx->fw, ctx->fw_name, ctx->dev);
 		if (ret < 0) {
@@ -254,6 +256,21 @@ static int cnl_load_base_firmware(struct sst_dsp *ctx)
 	}
 
 	cnl->fw_loaded = true;
+
+	ret = skl_get_firmware_configuration(ctx);
+	if (ret < 0) {
+		dev_err(ctx->dev, "fwconfig ipc failed !\n");
+		ret = -EIO;
+		goto cnl_load_base_firmware_failed;
+	}
+
+	fw_property = cnl->fw_property;
+	if (fw_property.memory_reclaimed <= 0) {
+		dev_err(ctx->dev, "Memory reclaim not enabled:%d\n",
+			fw_property.memory_reclaimed);
+		ret = -EIO;
+		goto cnl_load_base_firmware_failed;
+	}
 
 	return 0;
 
