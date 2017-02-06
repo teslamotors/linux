@@ -1466,6 +1466,7 @@ bool intel_bios_is_valid_vbt(const void *buf, size_t size)
 	return vbt;
 }
 
+#ifdef CONFIG_DRM_I915_PCI_ROM_VBT
 static const struct vbt_header *find_vbt(void __iomem *bios, size_t size)
 {
 	size_t i;
@@ -1490,6 +1491,7 @@ static const struct vbt_header *find_vbt(void __iomem *bios, size_t size)
 
 	return NULL;
 }
+#endif
 
 /**
  * intel_bios_init - find VBT and initialize settings from the BIOS
@@ -1515,6 +1517,7 @@ void intel_bios_init(struct drm_i915_private *dev_priv)
 
 	/* If the OpRegion does not have VBT, look in PCI ROM. */
 	if (!vbt) {
+#ifdef CONFIG_DRM_I915_PCI_ROM_VBT
 		size_t size;
 
 		bios = pci_map_rom(pdev, &size);
@@ -1526,6 +1529,9 @@ void intel_bios_init(struct drm_i915_private *dev_priv)
 			goto out;
 
 		DRM_DEBUG_KMS("Found valid VBT in PCI ROM\n");
+#else
+		goto out;
+#endif
 	}
 
 	bdb = get_bdb_header(vbt);
