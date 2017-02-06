@@ -1158,6 +1158,8 @@ int skl_free_dsp(struct skl *skl)
 	struct hdac_ext_bus *ebus = &skl->ebus;
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	struct skl_sst *ctx = skl->skl_sst;
+	struct skl_fw_property_info fw_property = skl->skl_sst->fw_property;
+	struct skl_scheduler_config sch_config = fw_property.scheduler_config;
 
 	/* disable  ppcap interrupt */
 	snd_hdac_ext_bus_ppcap_int_enable(&skl->ebus, false);
@@ -1169,6 +1171,9 @@ int skl_free_dsp(struct skl *skl)
 
 	if (ctx->dsp->addr.lpe)
 		iounmap(ctx->dsp->addr.lpe);
+
+	kfree(fw_property.dma_config);
+	kfree(sch_config.sys_tick_cfg);
 
 	return 0;
 }

@@ -437,6 +437,192 @@ void skl_release_library(struct skl_lib_info *linfo, int lib_count)
 		}
 	}
 }
+static int skl_fill_sch_cfg(
+		struct skl_fw_property_info *fw_property,
+		u32 *src)
+{
+	struct skl_scheduler_config *sch_config =
+		&(fw_property->scheduler_config);
+
+	sch_config->sys_tick_multiplier = *src;
+	sch_config->sys_tick_divider = *(src + 1);
+	sch_config->sys_tick_source = *(src + 2);
+	sch_config->sys_tick_cfg_length = *(src + 3);
+
+	if (sch_config->sys_tick_cfg_length > 0) {
+		sch_config->sys_tick_cfg =
+			kcalloc(sch_config->sys_tick_cfg_length,
+					sizeof(*sch_config->sys_tick_cfg),
+					GFP_KERNEL);
+
+		if (!sch_config->sys_tick_cfg)
+			return -ENOMEM;
+
+		memcpy(sch_config->sys_tick_cfg,
+				src + 4,
+				sch_config->sys_tick_cfg_length *
+				sizeof(*sch_config->sys_tick_cfg));
+	}
+	return 0;
+}
+
+static int skl_fill_dma_cfg(struct skl_tlv_message *message,
+		struct skl_fw_property_info *fw_property, u32 *src)
+{
+	struct skl_dma_buff_config dma_buff_cfg;
+
+	fw_property->num_dma_cfg = message->length /
+		sizeof(dma_buff_cfg);
+
+	if (fw_property->num_dma_cfg > 0) {
+		fw_property->dma_config =
+			kcalloc(fw_property->num_dma_cfg,
+					sizeof(dma_buff_cfg),
+					GFP_KERNEL);
+
+		if (!fw_property->dma_config)
+			return -ENOMEM;
+
+		memcpy(fw_property->dma_config, src,
+				message->length);
+	}
+	return 0;
+}
+
+static int skl_parse_fw_config_info(struct sst_dsp *ctx,
+		u8 *src, int limit)
+{
+	struct skl_tlv_message *message;
+	int offset = 0, shift, ret = 0;
+	u32 *value;
+	struct skl_sst *skl = ctx->thread_context;
+	struct skl_fw_property_info *fw_property = &skl->fw_property;
+	enum skl_fw_info_type type;
+	struct skl_scheduler_config *sch_config =
+		&fw_property->scheduler_config;
+
+	while (offset < limit) {
+
+		message = (struct skl_tlv_message *)src;
+		if (message == NULL)
+			break;
+
+		/* Skip TLV header to read value */
+		src += sizeof(*message);
+
+		value = (u32 *)src;
+		type = message->type;
+
+		switch (type) {
+		case SKL_FW_VERSION:
+			memcpy(&fw_property->version, value,
+					sizeof(fw_property->version));
+			break;
+
+		case SKL_MEMORY_RECLAIMED:
+			fw_property->memory_reclaimed = *value;
+			break;
+
+		case SKL_SLOW_CLOCK_FREQ_HZ:
+			fw_property->slow_clock_freq_hz = *value;
+			break;
+
+		case SKL_FAST_CLOCK_FREQ_HZ:
+			fw_property->fast_clock_freq_hz = *value;
+			break;
+
+		case SKL_DMA_BUFFER_CONFIG:
+			ret = skl_fill_dma_cfg(message, fw_property, value);
+			if (ret < 0)
+				goto err;
+			break;
+
+		case SKL_ALH_SUPPORT_LEVEL:
+			fw_property->alh_support = *value;
+			break;
+
+		case SKL_IPC_DL_MAILBOX_BYTES:
+			fw_property->ipc_dl_mailbox_bytes = *value;
+			break;
+
+		case SKL_IPC_UL_MAILBOX_BYTES:
+			fw_property->ipc_ul_mailbox_bytes = *value;
+			break;
+
+		case SKL_TRACE_LOG_BYTES:
+			fw_property->trace_log_bytes = *value;
+			break;
+
+		case SKL_MAX_PPL_COUNT:
+			fw_property->max_ppl_count = *value;
+			break;
+
+		case SKL_MAX_ASTATE_COUNT:
+			fw_property->max_astate_count = *value;
+			break;
+
+		case SKL_MAX_MODULE_PIN_COUNT:
+			fw_property->max_module_pin_count = *value;
+			break;
+
+		case SKL_MODULES_COUNT:
+			fw_property->modules_count = *value;
+			break;
+
+		case SKL_MAX_MOD_INST_COUNT:
+			fw_property->max_mod_inst_count = *value;
+			break;
+
+		case SKL_MAX_LL_TASKS_PER_PRI_COUNT:
+			fw_property->max_ll_tasks_per_pri_count = *value;
+			break;
+
+		case SKL_LL_PRI_COUNT:
+			fw_property->ll_pri_count = *value;
+			break;
+
+		case SKL_MAX_DP_TASKS_COUNT:
+			fw_property->max_dp_tasks_count = *value;
+			break;
+
+		case SKL_MAX_LIBS_COUNT:
+			fw_property->max_libs_count = *value;
+			break;
+
+		case SKL_SCHEDULER_CONFIG:
+			ret = skl_fill_sch_cfg(fw_property, value);
+			if (ret < 0)
+				goto err;
+			break;
+
+		case SKL_XTAL_FREQ_HZ:
+			fw_property->xtal_freq_hz = *value;
+			break;
+
+		case SKL_CLOCKS_CONFIG:
+			memcpy(&(fw_property->clk_config), value,
+					message->length);
+			break;
+
+		default:
+			dev_err(ctx->dev, "Invalid fw info type:%d !!\n",
+					type);
+			break;
+		}
+
+		shift = message->length + sizeof(*message);
+		offset += shift;
+		/* skip over to next tlv data */
+		src += message->length;
+	}
+err:
+	if (ret < 0) {
+		kfree(fw_property->dma_config);
+		kfree(sch_config->sys_tick_cfg);
+	}
+
+	return ret;
+}
 
 int skl_get_firmware_configuration(struct sst_dsp *ctx)
 {
@@ -457,9 +643,16 @@ int skl_get_firmware_configuration(struct sst_dsp *ctx)
 
 	ret = skl_ipc_get_large_config(&skl->ipc, &msg,
 			(u32 *)ipc_data, NULL, 0, &rx_bytes);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(ctx->dev, "failed to get fw configuration !!!\n");
+		goto err;
+	}
 
+	ret = skl_parse_fw_config_info(ctx, ipc_data, rx_bytes);
+	if (ret < 0)
+		dev_err(ctx->dev, "failed to parse configuration !!!\n");
+
+err:
 	kfree(ipc_data);
 	return ret;
 }

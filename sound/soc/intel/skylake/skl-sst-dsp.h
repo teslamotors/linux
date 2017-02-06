@@ -127,7 +127,39 @@ struct skl_lib_info;
 #define SKL_ADSPCS_CPA_SHIFT		24
 #define SKL_ADSPCS_CPA_MASK(cm)		((cm) << SKL_ADSPCS_CPA_SHIFT)
 
+/* Header size is in number of bytes */
+#define SKL_TLV_HEADER_SIZE     8
+struct skl_tlv_message {
+	u32     type;
+	u32     length;
+	char    data[0];
+} __packed;
+
 #define DSP_BUF                PAGE_SIZE
+
+enum skl_fw_info_type {
+	SKL_FW_VERSION = 0,
+	SKL_MEMORY_RECLAIMED,
+	SKL_SLOW_CLOCK_FREQ_HZ,
+	SKL_FAST_CLOCK_FREQ_HZ,
+	SKL_DMA_BUFFER_CONFIG,
+	SKL_ALH_SUPPORT_LEVEL,
+	SKL_IPC_DL_MAILBOX_BYTES,
+	SKL_IPC_UL_MAILBOX_BYTES,
+	SKL_TRACE_LOG_BYTES,
+	SKL_MAX_PPL_COUNT,
+	SKL_MAX_ASTATE_COUNT,
+	SKL_MAX_MODULE_PIN_COUNT,
+	SKL_MODULES_COUNT,
+	SKL_MAX_MOD_INST_COUNT,
+	SKL_MAX_LL_TASKS_PER_PRI_COUNT,
+	SKL_LL_PRI_COUNT,
+	SKL_MAX_DP_TASKS_COUNT,
+	SKL_MAX_LIBS_COUNT,
+	SKL_SCHEDULER_CONFIG,
+	SKL_XTAL_FREQ_HZ,
+	SKL_CLOCKS_CONFIG,
+};
 
 /* DSP Core state */
 enum skl_dsp_states {
