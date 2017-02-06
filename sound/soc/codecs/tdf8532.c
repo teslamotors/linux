@@ -13,7 +13,6 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
-#include <linux/delay.h>
 #include <linux/jiffies.h>
 #include <linux/time.h>
 #include <linux/acpi.h>
@@ -138,6 +137,52 @@ out:
 	return ret;
 }
 
+static int tdf8532_get_state(struct tdf8532_priv *dev_data, u8 *state)
+{
+	int ret = 0;
+	char *repl_buff = NULL;
+
+	ret = tdf8532_amp_write(dev_data, GET_DEV_STATUS);
+	if (ret < 0)
+		goto out;
+
+	ret = tdf8532_single_read(dev_data, &repl_buff);
+	if (ret < 0)
+		goto out_free;
+
+	*state = ((struct get_dev_status_repl *)repl_buff)->state;
+
+out_free:
+	kfree(repl_buff);
+out:
+	return ret;
+}
+
+static int tdf8532_wait_state(struct tdf8532_priv *dev_data, u8 req_state,
+					unsigned long timeout_val)
+{
+	int ret;
+	u8 state;
+	struct device *dev = &(dev_data->i2c->dev);
+	unsigned long timeout = jiffies + msecs_to_jiffies(timeout_val);
+
+	do {
+		ret = tdf8532_get_state(dev_data, &state);
+		if (ret < 0)
+			goto out;
+
+	} while (time_before(jiffies, timeout) && state != req_state);
+
+	if (state != req_state) {
+		ret = -ETIME;
+		dev_err(dev, "State: %u, req_state: %u, ret: %d\n", state,
+				req_state, ret);
+	}
+
+out:
+	return ret;
+}
+
 static int tdf8532_start_play(struct tdf8532_priv *tdf8532)
 {
 	int ret;
@@ -150,20 +195,33 @@ static int tdf8532_start_play(struct tdf8532_priv *tdf8532)
 
 	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_CONNECT);
 
+	if (ret >= 0)
+		ret = tdf8532_wait_state(tdf8532, STATE_PLAY, ACK_TIMEOUT);
+
 	return ret;
 }
+
 
 static int tdf8532_stop_play(struct tdf8532_priv *tdf8532)
 {
 	int ret;
 
-	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_DISCONNECT);
-	if (ret < 0)
-		return ret;
-
 	ret = tdf8532_amp_write(tdf8532, SET_CHNL_DISABLE,
 			CHNL_MASK(tdf8532->channels));
+	if (ret < 0)
+		goto out;
 
+	ret = tdf8532_wait_state(tdf8532, STATE_STBY, ACK_TIMEOUT);
+	if (ret < 0)
+		goto out;
+
+	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_DISCONNECT);
+	if (ret < 0)
+		goto out;
+
+	ret = tdf8532_wait_state(tdf8532, STATE_IDLE, ACK_TIMEOUT);
+
+out:
 	return ret;
 }
 
@@ -183,15 +241,13 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_RESUME:
 		ret = tdf8532_start_play(tdf8532);
 		break;
+
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_STOP:
 		/* WA on unexpected codec down during S3
 		 SNDRV_PCM_TRIGGER_STOP fails so skip set ret */
 		tdf8532_stop_play(tdf8532);
-		/*delay 300ms to allow state change to occur*/
-		/*TODO: add state check to wait for state change*/
-		mdelay(300);
 		break;
 	}
 
