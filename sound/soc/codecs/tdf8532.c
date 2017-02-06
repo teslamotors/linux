@@ -14,6 +14,8 @@
 #include <linux/init.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
+#include <linux/jiffies.h>
+#include <linux/time.h>
 #include <linux/acpi.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
@@ -74,6 +76,68 @@ static int __tdf8532_single_write(struct tdf8532_priv *dev_data,
 
 	return ret;
 }
+
+
+static uint8_t tdf8532_read_wait_ack(struct tdf8532_priv *dev_data,
+						unsigned long timeout_val)
+{
+	uint8_t ack_repl[HEADER_SIZE] = {0, 0, 0};
+	unsigned long timeout = jiffies + timeout_val;
+	int ret;
+
+	do {
+		ret = i2c_master_recv(dev_data->i2c, ack_repl, HEADER_SIZE);
+		if (ret < 0)
+			goto out;
+
+	} while (time_before(jiffies, timeout) && ack_repl[0] != MSG_TYPE_ACK);
+
+	if (ack_repl[0] != MSG_TYPE_ACK)
+		return -ETIME;
+	else
+		return ack_repl[2];
+
+out:
+	return ret;
+}
+
+static uint8_t tdf8532_single_read(struct tdf8532_priv *dev_data,
+					char **repl_buff)
+{
+	int ret;
+	uint8_t recv_len;
+	struct device *dev = &(dev_data->i2c->dev);
+
+	ret = tdf8532_read_wait_ack(dev_data, msecs_to_jiffies(ACK_TIMEOUT));
+
+	if (ret < 0) {
+		dev_err(dev, "Error waiting for ACK reply: %d\n", ret);
+		goto out;
+	}
+
+	recv_len = ret + HEADER_SIZE;
+	*repl_buff = kzalloc(recv_len, GFP_KERNEL);
+
+	ret = i2c_master_recv(dev_data->i2c, *repl_buff, recv_len);
+
+	print_hex_dump_debug("tdf8532-codec: Rx:", DUMP_PREFIX_NONE, 32, 1,
+				*repl_buff, recv_len, false);
+
+	if (ret < 0 || ret != recv_len) {
+		dev_err(dev, "i2c recv packet size: %d (expected: %d)\n",
+				ret, recv_len);
+		goto out_free;
+	}
+
+	return recv_len;
+
+out_free:
+	kfree(*repl_buff);
+	repl_buff = NULL;
+out:
+	return ret;
+}
+
 
 static void tdf8532_dai_shutdown(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
@@ -170,7 +234,6 @@ static struct snd_soc_dai_driver tdf8532_dai[] = {
 		.ops = &tdf8532_dai_ops,
 	}
 };
-
 
 static int tdf8532_i2c_probe(struct i2c_client *i2c,
 				const struct i2c_device_id *id)
