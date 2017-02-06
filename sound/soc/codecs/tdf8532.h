@@ -28,6 +28,51 @@
 #define SET_CHNL_MUTE 0x42
 #define SET_CHNL_UNMUTE 0x43
 
+/* Get commands */
+
+struct header_repl {
+	u8 msg_type;
+	u8 pkt_id;
+	u8 len;
+} __packed;
+
+#define GET_IDENT 0xE0
+
+struct get_ident_repl {
+	struct header_repl header;
+	u8 module_id;
+	u8 cmd_id;
+	u8 type_name;
+	u8 hw_major;
+	u8 hw_minor;
+	u8 sw_major;
+	u8 sw_minor;
+	u8 sw_sub;
+} __packed;
+
+#define GET_ERROR 0xE2
+
+struct get_error_repl {
+	struct header_repl header;
+	u8 module_id;
+	u8 cmd_id;
+	u8 last_cmd_id;
+	u8 error;
+	u8 status;
+} __packed;
+
+#define GET_DEV_STATUS 0x80
+
+enum dev_state {STATE_BOOT, STATE_IDLE, STATE_STBY, STATE_LDAG, STATE_PLAY,
+			STATE_PROT, STATE_SDWN, STATE_CLFA, STATE_NONE };
+
+struct get_dev_status_repl {
+	struct header_repl header;
+	u8 module_id;
+	u8 cmd_id;
+	u8 state;
+} __packed;
+
 /* Helpers */
 #define CHNL_MASK(channels) (u8)((0x00FF << channels) >> 8)
 
