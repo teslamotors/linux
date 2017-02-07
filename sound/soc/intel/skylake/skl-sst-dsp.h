@@ -261,4 +261,5 @@ int skl_prepare_lib_load(struct skl_sst *skl, struct skl_lib_info *linfo,
 			unsigned int hdr_offset, int index);
 void skl_release_library(struct skl_lib_info *linfo, int lib_count);
 
+int skl_get_firmware_configuration(struct sst_dsp *ctx);
 #endif /*__SKL_SST_DSP_H__*/

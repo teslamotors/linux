@@ -505,24 +505,6 @@ struct mod_set_get {
 	u32 mailbx[1024];
 };
 
-enum base_fw_run_time_param {
-	ADSP_PROPERTIES = 0,
-	ADSP_RESOURCE_STATE = 1,
-	NOTIFICATION_MASK = 3,
-	ASTATE_TABLE = 4,
-	DMA_CONTROL = 5,
-	ENABLE_LOGS = 6,
-	FIRMWARE_CONFIG = 7,
-	HARDWARE_CONFIG = 8,
-	MODULES_INFO = 9,
-	PIPELINE_LIST_INFO = 10,
-	PIPELINE_PROPS = 11,
-	SCHEDULERS_INFO = 12,
-	GATEWAYS_INFO = 13,
-	MEMORY_STATE_INFO = 14,
-	POWER_STATE_INFO = 15
-};
-
 struct fw_ipc_data {
 	u32 replysz;
 	u32 adsp_id;

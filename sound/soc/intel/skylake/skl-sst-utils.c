@@ -437,3 +437,29 @@ void skl_release_library(struct skl_lib_info *linfo, int lib_count)
 		}
 	}
 }
+
+int skl_get_firmware_configuration(struct sst_dsp *ctx)
+{
+	struct skl_ipc_large_config_msg msg;
+	struct skl_sst *skl = ctx->thread_context;
+	u8 *ipc_data;
+	int ret = 0;
+	size_t rx_bytes;
+
+	ipc_data = kzalloc(DSP_BUF, GFP_KERNEL);
+	if (!ipc_data)
+		return -ENOMEM;
+
+	msg.module_id = 0;
+	msg.instance_id = 0;
+	msg.large_param_id = FIRMWARE_CONFIG;
+	msg.param_data_size = DSP_BUF;
+
+	ret = skl_ipc_get_large_config(&skl->ipc, &msg,
+			(u32 *)ipc_data, NULL, 0, &rx_bytes);
+	if (ret < 0)
+		dev_err(ctx->dev, "failed to get fw configuration !!!\n");
+
+	kfree(ipc_data);
+	return ret;
+}
