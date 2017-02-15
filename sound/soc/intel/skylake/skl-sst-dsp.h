@@ -294,4 +294,10 @@ int skl_prepare_lib_load(struct skl_sst *skl, struct skl_lib_info *linfo,
 void skl_release_library(struct skl_lib_info *linfo, int lib_count);
 
 int skl_get_firmware_configuration(struct sst_dsp *ctx);
+
+int bxt_set_dsp_D0i0(struct sst_dsp *ctx);
+
+int bxt_schedule_dsp_D0i3(struct sst_dsp *ctx);
+
+void bxt_set_dsp_D0i3(struct work_struct *work);
 #endif /*__SKL_SST_DSP_H__*/
