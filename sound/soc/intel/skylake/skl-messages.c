@@ -471,7 +471,7 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 	if (link_cpr_cfg.id.pvt_id < 0)
 		return -EINVAL;
 
-	link_cpr_cfg.dev_type = SKL_DEVICE_SDW;
+	link_cpr_cfg.dev_type = SKL_DEVICE_SDW_PCM;
 #if IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
 	link_cpr_cfg.sdw_stream_num = 0x3;
 #else
@@ -635,7 +635,7 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 	link_cpr_cfg.module->loadable = 0;
 	link_cpr_cfg.domain = 0;
 	link_cpr_cfg.m_type = SKL_MODULE_TYPE_COPIER;
-	link_cpr_cfg.dev_type = SKL_DEVICE_SDW;
+	link_cpr_cfg.dev_type = SKL_DEVICE_SDW_PCM;
 #if IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
 	link_cpr_cfg.sdw_stream_num = 0x4;
 #else
@@ -1376,7 +1376,8 @@ static u32 skl_get_node_id(struct skl_sst *ctx,
 			SKL_DMA_HDA_HOST_INPUT_CLASS;
 		node_id.node.vindex = params->host_dma_id;
 		break;
-	case SKL_DEVICE_SDW:
+	case SKL_DEVICE_SDW_PCM:
+	case SKL_DEVICE_SDW_PDM:
 		node_id.node.dma_type =
 			(SKL_CONN_SOURCE == mconfig->hw_conn_type) ?
 			SKL_DMA_SDW_LINK_OUTPUT_CLASS :

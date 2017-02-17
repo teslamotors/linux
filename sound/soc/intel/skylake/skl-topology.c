@@ -2034,7 +2034,8 @@ static u8 skl_tplg_be_link_type(int dev_type)
 	case SKL_DEVICE_HDALINK:
 		ret = NHLT_LINK_HDA;
 		break;
-	case SKL_DEVICE_SDW:
+	case SKL_DEVICE_SDW_PCM:
+	case SKL_DEVICE_SDW_PDM:
 		ret = NHLT_LINK_SDW;
 		break;
 	default:
