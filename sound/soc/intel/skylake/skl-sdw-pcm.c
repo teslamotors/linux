@@ -90,9 +90,10 @@ int cnl_sdw_startup(struct snd_pcm_substream *substream,
 		ret = -ENOMEM;
 		goto alloc_failed;
 	}
-	if (m_cfg->pdi_type == SKL_PDI_PCM)
+
+	if (m_cfg->dev_type == SKL_DEVICE_SDW_PCM)
 		dma->stream_type = CNL_SDW_PDI_TYPE_PCM;
-	else if (m_cfg->pdi_type == SKL_PDI_PDM)
+	else if (m_cfg->dev_type == SKL_DEVICE_SDW_PDM)
 		dma->stream_type = CNL_SDW_PDI_TYPE_PDM;
 	else {
 		dev_err(dai->dev, "Stream type not known\n");
