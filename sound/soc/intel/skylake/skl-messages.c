@@ -404,7 +404,6 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 	host_cpr_cfg.hw_conn_type = SKL_CONN_SOURCE;
 	host_cpr_cfg.formats_config.caps_size = 0;
 	host_cpr_cfg.module->resources[0].dma_buffer_size = 2;
-	host_cpr_cfg.pdi_type = 0;
 	host_cpr_cfg.converter = 0;
 	host_cpr_cfg.vbus_id = 0;
 	host_cpr_cfg.sdw_agg_enable = 0;
@@ -645,7 +644,6 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 
 	link_cpr_cfg.formats_config.caps_size = 0;
 	link_cpr_cfg.module->resources[0].dma_buffer_size = 2;
-	link_cpr_cfg.pdi_type = 0;
 	link_cpr_cfg.converter = 0;
 	link_cpr_cfg.vbus_id = 0;
 	link_cpr_cfg.sdw_agg_enable = 0;

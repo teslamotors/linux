@@ -120,12 +120,6 @@ enum skl_dev_type {
 	SKL_DEVICE_NONE
 };
 
-enum skl_pdi_type {
-	SKL_PDI_PCM = 0,
-	SKL_PDI_PDM = 1,
-	SKL_PDI_INVALID = 2
-};
-
 /**
  * enum skl_interleaving - interleaving style
  *
