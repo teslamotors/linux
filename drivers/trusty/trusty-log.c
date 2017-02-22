@@ -63,7 +63,7 @@ static int log_read_line(struct trusty_log_state *s, int put, int get)
 	return i;
 }
 
-static void trusty_dump_logs(struct trusty_log_state *s)
+static void trusty_dump_logs(struct trusty_log_state *s, bool dump_panic_log)
 {
 	struct log_rb *log = s->log;
 	uint32_t get, put, alloc;
@@ -99,7 +99,10 @@ static void trusty_dump_logs(struct trusty_log_state *s)
 			get = alloc - log->sz;
 			continue;
 		}
-		pr_info("trusty: %s", s->line_buffer);
+
+		if (dump_panic_log)
+			pr_info("trusty: %s", s->line_buffer);
+
 		get += read_chars;
 	}
 	s->get = get;
@@ -116,7 +119,11 @@ static int trusty_log_call_notify(struct notifier_block *nb,
 
 	s = container_of(nb, struct trusty_log_state, call_notifier);
 	spin_lock_irqsave(&s->lock, flags);
-	trusty_dump_logs(s);
+#ifdef CONFIG_DEBUG_INFO
+	trusty_dump_logs(s, true);
+#else
+	trusty_dump_logs(s, false);
+#endif
 	spin_unlock_irqrestore(&s->lock, flags);
 	return NOTIFY_OK;
 }
@@ -133,7 +140,7 @@ static int trusty_log_panic_notify(struct notifier_block *nb,
 	s = container_of(nb, struct trusty_log_state, panic_notifier);
 	pr_info("trusty-log panic notifier - trusty version %s",
 		trusty_version_str_get(s->trusty_dev));
-	trusty_dump_logs(s);
+	trusty_dump_logs(s, true);
 	return NOTIFY_OK;
 }
 
