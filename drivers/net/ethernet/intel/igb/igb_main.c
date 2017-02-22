@@ -3459,6 +3459,7 @@ static void igb_remove(struct pci_dev *pdev)
 
 	pm_runtime_get_noresume(&pdev->dev);
 	pm_runtime_forbid(&pdev->dev);
+	pm_runtime_dont_use_autosuspend(&pdev->dev);
 #ifdef CONFIG_IGB_HWMON
 	igb_sysfs_exit(adapter);
 #endif
@@ -4829,10 +4830,11 @@ static void igb_set_rx_mode_task(struct work_struct *work)
 
 	__igb_set_rx_mode(netdev);
 	/* Schedule the suspend if netif_carrier_ok returns true
-	 * if netif_carrier_ok returns false let watchdog task
-	 * schedule the suspend
+	 * and device power/control is set to "auto".
+	 * Else let watchdog task schedule the suspend
 	 */
-	if (netif_carrier_ok(adapter->netdev)) {
+	if (netif_carrier_ok(adapter->netdev) &&
+	    pdev->dev.power.runtime_auto) {
 		pm_runtime_mark_last_busy(&pdev->dev);
 		pm_runtime_put_autosuspend(&pdev->dev);
 	} else {
@@ -5279,9 +5281,11 @@ no_wait:
 			}
 		}
 		/* For runtime PM, schedule suspend when link is not connected
-		 * irrespective of netif_carrier_ok, otherwise scenerio where
-		 * driver is loaded w/o n/w cable is not entering to suspend
+		 * irrespective of netif_carrier_ok but device power/control
+		 * should be "auto". Otherwise scenerio where driver is loaded
+		 * w/o n/w cable is not entering to suspend
 		 */
+	if (pdev->dev.power.runtime_auto)
 		pm_request_autosuspend(netdev->dev.parent);
 	}
 
@@ -6161,9 +6165,11 @@ static void igb_get_stats64(struct net_device *netdev,
 	spin_unlock(&adapter->stats64_lock);
 
 	/* Schedule the suspend if netif_carrier_ok returns true
-	 * else let watchdog task schedule the suspend.
+	 * and device power/control is set to "auto".
+	 * Else let watchdog task schedule the suspend.
 	 */
-	if (netif_carrier_ok(adapter->netdev)) {
+	if (netif_carrier_ok(adapter->netdev) &&
+	    pdev->dev.power.runtime_auto) {
 		pm_runtime_mark_last_busy(&pdev->dev);
 		pm_runtime_put_autosuspend(&pdev->dev);
 	} else {
@@ -7870,16 +7876,20 @@ static bool igb_clean_tx_irq(struct igb_q_vector *q_vector, int napi_budget)
 			u64_stats_update_end(&tx_ring->tx_syncp);
 		}
 	}
-/* schedule suspend if tx pending count is zero */
+	/* schedule suspend if tx pending count is zero
+	 * and device power/control is set to "auto".
+	 */
 	if (eop_desc_temp) {
 		spin_lock(&adapter->rpm_txlock);
 		adapter->igb_tx_pending -= count;
-		if (!adapter->igb_tx_pending) {
+		if (!adapter->igb_tx_pending &&
+		    pdev->dev.power.runtime_auto) {
 			spin_unlock(&adapter->rpm_txlock);
 			pm_runtime_mark_last_busy(&pdev->dev);
 			pm_runtime_put_sync_autosuspend(&pdev->dev);
 		} else {
 			spin_unlock(&adapter->rpm_txlock);
+			pm_runtime_put_noidle(&pdev->dev);
 		}
 	}
 	return !!budget;
@@ -8370,9 +8380,11 @@ static int igb_clean_rx_irq(struct igb_q_vector *q_vector, const int budget)
 		igb_alloc_rx_buffers(rx_ring, cleaned_count);
 
 	/* Schedule suspend if igb_poll() is actually called when
-	 * the hw received some packets.
+	 * the hw received some packets and
+	 * device power/control is set to "auto".
 	 */
-	if (total_packets) {
+
+	if ((total_packets) && pdev->dev.power.runtime_auto) {
 		pm_runtime_mark_last_busy(&pdev->dev);
 		pm_runtime_put_sync_autosuspend(&pdev->dev);
 	} else {
@@ -8620,9 +8632,11 @@ static int igb_vlan_rx_add_vid(struct net_device *netdev,
 
 	ret = __igb_vlan_rx_add_vid(netdev, proto, vid);
 	/* Schedule the suspend if netif_carrier_ok returns true
-	 * else let watchdog task schedule the suspend.
+	 * and device power/control is set to "auto".
+	 * Else let watchdog task schedule the suspend.
 	 */
-	if (netif_carrier_ok(adapter->netdev)) {
+	if (netif_carrier_ok(adapter->netdev) &&
+	    pdev->dev.power.runtime_auto) {
 		pm_runtime_mark_last_busy(&pdev->dev);
 		pm_runtime_put_autosuspend(&pdev->dev);
 	} else {
@@ -8662,10 +8676,11 @@ static int igb_vlan_rx_kill_vid(struct net_device *netdev,
 
 	clear_bit(vid, adapter->active_vlans);
 	/* Schedule the suspend if netif_carrier_ok returns true
-	 * if netif_carrier_ok returns false let watchdog task
-	 * schedule the suspend
+	 * and device power/control is set to "auto".
+	 * Else let watchdog task schedule the suspend
 	 */
-	if (netif_carrier_ok(adapter->netdev)) {
+	if (netif_carrier_ok(adapter->netdev) &&
+	    pdev->dev.power.runtime_auto) {
 		pm_runtime_mark_last_busy(&pdev->dev);
 		pm_runtime_put_autosuspend(&pdev->dev);
 	} else {
@@ -8960,10 +8975,11 @@ static int __maybe_unused igb_resume(struct device *dev)
 
 static int __maybe_unused igb_runtime_idle(struct device *dev)
 {
-	/* suspending even when cable is connected for rtd3
-	 * support
+	/* Enter "suspended" mode on no activity, even with cable
+	 * attached when power/control is set to "auto".
 	 */
-	pm_request_autosuspend(dev);
+	if (dev->power.runtime_auto)
+		pm_request_autosuspend(dev);
 	return -EBUSY;
 }
 
