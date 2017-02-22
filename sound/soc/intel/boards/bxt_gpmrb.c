@@ -90,7 +90,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "Speaker Port",
 		.stream_name = "Speaker",
-		.cpu_dai_name = "Speaker Pin",
+		.cpu_dai_name = "System Pin 2",
 		.platform_name = "0000:00:0e.0",
 		.nonatomic = 1,
 		.dynamic = 1,
@@ -103,7 +103,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "Dirana Tuner Cp Port",
 		.stream_name = "Dirana Tuner Cp",
-		.cpu_dai_name = "Dirana Tuner Cp Pin",
+		.cpu_dai_name = "System Pin 3",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
@@ -116,7 +116,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "Dirana Aux Cp Port",
 		.stream_name = "Dirana Aux Cp",
-		.cpu_dai_name = "Dirana Aux Cp Pin",
+		.cpu_dai_name = "System Pin 4",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
@@ -129,7 +129,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "Dirana Mic Cp Port",
 		.stream_name = "Dirana Mic Cp",
-		.cpu_dai_name = "Dirana Mic Cp Pin",
+		.cpu_dai_name = "System Pin 5",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
@@ -142,7 +142,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "Dirana Pb Port",
 		.stream_name = "Dirana Pb",
-		.cpu_dai_name = "Dirana Pb Pin",
+		.cpu_dai_name = "System Pin",
 		.platform_name = "0000:00:0e.0",
 		.nonatomic = 1,
 		.dynamic = 1,
@@ -155,7 +155,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "TestPin Cp Port",
 		.stream_name = "TestPin Cp",
-		.cpu_dai_name = "TestPin Cp Pin",
+		.cpu_dai_name = "System Pin 6",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
@@ -168,7 +168,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "TestPin Pb Port",
 		.stream_name = "TestPin Pb",
-		.cpu_dai_name = "TestPin Pb Pin",
+		.cpu_dai_name = "System Pin 6",
 		.platform_name = "0000:00:0e.0",
 		.nonatomic = 1,
 		.dynamic = 1,
@@ -181,7 +181,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "BtHfp Cp Port",
 		.stream_name = "BtHfp Cp",
-		.cpu_dai_name = "BtHfp Cp Pin",
+		.cpu_dai_name = "System Pin 7",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
@@ -194,7 +194,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "BtHfp Pb Port",
 		.stream_name = "BtHfp Pb",
-		.cpu_dai_name = "BtHfp Pb Pin",
+		.cpu_dai_name = "System Pin 7",
 		.platform_name = "0000:00:0e.0",
 		.nonatomic = 1,
 		.dynamic = 1,
@@ -207,7 +207,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "Modem Cp Port",
 		.stream_name = "Modem Cp",
-		.cpu_dai_name = "Modem Cp Pin",
+		.cpu_dai_name = "System Pin 8",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
@@ -220,7 +220,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "Modem Pb Port",
 		.stream_name = "Modem Pb",
-		.cpu_dai_name = "Modem Pb Pin",
+		.cpu_dai_name = "System Pin 8",
 		.platform_name = "0000:00:0e.0",
 		.nonatomic = 1,
 		.dynamic = 1,
@@ -233,7 +233,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		.name = "HDMI Cp Port",
 		.stream_name = "HDMI Cp",
-		.cpu_dai_name = "HDMI Cp Pin",
+		.cpu_dai_name = "HDMI2 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
