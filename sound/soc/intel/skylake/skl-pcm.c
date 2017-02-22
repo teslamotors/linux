@@ -1276,6 +1276,17 @@ static struct snd_soc_dai_driver skl_fe_dai[] = {
 			SNDRV_PCM_FMTBIT_S32_LE,
 		.sig_bits = 32,
 	},
+	.capture = {
+		.stream_name = "HDMI2 Capture",
+		.channels_min = HDA_STEREO,
+		.channels_max = 8,
+		.rates = SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |
+			SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 |
+			SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_176400 |
+			SNDRV_PCM_RATE_192000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE |
+			SNDRV_PCM_FMTBIT_S32_LE,
+	},
 },
 {
 	.name = "HDMI3 Pin",
