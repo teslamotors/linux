@@ -29,6 +29,7 @@
 #include <linux/bitops.h>
 #include <linux/vmalloc.h>
 #include <linux/pagemap.h>
+#include <linux/inetdevice.h>
 #include <linux/netdevice.h>
 #include <linux/ipv6.h>
 #include <linux/slab.h>
@@ -8750,9 +8751,12 @@ static int __igb_shutdown(struct pci_dev *pdev, bool *enable_wake,
 	struct net_device *netdev = pci_get_drvdata(pdev);
 	struct igb_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
-	u32 ctrl, rctl, status;
-	u32 wufc = runtime ? (E1000_WUFC_LNKC | E1000_WUFC_EX) : adapter->wol;
+	u32 ctrl, rctl, status, ipav;
+	u32 wufc = runtime ? (E1000_WUFC_LNKC | E1000_WUFC_EX | E1000_WUFC_ARPD)
+		: adapter->wol;
 	bool wake;
+	__be32 ipv4_addr;
+	int i;
 
 	rtnl_lock();
 	/* For supporting runtime pm based on activity monitoring
@@ -8794,6 +8798,33 @@ static int __igb_shutdown(struct pci_dev *pdev, bool *enable_wake,
 			rctl |= E1000_RCTL_UPE;
 			wr32(E1000_RCTL, rctl);
 		}
+
+		/* Enable wake on ARP request & device IP address match */
+		if ((wufc & E1000_WUFC_ARPD) && netdev->ip_ptr) {
+			if (netdev->ip_ptr->ifa_list) {
+				ipv4_addr = netdev->ip_ptr->ifa_list->ifa_local;
+
+				/* Check availability of IP4AT(n) registers */
+				ipav = rd32(E1000_IPAV);
+				for (i = 0; i < 4; i++) {
+					if ((ipav & (BIT(i))) == 0)
+						break;
+				}
+
+				if (i < 4) {
+					dev_dbg(&pdev->dev,
+						"Use IP4AT(%0d). Data = 0x%x\n",
+						i, ipv4_addr);
+				} else {
+					i = 0;
+					dev_warn(&pdev->dev,
+						 "IP4AT(0) overwritten.\n");
+				}
+				wr32(E1000_IP4AT_REG(i), ipv4_addr);
+				wr32(E1000_IPAV, BIT(i));
+			}
+		}
+
 		ctrl = rd32(E1000_CTRL);
 		ctrl |= E1000_CTRL_ADVD3WUC;
 		wr32(E1000_CTRL, ctrl);
