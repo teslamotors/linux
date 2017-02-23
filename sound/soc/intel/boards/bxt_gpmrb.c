@@ -25,6 +25,8 @@
 #include <linux/i2c.h>
 #include <sound/pcm_params.h>
 
+#define CHANNELS_MONO 1
+
 static const struct snd_kcontrol_new broxton_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Speaker"),
 };
@@ -82,6 +84,44 @@ static const struct snd_soc_dapm_route broxton_gpmrb_map[] = {
 
 	{ "ModemUl", NULL, "ssp3 Tx"},
 	{ "ssp3 Tx", NULL, "Modem_ssp3_out"},
+};
+
+static unsigned int bt_rates[] = { 8000, 16000 };
+
+static struct snd_pcm_hw_constraint_list constraints_bt_rates = {
+	.count = ARRAY_SIZE(bt_rates),
+	.list = bt_rates,
+	.mask = 0,
+};
+
+static int broxton_gpmrb_bt_modem_startup(struct snd_pcm_substream *substream)
+{
+	int ret;
+
+	ret = snd_pcm_hw_constraint_single(substream->runtime,
+			SNDRV_PCM_HW_PARAM_CHANNELS, CHANNELS_MONO);
+
+	if (ret < 0)
+		goto out;
+
+	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
+			SNDRV_PCM_HW_PARAM_RATE, &constraints_bt_rates);
+
+	if (ret < 0)
+		goto out;
+
+	ret = snd_pcm_hw_constraint_mask64(substream->runtime,
+			SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FMTBIT_S32_LE);
+
+	if (ret < 0)
+		goto out;
+
+out:
+	return ret;
+}
+
+static struct snd_soc_ops broxton_gpmrb_bt_modem_ops = {
+	.startup = broxton_gpmrb_bt_modem_startup,
 };
 
 /* broxton digital audio interface glue - connects codec <--> CPU */
@@ -190,6 +230,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
+		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
 	{
 		.name = "BtHfp Pb Port",
@@ -203,6 +244,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
+		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
 	{
 		.name = "Modem Cp Port",
@@ -216,6 +258,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
+		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
 	{
 		.name = "Modem Pb Port",
@@ -229,6 +272,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
+		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
 	{
 		.name = "HDMI Cp Port",
