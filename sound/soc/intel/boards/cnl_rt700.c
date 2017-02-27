@@ -80,45 +80,6 @@ static const struct snd_kcontrol_new cnl_rt700_controls[] = {
 };
 
 
-static int cnl_rt700_init(struct snd_soc_pcm_runtime *runtime)
-{
-	int ret;
-	struct snd_soc_card *card = runtime->card;
-
-	pr_info("Entry %s\n", __func__);
-	card->dapm.idle_bias_off = true;
-
-	ret = snd_soc_add_card_controls(card, cnl_rt700_controls,
-					ARRAY_SIZE(cnl_rt700_controls));
-	if (ret) {
-		pr_err("unable to add card controls\n");
-		return ret;
-	}
-	return 0;
-}
-
-static unsigned int rates_48000[] = {
-	48000,
-	16000,
-	8000,
-};
-
-static struct snd_pcm_hw_constraint_list constraints_48000 = {
-	.count = ARRAY_SIZE(rates_48000),
-	.list  = rates_48000,
-};
-
-static int cnl_rt700_startup(struct snd_pcm_substream *substream)
-{
-	return snd_pcm_hw_constraint_list(substream->runtime, 0,
-			SNDRV_PCM_HW_PARAM_RATE,
-			&constraints_48000);
-}
-
-static struct snd_soc_ops cnl_rt700_ops = {
-	.startup = cnl_rt700_startup,
-};
-
 static int cnl_rt700_codec_fixup(struct snd_soc_pcm_runtime *rtd,
 			    struct snd_pcm_hw_params *params)
 {
@@ -173,48 +134,6 @@ static const char cname[] = "sdw-slave1-10:02:5d:07:00:01";
 #endif
 struct snd_soc_dai_link cnl_rt700_msic_dailink[] = {
 	{
-		.name = "Bxtn Audio Port",
-		.stream_name = "Audio",
-		.cpu_dai_name = "System Pin",
-		.codec_name = "snd-soc-dummy",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = pname,
-		.init = cnl_rt700_init,
-		.ignore_suspend = 1,
-		.nonatomic = 1,
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.ops = &cnl_rt700_ops,
-	},
-	{
-		.name = "CNL Reference Port",
-		.stream_name = "Reference Capture",
-		.cpu_dai_name = "Reference Pin",
-		.codec_name = "snd-soc-dummy",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = pname,
-		.ignore_suspend = 1,
-		.nonatomic = 1,
-		.dynamic = 1,
-		.dpcm_capture = 1,
-		.ops = &cnl_rt700_ops,
-	},
-	{
-		.name = "CNL Deepbuffer Port",
-		.stream_name = "Deep Buffer Audio",
-		.cpu_dai_name = "Deepbuffer Pin",
-		.codec_name = "snd-soc-dummy",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = pname,
-		.dpcm_playback = 1,
-		.ignore_suspend = 1,
-		.nonatomic = 1,
-		.dynamic = 1,
-		.ops = &cnl_rt700_ops,
-	},
-
-	{
 		.name = "SDW0-Codec",
 		.cpu_dai_name = "SDW Pin",
 		.platform_name = pname,
@@ -251,6 +170,15 @@ struct snd_soc_dai_link cnl_rt700_msic_dailink[] = {
 	},
 };
 
+static int
+cnl_add_dai_link(struct snd_soc_card *card, struct snd_soc_dai_link *link)
+{
+       link->platform_name = pname;
+       link->nonatomic = 1;
+
+       return 0;
+}
+
 /* SoC card */
 static struct snd_soc_card snd_soc_card_cnl_rt700 = {
 	.name = "cnl_rt700-audio",
@@ -260,6 +188,9 @@ static struct snd_soc_card snd_soc_card_cnl_rt700 = {
 	.num_dapm_widgets = ARRAY_SIZE(cnl_rt700_widgets),
 	.dapm_routes = cnl_rt700_map,
 	.num_dapm_routes = ARRAY_SIZE(cnl_rt700_map),
+	.add_dai_link = cnl_add_dai_link,
+	.controls = cnl_rt700_controls,
+	.num_controls = ARRAY_SIZE(cnl_rt700_controls),
 };
 
 
