@@ -26,6 +26,11 @@
 
 #include "keystore_debug.h"
 #include "keystore_tests.h"
+#include "dal-client/api_dal.h"
+
+#ifdef CONFIG_DAL_KEYSTORE
+extern int dal_keystore_flag;
+#endif
 
 /* Universal operation data union */
 union keystore_ops_union {
@@ -86,7 +91,6 @@ static unsigned int is_cmd_supported(unsigned int cmd)
 	case KEYSTORE_IOC_RUN_TESTS:
 #endif
 		return 1;
-
 	default:
 		return 0;
 	}
@@ -173,7 +177,14 @@ static int register_op(struct ias_keystore_register *user_data)
 	if (!user_data)
 		return -EFAULT;
 
-	return keystore_register(user_data->seed_type,
+#ifdef CONFIG_DAL_KEYSTORE
+	set_dal_keystore_conf();
+	if (dal_keystore_flag)
+		return dal_keystore_register(user_data->seed_type,
+			user_data->client_ticket);
+	else
+#endif
+		return keystore_register(user_data->seed_type,
 				 user_data->client_ticket);
 
 	return res;
@@ -184,7 +195,12 @@ static int unregister_op(struct ias_keystore_unregister *user_data)
 	if (!user_data)
 		return -EFAULT;
 
-	return keystore_unregister(user_data->client_ticket);
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		return dal_keystore_unregister(user_data->client_ticket);
+	else
+#endif
+		return keystore_unregister(user_data->client_ticket);
 }
 
 static int wrapped_keysize_op(struct ias_keystore_wrapped_key_size *user_data)
@@ -192,7 +208,14 @@ static int wrapped_keysize_op(struct ias_keystore_wrapped_key_size *user_data)
 	if (!user_data)
 		return -EFAULT;
 
-	return keystore_wrapped_key_size(user_data->key_spec,
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		return dal_keystore_wrapped_key_size(user_data->key_spec,
+			&user_data->key_size,
+			&user_data->unwrapped_key_size);
+	else
+#endif
+		return keystore_wrapped_key_size(user_data->key_spec,
 					 &user_data->key_size,
 					 &user_data->unwrapped_key_size);
 }
@@ -206,7 +229,13 @@ static int generate_key_op(struct ias_keystore_generate_key *user_data)
 	if (!user_data)
 		return -EFAULT;
 
-	res = keystore_wrapped_key_size(user_data->key_spec,
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_wrapped_key_size(user_data->key_spec,
+				&wrapped_key_size, NULL);
+	else
+#endif
+		res = keystore_wrapped_key_size(user_data->key_spec,
 					&wrapped_key_size, NULL);
 	if (res)
 		return -EINVAL;
@@ -215,7 +244,13 @@ static int generate_key_op(struct ias_keystore_generate_key *user_data)
 	if (!wrapped_key)
 		return -ENOMEM;
 
-	res = keystore_generate_key(user_data->client_ticket,
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_generate_key(user_data->client_ticket,
+				user_data->key_spec, wrapped_key);
+	else
+#endif
+		res = keystore_generate_key(user_data->client_ticket,
 				    user_data->key_spec,
 				    wrapped_key);
 	if (res)
@@ -240,7 +275,13 @@ static int wrap_key_op(struct ias_keystore_wrap_key *user_data)
 	if (!user_data)
 		return -EFAULT;
 
-	res = keystore_wrapped_key_size(user_data->key_spec,
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_wrapped_key_size(user_data->key_spec,
+				&wrapped_key_size, &unwrapped_key_size);
+	else
+#endif
+		res = keystore_wrapped_key_size(user_data->key_spec,
 					&wrapped_key_size, &unwrapped_key_size);
 	if (res)
 		return -EINVAL;
@@ -255,7 +296,16 @@ static int wrap_key_op(struct ias_keystore_wrap_key *user_data)
 	res = copy_from_user(app_key, user_data->app_key,
 			     user_data->app_key_size);
 
-	res = keystore_wrap_key(user_data->client_ticket,
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_wrap_key(user_data->client_ticket,
+				app_key,
+				user_data->app_key_size,
+				user_data->key_spec,
+				wrapped_key);
+	else
+#endif
+		res = keystore_wrap_key(user_data->client_ticket,
 				app_key,
 				user_data->app_key_size,
 				user_data->key_spec,
@@ -292,11 +342,18 @@ static int load_key_op(struct ias_keystore_load_key *user_data)
 		goto free_buf;
 	}
 
-	res = keystore_load_key(user_data->client_ticket,
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_load_key(user_data->client_ticket,
 				wrapped_key,
 				user_data->wrapped_key_size,
 				&user_data->slot_id);
-
+	else
+#endif
+		res = keystore_load_key(user_data->client_ticket,
+				wrapped_key,
+				user_data->wrapped_key_size,
+				&user_data->slot_id);
 free_buf:
 	kzfree(wrapped_key);
 	return res;
@@ -309,8 +366,14 @@ static int unload_key_op(struct ias_keystore_unload_key *user_data)
 	if (!user_data)
 		return -EFAULT;
 
-	res = keystore_unload_key(user_data->client_ticket,
-				  user_data->slot_id);
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_unload_key(user_data->client_ticket,
+				user_data->slot_id);
+	else
+#endif
+		res = keystore_unload_key(user_data->client_ticket,
+				user_data->slot_id);
 
 	return res;
 }
@@ -319,8 +382,15 @@ static int encrypt_size_op(struct ias_keystore_crypto_size *user_data)
 {
 	if (!user_data)
 		return -EFAULT;
-	return keystore_encrypt_size(user_data->algospec, user_data->input_size,
-				     &user_data->output_size);
+
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		return dal_keystore_encrypt_size(user_data->algospec,
+			user_data->input_size, &user_data->output_size);
+	else
+#endif
+		return keystore_encrypt_size(user_data->algospec,
+		user_data->input_size, &user_data->output_size);
 }
 
 static int encrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
@@ -334,8 +404,14 @@ static int encrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 	if (!user_data)
 		return -EFAULT;
 
-	res = keystore_encrypt_size(user_data->algospec, user_data->input_size,
-				    &output_size);
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_encrypt_size(user_data->algospec,
+			user_data->input_size, &output_size);
+	else
+#endif
+		res = keystore_encrypt_size(user_data->algospec,
+		user_data->input_size, &output_size);
 	if (res)
 		return res;
 
@@ -362,11 +438,21 @@ static int encrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 			goto free_buf;
 	}
 
-	res = keystore_encrypt(user_data->client_ticket, user_data->slot_id,
-			       user_data->algospec, iv,
-			       user_data->iv_size,
-			       input, user_data->input_size,
-			       output);
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_encrypt(user_data->client_ticket,
+				user_data->slot_id,
+				user_data->algospec, iv,
+				user_data->iv_size,
+				input, user_data->input_size, output);
+	else
+#endif
+		res = keystore_encrypt(user_data->client_ticket,
+				user_data->slot_id,
+				user_data->algospec, iv,
+				user_data->iv_size,
+				input, user_data->input_size,
+				output);
 
 	if (res)
 		goto free_buf;
@@ -384,8 +470,15 @@ static int decrypt_size_op(struct ias_keystore_crypto_size *user_data)
 {
 	if (!user_data)
 		return -EFAULT;
-	return keystore_decrypt_size(user_data->algospec, user_data->input_size,
-				     &user_data->output_size);
+
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		return dal_keystore_decrypt_size(user_data->algospec,
+			user_data->input_size, &user_data->output_size);
+	else
+#endif
+		return keystore_decrypt_size(user_data->algospec,
+			user_data->input_size, &user_data->output_size);
 }
 
 static int decrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
@@ -399,8 +492,14 @@ static int decrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 	if (!user_data)
 		return -EFAULT;
 
-	res = keystore_decrypt_size(user_data->algospec, user_data->input_size,
-				    &output_size);
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_decrypt_size(user_data->algospec,
+			user_data->input_size, &output_size);
+	else
+#endif
+		res = keystore_decrypt_size(user_data->algospec,
+			user_data->input_size, &output_size);
 	if (res)
 		return res;
 
@@ -427,11 +526,18 @@ static int decrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 			goto free_buf;
 	}
 
-	res = keystore_decrypt(user_data->client_ticket, user_data->slot_id,
-			       user_data->algospec, iv,
-			       user_data->iv_size,
-			       input, user_data->input_size,
-			       output);
+#ifdef CONFIG_DAL_KEYSTORE
+	if (dal_keystore_flag)
+		res = dal_keystore_decrypt(user_data->client_ticket,
+			user_data->slot_id, user_data->algospec, iv,
+			user_data->iv_size,
+			input, user_data->input_size, output);
+	else
+#endif
+		res = keystore_decrypt(user_data->client_ticket,
+			user_data->slot_id, user_data->algospec, iv,
+			user_data->iv_size,
+			input, user_data->input_size, output);
 
 	if (res)
 		goto free_buf;
@@ -449,6 +555,7 @@ static int sign_verify_size_op(struct ias_keystore_crypto_size *user_data)
 {
 	if (!user_data)
 		return -EFAULT;
+
 	return keystore_sign_verify_size(user_data->algospec,
 				     &user_data->output_size);
 }
@@ -480,9 +587,9 @@ static int sign_op(struct ias_keystore_sign_verify *user_data)
 		goto free_buf;
 
 	res = keystore_sign(user_data->client_ticket, user_data->slot_id,
-			       user_data->algospec,
-			       input, user_data->input_size,
-			       signature);
+				user_data->algospec,
+				input, user_data->input_size,
+				signature);
 
 	if (res)
 		goto free_buf;
@@ -529,7 +636,6 @@ static int verify_op(struct ias_keystore_sign_verify *user_data)
 			       user_data->algospec,
 			       input, user_data->input_size,
 			       signature);
-
 free_buf:
 	kzfree(input);
 	kzfree(signature);

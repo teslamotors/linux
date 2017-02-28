@@ -58,6 +58,12 @@ keystore-$(CONFIG_KEYSTORE_FULL) +=\
 	crypto/aes/aes_ecb.o\
 	crypto/aes/aes_siv.o
 
+keystore-$(CONFIG_DAL_KEYSTORE) +=\
+	dal-client/api_dal.o\
+	dal-client/dal_client.o\
+	dal-client/applet_read.o\
+	dal-client/dal_keystore_conf.o
+
 keystore-$(CONFIG_KEYSTORE_DEBUG) +=\
 	debug.o
 
@@ -83,3 +89,4 @@ keystore-$(CONFIG_APPLICATION_AUTH) +=\
 	appauth/manifest_verify.o\
 	appauth/sign_verify.o \
 	appauth/manifest_sanity_check.o
+
