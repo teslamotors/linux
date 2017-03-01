@@ -26,6 +26,9 @@
 #include <sound/pcm_params.h>
 
 #define CHANNELS_MONO 1
+#define CHANNELS_STEREO 2
+
+static struct snd_soc_dai_link broxton_gpmrb_dais[];
 
 enum {
 	BXT_AUDIO_SPEAKER_PB = 0,
@@ -139,6 +142,40 @@ static struct snd_soc_ops broxton_gpmrb_bt_modem_ops = {
 	.startup = broxton_gpmrb_bt_modem_startup,
 };
 
+static int broxton_gpmrb_dirana_startup(struct snd_pcm_substream *substream)
+{
+	int ret;
+	char *stream_id = substream->pcm->id;
+	const char *mic_id = broxton_gpmrb_dais[BXT_AUDIO_MIC_CP].stream_name;
+
+	if (strncmp(stream_id, mic_id, strlen(mic_id)) == 0)
+		ret = snd_pcm_hw_constraint_single(substream->runtime,
+				SNDRV_PCM_HW_PARAM_CHANNELS, CHANNELS_MONO);
+	else
+		ret = snd_pcm_hw_constraint_single(substream->runtime,
+				SNDRV_PCM_HW_PARAM_CHANNELS, CHANNELS_STEREO);
+
+	if (ret < 0)
+		goto out;
+
+	ret = snd_pcm_hw_constraint_mask64(substream->runtime,
+			SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FMTBIT_S32_LE);
+
+	if (ret < 0)
+		goto out;
+
+	ret = snd_pcm_hw_constraint_single(substream->runtime,
+			SNDRV_PCM_HW_PARAM_RATE, 48000);
+
+
+out:
+	return 0;
+}
+
+static struct snd_soc_ops broxton_gpmrb_dirana_ops = {
+	.startup = broxton_gpmrb_dirana_startup,
+};
+
 /* broxton digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	/* Front End DAI links */
@@ -167,6 +204,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
+		.ops = &broxton_gpmrb_dirana_ops,
 	},
 	[BXT_AUDIO_AUX_CP] = {
 		.name = "Dirana Aux Cp Port",
@@ -180,6 +218,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
+		.ops = &broxton_gpmrb_dirana_ops,
 	},
 	[BXT_AUDIO_MIC_CP] = {
 		.name = "Dirana Mic Cp Port",
@@ -193,6 +232,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
+		.ops = &broxton_gpmrb_dirana_ops,
 	},
 	[BXT_AUDIO_DIRANA_PB] = {
 		.name = "Dirana Pb Port",
@@ -206,6 +246,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
+		.ops = &broxton_gpmrb_dirana_ops,
 	},
 	[BXT_AUDIO_TESTPIN_PB] = {
 		.name = "TestPin Cp Port",
