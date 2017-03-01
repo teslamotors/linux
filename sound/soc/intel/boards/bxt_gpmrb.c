@@ -27,6 +27,7 @@
 
 #define CHANNELS_MONO 1
 #define CHANNELS_STEREO 2
+#define CHANNELS_EIGHT 8
 
 static struct snd_soc_dai_link broxton_gpmrb_dais[];
 
@@ -174,6 +175,37 @@ out:
 
 static struct snd_soc_ops broxton_gpmrb_dirana_ops = {
 	.startup = broxton_gpmrb_dirana_startup,
+};
+
+static int broxton_gpmrb_hdmi_startup(struct snd_pcm_substream *substream)
+{
+	int ret;
+
+	ret = snd_pcm_hw_constraint_minmax(substream->runtime,
+			SNDRV_PCM_HW_PARAM_CHANNELS, CHANNELS_STEREO,
+			CHANNELS_EIGHT);
+
+	if (ret < 0)
+		goto out;
+
+	ret = snd_pcm_hw_constraint_single(substream->runtime,
+			SNDRV_PCM_HW_PARAM_RATE, 48000);
+
+	if (ret < 0)
+		goto out;
+
+	ret = snd_pcm_hw_constraint_mask64(substream->runtime,
+			SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FMTBIT_S32_LE);
+
+	if (ret < 0)
+		goto out;
+
+out:
+	return ret;
+}
+
+static struct snd_soc_ops broxton_gpmrb_hdmi_ops = {
+	.startup = broxton_gpmrb_hdmi_startup,
 };
 
 /* broxton digital audio interface glue - connects codec <--> CPU */
@@ -342,6 +374,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
+		.ops = &broxton_gpmrb_hdmi_ops,
 	},
 	/* Trace Buffer & Probing DAI links */
 	{
