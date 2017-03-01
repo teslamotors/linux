@@ -27,6 +27,21 @@
 
 #define CHANNELS_MONO 1
 
+enum {
+	BXT_AUDIO_SPEAKER_PB = 0,
+	BXT_AUDIO_TUNER_CP,
+	BXT_AUDIO_AUX_CP,
+	BXT_AUDIO_MIC_CP,
+	BXT_AUDIO_DIRANA_PB,
+	BXT_AUDIO_TESTPIN_PB,
+	BXT_AUDIO_TESTPIN_CP,
+	BXT_AUDIO_BT_CP,
+	BXT_AUDIO_BT_PB,
+	BXT_AUDIO_MODEM_CP,
+	BXT_AUDIO_MODEM_PB,
+	BXT_AUDIO_HDMI_CP,
+};
+
 static const struct snd_kcontrol_new broxton_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Speaker"),
 };
@@ -127,7 +142,7 @@ static struct snd_soc_ops broxton_gpmrb_bt_modem_ops = {
 /* broxton digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	/* Front End DAI links */
-	{
+	[BXT_AUDIO_SPEAKER_PB] = {
 		.name = "Speaker Port",
 		.stream_name = "Speaker",
 		.cpu_dai_name = "System Pin 2",
@@ -140,7 +155,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
 	},
-	{
+	[BXT_AUDIO_TUNER_CP] = {
 		.name = "Dirana Tuner Cp Port",
 		.stream_name = "Dirana Tuner Cp",
 		.cpu_dai_name = "System Pin 3",
@@ -153,7 +168,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.nonatomic = 1,
 		.dynamic = 1,
 	},
-	{
+	[BXT_AUDIO_AUX_CP] = {
 		.name = "Dirana Aux Cp Port",
 		.stream_name = "Dirana Aux Cp",
 		.cpu_dai_name = "System Pin 4",
@@ -166,7 +181,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.nonatomic = 1,
 		.dynamic = 1,
 	},
-	{
+	[BXT_AUDIO_MIC_CP] = {
 		.name = "Dirana Mic Cp Port",
 		.stream_name = "Dirana Mic Cp",
 		.cpu_dai_name = "System Pin 5",
@@ -179,7 +194,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.nonatomic = 1,
 		.dynamic = 1,
 	},
-	{
+	[BXT_AUDIO_DIRANA_PB] = {
 		.name = "Dirana Pb Port",
 		.stream_name = "Dirana Pb",
 		.cpu_dai_name = "System Pin",
@@ -192,7 +207,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
 	},
-	{
+	[BXT_AUDIO_TESTPIN_PB] = {
 		.name = "TestPin Cp Port",
 		.stream_name = "TestPin Cp",
 		.cpu_dai_name = "System Pin 6",
@@ -205,7 +220,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.nonatomic = 1,
 		.dynamic = 1,
 	},
-	{
+	[BXT_AUDIO_TESTPIN_CP] = {
 		.name = "TestPin Pb Port",
 		.stream_name = "TestPin Pb",
 		.cpu_dai_name = "System Pin 6",
@@ -218,7 +233,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
 	},
-	{
+	[BXT_AUDIO_BT_CP] = {
 		.name = "BtHfp Cp Port",
 		.stream_name = "BtHfp Cp",
 		.cpu_dai_name = "System Pin 7",
@@ -232,7 +247,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dynamic = 1,
 		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
-	{
+	[BXT_AUDIO_BT_PB] = {
 		.name = "BtHfp Pb Port",
 		.stream_name = "BtHfp Pb",
 		.cpu_dai_name = "System Pin 7",
@@ -246,7 +261,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dpcm_playback = 1,
 		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
-	{
+	[BXT_AUDIO_MODEM_CP] = {
 		.name = "Modem Cp Port",
 		.stream_name = "Modem Cp",
 		.cpu_dai_name = "System Pin 8",
@@ -260,7 +275,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dynamic = 1,
 		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
-	{
+	[BXT_AUDIO_MODEM_PB] = {
 		.name = "Modem Pb Port",
 		.stream_name = "Modem Pb",
 		.cpu_dai_name = "System Pin 8",
@@ -274,7 +289,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dpcm_playback = 1,
 		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
-	{
+	[BXT_AUDIO_HDMI_CP] = {
 		.name = "HDMI Cp Port",
 		.stream_name = "HDMI Cp",
 		.cpu_dai_name = "HDMI2 Pin",
