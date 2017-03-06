@@ -936,47 +936,7 @@ static struct snd_soc_dai_ops skl_sdw_dai_ops = {
 	.shutdown = skl_sdw_shutdown,
 };
 
-static struct snd_soc_dai_driver skl_platform_dai[] = {
-{
-	.name = "TraceBuffer0 Pin",
-	.compress_new = snd_soc_new_compress,
-	.cops = &skl_trace_compr_ops,
-	.capture = {
-		.stream_name = "TraceBuffer0 Capture",
-		.channels_min = HDA_MONO,
-		.channels_max = HDA_MONO,
-	},
-},
-{
-	.name = "TraceBuffer1 Pin",
-	.compress_new = snd_soc_new_compress,
-	.cops = &skl_trace_compr_ops,
-	.capture = {
-		.stream_name = "TraceBuffer1 Capture",
-		.channels_min = HDA_MONO,
-		.channels_max = HDA_MONO,
-	},
-},
-{
-	.name = "TraceBuffer2 Pin",
-	.compress_new = snd_soc_new_compress,
-	.cops = &skl_trace_compr_ops,
-	.capture = {
-		.stream_name = "TraceBuffer2 Capture",
-		.channels_min = HDA_MONO,
-		.channels_max = HDA_MONO,
-	},
-},
-{
-	.name = "TraceBuffer3 Pin",
-	.compress_new = snd_soc_new_compress,
-	.cops = &skl_trace_compr_ops,
-	.capture = {
-		.stream_name = "TraceBuffer3 Capture",
-		.channels_min = HDA_MONO,
-		.channels_max = HDA_MONO,
-	},
-},
+static struct snd_soc_dai_driver skl_fe_dai[] = {
 {
 	.name = "System Pin",
 	.ops = &skl_pcm_dai_ops,
@@ -1057,24 +1017,6 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	},
 },
 {
-	.name = "Compress Probe0 Pin",
-	.compress_new = snd_soc_new_compress,
-	.cops = &skl_probe_compr_ops,
-	.playback = {
-		.stream_name = "Probe Playback",
-		.channels_min = HDA_MONO,
-	},
-},
-{
-	.name = "Compress Probe1 Pin",
-	.compress_new = snd_soc_new_compress,
-	.cops = &skl_probe_compr_ops,
-	.capture = {
-			.stream_name = "Probe Capture",
-			.channels_min = HDA_MONO,
-	},
-},
-{
 	.name = "LowLatency Pin",
 	.ops = &skl_pcm_dai_ops,
 	.playback = {
@@ -1146,8 +1088,10 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 		.sig_bits = 32,
 	},
 },
+};
 
-/* BE CPU  Dais */
+/* BE cpu dais and compress dais*/
+static struct snd_soc_dai_driver skl_platform_dai[] = {
 {
 	.name = "SSP0 Pin",
 	.ops = &skl_be_ssp_dai_ops,
@@ -1446,6 +1390,64 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	},
 
+},
+{
+	.name = "TraceBuffer0 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_trace_compr_ops,
+	.capture = {
+		.stream_name = "TraceBuffer0 Capture",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_MONO,
+	},
+},
+{
+	.name = "TraceBuffer1 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_trace_compr_ops,
+	.capture = {
+		.stream_name = "TraceBuffer1 Capture",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_MONO,
+	},
+},
+{
+	.name = "TraceBuffer2 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_trace_compr_ops,
+	.capture = {
+		.stream_name = "TraceBuffer2 Capture",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_MONO,
+	},
+},
+{
+	.name = "TraceBuffer3 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_trace_compr_ops,
+	.capture = {
+		.stream_name = "TraceBuffer3 Capture",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_MONO,
+	},
+},
+{
+	.name = "Compress Probe0 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_probe_compr_ops,
+	.playback = {
+		.stream_name = "Probe Playback",
+		.channels_min = HDA_MONO,
+	},
+},
+{
+	.name = "Compress Probe1 Pin",
+	.compress_new = snd_soc_new_compress,
+	.cops = &skl_probe_compr_ops,
+	.capture = {
+			.stream_name = "Probe Capture",
+			.channels_min = HDA_MONO,
+	},
 },
 };
 
@@ -1895,11 +1897,22 @@ static const struct snd_soc_component_driver skl_component = {
 	.num_controls	= ARRAY_SIZE(skl_controls),
 };
 
+/*
+ * mod param to decide during platform registration whether
+ * if FE dai and FE dai links will come from topology or not.
+ * By default, it takes the fe dais defined above i.e. skl_fe_dai[].
+ */
+static int dynamic_dai;
+module_param(dynamic_dai, int, 0644);
+
 int skl_platform_register(struct device *dev)
 {
-	int ret;
+	int ret, skl_total_dai;
 	struct hdac_ext_bus *ebus = dev_get_drvdata(dev);
 	struct skl *skl = ebus_to_skl(ebus);
+	int skl_num_fe_dai = ARRAY_SIZE(skl_fe_dai);
+	int skl_num_dai = ARRAY_SIZE(skl_platform_dai);
+	struct snd_soc_dai_driver *skl_dais;
 
 	INIT_LIST_HEAD(&skl->ppl_list);
 	INIT_LIST_HEAD(&skl->bind_list);
@@ -1909,9 +1922,24 @@ int skl_platform_register(struct device *dev)
 		dev_err(dev, "soc platform registration failed %d\n", ret);
 		return ret;
 	}
-	ret = snd_soc_register_component(dev, &skl_component,
-				skl_platform_dai,
-				ARRAY_SIZE(skl_platform_dai));
+
+	skl_total_dai = (dynamic_dai ? skl_num_dai : skl_num_fe_dai +
+			 skl_num_dai);
+	skl_dais = devm_kcalloc(dev, skl_total_dai, sizeof(*skl_dais),
+				GFP_KERNEL);
+	if (!skl_dais) {
+		snd_soc_unregister_platform(dev);
+		return -ENOMEM;
+	}
+
+	memcpy(skl_dais, skl_platform_dai, sizeof(skl_platform_dai));
+
+	if (!dynamic_dai)
+		memcpy(&skl_dais[skl_num_dai], skl_fe_dai,
+						sizeof(skl_fe_dai));
+
+	ret = snd_soc_register_component(dev, &skl_component, skl_dais,
+					 skl_total_dai);
 	if (ret) {
 		dev_err(dev, "soc component registration failed %d\n", ret);
 		snd_soc_unregister_platform(dev);
