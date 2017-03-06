@@ -1451,6 +1451,15 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 },
 };
 
+int skl_dai_load(struct snd_soc_component *cmp,
+		 struct snd_soc_dai_driver *pcm_dai)
+{
+	dev_dbg(cmp->dev, "Adding dai %s from topology\n", pcm_dai->name);
+	pcm_dai->ops = &skl_pcm_dai_ops;
+
+	return 0;
+}
+
 static int skl_platform_open(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;

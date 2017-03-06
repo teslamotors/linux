@@ -601,4 +601,7 @@ int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
 			 struct snd_ctl_elem_value *ucontrol);
 int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
 			 struct snd_ctl_elem_value *ucontrol);
+
+int skl_dai_load(struct snd_soc_component *cmp,
+		 struct snd_soc_dai_driver *pcm_dai);
 #endif
