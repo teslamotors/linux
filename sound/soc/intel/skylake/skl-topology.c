@@ -2625,7 +2625,7 @@ static int skl_tplg_get_token(struct device *dev,
 	int tkn_count = 0;
 	int ret;
 	static int is_pipe_exists;
-	static int pin_index, dir, conf_idx;
+	static int pin_index, dir, conf_idx, agg_id;
 	struct skl_module_iface *iface = NULL;
 	struct skl_module_res *res = NULL;
 	int res_idx = mconfig->res_idx;
@@ -2837,6 +2837,23 @@ static int skl_tplg_get_token(struct device *dev,
 		mconfig->domain =
 			tkn_elem->value;
 
+		break;
+
+	case SKL_TKN_U32_AGG_LINK_ID:
+		agg_id = tkn_elem->value;
+		if (agg_id > SDW_MAX_MASTERS)
+			return -EINVAL;
+		break;
+
+	case SKL_TKN_U32_AGG_NUM_MASTERS:
+		mconfig->sdw_agg.num_masters = tkn_elem->value;
+		mconfig->sdw_agg_enable = (tkn_elem->value > 1)
+					? true : false;
+		break;
+
+	case SKL_TKN_U32_AGG_CH_MASK:
+		mconfig->sdw_agg.agg_data[agg_id].ch_mask =
+				tkn_elem->value;
 		break;
 
 	case SKL_TKN_U32_DMA_BUF_SIZE:
