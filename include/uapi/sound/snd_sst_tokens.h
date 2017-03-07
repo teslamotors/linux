@@ -222,6 +222,17 @@
  * %SKL_TKN_MM_U32_NUM_IN_FMT:  Number of input formats
  * %SKL_TKN_MM_U32_NUM_OUT_FMT: Number of output formats
  *
+ * %SKL_TKN_U32_AGG_NUM_MASTERS:
+ *                              Number of aggregated masters
+ *
+ * %SKL_TKN_U32_AGG_LINK_ID:    Aggregated master's instance id
+ *
+ * %SKL_TKN_U32_AGG_CH_MASK:    Represents channels driven by the master
+ *
+ * %SKL_TKN_U32_AGG_ID:         Aggregation id is a non zero identifier to
+ *                              indicate if this endpoint is participating
+ *                              in aggregation.
+ *
  * module_id and loadable flags dont have tokens as these values will be
  * read from the DSP FW manifest
  *
@@ -309,7 +320,12 @@ enum SKL_TKNS {
 	SKL_TKN_MM_U32_NUM_IN_FMT,
 	SKL_TKN_MM_U32_NUM_OUT_FMT,
 
-	SKL_TKN_MAX = SKL_TKN_MM_U32_NUM_OUT_FMT,
+	SKL_TKN_U32_AGG_NUM_MASTERS,
+	SKL_TKN_U32_AGG_LINK_ID,
+	SKL_TKN_U32_AGG_CH_MASK,
+	SKL_TKN_U32_AGG_ID,
+
+	SKL_TKN_MAX = SKL_TKN_U32_AGG_ID,
 };
 
 #endif
