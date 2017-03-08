@@ -27,6 +27,7 @@
 
 #define CHANNELS_MONO 1
 #define CHANNELS_STEREO 2
+#define CHANNELS_QUAD 4
 #define CHANNELS_EIGHT 8
 
 static struct snd_soc_dai_link broxton_gpmrb_dais[];
@@ -208,6 +209,35 @@ static struct snd_soc_ops broxton_gpmrb_hdmi_ops = {
 	.startup = broxton_gpmrb_hdmi_startup,
 };
 
+static int broxton_gpmrb_tdf8532_startup(struct snd_pcm_substream *substream)
+{
+	int ret;
+
+	ret = snd_pcm_hw_constraint_single(substream->runtime,
+			SNDRV_PCM_HW_PARAM_CHANNELS, CHANNELS_QUAD);
+
+	if (ret < 0)
+		goto out;
+
+	ret = snd_pcm_hw_constraint_single(substream->runtime,
+			SNDRV_PCM_HW_PARAM_RATE, 48000);
+
+	if (ret < 0)
+		goto out;
+
+	ret = snd_pcm_hw_constraint_mask64(substream->runtime,
+			SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FMTBIT_S32_LE);
+
+	if (ret < 0)
+		goto out;
+
+out:
+	return ret;
+}
+
+static struct snd_soc_ops broxton_gpmrb_tdf8532_ops = {
+	.startup = broxton_gpmrb_tdf8532_startup,
+};
 /* broxton digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	/* Front End DAI links */
@@ -223,6 +253,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
+		.ops = &broxton_gpmrb_tdf8532_ops,
 	},
 	[BXT_AUDIO_TUNER_CP] = {
 		.name = "Dirana Tuner Cp Port",
