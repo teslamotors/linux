@@ -57,6 +57,9 @@
 #define fp_ext_toint(X) ((X) >> EXT_FRAC_BITS)
 #define int_ext_tofp(X) ((int64_t)(X) << EXT_FRAC_BITS)
 
+/* Number of timer cycles for triggering force notification */
+#define NUM_CYCLES 10
+
 static ATOMIC_NOTIFIER_HEAD(pstate_freq_notifier_list);
 
 static int notification_registered_flag;
@@ -232,6 +235,7 @@ struct global_params {
  */
 struct cpudata {
 	int cpu;
+	int counter;
 
 	unsigned int policy;
 	struct update_util_data update_util;
@@ -1407,6 +1411,7 @@ EXPORT_SYMBOL_GPL(pstate_unregister_freq_notify);
 
 static int pstate_notifier_call_chain(struct cpudata *cpu)
 {
+	cpu->counter = 0;
 	return atomic_notifier_call_chain(&pstate_freq_notifier_list,
 		(unsigned long) cpu->pstate.current_pstate,
 		(void *) (long) (cpu->cpu));
@@ -1414,6 +1419,12 @@ static int pstate_notifier_call_chain(struct cpudata *cpu)
 
 static void intel_pstate_set_pstate(struct cpudata *cpu, int pstate)
 {
+	if (pstate == cpu->pstate.current_pstate) {
+		if (++cpu->counter >= NUM_CYCLES)
+			pstate_notifier_call_chain(cpu);
+		return;
+	}
+
 	trace_cpu_frequency(pstate * cpu->pstate.scaling, cpu->cpu);
 	cpu->pstate.current_pstate = pstate;
 	/*
@@ -1579,11 +1590,16 @@ static int intel_pstate_prepare_request(struct cpudata *cpu, int pstate)
 
 static void intel_pstate_update_pstate(struct cpudata *cpu, int pstate)
 {
-	if (pstate == cpu->pstate.current_pstate)
+	if (pstate == cpu->pstate.current_pstate) {
+		if (++cpu->counter >= NUM_CYCLES)
+			pstate_notifier_call_chain(cpu);
 		return;
+	}
 
 	cpu->pstate.current_pstate = pstate;
 	wrmsrl(MSR_IA32_PERF_CTL, pstate_funcs.get_val(cpu, pstate));
+
+	pstate_notifier_call_chain(cpu);
 }
 
 static void intel_pstate_adjust_pstate(struct cpudata *cpu)
