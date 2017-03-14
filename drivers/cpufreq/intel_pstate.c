@@ -699,6 +699,7 @@ static void intel_pstate_get_hwp_max(unsigned int cpu, int *phy_max,
 	*phy_max = HWP_HIGHEST_PERF(cap);
 }
 
+
 static void intel_pstate_hwp_set(unsigned int cpu)
 {
 	struct cpudata *cpu_data = all_cpu_data[cpu];
@@ -807,6 +808,44 @@ static void intel_pstate_update_policies(void)
 	for_each_possible_cpu(cpu)
 		cpufreq_update_policy(cpu);
 }
+
+/**
+ * pstate_cpu_enable_turbo_usage - enable cpu turbo mode
+ *
+ * Enable turbo mode for all cpu cores by changing
+ * no_turbo variable
+ *
+ * Return 0 on success, otherwise errno
+ */
+int pstate_cpu_enable_turbo_usage(void)
+{
+	update_turbo_state();
+	if (global.turbo_disabled) {
+		pr_warn("intel_pstate: Turbo disabled by BIOS or unavailable on processor\n");
+		return -EPERM;
+	}
+
+	global.no_turbo = 0;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_enable_turbo_usage);
+
+/**
+ * pstate_cpu_disable_turbo_usage - disable cpu turbo mode
+ *
+ * Disable turbo mode for all cpu cores by changing
+ * no_turbo variable
+ *
+ * Return 0 on success, otherwise errno
+ */
+int pstate_cpu_disable_turbo_usage(void)
+{
+	global.no_turbo = 1;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_disable_turbo_usage);
 
 /************************** sysfs begin ************************/
 #define show_one(file_name, object)					\
