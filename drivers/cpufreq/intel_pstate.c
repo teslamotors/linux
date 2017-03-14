@@ -59,6 +59,8 @@
 
 static ATOMIC_NOTIFIER_HEAD(pstate_freq_notifier_list);
 
+static int notification_registered_flag;
+
 static inline int32_t mul_fp(int32_t x, int32_t y)
 {
 	return ((int64_t)x * (int64_t)y) >> FRAC_BITS;
@@ -983,6 +985,9 @@ static ssize_t store_no_turbo(struct kobject *a, struct kobj_attribute *b,
 		return -EPERM;
 	}
 
+	if (notification_registered_flag)
+		return -EAGAIN;
+
 	global.no_turbo = clamp_t(int, input, 0, 1);
 
 	if (global.no_turbo) {
@@ -1384,6 +1389,7 @@ static int intel_pstate_get_base_pstate(struct cpudata *cpu)
  */
 int pstate_register_freq_notify(struct notifier_block *nb)
 {
+	notification_registered_flag++;
 	return atomic_notifier_chain_register(&pstate_freq_notifier_list, nb);
 }
 EXPORT_SYMBOL_GPL(pstate_register_freq_notify);
@@ -1394,6 +1400,7 @@ EXPORT_SYMBOL_GPL(pstate_register_freq_notify);
  */
 int pstate_unregister_freq_notify(struct notifier_block *nb)
 {
+	notification_registered_flag--;
 	return atomic_notifier_chain_unregister(&pstate_freq_notifier_list, nb);
 }
 EXPORT_SYMBOL_GPL(pstate_unregister_freq_notify);
