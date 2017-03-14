@@ -856,6 +856,55 @@ int pstate_cpu_disable_turbo_usage(void)
 }
 EXPORT_SYMBOL_GPL(pstate_cpu_disable_turbo_usage);
 
+/**
+ * pstate_cpu_pstate2freq – convert perf state to frequency value
+ *
+ * convert a performance state number to the matching clock
+ * frequency in kHz
+ *
+ * @pstate – the perf index number to be mapped to a frequency
+ * Return frequency value in kHz, -1 if pstate is out of range
+ */
+int pstate_cpu_pstate2freq(int pstate)
+{
+	/* Check if intel_pstate driver disabled */
+	if (!all_cpu_data)
+		return -1;
+
+	if (pstate < pstate_funcs.get_min() ||
+		pstate > pstate_funcs.get_turbo())
+		return -1;
+
+	return pstate * pstate_funcs.get_scaling();
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_pstate2freq);
+
+/**
+ * pstate_cpu_get_max_pstate() - get the highest possible pstate number
+ *
+ * Return the maximum number of available P-States for CPU
+ */
+int pstate_cpu_get_max_pstate(void)
+{
+	/* Check if intel_pstate driver disabled */
+	if (!all_cpu_data)
+		return -1;
+
+	return pstate_funcs.get_turbo();
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_get_max_pstate);
+
+/**
+ * pstate_cpu_get_sample() - get the cpu notifications sample rate
+ *
+ * Return the maximum sample rate for cpu notifications in ms
+ */
+int pstate_cpu_get_sample(void)
+{
+	return NUM_CYCLES * 10;
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_get_sample);
+
 /************************** sysfs begin ************************/
 #define show_one(file_name, object)					\
 	static ssize_t show_##file_name					\
