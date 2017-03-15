@@ -1944,6 +1944,18 @@ static int btusb_recv_event_intel(struct hci_dev *hdev, struct sk_buff *skb)
 			}
 		}
 	}
+	else if (skb->len >= sizeof(struct hci_event_hdr)) {
+		struct hci_event_hdr *hdr;
+
+		hdr = (struct hci_event_hdr *) skb->data;
+
+		if (hdr->evt == HCI_EV_CMD_COMPLETE) {
+			*(__u8 *)(skb->data + 2) = 1;
+		} else if (hdr->evt == HCI_EV_CMD_STATUS) {
+			*(__u8 *)(skb->data + 3) = 1;
+		}
+    }
+
 
 	return hci_recv_frame(hdev, skb);
 }
