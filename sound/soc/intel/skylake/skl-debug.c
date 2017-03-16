@@ -231,10 +231,12 @@ static ssize_t mod_control_write(struct file *file,
 
 		if (mbsz)
 			retval = skl_ipc_get_large_config(&ctx->ipc, &msg,
-				large_data, &(mod_set_get->mailbx[0]), mbsz);
+				large_data, &(mod_set_get->mailbx[0]),
+				mbsz, NULL);
 		else
 			retval = skl_ipc_get_large_config(&ctx->ipc,
-					&msg, large_data, NULL, 0);
+					&msg, large_data, NULL,
+					0, NULL);
 
 		d->ipc_data[0] = msg.param_data_size;
 		memcpy(&d->ipc_data[1], large_data, msg.param_data_size);
@@ -256,11 +258,11 @@ static ssize_t mod_control_write(struct file *file,
 	default:
 		if (mbsz)
 			retval = sst_ipc_tx_message_wait(&ctx->ipc, *ipc_header,
-				mod_set_get->mailbx, mbsz, NULL, 0);
+				mod_set_get->mailbx, mbsz, NULL, NULL);
 
 		else
 			retval = sst_ipc_tx_message_wait(&ctx->ipc, *ipc_header,
-				NULL, 0, NULL, 0);
+				NULL, 0, NULL, NULL);
 
 		d->ipc_data[0] = 0;
 		break;
@@ -717,10 +719,12 @@ static ssize_t adsp_control_write(struct file *file,
 
 	if (tx_param == 1)
 		skl_ipc_get_large_config(&ctx->ipc, &msg,
-				ipc_data, &tx_data, sizeof(u32));
+				ipc_data, &tx_data,
+				sizeof(u32), NULL);
 	else
 		skl_ipc_get_large_config(&ctx->ipc, &msg,
-							ipc_data, NULL, 0);
+				ipc_data, NULL,
+				0, NULL);
 
 	memset(&d->fw_ipc_data.mailbx[0], 0, DSP_BUF);
 

@@ -2333,5 +2333,6 @@ int skl_get_module_params(struct skl_sst *ctx, u32 *params, int size,
 	msg.param_data_size = size;
 	msg.large_param_id = param_id;
 
-	return skl_ipc_get_large_config(&ctx->ipc, &msg, params, NULL, 0);
+	return skl_ipc_get_large_config(&ctx->ipc, &msg, params, NULL,
+			0, NULL);
 }
