@@ -475,6 +475,10 @@ void skl_ipc_process_reply(struct sst_generic_ipc *ipc,
 	if (reply == IPC_GLB_REPLY_SUCCESS) {
 		dev_dbg(ipc->dev, "ipc FW reply %x: success\n", header.primary);
 		/* copy the rx data from the mailbox */
+		if (IPC_GLB_NOTIFY_MSG_TYPE(header.primary) ==
+				IPC_MOD_LARGE_CONFIG_GET)
+			msg->rx_size = header.extension &
+				IPC_DATA_OFFSET_SZ_MASK;
 		sst_dsp_inbox_read(ipc->dsp, msg->rx_data, msg->rx_size);
 		switch (IPC_GLB_NOTIFY_MSG_TYPE(header.primary)) {
 		case IPC_GLB_LOAD_MULTIPLE_MODS:
@@ -1039,15 +1043,27 @@ int skl_ipc_get_large_config(struct sst_generic_ipc *ipc,
 		dev_dbg(ipc->dev, "receiving offset: %#x, size: %#x\n",
 			(unsigned)data_offset, (unsigned)rx_size);
 
+		if (rx_bytes != NULL)
+			*rx_bytes = rx_size;
+
 		ret = sst_ipc_tx_message_wait(ipc, *ipc_header,
 			((char *)txparam), tx_bytes,
-			((char *)param) + data_offset, &rx_size);
+			((char *)param) + data_offset, rx_bytes);
+
 		if (ret < 0) {
 			dev_err(ipc->dev,
 				"ipc: get large config fail, err: %d\n", ret);
 			return ret;
 		}
+		/* exit as this is the final block */
+		if (header.extension | (0 << IPC_FINAL_BLOCK_SHIFT))
+			break;
+
+		if (rx_bytes != NULL)
+			rx_size = *rx_bytes;
+
 		sz_remaining -= rx_size;
+
 		data_offset = msg->param_data_size - sz_remaining;
 
 		/* clear the fields */
