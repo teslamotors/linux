@@ -1399,8 +1399,11 @@ static int skl_power_well_ctl_write(struct intel_vgpu *vgpu,
 {
 	u32 v = *(u32 *)p_data;
 
-	v &= (1 << 31) | (1 << 29) | (1 << 9) |
-	     (1 << 7) | (1 << 5) | (1 << 3) | (1 << 1);
+	if (IS_BROXTON(vgpu->gvt->dev_priv))
+		v &= (1 << 31) | (1 << 29);
+	else
+		v &= (1 << 31) | (1 << 29) | (1 << 9) |
+			(1 << 7) | (1 << 5) | (1 << 3) | (1 << 1);
 	v |= (v >> 1);
 
 	return intel_vgpu_default_mmio_write(vgpu, offset, &v, bytes);
@@ -1637,6 +1640,44 @@ static int ring_reset_ctl_write(struct intel_vgpu *vgpu,
 
 #define MMIO_PLANES_DH(prefix, d, r, w) \
 	MMIO_PLANES_SDH(prefix, 4, d, r, w)
+
+#define MMIO_PORT_CL_REF(phy) \
+	MMIO_D(BXT_PORT_CL1CM_DW0(phy), D_BXT); \
+	MMIO_D(BXT_PORT_CL1CM_DW9(phy), D_BXT); \
+	MMIO_D(BXT_PORT_CL1CM_DW10(phy), D_BXT); \
+	MMIO_D(BXT_PORT_CL1CM_DW28(phy), D_BXT); \
+	MMIO_D(BXT_PORT_CL1CM_DW30(phy), D_BXT); \
+	MMIO_D(BXT_PORT_CL2CM_DW6(phy), D_BXT); \
+	MMIO_D(BXT_PORT_REF_DW3(phy), D_BXT); \
+	MMIO_D(BXT_PORT_REF_DW6(phy), D_BXT); \
+	MMIO_D(BXT_PORT_REF_DW8(phy), D_BXT)
+
+#define MMIO_PORT_PCS_TX(phy, ch) \
+	MMIO_D(BXT_PORT_PLL_EBB_0(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_PLL_EBB_4(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_PCS_DW10_LN01(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_PCS_DW10_GRP(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_PCS_DW12_LN01(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_PCS_DW12_LN23(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_PCS_DW12_GRP(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW2_LN0(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW2_GRP(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW3_LN0(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW3_GRP(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW4_LN0(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW4_GRP(phy, ch), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW14_LN(phy, ch, 0), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW14_LN(phy, ch, 1), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW14_LN(phy, ch, 2), D_BXT); \
+	MMIO_D(BXT_PORT_TX_DW14_LN(phy, ch, 3), D_BXT); \
+	MMIO_D(BXT_PORT_PLL(phy, ch, 0), D_BXT); \
+	MMIO_D(BXT_PORT_PLL(phy, ch, 1), D_BXT); \
+	MMIO_D(BXT_PORT_PLL(phy, ch, 2), D_BXT); \
+	MMIO_D(BXT_PORT_PLL(phy, ch, 3), D_BXT); \
+	MMIO_D(BXT_PORT_PLL(phy, ch, 6), D_BXT); \
+	MMIO_D(BXT_PORT_PLL(phy, ch, 8), D_BXT); \
+	MMIO_D(BXT_PORT_PLL(phy, ch, 9), D_BXT); \
+	MMIO_D(BXT_PORT_PLL(phy, ch, 10), D_BXT)
 
 static int init_generic_mmio_info(struct intel_gvt *gvt)
 {
@@ -1952,8 +1993,8 @@ static int init_generic_mmio_info(struct intel_gvt *gvt)
 
 	MMIO_D(BLC_PWM_CPU_CTL2, D_ALL);
 	MMIO_D(BLC_PWM_CPU_CTL, D_ALL);
-	MMIO_D(BLC_PWM_PCH_CTL1, D_ALL);
-	MMIO_D(BLC_PWM_PCH_CTL2, D_ALL);
+	MMIO_D(BLC_PWM_PCH_CTL1, D_ALL & ~D_BXT);
+	MMIO_D(BLC_PWM_PCH_CTL2, D_ALL & ~D_BXT);
 
 	MMIO_D(0x48268, D_ALL);
 
@@ -2032,9 +2073,9 @@ static int init_generic_mmio_info(struct intel_gvt *gvt)
 	MMIO_D(_FDI_RXB_TUSIZE1, D_ALL);
 	MMIO_D(_FDI_RXB_TUSIZE2, D_ALL);
 
-	MMIO_DH(PCH_PP_CONTROL, D_ALL, NULL, pch_pp_control_mmio_write);
+	MMIO_DH(PCH_PP_CONTROL, D_ALL & ~D_BXT, NULL, pch_pp_control_mmio_write);
 	MMIO_D(PCH_PP_DIVISOR, D_ALL);
-	MMIO_D(PCH_PP_STATUS,  D_ALL);
+	MMIO_D(PCH_PP_STATUS,  D_ALL & ~D_BXT);
 	MMIO_D(PCH_LVDS, D_ALL);
 	MMIO_D(_PCH_DPLL_A, D_ALL);
 	MMIO_D(_PCH_DPLL_B, D_ALL);
@@ -2048,8 +2089,8 @@ static int init_generic_mmio_info(struct intel_gvt *gvt)
 
 	MMIO_D(0x61208, D_ALL);
 	MMIO_D(0x6120c, D_ALL);
-	MMIO_D(PCH_PP_ON_DELAYS, D_ALL);
-	MMIO_D(PCH_PP_OFF_DELAYS, D_ALL);
+	MMIO_D(PCH_PP_ON_DELAYS, D_ALL & ~D_BXT);
+	MMIO_D(PCH_PP_OFF_DELAYS, D_ALL & ~D_BXT);
 
 	MMIO_DH(0xe651c, D_ALL, dpy_reg_mmio_read, NULL);
 	MMIO_DH(0xe661c, D_ALL, dpy_reg_mmio_read, NULL);
@@ -2945,7 +2986,7 @@ static int init_bxt_mmio_info(struct intel_gvt *gvt)
 	MMIO_D(ERROR_GEN6, D_SKL_PLUS);
 	MMIO_D(DONE_REG, D_SKL_PLUS);
 	MMIO_D(EIR, D_SKL_PLUS);
-	MMIO_D(_MMIO(0x2024), D_SKL_PLUS);
+	MMIO_D(PGTBL_ER, D_SKL_PLUS);
 	MMIO_D(_MMIO(0x4194), D_SKL_PLUS);
 	MMIO_D(_MMIO(0x4294), D_SKL_PLUS);
 	MMIO_D(_MMIO(0x4494), D_SKL_PLUS);
@@ -2957,20 +2998,59 @@ static int init_bxt_mmio_info(struct intel_gvt *gvt)
 	MMIO_RING_D(RING_INSTPS, D_SKL_PLUS);
 	MMIO_RING_D(RING_BBADDR_UDW, D_SKL_PLUS);
 	MMIO_RING_D(RING_BBSTATE, D_SKL_PLUS);
+	MMIO_RING_D(RING_IPEIR, D_SKL_PLUS);
 
-#define RING_REG(base) (base + 0x64)
-	MMIO_RING_D(RING_REG, D_SKL_PLUS);
-#undef RING_REG
-
-	MMIO_D(RING_INSTDONE(BLT_RING_BASE), D_SKL_PLUS);
-	MMIO_D(RING_INSTDONE(GEN6_BSD_RING_BASE), D_SKL_PLUS);
-	MMIO_D(RING_INSTDONE(VEBOX_RING_BASE), D_SKL_PLUS);
-
-	MMIO_D(_MMIO(0x162128), D_SKL_PLUS);
 	MMIO_D(GEN9_CSFE_CHICKEN1_RCS, D_SKL_PLUS);
 	MMIO_F(SOFT_SCRATCH(0), 16 * 4, 0, 0, 0, D_SKL_PLUS, NULL, NULL);
-	//TOOD:this line caused compiler error, comment it
-//	MMIO_D(HOST2GUC_INTERRUPT, D_SKL_PLUS);
+	MMIO_D(GUC_BCS_RCS_IER, D_SKL_PLUS);
+	MMIO_D(GUC_VCS2_VCS1_IER, D_SKL_PLUS);
+	MMIO_D(GUC_WD_VECS_IER, D_SKL_PLUS);
+	MMIO_D(GUC_MAX_IDLE_COUNT, D_SKL_PLUS);
+
+	MMIO_D(BXT_P_CR_GT_DISP_PWRON, D_BXT);
+	MMIO_D(BXT_RP_STATE_CAP, D_BXT);
+	MMIO_D(BXT_PHY_CTL_FAMILY(DPIO_PHY0), D_BXT);
+	MMIO_D(BXT_PHY_CTL_FAMILY(DPIO_PHY1), D_BXT);
+	MMIO_D(BXT_PORT_PLL_ENABLE(PORT_A), D_BXT);
+	MMIO_D(BXT_PORT_PLL_ENABLE(PORT_B), D_BXT);
+	MMIO_D(BXT_PORT_PLL_ENABLE(PORT_C), D_BXT);
+
+	MMIO_PORT_CL_REF(DPIO_PHY0);
+	MMIO_PORT_PCS_TX(DPIO_PHY0, DPIO_CH0);
+	MMIO_PORT_PCS_TX(DPIO_PHY0, DPIO_CH1);
+	MMIO_PORT_CL_REF(DPIO_PHY1);
+	MMIO_PORT_PCS_TX(DPIO_PHY1, DPIO_CH0);
+
+	MMIO_D(BXT_DE_PLL_CTL, D_BXT);
+	MMIO_D(BXT_DE_PLL_ENABLE, D_BXT);
+	MMIO_D(BXT_DSI_PLL_CTL, D_BXT);
+	MMIO_D(BXT_DSI_PLL_ENABLE, D_BXT);
+
+	MMIO_D(BXT_BLC_PWM_CTL(0), D_BXT);
+	MMIO_D(BXT_BLC_PWM_FREQ(0), D_BXT);
+	MMIO_D(BXT_BLC_PWM_DUTY(0), D_BXT);
+	MMIO_D(BXT_BLC_PWM_CTL(1), D_BXT);
+	MMIO_D(BXT_BLC_PWM_FREQ(1), D_BXT);
+	MMIO_D(BXT_BLC_PWM_DUTY(1), D_BXT);
+
+	MMIO_D(PP_STATUS(0), D_BXT);
+	MMIO_DH(PP_CONTROL(0), D_BXT, NULL, pch_pp_control_mmio_write);
+	MMIO_D(PP_ON_DELAYS(0), D_BXT);
+	MMIO_D(PP_OFF_DELAYS(0), D_BXT);
+	MMIO_D(PP_STATUS(1), D_BXT);
+	MMIO_DH(PP_CONTROL(1), D_BXT, NULL, pch_pp_control_mmio_write);
+	MMIO_D(PP_ON_DELAYS(1), D_BXT);
+	MMIO_D(PP_OFF_DELAYS(1), D_BXT);
+
+	MMIO_D(GEN9_CLKGATE_DIS_0, D_BXT);
+
+	MMIO_D(HSW_TVIDEO_DIP_GCP(TRANSCODER_A), D_BXT);
+	MMIO_D(HSW_TVIDEO_DIP_GCP(TRANSCODER_B), D_BXT);
+	MMIO_D(HSW_TVIDEO_DIP_GCP(TRANSCODER_C), D_BXT);
+
+	MMIO_D(RC6_LOCATION, D_BXT);
+	MMIO_D(RC6_CTX_BASE, D_BXT);
+	MMIO_D(GEN6_STOLEN_RESERVED, D_BXT);
 
 	return 0;
 }
