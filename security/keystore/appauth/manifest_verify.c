@@ -140,6 +140,10 @@ static int verify_file_hashes(char *manifest_buf)
 					&digest_algo_id, &digest, &size);
 		if (!filename)
 			break;
+		if (IS_ERR(filename)) {
+			ret = -MALFORMED_MANIFEST;
+			break;
+		}
 		if (size > MAX_FILE_SIZE) {
 			ret = -FILE_TOO_BIG;
 			break;

@@ -28,7 +28,6 @@
 #define MAX_CHUNKS 10
 
 const uint8_t digest_len[] = {
-	16, /* md5    */
 	20, /* sha1   */
 	28, /* sha224 */
 	32, /* sha256 */
@@ -167,7 +166,8 @@ const char *mf_get_next_file(const uint8_t *mf,
 			ctx->bytes_left -= entry_size;
 			ctx->next_file += entry_size;
 			return filename;
-		}
+		} else
+			return ERR_PTR(-EFAULT);
 	}
 	return NULL;
 }

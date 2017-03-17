@@ -127,7 +127,43 @@ int keystore_calc_clientid(u8 *client_id, const unsigned int client_id_size)
 	if (res) {
 		/* error case, do not register */
 		ks_err(KBUILD_MODNAME ": Cannot register with keystore - manifest verification failed (res=%d)\n", res);
-		res = -EFAULT;
+		switch (-res) {
+		case MALFORMED_MANIFEST:
+			res = -EINVAL;
+			ks_err(KBUILD_MODNAME ": -> Malformed manifest (check the compiler version)\n");
+			break;
+		case CERTIFICATE_FAILURE:
+			res = -EKEYREJECTED;
+			ks_err(KBUILD_MODNAME ": -> Invalid certificate in the manifest\n");
+			break;
+		case CERTIFICATE_EXPIRED:
+			res = -EKEYEXPIRED;
+			ks_err(KBUILD_MODNAME ": -> Certificate expired (check system date!)\n");
+			break;
+		case CAPS_FAILURE:
+			res = -EKEYREJECTED;
+			ks_err(KBUILD_MODNAME ": -> Capabilities do not match\n");
+			break;
+		case SIGNATURE_FAILURE:
+			res = -EKEYREJECTED;
+			ks_err(KBUILD_MODNAME ": -> Manifest signature verification failed\n");
+			break;
+		case EXE_NOT_FOUND:
+			res = -ENOENT;
+			ks_err(KBUILD_MODNAME ": -> The executable not listed in the manifest\n");
+			break;
+		case FILE_TOO_BIG:
+			res = -EFBIG;
+			ks_err(KBUILD_MODNAME ": -> File too big\n");
+			break;
+		case HASH_FAILURE:
+			res = -EKEYREJECTED;
+			ks_err(KBUILD_MODNAME ": -> Hash calculation failed (or file listed in the manifest is missing)\n");
+			break;
+		default:
+			res = -EFAULT;
+			break;
+		}
 		goto out_buf;
 	}
 #endif
