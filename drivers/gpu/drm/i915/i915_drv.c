@@ -890,6 +890,14 @@ static int i915_driver_init_early(struct drm_i915_private *dev_priv,
 	if (ret < 0)
 		goto err_engines;
 
+	if (IS_BROXTON(dev_priv)) {
+		struct intel_device_info *info = mkwrite_device_info(dev_priv);
+
+		info->num_sprites[PIPE_A] = 2;
+		info->num_sprites[PIPE_B] = 2;
+		info->num_sprites[PIPE_C] = 1;
+	}
+
 	/* This must be called before any calls to HAS_PCH_* */
 	intel_detect_pch(dev_priv);
 
