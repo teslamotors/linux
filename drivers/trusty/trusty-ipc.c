@@ -71,9 +71,9 @@ struct tipc_dev_config {
 struct tipc_msg_hdr {
 	u32 src;
 	u32 dst;
-	u32 reserved;
-	u16 len;
+	u32 len;
 	u16 flags;
+	u16 reserved;
 	u8 data[0];
 } __packed;
 
