@@ -1209,7 +1209,8 @@ static int gen8_check_mi_display_flip(struct parser_exec_state *s,
 	if (!info->async_flip)
 		return 0;
 
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv) ||
+			IS_BROXTON(dev_priv)) {
 		stride = vgpu_vreg(s->vgpu, info->stride_reg) & GENMASK(9, 0);
 		tile = (vgpu_vreg(s->vgpu, info->ctrl_reg) &
 				GENMASK(12, 10)) >> 10;
@@ -1237,7 +1238,8 @@ static int gen8_update_plane_mmio_from_mi_display_flip(
 
 	set_mask_bits(&vgpu_vreg(vgpu, info->surf_reg), GENMASK(31, 12),
 		      info->surf_val << 12);
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv) ||
+			IS_BROXTON(dev_priv)) {
 		set_mask_bits(&vgpu_vreg(vgpu, info->stride_reg), GENMASK(9, 0),
 			      info->stride_val);
 		set_mask_bits(&vgpu_vreg(vgpu, info->ctrl_reg), GENMASK(12, 10),
@@ -1261,7 +1263,8 @@ static int decode_mi_display_flip(struct parser_exec_state *s,
 
 	if (IS_BROADWELL(dev_priv))
 		return gen8_decode_mi_display_flip(s, info);
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
+	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv) ||
+			IS_BROXTON(dev_priv))
 		return skl_decode_mi_display_flip(s, info);
 
 	return -ENODEV;
@@ -1274,6 +1277,7 @@ static int check_mi_display_flip(struct parser_exec_state *s,
 
 	if (IS_BROADWELL(dev_priv)
 		|| IS_SKYLAKE(dev_priv)
+		|| IS_BROXTON(dev_priv)
 		|| IS_KABYLAKE(dev_priv))
 		return gen8_check_mi_display_flip(s, info);
 	return -ENODEV;
@@ -1287,6 +1291,7 @@ static int update_plane_mmio_from_mi_display_flip(
 
 	if (IS_BROADWELL(dev_priv)
 		|| IS_SKYLAKE(dev_priv)
+		|| IS_BROXTON(dev_priv)
 		|| IS_KABYLAKE(dev_priv))
 		return gen8_update_plane_mmio_from_mi_display_flip(s, info);
 	return -ENODEV;
@@ -1568,6 +1573,7 @@ static int batch_buffer_needs_scan(struct parser_exec_state *s)
 	struct intel_gvt *gvt = s->vgpu->gvt;
 
 	if (IS_BROADWELL(gvt->dev_priv) || IS_SKYLAKE(gvt->dev_priv)
+		|| IS_BROXTON(gvt->dev_priv)
 		|| IS_KABYLAKE(gvt->dev_priv)) {
 		/* BDW decides privilege based on address space */
 		if (cmd_val(s, 0) & (1 << 8))

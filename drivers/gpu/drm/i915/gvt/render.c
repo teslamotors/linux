@@ -172,7 +172,8 @@ static void handle_tlb_pending_event(struct intel_vgpu *vgpu, int ring_id)
 	 */
 	fw = intel_uncore_forcewake_for_reg(dev_priv, reg,
 					    FW_REG_READ | FW_REG_WRITE);
-	if (ring_id == RCS && (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)))
+	if (ring_id == RCS && (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)
+				|| IS_BROXTON(dev_priv)))
 		fw |= FORCEWAKE_RENDER;
 
 	intel_uncore_forcewake_get(dev_priv, fw);
@@ -271,6 +272,7 @@ static void switch_mmio_to_vgpu(struct intel_vgpu *vgpu, int ring_id)
 	i915_reg_t last_reg = _MMIO(0);
 
 	if (IS_SKYLAKE(vgpu->gvt->dev_priv)
+		|| IS_BROXTON(dev_priv)
 		|| IS_KABYLAKE(vgpu->gvt->dev_priv)) {
 		mmio = gen9_render_mmio_list;
 		array_size = ARRAY_SIZE(gen9_render_mmio_list);
@@ -325,7 +327,8 @@ static void switch_mmio_to_host(struct intel_vgpu *vgpu, int ring_id)
 	u32 v;
 	int i, array_size;
 
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)
+			|| IS_BROXTON(dev_priv)) {
 		mmio = gen9_render_mmio_list;
 		array_size = ARRAY_SIZE(gen9_render_mmio_list);
 		restore_mocs(vgpu, ring_id);

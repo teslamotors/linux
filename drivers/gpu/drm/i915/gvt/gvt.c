@@ -109,6 +109,7 @@ static void init_device_info(struct intel_gvt *gvt)
 	struct pci_dev *pdev = gvt->dev_priv->drm.pdev;
 
 	if (IS_BROADWELL(gvt->dev_priv) || IS_SKYLAKE(gvt->dev_priv)
+		|| IS_BROXTON(gvt->dev_priv)
 		|| IS_KABYLAKE(gvt->dev_priv)) {
 		info->max_support_vgpus = 8;
 		info->cfg_space_size = 256;
