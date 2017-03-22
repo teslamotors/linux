@@ -59,7 +59,7 @@
 /* Delay before scheduling D0i3 entry */
 #define BXT_D0I3_DELAY 5000
 
-#define BXT_FW_INIT_RETRY 3
+#define BXT_FW_INIT_RETRY 6
 
 #define GET_SSP_BASE(N)	(N > 4 ? 0x2000 : 0x4000)
 
