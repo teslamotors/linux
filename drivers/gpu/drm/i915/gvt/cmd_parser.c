@@ -173,6 +173,8 @@ struct decode_info {
 #define OP_MEDIA_GATEWAY_STATE                  OP_3D_MEDIA(0x2, 0x0, 0x3)
 #define OP_MEDIA_STATE_FLUSH                    OP_3D_MEDIA(0x2, 0x0, 0x4)
 
+#define OP_MEDIA_POOL_STATE                     OP_3D_MEDIA(0x2, 0x0, 0x5)
+
 #define OP_MEDIA_OBJECT                         OP_3D_MEDIA(0x2, 0x1, 0x0)
 #define OP_MEDIA_OBJECT_PRT                     OP_3D_MEDIA(0x2, 0x1, 0x2)
 #define OP_MEDIA_OBJECT_WALKER                  OP_3D_MEDIA(0x2, 0x1, 0x3)
@@ -2283,6 +2285,9 @@ static struct cmd_info cmd_info[] = {
 
 	{"GPGPU_WALKER", OP_GPGPU_WALKER, F_LEN_VAR, R_RCS, D_ALL,
 		0, 8, NULL},
+
+	{"MEDIA_POOL_STATE", OP_MEDIA_POOL_STATE, F_LEN_VAR, R_RCS, D_ALL, 0, 16,
+		NULL},
 
 	{"MEDIA_VFE_STATE", OP_MEDIA_VFE_STATE, F_LEN_VAR, R_RCS, D_ALL, 0, 16,
 		NULL},
