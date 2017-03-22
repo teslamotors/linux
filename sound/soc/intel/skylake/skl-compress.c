@@ -26,11 +26,6 @@
 #include <sound/soc.h>
 #include "skl.h"
 #include "skl-compress.h"
-inline
-struct hdac_ext_stream *get_hdac_ext_compr_stream(struct snd_compr_stream *stream)
-{
-	return stream->runtime->private_data;
-}
 
 struct hdac_ext_bus *get_bus_compr_ctx(struct snd_compr_stream *substream)
 {

@@ -20,8 +20,6 @@
  */
 #ifndef __SKL_COMPRESS_H__
 #define __SKL_COMPRESS_H__
-inline
-struct hdac_ext_stream *get_hdac_ext_compr_stream(struct snd_compr_stream *stream);
 struct hdac_ext_bus *get_bus_compr_ctx(struct snd_compr_stream *substream);
 void skl_set_compr_runtime_buffer(struct snd_compr_stream *substream,
 				struct snd_dma_buffer *bufp, size_t size);
@@ -33,4 +31,9 @@ int skl_substream_alloc_compr_pages(struct hdac_ext_bus *ebus,
 int skl_compr_free_pages(struct snd_compr_stream *substream);
 int skl_substream_free_compr_pages(struct hdac_bus *bus,
 				struct snd_compr_stream *substream);
+static inline struct hdac_ext_stream
+*get_hdac_ext_compr_stream(struct snd_compr_stream *stream)
+{
+	return stream->runtime->private_data;
+}
 #endif /* __SKL_COMPRESS_H__*/
