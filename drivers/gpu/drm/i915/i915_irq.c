@@ -3429,8 +3429,7 @@ static void gen8_de_irq_postinstall(struct drm_i915_private *dev_priv)
 	enum pipe pipe;
 
 	if (INTEL_GEN(dev_priv) >= 9) {
-		de_pipe_masked |= GEN9_PIPE_PLANE1_FLIP_DONE |
-				  GEN9_DE_PIPE_IRQ_FAULT_ERRORS;
+		de_pipe_masked |= GEN9_PIPE_PLANE1_FLIP_DONE;
 		de_port_masked |= GEN9_AUX_CHANNEL_B | GEN9_AUX_CHANNEL_C |
 				  GEN9_AUX_CHANNEL_D;
 		if (IS_GEN9_LP(dev_priv))
