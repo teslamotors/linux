@@ -1112,7 +1112,6 @@ static int rt700_set_bias_level(struct snd_soc_codec *codec,
 	switch (level) {
 	case SND_SOC_BIAS_PREPARE:
 		if (SND_SOC_BIAS_STANDBY == dapm->bias_level) {
-			pm_runtime_get_sync(&rt700->sdw->mstr->dev);
 			snd_soc_write(codec,
 				RT700_SET_AUDIO_POWER_STATE, AC_PWRST_D0);
 		}
@@ -1120,7 +1119,6 @@ static int rt700_set_bias_level(struct snd_soc_codec *codec,
 
 	case SND_SOC_BIAS_STANDBY:
 		snd_soc_write(codec, RT700_SET_AUDIO_POWER_STATE, AC_PWRST_D3);
-		pm_runtime_put_sync_autosuspend(&rt700->sdw->mstr->dev);
 		break;
 
 	default:
