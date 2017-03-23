@@ -590,7 +590,7 @@ void intel_guc_log_destroy(struct intel_guc *guc)
 int i915_guc_log_control(struct drm_i915_private *dev_priv, u64 control_val)
 {
 	struct intel_guc *guc = &dev_priv->guc;
-
+	struct intel_uc_fw *guc_fw = &dev_priv->guc.fw;
 	union guc_log_control log_param;
 	int ret;
 
@@ -603,6 +603,13 @@ int i915_guc_log_control(struct drm_i915_private *dev_priv, u64 control_val)
 	/* This combination doesn't make sense & won't have any effect */
 	if (!log_param.logging_enabled && (i915_modparams.guc_log_level < 0))
 		return 0;
+
+	if (NEEDS_GUC_CRITICAL_LOGGING(dev_priv, guc_fw)) {
+		log_param.critical_logging_enabled = 1;
+		if (!log_param.logging_enabled &&
+		    !i915_modparams.enable_guc_critical_logging)
+			log_param.critical_logging_enabled = 0;
+	}
 
 	ret = guc_log_control(guc, log_param.value);
 	if (ret < 0) {
