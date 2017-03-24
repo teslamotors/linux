@@ -620,6 +620,8 @@ struct igb_adapter {
 	struct igb_mac_addr *mac_table;
 	struct vf_mac_filter vf_macs;
 	struct vf_mac_filter *vf_mac_list;
+	u8 igb_runtime_status;
+	u8 igb_runtime_auto;
 };
 
 /* flags controlling PTP/1588 function */
