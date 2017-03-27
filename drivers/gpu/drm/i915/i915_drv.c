@@ -146,6 +146,9 @@ static enum intel_pch intel_virt_detect_pch(struct drm_i915_private *dev_priv)
 	} else if (IS_COFFEELAKE(dev_priv) || IS_CANNONLAKE(dev_priv)) {
 		ret = PCH_CNP;
 		DRM_DEBUG_KMS("Assuming CannonPoint PCH\n");
+	} else if (IS_BROXTON(dev_priv)) {
+		ret = PCH_NONE;
+		DRM_DEBUG_KMS("Assuming None PCH for BXT\n");
 	}
 
 	return ret;
