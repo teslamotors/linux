@@ -628,6 +628,12 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 	int ret;
 	struct trusty_ctx *tctx;
 
+	ret = trusty_check_cpuid();
+	if (ret < 0) {
+		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		return -EINVAL;
+	}
+
 	dev_info(&pdev->dev, "initializing\n");
 
 	tctx = kzalloc(sizeof(*tctx), GFP_KERNEL);

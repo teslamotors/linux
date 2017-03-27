@@ -254,6 +254,12 @@ static int trusty_log_probe(struct platform_device *pdev)
 	phys_addr_t pa;
 	struct deadloop_dump *dump;
 
+	result = trusty_check_cpuid();
+	if (result < 0) {
+		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		return -EINVAL;
+	}
+
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 	if (!trusty_supports_logging(pdev->dev.parent)) {
 		return -ENXIO;

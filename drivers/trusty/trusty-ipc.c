@@ -31,6 +31,7 @@
 #include <linux/virtio_config.h>
 
 #include <linux/trusty/trusty_ipc.h>
+#include <linux/trusty/trusty.h>
 
 #define MAX_DEVICES			4
 
@@ -1523,6 +1524,12 @@ static int tipc_virtio_probe(struct virtio_device *vdev)
 	struct virtqueue *vqs[2];
 	vq_callback_t *vq_cbs[] = {_rxvq_cb, _txvq_cb};
 	const char *vq_names[] = { "rx", "tx" };
+
+	err = trusty_check_cpuid();
+	if (err < 0) {
+		dev_err(&vdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		return -EINVAL;
+	}
 
 	dev_dbg(&vdev->dev, "%s:\n", __func__);
 

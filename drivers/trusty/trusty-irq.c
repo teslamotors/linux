@@ -587,6 +587,12 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	struct trusty_irq_state *is;
 	work_func_t work_func;
 
+	ret = trusty_check_cpuid();
+	if (ret < 0) {
+		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		return -EINVAL;
+	}
+
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	is = kzalloc(sizeof(*is), GFP_KERNEL);

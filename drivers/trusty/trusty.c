@@ -450,6 +450,12 @@ static int trusty_probe(struct platform_device *pdev)
 	struct trusty_state *s;
 	struct device_node *node = pdev->dev.of_node;
 
+	ret = trusty_check_cpuid();
+	if (ret < 0) {
+		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		return -EINVAL;
+	}
+
 	if (!node) {
 		dev_err(&pdev->dev, "of_node required\n");
 		return -EINVAL;
