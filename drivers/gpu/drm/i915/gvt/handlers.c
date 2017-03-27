@@ -864,6 +864,7 @@ static int dp_aux_ch_ctl_mmio_write(struct intel_vgpu *vgpu,
 	data = vgpu_vreg(vgpu, offset);
 
 	if ((IS_SKYLAKE(vgpu->gvt->dev_priv)
+		|| IS_BROXTON(vgpu->gvt->dev_priv)
 		|| IS_KABYLAKE(vgpu->gvt->dev_priv))
 		&& offset != _REG_SKL_DP_AUX_CH_CTL(port_index)) {
 		/* SKL DPB/C/D aux ctl register changed */
