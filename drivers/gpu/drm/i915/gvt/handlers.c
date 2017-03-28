@@ -483,6 +483,14 @@ static int force_nonpriv_write(struct intel_vgpu *vgpu,
 	return ret;
 }
 
+static int pipe_dsl_mmio_read(struct intel_vgpu *vgpu,
+		unsigned int offset, void *p_data, unsigned int bytes)
+{
+	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
+	vgpu_vreg(vgpu, offset) = I915_READ(_MMIO(offset));
+	return intel_vgpu_default_mmio_read(vgpu, offset, p_data, bytes);
+}
+
 static int ddi_buf_ctl_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 		void *p_data, unsigned int bytes)
 {
@@ -1777,9 +1785,9 @@ static int init_generic_mmio_info(struct intel_gvt *gvt)
 	MMIO_D(0xc4040, D_ALL);
 	MMIO_D(DERRMR, D_ALL);
 
-	MMIO_D(PIPEDSL(PIPE_A), D_ALL);
-	MMIO_D(PIPEDSL(PIPE_B), D_ALL);
-	MMIO_D(PIPEDSL(PIPE_C), D_ALL);
+	MMIO_DH(PIPEDSL(PIPE_A), D_ALL, pipe_dsl_mmio_read, NULL);
+	MMIO_DH(PIPEDSL(PIPE_B), D_ALL, pipe_dsl_mmio_read, NULL);
+	MMIO_DH(PIPEDSL(PIPE_C), D_ALL, pipe_dsl_mmio_read, NULL);
 	MMIO_D(PIPEDSL(_PIPE_EDP), D_ALL);
 
 	MMIO_DH(PIPECONF(PIPE_A), D_ALL, NULL, pipeconf_mmio_write);
