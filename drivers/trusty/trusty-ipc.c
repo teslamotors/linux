@@ -21,6 +21,7 @@
 #include <linux/poll.h>
 #include <linux/idr.h>
 #include <linux/completion.h>
+#include <linux/sched/signal.h>
 #include <linux/sched.h>
 #include <linux/compat.h>
 #include <linux/uio.h>
@@ -1549,7 +1550,7 @@ static int tipc_virtio_probe(struct virtio_device *vdev)
 	vds->cdev_name[sizeof(vds->cdev_name)-1] = '\0';
 
 	/* find tx virtqueues (rx and tx and in this order) */
-	err = vdev->config->find_vqs(vdev, 2, vqs, vq_cbs, vq_names);
+	err = vdev->config->find_vqs(vdev, 2, vqs, vq_cbs, vq_names, NULL);
 	if (err)
 		goto err_find_vqs;
 

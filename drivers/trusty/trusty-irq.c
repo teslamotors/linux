@@ -59,9 +59,12 @@ struct trusty_irq_state {
 	spinlock_t normal_irqs_lock;
 	struct trusty_irq_irqset __percpu *percpu_irqs;
 	struct notifier_block trusty_call_notifier;
-	struct notifier_block cpu_notifier;
+	/* CPU hotplug instances for online */
+	struct hlist_node node;
 	struct workqueue_struct *wq;
 };
+
+static enum cpuhp_state trusty_irq_online;
 
 #define TRUSTY_VMCALL_PENDING_INTR 0x74727505
 static inline void set_pending_intr_to_lk(uint8_t vector)
@@ -252,49 +255,30 @@ irqreturn_t trusty_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static void trusty_irq_cpu_up(void *info)
+static int trusty_irq_cpu_up(unsigned int cpu, struct hlist_node *node)
 {
 	unsigned long irq_flags;
-	struct trusty_irq_state *is = info;
+	struct trusty_irq_state *is = hlist_entry_safe(node, struct trusty_irq_state, node);
 
 	dev_dbg(is->dev, "%s: cpu %d\n", __func__, smp_processor_id());
 
 	local_irq_save(irq_flags);
 	trusty_irq_enable_irqset(is, this_cpu_ptr(is->percpu_irqs));
 	local_irq_restore(irq_flags);
+	return 0;
 }
 
-static void trusty_irq_cpu_down(void *info)
+static int trusty_irq_cpu_down(unsigned int cpu, struct hlist_node *node)
 {
 	unsigned long irq_flags;
-	struct trusty_irq_state *is = info;
+	struct trusty_irq_state *is = hlist_entry_safe(node, struct trusty_irq_state, node);
 
 	dev_dbg(is->dev, "%s: cpu %d\n", __func__, smp_processor_id());
 
 	local_irq_save(irq_flags);
 	trusty_irq_disable_irqset(is, this_cpu_ptr(is->percpu_irqs));
 	local_irq_restore(irq_flags);
-}
-
-static int trusty_irq_cpu_notify(struct notifier_block *nb,
-				 unsigned long action, void *hcpu)
-{
-	struct trusty_irq_state *is;
-
-	is = container_of(nb, struct trusty_irq_state, cpu_notifier);
-
-	dev_dbg(is->dev, "%s: 0x%lx\n", __func__, action);
-
-	switch (action & ~CPU_TASKS_FROZEN) {
-	case CPU_UP_PREPARE:
-		trusty_irq_cpu_up(is);
-		break;
-	case CPU_DEAD:
-		trusty_irq_cpu_down(is);
-		break;
-	}
-
-	return NOTIFY_OK;
+	return 0;
 }
 
 static int trusty_irq_create_irq_mapping(struct trusty_irq_state *is, int irq)
@@ -580,6 +564,20 @@ static void trusty_irq_free_irqs(struct trusty_irq_state *is)
 	} */
 }
 
+static int trusty_irq_cpu_notif_add(struct trusty_irq_state *is)
+{
+	int ret;
+
+	ret = cpuhp_state_add_instance(trusty_irq_online, &is->node);
+
+	return ret;
+}
+
+static void trusty_irq_cpu_notif_remove(struct trusty_irq_state *is)
+{
+	cpuhp_state_remove_instance(trusty_irq_online, &is->node);
+}
+
 static int trusty_irq_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -646,23 +644,14 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	for (irq = 0; irq >= 0;)
 		irq = trusty_irq_init_one(is, irq, false);
 
-	is->cpu_notifier.notifier_call = trusty_irq_cpu_notify;
-	ret = register_hotcpu_notifier(&is->cpu_notifier);
+	ret = trusty_irq_cpu_notif_add(is);
 	if (ret) {
 		dev_err(&pdev->dev, "register_cpu_notifier failed %d\n", ret);
 		goto err_register_hotcpu_notifier;
 	}
-	ret = on_each_cpu(trusty_irq_cpu_up, is, 0);
-	if (ret) {
-		dev_err(&pdev->dev, "register_cpu_notifier failed %d\n", ret);
-		goto err_on_each_cpu;
-	}
 
 	return 0;
 
-err_on_each_cpu:
-	unregister_hotcpu_notifier(&is->cpu_notifier);
-	on_each_cpu(trusty_irq_cpu_down, is, 1);
 err_register_hotcpu_notifier:
 	spin_lock_irqsave(&is->normal_irqs_lock, irq_flags);
 	trusty_irq_disable_irqset(is, &is->normal_irqs);
@@ -692,17 +681,13 @@ err_alloc_is:
 
 static int trusty_irq_remove(struct platform_device *pdev)
 {
-	int ret;
 	unsigned int cpu;
 	unsigned long irq_flags;
 	struct trusty_irq_state *is = platform_get_drvdata(pdev);
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
-	unregister_hotcpu_notifier(&is->cpu_notifier);
-	ret = on_each_cpu(trusty_irq_cpu_down, is, 1);
-	if (ret)
-		dev_err(&pdev->dev, "on_each_cpu failed %d\n", ret);
+	trusty_irq_cpu_notif_remove(is);
 	spin_lock_irqsave(&is->normal_irqs_lock, irq_flags);
 	trusty_irq_disable_irqset(is, &is->normal_irqs);
 	spin_unlock_irqrestore(&is->normal_irqs_lock, irq_flags);
@@ -742,8 +727,35 @@ static struct platform_driver trusty_irq_driver = {
 	},
 };
 
-module_platform_driver(trusty_irq_driver);
+static int __init trusty_irq_driver_init(void)
+{
+	int ret;
 
+	ret = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN, "x86/trustyirq:online",
+			trusty_irq_cpu_up, trusty_irq_cpu_down);
+	if (ret < 0)
+		goto out;
+	trusty_irq_online = ret;
+
+	ret = platform_driver_register(&trusty_irq_driver);
+	if (ret)
+		goto err_dead;
+
+	return 0;
+err_dead:
+	cpuhp_remove_multi_state(trusty_irq_online);
+out:
+	return ret;
+}
+
+static void __exit trusty_irq_driver_exit(void)
+{
+	cpuhp_remove_multi_state(trusty_irq_online);
+	platform_driver_unregister(&trusty_irq_driver);
+}
+
+module_init(trusty_irq_driver_init);
+module_exit(trusty_irq_driver_exit);
 
 MODULE_LICENSE("GPL v2");
 

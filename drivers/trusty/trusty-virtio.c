@@ -349,7 +349,8 @@ err_new_virtqueue:
 static int trusty_virtio_find_vqs(struct virtio_device *vdev, unsigned nvqs,
 				  struct virtqueue *vqs[],
 				  vq_callback_t *callbacks[],
-				  const char * const names[])
+				  const char * const names[],
+				  struct irq_affinity *desc)
 {
 	uint i;
 	int ret;
