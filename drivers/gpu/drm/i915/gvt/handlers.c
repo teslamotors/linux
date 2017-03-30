@@ -1379,6 +1379,16 @@ static int mailbox_write(struct intel_vgpu *vgpu, unsigned int offset,
 				*data0 = 0x1e1a1100;
 			else
 				*data0 = 0x61514b3d;
+		} else if(IS_BROXTON(vgpu->gvt->dev_priv)) {
+			/**
+			 * "Read memory latency" command on gen9.
+			 * Below memory latency values are read
+			 * from broxton MRB.
+			 */
+			if (!*data0)
+				*data0 = 0x16080707;
+			else
+				*data0 = 0x16161616;
 		}
 		break;
 	case SKL_PCODE_CDCLK_CONTROL:
