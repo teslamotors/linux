@@ -60,6 +60,14 @@ static const struct snd_soc_dapm_widget cnl_rt274_widgets[] = {
 	SND_SOC_DAPM_MIC("SoC DMIC", NULL),
 };
 
+static const struct snd_soc_pcm_stream dai_params_codec = {
+	.formats = SNDRV_PCM_FMTBIT_S24_LE,
+	.rate_min = 48000,
+	.rate_max = 48000,
+	.channels_min = 2,
+	.channels_max = 2,
+};
+
 static int cnl_dmic_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
 {
@@ -285,6 +293,20 @@ struct snd_soc_dai_link cnl_rt274_msic_dailink[] = {
 		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.be_hw_params_fixup = cnl_dmic_fixup,
+	},
+	/* codec-codec link */
+	{
+		.name = "CNL SSP0-Loop Port",
+		.stream_name = "CNL SSP0-Loop",
+		.cpu_dai_name = "SSP0 Pin",
+		.platform_name = pname,
+		.codec_name = cname,
+		.codec_dai_name = "rt274-aif1",
+		.params = &dai_params_codec,
+		.dsp_loopback = true,
+		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
 	},
 };
 
