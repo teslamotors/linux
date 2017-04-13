@@ -21,6 +21,18 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/pxa2xx_spi.h>
 #include <linux/pwm.h>
+#include <linux/pinctrl/machine.h>
+#include <linux/pinctrl/pinconf-generic.h>
+
+/* Ideally, pin mappings should be provided by ACPI */
+static const struct pinctrl_map uart2_mappings[] __initconst = {
+	PIN_MAP_MUX_GROUP("dw-apb-uart.10", PINCTRL_STATE_INIT, "INT3452:00",
+			  "uart2_in_gpio_grp", "uart2_gpio"),
+	PIN_MAP_MUX_GROUP("dw-apb-uart.10", PINCTRL_STATE_DEFAULT, "INT3452:00",
+			  "uart2_in_uart_grp", "uart2_uart"),
+	PIN_MAP_MUX_GROUP("dw-apb-uart.10", PINCTRL_STATE_SLEEP, "INT3452:00",
+			  "uart2_in_gpio_grp", "uart2_gpio"),
+};
 
 static struct pxa2xx_spi_chip chip_data = {
 	.gpio_cs = -EINVAL,
@@ -131,4 +143,12 @@ exit:
 	return ret;
 }
 arch_initcall(apl_board_init);
+
+static int __init uart2_init(void)
+{
+	return pinctrl_register_mappings(uart2_mappings,
+					 ARRAY_SIZE(uart2_mappings));
+}
+postcore_initcall(uart2_init);
+
 MODULE_LICENSE("GPL v2");
