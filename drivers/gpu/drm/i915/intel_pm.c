@@ -6113,7 +6113,20 @@ static u32 intel_rps_limits(struct drm_i915_private *dev_priv, u8 val)
 	 * frequency, if the down threshold expires in that window we will not
 	 * receive a down interrupt. */
 	if (INTEL_GEN(dev_priv) >= 9) {
-		limits = (dev_priv->rps.max_freq_softlimit) << 23;
+		int max_freq = dev_priv->rps.max_freq_softlimit;
+		int rp0_freq = dev_priv->rps.rp0_freq;
+
+		if (IS_GEN9_LP(dev_priv) && (max_freq == rp0_freq))
+			/*
+			 * For GEN9_LP, it is suggested to increase the upper
+			 * interrupt limiter by 1 (16.6MHz) so that the HW will
+			 * generate an interrupt when we are near or just below
+			 * the upper limit.
+			 */
+			limits = (dev_priv->rps.max_freq_softlimit + 1) << 23;
+		else
+			limits = (dev_priv->rps.max_freq_softlimit) << 23;
+
 		if (val <= dev_priv->rps.min_freq_softlimit)
 			limits |= (dev_priv->rps.min_freq_softlimit) << 14;
 	} else {
