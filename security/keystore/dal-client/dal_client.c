@@ -34,14 +34,13 @@ int create_session(void)
 {
 	int ret = 0;
 
-	ret = dal_create_session(dal_hdr.handle, &(dal_hdr.session_handle),
+	ret = dal_create_session(&(dal_hdr.session_handle),
 		CONFIG_DAL_KEYSTORE_APPLET_ID, dal_hdr.acp_pkg,
 		dal_hdr.acp_pkg_len, NULL, 0);
 
 	if (ret != DAL_KDI_SUCCESS) {
 		ks_err(KBUILD_MODNAME ": %s dal_create_session failed\n",
 					__func__);
-		kdi_deinit(dal_hdr.handle);
 		return ret;
 	} else {
 		ks_debug(KBUILD_MODNAME ": %s dal_create_session succeeded\n",
@@ -58,12 +57,6 @@ int install_applet(void)
 	size_t acp_pkg_len = 0;
 
 	dal_hdr.state = DAL_KSM_INIT;
-	ret = kdi_init(0, &(dal_hdr.handle));
-	if (ret != DAL_KDI_SUCCESS) {
-		ks_err(KBUILD_MODNAME ": %s kdi_init failed\n", __func__);
-		return ret;
-	}
-
 	ret = read_keystore_applet(CONFIG_DAL_KEYSTORE_APPLET_PATH, &acp_pkg,
 		&acp_pkg_len);
 	if (ret != 0)
@@ -93,7 +86,7 @@ int send_and_receive(size_t command_id, const u8 *input, size_t input_len,
 	int ret = 0;
 
 	/* output_len can not be 0 */
-	ret = dal_send_and_receive(dal_hdr.handle, dal_hdr.session_handle,
+	ret = dal_send_and_receive(dal_hdr.session_handle,
 	command_id, input, input_len, output, output_len, (int *)response_code);
 
 	if (ret != DAL_KDI_SUCCESS) {
@@ -114,7 +107,7 @@ int close_session(void)
 {
 	int ret = 0;
 
-	ret = dal_close_session(dal_hdr.handle, dal_hdr.session_handle);
+	ret = dal_close_session(dal_hdr.session_handle);
 	if (ret != DAL_KDI_SUCCESS)
 		ks_err(KBUILD_MODNAME ": %s dal_close_session failed\n",
 					__func__);
@@ -124,8 +117,3 @@ int close_session(void)
 	return ret;
 }
 
-void uninstall_kdi(void)
-{
-	kdi_deinit(dal_hdr.handle);
-	dal_hdr.state = DAL_KSM_DEINIT;
-}

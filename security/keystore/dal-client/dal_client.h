@@ -49,7 +49,6 @@ typedef enum {
 
 struct dal_hdr_t {
 	dal_state state;
-	u64 handle;
 	u64 session_handle;
 	u8 *acp_pkg;
 	size_t acp_pkg_len;
@@ -105,11 +104,6 @@ int send_and_receive(size_t command_id, const u8 *input, size_t input_len,
  * Closes DAL session using DAL KDI API.
  */
 int close_session(void);
-
-/**
- * Uninstall DAL KDI.
- */
-void uninstall_kdi(void);
 #endif /* _DAL_CLIENT_H_ */
 
 
