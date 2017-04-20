@@ -918,6 +918,11 @@ S:	Supported
 F:	security/apparmor/
 F:	Documentation/admin-guide/LSM/apparmor.rst
 
+APOLLO_LAKE_I GENERIC DUMMY CODEC DRIVER
+M:	Vinod Kumar <vinod.kumarx.vinod.kumar@intel.com>
+S:	Maintained
+F:	sound/soc/intel/boards/apli_lhcrb_generic.c
+
 APPLE BCM5974 MULTITOUCH DRIVER
 M:	Henrik Rydberg <rydberg@bitmath.org>
 L:	linux-input@vger.kernel.org
