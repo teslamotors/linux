@@ -110,11 +110,11 @@ static struct platform_driver acpi_wmi_driver = {
 
 static bool find_guid(const char *guid_string, struct wmi_block **out)
 {
-	uuid_le guid_input;
+	guid_t guid_input;
 	struct wmi_block *wblock;
 	struct guid_block *block;
 
-	if (uuid_le_to_bin(guid_string, &guid_input))
+	if (guid_parse(guid_string, &guid_input))
 		return false;
 
 	list_for_each_entry(wblock, &wmi_block_list, list) {
@@ -133,7 +133,7 @@ static const void *find_guid_context(struct wmi_block *wblock,
 				      struct wmi_driver *wdriver)
 {
 	const struct wmi_device_id *id;
-	uuid_le guid_input;
+	guid_t guid_input;
 
 	if (wblock == NULL || wdriver == NULL)
 		return NULL;
@@ -142,7 +142,7 @@ static const void *find_guid_context(struct wmi_block *wblock,
 
 	id = wdriver->id_table;
 	while (*id->guid_string) {
-		if (uuid_le_to_bin(id->guid_string, &guid_input))
+		if (guid_parse(id->guid_string, &guid_input))
 			continue;
 		if (!memcmp(wblock->gblock.guid, &guid_input, 16))
 			return id->context;
@@ -526,12 +526,12 @@ wmi_notify_handler handler, void *data)
 {
 	struct wmi_block *block;
 	acpi_status status = AE_NOT_EXIST;
-	uuid_le guid_input;
+	guid_t guid_input;
 
 	if (!guid || !handler)
 		return AE_BAD_PARAMETER;
 
-	if (uuid_le_to_bin(guid, &guid_input))
+	if (guid_parse(guid, &guid_input))
 		return AE_BAD_PARAMETER;
 
 	list_for_each_entry(block, &wmi_block_list, list) {
@@ -565,12 +565,12 @@ acpi_status wmi_remove_notify_handler(const char *guid)
 {
 	struct wmi_block *block;
 	acpi_status status = AE_NOT_EXIST;
-	uuid_le guid_input;
+	guid_t guid_input;
 
 	if (!guid)
 		return AE_BAD_PARAMETER;
 
-	if (uuid_le_to_bin(guid, &guid_input))
+	if (guid_parse(guid, &guid_input))
 		return AE_BAD_PARAMETER;
 
 	list_for_each_entry(block, &wmi_block_list, list) {
@@ -801,9 +801,9 @@ static int wmi_dev_match(struct device *dev, struct device_driver *driver)
 		return 0;
 
 	while (*id->guid_string) {
-		uuid_le driver_guid;
+		guid_t driver_guid;
 
-		if (WARN_ON(uuid_le_to_bin(id->guid_string, &driver_guid)))
+		if (WARN_ON(guid_parse(id->guid_string, &driver_guid)))
 			continue;
 		if (!memcmp(&driver_guid, wblock->gblock.guid, 16))
 			return 1;
