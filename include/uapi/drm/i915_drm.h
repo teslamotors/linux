@@ -1395,6 +1395,7 @@ struct drm_i915_gem_context_param {
 #define   I915_CONTEXT_MAX_USER_PRIORITY	1023 /* inclusive */
 #define   I915_CONTEXT_DEFAULT_PRIORITY		0
 #define   I915_CONTEXT_MIN_USER_PRIORITY	-1023 /* inclusive */
+#define I915_CONTEXT_PARAM_WATCHDOG	0x7
 	__u64 value;
 };
 
