@@ -177,6 +177,8 @@ struct intel_guc {
 	DECLARE_BITMAP(doorbell_bitmap, GUC_NUM_DOORBELLS);
 	uint32_t db_cacheline;		/* Cyclic counter mod pagesize	*/
 
+	uint32_t shared_data_offset;    /* First page of default ctx */
+
 	/* GuC's FW specific registers used in MMIO send */
 	struct {
 		u32 base;
