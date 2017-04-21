@@ -2285,6 +2285,10 @@ enum i915_power_well_id {
 #define RING_START(base)	_MMIO((base)+0x38)
 #define RING_CTL(base)		_MMIO((base)+0x3c)
 #define   RING_CTL_SIZE(size)	((size) - PAGE_SIZE) /* in bytes -> pages */
+#define RING_CNTR(base)		_MMIO((base) + 0x178)
+#define   GEN9_WATCHDOG_ENABLE		0
+#define   GEN9_WATCHDOG_DISABLE		1
+#define RING_THRESH(base)      _MMIO((base) + 0x17C)
 #define RING_SYNC_0(base)	_MMIO((base)+0x40)
 #define RING_SYNC_1(base)	_MMIO((base)+0x44)
 #define RING_SYNC_2(base)	_MMIO((base)+0x48)
@@ -2774,6 +2778,7 @@ enum i915_power_well_id {
 #define GT_BSD_USER_INTERRUPT			(1 << 12)
 #define GT_RENDER_L3_PARITY_ERROR_INTERRUPT_S1	(1 << 11) /* hsw+; rsvd on snb, ivb, vlv */
 #define GT_CONTEXT_SWITCH_INTERRUPT		(1 <<  8)
+#define GT_GEN9_WATCHDOG_INTERRUPT		(1 <<  6) /* gen9+ */
 #define GT_RENDER_L3_PARITY_ERROR_INTERRUPT	(1 <<  5) /* !snb */
 #define GT_RENDER_PIPECTL_NOTIFY_INTERRUPT	(1 <<  4)
 #define GT_RENDER_CS_MASTER_ERROR_INTERRUPT	(1 <<  3)
