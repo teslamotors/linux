@@ -6,6 +6,7 @@ menu "Trusty"
 
 config TRUSTY
 	tristate "Trusty"
+	depends on X86
 	default n
 
 config TRUSTY_FIQ
