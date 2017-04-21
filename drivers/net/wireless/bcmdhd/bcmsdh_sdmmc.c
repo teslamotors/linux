@@ -62,14 +62,7 @@ static void IRQHandler(struct sdio_func *func);
 static void IRQHandlerF2(struct sdio_func *func);
 #endif /* !defined(OOB_INTR_ONLY) */
 static int sdioh_sdmmc_get_cisaddr(sdioh_info_t *sd, uint32 regaddr);
-#if 0 
 extern int sdio_reset_comm(struct mmc_card *card);
-#else
-int sdio_reset_comm(struct mmc_card *card)
-{
-	return 0;
-}
-#endif
 
 #define DEFAULT_SDIO_F2_BLKSIZE		512
 #ifndef CUSTOM_SDIO_F2_BLKSIZE
