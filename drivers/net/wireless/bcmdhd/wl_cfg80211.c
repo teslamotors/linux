@@ -1325,10 +1325,12 @@ wl_validate_wps_ie(char *wps_ie, s32 wps_ie_len, bool *pbc)
 		} else if (subelt_id == WPS_ID_DEVICE_NAME) {
 			char devname[100];
 			size_t namelen = MIN(subelt_len, sizeof(devname));
-			memcpy(devname, subel, namelen);
-			devname[namelen-1] = '\0';
-			WL_DBG(("  attr WPS_ID_DEVICE_NAME: %s (len %u)\n",
-				devname, subelt_len));
+			if (namelen) {
+				memcpy(devname, subel, namelen);
+				devname[namelen - 1] = '\0';
+				WL_DBG(("  attr WPS_ID_DEVICE_NAME: %s (len %u)\n",
+					devname, subelt_len));
+			}
 		} else if (subelt_id == WPS_ID_DEVICE_PWD_ID) {
 			valptr[0] = *subel;
 			valptr[1] = *(subel + 1);
