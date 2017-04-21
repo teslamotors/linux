@@ -967,10 +967,17 @@ static int guc_ads_create(struct intel_guc *guc)
 	/* MMIO reg state */
 	for_each_engine(engine, dev_priv, id) {
 		blob->reg_state.white_list[engine->guc_id].mmio_start =
-			engine->mmio_base + GUC_MMIO_WHITE_LIST_START;
+			i915_mmio_reg_offset(RING_FORCE_TO_NONPRIV(engine->mmio_base, 0));
+
+		/*
+		 * Note: if the GuC whitelist management is enabled, the values
+		 * should be filled using the workaround framework to avoid
+		 * inconsistencies with the handling of FORCE_TO_NONPRIV
+		 * registers.
+		 */
+		blob->reg_state.white_list[engine->guc_id].count = 0;
 
 		/* Nothing to be saved or restored for now. */
-		blob->reg_state.white_list[engine->guc_id].count = 0;
 	}
 
 	/*
