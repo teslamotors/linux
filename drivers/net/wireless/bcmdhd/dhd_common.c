@@ -2264,7 +2264,7 @@ wl_host_event_get_data(void *pktdata, wl_event_msg_t *event, void **data_ptr)
 }
 
 int
-wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
+wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, size_t pktlen,
 	wl_event_msg_t *event, void **data_ptr, void *raw_event)
 {
 	bcm_event_t *pvt_data;
@@ -2279,14 +2279,24 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 		return ret;
 	}
 
+	if (pktlen < sizeof(bcm_event_t))
+		return (BCME_ERROR);
+
 	pvt_data = (bcm_event_t *)pktdata;
 	event_data = *data_ptr;
 
 	type = ntoh32_ua((void *)&event->event_type);
 	flags = ntoh16_ua((void *)&event->flags);
 	status = ntoh32_ua((void *)&event->status);
+
 	datalen = ntoh32_ua((void *)&event->datalen);
+	if (datalen > pktlen)
+		return (BCME_ERROR);
+
 	evlen = datalen + sizeof(bcm_event_t);
+	if (evlen > pktlen) {
+		return (BCME_ERROR);
+	}
 
 	switch (type) {
 #ifdef PROP_TXSTATUS

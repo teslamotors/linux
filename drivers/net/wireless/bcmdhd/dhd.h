@@ -1066,7 +1066,7 @@ extern int net_os_send_hang_message(struct net_device *dev);
 extern int net_os_send_hang_message_reason(struct net_device *dev, const char *string_num);
 extern bool dhd_wowl_cap(void *bus);
 
-extern int wl_host_event(dhd_pub_t *dhd_pub, int *idx, void *pktdata,
+extern int wl_host_event(dhd_pub_t *dhd_pub, int *idx, void *pktdata, size_t pktlen,
                          wl_event_msg_t *, void **data_ptr,  void *);
 extern void wl_event_to_host_order(wl_event_msg_t * evt);
 extern int wl_host_event_get_data(void *pktdata, wl_event_msg_t *event, void **data_ptr);
