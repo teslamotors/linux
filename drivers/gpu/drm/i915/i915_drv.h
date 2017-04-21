@@ -3772,6 +3772,35 @@ i915_gem_context_lookup_timeline(struct i915_gem_context *ctx,
 	return &vm->timeline.engine[engine->id];
 }
 
+/*
+ * BDW & SKL+ Timestamp timer resolution = 0.080 uSec,
+ * or 12500000 counts per second, or ~12 counts per microsecond.
+ *
+ * But Broxton Timestamp timer resolution is different, 0.052 uSec,
+ * or 19200000 counts per second, or ~19 counts per microsecond.
+ */
+#define SKL_TIMESTAMP_CNTS_PER_USEC 12
+#define BXT_TIMESTAMP_CNTS_PER_USEC 19
+#define TIMESTAMP_CNTS_PER_USEC(dev_priv) (IS_BROXTON(dev_priv) ? \
+					   BXT_TIMESTAMP_CNTS_PER_USEC : \
+					   SKL_TIMESTAMP_CNTS_PER_USEC)
+static inline u32
+watchdog_to_us(struct drm_i915_private *dev_priv, u32 value_in_clock_counts)
+{
+	return value_in_clock_counts / TIMESTAMP_CNTS_PER_USEC(dev_priv);
+}
+
+static inline u32
+watchdog_to_clock_counts(struct drm_i915_private *dev_priv, u64 value_in_us)
+{
+	u64 threshold = value_in_us * TIMESTAMP_CNTS_PER_USEC(dev_priv);
+
+	if (overflows_type(threshold, u32))
+		return -EINVAL;
+
+	return threshold;
+}
+
 int i915_perf_open_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *file);
 int i915_perf_add_config_ioctl(struct drm_device *dev, void *data,
