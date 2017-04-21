@@ -1809,6 +1809,8 @@ static int gen8_emit_bb_start(struct drm_i915_gem_request *req,
 			      const unsigned int flags)
 {
 	u32 *cs;
+	u32 num_dwords;
+	bool watchdog_running = false;
 	int ret;
 
 	/* Don't rely in hw updating PDPs, specially in lite-restore.
@@ -1828,12 +1830,31 @@ static int gen8_emit_bb_start(struct drm_i915_gem_request *req,
 		req->ctx->ppgtt->pd_dirty_rings &= ~intel_engine_flag(req->engine);
 	}
 
-	cs = intel_ring_begin(req, 4);
+	/* bb_start only */
+	num_dwords = 4;
+
+	/* check if watchdog will be required */
+	if (req->ctx->engine[req->engine->id].watchdog_threshold != 0) {
+		if (!req->engine->emit_start_watchdog ||
+		    !req->engine->emit_stop_watchdog)
+			return -EINVAL;
+
+		/* + start_watchdog (6) + stop_watchdog (4) */
+		num_dwords += 10;
+		watchdog_running = true;
+	}
+
+	cs = intel_ring_begin(req, num_dwords);
 	if (IS_ERR(cs))
 		return PTR_ERR(cs);
 
 	/* WaDisableCtxRestoreArbitration:bdw,chv */
 	*cs++ = MI_ARB_ON_OFF | MI_ARB_ENABLE;
+
+	if (watchdog_running) {
+		/* Start watchdog timer */
+		cs = req->engine->emit_start_watchdog(req, cs);
+	}
 
 	/* FIXME(BDW): Address space and security selectors. */
 	*cs++ = MI_BATCH_BUFFER_START_GEN8 |
@@ -1841,8 +1862,13 @@ static int gen8_emit_bb_start(struct drm_i915_gem_request *req,
 		(flags & I915_DISPATCH_RS ? MI_BATCH_RESOURCE_STREAMER : 0);
 	*cs++ = lower_32_bits(offset);
 	*cs++ = upper_32_bits(offset);
-	intel_ring_advance(req, cs);
 
+	if (watchdog_running) {
+		/* Cancel watchdog timer */
+		cs = req->engine->emit_stop_watchdog(req, cs);
+	}
+
+	intel_ring_advance(req, cs);
 	return 0;
 }
 
@@ -1960,6 +1986,51 @@ static int gen8_emit_flush_render(struct drm_i915_gem_request *request,
 	intel_ring_advance(request, cs);
 
 	return 0;
+}
+
+static u32 *gen9_emit_start_watchdog(struct drm_i915_gem_request *req,
+				     u32 *cs)
+{
+	struct intel_engine_cs *engine = req->engine;
+	struct i915_gem_context *ctx = req->ctx;
+	struct intel_context *ce = &ctx->engine[engine->id];
+
+	/* XXX: no watchdog support in BCS engine */
+	GEM_BUG_ON(engine->id == BCS);
+
+	/*
+	 * watchdog register must never be programmed to zero. This would
+	 * cause the watchdog counter to exceed and not allow the engine to
+	 * go into IDLE state
+	 */
+	GEM_BUG_ON(ce->watchdog_threshold == 0);
+
+	/* Set counter period */
+	*cs++ = MI_LOAD_REGISTER_IMM(2);
+	*cs++ = i915_mmio_reg_offset(RING_THRESH(engine->mmio_base));
+	*cs++ = ce->watchdog_threshold;
+	/* Start counter */
+	*cs++ = i915_mmio_reg_offset(RING_CNTR(engine->mmio_base));
+	*cs++ = GEN9_WATCHDOG_ENABLE;
+	*cs++ = MI_NOOP;
+
+	return cs;
+}
+
+static u32 *gen9_emit_stop_watchdog(struct drm_i915_gem_request *req,
+				    u32 *cs)
+{
+	struct intel_engine_cs *engine = req->engine;
+
+	/* XXX: no watchdog support in BCS engine */
+	GEM_BUG_ON(engine->id == BCS);
+
+	*cs++ = MI_LOAD_REGISTER_IMM(1);
+	*cs++ = i915_mmio_reg_offset(RING_CNTR(engine->mmio_base));
+	*cs++ = GEN9_WATCHDOG_DISABLE;
+	*cs++ = MI_NOOP;
+
+	return cs;
 }
 
 /*
@@ -2111,6 +2182,18 @@ logical_ring_default_irqs(struct intel_engine_cs *engine)
 	unsigned shift = engine->irq_shift;
 	engine->irq_enable_mask = GT_RENDER_USER_INTERRUPT << shift;
 	engine->irq_keep_mask = GT_CONTEXT_SWITCH_INTERRUPT << shift;
+
+	switch (engine->id) {
+	default:
+		/* BCS engine does not support hw watchdog */
+		break;
+	case RCS:
+	case VCS:
+	case VCS2:
+	case VECS:
+		engine->irq_keep_mask |= (GT_GEN9_WATCHDOG_INTERRUPT << shift);
+		break;
+	}
 }
 
 static void i915_error_reset(struct work_struct *work) {
@@ -2190,6 +2273,10 @@ int logical_render_ring_init(struct intel_engine_cs *engine)
 	engine->emit_flush = gen8_emit_flush_render;
 	engine->emit_breadcrumb = gen8_emit_breadcrumb_render;
 	engine->emit_breadcrumb_sz = gen8_emit_breadcrumb_render_sz;
+	if (INTEL_GEN(dev_priv) >= 9) {
+		engine->emit_start_watchdog = gen9_emit_start_watchdog;
+		engine->emit_stop_watchdog = gen9_emit_stop_watchdog;
+	}
 
 	ret = intel_engine_create_scratch(engine, PAGE_SIZE);
 	if (ret)
@@ -2211,7 +2298,15 @@ int logical_render_ring_init(struct intel_engine_cs *engine)
 
 int logical_xcs_ring_init(struct intel_engine_cs *engine)
 {
+	struct drm_i915_private *dev_priv = engine->i915;
+
 	logical_ring_setup(engine);
+
+	/* BCS engine does not have a watchdog-expired irq */
+	if (engine->id != BCS && INTEL_GEN(dev_priv) >= 9) {
+		engine->emit_start_watchdog = gen9_emit_start_watchdog;
+		engine->emit_stop_watchdog = gen9_emit_stop_watchdog;
+	}
 
 	return logical_ring_init(engine);
 }
