@@ -378,12 +378,9 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 	host_cpr_params.s_fmt = 32;
 	host_cpr_params.linktype = 0;
 	host_cpr_params.stream = 0;
+	host_cpr_cfg.id.module_id = skl_get_module_id(ctx,
+					(uuid_le *)host_cpr_cfg.guid);
 
-#if IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
-	host_cpr_cfg.id.module_id = 3;
-#else
-	host_cpr_cfg.id.module_id = 4;
-#endif
 	host_cpr_cfg.id.instance_id = 1;
 	host_cpr_cfg.id.pvt_id = skl_get_pvt_id(ctx,
 		(uuid_le *)host_cpr_cfg.guid, host_cpr_cfg.id.instance_id);
@@ -612,12 +609,9 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 	link_cpr_params.s_fmt = 32;
 	link_cpr_params.linktype = 0;
 	link_cpr_params.stream = 0;
+	host_cpr_cfg.id.module_id = skl_get_module_id(ctx,
+					(uuid_le *)host_cpr_cfg.guid);
 
-#if IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
-	link_cpr_cfg.id.module_id = 3;
-#else
-	link_cpr_cfg.id.module_id = 4;
-#endif
 	link_cpr_cfg.id.instance_id = 3;
 	link_cpr_cfg.id.pvt_id = skl_get_pvt_id(ctx,
 		(uuid_le *)link_cpr_cfg.guid, link_cpr_cfg.id.instance_id);

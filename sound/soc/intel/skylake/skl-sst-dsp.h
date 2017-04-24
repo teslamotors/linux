@@ -280,6 +280,7 @@ int bxt_load_library(struct sst_dsp *ctx, struct skl_lib_info *linfo, int lib_co
 
 int snd_skl_parse_uuids(struct sst_dsp *ctx, const struct firmware *fw,
 				unsigned int offset, int index);
+int skl_get_module_id(struct skl_sst *ctx, uuid_le *uuid_mod);
 int skl_get_pvt_id(struct skl_sst *ctx, uuid_le *uuid_mod, int instance_id);
 int skl_put_pvt_id(struct skl_sst *ctx, uuid_le *uuid_mod, int *pvt_id);
 int skl_get_pvt_instance_id_map(struct skl_sst *ctx,

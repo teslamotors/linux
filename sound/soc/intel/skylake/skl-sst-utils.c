@@ -137,6 +137,18 @@ static int skl_get_pvtid_map(struct uuid_module *module, int instance_id)
 	return -EINVAL;
 }
 
+int skl_get_module_id(struct skl_sst *ctx, uuid_le *uuid_mod)
+{
+	struct uuid_module *module;
+
+	list_for_each_entry(module, &ctx->uuid_list, list) {
+		if (uuid_le_cmp(*uuid_mod, module->uuid) == 0)
+			return module->id;
+	}
+	return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(skl_get_module_id);
+
 int skl_get_pvt_instance_id_map(struct skl_sst *ctx,
 				int module_id, int instance_id)
 {
