@@ -59,6 +59,9 @@ static const int mic_quatro_list[][SKL_CH_QUATRO] = {
 #define CHECK_HW_PARAMS(ch, freq, bps, prm_ch, prm_freq, prm_bps) \
 	((ch == prm_ch) && (bps == prm_bps) && (freq == prm_freq))
 
+static void skl_init_single_module_pipe(struct snd_soc_dapm_widget *w,
+						struct skl *skl);
+
 void skl_tplg_d0i3_get(struct skl *skl, enum d0i3_capability caps)
 {
 	struct skl_d0i3_data *d0i3 =  &skl->skl_sst->d0i3;
@@ -878,6 +881,17 @@ static int skl_tplg_mixer_dapm_pre_pmu_event(struct snd_soc_dapm_widget *w,
 	struct skl_sst *ctx = skl->skl_sst;
 	struct skl_module_deferred_bind *modules;
 
+	if (mconfig->pipe->state >= SKL_PIPE_CREATED)
+		return 0;
+
+	/*
+	 * This will check for single module in source pipeline. If single
+	 * module pipeline  exists then its going to create source pipeline
+	 * first. This will handle/satisfy source-to-sink pipeline creation
+	 * scenario for single module in any stream
+	 */
+	skl_init_single_module_pipe(w, skl);
+
 	ret = skl_tplg_get_pipe_config(skl, mconfig);
 	if (ret < 0)
 		return ret;
@@ -938,6 +952,54 @@ static int skl_tplg_mixer_dapm_pre_pmu_event(struct snd_soc_dapm_widget *w,
 	}
 
 	return 0;
+}
+
+/*
+ * This function returns pipe order in given stream
+ */
+static int skl_get_pipe_order(struct skl_module_cfg *mcfg)
+{
+	struct skl_pipe *pipe = mcfg->pipe;
+
+	switch (pipe->conn_type) {
+	case SKL_PIPE_CONN_TYPE_FE:
+		if (pipe->direction == SNDRV_PCM_STREAM_CAPTURE)
+			return SKL_LAST_PIPE;
+		else if (pipe->direction == SNDRV_PCM_STREAM_PLAYBACK)
+			return SKL_FIRST_PIPE;
+		break;
+	case SKL_PIPE_CONN_TYPE_BE:
+		if (pipe->direction == SNDRV_PCM_STREAM_PLAYBACK)
+			return SKL_LAST_PIPE;
+		else if (pipe->direction == SNDRV_PCM_STREAM_CAPTURE)
+			return SKL_FIRST_PIPE;
+		break;
+	}
+	return SKL_INTERMEDIATE_PIPE;
+}
+
+/*
+ * This function checks for single module source pipeline. If found any then
+ * it will initialize source pipeline and its module
+ */
+static void skl_init_single_module_pipe(struct snd_soc_dapm_widget *w,
+							struct skl *skl)
+{
+	struct snd_soc_dapm_path *p;
+	struct snd_soc_dapm_widget *src_w = NULL;
+	struct skl_module_cfg *mcfg;
+
+	snd_soc_dapm_widget_for_each_source_path(w, p) {
+		src_w = p->source;
+
+		if ((src_w->priv != NULL) && is_skl_dsp_widget_type(src_w)) {
+			mcfg = src_w->priv;
+			if ((list_is_singular(&mcfg->pipe->w_list)) &&
+						(src_w->power_check(src_w)))
+				skl_tplg_mixer_dapm_pre_pmu_event(src_w, skl);
+		}
+		skl_init_single_module_pipe(src_w, skl);
+	}
 }
 
 static int skl_fill_sink_instance_id(struct skl_sst *ctx, u32 *params,
@@ -1481,6 +1543,43 @@ static int skl_tplg_pga_event(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
+
+/*
+ * In modelling, we assumed that all single module will be PGA leaf. Have
+ * added new event flag POST_PMU. PRE_PMU is going to handle dynamic connection
+ * i.e (dynamic FE or BE connection to already running stream). POST_PMU will
+ * handle the pipeline binding and running from sink to source. POST_PMD
+ * will handle the cleanup of single module pipe.
+ */
+static int skl_tplg_pga_single_module_event(struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *k, int event)
+
+{
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct skl *skl = get_skl_ctx(dapm->dev);
+	struct skl_module_cfg *mcfg = w->priv;
+	int ret;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		ret = skl_tplg_mixer_dapm_pre_pmu_event(w, skl);
+		if ((skl_get_pipe_order(mcfg) == SKL_LAST_PIPE) && (ret == 0))
+			ret = skl_tplg_mixer_dapm_post_pmu_event(w, skl);
+		return ret;
+
+	case SND_SOC_DAPM_POST_PMU:
+		return skl_tplg_pga_dapm_pre_pmu_event(w, skl);
+
+	case SND_SOC_DAPM_POST_PMD:
+		ret = skl_tplg_pga_dapm_post_pmd_event(w, skl);
+		if (ret >= 0)
+			ret = skl_tplg_mixer_dapm_post_pmd_event(w, skl);
+		return ret;
+	}
+
+	return 0;
+}
+
 int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
@@ -3661,6 +3760,40 @@ static int skl_manifest_load(struct snd_soc_component *cmpnt,
 	return 0;
 }
 
+/*
+ * This function updates the event flag and fucntiona handler for single module
+ */
+static void skl_update_single_module_event(struct skl *skl,
+					struct skl_pipe *pipe)
+{
+	struct skl_module_cfg *mcfg;
+	struct skl_pipe_module *w_module;
+	struct snd_soc_dapm_widget *w;
+
+	list_for_each_entry(w_module, &pipe->w_list, node) {
+		w = w_module->w;
+		mcfg = w->priv;
+
+		if (list_is_singular(&pipe->w_list)) {
+
+			/*
+			 * If module pipe order is last then we dont need
+			 * POST_PMU, as POST_PMU bind/run sink to source.
+			 * For last pipe order there is no sink pipelne.
+			 */
+			if (skl_get_pipe_order(mcfg) == SKL_LAST_PIPE)
+				w->event_flags = SND_SOC_DAPM_PRE_PMU |
+						 SND_SOC_DAPM_POST_PMD;
+			else
+				w->event_flags = SND_SOC_DAPM_PRE_PMU |
+						 SND_SOC_DAPM_POST_PMU |
+						 SND_SOC_DAPM_POST_PMD;
+
+			w->event = skl_tplg_pga_single_module_event;
+		}
+	}
+}
+
 static struct snd_soc_tplg_ops skl_tplg_ops  = {
 	.widget_load = skl_tplg_widget_load,
 	.control_load = skl_tplg_control_load,
@@ -3775,6 +3908,9 @@ int skl_tplg_init(struct snd_soc_platform *platform, struct hdac_ext_bus *ebus)
 
 	list_for_each_entry(ppl, &skl->ppl_list, node)
 		skl_tplg_set_pipe_type(skl, ppl->pipe);
+
+	list_for_each_entry(ppl, &skl->ppl_list, node)
+		skl_update_single_module_event(skl, ppl->pipe);
 
 	return 0;
 }
