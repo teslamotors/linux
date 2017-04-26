@@ -540,6 +540,12 @@ int i915_gem_context_set_watchdog(struct i915_gem_context *ctx,
 	if (threshold[BCS] != 0)
 		return -EINVAL;
 
+	/* Watchdog reset on RCS is not fully validated so quietly disable */
+	if (threshold[RCS] != 0) {
+		threshold[RCS] = 0;
+		DRM_WARN("Ignoring RCS watchdog enabling request\n");
+	}
+
 	for_each_engine(engine, dev_priv, id) {
 		threshold[id] = watchdog_to_clock_counts(dev_priv,
 							 threshold[id]);
