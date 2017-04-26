@@ -1694,17 +1694,9 @@ static int gen8_reset_engine_start(struct intel_engine_cs *engine)
 					 RESET_CTL_READY_TO_RESET,
 					 700);
 	if (ret)
-		DRM_ERROR("%s: reset request timeout\n", engine->name);
+		DRM_WARN("%s: reset request timeout\n", engine->name);
 
 	return ret;
-}
-
-static void gen8_reset_engine_cancel(struct intel_engine_cs *engine)
-{
-	struct drm_i915_private *dev_priv = engine->i915;
-
-	I915_WRITE_FW(RING_RESET_CTL(engine->mmio_base),
-		      _MASKED_BIT_DISABLE(RESET_CTL_REQUEST_RESET));
 }
 
 static int gen8_reset_engines(struct drm_i915_private *dev_priv,
@@ -1715,15 +1707,9 @@ static int gen8_reset_engines(struct drm_i915_private *dev_priv,
 
 	for_each_engine_masked(engine, dev_priv, engine_mask, tmp)
 		if (gen8_reset_engine_start(engine))
-			goto not_ready;
+			DRM_WARN("Ring: %s, did not ack reset. Reset anyway.\n", engine->name);
 
 	return gen6_reset_engines(dev_priv, engine_mask);
-
-not_ready:
-	for_each_engine_masked(engine, dev_priv, engine_mask, tmp)
-		gen8_reset_engine_cancel(engine);
-
-	return -EIO;
 }
 
 typedef int (*reset_func)(struct drm_i915_private *, unsigned engine_mask);
