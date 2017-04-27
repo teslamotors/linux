@@ -380,3 +380,33 @@ out_clean_idr:
 	kfree(gvt);
 	return ret;
 }
+
+int gvt_pause_user_domains(struct drm_i915_private *dev_priv)
+{
+	struct intel_vgpu *vgpu;
+	int id, ret = 0;
+
+	if (!intel_gvt_active(dev_priv))
+		return 0;
+
+	for_each_active_vgpu(dev_priv->gvt, vgpu, id) {
+		ret = intel_gvt_hypervisor_pause_domain(vgpu);
+	}
+
+	return ret;
+}
+
+int gvt_unpause_user_domains(struct drm_i915_private *dev_priv)
+{
+	struct intel_vgpu *vgpu;
+	int id, ret = 0;
+
+	if (!intel_gvt_active(dev_priv))
+		return 0;
+
+	for_each_active_vgpu(dev_priv->gvt, vgpu, id) {
+		ret = intel_gvt_hypervisor_unpause_domain(vgpu);
+	}
+
+	return ret;
+}

@@ -511,6 +511,8 @@ int intel_vgpu_init_opregion(struct intel_vgpu *vgpu, u32 gpa);
 
 int intel_vgpu_emulate_opregion_request(struct intel_vgpu *vgpu, u32 swsci);
 void populate_pvinfo_page(struct intel_vgpu *vgpu);
+int gvt_pause_user_domains(struct drm_i915_private *dev_priv);
+int gvt_unpause_user_domains(struct drm_i915_private *dev_priv);
 
 int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload);
 

@@ -292,4 +292,19 @@ static inline int intel_gvt_hypervisor_set_trap_area(
 	return intel_gvt_host.mpt->set_trap_area(vgpu->handle, start, end, map);
 }
 
+static inline int intel_gvt_hypervisor_pause_domain(struct intel_vgpu *vgpu)
+{
+	if (!intel_gvt_host.mpt || !intel_gvt_host.mpt->pause_domain)
+		return 0;
+
+	return intel_gvt_host.mpt->pause_domain(vgpu->handle);
+}
+
+static inline int intel_gvt_hypervisor_unpause_domain(struct intel_vgpu *vgpu)
+{
+	if (!intel_gvt_host.mpt || !intel_gvt_host.mpt->unpause_domain)
+		return 0;
+
+	return intel_gvt_host.mpt->unpause_domain(vgpu->handle);
+}
 #endif /* _GVT_MPT_H_ */
