@@ -1923,6 +1923,15 @@ static int dwc3_gadget_start(struct usb_gadget *g,
 	int			ret = 0;
 	int			irq;
 
+	if (dwc->usb2_phy) {
+		ret = otg_set_peripheral(dwc->usb2_phy->otg, &dwc->gadget);
+		if (ret == -ENOTSUPP)
+			dev_info(dwc->dev, "no OTG driver registered\n");
+		else if (ret)
+			return ret;
+	}
+
+
 	irq = dwc->irq_gadget;
 	ret = request_threaded_irq(irq, dwc3_interrupt, dwc3_thread_interrupt,
 			IRQF_SHARED, "dwc3", dwc->ev_buf);
@@ -1970,6 +1979,10 @@ static int dwc3_gadget_stop(struct usb_gadget *g)
 	struct dwc3		*dwc = gadget_to_dwc(g);
 	unsigned long		flags;
 	int			epnum;
+
+
+        if (dwc->usb2_phy)
+                otg_set_peripheral(dwc->usb2_phy->otg, NULL);
 
 	spin_lock_irqsave(&dwc->lock, flags);
 
