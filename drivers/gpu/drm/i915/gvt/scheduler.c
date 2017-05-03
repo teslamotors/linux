@@ -232,7 +232,8 @@ int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload)
 		goto out;
 
 	if ((workload->ring_id == RCS) &&
-	    (workload->wa_ctx.indirect_ctx.size != 0)) {
+	    (workload->wa_ctx.indirect_ctx.size != 0)
+	    && gvt_shadow_wa_ctx) {
 		ret = intel_gvt_scan_and_shadow_wa_ctx(&workload->wa_ctx);
 		if (ret)
 			goto out;

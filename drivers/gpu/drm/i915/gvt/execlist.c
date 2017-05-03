@@ -46,6 +46,7 @@
 #define same_context(a, b) (((a)->context_id == (b)->context_id) && \
 		((a)->lrca == (b)->lrca))
 
+bool gvt_shadow_wa_ctx = false;
 static void clean_workloads(struct intel_vgpu *vgpu, unsigned long engine_mask);
 
 static int context_switch_events[] = {
@@ -459,7 +460,8 @@ static int prepare_execlist_workload(struct intel_vgpu_workload *workload)
 	intel_vgpu_sync_oos_pages(workload->vgpu);
 	intel_vgpu_flush_post_shadow(workload->vgpu);
 	prepare_shadow_batch_buffer(workload);
-	prepare_shadow_wa_ctx(&workload->wa_ctx);
+	if (gvt_shadow_wa_ctx)
+		prepare_shadow_wa_ctx(&workload->wa_ctx);
 	if (!workload->emulate_schedule_in)
 		return 0;
 
@@ -512,7 +514,8 @@ static int complete_execlist_workload(struct intel_vgpu_workload *workload)
 			workload->status);
 
 	release_shadow_batch_buffer(workload);
-	release_shadow_wa_ctx(&workload->wa_ctx);
+	if(gvt_shadow_wa_ctx)
+		release_shadow_wa_ctx(&workload->wa_ctx);
 
 	if (workload->status || (vgpu->resetting_eng & ENGINE_MASK(ring_id))) {
 		/* if workload->status is not successful means HW GPU

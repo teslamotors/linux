@@ -141,4 +141,6 @@ int intel_vgpu_init_gvt_context(struct intel_vgpu *vgpu);
 
 void intel_vgpu_clean_gvt_context(struct intel_vgpu *vgpu);
 
+extern bool gvt_shadow_wa_ctx;
+
 #endif
