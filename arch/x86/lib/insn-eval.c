@@ -9,6 +9,7 @@
 #include <asm/inat.h>
 #include <asm/insn.h>
 #include <asm/insn-eval.h>
+#include <asm/vm86.h>
 
 #undef pr_fmt
 #define pr_fmt(fmt) "insn: " fmt
@@ -43,6 +44,283 @@ static bool is_string_insn(struct insn *insn)
 	default:
 		return false;
 	}
+}
+
+/**
+ * get_overridden_seg_reg() - obtain segment register to use from prefixes
+ * @insn:	Instruction structure with segment override prefixes
+ * @regs:	Structure with register values as seen when entering kernel mode
+ * @regoff:	Operand offset, in pt_regs, used to deterimine segment register
+ *
+ * The segment register to which an effective address refers depends on
+ * a) whether running in long mode (in such a case semgment override prefixes
+ * are ignored. b) Whether segment override prefixes must be ignored for certain
+ * registers: always use CS when the register is (R|E)IP; always use ES when
+ * operand register is (E)DI with a string instruction as defined in the Intel
+ * documentation. c) If segment overrides prefixes are found in the instruction
+ * prefixes. d) Use the default segment register associated with the operand
+ * register.
+ *
+ * This function returns the overridden segment register to use, if any, as per
+ * the conditions described above. Please note that this function
+ * does not return the value in the segment register (i.e., the segment
+ * selector). The segment selector needs to be obtained using
+ * get_segment_selector() and passing the segment register resolved by
+ * this function.
+ *
+ * Return: A constant identifying the segment register to use, among CS, SS, DS,
+ * ES, FS, or GS. INAT_SEG_REG_IGNORE is returned if running in long mode.
+ * INAT_SEG_REG_DEFAULT is returned if no segment override prefixes were found
+ * and the default segment register shall be used. -EINVAL in case of error.
+ */
+static int get_overridden_seg_reg(struct insn *insn, struct pt_regs *regs,
+				  int regoff)
+{
+	int i;
+	int sel_overrides = 0;
+	int seg_register = INAT_SEG_REG_DEFAULT;
+
+	/*
+	 * Segment override prefixes should not be used for (E)IP. Check this
+	 * case first as we might not have (and not needed at all) a
+	 * valid insn structure to evaluate segment override prefixes.
+	 */
+	if (regoff == offsetof(struct pt_regs, ip)) {
+		if (user_64bit_mode(regs))
+			return INAT_SEG_REG_IGNORE;
+		else
+			return INAT_SEG_REG_DEFAULT;
+	}
+
+	if (!insn)
+		return -EINVAL;
+
+	insn_get_prefixes(insn);
+
+	/* Look for any segment override prefixes. */
+	for (i = 0; i < insn->prefixes.nbytes; i++) {
+		insn_attr_t attr;
+
+		attr = inat_get_opcode_attribute(insn->prefixes.bytes[i]);
+		switch (attr) {
+		case INAT_MAKE_PREFIX(INAT_PFX_CS):
+			seg_register = INAT_SEG_REG_CS;
+			sel_overrides++;
+			break;
+		case INAT_MAKE_PREFIX(INAT_PFX_SS):
+			seg_register = INAT_SEG_REG_SS;
+			sel_overrides++;
+			break;
+		case INAT_MAKE_PREFIX(INAT_PFX_DS):
+			seg_register = INAT_SEG_REG_DS;
+			sel_overrides++;
+			break;
+		case INAT_MAKE_PREFIX(INAT_PFX_ES):
+			seg_register = INAT_SEG_REG_ES;
+			sel_overrides++;
+			break;
+		case INAT_MAKE_PREFIX(INAT_PFX_FS):
+			seg_register = INAT_SEG_REG_FS;
+			sel_overrides++;
+			break;
+		case INAT_MAKE_PREFIX(INAT_PFX_GS):
+			seg_register = INAT_SEG_REG_GS;
+			sel_overrides++;
+			break;
+		/* No default action needed. */
+		}
+	}
+
+	/*
+	 * In long mode, segment override prefixes are ignored, except for
+	 * overrides for FS and GS.
+	 */
+	if (user_64bit_mode(regs)) {
+		if (seg_register != INAT_SEG_REG_FS &&
+		    seg_register != INAT_SEG_REG_GS)
+			return INAT_SEG_REG_IGNORE;
+	/* More than one segment override prefix leads to undefined behavior. */
+	} else if (sel_overrides > 1) {
+		return -EINVAL;
+	/*
+	 * Segment override prefixes are always ignored for string instructions
+	 * that involve the use the (E)DI register.
+	 */
+	} else if ((regoff == offsetof(struct pt_regs, di)) &&
+		   is_string_insn(insn)) {
+		return INAT_SEG_REG_DEFAULT;
+	}
+
+	return seg_register;
+}
+
+/**
+ * resolve_seg_register() - obtain segment register
+ * @insn:	Instruction structure with segment override prefixes
+ * @regs:	Structure with register values as seen when entering kernel mode
+ * @regoff:	Operand offset, in pt_regs, used to deterimine segment register
+ *
+ * Determine the segment register associated with the operands and, if
+ * applicable, prefixes and the instruction pointed by insn. The function first
+ * checks if the segment register shall be ignored or has been overridden in the
+ * instruction prefixes. Otherwise, it resolves the segment register to use
+ * based on the defaults described in the Intel documentation.
+ *
+ * The operand register, regoff, is represented as the offset from the base of
+ * pt_regs. Also, regoff can be -EDOM for cases in which registers are not
+ * used as operands (e.g., displacement-only memory addressing).
+ *
+ * Return: A constant identifying the segment register to use, among CS, SS, DS,
+ * ES, FS, or GS. INAT_SEG_REG_IGNORE is returned if running in long mode.
+ * -EINVAL in case of error.
+ */
+static int resolve_seg_register(struct insn *insn, struct pt_regs *regs,
+				int regoff)
+{
+	int seg_reg;
+
+	seg_reg = get_overridden_seg_reg(insn, regs, regoff);
+
+	if (seg_reg < 0)
+		return seg_reg;
+
+	if (seg_reg == INAT_SEG_REG_IGNORE)
+		return seg_reg;
+
+	if (seg_reg != INAT_SEG_REG_DEFAULT)
+		return seg_reg;
+
+	/*
+	 * If we are here, we use the default segment register as described
+	 * in the Intel documentation:
+	 *  + DS for all references involving (E)AX, (E)CX, (E)DX, (E)BX, and
+	 * (E)SI.
+	 *  + If used in a string instruction, ES for (E)DI. Otherwise, DS.
+	 *  + AX, CX and DX are not valid register operands in 16-bit address
+	 *    encodings but are valid for 32-bit and 64-bit encodings.
+	 *  + -EDOM is reserved to identify for cases in which no register
+	 *    is used (i.e., displacement-only addressing). Use DS.
+	 *  + SS for (E)SP or (E)BP.
+	 *  + CS for (E)IP.
+	 */
+
+	switch (regoff) {
+	case offsetof(struct pt_regs, ax):
+	case offsetof(struct pt_regs, cx):
+	case offsetof(struct pt_regs, dx):
+		/* Need insn to verify address size. */
+		if (!insn || insn->addr_bytes == 2)
+			return -EINVAL;
+	case -EDOM:
+	case offsetof(struct pt_regs, bx):
+	case offsetof(struct pt_regs, si):
+		return INAT_SEG_REG_DS;
+	case offsetof(struct pt_regs, di):
+		/* Need insn to see if insn is string instruction. */
+		if (!insn)
+			return -EINVAL;
+		if (is_string_insn(insn))
+			return INAT_SEG_REG_ES;
+		return INAT_SEG_REG_DS;
+	case offsetof(struct pt_regs, bp):
+	case offsetof(struct pt_regs, sp):
+		return INAT_SEG_REG_SS;
+	case offsetof(struct pt_regs, ip):
+		return INAT_SEG_REG_CS;
+	default:
+		return -EINVAL;
+	}
+}
+
+/**
+ * get_segment_selector() - obtain segment selector
+ * @regs:	Structure with register values as seen when entering kernel mode
+ * @seg_reg:	Segment register to use
+ *
+ * Obtain the segment selector from any of the CS, SS, DS, ES, FS, GS segment
+ * registers. In CONFIG_X86_32, the segment is obtained from either pt_regs or
+ * kernel_vm86_regs as applicable. In CONFIG_X86_64, CS and SS are obtained
+ * from pt_regs. DS, ES, FS and GS are obtained by reading the actual CPU
+ * registers. This done for only for completeness as in CONFIG_X86_64 segment
+ * registers are ignored.
+ *
+ * Return: Value of the segment selector, including null when running in
+ * long mode. -1 on error.
+ */
+static short get_segment_selector(struct pt_regs *regs, int seg_reg)
+{
+#ifdef CONFIG_X86_64
+	unsigned short sel;
+
+	switch (seg_reg) {
+	case INAT_SEG_REG_IGNORE:
+		return 0;
+	case INAT_SEG_REG_CS:
+		return (unsigned short)(regs->cs & 0xffff);
+	case INAT_SEG_REG_SS:
+		return (unsigned short)(regs->ss & 0xffff);
+	case INAT_SEG_REG_DS:
+		savesegment(ds, sel);
+		return sel;
+	case INAT_SEG_REG_ES:
+		savesegment(es, sel);
+		return sel;
+	case INAT_SEG_REG_FS:
+		savesegment(fs, sel);
+		return sel;
+	case INAT_SEG_REG_GS:
+		savesegment(gs, sel);
+		return sel;
+	default:
+		return -EINVAL;
+	}
+#else /* CONFIG_X86_32 */
+	struct kernel_vm86_regs *vm86regs = (struct kernel_vm86_regs *)regs;
+
+	if (v8086_mode(regs)) {
+		switch (seg_reg) {
+		case INAT_SEG_REG_CS:
+			return (unsigned short)(regs->cs & 0xffff);
+		case INAT_SEG_REG_SS:
+			return (unsigned short)(regs->ss & 0xffff);
+		case INAT_SEG_REG_DS:
+			return vm86regs->ds;
+		case INAT_SEG_REG_ES:
+			return vm86regs->es;
+		case INAT_SEG_REG_FS:
+			return vm86regs->fs;
+		case INAT_SEG_REG_GS:
+			return vm86regs->gs;
+		case INAT_SEG_REG_IGNORE:
+			/* fall through */
+		default:
+			return -EINVAL;
+		}
+	}
+
+	switch (seg_reg) {
+	case INAT_SEG_REG_CS:
+		return (unsigned short)(regs->cs & 0xffff);
+	case INAT_SEG_REG_SS:
+		return (unsigned short)(regs->ss & 0xffff);
+	case INAT_SEG_REG_DS:
+		return (unsigned short)(regs->ds & 0xffff);
+	case INAT_SEG_REG_ES:
+		return (unsigned short)(regs->es & 0xffff);
+	case INAT_SEG_REG_FS:
+		return (unsigned short)(regs->fs & 0xffff);
+	case INAT_SEG_REG_GS:
+		/*
+		 * GS may or may not be in regs as per CONFIG_X86_32_LAZY_GS.
+		 * The macro below takes care of both cases.
+		 */
+		return get_user_gs(regs);
+	case INAT_SEG_REG_IGNORE:
+		/* fall through */
+	default:
+		return -EINVAL;
+	}
+#endif /* CONFIG_X86_64 */
 }
 
 static int get_reg_offset(struct insn *insn, struct pt_regs *regs,
