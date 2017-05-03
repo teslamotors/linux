@@ -56,6 +56,7 @@
  */
 struct dwc3_pci {
 	struct platform_device *dwc3;
+	struct platform_device	*usb2_phy;
 	struct pci_dev *pci;
 
 	guid_t guid;
@@ -123,6 +124,24 @@ static int dwc3_pci_quirks(struct dwc3_pci *dwc)
 			guid_parse(PCI_INTEL_BXT_DSM_GUID, &dwc->guid);
 			dwc->has_dsm_for_pm = true;
 		}
+
+		if (pdev->device == PCI_DEVICE_ID_INTEL_BXT ||
+		    pdev->device == PCI_DEVICE_ID_INTEL_BXT_M ||
+		    pdev->device == PCI_DEVICE_ID_INTEL_APL ) {
+
+			dwc->usb2_phy = platform_device_alloc(
+							"intel_usb_dr_phy", 0);
+			if (!dwc->usb2_phy)
+				return -ENOMEM;
+
+			dwc->usb2_phy->dev.parent = &pdev->dev;
+	                ret = platform_device_add(dwc->usb2_phy);
+		        if (ret) {
+			        platform_device_put(dwc->usb2_phy);
+				return ret;
+			}
+		}
+
 
 		if (pdev->device == PCI_DEVICE_ID_INTEL_BYT) {
 			struct gpio_desc *gpio;
@@ -245,6 +264,8 @@ static void dwc3_pci_remove(struct pci_dev *pci)
 
 	device_init_wakeup(&pci->dev, false);
 	pm_runtime_get(&pci->dev);
+	if(dwc->usb2_phy)
+		platform_device_unregister(dwc->usb2_phy);
 	platform_device_unregister(dwc->dwc3);
 }
 

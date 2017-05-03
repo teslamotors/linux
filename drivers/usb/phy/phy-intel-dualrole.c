@@ -51,7 +51,6 @@ static int intel_usb_mux_update(struct intel_dr_phy *intel_phy,
 {
 	struct usb_bus *host = intel_phy->phy.otg->host;
 	struct usb_gadget *gadget = intel_phy->phy.otg->gadget;
-	int ret;
 
 	if (!host || !gadget || !gadget->dev.parent || !intel_phy->edev)
 		return -ENODEV;
