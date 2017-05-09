@@ -85,4 +85,11 @@ static inline int trusty_check_cpuid(void)
 
 	return 0;
 }
+
+/* High 32 bits of unsigned 64-bit integer*/
+#ifdef CONFIG_64BIT
+#define HIULINT(x) ((x) >> 32)
+#else
+#define HIULINT(x) 0
+#endif
 #endif
