@@ -93,6 +93,16 @@ config SND_SOC_INTEL_BXT_RT298_MACH
 	   Say Y if you have such a device.
 	   If unsure select "N".
 
+config SND_SOC_INTEL_BXT_TDF8532_MACH
+        tristate "ASoC Audio driver for BXT with TDF8532 in I2S mode"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+        select SND_SOC_TDF8532
+        help
+	   This adds support for ASoC machine driver for Broxton IVI GP MRB platform
+	   Say Y if you have such a device.
+	   If unsure select "N".
+
 config SND_SOC_INTEL_BYT_RT5640_MACH
 	tristate "ASoC Audio driver for Intel Baytrail with RT5640 codec"
 	depends on X86_INTEL_LPSS && I2C
