@@ -138,15 +138,6 @@ static int tdf8532_mute(struct snd_soc_dai *dai, int mute)
 	return tdf8532_cmd_send(tdf8532, data, ARRAY_SIZE(data));
 }
 
-static int tdf8532_set_fast_mute(struct tdf8532_priv *tdf8532)
-{
-	unsigned char data[] = {
-		0x02, (tdf8532->packet_id)++, 0x06,
-			0x80, 0x18, 0x03, 0x01, 0x02, 0x00};
-
-	return tdf8532_cmd_send(tdf8532, data, ARRAY_SIZE(data));
-}
-
 static const struct snd_soc_dai_ops tdf8532_dai_ops = {
 	.shutdown = tdf8532_dai_shutdown,
 	.trigger  = tdf8532_dai_trigger,
@@ -189,11 +180,6 @@ static int tdf8532_i2c_probe(struct i2c_client *i2c,
 	tdf8532->packet_id = 0;
 
 	i2c_set_clientdata(i2c, tdf8532);
-
-	ret = tdf8532_set_fast_mute(tdf8532);
-
-	if (ret < 0)
-		dev_err(&i2c->dev, "Failed to set fast mute option: %d\n", ret);
 
 	ret = snd_soc_register_codec(&i2c->dev, &soc_codec_tdf8532,
 			tdf8532_dai, ARRAY_SIZE(tdf8532_dai));
