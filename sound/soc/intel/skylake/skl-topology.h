@@ -47,9 +47,9 @@
 
 #define SKL_OUTPUT_PIN		0
 #define SKL_INPUT_PIN		1
-#define SKL_MAX_PATH_CONFIGS	8
+#define SKL_MAX_PATH_CONFIGS	32
 #define SKL_MAX_MODULES_IN_PIPE	8
-#define SKL_MAX_MODULE_FORMATS		32
+#define SKL_MAX_MODULE_FORMATS		64
 #define SKL_MAX_MODULE_RESOURCES	32
 
 enum skl_channel_index {
