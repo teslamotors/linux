@@ -25,6 +25,22 @@ static guid_t osc_guid =
 	GUID_INIT(0xA69F886E, 0x6CEB, 0x4594,
 		  0xA4, 0x1F, 0x7B, 0x5D, 0xCE, 0x24, 0xC5, 0x53);
 
+int skl_get_nhlt_version(struct device *dev)
+{
+	const char *version;
+	int ret;
+
+	ret = device_property_read_string(dev, "nhlt-version", &version);
+	if (!ret) {
+		if (!strncmp(version, "1.8-0", strlen("1.8-0")))
+			return VERSION_1;
+		else
+			return VERSION_INVALID;
+	}
+	/* if reading fails, assume we are on older platforms */
+	return VERSION_0;
+}
+
 struct nhlt_acpi_table *skl_nhlt_init(struct device *dev)
 {
 	acpi_handle handle;

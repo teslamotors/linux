@@ -59,6 +59,12 @@ enum nhlt_device_type {
 	NHLT_DEVICE_INVALID
 };
 
+enum nhlt_version_type {
+	VERSION_INVALID = -1,
+	VERSION_0,
+	VERSION_1,
+};
+
 struct nhlt_specific_cfg {
 	u32 size;
 	u8 caps[0];

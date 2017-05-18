@@ -850,6 +850,7 @@ static int skl_probe(struct pci_dev *pci,
 	device_disable_async_suspend(bus->dev);
 
 #if !IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
+	skl->nhlt_version = skl_get_nhlt_version(bus->dev);
 	skl->nhlt = skl_nhlt_init(bus->dev);
 
 	if (skl->nhlt == NULL) {
