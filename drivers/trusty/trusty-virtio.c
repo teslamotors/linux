@@ -328,7 +328,7 @@ static struct virtqueue *_find_vq(struct virtio_device *vdev,
 		 id, tvr->vaddr, (u64)tvr->paddr, tvr->elem_num, tvr->notifyid);
 
 	tvr->vq = vring_new_virtqueue(id, tvr->elem_num, tvr->align,
-				      vdev, true, tvr->vaddr,
+				      vdev, true, true, tvr->vaddr,
 				      trusty_virtio_notify, callback, name);
 	if (!tvr->vq) {
 		dev_err(&vdev->dev, "vring_new_virtqueue %s failed\n",
@@ -350,6 +350,7 @@ static int trusty_virtio_find_vqs(struct virtio_device *vdev, unsigned nvqs,
 				  struct virtqueue *vqs[],
 				  vq_callback_t *callbacks[],
 				  const char * const names[],
+				  const bool *ctx,
 				  struct irq_affinity *desc)
 {
 	uint i;
