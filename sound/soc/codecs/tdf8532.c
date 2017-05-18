@@ -138,18 +138,35 @@ out:
 	return ret;
 }
 
-
-static void tdf8532_dai_shutdown(struct snd_pcm_substream *substream,
-		struct snd_soc_dai *dai)
+static int tdf8532_start_play(struct tdf8532_priv *tdf8532)
 {
 	int ret;
-	struct snd_soc_codec *codec = dai->codec;
-	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(codec);
 
-	dev_dbg(codec->dev, "%s\n", __func__);
+	ret = tdf8532_amp_write(tdf8532, SET_CHNL_ENABLE,
+			CHNL_MASK(tdf8532->channels));
+
+	if (ret < 0)
+		return ret;
+
+	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_CONNECT);
+
+	return ret;
+}
+
+static int tdf8532_stop_play(struct tdf8532_priv *tdf8532)
+{
+	int ret;
 
 	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_DISCONNECT);
+	if (ret < 0)
+		return ret;
+
+	ret = tdf8532_amp_write(tdf8532, SET_CHNL_DISABLE,
+			CHNL_MASK(tdf8532->channels));
+
+	return ret;
 }
+
 
 static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 		struct snd_soc_dai *dai)
@@ -164,19 +181,14 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 	case SNDRV_PCM_TRIGGER_RESUME:
-		ret = tdf8532_amp_write(tdf8532, SET_CHNL_ENABLE,
-						CHNL_MASK(tdf8532->channels));
-
+		ret = tdf8532_start_play(tdf8532);
 		break;
-
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_STOP:
 		/* WA on unexpected codec down during S3
 		 SNDRV_PCM_TRIGGER_STOP fails so skip set ret */
 		tdf8532_stop_play(tdf8532);
-		ret = tdf8532_amp_write(tdf8532, SET_CHNL_DISABLE,
-						CHNL_MASK(tdf8532->channels));
 		/*delay 300ms to allow state change to occur*/
 		/*TODO: add state check to wait for state change*/
 		mdelay(300);
@@ -184,17 +196,6 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	}
 
 	return ret;
-}
-
-static int tdf8532_dai_prepare(struct snd_pcm_substream *substream,
-						struct snd_soc_dai *dai)
-{
-	struct snd_soc_codec *codec = dai->codec;
-	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(codec);
-
-	dev_dbg(codec->dev, "%s\n", __func__);
-
-	return tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_CONNECT);
 }
 
 static int tdf8532_mute(struct snd_soc_dai *dai, int mute)
@@ -213,9 +214,7 @@ static int tdf8532_mute(struct snd_soc_dai *dai, int mute)
 }
 
 static const struct snd_soc_dai_ops tdf8532_dai_ops = {
-	.shutdown = tdf8532_dai_shutdown,
 	.trigger  = tdf8532_dai_trigger,
-	.prepare  = tdf8532_dai_prepare,
 	.digital_mute = tdf8532_mute,
 };
 
