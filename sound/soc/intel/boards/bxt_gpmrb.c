@@ -37,18 +37,15 @@ MODULE_PARM_DESC(dummy_codecs, "Set all DAI link codecs to dummy");
 static struct snd_soc_dai_link broxton_gpmrb_dais[];
 
 enum {
-	BXT_AUDIO_SPEAKER_PB = 0,
-	BXT_AUDIO_TUNER_CP,
-	BXT_AUDIO_AUX_CP,
-	BXT_AUDIO_MIC_CP,
-	BXT_AUDIO_DIRANA_PB,
-	BXT_AUDIO_TESTPIN_PB,
-	BXT_AUDIO_TESTPIN_CP,
-	BXT_AUDIO_BT_CP,
-	BXT_AUDIO_BT_PB,
-	BXT_AUDIO_MODEM_CP,
-	BXT_AUDIO_MODEM_PB,
-	BXT_AUDIO_HDMI_CP,
+	BXT_AUDIO_SPEAKER = 0,
+	BXT_AUDIO_TUNER,
+	BXT_AUDIO_AUX,
+	BXT_AUDIO_MIC,
+	BXT_AUDIO_DIRANA,
+	BXT_AUDIO_TESTPIN,
+	BXT_AUDIO_BT,
+	BXT_AUDIO_MODEM,
+	BXT_AUDIO_HDMI,
 };
 
 static const struct snd_kcontrol_new broxton_controls[] = {
@@ -152,7 +149,7 @@ static int broxton_gpmrb_dirana_startup(struct snd_pcm_substream *substream)
 {
 	int ret;
 	char *stream_id = substream->pcm->id;
-	const char *mic_id = broxton_gpmrb_dais[BXT_AUDIO_MIC_CP].stream_name;
+	const char *mic_id = broxton_gpmrb_dais[BXT_AUDIO_MIC].stream_name;
 
 	if (strncmp(stream_id, mic_id, strlen(mic_id)) == 0)
 		ret = snd_pcm_hw_constraint_single(substream->runtime,
@@ -245,7 +242,7 @@ static struct snd_soc_ops broxton_gpmrb_tdf8532_ops = {
 /* broxton digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	/* Front End DAI links */
-	[BXT_AUDIO_SPEAKER_PB] = {
+	[BXT_AUDIO_SPEAKER] = {
 		.name = "Speaker Port",
 		.stream_name = "Speaker",
 		.cpu_dai_name = "System Pin 2",
@@ -259,9 +256,9 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dpcm_playback = 1,
 		.ops = &broxton_gpmrb_tdf8532_ops,
 	},
-	[BXT_AUDIO_TUNER_CP] = {
-		.name = "Dirana Tuner Cp Port",
-		.stream_name = "Dirana Tuner Cp",
+	[BXT_AUDIO_TUNER] = {
+		.name = "Dirana Tuner Port",
+		.stream_name = "Dirana Tuner",
 		.cpu_dai_name = "System Pin 3",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -272,9 +269,9 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dynamic = 1,
 		.ops = &broxton_gpmrb_dirana_ops,
 	},
-	[BXT_AUDIO_AUX_CP] = {
-		.name = "Dirana Aux Cp Port",
-		.stream_name = "Dirana Aux Cp",
+	[BXT_AUDIO_AUX] = {
+		.name = "Dirana Aux Port",
+		.stream_name = "Dirana Aux",
 		.cpu_dai_name = "System Pin 4",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -285,9 +282,9 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dynamic = 1,
 		.ops = &broxton_gpmrb_dirana_ops,
 	},
-	[BXT_AUDIO_MIC_CP] = {
-		.name = "Dirana Mic Cp Port",
-		.stream_name = "Dirana Mic Cp",
+	[BXT_AUDIO_MIC] = {
+		.name = "Dirana Mic Port",
+		.stream_name = "Dirana Mic",
 		.cpu_dai_name = "System Pin 5",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -298,9 +295,9 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dynamic = 1,
 		.ops = &broxton_gpmrb_dirana_ops,
 	},
-	[BXT_AUDIO_DIRANA_PB] = {
-		.name = "Dirana Pb Port",
-		.stream_name = "Dirana Pb",
+	[BXT_AUDIO_DIRANA] = {
+		.name = "Dirana Port",
+		.stream_name = "Dirana",
 		.cpu_dai_name = "System Pin",
 		.platform_name = "0000:00:0e.0",
 		.nonatomic = 1,
@@ -312,88 +309,59 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dpcm_playback = 1,
 		.ops = &broxton_gpmrb_dirana_ops,
 	},
-	[BXT_AUDIO_TESTPIN_PB] = {
-		.name = "TestPin Cp Port",
-		.stream_name = "TestPin Cp",
+	[BXT_AUDIO_TESTPIN] = {
+		.name = "TestPin Port",
+		.stream_name = "TestPin",
 		.cpu_dai_name = "System Pin 6",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
 		.init = NULL,
-		.dpcm_capture = 1,
-		.nonatomic = 1,
-		.dynamic = 1,
-	},
-	[BXT_AUDIO_TESTPIN_CP] = {
-		.name = "TestPin Pb Port",
-		.stream_name = "TestPin Pb",
-		.cpu_dai_name = "System Pin 6",
-		.platform_name = "0000:00:0e.0",
-		.nonatomic = 1,
-		.dynamic = 1,
-		.codec_name = "snd-soc-dummy",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
+		.dpcm_capture = 1,
+		.symmetric_rates = 1,
+		.symmetric_channels = 1,
+		.symmetric_samplebits = 1,
+		.nonatomic = 1,
+		.dynamic = 1,
 	},
-	[BXT_AUDIO_BT_CP] = {
-		.name = "BtHfp Cp Port",
-		.stream_name = "BtHfp Cp",
+	[BXT_AUDIO_BT] = {
+		.name = "BtHfp Port",
+		.stream_name = "BtHfp",
 		.cpu_dai_name = "System Pin 7",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
 		.init = NULL,
-		.dpcm_capture = 1,
-		.nonatomic = 1,
-		.dynamic = 1,
-		.ops = &broxton_gpmrb_bt_modem_ops,
-	},
-	[BXT_AUDIO_BT_PB] = {
-		.name = "BtHfp Pb Port",
-		.stream_name = "BtHfp Pb",
-		.cpu_dai_name = "System Pin 7",
-		.platform_name = "0000:00:0e.0",
-		.nonatomic = 1,
-		.dynamic = 1,
-		.codec_name = "snd-soc-dummy",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
+		.dpcm_capture = 1,
+		.symmetric_rates = 1,
+		.symmetric_channels = 1,
+		.symmetric_samplebits = 1,
+		.nonatomic = 1,
+		.dynamic = 1,
 		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
-	[BXT_AUDIO_MODEM_CP] = {
-		.name = "Modem Cp Port",
-		.stream_name = "Modem Cp",
+	[BXT_AUDIO_MODEM] = {
+		.name = "Modem Port",
+		.stream_name = "Modem",
 		.cpu_dai_name = "System Pin 8",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
 		.init = NULL,
-		.dpcm_capture = 1,
-		.nonatomic = 1,
-		.dynamic = 1,
-		.ops = &broxton_gpmrb_bt_modem_ops,
-	},
-	[BXT_AUDIO_MODEM_PB] = {
-		.name = "Modem Pb Port",
-		.stream_name = "Modem Pb",
-		.cpu_dai_name = "System Pin 8",
-		.platform_name = "0000:00:0e.0",
-		.nonatomic = 1,
-		.dynamic = 1,
-		.codec_name = "snd-soc-dummy",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
+		.dpcm_capture = 1,
+		.symmetric_rates = 1,
+		.symmetric_channels = 1,
+		.symmetric_samplebits = 1,
+		.nonatomic = 1,
+		.dynamic = 1,
 		.ops = &broxton_gpmrb_bt_modem_ops,
 	},
-	[BXT_AUDIO_HDMI_CP] = {
-		.name = "HDMI Cp Port",
-		.stream_name = "HDMI Cp",
+	[BXT_AUDIO_HDMI] = {
+		.name = "HDMI Port",
+		.stream_name = "HDMI",
 		.cpu_dai_name = "HDMI2 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
