@@ -470,7 +470,11 @@ static s32 wl_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *dev,
 #endif
 #endif 
 #ifdef WL_SCHED_SCAN
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+static int wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev, u64 reqid);
+#else
 static int wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev);
+#endif
 #endif
 #if defined(WL_VIRTUAL_APSTA) || defined(DUAL_STA_STATIC_IF)
 bcm_struct_cfgdev*
@@ -1476,7 +1480,11 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0))
 	unsigned char name_assign_type,
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)) */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+	enum nl80211_iftype type,
+#else
 	enum nl80211_iftype type, u32 *flags,
+#endif
 	struct vif_params *params)
 {
 	s32 err = -ENODEV;
@@ -1982,7 +1990,11 @@ wl_cfg80211_del_virtual_iface(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev)
 
 static s32
 wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+	enum nl80211_iftype type,
+#else
 	enum nl80211_iftype type, u32 *flags,
+#endif
 	struct vif_params *params)
 {
 	s32 ap = 0;
@@ -4349,7 +4361,11 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 #endif
 #ifdef WL_SCHED_SCAN
 	if (cfg->sched_scan_req) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+		wl_cfg80211_sched_scan_stop(wiphy, bcmcfg_to_prmry_ndev(cfg), 0);
+#else
 		wl_cfg80211_sched_scan_stop(wiphy, bcmcfg_to_prmry_ndev(cfg));
+#endif
 	}
 #endif
 #if defined(ESCAN_RESULT_PATCH)
@@ -8525,7 +8541,11 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 }
 
 static int
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev, u64 reqid)
+#else
 wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev)
+#endif
 {
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 
@@ -8949,7 +8969,9 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
 	wdev->wiphy->max_sched_scan_ssids = MAX_PFN_LIST_COUNT;
 	wdev->wiphy->max_match_sets = MAX_PFN_LIST_COUNT;
 	wdev->wiphy->max_sched_scan_ie_len = WL_SCAN_IE_LEN_MAX;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0))
 	wdev->wiphy->flags |= WIPHY_FLAG_SUPPORTS_SCHED_SCAN;
+#endif
 #endif /* WL_SCHED_SCAN */
 	wdev->wiphy->interface_modes =
 		BIT(NL80211_IFTYPE_STATION)
@@ -10649,6 +10671,9 @@ wl_bss_roaming_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	struct ieee80211_channel *notify_channel = NULL;
 	u32 *channel;
 	u32 freq;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+	struct cfg80211_roam_info roam_info = {};
+#endif
 #endif 
 
 
@@ -10684,17 +10709,30 @@ wl_bss_roaming_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		band = wiphy->bands[NL80211_BAND_5GHZ ];
 	freq = ieee80211_channel_to_frequency(*channel, band->band);
 	notify_channel = ieee80211_get_channel(wiphy, freq);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+	roam_info.channel = notify_channel;
+	roam_info.bssid = curbssid;
+	roam_info.req_ie = conn_info->req_ie;
+	roam_info.req_ie_len = conn_info->req_ie_len;
+	roam_info.resp_ie = conn_info->resp_ie;
+	roam_info.resp_ie_len = conn_info->resp_ie_len;
+#endif
 #endif 
 	WL_ERR(("wl_bss_roaming_done succeeded to " MACDBG "\n",
 		MAC2STRDBG((const u8*)(&e->addr))));
 
 	cfg80211_roamed(ndev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+		&roam_info,
+#else
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39))
 		notify_channel,
 #endif
 		curbssid,
 		conn_info->req_ie, conn_info->req_ie_len,
-		conn_info->resp_ie, conn_info->resp_ie_len, GFP_KERNEL);
+		conn_info->resp_ie, conn_info->resp_ie_len,
+#endif
+		GFP_KERNEL);
 	WL_DBG(("Report roaming result\n"));
 
 	memcpy(&cfg->last_roamed_addr, (void *)&e->addr, ETHER_ADDR_LEN);
@@ -12047,7 +12085,12 @@ static s32 wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 	if (cfg->sched_scan_req && !cfg->scan_request) {
 		WL_PNO((">>> REPORTING SCHED SCAN RESULTS \n"));
 		if (!aborted)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+			cfg80211_sched_scan_results(cfg->sched_scan_req->wiphy, 0);
+#else
 			cfg80211_sched_scan_results(cfg->sched_scan_req->wiphy);
+#endif
+
 		cfg->sched_scan_running = FALSE;
 		cfg->sched_scan_req = NULL;
 	}
