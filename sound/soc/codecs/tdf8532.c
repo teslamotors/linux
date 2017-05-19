@@ -137,6 +137,30 @@ out:
 	return ret;
 }
 
+static int tdf8532_get_dev_info(struct tdf8532_priv *dev_data)
+{
+	int ret;
+	char *repl_buff = NULL;
+	struct get_ident_repl *id;
+
+	ret = tdf8532_amp_write(dev_data, GET_IDENT);
+	if (ret < 0)
+		return ret;
+
+	ret = tdf8532_single_read(dev_data, &repl_buff);
+	if (ret < 0) {
+		kfree(repl_buff);
+		return ret;
+	}
+
+	id = (struct get_ident_repl *)repl_buff;
+
+	dev_data->sw_major = id->sw_major;
+	kfree(repl_buff);
+
+	return 0;
+}
+
 static int tdf8532_get_state(struct tdf8532_priv *dev_data, u8 *state)
 {
 	int ret = 0;
@@ -311,6 +335,14 @@ static int tdf8532_i2c_probe(struct i2c_client *i2c,
 	dev_data->channels = 4;
 
 	i2c_set_clientdata(i2c, dev_data);
+
+	ret = tdf8532_get_dev_info(dev_data);
+	if (ret < 0) {
+		dev_err(&i2c->dev, "Failed to get device info: %d\n", ret);
+		goto out;
+	}
+
+	dev_dbg(&i2c->dev, "%s: sw_major: %u\n", __func__, dev_data->sw_major);
 
 	ret = snd_soc_register_codec(&i2c->dev, &soc_codec_tdf8532,
 					tdf8532_dai, ARRAY_SIZE(tdf8532_dai));
