@@ -83,6 +83,7 @@ struct tdf8532_priv {
 	struct i2c_client *i2c;
 	u8 channels;
 	u8 pkt_id;
+	u8 sw_major;
 };
 
 #endif
