@@ -2835,6 +2835,7 @@ static int skl_tplg_get_token(struct device *dev,
 			}
 			return is_pipe_exists;
 		}
+		is_pipe_exists = 0;
 
 		break;
 
@@ -2848,7 +2849,7 @@ static int skl_tplg_get_token(struct device *dev,
 	case SKL_TKN_U32_PMODE:
 	case SKL_TKN_U32_PIPE_DIRECTION:
 	case SKL_TKN_U32_NUM_CONFIGS:
-		if (is_pipe_exists) {
+		if (!is_pipe_exists) {
 			ret = skl_tplg_fill_pipe_tkn(dev, mconfig->pipe,
 					tkn_elem->token, tkn_elem->value);
 			if (ret < 0)
