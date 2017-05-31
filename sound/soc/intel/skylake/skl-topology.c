@@ -2997,9 +2997,6 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 		mconfig->formats_config[SKL_PARAM_INIT].caps_size = cfg->size;
 		mconfig->formats_config[SKL_PARAM_INIT].caps =
 							(u32 *) &cfg->caps;
-
-		print_hex_dump_debug("SSP Config:", DUMP_PREFIX_OFFSET, 8, 4,
-				cfg->caps, cfg->size, false);
 	} else {
 		dev_err(dai->dev, "Blob NULL for id %x type %d dirn %d\n",
 					mconfig->vbus_id, link_type,
