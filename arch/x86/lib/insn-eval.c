@@ -587,6 +587,65 @@ static unsigned long get_seg_limit(struct pt_regs *regs, struct insn *insn,
 }
 
 /**
+ * insn_get_code_seg_defaults() - Obtain code segment default parameters
+ * @regs:	Structure with register values as seen when entering kernel mode
+ *
+ * Obtain the default parameters of the code segment: address and operand sizes.
+ * The code segment is obtained from the selector contained in the CS register
+ * in regs. In protected mode, the default address is determined by inspecting
+ * the L and D bits of the segment descriptor. In virtual-8086 mode, the default
+ * is always two bytes for both address and operand sizes.
+ *
+ * Return: A signed 8-bit value containing the default parameters on success and
+ * -EINVAL on error.
+ */
+char insn_get_code_seg_defaults(struct pt_regs *regs)
+{
+	struct desc_struct *desc;
+	unsigned short sel;
+
+	if (v8086_mode(regs))
+		/* Address and operand size are both 16-bit. */
+		return INSN_CODE_SEG_PARAMS(2, 2);
+
+	sel = (unsigned short)regs->cs;
+
+	desc = get_desc(sel);
+	if (!desc)
+		return -EINVAL;
+
+	/*
+	 * The most significant byte of the Type field of the segment descriptor
+	 * determines whether a segment contains data or code. If this is a data
+	 * segment, return error.
+	 */
+	if (!(desc->type & BIT(3)))
+		return -EINVAL;
+
+	switch ((desc->l << 1) | desc->d) {
+	case 0: /*
+		 * Legacy mode. CS.L=0, CS.D=0. Address and operand size are
+		 * both 16-bit.
+		 */
+		return INSN_CODE_SEG_PARAMS(2, 2);
+	case 1: /*
+		 * Legacy mode. CS.L=0, CS.D=1. Address and operand size are
+		 * both 32-bit.
+		 */
+		return INSN_CODE_SEG_PARAMS(4, 4);
+	case 2: /*
+		 * IA-32e 64-bit mode. CS.L=1, CS.D=0. Address size is 64-bit;
+		 * operand size is 32-bit.
+		 */
+		return INSN_CODE_SEG_PARAMS(4, 8);
+	case 3: /* Invalid setting. CS.L=1, CS.D=1 */
+		/* fall through */
+	default:
+		return -EINVAL;
+	}
+}
+
+/**
  * insn_get_modrm_rm_off() - Obtain register in r/m part of ModRM byte
  * @insn:	Instruction structure containing the ModRM byte
  * @regs:	Structure with register values as seen when entering kernel mode
