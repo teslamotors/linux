@@ -13,5 +13,7 @@
 
 void __user *insn_get_addr_ref(struct insn *insn, struct pt_regs *regs);
 int insn_get_modrm_rm_off(struct insn *insn, struct pt_regs *regs);
+unsigned long insn_get_seg_base(struct pt_regs *regs, struct insn *insn,
+				int regoff);
 
 #endif /* _ASM_X86_INSN_EVAL_H */
