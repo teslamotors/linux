@@ -25,9 +25,10 @@
 #include <linux/trusty/sm_err.h>
 #include <linux/trusty/trusty.h>
 
-#define TRUSTY_VMCALL_SMC 0x74727500
+#define TRUSTY_VMCALL_SMC       0x74727500
 #define TRUSTY_LKTIMER_INTERVAL 10   /* 10 ms */
 #define TRUSTY_LKTIMER_VECTOR   0x31 /* INT_PIT */
+#define TRUSTY_STOP_TIMER       0xFFFFFFFF
 
 enum lktimer_mode {
 	ONESHOT_TIMER,
@@ -52,6 +53,12 @@ struct trusty_smc_interface {
 	ulong args[5];
 };
 
+static struct timer_list *lk_timer;
+
+static ulong (*smc_func)(ulong r0, ulong r1, ulong r2, ulong r3);
+static ulong smc_dynamic_timer(ulong r0, ulong r1, ulong r2, ulong r3);
+static ulong smc_periodic_timer(ulong r0, ulong r1, ulong r2, ulong r3);
+
 static void trusty_lktimer_work_func(struct work_struct *work)
 {
 	int ret;
@@ -72,7 +79,7 @@ static void trusty_lktimer_work_func(struct work_struct *work)
 	if (ret != SM_ERR_NOP_DONE)
 		dev_err(s->dev, "%s: SMC_SC_NOP failed %d", __func__, ret);
 
-	dev_notice_once(s->dev, "LK OS proxy timer works\n");
+	dev_notice_once(s->dev, "LK OS timer works\n");
 }
 
 static void trusty_lktimer_func(unsigned long data)
@@ -92,6 +99,7 @@ static void trusty_init_lktimer(struct trusty_state *s)
 {
 	INIT_WORK(&s->timer_work, trusty_lktimer_work_func);
 	setup_timer(&s->timer, trusty_lktimer_func, (unsigned long)s);
+	lk_timer = &s->timer;
 }
 
 /* note that this function is not thread-safe */
@@ -108,6 +116,39 @@ static void trusty_configure_lktimer(struct trusty_state *s,
 	mod_timer(&s->timer, jiffies + msecs_to_jiffies(s->timer_interval));
 }
 
+static void trusty_init_smc_function(void)
+{
+	smc_func = smc_periodic_timer;
+}
+
+static void trusty_set_timer_mode(struct trusty_state *s, struct device *dev)
+{
+	int ret;
+
+	ret = trusty_fast_call32(dev, SMC_FC_TIMER_MODE, 0, 0, 0);
+
+	if (ret == 0) {
+		smc_func = smc_dynamic_timer;
+	} else {
+		smc_func = smc_periodic_timer;
+		/*
+		 * If bit 31 set indicates periodic timer is used
+		 * bit 15:0 indicates interval
+		 */
+		if ((ret & 0x80000000) && (ret & 0x0FFFF)) {
+			trusty_configure_lktimer(s,
+				PERIODICAL_TIMER,
+				ret & 0x0FFFF);
+		} else {
+			/* set periodical timer with default interval */
+			trusty_configure_lktimer(s,
+				PERIODICAL_TIMER,
+				TRUSTY_LKTIMER_INTERVAL);
+		}
+	}
+
+}
+
 /*
  * this should be called when removing trusty dev and
  * when LK/Trusty crashes, to disable proxy timer.
@@ -120,11 +161,44 @@ static void trusty_del_lktimer(struct trusty_state *s)
 
 static inline ulong smc(ulong r0, ulong r1, ulong r2, ulong r3)
 {
+	return smc_func(r0, r1, r2, r3);
+}
+
+static ulong smc_dynamic_timer(ulong r0, ulong r1, ulong r2, ulong r3)
+{
 	__asm__ __volatile__(
 	"vmcall; \n"
-	:"=D"(r0)
-	:"a"(TRUSTY_VMCALL_SMC), "D"(r0), "S"(r1), "d"(r2), "b"(r3)
+	: "=D"(r0), "=S"(r1), "=d"(r2), "=b"(r3)
+	: "a"(TRUSTY_VMCALL_SMC), "D"(r0), "S"(r1), "d"(r2), "b"(r3)
 	);
+
+	if (((r0 == SM_ERR_NOP_INTERRUPTED) ||
+		(r0 == SM_ERR_INTERRUPTED)) &&
+		(r1 != 0)) {
+		struct trusty_state *s;
+
+		if (lk_timer != NULL) {
+			s = container_of(lk_timer, struct trusty_state, timer);
+			if (r1 != TRUSTY_STOP_TIMER)
+				trusty_configure_lktimer(s, ONESHOT_TIMER, r1);
+			else
+				trusty_configure_lktimer(s, ONESHOT_TIMER, 0);
+		} else {
+			pr_err("Trusty timer has not been initialized yet!\n");
+		}
+	}
+
+	return r0;
+}
+
+static inline ulong smc_periodic_timer(ulong r0, ulong r1, ulong r2, ulong r3)
+{
+	__asm__ __volatile__(
+	"vmcall; \n"
+	: "=D"(r0), "=S"(r1), "=d"(r2), "=b"(r3)
+	: "a"(TRUSTY_VMCALL_SMC), "D"(r0), "S"(r1), "d"(r2), "b"(r3)
+	);
+
 	return r0;
 }
 
@@ -472,19 +546,20 @@ static int trusty_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, s);
 	s->dev = &pdev->dev;
 
+	trusty_init_smc_function();
+	trusty_init_lktimer(s);
+	trusty_set_timer_mode(s, &pdev->dev);
+
 	trusty_init_version(s, &pdev->dev);
 
 	ret = trusty_init_api_version(s, &pdev->dev);
 	if (ret < 0)
 		goto err_api_version;
 
-	trusty_init_lktimer(s);
-	trusty_configure_lktimer(s,
-		PERIODICAL_TIMER, TRUSTY_LKTIMER_INTERVAL);
-
 	return 0;
 
 err_api_version:
+	trusty_del_lktimer(s);
 	if (s->version_str) {
 		device_remove_file(&pdev->dev, &dev_attr_trusty_version);
 		kfree(s->version_str);
