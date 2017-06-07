@@ -417,16 +417,6 @@ config SND_SOC_INTEL_BXT_GPMRB_MACH
 	   Say Y if you have such a device
 	   If unsure select "N".
 
-config SND_SOC_INTEL_BXT_GPMRB_MACH_TDF8532_CODEC
-	bool "Enable TDF8532 codec"
-	depends on SND_SOC_INTEL_BXT_GPMRB_MACH
-	select SND_SOC_TDF8532
-	default y
-	help
-	   This adds support for TDF8532 codec to BE DAI link.
-	   Say "Y" if you are using GP MRB board.
-	   Otherwise choose "N".
-
 config SND_SOC_INTEL_APLI_LHCRB_DUMMY_MACH
 	tristate "ASoC Audio driver for APLI LHCRB Dummy Codec"
 	depends on X86_INTEL_LPSS && I2C
