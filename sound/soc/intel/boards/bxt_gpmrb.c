@@ -30,6 +30,10 @@
 #define CHANNELS_QUAD 4
 #define CHANNELS_EIGHT 8
 
+static int dummy_codecs;
+module_param(dummy_codecs, int, 0444);
+MODULE_PARM_DESC(dummy_codecs, "Set all DAI link codecs to dummy");
+
 static struct snd_soc_dai_link broxton_gpmrb_dais[];
 
 enum {
@@ -542,9 +546,25 @@ static struct snd_soc_card broxton_gpmrb = {
 	.fully_routed = true,
 };
 
+static void broxton_set_dummy_codecs(void)
+{
+	int i;
+
+	for (i = 0; i < broxton_gpmrb.num_links; i++) {
+		broxton_gpmrb.dai_link[i].codec_name = "snd-soc-dummy";
+		broxton_gpmrb.dai_link[i].codec_dai_name = "snd-soc-dummy-dai";
+	}
+
+	dev_info(broxton_gpmrb.dev, "Codecs set to dummy\n");
+}
+
 static int broxton_audio_probe(struct platform_device *pdev)
 {
 	broxton_gpmrb.dev = &pdev->dev;
+
+	if (dummy_codecs)
+		broxton_set_dummy_codecs();
+
 	return snd_soc_register_card(&broxton_gpmrb);
 }
 
