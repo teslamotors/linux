@@ -789,11 +789,4 @@ enum dpm_order {
 	DPM_ORDER_DEV_LAST,
 };
 
-/*
- * Return this from system suspend/hibernation ->prepare() callback to
- * request the core to leave the device runtime-suspended during system
- * suspend if possible.
- */
-#define DPM_DIRECT_COMPLETE 1
-
 #endif /* _LINUX_PM_H */
