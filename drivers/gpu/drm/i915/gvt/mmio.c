@@ -315,6 +315,15 @@ void intel_vgpu_reset_mmio(struct intel_vgpu *vgpu, bool dmlr)
 		memcpy(vgpu->mmio.sreg, mmio, GVT_GEN8_MMIO_RESET_OFFSET);
 	}
 
+	/* below vreg init value are got from handler.c,
+	 * which won't change during vgpu life cycle
+	 */
+	vgpu_vreg(vgpu, 0xe651c) = 1 << 17;
+	vgpu_vreg(vgpu, 0xe661c) = 1 << 17;
+	vgpu_vreg(vgpu, 0xe671c) = 1 << 17;
+	vgpu_vreg(vgpu, 0xe681c) = 1 << 17;
+	vgpu_vreg(vgpu, 0xe6c04) = 3;
+	vgpu_vreg(vgpu, 0xe6e1c) = 0x2f << 16;
 }
 
 /**
