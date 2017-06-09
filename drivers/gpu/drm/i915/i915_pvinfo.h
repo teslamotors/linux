@@ -49,6 +49,8 @@ enum vgt_g2v_type {
 	VGT_G2V_MAX,
 };
 
+#define VGPU_PVMMIO(vgpu) vgpu_vreg(vgpu, vgtif_reg(enable_pvmmio))
+
 /*
  * VGT capabilities type
  */
@@ -101,8 +103,9 @@ struct vgt_if {
 
 	u32 execlist_context_descriptor_lo;
 	u32 execlist_context_descriptor_hi;
+	u32 enable_pvmmio;
 
-	u32  rsv7[0x200 - 24];    /* pad to one page */
+	u32  rsv7[0x200 - 25];    /* pad to one page */
 } __packed;
 
 #define vgtif_reg(x) \

@@ -2164,6 +2164,7 @@ struct drm_i915_private {
 	const struct intel_device_info info;
 
 	void __iomem *regs;
+	struct gvt_shared_page *shared_page;
 
 	struct intel_uncore uncore;
 

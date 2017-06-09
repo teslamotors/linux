@@ -65,6 +65,7 @@ struct i915_params i915 __read_mostly = {
 	.inject_load_failure = 0,
 	.enable_dpcd_backlight = false,
 	.enable_gvt = false,
+	.enable_pvmmio = 1,
 };
 
 module_param_named(modeset, i915.modeset, int, 0400);
@@ -257,3 +258,8 @@ MODULE_PARM_DESC(enable_dpcd_backlight,
 module_param_named(enable_gvt, i915.enable_gvt, bool, 0400);
 MODULE_PARM_DESC(enable_gvt,
 	"Enable support for Intel GVT-g graphics virtualization host support(default:false)");
+
+module_param_named(enable_pvmmio, i915.enable_pvmmio, bool, 0400);
+MODULE_PARM_DESC(enable_pvmmio,
+	"Enable pv mmio feature, default TRUE. This parameter "
+	"could only set from host, guest value is set through vgt_if");
