@@ -292,6 +292,27 @@ static inline int intel_gvt_hypervisor_set_trap_area(
 	return intel_gvt_host.mpt->set_trap_area(vgpu->handle, start, end, map);
 }
 
+/**
+ * intel_gvt_hypervisor_set_pvmmio - Set the pvmmio area
+ * @vgpu: a vGPU
+ * @start: the beginning of the guest physical address region
+ * @end: the end of the guest physical address region
+ * @map: map or unmap
+ *
+ * Returns:
+ * Zero on success, negative error code if failed.
+ */
+static inline int intel_gvt_hypervisor_set_pvmmio(
+		struct intel_vgpu *vgpu, u64 start, u64 end, bool map)
+{
+	/* a MPT implementation could have MMIO trapped elsewhere */
+	if (!intel_gvt_host.mpt->set_pvmmio)
+		return -ENOENT;
+
+	return intel_gvt_host.mpt->set_pvmmio(vgpu->handle, start, end, map);
+}
+
+
 static inline int intel_gvt_hypervisor_pause_domain(struct intel_vgpu *vgpu)
 {
 	if (!intel_gvt_host.mpt || !intel_gvt_host.mpt->pause_domain)

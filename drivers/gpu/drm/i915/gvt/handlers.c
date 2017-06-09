@@ -1134,6 +1134,7 @@ static int pvinfo_mmio_read(struct intel_vgpu *vgpu, unsigned int offset,
 		void *p_data, unsigned int bytes)
 {
 	bool invalid_read = false;
+	int ret = 0;
 
 	read_vreg(vgpu, offset, p_data, bytes);
 
@@ -1148,6 +1149,23 @@ static int pvinfo_mmio_read(struct intel_vgpu *vgpu, unsigned int offset,
 			_vgtif_reg(avail_rs.fence_num) + 4)
 			invalid_read = true;
 		break;
+	case _vgtif_reg(pv_mmio):
+	/* a remap happens from guest mmio read operation, the target reg offset
+	 * is in the first DWORD of shared_page.
+	 */
+	{
+		u32 reg = vgpu->mmio.shared_page->reg_addr;
+		struct intel_gvt_mmio_info *mmio;
+
+		mmio = find_mmio_info(vgpu->gvt, rounddown(reg, 4));
+		if (mmio)
+			ret = mmio->read(vgpu, reg, p_data, bytes);
+		else
+			ret = intel_vgpu_default_mmio_read(vgpu, reg, p_data,
+					bytes);
+		break;
+	}
+
 	case 0x78010:	/* vgt_caps */
 	case 0x7881c:
 		break;
@@ -1159,7 +1177,7 @@ static int pvinfo_mmio_read(struct intel_vgpu *vgpu, unsigned int offset,
 		gvt_vgpu_err("invalid pvinfo read: [%x:%x] = %x\n",
 				offset, bytes, *(u32 *)p_data);
 	vgpu->pv_notified = true;
-	return 0;
+	return ret;
 }
 
 static int handle_g2v_notification(struct intel_vgpu *vgpu, int notification)
@@ -1206,6 +1224,26 @@ static int send_display_ready_uevent(struct intel_vgpu *vgpu, int ready)
 	return kobject_uevent_env(kobj, KOBJ_ADD, env);
 }
 
+#define INTEL_GVT_PCI_BAR_GTTMMIO 0
+static int set_pvmmio(struct intel_vgpu *vgpu, bool map)
+{
+	u64 start, end;
+	u64 val;
+	int ret;
+
+	val = vgpu_cfg_space(vgpu)[PCI_BASE_ADDRESS_0];
+	if (val & PCI_BASE_ADDRESS_MEM_TYPE_64)
+		start = *(u64 *)(vgpu_cfg_space(vgpu) + PCI_BASE_ADDRESS_0);
+	else
+		start = *(u32 *)(vgpu_cfg_space(vgpu) + PCI_BASE_ADDRESS_0);
+
+	start &= ~GENMASK(3, 0);
+	end = start + vgpu->cfg_space.bar[INTEL_GVT_PCI_BAR_GTTMMIO].size - 1;
+
+	ret = intel_gvt_hypervisor_set_pvmmio(vgpu, start, end, map);
+	return ret;
+}
+
 static int pvinfo_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 		void *p_data, unsigned int bytes)
 {
@@ -1221,6 +1259,17 @@ static int pvinfo_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 		break;
 	case _vgtif_reg(g2v_notify):
 		ret = handle_g2v_notification(vgpu, data);
+		break;
+	case _vgtif_reg(enable_pvmmio):
+		if (i915.enable_pvmmio) {
+			if (set_pvmmio(vgpu, !!data)) {
+				vgpu_vreg(vgpu, offset) = 0;
+				break;
+			}
+			vgpu_vreg(vgpu, offset) = !!data;
+		} else {
+			vgpu_vreg(vgpu, offset) = 0;
+		}
 		break;
 	/* add xhot and yhot to handled list to avoid error log */
 	case 0x78830:
@@ -1605,6 +1654,7 @@ static int elsp_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 	int ring_id = render_mmio_to_ring_id(vgpu->gvt, offset);
 	struct intel_vgpu_execlist *execlist;
 	u32 data = *(u32 *)p_data;
+	u32 *elsp_data = vgpu->mmio.shared_page->elsp_data;
 	int ret = 0;
 
 	if (WARN_ON(ring_id < 0 || ring_id > I915_NUM_ENGINES - 1))
@@ -1612,16 +1662,23 @@ static int elsp_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 
 	execlist = &vgpu->execlist[ring_id];
 
-	execlist->elsp_dwords.data[execlist->elsp_dwords.index] = data;
-	if (execlist->elsp_dwords.index == 3) {
+	if (VGPU_PVMMIO(vgpu)) {
+		execlist->elsp_dwords.data[0] = elsp_data[0];
+		execlist->elsp_dwords.data[1] = elsp_data[1];
+		execlist->elsp_dwords.data[2] = elsp_data[2];
+		execlist->elsp_dwords.data[3] = data;
 		ret = intel_vgpu_submit_execlist(vgpu, ring_id);
-		if(ret)
-			gvt_vgpu_err("fail submit workload on ring %d\n",
-				ring_id);
+	} else {
+		execlist->elsp_dwords.data[execlist->elsp_dwords.index] = data;
+		if (execlist->elsp_dwords.index == 3)
+			ret = intel_vgpu_submit_execlist(vgpu, ring_id);
+		++execlist->elsp_dwords.index;
+		execlist->elsp_dwords.index &= 0x3;
 	}
 
-	++execlist->elsp_dwords.index;
-	execlist->elsp_dwords.index &= 0x3;
+	if (ret)
+		gvt_vgpu_err("fail submit workload on ring %d\n", ring_id);
+
 	return ret;
 }
 

@@ -55,6 +55,8 @@ void populate_pvinfo_page(struct intel_vgpu *vgpu)
 
 	vgpu_vreg(vgpu, vgtif_reg(avail_rs.fence_num)) = vgpu_fence_sz(vgpu);
 
+	vgpu_vreg(vgpu, vgtif_reg(enable_pvmmio)) = 0;
+
 	gvt_dbg_core("Populate PVINFO PAGE for vGPU %d\n", vgpu->id);
 	gvt_dbg_core("aperture base [GMADR] 0x%llx size 0x%llx\n",
 		vgpu_aperture_gmadr_base(vgpu), vgpu_aperture_sz(vgpu));
@@ -456,6 +458,8 @@ struct intel_vgpu *intel_gvt_create_vgpu(struct intel_gvt *gvt,
 	return vgpu;
 }
 
+#define _vgtif_reg(x) \
+	(VGT_PVINFO_PAGE + offsetof(struct vgt_if, x))
 /**
  * intel_gvt_reset_vgpu_locked - reset a virtual GPU by DMLR or GT reset
  * @vgpu: virtual GPU
@@ -490,6 +494,7 @@ void intel_gvt_reset_vgpu_locked(struct intel_vgpu *vgpu, bool dmlr,
 	struct intel_gvt *gvt = vgpu->gvt;
 	struct intel_gvt_workload_scheduler *scheduler = &gvt->scheduler;
 	unsigned int resetting_eng = dmlr ? ALL_ENGINES : engine_mask;
+	bool enable_pvmmio = vgpu_vreg(vgpu, _vgtif_reg(enable_pvmmio));
 
 	gvt_dbg_core("------------------------------------------\n");
 	gvt_dbg_core("resseting vgpu%d, dmlr %d, engine_mask %08x\n",
@@ -523,6 +528,7 @@ void intel_gvt_reset_vgpu_locked(struct intel_vgpu *vgpu, bool dmlr,
 
 		intel_vgpu_reset_mmio(vgpu, dmlr);
 		populate_pvinfo_page(vgpu);
+		vgpu_vreg(vgpu, _vgtif_reg(enable_pvmmio)) = enable_pvmmio;
 		intel_vgpu_reset_display(vgpu);
 
 		if (dmlr) {
