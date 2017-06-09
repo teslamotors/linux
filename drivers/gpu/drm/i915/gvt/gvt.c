@@ -114,6 +114,8 @@ static void init_device_info(struct intel_gvt *gvt)
 		info->max_support_vgpus = 8;
 		info->cfg_space_size = 256;
 		info->mmio_size = 2 * 1024 * 1024;
+		/* order of mmio size. assert(2^order == mmio_size) */
+		info->mmio_size_order = 9;
 		info->mmio_bar = 0;
 		info->gtt_start_offset = 8 * 1024 * 1024;
 		info->gtt_entry_size = 8;

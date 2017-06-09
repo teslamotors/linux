@@ -67,6 +67,7 @@ struct intel_gvt_device_info {
 	u32 max_support_vgpus;
 	u32 cfg_space_size;
 	u32 mmio_size;
+	u32 mmio_size_order;
 	u32 mmio_bar;
 	unsigned long msi_cap_offset;
 	u32 gtt_start_offset;
@@ -96,6 +97,7 @@ struct intel_vgpu_fence {
 struct intel_vgpu_mmio {
 	void *vreg;
 	void *sreg;
+	struct gvt_shared_page *shared_page;
 	bool disable_warn_untrack;
 };
 
