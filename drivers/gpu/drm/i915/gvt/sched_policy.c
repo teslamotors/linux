@@ -194,7 +194,7 @@ static struct intel_vgpu *find_busy_vgpu(struct gvt_sched_data *sched_data)
 }
 
 /* in nanosecond */
-#define GVT_DEFAULT_TIME_SLICE 1000000
+#define GVT_DEFAULT_TIME_SLICE 5000000
 
 static void tbs_sched_func(struct gvt_sched_data *sched_data)
 {
