@@ -281,6 +281,7 @@ struct intel_gvt_pipe_info {
 
 struct intel_gvt {
 	struct mutex lock;
+	struct mutex sched_lock;
 	struct drm_i915_private *dev_priv;
 	struct idr vgpu_idr;	/* vGPU IDR pool */
 

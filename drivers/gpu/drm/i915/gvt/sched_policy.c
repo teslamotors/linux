@@ -228,7 +228,7 @@ void intel_gvt_schedule(struct intel_gvt *gvt)
 	struct gvt_sched_data *sched_data = gvt->scheduler.sched_data;
 	static uint64_t timer_check;
 
-	mutex_lock(&gvt->lock);
+	mutex_lock(&gvt->sched_lock);
 
 	if (test_and_clear_bit(INTEL_GVT_REQUEST_SCHED,
 				(void *)&gvt->service_request)) {
@@ -239,7 +239,7 @@ void intel_gvt_schedule(struct intel_gvt *gvt)
 
 	tbs_sched_func(sched_data);
 
-	mutex_unlock(&gvt->lock);
+	mutex_unlock(&gvt->sched_lock);
 }
 
 static enum hrtimer_restart tbs_timer_fn(struct hrtimer *timer_data)

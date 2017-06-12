@@ -268,7 +268,11 @@ static int dispatch_workload(struct intel_vgpu_workload *workload)
 		goto out;
 
 	if (workload->prepare) {
+		mutex_unlock(&dev_priv->drm.struct_mutex);
+		mutex_lock(&vgpu->gvt->lock);
+		mutex_lock(&dev_priv->drm.struct_mutex);
 		ret = workload->prepare(workload);
+		mutex_unlock(&vgpu->gvt->lock);
 		if (ret)
 			goto out;
 	}
@@ -308,7 +312,7 @@ static struct intel_vgpu_workload *pick_next_workload(
 	struct intel_gvt_workload_scheduler *scheduler = &gvt->scheduler;
 	struct intel_vgpu_workload *workload = NULL;
 
-	mutex_lock(&gvt->lock);
+	mutex_lock(&gvt->sched_lock);
 
 	/*
 	 * no current vgpu / will be scheduled out / no workload
@@ -354,7 +358,7 @@ static struct intel_vgpu_workload *pick_next_workload(
 
 	atomic_inc(&workload->vgpu->running_workload_num);
 out:
-	mutex_unlock(&gvt->lock);
+	mutex_unlock(&gvt->sched_lock);
 	return workload;
 }
 
@@ -434,7 +438,7 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 	struct intel_vgpu *vgpu;
 	int event;
 
-	mutex_lock(&gvt->lock);
+	mutex_lock(&gvt->sched_lock);
 
 	workload = scheduler->current_workload[ring_id];
 	vgpu = workload->vgpu;
@@ -469,9 +473,11 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 					   ENGINE_MASK(ring_id))) {
 			update_guest_context(workload);
 
+			mutex_lock(&gvt->lock);
 			for_each_set_bit(event, workload->pending_events,
 					 INTEL_GVT_EVENT_MAX)
 				intel_vgpu_trigger_virtual_event(vgpu, event);
+			mutex_unlock(&gvt->lock);
 		}
 		mutex_lock(&dev_priv->drm.struct_mutex);
 		/* unpin shadow ctx as the shadow_ctx update is done */
@@ -484,6 +490,7 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 
 	scheduler->current_workload[ring_id] = NULL;
 
+	mutex_lock(&gvt->lock);
 	list_del_init(&workload->list);
 	workload->complete(workload);
 
@@ -494,6 +501,7 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 		intel_gvt_request_service(gvt, INTEL_GVT_REQUEST_EVENT_SCHED);
 
 	mutex_unlock(&gvt->lock);
+	mutex_unlock(&gvt->sched_lock);
 }
 
 struct workload_thread_param {
@@ -548,9 +556,9 @@ static int workload_thread(void *priv)
 			intel_uncore_forcewake_get(gvt->dev_priv,
 					FORCEWAKE_ALL);
 
-		mutex_lock(&gvt->lock);
+		mutex_lock(&gvt->sched_lock);
 		ret = dispatch_workload(workload);
-		mutex_unlock(&gvt->lock);
+		mutex_unlock(&gvt->sched_lock);
 
 		if (ret) {
 			vgpu = workload->vgpu;

@@ -222,6 +222,7 @@ void intel_gvt_deactivate_vgpu(struct intel_vgpu *vgpu)
 {
 	struct intel_gvt *gvt = vgpu->gvt;
 
+	mutex_lock(&vgpu->gvt->sched_lock);
 	mutex_lock(&gvt->lock);
 
 	vgpu->active = false;
@@ -230,13 +231,16 @@ void intel_gvt_deactivate_vgpu(struct intel_vgpu *vgpu)
 
 	if (atomic_read(&vgpu->running_workload_num)) {
 		mutex_unlock(&gvt->lock);
+		mutex_unlock(&vgpu->gvt->sched_lock);
 		intel_gvt_wait_vgpu_idle(vgpu);
+		mutex_lock(&vgpu->gvt->sched_lock);
 		mutex_lock(&gvt->lock);
 	}
 
 	intel_vgpu_stop_schedule(vgpu);
 
 	mutex_unlock(&gvt->lock);
+	mutex_unlock(&vgpu->gvt->sched_lock);
 }
 
 /**
@@ -500,7 +504,9 @@ void intel_gvt_reset_vgpu_locked(struct intel_vgpu *vgpu, bool dmlr,
 	 */
 	if (scheduler->current_vgpu == NULL) {
 		mutex_unlock(&gvt->lock);
+		mutex_unlock(&vgpu->gvt->sched_lock);
 		intel_gvt_wait_vgpu_idle(vgpu);
+		mutex_lock(&vgpu->gvt->sched_lock);
 		mutex_lock(&gvt->lock);
 	}
 
@@ -541,7 +547,9 @@ void intel_gvt_reset_vgpu_locked(struct intel_vgpu *vgpu, bool dmlr,
  */
 void intel_gvt_reset_vgpu(struct intel_vgpu *vgpu)
 {
+	mutex_lock(&vgpu->gvt->sched_lock);
 	mutex_lock(&vgpu->gvt->lock);
 	intel_gvt_reset_vgpu_locked(vgpu, true, 0);
 	mutex_unlock(&vgpu->gvt->lock);
+	mutex_unlock(&vgpu->gvt->sched_lock);
 }

@@ -738,7 +738,7 @@ int intel_vgpu_submit_execlist(struct intel_vgpu *vgpu, int ring_id)
 {
 	struct intel_vgpu_execlist *execlist = &vgpu->execlist[ring_id];
 	struct execlist_ctx_descriptor_format desc[2];
-	int i, ret;
+	int i, ret = 0;
 
 	desc[0] = *get_desc_from_elsp_dwords(&execlist->elsp_dwords, 1);
 	desc[1] = *get_desc_from_elsp_dwords(&execlist->elsp_dwords, 0);
@@ -757,6 +757,9 @@ int intel_vgpu_submit_execlist(struct intel_vgpu *vgpu, int ring_id)
 		}
 	}
 
+	mutex_unlock(&vgpu->gvt->lock);
+	mutex_lock(&vgpu->gvt->sched_lock);
+	mutex_lock(&vgpu->gvt->lock);
 	/* submit workload */
 	for (i = 0; i < ARRAY_SIZE(desc); i++) {
 		if (!desc[i].valid)
@@ -764,11 +767,13 @@ int intel_vgpu_submit_execlist(struct intel_vgpu *vgpu, int ring_id)
 		ret = submit_context(vgpu, ring_id, &desc[i], i == 0);
 		if (ret) {
 			gvt_vgpu_err("failed to submit desc %d\n", i);
-			return ret;
+			goto out;
 		}
 	}
 
-	return 0;
+out:
+	mutex_unlock(&vgpu->gvt->sched_lock);
+	return ret;
 
 inv_desc:
 	gvt_vgpu_err("descriptors content: desc0 %08x %08x desc1 %08x %08x\n",

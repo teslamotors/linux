@@ -307,7 +307,11 @@ static int gdrst_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 		}
 	}
 
+	mutex_unlock(&vgpu->gvt->lock);
+	mutex_lock(&vgpu->gvt->sched_lock);
+	mutex_lock(&vgpu->gvt->lock);
 	intel_gvt_reset_vgpu_locked(vgpu, false, engine_mask);
+	mutex_unlock(&vgpu->gvt->sched_lock);
 
 	/* sw will wait for the device to ack the reset request */
 	 vgpu_vreg(vgpu, offset) = 0;
@@ -1648,8 +1652,13 @@ static int ring_mode_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 				(enable_execlist ? "enabling" : "disabling"),
 				ring_id);
 
-		if (enable_execlist)
+		if (enable_execlist) {
+			mutex_unlock(&vgpu->gvt->lock);
+			mutex_lock(&vgpu->gvt->sched_lock);
+			mutex_lock(&vgpu->gvt->lock);
 			intel_vgpu_start_schedule(vgpu);
+			mutex_unlock(&vgpu->gvt->sched_lock);
+		}
 	}
 	return 0;
 }
