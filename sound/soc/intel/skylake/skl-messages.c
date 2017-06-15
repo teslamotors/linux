@@ -1168,6 +1168,10 @@ int skl_init_dsp(struct skl *skl)
 
 	dev_dbg(bus->dev, "dsp registration status=%d\n", ret);
 
+	/* Set DMA clock controls */
+	ret = skl_dsp_set_dma_clk_controls(skl->skl_sst);
+	if (ret < 0)
+		return ret;
 	return 0;
 
 free_core_state:
@@ -1274,7 +1278,9 @@ int skl_resume_dsp(struct skl *skl)
 		return ret;
 
 	skl_dsp_enable_notification(skl->skl_sst, false);
-	return ret;
+
+	/* Set DMA clock controls */
+	return skl_dsp_set_dma_clk_controls(skl->skl_sst);
 }
 
 enum skl_bitdepth skl_get_bit_depth(int params)
@@ -1490,8 +1496,10 @@ skip_buf_size_calc:
 }
 
 #define DMA_CONTROL_ID 5
+#define DMA_I2S_BLOB_SIZE 21
 
-int skl_dsp_set_dma_control(struct skl_sst *ctx, struct skl_module_cfg *mconfig)
+int skl_dsp_set_dma_control(struct skl_sst *ctx, u32 *caps,
+				u32 caps_size, u32 node_id)
 {
 	struct skl_dma_control *dma_ctrl;
 	struct skl_ipc_large_config_msg msg = {0};
@@ -1501,29 +1509,118 @@ int skl_dsp_set_dma_control(struct skl_sst *ctx, struct skl_module_cfg *mconfig)
 	/*
 	 * if blob size zero, then return
 	 */
-	if (mconfig->formats_config.caps_size == 0)
+	if (caps_size == 0)
 		return 0;
 
 	msg.large_param_id = DMA_CONTROL_ID;
-	msg.param_data_size = sizeof(struct skl_dma_control) +
-				mconfig->formats_config.caps_size;
+	msg.param_data_size = sizeof(struct skl_dma_control) + caps_size;
 
 	dma_ctrl = kzalloc(msg.param_data_size, GFP_KERNEL);
 	if (dma_ctrl == NULL)
 		return -ENOMEM;
 
-	dma_ctrl->node_id = skl_get_node_id(ctx, mconfig);
+	dma_ctrl->node_id = node_id;
 
-	/* size in dwords */
-	dma_ctrl->config_length = mconfig->formats_config.caps_size / 4;
+	/*
+	 * NHLT blob may contain additional configs along with i2s blob.
+	 * firmware expects only the I2S blob size as the config_length. So fix to i2s
+	 * blob size.
+	 *
+	 * size in dwords.
+	 */
+	dma_ctrl->config_length = DMA_I2S_BLOB_SIZE;
 
-	memcpy(dma_ctrl->config_data, mconfig->formats_config.caps,
-				mconfig->formats_config.caps_size);
+	memcpy(dma_ctrl->config_data, caps, caps_size);
 
 	err = skl_ipc_set_large_config(&ctx->ipc, &msg, (u32 *)dma_ctrl);
 
 	kfree(dma_ctrl);
+
 	return err;
+}
+
+static u32 skl_prepare_i2s_node_id(u32 instance, u8 dev_type,
+				u32 dir, u32 time_slot)
+{
+	union skl_connector_node_id node_id = {0};
+	union skl_ssp_dma_node ssp_node  = {0};
+
+	node_id.node.dma_type = (dir == SNDRV_PCM_STREAM_PLAYBACK) ?
+					SKL_DMA_I2S_LINK_OUTPUT_CLASS :
+					SKL_DMA_I2S_LINK_INPUT_CLASS;
+	ssp_node.dma_node.time_slot_index = time_slot;
+	ssp_node.dma_node.i2s_instance = instance;
+	node_id.node.vindex = ssp_node.val;
+
+	return node_id.val;
+}
+
+int skl_dsp_set_dma_clk_controls(struct skl_sst *ctx)
+{
+	struct nhlt_specific_cfg *cfg = NULL;
+	struct skl *skl = get_skl_ctx(ctx->dev);
+	struct skl_dmactrl_config *dmactrl_cfg = &skl->cfg.dmactrl_cfg;
+	struct skl_dmctrl_hdr *hdr;
+	u8 *dma_ctrl_config;
+	void *i2s_config = NULL;
+	u32 i2s_config_size, node_id;
+	int i, ret = 0;
+
+	if (!skl->cfg.dmactrl_cfg.size)
+		return 0;
+
+	for (i = 0; i < SKL_MAX_DMACTRL_CFG; i++) {
+		hdr = &dmactrl_cfg->hdr[i];
+
+		/* get nhlt specific config info */
+		cfg = skl_get_nhlt_specific_cfg(skl, hdr->vbus_id,
+					NHLT_LINK_SSP, hdr->fmt,
+					hdr->ch, hdr->freq,
+					hdr->direction, NHLT_DEVICE_I2S);
+
+		if (cfg && hdr->data_size) {
+			print_hex_dump(KERN_DEBUG, "NHLT blob Info:",
+					DUMP_PREFIX_OFFSET, 8, 4,
+					cfg->caps, cfg->size, false);
+
+			i2s_config_size = cfg->size + hdr->data_size;
+			i2s_config = kzalloc(i2s_config_size, GFP_KERNEL);
+			if (!i2s_config)
+				return -ENOMEM;
+
+			/* copy blob */
+			memcpy(i2s_config, cfg->caps, cfg->size);
+
+			/* copy additional dma controls informatioin */
+			dma_ctrl_config = (u8 *)i2s_config + cfg->size;
+			memcpy(dma_ctrl_config, hdr->data, hdr->data_size);
+
+			print_hex_dump(KERN_DEBUG, "Blob + DMA Control Info:",
+					DUMP_PREFIX_OFFSET, 8, 4,
+					i2s_config, i2s_config_size, false);
+
+			/* get node id */
+			node_id = skl_prepare_i2s_node_id(hdr->vbus_id,
+							SKL_DEVICE_I2S,
+							hdr->direction,
+							hdr->tdm_slot);
+
+			ret = skl_dsp_set_dma_control(ctx, (u32 *)i2s_config,
+							i2s_config_size, node_id);
+
+			kfree(i2s_config);
+
+			if (ret < 0)
+				return ret;
+
+		} else {
+			dev_err(ctx->dev, "Failed to get NHLT config: vbusi_id=%d ch=%d fmt=%d s_rate=%d\n",
+				hdr->vbus_id, hdr->ch, hdr->fmt, hdr->freq);
+			return -EIO;
+		}
+	}
+
+	return 0;
 }
 
 static void skl_setup_out_format(struct skl_sst *ctx,

@@ -2463,18 +2463,13 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 		mconfig->formats_config.caps = (u32 *) sdw_cfg;
 		return 0;
 	}
+
 	/* update the blob based on virtual bus_id*/
-	if (!skl->nhlt_override) {
-		cfg = skl_get_ep_blob(skl, mconfig->vbus_id, link_type,
+	cfg = skl_get_nhlt_specific_cfg(skl, mconfig->vbus_id, link_type,
 					params->s_fmt, params->ch,
 					params->s_freq, params->stream,
 					dev_type);
-	} else {
-		dev_warn(dai->dev, "Querying NHLT blob from Debugfs!!!!\n");
-		cfg = skl_nhlt_get_debugfs_blob(skl->debugfs,
-					link_type, mconfig->vbus_id,
-					params->stream);
-	}
+
 	if (cfg) {
 		mconfig->formats_config.caps_size = cfg->size;
 		mconfig->formats_config.caps = (u32 *) &cfg->caps;
