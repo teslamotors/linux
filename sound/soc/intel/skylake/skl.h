@@ -37,6 +37,9 @@
 #define AZX_REG_VS_D0I3C_I3       0x4 /* D0i3 enable */
 #define AZX_EM2_DUM_MASK		(1 << 23)
 
+#define SKL_MAX_DMA_CFG    24
+#define SKL_MAX_DMACTRL_CFG	7
+
 struct skl_dsp_resource {
 	u32 max_mcps;
 	u32 max_mem;
@@ -45,6 +48,29 @@ struct skl_dsp_resource {
 };
 
 struct skl_debug;
+
+struct skl_dmctrl_hdr {
+	u32 vbus_id;
+	u32 freq;
+	u32 tdm_slot;
+	u32 fmt;
+	u32 direction;
+	u32 ch;
+	u32 data_size;
+	u32 *data;
+} __packed;
+
+struct skl_dmactrl_config {
+	u32 type;
+	u32 size;
+	u32 idx;
+	struct skl_dmctrl_hdr hdr[SKL_MAX_DMACTRL_CFG];
+} __packed;
+
+
+struct skl_fw_cfg_info {
+	struct skl_dmactrl_config dmactrl_cfg;
+} __packed;
 
 struct ep_group_cnt {
 	int cnt;
@@ -83,6 +109,7 @@ struct skl {
 	bool nhlt_override;
 	bool mod_set_get_status;
 	struct ep_group_cnt grp_cnt;
+	struct skl_fw_cfg_info cfg;
 };
 
 #define skl_to_ebus(s)	(&(s)->ebus)

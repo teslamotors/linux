@@ -3650,6 +3650,63 @@ static int skl_tplg_get_str_tkn(struct device *dev,
 	return tkn_count;
 }
 
+static int skl_tplg_mfest_fill_dmactrl(struct device *dev,
+		struct skl_dmactrl_config *dmactrl_cfg,
+		struct snd_soc_tplg_vendor_value_elem *tkn_elem)
+{
+
+	u32 cfg_idx = dmactrl_cfg->idx;
+	struct skl_dmctrl_hdr *hdr = &dmactrl_cfg->hdr[cfg_idx];
+
+	switch (tkn_elem->token) {
+	case SKL_TKN_U32_FMT_CH:
+		hdr->ch = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_FMT_FREQ:
+		hdr->freq = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_FMT_BIT_DEPTH:
+		hdr->fmt = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_PIPE_DIRECTION:
+		hdr->direction = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U8_TIME_SLOT:
+		hdr->tdm_slot = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_VBUS_ID:
+		hdr->vbus_id = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_DMACTRL_CFG_IDX:
+		dmactrl_cfg->idx  = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_DMACTRL_CFG_SIZE:
+		if (tkn_elem->value && !hdr->data) {
+			hdr->data = devm_kzalloc(dev,
+				tkn_elem->value, GFP_KERNEL);
+			if (!hdr->data)
+				return -ENOMEM;
+			hdr->data_size = tkn_elem->value;
+		} else {
+			hdr->data_size = 0;
+			dev_err(dev, "Invalid dmactrl info \n");
+		}
+		break;
+	default:
+		dev_err(dev, "Invalid token %d\n", tkn_elem->token);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int skl_tplg_manifest_fill_fmt(struct device *dev,
 		struct skl_module_iface *fmt,
 		struct snd_soc_tplg_vendor_value_elem *tkn_elem,
@@ -3846,8 +3903,17 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 	case SKL_TKN_U32_FMT_SAMPLE_TYPE:
 	case SKL_TKN_U32_FMT_CH_MAP:
 	case SKL_TKN_MM_U32_INTF_PIN_ID:
-		ret = skl_tplg_manifest_fill_fmt(dev, fmt, tkn_elem,
-						 dir, pin_idx);
+	case SKL_TKN_U32_PIPE_DIRECTION:
+	case SKL_TKN_U8_TIME_SLOT:
+	case SKL_TKN_U32_VBUS_ID:
+	case SKL_TKN_U32_DMACTRL_CFG_IDX:
+	case SKL_TKN_U32_DMACTRL_CFG_SIZE:
+		if (skl->modules)
+			ret = skl_tplg_manifest_fill_fmt(dev, fmt, tkn_elem,
+							 dir, pin_idx);
+		else
+			ret = skl_tplg_mfest_fill_dmactrl(dev, &skl->cfg.dmactrl_cfg,
+					 tkn_elem);
 		if (ret < 0)
 			return ret;
 		break;
@@ -3950,8 +4016,9 @@ static int skl_tplg_get_manifest_data(struct snd_soc_tplg_manifest *manifest,
 {
 	struct snd_soc_tplg_vendor_array *array;
 	int num_blocks, block_size = 0, block_type, off = 0;
+	struct skl_dmctrl_hdr *dmactrl_hdr;
+	int cfg_idx, ret;
 	char *data;
-	int ret;
 
 	/* Read the NUM_DATA_BLOCKS descriptor */
 	array = (struct snd_soc_tplg_vendor_array *)manifest->priv.data;
@@ -3996,7 +4063,17 @@ static int skl_tplg_get_manifest_data(struct snd_soc_tplg_manifest *manifest,
 
 			--num_blocks;
 		} else {
-			return -EINVAL;
+			cfg_idx = skl->cfg.dmactrl_cfg.idx;
+			if (cfg_idx < SKL_MAX_DMACTRL_CFG) {
+				dmactrl_hdr = &skl->cfg.dmactrl_cfg.hdr[cfg_idx];
+				if (dmactrl_hdr->data && (dmactrl_hdr->data_size == block_size))
+					memcpy(dmactrl_hdr->data, data, block_size);
+			} else {
+				dev_err(dev, "error block_idx value exceeding %d\n", cfg_idx);
+				return -EINVAL;
+			}
+			ret = block_size;
+			--num_blocks;
 		}
 		off += ret;
 	}

@@ -233,6 +233,12 @@
  *                              indicate if this endpoint is participating
  *                              in aggregation.
  *
+ * %SKL_TKN_U32_DMACTRL_CFG_IDX:
+ *				Config index to fill up DMA control params
+ *
+ * %SKL_TKN_U32_DMACTRL_CFG_SIZE:
+ *				Size information of DMA control params
+ *
  * module_id and loadable flags dont have tokens as these values will be
  * read from the DSP FW manifest
  *
@@ -324,8 +330,9 @@ enum SKL_TKNS {
 	SKL_TKN_U32_AGG_LINK_ID,
 	SKL_TKN_U32_AGG_CH_MASK,
 	SKL_TKN_U32_AGG_ID,
-
-	SKL_TKN_MAX = SKL_TKN_U32_AGG_ID,
+	SKL_TKN_U32_DMACTRL_CFG_IDX,
+	SKL_TKN_U32_DMACTRL_CFG_SIZE,
+	SKL_TKN_MAX = SKL_TKN_U32_DMACTRL_CFG_SIZE,
 };
 
 #endif
