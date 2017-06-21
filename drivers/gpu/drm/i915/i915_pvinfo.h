@@ -55,6 +55,15 @@ enum vgt_g2v_type {
 	VGT_G2V_MAX,
 };
 
+/* shared page(4KB) between gvt and VM, located at the first page next
+ * to MMIO region(2MB size normally).
+ */
+struct gvt_shared_page {
+	u32 elsp_data[4];
+	u32 reg_addr;
+	u32 rsvd2[0x400 - 5];
+};
+
 #define VGPU_PVMMIO(vgpu) vgpu_vreg(vgpu, vgtif_reg(enable_pvmmio))
 
 /*
@@ -110,8 +119,9 @@ struct vgt_if {
 	u32 execlist_context_descriptor_lo;
 	u32 execlist_context_descriptor_hi;
 	u32 enable_pvmmio;
+	u32 pv_mmio; /* vgpu trapped mmio read will be redirected here */
 
-	u32  rsv7[0x200 - 25];    /* pad to one page */
+	u32  rsv7[0x200 - 26];    /* pad to one page */
 } __packed;
 
 #define vgtif_reg(x) \

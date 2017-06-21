@@ -342,6 +342,8 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 	u32 __iomem *elsp =
 		engine->i915->regs + i915_mmio_reg_offset(RING_ELSP(engine));
 	unsigned int n;
+	u32 descs[4];
+	int i = 0;
 
 	for (n = ARRAY_SIZE(engine->execlist_port); n--; ) {
 		struct drm_i915_gem_request *rq;
@@ -360,9 +362,25 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 			GEM_BUG_ON(!n);
 			desc = 0;
 		}
+		if (intel_vgpu_active(engine->i915) && i915.enable_pvmmio) {
+			BUG_ON(i >= 4);
+			descs[i] = upper_32_bits(desc);
+			descs[i + 1] = lower_32_bits(desc);
+			i += 2;
+		} else {
+			writel(upper_32_bits(desc), elsp);
+			writel(lower_32_bits(desc), elsp);
+		}
+	}
 
-		writel(upper_32_bits(desc), elsp);
-		writel(lower_32_bits(desc), elsp);
+	if (intel_vgpu_active(engine->i915) && i915.enable_pvmmio) {
+		u32 __iomem *elsp_data = engine->i915->shared_page->elsp_data;
+		spin_lock(&engine->i915->shared_page_lock);
+		writel(descs[0], elsp_data);
+		writel(descs[1], elsp_data + 1);
+		writel(descs[2], elsp_data + 2);
+		writel(descs[3], elsp);
+		spin_unlock(&engine->i915->shared_page_lock);
 	}
 }
 
