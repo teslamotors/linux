@@ -32,6 +32,7 @@
 
 /* CannonLake thermal reporting device */
 #define PCI_DEVICE_ID_PROC_CNL_THERMAL	0x5a03
+#define PCI_DEVICE_ID_PROC_CFL_THERMAL	0x3E83
 
 /* Braswell thermal reporting device */
 #define PCI_DEVICE_ID_PROC_BSW_THERMAL	0x22DC
