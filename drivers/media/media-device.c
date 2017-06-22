@@ -542,7 +542,7 @@ static void media_device_kpad_to_upad(const struct media_pad *kpad,
 }
 
 static long media_device_enum_links(struct media_device *mdev,
-				    struct file *filp,
+					struct file *filp,
 				    struct media_links_enum *links)
 {
 	struct media_entity *entity;
@@ -933,9 +933,9 @@ struct media_links_enum32 {
 	compat_uptr_t links; /* struct media_link_desc * */
 	__u32 reserved[4];
 };
-
 static long media_device_enum_links32(struct media_device *mdev,
-				      struct media_links_enum32 __user *ulinks)
+						struct file *filp,
+						struct media_links_enum32 __user *ulinks)
 {
 	struct media_links_enum links;
 	compat_uptr_t pads_ptr, links_ptr;
@@ -950,7 +950,7 @@ static long media_device_enum_links32(struct media_device *mdev,
 	links.pads = compat_ptr(pads_ptr);
 	links.links = compat_ptr(links_ptr);
 
-	return media_device_enum_links(mdev, &links);
+	return media_device_enum_links(mdev, filp, &links);
 }
 
 #define MEDIA_IOC_ENUM_LINKS32		_IOWR('|', 0x02, struct media_links_enum32)
@@ -965,6 +965,7 @@ static long media_device_compat_ioctl(struct file *filp, unsigned int cmd,
 	case MEDIA_IOC_ENUM_LINKS32:
 		mutex_lock(&dev->graph_mutex);
 		ret = media_device_enum_links32(dev,
+				filp,
 				(struct media_links_enum32 __user *)arg);
 		mutex_unlock(&dev->graph_mutex);
 		break;
