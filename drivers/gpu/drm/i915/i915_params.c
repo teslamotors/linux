@@ -66,6 +66,7 @@ struct i915_params i915 __read_mostly = {
 	.enable_dpcd_backlight = false,
 	.enable_gvt = false,
 	.enable_pvmmio = 1,
+	.enable_gvt_oos = 1,
 };
 
 module_param_named(modeset, i915.modeset, int, 0400);
@@ -263,3 +264,6 @@ module_param_named(enable_pvmmio, i915.enable_pvmmio, bool, 0400);
 MODULE_PARM_DESC(enable_pvmmio,
 	"Enable pv mmio feature, default TRUE. This parameter "
 	"could only set from host, guest value is set through vgt_if");
+
+module_param_named(enable_gvt_oos, i915.enable_gvt_oos, bool, 0400);
+MODULE_PARM_DESC(enable_gvt_oos, "To toggle the gvt ppgtt page table OOS (Out of Sync) feature.");
