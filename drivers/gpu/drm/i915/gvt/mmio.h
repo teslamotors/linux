@@ -86,9 +86,12 @@ int intel_vgpu_gpa_to_mmio_offset(struct intel_vgpu *vgpu, u64 gpa);
 
 int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, u64 pa,
 				void *p_data, unsigned int bytes);
+int intel_vgpu_emulate_mmio_read_locked(struct intel_vgpu *vgpu, u64 pa,
+				void *p_data, unsigned int bytes);
 int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, u64 pa,
 				void *p_data, unsigned int bytes);
-
+int intel_vgpu_emulate_mmio_write_locked(struct intel_vgpu *vgpu, u64 pa,
+				void *p_data, unsigned int bytes);
 int intel_vgpu_default_mmio_read(struct intel_vgpu *vgpu, unsigned int offset,
 				 void *p_data, unsigned int bytes);
 int intel_vgpu_default_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,

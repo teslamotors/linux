@@ -68,7 +68,6 @@ static void failsafe_emulate_mmio_rw(struct intel_vgpu *vgpu, uint64_t pa,
 		return;
 
 	gvt = vgpu->gvt;
-	mutex_lock(&gvt->lock);
 	offset = intel_vgpu_gpa_to_mmio_offset(vgpu, pa);
 	if (reg_is_mmio(gvt, offset)) {
 		if (read)
@@ -106,7 +105,6 @@ static void failsafe_emulate_mmio_rw(struct intel_vgpu *vgpu, uint64_t pa,
 						p_data, bytes);
 		}
 	}
-	mutex_unlock(&gvt->lock);
 }
 
 /**
@@ -119,19 +117,17 @@ static void failsafe_emulate_mmio_rw(struct intel_vgpu *vgpu, uint64_t pa,
  * Returns:
  * Zero on success, negative error code if failed
  */
-int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
+int intel_vgpu_emulate_mmio_read_locked(struct intel_vgpu *vgpu, uint64_t pa,
 		void *p_data, unsigned int bytes)
 {
 	struct intel_gvt *gvt = vgpu->gvt;
 	unsigned int offset = 0;
 	int ret = -EINVAL;
 
-
 	if (vgpu->failsafe) {
 		failsafe_emulate_mmio_rw(vgpu, pa, p_data, bytes, true);
 		return 0;
 	}
-	mutex_lock(&gvt->lock);
 
 	if (atomic_read(&vgpu->gtt.n_write_protected_guest_page)) {
 		struct intel_vgpu_guest_page *gp;
@@ -146,7 +142,6 @@ int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
 					ret, gp->gfn, pa, *(u32 *)p_data,
 					bytes);
 			}
-			mutex_unlock(&gvt->lock);
 			return ret;
 		}
 	}
@@ -168,13 +163,11 @@ int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
 				p_data, bytes);
 		if (ret)
 			goto err;
-		mutex_unlock(&gvt->lock);
 		return ret;
 	}
 
 	if (WARN_ON_ONCE(!reg_is_mmio(gvt, offset))) {
 		ret = intel_gvt_hypervisor_read_gpa(vgpu, pa, p_data, bytes);
-		mutex_unlock(&gvt->lock);
 		return ret;
 	}
 
@@ -191,12 +184,22 @@ int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
 		goto err;
 
 	intel_gvt_mmio_set_accessed(gvt, offset);
-	mutex_unlock(&gvt->lock);
 	return 0;
 err:
 	gvt_vgpu_err("fail to emulate MMIO read %08x len %d\n",
 			offset, bytes);
-	mutex_unlock(&gvt->lock);
+	return ret;
+}
+
+int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
+		void *p_data, unsigned int bytes)
+{
+	int ret;
+
+	mutex_lock(&vgpu->gvt->lock);
+	ret = intel_vgpu_emulate_mmio_read_locked(vgpu, pa, p_data, bytes);
+	mutex_unlock(&vgpu->gvt->lock);
+
 	return ret;
 }
 
@@ -210,7 +213,7 @@ err:
  * Returns:
  * Zero on success, negative error code if failed
  */
-int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
+int intel_vgpu_emulate_mmio_write_locked(struct intel_vgpu *vgpu, uint64_t pa,
 		void *p_data, unsigned int bytes)
 {
 	struct intel_gvt *gvt = vgpu->gvt;
@@ -221,8 +224,6 @@ int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 		failsafe_emulate_mmio_rw(vgpu, pa, p_data, bytes, false);
 		return 0;
 	}
-
-	mutex_lock(&gvt->lock);
 
 	if (atomic_read(&vgpu->gtt.n_write_protected_guest_page)) {
 		struct intel_vgpu_guest_page *gp;
@@ -237,7 +238,6 @@ int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 					ret, gp->gfn, pa,
 					*(u32 *)p_data, bytes);
 			}
-			mutex_unlock(&gvt->lock);
 			return ret;
 		}
 	}
@@ -259,13 +259,11 @@ int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 				p_data, bytes);
 		if (ret)
 			goto err;
-		mutex_unlock(&gvt->lock);
 		return ret;
 	}
 
 	if (WARN_ON_ONCE(!reg_is_mmio(gvt, offset))) {
 		ret = intel_gvt_hypervisor_write_gpa(vgpu, pa, p_data, bytes);
-		mutex_unlock(&gvt->lock);
 		return ret;
 	}
 
@@ -274,15 +272,24 @@ int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 		goto err;
 
 	intel_gvt_mmio_set_accessed(gvt, offset);
-	mutex_unlock(&gvt->lock);
 	return 0;
 err:
 	gvt_vgpu_err("fail to emulate MMIO write %08x len %d\n", offset,
 		     bytes);
-	mutex_unlock(&gvt->lock);
 	return ret;
 }
 
+int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
+		void *p_data, unsigned int bytes)
+{
+	int ret;
+
+	mutex_lock(&vgpu->gvt->lock);
+	ret = intel_vgpu_emulate_mmio_write_locked(vgpu, pa, p_data, bytes);
+	mutex_unlock(&vgpu->gvt->lock);
+
+	return ret;
+}
 
 /**
  * intel_vgpu_reset_mmio - reset virtual MMIO space
