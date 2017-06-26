@@ -1306,6 +1306,28 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	},
 },
 {
+	/* Currently adding 1 playback and 1 capture pin, ideally it
+	 * should be coming from CLT based on endpoints to be supported
+	 */
+	.name = "SDW10 Pin",
+	.id = SDW_BE_DAI_ID_MSTR0,
+	.ops = &skl_sdw_dai_ops,
+	.playback = {
+		.stream_name = "SDW Tx10",
+		.channels_min = HDA_STEREO,
+		.channels_max = HDA_STEREO,
+		.rates = SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.capture = {
+		.stream_name = "SDW Rx10",
+		.channels_min = HDA_STEREO,
+		.channels_max = HDA_STEREO,
+		.rates = SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+	},
+},
+{
 	/* Currently adding 1 capture pin, for PDM ideally it
 	 * should be coming from CLT based on endpoints to be supported
 	 */
