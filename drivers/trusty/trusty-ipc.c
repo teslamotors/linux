@@ -1525,7 +1525,7 @@ static int tipc_virtio_probe(struct virtio_device *vdev)
 	vq_callback_t *vq_cbs[] = {_rxvq_cb, _txvq_cb};
 	const char *vq_names[] = { "rx", "tx" };
 
-	err = trusty_check_cpuid();
+	err = trusty_check_cpuid(NULL);
 	if (err < 0) {
 		dev_err(&vdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
 		return -EINVAL;

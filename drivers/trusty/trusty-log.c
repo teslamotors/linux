@@ -255,10 +255,11 @@ static int trusty_log_probe(struct platform_device *pdev)
 {
 	struct trusty_log_state *s;
 	int result;
+	u32 vmm_signature;
 	phys_addr_t pa;
 	struct deadloop_dump *dump;
 
-	result = trusty_check_cpuid();
+	result = trusty_check_cpuid(&vmm_signature);
 	if (result < 0) {
 		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
 		return -EINVAL;
@@ -316,33 +317,35 @@ static int trusty_log_probe(struct platform_device *pdev)
 		goto error_panic_notifier;
 	}
 
-	/* allocate debug buffer for vmm panic dump */
-	g_vmm_debug_buf = __get_free_pages(GFP_KERNEL | __GFP_ZERO, 2);
-	if (!g_vmm_debug_buf) {
-		result = -ENOMEM;
-		goto error_alloc_vmm;
-	}
+	if(vmm_signature == EVMM_SIGNATURE_VMM) {
+		/* allocate debug buffer for vmm panic dump */
+		g_vmm_debug_buf = __get_free_pages(GFP_KERNEL | __GFP_ZERO, 2);
+		if (!g_vmm_debug_buf) {
+			result = -ENOMEM;
+			goto error_alloc_vmm;
+		}
 
-	dump = (struct deadloop_dump *)g_vmm_debug_buf;
-	dump->version_of_this_struct = VMM_DUMP_VERSION;
-	dump->size_of_this_struct = sizeof(struct deadloop_dump);
-	dump->is_valid = false;
+		dump = (struct deadloop_dump *)g_vmm_debug_buf;
+		dump->version_of_this_struct = VMM_DUMP_VERSION;
+		dump->size_of_this_struct = sizeof(struct deadloop_dump);
+		dump->is_valid = false;
 
-	/* shared the buffer to vmm by VMCALL */
-	result = trusty_vmm_dump_init(dump);
-	if (result < 0) {
-		dev_err(&pdev->dev,
-			"failed to share the dump buffer to VMM\n");
-		goto error_vmm_panic_notifier;
-	}
+		/* shared the buffer to vmm by VMCALL */
+		result = trusty_vmm_dump_init(dump);
+		if (result < 0) {
+			dev_err(&pdev->dev,
+				"failed to share the dump buffer to VMM\n");
+			goto error_vmm_panic_notifier;
+		}
 
-	/* register the panic notifier for vmm */
-	result = atomic_notifier_chain_register(&panic_notifier_list,
-				&trusty_vmm_panic_nb);
-	if (result < 0) {
-		dev_err(&pdev->dev,
-			"failed to register vmm panic notifier\n");
-		goto error_vmm_panic_notifier;
+		/* register the panic notifier for vmm */
+		result = atomic_notifier_chain_register(&panic_notifier_list,
+					&trusty_vmm_panic_nb);
+		if (result < 0) {
+			dev_err(&pdev->dev,
+				"failed to register vmm panic notifier\n");
+			goto error_vmm_panic_notifier;
+		}
 	}
 
 	platform_set_drvdata(pdev, s);

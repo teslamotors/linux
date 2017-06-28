@@ -629,7 +629,7 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 	int ret;
 	struct trusty_ctx *tctx;
 
-	ret = trusty_check_cpuid();
+	ret = trusty_check_cpuid(NULL);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
 		return -EINVAL;

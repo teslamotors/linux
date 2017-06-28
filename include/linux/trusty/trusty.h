@@ -70,17 +70,21 @@ int trusty_call32_mem_buf(struct device *dev, u32 smcnr,
 			  pgprot_t pgprot);
 
 /* CPUID leaf 0x3 is used because eVMM will trap this leaf.*/
-#define EVMM_RUNNING_SIGNATURE_CORP 0x43544E49  /* "INTC", edx */
-#define EVMM_RUNNING_SIGNATURE_MON  0x4D4D5645  /* "XMON", ecx */
+#define EVMM_SIGNATURE_CORP 0x43544E49  /* "INTC", edx */
+#define EVMM_SIGNATURE_VMM  0x4D4D5645  /* "EVMM", ecx */
 
-static inline int trusty_check_cpuid(void)
+static inline int trusty_check_cpuid(u32 *vmm_signature)
 {
 	u32 eax, ebx, ecx, edx;
 
 	cpuid(3, &eax, &ebx, &ecx, &edx);
-	if ((ecx != EVMM_RUNNING_SIGNATURE_MON) ||
-	    (edx != EVMM_RUNNING_SIGNATURE_CORP)) {
+	if ((ecx != EVMM_SIGNATURE_VMM) ||
+	    (edx != EVMM_SIGNATURE_CORP)) {
 		return -EINVAL;
+	}
+
+	if(vmm_signature) {
+		*vmm_signature = ecx;
 	}
 
 	return 0;
