@@ -362,6 +362,117 @@ int snd_skl_parse_uuids(struct sst_dsp *ctx, const struct firmware *fw,
 	return 0;
 }
 
+static int skl_parse_hw_config_info(struct sst_dsp *ctx, u8 *src, int limit)
+{
+	struct  skl_tlv_message *message;
+	int offset = 0, shift;
+	u32 *value;
+	struct skl_sst *skl = ctx->thread_context;
+	struct skl_hw_property_info *hw_property = &skl->hw_property;
+	enum skl_hw_info_type type;
+
+	while (offset < limit) {
+
+		message = (struct skl_tlv_message *)src;
+		if (message == NULL)
+		break;
+
+		/* Skip TLV header to read value */
+		src += sizeof(struct skl_tlv_message);
+
+		value = (u32 *)src;
+		type = message->type;
+
+		switch (type) {
+		case SKL_CAVS_VERSION:
+			hw_property->cavs_version = *value;
+			break;
+
+		case SKL_DSP_CORES:
+			hw_property->dsp_cores = *value;
+			break;
+
+		case SKL_MEM_PAGE_TYPES:
+			hw_property->mem_page_bytes = *value;
+			break;
+
+		case SKL_TOTAL_PHYS_MEM_PAGES:
+			hw_property->total_phys_mem_pages = *value;
+			break;
+
+		case SKL_I2S_CAPS:
+			memcpy(&hw_property->i2s_caps, value,
+				sizeof(hw_property->i2s_caps));
+			break;
+
+		case SKL_GPDMA_CAPS:
+			memcpy(&hw_property->gpdma_caps, value,
+				sizeof(hw_property->gpdma_caps));
+			break;
+
+		case SKL_GATEWAY_COUNT:
+			hw_property->gateway_count = *value;
+			break;
+
+		case SKL_HB_EBB_COUNT:
+			hw_property->hb_ebb_count = *value;
+			break;
+
+		case SKL_LP_EBB_COUNT:
+			hw_property->lp_ebb_count = *value;
+			break;
+
+		case SKL_EBB_SIZE_BYTES:
+			hw_property->ebb_size_bytes = *value;
+			break;
+
+		default:
+			dev_err(ctx->dev, "Invalid hw info type:%d \n", type);
+			break;
+		}
+
+		shift = message->length + sizeof(*message);
+		offset += shift;
+		/* skip over to next tlv data */
+		src += message->length;
+	}
+
+	return 0;
+}
+
+int skl_get_hardware_configuration(struct sst_dsp *ctx)
+{
+	struct skl_ipc_large_config_msg msg;
+	struct skl_sst *skl = ctx->thread_context;
+	u8 *ipc_data;
+	int ret = 0;
+	size_t rx_bytes;
+
+	ipc_data = kzalloc(DSP_BUF, GFP_KERNEL);
+	if (!ipc_data)
+		return -ENOMEM;
+
+	msg.module_id = 0;
+	msg.instance_id = 0;
+	msg.large_param_id = HARDWARE_CONFIG;
+	msg.param_data_size = DSP_BUF;
+
+	ret = skl_ipc_get_large_config(&skl->ipc, &msg,
+		(u32 *)ipc_data, NULL, 0, &rx_bytes);
+	if (ret < 0) {
+		dev_err(ctx->dev, "failed to get hw configuration !!!\n");
+		goto err;
+	}
+
+	ret = skl_parse_hw_config_info(ctx, ipc_data, rx_bytes);
+	if (ret < 0)
+		dev_err(ctx->dev, "failed to parse configuration !!!\n");
+
+err:
+	kfree(ipc_data);
+	return ret;
+}
+
 void skl_freeup_uuid_list(struct skl_sst *ctx)
 {
 	struct uuid_module *uuid, *_uuid;

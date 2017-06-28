@@ -163,6 +163,19 @@ enum skl_fw_info_type {
 	SKL_CLOCKS_CONFIG,
 };
 
+enum skl_hw_info_type {
+	SKL_CAVS_VERSION = 0,
+	SKL_DSP_CORES,
+	SKL_MEM_PAGE_TYPES,
+	SKL_TOTAL_PHYS_MEM_PAGES,
+	SKL_I2S_CAPS,
+	SKL_GPDMA_CAPS,
+	SKL_GATEWAY_COUNT,
+	SKL_HB_EBB_COUNT,
+	SKL_LP_EBB_COUNT,
+	SKL_EBB_SIZE_BYTES,
+};
+
 /* DSP Core state */
 enum skl_dsp_states {
 	SKL_DSP_RUNNING = 1,
@@ -298,6 +311,7 @@ int skl_prepare_lib_load(struct skl_sst *skl, struct skl_lib_info *linfo,
 void skl_release_library(struct skl_lib_info *linfo, int lib_count);
 
 int skl_get_firmware_configuration(struct sst_dsp *ctx);
+int skl_get_hardware_configuration(struct sst_dsp *ctx);
 
 int bxt_set_dsp_D0i0(struct sst_dsp *ctx);
 
