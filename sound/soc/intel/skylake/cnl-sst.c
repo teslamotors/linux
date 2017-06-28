@@ -272,6 +272,16 @@ static int cnl_load_base_firmware(struct sst_dsp *ctx)
 		goto cnl_load_base_firmware_failed;
 	}
 
+	ret = skl_get_hardware_configuration(ctx);
+	if (ret < 0) {
+		dev_err(ctx->dev, "hwconfig ipc failed !\n");
+		ret = -EIO;
+		goto cnl_load_base_firmware_failed;
+	}
+
+	/* Update dsp core count retrieved from hw config IPC */
+	cnl->cores.count = cnl->hw_property.dsp_cores;
+
 	return 0;
 
 cnl_load_base_firmware_failed:
