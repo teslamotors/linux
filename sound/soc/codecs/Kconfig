@@ -78,7 +78,6 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_ES8328_I2C if I2C
 	select SND_SOC_ES7134
 	select SND_SOC_GTM601
-	select SND_SOC_HDAC_HDMI
 	select SND_SOC_ICS43432
 	select SND_SOC_INNO_RK3036
 	select SND_SOC_ISABELLE if I2C
@@ -218,7 +217,6 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_WM9705 if SND_SOC_AC97_BUS
 	select SND_SOC_WM9712 if SND_SOC_AC97_BUS
 	select SND_SOC_WM9713 if SND_SOC_AC97_BUS
-	select SND_SOC_SVFPGA_I2C if I2C
         help
           Normally ASoC codec drivers are only built if a machine driver which
           uses them is also built since they are only usable with a machine
@@ -436,13 +434,13 @@ config SND_SOC_SVFPGA
 
 config SND_SOC_SVFPGA_SDW
 	tristate "Intel SVFPGA Codec - SDW"
-	depends on SDW
+	depends on SDW && X86
 	select SND_SOC_SVFPGA
 	select REGMAP_SDW
 
 config SND_SOC_SVFPGA_I2C
 	tristate "Intel SVFPGA Codec - I2C"
-	depends on I2C
+	depends on I2C && X86
 	select SND_SOC_SVFPGA
 
 config SND_SOC_CS42L51
@@ -591,6 +589,7 @@ config SND_SOC_GTM601
 	tristate 'GTM601 UMTS modem audio codec'
 
 config SND_SOC_HDAC_HDMI
+	depends on X86 && ACPI
 	tristate
 	select SND_HDA_EXT_CORE
 	select SND_PCM_ELD
