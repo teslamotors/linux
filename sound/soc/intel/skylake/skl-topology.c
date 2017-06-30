@@ -59,6 +59,14 @@ static const int mic_quatro_list[][SKL_CH_QUATRO] = {
 #define CHECK_HW_PARAMS(ch, freq, bps, prm_ch, prm_freq, prm_bps) \
 	((ch == prm_ch) && (bps == prm_bps) && (freq == prm_freq))
 
+#define GET_PIPE(ppl, skl, node, pipe_id, pipe) \
+	do { list_for_each_entry(ppl, &skl->ppl_list, node) { \
+		if (ppl->pipe->ppl_id == pipe_id) { \
+			pipe = ppl->pipe; \
+			break; } \
+		} \
+	} while (0)
+
 static void skl_init_single_module_pipe(struct snd_soc_dapm_widget *w,
 						struct skl *skl);
 
@@ -888,6 +896,35 @@ static int skl_tplg_unload_pipe_modules(struct skl_sst *ctx,
 	return ret;
 }
 
+static bool is_skl_tplg_multi_fmt(struct skl *skl, struct skl_pipe *pipe)
+{
+	int i;
+	struct skl_pipe_fmt *cur_fmt;
+	struct skl_pipe_fmt *next_fmt;
+
+	if (pipe->conn_type == SKL_PIPE_CONN_TYPE_FE &&
+			pipe->nr_cfgs > 1) {
+		for (i = 0; i < pipe->nr_cfgs-1; i++) {
+			if (pipe->direction == SNDRV_PCM_STREAM_PLAYBACK) {
+				cur_fmt = &pipe->configs[i].out_fmt;
+				next_fmt = &pipe->configs[i+1].out_fmt;
+			} else {
+				cur_fmt = &pipe->configs[i].in_fmt;
+				next_fmt = &pipe->configs[i+1].in_fmt;
+			}
+			if (!CHECK_HW_PARAMS(cur_fmt->channels, cur_fmt->freq,
+						cur_fmt->bps,
+						next_fmt->channels,
+						next_fmt->freq,	next_fmt->bps))
+				return true;
+		}
+	} else if (pipe->nr_cfgs > 1) {
+		return true;
+	}
+
+	return false;
+}
+
 /*
  * Here, we select pipe format based on the pipe type and pipe
  * direction to determine the current config index for the pipeline.
@@ -905,12 +942,21 @@ skl_tplg_get_pipe_config(struct skl *skl, struct skl_module_cfg *mconfig)
 	struct skl_pipe_fmt *fmt = NULL;
 	bool in_fmt = false;
 	int i;
+	bool ret;
 
 	if (pipe->nr_cfgs == 0) {
 		pipe->cur_config_idx = 0;
 		return 0;
 	}
 
+	ret = is_skl_tplg_multi_fmt(skl, pipe);
+	if (ret) {
+		pipe->cur_config_idx = pipe->pipe_config_idx;
+		pipe->memory_pages = pconfig->mem_pages;
+		dev_dbg(ctx->dev, "found pipe config idx:%d\n",
+				pipe->cur_config_idx);
+		return 0;
+	}
 	if (pipe->conn_type == SKL_PIPE_CONN_TYPE_NONE) {
 		dev_dbg(ctx->dev, "No conn_type detected, take 0th config\n");
 		pipe->cur_config_idx = 0;
@@ -1690,6 +1736,60 @@ int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+
+static int skl_tplg_multi_config_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_platform *platform = snd_soc_kcontrol_platform(kcontrol);
+	struct hdac_ext_bus *ebus = snd_soc_component_get_drvdata
+					(&(platform->component));
+	struct skl *skl = ebus_to_skl(ebus);
+	struct skl_pipeline *ppl;
+	struct skl_pipe *pipe = NULL;
+	u32 *pipe_id;
+	struct soc_enum *ec = (struct soc_enum *)kcontrol->private_value;
+
+	if (!ec)
+		return -EINVAL;
+
+	pipe_id = ec->dobj.private;
+	GET_PIPE(ppl, skl, node, *pipe_id, pipe);
+	if (!pipe)
+		return -EIO;
+
+	ucontrol->value.enumerated.item[0]  =  pipe->pipe_config_idx;
+
+	return 0;
+}
+
+static int skl_tplg_multi_config_set(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_platform *platform = snd_soc_kcontrol_platform(kcontrol);
+	struct hdac_ext_bus *ebus = snd_soc_component_get_drvdata
+					(&(platform->component));
+	struct skl *skl = ebus_to_skl(ebus);
+	struct skl_pipeline *ppl;
+	struct skl_pipe *pipe = NULL;
+	struct soc_enum *ec = (struct soc_enum *)kcontrol->private_value;
+	u32 *pipe_id;
+
+	if (!ec)
+		return -EINVAL;
+
+	if (ucontrol->value.enumerated.item[0] > ec->items)
+		return -EINVAL;
+
+	pipe_id = ec->dobj.private;
+	GET_PIPE(ppl, skl, node, *pipe_id, pipe);
+	if (!pipe)
+		return -EIO;
+
+	pipe->pipe_config_idx = ucontrol->value.enumerated.item[0];
+
+	return 0;
+}
+
 
 static int skl_tplg_tlv_control_get(struct snd_kcontrol *kcontrol,
 			unsigned int __user *data, unsigned int size)
@@ -2483,6 +2583,11 @@ static const struct snd_soc_tplg_kcontrol_ops skl_tplg_kcontrol_ops[] = {
 		.id = SKL_CONTROL_TYPE_MIC_SELECT,
 		.get = skl_tplg_mic_control_get,
 		.put = skl_tplg_mic_control_set,
+	},
+	{
+		.id = SKL_CONTROL_TYPE_MULTI_IO_SELECT,
+		.get = skl_tplg_multi_config_get,
+		.put = skl_tplg_multi_config_set,
 	},
 };
 
