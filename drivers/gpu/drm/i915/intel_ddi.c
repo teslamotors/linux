@@ -1554,7 +1554,7 @@ bool intel_ddi_connector_get_hw_state(struct intel_connector *intel_connector)
 		goto out;
 	}
 
-	if (port == PORT_A)
+	if (port == PORT_A && !intel_vgpu_active(dev_priv))
 		cpu_transcoder = TRANSCODER_EDP;
 	else
 		cpu_transcoder = (enum transcoder) pipe;
