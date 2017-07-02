@@ -69,7 +69,8 @@ bxt_load_library(struct sst_dsp *ctx, struct skl_lib_info *linfo, int lib_count)
 			goto load_library_failed;
 
 		stream_tag = ctx->dsp_ops.prepare(ctx->dev, 0x40,
-					stripped_fw.size, &dmab);
+					stripped_fw.size, &dmab,
+					SNDRV_PCM_STREAM_PLAYBACK);
 		if (stream_tag <= 0) {
 			dev_err(ctx->dev, "Lib prepare DMA err: %x\n",
 					stream_tag);
@@ -80,14 +81,17 @@ bxt_load_library(struct sst_dsp *ctx, struct skl_lib_info *linfo, int lib_count)
 		dma_id = stream_tag - 1;
 		memcpy(dmab.area, stripped_fw.data, stripped_fw.size);
 
-		ctx->dsp_ops.trigger(ctx->dev, true, stream_tag);
+		ctx->dsp_ops.trigger(ctx->dev, true, stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
 		ret = skl_sst_ipc_load_library(&skl->ipc, dma_id, i, true);
 		if (ret < 0)
 			dev_err(ctx->dev, "IPC Load Lib for %s fail: %d\n",
 					linfo[i].name, ret);
 
-		ctx->dsp_ops.trigger(ctx->dev, false, stream_tag);
-		ctx->dsp_ops.cleanup(ctx->dev, &dmab, stream_tag);
+		ctx->dsp_ops.trigger(ctx->dev, false, stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
+		ctx->dsp_ops.cleanup(ctx->dev, &dmab, stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
 	}
 
 	return ret;
@@ -107,7 +111,8 @@ static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
 {
 	int stream_tag, ret;
 
-	stream_tag = ctx->dsp_ops.prepare(ctx->dev, 0x40, fwsize, &ctx->dmab);
+	stream_tag = ctx->dsp_ops.prepare(ctx->dev, 0x40, fwsize, &ctx->dmab,
+						SNDRV_PCM_STREAM_PLAYBACK);
 	if (stream_tag <= 0) {
 		dev_err(ctx->dev, "Failed to prepare DMA FW loading err: %x\n",
 				stream_tag);
@@ -169,7 +174,9 @@ static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
 	return ret;
 
 base_fw_load_failed:
-	ctx->dsp_ops.cleanup(ctx->dev, &ctx->dmab, stream_tag);
+	ctx->dsp_ops.cleanup(ctx->dev, &ctx->dmab, stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
+
 	skl_dsp_core_power_down(ctx, SKL_DSP_CORE_MASK(1));
 	skl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
 	return ret;
@@ -179,12 +186,15 @@ static int sst_transfer_fw_host_dma(struct sst_dsp *ctx)
 {
 	int ret;
 
-	ctx->dsp_ops.trigger(ctx->dev, true, ctx->dsp_ops.stream_tag);
+	ctx->dsp_ops.trigger(ctx->dev, true, ctx->dsp_ops.stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
 	ret = sst_dsp_register_poll(ctx, BXT_ADSP_FW_STATUS, SKL_FW_STS_MASK,
 			BXT_ROM_INIT, BXT_BASEFW_TIMEOUT, "Firmware boot");
 
-	ctx->dsp_ops.trigger(ctx->dev, false, ctx->dsp_ops.stream_tag);
-	ctx->dsp_ops.cleanup(ctx->dev, &ctx->dmab, ctx->dsp_ops.stream_tag);
+	ctx->dsp_ops.trigger(ctx->dev, false, ctx->dsp_ops.stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
+	ctx->dsp_ops.cleanup(ctx->dev, &ctx->dmab, ctx->dsp_ops.stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
 
 	return ret;
 }

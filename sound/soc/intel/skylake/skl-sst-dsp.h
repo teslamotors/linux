@@ -157,7 +157,6 @@ struct skl_dsp_fw_ops {
 	unsigned int (*get_fw_errcode)(struct sst_dsp *ctx);
 	int (*load_mod)(struct sst_dsp *ctx, u16 mod_id, u8 *mod_name);
 	int (*unload_mod)(struct sst_dsp *ctx, u16 mod_id);
-
 };
 
 struct skl_dsp_loader_ops {
@@ -169,11 +168,11 @@ struct skl_dsp_loader_ops {
 		struct snd_dma_buffer *dmab);
 	int (*prepare)(struct device *dev, unsigned int format,
 				unsigned int byte_size,
-				struct snd_dma_buffer *bufp);
-	int (*trigger)(struct device *dev, bool start, int stream_tag);
-
+				struct snd_dma_buffer *bufp, int direction);
+	int (*trigger)(struct device *dev, bool start, int stream_tag,
+					int direction);
 	int (*cleanup)(struct device *dev, struct snd_dma_buffer *dmab,
-				 int stream_tag);
+				 int stream_tag, int direction);
 };
 
 #define MAX_INSTANCE_BUFF 2
