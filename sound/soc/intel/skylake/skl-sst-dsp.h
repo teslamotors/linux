@@ -229,14 +229,14 @@ int skl_dsp_put_core(struct sst_dsp *ctx, unsigned int core_id);
 
 int skl_dsp_boot(struct sst_dsp *ctx);
 int skl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
-		const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
-		struct skl_sst **dsp);
+			const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
+			struct skl_sst **dsp, void *ptr);
 int kbl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 		const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
-		struct skl_sst **dsp);
+		struct skl_sst **dsp, void *ptr);
 int bxt_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
-		const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
-		struct skl_sst **dsp);
+			const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
+			struct skl_sst **dsp, void *ptr);
 int skl_sst_init_fw(struct device *dev, struct skl_sst *ctx);
 int bxt_sst_init_fw(struct device *dev, struct skl_sst *ctx);
 void skl_sst_dsp_cleanup(struct device *dev, struct skl_sst *ctx);
