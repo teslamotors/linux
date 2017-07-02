@@ -17,6 +17,7 @@
 #define __SKL_IPC_H
 
 #include <linux/irqreturn.h>
+#include <sound/memalloc.h>
 #include "../common/sst-ipc.h"
 #include "skl-sst-dsp.h"
 
@@ -105,6 +106,15 @@ struct skl_probe_config {
 	struct extractor_data eprobe[NO_OF_EXTRACTOR];
 };
 
+struct bra_conf {
+	struct snd_dma_buffer pb_dmab;
+	struct snd_dma_buffer cp_dmab;
+	int pb_stream_tag;
+	int cp_stream_tag;
+	struct skl_pipe *pb_pipe;
+	struct skl_pipe *cp_pipe;
+};
+
 struct skl_sst {
 	struct device *dev;
 	struct sst_dsp *dsp;
@@ -153,7 +163,11 @@ struct skl_sst {
 	int num_sdw_controllers;
 	/* Array of sdw masters */
 	struct sdw_master *mstr;
+
 	struct skl_probe_config probe_config;
+
+	/* BRA configuration data */
+	struct bra_conf *bra_pipe_data;
 };
 
 struct skl_ipc_init_instance_msg {
