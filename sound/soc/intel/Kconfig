@@ -290,6 +290,7 @@ config SND_SOC_INTEL_SKYLAKE
 	select SND_SOC_COMPRESS
 	select SDW
 	select SDW_CNL
+	select WANT_DEV_COREDUMP
 
 config SND_SOC_INTEL_SKL_RT286_MACH
 	tristate "ASoC Audio driver for SKL with RT286 I2S mode"

@@ -372,19 +372,6 @@ struct sw_version {
 	u16 build;
 } __packed;
 
-struct skl_dsp_core_dump {
-	u16 type0;
-	u16 length0;
-	u32 crash_dump_ver;
-	u16 bus_dev_id;
-	u16 cavs_hw_version;
-	struct fw_version fw_ver;
-	struct sw_version sw_ver;
-	u16 type2;
-	u16 length2;
-	u32 fwreg[FW_REG_SZ];
-} __packed;
-
 struct skl_module_notify {
 	u32 unique_id;
 	u32 event_id;

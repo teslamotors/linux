@@ -16,6 +16,8 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/uuid.h>
+#include <linux/devcoredump.h>
+#include <linux/pci.h>
 #include "skl-sst-dsp.h"
 #include "../common/sst-dsp.h"
 #include "../common/sst-dsp-priv.h"
@@ -23,7 +25,11 @@
 
 
 #define UUID_STR_SIZE 37
-
+#define TYPE0_EXCEPTION 0
+#define TYPE1_EXCEPTION 1
+#define TYPE2_EXCEPTION 2
+#define MAX_CRASH_DATA_TYPES 3
+#define CRASH_DUMP_VERSION 0x1
 /* FW Extended Manifest Header id = $AE1 */
 #define SKL_EXT_MANIFEST_HEADER_MAGIC   0x31454124
 
@@ -125,6 +131,31 @@ struct skl_ext_manifest_hdr {
 	u16 version_minor;
 	u32 entries;
 };
+
+struct adsp_crash_hdr {
+	u16 type;
+	u16 length;
+	char data[0];
+} __packed;
+
+struct adsp_type0_crash_data {
+	u32 crash_dump_ver;
+	u16 bus_dev_id;
+	u16 cavs_hw_version;
+	struct fw_version fw_ver;
+	struct sw_version sw_ver;
+} __packed;
+
+struct adsp_type1_crash_data {
+	u32 mod_uuid[4];
+	u32 hash[2];
+	u16 mod_id;
+	u16 rsvd;
+} __packed;
+
+struct adsp_type2_crash_data {
+	u32 fwreg[FW_REG_SZ];
+} __packed;
 
 static int skl_get_pvtid_map(struct uuid_module *module, int instance_id)
 {
@@ -270,6 +301,83 @@ int skl_put_pvt_id(struct skl_sst *ctx, uuid_le *uuid_mod, int *pvt_id)
 	return -EINVAL;
 }
 EXPORT_SYMBOL_GPL(skl_put_pvt_id);
+
+int skl_dsp_crash_dump_read(struct skl_sst *ctx)
+{
+	int num_mod = 0, size_core_dump;
+	struct uuid_module *module, *module1;
+	void *coredump;
+	void *fw_reg_addr, *offset;
+	struct pci_dev *pci = to_pci_dev(ctx->dsp->dev);
+	u16 length0, length1, length2;
+	struct adsp_crash_hdr *crash_data_hdr;
+	struct adsp_type0_crash_data *type0_data;
+	struct adsp_type1_crash_data *type1_data;
+	struct adsp_type2_crash_data *type2_data;
+
+	if (list_empty(&ctx->uuid_list))
+		dev_info(ctx->dev, "Module list is empty\n");
+
+	list_for_each_entry(module1, &ctx->uuid_list, list) {
+		num_mod++;
+	}
+
+	/* Length representing in DWORD */
+	length0 = sizeof(*type0_data) / sizeof(u32);
+	length1 = (num_mod * sizeof(*type1_data)) / sizeof(u32);
+	length2 = sizeof(*type2_data) / sizeof(u32);
+
+	/* type1 data size is calculated based on number of modules */
+	size_core_dump = (MAX_CRASH_DATA_TYPES * sizeof(*crash_data_hdr)) +
+			sizeof(*type0_data) + (num_mod * sizeof(*type1_data)) +
+			sizeof(*type2_data);
+
+	coredump = vzalloc(size_core_dump);
+	if (!coredump)
+		return -ENOMEM;
+
+	offset = coredump;
+
+	/* Fill type0 header and data */
+	crash_data_hdr = (struct adsp_crash_hdr *) offset;
+	crash_data_hdr->type = TYPE0_EXCEPTION;
+	crash_data_hdr->length = length0;
+	offset += sizeof(*crash_data_hdr);
+	type0_data = (struct adsp_type0_crash_data *) offset;
+	type0_data->crash_dump_ver = CRASH_DUMP_VERSION;
+	type0_data->bus_dev_id = pci->device;
+	offset += sizeof(*type0_data);
+
+	/* Fill type1 header and data */
+	crash_data_hdr = (struct adsp_crash_hdr *) offset;
+	crash_data_hdr->type = TYPE1_EXCEPTION;
+	crash_data_hdr->length = length1;
+	offset += sizeof(*crash_data_hdr);
+	type1_data = (struct adsp_type1_crash_data *) offset;
+	list_for_each_entry(module, &ctx->uuid_list, list) {
+		memcpy(type1_data->mod_uuid, &(module->uuid),
+					(sizeof(type1_data->mod_uuid)));
+		memcpy(type1_data->hash, &(module->hash),
+					(sizeof(type1_data->hash)));
+		memcpy(&type1_data->mod_id, &(module->id),
+					(sizeof(type1_data->mod_id)));
+		type1_data++;
+	}
+	offset += (num_mod * sizeof(*type1_data));
+
+	/* Fill type2 header and data */
+	crash_data_hdr = (struct adsp_crash_hdr *) offset;
+	crash_data_hdr->type = TYPE2_EXCEPTION;
+	crash_data_hdr->length = length2;
+	offset += sizeof(*crash_data_hdr);
+	type2_data = (struct adsp_type2_crash_data *) offset;
+	fw_reg_addr = ctx->dsp->mailbox.in_base - ctx->dsp->addr.w0_stat_sz;
+	memcpy_fromio(type2_data->fwreg, fw_reg_addr, sizeof(*type2_data));
+
+	dev_coredumpv(ctx->dsp->dev, coredump,
+			size_core_dump, GFP_KERNEL);
+	return 0;
+}
 
 /*
  * Parse the firmware binary to get the UUID, module id

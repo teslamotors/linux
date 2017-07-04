@@ -21,6 +21,7 @@
 #include "skl-sst-ipc.h"
 #include "skl-fwlog.h"
 #include "sound/hdaudio_ext.h"
+#include "skl-topology.h"
 
 #define IPC_IXC_STATUS_BITS		24
 
@@ -271,7 +272,9 @@ enum skl_ipc_notification_type {
 	IPC_GLB_NOTIFY_RESOURCE_EVENT = 5,
 	IPC_GLB_NOTIFY_LOG_BUFFER_STATUS = 6,
 	IPC_GLB_NOTIFY_TIMESTAMP_CAPTURED = 7,
-	IPC_GLB_NOTIFY_FW_READY = 8
+	IPC_GLB_NOTIFY_FW_READY = 8,
+	IPC_GLB_NOTIFY_FW_AUD_CLASS_RESULT = 9,
+	IPC_GLB_NOTIFY_EXCEPTION_CAUGHT = 10
 };
 
 /* Module Message Types */
@@ -406,6 +409,7 @@ int skl_ipc_process_notification(struct sst_generic_ipc *ipc,
 		struct skl_ipc_header header)
 {
 	struct skl_sst *skl = container_of(ipc, struct skl_sst, ipc);
+	int ret;
 
 	if (IPC_GLB_NOTIFY_MSG_TYPE(header.primary)) {
 		switch (IPC_GLB_NOTIFY_TYPE(header.primary)) {
@@ -440,6 +444,17 @@ int skl_ipc_process_notification(struct sst_generic_ipc *ipc,
 			skl->enable_miscbdcge(ipc->dev, false);
 			skl->miscbdcg_disabled = true;
 			break;
+		case IPC_GLB_NOTIFY_EXCEPTION_CAUGHT:
+			dev_err(ipc->dev, "*****Exception Detected **********\n");
+			/* hexdump of the fw core exception record reg */
+			ret = skl_dsp_crash_dump_read(skl);
+			if (ret < 0) {
+				dev_err(ipc->dev,
+					"dsp crash dump read fail:%d\n", ret);
+				return ret;
+			}
+			break;
+
 
 		default:
 			dev_err(ipc->dev, "ipc: Unhandled error msg=%x\n",
