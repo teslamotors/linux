@@ -29,6 +29,7 @@
 #include "skl-tplg-interface.h"
 #include "../common/sst-dsp.h"
 #include "../common/sst-dsp-priv.h"
+#include "skl-fwlog.h"
 
 #define SKL_CH_FIXUP_MASK		(1 << 0)
 #define SKL_RATE_FIXUP_MASK		(1 << 1)
@@ -1362,6 +1363,31 @@ static int skl_tplg_pga_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMD:
 		return skl_tplg_pga_dapm_post_pmd_event(w, skl);
 	}
+
+	return 0;
+}
+int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_platform *platform = snd_soc_kcontrol_platform(kcontrol);
+	struct hdac_ext_bus *ebus = snd_soc_component_get_drvdata
+					(&(platform->component));
+	struct skl *skl = ebus_to_skl(ebus);
+
+	ucontrol->value.integer.value[0] = get_dsp_log_priority(skl);
+
+	return 0;
+}
+
+int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_platform *platform = snd_soc_kcontrol_platform(kcontrol);
+	struct hdac_ext_bus *ebus = snd_soc_component_get_drvdata
+					(&(platform->component));
+	struct skl *skl = ebus_to_skl(ebus);
+
+	update_dsp_log_priority(ucontrol->value.integer.value[0], skl);
 
 	return 0;
 }

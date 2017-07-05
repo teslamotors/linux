@@ -128,6 +128,8 @@ struct sst_trace_window {
 	u32		nr_dsp;
 	/* indicates which DSPs have logging enabled */
 	u32		flags;
+       /* dsp fw log level*/
+	u32 log_priority;
 };
 
 /*

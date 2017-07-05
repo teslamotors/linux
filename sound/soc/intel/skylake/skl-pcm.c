@@ -1698,8 +1698,21 @@ static const struct snd_soc_platform_driver skl_platform_drv  = {
 	.pcm_free	= skl_pcm_free,
 };
 
+static const char* const dsp_log_text[] =
+	{"QUIET", "CRITICAL", "HIGH", "MEDIUM", "LOW", "VERBOSE"};
+
+static const struct soc_enum dsp_log_enum =
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(dsp_log_text), dsp_log_text);
+
+static struct snd_kcontrol_new skl_controls[] = {
+	SOC_ENUM_EXT("DSP Log Level", dsp_log_enum, skl_tplg_dsp_log_get,
+		     skl_tplg_dsp_log_set),
+};
+
 static const struct snd_soc_component_driver skl_component = {
 	.name           = "pcm",
+	.controls	= skl_controls,
+	.num_controls	= ARRAY_SIZE(skl_controls),
 };
 
 int skl_platform_register(struct device *dev)

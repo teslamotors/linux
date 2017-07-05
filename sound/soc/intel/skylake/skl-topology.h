@@ -518,4 +518,8 @@ int skl_pcm_host_dma_prepare(struct device *dev,
 			struct skl_pipe_params *params);
 int skl_pcm_link_dma_prepare(struct device *dev,
 			struct skl_pipe_params *params);
+int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
+			 struct snd_ctl_elem_value *ucontrol);
+int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
+			 struct snd_ctl_elem_value *ucontrol);
 #endif

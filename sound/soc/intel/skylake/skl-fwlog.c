@@ -25,6 +25,8 @@
 #include "skl.h"
 #include "skl-fwlog.h"
 
+#define DEF_LOG_PRIORITY 3
+
 /*
  * Initialize trace window and firmware write pointers for the platform
  */
@@ -51,6 +53,7 @@ int skl_dsp_init_trace_window(struct sst_dsp *sst, u32 *wp, u32 offset,
 	sst->trace_wind.flags = 0;
 	sst->trace_wind.dbg_buffers = buff;
 	sst->trace_wind.dsp_wps = dsp_wps;
+	sst->trace_wind.log_priority = DEF_LOG_PRIORITY;
 	for (idx = 0; idx < cores; idx++)
 		sst->trace_wind.dsp_wps[idx] = (void *)(sst->addr.lpe
 							+ wp[idx]);
@@ -86,6 +89,26 @@ int skl_dsp_init_log_buffer(struct sst_dsp *sst, int size,	int core,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(skl_dsp_init_log_buffer);
+
+int update_dsp_log_priority(int value, struct skl *skl)
+{
+	int ret = 0;
+	struct skl_sst *ctx = skl->skl_sst;
+
+	ctx->dsp->trace_wind.log_priority = value;
+	return ret;
+}
+EXPORT_SYMBOL_GPL(update_dsp_log_priority);
+
+int get_dsp_log_priority(struct skl *skl)
+{
+	u32 value;
+	struct skl_sst *ctx = skl->skl_sst;
+
+	value = ctx->dsp->trace_wind.log_priority;
+	return value;
+}
+EXPORT_SYMBOL_GPL(get_dsp_log_priority);
 
 unsigned long skl_dsp_log_avail(struct sst_dsp *sst, int core)
 {
