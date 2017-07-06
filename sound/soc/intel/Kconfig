@@ -99,6 +99,7 @@ config SND_SOC_INTEL_BXT_TDF8532_MACH
         select SND_SOC_INTEL_SST
         select SND_SOC_INTEL_SKYLAKE
         select SND_SOC_TDF8532
+        select SND_SOC_COMPRESS
         help
 	   This adds support for ASoC machine driver for Broxton IVI GP MRB platform
 	   Say Y if you have such a device.
