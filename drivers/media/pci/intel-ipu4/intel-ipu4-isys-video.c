@@ -1491,8 +1491,11 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 	}
 
 	if (!state) {
-		if (csi_watchdog_enable)
-			intel_ipu4_isys_csi2_stop_wdt(ip->csi2);
+        if(ip->csi2){
+		    if (csi_watchdog_enable)
+			    intel_ipu4_isys_csi2_stop_wdt(ip->csi2);
+		    ip->csi2->current_owner = NULL;
+        }
 
 		stop_streaming_firmware(av);
 
@@ -1584,10 +1587,14 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 					video, s_stream, state);
 		if (rval)
 			goto out_media_entity_stop_streaming_firmware;
+        if(ip->csi2){
+		    ip->csi2->current_owner = current;
+		    ip->csi2->error_signal_send = false;
 
-		if (csi_watchdog_enable)
-			intel_ipu4_isys_csi2_start_wdt(ip->csi2,
-					csi_watchdog_timeout);
+		    if (csi_watchdog_enable)
+			    intel_ipu4_isys_csi2_start_wdt(ip->csi2,
+					    csi_watchdog_timeout);
+        }
 	} else {
 		close_streaming_firmware(av);
 		av->ip.stream_id = 0;

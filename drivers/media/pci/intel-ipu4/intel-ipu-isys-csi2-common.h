@@ -133,6 +133,8 @@ struct intel_ipu4_isys_csi2 {
 	struct workqueue_struct *wdt_wq;
 	unsigned long eof_wdt_timeout;
 	int wdt_enable;
+	struct task_struct *current_owner;
+	bool error_signal_send;
 };
 
 struct intel_ipu4_isys_csi2_timing {
