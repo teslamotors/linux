@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/device.h>
+#include <asm/set_memory.h>
 
 #include "../common/sst-dsp.h"
 #include "../common/sst-dsp-priv.h"
@@ -52,10 +53,68 @@
 #define CNL_ADSP_FW_HDR_OFFSET	0x2000
 #define CNL_ROM_CTRL_DMA_ID	0x9
 
+#define CNL_IMR_MEMSIZE					0x400000  /*4MB*/
+#define HDA_ADSP_REG_ADSPCS_IMR_CACHED_TLB_START	0x100
+#define HDA_ADSP_REG_ADSPCS_IMR_UNCACHED_TLB_START	0x200
+#define HDA_ADSP_REG_ADSPCS_IMR_SIZE	0x8
+
+#ifndef writeq
+static inline void writeq(u64 val, void __iomem *addr)
+{
+	writel(((u32) (val)), addr);
+	writel(((u32) (val >> 32)), addr + 4);
+}
+#endif
+
+/* Needed for presilicon platform based on FPGA */
+static int cnl_fpga_alloc_imr(struct sst_dsp *ctx)
+{
+	u32 pages;
+	u32 fw_size = CNL_IMR_MEMSIZE;
+	int ret;
+
+	ret = ctx->dsp_ops.alloc_dma_buf(ctx->dev, &ctx->dsp_fw_buf, fw_size);
+
+	if (ret < 0) {
+		dev_err(ctx->dev, "Alloc buffer for base fw failed: %x\n", ret);
+		return ret;
+	}
+
+	pages = (fw_size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+
+	dev_dbg(ctx->dev, "sst_cnl_fpga_alloc_imr pages=0x%x\n", pages);
+	set_memory_uc((unsigned long)ctx->dsp_fw_buf.area, pages);
+
+	writeq(virt_to_phys(ctx->dsp_fw_buf.area) + 1,
+		 ctx->addr.shim + HDA_ADSP_REG_ADSPCS_IMR_CACHED_TLB_START);
+	writeq(virt_to_phys(ctx->dsp_fw_buf.area) + 1,
+		 ctx->addr.shim + HDA_ADSP_REG_ADSPCS_IMR_UNCACHED_TLB_START);
+
+	writel(CNL_IMR_MEMSIZE, ctx->addr.shim
+	       + HDA_ADSP_REG_ADSPCS_IMR_CACHED_TLB_START
+	       + HDA_ADSP_REG_ADSPCS_IMR_SIZE);
+	writel(CNL_IMR_MEMSIZE, ctx->addr.shim
+	       + HDA_ADSP_REG_ADSPCS_IMR_UNCACHED_TLB_START
+	       + HDA_ADSP_REG_ADSPCS_IMR_SIZE);
+
+	memset(ctx->dsp_fw_buf.area, 0, fw_size);
+
+	return 0;
+}
+
+static inline void cnl_fpga_free_imr(struct sst_dsp *ctx)
+{
+	ctx->dsp_ops.free_dma_buf(ctx->dev, &ctx->dsp_fw_buf);
+}
+
 static int cnl_prepare_fw(struct sst_dsp *ctx, const void *fwdata, u32 fwsize)
 {
 
 	int ret, stream_tag;
+
+	ret = cnl_fpga_alloc_imr(ctx);
+	if (ret < 0)
+		return ret;
 
 	stream_tag = ctx->dsp_ops.prepare(ctx->dev, 0x40, fwsize, &ctx->dmab);
 	if (stream_tag <= 0) {
@@ -78,6 +137,21 @@ static int cnl_prepare_fw(struct sst_dsp *ctx, const void *fwdata, u32 fwsize)
 		goto base_fw_load_failed;
 	}
 
+
+	for (ret = CNL_BASEFW_TIMEOUT;
+	     ret > 0 && IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA); --ret) {
+		u32 reg = sst_dsp_shim_read(ctx, CNL_ADSP_REG_HIPCIDA);
+
+		if (reg & CNL_ADSP_REG_HIPCIDA_DONE) {
+			sst_dsp_shim_update_bits_forced(ctx,
+					CNL_ADSP_REG_HIPCIDA,
+					CNL_ADSP_REG_HIPCIDA_DONE,
+					CNL_ADSP_REG_HIPCIDA_DONE);
+			break;
+		}
+
+		mdelay(1);
+	}
 	/* enable interrupt */
 	cnl_ipc_int_enable(ctx);
 	cnl_ipc_op_int_enable(ctx);
@@ -95,6 +169,7 @@ static int cnl_prepare_fw(struct sst_dsp *ctx, const void *fwdata, u32 fwsize)
 base_fw_load_failed:
 	ctx->dsp_ops.cleanup(ctx->dev, &ctx->dmab, stream_tag);
 	cnl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
+	cnl_fpga_free_imr(ctx);
 
 	return ret;
 }
@@ -490,6 +565,7 @@ void cnl_sst_dsp_cleanup(struct device *dev, struct skl_sst *ctx)
 	cnl_ipc_free(&ctx->ipc);
 
 	ctx->dsp->ops->free(ctx->dsp);
+	cnl_fpga_free_imr(ctx->dsp);
 }
 EXPORT_SYMBOL_GPL(cnl_sst_dsp_cleanup);
 
