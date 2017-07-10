@@ -132,6 +132,8 @@ struct hv_fc_wwn_packet {
 #define SRB_FLAGS_PORT_DRIVER_RESERVED		0x0F000000
 #define SRB_FLAGS_CLASS_DRIVER_RESERVED		0xF0000000
 
+#define SP_UNTAGGED			((unsigned char) ~0)
+#define SRB_SIMPLE_TAG_REQUEST		0x20
 
 /*
  * Platform neutral description of a scsi request -
@@ -1041,6 +1043,13 @@ static void storvsc_handle_error(struct vmscsi_request *vm_srb,
 	switch (vm_srb->srb_status) {
 	case SRB_STATUS_ERROR:
 		/*
+		 * Let upper layer deal with error when
+		 * sense message is present.
+		 */
+
+		if (vm_srb->srb_status & SRB_STATUS_AUTOSENSE_VALID)
+			break;
+		/*
 		 * If there is an error; offline the device since all
 		 * error recovery strategies would have already been
 		 * deployed on the host side. However, if the command
@@ -1587,6 +1596,13 @@ static int storvsc_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *scmnd)
 	vm_srb->win8_extension.srb_flags |=
 		(SRB_FLAGS_QUEUE_ACTION_ENABLE |
 		SRB_FLAGS_DISABLE_SYNCH_TRANSFER);
+
+	if (scmnd->device->tagged_supported) {
+		vm_srb->win8_extension.srb_flags |=
+		(SRB_FLAGS_QUEUE_ACTION_ENABLE | SRB_FLAGS_NO_QUEUE_FREEZE);
+		vm_srb->win8_extension.queue_tag = SP_UNTAGGED;
+		vm_srb->win8_extension.queue_action = SRB_SIMPLE_TAG_REQUEST;
+	}
 
 	/* Build the SRB */
 	switch (scmnd->sc_data_direction) {
