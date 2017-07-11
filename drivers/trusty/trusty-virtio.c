@@ -60,7 +60,8 @@ struct trusty_vring {
 	atomic_t		needs_kick;
 	struct fw_rsc_vdev_vring *vr_descr;
 	struct virtqueue	*vq;
-	struct trusty_vdev      *tvdev;
+	struct trusty_vdev	*tvdev;
+	struct trusty_nop	kick_nop;
 };
 
 struct trusty_vdev {
@@ -144,8 +145,14 @@ static bool trusty_virtio_notify(struct virtqueue *vq)
 	struct trusty_vdev *tvdev = tvr->tvdev;
 	struct trusty_ctx *tctx = tvdev->tctx;
 
-	atomic_set(&tvr->needs_kick, 1);
-	queue_work(tctx->kick_wq, &tctx->kick_vqs);
+	u32 api_ver = trusty_get_api_version(tctx->dev->parent);
+
+	if (api_ver < TRUSTY_API_VERSION_SMP_NOP) {
+		atomic_set(&tvr->needs_kick, 1);
+		queue_work(tctx->kick_wq, &tctx->kick_vqs);
+	} else {
+		trusty_enqueue_nop(tctx->dev->parent, &tvr->kick_nop);
+	}
 
 	return true;
 }
@@ -269,6 +276,9 @@ static void _del_vqs(struct virtio_device *vdev)
 	struct trusty_vring *tvr = &tvdev->vrings[0];
 
 	for (i = 0; i < tvdev->vring_num; i++, tvr++) {
+		/* dequeue kick_nop */
+		trusty_dequeue_nop(tvdev->tctx->dev->parent, &tvr->kick_nop);
+
 		/* delete vq */
 		if (tvr->vq) {
 			vring_del_virtqueue(tvr->vq);
@@ -431,6 +441,8 @@ static int trusty_virtio_add_device(struct trusty_ctx *tctx,
 		tvr->align    = vr_descr->align;
 		tvr->elem_num = vr_descr->num;
 		tvr->notifyid = vr_descr->notifyid;
+		trusty_nop_init(&tvr->kick_nop, SMC_NC_VDEV_KICK_VQ,
+				tvdev->notifyid, tvr->notifyid);
 	}
 
 	/* register device */
