@@ -41,11 +41,6 @@ struct trusty_irq {
 	struct trusty_irq __percpu *percpu_ptr;
 };
 
-struct trusty_irq_work {
-	struct trusty_irq_state *is;
-	struct work_struct work;
-};
-
 struct trusty_irq_irqset {
 	struct hlist_head pending;
 	struct hlist_head inactive;
@@ -54,14 +49,12 @@ struct trusty_irq_irqset {
 struct trusty_irq_state {
 	struct device *dev;
 	struct device *trusty_dev;
-	struct trusty_irq_work __percpu *irq_work;
 	struct trusty_irq_irqset normal_irqs;
 	spinlock_t normal_irqs_lock;
 	struct trusty_irq_irqset __percpu *percpu_irqs;
 	struct notifier_block trusty_call_notifier;
 	/* CPU hotplug instances for online */
 	struct hlist_node node;
-	struct workqueue_struct *wq;
 };
 
 static enum cpuhp_state trusty_irq_online;
@@ -183,46 +176,10 @@ static int trusty_irq_call_notify(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
-
-static void trusty_irq_work_func_locked_nop(struct work_struct *work)
-{
-	int ret;
-	struct trusty_irq_state *is =
-		container_of(work, struct trusty_irq_work, work)->is;
-
-	dev_dbg(is->dev, "%s\n", __func__);
-
-	ret = trusty_std_call32(is->trusty_dev, SMC_SC_LOCKED_NOP, 0, 0, 0);
-	if (ret != 0)
-		dev_err(is->dev, "%s: SMC_SC_LOCKED_NOP failed %d",
-			__func__, ret);
-
-	dev_dbg(is->dev, "%s: done\n", __func__);
-}
-
-static void trusty_irq_work_func(struct work_struct *work)
-{
-	int ret;
-	struct trusty_irq_state *is =
-		container_of(work, struct trusty_irq_work, work)->is;
-
-	dev_dbg(is->dev, "%s\n", __func__);
-
-	do {
-		ret = trusty_std_call32(is->trusty_dev, SMC_SC_NOP, 0, 0, 0);
-	} while (ret == SM_ERR_NOP_INTERRUPTED);
-
-	if (ret != SM_ERR_NOP_DONE)
-		dev_err(is->dev, "%s: SMC_SC_NOP failed %d", __func__, ret);
-
-	dev_dbg(is->dev, "%s: done\n", __func__);
-}
-
 irqreturn_t trusty_irq_handler(int irq, void *data)
 {
 	struct trusty_irq *trusty_irq = data;
 	struct trusty_irq_state *is = trusty_irq->is;
-	struct trusty_irq_work *trusty_irq_work = this_cpu_ptr(is->irq_work);
 	struct trusty_irq_irqset *irqset;
 
 	dev_dbg(is->dev, "%s: irq %d, percpu %d, cpu %d, enable %d\n",
@@ -248,7 +205,7 @@ irqreturn_t trusty_irq_handler(int irq, void *data)
 	}
 	spin_unlock(&is->normal_irqs_lock);
 
-	queue_work_on(raw_smp_processor_id(), is->wq, &trusty_irq_work->work);
+	trusty_enqueue_nop(is->trusty_dev, NULL);
 
 	dev_dbg(is->dev, "%s: irq %d done\n", __func__, irq);
 
@@ -582,10 +539,8 @@ static int trusty_irq_probe(struct platform_device *pdev)
 {
 	int ret;
 	int irq;
-	unsigned int cpu;
 	unsigned long irq_flags;
 	struct trusty_irq_state *is;
-	work_func_t work_func;
 
 	ret = trusty_check_cpuid(NULL);
 	if (ret < 0) {
@@ -601,19 +556,8 @@ static int trusty_irq_probe(struct platform_device *pdev)
 		goto err_alloc_is;
 	}
 
-	is->wq = alloc_workqueue("trusty-irq-wq", WQ_CPU_INTENSIVE, 0);
-	if (!is->wq) {
-		ret = -ENOMEM;
-		goto err_alloc_wq;
-	}
-
 	is->dev = &pdev->dev;
 	is->trusty_dev = is->dev->parent;
-	is->irq_work = alloc_percpu(struct trusty_irq_work);
-	if (!is->irq_work) {
-		ret = -ENOMEM;
-		goto err_alloc_irq_work;
-	}
 	spin_lock_init(&is->normal_irqs_lock);
 	is->percpu_irqs = alloc_percpu(struct trusty_irq_irqset);
 	if (!is->percpu_irqs) {
@@ -630,21 +574,6 @@ static int trusty_irq_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev,
 			"failed to register trusty call notifier\n");
 		goto err_trusty_call_notifier_register;
-	}
-
-	if (trusty_get_api_version(is->trusty_dev) < TRUSTY_API_VERSION_SMP)
-		work_func = trusty_irq_work_func_locked_nop;
-	else
-		work_func = trusty_irq_work_func;
-
-	for_each_possible_cpu(cpu) {
-		struct trusty_irq_work *trusty_irq_work;
-
-		if (cpu >= 32)
-			return -EINVAL;
-		trusty_irq_work = per_cpu_ptr(is->irq_work, cpu);
-		trusty_irq_work->is = is;
-		INIT_WORK(&trusty_irq_work->work, work_func);
 	}
 
 	for (irq = 0; irq >= 0;)
@@ -670,18 +599,6 @@ err_register_hotcpu_notifier:
 err_trusty_call_notifier_register:
 	free_percpu(is->percpu_irqs);
 err_alloc_pending_percpu_irqs:
-	for_each_possible_cpu(cpu) {
-		struct trusty_irq_work *trusty_irq_work;
-
-		if (cpu >= 32)
-			return -EINVAL;
-		trusty_irq_work = per_cpu_ptr(is->irq_work, cpu);
-		flush_work(&trusty_irq_work->work);
-	}
-	free_percpu(is->irq_work);
-err_alloc_irq_work:
-	destroy_workqueue(is->wq);
-err_alloc_wq:
 	kfree(is);
 err_alloc_is:
 	return ret;
@@ -689,7 +606,6 @@ err_alloc_is:
 
 static int trusty_irq_remove(struct platform_device *pdev)
 {
-	unsigned int cpu;
 	unsigned long irq_flags;
 	struct trusty_irq_state *is = platform_get_drvdata(pdev);
 
@@ -705,16 +621,6 @@ static int trusty_irq_remove(struct platform_device *pdev)
 	trusty_call_notifier_unregister(is->trusty_dev,
 					&is->trusty_call_notifier);
 	free_percpu(is->percpu_irqs);
-	for_each_possible_cpu(cpu) {
-		struct trusty_irq_work *trusty_irq_work;
-
-		if (cpu >= 32)
-			return -EINVAL;
-		trusty_irq_work = per_cpu_ptr(is->irq_work, cpu);
-		flush_work(&trusty_irq_work->work);
-	}
-	free_percpu(is->irq_work);
-	destroy_workqueue(is->wq);
 	kfree(is);
 
 	return 0;

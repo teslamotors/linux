@@ -69,6 +69,23 @@ int trusty_call32_mem_buf(struct device *dev, u32 smcnr,
 			  struct page *page,  u32 size,
 			  pgprot_t pgprot);
 
+struct trusty_nop {
+	struct list_head node;
+	u32 args[3];
+};
+
+static inline void trusty_nop_init(struct trusty_nop *nop,
+				   u32 arg0, u32 arg1, u32 arg2) {
+	INIT_LIST_HEAD(&nop->node);
+	nop->args[0] = arg0;
+	nop->args[1] = arg1;
+	nop->args[2] = arg2;
+}
+
+void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop);
+void trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop);
+
+
 /* CPUID leaf 0x3 is used because eVMM will trap this leaf.*/
 #define EVMM_SIGNATURE_CORP 0x43544E49  /* "INTC", edx */
 #define EVMM_SIGNATURE_VMM  0x4D4D5645  /* "EVMM", ecx */
