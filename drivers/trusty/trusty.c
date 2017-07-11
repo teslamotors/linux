@@ -26,23 +26,11 @@
 #include <linux/trusty/trusty.h>
 
 #define TRUSTY_VMCALL_SMC 0x74727500
-#define TRUSTY_LKTIMER_INTERVAL 10   /* 10 ms */
-#define TRUSTY_LKTIMER_VECTOR   0x31 /* INT_PIT */
-
-enum lktimer_mode {
-	ONESHOT_TIMER,
-	PERIODICAL_TIMER,
-};
 
 struct trusty_state {
-	struct device *dev;
 	struct mutex smc_lock;
 	struct atomic_notifier_head notifier;
 	struct completion cpu_idle_completion;
-	struct timer_list timer;
-	struct work_struct timer_work;
-	enum lktimer_mode timer_mode;
-	unsigned long timer_interval;
 	char *version_str;
 	u32 api_version;
 };
@@ -51,72 +39,6 @@ struct trusty_smc_interface {
 	struct device *dev;
 	ulong args[5];
 };
-
-static void trusty_lktimer_work_func(struct work_struct *work)
-{
-	int ret;
-	unsigned int vector;
-	struct trusty_state *s =
-			container_of(work, struct trusty_state, timer_work);
-
-	dev_dbg(s->dev, "%s\n", __func__);
-
-	/* need vector number only for the first time */
-	vector = TRUSTY_LKTIMER_VECTOR;
-
-	do {
-		ret = trusty_std_call32(s->dev, SMC_SC_NOP, vector, 0, 0);
-		vector = 0;
-	} while (ret == SM_ERR_NOP_INTERRUPTED);
-
-	if (ret != SM_ERR_NOP_DONE)
-		dev_err(s->dev, "%s: SMC_SC_NOP failed %d", __func__, ret);
-
-	dev_notice_once(s->dev, "LK OS proxy timer works\n");
-}
-
-static void trusty_lktimer_func(unsigned long data)
-{
-	struct trusty_state *s = (struct trusty_state *)data;
-
-	/* binding it physical CPU0 only because trusty OS runs on it */
-	schedule_work_on(0, &s->timer_work);
-
-	/* reactivate the timer again in periodic mode */
-	if (s->timer_mode == PERIODICAL_TIMER)
-		mod_timer(&s->timer,
-			jiffies + msecs_to_jiffies(s->timer_interval));
-}
-
-static void trusty_init_lktimer(struct trusty_state *s)
-{
-	INIT_WORK(&s->timer_work, trusty_lktimer_work_func);
-	setup_timer(&s->timer, trusty_lktimer_func, (unsigned long)s);
-}
-
-/* note that this function is not thread-safe */
-static void trusty_configure_lktimer(struct trusty_state *s,
-			enum lktimer_mode mode, unsigned long interval)
-{
-	if (mode != ONESHOT_TIMER && mode != PERIODICAL_TIMER) {
-		pr_err("%s: invalid timer mode: %d\n", __func__, mode);
-		return;
-	}
-
-	s->timer_mode = mode;
-	s->timer_interval = interval;
-	mod_timer(&s->timer, jiffies + msecs_to_jiffies(s->timer_interval));
-}
-
-/*
- * this should be called when removing trusty dev and
- * when LK/Trusty crashes, to disable proxy timer.
- */
-static void trusty_del_lktimer(struct trusty_state *s)
-{
-	del_timer_sync(&s->timer);
-	flush_work(&s->timer_work);
-}
 
 static inline ulong smc(ulong r0, ulong r1, ulong r2, ulong r3)
 {
@@ -307,9 +229,6 @@ static long trusty_std_call32_work(void *args)
 
 	WARN_ONCE(ret == SM_ERR_PANIC, "trusty crashed");
 
-	if (ret == SM_ERR_PANIC)
-		trusty_del_lktimer(s);
-
 	if (smcnr == SMC_SC_NOP)
 		complete(&s->cpu_idle_completion);
 	else
@@ -470,7 +389,6 @@ static int trusty_probe(struct platform_device *pdev)
 	ATOMIC_INIT_NOTIFIER_HEAD(&s->notifier);
 	init_completion(&s->cpu_idle_completion);
 	platform_set_drvdata(pdev, s);
-	s->dev = &pdev->dev;
 
 	trusty_init_version(s, &pdev->dev);
 
@@ -478,14 +396,9 @@ static int trusty_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_api_version;
 
-	trusty_init_lktimer(s);
-	trusty_configure_lktimer(s,
-		PERIODICAL_TIMER, TRUSTY_LKTIMER_INTERVAL);
-
 	return 0;
 
 err_api_version:
-	trusty_del_lktimer(s);
 	if (s->version_str) {
 		device_remove_file(&pdev->dev, &dev_attr_trusty_version);
 		kfree(s->version_str);
@@ -509,7 +422,6 @@ static int trusty_remove(struct platform_device *pdev)
 		device_remove_file(&pdev->dev, &dev_attr_trusty_version);
 		kfree(s->version_str);
 	}
-	trusty_del_lktimer(s);
 	kfree(s);
 	return 0;
 }

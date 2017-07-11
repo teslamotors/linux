@@ -651,6 +651,8 @@ static int trusty_irq_probe(struct platform_device *pdev)
 		irq = trusty_irq_init_one(is, irq, false);
 
 	ret = trusty_irq_cpu_notif_add(is);
+	irq_register_done();
+
 	if (ret) {
 		dev_err(&pdev->dev, "register_cpu_notifier failed %d\n", ret);
 		goto err_register_hotcpu_notifier;
