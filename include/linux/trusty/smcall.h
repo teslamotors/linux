@@ -123,23 +123,6 @@
 #define TRUSTY_API_VERSION_CURRENT	(2)
 #define SMC_FC_API_VERSION	SMC_FASTCALL_NR(SMC_ENTITY_SECURE_MONITOR, 11)
 
-/**
- * SMC_FC_TIMER_MODE - Find and set timer mode
- * Returns timer mode from trusty.
- *
- * Return value stands for:
- * Bit 31 :
- *   If this bit is set, trusty uses periodic timer, Android trusty driver
- *   injects timer interrupt to trusty with specified interval.
- *   If this bit is clear, trusty uses dynamic timer, Android trusty
- *   driver injects timer interrupt to trusty on demand.
- * Bit 15:0 :
- *   If bit 31 is set, Android trusty driver injects timer interrupt to
- *   trusty with interval specified by this field in milliseconds.
- *   If bit 31 is clear, this field is ignored.
- */
-#define SMC_FC_TIMER_MODE	SMC_FASTCALL_NR(SMC_ENTITY_SECURE_MONITOR, 12)
-
 /* TRUSTED_OS entity calls */
 #define SMC_SC_VIRTIO_GET_DESCR	SMC_STDCALL_NR(SMC_ENTITY_TRUSTED_OS, 20)
 #define SMC_SC_VIRTIO_START	SMC_STDCALL_NR(SMC_ENTITY_TRUSTED_OS, 21)
