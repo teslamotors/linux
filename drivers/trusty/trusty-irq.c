@@ -59,24 +59,6 @@ struct trusty_irq_state {
 
 static enum cpuhp_state trusty_irq_online;
 
-#define TRUSTY_VMCALL_PENDING_INTR 0x74727505
-static inline void set_pending_intr_to_lk(uint8_t vector)
-{
-	__asm__ __volatile__(
-		"vmcall"
-		::"a"(TRUSTY_VMCALL_PENDING_INTR), "b"(vector)
-	);
-}
-
-#define TRUSTY_VMCALL_IRQ_DONE 0x74727506
-static inline void irq_register_done(void)
-{
-	__asm__ __volatile__(
-		"vmcall"
-		::"a"(TRUSTY_VMCALL_IRQ_DONE)
-	);
-}
-
 static void trusty_irq_enable_pending_irqs(struct trusty_irq_state *is,
 					   struct trusty_irq_irqset *irqset,
 					   bool percpu)
@@ -580,8 +562,6 @@ static int trusty_irq_probe(struct platform_device *pdev)
 		irq = trusty_irq_init_one(is, irq, false);
 
 	ret = trusty_irq_cpu_notif_add(is);
-	irq_register_done();
-
 	if (ret) {
 		dev_err(&pdev->dev, "register_cpu_notifier failed %d\n", ret);
 		goto err_register_hotcpu_notifier;

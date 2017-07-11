@@ -22,6 +22,7 @@
 #include <linux/smp.h>
 #include <linux/string.h>
 #include <linux/trusty/smcall.h>
+#include <linux/trusty/smwall.h>
 #include <linux/trusty/sm_err.h>
 #include <linux/trusty/trusty.h>
 
@@ -610,11 +611,16 @@ static struct platform_driver trusty_driver = {
 	},
 };
 
-void	trusty_dev_release(struct device *dev)
+void trusty_dev_release(struct device *dev)
 {
 	dev_dbg(dev, "%s() is called()\n", __func__);
 	return;
 }
+
+static struct device_node trusty_wall_node = {
+	.name = "trusty-wall",
+	.sibling = NULL,
+};
 
 static struct device_node trusty_irq_node = {
 	.name = "trusty-irq",
@@ -679,11 +685,23 @@ static struct platform_device trusty_platform_dev_irq = {
 	},
 };
 
+static struct platform_device trusty_platform_dev_wall = {
+	.name = "trusty-wall",
+	.id   = -1,
+	.num_resources = 0,
+	.dev = {
+		.release = trusty_dev_release,
+		.parent = &trusty_platform_dev.dev,
+		.of_node = &trusty_wall_node,
+	},
+};
+
 static struct platform_device *trusty_devices[] __initdata = {
 	&trusty_platform_dev,
 	&trusty_platform_dev_log,
 	&trusty_platform_dev_virtio,
-	&trusty_platform_dev_irq
+	&trusty_platform_dev_irq,
+	&trusty_platform_dev_wall
 };
 static int __init trusty_driver_init(void)
 {

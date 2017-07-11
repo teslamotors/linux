@@ -85,6 +85,19 @@ static inline void trusty_nop_init(struct trusty_nop *nop,
 void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop);
 void trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop);
 
+#define TRUSTY_VMCALL_PENDING_INTR 0x74727505
+static inline void set_pending_intr_to_lk(uint8_t vector)
+{
+	__asm__ __volatile__(
+		"vmcall"
+		::"a"(TRUSTY_VMCALL_PENDING_INTR), "b"(vector)
+	);
+}
+
+void trusty_update_wall_info(struct device *dev, void *va, size_t sz);
+void *trusty_wall_base(struct device *dev);
+void *trusty_wall_per_cpu_item_ptr(struct device *dev, unsigned int cpu,
+				   u32 item_id, size_t exp_sz);
 
 /* CPUID leaf 0x3 is used because eVMM will trap this leaf.*/
 #define EVMM_SIGNATURE_CORP 0x43544E49  /* "INTC", edx */
