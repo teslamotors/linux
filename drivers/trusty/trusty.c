@@ -617,6 +617,11 @@ void trusty_dev_release(struct device *dev)
 	return;
 }
 
+static struct device_node trusty_timer_node = {
+	.name = "trusty-timer",
+	.sibling = NULL,
+};
+
 static struct device_node trusty_wall_node = {
 	.name = "trusty-wall",
 	.sibling = NULL,
@@ -696,12 +701,24 @@ static struct platform_device trusty_platform_dev_wall = {
 	},
 };
 
+static struct platform_device trusty_platform_dev_timer = {
+	.name = "trusty-timer",
+	.id   = -1,
+	.num_resources = 0,
+	.dev = {
+		.release = trusty_dev_release,
+		.parent = &trusty_platform_dev_wall.dev,
+		.of_node = &trusty_timer_node,
+	},
+};
+
 static struct platform_device *trusty_devices[] __initdata = {
 	&trusty_platform_dev,
 	&trusty_platform_dev_log,
 	&trusty_platform_dev_virtio,
 	&trusty_platform_dev_irq,
-	&trusty_platform_dev_wall
+	&trusty_platform_dev_wall,
+	&trusty_platform_dev_timer
 };
 static int __init trusty_driver_init(void)
 {

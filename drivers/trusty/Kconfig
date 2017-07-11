@@ -49,4 +49,17 @@ config TRUSTY_VIRTIO_IPC
 	  If you choose to build a module, it'll be called trusty-ipc.
 	  Say N if unsure.
 
+config TRUSTY_BACKUP_TIMER
+	tristate "Trusty backup timer"
+	depends on TRUSTY
+	default y
+	help
+	  This module adds support for Trusty backup timer. Trusty backup
+	  timer might be required on platforms that might loose state of
+	  secure timer in deep idle state.
+
+	  If you choose to build a module, it'll be called trusty-timer.
+	  Say N if unsure.
+
+
 endmenu
