@@ -2014,8 +2014,8 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 			ctrl &= ~SDHCI_CTRL_EXEC_TUNING;
 			sdhci_writew(host, ctrl, SDHCI_HOST_CONTROL2);
 
-			sdhci_do_reset(host, SDHCI_RESET_CMD);
-			sdhci_do_reset(host, SDHCI_RESET_DATA);
+			sdhci_reset(host, SDHCI_RESET_CMD);
+			sdhci_reset(host, SDHCI_RESET_DATA);
 
 			err = -EIO;
 
@@ -2030,7 +2030,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 			memset(&cmd, 0, sizeof(cmd));
 			cmd.opcode = MMC_STOP_TRANSMISSION;
 			cmd.flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
-			cmd.busy_timeout = 50;
+			cmd.cmd_timeout_ms = 50;
 			mmc_wait_for_cmd(mmc, &cmd, 0);
 
 			spin_lock_irqsave(&host->lock, flags);
