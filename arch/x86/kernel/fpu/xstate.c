@@ -80,6 +80,7 @@ void fpu__xstate_clear_all_cpu_caps(void)
 	setup_clear_cpu_cap(X86_FEATURE_GFNI);
 	setup_clear_cpu_cap(X86_FEATURE_VAES);
 	setup_clear_cpu_cap(X86_FEATURE_AVX512VNNI);
+	setup_clear_cpu_cap(X86_FEATURE_AVX512_BITALG);
 	setup_clear_cpu_cap(X86_FEATURE_AVX512_4VNNIW);
 	setup_clear_cpu_cap(X86_FEATURE_AVX512_4FMAPS);
 	setup_clear_cpu_cap(X86_FEATURE_AVX512_VPOPCNTDQ);
