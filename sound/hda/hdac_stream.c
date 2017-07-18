@@ -71,8 +71,24 @@ EXPORT_SYMBOL_GPL(snd_hdac_stream_start);
  */
 void snd_hdac_stream_clear(struct hdac_stream *azx_dev)
 {
+	int timeout;
+	unsigned char val;
+
 	snd_hdac_stream_updateb(azx_dev, SD_CTL,
 				SD_CTL_DMA_START | SD_INT_MASK, 0);
+
+	timeout = 300;
+	do {
+		udelay(3);
+		val = snd_hdac_stream_readb(azx_dev, SD_CTL) &
+				SD_CTL_DMA_START;
+		if (!val)
+			break;
+	} while (--timeout);
+
+	if (!timeout)
+		dev_err(azx_dev->bus->dev, "unable to stop the stream\n");
+
 	snd_hdac_stream_writeb(azx_dev, SD_STS, SD_INT_MASK); /* to be sure */
 	azx_dev->running = false;
 }
