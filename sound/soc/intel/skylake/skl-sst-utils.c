@@ -880,6 +880,25 @@ err:
 	return ret;
 }
 
+int skl_notify_tplg_change(struct skl_sst *ctx, int type)
+{
+	struct skl_notify_data *notify_data;
+
+	notify_data = kzalloc(sizeof(*notify_data), GFP_KERNEL);
+	if (!notify_data)
+		return -ENOMEM;
+
+	notify_data->type = 0xFF;
+	notify_data->length = sizeof(struct skl_tcn_events);
+	notify_data->tcn_data.type = type;
+	do_gettimeofday(&(notify_data->tcn_data.tv));
+	ctx->notify_ops.notify_cb(ctx, SKL_TPLG_CHG_NOTIFY, notify_data);
+	kfree(notify_data);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(skl_notify_tplg_change);
+
 int skl_get_firmware_configuration(struct sst_dsp *ctx)
 {
 	struct skl_ipc_large_config_msg msg;

@@ -498,6 +498,11 @@ static int bxt_set_dsp_D0(struct sst_dsp *ctx, unsigned int core_id)
 	}
 
 	skl->cores.state[core_id] = SKL_DSP_RUNNING;
+	ret = skl_notify_tplg_change(skl, SKL_TPLG_CHG_NOTIFY_DSP_D0);
+	if (ret < 0)
+		dev_warn(ctx->dev,
+			"update of topology event D0 failed\n");
+
 	return 0;
 err:
 	if (core_id == SKL_DSP_CORE0_ID)
@@ -544,6 +549,11 @@ static int bxt_set_dsp_D3(struct sst_dsp *ctx, unsigned int core_id)
 		return ret;
 	}
 	skl->cores.state[core_id] = SKL_DSP_RESET;
+	ret = skl_notify_tplg_change(skl, SKL_TPLG_CHG_NOTIFY_DSP_D3);
+	if (ret < 0)
+		dev_warn(ctx->dev,
+			"update of topology event D3 failed\n");
+
 	return 0;
 }
 

@@ -20,6 +20,7 @@
 #include <linux/uuid.h>
 #include <linux/firmware.h>
 #include <sound/memalloc.h>
+#include <uapi/sound/snd_sst_tokens.h>
 #include "skl-sst-cldma.h"
 
 struct sst_dsp;
@@ -236,6 +237,17 @@ struct uuid_module {
 	u8 hash[DEFAULT_HASH_SHA256_LEN];
 };
 
+struct skl_notify_data {
+	u32 type;
+	u32 length;
+	struct skl_tcn_events tcn_data;
+};
+
+struct skl_dsp_notify_ops {
+	int (*notify_cb)(struct skl_sst *skl, unsigned int event,
+				 struct skl_notify_data *notify_data);
+};
+
 struct skl_load_module_info {
 	u16 mod_id;
 	const struct firmware *fw;
@@ -322,4 +334,8 @@ void bxt_set_dsp_D0i3(struct work_struct *work);
 int skl_module_sysfs_init(struct skl_sst *ctx, struct kobject *fw_modules_kobj);
 
 void skl_module_sysfs_exit(struct skl_sst *ctx);
+
+int skl_dsp_cb_event(struct skl_sst *ctx, unsigned int event,
+				struct skl_notify_data *notify_data);
+
 #endif /*__SKL_SST_DSP_H__*/

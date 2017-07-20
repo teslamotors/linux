@@ -335,4 +335,20 @@ enum SKL_TKNS {
 	SKL_TKN_MAX = SKL_TKN_U32_DMACTRL_CFG_SIZE,
 };
 
+/*
+ * Topology change notification events along with time at which
+ * the change occurred in topology.
+ */
+enum skl_event_type {
+	SKL_TPLG_CHG_NOTIFY_PIPELINE_START = 1,
+	SKL_TPLG_CHG_NOTIFY_PIPELINE_DELETE,
+	SKL_TPLG_CHG_NOTIFY_DSP_D0,
+	SKL_TPLG_CHG_NOTIFY_DSP_D3,
+};
+
+struct skl_tcn_events {
+	enum skl_event_type type;
+	struct timeval tv;
+};
+
 #endif

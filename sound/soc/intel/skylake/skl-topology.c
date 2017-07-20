@@ -2557,6 +2557,74 @@ int skl_tplg_be_update_params(struct snd_soc_dai *dai,
 	return 0;
 }
 
+/*
+ * Get the events along with data stored in notify_data and pass
+ * to kcontrol private data.
+ */
+int skl_dsp_cb_event(struct skl_sst *ctx, unsigned int event,
+				struct skl_notify_data *notify_data)
+{
+	struct snd_soc_card *card;
+	struct soc_bytes_ext *sb;
+	struct skl *skl = get_skl_ctx(ctx->dev);
+	struct snd_soc_platform *soc_platform = skl->platform;
+
+	switch (event) {
+	case SKL_TPLG_CHG_NOTIFY:
+		card = soc_platform->component.card;
+
+		if (!ctx->kcontrol) {
+			ctx->kcontrol = snd_soc_card_get_kcontrol(card,
+					"Topology Change Notification");
+			if (!ctx->kcontrol) {
+				dev_dbg(ctx->dev,
+					"NOTIFICATION Controls not found\n");
+				return -EINVAL;
+			}
+		}
+
+		sb = (struct soc_bytes_ext *)ctx->kcontrol->private_value;
+		if (!sb->dobj.private) {
+			sb->dobj.private = devm_kzalloc(ctx->dev,
+				sizeof(*notify_data), GFP_KERNEL);
+			if (!sb->dobj.private)
+				return -ENOMEM;
+		}
+
+		memcpy(sb->dobj.private, notify_data, sizeof(*notify_data));
+		snd_ctl_notify(card->snd_card, SNDRV_CTL_EVENT_MASK_VALUE,
+							&ctx->kcontrol->id);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/*
+ * Get last topology change events like pipeline start, pipeline delete,
+ * DSP D0/D3 and notify to user along with time at which last change occurred
+ * in topology.
+ */
+int skl_tplg_change_notification_get(struct snd_kcontrol *kcontrol,
+			unsigned int __user *data, unsigned int size)
+{
+	struct skl_notify_data *notify_data;
+	struct soc_bytes_ext *sb =
+			(struct soc_bytes_ext *)kcontrol->private_value;
+
+	if (sb->dobj.private) {
+		notify_data = (struct skl_notify_data *)sb->dobj.private;
+		if (copy_to_user(data, notify_data, sizeof(*notify_data)))
+			return -EFAULT;
+		/* Clear the data after copy to user as per requirement */
+		memset(notify_data, 0, sizeof(*notify_data));
+	}
+
+	return 0;
+}
+
 static const struct snd_soc_tplg_widget_events skl_tplg_widget_ops[] = {
 	{SKL_MIXER_EVENT, skl_tplg_mixer_event},
 	{SKL_VMIXER_EVENT, skl_tplg_mixer_event},

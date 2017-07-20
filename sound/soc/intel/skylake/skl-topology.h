@@ -598,4 +598,7 @@ int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
 int skl_dai_load(struct snd_soc_component *cmp,
 		 struct snd_soc_dai_driver *pcm_dai);
 int skl_dsp_crash_dump_read(struct skl_sst *ctx);
+
+int skl_tplg_change_notification_get(struct snd_kcontrol *kcontrol,
+			unsigned int __user *data, unsigned int size);
 #endif
