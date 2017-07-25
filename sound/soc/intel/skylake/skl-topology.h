@@ -55,6 +55,7 @@
 #define SKL_MAX_MODULES_IN_PIPE	8
 #define SKL_MAX_MODULE_FORMATS		64
 #define SKL_MAX_MODULE_RESOURCES	32
+#define MAX_NUM_CHANNELS	8
 
 enum skl_channel_index {
 	SKL_CHANNEL_LEFT = 0,
@@ -249,6 +250,11 @@ struct skl_kpb_params {
 	struct skl_mod_inst_map map[0];
 };
 
+struct skl_gain_module_config {
+	struct skl_base_cfg mconf;
+	struct skl_gain_config gain_cfg;
+};
+
 struct skl_module_inst_id {
 	uuid_le mod_uuid;
 	int module_id;
@@ -406,6 +412,12 @@ struct skl_sdw_aggregation {
 	struct skl_sdw_agg_data agg_data[4];
 };
 
+struct skl_gain_data {
+	u64 ramp_duration;
+	u32 ramp_type;
+	u32 volume[MAX_NUM_CHANNELS];
+};
+
 struct skl_module_cfg {
 	u8 guid[16];
 	struct skl_module_inst_id id;
@@ -450,6 +462,7 @@ struct skl_module_cfg {
 	struct skl_pipe *pipe;
 	struct skl_specific_cfg formats_config;
 	struct skl_pipe_mcfg mod_cfg[SKL_MAX_MODULES_IN_PIPE];
+	struct skl_gain_data *gain_data;
 };
 
 struct skl_algo_data {

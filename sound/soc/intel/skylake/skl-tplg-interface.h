@@ -27,6 +27,9 @@
 #define SKL_CONTROL_TYPE_MIC_SELECT	0x102
 #define SKL_CONTROL_TYPE_BYTE_PROBE	0x101
 #define SKL_CONTROL_TYPE_MULTI_IO_SELECT	0x103
+#define SKL_CONTROL_TYPE_VOLUME		0x104
+#define SKL_CONTROL_TYPE_RAMP_DURATION	0x105
+#define SKL_CONTROL_TYPE_RAMP_TYPE	0x106
 
 #define HDA_SST_CFG_MAX	900 /* size of copier cfg*/
 #define MAX_IN_QUEUE 8
@@ -89,7 +92,8 @@ enum skl_module_type {
 	SKL_MODULE_TYPE_KPB,
 	SKL_MODULE_TYPE_MIC_SELECT,
 	SKL_MODULE_TYPE_PROBE,
-	SKL_MODULE_TYPE_ASRC
+	SKL_MODULE_TYPE_ASRC,
+	SKL_MODULE_TYPE_GAIN
 };
 
 enum skl_core_affinity {
@@ -198,6 +202,13 @@ struct skl_dfw_algo_data {
 	u32 param_id;
 	u32 max;
 	char params[0];
+} __packed;
+
+struct skl_gain_config {
+	u32 channel_id;
+	u32 target_volume;
+	u32 ramp_type;
+	u64 ramp_duration;
 } __packed;
 
 enum skl_tkn_dir {
