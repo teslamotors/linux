@@ -3633,10 +3633,6 @@ static int i915_ddb_info(struct seq_file *m, void *unused)
 				   entry->start, entry->end,
 				   skl_ddb_entry_size(entry));
 		}
-
-		entry = &ddb->plane[pipe][PLANE_CURSOR];
-		seq_printf(m, "  %-13s%8u%8u%8u\n", "Cursor", entry->start,
-			   entry->end, skl_ddb_entry_size(entry));
 	}
 
 	drm_modeset_unlock_all(dev);

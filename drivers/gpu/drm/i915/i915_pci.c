@@ -425,6 +425,7 @@ static const struct intel_device_info intel_cherryview_info __initconst = {
 	.has_csr = 1, \
 	.has_guc = 1, \
 	.has_ipc = 1, \
+	.uplane_as_cursor = 1, \
 	.ddb_size = 896
 
 #define SKL_PLATFORM \

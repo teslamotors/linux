@@ -2027,7 +2027,8 @@ bool intel_sdvo_init(struct drm_i915_private *dev_priv,
 int intel_usecs_to_scanlines(const struct drm_display_mode *adjusted_mode,
 			     int usecs);
 struct intel_plane *intel_sprite_plane_create(struct drm_i915_private *dev_priv,
-					      enum pipe pipe, int plane);
+					      enum pipe pipe, int plane,
+					      bool use_as_cursor);
 int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv);
 void intel_pipe_update_start(struct intel_crtc *crtc);

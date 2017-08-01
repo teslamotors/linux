@@ -1443,7 +1443,7 @@ static const struct drm_plane_funcs intel_sprite_plane_funcs = {
 
 struct intel_plane *
 intel_sprite_plane_create(struct drm_i915_private *dev_priv,
-			  enum pipe pipe, int plane)
+			  enum pipe pipe, int plane, bool use_as_cursor)
 {
 	struct intel_plane *intel_plane = NULL;
 	struct intel_plane_state *state = NULL;
@@ -1560,6 +1560,7 @@ intel_sprite_plane_create(struct drm_i915_private *dev_priv,
 					       possible_crtcs, &intel_sprite_plane_funcs,
 					       plane_formats, num_plane_formats,
 					       modifiers,
+					       use_as_cursor ? DRM_PLANE_TYPE_CURSOR :
 					       DRM_PLANE_TYPE_OVERLAY,
 					       "plane %d%c", plane + 2, pipe_name(pipe));
 	else

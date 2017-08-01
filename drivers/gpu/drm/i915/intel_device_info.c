@@ -327,14 +327,33 @@ void intel_device_info_runtime_init(struct drm_i915_private *dev_priv)
 	 * as a DRM_PLANE_TYPE_CURSOR with all the features exposed/supported,
 	 * we don't expose the topmost plane at all to prevent ABI breakage
 	 * down the line.
+	 * SKL/BXT/KBL have a top-most universal (i.e., sprite) plane and a
+	 * cursor plane that are mutually exclusive.  If we use the cursor
+	 * plane we permanently lose the ability to make use of the more
+	 * full-featured universal plane.  So intstead let's use all of the
+	 * universal planes, ignore the cursor plane, but hook the top-most
+	 * universal plane up to the legacy cursor ioctl's and expose it to
+	 * userspace as DRM_PLANE_TYPE_CURSOR.  This won't result in any
+	 * visible behavior change to userspace; we're just internally
+	 * using a different hardware plane to satisfy "cursor" requests.
+	 *
+	 * Note that the device_info structures here are only concerned with
+	 * the number of universal planes that the driver is using in general,
+	 * regardless of how they're classified to userspace ("overlay" vs
+	 * "cursor").
 	 */
-	if (IS_GEN10(dev_priv) || IS_GEMINILAKE(dev_priv))
+	if (IS_GEN10(dev_priv) || IS_GEMINILAKE(dev_priv)) {
 		for_each_pipe(dev_priv, pipe)
 			info->num_sprites[pipe] = 3;
-	else if (IS_BROXTON(dev_priv)) {
-		info->num_sprites[PIPE_A] = 2;
-		info->num_sprites[PIPE_B] = 2;
-		info->num_sprites[PIPE_C] = 1;
+	} else if (IS_BROXTON(dev_priv)) {
+		info->num_sprites[PIPE_A] = 3;
+		info->num_sprites[PIPE_B] = 3;
+		info->num_sprites[PIPE_C] = 2;
+		info->uplane_as_cursor = 1;
+	} else if (IS_GEN9(dev_priv)) {
+		for_each_pipe(dev_priv, pipe)
+			info->num_sprites[pipe] = 2;
+	
 	} else if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv)) {
 		for_each_pipe(dev_priv, pipe)
 			info->num_sprites[pipe] = 2;

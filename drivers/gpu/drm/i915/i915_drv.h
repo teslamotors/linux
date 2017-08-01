@@ -481,9 +481,17 @@ struct i915_hotplug {
 	for ((__p) = 0;							\
 	     (__p) < INTEL_INFO(__dev_priv)->num_sprites[(__pipe)] + 1;	\
 	     (__p)++)
+
+/*
+ * Only iterate over planes being exposed to userspace as
+ * PLANE_TYPE_OVERLAY; on platforms that expose one of the univeral
+ * planes as a PLANE_TYPE_CURSOR, that plane is not included in this
+ * count.
+ */
 #define for_each_sprite(__dev_priv, __p, __s)				\
 	for ((__s) = 0;							\
-	     (__s) < INTEL_INFO(__dev_priv)->num_sprites[(__p)];	\
+	     (__s) < INTEL_INFO(__dev_priv)->num_sprites[(__p)] -	\
+		INTEL_INFO(__dev_priv)->uplane_as_cursor;		\
 	     (__s)++)
 
 #define for_each_port_masked(__port, __ports_mask) \
@@ -791,7 +799,8 @@ struct intel_csr {
 	func(hws_needs_physical); \
 	func(overlay_needs_physical); \
 	func(supports_tv); \
-	func(has_ipc);
+	func(has_ipc); \
+	func(uplane_as_cursor);
 
 struct sseu_dev_info {
 	u8 slice_mask;
