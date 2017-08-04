@@ -537,9 +537,6 @@ int skl_probe_attach_inj_dma(struct snd_soc_dapm_widget *w,
 					pconfig->iprobe[index].state);
 	}
 
-	ret = skl_set_module_params(ctx, (u32 *)&ad,
-			sizeof(struct skl_probe_attach_inj_dma),
-							1, mconfig);
 	return ret;
 
 }
