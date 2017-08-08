@@ -241,6 +241,7 @@ struct skl_notify_data {
 	u32 type;
 	u32 length;
 	struct skl_tcn_events tcn_data;
+	char data[0];
 };
 
 struct skl_dsp_notify_ops {

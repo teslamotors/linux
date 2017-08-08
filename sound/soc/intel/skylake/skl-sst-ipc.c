@@ -198,6 +198,8 @@
 #define IPC_D0IX_STREAMING(x)		(((x) & IPC_D0IX_STREAMING_MASK) \
 					<< IPC_D0IX_STREAMING_SHIFT)
 
+/* Offset to get the event data for module notification */
+#define MOD_DATA_OFFSET		12
 
 enum skl_ipc_msg_target {
 	IPC_FW_GEN_MSG = 0,
@@ -274,7 +276,8 @@ enum skl_ipc_notification_type {
 	IPC_GLB_NOTIFY_TIMESTAMP_CAPTURED = 7,
 	IPC_GLB_NOTIFY_FW_READY = 8,
 	IPC_GLB_NOTIFY_FW_AUD_CLASS_RESULT = 9,
-	IPC_GLB_NOTIFY_EXCEPTION_CAUGHT = 10
+	IPC_GLB_NOTIFY_EXCEPTION_CAUGHT = 10,
+	IPC_GLB_MODULE_NOTIFICATION = 12
 };
 
 /* Module Message Types */
@@ -353,6 +356,51 @@ static struct ipc_message *skl_ipc_reply_get_msg(struct sst_generic_ipc *ipc,
 out:
 	return msg;
 
+}
+
+static int skl_process_module_notification(struct skl_sst *skl)
+{
+	struct skl_notify_data *notify_data;
+	struct skl_module_notify mod_notif;
+	u32 notify_data_sz;
+	char *module_data;
+
+	dev_dbg(skl->dev, "***** Module Notification ******\n");
+	/* read module notification structure from mailbox */
+	sst_dsp_inbox_read(skl->dsp, &mod_notif,
+				sizeof(struct skl_module_notify));
+
+	notify_data_sz = sizeof(mod_notif) + mod_notif.event_data_size;
+	notify_data = kzalloc((sizeof(*notify_data) + notify_data_sz),
+							GFP_KERNEL);
+
+	if (!notify_data)
+		return -ENOMEM;
+
+	/* read the complete notification message */
+	sst_dsp_inbox_read(skl->dsp, notify_data->data, notify_data_sz);
+
+	notify_data->length = notify_data_sz;
+	notify_data->type = 0xFF;
+
+	/* Module notification data to console */
+	dev_dbg(skl->dev, "Module Id    = %#x\n",
+					(mod_notif.unique_id >> 16));
+	dev_dbg(skl->dev, "Instanse Id  = %#x\n",
+					(mod_notif.unique_id & 0x0000FFFF));
+	dev_dbg(skl->dev, "Data Size    = %d bytes\n",
+					mod_notif.event_data_size);
+
+	module_data = notify_data->data;
+
+	print_hex_dump(KERN_DEBUG, "DATA: ", MOD_DATA_OFFSET, 8, 4,
+				module_data, notify_data->length, false);
+
+	skl->notify_ops.notify_cb(skl, IPC_GLB_MODULE_NOTIFICATION,
+							notify_data);
+	kfree(notify_data);
+
+	return 0;
 }
 
 static void
@@ -455,6 +503,14 @@ int skl_ipc_process_notification(struct sst_generic_ipc *ipc,
 			}
 			break;
 
+		case IPC_GLB_MODULE_NOTIFICATION:
+			ret = skl_process_module_notification(skl);
+			if (ret < 0) {
+				dev_err(ipc->dev,
+				"Module Notification read fail:%d\n", ret);
+				return ret;
+			}
+			break;
 
 		default:
 			dev_err(ipc->dev, "ipc: Unhandled error msg=%x\n",

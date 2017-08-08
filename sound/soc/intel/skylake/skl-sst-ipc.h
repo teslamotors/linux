@@ -29,6 +29,7 @@ struct sst_generic_ipc;
 #define NO_OF_INJECTOR 6
 #define NO_OF_EXTRACTOR 8
 #define FW_REG_SZ 1024
+#define	SKL_EVENT_GLB_MODULE_NOTIFICATION	12
 #define	SKL_TPLG_CHG_NOTIFY	3
 
 enum skl_ipc_pipeline_state {
@@ -244,6 +245,12 @@ struct skl_hw_property_info {
 	u32 ebb_size_bytes;
 };
 
+struct skl_notify_kctrl_info {
+	struct list_head list;
+	u32 notify_id;
+	struct snd_kcontrol *notify_kctl;
+};
+
 struct skl_sst {
 	struct device *dev;
 	struct sst_dsp *dsp;
@@ -310,6 +317,8 @@ struct skl_sst {
 	struct skl_sysfs_tree *sysfs_tree;
 
 	struct snd_kcontrol *kcontrol;
+
+	struct list_head notify_kctls;
 };
 
 struct skl_ipc_init_instance_msg {
