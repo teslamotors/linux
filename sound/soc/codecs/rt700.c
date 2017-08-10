@@ -557,8 +557,6 @@ err:
 static int rt700_hda_read(struct regmap *regmap, unsigned int vid,
 	unsigned int nid, unsigned int pid, unsigned int *value)
 {
-	int ret;
-	unsigned int val_h, val_l;
 	unsigned int sdw_data_3, sdw_data_2, sdw_data_1, sdw_data_0;
 	unsigned int sdw_addr_h, sdw_addr_l;
 
@@ -1105,8 +1103,6 @@ static int rt700_set_bias_level(struct snd_soc_codec *codec,
 					enum snd_soc_bias_level level)
 {
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
-	struct rt700_priv *rt700 = snd_soc_codec_get_drvdata(codec);
-	unsigned int sdw_data_0;
 
 	pr_debug("%s level=%d\n", __func__, level);
 	switch (level) {
@@ -1411,8 +1407,7 @@ static ssize_t rt700_index_cmd_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct rt700_priv *rt700 = dev_get_drvdata(dev);
-	unsigned int sdw_addr_h, sdw_addr_l;
-	unsigned int sdw_data_3, sdw_data_2, sdw_data_1, sdw_data_0;
+	unsigned int sdw_data_0;
 	int i, cnt = 0;
 
 	/* index */
@@ -1433,8 +1428,7 @@ static ssize_t rt700_index_cmd_store(struct device *dev,
 				  const char *buf, size_t count)
 {
 	struct rt700_priv *rt700 = dev_get_drvdata(dev);
-	unsigned int sdw_addr_h, sdw_addr_l, sdw_data_h, sdw_data_l;
-	unsigned int index_reg, index_val;
+	unsigned int index_reg = 0, index_val = 0;
 	int i;
 
 	pr_debug("register \"%s\" count=%zu\n", buf, count);
@@ -1480,8 +1474,6 @@ static ssize_t rt700_hda_cmd_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct rt700_priv *rt700 = dev_get_drvdata(dev);
-	unsigned int sdw_addr_h, sdw_addr_l;
-	unsigned int sdw_data_3, sdw_data_2, sdw_data_1, sdw_data_0;
 	int i, cnt = 0;
 	unsigned int value;
 
@@ -1605,9 +1597,9 @@ static DEVICE_ATTR(hda_reg, 0664, rt700_hda_cmd_show, rt700_hda_cmd_store);
 static int rt700_clock_config(struct device *dev, struct alc700 *alc700)
 {
 	struct rt700_priv *rt700 = dev_get_drvdata(dev);
-	int value, read_value1, read_value2;
+	int value;
 
-	switch(alc700->params->bus_clk_freq) {
+	switch (alc700->params->bus_clk_freq) {
 	case RT700_CLK_FREQ_12000000HZ:
 		value = 0x0;
 		break;
@@ -1706,7 +1698,6 @@ int rt700_probe(struct device *dev, struct regmap *regmap,
 	struct rt700_priv *rt700;
 	struct alc700 *alc700 = dev_get_drvdata(dev);
 	int ret;
-	unsigned int value;
 
 	rt700 = devm_kzalloc(dev, sizeof(struct rt700_priv),
 			       GFP_KERNEL);
@@ -1868,7 +1859,7 @@ static int rt700_runtime_resume(struct device *dev)
 	int ret;
 	int timeout = 0;
 
-	if(rt700->sdw) {
+	if (rt700->sdw) {
 		ret = sdw_wait_for_slave_enumeration(rt700->sdw->mstr,
 						     rt700->sdw);
 		if (ret < 0)
