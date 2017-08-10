@@ -209,7 +209,7 @@ static long trusty_std_call32_work(void *args)
 
 	BUG_ON(!args);
 
-	work_args = args;
+	work_args = (struct trusty_std_call32_args *)args;
 	dev = work_args->dev;
 	s = platform_get_drvdata(to_platform_device(dev));
 
@@ -332,7 +332,7 @@ static void trusty_init_version(struct trusty_state *s, struct device *dev)
 	}
 	s->version_str[i] = '\0';
 
-	dev_info(dev, "trusty version: Built: %s\n", s->version_str);
+	dev_info(dev, "trusty version: %s\n", s->version_str);
 
 	ret = device_create_file(dev, &dev_attr_trusty_version);
 	if (ret)

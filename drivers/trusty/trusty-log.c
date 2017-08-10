@@ -156,10 +156,12 @@ static void trusty_vmm_dump_header(struct deadloop_dump *dump)
 		return;
 
 	header = &(dump->header);
+	pr_info("-----------VMM PANIC HEADER-----------\n");
 	pr_info("VMM version = %s\n", header->vmm_version);
 	pr_info("Signature = %s\n", header->signature);
 	pr_info("Error_info = %s\n", header->error_info);
 	pr_info("Cpuid = %d\n", header->cpuid);
+	pr_info("-----------END OF VMM PANIC HEADER-----------\n");
 }
 
 static void trusty_vmm_dump_data(struct deadloop_dump *dump)
@@ -172,6 +174,7 @@ static void trusty_vmm_dump_data(struct deadloop_dump *dump)
 
 	dump_data = &(dump->data);
 
+	pr_info("-----------VMM PANIC DATA INFO-----------\n");
 	pstr = (char *)dump_data->data;
 	for (p = pstr; p < ((char *)dump_data->data + dump_data->length); p++) {
 		if (*p == '\r') {
@@ -187,12 +190,13 @@ static void trusty_vmm_dump_data(struct deadloop_dump *dump)
 		*p = 0x00;
 		pr_info("%s\n", pstr);
 	}
+	pr_info("-----------END OF VMM PANIC DATA INFO-----------\n");
 }
 
 static int trusty_vmm_panic_notify(struct notifier_block *nb,
 				   unsigned long action, void *data)
 {
-	struct deadloop_dump *dump_info;
+	struct deadloop_dump *dump_info = NULL;
 
 	if (g_vmm_debug_buf) {
 		dump_info = (struct deadloop_dump *)g_vmm_debug_buf;

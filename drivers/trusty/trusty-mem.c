@@ -26,7 +26,58 @@
 
 static int get_mem_attr(struct page *page, pgprot_t pgprot)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
+#if defined(CONFIG_ARM64)
+	uint64_t mair;
+	uint attr_index = (pgprot_val(pgprot) & PTE_ATTRINDX_MASK) >> 2;
+
+	asm ("mrs %0, mair_el1\n" : "=&r" (mair));
+	return (mair >> (attr_index * 8)) & 0xff;
+
+#elif defined(CONFIG_ARM_LPAE)
+	uint32_t mair;
+	uint attr_index = ((pgprot_val(pgprot) & L_PTE_MT_MASK) >> 2);
+
+	if (attr_index >= 4) {
+		attr_index -= 4;
+		asm volatile("mrc p15, 0, %0, c10, c2, 1\n" : "=&r" (mair));
+	} else {
+		asm volatile("mrc p15, 0, %0, c10, c2, 0\n" : "=&r" (mair));
+	}
+	return (mair >> (attr_index * 8)) & 0xff;
+
+#elif defined(CONFIG_ARM)
+	/* check memory type */
+	switch (pgprot_val(pgprot) & L_PTE_MT_MASK) {
+	case L_PTE_MT_WRITEALLOC:
+		/* Normal: write back write allocate */
+		return 0xFF;
+
+	case L_PTE_MT_BUFFERABLE:
+		/* Normal: non-cacheble */
+		return 0x44;
+
+	case L_PTE_MT_WRITEBACK:
+		/* Normal: writeback, read allocate */
+		return 0xEE;
+
+	case L_PTE_MT_WRITETHROUGH:
+		/* Normal: write through */
+		return 0xAA;
+
+	case L_PTE_MT_UNCACHED:
+		/* strongly ordered */
+		return 0x00;
+
+	case L_PTE_MT_DEV_SHARED:
+	case L_PTE_MT_DEV_NONSHARED:
+		/* device */
+		return 0x04;
+
+	default:
+		return -EINVAL;
+	}
+#elif defined(CONFIG_X86)
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
 	/* The porting to CHT kernel (3.14.55) is in the #else clause.
 	** For BXT kernel (4.1.0), the function get_page_memtype() is static.
 	**
@@ -42,7 +93,7 @@ static int get_mem_attr(struct page *page, pgprot_t pgprot)
 	** with SMP, which only allow UNCACHED.
 	*/
 	return NS_MAIR_NORMAL_UNCACHED;
-#else
+	#else
 	unsigned long type;
 	int ret_mem_attr = 0;
 
@@ -73,6 +124,9 @@ static int get_mem_attr(struct page *page, pgprot_t pgprot)
 		ret_mem_attr = -EINVAL;
 	}
 	return ret_mem_attr;
+	#endif
+#else
+	return 0;
 #endif
 }
 
@@ -92,10 +146,23 @@ int trusty_encode_page_info(struct ns_mem_page_info *inf,
 	mem_attr = get_mem_attr(page, pgprot);
 	if (mem_attr < 0)
 		return mem_attr;
+
+	/* add other attributes */
+#if defined(CONFIG_ARM64) || defined(CONFIG_ARM_LPAE)
+	pte |= pgprot_val(pgprot);
+#elif defined(CONFIG_ARM)
+	if (pgprot_val(pgprot) & L_PTE_USER)
+		pte |= (1 << 6);
+	if (pgprot_val(pgprot) & L_PTE_RDONLY)
+		pte |= (1 << 7);
+	if (pgprot_val(pgprot) & L_PTE_SHARED)
+		pte |= (3 << 8); /* inner sharable */
+#elif defined(CONFIG_X86)
 	if (pgprot_val(pgprot) & _PAGE_USER)
 		pte |= (1 << 6);
 	if (!(pgprot_val(pgprot) & _PAGE_RW))
 		pte |= (1 << 7);
+#endif
 
 	inf->attr = (pte & 0x0000FFFFFFFFFFFFull) | ((uint64_t)mem_attr << 48);
 	return 0;

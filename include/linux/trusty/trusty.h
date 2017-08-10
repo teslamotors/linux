@@ -88,10 +88,12 @@ void trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop);
 #define TRUSTY_VMCALL_PENDING_INTR 0x74727505
 static inline void set_pending_intr_to_lk(uint8_t vector)
 {
+#ifdef CONFIG_X86
 	__asm__ __volatile__(
 		"vmcall"
 		::"a"(TRUSTY_VMCALL_PENDING_INTR), "b"(vector)
 	);
+#endif
 }
 
 void trusty_update_wall_info(struct device *dev, void *va, size_t sz);

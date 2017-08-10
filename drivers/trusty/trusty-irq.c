@@ -405,7 +405,7 @@ static int trusty_irq_init_per_cpu_irq(struct trusty_irq_state *is, int tirq)
 		struct trusty_irq *trusty_irq;
 		struct trusty_irq_irqset *irqset;
 
-		if (cpu >= 32)
+		if (cpu >= NR_CPUS)
 			return -EINVAL;
 		trusty_irq = per_cpu_ptr(trusty_irq_handler_data, cpu);
 		irqset = per_cpu_ptr(is->percpu_irqs, cpu);
@@ -430,7 +430,7 @@ err_request_percpu_irq:
 	for_each_possible_cpu(cpu) {
 		struct trusty_irq *trusty_irq;
 
-		if (cpu >= 32)
+		if (cpu >= NR_CPUS)
 			return -EINVAL;
 		trusty_irq = per_cpu_ptr(trusty_irq_handler_data, cpu);
 		hlist_del(&trusty_irq->node);
