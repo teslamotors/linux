@@ -366,11 +366,8 @@ static int rt700_sdw_handle_impl_def_interrupts(struct sdw_slave *swdev,
 	struct rt700_priv *rt700 = dev_get_drvdata(&swdev->dev);
 	bool hp, mic;
 
-	pr_debug("%s control_port_stat=%x port0_stat=%x\n", __func__,
-		intr_status->control_port_stat, intr_status->port0_stat);
 	if (intr_status->control_port_stat & 0x4) {
 		rt700_jack_detect(rt700, &hp, &mic);
-		pr_info("%s hp=%d mic=%d\n", __func__, hp, mic);
 	}
 
 	return 0;
