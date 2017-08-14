@@ -5,3 +5,11 @@ config INTEL_MEI_DAL
 	  Dynamic Application Loader enables downloading java applets
 	  to DAL FW and run it in a secure environment.
 	  The DAL module exposes both user space api and kernel space api.
+
+config INTEL_MEI_DAL_TEST
+	tristate "Test Module for Dynamic Application Loader for ME"
+	depends on INTEL_MEI_DAL
+	help
+	  Testing Module for Dynamic Application Loader, to test the
+	  kernel space api from a user space client. The test module
+	  calls the kernel space api functions of DAL module.
