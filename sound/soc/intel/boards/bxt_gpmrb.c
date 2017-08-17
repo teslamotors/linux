@@ -30,9 +30,15 @@
 #define CHANNELS_QUAD 4
 #define CHANNELS_EIGHT 8
 
+#define DEF_BT_MODEM_RATE_INDEX 0x0
+
 static int dummy_codecs;
 module_param(dummy_codecs, int, 0444);
 MODULE_PARM_DESC(dummy_codecs, "Set all DAI link codecs to dummy");
+
+struct bxtp_gpmrb_prv {
+	int srate;
+};
 
 static struct snd_soc_dai_link broxton_gpmrb_dais[];
 
@@ -48,8 +54,45 @@ enum {
 	BXT_AUDIO_HDMI,
 };
 
+
+static unsigned int gpmrb_bt_modem_rates[] = {
+	8000,
+	16000,
+};
+
+/* sound card controls */
+static const char * const bt_modem_rate[] = {"8K", "16K"};
+
+static const struct soc_enum bt_modem_rate_enum =
+	SOC_ENUM_SINGLE_EXT(2, bt_modem_rate);
+
+static int bt_modem_sample_rate_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_card *card = snd_kcontrol_chip(kcontrol);
+	struct bxtp_gpmrb_prv *drv = snd_soc_card_get_drvdata(card);
+
+	ucontrol->value.integer.value[0] = drv->srate;
+	return 0;
+}
+
+static int bt_modem_sample_rate_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_card *card = snd_kcontrol_chip(kcontrol);
+	struct bxtp_gpmrb_prv *drv = snd_soc_card_get_drvdata(card);
+
+	if (ucontrol->value.integer.value[0] == drv->srate)
+		return 0;
+
+	drv->srate = ucontrol->value.integer.value[0];
+	return 0;
+
+}
 static const struct snd_kcontrol_new broxton_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Speaker"),
+	SOC_ENUM_EXT("BT/Modem Rate", bt_modem_rate_enum,
+			bt_modem_sample_rate_get, bt_modem_sample_rate_put),
 };
 
 static const struct snd_soc_dapm_widget broxton_widgets[] = {
@@ -107,13 +150,22 @@ static const struct snd_soc_dapm_route broxton_gpmrb_map[] = {
 	{ "ssp3 Tx", NULL, "Modem_ssp3_out"},
 };
 
-static unsigned int bt_rates[] = { 8000, 16000 };
+static int broxton_ssp0_ssp3_fixup(struct snd_soc_pcm_runtime *rtd,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_RATE);
 
-static struct snd_pcm_hw_constraint_list constraints_bt_rates = {
-	.count = ARRAY_SIZE(bt_rates),
-	.list = bt_rates,
-	.mask = 0,
-};
+	struct snd_soc_card *card =  rtd->card;
+	struct bxtp_gpmrb_prv *drv = snd_soc_card_get_drvdata(card);
+	struct snd_mask *fmt = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
+	/* SSP0 operates with a BT Transceiver */
+	rate->min = rate->max = gpmrb_bt_modem_rates[drv->srate];
+
+	snd_mask_none(fmt);
+	snd_mask_set(fmt, SNDRV_PCM_FORMAT_S32_LE);
+	return 0;
+}
 
 static int broxton_gpmrb_bt_modem_startup(struct snd_pcm_substream *substream)
 {
@@ -125,14 +177,14 @@ static int broxton_gpmrb_bt_modem_startup(struct snd_pcm_substream *substream)
 	if (ret < 0)
 		goto out;
 
-	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
-			SNDRV_PCM_HW_PARAM_RATE, &constraints_bt_rates);
+
+	ret = snd_pcm_hw_constraint_single(substream->runtime,
+		SNDRV_PCM_HW_PARAM_RATE, 24000);
 
 	if (ret < 0)
 		goto out;
-
 	ret = snd_pcm_hw_constraint_mask64(substream->runtime,
-			SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FMTBIT_S32_LE);
+		SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FMTBIT_S16_LE);
 
 	if (ret < 0)
 		goto out;
@@ -423,6 +475,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dpcm_capture = 1,
 		.dpcm_playback = 1,
 		.no_pcm = 1,
+		.be_hw_params_fixup = broxton_ssp0_ssp3_fixup,
 	},
 	{
 		/* SSP1 - HDMI-In */
@@ -458,6 +511,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dpcm_capture = 1,
 		.dpcm_playback = 1,
 		.no_pcm = 1,
+		.be_hw_params_fixup = broxton_ssp0_ssp3_fixup,
 	},
 	{
 		/* SSP4 - Amplifier */
@@ -513,12 +567,31 @@ static void broxton_set_dummy_codecs(void)
 
 static int broxton_audio_probe(struct platform_device *pdev)
 {
+	int ret_val;
+	struct bxtp_gpmrb_prv *drv;
+
 	broxton_gpmrb.dev = &pdev->dev;
 
 	if (dummy_codecs)
 		broxton_set_dummy_codecs();
 
-	return snd_soc_register_card(&broxton_gpmrb);
+	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_KERNEL);
+	if (!drv)
+		return -ENOMEM;
+
+	drv->srate = DEF_BT_MODEM_RATE_INDEX;
+	snd_soc_card_set_drvdata(&broxton_gpmrb, drv);
+
+	ret_val = snd_soc_register_card(&broxton_gpmrb);
+	if (ret_val) {
+		dev_dbg(&pdev->dev, "snd_soc_register_card failed %d\n",
+								 ret_val);
+		return ret_val;
+	}
+
+	platform_set_drvdata(pdev, &broxton_gpmrb);
+
+	return ret_val;
 }
 
 static int broxton_audio_remove(struct platform_device *pdev)
