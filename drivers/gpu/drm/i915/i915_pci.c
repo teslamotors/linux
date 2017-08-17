@@ -473,6 +473,8 @@ static const struct intel_device_info intel_skylake_gt4_info __initconst = {
 	.has_full_ppgtt = 1, \
 	.has_full_48bit_ppgtt = 1, \
 	.has_reset_engine = 1, \
+	.has_snoop = true, \
+	.has_ipc = 1, \
 	GEN_DEFAULT_PIPEOFFSETS, \
 	IVB_CURSOR_OFFSETS, \
 	BDW_COLORS
@@ -497,6 +499,7 @@ static const struct intel_device_info intel_geminilake_info __initconst = {
 	.platform = INTEL_KABYLAKE, \
 	.has_csr = 1, \
 	.has_guc = 1, \
+	.has_ipc = 1, \
 	.ddb_size = 896
 
 static const struct intel_device_info intel_kabylake_gt1_info __initconst = {
@@ -520,6 +523,9 @@ static const struct intel_device_info intel_kabylake_gt3_info __initconst = {
 	BDW_FEATURES, \
 	.gen = 9, \
 	.platform = INTEL_COFFEELAKE, \
+	.has_csr = 1, \
+	.has_guc = 1, \
+	.has_ipc = 1, \
 	.ddb_size = 896
 
 static const struct intel_device_info intel_coffeelake_gt1_info __initconst = {
@@ -546,6 +552,7 @@ static const struct intel_device_info intel_cannonlake_gt2_info __initconst = {
 	.gt = 2,
 	.ddb_size = 1024,
 	.has_csr = 1,
+	.has_ipc = 1,
 	.color = { .degamma_lut_size = 0, .gamma_lut_size = 1024 }
 };
 
