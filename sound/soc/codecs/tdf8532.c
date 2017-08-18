@@ -91,6 +91,12 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 		/* WA on unexpected codec down during S3
 		 SNDRV_PCM_TRIGGER_STOP fails so skip set ret */
 		tdf8532_stop_play(tdf8532);
+		data[4] = 0x27;
+		ret = tdf8532_cmd_send(tdf8532, data, ARRAY_SIZE(data));
+
+		/*delay 300ms to allow state change to occur*/
+		/*TODO: add state check to wait for state change*/
+		mdelay(300);
 		break;
 	}
 
