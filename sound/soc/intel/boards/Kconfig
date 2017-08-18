@@ -388,7 +388,7 @@ config SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH
 	   If unsure select "N".
 
 config SND_SOC_INTEL_BXT_GPMRB_MACH
-	tristate "ASoC Audio driver for BXT IVI GP MRB with Dummy codec"
+	tristate "ASoC Audio driver for BXT IVI GP MRB"
 	select SND_SOC_INTEL_SST
 	select SND_SOC_TDF8532
 	select SND_SOC_COMPRESS
