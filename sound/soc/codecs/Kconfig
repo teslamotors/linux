@@ -74,6 +74,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_DIO2125
 	select SND_SOC_DMIC if GPIOLIB
 	select SND_SOC_ES8316 if I2C
+	select SND_SOC_TDF8532 if I2C
 	select SND_SOC_ES8328_SPI if SPI_MASTER
 	select SND_SOC_ES8328_I2C if I2C
 	select SND_SOC_ES7134
@@ -556,6 +557,10 @@ config SND_SOC_DIO2125
 
 config SND_SOC_DMIC
 	tristate
+
+config SND_SOC_TDF8532
+    tristate "NXP Semiconductors TDF8532 Codec"
+	depends on I2C
 
 config SND_SOC_HDMI_CODEC
 	tristate
