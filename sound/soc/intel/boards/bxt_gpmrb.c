@@ -44,6 +44,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[];
 
 enum {
 	BXT_AUDIO_SPEAKER = 0,
+	BXT_AUDIO_EARLY,
 	BXT_AUDIO_TUNER,
 	BXT_AUDIO_AUX,
 	BXT_AUDIO_MIC,
@@ -298,6 +299,20 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.name = "Speaker Port",
 		.stream_name = "Speaker",
 		.cpu_dai_name = "System Pin 2",
+		.platform_name = "0000:00:0e.0",
+		.nonatomic = 1,
+		.dynamic = 1,
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.dpcm_playback = 1,
+		.ops = &broxton_gpmrb_tdf8532_ops,
+	},
+	[BXT_AUDIO_EARLY] = {
+		.name = "Early Port",
+		.stream_name = "Early",
+		.cpu_dai_name = "System Pin 9",
 		.platform_name = "0000:00:0e.0",
 		.nonatomic = 1,
 		.dynamic = 1,
