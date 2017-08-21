@@ -34,6 +34,9 @@
 #include <linux/sdw_bus.h>
 #include <asm/set_memory.h>
 
+#define ASRC_MODE_UPLINK	2
+#define ASRC_MODE_DOWNLINK	1
+
 static int skl_alloc_dma_buf(struct device *dev,
 		struct snd_dma_buffer *dmab, size_t size)
 {
@@ -1719,6 +1722,14 @@ static void skl_set_src_format(struct skl_sst *ctx,
 		(struct skl_base_cfg *)src_mconfig);
 
 	src_mconfig->src_cfg = fmt->s_freq;
+
+	if (mconfig->m_type == SKL_MODULE_TYPE_ASRC) {
+		if (mconfig->pipe->p_params->stream ==
+				SNDRV_PCM_STREAM_PLAYBACK)
+			src_mconfig->mode = ASRC_MODE_DOWNLINK;
+		else
+			src_mconfig->mode = ASRC_MODE_UPLINK;
+	}
 }
 
 /*
@@ -1853,6 +1864,7 @@ static u16 skl_get_module_param_size(struct skl_sst *ctx,
 		return sizeof(struct skl_probe_cfg);
 
 	case SKL_MODULE_TYPE_SRCINT:
+	case SKL_MODULE_TYPE_ASRC:
 		return sizeof(struct skl_src_module_cfg);
 
 	case SKL_MODULE_TYPE_UPDWMIX:
@@ -1911,6 +1923,7 @@ static int skl_set_module_format(struct skl_sst *ctx,
 		break;
 
 	case SKL_MODULE_TYPE_SRCINT:
+	case SKL_MODULE_TYPE_ASRC:
 		skl_set_src_format(ctx, module_config, *param_data);
 		break;
 
