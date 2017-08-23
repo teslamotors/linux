@@ -85,6 +85,7 @@ struct intel_vgpu_workload {
 	bool dispatched;
 	bool shadowed;
 	int status;
+	unsigned int guilty_count;
 
 	struct intel_vgpu_mm *shadow_mm;
 
