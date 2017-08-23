@@ -4160,6 +4160,9 @@ i915_wedged_set(void *data, u64 val)
 	struct intel_engine_cs *engine;
 	unsigned int tmp;
 
+	if (intel_vgpu_active(i915))
+		return -EINVAL;
+
 	/*
 	 * There is no safeguard against this debugfs entry colliding
 	 * with the hangcheck calling same i915_handle_error() in
