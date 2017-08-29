@@ -25,6 +25,10 @@
 #include <linux/slab.h>
 #include <linux/cdev.h>
 #include <linux/jiffies.h>
+#ifdef CONFIG_DAL_KEYSTORE
+#include <linux/dal.h>
+#include <linux/workqueue.h>
+#endif
 
 #include <security/keystore_api_kernel.h>
 #include <security/sb.h>
@@ -78,6 +82,27 @@ static bool user_seed_active;
 static bool user_seed_active = 1;
 #endif
 
+#ifdef CONFIG_DAL_KEYSTORE
+/**
+ * DAL keystore client parameters
+ */
+#define APPLET_BLACKLIST_COUNT (1)
+#define APPLET_BLACKLIST_MAX_RETRY (5)
+
+
+struct applet_blacklisting_work {
+	struct delayed_work dwork;
+	int  retry;
+	int  applet_uuid_count;
+	char *applet_uuid[APPLET_BLACKLIST_COUNT];
+};
+
+typedef struct applet_blacklisting_work applet_blacklisting_work_t;
+
+applet_blacklisting_work_t *work_;
+
+#endif
+
 /**
  * keystore_open - the open function
  *
@@ -116,6 +141,78 @@ unlocked_ioctl : keystore_ioctl
 static dev_t dev_keystore; /* Structure to set device range */
 static struct class *class_keystore; /* Struct to set device class properties */
 static struct cdev cdev_keystore; /* Structure to create device */
+
+#ifdef CONFIG_DAL_KEYSTORE
+int add_to_blacklist(const char *uuid_str)
+{
+	uuid_be uuid;
+	int ret = 0;
+
+	ret = dal_uuid_be_to_bin(uuid_str, &uuid);
+	if (ret != DAL_KDI_SUCCESS) {
+		pr_err(KBUILD_MODNAME ": %s dal_uuid_be_to_bin failed\n",
+									__func__);
+	} else {
+		pr_err(KBUILD_MODNAME ": %s dal_uuid_be_to_bin succeeded\n",
+									__func__);
+	}
+
+	ret = dal_set_ta_exclusive_access(uuid);
+	if (ret != DAL_KDI_SUCCESS) {
+		pr_err(KBUILD_MODNAME ": %s dal_set_ta_exclusive_access failed\n",
+									__func__);
+	} else {
+		pr_err(KBUILD_MODNAME ": %s dal_set_ta_exclusive_access succeeded\n",
+									__func__);
+	}
+	return ret;
+}
+
+static void applet_blacklisting_worker(struct work_struct *work)
+{
+	struct applet_blacklisting_work *my_work = container_of(to_delayed_work(work),
+						struct applet_blacklisting_work, dwork);
+
+	int ret = DAL_KDI_SUCCESS;
+	int applet = 0;
+
+	if (my_work->retry ==  APPLET_BLACKLIST_MAX_RETRY)
+		goto exit;
+
+	for ( ; applet < my_work->applet_uuid_count; applet++) {
+		ret = add_to_blacklist(my_work->applet_uuid[applet]);
+
+		if (ret != DAL_KDI_SUCCESS) {
+			my_work->retry++;
+			schedule_delayed_work((struct delayed_work *)my_work, msecs_to_jiffies(200));
+			ks_info(KBUILD_MODNAME ": Re-scheduling DAL Keystore blacklisting work\n");
+
+			goto end;
+		}
+	}
+
+exit:
+	kfree( (void *)my_work );
+end:
+	return;
+}
+
+static void schedule_applet_blacklisting(void)
+{
+	int ret = 0;
+	work_ = (applet_blacklisting_work_t *)kmalloc(sizeof(applet_blacklisting_work_t), GFP_KERNEL);
+	if (work_) {
+		ks_info(KBUILD_MODNAME ": Scheduling DAL Keystore blacklisting work\n");
+
+		work_->applet_uuid_count = APPLET_BLACKLIST_COUNT;
+		work_->retry = 0;
+		work_->applet_uuid[0] = CONFIG_DAL_KEYSTORE_APPLET_ID;
+
+		INIT_DELAYED_WORK( (struct delayed_work *)work_, applet_blacklisting_worker );
+		schedule_delayed_work((struct delayed_work *)work_, msecs_to_jiffies(17000));
+	}
+}
+#endif
 
 static int __init keystore_init(void)
 {
@@ -176,7 +273,9 @@ static int __init keystore_init(void)
 
 	ks_info("--------\n");
 	ks_info(KBUILD_MODNAME ": keystore_init completed successfully\n");
-
+#ifdef CONFIG_DAL_KEYSTORE
+	schedule_applet_blacklisting();
+#endif
 	return 0;
 
 	/* error */
