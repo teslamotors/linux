@@ -1773,7 +1773,12 @@ static void skl_setup_probe_gateway_cfg(struct skl_sst *ctx,
 			struct skl_probe_cfg *probe_cfg)
 {
 	union skl_connector_node_id node_id = {0};
+	struct skl_module_res *res;
 	struct skl_probe_config *pconfig = &ctx->probe_config;
+
+	res = &mconfig->module->resources[mconfig->res_idx];
+
+	pconfig->edma_buffsize = res->dma_buffer_size;
 
 	node_id.node.dma_type = pconfig->edma_type;
 	node_id.node.vindex = pconfig->edma_id;
