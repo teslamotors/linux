@@ -225,6 +225,9 @@ struct intel_gvt_mmio {
 #define F_CMD_ACCESSED	(1 << 5)
 /* This reg could be accessed by unaligned address */
 #define F_UNALIGN	(1 << 6)
+/* This reg is not in the context */
+#define F_NON_CONTEXT	(1 << 7)
+
 
 	struct gvt_mmio_block *mmio_block;
 	unsigned int num_mmio_block;
@@ -616,7 +619,34 @@ static inline bool intel_gvt_mmio_has_mode_mask(
 	return gvt->mmio.mmio_attribute[offset >> 2] & F_MODE_MASK;
 }
 
+ /**
+ * intel_gvt_mmio_is_non_context - check a MMIO is non-context
+ * @gvt: a GVT device
+ * @offset: register offset
+ *
+ */
+static inline bool intel_gvt_mmio_is_non_context(
+			struct intel_gvt *gvt, unsigned int offset)
+{
+	return gvt->mmio.mmio_attribute[offset >> 2] & F_NON_CONTEXT;
+}
+
+/**
+ * intel_gvt_mmio_set_non_context - mark a MMIO is non-context
+ * @gvt: a GVT device
+ * @offset: register offset
+ *
+ */
+static inline void intel_gvt_mmio_set_non_context(
+			struct intel_gvt *gvt, unsigned int offset)
+{
+	gvt->mmio.mmio_attribute[offset >> 2] |= F_NON_CONTEXT;
+}
+
 #include "trace.h"
+
+void intel_gvt_mark_noncontext_mmios(struct intel_gvt *gvt);
+
 #include "mpt.h"
 
 #endif

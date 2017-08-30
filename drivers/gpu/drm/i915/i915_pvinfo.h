@@ -28,6 +28,12 @@
 #define VGT_PVINFO_PAGE	0x78000
 #define VGT_PVINFO_SIZE	0x1000
 
+/* Scratch reg used for redirecting command access to registers, any
+ * command access to PVINFO page would be discarded, so it has no HW
+ * impact.
+ */
+#define VGT_SCRATCH_REG VGT_PVINFO_PAGE
+
 /*
  * The following structure pages are defined in GEN MMIO space
  * for virtualization. (One page for now)

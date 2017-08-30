@@ -3348,12 +3348,14 @@ int intel_gvt_setup_mmio_info(struct intel_gvt *gvt)
 
 	gvt_dbg_mmio("traced %u virtual mmio registers\n",
 		     gvt->mmio.num_tracked_mmio);
+
+	intel_gvt_mark_noncontext_mmios(gvt);
+
 	return 0;
 err:
 	intel_gvt_clean_mmio_info(gvt);
 	return ret;
 }
-
 
 /**
  * intel_vgpu_default_mmio_read - default MMIO read handler

@@ -865,6 +865,15 @@ static int cmd_reg_handler(struct parser_exec_state *s,
 		patch_value(s, cmd_ptr(s, index), VGT_PVINFO_PAGE);
 	}
 
+	/* Re-direct the non-context MMIO access to VGT_SCRATCH_REG, it
+	 * has no functional impact to HW.
+	 */
+	if (!strcmp(cmd, "lri") || !strcmp(cmd, "lrr-dst")
+		|| !strcmp(cmd, "lrm") || !strcmp(cmd, "pipe_ctrl")) {
+		if (intel_gvt_mmio_is_non_context(gvt, offset))
+			patch_value(s, cmd_ptr(s, index), VGT_SCRATCH_REG);
+	}
+
 	/* TODO: Update the global mask if this MMIO is a masked-MMIO */
 	intel_gvt_mmio_set_cmd_accessed(gvt, offset);
 	return 0;

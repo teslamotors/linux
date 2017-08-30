@@ -141,6 +141,38 @@ static struct render_mmio gen9_render_mmio_list[] __cacheline_aligned = {
 	{RCS, _MMIO(0x20e4), 0xffff, false},
 };
 
+void intel_gvt_mark_noncontext_mmios(struct intel_gvt *gvt)
+{
+	uint32_t reg;
+	struct render_mmio *mmio;
+	int i, array_size;
+
+	for (i = 0; i < 64 * 5; i++) {
+		reg = GEN9_GFX_MOCS(i).reg;
+		intel_gvt_mmio_set_non_context(gvt, reg);
+	}
+
+	for (i = 0; i < 32; i++) {
+		reg = GEN9_LNCFCMOCS(i).reg;
+		intel_gvt_mmio_set_non_context(gvt, reg);
+	}
+
+	if (IS_SKYLAKE(gvt->dev_priv)
+		|| IS_BROXTON(gvt->dev_priv)) {
+		mmio = gen9_render_mmio_list;
+		array_size = ARRAY_SIZE(gen9_render_mmio_list);
+	} else {
+		mmio = gen8_render_mmio_list;
+		array_size = ARRAY_SIZE(gen8_render_mmio_list);
+	}
+
+	for (i = 0; i < array_size; i++, mmio++) {
+		if (mmio->in_context)
+			continue;
+		intel_gvt_mmio_set_non_context(gvt, mmio->reg.reg);
+	}
+}
+
 static u32 gen9_render_mocs[I915_NUM_ENGINES][64];
 static u32 gen9_render_mocs_L3[32];
 
