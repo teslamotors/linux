@@ -918,7 +918,7 @@ void ktime_get_snapshot(struct system_time_snapshot *systime_snapshot)
 	do {
 		seq = read_seqcount_begin(&tk_core.seq);
 
-		now = tk->tkr_mono.read(tk->tkr_mono.clock);
+		now = tk_clock_read(&tk->tkr_mono);
 		base_real = ktime_add(tk->tkr_mono.base,
 				      tk_core.timekeeper.offs_real);
 		base_raw = tk->tkr_raw.base;
