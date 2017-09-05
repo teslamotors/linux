@@ -758,20 +758,14 @@ struct tfmg_settings tfmg_settings = {
 static struct tfmg_fstats tfmg_fstats;
 
 struct sku_data sku_array[] = {
-	{"premium_var1", 10, 1900, 2300,  10, 600, 750},
-	{"premium",	  3, 1900, 2300,  17, 600, 750},
-	{"high",	 50, 1600, 1900,  50, 500, 650},
-	{"mid",		 50, 1600, 1700,  50, 400, 550},
-	{"low",		 50, 1300, 1700,  50, 400, 550},
-	{"debugging",	100, 1900, 2300, 100, 600, 750},
-	{"fallback",	 50, 1900, 2300,  50, 600, 750},
-	{NULL,		  0,    0,    0,   0,   0,   0},
+	{"premium_var1", 10, 1900, 2200, 10, 600, 750},
+	{"premium",       3, 1900, 2300, 17, 600, 750},
+	{NULL,            0,    0,  0,    0,   0,   0},
 };
 
-static char *sku_param = "fallback";
+static char *sku_param;
 module_param_named(sku, sku_param, charp, 0444);
-MODULE_PARM_DESC(sku, "Select the sku based settings; "
-		 "[premium|premium_var1|high|mid|low|debugging|fallback]");
+MODULE_PARM_DESC(sku, "Select the sku based settings; [premium|premium_var1]");
 
 static char *sched_param;
 module_param_named(sched, sched_param, charp, 0444);
