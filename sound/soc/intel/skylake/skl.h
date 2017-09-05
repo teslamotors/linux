@@ -37,8 +37,11 @@
 #define AZX_REG_VS_D0I3C_I3       0x4 /* D0i3 enable */
 #define AZX_EM2_DUM_MASK		(1 << 23)
 
-#define SKL_MAX_DMA_CFG    24
 #define SKL_MAX_DMACTRL_CFG	7
+#define SKL_MAX_DMA_CFG		24
+#define BXT_INSTANCE_ID		0
+#define BXT_BASE_FW_MODULE_ID	0
+
 
 struct skl_dsp_resource {
 	u32 max_mcps;
@@ -48,6 +51,17 @@ struct skl_dsp_resource {
 };
 
 struct skl_debug;
+
+struct skl_dma_config {
+	u32 min_size;
+	u32 max_size;
+} __packed;
+
+struct skl_dma_buff_cfg {
+	u32 type;
+	u32 size;
+	struct skl_dma_config dma_cfg[SKL_MAX_DMA_CFG];
+} __packed;
 
 struct skl_dmctrl_hdr {
 	u32 vbus_id;
@@ -69,6 +83,7 @@ struct skl_dmactrl_config {
 
 
 struct skl_fw_cfg_info {
+	struct skl_dma_buff_cfg dmacfg;
 	struct skl_dmactrl_config dmactrl_cfg;
 } __packed;
 

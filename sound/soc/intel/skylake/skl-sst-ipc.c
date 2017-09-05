@@ -200,6 +200,7 @@
 
 /* Offset to get the event data for module notification */
 #define MOD_DATA_OFFSET		12
+#define SET_LARGE_CFG_FW_CONFIG		7
 
 enum skl_ipc_msg_target {
 	IPC_FW_GEN_MSG = 0,
@@ -1163,6 +1164,25 @@ int skl_ipc_get_large_config(struct sst_generic_ipc *ipc,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(skl_ipc_get_large_config);
+
+void skl_ipc_set_dma_cfg(struct sst_generic_ipc *ipc, u8 instance_id,
+			u16 module_id, u32 *data)
+{
+	struct skl_ipc_large_config_msg msg = {0};
+	u32 size_offset = 1;
+	int ret;
+
+	msg.module_id = module_id;
+	msg.instance_id = instance_id;
+	msg.large_param_id = SET_LARGE_CFG_FW_CONFIG;
+	/* size of total message = size of payload + size of headers*/
+	msg.param_data_size = data[size_offset] + (2 * sizeof(u32));
+
+	ret = skl_ipc_set_large_config(ipc, &msg, data);
+	if (ret < 0)
+		dev_err(ipc->dev, "ipc: set dma config failed, err %d\n", ret);
+}
+EXPORT_SYMBOL_GPL(skl_ipc_set_dma_cfg);
 
 int skl_sst_ipc_load_library(struct sst_generic_ipc *ipc,
 				u8 dma_id, u8 table_id, bool wait)

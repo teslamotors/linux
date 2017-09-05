@@ -239,6 +239,19 @@
  * %SKL_TKN_U32_DMACTRL_CFG_SIZE:
  *				Size information of DMA control params
  *
+ * %SKL_TKN_U32_DMA_IDX         Config index to fill up DMA config info
+ *                              from the manifest.
+ *
+ * %SKL_TKN_U32_DMA_TYPE:       Types of FW configs
+ *                              DMA_CONFIG, SCHEDULER_CONFIG.
+ *
+ * %SKL_TKN_U32_DMA_SIZE:       DMA buffer Size
+ *
+ * %SKL_TKN_U32_DMA_MAX_SIZE:   Maximum DMA buffer size
+ *
+ * %SKL_TKN_U32_DMA_MIN_SIZE:   Minimum DMA buffer size
+ *
+ *
  * module_id and loadable flags dont have tokens as these values will be
  * read from the DSP FW manifest
  *
@@ -332,7 +345,12 @@ enum SKL_TKNS {
 	SKL_TKN_U32_AGG_ID,
 	SKL_TKN_U32_DMACTRL_CFG_IDX,
 	SKL_TKN_U32_DMACTRL_CFG_SIZE,
-	SKL_TKN_MAX = SKL_TKN_U32_DMACTRL_CFG_SIZE,
+	SKL_TKN_U32_DMA_IDX,
+	SKL_TKN_U32_DMA_TYPE,
+	SKL_TKN_U32_DMA_SIZE,
+	SKL_TKN_U32_DMA_MAX_SIZE,
+	SKL_TKN_U32_DMA_MIN_SIZE,
+	SKL_TKN_MAX = SKL_TKN_U32_DMA_MIN_SIZE,
 };
 
 /*

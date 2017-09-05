@@ -471,4 +471,6 @@ void skl_ipc_tx_data_copy(struct ipc_message *msg, char *tx_data,
 int skl_notify_tplg_change(struct skl_sst *ctx, int type);
 int skl_dsp_crash_dump_read(struct skl_sst *ctx);
 
+void skl_ipc_set_dma_cfg(struct sst_generic_ipc *ipc, u8 instance_id,
+			u16 module_id, u32 *data);
 #endif /* __SKL_IPC_H */

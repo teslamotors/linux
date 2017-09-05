@@ -45,9 +45,6 @@
 
 #define BXT_ADSP_SRAM1_BASE	0xA0000
 
-#define BXT_INSTANCE_ID 0
-#define BXT_BASE_FW_MODULE_ID 0
-
 #define BXT_ADSP_FW_BIN_HDR_OFFSET 0x2000
 
 /* Delay before scheduling D0i3 entry */

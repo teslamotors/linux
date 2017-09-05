@@ -3957,6 +3957,7 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 {
 	int tkn_count = 0, ret;
 	static int mod_idx, res_val_idx, intf_val_idx, dir, pin_idx;
+	static int dma_cfg_idx;
 	struct skl_module_res *res = NULL;
 	struct skl_module_iface *fmt = NULL;
 	struct skl_module *mod = NULL;
@@ -3990,6 +3991,28 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 
 	case SKL_TKN_MM_U8_MOD_IDX:
 		mod_idx = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_DMA_TYPE:
+		skl->cfg.dmacfg.type = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_DMA_SIZE:
+		skl->cfg.dmacfg.size = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_DMA_IDX:
+		dma_cfg_idx = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_DMA_MIN_SIZE:
+		skl->cfg.dmacfg.dma_cfg[dma_cfg_idx].min_size =
+							tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_DMA_MAX_SIZE:
+		skl->cfg.dmacfg.dma_cfg[dma_cfg_idx].max_size =
+							tkn_elem->value;
 		break;
 
 	case SKL_TKN_U8_IN_PIN_TYPE:
