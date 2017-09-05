@@ -675,8 +675,8 @@ int insn_get_modrm_rm_off(struct insn *insn, struct pt_regs *regs)
  */
 void __user *insn_get_addr_ref(struct insn *insn, struct pt_regs *regs)
 {
+	unsigned long linear_addr = -1L, seg_base_addr;
 	int addr_offset, base_offset, indx_offset;
-	unsigned long linear_addr = -1L;
 	long eff_addr, base, indx;
 	insn_byte_t sib;
 
@@ -690,6 +690,10 @@ void __user *insn_get_addr_ref(struct insn *insn, struct pt_regs *regs)
 			goto out;
 
 		eff_addr = regs_get_register(regs, addr_offset);
+
+		seg_base_addr = insn_get_seg_base(regs, insn, addr_offset);
+		if (seg_base_addr == -1L)
+			goto out;
 	} else {
 		if (insn->sib.nbytes) {
 			/*
@@ -716,6 +720,11 @@ void __user *insn_get_addr_ref(struct insn *insn, struct pt_regs *regs)
 				indx = regs_get_register(regs, indx_offset);
 
 			eff_addr = base + indx * (1 << X86_SIB_SCALE(sib));
+
+			seg_base_addr = insn_get_seg_base(regs, insn,
+							  base_offset);
+			if (seg_base_addr == -1L)
+				goto out;
 		} else {
 			addr_offset = get_reg_offset(insn, regs, REG_TYPE_RM);
 			/*
@@ -733,12 +742,17 @@ void __user *insn_get_addr_ref(struct insn *insn, struct pt_regs *regs)
 			} else {
 				eff_addr = regs_get_register(regs, addr_offset);
 			}
+
+			seg_base_addr = insn_get_seg_base(regs, insn,
+							  addr_offset);
+			if (seg_base_addr == -1L)
+				goto out;
 		}
 
 		eff_addr += insn->displacement.value;
 	}
 
-	linear_addr = (unsigned long)eff_addr;
+	linear_addr = (unsigned long)eff_addr + seg_base_addr;
 
 out:
 	return (void __user *)linear_addr;
