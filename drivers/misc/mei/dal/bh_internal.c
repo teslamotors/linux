@@ -142,6 +142,7 @@ void bh_session_remove(unsigned int conn_idx, u64 host_id)
 	}
 }
 
+static char skip_buffer[DAL_MAX_BUFFER_SIZE] = {0};
 /**
  * bh_transport_recv - receive message from DAL FW, using kdi callback
  *                     'dal_kdi_recv'
@@ -155,6 +156,31 @@ void bh_session_remove(unsigned int conn_idx, u64 host_id)
  */
 static int bh_transport_recv(unsigned int conn_idx, void *buffer, size_t size)
 {
+	size_t got;
+	unsigned int count;
+	char *buf = buffer;
+	int ret;
+
+	if (conn_idx > DAL_MEI_DEVICE_MAX)
+		return -ENODEV;
+
+	for (count = 0; count < size; count += got) {
+		got = min_t(size_t, size - count, DAL_MAX_BUFFER_SIZE);
+		if (buf)
+			ret = dal_kdi_recv(conn_idx, buf + count, &got);
+		else
+			ret = dal_kdi_recv(conn_idx, skip_buffer, &got);
+
+		if (!got)
+			return -EFAULT;
+
+		if (ret)
+			return ret;
+	}
+
+	if (count != size)
+		return -EFAULT;
+
 	return 0;
 }
 
@@ -173,6 +199,21 @@ static int bh_transport_recv(unsigned int conn_idx, void *buffer, size_t size)
 static int bh_transport_send(unsigned int conn_idx, const void *buffer,
 			     unsigned int size, u64 host_id)
 {
+	size_t chunk_sz;
+	unsigned int count;
+	const char *buf = buffer;
+	int ret;
+
+	if (conn_idx > DAL_MEI_DEVICE_MAX)
+		return -ENODEV;
+
+	for (count = 0; count < size; count += chunk_sz) {
+		chunk_sz = min_t(size_t, size - count, DAL_MAX_BUFFER_SIZE);
+		ret = dal_kdi_send(conn_idx, buf + count, chunk_sz, host_id);
+		if (ret)
+			return ret;
+	}
+
 	return 0;
 }
 

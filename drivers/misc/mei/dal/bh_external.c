@@ -61,6 +61,7 @@
 #include <linux/string.h>
 #include <linux/uuid.h>
 #include <linux/ctype.h>
+#include <linux/dal.h>
 
 #include "bh_errcode.h"
 #include "bh_external.h"
@@ -120,7 +121,7 @@ static void uuid_normalize_hyphenless(const char *uuid_hl, char *uuid_str)
  * Return: 0 on success
  *         <0 on failure
  */
-static int dal_uuid_parse(const char *uuid_str, uuid_t *uuid)
+int dal_uuid_parse(const char *uuid_str, uuid_t *uuid)
 {
 	char __uuid_str[UUID_STRING_LEN + 1];
 
@@ -134,6 +135,7 @@ static int dal_uuid_parse(const char *uuid_str, uuid_t *uuid)
 
 	return uuid_parse(uuid_str, uuid);
 }
+EXPORT_SYMBOL(dal_uuid_parse);
 
 /**
  * bh_msg_is_response - check if message is response

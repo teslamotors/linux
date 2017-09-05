@@ -794,6 +794,9 @@ static void __exit mei_dal_exit(void)
 	mei_cldev_driver_unregister(&dal_driver);
 
 	dal_dev_exit();
+
+	dal_kdi_exit();
+
 	class_destroy(dal_class);
 }
 
@@ -817,14 +820,20 @@ static int __init mei_dal_init(void)
 	if (ret < 0)
 		goto err_class;
 
+	ret = dal_kdi_init();
+	if (ret)
+		goto err_dev;
+
 	ret = mei_cldev_driver_register(&dal_driver);
 	if (ret < 0) {
 		pr_err("mei_cl_driver_register failed with status = %d\n", ret);
-		goto err_dev;
+		goto err;
 	}
 
 	return 0;
 
+err:
+	dal_kdi_exit();
 err_dev:
 	dal_dev_exit();
 err_class:

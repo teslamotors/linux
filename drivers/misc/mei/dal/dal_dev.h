@@ -201,4 +201,10 @@ void dal_dc_print(struct device *dev, struct dal_client *dc);
 int dal_dc_setup(struct dal_device *ddev, enum dal_intf intf);
 void dal_dc_destroy(struct dal_device *ddev, enum dal_intf intf);
 
+int dal_kdi_send(unsigned int handle, const unsigned char *buf,
+		 size_t len, u64 seq);
+int dal_kdi_recv(unsigned int handle, unsigned char *buf, size_t *count);
+int dal_kdi_init(void);
+void dal_kdi_exit(void);
+
 #endif /* _DAL_KDI_H_ */
