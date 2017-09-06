@@ -70,7 +70,8 @@
 	func(bool, enable_dpcd_backlight); \
 	func(bool, enable_gvt); \
 	func(bool, enable_pvmmio); \
-	func(bool, enable_gvt_oos)
+	func(bool, enable_gvt_oos); \
+	func(bool, enable_conformance_check)
 
 #define MEMBER(T, member) T member
 struct i915_params {

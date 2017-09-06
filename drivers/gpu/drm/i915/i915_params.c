@@ -67,6 +67,7 @@ struct i915_params i915 __read_mostly = {
 	.enable_gvt = false,
 	.enable_pvmmio = 1,
 	.enable_gvt_oos = 1,
+	.enable_conformance_check = true,
 };
 
 module_param_named(modeset, i915.modeset, int, 0400);
@@ -267,3 +268,6 @@ MODULE_PARM_DESC(enable_pvmmio,
 
 module_param_named(enable_gvt_oos, i915.enable_gvt_oos, bool, 0400);
 MODULE_PARM_DESC(enable_gvt_oos, "To toggle the gvt ppgtt page table OOS (Out of Sync) feature.");
+
+module_param_named(enable_conformance_check, i915.enable_conformance_check, bool, 0400);
+MODULE_PARM_DESC(enable_conformance_check, "To toggle the GVT guest conformance feature.");
