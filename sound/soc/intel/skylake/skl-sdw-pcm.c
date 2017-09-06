@@ -97,7 +97,8 @@ int cnl_sdw_startup(struct snd_pcm_substream *substream,
 		dma->stream_type = CNL_SDW_PDI_TYPE_PDM;
 	else {
 		dev_err(dai->dev, "Stream type not known\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto free_dma;
 	}
 	dma->mstr = mstr;
 	dma->mstr_nr = sdw_ctrl_nr;
@@ -113,13 +114,13 @@ int cnl_sdw_startup(struct snd_pcm_substream *substream,
 	if (ret) {
 		dev_err(dai->dev, "Unable to allocate stream tag");
 		ret =  -EINVAL;
-		goto alloc_stream_tag_failed;
+		goto free_dma;
 	}
 	ret = snd_soc_dai_program_stream_tag(substream, dai, dma->stream_tag);
 
 	dma->stream_state = STREAM_STATE_ALLOC_STREAM_TAG;
 	return 0;
-alloc_stream_tag_failed:
+free_dma:
 	kfree(dma);
 alloc_failed:
 	sdw_put_master(mstr);
