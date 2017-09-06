@@ -638,6 +638,8 @@ static int skl_register_sdw_masters(struct device *dev, struct skl_sst *dsp,
 			dpn_cap->word_length_buffer =
 					kzalloc(((sizeof(unsigned int)) *
 					dpn_cap->num_word_length), GFP_KERNEL);
+			if (!dpn_cap->word_length_buffer)
+				return -ENOMEM;
 			for (k = 0; k < dpn_cap->num_word_length; k++)
 				dpn_cap->word_length_buffer[k] = wl = wl + 8;
 			wl = 0;
