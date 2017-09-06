@@ -40,4 +40,6 @@ void intel_gvt_switch_mmio(struct intel_vgpu *pre,
 			   struct intel_vgpu *next, int ring_id);
 
 
+int intel_gvt_vgpu_conformance_check(struct intel_vgpu *vgpu, int ring_id);
+
 #endif
