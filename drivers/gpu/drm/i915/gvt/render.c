@@ -516,6 +516,12 @@ int intel_gvt_vgpu_conformance_check(struct intel_vgpu *vgpu, int ring_id)
 
 	int ret;
 
+	/* Entire non-context MMIOs check only need once */
+	if (!vgpu->entire_nonctxmmio_checked)
+		vgpu->entire_nonctxmmio_checked = true;
+	else
+		return 0;
+
 	get_host_mmio_snapshot(vgpu->gvt);
 
 	ret = noncontext_mmio_compare(vgpu, ring_id);

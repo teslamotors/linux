@@ -188,6 +188,8 @@ struct intel_vgpu {
 		atomic_t released;
 	} vdev;
 #endif
+
+	bool entire_nonctxmmio_checked;
 };
 
 struct intel_gvt_gm {
