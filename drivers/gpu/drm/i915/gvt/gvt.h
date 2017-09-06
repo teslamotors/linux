@@ -649,6 +649,7 @@ static inline void intel_gvt_mmio_set_non_context(
 #include "trace.h"
 
 void intel_gvt_mark_noncontext_mmios(struct intel_gvt *gvt);
+bool is_force_nonpriv_mmio(unsigned int offset);
 
 #include "mpt.h"
 

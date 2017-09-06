@@ -457,6 +457,7 @@ static int noncontext_mmio_compare(struct intel_vgpu *vgpu, int ring_id)
 	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
 	struct render_mmio *mmio, *mmio_list;
 	int i, array_size;
+	struct intel_engine_cs *engine = dev_priv->engine[ring_id];
 
 	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) {
 		mmio_list = gen9_render_mmio_list;
@@ -467,7 +468,9 @@ static int noncontext_mmio_compare(struct intel_vgpu *vgpu, int ring_id)
 	}
 
 	for (i = 0, mmio = mmio_list; i < array_size; i++, mmio++) {
-		if (mmio->ring_id != ring_id || mmio->in_context)
+		if (mmio->ring_id != ring_id || mmio->in_context
+			|| is_force_nonpriv_mmio(mmio->reg.reg)
+			|| mmio->reg.reg == RING_MODE_GEN7(engine).reg)
 			continue;
 
 		if (MMIO_COMPARE(vgpu, mmio->reg.reg, mmio->mask))

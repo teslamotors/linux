@@ -813,7 +813,7 @@ static bool is_shadowed_mmio(unsigned int offset)
 	return ret;
 }
 
-static inline bool is_force_nonpriv_mmio(unsigned int offset)
+bool is_force_nonpriv_mmio(unsigned int offset)
 {
 	return (offset >= 0x24d0 && offset < 0x2500);
 }
