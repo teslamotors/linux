@@ -1789,7 +1789,6 @@ static int rt700_runtime_resume(struct device *dev)
 {
 	struct rt700_priv *rt700 = dev_get_drvdata(dev);
 	int ret;
-	int timeout = 0;
 
 	if (rt700->sdw) {
 		ret = sdw_wait_for_slave_enumeration(rt700->sdw->mstr,
