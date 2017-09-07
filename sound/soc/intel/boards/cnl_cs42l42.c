@@ -187,16 +187,6 @@ static int cnl_cs42l42_codec_fixup(struct snd_soc_pcm_runtime *rtd,
 	return ret;
 }
 
-static int cnl_dmic_fixup(struct snd_soc_pcm_runtime *rtd,
-				struct snd_pcm_hw_params *params)
-{
-	struct snd_interval *channels = hw_param_interval(params,
-						SNDRV_PCM_HW_PARAM_CHANNELS);
-	channels->min = channels->max = 2;
-
-	return 0;
-}
-
 static const struct snd_soc_pcm_stream cnl_cs42l42_dai_params = {
 	.formats = SNDRV_PCM_FMTBIT_S24_LE,
 	.rate_min = 48000,
