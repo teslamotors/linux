@@ -182,6 +182,34 @@ out:
 	return ret;
 }
 
+static int tdf8532_dump_dev_error(struct tdf8532_priv *dev_data)
+{
+	u8 error;
+	int ret = 0;
+	char *repl_buff = NULL;
+	struct device *dev = &(dev_data->i2c->dev);
+
+	ret = tdf8532_amp_write(dev_data, GET_ERROR);
+	if (ret < 0)
+		goto out;
+
+	ret = tdf8532_single_read(dev_data, &repl_buff);
+	if (ret < 0)
+		goto out_free;
+
+	error = ((struct get_error_repl *)repl_buff)->error;
+
+	if (error) {
+		dev_err(dev, "%s: 0x%X\n", __func__, error);
+		ret = -EIO;
+	}
+
+out_free:
+	kfree(repl_buff);
+out:
+	return ret;
+}
+
 static int tdf8532_wait_state(struct tdf8532_priv *dev_data, u8 req_state,
 					unsigned long timeout_val)
 {
@@ -217,7 +245,15 @@ static int tdf8532_start_play(struct tdf8532_priv *tdf8532)
 	if (ret < 0)
 		return ret;
 
+	ret = tdf8532_dump_dev_error(tdf8532);
+	if (ret < 0)
+		return ret;
+
 	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_CONNECT);
+	if (ret < 0)
+		return ret;
+
+	ret = tdf8532_dump_dev_error(tdf8532);
 
 	if (ret >= 0)
 		ret = tdf8532_wait_state(tdf8532, STATE_PLAY, ACK_TIMEOUT);
@@ -235,11 +271,19 @@ static int tdf8532_stop_play(struct tdf8532_priv *tdf8532)
 	if (ret < 0)
 		goto out;
 
+	ret = tdf8532_dump_dev_error(tdf8532);
+	if (ret < 0)
+		goto out;
+
 	ret = tdf8532_wait_state(tdf8532, STATE_STBY, ACK_TIMEOUT);
 	if (ret < 0)
 		goto out;
 
 	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_DISCONNECT);
+	if (ret < 0)
+		goto out;
+
+	ret = tdf8532_dump_dev_error(tdf8532);
 	if (ret < 0)
 		goto out;
 
