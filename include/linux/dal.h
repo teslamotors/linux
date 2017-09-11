@@ -109,6 +109,8 @@ int dal_send_and_receive(u64 session_handle, int command_id, const u8 *input,
 
 int dal_close_session(u64 session_handle);
 
+int dal_set_ta_exclusive_access(const uuid_t *ta_id);
+int dal_unset_ta_exclusive_access(const uuid_t *ta_id);
 int dal_uuid_parse(const char *uuid_str, uuid_t *uuid);
 
 #endif /* _DAL_H_ */

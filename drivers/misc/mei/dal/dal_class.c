@@ -347,6 +347,39 @@ out:
 }
 
 /**
+ * dal_validate_access - validate that the access is permitted.
+ *
+ * in case of open session command, validate that the client has the permissions
+ * to open session to the requested ta
+ *
+ * @hdr: command header
+ * @count: message size
+ * @ctx: context (not used)
+ *
+ * Return: 0 when command is permitted
+ *         -EINVAL when message is invalid
+ *         -EPERM when access is not permitted
+ *
+ * Locking: called under "ddev->write_lock" lock
+ */
+static int dal_validate_access(const struct bh_command_header *hdr,
+			       size_t count, void *ctx)
+{
+	struct dal_client *dc = ctx;
+	struct dal_device *ddev = dc->ddev;
+	const uuid_t *ta_id;
+
+	if (!bh_msg_is_cmd_open_session(hdr))
+		return 0;
+
+	ta_id = bh_open_session_ta_id(hdr, count);
+	if (!ta_id)
+		return -EINVAL;
+
+	return dal_access_policy_allowed(ddev, ta_id, dc);
+}
+
+/**
  * dal_is_kdi_msg - check if sequence is in kernel space sequence range
  *
  * Each interface (kernel space and user space) has different range of
@@ -393,6 +426,7 @@ static int dal_validate_seq(const struct bh_command_header *hdr,
  *     has the permissions to send it
  */
 static const bh_filter_func dal_write_filter_tbl[] = {
+	dal_validate_access,
 	dal_validate_seq,
 	NULL,
 };
@@ -685,6 +719,7 @@ static void dal_device_release(struct device *dev)
 {
 	struct dal_device *ddev = to_dal_device(dev);
 
+	dal_access_list_free(ddev);
 	kfree(ddev->bh_fw_msg.msg);
 	kfree(ddev);
 }
@@ -735,6 +770,10 @@ static int dal_probe(struct mei_cl_device *cldev,
 		ret = -ENOMEM;
 		goto err;
 	}
+
+	ret = dal_access_list_init(ddev);
+	if (ret)
+		goto err;
 
 	ret = dal_mei_enable(ddev);
 	if (ret < 0)

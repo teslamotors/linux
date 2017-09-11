@@ -414,6 +414,85 @@ int dal_close_session(u64 session_handle)
 }
 EXPORT_SYMBOL(dal_close_session);
 
+/**
+ * dal_set_ta_exclusive_access - set client to be owner of the ta,
+ *                               so no one else (especially user space client)
+ *                               will be able to open session to it
+ *
+ * @ta_id: trusted application (ta) id
+ *
+ * Return: 0 on success
+ *         -ENODEV when the device can't be found
+ *         -ENOMEM on memory allocation failure
+ *         -EPERM when ta is owned by another client
+ *         -EEXIST when ta is already owned by current client
+ */
+int dal_set_ta_exclusive_access(const uuid_t *ta_id)
+{
+	struct dal_device *ddev;
+	struct device *dev;
+	struct dal_client *dc;
+	int ret;
+
+	mutex_lock(&dal_kdi_lock);
+
+	dev = dal_find_dev(DAL_MEI_DEVICE_IVM);
+	if (!dev) {
+		dev_dbg(dev, "can't find device\n");
+		ret = -ENODEV;
+		goto unlock;
+	}
+
+	ddev = to_dal_device(dev);
+	dc = ddev->clients[DAL_INTF_KDI];
+
+	ret = dal_access_policy_add(ddev, ta_id, dc);
+
+	put_device(dev);
+unlock:
+	mutex_unlock(&dal_kdi_lock);
+	return ret;
+}
+EXPORT_SYMBOL(dal_set_ta_exclusive_access);
+
+/**
+ * dal_unset_ta_exclusive_access - unset client from owning ta
+ *
+ * @ta_id: trusted application (ta) id
+ *
+ * Return: 0 on success
+ *         -ENODEV when the device can't be found
+ *         -ENOENT when ta isn't found in exclusiveness ta list
+ *         -EPERM when ta is owned by another client
+ */
+int dal_unset_ta_exclusive_access(const uuid_t *ta_id)
+{
+	struct dal_device *ddev;
+	struct device *dev;
+	struct dal_client *dc;
+	int ret;
+
+	mutex_lock(&dal_kdi_lock);
+
+	dev = dal_find_dev(DAL_MEI_DEVICE_IVM);
+	if (!dev) {
+		dev_dbg(dev, "can't find device\n");
+		ret = -ENODEV;
+		goto unlock;
+	}
+
+	ddev = to_dal_device(dev);
+	dc = ddev->clients[DAL_INTF_KDI];
+
+	ret = dal_access_policy_remove(ddev, ta_id, dc);
+
+	put_device(dev);
+unlock:
+	mutex_unlock(&dal_kdi_lock);
+	return ret;
+}
+EXPORT_SYMBOL(dal_unset_ta_exclusive_access);
+
 #define KDI_MAJOR_VER         "1"
 #define KDI_MINOR_VER         "0"
 #define KDI_HOTFIX_VER        "0"

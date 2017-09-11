@@ -207,4 +207,13 @@ int dal_kdi_recv(unsigned int handle, unsigned char *buf, size_t *count);
 int dal_kdi_init(void);
 void dal_kdi_exit(void);
 
+int dal_access_policy_add(struct dal_device *ddev,
+			  const uuid_t *ta_id, void *owner);
+int dal_access_policy_remove(struct dal_device *ddev,
+			     const uuid_t *ta_id, void *owner);
+int dal_access_policy_allowed(struct dal_device *ddev,
+			      const uuid_t *ta_id, void *owner);
+void dal_access_list_free(struct dal_device *ddev);
+int dal_access_list_init(struct dal_device *ddev);
+
 #endif /* _DAL_KDI_H_ */
