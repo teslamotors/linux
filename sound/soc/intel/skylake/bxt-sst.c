@@ -32,6 +32,15 @@
 #define BXT_ROM_INIT		0x5
 #define BXT_ADSP_SRAM0_BASE	0x80000
 
+/* BXT SSP/I2S Registers */
+#define I2S_SSC1_REG_OFF	BIT(2)
+#define SET_SLAVE_MASK		GENMASK(25, 24)
+
+/*BXT I2S Clock Gating*/
+#define BXT_DSP_CLK_CTL			0x378
+#define BXT_DISABLE_4_SSP_CLK_GT	GENMASK(21, 18)
+#define BXT_DISABLE_ALL_SSP_CLK_GT	GENMASK(23, 18)
+
 /* Trace Buffer Window */
 #define BXT_ADSP_SRAM2_BASE	0x0C0000
 #define BXT_ADSP_W2_SIZE	0x2000
@@ -51,6 +60,36 @@
 #define BXT_D0I3_DELAY 5000
 
 #define BXT_FW_ROM_INIT_RETRY 3
+
+#define GET_SSP_BASE(N)	(N > 4 ? 0x2000 : 0x4000)
+
+#define BXTP_NUM_I2S_PORTS	6
+
+static void bxt_set_ssp_slave(struct sst_dsp *ctx)
+{
+	u32 mask, i2s_base_addr;
+	int i;
+
+	if (BXTP_NUM_I2S_PORTS == 4)
+		mask = BXT_DISABLE_4_SSP_CLK_GT;
+	else
+		mask = BXT_DISABLE_ALL_SSP_CLK_GT;
+
+	/* disable clock gating on all SSPs */
+	sst_dsp_shim_update_bits_unlocked(ctx,
+			BXT_DSP_CLK_CTL, mask, mask);
+
+	/* set all SSPs to slave */
+	i2s_base_addr = GET_SSP_BASE(BXTP_NUM_I2S_PORTS);
+	for (i = 0; i < BXTP_NUM_I2S_PORTS; i++) {
+		sst_dsp_shim_update_bits_unlocked(ctx,
+			(i2s_base_addr + (i * 0x1000) + I2S_SSC1_REG_OFF),
+					SET_SLAVE_MASK, SET_SLAVE_MASK);
+	}
+
+	/* re-enable clock gating */
+	sst_dsp_shim_update_bits_unlocked(ctx, BXT_DSP_CLK_CTL, mask, 0);
+}
 
 static unsigned int bxt_get_errorcode(struct sst_dsp *ctx)
 {
@@ -133,6 +172,9 @@ static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
 		dev_err(ctx->dev, "dsp core0/1 power up failed\n");
 		goto base_fw_load_failed;
 	}
+
+	/* DSP is powered up, set all SSPs to slave mode */
+	bxt_set_ssp_slave(ctx);
 
 	/* Step 2: Purge FW request */
 	sst_dsp_shim_write(ctx, SKL_ADSP_REG_HIPCI, SKL_ADSP_REG_HIPCI_BUSY |
@@ -447,6 +489,9 @@ static int bxt_set_dsp_D0(struct sst_dsp *ctx, unsigned int core_id)
 		goto err;
 
 	if (core_id == SKL_DSP_CORE0_ID) {
+
+		 /* set all SSPs to slave mode */
+		bxt_set_ssp_slave(ctx);
 
 		/*
 		 * Enable interrupt after SPA is set and before
