@@ -2610,6 +2610,33 @@ out:
 	return ret;
 }
 
+#define GEN8_PDPES    4
+static int gvt_emit_pdps(struct intel_vgpu_workload *workload)
+{
+	const int num_cmds = GEN8_PDPES * 2;
+	struct drm_i915_gem_request *req = workload->req;
+	struct intel_engine_cs *engine = req->engine;
+	u32 *cs;
+	u32 *pdps = (u32 *)workload->shadow_mm->shadow_page_table;
+	int i;
+
+	cs = intel_ring_begin(req, num_cmds * 2 + 2);
+	if (IS_ERR(cs))
+		return PTR_ERR(cs);
+
+	*cs++ = MI_LOAD_REGISTER_IMM(num_cmds);
+	for (i = 0; i < GEN8_PDPES; i++) {
+		*cs++ = i915_mmio_reg_offset(GEN8_RING_PDP_LDW(engine, i));
+		*cs++ = pdps[i * 2];
+		*cs++ = i915_mmio_reg_offset(GEN8_RING_PDP_UDW(engine, i));
+		*cs++ = pdps[i * 2 + 1];
+	}
+	*cs++ = MI_NOOP;
+	intel_ring_advance(req, cs);
+
+	return 0;
+}
+
 static int shadow_workload_ring_buffer(struct intel_vgpu_workload *workload)
 {
 	struct intel_vgpu *vgpu = workload->vgpu;
@@ -2617,6 +2644,15 @@ static int shadow_workload_ring_buffer(struct intel_vgpu_workload *workload)
 	u32 *cs;
 	int ret;
 
+	/* we consider this as an workaround to avoid the situation that
+	 * PDP's not updated, and right now we only limit it to BXT platform
+	 * since it's not reported on the other platforms
+	 */
+	if (IS_BROXTON(vgpu->gvt->dev_priv)) {
+		ret = gvt_emit_pdps(workload);
+		if (ret)
+			return ret;
+	}
 	guest_rb_size = _RING_CTL_BUF_SIZE(workload->rb_ctl);
 
 	/* calculate workload ring buffer size */
