@@ -328,4 +328,12 @@ static inline int intel_gvt_hypervisor_unpause_domain(struct intel_vgpu *vgpu)
 
 	return intel_gvt_host.mpt->unpause_domain(vgpu->handle);
 }
+
+static inline int intel_gvt_hypervisor_dom0_ready(void)
+{
+	if (!intel_gvt_host.mpt->dom0_ready)
+		return 0;
+
+	return intel_gvt_host.mpt->dom0_ready();
+}
 #endif /* _GVT_MPT_H_ */

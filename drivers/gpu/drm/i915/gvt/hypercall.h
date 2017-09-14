@@ -59,6 +59,7 @@ struct intel_gvt_mpt {
 			     bool map);
 	int (*pause_domain)(unsigned long handle);
 	int (*unpause_domain)(unsigned long handle);
+	int (*dom0_ready)(void);
 };
 
 extern struct intel_gvt_mpt xengt_mpt;

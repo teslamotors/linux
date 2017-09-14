@@ -13859,6 +13859,15 @@ static void intel_setup_outputs(struct drm_i915_private *dev_priv)
 			intel_encoder_clones(encoder);
 	}
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	/*
+	 * Encoders have been initialized. If we are in VGT mode,
+	 * let's inform the HV that it can start Dom U as Dom 0
+	 * is ready to accept new Dom Us.
+	 */
+	gvt_dom0_ready(dev_priv);
+#endif
+
 	intel_init_pch_refclk(dev_priv);
 
 	drm_helper_move_panel_connectors_to_head(&dev_priv->drm);
