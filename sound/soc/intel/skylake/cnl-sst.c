@@ -755,19 +755,20 @@ int cnl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 		return ret;
 	}
 
-	/* set the D0i3 check */
-	cnl->ipc.ops.check_dsp_lp_on = skl_ipc_check_D0i0;
 	cnl->boot_complete = false;
 	init_waitqueue_head(&cnl->boot_wait);
-
-	INIT_DELAYED_WORK(&cnl->d0i3.work, bxt_set_dsp_D0i3);
-	cnl->d0i3.state = SKL_DSP_D0I3_NONE;
 
 	ret = cnl_load_base_firmware(sst);
 	if (ret < 0) {
 		dev_err(dev, "Load base fw failed: %d", ret);
 		return ret;
 	}
+
+	/* set the D0i3 check */
+	cnl->ipc.ops.check_dsp_lp_on = skl_ipc_check_D0i0;
+
+	INIT_DELAYED_WORK(&cnl->d0i3.work, bxt_set_dsp_D0i3);
+	cnl->d0i3.state = SKL_DSP_D0I3_NONE;
 
 #if IS_ENABLED(CONFIG_SND_SOC_RT700)
 	ret = skl_register_sdw_masters(dev, cnl, mmio_base, irq, ptr);
