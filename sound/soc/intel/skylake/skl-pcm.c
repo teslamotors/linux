@@ -324,8 +324,10 @@ static int skl_pcm_prepare(struct snd_pcm_substream *substream,
 
 	/* In case of XRUN recovery, reset the FW pipe to clean state */
 	if (mconfig && (substream->runtime->status->state ==
-					SNDRV_PCM_STATE_XRUN))
+					SNDRV_PCM_STATE_XRUN)) {
 		skl_reset_pipe(skl->skl_sst, mconfig->pipe);
+		skl_pcm_host_dma_prepare(dai->dev, mconfig->pipe->p_params);
+	}
 
 	return 0;
 }
