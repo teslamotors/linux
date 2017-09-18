@@ -25,6 +25,8 @@ static guid_t osc_guid =
 	GUID_INIT(0xA69F886E, 0x6CEB, 0x4594,
 		  0xA4, 0x1F, 0x7B, 0x5D, 0xCE, 0x24, 0xC5, 0x53);
 
+#define NHLT_ACPI_HEADER_SIG	"NHLT"
+
 int skl_get_nhlt_version(struct device *dev)
 {
 	const char *version;
@@ -61,6 +63,13 @@ struct nhlt_acpi_table *skl_nhlt_init(struct device *dev)
 				memremap(nhlt_ptr->min_addr, nhlt_ptr->length,
 				MEMREMAP_WB);
 		ACPI_FREE(obj);
+		if (nhlt_table && (strncmp(nhlt_table->header.signature,
+					NHLT_ACPI_HEADER_SIG,
+					strlen(NHLT_ACPI_HEADER_SIG)) != 0)) {
+			memunmap(nhlt_table);
+			dev_err(dev, "NHLT ACPI header signature incorrect\n");
+			return NULL;
+		}
 		return nhlt_table;
 	}
 
