@@ -210,8 +210,8 @@ out:
 	return ret;
 }
 
-static int tdf8532_wait_state(struct tdf8532_priv *dev_data, u8 req_state,
-					unsigned long timeout_val)
+static int __tdf8532_wait_state(struct tdf8532_priv *dev_data, u8 req_state,
+					unsigned long timeout_val, u8 or_higher)
 {
 	int ret;
 	u8 state;
@@ -225,13 +225,20 @@ static int tdf8532_wait_state(struct tdf8532_priv *dev_data, u8 req_state,
 
 	} while (time_before(jiffies, timeout) && state != req_state);
 
-	if (state != req_state) {
-		ret = -ETIME;
-		dev_err(dev, "State: %u, req_state: %u, ret: %d\n", state,
-				req_state, ret);
+	if (or_higher) {
+		if (state < req_state)
+			goto out_timeout;
+	} else {
+		if (state != req_state)
+			goto out_timeout;
 	}
 
 out:
+	return ret;
+out_timeout:
+	ret = -ETIME;
+	dev_err(dev, "State: %u, req_state: %u, ret: %d\n", state,
+			req_state, ret);
 	return ret;
 }
 
@@ -256,7 +263,8 @@ static int tdf8532_start_play(struct tdf8532_priv *tdf8532)
 	ret = tdf8532_dump_dev_error(tdf8532);
 
 	if (ret >= 0)
-		ret = tdf8532_wait_state(tdf8532, STATE_PLAY, ACK_TIMEOUT);
+		ret = tdf8532_wait_state_or_higher(tdf8532, STATE_PLAY,
+				ACK_TIMEOUT);
 
 	return ret;
 }
