@@ -79,6 +79,13 @@ struct get_dev_status_repl {
 #define tdf8532_amp_write(dev_data, ...)\
 	__tdf8532_single_write(dev_data, 0, AMP_MOD, __VA_ARGS__, END)
 
+#define tdf8532_wait_state(dev_data, state, tm)\
+	__tdf8532_wait_state(dev_data, state, tm, 0)
+
+#define tdf8532_wait_state_or_higher(dev_data, state, tm)\
+	__tdf8532_wait_state(dev_data, state, tm, 1)
+
+
 struct tdf8532_priv {
 	struct i2c_client *i2c;
 	u8 channels;
