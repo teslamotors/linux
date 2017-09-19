@@ -1,3 +1,14 @@
+/*
+ * tdf8532.c  --  driver for NXP Semiconductors TDF8532
+ *
+ * Copyright (C) 2017 Intel Corp.
+ *
+ * This program is free software; you can redistribute  it and/or modify it
+ * under  the terms of  the GNU General  Public License as published by the
+ * Free Software Foundation;  either version 2 of the  License, or (at your
+ * option) any later version.
+ *
+ */
 #ifndef __TDF8532_H_
 #define __TDF8532_H_
 
