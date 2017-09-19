@@ -1298,7 +1298,7 @@ int intel_vgpu_sync_oos_pages(struct intel_vgpu *vgpu)
 	struct intel_vgpu_oos_page *oos_page;
 	int ret;
 
-	if (!i915.enable_gvt_oos)
+	if (!i915_modparams.enable_gvt_oos)
 		return 0;
 
 	list_for_each_safe(pos, n, &vgpu->gtt.oos_page_list_head) {
@@ -1360,7 +1360,7 @@ fail:
 
 static inline bool can_do_out_of_sync(struct intel_vgpu_guest_page *gpt)
 {
-	return i915.enable_gvt_oos
+	return i915_modparams.enable_gvt_oos
 		&& gtt_type_is_pte_pt(
 			guest_page_to_ppgtt_spt(gpt)->guest_page_type)
 		&& gpt->write_cnt >= 2;
@@ -1452,7 +1452,7 @@ static int ppgtt_handle_guest_write_page_table_bytes(void *gp,
 		ppgtt_set_post_shadow(spt, index);
 	}
 
-	if (!i915.enable_gvt_oos)
+	if (!i915_modparams.enable_gvt_oos)
 		return 0;
 
 	gpt->write_cnt++;
@@ -2373,7 +2373,7 @@ int intel_gvt_init_gtt(struct intel_gvt *gvt)
 	gvt->gtt.scratch_ggtt_page = virt_to_page(page);
 	gvt->gtt.scratch_ggtt_mfn = (unsigned long)(daddr >> GTT_PAGE_SHIFT);
 
-	if (i915.enable_gvt_oos) {
+	if (i915_modparams.enable_gvt_oos) {
 		ret = setup_spt_oos(gvt);
 		if (ret) {
 			gvt_err("fail to initialize SPT oos\n");
@@ -2404,7 +2404,7 @@ void intel_gvt_clean_gtt(struct intel_gvt *gvt)
 
 	__free_page(gvt->gtt.scratch_ggtt_page);
 
-	if (i915.enable_gvt_oos)
+	if (i915_modparams.enable_gvt_oos)
 		clean_spt_oos(gvt);
 }
 

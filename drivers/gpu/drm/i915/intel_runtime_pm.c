@@ -2424,7 +2424,7 @@ static uint32_t get_allowed_dc_mask(const struct drm_i915_private *dev_priv,
 		mask = 0;
 	}
 
-	if (!i915.disable_power_well)
+	if (!i915_modparams.disable_power_well)
 		max_dc = 0;
 
 	if (enable_dc >= 0 && enable_dc <= max_dc) {
@@ -2482,10 +2482,11 @@ int intel_power_domains_init(struct drm_i915_private *dev_priv)
 {
 	struct i915_power_domains *power_domains = &dev_priv->power_domains;
 
-	i915.disable_power_well = sanitize_disable_power_well_option(dev_priv,
-						     i915.disable_power_well);
-	dev_priv->csr.allowed_dc_mask = get_allowed_dc_mask(dev_priv,
-							    i915.enable_dc);
+	i915_modparams.disable_power_well =
+		sanitize_disable_power_well_option(dev_priv,
+						   i915_modparams.disable_power_well);
+	dev_priv->csr.allowed_dc_mask =
+		get_allowed_dc_mask(dev_priv, i915_modparams.enable_dc);
 
 	BUILD_BUG_ON(POWER_DOMAIN_NUM > 64);
 
@@ -2546,7 +2547,7 @@ void intel_power_domains_fini(struct drm_i915_private *dev_priv)
 	intel_display_set_init_power(dev_priv, true);
 
 	/* Remove the refcount we took to keep power well support disabled. */
-	if (!i915.disable_power_well)
+	if (!i915_modparams.disable_power_well)
 		intel_display_power_put(dev_priv, POWER_DOMAIN_INIT);
 
 	/*
@@ -2986,7 +2987,7 @@ void intel_power_domains_init_hw(struct drm_i915_private *dev_priv, bool resume)
 	/* For now, we need the power well to be always enabled. */
 	intel_display_set_init_power(dev_priv, true);
 	/* Disable power support if the user asked so. */
-	if (!i915.disable_power_well)
+	if (!i915_modparams.disable_power_well)
 		intel_display_power_get(dev_priv, POWER_DOMAIN_INIT);
 	intel_power_domains_sync_hw(dev_priv);
 	power_domains->initializing = false;
@@ -3005,7 +3006,7 @@ void intel_power_domains_suspend(struct drm_i915_private *dev_priv)
 	 * Even if power well support was disabled we still want to disable
 	 * power wells while we are system suspended.
 	 */
-	if (!i915.disable_power_well)
+	if (!i915_modparams.disable_power_well)
 		intel_display_power_put(dev_priv, POWER_DOMAIN_INIT);
 
 	if (IS_CANNONLAKE(dev_priv))

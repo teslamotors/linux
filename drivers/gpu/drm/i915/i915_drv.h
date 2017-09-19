@@ -94,7 +94,7 @@
 #define I915_STATE_WARN(condition, format...) ({			\
 	int __ret_warn_on = !!(condition);				\
 	if (unlikely(__ret_warn_on))					\
-		if (!WARN(i915.verbose_state_checks, format))		\
+		if (!WARN(i915_modparams.verbose_state_checks, format))	\
 			DRM_ERROR(format);				\
 	unlikely(__ret_warn_on);					\
 })
@@ -3021,9 +3021,9 @@ intel_info(const struct drm_i915_private *dev_priv)
 
 #define HAS_LOGICAL_RING_CONTEXTS(dev_priv) \
 		((dev_priv)->info.has_logical_ring_contexts)
-#define USES_PPGTT(dev_priv)		(i915.enable_ppgtt)
-#define USES_FULL_PPGTT(dev_priv)	(i915.enable_ppgtt >= 2)
-#define USES_FULL_48BIT_PPGTT(dev_priv)	(i915.enable_ppgtt == 3)
+#define USES_PPGTT(dev_priv)		(i915_modparams.enable_ppgtt)
+#define USES_FULL_PPGTT(dev_priv)	(i915_modparams.enable_ppgtt >= 2)
+#define USES_FULL_48BIT_PPGTT(dev_priv)	(i915_modparams.enable_ppgtt == 3)
 
 #define HAS_OVERLAY(dev_priv)		 ((dev_priv)->info.has_overlay)
 #define OVERLAY_NEEDS_PHYSICAL(dev_priv) \
@@ -3221,7 +3221,7 @@ static inline void i915_queue_hangcheck(struct drm_i915_private *dev_priv)
 {
 	unsigned long delay;
 
-	if (unlikely(!i915.enable_hangcheck))
+	if (unlikely(!i915_modparams.enable_hangcheck))
 		return;
 
 	/* Don't continually defer the hangcheck so that it is always run at
@@ -4122,7 +4122,7 @@ u64 intel_rc6_residency_us(struct drm_i915_private *dev_priv,
 static inline uint##x##_t __raw_i915_read##x(const struct drm_i915_private *dev_priv, \
 					     i915_reg_t reg) \
 { \
-	if (!intel_vgpu_active(dev_priv) || !i915.enable_pvmmio || \
+	if (!intel_vgpu_active(dev_priv) || !i915_modparams.enable_pvmmio || \
 		likely(!in_mmio_read_trap_list((reg).reg))) \
 		return read##s(dev_priv->regs + i915_mmio_reg_offset(reg)); \
 	dev_priv->shared_page->reg_addr = i915_mmio_reg_offset(reg); \

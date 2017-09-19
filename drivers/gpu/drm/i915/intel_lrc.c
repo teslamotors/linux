@@ -219,9 +219,9 @@ static void execlists_init_reg_state(u32 *reg_state,
 				     struct intel_ring *ring);
 
 /**
- * intel_sanitize_enable_execlists() - sanitize i915.enable_execlists
+ * intel_sanitize_enable_execlists() - sanitize i915_modparams.enable_execlists
  * @dev_priv: i915 device private
- * @enable_execlists: value of i915.enable_execlists module parameter.
+ * @enable_execlists: value of i915_modparams.enable_execlists module parameter.
  *
  * Only certain platforms support Execlists (the prerequisites being
  * support for Logical Ring Contexts and Aliasing PPGTT or better).
@@ -244,7 +244,7 @@ int intel_sanitize_enable_execlists(struct drm_i915_private *dev_priv, int enabl
 
 	if (HAS_LOGICAL_RING_CONTEXTS(dev_priv) &&
 	    USES_PPGTT(dev_priv) &&
-	    i915.use_mmio_flip >= 0)
+	    i915_modparams.use_mmio_flip >= 0)
 		return 1;
 
 	return 0;
@@ -417,7 +417,7 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 			GEM_BUG_ON(!n);
 			desc = 0;
 		}
-		if (intel_vgpu_active(engine->i915) && i915.enable_pvmmio) {
+		if (intel_vgpu_active(engine->i915) && i915_modparams.enable_pvmmio) {
 			BUG_ON(i >= 4);
 			descs[i] = upper_32_bits(desc);
 			descs[i + 1] = lower_32_bits(desc);
@@ -428,7 +428,7 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 		}
 	}
 
-	if (intel_vgpu_active(engine->i915) && i915.enable_pvmmio) {
+	if (intel_vgpu_active(engine->i915) && i915_modparams.enable_pvmmio) {
 		u32 __iomem *elsp_data = engine->i915->shared_page->elsp_data;
 		spin_lock(&engine->i915->shared_page_lock);
 		writel(descs[0], elsp_data);
@@ -1342,7 +1342,7 @@ static int gen8_init_common_ring(struct intel_engine_cs *engine)
 	engine->csb_head = -1;
 
 	/* After a GPU reset, we may have requests to replay */
-	if (!i915.enable_guc_submission && engine->execlist_first)
+	if (!i915_modparams.enable_guc_submission && engine->execlist_first)
 		tasklet_schedule(&engine->irq_tasklet);
 
 	return 0;
