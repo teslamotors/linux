@@ -32,8 +32,8 @@
 #define WEST_BASE 0xd0c70000
 #define WEST_GPIO_VALUE 0x44000800
 
-/* NORTHWEST - GPIO 74 */
-#define I2S_1 0x610
+/* NORTHWEST - GPIO 75 */
+#define I2S_1 0x618
 /* NORTHWEST - GPIO 89 */
 #define I2S_3 0x688
 /* WEST - GPIO 150*/
@@ -122,11 +122,11 @@ static int apli_ssp_northwest_gpio_init(struct snd_soc_pcm_runtime *rtd)
 	switch (rtd->dai_link->be_id) {
 	case 0:
 		gpio_addr = (void *)ioremap_nocache(NORTHWEST_BASE
-				+ I2S_1, 0x30);
+				+ I2S_1, 0x20);
 		break;
 	case 2:
 		gpio_addr = (void *)ioremap_nocache(NORTHWEST_BASE
-				+ I2S_3, 0x30);
+				+ I2S_3, 0x20);
 		break;
 	default:
 		return -EINVAL;
@@ -141,7 +141,6 @@ static int apli_ssp_northwest_gpio_init(struct snd_soc_pcm_runtime *rtd)
 	memcpy_toio(gpio_addr + 0x8, &gpio_value, sizeof(gpio_value));
 	memcpy_toio(gpio_addr + 0x10, &gpio_value, sizeof(gpio_value));
 	memcpy_toio(gpio_addr + 0x18, &gpio_value, sizeof(gpio_value));
-	memcpy_toio(gpio_addr + 0x20, &gpio_value, sizeof(gpio_value));
 
 	iounmap(gpio_addr);
 	return 0;
@@ -161,10 +160,10 @@ static int apli_ssp_west_gpio_init(struct snd_soc_pcm_runtime *rtd)
 
 	switch (rtd->dai_link->be_id) {
 	case 4:
-		gpio_addr = (void *)ioremap_nocache(WEST_BASE + I2S_5, 0x30);
+		gpio_addr = (void *)ioremap_nocache(WEST_BASE + I2S_5, 0x20);
 		break;
 	case 5:
-		gpio_addr = (void *)ioremap_nocache(WEST_BASE + I2S_6, 0x30);
+		gpio_addr = (void *)ioremap_nocache(WEST_BASE + I2S_6, 0x20);
 		break;
 	default:
 		return -EINVAL;
@@ -179,7 +178,6 @@ static int apli_ssp_west_gpio_init(struct snd_soc_pcm_runtime *rtd)
 	memcpy_toio(gpio_addr + 0x8, &gpio_value, sizeof(gpio_value));
 	memcpy_toio(gpio_addr + 0x10, &gpio_value, sizeof(gpio_value));
 	memcpy_toio(gpio_addr + 0x18, &gpio_value, sizeof(gpio_value));
-	memcpy_toio(gpio_addr + 0x20, &gpio_value, sizeof(gpio_value));
 
 	iounmap(gpio_addr);
 	return 0;
