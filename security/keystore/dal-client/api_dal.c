@@ -326,7 +326,7 @@ int dal_keystore_wrap_key(const uint8_t *client_ticket,
 	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];
 	int res = 0;
 	size_t response_code = 0;
-	uint8_t in[KEYSTORE_MAX_CLIENT_ID_SIZE + app_key_size];
+	uint8_t in[KEYSTORE_MAX_CLIENT_ID_SIZE + app_key_size + 2];
 	int commandId = 0;
 	size_t output_len = 0;
 	uint8_t *out_buf = NULL;
@@ -342,7 +342,8 @@ int dal_keystore_wrap_key(const uint8_t *client_ticket,
 	}
 
 	memcpy(in, client_id, sizeof(client_id));
-	memcpy(in + sizeof(client_id), app_key, app_key_size);
+	pack_int_to_buf(keyspec, in + sizeof(client_id));
+	memcpy(in + sizeof(client_id) + 2, app_key, app_key_size);
 
 	commandId = DAL_KEYSTORE_WRAP_KEY;
 	out_buf = kmalloc(output_len, GFP_KERNEL);
