@@ -16,7 +16,7 @@
 #ifndef _DAL_KEYSTORE_API_H_
 #define _DAL_KEYSTORE_API_H_
 
-#include "keystore_context.h"
+#include "dal_context.h"
 
 void set_dal_keystore_conf(void);
 
