@@ -380,6 +380,33 @@ static void intel_engine_init_timeline(struct intel_engine_cs *engine)
 	engine->timeline = &engine->i915->gt.global_timeline.engine[engine->id];
 }
 
+static bool csb_force_mmio(struct drm_i915_private *i915)
+{
+	/* GVT emulation depends upon intercepting CSB mmio */
+	if (intel_vgpu_active(i915))
+		return true;
+
+	/*
+	 * IOMMU adds unpredictable latency causing the CSB write (from the
+	 * GPU into the HWSP) to only be visible some time after the interrupt
+	 * (missed breadcrumb syndrome).
+	 */
+	if (intel_vtd_active())
+		return true;
+
+	return false;
+}
+
+static void intel_engine_init_execlist(struct intel_engine_cs *engine)
+{
+	struct intel_engine_execlists * const execlists = &engine->execlists;
+
+	execlists->csb_use_mmio = csb_force_mmio(engine->i915);
+
+	execlists->queue = RB_ROOT;
+	execlists->first = NULL;
+}
+
 /**
  * intel_engines_setup_common - setup engine state not requiring hw access
  * @engine: Engine to setup.
@@ -391,8 +418,7 @@ static void intel_engine_init_timeline(struct intel_engine_cs *engine)
  */
 void intel_engine_setup_common(struct intel_engine_cs *engine)
 {
-	engine->execlist_queue = RB_ROOT;
-	engine->execlist_first = NULL;
+	intel_engine_init_execlist(engine);
 
 	intel_engine_init_timeline(engine);
 	intel_engine_init_hangcheck(engine);
@@ -1477,11 +1503,11 @@ bool intel_engine_is_idle(struct intel_engine_cs *engine)
 		return false;
 
 	/* Both ports drained, no more ELSP submission? */
-	if (port_request(&engine->execlist_port[0]))
+	if (port_request(&engine->execlists.port[0]))
 		return false;
 
 	/* ELSP is empty, but there are ready requests? */
-	if (READ_ONCE(engine->execlist_first))
+	if (READ_ONCE(engine->execlists.first))
 		return false;
 
 	/* Ring stopped? */
@@ -1530,8 +1556,8 @@ void intel_engines_mark_idle(struct drm_i915_private *i915)
 	for_each_engine(engine, i915, id) {
 		intel_engine_disarm_breadcrumbs(engine);
 		i915_gem_batch_pool_fini(&engine->batch_pool);
-		tasklet_kill(&engine->irq_tasklet);
-		engine->no_priolist = false;
+		tasklet_kill(&engine->execlists.irq_tasklet);
+		engine->execlists.no_priolist = false;
 	}
 }
 
