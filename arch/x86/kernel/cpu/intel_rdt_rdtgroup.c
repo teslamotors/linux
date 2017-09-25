@@ -1595,8 +1595,10 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
 	int ret;
 
 	prdtgrp = rdtgroup_kn_lock_live(prgrp_kn);
+	rdt_last_cmd_clear();
 	if (!prdtgrp) {
 		ret = -ENODEV;
+		rdt_last_cmd_puts("directory was removed\n");
 		goto out_unlock;
 	}
 
@@ -1604,6 +1606,7 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
 	rdtgrp = kzalloc(sizeof(*rdtgrp), GFP_KERNEL);
 	if (!rdtgrp) {
 		ret = -ENOSPC;
+		rdt_last_cmd_puts("kernel out of memory\n");
 		goto out_unlock;
 	}
 	*r = rdtgrp;
@@ -1615,6 +1618,7 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
 	kn = kernfs_create_dir(parent_kn, name, mode, rdtgrp);
 	if (IS_ERR(kn)) {
 		ret = PTR_ERR(kn);
+		rdt_last_cmd_puts("kernfs create error\n");
 		goto out_free_rgrp;
 	}
 	rdtgrp->kn = kn;
@@ -1628,24 +1632,32 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
 	kernfs_get(kn);
 
 	ret = rdtgroup_kn_set_ugid(kn);
-	if (ret)
+	if (ret) {
+		rdt_last_cmd_puts("kernfs perm error\n");
 		goto out_destroy;
+	}
 
 	files = RFTYPE_BASE | RFTYPE_CTRL;
 	files = RFTYPE_BASE | BIT(RF_CTRLSHIFT + rtype);
 	ret = rdtgroup_add_files(kn, files);
-	if (ret)
+	if (ret) {
+		rdt_last_cmd_puts("kernfs fill error\n");
 		goto out_destroy;
+	}
 
 	if (rdt_mon_capable) {
 		ret = alloc_rmid();
-		if (ret < 0)
+		if (ret < 0) {
+			rdt_last_cmd_puts("out of RMIDs\n");
 			goto out_destroy;
+		}
 		rdtgrp->mon.rmid = ret;
 
 		ret = mkdir_mondata_all(kn, rdtgrp, &rdtgrp->mon.mon_data_kn);
-		if (ret)
+		if (ret) {
+			rdt_last_cmd_puts("kernfs subdir error\n");
 			goto out_idfree;
+		}
 	}
 	kernfs_activate(kn);
 
@@ -1723,8 +1735,10 @@ static int rdtgroup_mkdir_ctrl_mon(struct kernfs_node *parent_kn,
 
 	kn = rdtgrp->kn;
 	ret = closid_alloc();
-	if (ret < 0)
+	if (ret < 0) {
+		rdt_last_cmd_puts("out of CLOSIDs\n");
 		goto out_common_fail;
+	}
 	closid = ret;
 	ret = 0;
 
@@ -1737,8 +1751,10 @@ static int rdtgroup_mkdir_ctrl_mon(struct kernfs_node *parent_kn,
 		 * of tasks and cpus to monitor.
 		 */
 		ret = mongroup_create_dir(kn, NULL, "mon_groups", NULL);
-		if (ret)
+		if (ret) {
+			rdt_last_cmd_puts("kernfs subdir error\n");
 			goto out_id_free;
+		}
 	}
 
 	goto out_unlock;
