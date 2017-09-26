@@ -30,6 +30,7 @@
 #include "dal_client.h"
 
 #define KEYSPEC_DAL_WRAPPED_KEY (165)
+#define EXCEPTION_SESSION_NOT_PRESENT (-155)
 
 struct dal_key_info key_info = {0};
 
@@ -187,15 +188,21 @@ static int handle_command_response(int res, int response_code, int *retry,
 	if (res == DAL_KDI_STATUS_INTERNAL_ERROR) {
 		*retry = 1;
 		res = dal_keystore_install_and_init();
-		ks_info(KBUILD_MODNAME ": %s install/init status: %d\n", __func__, res);
+		ks_info(KBUILD_MODNAME ": %s install/init status: %d\n",
+				__func__, res);
 		return res;
-	}
-	else if (res == 0 && response_code == 155
+	} else if (res == 0 && response_code == EXCEPTION_SESSION_NOT_PRESENT
 				&& client_ticket && client_id) {
 		*retry = 1;
 		res = restore_client_session(client_ticket, client_id);
-		ks_info(KBUILD_MODNAME ": %s restore session status: %d\n", __func__, res);
+		ks_info(KBUILD_MODNAME ": %s restore session status: %d\n",
+				__func__, res);
 		return res;
+	} else if (res == 0 && response_code < 0) {
+		*retry = 0;
+		ks_info(KBUILD_MODNAME ": %s command exception: %d\n",
+				__func__, response_code);
+		return response_code;
 	}
 
 	/* falls thru */
@@ -609,17 +616,62 @@ int dal_keystore_load_key(const uint8_t *client_ticket,
 			unsigned int wrapped_key_size, unsigned int *slot_id)
 {
 	int res = 0;
+	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];
+	size_t output_len = 0;
+	int commandId = DAL_KEYSTORE_LOAD_KEY;
+	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE + wrapped_key_size];
+	size_t index = 0;
+	size_t response_code = 0;
+	uint8_t *out_buf = NULL;
 
 	FUNC_BEGIN;
 
 	if (!slot_id)
 		return -EFAULT;
 
-	res = dal_ctx_add_wrapped_key(client_ticket, KEYSPEC_DAL_WRAPPED_KEY, wrapped_key, wrapped_key_size,
-				      slot_id);
+	if (wrapped_key_size > DAL_KEYSTORE_MAX_WRAP_KEY_LEN) {
+		ks_err(KBUILD_MODNAME ": %s: wrapped_key_size %u, expected < %u",
+				__func__, wrapped_key_size, DAL_KEYSTORE_MAX_WRAP_KEY_LEN);
+		return -EINVAL;
+	}
+
+	res = dal_calc_clientid(client_id, KEYSTORE_MAX_CLIENT_ID_SIZE);
+
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s Error calculating client ID: %d\n",
+				__func__, res);
+		return res;
+	}
+
+	memcpy(input, client_id, sizeof(client_id));
+	memcpy(input + sizeof(client_id), wrapped_key, wrapped_key_size);
+
+cmd_retry:
+	res = send_and_receive(commandId, input, sizeof(input),
+			&out_buf, &output_len, &response_code);
+
+	int retry = 0;
+
+	res = handle_command_response(res, response_code, &retry,
+			client_ticket, client_id);
+
+	if (!res && retry) {
+		response_code = 0;
+		goto cmd_retry;
+	}
+
+	if (res) {
+		ks_err(KBUILD_MODNAME ": %s Error in send_and_receive: command id = %d %d\n",
+				__func__, commandId, res);
+		kzfree(out_buf);
+		return res;
+	}
+
+	res = dal_ctx_add_wrapped_key(client_ticket, KEYSPEC_DAL_WRAPPED_KEY, wrapped_key,
+			wrapped_key_size, slot_id);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Insert wrapped key to slot failed\n",
-			   __func__);
+				__func__);
 	}
 
 	FUNC_RES(res);
