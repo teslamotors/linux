@@ -53,6 +53,7 @@
 #include <linux/mfd/core.h>
 #include <linux/mfd/lpc_ich.h>
 #include <linux/platform_data/itco_wdt.h>
+#include <linux/platform_data/sbi_apl.h>
 
 #define ACPIBASE		0x40
 #define ACPIBASE_GPE_OFF	0x28
@@ -101,6 +102,8 @@ struct lpc_ich_priv {
 	int abase_save;		/* Cached ACPI base value */
 	int actrl_pbase_save;		/* Cached ACPI control or PMC base value */
 	int gctrl_save;		/* Cached GPIO control value */
+
+	struct mutex lock;	/* Device hide/unhide control */
 };
 
 static struct resource wdt_ich_res[] = {
@@ -155,6 +158,11 @@ static struct mfd_cell lpc_ich_spi_cell = {
 	.num_resources = ARRAY_SIZE(intel_spi_res),
 	.resources = intel_spi_res,
 	.ignore_resource_conflicts = true,
+};
+
+static struct mfd_cell lpc_ich_sbi_cell = {
+	.name = "sbi_apl",
+	.resources = 0,
 };
 
 /* chipset related info */
@@ -1169,6 +1177,36 @@ static int lpc_ich_init_spi(struct pci_dev *dev)
 			       &lpc_ich_spi_cell, 1, NULL, 0, NULL);
 }
 
+static int lpc_ich_init_sbi(struct pci_dev *dev)
+{
+	struct lpc_ich_priv *priv = pci_get_drvdata(dev);
+	struct sbi_platform_data *info;
+
+	info = devm_kzalloc(&dev->dev, sizeof(*info), GFP_KERNEL);
+	if (!info)
+		return -ENOMEM;
+
+	switch (priv->chipset) {
+	case LPC_APL:
+		info->name = lpc_ich_sbi_cell.name;
+		info->version = 1;
+		info->bus = 0;
+		info->p2sb = PCI_DEVFN(0x0d, 0);
+		info->lock = &priv->lock;
+		break;
+
+	default:
+		return -ENODEV;
+	}
+
+	lpc_ich_sbi_cell.platform_data = info;
+	lpc_ich_sbi_cell.pdata_size = sizeof(*info);
+
+	return mfd_add_devices(&dev->dev, PLATFORM_DEVID_AUTO,
+			       &lpc_ich_sbi_cell, 1, NULL, 0, NULL);
+}
+
+
 static int lpc_ich_probe(struct pci_dev *dev,
 				const struct pci_device_id *id)
 {
@@ -1198,6 +1236,8 @@ static int lpc_ich_probe(struct pci_dev *dev,
 		priv->gctrl = GPIOCTRL_ICH6;
 	}
 
+	mutex_init(&priv->lock);
+
 	pci_set_drvdata(dev, priv);
 
 	if (lpc_chipset_info[priv->chipset].iTCO_version) {
@@ -1214,6 +1254,12 @@ static int lpc_ich_probe(struct pci_dev *dev,
 
 	if (lpc_chipset_info[priv->chipset].spi_type) {
 		ret = lpc_ich_init_spi(dev);
+		if (!ret)
+			cell_added = true;
+	}
+
+	if (priv->chipset == LPC_APL) {
+		ret = lpc_ich_init_sbi(dev);
 		if (!ret)
 			cell_added = true;
 	}
