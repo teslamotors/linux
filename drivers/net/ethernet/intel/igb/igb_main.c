@@ -7602,6 +7602,15 @@ static int igb_poll(struct napi_struct *napi, int budget)
 						     napi);
 	bool clean_complete = true;
 	int work_done = 0;
+	struct igb_adapter *adapter = q_vector->adapter;
+	struct pci_dev *pdev = adapter->pdev;
+
+	/* if igb_poll invoked while suspend in progress return from here */
+	if (pdev->dev.power.runtime_status == RPM_SUSPENDING ||
+	    pdev->dev.power.runtime_status == RPM_SUSPENDED) {
+		napi_complete(napi);
+		return 0;
+	}
 
 #ifdef CONFIG_IGB_DCA
 	if (q_vector->adapter->flags & IGB_FLAG_DCA_ENABLED)
@@ -7611,6 +7620,7 @@ static int igb_poll(struct napi_struct *napi, int budget)
 		clean_complete = igb_clean_tx_irq(q_vector, budget);
 
 	if (q_vector->rx.ring) {
+		pm_runtime_get_sync(&pdev->dev);
 		int cleaned = igb_clean_rx_irq(q_vector, budget);
 
 		work_done += cleaned;
@@ -8216,6 +8226,8 @@ static int igb_clean_rx_irq(struct igb_q_vector *q_vector, const int budget)
 	struct sk_buff *skb = rx_ring->skb;
 	unsigned int total_bytes = 0, total_packets = 0;
 	u16 cleaned_count = igb_desc_unused(rx_ring);
+	struct igb_adapter *adapter = q_vector->adapter;
+	struct pci_dev *pdev = adapter->pdev;
 
 	while (likely(total_packets < budget)) {
 		union e1000_adv_rx_desc *rx_desc;
@@ -8298,6 +8310,15 @@ static int igb_clean_rx_irq(struct igb_q_vector *q_vector, const int budget)
 	if (cleaned_count)
 		igb_alloc_rx_buffers(rx_ring, cleaned_count);
 
+	/* Schedule suspend if igb_poll() is actually called when
+	 * the hw received some packets.
+	 */
+	if (total_packets) {
+		pm_runtime_mark_last_busy(&pdev->dev);
+		pm_runtime_put_sync_autosuspend(&pdev->dev);
+	} else {
+		pm_runtime_put_noidle(&pdev->dev);
+	}
 	return total_packets;
 }
 
