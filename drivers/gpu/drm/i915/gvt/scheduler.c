@@ -169,6 +169,65 @@ static int populate_shadow_context(struct intel_vgpu_workload *workload)
 	return 0;
 }
 
+static inline bool is_gvt_request(struct drm_i915_gem_request *req)
+{
+	return i915_gem_context_force_single_submission(req->ctx);
+}
+
+static int shadow_context_status_change(struct notifier_block *nb,
+		unsigned long action, void *data)
+{
+	struct drm_i915_gem_request *req = (struct drm_i915_gem_request *)data;
+	struct intel_gvt *gvt = container_of(nb, struct intel_gvt,
+				shadow_ctx_notifier_block[req->engine->id]);
+	struct intel_gvt_workload_scheduler *scheduler = &gvt->scheduler;
+	enum intel_engine_id ring_id = req->engine->id;
+	struct intel_vgpu_workload *workload;
+
+	if (!is_gvt_request(req)) {
+		spin_lock_bh(&scheduler->mmio_context_lock);
+		if (action == INTEL_CONTEXT_SCHEDULE_IN &&
+		    scheduler->engine_owner[ring_id]) {
+			/* Switch ring from vGPU to host. */
+			intel_gvt_switch_mmio(scheduler->engine_owner[ring_id],
+					      NULL, ring_id);
+			scheduler->engine_owner[ring_id] = NULL;
+		}
+		spin_unlock_bh(&scheduler->mmio_context_lock);
+
+		return NOTIFY_OK;
+	}
+
+	workload = scheduler->current_workload[ring_id];
+	if (unlikely(!workload))
+		return NOTIFY_OK;
+
+	switch (action) {
+	case INTEL_CONTEXT_SCHEDULE_IN:
+		spin_lock_bh(&scheduler->mmio_context_lock);
+		if (workload->vgpu != scheduler->engine_owner[ring_id]) {
+			/* Switch ring from host to vGPU or vGPU to vGPU. */
+			intel_gvt_switch_mmio(scheduler->engine_owner[ring_id],
+					      workload->vgpu, ring_id);
+			scheduler->engine_owner[ring_id] = workload->vgpu;
+		} else
+			gvt_dbg_sched("skip ring %d mmio switch for vgpu%d\n",
+				      ring_id, workload->vgpu->id);
+		spin_unlock_bh(&scheduler->mmio_context_lock);
+		atomic_set(&workload->shadow_ctx_active, 1);
+		break;
+	case INTEL_CONTEXT_SCHEDULE_OUT:
+	case INTEL_CONTEXT_SCHEDULE_PREEMPTED:
+		atomic_set(&workload->shadow_ctx_active, 0);
+		break;
+	default:
+		WARN_ON(1);
+		return NOTIFY_OK;
+	}
+	wake_up(&workload->shadow_ctx_status_wq);
+	return NOTIFY_OK;
+}
+
 static void shadow_context_descriptor_update(struct i915_gem_context *ctx,
 		struct intel_engine_cs *engine)
 {
@@ -791,7 +850,13 @@ int intel_gvt_init_workload_scheduler(struct intel_gvt *gvt)
 			goto err;
 		}
 
+
+               gvt->shadow_ctx_notifier_block[i].notifier_call =
+		       shadow_context_status_change;
+               atomic_notifier_chain_register(&engine->context_status_notifier,
+					      &gvt->shadow_ctx_notifier_block[i]);
 	}
+	
 	return 0;
 err:
 	intel_gvt_clean_workload_scheduler(gvt);
