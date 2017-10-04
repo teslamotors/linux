@@ -39,7 +39,8 @@ static int dal_keystore_close(void);
 static void init_key_cache(void);
 static int dal_keystore_install_and_init(void);
 static int handle_command_response(int res, int response_code, int *retry,
-		uint8_t *client_ticket, uint8_t *client_id);
+		const uint8_t *client_ticket, const uint8_t *client_id);
+static int pack_int_to_buf(unsigned int i, unsigned char *buf);
 
 /*
  * The value of dal_keystore_flag decides whether kernel keystore
@@ -58,16 +59,11 @@ void set_dal_keystore_conf(void)
 
 static int dal_keystore_init(void)
 {
-	int res = 0;
 	size_t output_len = 0, response_code = 0;
 	int commandId = DAL_KEYSTORE_INIT;
 	uint8_t *out_buf = NULL;
 
-	out_buf = kmalloc(output_len, GFP_KERNEL);
-	if (!out_buf)
-		return -ENOMEM;
-
-	res = send_and_receive(commandId, NULL, 0,
+	int res = send_and_receive(commandId, NULL, 0,
 		&out_buf, &output_len, &response_code);
 
 	if (res) {
@@ -122,26 +118,36 @@ ret:
 }
 
 static int dal_keystore_register_client(enum keystore_seed_type seed_type,
-				uint8_t *client_id)
+				const uint8_t *client_ticket, const uint8_t *client_id)
 {
 	int res = 0;
 	size_t output_len = 0, response_code = 0;
 	int commandId = DAL_KEYSTORE_REGISTER;
+	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE
+				  + KEYSTORE_CLIENT_TICKET_SIZE + 2];
 	uint8_t *out_buf = NULL;
+	size_t index = 0;
 
 	FUNC_BEGIN;
 
-	if (!client_id) {
+	if (!client_ticket || !client_id) {
 		res = -EFAULT;
 		goto err;
 	}
 
+	memcpy(input, client_id, sizeof(client_id));
+	index += sizeof(client_id);
+	memcpy(input + index, client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
+	index += KEYSTORE_CLIENT_TICKET_SIZE;
+	pack_int_to_buf(seed_type, input + index);
+	index += 2;
+
 cmd_retry:
-	res = send_and_receive(commandId, client_id, KEYSTORE_MAX_CLIENT_ID_SIZE,
+	res = send_and_receive(commandId, input, index,
 		&out_buf, &output_len, &response_code);
 
 	int retry = 0;
-	res = handle_command_response(res, response_code, &retry, NULL, client_id);
+	res = handle_command_response(res, response_code, &retry, NULL, NULL);
 	if (res) {
 		ks_info(KBUILD_MODNAME ": %s Error in send_and_receive: command id = %d %d %d\n",
 					 __func__, commandId, res, response_code);
@@ -160,7 +166,8 @@ err:
 	return res;
 }
 
-static int restore_client_session(uint8_t *client_ticket, uint8_t *client_id)
+static int restore_client_session(const uint8_t *client_ticket,
+		const uint8_t *client_id)
 {
 	enum keystore_seed_type seed_type;
 	int res = 0;
@@ -173,7 +180,7 @@ static int restore_client_session(uint8_t *client_ticket, uint8_t *client_id)
 		return res;
 	}
 
-	res = dal_keystore_register_client(seed_type, client_id);
+	res = dal_keystore_register_client(seed_type, client_ticket, client_id);
 
 	if (res)
 		ks_info(KBUILD_MODNAME ": %s: Client re-register failed\n",
@@ -183,7 +190,7 @@ static int restore_client_session(uint8_t *client_ticket, uint8_t *client_id)
 }
 
 static int handle_command_response(int res, int response_code, int *retry,
-		uint8_t *client_ticket, uint8_t *client_id)
+		const uint8_t *client_ticket, const uint8_t *client_id)
 {
 	if (res == DAL_KDI_STATUS_INTERNAL_ERROR) {
 		*retry = 1;
@@ -207,7 +214,8 @@ static int handle_command_response(int res, int response_code, int *retry,
 
 	/* falls thru */
 	*retry = 0;
-	ks_info(KBUILD_MODNAME ": %s passing thru status: %d %d\n", __func__, res, response_code);
+	ks_info(KBUILD_MODNAME ": %s passing thru status: %d %d\n",
+			__func__, res, response_code);
 	return res;
 }
 
@@ -216,10 +224,13 @@ int dal_keystore_register(enum keystore_seed_type seed_type,
 				uint8_t *client_ticket)
 {
 	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];
+	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE
+				  + KEYSTORE_CLIENT_TICKET_SIZE + 2];
 	int res = 0;
 	size_t output_len = 0, response_code = 0;
 	int commandId = DAL_KEYSTORE_REGISTER;
 	uint8_t *out_buf = NULL;
+	size_t index = 0;
 
 	FUNC_BEGIN;
 
@@ -244,8 +255,18 @@ int dal_keystore_register(enum keystore_seed_type seed_type,
 		goto close_session;
 	}
 
+	/* randomize a buffer */
+	keystore_get_rdrand(client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
+
+	memcpy(input, client_id, sizeof(client_id));
+	index += sizeof(client_id);
+	memcpy(input + index, client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
+	index += KEYSTORE_CLIENT_TICKET_SIZE;
+	pack_int_to_buf(seed_type, input + index);
+	index += 2;
+
 cmd_retry:
-	res = send_and_receive(commandId, client_id, sizeof(client_id),
+	res = send_and_receive(commandId, input, index,
 		&out_buf, &output_len, &response_code);
 
 	int retry = 0;
@@ -264,9 +285,6 @@ cmd_retry:
 		kzfree(out_buf);
 		goto close_session;
 	}
-
-	/* randomize a buffer */
-	keystore_get_rdrand(client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
 
 	/* Add the new client to the context */
 	res = dal_ctx_add_client(client_ticket, seed_type, client_id);
@@ -290,14 +308,14 @@ EXPORT_SYMBOL(dal_keystore_register);
 
 int dal_keystore_unregister(const uint8_t *client_ticket)
 {
-	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];
+	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE + KEYSTORE_CLIENT_TICKET_SIZE];
 	int res = 0;
 	size_t output_len = 0, response_code = 0;
 	int commandId = DAL_KEYSTORE_UNREGISTER;
 	uint8_t *out_buf = NULL;
 
 	FUNC_BEGIN;
-	res = dal_calc_clientid(client_id, sizeof(client_id));
+	res = dal_calc_clientid(input, KEYSTORE_MAX_CLIENT_ID_SIZE);
 
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s Error calculating client ID: %d\n",
@@ -305,7 +323,10 @@ int dal_keystore_unregister(const uint8_t *client_ticket)
 		return res;
 	}
 
-	res = send_and_receive(commandId, client_id, sizeof(client_id),
+	memcpy(input + KEYSTORE_MAX_CLIENT_ID_SIZE,
+			client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
+
+	res = send_and_receive(commandId, input, sizeof(input),
 		&out_buf, &output_len, &response_code);
 
 	int retry = 0;
@@ -336,7 +357,7 @@ EXPORT_SYMBOL(dal_keystore_unregister);
 static int pack_int_to_buf(unsigned int i, unsigned char *buf)
 {
 	/* integers are represented by 2 bytes currently */
-	if (i >= 0x100)
+	if (i >= 0x10000)
 		return -EFAULT;
 	buf[0] = i & 0xFF;
 	buf[1] = (i >> 8) & 0xFF;
@@ -425,7 +446,8 @@ get_keysize_retry:
 	}
 	key_len = response_code;
 
-	cache_key_size(keyspec, response_code);
+	cache_key_size(keyspec, key_len);
+	response_code = 0;
 
 	commandId = DAL_KEYSTORE_WRAP_KEYSIZE;
 
@@ -503,10 +525,12 @@ int dal_keystore_wrap_key(const uint8_t *client_ticket,
 	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];
 	int res = 0;
 	size_t response_code = 0;
-	uint8_t in[KEYSTORE_MAX_CLIENT_ID_SIZE + app_key_size + 2];
+	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE + KEYSTORE_CLIENT_TICKET_SIZE
+				+ app_key_size + 2];
 	int commandId = DAL_KEYSTORE_WRAP_KEY;
 	size_t output_len = 0;
 	uint8_t *out_buf = NULL;
+	size_t index = 0;
 
 	FUNC_BEGIN;
 
@@ -518,20 +542,23 @@ int dal_keystore_wrap_key(const uint8_t *client_ticket,
 		return res;
 	}
 
-	memcpy(in, client_id, sizeof(client_id));
-	pack_int_to_buf(keyspec, in + sizeof(client_id));
-	memcpy(in + sizeof(client_id) + 2, app_key, app_key_size);
+	memcpy(input, client_id, sizeof(client_id));
+	index += sizeof(client_id);
+	memcpy(input + index, client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
+	index += KEYSTORE_CLIENT_TICKET_SIZE;
+	pack_int_to_buf(keyspec, input + index);
+	index += 2;
+	memcpy(input + index, app_key, app_key_size);
+	index += app_key_size;
 
 cmd_retry:
 	output_len = get_cached_wrapped_key_size();
-	out_buf = kmalloc(output_len, GFP_KERNEL);
-	if (!out_buf)
-		return -ENOMEM;
 
-	res = send_and_receive(commandId, in, sizeof(in),
+	res = send_and_receive(commandId, input, sizeof(input),
 		&out_buf, &output_len, &response_code);
 	int retry = 0;
-	res = handle_command_response(res, response_code, &retry, client_ticket, client_id);
+	res = handle_command_response(res, response_code, &retry,
+			client_ticket, client_id);
 
 	if (!res && retry) {
 		response_code = 0;
@@ -562,10 +589,11 @@ int dal_keystore_generate_key(const uint8_t *client_ticket,
 	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];
 	int res = 0;
 	size_t response_code = 0;
-	uint8_t in[KEYSTORE_MAX_CLIENT_ID_SIZE + 2];
+	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE + KEYSTORE_CLIENT_TICKET_SIZE + 2];
 	int commandId = DAL_KEYSTORE_GENERATE_KEY;
 	size_t output_len = 0;
 	uint8_t *out_buf = NULL;
+	size_t index = 0;
 
 	FUNC_BEGIN;
 
@@ -577,19 +605,21 @@ int dal_keystore_generate_key(const uint8_t *client_ticket,
 		return res;
 	}
 
-	memcpy(in, client_id, sizeof(client_id));
-	pack_int_to_buf(keyspec, in + KEYSTORE_MAX_CLIENT_ID_SIZE);
+	memcpy(input, client_id, sizeof(client_id));
+	index += sizeof(client_id);
+	memcpy(input + index, client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
+	index += KEYSTORE_CLIENT_TICKET_SIZE;
+	pack_int_to_buf(keyspec, input + index);
+	index += 2;
 
 cmd_retry:
 	output_len = dal_get_wrapped_key_size(keyspec);
-	out_buf = kmalloc(output_len, GFP_KERNEL);
-	if (!out_buf)
-		return -ENOMEM;
 
-	res = send_and_receive(commandId, in, sizeof(client_id) + 2,
+	res = send_and_receive(commandId, input, index,
 		&out_buf, &output_len, &response_code);
 	int retry = 0;
-	res = handle_command_response(res, response_code, &retry, client_ticket, client_id);
+	res = handle_command_response(res, response_code, &retry,
+			client_ticket, client_id);
 
 	if (!res && retry) {
 		response_code = 0;
@@ -619,8 +649,8 @@ int dal_keystore_load_key(const uint8_t *client_ticket,
 	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];
 	size_t output_len = 0;
 	int commandId = DAL_KEYSTORE_LOAD_KEY;
-	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE + wrapped_key_size];
-	size_t index = 0;
+	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE
+				  + KEYSTORE_CLIENT_TICKET_SIZE + wrapped_key_size];
 	size_t response_code = 0;
 	uint8_t *out_buf = NULL;
 
@@ -643,15 +673,19 @@ int dal_keystore_load_key(const uint8_t *client_ticket,
 		return res;
 	}
 
+	size_t index = 0;
 	memcpy(input, client_id, sizeof(client_id));
-	memcpy(input + sizeof(client_id), wrapped_key, wrapped_key_size);
+	index += sizeof(client_id);
+	memcpy(input + index, client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
+	index += KEYSTORE_CLIENT_TICKET_SIZE;
+	memcpy(input + index, wrapped_key, wrapped_key_size);
+	index += wrapped_key_size;
 
 cmd_retry:
-	res = send_and_receive(commandId, input, sizeof(input),
+	res = send_and_receive(commandId, input, index,
 			&out_buf, &output_len, &response_code);
 
 	int retry = 0;
-
 	res = handle_command_response(res, response_code, &retry,
 			client_ticket, client_id);
 
@@ -667,8 +701,8 @@ cmd_retry:
 		return res;
 	}
 
-	res = dal_ctx_add_wrapped_key(client_ticket, KEYSPEC_DAL_WRAPPED_KEY, wrapped_key,
-			wrapped_key_size, slot_id);
+	res = dal_ctx_add_wrapped_key(client_ticket, KEYSPEC_DAL_WRAPPED_KEY,
+			wrapped_key, wrapped_key_size, slot_id);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Insert wrapped key to slot failed\n",
 				__func__);
@@ -740,8 +774,9 @@ int dal_keystore_encrypt(const uint8_t *client_ticket, int slot_id,
 	unsigned int wrapped_key_size = DAL_KEYSTORE_MAX_WRAP_KEY_LEN;
 	enum keystore_key_spec key_spec = KEYSPEC_INVALID;
 	int commandId = DAL_KEYSTORE_ENCRYPT;
-	const size_t in_size = (KEYSTORE_MAX_CLIENT_ID_SIZE + DAL_KEYSTORE_MAX_WRAP_KEY_LEN + DAL_KEYSTORE_GCM_IV_SIZE
-			+ input_size + 8);
+	const size_t in_size = (KEYSTORE_MAX_CLIENT_ID_SIZE
+			+ KEYSTORE_CLIENT_TICKET_SIZE + DAL_KEYSTORE_MAX_WRAP_KEY_LEN
+			+ DAL_KEYSTORE_GCM_IV_SIZE + input_size + 8);
 	size_t index = 0;
 	size_t output_len = 0;
 	size_t response_code = 0;
@@ -778,6 +813,8 @@ int dal_keystore_encrypt(const uint8_t *client_ticket, int slot_id,
 
 	memcpy(in, client_id, sizeof(client_id));
 	index += sizeof(client_id);
+	memcpy(in + index, client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
+	index += KEYSTORE_CLIENT_TICKET_SIZE;
 
 	/* Get the wrapped application key */
 	res = dal_ctx_get_wrapped_key(client_ticket, slot_id, &key_spec,
@@ -817,17 +854,12 @@ cmd_retry:
 		goto exit;
 	}
 
-	out_buf = kmalloc(output_len, GFP_KERNEL);
-	if (!out_buf) {
-		res = -ENOMEM;
-		goto exit;
-	}
-
 	res = send_and_receive(commandId, in, index,
 		&out_buf, &output_len, &response_code);
 
 	int retry = 0;
-	res = handle_command_response(res, response_code, &retry, client_ticket, client_id);
+	res = handle_command_response(res, response_code, &retry,
+				client_ticket, client_id);
 
 	if (!res && retry) {
 		response_code = 0;
@@ -893,8 +925,9 @@ int dal_keystore_decrypt(const uint8_t *client_ticket, int slot_id,
 	unsigned int wrapped_key_size = DAL_KEYSTORE_MAX_WRAP_KEY_LEN;
 	enum keystore_key_spec key_spec = KEYSPEC_INVALID;
 	int commandId = DAL_KEYSTORE_DECRYPT;
-	const size_t in_size = (KEYSTORE_MAX_CLIENT_ID_SIZE + DAL_KEYSTORE_MAX_WRAP_KEY_LEN + DAL_KEYSTORE_GCM_IV_SIZE
-				+ input_size + 8);
+	const size_t in_size = (KEYSTORE_MAX_CLIENT_ID_SIZE
+			+ KEYSTORE_CLIENT_TICKET_SIZE + DAL_KEYSTORE_MAX_WRAP_KEY_LEN
+			+ DAL_KEYSTORE_GCM_IV_SIZE + input_size + 8);
 	size_t index = 0;
 	size_t output_len = 0;
 	size_t response_code = 0;
@@ -931,6 +964,8 @@ int dal_keystore_decrypt(const uint8_t *client_ticket, int slot_id,
 
 	memcpy(in, client_id, sizeof(client_id));
 	index += sizeof(client_id);
+	memcpy(in + index, client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
+	index += KEYSTORE_CLIENT_TICKET_SIZE;
 
 	/* Get the wrapped application key */
 	res = dal_ctx_get_wrapped_key(client_ticket, slot_id, &key_spec,
@@ -968,17 +1003,12 @@ cmd_retry:
 	if (res)
 		return res;
 
-	out_buf = kmalloc(output_len, GFP_KERNEL);
-	if (!out_buf) {
-		res = -ENOMEM;
-		goto exit;
-	}
-
 	res = send_and_receive(commandId, in, index,
 		&out_buf, &output_len, &response_code);
 
 	int retry = 0;
-	res = handle_command_response(res, response_code, &retry, client_ticket, client_id);
+	res = handle_command_response(res, response_code, &retry,
+				client_ticket, client_id);
 
 	if (!res && retry) {
 		response_code = 0;
