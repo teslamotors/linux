@@ -25,6 +25,7 @@
 static struct pxa2xx_spi_chip chip_data = {
 	.gpio_cs = -EINVAL,
 	.dma_burst_size = 1,
+	.pio_dma_threshold = 8,
 };
 
 static struct spi_board_info apl_spi_slaves[] = {
