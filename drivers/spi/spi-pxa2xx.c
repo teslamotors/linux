@@ -1102,6 +1102,7 @@ static void pump_transfers(unsigned long data)
 
 	dma_mapped = master->can_dma &&
 		     master->can_dma(master, message->spi, transfer) &&
+		     (drv_data->len > chip->pio_dma_threshold) &&
 		     master->cur_msg_mapped;
 	if (dma_mapped) {
 
@@ -1341,6 +1342,8 @@ static int setup(struct spi_device *spi)
 		chip->dma_threshold = 0;
 		if (chip_info->enable_loopback)
 			chip->cr1 = SSCR1_LBM;
+		if (chip_info->pio_dma_threshold)
+			chip->pio_dma_threshold = chip_info->pio_dma_threshold;
 	}
 
 	chip->lpss_rx_threshold = SSIRF_RxThresh(rx_thres);
