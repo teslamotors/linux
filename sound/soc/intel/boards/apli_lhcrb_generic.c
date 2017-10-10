@@ -73,8 +73,7 @@ static int apli_lhcrb_dummy_startup(struct snd_pcm_substream *substream)
 	};
 
 	static u64 formats = SNDRV_PCM_FMTBIT_S16_LE |
-			SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S24_LE |
-						SNDRV_PCM_FMTBIT_S32_LE;
+			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE;
 
 	static struct snd_pcm_hw_constraint_list hw_constraints_rates = {
 		.count = ARRAY_SIZE(rates),
