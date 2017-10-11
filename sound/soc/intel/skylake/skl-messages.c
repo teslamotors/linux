@@ -403,8 +403,8 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 	 */
 	memcpy(host_cpr_cfg->guid, &guid, 16);
 	memcpy(link_cpr_cfg->guid, &guid, 16);
-	in_fmt = &link_cpr_cfg->module->formats[0].inputs[0].fmt;
-	out_fmt = &link_cpr_cfg->module->formats[0].outputs[0].fmt;
+	in_fmt = &host_cpr_cfg->module->formats[0].inputs[0].fmt;
+	out_fmt = &host_cpr_cfg->module->formats[0].outputs[0].fmt;
 
 	/* Playback pipeline */
 	host_cpr_pipe = kzalloc(sizeof(struct skl_pipe), GFP_KERNEL);
