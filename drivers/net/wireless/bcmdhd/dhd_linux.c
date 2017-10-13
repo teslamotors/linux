@@ -10121,7 +10121,7 @@ dhd_os_get_image_block(char *buf, int len, void *image)
 		return 0;
 
 	size = i_size_read(file_inode(fp));
-	rdlen = kernel_read(fp, fp->f_pos, buf, MIN(len, size));
+	rdlen = kernel_read(fp, buf, MIN(len, size), &fp->f_pos);
 
 	if (len >= size && size != rdlen) {
 		return -EIO;
@@ -12782,6 +12782,7 @@ void dhd_get_memdump_info(dhd_pub_t *dhd)
 	uint32 mem_val = DUMP_MEMFILE_MAX;
 	int ret = 0;
 	char *filepath = MEMDUMPINFO;
+	loff_t pos=0;
 
 	/* Read memdump info from the file */
 	fp = filp_open(filepath, O_RDONLY, 0);
@@ -12789,7 +12790,7 @@ void dhd_get_memdump_info(dhd_pub_t *dhd)
 		DHD_ERROR(("%s: File [%s] doesn't exist\n", __FUNCTION__, filepath));
 		goto done;
 	} else {
-		ret = kernel_read(fp, 0, (char *)&mem_val, 4);
+		ret = kernel_read(fp, (char *)&mem_val, 4, &pos);
 		if (ret < 0) {
 			DHD_ERROR(("%s: File read error, ret=%d\n", __FUNCTION__, ret));
 			filp_close(fp, NULL);
@@ -12984,6 +12985,7 @@ void dhd_get_assert_info(dhd_pub_t *dhd)
 {
 	struct file *fp = NULL;
 	char *filepath = ASSERTINFO;
+	loff_t pos=0;
 
 	/*
 	 * Read assert info from the file
@@ -12997,7 +12999,7 @@ void dhd_get_assert_info(dhd_pub_t *dhd)
 		DHD_ERROR(("%s: File [%s] doesn't exist\n", __FUNCTION__, filepath));
 	} else {
 		int mem_val = 0;
-		int ret = kernel_read(fp, 0, (char *)&mem_val, 4);
+		int ret = kernel_read(fp, (char *)&mem_val, 4, &pos);
 		if (ret < 0) {
 			DHD_ERROR(("%s: File read error, ret=%d\n", __FUNCTION__, ret));
 		} else {

@@ -1068,13 +1068,14 @@ dhd_get_memcheck_info(void)
 	uint32 mem_val = 0;
 	int ret = 0;
 	char *filepath = MEMCHECKINFO;
+	loff_t pos=0;
 
 	fp = filp_open(filepath, O_RDONLY, 0);
 	if (IS_ERR(fp)) {
 		DHD_ERROR(("[WIFI_SEC] %s: File [%s] doesn't exist\n", __FUNCTION__, filepath));
 		goto done;
 	} else {
-		ret = kernel_read(fp, 0, (char *)&mem_val, 4);
+		ret = kernel_read(fp, (char *)&mem_val, 4, &pos);
 		if (ret < 0) {
 			DHD_ERROR(("[WIFI_SEC] %s: File read error, ret=%d\n", __FUNCTION__, ret));
 			filp_close(fp, NULL);
