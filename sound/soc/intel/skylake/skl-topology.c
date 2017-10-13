@@ -3285,11 +3285,11 @@ static const struct snd_soc_tplg_kcontrol_ops skl_tplg_kcontrol_ops[] = {
 		.get = skl_tplg_mic_control_get,
 		.put = skl_tplg_mic_control_set,
 	},
-	{
-		.id = SKL_CONTROL_TYPE_MULTI_IO_SELECT,
-		.get = skl_tplg_multi_config_get,
-		.put = skl_tplg_multi_config_set,
-	},
+	// {
+		// .id = SKL_CONTROL_TYPE_MULTI_IO_SELECT,
+		// .get = skl_tplg_multi_config_get,
+		// .put = skl_tplg_multi_config_set,
+	// },
 	{
 		.id = SKL_CONTROL_TYPE_VOLUME,
 		.info = skl_tplg_volume_ctl_info,
