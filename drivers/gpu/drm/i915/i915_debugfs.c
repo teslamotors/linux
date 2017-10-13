@@ -84,7 +84,7 @@ static char get_active_flag(struct drm_i915_gem_object *obj)
 
 static char get_pin_flag(struct drm_i915_gem_object *obj)
 {
-	return obj->pin_display ? 'p' : ' ';
+	return obj->pin_global ? 'p' : ' ';
 }
 
 static char get_tiling_flag(struct drm_i915_gem_object *obj)
@@ -151,8 +151,8 @@ describe_obj(struct seq_file *m, struct drm_i915_gem_object *obj)
 			pin_count++;
 	}
 	seq_printf(m, " (pinned x %d)", pin_count);
-	if (obj->pin_display)
-		seq_printf(m, " (display)");
+	if (obj->pin_global)
+		seq_printf(m, " (global)");
 	list_for_each_entry(vma, &obj->vma_list, obj_link) {
 		if (!drm_mm_node_allocated(&vma->node))
 			continue;
@@ -442,7 +442,7 @@ static int i915_gem_object_info(struct seq_file *m, void *data)
 		size += obj->base.size;
 		++count;
 
-		if (obj->pin_display) {
+		if (obj->pin_global) {
 			dpy_size += obj->base.size;
 			++dpy_count;
 		}
@@ -463,7 +463,7 @@ static int i915_gem_object_info(struct seq_file *m, void *data)
 		   purgeable_count, purgeable_size);
 	seq_printf(m, "%u mapped objects, %llu bytes\n",
 		   mapped_count, mapped_size);
-	seq_printf(m, "%u display objects (pinned), %llu bytes\n",
+	seq_printf(m, "%u display objects (globally pinned), %llu bytes\n",
 		   dpy_count, dpy_size);
 
 	seq_printf(m, "%llu [%llu] gtt total\n",
@@ -527,7 +527,7 @@ static int i915_gem_gtt_info(struct seq_file *m, void *data)
 
 	total_obj_size = total_gtt_size = count = 0;
 	list_for_each_entry(obj, &dev_priv->mm.bound_list, global_link) {
-		if (show_pin_display_only && !obj->pin_display)
+		if (show_pin_display_only && !obj->pin_global)
 			continue;
 
 		seq_puts(m, "   ");
