@@ -209,7 +209,7 @@ static void __fill_v4l2_buffer(struct vb2_buffer *vb, void *pb)
 	b->timecode = vbuf->timecode;
 	b->sequence = vbuf->sequence;
 	b->request = vbuf->request;
-	b->reserved = 0;
+	b->reserved = vbuf->reserved;
 
 	if (q->is_multiplanar) {
 		/*
