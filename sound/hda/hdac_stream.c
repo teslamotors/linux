@@ -91,6 +91,11 @@ void snd_hdac_stream_clear(struct hdac_stream *azx_dev)
 	int timeout;
 	unsigned char val;
 
+	/* check if the DMA is already stopped */
+	val = snd_hdac_stream_readb(azx_dev, SD_CTL) & SD_CTL_DMA_START;
+	if (!val)
+		return;
+
 	snd_hdac_stream_updateb(azx_dev, SD_CTL,
 				SD_CTL_DMA_START | SD_INT_MASK, 0);
 
