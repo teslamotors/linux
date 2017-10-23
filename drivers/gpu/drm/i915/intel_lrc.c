@@ -594,7 +594,8 @@ static void execlists_dequeue(struct intel_engine_cs *engine)
 			 * the state of the GPU is known (idle).
 			 */
 			inject_preempt_context(engine);
-			execlists->preempt = true;
+			execlists_set_active(execlists,
+					     EXECLISTS_ACTIVE_PREEMPT);
 			goto unlock;
 		} else {
 			/*
@@ -702,8 +703,10 @@ done:
 unlock:
 	spin_unlock_irq(&engine->timeline->lock);
 
-	if (submit)
+	if (submit) {
+		execlists_set_active(execlists, EXECLISTS_ACTIVE_USER);
 		execlists_submit_ports(engine);
+	}
 }
 
 static void
@@ -715,6 +718,7 @@ execlist_cancel_port_requests(struct intel_engine_execlists *execlists)
 	while (num_ports-- && port_isset(port)) {
 		struct drm_i915_gem_request *rq = port_request(port);
 
+		GEM_BUG_ON(!execlists->active);
 		execlists_context_status_change(rq, INTEL_CONTEXT_SCHEDULE_PREEMPTED);
 		i915_gem_request_put(rq);
 
@@ -881,14 +885,20 @@ static void intel_lrc_irq_handler(unsigned long data)
 				unwind_incomplete_requests(engine);
 				spin_unlock_irq(&engine->timeline->lock);
 
-				GEM_BUG_ON(!execlists->preempt);
-				execlists->preempt = false;
+				GEM_BUG_ON(!execlists_is_active(execlists,
+								EXECLISTS_ACTIVE_PREEMPT));
+				execlists_clear_active(execlists,
+						       EXECLISTS_ACTIVE_PREEMPT);
 				continue;
 			}
 
 			if (status & GEN8_CTX_STATUS_PREEMPTED &&
-			    execlists->preempt)
+			    execlists_is_active(execlists,
+						EXECLISTS_ACTIVE_PREEMPT))
 				continue;
+
+			GEM_BUG_ON(!execlists_is_active(execlists,
+							EXECLISTS_ACTIVE_USER));
 
 			/* Check the context/desc id for this event matches */
 			GEM_DEBUG_BUG_ON(buf[2 * head + 1] != port->context_id);
@@ -912,6 +922,9 @@ static void intel_lrc_irq_handler(unsigned long data)
 			/* After the final element, the hw should be idle */
 			GEM_BUG_ON(port_count(port) == 0 &&
 				   !(status & GEN8_CTX_STATUS_ACTIVE_IDLE));
+			if (port_count(port) == 0)
+				execlists_clear_active(execlists,
+						       EXECLISTS_ACTIVE_USER);
 		}
 
 		if (head != execlists->csb_head) {
@@ -921,7 +934,7 @@ static void intel_lrc_irq_handler(unsigned long data)
 		}
 	}
 
-	if (!execlists->preempt)
+	if (!execlists_is_active(execlists, EXECLISTS_ACTIVE_PREEMPT))
 		execlists_dequeue(engine);
 
 	intel_uncore_forcewake_put(dev_priv, execlists->fw_domains);
@@ -1484,7 +1497,7 @@ static int gen8_init_common_ring(struct intel_engine_cs *engine)
 		   GT_CONTEXT_SWITCH_INTERRUPT << engine->irq_shift);
 	clear_bit(ENGINE_IRQ_EXECLIST, &engine->irq_posted);
 	execlists->csb_head = -1;
-	execlists->preempt = false;
+	execlists->active = 0;
 
 	/* After a GPU reset, we may have requests to replay */
 	if (!i915_modparams.enable_guc_submission && execlists->first)
