@@ -91,19 +91,16 @@ static void ctm_mult_by_limited(uint64_t *result, int64_t *input)
 {
 	int i;
 
-	for (i = 0; i < 9; i++)
-		result[i] = 0;
-
-	for (i = 0; i < 3; i++) {
-		int64_t user_coeff = input[i * 3 + i];
+	for (i = 0; i < 9; i++) {
+		int64_t user_coeff = input[i];
 		uint64_t limited_coeff = CTM_COEFF_LIMITED_RANGE >> 2;
 		uint64_t abs_coeff = clamp_val(CTM_COEFF_ABS(user_coeff),
 					       0,
 					       CTM_COEFF_4_0 - 1) >> 2;
 
-		result[i * 3 + i] = (limited_coeff * abs_coeff) >> 27;
+		result[i] = (limited_coeff * abs_coeff) >> 28;
 		if (CTM_COEFF_NEGATIVE(user_coeff))
-			result[i * 3 + i] |= CTM_COEFF_SIGN;
+			result[i] |= CTM_COEFF_SIGN;
 	}
 }
 
