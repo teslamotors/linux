@@ -79,13 +79,13 @@ static inline int get_port_from_gmbus0(struct intel_vgpu *vgpu, u32 gmbus0)
 	int port_select = gmbus0 & _GMBUS_PIN_SEL_MASK;
 	int port = -EINVAL;
 
-        if (IS_BROXTON(dev_priv)) {
-                if (port_select == 1)
-                        port = PORT_B;
-                else if (port_select == 2)
-                        port = PORT_C;
-                else if (port_select == 3)
-                        port = PORT_D;
+	if (IS_BROXTON(dev_priv)) {
+		if (port_select == 1)
+			port = PORT_B;
+		else if (port_select == 2)
+			port = PORT_C;
+		else if (port_select == 3)
+			port = PORT_A;
 	} else {
 		if (port_select == 2)
 			port = PORT_E;
