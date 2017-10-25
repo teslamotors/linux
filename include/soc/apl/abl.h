@@ -48,5 +48,6 @@ struct hwver {
 int get_apl_hwver(struct hwver *hwver);
 int get_apl_manifest_offsets(struct manifest_offset *moff);
 int get_apl_seed_offsets(struct seed_offset *ksoff);
+int get_apl_seed_list_offsets(struct seed_offset *ksoff);
 
 #endif /* __SOC_APL_ABL_H__ */

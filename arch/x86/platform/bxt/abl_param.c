@@ -27,6 +27,7 @@ static unsigned int num_params;
 
 /* device and user seed */
 #define ABL_SEED		"seed"
+#define ABL_SEED_LIST		"seed_list"
 #define ABL_SEED_FORMAT         "%x,%x"
 #define ABL_RET_DSEED_USEED	2
 
@@ -38,7 +39,7 @@ static unsigned int num_params;
 #define ABL_HWVER_FORMAT	"%x,%d,%d,%x,%d,%d"
 #define ABL_RET_SIZE_HWVER	6
 
-int get_apl_seed_offsets(struct seed_offset *ksoff)
+static int get_apl_offsets(const char* tag, struct seed_offset *ksoff)
 {
 	struct abl_param *param;
 	int res = -ENODATA;
@@ -49,7 +50,7 @@ int get_apl_seed_offsets(struct seed_offset *ksoff)
 	}
 
 	list_for_each_entry(param, &params_list, list) {
-		if (0 == strcmp(ABL_SEED, param->name)) {
+		if (0 == strcmp(tag, param->name)) {
 			res = sscanf(param->value, ABL_SEED_FORMAT,
 					&ksoff->device_seed,
 					&ksoff->user_seed);
@@ -62,7 +63,19 @@ int get_apl_seed_offsets(struct seed_offset *ksoff)
 
 	return res;
 }
+
+
+int get_apl_seed_offsets(struct seed_offset *ksoff)
+{
+	return get_apl_offsets(ABL_SEED, ksoff);
+}
 EXPORT_SYMBOL_GPL(get_apl_seed_offsets);
+
+int get_apl_seed_list_offsets(struct seed_offset *ksoff)
+{
+	return get_apl_offsets(ABL_SEED_LIST, ksoff);
+}
+EXPORT_SYMBOL_GPL(get_apl_seed_list_offsets);
 
 int get_apl_manifest_offsets(struct manifest_offset *moff)
 {
