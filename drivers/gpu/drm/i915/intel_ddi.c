@@ -2632,11 +2632,18 @@ void intel_ddi_init(struct drm_i915_private *dev_priv, enum port port)
 		}
 	}
 
-	init_hdmi = (dev_priv->vbt.ddi_port_info[port].supports_dvi ||
+	/*
+	 * For port A check whether vgpu is active and we have a monitor
+	 * attached to port A.
+	 * */
+	init_hdmi = (intel_vgpu_active(dev_priv) && port == PORT_A &&
+			(I915_READ(GEN8_DE_PORT_ISR) & BXT_DE_PORT_HP_DDIA)) ||
+			(dev_priv->vbt.ddi_port_info[port].supports_dvi ||
 		     dev_priv->vbt.ddi_port_info[port].supports_hdmi);
 	init_dp = dev_priv->vbt.ddi_port_info[port].supports_dp;
 
-	if (intel_bios_is_lspcon_present(dev_priv, port)) {
+	if (!intel_vgpu_active(dev_priv) &&
+			intel_bios_is_lspcon_present(dev_priv, port)) {
 		/*
 		 * Lspcon device needs to be driven with DP connector
 		 * with special detection sequence. So make sure DP
@@ -2739,7 +2746,8 @@ void intel_ddi_init(struct drm_i915_private *dev_priv, enum port port)
 
 	/* In theory we don't need the encoder->type check, but leave it just in
 	 * case we have some really bad VBTs... */
-	if (intel_encoder->type != INTEL_OUTPUT_EDP && init_hdmi) {
+	if ((intel_vgpu_active(dev_priv) ||
+		(intel_encoder->type != INTEL_OUTPUT_EDP && init_hdmi))) {
 		if (!intel_ddi_init_hdmi_connector(intel_dig_port))
 			goto err;
 	}
