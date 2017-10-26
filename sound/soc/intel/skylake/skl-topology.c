@@ -3084,6 +3084,7 @@ int skl_dsp_cb_event(struct skl_sst *ctx, unsigned int event,
 	struct skl *skl = get_skl_ctx(ctx->dev);
 	struct snd_soc_platform *soc_platform = skl->platform;
 	struct skl_module_notify *m_notification = NULL;
+	struct snd_kcontrol *kcontrol;
 	struct skl_algo_data *bc;
 	u8 param_length;
 
@@ -3091,17 +3092,15 @@ int skl_dsp_cb_event(struct skl_sst *ctx, unsigned int event,
 	case SKL_TPLG_CHG_NOTIFY:
 		card = soc_platform->component.card;
 
-		if (!ctx->kcontrol) {
-			ctx->kcontrol = snd_soc_card_get_kcontrol(card,
-					"Topology Change Notification");
-			if (!ctx->kcontrol) {
-				dev_dbg(ctx->dev,
-					"NOTIFICATION Controls not found\n");
-				return -EINVAL;
-			}
+		kcontrol = snd_soc_card_get_kcontrol(card,
+				"Topology Change Notification");
+		if (!kcontrol) {
+			dev_warn(ctx->dev,
+				"NOTIFICATION Controls not found\n");
+			return -EINVAL;
 		}
 
-		sb = (struct soc_bytes_ext *)ctx->kcontrol->private_value;
+		sb = (struct soc_bytes_ext *)kcontrol->private_value;
 		if (!sb->dobj.private) {
 			sb->dobj.private = devm_kzalloc(ctx->dev,
 				sizeof(*notify_data), GFP_KERNEL);
@@ -3111,25 +3110,25 @@ int skl_dsp_cb_event(struct skl_sst *ctx, unsigned int event,
 
 		memcpy(sb->dobj.private, notify_data, sizeof(*notify_data));
 		snd_ctl_notify(card->snd_card, SNDRV_CTL_EVENT_MASK_VALUE,
-							&ctx->kcontrol->id);
+							&kcontrol->id);
 		break;
 	case SKL_EVENT_GLB_MODULE_NOTIFICATION:
 		m_notification = (struct skl_module_notify *)notify_data->data;
 		card = soc_platform->component.card;
-		ctx->kcontrol = skl_get_notify_kcontrol(ctx, card->snd_card,
+		kcontrol = skl_get_notify_kcontrol(ctx, card->snd_card,
 					m_notification->unique_id);
-		if (!ctx->kcontrol) {
-			dev_dbg(ctx->dev, "Module notify control not found\n");
+		if (!kcontrol) {
+			dev_warn(ctx->dev, "Module notify control not found\n");
 			return -EINVAL;
 		}
 
-		sb = (struct soc_bytes_ext *)ctx->kcontrol->private_value;
+		sb = (struct soc_bytes_ext *)kcontrol->private_value;
 		bc = (struct skl_algo_data *)sb->dobj.private;
 		param_length = sizeof(struct skl_notify_data)
 					+ notify_data->length;
 		memcpy(bc->params, (char *)notify_data, param_length);
 		snd_ctl_notify(card->snd_card,
-				SNDRV_CTL_EVENT_MASK_VALUE, &ctx->kcontrol->id);
+				SNDRV_CTL_EVENT_MASK_VALUE, &kcontrol->id);
 		break;
 	default:
 		return -EINVAL;

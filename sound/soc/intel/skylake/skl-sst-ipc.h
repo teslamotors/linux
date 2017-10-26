@@ -316,8 +316,6 @@ struct skl_sst {
 	/* sysfs for module info */
 	struct skl_sysfs_tree *sysfs_tree;
 
-	struct snd_kcontrol *kcontrol;
-
 	struct list_head notify_kctls;
 };
 
