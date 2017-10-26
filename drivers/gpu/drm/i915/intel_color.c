@@ -221,13 +221,34 @@ static void i9xx_load_csc_matrix(struct drm_crtc_state *crtc_state)
 
 	if (INTEL_GEN(dev_priv) > 6) {
 		uint16_t postoff = 0;
+		uint16_t postoff_red = 0;
+		uint16_t postoff_green = 0;
+		uint16_t postoff_blue = 0;
 
-		if (intel_crtc_state->limited_color_range)
+		if (intel_crtc_state->limited_color_range) {
 			postoff = (16 * (1 << 12) / 255) & 0x1fff;
+			postoff_red = postoff;
+			postoff_green = postoff;
+			postoff_blue = postoff;
+		}
 
-		I915_WRITE(PIPE_CSC_POSTOFF_HI(pipe), postoff);
-		I915_WRITE(PIPE_CSC_POSTOFF_ME(pipe), postoff);
-		I915_WRITE(PIPE_CSC_POSTOFF_LO(pipe), postoff);
+		if (crtc_state->ctm_post_offset) {
+			struct drm_color_ctm_post_offset *ctm_post_offset =
+				(struct drm_color_ctm_post_offset *)crtc_state->ctm_post_offset->data;
+
+			/* Convert to U0.12 format. */
+			postoff_red = ctm_post_offset->red >> 4;
+			postoff_green = ctm_post_offset->green >> 4;
+			postoff_blue = ctm_post_offset->blue >> 4;
+
+			postoff_red = clamp_val(postoff_red, postoff, 0xfff);
+			postoff_green = clamp_val(postoff_green, postoff, 0xfff);
+			postoff_blue = clamp_val(postoff_blue, postoff, 0xfff);
+		}
+
+		I915_WRITE(PIPE_CSC_POSTOFF_HI(pipe), postoff_red);
+		I915_WRITE(PIPE_CSC_POSTOFF_ME(pipe), postoff_green);
+		I915_WRITE(PIPE_CSC_POSTOFF_LO(pipe), postoff_blue);
 
 		I915_WRITE(PIPE_CSC_MODE(pipe), 0);
 	} else {

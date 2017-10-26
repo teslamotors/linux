@@ -325,6 +325,13 @@ static int drm_mode_create_standard_properties(struct drm_device *dev)
 
 	prop = drm_property_create(dev,
 			DRM_MODE_PROP_BLOB,
+			"CTM_POST_OFFSET", 0);
+	if (!prop)
+		return -ENOMEM;
+	dev->mode_config.ctm_post_offset_property = prop;
+
+	prop = drm_property_create(dev,
+			DRM_MODE_PROP_BLOB,
 			"GAMMA_LUT", 0);
 	if (!prop)
 		return -ENOMEM;

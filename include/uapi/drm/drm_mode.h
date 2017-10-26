@@ -580,6 +580,13 @@ struct drm_color_ctm {
 	__s64 matrix[9];
 };
 
+struct drm_color_ctm_post_offset {
+	/* Data is U0.16 fixed point format. */
+	__u16 red;
+	__u16 green;
+	__u16 blue;
+};
+
 struct drm_color_lut {
 	/*
 	 * Data is U0.16 fixed point format.
