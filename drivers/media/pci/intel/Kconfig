@@ -54,3 +54,9 @@ config VIDEO_INTEL_UOS
 	---help---
 	If selected UOS driver components will be compiled
 
+config VIDEO_INTEL_IPU4_POWER_CYCLE_AT_STREAMOFF
+       bool "Enable power cycling of IPU hardware at streamoff of last stream"
+       ---help---
+       Triggers HW power cycle without need of closing/reopening IPU device
+        node by userspace application after stopping last active stream.
+

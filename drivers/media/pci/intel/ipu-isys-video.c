@@ -1486,6 +1486,65 @@ turn_off_skew_cal:
 	return rval;
 }
 
+static void power_cycle(struct ipu_isys *isys)
+{
+	struct device *dev = &isys->adev->dev;
+	int end = 0;
+
+	dev_dbg(dev, "Power cycling\n");
+
+	mutex_lock(&isys->mutex);
+
+	dev_dbg(&isys->adev->dev, "Closing firmware");
+	ipu_fw_isys_close(isys);
+	isys->reset_needed = true;
+
+	mutex_unlock(&isys->mutex);
+
+	pm_runtime_put(&isys->adev->dev);
+	/* Make sure that power cycle will be done when needed */
+	if (isys->reset_needed) {
+		do {
+			dev_dbg(&isys->adev->dev,
+				"Waiting for power cycle to finish");
+			msleep(1);
+			mutex_lock(&isys->mutex);
+			if (isys->reset_needed == false)
+				end = 1;
+			mutex_unlock(&isys->mutex);
+		} while (!end);
+	}
+
+	pm_runtime_get_sync(&isys->adev->dev);
+
+	mutex_lock(&isys->mutex);
+
+	dev_dbg(&isys->adev->dev, "Configuring spc");
+	ipu_configure_spc(isys->adev->isp,
+			  &isys->pdata->ipdata->hw_variant,
+			  IPU_CPD_PKG_DIR_ISYS_SERVER_IDX,
+			  isys->pdata->base, isys->pkg_dir,
+			  isys->pkg_dir_dma_addr);
+
+	dev_dbg(&isys->adev->dev, "Cleaning old fw msg bufs");
+	ipu_cleanup_fw_msg_bufs(isys);
+
+	if (isys->fwcom) {
+		/*
+		 * Something went wrong in previous shutdown. As we are now
+		 * restarting isys we can safely delete old context.
+		 */
+		dev_dbg(&isys->adev->dev, "Clearing old context\n");
+		ipu_fw_isys_cleanup(isys);
+	}
+
+	dev_dbg(&isys->adev->dev, "initializing firmware");
+	ipu_fw_isys_init(isys, num_stream_support);
+
+	mutex_unlock(&isys->mutex);
+	dev_dbg(dev, "Power cycling finished\n");
+}
+
 int ipu_isys_video_set_streaming(struct ipu_isys_video *av,
 				 unsigned int state,
 				 struct ipu_isys_buffer_list *bl)
@@ -1615,6 +1674,13 @@ int ipu_isys_video_set_streaming(struct ipu_isys_video *av,
 		close_streaming_firmware(av);
 		av->ip.stream_id = 0;
 		av->ip.vc = 0;
+
+#ifdef CONFIG_VIDEO_INTEL_IPU4_POWER_CYCLE_AT_STREAMOFF
+               if (!av->isys->csi2_in_error_state &&
+                   av->isys->video_opened == 1) {
+                       power_cycle(av->isys);
+               }
+#endif
 	}
 
 	if (state)
