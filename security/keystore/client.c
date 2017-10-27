@@ -65,6 +65,17 @@ out:
 	return result;
 }
 
+static int keystore_derive_clientkey(const char *key, size_t klen,
+				     const char *data_in, size_t dlen,
+				     char *hash_out, size_t outlen)
+{
+	return  keystore_calc_mac("hmac(sha256)",
+				  key, klen,
+				  data_in, dlen,
+				  hash_out, outlen);
+
+}
+
 #ifdef CONFIG_APPLICATION_AUTH
 int keystore_calc_clientid(u8 *client_id, const unsigned int client_id_size,
 		int timeout, u16 caps)
@@ -184,6 +195,34 @@ out_buf:
 	return res;
 }
 
+int keystore_calc_clientkey_prev(const enum keystore_seed_type seed_type,
+				 const u8 *client_id,
+				 unsigned int client_id_size,
+				 u8 *client_key,
+				 const unsigned int client_key_size,
+				 unsigned int seed_index)
+{
+	int res = 0;
+	const uint8_t *seed = NULL;
+
+	if (!client_key || !client_id)
+		return -EFAULT;
+
+	seed = keystore_get_seed_list_entry(seed_type, seed_index);
+	if (!seed) {
+		ks_err(KBUILD_MODNAME ": %s: Seed type %d invalid or not available.\n",
+			       __func__, seed_type);
+		return -EINVAL;
+	}
+
+	/* calculate KDF(key = SEED, data = ClientID) */
+	res = keystore_derive_clientkey(seed, SEC_SEED_SIZE,
+					client_id,  client_id_size,
+					client_key, client_key_size);
+
+	return res;
+}
+
 int keystore_calc_clientkey(const enum keystore_seed_type seed_type,
 			    const u8 *client_id, unsigned int client_id_size,
 			    u8 *client_key, const unsigned int client_key_size)
@@ -202,10 +241,9 @@ int keystore_calc_clientkey(const enum keystore_seed_type seed_type,
 	}
 
 	/* calculate KDF(key = SEED, data = ClientID) */
-	res = keystore_calc_mac("hmac(sha256)",
-				seed, SEC_SEED_SIZE,
-				client_id,  client_id_size,
-				client_key, client_key_size);
+	res = keystore_derive_clientkey(seed, SEC_SEED_SIZE,
+					client_id, client_id_size,
+					client_key, client_key_size);
 
 	return res;
 }

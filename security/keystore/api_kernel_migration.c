@@ -155,7 +155,7 @@ int keystore_rewrap_key(const uint8_t *client_ticket,
 	/****************************************************************/
 	/* 3. Get Context for this client                               */
 	/****************************************************************/
-	res = ctx_get_client_key(client_ticket, client_key, client_id);
+	res = ctx_get_client_key(client_ticket, client_key, client_id, NULL);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Cannot find context\n",
 		       __func__);

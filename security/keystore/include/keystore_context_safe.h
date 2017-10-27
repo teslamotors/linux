@@ -52,7 +52,7 @@
  *
  */
 int ctx_add_client(const uint8_t *client_ticket, const uint8_t *client_key,
-		   const uint8_t *client_id);
+		   const uint8_t *client_id, enum keystore_seed_type seed_type);
 
 /**
  * ctx_remove_client() - Remove a client
@@ -100,6 +100,7 @@ int ctx_add_app_key(const uint8_t *client_ticket,
  *              keys. Must be an array of size %KEYSTORE_CLIENT_KEY_SIZE.
  * @client_id: A unique ID for the client, must be an array of
  *             %KEYSTORE_MAX_CLIENT_ID_SIZE bytes.
+ * @seed_type: The seed type associated with this client ID and Key
  *
  * Copies the client key and client ID associated with the @client_ticket
  * into the buffers pointed to by @client_key and @client_id respectively.
@@ -110,8 +111,8 @@ int ctx_add_app_key(const uint8_t *client_ticket,
  * Returns: 0 on success or negative errno.
  *
  */
-int ctx_get_client_key(const uint8_t *client_ticket,
-		       uint8_t *client_key, uint8_t *client_id);
+int ctx_get_client_key(const uint8_t *client_ticket, uint8_t *client_key,
+			uint8_t *client_id, enum keystore_seed_type *seed_type);
 
 /**
  * ctx_get_app_key() - Get the application key for the given ticket.

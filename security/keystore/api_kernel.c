@@ -26,6 +26,7 @@
 #include <security/sb.h>
 
 #include "keystore_debug.h"
+#include "keystore_seed.h"
 #include "keystore_client.h"
 #include "keystore_context_safe.h"
 #include "keystore_operations.h"
@@ -93,7 +94,7 @@ int keystore_register(enum keystore_seed_type seed_type, uint8_t *client_ticket)
 	keystore_get_rdrand(client_ticket, KEYSTORE_CLIENT_TICKET_SIZE);
 
 	/* Add the new client to the context */
-	res = ctx_add_client(client_ticket, client_key, client_id);
+	res = ctx_add_client(client_ticket, client_key, client_id, seed_type);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Cannot allocate context\n",
 		       __func__);
@@ -160,7 +161,7 @@ int keystore_generate_key(const uint8_t *client_ticket,
 	FUNC_BEGIN;
 
 	/* Cache the client key */
-	res = ctx_get_client_key(client_ticket, client_key, NULL);
+	res = ctx_get_client_key(client_ticket, client_key, NULL, NULL);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Cannot find context\n",
 		       __func__);
@@ -202,7 +203,7 @@ int keystore_wrap_key(const uint8_t *client_ticket,
 	FUNC_BEGIN;
 
 	/* Cache the client key */
-	res = ctx_get_client_key(client_ticket, client_key, NULL);
+	res = ctx_get_client_key(client_ticket, client_key, NULL, NULL);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Cannot find context\n",
 		       __func__);
@@ -224,14 +225,18 @@ exit:
 }
 EXPORT_SYMBOL(keystore_wrap_key);
 
-int keystore_load_key(const uint8_t *client_ticket, const uint8_t *wrapped_key,
+int keystore_load_key(const uint8_t *client_ticket, uint8_t *wrapped_key,
 		      unsigned int wrapped_key_size, unsigned int *slot_id)
 {
 	uint8_t client_key[KEYSTORE_CLIENT_KEY_SIZE];
+	uint8_t client_key_prev[KEYSTORE_CLIENT_KEY_SIZE];
+	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];
 	uint8_t app_key[KEYSTORE_MAX_APPKEY_SIZE];
 	unsigned int app_key_size = 0;
+	unsigned int i, max_seeds;
 	int res = 0;
 	enum keystore_key_spec keyspec = KEYSPEC_INVALID;
+	enum keystore_seed_type seed_type;
 
 	FUNC_BEGIN;
 
@@ -249,31 +254,75 @@ int keystore_load_key(const uint8_t *client_ticket, const uint8_t *wrapped_key,
 		goto exit;
 	}
 
-	res = ctx_get_client_key(client_ticket, client_key, NULL);
+	res = ctx_get_client_key(client_ticket, client_key,
+				 client_id, &seed_type);
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s: Cannot find context\n",
 		       __func__);
 		goto exit;
 	}
 
+	/* Try unwrapping with the latest client key
+	 * (ie generated with highest SVN)
+	 */
 	res = unwrap_key(client_key, wrapped_key, wrapped_key_size,
 			 &keyspec, app_key);
-	if (res) {
+	if (res == 0) {
+		/* Success */
+		res = ctx_add_app_key(client_ticket, keyspec,
+				      app_key, app_key_size,
+				      slot_id);
+		if (res)
+			ks_err(KBUILD_MODNAME ": %s: Insert key to slot failed\n",
+			       __func__);
+	} else if (res == -EKEYREJECTED) {
+		/* Decrypt successful, but hash did not match.
+		 * Try generating and unwrapping with legacy client keys.
+		 */
+		max_seeds = keystore_get_seed_list_size(seed_type);
+		for (i = 1; i < max_seeds; ++i) {
+			/* Derive the previous client key */
+			res = keystore_calc_clientkey_prev(seed_type,
+							   client_id,
+							   sizeof(client_id),
+							   client_key_prev,
+							   sizeof(client_key_prev),
+							   i);
+			if (res)
+				goto key_clear;
+
+			/* Try to unwrap with this key */
+			res = unwrap_key(client_key_prev,
+					 wrapped_key, wrapped_key_size,
+					 &keyspec, app_key);
+			if (res == 0) {
+				/* Success - we can exit */
+				res = wrap_key(client_key,
+					       app_key, app_key_size,
+					       keyspec, wrapped_key);
+				if (res)
+					goto key_clear;
+				/* Set return code to well known error code */
+				res = -EAGAIN;
+				break;
+			} else if (res == -EKEYREJECTED) {
+				/* Try the next key */
+				continue;
+			} else {
+				goto key_clear;
+			}
+		}
+	} else {
 		ks_err(KBUILD_MODNAME ": %s: Unwrap key failed\n", __func__);
-		goto key_clear;
 	}
 
-	res = ctx_add_app_key(client_ticket, keyspec, app_key, app_key_size,
-			      slot_id);
-	if (res) {
-		ks_err(KBUILD_MODNAME ": %s: Insert key to slot failed\n",
-		       __func__);
-		goto key_clear;
-	}
 
 key_clear:
 	/* clear local copies of the keys */
 	memset(client_key, 0, sizeof(client_key));
+	memset(client_key_prev, 0, sizeof(client_key_prev));
+	memset(client_id, 0, sizeof(client_id));
+	memset(app_key, 0, sizeof(app_key));
 exit:
 	FUNC_RES(res);
 	return res;

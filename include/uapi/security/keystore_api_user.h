@@ -336,7 +336,7 @@ struct ias_keystore_wrap_key {
 struct ias_keystore_load_key {
 	/* input */
 	__u8 client_ticket[KEYSTORE_CLIENT_TICKET_SIZE];
-	const __u8 __user *wrapped_key;
+	__u8 __user *wrapped_key;
 	__u32 wrapped_key_size;
 
 	/* output */

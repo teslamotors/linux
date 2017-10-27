@@ -11,7 +11,7 @@
 DEFINE_MUTEX(contexts_mutex);
 
 int ctx_add_client(const uint8_t *client_ticket, const uint8_t *client_key,
-		   const uint8_t *client_id)
+		   const uint8_t *client_id, enum keystore_seed_type seed_type)
 
 {
 	struct keystore_ctx *ctx;
@@ -36,6 +36,7 @@ int ctx_add_client(const uint8_t *client_ticket, const uint8_t *client_key,
 	       client_key, KEYSTORE_CLIENT_KEY_SIZE);
 	memcpy(ctx->client_id,
 	       client_id, KEYSTORE_MAX_CLIENT_ID_SIZE);
+	ctx->seed_type = seed_type;
 
 unlock_mutex:
 	mutex_unlock(&contexts_mutex);
@@ -93,8 +94,8 @@ unlock_mutex:
 	return res;
 }
 
-int ctx_get_client_key(const uint8_t *client_ticket,
-		       uint8_t *client_key, uint8_t *client_id)
+int ctx_get_client_key(const uint8_t *client_ticket, uint8_t *client_key,
+			uint8_t *client_id, enum keystore_seed_type *seed_type)
 {
 	struct keystore_ctx *ctx = NULL;
 	int res = 0;
@@ -116,6 +117,8 @@ int ctx_get_client_key(const uint8_t *client_ticket,
 	if (client_id)
 		memcpy(client_id, ctx->client_id,
 		       KEYSTORE_MAX_CLIENT_ID_SIZE);
+	if (seed_type)
+		*seed_type = ctx->seed_type;
 
 unlock_mutex:
 	mutex_unlock(&contexts_mutex);

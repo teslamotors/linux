@@ -82,7 +82,7 @@ int dal_keystore_generate_key(const uint8_t *client_ticket,
  * Return: 0 if OK or negative error code (see errno.h)
  */
 int dal_keystore_load_key(const uint8_t *client_ticket,
-			const uint8_t *wrapped_key,
+			uint8_t *wrapped_key,
 			unsigned int wrapped_key_size, unsigned int *slot_id);
 
 /**

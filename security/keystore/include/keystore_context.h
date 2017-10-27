@@ -83,7 +83,7 @@ struct keystore_ctx {
 	uint8_t client_ticket[KEYSTORE_CLIENT_TICKET_SIZE];  /* ClientTicket */
 	uint8_t client_key[KEYSTORE_CLIENT_KEY_SIZE];        /* ClientKey */
 	char client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];         /* Client ID */
-
+	enum keystore_seed_type seed_type;                   /* Seed type */
 	struct list_head slots;                              /* list of slots */
 };
 

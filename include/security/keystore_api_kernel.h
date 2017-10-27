@@ -118,9 +118,15 @@ int keystore_wrap_key(const uint8_t *client_ticket, const uint8_t *app_key,
  * Keystore will take the wrapped key, unwrap it and store it in a slot
  * associated with the client_ticket.
  *
+ * If the function returns -EAGAIN, unwrapping was only possible with a legacy
+ * SEED (with outdated SVN). The key has not been loaded, but the @wrapped_key
+ * array has been replaced with a key wrapped with the latest client key (with
+ * largest SVN). In this case the client must save the wrapped_key and call
+ * keystore_load_key() again with the newly wrapped key.
+ *
  * Return: 0 if OK or negative error code (see errno.h).
  */
-int keystore_load_key(const uint8_t *client_ticket, const uint8_t *wrapped_key,
+int keystore_load_key(const uint8_t *client_ticket, uint8_t *wrapped_key,
 		      unsigned int wrapped_key_size, unsigned int *slot_id);
 
 /**

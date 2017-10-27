@@ -391,7 +391,7 @@ int aes_siv_decrypt(const void *key, unsigned int key_size,
 }
 
 /**
- * Decrypt a block of data using AES-SIV.
+ * En/Decrypt a block of data using AES-SIV.
  *
  * @param enc Mode: 1 - encrypt, 0 - decrypt.
  * @param key Pointer to the key.

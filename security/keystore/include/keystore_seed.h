@@ -76,6 +76,8 @@ int keystore_fill_seeds(void);
  */
 const uint8_t *keystore_get_seed(enum keystore_seed_type type);
 
+unsigned int keystore_get_seed_list_size(enum keystore_seed_type type);
+const uint8_t *keystore_get_seed_list_entry(enum keystore_seed_type type, unsigned int seed_index);
 
 
 #endif /* _KEYSTORE_SEED_H_ */

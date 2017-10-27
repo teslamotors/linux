@@ -354,6 +354,14 @@ static int load_key_op(struct ias_keystore_load_key *user_data)
 				wrapped_key,
 				user_data->wrapped_key_size,
 				&user_data->slot_id);
+
+	if (res == -EAGAIN) {
+		res = copy_to_user(user_data->wrapped_key, wrapped_key,
+				user_data->wrapped_key_size);
+		if (res == 0)
+			res = -EAGAIN;
+	}
+
 free_buf:
 	kzfree(wrapped_key);
 	return res;

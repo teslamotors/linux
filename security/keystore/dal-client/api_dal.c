@@ -31,6 +31,7 @@
 
 #define KEYSPEC_DAL_WRAPPED_KEY (165)
 #define EXCEPTION_SESSION_NOT_PRESENT (-155)
+#define EXCEPTION_KEY_REWRAPPED (-171)
 
 struct dal_key_info key_info = {0};
 
@@ -205,6 +206,12 @@ static int handle_command_response(int res, int response_code, int *retry,
 		ks_info(KBUILD_MODNAME ": %s restore session status: %d\n",
 				__func__, res);
 		return res;
+	} else if (res == 0 &&
+			(response_code >> 16) == EXCEPTION_KEY_REWRAPPED) {
+		*retry = 0;
+		ks_info(KBUILD_MODNAME ": %s command exception: %d\n",
+				__func__, response_code);
+		return -EAGAIN;
 	} else if (res == 0 && response_code < 0) {
 		*retry = 0;
 		ks_info(KBUILD_MODNAME ": %s command exception: %d\n",
@@ -642,15 +649,13 @@ cmd_retry:
 EXPORT_SYMBOL(dal_keystore_generate_key);
 
 int dal_keystore_load_key(const uint8_t *client_ticket,
-			const uint8_t *wrapped_key,
+			uint8_t *wrapped_key,
 			unsigned int wrapped_key_size, unsigned int *slot_id)
 {
 	int res = 0;
 	uint8_t client_id[KEYSTORE_MAX_CLIENT_ID_SIZE];
 	size_t output_len = 0;
 	int commandId = DAL_KEYSTORE_LOAD_KEY;
-	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE
-				  + KEYSTORE_CLIENT_TICKET_SIZE + wrapped_key_size];
 	size_t response_code = 0;
 	uint8_t *out_buf = NULL;
 
@@ -664,6 +669,9 @@ int dal_keystore_load_key(const uint8_t *client_ticket,
 				__func__, wrapped_key_size, DAL_KEYSTORE_MAX_WRAP_KEY_LEN);
 		return -EINVAL;
 	}
+
+	uint8_t input[KEYSTORE_MAX_CLIENT_ID_SIZE
+				  + KEYSTORE_CLIENT_TICKET_SIZE + wrapped_key_size];
 
 	res = dal_calc_clientid(client_id, KEYSTORE_MAX_CLIENT_ID_SIZE);
 
@@ -697,6 +705,13 @@ cmd_retry:
 	if (res) {
 		ks_err(KBUILD_MODNAME ": %s Error in send_and_receive: command id = %d %d\n",
 				__func__, commandId, res);
+
+		if (res == -EAGAIN && output_len) {
+			/* The key was re-wrapped with current SEED
+			 * so client has to update it. */
+			memcpy(wrapped_key, out_buf, output_len);
+		}
+
 		kzfree(out_buf);
 		return res;
 	}
