@@ -1072,6 +1072,11 @@ static struct snd_soc_acpi_mach sst_bxtp_devdata[] = {
 		.drv_name = "bxt_tdf8532",
 		.fw_filename = "intel/dsp_fw_bxtn.bin",
 	},
+	{
+		.id = "INT34C3",
+		.drv_name = "bxt_ivi_ull",
+		.fw_filename = "intel/dsp_fw_ull_bxtn.bin",
+	},
 	{}
 };
 
