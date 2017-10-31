@@ -1371,6 +1371,9 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	.playback = {
 		.stream_name = "Probe Playback",
 		.channels_min = HDA_MONO,
+		.rates = SNDRV_PCM_RATE_48000,
+		.rate_min = 48000,
+		.rate_max = 48000,
 	},
 },
 {
@@ -1380,6 +1383,9 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 	.capture = {
 			.stream_name = "Probe Capture",
 			.channels_min = HDA_MONO,
+			.rates = SNDRV_PCM_RATE_48000,
+			.rate_min = 48000,
+			.rate_max = 48000,
 	},
 },
 };

@@ -323,6 +323,11 @@ int skl_probe_compr_tstamp(struct snd_compr_stream *stream,
 
 	tstamp->copied_total = hstream->hstream.curr_pos;
 
+	if (stream->direction == SND_COMPRESS_PLAYBACK)
+		tstamp->sampling_rate = snd_pcm_rate_bit_to_rate(dai->driver->playback.rates);
+        else
+		tstamp->sampling_rate = snd_pcm_rate_bit_to_rate(dai->driver->capture.rates);
+
 	return 0;
 
 }
