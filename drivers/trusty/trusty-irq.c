@@ -199,6 +199,9 @@ static int trusty_irq_cpu_up(unsigned int cpu, struct hlist_node *node)
 	unsigned long irq_flags;
 	struct trusty_irq_state *is = hlist_entry_safe(node, struct trusty_irq_state, node);
 
+	if(is == NULL)
+		return 0;
+
 	dev_dbg(is->dev, "%s: cpu %d\n", __func__, smp_processor_id());
 
 	local_irq_save(irq_flags);
@@ -211,6 +214,9 @@ static int trusty_irq_cpu_down(unsigned int cpu, struct hlist_node *node)
 {
 	unsigned long irq_flags;
 	struct trusty_irq_state *is = hlist_entry_safe(node, struct trusty_irq_state, node);
+
+	if(is == NULL)
+		return 0;
 
 	dev_dbg(is->dev, "%s: cpu %d\n", __func__, smp_processor_id());
 
