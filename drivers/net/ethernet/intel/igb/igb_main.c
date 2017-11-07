@@ -3649,6 +3649,7 @@ static int igb_sw_init(struct igb_adapter *adapter)
 	adapter->min_frame_size = ETH_ZLEN + ETH_FCS_LEN;
 
 	adapter->igb_tx_pending = 0;
+	spin_lock_init(&adapter->nfc_lock);
 	spin_lock_init(&adapter->rpm_txlock);
 	spin_lock_init(&adapter->stats64_lock);
 #ifdef CONFIG_PCI_IOV
@@ -8740,7 +8741,7 @@ static void igb_restore_vlan(struct igb_adapter *adapter)
 	u16 vid = 1;
 
 	igb_vlan_mode(adapter->netdev, adapter->netdev->features);
-	igb_vlan_rx_add_vid(adapter->netdev, htons(ETH_P_8021Q), 0);
+	__igb_vlan_rx_add_vid(adapter->netdev, htons(ETH_P_8021Q), 0);
 
 	for_each_set_bit_from(vid, adapter->active_vlans, VLAN_N_VID)
 		__igb_vlan_rx_add_vid(adapter->netdev, htons(ETH_P_8021Q), vid);
@@ -9028,7 +9029,7 @@ static int __maybe_unused igb_runtime_idle(struct device *dev)
 #ifdef CONFIG_PM
 	if (dev->power.runtime_auto)
 #endif
-		pm_request_autosuspend(dev);
+		pm_runtime_put_sync_autosuspend(dev);
 	return -EBUSY;
 }
 
