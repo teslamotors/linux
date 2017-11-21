@@ -147,6 +147,12 @@ static int trusty_wall_probe(struct platform_device *pdev)
 	int ret;
 	struct trusty_wall_dev_state *s;
 
+	ret = trusty_check_cpuid(NULL);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		return -EINVAL;
+	}
+
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	s = kzalloc(sizeof(*s), GFP_KERNEL);

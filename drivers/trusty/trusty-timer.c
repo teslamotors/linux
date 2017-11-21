@@ -79,9 +79,14 @@ static int trusty_timer_call_notify(struct notifier_block *nb,
 static int trusty_timer_probe(struct platform_device *pdev)
 {
 	int ret;
-	unsigned int cpu;
 	struct trusty_timer_dev_state *s;
 	struct trusty_timer *tt;
+
+	ret = trusty_check_cpuid(NULL);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		return -EINVAL;
+	}
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
@@ -127,7 +132,6 @@ static int trusty_timer_probe(struct platform_device *pdev)
 
 static int trusty_timer_remove(struct platform_device *pdev)
 {
-	unsigned int cpu;
 	struct trusty_timer_dev_state *s = platform_get_drvdata(pdev);
 	struct trusty_timer *tt;
 
