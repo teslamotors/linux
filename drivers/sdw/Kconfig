@@ -1,0 +1,19 @@
+menuconfig SDW
+	tristate "SoundWire bus support"
+	depends on CRC8
+	depends on X86
+	help
+	  SoundWire interface is typically used for transporting data
+	  related to audio functions.
+menuconfig SDW_CNL
+	tristate "Intel SoundWire master controller support"
+	depends on SDW && X86
+	help
+	  Intel SoundWire master controller driver
+menuconfig SDW_MAXIM_SLAVE
+	bool "SoundWire Slave for the Intel CNL FPGA"
+	depends on SDW && X86
+	help
+	  SoundWire Slave on FPGA platform for Intel CNL IP
+	  Mostly N for all the cases other than CNL Slave FPGA
+

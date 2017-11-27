@@ -223,6 +223,8 @@ struct hdac_io_ops {
 			       struct snd_dma_buffer *buf);
 	void (*dma_free_pages)(struct hdac_bus *bus,
 			       struct snd_dma_buffer *buf);
+	/* mark memory region as non-cache */
+	void (*mark_pages_uc)(struct snd_dma_buffer *buf, bool enable);
 };
 
 #define HDA_UNSOL_QUEUE_SIZE	64
@@ -429,6 +431,7 @@ struct hdac_stream {
 	struct snd_pcm_substream *substream;	/* assigned substream,
 						 * set in PCM open
 						 */
+	struct snd_compr_stream *stream;
 	unsigned int format_val;	/* format value to be set in the
 					 * controller and the codec
 					 */
@@ -442,6 +445,7 @@ struct hdac_stream {
 	bool no_period_wakeup:1;
 	bool locked:1;
 
+	unsigned long curr_pos;
 	/* timestamp */
 	unsigned long start_wallclk;	/* start + minimum wallclk */
 	unsigned long period_wallclk;	/* wallclk for period */

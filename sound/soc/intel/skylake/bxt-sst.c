@@ -21,7 +21,7 @@
 #include <linux/device.h>
 
 #include "../common/sst-dsp.h"
-#include "../common/sst-dsp-priv.h"
+#include "skl-fwlog.h"
 #include "skl-sst-ipc.h"
 
 #define BXT_BASEFW_TIMEOUT	3000
@@ -32,14 +32,27 @@
 #define BXT_ROM_INIT		0x5
 #define BXT_ADSP_SRAM0_BASE	0x80000
 
+/* BXT SSP/I2S Registers */
+#define I2S_SSC1_REG_OFF	BIT(2)
+#define SET_SLAVE_MASK		GENMASK(25, 24)
+
+/*BXT I2S Clock Gating*/
+#define BXT_DSP_CLK_CTL			0x378
+#define BXT_DISABLE_4_SSP_CLK_GT	GENMASK(21, 18)
+#define BXT_DISABLE_ALL_SSP_CLK_GT	GENMASK(23, 18)
+
+/* Trace Buffer Window */
+#define BXT_ADSP_SRAM2_BASE	0x0C0000
+#define BXT_ADSP_W2_SIZE	0x2000
+#define BXT_ADSP_WP_DSP0	(BXT_ADSP_SRAM0_BASE+0x30)
+#define BXT_ADSP_WP_DSP1	(BXT_ADSP_SRAM0_BASE+0x34)
+#define BXT_ADSP_NR_DSP		2
+
 /* Firmware status window */
 #define BXT_ADSP_FW_STATUS	BXT_ADSP_SRAM0_BASE
 #define BXT_ADSP_ERROR_CODE     (BXT_ADSP_FW_STATUS + 0x4)
 
 #define BXT_ADSP_SRAM1_BASE	0xA0000
-
-#define BXT_INSTANCE_ID 0
-#define BXT_BASE_FW_MODULE_ID 0
 
 #define BXT_ADSP_FW_BIN_HDR_OFFSET 0x2000
 
@@ -48,12 +61,42 @@
 
 #define BXT_FW_ROM_INIT_RETRY 3
 
+#define GET_SSP_BASE(N)	(N > 4 ? 0x2000 : 0x4000)
+
+#define BXTP_NUM_I2S_PORTS	6
+
+static void bxt_set_ssp_slave(struct sst_dsp *ctx)
+{
+	u32 mask, i2s_base_addr;
+	int i;
+
+	if (BXTP_NUM_I2S_PORTS == 4)
+		mask = BXT_DISABLE_4_SSP_CLK_GT;
+	else
+		mask = BXT_DISABLE_ALL_SSP_CLK_GT;
+
+	/* disable clock gating on all SSPs */
+	sst_dsp_shim_update_bits_unlocked(ctx,
+			BXT_DSP_CLK_CTL, mask, mask);
+
+	/* set all SSPs to slave */
+	i2s_base_addr = GET_SSP_BASE(BXTP_NUM_I2S_PORTS);
+	for (i = 0; i < BXTP_NUM_I2S_PORTS; i++) {
+		sst_dsp_shim_update_bits_unlocked(ctx,
+			(i2s_base_addr + (i * 0x1000) + I2S_SSC1_REG_OFF),
+					SET_SLAVE_MASK, SET_SLAVE_MASK);
+	}
+
+	/* re-enable clock gating */
+	sst_dsp_shim_update_bits_unlocked(ctx, BXT_DSP_CLK_CTL, mask, 0);
+}
+
 static unsigned int bxt_get_errorcode(struct sst_dsp *ctx)
 {
 	 return sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE);
 }
 
-static int
+int
 bxt_load_library(struct sst_dsp *ctx, struct skl_lib_info *linfo, int lib_count)
 {
 	struct snd_dma_buffer dmab;
@@ -69,7 +112,8 @@ bxt_load_library(struct sst_dsp *ctx, struct skl_lib_info *linfo, int lib_count)
 			goto load_library_failed;
 
 		stream_tag = ctx->dsp_ops.prepare(ctx->dev, 0x40,
-					stripped_fw.size, &dmab);
+					stripped_fw.size, &dmab,
+					SNDRV_PCM_STREAM_PLAYBACK);
 		if (stream_tag <= 0) {
 			dev_err(ctx->dev, "Lib prepare DMA err: %x\n",
 					stream_tag);
@@ -80,14 +124,17 @@ bxt_load_library(struct sst_dsp *ctx, struct skl_lib_info *linfo, int lib_count)
 		dma_id = stream_tag - 1;
 		memcpy(dmab.area, stripped_fw.data, stripped_fw.size);
 
-		ctx->dsp_ops.trigger(ctx->dev, true, stream_tag);
+		ctx->dsp_ops.trigger(ctx->dev, true, stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
 		ret = skl_sst_ipc_load_library(&skl->ipc, dma_id, i, true);
 		if (ret < 0)
 			dev_err(ctx->dev, "IPC Load Lib for %s fail: %d\n",
 					linfo[i].name, ret);
 
-		ctx->dsp_ops.trigger(ctx->dev, false, stream_tag);
-		ctx->dsp_ops.cleanup(ctx->dev, &dmab, stream_tag);
+		ctx->dsp_ops.trigger(ctx->dev, false, stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
+		ctx->dsp_ops.cleanup(ctx->dev, &dmab, stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
 	}
 
 	return ret;
@@ -107,7 +154,8 @@ static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
 {
 	int stream_tag, ret;
 
-	stream_tag = ctx->dsp_ops.prepare(ctx->dev, 0x40, fwsize, &ctx->dmab);
+	stream_tag = ctx->dsp_ops.prepare(ctx->dev, 0x40, fwsize, &ctx->dmab,
+						SNDRV_PCM_STREAM_PLAYBACK);
 	if (stream_tag <= 0) {
 		dev_err(ctx->dev, "Failed to prepare DMA FW loading err: %x\n",
 				stream_tag);
@@ -124,6 +172,9 @@ static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
 		dev_err(ctx->dev, "dsp core0/1 power up failed\n");
 		goto base_fw_load_failed;
 	}
+
+	/* DSP is powered up, set all SSPs to slave mode */
+	bxt_set_ssp_slave(ctx);
 
 	/* Step 2: Purge FW request */
 	sst_dsp_shim_write(ctx, SKL_ADSP_REG_HIPCI, SKL_ADSP_REG_HIPCI_BUSY |
@@ -169,7 +220,9 @@ static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
 	return ret;
 
 base_fw_load_failed:
-	ctx->dsp_ops.cleanup(ctx->dev, &ctx->dmab, stream_tag);
+	ctx->dsp_ops.cleanup(ctx->dev, &ctx->dmab, stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
+
 	skl_dsp_core_power_down(ctx, SKL_DSP_CORE_MASK(1));
 	skl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
 	return ret;
@@ -179,12 +232,15 @@ static int sst_transfer_fw_host_dma(struct sst_dsp *ctx)
 {
 	int ret;
 
-	ctx->dsp_ops.trigger(ctx->dev, true, ctx->dsp_ops.stream_tag);
+	ctx->dsp_ops.trigger(ctx->dev, true, ctx->dsp_ops.stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
 	ret = sst_dsp_register_poll(ctx, BXT_ADSP_FW_STATUS, SKL_FW_STS_MASK,
 			BXT_ROM_INIT, BXT_BASEFW_TIMEOUT, "Firmware boot");
 
-	ctx->dsp_ops.trigger(ctx->dev, false, ctx->dsp_ops.stream_tag);
-	ctx->dsp_ops.cleanup(ctx->dev, &ctx->dmab, ctx->dsp_ops.stream_tag);
+	ctx->dsp_ops.trigger(ctx->dev, false, ctx->dsp_ops.stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
+	ctx->dsp_ops.cleanup(ctx->dev, &ctx->dmab, ctx->dsp_ops.stream_tag,
+						SNDRV_PCM_STREAM_PLAYBACK);
 
 	return ret;
 }
@@ -292,7 +348,7 @@ static int bxt_d0i3_target_state(struct sst_dsp *ctx)
 		return SKL_DSP_D0I3_NONE;
 }
 
-static void bxt_set_dsp_D0i3(struct work_struct *work)
+void bxt_set_dsp_D0i3(struct work_struct *work)
 {
 	int ret;
 	struct skl_ipc_d0ix_msg msg;
@@ -337,7 +393,7 @@ static void bxt_set_dsp_D0i3(struct work_struct *work)
 	skl->cores.state[SKL_DSP_CORE0_ID] = SKL_DSP_RUNNING_D0I3;
 }
 
-static int bxt_schedule_dsp_D0i3(struct sst_dsp *ctx)
+int bxt_schedule_dsp_D0i3(struct sst_dsp *ctx)
 {
 	struct skl_sst *skl = ctx->thread_context;
 	struct skl_d0i3_data *d0i3 = &skl->d0i3;
@@ -354,7 +410,7 @@ static int bxt_schedule_dsp_D0i3(struct sst_dsp *ctx)
 	return 0;
 }
 
-static int bxt_set_dsp_D0i0(struct sst_dsp *ctx)
+int bxt_set_dsp_D0i0(struct sst_dsp *ctx)
 {
 	int ret;
 	struct skl_ipc_d0ix_msg msg;
@@ -434,6 +490,9 @@ static int bxt_set_dsp_D0(struct sst_dsp *ctx, unsigned int core_id)
 
 	if (core_id == SKL_DSP_CORE0_ID) {
 
+		 /* set all SSPs to slave mode */
+		bxt_set_ssp_slave(ctx);
+
 		/*
 		 * Enable interrupt after SPA is set and before
 		 * DSP is unstalled
@@ -481,6 +540,11 @@ static int bxt_set_dsp_D0(struct sst_dsp *ctx, unsigned int core_id)
 	}
 
 	skl->cores.state[core_id] = SKL_DSP_RUNNING;
+	ret = skl_notify_tplg_change(skl, SKL_TPLG_CHG_NOTIFY_DSP_D0);
+	if (ret < 0)
+		dev_warn(ctx->dev,
+			"update of topology event D0 failed\n");
+
 	return 0;
 err:
 	if (core_id == SKL_DSP_CORE0_ID)
@@ -527,6 +591,11 @@ static int bxt_set_dsp_D3(struct sst_dsp *ctx, unsigned int core_id)
 		return ret;
 	}
 	skl->cores.state[core_id] = SKL_DSP_RESET;
+	ret = skl_notify_tplg_change(skl, SKL_TPLG_CHG_NOTIFY_DSP_D3);
+	if (ret < 0)
+		dev_warn(ctx->dev,
+			"update of topology event D3 failed\n");
+
 	return 0;
 }
 
@@ -556,10 +625,11 @@ static struct sst_dsp_device skl_dev = {
 
 int bxt_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 			const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
-			struct skl_sst **dsp)
+			struct skl_sst **dsp, void *ptr)
 {
 	struct skl_sst *skl;
 	struct sst_dsp *sst;
+	u32 dsp_wp[] = {BXT_ADSP_WP_DSP0, BXT_ADSP_WP_DSP1};
 	int ret;
 
 	ret = skl_sst_ctx_init(dev, irq, fw_name, dsp_ops, dsp, &skl_dev);
@@ -580,6 +650,12 @@ int bxt_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 
 	sst_dsp_mailbox_init(sst, (BXT_ADSP_SRAM0_BASE + SKL_ADSP_W0_STAT_SZ),
 			SKL_ADSP_W0_UP_SZ, BXT_ADSP_SRAM1_BASE, SKL_ADSP_W1_SZ);
+	ret = skl_dsp_init_trace_window(sst, dsp_wp, BXT_ADSP_SRAM2_BASE,
+					BXT_ADSP_W2_SIZE, BXT_ADSP_NR_DSP);
+	if (ret) {
+		dev_err(dev, "FW tracing init failed : %x", ret);
+		return ret;
+	}
 
 	ret = skl_ipc_init(dev, skl);
 	if (ret) {

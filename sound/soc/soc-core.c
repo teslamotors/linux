@@ -1487,10 +1487,10 @@ static int soc_probe_component(struct snd_soc_card *card,
 	struct snd_soc_dapm_context *dapm = snd_soc_component_get_dapm(component);
 	struct snd_soc_dai *dai;
 	int ret;
-
+#if 0
 	if (!strcmp(component->name, "snd-soc-dummy"))
 		return 0;
-
+#endif
 	if (component->card) {
 		if (component->card != card) {
 			dev_err(component->dev,
@@ -1690,8 +1690,14 @@ static int soc_link_dai_widgets(struct snd_soc_card *card,
 		dev_warn(card->dev, "ASoC: Multiple codecs not supported yet\n");
 
 	/* link the DAI widgets */
-	sink = codec_dai->playback_widget;
-	source = cpu_dai->capture_widget;
+	if (!dai_link->dsp_loopback) {
+		sink = codec_dai->playback_widget;
+		source = cpu_dai->capture_widget;
+	} else {
+		sink = codec_dai->playback_widget;
+		source = cpu_dai->playback_widget;
+	}
+
 	if (sink && source) {
 		ret = snd_soc_dapm_new_pcm(card, dai_link->params,
 					   dai_link->num_params,
@@ -1703,8 +1709,14 @@ static int soc_link_dai_widgets(struct snd_soc_card *card,
 		}
 	}
 
-	sink = cpu_dai->playback_widget;
-	source = codec_dai->capture_widget;
+	if (!dai_link->dsp_loopback) {
+		sink = cpu_dai->playback_widget;
+		source = codec_dai->capture_widget;
+	} else {
+		sink = cpu_dai->capture_widget;
+		source = codec_dai->capture_widget;
+	}
+
 	if (sink && source) {
 		ret = snd_soc_dapm_new_pcm(card, dai_link->params,
 					   dai_link->num_params,
@@ -2876,6 +2888,60 @@ int snd_soc_dai_set_tdm_slot(struct snd_soc_dai *dai,
 		return -ENOTSUPP;
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_tdm_slot);
+
+/**
+ *  snd_soc_dai_program_stream_tag - Program the stream tag allocated by
+ *				CPU DAI to codec DAI. This will be
+ *				used in HDA and soundwire, wherex
+ *				audio stream between codec and
+ *				SoC need to have same stream tag.
+ *  substream: Substream
+ *  cpu_dai: CPU DAI
+ *  stream_tag: Stream tag to be programmed.
+ */
+int snd_soc_dai_program_stream_tag(struct snd_pcm_substream *substream,
+			struct snd_soc_dai *cpu_dai, int stream_tag)
+{
+	int i;
+	struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
+	const struct snd_soc_dai_ops *codec_dai_ops;
+	struct snd_soc_dai *codec_dai;
+	int ret = 0;
+
+	for (i = 0; i < rtd->num_codecs; i++) {
+		codec_dai = rtd->codec_dais[i];
+		codec_dai_ops = codec_dai->driver->ops;
+		if (codec_dai_ops->program_stream_tag)
+			ret = codec_dai_ops->program_stream_tag(substream,
+				codec_dai, stream_tag);
+			if (ret)
+				return ret;
+	}
+	return ret;
+
+}
+EXPORT_SYMBOL_GPL(snd_soc_dai_program_stream_tag);
+/**
+ *  snd_soc_dai_remove_stream_tag - Reverse the programmed stream tag
+ *  substream: Substream
+ *  cpu_dai: CPU DAI
+ */
+void snd_soc_dai_remove_stream_tag(struct snd_pcm_substream *substream,
+			struct snd_soc_dai *cpu_dai)
+{
+	int i;
+	struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
+	const struct snd_soc_dai_ops *codec_dai_ops;
+	struct snd_soc_dai *codec_dai;
+
+	for (i = 0; i < rtd->num_codecs; i++) {
+		codec_dai = rtd->codec_dais[i];
+		codec_dai_ops = codec_dai->driver->ops;
+		if (codec_dai_ops->program_stream_tag)
+			codec_dai_ops->remove_stream_tag(substream, codec_dai);
+	}
+}
+EXPORT_SYMBOL_GPL(snd_soc_dai_remove_stream_tag);
 
 /**
  * snd_soc_dai_set_channel_map - configure DAI audio channel map

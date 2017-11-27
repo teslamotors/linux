@@ -20,6 +20,8 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/io.h>
+#include <asm/pgtable.h>
+#include <asm/set_memory.h>
 #include <sound/hdaudio_ext.h>
 
 MODULE_DESCRIPTION("HDA extended core");
@@ -55,14 +57,46 @@ static u8 hdac_ext_readb(u8 __iomem *addr)
 	return readb(addr);
 }
 
+static void hdac_ext_mark_pages_uc(struct snd_dma_buffer *dmab, bool enable)
+{
+	int pages;
+
+	if (!dmab || !dmab->area || !dmab->bytes)
+		return;
+
+#ifdef CONFIG_SND_DMA_SGBUF
+	if (dmab->dev.type == SNDRV_DMA_TYPE_DEV_SG) {
+		struct snd_sg_buf *sgbuf = dmab->private_data;
+
+		if (enable)
+			set_pages_array_uc(sgbuf->page_table, sgbuf->pages);
+		else
+			set_pages_array_wb(sgbuf->page_table, sgbuf->pages);
+		return;
+	}
+#endif
+	pages = (dmab->bytes + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	if (enable)
+		set_memory_uc((unsigned long)dmab->area, pages);
+	else
+		set_memory_wb((unsigned long)dmab->area, pages);
+}
+
 static int hdac_ext_dma_alloc_pages(struct hdac_bus *bus, int type,
 			   size_t size, struct snd_dma_buffer *buf)
 {
-	return snd_dma_alloc_pages(type, bus->dev, size, buf);
+	int ret;
+
+	ret = snd_dma_alloc_pages(type, bus->dev, size, buf);
+	if (ret < 0)
+		return ret;
+	hdac_ext_mark_pages_uc(buf, true);
+	return ret;
 }
 
 static void hdac_ext_dma_free_pages(struct hdac_bus *bus, struct snd_dma_buffer *buf)
 {
+	hdac_ext_mark_pages_uc(buf, false);
 	snd_dma_free_pages(buf);
 }
 
@@ -75,6 +109,7 @@ static const struct hdac_io_ops hdac_ext_default_io = {
 	.reg_readb = hdac_ext_readb,
 	.dma_alloc_pages = hdac_ext_dma_alloc_pages,
 	.dma_free_pages = hdac_ext_dma_free_pages,
+	.mark_pages_uc = hdac_ext_mark_pages_uc,
 };
 
 /**

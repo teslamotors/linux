@@ -87,9 +87,22 @@ config SND_SOC_INTEL_BXT_RT298_MACH
 	select SND_SOC_DMIC
 	select SND_SOC_HDAC_HDMI
 	select SND_HDA_DSP_LOADER
+	select SND_SOC_COMPRESS
 	help
 	   This adds support for ASoC machine driver for Broxton platforms
 	   with RT286 I2S audio codec.
+	   Say Y if you have such a device.
+	   If unsure select "N".
+
+config SND_SOC_INTEL_BXT_TDF8532_MACH
+        tristate "ASoC Audio driver for BXT with TDF8532 in I2S mode"
+        depends on X86 && ACPI && I2C
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+        select SND_SOC_TDF8532
+        select SND_SOC_COMPRESS
+        help
+	   This adds support for ASoC machine driver for Broxton IVI GP MRB platform
 	   Say Y if you have such a device.
 	   If unsure select "N".
 
@@ -240,7 +253,7 @@ config SND_SOC_INTEL_BYT_CHT_NOCODEC_MACH
 
 config SND_SOC_INTEL_KBL_RT5663_MAX98927_MACH
 	tristate "ASoC Audio driver for KBL with RT5663 and MAX98927 in I2S Mode"
-	depends on X86_INTEL_LPSS && I2C
+	depends on X86_INTEL_LPSS && I2C && X86
 	select SND_SOC_INTEL_SST
 	select SND_SOC_INTEL_SKYLAKE
 	select SND_SOC_RT5663
@@ -255,7 +268,7 @@ config SND_SOC_INTEL_KBL_RT5663_MAX98927_MACH
 
 config SND_SOC_INTEL_KBL_RT5663_RT5514_MAX98927_MACH
         tristate "ASoC Audio driver for KBL with RT5663, RT5514 and MAX98927 in I2S Mode"
-        depends on X86_INTEL_LPSS && I2C && SPI
+        depends on X86_INTEL_LPSS && I2C && SPI && X86
         select SND_SOC_INTEL_SST
         select SND_SOC_INTEL_SKYLAKE
         select SND_SOC_RT5663
@@ -275,6 +288,10 @@ config SND_SOC_INTEL_SKYLAKE
 	select SND_HDA_DSP_LOADER
 	select SND_SOC_TOPOLOGY
 	select SND_SOC_INTEL_SST
+	select SND_SOC_COMPRESS
+	select SDW
+	select SDW_CNL
+	select WANT_DEV_COREDUMP
 
 config SND_SOC_INTEL_SKL_RT286_MACH
 	tristate "ASoC Audio driver for SKL with RT286 I2S mode"
@@ -291,7 +308,7 @@ config SND_SOC_INTEL_SKL_RT286_MACH
 
 config SND_SOC_INTEL_SKL_NAU88L25_SSM4567_MACH
 	tristate "ASoC Audio driver for SKL with NAU88L25 and SSM4567 in I2S Mode"
-	depends on X86_INTEL_LPSS && I2C
+	depends on X86_INTEL_LPSS && I2C && X86
 	select SND_SOC_INTEL_SKYLAKE
 	select SND_SOC_NAU8825
 	select SND_SOC_SSM4567
@@ -305,7 +322,7 @@ config SND_SOC_INTEL_SKL_NAU88L25_SSM4567_MACH
 
 config SND_SOC_INTEL_SKL_NAU88L25_MAX98357A_MACH
 	tristate "ASoC Audio driver for SKL with NAU88L25 and MAX98357A in I2S Mode"
-	depends on X86_INTEL_LPSS && I2C
+	depends on X86_INTEL_LPSS && I2C && X86
 	select SND_SOC_INTEL_SKYLAKE
 	select SND_SOC_NAU8825
 	select SND_SOC_MAX98357A
@@ -316,3 +333,62 @@ config SND_SOC_INTEL_SKL_NAU88L25_MAX98357A_MACH
 	  create an alsa sound card for NAU88L25 + MAX98357A.
 	  Say Y if you have such a device.
 	  If unsure select "N".
+
+config SND_SOC_INTEL_CNL_FPGA
+	tristate "Enable CNL FPGA board settings"
+	depends on X86
+	help
+	  Select Y if you are using FPGA.
+	  If unsure select "N".
+
+config SND_SOC_INTEL_CNL_CS42L42_MACH
+        tristate "SOC Machine Audio driver for CNL Platform"
+	depends on X86 && ACPI && I2C
+        select SND_SOC_CS42L42
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_DMIC
+        help
+	This adds support for ASoC machine driver for cnl and CS42L42. This
+	will create an alsa sound card.  Say Y if you have such a device If
+	unsure select "N".
+
+config SND_SOC_INTEL_CNL_RT700_MACH
+        tristate "SOC Machine Audio driver for CNL Platform"
+	depends on X86 && ACPI && I2C
+	select SND_SOC_RT700
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_DMIC
+        help
+        This adds support for ASoC machine driver . This will create an alsa
+        sound card.
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_CNL_SVFPGA_MACH
+        tristate "SND_SOC_INTEL_CNL_SVFPGA_MACH for CNL Platform"
+	depends on X86 && ACPI && I2C
+	select SND_SOC_SVFPGA
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_DMIC
+        help
+
+config SND_SOC_INTEL_CNL_RT274_MACH
+        tristate "ASoC Audio driver for CNL with RT274 in I2S Mode"
+	depends on X86 && ACPI && I2C
+	select SND_SOC_RT274
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_DMIC
+	select SND_SOC_HDAC_HDMI
+        help
+	This adds support for ASoC machine driver for CNL and codec RT274. This
+	will create an alsa sound card.  Say Y if you have such a device If
+	unsure select "N".
+
+config SND_SOC_SDW_AGGM1M2
+	bool "Enable SoundWire aggregation on Master 1 and Master 2"
+	help
+	  Say Y to enable SoundWire aggregation on Master1 and Master2.

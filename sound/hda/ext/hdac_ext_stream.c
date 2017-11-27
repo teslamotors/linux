@@ -22,6 +22,8 @@
 #include <sound/pcm.h>
 #include <sound/hda_register.h>
 #include <sound/hdaudio_ext.h>
+#include <sound/compress_offload.h>
+#include <sound/compress_driver.h>
 
 /**
  * snd_hdac_ext_stream_init - initialize each stream (aka device)
@@ -461,6 +463,8 @@ int snd_hdac_ext_stream_set_spib(struct hdac_ext_bus *ebus,
 	}
 
 	writel(value, stream->spib_addr);
+	/* save the value in stream context */
+	stream->spib = value;
 
 	return 0;
 }
@@ -571,3 +575,44 @@ int snd_hdac_ext_stream_set_lpib(struct hdac_ext_stream *stream, u32 value)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_hdac_ext_stream_set_lpib);
+struct hdac_ext_stream *
+hdac_ext_host_stream_compr_assign(struct hdac_ext_bus *ebus,
+				struct snd_compr_stream *substream,
+				int direction)
+{
+	struct hdac_ext_stream *res = NULL;
+	struct hdac_stream *stream = NULL;
+	struct hdac_bus *hbus = &ebus->bus;
+
+	if (!hbus->ppcap) {
+		dev_err(hbus->dev, "stream type not supported\n");
+		return NULL;
+	}
+
+	list_for_each_entry(stream, &hbus->stream_list, list) {
+		struct hdac_ext_stream *hstream = container_of(stream,
+						struct hdac_ext_stream,
+						hstream);
+		if (stream->direction != direction)
+			continue;
+
+		if (!stream->opened) {
+			if (!hstream->decoupled)
+				snd_hdac_ext_stream_decouple(ebus,
+							hstream, true);
+			res = hstream;
+			break;
+		}
+	}
+	if (res) {
+		spin_lock_irq(&hbus->reg_lock);
+		res->hstream.opened = 1;
+		res->hstream.running = 0;
+		res->hstream.stream = substream;
+		spin_unlock_irq(&hbus->reg_lock);
+		dev_dbg(hbus->dev, "Stream tag = %d, index = %d\n",
+				res->hstream.stream_tag, res->hstream.index);
+	}
+	return res;
+}
+EXPORT_SYMBOL_GPL(hdac_ext_host_stream_compr_assign);

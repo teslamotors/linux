@@ -32,9 +32,11 @@
 #include <sound/hda_register.h>
 #include <sound/hdaudio.h>
 #include <sound/hda_i915.h>
+#include <sound/compress_driver.h>
 #include "skl.h"
 #include "skl-sst-dsp.h"
 #include "skl-sst-ipc.h"
+#include "skl-topology.h"
 
 static struct skl_machine_pdata skl_dmic_data;
 
@@ -156,10 +158,57 @@ void skl_update_d0i3c(struct device *dev, bool enable)
 			snd_hdac_chip_readb(bus, VS_D0I3C));
 }
 
+static void skl_get_total_bytes_transferred(struct hdac_stream *hstr)
+{
+	int pos, prev_pos, no_of_bytes;
+
+	prev_pos = hstr->curr_pos % hstr->stream->runtime->buffer_size;
+	pos = snd_hdac_stream_get_pos_posbuf(hstr);
+
+	if (pos < prev_pos)
+		no_of_bytes = (hstr->stream->runtime->buffer_size - prev_pos) +  pos;
+	else
+		no_of_bytes = pos - prev_pos;
+
+	hstr->curr_pos += no_of_bytes;
+}
+
+/*
+ * skl_dum_set - Set the DUM bit in EM2 register to fix the IP bug
+ * of incorrect postion reporting for capture stream.
+ */
+static void skl_dum_set(struct hdac_ext_bus *ebus)
+{
+	struct hdac_bus *bus = ebus_to_hbus(ebus);
+	u32 reg;
+	u8 val;
+
+	/*
+	 * For the DUM bit to be set, CRST needs to be out of reset state
+	 */
+	val = snd_hdac_chip_readb(bus, GCTL) & AZX_GCTL_RESET;
+	if (!val) {
+		skl_enable_miscbdcge(bus->dev, false);
+		snd_hdac_bus_exit_link_reset(bus);
+		skl_enable_miscbdcge(bus->dev, true);
+	}
+	/*
+	 * Set the DUM bit in EM2 register to fix the IP bug of incorrect
+	 * postion reporting for capture stream.
+	 */
+	reg  = snd_hdac_chip_readl(bus, VS_EM2);
+	snd_hdac_chip_writel(bus, VS_EM2, (reg | AZX_EM2_DUM_MASK));
+}
+
 /* called from IRQ */
 static void skl_stream_update(struct hdac_bus *bus, struct hdac_stream *hstr)
 {
-	snd_pcm_period_elapsed(hstr->substream);
+	if (hstr->substream)
+		snd_pcm_period_elapsed(hstr->substream);
+	else if (hstr->stream) {
+		skl_get_total_bytes_transferred(hstr);
+		snd_compr_fragment_elapsed(hstr->stream);
+	}
 }
 
 static irqreturn_t skl_interrupt(int irq, void *dev_id)
@@ -167,16 +216,18 @@ static irqreturn_t skl_interrupt(int irq, void *dev_id)
 	struct hdac_ext_bus *ebus = dev_id;
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	u32 status;
+	u32 mask, int_enable;
+	int ret = IRQ_NONE;
 
 	if (!pm_runtime_active(bus->dev))
-		return IRQ_NONE;
+		return ret;
 
 	spin_lock(&bus->reg_lock);
 
 	status = snd_hdac_chip_readl(bus, INTSTS);
 	if (status == 0 || status == 0xffffffff) {
 		spin_unlock(&bus->reg_lock);
-		return IRQ_NONE;
+		return ret;
 	}
 
 	/* clear rirb int */
@@ -187,9 +238,21 @@ static irqreturn_t skl_interrupt(int irq, void *dev_id)
 		snd_hdac_chip_writeb(bus, RIRBSTS, RIRB_INT_MASK);
 	}
 
-	spin_unlock(&bus->reg_lock);
+	mask = (0x1 << ebus->num_streams) - 1;
 
-	return snd_hdac_chip_readl(bus, INTSTS) ? IRQ_WAKE_THREAD : IRQ_HANDLED;
+	status = snd_hdac_chip_readl(bus, INTSTS);
+	status &= mask;
+	if (status) {
+		/* Disable stream interrupts; Re-enable in bottom half */
+		int_enable = snd_hdac_chip_readl(bus, INTCTL);
+		snd_hdac_chip_writel(bus, INTCTL, (int_enable & (~mask)));
+		ret = IRQ_WAKE_THREAD;
+	} else
+		ret = IRQ_HANDLED;
+
+	spin_unlock(&bus->reg_lock);
+	return ret;
+
 }
 
 static irqreturn_t skl_threaded_handler(int irq, void *dev_id)
@@ -197,11 +260,20 @@ static irqreturn_t skl_threaded_handler(int irq, void *dev_id)
 	struct hdac_ext_bus *ebus = dev_id;
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	u32 status;
+	u32 int_enable;
+	u32 mask;
+	unsigned long flags;
 
 	status = snd_hdac_chip_readl(bus, INTSTS);
 
 	snd_hdac_bus_handle_stream_irq(bus, status, skl_stream_update);
 
+	/* Re-enable stream interrupts */
+	mask = (0x1 << ebus->num_streams) - 1;
+	spin_lock_irqsave(&bus->reg_lock, flags);
+	int_enable = snd_hdac_chip_readl(bus, INTCTL);
+	snd_hdac_chip_writel(bus, INTCTL, (int_enable | mask));
+	spin_unlock_irqrestore(&bus->reg_lock, flags);
 	return IRQ_HANDLED;
 }
 
@@ -323,7 +395,7 @@ static int skl_resume(struct device *dev)
 	struct skl *skl  = ebus_to_skl(ebus);
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	struct hdac_ext_link *hlink = NULL;
-	int ret;
+	int ret = 0;
 
 	/* Turned OFF in HDMI codec driver after codec reconfiguration */
 	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI)) {
@@ -442,13 +514,17 @@ static int skl_machine_device_register(struct skl *skl, void *driver_data)
 	struct sst_acpi_mach *mach = driver_data;
 	int ret;
 
+	if (IS_ENABLED(CONFIG_SND_SOC_RT700) ||
+	    IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA))
+		goto out;
+
 	mach = sst_acpi_find_machine(mach);
 	if (mach == NULL) {
 		dev_err(bus->dev, "No matching machine driver found\n");
 		return -ENODEV;
 	}
+out:
 	skl->fw_name = mach->fw_filename;
-
 	pdev = platform_device_alloc(mach->drv_name, -1);
 	if (pdev == NULL) {
 		dev_err(bus->dev, "platform device alloc failed\n");
@@ -528,7 +604,7 @@ static int probe_codec(struct hdac_ext_bus *ebus, int addr)
 }
 
 /* Codec initialization */
-static void skl_codec_create(struct hdac_ext_bus *ebus)
+static void __maybe_unused skl_codec_create(struct hdac_ext_bus *ebus)
 {
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	int c, max_slots;
@@ -609,8 +685,10 @@ static void skl_probe_work(struct work_struct *work)
 	if (!bus->codec_mask)
 		dev_info(bus->dev, "no hda codecs found!\n");
 
+#if !IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
 	/* create codec instances */
 	skl_codec_create(ebus);
+#endif
 
 	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI)) {
 		err = snd_hdac_display_power(bus, false);
@@ -742,6 +820,8 @@ static int skl_first_init(struct hdac_ext_bus *ebus)
 	/* initialize chip */
 	skl_init_pci(skl);
 
+	skl_dum_set(ebus);
+
 	return skl_init_chip(bus, true);
 }
 
@@ -751,6 +831,7 @@ static int skl_probe(struct pci_dev *pci,
 	struct skl *skl;
 	struct hdac_ext_bus *ebus = NULL;
 	struct hdac_bus *bus = NULL;
+	const struct firmware __maybe_unused *nhlt_fw = NULL;
 	int err;
 
 	/* we use ext core ops, so provide NULL for ops here */
@@ -769,6 +850,8 @@ static int skl_probe(struct pci_dev *pci,
 
 	device_disable_async_suspend(bus->dev);
 
+#if !IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
+	skl->nhlt_version = skl_get_nhlt_version(bus->dev);
 	skl->nhlt = skl_nhlt_init(bus->dev);
 
 	if (skl->nhlt == NULL) {
@@ -782,9 +865,25 @@ static int skl_probe(struct pci_dev *pci,
 
 	skl_nhlt_update_topology_bin(skl);
 
+#else
+	if (request_firmware(&nhlt_fw, "intel/nhlt_blob.bin", bus->dev)) {
+		dev_err(bus->dev, "Request nhlt fw failed, continuing..\n");
+		goto nhlt_continue;
+	}
+
+	skl->nhlt = devm_kzalloc(&pci->dev, nhlt_fw->size, GFP_KERNEL);
+	if (skl->nhlt == NULL)
+		return -ENOMEM;
+	memcpy(skl->nhlt, nhlt_fw->data, nhlt_fw->size);
+	release_firmware(nhlt_fw);
+
+nhlt_continue:
+#endif
 	pci_set_drvdata(skl->pci, ebus);
 
+#if !IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
 	skl_dmic_data.dmic_num = skl_get_dmic_geo(skl);
+#endif
 
 	/* check if dsp is there */
 	if (bus->ppcap) {
@@ -857,6 +956,7 @@ static void skl_remove(struct pci_dev *pci)
 	struct hdac_ext_bus *ebus = pci_get_drvdata(pci);
 	struct skl *skl = ebus_to_skl(ebus);
 
+	skl_delete_notify_kctl_list(skl->skl_sst);
 	release_firmware(skl->tplg);
 
 	pm_runtime_get_noresume(&pci->dev);
@@ -939,6 +1039,11 @@ static struct sst_acpi_mach sst_bxtp_devdata[] = {
 		.machine_quirk = sst_acpi_codec_list,
 		.quirk_data = &bxt_codecs,
 	},
+	{
+		.id = "INT34C3",
+		.drv_name = "bxt_tdf8532",
+		.fw_filename = "intel/dsp_fw_bxtn.bin",
+	},
 	{}
 };
 
@@ -999,11 +1104,29 @@ static struct sst_acpi_mach sst_glk_devdata[] = {
 };
 
 static const struct sst_acpi_mach sst_cnl_devdata[] = {
+#if !IS_ENABLED(CONFIG_SND_SOC_RT700)
 	{
 		.id = "INT34C2",
 		.drv_name = "cnl_rt274",
 		.fw_filename = "intel/dsp_fw_cnl.bin",
 	},
+#else
+	{
+		.drv_name = "cnl_rt700",
+		.fw_filename = "intel/dsp_fw_cnl.bin",
+	},
+#endif
+};
+
+static struct sst_acpi_mach sst_icl_devdata[] = {
+#if IS_ENABLED(CONFIG_SND_SOC_RT700)
+	{ "dummy", "icl_rt700", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
+#elif IS_ENABLED(CONFIG_SND_SOC_WM5110)
+	{ "dummy", "icl_wm8281", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
+#else
+	{ "dummy", "icl_rt274", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
+#endif
+	{}
 };
 
 /* PCI IDs */
@@ -1023,6 +1146,9 @@ static const struct pci_device_id skl_ids[] = {
 	/* CNL */
 	{ PCI_DEVICE(0x8086, 0x9dc8),
 		.driver_data = (unsigned long)&sst_cnl_devdata},
+	/* ICL */
+	{ PCI_DEVICE(0x8086, 0x34c8),
+		.driver_data = (unsigned long)&sst_icl_devdata},
 	{ 0, }
 };
 MODULE_DEVICE_TABLE(pci, skl_ids);

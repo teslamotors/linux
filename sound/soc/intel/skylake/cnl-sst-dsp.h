@@ -26,6 +26,8 @@ struct sst_generic_ipc;
 #define CNL_ADSP_REG_ADSPCS		(CNL_ADSP_GEN_BASE + 0x04)
 #define CNL_ADSP_REG_ADSPIC		(CNL_ADSP_GEN_BASE + 0x08)
 #define CNL_ADSP_REG_ADSPIS		(CNL_ADSP_GEN_BASE + 0x0c)
+#define CNL_ADSP_REG_ADSPIC2		(CNL_ADSP_GEN_BASE + 0x10)
+#define CNL_ADSP_REG_ADSPIS2		(CNL_ADSP_GEN_BASE + 0x14)
 
 /* Intel HD Audio Inter-Processor Communication Registers */
 #define CNL_ADSP_IPC_BASE               0xc0
@@ -72,6 +74,16 @@ struct sst_generic_ipc;
 #define CNL_ADSPIC_IPC			0x1
 #define CNL_ADSPIS_IPC			0x1
 
+#define CNL_ADSPIC2_SNDW		0x20
+
+#define CNL_SDW_SHIM_BASE		0x2C000
+#define CNL_SDW_LINK_0_BASE		0x30000
+#define CNL_SDW_LINK_1_BASE		0x40000
+#define CNL_SDW_LINK_2_BASE		0x50000
+#define CNL_SDW_LINK_3_BASE		0x60000
+#define CNL_ALH_BASE			0x2C800
+
+/* ADSPCS - Audio DSP Control & Status */
 #define CNL_DSP_CORES		4
 #define CNL_DSP_CORES_MASK	((1 << CNL_DSP_CORES) - 1)
 
@@ -98,6 +110,7 @@ void cnl_dsp_free(struct sst_dsp *dsp);
 
 void cnl_ipc_int_enable(struct sst_dsp *ctx);
 void cnl_ipc_int_disable(struct sst_dsp *ctx);
+void cnl_sdw_int_enable(struct sst_dsp *ctx, bool enable);
 void cnl_ipc_op_int_enable(struct sst_dsp *ctx);
 void cnl_ipc_op_int_disable(struct sst_dsp *ctx);
 bool cnl_ipc_int_status(struct sst_dsp *ctx);
@@ -105,7 +118,7 @@ void cnl_ipc_free(struct sst_generic_ipc *ipc);
 
 int cnl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 		     const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
-		     struct skl_sst **dsp);
+		     struct skl_sst **dsp, void *ptr);
 int cnl_sst_init_fw(struct device *dev, struct skl_sst *ctx);
 void cnl_sst_dsp_cleanup(struct device *dev, struct skl_sst *ctx);
 
