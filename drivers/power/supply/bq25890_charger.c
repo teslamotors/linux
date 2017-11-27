@@ -24,6 +24,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/usb/phy.h>
+#include <linux/power/bq25890_charger.h>
 
 #include <linux/acpi.h>
 #include <linux/of.h>
@@ -32,6 +33,35 @@
 #define BQ25890_IRQ_PIN			"bq25890_irq"
 
 #define BQ25890_ID			3
+#define BQ25892_ID			0
+
+/* pmic charger info */
+
+#define PMIC_CHG_DEF_CC             2600000     /* in uA */
+#define PMIC_CHG_DEF_IPRECHG        256000      /* in uA */
+#define PMIC_CHG_DEF_ITERM          128000      /* in uA */
+#define PMIC_CHG_DEF_CV             4350000     /* in uV */
+#define PMIC_CHG_DEF_VSYSMIN        3500000     /* in uV */
+#define PMIC_CHG_DEF_BOOSTV         4700000     /* in uV */
+#define PMIC_CHG_DEF_BOOSTI         500000      /* in uA */
+#define PMIC_CHG_MAX_CC             2600000     /* in uA */
+#define PMIC_CHG_MAX_CV             4350000     /* in uV */
+#define PMIC_CHG_MAX_TEMP           100		/* in DegC */
+#define PMIC_CHG_MIN_TEMP           0		/* in DegC */
+
+static struct bq25890_platform_data charger_drvdata = {
+	.def_cc		= PMIC_CHG_DEF_CC,
+	.def_cv		= PMIC_CHG_DEF_CV,
+	.iterm		= PMIC_CHG_DEF_ITERM,
+	.iprechg	= PMIC_CHG_DEF_IPRECHG,
+	.sysvmin	= PMIC_CHG_DEF_VSYSMIN,
+	.boostv		= PMIC_CHG_DEF_BOOSTV,
+	.boosti		= PMIC_CHG_DEF_BOOSTI,
+	.max_cc		= PMIC_CHG_MAX_CC,
+	.max_cv		= PMIC_CHG_MAX_CV,
+	.min_temp	= PMIC_CHG_MIN_TEMP,
+	.max_temp	= PMIC_CHG_MAX_TEMP,
+};
 
 enum bq25890_fields {
 	F_EN_HIZ, F_EN_ILIM, F_IILIM,				     /* Reg00 */
@@ -88,6 +118,7 @@ struct bq25890_state {
 
 struct bq25890_device {
 	struct i2c_client *client;
+	struct bq25890_platform_data *pdata;
 	struct device *dev;
 	struct power_supply *charger;
 
@@ -104,6 +135,11 @@ struct bq25890_device {
 	struct bq25890_state state;
 
 	struct mutex lock; /* protect state data */
+
+	int cc;
+	int cv;
+	int inlmt;
+	int chg_cntl_max;
 };
 
 static const struct regmap_range bq25890_readonly_reg_ranges[] = {
@@ -732,6 +768,7 @@ static int bq25890_irq_probe(struct bq25890_device *bq)
 	return gpiod_to_irq(irq);
 }
 
+#ifdef CONFIG_OF
 static int bq25890_fw_read_u32_props(struct bq25890_device *bq)
 {
 	int ret;
@@ -791,6 +828,37 @@ static int bq25890_fw_probe(struct bq25890_device *bq)
 
 	return 0;
 }
+#else
+static int bq25890_fw_probe(struct bq25890_device *bq)
+{
+	struct bq25890_init_data *init = &bq->init_data;
+
+	/* initialize the BXT platform data */
+	init->ichg = bq25890_find_idx(bq->pdata->def_cc, TBL_ICHG);
+	init->vreg = bq25890_find_idx(bq->pdata->def_cv, TBL_VREG);
+	init->iterm = bq25890_find_idx(bq->pdata->iterm, TBL_ITERM);
+	init->iprechg = bq25890_find_idx(bq->pdata->iprechg, TBL_IPRECHG);
+	init->sysvmin = bq25890_find_idx(bq->pdata->sysvmin, TBL_SYSVMIN);
+	init->boostv = bq25890_find_idx(bq->pdata->boostv, TBL_BOOSTV);
+	init->boosti = bq25890_find_idx(bq->pdata->boosti, TBL_BOOSTI);
+	init->treg = bq25890_find_idx(bq->pdata->max_temp, TBL_TREG);
+	init->boostf = bq->pdata->boostf_low;
+	init->ilim_en = bq->pdata->en_ilim_pin;
+
+	bq->cc = bq->pdata->def_cc;
+	bq->cv = bq->pdata->def_cv;
+
+	/*
+	 * devide the limit into 100mA steps so that
+	 * total available steps will n + 2 including
+	 * zero and High-Z mode.
+	 */
+	bq->chg_cntl_max = (bq->pdata->def_cc / 100000) + 2;
+
+	return 0;
+}
+#endif
+
 
 static int bq25890_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
@@ -840,12 +908,13 @@ static int bq25890_probe(struct i2c_client *client,
 		return bq->chip_id;
 	}
 
-	if (bq->chip_id != BQ25890_ID) {
+	if ((bq->chip_id != BQ25890_ID) && (bq->chip_id != BQ25892_ID)) {
 		dev_err(dev, "Chip with ID=%d, not supported!\n", bq->chip_id);
 		return -ENODEV;
 	}
 
 	if (!dev->platform_data) {
+		bq->pdata = &charger_drvdata;
 		ret = bq25890_fw_probe(bq);
 		if (ret < 0) {
 			dev_err(dev, "Cannot read device properties.\n");
