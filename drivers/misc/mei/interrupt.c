@@ -75,6 +75,8 @@ static inline int mei_cl_hbm_equal(struct mei_cl *cl,
  */
 static void mei_irq_discard_msg(struct mei_device *dev, struct mei_msg_hdr *hdr)
 {
+	if (hdr->dma_ring)
+		mei_dma_ring_read(dev, NULL, hdr->dr_length[0]);
 	/*
 	 * no need to check for size as it is guarantied
 	 * that length fits into rd_msg_buf
@@ -100,6 +102,7 @@ static int mei_cl_irq_read_msg(struct mei_cl *cl,
 	struct mei_device *dev = cl->dev;
 	struct mei_cl_cb *cb;
 	size_t buf_sz;
+	u32 length;
 
 	cb = list_first_entry_or_null(&cl->rd_pending, struct mei_cl_cb, list);
 	if (!cb) {
@@ -119,25 +122,31 @@ static int mei_cl_irq_read_msg(struct mei_cl *cl,
 		goto discard;
 	}
 
-	buf_sz = mei_hdr->length + cb->buf_idx;
+	length = mei_hdr->dma_ring ? mei_hdr->dr_length[0] : mei_hdr->length;
+
+	buf_sz = length + cb->buf_idx;
 	/* catch for integer overflow */
 	if (buf_sz < cb->buf_idx) {
 		cl_err(dev, cl, "message is too big len %d idx %zu\n",
-		       mei_hdr->length, cb->buf_idx);
+		       length, cb->buf_idx);
 		cb->status = -EMSGSIZE;
 		goto discard;
 	}
 
 	if (cb->buf.size < buf_sz) {
 		cl_dbg(dev, cl, "message overflow. size %zu len %d idx %zu\n",
-			cb->buf.size, mei_hdr->length, cb->buf_idx);
+			cb->buf.size, length, cb->buf_idx);
 		cb->status = -EMSGSIZE;
 		goto discard;
 	}
 
+	if (mei_hdr->dma_ring)
+		mei_dma_ring_read(dev, cb->buf.data + cb->buf_idx, length);
+
+	/*  for DMA read 0 length to generate an interrupt to the device */
 	mei_read_slots(dev, cb->buf.data + cb->buf_idx, mei_hdr->length);
 
-	cb->buf_idx += mei_hdr->length;
+	cb->buf_idx += length;
 
 	if (mei_hdr->msg_complete) {
 		cl_dbg(dev, cl, "completed read length = %zu\n", cb->buf_idx);
@@ -152,6 +161,7 @@ static int mei_cl_irq_read_msg(struct mei_cl *cl,
 discard:
 	if (cb)
 		list_move_tail(&cb->list, cmpl_list);
+
 	mei_irq_discard_msg(dev, mei_hdr);
 	return 0;
 }
@@ -243,6 +253,9 @@ static inline int hdr_is_valid(u32 msg_hdr)
 	if (!msg_hdr || mei_hdr->reserved)
 		return -EBADMSG;
 
+	if (mei_hdr->dma_ring && mei_hdr->length != sizeof(u32))
+		return -EBADMSG;
+
 	return 0;
 }
 
@@ -263,20 +276,21 @@ int mei_irq_read_handler(struct mei_device *dev,
 	struct mei_cl *cl;
 	int ret;
 
-	if (!dev->rd_msg_hdr) {
-		dev->rd_msg_hdr = mei_read_hdr(dev);
+	if (!dev->rd_msg_hdr[0]) {
+		dev->rd_msg_hdr[0] = mei_read_hdr(dev);
 		(*slots)--;
 		dev_dbg(dev->dev, "slots =%08x.\n", *slots);
 
-		ret = hdr_is_valid(dev->rd_msg_hdr);
+		ret = hdr_is_valid(dev->rd_msg_hdr[0]);
 		if (ret) {
 			dev_err(dev->dev, "corrupted message header 0x%08X\n",
-				dev->rd_msg_hdr);
+				dev->rd_msg_hdr[0]);
 			goto end;
 		}
+		dev_dbg(dev->dev, "slots = %08x.\n", *slots);
 	}
 
-	mei_hdr = (struct mei_msg_hdr *)&dev->rd_msg_hdr;
+	mei_hdr = (struct mei_msg_hdr *)dev->rd_msg_hdr;
 	dev_dbg(dev->dev, MEI_HDR_FMT, MEI_HDR_PRM(mei_hdr));
 
 	if (mei_slots2data(*slots) < mei_hdr->length) {
@@ -285,6 +299,11 @@ int mei_irq_read_handler(struct mei_device *dev,
 		/* we can't read the message */
 		ret = -ENODATA;
 		goto end;
+	}
+
+	if (mei_hdr->dma_ring) {
+		dev->rd_msg_hdr[1] = mei_read_hdr(dev);
+		mei_hdr->length = 0;
 	}
 
 	/*  HBM message */
@@ -317,7 +336,7 @@ int mei_irq_read_handler(struct mei_device *dev,
 			goto reset_slots;
 		}
 		dev_err(dev->dev, "no destination client found 0x%08X\n",
-				dev->rd_msg_hdr);
+				dev->rd_msg_hdr[0]);
 		ret = -EBADMSG;
 		goto end;
 	}
@@ -327,9 +346,8 @@ int mei_irq_read_handler(struct mei_device *dev,
 
 reset_slots:
 	/* reset the number of slots and header */
+	memset(dev->rd_msg_hdr, 0, sizeof(dev->rd_msg_hdr));
 	*slots = mei_count_full_read_slots(dev);
-	dev->rd_msg_hdr = 0;
-
 	if (*slots == -EOVERFLOW) {
 		/* overflow - reset */
 		dev_err(dev->dev, "resetting due to slots overflow.\n");

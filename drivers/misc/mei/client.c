@@ -460,7 +460,7 @@ struct mei_cl_cb *mei_cl_alloc_cb(struct mei_cl *cl, size_t length,
 	if (length == 0)
 		return cb;
 
-	cb->buf.data = kmalloc(length, GFP_KERNEL);
+	cb->buf.data = kmalloc(roundup(length, MEI_DMA_SLOT_SIZE), GFP_KERNEL);
 	if (!cb->buf.data) {
 		mei_io_cb_free(cb);
 		return NULL;
@@ -1513,6 +1513,22 @@ nortpm:
 	return rets;
 }
 
+static inline void mei_msg_hdr_init(struct mei_msg_hdr *mei_hdr,
+				    struct mei_cl_cb *cb)
+{
+	mei_hdr->host_addr = mei_cl_host_addr(cb->cl);
+	mei_hdr->me_addr = mei_cl_me_id(cb->cl);
+	mei_hdr->reserved = 0;
+	mei_hdr->msg_complete = 0;
+	mei_hdr->dma_ring = 0;
+	mei_hdr->internal = cb->internal;
+}
+
+struct mei_msg_hdr_ext {
+	struct mei_msg_hdr hdr;
+	u32 dma_len;
+};
+
 /**
  * mei_cl_irq_write - write a message to device
  *	from the interrupt thread context
@@ -1528,12 +1544,15 @@ int mei_cl_irq_write(struct mei_cl *cl, struct mei_cl_cb *cb,
 {
 	struct mei_device *dev;
 	struct mei_msg_data *buf;
-	struct mei_msg_hdr mei_hdr;
+	struct mei_msg_hdr_ext ext_hdr;
+	struct mei_msg_hdr *mei_hdr = &ext_hdr.hdr;
 	size_t len;
 	u32 msg_slots;
-	int slots;
+	u32 dr_slots;
+	int hbuf_slots;
 	int rets;
 	bool first_chunk;
+	const void *data;
 
 	if (WARN_ON(!cl || !cl->dev))
 		return -ENODEV;
@@ -1553,40 +1572,48 @@ int mei_cl_irq_write(struct mei_cl *cl, struct mei_cl_cb *cb,
 		return 0;
 	}
 
-	slots = mei_hbuf_empty_slots(dev);
+	mei_msg_hdr_init(mei_hdr, cb);
+
+	hbuf_slots = mei_hbuf_empty_slots(dev);
+	dr_slots = mei_dma_ring_empty_slots(dev);
 	len = buf->size - cb->buf_idx;
+	data = buf->data + cb->buf_idx;
 	msg_slots = mei_data2slots(len);
 
-	mei_hdr.host_addr = mei_cl_host_addr(cl);
-	mei_hdr.me_addr = mei_cl_me_id(cl);
-	mei_hdr.reserved = 0;
-	mei_hdr.internal = cb->internal;
+	if (hbuf_slots >= msg_slots) {
+		mei_hdr->length = len;
+		mei_hdr->msg_complete = 1;
+	} else if (dev->hbm_f_dr_supported && hbuf_slots > sizeof(ext_hdr) &&
+		   dr_slots) {
+		if (msg_slots < dr_slots)
+			mei_hdr->msg_complete = 1;
+		else
+			len = mei_slots2data(dr_slots);
 
-	if (slots >= msg_slots) {
-		mei_hdr.length = len;
-		mei_hdr.msg_complete = 1;
-	/* Split the message only if we can write the whole host buffer */
-	} else if (slots == dev->hbuf_depth) {
-		msg_slots = slots;
-		len = (slots * sizeof(u32)) - sizeof(struct mei_msg_hdr);
-		mei_hdr.length = len;
-		mei_hdr.msg_complete = 0;
+		mei_hdr->dma_ring = 1;
+		mei_hdr->length = sizeof(ext_hdr.dma_len);
+		ext_hdr.dma_len = len;
+		data = &ext_hdr.dma_len;
+
+	} else if (hbuf_slots == dev->hbuf_depth) {
+		len = mei_hbuf_max_len(dev);
+		mei_hdr->length = len;
 	} else {
 		/* wait for next time the host buffer is empty */
 		return 0;
 	}
 
-	cl_dbg(dev, cl, "buf: size = %zu idx = %zu\n",
-			cb->buf.size, cb->buf_idx);
+	if (mei_hdr->dma_ring)
+		mei_dma_ring_write(dev, buf->data + cb->buf_idx, len);
 
-	rets = mei_write_message(dev, &mei_hdr, buf->data + cb->buf_idx);
+	rets = mei_write_message(dev, mei_hdr, data);
 	if (rets)
 		goto err;
 
 	cl->status = 0;
 	cl->writing_state = MEI_WRITING;
-	cb->buf_idx += mei_hdr.length;
-	cb->completed = mei_hdr.msg_complete == 1;
+	cb->buf_idx += len;
+	cb->completed = mei_hdr->msg_complete == 1;
 
 	if (first_chunk) {
 		if (mei_cl_tx_flow_ctrl_creds_reduce(cl)) {
@@ -1595,7 +1622,7 @@ int mei_cl_irq_write(struct mei_cl *cl, struct mei_cl_cb *cb,
 		}
 	}
 
-	if (mei_hdr.msg_complete)
+	if (mei_hdr->msg_complete)
 		list_move_tail(&cb->list, &dev->write_waiting_list);
 
 	return 0;
@@ -1619,10 +1646,13 @@ int mei_cl_write(struct mei_cl *cl, struct mei_cl_cb *cb)
 {
 	struct mei_device *dev;
 	struct mei_msg_data *buf;
-	struct mei_msg_hdr mei_hdr;
-	int size;
+	struct mei_msg_hdr_ext ext_hdr;
+	struct mei_msg_hdr *mei_hdr = &ext_hdr.hdr;
 	int rets;
 	bool blocking;
+	size_t len;
+	u32 hbuf_slots, dr_slots, msg_slots;
+	const void *data;
 
 	if (WARN_ON(!cl || !cl->dev))
 		return -ENODEV;
@@ -1633,10 +1663,11 @@ int mei_cl_write(struct mei_cl *cl, struct mei_cl_cb *cb)
 	dev = cl->dev;
 
 	buf = &cb->buf;
-	size = buf->size;
+	len = buf->size;
+	data = buf->data;
 	blocking = cb->blocking;
 
-	cl_dbg(dev, cl, "size=%d\n", size);
+	cl_dbg(dev, cl, "size = %zu\n", len);
 
 	rets = pm_runtime_get(dev->dev);
 	if (rets < 0 && rets != -EINPROGRESS) {
@@ -1648,11 +1679,7 @@ int mei_cl_write(struct mei_cl *cl, struct mei_cl_cb *cb)
 	cb->buf_idx = 0;
 	cl->writing_state = MEI_IDLE;
 
-	mei_hdr.host_addr = mei_cl_host_addr(cl);
-	mei_hdr.me_addr = mei_cl_me_id(cl);
-	mei_hdr.reserved = 0;
-	mei_hdr.msg_complete = 0;
-	mei_hdr.internal = cb->internal;
+	mei_msg_hdr_init(mei_hdr, cb);
 
 	rets = mei_cl_tx_flow_ctrl_creds(cl);
 	if (rets < 0)
@@ -1660,25 +1687,41 @@ int mei_cl_write(struct mei_cl *cl, struct mei_cl_cb *cb)
 
 	if (rets == 0) {
 		cl_dbg(dev, cl, "No flow control credentials: not sending.\n");
-		rets = size;
 		goto out;
 	}
+
 	if (!mei_hbuf_acquire(dev)) {
 		cl_dbg(dev, cl, "Cannot acquire the host buffer: not sending.\n");
-		rets = size;
 		goto out;
 	}
 
-	/* Check for a maximum length */
-	if (size > mei_hbuf_max_len(dev)) {
-		mei_hdr.length = mei_hbuf_max_len(dev);
-		mei_hdr.msg_complete = 0;
+	hbuf_slots = mei_hbuf_empty_slots(dev);
+	dr_slots = mei_dma_ring_empty_slots(dev);
+	msg_slots = mei_data2slots(len);
+
+	if (hbuf_slots >= msg_slots) {
+		mei_hdr->length = len;
+		mei_hdr->msg_complete = 1;
+	} else if (dev->hbm_f_dr_supported && hbuf_slots > sizeof(ext_hdr) &&
+		   dr_slots) {
+		if (msg_slots < dr_slots)
+			mei_hdr->msg_complete = 1;
+		else
+			len = mei_slots2data(dr_slots);
+
+		mei_hdr->dma_ring = 1;
+		mei_hdr->length = sizeof(ext_hdr.dma_len);
+		ext_hdr.dma_len = len;
+		data = &ext_hdr.dma_len;
 	} else {
-		mei_hdr.length = size;
-		mei_hdr.msg_complete = 1;
+		len = mei_hbuf_max_len(dev);
+		mei_hdr->length = len;
 	}
 
-	rets = mei_write_message(dev, &mei_hdr, buf->data);
+	if (mei_hdr->dma_ring)
+		mei_dma_ring_write(dev, buf->data, len);
+
+	rets = mei_write_message(dev, mei_hdr, data);
 	if (rets)
 		goto err;
 
@@ -1687,11 +1730,13 @@ int mei_cl_write(struct mei_cl *cl, struct mei_cl_cb *cb)
 		goto err;
 
 	cl->writing_state = MEI_WRITING;
-	cb->buf_idx = mei_hdr.length;
-	cb->completed = mei_hdr.msg_complete == 1;
+	cb->buf_idx = len;
+	cb->completed = mei_hdr->msg_complete == 1;
 
+	/* reset len to the original size for a function return value */
+	len = buf->size;
 out:
-	if (mei_hdr.msg_complete)
+	if (mei_hdr->msg_complete)
 		list_add_tail(&cb->list, &dev->write_waiting_list);
 	else
 		list_add_tail(&cb->list, &dev->write_list);
@@ -1716,7 +1761,7 @@ out:
 		}
 	}
 
-	rets = size;
+	rets = len;
 err:
 	cl_dbg(dev, cl, "rpm: autosuspend\n");
 	pm_runtime_mark_last_busy(dev->dev);
