@@ -507,12 +507,10 @@ static int skl_free(struct hdac_ext_bus *ebus)
 	return 0;
 }
 
-static int skl_machine_device_register(struct skl *skl, void *driver_data)
+static int skl_find_machine(struct skl *skl, void *driver_data)
 {
-	struct hdac_bus *bus = ebus_to_hbus(&skl->ebus);
-	struct platform_device *pdev;
 	struct snd_soc_acpi_mach *mach = driver_data;
-	int ret;
+	struct hdac_bus *bus = ebus_to_hbus(&skl->ebus);
 
 	if (IS_ENABLED(CONFIG_SND_SOC_RT700) ||
 	    IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA))
@@ -523,8 +521,26 @@ static int skl_machine_device_register(struct skl *skl, void *driver_data)
 		dev_err(bus->dev, "No matching machine driver found\n");
 		return -ENODEV;
 	}
+
 out:
+
 	skl->fw_name = mach->fw_filename;
+	skl->mach = mach;
+	if (mach->pdata) {
+		skl->use_tplg_pcm =
+			((struct skl_machine_pdata *)mach->pdata)->use_tplg_pcm;
+	}
+
+	return 0;
+}
+
+static int skl_machine_device_register(struct skl *skl)
+{
+	struct hdac_bus *bus = ebus_to_hbus(&skl->ebus);
+	struct snd_soc_acpi_mach *mach = skl->mach;
+	struct platform_device *pdev;
+	int ret;
+
 	pdev = platform_device_alloc(mach->drv_name, -1);
 	if (pdev == NULL) {
 		dev_err(bus->dev, "platform device alloc failed\n");
@@ -690,18 +706,30 @@ static void skl_probe_work(struct work_struct *work)
 	skl_codec_create(ebus);
 #endif
 
-	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI)) {
-		err = snd_hdac_display_power(bus, false);
-		if (err < 0) {
-			dev_err(bus->dev, "Cannot turn off display power on i915\n");
-			return;
-		}
-	}
-
 	/* register platform dai and controls */
 	err = skl_platform_register(bus->dev);
 	if (err < 0)
 		return;
+
+	if (bus->ppcap) {
+		err = skl_machine_device_register(skl);
+		if (err < 0) {
+			dev_err(bus->dev,
+				"machine device register failed with err: %d\n",
+				err);
+			goto out_err;
+		}
+	}
+
+	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI)) {
+		err = snd_hdac_display_power(bus, false);
+		if (err < 0) {
+			dev_err(bus->dev, "Cannot turn off display power on i915\n");
+			skl_machine_device_unregister(skl);
+			return;
+		}
+	}
+
 	/*
 	 * we are done probing so decrement link counts
 	 */
@@ -887,15 +915,14 @@ nhlt_continue:
 
 	/* check if dsp is there */
 	if (bus->ppcap) {
-		err = skl_machine_device_register(skl,
-				  (void *)pci_id->driver_data);
+		err = skl_find_machine(skl, (void *)pci_id->driver_data);
 		if (err < 0)
 			goto out_nhlt_free;
 
 		err = skl_init_dsp(skl);
 		if (err < 0) {
 			dev_dbg(bus->dev, "error failed to register dsp\n");
-			goto out_mach_free;
+			goto out_nhlt_free;
 		}
 		skl->skl_sst->enable_miscbdcge = skl_enable_miscbdcge;
 
@@ -916,8 +943,6 @@ nhlt_continue:
 
 out_dsp_free:
 	skl_free_dsp(skl);
-out_mach_free:
-	skl_machine_device_unregister(skl);
 out_nhlt_free:
 	skl_nhlt_free(skl->nhlt);
 out_free:

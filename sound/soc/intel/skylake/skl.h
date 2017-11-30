@@ -125,6 +125,8 @@ struct skl {
 	bool mod_set_get_status;
 	struct ep_group_cnt grp_cnt;
 	struct skl_fw_cfg_info cfg;
+	struct snd_soc_acpi_mach *mach;
+	bool use_tplg_pcm;
 };
 
 #define skl_to_ebus(s)	(&(s)->ebus)
@@ -140,6 +142,7 @@ struct skl_dma_params {
 /* to pass dmic data */
 struct skl_machine_pdata {
 	u32 dmic_num;
+	bool use_tplg_pcm; /* use total dais and dai links from topology*/
 };
 
 struct skl_dsp_ops {
