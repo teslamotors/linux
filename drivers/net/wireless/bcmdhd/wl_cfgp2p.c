@@ -1381,9 +1381,11 @@ wl_cfgp2p_listen_expired(unsigned long data)
 {
 	wl_event_msg_t msg;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
-	struct p2p_info *ip2p = from_timer(ip2p, t, listen_timer);;
+	struct p2p_info *ip2p;
+	struct bcm_cfg80211 *cfg;
 
-	struct bcm_cfg80211 *cfg = ip2p->bcm_cfg;
+	ip2p = from_timer(ip2p, t, listen_timer);
+	cfg = ip2p->bcm_cfg;
 #else
 	struct bcm_cfg80211 *cfg = (struct bcm_cfg80211 *) data;
 #endif
