@@ -28,7 +28,7 @@ static int __init seed_wipe_init(void)
 {
 	int res;
 
-	ks_info("--------\n" KBUILD_MODNAME ": seed_wipe_init\n");
+	ks_info(KBUILD_MODNAME ": seed_wipe_init\n");
 
 	/* fill_seeds here will actually just wipe both of the seeds */
 	/* as the module will be compiled with the config options:   */
@@ -41,7 +41,6 @@ static int __init seed_wipe_init(void)
 		return res;
 	}
 
-	ks_info("--------\n");
 	ks_info(KBUILD_MODNAME ": seed_wipe_init completed successfully\n");
 
 	return 0;

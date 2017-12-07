@@ -218,7 +218,7 @@ static int __init keystore_init(void)
 {
 	int res;
 
-	ks_info("--------\n" KBUILD_MODNAME ": keystore_init\n");
+	ks_info(KBUILD_MODNAME ": keystore_init\n");
 
 #ifdef CONFIG_KEYSTORE_SECURE_BOOT_IGNORE
 	ks_info(KBUILD_MODNAME ": Not checking secure boot status!\n");
@@ -271,7 +271,6 @@ static int __init keystore_init(void)
 		goto err4;
 	}
 
-	ks_info("--------\n");
 	ks_info(KBUILD_MODNAME ": keystore_init completed successfully\n");
 #ifdef CONFIG_DAL_KEYSTORE
 	schedule_applet_blacklisting();
