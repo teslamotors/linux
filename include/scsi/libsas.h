@@ -87,10 +87,8 @@ enum discover_event {
 	DISCE_DISCOVER_DOMAIN   = 0U,
 	DISCE_REVALIDATE_DOMAIN = 1,
 	DISCE_PORT_GONE         = 2,
-	DISCE_PROBE		= 3,
 	DISCE_SUSPEND		= 4,
 	DISCE_RESUME		= 5,
-	DISCE_DESTRUCT		= 6,
 	DISC_NUM_EVENTS		= 7,
 };
 
@@ -269,6 +267,7 @@ struct asd_sas_port {
 	struct list_head dev_list;
 	struct list_head disco_list;
 	struct list_head destroy_list;
+	struct list_head sas_port_del_list;
 	enum   sas_linkrate linkrate;
 
 	struct sas_work work;
