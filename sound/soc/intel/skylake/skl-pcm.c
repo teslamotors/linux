@@ -2073,7 +2073,7 @@ static int skl_get_probe_widget(struct snd_soc_platform *platform,
 	int i;
 
 	list_for_each_entry(w, &platform->component.card->widgets, list) {
-		if (is_skl_dsp_widget_type(w) &&
+		if (is_skl_dsp_widget_type(w, skl->skl_sst->dev) &&
 				(strstr(w->name, "probe") != NULL)) {
 			pconfig->w = w;
 

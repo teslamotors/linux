@@ -608,7 +608,7 @@ int skl_get_module_params(struct skl_sst *ctx, u32 *params, int size,
 
 struct skl_module_cfg *skl_tplg_be_get_cpr_module(struct snd_soc_dai *dai,
 								int stream);
-int is_skl_dsp_widget_type(struct snd_soc_dapm_widget *w);
+int is_skl_dsp_widget_type(struct snd_soc_dapm_widget *w, struct device *dev);
 
 enum skl_bitdepth skl_get_bit_depth(int params);
 int skl_pcm_host_dma_prepare(struct device *dev,
