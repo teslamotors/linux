@@ -1151,10 +1151,14 @@ handle_impl_def_interrupts:
 		goto ack_interrupts;
 
 	intr_status = kzalloc(sizeof(*intr_status), GFP_KERNEL);
+	if (!intr_status)
+		return -ENOMEM;
 
 	portn_stat = kzalloc((sizeof(*portn_stat)) *
 				sdw_slv->sdw_slv_cap.num_of_sdw_ports,
 				GFP_KERNEL);
+	if (!portn_stat)
+		return -ENOMEM;
 
 	intr_status->portn_stat = portn_stat;
 	intr_status->control_port_stat = control_port_stat;
