@@ -134,7 +134,7 @@ int sdw_get_col_to_num(int col)
 {
 	int i;
 
-	for (i = 0; i <= MAX_NUM_COLS; i++) {
+	for (i = 0; i < MAX_NUM_COLS; i++) {
 		if (sdw_num_col_mapping[i].col == col)
 			return sdw_num_col_mapping[i].num;
 	}
