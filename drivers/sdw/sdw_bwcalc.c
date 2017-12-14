@@ -152,7 +152,7 @@ int sdw_get_row_to_num(int row)
 {
 	int i;
 
-	for (i = 0; i <= MAX_NUM_ROWS; i++) {
+	for (i = 0; i < MAX_NUM_ROWS; i++) {
 		if (sdw_num_row_mapping[i].row == row)
 			return sdw_num_row_mapping[i].num;
 	}
