@@ -107,13 +107,8 @@ static int intel_dr_phy_set_host(struct usb_otg *otg, struct usb_bus *host)
 {
 	struct intel_dr_phy *intel_phy;
 
-	if (!otg)
+	if (!otg || !host)
 		return -ENODEV;
-
-	if (!host) {
-		otg->host = NULL;
-		return -ENODEV;
-	}
 
 	intel_phy = container_of(otg->usb_phy, struct intel_dr_phy, phy);
 
@@ -133,13 +128,8 @@ static int intel_dr_phy_set_peripheral(struct usb_otg *otg,
 {
 	struct intel_dr_phy *intel_phy;
 
-	if (!otg)
+	if (!otg || !gadget)
 		return -ENODEV;
-
-	if (!gadget) {
-		otg->gadget = NULL;
-		return -ENODEV;
-	}
 
 	intel_phy = container_of(otg->usb_phy, struct intel_dr_phy, phy);
 
@@ -195,9 +185,9 @@ static int intel_dr_phy_handle_notification(struct notifier_block *nb,
 	}
 
 	/*
-	 * don't kick the state machine if host or device controller
-	 * is not registered. Just wait to kick it when set_host or
-	 * set_peripheral.
+	 * Don't kick the state machine if host or device controller
+	 * were never registered before. Just wait to kick it when
+	 * set_host or set_peripheral.
 	 * */
 
 	if (host && gadget)
