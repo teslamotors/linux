@@ -24,6 +24,7 @@
 struct trusty_timer {
 	struct sec_timer_state *sts;
 	struct hrtimer tm;
+	struct work_struct work;
 };
 
 struct trusty_timer_dev_state {
@@ -32,7 +33,25 @@ struct trusty_timer_dev_state {
 	struct device *trusty_dev;
 	struct notifier_block call_notifier;
 	struct trusty_timer timer;
+	struct workqueue_struct *workqueue;
 };
+
+/* Max entity defined as SMC_NUM_ENTITIES(64) */
+#define	SMC_ENTITY_SMC_X86	63	/* Used for customized SMC calls */
+
+#define	SMC_SC_LK_TIMER	SMC_STDCALL_NR(SMC_ENTITY_SMC_X86, 0)
+
+static void timer_work_func(struct work_struct *work)
+{
+	int ret;
+	struct trusty_timer_dev_state *s;
+
+	s = container_of(work, struct trusty_timer_dev_state, timer.work);
+
+	ret = trusty_std_call32(s->trusty_dev, SMC_SC_LK_TIMER, 0, 0, 0);
+	if (ret != 0)
+		dev_err(s->dev, "%s failed %d\n", __func__, ret);
+}
 
 static enum hrtimer_restart trusty_timer_cb(struct hrtimer *tm)
 {
@@ -40,8 +59,7 @@ static enum hrtimer_restart trusty_timer_cb(struct hrtimer *tm)
 
 	s = container_of(tm, struct trusty_timer_dev_state, timer.tm);
 
-	set_pending_intr_to_lk(0x31);
-	trusty_enqueue_nop(s->trusty_dev, NULL);
+	queue_work(s->workqueue, &s->timer.work);
 
 	return HRTIMER_NORESTART;
 }
@@ -114,6 +132,12 @@ static int trusty_timer_probe(struct platform_device *pdev)
 				sizeof(*tt->sts));
 	WARN_ON(!tt->sts);
 
+	s->workqueue = alloc_workqueue("trusty-timer-wq", WQ_CPU_INTENSIVE, 0);
+	if (!s->workqueue) {
+		ret = -ENODEV;
+		dev_err(&pdev->dev, "Failed to allocate work queue\n");
+		goto err_allocate_work_queue;
+	}
 
 	/* register notifier */
 	s->call_notifier.notifier_call = trusty_timer_call_notify;
@@ -124,9 +148,17 @@ static int trusty_timer_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	INIT_WORK(&s->timer.work, timer_work_func);
+
 	dev_info(s->dev, "initialized\n");
 
 	return 0;
+
+err_register_call_notifier:
+	destroy_workqueue(s->workqueue);
+err_allocate_work_queue:
+	kfree(s);
+	return ret;
 
 }
 
@@ -144,6 +176,8 @@ static int trusty_timer_remove(struct platform_device *pdev)
 	tt = &s->timer;
 	hrtimer_cancel(&tt->tm);
 
+	flush_work(&tt->work);
+	destroy_workqueue(s->workqueue);
 	/* free state */
 	kfree(s);
 	return 0;

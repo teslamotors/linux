@@ -59,6 +59,15 @@ struct trusty_irq_state {
 
 static enum cpuhp_state trusty_irq_online;
 
+#define TRUSTY_VMCALL_PENDING_INTR 0x74727505
+static inline void set_pending_intr_to_lk(uint8_t vector)
+{
+	__asm__ __volatile__(
+		"vmcall"
+		::"a"(TRUSTY_VMCALL_PENDING_INTR), "b"(vector)
+		);
+}
+
 static void trusty_irq_enable_pending_irqs(struct trusty_irq_state *is,
 					   struct trusty_irq_irqset *irqset,
 					   bool percpu)
