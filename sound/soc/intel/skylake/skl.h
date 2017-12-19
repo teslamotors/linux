@@ -170,7 +170,6 @@ int skl_platform_unregister(struct device *dev);
 int skl_platform_register(struct device *dev);
 
 int skl_get_nhlt_version(struct device *dev);
-void skl_nhlt_get_ep_cnt(struct skl *skl, int link_type);
 struct nhlt_acpi_table *skl_nhlt_init(struct device *dev);
 void skl_nhlt_free(struct nhlt_acpi_table *addr);
 struct nhlt_specific_cfg *skl_get_ep_blob(struct skl *skl, u32 instance,

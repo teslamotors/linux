@@ -307,39 +307,3 @@ void skl_nhlt_remove_sysfs(struct skl *skl)
 
 	sysfs_remove_file(&dev->kobj, &dev_attr_platform_id.attr);
 }
-
-static bool is_vbus_id_exist(struct skl *skl, int vbus_id)
-{
-	bool ret = false;
-	int i;
-
-	for (i = 0; i < skl->nhlt->endpoint_count; i++) {
-		if (vbus_id == skl->grp_cnt.vbus_id[i])
-			return true;
-	}
-	return ret;
-}
-
-/*
- * This function gets endpoint count and vbus_id for the specific link type
- *  passed as parameter.
- */
-void skl_nhlt_get_ep_cnt(struct skl *skl, int link_type)
-{
-	struct nhlt_endpoint *epnt = (struct nhlt_endpoint *) skl->nhlt->desc;
-	int i;
-
-	skl->grp_cnt.cnt = 0;
-	memset(skl->grp_cnt.vbus_id, 0xff,
-		(sizeof(int) * skl->nhlt->endpoint_count));
-
-	for (i = 0; i < skl->nhlt->endpoint_count; i++) {
-
-		if (epnt->linktype == link_type) {
-			if (!is_vbus_id_exist(skl, epnt->virtual_bus_id))
-				skl->grp_cnt.vbus_id[skl->grp_cnt.cnt++] =
-						epnt->virtual_bus_id;
-		}
-		epnt = (struct nhlt_endpoint *)((u8 *)epnt + epnt->length);
-	}
-}
