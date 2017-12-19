@@ -41,6 +41,10 @@
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+#include "gvt.h"
+#endif
+
 static bool
 format_is_yuv(uint32_t format)
 {
@@ -249,6 +253,11 @@ skl_update_plane(struct intel_plane *plane,
 	uint32_t src_w = drm_rect_width(&plane_state->base.src) >> 16;
 	uint32_t src_h = drm_rect_height(&plane_state->base.src) >> 16;
 	unsigned long irqflags;
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	struct intel_gvt *gvt = dev_priv->gvt;
+	struct intel_dom0_plane_regs *dom0_regs =
+		&gvt->pipe_info[pipe].dom0_regs[plane_id];
+#endif
 
 	/* Sizes are 0 based */
 	src_w--;
@@ -257,6 +266,32 @@ skl_update_plane(struct intel_plane *plane,
 	crtc_h--;
 
 	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
+
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (gvt && gvt->pipe_info[pipe].plane_owner[plane_id]) {
+		dom0_regs->plane_keyval =  key->min_value;
+		dom0_regs->plane_keymax =  key->max_value;
+		dom0_regs->plane_keymsk =  key->channel_mask;
+		dom0_regs->plane_offset =  (y << 16) | x;
+		dom0_regs->plane_stride = stride;
+		dom0_regs->plane_size = (src_h << 16) | src_w;
+		dom0_regs->plane_aux_dist =
+			(plane_state->aux.offset - surf_addr) | aux_stride;
+		dom0_regs->plane_aux_offset =
+			(plane_state->aux.y << 16) | plane_state->aux.x;
+		dom0_regs->plane_pos = (crtc_y << 16) | crtc_x;
+		dom0_regs->plane_ctl = plane_ctl;
+		dom0_regs->plane_surf =
+			intel_plane_ggtt_offset(plane_state) +
+			surf_addr;
+
+		if (plane_state->scaler_id >= 0)
+			DRM_ERROR("GVT not support plane scaling yet\n");
+
+		spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
+		return;
+	}
+#endif
 
 	if (IS_GEMINILAKE(dev_priv) || IS_CANNONLAKE(dev_priv)) {
 		I915_WRITE_FW(PLANE_COLOR_CTL(pipe, plane_id),
@@ -313,6 +348,17 @@ skl_disable_plane(struct intel_plane *plane, struct intel_crtc *crtc)
 	enum plane_id plane_id = plane->id;
 	enum pipe pipe = plane->pipe;
 	unsigned long irqflags;
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	struct intel_gvt *gvt = dev_priv->gvt;
+
+	if (gvt && gvt->pipe_info[pipe].plane_owner[plane_id]) {
+		struct intel_dom0_plane_regs *dom0_regs =
+			&gvt->pipe_info[pipe].dom0_regs[plane_id];
+		dom0_regs->plane_ctl = 0;
+		dom0_regs->plane_surf = 0;
+		return;
+	}
+#endif
 
 	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 

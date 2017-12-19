@@ -226,6 +226,8 @@ void intel_gvt_deactivate_vgpu(struct intel_vgpu *vgpu)
 
 	vgpu->active = false;
 
+	idr_remove(&gvt->vgpu_idr, vgpu->id);
+
 	if (atomic_read(&vgpu->running_workload_num)) {
 		mutex_unlock(&gvt->lock);
 		intel_gvt_wait_vgpu_idle(vgpu);
@@ -383,6 +385,8 @@ static struct intel_vgpu *__intel_gvt_create_vgpu(struct intel_gvt *gvt,
 	ret = intel_vgpu_init_sched_policy(vgpu);
 	if (ret)
 		goto out_clean_shadow_ctx;
+
+	vgpu->active = true;
 
 	mutex_unlock(&gvt->lock);
 

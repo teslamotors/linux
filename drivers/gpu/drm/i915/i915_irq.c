@@ -37,6 +37,10 @@
 #include "i915_trace.h"
 #include "intel_drv.h"
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+#include "gvt.h"
+#endif
+
 /**
  * DOC: interrupt handling
  *
@@ -1706,6 +1710,17 @@ static void gen9_guc_irq_handler(struct drm_i915_private *dev_priv, u32 gt_iir)
 	}
 }
 
+
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+static inline void gvt_notify_vblank(struct drm_i915_private *dev_priv,
+				     enum pipe pipe)
+{
+	if (dev_priv->gvt)
+		queue_work(system_unbound_wq,
+				&dev_priv->gvt->pipe_info[pipe].vblank_work);
+}
+#endif
+
 static void valleyview_pipestat_irq_ack(struct drm_i915_private *dev_priv,
 					u32 iir, u32 pipe_stats[I915_MAX_PIPES])
 {
@@ -2465,8 +2480,12 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 		ret = IRQ_HANDLED;
 		I915_WRITE(GEN8_DE_PIPE_IIR(pipe), iir);
 
-		if (iir & GEN8_PIPE_VBLANK)
+		if (iir & GEN8_PIPE_VBLANK) {
 			drm_handle_vblank(&dev_priv->drm, pipe);
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+			gvt_notify_vblank(dev_priv, pipe);
+#endif
+		}
 
 		if (iir & GEN8_PIPE_CDCLK_CRC_DONE)
 			hsw_pipe_crc_irq_handler(dev_priv, pipe);
@@ -2851,7 +2870,9 @@ static void gen8_disable_vblank(struct drm_device *dev, unsigned int pipe)
 	unsigned long irqflags;
 
 	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
-	bdw_disable_pipe_irq(dev_priv, pipe, GEN8_PIPE_VBLANK);
+	/*since guest will see all the pipes, we don't want it disable vblank*/
+	if (!dev_priv->gvt)
+		bdw_disable_pipe_irq(dev_priv, pipe, GEN8_PIPE_VBLANK);
 	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 }
 

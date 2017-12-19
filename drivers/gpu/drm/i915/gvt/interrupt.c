@@ -595,8 +595,8 @@ static void gen8_init_irq(
 		SET_BIT_INFO(irq, 4, SPRITE_C_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_C);
 
 		SET_BIT_INFO(irq, 5, PLANE_3_A_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_A);
-		SET_BIT_INFO(irq, 5, PLANE_3_A_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_B);
-		SET_BIT_INFO(irq, 5, PLANE_3_A_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_C);
+		SET_BIT_INFO(irq, 5, PLANE_3_B_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_B);
+		SET_BIT_INFO(irq, 5, PLANE_3_C_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_C);
 	}
 
 	/* GEN8 interrupt PCU events */
@@ -656,7 +656,7 @@ static enum hrtimer_restart vblank_timer_fn(struct hrtimer *data)
 	irq = container_of(vblank_timer, struct intel_gvt_irq, vblank_timer);
 	gvt = container_of(irq, struct intel_gvt, irq);
 
-	intel_gvt_request_service(gvt, INTEL_GVT_REQUEST_EMULATE_VBLANK);
+//	intel_gvt_request_service(gvt, INTEL_GVT_REQUEST_EMULATE_VBLANK);
 	hrtimer_add_expires_ns(&vblank_timer->timer, vblank_timer->period);
 	return HRTIMER_RESTART;
 }

@@ -55,10 +55,6 @@ static unsigned char edid_get_byte(struct intel_vgpu *vgpu)
 		gvt_vgpu_err("Driver tries to read EDID without proper sequence!\n");
 		return 0;
 	}
-	if (edid->current_edid_read >= EDID_SIZE) {
-		gvt_vgpu_err("edid_get_byte() exceeds the size of EDID!\n");
-		return 0;
-	}
 
 	if (!edid->edid_available) {
 		gvt_vgpu_err("Reading EDID but EDID is not available!\n");
@@ -445,6 +441,8 @@ void intel_gvt_i2c_handle_aux_ch_write(struct intel_vgpu *vgpu,
 	u32 value = *(u32 *)p_data;
 	int aux_data_for_write = 0;
 	int reg = get_aux_ch_reg(offset);
+	uint8_t rxbuf[20];
+	size_t rxsize;
 
 	if (reg != AUX_CH_CTL) {
 		vgpu_vreg(vgpu, offset) = value;
@@ -452,6 +450,9 @@ void intel_gvt_i2c_handle_aux_ch_write(struct intel_vgpu *vgpu,
 	}
 
 	msg_length = AUX_CTL_MSG_LENGTH(value);
+	for (rxsize = 0; rxsize < msg_length; rxsize += 4)
+		intel_dp_unpack_aux(vgpu_vreg(vgpu, offset + 4 + rxsize),
+				rxbuf + rxsize, msg_length - rxsize);
 	// check the msg in DATA register.
 	msg = vgpu_vreg(vgpu, offset + 4);
 	addr = (msg >> 8) & 0xffff;
@@ -491,12 +492,13 @@ void intel_gvt_i2c_handle_aux_ch_write(struct intel_vgpu *vgpu,
 			}
 		}
 	} else if ((op & 0x1) == GVT_AUX_I2C_WRITE) {
-		/* TODO
-		 * We only support EDID reading from I2C_over_AUX. And
-		 * we do not expect the index mode to be used. Right now
-		 * the WRITE operation is ignored. It is good enough to
-		 * support the gfx driver to do EDID access.
+		/* We only support EDID reading from I2C_over_AUX.
+		 * But if EDID has extension blocks, we use this write
+		 * operation to set block starting address
 		 */
+		if (addr == EDID_ADDR) {
+			i2c_edid->current_edid_read = rxbuf[4];
+		}
 	} else {
 		if (WARN_ON((op & 0x1) != GVT_AUX_I2C_READ))
 			return;

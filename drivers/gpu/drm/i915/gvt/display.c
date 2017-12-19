@@ -297,14 +297,18 @@ static void clean_virtual_dp_monitor(struct intel_vgpu *vgpu, int port_num)
 }
 
 static int setup_virtual_dp_monitor(struct intel_vgpu *vgpu, int port_num,
-				    int type, unsigned int resolution)
+				    int type, unsigned int resolution, void *edid)
 {
 	struct intel_vgpu_port *port = intel_vgpu_port(vgpu, port_num);
+	int valid_extensions = 1;
 
 	if (WARN_ON(resolution >= GVT_EDID_NUM))
 		return -EINVAL;
 
-	port->edid = kzalloc(sizeof(*(port->edid)), GFP_KERNEL);
+	if (edid)
+		valid_extensions += ((struct edid *)edid)->extensions;
+	port->edid = kzalloc(sizeof(*(port->edid))
+			+ valid_extensions * EDID_SIZE, GFP_KERNEL);
 	if (!port->edid)
 		return -ENOMEM;
 
@@ -314,8 +318,12 @@ static int setup_virtual_dp_monitor(struct intel_vgpu *vgpu, int port_num,
 		return -ENOMEM;
 	}
 
-	memcpy(port->edid->edid_block, virtual_dp_monitor_edid[resolution],
-			EDID_SIZE);
+	if (edid)
+		memcpy(port->edid->edid_block, edid, EDID_SIZE * valid_extensions);
+	else
+		memcpy(port->edid->edid_block, virtual_dp_monitor_edid[resolution],
+				EDID_SIZE);
+
 	port->edid->data_valid = true;
 
 	memcpy(port->dpcd->data, dpcd_fix_data, DPCD_HEADER_SIZE);
@@ -420,6 +428,65 @@ void intel_gvt_emulate_vblank(struct intel_gvt *gvt)
 		emulate_vblank(vgpu);
 }
 
+static void intel_gvt_vblank_work(struct work_struct *w)
+{
+	struct intel_gvt_pipe_info *pipe_info = container_of(w,
+			struct intel_gvt_pipe_info, vblank_work);
+	struct intel_gvt *gvt = pipe_info->gvt;
+	struct intel_vgpu *vgpu;
+	int id;
+
+	mutex_lock(&gvt->lock);
+	for_each_active_vgpu(gvt, vgpu, id)
+		emulate_vblank_on_pipe(vgpu, pipe_info->pipe_num);
+	mutex_unlock(&gvt->lock);
+}
+
+void intel_gvt_init_pipe_info(struct intel_gvt *gvt)
+{
+	int pipe;
+
+	for (pipe = PIPE_A; pipe <= PIPE_C; pipe++) {
+		gvt->pipe_info[pipe].pipe_num = pipe;
+		gvt->pipe_info[pipe].gvt = gvt;
+		INIT_WORK(&gvt->pipe_info[pipe].vblank_work,
+				intel_gvt_vblank_work);
+	}
+}
+
+int bxt_setup_virtual_monitors(struct intel_vgpu *vgpu)
+{
+	struct intel_connector *connector = NULL;
+	struct drm_connector_list_iter conn_iter;
+	int pipe = 0;
+	int ret = 0;
+
+	drm_connector_list_iter_begin(&vgpu->gvt->dev_priv->drm, &conn_iter);
+	for_each_intel_connector_iter(connector, &conn_iter) {
+		if (connector->encoder->get_hw_state(connector->encoder, &pipe)
+				&& connector->detect_edid) {
+			ret = setup_virtual_dp_monitor(vgpu, pipe,
+					GVT_DP_A + pipe, 0,
+					connector->detect_edid);
+			if (ret)
+				return ret;
+		}
+	}
+	return 0;
+}
+
+void bxt_clean_virtual_monitors(struct intel_vgpu *vgpu)
+{
+	int port = 0;
+
+	for (port = PORT_A; port < INTEL_GVT_MAX_PORT; port++) {
+		struct intel_vgpu_port *p = intel_vgpu_port(vgpu, port);
+
+		if (p->edid)
+			clean_virtual_dp_monitor(vgpu, port);
+	}
+}
+
 /**
  * intel_vgpu_clean_display - clean vGPU virtual display emulation
  * @vgpu: a vGPU
@@ -431,7 +498,9 @@ void intel_vgpu_clean_display(struct intel_vgpu *vgpu)
 {
 	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
 
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
+	if (IS_BROXTON(dev_priv))
+		bxt_clean_virtual_monitors(vgpu);
+	else if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
 		clean_virtual_dp_monitor(vgpu, PORT_D);
 	else
 		clean_virtual_dp_monitor(vgpu, PORT_B);
@@ -453,12 +522,12 @@ int intel_vgpu_init_display(struct intel_vgpu *vgpu, u64 resolution)
 
 	intel_vgpu_init_i2c_edid(vgpu);
 
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
-		return setup_virtual_dp_monitor(vgpu, PORT_D, GVT_DP_D,
-						resolution);
+	if (IS_BROXTON(dev_priv))
+		return bxt_setup_virtual_monitors(vgpu);
+	else if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
+		return setup_virtual_dp_monitor(vgpu, PORT_D, GVT_DP_D, resolution, NULL);
 	else
-		return setup_virtual_dp_monitor(vgpu, PORT_B, GVT_DP_B,
-						resolution);
+		return setup_virtual_dp_monitor(vgpu, PORT_B, GVT_DP_B, resolution, NULL);
 }
 
 /**

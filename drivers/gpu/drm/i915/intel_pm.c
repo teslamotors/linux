@@ -33,6 +33,10 @@
 #include <linux/module.h>
 #include <drm/drm_atomic_helper.h>
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+#include "gvt.h"
+#endif
+
 /**
  * DOC: RC6
  *
@@ -4657,18 +4661,22 @@ static void skl_ddb_entry_write(struct drm_i915_private *dev_priv,
 		I915_WRITE(reg, 0);
 }
 
-static void skl_write_wm_level(struct drm_i915_private *dev_priv,
-			       i915_reg_t reg,
-			       const struct skl_wm_level *level)
+static inline uint32_t skl_calc_wm_level(const struct skl_wm_level *level)
 {
 	uint32_t val = 0;
-
 	if (level->plane_en) {
 		val |= PLANE_WM_EN;
 		val |= level->plane_res_b;
 		val |= level->plane_res_l << PLANE_WM_LINES_SHIFT;
 	}
+	return val;
+}
 
+static void skl_write_wm_level(struct drm_i915_private *dev_priv,
+			       i915_reg_t reg,
+			       const struct skl_wm_level *level)
+{
+	uint32_t val = skl_calc_wm_level(level);
 	I915_WRITE(reg, val);
 }
 
@@ -4682,13 +4690,41 @@ static void skl_write_plane_wm(struct intel_crtc *intel_crtc,
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	int level, max_level = ilk_wm_max_level(dev_priv);
 	enum pipe pipe = intel_crtc->pipe;
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	struct intel_gvt *gvt = dev_priv->gvt;
+	struct intel_dom0_plane_regs *dom0_regs = NULL;
+#endif
 
 	for (level = 0; level <= max_level; level++) {
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+		if (gvt && gvt->pipe_info[pipe].plane_owner[plane_id]) {
+			dom0_regs = &gvt->pipe_info[pipe].dom0_regs[plane_id];
+			dom0_regs->plane_wm[level] = skl_calc_wm_level(
+					&wm->wm[level]);
+		} else {
+			skl_write_wm_level(dev_priv,
+				PLANE_WM(pipe, plane_id, level),
+				&wm->wm[level]);
+		}
+#else
 		skl_write_wm_level(dev_priv, PLANE_WM(pipe, plane_id, level),
-				   &wm->wm[level]);
+				&wm->wm[level]);
+#endif
 	}
-	skl_write_wm_level(dev_priv, PLANE_WM_TRANS(pipe, plane_id),
-			   &wm->trans_wm);
+
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (gvt && gvt->pipe_info[pipe].plane_owner[plane_id]) {
+		dom0_regs = &gvt->pipe_info[pipe].dom0_regs[plane_id];
+		dom0_regs->plane_wm_trans = skl_calc_wm_level(
+				&wm->trans_wm);
+	} else {
+		skl_write_wm_level(dev_priv, PLANE_WM_TRANS(pipe, plane_id),
+				&wm->trans_wm);
+	}
+#else
+	skl_write_wm_level(dev_priv, PLANE_WM(pipe, plane_id, level),
+			&wm->trans_wm);
+#endif
 
 	skl_ddb_entry_write(dev_priv, PLANE_BUF_CFG(pipe, plane_id),
 			    &ddb->plane[pipe][plane_id]);
@@ -4876,6 +4912,14 @@ skl_compute_ddb(struct drm_atomic_state *state)
 	 * make sure we start with the current state.
 	 */
 	memcpy(ddb, &dev_priv->wm.skl_hw.ddb, sizeof(*ddb));
+
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	/* In GVT environemnt, we only use the statically allocated ddb */
+	if (dev_priv->gvt) {
+		memcpy(ddb, &dev_priv->gvt->ddb, sizeof(*ddb));
+		return 0;
+	}
+#endif
 
 	for_each_intel_crtc_mask(dev, intel_crtc, realloc_pipes) {
 		struct intel_crtc_state *cstate;

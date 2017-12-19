@@ -243,6 +243,7 @@ struct intel_gvt_opregion {
 };
 
 #define NR_MAX_INTEL_VGPU_TYPES 20
+
 struct intel_vgpu_type {
 	char name[16];
 	unsigned int avail_instance;
@@ -251,6 +252,31 @@ struct intel_vgpu_type {
 	unsigned int fence;
 	unsigned int weight;
 	enum intel_vgpu_edid resolution;
+};
+
+struct intel_dom0_plane_regs {
+	u32 plane_ctl;
+	u32 plane_stride;
+	u32 plane_pos;
+	u32 plane_size;
+	u32 plane_keyval;
+	u32 plane_keymsk;
+	u32 plane_keymax;
+	u32 plane_offset;
+	u32 plane_aux_dist;
+	u32 plane_aux_offset;
+	u32 plane_surf;
+	u32 plane_wm[8];
+	u32 plane_wm_trans;
+};
+
+struct intel_gvt_pipe_info {
+	enum pipe pipe_num;
+	int owner;
+	struct intel_gvt *gvt;
+	struct work_struct vblank_work;
+	struct intel_dom0_plane_regs dom0_regs[I915_MAX_PLANES - 1];
+	int plane_owner[I915_MAX_PLANES - 1];
 };
 
 struct intel_gvt {
@@ -276,6 +302,9 @@ struct intel_gvt {
 	struct task_struct *service_thread;
 	wait_queue_head_t service_thread_wq;
 	unsigned long service_request;
+	struct intel_gvt_pipe_info pipe_info[I915_MAX_PIPES];
+
+	struct skl_ddb_allocation ddb;
 };
 
 static inline struct intel_gvt *to_gvt(struct drm_i915_private *i915)
