@@ -2102,12 +2102,6 @@ static int skl_platform_soc_probe(struct snd_soc_platform *platform)
 			return ret;
 		}
 
-		if (skl->cfg.astate_cfg != NULL) {
-			skl_dsp_set_astate_cfg(skl->skl_sst,
-					skl->cfg.astate_cfg->count,
-					skl->cfg.astate_cfg);
-		}
-
 		/* Set DMA buffer configuration */
 		if (skl->cfg.dmacfg.size)
 			skl_ipc_set_dma_cfg(&skl->skl_sst->ipc,
