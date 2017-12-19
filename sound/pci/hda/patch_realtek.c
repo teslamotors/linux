@@ -330,6 +330,7 @@ static void alc_fill_eapd_coef(struct hda_codec *codec)
 	case 0x10ec0236:
 	case 0x10ec0255:
 	case 0x10ec0256:
+	case 0x10ec0257:
 	case 0x10ec0282:
 	case 0x10ec0283:
 	case 0x10ec0286:
@@ -340,6 +341,9 @@ static void alc_fill_eapd_coef(struct hda_codec *codec)
 	case 0x10ec0289:
 	case 0x10ec0299:
 		alc_update_coef_idx(codec, 0x10, 1<<9, 0);
+		break;
+	case 0x10ec0275:
+		alc_update_coef_idx(codec, 0xe, 0, 1<<0);
 		break;
 	case 0x10ec0293:
 		alc_update_coef_idx(codec, 0xa, 1<<13, 0);
@@ -2746,6 +2750,7 @@ enum {
 	ALC269_TYPE_ALC298,
 	ALC269_TYPE_ALC255,
 	ALC269_TYPE_ALC256,
+	ALC269_TYPE_ALC257,
 	ALC269_TYPE_ALC215,
 	ALC269_TYPE_ALC225,
 	ALC269_TYPE_ALC294,
@@ -2779,6 +2784,7 @@ static int alc269_parse_auto_config(struct hda_codec *codec)
 	case ALC269_TYPE_ALC298:
 	case ALC269_TYPE_ALC255:
 	case ALC269_TYPE_ALC256:
+	case ALC269_TYPE_ALC257:
 	case ALC269_TYPE_ALC215:
 	case ALC269_TYPE_ALC225:
 	case ALC269_TYPE_ALC294:
@@ -6836,6 +6842,10 @@ static int patch_alc269(struct hda_codec *codec)
 		spec->gen.mixer_nid = 0; /* ALC256 does not have any loopback mixer path */
 		alc_update_coef_idx(codec, 0x36, 1 << 13, 1 << 5); /* Switch pcbeep path to Line in path*/
 		break;
+	case 0x10ec0257:
+		spec->codec_variant = ALC269_TYPE_ALC257;
+		spec->gen.mixer_nid = 0;
+		break;
 	case 0x10ec0215:
 	case 0x10ec0285:
 	case 0x10ec0289:
@@ -6863,7 +6873,7 @@ static int patch_alc269(struct hda_codec *codec)
 	case 0x10ec0703:
 		spec->codec_variant = ALC269_TYPE_ALC700;
 		spec->gen.mixer_nid = 0; /* ALC700 does not have any loopback mixer path */
-		alc_update_coef_idx(codec, 0x4a, 0, 1 << 15); /* Combo jack auto trigger control */
+		alc_update_coef_idx(codec, 0x4a, 1 << 15, 0); /* Combo jack auto trigger control */
 		break;
 
 	}
@@ -7883,6 +7893,7 @@ static const struct hda_device_id snd_hda_id_realtek[] = {
 	HDA_CODEC_ENTRY(0x10ec0236, "ALC236", patch_alc269),
 	HDA_CODEC_ENTRY(0x10ec0255, "ALC255", patch_alc269),
 	HDA_CODEC_ENTRY(0x10ec0256, "ALC256", patch_alc269),
+	HDA_CODEC_ENTRY(0x10ec0257, "ALC257", patch_alc269),
 	HDA_CODEC_ENTRY(0x10ec0260, "ALC260", patch_alc260),
 	HDA_CODEC_ENTRY(0x10ec0262, "ALC262", patch_alc262),
 	HDA_CODEC_ENTRY(0x10ec0267, "ALC267", patch_alc268),

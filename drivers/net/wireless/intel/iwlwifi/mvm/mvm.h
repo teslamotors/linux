@@ -954,6 +954,7 @@ struct iwl_mvm {
 
 	/* Tx queues */
 	u16 aux_queue;
+	u16 snif_queue;
 	u16 probe_queue;
 	u16 p2p_dev_queue;
 
@@ -1042,6 +1043,7 @@ struct iwl_mvm {
  * @IWL_MVM_STATUS_ROC_AUX_RUNNING: AUX remain-on-channel is running
  * @IWL_MVM_STATUS_D3_RECONFIG: D3 reconfiguration is being done
  * @IWL_MVM_STATUS_FIRMWARE_RUNNING: firmware is running
+ * @IWL_MVM_STATUS_NEED_FLUSH_P2P: need to flush P2P bcast STA
  */
 enum iwl_mvm_status {
 	IWL_MVM_STATUS_HW_RFKILL,
@@ -1053,6 +1055,7 @@ enum iwl_mvm_status {
 	IWL_MVM_STATUS_ROC_AUX_RUNNING,
 	IWL_MVM_STATUS_D3_RECONFIG,
 	IWL_MVM_STATUS_FIRMWARE_RUNNING,
+	IWL_MVM_STATUS_NEED_FLUSH_P2P,
 };
 
 /* Keep track of completed init configuration */
@@ -1122,6 +1125,12 @@ static inline bool iwl_mvm_is_d0i3_supported(struct iwl_mvm *mvm)
 	return !iwlwifi_mod_params.d0i3_disable &&
 		fw_has_capa(&mvm->fw->ucode_capa,
 			    IWL_UCODE_TLV_CAPA_D0I3_SUPPORT);
+}
+
+static inline bool iwl_mvm_is_adaptive_dwell_supported(struct iwl_mvm *mvm)
+{
+	return fw_has_api(&mvm->fw->ucode_capa,
+			  IWL_UCODE_TLV_API_ADAPTIVE_DWELL);
 }
 
 static inline bool iwl_mvm_enter_d0i3_on_suspend(struct iwl_mvm *mvm)
