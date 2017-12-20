@@ -24,6 +24,8 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/acpi.h>
+#include <linux/usb/phy.h>
+#include <linux/usb/otg.h>
 
 #include "xhci.h"
 #include "xhci-trace.h"
@@ -54,6 +56,8 @@
 #define PCI_DEVICE_ID_INTEL_APL_XHCI			0x5aa8
 #define PCI_DEVICE_ID_INTEL_DNV_XHCI			0x19d0
 
+#define XHCI_INTEL_VENDOR_CAPS 192
+
 #define PCI_DEVICE_ID_ASMEDIA_1042A_XHCI		0x1142
 
 static const char hcd_name[] = "xhci_hcd";
@@ -69,11 +73,33 @@ static const struct xhci_driver_overrides xhci_pci_overrides __initconst = {
 /* called after powerup, by probe or system-pm "wakeup" */
 static int xhci_pci_reinit(struct xhci_hcd *xhci, struct pci_dev *pdev)
 {
+	struct usb_hcd *hcd;
+	int retval;
+
 	/*
 	 * TODO: Implement finding debug ports later.
 	 * TODO: see if there are any quirks that need to be added to handle
 	 * new extended capabilities.
 	 */
+	retval = XHCI_HCC_EXT_CAPS(readl(&xhci->cap_regs->hcc_params));
+	retval = xhci_find_next_ext_cap(&xhci->cap_regs->hc_capbase,
+					retval << 2,
+					XHCI_INTEL_VENDOR_CAPS);
+	/* If This capbility is found, register host on PHY for OTG purpose */
+	if (pdev->vendor == PCI_VENDOR_ID_INTEL && retval) {
+		hcd = xhci_to_hcd(xhci);
+		hcd->usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
+
+		if (!IS_ERR_OR_NULL(hcd->usb_phy)) {
+			retval = otg_set_host(hcd->usb_phy->otg, &hcd->self);
+			if (retval)
+				usb_put_phy(hcd->usb_phy);
+		} else {
+			xhci_dbg(xhci, "No USB2 PHY transceiver found\n");
+			hcd->usb_phy = NULL;
+		}
+	}
+
 
 	/* PCI Memory-Write-Invalidate cycle support is optional (uncommon) */
 	if (!pci_set_mwi(pdev))

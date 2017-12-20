@@ -19,6 +19,7 @@
 #include <linux/kthread.h>
 #include <linux/interrupt.h>
 #include <linux/pm_runtime.h>
+#include <linux/sizes.h>
 
 #include "mei_dev.h"
 #include "hbm.h"
@@ -1375,6 +1376,11 @@ static bool mei_me_fw_type_sps(struct pci_dev *pdev)
 	.fw_status.status[4] = PCI_CFG_HFS_5,   \
 	.fw_status.status[5] = PCI_CFG_HFS_6
 
+#define MEI_CFG_DMA_128 \
+	.dma_size[DMA_DSCR_HOST] = SZ_128K, \
+	.dma_size[DMA_DSCR_DEVICE] = SZ_128K, \
+	.dma_size[DMA_DSCR_CTRL] = PAGE_SIZE
+
 /* ICH Legacy devices */
 static const struct mei_cfg mei_me_ich_cfg = {
 	MEI_CFG_ICH_HFS,
@@ -1407,6 +1413,12 @@ static const struct mei_cfg mei_me_pch8_sps_cfg = {
 	MEI_CFG_FW_SPS,
 };
 
+/* Cannon Lake and newer devices */
+static const struct mei_cfg mei_me_pch12_cfg = {
+	MEI_CFG_PCH8_HFS,
+	MEI_CFG_DMA_128,
+};
+
 /*
  * mei_cfg_list - A list of platform platform specific configurations.
  * Note: has to be synchronized with  enum mei_cfg_idx.
@@ -1419,6 +1431,7 @@ static const struct mei_cfg *const mei_cfg_list[] = {
 	[MEI_ME_PCH_CPT_PBG_CFG] = &mei_me_pch_cpt_pbg_cfg,
 	[MEI_ME_PCH8_CFG] = &mei_me_pch8_cfg,
 	[MEI_ME_PCH8_SPS_CFG] = &mei_me_pch8_sps_cfg,
+	[MEI_ME_PCH12_CFG] = &mei_me_pch12_cfg,
 };
 
 const struct mei_cfg *mei_me_get_cfg(kernel_ulong_t idx)
@@ -1444,15 +1457,21 @@ struct mei_device *mei_me_dev_init(struct pci_dev *pdev,
 {
 	struct mei_device *dev;
 	struct mei_me_hw *hw;
+	int i;
 
 	dev = devm_kzalloc(&pdev->dev, sizeof(struct mei_device) +
 			   sizeof(struct mei_me_hw), GFP_KERNEL);
 	if (!dev)
 		return NULL;
+
 	hw = to_me_hw(dev);
+
+	for (i = 0; i < DMA_DSCR_NUM; i++)
+		dev->dr_dscr[i].size = cfg->dma_size[i];
 
 	mei_device_init(dev, &pdev->dev, &mei_me_hw_ops);
 	hw->cfg = cfg;
+
 	return dev;
 }
 

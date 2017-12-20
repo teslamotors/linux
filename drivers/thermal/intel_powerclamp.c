@@ -99,6 +99,7 @@ struct powerclamp_worker_data {
 	unsigned int target_ratio;
 	unsigned int duration_jiffies;
 	bool clamping;
+	bool setscheduler_done;
 };
 
 static struct powerclamp_worker_data * __percpu worker_data;
@@ -388,6 +389,10 @@ static void clamp_balancing_func(struct kthread_work *work)
 	w_data = container_of(work, struct powerclamp_worker_data,
 			      balancing_work);
 
+	if (unlikely(w_data->setscheduler_done == false)) {
+		sched_setscheduler(current, SCHED_FIFO, &sparam);
+		w_data->setscheduler_done = true;
+	}
 	/*
 	 * make sure user selected ratio does not take effect until
 	 * the next round. adjust target_ratio if user has changed
@@ -503,7 +508,6 @@ static void start_power_clamp_worker(unsigned long cpu)
 	w_data->cpu = cpu;
 	w_data->clamping = true;
 	set_bit(cpu, cpu_clamping_mask);
-	sched_setscheduler(worker->task, SCHED_FIFO, &sparam);
 	kthread_init_work(&w_data->balancing_work, clamp_balancing_func);
 	kthread_init_delayed_work(&w_data->idle_injection_work,
 				  clamp_idle_injection_func);

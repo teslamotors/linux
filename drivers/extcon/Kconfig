@@ -157,4 +157,21 @@ config EXTCON_USBC_CROS_EC
 	  Say Y here to enable USB Type C cable detection extcon support when
 	  using Chrome OS EC based USB Type-C ports.
 
+config EXTCON_INTEL_USB
+	bool "Intel USB MUX support"
+	depends on X86 && USB
+	help
+	  Intel SoCs and chipsets often have an internal USB mux that is used to
+	  share one USB port between an USB Device Controller and xHCI. The mux
+	  is by default controlled by BIOS/FW, but on some platforms that is not
+	  possible and the OS has to configure the mux with this driver.
+
+	  The driver relies on events from some external source. The mux has no
+	  means to detect a change in the cable connection status on its own.
+	  That makes this driver useful only on platforms where a separate
+	  component exists, for example PMIC, that can detect connection status
+	  changes on the USB port behind the mux.
+
+	  If unsure, say N.
+
 endif

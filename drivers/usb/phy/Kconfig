@@ -202,4 +202,12 @@ config USB_ULPI_VIEWPORT
 	  Provides read/write operations to the ULPI phy register set for
 	  controllers with a viewport register (e.g. Chipidea/ARC controllers).
 
+config USB_INTEL_DUAL_ROLE_PHY
+	tristate "Intel Dual Role Transceiver Driver"
+	depends on USB_OTG_FSM && PM
+	depends on USB_GADGET || !USB_GADGET # if USB_GADGET=m, this can't be 'y'
+	help
+	  Enable this to support USB Dual Role transceiver for Broxton/Cherrytrail
+          platforms.
+
 endmenu

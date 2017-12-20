@@ -15,6 +15,7 @@
 #include <linux/export.h>
 #include <linux/acpi.h>
 #include <linux/dmi.h>
+#include <linux/extcon/intel_usb_mux.h>
 #include "pci-quirks.h"
 #include "xhci-ext-caps.h"
 
@@ -1091,8 +1092,30 @@ static void quirk_usb_handoff_xhci(struct pci_dev *pdev)
 	writel(val, base + ext_cap_offset + XHCI_LEGACY_CONTROL_OFFSET);
 
 hc_init:
-	if (pdev->vendor == PCI_VENDOR_ID_INTEL)
+	if (pdev->vendor == PCI_VENDOR_ID_INTEL) {
 		usb_enable_intel_xhci_ports(pdev);
+
+		/*
+		 * Initialize the internal mux that shares a port between USB
+		 * Device Controller and xHCI on platforms that have it.
+		 */
+#define XHCI_INTEL_VENDOR_CAPS 192
+		ext_cap_offset = xhci_find_next_ext_cap(base,
+							XHCI_HCC_PARAMS_OFFSET,
+							XHCI_INTEL_VENDOR_CAPS);
+		if (ext_cap_offset) {
+			struct intel_usb_mux *mux;
+			struct resource r;
+
+			r.start = pci_resource_start(pdev, 0) + 0x80d8;
+			r.end   = r.start + 8;
+			r.flags = IORESOURCE_MEM;
+
+			mux = intel_usb_mux_register(&pdev->dev, &r);
+			if (IS_ERR(mux))
+				dev_err(&pdev->dev, "failed to register mux\n");
+		}
+	}
 
 	op_reg_base = base + XHCI_HC_LENGTH(readl(base));
 

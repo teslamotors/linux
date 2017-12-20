@@ -404,6 +404,8 @@ latex_documents = [
      'The kernel development community', 'manual'),
     ('userspace-api/index', 'userspace-api.tex', 'The Linux kernel user-space API guide',
      'The kernel development community', 'manual'),
+    ('rpmb/index', 'rpmb.tex', 'Linux RPMB Subsystem Documentation',
+     'The kernel development community', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

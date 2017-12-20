@@ -127,6 +127,7 @@ obj-$(CONFIG_EFI)			+= sysfb_efi.o
 obj-$(CONFIG_PERF_EVENTS)		+= perf_regs.o
 obj-$(CONFIG_TRACING)			+= tracepoint.o
 obj-$(CONFIG_SCHED_MC_PRIO)		+= itmt.o
+obj-$(CONFIG_X86_INTEL_UMIP)		+= umip.o
 
 obj-$(CONFIG_ORC_UNWINDER)		+= unwind_orc.o
 obj-$(CONFIG_FRAME_POINTER_UNWINDER)	+= unwind_frame.o
