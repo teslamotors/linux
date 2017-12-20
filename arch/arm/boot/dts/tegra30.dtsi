@@ -114,9 +114,11 @@
 			compatible = "nvidia,tegra30-vi";
 			reg = <0x54080000 0x00040000>;
 			interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&tegra_car TEGRA30_CLK_VI>;
-			resets = <&tegra_car 20>;
-			reset-names = "vi";
+			clocks = <&tegra_car TEGRA30_CLK_VI>,
+				 <&tegra_car TEGRA30_CLK_CSI>;
+			clock-names = "vi", "csi";
+			resets = <&tegra_car 20>, <&tegra_car 52>;
+			reset-names = "vi", "csi";
 		};
 
 		epp@540c0000 {
@@ -141,7 +143,9 @@
 			compatible = "nvidia,tegra30-gr2d";
 			reg = <0x54140000 0x00040000>;
 			interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&tegra_car TEGRA30_CLK_GR2D>;
+			clocks = <&tegra_car TEGRA30_CLK_GR2D>,
+				 <&tegra_car TEGRA30_CLK_EPP>;
+			clock-names = "2d", "epp";
 			resets = <&tegra_car 21>;
 			reset-names = "2d";
 		};
@@ -220,6 +224,15 @@
 			reg = <0x54300000 0x00040000>;
 			clocks = <&tegra_car TEGRA30_CLK_DSIA>;
 			resets = <&tegra_car 48>;
+			reset-names = "dsi";
+			status = "disabled";
+		};
+
+		dsi@54400000 {
+			compatible = "nvidia,tegra30-dsi";
+			reg = <0x54400000 0x00040000>;
+			clocks = <&tegra_car TEGRA30_CLK_DSIB>;
+			resets = <&tegra_car 82>;
 			reset-names = "dsi";
 			status = "disabled";
 		};
@@ -439,6 +452,18 @@
 		status = "disabled";
 	};
 
+	nor@70009000 {
+		compatible = "nvidia,tegra20-nor", "nvidia,tegra30-nor";
+		reg = <0x70009000 0x1000>;
+		#address-cells = <2>;
+		#size-cells = <1>;
+		clocks = <&tegra_car TEGRA30_CLK_NOR>;
+		resets = < &tegra_car 42>;
+		reset-names = "nor";
+		nvidia,config = <0x00008000>; /* SNOR_CONFIG_0 value */
+		status = "disabled";
+	};
+
 	pwm: pwm@7000a000 {
 		compatible = "nvidia,tegra30-pwm", "nvidia,tegra20-pwm";
 		reg = <0x7000a000 0x100>;
@@ -648,6 +673,14 @@
 		#iommu-cells = <1>;
 	};
 
+	emc: emc-controller@7000f400 {
+		compatible = "nvidia,tegra30-emc";
+		reg = <0x7000f400 0x400>;
+		clocks = <&tegra_car TEGRA30_CLK_EMC>;
+		resets = <&tegra_car 57>;
+		reset-name = "emc";
+	};
+
 	fuse@7000f800 {
 		compatible = "nvidia,tegra30-efuse";
 		reg = <0x7000f800 0x400>;
@@ -655,6 +688,15 @@
 		clock-names = "fuse";
 		resets = <&tegra_car 39>;
 		reset-names = "fuse";
+	};
+
+	kfuse@7000fc00 {
+		compatible = "nvidia,tegra30-kfuse";
+		reg = <0x7000fc00 0x400>;
+		clocks = <&tegra_car TEGRA30_CLK_KFUSE>;
+		clock-names = "kfuse";
+		resets = <&tegra_car 40>;
+		reset-names = "kfuse";
 	};
 
 	hda@70030000 {
@@ -708,7 +750,12 @@
 			compatible = "nvidia,tegra30-i2s";
 			reg = <0x70080300 0x100>;
 			nvidia,ahub-cif-ids = <4 4>;
-			clocks = <&tegra_car TEGRA30_CLK_I2S0>;
+			clocks = <&tegra_car TEGRA30_CLK_I2S0>,
+				 <&tegra_car TEGRA30_CLK_I2S0_SYNC>,
+				 <&tegra_car TEGRA30_CLK_AUDIO0>,
+				 <&tegra_car TEGRA30_CLK_AUDIO0_2X>,
+				 <&tegra_car TEGRA30_CLK_AUDIO0_MUX>;
+			clock-names = "i2s", "i2s_sync", "audio", "audio_2x", "audio_mux";
 			resets = <&tegra_car 30>;
 			reset-names = "i2s";
 			status = "disabled";
@@ -718,7 +765,12 @@
 			compatible = "nvidia,tegra30-i2s";
 			reg = <0x70080400 0x100>;
 			nvidia,ahub-cif-ids = <5 5>;
-			clocks = <&tegra_car TEGRA30_CLK_I2S1>;
+			clocks = <&tegra_car TEGRA30_CLK_I2S1>,
+				 <&tegra_car TEGRA30_CLK_I2S1_SYNC>,
+				 <&tegra_car TEGRA30_CLK_AUDIO1>,
+				 <&tegra_car TEGRA30_CLK_AUDIO1_2X>,
+				 <&tegra_car TEGRA30_CLK_AUDIO1_MUX>;
+			clock-names = "i2s", "i2s_sync", "audio", "audio_2x", "audio_mux";
 			resets = <&tegra_car 11>;
 			reset-names = "i2s";
 			status = "disabled";
@@ -728,7 +780,12 @@
 			compatible = "nvidia,tegra30-i2s";
 			reg = <0x70080500 0x100>;
 			nvidia,ahub-cif-ids = <6 6>;
-			clocks = <&tegra_car TEGRA30_CLK_I2S2>;
+			clocks = <&tegra_car TEGRA30_CLK_I2S2>,
+				 <&tegra_car TEGRA30_CLK_I2S2_SYNC>,
+				 <&tegra_car TEGRA30_CLK_AUDIO2>,
+				 <&tegra_car TEGRA30_CLK_AUDIO2_2X>,
+				 <&tegra_car TEGRA30_CLK_AUDIO2_MUX>;
+			clock-names = "i2s", "i2s_sync", "audio", "audio_2x", "audio_mux";
 			resets = <&tegra_car 18>;
 			reset-names = "i2s";
 			status = "disabled";
@@ -738,7 +795,12 @@
 			compatible = "nvidia,tegra30-i2s";
 			reg = <0x70080600 0x100>;
 			nvidia,ahub-cif-ids = <7 7>;
-			clocks = <&tegra_car TEGRA30_CLK_I2S3>;
+			clocks = <&tegra_car TEGRA30_CLK_I2S3>,
+				 <&tegra_car TEGRA30_CLK_I2S3_SYNC>,
+				 <&tegra_car TEGRA30_CLK_AUDIO3>,
+				 <&tegra_car TEGRA30_CLK_AUDIO3_2X>,
+				 <&tegra_car TEGRA30_CLK_AUDIO3_MUX>;
+			clock-names = "i2s", "i2s_sync", "audio", "audio_2x", "audio_mux";
 			resets = <&tegra_car 101>;
 			reset-names = "i2s";
 			status = "disabled";
@@ -748,7 +810,12 @@
 			compatible = "nvidia,tegra30-i2s";
 			reg = <0x70080700 0x100>;
 			nvidia,ahub-cif-ids = <8 8>;
-			clocks = <&tegra_car TEGRA30_CLK_I2S4>;
+			clocks = <&tegra_car TEGRA30_CLK_I2S4>,
+				 <&tegra_car TEGRA30_CLK_I2S4_SYNC>,
+				 <&tegra_car TEGRA30_CLK_AUDIO4>,
+				 <&tegra_car TEGRA30_CLK_AUDIO4_2X>,
+				 <&tegra_car TEGRA30_CLK_AUDIO4_MUX>;
+			clock-names = "i2s", "i2s_sync", "audio", "audio_2x", "audio_mux";
 			resets = <&tegra_car 102>;
 			reset-names = "i2s";
 			status = "disabled";

@@ -320,6 +320,12 @@ __ca8_errata:
 	b	__errata_finish
 
 __ca9_errata:
+#ifdef 	CONFIG_ARM_ERRATA_716044
+	cmp	r6, #0x12
+	mrcle	p15, 0, r10, c1, c0, 0
+	orrle	r10, r10, #1 << 14		@ set SCTLR.RR
+	mcrle	p15, 0, r10, c1, c0, 0
+#endif
 #ifdef CONFIG_ARM_ERRATA_742230
 	cmp	r6, #0x22			@ only present up to r2p2
 	mrcle	p15, 0, r0, c15, c0, 1		@ read diagnostic register
@@ -349,6 +355,12 @@ __ca9_errata:
 	mcrlt	p15, 0, r0, c15, c0, 1		@ write diagnostic register
 1:
 #endif
+#ifdef CONFIG_ARM_ERRATA_752520
+	cmp	r6, #0x29			@ preset prior to r2p9
+	mrclt	p15, 0, r0, c15, c0, 1		@ read diagnostic register
+	orrlt	r0, r0, #1 << 20		@ set bit #20
+	mcrlt	p15, 0, r0, c15, c0, 1		@ write diagnostic register
+#endif	
 	b	__errata_finish
 
 __ca15_errata:

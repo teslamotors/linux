@@ -35,6 +35,7 @@
 #include <linux/capability.h>
 #include <linux/compat.h>
 #include <linux/pm_runtime.h>
+#include <linux/of.h>
 
 #include <linux/mmc/ioctl.h>
 #include <linux/mmc/card.h>
@@ -2186,6 +2187,47 @@ static inline int mmc_blk_readonly(struct mmc_card *card)
 	       !(card->csd.cmdclass & CCC_BLOCK_WRITE);
 }
 
+static int mmc_get_dev_index(struct mmc_card *card, int of_id, int of_max)
+{
+	int devidx = of_id;
+
+	if (devidx >= 0 && devidx < max_devices) {
+		if (!__test_and_set_bit(devidx, dev_use))
+			return devidx;
+	}
+
+	/* search from a reasonable free area which should
+	 * be above any of the devices we want to register */
+	for (devidx = of_max; devidx < max_devices; devidx++) {
+		if (!__test_and_set_bit(devidx, dev_use))
+			return devidx;
+	}
+
+	return max_devices;
+}
+
+static int mmc_get_name_index(struct mmc_card *card, int of_id, int of_max)
+{
+	int name_idx = of_id;
+
+	if (name_idx >= 0 && name_idx < max_devices) {
+		if (!__test_and_set_bit(name_idx, name_use))
+			return name_idx;
+	}
+
+	/* first try and see if we can find something after of_max */
+	if (of_max > 0) {
+		for (name_idx = of_max; name_idx < max_devices; name_idx++) {
+			if (!__test_and_set_bit(name_idx, name_use))
+				return name_idx;
+		}
+	}
+
+	name_idx = find_first_zero_bit(name_use, max_devices);
+	__set_bit(name_idx, name_use);
+	return name_idx;
+}
+
 static struct mmc_blk_data *mmc_blk_alloc_req(struct mmc_card *card,
 					      struct device *parent,
 					      sector_t size,
@@ -2195,11 +2237,23 @@ static struct mmc_blk_data *mmc_blk_alloc_req(struct mmc_card *card,
 {
 	struct mmc_blk_data *md;
 	int devidx, ret;
+	int of_id = -1;
+	int of_max = 0;
 
-	devidx = find_first_zero_bit(dev_use, max_devices);
+	/* if we have aliases, try and avoid allocating below highest */
+	of_max = of_alias_get_highest_id("mmcblock");
+	of_max = (of_max < 0) ? 0 : of_max + 1;
+
+	if (dev_of_node(&card->dev)) {
+		of_id = of_alias_get_id(dev_of_node(&card->dev), "mmcblock");
+
+		if (of_id < 0)
+			dev_warn(&card->dev, "cannot get of-aliases entry");
+	}
+
+	devidx = mmc_get_dev_index(card, of_id, of_max);
 	if (devidx >= max_devices)
 		return ERR_PTR(-ENOSPC);
-	__set_bit(devidx, dev_use);
 
 	md = kzalloc(sizeof(struct mmc_blk_data), GFP_KERNEL);
 	if (!md) {
@@ -2214,8 +2268,7 @@ static struct mmc_blk_data *mmc_blk_alloc_req(struct mmc_card *card,
 	 * index anymore so we keep track of a name index.
 	 */
 	if (!subname) {
-		md->name_idx = find_first_zero_bit(name_use, max_devices);
-		__set_bit(md->name_idx, name_use);
+		md->name_idx = mmc_get_name_index(card, of_id, of_max);
 	} else
 		md->name_idx = ((struct mmc_blk_data *)
 				dev_to_disk(parent)->private_data)->name_idx;

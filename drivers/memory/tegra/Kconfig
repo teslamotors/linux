@@ -6,6 +6,12 @@ config TEGRA_MC
 	  This driver supports the Memory Controller (MC) hardware found on
 	  NVIDIA Tegra SoCs.
 
+config TEGRA_MC_LATENCY_HACK
+	bool "Use more aggressive latency allowance setting for display clients"
+	depends on TEGRA_MC
+	help
+	  This hack was transferred from the 2.6 PDK based kernel source.
+
 config TEGRA124_EMC
 	bool "NVIDIA Tegra124 External Memory Controller driver"
 	default y

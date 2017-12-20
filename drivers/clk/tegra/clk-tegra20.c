@@ -499,7 +499,11 @@ static struct tegra_devclk devclks[] __initdata = {
 	{ .dev_id = "mpe", .dt_id = TEGRA20_CLK_MPE },
 	{ .dev_id = "host1x", .dt_id = TEGRA20_CLK_HOST1X },
 	{ .dev_id = "3d", .dt_id = TEGRA20_CLK_GR3D },
+	{ .dev_id = "3d", .con_id = "mux", .dt_id = TEGRA20_CLK_GR3D_MUX},
+	{ .dev_id = "3d", .con_id = "idle", .dt_id = TEGRA20_CLK_GR3D_IDLE },
 	{ .dev_id = "2d", .dt_id = TEGRA20_CLK_GR2D },
+	{ .dev_id = "2d", .con_id = "mux", .dt_id = TEGRA20_CLK_GR2D_MUX },
+	{ .dev_id = "2d", .con_id = "idle", .dt_id = TEGRA20_CLK_GR2D_IDLE },
 	{ .dev_id = "tegra-nor", .dt_id = TEGRA20_CLK_NOR },
 	{ .dev_id = "sdhci-tegra.0", .dt_id = TEGRA20_CLK_SDMMC1 },
 	{ .dev_id = "sdhci-tegra.1", .dt_id = TEGRA20_CLK_SDMMC2 },
@@ -533,7 +537,7 @@ static struct tegra_clk tegra20_clks[tegra_clk_max] __initdata = {
 	[tegra_clk_sdmmc4] = { .dt_id = TEGRA20_CLK_SDMMC4, .present = true },
 	[tegra_clk_la] = { .dt_id = TEGRA20_CLK_LA, .present = true },
 	[tegra_clk_csite] = { .dt_id = TEGRA20_CLK_CSITE, .present = true },
-	[tegra_clk_vfir] = { .dt_id = TEGRA20_CLK_VFIR, .present = true },
+	[tegra_clk_vfir] = { .dt_id = TEGRA20_CLK_VFIR, .present = false },
 	[tegra_clk_mipi] = { .dt_id = TEGRA20_CLK_MIPI, .present = true },
 	[tegra_clk_nor] = { .dt_id = TEGRA20_CLK_NOR, .present = true },
 	[tegra_clk_rtc] = { .dt_id = TEGRA20_CLK_RTC, .present = true },
@@ -569,6 +573,10 @@ static struct tegra_clk tegra20_clks[tegra_clk_max] __initdata = {
 	[tegra_clk_host1x] = { .dt_id = TEGRA20_CLK_HOST1X, .present = true },
 	[tegra_clk_gr2d] = { .dt_id = TEGRA20_CLK_GR2D, .present = true },
 	[tegra_clk_gr3d] = { .dt_id = TEGRA20_CLK_GR3D, .present = true },
+	[tegra_clk_gr2d_mux] = { .dt_id = TEGRA20_CLK_GR2D_MUX, .present = true},
+	[tegra_clk_gr2d_idle] = { .dt_id = TEGRA20_CLK_GR2D_IDLE, .present = true},
+	[tegra_clk_gr3d_mux] = { .dt_id = TEGRA20_CLK_GR3D_MUX, .present = true},
+	[tegra_clk_gr3d_idle] = { .dt_id = TEGRA20_CLK_GR3D_IDLE, .present = true},
 	[tegra_clk_ndflash] = { .dt_id = TEGRA20_CLK_NDFLASH, .present = true },
 	[tegra_clk_cve] = { .dt_id = TEGRA20_CLK_CVE, .present = true },
 	[tegra_clk_tvo] = { .dt_id = TEGRA20_CLK_TVO, .present = true },
@@ -746,6 +754,7 @@ static void __init tegra20_audio_clk_init(void)
 				ARRAY_SIZE(audio_parents),
 				CLK_SET_RATE_NO_REPARENT,
 				clk_base + AUDIO_SYNC_CLK, 0, 3, 0, NULL);
+	clks[TEGRA20_CLK_AUDIO_MUX] = clk;
 	clk = clk_register_gate(NULL, "audio", "audio_mux", 0,
 				clk_base + AUDIO_SYNC_CLK, 4,
 				CLK_GATE_SET_TO_DISABLE, NULL);
@@ -1029,44 +1038,79 @@ static struct tegra_clk_init_table init_table[] __initdata = {
 	{TEGRA20_CLK_PLL_P_OUT1, TEGRA20_CLK_CLK_MAX, 28800000, 1},
 	{TEGRA20_CLK_PLL_P_OUT2, TEGRA20_CLK_CLK_MAX, 48000000, 1},
 	{TEGRA20_CLK_PLL_P_OUT3, TEGRA20_CLK_CLK_MAX, 72000000, 1},
-	{TEGRA20_CLK_PLL_P_OUT4, TEGRA20_CLK_CLK_MAX, 24000000, 1},
+	{TEGRA20_CLK_PLL_P_OUT4, TEGRA20_CLK_CLK_MAX, 240000000, 1},
+	{TEGRA20_CLK_PLL_M, TEGRA20_CLK_CLK_MAX, 666000000, 1 },	/* added from 2.6 */
+	{TEGRA20_CLK_PLL_M_OUT1, TEGRA20_CLK_CLK_MAX, 266400000, 1 },	/* added from 2.6 */
 	{TEGRA20_CLK_PLL_C, TEGRA20_CLK_CLK_MAX, 600000000, 1},
-	{TEGRA20_CLK_PLL_C_OUT1, TEGRA20_CLK_CLK_MAX, 120000000, 1},
+	{TEGRA20_CLK_PLL_C_OUT1, TEGRA20_CLK_CLK_MAX, 240000000, 1}, /* updated from 2.6 */
 	{TEGRA20_CLK_SCLK, TEGRA20_CLK_PLL_C_OUT1, 0, 1},
 	{TEGRA20_CLK_HCLK, TEGRA20_CLK_CLK_MAX, 0, 1},
-	{TEGRA20_CLK_PCLK, TEGRA20_CLK_CLK_MAX, 60000000, 1},
+	{TEGRA20_CLK_PCLK, TEGRA20_CLK_CLK_MAX, 120000000, 1}, /* updated from 2.6 */
 	{TEGRA20_CLK_CSITE, TEGRA20_CLK_CLK_MAX, 0, 1},
 	{TEGRA20_CLK_EMC, TEGRA20_CLK_CLK_MAX, 0, 1},
+	{TEGRA20_CLK_PLL_D, TEGRA20_CLK_CLK_MAX, 594000000, 1},
+	{TEGRA20_CLK_PLL_D_OUT0, TEGRA20_CLK_CLK_MAX, 594000000/2, 1},  // adjust from 2.6 value
 	{TEGRA20_CLK_CCLK, TEGRA20_CLK_CLK_MAX, 0, 1},
 	{TEGRA20_CLK_UARTA, TEGRA20_CLK_PLL_P, 0, 0},
-	{TEGRA20_CLK_UARTB, TEGRA20_CLK_PLL_P, 0, 0},
+	{TEGRA20_CLK_UARTB, TEGRA20_CLK_PLL_P, 216000000, 1},
 	{TEGRA20_CLK_UARTC, TEGRA20_CLK_PLL_P, 0, 0},
 	{TEGRA20_CLK_UARTD, TEGRA20_CLK_PLL_P, 0, 0},
 	{TEGRA20_CLK_UARTE, TEGRA20_CLK_PLL_P, 0, 0},
 	{TEGRA20_CLK_PLL_A, TEGRA20_CLK_CLK_MAX, 56448000, 1},
 	{TEGRA20_CLK_PLL_A_OUT0, TEGRA20_CLK_CLK_MAX, 11289600, 1},
-	{TEGRA20_CLK_CDEV1, TEGRA20_CLK_CLK_MAX, 0, 1},
-	{TEGRA20_CLK_BLINK, TEGRA20_CLK_CLK_MAX, 32768, 1},
+	//{TEGRA20_CLK_CDEV1, TEGRA20_CLK_CLK_MAX, 0, 1}, /* not set in 2.6 */
+	{TEGRA20_CLK_BLINK, TEGRA20_CLK_CLK_MAX, 32768, 0},
 	{TEGRA20_CLK_I2S1, TEGRA20_CLK_PLL_A_OUT0, 11289600, 0},
 	{TEGRA20_CLK_I2S2, TEGRA20_CLK_PLL_A_OUT0, 11289600, 0},
 	{TEGRA20_CLK_SDMMC1, TEGRA20_CLK_PLL_P, 48000000, 0},
 	{TEGRA20_CLK_SDMMC3, TEGRA20_CLK_PLL_P, 48000000, 0},
 	{TEGRA20_CLK_SDMMC4, TEGRA20_CLK_PLL_P, 48000000, 0},
 	{TEGRA20_CLK_SPI, TEGRA20_CLK_PLL_P, 20000000, 0},
-	{TEGRA20_CLK_SBC1, TEGRA20_CLK_PLL_P, 100000000, 0},
-	{TEGRA20_CLK_SBC2, TEGRA20_CLK_PLL_P, 100000000, 0},
-	{TEGRA20_CLK_SBC3, TEGRA20_CLK_PLL_P, 100000000, 0},
-	{TEGRA20_CLK_SBC4, TEGRA20_CLK_PLL_P, 100000000, 0},
-	{TEGRA20_CLK_HOST1X, TEGRA20_CLK_PLL_C, 150000000, 0},
-	{TEGRA20_CLK_DISP1, TEGRA20_CLK_PLL_P, 600000000, 0},
-	{TEGRA20_CLK_DISP2, TEGRA20_CLK_PLL_P, 600000000, 0},
-	{TEGRA20_CLK_GR2D, TEGRA20_CLK_PLL_C, 300000000, 0},
-	{TEGRA20_CLK_GR3D, TEGRA20_CLK_PLL_C, 300000000, 0},
+	{TEGRA20_CLK_NOR, TEGRA20_CLK_PLL_P, 86500000, 0},
+	{TEGRA20_CLK_SBC1, TEGRA20_CLK_PLL_C, 12000000, 0}, /* updated from 2.6 */
+	{TEGRA20_CLK_SBC2, TEGRA20_CLK_PLL_C, 12000000, 0}, /* updated from 2.6 */
+	{TEGRA20_CLK_SBC3, TEGRA20_CLK_PLL_C, 12000000, 0}, /* updated from 2.6 */
+	{TEGRA20_CLK_SBC4, TEGRA20_CLK_PLL_C, 12000000, 0}, /* updated from 2.6 */
+	{TEGRA20_CLK_HOST1X, TEGRA20_CLK_PLL_M, 266400000, 1}, /* updated from 2.6 */
+	//{TEGRA20_CLK_DISP1, TEGRA20_CLK_PLL_P, 297000000, 1}, /* updated from 2.6 */
+	{TEGRA20_CLK_DISP1, TEGRA20_CLK_PLL_D_OUT0, 297000000, 1, },	// disp1 from pll_d (no div)
+	//{TEGRA20_CLK_DISP2, TEGRA20_CLK_PLL_P, 600000000, 0}, /* not set in 2.6 */
+	{TEGRA20_CLK_GR2D_MUX, TEGRA20_CLK_PLL_C, 300000000, 0},
+	{TEGRA20_CLK_GR3D_MUX, TEGRA20_CLK_PLL_C, 300000000, 0},
+	{TEGRA20_CLK_GR2D, TEGRA20_CLK_CLK_MAX, 300000000, 0},
+	{TEGRA20_CLK_GR2D, TEGRA20_CLK_CLK_MAX, 300000000, 0},
+	{TEGRA20_CLK_GR2D_IDLE, TEGRA20_CLK_CLK_MAX, 300000000/25, 0},
+	{TEGRA20_CLK_GR3D_IDLE, TEGRA20_CLK_CLK_MAX, 300000000/25, 0},
+	//{TEGRA20_CLK_VI, TEGRA20_CLK_PLL_M, 111000000, 0 },	/* added from 2.6 */
+	{TEGRA20_CLK_VI_SENSOR, TEGRA20_CLK_PLL_M, 111000000, 0 }, /* added from 2.6 */
+	{TEGRA20_CLK_I2C1, TEGRA20_CLK_PLL_P, 3000000, 0 },	/* added from 2.6 */
+	{TEGRA20_CLK_I2C2, TEGRA20_CLK_PLL_P, 3000000, 0 },	/* added from 2.6 */
+	{TEGRA20_CLK_I2C3, TEGRA20_CLK_PLL_P, 3000000, 0 },	/* added from 2.6 */
+	{TEGRA20_CLK_DVC, TEGRA20_CLK_PLL_P, 3000000, 0 },	/* added from 2.6 */
+	{TEGRA20_CLK_PWM, TEGRA20_CLK_CLK_32K, 32768, 0 },	/* added from 2.6 */
+	{TEGRA20_CLK_EPP, TEGRA20_CLK_PLL_M, 111000000, 0 },	/* added from 2.6 */
+	{TEGRA20_CLK_MPE, TEGRA20_CLK_PLL_C, 300000000, 0 },	/* added from 2.6 */
+	{TEGRA20_CLK_NDFLASH, TEGRA20_CLK_PLL_P, 86500000, 1 },	/* added from 2.6 */
+	{TEGRA20_CLK_VDE, TEGRA20_CLK_PLL_C, 300000000, 0 },	/* added from 2.6 */
+	{TEGRA20_CLK_SPDIF_IN, TEGRA20_CLK_PLL_M, 22200000, 0 }, /* added from 2.6 */
+	{TEGRA20_CLK_SPDIF_OUT, TEGRA20_CLK_PLL_A_OUT0, 5644800, 0 }, /* added from 2.6 */
+	{TEGRA20_CLK_AUDIO_MUX, TEGRA20_CLK_PLL_A_OUT0, 11289600, 0 },	/* added from 2.6 */
 	{TEGRA20_CLK_CLK_MAX, TEGRA20_CLK_CLK_MAX, 0, 0}, /* This MUST be the last entry */
 };
 
+/* set min/max rates on some of the clocks */
+static struct __init tegra_clk_bound_table init_limit_table[] = {
+        { .clk_id = TEGRA20_CLK_VI,     .min = 0, .max = 111000000, },
+        { .clk_id = TEGRA20_CLK_GR3D,   .min = 0, .max = 300000000, },
+        { .clk_id = TEGRA20_CLK_GR2D,   .min = 0, .max = 300000000, },
+        { .clk_id = TEGRA20_CLK_EPP,    .min = 0, .max = 266400000, },
+        { .clk_id = TEGRA20_CLK_MPE,    .min = 0, .max = 300000000, },
+        { .clk_id = TEGRA20_CLK_HOST1X, .min = 0, .max = 266400000, },
+        {TEGRA20_CLK_CLK_MAX, 0, 0}, /* This MUST be the last entry. */
+};
 static void __init tegra20_clock_apply_init_table(void)
 {
+	tegra_init_clock_bounds(init_limit_table, clks, TEGRA20_CLK_CLK_MAX);
 	tegra_init_from_table(init_table, clks, TEGRA20_CLK_CLK_MAX);
 }
 

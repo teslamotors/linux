@@ -25,6 +25,9 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 
+#include <soc/tegra/mc.h>
+#include "../../compat26/include/mc.h"
+
 #define DRV_NAME "tegra20-mc"
 
 #define MC_INTSTATUS			0x0
@@ -52,6 +55,9 @@ struct tegra20_mc {
 	struct device *dev;
 };
 
+static struct tegra20_mc *tegra20_mc;
+
+
 static inline u32 mc_readl(struct tegra20_mc *mc, u32 offs)
 {
 	u32 val = 0;
@@ -70,6 +76,27 @@ static inline void mc_writel(struct tegra20_mc *mc, u32 val, u32 offs)
 		writel(val, mc->regs[0] + offs);
 	else if (offs < 0x400)
 		writel(val, mc->regs[1] + offs - 0x3c);
+}
+
+static DEFINE_SPINLOCK(tegra_mc_priolock);
+
+void tegra20_mc_set_priority(unsigned long client, unsigned long prio)
+{
+	struct tegra20_mc *mc = tegra20_mc;
+	unsigned long reg = client >> 8;
+	unsigned int field = client & 0xff;
+	unsigned long flags;
+	u32 val = 0;
+
+	if (WARN_ON_ONCE(!mc))
+		return;
+
+	spin_lock_irqsave(&tegra_mc_priolock, flags);
+	val = mc_readl(mc, reg);
+	val &= ~(3 << field);
+	val |= prio << field;
+	mc_writel(mc, val, reg);
+	spin_unlock_irqrestore(&tegra_mc_priolock, flags);
 }
 
 static const char * const tegra20_mc_client[] = {
@@ -232,6 +259,7 @@ static int tegra20_mc_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	platform_set_drvdata(pdev, mc);
+	tegra20_mc = mc;
 
 	intmask = MC_INT_INVALID_GART_PAGE |
 		MC_INT_DECERR_EMEM | MC_INT_SECURITY_VIOLATION;
@@ -246,7 +274,19 @@ static struct platform_driver tegra20_mc_driver = {
 		.of_match_table = tegra20_mc_of_match,
 	},
 };
-module_platform_driver(tegra20_mc_driver);
+
+static int __init tegra20_mc_driver_init(void)
+{
+	return platform_driver_register(&tegra20_mc_driver);
+}
+
+static void __exit tegra20_mc_driver_exit(void)
+{
+	platform_driver_unregister(&tegra20_mc_driver);
+}
+
+subsys_initcall(tegra20_mc_driver_init);
+module_exit(tegra20_mc_driver_exit);
 
 MODULE_AUTHOR("Hiroshi DOYU <hdoyu@nvidia.com>");
 MODULE_DESCRIPTION("Tegra20 MC driver");

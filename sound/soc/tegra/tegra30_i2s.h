@@ -173,7 +173,7 @@
 /* Number of slots in frame, minus 1 */
 #define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT		16
 #define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK_US	7
-#define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK		(TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOT_MASK_US << TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOT_SHIFT)
+#define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK		(TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK_US << TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT)
 
 /* TDM mode slot enable bitmask */
 #define TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT	8
@@ -236,6 +236,10 @@ struct tegra30_i2s {
 	struct snd_soc_dai_driver dai;
 	int cif_id;
 	struct clk *clk_i2s;
+	struct clk *clk_i2s_sync;
+	struct clk *clk_audio;
+	struct clk *clk_audio_2x;
+	struct clk *clk_audio_mux;
 	enum tegra30_ahub_txcif capture_i2s_cif;
 	enum tegra30_ahub_rxcif capture_fifo_cif;
 	char capture_dma_chan[8];
@@ -246,6 +250,9 @@ struct tegra30_i2s {
 	struct snd_dmaengine_dai_dma_data playback_dma_data;
 	struct regmap *regmap;
 	struct snd_dmaengine_pcm_config dma_config;
+
+	struct mutex open_mutex;
+	unsigned int open_count;
 };
 
 #endif

@@ -120,6 +120,13 @@ config SIMPLE_PM_BUS
 	  Controller (BSC, sometimes called "LBSC within Bus Bridge", or
 	  "External Bus Interface") as found on several Renesas ARM SoCs.
 
+config TEGRA_NOR
+	tristate "Nvidia Tegra NOR flash bus driver a.k.a GMI/SNOR"
+		depends on ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
+		depends on OF
+		help
+			Driver for NOR flash bus found on Tegra30/20 SOC`s.
+
 config SUNXI_RSB
 	tristate "Allwinner sunXi Reduced Serial Bus Driver"
 	  default MACH_SUN8I || MACH_SUN9I

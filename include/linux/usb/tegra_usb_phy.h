@@ -48,6 +48,8 @@ struct tegra_utmip_config {
 	u8 xcvr_hsslew;
 	u8 hssquelch_level;
 	u8 hsdiscon_level;
+	u8 xcvr_use_6bits;
+	u8 xcvr_setup_offset;
 };
 
 enum tegra_usb_phy_port_speed {

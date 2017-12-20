@@ -1,0 +1,72 @@
+GIT policy and layout for TS001
+-------------------------------
+
+Read Documentation/SubmittingPatches section 11 about how to sign-off work,
+please make sure any patches have the proper signed off by. Any patches from
+upstream do not need any additional signed-off adding unless we are intending
+on submitting them upstream ourselves.
+
+For internal documentation or scripts, the requirement for signed-off is not
+required as we are not intending on sharing these outside of the customer.
+
+Branches
+========
+
+The repository is organised into branches of code from the master, which
+contain either the individual developer's updates, an upstream code source,
+or a release.
+
+The repos:
+
+    master		the master branch, releases are branched from
+    release/$date	release made on the date $date
+    upstream/$topic	an upstream code source for $topic
+    $user/$topic	developer's $topic branches [1]
+
+[1] not necessarily pushed up to the release git server
+
+Commands
+========
+
+To send a review, git-send-email with the following options is recommended:
+
+$ git send-email --to ts001-ct@extlists.codethink.co.uk --compose --suppress-cc=all --thread -M --histogram <revisions>
+
+Where <revisions> is either -n<number of patches> or start..end branches/commits
+
+The --suppress-cc=all option is recommended to not accidentally spam other
+people (especially if upstream patches are involved) and to avoid cc'ing
+yourself.
+
+Checking
+--------
+
+The script codethink/release-check.sh should be used to verify a branch
+before asking it to be merged. This script does several rounds of checking,
+including running sparse on the changed files, checking for warnings and
+scripts/checkpatch.pl on the entire diff.
+
+Any issues in new code should be resolved, and any issues raised from
+changes should also be resolved. It is not required to fix anything that
+was in the base kernel release.
+
+$ sh codethink/release-check.sh <start-ref> <end-ref>
+
+For example, this would check from the v4.4.15 tag to the current head:
+
+$ sh codethink/release-check.sh v4.4.15 HEAD
+
+
+Merging
+-------
+
+Once the branch is ready and reviewed the developer responsible for the master
+branch will merge it onto master with "git merge --no-ff" for release. The use
+of --no-ff ensurs there is a merge commit created, and the developer merging
+the commit is responsible for writing at least a paragraph about what is being
+merged, and possibly copying in any other information the branch authour has
+provided.
+
+The master branch owner should ensure that the merged branch passes the
+checking laid out in "Checking" and to revert the merge and ask the original
+authour to fix any issues that are shown.

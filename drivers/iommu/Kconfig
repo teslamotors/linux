@@ -232,7 +232,13 @@ config TEGRA_IOMMU_GART
 	  hardware included on Tegra SoCs.
 
 config TEGRA_IOMMU_SMMU
-	bool "NVIDIA Tegra SMMU Support"
+	depends on ARCH_TEGRA
+	depends on ARCH_TEGRA_3x_SOC
+	select IOMMU_API
+	bool "NVIDIA Tegra SMMU Support (2.6 kernel version)"
+
+config TEGRA_IOMMU_SMMU_NEW
+	bool "NVIDIA Tegra SMMU Support (4.4 kernel version)"
 	depends on ARCH_TEGRA
 	depends on TEGRA_AHB
 	depends on TEGRA_MC

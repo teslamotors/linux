@@ -164,6 +164,7 @@
 #define L_PTE_MT_BUFFERABLE	(_AT(pteval_t, 0x01) << 2)	/* 0001 */
 #define L_PTE_MT_WRITETHROUGH	(_AT(pteval_t, 0x02) << 2)	/* 0010 */
 #define L_PTE_MT_WRITEBACK	(_AT(pteval_t, 0x03) << 2)	/* 0011 */
+#define L_PTE_MT_INNER_WB       (_AT(pteval_t, 0x05) << 2)	/* 0101 (armv6, armv7) */
 #define L_PTE_MT_MINICACHE	(_AT(pteval_t, 0x06) << 2)	/* 0110 (sa1100, xscale) */
 #define L_PTE_MT_WRITEALLOC	(_AT(pteval_t, 0x07) << 2)	/* 0111 */
 #define L_PTE_MT_DEV_SHARED	(_AT(pteval_t, 0x04) << 2)	/* 0100 */
@@ -212,7 +213,13 @@ static inline pmd_t *pmd_offset(pud_t *pud, unsigned long addr)
 /* we don't need complex calculations here as the pmd is folded into the pgd */
 #define pmd_addr_end(addr,end) (end)
 
+#ifdef CONFIG_DEBUG_TRACK_SETPTEEXT
+extern void debug_cpu_set__pte_ext(pte_t *ptep, pte_t pte, unsigned int ext);
+#define set_pte_ext(ptep,pte,ext) debug_cpu_set__pte_ext(ptep,pte,ext)
+#else
 #define set_pte_ext(ptep,pte,ext) cpu_set_pte_ext(ptep,pte,ext)
+#endif
+
 #define pte_special(pte)	(0)
 static inline pte_t pte_mkspecial(pte_t pte) { return pte; }
 

@@ -92,6 +92,14 @@ config SND_SOC_TEGRA_WM8903
 	  boards using the WM8093 codec. Currently, the supported boards are
 	  Harmony, Ventana, Seaboard, Kaen, and Aebl.
 
+config SND_SOC_TEGRA_TESLA_CID
+	tristate "SoC Audio support for Tesla CID board"
+	depends on SND_SOC_TEGRA && ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_I2S
+	help
+	  Say Y or M here if you want to add support for SoC audio on Tesla
+	  CID
+
 config SND_SOC_TEGRA_WM9712
 	tristate "SoC Audio support for Tegra boards using a WM9712 codec"
 	depends on SND_SOC_TEGRA && ARCH_TEGRA_2x_SOC && GPIOLIB

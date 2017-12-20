@@ -54,6 +54,7 @@ static DEFINE_RAW_SPINLOCK(l2x0_lock);
 static u32 l2x0_way_mask;	/* Bitmask of active ways */
 static u32 l2x0_size;
 static unsigned long sync_reg_offset = L2X0_CACHE_SYNC;
+static bool no_power_gate;
 
 struct l2x0_regs l2x0_saved_regs;
 
@@ -649,8 +650,9 @@ static void __init l2c310_enable(void __iomem *base, unsigned num_lock)
 
 	/* r3p0 or later has power control register */
 	if (rev >= L310_CACHE_ID_RTL_R3P0)
-		l2x0_saved_regs.pwr_ctrl = L310_DYNAMIC_CLK_GATING_EN |
-						L310_STNDBY_MODE_EN;
+		l2x0_saved_regs.pwr_ctrl =
+			no_power_gate ? 0 : (L310_DYNAMIC_CLK_GATING_EN |
+					      L310_STNDBY_MODE_EN);
 
 	/*
 	 * Always enable non-secure access to the lockdown registers -
@@ -1038,6 +1040,11 @@ static void __init l2x0_of_parse(const struct device_node *np,
 	u32 val = 0, mask = 0;
 	u32 assoc;
 	int ret;
+
+	if (of_property_read_bool(np, "arm,no-power-gate")) {
+		pr_info("L2C OF: disabling power-gate\n");
+		no_power_gate = true;
+	}
 
 	of_property_read_u32(np, "arm,tag-latency", &tag);
 	if (tag) {
@@ -1711,6 +1718,9 @@ int __init l2x0_of_init(u32 aux_val, u32 aux_mask)
 
 	if (of_address_to_resource(np, 0, &res))
 		return -ENODEV;
+
+	if (!request_region(res.start, resource_size(&res), "l2x0_cache"))
+		pr_warn("L2C OF: cannot request region for registers\n");
 
 	l2x0_base = ioremap(res.start, resource_size(&res));
 	if (!l2x0_base)

@@ -60,6 +60,7 @@ static u32 tegra20_fuse_read(struct tegra_fuse *fuse, unsigned int offset)
 	mutex_lock(&fuse->apbdma.lock);
 
 	fuse->apbdma.config.src_addr = fuse->apbdma.phys + FUSE_BEGIN + offset;
+	fuse->apbdma.config.dst_addr = 0;
 
 	err = dmaengine_slave_config(fuse->apbdma.chan, &fuse->apbdma.config);
 	if (err)
@@ -94,6 +95,52 @@ static u32 tegra20_fuse_read(struct tegra_fuse *fuse, unsigned int offset)
 out:
 	mutex_unlock(&fuse->apbdma.lock);
 	return value;
+}
+
+static void tegra20_fuse_write(struct tegra_fuse *fuse, unsigned int offset,
+			       u32 value)
+{
+	unsigned long flags = DMA_PREP_INTERRUPT | DMA_CTRL_ACK;
+	struct dma_async_tx_descriptor *dma_desc;
+	unsigned long time_left;
+	int err;
+
+	mutex_lock(&fuse->apbdma.lock);
+
+	*fuse->apbdma.virt = value;
+	fuse->apbdma.config.dst_addr = fuse->apbdma.phys + FUSE_BEGIN + offset;
+	fuse->apbdma.config.src_addr = 0;
+
+	err = dmaengine_slave_config(fuse->apbdma.chan, &fuse->apbdma.config);
+	if (err)
+		goto out;
+
+	dma_desc = dmaengine_prep_slave_single(fuse->apbdma.chan,
+					       fuse->apbdma.phys,
+					       sizeof(u32), DMA_MEM_TO_DEV,
+					       flags);
+	if (!dma_desc)
+		goto out;
+
+	dma_desc->callback = apb_dma_complete;
+	dma_desc->callback_param = fuse;
+
+	reinit_completion(&fuse->apbdma.wait);
+
+	clk_prepare_enable(fuse->clk);
+
+	dmaengine_submit(dma_desc);
+	dma_async_issue_pending(fuse->apbdma.chan);
+	time_left = wait_for_completion_timeout(&fuse->apbdma.wait,
+						msecs_to_jiffies(50));
+
+	if (WARN(time_left == 0, "apb write dma timed out"))
+		dmaengine_terminate_all(fuse->apbdma.chan);
+
+	clk_disable_unprepare(fuse->clk);
+
+out:
+	mutex_unlock(&fuse->apbdma.lock);
 }
 
 static int tegra20_fuse_probe(struct tegra_fuse *fuse)
@@ -155,6 +202,7 @@ static void __init tegra20_fuse_add_randomness(void)
 static void __init tegra20_fuse_init(struct tegra_fuse *fuse)
 {
 	fuse->read_early = tegra20_fuse_read_early;
+	fuse->write = tegra20_fuse_write;
 
 	tegra_init_revision();
 	fuse->soc->speedo_init(&tegra_sku_info);

@@ -251,4 +251,12 @@ config SND_DMA_SGBUF
 	def_bool y
 	depends on X86
 
+config SND_FRAME_ALIGNMENT 
+	int "Customize frame aligment."
+	default 1 if !SND_SOC_TEGRA_TESLA_CID
+	default 2 if SND_SOC_TEGRA_TESLA_CID
+	help
+	  Platform specific for Tesla's CID. This will greatly reduce CPU
+	  load when DMA granularity is set to BURST.
+
 source "sound/core/seq/Kconfig"

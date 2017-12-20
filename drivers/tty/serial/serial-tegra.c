@@ -117,9 +117,11 @@ struct tegra_uart_port {
 
 	bool					enable_modem_interrupt;
 
+	bool					verbose_err;
 	bool					rx_timeout;
 	int					rx_in_progress;
 	int					symb_bit;
+	int					push_errs;
 
 	struct dma_chan				*rx_dma_chan;
 	struct dma_chan				*tx_dma_chan;
@@ -338,18 +340,22 @@ static char tegra_uart_decode_rx_error(struct tegra_uart_port *tup,
 			/* Overrrun error */
 			flag = TTY_OVERRUN;
 			tup->uport.icount.overrun++;
-			dev_err(tup->uport.dev, "Got overrun errors\n");
+			if (tup->verbose_err)
+				dev_err(tup->uport.dev, "Got overrun errors\n");
 		} else if (lsr & UART_LSR_PE) {
 			/* Parity error */
 			flag = TTY_PARITY;
 			tup->uport.icount.parity++;
-			dev_err(tup->uport.dev, "Got Parity errors\n");
+			if (tup->verbose_err)
+				dev_err(tup->uport.dev, "Got Parity errors\n");
 		} else if (lsr & UART_LSR_FE) {
 			flag = TTY_FRAME;
 			tup->uport.icount.frame++;
-			dev_err(tup->uport.dev, "Got frame errors\n");
+			if (tup->verbose_err)
+				dev_err(tup->uport.dev, "Got frame errors\n");
 		} else if (lsr & UART_LSR_BI) {
-			dev_err(tup->uport.dev, "Got Break\n");
+			if (tup->verbose_err)
+				dev_err(tup->uport.dev, "Got Break\n");
 			tup->uport.icount.brk++;
 			/* If FIFO read error without any data, reset Rx FIFO */
 			if (!(lsr & UART_LSR_DR) && (lsr & UART_LSR_FIFOE))
@@ -562,9 +568,14 @@ static void tegra_uart_copy_rx_to_tty(struct tegra_uart_port *tup,
 	copied = tty_insert_flip_string(tty,
 			((unsigned char *)(tup->rx_dma_buf_virt)), count);
 	if (copied != count) {
-		WARN_ON(1);
-		dev_err(tup->uport.dev, "RxData copy to tty layer failed\n");
-	}
+		dev_err(tup->uport.dev, "RxData copy to tty layer failed (count %d, copied %d)\n", count, copied);
+		++tup->push_errs;
+#ifdef CONFIG_SERIAL_TEGRA_PUSH_FAIL_PANIC
+		if (tup->push_errs >= CONFIG_SERIAL_TEGRA_PUSH_FAIL_LIMIT)
+			panic("failing to push data to application");
+#endif
+	} else
+		tup->push_errs = 0;
 	dma_sync_single_for_device(tup->uport.dev, tup->rx_dma_buf_phys,
 				TEGRA_UART_RX_DMA_BUFFER_SIZE, DMA_TO_DEVICE);
 }
@@ -1214,7 +1225,7 @@ static struct uart_ops tegra_uart_ops = {
 static struct uart_driver tegra_uart_driver = {
 	.owner		= THIS_MODULE,
 	.driver_name	= "tegra_hsuart",
-	.dev_name	= "ttyTHS",
+	.dev_name	= "ttyHS",
 	.cons		= NULL,
 	.nr		= TEGRA_UART_MAXIMUM,
 };
@@ -1236,6 +1247,24 @@ static int tegra_uart_parse_dt(struct platform_device *pdev,
 					"nvidia,enable-modem-interrupt");
 	return 0;
 }
+
+static ssize_t verbose_errors_show(struct device *dev,
+				   struct device_attribute *attr,
+				   char *buff)
+{
+	struct tegra_uart_port *tup = dev_get_drvdata(dev);
+	return snprintf(buff, PAGE_SIZE, "%d", tup->verbose_err);
+}
+
+static ssize_t verbose_errors_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buff, size_t count)
+{
+	struct tegra_uart_port *tup = dev_get_drvdata(dev);
+	return strtobool(buff, &tup->verbose_err) < 0 ? -EINVAL : count;
+}
+
+static DEVICE_ATTR_RW(verbose_errors);
 
 static struct tegra_uart_chip_data tegra20_uart_chip_data = {
 	.tx_fifo_full_status		= false,
@@ -1326,6 +1355,12 @@ static int tegra_uart_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to add uart port, err %d\n", ret);
 		return ret;
 	}
+
+	ret = device_create_file(&pdev->dev, &dev_attr_verbose_errors);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Failed to add device attribute\n");
+		return ret;
+	}
 	return ret;
 }
 
@@ -1334,6 +1369,7 @@ static int tegra_uart_remove(struct platform_device *pdev)
 	struct tegra_uart_port *tup = platform_get_drvdata(pdev);
 	struct uart_port *u = &tup->uport;
 
+	device_remove_file(&pdev->dev, &dev_attr_verbose_errors);
 	uart_remove_one_port(&tegra_uart_driver, u);
 	return 0;
 }

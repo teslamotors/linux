@@ -1,0 +1,30 @@
+menu "Tegra legacy drivers"
+
+config TEGRA_LEGACY_PROC
+	bool "Enable Tegra legacy /proc entries"
+	depends on ARCH_TEGRA
+	help
+	  Enable support for legacy /proc entries for compatibility with
+	  older tegra kernels.
+
+config TEGRA_LEGACY_FUSE
+	tristate "Enable tegra legacy fuse sysfs entries"
+	depends on ARCH_TEGRA
+	help
+	  Enable support for legacy sysfs entries for exporting fuse data
+	  to the user-space.
+
+config TEGRA_LEGACY_FUSE_ODM
+	tristate "Enable tegra legacy fuse ODM driver"
+	depends on TEGRA_LEGACY_FUSE
+	help
+	  Enable support for legacy fuse ODM reading.
+	  Note, the driver does not support writing.
+
+config TEGRA_LOADER_TIMES
+	bool "Enable reading of boot-time information from loader"
+	depends on ARCH_TEGRA
+	help
+	  Enable support for reading the start/end time of the loader.
+
+endmenu

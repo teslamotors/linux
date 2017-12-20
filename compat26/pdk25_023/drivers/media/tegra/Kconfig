@@ -1,0 +1,81 @@
+source "compat26/pdk25_023/drivers/media/tegra/avp/Kconfig"
+source "compat26/pdk25_023/drivers/media/tegra/mediaserver/Kconfig"
+source "compat26/pdk25_023/drivers/media/tegra/nvavp/Kconfig"
+
+config TEGRA_CAMERA
+        bool "Enable support for tegra camera/isp hardware"
+        depends on ARCH_TEGRA
+        default y
+        help
+          Enables support for the Tegra camera interface
+
+          If unsure, say Y
+
+config VIDEO_OV5650
+        tristate "OV5650 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the Omnivision OV5650 5MP camera sensor
+          for use with the tegra isp.
+
+config VIDEO_OV14810
+        tristate "OV14810 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the Omnivision OV14810 14MP camera sensor
+          for use with the tegra isp.
+
+
+config VIDEO_OV9726
+        tristate "OV9726 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the Omnivision OV9726 camera sensor
+          for use with the tegra isp.
+
+config VIDEO_OV2710
+        tristate "OV2710 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the Omnivision OV2710 camera sensor
+          for use with the tegra isp.
+
+config VIDEO_AR0832
+        tristate "AR0832 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the AR0832 camera sensor
+          for use with the tegra isp.
+
+config VIDEO_SOC380
+        tristate "SOC380 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the Semco soc380 camera sensor
+          for use with the tegra isp.
+
+config TORCH_SSL3250A
+        tristate "SSL3250A flash/torch support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the SSL3250A flash/torch camera device
+
+config TORCH_TPS61050
+        tristate "TPS61050 flash/torch support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the TPS61050 flash/torch camera device
+
+config VIDEO_SH532U
+        tristate "SH532U focuser support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the SEMCO SH532U focuser
+          for use with the tegra isp.
+
+config VIDEO_AD5820
+        tristate "AD5820 focuser support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the AD5820 focuser
+          for use with the tegra isp.

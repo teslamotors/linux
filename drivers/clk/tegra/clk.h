@@ -589,6 +589,18 @@ struct tegra_clk_init_table {
 };
 
 /**
+ * struct clk_bound_table - clock initialization table for bounary
+ * @clk_id:	clock id as mentioned in device tree bindings
+ * @min:	min clock rate (or 0)
+ * @max:	max clock rate (or ULONG_MAX)
+ */
+struct tegra_clk_bound_table {
+	unsigned int	clk_id;
+	unsigned long	min;
+	unsigned long	max;
+};
+
+/**
  * struct clk_duplicate - duplicate clocks
  * @clk_id:	clock id as mentioned in device tree bindings
  * @lookup:	duplicate lookup entry for the clock
@@ -620,6 +632,9 @@ struct tegra_devclk {
 
 void tegra_init_special_resets(unsigned int num, int (*assert)(unsigned long),
 			       int (*deassert)(unsigned long));
+
+void tegra_init_clock_bounds(struct tegra_clk_bound_table *tbl,
+			     struct clk *clks[], int clk_max);
 
 void tegra_init_from_table(struct tegra_clk_init_table *tbl,
 		struct clk *clks[], int clk_max);

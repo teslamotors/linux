@@ -1,0 +1,35 @@
+Fuse drivers
+------------
+
+
+Legacy 2.6
+==========
+
+The 2.6 kernel uses two driver files to export information to user-space and other in-kernel
+drivers. They are both in arch/arm/mach-tegra:
+
+- arch/arm/mach-tegra/fuse.c
+- arch/arm/mach-tegra/tegra_odm_fuses.c
+
+The arch/arm/mach-tegra/fuse.c creates two files tegra_chip_id and tegra_chip_rev from the
+information it gets from the fuses (see below) which can be found in:
+
+- /sys/module/fuse/parameters/tegra_chip_id
+- /sys/module/fuse/parameters/tegra_chip_rev
+
+On the tegra30, we get:
+
+$ cat tegra_chip_rev
+3
+$ cat tegra_chip_id
+48
+
+The nvidia fuse driver uses a module called fuse, and so do the fuse filesystem, which
+means the two modules overlap.
+
+The nvidia fuse.c driver will use the tegraid boot parameter in preference to reading
+the chip-id directly.
+
+The arch/arm/mach-tegra/tegra_odm_fuses.c creates the directory
+
+

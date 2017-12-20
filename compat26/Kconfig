@@ -1,0 +1,107 @@
+# items that were in arch/arm/mach-tegra/Kconfig
+
+menu "Tegra 2.6 Compatibility layer"
+
+config TEGRA_COMPAT_26
+       bool "Tegra 2.6 Compatibility layer"
+       default n
+       help
+         Support for Tegra 2.6 Compatibility layer
+
+# choice of which compatibility layer to build
+choice
+	prompt "Tegra PDK release"
+	default TEGRA_PDK_19_006 if ARCH_TEGRA_2x_SOC
+	default TEGRA_PDK_25_023 if ARCH_TEGRA_3x_SOC
+
+config TEGRA_PDK_19_006
+	depends on TEGRA_COMPAT_26
+	bool "NVidia PDK 19.006 (tegra2)"
+	select SWITCH
+
+config TEGRA_PDK_25_023
+	depends on TEGRA_COMPAT_26
+	bool "NVidia PDK 25.023 (tegra3)"
+
+endchoice
+
+config MACH_P1852
+       bool "P1852 board"
+       depends on ARCH_TEGRA_3x_SOC
+       help
+         Support for NVIDIA P1852 development platform
+
+config MACH_TEGRA_ENTERPRISE
+       bool "Enterprise board"
+       depends on ARCH_TEGRA_3x_SOC
+       help
+         Support for NVIDIA Enterprise development platform
+
+choice
+       prompt "Tegra platform type"
+       default TEGRA_SILICON_PLATFORM
+
+config TEGRA_SILICON_PLATFORM
+        bool "Silicon"
+        help
+          This enables support for a Tegra silicon platform.
+
+config TEGRA_SIMULATION_PLATFORM
+        bool "Simulation"
+        help
+          This enables support for a Tegra simulation platform.
+          Select this only if you are an NVIDIA developer working
+          on a simulation platform.
+
+config TEGRA_FPGA_PLATFORM
+        bool "FPGA"
+        help
+          This enables support for a Tegra FPGA platform.
+          Select this only if you are an NVIDIA developer working
+          on a FPGA platform.
+endchoice
+
+config TEGRA_IOVMM
+	bool
+	default y
+
+config TEGRA_IOVMM_SMMU
+	bool
+	default y if TEGRA_PDK_25_023
+
+config TEGRA_IOVMM_GART
+	bool
+	default y if TEGRA_PDK_19_006
+
+config TEGRA_AVP_KERNEL_ON_SMMU
+        bool "Use SMMU to relocate AVP kernel"
+        depends on TEGRA_IOMMU_SMMU
+        default y
+        help
+          Use SMMU to relocate AVP kernel (nvrm_avp.bin).
+
+config CPA
+	bool "Change Page Attributes"
+	depends on CPU_V7
+	help
+	  This option enables Changing Page Attibutes for low memory.
+	  This is needed to avoid conflicting memory mappings for low memory,
+	  One from kernel page table and others from user process page tables.
+
+config DEBUG_TRACK_SETPTEEXT
+	bool "track set_pte_ext() for debugging"
+	help
+	  As part of the debug, trap set_pte_ext() call and look for any
+	  of the inner-wb caching.
+
+source "compat26/tegra26/nv/Kconfig"
+
+if TEGRA_PDK_19_006
+source "compat26/pdk19_006/Kconfig"
+endif
+
+if TEGRA_PDK_25_023
+source "compat26/pdk25_023/Kconfig"
+endif
+
+endmenu

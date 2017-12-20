@@ -1133,7 +1133,7 @@ int __sock_create(struct net *net, int family, int type, int protocol,
 
 	sock->type = type;
 
-#ifdef CONFIG_MODULES
+#if defined(CONFIG_MODULES) && 0
 	/* Attempt to load a protocol module if the find failed.
 	 *
 	 * 12/09/1996 Marcin: But! this makes REALLY only sense, if the user

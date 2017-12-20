@@ -1,0 +1,39 @@
+Watchdogs
+---------
+
+Legacy tegra20
+==============
+
+To be reviewed.
+
+Legacy tegra30
+==============
+
+The 2.6 kernel has two watchdogs in /dev/iomem and has them configured
+in the kernel with the following options:
+
+CONFIG_TEGRA_WATCHDOG=y
+CONFIG_TEGRA_WATCHDOG_ENABLE_ON_PROBE=y
+
+60005088-6000508f : tegra_wdt
+  60005088-6000508f : tegra_wdt
+60005100-6000511f : tegra_wdt
+  60005100-6000511f : tegra_wdt
+
+And one node for /dev/watchdog
+
+From reading the source, these two /proc/iomem entries are acting as one
+watchdog, as the drivers/watchdog/tegra_wdt.c requires two IO regions
+and one interrupt.
+
+Kernel 4.4
+==========
+
+The watchdog has not yet been tested.
+
+
+Issues
+======
+
+4.4 does not have a CONFIG_TEGRA_WATCHDOG_ENABLE_ON_PROBE facility,
+so this will require a workaround either in userspace or kernel.

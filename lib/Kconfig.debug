@@ -382,6 +382,23 @@ config MAGIC_SYSRQ_DEFAULT_ENABLE
 	  This may be set to 1 or 0 to enable or disable them all, or
 	  to a bitmask as described in Documentation/sysrq.txt.
 
+config GATEWAY_ALT_SYSRQ
+	bool "Enable alternate serial SysRq sequence"
+	depends on MAGIC_SYSRQ
+	help
+	  If you say Y here, you will disable the normal serial SysRq behavior
+	  where a serial BREAK followed by a key triggers a SysRq operation.
+	  This prevents unintended magic sysrq operations on systems which
+	  experience spurious break conditions (as the Model S/X gateways
+	  currently seem to produce.)
+
+	  Instead, an unlikely and gateway friendly sequence of characters is
+	  used to trigger sysrq functionality:
+		 Enter, ~ (tilde), Ctrl-B, <sysrq mode>, Enter
+
+	  Original inspiration from the FreeBSD alternate break sequence,
+	  which was implemented for roughly this same purpose.
+
 config DEBUG_KERNEL
 	bool "Kernel debugging"
 	help

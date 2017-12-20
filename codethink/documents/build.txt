@@ -1,0 +1,35 @@
+TS001 Kernel Build
+==================
+
+To build the kernel, setup the build environment on the system for targeting
+an ARMv7.
+
+The build steps are close to the steps to build a standard kernel. The zImage
+produced from this can then be passed to the quickloader tool to make an image
+that can be booted on the kernel.
+
+$ make ts001_defconfig
+$ make Image zImage tegra30-tesla-cid.dtb
+
+Boot the kernel (CID)
+=====================
+
+To make an image that is bootable on the CID unit, use the quickloader
+tool to make a suitable boot image and then copy it to the CID as for
+the old kernel.
+
+The quickloader tool is in a separate git tree with documentation about
+how to use it.
+
+Use of zImage
+=============
+
+The build is currently using zImage as the uncompressor has the necessary
+code included in it for appended device-tree support and the ATAGs-to-DT
+updates.
+
+Using zImage will have a performance penalty over quickboot's on-the-fly
+lzf decompression, but avoids having to write an wrapper around the kernel
+Image file that does the ATAG conversion to FDT or updating quickboot to
+load and manipulate FDT files.
+

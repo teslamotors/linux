@@ -1,0 +1,13 @@
+
+# media support from 2.6 tegra
+source "compat26/pdk19_006/drivers/media/tegra/Kconfig"
+
+config FB_TEGRA_26
+	bool "Nvidia Tegra 2.6 forward-ported video drivers"
+	depends on FB && ARM && ARCH_TEGRA
+	help
+	  Frame buffer forward port of 2.6 tegra video system.
+
+menu "Tegra FB options"
+source "compat26/pdk19_006/drivers/video/tegra/Kconfig"
+endmenu

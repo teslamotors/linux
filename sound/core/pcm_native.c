@@ -577,6 +577,7 @@ static int snd_pcm_hw_params(struct snd_pcm_substream *substream,
 	}
 	runtime->byte_align = bits / 8;
 	runtime->min_align = frames;
+	runtime->min_align *= CONFIG_SND_FRAME_ALIGNMENT;
 
 	/* Default sw params */
 	runtime->tstamp_mode = SNDRV_PCM_TSTAMP_NONE;

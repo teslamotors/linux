@@ -672,7 +672,7 @@ config ARM_THUMBEE
 	  make use of it. Say N for code that can run on CPUs without ThumbEE.
 
 config ARM_VIRT_EXT
-	bool
+	bool "ARM virtualisation extensions"
 	depends on MMU
 	default y if CPU_V7
 	help

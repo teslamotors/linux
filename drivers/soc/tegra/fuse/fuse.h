@@ -46,6 +46,7 @@ struct tegra_fuse {
 
 	u32 (*read_early)(struct tegra_fuse *fuse, unsigned int offset);
 	u32 (*read)(struct tegra_fuse *fuse, unsigned int offset);
+	void (*write)(struct tegra_fuse *fuse, unsigned int offset, u32 value);
 	const struct tegra_fuse_soc *soc;
 
 	/* APBDMA on Tegra20 */

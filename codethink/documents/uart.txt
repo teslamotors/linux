@@ -1,0 +1,21 @@
+UART drivers
+------------
+
+
+Legacy tegra20
+==============
+
+To be added
+
+
+Legacy tegra30
+==============
+
+To be added
+
+Linux 4.4
+=========
+
+The 4.4 kernel's tegra specific driver in drivers/tty/serial/serial-tegra.c
+has had the prefix for the /dev/tty nodes changed from /dev/ttyTHS to be
+/dev/ttyHS to be backwards compatible with the 2.6 kernel.

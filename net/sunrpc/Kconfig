@@ -48,6 +48,13 @@ config SUNRPC_DEBUG
 
 	  If unsure, say Y.
 
+config SUNRPC_PROC
+	bool "RPC: Enable /proc/sys/sunrpc entries"
+	depends on SUNRPC && SYSCTL
+	help
+	  Enable /proc entires for tuning /proc/sys/sunrpc information
+	  without enabling all the debug features for the SUNRPC system.
+
 config SUNRPC_XPRT_RDMA
 	tristate "RPC-over-RDMA transport"
 	depends on SUNRPC && INFINIBAND && INFINIBAND_ADDR_TRANS

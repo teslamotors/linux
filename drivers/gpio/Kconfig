@@ -52,6 +52,13 @@ config OF_GPIO
 	depends on OF
 	depends on HAS_IOMEM
 
+config OF_GPIO_USER
+	tristate "OF based GPIO initialisation and user-export"
+	depends on OF_GPIO
+	help
+	  This enables user-space exporting of gpios and some basic start
+	  time initialisation from a device tree.
+
 config GPIO_ACPI
 	def_bool y
 	depends on ACPI

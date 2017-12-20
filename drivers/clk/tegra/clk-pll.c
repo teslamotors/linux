@@ -442,8 +442,8 @@ static int _calc_rate(struct clk_hw *hw, struct tegra_clk_pll_freq_table *cfg,
 		cfreq = parent_rate/(parent_rate/1000000);
 		break;
 	default:
-		pr_err("%s Unexpected reference rate %lu\n",
-		       __func__, parent_rate);
+		pr_err("%s Unexpected reference rate %lu for %s\n",
+		       __func__, parent_rate, __clk_get_name(hw->clk));
 		BUG();
 	}
 

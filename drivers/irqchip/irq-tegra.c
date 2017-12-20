@@ -32,6 +32,8 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
+#include "../../compat26/include/mach/legacy_irq.h"
+
 #define ICTLR_CPU_IEP_VFIQ	0x08
 #define ICTLR_CPU_IEP_FIR	0x14
 #define ICTLR_CPU_IEP_FIR_SET	0x18
@@ -119,6 +121,23 @@ static int tegra_retrigger(struct irq_data *d)
 {
 	tegra_ictlr_write_mask(d, ICTLR_CPU_IEP_FIR_SET);
 	return irq_chip_retrigger_hierarchy(d);
+}
+
+/* support for COP interrupt controller */
+
+void tegra_init_legacy_irq_cop(void)
+{
+	void __iomem *base;
+	int i;
+
+	for (i = 0; i < TEGRA_MAX_NUM_ICTLRS; i++) {
+		base = lic->base[i];
+		if (!base)
+			continue;
+
+		writel(~0, base + ICTLR_COP_IER_CLR);
+		writel(0, base + ICTLR_COP_IEP_CLASS);
+	}
 }
 
 #ifdef CONFIG_PM_SLEEP

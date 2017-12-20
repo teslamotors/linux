@@ -793,6 +793,11 @@ static int clk_core_round_rate_nolock(struct clk_core *core,
 	if (!core)
 		return 0;
 
+	if (req->rate > req->max_rate)
+		req->rate = req->max_rate;
+	if (req->rate < req->min_rate)
+		req->rate = req->min_rate;
+
 	parent = core->parent;
 	if (parent) {
 		req->best_parent_hw = parent->hw;
@@ -1974,17 +1979,63 @@ static struct hlist_head *orphan_list[] = {
 	NULL,
 };
 
+static char *pretty_freq(char *buff, size_t buffsz, unsigned long freq)
+{
+	unsigned long div, val;
+	unsigned int width;
+	char *suffix;
+
+	if (freq > (1*1000*1000*1000)) {
+		suffix = "GHz";
+		width = 9;
+		div = 1*1000*1000*1000;
+	} else if (freq > (1*1000*1000)) {
+		suffix = "MHz";
+		width = 6;
+		div = 1*1000*1000;
+	} else if (freq > (1*1000)) {
+		suffix = "kHz";
+		width = 3;
+		div = 1*1000;
+	} else {
+		suffix = "Hz";
+		div = 1;
+	}
+
+	if (div > 1) {
+		unsigned long left;
+		int ptr;
+
+		val = freq / div;
+		left = freq - val * div;
+		ptr = snprintf(buff, buffsz, "%lu.%0*lu", val, width, left);
+
+		/* remove trailing zeros and trailing .*/
+		for (ptr--; buff[ptr] == '0'; ptr--);
+		if (buff[ptr] != '.')
+			ptr++;
+		buff[ptr] = '\0';
+		snprintf(buff+ptr, buffsz-ptr, " %s", suffix);
+	} else {
+		snprintf(buff, buffsz, "%lu %s", freq, suffix);
+	}
+
+	return buff;
+}
+
 static void clk_summary_show_one(struct seq_file *s, struct clk_core *c,
 				 int level)
 {
+	char buff[64];
 	if (!c)
 		return;
 
-	seq_printf(s, "%*s%-*s %11d %12d %11lu %10lu %-3d\n",
+	seq_printf(s, "%*s%-*s %11d %12d %11lu %10lu %-3d %s\n",
 		   level * 3 + 1, "",
 		   30 - level * 3, c->name,
 		   c->enable_count, c->prepare_count, clk_core_get_rate(c),
-		   clk_core_get_accuracy(c), clk_core_get_phase(c));
+		   clk_core_get_accuracy(c), clk_core_get_phase(c),
+		   pretty_freq(buff, sizeof(buff), clk_core_get_rate(c)));
 }
 
 static void clk_summary_show_subtree(struct seq_file *s, struct clk_core *c,
@@ -2045,6 +2096,8 @@ static void clk_dump_one(struct seq_file *s, struct clk_core *c, int level)
 	seq_printf(s, "\"rate\": %lu,", clk_core_get_rate(c));
 	seq_printf(s, "\"accuracy\": %lu,", clk_core_get_accuracy(c));
 	seq_printf(s, "\"phase\": %d", clk_core_get_phase(c));
+	seq_printf(s, "\"min_rate\": %lu", c->min_rate);
+	seq_printf(s, "\"max_rate\": %lu", c->max_rate);
 }
 
 static void clk_dump_subtree(struct seq_file *s, struct clk_core *c, int level)
@@ -2125,6 +2178,16 @@ static int clk_debug_create_one(struct clk_core *core, struct dentry *pdentry)
 
 	d = debugfs_create_u32("clk_accuracy", S_IRUGO, core->dentry,
 			(u32 *)&core->accuracy);
+	if (!d)
+		goto err_out;
+
+	d = debugfs_create_u32("clk_min_rate", S_IRUGO, core->dentry,
+			(u32 *)&core->min_rate);
+	if (!d)
+		goto err_out;
+
+	d = debugfs_create_u32("clk_max_rate", S_IRUGO, core->dentry,
+			(u32 *)&core->max_rate);
 	if (!d)
 		goto err_out;
 

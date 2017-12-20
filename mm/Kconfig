@@ -668,3 +668,9 @@ config ZONE_DEVICE
 
 config FRAME_VECTOR
 	bool
+
+config VM_MIN_FREE_KBYTES
+	int "Minimum free vm kernel area (in kbytes)"
+	default -1
+	help
+	  Set the default size of the kernel's vm_min_free_kbytes parameter.

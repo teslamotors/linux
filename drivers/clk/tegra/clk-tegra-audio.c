@@ -22,6 +22,8 @@
 #include <linux/export.h>
 #include <linux/clk/tegra.h>
 
+#include <soc/tegra/tesla.h>
+
 #include "clk.h"
 #include "clk-id.h"
 
@@ -46,7 +48,7 @@ struct tegra_sync_source_initdata {
 #define SYNC(_name) \
 	{\
 		.name		= #_name,\
-		.rate		= 24000000,\
+		.rate		= 6144000,\
 		.max_rate	= 24000000,\
 		.clk_id		= tegra_clk_ ## _name,\
 	}
@@ -170,6 +172,10 @@ void __init tegra_audio_clk_init(void __iomem *clk_base,
 		dt_clk = tegra_lookup_dt_id(data->clk_id, tegra_clks);
 		if (!dt_clk)
 			continue;
+
+		/* Override audio rate with Tesla boardrev value */
+		if (tegra_audio_tdm_rate)
+			data->rate = tegra_audio_tdm_rate;
 
 		clk = tegra_clk_register_sync_source(data->name,
 					data->rate, data->max_rate);

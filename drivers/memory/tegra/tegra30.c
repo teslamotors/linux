@@ -17,10 +17,23 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 	{
 		.id = 0x00,
 		.name = "ptcr",
+		.fifo_size = 2,
 		.swgroup = TEGRA_SWGROUP_PTC,
+		.smmu = {
+			.reg = 0x228,
+			.bit = 0,
+		},
+		.la = {
+			.reg = 0x34c,
+			.shift = 0,
+			.mask = 0xff,
+			.def = 0x00,
+			.expiry_ns = 150,
+		},
 	}, {
 		.id = 0x01,
 		.name = "display0a",
+		.fifo_size = 128,
 		.swgroup = TEGRA_SWGROUP_DC,
 		.smmu = {
 			.reg = 0x228,
@@ -31,10 +44,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x4e,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x02,
 		.name = "display0ab",
+		.fifo_size = 128,
 		.swgroup = TEGRA_SWGROUP_DCB,
 		.smmu = {
 			.reg = 0x228,
@@ -45,10 +60,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x4e,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x03,
 		.name = "display0b",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_DC,
 		.smmu = {
 			.reg = 0x228,
@@ -59,10 +76,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x4e,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x04,
 		.name = "display0bb",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_DCB,
 		.smmu = {
 			.reg = 0x228,
@@ -73,10 +92,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x4e,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x05,
 		.name = "display0c",
+		.fifo_size = 128,
 		.swgroup = TEGRA_SWGROUP_DC,
 		.smmu = {
 			.reg = 0x228,
@@ -87,10 +108,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x4e,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x06,
 		.name = "display0cb",
+		.fifo_size = 128,
 		.swgroup = TEGRA_SWGROUP_DCB,
 		.smmu = {
 			.reg = 0x228,
@@ -101,10 +124,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x4e,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x07,
 		.name = "display1b",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_DC,
 		.smmu = {
 			.reg = 0x228,
@@ -115,10 +140,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x4e,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x08,
 		.name = "display1bb",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_DCB,
 		.smmu = {
 			.reg = 0x228,
@@ -129,10 +156,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x4e,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x09,
 		.name = "eppup",
+		.fifo_size = 8,
 		.swgroup = TEGRA_SWGROUP_EPP,
 		.smmu = {
 			.reg = 0x228,
@@ -143,10 +172,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x17,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x0a,
 		.name = "g2pr",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_G2,
 		.smmu = {
 			.reg = 0x228,
@@ -157,10 +188,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x09,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x0b,
 		.name = "g2sr",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_G2,
 		.smmu = {
 			.reg = 0x228,
@@ -171,10 +204,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x09,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x0c,
 		.name = "mpeunifbr",
+		.fifo_size = 8,
 		.swgroup = TEGRA_SWGROUP_MPE,
 		.smmu = {
 			.reg = 0x228,
@@ -185,10 +220,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x50,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x0d,
 		.name = "viruv",
+		.fifo_size = 8,
 		.swgroup = TEGRA_SWGROUP_VI,
 		.smmu = {
 			.reg = 0x228,
@@ -199,10 +236,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x2c,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x0e,
 		.name = "afir",
+		.fifo_size = 32,
 		.swgroup = TEGRA_SWGROUP_AFI,
 		.smmu = {
 			.reg = 0x228,
@@ -213,10 +252,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x10,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x0f,
 		.name = "avpcarm7r",
+		.fifo_size = 2,
 		.swgroup = TEGRA_SWGROUP_AVPC,
 		.smmu = {
 			.reg = 0x228,
@@ -227,10 +268,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x04,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x10,
 		.name = "displayhc",
+		.fifo_size = 2,
 		.swgroup = TEGRA_SWGROUP_DC,
 		.smmu = {
 			.reg = 0x228,
@@ -241,10 +284,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x11,
 		.name = "displayhcb",
+		.fifo_size = 2,
 		.swgroup = TEGRA_SWGROUP_DCB,
 		.smmu = {
 			.reg = 0x228,
@@ -255,10 +300,13 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x12,
 		.name = "fdcdrd",
+		.fifo_size = 48,
+		.fdc = true,
 		.swgroup = TEGRA_SWGROUP_NV,
 		.smmu = {
 			.reg = 0x228,
@@ -269,10 +317,13 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x0a,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x13,
 		.name = "fdcdrd2",
+		.fifo_size = 48,
+		.fdc = true,
 		.swgroup = TEGRA_SWGROUP_NV2,
 		.smmu = {
 			.reg = 0x228,
@@ -283,10 +334,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x0a,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x14,
 		.name = "g2dr",
+		.fifo_size = 48,
 		.swgroup = TEGRA_SWGROUP_G2,
 		.smmu = {
 			.reg = 0x228,
@@ -297,10 +350,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x0a,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x15,
 		.name = "hdar",
+		.fifo_size = 16,
 		.swgroup = TEGRA_SWGROUP_HDA,
 		.smmu = {
 			.reg = 0x228,
@@ -311,10 +366,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x16,
 		.name = "host1xdmar",
+		.fifo_size = 16,
 		.swgroup = TEGRA_SWGROUP_HC,
 		.smmu = {
 			.reg = 0x228,
@@ -325,10 +382,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x05,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x17,
 		.name = "host1xr",
+		.fifo_size = 8,
 		.swgroup = TEGRA_SWGROUP_HC,
 		.smmu = {
 			.reg = 0x228,
@@ -339,10 +398,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x50,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x18,
 		.name = "idxsrd",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_NV,
 		.smmu = {
 			.reg = 0x228,
@@ -353,10 +414,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x13,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x19,
 		.name = "idxsrd2",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_NV2,
 		.smmu = {
 			.reg = 0x228,
@@ -367,10 +430,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x13,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x1a,
 		.name = "mpe_ipred",
+		.fifo_size = 2,
 		.swgroup = TEGRA_SWGROUP_MPE,
 		.smmu = {
 			.reg = 0x228,
@@ -381,10 +446,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x80,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x1b,
 		.name = "mpeamemrd",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_MPE,
 		.smmu = {
 			.reg = 0x228,
@@ -395,10 +462,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x42,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x1c,
 		.name = "mpecsrd",
+		.fifo_size = 8,
 		.swgroup = TEGRA_SWGROUP_MPE,
 		.smmu = {
 			.reg = 0x228,
@@ -409,10 +478,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x1d,
 		.name = "ppcsahbdmar",
+		.fifo_size = 2,
 		.swgroup = TEGRA_SWGROUP_PPCS,
 		.smmu = {
 			.reg = 0x228,
@@ -423,10 +494,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x10,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x1e,
 		.name = "ppcsahbslvr",
+		.fifo_size = 8,
 		.swgroup = TEGRA_SWGROUP_PPCS,
 		.smmu = {
 			.reg = 0x228,
@@ -437,10 +510,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x12,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x1f,
 		.name = "satar",
+		.fifo_size = 32,
 		.swgroup = TEGRA_SWGROUP_SATA,
 		.smmu = {
 			.reg = 0x228,
@@ -451,10 +526,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x33,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x20,
 		.name = "texsrd",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_NV,
 		.smmu = {
 			.reg = 0x22c,
@@ -465,10 +542,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x13,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x21,
 		.name = "texsrd2",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_NV2,
 		.smmu = {
 			.reg = 0x22c,
@@ -479,10 +558,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x13,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x22,
 		.name = "vdebsevr",
+		.fifo_size = 8,
 		.swgroup = TEGRA_SWGROUP_VDE,
 		.smmu = {
 			.reg = 0x22c,
@@ -493,10 +574,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x23,
 		.name = "vdember",
+		.fifo_size = 4,
 		.swgroup = TEGRA_SWGROUP_VDE,
 		.smmu = {
 			.reg = 0x22c,
@@ -507,10 +590,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0xd0,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x24,
 		.name = "vdemcer",
+		.fifo_size = 16,
 		.swgroup = TEGRA_SWGROUP_VDE,
 		.smmu = {
 			.reg = 0x22c,
@@ -521,10 +606,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x2a,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x25,
 		.name = "vdetper",
+		.fifo_size = 16,
 		.swgroup = TEGRA_SWGROUP_VDE,
 		.smmu = {
 			.reg = 0x22c,
@@ -535,30 +622,36 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x74,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x26,
 		.name = "mpcorelpr",
+		.fifo_size = 14,
 		.swgroup = TEGRA_SWGROUP_MPCORELP,
 		.la = {
 			.reg = 0x324,
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x04,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x27,
 		.name = "mpcorer",
+		.fifo_size = 14,
 		.swgroup = TEGRA_SWGROUP_MPCORE,
 		.la = {
 			.reg = 0x320,
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x04,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x28,
 		.name = "eppu",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_EPP,
 		.smmu = {
 			.reg = 0x22c,
@@ -569,10 +662,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x6c,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x29,
 		.name = "eppv",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_EPP,
 		.smmu = {
 			.reg = 0x22c,
@@ -583,10 +678,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x6c,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x2a,
 		.name = "eppy",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_EPP,
 		.smmu = {
 			.reg = 0x22c,
@@ -597,10 +694,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x6c,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x2b,
 		.name = "mpeunifbw",
+		.fifo_size = 8,
 		.swgroup = TEGRA_SWGROUP_MPE,
 		.smmu = {
 			.reg = 0x22c,
@@ -611,10 +710,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x13,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x2c,
 		.name = "viwsb",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_VI,
 		.smmu = {
 			.reg = 0x22c,
@@ -625,10 +726,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x12,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x2d,
 		.name = "viwu",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_VI,
 		.smmu = {
 			.reg = 0x22c,
@@ -639,10 +742,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0xb2,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x2e,
 		.name = "viwv",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_VI,
 		.smmu = {
 			.reg = 0x22c,
@@ -653,10 +758,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0xb2,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x2f,
 		.name = "viwy",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_VI,
 		.smmu = {
 			.reg = 0x22c,
@@ -667,10 +774,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x12,
+			.expiry_ns = 1050,
 		},
 	}, {
 		.id = 0x30,
 		.name = "g2dw",
+		.fifo_size = 128,
 		.swgroup = TEGRA_SWGROUP_G2,
 		.smmu = {
 			.reg = 0x22c,
@@ -681,10 +790,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x9,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x31,
 		.name = "afiw",
+		.fifo_size = 32,
 		.swgroup = TEGRA_SWGROUP_AFI,
 		.smmu = {
 			.reg = 0x22c,
@@ -695,10 +806,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x0c,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x32,
 		.name = "avpcarm7w",
+		.fifo_size = 2,
 		.swgroup = TEGRA_SWGROUP_AVPC,
 		.smmu = {
 			.reg = 0x22c,
@@ -709,10 +822,13 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x0e,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x33,
 		.name = "fdcdwr",
+		.fifo_size = 48,
+		.fdc = true,
 		.swgroup = TEGRA_SWGROUP_NV,
 		.smmu = {
 			.reg = 0x22c,
@@ -723,10 +839,13 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x0a,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x34,
-		.name = "fdcwr2",
+		.name = "fdcdwr2",
+		.fifo_size = 48,
+		.fdc = true,
 		.swgroup = TEGRA_SWGROUP_NV2,
 		.smmu = {
 			.reg = 0x22c,
@@ -737,10 +856,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x0a,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x35,
 		.name = "hdaw",
+		.fifo_size = 16,
 		.swgroup = TEGRA_SWGROUP_HDA,
 		.smmu = {
 			.reg = 0x22c,
@@ -751,10 +872,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x36,
 		.name = "host1xw",
+		.fifo_size = 32,
 		.swgroup = TEGRA_SWGROUP_HC,
 		.smmu = {
 			.reg = 0x22c,
@@ -765,10 +888,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x10,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x37,
 		.name = "ispw",
+		.fifo_size = 64,
 		.swgroup = TEGRA_SWGROUP_ISP,
 		.smmu = {
 			.reg = 0x22c,
@@ -779,30 +904,36 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x38,
 		.name = "mpcorelpw",
+		.fifo_size = 24,
 		.swgroup = TEGRA_SWGROUP_MPCORELP,
 		.la = {
 			.reg = 0x324,
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x0e,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x39,
 		.name = "mpcorew",
+		.fifo_size = 24,
 		.swgroup = TEGRA_SWGROUP_MPCORE,
 		.la = {
 			.reg = 0x320,
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x0e,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x3a,
 		.name = "mpecswr",
+		.fifo_size = 8,
 		.swgroup = TEGRA_SWGROUP_MPE,
 		.smmu = {
 			.reg = 0x22c,
@@ -813,10 +944,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x3b,
 		.name = "ppcsahbdmaw",
+		.fifo_size = 2,
 		.swgroup = TEGRA_SWGROUP_PPCS,
 		.smmu = {
 			.reg = 0x22c,
@@ -827,10 +960,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x10,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x3c,
 		.name = "ppcsahbslvw",
+		.fifo_size = 4,
 		.swgroup = TEGRA_SWGROUP_PPCS,
 		.smmu = {
 			.reg = 0x22c,
@@ -841,10 +976,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x06,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x3d,
 		.name = "sataw",
+		.fifo_size = 32,
 		.swgroup = TEGRA_SWGROUP_SATA,
 		.smmu = {
 			.reg = 0x22c,
@@ -855,10 +992,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0x33,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x3e,
 		.name = "vdebsevw",
+		.fifo_size = 4,
 		.swgroup = TEGRA_SWGROUP_VDE,
 		.smmu = {
 			.reg = 0x22c,
@@ -869,10 +1008,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x3f,
 		.name = "vdedbgw",
+		.fifo_size = 16,
 		.swgroup = TEGRA_SWGROUP_VDE,
 		.smmu = {
 			.reg = 0x22c,
@@ -883,10 +1024,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 16,
 			.mask = 0xff,
 			.def = 0xff,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x40,
 		.name = "vdembew",
+		.fifo_size = 2,
 		.swgroup = TEGRA_SWGROUP_VDE,
 		.smmu = {
 			.reg = 0x230,
@@ -897,10 +1040,12 @@ static const struct tegra_mc_client tegra30_mc_clients[] = {
 			.shift = 0,
 			.mask = 0xff,
 			.def = 0x42,
+			.expiry_ns = 150,
 		},
 	}, {
 		.id = 0x41,
 		.name = "vdetpmw",
+		.fifo_size = 16,
 		.swgroup = TEGRA_SWGROUP_VDE,
 		.smmu = {
 			.reg = 0x230,
@@ -950,6 +1095,7 @@ const struct tegra_mc_soc tegra30_mc_soc = {
 	.num_clients = ARRAY_SIZE(tegra30_mc_clients),
 	.num_address_bits = 32,
 	.atom_size = 16,
+	.atom_size_fdc = 32,
 	.client_id_mask = 0x7f,
 	.smmu = &tegra30_smmu_soc,
 };

@@ -29,3 +29,13 @@ config REGMAP_MMIO
 
 config REGMAP_IRQ
 	bool
+
+# debugging options
+
+config REGMAP_DEBUG_FLAG
+	bool "Add debug flag to regmap to add read/write debug"
+	depends on REGMAP
+	help
+	  Add a debug flag to the regmap to allow runtime selection of
+	  which regmap(s) to debug. Useful if you need to run a selection
+	  of regmap, or enable debug during certain driver phases.

@@ -22,11 +22,13 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
+#include <linux/if_arp.h>
 #include <linux/mii.h>
 #include <linux/usb.h>
 #include <linux/bitrev.h>
 #include <linux/crc16.h>
 #include <linux/crc32.h>
+#include <linux/rtnetlink.h>
 #include <linux/usb/usbnet.h>
 #include <linux/slab.h>
 #include "smsc95xx.h"
@@ -70,9 +72,18 @@ struct smsc95xx_priv {
 	u8 suspend_flags;
 };
 
-static bool turbo_mode = true;
+static bool turbo_mode = IS_ENABLED(CONFIG_USB_NET_SMSC95XX_TURBO);
 module_param(turbo_mode, bool, 0644);
 MODULE_PARM_DESC(turbo_mode, "Enable multiple frames per Rx transaction");
+
+static char mac_addr_store[32];
+
+static char *mac_addr = mac_addr_store;
+module_param(mac_addr, charp, 0644);
+MODULE_PARM_DESC(mac_addr, "Default mac address");
+static char *nv_bl_macid = mac_addr_store;
+module_param(nv_bl_macid, charp, 0644);
+MODULE_PARM_DESC(nv_bl_macid, "Default mac address (nvidia bootloader)");
 
 static int __must_check __smsc95xx_read_reg(struct usbnet *dev, u32 index,
 					    u32 *data, int in_pm)
@@ -1831,10 +1842,17 @@ static struct sk_buff *smsc95xx_tx_fixup(struct usbnet *dev,
 	bool csum = skb->ip_summed == CHECKSUM_PARTIAL;
 	int overhead = csum ? SMSC95XX_TX_OVERHEAD_CSUM : SMSC95XX_TX_OVERHEAD;
 	u32 tx_cmd_a, tx_cmd_b;
+	u32 data_len;
+	uintptr_t align = 0;
 
 	/* We do not advertise SG, so skbs should be already linearized */
 	BUG_ON(skb_shinfo(skb)->nr_frags);
 
+	if (IS_ENABLED(CONFIG_USB_NET_SMSC95XX_TXALIGN)) {
+		align = (uintptr_t)skb->data & 3;
+		if (align)
+			overhead += 4 - align;
+	}
 	if (skb_headroom(skb) < overhead) {
 		struct sk_buff *skb2 = skb_copy_expand(skb,
 			overhead, 0, flags);
@@ -1863,16 +1881,22 @@ static struct sk_buff *smsc95xx_tx_fixup(struct usbnet *dev,
 		}
 	}
 
+	data_len = skb->len;
+	if (align)
+		skb_push(skb, 4 - align);
+
 	skb_push(skb, 4);
-	tx_cmd_b = (u32)(skb->len - 4);
+	tx_cmd_b = (u32)(data_len);
 	if (csum)
 		tx_cmd_b |= TX_CMD_B_CSUM_ENABLE;
 	cpu_to_le32s(&tx_cmd_b);
 	memcpy(skb->data, &tx_cmd_b, 4);
 
 	skb_push(skb, 4);
-	tx_cmd_a = (u32)(skb->len - 8) | TX_CMD_A_FIRST_SEG_ |
+	tx_cmd_a = (u32)(data_len) | TX_CMD_A_FIRST_SEG_ |
 		TX_CMD_A_LAST_SEG_;
+	if (align)
+		tx_cmd_a |= (4 - align) << 16;
 	cpu_to_le32s(&tx_cmd_a);
 	memcpy(skb->data, &tx_cmd_a, 4);
 
@@ -1909,7 +1933,7 @@ static const struct driver_info smsc95xx_info = {
 	.tx_fixup	= smsc95xx_tx_fixup,
 	.status		= smsc95xx_status,
 	.manage_power	= smsc95xx_manage_power,
-	.flags		= FLAG_ETHER | FLAG_SEND_ZLP | FLAG_LINK_INTR,
+	.flags		= FLAG_ETHER | FLAG_SEND_ZLP | FLAG_LINK_INTR | FLAG_CAN_RXALIGN,
 };
 
 static const struct usb_device_id products[] = {
@@ -2007,10 +2031,52 @@ static const struct usb_device_id products[] = {
 };
 MODULE_DEVICE_TABLE(usb, products);
 
+static int smsc95xx_probe(struct usb_interface *usbif,
+			  const struct usb_device_id *usbid)
+{
+	struct usbnet *dev;
+	struct sockaddr sa;
+	const char *macp;
+	int ret;
+
+	pr_info("%s: mac_addr=%s\n", __func__, mac_addr);
+
+	ret = usbnet_probe(usbif, usbid);
+	if (ret)
+		return ret;
+
+	/* note, we don't treat failure to parse mac-address as a failure as
+	 * the system will mostly work without setting the mac */
+	dev = usb_get_intfdata(usbif);
+	if (!dev)
+		return -EINVAL;
+
+	/* skip the 'name' in front of this */
+	macp = mac_addr;
+	while (macp[0] != ':' && macp[0] != '\0')
+		macp++;
+	if (macp[0] == ':')
+		macp++;
+
+	if (!mac_pton(macp, sa.sa_data)) {
+		dev_err(&dev->udev->dev, "failed to parse mac '%s'\n", mac_addr);
+		return 0;
+	}
+
+	sa.sa_family = ARPHRD_ETHER;
+	rtnl_lock();
+	ret = dev_set_mac_address(dev->net, &sa);
+	rtnl_unlock();
+	if (ret)
+		dev_warn(&dev->udev->dev, "failed to set mac-address\n");
+
+	return 0;
+}
+
 static struct usb_driver smsc95xx_driver = {
 	.name		= "smsc95xx",
 	.id_table	= products,
-	.probe		= usbnet_probe,
+	.probe		= smsc95xx_probe,
 	.suspend	= smsc95xx_suspend,
 	.resume		= smsc95xx_resume,
 	.reset_resume	= smsc95xx_reset_resume,

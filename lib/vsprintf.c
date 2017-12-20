@@ -16,6 +16,7 @@
  * - scnprintf and vscnprintf
  */
 
+
 #include <stdarg.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
@@ -2621,15 +2622,26 @@ int vsscanf(const char *buf, const char *fmt, va_list args)
 				simple_strtoull(str, &next, base);
 
 		if (field_width > 0 && next - str > field_width) {
+			char tmpstr[field_width + 1];
+			const char *nstr = NULL;
+
 			if (base == 0)
-				_parse_integer_fixup_radix(str, &base);
-			while (next - str > field_width) {
-				if (is_sign)
-					val.s = div_s64(val.s, base);
-				else
-					val.u = div_u64(val.u, base);
-				--next;
-			}
+				nstr = _parse_integer_fixup_radix(str, &base);
+			else
+				nstr = str;
+
+			strncpy(tmpstr, nstr, field_width);
+			tmpstr[field_width] = '\0';
+			next = (char *)nstr + field_width;
+
+			if (is_sign)
+				val.s = qualifier != 'L' ?
+					simple_strtol(tmpstr, NULL, base) :
+					simple_strtoll(tmpstr, NULL, base);
+			else
+				val.u = qualifier != 'L' ?
+					simple_strtoul(tmpstr, NULL, base) :
+					simple_strtoull(tmpstr, NULL, base);
 		}
 
 		switch (qualifier) {

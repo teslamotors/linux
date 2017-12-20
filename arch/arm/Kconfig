@@ -1015,6 +1015,16 @@ if !MMU
 source "arch/arm/Kconfig-nommu"
 endif
 
+config ARM_ERRATA_SECURE
+	bool "Allow secure-mode errata in multiplatform configurations"
+	depends on ARCH_MULTIPLATFORM && EXPERT
+	help
+	  There are a number of ARM ERRATA which require access to secure
+	  mode only registers. These are not always safe for a multiplatform
+	  kernel that has to operate on unknown boards. However it is possible
+	  to build subsets of multiplatform for known boards where the errata
+	  are both needed and can be safely deployed from the kernel.
+
 config PJ4B_ERRATA_4742
 	bool "PJ4B Errata 4742: IDLE Wake Up Commands can Cause the CPU Core to Cease Operation"
 	depends on CPU_PJ4B && MACH_ARMADA_370
@@ -1066,7 +1076,7 @@ config ARM_ERRATA_430973
 config ARM_ERRATA_458693
 	bool "ARM errata: Processor deadlock when a false hazard is created"
 	depends on CPU_V7
-	depends on !ARCH_MULTIPLATFORM
+	depends on ARM_ERRATA_SECURE
 	help
 	  This option enables the workaround for the 458693 Cortex-A8 (r2p0)
 	  erratum. For very specific sequences of memory operations, it is
@@ -1080,7 +1090,7 @@ config ARM_ERRATA_458693
 config ARM_ERRATA_460075
 	bool "ARM errata: Data written to the L2 cache can be overwritten with stale data"
 	depends on CPU_V7
-	depends on !ARCH_MULTIPLATFORM
+	depends on ARM_ERRATA_SECURE
 	help
 	  This option enables the workaround for the 460075 Cortex-A8 (r2p0)
 	  erratum. Any asynchronous access to the L2 cache may encounter a
@@ -1093,7 +1103,7 @@ config ARM_ERRATA_460075
 config ARM_ERRATA_742230
 	bool "ARM errata: DMB operation may be faulty"
 	depends on CPU_V7 && SMP
-	depends on !ARCH_MULTIPLATFORM
+	depends on ARM_ERRATA_SECURE
 	help
 	  This option enables the workaround for the 742230 Cortex-A9
 	  (r1p0..r2p2) erratum. Under rare circumstances, a DMB instruction
@@ -1106,7 +1116,7 @@ config ARM_ERRATA_742230
 config ARM_ERRATA_742231
 	bool "ARM errata: Incorrect hazard handling in the SCU may lead to data corruption"
 	depends on CPU_V7 && SMP
-	depends on !ARCH_MULTIPLATFORM
+	depends on ARM_ERRATA_SECURE
 	help
 	  This option enables the workaround for the 742231 Cortex-A9
 	  (r2p0..r2p2) erratum. Under certain conditions, specific to the
@@ -1129,6 +1139,15 @@ config ARM_ERRATA_643719
 	  corrects this value, ensuring cache maintenance operations which use
 	  it behave as intended and avoiding data corruption.
 
+config ARM_ERRATA_716044
+	bool "ARM errata: an uncacheable load multiple instruction can cause a deadlock"
+	depends on CPU_V7
+	default y if ARCH_TEGRA_2x_SOC
+	help
+	 Under some rare circumstances, an uncacheable load multiple
+	 instruction (LDRD, LDM, VLDM, VLD1, VLD2, VLD3, VLD4) can cause
+	 a processor deadlock.
+
 config ARM_ERRATA_720789
 	bool "ARM errata: TLBIASIDIS and TLBIMVAIS operations can broadcast a faulty ASID"
 	depends on CPU_V7
@@ -1144,7 +1163,7 @@ config ARM_ERRATA_720789
 config ARM_ERRATA_743622
 	bool "ARM errata: Faulty hazard checking in the Store Buffer may lead to data corruption"
 	depends on CPU_V7
-	depends on !ARCH_MULTIPLATFORM
+	depends on ARM_ERRATA_SECURE
 	help
 	  This option enables the workaround for the 743622 Cortex-A9
 	  (r2p*) erratum. Under very rare conditions, a faulty
@@ -1158,7 +1177,7 @@ config ARM_ERRATA_743622
 config ARM_ERRATA_751472
 	bool "ARM errata: Interrupted ICIALLUIS may prevent completion of broadcasted operation"
 	depends on CPU_V7
-	depends on !ARCH_MULTIPLATFORM
+	depends on ARM_ERRATA_SECURE
 	help
 	  This option enables the workaround for the 751472 Cortex-A9 (prior
 	  to r3p0) erratum. An interrupted ICIALLUIS operation may prevent the
@@ -1187,6 +1206,16 @@ config ARM_ERRATA_754327
 	  continuously polls a memory location waiting to observe an update.
 	  This workaround defines cpu_relax() as smp_mb(), preventing correctly
 	  written polling loops from denying visibility of updates to memory.
+
+config ARM_ERRATA_752520
+	bool "ARM errata: Possible deadlock betwen PLD and cacheable TLB requests"
+	depends on CPU_V7 && ARM_ERRATA_SECURE
+	help
+	  Under rare circumstances, PLDs may interfere with a cacheable page
+	  table walk, creating a processor deadlock. The erratum can only
+	  happen when the Data Cache and MMU are enabled, with the TLB
+	  descriptors marked as L1 cacheable, so that Page Table Walks are
+	  performed as cache linefills.
 
 config ARM_ERRATA_364296
 	bool "ARM errata: Possible cache data corruption with hit-under-miss enabled"
@@ -2169,3 +2198,5 @@ endif
 source "lib/Kconfig"
 
 source "arch/arm/kvm/Kconfig"
+
+source "compat26/Kconfig"

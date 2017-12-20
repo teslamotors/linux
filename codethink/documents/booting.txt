@@ -1,0 +1,18 @@
+Booting
+=======
+
+For more information about how to boot, see the quickloader tool that is used
+to wrap the kernel image.
+
+Issues
+------
+
+- Command line currently is limited to 1024 characters, which quickboot is
+  getting close to already. If this limit is reached, the atags->fdt process
+  will fail to update the commandline in the device-tree, and thus anything
+  quickboot passes is lost.
+
+- Currently due to the issues of atag->fdt conversion being in the compressed
+  loader, we have to boot zImage. This means both quickboot and the kernel are
+  decompressing data. For performance, this will need to be fixed.
+

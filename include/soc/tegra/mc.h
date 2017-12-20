@@ -32,6 +32,7 @@ struct tegra_mc_la {
 	unsigned int shift;
 	unsigned int mask;
 	unsigned int def;
+	int expiry_ns;
 };
 
 struct tegra_mc_client {
@@ -40,6 +41,8 @@ struct tegra_mc_client {
 	unsigned int swgroup;
 
 	unsigned int fifo_size;
+
+	bool fdc; /* flag for an FDC client */
 
 	struct tegra_smmu_enable smmu;
 	struct tegra_mc_la la;
@@ -95,6 +98,7 @@ struct tegra_mc_soc {
 
 	unsigned int num_address_bits;
 	unsigned int atom_size;
+	unsigned int atom_size_fdc;
 
 	u8 client_id_mask;
 
@@ -117,5 +121,9 @@ struct tegra_mc {
 
 void tegra_mc_write_emem_configuration(struct tegra_mc *mc, unsigned long rate);
 unsigned int tegra_mc_get_emem_device_count(struct tegra_mc *mc);
+
+extern void tegra20_mc_set_priority(unsigned long client, unsigned long prio);
+
+int tegra_mc_set_latency_allowance(int client_id, unsigned int bandwidth);
 
 #endif /* __SOC_TEGRA_MC_H__ */

@@ -525,6 +525,14 @@ config VEXPRESS_SYSCFG
 	  bus. System Configuration interface is one of the possible means
 	  of generating transactions on this bus.
 
+config COMPAT_SYSFS_PLATDEV
+	bool "Compatibility driver OF devices to link to platform sysfs"
+	help
+	  Allow for compatilibility with old-style platform devices when
+	  using OF based ones. This driver uses extra information within
+	  the device-tree passed to the kernel to build sysfs symlinks from
+	  the OF devices to where they where in the old platform directory.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -537,4 +545,5 @@ source "drivers/misc/mic/Kconfig"
 source "drivers/misc/genwqe/Kconfig"
 source "drivers/misc/echo/Kconfig"
 source "drivers/misc/cxl/Kconfig"
+source "drivers/misc/switch/Kconfig"
 endmenu

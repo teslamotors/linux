@@ -702,8 +702,12 @@ static struct tegra_devclk devclks[] __initdata = {
 	{ .dev_id = "mpe", .dt_id = TEGRA30_CLK_MPE },
 	{ .dev_id = "host1x", .dt_id = TEGRA30_CLK_HOST1X },
 	{ .dev_id = "3d", .dt_id = TEGRA30_CLK_GR3D },
+	{ .dev_id = "3d", .con_id = "mux", .dt_id = TEGRA30_CLK_GR3D_MUX },
+	{ .dev_id = "3d", .con_id = "idle", .dt_id = TEGRA30_CLK_GR3D_IDLE },
 	{ .dev_id = "3d2", .dt_id = TEGRA30_CLK_GR3D2 },
 	{ .dev_id = "2d", .dt_id = TEGRA30_CLK_GR2D },
+	{ .dev_id = "2d", .con_id = "mux", .dt_id = TEGRA30_CLK_GR2D_MUX },
+	{ .dev_id = "2d", .con_id = "idle", .dt_id = TEGRA30_CLK_GR2D_IDLE },
 	{ .dev_id = "se", .dt_id = TEGRA30_CLK_SE },
 	{ .dev_id = "mselect", .dt_id = TEGRA30_CLK_MSELECT },
 	{ .dev_id = "tegra-nor", .dt_id = TEGRA30_CLK_NOR },
@@ -806,6 +810,10 @@ static struct tegra_clk tegra30_clks[tegra_clk_max] __initdata = {
 	[tegra_clk_host1x] = { .dt_id = TEGRA30_CLK_HOST1X, .present = true },
 	[tegra_clk_gr2d] = { .dt_id = TEGRA30_CLK_GR2D, .present = true },
 	[tegra_clk_gr3d] = { .dt_id = TEGRA30_CLK_GR3D, .present = true },
+	[tegra_clk_gr2d_mux] = { .dt_id = TEGRA30_CLK_GR2D_MUX, .present = true },
+	[tegra_clk_gr3d_mux] = { .dt_id = TEGRA30_CLK_GR3D_MUX, .present = true },
+	[tegra_clk_gr2d_idle] = { .dt_id = TEGRA30_CLK_GR2D_IDLE, .present = true },
+	[tegra_clk_gr3d_idle] = { .dt_id = TEGRA30_CLK_GR3D_IDLE, .present = true },
 	[tegra_clk_mselect] = { .dt_id = TEGRA30_CLK_MSELECT, .present = true },
 	[tegra_clk_nor] = { .dt_id = TEGRA30_CLK_NOR, .present = true },
 	[tegra_clk_sdmmc1] = { .dt_id = TEGRA30_CLK_SDMMC1, .present = true },
@@ -1335,48 +1343,136 @@ static struct tegra_cpu_car_ops tegra30_cpu_car_ops = {
 };
 
 static struct tegra_clk_init_table init_table[] __initdata = {
-	{TEGRA30_CLK_UARTA, TEGRA30_CLK_PLL_P, 408000000, 0},
-	{TEGRA30_CLK_UARTB, TEGRA30_CLK_PLL_P, 408000000, 0},
+#ifdef CONFIG_PRINTK_TEGRA_TIMER
+	{TEGRA30_CLK_TIMER, TEGRA30_CLK_CLK_MAX, 0, 1},	/* keep clock running for debug */
+#endif
+	{TEGRA30_CLK_UARTA, TEGRA30_CLK_PLL_P, 408000000, 1},
+	{TEGRA30_CLK_UARTB, TEGRA30_CLK_PLL_P, 408000000, 1},
 	{TEGRA30_CLK_UARTC, TEGRA30_CLK_PLL_P, 408000000, 0},
-	{TEGRA30_CLK_UARTD, TEGRA30_CLK_PLL_P, 408000000, 0},
+	{TEGRA30_CLK_UARTD, TEGRA30_CLK_PLL_P, 408000000, 1},
 	{TEGRA30_CLK_UARTE, TEGRA30_CLK_PLL_P, 408000000, 0},
-	{TEGRA30_CLK_PLL_A, TEGRA30_CLK_CLK_MAX, 564480000, 1},
-	{TEGRA30_CLK_PLL_A_OUT0, TEGRA30_CLK_CLK_MAX, 11289600, 1},
-	{TEGRA30_CLK_EXTERN1, TEGRA30_CLK_PLL_A_OUT0, 0, 1},
-	{TEGRA30_CLK_CLK_OUT_1_MUX, TEGRA30_CLK_EXTERN1, 0, 0},
+	{TEGRA30_CLK_PLL_P_OUT1, TEGRA30_CLK_CLK_MAX, 9600000, 1}, /* update from 2.6 */
+	{TEGRA30_CLK_PLL_P_OUT2, TEGRA30_CLK_CLK_MAX, 48000000, 1}, /* update from 2.6 */
+	{TEGRA30_CLK_PLL_P_OUT3, TEGRA30_CLK_CLK_MAX, 102000000, 1}, /* update from 2.6 */
+	{TEGRA30_CLK_PLL_P_OUT4, TEGRA30_CLK_CLK_MAX, 102000000, 1}, /* update from 2.6 */
+	{TEGRA30_CLK_FUSE, TEGRA30_CLK_CLK_MAX, 12000000, 1},
+	{TEGRA30_CLK_KFUSE, TEGRA30_CLK_CLK_MAX, 12000000, 1},
+	{TEGRA30_CLK_CCLK_G, TEGRA30_CLK_CLK_MAX, 900000000, 0 }, // cpu to 900Mhz
+	{TEGRA30_CLK_CCLK_LP,TEGRA30_CLK_CLK_MAX, 484000000, 0 }, // cpu_lp to 484MHz
+	//{TEGRA30_CLK_PLL_A, TEGRA30_CLK_CLK_MAX, 564480000, 1},
+	{TEGRA30_CLK_PLL_A, TEGRA30_CLK_CLK_MAX, 552960000, 1},
+	{TEGRA30_CLK_PLL_A_OUT0, TEGRA30_CLK_CLK_MAX, 24576000, 1},
+	{TEGRA30_CLK_EXTERN1, TEGRA30_CLK_PLL_A_OUT0, 24576000, 1},
+	{TEGRA30_CLK_CLK_OUT_1_MUX, TEGRA30_CLK_CLK_M, 0, 0},
 	{TEGRA30_CLK_CLK_OUT_1, TEGRA30_CLK_CLK_MAX, 0, 1},
 	{TEGRA30_CLK_BLINK, TEGRA30_CLK_CLK_MAX, 0, 1},
-	{TEGRA30_CLK_I2S0, TEGRA30_CLK_PLL_A_OUT0, 11289600, 0},
-	{TEGRA30_CLK_I2S1, TEGRA30_CLK_PLL_A_OUT0, 11289600, 0},
-	{TEGRA30_CLK_I2S2, TEGRA30_CLK_PLL_A_OUT0, 11289600, 0},
-	{TEGRA30_CLK_I2S3, TEGRA30_CLK_PLL_A_OUT0, 11289600, 0},
-	{TEGRA30_CLK_I2S4, TEGRA30_CLK_PLL_A_OUT0, 11289600, 0},
+	{TEGRA30_CLK_I2S0, TEGRA30_CLK_CLK_M, 12288000, 0},
+	{TEGRA30_CLK_I2S1, TEGRA30_CLK_CLK_M, 12288000, 0},
+	{TEGRA30_CLK_I2S2, TEGRA30_CLK_CLK_M, 12288000, 0},
+	{TEGRA30_CLK_I2S3, TEGRA30_CLK_CLK_M, 12288000, 0},
+	{TEGRA30_CLK_I2S4, TEGRA30_CLK_CLK_M, 12288000, 0},
+	{TEGRA30_CLK_HDA, TEGRA30_CLK_PLL_P, 108000000, 0 },  /* as per 2.6 */
+	{TEGRA30_CLK_HDA2CODEC_2X, TEGRA30_CLK_PLL_P, 48000000, 0 }, /* as per 2.6 */
 	{TEGRA30_CLK_SDMMC1, TEGRA30_CLK_PLL_P, 48000000, 0},
-	{TEGRA30_CLK_SDMMC2, TEGRA30_CLK_PLL_P, 48000000, 0},
+	{TEGRA30_CLK_SDMMC2, TEGRA30_CLK_PLL_P, 104000000, 0}, /* as per 2.6 */
 	{TEGRA30_CLK_SDMMC3, TEGRA30_CLK_PLL_P, 48000000, 0},
+	{TEGRA30_CLK_SDMMC4, TEGRA30_CLK_PLL_P, 48000000, 0},
+	{TEGRA30_CLK_NOR, TEGRA30_CLK_PLL_P, 102000000, 0},
 	{TEGRA30_CLK_PLL_M, TEGRA30_CLK_CLK_MAX, 0, 1},
-	{TEGRA30_CLK_PCLK, TEGRA30_CLK_CLK_MAX, 0, 1},
+	{TEGRA30_CLK_PLL_M_OUT1, TEGRA30_CLK_CLK_MAX, 312500000, 1},
+	{TEGRA30_CLK_SCLK, TEGRA30_CLK_PLL_M_OUT1, 312500000, 1},	/* put sclk back to PLL_M_OUT1 */
+	{TEGRA30_CLK_HCLK, TEGRA30_CLK_CLK_MAX, 312500000, 1},		/* set HCLK to same as SCLK */
+	{TEGRA30_CLK_PCLK, TEGRA30_CLK_CLK_MAX, 312500000/2, 1},	/* set PCLK to half of HCLK */
 	{TEGRA30_CLK_CSITE, TEGRA30_CLK_CLK_MAX, 0, 1},
 	{TEGRA30_CLK_EMC, TEGRA30_CLK_CLK_MAX, 0, 1},
 	{TEGRA30_CLK_MSELECT, TEGRA30_CLK_CLK_MAX, 0, 1},
-	{TEGRA30_CLK_SBC1, TEGRA30_CLK_PLL_P, 100000000, 0},
-	{TEGRA30_CLK_SBC2, TEGRA30_CLK_PLL_P, 100000000, 0},
-	{TEGRA30_CLK_SBC3, TEGRA30_CLK_PLL_P, 100000000, 0},
-	{TEGRA30_CLK_SBC4, TEGRA30_CLK_PLL_P, 100000000, 0},
-	{TEGRA30_CLK_SBC5, TEGRA30_CLK_PLL_P, 100000000, 0},
-	{TEGRA30_CLK_SBC6, TEGRA30_CLK_PLL_P, 100000000, 0},
-	{TEGRA30_CLK_HOST1X, TEGRA30_CLK_PLL_C, 150000000, 0},
-	{TEGRA30_CLK_DISP1, TEGRA30_CLK_PLL_P, 600000000, 0},
-	{TEGRA30_CLK_DISP2, TEGRA30_CLK_PLL_P, 600000000, 0},
+	{TEGRA30_CLK_PLL_C, TEGRA30_CLK_CLK_MAX, 484000000, 1},
+	/* initialse PLL_D and set it up before the display code for test */
+	{TEGRA30_CLK_PLL_D, TEGRA30_CLK_CLK_MAX, 257800000, 1},
+	/* set EPP clock to TEGRA30_CLK_PLL_C */
+	{TEGRA30_CLK_EPP, TEGRA30_CLK_PLL_C, 484000000, 0},
+	{TEGRA30_CLK_SBC1, TEGRA30_CLK_PLL_M, 15822784, 1},
+	{TEGRA30_CLK_SBC2, TEGRA30_CLK_PLL_M, 100000000, 1},
+	{TEGRA30_CLK_SBC3, TEGRA30_CLK_PLL_M, 100000000, 1},
+	{TEGRA30_CLK_SBC4, TEGRA30_CLK_PLL_M, 100000000, 1},
+	{TEGRA30_CLK_SBC5, TEGRA30_CLK_PLL_M, 100000000, 1},
+	{TEGRA30_CLK_SBC6, TEGRA30_CLK_PLL_M, 100000000, 1},
+	{TEGRA30_CLK_SE, TEGRA30_CLK_PLL_M, 625000000, 1},
+	{TEGRA30_CLK_HOST1X, TEGRA30_CLK_PLL_C, 242000000, 0},
+	{TEGRA30_CLK_DISP1, TEGRA30_CLK_PLL_P, 275000000, 0}, // as per 2.6
+	{TEGRA30_CLK_DISP2, TEGRA30_CLK_PLL_P, 275000000, 0}, // as per 2.6
 	{TEGRA30_CLK_TWD, TEGRA30_CLK_CLK_MAX, 0, 1},
-	{TEGRA30_CLK_GR2D, TEGRA30_CLK_PLL_C, 300000000, 0},
-	{TEGRA30_CLK_GR3D, TEGRA30_CLK_PLL_C, 300000000, 0},
-	{TEGRA30_CLK_GR3D2, TEGRA30_CLK_PLL_C, 300000000, 0},
+	{TEGRA30_CLK_GR2D_MUX, TEGRA30_CLK_PLL_C, 484000000, 0},  /* as per 2.6 */
+	{TEGRA30_CLK_GR3D_MUX, TEGRA30_CLK_PLL_C, 484000000, 0},  /* as per 2.6 */	
+	{TEGRA30_CLK_GR2D, TEGRA30_CLK_CLK_MAX, 484000000, 0},  /* as per 2.6 */
+	{TEGRA30_CLK_GR3D, TEGRA30_CLK_CLK_MAX, 484000000, 0},  /* as per 2.6 */
+	{TEGRA30_CLK_GR2D_IDLE, TEGRA30_CLK_CLK_MAX, 484000000/25, 0},  /* as per 2.6 */
+	{TEGRA30_CLK_GR3D_IDLE, TEGRA30_CLK_CLK_MAX, 484000000/25, 0},  /* as per 2.6 */
+	{TEGRA30_CLK_GR3D2, TEGRA30_CLK_PLL_C, 484000000, 0}, /* as per 2.6 */
+	{TEGRA30_CLK_D_AUDIO, TEGRA30_CLK_PLL_A_OUT0, 24576000, 0 }, /* as per 2.6 */
+	{TEGRA30_CLK_MPE, TEGRA30_CLK_PLL_C, 484000000, 0 },  /* as per 2.6 */
+	{TEGRA30_CLK_VDE, TEGRA30_CLK_PLL_C, 484000000, 0 },  /* as per 2.6 */
+	{TEGRA30_CLK_VI, TEGRA30_CLK_PLL_P, 470000000, 0 },  /* as per 2.6 */
+	{TEGRA30_CLK_VI_SENSOR, TEGRA30_CLK_PLL_P, 150000000, 0 },  /* as per 2.6 */
+	{TEGRA30_CLK_PWM, TEGRA30_CLK_CLK_32K, 32768, 0 }, /* as per 2.6 */
 	{TEGRA30_CLK_CLK_MAX, TEGRA30_CLK_CLK_MAX, 0, 0}, /* This MUST be the last entry. */
+};
+
+/* set min/max rates on some of the clocks */
+static struct __init tegra_clk_bound_table init_limit_table[] = {
+	{ .clk_id = TEGRA30_CLK_NDSPEED, .min = 0, .max = 240000000,  },
+	{ .clk_id = TEGRA30_CLK_SBC1,	.min = 0, .max = 160000000, },
+	{ .clk_id = TEGRA30_CLK_SBC2,	.min = 0, .max = 160000000, },
+	{ .clk_id = TEGRA30_CLK_SBC3,	.min = 0, .max = 160000000, },
+	{ .clk_id = TEGRA30_CLK_SBC4,	.min = 0, .max = 160000000, },
+	{ .clk_id = TEGRA30_CLK_SBC5,	.min = 0, .max = 160000000, },
+	{ .clk_id = TEGRA30_CLK_SBC6,	.min = 0, .max = 160000000, },
+	/* TODO - missing VCP */
+	{ .clk_id = TEGRA30_CLK_BSEA,	.min = 0, .max = 250000000, },	
+	{ .clk_id = TEGRA30_CLK_BSEV,	.min = 0, .max = 250000000, },
+	{ .clk_id = TEGRA30_CLK_VDE,	.min = 0, .max = 520000000, },
+	{ .clk_id = TEGRA30_CLK_CSITE,	.min = 0, .max = 144000000, },
+	{ .clk_id = TEGRA30_CLK_LA,	.min = 0, .max = 26000000, },
+	{ .clk_id = TEGRA30_CLK_OWR,	.min = 0, .max = 26000000, },
+	{ .clk_id = TEGRA30_CLK_NOR,	.min = 0, .max = 127000000, },
+	{ .clk_id = TEGRA30_CLK_MIPI,	.min = 0, .max = 60000000, },
+	{ .clk_id = TEGRA30_CLK_I2C1,	.min = 0, .max = 26000000, },
+	{ .clk_id = TEGRA30_CLK_I2C2,	.min = 0, .max = 26000000, },
+	{ .clk_id = TEGRA30_CLK_I2C3,	.min = 0, .max = 26000000, },
+	{ .clk_id = TEGRA30_CLK_I2C4,	.min = 0, .max = 26000000, },
+	{ .clk_id = TEGRA30_CLK_UARTA,	.min = 0, .max = 800000000, },
+	{ .clk_id = TEGRA30_CLK_UARTB,	.min = 0, .max = 800000000, },
+	{ .clk_id = TEGRA30_CLK_UARTC,	.min = 0, .max = 800000000, },
+	{ .clk_id = TEGRA30_CLK_UARTD,	.min = 0, .max = 800000000, },
+	{ .clk_id = TEGRA30_CLK_UARTE,	.min = 0, .max = 800000000, },
+	{ .clk_id = TEGRA30_CLK_VI,	.min = 0, .max = 470000000, },
+	{ .clk_id = TEGRA30_CLK_GR3D,	.min = 0, .max = 520000000, },
+	{ .clk_id = TEGRA30_CLK_GR3D2,	.min = 0, .max = 520000000, },
+	{ .clk_id = TEGRA30_CLK_GR2D,	.min = 0, .max = 520000000, },
+	{ .clk_id = TEGRA30_CLK_EPP,	.min = 0, .max = 520000000, },
+	{ .clk_id = TEGRA30_CLK_MPE,	.min = 0, .max = 520000000, },
+	{ .clk_id = TEGRA30_CLK_HOST1X, .min = 0, .max = 260000000, },
+	{ .clk_id = TEGRA30_CLK_CVE,	.min = 0, .max = 250000000, },
+	{ .clk_id = TEGRA30_CLK_TVO,	.min = 0, .max = 250000000, },
+	{ .clk_id = TEGRA30_CLK_DTV,	.min = 0, .max = 250000000, },
+	{ .clk_id = TEGRA30_CLK_HDMI,	.min = 0, .max = 148500000, },
+	{ .clk_id = TEGRA30_CLK_TVDAC,	.min = 0, .max = 220000000, },
+	{ .clk_id = TEGRA30_CLK_DISP1,	.min = 0, .max = 600000000, },
+	{ .clk_id = TEGRA30_CLK_DISP2,	.min = 0, .max = 600000000, },
+	/* skipped usb */
+	{ .clk_id = TEGRA30_CLK_CSI,	.min = 0, .max = 102000000, },
+	{ .clk_id = TEGRA30_CLK_ISP,	.min = 0, .max = 150000000, },
+	{ .clk_id = TEGRA30_CLK_CSUS,	.min = 0, .max = 150000000, },
+	{ .clk_id = TEGRA30_CLK_TSENSOR, .min = 0, .max = 216000000, },
+	{ .clk_id = TEGRA30_CLK_ACTMON, .min = 0, .max = 216000000, },
+	/* skipped exter1..3 */
+	{ .clk_id = TEGRA30_CLK_SE,	.min = 0, .max = 625000000, },
+	{TEGRA30_CLK_CLK_MAX, 0, 0}, /* This MUST be the last entry. */
 };
 
 static void __init tegra30_clock_apply_init_table(void)
 {
+	tegra_init_clock_bounds(init_limit_table, clks, TEGRA30_CLK_CLK_MAX);
 	tegra_init_from_table(init_table, clks, TEGRA30_CLK_CLK_MAX);
 }
 

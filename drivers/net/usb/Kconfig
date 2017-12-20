@@ -345,6 +345,27 @@ config USB_NET_SMSC95XX
 	  This option adds support for SMSC LAN95XX based USB 2.0
 	  10/100 Ethernet adapters.
 
+config USB_NET_SMSC95XX_TURBO
+	bool "Use turbo receive mode by default"
+	depends on USB_NET_SMSC95XX
+	default y
+	help
+	  This options sets the default turbo mode settings for the
+	  driver's receive path. These can also be altered by the
+	  turbo_mode module parameter.
+
+config USB_NET_SMSC95XX_TXALIGN
+	bool "Add bytes to align transmit buffers"
+	depends on USB_NET_SMSC95XX
+	default n
+	help
+	  This option makes the tx buffers 32 bit aligned which might
+	  help with systems that want tx data aligned to a 32 bit
+	  boundary.
+
+	  Using this option will mean there may be up to 3 bytes of
+	  data per packet sent.
+
 config USB_NET_GL620A
 	tristate "GeneSys GL620USB-A based cables"
 	depends on USB_USBNET

@@ -221,6 +221,22 @@
 		.flags = _flags						\
 	}
 
+#define GATE_DIV(_name, _parent_name, _offset,				\
+		 _div_shift, _div_width, _div_frac_width, _div_flags,	\
+			     _clk_num, _gate_flags,  _clk_id, _flags)	\
+	{								\
+		.name = _name,						\
+		.clk_id = _clk_id,					\
+		.offset = _offset,					\
+		.p.parent_names = (const char *[]) {  _parent_name },	\
+		.num_parents = 1,					\
+		.periph = TEGRA_CLK_PERIPH(0, 0, 0,			\
+					   _div_shift, _div_width,	\
+					   _div_frac_width, _div_flags, \
+				_clk_num, _gate_flags, NULL, NULL),	\
+		.flags = _flags						\
+	}
+
 #define PLLP_BASE 0xa0
 #define PLLP_MISC 0xac
 #define PLLP_OUTA 0xa4
@@ -237,7 +253,7 @@ static DEFINE_SPINLOCK(sor0_lock);
 
 #define MUX_I2S_SPDIF(_id)						\
 static const char *mux_pllaout0_##_id##_2x_pllp_clkm[] = { "pll_a_out0", \
-							   #_id, "pll_p",\
+							   #_id"_2x", "pll_p",\
 							   "clk_m"};
 MUX_I2S_SPDIF(audio0)
 MUX_I2S_SPDIF(audio1)
@@ -401,13 +417,17 @@ static struct tegra_periph_init_data periph_clks[] = {
 	I2C("i2c3", mux_pllp_clkm, CLK_SOURCE_I2C3, 67, tegra_clk_i2c3),
 	I2C("i2c4", mux_pllp_clkm, CLK_SOURCE_I2C4, 103, tegra_clk_i2c4),
 	I2C("i2c5", mux_pllp_clkm, CLK_SOURCE_I2C5, 47, tegra_clk_i2c5),
-	INT("vde", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_VDE, 61, 0, tegra_clk_vde),
-	INT("vi", mux_pllm_pllc_pllp_plla, CLK_SOURCE_VI, 20, 0, tegra_clk_vi),
-	INT("epp", mux_pllm_pllc_pllp_plla, CLK_SOURCE_EPP, 19, 0, tegra_clk_epp),
-	INT("host1x", mux_pllm_pllc_pllp_plla, CLK_SOURCE_HOST1X, 28, 0, tegra_clk_host1x),
-	INT("mpe", mux_pllm_pllc_pllp_plla, CLK_SOURCE_MPE, 60, 0, tegra_clk_mpe),
-	INT("2d", mux_pllm_pllc_pllp_plla, CLK_SOURCE_2D, 21, 0, tegra_clk_gr2d),
-	INT("3d", mux_pllm_pllc_pllp_plla, CLK_SOURCE_3D, 24, 0, tegra_clk_gr3d),
+	MUX("vde", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_VDE, 61, 0, tegra_clk_vde),
+	MUX("vi", mux_pllm_pllc_pllp_plla, CLK_SOURCE_VI, 20, 0, tegra_clk_vi),
+	MUX("epp", mux_pllm_pllc_pllp_plla, CLK_SOURCE_EPP, 19, 0, tegra_clk_epp),
+	MUX("host1x", mux_pllm_pllc_pllp_plla, CLK_SOURCE_HOST1X, 28, 0, tegra_clk_host1x),
+	MUX("mpe", mux_pllm_pllc_pllp_plla, CLK_SOURCE_MPE, 60, 0, tegra_clk_mpe),
+	MUX("2d_mux", mux_pllm_pllc_pllp_plla, CLK_SOURCE_2D, 0, TEGRA_PERIPH_NO_DIV | TEGRA_PERIPH_NO_RESET | TEGRA_PERIPH_NO_GATE, tegra_clk_gr2d_mux),
+	GATE_DIV("2d", "2d_mux", CLK_SOURCE_2D, 0, 8, 1, TEGRA_DIVIDER_ROUND_UP,21, 0, tegra_clk_gr2d, 0),
+	GATE_DIV("2d_idle", "2d_mux", CLK_SOURCE_2D, 8, 8, 1, TEGRA_DIVIDER_ROUND_UP, 0, TEGRA_PERIPH_NO_GATE | TEGRA_PERIPH_NO_RESET, tegra_clk_gr2d_idle, 0),
+	MUX("3d_mux", mux_pllm_pllc_pllp_plla, CLK_SOURCE_3D, 0, TEGRA_PERIPH_NO_DIV | TEGRA_PERIPH_NO_RESET | TEGRA_PERIPH_NO_GATE, tegra_clk_gr3d_mux),
+	GATE_DIV("3d", "3d_mux", CLK_SOURCE_3D, 0, 8, 1, TEGRA_DIVIDER_ROUND_UP, 24, 0, tegra_clk_gr3d, 0),
+	GATE_DIV("3d_idle", "3d_mux", CLK_SOURCE_3D, 8, 8, 1, TEGRA_DIVIDER_ROUND_UP, 0, TEGRA_PERIPH_NO_GATE | TEGRA_PERIPH_NO_RESET, tegra_clk_gr3d_idle, 0),
 	INT8("vde", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_VDE, 61, 0, tegra_clk_vde_8),
 	INT8("vi", mux_pllm_pllc2_c_c3_pllp_plla, CLK_SOURCE_VI, 20, 0, tegra_clk_vi_8),
 	INT8("vi", mux_pllm_pllc2_c_c3_pllp_plla_pllc4, CLK_SOURCE_VI, 20, 0, tegra_clk_vi_9),

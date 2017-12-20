@@ -321,6 +321,21 @@ config SERIAL_TEGRA
 	  are enabled). This driver uses the APB DMA to achieve higher baudrate
 	  and better performance.
 
+config SERIAL_TEGRA_PUSH_FAIL_PANIC
+	bool "Tegra - panic on failure to push rx data to tty"
+	depends on SERIAL_TEGRA
+	help
+	  Say Y here to panic the system if there are failures to push
+	  the data from the RX to the tty layer. This is generally due
+	  to an issue with user-space failing, so catch and panic.
+
+config SERIAL_TEGRA_PUSH_FAIL_LIMIT
+	int "Tegra panic - rx push failure limit"
+	depends on SERIAL_TEGRA_PUSH_FAIL_PANIC
+	default 4
+	help
+	  Set maximum number of push-buffer failures before system panics.
+
 config SERIAL_MAX3100
 	tristate "MAX3100 support"
 	depends on SPI

@@ -42,18 +42,18 @@ static const struct snd_pcm_hardware tegra_pcm_hardware = {
 	.info			= SNDRV_PCM_INFO_MMAP |
 				  SNDRV_PCM_INFO_MMAP_VALID |
 				  SNDRV_PCM_INFO_INTERLEAVED,
-	.period_bytes_min	= 1024,
-	.period_bytes_max	= PAGE_SIZE,
-	.periods_min		= 2,
-	.periods_max		= 8,
-	.buffer_bytes_max	= PAGE_SIZE * 8,
+	.period_bytes_min	= 1024 * 16,
+	.period_bytes_max	= 1024 * 16,
+	.periods_min		= 4,
+	.periods_max		= 4,
+	.buffer_bytes_max	= 1024 * 16 * 4,
 	.fifo_size		= 4,
 };
 
 static const struct snd_dmaengine_pcm_config tegra_dmaengine_pcm_config = {
 	.pcm_hardware = &tegra_pcm_hardware,
 	.prepare_slave_config = snd_dmaengine_pcm_prepare_slave_config,
-	.prealloc_buffer_size = PAGE_SIZE * 8,
+	.prealloc_buffer_size = 1024 * 16 * 4,
 };
 
 int tegra_pcm_platform_register(struct device *dev)

@@ -55,6 +55,43 @@
 #include "console_cmdline.h"
 #include "braille.h"
 
+#ifdef CONFIG_PRINTK_TEGRA_TIMER
+#include <linux/io.h>
+
+/* debug code to use the tegra boot-timer to timestamp the log messages
+ * instead of using the kernel's time source. We may end up losing a little
+ * accuracy as the tegra timer block is micro-second  based, the kernel one
+ * returns nano-second times (so /may/ be more accurate).
+ *
+ * This depends on the bootloader starting the timer, and the clock code not
+ * shutting down the timer clock when this is enabled.
+*/
+
+static void __iomem *tegra_printk_timer_base;
+
+void init_tegra_local_clock(void __iomem *ptr)
+{
+	tegra_printk_timer_base = ptr;
+}
+
+static u64 tegra_local_clock(void)
+{
+	u64 ret;
+
+	if (!tegra_printk_timer_base)
+		return (u64)0;
+
+	ret = (u64)readl(tegra_printk_timer_base + 0x10);
+	ret *= 1000;	/* clock reads in us, convert to ns */
+	return ret;
+}
+
+
+#define __local_clock tegra_local_clock
+#else
+#define __local_clock local_clock
+#endif
+
 int console_printk[4] = {
 	CONSOLE_LOGLEVEL_DEFAULT,	/* console_loglevel */
 	MESSAGE_LOGLEVEL_DEFAULT,	/* default_message_loglevel */
@@ -467,7 +504,7 @@ static int log_store(int facility, int level,
 	if (ts_nsec > 0)
 		msg->ts_nsec = ts_nsec;
 	else
-		msg->ts_nsec = local_clock();
+		msg->ts_nsec = __local_clock();
 	memset(log_dict(msg) + dict_len, 0, pad_len);
 	msg->len = size;
 
@@ -1613,7 +1650,7 @@ static bool cont_add(int facility, int level, const char *text, size_t len)
 		cont.facility = facility;
 		cont.level = level;
 		cont.owner = current;
-		cont.ts_nsec = local_clock();
+		cont.ts_nsec = __local_clock();
 		cont.flags = 0;
 		cont.cons = 0;
 		cont.flushed = false;
@@ -1723,6 +1760,11 @@ asmlinkage int vprintk_emit(int facility, int level,
 	 * prefix which might be passed-in as a parameter.
 	 */
 	text_len = vscnprintf(text, sizeof(textbuf), fmt, args);
+
+	if (false) {
+		extern void printascii(char *);
+		printascii(text);
+	}
 
 	/* mark and strip a trailing newline */
 	if (text_len && text[text_len-1] == '\n') {

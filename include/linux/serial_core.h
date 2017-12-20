@@ -159,7 +159,11 @@ struct uart_port {
 	struct console		*cons;			/* struct console, if any */
 #if defined(CONFIG_SERIAL_CORE_CONSOLE) || defined(SUPPORT_SYSRQ)
 	unsigned long		sysrq;			/* sysrq timeout */
-#endif
+#ifdef CONFIG_GATEWAY_ALT_SYSRQ
+	unsigned int		sysrq_state;		/* track sysrq state */
+	unsigned int		sysrq_mode;		/* track sysrq mode */
+#endif /* CONFIG_GATEWAY_ALT_SYSRQ */
+#endif /* CONFIG_SERIAL_CORE_CONSOLE || SUPPORT_SYSRQ */
 
 	/* flags must be updated while holding port mutex */
 	upf_t			flags;
@@ -430,6 +434,69 @@ extern void uart_insert_char(struct uart_port *port, unsigned int status,
 static inline int
 uart_handle_sysrq_char(struct uart_port *port, unsigned int ch)
 {
+#ifdef CONFIG_GATEWAY_ALT_SYSRQ
+
+	/*
+	 * Model S/X gateway seems to have a tendency to send serial break at
+	 * unexpected times, so we provide here an alternate means to generate
+	 * break sysrq sequence.
+	 */
+
+	if (port->sysrq == 0) {
+		/* check for enter (newline char) */
+		if (ch == '\n')	{
+			port->sysrq = jiffies + HZ*5;
+			port->sysrq_state = 0;
+			/* pass this one through to allow normal console */
+			return 0;
+		}
+	} else {
+		if (ch && time_before(jiffies, port->sysrq)) {
+			switch (port->sysrq_state) {
+			case 0:	/* waiting for tilde */
+				if (ch == '~') {
+					port->sysrq_state = 1;
+					/* pass this one through as well */
+					return 0;
+				}
+				break;
+
+			case 1:	/* waiting for ctrl-B */
+				if (ch == 0x02) {
+					port->sysrq_state = 2;
+					/* assuming unlikely from here on */
+					return 1;
+				}
+				break;
+
+			case 2:	/* sysrq mode character */
+				port->sysrq_mode = ch;
+				port->sysrq_state = 3;
+				return 1;
+
+			case 3:	/* waiting for enter (newline char) */
+				if (ch == '\n') {
+					handle_sysrq(port->sysrq_mode);
+					port->sysrq = 0;
+					port->sysrq_state = 0;
+					return 1;
+				}
+				break;
+
+			default:
+				break;
+			}
+		}
+
+		/*
+		 * If we get here, we received wrong character or timed out.
+		 * Reset state machine and return unhandled.
+		 */
+
+		port->sysrq = 0;
+		port->sysrq_state = 0;
+	}
+#else /* CONFIG_GATEWAY_ALT_SYSRQ */
 	if (port->sysrq) {
 		if (ch && time_before(jiffies, port->sysrq)) {
 			handle_sysrq(ch);
@@ -438,11 +505,12 @@ uart_handle_sysrq_char(struct uart_port *port, unsigned int ch)
 		}
 		port->sysrq = 0;
 	}
+#endif /* CONFIG_GATEWAY_ALT_SYSRQ */
 	return 0;
 }
-#else
+#else /* SUPPORT_SYSRQ */
 #define uart_handle_sysrq_char(port,ch) ({ (void)port; 0; })
-#endif
+#endif /* SUPPORT_SYSRQ */
 
 /*
  * We do the SysRQ and SAK checking like this...
@@ -455,6 +523,14 @@ static inline int uart_handle_break(struct uart_port *port)
 		port->handle_break(port);
 
 #ifdef SUPPORT_SYSRQ
+#ifdef CONFIG_GATEWAY_ALT_SYSRQ
+	/*
+	 * Model S/X gateway has a tendency to send serial break at unexpected
+	 * times, so we ignore serial break (and reset state machine.)
+	 */
+	port->sysrq = 0;
+	port->sysrq_state = 0;
+#else /* CONFIG_GATEWAY_ALT_SYSRQ */
 	if (port->cons && port->cons->index == port->line) {
 		if (!port->sysrq) {
 			port->sysrq = jiffies + HZ*5;
@@ -462,7 +538,8 @@ static inline int uart_handle_break(struct uart_port *port)
 		}
 		port->sysrq = 0;
 	}
-#endif
+#endif /* CONFIG_GATEWAY_ALT_SYSRQ */
+#endif /* SUPPORT_SYSRQ */
 	if (port->flags & UPF_SAK)
 		do_SAK(state->port.tty);
 	return 0;

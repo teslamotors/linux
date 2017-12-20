@@ -1049,4 +1049,13 @@ static inline struct device *regmap_get_device(struct regmap *map)
 
 #endif
 
+#ifdef CONFIG_REGMAP_DEBUG_FLAG
+extern void regmap_set_debug(struct regmap *map, bool to);
+#else
+static inline void regmap_set_debug(struct regmap *map, bool to)
+{
+		WARN_ONCE(1, "CONFIG_REGMAP_DEBUG_FLAG is not set");
+}
+#endif
+
 #endif

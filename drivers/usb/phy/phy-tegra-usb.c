@@ -37,6 +37,8 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/regulator/consumer.h>
 
+#include <soc/tegra/fuse.h>
+
 #define ULPI_VIEWPORT		0x170
 
 /* PORTSC PTS/PHCD bits, Tegra20 only */
@@ -101,6 +103,10 @@
 #define   UTMIP_XCVR_HSSLEW(x)			(((x) & 0x3) << 4)
 #define   UTMIP_XCVR_HSSLEW_MSB(x)		((((x) & 0x1fc) >> 2) << 25)
 
+#define UTMIP_XCVR_MAX_OFFSET			2
+#define UTMIP_XCVR_SETUP_MAX_VALUE		0x7f
+#define XCVR_SETUP_MSB_CALIB(x)			((x) >> 4)
+
 #define UTMIP_BIAS_CFG0		0x80c
 #define   UTMIP_OTGPD			(1 << 11)
 #define   UTMIP_BIASPD			(1 << 10)
@@ -155,6 +161,10 @@
 #define   USB_USBMODE_MASK		(3 << 0)
 #define   USB_USBMODE_HOST		(3 << 0)
 #define   USB_USBMODE_DEVICE		(2 << 0)
+
+#define FUSE_USB_CALIB_0		0x1F0
+#define FUSE_USB_CALIB_XCVR_SETUP(x)	(((x) & 0x7F) << 0)
+#define   XCVR_SETUP_FUSE_VALID_MASK    0x3F
 
 static DEFINE_SPINLOCK(utmip_pad_lock);
 static int utmip_pad_count;
@@ -247,7 +257,8 @@ static int utmip_pad_open(struct tegra_usb_phy *phy)
 {
 	phy->pad_clk = devm_clk_get(phy->u_phy.dev, "utmi-pads");
 	if (IS_ERR(phy->pad_clk)) {
-		pr_err("%s: can't get utmip pad clock\n", __func__);
+		dev_err(phy->u_phy.dev,
+			"%s: can't get utmip pad clock\n", __func__);
 		return PTR_ERR(phy->pad_clk);
 	}
 
@@ -291,7 +302,8 @@ static int utmip_pad_power_off(struct tegra_usb_phy *phy)
 	void __iomem *base = phy->pad_regs;
 
 	if (!utmip_pad_count) {
-		pr_err("%s: utmip pad already powered off\n", __func__);
+		dev_err(phy->u_phy.dev,
+		       "%s: utmip pad already powered off\n", __func__);
 		return -EINVAL;
 	}
 
@@ -343,7 +355,8 @@ static void utmi_phy_clk_disable(struct tegra_usb_phy *phy)
 		set_phcd(phy, true);
 
 	if (utmi_wait_register(base + USB_SUSP_CTRL, USB_PHY_CLK_VALID, 0) < 0)
-		pr_err("%s: timeout waiting for phy to stabilize\n", __func__);
+		dev_err(phy->u_phy.dev,
+			"%s: timeout waiting for phy to stabilize\n", __func__);
 }
 
 static void utmi_phy_clk_enable(struct tegra_usb_phy *phy)
@@ -366,7 +379,8 @@ static void utmi_phy_clk_enable(struct tegra_usb_phy *phy)
 
 	if (utmi_wait_register(base + USB_SUSP_CTRL, USB_PHY_CLK_VALID,
 						     USB_PHY_CLK_VALID))
-		pr_err("%s: timeout waiting for phy to stabilize\n", __func__);
+		dev_err(phy->u_phy.dev,
+			"%s: timeout waiting for phy to stabilize\n", __func__);
 }
 
 static int utmi_phy_power_on(struct tegra_usb_phy *phy)
@@ -657,13 +671,13 @@ static int ulpi_phy_power_on(struct tegra_usb_phy *phy)
 	/* Fix VbusInvalid due to floating VBUS */
 	ret = usb_phy_io_write(phy->ulpi, 0x40, 0x08);
 	if (ret) {
-		pr_err("%s: ulpi write failed\n", __func__);
+		dev_err(phy->u_phy.dev, "%s: ulpi write failed\n", __func__);
 		return ret;
 	}
 
 	ret = usb_phy_io_write(phy->ulpi, 0x80, 0x0B);
 	if (ret) {
-		pr_err("%s: ulpi write failed\n", __func__);
+		dev_err(phy->u_phy.dev, "%s: ulpi write failed\n", __func__);
 		return ret;
 	}
 
@@ -724,7 +738,7 @@ static int ulpi_open(struct tegra_usb_phy *phy)
 
 	phy->clk = devm_clk_get(phy->u_phy.dev, "ulpi-link");
 	if (IS_ERR(phy->clk)) {
-		pr_err("%s: can't get ulpi clock\n", __func__);
+		dev_err(phy->u_phy.dev, "%s: can't get ulpi clock\n", __func__);
 		return PTR_ERR(phy->clk);
 	}
 
@@ -762,7 +776,7 @@ static int tegra_usb_phy_init(struct tegra_usb_phy *phy)
 
 	phy->pll_u = devm_clk_get(phy->u_phy.dev, "pll_u");
 	if (IS_ERR(phy->pll_u)) {
-		pr_err("Can't get pll_u clock\n");
+		dev_err(phy->u_phy.dev, "Can't get pll_u clock\n");
 		return PTR_ERR(phy->pll_u);
 	}
 
@@ -778,7 +792,8 @@ static int tegra_usb_phy_init(struct tegra_usb_phy *phy)
 		}
 	}
 	if (!phy->freq) {
-		pr_err("invalid pll_u parent rate %ld\n", parent_rate);
+		dev_err(phy->u_phy.dev,
+			"invalid pll_u parent rate %ld\n", parent_rate);
 		err = -EINVAL;
 		goto fail;
 	}
@@ -856,6 +871,46 @@ static int read_utmi_param(struct platform_device *pdev, const char *param,
 	return err;
 }
 
+static unsigned int tegra_phy_xcvr_setup_value(struct tegra_usb_phy *phy)
+{
+	struct tegra_utmip_config *cfg = phy->config;
+	signed long safemax;
+	unsigned int xcvr_setup;
+	u32 val;
+	int ret;
+
+	ret = tegra_fuse_readl(FUSE_USB_CALIB_0, &val);
+	if (ret) {
+		dev_err(phy->u_phy.dev, "tegra_fuse_readl failed (%d)\n", ret);
+		return 0;
+	}
+
+	val = FUSE_USB_CALIB_XCVR_SETUP(val);
+	dev_dbg(phy->u_phy.dev, "%s: fuse-val %08x\n", __func__, val);
+
+	if (cfg->xcvr_use_6bits) {
+		signed long fusevalid =	val & XCVR_SETUP_FUSE_VALID_MASK;
+
+		safemax = XCVR_SETUP_FUSE_VALID_MASK;
+		if (cfg->xcvr_setup_offset < 0)
+			cfg->xcvr_setup_offset = 0;
+		val = fusevalid + cfg->xcvr_setup_offset;
+	} else {
+		val = (val & 0xF) + cfg->xcvr_setup_offset;
+		xcvr_setup = min(val, (u32)0xF);
+		val = (cfg->xcvr_setup & 0x70) | xcvr_setup;
+		safemax = UTMIP_XCVR_SETUP_MAX_VALUE;
+	}
+
+	if (val > safemax) {
+		val = safemax;
+		dev_info(phy->u_phy.dev, "reset XCVR_SETUP to max value\n");
+	}
+
+	return val;
+}
+
+
 static int utmi_phy_probe(struct tegra_usb_phy *tegra_phy,
 			  struct platform_device *pdev)
 {
@@ -915,6 +970,9 @@ static int utmi_phy_probe(struct tegra_usb_phy *tegra_phy,
 	if (err < 0)
 		return err;
 
+	(void)read_utmi_param(pdev, "nvidia,xcvr-setup-offset",
+			      &config->xcvr_setup_offset);
+
 	if (tegra_phy->soc_config->requires_extra_tuning_parameters) {
 		err = read_utmi_param(pdev, "nvidia,xcvr-hsslew",
 			&config->xcvr_hsslew);
@@ -935,11 +993,16 @@ static int utmi_phy_probe(struct tegra_usb_phy *tegra_phy,
 	config->xcvr_setup_use_fuses = of_property_read_bool(
 		pdev->dev.of_node, "nvidia,xcvr-setup-use-fuses");
 
+	config->xcvr_use_6bits = of_property_read_bool(
+		pdev->dev.of_node, "nvidia,xcvr-fuse-6bit-setup");
+
 	if (!config->xcvr_setup_use_fuses) {
 		err = read_utmi_param(pdev, "nvidia,xcvr-setup",
 			&config->xcvr_setup);
 		if (err < 0)
 			return err;
+	} else {
+		config->xcvr_setup = tegra_phy_xcvr_setup_value(tegra_phy);
 	}
 
 	return 0;

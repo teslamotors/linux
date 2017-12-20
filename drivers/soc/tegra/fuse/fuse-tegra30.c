@@ -52,6 +52,21 @@ static u32 tegra30_fuse_read_early(struct tegra_fuse *fuse, unsigned int offset)
 	return readl_relaxed(fuse->base + FUSE_BEGIN + offset);
 }
 
+static void tegra30_fuse_write(struct tegra_fuse *fuse,
+			       unsigned int offset, u32 value)
+{
+	int err;
+
+	err = clk_prepare_enable(fuse->clk);
+	if (err < 0) {
+		dev_err(fuse->dev, "failed to enable FUSE clock: %d\n", err);
+		return;
+	}
+
+	writel(value, fuse->base + FUSE_BEGIN + offset);
+	clk_disable_unprepare(fuse->clk);
+}
+
 static u32 tegra30_fuse_read(struct tegra_fuse *fuse, unsigned int offset)
 {
 	u32 value;
@@ -96,6 +111,7 @@ static void __init tegra30_fuse_init(struct tegra_fuse *fuse)
 {
 	fuse->read_early = tegra30_fuse_read_early;
 	fuse->read = tegra30_fuse_read;
+	fuse->write = tegra30_fuse_write;
 
 	tegra_init_revision();
 	fuse->soc->speedo_init(&tegra_sku_info);

@@ -1,0 +1,21 @@
+/* tegra20 - compatibility with old style sysfs platform devices
+ *
+ * Copyright 2016 Codethink Ltd
+ *	Kejia Hu <kejia.hu@codethink.co.uk>
+ *	Ben Dooks <ben.dooks@codethink.co.uk>
+ *	Edward Cragg <edward.cragg@codethink.co.uk>
+ */
+
+/ {
+/*	sdhci@c8000000 {
+		linux,sysfs-compat-name = "sdhci-tegra.1";
+	};
+
+	sdhci@c8000200 {
+		linux,sysfs-compat-name = "sdhci-tegra.2";
+	};
+*/
+	sdhci@c8000600 {
+		linux,sysfs-compat-name = "sdhci-tegra.3";
+	};
+};

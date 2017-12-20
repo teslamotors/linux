@@ -14,6 +14,7 @@ Required properties:
   - i2s
 - nvidia,ahub-cif-ids : The list of AHUB CIF IDs for this port, rx (playback)
   first, tx (capture) second. See nvidia,tegra30-ahub.txt for values.
+- nvidia,audio-sync-clk : bool set if not using apll as clock source.
 
 Example:
 

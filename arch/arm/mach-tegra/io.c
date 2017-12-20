@@ -61,4 +61,9 @@ void __init tegra_map_common_io(void)
 {
 	debug_ll_io_init();
 	iotable_init(tegra_io_desc, ARRAY_SIZE(tegra_io_desc));
+
+	if (IS_ENABLED(CONFIG_PRINTK_TEGRA_TIMER)) {
+		extern void init_tegra_local_clock(void __iomem *);
+		init_tegra_local_clock(IO_ADDRESS(0x60005000));
+	}
 }

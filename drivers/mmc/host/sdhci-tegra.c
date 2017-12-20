@@ -49,6 +49,7 @@ struct sdhci_tegra_soc_data {
 struct sdhci_tegra {
 	const struct sdhci_tegra_soc_data *soc_data;
 	struct gpio_desc *power_gpio;
+	struct pinctrl *pinctrl;
 };
 
 static u16 tegra_sdhci_readw(struct sdhci_host *host, int reg)
@@ -164,7 +165,7 @@ static void tegra_sdhci_set_bus_width(struct sdhci_host *host, int bus_width)
 	sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
 }
 
-static const struct sdhci_ops tegra_sdhci_ops = {
+static const struct sdhci_ops tegra20_sdhci_ops = {
 	.get_ro     = tegra_sdhci_get_ro,
 	.read_w     = tegra_sdhci_readw,
 	.write_l    = tegra_sdhci_writel,
@@ -181,13 +182,25 @@ static const struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 		  SDHCI_QUIRK_NO_HISPD_BIT |
 		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
 		  SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN,
-	.ops  = &tegra_sdhci_ops,
+	.ops  = &tegra20_sdhci_ops,
 };
 
 static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 	.pdata = &sdhci_tegra20_pdata,
 	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
+};
+
+static const struct sdhci_ops tegra30_sdhci_ops = {
+	.get_ro     = tegra_sdhci_get_ro,
+	.read_w     = tegra_sdhci_readw,
+	.write_l    = tegra_sdhci_writel,
+	.write_w    = tegra_sdhci_writew,
+	.set_clock  = sdhci_set_clock,
+	.set_bus_width = tegra_sdhci_set_bus_width,
+	.reset      = tegra_sdhci_reset,
+	.set_uhs_signaling = sdhci_set_uhs_signaling,
+	.get_max_clock = sdhci_pltfm_clk_get_max_clock,
 };
 
 static const struct sdhci_pltfm_data sdhci_tegra30_pdata = {
@@ -197,7 +210,8 @@ static const struct sdhci_pltfm_data sdhci_tegra30_pdata = {
 		  SDHCI_QUIRK_NO_HISPD_BIT |
 		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
 		  SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN,
-	.ops  = &tegra_sdhci_ops,
+	.quirks2 = SDHCI_QUIRK2_ACMD23_BROKEN,
+	.ops  = &tegra30_sdhci_ops,
 };
 
 static struct sdhci_tegra_soc_data soc_data_tegra30 = {
@@ -252,6 +266,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	struct sdhci_host *host;
 	struct sdhci_pltfm_host *pltfm_host;
 	struct sdhci_tegra *tegra_host;
+	struct pinctrl_state *ps;
 	struct clk *clk;
 	int rc;
 
@@ -285,6 +300,26 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		goto err_power_req;
 	}
 
+	tegra_host->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR(tegra_host->pinctrl)) {
+		dev_info(&pdev->dev, "device has no pinctrl: %d\n",
+				(int) PTR_ERR(tegra_host->pinctrl));
+		tegra_host->pinctrl = NULL;
+	}
+
+	if (tegra_host->pinctrl != NULL) {
+		ps = pinctrl_lookup_state(tegra_host->pinctrl,
+					PINCTRL_STATE_DEFAULT);
+		if (!IS_ERR(ps)) {
+			rc = pinctrl_select_state(tegra_host->pinctrl, ps);
+			if (rc < 0)
+				dev_err(&pdev->dev,
+					"failed to set pinctrl to default: %d\n",
+					rc);
+		} else
+			dev_info(&pdev->dev, "no default pinctrl state\n");
+	}
+
 	clk = devm_clk_get(mmc_dev(host->mmc), NULL);
 	if (IS_ERR(clk)) {
 		dev_err(mmc_dev(host->mmc), "clk err\n");
@@ -310,6 +345,33 @@ err_alloc_tegra_host:
 	return rc;
 }
 
+static int sdhci_tegra_unregister(struct platform_device *pdev)
+{
+	struct sdhci_host *host = platform_get_drvdata(pdev);
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct pinctrl *pinctrl = tegra_host->pinctrl;
+	struct pinctrl_state *ps;
+	int ret, err;
+
+	ret = sdhci_pltfm_unregister(pdev);
+
+	if (pinctrl != NULL) {
+		ps = pinctrl_lookup_state(pinctrl, PINCTRL_STATE_SLEEP);
+		if (!IS_ERR(ps)) {
+			err = pinctrl_select_state(pinctrl, ps);
+			if (err < 0)
+				dev_err(&pdev->dev,
+					"failed to set pinctrl to sleep: %d\n",
+					err);
+		} else
+			dev_info(&pdev->dev, "no pinctrl sleep state\n");
+	}
+
+	return ret;
+}
+
+
 static struct platform_driver sdhci_tegra_driver = {
 	.driver		= {
 		.name	= "sdhci-tegra",
@@ -317,7 +379,7 @@ static struct platform_driver sdhci_tegra_driver = {
 		.pm	= SDHCI_PLTFM_PMOPS,
 	},
 	.probe		= sdhci_tegra_probe,
-	.remove		= sdhci_pltfm_unregister,
+	.remove		= sdhci_tegra_unregister,
 };
 
 module_platform_driver(sdhci_tegra_driver);

@@ -53,6 +53,10 @@
 #define MC_EMEM_ADR_CFG 0x54
 #define MC_EMEM_ADR_CFG_EMEM_NUMDEV BIT(0)
 
+#define MC_LA_MAX_VALUE 0xff
+
+static struct tegra_mc *plat_mc;
+
 static const struct of_device_id tegra_mc_of_match[] = {
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	{ .compatible = "nvidia,tegra30-mc", .data = &tegra30_mc_soc },
@@ -101,6 +105,58 @@ static int tegra_mc_setup_latency_allowance(struct tegra_mc *mc)
 
 	return 0;
 }
+
+/*
+ * Set a latency for a client by id, based on required bandwidth
+ */
+int tegra_mc_set_latency_allowance(int client_id, unsigned int bandwidth)
+{
+	const struct tegra_mc_client *client = &plat_mc->soc->clients[client_id];
+	const struct tegra_mc_la *la = &client->la;
+	int atom_bytes, la_set, la_ideal;
+	u32 value;
+
+	if (client_id >= plat_mc->soc->num_clients || bandwidth >= 4096)
+		return -EINVAL;
+
+	WARN_ON(client->id != client_id);
+
+	if (&client->fdc)
+		atom_bytes = plat_mc->soc->atom_size_fdc;
+	else
+		atom_bytes = plat_mc->soc->atom_size;
+
+	/* do bandwidth calculation */
+	if (bandwidth == 0) {
+		la_set = MC_LA_MAX_VALUE;
+	} else {
+		la_ideal = (client->fifo_size * atom_bytes * 1000) /
+			   (bandwidth * plat_mc->tick);
+		la_set = la_ideal - (la->expiry_ns / plat_mc->tick) - 1;
+	}
+
+	if (la_set < 0)
+		la_set = 0;
+	if (la_set > MC_LA_MAX_VALUE)
+		la_set = MC_LA_MAX_VALUE;
+
+#ifdef CONFIG_TEGRA_MC_LATENCY_HACK
+	/* until display can use latency allowance scaling, use a more
+	 * aggressive LA setting. Bug 862709 */
+	if ((client_id >= 0x01 && client_id <= 0x08) ||
+	    client_id == 0x10 || client_id == 0x11)
+		la_set /= 3;
+	/* see comment on mapping in compat26/tegra/latency-allowance.c */
+#endif
+
+	value = readl(plat_mc->regs + la->reg);
+	value &= ~(la->mask << la->shift);
+	value |= (la_set & la->mask) << la->shift;
+	writel(value, plat_mc->regs + la->reg);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra_mc_set_latency_allowance);
 
 void tegra_mc_write_emem_configuration(struct tegra_mc *mc, unsigned long rate)
 {
@@ -358,6 +414,7 @@ static int tegra_mc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	platform_set_drvdata(pdev, mc);
+	plat_mc = mc;
 	mc->soc = match->data;
 	mc->dev = &pdev->dev;
 
@@ -389,7 +446,7 @@ static int tegra_mc_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	if (IS_ENABLED(CONFIG_TEGRA_IOMMU_SMMU)) {
+	if (IS_ENABLED(CONFIG_TEGRA_IOMMU_SMMU_NEW)) {
 		mc->smmu = tegra_smmu_probe(&pdev->dev, mc->soc->smmu, mc);
 		if (IS_ERR(mc->smmu)) {
 			dev_err(&pdev->dev, "failed to probe SMMU: %ld\n",

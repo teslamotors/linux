@@ -36,9 +36,11 @@
 			compatible = "nvidia,tegra20-vi";
 			reg = <0x54080000 0x00040000>;
 			interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&tegra_car TEGRA20_CLK_VI>;
-			resets = <&tegra_car 20>;
-			reset-names = "vi";
+			clocks = <&tegra_car TEGRA20_CLK_VI>,
+				<&tegra_car TEGRA20_CLK_CSI>;
+			clock-names = "vi", "csi";
+			resets = <&tegra_car 20>, <&tegra_car 52>;
+			reset-names = "vi", "csi";
 		};
 
 		epp@540c0000 {
@@ -63,7 +65,9 @@
 			compatible = "nvidia,tegra20-gr2d";
 			reg = <0x54140000 0x00040000>;
 			interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&tegra_car TEGRA20_CLK_GR2D>;
+			clocks = <&tegra_car TEGRA20_CLK_GR2D>,
+				<&tegra_car TEGRA20_CLK_EPP>;
+			clock-names = "2d", "epp";
 			resets = <&tegra_car 21>;
 			reset-names = "2d";
 		};
@@ -165,6 +169,13 @@
 		arm,tag-latency = <4 4 2>;
 		cache-unified;
 		cache-level = <2>;
+	};
+
+	sema: semaphore-controller@60001000 {
+		compatible = "nvidia,tegra20-semaphore";
+		reg = <0x60001000 0x1000>, <0x60002000 0x1000>;
+		reg-names = "resource-sema", "arbitration-sema";
+		interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
 	lic: interrupt-controller@60004000 {
@@ -376,6 +387,18 @@
 		status = "disabled";
 	};
 
+	nor@70009000 {
+		compatible = "nvidia,tegra20-nor", "nvidia,tegra30-nor";
+		reg = <0x70009000 0x1000>;
+		#address-cells = <2>;
+		#size-cells = <1>;
+		clocks = <&tegra_car TEGRA20_CLK_NOR>;
+		resets = < &tegra_car 42>;
+		reset-names = "nor";
+		nvidia,config = <0x00008000>; /* SNOR_CONFIG_0 value */
+		status = "disabled";
+	};
+
 	pwm: pwm@7000a000 {
 		compatible = "nvidia,tegra20-pwm";
 		reg = <0x7000a000 0x100>;
@@ -560,6 +583,9 @@
 	memory-controller@7000f400 {
 		compatible = "nvidia,tegra20-emc";
 		reg = <0x7000f400 0x200>;
+		clocks = <&tegra_car TEGRA20_CLK_EMC>;
+		resets = <&tegra_car 57>;
+		reset-name = "emc";
 		#address-cells = <1>;
 		#size-cells = <0>;
 	};

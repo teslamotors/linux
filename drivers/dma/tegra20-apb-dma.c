@@ -38,6 +38,9 @@
 
 #include "dmaengine.h"
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/tegra_apb_dma.h>
+
 #define TEGRA_APBDMA_GENERAL			0x0
 #define TEGRA_APBDMA_GENERAL_ENABLE		BIT(31)
 
@@ -143,7 +146,7 @@ struct tegra_dma_channel_regs {
 };
 
 /*
- * tegra_dma_sg_req: Dma request details to configure hardware. This
+ * tegra_dma_sg_req: DMA request details to configure hardware. This
  * contains the details for one transfer to configure DMA hw.
  * The client's request for data transfer can be broken into multiple
  * sub-transfer as per requester details and hw support.
@@ -152,7 +155,7 @@ struct tegra_dma_channel_regs {
  */
 struct tegra_dma_sg_req {
 	struct tegra_dma_channel_regs	ch_regs;
-	int				req_len;
+	unsigned int			req_len;
 	bool				configured;
 	bool				last_sg;
 	struct list_head		node;
@@ -166,8 +169,8 @@ struct tegra_dma_sg_req {
  */
 struct tegra_dma_desc {
 	struct dma_async_tx_descriptor	txd;
-	int				bytes_requested;
-	int				bytes_transferred;
+	unsigned int			bytes_requested;
+	unsigned int			bytes_transferred;
 	enum dma_status			dma_status;
 	struct list_head		node;
 	struct list_head		tx_list;
@@ -570,7 +573,7 @@ static bool handle_continuous_head_request(struct tegra_dma_channel *tdc,
 	struct tegra_dma_sg_req *hsgreq = NULL;
 
 	if (list_empty(&tdc->pending_sg_req)) {
-		dev_err(tdc2dev(tdc), "Dma is running without req\n");
+		dev_err(tdc2dev(tdc), "DMA is running without req\n");
 		tegra_dma_stop(tdc);
 		return false;
 	}
@@ -632,7 +635,10 @@ static void handle_cont_sngl_cycle_dma_done(struct tegra_dma_channel *tdc,
 
 	sgreq = list_first_entry(&tdc->pending_sg_req, typeof(*sgreq), node);
 	dma_desc = sgreq->dma_desc;
-	dma_desc->bytes_transferred += sgreq->req_len;
+	/* if we dma for long enough the transfer count will wrap */
+	dma_desc->bytes_transferred =
+		(dma_desc->bytes_transferred + sgreq->req_len) %
+		dma_desc->bytes_requested;
 
 	/* Callback need to be call */
 	if (!dma_desc->cb_count)
@@ -667,6 +673,7 @@ static void tegra_dma_tasklet(unsigned long data)
 		callback_param = dma_desc->txd.callback_param;
 		cb_count = dma_desc->cb_count;
 		dma_desc->cb_count = 0;
+		trace_tegra_dma_complete_cb(&tdc->dma_chan, cb_count, callback);
 		spin_unlock_irqrestore(&tdc->lock, flags);
 		while (cb_count-- && callback)
 			callback(callback_param);
@@ -683,6 +690,7 @@ static irqreturn_t tegra_dma_isr(int irq, void *dev_id)
 
 	spin_lock_irqsave(&tdc->lock, flags);
 
+	trace_tegra_dma_isr(&tdc->dma_chan, irq);
 	status = tdc_read(tdc, TEGRA_APBDMA_CHAN_STATUS);
 	if (status & TEGRA_APBDMA_STATUS_ISE_EOC) {
 		tdc_write(tdc, TEGRA_APBDMA_CHAN_STATUS, status);
@@ -797,6 +805,89 @@ skip_dma_stop:
 	return 0;
 }
 
+static unsigned int tegra_dma_update_residual(struct tegra_dma_channel *tdc,
+					      struct tegra_dma_sg_req *sg_req,
+					      struct tegra_dma_desc *dma_desc,
+					      unsigned int residual)
+{
+	unsigned long status = 0x0;
+	unsigned long wcount;
+	unsigned long ahbptr;
+	unsigned long tmp = 0x0;
+	unsigned int result;
+	int retries = TEGRA_APBDMA_BURST_COMPLETE_TIME * 10;
+	int done;
+
+	/* if we're not the current request, then don't alter the residual */
+	if (sg_req != list_first_entry(&tdc->pending_sg_req,
+				       struct tegra_dma_sg_req, node)) {
+		result = residual;
+		ahbptr = 0xffffffff;
+		goto done;
+	}
+
+	/* loop until we have a reliable result for residual */
+	do {
+		ahbptr = tdc_read(tdc, TEGRA_APBDMA_CHAN_AHBPTR);
+		status = tdc_read(tdc, TEGRA_APBDMA_CHAN_STATUS);
+		tmp =  tdc_read(tdc, 0x08);	/* total count for debug */
+
+		/* check status, if channel isn't busy then skip */
+		if (!(status & TEGRA_APBDMA_STATUS_BUSY)) {
+			result = residual;
+			break;
+		}
+
+		/* if we've got an interrupt pending on the channel, don't
+		 * try and deal with the residue as the hardware has likely
+		 * moved on to the next buffer. return all data moved.
+		 */
+		if (status & TEGRA_APBDMA_STATUS_ISE_EOC) {
+			result = residual - sg_req->req_len;
+			break;
+		}
+
+		if (tdc->tdma->chip_data->support_separate_wcount_reg)
+			wcount = tdc_read(tdc, TEGRA_APBDMA_CHAN_WORD_TRANSFER);
+		else
+			wcount = status;
+
+		/* If the request is at the full point, then there is a
+		 * chance that we have read the status register in the
+		 * middle of the hardware reloading the next buffer.
+		 *
+		 * The sequence seems to be at the end of the buffer, to
+		 * load the new word count before raising the EOC flag (or
+		 * changing the ping-pong flag which could have also been
+		 * used to determine a new buffer). This  means there is a
+		 * small window where we cannot determine zero-done for the
+		 * current buffer, or moved to next buffer.
+		 *
+		 * If done shows 0, then retry the load, as it may hit the
+		 * above hardware race. We will either get a new value which
+		 * is from the first buffer, or we get an EOC (new buffer)
+		 * or both a new value and an EOC...
+		 */
+		done = get_current_xferred_count(tdc, sg_req, wcount);
+		if (done != 0) {
+			result = residual - done;
+			break;
+		}
+
+		ndelay(100);
+	} while (--retries > 0);
+
+	if (retries <= 0) {
+		dev_err(tdc2dev(tdc), "timeout waiting for dma load\n");
+		result = residual;
+	}
+
+done:	
+	trace_tegra_dma_tx_state(&tdc->dma_chan, ahbptr, status, result,
+				 tmp, residual);
+	return result;
+}
+
 static enum dma_status tegra_dma_tx_status(struct dma_chan *dc,
 	dma_cookie_t cookie, struct dma_tx_state *txstate)
 {
@@ -819,10 +910,7 @@ static enum dma_status tegra_dma_tx_status(struct dma_chan *dc,
 			residual =  dma_desc->bytes_requested -
 					(dma_desc->bytes_transferred %
 						dma_desc->bytes_requested);
-			dma_set_residue(txstate, residual);
-			ret = dma_desc->dma_status;
-			spin_unlock_irqrestore(&tdc->lock, flags);
-			return ret;
+			goto out_found;
 		}
 	}
 
@@ -833,14 +921,20 @@ static enum dma_status tegra_dma_tx_status(struct dma_chan *dc,
 			residual =  dma_desc->bytes_requested -
 					(dma_desc->bytes_transferred %
 						dma_desc->bytes_requested);
-			dma_set_residue(txstate, residual);
-			ret = dma_desc->dma_status;
-			spin_unlock_irqrestore(&tdc->lock, flags);
-			return ret;
+			residual = tegra_dma_update_residual(tdc, sg_req, dma_desc, residual);
+			goto out_found;
 		}
 	}
 
 	dev_dbg(tdc2dev(tdc), "cookie %d does not found\n", cookie);
+	spin_unlock_irqrestore(&tdc->lock, flags);
+	return ret;
+
+out_found:
+	dma_set_residue(txstate, residual);
+	trace_tegra_dma_tx_status(&tdc->dma_chan, cookie,
+				  txstate ? txstate->residue : -1);
+	ret = dma_desc->dma_status;
 	spin_unlock_irqrestore(&tdc->lock, flags);
 	return ret;
 }
@@ -918,7 +1012,7 @@ static int get_transfer_param(struct tegra_dma_channel *tdc,
 		return 0;
 
 	default:
-		dev_err(tdc2dev(tdc), "Dma direction is not supported\n");
+		dev_err(tdc2dev(tdc), "DMA direction is not supported\n");
 		return -EINVAL;
 	}
 	return -EINVAL;
@@ -979,7 +1073,7 @@ static struct dma_async_tx_descriptor *tegra_dma_prep_slave_sg(
 
 	dma_desc = tegra_dma_desc_get(tdc);
 	if (!dma_desc) {
-		dev_err(tdc2dev(tdc), "Dma descriptors not available\n");
+		dev_err(tdc2dev(tdc), "DMA descriptors not available\n");
 		return NULL;
 	}
 	INIT_LIST_HEAD(&dma_desc->tx_list);
@@ -999,14 +1093,14 @@ static struct dma_async_tx_descriptor *tegra_dma_prep_slave_sg(
 		if ((len & 3) || (mem & 3) ||
 				(len > tdc->tdma->chip_data->max_dma_count)) {
 			dev_err(tdc2dev(tdc),
-				"Dma length/memory address is not supported\n");
+				"DMA length/memory address is not supported\n");
 			tegra_dma_desc_put(tdc, dma_desc);
 			return NULL;
 		}
 
 		sg_req = tegra_dma_sg_req_get(tdc);
 		if (!sg_req) {
-			dev_err(tdc2dev(tdc), "Dma sg-req not available\n");
+			dev_err(tdc2dev(tdc), "DMA sg-req not available\n");
 			tegra_dma_desc_put(tdc, dma_desc);
 			return NULL;
 		}
@@ -1135,7 +1229,7 @@ static struct dma_async_tx_descriptor *tegra_dma_prep_dma_cyclic(
 	while (remain_len) {
 		sg_req = tegra_dma_sg_req_get(tdc);
 		if (!sg_req) {
-			dev_err(tdc2dev(tdc), "Dma sg-req not available\n");
+			dev_err(tdc2dev(tdc), "DMA sg-req not available\n");
 			tegra_dma_desc_put(tdc, dma_desc);
 			return NULL;
 		}
@@ -1399,6 +1493,11 @@ static int tegra_dma_probe(struct platform_device *pdev)
 			goto err_irq;
 		}
 		tdc->irq = res->start;
+
+		/* use CPU1 for audio DMA */
+		if (i == 4)
+			irq_set_affinity(tdc->irq, cpumask_of(1));
+
 		snprintf(tdc->name, sizeof(tdc->name), "apbdma.%d", i);
 		ret = devm_request_irq(&pdev->dev, tdc->irq,
 				tegra_dma_isr, 0, tdc->name, tdc);
@@ -1447,12 +1546,7 @@ static int tegra_dma_probe(struct platform_device *pdev)
 		BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) |
 		BIT(DMA_SLAVE_BUSWIDTH_8_BYTES);
 	tdma->dma_dev.directions = BIT(DMA_DEV_TO_MEM) | BIT(DMA_MEM_TO_DEV);
-	/*
-	 * XXX The hardware appears to support
-	 * DMA_RESIDUE_GRANULARITY_BURST-level reporting, but it's
-	 * only used by this driver during tegra_dma_terminate_all()
-	 */
-	tdma->dma_dev.residue_granularity = DMA_RESIDUE_GRANULARITY_SEGMENT;
+	tdma->dma_dev.residue_granularity = DMA_RESIDUE_GRANULARITY_BURST;
 	tdma->dma_dev.device_config = tegra_dma_slave_config;
 	tdma->dma_dev.device_terminate_all = tegra_dma_terminate_all;
 	tdma->dma_dev.device_tx_status = tegra_dma_tx_status;

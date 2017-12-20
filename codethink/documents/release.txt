@@ -1,0 +1,62 @@
+Making a release
+================
+
+The pre-requisite for a release is all the necessary source merged onto the
+master branch in the gitlab and internal git servers. This source should
+already have been built and tested as part of the development process.
+
+The process is as so:
+
+- Update the ts001 defconfig CONFIG_LOCALVERSION
+- Create a branch for the release
+- Run the release tool and verify it builds
+- Push new branch to gitlab
+- Notify everyone of the new release
+
+Updated ts001_defconfig (and ts001_ic_defconfig) CONFIG_LOCALVERSION
+--------------------------------------------------------------------
+
+Update the arch/arm/configs/{ts001_defconfig,ts001_ic_defconfig} files
+to change the CONFIG_LOCALVERSION entry to have the release date of the
+release.
+
+
+This should be in the form of:
+CONFIG_LOCALVERSION="-release-<date>"
+
+eg:
+CONFIG_LOCALVERSION="-release-28oct2016"
+
+Once this is done, commit the files with a commit message saying the
+update is for the release.
+
+
+Create a branch for the release
+-------------------------------
+
+The branch should be called release/<date>
+eg: release/28oct2016
+
+
+Run the release tool and verify it builds
+-----------------------------------------
+
+The release checking script is codethink/release-check.sh and will run some
+basic checks on the release (such as 
+
+
+Push the branch to gitlab
+-------------------------
+
+Use git to push the branch
+
+
+Notify everyone of the new release
+----------------------------------
+
+There is a script to help prepare the release report:
+
+codethink/mkreport.sh release/23sep2016 release/28oct2016
+
+Add a list of things the release fixes, or other notes and send to the
+relevant people and lists.

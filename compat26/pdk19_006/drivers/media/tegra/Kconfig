@@ -1,0 +1,27 @@
+source "compat26/pdk19_006/drivers/media/tegra/avp/Kconfig"
+source "compat26/pdk19_006/drivers/media/tegra/mediaserver/Kconfig"
+
+config TEGRA_CAMERA
+        bool "Enable support for tegra camera/isp hardware"
+        depends on ARCH_TEGRA
+        default y
+        help
+          Enables support for the Tegra camera interface
+
+          If unsure, say Y
+
+config TEGRA_ITU656
+        bool "Enable support for VIP ITU656 hardware"
+        depends on ARCH_TEGRA
+        default y
+        help
+          Enables support for the Tegra  VIP ITU656 inteface
+
+          If unsure, say Y
+
+config VIDEO_OV5650
+        tristate "OV5650 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the Omnivision OV5650 5MP camera sensor
+          for use with the tegra isp.

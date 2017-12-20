@@ -822,6 +822,25 @@ struct screen_info screen_info = {
 };
 #endif
 
+#ifdef CONFIG_OF
+static void of_platform_get_serialno(void)
+{
+	struct device_node *root = of_find_node_by_path("/");
+	const char *serial;
+	int ret;
+
+	if (!root)
+		return;
+
+	ret = of_property_read_string(root, "serial-number", &serial);
+	if (ret)
+		return;
+
+	sscanf(serial, "%08x%08x", &system_serial_high, &system_serial_low);
+	pr_info("%s: %s=%08x %08x\n", __func__, serial, system_serial_high, system_serial_low);
+}
+#endif
+
 static int __init customize_machine(void)
 {
 	/*
@@ -837,6 +856,8 @@ static int __init customize_machine(void)
 	else
 		of_platform_populate(NULL, of_default_bus_match_table,
 					NULL, NULL);
+
+	of_platform_get_serialno();
 #endif
 	return 0;
 }

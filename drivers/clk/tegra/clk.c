@@ -145,6 +145,17 @@ static struct tegra_clk_periph_regs periph_regs[] = {
 
 static void __iomem *clk_base;
 
+static int tegra_clk_rst_status(struct reset_controller_dev *rcdev,
+				unsigned long id)
+{
+	if (id < periph_banks * 32) {
+		void __iomem *reg = clk_base + periph_regs[id / 32].rst_reg;
+		return readl_relaxed(reg) & BIT(id % 32) ? 1 : 0;
+	}
+
+	return -ENOSYS;
+}
+
 static int tegra_clk_rst_assert(struct reset_controller_dev *rcdev,
 		unsigned long id)
 {
@@ -229,6 +240,29 @@ void __init tegra_init_dup_clks(struct tegra_clk_duplicate *dup_list,
 	}
 }
 
+/* WARN_ON(1) is a bit extreme here */
+#define BAD_CLOCK_INIT() do { pr_err("%s: ERROR: failed initialison of entry %p\n", __func__, tbl); } while(0)
+
+
+void __init tegra_init_clock_bounds(struct tegra_clk_bound_table *tbl,
+				    struct clk *clks[], int clk_max)
+
+{
+	struct clk *clk;
+
+	for (; tbl->clk_id < clk_max; tbl++) {
+		clk = clks[tbl->clk_id];
+		if (IS_ERR_OR_NULL(clk)) {
+			pr_err("%s: invalid entry %ld in clks array for id %d\n",
+			       __func__, PTR_ERR(clk), tbl->clk_id);
+			BAD_CLOCK_INIT();
+			continue;
+		}
+
+		clk_hw_set_rate_range(__clk_get_hw(clk), tbl->min, tbl->max);
+	}
+}
+
 void __init tegra_init_from_table(struct tegra_clk_init_table *tbl,
 				  struct clk *clks[], int clk_max)
 {
@@ -239,8 +273,7 @@ void __init tegra_init_from_table(struct tegra_clk_init_table *tbl,
 		if (IS_ERR_OR_NULL(clk)) {
 			pr_err("%s: invalid entry %ld in clks array for id %d\n",
 			       __func__, PTR_ERR(clk), tbl->clk_id);
-			WARN_ON(1);
-
+			BAD_CLOCK_INIT();
 			continue;
 		}
 
@@ -250,28 +283,30 @@ void __init tegra_init_from_table(struct tegra_clk_init_table *tbl,
 				pr_err("%s: Failed to set parent %s of %s\n",
 				       __func__, __clk_get_name(parent),
 				       __clk_get_name(clk));
-				WARN_ON(1);
+				BAD_CLOCK_INIT();
 			}
 		}
 
 		if (tbl->rate)
 			if (clk_set_rate(clk, tbl->rate)) {
-				pr_err("%s: Failed to set rate %lu of %s\n",
+				pr_err("%s: Failed to set rate %lu of %s (currently %lu)\n",
 				       __func__, tbl->rate,
-				       __clk_get_name(clk));
-				WARN_ON(1);
+				       __clk_get_name(clk),
+				       clk_get_rate(clk));
+				BAD_CLOCK_INIT();
 			}
 
 		if (tbl->state)
 			if (clk_prepare_enable(clk)) {
 				pr_err("%s: Failed to enable %s\n", __func__,
 				       __clk_get_name(clk));
-				WARN_ON(1);
+				BAD_CLOCK_INIT();
 			}
 	}
 }
 
 static struct reset_control_ops rst_ops = {
+	.status = tegra_clk_rst_status,
 	.assert = tegra_clk_rst_assert,
 	.deassert = tegra_clk_rst_deassert,
 };

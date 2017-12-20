@@ -19,6 +19,21 @@
 
 #include "mm.h"
 
+DEFINE_SPINLOCK(pgd_lock);
+LIST_HEAD(pgd_list);
+
+static inline void pgd_list_add(pgd_t *pgd)
+{
+	struct page *page = virt_to_page(pgd);
+	list_add(&page->lru, &pgd_list);
+}
+
+static inline void pgd_list_del(pgd_t *pgd)
+{
+	struct page *page = virt_to_page(pgd);
+	list_del(&page->lru);
+}
+
 #ifdef CONFIG_ARM_LPAE
 #define __pgd_alloc()	kmalloc(PTRS_PER_PGD * sizeof(pgd_t), GFP_KERNEL)
 #define __pgd_free(pgd)	kfree(pgd)
@@ -36,6 +51,7 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
 	pud_t *new_pud, *init_pud;
 	pmd_t *new_pmd, *init_pmd;
 	pte_t *new_pte, *init_pte;
+	unsigned long flags;
 
 	new_pgd = __pgd_alloc();
 	if (!new_pgd)
@@ -46,12 +62,17 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
 	/*
 	 * Copy over the kernel and IO PGD entries
 	 */
+	spin_lock_irqsave(&pgd_lock, flags);
+
 	init_pgd = pgd_offset_k(0);
 	memcpy(new_pgd + USER_PTRS_PER_PGD, init_pgd + USER_PTRS_PER_PGD,
 		       (PTRS_PER_PGD - USER_PTRS_PER_PGD) * sizeof(pgd_t));
 
 	clean_dcache_area(new_pgd, PTRS_PER_PGD * sizeof(pgd_t));
 
+        pgd_list_add(new_pgd);
+	spin_unlock_irqrestore(&pgd_lock, flags);
+	
 #ifdef CONFIG_ARM_LPAE
 	/*
 	 * Allocate PMD table for modules and pkmap mappings.
@@ -122,10 +143,15 @@ void pgd_free(struct mm_struct *mm, pgd_t *pgd_base)
 	pud_t *pud;
 	pmd_t *pmd;
 	pgtable_t pte;
+	unsigned long flags;
 
 	if (!pgd_base)
 		return;
 
+	spin_lock_irqsave(&pgd_lock, flags);
+	pgd_list_del(pgd_base);
+	spin_unlock_irqrestore(&pgd_lock, flags);
+	
 	pgd = pgd_base + pgd_index(0);
 	if (pgd_none_or_clear_bad(pgd))
 		goto no_pgd;

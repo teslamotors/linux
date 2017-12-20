@@ -18,6 +18,13 @@ config GENERIC_PINCONF
 	bool
 	select PINCONF
 
+config PINCTRL_STATE_PSEUDO
+	bool "Support for pinctrl pseudo-devices"
+	depends on PINCTRL
+	help
+	  Say Y here to add support for pseuo-devices for pinctrl where
+	  there is no in-kernel driver.
+
 config DEBUG_PINCTRL
 	bool "Debug PINCTRL calls"
 	depends on DEBUG_KERNEL
@@ -245,6 +252,14 @@ config PINCTRL_ZYNQ
 	select GENERIC_PINCONF
 	help
 	  This selectes the pinctrl driver for Xilinx Zynq.
+
+config PINCTRL_STATE_PSEUDO
+	bool "Pseudo-device for switching pinctrl states"
+	depends on OF && PINCTRL
+	help
+	  This pseudo-device exports a user interface for switching
+	  pinctrl states, selectinf from the states assigned to it in the
+	  devicetree.
 
 source "drivers/pinctrl/bcm/Kconfig"
 source "drivers/pinctrl/berlin/Kconfig"

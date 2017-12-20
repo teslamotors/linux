@@ -1,0 +1,30 @@
+Specifying initialisation values for gpios
+==========================================
+
+A node with the compatible string of "gpios,gpio-of" contains one or more
+sub-nodes specifying a gpio and the initialisation
+
+Each sub-node contains a single gpio that is configured according to the
+contents of the node.
+
+	 gpios ::= <gpio-phandle> <gpio-specifier>
+	 gpio,set-output ::= <output value>
+	 gpio,set-input
+
+The name of the gpio node is assigned as the label of the pin.
+
+For example:
+
+	gpios {
+		.compatible = "gpios,gpio-of",
+
+		gpio_a {
+			.gpios = <&gpio 0>;
+			.gpio,set-input;
+		};
+
+		gpio_b {
+			.gpios = <&gpio 1>;
+			.gpio,set-output = <1>;
+		};
+	};

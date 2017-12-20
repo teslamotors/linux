@@ -731,6 +731,9 @@ static bool __init_or_module initcall_blacklisted(initcall_t fn)
 	struct blacklist_entry *entry;
 	char *fn_name;
 
+	if (list_empty(&blacklisted_initcalls))
+		return false;
+
 	fn_name = kasprintf(GFP_KERNEL, "%pf", fn);
 	if (!fn_name)
 		return false;

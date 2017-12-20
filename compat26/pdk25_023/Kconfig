@@ -1,0 +1,27 @@
+# media support from 2.6 tegra
+source "compat26/pdk25_023/drivers/media/tegra/Kconfig"
+
+config FB_TEGRA_26
+	bool "Nvidia Tegra 2.6 forward-ported video drivers"
+	depends on FB && ARM && ARCH_TEGRA
+	help
+	  Frame buffer forward port of 2.6 tegra video system.
+
+menu "Tegra FB options"
+source "compat26/pdk25_023/drivers/video/tegra/Kconfig"
+endmenu
+
+config TEGRA_ERRATA_1053704
+	bool "Tegra errata: SMMU Hit-Under-Miss FIFO Out-of-Order"
+	depends on TEGRA_IOVMM_SMMU
+	depends on ARCH_TEGRA_3x_SOC
+	default y
+	help
+          SMMU TLB entry invalidate, while hit-under-miss(HUM) FIFO
+	  has pending transaction(s) based on the TLB entry, can cause
+	  violation of transactions ordering requirement at SMMU, if
+	  the subsequent transaction to the same IOVA address gets PTE
+	  into a different TLB entry. If this happens, The new
+	  transaction(s) can bypass pending transaction(s) and can
+	  lead to memory corruption. The workaround is not to flush
+	  TLB entry, which has pending transactions in HUM FIFO.

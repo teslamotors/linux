@@ -86,7 +86,9 @@ struct regmap {
 	struct list_head debugfs_off_cache;
 	struct mutex cache_lock;
 #endif
-
+#ifdef CONFIG_REGMAP_DEBUG_FLAG
+	bool debug_flag;
+#endif
 	unsigned int max_register;
 	bool (*writeable_reg)(struct device *dev, unsigned int reg);
 	bool (*readable_reg)(struct device *dev, unsigned int reg);
@@ -262,5 +264,14 @@ static inline const char *regmap_name(const struct regmap *map)
 
 	return map->name;
 }
+
+#ifdef CONFIG_REGMAP_DEBUG_FLAG
+static inline bool regmap_get_debug(const struct regmap *map)
+{
+	return map->debug_flag;
+}
+#else
+static inline bool regmap_get_debug(const struct regmap *map) { return false; }
+#endif
 
 #endif
