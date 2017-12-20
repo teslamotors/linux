@@ -28,8 +28,6 @@
 
 #define SKL_SUSPEND_DELAY 2000
 
-#define SKL_MAX_ASTATE_CFG		3
-
 #define AZX_PCIREG_PGCTL		0x44
 #define AZX_PGCTL_LSRMD_MASK		(1 << 4)
 #define AZX_PCIREG_CGCTL		0x48
@@ -83,20 +81,10 @@ struct skl_dmactrl_config {
 	struct skl_dmctrl_hdr hdr[SKL_MAX_DMACTRL_CFG];
 } __packed;
 
-struct skl_astate_config {
-	u32 kcps;
-	u32 clk_src;
-};
-
-struct skl_astate_cfg {
-	u32 count;
-	struct skl_astate_config astate_table[0];
-};
 
 struct skl_fw_cfg_info {
 	struct skl_dma_buff_cfg dmacfg;
 	struct skl_dmactrl_config dmactrl_cfg;
-	struct skl_astate_cfg *astate_cfg;
 } __packed;
 
 struct ep_group_cnt {
@@ -170,7 +158,6 @@ int skl_platform_unregister(struct device *dev);
 int skl_platform_register(struct device *dev);
 
 int skl_get_nhlt_version(struct device *dev);
-void skl_nhlt_get_ep_cnt(struct skl *skl, int link_type);
 struct nhlt_acpi_table *skl_nhlt_init(struct device *dev);
 void skl_nhlt_free(struct nhlt_acpi_table *addr);
 struct nhlt_specific_cfg *skl_get_ep_blob(struct skl *skl, u32 instance,

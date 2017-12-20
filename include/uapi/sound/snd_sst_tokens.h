@@ -222,17 +222,6 @@
  * %SKL_TKN_MM_U32_NUM_IN_FMT:  Number of input formats
  * %SKL_TKN_MM_U32_NUM_OUT_FMT: Number of output formats
  *
- * %SKL_TKN_U32_ASTATE_IDX:     Table Index for the A-State entry to be filled
- *                              with kcps and clock source
- *
- * %SKL_TKN_U32_ASTATE_COUNT:   Number of valid entries in A-State table
- *
- * %SKL_TKN_U32_ASTATE_KCPS:    Specifies the core load threshold (in kilo
- *                              cycles per second) below which DSP is clocked
- *                              from source specified by clock source.
- *
- * %SKL_TKN_U32_ASTATE_CLK_SRC: Clock source for A-State entry
- *
  * %SKL_TKN_U32_AGG_NUM_MASTERS:
  *                              Number of aggregated masters
  *
@@ -350,10 +339,6 @@ enum SKL_TKNS {
 	SKL_TKN_MM_U32_NUM_IN_FMT,
 	SKL_TKN_MM_U32_NUM_OUT_FMT,
 
-	SKL_TKN_U32_ASTATE_IDX,
-	SKL_TKN_U32_ASTATE_COUNT,
-	SKL_TKN_U32_ASTATE_KCPS,
-	SKL_TKN_U32_ASTATE_CLK_SRC,
 	SKL_TKN_U32_AGG_NUM_MASTERS,
 	SKL_TKN_U32_AGG_LINK_ID,
 	SKL_TKN_U32_AGG_CH_MASK,
