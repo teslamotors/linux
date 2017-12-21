@@ -632,7 +632,7 @@ static int i915_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	if (IS_ALPHA_SUPPORT(intel_info) && !i915_modparams.alpha_support) {
 		DRM_INFO("The driver support for your hardware in this kernel version is alpha quality\n"
-			 "See CONFIG_DRM_I915_ALPHA_SUPPORT or i915.alpha_support module parameter\n"
+			 "See CONFIG_DRM_I915_ALPHA_SUPPORT or i915_modparams.alpha_support module parameter\n"
 			 "to enable support in this kernel version, or check for kernel updates.\n");
 		return -ENODEV;
 	}
