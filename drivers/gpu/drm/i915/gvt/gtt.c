@@ -1349,6 +1349,8 @@ static int ppgtt_handle_guest_write_page_table_bytes(void *gp,
 
 	index = (pa & (PAGE_SIZE - 1)) >> info->gtt_entry_size_shift;
 
+	/* Set guest ppgtt entry. Optional for KVMGT, but MUST for XENGT. */
+	intel_gvt_hypervisor_write_gpa(vgpu, pa, p_data, bytes);
 	ppgtt_get_guest_entry(spt, &we, index);
 
 	ops->test_pse(&we);
