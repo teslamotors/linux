@@ -272,6 +272,11 @@ static inline void slow_down_io(void)
 #endif
 }
 
+static inline unsigned long cpu_khz_from_paravirt(void)
+{
+	return PVOP_CALL0(unsigned long, pv_cpu_ops.cpu_khz);
+}
+
 static inline void paravirt_activate_mm(struct mm_struct *prev,
 					struct mm_struct *next)
 {

@@ -367,6 +367,8 @@ __visible struct pv_cpu_ops pv_cpu_ops = {
 
 	.start_context_switch = paravirt_nop,
 	.end_context_switch = paravirt_nop,
+
+	.cpu_khz = paravirt_nop,
 };
 
 /* At this point, native_get/set_debugreg has real function entries */

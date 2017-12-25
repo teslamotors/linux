@@ -34,6 +34,18 @@
  */
 #include <asm/hypervisor.h>
 
+static unsigned long cpu_khz_from_cwp(void)
+{
+	unsigned int eax, ebx, ecx, edx;
+
+	/* Get TSC frequency from cpuid 0x40000010 */
+	eax = 0x40000010;
+	ebx = ecx = edx = 0;
+	__cpuid(&eax, &ebx, &ecx, &edx);
+
+	return (unsigned long)eax;
+}
+
 static uint32_t __init cwp_detect(void)
 {
 	return hypervisor_cpuid_base("CWPCWPCWP\0\0", 0);
@@ -41,6 +53,7 @@ static uint32_t __init cwp_detect(void)
 
 static void __init cwp_init_platform(void)
 {
+	pv_cpu_ops.cpu_khz = cpu_khz_from_cwp;
 }
 
 static void cwp_pin_vcpu(int cpu)

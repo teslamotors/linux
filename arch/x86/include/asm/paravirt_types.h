@@ -174,6 +174,8 @@ struct pv_cpu_ops {
 
 	void (*start_context_switch)(struct task_struct *prev);
 	void (*end_context_switch)(struct task_struct *next);
+
+	unsigned long (*cpu_khz)(void);
 } __no_randomize_layout;
 
 struct pv_irq_ops {
