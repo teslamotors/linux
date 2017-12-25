@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# This Kconfig describes CWP options
+#
+
+config CWP
+	bool "Enable services run on CWP hypervisor"
+	depends on X86
+	depends on PARAVIRT
+	depends on DMA_CMA
+	depends on !INTEL_IOMMU
+	depends on !VMAP_STACK
+	help
+	  This option is needed if were to run CWP services linux on top of
+	  CWP hypervisor.
