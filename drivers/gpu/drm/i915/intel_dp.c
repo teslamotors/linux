@@ -640,19 +640,15 @@ bxt_power_sequencer_idx(struct intel_dp *intel_dp)
 	struct intel_digital_port *intel_dig_port = dp_to_dig_port(intel_dp);
 	struct drm_device *dev = intel_dig_port->base.base.dev;
 	struct drm_i915_private *dev_priv = to_i915(dev);
+	int backlight_controller = dev_priv->vbt.backlight.controller;
 
 	lockdep_assert_held(&dev_priv->pps_mutex);
 
 	/* We should never land here with regular DP ports */
 	WARN_ON(!is_edp(intel_dp));
 
-	/*
-	 * TODO: BXT has 2 PPS instances. The correct port->PPS instance
-	 * mapping needs to be retrieved from VBT, for now just hard-code to
-	 * use instance #0 always.
-	 */
 	if (!intel_dp->pps_reset)
-		return 0;
+		return backlight_controller;
 
 	intel_dp->pps_reset = false;
 
@@ -662,7 +658,7 @@ bxt_power_sequencer_idx(struct intel_dp *intel_dp)
 	 */
 	intel_dp_init_panel_power_sequencer_registers(dev, intel_dp, false);
 
-	return 0;
+	return backlight_controller;
 }
 
 typedef bool (*vlv_pipe_check)(struct drm_i915_private *dev_priv,
