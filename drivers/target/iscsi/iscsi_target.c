@@ -1755,7 +1755,7 @@ iscsit_handle_task_mgt_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
 	struct iscsi_tm *hdr;
 	int out_of_order_cmdsn = 0, ret;
 	bool sess_ref = false;
-	u8 function;
+	u8 function, tcm_function = TMR_UNKNOWN;
 
 	hdr			= (struct iscsi_tm *) buf;
 	hdr->flags &= ~ISCSI_FLAG_CMD_FINAL;
@@ -1801,10 +1801,6 @@ iscsit_handle_task_mgt_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
 	 * LIO-Target $FABRIC_MOD
 	 */
 	if (function != ISCSI_TM_FUNC_TASK_REASSIGN) {
-
-		u8 tcm_function;
-		int ret;
-
 		transport_init_se_cmd(&cmd->se_cmd, &iscsi_ops,
 				      conn->sess->se_sess, 0, DMA_NONE,
 				      TCM_SIMPLE_TAG, cmd->sense_buffer + 2);
@@ -1840,15 +1836,14 @@ iscsit_handle_task_mgt_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
 			return iscsit_add_reject_cmd(cmd,
 				ISCSI_REASON_BOOKMARK_NO_RESOURCES, buf);
 		}
-
-		ret = core_tmr_alloc_req(&cmd->se_cmd, cmd->tmr_req,
-					 tcm_function, GFP_KERNEL);
-		if (ret < 0)
-			return iscsit_add_reject_cmd(cmd,
+	}
+	ret = core_tmr_alloc_req(&cmd->se_cmd, cmd->tmr_req, tcm_function,
+				 GFP_KERNEL);
+	if (ret < 0)
+		return iscsit_add_reject_cmd(cmd,
 				ISCSI_REASON_BOOKMARK_NO_RESOURCES, buf);
 
-		cmd->tmr_req->se_tmr_req = cmd->se_cmd.se_tmr_req;
-	}
+	cmd->tmr_req->se_tmr_req = cmd->se_cmd.se_tmr_req;
 
 	cmd->iscsi_opcode	= ISCSI_OP_SCSI_TMFUNC;
 	cmd->i_state		= ISTATE_SEND_TASKMGTRSP;
@@ -3449,7 +3444,7 @@ iscsit_build_sendtargets_response(struct iscsi_cmd *cmd,
 
 			if ((tpg->tpg_attrib.generate_node_acls == 0) &&
 			    (tpg->tpg_attrib.demo_mode_discovery == 0) &&
-			    (!core_tpg_get_initiator_node_acl(&tpg->tpg_se_tpg,
+			    (!target_tpg_has_node_acl(&tpg->tpg_se_tpg,
 				cmd->conn->sess->sess_ops->InitiatorName))) {
 				continue;
 			}
@@ -3969,6 +3964,8 @@ int iscsi_target_tx_thread(void *arg)
 {
 	int ret = 0;
 	struct iscsi_conn *conn = arg;
+	bool conn_freed = false;
+
 	/*
 	 * Allow ourselves to be interrupted by SIGINT so that a
 	 * connection recovery / failure event can be triggered externally.
@@ -3994,12 +3991,14 @@ get_immediate:
 			goto transport_err;
 
 		ret = iscsit_handle_response_queue(conn);
-		if (ret == 1)
+		if (ret == 1) {
 			goto get_immediate;
-		else if (ret == -ECONNRESET)
+		} else if (ret == -ECONNRESET) {
+			conn_freed = true;
 			goto out;
-		else if (ret < 0)
+		} else if (ret < 0) {
 			goto transport_err;
+		}
 	}
 
 transport_err:
@@ -4009,8 +4008,13 @@ transport_err:
 	 * responsible for cleaning up the early connection failure.
 	 */
 	if (conn->conn_state != TARG_CONN_STATE_IN_LOGIN)
-		iscsit_take_action_for_connection_exit(conn);
+		iscsit_take_action_for_connection_exit(conn, &conn_freed);
 out:
+	if (!conn_freed) {
+		while (!kthread_should_stop()) {
+			msleep(100);
+		}
+	}
 	return 0;
 }
 
@@ -4117,6 +4121,7 @@ int iscsi_target_rx_thread(void *arg)
 	u32 checksum = 0, digest = 0;
 	struct iscsi_conn *conn = arg;
 	struct kvec iov;
+	bool conn_freed = false;
 	/*
 	 * Allow ourselves to be interrupted by SIGINT so that a
 	 * connection recovery / failure event can be triggered externally.
@@ -4128,7 +4133,7 @@ int iscsi_target_rx_thread(void *arg)
 	 */
 	rc = wait_for_completion_interruptible(&conn->rx_login_comp);
 	if (rc < 0 || iscsi_target_check_conn_state(conn))
-		return 0;
+		goto out;
 
 	if (conn->conn_transport->transport_type == ISCSI_INFINIBAND) {
 		struct completion comp;
@@ -4213,7 +4218,13 @@ int iscsi_target_rx_thread(void *arg)
 transport_err:
 	if (!signal_pending(current))
 		atomic_set(&conn->transport_failed, 1);
-	iscsit_take_action_for_connection_exit(conn);
+	iscsit_take_action_for_connection_exit(conn, &conn_freed);
+out:
+	if (!conn_freed) {
+		while (!kthread_should_stop()) {
+			msleep(100);
+		}
+	}
 	return 0;
 }
 
