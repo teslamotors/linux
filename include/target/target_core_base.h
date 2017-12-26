@@ -228,6 +228,7 @@ enum tcm_tmreq_table {
 	TMR_LUN_RESET		= 5,
 	TMR_TARGET_WARM_RESET	= 6,
 	TMR_TARGET_COLD_RESET	= 7,
+	TMR_UNKNOWN		= 0xff,
 };
 
 /* fabric independent task management response values */
@@ -590,6 +591,7 @@ struct se_node_acl {
 	/* Used to signal demo mode created ACL, disabled by default */
 	bool			dynamic_node_acl;
 	bool			acl_stop:1;
+	bool			dynamic_stop;
 	u32			queue_depth;
 	u32			acl_index;
 	enum target_prot_type	saved_prot_type;
@@ -723,6 +725,7 @@ struct se_lun {
 	u32			lun_access;
 	u32			lun_flags;
 	u32			unpacked_lun;
+	bool			lun_shutdown;
 	atomic_t		lun_acl_count;
 	spinlock_t		lun_acl_lock;
 	spinlock_t		lun_sep_lock;

@@ -110,9 +110,21 @@ struct se_node_acl *core_tpg_get_initiator_node_acl(
 	unsigned char *initiatorname)
 {
 	struct se_node_acl *acl;
-
+	/*
+	 * Obtain se_node_acl->acl_kref using fabric driver provided
+	 * initiatorname[] during node acl endpoint lookup driven by
+	 * new se_session login.
+	 *
+	 * The reference is held until se_session shutdown -> release
+	 * occurs via fabric driver invoked transport_deregister_session()
+	 * or transport_free_session() code.
+	 */
 	spin_lock_irq(&tpg->acl_node_lock);
 	acl = __core_tpg_get_initiator_node_acl(tpg, initiatorname);
+	if (acl) {
+		if (!kref_get_unless_zero(&acl->acl_kref))
+			acl = NULL;
+	}
 	spin_unlock_irq(&tpg->acl_node_lock);
 
 	return acl;
@@ -254,6 +266,25 @@ static int core_create_device_list_for_node(struct se_node_acl *nacl)
 	return 0;
 }
 
+bool target_tpg_has_node_acl(struct se_portal_group *tpg,
+			     const char *initiatorname)
+{
+	struct se_node_acl *acl;
+	bool found = false;
+
+	spin_lock_irq(&tpg->acl_node_lock);
+	list_for_each_entry(acl, &tpg->acl_node_list, acl_list) {
+		if (!strcmp(acl->initiatorname, initiatorname)) {
+			found = true;
+			break;
+		}
+	}
+	spin_unlock_irq(&tpg->acl_node_lock);
+
+	return found;
+}
+EXPORT_SYMBOL(target_tpg_has_node_acl);
+
 /*	core_tpg_check_initiator_node_acl()
  *
  *
@@ -274,10 +305,19 @@ struct se_node_acl *core_tpg_check_initiator_node_acl(
 	acl =  tpg->se_tpg_tfo->tpg_alloc_fabric_acl(tpg);
 	if (!acl)
 		return NULL;
+	/*
+	 * When allocating a dynamically generated node_acl, go ahead
+	 * and take the extra kref now before returning to the fabric
+	 * driver caller.
+	 *
+	 * Note this reference will be released at session shutdown
+	 * time within transport_free_session() code.
+	 */
+	kref_init(&acl->acl_kref);
+	kref_get(&acl->acl_kref);
 
 	INIT_LIST_HEAD(&acl->acl_list);
 	INIT_LIST_HEAD(&acl->acl_sess_list);
-	kref_init(&acl->acl_kref);
 	init_completion(&acl->acl_free_comp);
 	spin_lock_init(&acl->device_list_lock);
 	spin_lock_init(&acl->nacl_sess_lock);
@@ -460,7 +500,7 @@ int core_tpg_del_initiator_node_acl(
 	if (acl->dynamic_node_acl) {
 		acl->dynamic_node_acl = 0;
 	}
-	list_del(&acl->acl_list);
+	list_del_init(&acl->acl_list);
 	tpg->num_node_acls--;
 	spin_unlock_irq(&tpg->acl_node_lock);
 
@@ -761,7 +801,7 @@ int core_tpg_deregister(struct se_portal_group *se_tpg)
 	spin_lock_irq(&se_tpg->acl_node_lock);
 	list_for_each_entry_safe(nacl, nacl_tmp, &se_tpg->acl_node_list,
 			acl_list) {
-		list_del(&nacl->acl_list);
+		list_del_init(&nacl->acl_list);
 		se_tpg->num_node_acls--;
 		spin_unlock_irq(&se_tpg->acl_node_lock);
 
@@ -843,6 +883,8 @@ void core_tpg_remove_lun(
 	struct se_portal_group *tpg,
 	struct se_lun *lun)
 {
+	lun->lun_shutdown = true;
+
 	core_clear_lun_from_tpg(lun, tpg);
 	transport_clear_lun_ref(lun);
 
@@ -850,6 +892,7 @@ void core_tpg_remove_lun(
 
 	spin_lock(&tpg->tpg_lun_lock);
 	lun->lun_status = TRANSPORT_LUN_STATUS_FREE;
+	lun->lun_shutdown = false;
 	spin_unlock(&tpg->tpg_lun_lock);
 
 	percpu_ref_exit(&lun->lun_ref);
