@@ -5803,6 +5803,7 @@ wl_cfg80211_remain_on_channel(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 			_timer = &cfg->p2p->listen_timer;
 			wl_clr_p2p_status(cfg, LISTEN_EXPIRED);
 
+			cfg->p2p->bcm_cfg = cfg;
 			INIT_TIMER(_timer, wl_cfgp2p_listen_expired, duration, 0);
 
 			err = BCME_OK;
@@ -11783,10 +11784,18 @@ void wl_terminate_event_handler(void)
 	}
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+static void wl_scan_timeout(struct timer_list *t)
+#else
 static void wl_scan_timeout(unsigned long data)
+#endif
 {
 	wl_event_msg_t msg;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	struct bcm_cfg80211 *cfg = from_timer(cfg, t, scan_timeout);
+#else
 	struct bcm_cfg80211 *cfg = (struct bcm_cfg80211 *)data;
+#endif
 	struct wireless_dev *wdev = NULL;
 	struct net_device *ndev = NULL;
 	struct wl_scan_results *bss_list;
@@ -11861,9 +11870,17 @@ static void wl_del_roam_timeout(struct bcm_cfg80211 *cfg)
 
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+static void wl_roam_timeout(struct timer_list *t)
+#else
 static void wl_roam_timeout(unsigned long data)
+#endif
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	struct bcm_cfg80211 *cfg = from_timer(cfg, t, roam_timeout);
+#else
 	struct bcm_cfg80211 *cfg = (struct bcm_cfg80211 *)data;
+#endif
 	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
 
 	WL_ERR(("roam timer expired\n"));
@@ -12718,9 +12735,13 @@ static s32 wl_init_scan(struct bcm_cfg80211 *cfg)
 	wl_escan_init_sync_id(cfg);
 
 	/* Init scan_timeout timer */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	timer_setup(&cfg->scan_timeout, wl_scan_timeout, 0);
+#else
 	init_timer(&cfg->scan_timeout);
 	cfg->scan_timeout.data = (unsigned long) cfg;
 	cfg->scan_timeout.function = wl_scan_timeout;
+#endif
 
 	return err;
 }
@@ -12731,10 +12752,14 @@ static s32 wl_init_roam_timeout(struct bcm_cfg80211 *cfg)
 	int err = 0;
 
 	/* Init roam timer */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	timer_setup(&cfg->roam_timeout, wl_roam_timeout, 0);
+#else
 	init_timer(&cfg->roam_timeout);
 	cfg->roam_timeout.data = (unsigned long) cfg;
 	cfg->roam_timeout.function = wl_roam_timeout;
 
+#endif
 	return err;
 }
 #endif /* DHD_LOSSLESS_ROAMING */

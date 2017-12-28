@@ -60,6 +60,20 @@ struct hci_mrvl_pkt {
 } __packed;
 #define HCI_MRVL_PKT_SIZE 4
 
+static int get_cts(struct hci_uart *hu)
+{
+	struct tty_struct *tty = hu->tty;
+	u32 state =  tty->ops->tiocmget(tty);
+
+	if (state & TIOCM_CTS) {
+		BT_INFO("CTS is low");
+		return 1;
+	}
+	BT_INFO("CTS is high");
+
+	return 0;
+}
+
 static int mrvl_open(struct hci_uart *hu)
 {
 	struct mrvl_data *mrvl;
@@ -344,6 +358,14 @@ static int mrvl_load_firmware(struct hci_dev *hdev, const char *name)
 static int mrvl_setup(struct hci_uart *hu)
 {
 	int err;
+
+	if (get_cts(hu)) {
+		BT_INFO("fw is running");
+		hci_uart_set_baudrate(hu, 3000000);
+		hci_uart_set_flow_control(hu, false);
+
+		return 0;
+	}
 
 	hci_uart_set_flow_control(hu, true);
 

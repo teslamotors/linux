@@ -157,7 +157,11 @@ typedef struct iscan_info {
 	char ioctlbuf[WLC_IOCTL_SMLEN];
 } iscan_info_t;
 iscan_info_t *g_iscan = NULL;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+static void wl_iw_timerfunc(struct timer_list *t);
+#else
 static void wl_iw_timerfunc(ulong data);
+#endif
 static void wl_iw_set_event_mask(struct net_device *dev);
 static int wl_iw_iscan(iscan_info_t *iscan, wlc_ssid_t *ssid, uint16 action);
 
@@ -3520,9 +3524,17 @@ done:
 }
 
 static void
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+wl_iw_timerfunc(struct timer_list *t)
+#else
 wl_iw_timerfunc(ulong data)
+#endif
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	iscan_info_t *iscan = from_timer(iscan, t, timer);;
+#else
 	iscan_info_t *iscan = (iscan_info_t *)data;
+#endif
 	iscan->timer_on = 0;
 	if (iscan->iscan_state != ISCAN_STATE_IDLE) {
 		WL_TRACE(("timer trigger\n"));
@@ -3755,9 +3767,13 @@ wl_iw_attach(struct net_device *dev, void * dhdp)
 
 	/* Set up the timer */
 	iscan->timer_ms    = 2000;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	timer_setup(&iscan->timer, wl_iw_timerfunc, 0);
+#else
 	init_timer(&iscan->timer);
 	iscan->timer.data = (ulong)iscan;
 	iscan->timer.function = wl_iw_timerfunc;
+#endif
 
 	sema_init(&iscan->sysioc_sem, 0);
 	init_completion(&iscan->sysioc_exited);
