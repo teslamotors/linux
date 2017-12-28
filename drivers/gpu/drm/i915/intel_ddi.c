@@ -2541,7 +2541,7 @@ static bool intel_ddi_compute_config(struct intel_encoder *encoder,
 
 	WARN(type == INTEL_OUTPUT_UNKNOWN, "compute_config() on unknown output!\n");
 
-	if (port == PORT_A)
+	if (port == PORT_A && !intel_vgpu_active(dev_priv))
 		pipe_config->cpu_transcoder = TRANSCODER_EDP;
 
 	if (type == INTEL_OUTPUT_HDMI)

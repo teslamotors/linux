@@ -1973,7 +1973,12 @@ static void wait_panel_status(struct intel_dp *intel_dp,
 			I915_READ(pp_stat_reg),
 			I915_READ(pp_ctrl_reg));
 
-	if (intel_wait_for_register(dev_priv,
+	/*
+	 * Only wait for panel status if we are not in a GVT guest environment,
+	 * because such a wait in a GVT guest environment doesn't make any sense
+	 * as we are exposing virtual DP monitors to the guest.
+	 */
+	if (!intel_vgpu_active(dev_priv) && intel_wait_for_register(dev_priv,
 				    pp_stat_reg, mask, value,
 				    5000))
 		DRM_ERROR("Panel status timeout: status %08x control %08x\n",

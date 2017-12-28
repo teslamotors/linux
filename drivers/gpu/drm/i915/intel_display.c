@@ -11691,7 +11691,16 @@ verify_crtc_state(struct drm_crtc *crtc,
 	intel_pipe_config_sanity_check(dev_priv, pipe_config);
 
 	sw_config = to_intel_crtc_state(new_crtc_state);
-	if (!intel_pipe_config_compare(dev_priv, sw_config,
+
+	/*
+	 * Only check for pipe config if we are not in a GVT guest environment,
+	 * because such a check in a GVT guest environment doesn't make any sense
+	 * as we don't allow the guest to do a mode set, so there can very well
+	 * be a difference between what it has programmed vs. what the host
+	 * truly configured the HW pipe to be in.
+	 */
+	if (!intel_vgpu_active(dev_priv) &&
+		!intel_pipe_config_compare(dev_priv, sw_config,
 				       pipe_config, false)) {
 		I915_STATE_WARN(1, "pipe state doesn't match!\n");
 		intel_dump_pipe_config(intel_crtc, pipe_config,
