@@ -1373,10 +1373,22 @@ wl_cfgp2p_listen_complete(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
  *  so lets do it from thread context.
  */
 void
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+wl_cfgp2p_listen_expired(struct timer_list *t)
+#else
 wl_cfgp2p_listen_expired(unsigned long data)
+#endif
 {
 	wl_event_msg_t msg;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	struct p2p_info *ip2p;
+	struct bcm_cfg80211 *cfg;
+
+	ip2p = from_timer(ip2p, t, listen_timer);
+	cfg = ip2p->bcm_cfg;
+#else
 	struct bcm_cfg80211 *cfg = (struct bcm_cfg80211 *) data;
+#endif
 	CFGP2P_DBG((" Enter\n"));
 	bzero(&msg, sizeof(wl_event_msg_t));
 	msg.event_type =  hton32(WLC_E_P2P_DISC_LISTEN_COMPLETE);
@@ -1472,6 +1484,7 @@ wl_cfgp2p_discover_listen(struct bcm_cfg80211 *cfg, s32 channel, u32 duration_ms
 		extra_delay = 0;
 	}
 
+	cfg->p2p->bcm_cfg = cfg;
 	INIT_TIMER(_timer, wl_cfgp2p_listen_expired, duration_ms, extra_delay);
 #ifdef WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST
 	wl_clr_p2p_status(cfg, LISTEN_EXPIRED);

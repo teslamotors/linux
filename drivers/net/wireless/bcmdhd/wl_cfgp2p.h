@@ -78,6 +78,7 @@ struct p2p_info {
 	unsigned long status;
 	struct p2p_bss bss[P2PAPI_BSSCFG_MAX];
 	struct timer_list listen_timer;
+	struct bcm_cfg80211 *bcm_cfg;
 	wl_p2p_sched_t noa;
 	wl_p2p_ops_t ops;
 	wlc_ssid_t ssid;
@@ -183,6 +184,13 @@ enum wl_cfgp2p_status {
 			printk args;							\
 		}									\
 	} while (0)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+#define INIT_TIMER(timer, func, duration, extra_delay)	\
+	do {				   \
+		timer_setup(timer, func, duration + extra_delay); \
+		add_timer(timer); \
+	} while (0);
+#else
 #define INIT_TIMER(timer, func, duration, extra_delay)	\
 	do {				   \
 		init_timer(timer); \
@@ -191,6 +199,7 @@ enum wl_cfgp2p_status {
 		timer->data = (unsigned long) cfg; \
 		add_timer(timer); \
 	} while (0);
+#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)) && !defined(WL_CFG80211_P2P_DEV_IF)
 #define WL_CFG80211_P2P_DEV_IF
@@ -232,8 +241,14 @@ enum wl_cfgp2p_status {
 
 #define P2P_ECSA_CNT 50
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+extern void
+wl_cfgp2p_listen_expired(struct timer_list *t);
+#else
 extern void
 wl_cfgp2p_listen_expired(unsigned long data);
+#endif
+
 extern bool
 wl_cfgp2p_is_pub_action(void *frame, u32 frame_len);
 extern bool

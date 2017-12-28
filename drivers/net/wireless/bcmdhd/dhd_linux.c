@@ -4710,9 +4710,17 @@ dhd_watchdog_thread(void *data)
 	complete_and_exit(&tsk->completed, 0);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+static void dhd_watchdog(struct timer_list *t)
+#else
 static void dhd_watchdog(ulong data)
+#endif
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	dhd_info_t *dhd = from_timer(dhd, t, timer);
+#else
 	dhd_info_t *dhd = (dhd_info_t *)data;
+#endif
 	unsigned long flags;
 
 	if (dhd->pub.dongle_reset) {
@@ -4791,9 +4799,17 @@ dhd_rpm_state_thread(void *data)
 	complete_and_exit(&tsk->completed, 0);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+static void dhd_runtimepm(struct timer_list *t)
+#else
 static void dhd_runtimepm(ulong data)
+#endif
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	dhd_info_t *dhd = from_timer(dhd, t, rpm_timer);;
+#else
 	dhd_info_t *dhd = (dhd_info_t *)data;
+#endif
 
 	if (dhd->pub.dongle_reset) {
 		return;
@@ -7092,10 +7108,14 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 
 
 	/* Set up the watchdog timer */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	timer_setup(&dhd->timer, dhd_watchdog, dhd_watchdog_ms);
+#else
 	init_timer(&dhd->timer);
 	dhd->timer.data = (ulong)dhd;
 	dhd->timer.function = dhd_watchdog;
 	dhd->default_wd_interval = dhd_watchdog_ms;
+#endif
 
 	if (dhd_watchdog_prio >= 0) {
 		/* Initialize watchdog thread */
@@ -7110,9 +7130,14 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 
 #ifdef DHD_PCIE_RUNTIMEPM
 	/* Setup up the runtime PM Idlecount timer */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	timer_setup(&dhd->rpm_timer, dhd_runtimepm, 0);
+#else
 	init_timer(&dhd->rpm_timer);
 	dhd->rpm_timer.data = (ulong)dhd;
 	dhd->rpm_timer.function = dhd_runtimepm;
+#endif
+
 	dhd->rpm_timer_valid = FALSE;
 
 	dhd->thr_rpm_ctl.thr_pid = DHD_PID_KT_INVALID;
