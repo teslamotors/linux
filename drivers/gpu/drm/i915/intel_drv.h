@@ -495,7 +495,7 @@ struct intel_crtc_scaler_state {
 #define I915_MODE_FLAG_INHERITED 1
 
 struct intel_pipe_wm {
-	struct intel_wm_level wm[5];
+	struct intel_wm_level wm[7];
 	uint32_t linetime;
 	bool fbc_wm_enabled;
 	bool pipe_enabled;
