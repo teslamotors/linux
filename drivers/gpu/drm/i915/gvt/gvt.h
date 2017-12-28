@@ -52,6 +52,7 @@
 enum {
 	INTEL_GVT_HYPERVISOR_XEN = 0,
 	INTEL_GVT_HYPERVISOR_KVM,
+	INTEL_GVT_HYPERVISOR_CWP,
 };
 
 struct intel_gvt_host {

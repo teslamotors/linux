@@ -42,6 +42,7 @@ struct intel_gvt_host intel_gvt_host;
 static const char * const supported_hypervisors[] = {
 	[INTEL_GVT_HYPERVISOR_XEN] = "XEN",
 	[INTEL_GVT_HYPERVISOR_KVM] = "KVM",
+	[INTEL_GVT_HYPERVISOR_CWP] = "CWP",
 };
 
 static const struct intel_gvt_ops intel_gvt_ops = {
@@ -90,6 +91,11 @@ int intel_gvt_init_host(void)
 				symbol_get(kvmgt_mpt), "kvmgt");
 		intel_gvt_host.hypervisor_type = INTEL_GVT_HYPERVISOR_KVM;
 #endif
+		/* not in Xen. Try CWP */
+		intel_gvt_host.mpt = try_then_request_module(
+				symbol_get(cwp_gvt_mpt), "cwp_gvt");
+		intel_gvt_host.hypervisor_type = INTEL_GVT_HYPERVISOR_CWP;
+		printk("cwpgt %s\n", intel_gvt_host.mpt?"found":"not found");
 	}
 
 	/* Fail to load MPT modules - bail out */

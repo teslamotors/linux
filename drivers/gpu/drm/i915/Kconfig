@@ -124,6 +124,13 @@ config DRM_I915_GVT_KVMGT
 	help
 	  Choose this option if you want to enable KVMGT support for
 	  Intel GVT-g.
+config DRM_I915_GVT_CWP_GVT
+	tristate "Enable CWP support for Intel GVT-g"
+	depends on DRM_I915_GVT
+	default n
+	help
+          Choose this option if you want to enable CWP_GVT support for
+          Intel GVT-g under CWP hypervisor environment.
 
 menu "drm/i915 Debugging"
 depends on DRM_I915
