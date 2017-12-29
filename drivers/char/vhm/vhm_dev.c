@@ -224,6 +224,23 @@ static long vhm_dev_ioctl(struct file *filep,
 		return ret;
 	}
 
+	case IC_CREATE_VCPU: {
+		struct cwp_create_vcpu cv;
+
+		if (copy_from_user(&cv, (void *)ioctl_param,
+				sizeof(struct cwp_create_vcpu)))
+			return -EFAULT;
+
+		ret = cwp_hypercall2(HC_CREATE_VCPU, vm->vmid,
+				virt_to_phys(&cv));
+		if (ret < 0) {
+			pr_err("vhm: failed to create vcpu %ld!\n", cv.vcpuid);
+			return -EFAULT;
+		}
+
+		return ret;
+	}
+
 	case IC_ALLOC_MEMSEG: {
 		struct vm_memseg memseg;
 
