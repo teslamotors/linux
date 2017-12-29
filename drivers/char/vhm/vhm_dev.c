@@ -78,6 +78,7 @@
 
 #include <linux/vhm/cwp_hv_defs.h>
 #include <linux/vhm/vhm_ioctl_defs.h>
+#include <linux/vhm/cwp_vhm_mm.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 #include <linux/vhm/vhm_hypercall.h>
 
@@ -99,6 +100,9 @@ static int vhm_dev_open(struct inode *inodep, struct file *filep)
 		return -ENOMEM;
 	vm->vmid = CWP_INVALID_VMID;
 	vm->dev = vhm_device;
+
+	INIT_LIST_HEAD(&vm->memseg_list);
+	mutex_init(&vm->seg_lock);
 
 	vm_mutex_lock(&vhm_vm_list_lock);
 	vm->refcnt = 1;
@@ -163,6 +167,27 @@ static long vhm_dev_ioctl(struct file *filep,
 		ret = vhm_query_vm_state(vm);
 		break;
 
+	case IC_ALLOC_MEMSEG: {
+		struct vm_memseg memseg;
+
+		if (copy_from_user(&memseg, (void *)ioctl_param,
+			sizeof(struct vm_memseg)))
+			return -EFAULT;
+
+		return alloc_guest_memseg(vm, &memseg);
+	}
+
+	case IC_SET_MEMSEG: {
+		struct vm_memmap memmap;
+
+		if (copy_from_user(&memmap, (void *)ioctl_param,
+			sizeof(struct vm_memmap)))
+			return -EFAULT;
+
+		ret = map_guest_memseg(vm, &memmap);
+		break;
+	}
+
 	default:
 		pr_warn("Unknown IOCTL 0x%x\n", ioctl_num);
 		ret = 0;
@@ -189,6 +214,7 @@ static const struct file_operations fops = {
 	.open = vhm_dev_open,
 	.read = vhm_dev_read,
 	.write = vhm_dev_write,
+	.mmap = vhm_dev_mmap,
 	.release = vhm_dev_release,
 	.unlocked_ioctl = vhm_dev_ioctl,
 };

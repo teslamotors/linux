@@ -139,6 +139,7 @@ static inline long cwp_hypercall4(unsigned long hyp_id, unsigned long param1,
 	return result;
 }
 
+inline long hcall_set_memmap(unsigned long vmid, unsigned long memmap);
 inline long vhm_create_vm(struct vhm_vm *vm, unsigned long ioctl_param);
 inline long vhm_resume_vm(struct vhm_vm *vm);
 inline long vhm_pause_vm(struct vhm_vm *vm);

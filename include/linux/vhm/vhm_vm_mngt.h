@@ -66,6 +66,8 @@ struct vhm_vm {
 	struct list_head list;
 	unsigned long vmid;
 	long refcnt;
+	struct mutex seg_lock;
+	struct list_head memseg_list;
 };
 
 struct vhm_vm *find_get_vm(unsigned long vmid);

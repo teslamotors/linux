@@ -58,6 +58,7 @@
 #include <asm/processor.h>
 #include <linux/vhm/cwp_hv_defs.h>
 #include <linux/vhm/vhm_ioctl_defs.h>
+#include <linux/vhm/cwp_vhm_mm.h>
 #include <linux/vhm/vhm_hypercall.h>
 
 LIST_HEAD(vhm_vm_list);
@@ -85,6 +86,7 @@ void put_vm(struct vhm_vm *vm)
 	vm->refcnt--;
 	if (vm->refcnt == 0) {
 		list_del(&vm->list);
+		free_guest_mem(vm);
 		kfree(vm);
 		pr_info("vhm: freed vm\n");
 	}

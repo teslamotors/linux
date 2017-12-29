@@ -64,4 +64,44 @@
 #define IC_PAUSE_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x04)
 #define IC_QUERY_VMSTATE               _IC_ID(IC_ID, IC_ID_VM_BASE + 0x05)
 
+/* Guest memory management */
+#define IC_ID_MEM_BASE                  0x300UL
+#define IC_ALLOC_MEMSEG                 _IC_ID(IC_ID, IC_ID_MEM_BASE + 0x00)
+#define IC_SET_MEMSEG                   _IC_ID(IC_ID, IC_ID_MEM_BASE + 0x01)
+
+#define SPECNAMELEN 63
+
+enum {
+	VM_SYSMEM,
+	VM_BOOTROM,
+	VM_FRAMEBUFFER,
+	VM_MMIO,
+};
+
+struct vm_memseg {
+	int segid;
+	size_t len;
+	char name[SPECNAMELEN + 1];
+	unsigned long gpa;
+};
+
+struct vm_memmap {
+	int segid;		/* memory segment */
+	union {
+		struct {
+			uint64_t gpa;
+			uint64_t segoff;	/* offset into memory segment */
+			size_t len;		/* mmap length */
+			int prot;		/* RWX */
+			int flags;
+		} mem;
+		struct {
+			uint64_t gpa;
+			uint64_t hpa;
+			size_t len;
+			int prot;
+		} mmio;
+	};
+};
+
 #endif /* VHM_IOCTL_DEFS_H */

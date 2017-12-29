@@ -1,5 +1,5 @@
 /*
- * virtio and hyperviosr service module (VHM): hypercall header
+ * virtio and hyperviosr service module (VHM): memory map
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -47,61 +47,42 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * Jason Chen CJ <jason.cj.chen@intel.com>
+ *
  */
 
-#ifndef CWP_HV_DEFS_H
-#define CWP_HV_DEFS_H
+#ifndef __CWP_VHM_MM_H__
+#define __CWP_VHM_MM_H__
 
-/*
- * Commmon structures for CWP/VHM/DM
- */
-#include "cwp_common.h"
+#include <linux/vhm/vhm_ioctl_defs.h>
+#include <linux/vhm/vhm_vm_mngt.h>
 
-/*
- * Commmon structures for HV/VHM
- */
+#define	MMU_MEM_ATTR_READ	0x00000001
+#define	MMU_MEM_ATTR_WRITE	0x00000002
+#define	MMU_MEM_ATTR_EXECUTE	0x00000004
+#define MMU_MEM_ATTR_WB_CACHE   0x00000040
+#define MMU_MEM_ATTR_WT_CACHE   0x00000080
+#define MMU_MEM_ATTR_UNCACHED   0x00000100
+#define MMU_MEM_ATTR_WC         0x00000200
 
-#define _HC_ID(x, y) (((x)<<24)|(y))
+#define MMU_MEM_ATTR_ALL	0x00000007
+#define MMU_MEM_ATTR_WP		0x00000005
+#define MMU_MEM_ATTR_ALL_WB	0x00000047
+#define MMU_MEM_ATTR_ALL_WC	0x00000207
 
-#define HC_ID 0x7FUL
+int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len, int prot);
+int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len, int prot);
+int update_mem_map(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len, int prot);
 
-/* VM management */
-#define HC_ID_VM_BASE               0x0UL
-#define HC_GET_API_VERSION          _HC_ID(HC_ID, HC_ID_VM_BASE + 0x00)
-#define HC_CREATE_VM                _HC_ID(HC_ID, HC_ID_VM_BASE + 0x01)
-#define HC_DESTROY_VM               _HC_ID(HC_ID, HC_ID_VM_BASE + 0x02)
-#define HC_RESUME_VM                _HC_ID(HC_ID, HC_ID_VM_BASE + 0x03)
-#define HC_PAUSE_VM                 _HC_ID(HC_ID, HC_ID_VM_BASE + 0x04)
-#define HC_QUERY_VMSTATE            _HC_ID(HC_ID, HC_ID_VM_BASE + 0x05)
+int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma);
 
-/* Guest memory management */
-#define HC_ID_MEM_BASE              0x300UL
-#define HC_VM_SET_MEMMAP            _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x00)
+int check_guest_mem(struct vhm_vm *vm);
+void free_guest_mem(struct vhm_vm *vm);
 
-#define CWP_DOM0_VMID (0UL)
-#define CWP_INVALID_VMID (-1UL)
-#define CWP_INVALID_HPA (-1UL)
+int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg);
+int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap);
 
-enum vm_memmap_type {
-	MAP_MEM = 0,
-	MAP_MMIO,
-	MAP_UNMAP,
-	MAP_UPDATE,
-};
-
-struct vm_set_memmap {
-	enum vm_memmap_type type;
-	/* IN: beginning guest GPA to map */
-	unsigned long foreign_gpa;
-
-	/* IN: VM0's GPA which foreign gpa will be mapped to */
-	unsigned long hvm_gpa;
-
-	/* IN: length of the range */
-	unsigned long length;
-
-	/* IN: not used right now */
-	int prot;
-} __attribute__((aligned(8)));
-
-#endif /* CWP_HV_DEFS_H */
+#endif
