@@ -267,6 +267,31 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 
+	case IC_ASSIGN_PTDEV: {
+		ret = vhm_assign_ptdev(vm, ioctl_param);
+		break;
+	}
+
+	case IC_DEASSIGN_PTDEV: {
+		ret = vhm_deassign_ptdev(vm, ioctl_param);
+		break;
+	}
+
+	case IC_SET_PTDEV_INTR_INFO: {
+		ret = vhm_set_ptdev_intr_info(vm, ioctl_param);
+		break;
+	}
+
+	case IC_RESET_PTDEV_INTR_INFO: {
+		ret = vhm_reset_ptdev_intr_info(vm, ioctl_param);
+		break;
+	}
+
+	case IC_VM_PCI_MSIX_REMAP: {
+		ret = vhm_remap_pci_msix(vm, ioctl_param);
+		break;
+	}
+
 	default:
 		pr_warn("Unknown IOCTL 0x%x\n", ioctl_num);
 		ret = 0;

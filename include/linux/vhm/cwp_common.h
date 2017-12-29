@@ -99,6 +99,15 @@ enum request_direction {
 	DIRECTION_MAX,
 } __attribute__((aligned(4)));
 
+/*
+ * IRQ type for ptdev
+ */
+enum irq_type {
+	IRQ_INTX,
+	IRQ_MSI,
+	IRQ_MSIX,
+} __attribute__((aligned(4)));
+
 struct msr_request {
 	enum request_direction direction;
 	long index;
@@ -214,6 +223,40 @@ struct cwp_nmi_entry {
 struct vm_gpa2hpa {
 	unsigned long gpa;		/* IN: gpa to translation */
 	unsigned long hpa;		/* OUT: -1 means invalid gpa */
+} __attribute__((aligned(8)));
+
+struct cwp_ptdev_irq {
+	enum irq_type type;
+	unsigned short virt_bdf;	/* IN: Device virtual BDF# */
+	unsigned short phys_bdf;	/* IN: Device physical BDF# */
+	union {
+		struct {
+			int virt_pin;	/* IN: virtual IOAPIC pin */
+			int phys_pin;	/* IN: physical IOAPIC pin */
+			bool pic_pin;	/* IN: pin from PIC? */
+		} intx;
+		struct {
+			int vector_cnt;	/* IN: vector count of MSI/MSIX */
+
+			/* IN: physcial address of MSI-X table */
+			unsigned long table_paddr;
+
+			/* IN: size of MSI-X table (round up to 4K) */
+			int table_size;
+		} msix;
+	};
+} __attribute__((aligned(8)));
+
+struct cwp_vm_pci_msix_remap {
+	unsigned short virt_bdf;	/* IN: Device virtual BDF# */
+	unsigned short phys_bdf;	/* IN: Device physical BDF# */
+	unsigned short msi_ctl;		/* IN: PCI MSI/x cap control data */
+	unsigned long msi_addr;		/* IN/OUT: msi address to fix */
+	unsigned int msi_data;		/* IN/OUT: msi data to fix */
+	int msix;			/* IN: 0 - MSI, 1 - MSI-X */
+	int msix_entry_index;		/* IN: MSI-X the entry table index */
+	/* IN: Vector Control for MSI-X Entry, field defined in MSIX spec */
+	unsigned int vector_ctl;
 } __attribute__((aligned(8)));
 
 #endif /* CWP_COMMON_H */

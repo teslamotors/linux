@@ -50,12 +50,28 @@
  */
 #include <linux/uaccess.h>
 #include <linux/io.h>
+#include <linux/pci.h>
 #include <linux/vhm/cwp_hv_defs.h>
 #include <linux/vhm/vhm_hypercall.h>
+
+/* max num of pass-through devices using msix */
+#define MAX_ENTRY 3
+
+struct table_iomems {
+	/* device's virtual BDF */
+	unsigned short virt_bdf;
+	/* virtual base address of MSI-X table in memory space after ioremap */
+	unsigned long mmap_addr;
+} tables[MAX_ENTRY];
 
 inline long hcall_inject_msi(unsigned long vmid, unsigned long msi)
 {
 	return cwp_hypercall2(HC_INJECT_MSI, vmid, msi);
+}
+
+inline long hcall_remap_pci_msix(unsigned long vmid, unsigned long msix)
+{
+	return cwp_hypercall2(HC_VM_PCI_MSIX_REMAP, vmid, msix);
 }
 
 inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer)
@@ -207,6 +223,165 @@ inline long vhm_pulse_irqline(struct vhm_vm *vm, unsigned long ioctl_param)
 	if (ret < 0) {
 		pr_err("vhm: failed to assert irq!\n");
 		return -EFAULT;
+	}
+
+	return ret;
+}
+
+inline long vhm_assign_ptdev(struct vhm_vm *vm, unsigned long ioctl_param)
+{
+	long ret = 0;
+	uint16_t bdf;
+
+	if (copy_from_user(&bdf,
+				(void *)ioctl_param, sizeof(uint16_t)))
+		return -EFAULT;
+
+	ret = cwp_hypercall2(HC_ASSIGN_PTDEV, vm->vmid,
+			virt_to_phys(&bdf));
+	if (ret < 0) {
+		pr_err("vhm: failed to assign ptdev!\n");
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
+inline long vhm_deassign_ptdev(struct vhm_vm *vm, unsigned long ioctl_param)
+{
+	long ret = 0;
+	uint16_t bdf;
+
+	if (copy_from_user(&bdf,
+				(void *)ioctl_param, sizeof(uint16_t)))
+		return -EFAULT;
+
+	ret = cwp_hypercall2(HC_DEASSIGN_PTDEV, vm->vmid,
+			virt_to_phys(&bdf));
+	if (ret < 0) {
+		pr_err("vhm: failed to deassign ptdev!\n");
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
+inline long vhm_set_ptdev_intr_info(struct vhm_vm *vm,
+		unsigned long ioctl_param)
+{
+	long ret = 0;
+	struct cwp_ptdev_irq pt_irq;
+	int i;
+
+	if (copy_from_user(&pt_irq,
+				(void *)ioctl_param, sizeof(pt_irq)))
+		return -EFAULT;
+
+	ret = cwp_hypercall2(HC_SET_PTDEV_INTR_INFO, vm->vmid,
+			virt_to_phys(&pt_irq));
+	if (ret < 0) {
+		pr_err("vhm: failed to set intr info for ptdev!\n");
+		return -EFAULT;
+	}
+
+	if (pt_irq.msix.table_paddr) {
+		for (i = 0; i < MAX_ENTRY; i++) {
+			if (tables[i].virt_bdf)
+				continue;
+
+			tables[i].virt_bdf = pt_irq.virt_bdf;
+			tables[i].mmap_addr = (unsigned long)
+				ioremap_nocache(pt_irq.msix.table_paddr,
+						pt_irq.msix.table_size);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+inline long vhm_reset_ptdev_intr_info(struct vhm_vm *vm,
+		unsigned long ioctl_param)
+{
+	long ret = 0;
+	struct cwp_ptdev_irq pt_irq;
+	int i;
+
+	if (copy_from_user(&pt_irq,
+				(void *)ioctl_param, sizeof(pt_irq)))
+		return -EFAULT;
+
+	ret = cwp_hypercall2(HC_RESET_PTDEV_INTR_INFO, vm->vmid,
+			virt_to_phys(&pt_irq));
+	if (ret < 0) {
+		pr_err("vhm: failed to reset intr info for ptdev!\n");
+		return -EFAULT;
+	}
+
+	if (pt_irq.msix.table_paddr) {
+		for (i = 0; i < MAX_ENTRY; i++) {
+			if (tables[i].virt_bdf)
+				continue;
+
+			tables[i].virt_bdf = pt_irq.virt_bdf;
+			tables[i].mmap_addr = (unsigned long)
+				ioremap_nocache(pt_irq.msix.table_paddr,
+						pt_irq.msix.table_size);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+inline long vhm_remap_pci_msix(struct vhm_vm *vm, unsigned long ioctl_param)
+{
+	long ret = 0;
+	struct cwp_vm_pci_msix_remap msix_remap;
+
+	if (copy_from_user(&msix_remap,
+				(void *)ioctl_param, sizeof(msix_remap)))
+		return -EFAULT;
+
+	ret = cwp_hypercall2(HC_VM_PCI_MSIX_REMAP, vm->vmid,
+			virt_to_phys(&msix_remap));
+
+	if (copy_to_user((void *)ioctl_param,
+				&msix_remap, sizeof(msix_remap)))
+		return -EFAULT;
+
+	if (msix_remap.msix) {
+		void __iomem *msix_entry;
+		int i;
+
+		for (i = 0; i < MAX_ENTRY; i++) {
+			if (tables[i].virt_bdf == msix_remap.virt_bdf)
+				break;
+		}
+
+		if (!tables[i].mmap_addr)
+			return -EFAULT;
+
+		msix_entry = (void *)(tables[i].mmap_addr +
+			msix_remap.msix_entry_index *
+			PCI_MSIX_ENTRY_SIZE);
+
+		/* mask the entry when setup */
+		writel(PCI_MSIX_ENTRY_CTRL_MASKBIT,
+				msix_entry + PCI_MSIX_ENTRY_VECTOR_CTRL);
+
+		/* setup the msi entry */
+		writel((uint32_t)msix_remap.msi_addr,
+				msix_entry + PCI_MSIX_ENTRY_LOWER_ADDR);
+		writel((uint32_t)(msix_remap.msi_addr >> 32),
+				msix_entry + PCI_MSIX_ENTRY_UPPER_ADDR);
+		writel(msix_remap.msi_data,
+				msix_entry + PCI_MSIX_ENTRY_DATA);
+
+		/* unmask the entry */
+		writel(msix_remap.vector_ctl &
+				PCI_MSIX_ENTRY_CTRL_MASKBIT,
+				msix_entry + PCI_MSIX_ENTRY_VECTOR_CTRL);
 	}
 
 	return ret;

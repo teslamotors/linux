@@ -140,6 +140,7 @@ static inline long cwp_hypercall4(unsigned long hyp_id, unsigned long param1,
 }
 
 inline long hcall_inject_msi(unsigned long vmid, unsigned long msi);
+inline long hcall_remap_pci_msix(unsigned long vmid, unsigned long msix);
 inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer);
 inline long hcall_notify_req_finish(unsigned long vmid,
 		unsigned long vcpu_mask);
@@ -153,5 +154,12 @@ inline long vhm_query_vm_state(struct vhm_vm *vm);
 inline long vhm_assert_irqline(struct vhm_vm *vm, unsigned long ioctl_param);
 inline long vhm_deassert_irqline(struct vhm_vm *vm, unsigned long ioctl_param);
 inline long vhm_pulse_irqline(struct vhm_vm *vm, unsigned long ioctl_param);
+inline long vhm_assign_ptdev(struct vhm_vm *vm, unsigned long ioctl_param);
+inline long vhm_deassign_ptdev(struct vhm_vm *vm, unsigned long ioctl_param);
+inline long vhm_set_ptdev_intr_info(struct vhm_vm *vm,
+		unsigned long ioctl_param);
+inline long vhm_reset_ptdev_intr_info(struct vhm_vm *vm,
+		unsigned long ioctl_param);
+inline long vhm_remap_pci_msix(struct vhm_vm *vm, unsigned long ioctl_param);
 
 #endif /* VHM_HYPERCALL_H */
