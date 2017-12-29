@@ -86,6 +86,7 @@ void put_vm(struct vhm_vm *vm);
 int vhm_get_vm_info(unsigned long vmid, struct vm_info *info);
 int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
 	unsigned long msi_data);
+unsigned long vhm_vm_gpa2hpa(unsigned long vmid, unsigned long gpa);
 
 void vm_list_add(struct list_head *list);
 void vm_mutex_lock(struct mutex *mlock);

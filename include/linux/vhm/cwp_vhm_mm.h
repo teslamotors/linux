@@ -70,6 +70,12 @@
 #define MMU_MEM_ATTR_ALL_WB	0x00000047
 #define MMU_MEM_ATTR_ALL_WC	0x00000207
 
+/* 1:1 mapping for service OS */
+static inline unsigned long  cwp_hpa2gpa(unsigned long hpa)
+{
+	return hpa;
+}
+
 void *map_guest_phys(unsigned long vmid, u64 uos_phys, size_t size);
 int unmap_guest_phys(unsigned long vmid, u64 uos_phys);
 int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,

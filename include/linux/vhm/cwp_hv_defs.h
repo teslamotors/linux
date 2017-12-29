@@ -86,9 +86,11 @@
 #define HC_SET_IOREQ_BUFFER         _HC_ID(HC_ID, HC_ID_IOREQ_BASE + 0x00)
 #define HC_NOTIFY_REQUEST_FINISH    _HC_ID(HC_ID, HC_ID_IOREQ_BASE + 0x01)
 
+
 /* Guest memory management */
 #define HC_ID_MEM_BASE              0x300UL
 #define HC_VM_SET_MEMMAP            _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x00)
+#define HC_VM_GPA2HPA               _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x01)
 
 #define CWP_DOM0_VMID (0UL)
 #define CWP_INVALID_VMID (-1UL)

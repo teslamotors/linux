@@ -130,6 +130,21 @@ int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
 	return 0;
 }
 
+unsigned long vhm_vm_gpa2hpa(unsigned long vmid, unsigned long gpa)
+{
+	struct vm_gpa2hpa gpa2hpa;
+	int ret;
+
+	gpa2hpa.gpa = gpa;
+	ret = hcall_vm_gpa2hpa(vmid, virt_to_phys(&gpa2hpa));
+	if (ret < 0) {
+		pr_err("vhm: failed to inject!\n");
+		return -EFAULT;
+	}
+	mb();
+	return gpa2hpa.hpa;
+}
+
 void vm_list_add(struct list_head *list)
 {
 	list_add(list, &vhm_vm_list);

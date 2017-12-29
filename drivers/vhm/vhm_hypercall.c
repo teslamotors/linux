@@ -73,6 +73,11 @@ inline long hcall_set_memmap(unsigned long vmid, unsigned long memmap)
 	return cwp_hypercall2(HC_VM_SET_MEMMAP, vmid, memmap);
 }
 
+inline long hcall_vm_gpa2hpa(unsigned long vmid, unsigned long gpa2hpa)
+{
+	return cwp_hypercall2(HC_VM_GPA2HPA, vmid, gpa2hpa);
+}
+
 inline long vhm_create_vm(struct vhm_vm *vm, unsigned long ioctl_param)
 {
 	long ret = 0;

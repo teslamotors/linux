@@ -144,6 +144,7 @@ inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer);
 inline long hcall_notify_req_finish(unsigned long vmid,
 		unsigned long vcpu_mask);
 inline long hcall_set_memmap(unsigned long vmid, unsigned long memmap);
+inline long hcall_vm_gpa2hpa(unsigned long vmid, unsigned long gpa2hpa);
 inline long vhm_create_vm(struct vhm_vm *vm, unsigned long ioctl_param);
 inline long vhm_resume_vm(struct vhm_vm *vm);
 inline long vhm_pause_vm(struct vhm_vm *vm);
