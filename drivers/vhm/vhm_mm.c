@@ -117,6 +117,7 @@ int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
 {
 	struct guest_memseg *seg;
 	u64 base;
+	int max_gfn;
 
 	seg = kzalloc(sizeof(struct guest_memseg), GFP_KERNEL);
 	if (seg == NULL)
@@ -134,9 +135,13 @@ int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
 	strncpy(seg->name, memseg->name, SPECNAMELEN + 1);
 	seg->gpa = memseg->gpa;
 
+	max_gfn = (seg->gpa + seg->len) >> PAGE_SHIFT;
+	if (vm->max_gfn < max_gfn)
+		vm->max_gfn = max_gfn;
+
 	pr_info("VHM: alloc memseg[%s] with len=0x%lx, base=0x%llx,"
-		" and its guest gpa = 0x%llx\n",
-		seg->name, seg->len, seg->base, seg->gpa);
+		" and its guest gpa = 0x%llx, vm max_gfn 0x%x\n",
+		seg->name, seg->len, seg->base, seg->gpa, vm->max_gfn);
 
 	seg->vma_count = 0;
 	mutex_lock(&vm->seg_lock);

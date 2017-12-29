@@ -95,6 +95,23 @@ void put_vm(struct vhm_vm *vm)
 	mutex_unlock(&vhm_vm_list_lock);
 }
 
+int vhm_get_vm_info(unsigned long vmid, struct vm_info *info)
+{
+	struct vhm_vm *vm;
+
+	vm = find_get_vm(vmid);
+	if (unlikely(vm == NULL)) {
+		pr_err("vhm: failed to find vm from vmid %ld\n",
+			vmid);
+		return -EINVAL;
+	}
+	/*TODO: hardcode max_vcpu here, should be fixed by getting at runtime */
+	info->max_vcpu = 4;
+	info->max_gfn = vm->max_gfn;
+	put_vm(vm);
+	return 0;
+}
+
 int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
 		unsigned long msi_data)
 {

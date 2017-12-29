@@ -69,14 +69,21 @@ struct vhm_vm {
 	long refcnt;
 	struct mutex seg_lock;
 	struct list_head memseg_list;
+	int max_gfn;
 	spinlock_t ioreq_client_lock;
 	struct list_head ioreq_client_list;
 	struct vhm_request_buffer *req_buf;
 	struct page *pg;
 };
 
+struct vm_info {
+	int max_vcpu;
+	int max_gfn;
+};
+
 struct vhm_vm *find_get_vm(unsigned long vmid);
 void put_vm(struct vhm_vm *vm);
+int vhm_get_vm_info(unsigned long vmid, struct vm_info *info);
 int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
 	unsigned long msi_data);
 
