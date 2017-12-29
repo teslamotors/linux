@@ -139,7 +139,14 @@ struct msi_desc *alloc_msi_entry(struct device *dev, int nvec,
 				 const struct cpumask *affinity);
 void free_msi_entry(struct msi_desc *entry);
 void __pci_read_msi_msg(struct msi_desc *entry, struct msi_msg *msg);
-void __pci_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg);
+
+void native_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg);
+#ifdef CONFIG_PARAVIRT
+#include <asm/paravirt.h>
+#define __pci_write_msi_msg write_msi_msg_paravirt
+#else
+#define __pci_write_msi_msg native_write_msi_msg
+#endif
 
 u32 __pci_msix_desc_mask_irq(struct msi_desc *desc, u32 flag);
 u32 __pci_msi_desc_mask_irq(struct msi_desc *desc, u32 mask, u32 flag);

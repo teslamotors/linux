@@ -53,6 +53,8 @@ struct desc_struct;
 struct task_struct;
 struct cpumask;
 struct flush_tlb_info;
+struct msi_desc;
+struct msi_msg;
 
 /*
  * Wrapper type for pointers to code which uses the non-standard
@@ -196,6 +198,7 @@ struct pv_irq_ops {
 	void (*safe_halt)(void);
 	void (*halt)(void);
 
+	void (*write_msi)(struct msi_desc *entry, struct msi_msg *msg);
 } __no_randomize_layout;
 
 struct pv_mmu_ops {

@@ -1,5 +1,23 @@
 /*
- * CWP hypervisor support
+ * virtio and hyperviosr service module (VHM): msi paravirt
+ *
+ * This file is provided under a dual BSD/GPLv2 license.  When using or
+ * redistributing this file, you may do so under either license.
+ *
+ * GPL LICENSE SUMMARY
+ *
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * BSD LICENSE
  *
  * Copyright (C) 2017 Intel Corporation. All rights reserved.
  *
@@ -32,55 +50,12 @@
  * Jason Chen CJ <jason.cj.chen@intel.com>
  *
  */
-#include <asm/hypervisor.h>
-#include <linux/vhm/vhm_msi.h>
 
-static unsigned long cpu_khz_from_cwp(void)
-{
-	unsigned int eax, ebx, ecx, edx;
+#ifndef __CWP_VHM_MSI_H__
+#define __CWP_VHM_MSI_H__
 
-	/* Get TSC frequency from cpuid 0x40000010 */
-	eax = 0x40000010;
-	ebx = ecx = edx = 0;
-	__cpuid(&eax, &ebx, &ecx, &edx);
+struct msi_desc;
+struct msi_msg;
+void cwp_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg);
 
-	return (unsigned long)eax;
-}
-
-static uint32_t __init cwp_detect(void)
-{
-	return hypervisor_cpuid_base("CWPCWPCWP\0\0", 0);
-}
-
-static void __init cwp_init_platform(void)
-{
-	pv_cpu_ops.cpu_khz = cpu_khz_from_cwp;
-	pv_irq_ops.write_msi = cwp_write_msi_msg;
-}
-
-static void cwp_pin_vcpu(int cpu)
-{
-	/* do nothing here now */
-}
-
-static bool cwp_x2apic_available(void)
-{
-	/* do not support x2apic */
-	return false;
-}
-
-static void __init cwp_init_mem_mapping(void)
-{
-	/* do nothing here now */
-}
-
-const struct hypervisor_x86 x86_hyper_cwp = {
-	.name                   = "CWP",
-	.detect                 = cwp_detect,
-	.type                 	= X86_HYPER_CWP,
-	.init.init_platform     = cwp_init_platform,
-	.runtime.pin_vcpu       = cwp_pin_vcpu,
-	.init.x2apic_available  = cwp_x2apic_available,
-	.init.init_mem_mapping	= cwp_init_mem_mapping,
-};
-EXPORT_SYMBOL(x86_hyper_cwp);
+#endif

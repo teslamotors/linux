@@ -801,6 +801,12 @@ static inline notrace unsigned long arch_local_irq_save(void)
 	return f;
 }
 
+static inline void write_msi_msg_paravirt(struct msi_desc *entry,
+					struct msi_msg *msg)
+{
+	return PVOP_VCALL2(pv_irq_ops.write_msi, entry, msg);
+}
+
 
 /* Make sure as little as possible of this mess escapes. */
 #undef PARAVIRT_CALL
