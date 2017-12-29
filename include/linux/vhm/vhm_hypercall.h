@@ -52,14 +52,12 @@
 #ifndef VHM_HYPERCALL_H
 #define VHM_HYPERCALL_H
 
-#include <linux/vhm/vhm_vm_mngt.h>
-
-static inline long cwp_hypercall0(unsigned long hyp_id)
+static inline long cwp_hypercall0(unsigned long hcall_id)
 {
 
 	/* x86-64 System V ABI register usage */
 	register signed long    result asm("rax");
-	register unsigned long  r8 asm("r8")  = hyp_id;
+	register unsigned long  r8 asm("r8")  = hcall_id;
 
 	/* Execute vmcall */
 	asm volatile(".byte 0x0F,0x01,0xC1\n"
@@ -70,12 +68,12 @@ static inline long cwp_hypercall0(unsigned long hyp_id)
 	return result;
 }
 
-static inline long cwp_hypercall1(unsigned long hyp_id, unsigned long param1)
+static inline long cwp_hypercall1(unsigned long hcall_id, unsigned long param1)
 {
 
 	/* x86-64 System V ABI register usage */
 	register signed long    result asm("rax");
-	register unsigned long  r8 asm("r8")  = hyp_id;
+	register unsigned long  r8 asm("r8")  = hcall_id;
 
 	/* Execute vmcall */
 	asm volatile(".byte 0x0F,0x01,0xC1\n"
@@ -86,13 +84,13 @@ static inline long cwp_hypercall1(unsigned long hyp_id, unsigned long param1)
 	return result;
 }
 
-static inline long cwp_hypercall2(unsigned long hyp_id, unsigned long param1,
+static inline long cwp_hypercall2(unsigned long hcall_id, unsigned long param1,
 		unsigned long param2)
 {
 
 	/* x86-64 System V ABI register usage */
 	register signed long    result asm("rax");
-	register unsigned long  r8 asm("r8")  = hyp_id;
+	register unsigned long  r8 asm("r8")  = hcall_id;
 
 	/* Execute vmcall */
 	asm volatile(".byte 0x0F,0x01,0xC1\n"
@@ -103,13 +101,13 @@ static inline long cwp_hypercall2(unsigned long hyp_id, unsigned long param1,
 	return result;
 }
 
-static inline long cwp_hypercall3(unsigned long hyp_id, unsigned long param1,
+static inline long cwp_hypercall3(unsigned long hcall_id, unsigned long param1,
 		unsigned long param2, unsigned long param3)
 {
 
 	/* x86-64 System V ABI register usage */
 	register signed long    result asm("rax");
-	register unsigned long  r8 asm("r8")  = hyp_id;
+	register unsigned long  r8 asm("r8")  = hcall_id;
 
 	/* Execute vmcall */
 	asm volatile(".byte 0x0F,0x01,0xC1\n"
@@ -120,14 +118,14 @@ static inline long cwp_hypercall3(unsigned long hyp_id, unsigned long param1,
 	return result;
 }
 
-static inline long cwp_hypercall4(unsigned long hyp_id, unsigned long param1,
+static inline long cwp_hypercall4(unsigned long hcall_id, unsigned long param1,
 		unsigned long param2, unsigned long param3,
 		unsigned long param4)
 {
 
 	/* x86-64 System V ABI register usage */
 	register signed long    result asm("rax");
-	register unsigned long  r8 asm("r8")  = hyp_id;
+	register unsigned long  r8 asm("r8")  = hcall_id;
 
 	/* Execute vmcall */
 	asm volatile(".byte 0x0F,0x01,0xC1\n"
@@ -139,27 +137,28 @@ static inline long cwp_hypercall4(unsigned long hyp_id, unsigned long param1,
 	return result;
 }
 
-inline long hcall_inject_msi(unsigned long vmid, unsigned long msi);
-inline long hcall_remap_pci_msix(unsigned long vmid, unsigned long msix);
-inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer);
+inline long hcall_create_vm(unsigned long vminfo);
+inline long hcall_resume_vm(unsigned long vmid);
+inline long hcall_pause_vm(unsigned long vmid);
+inline long hcall_destroy_vm(unsigned long vmid);
+inline long hcall_query_vm_state(unsigned long vmid);
+inline long hcall_set_memmap(unsigned long vmid,
+		unsigned long memmap);
+inline long hcall_set_ioreq_buffer(unsigned long vmid,
+		unsigned long buffer);
 inline long hcall_notify_req_finish(unsigned long vmid,
 		unsigned long vcpu_mask);
-inline long hcall_set_memmap(unsigned long vmid, unsigned long memmap);
-inline long hcall_vm_gpa2hpa(unsigned long vmid, unsigned long gpa2hpa);
-inline long vhm_create_vm(struct vhm_vm *vm, unsigned long ioctl_param);
-inline long vhm_resume_vm(struct vhm_vm *vm);
-inline long vhm_pause_vm(struct vhm_vm *vm);
-inline long vhm_destroy_vm(struct vhm_vm *vm);
-inline long vhm_query_vm_state(struct vhm_vm *vm);
-inline long vhm_assert_irqline(struct vhm_vm *vm, unsigned long ioctl_param);
-inline long vhm_deassert_irqline(struct vhm_vm *vm, unsigned long ioctl_param);
-inline long vhm_pulse_irqline(struct vhm_vm *vm, unsigned long ioctl_param);
-inline long vhm_assign_ptdev(struct vhm_vm *vm, unsigned long ioctl_param);
-inline long vhm_deassign_ptdev(struct vhm_vm *vm, unsigned long ioctl_param);
-inline long vhm_set_ptdev_intr_info(struct vhm_vm *vm,
-		unsigned long ioctl_param);
-inline long vhm_reset_ptdev_intr_info(struct vhm_vm *vm,
-		unsigned long ioctl_param);
-inline long vhm_remap_pci_msix(struct vhm_vm *vm, unsigned long ioctl_param);
+inline long hcall_assert_irqline(unsigned long vmid, unsigned long irq);
+inline long hcall_deassert_irqline(unsigned long vmid, unsigned long irq);
+inline long hcall_pulse_irqline(unsigned long vmid, unsigned long irq);
+inline long hcall_inject_msi(unsigned long vmid, unsigned long msi);
+inline long hcall_assign_ptdev(unsigned long vmid, unsigned long bdf);
+inline long hcall_deassign_ptdev(unsigned long vmid, unsigned long bdf);
+inline long hcall_set_ptdev_intr_info(unsigned long vmid,
+		unsigned long pt_irq);
+inline long hcall_reset_ptdev_intr_info(unsigned long vmid,
+		unsigned long pt_irq);
+inline long hcall_remap_pci_msix(unsigned long vmid, unsigned long msi);
+inline long hcall_vm_gpa2hpa(unsigned long vmid, unsigned long addr);
 
 #endif /* VHM_HYPERCALL_H */

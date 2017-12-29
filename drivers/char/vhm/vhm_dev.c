@@ -92,6 +92,16 @@ static struct device *vhm_device;
 static struct tasklet_struct vhm_io_req_tasklet;
 static atomic_t ioreq_retry = ATOMIC_INIT(0);
 
+/* max num of pass-through devices using msix */
+#define MAX_ENTRY 3
+
+struct table_iomems {
+	/* device's virtual BDF */
+	unsigned short virt_bdf;
+	/* virtual base address of MSI-X table in memory space after ioremap */
+	unsigned long mmap_addr;
+} tables[MAX_ENTRY];
+
 static int vhm_dev_open(struct inode *inodep, struct file *filep)
 {
 	struct vhm_vm *vm;
@@ -153,25 +163,66 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	switch (ioctl_num) {
-	case IC_CREATE_VM:
-		ret = vhm_create_vm(vm, ioctl_param);
-		break;
+	case IC_CREATE_VM: {
+		struct cwp_create_vm created_vm;
 
-	case IC_RESUME_VM:
-		ret = vhm_resume_vm(vm);
-		break;
+		if (copy_from_user(&created_vm, (void *)ioctl_param,
+			sizeof(struct cwp_create_vm)))
+			return -EFAULT;
 
-	case IC_PAUSE_VM:
-		ret = vhm_pause_vm(vm);
-		break;
+		ret = hcall_create_vm(virt_to_phys(&created_vm));
+		if ((ret < 0) ||
+			(created_vm.vmid == CWP_INVALID_VMID)) {
+			pr_err("vhm: failed to create VM from Hypervisor !\n");
+			return -EFAULT;
+		}
 
-	case IC_DESTROY_VM:
-		ret = vhm_destroy_vm(vm);
-		break;
+		if (copy_to_user((void *)ioctl_param, &created_vm,
+			sizeof(struct cwp_create_vm)))
+			return -EFAULT;
 
-	case IC_QUERY_VMSTATE:
-		ret = vhm_query_vm_state(vm);
+		vm->vmid = created_vm.vmid;
+
+		pr_info("vhm: VM %ld created\n", created_vm.vmid);
 		break;
+	}
+
+	case IC_RESUME_VM: {
+		ret = hcall_resume_vm(vm->vmid);
+		if (ret < 0) {
+			pr_err("vhm: failed to start VM %ld!\n", vm->vmid);
+			return -EFAULT;
+		}
+		break;
+	}
+
+	case IC_PAUSE_VM: {
+		ret = hcall_pause_vm(vm->vmid);
+		if (ret < 0) {
+			pr_err("vhm: failed to pause VM %ld!\n", vm->vmid);
+			return -EFAULT;
+		}
+		break;
+	}
+
+	case IC_DESTROY_VM: {
+		ret = hcall_destroy_vm(vm->vmid);
+		if (ret < 0) {
+			pr_err("failed to destroy VM %ld\n", vm->vmid);
+			return -EFAULT;
+		}
+		vm->vmid = CWP_INVALID_VMID;
+		break;
+	}
+
+	case IC_QUERY_VMSTATE: {
+		ret = hcall_query_vm_state(vm->vmid);
+		if (ret < 0) {
+			pr_err("vhm: failed to query VM State%ld!\n", vm->vmid);
+			return -EFAULT;
+		}
+		return ret;
+	}
 
 	case IC_ALLOC_MEMSEG: {
 		struct vm_memseg memseg;
@@ -239,17 +290,43 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_ASSERT_IRQLINE: {
-		ret = vhm_assert_irqline(vm, ioctl_param);
+		struct cwp_irqline irq;
+
+		if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
+			return -EFAULT;
+
+		ret = hcall_assert_irqline(vm->vmid, virt_to_phys(&irq));
+		if (ret < 0) {
+			pr_err("vhm: failed to assert irq!\n");
+			return -EFAULT;
+		}
 		break;
 	}
-
 	case IC_DEASSERT_IRQLINE: {
-		ret = vhm_deassert_irqline(vm, ioctl_param);
+		struct cwp_irqline irq;
+
+		if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
+			return -EFAULT;
+
+		ret = hcall_deassert_irqline(vm->vmid, virt_to_phys(&irq));
+		if (ret < 0) {
+			pr_err("vhm: failed to deassert irq!\n");
+			return -EFAULT;
+		}
 		break;
 	}
-
 	case IC_PULSE_IRQLINE: {
-		ret = vhm_pulse_irqline(vm, ioctl_param);
+		struct cwp_irqline irq;
+
+		if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
+			return -EFAULT;
+
+		ret = hcall_pulse_irqline(vm->vmid,
+					virt_to_phys(&irq));
+		if (ret < 0) {
+			pr_err("vhm: failed to assert irq!\n");
+			return -EFAULT;
+		}
 		break;
 	}
 
@@ -268,27 +345,141 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_ASSIGN_PTDEV: {
-		ret = vhm_assign_ptdev(vm, ioctl_param);
+		uint16_t bdf;
+
+		if (copy_from_user(&bdf,
+				(void *)ioctl_param, sizeof(uint16_t)))
+			return -EFAULT;
+
+		ret = hcall_assign_ptdev(vm->vmid, virt_to_phys(&bdf));
+		if (ret < 0) {
+			pr_err("vhm: failed to assign ptdev!\n");
+			return -EFAULT;
+		}
 		break;
 	}
-
 	case IC_DEASSIGN_PTDEV: {
-		ret = vhm_deassign_ptdev(vm, ioctl_param);
+		uint16_t bdf;
+
+		if (copy_from_user(&bdf,
+				(void *)ioctl_param, sizeof(uint16_t)))
+			return -EFAULT;
+
+		ret = hcall_deassign_ptdev(vm->vmid, virt_to_phys(&bdf));
+		if (ret < 0) {
+			pr_err("vhm: failed to deassign ptdev!\n");
+			return -EFAULT;
+		}
 		break;
 	}
 
 	case IC_SET_PTDEV_INTR_INFO: {
-		ret = vhm_set_ptdev_intr_info(vm, ioctl_param);
+		struct cwp_ptdev_irq pt_irq;
+		int i;
+
+		if (copy_from_user(&pt_irq,
+				(void *)ioctl_param, sizeof(pt_irq)))
+			return -EFAULT;
+
+		ret = hcall_set_ptdev_intr_info(vm->vmid,
+				virt_to_phys(&pt_irq));
+		if (ret < 0) {
+			pr_err("vhm: failed to set intr info for ptdev!\n");
+			return -EFAULT;
+		}
+
+		if (pt_irq.msix.table_paddr) {
+			for (i = 0; i < MAX_ENTRY; i++) {
+				if (tables[i].virt_bdf)
+					continue;
+
+				tables[i].virt_bdf = pt_irq.virt_bdf;
+				tables[i].mmap_addr =
+					ioremap_nocache(pt_irq.msix.table_paddr,
+					pt_irq.msix.table_size);
+				break;
+			}
+		}
+
 		break;
 	}
-
 	case IC_RESET_PTDEV_INTR_INFO: {
-		ret = vhm_reset_ptdev_intr_info(vm, ioctl_param);
+		struct cwp_ptdev_irq pt_irq;
+		int i;
+
+		if (copy_from_user(&pt_irq,
+				(void *)ioctl_param, sizeof(pt_irq)))
+			return -EFAULT;
+
+		ret = hcall_reset_ptdev_intr_info(vm->vmid,
+				virt_to_phys(&pt_irq));
+		if (ret < 0) {
+			pr_err("vhm: failed to reset intr info for ptdev!\n");
+			return -EFAULT;
+		}
+
+		if (pt_irq.msix.table_paddr) {
+			for (i = 0; i < MAX_ENTRY; i++) {
+				if (tables[i].virt_bdf)
+					continue;
+
+				tables[i].virt_bdf = pt_irq.virt_bdf;
+				tables[i].mmap_addr =
+					ioremap_nocache(pt_irq.msix.table_paddr,
+					pt_irq.msix.table_size);
+				break;
+			}
+		}
+
 		break;
 	}
 
 	case IC_VM_PCI_MSIX_REMAP: {
-		ret = vhm_remap_pci_msix(vm, ioctl_param);
+		struct cwp_vm_pci_msix_remap msix_remap;
+
+		if (copy_from_user(&msix_remap,
+			(void *)ioctl_param, sizeof(msix_remap)))
+			return -EFAULT;
+
+		ret = hcall_remap_pci_msix(vm->vmid, virt_to_phys(&msix_remap));
+
+		if (copy_to_user((void *)ioctl_param,
+				&msix_remap, sizeof(msix_remap)))
+			return -EFAULT;
+
+		if (msix_remap.msix) {
+			void __iomem *msix_entry;
+			int i;
+
+			for (i = 0; i < MAX_ENTRY; i++) {
+				if (tables[i].virt_bdf == msix_remap.virt_bdf)
+					break;
+			}
+
+			if (!tables[i].mmap_addr)
+				return -EFAULT;
+
+			msix_entry = tables[i].mmap_addr +
+				msix_remap.msix_entry_index *
+				PCI_MSIX_ENTRY_SIZE;
+
+			/* mask the entry when setup */
+			writel(PCI_MSIX_ENTRY_CTRL_MASKBIT,
+				msix_entry + PCI_MSIX_ENTRY_VECTOR_CTRL);
+
+			/* setup the msi entry */
+			writel((uint32_t)msix_remap.msi_addr,
+				msix_entry + PCI_MSIX_ENTRY_LOWER_ADDR);
+			writel((uint32_t)(msix_remap.msi_addr >> 32),
+				msix_entry + PCI_MSIX_ENTRY_UPPER_ADDR);
+			writel(msix_remap.msi_data,
+				msix_entry + PCI_MSIX_ENTRY_DATA);
+
+			/* unmask the entry */
+			writel(msix_remap.vector_ctl &
+				PCI_MSIX_ENTRY_CTRL_MASKBIT,
+				msix_entry + PCI_MSIX_ENTRY_VECTOR_CTRL);
+		}
 		break;
 	}
 
