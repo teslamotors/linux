@@ -74,6 +74,11 @@
 #define HC_PAUSE_VM                 _HC_ID(HC_ID, HC_ID_VM_BASE + 0x04)
 #define HC_QUERY_VMSTATE            _HC_ID(HC_ID, HC_ID_VM_BASE + 0x05)
 
+/* DM ioreq management */
+#define HC_ID_IOREQ_BASE            0x200UL
+#define HC_SET_IOREQ_BUFFER         _HC_ID(HC_ID, HC_ID_IOREQ_BASE + 0x00)
+#define HC_NOTIFY_REQUEST_FINISH    _HC_ID(HC_ID, HC_ID_IOREQ_BASE + 0x01)
+
 /* Guest memory management */
 #define HC_ID_MEM_BASE              0x300UL
 #define HC_VM_SET_MEMMAP            _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x00)

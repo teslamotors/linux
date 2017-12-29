@@ -78,6 +78,7 @@
 
 #include <linux/vhm/cwp_hv_defs.h>
 #include <linux/vhm/vhm_ioctl_defs.h>
+#include <linux/vhm/cwp_vhm_ioreq.h>
 #include <linux/vhm/cwp_vhm_mm.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 #include <linux/vhm/vhm_hypercall.h>
@@ -88,6 +89,8 @@
 static int    major;
 static struct class *vhm_class;
 static struct device *vhm_device;
+static struct tasklet_struct vhm_io_req_tasklet;
+static atomic_t ioreq_retry = ATOMIC_INIT(0);
 
 static int vhm_dev_open(struct inode *inodep, struct file *filep)
 {
@@ -103,6 +106,9 @@ static int vhm_dev_open(struct inode *inodep, struct file *filep)
 
 	INIT_LIST_HEAD(&vm->memseg_list);
 	mutex_init(&vm->seg_lock);
+
+	INIT_LIST_HEAD(&vm->ioreq_client_list);
+	spin_lock_init(&vm->ioreq_client_lock);
 
 	vm_mutex_lock(&vhm_vm_list_lock);
 	vm->refcnt = 1;
@@ -188,6 +194,50 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 
+	case IC_SET_IOREQ_BUFFER: {
+		/* init ioreq buffer */
+		ret = cwp_ioreq_init(vm, (unsigned long)ioctl_param);
+		if (ret < 0)
+			return ret;
+		break;
+	}
+
+	case IC_CREATE_IOREQ_CLIENT: {
+		int client_id;
+
+		client_id = cwp_ioreq_create_fallback_client(vm->vmid, "cwpdm");
+		if (client_id < 0)
+			return -EFAULT;
+		return client_id;
+	}
+
+	case IC_DESTROY_IOREQ_CLIENT: {
+		int client = ioctl_param;
+
+		cwp_ioreq_destroy_client(client);
+		break;
+	}
+
+	case IC_ATTACH_IOREQ_CLIENT: {
+		int client = ioctl_param;
+
+		return cwp_ioreq_attach_client(client, 0);
+	}
+
+	case IC_NOTIFY_REQUEST_FINISH: {
+		struct cwp_ioreq_notify notify;
+
+		if (copy_from_user(&notify, (void *)ioctl_param,
+					sizeof(notify)))
+			return -EFAULT;
+
+		ret = cwp_ioreq_complete_request(notify.client_id,
+							notify.vcpu_mask);
+		if (ret < 0)
+			return -EFAULT;
+		break;
+	}
+
 	default:
 		pr_warn("Unknown IOCTL 0x%x\n", ioctl_num);
 		ret = 0;
@@ -195,6 +245,31 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	return ret;
+}
+
+static void io_req_tasklet(unsigned long data)
+{
+	struct vhm_vm *vm;
+
+	list_for_each_entry(vm, &vhm_vm_list, list) {
+		if (!vm || !vm->req_buf)
+			break;
+
+		cwp_ioreq_distribute_request(vm);
+	}
+
+	if (atomic_read(&ioreq_retry) > 0) {
+		atomic_dec(&ioreq_retry);
+		tasklet_schedule(&vhm_io_req_tasklet);
+	}
+}
+
+static void vhm_intr_handler(void)
+{
+	if (test_bit(TASKLET_STATE_SCHED, &(vhm_io_req_tasklet.state)))
+		atomic_inc(&ioreq_retry);
+	else
+		tasklet_schedule(&vhm_io_req_tasklet);
 }
 
 static int vhm_dev_release(struct inode *inodep, struct file *filep)
@@ -217,10 +292,13 @@ static const struct file_operations fops = {
 	.mmap = vhm_dev_mmap,
 	.release = vhm_dev_release,
 	.unlocked_ioctl = vhm_dev_ioctl,
+	.poll = vhm_dev_poll,
 };
 
 static int __init vhm_init(void)
 {
+	unsigned long flag;
+
 	pr_info("vhm: initializing\n");
 
 	/* Try to dynamically allocate a major number for the device */
@@ -249,12 +327,22 @@ static int __init vhm_init(void)
 		pr_warn("vhm: failed to create the device\n");
 		return PTR_ERR(vhm_device);
 	}
+	pr_info("register IPI handler\n");
+	tasklet_init(&vhm_io_req_tasklet, io_req_tasklet, 0);
+	if (x86_platform_ipi_callback) {
+		pr_warn("vhm: ipi callback was occupied\n");
+		return -EINVAL;
+	}
+	local_irq_save(flag);
+	x86_platform_ipi_callback = vhm_intr_handler;
+	local_irq_restore(flag);
 
 	pr_info("vhm: Virtio & Hypervisor service module initialized\n");
 	return 0;
 }
 static void __exit vhm_exit(void)
 {
+	tasklet_kill(&vhm_io_req_tasklet);
 	device_destroy(vhm_class, MKDEV(major, 0));
 	class_unregister(vhm_class);
 	class_destroy(vhm_class);

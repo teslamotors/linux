@@ -53,6 +53,16 @@
 #include <linux/vhm/cwp_hv_defs.h>
 #include <linux/vhm/vhm_hypercall.h>
 
+inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer)
+{
+	return cwp_hypercall2(HC_SET_IOREQ_BUFFER, vmid, buffer);
+}
+
+inline long hcall_notify_req_finish(unsigned long vmid, unsigned long vcpu_mask)
+{
+	return cwp_hypercall2(HC_NOTIFY_REQUEST_FINISH,	vmid, vcpu_mask);
+}
+
 inline long hcall_set_memmap(unsigned long vmid, unsigned long memmap)
 {
 	return cwp_hypercall2(HC_VM_SET_MEMMAP, vmid, memmap);

@@ -65,9 +65,14 @@ struct vhm_vm {
 	struct device *dev;
 	struct list_head list;
 	unsigned long vmid;
+	int ioreq_fallback_client;
 	long refcnt;
 	struct mutex seg_lock;
 	struct list_head memseg_list;
+	spinlock_t ioreq_client_lock;
+	struct list_head ioreq_client_list;
+	struct vhm_request_buffer *req_buf;
+	struct page *pg;
 };
 
 struct vhm_vm *find_get_vm(unsigned long vmid);

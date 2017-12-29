@@ -64,6 +64,14 @@
 #define IC_PAUSE_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x04)
 #define IC_QUERY_VMSTATE               _IC_ID(IC_ID, IC_ID_VM_BASE + 0x05)
 
+/* DM ioreq management */
+#define IC_ID_IOREQ_BASE                0x200UL
+#define IC_SET_IOREQ_BUFFER             _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x00)
+#define IC_NOTIFY_REQUEST_FINISH        _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x01)
+#define IC_CREATE_IOREQ_CLIENT          _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x02)
+#define IC_ATTACH_IOREQ_CLIENT          _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x03)
+#define IC_DESTROY_IOREQ_CLIENT         _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x04)
+
 /* Guest memory management */
 #define IC_ID_MEM_BASE                  0x300UL
 #define IC_ALLOC_MEMSEG                 _IC_ID(IC_ID, IC_ID_MEM_BASE + 0x00)

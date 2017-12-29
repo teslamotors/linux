@@ -56,10 +56,127 @@
  * Commmon structures for CWP/VHM/DM
  */
 
+/*
+ * IO request
+ */
+#define VHM_REQUEST_MAX 16
+
+enum request_state {
+	REQ_STATE_SUCCESS = 1,
+	REQ_STATE_PENDING = 0,
+	REQ_STATE_PROCESSING = 2,
+	REQ_STATE_FAILED = -1,
+} __attribute__((aligned(4)));
+
+enum request_type {
+	REQ_MSR,
+	REQ_CPUID,
+	REQ_PORTIO,
+	REQ_MMIO,
+	REQ_PCICFG,
+	REQ_WP,
+	REQ_EXIT,
+	REQ_MAX,
+} __attribute__((aligned(4)));
+
+enum request_direction {
+	REQUEST_READ,
+	REQUEST_WRITE,
+	DIRECTION_MAX,
+} __attribute__((aligned(4)));
+
+struct msr_request {
+	enum request_direction direction;
+	long index;
+	long value;
+} __attribute__((aligned(8)));
+
+struct cpuid_request {
+	long eax_in;
+	long ecx_in;
+	long eax_out;
+	long ebx_out;
+	long ecx_out;
+	long edx_out;
+} __attribute__((aligned(8)));
+
+struct mmio_request {
+	enum request_direction direction;
+	long address;
+	long size;
+	long value;
+} __attribute__((aligned(8)));
+
+struct io_request {
+	enum request_direction direction;
+	long address;
+	long size;
+	int value;
+} __attribute__((aligned(8)));
+
+struct pci_request {
+	enum request_direction direction;
+	long reserve; /*io_request address*/
+	long size;
+	int value;
+	int bus;
+	int dev;
+	int func;
+	int reg;
+} __attribute__((aligned(8)));
+
+/* vhm_request are 256Bytes aligned */
+struct vhm_request {
+	/* offset: 0bytes - 63bytes */
+	enum request_type type;
+	int reserved0[15];
+
+	/* offset: 64bytes-127bytes */
+	union {
+		struct msr_request msr_request;
+		struct cpuid_request cpuid_request;
+		struct io_request pio_request;
+		struct pci_request pci_request;
+		struct mmio_request mmio_request;
+		long reserved1[8];
+	} reqs;
+
+	/* True: valid req which need VHM to process.
+	 * CWP write, VHM read only
+	 **/
+	int valid;
+
+	/* the client which is distributed to handle this request */
+	int client;
+
+	/* 1: VHM had processed and success
+	 *  0: VHM had not yet processed
+	 * -1: VHM failed to process. Invalid request
+	 * VHM write, CWP read only
+	 **/
+	enum request_state processed;
+} __attribute__((aligned(256)));
+
+struct vhm_request_buffer {
+	union {
+		struct vhm_request req_queue[VHM_REQUEST_MAX];
+		char reserved[4096];
+	};
+} __attribute__((aligned(4096)));
+
 /* Common API params */
 struct cwp_create_vm {
 	unsigned long vmid;		/* OUT: HV return vmid to VHM */
 	unsigned long vcpu_num;		/* IN: VM vcpu number */
+} __attribute__((aligned(8)));
+
+struct cwp_set_ioreq_buffer {
+	long req_buf;			/* IN: gpa of per VM request_buffer*/
+} __attribute__((aligned(8)));
+
+struct cwp_ioreq_notify {
+	int client_id;
+	unsigned long vcpu_mask;
 } __attribute__((aligned(8)));
 
 #endif /* CWP_COMMON_H */

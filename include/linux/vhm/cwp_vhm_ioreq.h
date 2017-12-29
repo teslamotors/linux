@@ -1,5 +1,5 @@
 /*
- * virtio and hyperviosr service module (VHM): vm management
+ * virtio and hyperviosr service module (VHM): ioreq multi client feature
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -47,65 +47,40 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * Liang Ding <liang.ding@intel.com>
- * Jason Zeng <jason.zeng@intel.com>
+ * Jason Chen CJ <jason.cj.chen@intel.com>
  *
  */
 
-#include <linux/list.h>
-#include <linux/slab.h>
-#include <linux/init.h>
-#include <asm/processor.h>
-#include <linux/vhm/cwp_hv_defs.h>
-#include <linux/vhm/vhm_ioctl_defs.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
-#include <linux/vhm/cwp_vhm_mm.h>
-#include <linux/vhm/vhm_hypercall.h>
+#ifndef __CWP_VHM_IOREQ_H__
+#define __CWP_VHM_IOREQ_H__
 
-LIST_HEAD(vhm_vm_list);
-DEFINE_MUTEX(vhm_vm_list_lock);
+#include <linux/poll.h>
+#include <linux/vhm/vhm_vm_mngt.h>
 
-struct vhm_vm *find_get_vm(unsigned long vmid)
-{
-	struct vhm_vm *vm;
+typedef	int (*ioreq_handler_t)(int client_id, int req);
 
-	mutex_lock(&vhm_vm_list_lock);
-	list_for_each_entry(vm, &vhm_vm_list, list) {
-		if (vm->vmid == vmid) {
-			vm->refcnt++;
-			mutex_unlock(&vhm_vm_list_lock);
-			return vm;
-		}
-	}
-	mutex_unlock(&vhm_vm_list_lock);
-	return NULL;
-}
+int cwp_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
+	char *name);
+void cwp_ioreq_destroy_client(int client_id);
 
-void put_vm(struct vhm_vm *vm)
-{
-	mutex_lock(&vhm_vm_list_lock);
-	vm->refcnt--;
-	if (vm->refcnt == 0) {
-		list_del(&vm->list);
-		free_guest_mem(vm);
-		cwp_ioreq_free(vm);
-		kfree(vm);
-		pr_info("vhm: freed vm\n");
-	}
-	mutex_unlock(&vhm_vm_list_lock);
-}
+int cwp_ioreq_add_iorange(int client_id, enum request_type type,
+	long start, long end);
+int cwp_ioreq_del_iorange(int client_id, enum request_type type,
+	long start, long end);
 
-void vm_list_add(struct list_head *list)
-{
-	list_add(list, &vhm_vm_list);
-}
+struct vhm_request *cwp_ioreq_get_reqbuf(int client_id);
+int cwp_ioreq_attach_client(int client_id, bool check_kthread_stop);
 
-void vm_mutex_lock(struct mutex *mlock)
-{
-	mutex_lock(mlock);
-}
+int cwp_ioreq_distribute_request(struct vhm_vm *vm);
+int cwp_ioreq_complete_request(int client_id, uint64_t vcpu_mask);
 
-void vm_mutex_unlock(struct mutex *mlock)
-{
-	mutex_unlock(mlock);
-}
+void cwp_ioreq_intercept_bdf(int client_id, int bus, int dev, int func);
+void cwp_ioreq_unintercept_bdf(int client_id);
+
+/* IOReq APIs */
+int cwp_ioreq_init(struct vhm_vm *vm, unsigned long vma);
+void cwp_ioreq_free(struct vhm_vm *vm);
+int cwp_ioreq_create_fallback_client(unsigned long vmid, char *name);
+unsigned int vhm_dev_poll(struct file *filep, poll_table *wait);
+
+#endif

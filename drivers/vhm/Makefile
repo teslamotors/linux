@@ -1,1 +1,1 @@
-obj-y += vhm_mm.o vhm_vm_mngt.o vhm_hypercall.o
+obj-y += vhm_mm.o vhm_ioreq.o vhm_vm_mngt.o vhm_hypercall.o
