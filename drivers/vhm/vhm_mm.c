@@ -362,3 +362,82 @@ int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma)
 	mutex_unlock(&vm->seg_lock);
 	return -EINVAL;
 }
+
+static void *do_map_guest_phys(struct vhm_vm *vm, u64 guest_phys, size_t size)
+{
+	struct guest_memseg *seg;
+
+	mutex_lock(&vm->seg_lock);
+	list_for_each_entry(seg, &vm->memseg_list, list) {
+		if (seg->segid != VM_SYSMEM)
+			continue;
+
+		if (seg->gpa > guest_phys ||
+		    guest_phys >= seg->gpa + seg->len)
+			continue;
+
+		if (guest_phys + size > seg->gpa + seg->len) {
+			mutex_unlock(&vm->seg_lock);
+			return NULL;
+		}
+
+		mutex_unlock(&vm->seg_lock);
+		return phys_to_virt(seg->base + guest_phys);
+	}
+	mutex_unlock(&vm->seg_lock);
+	return NULL;
+}
+
+void *map_guest_phys(unsigned long vmid, u64 guest_phys, size_t size)
+{
+	struct vhm_vm *vm;
+	void *ret;
+
+	vm = find_get_vm(vmid);
+	if (vm == NULL)
+		return NULL;
+
+	ret = do_map_guest_phys(vm, guest_phys, size);
+
+	put_vm(vm);
+
+	return ret;
+}
+EXPORT_SYMBOL(map_guest_phys);
+
+static int do_unmap_guest_phys(struct vhm_vm *vm, u64 guest_phys)
+{
+	struct guest_memseg *seg;
+
+	mutex_lock(&vm->seg_lock);
+	list_for_each_entry(seg, &vm->memseg_list, list) {
+		if (seg->segid != VM_SYSMEM)
+			continue;
+
+		if (seg->gpa <= guest_phys &&
+			guest_phys < seg->gpa + seg->len) {
+			mutex_unlock(&vm->seg_lock);
+			return 0;
+		}
+	}
+	mutex_unlock(&vm->seg_lock);
+
+	return -ESRCH;
+}
+
+int unmap_guest_phys(unsigned long vmid, u64 guest_phys)
+{
+	struct vhm_vm *vm;
+	int ret;
+
+	vm = find_get_vm(vmid);
+	if (vm == NULL) {
+		pr_warn("vm_list corrupted\n");
+		return -ESRCH;
+	}
+
+	ret = do_unmap_guest_phys(vm, guest_phys);
+	put_vm(vm);
+	return ret;
+}
+EXPORT_SYMBOL(unmap_guest_phys);
