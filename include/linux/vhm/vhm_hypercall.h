@@ -139,6 +139,7 @@ static inline long cwp_hypercall4(unsigned long hyp_id, unsigned long param1,
 	return result;
 }
 
+inline long hcall_inject_msi(unsigned long vmid, unsigned long msi);
 inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer);
 inline long hcall_notify_req_finish(unsigned long vmid,
 		unsigned long vcpu_mask);
@@ -148,5 +149,8 @@ inline long vhm_resume_vm(struct vhm_vm *vm);
 inline long vhm_pause_vm(struct vhm_vm *vm);
 inline long vhm_destroy_vm(struct vhm_vm *vm);
 inline long vhm_query_vm_state(struct vhm_vm *vm);
+inline long vhm_assert_irqline(struct vhm_vm *vm, unsigned long ioctl_param);
+inline long vhm_deassert_irqline(struct vhm_vm *vm, unsigned long ioctl_param);
+inline long vhm_pulse_irqline(struct vhm_vm *vm, unsigned long ioctl_param);
 
 #endif /* VHM_HYPERCALL_H */

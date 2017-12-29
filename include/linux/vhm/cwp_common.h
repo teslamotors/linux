@@ -56,6 +56,20 @@
  * Commmon structures for CWP/VHM/DM
  */
 
+enum irq_mode {
+	IRQ_PULSE,
+	IRQ_ASSERT,
+	IRQ_DEASSERT,
+} __attribute__((aligned(4)));
+
+/* ISA type
+ * inject interrut to both PIC and IOAPIC
+ */
+enum interrupt_type {
+	CWP_INTR_TYPE_ISA,
+	CWP_INTR_TYPE_IOAPIC,
+} __attribute__((aligned(4)));
+
 /*
  * IO request
  */
@@ -177,6 +191,24 @@ struct cwp_set_ioreq_buffer {
 struct cwp_ioreq_notify {
 	int client_id;
 	unsigned long vcpu_mask;
+} __attribute__((aligned(8)));
+
+/* For ISA, PIC, IOAPIC etc */
+struct cwp_irqline {
+	enum interrupt_type intr_type;
+	unsigned long pic_irq;        /* IN: for ISA type */
+	unsigned long ioapic_irq;    /* IN: for IOAPIC type, -1 don't inject */
+} __attribute__((aligned(8)));
+
+/* For MSI type inject */
+struct cwp_msi_entry {
+	unsigned long msi_addr;	/* IN: addr[19:12] with dest vcpu id */
+	unsigned long msi_data;	/* IN: data[7:0] with vector */
+} __attribute__((aligned(8)));
+
+/* For NMI inject */
+struct cwp_nmi_entry {
+	unsigned long vcpuid;	/* IN: -1 means vcpu0 */
 } __attribute__((aligned(8)));
 
 #endif /* CWP_COMMON_H */

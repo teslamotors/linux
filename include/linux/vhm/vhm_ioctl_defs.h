@@ -64,6 +64,13 @@
 #define IC_PAUSE_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x04)
 #define IC_QUERY_VMSTATE               _IC_ID(IC_ID, IC_ID_VM_BASE + 0x05)
 
+/* IRQ and Interrupts */
+#define IC_ID_IRQ_BASE                 0x100UL
+#define IC_ASSERT_IRQLINE              _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x00)
+#define IC_DEASSERT_IRQLINE            _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x01)
+#define IC_PULSE_IRQLINE               _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x02)
+#define IC_INJECT_MSI                  _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x03)
+
 /* DM ioreq management */
 #define IC_ID_IOREQ_BASE                0x200UL
 #define IC_SET_IOREQ_BUFFER             _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x00)

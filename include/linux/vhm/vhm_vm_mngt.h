@@ -77,6 +77,8 @@ struct vhm_vm {
 
 struct vhm_vm *find_get_vm(unsigned long vmid);
 void put_vm(struct vhm_vm *vm);
+int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
+	unsigned long msi_data);
 
 void vm_list_add(struct list_head *list);
 void vm_mutex_lock(struct mutex *mlock);

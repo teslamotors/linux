@@ -238,6 +238,35 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 
+	case IC_ASSERT_IRQLINE: {
+		ret = vhm_assert_irqline(vm, ioctl_param);
+		break;
+	}
+
+	case IC_DEASSERT_IRQLINE: {
+		ret = vhm_deassert_irqline(vm, ioctl_param);
+		break;
+	}
+
+	case IC_PULSE_IRQLINE: {
+		ret = vhm_pulse_irqline(vm, ioctl_param);
+		break;
+	}
+
+	case IC_INJECT_MSI: {
+		struct cwp_msi_entry msi;
+
+		if (copy_from_user(&msi, (void *)ioctl_param, sizeof(msi)))
+			return -EFAULT;
+
+		ret = hcall_inject_msi(vm->vmid, virt_to_phys(&msi));
+		if (ret < 0) {
+			pr_err("vhm: failed to inject!\n");
+			return -EFAULT;
+		}
+		break;
+	}
+
 	default:
 		pr_warn("Unknown IOCTL 0x%x\n", ioctl_num);
 		ret = 0;

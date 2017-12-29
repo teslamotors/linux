@@ -53,6 +53,11 @@
 #include <linux/vhm/cwp_hv_defs.h>
 #include <linux/vhm/vhm_hypercall.h>
 
+inline long hcall_inject_msi(unsigned long vmid, unsigned long msi)
+{
+	return cwp_hypercall2(HC_INJECT_MSI, vmid, msi);
+}
+
 inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer)
 {
 	return cwp_hypercall2(HC_SET_IOREQ_BUFFER, vmid, buffer);
@@ -142,6 +147,60 @@ inline long vhm_query_vm_state(struct vhm_vm *vm)
 	ret = cwp_hypercall1(HC_QUERY_VMSTATE, vm->vmid);
 	if (ret < 0) {
 		pr_err("vhm: failed to query VM State%ld!\n", vm->vmid);
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
+inline long vhm_assert_irqline(struct vhm_vm *vm, unsigned long ioctl_param)
+{
+	long ret = 0;
+	struct cwp_irqline irq;
+
+	if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
+		return -EFAULT;
+
+	ret = cwp_hypercall2(HC_ASSERT_IRQLINE, vm->vmid,
+			virt_to_phys(&irq));
+	if (ret < 0) {
+		pr_err("vhm: failed to assert irq!\n");
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
+inline long vhm_deassert_irqline(struct vhm_vm *vm, unsigned long ioctl_param)
+{
+	long ret = 0;
+	struct cwp_irqline irq;
+
+	if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
+		return -EFAULT;
+
+	ret = cwp_hypercall2(HC_DEASSERT_IRQLINE, vm->vmid,
+			virt_to_phys(&irq));
+	if (ret < 0) {
+		pr_err("vhm: failed to deassert irq!\n");
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
+inline long vhm_pulse_irqline(struct vhm_vm *vm, unsigned long ioctl_param)
+{
+	long ret = 0;
+	struct cwp_irqline irq;
+
+	if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
+		return -EFAULT;
+
+	ret = cwp_hypercall2(HC_PULSE_IRQLINE, vm->vmid,
+			virt_to_phys(&irq));
+	if (ret < 0) {
+		pr_err("vhm: failed to assert irq!\n");
 		return -EFAULT;
 	}
 

@@ -95,6 +95,24 @@ void put_vm(struct vhm_vm *vm)
 	mutex_unlock(&vhm_vm_list_lock);
 }
 
+int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
+		unsigned long msi_data)
+{
+	struct cwp_msi_entry msi;
+	int ret;
+
+	/* msi_addr: addr[19:12] with dest vcpu id */
+	/* msi_data: data[7:0] with vector */
+	msi.msi_addr = msi_addr;
+	msi.msi_data = msi_data;
+	ret = hcall_inject_msi(vmid, virt_to_phys(&msi));
+	if (ret < 0) {
+		pr_err("vhm: failed to inject!\n");
+		return -EFAULT;
+	}
+	return 0;
+}
+
 void vm_list_add(struct list_head *list)
 {
 	list_add(list, &vhm_vm_list);
