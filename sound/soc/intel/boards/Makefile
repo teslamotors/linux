@@ -27,6 +27,7 @@ snd-soc-cnl_svfpga-objs := cnl_svfpga.o
 snd-soc-bxt_ivi_ull-objs := bxt_ivi_ull.o
 snd-soc-bxtp_ivi_rse_rt298-objs := bxtp_ivi_rse_rt298.o
 snd-soc-bxtp_ivi_hu_rt298-objs := bxtp_ivi_hu_rt298.o
+snd-soc-bxtp_ivi_m3-objs := bxtp_ivi_m3.o
 
 obj-$(CONFIG_SND_SOC_INTEL_HASWELL_MACH) += snd-soc-sst-haswell.o
 obj-$(CONFIG_SND_SOC_INTEL_BYT_RT5640_MACH) += snd-soc-sst-byt-rt5640-mach.o
@@ -56,3 +57,4 @@ obj-$(CONFIG_SND_SOC_INTEL_CNL_SVFPGA_MACH) += snd-soc-cnl_svfpga.o
 obj-$(CONFIG_SND_SOC_INTEL_BXT_ULL_MACH) += snd-soc-bxt_ivi_ull.o
 obj-$(CONFIG_SND_SOC_INTEL_BXTP_IVI_RSE_MACH) += snd-soc-bxtp_ivi_rse_rt298.o
 obj-$(CONFIG_SND_SOC_INTEL_BXTP_IVI_HU_MACH) += snd-soc-bxtp_ivi_hu_rt298.o
+obj-$(CONFIG_SND_SOC_INTEL_BXTP_IVI_M3_MACH) += snd-soc-bxtp_ivi_m3.o
