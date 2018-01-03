@@ -80,19 +80,76 @@ struct ctx {
 	int vmid;
 };
 
+struct virtio_desc {			/* AKA vring_desc */
+	uint64_t addr;			/* guest physical address */
+	uint32_t len;			/* length of scatter/gather seg */
+	uint16_t flags;			/* desc flags */
+	uint16_t next;			/* next desc if F_NEXT */
+} __attribute__((packed));
+
+struct virtio_used {			/* AKA vring_used_elem */
+	uint32_t idx;			/* head of used descriptor chain */
+	uint32_t len;			/* length written-to */
+} __attribute__((packed));
+
+struct vring_avail {
+	uint16_t flags;			/* vring_avail flags */
+	uint16_t idx;			/* counts to 65535, then cycles */
+	uint16_t ring[];		/* size N, reported in QNUM value */
+} __attribute__((packed));
+
+struct vring_used {
+	uint16_t flags;			/* vring_used flags */
+	uint16_t idx;			/* counts to 65535, then cycles */
+	struct virtio_used ring[];	/* size N */
+} __attribute__((packed));
+
+/* struct used to maintain virtqueue info from userspace VBS */
+struct virtio_vq_info {
+	/* virtqueue info from VBS-U */
+	uint16_t qsize;			/* size of this queue (a power of 2) */
+	uint32_t pfn;			/* PFN of virt queue (not shifted!) */
+	uint16_t msix_idx;		/* MSI-X index/VIRTIO_MSI_NO_VECTOR */
+	uint64_t msix_addr;		/* MSI-X address specified by index */
+	uint32_t msix_data;		/* MSI-X data specified by index */
+
+	/* members created in kernel space VBS */
+	int (*vq_notify)(int);		/* vq-wide notification */
+	struct virtio_dev_info *dev;	/* backpointer to virtio_dev_info */
+	uint16_t num;			/* we're the num'th virtqueue */
+	uint16_t flags;			/* virtqueue flags */
+	uint16_t last_avail;		/* a recent value of vq_avail->va_idx */
+	uint16_t save_used;		/* saved vq_used->vu_idx */
+
+	volatile struct virtio_desc *desc;   /* descriptor array */
+	volatile struct vring_avail *avail;  /* the "avail" ring */
+	volatile struct vring_used *used;    /* the "used" ring */
+};
+
 /* struct used to maintain virtio device info from userspace VBS */
 struct virtio_dev_info {
 	/* dev info from VBS */
 	char name[VBS_NAME_LEN];	/* VBS device name */
 	struct ctx _ctx;		/* device context */
+	int nvq;			/* number of virtqueues */
 	uint32_t negotiated_features;	/* features after guest loads driver */
 	uint64_t io_range_start;	/* IO range start of VBS device */
 	uint64_t io_range_len;		/* IO range len of VBS device */
 	enum IORangeType io_range_type;	/* IO range type, PIO or MMIO */
+
+	/* members created in kernel space VBS */
+	void (*dev_notify)(void *, struct virtio_vq_info *);
+					/* device-wide notification */
+	struct virtio_vq_info *vqs;	/* virtqueue(s) */
+	int curq;			/* current virtqueue index */
 };
 
 /* VBS Runtime Control APIs */
+long virtio_dev_init(struct virtio_dev_info *dev, struct virtio_vq_info *vqs,
+		     int nvq);
 long virtio_dev_ioctl(struct virtio_dev_info *dev, unsigned int ioctl,
+		      void __user *argp);
+long virtio_vqs_ioctl(struct virtio_dev_info *dev, unsigned int ioctl,
 		      void __user *argp);
 
 #endif

@@ -50,47 +50,50 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- *
+ * Chris Torek <torek @ torek net>
  * Hao Li <hao.l.li@intel.com>
- *  - Define data structures shared between VBS userspace and VBS kernel
- *    space.
+ *  Define virtqueue data structures and APIs for VBS framework.
+ *  - VBS-K is a kernel-level virtio framework that can be used for
+ *    virtio backend driver development for CWP hypervisor.
+ *  - VBS-K should be working with VBS-U (Virtio Backend Service in
+ *    User) together, in order to connect with virtio frontend driver.
  */
 
-#ifndef _VBS_COMMON_IF_H_
-#define _VBS_COMMON_IF_H_
+#ifndef _VQ_H_
+#define _VQ_H_
 
-#define VBS_MAX_VQ_CNT		10
-#define VBS_NAME_LEN		32
-#define VIRTIO_MSI_NO_VECTOR	0xFFFF
+#include <linux/uio.h>
+#include <linux/vbs/vbs.h>
 
-struct vbs_vq_info {
-	uint16_t qsize;		/* size of this virtqueue (a power of 2) */
-	uint32_t pfn;		/* PFN of virtqueue (not shifted!) */
-	uint16_t msix_idx;	/* MSI-X index, or VIRTIO_MSI_NO_VECTOR */
-	uint64_t msix_addr;	/* MSI-X address specified by index */
-	uint32_t msix_data;	/* MSI-X data specified by index */
-};
+/* virtqueue alignment */
+#define VRING_ALIGN			4096
+#define roundup2(x, y) (((x)+((y)-1))&(~((y)-1)))
 
-struct vbs_vqs_info {
-	uint32_t nvq;		/* number of virtqueues */
-	struct vbs_vq_info vqs[VBS_MAX_VQ_CNT];
-				/* array of struct vbs_vq_info */
-};
+/* PFN register shift amount */
+#define VRING_PAGE_BITS			12
 
-struct vbs_dev_info {
-	char name[VBS_NAME_LEN];/* VBS name */
-	int vmid;		/* id of VM this device belongs to */
-	int nvq;		/* number of virtqueues */
-	uint32_t negotiated_features;
-				/* features after VIRTIO_CONFIG_S_DRIVER_OK */
-	uint64_t pio_range_start;
-				/* start of PIO range initialized by guest OS */
-	uint64_t pio_range_len;	/* len of PIO range initialized by guest OS */
-};
+/* virtqueue flags */
+#define	VQ_ALLOC			0x01
+#define	VQ_BROKED			0x02
 
-#define VBS_IOCTL	0xAF
+/* get virtqueue size according to virtio specification */
+static inline size_t virtio_vq_ring_size(unsigned int qsz)
+{
+	size_t size;
 
-#define VBS_SET_DEV _IOW(VBS_IOCTL, 0x00, struct vbs_dev_info)
-#define VBS_SET_VQ _IOW(VBS_IOCTL, 0x01, struct vbs_vqs_info)
+	/* constant 3 below = va_flags, va_idx, va_used_event */
+	size = sizeof(struct virtio_desc) * qsz + sizeof(uint16_t) * (3 + qsz);
+	size = roundup2(size, VRING_ALIGN);
+
+	/* constant 3 below = vu_flags, vu_idx, vu_avail_event */
+	size += sizeof(uint16_t) * 3 + sizeof(struct virtio_used) * qsz;
+	size = roundup2(size, VRING_ALIGN);
+
+	return size;
+}
+
+/* virtqueue initialization APIs */
+void virtio_vq_init(struct virtio_vq_info *vq, uint32_t pfn);
+void virtio_vq_reset(struct virtio_vq_info *vq);
 
 #endif

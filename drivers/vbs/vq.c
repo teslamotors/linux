@@ -50,47 +50,76 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- *
+ * Chris Torek <torek @ torek net>
  * Hao Li <hao.l.li@intel.com>
- *  - Define data structures shared between VBS userspace and VBS kernel
- *    space.
+ *  Created Virtqueue APIs for CWP VBS framework:
+ *  - VBS-K is a kernel-level virtio framework that can be used for
+ *    virtio backend driver development for CWP hypervisor.
+ *  - Virtqueue APIs abstract away the details of the internal data
+ *    structures of virtqueue, so that callers could easily access
+ *    the data from guest through virtqueues.
  */
 
-#ifndef _VBS_COMMON_IF_H_
-#define _VBS_COMMON_IF_H_
+#include <linux/module.h>
+#include <linux/vbs/vq.h>
+#include <linux/vbs/vbs.h>
+#include <linux/vhm/cwp_vhm_mm.h>
 
-#define VBS_MAX_VQ_CNT		10
-#define VBS_NAME_LEN		32
-#define VIRTIO_MSI_NO_VECTOR	0xFFFF
+/* helper function for remote memory map */
+void * paddr_guest2host(struct ctx *ctx, uintptr_t gaddr, size_t len)
+{
+	return map_guest_phys(ctx->vmid, gaddr, len);
+}
 
-struct vbs_vq_info {
-	uint16_t qsize;		/* size of this virtqueue (a power of 2) */
-	uint32_t pfn;		/* PFN of virtqueue (not shifted!) */
-	uint16_t msix_idx;	/* MSI-X index, or VIRTIO_MSI_NO_VECTOR */
-	uint64_t msix_addr;	/* MSI-X address specified by index */
-	uint32_t msix_data;	/* MSI-X data specified by index */
-};
+/*
+ * Initialize the currently-selected virtqueue.
+ * The guest just gave us a page frame number, from which we can
+ * calculate the addresses of the queue.
+ */
+void virtio_vq_init(struct virtio_vq_info *vq, uint32_t pfn)
+{
+	uint64_t phys;
+	size_t size;
+	char *base;
+	struct ctx *ctx;
 
-struct vbs_vqs_info {
-	uint32_t nvq;		/* number of virtqueues */
-	struct vbs_vq_info vqs[VBS_MAX_VQ_CNT];
-				/* array of struct vbs_vq_info */
-};
+	ctx = &vq->dev->_ctx;
 
-struct vbs_dev_info {
-	char name[VBS_NAME_LEN];/* VBS name */
-	int vmid;		/* id of VM this device belongs to */
-	int nvq;		/* number of virtqueues */
-	uint32_t negotiated_features;
-				/* features after VIRTIO_CONFIG_S_DRIVER_OK */
-	uint64_t pio_range_start;
-				/* start of PIO range initialized by guest OS */
-	uint64_t pio_range_len;	/* len of PIO range initialized by guest OS */
-};
+	phys = (uint64_t)pfn << VRING_PAGE_BITS;
+	size = virtio_vq_ring_size(vq->qsize);
+	base = paddr_guest2host(ctx, phys, size);
 
-#define VBS_IOCTL	0xAF
+	/* First page(s) are descriptors... */
+	vq->desc = (struct virtio_desc *)base;
+	base += vq->qsize * sizeof(struct virtio_desc);
 
-#define VBS_SET_DEV _IOW(VBS_IOCTL, 0x00, struct vbs_dev_info)
-#define VBS_SET_VQ _IOW(VBS_IOCTL, 0x01, struct vbs_vqs_info)
+	/* ... immediately followed by "avail" ring (entirely uint16_t's) */
+	vq->avail = (struct vring_avail *)base;
+	base += (2 + vq->qsize + 1) * sizeof(uint16_t);
 
-#endif
+	/* Then it's rounded up to the next page... */
+	base = (char *)roundup2((uintptr_t)base, VRING_ALIGN);
+
+	/* ... and the last page(s) are the used ring. */
+	vq->used = (struct vring_used *)base;
+
+	/* Mark queue as allocated, and start at 0 when we use it. */
+	vq->flags = VQ_ALLOC;
+	vq->last_avail = 0;
+	vq->save_used = 0;
+}
+
+/* reset one virtqueue, make it invalid */
+void virtio_vq_reset(struct virtio_vq_info *vq)
+{
+	if (!vq) {
+		pr_info("%s: vq is NULL!\n", __func__);
+		return;
+	}
+
+	vq->pfn = 0;
+	vq->msix_idx = VIRTIO_MSI_NO_VECTOR;
+	vq->flags = 0;
+	vq->last_avail = 0;
+	vq->save_used = 0;
+}

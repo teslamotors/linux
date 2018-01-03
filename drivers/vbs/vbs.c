@@ -65,6 +65,66 @@
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <linux/vbs/vbs.h>
+#include <linux/vbs/vq.h>
+
+static long virtio_vqs_info_set(struct virtio_dev_info *dev,
+				struct vbs_vqs_info __user *i)
+{
+	struct vbs_vqs_info info;
+	struct virtio_vq_info *vq;
+	int j;
+
+	vq = dev->vqs;
+
+	if (copy_from_user(&info, i, sizeof(struct vbs_vqs_info)))
+		return -EFAULT;
+
+	/* setup struct virtio_vq_info based on info in struct vbs_vq_info */
+	if (dev->nvq && dev->nvq != info.nvq) {
+		pr_err("Oops! dev's nvq != vqs's nvq. Not the same device?\n");
+		return -EFAULT;
+	}
+
+	for (j = 0; j < info.nvq; j++) {
+		vq->qsize = info.vqs[j].qsize;
+		vq->pfn = info.vqs[j].pfn;
+		vq->msix_idx = info.vqs[j].msix_idx;
+		vq->msix_addr = info.vqs[j].msix_addr;
+		vq->msix_data = info.vqs[j].msix_data;
+
+		pr_debug("msix id %x, addr %llx, data %x\n", vq->msix_idx,
+			 vq->msix_addr, vq->msix_data);
+
+		virtio_vq_init(vq, vq->pfn);
+
+		vq++;
+	}
+
+	return 0;
+}
+
+/* invoked by VBS-K device's ioctl routine */
+long virtio_vqs_ioctl(struct virtio_dev_info *dev, unsigned int ioctl,
+		      void __user *argp)
+{
+	long ret;
+
+	/*
+	 * Currently we don't conduct ownership checking,
+	 * but assuming caller would have device mutex.
+	 */
+
+	switch (ioctl) {
+	case VBS_SET_VQ:
+		ret = virtio_vqs_info_set(dev, argp);
+		break;
+	default:
+		ret = -ENOIOCTLCMD;
+		break;
+	}
+	return ret;
+}
+EXPORT_SYMBOL_GPL(virtio_vqs_ioctl);
 
 static long virtio_dev_info_set(struct virtio_dev_info *dev,
 				struct vbs_dev_info __user *i)
@@ -77,6 +137,7 @@ static long virtio_dev_info_set(struct virtio_dev_info *dev,
 	/* setup struct virtio_dev_info based on info in vbs_dev_info */
 	strncpy(dev->name, info.name, VBS_NAME_LEN);
 	dev->_ctx.vmid = info.vmid;
+	dev->nvq = info.nvq;
 	dev->negotiated_features = info.negotiated_features;
 	dev->io_range_start = info.pio_range_start;
 	dev->io_range_len = info.pio_range_len;
@@ -85,6 +146,7 @@ static long virtio_dev_info_set(struct virtio_dev_info *dev,
 	return 0;
 }
 
+/* invoked by VBS-K device's ioctl routine */
 long virtio_dev_ioctl(struct virtio_dev_info *dev, unsigned int ioctl,
 		      void __user *argp)
 {
@@ -106,6 +168,19 @@ long virtio_dev_ioctl(struct virtio_dev_info *dev, unsigned int ioctl,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(virtio_dev_ioctl);
+
+/* called in VBS-K device's .open() */
+long virtio_dev_init(struct virtio_dev_info *dev,
+		     struct virtio_vq_info *vqs, int nvq)
+{
+	int i;
+
+	for (i = 0; i < nvq; i++)
+		virtio_vq_reset(&vqs[i]);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(virtio_dev_init);
 
 static int __init vbs_init(void)
 {
