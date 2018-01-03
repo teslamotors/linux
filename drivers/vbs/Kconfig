@@ -17,3 +17,14 @@ config VBS_DEBUG
 	---help---
 	  This is an option for use by developers; most people should
 	  say N here.  This enables CWP VBS debugging.
+
+config VBS_RNG
+	tristate "CWP VBS reference driver: virtio RNG"
+	depends on VBS != n
+	default n
+	---help---
+	  Say M or * here to enable a VBS-K reference driver for CWP
+	  hypervisor, virtio RNG driver, to work with virtio-rng
+	  frontend driver in guest.
+	  The reference driver shows an example on how to use VBS-K
+	  APIs.
