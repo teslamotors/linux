@@ -146,7 +146,11 @@ static void i915_gem_context_free(struct i915_gem_context *ctx)
 
 	list_del(&ctx->link);
 
-	ida_simple_remove(&ctx->i915->contexts.hw_ida, ctx->hw_id);
+	if (intel_vgpu_active(ctx->i915))
+		ida_simple_remove(&ctx->i915->contexts.hw_ida, ctx->hw_id & ~(0x7 << SIZE_CONTEXT_HW_ID));
+	else
+		ida_simple_remove(&ctx->i915->contexts.hw_ida, ctx->hw_id);
+
 	kfree_rcu(ctx, rcu);
 }
 
