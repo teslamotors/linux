@@ -1028,9 +1028,14 @@ static int start_stream_firmware(struct intel_ipu4_isys_video *av,
 	stream_cfg->input_pins[0].dt =
 		intel_ipu4_isys_mbus_code_to_mipi(source_fmt.format.code);
 
-	if (ip->csi2 && !v4l2_ctrl_g_ctrl(ip->csi2->store_csi2_header))
+	/* Force removing CSI-2 headers in CSI mode */
+	if (ip->csi2 && !ip->csi2_be && !ip->csi2_be_soc)
 		stream_cfg->input_pins[0].mipi_store_mode =
 			IPU_FW_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER;
+	else {
+		stream_cfg->input_pins[0].mipi_store_mode =
+			IPU_FW_ISYS_MIPI_STORE_MODE_NORMAL;
+	}
 
 	stream_cfg->src = ip->source;
 	stream_cfg->vc = 0;

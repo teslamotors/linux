@@ -408,21 +408,6 @@ static int csi2_link_validate(struct media_link *link)
 	if (rval)
 		return rval;
 
-	if (!v4l2_ctrl_g_ctrl(csi2->store_csi2_header)) {
-		for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++) {
-			struct media_pad *remote_pad =
-				media_entity_remote_pad(
-				&csi2->asd.pad[CSI2_PAD_SOURCE(i)]);
-
-			if (remote_pad && (remote_pad->entity->type &
-			    MEDIA_ENT_TYPE_MASK) == MEDIA_ENT_T_V4L2_SUBDEV) {
-				dev_err(&csi2->isys->adev->dev,
-					"CSI2 BE requires CSI2 headers.\n");
-				return -EINVAL;
-			}
-		}
-	}
-
 	rval = v4l2_subdev_call(
 		media_entity_to_v4l2_subdev(link->source->entity), pad,
 		get_routing, &routing);
@@ -617,7 +602,7 @@ static const struct intel_ipu4_isys_pixelformat *csi2_try_fmt(
 	struct intel_ipu4_isys_csi2 *csi2 = to_intel_ipu4_isys_csi2(sd);
 
 	return intel_ipu4_isys_video_try_fmt_vid_mplane(av, mpix,
-		v4l2_ctrl_g_ctrl(csi2->store_csi2_header));
+		0 /* store_csi2_header */);
 }
 
 void intel_ipu_isys_csi2_cleanup(struct intel_ipu4_isys_csi2 *csi2)
@@ -639,6 +624,7 @@ static void csi_ctrl_init(struct v4l2_subdev *sd)
 {
 	struct intel_ipu4_isys_csi2 *csi2 = to_intel_ipu4_isys_csi2(sd);
 
+	/* This control is not in use, it stays here only for compatibility. */
 	static const struct v4l2_ctrl_config cfg = {
 		.id = V4L2_CID_INTEL_IPU4_STORE_CSI2_HEADER,
 		.name = "Store CSI-2 Headers",
