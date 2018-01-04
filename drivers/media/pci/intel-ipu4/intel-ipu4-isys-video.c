@@ -1232,12 +1232,18 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 		to_intel_ipu4_isys_pipeline(av->vdev.entity.pipe);
 	struct device *dev = &av->isys->adev->dev;
 	int rval, tout;
+	enum ipu_fw_isys_send_type send_type =
+		IPU_FW_ISYS_SEND_TYPE_STREAM_FLUSH;
 
 	reinit_completion(&ip->stream_stop_completion);
 
+	/* Use STOP command if running in CSI capture mode */
+	if (ip->csi2 && !ip->csi2_be && !ip->csi2_be_soc)
+		send_type = IPU_FW_ISYS_SEND_TYPE_STREAM_STOP;
+
 	rval = av->isys->fwctrl->simple_cmd(av->isys,
 				ip->stream_handle,
-				IPU_FW_ISYS_SEND_TYPE_STREAM_FLUSH);
+				send_type);
 
 	if (rval < 0) {
 		dev_err(dev, "can't stop stream (%d)\n", rval);
