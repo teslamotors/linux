@@ -868,7 +868,6 @@ static void return_buffers(struct intel_ipu4_isys_queue *aq,
 			   enum vb2_buffer_state state)
 {
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
-	int reset_needed = 0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&aq->lock, flags);
@@ -927,16 +926,9 @@ static void return_buffers(struct intel_ipu4_isys_queue *aq,
 #endif
 
 		spin_lock_irqsave(&aq->lock, flags);
-		reset_needed = 1;
 	}
 
 	spin_unlock_irqrestore(&aq->lock, flags);
-
-	if (reset_needed) {
-		mutex_lock(&av->isys->mutex);
-		av->isys->reset_needed = true;
-		mutex_unlock(&av->isys->mutex);
-	}
 }
 
 static int start_streaming(struct vb2_queue *q, unsigned int count)
