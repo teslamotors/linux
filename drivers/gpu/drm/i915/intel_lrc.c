@@ -2062,6 +2062,14 @@ populate_lr_context(struct i915_gem_context *ctx,
 	execlists_init_reg_state(vaddr + LRC_STATE_PN * PAGE_SIZE,
 				 ctx, engine, ring);
 
+	/* write the context's pid and hw_id/cid to the per-context HWS page */
+	if(intel_vgpu_active(engine->i915) && pid_nr(ctx->pid)) {
+		*(u32*)(vaddr + LRC_PPHWSP_PN * PAGE_SIZE + I915_GEM_HWS_PID_ADDR)
+			= pid_nr(ctx->pid) & 0x3fffff;
+		*(u32*)(vaddr + LRC_PPHWSP_PN * PAGE_SIZE + I915_GEM_HWS_CID_ADDR)
+			= ctx->hw_id & 0x3fffff;
+	}
+
 	i915_gem_object_unpin_map(ctx_obj);
 
 	return 0;
