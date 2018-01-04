@@ -75,6 +75,7 @@
 #include <linux/uaccess.h>
 #include <linux/io.h>
 #include <linux/pci.h>
+#include <linux/list.h>
 
 #include <linux/vhm/cwp_hv_defs.h>
 #include <linux/vhm/vhm_ioctl_defs.h>
@@ -92,15 +93,16 @@ static struct device *vhm_device;
 static struct tasklet_struct vhm_io_req_tasklet;
 static atomic_t ioreq_retry = ATOMIC_INIT(0);
 
-/* max num of pass-through devices using msix */
-#define MAX_ENTRY 3
-
 struct table_iomems {
-	/* device's virtual BDF */
-	unsigned short virt_bdf;
+	/* list node for this table_iomems */
+	struct list_head list;
+	/* device's physical BDF */
+	unsigned short phys_bdf;
 	/* virtual base address of MSI-X table in memory space after ioremap */
 	unsigned long mmap_addr;
-} tables[MAX_ENTRY];
+};
+static LIST_HEAD(table_iomems_list);
+static DEFINE_MUTEX(table_iomems_lock);
 
 static int vhm_dev_open(struct inode *inodep, struct file *filep)
 {
@@ -392,7 +394,7 @@ static long vhm_dev_ioctl(struct file *filep,
 
 	case IC_SET_PTDEV_INTR_INFO: {
 		struct cwp_ptdev_irq pt_irq;
-		int i;
+		struct table_iomems *new;
 
 		if (copy_from_user(&pt_irq,
 				(void *)ioctl_param, sizeof(pt_irq)))
@@ -406,23 +408,24 @@ static long vhm_dev_ioctl(struct file *filep,
 		}
 
 		if (pt_irq.msix.table_paddr) {
-			for (i = 0; i < MAX_ENTRY; i++) {
-				if (tables[i].virt_bdf)
-					continue;
-
-				tables[i].virt_bdf = pt_irq.virt_bdf;
-				tables[i].mmap_addr =
-					ioremap_nocache(pt_irq.msix.table_paddr,
+			new = kmalloc(sizeof(struct table_iomems), GFP_KERNEL);
+			if (new == NULL)
+				return -EFAULT;
+			new->phys_bdf = pt_irq.phys_bdf;
+			new->mmap_addr = (unsigned long)
+				ioremap_nocache(pt_irq.msix.table_paddr,
 					pt_irq.msix.table_size);
-				break;
-			}
+
+			mutex_lock(&table_iomems_lock);
+			list_add(&new->list, &table_iomems_list);
+			mutex_unlock(&table_iomems_lock);
 		}
 
 		break;
 	}
 	case IC_RESET_PTDEV_INTR_INFO: {
 		struct cwp_ptdev_irq pt_irq;
-		int i;
+		struct table_iomems *new;
 
 		if (copy_from_user(&pt_irq,
 				(void *)ioctl_param, sizeof(pt_irq)))
@@ -436,16 +439,17 @@ static long vhm_dev_ioctl(struct file *filep,
 		}
 
 		if (pt_irq.msix.table_paddr) {
-			for (i = 0; i < MAX_ENTRY; i++) {
-				if (tables[i].virt_bdf)
-					continue;
-
-				tables[i].virt_bdf = pt_irq.virt_bdf;
-				tables[i].mmap_addr =
-					ioremap_nocache(pt_irq.msix.table_paddr,
+			new = kmalloc(sizeof(struct table_iomems), GFP_KERNEL);
+			if (new == NULL)
+				return -EFAULT;
+			new->phys_bdf = pt_irq.phys_bdf;
+			new->mmap_addr = (unsigned long)
+				ioremap_nocache(pt_irq.msix.table_paddr,
 					pt_irq.msix.table_size);
-				break;
-			}
+
+			mutex_lock(&table_iomems_lock);
+			list_add(&new->list, &table_iomems_list);
+			mutex_unlock(&table_iomems_lock);
 		}
 
 		break;
@@ -466,19 +470,21 @@ static long vhm_dev_ioctl(struct file *filep,
 
 		if (msix_remap.msix) {
 			void __iomem *msix_entry;
-			int i;
+			struct table_iomems *ptr;
 
-			for (i = 0; i < MAX_ENTRY; i++) {
-				if (tables[i].virt_bdf == msix_remap.virt_bdf)
+			mutex_lock(&table_iomems_lock);
+			list_for_each_entry(ptr, &table_iomems_list, list) {
+				if (ptr->phys_bdf == msix_remap.phys_bdf)
 					break;
 			}
+			mutex_unlock(&table_iomems_lock);
 
-			if (!tables[i].mmap_addr)
+			if (!ptr->mmap_addr)
 				return -EFAULT;
 
-			msix_entry = tables[i].mmap_addr +
+			msix_entry = (void __iomem *) (ptr->mmap_addr +
 				msix_remap.msix_entry_index *
-				PCI_MSIX_ENTRY_SIZE;
+				PCI_MSIX_ENTRY_SIZE);
 
 			/* mask the entry when setup */
 			writel(PCI_MSIX_ENTRY_CTRL_MASKBIT,
