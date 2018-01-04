@@ -1910,6 +1910,36 @@ static void describe_ctx_ring(struct seq_file *m, struct intel_ring *ring)
 		   ring->space, ring->head, ring->tail);
 }
 
+bool is_shadow_context(struct i915_gem_context *ctx)
+{
+	if (ctx->name && !strncmp(ctx->name, "Shadow Context", 14))
+		return true;
+
+	return false;
+}
+
+int get_vgt_id(struct i915_gem_context *ctx)
+{
+	int vgt_id;
+
+	vgt_id = 0;
+
+	if (is_shadow_context(ctx))
+		sscanf(ctx->name, "Shadow Context %d", &vgt_id);
+
+	return vgt_id;
+}
+
+int get_pid_shadowed(struct i915_gem_context *ctx,
+		struct intel_engine_cs *engine)
+{
+	int pid, vgt_id;
+
+	sscanf(ctx->name, "Shadow Context %d", &vgt_id);
+	pid = intel_read_status_page(engine, I915_GEM_HWS_PID_INDEX + vgt_id);
+	return pid;
+}
+
 static void describe_ctx_ring_shadowed(struct seq_file *m,
 		struct i915_gem_context *ctx, struct intel_ring *ring,
 		struct intel_engine_cs *engine)
