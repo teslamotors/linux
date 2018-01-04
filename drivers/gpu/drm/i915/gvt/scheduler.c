@@ -249,6 +249,36 @@ out:
 	return ret;
 }
 
+static void gen8_shadow_pid_cid(struct intel_vgpu_workload *workload)
+{
+	int ring_id = workload->ring_id;
+	struct drm_i915_private *dev_priv = workload->vgpu->gvt->dev_priv;
+	struct intel_engine_cs *engine = dev_priv->engine[ring_id];
+	u32 *cs;
+
+	/* Copy the PID and CID from the guest's HWS page to the host's one */
+	cs = intel_ring_begin(workload->req, 16);
+	*cs++ = MI_LOAD_REGISTER_MEM_GEN8 | MI_SRM_LRM_GLOBAL_GTT;
+	*cs++ = i915_mmio_reg_offset(NOPID);
+	*cs++ = (workload->ctx_desc.lrca << GTT_PAGE_SHIFT) + I915_GEM_HWS_PID_ADDR;
+	*cs++ = 0;
+	*cs++ = MI_STORE_REGISTER_MEM_GEN8 | MI_SRM_LRM_GLOBAL_GTT;
+	*cs++ = i915_mmio_reg_offset(NOPID);
+	*cs++ = engine->status_page.ggtt_offset + I915_GEM_HWS_PID_ADDR +
+		(workload->vgpu->id << MI_STORE_DWORD_INDEX_SHIFT);
+	*cs++ = 0;
+	*cs++ = MI_LOAD_REGISTER_MEM_GEN8 | MI_SRM_LRM_GLOBAL_GTT;
+	*cs++ = i915_mmio_reg_offset(NOPID);
+	*cs++ = (workload->ctx_desc.lrca << GTT_PAGE_SHIFT) + I915_GEM_HWS_CID_ADDR;
+	*cs++ = 0;
+	*cs++ = MI_STORE_REGISTER_MEM_GEN8 | MI_SRM_LRM_GLOBAL_GTT;
+	*cs++ = i915_mmio_reg_offset(NOPID);
+	*cs++ = engine->status_page.ggtt_offset + I915_GEM_HWS_CID_ADDR +
+		(workload->vgpu->id << MI_STORE_DWORD_INDEX_SHIFT);
+	*cs++ = 0;
+	intel_ring_advance(workload->req, cs);
+}
+
 static int dispatch_workload(struct intel_vgpu_workload *workload)
 {
 	int ring_id = workload->ring_id;
@@ -272,6 +302,8 @@ static int dispatch_workload(struct intel_vgpu_workload *workload)
 
 	if (ret)
 		goto out;
+
+	gen8_shadow_pid_cid(workload);
 
 	if (workload->prepare) {
 		mutex_unlock(&dev_priv->drm.struct_mutex);
@@ -704,6 +736,10 @@ int intel_vgpu_init_gvt_context(struct intel_vgpu *vgpu)
 			&vgpu->gvt->dev_priv->drm);
 	if (IS_ERR(vgpu->shadow_ctx))
 		return PTR_ERR(vgpu->shadow_ctx);
+
+	if (!vgpu->shadow_ctx->name) {
+		vgpu->shadow_ctx->name = kasprintf(GFP_KERNEL, "Shadow Context %d", vgpu->id);
+	}
 
 	vgpu->shadow_ctx->engine[RCS].initialised = true;
 
