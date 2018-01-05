@@ -56,12 +56,6 @@
  * Commmon structures for CWP/VHM/DM
  */
 
-enum irq_mode {
-	IRQ_PULSE,
-	IRQ_ASSERT,
-	IRQ_DEASSERT,
-} __attribute__((aligned(4)));
-
 /* ISA type
  * inject interrut to both PIC and IOAPIC
  */
@@ -114,14 +108,6 @@ struct msr_request {
 	long value;
 } __attribute__((aligned(8)));
 
-struct cpuid_request {
-	long eax_in;
-	long ecx_in;
-	long eax_out;
-	long ebx_out;
-	long ecx_out;
-	long edx_out;
-} __attribute__((aligned(8)));
 
 struct mmio_request {
 	enum request_direction direction;
@@ -151,13 +137,15 @@ struct pci_request {
 /* vhm_request are 256Bytes aligned */
 struct vhm_request {
 	/* offset: 0bytes - 63bytes */
-	enum request_type type;
-	int reserved0[15];
-
+	union {
+		int exitcode;
+		enum request_type type;
+		unsigned long     rip;
+		int reserved0[16];
+	};
 	/* offset: 64bytes-127bytes */
 	union {
 		struct msr_request msr_request;
-		struct cpuid_request cpuid_request;
 		struct io_request pio_request;
 		struct pci_request pci_request;
 		struct mmio_request mmio_request;
@@ -223,11 +211,6 @@ struct cwp_msi_entry {
 /* For NMI inject */
 struct cwp_nmi_entry {
 	unsigned long vcpuid;	/* IN: -1 means vcpu0 */
-} __attribute__((aligned(8)));
-
-struct vm_gpa2hpa {
-	unsigned long gpa;		/* IN: gpa to translation */
-	unsigned long hpa;		/* OUT: -1 means invalid gpa */
 } __attribute__((aligned(8)));
 
 struct cwp_ptdev_irq {
