@@ -1,0 +1,44 @@
+config SND_SOC_SOF_PCI
+	tristate
+
+config SND_SOC_SOF_ACPI
+	tristate
+
+config SND_SOC_SOF_PLATFORM
+	tristate
+
+
+config SND_SOC_SOF
+	tristate "Sound Open Firmware Support"
+	default m
+	select SND_SOC_TOPOLOGY
+	select SND_SOC_COMPRESS
+	help
+          This adds support for SOF
+          Say Y if you have such a device.
+          If unsure select "N".
+
+config SND_SOC_SOF_NOCODEC
+	tristate "SOF nocodec mode Support"
+	depends on SND_SOC_SOF
+	help
+          This adds support for a dummy/nocodec machine driver fallback
+	  option if no known codec is detected. This is typically only
+	  enabled for developers or devices where the sound card is
+	  controlled externally
+          Say Y if you need this nocodec fallback option
+          If unsure select "N".
+
+config SND_SOC_SOF_FORCE_NOCODEC_MODE
+	tristate "SOF force nocodec Mode"
+	depends on SND_SOC_SOF_NOCODEC
+	help
+          This forces SOF to use dummy/nocodec as machine driver, even
+	  though there is a codec detected on the real platform. This is
+	  typically only enabled for developers for debug purposes, before
+	  codec/machine driver is ready, or to exclude the impact of those
+	  drivers
+          Say Y if you need this force nocodec mode option
+          If unsure select "N".
+
+source "sound/soc/sof/intel/Kconfig"
