@@ -2334,6 +2334,12 @@ static void intel_enable_ddi(struct intel_encoder *intel_encoder,
 
 	if (pipe_config->has_audio)
 		intel_audio_codec_enable(intel_encoder, pipe_config, conn_state);
+
+
+	/* Enable hdcp if it's desired */
+	if (conn_state->content_protection ==
+	    DRM_MODE_CONTENT_PROTECTION_DESIRED)
+		intel_hdcp_enable(to_intel_connector(conn_state->connector));
 }
 
 static void intel_disable_ddi(struct intel_encoder *intel_encoder,
@@ -2342,6 +2348,8 @@ static void intel_disable_ddi(struct intel_encoder *intel_encoder,
 {
 	struct drm_encoder *encoder = &intel_encoder->base;
 	int type = intel_encoder->type;
+
+	intel_hdcp_disable(to_intel_connector(old_conn_state->connector));
 
 	if (old_crtc_state->has_audio)
 		intel_audio_codec_disable(intel_encoder);
