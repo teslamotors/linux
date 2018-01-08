@@ -73,4 +73,9 @@ struct sof_dev_desc {
 	const char *nocodec_tplg_filename;
 };
 
+int sof_nocodec_setup(struct device *dev,
+		      struct snd_sof_pdata *sof_pdata,
+		      struct snd_soc_acpi_mach *mach,
+		      const struct sof_dev_desc *desc);
+
 #endif
