@@ -117,6 +117,11 @@ struct snd_sof_dai *snd_sof_find_dai(struct snd_sof_dev *sdev,
 	return NULL;
 }
 
+static inline unsigned int sof_get_pages(size_t size)
+{
+	return (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+}
+
 struct sof_panic_msg {
 	u32 id;
 	const char *msg;
@@ -378,7 +383,7 @@ int snd_sof_create_page_table(struct snd_sof_dev *sdev,
 {
 	int i, pages;
 
-	pages = snd_sgbuf_aligned_pages(size);
+	pages = sof_get_pages(size);
 
 	dev_dbg(sdev->dev, "generating page table for %p size 0x%zx pages %d\n",
 		dmab->area, size, pages);
@@ -412,6 +417,6 @@ static struct platform_driver sof_driver = {
 module_platform_driver(sof_driver);
 
 MODULE_AUTHOR("Liam Girdwood");
-MODULE_DESCRIPTION("Sound Open Firmware (Reef) Core");
+MODULE_DESCRIPTION("Sound Open Firmware (SOF) Core");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_ALIAS("platform:sof-audio");

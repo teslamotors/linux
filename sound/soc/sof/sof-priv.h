@@ -111,10 +111,10 @@ struct snd_sof_dsp_ops {
 	int (*host_stream_close)(struct snd_sof_dev *sdev,
 				 struct snd_pcm_substream *substream);
 
-	/* host stream prepare */
-	int (*host_stream_prepare)(struct snd_sof_dev *sdev,
-				   struct snd_pcm_substream *substream,
-				   struct snd_pcm_hw_params *params);
+	/* host stream hw params */
+	int (*host_stream_hw_params)(struct snd_sof_dev *sdev,
+				     struct snd_pcm_substream *substream,
+				     struct snd_pcm_hw_params *params);
 
 	/* host stream trigger */
 	int (*host_stream_trigger)(struct snd_sof_dev *sdev,
@@ -128,6 +128,10 @@ struct snd_sof_dsp_ops {
 			   struct snd_sof_mod_hdr *hdr);
 	int (*fw_ready)(struct snd_sof_dev *sdev, u32 msg_id);
 
+	/* host DMA trace initialization */
+	int (*trace_init)(struct snd_sof_dev *sdev, u32 *stream_tag);
+	int (*trace_release)(struct snd_sof_dev *sdev);
+	int (*trace_trigger)(struct snd_sof_dev *sdev, int cmd);
 };
 
 struct snd_sof_pdata;
@@ -136,19 +140,6 @@ struct sof_ops_table {
 	const struct sof_dev_desc *desc;
 	struct snd_sof_dsp_ops *ops;
 	struct platform_device *(*new_data)(struct snd_sof_pdata *pdata);
-};
-
-struct snd_sof_chip_info {
-	int id;
-	int cores_num;
-	int cores_mask;
-	int ipc_req;
-	int ipc_req_mask;
-	int ipc_ack;
-	int ipc_ack_mask;
-	int ipc_ctl;
-
-	irqreturn_t (*irq_thread)(int irq, void *context);
 };
 
 struct snd_sof_dfsentry {
@@ -182,7 +173,7 @@ struct snd_sof_pcm {
 	struct snd_soc_tplg_pcm pcm;
 	struct snd_sof_pcm_stream stream[2];
 	u32 posn_offset[2];
-	struct mutex mutex;	/* TODO: not used ? remove ? */
+	struct mutex mutex;
 	struct list_head list;	/* list in sdev pcm list */
 };
 
@@ -195,7 +186,7 @@ struct snd_sof_control {
 	u32 size;	/* cdata size */
 	enum sof_ipc_ctrl_cmd cmd;
 
-	struct mutex mutex;	/* TODO: not used ? remove ? */
+	struct mutex mutex;
 	struct list_head list;	/* list in sdev control list */
 };
 
@@ -207,7 +198,7 @@ struct snd_sof_widget {
 	int id;
 
 	struct snd_soc_dapm_widget *widget;
-	struct mutex mutex;	/* TODO: not used ? remove ? */
+	struct mutex mutex;
 	struct list_head list;	/* list in sdev widget list */
 
 	void *private;			/* core does not touch this */
@@ -236,70 +227,7 @@ struct snd_sof_ipc_msg {
 	bool complete;
 };
 
-struct snd_sof_hda_rb {
-	__le32 *buf;
-	dma_addr_t addr;
-	unsigned short rp, wp;
-	int cmds[HDA_MAX_CODECS];
-	u32 res[HDA_MAX_CODECS];
-};
-
-struct snd_sof_hda_stream {
-	void __iomem *pphc_addr;
-	void __iomem *pplc_addr; // do we need this ?
-	void __iomem *spib_addr;
-	void __iomem *fifo_addr;
-	void __iomem *drsm_addr;
-	u32 dpib;
-	u32 lpib;
-	int stream_tag;
-	int direction;
-	bool open;
-	bool running;
-	struct snd_dma_buffer bdl;
-	void __iomem *sd_addr;	/* stream descriptor pointer */
-
-	int sd_offset; /* Stream descriptor offset */
-
-	/* CORB/RIRB and position buffers */
-	struct snd_dma_buffer posbuffer;
-	struct snd_dma_buffer ringbuffer;
-
-	__le32 *posbuf;		/* position buffer pointer */
-	unsigned int frags;	/* number for period in the play buffer */
-	unsigned int format_val;	/* format value to be set in the
-					 * controller and the codec
-					 */
-	unsigned int bufsize;	/* size of the play buffer in bytes */
-	unsigned int fifo_size;	/* FIFO size */
-	unsigned char index;		/* stream index */
-	/* PCM Support */
-	/* Assigned substream set in PCM open */
-	struct snd_pcm_substream *substream;
-};
-
-#define SOF_HDA_PLAYBACK_STREAMS	16
-#define SOF_HDA_CAPTURE_STREAMS		16
-#define SOF_HDA_PLAYBACK 0
-#define SOF_HDA_CAPTURE 1
-
-struct snd_sof_hda_dev {
-	struct snd_sof_hda_stream pstream[SOF_HDA_PLAYBACK_STREAMS];
-	struct snd_sof_hda_stream cstream[SOF_HDA_CAPTURE_STREAMS];
-
-	int num_capture;
-	int num_playback;
-
-	/* CORB/RIRB */
-	struct snd_sof_hda_rb corb;
-	struct snd_sof_hda_rb rirb;
-
-	/* CORB/RIRB and position buffers */
-	struct snd_dma_buffer posbuffer;
-	struct snd_dma_buffer ringbuffer;
-
-	int irq;
-};
+struct sof_intel_hda_dev;
 
 /*
  * SOF Device Level.
@@ -324,7 +252,7 @@ struct snd_sof_dev {
 	/* DSP HW differentiation */
 	struct snd_sof_pdata *pdata;
 	const struct snd_sof_dsp_ops *ops;
-	struct snd_sof_hda_dev hda;	/* for HDA based DSP HW */
+	struct sof_intel_hda_dev *hda;	/* for HDA based DSP HW */
 
 	/* IPC */
 	struct snd_sof_ipc *ipc;
@@ -339,6 +267,7 @@ struct snd_sof_dev {
 	void __iomem *bar[SND_SOF_BARS];	/* DSP base address */
 	int mmio_bar;
 	int mailbox_bar;
+	size_t dsp_oops_offset;
 
 	/* debug */
 	struct dentry *debugfs_root;
@@ -485,13 +414,6 @@ int snd_sof_get_status(struct snd_sof_dev *sdev, u32 panic_code,
 /*
  * Platform specific ops.
  */
-
-extern struct snd_sof_dsp_ops snd_sof_byt_ops;
-extern struct snd_sof_dsp_ops snd_sof_cht_ops;
-extern struct snd_sof_dsp_ops snd_sof_hsw_ops;
-extern struct snd_sof_dsp_ops snd_sof_bdw_ops;
-extern struct snd_sof_dsp_ops snd_sof_apl_ops;
-extern struct snd_sof_dsp_ops snd_sof_cnl_ops;
 extern struct snd_compr_ops sof_compressed_ops;
 
 /*
