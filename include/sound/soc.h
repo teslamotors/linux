@@ -1254,6 +1254,7 @@ struct snd_soc_pcm_runtime {
 	/* runtime devices */
 	struct snd_pcm *pcm;
 	struct snd_compr *compr;
+	struct snd_sof_pcm *sof;
 	struct snd_soc_codec *codec;
 	struct snd_soc_platform *platform; /* will be removed */
 	struct snd_soc_dai *codec_dai;
