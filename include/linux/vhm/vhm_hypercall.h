@@ -138,7 +138,7 @@ static inline long cwp_hypercall4(unsigned long hcall_id, unsigned long param1,
 }
 
 inline long hcall_create_vm(unsigned long vminfo);
-inline long hcall_resume_vm(unsigned long vmid);
+inline long hcall_start_vm(unsigned long vmid);
 inline long hcall_pause_vm(unsigned long vmid);
 inline long hcall_destroy_vm(unsigned long vmid);
 inline long hcall_query_vm_state(unsigned long vmid);

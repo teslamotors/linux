@@ -57,9 +57,9 @@ inline long hcall_create_vm(unsigned long vminfo)
 	return cwp_hypercall2(HC_CREATE_VM, 0, vminfo);
 }
 
-inline long hcall_resume_vm(unsigned long vmid)
+inline long hcall_start_vm(unsigned long vmid)
 {
-	return  cwp_hypercall1(HC_RESUME_VM, vmid);
+	return  cwp_hypercall1(HC_START_VM, vmid);
 }
 
 inline long hcall_pause_vm(unsigned long vmid)
@@ -70,11 +70,6 @@ inline long hcall_pause_vm(unsigned long vmid)
 inline long hcall_destroy_vm(unsigned long vmid)
 {
 	return  cwp_hypercall1(HC_DESTROY_VM, vmid);
-}
-
-inline long hcall_query_vm_state(unsigned long vmid)
-{
-	return cwp_hypercall1(HC_QUERY_VMSTATE, vmid);
 }
 
 inline long hcall_set_memmap(unsigned long vmid, unsigned long memmap)

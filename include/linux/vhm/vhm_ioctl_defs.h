@@ -60,10 +60,9 @@
 #define IC_GET_API_VERSION             _IC_ID(IC_ID, IC_ID_VM_BASE + 0x00)
 #define IC_CREATE_VM                   _IC_ID(IC_ID, IC_ID_VM_BASE + 0x01)
 #define IC_DESTROY_VM                  _IC_ID(IC_ID, IC_ID_VM_BASE + 0x02)
-#define IC_RESUME_VM                   _IC_ID(IC_ID, IC_ID_VM_BASE + 0x03)
+#define IC_START_VM                   _IC_ID(IC_ID, IC_ID_VM_BASE + 0x03)
 #define IC_PAUSE_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x04)
-#define IC_QUERY_VMSTATE               _IC_ID(IC_ID, IC_ID_VM_BASE + 0x05)
-#define	IC_CREATE_VCPU                 _IC_ID(IC_ID, IC_ID_VM_BASE + 0x06)
+#define	IC_CREATE_VCPU                 _IC_ID(IC_ID, IC_ID_VM_BASE + 0x05)
 
 /* IRQ and Interrupts */
 #define IC_ID_IRQ_BASE                 0x100UL
