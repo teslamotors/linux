@@ -172,13 +172,13 @@ static int cwpgt_hvm_mmio_emulation(struct intel_vgpu *vgpu,
 {
 	if (req->reqs.mmio_request.direction == REQUEST_READ) {
 		/* MMIO READ */
-		gvt_dbg_core("handle mmio read emulation at address 0x%lx\n",
+		gvt_dbg_core("handle mmio read emulation at address 0x%llx\n",
 			req->reqs.mmio_request.address);
 		if (intel_gvt_ops->emulate_mmio_read(vgpu,
 				req->reqs.mmio_request.address,
 				&req->reqs.mmio_request.value,
 				req->reqs.mmio_request.size)) {
-			gvt_err("failed to read mmio at addr 0x%lx\n",
+			gvt_err("failed to read mmio at addr 0x%llx\n",
 				req->reqs.mmio_request.address);
 			return -EINVAL;
 		}
@@ -188,12 +188,12 @@ static int cwpgt_hvm_mmio_emulation(struct intel_vgpu *vgpu,
 				req->reqs.mmio_request.address,
 				&req->reqs.mmio_request.value,
 				req->reqs.mmio_request.size)) {
-			gvt_err("failed to write mmio at addr 0x%lx\n",
+			gvt_err("failed to write mmio at addr 0x%llx\n",
 				req->reqs.mmio_request.address);
 			return -EINVAL;
 		}
-		gvt_dbg_core("handle mmio write emulation at address 0x%lx, "
-			"value 0x%lx\n",
+		gvt_dbg_core("handle mmio write emulation at address 0x%llx, "
+			"value 0x%llx\n",
 			req->reqs.mmio_request.address, req->reqs.mmio_request.value);
 	}
 
@@ -247,7 +247,7 @@ static int cwpgt_emulation_thread(void *priv)
 				req->processed = REQ_STATE_SUCCESS;
 				/* complete request */
 				if (cwp_ioreq_complete_request(info->client,
-						1 << vcpu))
+						vcpu))
 					gvt_err("failed complete request\n");
 			}
 		}
@@ -669,10 +669,10 @@ static int cwpgt_set_wp_page(unsigned long handle, u64 gfn)
 		gvt_err("failed cwp_ioreq_add_iorange for gfn 0x%llx\n", gfn);
 		return ret;
 	}
-	ret = update_mem_map(info->vm_id, gfn << PAGE_SHIFT,
-				cwp_hpa2gpa(hpa), 0x1000, MMU_MEM_ATTR_WP);
+	ret = update_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
+				cwp_hpa2gpa(hpa), 0x1000, MEM_ATTR_WRITE_PROT);
 	if (ret)
-		gvt_err("failed update_mem_map set for gfn 0x%llx\n", gfn);
+		gvt_err("failed update_mmio_map set for gfn 0x%llx\n", gfn);
 	return ret;
 }
 
@@ -685,10 +685,10 @@ static int cwpgt_unset_wp_page(unsigned long handle, u64 gfn)
 
 	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
 
-	ret = update_mem_map(info->vm_id, gfn << PAGE_SHIFT,
-			cwp_hpa2gpa(hpa), 0x1000, MMU_MEM_ATTR_ALL);
+	ret = update_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
+			cwp_hpa2gpa(hpa), 0x1000, MEM_ATTR_ALL);
 	if (ret) {
-		gvt_err("failed update_mem_map unset for gfn 0x%llx\n", gfn);
+		gvt_err("failed update_mmio_map unset for gfn 0x%llx\n", gfn);
 		return ret;
 	}
 	ret = cwp_ioreq_del_iorange(info->client, REQ_WP, gfn << PAGE_SHIFT,
@@ -705,7 +705,7 @@ static int cwpgt_read_gpa(unsigned long handle, unsigned long gpa,
 	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
 	gvt_dbg_core("read gpa 0x%lx with len 0x%lx\n", gpa, len);
 
-	va = sos_map_uos_phys(info->vm_id, gpa, len);
+	va = map_guest_phys(info->vm_id, gpa, len);
 	if (!va) {
 		gvt_err("GVT: can not read gpa = 0x%lx!!!\n", gpa);
 		return -EFAULT;
@@ -738,7 +738,7 @@ static int cwpgt_write_gpa(unsigned long handle, unsigned long gpa,
 	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
 	gvt_dbg_core("write gpa 0x%lx with len 0x%lx\n", gpa, len);
 
-	va = sos_map_uos_phys(info->vm_id, gpa, len);
+	va = map_guest_phys(info->vm_id, gpa, len);
 	if (!va) {
 		gvt_err("GVT: can not write gpa = 0x%lx!!!\n", gpa);
 		return -EFAULT;
@@ -785,11 +785,11 @@ static int cwpgt_map_gfn_to_mfn(unsigned long handle, unsigned long gfn,
 	if (map)
 		ret = set_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
 					mfn << PAGE_SHIFT, nr << PAGE_SHIFT,
-					MMU_MEM_ATTR_ALL);
+					MEM_ATTR_ALL);
 	else
 		ret = unset_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
 					mfn << PAGE_SHIFT, nr << PAGE_SHIFT,
-					MMU_MEM_ATTR_ALL);
+					MEM_ATTR_ALL);
 	if (ret)
 		gvt_err("failed map/unmap gfn 0x%lx to mfn 0x%lx with %u pages,"
 			" map %d\n", gfn, mfn, nr, map);
@@ -848,12 +848,12 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 			gvt_err("failed cwp_ioreq_add_iorange for pfn 0x%lx\n", pfn);
 			return rc;
 		}
-		rc = update_mem_map(info->vm_id, pfn << PAGE_SHIFT,
+		rc = update_mmio_map(info->vm_id, pfn << PAGE_SHIFT,
 					mfn << PAGE_SHIFT,
 					mmio_size_fn << PAGE_SHIFT,
-					MMU_MEM_ATTR_WP);
+					MEM_ATTR_WRITE_PROT);
 		if (rc)
-			gvt_err("failed update_mem_map set for pfn 0x%lx\n", pfn);
+			gvt_err("failed update_mmio_map set for pfn 0x%lx\n", pfn);
 
 		/* scratch reg access is trapped like mmio access, 1 page */
 		rc = cwpgt_map_gfn_to_mfn(handle, pfn + (VGT_PVINFO_PAGE >> PAGE_SHIFT),
@@ -873,13 +873,13 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 		}
 
 		/* shared page is not trapped, directly pass through */
-		//todo: MMU_MEM_ATTR_ALL_WB or MMU_MEM_ATTR_ALL?
-		rc = update_mem_map(info->vm_id,
+		//todo: MEM_ATTR_ALL_WB or MEM_ATTR_ALL?
+		rc = update_mmio_map(info->vm_id,
 				(pfn + mmio_size_fn) << PAGE_SHIFT,
 				shared_mfn << PAGE_SHIFT,
-				0x1000, MMU_MEM_ATTR_ALL);
+				0x1000, MEM_ATTR_ALL);
 		if (rc)
-			gvt_err("failed update_mem_map set for gfn 0x%lx\n",
+			gvt_err("failed update_mmio_map set for gfn 0x%lx\n",
 				pfn + mmio_size_fn);
 	} else {
 		mfn = cwpgt_virt_to_mfn(info->vgpu->mmio.vreg);
