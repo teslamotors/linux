@@ -37,10 +37,10 @@
 #define _GVT_SCHEDULER_H_
 
 struct intel_gvt_workload_scheduler {
-	struct intel_vgpu *current_vgpu;
-	struct intel_vgpu *next_vgpu;
+	struct intel_vgpu *current_vgpu[I915_NUM_ENGINES];
+	struct intel_vgpu *next_vgpu[I915_NUM_ENGINES];
 	struct intel_vgpu_workload *current_workload[I915_NUM_ENGINES];
-	bool need_reschedule;
+	bool need_reschedule[I915_NUM_ENGINES];
 
 	spinlock_t mmio_context_lock;
 	/* can be null when owner is host */

@@ -153,7 +153,7 @@ struct intel_vgpu {
 	bool pv_notified;
 	bool failsafe;
 	unsigned int resetting_eng;
-	void *sched_data;
+	void *sched_data[I915_NUM_ENGINES];
 	struct vgpu_sched_ctl sched_ctl;
 
 	struct intel_vgpu_fence fence;

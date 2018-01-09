@@ -507,7 +507,7 @@ void intel_gvt_reset_vgpu_locked(struct intel_vgpu *vgpu, bool dmlr,
 	 * The current_vgpu will set to NULL after stopping the
 	 * scheduler when the reset is triggered by current vgpu.
 	 */
-	if (scheduler->current_vgpu == NULL) {
+	if (scheduler->current_vgpu[0] == NULL) {
 		mutex_unlock(&gvt->lock);
 		mutex_unlock(&vgpu->gvt->sched_lock);
 		intel_gvt_wait_vgpu_idle(vgpu);
