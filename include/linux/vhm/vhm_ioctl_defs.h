@@ -129,4 +129,31 @@ struct vm_memmap {
 	};
 };
 
+struct ic_ptdev_irq {
+#define IRQ_INTX 0
+#define IRQ_MSI 1
+#define IRQ_MSIX 2
+	uint32_t type;
+	uint16_t virt_bdf;	/* IN: Device virtual BDF# */
+	uint16_t phys_bdf;	/* IN: Device physical BDF# */
+	union {
+		struct {
+			uint32_t virt_pin;	/* IN: virtual IOAPIC pin */
+			uint32_t phys_pin;	/* IN: physical IOAPIC pin */
+			uint32_t pic_pin;	/* IN: pin from PIC? */
+		} intx;
+		struct {
+			/* IN: vector count of MSI/MSIX,
+                         * Keep this filed on top of msix */
+			uint32_t vector_cnt;
+
+			/* IN: size of MSI-X table (round up to 4K) */
+			uint32_t table_size;
+
+			/* IN: physical address of MSI-X table */
+			uint64_t table_paddr;
+		} msix;
+	};
+};
+
 #endif /* VHM_IOCTL_DEFS_H */

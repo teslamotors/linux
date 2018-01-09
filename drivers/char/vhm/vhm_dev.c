@@ -393,28 +393,31 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_SET_PTDEV_INTR_INFO: {
-		struct cwp_ptdev_irq pt_irq;
+		struct ic_ptdev_irq ic_pt_irq;
+		struct hc_ptdev_irq hc_pt_irq;
 		struct table_iomems *new;
 
-		if (copy_from_user(&pt_irq,
-				(void *)ioctl_param, sizeof(pt_irq)))
+		if (copy_from_user(&ic_pt_irq,
+				(void *)ioctl_param, sizeof(ic_pt_irq)))
 			return -EFAULT;
 
+		memcpy(&hc_pt_irq, &ic_pt_irq, sizeof(hc_pt_irq));
+
 		ret = hcall_set_ptdev_intr_info(vm->vmid,
-				virt_to_phys(&pt_irq));
+				virt_to_phys(&hc_pt_irq));
 		if (ret < 0) {
 			pr_err("vhm: failed to set intr info for ptdev!\n");
 			return -EFAULT;
 		}
 
-		if (pt_irq.msix.table_paddr) {
+		if (ic_pt_irq.msix.table_paddr) {
 			new = kmalloc(sizeof(struct table_iomems), GFP_KERNEL);
 			if (new == NULL)
 				return -EFAULT;
-			new->phys_bdf = pt_irq.phys_bdf;
+			new->phys_bdf = ic_pt_irq.phys_bdf;
 			new->mmap_addr = (unsigned long)
-				ioremap_nocache(pt_irq.msix.table_paddr,
-					pt_irq.msix.table_size);
+				ioremap_nocache(ic_pt_irq.msix.table_paddr,
+					ic_pt_irq.msix.table_size);
 
 			mutex_lock(&table_iomems_lock);
 			list_add(&new->list, &table_iomems_list);
@@ -424,28 +427,31 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 	case IC_RESET_PTDEV_INTR_INFO: {
-		struct cwp_ptdev_irq pt_irq;
+		struct ic_ptdev_irq ic_pt_irq;
+		struct hc_ptdev_irq hc_pt_irq;
 		struct table_iomems *new;
 
-		if (copy_from_user(&pt_irq,
-				(void *)ioctl_param, sizeof(pt_irq)))
+		if (copy_from_user(&ic_pt_irq,
+				(void *)ioctl_param, sizeof(ic_pt_irq)))
 			return -EFAULT;
 
+		memcpy(&hc_pt_irq, &ic_pt_irq, sizeof(hc_pt_irq));
+
 		ret = hcall_reset_ptdev_intr_info(vm->vmid,
-				virt_to_phys(&pt_irq));
+				virt_to_phys(&hc_pt_irq));
 		if (ret < 0) {
 			pr_err("vhm: failed to reset intr info for ptdev!\n");
 			return -EFAULT;
 		}
 
-		if (pt_irq.msix.table_paddr) {
+		if (ic_pt_irq.msix.table_paddr) {
 			new = kmalloc(sizeof(struct table_iomems), GFP_KERNEL);
 			if (new == NULL)
 				return -EFAULT;
-			new->phys_bdf = pt_irq.phys_bdf;
+			new->phys_bdf = ic_pt_irq.phys_bdf;
 			new->mmap_addr = (unsigned long)
-				ioremap_nocache(pt_irq.msix.table_paddr,
-					pt_irq.msix.table_size);
+				ioremap_nocache(ic_pt_irq.msix.table_paddr,
+					ic_pt_irq.msix.table_size);
 
 			mutex_lock(&table_iomems_lock);
 			list_add(&new->list, &table_iomems_list);
