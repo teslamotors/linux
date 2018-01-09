@@ -57,19 +57,6 @@
 #include <linux/vhm/vhm_ioctl_defs.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 
-#define	MMU_MEM_ATTR_READ	0x00000001
-#define	MMU_MEM_ATTR_WRITE	0x00000002
-#define	MMU_MEM_ATTR_EXECUTE	0x00000004
-#define MMU_MEM_ATTR_WB_CACHE   0x00000040
-#define MMU_MEM_ATTR_WT_CACHE   0x00000080
-#define MMU_MEM_ATTR_UNCACHED   0x00000100
-#define MMU_MEM_ATTR_WC         0x00000200
-
-#define MMU_MEM_ATTR_ALL	0x00000007
-#define MMU_MEM_ATTR_WP		0x00000005
-#define MMU_MEM_ATTR_ALL_WB	0x00000047
-#define MMU_MEM_ATTR_ALL_WC	0x00000207
-
 /* 1:1 mapping for service OS */
 static inline unsigned long  cwp_hpa2gpa(unsigned long hpa)
 {
@@ -79,11 +66,11 @@ static inline unsigned long  cwp_hpa2gpa(unsigned long hpa)
 void *map_guest_phys(unsigned long vmid, u64 uos_phys, size_t size);
 int unmap_guest_phys(unsigned long vmid, u64 uos_phys);
 int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, int prot);
+	unsigned long host_gpa, unsigned long len, unsigned int prot);
 int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, int prot);
-int update_mem_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, int prot);
+	unsigned long host_gpa, unsigned long len, unsigned int prot);
+int update_mmio_map(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len, unsigned int prot);
 
 int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma);
 

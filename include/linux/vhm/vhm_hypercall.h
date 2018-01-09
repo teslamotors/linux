@@ -146,8 +146,7 @@ inline long hcall_set_memmap(unsigned long vmid,
 		unsigned long memmap);
 inline long hcall_set_ioreq_buffer(unsigned long vmid,
 		unsigned long buffer);
-inline long hcall_notify_req_finish(unsigned long vmid,
-		unsigned long vcpu_mask);
+inline long hcall_notify_req_finish(unsigned long vmid, unsigned long vcpu);
 inline long hcall_assert_irqline(unsigned long vmid, unsigned long irq);
 inline long hcall_deassert_irqline(unsigned long vmid, unsigned long irq);
 inline long hcall_pulse_irqline(unsigned long vmid, unsigned long irq);

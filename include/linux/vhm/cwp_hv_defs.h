@@ -1,5 +1,5 @@
 /*
- * virtio and hyperviosr service module (VHM): hypercall header
+ * hypercall definition
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -53,12 +53,12 @@
 #define CWP_HV_DEFS_H
 
 /*
- * Commmon structures for CWP/VHM/DM
+ * Common structures for CWP/VHM/DM
  */
 #include "cwp_common.h"
 
 /*
- * Commmon structures for HV/VHM
+ * Common structures for HV/VHM
  */
 
 #define _HC_ID(x, y) (((x)<<24)|(y))
@@ -101,35 +101,84 @@
 #define HC_SET_PTDEV_INTR_INFO      _HC_ID(HC_ID, HC_ID_PCI_BASE + 0x03)
 #define HC_RESET_PTDEV_INTR_INFO    _HC_ID(HC_ID, HC_ID_PCI_BASE + 0x04)
 
+/* TRACE */
+#define HC_ID_TRACE_BASE            0x600UL
+#define HC_CWP_SBUF_SETUP           _HC_ID(HC_ID, HC_ID_TRACE_BASE + 0x00)
+
 #define CWP_DOM0_VMID (0UL)
 #define CWP_INVALID_VMID (-1UL)
 #define CWP_INVALID_HPA (-1UL)
 
-enum vm_memmap_type {
-	MAP_MEM = 0,
-	MAP_MMIO,
-	MAP_UNMAP,
-	MAP_UPDATE,
-};
+/* Generic memory attributes */
+#define	MEM_ATTR_READ                   0x00000001
+#define	MEM_ATTR_WRITE                  0x00000002
+#define	MEM_ATTR_EXECUTE                0x00000004
+#define	MEM_ATTR_USER                   0x00000008
+#define	MEM_ATTR_WB_CACHE               0x00000040
+#define	MEM_ATTR_WT_CACHE               0x00000080
+#define	MEM_ATTR_UNCACHED               0x00000100
+#define	MEM_ATTR_WC                     0x00000200
+#define	MEM_ATTR_WP                     0x00000400
+
+#define	MEM_ATTR_ALL			0x00000007
+#define	MEM_ATTR_WRITE_PROT		0x00000005
+#define MEM_ATTR_ALL_WB			0x00000047
+#define MEM_ATTR_ALL_WC			0x00000207
 
 struct vm_set_memmap {
-	enum vm_memmap_type type;
+#define MAP_MEM		0
+#define MAP_MMIO	1
+#define MAP_UNMAP	2
+	uint32_t type;
+	uint32_t reserved;
+
 	/* IN: beginning guest GPA to map */
-	unsigned long foreign_gpa;
+	uint64_t remote_gpa;
 
 	/* IN: VM0's GPA which foreign gpa will be mapped to */
-	unsigned long hvm_gpa;
+	uint64_t vm0_gpa;
 
 	/* IN: length of the range */
-	unsigned long length;
+	uint64_t length;
 
-	/* IN: not used right now */
-	int prot;
+	/* IN: mem attr */
+	uint32_t prot;
+} __attribute__((aligned(8)));
+
+struct sbuf_setup_param {
+	uint32_t pcpu_id;
+	uint32_t sbuf_id;
+	uint64_t gpa;
 } __attribute__((aligned(8)));
 
 struct vm_gpa2hpa {
-	unsigned long gpa;		/* IN: gpa to translation */
-	unsigned long hpa;		/* OUT: -1 means invalid gpa */
+	uint64_t gpa;		/* IN: gpa to translation */
+	uint64_t hpa;		/* OUT: -1 means invalid gpa */
+} __attribute__((aligned(8)));
+
+struct hc_ptdev_irq {
+#define IRQ_INTX 0
+#define IRQ_MSI 1
+#define IRQ_MSIX 2
+	uint32_t type;
+	uint16_t virt_bdf;	/* IN: Device virtual BDF# */
+	uint16_t phys_bdf;	/* IN: Device physical BDF# */
+	union {
+		struct {
+			uint32_t virt_pin;	/* IN: virtual IOAPIC pin */
+			uint32_t phys_pin;	/* IN: physical IOAPIC pin */
+			uint32_t pic_pin;	/* IN: pin from PIC? */
+		} intx;
+		struct {
+			/* IN: vector count of MSI/MSIX */
+			uint32_t vector_cnt;
+		} msix;
+	};
+} __attribute__((aligned(8)));
+
+struct hc_api_version {
+	uint32_t major_version;
+	uint32_t minor_version;
 } __attribute__((aligned(8)));
 
 #endif /* CWP_HV_DEFS_H */

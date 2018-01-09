@@ -156,4 +156,9 @@ struct ic_ptdev_irq {
 	};
 };
 
+struct ioreq_notify {
+       int32_t client_id;
+       uint32_t vcpu;
+};
+
 #endif /* VHM_IOCTL_DEFS_H */

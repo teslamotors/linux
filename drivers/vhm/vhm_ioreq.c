@@ -67,7 +67,7 @@
 
 struct ioreq_range {
 	struct list_head list;
-	enum request_type type;
+	uint32_t type;
 	long start;
 	long end;
 };
@@ -130,7 +130,7 @@ static DECLARE_BITMAP(client_bitmap, MAX_CLIENT);
 
 static void cwp_ioreq_notify_client(struct ioreq_client *client);
 
-static inline bool is_range_type(enum request_type type)
+static inline bool is_range_type(uint32_t type)
 {
 	return (type == REQ_MMIO || type == REQ_PORTIO || type == REQ_WP);
 }
@@ -335,7 +335,7 @@ static void __attribute__((unused)) dump_iorange(struct ioreq_client *client)
  * NOTE: here just add iorange entry directly, no check for the overlap..
  * please client take care of it
  */
-int cwp_ioreq_add_iorange(int client_id, enum request_type type,
+int cwp_ioreq_add_iorange(int client_id, uint32_t type,
 	long start, long end)
 {
 	struct ioreq_client *client;
@@ -375,7 +375,7 @@ int cwp_ioreq_add_iorange(int client_id, enum request_type type,
 	return 0;
 }
 
-int cwp_ioreq_del_iorange(int client_id, enum request_type type,
+int cwp_ioreq_del_iorange(int client_id, uint32_t type,
 	long start, long end)
 {
 	struct ioreq_client *client;
@@ -617,13 +617,6 @@ static bool req_in_range(struct ioreq_range *range, struct vhm_request *req)
 				ret = true;
 			break;
 		}
-		case REQ_MSR: /*TODO: add bitmap for MSR range */
-		case REQ_CPUID:
-		case REQ_EXIT:
-		{
-			ret = true;
-			break;
-		}
 
 		default:
 			ret = false;
@@ -707,7 +700,7 @@ static int handle_cf8cfc(struct vhm_vm *vm, struct vhm_request *req, int vcpu)
 
 	if (req_handled) {
 		req->processed = REQ_STATE_SUCCESS;
-		if (hcall_notify_req_finish(vm->vmid,	1 << vcpu) < 0) {
+		if (hcall_notify_req_finish(vm->vmid, vcpu) < 0) {
 			pr_err("vhm-ioreq: failed to "
 				"notify request finished !\n");
 			return -EFAULT;
@@ -815,7 +808,7 @@ int cwp_ioreq_distribute_request(struct vhm_vm *vm)
 	return 0;
 }
 
-int cwp_ioreq_complete_request(int client_id, uint64_t vcpu_mask)
+int cwp_ioreq_complete_request(int client_id, uint64_t vcpu)
 {
 	struct ioreq_client *client;
 	int ret;
@@ -830,9 +823,8 @@ int cwp_ioreq_complete_request(int client_id, uint64_t vcpu_mask)
 		return -EINVAL;
 	}
 
-	atomic_sub(bitmap_weight((unsigned long *)&vcpu_mask,
-				VHM_REQUEST_MAX), &client->req);
-	ret = hcall_notify_req_finish(client->vmid, vcpu_mask);
+	atomic_dec(&client->req);
+	ret = hcall_notify_req_finish(client->vmid, vcpu);
 	if (ret < 0) {
 		pr_err("vhm-ioreq: failed to notify request finished !\n");
 		return -EFAULT;
@@ -887,7 +879,7 @@ int cwp_ioreq_init(struct vhm_vm *vm, unsigned long vma)
 	vm->req_buf = page_address(page);
 	vm->pg = page;
 
-	set_buffer.req_buf = (long) page_to_phys(page);
+	set_buffer.req_buf = page_to_phys(page);
 
 	ret = hcall_set_ioreq_buffer(vm->vmid, virt_to_phys(&set_buffer));
 	if (ret < 0) {

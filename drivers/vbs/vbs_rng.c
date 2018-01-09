@@ -370,8 +370,7 @@ static int handle_kick(int client_id, int req_cnt)
 				 req->reqs.pio_request.value);
 			req->processed = REQ_STATE_SUCCESS;
 			req->client = 0;
-			cwp_ioreq_complete_request(client->vhm_client_id,
-						   1 << i);
+			cwp_ioreq_complete_request(client->vhm_client_id, i);
 		}
 	}
 

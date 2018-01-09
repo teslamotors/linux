@@ -63,16 +63,16 @@ int cwp_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
 	char *name);
 void cwp_ioreq_destroy_client(int client_id);
 
-int cwp_ioreq_add_iorange(int client_id, enum request_type type,
+int cwp_ioreq_add_iorange(int client_id, uint32_t type,
 	long start, long end);
-int cwp_ioreq_del_iorange(int client_id, enum request_type type,
+int cwp_ioreq_del_iorange(int client_id, uint32_t type,
 	long start, long end);
 
 struct vhm_request *cwp_ioreq_get_reqbuf(int client_id);
 int cwp_ioreq_attach_client(int client_id, bool check_kthread_stop);
 
 int cwp_ioreq_distribute_request(struct vhm_vm *vm);
-int cwp_ioreq_complete_request(int client_id, uint64_t vcpu_mask);
+int cwp_ioreq_complete_request(int client_id, uint64_t vcpu);
 
 void cwp_ioreq_intercept_bdf(int client_id, int bus, int dev, int func);
 void cwp_ioreq_unintercept_bdf(int client_id);

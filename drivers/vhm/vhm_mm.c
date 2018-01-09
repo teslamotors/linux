@@ -152,13 +152,14 @@ int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
 }
 
 static int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, int prot, int type)
+	unsigned long host_gpa, unsigned long len,
+	unsigned int prot, unsigned int type)
 {
 	struct vm_set_memmap set_memmap;
 
 	set_memmap.type = type;
-	set_memmap.foreign_gpa = guest_gpa;
-	set_memmap.hvm_gpa = host_gpa;
+	set_memmap.remote_gpa = guest_gpa;
+	set_memmap.vm0_gpa = host_gpa;
 	set_memmap.length = len;
 	set_memmap.prot = prot;
 
@@ -177,24 +178,24 @@ static int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
 }
 
 int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, int prot)
+	unsigned long host_gpa, unsigned long len, unsigned int prot)
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
 		prot, MAP_MMIO);
 }
 
 int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, int prot)
+	unsigned long host_gpa, unsigned long len, unsigned int prot)
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
 		prot, MAP_UNMAP);
 }
 
-int update_mem_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, int prot)
+int update_mmio_map(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len, unsigned int prot)
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
-		prot, MAP_UPDATE);
+		prot, MAP_MMIO);
 }
 
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
@@ -217,18 +218,18 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 		}
 		seg->prot = memmap->mem.prot;
 		set_memmap.type = MAP_MEM;
-		set_memmap.foreign_gpa = seg->gpa;
-		set_memmap.hvm_gpa = seg->base;
+		set_memmap.remote_gpa = seg->gpa;
+		set_memmap.vm0_gpa = seg->base;
 		set_memmap.length = seg->len;
 		set_memmap.prot = seg->prot;
-		set_memmap.prot |= MMU_MEM_ATTR_WB_CACHE;
+		set_memmap.prot |= MEM_ATTR_WB_CACHE;
 	} else {
 		set_memmap.type = MAP_MMIO;
-		set_memmap.foreign_gpa = memmap->mmio.gpa;
-		set_memmap.hvm_gpa = memmap->mmio.hpa;
+		set_memmap.remote_gpa = memmap->mmio.gpa;
+		set_memmap.vm0_gpa = memmap->mmio.hpa;
 		set_memmap.length = memmap->mmio.len;
 		set_memmap.prot = memmap->mmio.prot;
-		set_memmap.prot |= MMU_MEM_ATTR_UNCACHED;
+		set_memmap.prot |= MEM_ATTR_UNCACHED;
 	}
 
 	/* hypercall to notify hv the guest EPT setting*/

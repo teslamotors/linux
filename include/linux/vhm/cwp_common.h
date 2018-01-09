@@ -1,5 +1,5 @@
 /*
- * virtio and hyperviosr service module (VHM): commom.h
+ * common definition
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -53,125 +53,89 @@
 #define CWP_COMMON_H
 
 /*
- * Commmon structures for CWP/VHM/DM
+ * Common structures for CWP/VHM/DM
  */
-
-/* ISA type
- * inject interrut to both PIC and IOAPIC
- */
-enum interrupt_type {
-	CWP_INTR_TYPE_ISA,
-	CWP_INTR_TYPE_IOAPIC,
-} __attribute__((aligned(4)));
 
 /*
  * IO request
  */
 #define VHM_REQUEST_MAX 16
 
-enum request_state {
-	REQ_STATE_SUCCESS = 1,
-	REQ_STATE_PENDING = 0,
-	REQ_STATE_PROCESSING = 2,
-	REQ_STATE_FAILED = -1,
-} __attribute__((aligned(4)));
+#define REQ_STATE_PENDING	0
+#define REQ_STATE_SUCCESS	1
+#define REQ_STATE_PROCESSING	2
+#define REQ_STATE_FAILED	-1
 
-enum request_type {
-	REQ_MSR,
-	REQ_CPUID,
-	REQ_PORTIO,
-	REQ_MMIO,
-	REQ_PCICFG,
-	REQ_WP,
-	REQ_EXIT,
-	REQ_MAX,
-} __attribute__((aligned(4)));
+#define REQ_PORTIO	0
+#define REQ_MMIO	1
+#define REQ_PCICFG	2
+#define REQ_WP		3
 
-enum request_direction {
-	REQUEST_READ,
-	REQUEST_WRITE,
-	DIRECTION_MAX,
-} __attribute__((aligned(4)));
-
-/*
- * IRQ type for ptdev
- */
-enum irq_type {
-	IRQ_INTX,
-	IRQ_MSI,
-	IRQ_MSIX,
-} __attribute__((aligned(4)));
-
-struct msr_request {
-	enum request_direction direction;
-	long index;
-	long value;
-} __attribute__((aligned(8)));
-
+#define REQUEST_READ	0
+#define REQUEST_WRITE	1
 
 struct mmio_request {
-	enum request_direction direction;
-	long address;
-	long size;
-	long value;
+	uint32_t direction;
+	uint32_t reserved;
+	int64_t address;
+	int64_t size;
+	int64_t value;
 } __attribute__((aligned(8)));
 
-struct io_request {
-	enum request_direction direction;
-	long address;
-	long size;
-	int value;
+struct pio_request {
+	uint32_t direction;
+	uint32_t reserved;
+	int64_t address;
+	int64_t size;
+	int32_t value;
 } __attribute__((aligned(8)));
 
 struct pci_request {
-	enum request_direction direction;
-	long reserve; /*io_request address*/
-	long size;
-	int value;
-	int bus;
-	int dev;
-	int func;
-	int reg;
+	uint32_t direction;
+	uint32_t reserved[3];/* need keep same header fields with pio_request */
+	int64_t size;
+	int32_t value;
+	int32_t bus;
+	int32_t dev;
+	int32_t func;
+	int32_t reg;
 } __attribute__((aligned(8)));
 
 /* vhm_request are 256Bytes aligned */
 struct vhm_request {
 	/* offset: 0bytes - 63bytes */
 	union {
-		int exitcode;
-		enum request_type type;
-		unsigned long     rip;
-		int reserved0[16];
+		uint32_t type;
+		int32_t reserved0[16];
 	};
 	/* offset: 64bytes-127bytes */
 	union {
-		struct msr_request msr_request;
-		struct io_request pio_request;
+		struct pio_request pio_request;
 		struct pci_request pci_request;
 		struct mmio_request mmio_request;
-		long reserved1[8];
+		int64_t reserved1[8];
 	} reqs;
 
 	/* True: valid req which need VHM to process.
 	 * CWP write, VHM read only
 	 **/
-	int valid;
+	int32_t valid;
 
 	/* the client which is distributed to handle this request */
-	int client;
+	int32_t client;
 
 	/* 1: VHM had processed and success
 	 *  0: VHM had not yet processed
 	 * -1: VHM failed to process. Invalid request
 	 * VHM write, CWP read only
 	 **/
-	enum request_state processed;
+	int32_t processed;
 } __attribute__((aligned(256)));
 
 struct vhm_request_buffer {
 	union {
 		struct vhm_request req_queue[VHM_REQUEST_MAX];
-		char reserved[4096];
+		int8_t reserved[4096];
 	};
 } __attribute__((aligned(4096)));
 
@@ -182,69 +146,52 @@ struct cwp_create_vm {
 } __attribute__((aligned(8)));
 
 struct cwp_create_vcpu {
-	int vcpuid;			/* IN: vcpu id */
+	int vcpuid;                     /* IN: vcpu id */
 	int pcpuid;			/* IN: pcpu id */
 } __attribute__((aligned(8)));
 
 struct cwp_set_ioreq_buffer {
-	long req_buf;			/* IN: gpa of per VM request_buffer*/
+	uint64_t req_buf;			/* IN: gpa of per VM request_buffer*/
 } __attribute__((aligned(8)));
 
-struct cwp_ioreq_notify {
-	int client_id;
-	unsigned long vcpu_mask;
-} __attribute__((aligned(8)));
+/*
+ * intr type
+ * IOAPIC: inject interrupt to IOAPIC
+ * ISA: inject interrupt to both PIC and IOAPIC
+ */
+#define	CWP_INTR_TYPE_ISA	0
+#define	CWP_INTR_TYPE_IOAPIC	1
 
 /* For ISA, PIC, IOAPIC etc */
 struct cwp_irqline {
-	enum interrupt_type intr_type;
-	unsigned long pic_irq;        /* IN: for ISA type */
-	unsigned long ioapic_irq;    /* IN: for IOAPIC type, -1 don't inject */
+	uint32_t intr_type;
+	uint32_t reserved;
+	uint64_t pic_irq;        /* IN: for ISA type */
+	uint64_t ioapic_irq;    /* IN: for IOAPIC type, -1 don't inject */
 } __attribute__((aligned(8)));
 
 /* For MSI type inject */
 struct cwp_msi_entry {
-	unsigned long msi_addr;	/* IN: addr[19:12] with dest vcpu id */
-	unsigned long msi_data;	/* IN: data[7:0] with vector */
+	uint64_t msi_addr;	/* IN: addr[19:12] with dest vcpu id */
+	uint64_t msi_data;	/* IN: data[7:0] with vector */
 } __attribute__((aligned(8)));
 
 /* For NMI inject */
 struct cwp_nmi_entry {
-	unsigned long vcpuid;	/* IN: -1 means vcpu0 */
-} __attribute__((aligned(8)));
-
-struct cwp_ptdev_irq {
-	enum irq_type type;
-	unsigned short virt_bdf;	/* IN: Device virtual BDF# */
-	unsigned short phys_bdf;	/* IN: Device physical BDF# */
-	union {
-		struct {
-			int virt_pin;	/* IN: virtual IOAPIC pin */
-			int phys_pin;	/* IN: physical IOAPIC pin */
-			bool pic_pin;	/* IN: pin from PIC? */
-		} intx;
-		struct {
-			int vector_cnt;	/* IN: vector count of MSI/MSIX */
-
-			/* IN: physcial address of MSI-X table */
-			unsigned long table_paddr;
-
-			/* IN: size of MSI-X table (round up to 4K) */
-			int table_size;
-		} msix;
-	};
+	int64_t vcpuid;		/* IN: -1 means vcpu0 */
 } __attribute__((aligned(8)));
 
 struct cwp_vm_pci_msix_remap {
-	unsigned short virt_bdf;	/* IN: Device virtual BDF# */
-	unsigned short phys_bdf;	/* IN: Device physical BDF# */
-	unsigned short msi_ctl;		/* IN: PCI MSI/x cap control data */
-	unsigned long msi_addr;		/* IN/OUT: msi address to fix */
-	unsigned int msi_data;		/* IN/OUT: msi data to fix */
-	int msix;			/* IN: 0 - MSI, 1 - MSI-X */
-	int msix_entry_index;		/* IN: MSI-X the entry table index */
+	uint16_t virt_bdf;	/* IN: Device virtual BDF# */
+	uint16_t phys_bdf;	/* IN: Device physical BDF# */
+	uint16_t msi_ctl;		/* IN: PCI MSI/x cap control data */
+	uint16_t reserved;
+	uint64_t msi_addr;		/* IN/OUT: msi address to fix */
+	uint32_t msi_data;		/* IN/OUT: msi data to fix */
+	int32_t msix;			/* IN: 0 - MSI, 1 - MSI-X */
+	int32_t msix_entry_index;	/* IN: MSI-X the entry table index */
 	/* IN: Vector Control for MSI-X Entry, field defined in MSIX spec */
-	unsigned int vector_ctl;
+	uint32_t vector_ctl;
 } __attribute__((aligned(8)));
 
 #endif /* CWP_COMMON_H */

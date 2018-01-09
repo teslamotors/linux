@@ -87,9 +87,9 @@ inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer)
 	return cwp_hypercall2(HC_SET_IOREQ_BUFFER, vmid, buffer);
 }
 
-inline long hcall_notify_req_finish(unsigned long vmid, unsigned long vcpu_mask)
+inline long hcall_notify_req_finish(unsigned long vmid, unsigned long vcpu)
 {
-	return cwp_hypercall2(HC_NOTIFY_REQUEST_FINISH, vmid, vcpu_mask);
+	return cwp_hypercall2(HC_NOTIFY_REQUEST_FINISH, vmid, vcpu);
 }
 
 inline long hcall_assert_irqline(unsigned long vmid, unsigned long irq)
