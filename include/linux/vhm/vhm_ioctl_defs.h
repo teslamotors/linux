@@ -60,7 +60,7 @@
 #define IC_GET_API_VERSION             _IC_ID(IC_ID, IC_ID_VM_BASE + 0x00)
 #define IC_CREATE_VM                   _IC_ID(IC_ID, IC_ID_VM_BASE + 0x01)
 #define IC_DESTROY_VM                  _IC_ID(IC_ID, IC_ID_VM_BASE + 0x02)
-#define IC_START_VM                   _IC_ID(IC_ID, IC_ID_VM_BASE + 0x03)
+#define IC_START_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x03)
 #define IC_PAUSE_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x04)
 #define	IC_CREATE_VCPU                 _IC_ID(IC_ID, IC_ID_VM_BASE + 0x05)
 
@@ -95,35 +95,31 @@
 
 #define SPECNAMELEN 63
 
-enum {
-	VM_SYSMEM,
-	VM_BOOTROM,
-	VM_FRAMEBUFFER,
-	VM_MMIO,
-};
+#define VM_SYSMEM       0
+#define VM_MMIO         1
 
 struct vm_memseg {
-	int segid;
-	size_t len;
+	uint32_t segid;
+	uint32_t reserved;
+	uint64_t len;
+	uint64_t gpa;
 	char name[SPECNAMELEN + 1];
-	unsigned long gpa;
 };
 
 struct vm_memmap {
-	int segid;		/* memory segment */
+	uint32_t segid;		/* memory segment */
+	uint32_t reserved;
 	union {
 		struct {
 			uint64_t gpa;
-			uint64_t segoff;	/* offset into memory segment */
-			size_t len;		/* mmap length */
-			int prot;		/* RWX */
-			int flags;
+			uint64_t len;		/* mmap length */
+			uint32_t prot;		/* RWX */
 		} mem;
 		struct {
 			uint64_t gpa;
 			uint64_t hpa;
-			size_t len;
-			int prot;
+			uint64_t len;
+			uint32_t prot;
 		} mmio;
 	};
 };
