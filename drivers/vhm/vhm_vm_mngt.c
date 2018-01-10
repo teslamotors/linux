@@ -136,6 +136,7 @@ unsigned long vhm_vm_gpa2hpa(unsigned long vmid, unsigned long gpa)
 	int ret;
 
 	gpa2hpa.gpa = gpa;
+	gpa2hpa.hpa = -1UL; /* Init value as invalid gpa */
 	ret = hcall_vm_gpa2hpa(vmid, virt_to_phys(&gpa2hpa));
 	if (ret < 0) {
 		pr_err("vhm: failed to inject!\n");
