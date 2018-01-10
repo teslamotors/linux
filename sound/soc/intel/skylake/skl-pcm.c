@@ -317,16 +317,26 @@ static int skl_pcm_prepare(struct snd_pcm_substream *substream,
 {
 	struct skl *skl = get_skl_ctx(dai->dev);
 	struct skl_module_cfg *mconfig;
+	int ret;
 
 	dev_dbg(dai->dev, "%s: %s\n", __func__, dai->name);
 
 	mconfig = skl_tplg_fe_get_cpr_module(dai, substream->stream);
 
-	/* In case of XRUN recovery, reset the FW pipe to clean state */
-	if (mconfig && (substream->runtime->status->state ==
-					SNDRV_PCM_STATE_XRUN)) {
+	/*
+	 * In case of XRUN recovery or in the case when the application
+	 * calls prepare another time, reset the FW pipe to clean state
+	 */
+	if (mconfig &&
+		((substream->runtime->status->state == SNDRV_PCM_STATE_XRUN) ||
+		(mconfig->pipe->state == SKL_PIPE_CREATED) ||
+		(mconfig->pipe->state == SKL_PIPE_PAUSED))) {
+
 		skl_reset_pipe(skl->skl_sst, mconfig->pipe);
-		skl_pcm_host_dma_prepare(dai->dev, mconfig->pipe->p_params);
+		ret = skl_pcm_host_dma_prepare(dai->dev,
+					mconfig->pipe->p_params);
+		if (ret < 0)
+			return ret;
 	}
 
 	return 0;
@@ -419,12 +429,22 @@ static int skl_pcm_hw_free(struct snd_pcm_substream *substream,
 	struct hdac_ext_stream *stream = get_hdac_ext_stream(substream);
 	struct hdac_stream *hstream = hdac_stream(stream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct skl *skl = get_skl_ctx(dai->dev);
+	struct skl_module_cfg *mconfig;
+	int ret;
 
 	dev_dbg(dai->dev, "%s: %s\n", __func__, dai->name);
+
+	mconfig = skl_tplg_fe_get_cpr_module(dai, substream->stream);
 
 	if (runtime->no_rewinds) {
 		snd_hdac_ext_stream_set_spib(ebus, stream, 0);
 		snd_hdac_ext_stream_spbcap_enable(ebus, 0, hstream->index);
+	}
+	if (mconfig) {
+		ret = skl_reset_pipe(skl->skl_sst, mconfig->pipe);
+		if (ret < 0)
+			dev_err(dai->dev, "%s:Reset failed ret =%d", __func__, ret);
 	}
 
 	snd_hdac_stream_cleanup(hdac_stream(stream));
