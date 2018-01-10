@@ -179,6 +179,15 @@ struct drm_crtc_state {
 	struct drm_property_blob *ctm;
 
 	/**
+	 * @ctm_post_offset:
+	 *
+	 * Post offset used to convert colors after applying ctm. See
+	 * drm_crtc_enable_color_mgmt().The blob (if not NULL) is a &struct
+	 * drm_color_ctm_post_offset.
+	 */
+	struct drm_property_blob *ctm_post_offset;
+
+	/**
 	 * @gamma_lut:
 	 *
 	 * Lookup table for converting pixel data after the color conversion
