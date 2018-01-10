@@ -49,6 +49,8 @@ EXPORT_SYMBOL_GPL(snd_hdac_stream_init);
 void snd_hdac_stream_start(struct hdac_stream *azx_dev, bool fresh_start)
 {
 	struct hdac_bus *bus = azx_dev->bus;
+	int timeout;
+	unsigned char val;
 
 	trace_snd_hdac_stream_start(bus, azx_dev);
 
@@ -61,6 +63,21 @@ void snd_hdac_stream_start(struct hdac_stream *azx_dev, bool fresh_start)
 	/* set DMA start and interrupt mask */
 	snd_hdac_stream_updateb(azx_dev, SD_CTL,
 				0, SD_CTL_DMA_START | SD_INT_MASK);
+
+	timeout = 300;
+	do {
+		udelay(3);
+		val = snd_hdac_stream_readb(azx_dev, SD_CTL) & SD_CTL_DMA_START;
+		if (val)
+			break;
+	} while(--timeout);
+
+	if (!timeout) {
+		dev_err(azx_dev->bus->dev, "unable to start the stream\n");
+		azx_dev->running = false;
+		return;
+	}
+
 	azx_dev->running = true;
 }
 EXPORT_SYMBOL_GPL(snd_hdac_stream_start);
@@ -71,8 +88,29 @@ EXPORT_SYMBOL_GPL(snd_hdac_stream_start);
  */
 void snd_hdac_stream_clear(struct hdac_stream *azx_dev)
 {
+	int timeout;
+	unsigned char val;
+
+	/* check if the DMA is already stopped */
+	val = snd_hdac_stream_readb(azx_dev, SD_CTL) & SD_CTL_DMA_START;
+	if (!val)
+		return;
+
 	snd_hdac_stream_updateb(azx_dev, SD_CTL,
 				SD_CTL_DMA_START | SD_INT_MASK, 0);
+
+	timeout = 300;
+	do {
+		udelay(3);
+		val = snd_hdac_stream_readb(azx_dev, SD_CTL) &
+				SD_CTL_DMA_START;
+		if (!val)
+			break;
+	} while (--timeout);
+
+	if (!timeout)
+		dev_err(azx_dev->bus->dev, "unable to stop the stream\n");
+
 	snd_hdac_stream_writeb(azx_dev, SD_STS, SD_INT_MASK); /* to be sure */
 	azx_dev->running = false;
 }
@@ -114,6 +152,10 @@ void snd_hdac_stream_reset(struct hdac_stream *azx_dev)
 		if (val)
 			break;
 	} while (--timeout);
+
+	if (!timeout)
+		dev_err(azx_dev->bus->dev, "timeout on stream reset entry\n");
+
 	val &= ~SD_CTL_STREAM_RESET;
 	snd_hdac_stream_writeb(azx_dev, SD_CTL, val);
 	udelay(3);
@@ -126,6 +168,9 @@ void snd_hdac_stream_reset(struct hdac_stream *azx_dev)
 		if (!val)
 			break;
 	} while (--timeout);
+
+	if (!timeout)
+		dev_err(azx_dev->bus->dev, "timeout on stream reset exit\n");
 
 	/* reset first position - may not be synced with hw at this time */
 	if (azx_dev->posbuf)
