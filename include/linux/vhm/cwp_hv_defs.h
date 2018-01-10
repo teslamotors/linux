@@ -63,49 +63,51 @@
 
 #define _HC_ID(x, y) (((x)<<24)|(y))
 
-#define HC_ID 0x7FUL
+#define HC_ID 0x80UL
+
+/* general */
+#define HC_ID_GEN_BASE               0x0UL
+#define HC_GET_API_VERSION          _HC_ID(HC_ID, HC_ID_GEN_BASE + 0x00)
 
 /* VM management */
-#define HC_ID_VM_BASE               0x0UL
-#define HC_GET_API_VERSION          _HC_ID(HC_ID, HC_ID_VM_BASE + 0x00)
-#define HC_CREATE_VM                _HC_ID(HC_ID, HC_ID_VM_BASE + 0x01)
-#define HC_DESTROY_VM               _HC_ID(HC_ID, HC_ID_VM_BASE + 0x02)
-#define HC_START_VM                 _HC_ID(HC_ID, HC_ID_VM_BASE + 0x03)
-#define HC_PAUSE_VM                 _HC_ID(HC_ID, HC_ID_VM_BASE + 0x04)
-#define HC_CREATE_VCPU              _HC_ID(HC_ID, HC_ID_VM_BASE + 0x05)
+#define HC_ID_VM_BASE               0x10UL
+#define HC_CREATE_VM                _HC_ID(HC_ID, HC_ID_VM_BASE + 0x00)
+#define HC_DESTROY_VM               _HC_ID(HC_ID, HC_ID_VM_BASE + 0x01)
+#define HC_START_VM                 _HC_ID(HC_ID, HC_ID_VM_BASE + 0x02)
+#define HC_PAUSE_VM                 _HC_ID(HC_ID, HC_ID_VM_BASE + 0x03)
+#define HC_CREATE_VCPU              _HC_ID(HC_ID, HC_ID_VM_BASE + 0x04)
 
 /* IRQ and Interrupts */
-#define HC_ID_IRQ_BASE              0x100UL
+#define HC_ID_IRQ_BASE              0x20UL
 #define HC_ASSERT_IRQLINE           _HC_ID(HC_ID, HC_ID_IRQ_BASE + 0x00)
 #define HC_DEASSERT_IRQLINE         _HC_ID(HC_ID, HC_ID_IRQ_BASE + 0x01)
 #define HC_PULSE_IRQLINE            _HC_ID(HC_ID, HC_ID_IRQ_BASE + 0x02)
 #define HC_INJECT_MSI               _HC_ID(HC_ID, HC_ID_IRQ_BASE + 0x03)
 
 /* DM ioreq management */
-#define HC_ID_IOREQ_BASE            0x200UL
+#define HC_ID_IOREQ_BASE            0x30UL
 #define HC_SET_IOREQ_BUFFER         _HC_ID(HC_ID, HC_ID_IOREQ_BASE + 0x00)
 #define HC_NOTIFY_REQUEST_FINISH    _HC_ID(HC_ID, HC_ID_IOREQ_BASE + 0x01)
 
-
 /* Guest memory management */
-#define HC_ID_MEM_BASE              0x300UL
+#define HC_ID_MEM_BASE              0x40UL
 #define HC_VM_SET_MEMMAP            _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x00)
 #define HC_VM_GPA2HPA               _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x01)
 
 /* PCI assignment*/
-#define HC_ID_PCI_BASE              0x400UL
+#define HC_ID_PCI_BASE              0x50UL
 #define HC_ASSIGN_PTDEV             _HC_ID(HC_ID, HC_ID_PCI_BASE + 0x00)
 #define HC_DEASSIGN_PTDEV           _HC_ID(HC_ID, HC_ID_PCI_BASE + 0x01)
 #define HC_VM_PCI_MSIX_REMAP        _HC_ID(HC_ID, HC_ID_PCI_BASE + 0x02)
 #define HC_SET_PTDEV_INTR_INFO      _HC_ID(HC_ID, HC_ID_PCI_BASE + 0x03)
 #define HC_RESET_PTDEV_INTR_INFO    _HC_ID(HC_ID, HC_ID_PCI_BASE + 0x04)
 
-/* TRACE */
-#define HC_ID_TRACE_BASE            0x600UL
-#define HC_CWP_SBUF_SETUP           _HC_ID(HC_ID, HC_ID_TRACE_BASE + 0x00)
+/* DEBUG */
+#define HC_ID_DBG_BASE              0x60UL
+#define HC_SBUF_SETUP               _HC_ID(HC_ID, HC_ID_DBG_BASE + 0x00)
 
 #define CWP_DOM0_VMID (0UL)
-#define CWP_INVALID_VMID (-1UL)
+#define CWP_INVALID_VMID (-1)
 #define CWP_INVALID_HPA (-1UL)
 
 /* Generic memory attributes */

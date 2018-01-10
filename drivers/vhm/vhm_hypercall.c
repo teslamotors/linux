@@ -52,9 +52,14 @@
 #include <linux/vhm/cwp_hv_defs.h>
 #include <linux/vhm/vhm_hypercall.h>
 
+inline long hcall_get_api_version(unsigned long api_version)
+{
+	return cwp_hypercall1(HC_GET_API_VERSION, api_version);
+}
+
 inline long hcall_create_vm(unsigned long vminfo)
 {
-	return cwp_hypercall2(HC_CREATE_VM, 0, vminfo);
+	return cwp_hypercall1(HC_CREATE_VM, vminfo);
 }
 
 inline long hcall_start_vm(unsigned long vmid)

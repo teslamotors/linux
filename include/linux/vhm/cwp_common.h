@@ -141,11 +141,11 @@ struct vhm_request_buffer {
 
 /* Common API params */
 struct cwp_create_vm {
-	int32_t vmid;   /* OUT: return vmid to VHM. Keep it first field */
-	uint32_t vcpu_num;      /* IN: VM vcpu number */
-	uint8_t  GUID[16];      /* IN: GUID of this vm */
-	uint8_t  trusty_enabled;/* IN: whether trusty is enabled */
-	uint8_t  reserved[31];   /* Reserved for future use */
+	int32_t vmid;	/* OUT: return vmid to VHM. Keep it first field */
+	uint32_t vcpu_num;	/* IN: VM vcpu number */
+	uint8_t	 GUID[16];	/* IN: GUID of this vm */
+	uint8_t	 trusty_enabled;/* IN: whether trusty is enabled */
+	uint8_t  reserved[31];	/* Reserved for future use */
 } __attribute__((aligned(8)));
 
 struct cwp_create_vcpu {
