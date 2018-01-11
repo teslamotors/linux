@@ -388,7 +388,7 @@ static void *do_map_guest_phys(struct vhm_vm *vm, u64 guest_phys, size_t size)
 		}
 
 		mutex_unlock(&vm->seg_lock);
-		return phys_to_virt(seg->base + guest_phys);
+		return phys_to_virt(seg->base + guest_phys - seg->gpa);
 	}
 	mutex_unlock(&vm->seg_lock);
 	return NULL;
