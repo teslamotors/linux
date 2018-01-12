@@ -57,6 +57,8 @@
 
 #include <linux/gfp.h>
 #include <asm/pgtable.h>
+#include <linux/vhm/cwp_hv_defs.h>
+#include <linux/vhm/vhm_hypercall.h>
 #include "sbuf.h"
 
 static inline bool sbuf_is_empty(shared_buf_t *sbuf)
@@ -163,6 +165,25 @@ int sbuf_get(shared_buf_t *sbuf, uint8_t *data)
 	return sbuf->ele_size;
 }
 EXPORT_SYMBOL(sbuf_get);
+
+int sbuf_share_setup(uint32_t pcpu_id, uint32_t sbuf_id, shared_buf_t *sbuf)
+{
+	struct sbuf_setup_param ssp;
+
+	ssp.pcpu_id = pcpu_id;
+	ssp.sbuf_id = sbuf_id;
+
+	if (!sbuf) {
+		ssp.gpa = 0;
+	} else {
+		BUG_ON(!virt_addr_valid(sbuf));
+		ssp.gpa = virt_to_phys(sbuf);
+	}
+	pr_info("setup phys add = 0x%llx\n", ssp.gpa);
+
+	return hcall_setup_sbuf(virt_to_phys(&ssp));
+}
+EXPORT_SYMBOL(sbuf_share_setup);
 
 shared_buf_t *sbuf_construct(uint32_t ele_num, uint32_t ele_size,
 				uint64_t paddr)
