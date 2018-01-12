@@ -211,4 +211,5 @@ source "drivers/mux/Kconfig"
 
 source "drivers/vbs/Kconfig"
 
+source "drivers/cwp/Kconfig"
 endmenu

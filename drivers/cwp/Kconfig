@@ -1,0 +1,5 @@
+config CWP_SHARED_BUFFER
+	bool "Intel CWP SHARED BUFFER"
+	---help---
+	  Ring buffer shared between CWP Hypervisor and its SOS.
+	  Help CWP performance profiling.
