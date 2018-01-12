@@ -400,7 +400,8 @@ static long vhm_dev_ioctl(struct file *filep,
 			return -EFAULT;
 		}
 
-		if (ic_pt_irq.msix.table_paddr) {
+		if ((ic_pt_irq.type == IRQ_MSIX) &&
+				ic_pt_irq.msix.table_paddr) {
 			new = kmalloc(sizeof(struct table_iomems), GFP_KERNEL);
 			if (new == NULL)
 				return -EFAULT;
@@ -419,7 +420,8 @@ static long vhm_dev_ioctl(struct file *filep,
 	case IC_RESET_PTDEV_INTR_INFO: {
 		struct ic_ptdev_irq ic_pt_irq;
 		struct hc_ptdev_irq hc_pt_irq;
-		struct table_iomems *new;
+		struct table_iomems *ptr;
+		int dev_found = 0;
 
 		if (copy_from_user(&ic_pt_irq,
 				(void *)ioctl_param, sizeof(ic_pt_irq)))
@@ -434,17 +436,18 @@ static long vhm_dev_ioctl(struct file *filep,
 			return -EFAULT;
 		}
 
-		if (ic_pt_irq.msix.table_paddr) {
-			new = kmalloc(sizeof(struct table_iomems), GFP_KERNEL);
-			if (new == NULL)
-				return -EFAULT;
-			new->phys_bdf = ic_pt_irq.phys_bdf;
-			new->mmap_addr = (unsigned long)
-				ioremap_nocache(ic_pt_irq.msix.table_paddr,
-					ic_pt_irq.msix.table_size);
-
+		if (ic_pt_irq.type == IRQ_MSIX) {
 			mutex_lock(&table_iomems_lock);
-			list_add(&new->list, &table_iomems_list);
+			list_for_each_entry(ptr, &table_iomems_list, list) {
+				if (ptr->phys_bdf == ic_pt_irq.phys_bdf) {
+					dev_found = 1;
+					break;
+				}
+			}
+			if (dev_found) {
+				iounmap((void __iomem *)ptr->mmap_addr);
+				list_del(&ptr->list);
+			}
 			mutex_unlock(&table_iomems_lock);
 		}
 
@@ -467,15 +470,18 @@ static long vhm_dev_ioctl(struct file *filep,
 		if (msix_remap.msix) {
 			void __iomem *msix_entry;
 			struct table_iomems *ptr;
+			int dev_found = 0;
 
 			mutex_lock(&table_iomems_lock);
 			list_for_each_entry(ptr, &table_iomems_list, list) {
-				if (ptr->phys_bdf == msix_remap.phys_bdf)
+				if (ptr->phys_bdf == msix_remap.phys_bdf) {
+					dev_found = 1;
 					break;
+				}
 			}
 			mutex_unlock(&table_iomems_lock);
 
-			if (!ptr->mmap_addr)
+			if (!dev_found || !ptr->mmap_addr)
 				return -EFAULT;
 
 			msix_entry = (void __iomem *) (ptr->mmap_addr +
