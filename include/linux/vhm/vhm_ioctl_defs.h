@@ -53,26 +53,29 @@
  * Commmon IOCTL ID defination for VHM/DM
  */
 #define _IC_ID(x, y) (((x)<<24)|(y))
-#define IC_ID 0x5FUL
+#define IC_ID 0x43UL
+
+/* General */
+#define IC_ID_GEN_BASE                  0x0UL
+#define IC_GET_API_VERSION             _IC_ID(IC_ID, IC_ID_GEN_BASE + 0x00)
 
 /* VM management */
-#define IC_ID_VM_BASE                  0x0UL
-#define IC_GET_API_VERSION             _IC_ID(IC_ID, IC_ID_VM_BASE + 0x00)
-#define IC_CREATE_VM                   _IC_ID(IC_ID, IC_ID_VM_BASE + 0x01)
-#define IC_DESTROY_VM                  _IC_ID(IC_ID, IC_ID_VM_BASE + 0x02)
-#define IC_START_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x03)
-#define IC_PAUSE_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x04)
-#define	IC_CREATE_VCPU                 _IC_ID(IC_ID, IC_ID_VM_BASE + 0x05)
+#define IC_ID_VM_BASE                  0x10UL
+#define IC_CREATE_VM                   _IC_ID(IC_ID, IC_ID_VM_BASE + 0x00)
+#define IC_DESTROY_VM                  _IC_ID(IC_ID, IC_ID_VM_BASE + 0x01)
+#define IC_START_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x02)
+#define IC_PAUSE_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x03)
+#define	IC_CREATE_VCPU                 _IC_ID(IC_ID, IC_ID_VM_BASE + 0x04)
 
 /* IRQ and Interrupts */
-#define IC_ID_IRQ_BASE                 0x100UL
+#define IC_ID_IRQ_BASE                 0x20UL
 #define IC_ASSERT_IRQLINE              _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x00)
 #define IC_DEASSERT_IRQLINE            _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x01)
 #define IC_PULSE_IRQLINE               _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x02)
 #define IC_INJECT_MSI                  _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x03)
 
 /* DM ioreq management */
-#define IC_ID_IOREQ_BASE                0x200UL
+#define IC_ID_IOREQ_BASE                0x30UL
 #define IC_SET_IOREQ_BUFFER             _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x00)
 #define IC_NOTIFY_REQUEST_FINISH        _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x01)
 #define IC_CREATE_IOREQ_CLIENT          _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x02)
@@ -81,12 +84,12 @@
 
 
 /* Guest memory management */
-#define IC_ID_MEM_BASE                  0x300UL
+#define IC_ID_MEM_BASE                  0x40UL
 #define IC_ALLOC_MEMSEG                 _IC_ID(IC_ID, IC_ID_MEM_BASE + 0x00)
 #define IC_SET_MEMSEG                   _IC_ID(IC_ID, IC_ID_MEM_BASE + 0x01)
 
 /* PCI assignment*/
-#define IC_ID_PCI_BASE                  0x400UL
+#define IC_ID_PCI_BASE                  0x50UL
 #define IC_ASSIGN_PTDEV                _IC_ID(IC_ID, IC_ID_PCI_BASE + 0x00)
 #define IC_DEASSIGN_PTDEV              _IC_ID(IC_ID, IC_ID_PCI_BASE + 0x01)
 #define IC_VM_PCI_MSIX_REMAP           _IC_ID(IC_ID, IC_ID_PCI_BASE + 0x02)
