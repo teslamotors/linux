@@ -656,6 +656,10 @@ unsigned long native_calibrate_cpu(void)
 	unsigned long flags, latch, ms, fast_calibrate;
 	int hpet = is_hpet_enabled(), i, loopmin;
 
+	fast_calibrate = cpu_khz_from_paravirt();
+	if (fast_calibrate)
+		return fast_calibrate;
+
 	fast_calibrate = cpu_khz_from_cpuid();
 	if (fast_calibrate)
 		return fast_calibrate;

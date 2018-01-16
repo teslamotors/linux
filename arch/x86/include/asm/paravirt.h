@@ -272,6 +272,11 @@ static inline void slow_down_io(void)
 #endif
 }
 
+static inline unsigned long cpu_khz_from_paravirt(void)
+{
+	return PVOP_CALL0(unsigned long, pv_cpu_ops.cpu_khz);
+}
+
 static inline void paravirt_activate_mm(struct mm_struct *prev,
 					struct mm_struct *next)
 {
@@ -794,6 +799,12 @@ static inline notrace unsigned long arch_local_irq_save(void)
 	f = arch_local_save_flags();
 	arch_local_irq_disable();
 	return f;
+}
+
+static inline void write_msi_msg_paravirt(struct msi_desc *entry,
+					struct msi_msg *msg)
+{
+	return PVOP_VCALL2(pv_irq_ops.write_msi, entry, msg);
 }
 
 
