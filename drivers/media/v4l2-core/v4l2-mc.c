@@ -265,12 +265,13 @@ EXPORT_SYMBOL_GPL(v4l_vb2q_enable_media_source);
  *
  * Return the total number of users of all video device nodes in the pipeline.
  */
-static int pipeline_pm_use_count(struct media_entity *entity,
+static int pipeline_pm_use_count(struct media_pad *pad,
 	struct media_graph *graph)
 {
+	struct media_entity *entity = pad->entity;
 	int use = 0;
 
-	media_graph_walk_start(graph, &entity->pads[0]);
+	media_graph_walk_start(graph, pad);
 
 	while ((entity = media_graph_walk_next(graph))) {
 		if (is_media_entity_v4l2_video_device(entity))
@@ -385,14 +386,17 @@ int v4l2_pipeline_link_notify(struct media_link *link, u32 flags,
 	int sink_use;
 	int ret = 0;
 
-	source_use = pipeline_pm_use_count(source, graph);
-	sink_use = pipeline_pm_use_count(sink, graph);
+	source_use = pipeline_pm_use_count(link->source, graph);
+	sink_use = pipeline_pm_use_count(link->sink, graph);
 
 	if (notification == MEDIA_DEV_NOTIFY_POST_LINK_CH &&
 	    !(flags & MEDIA_LNK_FL_ENABLED)) {
 		/* Powering off entities is assumed to never fail. */
 		pipeline_pm_power(source, -sink_use, graph);
 		pipeline_pm_power(sink, -source_use, graph);
+
+		source->use_count = 0;
+		sink->use_count = 0;
 		return 0;
 	}
 
