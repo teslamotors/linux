@@ -159,4 +159,9 @@ struct ioreq_notify {
        uint32_t vcpu;
 };
 
+struct api_version {
+	uint32_t major_version;
+	uint32_t minor_version;
+};
+
 #endif /* VHM_IOCTL_DEFS_H */
