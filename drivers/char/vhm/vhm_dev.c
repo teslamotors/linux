@@ -565,11 +565,29 @@ static const struct file_operations fops = {
 	.poll = vhm_dev_poll,
 };
 
+#define SUPPORT_HV_API_VERSION_MAJOR	1
+#define SUPPORT_HV_API_VERSION_MINOR	0
 static int __init vhm_init(void)
 {
 	unsigned long flag;
+	struct hc_api_version api_version;
 
 	pr_info("vhm: initializing\n");
+
+	if (hcall_get_api_version(virt_to_phys(&api_version)) < 0) {
+		pr_err("vhm: failed to get api version from Hypervisor !\n");
+		return -EINVAL;
+	}
+
+	if (api_version.major_version == SUPPORT_HV_API_VERSION_MAJOR &&
+		api_version.minor_version == SUPPORT_HV_API_VERSION_MINOR) {
+		pr_info("vhm: hv api version %d.%d\n",
+			api_version.major_version, api_version.minor_version);
+	} else {
+		pr_err("vhm: not support hv api version %d.%d!\n",
+			api_version.major_version, api_version.minor_version);
+		return -EINVAL;
+	}
 
 	/* Try to dynamically allocate a major number for the device */
 	major = register_chrdev(0, DEVICE_NAME, &fops);
