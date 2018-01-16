@@ -18,7 +18,6 @@
 #include <linux/irqdomain.h>
 #include <linux/pm_runtime.h>
 #include "pci.h"
-
 #define CARDBUS_LATENCY_TIMER	176	/* secondary latency timer */
 #define CARDBUS_RESERVE_BUSNR	3
 
@@ -40,6 +39,70 @@ struct pci_domain_busn_res {
 	struct resource res;
 	int domain_nr;
 };
+
+#define PCI_IGNORE_MAX 8
+
+static u16 devices_ignore_table[PCI_IGNORE_MAX];
+static int devices_ignore_cnt;
+
+static void parse_ignore_device(char *bdf_str)
+{
+	int fields;
+	unsigned int bus;
+	unsigned int dev;
+	unsigned int func;
+
+	if (devices_ignore_cnt >= PCI_IGNORE_MAX - 1)
+		return;
+
+	fields = sscanf(bdf_str, "%x:%x:%x", &bus, &dev, &func);
+	if (fields != 3)
+		return;
+
+	devices_ignore_table[devices_ignore_cnt++] =
+			PCI_DEVID(bus, PCI_DEVFN(dev, func));
+}
+
+static int __init pci_deivces_ignore(char *str)
+{
+	int len;
+	char *start, *end;
+	char bdf[16];
+
+	devices_ignore_cnt = 0;
+
+	while ((start = strchr(str, '('))) {
+
+		end = strchr(start, ')');
+		if (end == NULL)
+			break;
+
+		len = end - start - 1;
+		if (len >= 16) /*invalid string*/
+			break;
+
+		memcpy((void *)bdf, (void *)(start+1), len);
+		bdf[len] = '\0';
+		parse_ignore_device(bdf);
+		str = end + 1;
+	}
+
+	return 1;
+}
+__setup("pci_devices_ignore=", pci_deivces_ignore);
+
+static bool device_on_ignore_list(int bus, int dev, int func)
+{
+	int i;
+
+	for (i = 0; i < devices_ignore_cnt; i++)
+		if ((PCI_BUS_NUM(devices_ignore_table[i]) == bus) &&
+			(PCI_SLOT(devices_ignore_table[i]) == dev) &&
+			(PCI_FUNC(devices_ignore_table[i]) == func))
+			return true;
+
+	return false;
+}
 
 static struct resource *get_pci_domain_busn_res(int domain_nr)
 {
@@ -2133,6 +2196,11 @@ struct pci_dev *pci_scan_single_device(struct pci_bus *bus, int devfn)
 		pci_dev_put(dev);
 		return dev;
 	}
+
+	if (device_on_ignore_list(bus->number,
+				PCI_SLOT(devfn),
+				PCI_FUNC(devfn)))
+		return NULL;
 
 	dev = pci_scan_device(bus, devfn);
 	if (!dev)

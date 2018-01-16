@@ -1,0 +1,449 @@
+/*
+ * virtio and hyperviosr service module (VHM): memory map
+ *
+ * This file is provided under a dual BSD/GPLv2 license.  When using or
+ * redistributing this file, you may do so under either license.
+ *
+ * GPL LICENSE SUMMARY
+ *
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * BSD LICENSE
+ *
+ * Copyright (C) 2017 Intel Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in
+ *     the documentation and/or other materials provided with the
+ *     distribution.
+ *   * Neither the name of Intel Corporation nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ *
+ * Jason Zeng <jason.zeng@intel.com>
+ * Jason Chen CJ <jason.cj.chen@intel.com>
+ *
+ */
+
+#include <linux/init.h>
+#include <linux/interrupt.h>
+#include <linux/module.h>
+#include <linux/device.h>
+#include <linux/kernel.h>
+#include <linux/dma-mapping.h>
+#include <linux/gfp.h>
+#include <linux/mm.h>
+#include <linux/fs.h>
+#include <linux/poll.h>
+#include <linux/wait.h>
+#include <linux/slab.h>
+#include <linux/sched.h>
+#include <linux/list.h>
+#include <linux/uaccess.h>
+#include <linux/io.h>
+
+#include <linux/vhm/vhm_ioctl_defs.h>
+#include <linux/vhm/cwp_hv_defs.h>
+#include <linux/vhm/cwp_vhm_mm.h>
+#include <linux/vhm/vhm_vm_mngt.h>
+#include <linux/vhm/vhm_hypercall.h>
+
+struct guest_memseg {
+	struct list_head list;
+	int segid;
+	u64 base;
+	size_t len;
+	char name[SPECNAMELEN + 1];
+	u64 gpa;
+	int prot; /* RWX */
+	long vma_count;
+};
+
+static u64 _alloc_memblk(struct device *dev, size_t len)
+{
+	unsigned int count;
+	struct page *page;
+
+	if (!PAGE_ALIGNED(len)) {
+		pr_warn("alloc size of memblk must be page aligned\n");
+		return 0ULL;
+	}
+
+	count = PAGE_ALIGN(len) >> PAGE_SHIFT;
+	page = dma_alloc_from_contiguous(dev, count, 1, GFP_KERNEL);
+	if (page)
+		return page_to_phys(page);
+	else
+		return 0ULL;
+}
+
+static bool _free_memblk(struct device *dev, u64 base, size_t len)
+{
+	unsigned int count = PAGE_ALIGN(len) >> PAGE_SHIFT;
+	struct page *page = pfn_to_page(base >> PAGE_SHIFT);
+
+	return dma_release_from_contiguous(dev, page, count);
+}
+
+int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
+{
+	struct guest_memseg *seg;
+	u64 base;
+	int max_gfn;
+
+	seg = kzalloc(sizeof(struct guest_memseg), GFP_KERNEL);
+	if (seg == NULL)
+		return -ENOMEM;
+
+	base = _alloc_memblk(vm->dev, memseg->len);
+	if (base == 0ULL) {
+		kfree(seg);
+		return -ENOMEM;
+	}
+
+	seg->segid = memseg->segid;
+	seg->base = base;
+	seg->len = memseg->len;
+	strncpy(seg->name, memseg->name, SPECNAMELEN + 1);
+	seg->gpa = memseg->gpa;
+
+	max_gfn = (seg->gpa + seg->len) >> PAGE_SHIFT;
+	if (vm->max_gfn < max_gfn)
+		vm->max_gfn = max_gfn;
+
+	pr_info("VHM: alloc memseg[%s] with len=0x%lx, base=0x%llx,"
+		" and its guest gpa = 0x%llx, vm max_gfn 0x%x\n",
+		seg->name, seg->len, seg->base, seg->gpa, vm->max_gfn);
+
+	seg->vma_count = 0;
+	mutex_lock(&vm->seg_lock);
+	list_add(&seg->list, &vm->memseg_list);
+	mutex_unlock(&vm->seg_lock);
+
+	return 0;
+}
+
+static int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len,
+	unsigned int prot, unsigned int type)
+{
+	struct vm_set_memmap set_memmap;
+
+	set_memmap.type = type;
+	set_memmap.remote_gpa = guest_gpa;
+	set_memmap.vm0_gpa = host_gpa;
+	set_memmap.length = len;
+	set_memmap.prot = prot;
+
+	/* hypercall to notify hv the guest EPT setting*/
+	if (hcall_set_memmap(vmid,
+			virt_to_phys(&set_memmap)) < 0) {
+		pr_err("vhm: failed to set memmap %ld!\n", vmid);
+		return -EFAULT;
+	}
+
+	pr_debug("VHM: set ept for mem map[type=0x%x, host_gpa=0x%lx,"
+		"guest_gpa=0x%lx,len=0x%lx, prot=0x%x]\n",
+		type, host_gpa, guest_gpa, len, prot);
+
+	return 0;
+}
+
+int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len, unsigned int prot)
+{
+	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
+		prot, MAP_MMIO);
+}
+
+int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len, unsigned int prot)
+{
+	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
+		prot, MAP_UNMAP);
+}
+
+int update_mmio_map(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len, unsigned int prot)
+{
+	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
+		prot, MAP_MMIO);
+}
+
+int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
+{
+	struct guest_memseg *seg = NULL;
+	struct vm_set_memmap set_memmap;
+
+	mutex_lock(&vm->seg_lock);
+
+	if (memmap->segid != VM_MMIO) {
+		list_for_each_entry(seg, &vm->memseg_list, list) {
+			if (seg->segid == memmap->segid
+				&& seg->gpa == memmap->mem.gpa
+				&& seg->len == memmap->mem.len)
+				break;
+		}
+		if (&seg->list == &vm->memseg_list) {
+			mutex_unlock(&vm->seg_lock);
+			return -EINVAL;
+		}
+		seg->prot = memmap->mem.prot;
+		set_memmap.type = MAP_MEM;
+		set_memmap.remote_gpa = seg->gpa;
+		set_memmap.vm0_gpa = seg->base;
+		set_memmap.length = seg->len;
+		set_memmap.prot = seg->prot;
+		set_memmap.prot |= MEM_ATTR_WB_CACHE;
+	} else {
+		set_memmap.type = MAP_MMIO;
+		set_memmap.remote_gpa = memmap->mmio.gpa;
+		set_memmap.vm0_gpa = memmap->mmio.hpa;
+		set_memmap.length = memmap->mmio.len;
+		set_memmap.prot = memmap->mmio.prot;
+		set_memmap.prot |= MEM_ATTR_UNCACHED;
+	}
+
+	/* hypercall to notify hv the guest EPT setting*/
+	if (hcall_set_memmap(vm->vmid, virt_to_phys(&set_memmap)) < 0) {
+		pr_err("vhm: failed to set memmap %ld!\n", vm->vmid);
+		mutex_unlock(&vm->seg_lock);
+		return -EFAULT;
+	}
+
+	mutex_unlock(&vm->seg_lock);
+
+	if (memmap->segid != VM_MMIO)
+		pr_debug("VHM: set ept for memseg [hvm_gpa=0x%llx,"
+			"guest_gpa=0x%llx,len=0x%lx, prot=0x%x]\n",
+			seg->base, seg->gpa, seg->len, seg->prot);
+	else
+		pr_debug("VHM: set ept for mmio [hpa=0x%llx,"
+			"gpa=0x%llx,len=0x%lx, prot=0x%x]\n",
+			memmap->mmio.hpa, memmap->mmio.gpa,
+			memmap->mmio.len, memmap->mmio.prot);
+
+	return 0;
+}
+
+void free_guest_mem(struct vhm_vm *vm)
+{
+	struct guest_memseg *seg;
+
+	mutex_lock(&vm->seg_lock);
+	while (!list_empty(&vm->memseg_list)) {
+		seg = list_first_entry(&vm->memseg_list,
+				struct guest_memseg, list);
+		if (!_free_memblk(vm->dev, seg->base, seg->len))
+			pr_warn("failed to free memblk\n");
+		list_del(&seg->list);
+		kfree(seg);
+	}
+	mutex_unlock(&vm->seg_lock);
+}
+
+int check_guest_mem(struct vhm_vm *vm)
+{
+	struct guest_memseg *seg;
+
+	mutex_lock(&vm->seg_lock);
+	list_for_each_entry(seg, &vm->memseg_list, list) {
+		if (seg->segid != VM_SYSMEM)
+			continue;
+
+		if (seg->vma_count == 0)
+			continue;
+
+		mutex_unlock(&vm->seg_lock);
+		return -EAGAIN;
+	}
+	mutex_unlock(&vm->seg_lock);
+	return 0;
+}
+
+static void guest_vm_open(struct vm_area_struct *vma)
+{
+	struct vhm_vm *vm = vma->vm_file->private_data;
+	struct guest_memseg *seg = vma->vm_private_data;
+
+	mutex_lock(&vm->seg_lock);
+	seg->vma_count++;
+	mutex_unlock(&vm->seg_lock);
+}
+
+static void guest_vm_close(struct vm_area_struct *vma)
+{
+	struct vhm_vm *vm = vma->vm_file->private_data;
+	struct guest_memseg *seg = vma->vm_private_data;
+
+	mutex_lock(&vm->seg_lock);
+	seg->vma_count--;
+	BUG_ON(seg->vma_count < 0);
+	mutex_unlock(&vm->seg_lock);
+}
+
+static const struct vm_operations_struct guest_vm_ops = {
+	.open = guest_vm_open,
+	.close = guest_vm_close,
+};
+
+static int do_mmap_guest(struct file *file,
+		struct vm_area_struct *vma, struct guest_memseg *seg)
+{
+	struct page *page;
+	size_t size = seg->len;
+	unsigned long pfn;
+	unsigned long start_addr;
+
+	vma->vm_flags |= VM_MIXEDMAP | VM_DONTEXPAND | VM_DONTCOPY;
+	pfn = seg->base >> PAGE_SHIFT;
+	start_addr = vma->vm_start;
+	while (size > 0) {
+		page = pfn_to_page(pfn);
+		if (vm_insert_page(vma, start_addr, page))
+			return -EINVAL;
+		size -= PAGE_SIZE;
+		start_addr += PAGE_SIZE;
+		pfn++;
+	}
+	seg->vma_count++;
+	vma->vm_ops = &guest_vm_ops;
+	vma->vm_private_data = (void *)seg;
+
+	pr_info("VHM: mmap for memseg [seg base=0x%llx, gpa=0x%llx] "
+		"to start addr 0x%lx\n",
+		seg->base, seg->gpa, start_addr);
+
+	return 0;
+}
+
+int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma)
+{
+	struct vhm_vm *vm = file->private_data;
+	struct guest_memseg *seg;
+	u64 offset = vma->vm_pgoff << PAGE_SHIFT;
+	size_t len = vma->vm_end - vma->vm_start;
+	int ret;
+
+	mutex_lock(&vm->seg_lock);
+	list_for_each_entry(seg, &vm->memseg_list, list) {
+		if (seg->segid != VM_SYSMEM)
+			continue;
+
+		if (seg->gpa != offset || seg->len != len)
+			continue;
+
+		ret = do_mmap_guest(file, vma, seg);
+		mutex_unlock(&vm->seg_lock);
+		return ret;
+	}
+	mutex_unlock(&vm->seg_lock);
+	return -EINVAL;
+}
+
+static void *do_map_guest_phys(struct vhm_vm *vm, u64 guest_phys, size_t size)
+{
+	struct guest_memseg *seg;
+
+	mutex_lock(&vm->seg_lock);
+	list_for_each_entry(seg, &vm->memseg_list, list) {
+		if (seg->segid != VM_SYSMEM)
+			continue;
+
+		if (seg->gpa > guest_phys ||
+		    guest_phys >= seg->gpa + seg->len)
+			continue;
+
+		if (guest_phys + size > seg->gpa + seg->len) {
+			mutex_unlock(&vm->seg_lock);
+			return NULL;
+		}
+
+		mutex_unlock(&vm->seg_lock);
+		return phys_to_virt(seg->base + guest_phys - seg->gpa);
+	}
+	mutex_unlock(&vm->seg_lock);
+	return NULL;
+}
+
+void *map_guest_phys(unsigned long vmid, u64 guest_phys, size_t size)
+{
+	struct vhm_vm *vm;
+	void *ret;
+
+	vm = find_get_vm(vmid);
+	if (vm == NULL)
+		return NULL;
+
+	ret = do_map_guest_phys(vm, guest_phys, size);
+
+	put_vm(vm);
+
+	return ret;
+}
+EXPORT_SYMBOL(map_guest_phys);
+
+static int do_unmap_guest_phys(struct vhm_vm *vm, u64 guest_phys)
+{
+	struct guest_memseg *seg;
+
+	mutex_lock(&vm->seg_lock);
+	list_for_each_entry(seg, &vm->memseg_list, list) {
+		if (seg->segid != VM_SYSMEM)
+			continue;
+
+		if (seg->gpa <= guest_phys &&
+			guest_phys < seg->gpa + seg->len) {
+			mutex_unlock(&vm->seg_lock);
+			return 0;
+		}
+	}
+	mutex_unlock(&vm->seg_lock);
+
+	return -ESRCH;
+}
+
+int unmap_guest_phys(unsigned long vmid, u64 guest_phys)
+{
+	struct vhm_vm *vm;
+	int ret;
+
+	vm = find_get_vm(vmid);
+	if (vm == NULL) {
+		pr_warn("vm_list corrupted\n");
+		return -ESRCH;
+	}
+
+	ret = do_unmap_guest_phys(vm, guest_phys);
+	put_vm(vm);
+	return ret;
+}
+EXPORT_SYMBOL(unmap_guest_phys);
