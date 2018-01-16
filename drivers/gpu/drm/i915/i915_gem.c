@@ -5169,6 +5169,39 @@ fail:
 	return ERR_PTR(err);
 }
 
+/**
+ * i915_gem_access_userdata_ioctl -Reads/writes userdata for the object
+ * @dev: DRM device
+ * @data: struct drm_i915_gem_access_userdata
+ * @file: GEM object info
+ *
+ * Set/Get 32-bit private user defined data stored with a given GEM object.
+ */
+int
+i915_gem_access_userdata_ioctl(struct drm_device *dev, void *data,
+			       struct drm_file *file)
+{
+	struct drm_i915_gem_access_userdata *args = data;
+	struct drm_i915_gem_object *obj;
+
+	obj = i915_gem_object_lookup(file, args->handle);
+	if (!obj)
+		return -ENOENT;
+
+	mutex_lock(&dev->struct_mutex);
+
+	if (args->write)
+		obj->userdata = args->userdata;
+	else
+		args->userdata = obj->userdata;
+
+	mutex_unlock(&dev->struct_mutex);
+
+	i915_gem_object_put(obj);
+
+	return 0;
+}
+
 struct scatterlist *
 i915_gem_object_get_sg(struct drm_i915_gem_object *obj,
 		       unsigned int n,
