@@ -13,6 +13,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/async.h>
 #include <linux/clk.h>
 #include <linux/clkdev.h>
 #include <linux/clk-provider.h>
@@ -138,7 +139,7 @@ static int intel_lpss_request_dma_module(const char *name)
 		return 0;
 
 	intel_lpss_dma_requested = true;
-	return request_module("%s", name);
+	return request_module_nowait("%s", name);
 }
 
 static void intel_lpss_cache_ltr(struct intel_lpss *lpss)
@@ -381,6 +382,39 @@ static void intel_lpss_unregister_clock(struct intel_lpss *lpss)
 	intel_lpss_unregister_clock_tree(lpss->clk);
 }
 
+static void intel_lpss_async_add_devices(void *_lpss, async_cookie_t cookie)
+{
+	struct intel_lpss *lpss = _lpss;
+	int ret;
+
+	if (intel_lpss_has_idma(lpss)) {
+		/*
+		 * Ensure the DMA driver is loaded before the host
+		 * controller device appears, so that the host controller
+		 * driver can request its DMA channels as early as
+		 * possible.
+		 *
+		 * If the DMA module is not there that's OK as well.
+		 */
+		intel_lpss_request_dma_module(LPSS_IDMA64_DRIVER_NAME);
+
+		ret = mfd_add_devices(lpss->dev, lpss->devid,
+				&intel_lpss_idma64_cell, 1, lpss->info->mem,
+				lpss->info->irq, NULL);
+		if (ret)
+			dev_warn(lpss->dev, "Failed to add %s, fallback to PIO\n",
+				 LPSS_IDMA64_DRIVER_NAME);
+	}
+
+	ret = mfd_add_devices(lpss->dev, lpss->devid, lpss->cell,
+			1, lpss->info->mem, lpss->info->irq, NULL);
+	if (ret) {
+		intel_lpss_debugfs_remove(lpss);
+		intel_lpss_ltr_hide(lpss);
+		intel_lpss_unregister_clock(lpss);
+	}
+}
+
 int intel_lpss_probe(struct device *dev,
 		     const struct intel_lpss_platform_info *info)
 {
@@ -427,35 +461,9 @@ int intel_lpss_probe(struct device *dev,
 	if (ret)
 		dev_warn(dev, "Failed to create debugfs entries\n");
 
-	if (intel_lpss_has_idma(lpss)) {
-		/*
-		 * Ensure the DMA driver is loaded before the host
-		 * controller device appears, so that the host controller
-		 * driver can request its DMA channels as early as
-		 * possible.
-		 *
-		 * If the DMA module is not there that's OK as well.
-		 */
-		intel_lpss_request_dma_module(LPSS_IDMA64_DRIVER_NAME);
-
-		ret = mfd_add_devices(dev, lpss->devid, &intel_lpss_idma64_cell,
-				      1, info->mem, info->irq, NULL);
-		if (ret)
-			dev_warn(dev, "Failed to add %s, fallback to PIO\n",
-				 LPSS_IDMA64_DRIVER_NAME);
-	}
-
-	ret = mfd_add_devices(dev, lpss->devid, lpss->cell,
-			      1, info->mem, info->irq, NULL);
-	if (ret)
-		goto err_remove_ltr;
+	async_schedule(intel_lpss_async_add_devices, lpss);
 
 	return 0;
-
-err_remove_ltr:
-	intel_lpss_debugfs_remove(lpss);
-	intel_lpss_ltr_hide(lpss);
-	intel_lpss_unregister_clock(lpss);
 
 err_clk_register:
 	ida_simple_remove(&intel_lpss_devid_ida, lpss->devid);
