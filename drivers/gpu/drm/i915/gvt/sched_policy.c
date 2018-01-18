@@ -83,8 +83,8 @@ static void gvt_balance_timeslice(struct gvt_sched_data *sched_data,
 {
 	struct vgpu_sched_data *vgpu_data;
 	struct list_head *pos;
-	static uint64_t stage_check;
-	int stage = stage_check++ % GVT_TS_BALANCE_STAGE_NUM;
+	static uint64_t stage_check[I915_NUM_ENGINES];
+	int stage = stage_check[ring_id]++ % GVT_TS_BALANCE_STAGE_NUM;
 
 	/* The timeslice accumulation reset at stage 0, which is
 	 * allocated again without adding previous debt.
