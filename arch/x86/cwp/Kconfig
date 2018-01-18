@@ -8,6 +8,7 @@ config CWP
 	depends on X86
 	depends on PARAVIRT
 	depends on DMA_CMA
+	depends on PCI_MSI
 	depends on !INTEL_IOMMU
 	depends on !VMAP_STACK
 	help
