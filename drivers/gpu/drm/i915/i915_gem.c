@@ -2772,13 +2772,15 @@ i915_gem_find_active_request(struct intel_engine_cs *engine)
 
 static bool engine_stalled(struct intel_engine_cs *engine)
 {
-	if (!engine->hangcheck.stalled)
-		return false;
+	if (!intel_vgpu_active(engine->i915)) {
+		if (!engine->hangcheck.stalled)
+			return false;
 
-	/* Check for possible seqno movement after hang declaration */
-	if (engine->hangcheck.seqno != intel_engine_get_seqno(engine)) {
-		DRM_DEBUG_DRIVER("%s pardoned\n", engine->name);
-		return false;
+		/* Check for possible seqno movement after hang declaration */
+		if (engine->hangcheck.seqno != intel_engine_get_seqno(engine)) {
+			DRM_DEBUG_DRIVER("%s pardoned\n", engine->name);
+			return false;
+		}
 	}
 
 	return true;
@@ -4544,7 +4546,7 @@ void i915_gem_sanitize(struct drm_i915_private *i915)
 	 * it may impact the display and we are uncertain about the stability
 	 * of the reset, so this could be applied to even earlier gen.
 	 */
-	if (INTEL_GEN(i915) >= 5) {
+	if (INTEL_GEN(i915) >= 5 && !intel_vgpu_active(i915)) {
 		int reset = intel_gpu_reset(i915, ALL_ENGINES);
 		WARN_ON(reset && reset != -ENODEV);
 	}

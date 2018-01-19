@@ -342,6 +342,8 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 	u32 __iomem *elsp =
 		engine->i915->regs + i915_mmio_reg_offset(RING_ELSP(engine));
 	unsigned int n;
+	u32 descs[4];
+	int i = 0;
 
 	for (n = ARRAY_SIZE(engine->execlist_port); n--; ) {
 		struct drm_i915_gem_request *rq;
@@ -360,9 +362,25 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 			GEM_BUG_ON(!n);
 			desc = 0;
 		}
+		if (intel_vgpu_active(engine->i915) && i915.enable_pvmmio) {
+			BUG_ON(i >= 4);
+			descs[i] = upper_32_bits(desc);
+			descs[i + 1] = lower_32_bits(desc);
+			i += 2;
+		} else {
+			writel(upper_32_bits(desc), elsp);
+			writel(lower_32_bits(desc), elsp);
+		}
+	}
 
-		writel(upper_32_bits(desc), elsp);
-		writel(lower_32_bits(desc), elsp);
+	if (intel_vgpu_active(engine->i915) && i915.enable_pvmmio) {
+		u32 __iomem *elsp_data = engine->i915->shared_page->elsp_data;
+		spin_lock(&engine->i915->shared_page_lock);
+		writel(descs[0], elsp_data);
+		writel(descs[1], elsp_data + 1);
+		writel(descs[2], elsp_data + 2);
+		writel(descs[3], elsp);
+		spin_unlock(&engine->i915->shared_page_lock);
 	}
 }
 
@@ -1747,6 +1765,15 @@ lrc_setup_hws(struct intel_engine_cs *engine, struct i915_vma *vma)
 	return 0;
 }
 
+static void i915_error_reset(struct work_struct *work) {
+	struct intel_engine_cs *engine =
+		container_of(work, struct intel_engine_cs,
+			     reset_work);
+	i915_handle_error(engine->i915, 1 << engine->id,
+			"Received error interrupt from engine %d",
+			engine->id);
+}
+
 static void
 logical_ring_setup(struct intel_engine_cs *engine)
 {
@@ -1777,6 +1804,8 @@ logical_ring_setup(struct intel_engine_cs *engine)
 
 	logical_ring_default_vfuncs(engine);
 	logical_ring_default_irqs(engine);
+
+	INIT_WORK(&engine->reset_work, i915_error_reset);
 }
 
 static int
@@ -2032,6 +2061,14 @@ populate_lr_context(struct i915_gem_context *ctx,
 
 	execlists_init_reg_state(vaddr + LRC_STATE_PN * PAGE_SIZE,
 				 ctx, engine, ring);
+
+	/* write the context's pid and hw_id/cid to the per-context HWS page */
+	if(intel_vgpu_active(engine->i915) && pid_nr(ctx->pid)) {
+		*(u32*)(vaddr + LRC_PPHWSP_PN * PAGE_SIZE + I915_GEM_HWS_PID_ADDR)
+			= pid_nr(ctx->pid) & 0x3fffff;
+		*(u32*)(vaddr + LRC_PPHWSP_PN * PAGE_SIZE + I915_GEM_HWS_CID_ADDR)
+			= ctx->hw_id & 0x3fffff;
+	}
 
 	i915_gem_object_unpin_map(ctx_obj);
 

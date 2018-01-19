@@ -440,7 +440,13 @@ void intel_csr_ucode_init(struct drm_i915_private *dev_priv)
 
 	INIT_WORK(&dev_priv->csr.work, csr_load_work_fn);
 
-	if (!HAS_CSR(dev_priv))
+	/*
+	 * In a GVTg enabled environment, loading the CSR firmware for DomU doesn't
+	 * make much sense since we don't allow it to control display power
+	 * management settings. Furthermore, we can save some time for DomU bootup
+	 * by skipping CSR loading.
+	 */
+	if (!HAS_CSR(dev_priv) || intel_vgpu_active(dev_priv))
 		return;
 
 	if (IS_CANNONLAKE(dev_priv))

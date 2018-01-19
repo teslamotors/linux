@@ -49,6 +49,10 @@
 #include <linux/dma_remapping.h>
 #include <linux/reservation.h>
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+#include "gvt.h"
+#endif
+
 /* Primary plane formats for gen <= 3 */
 static const uint32_t i8xx_primary_formats[] = {
 	DRM_FORMAT_C8,
@@ -1304,6 +1308,13 @@ static void assert_sprites_disabled(struct drm_i915_private *dev_priv,
 	if (INTEL_GEN(dev_priv) >= 9) {
 		for_each_sprite(dev_priv, pipe, sprite) {
 			u32 val = I915_READ(PLANE_CTL(pipe, sprite));
+
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+			struct intel_gvt *gvt = dev_priv->gvt;
+			if (gvt && gvt->pipe_info[pipe].plane_owner[sprite])
+				return;
+#endif
+
 			I915_STATE_WARN(val & PLANE_CTL_ENABLE,
 			     "plane %d assertion failure, should be off on pipe %c but is still active\n",
 			     sprite, pipe_name(pipe));
@@ -3595,6 +3606,9 @@ static void skylake_update_primary_plane(struct intel_plane *plane,
 	int dst_w = drm_rect_width(&plane_state->base.dst);
 	int dst_h = drm_rect_height(&plane_state->base.dst);
 	unsigned long irqflags;
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	struct intel_gvt *gvt = dev_priv->gvt;
+#endif
 
 	/* Sizes are 0 based */
 	src_w--;
@@ -3615,6 +3629,30 @@ static void skylake_update_primary_plane(struct intel_plane *plane,
 			      PLANE_COLOR_PIPE_CSC_ENABLE |
 			      PLANE_COLOR_PLANE_GAMMA_DISABLE);
 	}
+
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (gvt && gvt->pipe_info[pipe].plane_owner[plane_id]) {
+		struct intel_dom0_plane_regs *dom0_regs =
+			&gvt->pipe_info[pipe].dom0_regs[plane_id];
+
+		dom0_regs->plane_ctl = plane_ctl;
+		dom0_regs->plane_offset = (src_y << 16) | src_x;
+		dom0_regs->plane_stride = stride;
+		dom0_regs->plane_size = (src_h << 16) | src_w;
+		dom0_regs->plane_aux_dist =
+			(plane_state->aux.offset - surf_addr) | aux_stride;
+		dom0_regs->plane_aux_offset =
+			 (plane_state->aux.y << 16) | plane_state->aux.x;
+		dom0_regs->plane_pos = (dst_y << 16) | dst_x;
+		dom0_regs->plane_surf = intel_plane_ggtt_offset(plane_state) +
+			surf_addr;
+		/* TODO: to support plane scaling in gvt*/
+		if (scaler_id >= 0)
+			DRM_ERROR("GVT not support plane scaling yet\n");
+		spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
+		return;
+	}
+#endif
 
 	I915_WRITE_FW(PLANE_CTL(pipe, plane_id), plane_ctl);
 	I915_WRITE_FW(PLANE_OFFSET(pipe, plane_id), (src_y << 16) | src_x);
@@ -3655,6 +3693,17 @@ static void skylake_disable_primary_plane(struct intel_plane *primary,
 	enum plane_id plane_id = primary->id;
 	enum pipe pipe = primary->pipe;
 	unsigned long irqflags;
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	struct intel_gvt *gvt = dev_priv->gvt;
+
+	if (gvt && gvt->pipe_info[pipe].plane_owner[plane_id]) {
+		struct intel_dom0_plane_regs *dom0_regs =
+			&gvt->pipe_info[pipe].dom0_regs[plane_id];
+		dom0_regs->plane_ctl = 0;
+		dom0_regs->plane_surf = 0;
+		return;
+	}
+#endif
 
 	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 
@@ -11643,7 +11692,16 @@ verify_crtc_state(struct drm_crtc *crtc,
 	intel_pipe_config_sanity_check(dev_priv, pipe_config);
 
 	sw_config = to_intel_crtc_state(new_crtc_state);
-	if (!intel_pipe_config_compare(dev_priv, sw_config,
+
+	/*
+	 * Only check for pipe config if we are not in a GVT guest environment,
+	 * because such a check in a GVT guest environment doesn't make any sense
+	 * as we don't allow the guest to do a mode set, so there can very well
+	 * be a difference between what it has programmed vs. what the host
+	 * truly configured the HW pipe to be in.
+	 */
+	if (!intel_vgpu_active(dev_priv) &&
+		!intel_pipe_config_compare(dev_priv, sw_config,
 				       pipe_config, false)) {
 		I915_STATE_WARN(1, "pipe state doesn't match!\n");
 		intel_dump_pipe_config(intel_crtc, pipe_config,
@@ -13801,6 +13859,15 @@ static void intel_setup_outputs(struct drm_i915_private *dev_priv)
 		encoder->base.possible_clones =
 			intel_encoder_clones(encoder);
 	}
+
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	/*
+	 * Encoders have been initialized. If we are in VGT mode,
+	 * let's inform the HV that it can start Dom U as Dom 0
+	 * is ready to accept new Dom Us.
+	 */
+	gvt_dom0_ready(dev_priv);
+#endif
 
 	intel_init_pch_refclk(dev_priv);
 

@@ -42,6 +42,10 @@
 #include "intel_drv.h"
 #include "intel_frontbuffer.h"
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+#include "gvt.h"
+#endif
+
 #define I915_GFP_DMA (GFP_KERNEL | __GFP_HIGHMEM)
 
 /**
@@ -2202,7 +2206,15 @@ static int bxt_vtd_ggtt_insert_page__cb(void *_arg)
 {
 	struct insert_page *arg = _arg;
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_pause_user_domains(arg->vm->i915);
+#endif
 	gen8_ggtt_insert_page(arg->vm, arg->addr, arg->offset, arg->level, 0);
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_unpause_user_domains(arg->vm->i915);
+#endif
 	bxt_vtd_ggtt_wa(arg->vm);
 
 	return 0;
@@ -2229,7 +2241,15 @@ static int bxt_vtd_ggtt_insert_entries__cb(void *_arg)
 {
 	struct insert_entries *arg = _arg;
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_pause_user_domains(arg->vm->i915);
+#endif
 	gen8_ggtt_insert_entries(arg->vm, arg->vma, arg->level, 0);
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_unpause_user_domains(arg->vm->i915);
+#endif
 	bxt_vtd_ggtt_wa(arg->vm);
 
 	return 0;
@@ -2255,7 +2275,15 @@ static int bxt_vtd_ggtt_clear_range__cb(void *_arg)
 {
 	struct clear_range *arg = _arg;
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_pause_user_domains(arg->vm->i915);
+#endif
 	gen8_ggtt_clear_range(arg->vm, arg->start, arg->length);
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_unpause_user_domains(arg->vm->i915);
+#endif
 	bxt_vtd_ggtt_wa(arg->vm);
 
 	return 0;
@@ -2558,17 +2586,20 @@ int i915_gem_init_ggtt(struct drm_i915_private *dev_priv)
 	if (ret)
 		return ret;
 
-	/* Clear any non-preallocated blocks */
-	drm_mm_for_each_hole(entry, &ggtt->base.mm, hole_start, hole_end) {
-		DRM_DEBUG_KMS("clearing unused GTT space: [%lx, %lx]\n",
-			      hole_start, hole_end);
-		ggtt->base.clear_range(&ggtt->base, hole_start,
-				       hole_end - hole_start);
-	}
+	if (!intel_vgpu_active(dev_priv)) {
+		/* Clear any non-preallocated blocks */
+		drm_mm_for_each_hole(entry, &ggtt->base.mm, hole_start,
+				hole_end) {
+			DRM_DEBUG_KMS("clearing unused GTT space: [%lx, %lx]\n",
+					hole_start, hole_end);
+			ggtt->base.clear_range(&ggtt->base, hole_start,
+					hole_end - hole_start);
+		}
 
-	/* And finally clear the reserved guard page */
-	ggtt->base.clear_range(&ggtt->base,
-			       ggtt->base.total - PAGE_SIZE, PAGE_SIZE);
+		/* And finally clear the reserved guard page */
+		ggtt->base.clear_range(&ggtt->base,
+				ggtt->base.total - PAGE_SIZE, PAGE_SIZE);
+	}
 
 	if (USES_PPGTT(dev_priv) && !USES_FULL_PPGTT(dev_priv)) {
 		ret = i915_gem_init_aliasing_ppgtt(dev_priv);

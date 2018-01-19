@@ -107,14 +107,9 @@ static void lut_close(struct i915_gem_context *ctx)
 	rcu_read_lock();
 	radix_tree_for_each_slot(slot, &ctx->handles_vma, &iter, 0) {
 		struct i915_vma *vma = rcu_dereference_raw(*slot);
-		struct drm_i915_gem_object *obj = vma->obj;
 
 		radix_tree_iter_delete(&ctx->handles_vma, &iter, slot);
-
-		if (!i915_vma_is_ggtt(vma))
-			i915_vma_close(vma);
-
-		__i915_gem_object_release_unless_active(obj);
+		__i915_gem_object_release_unless_active(vma->obj);
 	}
 	rcu_read_unlock();
 }
@@ -146,7 +141,11 @@ static void i915_gem_context_free(struct i915_gem_context *ctx)
 
 	list_del(&ctx->link);
 
-	ida_simple_remove(&ctx->i915->contexts.hw_ida, ctx->hw_id);
+	if (intel_vgpu_active(ctx->i915))
+		ida_simple_remove(&ctx->i915->contexts.hw_ida, ctx->hw_id & ~(0x7 << SIZE_CONTEXT_HW_ID));
+	else
+		ida_simple_remove(&ctx->i915->contexts.hw_ida, ctx->hw_id);
+
 	kfree_rcu(ctx, rcu);
 }
 
@@ -200,6 +199,11 @@ static void context_close(struct i915_gem_context *ctx)
 {
 	i915_gem_context_set_closed(ctx);
 
+	/*
+	 * The LUT uses the VMA as a backpointer to unref the object,
+	 * so we need to clear the LUT before we close all the VMA (inside
+	 * the ppgtt).
+	 */
 	lut_close(ctx);
 	if (ctx->ppgtt)
 		i915_ppgtt_close(&ctx->ppgtt->base);

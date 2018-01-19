@@ -37,6 +37,10 @@
 #include "i915_trace.h"
 #include "intel_drv.h"
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+#include "gvt.h"
+#endif
+
 /**
  * DOC: interrupt handling
  *
@@ -1319,6 +1323,12 @@ gen8_cs_irq_handler(struct intel_engine_cs *engine, u32 iir, int test_shift)
 		tasklet |= i915.enable_guc_submission;
 	}
 
+	if ((iir & (GT_RENDER_CS_MASTER_ERROR_INTERRUPT << test_shift)) &&
+			intel_vgpu_active(engine->i915)) {
+		queue_work(system_highpri_wq, &engine->reset_work);
+		return;
+	}
+
 	if (tasklet)
 		tasklet_hi_schedule(&engine->irq_tasklet);
 }
@@ -1705,6 +1715,17 @@ static void gen9_guc_irq_handler(struct drm_i915_private *dev_priv, u32 gt_iir)
 		}
 	}
 }
+
+
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+static inline void gvt_notify_vblank(struct drm_i915_private *dev_priv,
+				     enum pipe pipe)
+{
+	if (dev_priv->gvt)
+		queue_work(system_unbound_wq,
+				&dev_priv->gvt->pipe_info[pipe].vblank_work);
+}
+#endif
 
 static void valleyview_pipestat_irq_ack(struct drm_i915_private *dev_priv,
 					u32 iir, u32 pipe_stats[I915_MAX_PIPES])
@@ -2465,8 +2486,12 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 		ret = IRQ_HANDLED;
 		I915_WRITE(GEN8_DE_PIPE_IIR(pipe), iir);
 
-		if (iir & GEN8_PIPE_VBLANK)
+		if (iir & GEN8_PIPE_VBLANK) {
 			drm_handle_vblank(&dev_priv->drm, pipe);
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+			gvt_notify_vblank(dev_priv, pipe);
+#endif
+		}
 
 		if (iir & GEN8_PIPE_CDCLK_CRC_DONE)
 			hsw_pipe_crc_irq_handler(dev_priv, pipe);
@@ -2851,7 +2876,9 @@ static void gen8_disable_vblank(struct drm_device *dev, unsigned int pipe)
 	unsigned long irqflags;
 
 	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
-	bdw_disable_pipe_irq(dev_priv, pipe, GEN8_PIPE_VBLANK);
+	/*since guest will see all the pipes, we don't want it disable vblank*/
+	if (!dev_priv->gvt)
+		bdw_disable_pipe_irq(dev_priv, pipe, GEN8_PIPE_VBLANK);
 	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 }
 
@@ -3407,6 +3434,19 @@ static void gen8_gt_irq_postinstall(struct drm_i915_private *dev_priv)
 	if (HAS_L3_DPF(dev_priv))
 		gt_interrupts[0] |= GT_RENDER_L3_PARITY_ERROR_INTERRUPT;
 
+	if (intel_vgpu_active(dev_priv)) {
+		gt_interrupts[0] |= GT_RENDER_CS_MASTER_ERROR_INTERRUPT <<
+				GEN8_RCS_IRQ_SHIFT |
+			GT_RENDER_CS_MASTER_ERROR_INTERRUPT <<
+				GEN8_BCS_IRQ_SHIFT;
+		gt_interrupts[1] |= GT_RENDER_CS_MASTER_ERROR_INTERRUPT <<
+				GEN8_VCS1_IRQ_SHIFT |
+			GT_RENDER_CS_MASTER_ERROR_INTERRUPT <<
+				GEN8_VCS2_IRQ_SHIFT;
+		gt_interrupts[3] |= GT_RENDER_CS_MASTER_ERROR_INTERRUPT <<
+				GEN8_VECS_IRQ_SHIFT;
+	}
+
 	dev_priv->pm_ier = 0x0;
 	dev_priv->pm_imr = ~dev_priv->pm_ier;
 	GEN8_IRQ_INIT_NDX(GT, 0, ~gt_interrupts[0], gt_interrupts[0]);
@@ -3429,8 +3469,7 @@ static void gen8_de_irq_postinstall(struct drm_i915_private *dev_priv)
 	enum pipe pipe;
 
 	if (INTEL_GEN(dev_priv) >= 9) {
-		de_pipe_masked |= GEN9_PIPE_PLANE1_FLIP_DONE |
-				  GEN9_DE_PIPE_IRQ_FAULT_ERRORS;
+		de_pipe_masked |= GEN9_PIPE_PLANE1_FLIP_DONE;
 		de_port_masked |= GEN9_AUX_CHANNEL_B | GEN9_AUX_CHANNEL_C |
 				  GEN9_AUX_CHANNEL_D;
 		if (IS_GEN9_LP(dev_priv))

@@ -392,6 +392,7 @@ struct intel_engine_cs {
 	struct rb_root execlist_queue;
 	struct rb_node *execlist_first;
 	unsigned int fw_domains;
+	struct work_struct reset_work;
 
 	/* Contexts are pinned whilst they are active on the GPU. The last
 	 * context executed remains active whilst the GPU is idle - the
@@ -494,7 +495,11 @@ intel_write_status_page(struct intel_engine_cs *engine, int reg, u32 value)
  */
 #define I915_GEM_HWS_INDEX		0x30
 #define I915_GEM_HWS_INDEX_ADDR (I915_GEM_HWS_INDEX << MI_STORE_DWORD_INDEX_SHIFT)
-#define I915_GEM_HWS_SCRATCH_INDEX	0x40
+#define I915_GEM_HWS_PID_INDEX 0x40
+#define I915_GEM_HWS_PID_ADDR (I915_GEM_HWS_PID_INDEX << MI_STORE_DWORD_INDEX_SHIFT)
+#define I915_GEM_HWS_CID_INDEX 0x48
+#define I915_GEM_HWS_CID_ADDR (I915_GEM_HWS_CID_INDEX << MI_STORE_DWORD_INDEX_SHIFT)
+#define I915_GEM_HWS_SCRATCH_INDEX     0x50
 #define I915_GEM_HWS_SCRATCH_ADDR (I915_GEM_HWS_SCRATCH_INDEX << MI_STORE_DWORD_INDEX_SHIFT)
 
 struct intel_ring *

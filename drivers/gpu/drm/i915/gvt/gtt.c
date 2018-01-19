@@ -33,12 +33,12 @@
  *
  */
 
+#include <linux/stop_machine.h>
 #include "i915_drv.h"
 #include "gvt.h"
 #include "i915_pvinfo.h"
 #include "trace.h"
 
-static bool enable_out_of_sync = false;
 static int preallocated_oos_pages = 8192;
 
 /*
@@ -284,6 +284,50 @@ static inline int gtt_get_entry64(void *pt,
 	return 0;
 }
 
+struct ggtt_entry64 {
+	void *pt;
+	struct intel_gvt_gtt_entry *e;
+	unsigned long index;
+	bool hypervisor_access;
+	unsigned long gpa;
+	struct intel_vgpu *vgpu;
+};
+
+#ifdef CONFIG_INTEL_IOMMU
+static int gtt_get_entry64__cb(void *_arg)
+{
+	struct ggtt_entry64 *arg = _arg;
+	int ret = 0;
+
+	gvt_pause_user_domains(arg->vgpu->gvt->dev_priv);
+	ret = gtt_get_entry64(arg->pt, arg->e, arg->index,
+			arg->hypervisor_access, arg->gpa, arg->vgpu);
+	gvt_unpause_user_domains(arg->vgpu->gvt->dev_priv);
+
+	return ret;
+}
+#endif
+
+static inline int gtt_get_entry64__BKL(void *pt,
+		struct intel_gvt_gtt_entry *e,
+		unsigned long index, bool hypervisor_access, unsigned long gpa,
+		struct intel_vgpu *vgpu)
+{
+#ifdef CONFIG_INTEL_IOMMU
+	struct ggtt_entry64 arg = { pt, e, index, hypervisor_access, gpa, vgpu };
+
+	if (!intel_iommu_gfx_mapped || !IS_BROXTON(vgpu->gvt->dev_priv) ||
+				hypervisor_access || pt) {
+		return gtt_get_entry64(pt, e, index, hypervisor_access, gpa, vgpu);
+	} else {
+		stop_machine(gtt_get_entry64__cb, &arg, NULL);
+		return 0;
+	}
+#else
+	return gtt_get_entry64(pt, e, index, hypervisor_access, gpa, vgpu);
+#endif
+}
+
 static inline int gtt_set_entry64(void *pt,
 		struct intel_gvt_gtt_entry *e,
 		unsigned long index, bool hypervisor_access, unsigned long gpa,
@@ -307,6 +351,41 @@ static inline int gtt_set_entry64(void *pt,
 		*((u64 *)pt + index) = e->val64;
 	}
 	return 0;
+}
+
+#ifdef CONFIG_INTEL_IOMMU
+static int gtt_set_entry64__cb(void *_arg)
+{
+	struct ggtt_entry64 *arg = _arg;
+	int ret;
+
+	gvt_pause_user_domains(arg->vgpu->gvt->dev_priv);
+	ret = gtt_set_entry64(arg->pt, arg->e, arg->index, arg->hypervisor_access,
+				arg->gpa, arg->vgpu);
+	gvt_unpause_user_domains(arg->vgpu->gvt->dev_priv);
+
+	return ret;
+}
+#endif
+
+static inline int gtt_set_entry64__BKL(void *pt,
+		struct intel_gvt_gtt_entry *e,
+		unsigned long index, bool hypervisor_access, unsigned long gpa,
+		struct intel_vgpu *vgpu)
+{
+#ifdef CONFIG_INTEL_IOMMU
+	struct ggtt_entry64 arg = { pt, e, index, hypervisor_access, gpa, vgpu };
+
+	if (!intel_iommu_gfx_mapped || !IS_BROXTON(vgpu->gvt->dev_priv) ||
+				hypervisor_access || pt) {
+		return gtt_set_entry64(pt, e, index, hypervisor_access, gpa, vgpu);
+	} else {
+		stop_machine(gtt_set_entry64__cb, &arg, NULL);
+		return 0;
+	}
+#else
+	return gtt_set_entry64(pt, e, index, hypervisor_access, gpa, vgpu);
+#endif
 }
 
 #define GTT_HAW 46
@@ -403,8 +482,8 @@ DEFINE_PPGTT_GMA_TO_INDEX(gen8, l4_pdp, (gma >> 30 & 0x1ff));
 DEFINE_PPGTT_GMA_TO_INDEX(gen8, pml4, (gma >> 39 & 0x1ff));
 
 static struct intel_gvt_gtt_pte_ops gen8_gtt_pte_ops = {
-	.get_entry = gtt_get_entry64,
-	.set_entry = gtt_set_entry64,
+	.get_entry = gtt_get_entry64__BKL,
+	.set_entry = gtt_set_entry64__BKL,
 	.clear_present = gtt_entry_clear_present,
 	.test_present = gen8_gtt_test_present,
 	.test_pse = gen8_gtt_test_pse,
@@ -1219,7 +1298,7 @@ int intel_vgpu_sync_oos_pages(struct intel_vgpu *vgpu)
 	struct intel_vgpu_oos_page *oos_page;
 	int ret;
 
-	if (!enable_out_of_sync)
+	if (!i915.enable_gvt_oos)
 		return 0;
 
 	list_for_each_safe(pos, n, &vgpu->gtt.oos_page_list_head) {
@@ -1281,7 +1360,7 @@ fail:
 
 static inline bool can_do_out_of_sync(struct intel_vgpu_guest_page *gpt)
 {
-	return enable_out_of_sync
+	return i915.enable_gvt_oos
 		&& gtt_type_is_pte_pt(
 			guest_page_to_ppgtt_spt(gpt)->guest_page_type)
 		&& gpt->write_cnt >= 2;
@@ -1349,6 +1428,8 @@ static int ppgtt_handle_guest_write_page_table_bytes(void *gp,
 
 	index = (pa & (PAGE_SIZE - 1)) >> info->gtt_entry_size_shift;
 
+	/* Set guest ppgtt entry. Optional for KVMGT, but MUST for XENGT. */
+	intel_gvt_hypervisor_write_gpa(vgpu, pa, p_data, bytes);
 	ppgtt_get_guest_entry(spt, &we, index);
 
 	ops->test_pse(&we);
@@ -1371,7 +1452,7 @@ static int ppgtt_handle_guest_write_page_table_bytes(void *gp,
 		ppgtt_set_post_shadow(spt, index);
 	}
 
-	if (!enable_out_of_sync)
+	if (!i915.enable_gvt_oos)
 		return 0;
 
 	gpt->write_cnt++;
@@ -2267,7 +2348,7 @@ int intel_gvt_init_gtt(struct intel_gvt *gvt)
 	gvt_dbg_core("init gtt\n");
 
 	if (IS_BROADWELL(gvt->dev_priv) || IS_SKYLAKE(gvt->dev_priv)
-		|| IS_KABYLAKE(gvt->dev_priv)) {
+		|| IS_KABYLAKE(gvt->dev_priv) || IS_BROXTON(gvt->dev_priv)) {
 		gvt->gtt.pte_ops = &gen8_gtt_pte_ops;
 		gvt->gtt.gma_ops = &gen8_gtt_gma_ops;
 		gvt->gtt.mm_alloc_page_table = gen8_mm_alloc_page_table;
@@ -2292,7 +2373,7 @@ int intel_gvt_init_gtt(struct intel_gvt *gvt)
 	gvt->gtt.scratch_ggtt_page = virt_to_page(page);
 	gvt->gtt.scratch_ggtt_mfn = (unsigned long)(daddr >> GTT_PAGE_SHIFT);
 
-	if (enable_out_of_sync) {
+	if (i915.enable_gvt_oos) {
 		ret = setup_spt_oos(gvt);
 		if (ret) {
 			gvt_err("fail to initialize SPT oos\n");
@@ -2323,7 +2404,7 @@ void intel_gvt_clean_gtt(struct intel_gvt *gvt)
 
 	__free_page(gvt->gtt.scratch_ggtt_page);
 
-	if (enable_out_of_sync)
+	if (i915.enable_gvt_oos)
 		clean_spt_oos(gvt);
 }
 

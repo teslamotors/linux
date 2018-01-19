@@ -1910,6 +1910,49 @@ static void describe_ctx_ring(struct seq_file *m, struct intel_ring *ring)
 		   ring->space, ring->head, ring->tail);
 }
 
+bool is_shadow_context(struct i915_gem_context *ctx)
+{
+	if (ctx->name && !strncmp(ctx->name, "Shadow Context", 14))
+		return true;
+
+	return false;
+}
+
+int get_vgt_id(struct i915_gem_context *ctx)
+{
+	int vgt_id;
+
+	vgt_id = 0;
+
+	if (is_shadow_context(ctx))
+		sscanf(ctx->name, "Shadow Context %d", &vgt_id);
+
+	return vgt_id;
+}
+
+int get_pid_shadowed(struct i915_gem_context *ctx,
+		struct intel_engine_cs *engine)
+{
+	int pid, vgt_id;
+
+	sscanf(ctx->name, "Shadow Context %d", &vgt_id);
+	pid = intel_read_status_page(engine, I915_GEM_HWS_PID_INDEX + vgt_id);
+	return pid;
+}
+
+static void describe_ctx_ring_shadowed(struct seq_file *m,
+		struct i915_gem_context *ctx, struct intel_ring *ring,
+		struct intel_engine_cs *engine)
+{
+	int pid, cid, vgt_id;
+
+	sscanf(ctx->name, "Shadow Context %d", &vgt_id);
+	pid = intel_read_status_page(engine, I915_GEM_HWS_PID_INDEX + vgt_id);
+	cid = intel_read_status_page(engine, I915_GEM_HWS_CID_INDEX + vgt_id);
+	seq_printf(m, " (Current DomU Process PID: %d, CID: %d)",
+			pid, cid);
+}
+
 static int i915_context_status(struct seq_file *m, void *unused)
 {
 	struct drm_i915_private *dev_priv = node_to_i915(m->private);
@@ -1924,6 +1967,7 @@ static int i915_context_status(struct seq_file *m, void *unused)
 		return ret;
 
 	list_for_each_entry(ctx, &dev_priv->contexts.list, link) {
+		bool is_shadow_context = false;
 		seq_printf(m, "HW context %u ", ctx->hw_id);
 		if (ctx->pid) {
 			struct task_struct *task;
@@ -1934,6 +1978,9 @@ static int i915_context_status(struct seq_file *m, void *unused)
 					   task->comm, task->pid);
 				put_task_struct(task);
 			}
+		} else if (ctx->name && !strncmp(ctx->name, "Shadow Context", 14)) {
+			seq_puts(m, "DomU Shadow Context ");
+			is_shadow_context = true;
 		} else if (IS_ERR(ctx->file_priv)) {
 			seq_puts(m, "(deleted) ");
 		} else {
@@ -1945,13 +1992,22 @@ static int i915_context_status(struct seq_file *m, void *unused)
 
 		for_each_engine(engine, dev_priv, id) {
 			struct intel_context *ce = &ctx->engine[engine->id];
+			u64 lrc_desc = intel_lr_context_descriptor(ctx,
+					engine);
 
 			seq_printf(m, "%s: ", engine->name);
+			seq_printf(m, "ctx id 0x%x ", (uint32_t)((lrc_desc >> 12) &
+					0xFFFFF));
 			seq_putc(m, ce->initialised ? 'I' : 'i');
 			if (ce->state)
 				describe_obj(m, ce->state->obj);
-			if (ce->ring)
+			if (ce->ring) {
 				describe_ctx_ring(m, ce->ring);
+				if(is_shadow_context)
+					describe_ctx_ring_shadowed(m, ctx,
+							ce->ring, engine);
+			}
+
 			seq_putc(m, '\n');
 		}
 
@@ -3549,10 +3605,17 @@ static int i915_ddb_info(struct seq_file *m, void *unused)
 			seq_printf(m, "  Plane%-8d%8u%8u%8u\n", plane + 1,
 				   entry->start, entry->end,
 				   skl_ddb_entry_size(entry));
+			entry = &ddb->y_plane[pipe][plane];
+			seq_printf(m, " YPlane%-8d%8u%8u%8u\n", plane + 1,
+				   entry->start, entry->end,
+				   skl_ddb_entry_size(entry));
 		}
 
 		entry = &ddb->plane[pipe][PLANE_CURSOR];
 		seq_printf(m, "  %-13s%8u%8u%8u\n", "Cursor", entry->start,
+			   entry->end, skl_ddb_entry_size(entry));
+		entry = &ddb->y_plane[pipe][PLANE_CURSOR];
+		seq_printf(m, " Y%-13s%8u%8u%8u\n", "Cursor", entry->start,
 			   entry->end, skl_ddb_entry_size(entry));
 	}
 
@@ -4152,6 +4215,9 @@ i915_wedged_set(void *data, u64 val)
 	struct drm_i915_private *i915 = data;
 	struct intel_engine_cs *engine;
 	unsigned int tmp;
+
+	if (intel_vgpu_active(i915))
+		return -EINVAL;
 
 	/*
 	 * There is no safeguard against this debugfs entry colliding

@@ -42,15 +42,16 @@ struct intel_vgpu;
 #define D_BDW   (1 << 0)
 #define D_SKL	(1 << 1)
 #define D_KBL	(1 << 2)
+#define D_BXT	(1 << 3)
 
-#define D_GEN9PLUS	(D_SKL | D_KBL)
-#define D_GEN8PLUS	(D_BDW | D_SKL | D_KBL)
+#define D_GEN9PLUS	(D_SKL | D_KBL | D_BXT)
+#define D_GEN8PLUS	(D_BDW | D_SKL | D_KBL | D_BXT)
 
-#define D_SKL_PLUS	(D_SKL | D_KBL)
-#define D_BDW_PLUS	(D_BDW | D_SKL | D_KBL)
+#define D_SKL_PLUS	(D_SKL | D_KBL | D_BXT)
+#define D_BDW_PLUS	(D_BDW | D_SKL | D_KBL | D_BXT)
 
 #define D_PRE_SKL	(D_BDW)
-#define D_ALL		(D_BDW | D_SKL | D_KBL)
+#define D_ALL		(D_BDW | D_SKL | D_KBL | D_BXT)
 
 typedef int (*gvt_mmio_func)(struct intel_vgpu *, unsigned int, void *,
 			     unsigned int);
@@ -85,9 +86,12 @@ int intel_vgpu_gpa_to_mmio_offset(struct intel_vgpu *vgpu, u64 gpa);
 
 int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, u64 pa,
 				void *p_data, unsigned int bytes);
+int intel_vgpu_emulate_mmio_read_locked(struct intel_vgpu *vgpu, u64 pa,
+				void *p_data, unsigned int bytes);
 int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, u64 pa,
 				void *p_data, unsigned int bytes);
-
+int intel_vgpu_emulate_mmio_write_locked(struct intel_vgpu *vgpu, u64 pa,
+				void *p_data, unsigned int bytes);
 int intel_vgpu_default_mmio_read(struct intel_vgpu *vgpu, unsigned int offset,
 				 void *p_data, unsigned int bytes);
 int intel_vgpu_default_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
