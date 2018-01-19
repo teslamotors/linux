@@ -28,6 +28,12 @@
 #define VGT_PVINFO_PAGE	0x78000
 #define VGT_PVINFO_SIZE	0x1000
 
+/* Scratch reg used for redirecting command access to registers, any
+ * command access to PVINFO page would be discarded, so it has no HW
+ * impact.
+ */
+#define VGT_SCRATCH_REG VGT_PVINFO_PAGE
+
 /*
  * The following structure pages are defined in GEN MMIO space
  * for virtualization. (One page for now)
@@ -48,6 +54,17 @@ enum vgt_g2v_type {
 	VGT_G2V_EXECLIST_CONTEXT_DESTROY,
 	VGT_G2V_MAX,
 };
+
+/* shared page(4KB) between gvt and VM, located at the first page next
+ * to MMIO region(2MB size normally).
+ */
+struct gvt_shared_page {
+	u32 elsp_data[4];
+	u32 reg_addr;
+	u32 rsvd2[0x400 - 5];
+};
+
+#define VGPU_PVMMIO(vgpu) vgpu_vreg(vgpu, vgtif_reg(enable_pvmmio))
 
 /*
  * VGT capabilities type
@@ -101,8 +118,10 @@ struct vgt_if {
 
 	u32 execlist_context_descriptor_lo;
 	u32 execlist_context_descriptor_hi;
+	u32 enable_pvmmio;
+	u32 pv_mmio; /* vgpu trapped mmio read will be redirected here */
 
-	u32  rsv7[0x200 - 24];    /* pad to one page */
+	u32  rsv7[0x200 - 26];    /* pad to one page */
 } __packed;
 
 #define vgtif_reg(x) \

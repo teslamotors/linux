@@ -262,6 +262,7 @@ typedef struct _drm_i915_sarea {
 #define DRM_I915_PERF_OPEN		0x36
 #define DRM_I915_PERF_ADD_CONFIG	0x37
 #define DRM_I915_PERF_REMOVE_CONFIG	0x38
+#define DRM_I915_GEM_GVTBUFFER		0x39
 
 #define DRM_IOCTL_I915_INIT		DRM_IOW( DRM_COMMAND_BASE + DRM_I915_INIT, drm_i915_init_t)
 #define DRM_IOCTL_I915_FLUSH		DRM_IO ( DRM_COMMAND_BASE + DRM_I915_FLUSH)
@@ -319,6 +320,8 @@ typedef struct _drm_i915_sarea {
 #define DRM_IOCTL_I915_PERF_OPEN	DRM_IOW(DRM_COMMAND_BASE + DRM_I915_PERF_OPEN, struct drm_i915_perf_open_param)
 #define DRM_IOCTL_I915_PERF_ADD_CONFIG	DRM_IOW(DRM_COMMAND_BASE + DRM_I915_PERF_ADD_CONFIG, struct drm_i915_perf_oa_config)
 #define DRM_IOCTL_I915_PERF_REMOVE_CONFIG	DRM_IOW(DRM_COMMAND_BASE + DRM_I915_PERF_REMOVE_CONFIG, __u64)
+
+#define DRM_IOCTL_I915_GEM_GVTBUFFER		DRM_IOWR(DRM_COMMAND_BASE + DRM_I915_GEM_GVTBUFFER, struct drm_i915_gem_gvtbuffer)
 
 /* Allow drivers to submit batchbuffers directly to hardware, relying
  * on the security mechanisms provided by hardware.
@@ -1513,6 +1516,43 @@ struct drm_i915_perf_oa_config {
 	__u64 __user mux_regs_ptr;
 	__u64 __user boolean_regs_ptr;
 	__u64 __user flex_regs_ptr;
+};
+
+struct drm_i915_gem_gvtbuffer {
+        __u32 id;
+	__u32 plane_id;
+#define I915_GVT_PLANE_PRIMARY 1
+#define I915_GVT_PLANE_SPRITE 2
+#define I915_GVT_PLANE_CURSOR 3
+	__u32 pipe_id;
+	__u32 phys_pipe_id;
+	__u8  enabled;
+	__u8  tiled;
+	__u32 bpp;
+	__u32 hw_format;
+	__u32 drm_format;
+	__u32 start;
+	__u32 x_pos;
+	__u32 y_pos;
+	__u32 x_offset;
+	__u32 y_offset;
+	__u32 size;
+	__u32 width;
+	__u32 height;
+	__u32 stride;
+	__u64 user_ptr;
+	__u32 user_size;
+	__u32 flags;
+#define I915_GVTBUFFER_READ_ONLY (1<<0)
+#define I915_GVTBUFFER_QUERY_ONLY (1<<1)
+#define I915_GVTBUFFER_CHECK_CAPABILITY (1<<2)
+#define I915_GVTBUFFER_UNSYNCHRONIZED 0x80000000
+	/**
+	 * Returned handle for the object.
+	 *
+	 * Object handles are nonzero.
+	 */
+	__u32 handle;
 };
 
 #if defined(__cplusplus)

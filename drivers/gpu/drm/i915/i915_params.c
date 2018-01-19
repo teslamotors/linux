@@ -65,6 +65,10 @@ struct i915_params i915 __read_mostly = {
 	.inject_load_failure = 0,
 	.enable_dpcd_backlight = false,
 	.enable_gvt = false,
+	.enable_pvmmio = 1,
+	.enable_gvt_oos = 1,
+	.enable_conformance_check = true,
+	.disable_gvt_fw_loading = true,
 };
 
 module_param_named(modeset, i915.modeset, int, 0400);
@@ -257,3 +261,17 @@ MODULE_PARM_DESC(enable_dpcd_backlight,
 module_param_named(enable_gvt, i915.enable_gvt, bool, 0400);
 MODULE_PARM_DESC(enable_gvt,
 	"Enable support for Intel GVT-g graphics virtualization host support(default:false)");
+
+module_param_named(enable_pvmmio, i915.enable_pvmmio, bool, 0400);
+MODULE_PARM_DESC(enable_pvmmio,
+	"Enable pv mmio feature, default TRUE. This parameter "
+	"could only set from host, guest value is set through vgt_if");
+
+module_param_named(enable_gvt_oos, i915.enable_gvt_oos, bool, 0400);
+MODULE_PARM_DESC(enable_gvt_oos, "To toggle the gvt ppgtt page table OOS (Out of Sync) feature.");
+
+module_param_named(enable_conformance_check, i915.enable_conformance_check, bool, 0400);
+MODULE_PARM_DESC(enable_conformance_check, "To toggle the GVT guest conformance feature.");
+
+module_param_named(disable_gvt_fw_loading, i915.disable_gvt_fw_loading, bool, 0400);
+MODULE_PARM_DESC(disable_gvt_fw_loading, "Disable GVT-g fw loading.");

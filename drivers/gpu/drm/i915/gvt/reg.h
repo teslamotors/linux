@@ -54,8 +54,13 @@
 
 #define VGT_SPRSTRIDE(pipe)	_PIPE(pipe, _SPRA_STRIDE, _PLANE_STRIDE_2_B)
 
-#define _REG_701C0(pipe, plane) (0x701c0 + pipe * 0x1000 + (plane - 1) * 0x100)
-#define _REG_701C4(pipe, plane) (0x701c4 + pipe * 0x1000 + (plane - 1) * 0x100)
+#define _REG_701C0(pipe, plane) (0x701c0 + pipe * 0x1000 + plane * 0x100)
+#define _REG_701C4(pipe, plane) (0x701c4 + pipe * 0x1000 + plane * 0x100)
+#define _REG_701AC(pipe, plane) (0x701ac + pipe * 0x1000 + plane * 0x100)
+
+#define SKL_PLANE_REG_TO_PIPE(reg) (((reg) >> 12) & 0x3)
+#define SKL_PLANE_REG_TO_PLANE(reg) ((((reg) & 0xFFF) - 0x180) >> 8)
+#define SKL_FLIP_EVENT(pipe, plane) (PRIMARY_A_FLIP_DONE + (plane)*3 + pipe)
 
 #define GFX_MODE_BIT_SET_IN_MASK(val, bit) \
 		((((bit) & 0xffff0000) == 0) && !!((val) & (((bit) << 16))))
