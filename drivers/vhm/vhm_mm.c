@@ -78,12 +78,9 @@
 
 struct guest_memseg {
 	struct list_head list;
-	int segid;
-	u64 base;
+	u64 vm0_gpa;
 	size_t len;
-	char name[SPECNAMELEN + 1];
 	u64 gpa;
-	int prot; /* RWX */
 	long vma_count;
 };
 
@@ -105,10 +102,10 @@ static u64 _alloc_memblk(struct device *dev, size_t len)
 		return 0ULL;
 }
 
-static bool _free_memblk(struct device *dev, u64 base, size_t len)
+static bool _free_memblk(struct device *dev, u64 vm0_gpa, size_t len)
 {
 	unsigned int count = PAGE_ALIGN(len) >> PAGE_SHIFT;
-	struct page *page = pfn_to_page(base >> PAGE_SHIFT);
+	struct page *page = pfn_to_page(vm0_gpa >> PAGE_SHIFT);
 
 	return dma_release_from_contiguous(dev, page, count);
 }
@@ -116,32 +113,30 @@ static bool _free_memblk(struct device *dev, u64 base, size_t len)
 int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
 {
 	struct guest_memseg *seg;
-	u64 base;
+	u64 vm0_gpa;
 	int max_gfn;
 
 	seg = kzalloc(sizeof(struct guest_memseg), GFP_KERNEL);
 	if (seg == NULL)
 		return -ENOMEM;
 
-	base = _alloc_memblk(vm->dev, memseg->len);
-	if (base == 0ULL) {
+	vm0_gpa = _alloc_memblk(vm->dev, memseg->len);
+	if (vm0_gpa == 0ULL) {
 		kfree(seg);
 		return -ENOMEM;
 	}
 
-	seg->segid = memseg->segid;
-	seg->base = base;
+	seg->vm0_gpa = vm0_gpa;
 	seg->len = memseg->len;
-	strncpy(seg->name, memseg->name, SPECNAMELEN + 1);
 	seg->gpa = memseg->gpa;
 
 	max_gfn = (seg->gpa + seg->len) >> PAGE_SHIFT;
 	if (vm->max_gfn < max_gfn)
 		vm->max_gfn = max_gfn;
 
-	pr_info("VHM: alloc memseg[%s] with len=0x%lx, base=0x%llx,"
+	pr_info("VHM: alloc memseg with len=0x%lx, vm0_gpa=0x%llx,"
 		" and its guest gpa = 0x%llx, vm max_gfn 0x%x\n",
-		seg->name, seg->len, seg->base, seg->gpa, vm->max_gfn);
+		seg->len, seg->vm0_gpa, seg->gpa, vm->max_gfn);
 
 	seg->vma_count = 0;
 	mutex_lock(&vm->seg_lock);
@@ -201,55 +196,40 @@ int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 {
 	struct guest_memseg *seg = NULL;
-	struct vm_set_memmap set_memmap;
+	unsigned int type, prot;
+	unsigned long guest_gpa, host_gpa;
 
 	mutex_lock(&vm->seg_lock);
 
-	if (memmap->segid != VM_MMIO) {
+	if (memmap->type == VM_SYSMEM) {
 		list_for_each_entry(seg, &vm->memseg_list, list) {
-			if (seg->segid == memmap->segid
-				&& seg->gpa == memmap->mem.gpa
-				&& seg->len == memmap->mem.len)
+			if (seg->gpa == memmap->gpa
+				&& seg->len == memmap->len)
 				break;
 		}
 		if (&seg->list == &vm->memseg_list) {
 			mutex_unlock(&vm->seg_lock);
 			return -EINVAL;
 		}
-		seg->prot = memmap->mem.prot;
-		set_memmap.type = MAP_MEM;
-		set_memmap.remote_gpa = seg->gpa;
-		set_memmap.vm0_gpa = seg->base;
-		set_memmap.length = seg->len;
-		set_memmap.prot = seg->prot;
-		set_memmap.prot |= MEM_ATTR_WB_CACHE;
+		guest_gpa = seg->gpa;
+		host_gpa = seg->vm0_gpa;
+		prot = memmap->prot | MEM_ATTR_WB_CACHE;
+		type = MAP_MEM;
 	} else {
-		set_memmap.type = MAP_MMIO;
-		set_memmap.remote_gpa = memmap->mmio.gpa;
-		set_memmap.vm0_gpa = memmap->mmio.hpa;
-		set_memmap.length = memmap->mmio.len;
-		set_memmap.prot = memmap->mmio.prot;
-		set_memmap.prot |= MEM_ATTR_UNCACHED;
+		guest_gpa = memmap->gpa;
+		host_gpa = cwp_hpa2gpa(memmap->hpa);
+		prot = memmap->prot | MEM_ATTR_UNCACHED;
+		type = MAP_MMIO;
 	}
 
-	/* hypercall to notify hv the guest EPT setting*/
-	if (hcall_set_memmap(vm->vmid, virt_to_phys(&set_memmap)) < 0) {
+	if (_mem_set_memmap(vm->vmid, guest_gpa, host_gpa, memmap->len,
+		prot, type) < 0) {
 		pr_err("vhm: failed to set memmap %ld!\n", vm->vmid);
 		mutex_unlock(&vm->seg_lock);
 		return -EFAULT;
 	}
 
 	mutex_unlock(&vm->seg_lock);
-
-	if (memmap->segid != VM_MMIO)
-		pr_debug("VHM: set ept for memseg [hvm_gpa=0x%llx,"
-			"guest_gpa=0x%llx,len=0x%lx, prot=0x%x]\n",
-			seg->base, seg->gpa, seg->len, seg->prot);
-	else
-		pr_debug("VHM: set ept for mmio [hpa=0x%llx,"
-			"gpa=0x%llx,len=0x%lx, prot=0x%x]\n",
-			memmap->mmio.hpa, memmap->mmio.gpa,
-			memmap->mmio.len, memmap->mmio.prot);
 
 	return 0;
 }
@@ -262,7 +242,7 @@ void free_guest_mem(struct vhm_vm *vm)
 	while (!list_empty(&vm->memseg_list)) {
 		seg = list_first_entry(&vm->memseg_list,
 				struct guest_memseg, list);
-		if (!_free_memblk(vm->dev, seg->base, seg->len))
+		if (!_free_memblk(vm->dev, seg->vm0_gpa, seg->len))
 			pr_warn("failed to free memblk\n");
 		list_del(&seg->list);
 		kfree(seg);
@@ -276,9 +256,6 @@ int check_guest_mem(struct vhm_vm *vm)
 
 	mutex_lock(&vm->seg_lock);
 	list_for_each_entry(seg, &vm->memseg_list, list) {
-		if (seg->segid != VM_SYSMEM)
-			continue;
-
 		if (seg->vma_count == 0)
 			continue;
 
@@ -324,7 +301,7 @@ static int do_mmap_guest(struct file *file,
 	unsigned long start_addr;
 
 	vma->vm_flags |= VM_MIXEDMAP | VM_DONTEXPAND | VM_DONTCOPY;
-	pfn = seg->base >> PAGE_SHIFT;
+	pfn = seg->vm0_gpa >> PAGE_SHIFT;
 	start_addr = vma->vm_start;
 	while (size > 0) {
 		page = pfn_to_page(pfn);
@@ -338,9 +315,9 @@ static int do_mmap_guest(struct file *file,
 	vma->vm_ops = &guest_vm_ops;
 	vma->vm_private_data = (void *)seg;
 
-	pr_info("VHM: mmap for memseg [seg base=0x%llx, gpa=0x%llx] "
+	pr_info("VHM: mmap for memseg [seg vm0_gpa=0x%llx, gpa=0x%llx] "
 		"to start addr 0x%lx\n",
-		seg->base, seg->gpa, start_addr);
+		seg->vm0_gpa, seg->gpa, start_addr);
 
 	return 0;
 }
@@ -355,9 +332,6 @@ int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma)
 
 	mutex_lock(&vm->seg_lock);
 	list_for_each_entry(seg, &vm->memseg_list, list) {
-		if (seg->segid != VM_SYSMEM)
-			continue;
-
 		if (seg->gpa != offset || seg->len != len)
 			continue;
 
@@ -375,9 +349,6 @@ static void *do_map_guest_phys(struct vhm_vm *vm, u64 guest_phys, size_t size)
 
 	mutex_lock(&vm->seg_lock);
 	list_for_each_entry(seg, &vm->memseg_list, list) {
-		if (seg->segid != VM_SYSMEM)
-			continue;
-
 		if (seg->gpa > guest_phys ||
 		    guest_phys >= seg->gpa + seg->len)
 			continue;
@@ -388,7 +359,7 @@ static void *do_map_guest_phys(struct vhm_vm *vm, u64 guest_phys, size_t size)
 		}
 
 		mutex_unlock(&vm->seg_lock);
-		return phys_to_virt(seg->base + guest_phys - seg->gpa);
+		return phys_to_virt(seg->vm0_gpa + guest_phys - seg->gpa);
 	}
 	mutex_unlock(&vm->seg_lock);
 	return NULL;
@@ -417,9 +388,6 @@ static int do_unmap_guest_phys(struct vhm_vm *vm, u64 guest_phys)
 
 	mutex_lock(&vm->seg_lock);
 	list_for_each_entry(seg, &vm->memseg_list, list) {
-		if (seg->segid != VM_SYSMEM)
-			continue;
-
 		if (seg->gpa <= guest_phys &&
 			guest_phys < seg->gpa + seg->len) {
 			mutex_unlock(&vm->seg_lock);
