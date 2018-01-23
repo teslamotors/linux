@@ -67,6 +67,11 @@
 #define OVERRUN_CNT_EN	(1ULL << 0) /* whether overrun counting is enabled */
 #define OVERWRITE_EN	(1ULL << 1) /* whether overwrite is enabled */
 
+enum sbuf_type {
+	CWP_TRACE,
+	CWP_HVLOG,
+	CWP_SBUF_TYPE_MAX,
+};
 /**
  * (sbuf) head + buf (store (ele_num - 1) elements at most)
  * buffer empty: tail == head
@@ -115,6 +120,10 @@ shared_buf_t *sbuf_allocate(uint32_t ele_num, uint32_t ele_size);
 void sbuf_free(shared_buf_t *sbuf);
 int sbuf_get(shared_buf_t *sbuf, uint8_t *data);
 int sbuf_share_setup(uint32_t pcpu_id, uint32_t sbuf_id, shared_buf_t *sbuf);
-shared_buf_t *sbuf_construct(uint32_t ele_num, uint32_t ele_size, uint64_t gpa);
+shared_buf_t *sbuf_check_valid(uint32_t ele_num, uint32_t ele_size,
+				uint64_t gpa);
+shared_buf_t *sbuf_construct(uint32_t ele_num, uint32_t ele_size,
+				uint64_t gpa);
+void sbuf_deconstruct(shared_buf_t *sbuf);
 
 #endif /* SHARED_BUF_H */
