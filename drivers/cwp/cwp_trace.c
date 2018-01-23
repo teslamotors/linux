@@ -63,6 +63,8 @@
 #include <linux/fs.h>
 #include <linux/mm.h>
 
+#include <asm/hypervisor.h>
+
 #include "sbuf.h"
 
 
@@ -210,6 +212,11 @@ static int __init cwp_trace_init(void)
 {
 	int ret = 0;
 	int i, cpu;
+
+	if (x86_hyper_type != X86_HYPER_CWP) {
+		pr_err("cwp_trace: not support cwp hypervisor!\n");
+		return -EINVAL;
+	}
 
 	/* TBD: we could get the native cpu number by hypercall later */
 	pr_info("%s, cpu_num %d\n", __func__, nr_cpus);
