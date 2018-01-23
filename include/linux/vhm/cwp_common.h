@@ -144,7 +144,7 @@ struct cwp_create_vm {
 	int32_t vmid;	/* OUT: return vmid to VHM. Keep it first field */
 	uint32_t vcpu_num;	/* IN: VM vcpu number */
 	uint8_t	 GUID[16];	/* IN: GUID of this vm */
-	uint8_t	 trusty_enabled;/* IN: whether trusty is enabled */
+	uint8_t	 secure_world_enabled;/* IN: whether Secure World is enabled */
 	uint8_t  reserved[31];	/* Reserved for future use */
 } __attribute__((aligned(8)));
 
@@ -196,5 +196,14 @@ struct cwp_vm_pci_msix_remap {
 	/* IN: Vector Control for MSI-X Entry, field defined in MSIX spec */
 	uint32_t vector_ctl;
 } __attribute__((aligned(8)));
+
+/* It's designed to support passing DM config data pointer, based on it,
+ * hypervisor would parse then pass DM defined configration to GUEST vcpu
+ * when booting guest VM.
+ * the address 0xd0000 here is designed by DM, as it arranged all memory
+ * layout below 1M, DM should make sure there is no overlap for the address
+ * 0xd0000 usage.
+ */
+#define GUEST_CFG_OFFSET 	0xd0000
 
 #endif /* CWP_COMMON_H */
