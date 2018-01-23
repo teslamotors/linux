@@ -191,11 +191,11 @@ int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
 		prot, MAP_UNMAP);
 }
 
-int update_mmio_map(unsigned long vmid, unsigned long guest_gpa,
+int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len, unsigned int prot)
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
-		prot, MAP_MMIO);
+		prot, MAP_MEM);
 }
 
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)

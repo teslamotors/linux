@@ -69,7 +69,7 @@ int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len, unsigned int prot);
 int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len, unsigned int prot);
-int update_mmio_map(unsigned long vmid, unsigned long guest_gpa,
+int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len, unsigned int prot);
 
 int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma);
