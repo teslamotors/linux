@@ -588,7 +588,7 @@ static const struct file_operations fops = {
 static int __init vhm_init(void)
 {
 	unsigned long flag;
-	struct hc_api_version api_version;
+	struct hc_api_version api_version = {0, 0};
 
 	pr_info("vhm: initializing\n");
 
