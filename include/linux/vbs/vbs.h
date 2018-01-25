@@ -63,6 +63,8 @@
 #define _VBS_H_
 
 #include <linux/vbs/vbs_common_if.h>
+#include <linux/vhm/cwp_common.h>
+#include <linux/vhm/cwp_vhm_ioreq.h>
 
 /*
  * VBS-K device needs to handle frontend driver's kick in kernel.
@@ -78,6 +80,9 @@ enum IORangeType {
 struct ctx {
 	/* VHM required info */
 	int vmid;
+	int vhm_client_id;
+	int max_vcpu;
+	struct vhm_request *req_buf;
 };
 
 struct virtio_desc {			/* AKA vring_desc */
@@ -138,11 +143,15 @@ struct virtio_dev_info {
 	enum IORangeType io_range_type;	/* IO range type, PIO or MMIO */
 
 	/* members created in kernel space VBS */
-	void (*dev_notify)(void *, struct virtio_vq_info *);
-					/* device-wide notification */
+	int (*dev_notify)(int, int);	/* device-wide notification */
 	struct virtio_vq_info *vqs;	/* virtqueue(s) */
 	int curq;			/* current virtqueue index */
 };
+
+static inline int virtio_dev_client_id(struct virtio_dev_info *dev)
+{
+	return dev->_ctx.vhm_client_id;
+}
 
 /* VBS Runtime Control APIs */
 long virtio_dev_init(struct virtio_dev_info *dev, struct virtio_vq_info *vqs,
@@ -151,5 +160,8 @@ long virtio_dev_ioctl(struct virtio_dev_info *dev, unsigned int ioctl,
 		      void __user *argp);
 long virtio_vqs_ioctl(struct virtio_dev_info *dev, unsigned int ioctl,
 		      void __user *argp);
+long virtio_dev_register(struct virtio_dev_info *dev);
+long virtio_dev_deregister(struct virtio_dev_info *dev);
+int virtio_vq_index_get(struct virtio_dev_info *dev, int req_cnt);
 
 #endif

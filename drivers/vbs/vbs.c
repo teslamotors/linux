@@ -67,6 +67,127 @@
 #include <linux/vbs/vbs.h>
 #include <linux/vbs/vq.h>
 
+long virtio_dev_register(struct virtio_dev_info *dev)
+{
+	struct vm_info info;
+	int ret;
+
+	pr_debug("vmid is %d\n", dev->_ctx.vmid);
+
+	if (dev->dev_notify == NULL) {
+		pr_err("%s dev_notify empty!\n", dev->name);
+		goto err;
+	}
+
+	/*
+	 * dev->name is 32 chars while vhm only accepts 16 chars
+	 * at most, so we make sure there will be a NULL
+	 * terminator for the chars.
+	 */
+	dev->name[15] = '\0';
+	dev->_ctx.vhm_client_id =
+			cwp_ioreq_create_client(dev->_ctx.vmid,
+						dev->dev_notify,
+						dev->name);
+	if (dev->_ctx.vhm_client_id < 0) {
+		pr_err("failed to create client of cwp ioreq!\n");
+		goto err;
+	}
+
+	ret = cwp_ioreq_add_iorange(dev->_ctx.vhm_client_id,
+				    dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
+				    dev->io_range_start,
+				    dev->io_range_start + dev->io_range_len);
+	if (ret < 0) {
+		pr_err("failed to add iorange to cwp ioreq!\n");
+		goto err;
+	}
+
+	/* feed up max_cpu and req_buf */
+	ret = vhm_get_vm_info(dev->_ctx.vmid, &info);
+	if (ret < 0) {
+		pr_err("failed in vhm_get_vm_info!\n");
+		goto range_err;
+	}
+	dev->_ctx.max_vcpu = info.max_vcpu;
+
+	dev->_ctx.req_buf = cwp_ioreq_get_reqbuf(dev->_ctx.vhm_client_id);
+	if (dev->_ctx.req_buf == NULL) {
+		pr_err("failed in cwp_ioreq_get_reqbuf!\n");
+		goto range_err;
+	}
+
+	cwp_ioreq_attach_client(dev->_ctx.vhm_client_id, 0);
+
+	return 0;
+
+range_err:
+	cwp_ioreq_del_iorange(dev->_ctx.vhm_client_id,
+			      dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
+			      dev->io_range_start,
+			      dev->io_range_start + dev->io_range_len);
+
+err:
+	cwp_ioreq_destroy_client(dev->_ctx.vhm_client_id);
+
+	return -EINVAL;
+}
+
+long virtio_dev_deregister(struct virtio_dev_info *dev)
+{
+	cwp_ioreq_del_iorange(dev->_ctx.vhm_client_id,
+			      dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
+			      dev->io_range_start,
+			      dev->io_range_start + dev->io_range_len);
+
+	cwp_ioreq_destroy_client(dev->_ctx.vhm_client_id);
+
+	return 0;
+}
+
+int virtio_vq_index_get(struct virtio_dev_info *dev, int req_cnt)
+{
+	int val = -1;
+	struct vhm_request *req;
+	int i;
+
+	if (unlikely(req_cnt <= 0))
+		return -EINVAL;
+
+	if (dev == NULL) {
+		pr_err("%s: dev is NULL!\n", __func__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < dev->_ctx.max_vcpu; i++) {
+		req = &dev->_ctx.req_buf[i];
+		if (req->valid && req->processed == REQ_STATE_PROCESSING &&
+		    req->client == dev->_ctx.vhm_client_id) {
+			if (req->reqs.pio_request.direction == REQUEST_READ) {
+				/* currently we handle kick only,
+				 * so read will return 0
+				 */
+				pr_debug("%s: read request!\n", __func__);
+				if (dev->io_range_type == PIO_RANGE)
+					req->reqs.pio_request.value = 0;
+				else
+					req->reqs.mmio_request.value = 0;
+			} else {
+				pr_debug("%s: write request! type %d\n",
+						__func__, req->type);
+				if (dev->io_range_type == PIO_RANGE)
+					val = req->reqs.pio_request.value;
+				else
+					val = req->reqs.mmio_request.value;
+			}
+			req->processed = REQ_STATE_SUCCESS;
+			cwp_ioreq_complete_request(dev->_ctx.vhm_client_id, i);
+		}
+	}
+
+	return val;
+}
+
 static long virtio_vqs_info_set(struct virtio_dev_info *dev,
 				struct vbs_vqs_info __user *i)
 {

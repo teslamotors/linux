@@ -74,8 +74,6 @@
 
 #include <linux/vbs/vq.h>
 #include <linux/vbs/vbs.h>
-#include <linux/vhm/cwp_common.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
 #include <linux/hashtable.h>
 
 enum {
@@ -96,26 +94,14 @@ enum {
 struct vbs_rng {
 	struct virtio_dev_info dev;
 	struct virtio_vq_info vqs[VBS_K_RNG_VQ_MAX];
-	int vhm_client_id;
 	/* Below could be device specific members */
 	struct hwrng hwrng;
-};
-
-/*
- * Each VBS-K module might serve multiple connections from multiple
- * guests/device models/VBS-Us, so better to maintain the connections
- * in a list, and here we use hashtalble as an example.
- */
-struct vbs_rng_client {
-	struct vbs_rng *rng;
-	int vhm_client_id;
-	int max_vcpu;
-	struct vhm_request *req_buf;
-};
-
-/* instances malloced/freed by hashtable routines */
-struct vbs_rng_hash_entry {
-	struct vbs_rng_client *info;
+	/*
+	 * Each VBS-K module might serve multiple connections
+	 * from multiple guests/device models/VBS-Us, so better
+	 * to maintain the connections in a list, and here we
+	 * use hashtable as an example.
+	 */
 	struct hlist_node node;
 };
 
@@ -149,30 +135,20 @@ static void vbs_rng_hash_init(void)
 	vbs_rng_hash_initialized = 1;
 }
 
-static int vbs_rng_hash_add(struct vbs_rng_client *client)
+static int vbs_rng_hash_add(struct vbs_rng *entry)
 {
-	struct vbs_rng_hash_entry *entry;
-
 	if (!vbs_rng_hash_initialized) {
 		pr_err("RNG hash table not initialized!\n");
 		return -1;
 	}
 
-	entry = kmalloc(sizeof(*entry), GFP_KERNEL);
-	if (!entry) {
-		pr_err("Failed to alloc memory for rng hash entry!\n");
-		return -1;
-	}
-
-	entry->info = client;
-
-	hash_add(HASH_NAME, &entry->node, entry->info->vhm_client_id);
+	hash_add(HASH_NAME, &entry->node, virtio_dev_client_id(&entry->dev));
 	return 0;
 }
 
-static struct vbs_rng_client *vbs_rng_hash_find(int client_id)
+static struct vbs_rng *vbs_rng_hash_find(int client_id)
 {
-	struct vbs_rng_hash_entry *entry;
+	struct vbs_rng *entry;
 	int bkt;
 
 	if (!vbs_rng_hash_initialized) {
@@ -181,8 +157,8 @@ static struct vbs_rng_client *vbs_rng_hash_find(int client_id)
 	}
 
 	hash_for_each(HASH_NAME, bkt, entry, node)
-		if (entry->info->vhm_client_id == client_id)
-			return entry->info;
+		if (virtio_dev_client_id(&entry->dev) == client_id)
+			return entry;
 
 	pr_err("Not found item matching client_id!\n");
 	return NULL;
@@ -190,7 +166,7 @@ static struct vbs_rng_client *vbs_rng_hash_find(int client_id)
 
 static int vbs_rng_hash_del(int client_id)
 {
-	struct vbs_rng_hash_entry *entry;
+	struct vbs_rng *entry;
 	int bkt;
 
 	if (!vbs_rng_hash_initialized) {
@@ -199,9 +175,8 @@ static int vbs_rng_hash_del(int client_id)
 	}
 
 	hash_for_each(HASH_NAME, bkt, entry, node)
-		if (entry->info->vhm_client_id == client_id) {
+		if (virtio_dev_client_id(&entry->dev) == client_id) {
 			hash_del(&entry->node);
-			kfree(entry);
 			return 0;
 		}
 
@@ -212,7 +187,7 @@ static int vbs_rng_hash_del(int client_id)
 
 static int vbs_rng_hash_del_all(void)
 {
-	struct vbs_rng_hash_entry *entry;
+	struct vbs_rng *entry;
 	int bkt;
 
 	if (!vbs_rng_hash_initialized) {
@@ -221,73 +196,9 @@ static int vbs_rng_hash_del_all(void)
 	}
 
 	hash_for_each(HASH_NAME, bkt, entry, node)
-		if (1) {
-			hash_del(&entry->node);
-			kfree(entry);
-		}
+		hash_del(&entry->node);
 
 	return 0;
-}
-
-static int register_vhm_client(struct virtio_dev_info *dev)
-{
-	unsigned int vmid;
-	struct vm_info info;
-	struct vbs_rng_client *client;
-	int ret;
-
-	client = kcalloc(1, sizeof(*client), GFP_KERNEL);
-	if (!client) {
-		pr_err("failed to malloc vbs_rng_client!\n");
-		return -EINVAL;
-	}
-
-	client->rng = container_of(dev, struct vbs_rng, dev);
-	vmid = dev->_ctx.vmid;
-	pr_debug("vmid is %d\n", vmid);
-
-	client->vhm_client_id = cwp_ioreq_create_client(vmid, handle_kick,
-					       "vbs_rng kick init\n");
-	if (client->vhm_client_id < 0) {
-		pr_err("failed to create client of cwp ioreq!\n");
-		goto err;
-	}
-
-	ret = cwp_ioreq_add_iorange(client->vhm_client_id,
-				    dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
-				    dev->io_range_start,
-				    dev->io_range_start + dev->io_range_len);
-	if (ret < 0) {
-		pr_err("failed to add iorange to cwp ioreq!\n");
-		goto err;
-	}
-
-	/* feed up max_cpu and req_buf */
-	ret = vhm_get_vm_info(vmid, &info);
-	if (ret < 0) {
-		pr_err("failed in vhm_get_vm_info!\n");
-		goto err;
-	}
-	client->max_vcpu = info.max_vcpu;
-
-	client->req_buf = cwp_ioreq_get_reqbuf(client->vhm_client_id);
-	if (client->req_buf == NULL) {
-		pr_err("failed in cwp_ioreq_get_reqbuf!\n");
-		goto err;
-	}
-
-	/* just attach once as vhm will kick kthread */
-	cwp_ioreq_attach_client(client->vhm_client_id, 0);
-
-	client->rng->vhm_client_id = client->vhm_client_id;
-	vbs_rng_hash_add(client);
-
-	return 0;
-err:
-	cwp_ioreq_destroy_client(client->vhm_client_id);
-	kfree(client);
-
-	return -EINVAL;
 }
 
 static void handle_vq_kick(struct vbs_rng *rng, int vq_idx)
@@ -308,8 +219,6 @@ static void handle_vq_kick(struct vbs_rng *rng, int vq_idx)
 	}
 
 	vq = &(sc->vqs[vq_idx]);
-
-	pr_debug("before vq_has_desc!\n");
 
 	while (virtio_vq_has_descs(vq)) {
 		virtio_vq_getchain(vq, &idx, &iov, 1, NULL);
@@ -334,47 +243,25 @@ static void handle_vq_kick(struct vbs_rng *rng, int vq_idx)
 static int handle_kick(int client_id, int req_cnt)
 {
 	int val = -1;
-	struct vhm_request *req;
-	struct vbs_rng_client *client;
-	int i;
+	struct vbs_rng *rng;
 
 	if (unlikely(req_cnt <= 0))
 		return -EINVAL;
 
-	pr_debug("%s!\n", __func__);
+	pr_debug("%s: handle kick!\n", __func__);
 
-	client = vbs_rng_hash_find(client_id);
-	if (!client) {
-		pr_err("Ooops! client %d not found!\n", client_id);
+	rng = vbs_rng_hash_find(client_id);
+	if (rng == NULL) {
+		pr_err("%s: client %d not found!\n",
+				__func__, client_id);
 		return -EINVAL;
 	}
 
-	for (i = 0; i < client->max_vcpu; i++) {
-		req = &client->req_buf[i];
-		if (req->valid && req->processed == REQ_STATE_PROCESSING &&
-		    req->client == client->vhm_client_id) {
-			if (req->reqs.pio_request.direction == REQUEST_READ)
-				/* currently we handle kick only,
-				 * so read will return 0
-				 */
-				req->reqs.pio_request.value = 0;
-			else
-				val = req->reqs.pio_request.value;
-			pr_debug("%s: ioreq type %d, direction %d, "
-				 "addr 0x%lx, size 0x%lx, value 0x%x\n",
-				 __func__,
-				 req->type,
-				 req->reqs.pio_request.direction,
-				 req->reqs.pio_request.address,
-				 req->reqs.pio_request.size,
-				 req->reqs.pio_request.value);
-			req->processed = REQ_STATE_SUCCESS;
-			cwp_ioreq_complete_request(client->vhm_client_id, i);
-		}
-	}
+	val = virtio_vq_index_get(&rng->dev, req_cnt);
 
 	if (val >= 0)
-		handle_vq_kick(client->rng, val);
+		handle_vq_kick(rng, val);
+
 	return 0;
 }
 
@@ -385,15 +272,15 @@ static int vbs_rng_open(struct inode *inode, struct file *f)
 	struct virtio_vq_info *vqs;
 	int i;
 
-	pr_debug("%s!\n", __func__);
-
 	rng = kmalloc(sizeof(*rng), GFP_KERNEL);
-	if (!rng) {
+	if (rng == NULL) {
 		pr_err("Failed to allocate memory for vbs_rng!\n");
 		return -ENOMEM;
 	}
 
 	dev = &rng->dev;
+	strncpy(dev->name, "vbs_rng", VBS_NAME_LEN);
+	dev->dev_notify = handle_kick;
 	vqs = (struct virtio_vq_info *)&rng->vqs;
 
 	for (i = 0; i < VBS_K_RNG_VQ_MAX; i++) {
@@ -411,6 +298,8 @@ static int vbs_rng_open(struct inode *inode, struct file *f)
 	virtio_dev_init(dev, vqs, VBS_K_RNG_VQ_MAX);
 
 	f->private_data = rng;
+
+	/* init a hash table to maintain multi-connections */
 	vbs_rng_hash_init();
 
 	return 0;
@@ -419,14 +308,10 @@ static int vbs_rng_open(struct inode *inode, struct file *f)
 static int vbs_rng_release(struct inode *inode, struct file *f)
 {
 	struct vbs_rng *rng = f->private_data;
-	struct vbs_rng_client *client;
 	int i;
 
-	pr_debug("%s!\n", __func__);
-
-	client = vbs_rng_hash_find(rng->vhm_client_id);
-	if (!client)
-		pr_err("%s: UNLIKELY not found client!\n",
+	if (!rng)
+		pr_err("%s: UNLIKELY rng NULL!\n",
 		       __func__);
 
 	vbs_rng_stop(rng);
@@ -437,16 +322,16 @@ static int vbs_rng_release(struct inode *inode, struct file *f)
 	/* device specific release */
 	vbs_rng_reset(rng);
 
-	pr_debug("vbs_rng_connection cnt is %d\n", vbs_rng_connection_cnt);
+	pr_debug("vbs_rng_connection cnt is %d\n",
+			vbs_rng_connection_cnt);
 
-	if (client && vbs_rng_connection_cnt--)
-		vbs_rng_hash_del(client->vhm_client_id);
+	if (rng && vbs_rng_connection_cnt--)
+		vbs_rng_hash_del(virtio_dev_client_id(&rng->dev));
 	if (!vbs_rng_connection_cnt) {
 		pr_debug("vbs_rng remove all hash entries\n");
 		vbs_rng_hash_del_all();
 	}
 
-	kfree(client);
 	kfree(rng);
 
 	pr_debug("%s done\n", __func__);
@@ -488,7 +373,8 @@ static long vbs_rng_ioctl(struct file *f, unsigned int ioctl,
  *		return vhost_net_set_features(n, features);
  */
 	case VBS_SET_VQ:
-		/* we handle this here because we want to register VHM client
+		/*
+		 * we handle this here because we want to register VHM client
 		 * after handling VBS_K_SET_VQ request
 		 */
 		pr_debug("VBS_K_SET_VQ ioctl:\n");
@@ -498,10 +384,16 @@ static long vbs_rng_ioctl(struct file *f, unsigned int ioctl,
 			return -EFAULT;
 		}
 		/* Register VHM client */
-		if (register_vhm_client(&rng->dev) < 0) {
+		if (virtio_dev_register(&rng->dev) < 0) {
 			pr_err("failed to register VHM client!\n");
 			return -EFAULT;
 		}
+		/* Added to local hash table */
+		if (vbs_rng_hash_add(rng) < 0) {
+			pr_err("failed to add to hashtable!\n");
+			return -EFAULT;
+		}
+		/* Increment counter */
 		vbs_rng_connection_cnt++;
 		return r;
 	default:
@@ -544,6 +436,7 @@ static void vbs_rng_stop_vq(struct vbs_rng *rng,
 /* device specific function */
 static void vbs_rng_stop(struct vbs_rng *rng)
 {
+	virtio_dev_deregister(&rng->dev);
 }
 
 /* device specific function */
