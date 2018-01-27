@@ -87,6 +87,9 @@
 #define  DEVICE_NAME "cwp_vhm"
 #define  CLASS_NAME  "vhm"
 
+#define VHM_API_VERSION_MAJOR	1
+#define VHM_API_VERSION_MINOR	0
+
 static int    major;
 static struct class *vhm_class;
 static struct device *vhm_device;
@@ -153,6 +156,19 @@ static long vhm_dev_ioctl(struct file *filep,
 	struct vhm_vm *vm;
 
 	trace_printk("[%s] ioctl_num=0x%x\n", __func__, ioctl_num);
+
+	if (ioctl_num == IC_GET_API_VERSION) {
+		struct api_version api_version;
+
+		api_version.major_version = VHM_API_VERSION_MAJOR;
+		api_version.minor_version = VHM_API_VERSION_MINOR;
+
+		if (copy_to_user((void *)ioctl_param, &api_version,
+			sizeof(struct api_version)))
+			return -EFAULT;
+
+		return 0;
+	}
 
 	vm = (struct vhm_vm *)filep->private_data;
 	if (vm == NULL) {
@@ -400,7 +416,8 @@ static long vhm_dev_ioctl(struct file *filep,
 			return -EFAULT;
 		}
 
-		if (ic_pt_irq.msix.table_paddr) {
+		if ((ic_pt_irq.type == IRQ_MSIX) &&
+				ic_pt_irq.msix.table_paddr) {
 			new = kmalloc(sizeof(struct table_iomems), GFP_KERNEL);
 			if (new == NULL)
 				return -EFAULT;
@@ -419,7 +436,8 @@ static long vhm_dev_ioctl(struct file *filep,
 	case IC_RESET_PTDEV_INTR_INFO: {
 		struct ic_ptdev_irq ic_pt_irq;
 		struct hc_ptdev_irq hc_pt_irq;
-		struct table_iomems *new;
+		struct table_iomems *ptr;
+		int dev_found = 0;
 
 		if (copy_from_user(&ic_pt_irq,
 				(void *)ioctl_param, sizeof(ic_pt_irq)))
@@ -434,17 +452,18 @@ static long vhm_dev_ioctl(struct file *filep,
 			return -EFAULT;
 		}
 
-		if (ic_pt_irq.msix.table_paddr) {
-			new = kmalloc(sizeof(struct table_iomems), GFP_KERNEL);
-			if (new == NULL)
-				return -EFAULT;
-			new->phys_bdf = ic_pt_irq.phys_bdf;
-			new->mmap_addr = (unsigned long)
-				ioremap_nocache(ic_pt_irq.msix.table_paddr,
-					ic_pt_irq.msix.table_size);
-
+		if (ic_pt_irq.type == IRQ_MSIX) {
 			mutex_lock(&table_iomems_lock);
-			list_add(&new->list, &table_iomems_list);
+			list_for_each_entry(ptr, &table_iomems_list, list) {
+				if (ptr->phys_bdf == ic_pt_irq.phys_bdf) {
+					dev_found = 1;
+					break;
+				}
+			}
+			if (dev_found) {
+				iounmap((void __iomem *)ptr->mmap_addr);
+				list_del(&ptr->list);
+			}
 			mutex_unlock(&table_iomems_lock);
 		}
 
@@ -467,15 +486,18 @@ static long vhm_dev_ioctl(struct file *filep,
 		if (msix_remap.msix) {
 			void __iomem *msix_entry;
 			struct table_iomems *ptr;
+			int dev_found = 0;
 
 			mutex_lock(&table_iomems_lock);
 			list_for_each_entry(ptr, &table_iomems_list, list) {
-				if (ptr->phys_bdf == msix_remap.phys_bdf)
+				if (ptr->phys_bdf == msix_remap.phys_bdf) {
+					dev_found = 1;
 					break;
+				}
 			}
 			mutex_unlock(&table_iomems_lock);
 
-			if (!ptr->mmap_addr)
+			if (!dev_found || !ptr->mmap_addr)
 				return -EFAULT;
 
 			msix_entry = (void __iomem *) (ptr->mmap_addr +
@@ -559,11 +581,29 @@ static const struct file_operations fops = {
 	.poll = vhm_dev_poll,
 };
 
+#define SUPPORT_HV_API_VERSION_MAJOR	1
+#define SUPPORT_HV_API_VERSION_MINOR	0
 static int __init vhm_init(void)
 {
 	unsigned long flag;
+	struct hc_api_version api_version;
 
 	pr_info("vhm: initializing\n");
+
+	if (hcall_get_api_version(virt_to_phys(&api_version)) < 0) {
+		pr_err("vhm: failed to get api version from Hypervisor !\n");
+		return -EINVAL;
+	}
+
+	if (api_version.major_version == SUPPORT_HV_API_VERSION_MAJOR &&
+		api_version.minor_version == SUPPORT_HV_API_VERSION_MINOR) {
+		pr_info("vhm: hv api version %d.%d\n",
+			api_version.major_version, api_version.minor_version);
+	} else {
+		pr_err("vhm: not support hv api version %d.%d!\n",
+			api_version.major_version, api_version.minor_version);
+		return -EINVAL;
+	}
 
 	/* Try to dynamically allocate a major number for the device */
 	major = register_chrdev(0, DEVICE_NAME, &fops);
