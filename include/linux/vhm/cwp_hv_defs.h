@@ -104,7 +104,7 @@
 
 /* DEBUG */
 #define HC_ID_DBG_BASE              0x60UL
-#define HC_SBUF_SETUP               _HC_ID(HC_ID, HC_ID_DBG_BASE + 0x00)
+#define HC_SETUP_SBUF               _HC_ID(HC_ID, HC_ID_DBG_BASE + 0x00)
 
 #define CWP_DOM0_VMID (0UL)
 #define CWP_INVALID_VMID (-1)

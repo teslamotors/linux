@@ -1,0 +1,13 @@
+config CWP_SHARED_BUFFER
+	bool "Intel CWP SHARED BUFFER"
+	---help---
+	  Ring buffer shared between CWP Hypervisor and its SOS.
+	  Help CWP performance profiling.
+
+config CWP_TRACE
+	tristate "Intel CWP Hypervisor Trace support"
+	select CWP_SHARED_BUFFER
+	---help---
+		This is the Trace driver for the Intel CWP hypervisor.
+		You can say y to build it into the kernel, or m to build
+		it as a module.
