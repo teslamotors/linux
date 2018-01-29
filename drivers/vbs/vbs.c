@@ -97,7 +97,7 @@ long virtio_dev_register(struct virtio_dev_info *dev)
 	ret = cwp_ioreq_add_iorange(dev->_ctx.vhm_client_id,
 				    dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 				    dev->io_range_start,
-				    dev->io_range_start + dev->io_range_len);
+				    dev->io_range_start + dev->io_range_len - 1);
 	if (ret < 0) {
 		pr_err("failed to add iorange to cwp ioreq!\n");
 		goto err;
