@@ -91,6 +91,15 @@ enum {
  *};
  */
 
+/**
+ * struct vbs_rng - Backend of virtio-rng based on VBS-K
+ *
+ * @dev		: instance of struct virtio_dev_info
+ * @vqs		: instances of struct virtio_vq_info
+ * @hwrng	: device specific member
+ * @node	: hashtable maintaining multiple connections
+ *		  from multiple guests/devices
+ */
 struct vbs_rng {
 	struct virtio_dev_info dev;
 	struct virtio_vq_info vqs[VBS_K_RNG_VQ_MAX];
