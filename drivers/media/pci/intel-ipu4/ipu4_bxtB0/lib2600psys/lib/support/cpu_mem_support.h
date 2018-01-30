@@ -16,6 +16,29 @@
 #define __CPU_MEM_SUPPORT_H
 
 #include "storage_class.h"
+#include "assert_support.h"
+#include "type_support.h"
+
+STORAGE_CLASS_INLINE void*
+ia_css_cpu_mem_copy(void *dst, const void *src, unsigned int size)
+{
+	/* memcpy cannot be used in in Windows (function is not allowed),
+	 * and the safer function memcpy_s is not available on other platforms.
+	 * Because usage of ia_css_cpu_mem_copy is minimal, we implement it here in an easy,
+	 * but sub-optimal way.
+	 */
+	unsigned int i;
+
+	assert(dst != NULL && src != NULL);
+
+	if (!(dst != NULL && src != NULL)) {
+		return NULL;
+	}
+	for (i = 0; i < size; i++) {
+		((char *)dst)[i] = ((char *)src)[i];
+	}
+	return dst;
+}
 
 #if defined(__KERNEL__)
 
@@ -45,13 +68,6 @@ STORAGE_CLASS_INLINE void
 ia_css_cpu_mem_protect(void *ptr, unsigned int size, int prot)
 {
 	/* nothing here yet */
-}
-
-STORAGE_CLASS_INLINE void*
-ia_css_cpu_mem_copy(void *dst, const void *src, unsigned int size)
-{
-	/* available in kernel in linux/string.h */
-	return memcpy(dst, src, size);
 }
 
 STORAGE_CLASS_INLINE void*
@@ -123,12 +139,6 @@ ia_css_cpu_mem_alloc_page_aligned(unsigned int size)
 }
 
 STORAGE_CLASS_INLINE void*
-ia_css_cpu_mem_copy(void *dst, const void *src, unsigned int size)
-{
-	return memcpy(dst, src, size);
-}
-
-STORAGE_CLASS_INLINE void*
 ia_css_cpu_mem_set_zero(void *dst, unsigned int size)
 {
 	return memset(dst, 0, size);
@@ -187,12 +197,6 @@ ia_css_cpu_mem_alloc_page_aligned(unsigned int size)
 
 	pagesize = sysconf(_SC_PAGE_SIZE);
 	return memalign(pagesize, size);
-}
-
-STORAGE_CLASS_INLINE void*
-ia_css_cpu_mem_copy(void *dst, const void *src, unsigned int size)
-{
-	return memcpy(dst, src, size);
 }
 
 STORAGE_CLASS_INLINE void*
