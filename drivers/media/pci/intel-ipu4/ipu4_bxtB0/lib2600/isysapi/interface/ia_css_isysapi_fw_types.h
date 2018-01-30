@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2017, Intel Corporation.
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-*
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2018, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef __IA_CSS_ISYSAPI_FW_TYPES_H
@@ -29,15 +29,30 @@
 
 /* Aligned with the approach of having one dedicated per stream */
 #define N_MAX_MSG_SEND_QUEUES (STREAM_ID_MAX)
+/* Single return queue for all streams/commands type */
 #define N_MAX_MSG_RECV_QUEUES (1)
+/* Single device queue for high priority commands (bypass in-order queue) */
+#define N_MAX_DEV_SEND_QUEUES (1)
 /* Single dedicated send queue for proxy interface */
 #define N_MAX_PROXY_SEND_QUEUES (1)
 /* Single dedicated recv queue for proxy interface */
 #define N_MAX_PROXY_RECV_QUEUES (1)
-#define N_MAX_SEND_QUEUES (N_MAX_MSG_SEND_QUEUES + N_MAX_PROXY_SEND_QUEUES)
-#define N_MAX_RECV_QUEUES (N_MAX_MSG_RECV_QUEUES + N_MAX_PROXY_RECV_QUEUES)
+/* Send queues layout */
+#define BASE_PROXY_SEND_QUEUES (0)
+#define BASE_DEV_SEND_QUEUES (BASE_PROXY_SEND_QUEUES + N_MAX_PROXY_SEND_QUEUES)
+#define BASE_MSG_SEND_QUEUES (BASE_DEV_SEND_QUEUES + N_MAX_DEV_SEND_QUEUES)
+#define N_MAX_SEND_QUEUES (BASE_MSG_SEND_QUEUES + N_MAX_MSG_SEND_QUEUES)
+/* Recv queues layout */
+#define BASE_PROXY_RECV_QUEUES (0)
+#define BASE_MSG_RECV_QUEUES (BASE_PROXY_RECV_QUEUES + N_MAX_PROXY_RECV_QUEUES)
+#define N_MAX_RECV_QUEUES (BASE_MSG_RECV_QUEUES + N_MAX_MSG_RECV_QUEUES)
+
 #define MAX_QUEUE_SIZE (256)
 #define MIN_QUEUE_SIZE (1)
+
+/* Consider 1 slot per stream since driver is not expected to pipeline
+ * device commands for the same stream */
+#define DEV_SEND_QUEUE_SIZE (STREAM_ID_MAX)
 
 /* Max number of supported SRAM buffer partitions */
 /* It refers to the size of stream partitions */
@@ -96,6 +111,7 @@ enum ia_css_isys_send_type {
  */
 enum ia_css_isys_queue_type {
 	IA_CSS_ISYS_QUEUE_TYPE_PROXY = 0,
+	IA_CSS_ISYS_QUEUE_TYPE_DEV,
 	IA_CSS_ISYS_QUEUE_TYPE_MSG,
 	N_IA_CSS_ISYS_QUEUE_TYPE
 };

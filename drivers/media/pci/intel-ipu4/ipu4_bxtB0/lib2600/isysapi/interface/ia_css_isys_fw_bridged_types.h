@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2017, Intel Corporation.
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-*
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2018, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 #ifndef __IA_CSS_ISYS_FW_BRIDGED_TYPES_H
@@ -367,7 +367,8 @@ struct resp_queue_token {
 struct send_queue_token {
 	aligned_uint64(ia_css_return_token, buf_handle);
 	aligned_uint32(ia_css_input_buffer_css_address, payload);
-	aligned_enum(enum ia_css_isys_send_type, send_type);
+	aligned_uint16(enum ia_css_isys_send_type, send_type);
+	aligned_uint16(unsigned int, stream_id);
 };
 
 /**

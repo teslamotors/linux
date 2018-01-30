@@ -1,15 +1,15 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2017, Intel Corporation.
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-*
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
+ * Copyright (c) 2010 - 2018, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
 */
 
 /* TODO: REMOVE --> START IF EXTERNALLY INCLUDED/DEFINED */
@@ -121,58 +121,75 @@ int ia_css_isys_device_open(
 	 */
 	ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY] =
 		N_MAX_PROXY_SEND_QUEUES;
+	ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_DEV] =
+		N_MAX_DEV_SEND_QUEUES;
 	ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG] =
 		config->driver_sys.num_send_queues;
 	ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY] =
 		N_MAX_PROXY_RECV_QUEUES;
+	ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_DEV] =
+		0;	/* Common msg/dev return queue */
 	ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG] =
 		config->driver_sys.num_recv_queues;
 
 	sys.num_input_queues =
 		ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY] +
+		ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_DEV] +
 		ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG];
 	sys.num_output_queues =
 		ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY] +
+		ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_DEV] +
 		ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG];
 
 	sys.input = input_queue_cfg;
-	for (i = 0; i < sys.num_input_queues; i++) {
-		/* queue_size for send msg queue and send proxy queue
-		 * are provided differently
-		 */
-		input_queue_cfg[i].queue_size =
-		(i < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY]) ?
-			proxy_write_queue_size :
+	for (i = 0;
+	     i < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY];
+	     i++) {
+		input_queue_cfg[BASE_PROXY_SEND_QUEUES + i].queue_size =
+			proxy_write_queue_size;
+		input_queue_cfg[BASE_PROXY_SEND_QUEUES + i].token_size =
+			sizeof(struct proxy_send_queue_token);
+	}
+	for (i = 0;
+	     i < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_DEV];
+	     i++) {
+		input_queue_cfg[BASE_DEV_SEND_QUEUES + i].queue_size =
+			DEV_SEND_QUEUE_SIZE;
+		input_queue_cfg[BASE_DEV_SEND_QUEUES + i].token_size =
+			sizeof(struct send_queue_token);
+	}
+	for (i = 0;
+	     i < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG];
+	     i++) {
+		input_queue_cfg[BASE_MSG_SEND_QUEUES + i].queue_size =
 			config->driver_sys.send_queue_size;
-		/* token_size for send msg queue and send proxy queue
-		 * are provided differently
-		 */
-		input_queue_cfg[i].token_size =
-		(i < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY]) ?
-			sizeof(struct proxy_send_queue_token) :
+		input_queue_cfg[BASE_MSG_SEND_QUEUES + i].token_size =
 			sizeof(struct send_queue_token);
 	}
 
 	ctx->send_queue_size[IA_CSS_ISYS_QUEUE_TYPE_PROXY] =
 		proxy_write_queue_size;
+	ctx->send_queue_size[IA_CSS_ISYS_QUEUE_TYPE_DEV] =
+		DEV_SEND_QUEUE_SIZE;
 	ctx->send_queue_size[IA_CSS_ISYS_QUEUE_TYPE_MSG] =
 		config->driver_sys.send_queue_size;
 
 	sys.output = output_queue_cfg;
-	for (i = 0; i < sys.num_output_queues; i++) {
-		/* queue_size for recv msg queue and recv proxy queue are
-		 * provided differently
-		 */
-		output_queue_cfg[i].queue_size =
-		(i < ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY]) ?
-			proxy_write_queue_size :
+	for (i = 0;
+	     i < ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY];
+	     i++) {
+		output_queue_cfg[BASE_PROXY_RECV_QUEUES + i].queue_size =
+			proxy_write_queue_size;
+		output_queue_cfg[BASE_PROXY_RECV_QUEUES + i].token_size =
+			sizeof(struct proxy_resp_queue_token);
+	}
+	/* There is no recv DEV queue */
+	for (i = 0;
+	     i < ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG];
+	     i++) {
+		output_queue_cfg[BASE_MSG_RECV_QUEUES + i].queue_size =
 			config->driver_sys.recv_queue_size;
-		/* token_size for recv msg queue and recv proxy queue are
-		 * provided differently
-		 */
-		output_queue_cfg[i].token_size =
-		(i < ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY]) ?
-			sizeof(struct proxy_resp_queue_token) :
+		output_queue_cfg[BASE_MSG_RECV_QUEUES + i].token_size =
 			sizeof(struct resp_queue_token);
 	}
 
@@ -220,7 +237,6 @@ int ia_css_isys_device_open(
 	     stream_handle++) {
 		ctx->stream_state_array[stream_handle] =
 			IA_CSS_ISYS_STREAM_STATE_IDLE;
-		ctx->stream_nof_output_pins[stream_handle] = 0;
 	}
 
 	retval = ia_css_isys_constr_comm_buff_queue(ctx);
@@ -277,8 +293,10 @@ int ia_css_isys_device_open_ready(HANDLE context)
 	verifret(ctx->dev_state == IA_CSS_ISYS_DEVICE_STATE_CONFIGURED, EPERM);
 #endif /* VERIFY_DEVSTATE */
 
-	/* Open the ports for all the proxy send queues */
-	for (i = 0; i < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY];
+	/* Open the ports for all the non-MSG send queues (PROXY + DEV) */
+	for (i = 0;
+	     i < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY] +
+	         ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_DEV];
 	     i++) {
 		retval = ia_css_syscom_send_port_open(ctx->sys, i);
 		verifret(retval != ERROR_BUSY, EBUSY);
@@ -286,7 +304,7 @@ int ia_css_isys_device_open_ready(HANDLE context)
 		verifret(retval == 0, EINVAL);
 	}
 
-	/* Open the ports for all the recv queues (MSG + PROXY) */
+	/* Open the ports for all the recv queues (PROXY + MSG) */
 	for (i = 0;
 	     i < (ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY] +
 		  ctx->num_recv_queues[IA_CSS_ISYS_QUEUE_TYPE_MSG]);
@@ -525,13 +543,13 @@ stream_cfg->output_pins[i].output_res.width, EINVAL);
 	 * if not existing
 	 */
 	retval = ia_css_syscom_send_port_open(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle));
+			(BASE_MSG_SEND_QUEUES + stream_handle));
 	verifret(retval != ERROR_BUSY, EBUSY);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval == 0, EINVAL);
 
 	packets = ia_css_syscom_send_port_available(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle));
+			(BASE_MSG_SEND_QUEUES + stream_handle));
 	verifret(packets != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(packets >= 0, EINVAL);
 	verifret(packets > 0, EPERM);
@@ -542,7 +560,7 @@ stream_cfg->output_pins[i].output_res.width, EINVAL);
 	token.payload = stream_cfg_fw;
 	token.buf_handle = HOST_ADDRESS(buf_stream_cfg_id);
 	retval = ia_css_syscom_send_port_transfer(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle), &token);
+			(BASE_MSG_SEND_QUEUES + stream_handle), &token);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval >= 0, EINVAL);
 
@@ -597,15 +615,16 @@ int ia_css_isys_stream_close(
 		IA_CSS_ISYS_STREAM_STATE_OPENED, EPERM);
 
 	packets = ia_css_syscom_send_port_available(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle));
+			(BASE_MSG_SEND_QUEUES + stream_handle));
 	verifret(packets != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(packets >= 0, EINVAL);
 	verifret(packets > 0, EPERM);
 	token.send_type = IA_CSS_ISYS_SEND_TYPE_STREAM_CLOSE;
+	token.stream_id = stream_handle;
 	token.payload = 0;
 	token.buf_handle = 0;
 	retval = ia_css_syscom_send_port_transfer(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle), &token);
+			(BASE_MSG_SEND_QUEUES + stream_handle), &token);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval >= 0, EINVAL);
 
@@ -613,12 +632,11 @@ int ia_css_isys_stream_close(
 	 * if none is using it
 	 */
 	retval = ia_css_syscom_send_port_close(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle));
+			(BASE_MSG_SEND_QUEUES + stream_handle));
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval == 0, EINVAL);
 
 	ctx->stream_state_array[stream_handle] = IA_CSS_ISYS_STREAM_STATE_IDLE;
-	ctx->stream_nof_output_pins[stream_handle] = 0;
 	/* Printing "LEAVE IA_CSS_ISYS_STREAM_CLOSE" message
 	 * if tracing level = VERBOSE.
 	 */
@@ -671,7 +689,7 @@ int ia_css_isys_stream_start(
 		IA_CSS_ISYS_STREAM_STATE_OPENED, EPERM);
 
 	packets = ia_css_syscom_send_port_available(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle));
+			(BASE_MSG_SEND_QUEUES + stream_handle));
 	verifret(packets != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(packets >= 0, EINVAL);
 	verifret(packets > 0, EPERM);
@@ -689,7 +707,7 @@ int ia_css_isys_stream_start(
 		token.buf_handle = 0;
 	}
 	retval = ia_css_syscom_send_port_transfer(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle), &token);
+			(BASE_MSG_SEND_QUEUES + stream_handle), &token);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval >= 0, EINVAL);
 
@@ -742,15 +760,16 @@ int ia_css_isys_stream_stop(
 		IA_CSS_ISYS_STREAM_STATE_STARTED, EPERM);
 
 	packets = ia_css_syscom_send_port_available(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle));
+			(BASE_DEV_SEND_QUEUES));
 	verifret(packets != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(packets >= 0, EINVAL);
 	verifret(packets > 0, EPERM);
 	token.send_type = IA_CSS_ISYS_SEND_TYPE_STREAM_STOP;
+	token.stream_id = stream_handle;
 	token.payload = 0;
 	token.buf_handle = 0;
 	retval = ia_css_syscom_send_port_transfer(ctx->sys,
-		(N_MAX_PROXY_SEND_QUEUES + stream_handle), &token);
+		(BASE_DEV_SEND_QUEUES), &token);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval >= 0, EINVAL);
 
@@ -805,7 +824,7 @@ int ia_css_isys_stream_flush(
 		IA_CSS_ISYS_STREAM_STATE_STARTED, EPERM);
 
 	packets = ia_css_syscom_send_port_available(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle));
+			(BASE_MSG_SEND_QUEUES + stream_handle));
 	verifret(packets != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(packets >= 0, EINVAL);
 	verifret(packets > 0, EPERM);
@@ -813,7 +832,7 @@ int ia_css_isys_stream_flush(
 	token.payload = 0;
 	token.buf_handle = 0;
 	retval = ia_css_syscom_send_port_transfer(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle), &token);
+			(BASE_MSG_SEND_QUEUES + stream_handle), &token);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval >= 0, EINVAL);
 
@@ -874,7 +893,7 @@ int ia_css_isys_stream_capture_indication(
 	verifret(next_frame != NULL, EFAULT);
 
 	packets = ia_css_syscom_send_port_available(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle));
+			(BASE_MSG_SEND_QUEUES + stream_handle));
 	verifret(packets != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(packets >= 0, EINVAL);
 	verifret(packets > 0, EPERM);
@@ -887,7 +906,7 @@ int ia_css_isys_stream_capture_indication(
 		token.buf_handle = HOST_ADDRESS(buf_next_frame_id);
 	}
 	retval = ia_css_syscom_send_port_transfer(ctx->sys,
-			(N_MAX_PROXY_SEND_QUEUES + stream_handle), &token);
+			(BASE_MSG_SEND_QUEUES + stream_handle), &token);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval >= 0, EINVAL);
 
@@ -935,13 +954,13 @@ int ia_css_isys_stream_handle_response(
 	verifret(received_response != NULL, EFAULT);
 
 	packets = ia_css_syscom_recv_port_available(
-			ctx->sys, N_MAX_PROXY_RECV_QUEUES);
+			ctx->sys, BASE_MSG_RECV_QUEUES);
 	verifret(packets != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(packets >= 0, EINVAL);
 	verifret(packets > 0, EPERM);
 
 	retval = ia_css_syscom_recv_port_transfer(
-			ctx->sys, N_MAX_PROXY_RECV_QUEUES, &token);
+			ctx->sys, BASE_MSG_RECV_QUEUES, &token);
 	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
 	verifret(retval >= 0, EINVAL);
 	retval = ia_css_isys_extract_fw_response(
@@ -987,7 +1006,6 @@ int ia_css_isys_device_close(HANDLE context)
 	unsigned int stream_handle;
 	unsigned int queue_id;
 	unsigned int nof_recv_queues;
-	unsigned int nof_proxy_send_queues;
 	int retval = 0;
 
 	/* Printing "ENTRY IA_CSS_ISYS_DEVICE_CLOSE" message
@@ -1014,19 +1032,20 @@ int ia_css_isys_device_close(HANDLE context)
 	for (queue_id = 0; queue_id < nof_recv_queues; queue_id++) {
 		retval = ia_css_syscom_recv_port_close(
 				ctx->sys, queue_id);
+		verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
+		verifret(retval == 0, EINVAL);
 	}
-	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
-	verifret(retval == 0, EINVAL);
 
-	nof_proxy_send_queues =
-		ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY];
 	/* Close the ports for PROXY send queue(s) */
-	for (queue_id = 0; queue_id < nof_proxy_send_queues; queue_id++) {
+	for (queue_id = 0;
+	     queue_id < ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_PROXY] +
+	                ctx->num_send_queues[IA_CSS_ISYS_QUEUE_TYPE_DEV];
+	     queue_id++) {
 		retval = ia_css_syscom_send_port_close(
 				ctx->sys, queue_id);
+		verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
+		verifret(retval == 0, EINVAL);
 	}
-	verifret(retval != ERROR_BAD_ADDRESS, EFAULT);
-	verifret(retval == 0, EINVAL);
 
 	for (stream_handle = 0; stream_handle < STREAM_ID_MAX;
 	     stream_handle++) {
