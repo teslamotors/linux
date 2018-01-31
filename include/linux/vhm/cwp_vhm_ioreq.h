@@ -51,6 +51,12 @@
  *
  */
 
+/**
+ * @file cwp_vhm_ioreq.h
+ *
+ * @brief Virtio and Hypervisor Module(VHM) ioreq APIs
+ */
+
 #ifndef __CWP_VHM_IOREQ_H__
 #define __CWP_VHM_IOREQ_H__
 
@@ -59,22 +65,122 @@
 
 typedef	int (*ioreq_handler_t)(int client_id, int req);
 
+/**
+ * cwp_ioreq_create_client - create ioreq client
+ *
+ * @vmid: ID to identify guest
+ * @handler: ioreq_handler of ioreq client
+ *           If client want request handled in client thread context, set
+ *           this parameter to NULL. If client want request handled out of
+ *           client thread context, set handler function pointer of its own.
+ *           VHM will create kernel thread and call handler to handle request
+ *
+ * @name: the name of ioreq client
+ *
+ * Return: client id on success, <0 on error
+ */
 int cwp_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
 	char *name);
+
+/**
+ * cwp_ioreq_destroy_client - destroy ioreq client
+ *
+ * @client_id: client id to identify ioreq client
+ *
+ * Return:
+ */
 void cwp_ioreq_destroy_client(int client_id);
 
+/**
+ * cwp_ioreq_add_iorange - add iorange monitored by ioreq client
+ *
+ * @client_id: client id to identify ioreq client
+ * @type: iorange type
+ * @start: iorange start address
+ * @end: iorange end address
+ *
+ * Return: 0 on success, <0 on error
+ */
 int cwp_ioreq_add_iorange(int client_id, uint32_t type,
 	long start, long end);
+
+/**
+ * cwp_ioreq_del_iorange - del iorange monitored by ioreq client
+ *
+ * @client_id: client id to identify ioreq client
+ * @type: iorange type
+ * @start: iorange start address
+ * @end: iorange end address
+ *
+ * Return: 0 on success, <0 on error
+ */
 int cwp_ioreq_del_iorange(int client_id, uint32_t type,
 	long start, long end);
 
+/**
+ * cwp_ioreq_get_reqbuf - get request buffer
+ * request buffer is shared by all clients in one guest
+ *
+ * @client_id: client id to identify ioreq client
+ *
+ * Return: pointer to request buffer, NULL on error
+ */
 struct vhm_request *cwp_ioreq_get_reqbuf(int client_id);
+
+/**
+ * cwp_ioreq_attach_client - start handle request for ioreq client
+ * If request is handled out of client thread context, this function is
+ * only called once to be ready to handle new request.
+ *
+ * If request is handled in client thread context, this function must
+ * be called every time after the previous request handling is completed
+ * to be ready to handle new request.
+ *
+ * @client_id: client id to identify ioreq client
+ * @check_kthread_stop: whether check current kthread should be stopped
+ *
+ * Return: 0 on success, <0 on error, 1 if ioreq client is destroying
+ */
 int cwp_ioreq_attach_client(int client_id, bool check_kthread_stop);
 
+/**
+ * cwp_ioreq_distribute_request - deliver request to corresponding client
+ *
+ * @vm: pointer to guest
+ *
+ * Return: 0 always
+ */
 int cwp_ioreq_distribute_request(struct vhm_vm *vm);
+
+/**
+ * cwp_ioreq_complete_request - notify guest request handling is completed
+ *
+ * @client_id: client id to identify ioreq client
+ * @vcpu: identify request submitter
+ *
+ * Return: 0 on success, <0 on error
+ */
 int cwp_ioreq_complete_request(int client_id, uint64_t vcpu);
 
+/**
+ * cwp_ioreq_intercept_bdf - set intercept bdf info of ioreq client
+ *
+ * @client_id: client id to identify ioreq client
+ * @bus: bus number
+ * @dev: device number
+ * @func: function number
+ *
+ * Return:
+ */
 void cwp_ioreq_intercept_bdf(int client_id, int bus, int dev, int func);
+
+/**
+ * cwp_ioreq_unintercept_bdf - clear intercept bdf info of ioreq client
+ *
+ * @client_id: client id to identify ioreq client
+ *
+ * Return:
+ */
 void cwp_ioreq_unintercept_bdf(int client_id);
 
 /* IOReq APIs */

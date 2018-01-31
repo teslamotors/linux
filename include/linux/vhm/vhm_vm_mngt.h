@@ -53,6 +53,12 @@
  * Jason Chen CJ <jason.cj.chen@intel.com>
  *
  */
+
+/**
+ * @file vhm_vm_mngt.h
+ *
+ * @brief Virtio and Hypervisor Module(VHM) management APIs
+ */
 #ifndef VHM_VM_MNGT_H
 #define VHM_VM_MNGT_H
 
@@ -61,6 +67,22 @@
 extern struct list_head vhm_vm_list;
 extern struct mutex vhm_vm_list_lock;
 
+/**
+ * struct vhm_vm - data structure to track guest
+ *
+ * @dev: pointer to dev of linux device mode
+ * @list: list of vhm_vm
+ * @vmid: guest vmid
+ * @ioreq_fallback_client: default ioreq client
+ * @refcnt: reference count of guest
+ * @seg_lock:  mutex to protect memseg_list
+ * @memseg_list: list of memseg
+ * @max_gfn: maximum guest page frame number
+ * @ioreq_client_lock: spinlock to protect ioreq_client_list
+ * @ioreq_client_list: list of ioreq clients
+ * @req_buf: request buffer shared between HV, SOS and UOS
+ * @pg: pointer to linux page which holds req_buf
+ */
 struct vhm_vm {
 	struct device *dev;
 	struct list_head list;
@@ -76,16 +98,67 @@ struct vhm_vm {
 	struct page *pg;
 };
 
+/**
+ * struct vm_info - data structure to track guest info
+ *
+ * @max_vcpu: maximum vcpu number of guest
+ * @max_gfn: maximum guest page frame number
+ */
 struct vm_info {
 	int max_vcpu;
 	int max_gfn;
 };
 
+/**
+ * struct find_get_vm - find and hold vhm_vm of guest according to guest vmid
+ *
+ * @vmid: guest vmid
+ *
+ * Return: pointer to vhm_vm, NULL if can't find vm matching vmid
+ */
 struct vhm_vm *find_get_vm(unsigned long vmid);
+
+/**
+ * struct put_vm - release vhm_vm of guest according to guest vmid
+ * If the latest reference count drops to zero, free vhm_vm as well
+ *
+ * @vm: pointer to vhm_vm which identrify specific guest
+ *
+ * Return:
+ */
 void put_vm(struct vhm_vm *vm);
+
+/**
+ * struct vhm_get_vm_info - get vm_info of specific guest
+ *
+ * @vmid: guest vmid
+ * @info: pointer to vm_info for returned vm_info
+ *
+ * Return: 0 on success, <0 on error
+ */
 int vhm_get_vm_info(unsigned long vmid, struct vm_info *info);
+
+/**
+ * struct vhm_inject_msi - inject MSI interrupt to guest
+ *
+ * @vmid: guest vmid
+ * @msi_addr: MSI addr matches MSI spec
+ * @msi_data: MSI data matches MSI spec
+ *
+ * Return: 0 on success, <0 on error
+ */
 int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
 	unsigned long msi_data);
+
+/**
+ * struct vhm_vm_gpa2hpa - convert guest physical address to
+ * host physical address
+ *
+ * @vmid: guest vmid
+ * @gap: guest physical address
+ *
+ * Return: host physical address, <0 on error
+ */
 unsigned long vhm_vm_gpa2hpa(unsigned long vmid, unsigned long gpa);
 
 void vm_list_add(struct list_head *list);

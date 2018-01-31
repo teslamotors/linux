@@ -43,6 +43,12 @@
  * $FreeBSD$
  */
 
+/**
+ * @file vhm_ioctl_defs.h
+ *
+ * @brief Virtio and Hypervisor Module definition for ioctl to user space
+ */
+
 #ifndef	_VHM_IOCTL_DEFS_H_
 #define	_VHM_IOCTL_DEFS_H_
 
@@ -95,6 +101,12 @@
 #define IC_SET_PTDEV_INTR_INFO         _IC_ID(IC_ID, IC_ID_PCI_BASE + 0x03)
 #define IC_RESET_PTDEV_INTR_INFO       _IC_ID(IC_ID, IC_ID_PCI_BASE + 0x04)
 
+/**
+ * struct vm_memseg - memory segment info for guest
+ *
+ * @len: length of memory segment
+ * @gpa: guest physical start address of memory segment
+ */
 struct vm_memseg {
 	uint64_t len;
 	uint64_t gpa;
@@ -103,6 +115,15 @@ struct vm_memseg {
 #define VM_SYSMEM       0
 #define VM_MMIO         1
 
+/**
+ * struct vm_memmap - EPT memory mapping info for guest
+ *
+ * @type: memory mapping type
+ * @gpa: guest physical start address of memory mapping
+ * @hpa: host physical start address of memory
+ * @len: the length of memory range mapped
+ * @prot: memory mapping attribute
+ */
 struct vm_memmap {
 	uint32_t type;
 	uint32_t reserved;
@@ -112,38 +133,63 @@ struct vm_memmap {
 	uint32_t prot;	/* RWX */
 };
 
+/**
+ * struct ic_ptdev_irq - pass thru device irq data structure
+ */
 struct ic_ptdev_irq {
 #define IRQ_INTX 0
 #define IRQ_MSI 1
 #define IRQ_MSIX 2
+	/** @type: irq type */
 	uint32_t type;
+	/** @virt_bdf: virtual bdf description of pass thru device */
 	uint16_t virt_bdf;	/* IN: Device virtual BDF# */
+	/** @phy_bdf: physical bdf description of pass thru device */
 	uint16_t phys_bdf;	/* IN: Device physical BDF# */
+	/** union */
 	union {
+		/** struct intx - info of IOAPIC/PIC interrupt */
 		struct {
-			uint32_t virt_pin;	/* IN: virtual IOAPIC pin */
-			uint32_t phys_pin;	/* IN: physical IOAPIC pin */
-			uint32_t is_pic_pin;	/* IN: pin from PIC? */
+			/** @virt_pin: virtual IOAPIC pin */
+			uint32_t virt_pin;
+			/** @phys_pin: physical IOAPIC pin */
+			uint32_t phys_pin;
+			/** @pic_pin: PIC pin */
+			uint32_t is_pic_pin;
 		} intx;
+
+		/** struct msix - info of MSI/MSIX interrupt */
 		struct {
-			/* IN: vector count of MSI/MSIX,
-                         * Keep this filed on top of msix */
+                        /* Keep this filed on top of msix */
+			/** @vector_cnt: vector count of MSI/MSIX */
 			uint32_t vector_cnt;
 
-			/* IN: size of MSI-X table (round up to 4K) */
+			/** @table_size: size of MSIX table(round up to 4K) */
 			uint32_t table_size;
 
-			/* IN: physical address of MSI-X table */
+			/** @table_paddr: physical address of MSIX table */
 			uint64_t table_paddr;
 		} msix;
 	};
 };
 
+/**
+ * struct ioreq_notify - data strcture to notify hypervisor ioreq is handled
+ *
+ * @client_id: client id to identify ioreq client
+ * @vcpu: identify the ioreq submitter
+ */
 struct ioreq_notify {
        int32_t client_id;
        uint32_t vcpu;
 };
 
+/**
+ * struct api_version - data structure to track VHM API version
+ *
+ * @major_version: major version of VHM API
+ * @minor_version: minor version of VHM API
+ */
 struct api_version {
 	uint32_t major_version;
 	uint32_t minor_version;
