@@ -82,7 +82,6 @@
 #define IC_ATTACH_IOREQ_CLIENT          _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x03)
 #define IC_DESTROY_IOREQ_CLIENT         _IC_ID(IC_ID, IC_ID_IOREQ_BASE + 0x04)
 
-
 /* Guest memory management */
 #define IC_ID_MEM_BASE                  0x40UL
 #define IC_ALLOC_MEMSEG                 _IC_ID(IC_ID, IC_ID_MEM_BASE + 0x00)
@@ -96,35 +95,21 @@
 #define IC_SET_PTDEV_INTR_INFO         _IC_ID(IC_ID, IC_ID_PCI_BASE + 0x03)
 #define IC_RESET_PTDEV_INTR_INFO       _IC_ID(IC_ID, IC_ID_PCI_BASE + 0x04)
 
-#define SPECNAMELEN 63
+struct vm_memseg {
+	uint64_t len;
+	uint64_t gpa;
+};
 
 #define VM_SYSMEM       0
 #define VM_MMIO         1
 
-struct vm_memseg {
-	uint32_t segid;
-	uint32_t reserved;
-	uint64_t len;
-	uint64_t gpa;
-	char name[SPECNAMELEN + 1];
-};
-
 struct vm_memmap {
-	uint32_t segid;		/* memory segment */
+	uint32_t type;
 	uint32_t reserved;
-	union {
-		struct {
-			uint64_t gpa;
-			uint64_t len;		/* mmap length */
-			uint32_t prot;		/* RWX */
-		} mem;
-		struct {
-			uint64_t gpa;
-			uint64_t hpa;
-			uint64_t len;
-			uint32_t prot;
-		} mmio;
-	};
+	uint64_t gpa;
+	uint64_t hpa;	/* only for type == VM_MMIO */
+	uint64_t len;	/* mmap length */
+	uint32_t prot;	/* RWX */
 };
 
 struct ic_ptdev_irq {

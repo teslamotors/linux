@@ -101,7 +101,13 @@
 /* Functions for dealing with generalized "virtual devices" */
 #define VQ_USED_EVENT_IDX(vq) ((vq)->avail->ring[(vq)->qsize])
 
-/* get virtqueue size according to virtio specification */
+/**
+ * virtio_vq_ring_size - Calculate size of a virtqueue
+ *
+ * @qsz: size of raw data in a certain virtqueue
+ *
+ * Return: size of a certain virtqueue
+ */
 static inline size_t virtio_vq_ring_size(unsigned int qsz)
 {
 	size_t size;
@@ -117,15 +123,26 @@ static inline size_t virtio_vq_ring_size(unsigned int qsz)
 	return size;
 }
 
-/* Is this ring ready for I/O? */
+/**
+ * virtio_vq_ring_ready - Is this ring ready for I/O?
+ *
+ * @vq: Pointer to struct virtio_vq_info
+ *
+ * Return: 0 on not ready, and 1 on ready
+ */
 static inline int virtio_vq_ring_ready(struct virtio_vq_info *vq)
 {
 	return (vq->flags & VQ_ALLOC);
 }
 
-/*
- * Are there "available" descriptors?  (This does not count
- * how many, just returns True if there are some).
+/**
+ * virtio_vq_has_descs - Are there "available" descriptors?
+ *
+ * This does not count how many, just returns True if there is any.
+ *
+ * @vq: Pointer to struct virtio_vq_info
+ *
+ * Return: 0 on no available, and non-zero on available
  */
 static inline int virtio_vq_has_descs(struct virtio_vq_info *vq)
 {
@@ -133,7 +150,16 @@ static inline int virtio_vq_has_descs(struct virtio_vq_info *vq)
 			vq->last_avail != vq->avail->idx);
 }
 
-/* Deliver an interrupt to guest on the given virtual queue */
+/**
+ * virtio_vq_interrupt - Deliver an interrupt to guest on the given
+ *			 virtqueue.
+ *			 MSI-x or a generic MSI interrupt.
+ *
+ * @dev: Pointer to struct virtio_dev_info
+ * @vq: Pointer to struct virtio_vq_info
+ *
+ * Return: NULL
+ */
 static inline void virtio_vq_interrupt(struct virtio_dev_info *dev,
 				       struct virtio_vq_info *vq)
 {
@@ -158,15 +184,83 @@ static inline void virtio_vq_interrupt(struct virtio_dev_info *dev,
 
 
 /* virtqueue initialization APIs */
+
+/**
+ * virtio_vq_init - Initialize the currently-selected virtqueue
+ *
+ * The guest just gave us a page frame number, from which we can
+ * calculate the addresses of the queue. After calculation, the
+ * addresses are updated in vq's members.
+ *
+ * @vq: Pointer to struct virtio_vq_info
+ * @pfn: page frame number in guest physical address space
+ *
+ * Return: NULL
+ */
 void virtio_vq_init(struct virtio_vq_info *vq, uint32_t pfn);
+
+/**
+ * virtio_vq_reset - reset one virtqueue, make it invalid
+ *
+ * @vq: Pointer to struct virtio_vq_info
+ *
+ * Return: NULL
+ */
 void virtio_vq_reset(struct virtio_vq_info *vq);
 
 /* virtqueue runtime APIs */
+
+/**
+ * virtio_vq_getchain - Walk through the chain of descriptors
+ *			involved in a request and put them into
+ *			a given iov[] array
+ *
+ * @vq: Pointer to struct virtio_vq_info
+ * @pidx: Pointer to available ring position
+ * @iov: Pointer to iov[] array prepared by caller
+ * @n_iov: Size of iov[] array
+ * @flags: Pointer to a uint16_t array which will contain flag of
+ *	   each descriptor
+ *
+ * Return: number of descriptors
+ */
 int virtio_vq_getchain(struct virtio_vq_info *vq, uint16_t *pidx,
 		       struct iovec *iov, int n_iov, uint16_t *flags);
+
+/**
+ * virtio_vq_retchain - Return the currently-first request chain
+ *			back to the available ring
+ *
+ * @vq: Pointer to struct virtio_vq_info
+ *
+ * Return: NULL
+ */
 void virtio_vq_retchain(struct virtio_vq_info *vq);
+
+/**
+ * virtio_vq_relchain - Return specified request chain to the guest,
+ *			setting its I/O length to the provided value
+ *
+ * @vq: Pointer to struct virtio_vq_info
+ * @idx: Pointer to available ring position, returned by vq_getchain()
+ * @iolen: Number of data bytes to be returned to frontend
+ *
+ * Return: NULL
+ */
 void virtio_vq_relchain(struct virtio_vq_info *vq, uint16_t idx,
 			uint32_t iolen);
+
+/**
+ * virtio_vq_endchains - Driver has finished processing "available"
+ *			 chains and calling vq_relchain on each one
+ *
+ * If driver used all the available chains, used_all should be set.
+ *
+ * @vq: Pointer to struct virtio_vq_info
+ * @used_all_avail: Flag indicating if driver used all available chains
+ *
+ * Return: NULL
+ */
 void virtio_vq_endchains(struct virtio_vq_info *vq, int used_all_avail);
 
 #endif
