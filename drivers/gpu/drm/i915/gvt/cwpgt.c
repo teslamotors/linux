@@ -669,10 +669,10 @@ static int cwpgt_set_wp_page(unsigned long handle, u64 gfn)
 		gvt_err("failed cwp_ioreq_add_iorange for gfn 0x%llx\n", gfn);
 		return ret;
 	}
-	ret = update_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
+	ret = update_memmap_attr(info->vm_id, gfn << PAGE_SHIFT,
 				cwp_hpa2gpa(hpa), 0x1000, MEM_ATTR_WRITE_PROT);
 	if (ret)
-		gvt_err("failed update_mmio_map set for gfn 0x%llx\n", gfn);
+		gvt_err("failed update_memmap_attr set for gfn 0x%llx\n", gfn);
 	return ret;
 }
 
@@ -685,10 +685,11 @@ static int cwpgt_unset_wp_page(unsigned long handle, u64 gfn)
 
 	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
 
-	ret = update_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
+	ret = update_memmap_attr(info->vm_id, gfn << PAGE_SHIFT,
 			cwp_hpa2gpa(hpa), 0x1000, MEM_ATTR_ALL);
 	if (ret) {
-		gvt_err("failed update_mmio_map unset for gfn 0x%llx\n", gfn);
+		gvt_err("failed update_memmap_attr unset for gfn 0x%llx\n",
+			gfn);
 		return ret;
 	}
 	ret = cwp_ioreq_del_iorange(info->client, REQ_WP, gfn << PAGE_SHIFT,
@@ -848,12 +849,12 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 			gvt_err("failed cwp_ioreq_add_iorange for pfn 0x%lx\n", pfn);
 			return rc;
 		}
-		rc = update_mmio_map(info->vm_id, pfn << PAGE_SHIFT,
+		rc = update_memmap_attr(info->vm_id, pfn << PAGE_SHIFT,
 					mfn << PAGE_SHIFT,
 					mmio_size_fn << PAGE_SHIFT,
 					MEM_ATTR_WRITE_PROT);
 		if (rc)
-			gvt_err("failed update_mmio_map set for pfn 0x%lx\n", pfn);
+			gvt_err("failed update_memmap_attr set for pfn 0x%lx\n", pfn);
 
 		/* scratch reg access is trapped like mmio access, 1 page */
 		rc = cwpgt_map_gfn_to_mfn(handle, pfn + (VGT_PVINFO_PAGE >> PAGE_SHIFT),
@@ -874,12 +875,12 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 
 		/* shared page is not trapped, directly pass through */
 		//todo: MEM_ATTR_ALL_WB or MEM_ATTR_ALL?
-		rc = update_mmio_map(info->vm_id,
+		rc = update_memmap_attr(info->vm_id,
 				(pfn + mmio_size_fn) << PAGE_SHIFT,
 				shared_mfn << PAGE_SHIFT,
 				0x1000, MEM_ATTR_ALL);
 		if (rc)
-			gvt_err("failed update_mmio_map set for gfn 0x%lx\n",
+			gvt_err("failed update_memmap_attr set for gfn 0x%lx\n",
 				pfn + mmio_size_fn);
 	} else {
 		mfn = cwpgt_virt_to_mfn(info->vgpu->mmio.vreg);

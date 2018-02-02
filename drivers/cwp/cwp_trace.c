@@ -63,6 +63,8 @@
 #include <linux/fs.h>
 #include <linux/mm.h>
 
+#include <asm/hypervisor.h>
+
 #include "sbuf.h"
 
 
@@ -211,6 +213,11 @@ static int __init cwp_trace_init(void)
 	int ret = 0;
 	int i, cpu;
 
+	if (x86_hyper_type != X86_HYPER_CWP) {
+		pr_err("cwp_trace: not support cwp hypervisor!\n");
+		return -EINVAL;
+	}
+
 	/* TBD: we could get the native cpu number by hypercall later */
 	pr_info("%s, cpu_num %d\n", __func__, nr_cpus);
 	if (nr_cpus > MAX_NR_CPUS) {
@@ -232,7 +239,7 @@ static int __init cwp_trace_init(void)
 	}
 
 	foreach_cpu(cpu, pcpu_num) {
-		ret = sbuf_share_setup(cpu, 0, sbuf_per_cpu[cpu]);
+		ret = sbuf_share_setup(cpu, CWP_TRACE, sbuf_per_cpu[cpu]);
 		if (ret < 0) {
 			pr_err("Failed to setup SBuf, cpuid %d\n", cpu);
 			goto out_sbuf;
@@ -257,7 +264,7 @@ out_dereg:
 
 out_sbuf:
 	for (i = --cpu; i >= 0; i--)
-		sbuf_share_setup(i, 0, NULL);
+		sbuf_share_setup(i, CWP_TRACE, NULL);
 	cpu = pcpu_num;
 
 out_free:
@@ -281,7 +288,7 @@ static void __exit cwp_trace_exit(void)
 		misc_deregister(cwp_trace_devs[cpu]);
 
 		/* set sbuf pointer to NULL in HV */
-		sbuf_share_setup(cpu, 0, NULL);
+		sbuf_share_setup(cpu, CWP_TRACE, NULL);
 
 		/* free sbuf, sbuf_per_cpu[cpu] should be set NULL */
 		sbuf_free(sbuf_per_cpu[cpu]);

@@ -9,3 +9,6 @@ kvm/
 	- Kernel Virtual Machine.  See also http://linux-kvm.org
 uml/
 	- User Mode Linux, builds/runs Linux kernel as a userspace program.
+
+cwp/
+	- Clearwater Pass Project. See also http://xxxx

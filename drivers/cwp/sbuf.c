@@ -185,7 +185,7 @@ int sbuf_share_setup(uint32_t pcpu_id, uint32_t sbuf_id, shared_buf_t *sbuf)
 }
 EXPORT_SYMBOL(sbuf_share_setup);
 
-shared_buf_t *sbuf_construct(uint32_t ele_num, uint32_t ele_size,
+shared_buf_t *sbuf_check_valid(uint32_t ele_num, uint32_t ele_size,
 				uint64_t paddr)
 {
 	shared_buf_t *sbuf;
@@ -199,11 +199,39 @@ shared_buf_t *sbuf_construct(uint32_t ele_num, uint32_t ele_size,
 	if ((sbuf->magic == SBUF_MAGIC) &&
 		(sbuf->ele_num == ele_num) &&
 		(sbuf->ele_size == ele_size)) {
-		pr_info("construct sbuf at 0x%llx.\n", paddr);
-		/* return sbuf for dump */
 		return sbuf;
 	}
 
 	return NULL;
 }
+EXPORT_SYMBOL(sbuf_check_valid);
+
+shared_buf_t *sbuf_construct(uint32_t ele_num, uint32_t ele_size,
+				uint64_t paddr)
+{
+	shared_buf_t *sbuf;
+
+	if (!ele_num || !ele_size || !paddr)
+		return NULL;
+
+	sbuf = (shared_buf_t *)phys_to_virt(paddr);
+	BUG_ON(!virt_addr_valid(sbuf));
+
+	memset(sbuf, 0, SBUF_HEAD_SIZE);
+	sbuf->magic = SBUF_MAGIC;
+	sbuf->ele_num = ele_num;
+	sbuf->ele_size = ele_size;
+	sbuf->size = ele_num * ele_size;
+	pr_info("construct sbuf at 0x%llx.\n", paddr);
+	return sbuf;
+}
 EXPORT_SYMBOL(sbuf_construct);
+
+void sbuf_deconstruct(shared_buf_t *sbuf)
+{
+	if (sbuf == NULL)
+		return;
+
+	sbuf->magic = 0;
+}
+EXPORT_SYMBOL(sbuf_deconstruct);

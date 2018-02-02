@@ -84,6 +84,8 @@
 #include <linux/vhm/vhm_vm_mngt.h>
 #include <linux/vhm/vhm_hypercall.h>
 
+#include <asm/hypervisor.h>
+
 #define  DEVICE_NAME "cwp_vhm"
 #define  CLASS_NAME  "vhm"
 
@@ -586,9 +588,14 @@ static const struct file_operations fops = {
 static int __init vhm_init(void)
 {
 	unsigned long flag;
-	struct hc_api_version api_version;
+	struct hc_api_version api_version = {0, 0};
 
 	pr_info("vhm: initializing\n");
+
+	if (x86_hyper_type != X86_HYPER_CWP) {
+		pr_err("vhm: not support cwp hypervisor!\n");
+		return -EINVAL;
+	}
 
 	if (hcall_get_api_version(virt_to_phys(&api_version)) < 0) {
 		pr_err("vhm: failed to get api version from Hypervisor !\n");

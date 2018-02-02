@@ -11,3 +11,10 @@ config CWP_TRACE
 		This is the Trace driver for the Intel CWP hypervisor.
 		You can say y to build it into the kernel, or m to build
 		it as a module.
+
+config CWP_HVLOG
+	bool "Intel CWP Hypervisor Logmsg support"
+	select CWP_SHARED_BUFFER
+	---help---
+		This is the Trace driver for the Intel CWP hypervisor log.
+		You can say y to build it into the kernel.
