@@ -312,19 +312,21 @@ static int setup_virtual_monitor(struct intel_vgpu *vgpu, int port_num,
 	if (!port->edid)
 		return -ENOMEM;
 
-		port->dpcd = kzalloc(sizeof(*(port->dpcd)), GFP_KERNEL);
-		if (!port->dpcd) {
-			kfree(port->edid);
-			return -ENOMEM;
-		}
+	port->dpcd = kzalloc(sizeof(*(port->dpcd)), GFP_KERNEL);
+	if (!port->dpcd) {
+		kfree(port->edid);
+		return -ENOMEM;
+	}
 
-		if (edid)
-			memcpy(port->edid->edid_block, edid, EDID_SIZE * valid_extensions);
-		else
-			memcpy(port->edid->edid_block, virtual_dp_monitor_edid[resolution],
-					EDID_SIZE);
+	if (edid)
+		memcpy(port->edid->edid_block, edid,
+				EDID_SIZE * valid_extensions);
+	else
+		memcpy(port->edid->edid_block,
+				virtual_dp_monitor_edid[resolution],
+				EDID_SIZE);
 
-		port->edid->data_valid = true;
+	port->edid->data_valid = true;
 
 	if (is_dp) {
 		memcpy(port->dpcd->data, dpcd_fix_data, DPCD_HEADER_SIZE);

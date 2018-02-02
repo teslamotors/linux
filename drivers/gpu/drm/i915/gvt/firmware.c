@@ -221,16 +221,13 @@ int intel_gvt_load_firmware(struct intel_gvt *gvt)
 	int ret;
 
 	mem = kmalloc(info->cfg_space_size, GFP_KERNEL);
-	if (!mem) {
-		kfree(path);
+	if (!mem)
 		return -ENOMEM;
-	}
 
 	firmware->cfg_space = mem;
 
 	mem = kmalloc(info->mmio_size, GFP_KERNEL);
 	if (!mem) {
-		kfree(path);
 		kfree(firmware->cfg_space);
 		return -ENOMEM;
 	}
