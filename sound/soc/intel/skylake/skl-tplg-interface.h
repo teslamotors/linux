@@ -208,6 +208,7 @@ struct skl_gain_config {
 	u32 channel_id;
 	u32 target_volume;
 	u32 ramp_type;
+	u32 reserved;
 	u64 ramp_duration;
 } __packed;
 
