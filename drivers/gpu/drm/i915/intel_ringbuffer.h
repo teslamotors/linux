@@ -513,6 +513,10 @@ struct intel_engine_cs {
 
 	struct intel_engine_hangcheck hangcheck;
 
+	struct hrtimer fpreempt_timer;
+	struct work_struct fpreempt_work;
+	bool fpreempt_stalled;
+
 	bool needs_cmd_parser;
 
 	/*

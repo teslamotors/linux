@@ -545,6 +545,11 @@ static void inject_preempt_context(struct intel_engine_cs *engine)
 		elsp_write(0, elsp);
 
 	elsp_write(ce->lrc_desc, elsp);
+
+	if (i915_modparams.fpreempt_timeout)
+		hrtimer_start(&engine->fpreempt_timer,
+			      ms_to_ktime(i915_modparams.fpreempt_timeout),
+			      HRTIMER_MODE_REL);
 }
 
 static bool can_preempt(struct intel_engine_cs *engine)
@@ -890,6 +895,7 @@ static void process_csb(struct intel_engine_cs *engine)
 							EXECLISTS_ACTIVE_PREEMPT));
 			execlists_clear_active(execlists,
 					       EXECLISTS_ACTIVE_PREEMPT);
+			hrtimer_try_to_cancel(&engine->fpreempt_timer);
 			continue;
 		}
 
@@ -1728,6 +1734,9 @@ static void execlists_reset(struct intel_engine_cs *engine,
 
 static void execlists_reset_finish(struct intel_engine_cs *engine)
 {
+	/* Mark any force preemption as resolved */
+	engine->fpreempt_stalled = false;
+
 	/* Get things going again if we have queued requests. Needed
 	 * if the reset was executed or aborted.
 	 */

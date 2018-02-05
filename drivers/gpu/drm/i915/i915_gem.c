@@ -2770,9 +2770,25 @@ i915_gem_find_active_request(struct intel_engine_cs *engine)
 	return active;
 }
 
-static bool engine_stalled(struct intel_engine_cs *engine)
+static bool engine_stalled(struct intel_engine_cs *engine,
+			   struct drm_i915_gem_request *request)
 {
 	if (!intel_vgpu_active(engine->i915)) {
+		if (engine->fpreempt_stalled) {
+			/* Pardon the request if it managed to yield the
+			 * engine by completing just prior to the reset. We
+			 * could be even more sophisticated here and pardon
+			 * the request if it preempted out (mid-batch) prior
+			 * to the reset, but that's not so straight-forward
+			 * to detect. Perhaps not worth splitting hairs when
+			 * the request had clearly behaved badly to get here.
+			 */
+			if (i915_gem_request_completed(request))
+				return false;
+
+			return true;
+		}
+
 		if (!engine->hangcheck.stalled)
 			return false;
 
@@ -2903,7 +2919,7 @@ i915_gem_reset_request(struct intel_engine_cs *engine,
 	 * subsequent hangs.
 	 */
 
-	if (engine_stalled(engine)) {
+	if (engine_stalled(engine, request)) {
 		i915_gem_context_mark_guilty(request->ctx);
 		skip_request(request);
 
@@ -2911,6 +2927,13 @@ i915_gem_reset_request(struct intel_engine_cs *engine,
 		if (i915_gem_context_is_banned(request->ctx))
 			engine_skip_context(request);
 	} else {
+		/* If the request that we just pardoned was the target of a
+		 * force preemption there is no possibility of the next
+		 * request in line having started.
+		 */
+		if (engine->fpreempt_stalled)
+			return NULL;
+
 		/*
 		 * Since this is not the hung engine, it may have advanced
 		 * since the hang declaration. Double check by refinding

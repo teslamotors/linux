@@ -346,3 +346,6 @@ module_param_named_unsafe(domain_scaler_owner,
 MODULE_PARM_DESC(domain_scaler_owner, "scaler owners for each domain and for\n"
 	"each pipe ids can be from 0-F, eg domain_scaler_owners = 0x00030210\n"
 	"scaler owner: 1C:3 2B:0 1B:2 2A:1 1A:0 (0x0 - default value)\n");
+
+i915_param_named(fpreempt_timeout, uint, 0600,
+	"Wait time in msecs before forcing a preemption with reset (0:never force [default])");
