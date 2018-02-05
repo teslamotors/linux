@@ -95,6 +95,7 @@ struct media_graph {
 	struct {
 		struct media_entity *entity;
 		struct list_head *link;
+		int stream;
 		int pad;
 	} stack[MEDIA_ENTITY_ENUM_MAX_DEPTH];
 
@@ -198,7 +199,7 @@ struct media_entity_operations {
 			  const struct media_pad *remote, u32 flags);
 	int (*link_validate)(struct media_link *link);
 	bool (*has_route)(struct media_entity *entity, unsigned int pad0,
-			  unsigned int pad1);
+			  unsigned int pad1, int *stream);
 };
 
 /**

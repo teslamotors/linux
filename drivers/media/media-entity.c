@@ -270,13 +270,13 @@ bool media_entity_has_route(struct media_entity *entity, unsigned int pad0,
 	if (!entity->ops || !entity->ops->has_route)
 		return true;
 
-	return entity->ops->has_route(entity, pad0, pad1);
+	return entity->ops->has_route(entity, pad0, pad1, NULL);
 }
 EXPORT_SYMBOL_GPL(media_entity_has_route);
 
 /* push an entity to traversal stack */
 static void stack_push(struct media_graph *graph,
-		       struct media_entity *entity, int pad)
+		       struct media_entity *entity, int pad, int stream)
 {
 	if (graph->top == MEDIA_ENTITY_ENUM_MAX_DEPTH - 1) {
 		WARN_ON(1);
@@ -286,6 +286,7 @@ static void stack_push(struct media_graph *graph,
 	graph->stack[graph->top].link = entity->links.next;
 	graph->stack[graph->top].pad = pad;
 	graph->stack[graph->top].entity = entity;
+	graph->stack[graph->top].stream = stream;
 }
 
 static struct media_entity *stack_pop(struct media_graph *graph)
@@ -300,6 +301,7 @@ static struct media_entity *stack_pop(struct media_graph *graph)
 
 #define link_top(en)	((en)->stack[(en)->top].link)
 #define pad_top(en)	((en)->stack[(en)->top].pad)
+#define stream_top(en)	((en)->stack[(en)->top].stream)
 #define stack_top(en)	((en)->stack[(en)->top].entity)
 
 /*
@@ -343,7 +345,7 @@ void media_graph_walk_start(struct media_graph *graph,
 
 	graph->top = 0;
 	graph->stack[graph->top].entity = NULL;
-	stack_push(graph, pad->entity, pad->index);
+	stack_push(graph, pad->entity, pad->index, -1);
 	dev_dbg(pad->entity->graph_obj.mdev->dev,
 		"begin graph walk at '%s'\n", pad->entity->name);
 }
@@ -357,6 +359,7 @@ static void media_graph_walk_iter(struct media_graph *graph)
 	struct media_entity *next;
 	struct media_pad *remote;
 	struct media_pad *local;
+	int stream = stream_top(graph);
 
 	link = list_entry(link_top(graph), typeof(*link), list);
 
@@ -388,9 +391,12 @@ static void media_graph_walk_iter(struct media_graph *graph)
 	 * Are the local pad and the pad we came from connected
 	 * internally in the entity ?
 	 */
-	if (!media_entity_has_route(entity, from_pad, local->index)) {
-		link_top(graph) = link_top(graph)->next;
-		return;
+	if (entity->ops && entity->ops->has_route) {
+		if (!entity->ops->has_route(entity, from_pad,
+			local->index, &stream)) {
+			link_top(graph) = link_top(graph)->next;
+			return;
+		}
 	}
 
 	/* Has the entity already been visited? */
@@ -404,7 +410,7 @@ static void media_graph_walk_iter(struct media_graph *graph)
 
 	/* Push the new entity to stack and start over. */
 	link_top(graph) = link_top(graph)->next;
-	stack_push(graph, next, remote->index);
+	stack_push(graph, next, remote->index, stream);
 	dev_dbg(entity->graph_obj.mdev->dev, "walk: pushing '%s' on stack\n",
 		next->name);
 }
