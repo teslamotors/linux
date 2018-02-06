@@ -100,9 +100,9 @@ static int trusty_timer_probe(struct platform_device *pdev)
 	struct trusty_timer_dev_state *s;
 	struct trusty_timer *tt;
 
-	ret = trusty_check_cpuid(NULL);
+	ret = trusty_detect_vmm();
 	if (ret < 0) {
-		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		dev_err(&pdev->dev, "Cannot detect VMM which supports trusty!");
 		return -EINVAL;
 	}
 

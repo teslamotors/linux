@@ -539,9 +539,9 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	unsigned long irq_flags;
 	struct trusty_irq_state *is;
 
-	ret = trusty_check_cpuid(NULL);
+	ret = trusty_detect_vmm();
 	if (ret < 0) {
-		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		dev_err(&pdev->dev, "Cannot detect VMM which supports trusty!");
 		return -EINVAL;
 	}
 

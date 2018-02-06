@@ -26,7 +26,8 @@
 #include <linux/trusty/sm_err.h>
 #include <linux/trusty/trusty.h>
 
-#define TRUSTY_VMCALL_SMC 0x74727500
+#define EVMM_SMC_HC_ID 0x74727500
+#define CWP_SMC_HC_ID  0x80000071
 
 struct trusty_state;
 
@@ -53,13 +54,28 @@ struct trusty_smc_interface {
 	ulong args[5];
 };
 
-static inline ulong smc(ulong r0, ulong r1, ulong r2, ulong r3)
+static ulong (*smc)(ulong, ulong, ulong, ulong);
+
+#define asm_smc_vmcall(smc_id, rdi, rsi, rdx, rbx) \
+do { \
+	__asm__ __volatile__( \
+	"vmcall; \n" \
+	: "=D"(rdi) \
+	: "r"(smc_id), "D"(rdi), "S"(rsi), "d"(rdx), "b"(rbx) \
+	); \
+} while (0)
+
+static inline ulong smc_evmm(ulong r0, ulong r1, ulong r2, ulong r3)
 {
-	__asm__ __volatile__(
-	"vmcall; \n"
-	: "=D"(r0)
-	: "a"(TRUSTY_VMCALL_SMC), "D"(r0), "S"(r1), "d"(r2), "b"(r3)
-	);
+	register unsigned long smc_id asm("rax") = EVMM_SMC_HC_ID;
+	asm_smc_vmcall(smc_id, r0, r1, r2, r3);
+	return r0;
+}
+
+static inline ulong smc_cwp(ulong r0, ulong r1, ulong r2, ulong r3)
+{
+	register unsigned long smc_id asm("r8") = CWP_SMC_HC_ID;
+	asm_smc_vmcall(smc_id, r0, r1, r2, r3);
 	return r0;
 }
 
@@ -443,6 +459,19 @@ static void nop_work_func(struct work_struct *work)
 	dev_dbg(s->dev, "%s: done\n", __func__);
 }
 
+static void trusty_init_smc(int vmm_id)
+{
+	if (vmm_id == VMM_ID_EVMM) {
+		smc = smc_evmm;
+	} else if (vmm_id == VMM_ID_CWP) {
+		smc = smc_cwp;
+	} else {
+		pr_err("%s: No smc supports VMM[%d](sig:%s)!",
+				__func__, vmm_id, vmm_signature[vmm_id]);
+		BUG();
+	}
+}
+
 void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop)
 {
 	unsigned long flags;
@@ -479,8 +508,6 @@ void trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop)
 }
 EXPORT_SYMBOL(trusty_dequeue_nop);
 
-
-
 static int trusty_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -489,11 +516,14 @@ static int trusty_probe(struct platform_device *pdev)
 	struct trusty_state *s;
 	struct device_node *node = pdev->dev.of_node;
 
-	ret = trusty_check_cpuid(NULL);
+	ret = trusty_detect_vmm();
 	if (ret < 0) {
-		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		dev_err(&pdev->dev, "Cannot detect VMM which supports trusty!");
 		return -EINVAL;
 	}
+	dev_dbg(&pdev->dev, "Detected VMM: sig=%s\n", vmm_signature[ret]);
+
+	trusty_init_smc(ret);
 
 	if (!node) {
 		dev_err(&pdev->dev, "of_node required\n");
