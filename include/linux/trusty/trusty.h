@@ -18,6 +18,7 @@
 #include <linux/trusty/sm_err.h>
 #include <linux/device.h>
 #include <linux/pagemap.h>
+#include <asm/hypervisor.h>
 
 
 #if IS_ENABLED(CONFIG_TRUSTY)
@@ -90,25 +91,27 @@ void *trusty_wall_base(struct device *dev);
 void *trusty_wall_per_cpu_item_ptr(struct device *dev, unsigned int cpu,
 				   u32 item_id, size_t exp_sz);
 
-/* CPUID leaf 0x3 is used because eVMM will trap this leaf.*/
-#define EVMM_SIGNATURE_CORP 0x43544E49  /* "INTC", edx */
-#define EVMM_SIGNATURE_VMM  0x4D4D5645  /* "EVMM", ecx */
+enum {
+	VMM_ID_EVMM = 0,
+	VMM_ID_CWP,
+	VMM_SUPPORTED_NUM
+};
 
-static inline int trusty_check_cpuid(u32 *vmm_signature)
+static const char *vmm_signature[] = {
+	[VMM_ID_EVMM] = "EVMMEVMMEVMM",
+	[VMM_ID_CWP]  = "CWPCWPCWP\0\0"
+};
+
+/* Detect VMM and return vmm_id */
+static inline int trusty_detect_vmm(void)
 {
-	u32 eax, ebx, ecx, edx;
-
-	cpuid(3, &eax, &ebx, &ecx, &edx);
-	if ((ecx != EVMM_SIGNATURE_VMM) ||
-	    (edx != EVMM_SIGNATURE_CORP)) {
-		return -EINVAL;
+	int i;
+	for (i = 0; i < VMM_SUPPORTED_NUM; i++) {
+		if (hypervisor_cpuid_base(vmm_signature[i], 0))
+			return i;
 	}
 
-	if(vmm_signature) {
-		*vmm_signature = ecx;
-	}
-
-	return 0;
+	return -EINVAL;
 }
 
 /* High 32 bits of unsigned 64-bit integer*/
