@@ -123,7 +123,7 @@ struct ic_ptdev_irq {
 		struct {
 			uint32_t virt_pin;	/* IN: virtual IOAPIC pin */
 			uint32_t phys_pin;	/* IN: physical IOAPIC pin */
-			uint32_t pic_pin;	/* IN: pin from PIC? */
+			uint32_t is_pic_pin;	/* IN: pin from PIC? */
 		} intx;
 		struct {
 			/* IN: vector count of MSI/MSIX,
