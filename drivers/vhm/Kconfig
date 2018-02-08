@@ -1,0 +1,18 @@
+config CWP_VHM
+	bool "Intel CWP Hypervisor Virtio and Hypervisor service Module (VHM)"
+	depends on CWP
+	depends on DMA_CMA
+	depends on PCI_MSI
+	depends on !INTEL_IOMMU
+	depends on !VMAP_STACK
+	default n
+	---help---
+		This is the Virtio and Hypervisor service Module (VHM) for
+		Intel CWP hypervisor.
+
+		It is required for Service OS.
+		User OS doesn't need to have this config.
+
+		Say Y for SOS and say N for UOS.
+
+		If unsure, say N.

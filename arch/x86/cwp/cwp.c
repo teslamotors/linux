@@ -55,7 +55,10 @@ static uint32_t __init cwp_detect(void)
 static void __init cwp_init_platform(void)
 {
 	pv_cpu_ops.cpu_khz = cpu_khz_from_cwp;
+
+#ifdef CONFIG_CWP_VHM
 	pv_irq_ops.write_msi = cwp_write_msi_msg;
+#endif /* CONFIG_CWP_VHM */
 }
 
 static void cwp_pin_vcpu(int cpu)
