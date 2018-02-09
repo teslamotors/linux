@@ -1533,6 +1533,35 @@ void intel_ddi_disable_transcoder_func(struct drm_i915_private *dev_priv,
 	I915_WRITE(reg, val);
 }
 
+int intel_ddi_toggle_hdcp_signalling(struct intel_encoder *intel_encoder,
+				     bool enable)
+{
+	struct drm_device *dev = intel_encoder->base.dev;
+	struct drm_i915_private *dev_priv = to_i915(dev);
+	enum pipe pipe = 0;
+	int ret = 0;
+	uint32_t tmp;
+
+	if (WARN_ON(!intel_display_power_get_if_enabled(dev_priv,
+						intel_encoder->power_domain)))
+		return -ENXIO;
+
+	if (WARN_ON(!intel_encoder->get_hw_state(intel_encoder, &pipe))) {
+		ret = -EIO;
+		goto out;
+	}
+
+	tmp = I915_READ(TRANS_DDI_FUNC_CTL(pipe));
+	if (enable)
+		tmp |= TRANS_DDI_HDCP_SIGNALLING;
+	else
+		tmp &= ~TRANS_DDI_HDCP_SIGNALLING;
+	I915_WRITE(TRANS_DDI_FUNC_CTL(pipe), tmp);
+out:
+	intel_display_power_put(dev_priv, intel_encoder->power_domain);
+	return ret;
+}
+
 bool intel_ddi_connector_get_hw_state(struct intel_connector *intel_connector)
 {
 	struct drm_device *dev = intel_connector->base.dev;
@@ -2334,6 +2363,12 @@ static void intel_enable_ddi(struct intel_encoder *intel_encoder,
 
 	if (pipe_config->has_audio)
 		intel_audio_codec_enable(intel_encoder, pipe_config, conn_state);
+
+
+	/* Enable hdcp if it's desired */
+	if (conn_state->content_protection ==
+	    DRM_MODE_CONTENT_PROTECTION_DESIRED)
+		intel_hdcp_enable(to_intel_connector(conn_state->connector));
 }
 
 static void intel_disable_ddi(struct intel_encoder *intel_encoder,
@@ -2342,6 +2377,8 @@ static void intel_disable_ddi(struct intel_encoder *intel_encoder,
 {
 	struct drm_encoder *encoder = &intel_encoder->base;
 	int type = intel_encoder->type;
+
+	intel_hdcp_disable(to_intel_connector(old_conn_state->connector));
 
 	if (old_crtc_state->has_audio)
 		intel_audio_codec_disable(intel_encoder);

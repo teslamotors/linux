@@ -144,12 +144,23 @@ void intel_uncore_forcewake_get__locked(struct drm_i915_private *dev_priv,
 					enum forcewake_domains domains);
 void intel_uncore_forcewake_put__locked(struct drm_i915_private *dev_priv,
 					enum forcewake_domains domains);
-
+int __intel_wait_for_register(struct drm_i915_private *dev_priv,
+			      i915_reg_t reg,
+			      u32 mask,
+			      u32 value,
+			      unsigned int fast_timeout_us,
+			      unsigned int slow_timeout_ms,
+			      u32 *out_value);
+static inline
 int intel_wait_for_register(struct drm_i915_private *dev_priv,
 			    i915_reg_t reg,
 			    u32 mask,
 			    u32 value,
-			    unsigned int timeout_ms);
+			    unsigned int timeout_ms)
+{
+	return __intel_wait_for_register(dev_priv, reg, mask, value, 2,
+					 timeout_ms, NULL);
+}
 int __intel_wait_for_register_fw(struct drm_i915_private *dev_priv,
 				 i915_reg_t reg,
 				 u32 mask,
