@@ -106,7 +106,7 @@
  *
  * @qsz: size of raw data in a certain virtqueue
  *
- * Return: size of a certain virtqueue
+ * Return: size of a certain virtqueue, in bytes
  */
 static inline size_t virtio_vq_ring_size(unsigned int qsz)
 {
@@ -158,7 +158,7 @@ static inline int virtio_vq_has_descs(struct virtio_vq_info *vq)
  * @dev: Pointer to struct virtio_dev_info
  * @vq: Pointer to struct virtio_vq_info
  *
- * Return: NULL
+ * Return: N/A
  */
 static inline void virtio_vq_interrupt(struct virtio_dev_info *dev,
 				       struct virtio_vq_info *vq)
@@ -195,7 +195,7 @@ static inline void virtio_vq_interrupt(struct virtio_dev_info *dev,
  * @vq: Pointer to struct virtio_vq_info
  * @pfn: page frame number in guest physical address space
  *
- * Return: NULL
+ * Return: N/A
  */
 void virtio_vq_init(struct virtio_vq_info *vq, uint32_t pfn);
 
@@ -204,7 +204,7 @@ void virtio_vq_init(struct virtio_vq_info *vq, uint32_t pfn);
  *
  * @vq: Pointer to struct virtio_vq_info
  *
- * Return: NULL
+ * Return: N/A
  */
 void virtio_vq_reset(struct virtio_vq_info *vq);
 
@@ -233,7 +233,7 @@ int virtio_vq_getchain(struct virtio_vq_info *vq, uint16_t *pidx,
  *
  * @vq: Pointer to struct virtio_vq_info
  *
- * Return: NULL
+ * Return: N/A
  */
 void virtio_vq_retchain(struct virtio_vq_info *vq);
 
@@ -245,7 +245,7 @@ void virtio_vq_retchain(struct virtio_vq_info *vq);
  * @idx: Pointer to available ring position, returned by vq_getchain()
  * @iolen: Number of data bytes to be returned to frontend
  *
- * Return: NULL
+ * Return: N/A
  */
 void virtio_vq_relchain(struct virtio_vq_info *vq, uint16_t idx,
 			uint32_t iolen);
@@ -259,7 +259,7 @@ void virtio_vq_relchain(struct virtio_vq_info *vq, uint16_t idx,
  * @vq: Pointer to struct virtio_vq_info
  * @used_all_avail: Flag indicating if driver used all available chains
  *
- * Return: NULL
+ * Return: N/A
  */
 void virtio_vq_endchains(struct virtio_vq_info *vq, int used_all_avail);
 
