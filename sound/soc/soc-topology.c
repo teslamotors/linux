@@ -2030,11 +2030,11 @@ static void set_link_hw_format(struct snd_soc_dai_link *link,
 		/* clock masters */
 		bclk_master = hw_config->bclk_master;
 		fsync_master = hw_config->fsync_master;
-		if (!bclk_master && !fsync_master)
+		if (bclk_master && fsync_master)
 			link->dai_fmt |= SND_SOC_DAIFMT_CBM_CFM;
-		else if (bclk_master && !fsync_master)
-			link->dai_fmt |= SND_SOC_DAIFMT_CBS_CFM;
 		else if (!bclk_master && fsync_master)
+			link->dai_fmt |= SND_SOC_DAIFMT_CBS_CFM;
+		else if (bclk_master && !fsync_master)
 			link->dai_fmt |= SND_SOC_DAIFMT_CBM_CFS;
 		else
 			link->dai_fmt |= SND_SOC_DAIFMT_CBS_CFS;
