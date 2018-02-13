@@ -111,20 +111,18 @@
 #define CWP_INVALID_HPA (-1UL)
 
 /* Generic memory attributes */
-#define	MEM_ATTR_READ                   0x00000001
-#define	MEM_ATTR_WRITE                  0x00000002
-#define	MEM_ATTR_EXECUTE                0x00000004
-#define	MEM_ATTR_USER                   0x00000008
-#define	MEM_ATTR_WB_CACHE               0x00000040
-#define	MEM_ATTR_WT_CACHE               0x00000080
-#define	MEM_ATTR_UNCACHED               0x00000100
-#define	MEM_ATTR_WC                     0x00000200
-#define	MEM_ATTR_WP                     0x00000400
-
-#define	MEM_ATTR_ALL			0x00000007
-#define	MEM_ATTR_WRITE_PROT		0x00000045
-#define MEM_ATTR_ALL_WB			0x00000047
-#define MEM_ATTR_ALL_WC			0x00000207
+#define	MEM_ACCESS_READ                 0x00000001
+#define	MEM_ACCESS_WRITE                0x00000002
+#define	MEM_ACCESS_EXEC	                0x00000004
+#define	MEM_ACCESS_RWX			(MEM_ACCESS_READ | MEM_ACCESS_WRITE | \
+						MEM_ACCESS_EXEC)
+#define MEM_ACCESS_RIGHT_MASK           0x00000007
+#define	MEM_TYPE_WB                     0x00000040
+#define	MEM_TYPE_WT                     0x00000080
+#define	MEM_TYPE_UC                     0x00000100
+#define	MEM_TYPE_WC                     0x00000200
+#define	MEM_TYPE_WP                     0x00000400
+#define MEM_TYPE_MASK                   0x000007C0
 
 struct vm_set_memmap {
 #define MAP_MEM		0

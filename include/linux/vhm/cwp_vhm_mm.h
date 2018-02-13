@@ -66,11 +66,13 @@ static inline unsigned long  cwp_hpa2gpa(unsigned long hpa)
 void *map_guest_phys(unsigned long vmid, u64 uos_phys, size_t size);
 int unmap_guest_phys(unsigned long vmid, u64 uos_phys);
 int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, unsigned int prot);
+	unsigned long host_gpa, unsigned long len,
+	unsigned int mem_type, unsigned int mem_access_right);
 int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, unsigned int prot);
+	unsigned long host_gpa, unsigned long len);
 int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, unsigned int prot);
+	unsigned long host_gpa, unsigned long len,
+	unsigned int mem_type, unsigned int mem_access_right);
 
 int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma);
 

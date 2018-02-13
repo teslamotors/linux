@@ -148,7 +148,8 @@ int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
 
 static int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len,
-	unsigned int prot, unsigned int type)
+	unsigned int mem_type, unsigned int mem_access_right,
+	unsigned int type)
 {
 	struct vm_set_memmap set_memmap;
 
@@ -156,7 +157,8 @@ static int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
 	set_memmap.remote_gpa = guest_gpa;
 	set_memmap.vm0_gpa = host_gpa;
 	set_memmap.length = len;
-	set_memmap.prot = prot;
+	set_memmap.prot = ((mem_type & MEM_TYPE_MASK) |
+			(mem_access_right & MEM_ACCESS_RIGHT_MASK));
 
 	/* hypercall to notify hv the guest EPT setting*/
 	if (hcall_set_memmap(vmid,
@@ -167,36 +169,39 @@ static int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
 
 	pr_debug("VHM: set ept for mem map[type=0x%x, host_gpa=0x%lx,"
 		"guest_gpa=0x%lx,len=0x%lx, prot=0x%x]\n",
-		type, host_gpa, guest_gpa, len, prot);
+		type, host_gpa, guest_gpa, len, set_memmap.prot);
 
 	return 0;
 }
 
 int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, unsigned int prot)
+	unsigned long host_gpa, unsigned long len,
+	unsigned int mem_type, unsigned mem_access_right)
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
-		prot, MAP_MMIO);
+		mem_type, mem_access_right, MAP_MMIO);
 }
 
 int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, unsigned int prot)
+	unsigned long host_gpa, unsigned long len)
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
-		prot, MAP_UNMAP);
+		0, 0,  MAP_UNMAP);
 }
 
 int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len, unsigned int prot)
+	unsigned long host_gpa, unsigned long len,
+	unsigned int mem_type, unsigned int mem_access_right)
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
-		prot, MAP_MEM);
+		mem_type, mem_access_right, MAP_MEM);
 }
 
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 {
 	struct guest_memseg *seg = NULL;
-	unsigned int type, prot;
+	unsigned int type;
+	unsigned int mem_type, mem_access_right;
 	unsigned long guest_gpa, host_gpa;
 
 	mutex_lock(&vm->seg_lock);
@@ -213,17 +218,19 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 		}
 		guest_gpa = seg->gpa;
 		host_gpa = seg->vm0_gpa;
-		prot = memmap->prot | MEM_ATTR_WB_CACHE;
+		mem_type = MEM_TYPE_WB;
+		mem_access_right = (memmap->prot & MEM_ACCESS_RIGHT_MASK);
 		type = MAP_MEM;
 	} else {
 		guest_gpa = memmap->gpa;
 		host_gpa = cwp_hpa2gpa(memmap->hpa);
-		prot = memmap->prot | MEM_ATTR_UNCACHED;
+		mem_type = MEM_TYPE_UC;
+		mem_access_right = (memmap->prot & MEM_ACCESS_RIGHT_MASK);
 		type = MAP_MMIO;
 	}
 
 	if (_mem_set_memmap(vm->vmid, guest_gpa, host_gpa, memmap->len,
-		prot, type) < 0) {
+		mem_type, mem_access_right, type) < 0) {
 		pr_err("vhm: failed to set memmap %ld!\n", vm->vmid);
 		mutex_unlock(&vm->seg_lock);
 		return -EFAULT;
