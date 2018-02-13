@@ -670,7 +670,9 @@ static int cwpgt_set_wp_page(unsigned long handle, u64 gfn)
 		return ret;
 	}
 	ret = update_memmap_attr(info->vm_id, gfn << PAGE_SHIFT,
-				cwp_hpa2gpa(hpa), 0x1000, MEM_ATTR_WRITE_PROT);
+				cwp_hpa2gpa(hpa), 0x1000,
+				MEM_TYPE_WB,
+				(MEM_ACCESS_READ | MEM_ACCESS_EXEC));
 	if (ret)
 		gvt_err("failed update_memmap_attr set for gfn 0x%llx\n", gfn);
 	return ret;
@@ -684,9 +686,9 @@ static int cwpgt_unset_wp_page(unsigned long handle, u64 gfn)
 	gvt_dbg_core("unset wp page for gfx 0x%llx\n", gfn);
 
 	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
-
+	/* TODO: need to read back default value before write */
 	ret = update_memmap_attr(info->vm_id, gfn << PAGE_SHIFT,
-			cwp_hpa2gpa(hpa), 0x1000, MEM_ATTR_ALL);
+			cwp_hpa2gpa(hpa), 0x1000, MEM_TYPE_WB, MEM_ACCESS_RWX);
 	if (ret) {
 		gvt_err("failed update_memmap_attr unset for gfn 0x%llx\n",
 			gfn);
@@ -786,11 +788,10 @@ static int cwpgt_map_gfn_to_mfn(unsigned long handle, unsigned long gfn,
 	if (map)
 		ret = set_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
 					mfn << PAGE_SHIFT, nr << PAGE_SHIFT,
-					MEM_ATTR_ALL);
+					MEM_TYPE_UC, MEM_ACCESS_RWX);
 	else
 		ret = unset_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
-					mfn << PAGE_SHIFT, nr << PAGE_SHIFT,
-					MEM_ATTR_ALL);
+					mfn << PAGE_SHIFT, nr << PAGE_SHIFT);
 	if (ret)
 		gvt_err("failed map/unmap gfn 0x%lx to mfn 0x%lx with %u pages,"
 			" map %d\n", gfn, mfn, nr, map);
@@ -852,7 +853,8 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 		rc = update_memmap_attr(info->vm_id, pfn << PAGE_SHIFT,
 					mfn << PAGE_SHIFT,
 					mmio_size_fn << PAGE_SHIFT,
-					MEM_ATTR_WRITE_PROT);
+					MEM_TYPE_WB,
+					(MEM_ACCESS_READ | MEM_ACCESS_EXEC));
 		if (rc)
 			gvt_err("failed update_memmap_attr set for pfn 0x%lx\n", pfn);
 
@@ -878,7 +880,7 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 		rc = update_memmap_attr(info->vm_id,
 				(pfn + mmio_size_fn) << PAGE_SHIFT,
 				shared_mfn << PAGE_SHIFT,
-				0x1000, MEM_ATTR_ALL);
+				0x1000, MEM_TYPE_WB, MEM_ACCESS_RWX);
 		if (rc)
 			gvt_err("failed update_memmap_attr set for gfn 0x%lx\n",
 				pfn + mmio_size_fn);
