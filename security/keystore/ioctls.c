@@ -409,8 +409,11 @@ static int encrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 	uint8_t *input = NULL;
 	uint8_t *output = NULL;
 
-	if (!user_data)
+	if (!user_data || !user_data->input || !user_data->output)
 		return -EFAULT;
+
+	if (!user_data->input_size)
+		return -EINVAL;
 
 #ifdef CONFIG_DAL_KEYSTORE
 	if (dal_keystore_flag)
@@ -497,8 +500,11 @@ static int decrypt_op(struct ias_keystore_encrypt_decrypt *user_data)
 	uint8_t *input = NULL;
 	uint8_t *output = NULL;
 
-	if (!user_data)
+	if (!user_data || !user_data->input || !user_data->output)
 		return -EFAULT;
+
+	if (!user_data->input_size)
+		return -EINVAL;
 
 #ifdef CONFIG_DAL_KEYSTORE
 	if (dal_keystore_flag)
