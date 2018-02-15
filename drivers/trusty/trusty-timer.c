@@ -154,7 +154,6 @@ static int trusty_timer_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_register_call_notifier:
 	destroy_workqueue(s->workqueue);
 err_allocate_work_queue:
 	kfree(s);
