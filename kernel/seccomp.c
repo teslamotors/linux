@@ -614,7 +614,6 @@ int __secure_computing(void)
 #ifdef CONFIG_SECCOMP_FILTER
 static u32 __seccomp_phase1_filter(int this_syscall, struct seccomp_data *sd)
 {
-	char name[sizeof(current->comm)];
 	u32 filter_ret, action;
 	int data;
 
@@ -644,13 +643,6 @@ static u32 __seccomp_phase1_filter(int this_syscall, struct seccomp_data *sd)
 
 	case SECCOMP_RET_TRACE:
 		return filter_ret;  /* Save the rest for phase 2. */
-
-	case SECCOMP_RET_LOG:
-		/* Log the non-whitelisted call, then fall through to allow. */
-		get_task_comm(name, current);
-		pr_err_ratelimited("seccomp: %s [%u] tried to call non-whitelisted syscall: %d\n", name, current->pid, this_syscall);
-		audit_seccomp(this_syscall, 0, action);
-		/* Fall through. */
 
 	case SECCOMP_RET_ALLOW:
 		return SECCOMP_PHASE1_OK;
