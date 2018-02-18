@@ -1,0 +1,138 @@
+menuconfig TEGRA_NVMAP
+	bool "Tegra GPU memory management driver (nvmap)"
+	select ARM_DMA_USE_IOMMU if IOMMU_API
+	select DMA_SHARED_BUFFER
+	select CRYPTO_LZO
+	default y
+	help
+	  Say Y here to include the memory management driver for the Tegra
+	  GPU, multimedia and display subsystems
+
+if TEGRA_NVMAP
+
+config NVMAP_HIGHMEM_ONLY
+	bool "Use only HIGHMEM for nvmap"
+	depends on IOMMU_API && HIGHMEM
+	help
+	  Say Y here to restrict nvmap system memory allocations (both
+	  physical system memory and IOVMM) to just HIGHMEM pages.
+
+config NVMAP_PAGE_POOLS
+	bool "Use page pools to reduce allocation overhead"
+	default y
+	help
+	  say Y here to reduce the alloction overhead, which is significant
+	  for uncached, writecombine and inner cacheable memories as it
+	  involves changing page attributes during every allocation per page
+	  and flushing cache. Alloc time is reduced by allcoating the pages
+	  ahead and keeping them aside. The reserved pages would be released
+	  when system is low on memory and acquired back during release of
+	  memory.
+
+config NVMAP_PAGE_POOL_DEBUG
+	bool "Debugging for page pools"
+	depends on NVMAP_PAGE_POOLS
+	help
+	  Say Y here to include some debugging info in the page pools. This
+	  adds a bit of unnecessary overhead so only enable this is you
+	  suspect there is an issue with the nvmap page pools.
+
+config NVMAP_PAGE_POOLS_INIT_FILLUP
+	bool "Fill up page pools during page pools init"
+	depends on NVMAP_PAGE_POOLS
+	default y
+	help
+	  Say Y here to fill up the page pools during page pool init time.
+	  This helps in faster alloctions right from the early alloction
+	  requests. Page pools fill up during init would increase the boot time.
+	  If increase in boot time is not acceptable, keep this option disabled.
+
+config NVMAP_PAGE_POOLS_INIT_FILLUP_SIZE
+	depends on NVMAP_PAGE_POOLS_INIT_FILLUP
+	hex "Amount of memory to fill up page pools with during bootup in MB"
+	default 0x64
+
+config NVMAP_PAGE_POOL_SIZE
+	depends on NVMAP_PAGE_POOLS
+	hex "Page pool size in pages"
+	default 0x0
+
+config NVMAP_CACHE_MAINT_BY_SET_WAYS
+	bool "Enable cache maintenance by set/ways"
+	help
+	 Say Y here to reduce cache maintenance overhead by MVA.
+	 This helps in reducing cache maintenance overhead in the systems,
+	 where inner cache includes only L1. For the systems, where inner cache
+	 includes L1 and L2, keep this option disabled.
+
+config NVMAP_CACHE_MAINT_BY_SET_WAYS_ON_ONE_CPU
+	bool "Perform cache maint on one cpu only"
+	depends on NVMAP_CACHE_MAINT_BY_SET_WAYS
+	help
+	  Say Y here to avoid cache maint on all CPU's during inner cache maint
+	  by set/ways. When L1 and L2 are inner caches, cache maint on one
+	  CPU is enough. When L1 is inner and L2 is outer, cache maint on
+	  all CPU's is necessary during L1 cache maint by set/ways.
+
+config NVMAP_OUTER_CACHE_MAINT_BY_SET_WAYS
+	bool "Enable outer cache maintenance by set/ways"
+	help
+	  Say Y here if you want to optimize cache maintenance for ranges
+	  bigger than size of outer cache. This option has no effect on
+	  system without outer cache.
+
+config NVMAP_DMABUF_STASH
+	bool "Enable stashing of IOVA maps with dmabuf"
+	default y
+	help
+	  Set to Y if you would like nvmap to stash maps when using dma
+	  bufs. This will speed up remapping of the same handle at the cost
+	  of using more IOVA space.
+
+config NVMAP_DMABUF_STASH_STATS
+	bool "Enable stat tracking on the stash"
+	depends on NVMAP_DMABUF_STASH
+	help
+	  Say Y to enable tracking of basic cache statistics on the dmabuf
+	  stash. This adds some overhead but should be very useful for
+	  debugging memory leaks.
+
+config NVMAP_FORCE_ZEROED_USER_PAGES
+	bool "Only alloc zeroed pages for user space"
+	default y
+	help
+	  Say Y here to force zeroing of pages allocated for user space. This
+	  avoids leaking kernel secure data to user space. This can add
+	  significant overhead to allocation operations depending on the
+	  allocation size requested.
+
+config NVMAP_FD_START
+	hex "FD number to start allocation from"
+	default 0x400
+	help
+	  NvMap handles are represented with FD's in the user processes.
+	  To avoid Linux FD usage limitations, NvMap allocates FD starting
+	  from this number.
+
+config NVMAP_DEFER_FD_RECYCLE
+	bool "Defer FD recycle"
+	help
+	  Say Y here to enable deferred FD recycle.
+	  A released nvmap handle would release memory and FD. This FD
+	  can be reused immediately for subsequent nvmap allocation req in
+	  the same process. Any buggy code in client process that continues to
+	  use FD of released allocation would continue to use new allocation
+	  and can lead to undesired consequences, which can be hard to debug.
+	  Enabling this option would defer recycling FD for longer time and
+	  allows debugging incorrect FD references by clients by returning errors
+	  for the accesses that occur after handle/FD release.
+
+config NVMAP_DEFER_FD_RECYCLE_MAX_FD
+	hex "FD number to start free FD recycle"
+	depends on NVMAP_DEFER_FD_RECYCLE
+	default 0x8000
+	help
+	  Once last allocated FD reaches this number, allocation of subsequent
+	  FD's start from NVMAP_START_FD.
+
+endif

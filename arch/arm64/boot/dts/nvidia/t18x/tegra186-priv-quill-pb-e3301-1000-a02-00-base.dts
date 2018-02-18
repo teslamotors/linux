@@ -1,0 +1,39 @@
+/*
+ * tegra186-quill-e3301-1000-a02-00-base.dts Quill-PB A01 Board
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-priv-quill-pb-e3301-1000-a00-00-base.dts"
+
+/ {
+	model = "quill";
+	compatible = "nvidia,quill", "nvidia,tegra186";
+	host1x {
+		sor {
+			status = "okay";
+			nvidia,audio-switch-name = "hdmi_audio";
+			hdmi-display {
+				status = "okay";
+			};
+			dp-display {
+				status = "disabled";
+			};
+		};
+		sor1 {
+			nvidia,audio-switch-name = "dp_audio";
+			hdmi-display {
+				status = "disabled";
+			};
+		};
+	};
+};

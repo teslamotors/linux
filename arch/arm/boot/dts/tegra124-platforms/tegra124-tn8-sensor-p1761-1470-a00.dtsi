@@ -1,0 +1,64 @@
+/* Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	i2c@7000c000 {
+		mpu6515@69 {
+			compatible = "invensense,mpu6xxx";
+			reg = <0x69>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(S, 0) 0x01>;
+			accelerometer_matrix = [ff 00 00 00 01 00 00 00 ff];
+			gyroscope_matrix = [ff 00 00 00 01 00 00 00 ff];
+			vlogic-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
+		};
+
+		ak8963c@0d {
+			compatible = "ak,ak89xx";
+			reg = <0x0d>;
+			magnetic_field_matrix = [ff 00 00 00 01 00 00 00 ff];
+			vid-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
+		};
+
+		max44006@44 {
+			compatible = "maxim,max44006";
+			reg = <0x44>;
+			vcc-supply = <&palmas_smps8>;
+		};
+	};
+
+	i2c@7000c400 {
+		status = "okay";
+
+		iqs253@44 {
+			compatible = "azoteq,iqs253";
+			reg = <0x44>;
+			vddhi-supply = <&palmas_smps9>;
+			vendor = "Azoteq";
+			proximity,max-range = "2"; /* 2 cm */
+			proximity,integration-time = "16000000"; /* 16 msec */
+			proximity,power-consumed = "1.67"; /* approx mA */
+			rdy-gpio = <&gpio TEGRA_GPIO(K, 5) GPIO_ACTIVE_LOW>;
+			wake-gpio = <&gpio TEGRA_GPIO(W, 3) GPIO_ACTIVE_LOW>;
+			sar-gpio = <&gpio TEGRA_GPIO(I, 2) GPIO_ACTIVE_LOW>;
+		};
+	};
+};

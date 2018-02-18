@@ -1,0 +1,88 @@
+/*
+ * arch/arm64/boot/dts/tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi
+ *
+ * Copyright (c) 2014 - 2015, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/thermal/thermal.h>
+
+/ {
+	thermal-zones {
+		Tboard_tegra {
+			status = "disabled";
+			polling-delay = <0>;
+			polling-delay-passive = <0>;
+			thermal-sensors = <&tegra_nct72 0>;
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+			tboard_dram_cool_dev: dram-cool-dev {
+				#cooling-cells = <2>; /* min followed by max */
+			};
+
+			trips {
+				tboard_dram_throttle: dram-throttle {
+					temperature = <80000>;
+					hysteresis = <1000>;
+					type = "active";
+					writable;
+				};
+			};
+
+			cooling-maps {
+				map-tegra-dram {
+					trip = <&tboard_dram_throttle>;
+					cooling-device = <&tboard_dram_cool_dev
+						1 1>;
+					cdev-type = "tegra-dram";
+				};
+			};
+		};
+
+		Tdiode_tegra {
+			status = "disabled";
+			polling-delay = <0>;
+			polling-delay-passive = <1000>;
+			thermal-sensors = <&tegra_nct72 1>;
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+			tdiode_shutdown_warn_cool_dev: shutdown-warn-cool-dev {
+				#cooling-cells = <2>; /* min followed by max */
+			};
+
+			trips {
+				tdiode_shutdown_warn: shutdown-warn-throttle {
+					temperature = <104000>;
+					hysteresis = <1000>;
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map-shutdown-warn {
+					trip = <&tdiode_shutdown_warn>;
+					cooling-device = <&tdiode_shutdown_warn_cool_dev
+							THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+					cdev-type = "shutdown_warning";
+				};
+			};
+		};
+	};
+};

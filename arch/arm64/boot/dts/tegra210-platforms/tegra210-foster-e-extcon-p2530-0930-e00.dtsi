@@ -1,0 +1,55 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	extcon {
+		otg_gpio_extcon: extcon@1 {
+			compatible = "extcon-otg";
+			reg = <0x1>;
+			extcon-otg,name = "otg";
+			id-gpio = <&max77620 0 0>;
+			vbus-gpio = <&gpio TEGRA_GPIO(Z, 5) 0>;
+			io-channels = <&ina3221x INA3221_CHAN_INDEX(1, VOLTAGE, NORMAL)>;
+			vbus-presence-threshold = <4000>;
+			io-channel-names = "vbus";
+			debounce = <100>;
+			vbus-auto-hw;
+			extcon-gpio,cable-name = "USB", "USB-Host";
+			#extcon-cells = <1>;
+		};
+	};
+
+	udc@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&otg_gpio_extcon 0>;
+		extcon-cable-names = "vbus";
+	};
+
+	otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&otg_gpio_extcon 0 &otg_gpio_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+	};
+
+	xudc@700d0000 {
+		extcon-cables = <&otg_gpio_extcon 0>;
+		extcon-cable-names = "vbus";
+	};
+
+	xotg {
+		extcon-cables = <&otg_gpio_extcon 1>;
+		extcon-cable-names = "id";
+	};
+};

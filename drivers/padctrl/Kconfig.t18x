@@ -1,0 +1,8 @@
+config PADCTRL_TEGRA186_PMC
+	bool "Tegra186 PMC PADCTRL driver"
+	depends on TEGRA186_PMC
+	help
+	  This option enables Tegra 186 PMC padctrl driver
+
+	  Tegra186 PMC padctrl driver which controls the pad
+	  to supply either 1.2V or 1.8V or 3.3V.

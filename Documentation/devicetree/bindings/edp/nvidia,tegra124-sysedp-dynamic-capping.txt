@@ -1,0 +1,91 @@
+System-EDP Consumers:
+
+Required properties:
+- compatible: "nvidia,tegra124-sysedp-dynamic-capping"
+- nvidia,corecap: This is an array of tegra_sysedp_corecap structs. The order
+  and contents of each corecap line refers to a unsigned int value inside the
+  tegra_sysedp_corecap struct.  Here's the order of the values expected per
+  line of data:
+	- AP power (milliwatts): Power required by the AP+DRAM when the CPU power
+	  and GPU and EMC frequencies are capped.
+	- CPU Priority CPU Max Power (milliwatts): Maximum power given to the CPU
+	  when the CPU has the priority.
+	- CPU Priority GPU Max Frequency (kHz) (or Max Power (mW)): Maximum GPU
+	  frequency (or power) allowed when the CPU has the priority. (See
+	  nvidia,gpu_cap_as_mw).
+	- CPU Priority EMC Max Frequency (kHz): Maximum EMC frequency allowed when
+	  the CPU has the priority.
+	- GPU Priority CPU Max Power (milliwatts): Maximum power given to the CPU
+	  when the GPU has the priority.
+	- GPU Priority GPU Max Frequency (kHz) (or Max Power (mW)): Maximum GPU
+	  frequency (or power) allowed when the GPU has the priority. (See
+	  nvidia,gpu_cap_as_mw).
+	- GPU Priority EMC Max Frequency (kHz): Maximum EMC frequency allowed when
+	  the GPU has the priority.
+	- Throttle power (milliwatts): The amount of power returned to the system
+	  when the SOC_THERM OC signal throttles the CPU and GPU frequencies.
+	  This is the amount of power with 100% throttle depth.
+	- CPU Priority GPU Supplemental Frequency (kHz) (Optional): Maximum GPU
+	  frequency allowed when the CPU has the priority. (See
+	  nvidia,gpu_supp_freq).
+	- GPU Priority GPU Supplemental Frequency (kHz) (Optional): Maximum GPU
+	  frequency allowed when the GPU has the priority. (See
+	  nvidia,gpu_supp_freq).
+  Note that the order of AP Power must start with the smallest power and
+  should increase for each entry.
+- nvidia,core_gain: The percentage of gain applied to the AP+DRAM budget power.
+  A value of 100 means to multiply by 1.0.
+- nvidia,init_req_watts defines the initial AP+DRAM budget before the
+  sysedp_dynamic_capping gets a calculated budget from the sysedp module.
+- nvidia,throttle_depth: The percentage of gain applied to the throttle power.
+  A value of 100 means to multiply by 1.0.  Expected values are between 0-100%.
+  This value should be matched to the HW SOC_THERM throttle depth choice.
+- nvidia,cap_method: The calculation to use when determining which corecap
+  entry is associated with the AP+DRAM budget. For systems with voltage
+  comparators, the value should be 3.  For systems without voltage comparators,
+  but with modem overcurrent signals, the value should be 2.  For all other
+  systems, the value should be set to 1.
+
+Optional properties:
+- nvidia,gpu_cap_as_mw: if present, this property indicates that the
+  GPU caps are power limits in mW as opposed to frequency limits in
+  kHz
+- nvidia,gpu_supp_freq: This property must to be used in tandem with
+  nvidia,gpu_cap_as_mw. If present, this property indicates that there
+  are two additional columns in the nvidia,corecap tables, which contain
+  the gpu frequency tables in KHz corresponding to a typical part at 70C.
+  These columns are required if the GPU caps are expressed in terms of mW
+  instead of KHz, to supplement the information available to choose
+  between GPU priority mode vs CPU Priority Mode.
+
+Example:
+	sysedp-dynamic-capping {
+		compatible = "nvidia,tegra124-sysedp-dynamic-capping";
+		nvidia,corecap = <
+		   5000   2000 100000 933000   2000 100000 933000    500
+		  10000   7000 100000 933000   3500 400000 933000   2000
+		  15000  10000 200000 933000   4000 600000 933000   4000
+		  20000  10000 500000 933000   5000 700000 933000   8000
+		>;
+		nvidia,core_gain = <100>;
+		nvidia,init_req_watts = <20000>;
+		nvidia,throttle_depth = <75>;
+		nvidia,cap_method = <3>;
+	};
+
+Example 2:
+	sysedp-dynamic-capping {
+		compatible = "nvidia,tegra124-sysedp-dynamic-capping";
+		nvidia,gpu_cap_as_mw;
+		nvidia,gpu_supp_freq;
+		nvidia,corecap = <
+		   5000   2000 1200 933000   2000 1200 933000    500   77  77
+		  10000   7000 1200 933000   3500 3800 933000   2000  231 308
+		  15000  10000 2400 933000   4000 6000 933000   4000  384 538
+		  20000  10000 5000 933000   5000 7000 933000   8000  461 768
+		>;
+		nvidia,core_gain = <100>;
+		nvidia,init_req_watts = <20000>;
+		nvidia,throttle_depth = <75>;
+		nvidia,cap_method = <3>;
+	};

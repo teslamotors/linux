@@ -1,7 +1,7 @@
 /*
  * Tegra host1x Interrupt Management
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (C) 2010-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,6 +20,7 @@
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/irq.h>
+#include <linux/pm_runtime.h>
 
 #include <trace/events/host1x.h>
 #include "channel.h"
@@ -27,6 +28,11 @@
 #include "intr.h"
 
 /* Wait list management */
+
+struct host1x_waitlist_external_notifier {
+	void (*callback)(void *, int);
+	void *private_data;
+};
 
 enum waitlist_state {
 	WLS_PENDING,
@@ -110,8 +116,12 @@ static void reset_threshold_interrupt(struct host1x *host,
 static void action_submit_complete(struct host1x_waitlist *waiter)
 {
 	struct host1x_channel *channel = waiter->data;
+	int i;
 
 	host1x_cdma_update(&channel->cdma);
+
+	for (i = 0; i < waiter->count; i++)
+		pm_runtime_put_autosuspend(channel->dev);
 
 	/*  Add nr_completed to trace */
 	trace_host1x_channel_submit_complete(dev_name(channel->dev),
@@ -128,7 +138,25 @@ static void action_wakeup(struct host1x_waitlist *waiter)
 static void action_wakeup_interruptible(struct host1x_waitlist *waiter)
 {
 	wait_queue_head_t *wq = waiter->data;
+
 	wake_up_interruptible(wq);
+}
+
+static void action_signal_timeline(struct host1x_waitlist *waiter)
+{
+	struct host1x_sync_timeline *tl = waiter->data;
+
+	host1x_sync_timeline_signal(tl);
+}
+
+static void action_notify(struct host1x_waitlist *waiter)
+{
+	struct host1x_waitlist_external_notifier *notifier = waiter->data;
+
+	notifier->callback(notifier->private_data, waiter->count);
+
+	kfree(notifier);
+	waiter->data = NULL;
 }
 
 typedef void (*action_handler)(struct host1x_waitlist *waiter);
@@ -137,6 +165,8 @@ static action_handler action_handlers[HOST1X_INTR_ACTION_COUNT] = {
 	action_submit_complete,
 	action_wakeup,
 	action_wakeup_interruptible,
+	action_signal_timeline,
+	action_notify,
 };
 
 static void run_handlers(struct list_head completed[HOST1X_INTR_ACTION_COUNT])
@@ -270,12 +300,14 @@ void host1x_intr_put_ref(struct host1x *host, u32 id, void *ref)
 	kref_put(&waiter->refcount, waiter_release);
 }
 
-int host1x_intr_init(struct host1x *host, unsigned int irq_sync)
+int host1x_intr_init(struct host1x *host, unsigned int irq_gen,
+		     unsigned int irq_sync)
 {
 	unsigned int id;
 	u32 nb_pts = host1x_syncpt_nb_pts(host);
 
 	mutex_init(&host->intr_mutex);
+	host->intr_general_irq = irq_gen;
 	host->intr_syncpt_irq = irq_sync;
 	host->intr_wq = create_workqueue("host_syncpt");
 	if (!host->intr_wq)
@@ -314,6 +346,9 @@ void host1x_intr_start(struct host1x *host)
 		mutex_unlock(&host->intr_mutex);
 		return;
 	}
+
+	host1x_hw_intr_request_host_general_irq(host);
+
 	mutex_unlock(&host->intr_mutex);
 }
 
@@ -348,7 +383,51 @@ void host1x_intr_stop(struct host1x *host)
 		}
 	}
 
+	host1x_hw_intr_free_host_general_irq(host);
 	host1x_hw_intr_free_syncpt_irq(host);
 
 	mutex_unlock(&host->intr_mutex);
 }
+
+int host1x_intr_register_notifier(struct host1x_syncpt *sp,
+				  u32 thresh,
+				  void (*callback)(void *, int),
+				  void *private_data)
+{
+	struct host1x *host = sp->host;
+	struct host1x_waitlist *waiter;
+	struct host1x_waitlist_external_notifier *notifier;
+	int err = 0;
+
+	if (!callback)
+		return -EINVAL;
+
+	waiter = kzalloc(sizeof(*waiter), GFP_KERNEL | __GFP_REPEAT);
+	if (!waiter) {
+		err = -ENOMEM;
+		goto err_alloc_waiter;
+	}
+	notifier = kzalloc(sizeof(*notifier), GFP_KERNEL | __GFP_REPEAT);
+	if (!notifier) {
+		err = -ENOMEM;
+		goto err_alloc_notifier;
+	}
+
+	notifier->callback = callback;
+	notifier->private_data = private_data;
+
+	err = host1x_intr_add_action(host,
+				     host1x_syncpt_id(sp), thresh,
+				     HOST1X_INTR_ACTION_NOTIFY,
+				     notifier,
+				     waiter,
+				     NULL);
+
+	return err;
+
+err_alloc_notifier:
+	kfree(waiter);
+err_alloc_waiter:
+	return err;
+}
+EXPORT_SYMBOL(host1x_intr_register_notifier);

@@ -14,4 +14,7 @@ config I2C_ALGOPCF
 config I2C_ALGOPCA
 	tristate "I2C PCA 9564 interfaces"
 
+config I2C_ALGO_BUSCLEAR
+	bool
+
 endmenu

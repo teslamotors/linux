@@ -3764,7 +3764,9 @@ ncls:
 
 	if (vlan_tx_tag_present(skb)) {
 		if (pt_prev) {
+#ifndef CONFIG_DISABLE_VLAN_FWD_TO_REAL_IF
 			ret = deliver_skb(skb, pt_prev, orig_dev);
+#endif
 			pt_prev = NULL;
 		}
 		if (vlan_do_receive(&skb))
@@ -4687,7 +4689,7 @@ out:
 
 softnet_break:
 	sd->time_squeeze++;
-	__raise_softirq_irqoff_ksoft(NET_RX_SOFTIRQ);
+	__raise_softirq_irqoff(NET_RX_SOFTIRQ);
 	goto out;
 }
 

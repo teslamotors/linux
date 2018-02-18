@@ -1,0 +1,57 @@
+/*
+ * arch/arm64/boot/dts/tegra210-platforms/tegra210-thermal-tmp451-e2580.dtsi
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
+
+/* THERMAL gpio definitions */
+#define TEMP_ALERT		TEGRA_GPIO(X, 4)
+
+/ {
+	i2c@7000c000 {
+		tegra_nct72: onsemi,nct72@4c {
+			#thermal-sensor-cells = <1>;
+			compatible = "onsemi,nct72";
+			reg = <0x4c>;
+			sensor-name = "tmp451-ext";
+			supported-hwrev = <1>;
+			/*
+			 * Ext Temp Offset High Byte unit is 1C per 1
+			 * Upper 2bit of Ext Temp Offset Low Byte unit is 0.25C per 1
+			 * Ext Temp Offset High Byte will be set "offset / 4"
+			 * Upper 2bit of Ext Temp Offset Low Byte will be set "offset % 4"
+			 * We need to set offset value as 0.25C per 1
+			 */
+			offset = <48>; /* 48 * 0.25C = 12C */
+			conv-rate = <0x08>; /* 16 conversions per second */
+			extended-rage = <1>; /* -64C ~ 191C */
+			interrupt-parent = <&gpio>;
+			interrupts = <TEMP_ALERT IRQ_TYPE_LEVEL_LOW>;
+			vdd-supply = <&max77620_sd3>;
+			temp-alert-gpio = <&gpio TEMP_ALERT 0>;
+			loc {
+				/* set maximum, so that, no local shutdown */
+				shutdown-limit = <191>;
+			};
+			ext {
+				shutdown-limit = <105>;
+			};
+		};
+	};
+};

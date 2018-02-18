@@ -1,0 +1,130 @@
+/ {
+	power-domain {
+		compatible = "tegra-power-domains";
+
+		mc_clk_pd: mc-clk-pd {
+			compatible = "nvidia,tegra210-mc-clk-pd";
+			#power-domain-cells = <0>;
+		};
+
+		ape_pd: ape-pd {
+			compatible = "nvidia,tegra210-ape-pd";
+			#power-domain-cells = <0>;
+			power-domains = <&mc_clk_pd>;
+			partition-id = <TEGRA_POWERGATE_APE>;
+		};
+
+		adsp_pd: adsp-pd {
+			compatible = "nvidia,tegra210-adsp-pd";
+			#power-domain-cells = <0>;
+			power-domains = <&ape_pd>;
+		};
+
+		host1x_pd: host1x-pd {
+			compatible = "nvidia,tegra210-host1x-pd";
+			is_off;
+			host1x;
+			#power-domain-cells = <0>;
+			power-domains = <&mc_clk_pd>;
+		};
+
+		tsec_pd: tsec-pd {
+			compatible = "nvidia,tegra210-tsec-pd";
+			is_off;
+			#power-domain-cells = <0>;
+			power-domains = <&host1x_pd>;
+		};
+
+		nvdec_pd: nvdec-pd {
+			compatible = "nvidia,tegra210-nvdec-pd";
+			is_off;
+			#power-domain-cells = <0>;
+			power-domains = <&host1x_pd>;
+			partition-id = <TEGRA_POWERGATE_NVDEC>;
+		};
+
+		ve_pd: ve-pd {
+			compatible = "nvidia,tegra210-ve-pd";
+			is_off;
+			#power-domain-cells = <0>;
+			power-domains = <&host1x_pd>;
+			partition-id = <TEGRA_POWERGATE_VENC>;
+		};
+
+		ve2_pd: ve2-pd {
+			compatible = "nvidia,tegra210-ve2-pd";
+			is_off;
+			#power-domain-cells = <0>;
+			power-domains = <&host1x_pd>;
+			partition-id = <TEGRA_POWERGATE_VE2>;
+		};
+
+		vic03_pd: vic03-pd {
+			compatible = "nvidia,tegra210-vic03-pd";
+			is_off;
+			#power-domain-cells = <0>;
+			power-domains = <&host1x_pd>;
+			partition-id = <TEGRA_POWERGATE_VIC>;
+		};
+
+		msenc_pd: msenc-pd {
+			compatible = "nvidia,tegra210-msenc-pd";
+			is_off;
+			#power-domain-cells = <0>;
+			power-domains = <&host1x_pd>;
+			partition-id = <TEGRA_POWERGATE_MPE>;
+		};
+
+		nvjpg_pd: nvjpg-pd {
+			compatible = "nvidia,tegra210-nvjpg-pd";
+			is_off;
+			#power-domain-cells = <0>;
+			power-domains = <&host1x_pd>;
+			partition-id = <TEGRA_POWERGATE_NVJPG>;
+		};
+
+		pcie_pd: pcie-pd {
+			compatible = "nvidia,tegra210-pcie-pd";
+			is_off;
+			#power-domain-cells = <0>;
+			power-domains = <&mc_clk_pd>;
+			partition-id = <TEGRA_POWERGATE_PCIE>;
+		};
+
+		sata_pd: sata-pd {
+			compatible = "nvidia,tegra210-sata-pd";
+			#power-domain-cells = <0>;
+			partition-id = <TEGRA_POWERGATE_SATA>;
+		};
+
+		disa_pd: disa-pd {
+			compatible = "nvidia,tegra210-disa-pd";
+			#power-domain-cells = <0>;
+			partition-id = <TEGRA_POWERGATE_DISA>;
+		};
+
+		disb_pd: disb-pd {
+			compatible = "nvidia,tegra210-disb-pd";
+			#power-domain-cells = <0>;
+			partition-id = <TEGRA_POWERGATE_DISB>;
+		};
+
+		xusba_pd: xusba-pd {
+			compatible = "nvidia,tegra210-xusba-pd";
+			#power-domain-cells = <0>;
+			partition-id = <TEGRA_POWERGATE_XUSBA>;
+		};
+
+		xusbb_pd: xusbb-pd {
+			compatible = "nvidia,tegra210-xusbb-pd";
+			#power-domain-cells = <0>;
+			partition-id = <TEGRA_POWERGATE_XUSBB>;
+		};
+
+		xusbc_pd: xusbc-pd {
+			compatible = "nvidia,tegra210-xusbc-pd";
+			#power-domain-cells = <0>;
+			partition-id = <TEGRA_POWERGATE_XUSBC>;
+		};
+	};
+};

@@ -248,6 +248,13 @@ config ENCLOSURE_SERVICES
 	  driver (SCSI/ATA) which supports enclosures
 	  or a SCSI enclosure device (SES) to use these services.
 
+config KERNEL_DEBUGGER_CORE
+	bool "Kernel Debugger Core"
+	default n
+	---help---
+	  Generic kernel debugging command processor used by low level
+	  (interrupt context) platform-specific debuggers.
+
 config SGI_XP
 	tristate "Support communication between SGI SSIs"
 	depends on NET
@@ -410,6 +417,15 @@ config HMC6352
 	  This driver provides support for the Honeywell HMC6352 compass,
 	  providing configuration and heading data via sysfs.
 
+config SENSORS_NCT1008
+	tristate "ON Semiconductor Temperature Sensor"
+	default n
+	depends on I2C
+	depends on THERMAL
+	help
+	 Say yes here if you wish to include the ON Semiconductor
+	 NCT1008 Temperature sensor.
+
 config DS1682
 	tristate "Dallas DS1682 Total Elapsed Time Recorder with Alarm"
 	depends on I2C
@@ -439,6 +455,10 @@ config TI_DAC7512
 
 	  This driver can also be built as a module. If so, the module
 	  will be called ti_dac7512.
+
+config UID_STAT
+	bool "UID based statistics tracking exported to /proc/uid_stat"
+	default n
 
 config VMWARE_BALLOON
 	tristate "VMware Balloon Driver"
@@ -553,6 +573,170 @@ config VEXPRESS_SYSCFG
 	  bus. System Configuration interface is one of the possible means
 	  of generating transactions on this bus.
 
+config BCM4329_RFKILL
+	bool "Enable BCM4329 RFKILL driver"
+	default n
+	---help---
+	Adds BCM4329 RFKILL driver for Broadcom BCM4329 chipset
+
+config TEGRA_CRYPTO_DEV
+	bool "Device node to access tegra aes hardware"
+	---help---
+	Dev node /dev/tegra-crypto in order to get access to tegra aes
+	hardware from user space
+
+config TEGRA_CPC
+	bool "Tegra content protection controller"
+	depends on I2C
+	---help---
+	This driver allows authenticated IO access to storage blocks on
+	CPC controller via i2c.
+
+config MAX1749_VIBRATOR
+	bool "MAX1749 vibrator device driver"
+	depends on ANDROID_TIMED_OUTPUT
+	default n
+	---help---
+	Adds a timed output vibrator device node for MAX1749 vibrator motor
+
+config APANIC
+	bool "Android kernel panic diagnostics driver"
+	default n
+	---help---
+	 Driver which handles kernel panics and attempts to write
+	 critical debugging data to flash.
+
+config APANIC_PLABEL
+	string "Android panic dump flash partition label"
+	default "kpanic"
+	---help---
+	 If your platform uses a different flash partition label for storing
+ 	 crashdumps, enter it here.
+
+config THERM_EST
+	bool "Thermal estimator driver"
+	depends on THERMAL
+	default n
+	---help---
+	Thermal driver which estimates temperature based of other sensors.
+
+config TEGRA_THROUGHPUT
+	bool "Device node to set throughput target"
+	depends on TEGRA_DC && TEGRA_DC_EXTENSIONS
+	default y
+	---help---
+	Dev node /dev/tegra-throughput used to set a throughput target.
+
+config FAN_THERM_EST
+	tristate "Fan driving temp estimator"
+	depends on THERMAL
+	---help---
+	Thermal driver that estimates the fan driving temperature based on
+	other sensors.
+
+	This enables a virtual sensor that polls other registered thermal
+	zone devices for temperature updates.
+
+config BLUEDROID_PM
+        tristate "Bluedroid_pm driver support"
+        help
+          Bluetooth Bluedroid power management Driver.
+          This driver provides power control and dynamic active power saving
+          mechanism for bluetooth radio devices.
+
+          Say Y here to compile support for bluedroid_pm support into the kernel
+          or say M to compile it as module (bluedroid_pm).
+
+config GPS_HWGEOFENCING
+	tristate "hw geofencing support"
+	---help---
+	This driver provides gps enable, hw geofencing and host wake capability.
+
+config CPULOAD_MONITOR
+	bool "Publish cpu load measures in sysfs"
+	depends on CPU_FREQ
+	default y
+	---help---
+	Publish cpu load measured in sysfs, to be used by user space cpu
+	frequency controllers.
+
+config SIM_MAX77660
+        tristate "Maxim SIM MAX77660"
+        depends on MFD_MAX77660
+       ---help---
+       If you say yes, SIM drv of Maxim MAX77660 will be enabled.
+       It supports SIM Card detection and SIM configuration of Max77660.
+
+config SIM_PALMAS
+	tristate "Palmas SIM driver"
+	depends on MFD_PALMAS
+	---help---
+	If yes, the Palmas SIM driver will be enabled. It supports SIM card
+	detection and SIM configuration for Palmas PMICs.
+
+config PALMAS_LDOUSB_INPUT
+        tristate "Palmas LDOUSB input driver support"
+        depends on MFD_PALMAS
+       ---help---
+          Say Y here to enable palmas LDOUSB input selection based on
+          battery voltage.
+
+config MODS
+	tristate "NVIDIA MODS driver"
+	default n
+	---help---
+	The NVIDIA MODS driver gives user space software direct access
+	to hardware. The NVIDIA Diagnostic Software uses this to test hardware.
+	This driver should normally be disabled in all production builds.
+
+	Say Y here to compile the NVIDIA MODS driver into the kernel or say M
+	to compile it as a module.
+
+	If unsure, say N here.
+
+config TEGRA_PROC_POWER_MODEL
+	bool
+	help
+	  A simple model of processor power relating voltage, frequency,
+	  cores, and chip specific data. Used by various drivers.
+
+config NV_GAMEPAD_RESET
+	tristate "Nvidia Gamepad Reset Driver"
+	help
+	 This driver provides an interface that can be used to recover
+	 gamepad uC when needed
+
+config SAF775x_HWDEP
+        tristate "SAF775x HWDEP Driver"
+	default n
+        depends on I2C || SPI
+
+config SAF36XX_HWDEP
+	tristate "SAF36XX HWDEP Driver"
+	default n
+	depends on SPI && SPI_MASTER
+	help
+	  Provides interfaces for flashing SAF36XX
+
+config EQOS_APE_HWDEP
+	tristate "EQOS APE HWDEO Driver"
+	default n
+	depends on TEGRA_NVADSP
+	help
+	Driver provides mechanism to synchronize EAVB and APE clock.
+	This driver copies the EAVB time stamp on APE time registers
+	to synchroniza the initial phase offset. It calculates the
+	frequency offset between the two clocks  by taking subsequent
+	snapshots of the clock and taking the difference. Based on the
+	calculated frequency offset, the pll_a clock (parent of APE clock)
+	frequency is adjusted.
+
+config UID_CPUTIME
+	tristate "Per-UID cpu time statistics"
+	depends on PROFILING
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -560,10 +744,17 @@ source "drivers/misc/ti-st/Kconfig"
 source "drivers/misc/lis3lv02d/Kconfig"
 source "drivers/misc/carma/Kconfig"
 source "drivers/misc/altera-stapl/Kconfig"
+source "drivers/misc/tegra-baseband/Kconfig"
+source "drivers/misc/tegra-cec/Kconfig"
 source "drivers/misc/mei/Kconfig"
 source "drivers/misc/vmw_vmci/Kconfig"
 source "drivers/misc/mic/Kconfig"
 source "drivers/misc/genwqe/Kconfig"
 source "drivers/misc/echo/Kconfig"
 source "drivers/misc/cxl/Kconfig"
+source "drivers/misc/issp/Kconfig"
+source "drivers/misc/tegra-profiler/Kconfig"
+source "drivers/misc/gps/Kconfig"
+source "drivers/misc/nvs-dfsh/Kconfig"
+source "drivers/misc/inter-tegra/Kconfig"
 endmenu

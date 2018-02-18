@@ -1,7 +1,7 @@
 /*
  * Tegra host1x Command DMA
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -42,7 +42,7 @@ struct host1x_job;
  */
 
 struct push_buffer {
-	u32 *mapped;			/* mapped pushbuffer memory */
+	void *mapped;			/* mapped pushbuffer memory */
 	dma_addr_t phys;		/* physical address of pushbuffer */
 	u32 fence;			/* index we've written */
 	u32 pos;			/* index to write to */
@@ -52,8 +52,8 @@ struct push_buffer {
 struct buffer_timeout {
 	struct delayed_work wq;		/* work queue */
 	bool initialized;		/* timer one-time setup flag */
-	struct host1x_syncpt *syncpt;	/* buffer completion syncpt */
-	u32 syncpt_val;			/* syncpt value when completed */
+	unsigned int num_syncpts;	/* number of syncpoints used */
+	struct host1x_job_syncpt *syncpts; /* buffer completion syncpt */
 	ktime_t start_ktime;		/* starting time */
 	/* context timeout information */
 	int client;

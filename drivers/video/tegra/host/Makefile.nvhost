@@ -1,0 +1,47 @@
+GCOV_PROFILE := y
+ccflags-y += -I../nvhost/drivers/video/tegra/host
+ccflags-y += -Idrivers/video/tegra/host
+ccflags-y += -Idrivers/devfreq
+ccflags-y += -Wno-multichar
+
+subdir-ccflags-y := -Werror
+
+nvhost-objs = \
+	nvhost_acm.o \
+	nvhost_syncpt.o \
+	nvhost_cdma.o \
+	nvhost_intr.o \
+	nvhost_channel.o \
+	nvhost_job.o \
+	dev.o \
+	debug.o \
+	bus_client.o \
+	chip_support.o \
+	nvhost_scale.o \
+	nvhost_vm.o \
+	scale_emc.o
+
+obj-$(CONFIG_TEGRA_GRHOST) += nvhost.o
+obj-$(CONFIG_TEGRA_GRHOST) += host1x/
+obj-$(CONFIG_TEGRA_GRHOST_TSEC) += tsec/
+obj-$(CONFIG_TEGRA_GRHOST_NVDEC) += nvdec/
+obj-$(CONFIG_TEGRA_GRHOST_ISP) += isp/
+obj-$(CONFIG_TEGRA_GRHOST) += t124/
+obj-$(CONFIG_TEGRA_GRHOST) += flcn/
+obj-$(CONFIG_TEGRA_GRHOST) += t210/
+
+ifeq ($(CONFIG_ARCH_TEGRA_18x_SOC),y)
+ifneq ($(wildcard $(srctree)/../nvhost-t18x/drivers/video/tegra/host/Makefile.nvhost-t18x),)
+obj-$(CONFIG_TEGRA_GRHOST) += $(call tegra-path,nvhost-t18x/,drivers/video/tegra/host/)
+endif
+endif
+
+ifeq ($(CONFIG_ARCH_TEGRA_19x_SOC),y)
+ifneq ($(wildcard $(srctree)/../nvhost-t19x/drivers/video/tegra/host/Makefile),)
+obj-$(CONFIG_TEGRA_GRHOST) += $(call tegra-path,nvhost-t19x/,drivers/video/tegra/host/)
+endif
+endif
+
+obj-$(CONFIG_TEGRA_GRHOST_SYNC) += nvhost_sync.o
+
+obj-$(CONFIG_TEGRA_GRHOST) += vhost/

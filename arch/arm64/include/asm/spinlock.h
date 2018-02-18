@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 ARM Ltd.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,6 +19,7 @@
 
 #include <asm/spinlock_types.h>
 #include <asm/processor.h>
+#include <asm/atomic.h>
 
 /*
  * Spinlock implementation.
@@ -25,6 +27,164 @@
  * The memory barriers are implicit with the load-acquire and store-release
  * instructions.
  */
+
+#if defined(CONFIG_ARM64_SIMPLE_SPINLOCK)
+
+/*
+ * Simple locks.
+ *
+ * These locks are designed to be simpler, faster, and more power efficent when
+ * there are not many cores contending for the lock. It does this by minimizing
+ * the time before executing wfe in the contention case while minimizing the
+ * work in the uncontended case.
+ */
+
+/*
+ * Simple spinlock implementation.
+ *
+ * When the lock != 0, it is held. When the lock == 0, it is free.
+ */
+
+static inline void arch_spin_lock(arch_spinlock_t *lock)
+{
+	do {
+		/* Wait for the lock to be free */
+		while (ldax32(lock))
+			wfe();	/* Go to sleep waiting for a change */
+	} while (stx32(lock, 1));
+}
+
+#define arch_spin_lock_flags(lock, flags) arch_spin_lock(lock)
+
+static inline int arch_spin_trylock(arch_spinlock_t *lock)
+{
+	if (ldax32(lock))
+		return 0;
+	if (stx32(lock, 1))
+		return 0;
+	return 1;
+}
+
+static inline void arch_spin_unlock(arch_spinlock_t *lock)
+{
+	stl32(lock, 0);
+}
+
+static inline int arch_spin_is_locked(arch_spinlock_t *lock)
+{
+	/*
+	 * This needs ldax32() so that __raw_spin_lock() can use wfe() for
+	 * arch_spin_relax().
+	 */
+	return ldax32(lock);
+}
+
+static inline void arch_spin_unlock_wait(arch_spinlock_t *lock)
+{
+	while (ldax32(lock))
+		wfe();
+}
+
+#define arch_spin_relax(x) wfe()
+
+/*
+ * RW lock implementation.
+ *
+ * The lock contains the number of readers. When a writer has the lock the
+ * value is RW_WRITE_LOCK. A writer can obtain the lock only if the value is 0.
+ * A reader will increment the lock value. A reader can obtain the lock any time
+ * it is not RW_WRITE_LOCK.
+ */
+
+
+#define RW_WRITE_LOCK (~0)
+static inline void arch_read_lock(arch_rwlock_t *lock)
+{
+	u32 lockval;
+
+	do {
+		/* Sleep while a writer owns the lock */
+		while ((lockval = ldax32(lock)) == RW_WRITE_LOCK)
+			wfe();
+	} while (stx32(lock, lockval + 1));
+}
+
+static inline void arch_read_unlock(arch_rwlock_t *lock)
+{
+	while (stx32(lock, ldx32(lock) - 1))
+		;
+}
+
+static inline int arch_read_trylock(arch_rwlock_t *lock)
+{
+	u32 lockval;
+
+	/*
+	 * Spin as long as a writer doesn't hold the lock because the contention
+	 * is only with other readers updating the lock value. Also, stx32() may
+	 * return 1 even if the exlusively held address did not change.
+	 */
+	do {
+		lockval = ldax32(lock);
+		if (lockval == RW_WRITE_LOCK)
+			return 0;
+	} while (stx32(lock, lockval + 1));
+	return 1;
+}
+
+static inline int arch_read_can_lock(arch_rwlock_t *lock)
+
+{
+	/*
+	 * This needs ldax32() so that __raw_read_lock() can use wfe() for
+	 * arch_read_relax().
+	 */
+	return ldax32(lock) >= 0;
+}
+
+#define arch_read_relax(x) wfe()
+
+static inline void arch_write_lock(arch_rwlock_t *lock)
+{
+	/* A writer can only obtain the lock when the value is 0 */
+	do {
+		while (ldax32(lock) != 0)
+			wfe();
+	} while (stx32(lock, RW_WRITE_LOCK));
+}
+
+static inline void arch_write_unlock(arch_rwlock_t *lock)
+{
+	stl32(lock, 0);
+}
+
+static inline int arch_write_trylock(arch_rwlock_t *lock)
+{
+	/*
+	 * Spin as long as a nothing else holds the lock because the contention
+	 * is only with others updating the lock value. Also, stx32() may
+	 * return 1 even if the exlusively held address did not change.
+	 */
+	do {
+		if (ldax32(lock) != 0)
+			return 0;
+	} while (stx32(lock, RW_WRITE_LOCK));
+	return 1;
+}
+
+static inline int arch_write_can_lock(arch_rwlock_t *lock)
+
+{
+	/*
+	 * This needs ldax32() so that __raw_write_lock() can use wfe() for
+	 * arch_write_relax().
+	 */
+	return ldax32(lock) == 0;
+}
+
+#define arch_write_relax(x) wfe()
+
+#else /* defined(CONFIG_ARM64_SIMPLE_SPINLOCK) */
 
 #define arch_spin_unlock_wait(lock) \
 	do { while (arch_spin_is_locked(lock)) cpu_relax(); } while (0)
@@ -231,6 +391,7 @@ static inline int arch_read_trylock(arch_rwlock_t *rw)
 #define arch_read_relax(lock)	cpu_relax()
 #define arch_write_relax(lock)	cpu_relax()
 
+#endif /* defined(CONFIG_ARM64_SIMPLE_SPINLOCK) */
 /*
  * Accesses appearing in program order before a spin_lock() operation
  * can be reordered with accesses inside the critical section, by virtue

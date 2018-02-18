@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2007 Atmel Corporation
  * Copyright (C) 2013 Intel Corporation
+ * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -36,17 +37,22 @@ module_param_string(device, test_device, sizeof(test_device),
 		S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(device, "Bus ID of the DMA Engine to test (default: any)");
 
+static char test_filter[32] = "copy";
+module_param_string(filter, test_filter, sizeof(test_filter),
+		S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(filter, "Type of the DMA Engine to test (default: copy)");
+
 static unsigned int threads_per_chan = 1;
 module_param(threads_per_chan, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(threads_per_chan,
 		"Number of threads to start per channel (default: 1)");
 
-static unsigned int max_channels;
+static unsigned int max_channels = 32;
 module_param(max_channels, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(max_channels,
 		"Maximum number of channels to use (default: all)");
 
-static unsigned int iterations;
+static unsigned int iterations = 1;
 module_param(iterations, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(iterations,
 		"Iterations before stopping test (default: infinite)");
@@ -73,6 +79,10 @@ MODULE_PARM_DESC(noverify, "Disable random data setup and verification");
 static bool verbose;
 module_param(verbose, bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(verbose, "Enable \"success\" result messages (default: off)");
+
+static int error;
+module_param(error, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(error, "Keep error count");
 
 /**
  * struct dmatest_params - test parameters.
@@ -146,7 +156,14 @@ MODULE_PARM_DESC(run, "Run the test (default: false)");
 #define PATTERN_DST		0x00
 #define PATTERN_COPY		0x40
 #define PATTERN_OVERWRITE	0x20
+#define PATTERN_FILL		0xa5
 #define PATTERN_COUNT_MASK	0x1f
+
+#define MEMSET_VAL				\
+	(PATTERN_FILL << 24) |			\
+	(PATTERN_FILL << 16) |			\
+	(PATTERN_FILL << 8) |			\
+	(PATTERN_FILL << 0)
 
 struct dmatest_thread {
 	struct list_head	node;
@@ -298,7 +315,10 @@ static unsigned int dmatest_verify(u8 **bufs, unsigned int start,
 		counter = counter_orig;
 		for (i = start; i < end; i++) {
 			actual = buf[i];
-			expected = pattern | (~counter & PATTERN_COUNT_MASK);
+			if (pattern == PATTERN_FILL)
+				expected = PATTERN_FILL;
+			else
+				expected = pattern | (~counter & PATTERN_COUNT_MASK);
 			if (actual != expected) {
 				if (error_count < MAX_ERROR_COUNT)
 					dmatest_mismatch(actual, pattern, i,
@@ -342,6 +362,9 @@ static void result(const char *err, unsigned int n, unsigned int src_off,
 {
 	pr_info("%s: result #%u: '%s' with src_off=0x%x dst_off=0x%x len=0x%x (%lu)\n",
 		current->comm, n, err, src_off, dst_off, len, data);
+
+	if (strcmp(err, "test passed") != 0)
+		error++;
 }
 
 static void dbg_result(const char *err, unsigned int n, unsigned int src_off,
@@ -420,6 +443,7 @@ static int dmatest_func(void *data)
 	ktime_t			ktime;
 	s64			runtime = 0;
 	unsigned long long	total_len = 0;
+	u8			pat;
 
 	set_freezable();
 
@@ -447,6 +471,9 @@ static int dmatest_func(void *data)
 
 		for (i = 0; i < src_cnt; i++)
 			pq_coefs[i] = 1;
+	} else if (thread->type == DMA_MEMSET) {
+		src_cnt = 0;
+		dst_cnt = 1;
 	} else
 		goto err_thread_type;
 
@@ -495,6 +522,8 @@ static int dmatest_func(void *data)
 			align = dev->xor_align;
 		else if (thread->type == DMA_PQ)
 			align = dev->pq_align;
+		else if (thread->type == DMA_MEMSET)
+			align = dev->fill_align;
 
 		if (1 << align > params->buf_size) {
 			pr_err("%u-byte buffer too small for %d-byte alignment\n",
@@ -593,6 +622,11 @@ static int dmatest_func(void *data)
 			tx = dev->device_prep_dma_pq(chan, dma_pq, srcs,
 						     src_cnt, pq_coefs,
 						     len, flags);
+		} else if (thread->type == DMA_MEMSET) {
+			tx = dev->device_prep_dma_memset(chan,
+							 dsts[0] + dst_off,
+							 MEMSET_VAL,
+							 len, flags);
 		}
 
 		if (!tx) {
@@ -669,9 +703,13 @@ static int dmatest_func(void *data)
 		pr_debug("%s: verifying dest buffer...\n", current->comm);
 		error_count += dmatest_verify(thread->dsts, 0, dst_off,
 				0, PATTERN_DST, false);
+		if (thread->type == DMA_MEMSET)
+			pat = PATTERN_FILL;
+		else
+			pat = PATTERN_SRC | PATTERN_COPY;
 		error_count += dmatest_verify(thread->dsts, dst_off,
 				dst_off + len, src_off,
-				PATTERN_SRC | PATTERN_COPY, false);
+				pat, false);
 		error_count += dmatest_verify(thread->dsts, dst_off + len,
 				params->buf_size, dst_off + len,
 				PATTERN_DST, false);
@@ -751,6 +789,8 @@ static int dmatest_add_threads(struct dmatest_info *info,
 		op = "xor";
 	else if (type == DMA_PQ)
 		op = "pq";
+	else if (type == DMA_MEMSET)
+		op = "fill";
 	else
 		return -EINVAL;
 
@@ -784,7 +824,8 @@ static int dmatest_add_threads(struct dmatest_info *info,
 }
 
 static int dmatest_add_channel(struct dmatest_info *info,
-		struct dma_chan *chan)
+			       struct dma_chan *chan,
+			       dma_cap_mask_t test_filter)
 {
 	struct dmatest_chan	*dtc;
 	struct dma_device	*dma_dev = chan->device;
@@ -800,16 +841,24 @@ static int dmatest_add_channel(struct dmatest_info *info,
 	dtc->chan = chan;
 	INIT_LIST_HEAD(&dtc->threads);
 
-	if (dma_has_cap(DMA_MEMCPY, dma_dev->cap_mask)) {
+	if (dma_has_cap(DMA_MEMCPY, dma_dev->cap_mask) &&
+	    dma_has_cap(DMA_MEMCPY, test_filter)) {
 		cnt = dmatest_add_threads(info, dtc, DMA_MEMCPY);
 		thread_count += cnt > 0 ? cnt : 0;
 	}
-	if (dma_has_cap(DMA_XOR, dma_dev->cap_mask)) {
+	if (dma_has_cap(DMA_XOR, dma_dev->cap_mask) &&
+	    dma_has_cap(DMA_XOR, test_filter)) {
 		cnt = dmatest_add_threads(info, dtc, DMA_XOR);
 		thread_count += cnt > 0 ? cnt : 0;
 	}
-	if (dma_has_cap(DMA_PQ, dma_dev->cap_mask)) {
+	if (dma_has_cap(DMA_PQ, dma_dev->cap_mask) &&
+	    dma_has_cap(DMA_PQ, test_filter)) {
 		cnt = dmatest_add_threads(info, dtc, DMA_PQ);
+		thread_count += cnt > 0 ? cnt : 0;
+	}
+	if (dma_has_cap(DMA_MEMSET, dma_dev->cap_mask) &&
+	    dma_has_cap(DMA_MEMSET, test_filter)) {
+		cnt = dmatest_add_threads(info, dtc, DMA_MEMSET);
 		thread_count += cnt > 0 ? cnt : 0;
 	}
 
@@ -846,7 +895,7 @@ static void request_channels(struct dmatest_info *info,
 
 		chan = dma_request_channel(mask, filter, params);
 		if (chan) {
-			if (dmatest_add_channel(info, chan)) {
+			if (dmatest_add_channel(info, chan, mask)) {
 				dma_release_channel(chan);
 				break; /* add_channel failed, punt */
 			}
@@ -860,7 +909,20 @@ static void request_channels(struct dmatest_info *info,
 
 static void run_threaded_test(struct dmatest_info *info)
 {
+	int i;
 	struct dmatest_params *params = &info->params;
+	enum dma_transaction_type test_type[] = {
+		DMA_MEMCPY,
+		DMA_XOR,
+		DMA_PQ,
+		DMA_MEMSET,
+	};
+	const char * const test_str[] = {
+		"copy",
+		"xor",
+		"pq",
+		"fill",
+	};
 
 	/* Copy test parameters */
 	params->buf_size = test_buf_size;
@@ -874,9 +936,17 @@ static void run_threaded_test(struct dmatest_info *info)
 	params->timeout = timeout;
 	params->noverify = noverify;
 
-	request_channels(info, DMA_MEMCPY);
-	request_channels(info, DMA_XOR);
-	request_channels(info, DMA_PQ);
+	error = 0;
+
+	for (i = 0; i < ARRAY_SIZE(test_type); i++) {
+		if (strncmp(test_filter, test_str[i],
+			    strlen(test_str[i])) == 0) {
+			request_channels(info, test_type[i]);
+			return;
+		}
+	}
+	pr_err("filter should be from %s %s %s %s\n",
+		test_str[0], test_str[1], test_str[2], test_str[3]);
 }
 
 static void stop_threaded_test(struct dmatest_info *info)

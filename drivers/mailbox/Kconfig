@@ -33,4 +33,8 @@ config OMAP_MBOX_KFIFO_SIZE
 	  Specify the default size of mailbox's kfifo buffers (bytes).
 	  This can also be changed at runtime (via the mbox_kfifo_size
 	  module parameter).
+
+config TEGRA_XUSB_MBOX
+	def_bool y if ARCH_TEGRA_18x_SOC
+
 endif

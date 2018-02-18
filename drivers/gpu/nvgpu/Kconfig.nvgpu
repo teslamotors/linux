@@ -1,0 +1,112 @@
+config GK20A
+	tristate "Nvidia GK20A GPU support"
+	default y
+	help
+	  Choose this option if you have an SoC with integrated
+	  Nvidia GPU IP.
+
+config GK20A_DEFAULT_TIMEOUT
+	depends on GK20A
+	int "Default timeout for submits"
+	default 3000
+	help
+	  Default timeout for jobs in milliseconds. Set to zero for no timeout.
+
+config GK20A_PMU
+	bool "Support GK20A PMU"
+	depends on GK20A
+	default n
+	help
+	  Say Y here to enable GK20A PMU features.
+
+choice
+	depends on GK20A
+	prompt "Enable GK20A frequency scaling"
+	default GK20A_PERFMON
+	optional
+	help
+	  Select this entry to enable gk20a scaling
+
+config GK20A_PERFMON
+	bool "Use Perfmon"
+	help
+	  Select this to enable built-in perfmon scaling.
+	  The built-in scaling option uses simplistic
+	  scaling mechanism (if busy, increase frequency and
+	  decrease frequency if idle).
+
+config GK20A_DEVFREQ
+	depends on TEGRA_CLK_FRAMEWORK || COMMON_CLK
+	bool "Use Devfreq"
+	help
+	  Select this to use devfreq based scaling.
+	  Devfreq is a common framework that allows using
+	  variety of different governors and changing
+	  between governors on the fly. By default, no
+	  governor is selected.
+
+endchoice
+
+config GK20A_CYCLE_STATS
+	bool "Support GK20A GPU CYCLE STATS"
+	depends on GK20A
+	default y
+	help
+	  Say Y here to enable the cycle stats debugging features.
+
+config GK20A_CTXSW_TRACE
+	bool "Support GK20A Context Switch tracing"
+	depends on GK20A
+	default n
+	help
+	  Enable support for the GK20A Context Switch Tracing. In this mode,
+	  FECS collects timestamps for contexts loaded on GR engine. This
+	  allows tracking context switches on GR engine, as well as
+	  identifying processes that submitted work.
+
+config TEGRA_GK20A
+	bool "Enable the GK20A GPU on Tegra"
+	depends on TEGRA_GRHOST || TEGRA_HOST1X
+	depends on GK20A
+	default y
+	help
+	  Enable support for the GK20A graphics engine on Tegra
+	  by adding a Tegra platfrom interface to the GK20A driver.
+	  The Tegra platform interface requires TEGRA_GRHOST (host1x).
+
+config TEGRA_ACR
+	bool "Enable HS bin support on GM20B GPU on Tegra"
+	depends on GK20A_PMU
+	default n
+	help
+	  Enable Support for Loading High Secure binary, and using
+	  Write Protected Regions (WPR) for storing ucodes, and bootstrap
+	  PMU, FECS and GPCCS in Low Secure mode.
+
+config TEGRA_USE_NA_GPCPLL
+	bool "Enable noise aware mode of GM20B GPCPLL on Tegra"
+	depends on TEGRA_CLK_FRAMEWORK
+	default n
+	help
+	  Enable noise aware (NA) mode of GM20b GPCPLL. In this mode PLL output
+	  frequency is automatically adjusted when GM20b voltage is fluctuating
+	  because of transient PMIC or power distribution tree noise.
+
+config GK20A_PCI
+	bool "Support PCIe NVIDIA GPUs on nvgpu"
+	depends on PCI && GK20A
+	default y if ARM64
+	default n
+	help
+	  Enable support for GPUs on PCIe bus.
+
+config GK20A_VIDMEM
+	bool "Support separate video memory on nvgpu"
+	depends on GK20A
+	default n
+	help
+	  Enable support for using and allocating buffers in a distinct video
+	  memory aperture (in contrast to general system memory), available on
+	  GPUs that have their own banks. PCIe GPUs have this, for example.
+
+trysource "../nvgpu-t19x/drivers/gpu/nvgpu/Kconfig"

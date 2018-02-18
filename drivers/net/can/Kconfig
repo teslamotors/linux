@@ -153,6 +153,10 @@ source "drivers/net/can/usb/Kconfig"
 
 source "drivers/net/can/softing/Kconfig"
 
+trysource "../t18x/drivers/net/can/Kconfig"
+trysource "../t18x/drivers/net/can/Kconfig.t18x"
+trysource "drivers/net/can/Kconfig.t18x"
+
 endif
 
 config CAN_DEBUG_DEVICES

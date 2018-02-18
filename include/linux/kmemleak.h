@@ -23,6 +23,8 @@
 
 #ifdef CONFIG_DEBUG_KMEMLEAK
 
+#include <linux/slab.h>
+
 extern void kmemleak_init(void) __ref;
 extern void kmemleak_alloc(const void *ptr, size_t size, int min_count,
 			   gfp_t gfp) __ref;

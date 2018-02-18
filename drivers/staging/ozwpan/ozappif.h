@@ -1,5 +1,6 @@
 /* -----------------------------------------------------------------------------
  * Copyright (c) 2011 Ozmo Inc
+ * Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
  * Released under the GNU General Public License Version 2 (GPLv2).
  * -----------------------------------------------------------------------------
  */
@@ -12,7 +13,7 @@ struct oz_mac_addr {
 	__u8 a[6];
 };
 
-#define OZ_MAX_PDS	8
+#define OZ_MAX_PDS	4
 
 struct oz_pd_list {
 	__u32 count;

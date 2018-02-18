@@ -28,6 +28,24 @@ config REGULATOR_DEBUG
 	help
 	  Say yes here to enable debugging support.
 
+config REGULATOR_DUMMY
+	bool "Provide a dummy regulator if regulator lookups fail"
+	help
+	  If this option is enabled then when a regulator lookup fails
+	  and the board has not specified that it has provided full
+	  constraints the regulator core will provide an always
+	  enabled dummy regulator, allowing consumer drivers to continue.
+
+	  A warning will be generated when this substitution is done.
+
+config REGULATOR_PMIC_OTP
+	bool "Provide a regulator with PMIC OTP without PMIC registration"
+	help
+	  This driver able to provide all regulator interface to client
+	  without any actual implementation. This should be used if it
+	  is required to use the PMCI OTP configuration and do not want
+	  to register PMIC.
+
 config REGULATOR_FIXED_VOLTAGE
 	tristate "Fixed voltage regulator support"
 	help
@@ -324,6 +342,22 @@ config REGULATOR_MAX1586
 	  regulator via I2C bus. The provided regulator is suitable
 	  for PXA27x chips to control VCC_CORE and VCC_USIM voltages.
 
+config REGULATOR_MAX77663
+	tristate "Maxim 77663 voltage regulator"
+	depends on MFD_MAX77663
+	help
+	  This driver controls a Maxim 77663 voltage output regulator
+	  via I2C bus. The provided regulator is suitable for Tegra
+	  chip to control Step-Down DC-DC and LDOs.
+config REGULATOR_MAX16989
+	tristate "Maxim 16989 2-Channel Step Down controller"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  MAXIM MAX16989 is automotive low-voltage 2 Channel High-Efficiency
+	  DC-DC Controller. This driver supports configuration of this device
+	  through regulator interface.
+
 config REGULATOR_MAX8649
 	tristate "Maxim 8649 voltage regulator"
 	depends on I2C
@@ -388,6 +422,14 @@ config REGULATOR_MAX8998
 	  via I2C bus. The provided regulator is suitable for S3C6410
 	  and S5PC1XX chips to control VCC_CORE and VCC_USIM voltages.
 
+config REGULATOR_MAX8907C
+	tristate "Maxim 8907C voltage regulator"
+	depends on MFD_MAX8907C
+	help
+	  This driver controls a Maxim 8907C voltage output regulator
+	  via I2C bus. The provided regulator is suitable for Tegra
+	  chip to control Step-Down DC-DC and LDOs.
+
 config REGULATOR_MAX77686
 	tristate "Maxim 77686 regulator"
 	depends on MFD_MAX77686
@@ -416,6 +458,33 @@ config REGULATOR_MAX77802
 
 config REGULATOR_MC13XXX_CORE
 	tristate
+
+config REGULATOR_MAX77620
+	tristate "Maxim 77620 voltage regulator"
+	depends on MFD_MAX77620
+	help
+	  This driver controls Maxim MAX77620 voltage output regulator
+	  via I2C bus. The provided regulator is suitable for Tegra
+	  chip to control Step-Down DC-DC and LDOs. Say Y here to
+	  enable the regulator driver.
+
+config REGULATOR_MAX15569
+	tristate "Maxim 15569/16989 voltage regulator"
+	depends on I2C
+	help
+	  It is Step-Down Controller.
+	  This driver controls a Maxim 15569/16989 voltage output
+	  regulators via I2C bus. The provided regulator is suitable
+	  for Tegra chip.
+	  Say y here to support Maxim 15569/16989.
+
+
+config REGULATOR_AS3720
+	tristate "ams AS3720 PMIC regulators"
+	depends on MFD_AS3720
+	help
+	  This driver provides support for the voltage regulators of the
+	  AS3720 PMIC.
 
 config REGULATOR_MC13783
 	tristate "Freescale MC13783 regulator driver"
@@ -476,13 +545,6 @@ config REGULATOR_PFUZE100
 	  Say y here to support the regulators found on the Freescale
 	  PFUZE100/PFUZE200 PMIC.
 
-config REGULATOR_PWM
-	tristate "PWM voltage regulator"
-	depends on PWM
-	help
-	  This driver supports PWM controlled voltage regulators. PWM
-	  duty cycle can increase or decrease the voltage.
-
 config REGULATOR_QCOM_RPM
 	tristate "Qualcomm RPM regulator driver"
 	depends on MFD_QCOM_RPM
@@ -494,6 +556,21 @@ config REGULATOR_QCOM_RPM
 	  Say M here if you want to include support for the regulators on the
 	  Qualcomm RPM as a module. The module will be named
 	  "qcom_rpm-regulator".
+
+config REGULATOR_PINMUX_FIXED
+	tristate "Pinmux based fixed voltage regulator support"
+	help
+	  This driver provides support for fixed voltage regulators
+	  based on pinmux state. The regulator can be controlled by
+	  changign the pimux states.
+
+config REGULATOR_PWM
+	tristate "PWM based voltage regulator support"
+	depends on PWM
+	help
+	  This driver provides support for pwm based voltage regulators,
+	  useful for systems which use a pwm to control the voltage
+	  output from the regulator device.
 
 config REGULATOR_RC5T583
 	tristate "RICOH RC5T583 Power regulators"
@@ -544,6 +621,12 @@ config REGULATOR_S5M8767
 	 This driver supports a Samsung S5M8767A voltage output regulator
 	 via I2C bus. S5M8767A have 9 Bucks and 28 LDOs output and
 	 supports DVS mode with 8bits of output voltage control.
+
+config REGULATOR_ST_PWM
+	tristate "STMicroelectronics PWM voltage regulator"
+	depends on ARCH_STI
+	help
+	 This driver supports ST's PWM controlled voltage regulators.
 
 config REGULATOR_SKY81452
 	tristate "Skyworks Solutions SKY81452 voltage regulator"
@@ -604,6 +687,16 @@ config REGULATOR_TPS62360
 	  high-frequency synchronous step down dc-dc converter optimized
 	  for battery-powered portable applications.
 
+config REGULATOR_TPS6238X0
+	tristate "TI TPS623850/TPS623860/TPS623870 Power Regulator"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports TPS6238X0 voltage regulator chip. This
+	  regulator is meant for processor core supply. This chip is
+	  high-frequency synchronous step down dc-dc converter optimized
+	  for battery-powered portable applications.
+
 config REGULATOR_TPS65023
 	tristate "TI TPS65023 Power regulators"
 	depends on I2C
@@ -627,6 +720,14 @@ config REGULATOR_TPS65090
 	help
 	  This driver provides support for the voltage regulators on the
 	  TI TPS65090 PMIC.
+
+config REGULATOR_TPS65132
+	tristate "TI TPS65132 Dual Output Power regulators"
+	depends on I2C && GPIOLIB
+	select REGMAP_I2C
+	help
+	  This driver supports TPS65132 single inductor - dual output
+	  power supply specifcally designed for display panels.
 
 config REGULATOR_TPS65217
 	tristate "TI TPS65217 Power regulators"
@@ -683,6 +784,16 @@ config REGULATOR_TPS80031
 	  converters, 11 general purpose LDOs, VBUS generator and digital
 	  output to control regulators.
 
+config REGULATOR_TPS61280
+        tristate "TI TPS61280 Power Regulator"
+        depends on I2C
+        select REGMAP_I2C
+        help
+          This driver supports TPS61280 voltage regulator chip. This
+          regulator is meant for modem power supply. This chip is
+          high-frequency synchronous step-up dc-dc converter optimized
+          for battery-powered portable applications.
+
 config REGULATOR_TWL4030
 	tristate "TI TWL4030/TWL5030/TWL6030/TPS659x0 PMIC"
 	depends on TWL4030_CORE
@@ -724,6 +835,27 @@ config REGULATOR_WM8994
 	help
 	  This driver provides support for the voltage regulators on the
 	  WM8994 CODEC.
+
+config REGULATOR_TPS6591X
+	tristate "TI TPS6591X Power regulators"
+	depends on MFD_TPS6591X
+	help
+	  This driver supports TPS6591X voltage regulator chips.
+
+config REGULATOR_RICOH583
+	tristate "RICOH 583 Power regulators"
+	depends on MFD_RICOH583
+	default n
+	help
+	  This driver supports regulator driver for RICOH583 PMIC.
+
+config REGULATOR_MAX77660
+	tristate "Maxim 77660 voltage regulator"
+	depends on MFD_MAX77660
+	help
+	  This driver controls a Maxim 77660 voltage output regulator
+	  via I2C bus. The provided regulator is suitable for Tegra
+	  chip to control Step-Down DC-DC and LDOs.
 
 endif
 

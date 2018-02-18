@@ -1,0 +1,70 @@
+/*
+ * tegra186-priv-vcm31-p2382-010-a01-00-drew.dts: P2382(sunstreaker) drew dts
+ * file
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-vcm31-p2382-common.dtsi"
+#include "tegra186-platforms/tegra186-vcm31-p2382-disp.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "p2382:0010:A01";
+	nvidia,proc-boardid = "p2382:0010:A01";
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "p2382_t188";
+		};
+	};
+
+	cpus {
+
+		cpu@0 {
+			status = "disabled";
+		};
+
+		cpu@1 {
+			status = "disabled";
+		};
+
+		cpu@2 {
+			status = "okay";
+		};
+
+		cpu@3 {
+			status = "okay";
+		};
+
+		cpu@4 {
+			status = "okay";
+		};
+
+		cpu@5 {
+			status = "okay";
+		};
+	};
+
+	host1x {
+		isp@15600000 {
+			status = "disabled";
+		};
+	};
+
+};

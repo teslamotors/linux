@@ -647,8 +647,6 @@ void ktime_get_ts64(struct timespec64 *ts)
 }
 EXPORT_SYMBOL_GPL(ktime_get_ts64);
 
-#ifdef CONFIG_NTP_PPS
-
 /**
  * getnstime_raw_and_real - get day and raw monotonic time in timespec format
  * @ts_raw:	pointer to the timespec to be set to raw monotonic time
@@ -682,8 +680,6 @@ void getnstime_raw_and_real(struct timespec *ts_raw, struct timespec *ts_real)
 	timespec_add_ns(ts_real, nsecs_real);
 }
 EXPORT_SYMBOL(getnstime_raw_and_real);
-
-#endif /* CONFIG_NTP_PPS */
 
 /**
  * do_gettimeofday - Returns the time of day in a timeval

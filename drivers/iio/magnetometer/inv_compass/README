@@ -1,0 +1,176 @@
+Kernel driver
+Author: Invensense <http://invensense.com>
+
+Table of Contents:
+==================
+- Description
+- Integrating the Driver in the Linux Kernel
+- Board and Platform Data
+    > Platform Data
+- Board File Modifications for compass
+    > AMI306
+    > YAS530/532/533
+- IIO Subsystem
+    > Communicating with the Driver in Userspace
+- Streaming Data to an Userspace Application
+- Test Applications
+    > Running Test Applications with AMI306 or YAS53x
+
+Description
+===========
+This document describes how to install the Invensense device driver for AMI306
+and YAS53x series compass chip into a Linux kernel. The Invensense driver
+currently supports the following sensors:
+- AMI306
+- YAS530
+- YAS532
+- YAS533
+
+Please refer to the appropriate product specification
+document for further information regarding the slave address.
+
+The following files are included in this package:
+- Kconfig
+- Makefile
+- inv_ami306_core.c
+- inv_ami306_ring.c
+- inv_ami306_trigger.c
+- inv_ami306_iio.h
+- inv_yas53x_core.c
+- inv_yas53x_ring.c
+- inv_yas53x_trigger.c
+- inv_yas53x_iio.h
+
+Integrating the Driver in the Linux Kernel
+==========================================
+Please add the files as follows:
+- Add all above files to drivers/staging/iio/magnetometer/inv_compass
+(another directory is acceptable, but this is the recommended destination)
+
+In order to see the driver in menuconfig when building the kernel, please
+make modifications as shown below:
+
+    modify "drivers/staging/iio/magnetometer/Kconfig" with:
+    >> source "drivers/staging/iio/magnetometer/inv_compass/Kconfig"
+
+    modify "drivers/staging/iio/magnetometer/Makefile" with:
+    >> obj-y += inv_compass/
+
+
+Board and Platform Data
+=======================
+In order to recognize the Invensense device on the I2C bus, the board file must
+be modified.
+The i2c_board_info instance must be defined as shown below.
+
+Platform Data
+-------------
+The platform data (orientation matrix and secondary bus configurations) must be
+modified as show below, according to your particular platform configuration.
+
+Board File Modifications for Secondary I2C Configuration
+========================================================
+For the Panda Board, the board file can be found at
+arch/arm/mach-omap2/board-omap4panda.c.
+Please modify the pertinent baord file in your system according to the examples
+shown below:
+
+AMI306
+-------------------------------------------------
+static struct mpu_platform_data compass_data = {
+        .orientation = {   0,  0,  1,
+                           0,  1,  0,
+                           1,  0,  0 },
+};
+
+static struct i2c_board_info __initdata chip_board_info[] = {
+        {
+                I2C_BOARD_INFO("ami306", 0x0E),
+                .platform_data = &compass_data,
+        },
+};
+
+YAS53x(Use YAS532 as an example)
+-------------------------------------------------
+static struct mpu_platform_data compass_data = {
+        .orientation = {   0,  -1, 0,
+                           1,  0,  0,
+                           0,  0,  1 },
+};
+
+static struct i2c_board_info __initdata compass_board_info[] = {
+        {
+                I2C_BOARD_INFO("yas532", 0x2E),
+                .platform_data = &compass_data,
+        },
+};
+
+IIO subsystem
+=============
+A successful installation will create the following two new directories under
+/sys/bus/iio/devices:
+    - iio:device0
+    - trigger0
+
+Also, a new file, "iio:device0", will be created in the /dev/ diretory.
+(if you have more than one IIO device, the file will be named "iio:deviceX",
+where X is a number)
+
+
+Communicating with the Driver in Userspace
+------------------------------------------
+The driver generates several files in sysfs upon installation.
+These files are used to communicate with the driver. The files can be found
+at /sys/bus/iio/devices/iio:device0 (or ../iio:deviceX as shown above).
+
+A brief description of the pertinent files for each Invensense device is shown
+below:
+
+AMI306
+--------
+compass_matrix (read-only)
+--show the orientation matrix obtained from the board file.
+
+sampling_frequency(read and write)
+--show and change the sampling rate of the sensor.
+
+YAS53x
+---------------------
+YAS53x has all the attributes AMI306 has. It has one more additional attribute:
+
+overunderflow(read-only)
+--value 1 shows an overflow or underflow happens. Need to write into it to make
+  it zero.
+
+Streaming Data to an Userspace Application
+==========================================
+When streaming data to an userspace application, we recommend that you access
+compass data via /dev/iio:device0.
+
+Please follow the steps below to read data at a constant rate from the driver:
+
+1. Write the desired output rate to sampling_frequency.
+2. Write 1 to enable to turn on the event.
+3. Read /dev/iio:device0 to get a string of gyro/accel/compass data.
+4. Parse this string to obtain each compass element.
+
+Test Applications
+=================
+A test application is located under software/simple_apps/mpu_iio.
+This application is stand-alone in that it cannot be run concurrently with other
+entities trying to access the device node(s) or sysfs entries; in particular,
+the
+
+Running Test Applications
+---------------------------------------------------------
+To run test applications with AMI306 or YAS53x devices,
+please use the following commands:
+
+1. for ami306:
+   mpu_iio -n ami306 -c 10 -l 3
+
+2. for yas532:
+   mpu_iio -n yas532 -c 10 -l 3
+
+Please use mpu_iio.c and iio_utils.h as example code for your development
+purposes.

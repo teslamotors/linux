@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/acpi.h>
 #include <linux/export.h>
 #include <linux/kernel.h>
 #include <linux/stddef.h>
@@ -44,6 +45,7 @@
 #include <linux/of_platform.h>
 #include <linux/efi.h>
 #include <linux/personality.h>
+#include <linux/psci.h>
 
 #include <asm/fixmap.h>
 #include <asm/cpu.h>
@@ -59,8 +61,9 @@
 #include <asm/tlbflush.h>
 #include <asm/traps.h>
 #include <asm/memblock.h>
-#include <asm/psci.h>
 #include <asm/efi.h>
+
+#include <asm/mach/arch.h>
 
 unsigned int processor_id;
 EXPORT_SYMBOL(processor_id);
@@ -80,9 +83,11 @@ unsigned int compat_elf_hwcap __read_mostly = COMPAT_ELF_HWCAP_DEFAULT;
 unsigned int compat_elf_hwcap2 __read_mostly;
 #endif
 
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+const struct machine_desc *machine_desc __initdata;
+#endif
 DECLARE_BITMAP(cpu_hwcaps, ARM64_NCAPS);
 
-static const char *cpu_name;
 phys_addr_t __fdt_pointer __initdata;
 
 /*
@@ -115,7 +120,7 @@ void __init early_print(const char *str, ...)
 	vsnprintf(buf, sizeof(buf), str, ap);
 	va_end(ap);
 
-	printk("%s", buf);
+	pr_info("%s", buf);
 }
 
 void __init smp_setup_processor_id(void)
@@ -211,15 +216,13 @@ static void __init setup_processor(void)
 
 	cpu_info = lookup_processor_type(read_cpuid_id());
 	if (!cpu_info) {
-		printk("CPU configuration botched (ID %08x), unable to continue.\n",
+		pr_info("CPU configuration botched (ID %08x), unable to continue.\n",
 		       read_cpuid_id());
 		while (1);
 	}
 
-	cpu_name = cpu_info->cpu_name;
-
-	printk("CPU: %s [%08x] revision %d\n",
-	       cpu_name, read_cpuid_id(), read_cpuid_id() & 15);
+	pr_info("CPU: %s [%08x] revision %d\n",
+	       cpu_info->cpu_name, read_cpuid_id(), read_cpuid_id() & 15);
 
 	sprintf(init_utsname()->machine, ELF_PLATFORM);
 	elf_hwcap = 0;
@@ -302,8 +305,18 @@ static void __init setup_processor(void)
 #endif
 }
 
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+static const struct machine_desc * __init setup_machine_fdt(phys_addr_t dt_phys)
+#else
 static void __init setup_machine_fdt(phys_addr_t dt_phys)
+#endif
 {
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+	const struct machine_desc *mdesc, *mdesc_best = NULL;
+	unsigned int score, mdesc_score = ~1;
+	unsigned long dt_root;
+#endif
+
 	if (!dt_phys || !early_init_dt_scan(phys_to_virt(dt_phys))) {
 		early_print("\n"
 			"Error: invalid device tree blob at physical address 0x%p (virtual address 0x%p)\n"
@@ -314,6 +327,42 @@ static void __init setup_machine_fdt(phys_addr_t dt_phys)
 		while (true)
 			cpu_relax();
 	}
+
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+	dt_root = of_get_flat_dt_root();
+
+	for_each_machine_desc(mdesc) {
+		score = of_flat_dt_match(dt_root, mdesc->dt_compat);
+		if (score > 0 && score < mdesc_score) {
+			mdesc_best = mdesc;
+			mdesc_score = score;
+		}
+	}
+	if (!mdesc_best) {
+		const char *prop;
+		int size;
+
+		pr_info("\nError: unrecognized/unsupported "
+			    "device tree compatible list:\n[ ");
+
+		prop = of_get_flat_dt_prop(dt_root, "compatible", &size);
+		while (size > 0) {
+			pr_info("'%s' ", prop);
+			size -= strlen(prop) + 1;
+			prop += strlen(prop) + 1;
+		}
+		pr_info("]\n\n");
+
+		while (true)
+			/* can't use cpu_relax() here as it may require MMU setup */;
+	}
+#endif
+
+	dump_stack_set_arch_desc("%s (DT)", of_flat_dt_get_machine_name());
+
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+	return mdesc_best;
+#endif
 }
 
 /*
@@ -367,9 +416,18 @@ u64 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = INVALID_HWID };
 
 void __init setup_arch(char **cmdline_p)
 {
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+	const struct machine_desc *mdesc;
+#endif
+
 	setup_processor();
 
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+	mdesc = setup_machine_fdt(__fdt_pointer);
+	machine_desc = mdesc;
+#else
 	setup_machine_fdt(__fdt_pointer);
+#endif
 
 	init_mm.start_code = (unsigned long) _text;
 	init_mm.end_code   = (unsigned long) _etext;
@@ -399,11 +457,19 @@ void __init setup_arch(char **cmdline_p)
 
 	unflatten_device_tree();
 
-	psci_init();
+	if (acpi_disabled) {
+		unflatten_device_tree();
+		psci_dt_init();
+	} else {
+		psci_acpi_init();
+	}
 
 	cpu_logical_map(0) = read_cpuid_mpidr() & MPIDR_HWID_BITMASK;
 	cpu_read_bootcpu_ops();
 #ifdef CONFIG_SMP
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+	smp_set_ops(machine_desc->smp);
+#endif
 	smp_init_cpus();
 	smp_build_mpidr_hash();
 #endif
@@ -415,11 +481,19 @@ void __init setup_arch(char **cmdline_p)
 	conswitchp = &dummy_con;
 #endif
 #endif
+
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+	if (machine_desc->init_early)
+		machine_desc->init_early();
+#endif
 }
 
 static int __init arm64_device_init(void)
 {
-	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+	if (!machine_desc->init_machine)
+#endif
+		of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 	return 0;
 }
 arch_initcall_sync(arm64_device_init);
@@ -431,6 +505,11 @@ static int __init topology_init(void)
 	for_each_possible_cpu(i) {
 		struct cpu *cpu = &per_cpu(cpu_data.cpu, i);
 		cpu->hotpluggable = 1;
+#if !defined(CONFIG_HOTPLUG_CPU0)
+		if (i == 0)
+			cpu->hotpluggable = 0;
+#endif
+
 		register_cpu(cpu, i);
 	}
 
@@ -537,7 +616,10 @@ static int c_show(struct seq_file *m, void *v)
 		seq_printf(m, "CPU architecture: 8\n");
 		seq_printf(m, "CPU variant\t: 0x%x\n", MIDR_VARIANT(midr));
 		seq_printf(m, "CPU part\t: 0x%03x\n", MIDR_PARTNUM(midr));
-		seq_printf(m, "CPU revision\t: %d\n\n", MIDR_REVISION(midr));
+		seq_printf(m, "CPU revision\t: %d\n", MIDR_REVISION(midr));
+		if (MIDR_IMPLEMENTOR(midr) == ARM_CPU_IMP_NVIDIA)
+			seq_printf(m, "MTS version\t: %u\n", cpuinfo->reg_aidr);
+		seq_printf(m, "\n");
 	}
 
 	return 0;
@@ -564,3 +646,22 @@ const struct seq_operations cpuinfo_op = {
 	.stop	= c_stop,
 	.show	= c_show
 };
+
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+static int __init customize_machine(void)
+{
+	/* customizes platform devices, or adds new ones */
+	if (machine_desc->init_machine)
+		machine_desc->init_machine();
+	return 0;
+}
+arch_initcall(customize_machine);
+
+static int __init init_machine_late(void)
+{
+	if (machine_desc->init_late)
+		machine_desc->init_late();
+	return 0;
+}
+late_initcall(init_machine_late);
+#endif

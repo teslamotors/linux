@@ -1,0 +1,19 @@
+/*
+ * tegra186-priv-vcm31-p2379-0000-c01-00-base-a-mods.dts: P2379-C01 TA Mods dts
+ * file
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-priv-vcm31-p2379-0000-c01-00-base-a.dts"
+
+/* All MODS overrides below */

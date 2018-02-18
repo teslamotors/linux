@@ -1,0 +1,67 @@
+/*
+ * tegra186-quill-p3310-1000-a00-plugin-manager.dtsi: P3310 plugin manager
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-quill-odm-data-plugin-manager.dtsi"
+#include "tegra186-quill-p3310-1000-300-plugin-manager.dtsi"
+
+/ {
+	eeprom-manager {
+		data-size = <0x100>;
+		boardid-with-revision = <3310>;
+		boardid-with-config = <3310>;
+		bus@0 {
+			i2c-bus = <&gen8_i2c>;
+			eeprom@0 {
+				slave-address = <0x50>;
+				label = "cvm";
+			};
+			eeprom@1 {
+				slave-address = <0x57>;
+				label = "cvb";
+			};
+		};
+		bus@1 {
+			i2c-bus = <&gen2_i2c>;
+			eeprom@0 {
+				slave-address = <0x51>;
+			};
+		};
+		bus@2 {
+			i2c-bus = <&gen1_i2c>;
+			eeprom@0 {
+				slave-address = <0x50>;
+			};
+		};
+		bus@3 {
+			i2c-bus = <&cam_i2c>;
+			eeprom@0 {
+				slave-address = <0x54>;
+				label = "cam";
+				enable-gpio = <2 9>;
+			};
+		};
+	};
+	plugin-manager {
+		fragment-devslp@0 {
+			ids = ">=3310-1000-200";
+			override@0 {
+				target = <&{/ahci-sata@3507000}>;
+				_overlay_ {
+					gpios = <&spmic 7 0>;
+				};
+			};
+		};
+	};
+};

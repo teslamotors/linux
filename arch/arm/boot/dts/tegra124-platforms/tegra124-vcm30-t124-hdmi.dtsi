@@ -1,0 +1,106 @@
+/*
+ * arch/arm/boot/dts/tegra124-vcm30_t124-hdmi.dtsi
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/display/tegra-dc.h>
+
+/ {
+	host1x {
+		hdmi {
+			status = "okay";
+			nvidia,ddc-i2c-bus = <&hdmi_ddc>;
+			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(N, 7) 1>; /* PN7 */
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW TEGRA_DC_OUT_NVHDCP_POLICY_ON_DEMAND>;
+					nvidia,out-parent-clk = "pll_d2";
+					nvidia,out-max-pixclk = <3367>; /* KHZ2PICOS(297000) */
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <1920>;
+					nvidia,out-yres = <1080>;
+				};
+				tmds-config {
+					tmds-cfg@0 {
+						version = <1 0>;
+						pclk = <27000000>;
+						pll0 = <0x01003010>;
+						pll1 = <0x00301900>;
+						pe-current = <0x08080808>;
+						drive-current = <0x20202020>;
+						peak-current = <0x03030303>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x800034BB>;
+					};
+					tmds-cfg@1 {
+						version = <1 0>;
+						pclk = <74250000>;
+						pll0 = <0x01003310>;
+						pll1 = <0x00301900>;
+						pe-current = <0x08080808>;
+						drive-current = <0x26262626>;
+						peak-current = <0x07070707>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x800034BB>;
+					};
+					tmds-cfg@2 {
+						version = <1 0>;
+						pclk = <148500000>;
+						pll0 = <0x01003310>;
+						pll1 = <0x00301300>;
+						pe-current = <0x08080808>;
+						drive-current = <0x31313131>;
+						peak-current = <0x0D0D0D0D>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x80034BB>;
+					};
+					tmds-cfg@3 {
+						version = <1 0>;
+						pclk = <297000000>;
+						pll0 = <0x01003F10>;
+						pll1 = <0x00300B00>;
+						pe-current = <0x08080808>;
+						drive-current = <0x34343434>;
+						peak-current = <0x17171717>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x80036BB>;
+					};
+					tmds-cfg@4 {
+						version = <1 0>;
+						pclk = <0x7fffffff>;
+						pll0 = <0x01003310>;
+						pll1 = <0x10300F00>;
+						pe-current = <0x08080808>;
+						drive-current = <0x3A353536>;
+						peak-current = <0x00000000>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000600>;
+					};
+				};
+			};
+		};
+	};
+	hdmi_ddc: i2c@7000c700 {
+		clock-frequency = <100000>;
+	};
+};
+

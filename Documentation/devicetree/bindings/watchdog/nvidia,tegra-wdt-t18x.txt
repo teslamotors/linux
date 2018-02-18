@@ -1,0 +1,52 @@
+* NVIDIA Tegra18x Watchdog controller
+
+Required properties:
+
+- compatible: Should be "nvidia,tegra-wdt-t18x"
+- reg: Should contain WDT and corresponding timer source
+  registers location and length.
+
+Optional properties for recovery mode:
+
+- interrupts: interrupt number to the cpu
+- nvidia,wdt-cluster-id: ID of the cpu cluster monitored by this WDT instance.
+- nvidia,enable-on-init: toggle switch for enable during init
+- nvidia,heartbeat-init: default timeout in secs (120 secs if not specified)
+- nvidia,shutdown-timeout: timeout in secs during shutdown before watchdog
+			reset occurs. same as heartbeat if not specified.
+- nvidia,expiry-count: total expiration levels supported by the watchdog.
+       Should be 1 if not specified.
+- nvidia,extend-watchdog-suspend: Boolean. Extend the disable of watchdog
+	timer to syscore suspend and re-eanble on syscore resume. If this
+	is selected then do not disable watchdog timer in device suspend
+	otherwise disable in device suspend.
+
+Optional properties for debug purpose:
+
+- nvidia,disable-debug-reset:
+	Disable system wide debug reset assertion at fourth expiration of the
+	counter. WDT debug reset can be intercepted by debug logic, e.g. to
+	preserve information. This reset should be enabled if not specified.
+- nvidia,disable-por-reset:
+	Disable internal full system reset at fifth expiration of the counter.
+	WDT POR reset cannot be intercepted and acts as a Power On Reset. This
+	reset should be enabled if not specified.
+
+Examples:
+
+watchdog@30c0000 {
+       compatible = "nvidia,tegra-wdt-18x";
+       reg = <0x0 0x030c0000 0x0 0x10000
+              0x0 0x03090000 0x0 0x10000>;
+       nvidia,expiry-count = <5>;
+       status = "disabled";
+};
+
+watchdog@30d0000 {
+       compatible = "nvidia,tegra-wdt-18x";
+       reg = <0x0 0x030c0000 0x0 0x10000
+              0x0 0x030a0000 0x0 0x10000>;
+       nvidia,expiry-count = <5>;
+       status = "disabled";
+};
+

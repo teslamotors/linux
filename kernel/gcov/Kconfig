@@ -46,6 +46,17 @@ config GCOV_PROFILE_ALL
 	larger and run slower. Also be sure to exclude files from profiling
 	which are not linked to the kernel image to prevent linker errors.
 
+config GCOV_TOOLCHAIN_IS_ANDROID
+	bool "Use Android toolchain ABI for gcov instead of vanilla gcc ABI"
+	default n
+	---help---
+	This option must be set if a gcov-enabled kernel is being built with an
+	Android toolchain. The gcov ABI in Android gcc is not compatible with
+	vanilla gcc, and choosing this option incorrectly might lead to kernel
+	panics during boot or when dumping the gcov data.
+
+	If unsure, say N.
+
 choice
 	prompt "Specify GCOV format"
 	depends on GCOV_KERNEL

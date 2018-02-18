@@ -1324,7 +1324,7 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
 
 	enableirqs = (flags & __GFP_WAIT) != 0;
 #ifdef CONFIG_PREEMPT_RT_FULL
-	enableirqs |= system_state == SYSTEM_RUNNING;
+	enableirqs |= system_state > SYSTEM_BOOTING_SINGLECORE;
 #endif
 	if (enableirqs)
 		local_irq_enable();

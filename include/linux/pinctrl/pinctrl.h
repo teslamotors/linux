@@ -85,6 +85,8 @@ struct pinctrl_gpio_range {
  *	allocated members of the mapping table entries themselves. This
  *	function is optional, and may be omitted for pinctrl drivers that do
  *	not support device tree.
+ * @dt_node_to_custom_config: parse a device tree "pin configuration node" for
+ *      custom properties and return mapping table entries for it.
  */
 struct pinctrl_ops {
 	int (*get_groups_count) (struct pinctrl_dev *pctldev);
@@ -101,6 +103,9 @@ struct pinctrl_ops {
 			       struct pinctrl_map **map, unsigned *num_maps);
 	void (*dt_free_map) (struct pinctrl_dev *pctldev,
 			     struct pinctrl_map *map, unsigned num_maps);
+	int (*dt_node_to_custom_config) (struct pinctrl_dev *pctldev,
+			       struct device_node *np_config,
+			       unsigned long *configs, unsigned int *nconfigs);
 };
 
 /**
@@ -132,6 +137,12 @@ struct pinctrl_desc {
 extern struct pinctrl_dev *pinctrl_register(struct pinctrl_desc *pctldesc,
 				struct device *dev, void *driver_data);
 extern void pinctrl_unregister(struct pinctrl_dev *pctldev);
+extern struct pinctrl_dev *devm_pinctrl_register(struct device *dev,
+				struct pinctrl_desc *pctldesc,
+				void *driver_data);
+extern void devm_pinctrl_unregister(struct device *dev,
+				struct pinctrl_dev *pctldev);
+
 extern bool pin_is_valid(struct pinctrl_dev *pctldev, int pin);
 extern void pinctrl_add_gpio_range(struct pinctrl_dev *pctldev,
 				struct pinctrl_gpio_range *range);
@@ -163,6 +174,8 @@ struct pinctrl_dev *of_pinctrl_get(struct device_node *np)
 extern const char *pinctrl_dev_get_name(struct pinctrl_dev *pctldev);
 extern const char *pinctrl_dev_get_devname(struct pinctrl_dev *pctldev);
 extern void *pinctrl_dev_get_drvdata(struct pinctrl_dev *pctldev);
+extern struct pinctrl_dev *get_pinctrl_dev_from_devname(const char *devname);
+extern struct pinctrl_dev *get_pinctrl_dev_from_of_node(struct device_node *np);
 #else
 
 struct pinctrl_dev;

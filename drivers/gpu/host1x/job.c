@@ -1,7 +1,7 @@
 /*
  * Tegra host1x Job
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (C) 2010-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,6 +25,7 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <trace/events/host1x.h>
+#include <drm/tegra_drm.h>
 
 #include "channel.h"
 #include "dev.h"
@@ -33,7 +34,7 @@
 
 struct host1x_job *host1x_job_alloc(struct host1x_channel *ch,
 				    u32 num_cmdbufs, u32 num_relocs,
-				    u32 num_waitchks)
+				    u32 num_waitchks, u32 num_syncpts)
 {
 	struct host1x_job *job = NULL;
 	unsigned int num_unpins = num_cmdbufs + num_relocs;
@@ -46,6 +47,7 @@ struct host1x_job *host1x_job_alloc(struct host1x_channel *ch,
 		(u64)num_unpins * sizeof(struct host1x_job_unpin_data) +
 		(u64)num_waitchks * sizeof(struct host1x_waitchk) +
 		(u64)num_cmdbufs * sizeof(struct host1x_job_gather) +
+		(u64)num_syncpts * sizeof(struct host1x_job_syncpt) +
 		(u64)num_unpins * sizeof(dma_addr_t) +
 		(u64)num_unpins * sizeof(u32 *);
 	if (total > ULONG_MAX)
@@ -68,6 +70,8 @@ struct host1x_job *host1x_job_alloc(struct host1x_channel *ch,
 	mem += num_waitchks * sizeof(struct host1x_waitchk);
 	job->gathers = num_cmdbufs ? mem : NULL;
 	mem += num_cmdbufs * sizeof(struct host1x_job_gather);
+	job->syncpts = num_syncpts ? mem : NULL;
+	mem += num_syncpts * sizeof(struct host1x_job_syncpt);
 	job->addr_phys = num_unpins ? mem : NULL;
 
 	job->reloc_addr_phys = job->addr_phys;
@@ -98,16 +102,32 @@ void host1x_job_put(struct host1x_job *job)
 EXPORT_SYMBOL(host1x_job_put);
 
 void host1x_job_add_gather(struct host1x_job *job, struct host1x_bo *bo,
-			   u32 words, u32 offset)
+			   u32 words, u32 offset, struct sync_fence *pre_fence,
+			   u32 class_id)
 {
 	struct host1x_job_gather *cur_gather = &job->gathers[job->num_gathers];
 
 	cur_gather->words = words;
 	cur_gather->bo = bo;
 	cur_gather->offset = offset;
+	cur_gather->pre_fence = pre_fence;
+	cur_gather->class_id = class_id;
+
 	job->num_gathers++;
 }
 EXPORT_SYMBOL(host1x_job_add_gather);
+
+void host1x_job_add_client_gather_address(struct host1x_job *job,
+					  struct host1x_bo *bo,
+					  u32 words,
+					  u32 class_id,
+					  dma_addr_t gather_address)
+{
+	host1x_job_add_gather(job, bo, words, 0, NULL, class_id);
+
+	job->gathers[job->num_gathers - 1].base = gather_address;
+}
+EXPORT_SYMBOL(host1x_job_add_client_gather_address);
 
 /*
  * NULL an already satisfied WAIT_SYNCPT host method, by patching its
@@ -295,9 +315,20 @@ struct host1x_firewall {
 	u32 count;
 };
 
-static int check_register(struct host1x_firewall *fw, unsigned long offset)
+static int is_addr_reg(struct host1x_firewall *fw, unsigned long offset,
+		       u32 val)
 {
-	if (fw->job->is_addr_reg(fw->dev, fw->class, offset)) {
+	if (fw->class == HOST1X_CLASS_HOST1X &&
+		(offset == 0x2c /* INDOFF2 */ || offset == 0x2d /* INDOFF */))
+		return true;
+
+	return fw->job->is_addr_reg(fw->dev, fw->class, offset, val);
+}
+
+static int check_register(struct host1x_firewall *fw,
+			  unsigned long offset, u32 val)
+{
+	if (is_addr_reg(fw, offset, val)) {
 		if (!fw->num_relocs)
 			return -EINVAL;
 
@@ -311,18 +342,21 @@ static int check_register(struct host1x_firewall *fw, unsigned long offset)
 	return 0;
 }
 
-static int check_mask(struct host1x_firewall *fw)
+static int check_mask(struct host1x_firewall *fw, struct host1x_job_gather *g)
 {
+	u32 *cmdbuf_base = (u32 *)fw->job->gather_copy_mapped +
+		(g->offset / sizeof(u32));
 	u32 mask = fw->mask;
 	u32 reg = fw->reg;
 	int ret;
 
 	while (mask) {
+		u32 val = cmdbuf_base[fw->offset];
 		if (fw->words == 0)
 			return -EINVAL;
 
 		if (mask & 1) {
-			ret = check_register(fw, reg);
+			ret = check_register(fw, reg, val);
 			if (ret < 0)
 				return ret;
 
@@ -336,17 +370,20 @@ static int check_mask(struct host1x_firewall *fw)
 	return 0;
 }
 
-static int check_incr(struct host1x_firewall *fw)
+static int check_incr(struct host1x_firewall *fw, struct host1x_job_gather *g)
 {
+	u32 *cmdbuf_base = (u32 *)fw->job->gather_copy_mapped +
+		(g->offset / sizeof(u32));
 	u32 count = fw->count;
 	u32 reg = fw->reg;
 	int ret;
 
 	while (count) {
+		u32 val = cmdbuf_base[fw->offset];
 		if (fw->words == 0)
 			return -EINVAL;
 
-		ret = check_register(fw, reg);
+		ret = check_register(fw, reg, val);
 		if (ret < 0)
 			return ret;
 
@@ -359,16 +396,20 @@ static int check_incr(struct host1x_firewall *fw)
 	return 0;
 }
 
-static int check_nonincr(struct host1x_firewall *fw)
+static int check_nonincr(struct host1x_firewall *fw,
+			 struct host1x_job_gather *g)
 {
+	u32 *cmdbuf_base = (u32 *)fw->job->gather_copy_mapped +
+		(g->offset / sizeof(u32));
 	u32 count = fw->count;
 	int ret;
 
 	while (count) {
+		u32 val = cmdbuf_base[fw->offset];
 		if (fw->words == 0)
 			return -EINVAL;
 
-		ret = check_register(fw, fw->reg);
+		ret = check_register(fw, fw->reg, val);
 		if (ret < 0)
 			return ret;
 
@@ -408,14 +449,14 @@ static int validate(struct host1x_firewall *fw, struct host1x_job_gather *g)
 			fw->class = word >> 6 & 0x3ff;
 			fw->mask = word & 0x3f;
 			fw->reg = word >> 16 & 0xfff;
-			err = check_mask(fw);
+			err = check_mask(fw, g);
 			if (err)
 				goto out;
 			break;
 		case 1:
 			fw->reg = word >> 16 & 0xfff;
 			fw->count = word & 0xffff;
-			err = check_incr(fw);
+			err = check_incr(fw, g);
 			if (err)
 				goto out;
 			break;
@@ -423,7 +464,7 @@ static int validate(struct host1x_firewall *fw, struct host1x_job_gather *g)
 		case 2:
 			fw->reg = word >> 16 & 0xfff;
 			fw->count = word & 0xffff;
-			err = check_nonincr(fw);
+			err = check_nonincr(fw, g);
 			if (err)
 				goto out;
 			break;
@@ -431,7 +472,7 @@ static int validate(struct host1x_firewall *fw, struct host1x_job_gather *g)
 		case 3:
 			fw->mask = word & 0xffff;
 			fw->reg = word >> 16 & 0xfff;
-			err = check_mask(fw);
+			err = check_mask(fw, g);
 			if (err)
 				goto out;
 			break;
@@ -538,9 +579,12 @@ int host1x_job_pin(struct host1x_job *job, struct device *dev)
 
 		g->base = job->gather_addr_phys[i];
 
-		for (j = i + 1; j < job->num_gathers; j++)
-			if (job->gathers[j].bo == g->bo)
+		for (j = i + 1; j < job->num_gathers; j++) {
+			if (job->gathers[j].bo == g->bo) {
 				job->gathers[j].handled = true;
+				job->gathers[j].base = g->base;
+			}
+		}
 
 		err = do_relocs(job, g->bo);
 		if (err)
@@ -584,13 +628,49 @@ void host1x_job_unpin(struct host1x_job *job)
 }
 EXPORT_SYMBOL(host1x_job_unpin);
 
+void host1x_job_set_notifier(struct host1x_job *job, u32 error)
+{
+	struct drm_tegra_notification *error_notifier;
+	struct timespec time_data;
+	void *notifier_va;
+	u64 nsec;
+
+	if (!job->error_notifier_bo)
+		return;
+
+	notifier_va = host1x_bo_mmap(job->error_notifier_bo);
+	if (!notifier_va)
+		return;
+
+	error_notifier = notifier_va + job->error_notifier_offset;
+
+	getnstimeofday(&time_data);
+	nsec = ((u64)time_data.tv_sec) * 1000000000u +
+		(u64)time_data.tv_nsec;
+	error_notifier->time_stamp.nanoseconds[0] =
+		(u32)nsec;
+	error_notifier->time_stamp.nanoseconds[1] =
+		(u32)(nsec >> 32);
+
+	error_notifier->error32 = error;
+	error_notifier->status = 0xffff;
+
+	dev_err(job->channel->dev, "error notifier set to %d\n", error);
+
+	host1x_bo_munmap(job->error_notifier_bo, notifier_va);
+}
+
 /*
  * Debug routine used to dump job entries
  */
 void host1x_job_dump(struct device *dev, struct host1x_job *job)
 {
-	dev_dbg(dev, "    SYNCPT_ID   %d\n", job->syncpt_id);
-	dev_dbg(dev, "    SYNCPT_VAL  %d\n", job->syncpt_end);
+	unsigned int i;
+
+	for (i = 0; i < job->num_syncpts; i++) {
+		dev_dbg(dev, "    SYNCPT_ID   %d\n", job->syncpts[i].id);
+		dev_dbg(dev, "    SYNCPT_VAL  %d\n", job->syncpts[i].end);
+	}
 	dev_dbg(dev, "    FIRST_GET   0x%x\n", job->first_get);
 	dev_dbg(dev, "    TIMEOUT     %d\n", job->timeout);
 	dev_dbg(dev, "    NUM_SLOTS   %d\n", job->num_slots);

@@ -602,10 +602,10 @@ static const struct sdiod_drive_str sdiod_drvstr_tab2_3v3[] = {
 #define BCM43241B0_NVRAM_NAME		"brcm/brcmfmac43241b0-sdio.txt"
 #define BCM43241B4_FIRMWARE_NAME	"brcm/brcmfmac43241b4-sdio.bin"
 #define BCM43241B4_NVRAM_NAME		"brcm/brcmfmac43241b4-sdio.txt"
-#define BCM4329_FIRMWARE_NAME		"brcm/brcmfmac4329-sdio.bin"
-#define BCM4329_NVRAM_NAME		"brcm/brcmfmac4329-sdio.txt"
-#define BCM4330_FIRMWARE_NAME		"brcm/brcmfmac4330-sdio.bin"
-#define BCM4330_NVRAM_NAME		"brcm/brcmfmac4330-sdio.txt"
+#define BCM4329_FIRMWARE_NAME		"brcm/brcmfmac-sdio-4329.bin"
+#define BCM4329_NVRAM_NAME		"brcm/brcmfmac-sdio-4329.txt"
+#define BCM4330_FIRMWARE_NAME		"brcm/brcmfmac-sdio-4330.bin"
+#define BCM4330_NVRAM_NAME		"brcm/brcmfmac-sdio-4330.txt"
 #define BCM4334_FIRMWARE_NAME		"brcm/brcmfmac4334-sdio.bin"
 #define BCM4334_NVRAM_NAME		"brcm/brcmfmac4334-sdio.txt"
 #define BCM4335_FIRMWARE_NAME		"brcm/brcmfmac4335-sdio.bin"
@@ -3531,8 +3531,14 @@ void brcmf_sdio_isr(struct brcmf_sdio *bus)
 	if (!bus->intr)
 		brcmf_err("isr w/o interrupt configured!\n");
 
+#ifndef CONFIG_BRCMFMAC_SDIO_OOB
+#error TODO - make brcmf_sdbrcm_dpc return bool
+	while (brcmf_sdbrcm_dpc(bus))
+		;
+#else
 	atomic_inc(&bus->dpc_tskcnt);
 	queue_work(bus->brcmf_wq, &bus->datawork);
+#endif
 }
 
 static bool brcmf_sdio_bus_watchdog(struct brcmf_sdio *bus)

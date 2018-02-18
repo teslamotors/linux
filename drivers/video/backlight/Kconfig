@@ -264,6 +264,25 @@ config BACKLIGHT_PWM
 	  If you have a LCD backlight adjustable by PWM, say Y to enable
 	  this driver.
 
+config BACKLIGHT_TEGRA_PWM
+	bool "Tegra PMx based PWM Backlight Driver"
+	depends on TEGRA_DC
+	help
+	  Enable support for Tegra2 DC pwm backlight.
+
+	  If you have a pwm backlight adjustable by the DC PM0 or PM1 signal
+	  control on tegra, say Y to enable this driver.
+
+config BACKLIGHT_TEGRA_DSI
+	bool "Tegra DSI based Backlight Driver"
+	depends on TEGRA_DC
+	depends on TEGRA_DSI
+	help
+	  Enable support for Tegra DSI backlight driver. If you have a
+	  backlight adjustable by sending DSI command for DSI panel, say Y
+	  to enable this driver. Providing backlight control sequence by
+	  following the format of Tegra DSI driver is also required.
+
 config BACKLIGHT_DA903X
 	tristate "Backlight Driver for DA9030/DA9034 using WLED"
 	depends on PMIC_DA903X
@@ -362,6 +381,7 @@ config BACKLIGHT_PCF50633
 config BACKLIGHT_AAT2870
 	tristate "AnalogicTech AAT2870 Backlight"
 	depends on BACKLIGHT_CLASS_DEVICE && MFD_AAT2870_CORE
+	default n
 	help
 	  If you have a AnalogicTech AAT2870 say Y to enable the
 	  backlight driver.
@@ -441,6 +461,28 @@ config BACKLIGHT_BD6107
 	depends on I2C
 	help
 	  If you have a Rohm BD6107 say Y to enable the backlight driver.
+
+config BACKLIGHT_MAX8831
+	tristate "Backlight driver for Maxim MAX8831"
+	depends on MFD_MAX8831
+	help
+	  If you have a MAX8831 for backlight, say Y to enable the
+	  backlight driver.
+
+config BACKLIGHT_LM3528
+	tristate "Backlight driver for TI LM3528"
+	depends on I2C=y
+	select REGMAP_I2C
+	help
+	  If you have a LM3528 for backlight, say Y to enable the
+	  backlight driver.
+
+config BACKLIGHT_DS1050
+	tristate "Backlight driver for Maxim DS1050"
+	depends on I2C
+	help
+	  If you have a DS1050 for backlight, say Y to enable the
+	  backlight driver.
 
 endif # BACKLIGHT_CLASS_DEVICE
 

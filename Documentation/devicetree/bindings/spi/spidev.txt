@@ -1,0 +1,18 @@
+spidev driver
+
+Required properties:
+- compatible : should be "spidev"
+
+Optional properties:
+- slave-ready-gpio : Ready/Busy gpio
+  Does not use ready/busy pin if this property is not set
+- slave-ready-timeout : timeout for slave to be ready (in seconds)
+  Default is 5 seconds if Ready/Busy GPIO is specified and this property
+  is absent
+
+Example:
+spi@0 {
+	compatible = "spidev";
+	slave-ready-gpio = <&gpio TEGRA_GPIO(C, 2) GPIO_ACTIVE_LOW>;
+	slave-ready-timeout = <2>;
+};

@@ -1,0 +1,13 @@
+
+config CRYPTO_DEV_TEGRA_SE_USE_HOST1X_INTERFACE
+	tristate "Use Host1x Interface for Tegra SE crypto algorithms"
+	depends on ARCH_TEGRA_18x_SOC && CRYPTO_DEV_TEGRA_SE
+	help
+	  This allows you to use Host1x Memory Interface for Tegra SE Driver
+	  Crypto algorithms.
+
+config CRYPTO_DEV_TEGRA_VIRTUAL_SE_INTERFACE
+        tristate "Virtual SE interface for Tegra SE crypto algorithms"
+        depends on TEGRA_HV_MANAGER && CRYPTO_DEV_TEGRA_SE
+        help
+          This allows you to use Virtual SE interface for Tegra Crypto algorithms.

@@ -76,6 +76,7 @@ struct tas2552_data {
 	struct gpio_desc *enable_gpio;
 	unsigned char regs[TAS2552_VBAT_DATA];
 	unsigned int mclk;
+	unsigned int edge_select; /* PDM data edge select */
 };
 
 /* Input mux controls */
@@ -115,7 +116,7 @@ static const struct snd_soc_dapm_route tas2552_audio_map[] = {
 	{"ClassD", NULL, "PLL"},
 };
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 static void tas2552_sw_shutdown(struct tas2552_data *tas_data, int sw_shutdown)
 {
 	u8 cfg1_reg;
@@ -132,6 +133,13 @@ static void tas2552_sw_shutdown(struct tas2552_data *tas_data, int sw_shutdown)
 						 TAS2552_SWS_MASK, cfg1_reg);
 }
 #endif
+
+/* edge select info is passed from DT. This is needed to configure mono amps differently
+for a true stereo playback */
+static int tas2552_parse_dt(struct tas2552_data *tas2552, struct device_node *np)
+{
+	return of_property_read_u32(np, "tas2552,pdm_edge_select", &tas2552->edge_select);
+}
 
 static int tas2552_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params,
@@ -267,7 +275,7 @@ static int tas2552_mute(struct snd_soc_dai *dai, int mute)
 	return 0;
 }
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 static int tas2552_runtime_suspend(struct device *dev)
 {
 	struct tas2552_data *tas2552 = dev_get_drvdata(dev);
@@ -320,7 +328,7 @@ static struct snd_soc_dai_driver tas2552_dai[] = {
 	{
 		.name = "tas2552-amplifier",
 		.playback = {
-			.stream_name = "Playback",
+			.stream_name = "DAC Playback",
 			.channels_min = 2,
 			.channels_max = 2,
 			.rates = SNDRV_PCM_RATE_8000_192000,
@@ -372,12 +380,12 @@ static int tas2552_codec_probe(struct snd_soc_codec *codec)
 	}
 
 	snd_soc_write(codec, TAS2552_CFG_1, TAS2552_MUTE_MASK |
-				TAS2552_PLL_SRC_BCLK);
-	snd_soc_write(codec, TAS2552_CFG_3, TAS2552_I2S_OUT_SEL |
+				TAS2552_PLL_SRC_IVCLKIN);
+	snd_soc_write(codec, TAS2552_CFG_3, TAS2552_PDM_IN_SEL |
 				TAS2552_DIN_SRC_SEL_AVG_L_R | TAS2552_88_96KHZ);
 	snd_soc_write(codec, TAS2552_DOUT, TAS2552_PDM_DATA_I);
 	snd_soc_write(codec, TAS2552_OUTPUT_DATA, TAS2552_PDM_DATA_V_I | 0x8);
-	snd_soc_write(codec, TAS2552_PDM_CFG, TAS2552_PDM_BCLK_SEL);
+	snd_soc_write(codec, TAS2552_PDM_CFG, TAS2552_PDM_IV_CLK_SEL);
 	snd_soc_write(codec, TAS2552_BOOST_PT_CTRL, TAS2552_APT_DELAY_200 |
 				TAS2552_APT_THRESH_2_1_7);
 
@@ -396,6 +404,10 @@ static int tas2552_codec_probe(struct snd_soc_codec *codec)
 				ARRAY_SIZE(tas2552_dapm_widgets));
 	snd_soc_dapm_add_routes(dapm, tas2552_audio_map,
 				ARRAY_SIZE(tas2552_audio_map));
+
+	if (tas2552->edge_select)
+		snd_soc_write(codec, TAS2552_PDM_CFG, TAS2552_PDM_IV_CLK_SEL |
+			TAS2552_PDM_DATA_ES_RISE);
 
 	return 0;
 
@@ -509,6 +521,15 @@ static int tas2552_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	if (data->tas2552_client) {
+		ret = tas2552_parse_dt(data, client->dev.of_node);
+		if (ret) {
+			dev_err(&client->dev,
+				"Failed to parse device tree: %d\n", ret);
+			return ret;
+		}
+	}
+
 	for (i = 0; i < ARRAY_SIZE(data->supplies); i++)
 		data->supplies[i].supply = tas2552_supply_names[i];
 
@@ -523,8 +544,6 @@ static int tas2552_probe(struct i2c_client *client,
 	pm_runtime_set_autosuspend_delay(&client->dev, 1000);
 	pm_runtime_use_autosuspend(&client->dev);
 	pm_runtime_enable(&client->dev);
-	pm_runtime_mark_last_busy(&client->dev);
-	pm_runtime_put_sync_autosuspend(&client->dev);
 
 	dev_set_drvdata(&client->dev, data);
 

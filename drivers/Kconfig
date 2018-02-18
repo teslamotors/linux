@@ -64,6 +64,8 @@ source "drivers/pinctrl/Kconfig"
 
 source "drivers/gpio/Kconfig"
 
+source "drivers/padctrl/Kconfig"
+
 source "drivers/w1/Kconfig"
 
 source "drivers/power/Kconfig"
@@ -71,6 +73,8 @@ source "drivers/power/Kconfig"
 source "drivers/hwmon/Kconfig"
 
 source "drivers/thermal/Kconfig"
+
+source "drivers/trusty/Kconfig"
 
 source "drivers/watchdog/Kconfig"
 
@@ -99,6 +103,8 @@ source "drivers/mmc/Kconfig"
 source "drivers/memstick/Kconfig"
 
 source "drivers/leds/Kconfig"
+
+source "drivers/switch/Kconfig"
 
 source "drivers/accessibility/Kconfig"
 
@@ -154,6 +160,8 @@ source "drivers/devfreq/Kconfig"
 
 source "drivers/extcon/Kconfig"
 
+source "drivers/mipi_bif/Kconfig"
+
 source "drivers/memory/Kconfig"
 
 source "drivers/iio/Kconfig"
@@ -182,4 +190,27 @@ source "drivers/ras/Kconfig"
 
 source "drivers/thunderbolt/Kconfig"
 
+source "drivers/edp/Kconfig"
+
+trysource "../nvgpu/drivers/gpu/nvgpu/Kconfig"
+trysource "../nvgpu/drivers/gpu/nvgpu/Kconfig.nvgpu"
+trysource "drivers/gpu/nvgpu/Kconfig.nvgpu"
+
+trysource "../nvhost-t18x/drivers/video/tegra/host/Kconfig"
+trysource "../nvhost-t18x/drivers/video/tegra/host/Kconfig.nvhost-t18x"
+trysource "drivers/video/tegra/host/Kconfig.nvhost-t18x"
+
+trysource "../nvhost-t19x/drivers/video/tegra/host/Kconfig"
+
+trysource "../t18x/drivers/tachometer/Kconfig"
+trysource "../t18x/drivers/tachometer/Kconfig.t18x"
+trysource "drivers/tachometer/Kconfig.t18x"
+
+trysource "../t18x/drivers/misc/csi_mipi_cal/Kconfig"
+trysource "../t18x/drivers/misc/csi_mipi_cal/Kconfig.t18x"
+trysource "drivers/misc/csi_mipi_cal/Kconfig.t18x"
+
+trysource "../t18x/drivers/misc/tegra186-ahc/Kconfig"
+trysource "../t18x/drivers/misc/tegra186-ahc/Kconfig.t18x"
+trysource "drivers/misc/tegra186-ahc/Kconfig.t18x"
 endmenu

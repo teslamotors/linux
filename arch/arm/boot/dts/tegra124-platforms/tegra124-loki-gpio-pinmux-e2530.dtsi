@@ -1,0 +1,25 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/pinctrl/pinctrl-tegra.h>
+
+/ {
+	gpio@6000d000 {
+		gpio-init-names = "default", "e2530-gpio";
+		gpio-init-1 = <&gpio_e2530_default>;
+
+		gpio_e2530_default: gpio_e2530 {
+			gpio-output-low = <TEGRA_GPIO(FF, 0)>;
+		};
+	};
+
+	pinmux@70000868 {
+		common {
+			dp_hpd_pff0 {
+				nvidia,pins = "dp_hpd_pff0";
+				nvidia,function = "dp";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};
+};

@@ -1,6 +1,8 @@
 /*
  *  linux/include/linux/mmc/host.h
  *
+ *  Copyright (c) 2013-2016, NVIDIA CORPORATION. All Rights Reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -19,6 +21,19 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/card.h>
 #include <linux/mmc/pm.h>
+#include <linux/semaphore.h>
+
+/* mmc queue flush depth and the maximum number of data
+ * commands we can queue before forced flush
+ * for ADMA3 cases
+ */
+#define MMC_QUEUE_FLUSH_ADMA3_DEPTH 16
+
+#define SAVE_TUNED_TAP	0
+#define SET_DEFAULT_TAP	1
+#define SET_TUNED_TAP	2
+#define SET_DDR_TAP	4
+#define SET_OVERRIDE_TAP	8
 
 struct mmc_ios {
 	unsigned int	clock;			/* clock rate */
@@ -63,6 +78,7 @@ struct mmc_ios {
 #define MMC_TIMING_MMC_DDR52	8
 #define MMC_TIMING_MMC_HS200	9
 #define MMC_TIMING_MMC_HS400	10
+#define MMC_TIMINGS_MAX_MODES  (MMC_TIMING_MMC_HS400 + 1)
 
 	unsigned char	signal_voltage;		/* signalling voltage (1.8V or 3.3V) */
 
@@ -76,6 +92,17 @@ struct mmc_ios {
 #define MMC_SET_DRIVER_TYPE_A	1
 #define MMC_SET_DRIVER_TYPE_C	2
 #define MMC_SET_DRIVER_TYPE_D	3
+};
+
+struct mmc_cmdq_host_ops {
+	int (*enable)(struct mmc_host *host);
+	void (*disable)(struct mmc_host *host, bool soft);
+	int (*request)(struct mmc_host *host, struct mmc_request *mrq);
+	int (*halt)(struct mmc_host *host, bool halt);
+	void (*post_req)(struct mmc_host *host, struct mmc_request *mrq,
+			int err);
+	int (*discard_task)(struct mmc_host *mmc, u32 tag, bool all);
+	void (*wait_cq_empty)(struct mmc_host *mmc);
 };
 
 struct mmc_host_ops {
@@ -98,6 +125,7 @@ struct mmc_host_ops {
 	void	(*pre_req)(struct mmc_host *host, struct mmc_request *req,
 			   bool is_first_req);
 	void	(*request)(struct mmc_host *host, struct mmc_request *req);
+	int	(*request_queue_flush)(struct mmc_host *host);
 	/*
 	 * Avoid calling these three functions too often or in a "fast path",
 	 * since underlaying controller might implement them in an expensive
@@ -137,7 +165,10 @@ struct mmc_host_ops {
 
 	/* Prepare HS400 target operating frequency depending host driver */
 	int	(*prepare_hs400_tuning)(struct mmc_host *host, struct mmc_ios *ios);
-	int	(*select_drive_strength)(unsigned int max_dtr, int host_drv, int card_drv);
+	int	(*validate_sd2_0)(struct mmc_host *host);
+	int	(*select_drive_strength)(struct mmc_host *host,
+					 unsigned int max_dtr,
+					 int host_drv, int card_drv);
 	void	(*hw_reset)(struct mmc_host *host);
 	void	(*card_event)(struct mmc_host *host);
 
@@ -147,14 +178,50 @@ struct mmc_host_ops {
 	 */
 	int	(*multi_io_quirk)(struct mmc_card *card,
 				  unsigned int direction, int blk_size);
+	void	(*post_init)(struct mmc_host *host);
+	void	(*en_strobe)(struct mmc_host *host);
+	void	(*clear_cqe_intr)(struct mmc_host *host, u32 intmask);
+	void	(*discard_cqe_task)(struct mmc_host *host, u8 tag, bool all);
+	void	(*enable_host_int)(struct mmc_host *host, bool enable);
 };
 
 struct mmc_card;
 struct device;
 
+struct mmc_cmdq_req {
+	unsigned int cmd_flags;
+	u32 blk_addr;
+	/* active mmc request */
+	struct mmc_request	mrq;
+	struct mmc_command	task_mgmt;
+	struct mmc_data		data;
+	struct mmc_command	cmd;
+#define DCMD	(1 << 0)
+#define QBR	(1 << 1)
+#define DIR	(1 << 2)
+#define PRIO	(1 << 3)
+#define REL_WR	(1 << 4)
+#define DAT_TAG	(1 << 5)
+#define FORCED_PRG (1 << 6)
+	unsigned int		cmdq_req_flags;
+	int			tag; /* used for command queuing */
+	u8			ctx_id;
+};
+
 struct mmc_async_req {
 	/* active mmc request */
+	struct mmc_request	*mrq_que;
 	struct mmc_request	*mrq;
+#define MMC_QUEUE_BEFORE_ENQ			(0)	/* mrq is entered in driver */
+#define MMC_QUEUE_ENQ					(1)	/* mrq is enqueued in device */
+#define MMC_QUEUE_BEFORE_QRDY			(2)	/* mrq is 44/45 issue & wait for qrdy */
+#define MMC_QUEUE_BEFORE_TRAN			(3)	/* mrq is checking qrdy & ready to transfer */
+#define MMC_QUEUE_TRAN					(4)	/* mrq is transfer */
+#define MMC_QUEUE_BUSY					(5) /* mrq is transfer done & cheking busy in case of write */
+#define MMC_QUEUE_WAIT_DONE				(6) /* mrq is transfer done & cheking busy in case of write */
+#define MMC_QUEUE_BEFORE_POST			(7) /* mrq is terminated transfer including busy check & ready to post process */
+	unsigned long		state;
+	unsigned int		prio;
 	/*
 	 * Check error status of completed mmc request.
 	 * Returns 0 if success otherwise non zero.
@@ -196,6 +263,61 @@ struct mmc_context_info {
 	spinlock_t		lock;
 };
 
+#define ADMA3_MAX_QUEUE_DEPTH		(18) /* for 16 deep adma3 support */
+#define EMMC_MAX_QUEUE_DEPTH		16
+#define EMMC_MIN_RT_CLASS_TAG_COUNT	(14)
+
+#ifdef CONFIG_CMD_DUMP
+#define dbg_max_cnt (400)
+struct dbg_run_host_log {
+	unsigned long long time_sec;
+	unsigned long long time_usec;
+	int type;
+	int cmd;
+	int arg;
+};
+#endif
+enum transfer_flags {
+	MMC_QUEUE_WRITE_NORMAL,
+	MMC_QUEUE_READ_NORMAL,
+#ifdef CONFIG_SKIP_QUEUE_CHECK
+	MMC_QUEUE_WRITE_SKIP,
+	MMC_QUEUE_READ_SKIP,
+#endif
+	MMC_QUEUE_ALL
+};
+#define MMC_QUEUE_WRITE		0
+#define MMC_QUEUE_READ		1
+enum cmdq_states {
+		CMDQ_STATE_HALT = 1,
+		CMDQ_STATE_ERR,
+};
+
+/**
+ * mmc_cmdq_context_info - describes the contexts of cmdq
+ * @active_reqs		requests being processed
+ * @active_dcmd		dcmd in progress, don't issue any
+ *			more dcmd requests
+ * @rpmb_in_wait	do not pull any more reqs till rpmb is handled
+ * @cmdq_state		state of cmdq engine
+ * @req_starved		completion should invoke the request_fn since
+ *			no tags were available
+ * @cmdq_ctx_lock	acquire this before accessing this structure
+ */
+struct mmc_cmdq_context_info {
+	unsigned long	active_reqs; /* in-flight requests */
+	bool		active_dcmd;
+	bool		rpmb_in_wait;
+	bool		active_ncqcmd; /* Non CQ command like CMD8 */
+	bool		active_qbr;
+	enum cmdq_states curr_state;
+
+	/* no free tag available */
+	unsigned long	req_starved;
+	spinlock_t	cmdq_ctx_lock;
+	struct semaphore	thread_sem;
+};
+
 struct regulator;
 
 struct mmc_supply {
@@ -203,11 +325,26 @@ struct mmc_supply {
 	struct regulator *vqmmc;	/* Optional Vccq supply */
 };
 
+struct mmc_incomplete_req_entry {
+	struct mmc_async_req *areq;
+	struct request *rqc;
+	struct mmc_incomplete_req_entry *next;
+};
+
 struct mmc_host {
 	struct device		*parent;
 	struct device		class_dev;
 	int			index;
 	const struct mmc_host_ops *ops;
+	const struct mmc_cmdq_host_ops *cmdq_ops;
+	bool			init_ext_csd_done;
+	unsigned int		adma3_req_bytes;
+	struct mmc_incomplete_req_entry
+		incomplete_req_array[MMC_QUEUE_FLUSH_ADMA3_DEPTH];
+	unsigned int		incomplete_req_size;
+	unsigned int		adma3_queue_length;
+	struct mmc_async_req	*saved_areq_last;	/* active async req */
+	bool			flush_adma3_started;
 	unsigned int		f_min;
 	unsigned int		f_max;
 	unsigned int		f_init;
@@ -290,6 +427,15 @@ struct mmc_host {
 #define MMC_CAP2_HS400		(MMC_CAP2_HS400_1_8V | \
 				 MMC_CAP2_HS400_1_2V)
 #define MMC_CAP2_SDIO_IRQ_NOTHREAD (1 << 17)
+#define MMC_CAP2_EN_STROBE	(1 << 18)       /* can support enhanced strobe*/
+#define MMC_CAP2_HS533		(1 << 19)       /* can support HS533*/
+#define MMC_CAP2_CQ		(1 << 20)       /* can support CQ*/
+#define MMC_CAP2_NO_SLEEP_CMD	(1 << 21)	/* cannot support sleep mode */
+#define MMC_CAP2_SINGLE_POWERON (1 << 22)	/* Host can power up in single step */
+#define MMC_CAP2_HW_CQ		(1 << 23)	/* support eMMC command queue */
+#define MMC_CAP2_ADMA3		(1 << 24)       /* Host supports ADMA3 */
+#define MMC_CAP2_CMDQ_QBR	(1 << 25)	/* CMDQ Queue barrier supported */
+#define MMC_CAP2_PERIODIC_CACHE_FLUSH	(1 << 26)
 
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
@@ -304,6 +450,7 @@ struct mmc_host {
 	struct device_attribute clkgate_delay_attr;
 	unsigned long           clkgate_delay;
 #endif
+	bool			skip_host_clkgate;
 
 	/* host specific block data */
 	unsigned int		max_seg_size;	/* see blk_queue_max_segment_size */
@@ -313,6 +460,8 @@ struct mmc_host {
 	unsigned int		max_blk_size;	/* maximum size of one mmc block */
 	unsigned int		max_blk_count;	/* maximum number of blocks in one req */
 	unsigned int		max_busy_timeout; /* max busy timeout in ms */
+#define BLOCK_COUNT_16BIT	16
+#define BLOCK_COUNT_32BIT	32
 
 	/* private data */
 	spinlock_t		lock;		/* lock for claim and bus ops */
@@ -331,6 +480,7 @@ struct mmc_host {
 	int			rescan_entered;	/* used with nonremovable devices */
 
 	bool			trigger_card_event; /* card_event necessary */
+	bool			rem_card_present; /* Removable card presence status */
 
 	struct mmc_card		*card;		/* device attached to this host */
 
@@ -364,6 +514,31 @@ struct mmc_host {
 	struct mmc_async_req	*areq;		/* active async req */
 	struct mmc_context_info	context_info;	/* async synchronization info */
 
+	struct mmc_async_req	*areq_que[EMMC_MAX_QUEUE_DEPTH];
+	struct mmc_async_req	*areq_cur;
+	atomic_t		areq_cnt;
+	atomic_t		read_cnt;
+	spinlock_t		que_lock;
+#define GC_NOT_OPERATE	0
+#define GC_OPERATE		1
+#define GC_UNKNOWN		2
+#ifdef CONFIG_GC_SEPERATE
+	atomic_t		gc_status;
+#endif
+	spinlock_t		cmd_dump_lock;
+	unsigned long		state;
+#define MMC_CMDQ_IDLE		(0)
+#define MMC_CMDQ_CMD		(1 << 0)
+#define MMC_CMDQ_DAT		(1 << 1)
+#define MMC_CMDQ_QRDY		(1 << 2)
+	wait_queue_head_t	cmp_que;
+	struct mmc_command	chk_cmd;
+	struct mmc_request	chk_mrq;
+	struct mmc_command	que_cmd;
+	struct mmc_request	que_mrq;
+#define MMC_QUEUE_STATE_MAX		8
+	unsigned int mmc_queue_state_sum[2][MMC_QUEUE_STATE_MAX];
+
 #ifdef CONFIG_FAIL_MMC_REQUEST
 	struct fault_attr	fail_mmc_request;
 #endif
@@ -372,9 +547,48 @@ struct mmc_host {
 
 	unsigned int		slotno;	/* used for sdio acpi binding */
 
+	unsigned int	cmdq_slots;
+	struct mmc_cmdq_context_info	cmdq_ctx;
+	/*
+	 * several cmdq supporting host controllers are extensions
+	 * of legacy controllers. This variable can be used to store
+	 * a reference to the cmdq extension of the existing host
+	 * controller.
+	 */
+	void *cmdq_private;
+
 	int			dsr_req;	/* DSR value is valid */
 	u32			dsr;	/* optional driver stage (DSR) value */
 
+	int				need_tuning;
+	int				ready_tuning;
+#ifdef CONFIG_GC_SEPERATE
+	atomic_t		cmd13p_count;
+	atomic_t		cmd13p_write_first;
+	struct delayed_work poll_ready;
+#endif
+#ifdef CONFIG_CMD_DUMP
+	struct dbg_run_host_log dbg_run_host_log_dat[dbg_max_cnt];
+	int dbg_host_cnt;
+#endif
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	struct {
+		struct sdio_cis			*cis;
+		struct sdio_cccr		*cccr;
+		struct sdio_embedded_func	*funcs;
+		int				num_funcs;
+	} embedded_sdio_data;
+#endif
+#ifdef CONFIG_EMMC_BLKTRACE
+	struct mmc_queue	*mq;
+	struct mmc_queue_req	*mqrq_cur;	/* for mmc trace */
+	struct mmc_queue_req	*mqrq_prev;	/* for mmc trace */
+#endif
+	bool			cache_flush_needed;
+	bool			en_periodic_cflush;
+	unsigned int		flush_timeout;
+	struct timer_list	flush_timer;
 	unsigned long		private[0] ____cacheline_aligned;
 };
 
@@ -383,6 +597,19 @@ int mmc_add_host(struct mmc_host *);
 void mmc_remove_host(struct mmc_host *);
 void mmc_free_host(struct mmc_host *);
 int mmc_of_parse(struct mmc_host *host);
+
+static inline void *mmc_cmdq_private(struct mmc_host *host)
+{
+	return host->cmdq_private;
+}
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+extern void mmc_set_embedded_sdio_data(struct mmc_host *host,
+				       struct sdio_cis *cis,
+				       struct sdio_cccr *cccr,
+				       struct sdio_embedded_func *funcs,
+				       int num_funcs);
+#endif
 
 static inline void *mmc_priv(struct mmc_host *host)
 {
@@ -400,6 +627,16 @@ int mmc_power_restore_host(struct mmc_host *host);
 
 void mmc_detect_change(struct mmc_host *, unsigned long delay);
 void mmc_request_done(struct mmc_host *, struct mmc_request *);
+#define MMC_HANDLE_QUE_READY	(0)
+#define MMC_HANDLE_SET_CMD	(1)
+#define MMC_HANDLE_CLR_CMD	(2)
+#define MMC_HANDLE_SET_DAT	(3)
+#define MMC_HANDLE_CLR_DAT	(4)
+extern void mmc_handle_queued_request(struct mmc_host *host, int flag);
+extern int mmc_blk_end_queued_req(struct mmc_host *host,
+			struct mmc_async_req *areq, int index, int status);
+extern int
+mmc_issue_adma3_queued_requests(struct mmc_host *host);
 
 static inline void mmc_signal_sdio_irq(struct mmc_host *host)
 {
@@ -432,6 +669,9 @@ static inline int mmc_regulator_set_ocr(struct mmc_host *mmc,
 int mmc_regulator_get_supply(struct mmc_host *mmc);
 
 int mmc_pm_notify(struct notifier_block *notify_block, unsigned long, void *);
+int mmc_speed_class_control(struct mmc_host *host,
+	unsigned int speed_class_ctrl_arg);
+
 
 static inline int mmc_card_is_removable(struct mmc_host *host)
 {
@@ -516,6 +756,12 @@ static inline bool mmc_card_ddr52(struct mmc_card *card)
 static inline bool mmc_card_hs400(struct mmc_card *card)
 {
 	return card->host->ios.timing == MMC_TIMING_MMC_HS400;
+}
+
+static inline bool mmc_card_hs533(struct mmc_card *card)
+{
+	return ((card->host->ios.timing == MMC_TIMING_MMC_HS400) &&
+		(card->host->caps2 & MMC_CAP2_HS533));
 }
 
 #endif /* LINUX_MMC_HOST_H */

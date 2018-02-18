@@ -1,0 +1,69 @@
+Tegra AGIC Interrupt Controller Bindings
+----------------------------------------
+
+AGIC is based on generic interrupt controller ARM IP GIC400. The
+GIC-400 complies to AMBA AXI4 protocol and Version 2 of the ARM
+GIC Architecture Specification. The GIC-400 implements the GICv2
+Security Extension.
+
+Required properties:
+ - compatible: should be set to "nvidia,tegra18x-agic"
+ - reg: should contain AGIC distributor and cpu interface base
+   address
+ - interrupt-controller: detect this node as an interrupt-controller
+ - no-gic-extension: This gic is standalone int controller and does
+   not have external interrupt controller to support.
+ - not-per-cpu: This gic is shared between the CPU's and the adsp and
+   does not provide per-cpu interface.
+ - interrupts: The Agic is a secondary GIC, hence requires the
+   interrupt number which is wired to the primary GIC.
+
+Example:
+	tegra_agic: agic-controller@2a41000 {
+		compatible = "nvidia,tegra18x-agic";
+		interrupt-controller;
+		#interrupt-cells = <4>;
+		no-gic-extension;
+		not-per-cpu;
+		reg = <0x0 0x02a41000 0x0 0x1000>,
+		      <0x0 0x02a42000 0x0 0x2000>;
+		interrupts = <0 145 0xf04>;
+		status = "disabled";
+	};
+
+
+The devices using AGIC as interrupt-parent need to add a 4 cell property
+for an interrupt to be used. The first 3 cell properties are same as that
+for a GIC interrupt. The last cell represents the default routing of the
+interrupt.
+
+Example:
+	adsp@2993000 {
+		compatible = "nvidia,tegra18x-adsp";
+		interrupt-parent = <&tegra_agic>;
+		interrupts = <GIC_SPI INT_AMISC_MBOX_EMPTY1 IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_HOST_INTF0>, /* MBOX SEND */
+			     <GIC_SPI INT_AMISC_MBOX_FULL0 IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_HOST_INTF0>,  /* MBOX RECV */
+			     <GIC_SPI INT_ATKE_WDT_IRQ IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_HOST_INTF0>, /* ATKE Watchdog */
+			     <GIC_SPI INT_WFI IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_HOST_INTF0>, /* WFI */
+			     <GIC_SPI INT_AMC_ERR IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_HOST_INTF0>, /* AMC ERR IRQ */
+			     <GIC_SPI INT_ADSP_ACTMON IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_HOST_INTF0>, /* ADSP ACTMON IRQ */
+			     <GIC_SPI INT_AMISC_MBOX_EMPTY0 IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_ADSP>, /* ADSP MBOX SEND */
+			     <GIC_SPI INT_AMISC_MBOX_FULL1 IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_ADSP>, /* ADSP MBOX RECV */
+			     <GIC_SPI INT_AMISC_MBOX_FULL2 IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_ADSP>, /* ADSP FIQ HANDLER */
+			     <GIC_SPI INT_ATKE_TMR0 IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_ADSP>, /* ATKE TIMER 0 */
+			     <GIC_SPI INT_ATKE_TMR1 IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_ADSP>, /* ATKE TIMER 1 */
+			     <GIC_SPI INT_SHSP2APE_DB IRQ_TYPE_LEVEL_HIGH
+				ROUTE_TO_ADSP>; /* SHSP2APE */
+	};
+

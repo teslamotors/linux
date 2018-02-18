@@ -1,0 +1,251 @@
+/*
+ * arch/arm64/boot/dts/tegra210-vcm31-e2379-b00-common.dtsi
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/dts-v1/;
+
+/memreserve/ 0x80000000 0x00020000;
+
+#include "tegra210-platforms/tegra210-vcm31.dtsi"
+
+#include <dt-bindings/display/tegra-panel.h>
+
+/ {
+	/* Place holder for Boardinfo,this will be updated by QB
+	* by reading the values from BCT partition
+	*/
+	nvidia,boardinfo {
+		macids {
+			mac0-interface = "0000";
+			mac0-address = <00 00 00 00 00 00>;
+			mac0-address-string = "00 00 00 00 00 00";
+		};
+		skuinfo {
+			skustring = "000-00000-0000-000";
+			skuver = "00";
+		};
+		prodinfo {
+			prodstring = "000-00000-0000-000";
+			prodver = "0";
+		};
+		serialnuminfo {
+			serialnumstring = "0000000";
+			version = "0";
+		};
+	};
+
+	spi@7000d400 { /* TegraX master */
+		status = "okay";
+	};
+
+	spi@7000d600 { /* Aurix */
+		compatible = "nvidia,tegra210-spi-slave";
+		nvidia,clk-pin = "spi2_sck_pb6";
+		status = "okay";
+	};
+
+	spi@7000da00 { /* TegraX slave */
+		compatible = "nvidia,tegra210-spi-slave";
+		nvidia,clk-pin = "spi4_sck_pc5";
+		status = "okay";
+	};
+
+	host1x {
+		sor {
+			panel-a-edp-1080p-14-0 {
+				nvidia,hdmi-fpd-bridge = <TEGRA_HDMI_ENABLE>;
+			};
+		};
+		sor1 {
+			hdmi-display {
+				nvidia,hdmi-fpd-bridge = <TEGRA_HDMI_ENABLE>;
+			};
+		};
+	};
+
+	extcon {
+		vbus_gpio_extcon: extcon@1 {
+			/* Always set USB=1 USB-Host=0 regardless gpio value*/
+			extcon-gpio,cable-states = <0x3 0x1
+						    0x0 0x1
+						    0x1 0x1
+						    0x2 0x1>;
+			/* Dummy unused gpios */
+			gpios = <&gpio TEGRA_GPIO(M, 0) 0 &gpio TEGRA_GPIO(M, 1) 0>;
+		};
+	};
+
+	xudc@700d0000 {
+		extcon-cables = <&vbus_gpio_extcon 0>;
+		extcon-cable-names = "vbus";
+		status = "okay";
+	};
+
+	xotg {
+		status = "okay";
+	};
+
+	hdmi_ddc: i2c@7000c700 {
+		status = "okay";
+	};
+
+	adsp_audio {
+		status = "disabled";
+	};
+
+	adma@702e2000  {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+	};
+
+	sound {
+		status = "disabled";
+	};
+
+	sound_ref {
+		status = "disabled";
+	};
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <0>;
+		pwdn-gpios = < &gpio TEGRA_GPIO(X, 1) GPIO_ACTIVE_HIGH  /* GMSLA_PWRDN */
+			&gpio TEGRA_GPIO(H, 2) GPIO_ACTIVE_HIGH         /* TA_TV1_TV2_ENA */
+			&gpio TEGRA_GPIO(H, 5) GPIO_ACTIVE_HIGH>;       /* TA_TV3_TV4_ENA */
+		pwr-items =  <0 1 1 2 2>; /* map pwr-items to pwdn-gpios */
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(V, 2) 2>; /* GMSLA_STATUS_OC : falling edge sensitive */
+		status = "okay";
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <0>;
+		csi-port = <2>;
+		pwdn-gpios = < &gpio TEGRA_GPIO(Y, 2) GPIO_ACTIVE_HIGH  /* GMSLA_PWRDN */
+			&gpio TEGRA_GPIO(H, 6) GPIO_ACTIVE_HIGH         /* TA_TV5_TV6_ENA */
+			&gpio TEGRA_GPIO(H, 7) GPIO_ACTIVE_HIGH>;       /* TA_TV7_TV8_ENA */
+		pwr-items =  <0 1 1 2 2>; /* map pwr-items to pwdn-gpios */
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(X, 5) 2>; /* GMSLB_STATUS_OC : falling edge sensitive */
+		status = "okay";
+	};
+
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <1>;
+		csi-port = <4>;
+		pwdn-gpios = < &gpio TEGRA_GPIO(Z, 0) GPIO_ACTIVE_HIGH  /* GMSLA_PWRDN */
+			&gpio TEGRA_GPIO(H, 1) GPIO_ACTIVE_HIGH         /* TA_TV9_TV10_ENA */
+			&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_HIGH>;       /* TA_TV11_TV12_ENA */
+		pwr-items =  <0 1 1 2 2>; /* map pwr-items to pwdn-gpios */
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(Y, 0) 2>; /* GMSLB_STATUS_OC : falling edge sensitive */
+		status = "okay";
+	};
+	i2c@7000c500 {
+		fpd-serializer@0c {
+			out-type = <TEGRA_DC_OUT_HDMI>;
+			compatible = "ti,ds90uh949";
+			reg = <0x0c>;
+			ti,enable-gpio = <&gpio TEGRA_GPIO(S, 1) 1>;
+			ti,power-on-delay = <3>;
+			ti,power-off-delay = <3>;
+		};
+	};
+	i2c@7000c400 {
+		fpd-serializer@0c {
+			out-type = <TEGRA_DC_OUT_DP>;
+			compatible = "ti,ds90uh949";
+			reg = <0x0c>;
+			ti,enable-gpio = <&gpio TEGRA_GPIO(S, 0) 1>;
+			ti,power-on-delay = <300>;
+			ti,power-off-delay = <3>;
+		};
+	};
+	thermal_fan_est_shared_data: tfesd {
+		secret = <37>;
+		toffset = <0>;
+		polling_period = <1100>; /* Update temp every 1.1sec */
+		ndevs = <1>;
+		cdev_type = "pwm-fan";
+		tzp_governor_name = "pid_thermal_gov";
+
+		dev1 {
+			dev_data = "Tdiode_tegra";
+			/* Apply Tdiode value 100% in real time */
+			coeffs = <100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+		};
+	};
+
+	thermal-fan-est {
+		compatible = "thermal-fan-est";
+		name = "thermal-fan-est";
+		num_resources = <0>;
+		shared_data = <&thermal_fan_est_shared_data>;
+		trip_length = <10>;
+		/*
+		 * This table corresponds to active_pwm table.
+		 * Set active_pwm[1] when temp is over 75C,
+		 * back to active_pwm[0] when temp cooldown to 55C.
+		 */
+		active_trip_temps = <0 75000 77000 80000 85000
+				140000 150000 160000 170000 180000>;
+		active_hysteresis = <0 20000 0 0 0
+				0 0 0 0 0>;
+	};
+
+	pwm@7000a000 {
+		/* We can use this algorithm only when we use 1 pwm */
+		pwm,use-pretty-good-alogorithm = <1>;
+	};
+
+	pwm_fan_shared_data: pfsd {
+		num_resources = <0>;
+		secret = <47>;
+		active_steps = <10>;
+		active_rpm = <1386 2310 2310 2310 2310 2310 2310 2310 2310 2310>;
+		active_rru = <40 2 1 1 1 1 1 1 1 1>;
+		active_rrd = <40 2 1 1 1 1 1 1 1 1>;
+		state_cap_lookup = <2 2 2 2 3 3 3 4 4 4>;
+		/* WAR: 12V fan spec is 37KHz, but use 15KHz */
+		/* PWM freq = 1/ pwm_period = 15KHz*/
+		pwm_period = <66500>; /* nanoseconds */
+		pwm_id = <0>;
+		step_time = <100>; /* milliseconds */
+		state_cap = <2>; /* Cap pwm max to 256 = active_pwm[2] */
+		active_pwm_max = <256>;
+		/* Not use Tachometer pin */
+		/* tach_gpio =  <TEGRA_GPIO(X, 7)>; */
+		pwm_gpio = <TEGRA_GPIO(V, 0)>; /* TEGRA_GPIO_PV0 */
+	};
+
+	pwm-fan {
+		compatible = "pwm-fan";
+		shared_data = <&pwm_fan_shared_data>;
+		/* WAR: 12V fan PWM wave is not square.
+		 * Use duty 86% to set 60% speed of max */
+		/* Duty = <86 100 ... */
+		active_pwm = <220 256 256 256 256 256 256 256 256 256>;
+	};
+};

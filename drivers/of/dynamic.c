@@ -142,6 +142,7 @@ int of_attach_node(struct device_node *np)
 
 	return 0;
 }
+EXPORT_SYMBOL(of_attach_node);
 
 void __of_detach_node(struct device_node *np)
 {
@@ -202,6 +203,7 @@ int of_detach_node(struct device_node *np)
 
 	return rc;
 }
+EXPORT_SYMBOL(of_detach_node);
 
 /**
  * of_node_release() - release a dynamically allocated node

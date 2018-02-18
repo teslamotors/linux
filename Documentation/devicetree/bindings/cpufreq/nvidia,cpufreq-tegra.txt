@@ -1,0 +1,103 @@
+NVIDIA Tegra cpufreq scaling tables
+
+This binding specifies format of scaling data for NVIDIA Tegra cpufreq driver.
+
+Required properties :
+- compatible : Must be one of the following
+        "nvidia,tegra210-cpufreq"
+
+Optional properties:
+- status : standard DT availability property.
+
+Optional  child nodes :
+- cpu-scaling-data : specifies cpufreq scaling table data for CPU clock.
+  If this node is not present or not available, default frequency table
+  constructed by the driver from CPU DVFS tables is used.
+- emc-scaling-data : specifies cpufreq scaling table data for EMC clock floor
+  rate request based on CPU clock frequency.
+  If the node is not present or not available, default EMC_TO_CPU limit ratio
+  table hard-coded in the kernel is used.
+
+
+* cpu-scaling-data node properties.
+
+Required properties :
+- freq-table : array of frequencies converted to cpufreq driver targets as
+  described below. Must be in kHz, in increasing order.
+
+Optional properties:
+- status : standard DT availability property.
+- preserve-across-suspend : if specified, cpufreq governor scaling limits are
+  preserved during suspend/resume operations; if not present, cpufreq governor
+  scaling limits are set to frequency defined in tegra suspend platform data
+  during suspend/resume operations.preserve_cpu_speed
+- clip-to-dvfs-down : if specified, freq-table entries are clipped down to CPU
+  DVFS table; if not present, freq-table entries are clipped up to CPU DVFS
+  table.
+
+  Conversion from freq-table entries to cpufreq driver targets:
+
+  If clip-to-dvfs-down property is present:
+  any freq-table entry below bottom DVFS step is kept unchanged
+  any freq-table entry exactly at one of the DVFS steps is kept unchanged
+  any freq-table entry between two DVFS steps is replaced with lower step
+  any freq-table entry above top DVFS step is replaced with top step
+
+  If clip-to-dvfs-down property is not present:
+  any freq-table entry below bottom DVFS step is replaced with bottom step
+  any freq-table entry exactly at one of the DVFS steps is kept unchanged
+  any freq-table entry between two DVFS steps is replaced with upper step
+  any freq-table entry above top DVFS step is replaced with top step
+
+
+* emc-scaling-data node properties.
+
+Required properties :
+- emc-cpu-limit-table : array of frequencies to specify EMC and CPU rates
+  relation as described below:
+
+	if F[0] > CPU frequency, then EMC frequency is unrestricted by CPU
+	if F[i+2] > CPU frequency >= F[i], then EMC frequency >= F[i+1],
+	i = 0, ... N-4
+	if CPU frequency >= F[N-2], then EMC frequency >= F[N-1]
+
+	N is array size, must be even
+	i = 0 ... N-1 is 0-based position index within array
+	F[i] value of array cell at index i
+
+   All frequencies are in kHz. CPU frequencies at even positions must be in
+   increasing order. EMC frequencies at odd positions are clipped down to EMC
+   maximum rate.
+
+Optional properties:
+- status : standard DT availability property.
+
+
+Example:
+
+cpufreq {
+        compatible = "nvidia,tegra210-cpufreq";
+        cpu-scaling-data {
+                freq-table = <
+                        200000
+                        300000
+                        800000
+                        1000000
+                        1500000
+                        2000000
+                        2100000
+                >;
+        };
+
+	emc-scaling-data {
+		emc-cpu-limit-table = <
+			/* CPU    EMC */
+			100000  95000
+			200000  185000
+			300000  375000
+			800000  550000
+			1000000 750000
+			1500000	1600000
+		>;
+	};
+};

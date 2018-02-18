@@ -1,6 +1,8 @@
 /*
  * Alarmtimer interface
  *
+ * Copyright (C) 2016 NVIDIA CORPORATION. All rights reserved.
+ *
  * This interface provides a timer which is similarto hrtimers,
  * but triggers a RTC alarm if the box is suspend.
  *
@@ -25,6 +27,7 @@
 #include <linux/posix-timers.h>
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
+#include <linux/device.h>
 
 /**
  * struct alarm_base - Alarm timer bases
@@ -44,6 +47,8 @@ static struct alarm_base {
 /* freezer delta & lock used to handle clock_nanosleep triggered wakeups */
 static ktime_t freezer_delta;
 static DEFINE_SPINLOCK(freezer_delta_lock);
+
+static ktime_t max_wakeup_interval;
 
 static struct wakeup_source *ws;
 
@@ -82,9 +87,12 @@ static int alarmtimer_rtc_add_device(struct device *dev,
 	if (rtcdev)
 		return -EBUSY;
 
+#ifdef CONFIG_RTC_HCTOSYS_DEVICE
+	if (strcmp(dev_name(&rtc->dev),	CONFIG_RTC_HCTOSYS_DEVICE) != 0)
+		return -EINVAL;
+#endif
+
 	if (!rtc->ops->set_alarm)
-		return -1;
-	if (!device_may_wakeup(rtc->dev.parent))
 		return -1;
 
 	spin_lock_irqsave(&rtcdev_lock, flags);
@@ -116,10 +124,6 @@ static void alarmtimer_rtc_interface_remove(void)
 	class_interface_unregister(&alarmtimer_rtc_interface);
 }
 #else
-struct rtc_device *alarmtimer_get_rtcdev(void)
-{
-	return NULL;
-}
 #define rtcdev (NULL)
 static inline int alarmtimer_rtc_interface_setup(void) { return 0; }
 static inline void alarmtimer_rtc_interface_remove(void) { }
@@ -206,6 +210,18 @@ ktime_t alarm_expires_remaining(const struct alarm *alarm)
 }
 EXPORT_SYMBOL_GPL(alarm_expires_remaining);
 
+/**
+ * alarmtimer_set_after - Set alarmtimer after after_sec from now.
+ * @dev: device pointer
+ * @wakeup_time_s: Maximum gap between wakeup from alarm in second.
+ */
+int alarmtimer_set_maximum_wakeup_interval_time(int wakeup_time_s)
+{
+	max_wakeup_interval = ktime_set(wakeup_time_s, 0);
+	return 0;
+}
+EXPORT_SYMBOL(alarmtimer_set_maximum_wakeup_interval_time);
+
 #ifdef CONFIG_RTC_CLASS
 /**
  * alarmtimer_suspend - Suspend time callback
@@ -256,7 +272,14 @@ static int alarmtimer_suspend(struct device *dev)
 
 	if (ktime_to_ns(min) < 2 * NSEC_PER_SEC) {
 		__pm_wakeup_event(ws, 2 * MSEC_PER_SEC);
+		dev_err(dev, "RTC waketime %lld less than 2 sec\n",
+			ktime_to_ns(min));
 		return -EBUSY;
+	}
+
+	if (max_wakeup_interval.tv64) {
+		if (min.tv64 > max_wakeup_interval.tv64)
+			min.tv64 = max_wakeup_interval.tv64;
 	}
 
 	/* Setup an rtc timer to fire that far in the future */
@@ -265,14 +288,45 @@ static int alarmtimer_suspend(struct device *dev)
 	now = rtc_tm_to_ktime(tm);
 	now = ktime_add(now, min);
 
+	dev_info(dev, "Next RTC waketime after %lld second\n",
+				ktime_to_sec(min));
+
 	/* Set alarm, if in the past reject suspend briefly to handle */
 	ret = rtc_timer_start(rtc, &rtctimer, now, ktime_set(0, 0));
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(dev, "rtc_timer_start failed: %d\n", ret);
 		__pm_wakeup_event(ws, MSEC_PER_SEC);
+	}
 	return ret;
+}
+
+static void sync_to_rtc_time(struct device *dev)
+{
+	struct timespec ts_old;
+	struct rtc_time tm;
+
+	/* log old system time */
+	getnstimeofday(&ts_old);
+	rtc_time_to_tm(ts_old.tv_sec, &tm);
+	pr_info("alarmtimer: old system time %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec, ts_old.tv_nsec);
+
+#ifdef CONFIG_RTC_HCTOSYS
+	rtc_hctosys();
+#else
+	pr_info("%s %s line=%d, missing function to sync system time to rtc time\n",
+		__FILE__, __func__, __LINE__);
+#endif
+	return;
 }
 #else
 static int alarmtimer_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static void sync_to_rtc_time(struct device *dev)
 {
 	return 0;
 }
@@ -812,6 +866,7 @@ out:
 /* Suspend hook structures */
 static const struct dev_pm_ops alarmtimer_pm_ops = {
 	.suspend = alarmtimer_suspend,
+	.complete = sync_to_rtc_time,
 };
 
 static struct platform_driver alarmtimer_driver = {

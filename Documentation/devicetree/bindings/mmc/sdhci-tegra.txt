@@ -1,0 +1,137 @@
+* Nvidia sdhci-tegra controller
+
+This file documents differences between the core properties in mmc.txt
+and the properties used by the sdhci-tegra driver.
+
+Required properties:
+- compatible: Should be "nvidia,tegra186-sdhci"
+- reg: Specify start address and registers count details
+- interrupts: Specify the interrupts IRQ info for device
+
+Optional properties:
+- tap-delay: Specify number of cycles to delay for reading data from device
+- nvidia,ddr-tap-delay: Specify number of cycles to delay for reading data from device in ddr mode.
+- trim-delay: Specify number of cycles to delay for writing data to device
+- ddr-trim-delay: Specify number of cycles to delay for writing data to device when in DDR mode
+- dqs-trim-delay: HS400 Tap value for incoming DQS path trimmer.
+- dqs-trim-delay-hs533: HS533 Tap value for incoming DQS path trimmer.
+- max-clk-limit: Specify the maximum clock limit for the device
+- ddr-clk-limit: Specify the maximum clock frequency in kHz for device in DDR mode
+- mmc-ocr-mask: Specify OCR register masking details. Based on this value the power up voltage depending on board capabilities can be selected.
+- uhs-mask: Specify modes that are masked for the device
+	Mask HS200 mode: 0x20
+	Mask HS400 mode: 0x40
+	Mask SDR104 mode: 0x10
+	Mask SDR50 mode: 0x4
+	Mask DDR50 mode: 0x8
+- calib-3v3-offsets and calib-1v8-offsets: Specify caliberation settings at 3.3V and at 1.8V
+- compad-vref-3v3 and compad-vref-1v8: used to control Vref_sel input of calibration pad. Should be set based on pads used for controller before starting pad drive strength calibration.
+- power-gpios: details of GPIO port used to power up SDIO card
+- default-drv-type: Drive strength to select for SDIO devices is encoded as 8-bit char as follows
+	Drive strength Type B: 0x0
+	Drive strength Type A: 0x1
+	Drive strength Type C: 0x2
+	Drive strength Type D: 0x3
+- nvidia,update-pinctrl-settings: Specify desired pin control settings if different from default pin control settings done during init.
+- pwr-off-during-lp0: Some devices like SDIO devices may use this to select power off mode when in LP0 or deep sleep or SC7 state.
+
+- power-off-rail: flag when set enables sdmmc reboot notifier
+- nvidia,dll-calib-needed: DLL calibration is needed for SDMMC4 and SDMMC2 devices if they are enumerated
+- pwrdet-support: flag when set indicates the sdmmc controller instance needs power detect bit programming for voltage switching.
+in HS400 mode.
+- nvidia,disable-auto-cal: This flag when set will disable auto calibration
+- nvidia,en-io-trim-volt: Enable IO trimmer voltage
+- nvidia,is-emmc: Enable this flag for eMMC devices
+- nvidia,sd-device: Enable this flag for SD devices
+- nvidia,limit-vddio-max-volt: enable this flag for sdmmc1/3 if it has Vddio 3.3v support.
+- nvidia,enable-hs533-mode: Set this Flag toenable HS533 mode.
+	---> eMMC card does not advertise HS533 mode support in device registers.
+	---> This flag has to be enabled only if the card supports HS533 mode, other wise the consequences are un-known.(Errors will be seen)
+- fixed-clock-freq: The first element is for ID mode. The rest of the entries are for different modes indexed as per ios timings.
+	ID MODE			0
+	MMC_TIMING_LEGACY	1
+	MMC_TIMING_MMC_HS	2
+	MMC_TIMING_SD_HS	3
+	MMC_TIMING_UHS_SDR12	4
+	MMC_TIMING_UHS_SDR25	5
+	MMC_TIMING_UHS_SDR50	6
+	MMC_TIMING_UHS_SDR104	7
+	MMC_TIMING_UHS_DDR50	8
+	MMC_TIMING_MMC_HS200	9
+	MMC_TIMING_MMC_HS400	10
+- nvidia,auto-cal-slew-override: flag to set AUTO_CAL_SLW_OVERRIDE bit in SDMMC_AUTO_CAL_CONFIG_0 register.
+- nvidia,enable-cq: Set this flag to enable CQ.
+- nvidia,enable-hwcq: Enable this flag to select hardware CQ support available on selected Tegra chips.
+
+- nvidia,enable-strobe-mode: Enable enhance strobe mode when eMMC device runs at HS400 mode.
+- nvidia,en-periodic-calib: Enable periodic calibration support for sdmmc1/sdmmc3. Auto calibration sequence will be run at interval of 100ms during sdmmc1/sdmmc3 interfaces are active.
+- nvidia,adma3-enable: boolean property to enable ADMA3 for the sdhci controller instance if supported by the Tegra chip.
+- nvidia,en-32bit-bc: Enables 32 bit block count support on sdhci controller, if HW supports.
+
+- nvidia,en-periodic-cflush: Enables periodic cache flush for sdmmc device to improve performance. This check is not required for
+ SD and SDIO devices since they do not have volatile cache memory. So, set it only for eMMC device when required.
+- nvidia,periodic-cflush-to: Sets the periodic cache flush timeout value.
+
+Example:
+
+	sdhci@3460000 {
+		compatible = "nvidia,tegra186-sdhci";
+		reg = <0x0 0x3460000 0x0 0x210>;
+		interrupts = < 0 65 0x04>;
+		max-clk-limit = <200000000>;
+                ddr-clk-limit = <48000000>;
+		tap-delay = <9>;
+		nvidia,ddr-tap-delay = <9>;
+		trim-delay = <5>;
+		ddr-trim-delay = <5>;
+		dqs-trim-delay = <63>;
+		dqs-trim-delay-hs533 = <40>;
+		mmc-ocr-mask = <0>;
+		uhs-mask = <0x60>;
+		calib-3v3-offsets = <0x0505>;
+		calib-1v8-offsets = <0x0505>;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
+		nvidia,enable-hs533-mode;
+		nvidia,limit-vddio-max-volt;
+		nvidia,en-io-trim-volt;
+		nvidia,disable-auto-cal;
+		pwrdet-support;
+		nvidia,dll-calib-needed;
+		pwr-off-during-lp0;
+
+		nvidia,enable-strobe-mode;
+		nvidia,en-periodic-calib;
+		nvidia,enable-cq;
+		nvidia,enable-hwcq;
+		nvidia,is-emmc;
+		nvidia,auto-cal-slew-override;
+		nvidia,update-pinctrl-settings;
+		pinctrl-names = "sdmmc_schmitt_enable", "sdmmc_schmitt_disable", "sdmmc_clk_schmitt_enable", "sdmmc_clk_schmitt_disable";
+		pinctrl-0 = <&sdmmc3_schmitt_enable_state>;
+		pinctrl-1 = <&sdmmc3_schmitt_disable_state>;
+		pinctrl-2 = <&sdmmc3_clk_schmitt_enable_state>;
+		pinctrl-3 = <&sdmmc3_clk_schmitt_disable_state>;
+		pll_source = "pll_p", "pll_c4_out2";
+		resets = <&tegra_car TEGRA186_RESET_SDMMC4>;
+		reset-names = "sdmmc";
+		clocks = <&tegra_car TEGRA186_CLK_SDMMC4>,
+		       <&tegra_car TEGRA186_CLK_PLLP_GRTTA>,
+		       <&tegra_car TEGRA186_CLK_PLLC4_OUT2>;
+		clock-names = "sdmmc4", "pll_p", "pll_c4_out2";
+		nvidia,clk-name = "sdmmc4";
+		fixed-clock-freq = <25500000 25500000 24000000 47000000 24000000 47000000 94000000 204000000 0 0 0>;
+	};
+
+	sdhci@3420000 {
+		compatible = "nvidia,tegra186-sdhci";
+		reg = <0x0 0x3460000 0x0 0x210>;
+		interrupts = < 0 65 0x04>;
+		power-off-rail;
+		cd-gpios = <&tegra_gpio TEGRA_GPIO(P, 5) 0>;
+		power-gpios = <180>;
+		default-drv-type = <1>;
+		nvidia,clk-name = "sdmmc2";
+		nvidia,adma3-enable;
+		nvidia,sd-device;
+	};

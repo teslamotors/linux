@@ -1,0 +1,7 @@
+Use for fecs.bin, gpccs.bin and add results to drivers/gpu/nvgpu/. If you see
+something like:
+
+  unknown falcon ucode boot signature 0x4d6cbc10 with reg_offset 0x00000000
+
+in the boot logs, then the kernel needs to be updated to know the signatures
+and abi of the new ucode boot binaries.

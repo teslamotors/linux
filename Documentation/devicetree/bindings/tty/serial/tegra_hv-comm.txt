@@ -1,0 +1,14 @@
+* Tegra Hypervisor Serial emulation (tegra_hv_comm)
+
+Required properties:
+- compatible: Should be "nvidia,tegra-hv-comm"
+- ivc: Should contain a tupple containing a reference to the tegra hypervisor
+  node and an index of the IVC channel to use
+
+Example:
+	tegra_hv_comm {
+		compatible = "nvidia,tegra-hv-comm";
+		status = "okay";
+		/* ivc channel to use definition (second one in tegra_hv) */
+		ivc = <&tegra_hv 1>;
+	};

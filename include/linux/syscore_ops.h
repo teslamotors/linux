@@ -16,6 +16,8 @@ struct syscore_ops {
 	int (*suspend)(void);
 	void (*resume)(void);
 	void (*shutdown)(void);
+	int (*save)(void);
+	void (*restore)(void);
 };
 
 extern void register_syscore_ops(struct syscore_ops *ops);
@@ -23,6 +25,8 @@ extern void unregister_syscore_ops(struct syscore_ops *ops);
 #ifdef CONFIG_PM_SLEEP
 extern int syscore_suspend(void);
 extern void syscore_resume(void);
+extern int syscore_save(void);
+extern void syscore_restore(void);
 #endif
 extern void syscore_shutdown(void);
 

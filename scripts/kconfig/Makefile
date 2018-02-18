@@ -102,7 +102,11 @@ else
 endif
 
 %_defconfig: $(obj)/conf
+ifeq ($(DEFCONFIG_PATH),)
 	$(Q)$< --defconfig=arch/$(SRCARCH)/configs/$@ $(Kconfig)
+else
+	$(Q)$< --defconfig=$(DEFCONFIG_PATH)/$@ $(Kconfig)
+endif
 
 configfiles=$(wildcard $(srctree)/kernel/configs/$(1).config $(srctree)/arch/$(SRCARCH)/configs/$(1).config)
 

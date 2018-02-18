@@ -1,0 +1,23 @@
+This driver is implemented to parse the gps_en gpio from device tree
+and create a sysfs to control the gpio in gpsd binary. Also it
+registers a irq to enable the HW geofencing feature.
+
+SYSFS: This interface is used to toggle gps_en gpio in userspace.
+
+Required Properties:
+- compatible: Must be "nvidia,tegra-gps-wake";
+
+Optional Properties:
+- gps-en is resource name for gps_en gpio
+- gps-host-wake is resource name for host wake irq line
+
+Example:
+gps_wake {
+	compatible = "nvidia,tegra-gps-wake";
+	id = <0>;
+	gps-en = <&gpio_i2c_1_20 10 0>;
+	gps-host-wake = <&gpio TEGRA_GPIO(Q, 5) 0>;
+	interrupt-parent = <&gpio>;
+	interrupts = <TEGRA_GPIO(Q, 5) 0x01>;
+	status = "disabled";
+};

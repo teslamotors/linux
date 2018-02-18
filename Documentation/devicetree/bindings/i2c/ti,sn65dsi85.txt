@@ -1,0 +1,57 @@
+TI SN65DSI85 MIPI DSI to LVDS Bridge
+===================================
+
+The sn65dsi85 node:
+sn65dsi85 node must be contained in i2c parent node. This node represents
+TI SN65DSI85 MIPI DSI to LVDS Bridge.
+
+Required properties:
+- compatible: Should contain "ti,sn65dsi85".
+- reg: I2C address for chip.
+
+Optional properties:
+- ti,enable-gpio: gpio to enable and reset chip.
+- ti,pll-refclk-cfg: is the value for SN65DSI85_PLL_REFCLK_CFG register.
+- ti,dsi_cfg1: is the value for SN65DSI85_DSI_CFG1 register.
+- ti,dsi-cha-clk-range: is the value for SN65DSI85_DSI_CHA_CLK_RANGE register.
+- ti,dsi-chb-clk-range: is the value for SN65DSI85_DSI_CHB_CLK_RANGE register.
+- ti,disable-assr: can be 0 or 1 to enable or disable ASSR support.
+  Default is set to zero.
+- ti,dp-ssc-cfg: is the value for SN65DSI85_DP_SSC_CFG register.
+- ti,video_cha_line_low: is the value for SN65DSI85_VIDEO_CHA_LINE_LOW
+  register.
+- ti,video_cha_line_high: is the value for SN65DSI85_VIDEO_CHA_LINE_HIGH
+  register.
+- ti,video_chb_line_low: is the value for SN65DSI85_VIDEO_CHB_LINE_LOW
+  register.
+- ti,video_chb_line_high: is the value for SN65DSI85_VIDEO_CHB_LINE_HIGH
+  register.
+- ti,cha_vert_disp_size_low: is the value for SN65DSI85_CHA_VERT_DISP_SIZE_LOW
+  register.
+- ti,cha_vert_disp_size_heigh: is the value for
+  SN65DSI85_CHA_VERT_DISP_SIZE_HEIGH register.
+- ti,h-pulse-width-low: is the value for SN65DSI85_CHA_HSYNC_PULSE_WIDTH_LOW
+  register.
+- ti,h-pulse-width-high: is the value for SN65DSI85_CHA_HSYNC_PULSE_WIDTH_HEIGH
+  register.
+- ti,v-pulse-width-low: is the value for SN65DSI85_CHA_VSYNC_PULSE_WIDTH_LOW
+  register.
+- ti,v-pulse-width-high: is the value for SN65DSI85_CHA_VSYNC_PULSE_WIDTH_HIGH
+  register.
+- ti,h-back-porch: is the value for SN65DSI85_CHA_HORIZONTAL_BACK_PORCH
+  register.
+- ti,v-back-porch: is the value for SN65DSI85_CHA_VERTICAL_BACK_PORCH register.
+- ti,h-front-porch: is the value for SN65DSI85_CHA_HORIZONTAL_FRONT_PORCH
+  register.
+- ti,v-front-porch: is the value for SN65DSI85_CHA_VERTICAL_FRONT_PORCH
+  register.
+
+Example:
+
+i2c@7000c000 {
+	sn65dsi85@2d {
+		compatible = "ti,sn65dsi85";
+		reg = <0x2d>;
+		status = "okay";
+	};
+}:

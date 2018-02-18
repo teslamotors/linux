@@ -1,0 +1,313 @@
+/*
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/mfd/max77620.h>
+#include <dt-bindings/regulator/regulator.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/thermal/thermal.h>
+
+/ {
+	i2c@7000d000 {
+		nvidia,bit-banging-xfer-after-shutdown;
+
+		max77620: max77620@3c {
+			compatible = "maxim,max77620";
+			reg = <0x3c>;
+			interrupts = <0 86 IRQ_TYPE_NONE>;
+
+			#interrupt-cells = <2>;
+                        interrupt-controller;
+
+			gpio-controller;
+			#gpio-cells = <2>;
+
+			maxim,enable-clock32k-out;
+
+			maxim,system-pmic-power-off;
+
+			maxim,hot-die-threshold-temp = <110000>;
+			#thermal-sensor-cells = <0>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&max77620_default>;
+
+			gpio-init-names = "default";
+			gpio-init-0 = <&max77620_gpio_default>;
+
+			max77620_default: pinmux@0 {
+				pin_gpio0 {
+					pins = "gpio0";
+					function = "gpio";
+				};
+
+				pin_gpio1 {
+					pins = "gpio1";
+					function = "fps-out";
+					drive-push-pull = <1>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <7>;
+					maxim,active-fps-power-down-slot = <0>;
+				};
+
+				pin_gpio2_3 {
+					pins = "gpio2", "gpio3";
+					function = "fps-out";
+					drive-open-drain = <1>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+				};
+
+				pin_gpio4 {
+					pins = "gpio4";
+					function = "32k-out1";
+				};
+
+				pin_gpio5_6_7 {
+					pins = "gpio5", "gpio6", "gpio7";
+					function = "gpio";
+					drive-push-pull = <1>;
+				};
+			};
+
+			max77620_gpio_default:gpio_default {
+				gpio-output-high = <2>;
+			};
+
+			watchdog {
+				maxim,wdt-timeout = <16>;
+				maxim,wdt-clear-time = <13>;
+				status = "okay";
+				dt-override-status-odm-data = <0x00020000 0x00020000>;
+			};
+
+			fps {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				fps0 {
+					reg = <0>;
+					maxim,shutdown-fps-time-period-us = <2560>;
+					maxim,fps-event-source = <MAX77620_FPS_EVENT_SRC_EN0>;
+				};
+
+				fps1 {
+					reg = <1>;
+					maxim,shutdown-fps-time-period-us = <2560>;
+					maxim,fps-event-source = <MAX77620_FPS_EVENT_SRC_EN1>;
+					maxim,device-state-on-disabled-event = <MAX77620_FPS_INACTIVE_STATE_SLEEP>;
+				};
+
+				fps2 {
+					reg = <2>;
+					maxim,fps-event-source = <MAX77620_FPS_EVENT_SRC_EN0>;
+				};
+			};
+
+			backup-battery {
+				maxim,backup-battery-charging-current = <100>;
+				maxim,backup-battery-charging-voltage = <3000000>;
+				maxim,backup-battery-output-resister = <100>;
+			};
+
+			regulators {
+				in-ldo0-1-supply = <&max77620_sd2>;
+				in-ldo7-8-supply = <&max77620_sd2>;
+
+				max77620_sd0: sd0 {
+					regulator-name = "vdd_core";
+					regulator-min-microvolt = <600000>;
+					regulator-max-microvolt = <1400000>;
+					regulator-boot-on;
+					regulator-always-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+				};
+
+				max77620_sd1: sd1 {
+					regulator-name = "vddio-ddr";
+					regulator-always-on;
+					regulator-boot-on;
+					regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+				};
+
+				max77620_sd2: sd2 {
+					regulator-name = "vdd-pre-reg";
+					regulator-min-microvolt = <1350000>;
+					regulator-max-microvolt = <1350000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+				};
+
+				max77620_sd3: sd3 {
+					regulator-name = "vdd-1v8";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+					regulator-boot-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+					consumers {
+						c7 {
+							regulator-consumer-supply = "avdd_pll_utmip";
+							regulator-consumer-device = "tegra-ehci.0";
+						};
+						c8 {
+							regulator-consumer-supply = "avdd_pll_utmip";
+							regulator-consumer-device = "tegra-ehci.1";
+						};
+						c9 {
+							regulator-consumer-supply = "avdd_pll_utmip";
+							regulator-consumer-device = "tegra-ehci.2";
+						};
+						c18 {
+							regulator-consumer-supply = "vdd";
+							regulator-consumer-device = "2-004c";
+						};
+						c19 {
+							regulator-consumer-supply = "vdd";
+							regulator-consumer-device = "0-004c";
+						};
+					};
+				};
+
+				max77620_ldo0: ldo0 {
+					regulator-name = "avdd-sys";
+					regulator-min-microvolt = <1200000>;
+					regulator-max-microvolt = <1200000>;
+					regulator-always-on;
+					regulator-boot-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					consumers {
+						c0 {
+							regulator-consumer-supply = "vddio_hsic";
+							regulator-consumer-device = "tegra-ehci.1";
+						};
+						c1 {
+							regulator-consumer-supply = "vddio_hsic";
+							regulator-consumer-device = "tegra-ehci.2";
+						};
+						c2 {
+							regulator-consumer-supply = "vdig";
+						};
+					};
+				};
+
+				max77620_ldo1: ldo1 {
+					regulator-name = "vdd-pex";
+					regulator-min-microvolt = <1050000>;
+					regulator-max-microvolt = <1050000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+				};
+
+				max77620_ldo2: ldo2 {
+					regulator-name = "vddio-sdmmc1";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <3300000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+				};
+
+				max77620_ldo3: ldo3 {
+					regulator-name = "vdd-cam-hv";
+					regulator-min-microvolt = <2800000>;
+					regulator-max-microvolt = <2800000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					consumers {
+						c0 {
+							regulator-consumer-supply = "vana";
+						};
+					};
+				};
+
+				max77620_ldo4: ldo4 {
+					regulator-name = "vdd-rtc";
+					regulator-min-microvolt = <850000>;
+					regulator-max-microvolt = <850000>;
+					regulator-always-on;
+					regulator-boot-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+				};
+
+				max77620_ldo5: ldo5 {
+					regulator-name = "avdd-ts-hv";
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+				};
+
+				max77620_ldo6: ldo6 {
+					regulator-name = "vdd-ts";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+					regulator-boot-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <7>;
+					maxim,active-fps-power-down-slot = <0>;
+				};
+
+				max77620_ldo7: ldo7 {
+					regulator-name = "vdd-gen-pll-edp";
+					regulator-min-microvolt = <1050000>;
+					regulator-max-microvolt = <1050000>;
+					regulator-always-on;
+					regulator-boot-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+				};
+
+				max77620_ldo8: ldo8 {
+					regulator-name = "vdd-hdmi-dp";
+					regulator-min-microvolt = <1050000>;
+					regulator-max-microvolt = <1050000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+				};
+			};
+		};
+	};
+
+	dummy_cool_dev: dummy-cool-dev {
+		compatible = "dummy-cooling-dev";
+		#cooling-cells = <2>; /* min followed by max */
+	};
+
+	thermal-zones {
+		PMIC-Die {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+
+			thermal-sensors = <&max77620>;
+			trips {
+				die_temp_thresh: hot-die {
+					temperature = <120000>;
+					type = "active";
+					hysteresis = <0>;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&die_temp_thresh>;
+					cooling-device = <&dummy_cool_dev THERMAL_NO_LIMIT
+								THERMAL_NO_LIMIT>;
+					contribution = <100>;
+					cdev-type = "emergency-balanced";
+				};
+			};
+		};
+	};
+
+	extcon {
+		compatible = "simple-bus";
+		device_type = "external-connection";
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+};

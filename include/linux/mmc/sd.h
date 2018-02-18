@@ -19,6 +19,10 @@
 #define SD_SEND_IF_COND           8   /* bcr  [11:0] See below   R7  */
 #define SD_SWITCH_VOLTAGE         11  /* ac                      R1  */
 
+  /* class 2 */
+#define SD_SEND_TUNING_PATTERN   19   /* adtc                    R1  */
+#define SD_SPEED_CLASS_CONTROL   20   /* ac                      R1b */
+
   /* class 10 */
 #define SD_SWITCH                 6   /* adtc [31:0] See below   R1  */
 
@@ -91,4 +95,13 @@
 #define SD_SWITCH_ACCESS_DEF	0
 #define SD_SWITCH_ACCESS_HS	1
 
+/*
+ * SD_SPEED_CLASS_CONTROL definitions
+ */
+#define SD_SPEED_CLASS_CONTROL_START_REC		0x0
+#define SD_SPEED_CLASS_CONTROL_CREATE_DIR		0x1
+#define SD_SPEED_CLASS_CONTROL_UPDATE_CI		0x4
+
+
 #endif /* LINUX_MMC_SD_H */
+

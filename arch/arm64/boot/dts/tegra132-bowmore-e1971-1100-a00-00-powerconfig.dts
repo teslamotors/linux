@@ -1,0 +1,35 @@
+#include "tegra132-bowmore-e1971-1100-a00-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	i2c@7000c400 {
+		pca9546@71 {
+			i2c@3 {
+				ina230@48{
+					ti,calibration-data = <0x0831>;
+					ti,resistor = <10>;
+					ti,power-lsb = <6103>;
+				};
+
+				ina230@49{
+					ti,calibration-data = <0x1062>;
+					ti,resistor = <10>;
+					ti,power-lsb = <3051>;
+				};
+
+				ina230@4b{
+					ti,calibration-data = <0x0576>;
+					ti,resistor = <10>;
+					ti,power-lsb = <9155>;
+				};
+
+				ina230@4c{
+					ti,calibration-data = <0x7FFF>;
+					ti,resistor = <10>;
+					ti,power-lsb = <390>;
+				};
+			};
+		};
+	};
+};

@@ -1,0 +1,63 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/pinctrl/pinctrl-tegra.h>
+
+/ {
+	pinmux@2430000 {
+		devslp_active_state: devslp_active {
+			sata {
+				nvidia,pins = "pex_l2_clkreq_n_pa6";
+				nvidia,function = "sata";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,io-high-voltage = <TEGRA_PIN_ENABLE>;
+				nvidia,lpdr = <TEGRA_PIN_ENABLE>;
+			};
+		};
+		devslp_pullup_state: devslp_pullup {
+			sata {
+				nvidia,pins = "pex_l2_clkreq_n_pa6";
+				nvidia,function = "sata";
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+			};
+		};
+	};
+
+	tegra_sata: ahci-sata@3507000 {
+		compatible = "nvidia,tegra186-ahci-sata";
+		reg = <0x0 0x03507000 0x0 0x00002000>, /* SATA AHCI */
+			<0x0 0x03501000 0x0 0x00006000>, /* SATA Config */
+			<0x0 0x03500000 0x0 0x00001000>, /* SATA IPFS */
+			<0x0 0x03A90000 0x0 0x00010000>; /* SATA AUX */
+		interrupts = <0 TEGRA186_IRQ_SATA 0x04>;
+		#stream-id-cells = <1>;
+		clocks = <&tegra_car TEGRA186_CLK_SATA>,
+			<&tegra_car TEGRA186_CLK_SATA_OOB>,
+			<&tegra_car TEGRA186_CLK_PLLP>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "sata", "sata_oob", "pllp", "pllp_uphy";
+		resets = <&tegra_car TEGRA186_RESET_SATA>,
+			<&tegra_car TEGRA186_RESET_SATACOLD>;
+		reset-names = "sata", "satacold";
+		pinctrl-names = "devslp_active", "devslp_pullup";
+		pinctrl-0 = <&devslp_active_state>;
+		pinctrl-1 = <&devslp_pullup_state>;
+		nvidia,disable-features = "devslp", "dipm";
+		nvidia,link-flags = "min_power";
+		status = "disabled";
+	};
+};

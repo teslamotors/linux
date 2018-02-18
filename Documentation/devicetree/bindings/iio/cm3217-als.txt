@@ -1,0 +1,30 @@
+* Capella CM3217 ambient light sensor
+
+nvs_ drivers use the NVidia Sensor (NVS) framework.
+See the nvs.txt documentation for NVS DT capabilities.
+
+Required properties:
+- compatible: must be "capella,cm3217"
+- reg: i2c address of the device. It should be 0x10.
+
+Optional properties:
+- status: set to "ok" or "okay" for normal operation.  Set to anything else
+	  to unload the driver without ever communicating with the device.
+  Note: The "anything else" above is typically "disabled".
+	Since the driver will unload without communicating with the device, the
+	device will be left in its POR state.
+	This device's POR comes up in an operational mode and will draw power.
+	If it is desired to unload the driver leaving the device in a low power
+	sleep state, then use the individual sensor disable mechanism below.
+- light_disable: Setting this property to <1> will disable the device and
+                 unload the driver.
+- vdd-supply: regulator supply for the chip
+  Note: This is required if the driver is to control the regulator.
+
+Example:
+	cm3217@10 {
+		compatible = "capella,cm3217";
+		reg = <0x10>;
+		vdd-supply = <&palmas_smps9>;
+	};
+

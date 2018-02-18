@@ -122,6 +122,13 @@ config COMMON_CLK_KEYSTONE
           Supports clock drivers for Keystone based SOCs. These SOCs have local
 	  a power sleep control module that gate the clock to the IPs and PLLs.
 
+config CLK_MAX77620
+	tristate "Clock driver for Max77620 PMIC"
+	depends on MFD_MAX77620
+	---help---
+          Supports the clocking subsystem of the MAX77620
+	  PMIC from Maxim. Say Y here to enable support for the same.
+
 config COMMON_CLK_PALMAS
 	tristate "Clock driver for TI Palmas devices"
 	depends on MFD_PALMAS
@@ -133,6 +140,31 @@ config COMMON_CLK_PXA
 	def_bool COMMON_CLK && ARCH_PXA
 	---help---
 	  Sypport for the Marvell PXA SoC.
+
+config CLK_AS3722
+	tristate "ams AS3722 clock32K driver"
+	depends on MFD_AS3722
+	help
+	  Supports the clocking subsystem of the ams AS3722 PMIC from ams.
+	  This device supports one 32KHz clock.
+
+config COMMON_CLK_FREQ_STATS_ACCOUNTING
+	bool "Enable clock frequency stats accounting"
+	depends on COMMON_CLK
+	depends on DEBUG_FS
+	---help---
+	 Allows accounting of the time spent by various clocks in each
+	 of its operating frequency. The stats get reported as a part
+	 of clk_summary. Would be be useful in finding out which
+	 components are running at what power states to debug
+	 battery consumption issues.
+
+config COMMON_CLK_BEGIN_ACCOUNTING_FROM_BOOT
+	bool "Start clock frequency stats accounting from boot"
+	depends on COMMON_CLK_FREQ_STATS_ACCOUNTING
+	---help---
+	 Enabling this option starts the frequency accounting right from
+	 the boot.
 
 source "drivers/clk/qcom/Kconfig"
 

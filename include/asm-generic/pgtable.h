@@ -263,6 +263,8 @@ static inline pgprot_t pgprot_modify(pgprot_t oldprot, pgprot_t newprot)
 		newprot = pgprot_writecombine(newprot);
 	if (pgprot_val(oldprot) == pgprot_val(pgprot_device(oldprot)))
 		newprot = pgprot_device(newprot);
+	if (pgprot_val(oldprot) == pgprot_val(pgprot_device_writecombine(oldprot)))
+		newprot = pgprot_device_writecombine(newprot);
 	return newprot;
 }
 #endif

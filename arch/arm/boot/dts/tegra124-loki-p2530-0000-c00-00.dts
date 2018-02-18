@@ -1,0 +1,17 @@
+#include "tegra124-loki.dts"
+#include "tegra124-platforms/tegra124-loki-powermon-p2530-a01.dtsi"
+#include "tegra124-platforms/tegra124-loki-gpio-p2530-c00.dtsi"
+#include "tegra124-platforms/tegra124-loki-pinmux-p2530-c00.dtsi"
+#include "tegra124-platforms/tegra124-loki-gpuovr-p2530-c00.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	i2c@7000c400 {
+		ina3221x@40 {
+			channel@0 {
+				ti,shunt-resistor-mohm = <5>;
+			};
+		};
+	};
+};

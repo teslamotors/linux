@@ -1,0 +1,227 @@
+/*
+ * Power monitor devices for the PM374-A00
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	i2c@7000c400 {
+		ina219@40{
+			compatible = "ti,ina219x";
+			reg = <0x40>;
+			ti,rail-name = "PMU_MUX";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <1>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <12500>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@41{
+			compatible = "ti,ina219x";
+			reg = <0x41>;
+			ti,rail-name = "3.3V_PEX_PLL_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <500>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <25>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@42{
+			compatible = "ti,ina219x";
+			reg = <0x42>;
+			ti,rail-name = "3.3V_VDD_USB_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <500>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <25>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@43{
+			compatible = "ti,ina219x";
+			reg = <0x43>;
+			ti,rail-name = "1.05V_AVDD_LVDS_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <500>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <25>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@44{
+			compatible = "ti,ina219x";
+			reg = <0x44>;
+			ti,rail-name = "1.8V_VDDIO_SYS_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <500>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <25>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@45{
+			compatible = "ti,ina219x";
+			reg = <0x45>;
+			ti,rail-name = "VDD_CORE";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <3>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <4166>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@46{
+			compatible = "ti,ina219x";
+			reg = <0x46>;
+			ti,rail-name = "VDD_CPU";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <5>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <25000>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@47{
+			compatible = "ti,ina219x";
+			reg = <0x47>;
+			ti,rail-name = "3.3V_AVDD_HDMI_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <100>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <125>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@48{
+			compatible = "ti,ina219x";
+			reg = <0x48>;
+			ti,rail-name = "1.35_VDDIO_DDR_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <1>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <12500>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@49{
+			compatible = "ti,ina219x";
+			reg = <0x49>;
+			ti,rail-name = "1.35_VDDIO_DDR";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <1>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <12500>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4A{
+			compatible = "ti,ina219x";
+			reg = <0x4A>;
+			ti,rail-name = "VDDIO_BB_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <1000>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <12>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4B{
+			compatible = "ti,ina219x";
+			reg = <0x4B>;
+			ti,rail-name = "3.3V_HVDD_SATA_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <1000>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <12>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4C{
+			compatible = "ti,ina219x";
+			reg = <0x4C>;
+			ti,rail-name = "VDD_GPU";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <1>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <12500>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4D{
+			compatible = "ti,ina219x";
+			reg = <0x4D>;
+			ti,rail-name = "1.8V_COM";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <100>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <125>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4E{
+			compatible = "ti,ina219x";
+			reg = <0x4E>;
+			ti,rail-name = "1.05V_AVDDIO_PEX_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <100>;
+			ti,calibration-data = <0x7042>;
+			ti,power-lsb = <285>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4F{
+			compatible = "ti,ina219x";
+			reg = <0x4F>;
+			ti,rail-name = "3.3V_GPS";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,shunt-resistor-mohm = <500>;
+			ti,calibration-data = <0xBEA4>;
+			ti,power-lsb = <33>;
+			ti,divisor = <20>;
+			ti,precision-multiplier = <1000>;
+		};
+	};
+};

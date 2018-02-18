@@ -1,0 +1,49 @@
+* LTR 558/659 ALS/proximity sensor
+
+nvs_ drivers use the NVidia Sensor (NVS) framework.
+See the nvs.txt documentation for NVS DT capabilities.
+The nvs_ltr659 ALS/proximity sensor driver supports the LTR558 and LTR659
+devices.
+
+Required properties:
+- compatible: Device or generic name.
+	      Supported device names:
+	      - liteon,ltrX5X
+	      - liteon,ltr558als
+	      - liteon,ltr659ps
+  Note: If the part is known and is populated, then it can be specified:
+	Example: compatible = "liteon,ltr659ps";
+	When specifying a device this way, the driver will assume this specific
+	device is populated during system boot and will not verify its
+	existence.  If, however, the device is unknown or may not be populated,
+	then the label, ltrX5X, (Example: compatible = "liteon,ltrX5X";),
+	must be used.  This tells the driver to find which device is used.  If
+	the device is not found, the driver will unload itself.  This requires
+	regulators to be setup correctly for the probe function.
+- reg: i2c address of the device. It is 0x23.
+
+Optional properties:
+- status: set to "ok" or "okay" for normal operation.  Set to anything else
+	  to unload the driver without ever communicating with the device.
+  Note: The "anything else" above is typically "disabled".
+	Since the driver will unload without communicating with the device, the
+	device will be left in its POR state.
+- light_disable: Setting this property to <1> will disable the light sensor.
+- proximity_disable: Setting this property to <1> will disable the proximity
+                     sensor.
+  Note: If the device supports both light and proximity, then to disable the
+        entire device so that the driver unloads, all sensors must be disabled:
+	light_disable = <1>;
+	proximity_disable = <1>;
+- vdd-supply: regulator supply for chip
+- vled-supply: regulator supply for led anode.
+  Note: These are required if the driver is to control the regulators.
+
+Example:
+
+	ltr659@23 {
+		compatible = "liteon,ltrX5X";
+		reg = <0x23>;
+		vdd-supply = <&palmas_smps9>;
+		vled-supply = <&palmas_smps8>;
+	};

@@ -71,6 +71,14 @@ config POWER_RESET_HISI
 	help
 	  Reboot support for Hisilicon boards.
 
+config POWER_OFF_MAX77620
+	bool "MAX77620 power-off-reset driver"
+	depends on MFD_MAX77620
+	select SYSTEM_PMIC
+	help
+	  This driver supports turning off and resetting board through MAX77620
+	  PMIC.
+
 config POWER_RESET_MSM
 	bool "Qualcomm MSM power-off driver"
 	depends on ARCH_QCOM
@@ -83,6 +91,14 @@ config POWER_RESET_LTC2952
 	help
 	  This driver supports an external powerdown trigger and board power
 	  down via the LTC2952. Bindings are made in the device tree.
+
+config POWER_OFF_PALMAS
+	bool "Palmas power-off-reset driver"
+	depends on MFD_PALMAS
+	select SYSTEM_PMIC
+	help
+	  This driver supports turning off and resetting board through Palmas
+	  PMIC.
 
 config POWER_RESET_QNAP
 	bool "QNAP power-off driver"
@@ -149,6 +165,9 @@ config POWER_RESET_SYSCON
 	select MFD_SYSCON
 	help
 	  Reboot support for generic SYSCON mapped register reset.
+
+config SYSTEM_PMIC
+	bool "System PMIC reset ot power off"
 
 endif
 

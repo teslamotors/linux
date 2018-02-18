@@ -4,6 +4,7 @@
 
 obj-$(CONFIG_BT_HCIVHCI)	+= hci_vhci.o
 obj-$(CONFIG_BT_HCIUART)	+= hci_uart.o
+obj-$(CONFIG_BT_BLUESLEEP)	+= bluesleep.o
 obj-$(CONFIG_BT_HCIBCM203X)	+= bcm203x.o
 obj-$(CONFIG_BT_HCIBPA10X)	+= bpa10x.o
 obj-$(CONFIG_BT_HCIBFUSB)	+= bfusb.o
@@ -31,4 +32,5 @@ hci_uart-$(CONFIG_BT_HCIUART_ATH3K)	+= hci_ath.o
 hci_uart-$(CONFIG_BT_HCIUART_3WIRE)	+= hci_h5.o
 hci_uart-objs				:= $(hci_uart-y)
 
-ccflags-y += -D__CHECK_ENDIAN__
+obj-$(CONFIG_SD8897) += sd8897/
+obj-$(CONFIG_SD8797) += sd8797/

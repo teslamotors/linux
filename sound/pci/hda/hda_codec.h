@@ -248,6 +248,8 @@ struct hda_pcm_stream {
 	unsigned int maxbps;	/* supported max. bit per sample */
 	const struct snd_pcm_chmap_elem *chmap; /* chmap to override */
 	struct hda_pcm_ops ops;
+
+	int pcm_open_retry_count;
 };
 
 /* PCM types */
@@ -387,6 +389,9 @@ struct hda_codec {
 	/* codec-specific additional proc output */
 	void (*proc_widget_hook)(struct snd_info_buffer *buffer,
 				 struct hda_codec *codec, hda_nid_t nid);
+
+	unsigned int recv_dec_cap;
+	unsigned int max_pcm_channels;
 
 	/* jack detection */
 	struct snd_array jacktbl;

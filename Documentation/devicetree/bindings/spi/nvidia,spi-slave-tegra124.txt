@@ -1,0 +1,40 @@
+NVIDIA Tegra124 SPI Slave controller.
+
+Required properties:
+- compatible : should be "nvidia,tegra124-spi-slave".
+- reg: Should contain SPI registers location and length.
+- interrupts: Should contain SPI interrupts.
+- nvidia,dma-request-selector : The Tegra DMA controller's phandle and
+  request selector for this SPI controller.
+- nvidia,clk-pin: Name of the tegra pin selected for controller clock input.
+	It is require to disable external clock while programing/resetting
+	the controller.
+
+Recommended properties:
+- spi-max-frequency: Maximum SPI clocking speed of device in Hz. For slave,
+	It must be at least 1.5 times bus rate.
+
+Optional properties:
+- nvidia,clock-always-on: Enable clock of spi always.
+- nvidia,maximum-dma-buffer-size: Maximum dma buffer size per transfer.
+	If this is not available then 16K will be default. The value should
+	be unit of byte.
+- nvidia,slave-ready-gpio: OUT GPIO from slave to report slave status. This
+	GPIO, when asserted, implies slave controller is ready for transaction.
+	When this GPIO is de-asserted, the master cannot initiate transaction
+	with this slave.
+
+Example:
+spi@7000d600 {
+	compatible = "nvidia,tegra124-spi-slave";
+	reg = <0x7000d600 0x200>;
+	interrupts = <0 82 0x04>;
+	nvidia,dma-request-selector = <&apbdma 16>;
+	spi-max-frequency = <25000000>;
+	nvidia,clock-always-on;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "disabled";
+	nvidia,slave-ready-gpio = <&gpio TEGRA_GPIO(I, 3) GPIO_ACTIVE_LOW>; /*PI3*/
+	nvidia,clk-pin = "gpio_x5_aud_px5";
+};

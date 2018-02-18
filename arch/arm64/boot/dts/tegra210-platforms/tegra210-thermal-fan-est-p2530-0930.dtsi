@@ -1,0 +1,45 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	thermal_fan_est_shared_data: tfesd {
+		secret = <37>;
+		toffset = <0>;
+		polling_period = <1100>;
+		ndevs = <2>;
+		cdev_type = "pwm-fan";
+		tzp_governor_name = "pid_thermal_gov";
+
+		dev1 {
+			dev_data = "CPU-therm";
+			coeffs = <50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+		};
+
+		dev2 {
+			dev_data = "GPU-therm";
+			coeffs = <50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+		};
+	};
+
+	thermal-fan-est {
+		name = "thermal-fan-est";
+		compatible = "thermal-fan-est";
+		num_resources = <0>;
+		shared_data = <&thermal_fan_est_shared_data>;
+		trip_length = <10>;
+		active_trip_temps = <0 51000 61000 71000 82000
+				140000 150000 160000 170000 180000>;
+		active_hysteresis = <0 15000 9000 9000 10000
+				0 0 0 0 0>;
+	};
+};

@@ -35,6 +35,7 @@
  * @dvfs_step_20mV: Step for DVFS is 20mV or 10mV.
  * @max_voltage_uV: Maximum possible voltage in PWM-DVFS mode.
  * @base_voltage_uV: Base voltage when PWM-DVFS enabled.
+ * @ena_gpio: Enable gpio for the rail.
  */
 struct tps51632_regulator_platform_data {
 	struct regulator_init_data *reg_init_data;
@@ -42,6 +43,7 @@ struct tps51632_regulator_platform_data {
 	bool dvfs_step_20mV;
 	int max_voltage_uV;
 	int base_voltage_uV;
+	int ena_gpio;
 };
 
 #endif /* __LINUX_REGULATOR_TPS51632_H */

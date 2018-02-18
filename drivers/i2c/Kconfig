@@ -70,6 +70,16 @@ config I2C_MUX
 
 source drivers/i2c/muxes/Kconfig
 
+config I2C_SLAVE
+	bool "I2C slave driver support"
+	default n
+	help
+	  Say Y here if you want the I2C slave functionality in the driver.
+	  The external system will be master and the system on which this
+	  driver is running act as i2c slave.
+	  This drivers supports read/write data from master devices through
+	  I2C.
+
 config I2C_HELPER_AUTO
 	bool "Autoselect pertinent helper modules"
 	default y

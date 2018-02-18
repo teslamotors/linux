@@ -101,6 +101,15 @@ static DEFINE_SPINLOCK(free_entries_lock);
 
 /* Global disable flag - will be set in case of an error */
 static u32 global_disable __read_mostly;
+/*
+ * The global_disable flag can be set in kernel command line, and
+ * dma_debug_init() is called much later than that. Mappings can happen before
+ * the init function is called, and thus no memory has been reserved for the
+ * entries. This out-of-memory situation flips enables the global_disable flag,
+ * which cannot then be enabled again. Use another flag for skipping the
+ * tracking if init hasn't been done yet.
+ */
+static bool initialized __read_mostly;
 
 /* Global error count */
 static u32 error_count;
@@ -147,6 +156,24 @@ static const char *type2name[4] = { "single", "page",
 
 static const char *dir2name[4] = { "DMA_BIDIRECTIONAL", "DMA_TO_DEVICE",
 				   "DMA_FROM_DEVICE", "DMA_NONE" };
+
+/* dma statistics per device */
+struct dma_dev_info {
+	struct list_head list;
+	struct device *dev;
+	spinlock_t lock;	/* Protects dma_dev_info itself */
+
+	int current_allocs;
+	int total_allocs;
+	int max_allocs;
+
+	int current_alloc_size;
+	int total_alloc_size;
+	int max_alloc_size;
+};
+
+static LIST_HEAD(dev_info_list);
+static DEFINE_SPINLOCK(dev_info_lock); /* Protects dev_info_list */
 
 /*
  * The access to some variables in this macro is racy. We can't use atomic_t
@@ -594,6 +621,79 @@ void debug_dma_assert_idle(struct page *page)
 }
 
 /*
+ * device info snapshot updating functions
+ */
+static void ____dev_info_incr(struct dma_dev_info *info,
+			      struct dma_debug_entry *entry)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&info->lock, flags);
+
+	info->current_allocs++;
+	info->total_allocs++;
+	if (info->current_allocs > info->max_allocs)
+		info->max_allocs = info->current_allocs;
+
+	info->current_alloc_size += entry->size;
+	info->total_alloc_size += entry->size;
+	if (info->current_alloc_size > info->max_alloc_size)
+		info->max_alloc_size = info->current_alloc_size;
+
+	spin_unlock_irqrestore(&info->lock, flags);
+}
+
+static void ____dev_info_decr(struct dma_dev_info *info,
+			      struct dma_debug_entry *entry)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&info->lock, flags);
+
+	info->current_allocs--;
+	info->current_alloc_size -= entry->size;
+
+	spin_unlock_irqrestore(&info->lock, flags);
+}
+
+static void __dev_info_fn(struct dma_debug_entry *entry,
+	 void (*fn)(struct dma_dev_info *, struct dma_debug_entry *))
+{
+	struct dma_dev_info *info;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev_info_lock, flags);
+
+	list_for_each_entry(info, &dev_info_list, list)
+		if (info->dev == entry->dev)
+			goto found;
+
+	info = kzalloc(sizeof(*info), GFP_KERNEL);
+	if (!info) {
+		dev_err(entry->dev, "Out of memory at %s\n", __func__);
+		spin_unlock_irqrestore(&dev_info_lock, flags);
+		return;
+	}
+
+	spin_lock_init(&info->lock);
+	info->dev = entry->dev;
+	list_add(&info->list, &dev_info_list);
+found:
+	spin_unlock_irqrestore(&dev_info_lock, flags);
+	fn(info, entry);
+}
+
+static inline void dev_info_alloc(struct dma_debug_entry *entry)
+{
+	__dev_info_fn(entry, ____dev_info_incr);
+}
+
+static inline void dev_info_free(struct dma_debug_entry *entry)
+{
+	__dev_info_fn(entry, ____dev_info_decr);
+}
+
+/*
  * Wrapper function for adding an entry to the hash.
  * This function takes care of locking itself.
  */
@@ -606,6 +706,8 @@ static void add_dma_entry(struct dma_debug_entry *entry)
 	bucket = get_hash_bucket(entry, &flags);
 	hash_bucket_add(bucket, entry);
 	put_hash_bucket(bucket, &flags);
+
+	dev_info_alloc(entry);
 
 	rc = active_cacheline_insert(entry);
 	if (rc == -ENOMEM) {
@@ -853,6 +955,125 @@ out_unlock:
 	return count;
 }
 
+static inline void seq_print_ip_sym(struct seq_file *s, unsigned long ip)
+{
+	seq_printf(s, "[<%p>] %pS\n", (void *)ip, (void *)ip);
+}
+
+void seq_print_trace(struct seq_file *s, struct stack_trace *trace)
+{
+	int i;
+
+	if (WARN_ON(!trace->entries))
+		return;
+
+	for (i = trace->skip; i < trace->nr_entries; i++)
+		seq_print_ip_sym(s, trace->entries[i]);
+}
+
+/*
+ * Print all map entries just in the order they are stored. We assume that the
+ * user will be able to parse this later anyway. Detailed output includes stack
+ * traces of allocations.
+ */
+void seq_print_dma_mappings(struct seq_file *s, int detail)
+{
+	int idx;
+
+	for (idx = 0; idx < HASH_SIZE; idx++) {
+		struct hash_bucket *bucket = &dma_entry_hash[idx];
+		struct dma_debug_entry *entry;
+		unsigned long flags;
+
+		spin_lock_irqsave(&bucket->lock, flags);
+
+		list_for_each_entry(entry, &bucket->list, list) {
+			seq_printf(s,
+				   "    %s %s idx %d P=%Lx D=%llx L=%llx %s A=%s\n",
+				   dev_name(entry->dev),
+				   type2name[entry->type], idx,
+				   phys_addr(entry),
+				   entry->dev_addr, entry->size,
+				   dir2name[entry->direction],
+				   debug_dma_platformdata(entry->dev));
+
+			if (detail)
+				seq_print_trace(s, &entry->stacktrace);
+		}
+
+		spin_unlock_irqrestore(&bucket->lock, flags);
+	}
+}
+
+void __weak dma_debugfs_platform_info(struct dentry *dent)
+{
+}
+
+static int _dump_allocs(struct seq_file *s, void *data)
+{
+	int detail = (int)s->private;
+
+	seq_print_dma_mappings(s, detail);
+	return 0;
+}
+
+static int _dump_dev_info(struct seq_file *s, void *data)
+{
+	struct dma_dev_info *i;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev_info_lock, flags);
+
+	list_for_each_entry(i, &dev_info_list, list)
+		seq_printf(s,
+			   "dev=%s curallocs=%d totallocs=%d maxallocs=%d cursize=%d totsize=%d maxsize=%d\n",
+			   dev_name(i->dev), i->current_allocs, i->total_allocs,
+			   i->max_allocs, i->current_alloc_size,
+			   i->total_alloc_size, i->max_alloc_size);
+
+	spin_unlock_irqrestore(&dev_info_lock, flags);
+	return 0;
+}
+
+#define DEFINE_DEBUGFS(__name, __func, __data)                          \
+static int __name ## _open(struct inode *inode, struct file *file)      \
+{                                                                       \
+	return single_open(file, __func, __data);                       \
+}                                                                       \
+static const struct file_operations __name ## _fops = {                 \
+	.open           = __name ## _open,                              \
+	.read           = seq_read,                                     \
+	.llseek         = seq_lseek,                                    \
+	.release        = single_release,                               \
+}
+
+DEFINE_DEBUGFS(_dump_allocs, _dump_allocs, NULL);
+DEFINE_DEBUGFS(_dump_allocs_detail, _dump_allocs, (void *)1);
+DEFINE_DEBUGFS(_dump_dev_info, _dump_dev_info, NULL);
+#undef DEFINE_DEBUGFS
+
+static int map_dump_debug_fs_init(void)
+{
+#define CREATE_FILE(name) \
+	debugfs_create_file(#name, S_IRUGO, \
+				dma_debug_dent, NULL, \
+				&_##name##_fops)
+
+	if (!CREATE_FILE(dump_allocs))
+		return -ENOMEM;
+
+	if (!CREATE_FILE(dump_allocs_detail))
+		return -ENOMEM;
+
+	if (!CREATE_FILE(dump_dev_info))
+		return -ENOMEM;
+
+#undef CREATE_FILE
+
+	dma_debugfs_platform_info(dma_debug_dent);
+	return 0;
+}
+
 static const struct file_operations filter_fops = {
 	.read  = filter_read,
 	.write = filter_write,
@@ -907,6 +1128,9 @@ static int dma_debug_fs_init(void)
 	if (!filter_dent)
 		goto out_err;
 
+	if (map_dump_debug_fs_init())
+		goto out_err;
+
 	return 0;
 
 out_err:
@@ -945,7 +1169,7 @@ static int dma_debug_device_change(struct notifier_block *nb, unsigned long acti
 	struct dma_debug_entry *uninitialized_var(entry);
 	int count;
 
-	if (global_disable)
+	if (!initialized || global_disable)
 		return 0;
 
 	switch (action) {
@@ -973,7 +1197,7 @@ void dma_debug_add_bus(struct bus_type *bus)
 {
 	struct notifier_block *nb;
 
-	if (global_disable)
+	if (!initialized || global_disable)
 		return;
 
 	nb = kzalloc(sizeof(struct notifier_block), GFP_KERNEL);
@@ -1022,6 +1246,7 @@ void dma_debug_init(u32 num_entries)
 	nr_total_entries = num_free_entries;
 
 	pr_info("DMA-API: debugging enabled by kernel config\n");
+	initialized = true;
 }
 
 static __init int dma_debug_cmdline(char *str)
@@ -1140,6 +1365,8 @@ static void check_unmap(struct dma_debug_entry *ref)
 			   type2name[entry->type]);
 	}
 
+	dev_info_free(entry);
+
 	hash_bucket_del(entry);
 	dma_entry_free(entry);
 
@@ -1243,7 +1470,7 @@ void debug_dma_map_page(struct device *dev, struct page *page, size_t offset,
 {
 	struct dma_debug_entry *entry;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	if (dma_mapping_error(dev, dma_addr))
@@ -1283,7 +1510,7 @@ void debug_dma_mapping_error(struct device *dev, dma_addr_t dma_addr)
 	struct hash_bucket *bucket;
 	unsigned long flags;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	ref.dev = dev;
@@ -1325,7 +1552,7 @@ void debug_dma_unmap_page(struct device *dev, dma_addr_t addr,
 		.direction      = direction,
 	};
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	if (map_single)
@@ -1342,7 +1569,7 @@ void debug_dma_map_sg(struct device *dev, struct scatterlist *sg,
 	struct scatterlist *s;
 	int i;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	for_each_sg(sg, s, mapped_ents, i) {
@@ -1395,7 +1622,7 @@ void debug_dma_unmap_sg(struct device *dev, struct scatterlist *sglist,
 	struct scatterlist *s;
 	int mapped_ents = 0, i;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	for_each_sg(sglist, s, nelems, i) {
@@ -1427,7 +1654,7 @@ void debug_dma_alloc_coherent(struct device *dev, size_t size,
 {
 	struct dma_debug_entry *entry;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	if (unlikely(virt == NULL))
@@ -1462,7 +1689,7 @@ void debug_dma_free_coherent(struct device *dev, size_t size,
 		.direction      = DMA_BIDIRECTIONAL,
 	};
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	check_unmap(&ref);
@@ -1474,7 +1701,7 @@ void debug_dma_sync_single_for_cpu(struct device *dev, dma_addr_t dma_handle,
 {
 	struct dma_debug_entry ref;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	ref.type         = dma_debug_single;
@@ -1494,7 +1721,7 @@ void debug_dma_sync_single_for_device(struct device *dev,
 {
 	struct dma_debug_entry ref;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	ref.type         = dma_debug_single;
@@ -1515,7 +1742,7 @@ void debug_dma_sync_single_range_for_cpu(struct device *dev,
 {
 	struct dma_debug_entry ref;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	ref.type         = dma_debug_single;
@@ -1536,7 +1763,7 @@ void debug_dma_sync_single_range_for_device(struct device *dev,
 {
 	struct dma_debug_entry ref;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	ref.type         = dma_debug_single;
@@ -1556,7 +1783,7 @@ void debug_dma_sync_sg_for_cpu(struct device *dev, struct scatterlist *sg,
 	struct scatterlist *s;
 	int mapped_ents = 0, i;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	for_each_sg(sg, s, nelems, i) {
@@ -1589,7 +1816,7 @@ void debug_dma_sync_sg_for_device(struct device *dev, struct scatterlist *sg,
 	struct scatterlist *s;
 	int mapped_ents = 0, i;
 
-	if (unlikely(global_disable))
+	if (unlikely(!initialized || global_disable))
 		return;
 
 	for_each_sg(sg, s, nelems, i) {

@@ -1,0 +1,43 @@
+/* Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "tegra124-loki-pmic-e2545-0000-common.dtsi"
+
+/ {
+	i2c@7000c000 {
+		mpu6050@68 {
+			compatible = "invensense,mpu6xxx";
+			reg = <0x68>;
+			interrupt-parent = <&gpio>;
+			interrupts = <138 0x01>;
+			invensense,orientation = [ff 00 00 00 01 00 00 00 ff];
+			accelerometer_matrix = [ff 00 00 00 01 00 00 00 ff];
+			gyroscope_matrix = [ff 00 00 00 01 00 00 00 ff];
+			vdd-supply = <&palmas_ldo6>;
+			vlogic-supply = <&palmas_smps8>;
+		};
+
+		ak8975@0c {
+			compatible = "ak,ak8975";
+			reg = <0x0c>;
+			orientation = [01 00 00 00 ff 00 00 00 ff];
+			magnetic_field_matrix = [01 00 00 00 ff 00 00 00 ff];
+			vdd-supply = <&palmas_ldo6>;
+			vid-supply = <&palmas_smps8>;
+		};
+	};
+};

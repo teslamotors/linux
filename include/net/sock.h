@@ -36,6 +36,8 @@
  *		modify it under the terms of the GNU General Public License
  *		as published by the Free Software Foundation; either version
  *		2 of the License, or (at your option) any later version.
+ *
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  */
 #ifndef _SOCK_H
 #define _SOCK_H
@@ -1060,6 +1062,7 @@ struct proto {
 	void			(*destroy_cgroup)(struct mem_cgroup *memcg);
 	struct cg_proto		*(*proto_cgroup)(struct mem_cgroup *memcg);
 #endif
+	int			(*diag_destroy)(struct sock *sk, int err);
 };
 
 /*
@@ -1642,6 +1645,8 @@ int compat_sock_common_setsockopt(struct socket *sock, int level,
 		int optname, char __user *optval, unsigned int optlen);
 
 void sk_common_release(struct sock *sk);
+
+extern char *sk_get_waiting_task_cmdline(struct sock *sk, char *cmdline);
 
 /*
  *	Default socket callbacks and setup code

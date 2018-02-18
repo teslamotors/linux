@@ -187,6 +187,28 @@ config INPUT_MC13783_PWRBUTTON
 	  To compile this driver as a module, choose M here: the module
 	  will be called mc13783-pwrbutton.
 
+config INPUT_MAX77665_HAPTIC
+	tristate "MAXIM MAX77665 haptic controller support"
+	depends on HAVE_PWM && MFD_MAX77665
+	select INPUT_FF_MEMLESS
+	help
+	  This option enables device driver support for the haptic controller
+	  on MAXIM MAX77665 chip. This driver supports ff-memless interface
+	  from input framework.
+
+config INPUT_MAX77660_HAPTIC
+	tristate "MAXIM MAX77660 haptic controller support"
+	depends on HAVE_PWM && MFD_MAX77660
+	select INPUT_FF_MEMLESS
+	help
+	  Say Y here if you want to support MAXIM MAX77660 Haptic controller
+	  integrated in MAX77660 PMIC.
+
+	  This driver supports ff-memless interface from input framework.
+
+	  To compile this driver as module, choose M here: the
+	  module will be called max77660-vibrator.
+
 config INPUT_MMA8450
 	tristate "MMA8450 - Freescale's 3-Axis, 8/12-bit Digital Accelerometer"
 	depends on I2C
@@ -318,6 +340,17 @@ config INPUT_ATI_REMOTE2
 
 	  To compile this driver as a module, choose M here: the module will be
 	  called ati_remote2.
+
+config INPUT_KEYCHORD
+	tristate "Key chord input driver support"
+	help
+	  Say Y here if you want to enable the key chord driver
+	  accessible at /dev/keychord.  This driver can be used
+	  for receiving notifications when client specified key
+	  combinations are pressed.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called keychord.
 
 config INPUT_KEYSPAN_REMOTE
 	tristate "Keyspan DMR USB remote control"
@@ -453,6 +486,11 @@ config INPUT_SGI_BTNS
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called sgi_btns.
+
+config INPUT_GPIO
+	tristate "GPIO driver support"
+	help
+	  Say Y here if you want to support gpio based keys, wheels etc...
 
 config HP_SDC_RTC
 	tristate "HP SDC Real Time Clock"
@@ -718,5 +756,33 @@ config INPUT_DRV2667_HAPTICS
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called drv260x-haptics.
+
+config INPUT_ALPS_GPIO_SCROLLWHEEL
+	tristate "Alps GPIO Scrollwheel"
+	depends on GENERIC_GPIO
+	help
+	  This driver implements support for Alps SRBE
+          ScrollWheel connected to GPIO pins of various
+          CPUs (and some other chips).
+
+	  Say Y here if your device has ScrollWheel connected
+	  directly to such GPIO pins.  Your board-specific
+	  setup logic must also provide a platform device,
+	  with configuration data saying which GPIOs are used.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called alps_gpio_scrollwheel.
+
+config INPUT_DRV2603_VIBRATOR
+	tristate "DRV2603 Vibrator"
+	select HAVE_PWM
+	help
+	  DRV2603 is vibrator haptic driver with auto-resonance detection
+	  for LRA & ERM haptic elements.
+	  Say Y here to enable the DRV2603 vibrator haptic driver.
+
+source	"drivers/input/misc/compass/Kconfig"
+source	"drivers/input/misc/mpu/Kconfig"
+source	"drivers/input/misc/pressure/Kconfig"
 
 endif

@@ -1,0 +1,8 @@
+# SE Elliptic Engine Driver
+config CRYPTO_DEV_TEGRA_ELLIPTIC_SE
+	tristate "Tegra SE for Elliptic crypto algorithms"
+	depends on ARCH_TEGRA_18x_SOC && CRYPTO_DEV_TEGRA_SE
+	help
+	   This option allows you to have support of Security Engine for Elliptic
+	   Crypto Algorithms
+

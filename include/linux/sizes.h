@@ -43,5 +43,12 @@
 
 #define SZ_1G				0x40000000
 #define SZ_2G				0x80000000
+#define SZ_4G				0x100000000
+#define SZ_8G				0x200000000
+#define SZ_16G				0x400000000
+#define SZ_32G				0x800000000
+#define SZ_64G				0x1000000000
+#define SZ_128G				0x2000000000
+#define SZ_256G				0x4000000000
 
 #endif /* __LINUX_SIZES_H__ */

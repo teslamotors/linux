@@ -207,6 +207,7 @@ struct rtc_device *rtc_device_register(const char *name, struct device *dev,
 	rtc->dev.parent = dev;
 	rtc->dev.class = rtc_class;
 	rtc->dev.release = rtc_device_release;
+	rtc->system_shutting = false;
 
 	mutex_init(&rtc->ops_lock);
 	spin_lock_init(&rtc->irq_lock);
@@ -287,6 +288,18 @@ void rtc_device_unregister(struct rtc_device *rtc)
 	}
 }
 EXPORT_SYMBOL_GPL(rtc_device_unregister);
+
+/**
+ * rtc_device_shutdown - flush any pending irq workqueue
+ *
+ * @rtc: the RTC class device to cancel pending work
+ */
+void rtc_device_shutdown(struct rtc_device *rtc)
+{
+	cancel_work_sync(&rtc->irqwork);
+	rtc->system_shutting = true;
+}
+EXPORT_SYMBOL_GPL(rtc_device_shutdown);
 
 static void devm_rtc_device_release(struct device *dev, void *res)
 {

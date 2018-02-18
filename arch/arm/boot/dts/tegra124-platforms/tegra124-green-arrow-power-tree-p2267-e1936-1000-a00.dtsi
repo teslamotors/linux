@@ -1,0 +1,105 @@
+/*
+ * tegra124-green-arrow-power-tree-p2267-e1936-1000-a00.dtsi
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra124-green-arrow-p2267-pmic-e1936-1000-a00.dtsi"
+#include "tegra124-green-arrow-p2267-fixed-1936-1000-a00.dtsi"
+
+/ {
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&ldo5_reg>;
+			avdd_lcd-supply = <&ldo2_reg>;
+			dvdd_lcd-supply = <&vdd_lcd_1v8>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&avdd_hdmi>;
+			/* TODO: Fix the following 2 supplies */
+			avdd_hdmi_pll-supply = <&avdd_hdmi_pll>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+		vi {
+			avdd_dsi_csi-supply = <&ldo5_reg>;
+		};
+	};
+
+	sound {
+		dbvdd-supply = <&palmas_smps8>;
+		avdd-supply = <&palmas_smps8>;
+		dmicvdd-supply = <&palmas_smps8>;
+		spkvdd-supply = <&palmas_smps10_out2>;
+	};
+
+	i2c@7000c000 {
+		icm20628@69 {
+			vdd-supply = <&palmas_smps8>;
+			vlogic-supply = <&palmas_smps8>;
+		};
+
+		ak8963c@0d {
+			vdd-supply = <&palmas_smps8>;
+			vid-supply = <&palmas_smps9>;
+		};
+
+		cm3218@48 {
+			vdd-supply = <&palmas_smps9>;
+		};
+	};
+
+	bluedroid_pm {
+		avdd-supply = <&vdd_ac_bat_reg>;
+		dvdd-supply = <&palmas_smps8>;
+	};
+
+	power-detect {
+		pwrdet-nand-supply = <&palmas_smps8>;
+		pwrdet-sdmmc1-supply = <&palmas_smps8>;
+		pwrdet-sdmmc4-supply = <&palmas_smps8>;
+		pwrdet-audio-supply = <&palmas_smps8>;
+		pwrdet-uart-supply = <&palmas_smps8>;
+		pwrdet-bb-supply = <&palmas_smps8>;
+		pwrdet-mipi-supply = <&ldo5_reg>;
+		pwrdet-sdmmc3-supply = <&palmas_ldo9>;
+		pwrdet-hv-supply = <&ldoln_reg>;
+		pwrdet-pex-ctl-supply = <&ldousb_reg>;
+		pwrdet-cam-supply = <&en_vdd_cam_1v8>;
+	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	otg@7d000000 {
+		usb_bat_chg-supply = <&battery_charger>;
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+
+	ehci@0x7d000000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+
+	spi@7000d400 {
+		spi-touch@0 {
+			avdd-supply = <&ldo3_reg>;
+			dvdd-supply = <&palmas_smps8>;
+		};
+	};
+};

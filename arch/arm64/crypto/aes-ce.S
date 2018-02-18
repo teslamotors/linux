@@ -3,6 +3,7 @@
  *                                    Crypto Extensions
  *
  * Copyright (C) 2013 Linaro Ltd <ard.biesheuvel@linaro.org>
+ * Copyright (c) 2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,8 +14,6 @@
 
 #define AES_ENTRY(func)		ENTRY(ce_ ## func)
 #define AES_ENDPROC(func)	ENDPROC(ce_ ## func)
-
-	.arch		armv8-a+crypto
 
 	/* preload all round keys */
 	.macro		load_round_keys, rounds, rk

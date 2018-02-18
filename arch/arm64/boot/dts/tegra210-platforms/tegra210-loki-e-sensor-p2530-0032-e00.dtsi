@@ -1,0 +1,53 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	i2c@7000c000 {
+		icm20628@68 {
+			compatible = "invensense,mpu6xxx";
+			reg = <0x68>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(X, 2) 0x00>;
+			accelerometer_matrix = [ff 00 00 00 01 00 00 00 ff];
+			gyroscope_matrix = [ff 00 00 00 01 00 00 00 ff];
+			gyroscope_delay_us_max = <100000>;
+		};
+
+		ak8963c@0c {
+			compatible = "ak,ak89xx";
+			reg = <0x0c>;
+			magnetic_field_matrix = [01 00 00 00 ff 00 00 00 ff];
+		};
+
+		jsa1127@39 {
+			compatible = "solteamopto,jsa1127";
+			reg = <0x39>;
+			light_hwm_maxrange_ival = <212000>;
+			light_hwm_resolution_ival = <6>;
+			light_hwm_resolution_fval = <610000>;
+			light_hyb_maxrange_ival = <63>;
+			light_hyb_maxrange_fval = <0>;
+			light_hyb_resolution_ival = <6>;
+			light_hyb_resolution_fval = <850000>;
+			light_hyb_interval = <5000>;
+		};
+	};
+
+};

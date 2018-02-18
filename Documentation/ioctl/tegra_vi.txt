@@ -1,0 +1,27 @@
+NVHOST_VI_IOCTL_ENABLE_TPG          enable TPG
+usage:
+       uint enable;
+       ioctl(fd, NVHOST_VI_IOCTL_ENABLE_TPG, &enable);
+
+     inputs:
+
+     Enable/disable TPG
+
+     outputs:      none
+
+     error return:
+     EINVAL      Couldn't get clocks value
+
+NVHOST_VI_IOCTL_SET_EMC_INFO          set memory controller bandwith info
+usage:
+     uint vi_bw;
+     ioctl(fd, NVHOST_VI_IOCTL_SET_EMC_INFO , &vi_bw);
+
+     inputs:
+
+     Provide EMC bandwith info
+
+     outputs:      none
+
+     error return:
+     ENOMEM      Failed to set la for this bandwith

@@ -1,0 +1,14 @@
+NVIDIA tegra efuse driver interface.
+
+Required properties:
+-compatible: the driver is compatible with
+	"nvidia, tegra114-efuse"
+	"nvidia, tegra124-efuse"
+-reg: Should contain tegra-fuse registers location and length.
+
+Example:
+
+	efuse@7000f800 {
+		compatible = "nvidia,tegra114-efuse";
+		reg = <0x7000f800 0x400>;
+	};

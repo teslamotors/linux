@@ -54,3 +54,12 @@ config CAIF_VIRTIO
 if CAIF_VIRTIO
 source "drivers/vhost/Kconfig"
 endif
+
+config TEGRA_SPI_CAIF
+	tristate "TEGRA specific CAIF SPI transport driver for slave interface"
+	depends on CAIF_SPI_SLAVE && TEGRA_SPI_SLAVE
+	default n
+	---help---
+	The CAIF Link layer SPI Protocol driver for Tegra Slave SPI interface.
+	This driver implements a platform driver to accommodate for a
+	Tegra Slave SPI device.

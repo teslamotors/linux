@@ -4,7 +4,6 @@
 
 config ARM64_CPUIDLE
 	bool "Generic ARM64 CPU idle Driver"
-	select ARM64_CPU_SUSPEND
 	select DT_IDLE_STATES
 	help
 	  Select this to enable generic cpuidle driver for ARM64.
@@ -12,3 +11,34 @@ config ARM64_CPUIDLE
 	  at run-time through DT nodes. The CPUidle suspend backend is
 	  initialized by calling the CPU operations init idle hook
 	  provided by architecture code.
+
+config CPU_IDLE_DENVER
+	bool "CPU Idle Driver for NVIDIA Denver processors"
+	select DT_IDLE_STATES
+	depends on DENVER_CPU
+	default y
+	help
+	  Select this to enable cpuidle on NVIDIA Denver processors.
+
+config CPU_IDLE_TEGRA210
+	bool "CPU Idle Driver for NVIDIA Tegra210 SoC"
+	select DT_IDLE_STATES
+	depends on ARCH_TEGRA_21x_SOC
+	default y
+	help
+          Support for entering different power states on NVIDIA Tegra210
+          SoC when CPUs become idle.
+
+          Select this to enable cpuidle on NVIDIA Tegra210 SoC.
+
+config CPU_IDLE_TEGRA18X
+	bool "CPU Idle Driver for NVIDIA Tegra18x SoCs"
+	depends on ARCH_TEGRA_18x_SOC
+	default y
+	select CPU_IDLE_MULTIPLE_DRIVERS
+	select DT_IDLE_STATES
+	help
+	  Support for entering different power states on NVIDIA Tegra18x
+	  SoCs when CPUs become idle.
+
+	  Select this to enable cpuidle on NVIDIA Tegra18x SoCs.

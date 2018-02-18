@@ -1,0 +1,629 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-quill-p3310-1000-a00-00-base.dts"
+#include "tegra186-modules/tegra186-super-module-e2614-p2597-1000-a00.dtsi"
+
+#define CAM_RST_L				TEGRA_GPIO(R, 5)
+#define CAM_FLASH_EN			TEGRA_GPIO(X, 6)
+
+#define VI_I2C_BUS			2
+
+/* generally used camera control gpio definitions and aliases*/
+#define CAM_AF_EN				TEGRA_GPIO(R, 1)
+#define CAM_PWDN_FQ				TEGRA_GPIO(L, 6)
+#define CAM_STROBE_EN			TEGRA_GPIO(X, 5)
+
+/* alias */
+#define CAMFI_PWDN			CAM_STROBE_EN
+#define CAMRI_PWDN			CAM_STROBE_EN
+
+/* specifically used on camera board designs */
+/* NxOV10823 general */
+#define OV10823_SID_CAM0	CAMRI_PWDN	/*PX5*/
+#define OV10823_SID_CAM1	CAM_AF_EN	/*PR1*/
+#define OV10823_SID_CAM2	CAM_PWDN_FQ	/*PL6*/
+
+#define OV10823_DEFAULT_I2C_ADDR_SID_LOW	(0x10)
+#define OV10823_DEFAULT_I2C_ADDR_SID_HIGH	(0x36)
+#define OV10823_SENSOR_REG_RW_SID_LOW		(0x300c)
+#define OV10823_SENSOR_REG_RW_SID_HIGH		(0x3661)
+
+#define OV10823_I2C_ADDR_CAM0		(0x20)
+#define OV10823_I2C_ADDR_CAM1		(0x22)
+#define OV10823_I2C_ADDR_CAM2		(0x24)
+
+/* ov10823 board specific */
+#define OV10823_USE_OSC_FOR_MCLK	(1)
+#define OV10823_NEED_I2C_RECOVERY	(0)
+
+#define FIRST_CAM_POS				(0)
+#define SECOND_CAM_POS				(1)
+#define THIRD_CAM_POS				(2)
+
+/ {
+	model = "p4573-3310";
+	nvidia,dtsfilename = __FILE__;
+
+	dfsh {
+		compatible = "nvidia,tegra186-dfsh";
+		vdd-1v8-supply = <&spmic_sd2>;
+		dfsh,reset-gpio =
+			<&tegra_gpio TEGRA_GPIO(R, 5) GPIO_ACTIVE_LOW>;
+		dfsh,boot0-gpio =
+			<&tegra_gpio TEGRA_GPIO(X, 6) GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+
+	gpio@2200000 {
+		camera-control {
+			gpio-output-low = <
+				TEGRA_GPIO(Q, 5)
+				TEGRA_GPIO(X, 6)
+				TEGRA_GPIO(R, 5)
+				TEGRA_GPIO(X, 5)
+				TEGRA_GPIO(R, 1)
+				TEGRA_GPIO(L, 6)
+				>;
+		};
+	};
+
+	tegra-camera-platform {
+		/delete-node/ modules;
+	};
+
+	host1x {
+		vi@15700000 {
+			num-channels = <3>;
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					vi_in0: endpoint {
+						remote-endpoint = <&csi_out0>;
+					};
+				};
+				port@1 {
+					reg = <1>;
+					vi_in1: endpoint {
+						remote-endpoint = <&csi_out1>;
+					};
+				};
+				port@2 {
+					reg = <2>;
+					vi_in2: endpoint {
+						remote-endpoint = <&csi_out2>;
+					};
+				};
+
+				/delete-node/ port@3;
+			};
+		};
+
+		nvcsi@150c0000 {
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					csi_in0: endpoint@0 {
+					bus-width = <4>;
+					remote-endpoint = <&ov10823_out0>;
+					};
+				};
+				port@1 {
+					reg = <1>;
+					csi_out0: endpoint@1 {
+					remote-endpoint = <&vi_in0>;
+					};
+				};
+				port@2 {
+					reg = <2>;
+					csi_in1: endpoint@2 {
+					bus-width = <4>;
+					remote-endpoint = <&ov10823_out1>;
+					};
+				};
+				port@3 {
+					reg = <3>;
+					csi_out1: endpoint@3 {
+					remote-endpoint = <&vi_in1>;
+					};
+				};
+				port@4 {
+					reg = <4>;
+					csi_in2: endpoint@4 {
+					bus-width = <4>;
+					remote-endpoint = <&ov10823_out2>;
+					};
+				};
+				port@5 {
+					reg = <5>;
+					csi_out2: endpoint@5 {
+					remote-endpoint = <&vi_in2>;
+					};
+				};
+			};
+		};
+	};
+
+	backlight {
+		status = "disabled";
+	};
+
+	sdhci@3400000 {
+		/delete-property/ wp-gpios;
+	};
+
+	fixed-regulators {
+		vdd_fan: regulator@13 {
+			gpio = <&tegra_gpio TEGRA_GPIO(I, 5) 0>;
+			enable-active-high;
+		};
+	};
+
+	pwm-fan {
+		vdd-fan-supply = <&vdd_fan>;
+	};
+
+	i2c@c240000 {
+		/delete-node/ ov23850_c@36;
+		/delete-node/ lc898212@1_0072;
+	};
+
+	i2c@3160000 {
+		lp8557-backlight-s-wuxga-8-0@2c {
+			status = "disabled";
+		};
+		ina3221x@40 {
+			status = "disabled";
+		};
+		ina3221x@41 {
+			status = "disabled";
+		};
+		ina3221x@43 {
+			status = "disabled";
+		};
+	};
+
+	i2c@3180000 {
+		/delete-node/ ov23850_a@10;
+		/delete-node/ lc898212@2_0072;
+
+		ov10823_a@20 {
+			compatible = "nvidia,ov10823";
+			reg = <0x20>;
+
+			devnode = "video0";
+
+			/* Physical dimensions of sensor */
+			physical_w = "5.440";
+			physical_h = "3.072";
+
+			clocks = <&tegra_car TEGRA186_CLK_EXTPERIPH1>,
+					 <&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+			clock-names = "extperiph1", "pllp_grtba";
+			mclk = "extperiph1";
+
+			cam0-i2c-addr = <OV10823_I2C_ADDR_CAM0>;
+			cam1-i2c-addr = <OV10823_I2C_ADDR_CAM1>;
+			cam2-i2c-addr = <OV10823_I2C_ADDR_CAM2>;
+			cam0-sid-gpios = <&tegra_gpio OV10823_SID_CAM0 0>;
+			cam1-sid-gpios = <&tegra_gpio OV10823_SID_CAM1 0>;
+			cam2-sid-gpios = <&tegra_gpio OV10823_SID_CAM2 0>;
+			mcu-reset-gpios =
+			<&tegra_gpio TEGRA_GPIO(R, 5) GPIO_ACTIVE_HIGH>;
+			mcu-boot-gpios =
+			<&tegra_gpio TEGRA_GPIO(X, 6) GPIO_ACTIVE_HIGH>;
+
+			/**
+			 * Generic formula to calculate different parameters.
+			 * Please add the formula in proper parenthesis.
+			 * Formula must contain only these operators '*' '/' '+' '-' '(' ')'
+			 * Formula containing both numbers and variables is supported. Refer example #3.
+			 * There must be atleast one operator inside the parenthesis. Refer example #4.
+			 * Don't use spaces. Refer example #5.
+			 *
+			 * Examples -
+			 * correct example
+			 * 1. formula = "(powerx+powery)+(exposure*2)";
+			 * correct example
+			 * 2. formula = "((2*(6-1))/2)*4";
+			 * correct example
+			 * 3. formula = "((powerx*(6-1))/2)*4";
+			 * incorrect example - extra use of parenthesis
+			 * 4. formula = "((2*(6-1))*2)/(2)";
+			 * incorrect example - use of spaces
+			 * 5. formula = "((2*(6-1)) / 2)*4";
+			 *
+			 * A modeX node is required to support v4l2 driver
+			 * implementation with NVIDIA camera software stack
+			 *
+			 * mclk_khz = "";
+			 * Standard MIPI driving clock, typically 24MHz
+			 *
+			 * num_lanes = "";
+			 * Number of lane channels sensor is programmed to output
+			 *
+			 * tegra_sinterface = "";
+			 * The base tegra serial interface lanes are connected to
+			 *
+			 * discontinuous_clk = "";
+			 * The sensor is programmed to use a discontinuous clock on MIPI lanes
+			 *
+			 * dpcm_enable = "true";
+			 * The sensor is programmed to use a DPCM modes
+			 *
+			 * cil_settletime = "";
+			 * MIPI lane settle time value.
+			 * A "0" value attempts to autocalibrate based on mclk_multiplier
+			 *
+			 * active_w = "";
+			 * Pixel active region width
+			 *
+			 * active_h = "";
+			 * Pixel active region height
+			 *
+			 * pixel_t = "";
+			 * The sensor readout pixel pattern
+			 *
+			 * readout_orientation = "0";
+			 * Based on camera module orientation.
+			 * Only change readout_orientation if you specifically
+			 * Program a different readout order for this mode
+			 *
+			 * line_length = "";
+			 * Pixel line length (width) for sensor mode.
+			 * This is used to calibrate features in our camera stack.
+			 *
+			 * mclk_multiplier = "";
+			 * Multiplier to MCLK to help time hardware capture sequence
+			 * TODO: Assign to PLL_Multiplier as well until fixed in core
+			 *
+			 * pix_clk_hz = "";
+			 * Sensor pixel clock used for calculations like exposure and framerate
+			 *
+			 * inherent_gain = "";
+			 * Gain obtained inherently from mode (ie. pixel binning)
+			 *
+			 * min_gain_val = "";
+			 * max_gain_val = "";
+			 * Gain limits for mode
+			 *
+			 * min_exp_time = "";
+			 * max_exp_time = "";
+			 * Exposure Time limits for mode (us)
+			 *
+			 * min_hdr_ratio = "";
+			 * max_hdr_ratio = "";
+			 * HDR Ratio limits for mode
+			 *
+			 * min_framerate = "";
+			 * max_framerate = "";
+			 * Framerate limits for mode (fps)
+			 */
+
+			mode0 { // OV23850_MODE_5632X4224
+				mclk_khz = "26000";
+				num_lanes = "4";
+				tegra_sinterface = "serial_a";
+				discontinuous_clk = "no";
+				dpcm_enable = "false";
+				cil_settletime = "10";
+
+				active_w = "4336";
+				active_h = "2440";
+				pixel_t = "bayer_bggr";
+				readout_orientation = "0";
+				line_length = "5510";
+				inherent_gain = "1";
+				mclk_multiplier = "25";
+				pix_clk_hz = "417733000";
+
+				min_gain_val = "1.0";
+				max_gain_val = "15.5";
+				min_hdr_ratio = "1";
+				max_hdr_ratio = "1";
+				min_framerate = "2.316241";
+				max_framerate = "30";
+				min_exp_time = "26";
+				max_exp_time = "431629";
+				max_coarse_diff = "8";
+			};
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					ov10823_out0: endpoint {
+						csi-port = <0>;
+						bus-width = <4>;
+						remote-endpoint = <&csi_in0>;
+					};
+				};
+			};
+		};
+	};
+
+	i2c@3180000 {
+		ov10823_c@22 {
+			compatible = "nvidia,ov10823";
+			reg = <0x22>;
+
+			devnode = "video1";
+
+			/* Physical dimensions of sensor */
+			physical_w = "5.440";
+			physical_h = "3.072";
+
+			clocks = <&tegra_car TEGRA186_CLK_EXTPERIPH1>,
+					 <&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+			clock-names = "extperiph1", "pllp_grtba";
+			mclk = "extperiph1";
+
+			cam0-i2c-addr = <OV10823_I2C_ADDR_CAM0>;
+			cam1-i2c-addr = <OV10823_I2C_ADDR_CAM1>;
+			cam2-i2c-addr = <OV10823_I2C_ADDR_CAM2>;
+			cam0-sid-gpios = <&tegra_gpio OV10823_SID_CAM0 0>;
+			cam1-sid-gpios = <&tegra_gpio OV10823_SID_CAM1 0>;
+			cam2-sid-gpios = <&tegra_gpio OV10823_SID_CAM2 0>;
+			mcu-reset-gpios =
+			<&tegra_gpio TEGRA_GPIO(R, 5) GPIO_ACTIVE_HIGH>;
+			mcu-boot-gpios =
+			<&tegra_gpio TEGRA_GPIO(X, 6) GPIO_ACTIVE_HIGH>;
+
+			mode0 {
+				mclk_khz = "26000";
+				num_lanes = "4";
+				tegra_sinterface = "serial_c";
+				discontinuous_clk = "no";
+				dpcm_enable = "false";
+				cil_settletime = "10";
+
+				active_w = "4336";
+				active_h = "2440";
+				pixel_t = "bayer_bggr";
+				readout_orientation = "0";
+				line_length = "5510";
+				inherent_gain = "1";
+				mclk_multiplier = "25";
+				pix_clk_hz = "417733000";
+
+				min_gain_val = "1.0";
+				max_gain_val = "15.5";
+				min_hdr_ratio = "1";
+				max_hdr_ratio = "1";
+				min_framerate = "2.316241";
+				max_framerate = "30";
+				min_exp_time = "26";
+				max_exp_time = "431629";
+				max_coarse_diff = "8";
+			};
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					ov10823_out1: endpoint {
+						csi-port = <2>;
+						bus-width = <4>;
+						remote-endpoint = <&csi_in1>;
+					};
+				};
+			};
+		};
+	};
+
+	i2c@3180000 {
+		ov10823_e@24 {
+			compatible = "nvidia,ov10823";
+			reg = <0x24>;
+
+			devnode = "video2";
+
+			/* Physical dimensions of sensor */
+			physical_w = "5.440";
+			physical_h = "3.072";
+
+			clocks = <&tegra_car TEGRA186_CLK_EXTPERIPH1>,
+					 <&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+			clock-names = "extperiph1", "pllp_grtba";
+			mclk = "extperiph1";
+
+			cam0-i2c-addr = <OV10823_I2C_ADDR_CAM0>;
+			cam1-i2c-addr = <OV10823_I2C_ADDR_CAM1>;
+			cam2-i2c-addr = <OV10823_I2C_ADDR_CAM2>;
+			cam0-sid-gpios = <&tegra_gpio OV10823_SID_CAM0 0>;
+			cam1-sid-gpios = <&tegra_gpio OV10823_SID_CAM1 0>;
+			cam2-sid-gpios = <&tegra_gpio OV10823_SID_CAM2 0>;
+			mcu-reset-gpios =
+			<&tegra_gpio TEGRA_GPIO(R, 5) GPIO_ACTIVE_HIGH>;
+			mcu-boot-gpios =
+			<&tegra_gpio TEGRA_GPIO(X, 6) GPIO_ACTIVE_HIGH>;
+
+			mode0 {
+				mclk_khz = "26000";
+				num_lanes = "4";
+				tegra_sinterface = "serial_e";
+				discontinuous_clk = "no";
+				dpcm_enable = "false";
+				cil_settletime = "10";
+
+				active_w = "4336";
+				active_h = "2440";
+				pixel_t = "bayer_bggr";
+				readout_orientation = "0";
+				line_length = "5510";
+				inherent_gain = "1";
+				mclk_multiplier = "25";
+				pix_clk_hz = "417733000";
+
+				min_gain_val = "1.0";
+				max_gain_val = "15.5";
+				min_hdr_ratio = "1";
+				max_hdr_ratio = "1";
+				min_framerate = "2.316241";
+				max_framerate = "30";
+				min_exp_time = "26";
+				max_exp_time = "431629";
+				max_coarse_diff = "8";
+			};
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					ov10823_out2: endpoint {
+						csi-port = <4>;
+						bus-width = <4>;
+						remote-endpoint = <&csi_in2>;
+					};
+				};
+			};
+		};
+	};
+
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+		/**
+		* Physical settings to calculate max ISO BW
+		*
+		* num_csi_lanes = <>;
+		* Total number of CSI lanes when all cameras are active
+		*
+		* max_lane_speed = <>;
+		* Max lane speed in Kbit/s
+		*
+		* min_bits_per_pixel = <>;
+		* Min bits per pixel
+		*
+		* vi_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the VI ISO case
+		*
+		* vi_bw_margin_pct = <>;
+		* Vi bandwidth margin in percentage
+		*
+		* max_pixel_rate = <>;
+		* Max pixel rate in Kpixel/s for the ISP ISO case
+		*
+		* isp_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the ISP ISO case
+		*
+		* isp_bw_margin_pct = <>;
+		* Isp bandwidth margin in percentage
+		*/
+		num_csi_lanes = <8>;
+		max_lane_speed = <1500000>;
+		min_bits_per_pixel = <10>;
+		vi_peak_byte_per_pixel = <2>;
+		vi_bw_margin_pct = <25>;
+		max_pixel_rate = <750000>;
+		isp_peak_byte_per_pixel = <5>;
+		isp_bw_margin_pct = <25>;
+
+		/**
+		 * The general guideline for naming badge_info contains 3 parts, and is as
+		 * follows, The first part is the camera_board_id for the module; if the module
+		 * is in a FFD platform, then use the platform name for this part.
+		 * The second part contains the position of the module, ex. “rear” or “front”.
+		 * The third part contains the last 6 characters of a part number which is found
+		 * in the module's specsheet from the vender.
+		 */
+
+		modules {
+			module0 {
+				badge = "p4572_bottom_ov10823";
+				position = "bottom";
+				orientation = "0";
+				drivernode0 {
+					/* Declare PCL support driver (classically known as guid) */
+					pcl_id = "v4l2_soc_sensor";
+					/* Declare the device-tree hierarchy to driver instance */
+					proc-device-tree =
+				"/proc/device-tree/i2c@3180000/ov10823_a@20";
+				};
+			};
+			module1 {
+				badge = "p4572_center_ov10823";
+				position = "center";
+				orientation = "0";
+				drivernode0 {
+					/* Declare PCL support driver (classically known as guid) */
+					pcl_id = "v4l2_soc_sensor";
+					/* Declare the device-tree hierarchy to driver instance */
+					proc-device-tree =
+				"/proc/device-tree/i2c@3180000/ov10823_c@22";
+				};
+			};
+			module2 {
+				badge = "p4572_top_ov10823";
+				position = "top";
+				orientation = "0";
+				drivernode0 {
+					/* Declare PCL support driver (classically known as guid) */
+					pcl_id = "v4l2_soc_sensor";
+					/* Declare the device-tree hierarchy to driver instance */
+					proc-device-tree =
+				"/proc/device-tree/i2c@3180000/ov10823_e@24";
+				};
+			};
+		};
+	};
+
+	pinmux@2430000 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinmux_default>;
+		pinmux_default: common {
+			directdc1_out3_pq5 {
+				nvidia,pins = "directdc1_out3_pq5";
+				nvidia,function = "rsvd1";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+			gp_pwm6_pl6 {
+				nvidia,pins = "gp_pwm6_pl6";
+				nvidia,function = "rsvd1";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+			qspi_cs_n_pr5 {
+				nvidia,pins = "qspi_cs_n_pr5";
+				nvidia,function = "rsvd1";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};
+
+	spdif_dit {
+		status = "disabled";
+	};
+
+	serial@c280000 {
+		status = "okay";
+	};
+
+	sound {
+		status = "disabled";
+	};
+};

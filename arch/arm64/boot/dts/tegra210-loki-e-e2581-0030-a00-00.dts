@@ -1,0 +1,6 @@
+#include "tegra210-loki-e-p2530-0030-e00-00.dts"
+#include "tegra210-platforms/tegra210-loki-e-emc-a00.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+};

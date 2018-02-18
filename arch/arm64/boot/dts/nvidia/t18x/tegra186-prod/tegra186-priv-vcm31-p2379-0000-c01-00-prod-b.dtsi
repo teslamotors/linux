@@ -1,0 +1,24 @@
+/*
+ * P2379 Tegra B(Drive PX2) specific Prod configuration.
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ */
+#include "tegra186-prod/tegra186-priv-vcm31-p2379-0000-c01-00-prod-a.dtsi"
+/ {
+	pinctrl@3520000 {
+		prod-settings {
+			#prod-cells = <4>;
+			mask-one-style;
+			prod_c_utmi2 {
+				board {
+					prod = <0 0x108 0x3FFFFFC0 0x02CC88C0>;
+				};
+			};
+		};
+	};
+};

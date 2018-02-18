@@ -1,0 +1,6 @@
+config CLK_SRC_TEGRA18_TIMER
+	bool "Clocksource for tegra18 based SOC's"
+	depends on PLATFORM_TEGRA
+	help
+	  This is the tegra18 SOC timer driver.
+

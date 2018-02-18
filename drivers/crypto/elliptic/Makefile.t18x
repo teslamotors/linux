@@ -1,0 +1,3 @@
+GCOV_PROFILE := y
+
+obj-$(CONFIG_CRYPTO_DEV_TEGRA_ELLIPTIC_SE) += tegra-se-elp.o

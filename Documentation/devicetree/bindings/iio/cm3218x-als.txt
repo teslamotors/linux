@@ -1,0 +1,63 @@
+* Capella CM3218/CM32180/CM32181 ambient light sensor
+
+nvs_ drivers use the NVidia Sensor (NVS) framework.
+See the nvs.txt documentation for NVS DT capabilities.
+The nvs_cm3218 ALS sensor driver supports the CM3218, CM32180, and CM32181
+devices.
+
+Required properties:
+- compatible: Device or generic name.
+	      Supported device names:
+	      - capella,cm3218x
+	      - capella,cm3218
+	      - capella,cm32180
+	      - capella,cm32181
+  Note: If the part is known and is populated, then it can be specified:
+	Example: compatible = "capella,cm32181";
+	When specifying a device this way, the driver will assume this specific
+	device is populated during system boot and will not verify its
+	existence.  If, however, the device is unknown or may not be populated,
+	then the label, cm3218x, (Example: compatible = "capella,cm3218x";),
+	must be used.  This tells the driver to find which device is used.  If
+	the device is not found, the driver will unload itself.  This requires
+	regulators to be setup correctly for the probe function.
+- reg: i2c address of the device. It should be 0x10 or 0x48.
+- gpio_irq: GPIO to be used for the interrupt.
+  Note: This is required for the CM3218 & CM32180 since these devices require
+        an ACK of the interrupt (regardless of whether the interrupt is used or
+	not) using the I2C ARA (Alert Response Address).  Defining the GPIO
+	allows the driver the device's INT pin visibility for the action
+	required.
+
+Optional properties:
+- status: set to "ok" or "okay" for normal operation.  Set to anything else
+	  to unload the driver without ever communicating with the device.
+  Note: The "anything else" above is typically "disabled".
+	Since the driver will unload without communicating with the device, the
+	device will be left in its POR state.
+	This device's POR comes up in an operational mode and will draw power.
+	If it is desired to unload the driver leaving the device in a low power
+	sleep state, then use the individual sensor disable mechanism below.
+- light_disable: Setting this property to <1> will disable the device and
+                 unload the driver.
+- vdd-supply: regulator supply for the chip
+  Note: This is required if the driver is to control the regulator.
+- interrupt-parent:  GPIO number
+- interrupts:  GPIO macro
+  Note: The driver will operate in poll mode if an interrupt is not specified.
+	The interrupt-parent/interrupts properties can only be specified with
+	the CM32181 device.  If the cm3218x is used for the compatibility
+	(defined above) then the gpio_irq (defined above) can be used instead.
+- als_cfg: User selection of the configuration register (register 0).
+  Note: This allows selection of the ALS_SM and ALS_PERS fields.
+- als_psm: User selection of the PSM register.
+  Note: This only applies to the CM32181 device.
+
+Example:
+	cm3218x@48 {
+		compatible = "capella,cm32180";
+		reg = <0x48>;
+		vdd-supply = <&vdd_3v3>;
+		gpio_irq = <&gpio TEGRA_GPIO(X, 3) GPIO_ACTIVE_LOW>;
+	};
+

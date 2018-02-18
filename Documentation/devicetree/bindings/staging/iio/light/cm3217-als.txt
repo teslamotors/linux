@@ -1,0 +1,28 @@
+* Capella CM3217 ambient light sensor
+
+Required properties:
+- compatible: must be "capella,cm3217-siio"
+- reg: i2c address of the device. It should be 0x10.
+- vdd-supply: regulator supply for the chip
+
+Optional propertied:
+- illuminance,integration-time: minimum sampling period in nano seconds.
+  default: ""480000""
+- illuminance,max-range: maximum range of this sensor's value in SI units.
+  default: "78643.2"
+- illuminance,resolution: conversion factor from sensor raw units to lux.
+  default: "307"
+- illuminance,power-consumed: rough estimate of this sensor's power consumption in mA.
+  default: "1670"
+
+Example:
+	cm3217@10 {
+		compatible = "capella,cm3217-siio";
+		reg = <0x10>;
+		vdd-supply = <&palmas_smps9>;
+		illuminance,integration-time = "480000";
+		illuminance,max-range = "78643.2";
+		illuminance,resolution = "7675";
+		illuminance,power-consumed = "1670"; /* milli Watt */
+	};
+

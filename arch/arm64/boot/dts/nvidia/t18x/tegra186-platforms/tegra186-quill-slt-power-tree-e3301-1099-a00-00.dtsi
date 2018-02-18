@@ -1,0 +1,38 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra186-quill-char-power-tree-e3301-1080-a00-00.dtsi"
+
+/ {
+	bpmp_i2c {
+		spmic@3c {
+			regulators {
+				ldo8 {
+					regulator-name = "dmic-audio-hv";
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-always-on;
+					regulator-boot-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+				};
+			};
+		};
+	};
+
+	pmc-iopower {
+		iopower-dmic-hv-supply =  <&spmic_ldo8>;
+		iopower-audio-hv-supply = <&spmic_ldo8>;
+	};
+};

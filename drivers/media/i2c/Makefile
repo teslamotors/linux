@@ -1,4 +1,6 @@
 msp3400-objs	:=	msp3400-driver.o msp3400-kthreads.o
+ccflags-y += -I$(srctree)/drivers/media/platform/tegra
+ccflags-y += -I$(srctree)/drivers/video/tegra/camera
 obj-$(CONFIG_VIDEO_MSP3400) += msp3400.o
 
 obj-$(CONFIG_VIDEO_SMIAPP)	+= smiapp/
@@ -55,9 +57,15 @@ obj-$(CONFIG_VIDEO_VP27SMPX) += vp27smpx.o
 obj-$(CONFIG_VIDEO_SONY_BTF_MPX) += sony-btf-mpx.o
 obj-$(CONFIG_VIDEO_UPD64031A) += upd64031a.o
 obj-$(CONFIG_VIDEO_UPD64083) += upd64083.o
+obj-$(CONFIG_VIDEO_OV5693) += ov5693.o
 obj-$(CONFIG_VIDEO_OV7640) += ov7640.o
 obj-$(CONFIG_VIDEO_OV7670) += ov7670.o
 obj-$(CONFIG_VIDEO_OV9650) += ov9650.o
+obj-$(CONFIG_VIDEO_IMX214) += imx214.o
+obj-$(CONFIG_VIDEO_OV10823) += ov10823.o
+obj-$(CONFIG_VIDEO_OV23850) += ov23850.o
+obj-$(CONFIG_VIDEO_LC898212) += lc898212.o
+obj-$(CONFIG_VIDEO_IMX219) += imx219.o
 obj-$(CONFIG_VIDEO_MT9M032) += mt9m032.o
 obj-$(CONFIG_VIDEO_MT9P031) += mt9p031.o
 obj-$(CONFIG_VIDEO_MT9T001) += mt9t001.o

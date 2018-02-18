@@ -1,0 +1,183 @@
+/ {
+	i2c@7000c400 {
+		ina230@40{
+			compatible = "ina230x";
+			reg = <0x40>;
+			ti,rail-name = "VDD_MUX";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <3633>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@41{
+			compatible = "ina230x";
+			reg = <0x41>;
+			ti,rail-name = "VDD_CPU";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x3E6A>;
+			ti,power-lsb = <16021>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@42{
+			compatible = "ina230x";
+			reg = <0x42>;
+			ti,rail-name = "VDDIO_DDR_AP_1V35";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <550>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@43{
+			compatible = "ina230x";
+			reg = <0x43>;
+			ti,rail-name = "VDD_CORE";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x369D>;
+			ti,power-lsb = <4577>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@44{
+			compatible = "ina230x";
+			reg = <0x44>;
+			ti,rail-name = "COM_1V8";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <53>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@45{
+			compatible = "ina230x";
+			reg = <0x45>;
+			ti,rail-name = "VDDIO_DDR_1V35";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <762>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@46{
+			compatible = "ina230x";
+			reg = <0x46>;
+			ti,rail-name = "AVDDIO_PEX_AP_1V05";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <356>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@47{
+			compatible = "ina230x";
+			reg = <0x47>;
+			ti,rail-name = "PEX_PLL_AP_3V3";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <27>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@48{
+			compatible = "ina230x";
+			reg = <0x48>;
+			ti,rail-name = "VDD_USB_AP_3V3";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <23>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@49{
+			compatible = "ina230x";
+			reg = <0x49>;
+			ti,rail-name = "VDD_GPU";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x4EF5>;
+			ti,power-lsb = <6332>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@4a{
+			compatible = "ina230x";
+			reg = <0x4a>;
+			ti,rail-name = "HVDD_SATA_AP_3V3";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <3>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@4b{
+			compatible = "ina230x";
+			reg = <0x4b>;
+			ti,rail-name = "VDDIO_SYS_AP_1V8";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <23>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@4d{
+			compatible = "ina230x";
+			reg = <0x4d>;
+			ti,rail-name = "VDDIO_BB_AP";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <2>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@4e{
+			compatible = "ina230x";
+			reg = <0x4e>;
+			ti,rail-name = "AVDD_LVDS_AP_1V05";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <7>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina230@4f{
+			compatible = "ina230x";
+			reg = <0x4f>;
+			ti,rail-name = "AVDD_HDMI_AP_3V3";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x7FFF>;
+			ti,power-lsb = <70>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
+		};
+	};
+};

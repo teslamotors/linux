@@ -32,6 +32,39 @@ struct pm_clock_entry {
 };
 
 /**
+ * TODO: acquire_clk_lock and release_clk_lock are added because T210 is not
+ * using CONFIG_COMMON_CLK, whereas T186 is using it. As a result, clk_disable
+ * and __pm_clk_enable causes mutex lock to be called from a non-sleeping
+ * for T210 which should not normally happen. Therefore, adding these two
+ * which would take this information into consideration and call the relevant
+ * lock/unlock calls.
+ * Once T210 does not use kernel-3.18, remove these functions.
+ */
+static void acquire_clk_lock(struct pm_subsys_data *psd, unsigned long *flags)
+{
+#ifdef CONFIG_COMMON_CLK
+	if (flags)
+		spin_lock_irqsave(&psd->lock, *flags);
+	else
+		spin_lock_irq(&psd->lock);
+#else
+	mutex_lock(&psd->clocks_mutex);
+#endif
+}
+
+static void release_clk_lock(struct pm_subsys_data *psd, unsigned long *flags)
+{
+#ifdef CONFIG_COMMON_CLK
+	if (flags)
+		spin_unlock_irqrestore(&psd->lock, *flags);
+	else
+		spin_unlock_irq(&psd->lock);
+#else
+	mutex_unlock(&psd->clocks_mutex);
+#endif
+}
+
+/**
  * pm_clk_enable - Enable a clock, reporting any errors
  * @dev: The device for the given clock
  * @clk: The clock being enabled.
@@ -97,11 +130,12 @@ int pm_clk_add(struct device *dev, const char *con_id)
 
 	pm_clk_acquire(dev, ce);
 
-	spin_lock_irq(&psd->lock);
+	acquire_clk_lock(psd, NULL);
 	list_add_tail(&ce->node, &psd->clock_list);
-	spin_unlock_irq(&psd->lock);
+	release_clk_lock(psd, NULL);
 	return 0;
 }
+EXPORT_SYMBOL(pm_clk_add);
 
 /**
  * __pm_clk_remove - Destroy PM clock entry.
@@ -142,7 +176,7 @@ void pm_clk_remove(struct device *dev, const char *con_id)
 	if (!psd)
 		return;
 
-	spin_lock_irq(&psd->lock);
+	acquire_clk_lock(psd, NULL);
 
 	list_for_each_entry(ce, &psd->clock_list, node) {
 		if (!con_id && !ce->con_id)
@@ -153,12 +187,12 @@ void pm_clk_remove(struct device *dev, const char *con_id)
 			goto remove;
 	}
 
-	spin_unlock_irq(&psd->lock);
+	release_clk_lock(psd, NULL);
 	return;
 
  remove:
 	list_del(&ce->node);
-	spin_unlock_irq(&psd->lock);
+	release_clk_lock(psd, NULL);
 
 	__pm_clk_remove(ce);
 }
@@ -188,6 +222,7 @@ int pm_clk_create(struct device *dev)
 {
 	return dev_pm_get_subsys_data(dev);
 }
+EXPORT_SYMBOL(pm_clk_create);
 
 /**
  * pm_clk_destroy - Destroy a device's list of power management clocks.
@@ -208,12 +243,12 @@ void pm_clk_destroy(struct device *dev)
 
 	INIT_LIST_HEAD(&list);
 
-	spin_lock_irq(&psd->lock);
+	acquire_clk_lock(psd, NULL);
 
 	list_for_each_entry_safe_reverse(ce, c, &psd->clock_list, node)
 		list_move(&ce->node, &list);
 
-	spin_unlock_irq(&psd->lock);
+	release_clk_lock(psd, NULL);
 
 	dev_pm_put_subsys_data(dev);
 
@@ -222,10 +257,6 @@ void pm_clk_destroy(struct device *dev)
 		__pm_clk_remove(ce);
 	}
 }
-
-#endif /* CONFIG_PM */
-
-#ifdef CONFIG_PM_RUNTIME
 
 /**
  * pm_clk_suspend - Disable clocks in a device's PM clock list.
@@ -242,7 +273,7 @@ int pm_clk_suspend(struct device *dev)
 	if (!psd)
 		return 0;
 
-	spin_lock_irqsave(&psd->lock, flags);
+	acquire_clk_lock(psd, &flags);
 
 	list_for_each_entry_reverse(ce, &psd->clock_list, node) {
 		if (ce->status < PCE_STATUS_ERROR) {
@@ -252,7 +283,7 @@ int pm_clk_suspend(struct device *dev)
 		}
 	}
 
-	spin_unlock_irqrestore(&psd->lock, flags);
+	release_clk_lock(psd, &flags);
 
 	return 0;
 }
@@ -273,7 +304,7 @@ int pm_clk_resume(struct device *dev)
 	if (!psd)
 		return 0;
 
-	spin_lock_irqsave(&psd->lock, flags);
+	acquire_clk_lock(psd, &flags);
 
 	list_for_each_entry(ce, &psd->clock_list, node) {
 		if (ce->status < PCE_STATUS_ERROR) {
@@ -283,7 +314,7 @@ int pm_clk_resume(struct device *dev)
 		}
 	}
 
-	spin_unlock_irqrestore(&psd->lock, flags);
+	release_clk_lock(psd, &flags);
 
 	return 0;
 }
@@ -346,74 +377,7 @@ static int pm_clk_notify(struct notifier_block *nb,
 	return 0;
 }
 
-#else /* !CONFIG_PM_RUNTIME */
-
-#ifdef CONFIG_PM
-
-/**
- * pm_clk_suspend - Disable clocks in a device's PM clock list.
- * @dev: Device to disable the clocks for.
- */
-int pm_clk_suspend(struct device *dev)
-{
-	struct pm_subsys_data *psd = dev_to_psd(dev);
-	struct pm_clock_entry *ce;
-	unsigned long flags;
-
-	dev_dbg(dev, "%s()\n", __func__);
-
-	/* If there is no driver, the clocks are already disabled. */
-	if (!psd || !dev->driver)
-		return 0;
-
-	spin_lock_irqsave(&psd->lock, flags);
-
-	list_for_each_entry_reverse(ce, &psd->clock_list, node) {
-		if (ce->status < PCE_STATUS_ERROR) {
-			if (ce->status == PCE_STATUS_ENABLED)
-				clk_disable(ce->clk);
-			ce->status = PCE_STATUS_ACQUIRED;
-		}
-	}
-
-	spin_unlock_irqrestore(&psd->lock, flags);
-
-	return 0;
-}
-
-/**
- * pm_clk_resume - Enable clocks in a device's PM clock list.
- * @dev: Device to enable the clocks for.
- */
-int pm_clk_resume(struct device *dev)
-{
-	struct pm_subsys_data *psd = dev_to_psd(dev);
-	struct pm_clock_entry *ce;
-	unsigned long flags;
-	int ret;
-
-	dev_dbg(dev, "%s()\n", __func__);
-
-	/* If there is no driver, the clocks should remain disabled. */
-	if (!psd || !dev->driver)
-		return 0;
-
-	spin_lock_irqsave(&psd->lock, flags);
-
-	list_for_each_entry(ce, &psd->clock_list, node) {
-		if (ce->status < PCE_STATUS_ERROR) {
-			ret = __pm_clk_enable(dev, ce->clk);
-			if (!ret)
-				ce->status = PCE_STATUS_ENABLED;
-		}
-	}
-
-	spin_unlock_irqrestore(&psd->lock, flags);
-
-	return 0;
-}
-
-#endif /* CONFIG_PM */
+#else /* !CONFIG_PM */
 
 /**
  * enable_clock - Enable a device clock.
@@ -493,7 +457,7 @@ static int pm_clk_notify(struct notifier_block *nb,
 	return 0;
 }
 
-#endif /* !CONFIG_PM_RUNTIME */
+#endif /* !CONFIG_PM */
 
 /**
  * pm_clk_add_notifier - Add bus type notifier for power management clocks.

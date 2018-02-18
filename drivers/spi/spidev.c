@@ -4,6 +4,7 @@
  * Copyright (C) 2006 SWAPP
  *	Andrea Paterniani <a.paterniani@swapp-eng.it>
  * Copyright (C) 2007 David Brownell (simplification, cleanup)
+ * Copyright (C) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,11 +21,14 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <linux/completion.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/ioctl.h>
 #include <linux/fs.h>
 #include <linux/device.h>
+#include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/list.h>
 #include <linux/errno.h>
@@ -33,6 +37,7 @@
 #include <linux/compat.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_gpio.h>
 
 #include <linux/spi/spi.h>
 #include <linux/spi/spidev.h>
@@ -87,6 +92,10 @@ struct spidev_data {
 	unsigned		users;
 	u8			*tx_buffer;
 	u8			*rx_buffer;
+	void			*slave_ready_completion;
+	int			slave_ready_gpio;
+	bool			slave_ready_gpio_activelow;
+	u32			slave_ready_timeout;
 };
 
 static LIST_HEAD(device_list);
@@ -107,14 +116,73 @@ static void spidev_complete(void *arg)
 	complete(arg);
 }
 
+static bool is_spidev_slave_ready(struct spidev_data *spidev)
+{
+	bool rb_status = !!gpio_get_value(spidev->slave_ready_gpio);
+
+	if (spidev->slave_ready_gpio_activelow)
+		return !rb_status;
+
+	return rb_status;
+}
+
+static irqreturn_t slave_readybusy_irq(int irq, void *data)
+{
+	struct spidev_data *spidev = (struct spidev_data *)data;
+
+	BUG_ON(!spidev->slave_ready_completion);
+
+	complete(spidev->slave_ready_completion);
+
+	return IRQ_HANDLED;
+}
+
 static ssize_t
 spidev_sync(struct spidev_data *spidev, struct spi_message *message)
 {
 	DECLARE_COMPLETION_ONSTACK(done);
-	int status;
+	DECLARE_COMPLETION_ONSTACK(slave_ready);
+	unsigned long flags;
+	int status, rc;
+	u32 timeout = spidev->slave_ready_timeout;
 
 	message->complete = spidev_complete;
 	message->context = &done;
+
+	spidev->slave_ready_completion = &slave_ready;
+
+	if (gpio_is_valid(spidev->slave_ready_gpio)) {
+
+		if (spidev->slave_ready_gpio_activelow)
+			flags = IRQF_TRIGGER_FALLING;
+		else
+			flags = IRQF_TRIGGER_RISING;
+
+		rc = request_irq(gpio_to_irq(spidev->slave_ready_gpio),
+				slave_readybusy_irq,
+				flags, "spislave-ready-busy",
+				spidev);
+		if (rc) {
+			dev_err(&spidev->spi->dev, "request irq error\n");
+			return -ESHUTDOWN;
+		}
+
+		if (!is_spidev_slave_ready(spidev)) {
+			rc = wait_for_completion_timeout(&slave_ready,
+				msecs_to_jiffies(1000 * timeout));
+			if (!rc) {
+				dev_err(&spidev->spi->dev,
+						"timeout: slave not ready\n");
+				free_irq(gpio_to_irq(spidev->slave_ready_gpio),
+						spidev);
+
+				return -ESHUTDOWN;
+			}
+		}
+		free_irq(gpio_to_irq(spidev->slave_ready_gpio), spidev);
+	}
+
+	spidev->slave_ready_completion = NULL;
 
 	spin_lock_irq(&spidev->spi_lock);
 	if (spidev->spi == NULL)
@@ -297,16 +365,23 @@ static int spidev_message(struct spidev_data *spidev,
 
 	/* copy any rx data out of bounce buffer */
 	rx_buf = spidev->rx_buffer;
-	for (n = n_xfers, u_tmp = u_xfers; n; n--, u_tmp++) {
+	total = 0;
+	u_tmp = u_xfers;
+	k_tmp = k_xfers;
+	for (n = n_xfers; n; n--) {
 		if (u_tmp->rx_buf) {
 			if (__copy_to_user((u8 __user *)
 					(uintptr_t) u_tmp->rx_buf, rx_buf,
-					u_tmp->len)) {
+					k_tmp->len)) {
 				status = -EFAULT;
 				goto done;
 			}
+			u_tmp->len = k_tmp->len;
 		}
-		rx_buf += u_tmp->len;
+		rx_buf += k_tmp->len;
+		total += k_tmp->len;
+		u_tmp++;
+		k_tmp++;
 	}
 	status = total;
 
@@ -615,8 +690,11 @@ static struct class *spidev_class;
 static int spidev_probe(struct spi_device *spi)
 {
 	struct spidev_data	*spidev;
+	enum of_gpio_flags	flags;
 	int			status;
 	unsigned long		minor;
+	char			spidev_name[20];
+	char			spidev_gpio[25];
 
 	/* Allocate driver data */
 	spidev = kzalloc(sizeof(*spidev), GFP_KERNEL);
@@ -634,14 +712,38 @@ static int spidev_probe(struct spi_device *spi)
 	 * Reusing minors is fine so long as udev or mdev is working.
 	 */
 	mutex_lock(&device_list_lock);
+
+	sprintf(spidev_name, "spidev%d.%d",
+			spi->master->bus_num, spi->chip_select);
+	spidev->slave_ready_gpio = of_get_named_gpio_flags(spi->dev.of_node,
+			"slave-ready-gpio", 0, &flags);
+
+	if (gpio_is_valid(spidev->slave_ready_gpio)) {
+
+		if (flags & OF_GPIO_ACTIVE_LOW)
+			spidev->slave_ready_gpio_activelow = true;
+		else
+			spidev->slave_ready_gpio_activelow = false;
+
+		if (of_property_read_u32(spi->dev.of_node,
+					"slave-ready-timeout",
+					&spidev->slave_ready_timeout))
+			spidev->slave_ready_timeout = 5;
+
+		strcpy(spidev_gpio, "gpio-rb-");
+		strcat(spidev_gpio, spidev_name);
+
+		gpio_request(spidev->slave_ready_gpio, spidev_gpio);
+		gpio_direction_input(spidev->slave_ready_gpio);
+	}
+
 	minor = find_first_zero_bit(minors, N_SPI_MINORS);
 	if (minor < N_SPI_MINORS) {
 		struct device *dev;
 
 		spidev->devt = MKDEV(SPIDEV_MAJOR, minor);
 		dev = device_create(spidev_class, &spi->dev, spidev->devt,
-				    spidev, "spidev%d.%d",
-				    spi->master->bus_num, spi->chip_select);
+				spidev, spidev_name);
 		status = PTR_ERR_OR_ZERO(dev);
 	} else {
 		dev_dbg(&spi->dev, "no minor number available!\n");
@@ -683,6 +785,7 @@ static int spidev_remove(struct spi_device *spi)
 }
 
 static const struct of_device_id spidev_dt_ids[] = {
+	{ .compatible = "spidev" },
 	{ .compatible = "rohm,dh2228fv" },
 	{},
 };

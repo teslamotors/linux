@@ -1,0 +1,245 @@
+/*
+ * T210- DSC
+ *
+ * arch/arm64/boot/dts/tegra210-vcm31-p2382-0000-a00-00-vm.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/dts-v1/;
+/memreserve/ 0x80000000 0x00020000;
+/ {
+	/* smmu and ivc drivers are called very early in the kernel init
+	 * call sequence (core_initcall). smmu driver as such is a consumer
+	 * of ivc and depends on it.
+	 * Keeping the ivc node at the very top in the device tree ensures
+	 * that probe for ivc is called before the smmu driver probe.
+	 * Without this virtualized smmu driver probe will fail.
+	 */
+
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+	};
+};
+
+#include "tegra210-vcm31-p2382-common.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	chosen {
+		nvidia,tegra-hypervisor-mode;
+	};
+
+	iommu {
+		compatible = "nvidia,tegra124-smmu-hv";
+		#asids = <120>;
+		ivc_queue = <&tegra_hv 0>;
+		mempool_id = <&tegra_hv 0>;
+		domains = <
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS2)
+			&dc_as TEGRA_SWGROUP_CELLS2(DC, DC12)
+			&dc_as TEGRA_SWGROUP_CELLS(DCB)
+			&common_as TEGRA_SWGROUP_CELLS(AFI)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC1A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC2A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC3A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC4A)
+			/* For now, GPU shares address space with host1x */
+			&host1x_as TEGRA_SWGROUP_CELLS12(EPP, HC, HDA, VI, ISP, ISP2B, VIC, MSENC, TSEC, NVJPG, NVDEC, GPUB)
+			&common_as 0xFFFFFFFF 0xFFFFFFFF>;
+
+		address-space-prop {
+			host1x_as: host1x {
+				iova-start = <0x0 0x00100000>;
+				iova-size = <0x0 0x7FEFFFFF>;
+				alignment = <0x20000>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+		};
+
+	};
+
+	i2c@7000c000 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 1>;
+	};
+
+	i2c@7000c400 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 1>;
+	};
+
+	i2c@7000c500 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 1>;
+	};
+
+	i2c@7000c700 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 1>;
+	};
+
+	i2c@7000d000 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 1>;
+
+		gpu_max16989_reg: max16989@3b {
+			status = "disabled";
+		};
+	};
+
+	i2c@7000d100 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 1>;
+	};
+
+	tegra_hv_wdt {
+		compatible = "nvidia,tegra-hv-wdt";
+		status = "okay";
+		ivc = <&tegra_hv 2>;
+	};
+
+	watchdog@60005100 {
+		status = "disabled";
+	};
+
+	host1x {
+		virtual-dev = <1>;
+
+		iommus = <&smmu TEGRA_SWGROUP_EPP>,
+			<&smmu TEGRA_SWGROUP_HC>,
+			<&smmu TEGRA_SWGROUP_HDA>;
+
+		ivc-queue0 = <&tegra_hv 4>;
+		ivc-queue1 = <&tegra_hv 5>;
+		ivc-queue2 = <&tegra_hv 6>;
+
+		vic {
+			compatible = "nvidia,tegra210-vhost-vic";
+		};
+
+		nvdec {
+			compatible = "nvidia,tegra210-vhost-nvdec";
+		};
+
+		nvjpg {
+			compatible = "nvidia,tegra210-vhost-nvjpg";
+		};
+
+		vi {
+			compatible = "nvidia,tegra210-vhost-vi";
+		};
+
+		isp@54600000 {
+			compatible = "nvidia,tegra210-vhost-isp";
+		};
+
+		isp@54680000 {
+			compatible = "nvidia,tegra210-vhost-isp";
+		};
+
+		nvenc {
+			compatible = "nvidia,tegra210-vhost-nvenc";
+		};
+
+		tsec {
+			status = "disabled";
+		};
+
+		tsecb {
+			status = "disabled";
+		};
+	};
+
+	gpu {
+		status = "disabled";
+	};
+
+	vgpu {
+		compatible = "nvidia,tegra124-gk20a-vgpu";
+		nvidia,host1x = <&host1x>;
+		reg = <0x0 0x58000000 0x0 0x01000000>;
+		iommus = <&smmu TEGRA_SWGROUP_GPU &smmu TEGRA_SWGROUP_GPUB>;
+
+		ivc-queue3 = <&tegra_hv 7>;
+		ivc-queue4 = <&tegra_hv 8>;
+	};
+
+	sdhci@700b0600 {
+		status = "disabled";
+	};
+
+	/* the virtual storage device node */
+	tegra_hv_storage {
+		compatible = "nvidia,tegra-hv-storage";
+		status = "okay";
+		instance = <0>;
+		ivc = <&tegra_hv 3>;
+	};
+
+	sound {
+		status = "disabled";
+	};
+
+	sound_ref {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+	};
+
+	adsp_audio {
+		status = "disabled";
+	};
+
+	adsp {
+		status = "disabled";
+	};
+
+	virt-alt-pcm {
+		compatible = "nvidia,tegra210-virt-pcm";
+		status = "okay";
+
+		iommus = <&smmu TEGRA_SWGROUP_APE>;
+		power-domains = <&ape_pd>;
+		wakeup-disable;
+
+		cardname = "tegra-virt-pcm";
+
+		dmas = <&adma 1>, <&adma 1>, <&adma 2>, <&adma 2>,
+			<&adma 3>, <&adma 3>, <&adma 4>, <&adma 4>,
+			<&adma 5>, <&adma 5>, <&adma 6>, <&adma 6>,
+			<&adma 7>, <&adma 7>, <&adma 8>, <&adma 8>,
+			<&adma 9>, <&adma 9>, <&adma 10>, <&adma 10>;
+		dma-names = "rx1", "tx1", "rx2", "tx2", "rx3", "tx3",
+			"rx4", "tx4", "rx5", "tx5", "rx6", "tx6",
+			"rx7", "tx7", "rx8", "tx8", "rx9", "tx9",
+			"rx10", "tx10";
+
+		ivc_queue = <&tegra_hv 11>;
+
+		admaif_ch_num = <10>;
+		admaif_ch_list = <1>, <2>, <3>, <4>, <5>, <6>, <7>, <8>,
+					<9>, <10>;
+	};
+};

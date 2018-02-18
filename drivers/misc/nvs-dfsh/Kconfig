@@ -1,0 +1,14 @@
+config NVS_DFSH
+	tristate "Line discipline for NVS DFSH"
+	select NVS_IIO
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	depends on TTY
+	default n
+	help
+	  Say Y here for TTY line discipline for NVS
+	  DFSH stream.
+
+	  This driver cannot be built as a module.
+	  If unsure, say N.
+

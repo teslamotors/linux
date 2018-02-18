@@ -1,0 +1,52 @@
+/dts-v1/;
+
+#include "tegra132-norrin-pm374-0001-common.dtsi"
+#include "tegra132-platforms/tegra132-norrin-powermon-pm374-0001-a00-00.dtsi"
+
+/ {
+	nvidia,boardids = "374:0001:01";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,proc-boardid = "374:0001:01";
+
+	i2c@7000c400 {
+		ina219@40{
+			ti,shunt-resistor-mohm = <20>;
+			ti,calibration-data = <0x346C>;
+			ti,power-lsb = <3052>;
+		};
+
+		ina219@43{
+			ti,shunt-resistor-mohm = <200>;
+			ti,power-lsb = <62>;
+		};
+
+		ina219@45{
+			ti,shunt-resistor-mohm = <1>;
+			ti,power-lsb = <12500>;
+		};
+
+		ina219@46{
+			ti,shunt-resistor-mohm = <1>;
+			ti,calibration-data = <0xF9A6>;
+			ti,power-lsb = <12818>;
+		};
+
+		ina219@4D{
+			ti,shunt-resistor-mohm = <50>;
+			ti,power-lsb = <250>;
+		};
+
+		ina219@4E{
+			ti,shunt-resistor-mohm = <20>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <625>;
+		};
+	};
+
+	i2c@7000d000 {
+		as3722@40 {
+			ams,major-rev = <1>;
+			ams,minor-rev = <2>;
+		};
+	};
+};

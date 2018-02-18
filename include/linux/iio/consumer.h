@@ -151,6 +151,35 @@ int iio_read_channel_average_raw(struct iio_channel *chan, int *val);
 int iio_read_channel_processed(struct iio_channel *chan, int *val);
 
 /**
+ * iio_read_channel_raw_dual() - read values from a given channel with dual mode
+ * @chan:		The channel supporting dual mode.
+ * @val:		First part of value read back.
+ * @val2:		Second part of value read back.
+ *
+ * Note raw reads from iio channels with dual mode are in adc counts and hence
+ * scale will need to be applied if standard units required.
+ */
+int iio_read_channel_raw_dual(struct iio_channel *chan, int *val, int *val2);
+
+/**
+ * iio_read_channel_processed_dual() - read processed values from a given
+ *				       channel with dual mode
+ * @chan:		The channel supporting dual mode.
+ * @val:		First part of value read back.
+ * @val2:		Second part of value read back.
+ *
+ * Returns an error code or 0.
+ *
+ * This function will read processed values from a channel with dual mode.
+ * The processed values mean that this value will have the correct unit and not
+ * some device internal representation. If the device does not support reporting
+ * The processed values the function will query the raw value and the channels
+ * scale and offset and do the appropriate transformation.
+ */
+int iio_read_channel_processed_dual(struct iio_channel *chan, int *val,
+				    int *val2);
+
+/**
  * iio_get_channel_type() - get the type of a channel
  * @channel:		The channel being queried.
  * @type:		The type of the channel.

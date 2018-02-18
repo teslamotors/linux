@@ -75,6 +75,7 @@ struct as3722_register_mapping {
 struct as3722_regulator_config_data {
 	struct regulator_init_data *reg_init;
 	bool enable_tracking;
+	bool volatile_vsel;
 	int ext_control;
 };
 
@@ -316,7 +317,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 
 
 static const int as3722_ldo_current[] = { 150000, 300000 };
-static const int as3722_sd016_current[] = { 2500000, 3000000, 3500000 };
+static const int as3722_sd016_current[] = { 2500000, 3000000, 3500000,
+						4000000 };
 
 static int as3722_current_to_index(int min_uA, int max_uA,
 		const int *curr_table, int n_currents)
@@ -547,8 +549,6 @@ static int as3722_sd016_get_current_limit(struct regulator_dev *rdev)
 	}
 	val &= mask;
 	val >>= ffs(mask) - 1;
-	if (val == 3)
-		return -EINVAL;
 	return as3722_sd016_current[val];
 }
 
@@ -749,6 +749,9 @@ static int as3722_get_regulator_dt_data(struct platform_device *pdev,
 		}
 		reg_config->enable_tracking =
 			of_property_read_bool(reg_node, "ams,enable-tracking");
+		reg_config->volatile_vsel =
+			of_property_read_bool(reg_node, "ams,volatile-vsel");
+
 	}
 	return 0;
 }
@@ -807,7 +810,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			as3722_regs->desc[id].min_uV = 825000;
 			as3722_regs->desc[id].uV_step = 25000;
 			as3722_regs->desc[id].linear_min_sel = 1;
-			as3722_regs->desc[id].enable_time = 500;
+			as3722_regs->desc[id].enable_time = 150;
 			break;
 		case AS3722_REGULATOR_ID_LDO3:
 			if (reg_config->ext_control)
@@ -817,7 +820,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			as3722_regs->desc[id].min_uV = 620000;
 			as3722_regs->desc[id].uV_step = 20000;
 			as3722_regs->desc[id].linear_min_sel = 1;
-			as3722_regs->desc[id].enable_time = 500;
+			as3722_regs->desc[id].enable_time = 350;
 			if (reg_config->enable_tracking) {
 				ret = as3722_ldo3_set_tracking_mode(as3722_regs,
 					id, AS3722_LDO3_MODE_PMOS_TRACKING);
@@ -848,7 +851,8 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			}
 			as3722_regs->desc[id].uV_step = 10000;
 			as3722_regs->desc[id].linear_min_sel = 1;
-			as3722_regs->desc[id].enable_time = 600;
+			as3722_regs->desc[id].enable_time = 275;
+			as3722_regs->desc[id].vsel_persist = true;
 			break;
 		case AS3722_REGULATOR_ID_SD2:
 		case AS3722_REGULATOR_ID_SD3:
@@ -862,13 +866,15 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 						as3722_sd2345_ranges;
 			as3722_regs->desc[id].n_linear_ranges =
 					ARRAY_SIZE(as3722_sd2345_ranges);
+			as3722_regs->desc[id].vsel_persist = true;
+			as3722_regs->desc[id].enable_time = 275;
 			break;
 		default:
 			if (reg_config->ext_control)
 				ops = &as3722_ldo_extcntrl_ops;
 			else
 				ops = &as3722_ldo_ops;
-			as3722_regs->desc[id].enable_time = 500;
+			as3722_regs->desc[id].enable_time = 150;
 			as3722_regs->desc[id].linear_ranges = as3722_ldo_ranges;
 			as3722_regs->desc[id].n_linear_ranges =
 						ARRAY_SIZE(as3722_ldo_ranges);
@@ -877,6 +883,11 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 		as3722_regs->desc[id].ops = ops;
 		config.init_data = reg_config->reg_init;
 		config.of_node = as3722_regulator_matches[id].of_node;
+
+		if (reg_config->volatile_vsel) {
+			unsigned int bit = as3722_reg_lookup[id].vsel_reg;
+			__set_bit(bit, as3722->volatile_vsel_registers);
+		}
 		rdev = devm_regulator_register(&pdev->dev,
 					&as3722_regs->desc[id], &config);
 		if (IS_ERR(rdev)) {
@@ -922,7 +933,19 @@ static struct platform_driver as3722_regulator_driver = {
 	.probe = as3722_regulator_probe,
 };
 
-module_platform_driver(as3722_regulator_driver);
+static int __init as3722_regulator_init(void)
+{
+	return platform_driver_register(&as3722_regulator_driver);
+}
+
+subsys_initcall(as3722_regulator_init);
+
+static void __exit as3722_regulator_exit(void)
+{
+	platform_driver_unregister(&as3722_regulator_driver);
+}
+
+module_exit(as3722_regulator_exit);
 
 MODULE_ALIAS("platform:as3722-regulator");
 MODULE_DESCRIPTION("AS3722 regulator driver");

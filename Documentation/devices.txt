@@ -2816,6 +2816,7 @@ Your cooperation is appreciated.
 		 210 = /dev/ttyMAX1		MAX3100 serial port 1
 		 211 = /dev/ttyMAX2		MAX3100 serial port 2
 		 212 = /dev/ttyMAX3		MAX3100 serial port 3
+		 213 = /dev/ttyTGRHVC0		Tegra HV emulated serial port 0
 
 205 char	Low-density serial ports (alternate device)
 		  0 = /dev/culu0		Callout device for ttyLU0

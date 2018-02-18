@@ -1,0 +1,21 @@
+#include <dt-bindings/pinctrl/pinctrl-tegra.h>
+#include <tegra124-platforms/tegra124-loki-pinmux-p2530-c00.dtsi>
+
+/ {
+	pinmux: pinmux@70000868 {
+		pinctrl-names = "default", "drive", "unused";
+		pinctrl-0 = <&pinmux_default>;
+		pinctrl-1 = <&drive_default>;
+		pinctrl-2 = <&pinmux_unused_lowpower>;
+
+		pinmux_default: common {
+				spdif_out_pk5 {
+				nvidia,pins = "spdif_out_pk5";
+				nvidia,function = "safe";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};
+};

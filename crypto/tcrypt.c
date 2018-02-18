@@ -1289,10 +1289,7 @@ static int do_test(int m)
 	case 10:
 		ret += tcrypt_test("ecb(aes)");
 		ret += tcrypt_test("cbc(aes)");
-		ret += tcrypt_test("lrw(aes)");
-		ret += tcrypt_test("xts(aes)");
 		ret += tcrypt_test("ctr(aes)");
-		ret += tcrypt_test("rfc3686(ctr(aes))");
 		break;
 
 	case 11:
@@ -1454,6 +1451,10 @@ static int do_test(int m)
 		ret += tcrypt_test("crct10dif");
 		break;
 
+	case 48:
+		ret += tcrypt_test("ofb(aes)");
+		break;
+
 	case 100:
 		ret += tcrypt_test("hmac(md5)");
 		break;
@@ -1496,6 +1497,10 @@ static int do_test(int m)
 
 	case 110:
 		ret += tcrypt_test("hmac(crc32)");
+		break;
+
+	case 111:
+		ret += tcrypt_test("cmac(aes)");
 		break;
 
 	case 150:

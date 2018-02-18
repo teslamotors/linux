@@ -1022,6 +1022,44 @@ static void i2c_dev_set_name(struct i2c_adapter *adap,
 		     client->addr | ((client->flags & I2C_CLIENT_TEN)
 				     ? 0xa000 : 0));
 }
+int i2c_set_adapter_bus_clk_rate(struct i2c_adapter *adap, int bus_rate)
+{
+	i2c_lock_adapter(adap);
+	adap->bus_clk_rate = bus_rate;
+	i2c_unlock_adapter(adap);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(i2c_set_adapter_bus_clk_rate);
+
+int i2c_get_adapter_bus_clk_rate(struct i2c_adapter *adap)
+{
+	int bus_clk_rate;
+
+	i2c_lock_adapter(adap);
+	bus_clk_rate = adap->bus_clk_rate;
+	i2c_unlock_adapter(adap);
+
+	return bus_clk_rate;
+}
+EXPORT_SYMBOL_GPL(i2c_get_adapter_bus_clk_rate);
+
+void i2c_shutdown_adapter(struct i2c_adapter *adapter)
+{
+	i2c_lock_adapter(adapter);
+	adapter->cancel_xfer_on_shutdown = true;
+	i2c_unlock_adapter(adapter);
+}
+EXPORT_SYMBOL_GPL(i2c_shutdown_adapter);
+
+void i2c_shutdown_clear_adapter(struct i2c_adapter *adapter)
+{
+	i2c_lock_adapter(adapter);
+	adapter->cancel_xfer_on_shutdown = false;
+	adapter->atomic_xfer_only = true;
+	i2c_unlock_adapter(adapter);
+}
+EXPORT_SYMBOL_GPL(i2c_shutdown_clear_adapter);
 
 /**
  * i2c_new_device - instantiate an i2c device
@@ -1180,7 +1218,8 @@ static void i2c_adapter_dev_release(struct device *dev)
  * make it inline to avoid a compiler warning. That's what gcc ends up
  * doing anyway.
  */
-static inline unsigned int i2c_adapter_depth(struct i2c_adapter *adapter)
+static inline unsigned int __maybe_unused
+i2c_adapter_depth(struct i2c_adapter *adapter)
 {
 	unsigned int depth = 0;
 
@@ -1302,14 +1341,37 @@ i2c_sysfs_delete_device(struct device *dev, struct device_attribute *attr,
 	return res;
 }
 
+static ssize_t show_bus_clk_rate(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct i2c_adapter *adap = to_i2c_adapter(dev);
+
+	return sprintf(buf, "%ld\n", adap->bus_clk_rate);
+}
+
+static ssize_t set_bus_clk_rate(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct i2c_adapter *adap = to_i2c_adapter(dev);
+	char *p = (char *)buf;
+	int bus_clk_rate;
+
+	bus_clk_rate = memparse(p, &p);
+	dev_info(dev, "Setting clock rate %d on next transfer\n", bus_clk_rate);
+	adap->bus_clk_rate = bus_clk_rate;
+	return count;
+}
+
 static DEVICE_ATTR(new_device, S_IWUSR, NULL, i2c_sysfs_new_device);
 static DEVICE_ATTR_IGNORE_LOCKDEP(delete_device, S_IWUSR, NULL,
 				   i2c_sysfs_delete_device);
+static DEVICE_ATTR(bus_clk_rate, 0644, show_bus_clk_rate, set_bus_clk_rate);
 
 static struct attribute *i2c_adapter_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_new_device.attr,
 	&dev_attr_delete_device.attr,
+	&dev_attr_bus_clk_rate.attr,
 	NULL
 };
 
@@ -1384,6 +1446,9 @@ static void of_i2c_register_devices(struct i2c_adapter *adap)
 		struct dev_archdata dev_ad = {};
 		const __be32 *addr;
 		int len;
+
+		if (!strcmp(node->name, "prod-settings"))
+			continue;
 
 		dev_dbg(&adap->dev, "of_i2c: register %s\n", node->full_name);
 
@@ -1944,6 +2009,20 @@ void i2c_clients_command(struct i2c_adapter *adap, unsigned int cmd, void *arg)
 }
 EXPORT_SYMBOL(i2c_clients_command);
 
+static int __init i2c_first_dynamic_bus_num_init(void)
+{
+	int max_bus;
+
+	max_bus = of_alias_get_max_id("i2c");
+	if (max_bus > 0)
+		__i2c_first_dynamic_bus_num = max_bus + 1;
+
+	pr_info("I2C first dynamic bus number based on alias = %d\n",
+			__i2c_first_dynamic_bus_num);
+
+	return 0;
+}
+
 static int __init i2c_init(void)
 {
 	int retval;
@@ -1951,6 +2030,9 @@ static int __init i2c_init(void)
 	retval = bus_register(&i2c_bus_type);
 	if (retval)
 		return retval;
+
+	i2c_first_dynamic_bus_num_init();
+
 #ifdef CONFIG_I2C_COMPAT
 	i2c_adapter_compat_class = class_compat_register("i2c-adapter");
 	if (!i2c_adapter_compat_class) {
@@ -2097,7 +2179,12 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 			i2c_lock_adapter(adap);
 		}
 
-		ret = __i2c_transfer(adap, msgs, num);
+		if (!adap->cancel_xfer_on_shutdown)
+			ret = __i2c_transfer(adap, msgs, num);
+		else {
+			WARN_ON(1);
+			ret = -EPERM;
+		}
 		i2c_unlock_adapter(adap);
 
 		return ret;

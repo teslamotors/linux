@@ -107,6 +107,7 @@ struct fence_cb {
  * @get_driver_name: returns the driver name.
  * @get_timeline_name: return the name of the context this fence belongs to.
  * @enable_signaling: enable software signaling of fence.
+ * @disable_signaling: disable software signaling of fence (optional).
  * @signaled: [optional] peek whether the fence is signaled, can be null.
  * @wait: custom wait implementation, or fence_default_wait.
  * @release: [optional] called on destruction of fence, can be null
@@ -166,6 +167,7 @@ struct fence_ops {
 	const char * (*get_driver_name)(struct fence *fence);
 	const char * (*get_timeline_name)(struct fence *fence);
 	bool (*enable_signaling)(struct fence *fence);
+	void (*disable_signaling)(struct fence *fence);
 	bool (*signaled)(struct fence *fence);
 	signed long (*wait)(struct fence *fence, bool intr, signed long timeout);
 	void (*release)(struct fence *fence);
@@ -238,12 +240,14 @@ void fence_enable_sw_signaling(struct fence *fence);
  * This function requires fence->lock to be held.
  */
 static inline bool
-fence_is_signaled_locked(struct fence *fence)
+fence_is_signaled_locked(struct fence *fence, u64 timestamp)
 {
 	if (test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return true;
 
 	if (fence->ops->signaled && fence->ops->signaled(fence)) {
+		if (timestamp)
+			fence->timestamp = ns_to_ktime(timestamp);
 		fence_signal_locked(fence);
 		return true;
 	}

@@ -1,0 +1,340 @@
+/*
+ * tegra186-soc-vcm.dtsi: Mobile family SoC specific DTSI file with
+ * required node enabled for VCM modules.
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra186-soc/tegra186-cpus-2D4A.dtsi"
+#include "tegra186-soc/tegra186-soc-base.dtsi"
+#include "tegra186-soc/tegra186-soc-prod.dtsi"
+#include "tegra186-soc/tegra186-soc-audio.dtsi"
+
+/ {
+
+	aliases {
+		spi0 = &spi0;
+		spi2 = &spi2;
+		spi3 = &spi3;
+		serial0 = &uarta;
+		serial1 = &uartb;
+		serial2 = &uartc;
+		serial3 = &uartd;
+		serial4 = &uarte;
+		serial5 = &uartf;
+		serial6 = &uartg;
+		qspi6 = &qspi6;
+		rtc1 = "/rtc";
+		rtc0 = "/bpmp_i2c/spmic@3c";
+	};
+
+	cpus {
+		status = "okay";
+
+		cpu@0 {
+			status = "okay";
+		};
+
+		cpu@1 {
+			status = "okay";
+		};
+
+		cpu@2 {
+			status = "okay";
+		};
+
+		cpu@3 {
+			status = "okay";
+		};
+
+		cpu@4 {
+			status = "okay";
+		};
+
+		cpu@5 {
+			status = "okay";
+		};
+	};
+
+	aon@c160000 {
+		status = "okay";
+	};
+
+	timer {
+		status = "okay";
+	};
+
+	rtc@c2a0000 {
+		status = "okay";
+	};
+
+	mc_sid@2c00000 {
+		status = "okay";
+	};
+
+	iommu@12000000 {
+		status = "okay";
+	};
+
+	mc {
+		status = "okay";
+	};
+
+	host1x {
+		status = "okay";
+		ctx0 {
+			status = "okay";
+		};
+
+		ctx1 {
+			status = "okay";
+		};
+
+		ctx2 {
+			status = "okay";
+		};
+
+		ctx3 {
+			status = "okay";
+		};
+
+		ctx4 {
+			status = "okay";
+		};
+
+		ctx5 {
+			status = "okay";
+		};
+
+		ctx6 {
+			status = "okay";
+		};
+
+		ctx7 {
+			status = "okay";
+		};
+
+		nvcsi@150c0000 {
+			status = "okay";
+		};
+
+		vi@15700000 {
+			status = "okay";
+		};
+
+		isp@15600000 {
+			status = "okay";
+		};
+
+		dsi {	/* dsi@15300000 */
+			status = "okay";
+		};
+
+		vic@15340000 {
+			status = "okay";
+		};
+
+		nvenc@154c0000 {
+			status = "okay";
+		};
+
+		nvdec@15480000 {
+			status = "okay";
+		};
+
+		nvjpg@15380000 {
+			status = "okay";
+		};
+
+		tsec@15500000 {
+			status = "okay";
+		};
+
+		tsecb@15100000 {
+			status = "okay";
+		};
+
+		se@15810000 {
+			status = "okay";
+		};
+
+		se@15820000 {
+			status = "okay";
+		};
+
+		se@15830000 {
+			status = "okay";
+		};
+
+		se@15840000 {
+			status = "okay";
+		};
+	};
+
+	hsp_top {
+		status = "okay";
+	};
+
+	gp10b {
+		status = "okay";
+	};
+
+	psci {
+		status = "okay";
+	};
+
+	interrupt-controller@3881000 {
+		status = "okay";
+	};
+
+	agic-controller@2a41000 {
+		status = "okay";
+	};
+
+	timer@3020000 {
+		status = "okay";
+	};
+
+	clock@5000000 {
+		status = "okay";
+	};
+
+	ether_qos@2490000 {
+		status = "okay";
+	};
+
+	ether_qos_virt_test@2490000 {
+		status = "disabled";
+	};
+
+	bpmp {
+		status = "okay";
+
+		bpmpthermal {
+			status = "okay";
+		};
+	};
+
+	dma@2600000 {
+		status = "okay";
+	};
+
+	adsp@2993000 {
+		status = "okay";
+	};
+
+	eqos_ape@2990000 {
+		status = "okay";
+	};
+
+	spi@3270000 {
+		status = "okay";
+	};
+
+	serial@3100000 {
+		status = "okay";
+	};
+
+	pinmux@2430000 {
+		status = "okay";
+	};
+
+	gpio@2200000 {
+		status = "okay";
+	};
+
+	i2c@3160000 {
+		status = "okay";
+	};
+
+	i2c@c240000 {
+		status = "okay";
+	};
+
+	i2c@3180000 {
+		status = "okay";
+	};
+
+	i2c@3190000 {
+		status = "okay";
+	};
+
+	bpmp_i2c {
+		status = "okay";
+	};
+
+	i2c@31b0000 {
+		status = "okay";
+	};
+
+	i2c@31c0000 {
+		status = "okay";
+	};
+
+	i2c@31e0000 {
+		status = "okay";
+	};
+
+	watchdog@30c0000 {
+		nvidia,shutdown-timeout = <150>;
+	};
+
+	pcie-controller@10003000 {
+		status = "okay";
+		pci@1,0 {
+			status = "okay";
+		};
+
+		pci@2,0 {
+			status = "okay";
+		};
+	};
+
+	clocks {
+		status = "okay";
+
+		clk32k_in@0 {
+			status = "okay";
+		};
+	};
+
+	pmc@c360000 {
+		status = "okay";
+	};
+
+	pmc@c370000 {
+		status = "okay";
+	};
+
+	pmc-iopower {
+		status = "okay";
+	};
+
+	cpufreq@e070000 {
+		status = "okay";
+	};
+
+	efuse@3820000 {
+		status = "okay";
+	};
+
+	cluster_clk_priv@e090000 {
+		status = "okay";
+	};
+
+	reserved-memory {
+		vpr: vpr-carveout {
+			status = "disabled";
+		};
+	};
+};

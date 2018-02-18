@@ -1,0 +1,66 @@
+TI SN65DSI86 MIPI DSI to EDP Bridge
+===================================
+
+The sn65dsi86 node:
+sn65dsi86 node must be contained in i2c parent node. This node represents
+TI SN65DSI86 MIPI DSI to EDP Bridge.
+
+Required properties:
+- compatible: Should contain "ti,sn65dsi86".
+- reg: I2C address for chip.
+
+Optional properties:
+- ti,enable-gpio: gpio port to enable and reset chip.
+- ti,pll-refclk-cfg: init value for the register 0x0a. Default value is 0x02.
+- ti,dp-ssc-cfg: init value for the register 0x93. Default value is 0x20.
+- ti,disable-assr: 0 or 1 to enable or disable ASSR support.
+  Default value is 0.
+- ti,negative-hsync: 0 or 1 to be normal or negative polarity of H-Sync
+  pulse. Default value is 0.
+- ti,negative-vsync: 0 or 1 to be normal or negative polarity of V-Sync
+  pulse. Default value is 0.
+- ti,enable-colorbar: 0 or 1 to disable or enable the color-bar test pattern
+  generator. Default value is 0.
+
+Properties to be obsolete:
+- ti,h-pulse-width-high: init value for the register 0x2D. Default value
+  is 0x00. (only bit7 is used to set the H-Sync polarity negative)
+- ti,v-pulse-width-high: init value for the register 0x31. Default value
+  is 0x00. (only bit7 is used to set the V-Sync polarity negative)
+
+Properties not in use (ignored):
+- ti,dsi_cfg1: init value for the register 0x10. Default value is 0x26.
+- ti,dsi-cha-clk-range: init value for the register 0x12. Default value
+  is 0x55.
+- ti,dsi-chb-clk-range: init value for the register 0x13. Default value
+  is 0x00.
+- ti,video_cha_line_low: init value for the register 0x20. Default value
+  is 0x80.
+- ti,video_cha_line_high: init value for the register 0x21. Default value
+  is 0x07.
+- ti,video_chb_line_low: init value for the register 0x22. Default value
+  is -1.
+- ti,video_chb_line_high: init value for the register 0x23. Default value
+  is 0x00.
+- ti,cha_vert_disp_size_low: init value for the register 0x24. Default value
+  is 0x38.
+- ti,cha_vert_disp_size_high: init value for the register 0x25. Default value
+  is 0x04.
+- ti,h-pulse-width-low: init value for the register 0x2C. Default value
+  is 0x10.
+- ti,v-pulse-width-low: init value for the register 0x30. Default value
+  is 0x0e.
+- ti,h-back-porch: init value for the register 0x34. Default value is 0x98.
+- ti,v-back-porch: init value for the register 0x36. Default value is 0x13.
+- ti,h-front-porch: init value for the register 0x38. Default value is 0x10.
+- ti,v-front-porch: init value for the register 0x3a. Default value is 0x03.
+
+Example:
+
+i2c@7000c000 {
+	sn65dsi86@2d {
+		compatible = "ti,sn65dsi86";
+		reg = <0x2d>;
+		status = "okay";
+	};
+}:

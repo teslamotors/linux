@@ -2,6 +2,7 @@
  * USB CDC EEM network interface driver
  * Copyright (C) 2009 Oberthur Technologies
  * by Omar Laazimani, Olivier Condemine
+ * Copyright (c) 2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -344,7 +345,11 @@ next:
 
 static const struct driver_info eem_info = {
 	.description =	"CDC EEM Device",
+#ifdef CONFIG_USB_NET_CDC_EEM_ETHER_ONLY
+	.flags =	FLAG_ETHER,
+#else
 	.flags =	FLAG_ETHER | FLAG_POINTTOPOINT,
+#endif
 	.bind =		eem_bind,
 	.rx_fixup =	eem_rx_fixup,
 	.tx_fixup =	eem_tx_fixup,

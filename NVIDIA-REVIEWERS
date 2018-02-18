@@ -1,0 +1,238 @@
+This is a reviewers file that can be parsed by get_nv_reviewers.py that
+internally uses scripts/get_maintainer.pl from kernel.
+
+See the MAINTAINERS file in the Linux kernel source tree for details of the
+file format. The file format is defined by the upstream Linux kernel community,
+so don't modify it without upstreaming any changes to get_maintainer.pl.
+
+Descriptions of section entries (copied from MAINTAINERS):
+
+	P: Person (obsolete)
+	M: Mail patches to: FullName <address@domain>
+	L: Mailing list that is relevant to this area
+	W: Web-page with status/info
+	Q: Patchwork web based patch tracking system site
+	T: SCM tree type and location.  Type is one of: git, hg, quilt, stgit, topgit.
+	S: Status, one of the following:
+	   Supported:	Someone is actually paid to look after this.
+	   Maintained:	Someone actually looks after it.
+	   Odd Fixes:	It has a maintainer but they don't have time to do
+			much other than throw the odd patch in. See below..
+	   Orphan:	No current maintainer [but maybe you could take the
+			role as you write your new code].
+	   Obsolete:	Old code. Something tagged obsolete generally means
+			it has been replaced by a better system and you
+			should be using that.
+	F: Files and directories with wildcard patterns.
+	   A trailing slash includes all files and subdirectory files.
+	   F:	drivers/net/	all files in and below drivers/net
+	   F:	drivers/net/*	all files in drivers/net, but not below
+	   F:	*/net/*		all files in "any top level directory"/net
+	   One pattern per line.  Multiple F: lines acceptable.
+	X: Files and directories that are NOT maintained, same rules as F:
+	   Files exclusions are tested before file matches.
+	   Can be useful for excluding a specific subdirectory, for instance:
+	   F:	net/
+	   X:	net/ipv6/
+	   matches all files in and below net excluding net/ipv6/
+	K: Keyword perl extended regex pattern to match content in a
+	   patch or file.  For instance:
+	   K: of_get_profile
+	      matches patches or files that contain "of_get_profile"
+	   K: \b(printk|pr_(info|err))\b
+	      matches patches or files that contain one or more of the words
+	      printk, pr_info or pr_err
+	   One regex pattern per line.  Multiple K: lines acceptable.
+
+Note: For the hard of thinking, this list is meant to remain in alphabetical
+order. If you could add yourselves to it in alphabetical order that would be
+so much easier [Ed]
+
+Maintainers List (try to look for most precise areas first)
+
+		-----------------------------------
+DEVICE-TREE
+M:	Laxman Dewangan <ldewangan@nvidia.com>
+M:	Alexander Van Brunt <avanbrunt@nvidia.com>
+L:	sw-mobile-platform@exchange.nvidia.com
+S:	Supported
+F:	arch/arm64/boot/dts/
+
+ADSP
+M:	Nitin Kumbhar <nkumbhar@nvidia.com>
+M:	Sachin Nikam <snikam@nvidia.com>
+L:	adsp_os@exchange.nvidia.com
+S:	Supported
+F:	drivers/platform/tegra/nvadsp/*
+
+AUDIO
+M:	Niranjan Wartikar <nwartikar@nvidia.com>
+L:	sw-mobile-audio-arch@exchange.nvidia.com
+S:	Supported
+F:	sound/soc/tegra-alt/*
+
+AUDIO_AUTO
+M:	Nitin Pai <npai@nvidia.com>
+M:	Dipesh Gandhi <dipeshg@nvidia.com>
+S:	Supported
+F:	drivers/misc/tegra186-ahc/*
+F:	drivers/net/ethernet/nvidia/eqos/*
+
+BPMP
+M:	Matthew Longnecker <mlongnecker@nvidia.com>
+M:	Timo Alho <talho@nvidia.com>
+L:	sw-mobile-bpmp-dev@exchange.nvidia.com
+S:	Supported
+F:	drivers/firmware/tegra/*
+F:	drivers/reset/tegra/*
+
+BUS
+M:	Laxman Dewangan <ldewangan@nvidia.com>
+L:	sw-mobile-kernel-bus@exchange.nvidia.com
+S:	Supported
+F:	drivers/i2c/busses/*
+F:	drivers/spi/*
+
+CAMERA
+M:	Nicholas Haemel <nhaemel@nvidia.com>
+M:	Jihoon Bang <jbang@nvidia.com>
+M:	Shantanu Nath <snath@nvidia.com>
+L:	sw-mobile-camera@exchange.nvidia.com
+S:	Supported
+F:	drivers/video/tegra/host/vi/*
+
+CPU
+M:	Guy Sotomayor <gsotomayor@nvidia.com>
+M:	Alexander Van Brunt <avanbrunt@nvidia.com>
+L:	sw-mobile-cpu@exchange.nvidia.com
+S:	Supported
+F:	drivers/clocksource/tegra186-timer.c
+F:	drivers/cpuidle/cpuidle-tegra18x.c
+F:	drivers/platform/tegra/ari_mca.c
+F:	drivers/platform/tegra/bridge_mca.c
+F:	drivers/platform/tegra/tegra-mce.c
+F:	drivers/platform/tegra/tegra-sysfs-mbox.c
+
+DISPLAY
+M:	Mitch Luban <mluban@nvidia.com>
+M:	Venu Byravarasu <vbyravarasu@nvidia.com>
+M:	Jon Mayo <jmayo@nvidia.com>
+L:	tegra-display-core@exchange.nvidia.com
+S:	Supported
+F:	drivers/platform/tegra/panel-simulator.c
+F:	drivers/video/tegra/dc/*
+F:	drivers/misc/csi_mipi_cal/*
+
+DEVICE-TREE
+M:	Laxman Dewangan <ldewangan@nvidia.com>
+M:	Alexander Van Brunt <avanbrunt@nvidia.com>
+L:	sw-mobile-platform@exchange.nvidia.com
+S:	Supported
+F:	arch/arm64/boot/dts/
+
+HOST
+M:	Arto Merilainen <amerilainen@nvidia.com>
+L:	sw-mobile-host1x@exchange.nvidia.com
+S:	Supported
+F:	drivers/gpu/drm/*
+F:	drivers/gpu/host1x/*
+
+HSP
+M:	Pend Du <pdu@nvidia.com>
+S:	Supported
+F:	drivers/platform/tegra/tegra-hsp.c
+
+MEMORY
+M:	Krishna Reddy <vdumpa@nvidia.com>
+M:	Sri Krishna Chowdary <schowdary@nvidia.com>
+L:	sw-mobile-memory@exchange.nvidia.com
+S:	Supported
+F:	drivers/dma/*
+F:	drivers/video/tegra/nvmap/*
+F:	drivers/platform/tegra/iomap_t18x.h
+F:	drivers/platform/tegra/mc/*
+
+MTTCAN
+M:	Manoj Chourasia <mchourasia@nvidia.com>
+S:	Supported
+F:	drivers/staging/mttcan/*
+
+PLATFORM
+M:	Mallikarjun Kasoju <mkasoju@nvidia.com>
+M:	Laxman Dewangan <ldewangan@nvidia.com>
+L:	sw-mobile-kernel-platform@exchange.nvidia.com
+S:	Supported
+F:	drivers/gpio/*
+F:	drivers/misc/tegra-fuse/tegra18x_fuse_offsets.h
+F:	drivers/padctrl/*
+F:	drivers/pinctrl/pinctrl-*.c
+F:	drivers/platform/tegra/tegra18_kfuse.c
+F:	drivers/platform/tegra/tegra18_kfuse_priv.h
+
+POWER: CLOCKS AND VOLTAGE
+M:	Matthew Longnecker <mlongnecker@nvidia.com>
+M:	Aleksandr Frid <afrid@nvidia.com>
+L:	sw-mobile-clocks@exchange.nvidia.com
+F:	drivers/clk/tegra/*
+F:	drivers/platform/tegra/cactmon_t18x.c
+
+POWER: CPU
+M:	Matthew Longnecker <mlongnecker@nvidia.com>
+L:	sw-mobile-cpu-power@exchange.nvidia.com
+S:	Supported
+F:	drivers/cpufreq/*
+F:	drivers/cpuidle/*
+F:	drivers/platform/tegra/tegra18_a57_serr.c
+F:	drivers/platform/tegra/tegra18_cpu_debugfs.c
+F:	drivers/platform/tegra/tegra18_serr.c
+F:	drivers/platform/tegra/tegra18_speedo.c
+F:	drivers/platform/tegra/chipid.c
+
+POWER: THERMAL
+M:	Matthew Longnecker <mlongnecker@nvidia.com>
+L:	sw-mobile-therm@exchange.nvidia.com
+S:	Supported
+F:	drivers/thermal/*
+F:	drivers/platform/tegra/tegra18_throttle.c
+
+POWER: GATING AND STATES
+M:	Matthew Longnecker <mlongnecker@nvidia.com>
+M:	Laxman Dewangan <ldewangan@nvidia.com>
+L:	sw-mobile-power@exchange.nvidia.com
+S:	Supported
+F:	drivers/platform/tegra/pm-*.c
+F:	drivers/platform/tegra/aon-ivc-dbg-messages.h
+F:	drivers/platform/tegra/powergate/*
+F:	drivers/platform/tegra/reboot-t18x.c
+F:	drivers/platform/tegra/tegra-aon.c
+F:	drivers/platform/tegra/tegra186-aowoke.*
+F:	drivers/platform/tegra/tegra186-aondbg.c
+F:	drivers/platform/tegra/tegra186-platform-common.c
+F:	drivers/platform/tegra/tegra186-pmc*.c
+F:	drivers/platform/tegra/wakeups-t18x.c
+
+RTCPU
+M:	Remi Denis-Courmont <remid@nvidia.com>
+S:	Supported
+F:	drivers/platform/tegra/rtcpu/
+F:	drivers/platform/tegra/tegra-camera-rtcpu.c
+F:	drivers/platform/tegra/tegra_ast.c
+
+SECURITY
+M:	Vincent Chen <vinchen@nvidia.com>
+L:	sw-mobile-security@exchange.nvidia.com
+S:	Supported
+F:	drivers/crypto/*
+
+SENSORS
+M:	R Raj Kumar <rrajk@nvidia.com>
+S:	Supported
+F:	drivers/tachometer/*
+
+SYSTEM
+M:	Laxman Dewangan <ldewangan@nvidia.com>
+L:	sw-mobile-system@exchange.nvidia.com
+S:	Supported
+F:	drivers/platform/tegra/tegra186-system-config.c
+F:	drivers/watchdog/*
+

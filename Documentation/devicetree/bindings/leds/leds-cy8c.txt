@@ -1,0 +1,23 @@
+LED connected to I2C (CY8C uC controller)
+
+Required properties:
+- compatible : should be "nvidia,cy8c_led".
+
+Each LED is represented as a sub-node of the cy8c_led device. Each
+node's name represents the name of the corresponding LED.
+
+LED sub-node properties:
+- label :  (optional)
+	see Documentation/devicetree/bindings/leds/common.txt
+- reg : i2c regmap address
+
+Examples:
+	i2c@7000c000 {
+		nv_foster_led@09 {
+			compatible = "nvidia,cy8c_led";
+			label = "led_lightbar";
+			reg = <0x09>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+	};
+};

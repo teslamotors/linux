@@ -1,0 +1,77 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <tegra210-platforms/tegra210-camera-e3323-a00.dtsi>
+
+#define CAM0_RST_L	TEGRA_GPIO(S, 4)
+#define CAM0_PWDN		TEGRA_GPIO(S, 7)
+#define CAM1_RST_L	TEGRA_GPIO(S, 5)
+#define CAM1_PWDN		TEGRA_GPIO(T, 0)
+/* CAM2_RST  TCA9539 - P10 */
+/* CAM2_PWDN  TCA9539 - P07 */
+/* CAM_AF_PWDN  TCA9539 - P13 */
+
+/* camera control gpio definitions */
+
+/ {
+	host1x {
+		i2c@546c0000 {
+			ov23850_a@10 {
+				/* Define any required hw resources needed by driver */
+				/* ie. clocks, io pins, power sources */
+				mclk = "cam_mclk1";
+				reset-gpios = <&gpio CAM0_RST_L GPIO_ACTIVE_HIGH>;   //also for VCM_2V8 en
+				pwdn-gpios = <&gpio CAM0_PWDN GPIO_ACTIVE_HIGH>;
+				vana-supply = <&en_vdd_cam_hv_2v8>;
+				vdig-supply = <&en_vdd_cam_1v2>;
+				vif-supply = <&en_vdd_cam>;
+				vvcm-suply = <&en_vdd_vcm_2v8>;
+			};
+			lc898212_1: lc898212@6_0072 {
+				vvcm-supply = <&en_vdd_vcm_2v8>;
+			};
+		};
+	};
+
+	i2c@7000c000 {
+		ov23850_c@36 {
+			/* Define any required hw resources needed by driver */
+			/* ie. clocks, io pins, power sources */
+			mclk = "cam_mclk1";
+			reset-gpios = <&gpio CAM1_RST_L GPIO_ACTIVE_HIGH>;   //also for VCM_2V8 en
+			pwdn-gpios = <&gpio CAM1_PWDN GPIO_ACTIVE_HIGH>;
+			vana-supply = <&en_vdd_cam_hv_2v8>;
+			vdig-supply = <&en_vdd_cam_1v2>;
+			vif-supply = <&en_vdd_cam>;
+			vvcm-suply = <&en_vdd_vcm_2v8>;
+		};
+		lc898212_2: lc898212@0_0072 {
+			vvcm-supply = <&en_vdd_vcm_2v8>;
+		};
+	};
+
+	gpio: gpio@6000d000 {
+		camera-control {
+			gpio-output-low = <
+				CAM0_RST_L
+				CAM0_PWDN
+				CAM1_RST_L
+				CAM1_PWDN
+				>;
+		};
+	};
+};

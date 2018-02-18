@@ -29,6 +29,8 @@ static int battery_present		= 1; /* true */
 static int battery_technology		= POWER_SUPPLY_TECHNOLOGY_LION;
 static int battery_capacity		= 50;
 static int battery_voltage		= 3300;
+static int battery_voltage_ocv          = 4200000; /* uV */
+static int battery_temp                 = 26;
 
 static bool module_initialized;
 
@@ -105,10 +107,13 @@ static int test_power_get_battery_property(struct power_supply *psy,
 		val->intval = 3600;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		val->intval = 26;
+		val->intval = battery_temp;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = battery_voltage;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
+		val->intval = battery_voltage_ocv;
 		break;
 	default:
 		pr_info("%s: some properties deliberately report errors.\n",
@@ -140,6 +145,7 @@ static enum power_supply_property test_power_battery_props[] = {
 	POWER_SUPPLY_PROP_SERIAL_NUMBER,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_VOLTAGE_OCV,
 };
 
 static char *test_power_ac_supplied_to[] = {
@@ -422,6 +428,37 @@ static int param_set_battery_voltage(const char *key,
 
 #define param_get_battery_voltage param_get_int
 
+static int param_set_battery_voltage_ocv(const char *key,
+					const struct kernel_param *kp)
+{
+	int tmp;
+
+	if (1 != sscanf(key, "%d", &tmp))
+		return -EINVAL;
+
+	battery_voltage_ocv = tmp;
+	power_supply_changed(&test_power_supplies[1]);
+	return 0;
+}
+
+#define param_get_battery_voltage_ocv param_get_int
+
+static int param_set_battery_temp(const char *key,
+				  const struct kernel_param *kp)
+{
+	int tmp;
+
+	if (1 != sscanf(key, "%d", &tmp))
+		return -EINVAL;
+
+	battery_temp = tmp;
+	power_supply_changed(&test_power_supplies[1]);
+	return 0;
+}
+
+#define param_get_battery_temp param_get_int
+
+
 static struct kernel_param_ops param_ops_ac_online = {
 	.set = param_set_ac_online,
 	.get = param_get_ac_online,
@@ -462,6 +499,16 @@ static struct kernel_param_ops param_ops_battery_voltage = {
 	.get = param_get_battery_voltage,
 };
 
+static struct kernel_param_ops param_ops_battery_voltage_ocv = {
+	.set = param_set_battery_voltage_ocv,
+	.get = param_get_battery_voltage_ocv,
+};
+
+static struct kernel_param_ops param_ops_battery_temp = {
+	.set = param_set_battery_temp,
+	.get = param_get_battery_temp,
+};
+
 #define param_check_ac_online(name, p) __param_check(name, p, void);
 #define param_check_usb_online(name, p) __param_check(name, p, void);
 #define param_check_battery_status(name, p) __param_check(name, p, void);
@@ -470,6 +517,8 @@ static struct kernel_param_ops param_ops_battery_voltage = {
 #define param_check_battery_health(name, p) __param_check(name, p, void);
 #define param_check_battery_capacity(name, p) __param_check(name, p, void);
 #define param_check_battery_voltage(name, p) __param_check(name, p, void);
+#define param_check_battery_voltage_ocv(name, p) __param_check(name, p, void);
+#define param_check_battery_temp(name, p) __param_check(name, p, void);
 
 
 module_param(ac_online, ac_online, 0644);
@@ -499,6 +548,12 @@ MODULE_PARM_DESC(battery_capacity, "battery capacity (percentage)");
 
 module_param(battery_voltage, battery_voltage, 0644);
 MODULE_PARM_DESC(battery_voltage, "battery voltage (millivolts)");
+
+module_param(battery_voltage_ocv, battery_voltage_ocv, 0644);
+MODULE_PARM_DESC(battery_voltage_ocv, "battery open circuit voltage (microvolts)");
+
+module_param(battery_temp, battery_temp, 0644);
+MODULE_PARM_DESC(battery_temp, "battery temperature");
 
 MODULE_DESCRIPTION("Power supply driver for testing");
 MODULE_AUTHOR("Anton Vorontsov <cbouatmailru@gmail.com>");

@@ -1,0 +1,24 @@
+DS90UB947-Q1 1080p OpenLDS to FPD-Link III Serializer driver
+
+Required properties:
+- compatible : should be "ti,ds90ub947-q1".
+
+Sub-node properties:
+- reg : i2c regmap address (app firmware)
+- init-regs : an array of 8b values. The array should contain consecutive
+    groups of 3 values, each group containing reg address, mask, and data.
+	Data is written to each register using the mask, in a read/modify/write fashion.
+
+Examples:
+	i2c@3180000 {
+		ds90ub947-q1@0c {
+			compatible = "ti,ds90ub947-q1";
+			reg = <0x0c>;
+
+			/* Set OLDI_IN_MODE to single-pixel mode */
+			/* Write 1 to bit 6 of register 0x47. Additional reg writes
+			 * would simply be appended to this array */
+			init-regs = <0x47 0x40 0x40>;
+		};
+	};
+};

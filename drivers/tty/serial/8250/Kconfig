@@ -91,6 +91,15 @@ config SERIAL_8250_CONSOLE
 
 	  If unsure, say N.
 
+config SERIAL_8250_EARLYCON
+	bool "Earlycon on 8250/16550 and compatible serial port"
+	depends on SERIAL_8250_CONSOLE
+	default y
+	help
+	  Allow earlycon to work on 8250/16550 serial ports. Beware, with this
+	  enabled, a kernel command line with earlycon and earlyprintk will not
+	  work.
+
 config SERIAL_8250_GSC
 	tristate
 	depends on SERIAL_8250 && GSC
@@ -180,6 +189,13 @@ config SERIAL_8250_MANY_PORTS
 	  hardware. If you only use the standard COM 1/2/3/4 ports, you can
 	  say N here to save some memory. You can also say Y if you have an
 	  "intelligent" multiport card such as Cyclades, Digiboards, etc.
+
+config HAS_NS_SUPER_IO_CHIP
+	bool "Support National Semiconductor SuperIO chip"
+	depends on SERIAL_8250
+	default n
+	help
+	  Say Y here If you wish to use National Semiconductor SuperIO chip
 
 #
 # Multi-port serial cards

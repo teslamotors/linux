@@ -45,8 +45,24 @@ struct mmc_ioc_cmd {
 };
 #define mmc_ioc_cmd_set_data(ic, ptr) ic.data_ptr = (__u64)(unsigned long) ptr
 
-#define MMC_IOC_CMD _IOWR(MMC_BLOCK_MAJOR, 0, struct mmc_ioc_cmd)
+/**
+ * combo command used ioctl cmd id MMC_COMBO_IOC_CMD
+ */
+struct mmc_combo_cmd_info {
+	uint8_t  num_of_combo_cmds;
+	struct mmc_ioc_cmd *mmc_ioc_cmd_list;
+};
 
+#define MMC_IOC_CMD _IOWR(MMC_BLOCK_MAJOR, 0, struct mmc_ioc_cmd)
+/*
+ * MMC_COMBO_IOC_CMD: This is used to send a array of eMMC commands.
+ * each entry in struct mmc_ioc_cmd will have details of
+ * one eMMC command.
+ * The mmc driver will issue all commands in array in sequence to card.
+ * To ensure atomic operations of all commands in array,
+ * a single lock is acquired.
+ */
+#define MMC_COMBO_IOC_CMD _IOWR(MMC_BLOCK_MAJOR, 1, struct mmc_combo_cmd_info)
 /*
  * Since this ioctl is only meant to enhance (and not replace) normal access
  * to the mmc bus device, an upper data transfer limit of MMC_IOC_MAX_BYTES

@@ -3,6 +3,8 @@
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
  *
+ *  Copyright (c) 2013-2016, NVIDIA CORPORATION. All Rights Reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or (at
@@ -16,12 +18,109 @@
 #include <linux/types.h>
 #include <linux/io.h>
 #include <linux/mmc/host.h>
+#include <linux/sysedp.h>
+
+#define ADMA_DESC_ALLOC_SIZE ((128 * 2 + 1) * 8)
+#define ADMA_ALIGN_BUFFER_SIZE (128 * 8)
+
+#ifdef CONFIG_DEBUG_FS
+struct data_stat_entry {
+	u32 max_kbps;
+	u32 min_kbps;
+	ktime_t start_ktime;
+	u32 duration_usecs;
+	u64 total_usecs;
+	u32 total_transfers;
+	u32 current_transferred_bytes;
+	u64 total_bytes;
+	u32 stat_blk_size;
+	u32 stat_blks_per_transfer;
+	bool is_read;
+	struct data_stat_entry *next;
+};
+
+/*
+ * 1. Each block size has a element of type struct data_stat_entry
+ * 2. For a particular block size we maintain a table of
+ *    performance values observed. This table is used to
+ *    find the most frequent performance value
+ */
+struct data_stat {
+	/*
+	 * use insertion sort to keep the list sorted with
+	 * increasing block size
+	 */
+	struct data_stat_entry *head;
+	/* actual number of stat entries */
+	u8	stat_size;
+};
+#endif
+
+#ifdef CONFIG_MMC_ADMA3
+struct sdhci_adma3_desc_pair {
+	u64 cmd_desc[4];
+	u8 adma_desc[ADMA_DESC_ALLOC_SIZE];
+};
+#endif
+
+struct sdhci_adma_info {
+#ifdef CONFIG_MMC_ADMA3
+	struct sdhci_adma3_desc_pair *adma3_desc;
+#else
+	u8 *adma_desc;
+#endif
+	dma_addr_t adma_addr;
+
+	u8 *align_buffer;	/* Bounce buffer */
+	dma_addr_t align_addr;	/* Mapped bounce buffer */
+
+	int sg_count;		/* Mapped sg entries */
+};
+
+#ifdef CONFIG_MMC_ADMA3
+#define DEFAULT_ADMA3_Q_ALLOC_SIZE 16
+struct adma3_cmd_node {
+	struct mmc_command *cmd;
+	struct mmc_data *data;
+	unsigned int  command;
+	u16 mode;
+	struct mmc_request *mrq;
+	struct sdhci_adma_info *adma_info;
+	struct adma3_cmd_node *next;
+};
+#endif
 
 struct sdhci_host {
+	bool is_reset_once;
+	bool wake_enable_failed;
+	bool disable_command_to_media;
+#ifdef CONFIG_MMC_ADMA3
+	atomic_t is_adma3_cmd_issued;
+	struct adma3_cmd_node *last_adma3_entry;
+	unsigned adma3_index;
+	bool is_cq_check_done;
+	bool is_adma_mode_printed;
+	unsigned int last_flush_size;
+	struct adma3_cmd_node
+		adma3_data_cmd_array[MMC_QUEUE_FLUSH_ADMA3_DEPTH];
+	unsigned int queue_length;
+	unsigned int size_integ_desc_entry;
+	struct work_struct	adma3_post_wrk;
+	unsigned int saved_last_data_error;
+#endif
+	bool	enable_64bit_addr;
+	bool	enable_adma2_26bit;
+	unsigned int	data_len;
+
 	/* Data set by hardware interface driver */
 	const char *hw_name;	/* Hardware bus name */
-
 	unsigned int quirks;	/* Deviations from spec. */
+#ifdef CONFIG_DEBUG_FS
+	struct dentry           *debugfs_root;
+	/* collect data transfer rate statistics */
+	struct data_stat sdhci_data_stat;
+	unsigned int no_data_transfer_count;
+#endif
 
 /* Controller doesn't honor resets unless we touch the clock register */
 #define SDHCI_QUIRK_CLOCK_BEFORE_RESET			(1<<0)
@@ -100,7 +199,23 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_BROKEN_DDR50			(1<<7)
 /* Stop command (CMD12) can set Transfer Complete when not using MMC_RSP_BUSY */
 #define SDHCI_QUIRK2_STOP_WITH_TC			(1<<8)
+/* Controller supports 64 BIT DMA mode */
+#define SDHCI_QUIRK2_SUPPORT_64BIT_DMA			(1<<9)
+/* Use 64 BIT addressing */
+#define SDHCI_QUIRK2_USE_64BIT_ADDR			(1<<10)
+/* Turn off/on card clock before sending/after tuning command*/
+#define SDHCI_QUIRK2_NON_STD_TUN_CARD_CLOCK		(1<<13)
+#define SDHCI_QUIRK2_NON_STD_TUNING_LOOP_CNTR		(1<<14)
+#define SDHCI_QUIRK2_PERIODIC_CALIBRATION		(1<<15)
+#define SDHCI_QUIRK2_DISABLE_CARD_CLOCK_FIRST		(1<<16)
+/*Controller skips tuning if it is already done*/
+#define SDHCI_QUIRK2_SKIP_TUNING			(1<<17)
+#define SDHCI_QUIRK2_USE_32BIT_BLK_COUNT		(1<<18)
+#define SDHCI_QUIRK2_BROKEN_ADMA3			(1<<19)
+#define SDHCI_QUIRK2_ADMA2_26BIT_DATA_LEN		(1<<20)
 
+	unsigned int  acmd12_ctrl;
+	unsigned int  command;
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
 
@@ -130,6 +245,10 @@ struct sdhci_host {
 #define SDHCI_SDIO_IRQ_ENABLED	(1<<9)	/* SDIO irq enabled */
 #define SDHCI_SDR104_NEEDS_TUNING (1<<10)	/* SDR104/HS200 needs tuning */
 #define SDHCI_USING_RETUNING_TIMER (1<<11)	/* Host is using a retuning timer for the card */
+#define SDHCI_USE_ADMA_64BIT	(1<<12)	/* Host is 64bit ADMA capable */
+#define SDHCI_USE_ADMA3		(1<<13)	/* Host is ADMA3 capable */
+#define SDHCI_USE_32BIT_BLK_COUNT	(1<<14)	/* Host supports 32bit block count */
+#define SDHCI_FORCE_PIO_MODE	(1<<15)	/* Force host to use PIO mode */
 
 	unsigned int version;	/* SDHCI spec. version */
 
@@ -144,7 +263,8 @@ struct sdhci_host {
 	bool bus_on;		/* Bus power prevents runtime suspend */
 	bool preset_enabled;	/* Preset is enabled */
 
-	struct mmc_request *mrq;	/* Current request */
+	struct mmc_request *mrq_cmd;	/* Current request */
+	struct mmc_request *mrq_dat;	/* Current request with data*/
 	struct mmc_command *cmd;	/* Current command */
 	struct mmc_data *data;	/* Current data request */
 	unsigned int data_early:1;	/* Data finished before cmd */
@@ -152,21 +272,34 @@ struct sdhci_host {
 
 	struct sg_mapping_iter sg_miter;	/* SG state for PIO */
 	unsigned int blocks;	/* remaining PIO blocks */
+	unsigned int max_pio_size;
+	unsigned int max_pio_blocks;
 
-	int sg_count;		/* Mapped sg entries */
-
-	u8 *adma_desc;		/* ADMA descriptor table */
-	u8 *align_buffer;	/* Bounce buffer */
-
-	dma_addr_t adma_addr;	/* Mapped ADMA descr. table */
-	dma_addr_t align_addr;	/* Mapped bounce buffer */
+#ifdef CONFIG_MMC_ADMA3
+	struct sdhci_adma_info adma_info[DEFAULT_ADMA3_Q_ALLOC_SIZE];
+	unsigned int current_adma_info_index;
+#else
+	struct sdhci_adma_info adma_info;
+#endif
+	u8 *int_desc;		/* ADMA3 integrated descriptor table */
+	dma_addr_t int_adma_addr; /* Mapped ADMA3 integrated descr. table */
+#ifndef CONFIG_MMC_ADMA3
+	u8 *cmd_desc;		/* ADMA3 command descriptor table */
+	dma_addr_t cmd_adma_addr; /* Mapped ADMA3 command descr. table */
+#endif
 
 	struct tasklet_struct finish_tasklet;	/* Tasklet structures */
+	struct tasklet_struct finish_dat_tasklet;
+	struct tasklet_struct finish_cmd_tasklet;
+#ifdef CONFIG_MMC_ADMA3
+	struct tasklet_struct finish_adma3_tasklet;
+#endif
 
 	struct timer_list timer;	/* Timer for timeouts */
 
 	u32 caps;		/* Alternative CAPABILITY_0 */
 	u32 caps1;		/* Alternative CAPABILITY_1 */
+	u32 caps_timing_orig;	/* Save the original host timing caps*/
 
 	unsigned int            ocr_avail_sdio;	/* OCR bit masks */
 	unsigned int            ocr_avail_sd;
@@ -187,6 +320,15 @@ struct sdhci_host {
 	unsigned int		tuning_mode;	/* Re-tuning mode supported by host */
 #define SDHCI_TUNING_MODE_1	0
 	struct timer_list	tuning_timer;	/* Timer for tuning */
+
+	struct cmdq_host *cq_host;
+	struct sysedp_consumer *sysedpc;
+
+#ifdef CONFIG_DEBUG_FS
+	bool			enable_sdhci_perf_stats;
+#endif
+	ktime_t timestamp;
+	bool is_calibration_done;
 
 	unsigned long private[0] ____cacheline_aligned;
 };

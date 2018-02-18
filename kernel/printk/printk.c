@@ -55,6 +55,10 @@
 #include "console_cmdline.h"
 #include "braille.h"
 
+#ifdef CONFIG_EARLY_PRINTK_DIRECT
+extern void printascii(char *);
+#endif
+
 int console_printk[4] = {
 	CONSOLE_LOGLEVEL_DEFAULT,	/* console_loglevel */
 	MESSAGE_LOGLEVEL_DEFAULT,	/* default_message_loglevel */
@@ -1487,6 +1491,8 @@ static int have_callable_console(void)
 	return 0;
 }
 
+bool console_enabled = 1;
+
 /*
  * Can we actually use the console at this time on this cpu?
  *
@@ -1496,7 +1502,7 @@ static int have_callable_console(void)
  */
 static inline int can_use_console(unsigned int cpu)
 {
-	return cpu_online(cpu) || have_callable_console();
+	return console_enabled && (cpu_online(cpu) || have_callable_console());
 }
 
 /*
@@ -1811,6 +1817,10 @@ asmlinkage int vprintk_emit(int facility, int level,
 		}
 	}
 
+#ifdef CONFIG_EARLY_PRINTK_DIRECT
+	printascii(text);
+#endif
+
 	if (level == -1)
 		level = default_message_loglevel;
 
@@ -2088,7 +2098,7 @@ int update_console_cmdline(char *name, int idx, char *name_new, int idx_new, cha
 	return -1;
 }
 
-bool console_suspend_enabled = true;
+bool console_suspend_enabled = false;
 EXPORT_SYMBOL(console_suspend_enabled);
 
 static int __init console_suspend_disable(char *str)

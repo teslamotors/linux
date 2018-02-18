@@ -144,8 +144,14 @@ int regulator_set_voltage_sel_regmap(struct regulator_dev *rdev, unsigned sel)
 
 	sel <<= ffs(rdev->desc->vsel_mask) - 1;
 
-	ret = regmap_update_bits(rdev->regmap, rdev->desc->vsel_reg,
-				  rdev->desc->vsel_mask, sel);
+	if (rdev->desc->vsel_persist) {
+		sel &= rdev->desc->vsel_mask;
+		sel |= ~rdev->desc->vsel_mask & rdev->desc->vsel_persist_val;
+		ret = regmap_write(rdev->regmap, rdev->desc->vsel_reg, sel);
+	} else {
+		ret = regmap_update_bits(rdev->regmap, rdev->desc->vsel_reg,
+					  rdev->desc->vsel_mask, sel);
+	}
 	if (ret)
 		return ret;
 

@@ -1,0 +1,53 @@
+/*
+ * T210- VCM3.1
+ *
+ * arch/arm64/boot/dts/tegra210-vcm31-p2382-0000-a00-00.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/dts-v1/;
+/memreserve/ 0x80000000 0x00020000;
+
+#include "tegra210-vcm31-p2382-common.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	host1x {
+		sor {
+			panel-a-edp-1080p-14-0 {
+				status = "disabled";
+			};
+		};
+
+		dpaux {
+			status = "disabled";
+		};
+
+		/* tegradc.0 */
+		dc@54200000 {
+			nvidia,dc-flags = <0>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,cmu-enable = <0>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "disabled";
+		};
+	};
+};

@@ -1,0 +1,21 @@
+config TRUSTED_LITTLE_KERNEL
+	bool "Enable Open Trusted Execution driver for TLK"
+	select TEGRA_USE_SECURE_KERNEL
+	select FIQ
+	select FIQ_GLUE
+	help
+	  This option adds kernel support for communication with the
+	  Trusted Little Kernel (TLK) secure OS.
+	  If you are unsure how to answer this question, answer N.
+
+config OTE_TRUSTY
+	bool "Enable Open Trusted Execution driver for OTE-Trusty"
+	select TEGRA_USE_SECURE_KERNEL
+	select FIQ
+	select FIQ_GLUE
+	depends on TRUSTY
+	help
+	  This option adds kernel support for communication with the
+	  Trusty-OTE Secure OS, which is a variant of the Trusty
+	  Secure OS, that is provided by Google.
+	  If you are unsure how to answer this question, answer N.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA Corporation.
+ * Copyright (C) 2012-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,22 +35,28 @@ struct push_buffer;
 struct output;
 struct dentry;
 
+struct host1x_dev_ops {
+	int (*load_regs)(struct host1x *host);
+};
+
 struct host1x_channel_ops {
 	int (*init)(struct host1x_channel *channel, struct host1x *host,
 		    unsigned int id);
 	int (*submit)(struct host1x_job *job);
+	void (*push_wait)(struct host1x_channel *ch, u32 id, u32 thresh);
+	void (*enable_gather_filter)(struct host1x_channel *ch);
 };
 
 struct host1x_cdma_ops {
 	void (*start)(struct host1x_cdma *cdma);
 	void (*stop)(struct host1x_cdma *cdma);
 	void (*flush)(struct  host1x_cdma *cdma);
-	int (*timeout_init)(struct host1x_cdma *cdma, u32 syncpt_id);
+	int (*timeout_init)(struct host1x_cdma *cdma);
 	void (*timeout_destroy)(struct host1x_cdma *cdma);
 	void (*freeze)(struct host1x_cdma *cdma);
 	void (*resume)(struct host1x_cdma *cdma, u32 getptr);
-	void (*timeout_cpu_incr)(struct host1x_cdma *cdma, u32 getptr,
-				 u32 syncpt_incrs, u32 syncval, u32 nr_slots);
+	void (*timeout_handle)(struct host1x_cdma *cdma, u32 getptr,
+			       u32 nr_slots);
 };
 
 struct host1x_pushbuffer_ops {
@@ -76,6 +82,9 @@ struct host1x_syncpt_ops {
 	u32 (*load)(struct host1x_syncpt *syncpt);
 	int (*cpu_incr)(struct host1x_syncpt *syncpt);
 	int (*patch_wait)(struct host1x_syncpt *syncpt, void *patch_addr);
+	void (*get_mutex_owner)(struct host1x_syncpt *syncpt,
+				unsigned int mutex_id, bool *cpu, bool *ch,
+				unsigned int *chid);
 };
 
 struct host1x_intr_ops {
@@ -87,6 +96,8 @@ struct host1x_intr_ops {
 	void (*disable_syncpt_intr)(struct host1x *host, u32 id);
 	void (*disable_all_syncpt_intrs)(struct host1x *host);
 	int (*free_syncpt_irq)(struct host1x *host);
+	int (*request_host_general_irq)(struct host1x *host);
+	void (*free_host_general_irq)(struct host1x *host);
 };
 
 struct host1x_info {
@@ -96,6 +107,7 @@ struct host1x_info {
 	int	nb_mlocks;		/* host1x: number of mlocks */
 	int	(*init)(struct host1x *); /* initialize per SoC ops */
 	int	sync_offset;
+	bool	gather_filter_enabled;
 };
 
 struct host1x {
@@ -106,11 +118,16 @@ struct host1x {
 	struct host1x_syncpt_base *bases;
 	struct device *dev;
 	struct clk *clk;
+	struct reset_control *reset_control;
 
 	struct mutex intr_mutex;
 	struct workqueue_struct *intr_wq;
 	int intr_syncpt_irq;
 
+	/* For general interrupts */
+	int intr_general_irq;
+
+	const struct host1x_dev_ops *dev_op;
 	const struct host1x_syncpt_ops *syncpt_op;
 	const struct host1x_intr_ops *intr_op;
 	const struct host1x_channel_ops *channel_op;
@@ -120,6 +137,7 @@ struct host1x {
 
 	struct host1x_syncpt *nop_sp;
 
+	struct mutex syncpt_mutex;
 	struct mutex chlist_mutex;
 	struct host1x_channel chlist;
 	unsigned long allocated_channels;
@@ -131,12 +149,21 @@ struct host1x {
 	struct list_head devices;
 
 	struct list_head list;
+	struct device_dma_parameters dma_parms;
+
+	struct host1x_characteristics host1x_chara;
 };
 
-void host1x_sync_writel(struct host1x *host1x, u32 r, u32 v);
+void host1x_sync_writel(struct host1x *host1x, u32 v, u32 r);
 u32 host1x_sync_readl(struct host1x *host1x, u32 r);
-void host1x_ch_writel(struct host1x_channel *ch, u32 r, u32 v);
+void host1x_ch_writel(struct host1x_channel *ch, u32 v, u32 r);
 u32 host1x_ch_readl(struct host1x_channel *ch, u32 r);
+
+static inline void host1x_hw_load_regs(struct host1x *host)
+{
+	if (host->dev_op && host->dev_op->load_regs)
+		host->dev_op->load_regs(host);
+}
 
 static inline void host1x_hw_syncpt_restore(struct host1x *host,
 					    struct host1x_syncpt *sp)
@@ -209,6 +236,16 @@ static inline int host1x_hw_intr_free_syncpt_irq(struct host1x *host)
 	return host->intr_op->free_syncpt_irq(host);
 }
 
+static inline int host1x_hw_intr_request_host_general_irq(struct host1x *host)
+{
+	return host->intr_op->request_host_general_irq(host);
+}
+
+static inline void host1x_hw_intr_free_host_general_irq(struct host1x *host)
+{
+	host->intr_op->free_host_general_irq(host);
+}
+
 static inline int host1x_hw_channel_init(struct host1x *host,
 					 struct host1x_channel *channel,
 					 int chid)
@@ -220,6 +257,19 @@ static inline int host1x_hw_channel_submit(struct host1x *host,
 					   struct host1x_job *job)
 {
 	return host->channel_op->submit(job);
+}
+
+static inline void host1x_hw_channel_push_wait(struct host1x *host,
+					       struct host1x_channel *channel,
+					       u32 id, u32 thresh)
+{
+	host->channel_op->push_wait(channel, id, thresh);
+}
+
+static inline void host1x_hw_channel_enable_gather_filter(struct host1x *host,
+						   struct host1x_channel *channel)
+{
+	return host->channel_op->enable_gather_filter(channel);
 }
 
 static inline void host1x_hw_cdma_start(struct host1x *host,
@@ -241,10 +291,9 @@ static inline void host1x_hw_cdma_flush(struct host1x *host,
 }
 
 static inline int host1x_hw_cdma_timeout_init(struct host1x *host,
-					      struct host1x_cdma *cdma,
-					      u32 syncpt_id)
+					      struct host1x_cdma *cdma)
 {
-	return host->cdma_op->timeout_init(cdma, syncpt_id);
+	return host->cdma_op->timeout_init(cdma);
 }
 
 static inline void host1x_hw_cdma_timeout_destroy(struct host1x *host,
@@ -265,14 +314,11 @@ static inline void host1x_hw_cdma_resume(struct host1x *host,
 	host->cdma_op->resume(cdma, getptr);
 }
 
-static inline void host1x_hw_cdma_timeout_cpu_incr(struct host1x *host,
+static inline void host1x_hw_cdma_timeout_handle(struct host1x *host,
 						   struct host1x_cdma *cdma,
-						   u32 getptr,
-						   u32 syncpt_incrs,
-						   u32 syncval, u32 nr_slots)
+						   u32 getptr, u32 nr_slots)
 {
-	host->cdma_op->timeout_cpu_incr(cdma, getptr, syncpt_incrs, syncval,
-					nr_slots);
+	host->cdma_op->timeout_handle(cdma, getptr, nr_slots);
 }
 
 static inline void host1x_hw_pushbuffer_init(struct host1x *host,

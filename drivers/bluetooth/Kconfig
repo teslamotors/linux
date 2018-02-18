@@ -106,6 +106,17 @@ config BT_HCIBCM203X
 	  Say Y here to compile support for HCI BCM203x devices into the
 	  kernel or say M to compile it as module (bcm203x).
 
+config BT_BLUESLEEP
+        tristate "Bluesleep driver support"
+        depends on SERIAL_TEGRA
+        help
+          Bluetooth Bluesleep Driver.
+          This driver provides the dynamic active power saving mechanism for
+          bluetooth radio devices.
+
+          Say Y here to compile support for bluesleep support into the kernel
+          or say M to compile it as module (bluesleep).
+
 config BT_HCIBPA10X
 	tristate "HCI BPA10x USB driver"
 	depends on USB
@@ -244,3 +255,6 @@ config BT_WILINK
 	  into the kernel or say M to compile it as module (btwilink).
 
 endmenu
+
+source "drivers/bluetooth/sd8897/Kconfig"
+source "drivers/bluetooth/sd8797/Kconfig"

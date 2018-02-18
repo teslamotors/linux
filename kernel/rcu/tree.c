@@ -56,7 +56,7 @@
 #include <linux/random.h>
 #include <linux/ftrace_event.h>
 #include <linux/suspend.h>
-#include <linux/delay.h>
+#include <linux/irq.h>
 #include <linux/gfp.h>
 #include <linux/oom.h>
 #include <linux/smpboot.h>
@@ -1048,6 +1048,30 @@ static void record_gp_stall_check_time(struct rcu_state *rsp)
 	rsp->jiffies_resched = j + j1 / 2;
 }
 
+static void dump_interrupt_stats(void)
+{
+	struct irq_desc *desc;
+	int irq;
+
+	pr_err("INFO: Interrupt stats dump\n");
+	for_each_irq_nr(irq) {
+		desc = irq_to_desc(irq);
+		if (!desc || !desc->action)
+			continue;
+		pr_err("%5d: %10u", irq, kstat_irqs(irq));
+		if (desc->irq_data.chip) {
+			if (desc->irq_data.chip->name)
+				pr_cont(" %8s", desc->irq_data.chip->name);
+			else
+				pr_cont(" %8s", "-");
+		} else
+			pr_cont(" %8s", "None");
+		if (desc->name)
+			pr_cont(" -%-8s", desc->name);
+		pr_cont(" %s\n", desc->action->name);
+	}
+}
+
 /*
  * Dump stacks of all tasks running on stalled CPUs.
  */
@@ -1127,8 +1151,10 @@ static void print_other_cpu_stall(struct rcu_state *rsp)
 	       (long)rsp->gpnum, (long)rsp->completed, totqlen);
 	if (ndetected == 0)
 		pr_err("INFO: Stall ended before state dump start\n");
-	else
+	else {
 		rcu_dump_cpu_stacks(rsp);
+		dump_interrupt_stats();
+	}
 
 	/* Complain about tasks blocking the grace period. */
 
@@ -1159,6 +1185,7 @@ static void print_cpu_stall(struct rcu_state *rsp)
 		jiffies - rsp->gp_start,
 		(long)rsp->gpnum, (long)rsp->completed, totqlen);
 	rcu_dump_cpu_stacks(rsp);
+	dump_interrupt_stats();
 
 	raw_spin_lock_irqsave(&rnp->lock, flags);
 	if (ULONG_CMP_GE(jiffies, ACCESS_ONCE(rsp->jiffies_stall)))

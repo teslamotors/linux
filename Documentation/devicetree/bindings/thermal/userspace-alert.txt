@@ -1,0 +1,68 @@
+* Userspace thermal alert cooling device node
+
+Provides the facility for userspace to know whether a thermal alert
+occurred or not for a perticular temperature trip value. This is Supported
+by adding a Thermal cooling device.
+
+This cooling device is intended with single trip point.
+
+Required properties:
+- compatible:           "userspace-therm-alert";
+
+- cdev-type:		Name of cdev.
+  Type: string
+  Size: one cell
+
+- #cooling-cells:       Provides cooling device specific information.
+  Type: unsigned        Must be at least 2, to represent minimum followed
+  Size: one cell        by maximum cooling state.
+
+Optional properties:
+- cooling-min-level:    The smallest cooling state.
+  Type: unsigned
+  Size: one cell
+
+- cooling-max-level:    The largest cooling state.
+  Type: unsigned
+  Size: one cell
+
+For more information on cooling device refer,
+	Documentation/devicetree/bindings/thermal/thermal.txt
+
+
+Examples:
+	userspace-alert {
+		compatible = "userspace-therm-alert";
+		cdev-type = "userspace-alert";
+		cooling-min-state = <0>;
+		cooling-max-state = <1>;
+		#cooling-cells = <2>;
+	};
+
+	thermal-zones {
+		Tdiode{
+			status = "okay";
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+			trips {
+				trip_usr_alert {
+					temperature = <60000>;
+					type = "passive";
+					hysteresis = <1>;
+					writable;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&{/thermal-zones/Tdiode_tegra/trips/trip_usr_alert}>;
+					cdev-type = "userspace-alert";
+					cooling-device = <&{/userspace-alert} THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+
+

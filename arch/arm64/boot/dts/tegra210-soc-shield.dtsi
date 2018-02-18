@@ -1,0 +1,547 @@
+/*
+ * tegra210-soc-shield.dtsi: Shiled family SoC specific DTSI file with required node enabled.
+ *
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra210-soc-base.dtsi"
+#include "tegra210-platforms/tegra210-bthrot-cdev.dtsi"
+
+/ {
+	aliases {
+		i2c0 = &i2c1;
+		i2c1 = &i2c2;
+		i2c2 = &i2c3;
+		i2c3 = &i2c4;
+		i2c4 = &i2c5;
+		i2c5 = &i2c6;
+		i2c6 = &i2c7;
+		spi0 = &spi0;
+		spi1 = &spi1;
+		spi2 = &spi2;
+		spi3 = &spi3;
+		qspi6 = &qspi6;
+		serial0 = &uarta;
+		serial1 = &uartb;
+		serial2 = &uartc;
+		serial3 = &uartd;
+		udc0 = &udc;
+		ehci0 = &ehci1;
+		ehci1 = &ehci2;
+		rtc0 = "/rtc";
+		rtc1 = "/i2c@7000d000/max77620@3c";
+	};
+
+	cpus {
+		status = "okay";
+
+		cpu@0 {
+			status = "okay";
+		};
+
+		cpu@1 {
+			status = "okay";
+		};
+
+		cpu@2 {
+			status = "okay";
+		};
+
+		cpu@3 {
+			status = "okay";
+		};
+	};
+
+	psci {
+		status = "okay";
+	};
+
+	arm-pmu {
+		status = "okay";
+	};
+
+	clock {
+		status = "okay";
+	};
+
+	iommu {
+		status = "okay";
+	};
+
+	bpmp {
+		status = "okay";
+	};
+
+	mc {
+		status = "okay";
+	};
+
+	interrupt-controller {
+		status = "okay";
+	};
+
+	interrupt-controller@60004000 {
+		status = "okay";
+	};
+
+	agic-controller {
+		status = "okay";
+	};
+
+	timer {
+		status = "okay";
+	};
+
+	timer@60005000 {
+		status = "okay";
+	};
+
+	rtc {
+		status = "okay";
+	};
+
+	dma@60020000 {
+		status = "okay";
+	};
+
+	pinmux@700008d4 {
+		status = "okay";
+        };
+
+	gpio@6000d000 {
+		status = "okay";
+        };
+
+	xusb@70090000 {
+		status = "okay";
+	};
+
+	serial@70006000 {
+		status = "disabled";
+	};
+
+	serial@70006040 {
+		status = "disabled";
+	};
+
+	serial@70006200 {
+		status = "disabled";
+	};
+
+	serial@70006300 {
+		status = "disabled";
+	};
+
+	sound {
+		status = "okay";
+	};
+
+	sound_ref {
+		status = "okay";
+	};
+
+	pwm@7000a000 {
+		status = "okay";
+	};
+
+	spi@7000d400 {
+		status = "disabled";
+	};
+
+	spi@7000d600 {
+		status = "disabled";
+	};
+
+	spi@7000d800 {
+		status = "disabled";
+	};
+
+	spi@7000da00 {
+		status = "disabled";
+	};
+
+	spi@70410000 {
+		status = "disabled";
+	};
+
+	host1x {
+		status = "okay";
+		vi {
+			status = "okay";
+		};
+
+		isp@54600000 {
+			status = "okay";
+		};
+
+		isp@54680000 {
+			status = "okay";
+		};
+
+		dc@54200000 {
+			status = "disabled";
+		};
+
+		dc@54240000 {
+			status = "disabled";
+		};
+
+		dsi {
+			status = "disabled";
+		};
+
+		vic {
+			status = "okay";
+		};
+
+		nvenc {
+			status = "okay";
+		};
+
+		tsec {
+			status = "okay";
+		};
+
+		tsecb {
+			status = "okay";
+		};
+
+		nvdec {
+			status = "okay";
+		};
+
+		nvjpg {
+			status = "okay";
+		};
+
+		sor {
+			status = "disabled";
+		};
+
+		sor1 {
+			status = "disabled";
+		};
+
+		dpaux {
+			status = "disabled";
+		};
+
+		dpaux1 {
+			status = "disabled";
+		};
+
+		i2c@546c0000 {
+			status = "okay";
+		};
+	};
+
+	gpu {
+		status = "okay";
+	};
+
+	mipical {
+		status = "okay";
+	};
+
+	pmc@7000e400 {
+		status = "okay";
+	};
+
+	adma@702e2000 {
+		status = "okay";
+	};
+
+	se@70012000 {
+		status = "okay";
+	};
+
+	ahub {
+		status = "disabled";
+		admaif@0x702d0000 {
+			status = "disabled";
+		};
+
+		sfc@702d2000 {
+			status = "disabled";
+		};
+
+		sfc@702d2200 {
+			status = "disabled";
+		};
+
+		sfc@702d2400 {
+			status = "disabled";
+		};
+
+		sfc@702d2600 {
+			status = "disabled";
+		};
+
+		spkprot@702d8c00 {
+			status = "disabled";
+		};
+
+		amixer@702dbb00 {
+			status = "disabled";
+		};
+
+		i2s@702d1000 {
+			status = "disabled";
+		};
+
+		i2s@702d1100 {
+			status = "disabled";
+		};
+
+		i2s@702d1200 {
+			status = "disabled";
+		};
+
+		i2s@702d1300 {
+			status = "disabled";
+		};
+
+		i2s@702d1400 {
+			status = "disabled";
+		};
+
+		amx@702d3000 {
+			status = "disabled";
+		};
+
+		amx@702d3100 {
+			status = "disabled";
+		};
+
+		adx@702d3800 {
+			status = "disabled";
+		};
+
+		adx@702d3900 {
+			status = "disabled";
+		};
+
+		dmic@702d4000 {
+			status = "disabled";
+		};
+
+		dmic@702d4100 {
+			status = "disabled";
+		};
+
+		dmic@702d4200 {
+			status = "disabled";
+		};
+
+		afc@702d7000 {
+			status = "disabled";
+		};
+
+		afc@702d7100 {
+			status = "disabled";
+		};
+
+		afc@702d7200 {
+			status = "disabled";
+		};
+
+		afc@702d7300 {
+			status = "disabled";
+		};
+
+		afc@702d7400 {
+			status = "disabled";
+		};
+
+		afc@702d7500 {
+			status = "disabled";
+		};
+
+		mvc@702da000 {
+			status = "disabled";
+		};
+
+		mvc@702da200 {
+			status = "disabled";
+		};
+
+		spdif@702d6000 {
+			status = "disabled";
+		};
+
+		iqc@702de000 {
+			status = "disabled";
+		};
+
+		iqc@702de200 {
+                        status = "disabled";
+                };
+
+		ope@702d8000 {
+			status = "disabled";
+		};
+
+		ope@702d8400 {
+			status = "disabled";
+		};
+	};
+
+	hda@70030000 {
+		status = "okay";
+	};
+
+	adsp_audio {
+		status = "disabled";
+	};
+
+	adsp {
+		status = "okay";
+	};
+
+	pcie-controller@1003000 {
+		status = "disabled";
+	};
+
+	sata@70020000 {
+		status = "disabled";
+	};
+
+	i2c@7000c000 {
+		status = "okay";
+	};
+
+	i2c@7000c400 {
+		status = "okay";
+	};
+
+	i2c@7000c500 {
+		status = "okay";
+	};
+
+	i2c@7000c700 {
+		status = "okay";
+	};
+
+	i2c@7000d000 {
+		status = "okay";
+	};
+
+	i2c@7000d100 {
+		status = "okay";
+	};
+
+	sdhci@700b0600 {
+		status = "disabled";
+	};
+
+	sdhci@700b0400 {
+		status = "disabled";
+	};
+
+	sdhci@700b0200 {
+		status = "disabled";
+	};
+
+	sdhci@700b0000 {
+		status = "disabled";
+	};
+
+	efuse@7000f800 {
+		status = "okay";
+	};
+
+	udc@7d000000 {
+		status = "disabled";
+	};
+
+	otg@7d000000 {
+		status = "disabled";
+	};
+
+	pmc-iopower {
+		status = "okay";
+	};
+
+	dtv@7000c300 {
+		status = "disabled";
+	};
+
+	xudc@700d0000 {
+		status = "disabled";
+	};
+
+	xotg {
+		status = "disabled";
+	};
+
+	soctherm@0x700E2000 {
+		status = "okay";
+	};
+
+	tegra-aotag {
+		status = "okay";
+	};
+
+	tegra_cec {
+		status = "okay";
+	};
+
+	ehci@7d004000 {
+		status = "disabled";
+	};
+
+	watchdog@60005100 {
+		status = "disabled";
+	};
+
+	ptm {
+		status = "okay";
+	};
+
+	thermal-zones {
+		AO-therm {
+			status = "disabled";
+		};
+
+		CPU-therm {
+			status = "okay";
+		};
+		GPU-therm {
+			status = "okay";
+		};
+		LCPU-therm {
+			status = "disabled";
+		};
+		PLL-therm {
+			status = "okay";
+		};
+	};
+
+	mselect {
+		status = "disabled";
+	};
+
+	bthrot_cdev {
+		skin_balanced {
+			status = "okay";
+		};
+		gpu_balanced {
+			status = "okay";
+		};
+		cpu_balanced {
+			status = "okay";
+		};
+		emergency_balanced {
+			status = "okay";
+		};
+	};
+};

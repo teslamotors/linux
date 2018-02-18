@@ -1,0 +1,65 @@
+/*
+ * arch/arm64/boot/dts/tegra210-platforms/tegra210-thermal.dtsi
+ *
+ * Copyright (c) 2014 - 2015, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/thermal/thermal.h>
+
+/ {
+	thermal-zones {
+		AO-therm {
+			status = "disabled";
+			polling-delay = <0>;
+			polling-delay-passive = <1000>;
+			thermal-sensors = <&{/tegra-aotag}>;
+			/* in case of multiple sensors -
+			 * <&{/tegra-aotag/sensor} [0|1|..]>
+			 */
+			trips {
+				trip_shutdown {
+					temperature = <110000>;
+					hysteresis = <0>;
+					type = "critical";
+					writable;
+				};
+			};
+		};
+		CPU-therm {
+			polling-delay		= <0>;
+			polling-delay-passive	= <1000>;
+			thermal-sensors		= <&{/soctherm@0x700E2000} 0>;
+			status = "disabled";
+		};
+		GPU-therm {
+			polling-delay		= <0>;
+			polling-delay-passive	= <1000>;
+			thermal-sensors		= <&{/soctherm@0x700E2000} 1>;
+			status = "disabled";
+		};
+		LCPU-therm {
+			polling-delay		= <0>;
+			polling-delay-passive	= <1000>;
+			thermal-sensors		= <&{/soctherm@0x700E2000} 2>;
+			status = "disabled";
+		};
+		PLL-therm {
+			polling-delay		= <0>;
+			polling-delay-passive	= <1000>;
+			thermal-sensors		= <&{/soctherm@0x700E2000} 3>;
+			status = "disabled";
+		};
+	};
+};

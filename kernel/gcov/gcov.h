@@ -17,10 +17,29 @@
 #include <linux/types.h>
 
 /*
- * Profiling data types used for gcc 3.4 and above - these are defined by
+ * Profiling data types used for at least gcc 4.4 - these are defined by
  * gcc and need to be kept as close to the original definition as possible to
  * remain compatible.
+ *
+ * If compiling with an Android toolchain (from 4.4 to at least 4.6),
+ * CONFIG_GCOV_TOOLCHAIN_IS_ANDROID must be set, since it's not compatible
+ * with a vanilla gcc.
  */
+
+#ifdef CONFIG_GCOV_TOOLCHAIN_IS_ANDROID
+
+/*
+ * Android GCC 4.6 drops the 'name' field from 'struct gcov_fn_info'.
+ */
+# if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 6)
+# define GCOV_FN_INFO_HAS_NAME_FIELD
+# endif
+
+# define GCOV_TAG_FUNCTION_LENGTH 3
+#else /* !CONFIG_GCOV_TOOLCHAIN_IS_ANDROID */
+# define GCOV_TAG_FUNCTION_LENGTH 2
+#endif
+
 #define GCOV_DATA_MAGIC		((unsigned int) 0x67636461)
 #define GCOV_TAG_FUNCTION	((unsigned int) 0x01000000)
 #define GCOV_TAG_COUNTER_BASE	((unsigned int) 0x01a10000)

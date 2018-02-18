@@ -865,18 +865,12 @@ static void hw_breakpoint_reset(void *unused)
 	for (slots = this_cpu_ptr(bp_on_reg), i = 0; i < core_num_brps; ++i) {
 		if (slots[i]) {
 			hw_breakpoint_control(slots[i], HW_BREAKPOINT_RESTORE);
-		} else {
-			write_wb_reg(AARCH64_DBG_REG_BCR, i, 0UL);
-			write_wb_reg(AARCH64_DBG_REG_BVR, i, 0UL);
 		}
 	}
 
 	for (slots = this_cpu_ptr(wp_on_reg), i = 0; i < core_num_wrps; ++i) {
 		if (slots[i]) {
 			hw_breakpoint_control(slots[i], HW_BREAKPOINT_RESTORE);
-		} else {
-			write_wb_reg(AARCH64_DBG_REG_WCR, i, 0UL);
-			write_wb_reg(AARCH64_DBG_REG_WVR, i, 0UL);
 		}
 	}
 }
@@ -895,7 +889,7 @@ static struct notifier_block hw_breakpoint_reset_nb = {
 	.notifier_call = hw_breakpoint_reset_notify,
 };
 
-#ifdef CONFIG_ARM64_CPU_SUSPEND
+#ifdef CONFIG_CPU_PM
 extern void cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void *));
 #else
 static inline void cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void *))

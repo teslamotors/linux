@@ -804,10 +804,40 @@ config I2C_SUN6I_P2WI
 
 config I2C_TEGRA
 	tristate "NVIDIA Tegra internal I2C controller"
-	depends on ARCH_TEGRA
+	depends on ARCH_TEGRA || PLATFORM_TEGRA
+	select I2C_ALGO_BUSCLEAR
+	select I2C_ALGOBIT
 	help
 	  If you say yes to this option, support will be included for the
 	  I2C controller embedded in NVIDIA Tegra SOCs
+
+config I2C_TEGRA_VI
+	tristate "NVIDIA Tegra internal VII2C controller"
+	depends on ARCH_TEGRA
+	default y
+	select I2C_ALGO_BUSCLEAR
+	select I2C_ALGOBIT
+	help
+	  If you say yes to this option, support will be included for the
+	  I2C controller embedded in NVIDIA Tegra SOCs
+
+config I2C_TEGRA_HV
+        bool "Tegra I2C virtualization Support"
+        depends on TEGRA_HV_MANAGER
+        default y
+        help
+          Enables support for para-virtualized I2C client driver.
+          Client driver is written to communicate with I2C server
+          partition by using IVC (Inter VM Commuication) framework.
+          IVC support is a prerequisite for this driver.
+
+config I2C_SLAVE_TEGRA
+	tristate "NVIDIA Tegra internal I2C slave controller"
+	depends on ARCH_TEGRA && I2C_SLAVE
+	default n
+	help
+	  If you say yes to this option, support will be included for the
+	  I2C slave controller embedded in NVIDIA Tegra SOCs
 
 config I2C_VERSATILE
 	tristate "ARM Versatile/Realview I2C bus support"
@@ -1045,4 +1075,16 @@ config SCx200_ACB
 	  This support is also available as a module.  If so, the module
 	  will be called scx200_acb.
 
+config I2C_PCA_GMI
+	tristate "PCA9564/PCA9665 on an GMI bus"
+	select I2C_ALGOPCA
+	select TEGRA_GMI
+	default n
+	help
+	  This driver supports boards using the Philips PCA9564/PCA9665 parallel
+          bus to I2C bus controller connected on Nvidia Tegra GMI bus.
+
+trysource "../t18x/drivers/i2c/busses/Kconfig"
+trysource "../t18x/drivers/i2c/busses/Kconfig.t18x"
+trysource "drivers/i2c/busses/Kconfig.t18x"
 endmenu

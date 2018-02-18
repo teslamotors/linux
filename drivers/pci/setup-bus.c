@@ -29,6 +29,7 @@
 #include "pci.h"
 
 unsigned int pci_flags;
+EXPORT_SYMBOL(pci_flags);
 
 struct pci_dev_resource {
 	struct list_head list;
@@ -1292,8 +1293,7 @@ void __pci_bus_assign_resources(const struct pci_bus *bus,
 
 		switch (dev->class >> 8) {
 		case PCI_CLASS_BRIDGE_PCI:
-			if (!pci_is_enabled(dev))
-				pci_setup_bridge(b);
+			pci_setup_bridge(b);
 			break;
 
 		case PCI_CLASS_BRIDGE_CARDBUS:

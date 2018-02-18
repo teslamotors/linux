@@ -1,0 +1,62 @@
+Userspace thermal alert
+=======================
+
+Provides the facility for userspace to know whether a thermal alert
+occurred or not for a perticular temperature trip value. This is Supported
+by adding a software thermal cooling device.
+
+Features
+--------
+
+- Sends an "uevent" notification to userspace on tripping the associated
+thermal trip point.
+"uevent" comes under /sys/class/thermal/cooling_device[0-*].
+
+- sysfs API:
+sysfs attributes are represented under
+/sys/bus/platform/devices/userspace-alert.
+
+Also a symlink to this is provide with
+/sys/class/thermal/cooling_device[0-*]/userspace_alert.
+
+/sys/bus/platform/devices/userspace-alert:
+/sys/class/thermal/cooling_device[0-*]/userspace_alert:
+    |---thermal_alert_block
+    |---thermal_alert
+
+thermal_alert_block
+			Read/Write value
+
+			Read: Blocks the read call until an alert occurs or the
+			specified duration times out. When alert occurs or if
+			alert is already preset,then read returns immediately
+			with value "1". If alert is not there and time out
+			happens then read returns with value "0".
+
+			Write: Set the time out duration(in milli seconds) to
+			wait when alert is not preset. By default this value is
+			"0" if not set. Value of "0" wall wait for infinite
+			time. When alert occurs or if alert is already preset,
+			then write value has no significance.
+
+thermal_alert
+			 Read only value
+			 Read: If alert is preset returns "1", otherwise
+			 returns "0".
+
+
+- The trip temperature can be modified at runtime if writable permission is
+set in device tree propreties of trip temperature.
+If alert occurs then by increasing the trip temperature to value greater than
+current temperature will make the alert to go off  and userspace can wait for
+alert again with increased temperture trip.
+For trip temperature sysfs, refer Documentation/thermal/sysfs-api.txt.
+
+
+
+Note:
+-----
+This cooling device is intended with single trip temperature. When associated
+with multiple trip points, alert will come for every trip temperature except
+for the case when temperature goes to lower than the lowest trip temperature.
+

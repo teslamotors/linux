@@ -1,0 +1,239 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/media/camera.h>
+
+/ {
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+		/**
+		* Physical settings to calculate max ISO BW
+		*
+		* num_csi_lanes = <>;
+		* Total number of CSI lanes when all cameras are active
+		*
+		* max_lane_speed = <>;
+		* Max lane speed in Kbit/s
+		*
+		* min_bits_per_pixel = <>;
+		* Min bits per pixel
+		*
+		* vi_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the VI ISO case
+		*
+		* vi_bw_margin_pct = <>;
+		* Vi bandwidth margin in percentage
+		*
+		* max_pixel_rate = <>;
+		* Max pixel rate in Kpixel/s for the ISP ISO case
+		*
+		* isp_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the ISP ISO case
+		*
+		* isp_bw_margin_pct = <>;
+		* Isp bandwidth margin in percentage
+		*/
+		num_csi_lanes = <4>;
+		max_lane_speed = <1000000>;
+		min_bits_per_pixel = <10>;
+		vi_peak_byte_per_pixel = <2>;
+		vi_bw_margin_pct = <25>;
+		max_pixel_rate = <200000>;
+		isp_peak_byte_per_pixel = <4>;
+		isp_bw_margin_pct = <25>;
+	};
+
+	camera-pcl {
+		compatible = "nvidia,tegra124-camera", "simple-bus";
+		configuration = <0xAA55AA55>;
+
+		modules {
+			module1: module1@modules {
+				compatible = "sensor,rear";
+				badge_info = "e1823_rear_D9A951";
+
+				sensor {
+					profile = <&imx135_1>;
+					platformdata = "ardbeg_imx135_pdata";
+				};
+				focuser {
+					profile = <&dw9718_1>;
+					platformdata = "ardbeg_dw9718_pdata";
+				};
+				flash {
+					profile = <&as3648_1>;
+					platformdata = "ardbeg_as3648_pdata";
+				};
+			};
+/*
+ * Bug 1461788: Norrin PM374 does not support front sensor
+ *			module2: module4@modules {
+ *				compatible = "sensor,front";
+ *				badge_info = "e1823_front_Q2M12A";
+ *
+ *				sensor {
+ *					profile = <&ar0261_1>;
+ *					platformdata = "ardbeg_ar0261_pdata";
+ *				};
+ *			};
+ */
+		};
+
+		profiles {
+			as3648_1: as3648@2_0030 {
+				index = <4>;
+				chipname = "pcl_AS3648";
+				type = "flash";
+				guid = "l_NVCAM0";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0x30>;
+				datalen = <1>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vi2c", "vin";
+				drivername = "as3648";
+				detect = <0x0001 0x0000 0x00F0 0x00b0>;
+				devid = <0x3648>;
+				poweron = <
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITUS(1000)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
+			};
+			imx135_1: imx135@2_0010 {
+				index = <5>;
+				chipname = "pcl_IMX135";
+				type = "sensor";
+				guid = "s_IMX135";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0x10>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vdig_lv", "vif";
+				clocks = "mclk";
+				drivername = "imx135";
+				detect = <0x0002 0x0016 0xFFFF 0x0135>;
+				devid = <0x0135>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(221)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_ON(2)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITMS(5)
+					CAMERA_GPIO_SET(221)
+					CAMERA_WAITUS(300)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(221)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(2)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			ar0261_1: ar0261@2_0036 {
+				index = <6>;
+				chipname = "pcl_AR0261";
+				type = "sensor";
+				guid = "s_AR0261";
+				position = <1>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0x36>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vdig", "vif";
+				clocks = "mclk2";
+				drivername = "ar0261";
+				detect = <0x0002 0x0003 0xFFFF 0x060A>;
+				devid = <0x0261>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(219)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(2)
+					CAMERA_WAITMS(40)
+					CAMERA_GPIO_SET(219)
+					CAMERA_WAITMS(20)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(219)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(2)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			dw9718_1: dw9718@2_000c {
+				index = <8>;
+				chipname = "pcl_DW9718";
+				type = "focuser";
+				guid = "f_NVCAM0";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0xc>;
+				datalen = <1>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vdd", "vdd_i2c";
+				drivername = "dw9718";
+				detect = <0x0002 0x0004 0xFFFF 0x0060>;
+				devid = <0x9718>;
+				poweron = <
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITUS(10)
+					CAMERA_GPIO_SET(223)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_GPIO_CLR(223)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
+				support_mfi;
+			};
+		};
+	};
+};
+

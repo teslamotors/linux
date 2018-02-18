@@ -2,6 +2,9 @@
 # Makefile for Inertial Measurement Units
 #
 
+GCOV_PROFILE := y
+
+ccflags-y += -Werror
 # When adding new entries keep the list in alphabetical order
 adis16400-y             := adis16400_core.o
 adis16400-$(CONFIG_IIO_BUFFER) += adis16400_buffer.o
@@ -14,3 +17,5 @@ adis_lib-$(CONFIG_IIO_ADIS_LIB_BUFFER) += adis_buffer.o
 obj-$(CONFIG_IIO_ADIS_LIB) += adis_lib.o
 
 obj-y += inv_mpu6050/
+obj-y += inv_mpu/
+obj-y += nvi_mpu/

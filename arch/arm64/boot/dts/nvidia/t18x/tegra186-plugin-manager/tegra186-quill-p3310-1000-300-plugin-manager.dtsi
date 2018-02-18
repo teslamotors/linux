@@ -1,0 +1,119 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/pinctrl/pinctrl-tegra.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	pinmux@2430000 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinmux_default>;
+
+		pinmux_default: common {
+			gpio_edp2_pp5 {
+				nvidia,pins = "gpio_edp2_pp5";
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				status = "disabled";
+			};
+
+			gpio_edp3_pp6 {
+				nvidia,pins = "gpio_edp3_pp6";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				status = "disabled";
+			};
+		};
+	};
+
+	gpio@2200000 {
+		gpio_sdmmc_wake_support: sdmmc-wake-support {
+			gpio-input = <TEGRA_GPIO(P, 5)>;
+			gpio-output-low = <TEGRA_GPIO(P, 6)>;
+			status = "disabled";
+		};
+	};
+
+	plugin-manager {
+		fragment-sdwake-p3310-1000-300 {
+			ids = ">=3310-1000-300";
+
+			override@100 {
+				target = <&pinmux_default>;
+				_overlay_ {
+					gpio_edp2_pp5 {
+						status = "okay";
+					};
+					gpio_edp3_pp6 {
+						status = "okay";
+					};
+				};
+			};
+
+			override@101 {
+				target = <&gpio_sdmmc_wake_support>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@102 {
+				target = <&en_vdd_sdcard1>;
+				_overlay_ {
+					gpio = <&tegra_gpio TEGRA_GPIO(P, 6) 0>;
+				};
+			};
+
+			override@103 {
+				target = <&sdmmc1>;
+				_overlay_ {
+					cd-gpios = <&tegra_gpio TEGRA_GPIO(P, 5) 0>;
+				};
+			};
+		};
+
+		fragement-power-monitor-p3310-1000-300 {
+			ids = ">=3310-1000-300", "3310-1000-200-F";
+			override@0 {
+				target = <&ina3221x_40>;
+				_overlay_ {
+					channel@0 {
+						ti,shunt-resistor-mohm = <10>;
+					};
+					channel@1 {
+						ti,shunt-resistor-mohm = <10>;
+					};
+				};
+			};
+
+			override@1 {
+				target = <&ina3221x_41>;
+				_overlay_ {
+					channel@0 {
+						ti,shunt-resistor-mohm = <5>;
+					};
+					channel@1 {
+						ti,shunt-resistor-mohm = <10>;
+					};
+					channel@2 {
+						ti,shunt-resistor-mohm = <10>;
+					};
+				};
+			};
+		};
+
+	};
+};

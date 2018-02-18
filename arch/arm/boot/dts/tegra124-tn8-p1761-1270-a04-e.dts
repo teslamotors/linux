@@ -1,0 +1,7 @@
+/*
+ * This file should not be touched
+ * This file is same as battery version to avoid OTA issue
+ */
+
+#include "tegra124-tn8-p1761-1270-a04-e-battery.dts"
+

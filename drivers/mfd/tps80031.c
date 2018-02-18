@@ -74,6 +74,9 @@ static int tps80031_slave_address[TPS80031_NUM_SLAVES] = {
 	TPS80031_I2C_ID3_ADDR,
 };
 
+#define TPS80031_BBSPOR_CFG	0xE6
+#define TPS80031_BBSPOR_CHG_EN	0x8
+
 struct tps80031_pupd_data {
 	u8	reg;
 	u8	pullup_bit;
@@ -238,6 +241,17 @@ static void tps80031_pupd_init(struct tps80031 *tps80031,
 		tps80031_update(tps80031->dev, TPS80031_SLAVE_ID1, pupd->reg,
 				update_value, update_mask);
 	}
+}
+
+static void tps80031_backup_battery_charger_control(struct tps80031 *tps80031,
+						    int enable)
+{
+	if (enable)
+		tps80031_update(tps80031->dev, TPS80031_SLAVE_ID1, TPS80031_BBSPOR_CFG,
+				TPS80031_BBSPOR_CHG_EN, TPS80031_BBSPOR_CHG_EN);
+	else
+		tps80031_update(tps80031->dev, TPS80031_SLAVE_ID1, TPS80031_BBSPOR_CFG,
+				0, TPS80031_BBSPOR_CHG_EN);
 }
 
 static int tps80031_init_ext_control(struct tps80031 *tps80031,
@@ -501,6 +515,8 @@ static int tps80031_probe(struct i2c_client *client,
 		goto fail_mfd_add;
 	}
 
+	tps80031_backup_battery_charger_control(tps80031, 1);
+
 	if (pdata->use_power_off && !pm_power_off) {
 		tps80031_power_off_dev = tps80031;
 		pm_power_off = tps80031_power_off;
@@ -539,6 +555,35 @@ static int tps80031_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int tps80031_i2c_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct tps80031 *tps80031 = i2c_get_clientdata(client);
+	if (client->irq)
+		disable_irq(client->irq);
+	tps80031_backup_battery_charger_control(tps80031, 0);
+	return 0;
+}
+
+static int tps80031_i2c_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct tps80031 *tps80031 = i2c_get_clientdata(client);
+	tps80031_backup_battery_charger_control(tps80031, 1);
+	if (client->irq)
+		enable_irq(client->irq);
+	return 0;
+}
+static const struct dev_pm_ops tps80031_dev_pm_ops = {
+	.suspend	= tps80031_i2c_suspend,
+	.resume		= tps80031_i2c_resume,
+};
+#define TPS80031_DEV_PM (&tps80031_dev_pm_ops)
+#else
+#define TPS80031_DEV_PM NULL
+#endif
+
 static const struct i2c_device_id tps80031_id_table[] = {
 	{ "tps80031", TPS80031 },
 	{ "tps80032", TPS80032 },
@@ -550,6 +595,7 @@ static struct i2c_driver tps80031_driver = {
 	.driver	= {
 		.name	= "tps80031",
 		.owner	= THIS_MODULE,
+		.pm	= TPS80031_DEV_PM,
 	},
 	.probe		= tps80031_probe,
 	.remove		= tps80031_remove,

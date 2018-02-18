@@ -27,6 +27,8 @@ enum usb_phy_events {
 	USB_EVENT_ID,           /* id was grounded */
 	USB_EVENT_CHARGER,      /* usb dedicated charger */
 	USB_EVENT_ENUMERATED,   /* gadget driver enumerated */
+	USB_EVENT_HANDLE_OTG_PP,   /* power on/off otg portsc.pp */
+	USB_EVENT_ID_FLOAT,	/* ID was floated */
 };
 
 /* associate a type with PHY */
@@ -80,6 +82,8 @@ struct usb_phy {
 	enum usb_otg_state	state;
 	enum usb_phy_events	last_event;
 
+	spinlock_t		sync_lock;
+
 	struct usb_otg		*otg;
 
 	struct device		*io_dev;
@@ -123,6 +127,7 @@ struct usb_phy {
 			enum usb_device_speed speed);
 	int	(*notify_disconnect)(struct usb_phy *x,
 			enum usb_device_speed speed);
+	int	(*notify_otg_test_device)(struct usb_phy *x);
 };
 
 /**
@@ -294,6 +299,15 @@ usb_phy_notify_disconnect(struct usb_phy *x, enum usb_device_speed speed)
 {
 	if (x && x->notify_disconnect)
 		return x->notify_disconnect(x, speed);
+	else
+		return 0;
+}
+
+static inline int
+usb_phy_notify_otg_test_device(struct usb_phy *x)
+{
+	if (x && x->notify_otg_test_device)
+		return x->notify_otg_test_device(x);
 	else
 		return 0;
 }

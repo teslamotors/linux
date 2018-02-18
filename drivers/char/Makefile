@@ -55,6 +55,7 @@ obj-$(CONFIG_PCMCIA)		+= pcmcia/
 obj-$(CONFIG_HANGCHECK_TIMER)	+= hangcheck-timer.o
 obj-$(CONFIG_TCG_TPM)		+= tpm/
 
+obj-$(CONFIG_DCC_TTY)		+= dcc_tty.o
 obj-$(CONFIG_PS3_FLASH)		+= ps3flash.o
 
 obj-$(CONFIG_JS_RTC)		+= js-rtc.o
@@ -62,3 +63,8 @@ js-rtc-y = rtc.o
 
 obj-$(CONFIG_TILE_SROM)		+= tile-srom.o
 obj-$(CONFIG_XILLYBUS)		+= xillybus/
+obj-$(CONFIG_TEGRA_EFS)		+= tegra-efshlp.o
+obj-$(CONFIG_TEGRA_PFLASH)        += tegra_pflash.o
+obj-$(CONFIG_TEGRA_GMI_CHAR)	+= tegra_gmi_char.o
+obj-$(CONFIG_TEGRA_GMI_ACCESS_CONTROL)	+= tegra_gmi_access.o
+obj-$(CONFIG_HMM_DUMMY)		+= hmm_dummy.o

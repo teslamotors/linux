@@ -277,7 +277,7 @@ static struct snd_soc_codec_driver soc_codec_dev_cs35l32 = {
 };
 
 /* Current and threshold powerup sequence Pg37 in datasheet */
-static const struct reg_default cs35l32_monitor_patch[] = {
+static const struct reg_sequence cs35l32_monitor_patch[] = {
 
 	{ 0x00, 0x99 },
 	{ 0x48, 0x17 },
@@ -550,7 +550,7 @@ static int cs35l32_i2c_remove(struct i2c_client *i2c_client)
 	return 0;
 }
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 static int cs35l32_runtime_suspend(struct device *dev)
 {
 	struct cs35l32_private *cs35l32 = dev_get_drvdata(dev);

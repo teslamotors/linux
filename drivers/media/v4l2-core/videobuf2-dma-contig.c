@@ -480,9 +480,13 @@ static int vb2_dc_get_user_pages(unsigned long start, struct page **pages,
 		}
 	} else {
 		int n;
+		int flags = FOLL_TOUCH | FOLL_GET | FOLL_FORCE | FOLL_DURABLE;
 
-		n = get_user_pages(current, current->mm, start & PAGE_MASK,
-			n_pages, write, 1, pages, NULL);
+		if (write)
+			flags |= FOLL_WRITE;
+
+		n = __get_user_pages(current, current->mm, start & PAGE_MASK,
+			n_pages, flags, pages, NULL, NULL);
 		/* negative error means that no page was pinned */
 		n = max(n, 0);
 		if (n != n_pages) {

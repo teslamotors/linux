@@ -1,0 +1,148 @@
+Device tree binding for NVIDIA Tegra186 XUSB PADCTL
+========================================================
+
+The Tegra186 XUSB PADCTL manages UTMI/HSIC/SuperSpeed USB 2.0/3.0 pads, each of
+which can be configured with one out of HOST_ONLY/DEVICE_ONLY/OTG capabilities.
+
+This document defines the device-specific binding for the Tegra186 PADCTL driver.
+This driver models pads and lanes as phy instances with the generic phy
+abstraction. Function drivers (XHCI/XUDC drivers) could retrieve its own
+phy instance via devm_phy_get() call.
+
+Refer to pinctrl-bindings.txt in this directory for generic information about
+pin controller device tree bindings and ../phy/phy-bindings.txt for details on
+how to describe and reference PHYs in device trees.
+
+Required properties:
+--------------------
+- compatible: should be "nvidia,tegra186-padctl"
+- reg: Physical base address and length of PADCTL.
+- interrupts: IRQ number of PADCTL.
+- #phy-cells: Should be 1. The specifier is the index of the PHY to reference.
+  See <dt-bindings/pinctrl/pinctrl-tegra-padctl.h> for the list of valid values.
+- mboxes: Must contain an entry for the XUSB mailbox channel.
+  See ../mailbox/mailbox.txt for details.
+- mbox-names: Must include the following entries:
+  - xusb
+
+Optional properties:
+-------------------
+- vbus-{0,1,2}-supply: VBUS regulator for the corresponding UTMI pad.
+- vddio-hsic-supply: VDDIO regulator for the HSIC pads.
+
+Lane muxing:
+------------
+
+Child nodes contain the pinmux configurations following the conventions from
+the pinctrl-bindings.txt document. Typically a single, static configuration is
+given and applied at boot time.
+
+Each subnode describes groups of lanes along with parameters and pads that
+they should be assigned to. The name of these subnodes is not important. All
+subnodes should be parsed solely based on their content.
+
+Each subnode only applies the parameters that are explicitly listed. In other
+words, if a subnode that lists a function but no pin configuration parameters
+implies no information about any pin configuration parameters. Similarly, a
+subnode that describes only a parameter implies no information about what
+function the pins are assigned to.
+
+Required properties:
+- nvidia,lanes: An array of strings. Each string is the name of a lane.
+
+Optional properties:
+- nvidia,function: A string that is the name of the function (pad) that the
+  pin or group should be assigned to. Valid values for function names are
+  listed below.
+- nvidia,usb3-port: USB3 port (0/1/2) to which the lane is mapped.
+- nvidia,port-cap: USB port capability.
+
+Note that not all of these properties are valid for all lanes. Lanes can be
+divided into four groups:
+
+  - otg-0, otg-1, otg-2:
+
+    Valid functions for this group are: "xusb", "uart", "rsvd".
+    nvidia,port-cap property is required when the function is xusb.
+
+  - hsic-0:
+
+    Valid functions for this group are: "xusb", "rsvd".
+
+  - usb3-0, usb3-1, usb3-2:
+
+    Do not set function for this group.
+    nvidia,port-cap is required.
+
+Example:
+========
+
+SoC file extract:
+-----------------
+
+	pinctrl@0x03520000 {
+		compatible = "nvidia,tegra186-padctl";
+		reg = <0x0 0x03520000 0x0 0x1000>,
+			<0x0 0x02500000 0x0 0xa0000>;
+		interrupts = <0 167 0x4>;
+		mboxes = <&xusb_mbox>;
+		mbox-names = "xusb";
+
+		#phy-cells = <1>;
+	};
+
+Board file extract:
+-------------------
+
+	# XUSB host mode takes UTMI pad#2 and SuperSpeed pad#2 for a USB 3.0 host port
+	xhci@0x03530000 {
+		...
+		phys = 	<&board-padctl TEGRA_PADCTL_PHY_UTMI_P(2)>,
+			<&board-padctl TEGRA_PADCTL_PHY_USB3_P(2)>,
+		phy-names = "utmi-2", "usb3-2";
+
+		...
+	}
+
+	...
+
+	# XUSB device mode takes UTMI pad#0 and SuperSpeed pad#0 for a USB3.0 device port
+	xudc@0x03550000 {
+		...
+		phys = 	<&board-padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+			<&board-padctl TEGRA_PADCTL_PHY_USB3_P(0)>,
+		phy-names = "usb2", "usb3";
+
+		...
+	}
+
+	board-padctl: pinctrl@0x03520000 {
+		pinctrl-0 = <&pinctrl_default>;
+		pinctrl-names = "default";
+
+		vbus-2-supply = <&vdd_usb3_vbus>;
+
+		pinctrl_default: pinmux {
+			usb2-micro-AB {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+
+			usb3-micro-AB {
+				nvidia,lanes = "usb3-0";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+
+			usb2-std-A {
+				nvidia,lanes = "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+
+			usb3-std-A {
+				nvidia,lanes = "usb3-2";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+		};
+	};

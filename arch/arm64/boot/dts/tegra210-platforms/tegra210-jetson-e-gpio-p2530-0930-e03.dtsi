@@ -1,0 +1,83 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	gpio: gpio@6000d000 {
+		gpio-init-names = "default";
+		gpio-init-0 = <&gpio_default>;
+
+		gpio_default: default {
+			gpio-input = <
+				TEGRA_GPIO(E, 6)
+				TEGRA_GPIO(A, 5)
+				TEGRA_GPIO(X, 3)
+				TEGRA_GPIO(X, 4)
+				TEGRA_GPIO(X, 2)
+				TEGRA_GPIO(X, 1)
+				TEGRA_GPIO(X, 0)
+				TEGRA_GPIO(X, 5)
+				TEGRA_GPIO(X, 6)
+				TEGRA_GPIO(X, 7)
+				TEGRA_GPIO(Y, 1)
+				TEGRA_GPIO(Z, 0)
+				TEGRA_GPIO(G, 0)
+				TEGRA_GPIO(K, 4)
+				TEGRA_GPIO(K, 6)
+				TEGRA_GPIO(H, 2)
+				TEGRA_GPIO(H, 5)
+				TEGRA_GPIO(I, 1)
+				TEGRA_GPIO(CC, 6)
+				TEGRA_GPIO(CC, 1)
+				>;
+			gpio-output-low = <
+				TEGRA_GPIO(BB, 2)
+				TEGRA_GPIO(BB, 3)
+				TEGRA_GPIO(E, 4)
+				TEGRA_GPIO(S, 4)
+				TEGRA_GPIO(S, 5)
+				TEGRA_GPIO(S, 6)
+				TEGRA_GPIO(S, 7)
+				TEGRA_GPIO(T, 0)
+				TEGRA_GPIO(T, 1)
+				TEGRA_GPIO(V, 6)
+				TEGRA_GPIO(V, 5)
+				TEGRA_GPIO(Z, 4)
+				TEGRA_GPIO(G, 3)
+				TEGRA_GPIO(K, 5)
+				TEGRA_GPIO(K, 7)
+				TEGRA_GPIO(L, 0)
+				TEGRA_GPIO(H, 0)
+				TEGRA_GPIO(H, 3)
+				TEGRA_GPIO(H, 4)
+				TEGRA_GPIO(H, 6)
+				TEGRA_GPIO(H, 7)
+				TEGRA_GPIO(I, 0)
+				TEGRA_GPIO(I, 2)
+				TEGRA_GPIO(I, 3)
+				TEGRA_GPIO(CC, 7)
+				>;
+			gpio-output-high = <
+				>;
+			gpio-suspend-output-low = <
+				TEGRA_GPIO(V, 4)
+				>;
+		};
+	};
+};

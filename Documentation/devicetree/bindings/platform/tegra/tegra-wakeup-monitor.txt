@@ -1,0 +1,17 @@
+* Nvidia tegra-wakeup-monitor
+
+Required properties:
+- compatible: The driver is compatible with
+  "nvidia,tegra_wakeup_monitor"
+
+- nvidia,wifi-wakeup-source : assign the wifi wakeup source.
+- nvidia,rtc-wakeup-source : assign the rtc wakeup source.
+
+Example:
+
+tegra_wakeup_monitor {
+	compatible = "nvidia,tegra_wakeup_monitor";
+	nvidia,wifi-wakeup-source = <6>;
+	nvidia,rtc-wakeup-source = <18>;
+};
+

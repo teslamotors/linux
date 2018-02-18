@@ -1,0 +1,56 @@
+NVIDIA Tegra Clock Initialization Table
+
+This binding specifies format of clock initialization table node for NVIDIA
+Tegra Clock And Reset controller.
+
+Required properties :
+- compatible : Should be "nvidia,tegra-clk-init-table"
+- clkinit-0 : Must contain array of numbers with the following position
+  designations according to "0"-based position index
+
+  if position index % 4 = 0, array entry specifies ID of the target clock to be
+  initialed ("0" to terminate the table)
+
+  if position index % 4 = 1, array entry specifies ID of the clock to be set as
+  target clock parent ("0" to keep current clock parent)
+
+  if position index % 4 = 2, array entry specifies target clock rate to be set
+  ("0" to not set rate explicitly; rate may still change if parent has changed)
+
+  if position index % 4 = 3, array entry specifies initialization flags;
+  must contain bitwise OR combination of any of the following flags
+	0 - set target clock parent/rate as specified
+	1 - enable target clock
+	2 - apply initialization constraints:
+		* Tegra CxBUS clock is initialized only if it has no enabled
+		  decedents outside CxBUS
+		* Non-CBUS clock is initialized only if it has no enabled
+		  decedents
+
+Optional properties:
+- clkinit-1 : Must contain array of numbers (with the same as clkinit-0 position
+  designations)
+...
+- clkinit-n : Must contain array of numbers (with the same as clkinit-0 position
+  designations)
+
+Example:
+
+/ {
+	clock {
+		tXXX-clk-init-table {
+				compatible = "nvidia,tegra-clk-init-table";
+				clkinit-0 = <
+				/* clock id     	   parent id    	  rate       ctrl flags */
+				TEGRAXXX_CLK_ID_PLL_A      0    		  368640000  0
+				TEGRAXXX_CLK_ID_PLL_A_OUT0 TEGRA210_CLK_ID_PLL_A  12288000   1
+				TEGRAXXX_CLK_ID_C2BUS      TEGRA210_CLK_ID_PLL_C2 300000000  2
+				0 >;
+
+				clkinit-1 = <
+				/* clock id     	        parent id    	            rate       ctrl flags */
+				TEGRAXXX_CLK_ID_UART_MIPI_CAL	TEGRA210_CLK_ID_PLL_P	    68000000	0
+				0 >;
+		};
+	};
+};

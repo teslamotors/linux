@@ -3,6 +3,7 @@
  *
  * Copyright (C) 1996-2000 Russell King
  * Copyright (C) 2012 ARM Ltd.
+ * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,6 +24,7 @@
 
 #include <linux/types.h>
 #include <linux/blk_types.h>
+#include <linux/pstore.h>
 
 #include <asm/byteorder.h>
 #include <asm/barrier.h>
@@ -38,31 +40,37 @@
  */
 static inline void __raw_writeb(u8 val, volatile void __iomem *addr)
 {
+	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr, (long)val);
 	asm volatile("strb %w0, [%1]" : : "r" (val), "r" (addr));
 }
 
 static inline void __raw_writew(u16 val, volatile void __iomem *addr)
 {
+	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr, (long)val);
 	asm volatile("strh %w0, [%1]" : : "r" (val), "r" (addr));
 }
 
 static inline void __raw_writel(u32 val, volatile void __iomem *addr)
 {
+	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr, (long)val);
 	asm volatile("str %w0, [%1]" : : "r" (val), "r" (addr));
 }
 
 static inline void __raw_writeq(u64 val, volatile void __iomem *addr)
 {
+	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr, (long)val);
 	asm volatile("str %0, [%1]" : : "r" (val), "r" (addr));
 }
 
 static inline u8 __raw_readb(const volatile void __iomem *addr)
 {
 	u8 val;
+	pstore_rtrace_call(RTRACE_READ, (void __force *)addr, 0);
 	asm volatile(ALTERNATIVE("ldrb %w0, [%1]",
 				 "ldarb %w0, [%1]",
 				 ARM64_WORKAROUND_DEVICE_LOAD_ACQUIRE)
 		     : "=r" (val) : "r" (addr));
+	pstore_rtrace_call(RTRACE_READ, (void __force *)addr, (long)val);
 	return val;
 }
 
@@ -70,6 +78,7 @@ static inline u16 __raw_readw(const volatile void __iomem *addr)
 {
 	u16 val;
 
+	pstore_rtrace_call(RTRACE_READ, (void __force *)addr, 0);
 	asm volatile(ALTERNATIVE("ldrh %w0, [%1]",
 				 "ldarh %w0, [%1]",
 				 ARM64_WORKAROUND_DEVICE_LOAD_ACQUIRE)
@@ -80,6 +89,7 @@ static inline u16 __raw_readw(const volatile void __iomem *addr)
 static inline u32 __raw_readl(const volatile void __iomem *addr)
 {
 	u32 val;
+	pstore_rtrace_call(RTRACE_READ, (void __force *)addr, 0);
 	asm volatile(ALTERNATIVE("ldr %w0, [%1]",
 				 "ldar %w0, [%1]",
 				 ARM64_WORKAROUND_DEVICE_LOAD_ACQUIRE)
@@ -90,11 +100,25 @@ static inline u32 __raw_readl(const volatile void __iomem *addr)
 static inline u64 __raw_readq(const volatile void __iomem *addr)
 {
 	u64 val;
+	pstore_rtrace_call(RTRACE_READ, (void __force *)addr, 0);
 	asm volatile(ALTERNATIVE("ldr %0, [%1]",
 				 "ldar %0, [%1]",
 				 ARM64_WORKAROUND_DEVICE_LOAD_ACQUIRE)
 		     : "=r" (val) : "r" (addr));
 	return val;
+}
+
+static inline unsigned long notrace virt_to_phys_in_hw(void *addr)
+{
+	unsigned long phys;
+	asm volatile("at s1e1r, %1\n"
+			"mrs %0, par_el1\n" : "=r"(phys) : "r"(addr));
+	barrier();
+	if (phys & 1)
+		return (unsigned long)addr;
+	phys &= 0xfffffffff000;
+	phys |= ((unsigned long)addr & 0xfff);
+	return phys;
 }
 
 /* IO barriers */
@@ -253,6 +277,12 @@ extern void __iomem *ioremap_cache(phys_addr_t phys_addr, size_t size);
 
 #define ARCH_HAS_IOREMAP_WC
 #include <asm-generic/iomap.h>
+
+#define IOMEM(x)	((void __force __iomem *)(x))
+
+extern int pci_ioremap_io(unsigned int offset, phys_addr_t phys_addr);
+extern void pci_iounmap_io(unsigned int offset);
+
 
 /*
  * More restrictive address range checking than the default implementation

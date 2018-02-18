@@ -56,6 +56,8 @@
  *	paradigm.
  *
  *	Based upon Swansea University Computer Society NET3.039
+ *
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  */
 
 #include <linux/mm.h>
@@ -915,6 +917,7 @@ static ssize_t do_sock_read(struct msghdr *msg, struct kiocb *iocb,
 	msg->msg_iov = (struct iovec *)iov;
 	msg->msg_iovlen = nr_segs;
 	msg->msg_flags = (file->f_flags & O_NONBLOCK) ? MSG_DONTWAIT : 0;
+	SOCK_INODE(sock)->i_private = get_thread_process(current);
 
 	return __sock_recvmsg(iocb, sock, msg, size, msg->msg_flags);
 }
@@ -1153,6 +1156,7 @@ static unsigned int sock_poll(struct file *file, poll_table *wait)
 	 */
 	sock = file->private_data;
 
+	SOCK_INODE(sock)->i_private = get_thread_process(current);
 	if (sk_can_busy_loop(sock->sk)) {
 		/* this socket can poll_ll so tell the system call */
 		busy_flag = POLL_BUSY_LOOP;
@@ -1398,6 +1402,7 @@ SYSCALL_DEFINE3(socket, int, family, int, type, int, protocol)
 	retval = sock_map_fd(sock, flags & (O_CLOEXEC | O_NONBLOCK));
 	if (retval < 0)
 		goto out_release;
+	SOCK_INODE(sock)->i_private = get_thread_process(current);
 
 out:
 	/* It may be already another descriptor 8) Not kernel problem. */

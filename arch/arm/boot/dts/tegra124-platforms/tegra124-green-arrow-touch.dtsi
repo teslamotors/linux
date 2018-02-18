@@ -1,0 +1,35 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/spi/rm31080a_platform.h>
+/ {
+	spi@7000d400 {
+		spi-touch@0 {
+			compatible = "raydium,rm_ts_spidev";
+			reg = <0>; /* spi chip select 0 */
+			spi-max-frequency = <12000000>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(K, 2) 0x01>; /* GPIO_PK2 */
+			reset-gpio = <&gpio TEGRA_GPIO(K, 4) 0>; /* GPIO_PK4 */
+			config = <0>;
+			platform-id = <RM_PLATFORM_T008>;
+			name-of-clock = "clk_out_2";
+			name-of-clock-con = "extern2";
+		};
+	};
+};

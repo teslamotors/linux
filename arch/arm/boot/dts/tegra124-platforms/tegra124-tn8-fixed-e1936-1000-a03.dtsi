@@ -1,0 +1,42 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include "tegra124-tn8-fixed-e1936-1000-common.dtsi"
+
+/ {
+	regulators {
+		vdd_ts_1v8: regulator@7  {
+			compatible = "regulator-fixed-sync";
+			reg = <7>;
+			regulator-name = "vdd_ts_1v8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&gpio TEGRA_GPIO(K, 1) 0>;
+			enable-active-high;
+			vin-supply = <&palmas_smps8>;
+
+			consumers {
+							c1 {
+								regulator-consumer-supply = "dvdd";
+								regulator-consumer-device = "spi0.0";
+							};
+			};
+		};
+
+		avdd_ts_3v3: regulator@8  {
+			compatible = "regulator-fixed-sync";
+			reg = <8>;
+			regulator-name = "avdd_ts_3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&palmas_gpio 2 0>;
+			enable-active-high;
+			vin-supply = <&ldousb_reg>;
+
+			consumers {
+							c1 {
+								regulator-consumer-supply = "avdd";
+								regulator-consumer-device = "spi0.0";
+							};
+			};
+		};
+	};
+};

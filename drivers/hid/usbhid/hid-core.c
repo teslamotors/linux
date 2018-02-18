@@ -6,6 +6,7 @@
  *  Copyright (c) 2005 Michael Haboustak <mike-@cinci.rr.com> for Concept2, Inc
  *  Copyright (c) 2007-2008 Oliver Neukum
  *  Copyright (c) 2006-2010 Jiri Kosina
+ *  Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  */
 
 /*
@@ -309,6 +310,10 @@ static void hid_irq_in(struct urb *urb)
 		usbhid_mark_busy(usbhid);
 		clear_bit(HID_IN_RUNNING, &usbhid->iofl);
 		hid_io_error(hid);
+		return;
+	case -EOVERFLOW:	/* Value too large, WAR  */
+		printk("input irq status -75 : RESETTING HID...\n");
+		schedule_work(&usbhid->reset_work);
 		return;
 	default:		/* error */
 		hid_warn(urb->dev, "input irq status %d received\n",
@@ -844,11 +849,27 @@ static int usbhid_get_raw_report(struct hid_device *hid,
 		unsigned char report_type)
 {
 	struct usbhid_device *usbhid = hid->driver_data;
-	struct usb_device *dev = hid_to_usb_dev(hid);
-	struct usb_interface *intf = usbhid->intf;
-	struct usb_host_interface *interface = intf->cur_altsetting;
+	struct usb_device *dev;
+	struct usb_interface *intf;
+	struct usb_host_interface *interface;
 	int skipped_report_id = 0;
 	int ret;
+
+	intf = usbhid->intf;
+	if (intf == NULL) {
+		pr_err("%s: no USB intf\n", __func__);
+		return -ESHUTDOWN;
+	}
+	spin_lock_irq(&usbhid->lock);
+	if (test_bit(HID_DISCONNECTED, &usbhid->iofl)) {
+		pr_err("hid device disconnected\n");
+		spin_unlock_irq(&usbhid->lock);
+		return -ESHUTDOWN;
+	}
+	spin_unlock_irq(&usbhid->lock);
+
+	dev = hid_to_usb_dev(hid);
+	interface = intf->cur_altsetting;
 
 	/* Byte 0 is the report number. Report data starts at byte 1.*/
 	buf[0] = report_number;
@@ -1138,7 +1159,13 @@ static int usbhid_start(struct hid_device *hid)
 				USB_INTERFACE_PROTOCOL_KEYBOARD) {
 		usbhid_set_leds(hid);
 		device_set_wakeup_enable(&dev->dev, 1);
+		usb_disable_autosuspend(dev);
 	}
+#ifdef CONFIG_USB_EHCI_TEGRA
+	else if (interface->desc.bInterfaceProtocol ==
+				USB_INTERFACE_PROTOCOL_MOUSE)
+		usb_disable_autosuspend(dev);
+#endif
 	return 0;
 
 fail:

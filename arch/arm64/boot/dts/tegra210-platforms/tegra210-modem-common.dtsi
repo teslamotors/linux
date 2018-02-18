@@ -1,0 +1,46 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	modem {
+		compatible = "nvidia,icera-i500";
+		status = "disabled";
+
+		nvidia,boot-gpio = <&gpio TEGRA_GPIO(K, 6) GPIO_ACTIVE_LOW>;
+		nvidia,mdm-power-report-gpio = <&gpio TEGRA_GPIO(L, 1) GPIO_ACTIVE_LOW>;
+		nvidia,reset-gpio = <&gpio TEGRA_GPIO(L, 0) GPIO_ACTIVE_LOW>;
+		nvidia,mdm-en-gpio = <&gpio TEGRA_GPIO(K, 7) GPIO_ACTIVE_HIGH>;
+		nvidia,num-temp-sensors = <3>;
+		nvidia,ehci-device = <&ehci2>;
+
+		/* modem interface child nodes */
+		nvidia,phy-ehci-hsic {
+			status = "disabled";
+		};
+
+		nvidia,phy-xhci-hsic {
+			status = "disabled";
+		};
+
+		nvidia,phy-xhci-utmi {
+			status = "disabled";
+		};
+	};
+};

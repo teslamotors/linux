@@ -1,0 +1,14 @@
+obj-$(CONFIG_MODS)                 := mods.o
+mods-y                             := mods_krnl.o
+mods-y                             += mods_mem.o
+mods-y                             += mods_irq.o
+mods-y                             += mods_clock.o
+mods-$(CONFIG_PCI)                 += mods_pci.o
+mods-$(CONFIG_ACPI)                += mods_acpi.o
+mods-$(CONFIG_PLATFORM_TEGRA)      += mods_dmabuf.o
+mods-$(CONFIG_DMA_ENGINE)          += mods_dma.o
+mods-$(CONFIG_DEBUG_FS)            += mods_debugfs.o
+mods-$(CONFIG_TEGRA_DC)            += mods_tegradc.o
+mods-$(CONFIG_TEGRA_NVADSP)        += mods_adsp.o
+mods-$(CONFIG_NET)                 += mods_netdevice.o
+mods-objs                          := mods.dtb.o

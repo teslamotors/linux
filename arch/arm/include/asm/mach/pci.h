@@ -25,6 +25,7 @@ struct hw_pci {
 	struct pci_ops	*ops;
 	int		nr_controllers;
 	void		**private_data;
+	struct list_head *sys;
 	int		(*setup)(int nr, struct pci_sys_data *);
 	struct pci_bus *(*scan)(int nr, struct pci_sys_data *);
 	void		(*preinit)(void);
@@ -38,6 +39,7 @@ struct hw_pci {
 					  resource_size_t align);
 	void		(*add_bus)(struct pci_bus *bus);
 	void		(*remove_bus)(struct pci_bus *bus);
+	void		(*teardown)(int nr, struct pci_sys_data *);
 };
 
 /*
@@ -49,6 +51,7 @@ struct pci_sys_data {
 #endif
 	struct list_head node;
 	int		busnr;		/* primary bus number			*/
+	int		nr;		/* controller number			*/
 	u64		mem_offset;	/* bus->cpu memory mapping offset	*/
 	unsigned long	io_offset;	/* bus->cpu IO mapping offset		*/
 	struct pci_bus	*bus;		/* PCI bus				*/
@@ -67,6 +70,7 @@ struct pci_sys_data {
 					  resource_size_t align);
 	void		(*add_bus)(struct pci_bus *bus);
 	void		(*remove_bus)(struct pci_bus *bus);
+	void		(*teardown)(int nr, struct pci_sys_data *);
 	void		*private_data;	/* platform controller private data	*/
 };
 
@@ -83,6 +87,8 @@ static inline void pci_common_init(struct hw_pci *hw)
 {
 	pci_common_init_dev(NULL, hw);
 }
+
+void pci_common_exit(struct list_head *head);
 
 /*
  * Setup early fixed I/O mapping.

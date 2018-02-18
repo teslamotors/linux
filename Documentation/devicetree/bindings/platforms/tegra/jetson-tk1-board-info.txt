@@ -1,0 +1,16 @@
+Jetson TK1 Board Info
+~~~~~~~~~~~~~~~~~~~~~
+
+This document describes various DT properties under board_info for NVIDIA
+Tegra based Jetson TK1 development platform.
+
+board_info DT node shows up in proc fs in:
+	/proc/device-tree/chosen/board_info
+
+Properties description:
+- id: Board ID. For Jetson TK1 this property should be 0x177.
+- bom: BOM version of the board in ASCII value.
+- major_revision: Major revision of the board in ASCII value.
+- minor_revision: Minor revision of the board in hexadecimal.
+- name: This will give the Board name, i.e., NVIDIA Jetson TK1.
+- sku: SKU information.

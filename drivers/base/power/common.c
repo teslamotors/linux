@@ -36,6 +36,9 @@ int dev_pm_get_subsys_data(struct device *dev)
 		dev->power.subsys_data->refcount++;
 	} else {
 		spin_lock_init(&psd->lock);
+#ifndef CONFIG_COMMON_CLK
+		mutex_init(&psd->clocks_mutex);
+#endif
 		psd->refcount = 1;
 		dev->power.subsys_data = psd;
 		pm_clk_init(dev);

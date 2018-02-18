@@ -1,0 +1,5 @@
+config GPIO_TEGRA186
+	bool "NVIDIA Tegra186 GPIO support"
+	select GPIO_SYSFS
+	help
+	Support for the NVIDIA Tegra186 GPIO controller driver.

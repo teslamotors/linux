@@ -1,10 +1,34 @@
 comment "soc_camera sensor drivers"
 
+config SOC_CAMERA_AR0261
+	tristate "AR0261 support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This driver supports AR0261 camera from Aptina
+
 config SOC_CAMERA_IMX074
 	tristate "imx074 support"
 	depends on SOC_CAMERA && I2C
 	help
 	  This driver supports IMX074 cameras from Sony
+
+config SOC_CAMERA_IMX135
+        tristate "IMX135 camera sensor support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This driver supports IMX135 cameras from Sony
+
+config SOC_CAMERA_IMX214
+        tristate "IMX214 camera sensor support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This driver supports IMX214 cameras from Sony
+
+config SOC_CAMERA_OV23850
+        tristate "OV23850 camera sensor support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This driver supports OV23850 cameras from Omnivision
 
 config SOC_CAMERA_MT9M001
 	tristate "mt9m001 support"
@@ -44,11 +68,29 @@ config SOC_CAMERA_OV2640
 	help
 	  This is a ov2640 camera driver
 
+config SOC_CAMERA_OV5640
+	tristate "ov5640 camera support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a V4L2 camera driver for the OmniVision OV5640 sensor
+
 config SOC_CAMERA_OV5642
 	tristate "ov5642 camera support"
 	depends on SOC_CAMERA && I2C
 	help
 	  This is a V4L2 camera driver for the OmniVision OV5642 sensor
+
+config SOC_CAMERA_OV5650
+	tristate "ov5650 sensor support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a V4L2 camera driver for the OmniVision OV5650 sensor
+
+config SOC_CAMERA_OV5693
+	tristate "ov5693 sensor support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a V4L2 camera driver for the OmniVision OV5693 sensor
 
 config SOC_CAMERA_OV6650
 	tristate "ov6650 sensor support"

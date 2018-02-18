@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA Corporation.
+ * Copyright (C) 2012-2016 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -53,6 +53,60 @@
 
 #define REGISTER_STRIDE	4
 
+static inline u32 host1x_sync_intstatus_r(void)
+{
+	return 0x0;
+}
+#define HOST1X_SYNC_INTSTATUS \
+	host1x_sync_intstatus_r()
+static inline u32 host1x_sync_intmask_r(void)
+{
+	return 0x4;
+}
+#define HOST1X_SYNC_INTMASK \
+	host1x_sync_intmask_r()
+static inline u32 host1x_sync_intc0mask_r(void)
+{
+	return 0x8;
+}
+#define HOST1X_SYNC_INTC0MASK \
+	host1x_sync_intc0mask_r()
+static inline u32 host1x_sync_hintstatus_r(void)
+{
+	return 0x20;
+}
+#define HOST1X_SYNC_HINTSTATUS \
+	host1x_sync_hintstatus_r()
+static inline u32 host1x_sync_hintmask_r(void)
+{
+	return 0x24;
+}
+#define HOST1X_SYNC_HINTMASK \
+	host1x_sync_hintmask_r()
+static inline u32 host1x_sync_hintstatus_ext_r(void)
+{
+	return 0x28;
+}
+#define HOST1X_SYNC_HINTSTATUS_EXT \
+	host1x_sync_hintstatus_ext_r()
+static inline u32 host1x_sync_hintstatus_ext_ip_read_int_v(u32 r)
+{
+	return (r >> 30) & 0x1;
+}
+#define HOST1X_SYNC_HINTSTATUS_EXT_IP_READ_INT_V(r) \
+	host1x_sync_hintstatus_ext_ip_read_int_v(r)
+static inline u32 host1x_sync_hintstatus_ext_ip_write_int_v(u32 r)
+{
+	return (r >> 31) & 0x1;
+}
+#define HOST1X_SYNC_HINTSTATUS_EXT_IP_WRITE_INT_V(r) \
+	host1x_sync_hintstatus_ext_ip_write_int_v(r)
+static inline u32 host1x_sync_hintmask_ext_r(void)
+{
+	return 0x2c;
+}
+#define HOST1X_SYNC_HINTMASK_EXT \
+	host1x_sync_hintmask_ext_r()
 static inline u32 host1x_sync_syncpt_r(unsigned int id)
 {
 	return 0x400 + id * REGISTER_STRIDE;
@@ -125,6 +179,18 @@ static inline u32 host1x_sync_ip_busy_timeout_r(void)
 }
 #define HOST1X_SYNC_IP_BUSY_TIMEOUT \
 	host1x_sync_ip_busy_timeout_r()
+static inline u32 host1x_sync_ip_read_timeout_addr_r(void)
+{
+	return 0x1c0;
+}
+#define HOST1X_SYNC_IP_READ_TIMEOUT_ADDR \
+	host1x_sync_ip_read_timeout_addr_r()
+static inline u32 host1x_sync_ip_write_timeout_addr_r(void)
+{
+	return 0x1c4;
+}
+#define HOST1X_SYNC_IP_WRITE_TIMEOUT_ADDR \
+	host1x_sync_ip_write_timeout_addr_r()
 static inline u32 host1x_sync_mlock_owner_r(unsigned int id)
 {
 	return 0x340 + id * REGISTER_STRIDE;

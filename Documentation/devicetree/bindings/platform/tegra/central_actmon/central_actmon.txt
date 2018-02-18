@@ -1,0 +1,117 @@
+Device tree binding for NVIDIA Tegra central actmon
+=================================================================
+
+The Tegra central actmon is the device to monitor activity of various hw devices
+, for e.g. external memory controller hw. It has dedicated
+actmon device to capture activity of each EMC client. Emc clients can be added
+as child node to parent node. For e.g. "mc_all" is one of the client of emc and
+captures rd/wr memory access by all the emc clients. Therefore "mc_all" can
+be added as child node of the "nvidia,tegra<hw>-cactmon" node.
+
+Required properties:
+- compatible: 			should be "nvidia,tegra<hw>-cactmon"
+				where hw is soc like 210
+- reg: 		Physical base address and length of registers for actmon HW.
+- interrupts: 	IRQ number for actmon Hw.
+- clocks: 	Specifies the actmon hw ref clock.
+- clock-names: 	Specifies the name actmon hw ref clock.
+- resets: 	Specifies the reset line.
+- reset-names: 	Specifies the name of the reset line.
+- status: 	may have values as "disabled", "okay" and "ok";
+- nvidia,sample_period: actmon sample period.
+
+Optional child nodes:
+Actmon devices for mc clients.
+
+Child node's required properties:
+- nvidia,reg_offs: register offset for actmon device
+- nvidia,irq_mask: irq mask for actmon debvice
+
+Child node's optional properties:
+- nvidia,suspend_freq: actmon device freq when mc client goes in suspend
+- nvidia,boost_freq_step: base freq of boost freq component
+- nvidia,boost_up_coef: percentage of times want to boost up the freq
+- nvidia,boost_down_coef:percentage of times want to boost down the freq
+- nvidia,boost_up_threshold: Up threshold, crossing that boost up interrupt
+				triggeres
+- nvidia,boost_down_threshold: Down threshold, crossing that boost down
+				interrupt triggeres
+- nvidia,up_wmark_window: Count crossing that many times of boost_up_threshold,
+				boost interrupt triggeres
+- nvidia,down_wmark_window: Count crossing that many times of boost_up_threshold
+				, boost interrupt triggeres
+- nvidia,avg_window_log2: K value for moving average of 2^k windows
+- nvidia,count_weight: scaling factor
+- nvidia,type: Freq sampler or Load sampler
+
+- reg: 		Physical base address and length of registers for actmon HW.
+- interrupts: IRQ number for actmon Hw.
+- clocks: Specifies the actmon hw ref clock.
+- clock-names: Specifies the name actmon hw ref clock.
+- resets: Specifies the reset line.
+- reset-names: Specifies the name of the reset line.
+- status = may have values as "disabled", "okay" and "ok";
+- nvidia,sample_period = actmon sample period.
+Optional child nodes:
+Actmon devices for mc clients.
+
+Child node's required properties:
+- nvidia,reg_offs: register offset for actmon device
+- nvidia,irq_mask: irq mask for actmon debvice
+
+Child node's optional properties:
+- nvidia,suspend_freq: actmon device freq when mc client goes in suspend
+- nvidia,boost_freq_step: base freq of boost freq component
+- nvidia,boost_up_coef: percentage of times want to boost up the freq
+- nvidia,boost_down_coef:percentage of times want to boost down the freq
+- nvidia,boost_up_threshold: Up threshold, crossing that boost up interrupt
+				triggeres
+- nvidia,boost_down_threshold: Down threshold, crossing that boost down interrupt
+				triggeres
+- nvidia,up_wmark_window: Count crossing that many times of boost_up_threshold,
+				boost interrupt triggeres
+- nvidia,down_wmark_window: Count crossing that many times of boost_up_threshold,
+				boost interrupt triggeres
+- nvidia,avg_window_log2: K value for moving average of 2^k windows
+- nvidia,count_weight: scaling factor
+- nvidia,type: Freq sampler or Load sampler
+
+Example 1:
+----------
+	actmon@d230000 {
+		status = "disabled";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		/* tegra210 central actmon */
+		compatible = "nvidia,tegra210-cactmon";
+		reg = <0x0 0x0d230000 0x0 0x1000>; /* ACTMON_BASE */
+		interrupts = <0 TEGRA210_IRQ_ACTMON IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&tegra_car TEGRA210_CLK_ACTMON>;
+		clock-names = "actmon";
+		#stream-id-cells = <1>;
+		resets = <&tegra_car TEGRA210_RESET_ACTMON>;
+		reset-names = "actmon_rst";
+		nvidia,sample_period = /bits/ 8 <7>;
+
+		mc_all {	/* MC_ALL actmon device */
+			#address-cells = <1>;
+			#size-cells = <0>;
+			nvidia,reg_offs = <0x100>;
+			nvidia,irq_mask = <0x2>;
+			/* EMC_PLLP_FREQ + 2000 */
+			nvidia,suspend_freq = <204000>;
+			nvidia,boost_freq_step = <204000>;
+			nvidia,boost_up_coef = <200>;
+			nvidia,boost_down_coef = <50>;
+			nvidia,boost_up_threshold = <30>;
+			nvidia,boost_down_threshold = <20>;
+			nvidia,up_wmark_window = /bits/ 8 <3>;
+			nvidia,down_wmark_window = /bits/ 8 <2>;
+			nvidia,avg_window_log2 = /bits/ 8 <6>;
+			/* emc_freq / actmon_freq = 1600MHz / 19.2 MHz */
+			nvidia,count_weight = <0x53>;
+			nvidia,type = <1>;
+			status = "disabled";
+		};
+       };
+

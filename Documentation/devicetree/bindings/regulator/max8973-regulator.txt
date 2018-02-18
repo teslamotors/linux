@@ -2,11 +2,38 @@
 
 Required properties:
 
-- compatible:	must be "maxim,max8973"
+- compatible:	must be one of following:
+			"maxim,max8973"
+			"maxim,max77621".
 - reg:		the i2c slave address of the regulator. It should be 0x1b.
 
 Any standard regulator properties can be used to configure the single max8973
 DCDC.
+
+Optional properties:
+- interrupts: Interrupt number can be provided as detailed on
+	Documentation/devicetree/bindings/interrupt-controller/interrupts.txt
+- interrupt-flags: Provide interrupt flags as per
+	include/dt-bindings/interrupt-controller/irq.h.
+-maxim,externally-enable: boolean, externally control the regulator output
+		enable/disable.
+-maxim,enable-gpio: GPIO for enable control. If the valid GPIO is provided
+		then externally enable control will be considered.
+-maxim,dvs-gpio: GPIO which is connected to DVS pin of device.
+-maxim,dvs-default-state: Default state of GPIO during initialisation.
+		1 for HIGH and 0 for LOW.
+- maxim,sleep-on-dvs: Boolean, enable sleep control through DVS pin. When
+		this property is available then property dvs-default-state
+		will tell dvs pin state for active state of the rail.
+- maxim,junction-temp-warning: Junction temp thrshold for which warnign
+		generated. This is milli-celcius like for 120degC, it is
+		120000.
+-maxim,enable-remote-sense: boolean, enable reote sense.
+-maxim,enable-falling-slew-rate: boolean, enable falling slew rate.
+-maxim,enable-active-discharge: boolean: enable active discharge.
+-maxim,enable-frequency-shift: boolean, enable 9% frequency shift.
+-maxim,enable-bias-control: boolean, enable bias control. By enabling this
+		startup delay can be reduce to 20us from 220us.
 
 Example:
 

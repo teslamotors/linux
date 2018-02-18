@@ -1,0 +1,146 @@
+/*
+ * arch/arm/boot/dts/panel-a-1080p-14-0.dtsi
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+
+/ {
+	host1x {
+		dsi {
+			panel-a-1080p-14-0 {
+				status = "disabled";
+				compatible = "a,1080p-14-0";
+				nvidia,dsi-instance = <DSI_INSTANCE_0>;
+				nvidia,dsi-n-data-lanes = <4>;
+				nvidia,dsi-pixel-format = <TEGRA_DSI_PIXEL_FORMAT_24BIT_P>;
+				nvidia,dsi-refresh-rate = <61>;
+				nvidia,dsi-video-data-type = <TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE>;
+				nvidia,dsi-video-clock-mode = <TEGRA_DSI_VIDEO_CLOCK_TX_ONLY>;
+				nvidia,dsi-video-burst-mode = <TEGRA_DSI_VIDEO_NONE_BURST_MODE_WITH_SYNC_END>;
+				nvidia,dsi-virtual-channel = <TEGRA_DSI_VIRTUAL_CHANNEL_0>;
+				nvidia,dsi-panel-reset = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-power-saving-suspend = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-phy-hsdexit = <123>;
+				nvidia,dsi-phy-hstrail = <85>;
+				nvidia,dsi-phy-datzero = <170>;
+				nvidia,dsi-phy-hsprepare = <57>;
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_DSI>;
+					nvidia,out-width = <256>;
+					nvidia,out-height = <144>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-parent-clk = "pll_d_out0";
+					nvidia,out-xres = <1920>;
+					nvidia,out-yres = <1080>;
+				};
+				display-timings {
+					1920x1080-32 {
+						clock-frequency = <137986200>;
+						hactive = <1920>;
+						vactive = <1080>;
+						hfront-porch = <16>;
+						hback-porch = <152>;
+						hsync-len = <16>;
+						vfront-porch = <3>;
+						vback-porch = <19>;
+						vsync-len = <14>;
+						nvidia,h-ref-to-sync = <11>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+				smartdimmer {
+					status = "okay";
+					nvidia,use-auto-pwm = <0>;
+					nvidia,hw-update-delay = <0>;
+					nvidia,bin-width = <0xffffffff>;
+					nvidia,aggressiveness = <5>;
+					nvidia,use-vid-luma = <0>;
+					nvidia,phase-in-settings = <0>;
+					nvidia,phase-in-adjustments = <0>;
+					nvidia,k-limit-enable = <1>;
+					nvidia,k-limit = <200>;
+					nvidia,sd-window-enable = <0>;
+					nvidia,soft-clipping-enable= <1>;
+					nvidia,soft-clipping-threshold = <128>;
+					nvidia,smooth-k-enable = <1>;
+					nvidia,smooth-k-incr = <64>;
+					nvidia,coeff = <5 9 2>;
+					nvidia,fc = <0 0>;
+					nvidia,blp = <1024 255>;
+					nvidia,bltf = <57 65 73 82
+						       92 103 114 125
+						       138 150 164 178
+						       193 208 224 241>;
+					nvidia,lut = <255 255 255
+						      199 199 199
+						      153 153 153
+						      116 116 116
+						      85 85 85
+						      59 59 59
+						      36 36 36
+						      17 17 17
+						      0 0 0>;
+					nvidia,use-vpulse2 = <1>;
+					nvidia,bl-device-name = "pwm-backlight";
+				};
+			};
+		};
+	};
+	backlight {
+		panel-a-1080p-14-0-bl {
+			status = "disabled";
+			compatible = "a,1080p-14-0-bl";
+			pwms = <&tegra_pwm 1 1000000>;
+			max-brightness = <255>;
+			default-brightness = <224>;
+			bl-measured = < 0 0 1 2 3 4 5 6
+					7 8 9 9 10 11 12 13
+					13 14 15 16 17 17 18 19
+					20 21 22 22 23 24 25 26
+					27 27 28 29 30 31 32 32
+					33 34 35 36 37 37 38 39
+					40 41 42 42 43 44 45 46
+					47 48 48 49 50 51 52 53
+					54 55 56 57 57 58 59 60
+					61 62 63 64 65 66 67 68
+					69 70 71 71 72 73 74 75
+					76 77 77 78 79 80 81 82
+					83 84 85 87 88 89 90 91
+					92 93 94 95 96 97 98 99
+					100 101 102 103 104 105 106 107
+					108 109 110 111 112 113 115 116
+					117 118 119 120 121 122 123 124
+					125 126 127 128 129 130 131 132
+					133 134 135 136 137 138 139 141
+					142 143 144 146 147 148 149 151
+					152 153 154 155 156 157 158 158
+					159 160 161 162 163 165 166 167
+					168 169 170 171 172 173 174 176
+					177 178 179 180 182 183 184 185
+					186 187 188 189 190 191 192 194
+					195 196 197 198 199 200 201 202
+					203 204 205 206 207 208 209 210
+					211 212 213 214 215 216 217 219
+					220 221 222 224 225 226 227 229
+					230 231 232 233 234 235 236 238
+					239 240 241 242 243 244 245 246
+					247 248 249 250 251 252 253 255 >;
+		};
+	};
+};

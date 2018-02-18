@@ -125,7 +125,11 @@
 #define USB_DEVICE_A_HNP_SUPPORT	4	/* (otg) RH port supports HNP */
 #define USB_DEVICE_A_ALT_HNP_SUPPORT	5	/* (otg) other RH port does */
 #define USB_DEVICE_DEBUG_MODE		6	/* (special devices only) */
+#define USB_DEVICE_OTG_STATUS_SELECTOR	0xF000
+#define HOST_REQUEST_FLAG		0x1
 
+#define TEST_MODE_OTG_HNP_REQD			0x7
+#define TEST_MODE_OTG_SRP_REQD			0x6
 /*
  * Test Mode Selectors
  * See USB 2.0 spec Table 9-7
@@ -672,8 +676,10 @@ struct usb_otg_descriptor {
 	__u8  bDescriptorType;
 
 	__u8  bmAttributes;	/* support for HNP, SRP, etc */
+	__u16  bcdOTG;		/* supplement release number (from 1.1a) */
 } __attribute__ ((packed));
 
+#define USB_DT_OTG_SIZE         5
 /* from usb_otg_descriptor.bmAttributes */
 #define USB_OTG_SRP		(1 << 0)
 #define USB_OTG_HNP		(1 << 1)	/* swap host/device roles */
@@ -995,5 +1001,6 @@ struct usb_set_sel_req {
  * http://compliance.usb.org/index.asp?UpdateFile=Electrical&Format=Standard#34
  */
 #define USB_SELF_POWER_VBUS_MAX_DRAW		100
+#define USB_HS_VBUS_MAX_DRAW			500
 
 #endif /* _UAPI__LINUX_USB_CH9_H */

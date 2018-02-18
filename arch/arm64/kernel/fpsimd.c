@@ -24,6 +24,7 @@
 #include <linux/signal.h>
 #include <linux/hardirq.h>
 
+#include <linux/cpu.h>
 #include <asm/fpsimd.h>
 #include <asm/cputype.h>
 
@@ -265,6 +266,36 @@ EXPORT_SYMBOL(kernel_neon_end);
 
 #endif /* CONFIG_KERNEL_MODE_NEON */
 
+#ifdef CONFIG_HOTPLUG_CPU
+static int fpsimd_cpu_hotplug_notifier(struct notifier_block *self,
+	unsigned long action, void *hcpu)
+{
+	long cpu = (long)hcpu;
+
+	switch (action) {
+	case CPU_DYING:
+		if (WARN_ON_ONCE(cpu != smp_processor_id()))
+			break;
+		this_cpu_write(fpsimd_last_state, NULL);
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block fpsimd_cpu_hotplug_notifier_block = {
+	.notifier_call = fpsimd_cpu_hotplug_notifier,
+};
+
+static void fpsimd_cpu_hotplug_init(void)
+{
+	register_cpu_notifier(&fpsimd_cpu_hotplug_notifier_block);
+}
+#else
+static inline void fpsimd_cpu_hotplug_init(void) { }
+#endif /* CONFIG_CPU_HOTPLUG */
+
 #ifdef CONFIG_CPU_PM
 static int fpsimd_cpu_pm_notifier(struct notifier_block *self,
 				  unsigned long cmd, void *v)
@@ -318,6 +349,7 @@ static int __init fpsimd_init(void)
 		elf_hwcap |= HWCAP_ASIMD;
 
 	fpsimd_pm_init();
+	fpsimd_cpu_hotplug_init();
 
 	return 0;
 }

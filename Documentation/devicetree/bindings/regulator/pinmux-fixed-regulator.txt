@@ -1,0 +1,47 @@
+Pinmux Fixed Voltage regulators
+
+Required properties:
+- compatible: Must be "regulator-pinmux-fixed".
+- pinctrl-names: Nmae of the pincontrol node, must be "enable" and "disable".
+- pinctrl-0: The handle of pinmux setting for enabling regulator.
+- pinctrl-1: The handle for pinmux setting for disabling regulator.
+
+Optional properties:
+- startup-delay-us: startup time in microseconds
+- vin-supply: Input supply name.
+
+Any property defined as part of the core regulator binding, defined in
+regulator.txt, can also be used.
+However a pinmux fixed voltage regulator is expected to have the
+regulator-min-microvolt and regulator-max-microvolt to be the same.
+
+Example:
+	abc: regulator@0 {
+		compatible = "regulator-pinmux-fixed";
+		regulator-name = "fixed-supply";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		startup-delay-us = <70000>;
+		regulator-boot-on;
+		vin-supply = <&parent_reg>;
+		pinctrl-names = "enable", "disable";
+		pinctrl-0 = <&regulator_enable>;
+		pinctrl-1 = <&regulator_disable>;
+	};
+
+
+pinmux {
+	regulator_enable: enable {
+		sdmmc3 {
+			::::
+		};
+		::::
+	};
+
+	regulator_disable: disable {
+		sdmmc3 {
+			::::
+		};
+		::::
+	};
+};

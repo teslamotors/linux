@@ -1,0 +1,26 @@
+Userspace consumer regulators
+
+Required properties:
+- compatible		: Must be "reg-userspace-consumer".
+
+Optional properties:
+- regulator-name: Name of the consumer line.
+- regulator-boot-on: Enable regulator on booting.
+- regulator-supplies: Supply names for this regualtor. This can be
+	multiple strings.
+
+With all supply names, there should be <name>-supply to pass the regulator
+handles as defined in regulator.txt.
+
+Example:
+
+	userspace-consumer {
+		compatible = "reg-userspace-consumer";
+
+		regulator-name = "gps-consumer";
+		regulator-boot-on;
+		regulator-supplies = "vdd", "vcc", "vdd-3v3";
+		vdd-supply = <&reg1>;
+		vcc-supply = <&reg2>;
+		vdd-3v3-supply = <&reg3>;
+	};

@@ -10,6 +10,9 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#ifdef CONFIG_DEBUG_DEVRES
+#include <linux/debugfs.h>
+#endif
 
 #include "base.h"
 
@@ -53,9 +56,106 @@ static void devres_log(struct device *dev, struct devres_node *node,
 		dev_err(dev, "DEVRES %3s %p %s (%lu bytes)\n",
 			op, node, node->name, (unsigned long)node->size);
 }
+
+struct dnode {
+	struct device *dev;
+	struct list_head list;
+};
+
+LIST_HEAD(devres_list);
+
+static void add_to_devres_list(struct device *dev)
+{
+	struct dnode *node;
+	if (!list_empty(&dev->devres_head))
+		return;
+
+	list_for_each_entry(node, &devres_list, list)
+		if (dev == node->dev)
+			return;
+
+	node = kzalloc(sizeof(*node), GFP_ATOMIC);
+	if (!node) {
+		pr_info("devres list node allocation failed\n");
+		return;
+	}
+
+	INIT_LIST_HEAD(&node->list);
+	node->dev = dev;
+	list_add(&node->list, &devres_list);
+}
+
+static void remove_from_devres_list(struct device *dev)
+{
+	struct dnode *node, *temp;
+	if (!list_empty(&dev->devres_head))
+		return;
+
+	list_for_each_entry_safe(node, temp, &devres_list, list) {
+		if (dev == node->dev) {
+			list_del_init(&node->list);
+			break;
+		}
+	}
+	kfree(node);
+}
+
+static int devres_mt_show(struct seq_file *m, void *v)
+{
+	struct dnode *node;
+	size_t total = 0;
+
+	list_for_each_entry(node, &devres_list, list) {
+		struct devres_node *devres;
+		size_t per_dev_total = 0;
+		unsigned long flags;
+
+		spin_lock_irqsave(&node->dev->devres_lock, flags);
+		list_for_each_entry(devres, &node->dev->devres_head, entry)
+			per_dev_total += devres->size;
+		spin_unlock_irqrestore(&node->dev->devres_lock, flags);
+		if (!per_dev_total)
+			continue;
+		seq_printf(m, "%s : ", dev_name(node->dev));
+		seq_printf(m, "%zu ", per_dev_total);
+		seq_printf(m, "\n");
+		total += per_dev_total;
+	}
+	seq_printf(m, "TOTAL: %zu\n", total);
+	return 0;
+}
+
+static int devres_mt_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, devres_mt_show, inode->i_private);
+}
+
+static const struct file_operations devres_memtrack_fops = {
+	.open = devres_mt_open,
+	.read = seq_read,
+	.release = single_release,
+};
+
+static int __init devres_memtrack_init(void)
+{
+	struct dentry *root, *devres_mt;
+
+	root = debugfs_create_dir("devres", NULL);
+	if (!root)
+		return -ENODEV;
+
+	devres_mt = debugfs_create_file("memtrack", S_IRUSR, root,
+					NULL, &devres_memtrack_fops);
+	if (!devres_mt)
+		debugfs_remove_recursive(root);
+	return 0;
+}
+late_initcall(devres_memtrack_init);
 #else /* CONFIG_DEBUG_DEVRES */
 #define set_node_dbginfo(node, n, s)	do {} while (0)
 #define devres_log(dev, node, op)	do {} while (0)
+#define add_to_devres_list(dev)		do {} while (0)
+#define remove_from_devres_list(dev)	do {} while (0)
 #endif /* CONFIG_DEBUG_DEVRES */
 
 /*
@@ -102,6 +202,8 @@ static void add_dr(struct device *dev, struct devres_node *node)
 {
 	devres_log(dev, node, "ADD");
 	BUG_ON(!list_empty(&node->entry));
+
+	add_to_devres_list(dev);
 	list_add_tail(&node->entry, &dev->devres_head);
 }
 
@@ -332,6 +434,7 @@ void * devres_remove(struct device *dev, dr_release_t release,
 	if (dr) {
 		list_del_init(&dr->node.entry);
 		devres_log(dev, &dr->node, "REM");
+		remove_from_devres_list(dev);
 	}
 	spin_unlock_irqrestore(&dev->devres_lock, flags);
 

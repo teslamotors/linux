@@ -5,12 +5,17 @@ Required properties:
 	- gpios: specifies GPIO used for IR signal reception.
 
 Optional properties:
+	- min-delay: minimum delay(ms) to send IR event reset for raw IR decoding.
 	- linux,rc-map-name: Linux specific remote control map name.
+	- allowed-protos: 64 bit integer, platform specific allowed
+			  IR protocols.
 
 Example node:
 
 	ir: ir-receiver {
 		compatible = "gpio-ir-receiver";
 		gpios = <&gpio0 19 1>;
+		min-delay = <500>;
 		linux,rc-map-name = "rc-rc6-mce";
+		allowed-protos = <0x00000000 0x00000080>;
 	};

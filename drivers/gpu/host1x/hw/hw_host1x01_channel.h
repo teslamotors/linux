@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA Corporation.
+ * Copyright (c) 2012-2016, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -117,4 +117,16 @@ static inline u32 host1x_channel_dmactrl_dmainitget(void)
 }
 #define HOST1X_CHANNEL_DMACTRL_DMAINITGET \
 	host1x_channel_dmactrl_dmainitget()
+static inline u32 host1x_channel_channelctrl_r(void)
+{
+	return 0x98;
+}
+#define HOST1X_CHANNEL_CHANNELCTRL \
+	host1x_channel_channelctrl_r()
+static inline u32 host1x_channel_channelctrl_kernel_filter_gbuffer_f(u32 v)
+{
+	return (v & 0x1) << 2;
+}
+#define HOST1X_CHANNEL_CHANNELCTRL_KERNEL_FILTER_GBUFFER_F(v) \
+	host1x_channel_channelctrl_kernel_filter_gbuffer_f(v)
 #endif

@@ -16,7 +16,47 @@ config NET_VENDOR_REALTEK
 	  the questions about Realtek devices. If you say Y, you will be asked for
 	  your specific card in the following questions.
 
+config R8168
+	tristate "Realtek 8168 gigabit ethernet support"
+	depends on PCI && NET_VENDOR_REALTEK
+	---help---
+	  Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called r8168.  This is recommended.
+
 if NET_VENDOR_REALTEK
+if R8168
+
+config R8168_NAPI
+    bool "Realtek 8168 NAPI"
+    default y
+    depends on PCI && NET_VENDOR_REALTEK
+    ---help---
+      Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
+
+config R8168_VLAN
+    bool "Realtek 8168 VLAN"
+    default y
+    depends on PCI && NET_VENDOR_REALTEK
+    ---help---
+      Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
+
+config R8168_ASPM
+    bool "Realtek 8168 ASPM"
+    default y
+    depends on PCI && NET_VENDOR_REALTEK
+    ---help---
+      Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
+
+config R8168_S5WOL
+    bool "Realtek 8168 S5WOL"
+    default y
+    depends on PCI && NET_VENDOR_REALTEK
+    ---help---
+      Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
+
+endif # R8168
 
 config ATP
 	tristate "AT-LAN-TEC/RealTek pocket adapter support"
@@ -103,7 +143,6 @@ config 8139_OLD_RX_RESET
 config R8169
 	tristate "Realtek 8169 gigabit ethernet support"
 	depends on PCI
-	select FW_LOADER
 	select CRC32
 	select MII
 	---help---
@@ -111,5 +150,16 @@ config R8169
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called r8169.  This is recommended.
+
+config R8169_FW_LOAD
+	bool "Load firmware for Realtek 8169"
+	depends on R8169
+	select FW_LOADER
+	default y
+	---help---
+	  This enables runtime loading of optional firmware by the Realtek 8169
+	  driver. Some environments do not require firmware, or prefer not to delay
+	  the boot process when firmware is not available. Say N here to disable
+	  firmware loading. If unsure, say Y.
 
 endif # NET_VENDOR_REALTEK

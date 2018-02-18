@@ -1,0 +1,346 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra186-quill-spmic-p3310-1000-a00-00.dtsi"
+#include "tegra186-cvb-prod-p2597-b00-p3310-1000-a00-00.dtsi"
+
+/ {
+
+	fixed-regulators {
+		vdd_1v8_ap: regulator@101 {
+			compatible = "regulator-fixed";
+			reg = <101>;
+			regulator-name = "vdd-1v8-ap";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+			regulator-boot-on;
+		};
+	};
+
+
+	ether_qos@2490000 {
+		vddio_sys_enet_bias-supply = <&spmic_sd2>;
+		vddio_enet-supply = <&spmic_sd3>;
+		phy_vdd_1v8-supply = <&spmic_sd2>;
+		phy_ovdd_rgmii-supply = <&spmic_sd3>;
+		phy_pllvdd-supply = <&spmic_sd1>;
+	};
+
+	host1x {
+		nvdisplay@15200000 {
+			avdd_lcd-supply = <&en_avdd_disp_3v3>;
+			dvdd_lcd-supply = <&en_vdd_disp_1v8>;
+			avdd_dsi_csi-supply = <&spmic_sd1>;
+			outp-supply = <&vpp_lcd>;
+			outn-supply = <&vmm_lcd>;
+			vdd_lcd_bl-supply = <&battery_reg>;
+			vdd_lcd_bl_en-supply = <&vdd_bl_en>;
+			/* added hdmi for testing in head 0 */
+			avdd_hdmi-supply = <&spmic_ldo7>;
+			avdd_hdmi_pll-supply = <&spmic_sd2>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+		nvdisplay@15210000 {
+			avdd_hdmi-supply = <&spmic_ldo7>;
+			avdd_hdmi_pll-supply = <&spmic_sd2>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+		vi@15700000 {
+			avdd_dsi_csi-supply = <&spmic_sd1>;
+		};
+	};
+
+	sdhci@3460000 {
+		vddio_sdmmc-supply = <&spmic_sd2>;
+		vddio_sd_slot-supply = <&spmic_sd3>;
+	};
+
+	sdhci@3440000 {
+		vddio_sdmmc-supply = <&spmic_ldo5>;
+		vddio_sd_slot-supply = <&spmic_sd2>;
+	};
+
+	sdhci@3420000 {
+		vddio_sdmmc-supply = <&spmic_sd2>;
+		vddio_sd_slot-supply = <&spmic_sd3>;
+	};
+
+	sdhci@3400000 {
+		vddio_sdmmc-supply = <&spmic_ldo3>;
+		vddio_sd_slot-supply = <&en_vdd_sdcard1>;
+	};
+
+	xhci@3530000 {
+		avddio_usb-supply = <&spmic_sd3>;
+		avdd_pll_utmip-supply = <&spmic_sd2>;
+		hvdd_usb-supply =  <&spmic_sd2>;
+	};
+
+	xudc@3550000 {
+		avdd-usb-supply = <&spmic_sd3>;
+		dvdd-pex-supply = <&spmic_ldo7>;
+		hvdd-pex-supply =  <&spmic_sd2>;
+		dvdd-pex-pll-supply = <&spmic_ldo7>;
+		hvdd-pex-pll-supply = <&spmic_sd2>;
+	};
+
+	pinctrl@3520000 {
+		vbus-0-supply = <&vdd_usb0_5v>;
+		vbus-1-supply = <&vdd_usb1_5v>;
+		vbus-2-supply = <&vdd_usb2_5v>;
+		vbus-3-supply = <&battery_reg>;
+		vddio-hsic-supply = <&battery_reg>;
+		hvdd_pex_pll-supply = <&spmic_sd2>;
+		hvdd_pex-supply = <&spmic_sd2>;
+		dvdd_pex-supply = <&spmic_ldo7>;
+		avdd_usb-supply = <&spmic_sd3>;
+		vclamp_usb-supply = <&spmic_sd2>;
+		avdd_pll_erefeut-supply = <&spmic_sd2>;
+	};
+
+	spi@c260000 {
+		spi-touch-sharp19x12@0 {
+			avdd-supply = <&en_vdd_ts_hv_3v3>;
+			dvdd-supply = <&en_vdd_ts_1v8>;
+		};
+	};
+
+	pcie-controller@10003000 {
+		dvdd-pex-supply = <&spmic_ldo7>;
+		hvdd-pex-pll-supply = <&spmic_sd2>;
+		hvdd-pex-supply = <&spmic_sd2>;
+		vddio-pexctl-aud-supply = <&spmic_sd2>;
+	};
+
+	pmc-iopower {
+		iopower-sys-supply = <&vdd_1v8_ap>;
+		iopower-uart-supply = <&vdd_1v8_ap>;
+		iopower-conn-supply = <&vdd_1v8_ap>;
+		iopower-edp-supply = <&vdd_1v8_ap>;
+		iopower-pex-ctrl-audio-supply = <&vdd_1v8_ap>;
+		iopower-ufs-supply = <&vdd_1v8_ap>;
+		iopower-ddr0-supply = <&spmic_sd0>;
+		iopower-ddr1-supply = <&spmic_sd0>;
+		iopower-csi-dsi-supply = <&spmic_sd1>;
+		iopower-cam-supply = <&vdd_1v8_ap>;
+		iopower-sdmmc4-supply = <&vdd_1v8_ap>;
+		iopower-sdmmc1-hv-supply = <&spmic_ldo3>;
+		iopower-audio-hv-supply = <&vdd_1v8_ap>;
+		iopower-dbg-supply = <&vdd_1v8_ap>;
+		iopower-spi-supply = <&vdd_1v8_ap>;
+		iopower-ao-supply = <&vdd_1v8_ap>;
+		iopower-ao-hv-supply = <&spmic_ldo2>;
+		iopower-dmic-hv-supply =  <&vdd_1v8_ap>;
+		iopower-sdmmc2-hv-supply = <&spmic_sd3>;
+		iopower-sdmmc3-hv-supply =  <&spmic_ldo5>;
+	};
+
+	i2c@c250000 {
+		tegra_nct72: onsemi,nct72@4c {
+			vdd-supply = <&vdd_1v8_ap>;
+		};
+	};
+
+	pwm-fan {
+		vdd-fan-supply = <&vdd_fan>;
+	};
+
+	bluedroid_pm {
+		avdd-supply = <&battery_reg>;
+		dvdd-supply = <&spmic_sd2>;
+	};
+
+	bpmp_i2c {
+		spmic@3c {
+			pinmux@0 {
+
+				pin_gpio1 {
+					maxim,active-fps-power-up-slot = <1>;
+					maxim,active-fps-power-down-slot = <3>;
+				};
+
+				pin_gpio2 {
+					maxim,active-fps-power-up-slot = <7>;
+					maxim,active-fps-power-down-slot = <2>;
+				};
+
+				pin_gpio3 {
+					maxim,active-fps-power-up-slot = <1>;
+					maxim,active-fps-power-down-slot = <7>;
+				};
+			};
+
+			regulators {
+				sd0 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <5>;
+					maxim,active-fps-power-down-slot = <2>;
+					regulator-enable-ramp-delay = <278>;
+					regulator-disable-ramp-delay = <153000>;
+					regulator-ramp-delay = <27500>;
+					regulator-ramp-delay-scale = <700>;
+				};
+
+				sd1 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					maxim,active-fps-power-up-slot = <3>;
+					maxim,active-fps-power-down-slot = <1>;
+					regulator-enable-ramp-delay = <211>;
+					regulator-disable-ramp-delay = <40000>;
+					regulator-ramp-delay = <27500>;
+					regulator-ramp-delay-scale = <500>;
+				};
+
+				sd2 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-enable-ramp-delay = <4000>;
+					regulator-disable-ramp-delay = <21000>;
+					regulator-ramp-delay = <27500>;
+					regulator-ramp-delay-scale = <6150>;
+				};
+
+				sd3 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <6>;
+					maxim,active-fps-power-down-slot = <1>;
+					regulator-enable-ramp-delay = <574>;
+					regulator-disable-ramp-delay = <40000>;
+					regulator-ramp-delay = <27500>;
+					regulator-ramp-delay-scale = <500>;
+				};
+
+				ldo0 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					maxim,active-fps-power-up-slot = <3>;
+					maxim,active-fps-power-down-slot = <3>;
+					regulator-ramp-delay = <100000>;
+				};
+
+				ldo1 {
+					regulator-ramp-delay = <100000>;
+				};
+
+				ldo2 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <6>;
+					maxim,active-fps-power-down-slot = <1>;
+					regulator-enable-ramp-delay = <152>;
+					regulator-disable-ramp-delay = <14000>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <500>;
+				};
+
+				ldo3 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-enable-ramp-delay = <160>;
+					regulator-disable-ramp-delay = <16000>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <500>;
+				};
+
+				ldo4 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <1>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-enable-ramp-delay = <26>;
+					regulator-disable-ramp-delay = <1650>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <300>;
+				};
+
+				ldo5 {
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-enable-ramp-delay = <309>;
+					regulator-disable-ramp-delay = <16000>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <950>;
+				};
+
+				ldo6 {
+					regulator-ramp-delay = <100000>;
+				};
+
+				ldo7 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					maxim,active-fps-power-up-slot = <4>;
+					maxim,active-fps-power-down-slot = <1>;
+					regulator-enable-ramp-delay = <95>;
+					regulator-disable-ramp-delay = <15000>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <950>;
+				};
+
+			};
+		};
+	};
+
+	fixed-regulators {
+		regulator@1 {
+			regulator-enable-ramp-delay = <1120>;
+			regulator-disable-ramp-delay = <16500>;
+		};
+
+		regulator@2 {
+			regulator-enable-ramp-delay = <108>;
+			regulator-disable-ramp-delay = <1200>;
+		};
+
+		regulator@3 {
+			regulator-enable-ramp-delay = <745>;
+			regulator-disable-ramp-delay = <74000>;
+		};
+
+		regulator@4 {
+			regulator-enable-ramp-delay = <945>;
+			regulator-disable-ramp-delay = <2650>;
+		};
+
+		regulator@5 {
+			regulator-enable-ramp-delay = <800>;
+			regulator-disable-ramp-delay = <13000>;
+		};
+
+		regulator@6 {
+			regulator-enable-ramp-delay = <173>;
+			regulator-disable-ramp-delay = <13000>;
+		};
+
+		regulator@7 {
+			regulator-enable-ramp-delay = <245>;
+			regulator-disable-ramp-delay = <43000>;
+		};
+
+		regulator@8 {
+			regulator-enable-ramp-delay = <216>;
+			regulator-disable-ramp-delay = <43000>;
+		};
+
+		regulator@10 {
+			regulator-enable-ramp-delay = <178>;
+			regulator-disable-ramp-delay = <10000>;
+		};
+
+		regulator@11 {
+			regulator-enable-ramp-delay = <5000>;
+			regulator-disable-ramp-delay = <87000>;
+		};
+	};
+};

@@ -96,6 +96,40 @@ to generate or receive a signal of the opposite polarity, software will be
 responsible for correctly interpreting (inverting) the GPIO signal at the GPIO
 controller.
 
+1.1) Default initialisation of GPIOs:
+-----------------------------------
+The GPIOs can be set as input or output-low or output-high during
+GPIO registration with gpiolib.
+The two properties are provided with this
+- gpio-init-names: The state names of the GPIO initialisation.
+- gpio-init-0: The state 0 node handle for GPIO initialisation.
+  :
+- gpio-init-n: The state n node handle for GPIO initialisation.
+
+The subnode property:
+--------------------
+The subnode should have following properties with the list of GPIOs number
+belongs to that device.
+- gpio-input: The list of GPIOs to be set as input.
+- gpio-output-low: The list of GPIOs to be set as output with low output.
+- gpio-output-high: The list of GPIOs to be set as output with high output.
+
+Example:
+	gpio: gpio@6000d000 {
+		gpio-init-names = "default";
+		gpio-init-0 = <&gpio_default>;
+
+		gpio_default: default {
+			gpio-input = <189 190 178 179>;
+			gpio-output-low = <188 191>;
+			gpio-output-high = <149 138>;
+		};
+	};
+
+Here GPIO driver will have one state "default" and with this, the GPIOs
+189, 190, 178, 179 are set as input, 188 and 191 are set as output low and
+GPIOs 149 and 138 are set as GPIO output-high.
+
 2) gpio-controller nodes
 ------------------------
 

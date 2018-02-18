@@ -74,11 +74,32 @@ struct tps6586x_settings {
 	int slew_rate;
 };
 
+enum {
+	TPS6586X_RTC_CL_SEL_1_5PF  = 0x0,
+	TPS6586X_RTC_CL_SEL_6_5PF  = 0x1,
+	TPS6586X_RTC_CL_SEL_7_5PF  = 0x2,
+	TPS6586X_RTC_CL_SEL_12_5PF = 0x3,
+};
+
 struct tps6586x_subdev_info {
 	int		id;
 	const char	*name;
 	void		*platform_data;
 	struct device_node *of_node;
+};
+
+struct tps6586x_epoch_start {
+	int year;
+	int month;
+	int day;
+	int hour;
+	int min;
+	int sec;
+};
+
+struct tps6586x_rtc_platform_data {
+	struct tps6586x_epoch_start start;
+	int cl_sel; /* internal XTAL capacitance, see TPS6586X_RTC_CL_SEL* */
 };
 
 struct tps6586x_platform_data {

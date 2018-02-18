@@ -1,0 +1,19 @@
+config PINCTRL_TEGRA186
+	bool "NVIDIA Tegra186 Pinmux support"
+	select PINCTRL_TEGRA
+	help
+	Support for the NVIDIA Tegra186 PINCTRL controller driver.
+
+config PINCTRL_TEGRA186_PADCTL
+	bool "NVIDIA Tegra186 XUSB PADCTL Driver"
+	depends on ARCH_TEGRA_18x_SOC
+	depends on MAILBOX
+	select GENERIC_PHY
+	select PINCONF
+	select PINMUX
+
+config PINCTRL_TEGRA186_DPAUX
+	bool "NVIDIA Tegra186 DP AUX Pinctrl Driver"
+        depends on ARCH_TEGRA_18x_SOC
+        select PINCONF
+        select PINMUX

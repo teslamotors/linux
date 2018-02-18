@@ -1,0 +1,3 @@
+config TEGRA186_AHC
+	tristate "Tegra186 AHC driver"
+	depends on ARCH_TEGRA_18x_SOC

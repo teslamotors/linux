@@ -1,0 +1,405 @@
+/*
+ * arch/arm64/boot/dts/tegra186-fpga-cl34563539-vm.dts
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra186-priv-fpga-cl34563539.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+	};
+
+	chosen {
+		nvidia,tegra-hypervisor-mode;
+	};
+
+	reserved-memory {
+		generic_carveout {
+			status = "disabled";
+		};
+	};
+
+	tegra-carveouts {
+		status = "disabled";
+	};
+
+	mc_sid@2c00000 {
+		status = "disabled";
+	};
+
+	iommu@12000000 {
+		status = "disabled";
+	};
+
+	mc {
+		compatible = "nvidia,tegra-mc-none";
+		status = "disabled";
+        };
+
+	mailbox@3538000 {
+		status = "disabled";
+	};
+
+	xhci@3530000 {
+		status = "disabled";
+	};
+
+	xudc@3550000 {
+		status = "disabled";
+	};
+
+	pmc@c360000 {
+		status = "disabled";
+	};
+
+	pinctrl@3520000 {
+		status = "disabled";
+	};
+
+	host1x {
+		status = "disabled";
+		ctx0 {
+			status = "disabled";
+		};
+
+		ctx1 {
+			status = "disabled";
+		};
+
+		ctx2 {
+			status = "disabled";
+		};
+
+		ctx3 {
+			status = "disabled";
+		};
+
+		ctx4 {
+			status = "disabled";
+		};
+
+		ctx5 {
+			status = "disabled";
+		};
+
+		ctx6 {
+			status = "disabled";
+		};
+
+		ctx7 {
+			status = "disabled";
+		};
+
+		nvcsi@150c0000 {
+			status = "disabled";
+		};
+
+		vi@15700000 {
+			status = "disabled";
+		};
+
+		isp@15600000 {
+			status = "disabled";
+		};
+
+		nvdisplay@15200000 {
+			status = "disabled";
+		};
+
+		nvdisplay@15210000 {
+			status = "disabled";
+		};
+
+		nvdisplay@15220000 {
+			status = "disabled";
+		};
+
+		dsi {
+			status = "disabled";
+		};
+
+		vic@15340000 {
+			status = "disabled";
+		};
+
+		nvenc@154c0000 {
+			status = "disabled";
+		};
+
+		nvdec@15480000 {
+			status = "disabled";
+		};
+
+		nvjpg@15380000 {
+			status = "disabled";
+		};
+
+		tsec@15500000 {
+			status = "disabled";
+		};
+
+		tsecb@15100000 {
+			status = "disabled";
+		};
+
+		sor {
+			status = "disabled";
+		};
+
+		sor1 {
+			status = "disabled";
+		};
+
+		dpaux@155c0000 {
+			status = "disabled";
+		};
+
+		dpaux@15040000 {
+			status = "disabled";
+		};
+
+		se@15810000 {
+			status = "disabled";
+		};
+
+		se@15820000 {
+			status = "disabled";
+		};
+
+		se@15830000 {
+			status = "disabled";
+		};
+
+		se@15840000 {
+			status = "disabled";
+		};
+	};
+
+	gp10b {
+		status = "disabled";
+	};
+
+	psci {
+		status = "okay";
+	};
+
+	interrupt-controller@3881000 {
+		status = "okay";
+	};
+
+	interrupt-controller@3000000 {
+		compatible = "arm,cortex-a15-gic-none";
+		status = "disabled";
+	};
+
+	clock@5000000 {
+		status = "okay";
+	};
+
+	se_elp@3ad0000 {
+		status = "disabled";
+	};
+
+	spi@3270000 {
+		status = "disabled";
+	};
+
+	spi@3210000 {
+		status = "disabled";
+	};
+
+	spi@c260000 {
+		status = "disabled";
+	};
+
+	spi@3230000 {
+		status = "disabled";
+	};
+
+	spi@3240000 {
+		status = "disabled";
+	};
+
+        ether_qos@2490000 {
+		status = "disabled";
+        };
+
+        ether_qos_virt_test@2490000 {
+		status = "disabled";
+        };
+
+	tegra-hsp@3c00000 {
+		compatible = "nvidia,tegra186-hsp-none";
+		status = "disabled";
+	};
+
+	chipid@100000 {
+		status = "disabled";
+	};
+
+	bpmp {
+		compatible = "nvidia,tegra186-bpmp-hv";
+		ivc_queue = <&tegra_hv 14 14>;
+		status = "okay";
+
+		bpmpthermal {
+			status = "disabled";
+		};
+	};
+
+	dma@2600000 {
+		status = "disabled";
+	};
+
+	serial@3100000 {
+		status = "okay";
+	};
+
+	serial@3110000 {
+		status = "disabled";
+	};
+
+	serial@c280000 {
+		status = "disabled";
+	};
+
+	serial@3130000 {
+		status = "disabled";
+	};
+
+	serial@3140000 {
+		status = "disabled";
+	};
+
+	serial@3150000 {
+		status = "disabled";
+	};
+
+	serial@c290000 {
+		status = "disabled";
+	};
+
+	pinmux@2430000 {
+                status = "disabled";
+        };
+
+        gpio@2200000 {
+                status = "disabled";
+        };
+
+	i2c@3160000 {
+		status = "disabled";
+	};
+
+	i2c@3180000 {
+		status = "disabled";
+	};
+
+	i2c@3190000 {
+		status = "disabled";
+	};
+
+	bpmp_i2c {
+		status = "disabled";
+	};
+
+	i2c@31b0000 {
+		status = "disabled";
+	};
+
+	i2c@31c0000 {
+		status = "disabled";
+	};
+
+	i2c@31e0000 {
+		status = "disabled";
+	};
+
+	ahci-sata@3507000 {
+		status = "disabled";
+	};
+
+	pcie-controller@10003000 {
+		status = "disabled";
+
+		pci@1,0 {
+			status = "disabled";
+		};
+
+		pci@2,0 {
+			status = "disabled";
+		};
+
+		pci@3,0 {
+			status = "disabled";
+		};
+
+	};
+
+	agic-controller@2a41000 {
+		status = "disabled";
+	};
+
+	adsp@2993000 {
+		status = "disabled";
+	};
+
+	roc-flush@e080000 {
+		status = "disabled";
+	};
+
+	clocks {
+	     clk32k_in@0 {
+		status = "disabled";
+	     };
+	};
+
+	mttcan@c310000 {
+		status = "disabled";
+	};
+
+	mttcan@c320000 {
+		status = "disabled";
+	};
+
+	cpuidle {
+		compatible = "nvidia,tegra18x-cpuidle";
+		status = "disabled";
+	};
+
+	tegra_edvd@e070000 {
+		status = "disabled";
+	};
+
+	aon@c160000 {
+		status = "disabled";
+	};
+
+	efuse@3820000 {
+                compatible = "nvidia,tegra186-efuse-none";
+		status = "disabled";
+	};
+
+	tachometer@39c0000 {
+		status = "disabled";
+	};
+};

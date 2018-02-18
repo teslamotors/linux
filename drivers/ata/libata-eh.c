@@ -3446,6 +3446,7 @@ static int ata_eh_set_lpm(struct ata_link *link, enum ata_lpm_policy policy,
 		}
 	}
 
+	link->lpm_policy = policy;
 	if (ap) {
 		rc = ap->ops->set_lpm(link, policy, hints);
 		if (!rc && ap->slave_link)
@@ -3470,7 +3471,6 @@ static int ata_eh_set_lpm(struct ata_link *link, enum ata_lpm_policy policy,
 	 * Low level driver acked the transition.  Issue DIPM command
 	 * with the new policy set.
 	 */
-	link->lpm_policy = policy;
 	if (ap && ap->slave_link)
 		ap->slave_link->lpm_policy = policy;
 

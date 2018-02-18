@@ -1,0 +1,17 @@
+#include "tegra210-loki-e-p2530-0030-e02-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	udc@7d000000 {
+		nvidia,dcp-current-limit-ua = <3000000>;
+	};
+
+	usb_cd@7009f000 {
+		nvidia,dcp-current-limit-ua = <3000000>;
+	};
+
+	touch-leds-pwm-rework {
+		status = "okay";
+	};
+};

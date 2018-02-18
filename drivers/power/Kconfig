@@ -14,6 +14,15 @@ config POWER_SUPPLY_DEBUG
 	  Say Y here to enable debugging messages for power supply class
 	  and drivers.
 
+config POWER_SUPPLY_EXTCON
+	bool "Power supply detection through extcon"
+	depends on EXTCON
+	help
+	  Say Y to enable the power supply cable type notification
+	  through extcon. The external driver like USB Host identify
+	  the supply type and generate the cable type notification
+	  through extcon.
+
 config PDA_POWER
 	tristate "Generic PDA/phone power driver"
 	depends on !S390
@@ -21,6 +30,40 @@ config PDA_POWER
 	  Say Y here to enable generic power driver for PDAs and phones with
 	  one or two external power supplies (AC/USB) connected to main and
 	  backup batteries, and optional builtin charger.
+
+config CHARGER_PALMAS
+	tristate "Palmas charger driver support"
+	depends on MFD_PALMAS
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	  Say Y here to enable charger driver support
+	  for the palmas series of chipsets from TI
+
+config CHARGER_BQ2419X
+	tristate "BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver support"
+	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	  Say Y here to enable driver support for TI BQ24190/
+	  BQ24192/BQ24192i/BQ24193 Charger.
+
+config CHARGER_BQ2471X
+	tristate "BQ24715/BQ24717 Charger driver support"
+	depends on I2C
+	help
+	  BQ2471X is a companion pmic for smartphones and tablets
+	  which supports battery charging feature.
+	  Say Y here to enable driver support for TI BQ24715/
+	  BQ24717 Battery Charger.
+
+config CHARGER_BQ2477X
+	tristate "BQ24770/BQ24773 Charger driver support"
+	depends on I2C
+	help
+	  BQ2477X is a companion pmic for smartphones and tablets
+	  which supports battery charging feature.
+	  Say Y here to enable driver support for TI BQ24770/
+	  BQ24773 Battery Charger.
 
 config APM_POWER
 	tristate "APM emulation for class batteries"
@@ -36,12 +79,29 @@ config GENERIC_ADC_BATTERY
 	  Say Y here to enable support for the generic battery driver
 	  which uses IIO framework to read adc.
 
+config CHARGER_MAX77665
+	tristate "MAX77665 battery charger support"
+	depends on MFD_MAX77665 && EXTCON
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	 MAX77665 is a companion pmic for smartphones and tablets
+	 which supports battery charging feature.
+	 Say Y here to enable battery charging driver support for
+	 maxim MAX77665 chipset.
+
 config MAX8925_POWER
 	tristate "MAX8925 battery charger support"
 	depends on MFD_MAX8925
 	help
 	  Say Y here to enable support for the battery charger in the Maxim
 	  MAX8925 PMIC.
+
+config MAX8907C_CHARGER
+	tristate "MAX8907c charger support"
+	depends on MFD_MAX8907C
+	help
+	  Say Y here to enable support for the charger in the Maxim
+	  MAX8907c PMIC.
 
 config WM831X_BACKUP
 	tristate "WM831X backup battery charger support"
@@ -80,6 +140,15 @@ config BATTERY_DS2760
 	depends on W1 && W1_SLAVE_DS2760
 	help
 	  Say Y here to enable support for batteries with ds2760 chip.
+
+config BATTERY_PALMAS
+	tristate "Palmas Embedded Fuel Gauge"
+	depends on MFD_PALMAS
+	select MFD_PALMAS_GPADC
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	  Say Y to include support for the TPS80036 fuel gauge IP block
+	  within the palmas-charger PMIC IC.
 
 config BATTERY_DS2780
 	tristate "DS2780 battery driver"
@@ -153,6 +222,7 @@ config BATTERY_WM97XX
 config BATTERY_SBS
         tristate "SBS Compliant gas gauge"
         depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
         help
 	  Say Y to include support for SBS battery driver for SBS-compliant
 	  gas gauges.
@@ -177,6 +247,26 @@ config BATTERY_BQ27X00_PLATFORM
 	default y
 	help
 	  Say Y here to enable support for batteries with BQ27000 (HDQ) chips.
+
+config CHARGER_TPS8003X
+	tristate "TPS8003x battery charger driver"
+	depends on MFD_TPS80031
+	default n
+	help
+	  Say Y here to enable support for battery charging with TPS80031x chips.
+
+config BATTERY_GAUGE_TPS8003X
+	tristate "TPS8003x battery gauge driver"
+	depends on MFD_TPS80031
+	default n
+	help
+	 Say Y here to enable support for battery gauge for TPS80031x chips.
+
+config CHARGER_SMB349
+	tristate "SMB349 battery charger driver"
+	depends on I2C
+	help
+	  Say Y here to enable support for battery charging with SMB349 chips.
 
 config BATTERY_DA9030
 	tristate "DA9030 battery driver"
@@ -211,6 +301,43 @@ config BATTERY_MAX17042
 	  multi-function devices that include fuel gauages that are compatible
 	  with MAX17042. This driver also supports max17047/50 chips which are
 	  improved version of max17042.
+
+config BATTERY_MAX17048
+	tristate "Maxim MAX17048/17049 Fuel Gauge"
+	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	  MAX17048 is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment. The MAX17048 is configured
+	  to operate with a single lithium cell, and MAX17049 for two lithium
+	  cells.
+
+config BATTERY_BQ27441
+	tristate "TI's BQ27441 Fuel Gauge"
+	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	  BQ27441 is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment.
+
+config BATTERY_LC709203F
+	tristate "On semi's LC709203F Fuel Gauge"
+	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	  LC709203F is fuel-gauge system for from On-semi for
+	  Lithium-ion batteries. Say Y here to enable the driver for
+	  the same.
+
+config BATTERY_ANDROID
+	tristate "Battery driver for Android"
+	help
+	  Say Y to enable generic support for battery charging according
+	  to common Android policies.
+	  This driver adds periodic battery level and health monitoring,
+	  kernel log reporting and other debugging features, common board
+	  battery file glue logic for battery/case temperature sensors,
+	  etc.
 
 config BATTERY_Z2
 	tristate "Z2 battery driver"
@@ -397,8 +524,39 @@ config BATTERY_GOLDFISH
 	  Say Y to enable support for the battery and AC power in the
 	  Goldfish emulator.
 
+config CHARGER_EXTCON_MAX77660
+	tristate "MAX77660 battery charger and external connection support"
+	depends on MFD_MAX77660 && EXTCON && REGULATOR
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	 MAX77660 is a pmic for smartphones and tablets which supports
+	 battery charging feature. It also detect the presence of HOST
+	 cable. Implement the notification mechanism for Host cable connection
+	 through extcon framework.
+	 Say Y here to enable battery charging driver support for
+	 maxim MAX77660 chipset.
+
+config BATTERY_CW201X
+	tristate "Cellwise CW2015 Fuel Gauge driver"
+	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
+	select REGMAP_I2C
+	help
+	  CW201X is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY
+
+config TEGRA_BPC_MGMT
+	tristate "battery peak current management"
+	depends on ARCH_TEGRA
+	help
+	  This driver reduces cpu frequency/voltage on gpio event from the
+	  battery current monitor device.
+
+config BATTERY_CHARGER_GAUGE_COMM
+	bool
 
 source "drivers/power/avs/Kconfig"

@@ -49,6 +49,7 @@ static DECLARE_WAIT_QUEUE_HEAD(alarm_wait_queue);
 static uint32_t alarm_pending;
 static uint32_t alarm_enabled;
 static uint32_t wait_pending;
+static uint32_t rtc_wakeup_src;
 
 struct devalarm {
 	union {
@@ -93,6 +94,16 @@ static void devalarm_cancel(struct devalarm *alrm)
 		alarm_cancel(&alrm->u.alrm);
 	else
 		hrtimer_cancel(&alrm->u.hrt);
+}
+
+uint32_t get_rtc_wakeup_src(void)
+{
+	return rtc_wakeup_src;
+}
+
+void set_rtc_wakeup_src(uint32_t value)
+{
+	rtc_wakeup_src = value;
 }
 
 static void alarm_clear(enum android_alarm_type alarm_type)
@@ -148,6 +159,12 @@ static int alarm_wait(void)
 	wait_pending = 1;
 	alarm_pending = 0;
 	spin_unlock_irqrestore(&alarm_slock, flags);
+
+	if (rtc_wakeup_src) {
+		rv |= ANDROID_ALARM_WAKENUP_BY_RTCCHIP_MASK;
+		rtc_wakeup_src = 0;
+		alarm_dbg(INFO, "it is a rtc wakeup\n");
+	}
 
 	return rv;
 }

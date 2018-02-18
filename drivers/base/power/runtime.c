@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2009 Rafael J. Wysocki <rjw@sisk.pl>, Novell Inc.
  * Copyright (C) 2010 Alan Stern <stern@rowland.harvard.edu>
+ * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
  *
  * This file is released under the GPLv2.
  */
@@ -44,7 +45,6 @@ static int (*rpm_get_resume_cb(struct device *dev))(struct device *)
 	return RPM_GET_CALLBACK(dev, runtime_resume);
 }
 
-#ifdef CONFIG_PM_RUNTIME
 static int (*rpm_get_idle_cb(struct device *dev))(struct device *)
 {
 	return RPM_GET_CALLBACK(dev, runtime_idle);
@@ -571,8 +571,10 @@ static int rpm_suspend(struct device *dev, int rpmflags)
 		 * reschedule another autosuspend.
 		 */
 		if ((rpmflags & RPM_AUTO) &&
-		    pm_runtime_autosuspend_expiration(dev) != 0)
+		    pm_runtime_autosuspend_expiration(dev) != 0) {
+			wake_up_all(&dev->power.wait_queue);
 			goto repeat;
+		}
 	} else {
 		pm_runtime_cancel_pending(dev);
 	}
@@ -871,6 +873,21 @@ int pm_schedule_suspend(struct device *dev, unsigned int delay)
 }
 EXPORT_SYMBOL_GPL(pm_schedule_suspend);
 
+static bool pm_runtime_usage_cnt_dec(struct device *dev, bool test)
+{
+	bool ret = false;
+
+	if (!WARN_ON(atomic_read(&dev->power.usage_count) == 0)) {
+		if (test)
+			ret = !!atomic_dec_and_test(&dev->power.usage_count);
+		else
+			atomic_dec(&dev->power.usage_count);
+	} else {
+		dev_warn(dev, "Unexpected usage count decrement\n");
+	}
+	return ret;
+}
+
 /**
  * __pm_runtime_idle - Entry point for runtime idle operations.
  * @dev: Device to send idle notification for.
@@ -891,7 +908,7 @@ int __pm_runtime_idle(struct device *dev, int rpmflags)
 	might_sleep_if(!(rpmflags & RPM_ASYNC) && !dev->power.irq_safe);
 
 	if (rpmflags & RPM_GET_PUT) {
-		if (!atomic_dec_and_test(&dev->power.usage_count))
+		if (!pm_runtime_usage_cnt_dec(dev, 1))
 			return 0;
 	}
 
@@ -923,7 +940,7 @@ int __pm_runtime_suspend(struct device *dev, int rpmflags)
 	might_sleep_if(!(rpmflags & RPM_ASYNC) && !dev->power.irq_safe);
 
 	if (rpmflags & RPM_GET_PUT) {
-		if (!atomic_dec_and_test(&dev->power.usage_count))
+		if (!pm_runtime_usage_cnt_dec(dev, 1))
 			return 0;
 	}
 
@@ -1230,7 +1247,7 @@ void pm_runtime_allow(struct device *dev)
 		goto out;
 
 	dev->power.runtime_auto = true;
-	if (atomic_dec_and_test(&dev->power.usage_count))
+	pm_runtime_usage_cnt_dec(dev, 1);
 		rpm_idle(dev, RPM_AUTO);
 
  out:
@@ -1307,7 +1324,7 @@ static void update_autosuspend(struct device *dev, int old_delay, int old_use)
 
 		/* If it used to be prevented then allow it. */
 		if (old_use && old_delay < 0)
-			atomic_dec(&dev->power.usage_count);
+			pm_runtime_usage_cnt_dec(dev, 0);
 
 		/* Maybe we can autosuspend now. */
 		rpm_idle(dev, RPM_AUTO);
@@ -1402,7 +1419,6 @@ void pm_runtime_remove(struct device *dev)
 	if (dev->power.irq_safe && dev->parent)
 		pm_runtime_put(dev->parent);
 }
-#endif
 
 /**
  * pm_runtime_force_suspend - Force a device into suspend state if needed.
@@ -1422,12 +1438,6 @@ int pm_runtime_force_suspend(struct device *dev)
 	int ret = 0;
 
 	pm_runtime_disable(dev);
-
-	/*
-	 * Note that pm_runtime_status_suspended() returns false while
-	 * !CONFIG_PM_RUNTIME, which means the device will be put into low
-	 * power state.
-	 */
 	if (pm_runtime_status_suspended(dev))
 		return 0;
 

@@ -296,6 +296,10 @@ static int __test_hash(struct crypto_ahash *tfm, struct hash_testvec *template,
 			hexdump(result, crypto_ahash_digestsize(tfm));
 			ret = -EINVAL;
 			goto out;
+		} else {
+			printk(KERN_ERR "alg: hash: Test %d passed for %s\n",
+			       j, algo);
+			hexdump(result, crypto_ahash_digestsize(tfm));
 		}
 	}
 
@@ -1022,6 +1026,10 @@ static int __test_skcipher(struct crypto_ablkcipher *tfm, int enc,
 			hexdump(q, template[i].rlen);
 			ret = -EINVAL;
 			goto out;
+		} else {
+			pr_err("alg: skcipher%s: Test %d passed on %s for %s\n",
+			       d, j, e, algo);
+			hexdump(q, template[i].rlen);
 		}
 	}
 
@@ -2301,9 +2309,10 @@ static const struct alg_test_desc alg_test_descs[] = {
 				}
 			}
 		}
-	}, {
+	},{
 		.alg = "cmac(aes)",
 		.test = alg_test_hash,
+		.fips_allowed = 1,
 		.suite = {
 			.hash = {
 				.vecs = aes_cmac128_tv_template,

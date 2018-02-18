@@ -1,0 +1,32 @@
+config SND_SOC_TEGRA_124_OR_LATER
+  def_bool y
+	depends on ARCH_TEGRA
+	depends on ARCH_TEGRA_12x_SOC
+	help
+		Say Y or M here if the module depends upon tegra124 or later SoC.
+		Virtual driver needs this as the driver support is available only
+		for T124 or later SoC. For this option to work, all the dependencies
+		should be selected in defconfig file.
+
+config SND_SOC_TEGRA124_VIRT_APBIF_SLAVE
+	tristate "Tegra124 APBIF slave"
+	depends on SND_SOC_TEGRA_124_OR_LATER
+	depends on MACH_P1859
+	help
+		Say Y or M if you want to add support for Tegra124 APBIF slave module.
+		APBIF_SLAVE module exposes only apbif dai links to apbdma. This module
+		can be build independent of APBIF_MASTER module. This module provides
+		a pcm interface to slave card in audio virtualization use case.
+
+config SND_SOC_TEGRA_VIRT_VCM30T124_SLAVE
+	tristate "SoC Audio Slave for VCM30_T124"
+	depends on TEGRA20_APB_DMA
+	depends on MACH_P1859
+	depends on SND_SOC_TEGRA_ALT
+	select SND_SOC_TEGRA124_VIRT_APBIF_SLAVE
+	select SND_SOC_SPDIF
+	help
+		Say Y or M here if you want to add slave interface for SoC audio on the
+		TEGRA. This option automatically selects all the required dependancies.
+		pcm driver is selected from tegra-alt. Selecting APBIF_SLAVE option
+		enables apbif dai link interface.

@@ -1,6 +1,7 @@
 /*
  * usb port device code
  *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (C) 2012 Intel Corp
  *
  * Author: Lan Tianyu <tianyu.lan@intel.com>
@@ -72,7 +73,7 @@ static void usb_port_device_release(struct device *dev)
 	kfree(port_dev);
 }
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 static int usb_port_runtime_resume(struct device *dev)
 {
 	struct usb_port *port_dev = to_usb_port(dev);
@@ -171,7 +172,7 @@ static int usb_port_runtime_suspend(struct device *dev)
 #endif
 
 static const struct dev_pm_ops usb_port_pm_ops = {
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 	.runtime_suspend =	usb_port_runtime_suspend,
 	.runtime_resume =	usb_port_runtime_resume,
 #endif
@@ -479,6 +480,9 @@ void usb_hub_remove_port_device(struct usb_hub *hub, int port1)
 {
 	struct usb_port *port_dev = hub->ports[port1 - 1];
 	struct usb_port *peer;
+
+	if (port_dev == NULL)
+		return;
 
 	peer = port_dev->peer;
 	if (peer)

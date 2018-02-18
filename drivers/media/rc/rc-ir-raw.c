@@ -116,7 +116,7 @@ int ir_raw_event_store_edge(struct rc_dev *dev, enum raw_event_type type)
 
 	now = ktime_get();
 	delta = ktime_to_ns(ktime_sub(now, dev->raw->last_event));
-	delay = MS_TO_NS(dev->input_dev->rep[REP_DELAY]);
+	delay = MS_TO_NS(max(dev->input_dev->rep[REP_DELAY], dev->min_delay));
 
 	/* Check for a long duration since last event or if we're
 	 * being called for the first time, note that delta can't

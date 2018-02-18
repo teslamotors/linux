@@ -1,0 +1,125 @@
+config SND_SOC_TEGRA_ALT_186
+        def_bool y
+        depends on SND_SOC_TEGRA_ALT
+        depends on ARCH_TEGRA_APE
+	depends on ARCH_TEGRA_18x_SOC
+
+config SND_SOC_TEGRA186_DSPK_ALT
+	tristate "Tegra186 DSPK driver"
+	depends on SND_SOC_TEGRA_ALT && SND_SOC_TEGRA_ALT_186
+	help
+	  Say Y or M if you want to add support for Tegra186 DSPK module.
+
+config SND_SOC_TEGRA186_ASRC_ALT
+	tristate "Tegra186 ASRC driver"
+	depends on SND_SOC_TEGRA_ALT && SND_SOC_TEGRA_ALT_186
+	help
+	  Say Y or M if you want to add support for Tegra186 ASRC module.
+
+config SND_SOC_TEGRA186_ARAD_ALT
+	tristate "Tegra186 ARAD driver"
+	depends on SND_SOC_TEGRA_ALT && SND_SOC_TEGRA_ALT_186
+	help
+	  Say Y or M if you want to add support for Tegra186 ARAD module.
+
+config SND_SOC_TEGRA_ALT_FORCE_CARD_REG
+	tristate "Enable sound card even if audio codec is missing on board"
+	depends on SND_SOC_TEGRA_ALT
+	help
+	  Say Y or M if you want to register the sound card even if audio codec
+	  is not connected/present on board.
+
+config SND_SOC_TEGRA_ASOC_MACHINE_T18X_ALT
+	tristate "Tegra ASoC machine driver"
+	depends on SND_SOC_TEGRA_ALT
+	help
+	  Say Y or M,
+	  if you want to add support for
+	  Tegra ASoC
+	  machine driver.
+
+config SND_SOC_TEGRA186_XBAR_ALT
+	tristate "Tegra186 XBAR driver"
+	depends on SND_SOC_TEGRA_ALT && SND_SOC_TEGRA_ALT_186
+	help
+	  Say Y or M if you want to add support for Tegra186 XBAR module.
+
+config SND_SOC_TEGRA186_AFC_ALT
+	tristate "Tegra186 AFC driver"
+	depends on SND_SOC_TEGRA_ALT && SND_SOC_TEGRA_ALT_186
+	help
+	  Say Y or M if you want to add support for Tegra186 AFC module.
+
+config SND_SOC_TEGRA_T186REF_ALT
+	tristate "SoC Audio support for T186Ref"
+	depends on SND_SOC_TEGRA_ALT
+	depends on ARCH_TEGRA_18x_SOC
+	select SND_SOC_TEGRA186_XBAR_ALT
+	select SND_SOC_TEGRA210_PCM_ALT
+	select SND_SOC_TEGRA210_ADMA_ALT
+	select SND_SOC_TEGRA210_ADMAIF_ALT
+	select SND_SOC_TEGRA210_I2S_ALT
+	select SND_SOC_TEGRA210_DMIC_ALT
+	select SND_SOC_TEGRA210_AMX_ALT
+	select SND_SOC_TEGRA210_ADX_ALT
+	select SND_SOC_TEGRA210_MIXER_ALT
+	select SND_SOC_TEGRA210_SFC_ALT
+	select SND_SOC_TEGRA186_AFC_ALT
+	select SND_SOC_TEGRA210_MVC_ALT
+	select SND_SOC_TEGRA210_OPE_ALT
+	select SND_SOC_TEGRA210_SPDIF_ALT
+	select SND_SOC_TEGRA186_ASRC_ALT
+	select SND_SOC_TEGRA186_ARAD_ALT
+	select SND_SOC_TEGRA186_DSPK_ALT
+	select SND_SOC_TEGRA_ASOC_HWDEP_ALT
+	select SND_SOC_SPDIF
+	select SND_SOC_AD193X
+	select SND_SOC_TEGRA_ASOC_MACHINE_T18X_ALT
+	help
+	  Say Y or M here.
+
+config SND_SOC_TEGRA_T186REF_MOBILE_ALT
+        tristate "SoC Audio support for T186Ref Mobile"
+        depends on SND_SOC_TEGRA_ALT
+        depends on ARCH_TEGRA_18x_SOC
+        select SND_SOC_TEGRA186_XBAR_ALT
+        select SND_SOC_TEGRA210_PCM_ALT
+        select SND_SOC_TEGRA210_ADMA_ALT
+        select SND_SOC_TEGRA210_ADMAIF_ALT
+        select SND_SOC_TEGRA210_I2S_ALT
+        select SND_SOC_TEGRA210_DMIC_ALT
+        select SND_SOC_TEGRA210_AMX_ALT
+        select SND_SOC_TEGRA210_ADX_ALT
+        select SND_SOC_TEGRA210_MIXER_ALT
+        select SND_SOC_TEGRA210_SFC_ALT
+        select SND_SOC_TEGRA186_AFC_ALT
+        select SND_SOC_TEGRA210_MVC_ALT
+        select SND_SOC_TEGRA210_OPE_ALT
+        select SND_SOC_TEGRA210_SPDIF_ALT
+        select SND_SOC_TEGRA210_ADSP_ALT
+        select SND_SOC_TEGRA186_ASRC_ALT
+        select SND_SOC_TEGRA186_ARAD_ALT
+        select SND_SOC_TEGRA186_DSPK_ALT
+        select SND_SOC_TEGRA_ASOC_HWDEP_ALT
+        select SND_SOC_SPDIF
+        select SND_SOC_RT5659
+        select SND_SOC_COMPRESS
+        select SND_SOC_TEGRA_ASOC_MACHINE_T18X_ALT
+        help
+          Say Y or M here.
+
+config SND_SOC_TEGRA_T186REF_AUTO_ALT
+	tristate "SoC Audio support for T186Ref Automotive"
+	depends on SND_SOC_TEGRA_T186REF_ALT
+	help
+	  Say Y or M here.
+
+config SND_SOC_TEGRA186_ARAD_WAR
+	def_bool y
+	depends on SND_SOC_TEGRA186_ARAD_ALT
+	depends on TEGRA186_AHC
+
+config SND_SOC_TEGRA186_ASRC_WAR
+	def_bool n
+	depends on SND_SOC_TEGRA186_ASRC_ALT
+	depends on SND_SOC_TEGRA186_ARAD_WAR

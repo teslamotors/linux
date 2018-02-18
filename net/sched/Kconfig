@@ -308,6 +308,16 @@ config NET_SCH_PIE
 
 	  If unsure, say N.
 
+config NET_SCH_TEGRA
+	tristate "Tegra Network Device Queue (TEGRA)"
+	help
+	  Say Y here if you want to use the Tegra Network Device Queue (TEGRA)
+	  packet scheduling algorithm.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called sch_tegra.
+	  If unsure, say N.
+
 config NET_SCH_INGRESS
 	tristate "Ingress Qdisc"
 	depends on NET_CLS_ACT

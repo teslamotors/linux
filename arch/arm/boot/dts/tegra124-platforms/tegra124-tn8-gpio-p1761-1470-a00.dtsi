@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	gpio: gpio@6000d000 {
+		gpio-init-names = "default";
+		gpio-init-0 = <&gpio_default>;
+
+		gpio_default: default {
+			gpio-input = <  TEGRA_GPIO(C, 7)
+					TEGRA_GPIO(H, 4)
+					TEGRA_GPIO(I, 1)
+					TEGRA_GPIO(I, 6)
+					TEGRA_GPIO(J, 0)
+					TEGRA_GPIO(K, 0)
+					TEGRA_GPIO(K, 2)
+					TEGRA_GPIO(K, 5)
+					TEGRA_GPIO(N, 7)
+					TEGRA_GPIO(O, 5)
+					TEGRA_GPIO(Q, 0)
+					TEGRA_GPIO(Q, 5)
+					TEGRA_GPIO(Q, 6)
+					TEGRA_GPIO(Q, 7)
+					TEGRA_GPIO(R, 4)
+					TEGRA_GPIO(S, 0)
+					TEGRA_GPIO(U, 4)
+					TEGRA_GPIO(U, 5)
+					TEGRA_GPIO(U, 6)
+					TEGRA_GPIO(V, 0)
+					TEGRA_GPIO(V, 1)
+					TEGRA_GPIO(W, 3)
+					TEGRA_GPIO(X, 3)>;
+			gpio-output-low = <TEGRA_GPIO(H, 3)
+					TEGRA_GPIO(H, 5)
+					TEGRA_GPIO(I, 0)
+					TEGRA_GPIO(K, 1)
+					TEGRA_GPIO(K, 4)
+					TEGRA_GPIO(K, 6)
+					TEGRA_GPIO(N, 5)
+					TEGRA_GPIO(O, 6)
+					TEGRA_GPIO(R, 0)
+					TEGRA_GPIO(R, 1)
+					TEGRA_GPIO(R, 2)
+					TEGRA_GPIO(R, 5)
+					TEGRA_GPIO(S, 3)
+					TEGRA_GPIO(S, 4)
+					TEGRA_GPIO(X, 7)
+					TEGRA_GPIO(BB, 3)
+					TEGRA_GPIO(BB, 5)
+					TEGRA_GPIO(BB, 6)
+					TEGRA_GPIO(BB, 7)
+					TEGRA_GPIO(EE, 1)>;
+			gpio-output-high = <TEGRA_GPIO(H, 2)
+					TEGRA_GPIO(N, 4)>;
+		};
+	};
+};

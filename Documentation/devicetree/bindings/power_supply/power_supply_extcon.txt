@@ -1,0 +1,11 @@
+power_supply_extcon
+~~~~~~~~~~~~~~~~
+Required properties :
+ - compatible : Should contain "power-supply-extcon".
+ - power-supply,extcon-dev: Extcon device name.
+
+Example:
+	psy_extcon {
+		compatible = "power-supply-extcon";
+		power-supply,extcon-dev = "udc-extcon";
+	};

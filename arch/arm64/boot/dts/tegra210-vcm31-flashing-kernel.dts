@@ -1,0 +1,88 @@
+/*
+ * arch/arm64/boot/dts/tegra210-vcm31-flashing-kernel.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+/dts-v1/;
+
+/memreserve/ 0x80000000 0x00020000;
+
+#include "tegra210-platforms/tegra210-vcm31.dtsi"
+
+/ {
+	model = "vcm31-t210";
+	compatible = "nvidia,vcm31-t210", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+
+	xusb_pad_ctl: xusb_padctl {
+		status = "disabled";
+		nvidia,ss_portmap = <0x7777>;
+		nvidia,lane_owner = <0xFFFF>;
+		nvidia,otg_portmap = <0x0100>;
+	};
+
+	xusb@70090000 {
+		nvidia,portmap = <0x0E08>;
+		status = "okay";
+	};
+
+	extcon {
+		vbus_gpio_extcon: extcon@1 {
+			/* Always set USB=1 USB-Host=0 regardless gpio value*/
+			extcon-gpio,cable-states = <0x3 0x1
+						    0x0 0x1
+						    0x1 0x1
+						    0x2 0x1>;
+			/* Dummy unused gpios */
+			gpios = <&gpio TEGRA_GPIO(I, 2) 0
+					&gpio TEGRA_GPIO(I, 3) 0>;
+		};
+	};
+
+	xudc@700d0000 {
+		extcon-cables = <&vbus_gpio_extcon 0>;
+		extcon-cable-names = "vbus";
+		status = "okay";
+		nvidia,portmap = <0x0000>;
+	};
+
+	xotg {
+		status = "okay";
+	};
+
+	/* Disable display */
+	host1x {
+		status = "disabled";
+	};
+
+	/* Disable audio */
+	adsp_audio {
+		status = "disabled";
+	};
+
+	adma@702e2000  {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+	};
+
+	sound {
+		status = "disabled";
+	};
+
+	sound_ref {
+		status = "disabled";
+	};
+};

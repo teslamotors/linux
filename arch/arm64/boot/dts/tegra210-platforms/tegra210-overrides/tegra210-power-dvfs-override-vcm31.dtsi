@@ -1,0 +1,62 @@
+/*
+ * Copyright (c) 2015 NVIDIA CORPORATION. All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+/*
+ * DVFS overrides for T210 VCM platforms.
+ *
+ * Recommended to copy the contents of this file to final .dts file for
+ * the respective platform. If file is included "as is", the #include statement
+ * should be placed after .dtsi with dvfs_rail node definition is included.
+ */
+
+/ {
+	dvfs_rails {
+		vdd-cpu-vmin-cdev@5 {
+			nvidia,trips = <&cpu_vmin1 918>;
+		};
+
+		vdd-core-vmin-cdev@6 {
+			status = "disabled";
+		};
+
+		vdd-gpu-scaling-cdev@7 {
+			nvidia,trips = <&gpu_scaling0 918 &gpu_scaling1 0
+					&gpu_scaling2 0 &gpu_scaling3 0
+					&gpu_scaling4 0 &gpu_scaling5 0>;
+		};
+
+		vdd-cpu-vmax-cdev@8 {
+			status = "disabled";
+		};
+
+		vdd-gpu-vmax-cdev@9 {
+			status = "disabled";
+		};
+
+		vdd-core-vmax-cdev@10 {
+			status = "disabled";
+		};
+	};
+
+	thermal-zones {
+		Tdiode_tegra {
+			trips {
+				gpu-scaling0 {
+					temperature = <(-40000)>;
+				};
+			};
+		};
+	};
+};
+

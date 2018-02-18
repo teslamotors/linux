@@ -1,7 +1,7 @@
 /*
  * Tegra host1x Command DMA
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -26,6 +26,7 @@
 #include <linux/kfifo.h>
 #include <linux/slab.h>
 #include <trace/events/host1x.h>
+#include <drm/tegra_drm.h>
 
 #include "cdma.h"
 #include "channel.h"
@@ -97,7 +98,7 @@ fail:
 static void host1x_pushbuffer_push(struct push_buffer *pb, u32 op1, u32 op2)
 {
 	u32 pos = pb->pos;
-	u32 *p = (u32 *)((u32)pb->mapped + pos);
+	u32 *p = (u32 *)((void *)pb->mapped + pos);
 	WARN_ON(pos == pb->fence);
 	*(p++) = op1;
 	*(p++) = op2;
@@ -175,16 +176,14 @@ unsigned int host1x_cdma_wait_locked(struct host1x_cdma *cdma,
 static void cdma_start_timer_locked(struct host1x_cdma *cdma,
 				    struct host1x_job *job)
 {
-	struct host1x *host = cdma_to_host1x(cdma);
-
 	if (cdma->timeout.client) {
 		/* timer already started */
 		return;
 	}
 
 	cdma->timeout.client = job->client;
-	cdma->timeout.syncpt = host1x_syncpt_get(host, job->syncpt_id);
-	cdma->timeout.syncpt_val = job->syncpt_end;
+	cdma->timeout.num_syncpts = job->num_syncpts;
+	cdma->timeout.syncpts = job->syncpts;
 	cdma->timeout.start_ktime = ktime_get();
 
 	schedule_delayed_work(&cdma->timeout.wq,
@@ -226,15 +225,20 @@ static void update_cdma_locked(struct host1x_cdma *cdma)
 	 * to consume as many sync queue entries as possible without blocking
 	 */
 	list_for_each_entry_safe(job, n, &cdma->sync_queue, list) {
-		struct host1x_syncpt *sp =
-			host1x_syncpt_get(host1x, job->syncpt_id);
+		unsigned int i;
 
-		/* Check whether this syncpt has completed, and bail if not */
-		if (!host1x_syncpt_is_expired(sp, job->syncpt_end)) {
-			/* Start timer on next pending syncpt */
-			if (job->timeout)
-				cdma_start_timer_locked(cdma, job);
-			break;
+		for (i = 0; i < job->num_syncpts; i++) {
+			struct host1x_syncpt *sp =
+				host1x_syncpt_get(host1x, job->syncpts[i].id);
+
+			/* Check whether this syncpt has completed */
+			if (!host1x_syncpt_is_expired(sp,
+						      job->syncpts[i].end)) {
+				/* Start timer on next pending syncpt */
+				if (job->timeout)
+					cdma_start_timer_locked(cdma, job);
+				goto done;
+			}
 		}
 
 		/* Cancel timeout, when a buffer completes */
@@ -255,6 +259,7 @@ static void update_cdma_locked(struct host1x_cdma *cdma)
 		list_del(&job->list);
 		host1x_job_put(job);
 	}
+done:
 
 	if (cdma->event == CDMA_EVENT_SYNC_QUEUE_EMPTY &&
 	    list_empty(&cdma->sync_queue))
@@ -270,15 +275,9 @@ void host1x_cdma_update_sync_queue(struct host1x_cdma *cdma,
 				   struct device *dev)
 {
 	u32 restart_addr;
-	u32 syncpt_incrs;
 	struct host1x_job *job = NULL;
-	u32 syncpt_val;
 	struct host1x *host1x = cdma_to_host1x(cdma);
-
-	syncpt_val = host1x_syncpt_load(cdma->timeout.syncpt);
-
-	dev_dbg(dev, "%s: starting cleanup (thresh %d)\n",
-		__func__, syncpt_val);
+	unsigned int i;
 
 	/*
 	 * Move the sync_queue read pointer to the first entry that hasn't
@@ -291,11 +290,23 @@ void host1x_cdma_update_sync_queue(struct host1x_cdma *cdma,
 		__func__);
 
 	list_for_each_entry(job, &cdma->sync_queue, list) {
-		if (syncpt_val < job->syncpt_end)
-			break;
+		for (i = 0; i < job->num_syncpts; ++i) {
+			u32 id = cdma->timeout.syncpts[i].id;
+			u32 end = cdma->timeout.syncpts[i].end;
+			struct host1x_syncpt *syncpt =
+			  host1x_syncpt_get(host1x, id);
+
+			if (!host1x_syncpt_is_expired(syncpt, end))
+				goto out;
+		}
 
 		host1x_job_dump(dev, job);
 	}
+out:
+
+	/* First, reset the engine */
+	if (job->reset)
+		job->reset(dev);
 
 	/*
 	 * Walk the sync_queue, first incrementing with the CPU syncpts that
@@ -329,17 +340,31 @@ void host1x_cdma_update_sync_queue(struct host1x_cdma *cdma,
 		/* won't need a timeout when replayed */
 		job->timeout = 0;
 
-		syncpt_incrs = job->syncpt_end - syncpt_val;
-		dev_dbg(dev, "%s: CPU incr (%d)\n", __func__, syncpt_incrs);
-
+		host1x_job_set_notifier(job, DRM_TEGRA_ERROR_SUBMIT_TIMEOUT);
 		host1x_job_dump(dev, job);
 
-		/* safe to use CPU to incr syncpts */
-		host1x_hw_cdma_timeout_cpu_incr(host1x, cdma, job->first_get,
-						syncpt_incrs, job->syncpt_end,
-						job->num_slots);
+		/* first, make all missing increments */
+		for (i = 0; i < job->num_syncpts; i++) {
+			u32 syncpt_id = job->syncpts[i].id;
+			struct host1x_syncpt *syncpt =
+				host1x_syncpt_get(host1x, syncpt_id);
+			u32 syncpt_val = host1x_syncpt_read_min(syncpt);
+			u32 syncpt_incrs = job->syncpts[i].end - syncpt_val;
 
-		syncpt_val += syncpt_incrs;
+			dev_dbg(dev, "%s: CPU incr (id=%d, incrs=%d)\n",
+				__func__, syncpt_id, syncpt_incrs);
+
+			while (syncpt_incrs--)
+				host1x_syncpt_incr(syncpt);
+
+			/* after CPU incr, ensure shadow is up to date */
+			host1x_syncpt_load(syncpt);
+
+		}
+
+		/* then, nop cdma elements */
+		host1x_hw_cdma_timeout_handle(host1x, cdma, job->first_get,
+					      job->num_slots);
 	}
 
 	/* The following sumbits from the same client may be dependent on the
@@ -410,8 +435,7 @@ int host1x_cdma_begin(struct host1x_cdma *cdma, struct host1x_job *job)
 		/* init state on first submit with timeout value */
 		if (!cdma->timeout.initialized) {
 			int err;
-			err = host1x_hw_cdma_timeout_init(host1x, cdma,
-							  job->syncpt_id);
+			err = host1x_hw_cdma_timeout_init(host1x, cdma);
 			if (err) {
 				mutex_unlock(&cdma->lock);
 				return err;

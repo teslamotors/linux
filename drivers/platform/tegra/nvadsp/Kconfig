@@ -1,0 +1,92 @@
+config TEGRA_NVADSP
+	bool "Enable Host ADSP driver"
+	depends on ARCH_TEGRA_APE
+	default n
+	help
+	  Enables support for Host ADSP driver.
+
+	  If unsure, say N
+
+config TEGRA_APE_AGIC
+	bool "Enable AGIC interrupt controller"
+	depends on ARCH_TEGRA_APE
+	select FIQ
+	default n
+	help
+	  The AGIC interrupt controller is based on GIC 400. Use this
+	  controller if the tegra platform needs interrupts from/to
+	  APE modules.
+
+	  If unsure, say N
+
+config TEGRA_NVADSP_ON_SMMU
+	bool "Use SMMU to relocate ADSP"
+	depends on (TEGRA_IOMMU_SMMU || OF_TEGRA_IOMMU_SMMU) && TEGRA_NVADSP
+	default n
+	help
+	  Use SMMU to relocate ADSP OS.
+
+config TEGRA_ADSP_DFS
+	bool "Enable ADSP DFS"
+	depends on TEGRA_NVADSP
+	default n
+	help
+	  Enable ADSP dynamic frequency scaling. Use this config
+	  to scale adsp frequency via actmon or set fixed value.
+
+	  If unsure, say N
+
+config TEGRA_ADSP_ACTMON
+	bool "Enable ADSP ACTMON"
+	depends on TEGRA_ADSP_DFS
+	default n
+	help
+	  Enable ADSP actmon. It converts adsp activty to frequency and
+	  asks adsp dfs to set the adsp frequency. Use it if adsp frequency
+	  to be scaled dynamically by actmon.
+
+	  If unsure, say N
+
+config TEGRA_ADSP_CPUSTAT
+	bool "Enable ADSP CPUSTAT"
+	depends on DEBUG_FS && TEGRA_NVADSP && !TEGRA_ADSP_ACTMON
+	default n
+	help
+	  Enable ADSP cpu usage measurement using actmon
+
+	  If unsure, say N
+
+config TEGRA_ADSP_FILEIO
+	bool "Enable ADSP file io"
+	default n
+	help
+	  Enable dumping to and reading from file on host from ADSP
+
+	  If unsure, say N
+
+config TEGRA_EMC_APE_DFS
+	bool "Enable emc dfs due to APE"
+	depends on ARCH_TEGRA_APE
+	default n
+	help
+	  Enable emc dfs due to APE DRAM access
+
+	  If unsure, say N
+
+config TEGRA_ADSP_CONSOLE
+	bool "Enable ADSP console"
+	depends on TEGRA_NVADSP
+	default y
+	help
+	  Enable ADSP console access
+
+	  If unsure, say N
+
+config MBOX_ACK_HANDLER
+	bool "Enable mailbox acknowledge handler"
+	depends on TEGRA_NVADSP
+	default n
+	help
+	  Enable mailbox acknowledge handler
+
+	  if unsure, say N

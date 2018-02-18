@@ -1,0 +1,638 @@
+/*
+ * T210- DSC
+ *
+ * arch/arm64/boot/dts/tegra210-vcm31-e2580-0631-a00-00-vm2.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/dts-v1/;
+/memreserve/ 0x80000000 0x00020000;
+/ {
+	/* smmu and ivc drivers are called very early in the kernel init
+	 * call sequence (core_initcall). smmu driver as such is a consumer
+	 * of ivc and depends on it.
+	 * Keeping the ivc node at the very top in the device tree ensures
+	 * that probe for ivc is called before the smmu driver probe.
+	 * Without this virtualized smmu driver probe will fail.
+	 */
+
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+	};
+};
+
+#include "tegra210-vcm31-e2580-common.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-extcon-p2530-0930-e01.dtsi"
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	chosen {
+		nvidia,tegra-hypervisor-mode;
+	};
+
+	iommu {
+		compatible = "nvidia,tegra124-smmu-hv";
+		#asids = <20>;
+		ivc_queue = <&tegra_hv 1>;
+		mempool_id = <&tegra_hv 1>;
+
+		domains = <
+			&ape_as TEGRA_SWGROUP_CELLS(APE)>;
+
+		address-space-prop {
+			ape_as: ape {
+				iova-start = <0x0 0x40000000>;
+				iova-size = <0x0 0x3FFFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+		};
+	};
+
+	tegra_hv_wdt {
+		compatible = "nvidia,tegra-hv-wdt";
+		status = "okay";
+		ivc = <&tegra_hv 5>;
+	};
+
+	tegra_hv_net {
+		compatible = "nvidia,tegra-hv-net";
+		status = "okay";
+		ivc = <&tegra_hv 6>;
+	};
+
+	memory-controller@7001b000 {
+		emc-table@204000 {
+			compatible = "nvidia,tegra21-emc-table-vm2";
+			status = "disabled";
+		};
+
+		emc-table@1600000 {
+			compatible = "nvidia,tegra21-emc-table-vm2";
+			status = "disabled";
+		};
+	};
+
+	apbdma: dma@60020000 {
+		dma-channels = <16>;
+		nvidia,start-dma-channel-index = <16>;
+		status = "okay";
+	};
+
+	timer@60005000 {
+		status = "disabled";
+	};
+
+	rtc {
+		status = "disabled";
+	};
+
+	dma@60020000 {
+		status = "disabled";
+	};
+
+	gpio@6000d0000 {
+		status = "disabled";
+	};
+
+	xusb@70090000 {
+		status = "disabled";
+	};
+
+	serial@70006000 {
+		status = "disabled";
+	};
+
+	serial@70006200 {
+		status = "disabled";
+	};
+
+	serial@70006300 {
+		status = "disabled";
+	};
+
+	sound {
+		status = "disabled";
+	};
+
+	sound_ref {
+		status = "disabled";
+	};
+
+	pwm@7000a000 {
+		status = "disabled";
+	};
+
+	spi@7000d400 {
+		status = "disabled";
+	};
+
+	spi@7000d600 {
+		status = "disabled";
+	};
+
+	spi@7000d800 {
+		status = "disabled";
+	};
+
+	spi@7000da00 {
+		status = "disabled";
+	};
+
+	spi@70410000 {
+		status = "disabled";
+	};
+
+	host1x {
+		status = "disabled";
+		vi {
+			status = "disabled";
+		};
+
+		isp@54600000 {
+			status = "disabled";
+		};
+
+		isp@54680000 {
+			status = "disabled";
+		};
+
+		dc@54200000 {
+			status = "disabled";
+		};
+
+		dc@54240000 {
+			status = "disabled";
+		};
+
+		dsi {
+			status = "disabled";
+		};
+
+		vic {
+			status = "disabled";
+		};
+
+		nvenc {
+			status = "disabled";
+		};
+
+		tsec {
+			status = "disabled";
+		};
+
+		tsecb {
+			status = "disabled";
+		};
+
+		nvdec {
+			status = "disabled";
+		};
+
+		nvjpg {
+			status = "disabled";
+		};
+
+		sor {
+			status = "disabled";
+		};
+
+		sor1 {
+			status = "disabled";
+		};
+
+		dpaux {
+			status = "disabled";
+		};
+
+		dpaux1 {
+			status = "disabled";
+		};
+	};
+
+	gpu {
+		status = "disabled";
+	};
+
+	vgpu {
+		status = "disabled";
+	};
+
+	mipical {
+		status = "disabled";
+	};
+
+	pmc@7000e400 {
+		status = "disabled";
+	};
+
+	se@70012000 {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+		admaif@0x702d0000 {
+			status = "disabled";
+		};
+
+		sfc@702d2000 {
+			status = "disabled";
+		};
+
+		sfc@702d2200 {
+			status = "disabled";
+		};
+
+		sfc@702d2400 {
+			status = "disabled";
+		};
+
+		sfc@702d2600 {
+			status = "disabled";
+		};
+
+		spkprot@702d8c00 {
+			status = "disabled";
+		};
+
+		amixer@702dbb00 {
+			status = "disabled";
+		};
+
+		i2s@702d1000 {
+			status = "disabled";
+		};
+
+		i2s@702d1100 {
+			status = "disabled";
+		};
+
+		i2s@702d1200 {
+			status = "disabled";
+		};
+
+		i2s@702d1300 {
+			status = "disabled";
+		};
+
+		i2s@702d1400 {
+			status = "disabled";
+		};
+
+		amx@702d3000 {
+			status = "disabled";
+		};
+
+		amx@702d3100 {
+			status = "disabled";
+		};
+
+		adx@702d3800 {
+			status = "disabled";
+		};
+
+		adx@702d3900 {
+			status = "disabled";
+		};
+
+		dmic@702d4000 {
+			status = "disabled";
+		};
+
+		dmic@702d4100 {
+			status = "disabled";
+		};
+
+		dmic@702d4200 {
+			status = "disabled";
+		};
+
+		afc@702d7000 {
+			status = "disabled";
+		};
+
+		afc@702d7100 {
+			status = "disabled";
+		};
+
+		afc@702d7200 {
+			status = "disabled";
+		};
+
+		afc@702d7300 {
+			status = "disabled";
+		};
+
+		afc@702d7400 {
+			status = "disabled";
+		};
+
+		afc@702d7500 {
+			status = "disabled";
+		};
+
+		mvc@702da000 {
+			status = "disabled";
+		};
+
+		mvc@702da200 {
+			status = "disabled";
+		};
+
+		spdif@702d6000 {
+			status = "disabled";
+		};
+
+		iqc@702de000 {
+			status = "disabled";
+		};
+
+		iqc@702de200 {
+                        status = "disabled";
+                };
+
+		ope@702d8000 {
+			status = "disabled";
+		};
+
+		ope@702d8400 {
+			status = "disabled";
+		};
+	};
+
+	hda@70030000 {
+		status = "disabled";
+	};
+
+	adsp_audio {
+		status = "disabled";
+	};
+
+	adsp {
+		status = "disabled";
+	};
+
+	pcie-controller@1003000 {
+		status = "disabled";
+	};
+
+	xusb_padctl {
+		/delete-property/nvidia,lane-map;
+		/delete-property/nvidia,enable-sata-port;
+	};
+
+	sata@70020000 {
+		status = "disabled";
+	};
+
+	i2c@7000c000 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 3>;
+	};
+
+	i2c@7000c400 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 3>;
+	};
+
+	i2c@7000c500 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 3>;
+	};
+
+	i2c@7000c700 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 3>;
+	};
+
+	i2c@7000d000 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 3>;
+	};
+
+	i2c@7000d100 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 3>;
+	};
+
+	i2c@546c0000 {
+		status = "disabled";
+	};
+
+	sdhci@700b0600 {
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		status = "disabled";
+	};
+
+	sdhci@700b0200 {
+		status = "disabled";
+	};
+
+	sdhci@700b0000 {
+		status = "disabled";
+	};
+
+	efuse@7000f800 {
+		status = "disabled";
+	};
+
+	udc@7d000000 {
+		status = "disabled";
+	};
+
+	otg@7d000000 {
+		status = "disabled";
+	};
+
+	pmc-iopower {
+		status = "disabled";
+	};
+
+	dtv@7000c300 {
+		status = "disabled";
+	};
+
+	xudc@700d0000 {
+		status = "disabled";
+	};
+
+	xotg {
+		status = "disabled";
+	};
+
+	soctherm@0x700E2000 {
+		status = "disabled";
+	};
+
+	tegra-aotag {
+		status = "disabled";
+	};
+
+	tegra_cec {
+		status = "disabled";
+	};
+
+	ehci@7d004000 {
+		status = "disabled";
+	};
+
+	watchdog@60005100 {
+		status = "disabled";
+	};
+
+	ptm {
+		status = "disabled";
+	};
+
+	thermal-zones {
+		AO-therm {
+			status = "disabled";
+		};
+
+		CPU-therm {
+			status = "disabled";
+		};
+		GPU-therm {
+			status = "disabled";
+		};
+		LCPU-therm {
+			status = "disabled";
+		};
+		PLL-therm {
+			status = "disabled";
+		};
+	};
+
+	cpu_edp {
+		status = "disabled";
+	};
+
+	gpu_edp {
+		status = "disabled";
+	};
+
+	isc-mgr.0 {
+		status = "disabled";
+	};
+
+	sysedp_reactive_capping@3 {
+		status = "disabled";
+	};
+
+	sysedp {
+		status = "disabled";
+	};
+
+	sysedp-dynamic-capping {
+		status = "disabled";
+	};
+
+	isc-mgr.1 {
+		status = "disabled";
+	};
+
+	isc-mgr.2 {
+		status = "disabled";
+	};
+
+	mselect {
+		status = "disabled";
+	};
+
+	bthrot_cdev {
+		skin_balanced {
+			status = "disabled";
+		};
+		gpu_balanced {
+			status = "disabled";
+		};
+		cpu_balanced {
+			status = "disabled";
+		};
+		emergency_balanced {
+			status = "disabled";
+		};
+	};
+
+	gpio@6000d000 {
+                status = "disabled";
+        };
+
+	bpmp {
+		compatible = "nvidia,tegra210-bpmp-none";
+		status = "disabled";
+	};
+
+	clock {
+		t210-clk-init-table {
+			clkinit-2 = <
+			/* clock id			parent id		rate		ctrl flags */
+			TEGRA210_CLK_ID_PWM             0                       0               1
+			0 >;
+		};
+	};
+
+	pwm_regulators {
+		gpu_ovr_reg: pwm-regulator@1 {
+			status = "disabled";
+		};
+	};
+
+	dvfs_rails {
+		gpu_scaling_cdev: vdd-gpu-scaling-cdev@7 {
+			status = "disabled";
+		};
+	};
+
+	agic-controller {
+		compatible = "nvidia,tegra210-agic";
+		status = "okay";
+	};
+
+	adma: adma@702e2000 {
+		compatible = "nvidia,tegra210-adma";
+		status = "okay";
+		wakeup-disable;
+		dma-channels = <2>;
+		dma-start-index = <2>;
+	};
+
+	virt-alt-pcm {
+		compatible = "nvidia,tegra210-virt-pcm";
+		status = "okay";
+
+		iommus = <&smmu TEGRA_SWGROUP_APE>;
+		power-domains = <&ape_pd>;
+		wakeup-disable;
+
+		cardname = "tegra-virt-pcm-vm2";
+
+		dmas = <&adma 1>, <&adma 1>, <&adma 2>, <&adma 2>;
+		dma-names = "rx1", "tx1", "rx2", "tx2";
+
+		ivc_queue = <&tegra_hv 13>;
+
+		admaif_ch_num = <2>;
+		admaif_ch_list = <3>, <4>;
+	};
+};

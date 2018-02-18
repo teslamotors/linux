@@ -218,6 +218,11 @@
 			reset-names = "dsi";
 			status = "disabled";
 		};
+
+		nvavp {
+			compatible = "nvidia,tegra30-nvavp";
+			interrupts = <0 36 0x04>; /* mailbox AVP IRQ */
+		};
 	};
 
 	timer@50004600 {

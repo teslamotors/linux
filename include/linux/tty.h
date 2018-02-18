@@ -282,7 +282,7 @@ struct tty_struct {
 	void *driver_data;
 	struct list_head tty_files;
 
-#define N_TTY_BUF_SIZE 4096
+#define N_TTY_BUF_SIZE 32768
 
 	unsigned char closing:1;
 	unsigned char *write_buf;

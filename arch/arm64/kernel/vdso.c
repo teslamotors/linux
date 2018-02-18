@@ -40,6 +40,12 @@ extern char vdso_start, vdso_end;
 static unsigned long vdso_pages;
 static struct page **vdso_pagelist;
 
+#ifdef CONFIG_COMPAT_VDSO32
+extern char vdso32_start, vdso32_end;
+static unsigned long vdso32_pages;
+static struct page **vdso32_pagelist;
+#endif
+
 /*
  * The vDSO data page.
  */
@@ -110,6 +116,9 @@ int aarch32_setup_vectors_page(struct linux_binprm *bprm, int uses_interp)
 #endif /* CONFIG_COMPAT */
 
 static struct vm_special_mapping vdso_spec[2];
+#ifdef CONFIG_COMPAT_VDSO32
+static struct vm_special_mapping vdso32_spec[2];
+#endif
 
 static int __init vdso_init(void)
 {
@@ -148,6 +157,40 @@ static int __init vdso_init(void)
 		.pages	= &vdso_pagelist[1],
 	};
 
+#ifdef CONFIG_COMPAT_VDSO32
+	if (memcmp(&vdso_start, "\177ELF", 4)) {
+		pr_err("vDSO 32 is not a valid ELF object!\n");
+		return -EINVAL;
+	}
+
+	vdso32_pages = (&vdso32_end - &vdso32_start) >> PAGE_SHIFT;
+	pr_info("vdso32: %ld pages (%ld code, %ld data) at base %p\n",
+		vdso32_pages + 1, vdso32_pages, 1L, &vdso32_start);
+
+	vdso32_pagelist = kcalloc(vdso32_pages + 1, sizeof(struct page *),
+				   GFP_KERNEL);
+	if (vdso32_pagelist == NULL)
+		return -ENOMEM;
+
+	/* Grab the vDSO data page. */
+	vdso32_pagelist[0] = virt_to_page(vdso_data);
+
+	/* Grab the vDSO code pages. */
+	for (i = 0; i < vdso32_pages; i++)
+		vdso32_pagelist[i + 1] = virt_to_page(&vdso32_start + i * PAGE_SIZE);
+
+	/* Populate the special mapping structures */
+	vdso32_spec[0] = (struct vm_special_mapping) {
+		.name	= "[vvar]",
+		.pages	= vdso32_pagelist,
+	};
+
+	vdso32_spec[1] = (struct vm_special_mapping) {
+		.name	= "[vdso]",
+		.pages	= &vdso32_pagelist[1],
+	};
+#endif
+
 	return 0;
 }
 arch_initcall(vdso_init);
@@ -157,9 +200,21 @@ int arch_setup_additional_pages(struct linux_binprm *bprm,
 {
 	struct mm_struct *mm = current->mm;
 	unsigned long vdso_base, vdso_text_len, vdso_mapping_len;
+	struct vm_special_mapping *local_vdso_spec;
 	void *ret;
 
-	vdso_text_len = vdso_pages << PAGE_SHIFT;
+#ifdef CONFIG_COMPAT_VDSO32
+	if (is_compat_task()) {
+		aarch32_setup_vectors_page(bprm, uses_interp);
+		local_vdso_spec = &vdso32_spec[0];
+		vdso_text_len = vdso32_pages << PAGE_SHIFT;
+	} else
+#endif
+	{
+		local_vdso_spec = &vdso_spec[0];
+		vdso_text_len = vdso_pages << PAGE_SHIFT;
+	}
+
 	/* Be sure to map the data page */
 	vdso_mapping_len = vdso_text_len + PAGE_SIZE;
 
@@ -171,7 +226,7 @@ int arch_setup_additional_pages(struct linux_binprm *bprm,
 	}
 	ret = _install_special_mapping(mm, vdso_base, PAGE_SIZE,
 				       VM_READ|VM_MAYREAD,
-				       &vdso_spec[0]);
+				       &local_vdso_spec[0]);
 	if (IS_ERR(ret))
 		goto up_fail;
 
@@ -180,7 +235,7 @@ int arch_setup_additional_pages(struct linux_binprm *bprm,
 	ret = _install_special_mapping(mm, vdso_base, vdso_text_len,
 				       VM_READ|VM_EXEC|
 				       VM_MAYREAD|VM_MAYWRITE|VM_MAYEXEC,
-				       &vdso_spec[1]);
+				       &local_vdso_spec[1]);
 	if (IS_ERR(ret))
 		goto up_fail;
 

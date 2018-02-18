@@ -220,8 +220,13 @@ config GENERIC_CPU_DEVICES
 	bool
 	default n
 
+config HAVE_CPU_AUTOPROBE
+	def_bool ARCH_HAS_CPU_AUTOPROBE
+
 config GENERIC_CPU_AUTOPROBE
 	bool
+	depends on !ARCH_HAS_CPU_AUTOPROBE
+	select HAVE_CPU_AUTOPROBE
 
 config SOC_BUS
 	bool
@@ -246,6 +251,15 @@ config FENCE_TRACE
 	  spam to the console log, but will make it easier to diagnose
 	  lockup related problems for dma-buffers shared across multiple
 	  devices.
+
+config DMABUF_LAZY_UNMAPPING
+	bool "Lazy unmapping for shared DMA buffer"
+	depends on DMA_SHARED_BUFFER
+	help
+	  This option enables the buffer-sharing framework to use lazy unmapping.
+	  Buffer mappings would be reused and kept repeatedly until dmabuf refcount
+	  rearchs zero. Currently this is configured statically only by this kernel
+	  config.
 
 config DMA_CMA
 	bool "DMA Contiguous Memory Allocator"
@@ -317,5 +331,9 @@ config CMA_ALIGNMENT
 	  If unsure, leave the default value "8".
 
 endif
+
+config PLATFORM_ENABLE_IOMMU
+        bool "Make platform devices iommuable"
+	depends on IOMMU_API
 
 endmenu

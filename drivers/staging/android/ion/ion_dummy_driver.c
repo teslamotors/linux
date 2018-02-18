@@ -1,5 +1,5 @@
 /*
- * drivers/gpu/ion/ion_dummy_driver.c
+ * drivers/staging/android/ion/ion_dummy_driver.c
  *
  * Copyright (C) 2013 Linaro, Inc
  *
@@ -55,6 +55,11 @@ static struct ion_platform_heap dummy_heaps[] = {
 			.size	= SZ_4M,
 			.align	= SZ_16K,
 			.priv	= (void *)(SZ_16K),
+		},
+		{
+			.id	= ION_HEAP_TYPE_DMA,
+			.type	= ION_HEAP_TYPE_DMA,
+			.name	= "dma",
 		},
 };
 

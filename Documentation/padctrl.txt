@@ -1,0 +1,59 @@
+PADCTRL (PAD CONTROL) subsystem
+This document outlines the pad control subsystem in Linux
+
+This subsystem  is extension of the pinctrl and the configuration which
+is not possible through pinctrl interface can be done here.
+
+Pad controller are not actual pin controller by HW. This is very much
+engage with IO power rail for the pins functionality.
+SOC has number of pins. Group of pins are allocated to the IO power rail.
+This IO power rail voltage decides the interface voltage levels on that pins.
+A Pad can contains the group of pins with single IO power rail.
+
+The pad controller can configure the pads to work on different voltages based
+on IO power voltages or any such multiple configurations.
+
+Definition of PAD CONTROLLER:
+============================
+- A pad controller is a piece of hardware, usually a set of registers, that
+  can control PADs. A PADs may contain group of pins and so it can configure
+  the properties of pins. It is extension of pinctrl.
+
+- The group of pins wich belongs to given PAD act on similar voltage or any
+  such configuration.
+
+Top-level interface
+===================
+
+The client of pad controller can configure the pads voltages etc.
+
+The client can get the handle of given padcontrol HW as
+	padctrl_get() and devm_padctrl_get()
+The handle can be realse through
+	padctrl_put()
+
+Client can call API padctrl_set_voltage() to set the pad voltage to desired
+level.
+
+Pad controller HW driver:
+========================
+ Pad controller client calls teh generic API to configure the pads.
+ The hw module which controls the pad implement the desired APIs/functionality
+ to achieve the control of pads.
+
+  The padcotrol HW driver can register/unregister with framework as
+	padctrl_register() and devm_padctrl_register()
+	padctrl_unregister() and devm_padctrl_unregister()
+
+
+ Some supports APIs are provided to write driver
+	padctrl_set_drvdata()
+	padctrl_get_drvdata()
+  
+When HW driver register itself as pad controller, it provide the callback
+ through padctrl_ops.
+	padctrl_ops {
+		set_voltage()
+		get_voltage()
+	}
+

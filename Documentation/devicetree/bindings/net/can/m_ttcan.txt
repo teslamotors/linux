@@ -1,0 +1,93 @@
+Bosch MTTCAN controller Device Tree Bindings
+-------------------------------------------------
+
+Required properties:
+- compatible		: Should be "bosch,mttcan" for M_TTCAN controllers
+- reg			: physical base address and size of the M_TTCAN
+			  registers map, glue logic register maps and
+			  Message RAM
+- reg-names		: Should be "can-regs", "glue-regs" and "msg_ram"
+- interrupts		: Should be the interrupt number of M_TTCAN interrupt,
+			  line 0 and line 1 can have different interrupts.
+- clocks		: Clocks used by controller, should be CAN clock,
+			  CAN host clock and parent PLL.
+- clock-names		: Should contain "can", "can_host" and parent PLL.
+- pll_source	 	: Names corresponding parent PLL
+- resets		: reset number corresponding to controller reset line.
+- reset-names		: Name corresponding to controller reset line.
+- gpio_can_stb		: GPIO number and active level to program PHY chip
+- gpio_can_en		: GPIO number and active level to enable PHY chip
+- mram-params		: Message RAM configuration data.
+			  Multiple M_TTCAN controller instance can share same
+			  Message RAM. Location and number of elements per
+			  category are configurable. Care should be taken while
+			  configuring Message RAM as the memory overlap is not
+			  detected and result are unpredictable behaviour.
+
+			  The format should be as follows:
+			  <offset num_sidf_elems num_xidf_elems num_rxf0_elems
+			  num_rxf1_elems num_rxb_elems num_txe_elems
+			  num_txb_elems num_tmc_elems>
+			  The 'offset' is an address offset of the Message RAM
+			  where the following elements start from.
+
+			  M_TTCAN includes the following elements according to
+			  user manual:
+			  11-bit Filter	 0-128 elements / 0-128 words
+			  29-bit Filter	 0-64 elements / 0-128 words
+			  Rx FIFO 0	 0-64 elements / 0-1152 words
+			  Rx FIFO 1	 0-64 elements / 0-1152 words
+			  Rx Buffers	 0-64 elements / 0-1152 words
+			  Tx Event FIFO	 0-32 elements / 0-64 words
+			  Tx Buffers	 0-32 elements / 0-576 words
+			  Trigger Memory 0-64 elements / 0-128 words
+
+			  Please refer to 2.4.1 Message RAM Configuration in
+			  Bosch M_TTCAN user manual for details.
+- tx-config		: Tx Buffer region configuration. Tx Buffers can be
+			  in sub configured as Tx Buffers, Tx Queue and TxFIFO.
+			  Valid configuration are
+			  * Tx Buffers + Tx Queue
+			  * Tx Buffers + Tx FIFO
+
+			  The format should be as follows
+			  <num_tx_buf, num_txq, q_mode, tx_max_data_size>
+			  'num_tx_buf' is number of elements configures as
+			  buffers. 'num_txq' is number of elements which are
+			  configured in Queue/FIFO. 'q_mode' to 1 select mode
+			  as queue, 0 to select FIFO mode. 'tx_max_data_size'
+			  is max payload of a message. M_TTCAN support 64 bytes
+			  max payload. 'tx_max_data_size' is used optimize
+			  Message RAM usage.
+- rx-config		: Size of Rx elements max payload.
+			  The format should be as follow
+			  <rx_buf_payload, rx_fifo0_payload, rx_fif1_payload>
+
+Example:
+SoC dtsi:
+mttcan0: mttcan@c310000 {
+	compatible = "bosch,mttcan";
+	reg    = <0x00 0x0c310000 0x00 0x400>,
+		<0x00 0x0c311000 0x00 0x32>,
+		<0x00 0x0c312000 0x00 0x1000>;
+	reg-names = "can-regs", "glue-regs", "msg-ram";
+	interrupts = <0 40 0x04 >;
+	pll_source = "pllaon";
+	clocks = <&tegra_car TEGRA186_CLK_CAN1>,
+		<&tegra_car TEGRA186_CLK_CAN1_HOST>,
+		<&tegra_car TEGRA186_CLK_PLLAON>;
+	clock-names = "can","can_host","pllaon";
+	resets = <&tegra_car TEGRA186_RESET_CAN1>;
+	reset-names = "can";
+	status = "disabled";
+};
+
+Board dts:
+mttcan@c310000 {
+	gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 0) GPIO_ACTIVE_HIGH>;
+	gpio_can_en = <&tegra_gpio TEGRA_GPIO(AA, 1) GPIO_ACTIVE_HIGH>;
+	mram-params = <0 16 16 8 8 8 16 16 16>;
+	tx-config = <8 8 0 64>;
+	rx-config = <64 64 64>;
+	status = "okay";
+};

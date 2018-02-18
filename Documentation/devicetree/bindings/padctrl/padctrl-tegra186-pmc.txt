@@ -1,0 +1,75 @@
+This describe DT binding of the pad controller driver for Tegra 186 pmc.
+
+Required properties:
+- Compatible: Must be nvidia,tegra186-pmc.
+- #padcontroller-cells: Number of padctrl arguments. It must be 1.
+
+Pad intitialisation through subnode:
+==================================
+Driver offers the pad initialisation through subnode. The subnode
+under "pmc" node contains the subnode name "io-pad-defaults" which contains
+child node of pads and their settings.
+Following are child node name for the "io-pad-defaults" node.
+	audio-hv, dmic-hv, ao-hv, sdmmc1-hv, sdmmc2-hv, sdmmc3-hv,
+	spi, dbg, ufs.
+
+Optional properties:
+- nvidia,pad-name: Pad name if child node name is not used for pad name.
+- nvidia,io-pad-init-voltage: Voltage value. Options are
+		IO_RAIL_VOLTAGE_1_2V,
+		IO_RAIL_VOLTAGE_1_8V,
+		IO_RAIL_VOLTAGE_3_3V.
+- nvidia,deep-power-down-enable: Boolean, Deep power down enable.
+- nvidia,deep-power-down-disable: Boolean, deep power down disable.
+- nvidia,io-pad-power-enable: boolean, enable io pad power i.e. deep power
+		down disable.
+- nvidia,io-pad-power-disable: boolean, disable io pad power i.e. deep
+		power down enable.
+- nvidia,enable-dynamic-pad-voltage: boolean, allow dynamic pad voltage
+		configuration. If this property is mising then it only
+		only allo the configuration during init and thereafter,
+		no dynamic switching.
+
+	Property should be used for better readbility and not conflict with
+	other properties.
+
+	pmc {
+		::::
+		io-pad-defaults {
+			audio-hv {
+				nvidia,deep-power-down-enable;
+			};
+
+			dmic-hv {
+				nvidia,io-pad-init-voltage = <IO_RAIL_VOLTAGE_1_8V>;
+			};
+			:::
+		};
+	};
+
+
+Example: SDMMC1 pad is 6 and SDMMC3 is 7.
+
+	tegra_pmc: pmc@c360000 {
+		compatible = "nvidia,tegra186-pmc";
+		reg = <0x0 0xc360000 0x0 0x400>;
+		#padcontroller-cells = <1>;
+		status = "disabled";
+		io-pad-defaults {
+			gpio {
+				nvidia,io-pad-init-voltage = <IO_RAIL_VOLTAGE_1_8V>;
+			};
+			audio-hv {
+				nvidia,io-pad-init-voltage = <IO_RAIL_VOLTAGE_3_3V>;
+			};
+		};
+	};
+
+
+	sdhci@700b0400 {
+		compatible = "nvidia,tegra186-sdhci";
+		::::
+		pad-controllers = <&tegra_pmc TEGRA186_PAD_SDMMC3>;
+		pad-names = "sdmmc";
+		::::
+	};

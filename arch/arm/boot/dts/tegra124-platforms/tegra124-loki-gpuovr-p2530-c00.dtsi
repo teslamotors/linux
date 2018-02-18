@@ -1,0 +1,42 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vdd_gpu: regulator@200 {
+			compatible = "regulator-pwm";
+			reg = <200>;
+			regulator-name = "vdd-gpu";
+			regulator-min-microvolt = <710000>;
+			regulator-max-microvolt = <1320000>;
+			regulator-init-microvolt = <1000000>;
+			regulator-ramp-delay = <500>;
+			regulator-n-voltages = <62>;
+			regulator-enable-ramp-delay = <500>;
+			enable-gpio = <&gpio TEGRA_GPIO(R, 5) 0>;
+			pwms = <&tegra_pwm 3 4880>;
+			regulator-boot-on;
+
+			consumers {
+				c1 {
+					regulator-consumer-supply = "vdd_gpu";
+				};
+			};
+		};
+	};
+
+	i2c@7000d000 {
+		tps65913 {
+			pmic {
+				regulators {
+					smps123 {
+						status="disabled";
+					};
+				};
+			};
+		};
+	};
+};

@@ -1,0 +1,30 @@
+/*
+ * tegra210-hawkeye-ffpb-e2295-a00-00.dts: Hawkeye FFPB E2295 A00 board.
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra210-hawkeye-p2290-a00-00.dts"
+#include "tegra210-platforms/tegra210-hawkeye-ffpb-e2295-powermon.dtsi"
+#include "tegra210-platforms/tegra210-sysedp.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "2295:0000:A0";
+	nvidia,proc-boardid = "2295:0000:A0";
+
+	i2c@7000c400 {
+		pca9546@71 {
+			vcc-supply = <&vdd_3v3>;
+		};
+	};
+};

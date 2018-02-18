@@ -1,0 +1,48 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/spi/lr388k7_platform.h>
+/ {
+	spi@c260000 {
+		status = "okay";
+		spi-max-frequency = <12000000>;
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+			    prod = <0x04 0x00000fc0 0x00000400>;
+			};
+		};
+		spi-touch-sharp19x12@0 {
+			status = "okay";
+			compatible = "sharp,lr388k7_ts";
+			reg = <0>; /* spi chip select 0 */
+			spi-max-frequency = <12000000>;
+			interrupt-parent = <&tegra_gpio>;
+			interrupts = <TEGRA_GPIO(AA, 7) 0x01>; /* GPIO_PAA7 */
+			reset-gpio = <&tegra_gpio TEGRA_GPIO(S, 3) 0>; /* GPIO_PS3 */
+			clock-sel-gpio = <&gpio_i2c_0_21 1 0>; /* tca6408 7h21 pin1 */
+			x-max = <9600>;
+			y-max = <15360>;
+			z-max = <65535>;
+			flip-x = <1>;
+			flip-y = <1>;
+			touch-num-max = <10>;
+			platform-id = <K7_PLATFORM_HAWKEYE>;
+		};
+	};
+};

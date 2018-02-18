@@ -1,0 +1,79 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/ {
+	i2c@7000c400 {
+		ina3221x@42 {
+			compatible = "ti,ina3221x";
+			reg = <0x42>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7607>;
+			ti,enable-forced-continuous;
+			#io-channel-cells = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_MUX";
+				ti,shunt-resistor-mohm = <20>;
+			};
+
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_5V_IO_SYS";
+				ti,shunt-resistor-mohm = <5>;
+			};
+
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_3V3_SYS";
+				ti,shunt-resistor-mohm = <10>;
+			};
+		};
+		ina3221x@43 {
+			compatible = "ti,ina3221x";
+			reg = <0x43>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7607>;
+			ti,enable-forced-continuous;
+			#io-channel-cells = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_3V3_IO";
+				ti,shunt-resistor-mohm = <10>;
+			};
+
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_1V8_IO";
+				ti,shunt-resistor-mohm = <10>;
+			};
+
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_M2_IN";
+				ti,shunt-resistor-mohm = <10>;
+			};
+		};
+	};
+};

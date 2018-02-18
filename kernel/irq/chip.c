@@ -122,6 +122,7 @@ int irq_set_msi_desc(unsigned int irq, struct msi_desc *entry)
 {
 	return irq_set_msi_desc_off(irq, 0, entry);
 }
+EXPORT_SYMBOL(irq_set_msi_desc);
 
 /**
  *	irq_set_chip_data - set irq chip data for an irq

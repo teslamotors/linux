@@ -78,38 +78,63 @@ static inline void flush_tlb_all(void)
 	isb();
 }
 
+static inline void local_flush_tlb_all(void)
+{
+	dsb(sy);
+	asm("tlbi	vmalle1");
+	dsb(sy);
+	isb();
+}
+
 static inline void flush_tlb_mm(struct mm_struct *mm)
 {
 	unsigned long asid = (unsigned long)ASID(mm) << 48;
 
+	preempt_disable();
 	dsb(ishst);
-	asm("tlbi	aside1is, %0" : : "r" (asid));
+	if (cpumask_equal(mm_cpumask(mm), cpumask_of(smp_processor_id())))
+		asm("tlbi	aside1, %0" : : "r" (asid));
+	else
+		asm("tlbi	aside1is, %0" : : "r" (asid));
 	dsb(ish);
+	preempt_enable();
 }
 
 static inline void flush_tlb_page(struct vm_area_struct *vma,
 				  unsigned long uaddr)
 {
-	unsigned long addr = uaddr >> 12 |
-		((unsigned long)ASID(vma->vm_mm) << 48);
+	struct mm_struct *mm = vma->vm_mm;
+	unsigned long addr = uaddr >> 12 | ((unsigned long)ASID(mm) << 48);
 
+	preempt_disable();
 	dsb(ishst);
-	asm("tlbi	vae1is, %0" : : "r" (addr));
+	if (cpumask_equal(mm_cpumask(mm), cpumask_of(smp_processor_id())))
+		asm("tlbi	vae1, %0" : : "r" (addr));
+	else
+		asm("tlbi	vae1is, %0" : : "r" (addr));
 	dsb(ish);
+	preempt_enable();
 }
 
 static inline void __flush_tlb_range(struct vm_area_struct *vma,
 				     unsigned long start, unsigned long end)
 {
-	unsigned long asid = (unsigned long)ASID(vma->vm_mm) << 48;
+	struct mm_struct *mm = vma->vm_mm;
+	unsigned long asid = (unsigned long)ASID(mm) << 48;
 	unsigned long addr;
 	start = asid | (start >> 12);
 	end = asid | (end >> 12);
 
+	preempt_disable();
 	dsb(ishst);
-	for (addr = start; addr < end; addr += 1 << (PAGE_SHIFT - 12))
-		asm("tlbi vae1is, %0" : : "r"(addr));
+	if (cpumask_equal(mm_cpumask(mm), cpumask_of(smp_processor_id())))
+		for (addr = start; addr < end; addr += 1 << (PAGE_SHIFT - 12))
+			asm("tlbi vae1, %0" : : "r"(addr));
+	else
+		for (addr = start; addr < end; addr += 1 << (PAGE_SHIFT - 12))
+			asm("tlbi vae1is, %0" : : "r"(addr));
 	dsb(ish);
+	preempt_enable();
 }
 
 static inline void __flush_tlb_kernel_range(unsigned long start, unsigned long end)
@@ -125,11 +150,7 @@ static inline void __flush_tlb_kernel_range(unsigned long start, unsigned long e
 	isb();
 }
 
-/*
- * This is meant to avoid soft lock-ups on large TLB flushing ranges and not
- * necessarily a performance improvement.
- */
-#define MAX_TLB_RANGE	(1024UL << PAGE_SHIFT)
+#define MAX_TLB_RANGE (PAGE_SIZE * 128)
 
 static inline void flush_tlb_range(struct vm_area_struct *vma,
 				   unsigned long start, unsigned long end)

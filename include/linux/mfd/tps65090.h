@@ -78,6 +78,10 @@ enum {
 #define TPS65090_REG_CG_STATUS1	0x0a
 #define TPS65090_REG_CG_STATUS2	0x0b
 
+struct tps65090_charger_data {
+	int irq_base;
+};
+
 struct tps65090 {
 	struct device		*dev;
 	struct regmap		*rmap;
@@ -112,6 +116,7 @@ struct tps65090_platform_data {
 	int enable_low_current_chrg;
 
 	struct tps65090_regulator_plat_data *reg_pdata[TPS65090_REGULATOR_MAX];
+	struct tps65090_charger_data *charger_pdata;
 };
 
 /*
@@ -151,6 +156,14 @@ static inline int tps65090_clr_bits(struct device *dev, int reg,
 	struct tps65090 *tps = dev_get_drvdata(dev);
 
 	return regmap_update_bits(tps->rmap, reg, BIT(bit_num), 0u);
+}
+
+static inline int tps65090_update_bits(struct device *dev, int reg,
+		uint8_t bit_mask, uint8_t val)
+{
+	struct tps65090 *tps = dev_get_drvdata(dev);
+
+	return regmap_update_bits(tps->rmap, reg, bit_mask, val);
 }
 
 #endif /*__LINUX_MFD_TPS65090_H */

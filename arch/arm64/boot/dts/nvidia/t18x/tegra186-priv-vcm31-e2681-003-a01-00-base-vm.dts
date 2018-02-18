@@ -1,0 +1,95 @@
+/*
+ * tegra186-priv-vcm31-e2681-003-a01-00-base-vm.dts: E2681 A01 base dts
+ * file
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-vcm31-e2681-common.dtsi"
+#include "t186-status-override/tegra186-vcm31-e2681-0003-a01-dt-status-override.dtsi"
+#include "tegra186-platforms/tegra186-vcm31-camera-ccplex.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "e2681:0003:A01";
+	nvidia,proc-boardid = "e2681:0003:A01";
+
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+	};
+
+	chosen {
+		nvidia,tegra-hypervisor-mode;
+	};
+
+	reserved-memory {
+		generic_carveout {
+			status = "okay";
+			size = <0 0x40000000>;
+		};
+	};
+
+	bpmp {
+		compatible = "nvidia,tegra186-bpmp-hv";
+		ivc_queue = <&tegra_hv 0 14>;
+	};
+
+	aon@c160000 {
+		status = "disabled";
+	};
+
+	cpuidle {
+		compatible = "nvidia,tegra18x-cpuidle";
+		status = "disabled";
+	};
+
+	i2c@3160000 {
+		tegra_nct72: onsemi,nct72@4c {
+			status = "disabled";
+		};
+	};
+
+	mc_sid@2c00000 {
+		nvidia,by-pass-smmu-streamid = <0x7e>;
+		status = "okay";
+	};
+
+	pmc@c370000 {
+		status = "disabled";
+	};
+
+	host1x: host1x {
+		reg = <0x0 0x13e10000 0x0 0x00010000>;
+		interrupts = <0 265 0x04
+					0 263 0x04>;
+		nvidia,vmid = <1>;
+
+		nvidia,ch-base = <0>;
+		nvidia,nb-channels = <62>;
+
+		nvidia,nb-hw-pts = <576>;
+		nvidia,pts-base = <0>;
+		nvidia,nb-pts = <576>;
+	};
+
+	generic-system-config {
+		status = "dislabled";
+	};
+
+	dma@2600000 {
+		dma-channels = <32>;
+		nvidia,start-dma-channel-index = <0>;
+		nvidia,stream-id = <TEGRA_SID_GPCDMA_0>;
+		status = "okay";
+	};
+};

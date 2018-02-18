@@ -1,0 +1,153 @@
+/*
+ * tegra186-quill-mfg-p3310-a00-00-base.dts Quill-MFG A00 Board
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-quill-common-p3310-1000-a00.dtsi"
+#include "tegra186-platforms/tegra186-quill-mfg-power-tree-p3310-1000-a00-00.dtsi"
+#include "tegra186-platforms/tegra186-quill-comms.dtsi"
+#include "tegra186-plugin-manager/tegra186-quill-p3310-mfg-1000-a00-plugin-manager.dtsi"
+#include "tegra186-prod/tegra186-priv-quill-mfg-p3310-1000-a00-prod.dtsi"
+#include "tegra186-platforms/tegra186-quill-mfg-p3310-1000-e2598-1099-a00.dtsi"
+#include "tegra186-plugin-manager/tegra186-quill-mfg-e3301-1099-a01-00-plugin-manager.dtsi"
+
+/ {
+	model = "quill-mfg";
+	compatible = "nvidia,quill-mfg", "nvidia,tegra186";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "3310:0000:A0";
+	nvidia,proc-boardid = "3310:0000:A0";
+
+	chosen {
+		board-has-eeprom;
+		bootargs ="console=ttyS0,115200";
+		stdout-path = &uarta;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "quill-mfg";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	xudc@3550000 {
+		status = "okay";
+		phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(1)>;
+		phy-names = "usb2", "usb3";
+	};
+
+	xhci@3530000 {
+		status = "okay";
+		phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(1)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(2)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(2)>;
+		phy-names = "utmi-1", "utmi-2", "usb3-0", "usb3-2";
+	};
+
+	pinctrl@3520000 {
+		status = "okay";
+		pinctrl-0 = <&tegra_padctl_pinmux_default>;
+		pinctrl-names = "default";
+		tegra_padctl_pinmux_default: pinmux {
+			usb2-std-A-port0 {
+				nvidia,lanes = "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port0 {
+				nvidia,lanes = "usb3-0";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb2-micro-AB {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb3-micro-AB {
+				nvidia,lanes = "usb3-1";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb2-std-A-port2 {
+				nvidia,lanes = "otg-1";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port2 {
+				nvidia,lanes = "usb3-2";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+		};
+	};
+	pcie-controller@10003000 {
+		nvidia,lane-map = <0x211>;
+		status = "okay";
+		pci@1,0 {
+			status = "okay";
+		};
+		pci@2,0 {
+			status = "okay";
+		};
+		pci@3,0 {
+			status = "okay";
+		};
+	};
+
+	cpus {
+		status = "disabled";
+	};
+
+	pmc-iopower {
+		status = "disabled";
+	};
+	host1x {
+		sor {
+			status = "disabled";
+			hdmi-display {
+				status = "disabled";
+			};
+
+			panel-s-edp-uhdtv-15-6 {
+				smartdimmer {
+					status = "disabled";
+				};
+			};
+		};
+	};
+
+        mttcan@c310000 {
+                status = "okay";
+                gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 0) GPIO_ACTIVE_HIGH>;
+                gpio_can_en = <&tegra_gpio TEGRA_GPIO(AA, 1) GPIO_ACTIVE_HIGH>;
+                mram-params = <0 16 16 8 8 8 16 16 16>;
+                tx-config = <8 8 0 64>;
+                rx-config = <64 64 64>;
+        };
+
+        mttcan@c320000 {
+                status = "okay";
+                gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 6) GPIO_ACTIVE_HIGH>;
+                gpio_can_en = <&tegra_gpio TEGRA_GPIO(AA, 7) GPIO_ACTIVE_HIGH>;
+                mram-params = <0 16 16 8 8 8 16 16 16>;
+                tx-config = <8 8 0 64>;
+                rx-config = <64 64 64>;
+        };
+
+};

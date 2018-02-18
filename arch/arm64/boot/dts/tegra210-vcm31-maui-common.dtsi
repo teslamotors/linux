@@ -1,0 +1,452 @@
+/*
+ * arch/arm64/boot/dts/tegra210-vcm31-maui.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+#include "tegra210-platforms/tegra210-vcm31.dtsi"
+
+#define CAM_I2C_BUS 6
+
+/ {
+	model = "maui";
+	compatible = "nvidia,maui", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "maui:0000:000";
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "maui";
+		};
+	};
+
+	serial@70006000 { /* CSB */
+		status = "okay";
+	};
+
+	serial@70006200 { /* BT */
+		status = "okay";
+	};
+
+	serial@70006300 { /* MCU */
+		status = "okay";
+	};
+
+	spi@7000d400 { /* SPI1 */
+		status = "okay";
+
+		spi@0 {	 /* GYRO */
+			compatible = "spidev";
+			reg = <0>;
+			interrupts=<TEGRA_GPIO(V,2)>;
+			spi-cpha;
+			spi-cpol;
+			/* spi-active-high; */
+		};
+
+		spi@1 {	 /* ACC */
+			compatible = "spidev";
+			reg = <1>;
+			spi-max-frequency = <13000000>;
+			interrupts=<TEGRA_GPIO(Z,0)>;
+			spi-cpha;
+			spi-cpol;
+			/* spi-active-high; */
+		};
+
+	};
+
+	spi@7000d600 { /* SLAVE */
+		status = "okay";
+		compatible = "nvidia,tegra210-spi-slave";
+		nvidia,slave-ready-gpio = <&gpio TEGRA_GPIO(V,0) 1>;
+		spi@0 {
+			compatible = "spidev";
+			spi-max-frequency = <4000000>;
+			spi-cpha;
+			controller-data {
+				nvidia,clk-delay-between-packets = <10>;
+				nvidia,variable-length-transfer;
+			};
+		};
+	};
+
+	spi@7000d800 { /* unused */
+		status = "disabled";
+	};
+
+	spi@7000da00 { /* unused */
+		status = "disabled";
+	};
+
+	sdhci@700b0000 { /* sdio/wifi/bt */
+		/delete-property/ non-removable;
+		nvidia,sd-device;
+		power-gpios = <&gpio TEGRA_GPIO(C,6) 0 &gpio TEGRA_GPIO(BB,1) 0>;
+		uhs-mask = <0x7C>;
+		mmc-ocr-mask = <0x3>;
+		vddio_sdmmc-supply = <&vdd_dummy_1v8>;
+		cap-sdio-irq;
+		disable-clock-gate;
+		status = "okay";
+
+	};
+
+	sdhci@700b0200 {
+		  status = "disabled";
+	 };
+
+	sdhci@700b0400 { /* sdio/wifi */
+		/delete-property/ non-removable;
+		nvidia,sd-device;
+		power-gpios = <&gpio TEGRA_GPIO(C,5) 0>;
+		uhs-mask = <0x7C>;
+		mmc-ocr-mask = <0x3>;
+		vddio_sdmmc-supply = <&vdd_dummy_1v8>;
+		cap-sdio-irq;
+		disable-clock-gate;
+		status = "okay";
+	};
+
+	sdhci@700b0600 { /* emmc */
+		status = "okay";
+	};
+
+	hdmi_ddc: i2c@7000c700 { /* DDC */
+		status = "okay";
+	};
+
+	sata@70020000 {
+		status = "okay";
+	};
+
+	extcon {
+		  vbus_gpio_extcon: extcon@1 {
+			/* OTG/ID pins are virtual and indicate Device mode at boot */
+			   extcon-gpio,cable-states = <0x3 0x1
+						      0x0 0x1
+						      0x1 0x1
+						      0x2 0x1>;
+			/*
+			 * L0 + L1 are unused GPIOs in Maui
+			 * with  GPIOs reserved for VBUS/ID sensing
+			 */
+			gpios = <&gpio TEGRA_GPIO(L,0) 0 &gpio TEGRA_GPIO(L,1) 0>;
+		  };
+	 };
+
+	xusb_pad_ctl: xusb_padctl {
+		nvidia,enable-sata-port;
+		/* no SS mapping, no lane owner - everything is owned by USB3 */
+		nvidia,ss_portmap = <0x7777>;
+		nvidia,lane_owner = <0xFFFF>;
+		nvidia,otg_portmap = <0x0100>;
+		status = "okay";
+	};
+
+	xusb@70090000 {
+		/*
+		 * portmap - bit-field indicating which non-OTG ports are
+		 *		controlled by XHCI (SSP3 and USB2P2)
+		 * bit[0-3]  : SS ports 0 to 3
+		 * bit[8-11] : HS ports 0 to 3
+		 */
+		nvidia,portmap = <0x10E00>;
+		status = "okay";
+	};
+
+	xudc@700d0000 {
+		/*
+		 * portmap - bit-field indicating which non-OTG ports are
+		 *		controlled by XUDC (None)
+		 * bit[0-3]  : SS ports 0 to 3
+		 * bit[8-11] : HS ports 0 to 3
+		 */
+		nvidia,portmap = <0x0000>;
+		status = "okay";
+	};
+
+	xotg {
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		#extcon-cells = <1>;
+		status = "okay";
+		extcon-cables = <&vbus_gpio_extcon 1>;
+		extcon-cable-names = "id";
+	};
+
+	i2c@7000d000 {
+		max20024: max20024@3c {
+			pinctrl-names = "default";
+			pinctrl-0 = <&max20024_default>;
+			max20024_default: pinmux@0 {
+				pin_gpio0 { /* USB ID */
+					pins = "gpio0";
+					function = "gpio";
+				};
+			};
+		};
+	};
+
+	i2c@7000c000 { /* GEN1 */
+		clock-frequency = <400000>;
+
+		max9291@42 {
+			compatible = "max9291";
+			reg = <0x42>;
+			status = "okay";
+		};
+	};
+
+	i2c@7000c400 { /* GEN2 */
+		clock-frequency = <400000>;
+		max9293@40 {
+			compatible = "max9293";
+			reg = <0x40>;
+			status = "okay";
+		};
+	};
+
+	i2c@7000c500 { /* GEN3 */
+		clock-frequency = <400000>;
+		max9298@68 {
+			compatible = "max9298";
+			reg = <0x68>;
+			status = "okay";
+		};
+		max9298@6a {
+			compatible = "max9298";
+			reg = <0x6A>;
+			status = "okay";
+		};
+		max9298@6c {
+			compatible = "max9298";
+			reg = <0x6C>;
+			status = "okay";
+		};
+	};
+
+	vii2c {
+		avdd_dsi_csi-supply = <&vdd_dummy>;
+	};
+
+	i2c@546c0000 {
+		avdd_dsi_csi-supply = <&vdd_dummy>;
+		status = "okay";
+	};
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <0>;
+
+		status = "disabled";
+
+		/* default-power-on; */
+		interrupt-parent = <&gpio>;
+
+		aggregator@6a {
+			addr = <0x6a>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		serializer0@40 {
+			addr = <0x40>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		sensor0@30 {
+			addr = <0x30>;  /* 7 bit slave address */
+			reg_len = <16>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <CAM_I2C_BUS>;
+		csi-port = <2>;
+		pwdn-gpios = < &gpio TEGRA_GPIO(Y, 2) GPIO_ACTIVE_HIGH	/* GMSL_IN2_PDN */
+			&gpio TEGRA_GPIO(H, 1) GPIO_ACTIVE_HIGH		/* CSI2_TV_EN1 */
+			&gpio TEGRA_GPIO(H, 5) GPIO_ACTIVE_HIGH		/* CSI2_TV_EN2 */
+			&gpio TEGRA_GPIO(S, 7) GPIO_ACTIVE_HIGH		/* CSI2_TV_EN3 */
+			&gpio TEGRA_GPIO(T, 0) GPIO_ACTIVE_HIGH>;	/* CSI2_TV_EN4 */
+		/* default-power-on; */
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(X, 5) 2>; /* gpio PX5 : falling edge sensitive */
+
+		status = "disabled";
+
+		aggregator@6a {
+			addr = <0x6a>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		serializer0@40 {
+			addr = <0x40>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		sensor0@30 {
+			addr = <0x30>;  /* 7 bit slave address */
+			reg_len = <16>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
+
+	tlk {
+		compatible = "nvidia,trusted-little-kernel";
+		logger = "disabled";
+		storage = "disabled";
+	};
+
+	regulators {
+		en_vdd_sdcard1: regulator@4 {
+			status = "disabled";
+		};
+
+	 	en_vdd_sdcard3: regulator@5 {
+			status = "disabled";
+		};
+	};
+
+	sound_ref {
+		compatible = "nvidia,tegra-audio-maui";
+		nvidia,model = "tegra-snd-maui";
+		nvidia,num-codec-link = <1>;
+		nvidia,num-amx = <2>;
+		nvidia,num-adx = <2>;
+		nvidia,amx-slot-size = <32 32>;
+		nvidia,adx-slot-size = <32 32>;
+		nvidia,amx-slot-map = <
+			/* slot 0 - Hi */
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			/* slot 1 - Hi */
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* slot 2 - Hi */
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			/* slot 3 - Hi */
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* slot 4 - Hi */
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			/* slot 5 - Hi */
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* slot 6 - Hi */
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			/* slot 7 - Hi */
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)
+			/* slot 0 to 7 - Low */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)>;
+
+		nvidia,adx-slot-map = <
+			/* slot 0 - Hi */
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			/* slot 1 - Hi */
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* slot 2 - Hi */
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			/* slot 3 - Hi */
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* slot 4 - Hi */
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			/* slot 5 - Hi */
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* slot 6 - Hi */
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			/* slot 7 - Hi */
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)
+			/* slot 0 to 7 - Low */
+			/* slot 0 to 7 - Low */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)>;
+
+		nvidia,audio-routing =
+			"Headphone-y", "y OUT",
+			"y IN", "LineIn-y";
+
+		nvidia,xbar = <&tegra_axbar>;
+
+
+		nvidia,dai-link-1 {
+			link-name = "dif-playback";
+			cpu-dai = <&tegra_i2s4>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "I2S4";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s32_le";
+			bclk_ratio = <1>;
+			srate = <48000>;
+			num-channel = <8>;
+			name-prefix = "y";
+		};
+	};
+};

@@ -1,0 +1,242 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	i2c@3160000 {
+		gpio_i2c_0_76: gpio@76 {
+			compatible = "ti,tca9539";
+			reg = <0x76>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			xusb_lane0_mux {
+				gpio-output-low = <9>;
+				status = "okay";
+			};
+			pcie1_lane0_mux {
+				gpio-output-high = <9>;
+				status = "disabled";
+			};
+			xusb_lane1_mux {
+				gpio-output-low = <10>;
+				status = "okay";
+			};
+			pcie0_lane1_mux {
+				gpio-output-high = <10>;
+				status = "disabled";
+			};
+			xusb_lane2_mux {
+				gpio-output-low = <11>;
+				status = "okay";
+			};
+			pcie0_lane2_mux {
+				gpio-output-high = <11>;
+				status = "disabled";
+			};
+			pcie2_lane3_mux {
+				gpio-output-low = <12>;
+				status = "okay";
+			};
+			pcie0_lane3_mux {
+				gpio-output-high = <12>;
+				status = "disabled";
+			};
+			ufs_lane4_mux {
+				gpio-output-low = <13>;
+				status = "disabled";
+			};
+			pcie0_lane4_mux {
+				gpio-output-high = <13>;
+				status = "okay";
+			};
+			ufs_lane5_mux {
+				gpio-output-low = <14>;
+				status = "disabled";
+			};
+			sata_lane5_mux {
+				gpio-output-high = <14>;
+				status = "okay";
+			};
+		};
+
+		gpio_i2c_0_75: gpio@75 {
+			compatible = "ti,tca9539";
+			reg = <0x75>;
+			gpio-controller;
+			#gpio-cells = <2>;
+		};
+
+	};
+
+	fixed-regulators {
+		battery_reg: regulator@0 {
+			compatible = "regulator-fixed";
+			reg = <0>;
+			regulator-name = "vdd-ac-bat";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			regulator-always-on;
+		};
+
+
+		vdd_ddrio_ch0: regulator@1 {
+			compatible = "regulator-fixed-sync";
+			reg = <1>;
+			regulator-name = "vdd-ddrio-ch0";
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
+			regulator-always-on;
+			regulator-boot-on;
+			vin-supply = <&spmic_sd0>;
+		};
+
+		vdd_sys_5v: regulator@2 {
+			compatible = "regulator-fixed-sync";
+			reg = <2>;
+			regulator-name = "vdd-sys-5v";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio_i2c_0_76 6 0>;
+			enable-active-high;
+		};
+
+		vdd_3v3_sata: regulator@3 {
+			compatible = "regulator-fixed";
+			reg = <3>;
+			regulator-name = "vdd-3v3-sata";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio_i2c_0_76 7 0>;
+			enable-active-high;
+			vin-supply = <&spmic_sd3>;
+		};
+
+		vdd_usb0_5v: regulator@4 {
+			compatible = "regulator-fixed-sync";
+			reg = <4>;
+			regulator-name = "vdd-usb0-5v";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(L, 4) 0>;
+			enable-active-high;
+			vin-supply = <&vdd_sys_5v>;
+		};
+
+		vdd_usb1_5v: regulator@5 {
+			compatible = "regulator-fixed-sync";
+			reg = <5>;
+			regulator-name = "vdd-usb1-5v";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(L, 5) 0>;
+			enable-active-high;
+			vin-supply = <&vdd_sys_5v>;
+		};
+
+		vdd_usb2_5v: regulator@6 {
+			compatible = "regulator-fixed-sync";
+			reg = <6>;
+			regulator-name = "vdd-usb2-5v";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(L, 5) 0>;
+			enable-active-high;
+			vin-supply = <&vdd_sys_5v>;
+		};
+
+		vdd_sdcard1_3v3: regulator@7 {
+			compatible = "regulator-fixed-sync";
+			reg = <7>;
+			regulator-name = "vdd-sdcard1";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(N, 0) 0>;
+			enable-active-high;
+			vin-supply = <&spmic_sd3>;
+		};
+
+		vdd_sdcard3_3v3: regulator@8 {
+			compatible = "regulator-fixed-sync";
+			reg = <8>;
+			regulator-name = "vdd-sdcard3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(P, 5) 0>;
+			enable-active-high;
+			vin-supply = <&spmic_sd3>;
+		};
+
+		vdd_3v3_hv: regulator@9 {
+			compatible = "regulator-fixed-sync";
+			reg = <9>;
+			regulator-name = "vdd-3v3-hv";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(FF, 3) 0>;
+			enable-active-high;
+			vin-supply = <&spmic_sd3>;
+		};
+
+		ext_vdd_rtc_1v1: regulator@10 {
+			compatible = "regulator-fixed";
+			reg = <10>;
+			regulator-name = "ext-vdd-rtc-1v1";
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
+		};
+
+		vdd_vbus_typea_5v5: regulator@11 {
+			compatible = "regulator-fixed";
+			reg = <11>;
+			regulator-name = "vdd-vbus-typea-5v5";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&vdd_sys_5v>;
+		};
+
+		vdd_1v2_enet: regulator@12 {
+			compatible = "regulator-fixed";
+			reg = <12>;
+			regulator-name = "vdd-1v2-enet";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			vin-supply = <&spmic_sd3>;
+		};
+
+		vdd_hdmi0_5v0: regulator@13 {
+			compatible = "regulator-fixed-sync";
+			reg = <13>;
+			regulator-name = "vdd-hdmi0-5v0";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(FF, 3) 0>;
+			enable-active-high;
+			vin-supply = <&vdd_sys_5v>;
+		};
+
+		vdd_1v8_sw: regulator@14 {
+			compatible = "regulator-fixed-sync";
+			reg = <14>;
+			regulator-name = "vdd-1v8-sw";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&spmic_sd2>;
+			gpio = <&spmic 7 0>;
+			regulator-always-on;
+			regulator-boot-on;
+			enable-active-high;
+		};
+	};
+};

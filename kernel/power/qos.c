@@ -25,6 +25,9 @@
  * pointer or exits the pm_qos_object will get an opportunity to clean up.
  *
  * Mark Gross <mgross@linux.intel.com>
+ *
+ * Support added for bounded constraints
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION. All rights reserved.
  */
 
 /*#define DEBUG*/
@@ -41,15 +44,16 @@
 #include <linux/platform_device.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
-
+#include <linux/moduleparam.h>
 #include <linux/uaccess.h>
 #include <linux/export.h>
 #include <trace/events/power.h>
 
 /*
  * locking rule: all changes to constraints or notifiers lists
- * or pm_qos_object list and pm_qos_objects need to happen with pm_qos_lock
- * held, taken with _irqsave.  One lock to rule them all
+ * or pm_qos_object list or pm_qos_bounded objects/lists and
+ * pm_qos_objects need to happen with pm_qos_lock
+ * One lock to rule them all
  */
 struct pm_qos_object {
 	struct pm_qos_constraints *constraints;
@@ -57,9 +61,16 @@ struct pm_qos_object {
 	char *name;
 };
 
-static DEFINE_SPINLOCK(pm_qos_lock);
+struct pm_qos_bounded_object {
+	struct pm_qos_bounded_constraint *bounds;
+	struct miscdevice miscdev;
+	char *name;
+};
+
+static DEFINE_MUTEX(pm_qos_lock);
 
 static struct pm_qos_object null_pm_qos;
+static struct pm_qos_bounded_object null_pm_qos_bounded;
 
 static BLOCKING_NOTIFIER_HEAD(cpu_dma_lat_notifier);
 static struct pm_qos_constraints cpu_dma_constraints = {
@@ -104,6 +115,46 @@ static struct pm_qos_object network_throughput_pm_qos = {
 	.name = "network_throughput",
 };
 
+static struct pm_qos_bounded_constraint online_cpus_constraint = {
+	.prio_list = PLIST_HEAD_INIT(online_cpus_constraint.prio_list),
+	.max_class = PM_QOS_MAX_ONLINE_CPUS,
+	.min_class = PM_QOS_MIN_ONLINE_CPUS,
+	.min_wins = true,
+};
+static struct pm_qos_bounded_object online_cpus_pm_qos = {
+	.bounds = &online_cpus_constraint,
+	.name = "constraint_online_cpus",
+};
+static BLOCKING_NOTIFIER_HEAD(min_online_cpus_notifier);
+static struct pm_qos_constraints min_online_cpus_constraints = {
+	.list = PLIST_HEAD_INIT(min_online_cpus_constraints.list),
+	.target_value = PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE,
+	.default_value = PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE,
+	.type = PM_QOS_MAX,
+	.notifiers = &min_online_cpus_notifier,
+	.parent_class = PM_QOS_ONLINE_CPUS_BOUNDS,
+};
+static struct pm_qos_object min_online_cpus_pm_qos = {
+	.constraints = &min_online_cpus_constraints,
+	.name = "min_online_cpus",
+};
+
+
+static BLOCKING_NOTIFIER_HEAD(max_online_cpus_notifier);
+static struct pm_qos_constraints max_online_cpus_constraints = {
+	.list = PLIST_HEAD_INIT(max_online_cpus_constraints.list),
+	.target_value = PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE,
+	.default_value = PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE,
+	.type = PM_QOS_MIN,
+	.notifiers = &max_online_cpus_notifier,
+	.parent_class = PM_QOS_ONLINE_CPUS_BOUNDS,
+};
+static struct pm_qos_object max_online_cpus_pm_qos = {
+	.constraints = &max_online_cpus_constraints,
+	.name = "max_online_cpus",
+
+};
+
 
 static BLOCKING_NOTIFIER_HEAD(memory_bandwidth_notifier);
 static struct pm_qos_constraints memory_bw_constraints = {
@@ -119,6 +170,203 @@ static struct pm_qos_object memory_bandwidth_pm_qos = {
 	.name = "memory_bandwidth",
 };
 
+static struct pm_qos_bounded_constraint cpu_freq_constraint = {
+	.prio_list = PLIST_HEAD_INIT(cpu_freq_constraint.prio_list),
+	.max_class = PM_QOS_CPU_FREQ_MAX,
+	.min_class = PM_QOS_CPU_FREQ_MIN,
+	.min_wins = false,
+};
+static struct pm_qos_bounded_object cpu_freq_pm_qos = {
+	.bounds = &cpu_freq_constraint,
+	.name = "constraint_cpu_freq",
+};
+
+static BLOCKING_NOTIFIER_HEAD(cpu_freq_min_notifier);
+static struct pm_qos_constraints cpu_freq_min_constraints = {
+	.list = PLIST_HEAD_INIT(cpu_freq_min_constraints.list),
+	.target_value = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE,
+	.default_value = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE,
+	.type = PM_QOS_MAX,
+	.notifiers = &cpu_freq_min_notifier,
+	.parent_class = PM_QOS_CPU_FREQ_BOUNDS,
+};
+static struct pm_qos_object cpu_freq_min_pm_qos = {
+	.constraints = &cpu_freq_min_constraints,
+	.name = "cpu_freq_min",
+};
+
+
+static BLOCKING_NOTIFIER_HEAD(cpu_freq_max_notifier);
+static struct pm_qos_constraints cpu_freq_max_constraints = {
+	.list = PLIST_HEAD_INIT(cpu_freq_max_constraints.list),
+	.target_value = PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE,
+	.default_value = PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE,
+	.type = PM_QOS_MIN,
+	.notifiers = &cpu_freq_max_notifier,
+	.parent_class = PM_QOS_CPU_FREQ_BOUNDS,
+};
+static struct pm_qos_object cpu_freq_max_pm_qos = {
+	.constraints = &cpu_freq_max_constraints,
+	.name = "cpu_freq_max",
+};
+
+static struct pm_qos_bounded_constraint cluster0_freq_constraint = {
+	.prio_list = PLIST_HEAD_INIT(cluster0_freq_constraint.prio_list),
+	.max_class = PM_QOS_CLUSTER0_FREQ_MAX,
+	.min_class = PM_QOS_CLUSTER0_FREQ_MIN,
+	.min_wins = false,
+};
+static struct pm_qos_bounded_object cluster0_freq_pm_qos = {
+	.bounds = &cluster0_freq_constraint,
+	.name = "constraint_cluster0_freq",
+};
+
+static struct pm_qos_bounded_constraint cluster1_freq_constraint = {
+	.prio_list = PLIST_HEAD_INIT(cluster1_freq_constraint.prio_list),
+	.max_class = PM_QOS_CLUSTER1_FREQ_MAX,
+	.min_class = PM_QOS_CLUSTER1_FREQ_MIN,
+	.min_wins = false,
+};
+static struct pm_qos_bounded_object cluster1_freq_pm_qos = {
+	.bounds = &cluster1_freq_constraint,
+	.name = "constraint_cluster1_freq",
+};
+
+static BLOCKING_NOTIFIER_HEAD(cluster0_freq_min_notifier);
+static struct pm_qos_constraints cluster0_freq_min_constraints = {
+	.list = PLIST_HEAD_INIT(cluster0_freq_min_constraints.list),
+	.target_value = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE,
+	.default_value = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE,
+	.type = PM_QOS_MAX,
+	.notifiers = &cluster0_freq_min_notifier,
+	.parent_class = PM_QOS_CLUSTER0_FREQ_BOUNDS,
+};
+
+static struct pm_qos_object cluster0_freq_min_pm_qos = {
+	.constraints = &cluster0_freq_min_constraints,
+	.name = "cluster0_freq_min",
+};
+
+static BLOCKING_NOTIFIER_HEAD(cluster0_freq_max_notifier);
+static struct pm_qos_constraints cluster0_freq_max_constraints = {
+	.list = PLIST_HEAD_INIT(cluster0_freq_max_constraints.list),
+	.target_value = PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE,
+	.default_value = PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE,
+	.type = PM_QOS_MIN,
+	.notifiers = &cluster0_freq_max_notifier,
+	.parent_class = PM_QOS_CLUSTER0_FREQ_BOUNDS,
+};
+static struct pm_qos_object cluster0_freq_max_pm_qos = {
+	.constraints = &cluster0_freq_max_constraints,
+	.name = "cluster0_freq_max",
+};
+
+static BLOCKING_NOTIFIER_HEAD(cluster1_freq_min_notifier);
+static struct pm_qos_constraints cluster1_freq_min_constraints = {
+	.list = PLIST_HEAD_INIT(cluster1_freq_min_constraints.list),
+	.target_value = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE,
+	.default_value = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE,
+	.type = PM_QOS_MAX,
+	.notifiers = &cluster1_freq_min_notifier,
+	.parent_class = PM_QOS_CLUSTER1_FREQ_BOUNDS,
+};
+
+static struct pm_qos_object cluster1_freq_min_pm_qos = {
+	.constraints = &cluster1_freq_min_constraints,
+	.name = "cluster1_freq_min",
+};
+
+static BLOCKING_NOTIFIER_HEAD(cluster1_freq_max_notifier);
+static struct pm_qos_constraints cluster1_freq_max_constraints = {
+	.list = PLIST_HEAD_INIT(cluster1_freq_max_constraints.list),
+	.target_value = PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE,
+	.default_value = PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE,
+	.type = PM_QOS_MIN,
+	.notifiers = &cluster1_freq_max_notifier,
+	.parent_class = PM_QOS_CLUSTER1_FREQ_BOUNDS,
+};
+static struct pm_qos_object cluster1_freq_max_pm_qos = {
+	.constraints = &cluster1_freq_max_constraints,
+	.name = "cluster1_freq_max",
+};
+
+static struct pm_qos_bounded_constraint gpu_freq_constraint = {
+	.prio_list = PLIST_HEAD_INIT(gpu_freq_constraint.prio_list),
+	.max_class = PM_QOS_GPU_FREQ_MAX,
+	.min_class = PM_QOS_GPU_FREQ_MIN,
+	.min_wins = false,
+};
+static struct pm_qos_bounded_object gpu_freq_pm_qos = {
+	.bounds = &gpu_freq_constraint,
+	.name = "constraint_gpu_freq",
+};
+
+static BLOCKING_NOTIFIER_HEAD(gpu_freq_min_notifier);
+static struct pm_qos_constraints gpu_freq_min_constraints = {
+	.list = PLIST_HEAD_INIT(gpu_freq_min_constraints.list),
+	.target_value = PM_QOS_GPU_FREQ_MIN_DEFAULT_VALUE,
+	.default_value = PM_QOS_GPU_FREQ_MIN_DEFAULT_VALUE,
+	.type = PM_QOS_MAX,
+	.notifiers = &gpu_freq_min_notifier,
+	.parent_class = PM_QOS_GPU_FREQ_BOUNDS,
+};
+static struct pm_qos_object gpu_freq_min_pm_qos = {
+	.constraints = &gpu_freq_min_constraints,
+	.name = "gpu_freq_min",
+};
+
+static BLOCKING_NOTIFIER_HEAD(gpu_freq_max_notifier);
+static struct pm_qos_constraints gpu_freq_max_constraints = {
+	.list = PLIST_HEAD_INIT(gpu_freq_max_constraints.list),
+	.target_value = PM_QOS_GPU_FREQ_MAX_DEFAULT_VALUE,
+	.default_value = PM_QOS_GPU_FREQ_MAX_DEFAULT_VALUE,
+	.type = PM_QOS_MIN,
+	.notifiers = &gpu_freq_max_notifier,
+	.parent_class = PM_QOS_GPU_FREQ_BOUNDS,
+};
+static struct pm_qos_object gpu_freq_max_pm_qos = {
+	.constraints = &gpu_freq_max_constraints,
+	.name = "gpu_freq_max",
+};
+
+static BLOCKING_NOTIFIER_HEAD(emc_freq_min_notifier);
+static struct pm_qos_constraints emc_freq_min_constraints = {
+	.list = PLIST_HEAD_INIT(emc_freq_min_constraints.list),
+	.target_value = PM_QOS_EMC_FREQ_MIN_DEFAULT_VALUE,
+	.default_value = PM_QOS_EMC_FREQ_MIN_DEFAULT_VALUE,
+	.type = PM_QOS_MAX,
+	.notifiers = &emc_freq_min_notifier,
+};
+static struct pm_qos_object emc_freq_min_pm_qos = {
+	.constraints = &emc_freq_min_constraints,
+	.name = "emc_freq_min",
+};
+
+static BLOCKING_NOTIFIER_HEAD(max_cpu_pwr_notifier);
+static struct pm_qos_constraints max_cpu_pwr_constraints = {
+	.list = PLIST_HEAD_INIT(max_cpu_pwr_constraints.list),
+	.target_value = PM_QOS_CPU_POWER_MAX_DEFAULT_VALUE,
+	.default_value = PM_QOS_CPU_POWER_MAX_DEFAULT_VALUE,
+	.type = PM_QOS_MIN,
+	.notifiers = &max_cpu_pwr_notifier,
+};
+static struct pm_qos_object max_cpu_pwr_qos = {
+	.constraints = &max_cpu_pwr_constraints,
+	.name = "max_cpu_power",
+};
+
+static BLOCKING_NOTIFIER_HEAD(max_gpu_pwr_notifier);
+static struct pm_qos_constraints max_gpu_pwr_constraints = {
+	.list = PLIST_HEAD_INIT(max_gpu_pwr_constraints.list),
+	.target_value = PM_QOS_GPU_POWER_MAX_DEFAULT_VALUE,
+	.default_value = PM_QOS_GPU_POWER_MAX_DEFAULT_VALUE,
+	.type = PM_QOS_MIN,
+	.notifiers = &max_gpu_pwr_notifier,
+};
+static struct pm_qos_object max_gpu_pwr_qos = {
+	.constraints = &max_gpu_pwr_constraints,
+	.name = "max_gpu_power",
+};
 
 static struct pm_qos_object *pm_qos_array[] = {
 	&null_pm_qos,
@@ -126,6 +374,28 @@ static struct pm_qos_object *pm_qos_array[] = {
 	&network_lat_pm_qos,
 	&network_throughput_pm_qos,
 	&memory_bandwidth_pm_qos,
+	&min_online_cpus_pm_qos,
+	&max_online_cpus_pm_qos,
+	&cpu_freq_min_pm_qos,
+	&cpu_freq_max_pm_qos,
+	&gpu_freq_min_pm_qos,
+	&gpu_freq_max_pm_qos,
+	&emc_freq_min_pm_qos,
+	&max_cpu_pwr_qos,
+	&max_gpu_pwr_qos,
+	&cluster0_freq_min_pm_qos,
+	&cluster0_freq_max_pm_qos,
+	&cluster1_freq_min_pm_qos,
+	&cluster1_freq_max_pm_qos,
+};
+
+static struct pm_qos_bounded_object * const pm_qos_bounded_obj_array[] = {
+	&null_pm_qos_bounded,
+	&cpu_freq_pm_qos,
+	&gpu_freq_pm_qos,
+	&online_cpus_pm_qos,
+	&cluster0_freq_pm_qos,
+	&cluster1_freq_pm_qos
 };
 
 static ssize_t pm_qos_power_write(struct file *filp, const char __user *buf,
@@ -142,6 +412,24 @@ static const struct file_operations pm_qos_power_fops = {
 	.release = pm_qos_power_release,
 	.llseek = noop_llseek,
 };
+
+static ssize_t pm_qos_bounded_write(struct file *filp, const char __user *buf,
+		size_t count, loff_t *f_pos);
+static ssize_t pm_qos_bounded_read(struct file *filp, char __user *buf,
+		size_t count, loff_t *f_pos);
+static int pm_qos_bounded_open(struct inode *inode, struct file *filp);
+static int pm_qos_bounded_release(struct inode *inode, struct file *filp);
+
+static const struct file_operations pm_qos_bounded_constraint_fops = {
+	.write = pm_qos_bounded_write,
+	.read = pm_qos_bounded_read,
+	.open = pm_qos_bounded_open,
+	.release = pm_qos_bounded_release,
+	.llseek = generic_file_llseek,
+};
+
+static bool pm_qos_enabled __read_mostly = true;
+static int disable_priorities;
 
 /* unlocked internal variant */
 static inline int pm_qos_get_value(struct pm_qos_constraints *c)
@@ -182,6 +470,294 @@ static inline void pm_qos_set_value(struct pm_qos_constraints *c, s32 value)
 	c->target_value = value;
 }
 
+/*
+ * Finds the current max and min targets for the given bounded constraint.
+ * If buf is non NULL, the max and min targets at each priority level are
+ * written to the provided buffer as long as buf_size isn't exceeded.
+ * Returns the bytes read into the buffer and updates variables target_max and
+ * target_min with new targets.
+ */
+static size_t pm_qos_find_bounded_targets(struct pm_qos_bounded_constraint *c,
+					  s32 *target_max, s32 *target_min,
+					  char *buf, size_t buf_size)
+{
+	char str[30];
+	size_t size, bytes_read;
+	struct pm_qos_prio *p;
+	struct pm_qos_constraints *max_constraint, *min_constraint;
+	s32 cur_max, cur_min, tmp_max, tmp_min;
+
+	bool stop = false;
+	char header[] = "Priority Min Max\n";
+	max_constraint = pm_qos_array[c->max_class]->constraints;
+	min_constraint = pm_qos_array[c->min_class]->constraints;
+	cur_max = max_constraint->default_value;
+	cur_min = min_constraint->default_value;
+	bytes_read = 0;
+	if (buf) {
+		size = strlen(header);
+		if (size > buf_size)
+			return 0;
+		memcpy(buf, header, size);
+		bytes_read = size;
+		buf_size -= size;
+		buf += size;
+	}
+
+	/*
+	 * Output the intersection of all (min, max) higher priority
+	 * ranges at each priority level
+	 */
+	plist_for_each_entry(p, &c->prio_list, node) {
+		if (p->node.prio < disable_priorities)
+			continue;
+
+		tmp_min = min_constraint->default_value;
+		tmp_max = max_constraint->default_value;
+		if (!plist_head_empty(&p->max_list))
+			tmp_max = plist_first(&p->max_list)->prio;
+		if (!plist_head_empty(&p->min_list))
+			tmp_min = plist_last(&p->min_list)->prio;
+		if (tmp_min > tmp_max) {
+			if (c->min_wins)
+				tmp_max = tmp_min;
+			else
+				tmp_min = tmp_max;
+		}
+		if (tmp_min > cur_min) {
+			if (tmp_min < cur_max) {
+				cur_min = tmp_min;
+			} else {
+				cur_min = cur_max;
+				stop = true;
+			}
+		}
+		if (tmp_max < cur_max) {
+			if (tmp_max > cur_min) {
+				cur_max = tmp_max;
+			} else {
+				cur_max = cur_min;
+				stop = true;
+			}
+		}
+		if (buf) {
+			size = scnprintf(str, sizeof(str), "%i %i %i\n",
+					 p->node.prio, cur_min, cur_max);
+			if (size > buf_size)
+				return 0;
+
+			memcpy(buf, str, size);
+			buf += size;
+			buf_size -= size;
+			bytes_read += size;
+		}
+		if (stop)
+			break;
+	}
+
+	if (target_max)
+		*target_max = cur_max;
+	if (target_min)
+		*target_min = cur_min;
+
+	return bytes_read;
+}
+
+/* Updates the target bounds for the given bounded constraint */
+static void pm_qos_set_bounded_targets(struct pm_qos_bounded_constraint *c)
+{
+	struct pm_qos_constraints *max_constraint, *min_constraint;
+	s32 cur_max, cur_min;
+
+	max_constraint = pm_qos_array[c->max_class]->constraints;
+	min_constraint = pm_qos_array[c->min_class]->constraints;
+	cur_max = max_constraint->default_value;
+	cur_min = min_constraint->default_value;
+
+	if (pm_qos_enabled)
+		pm_qos_find_bounded_targets(c, &cur_max, &cur_min, NULL, 0);
+
+	pm_qos_set_value(max_constraint, cur_max);
+	pm_qos_set_value(min_constraint, cur_min);
+}
+
+/*
+ * Remove node of the given priority and type. Removes priority node
+ * from the list of priorities if it is no longer used.
+ */
+static void pm_qos_remove_node(struct plist_node *node,
+			       struct pm_qos_prio *priority,
+			       struct pm_qos_bounded_constraint *c,
+			       enum pm_qos_type type)
+{
+	if (!priority)
+		return;
+
+	/* pm_qos_max => minimum bound of constraint and vice versa */
+	if (type == PM_QOS_MAX)
+		plist_del(node, &priority->min_list);
+	else if (type == PM_QOS_MIN)
+		plist_del(node, &priority->max_list);
+	else
+		return;
+
+	/* Remove priority level if no longer used */
+	if (plist_head_empty(&priority->max_list) &&
+	    plist_head_empty(&priority->min_list)) {
+		plist_del(&priority->node, &c->prio_list);
+		kfree(priority);
+	}
+}
+
+/* Add new node at the specified priority for the given type */
+static void pm_qos_add_node(struct plist_node *node,
+			    struct pm_qos_prio *priority,
+			    enum pm_qos_type type)
+{
+	if (!priority)
+		return;
+
+	/* pm_qos_max => minimum bound of constraint and vice versa */
+	if (type == PM_QOS_MAX)
+		plist_add(node, &priority->min_list);
+	else if (type == PM_QOS_MIN)
+		plist_add(node, &priority->max_list);
+	return;
+}
+
+/* Creates, initializes and adds the priority level. Returns NULL on failure */
+static struct pm_qos_prio *pm_qos_add_priority(int priority,
+					       struct plist_head *list)
+{
+	struct pm_qos_prio *prio = kzalloc(sizeof(*prio), GFP_KERNEL);
+	if (!prio)
+		return NULL;
+
+	plist_node_init(&prio->node, priority);
+	plist_head_init(&prio->max_list);
+	plist_head_init(&prio->min_list);
+	plist_add(&prio->node, list);
+
+	return prio;
+}
+
+/* Returns priority level from the priority list. NULL if it doesn't exist */
+static struct pm_qos_prio *pm_qos_get_prio_level(int priority,
+						 struct plist_head *list)
+{
+	struct pm_qos_prio *p;
+
+	if (plist_head_empty(list))
+		return NULL;
+
+	plist_for_each_entry(p, list, node)
+		if (p->node.prio == priority)
+			return p;
+
+	return NULL;
+}
+
+/**
+ * pm_qos_update_bounded_target - Update a bounded constraints target bounds
+ * @c: bound that is being updated (either min or max)
+ * @value: new value to add or update for the given bound
+ * @req: the request that is getting updated/added or removed
+ * @priority: new priority of the bound request
+ * @action: remove/add/update req
+ *
+ * Returns a negative value on error, 0 if the target bounds were not updated
+ * and 1 if the target bounds were updated.
+ */
+static int pm_qos_update_bounded_target(struct pm_qos_constraints *c, s32 value,
+					struct pm_qos_request *req,
+					int priority,
+					enum pm_qos_req_action action)
+{
+	struct pm_qos_constraints *max_constraint, *min_constraint;
+	struct pm_qos_bounded_constraint *parent;
+	struct pm_qos_prio *prio;
+	s32 prev_max, prev_min, curr_max, curr_min, new_value;
+	int ret = -EINVAL;
+
+	if (!c->parent_class)
+		return 0;
+
+	mutex_lock(&pm_qos_lock);
+	parent = pm_qos_bounded_obj_array[c->parent_class]->bounds;
+	max_constraint = pm_qos_array[parent->max_class]->constraints;
+	min_constraint = pm_qos_array[parent->min_class]->constraints;
+	prev_max = pm_qos_read_value(max_constraint);
+	prev_min = pm_qos_read_value(min_constraint);
+	new_value = value;
+	if (value == PM_QOS_DEFAULT_VALUE)
+		new_value = c->default_value;
+
+	switch (action) {
+	case PM_QOS_REMOVE_REQ:
+		prio = pm_qos_get_prio_level(priority, &parent->prio_list);
+		pm_qos_remove_node(&req->node, prio, parent, c->type);
+		break;
+	case PM_QOS_UPDATE_REQ:
+		/*
+		 * Remove old node and update by reinitializing node and
+		 * adding it
+		 */
+		prio = pm_qos_get_prio_level(req->priority, &parent->prio_list);
+		if (!prio) {
+			WARN(1, KERN_ERR "pm_qos_update_bounded_target: priority does not exist\n");
+			mutex_unlock(&pm_qos_lock);
+			return -EINVAL;
+		}
+		pm_qos_remove_node(&req->node, prio, parent, c->type);
+		/* Fall through and add */
+	case PM_QOS_ADD_REQ:
+		prio = pm_qos_get_prio_level(priority, &parent->prio_list);
+		if (!prio) {
+			prio = pm_qos_add_priority(priority,
+						   &parent->prio_list);
+			if (!prio) {
+				mutex_unlock(&pm_qos_lock);
+				return -ENOMEM;
+			}
+		}
+		plist_node_init(&req->node, new_value);
+		pm_qos_add_node(&req->node, prio, c->type);
+		break;
+	default:
+		break;
+	}
+
+	pm_qos_set_bounded_targets(parent);
+
+	curr_max = pm_qos_read_value(max_constraint);
+	curr_min = pm_qos_read_value(min_constraint);
+	ret = 0;
+
+	/* Call notifiers if necessary */
+	if (prev_max != curr_max) {
+		if (curr_max < prev_min) {
+			blocking_notifier_call_chain(min_constraint->notifiers,
+						     (unsigned long)curr_min,
+						     NULL);
+			prev_min = curr_min;
+		}
+		blocking_notifier_call_chain(max_constraint->notifiers,
+					     (unsigned long)curr_max,
+					     NULL);
+		ret = 1;
+	}
+	if (prev_min != curr_min) {
+		blocking_notifier_call_chain(min_constraint->notifiers,
+					     (unsigned long)curr_min,
+					     NULL);
+		ret = 1;
+	}
+
+	mutex_unlock(&pm_qos_lock);
+
+	return ret;
+}
+
 /**
  * pm_qos_update_target - manages the constraints list and calls the notifiers
  *  if needed
@@ -196,11 +772,10 @@ static inline void pm_qos_set_value(struct pm_qos_constraints *c, s32 value)
 int pm_qos_update_target(struct pm_qos_constraints *c, struct plist_node *node,
 			 enum pm_qos_req_action action, int value)
 {
-	unsigned long flags;
 	int prev_value, curr_value, new_value;
 	int ret;
 
-	spin_lock_irqsave(&pm_qos_lock, flags);
+	mutex_lock(&pm_qos_lock);
 	prev_value = pm_qos_get_value(c);
 	if (value == PM_QOS_DEFAULT_VALUE)
 		new_value = c->default_value;
@@ -227,10 +802,12 @@ int pm_qos_update_target(struct pm_qos_constraints *c, struct plist_node *node,
 		;
 	}
 
-	curr_value = pm_qos_get_value(c);
-	pm_qos_set_value(c, curr_value);
-
-	spin_unlock_irqrestore(&pm_qos_lock, flags);
+	if (pm_qos_enabled) {
+		curr_value = pm_qos_get_value(c);
+		pm_qos_set_value(c, curr_value);
+	} else {
+		curr_value = c->default_value;
+	}
 
 	trace_pm_qos_update_target(action, prev_value, curr_value);
 	if (prev_value != curr_value) {
@@ -242,6 +819,8 @@ int pm_qos_update_target(struct pm_qos_constraints *c, struct plist_node *node,
 	} else {
 		ret = 0;
 	}
+
+	mutex_unlock(&pm_qos_lock);
 	return ret;
 }
 
@@ -277,10 +856,9 @@ bool pm_qos_update_flags(struct pm_qos_flags *pqf,
 			 struct pm_qos_flags_request *req,
 			 enum pm_qos_req_action action, s32 val)
 {
-	unsigned long irqflags;
 	s32 prev_value, curr_value;
 
-	spin_lock_irqsave(&pm_qos_lock, irqflags);
+	mutex_lock(&pm_qos_lock);
 
 	prev_value = list_empty(&pqf->list) ? 0 : pqf->effective_flags;
 
@@ -303,9 +881,15 @@ bool pm_qos_update_flags(struct pm_qos_flags *pqf,
 
 	curr_value = list_empty(&pqf->list) ? 0 : pqf->effective_flags;
 
-	spin_unlock_irqrestore(&pm_qos_lock, irqflags);
+	mutex_unlock(&pm_qos_lock);
 
 	trace_pm_qos_update_flags(action, prev_value, curr_value);
+
+	if (curr_value != prev_value && pqf->notifiers)
+		blocking_notifier_call_chain(pqf->notifiers,
+					     (unsigned long)curr_value,
+					     NULL);
+
 	return prev_value != curr_value;
 }
 
@@ -330,12 +914,21 @@ EXPORT_SYMBOL_GPL(pm_qos_request_active);
 static void __pm_qos_update_request(struct pm_qos_request *req,
 			   s32 new_value)
 {
+	struct pm_qos_constraints *c;
+
 	trace_pm_qos_update_request(req->pm_qos_class, new_value);
 
-	if (new_value != req->node.prio)
-		pm_qos_update_target(
-			pm_qos_array[req->pm_qos_class]->constraints,
-			&req->node, PM_QOS_UPDATE_REQ, new_value);
+	if (new_value == req->node.prio)
+		return;
+
+	c = pm_qos_array[req->pm_qos_class]->constraints;
+
+	if (c->parent_class)
+		pm_qos_update_bounded_target(c, new_value, req, req->priority,
+					     PM_QOS_UPDATE_REQ);
+	else
+		pm_qos_update_target(c, &req->node, PM_QOS_UPDATE_REQ,
+				     new_value);
 }
 
 /**
@@ -369,6 +962,8 @@ static void pm_qos_work_fn(struct work_struct *work)
 void pm_qos_add_request(struct pm_qos_request *req,
 			int pm_qos_class, s32 value)
 {
+	struct pm_qos_constraints *c;
+
 	if (!req) /*guard against callers passing in null */
 		return;
 
@@ -378,9 +973,16 @@ void pm_qos_add_request(struct pm_qos_request *req,
 	}
 	req->pm_qos_class = pm_qos_class;
 	INIT_DELAYED_WORK(&req->work, pm_qos_work_fn);
+	c = pm_qos_array[pm_qos_class]->constraints;
+
 	trace_pm_qos_add_request(pm_qos_class, value);
-	pm_qos_update_target(pm_qos_array[pm_qos_class]->constraints,
-			     &req->node, PM_QOS_ADD_REQ, value);
+	if (c->parent_class) {
+		req->priority = PM_QOS_PRIO_TRUSTED;
+		pm_qos_update_bounded_target(c, value, req, req->priority,
+					     PM_QOS_ADD_REQ);
+	} else {
+		pm_qos_update_target(c, &req->node, PM_QOS_ADD_REQ, value);
+	}
 }
 EXPORT_SYMBOL_GPL(pm_qos_add_request);
 
@@ -421,6 +1023,8 @@ EXPORT_SYMBOL_GPL(pm_qos_update_request);
 void pm_qos_update_request_timeout(struct pm_qos_request *req, s32 new_value,
 				   unsigned long timeout_us)
 {
+	struct pm_qos_constraints *c;
+
 	if (!req)
 		return;
 	if (WARN(!pm_qos_request_active(req),
@@ -429,15 +1033,25 @@ void pm_qos_update_request_timeout(struct pm_qos_request *req, s32 new_value,
 
 	cancel_delayed_work_sync(&req->work);
 
+	c = pm_qos_array[req->pm_qos_class]->constraints;
+
 	trace_pm_qos_update_request_timeout(req->pm_qos_class,
 					    new_value, timeout_us);
-	if (new_value != req->node.prio)
-		pm_qos_update_target(
-			pm_qos_array[req->pm_qos_class]->constraints,
-			&req->node, PM_QOS_UPDATE_REQ, new_value);
+	if (new_value == req->node.prio) {
+		schedule_delayed_work(&req->work, usecs_to_jiffies(timeout_us));
+		return;
+	}
+
+	if (c->parent_class)
+		pm_qos_update_bounded_target(c, new_value, req, req->priority,
+					     PM_QOS_UPDATE_REQ);
+	else
+		pm_qos_update_target(c, &req->node,
+				     PM_QOS_UPDATE_REQ, new_value);
 
 	schedule_delayed_work(&req->work, usecs_to_jiffies(timeout_us));
 }
+EXPORT_SYMBOL_GPL(pm_qos_update_request_timeout);
 
 /**
  * pm_qos_remove_request - modifies an existing qos request
@@ -449,6 +1063,8 @@ void pm_qos_update_request_timeout(struct pm_qos_request *req, s32 new_value,
  */
 void pm_qos_remove_request(struct pm_qos_request *req)
 {
+	struct pm_qos_constraints *c;
+
 	if (!req) /*guard against callers passing in null */
 		return;
 		/* silent return to keep pcm code cleaner */
@@ -461,12 +1077,351 @@ void pm_qos_remove_request(struct pm_qos_request *req)
 	cancel_delayed_work_sync(&req->work);
 
 	trace_pm_qos_remove_request(req->pm_qos_class, PM_QOS_DEFAULT_VALUE);
-	pm_qos_update_target(pm_qos_array[req->pm_qos_class]->constraints,
-			     &req->node, PM_QOS_REMOVE_REQ,
-			     PM_QOS_DEFAULT_VALUE);
+	c = pm_qos_array[req->pm_qos_class]->constraints;
+	if (c->parent_class)
+		pm_qos_update_bounded_target(c, PM_QOS_DEFAULT_VALUE, req,
+					     req->priority, PM_QOS_REMOVE_REQ);
+	else
+		pm_qos_update_target(c, &req->node, PM_QOS_REMOVE_REQ,
+				     PM_QOS_DEFAULT_VALUE);
 	memset(req, 0, sizeof(*req));
 }
 EXPORT_SYMBOL_GPL(pm_qos_remove_request);
+
+/**
+ * pm_qos_add_min_bound_req - adds a new minimum bound for a constraint
+ * @req: handle to request being added
+ * @priority: priority of the request being added. enum pm_qos_bound_priority
+ * @pm_qos_bounded_class: the bounded constraint id this min bound applies to
+ * @val: value of the min bound request
+ */
+void pm_qos_add_min_bound_req(struct pm_qos_request *req, int priority,
+			      int pm_qos_bounded_class, s32 val)
+{
+	struct pm_qos_bounded_constraint *c;
+
+	if (!req)
+		return;
+
+	if (pm_qos_request_active(req)) {
+		WARN(1, KERN_ERR "pm_qos_add_min_bound_req() called for already added request\n");
+		return;
+	}
+
+	c = pm_qos_bounded_obj_array[pm_qos_bounded_class]->bounds;
+	req->pm_qos_class = c->min_class;
+	req->priority = priority;
+	INIT_DELAYED_WORK(&req->work, pm_qos_work_fn);
+
+	pm_qos_update_bounded_target(pm_qos_array[c->min_class]->constraints,
+				     val, req, req->priority, PM_QOS_ADD_REQ);
+}
+EXPORT_SYMBOL_GPL(pm_qos_add_min_bound_req);
+
+/**
+ * pm_qos_add_max_bound_req - adds a new maximum bound for a constraint
+ * @req: handle to request being added
+ * @priority: priority of the request being added. enum pm_qos_bound_priority
+ * @pm_qos_bounded_class: the bounded constraint id this max bound applies to
+ * @val: value of the max bound request
+ */
+void pm_qos_add_max_bound_req(struct pm_qos_request *req, int priority,
+			      int pm_qos_bounded_class, s32 val)
+{
+	struct pm_qos_bounded_constraint *c;
+
+	if (!req)
+		return;
+
+	if (pm_qos_request_active(req)) {
+		WARN(1, KERN_ERR "pm_qos_add_max_bound_req() called for already added request\n");
+		return;
+	}
+
+	c = pm_qos_bounded_obj_array[pm_qos_bounded_class]->bounds;
+	req->pm_qos_class = c->max_class;
+	req->priority = priority;
+	INIT_DELAYED_WORK(&req->work, pm_qos_work_fn);
+
+	pm_qos_update_bounded_target(pm_qos_array[c->max_class]->constraints,
+				     val, req, req->priority, PM_QOS_ADD_REQ);
+}
+EXPORT_SYMBOL_GPL(pm_qos_add_max_bound_req);
+
+/**
+ * pm_qos_update_bounded_req - updates the requested bound for the constraint
+ * @req: handle to the request being updated
+ * @priority: priority to use for the request
+ * @val: updated value to use for the request
+ *
+ * Updating a request also resets any previous timeouts requests for the
+ * given request handle
+ */
+void pm_qos_update_bounded_req(struct pm_qos_request *req, int priority,
+			       s32 val)
+{
+	struct pm_qos_constraints *c;
+	if (!req)
+		return;
+
+	if (!pm_qos_request_active(req)) {
+		WARN(1, KERN_ERR "pm_qos_update_bounded_req() called for unknown object\n");
+		return;
+	}
+
+	cancel_delayed_work_sync(&req->work);
+
+	c = pm_qos_array[req->pm_qos_class]->constraints;
+
+	if (val == req->node.prio && priority == req->priority)
+		return;
+
+	pm_qos_update_bounded_target(c, val, req, priority,
+				     PM_QOS_UPDATE_REQ);
+	req->priority = priority;
+}
+EXPORT_SYMBOL_GPL(pm_qos_update_bounded_req);
+
+/**
+ * pm_qos_update_bounded_req_timeout - updates the timeout for the request
+ * @req: handle to the request for which timeout is updated
+ * @timeout_us: new timeout value to use in usecs
+ */
+void pm_qos_update_bounded_req_timeout(struct pm_qos_request *req,
+				       unsigned long timeout_us)
+{
+	pm_qos_update_request_timeout(req, req->node.prio, timeout_us);
+}
+EXPORT_SYMBOL_GPL(pm_qos_update_bounded_req_timeout);
+
+/**
+ * pm_qos_remove_bounded_req - removes the requested bound
+ * @req: handle to the bound to remove
+ *
+ * Removes the requested type of bound for the bounded constraint
+ * and ensures that the target bounds are updated properly
+ */
+void pm_qos_remove_bounded_req(struct pm_qos_request *req)
+{
+	pm_qos_remove_request(req);
+}
+EXPORT_SYMBOL_GPL(pm_qos_remove_bounded_req);
+
+/**
+ * pm_qos_add_min_notifier - adds a notifier for the minimum bound
+ * @pm_qos_bounded_class: class id of the bounded constraint
+ * @notifier: notifier to add to the notifier list for min bound
+ *
+ * Notifier is called when there is a change to the minimum bound of
+ * the bounded constraint
+ */
+void pm_qos_add_min_notifier(int pm_qos_bounded_class,
+			     struct notifier_block *notifier)
+{
+	struct pm_qos_bounded_constraint *c;
+
+	c = pm_qos_bounded_obj_array[pm_qos_bounded_class]->bounds;
+	pm_qos_add_notifier(c->min_class, notifier);
+}
+EXPORT_SYMBOL_GPL(pm_qos_add_min_notifier);
+
+/**
+ * pm_qos_add_max_notifier - adds a notifier for the maximum bound
+ * @pm_qos_bounded_class: class id of the bounded constraint
+ * @notifier: notifier to add to the notifier list for min bound
+ *
+ * Notifier is called when there is a change to the maximum bound of
+ * the bounded constraint
+ */
+void pm_qos_add_max_notifier(int pm_qos_bounded_class,
+			     struct notifier_block *notifier)
+{
+	struct pm_qos_bounded_constraint *c;
+
+	c = pm_qos_bounded_obj_array[pm_qos_bounded_class]->bounds;
+	pm_qos_add_notifier(c->max_class, notifier);
+}
+EXPORT_SYMBOL_GPL(pm_qos_add_max_notifier);
+
+/**
+ * pm_qos_remove_min_notifier - removes notifier for the minimum bound
+ * @pm_qos_bounded_class: class id of the bounded constraint
+ * @notifier: notifier to remove from the notifier list for min bound
+ */
+void pm_qos_remove_min_notifier(int pm_qos_bounded_class,
+				struct notifier_block *notifier)
+{
+	struct pm_qos_bounded_constraint *c;
+
+	c = pm_qos_bounded_obj_array[pm_qos_bounded_class]->bounds;
+	pm_qos_remove_notifier(c->min_class, notifier);
+}
+EXPORT_SYMBOL_GPL(pm_qos_remove_min_notifier);
+
+/**
+ * pm_qos_remove_max_notifier - removes notifier for the maximum bound
+ * @pm_qos_bounded_class: class id of the bounded constraint
+ * @notifier: notifier to remove from the notifier list for max bound
+ */
+void pm_qos_remove_max_notifier(int pm_qos_bounded_class,
+				struct notifier_block *notifier)
+{
+	struct pm_qos_bounded_constraint *c;
+
+	c = pm_qos_bounded_obj_array[pm_qos_bounded_class]->bounds;
+	pm_qos_remove_notifier(c->max_class, notifier);
+}
+EXPORT_SYMBOL_GPL(pm_qos_remove_max_notifier);
+
+/**
+ * pm_qos_read_min_bound - gets the current min bound set by all requests
+ * @pm_qos_bounded_class: class id of the bounded constraint
+ */
+s32 pm_qos_read_min_bound(int pm_qos_bounded_class)
+{
+	struct pm_qos_bounded_constraint *c;
+	struct pm_qos_constraints *bound;
+
+	c = pm_qos_bounded_obj_array[pm_qos_bounded_class]->bounds;
+	bound = pm_qos_array[c->min_class]->constraints;
+	return pm_qos_read_value(bound);
+}
+EXPORT_SYMBOL_GPL(pm_qos_read_min_bound);
+
+/**
+ * pm_qos_read_max_bound - gets the current max bound set by all requests
+ * @pm_qos_bounded_class: class id of the bounded constraint
+ */
+s32 pm_qos_read_max_bound(int pm_qos_bounded_class)
+{
+	struct pm_qos_bounded_constraint *c;
+	struct pm_qos_constraints *bound;
+
+	c = pm_qos_bounded_obj_array[pm_qos_bounded_class]->bounds;
+	bound = pm_qos_array[c->max_class]->constraints;
+	return pm_qos_read_value(bound);
+}
+EXPORT_SYMBOL_GPL(pm_qos_read_max_bound);
+
+static int pm_qos_enabled_set(const char *arg, const struct kernel_param *kp)
+{
+	bool old;
+	int ret, i;
+	struct pm_qos_constraints *c;
+	struct pm_qos_bounded_constraint *parent;
+
+	old = pm_qos_enabled;
+	ret = param_set_bool(arg, kp);
+	if (ret != 0) {
+		pr_warn("%s: cannot set PM QoS enable to %s\n",
+			__FUNCTION__, arg);
+		return ret;
+	}
+
+	mutex_lock(&pm_qos_lock);
+
+	for (i = 1; i < PM_QOS_NUM_CLASSES; i++) {
+		c = pm_qos_array[i]->constraints;
+		if (c->parent_class) {
+			int class = c->parent_class;
+			parent = pm_qos_bounded_obj_array[class]->bounds;
+			pm_qos_set_bounded_targets(parent);
+		} else if (old && !pm_qos_enabled) {
+			/* got disabled */
+			pm_qos_set_value(c, c->default_value);
+		} else if (!old && pm_qos_enabled) {
+			/* got enabled */
+			pm_qos_set_value(c, pm_qos_get_value(c));
+		}
+
+		if (old != pm_qos_enabled)
+			blocking_notifier_call_chain(c->notifiers,
+					(unsigned long)pm_qos_read_value(c),
+					NULL);
+	}
+
+	mutex_unlock(&pm_qos_lock);
+
+	return ret;
+}
+
+static int pm_qos_enabled_get(char *buffer, const struct kernel_param *kp)
+{
+	return param_get_bool(buffer, kp);
+}
+
+static struct kernel_param_ops pm_qos_enabled_ops = {
+	.set = pm_qos_enabled_set,
+	.get = pm_qos_enabled_get,
+};
+
+module_param_cb(enable, &pm_qos_enabled_ops, &pm_qos_enabled, 0644);
+
+static int pm_qos_disable_priorities_set(const char *arg,
+					 const struct kernel_param *kp)
+{
+	int ret, i, old;
+	struct pm_qos_constraints *c;
+	struct pm_qos_bounded_constraint *parent;
+
+	old = disable_priorities;
+	ret = param_set_int(arg, kp);
+	if (ret) {
+		pr_warn("%s: cannot set PM QoS disable_priorities to %s\n",
+			__func__, arg);
+		return ret;
+	}
+
+	if (disable_priorities > PM_QOS_NUM_PRIO)
+		disable_priorities = PM_QOS_NUM_PRIO + 1;
+
+	if (disable_priorities < PM_QOS_PRIO_HIGHEST)
+		disable_priorities = PM_QOS_PRIO_HIGHEST;
+
+	if (old == disable_priorities)
+		return ret;
+
+	mutex_lock(&pm_qos_lock);
+
+	for (i = 1; i < PM_QOS_NUM_BOUNDED_CLASSES; i++) {
+		s32 old_min, old_max, new_min, new_max;
+		parent = pm_qos_bounded_obj_array[i]->bounds;
+		old_min = pm_qos_read_min_bound(i);
+		old_max = pm_qos_read_max_bound(i);
+		pm_qos_set_bounded_targets(parent);
+		new_min = pm_qos_read_min_bound(i);
+		new_max = pm_qos_read_max_bound(i);
+		if (old_min != new_min) {
+			c = pm_qos_array[parent->min_class]->constraints;
+			blocking_notifier_call_chain(c->notifiers,
+					(unsigned long)new_min,
+					NULL);
+		}
+		if (old_max != new_max) {
+			c = pm_qos_array[parent->max_class]->constraints;
+			blocking_notifier_call_chain(c->notifiers,
+					(unsigned long)new_max,
+					NULL);
+		}
+	}
+
+	mutex_unlock(&pm_qos_lock);
+
+	return ret;
+}
+
+static int pm_qos_disable_priorities_get(char *buffer,
+					 const struct kernel_param *kp)
+{
+	return param_get_int(buffer, kp);
+}
+static struct kernel_param_ops pm_qos_disable_priorities_ops = {
+	.set = pm_qos_disable_priorities_set,
+	.get = pm_qos_disable_priorities_get,
+};
+
+module_param_cb(disable_priorities, &pm_qos_disable_priorities_ops,
+		&disable_priorities, 0644);
 
 /**
  * pm_qos_add_notifier - sets notification entry for changes to target value
@@ -534,19 +1489,31 @@ static int find_pm_qos_object_by_minor(int minor)
 static int pm_qos_power_open(struct inode *inode, struct file *filp)
 {
 	long pm_qos_class;
+	struct pm_qos_constraints *c;
+	struct pm_qos_request *req;
 
 	pm_qos_class = find_pm_qos_object_by_minor(iminor(inode));
-	if (pm_qos_class >= PM_QOS_CPU_DMA_LATENCY) {
-		struct pm_qos_request *req = kzalloc(sizeof(*req), GFP_KERNEL);
-		if (!req)
-			return -ENOMEM;
+	if (pm_qos_class < PM_QOS_CPU_DMA_LATENCY)
+		return -EPERM;
 
+	req = kzalloc(sizeof(*req), GFP_KERNEL);
+	if (!req)
+		return -ENOMEM;
+
+	c = pm_qos_array[pm_qos_class]->constraints;
+
+	if (c->parent_class && c->type == PM_QOS_MAX)
+		pm_qos_add_min_bound_req(req, PM_QOS_PRIO_DEFAULT_UNTRUSTED,
+					 c->parent_class, PM_QOS_DEFAULT_VALUE);
+	else if (c->parent_class && c->type == PM_QOS_MIN)
+		pm_qos_add_max_bound_req(req, PM_QOS_PRIO_DEFAULT_UNTRUSTED,
+					 c->parent_class, PM_QOS_DEFAULT_VALUE);
+	else
 		pm_qos_add_request(req, pm_qos_class, PM_QOS_DEFAULT_VALUE);
-		filp->private_data = req;
 
-		return 0;
-	}
-	return -EPERM;
+	filp->private_data = req;
+
+	return 0;
 }
 
 static int pm_qos_power_release(struct inode *inode, struct file *filp)
@@ -565,17 +1532,21 @@ static ssize_t pm_qos_power_read(struct file *filp, char __user *buf,
 		size_t count, loff_t *f_pos)
 {
 	s32 value;
-	unsigned long flags;
 	struct pm_qos_request *req = filp->private_data;
+	struct pm_qos_constraints *c;
 
 	if (!req)
 		return -EINVAL;
 	if (!pm_qos_request_active(req))
 		return -EINVAL;
 
-	spin_lock_irqsave(&pm_qos_lock, flags);
-	value = pm_qos_get_value(pm_qos_array[req->pm_qos_class]->constraints);
-	spin_unlock_irqrestore(&pm_qos_lock, flags);
+	mutex_lock(&pm_qos_lock);
+	c = pm_qos_array[req->pm_qos_class]->constraints;
+	if (c->parent_class)
+		value = pm_qos_read_value(c);
+	else
+		value = pm_qos_get_value(c);
+	mutex_unlock(&pm_qos_lock);
 
 	return simple_read_from_buffer(buf, count, f_pos, &value, sizeof(s32));
 }
@@ -603,6 +1574,191 @@ static ssize_t pm_qos_power_write(struct file *filp, const char __user *buf,
 	return count;
 }
 
+/* Userspace interface for bounded constraints */
+static int register_pm_qos_bounded_obj(struct pm_qos_bounded_object *qos)
+{
+	qos->miscdev.minor = MISC_DYNAMIC_MINOR;
+	qos->miscdev.name = qos->name;
+	qos->miscdev.fops = &pm_qos_bounded_constraint_fops;
+
+	return misc_register(&qos->miscdev);
+}
+
+static int find_pm_qos_bounded_obj_by_minor(int minor)
+{
+	int class;
+	for (class = 0; class < PM_QOS_NUM_BOUNDED_CLASSES; class++)
+		if (minor == pm_qos_bounded_obj_array[class]->miscdev.minor)
+			return class;
+	return -1;
+}
+
+struct pm_qos_bounded_user_req {
+	struct pm_qos_request min_req;
+	struct pm_qos_request max_req;
+};
+
+/* Represents the userspace input */
+struct pm_qos_bounded_input {
+	s32 max;
+	s32 min;
+	s32 priority;
+	s32 timeout_ms;
+};
+
+#define MAX_READ_BYTES	3000
+#define MAX_WRITE_BYTES	50
+
+/*
+ * Assumes input is a maximum of 4 s32 ASCII base10 numbers space delimited
+ * Order of input is max, min, priority and timeout
+ */
+static ssize_t pm_qos_bounded_write(struct file *filp, const char __user *buf,
+				    size_t count, loff_t *f_pos)
+{
+	int i, ret;
+	char *input, *val, *tmp;
+	struct pm_qos_bounded_input value;
+	struct pm_qos_constraints *max_constraint, *min_constraint;
+	struct pm_qos_bounded_user_req *req = filp->private_data;
+	s32 * const value_array[] = {
+		&value.max, &value.min, &value.priority, &value.timeout_ms
+	};
+
+	if (!count || count >= MAX_WRITE_BYTES)
+		return -EINVAL;
+
+	input = kzalloc(count + 1, GFP_KERNEL);
+	tmp = input;
+	if (!input)
+		return -ENOMEM;
+
+	if (copy_from_user(input, buf, count)) {
+		kfree(tmp);
+		return -EFAULT;
+	}
+	input[count] = '\0';
+	memset(&value, 0, sizeof(value));
+	max_constraint = pm_qos_array[req->max_req.pm_qos_class]->constraints;
+	min_constraint = pm_qos_array[req->min_req.pm_qos_class]->constraints;
+	value.max = max_constraint->default_value;
+	value.min = min_constraint->default_value;
+	i = 0;
+	while ((val = strsep(&input, " ")) != NULL) {
+		if (!val || *val == '\0')
+			break;
+		ret = kstrtoint(val, 10, value_array[i]);
+		if (ret) {
+			pr_debug("%s, %d, %x\n", val, *value_array[i], ret);
+			kfree(tmp);
+			return -EINVAL;
+		}
+		i++;
+		if (i >= ARRAY_SIZE(value_array))
+			break;
+	}
+
+	if (value.priority <= PM_QOS_PRIO_TRUSTED ||
+	    value.priority >= PM_QOS_NUM_PRIO)
+		value.priority = PM_QOS_PRIO_DEFAULT_UNTRUSTED;
+
+	pm_qos_update_bounded_req(&req->max_req, value.priority, value.max);
+	pm_qos_update_bounded_req(&req->min_req, value.priority, value.min);
+
+	if (value.timeout_ms > 0) {
+		pm_qos_update_bounded_req_timeout(&req->max_req,
+						  value.timeout_ms * 1000);
+		pm_qos_update_bounded_req_timeout(&req->min_req,
+						  value.timeout_ms * 1000);
+	}
+
+	kfree(tmp);
+	return count;
+}
+
+/*
+ * Read out the intersection of all ranges with priority greater than or
+ * equal to at every priority level. If the intersection set is NULL the
+ * higher priority bound is taken. Returns the total number of bytes read.
+ * If count (max bytes to read) is not large enough to read the ranges
+ * for all priorities -EFAULT is returned
+ */
+static ssize_t pm_qos_bounded_read(struct file *filp, char __user *buf,
+				   size_t count, loff_t *f_pos)
+{
+	char *output;
+	struct pm_qos_constraints *max_constraint;
+	struct pm_qos_bounded_constraint *parent;
+	size_t bytes_read;
+	ssize_t ret;
+	struct pm_qos_bounded_user_req *req = filp->private_data;
+	max_constraint = pm_qos_array[req->max_req.pm_qos_class]->constraints;
+	parent = pm_qos_bounded_obj_array[max_constraint->parent_class]->bounds;
+
+	/* Finished reading */
+	if (*f_pos)
+		return 0;
+
+	output = kzalloc(MAX_READ_BYTES, GFP_KERNEL);
+	if (!output)
+		return -ENOMEM;
+
+	mutex_lock(&pm_qos_lock);
+	bytes_read = pm_qos_find_bounded_targets(parent, NULL, NULL,
+						 output, MAX_READ_BYTES);
+	mutex_unlock(&pm_qos_lock);
+
+	if (bytes_read > count)
+		goto err;
+
+	ret = copy_to_user(buf, output, bytes_read);
+	if (bytes_read == ret)
+		goto err;
+
+	*f_pos += bytes_read - ret;
+
+	kfree(output);
+	return bytes_read - ret;
+err:
+	kfree(output);
+	return -EFAULT;
+}
+
+static int pm_qos_bounded_open(struct inode *inode, struct file *filp)
+{
+	long class;
+	struct pm_qos_bounded_user_req *req;
+
+	class = find_pm_qos_bounded_obj_by_minor(iminor(inode));
+	if (class < 0)
+		return -EPERM;
+
+	req = kzalloc(sizeof(*req), GFP_KERNEL);
+	if (!req)
+		return -ENOMEM;
+
+	pm_qos_add_max_bound_req(&req->max_req, PM_QOS_PRIO_DEFAULT_UNTRUSTED,
+				 class, PM_QOS_DEFAULT_VALUE);
+	pm_qos_add_min_bound_req(&req->min_req, PM_QOS_PRIO_DEFAULT_UNTRUSTED,
+				 class, PM_QOS_DEFAULT_VALUE);
+
+	filp->private_data = req;
+
+	return 0;
+}
+
+static int pm_qos_bounded_release(struct inode *inode, struct file *filp)
+{
+	struct pm_qos_bounded_user_req *req;
+
+	req = filp->private_data;
+	pm_qos_remove_bounded_req(&req->max_req);
+	pm_qos_remove_bounded_req(&req->min_req);
+
+	kfree(req);
+
+	return 0;
+}
 
 static int __init pm_qos_power_init(void)
 {
@@ -610,12 +1766,48 @@ static int __init pm_qos_power_init(void)
 	int i;
 
 	BUILD_BUG_ON(ARRAY_SIZE(pm_qos_array) != PM_QOS_NUM_CLASSES);
+	BUILD_BUG_ON(ARRAY_SIZE(pm_qos_bounded_obj_array) !=
+		     PM_QOS_NUM_BOUNDED_CLASSES);
 
 	for (i = PM_QOS_CPU_DMA_LATENCY; i < PM_QOS_NUM_CLASSES; i++) {
+#if defined(CONFIG_ARCH_TEGRA_18x_SOC)
+		switch (i) {
+		case PM_QOS_CPU_FREQ_MIN:
+		case PM_QOS_CPU_FREQ_MAX:
+			continue;
+		}
+#else
+		switch (i) {
+		case PM_QOS_CLUSTER0_FREQ_MIN:
+		case PM_QOS_CLUSTER0_FREQ_MAX:
+		case PM_QOS_CLUSTER1_FREQ_MIN:
+		case PM_QOS_CLUSTER1_FREQ_MAX:
+			continue;
+		}
+#endif
 		ret = register_pm_qos_misc(pm_qos_array[i]);
 		if (ret < 0) {
 			printk(KERN_ERR "pm_qos_param: %s setup failed\n",
 			       pm_qos_array[i]->name);
+			return ret;
+		}
+	}
+
+	for (i = 1; i < PM_QOS_NUM_BOUNDED_CLASSES; i++) {
+#if defined(CONFIG_ARCH_TEGRA_18x_SOC)
+		if (i == PM_QOS_CPU_FREQ_BOUNDS)
+			continue;
+#else
+		switch (i) {
+		case PM_QOS_CLUSTER0_FREQ_BOUNDS:
+		case PM_QOS_CLUSTER1_FREQ_BOUNDS:
+			continue;
+		}
+#endif
+		ret = register_pm_qos_bounded_obj(pm_qos_bounded_obj_array[i]);
+		if (ret < 0) {
+			pr_err("pm_qos_bounded_reg: %s setup failed\n",
+			       pm_qos_bounded_obj_array[i]->name);
 			return ret;
 		}
 	}

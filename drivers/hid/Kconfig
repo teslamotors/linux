@@ -513,6 +513,16 @@ config HID_NTRIG
 	---help---
 	Support for N-Trig touch screen.
 
+config HID_NVIDIA
+	tristate "NVIDIA game controller"
+	depends on USB_HID
+	---help---
+	Support for NVIDIA game controllers. To improve gaming experience, NVIDIA controller
+	has customized axis flat and fuzz values.
+	Supported devices:
+
+	   - NVIDIA Shield Handheld game console.
+
 config HID_ORTEK
 	tristate "Ortek PKB-1700/WKB-2000/Skycable wireless keyboard and mouse trackpad"
 	depends on HID
@@ -864,6 +874,18 @@ config HID_SENSOR_HUB
 	  drivers can use the service provided by this driver to register
 	  for events and handle data streams. Each sensor driver can format
 	  data and present to user mode using input or IIO interface.
+
+config HID_ANDROIDTV_REMOTE
+	tristate "AndroidTV remote control support"
+	depends on USB_HID
+	---help---
+	Support for AndroidTV remote control.
+
+config HID_SHIELD_REMOTE
+	tristate "SHIELD remote control support"
+	depends on USB_HID
+	---help---
+	Support for NVIDIA SHIELD remote control.
 
 endmenu
 

@@ -1,0 +1,111 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/ {
+	/* SPDIF simple bus */
+	spdif_dit {
+		compatible = "simple-bus";
+		device_type = "spdif-dit";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		spdif_dit0: spdif-dit.0@0 {
+			compatible = "linux,spdif-dit";
+			reg = <0x0>;
+			status = "disabled";
+		};
+
+		spdif_dit1: spdif-dit.1@1 {
+			compatible = "linux,spdif-dit";
+			reg = <0x1>;
+			status = "disabled";
+		};
+
+		spdif_dit2: spdif-dit.2@2 {
+			compatible = "linux,spdif-dit";
+			reg = <0x2>;
+			status = "disabled";
+		};
+
+		spdif_dit3: spdif-dit.3@3 {
+			compatible = "linux,spdif-dit";
+			reg = <0x03>;
+			status = "disabled";
+		};
+
+		spdif_dit4: spdif-dit.4@4 {
+			compatible = "linux,spdif-dit";
+			reg = <0x04>;
+			status = "disabled";
+		};
+
+		spdif_dit5: spdif-dit.5@5 {
+			compatible = "linux,spdif-dit";
+			reg = <0x05>;
+			status = "disabled";
+		};
+
+		spdif_dit6: spdif-dit.6@6 {
+			compatible = "linux,spdif-dit";
+			reg = <0x06>;
+			status = "disabled";
+		};
+
+		spdif_dit7: spdif-dit.7@7 {
+			compatible = "linux,spdif-dit";
+			reg = <0x07>;
+			status = "disabled";
+		};
+
+		spdif_dit8: spdif-dit.8@8 {
+			compatible = "linux,spdif-dit";
+			reg = <0x08>;
+			status = "disabled";
+		};
+
+		spdif_dit9: spdif-dit.9@9 {
+			compatible = "linux,spdif-dit";
+			reg = <0x09>;
+			status = "disabled";
+		};
+
+		spdif_dit10: spdif-dit.10@a {
+			compatible = "linux,spdif-dit";
+			reg = <0x0a>;
+			status = "disabled";
+		};
+
+		spdif_dit11: spdif-dit.11@b {
+			compatible = "linux,spdif-dit";
+			reg = <0x0b>;
+			status = "disabled";
+		};
+
+		spdif_dit12: spdif-dit.12@c {
+			compatible = "linux,spdif-dit";
+			reg = <0x0c>;
+			status = "disabled";
+		};
+
+		spdif_dit13: spdif-dit.13@d {
+			compatible = "linux,spdif-dit";
+			reg = <0x0d>;
+			status = "disabled";
+		};
+	};
+};

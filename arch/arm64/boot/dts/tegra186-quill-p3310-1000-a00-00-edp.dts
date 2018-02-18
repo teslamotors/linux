@@ -1,0 +1,79 @@
+/*
+ * tegra186-quill-p3310-1000-a00-00-edp.dtsi:
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-quill-p3310-1000-a00-00-base.dts"
+
+/ {
+	fixed-regulators {
+		/* Quill eDP LCD backlight */
+		vdd_lcd_bl_en: regulator@17 {
+			compatible = "regulator-fixed-sync";
+			reg = <17>;
+			regulator-name = "vdd_lcd_bl_en";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(U, 3) 0>; /* GPIO_DIS3 for eDP */
+			enable-active-high;
+			regulator-boot-on;
+		};
+		/* HACK Quill eDP LCD backlight pwm */
+		vdd_lcd_bl_pwm: regulator@18 {
+			compatible = "regulator-fixed-sync";
+			reg = <18>;
+			regulator-name = "vdd_lcd_bl_pwm";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			enable-active-high;
+			gpio = <&tegra_gpio TEGRA_GPIO(U, 0) 1>; /* GPIO_DIS0 for eDP */
+			regulator-boot-on;
+		};
+	};
+
+	host1x {
+		/* Head0->SOR0->eDP */
+		nvdisplay@15200000 {
+			vdd_lcd_bl_en-supply = <&vdd_lcd_bl_en>; /* GPIO_DIS3 / LCD_BL_EN for eDP */
+			nvidia,dc-or-node = "/host1x/sor";
+		};
+
+		sor {
+			status = "okay";
+			hdmi-display {
+				status = "disabled";
+			};
+
+			dp-display {
+				status = "disabled";
+			};
+
+			panel-s-edp-uhdtv-15-6 {
+				status = "okay";
+				nvidia,panel-rst-gpio = <&tegra_gpio TEGRA_GPIO(P, 3) 1>; /* PP3 */
+				nvidia,panel-bl-pwm-gpio = <&tegra_gpio TEGRA_GPIO(U, 0) 1>; /* PU0 */
+				nvidia,en-vmm-vpp-with-i2c-config;
+				nvidia,is_ext_dp_panel = <0>;
+
+				disp-default-out {
+					/* SOR0->eDP on plld3; SOR1->HDMI on plld2 */
+					nvidia,out-parent-clk = "plld3";
+				};
+				smartdimmer {
+					status = "okay";
+				};
+			}; /* panel-s-edp-uhdtv-15-6 */
+		}; /* sor */
+	}; /* host1x */
+};
+

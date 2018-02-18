@@ -1,0 +1,166 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/ {
+
+	aliases {
+		sdhci0 = &sdmmc1;
+		sdhci1 = &sdmmc2;
+		sdhci2 = &sdmmc3;
+		sdhci3 = &sdmmc4;
+	};
+
+	sdmmc4: sdhci@3460000 { /* Used for eMMC */
+		compatible = "nvidia,tegra186-sdhci";
+		reg = <0x0 0x3460000 0x0 0x210>;
+		interrupts = < 0 65 0x04>;
+		max-clk-limit = <196249804>;
+                ddr-clk-limit = <48000000>;
+		tap-delay = <9>;
+		trim-delay = <5>;
+		nvidia,ddr-tap-delay = <9>;
+		ddr-trim-delay = <5>;
+		dqs-trim-delay = <63>;
+		dqs-trim-delay-hs533 = <40>;
+		mmc-ocr-mask = <0>;
+		bus-width = <8>;
+		ignore-pm-notify;
+		keep-power-in-suspend;
+		non-removable;
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		mmc-ddr-1_8v;
+		mmc-hs200-1_8v;
+		mmc-hs400-1_8v;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
+		uhs-mask = <0x60>;
+		nvidia,is-emmc;
+		calib-3v3-offsets = <0x0505>;
+		calib-1v8-offsets = <0x0505>;
+		pll_source = "pll_p", "pll_c4_out0";
+		resets = <&tegra_car TEGRA186_RESET_SDMMC4>;
+		reset-names = "sdmmc";
+		clocks = <&tegra_car TEGRA186_CLK_SDMMC4>,
+		       <&tegra_car TEGRA186_CLK_PLLP_OUT0>,
+		       <&tegra_car TEGRA186_CLK_PLLC4_OUT0>;
+		clock-names = "sdmmc", "pll_p", "pll_c4_out0";
+		#stream-id-cells = <1>;
+		status = "disabled";
+	};
+
+	sdmmc3: sdhci@3440000 {
+		compatible = "nvidia,tegra186-sdhci";
+		reg = <0x0 0x3440000 0x0 0x210>;
+		interrupts = < 0 64 0x04>;
+		max-clk-limit = <204000000>;
+                ddr-clk-limit = <48000000>;
+		tap-delay = <11>;
+		trim-delay = <5>;
+		nvidia,ddr-tap-delay = <11>;
+		ddr-trim-delay = <5>;
+                bus-width = <4>;
+		ignore-pm-notify;
+                mmc-ocr-mask = <0>;
+		keep-power-in-suspend;
+		non-removable;
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		pwrdet-support;
+		compad-vref-3v3 = <0x1>;
+		compad-vref-1v8 = <0x2>;
+		uhs-mask = <0x1C>;
+		pll_source = "pll_p";
+		resets = <&tegra_car TEGRA186_RESET_SDMMC3>;
+		reset-names = "sdmmc";
+		clocks = <&tegra_car TEGRA186_CLK_SDMMC3>,
+		       <&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "sdmmc", "pll_p";
+		#stream-id-cells = <1>;
+		pad-controllers = <&tegra_pmc TEGRA_IO_PAD_GROUP_SDMMC3_HV>;
+		pad-names = "sdmmc";
+		status = "disabled";
+	};
+
+	sdmmc2: sdhci@3420000 { /* Should be used for eMMC. HS400 mode is not supported */
+		compatible = "nvidia,tegra186-sdhci";
+		reg = <0x0 0x3420000 0x0 0x210>;
+		interrupts = < 0 63 0x04>;
+		max-clk-limit = <200000000>;
+                ddr-clk-limit = <48000000>;
+		tap-delay = <11>;
+		trim-delay = <5>;
+		nvidia,ddr-tap-delay = <11>;
+		ddr-trim-delay = <5>;
+		mmc-ocr-mask = <0>;
+		bus-width = <8>;
+		ignore-pm-notify;
+		keep-power-in-suspend;
+		non-removable;
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		mmc-ddr-1_8v;
+		mmc-hs200-1_8v;
+		pwrdet-support;
+		compad-vref-3v3 = <0x1>;
+		compad-vref-1v8 = <0x2>;
+		uhs-mask = <0x60>;
+		nvidia,is-emmc;
+		pll_source = "pll_p";
+		resets = <&tegra_car TEGRA186_RESET_SDMMC2>;
+		reset-names = "sdmmc";
+		clocks = <&tegra_car TEGRA186_CLK_SDMMC2>,
+		       <&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "sdmmc", "pll_p";
+		#stream-id-cells = <1>;
+		pad-controllers = <&tegra_pmc TEGRA_IO_PAD_GROUP_SDMMC2_HV>;
+		pad-names = "sdmmc";
+		nvidia,disable-rtpm;
+		status = "disabled";
+	};
+
+	sdmmc1: sdhci@3400000 {
+		compatible = "nvidia,tegra186-sdhci";
+		reg = <0x0 0x3400000 0x0 0x210>;
+		interrupts = < 0 62 0x04>;
+		max-clk-limit = <204000000>;
+                ddr-clk-limit = <48000000>;
+		tap-delay = <11>;
+		trim-delay = <5>;
+		nvidia,ddr-tap-delay = <11>;
+		ddr-trim-delay = <5>;
+                mmc-ocr-mask = <3>;
+                bus-width = <4>;
+		ignore-pm-notify;
+		keep-power-in-suspend;
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		pwrdet-support;
+		compad-vref-3v3 = <0x1>;
+		compad-vref-1v8 = <0x2>;
+		uhs-mask = <0x1C>;
+		pll_source = "pll_p";
+		resets = <&tegra_car TEGRA186_RESET_SDMMC1>;
+		reset-names = "sdmmc";
+		clocks = <&tegra_car TEGRA186_CLK_SDMMC1>,
+		       <&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "sdmmc", "pll_p";
+		#stream-id-cells = <1>;
+		pad-controllers = <&tegra_pmc TEGRA_IO_PAD_GROUP_SDMMC1_HV>;
+		pad-names = "sdmmc";
+		status = "disabled";
+	 };
+};

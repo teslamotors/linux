@@ -1,0 +1,161 @@
+/*
+ * arch/arm64/boot/dts/tegra132-tn8.dtsi
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#define TEGRA132_PACKAGE_IS_DSC
+#include "tegra132-soc-shield.dtsi"
+#include "tegra132-platforms/tegra132-modem-common.dtsi"
+
+/ {
+	serial@70006000 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006200 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006300 {
+		compatible = "nvidia,tegra20-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
+		status = "okay";
+	};
+
+	i2c@7000d000 {
+		nvidia,bit-banging-xfer-after-shutdown;
+	};
+
+	spi@7000d400 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	spi@7000da00 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	pmc@7000e400 {
+		nvidia,invert-interrupt;
+	};
+
+	xusb@70090000 {
+		/* nvidia,uses_external_pmic;
+		nvidia,gpio_controls_muxed_ss_lanes; */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,portmap = <0x101>; /* SSP0, USB2P0 */
+		nvidia,ss_portmap = <0x0>; /* SSP0 on USB2P0 */
+		nvidia,lane_owner = <4>; /* USB3P0 */
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		status = "okay";
+	};
+
+	memory@0x80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		nvidia,qc2-input-voltage = <1>;
+		nvidia,qc2-current-limit-ma = <1200>;
+		nvidia,dcp-current-limit-ma = <1800>;
+		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_bat_chg-supply = <&battery_charger>;
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+		usb_vbus-supply = <&usb0_vbus>;
+		status = "okay";
+	};
+
+	psy_extcon {
+		compatible = "power-supply-extcon";
+		extcon-cables = <&udc 1 &udc 2 &udc 3
+				&udc 4 &udc 5 &udc 6
+				&udc 7 &udc 8 &udc 9
+				&udc 10 &otg 0>;
+		extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
+				"qc2-charger", "downstream-charger","fast-charger",
+				"slow-charger", "apple-500ma", "apple-1a",
+				"apple-2a", "y-cable";
+	};
+
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,reset-gpio = <&gpio TEGRA_GPIO(X, 1) 0>;
+		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) 0>;
+		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) 0>;
+		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) 0>;
+		interrupt-parent = <&gpio>;
+		interrupts = <166 0x01>;
+	};
+
+	ehci@7d004000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		vddio_hsic-supply = <&ldo5_reg>;
+		status = "disabled";
+	};
+
+	therm_est_sensor {
+		subdev {
+			subdev_names = "Tdiode", "Tboard";
+
+			coeff_set@0 {
+				toffset = <708>;
+				coeffs = <
+					(-1) (-1) 0 (-1) 0 (-1) (-1) 0 0 0 1 1 1 1 2 2 2 2 3 5
+					(-3) (-1) 1 1 2 1 2 1 (-1) (-1) 0 2 3 4 5 3 3 4 6 36
+				>;
+			};
+		};
+	};
+
+	cpu_edp {
+		nvidia,edp_limit = <16800>;
+	};
+
+	gpu_edp {
+		nvidia,edp_limit = <11200>;
+	};
+
+};

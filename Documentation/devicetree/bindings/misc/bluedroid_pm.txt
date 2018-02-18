@@ -1,0 +1,39 @@
+This driver is implemented to actively manage the bluetooth radio power and
+control wake interface from bluetooth radio to host processor.
+Two interfaces are used to manage bluetooth radio power
+
+RFKILL: This interface is used to toggle rfkill switches which are controlled
+by gpios and voltage regulators. This interface is created only when
+bluetooth radio requires one of rfkill switches [GPIO/ Voltage regulators]
+Driver assumes vdd_bt_3v3 as consumer name for 3V regulator and
+vddio_bt_1v8 as consumer name for 1.8V regulator
+
+PROCFS: Using procfs interface, driver controls BT chip ext_wake GPIO to
+enable/disable BT chip LPM. This interface is created only when bluetooth
+module supports LPM mode control using GPIO
+
+This driver assumes platform data is passed from the board files to configure
+IO parameters needed to control bluetooth radio.
+
+Required Properties:
+- compatible: Must be  "nvidia,tegra-bluedroid_pm";
+
+Optional Properties:
+- "bluedoird_pm,shoutdown-gpio" is resource name to register radio's Enable/Shutdown gpio
+- "bluedoird_pm,reset-gpio" is resource name to regster radio's reset gpio
+    One of above is mandatory requirement for registering rfkill interface.
+
+- "bluedoird_pm,ext-wake-gpio" is resource name to register radio's ext_wake gpio
+- "bluedoird_pm,host-wake-gpio" is resource name to register host wake gpio
+
+Example:
+bluedroid_pm {
+	compatible = "nvidia,tegra-bluedroid_pm";
+	id = <0>;
+	bluedoird_pm,reset-gpio = <&gpio TEGRA_GPIO(X, 1) 0>;
+	bluedoird_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) 0>;
+	bluedoird_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) 0>;
+	interrupt-parent = <&gpio>;
+	interrupts = <166 0x01>;
+};
+

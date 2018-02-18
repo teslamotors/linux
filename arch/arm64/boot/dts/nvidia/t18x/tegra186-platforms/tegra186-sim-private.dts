@@ -1,0 +1,404 @@
+/*
+ * arch/arm64/boot/dts/tegra186-sim-private.dts
+ *
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/dts-v1/;
+
+/memreserve/ 0x80000000 0x00010000;
+
+#include "tegra186-soc/tegra186-soc-sim-fpga.dtsi"
+#include "tegra186-soc/tegra186-cpus-2D4A.dtsi"
+#include "panel-sim.dtsi"
+#include "tegra186-sim-hdmi.dtsi"
+#include "tegra186-platforms/tegra186-sunstreaker-eqos.dtsi"
+#include <dt-bindings/sound/tegra-asoc-alt.h>
+
+/ {
+	model = "t186ref";
+	compatible = "nvidia,tegra186";
+
+	reserved-memory {
+		vpr: vpr-carveout {
+			status = "disabled";
+		};
+	};
+
+	chosen {
+		bootargs ="mem=1024M@2048M console=ttyS0,115200 earlyprintk=uart8250-32bit,0x03100000";
+		stdout-path = &uarta;
+	};
+
+	/* chosen */
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "t186ref";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0xc0000000 >;
+	};
+
+	clock@5000000 {
+		status = "disabled";
+	};
+
+	ethernet@0x7ffff000 {
+		compatible = "smsc,lan9115";
+		reg = <0x0 0x03b40000 0x0 0x00000100>;
+		interrupts = <0 218 0x4>;
+		reg-io-width = <4>;
+		smsc,irq-active-high;
+		smsc,irq-push-pull;
+	};
+
+	asim {
+		compatible = "nvidia,tegra210-asim";
+		reg = < 0x0 0x03b41000 0x0 0x00001000 >;
+	};
+
+	adma@2930000 {
+		dma-channels = <10>;
+		status = "disabled";
+	};
+
+        adsp_audio {
+                compr-ops = <1>;
+                num-plugin = <4>;
+                plugin-info-1 {
+                        plugin-name = "mp3-dec1";
+                        firmware-name = "nvmp3dec.elf";
+                        widget-name = "MP3-DEC1";
+                };
+                plugin-info-2 {
+                        plugin-name = "spkprot";
+                        firmware-name = "nvspkprot.elf";
+                        widget-name = "SPKPROT-SW";
+                };
+                plugin-info-3 {
+                        plugin-name = "src";
+                        firmware-name = "nvsrc.elf";
+                        widget-name = "SRC";
+                };
+                plugin-info-4 {
+                        plugin-name = "aac-dec1";
+                        firmware-name = "nvaacdec.elf";
+                        widget-name = "AAC-DEC1";
+                };
+        };
+
+	ahub {
+		i2s@02901000 {
+			fsync-width = <31>;
+		};
+
+		i2s@02901100 {
+			fsync-width = <31>;
+		};
+
+		i2s@02901200 {
+			fsync-width = <31>;
+		};
+
+		i2s@02901300 {
+			fsync-width = <31>;
+		};
+
+		i2s@02901400 {
+			fsync-width = <31>;
+		};
+
+		i2s@02901500 {
+			fsync-width = <31>;
+		};
+	};
+
+	sound_ref {
+		compatible = "nvidia,tegra-audio-t186ref";
+		nvidia,model = "tegra-snd-t186ref";
+		nvidia,num-codec-link = <5>;
+		nvidia,num-amx = <1>;
+		nvidia,num-adx = <1>;
+		nvidia,amx-slot-size = <32 32>;
+		nvidia,adx-slot-size = <32 32>;
+		nvidia,addr-max9485 = <0>;
+		nvidia,amx-slot-map = <
+			/* jack 0 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* jack 1 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* jack 2 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* jack 3 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)>;
+		nvidia,adx-slot-map = <
+			/* jack 0 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* jack 1 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* jack 2 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* jack 3 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)>;
+
+        nvidia,audio-routing =
+                "Headphone-x",  "x OUT",
+                "x IN", "LineIn-x";
+
+        nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			link-name = "spdif-dit-0";
+			cpu-dai = <&tegra_i2s3>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "I2S3";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s32_le";
+			bclk_ratio = <1>;
+			srate = <48000>;
+			num-channel = <8>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-2 {
+			link-name = "spdif-dit-1";
+			cpu-dai = <&tegra_i2s5>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "I2S5";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s16_le";
+			bclk_ratio = <2>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-3 {
+			link-name = "spdif-dit-2";
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s16_le";
+			bclk_ratio = <2>;
+			srate = <8000>;
+			num-channel = <2>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-4 {
+			link-name = "spdif-dit-3";
+			cpu-dai = <&tegra_dmic1>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "DMIC1";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bit-format = "s16_le";
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "dmic-x";
+		};
+		nvidia,dai-link-5 {
+			link-name = "spdif-dit-4";
+			cpu-dai = <&tegra_dspk1>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "DSPK1";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bit-format = "s16_le";
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "dspk-x";
+		};
+
+	};
+
+	spi6: spi@3270000{
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <1>;
+			spi-max-frequency = <20000000>;
+
+			controller-data {
+				nvidia,x1-len-limit = <16>;
+				nvidia,x1-bus-speed = <20000000>; /* In Mhz */
+				nvidia,x1-dymmy-cycle = <0>;
+				nvidia,x4-bus-speed = <20000000>;
+				nvidia,x4-dymmy-cycle = <8>;
+				nvidia,ifddr-div2-sdr = <1>;
+				nvidia,x4-is-ddr=<1>;
+			};
+
+		};
+		spiflash@1 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "s25fs256s";
+			reg = <0>;
+			spi-max-frequency = <20000000>;
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000000 0x2000000>;
+			};
+			controller-data {
+				nvidia,x1-len-limit = <16>;
+				nvidia,x1-bus-speed = <20000000>; /* In Mhz */
+				nvidia,x1-dymmy-cycle = <8>;
+				nvidia,x4-bus-speed = <20000000>;
+				nvidia,x4-dymmy-cycle = <8>;
+				nvidia,ifddr-div2-sdr = <1>;
+				nvidia,x4-is-ddr=<1>;
+			};
+		};
+
+	};
+
+	mipical {
+		status = "okay";
+	};
+
+	host1x {
+		nvdisplay@15200000 {
+			status = "okay";
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,fb-win = <0>;
+			nvidia,dc-ctrlnum = <0>;
+			nvidia,dc-or-node = "/host1x/dsi";
+		};
+
+		nvdisplay@15210000 {
+			status = "disabled";
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,fb-win = <3>;
+			nvidia,dc-ctrlnum = <1>;
+			nvidia,dc-or-node = "/host1x/sor1";
+		};
+
+		nvdisplay@15220000 {
+			status = "disabled";
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,fb-win = <3>;
+			nvidia,dc-ctrlnum = <2>;
+		};
+
+		dsi { /* dsi@15300000 */
+			status = "okay";
+			panel-s-wuxga-8-0 {
+				status = "okay";
+			};
+		};
+
+		sor {
+			status = "disabled";
+		};
+
+		sor1 {
+			status = "disabled";
+		};
+
+		dpaux@155c0000 {
+			status = "disabled";
+		};
+
+		dpaux@15040000 {
+			status = "disabled";
+		};
+	};
+};

@@ -2,6 +2,9 @@
 # Makefile for IIO Light sensors
 #
 
+GCOV_PROFILE := y
+
+ccflags-y += -Werror
 # When adding new entries keep the list in alphabetical order
 obj-$(CONFIG_ADJD_S311)		+= adjd_s311.o
 obj-$(CONFIG_AL3320A)		+= al3320a.o
@@ -19,3 +22,10 @@ obj-$(CONFIG_TCS3414)		+= tcs3414.o
 obj-$(CONFIG_TCS3472)		+= tcs3472.o
 obj-$(CONFIG_TSL4531)		+= tsl4531.o
 obj-$(CONFIG_VCNL4000)		+= vcnl4000.o
+obj-$(CONFIG_NVS_CM3217)	+= nvs_cm3217.o
+obj-$(CONFIG_NVS_CM3218)	+= nvs_cm3218.o
+obj-$(CONFIG_NVS_MAX4400X)	+= nvs_max4400x.o
+obj-$(CONFIG_NVS_JSA1127)	+= nvs_jsa1127.o
+obj-$(CONFIG_NVS_ISL2902X)	+= nvs_isl2902x.o
+obj-$(CONFIG_NVS_LTR659)	+= nvs_ltr659.o
+

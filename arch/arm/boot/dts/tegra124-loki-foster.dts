@@ -1,0 +1,166 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/dts-v1/;
+
+#include "tegra124-soc-shield.dtsi"
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <tegra124-platforms/tegra124-loki-gpio-default.dtsi>
+#include <tegra124-platforms/tegra124-loki-pinmux.dtsi>
+#include "tegra124-platforms/tegra124-loki-power-tree-e2530-0000-a01.dtsi"
+#include "tegra124-platforms/tegra124-loki-gpio-pinmux-e2530.dtsi"
+#include "tegra124-platforms/tegra124-loki-thermal-zone-p2530-0000-a01.dtsi"
+#include "tegra124-platforms/tegra124-loki-foster-pwm-fan.dtsi"
+#include "tegra124-platforms/tegra124-foster-thermal-fan-est.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 Foster";
+	compatible = "nvidia,foster", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "foster";
+		};
+	};
+
+	pwm-leds {
+		compatible = "pwm-leds";
+		lightbar {
+			label = "led_lightbar";
+			pwms = <&tegra_pwm 2 10000000>;
+			max_brightness = <255>;
+			linux,default-trigger = "default-on";
+		};
+	};
+
+	serial@70006000 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
+		dt-override-status-odm-data = <0x00038000 0x00028000>;
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006200 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006300 {
+		compatible = "nvidia,tegra20-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
+		dt-override-status-odm-data = <0x00038000 0x00018000>;
+	};
+
+	memory@0x80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	i2c@7000d000 {
+		nvidia,bit-banging-xfer-after-shutdown;
+
+		tps65913 {
+			gpadc {
+				ti,auto-conversion-period-ms = <1000>;
+				auto_conv0 {
+					ti,adc-channel-number = <1>;
+					ti,adc-low-threshold = <765>;
+					ti,enable-shutdown;
+				};
+			};
+
+			extcon {
+				extcon-name = "palmas-extcon";
+			};
+		};
+	};
+
+	spi@7000d400 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	spi@7000da00 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	pmc@7000e400 {
+		status = "okay";
+		nvidia,invert-interrupt;
+		nvidia,suspend-mode = <3>;
+		nvidia,cpu-pwr-good-time = <500>;
+		nvidia,cpu-pwr-off-time = <300>;
+		nvidia,core-pwr-good-time = <3845 3845>;
+		nvidia,core-pwr-off-time = <2000>;
+		nvidia,core-power-req-active-high;
+		nvidia,sys-clock-req-active-high;
+	};
+
+	xusb@70090000 {
+		/* nvidia,uses_external_pmic;
+		nvidia,gpio_controls_muxed_ss_lanes; */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,portmap = <0x603>; /* SSP0, SSP1 USB2P1, USB2P2 */
+		nvidia,ss_portmap = <0x21>; /* SSP0 on USB2P1, SSP1 on USB2P2 */
+		nvidia,lane_owner = <6>; /* USB3P0 USB3P1 */
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		status = "okay";
+	};
+
+	generic-adc-thermal@4 {
+		status = "disabled";
+	};
+
+	thermal-zones {
+		Battery {
+			status = "disabled";
+		};
+	};
+	bthrot_cdev {
+			skin_balanced {
+				status = "disabled";
+			};
+			gpu_balanced {
+				status = "disabled";
+			};
+			cpu_balanced {
+				cdev-type = "tegra-balanced";
+			};
+			emergency_balanced{
+				status = "disabled";
+			};
+	};
+
+	gpu_edp {
+		nvidia,edp_limit = <14000>;
+	};
+	cpu_edp {
+		nvidia,edp_limit = <14000>;
+	};
+};

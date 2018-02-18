@@ -16,10 +16,14 @@ struct usb_otg {
 
 	struct usb_phy		*phy;
 	struct usb_bus		*host;
+	struct usb_bus		*xhcihost;
 	struct usb_gadget	*gadget;
 
 	/* bind/unbind the host controller */
 	int	(*set_host)(struct usb_otg *otg, struct usb_bus *host);
+
+	/* bind/unbind the host controller */
+	int	(*set_xhci_host)(struct usb_otg *otg, struct usb_bus *host);
 
 	/* bind/unbind the peripheral controller */
 	int	(*set_peripheral)(struct usb_otg *otg,
@@ -59,6 +63,15 @@ otg_set_vbus(struct usb_otg *otg, bool enabled)
 }
 
 /* for HCDs */
+static inline int
+otg_set_xhci_host(struct usb_otg *otg, struct usb_bus *host)
+{
+	if (otg && otg->set_xhci_host)
+		return otg->set_xhci_host(otg, host);
+
+	return -ENOTSUPP;
+}
+
 static inline int
 otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 {

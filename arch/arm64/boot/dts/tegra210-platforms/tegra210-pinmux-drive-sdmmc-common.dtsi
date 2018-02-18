@@ -1,0 +1,111 @@
+/*
+ * tegra210-pinmux-drive-sdmmc-common.dtsi: Common SDMMC pinmcontrol drive to
+ *				configure sdmmc pin's schmitt.
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include <dt-bindings/pinctrl/pinctrl-tegra.h>
+
+/ {
+	pinmux: pinmux@700008d4 {
+
+		sdmmc1_schmitt_enable_state: sdmmc1_schmitt_enable {
+			sdmmc1 {
+				nvidia,pins = "sdmmc1_cmd_pm1", "sdmmc1_dat0_pm5", "sdmmc1_dat1_pm4", "sdmmc1_dat2_pm3", "sdmmc1_dat3_pm2";
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+			};
+		};
+
+		sdmmc1_schmitt_disable_state: sdmmc1_schmitt_disable {
+			sdmmc1 {
+				nvidia,pins = "sdmmc1_cmd_pm1", "sdmmc1_dat0_pm5", "sdmmc1_dat1_pm4", "sdmmc1_dat2_pm3", "sdmmc1_dat3_pm2";
+				nvidia,schmitt = <TEGRA_PIN_DISABLE>;
+			};
+		};
+
+		sdmmc1_clk_schmitt_enable_state: sdmmc1_clk_schmitt_enable {
+			sdmmc1 {
+				nvidia,pins = "sdmmc1_clk_pm0";
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+			};
+		};
+
+		sdmmc1_clk_schmitt_disable_state: sdmmc1_clk_schmitt_disable {
+			sdmmc1 {
+				nvidia,pins = "sdmmc1_clk_pm0";
+				nvidia,schmitt = <TEGRA_PIN_DISABLE>;
+			};
+		};
+
+		sdmmc1_drv_code_1_8V: sdmmc1_drv_code {
+			sdmmc1 {
+				nvidia,pins = "drive_sdmmc1";
+				nvidia,pull-down-strength = <21>;
+				nvidia,pull-up-strength = <17>;
+			};
+		};
+
+		sdmmc1_default_drv_code_3_3V: sdmmc1_default_drv_code {
+			sdmmc1 {
+				nvidia,pins = "drive_sdmmc1";
+				nvidia,pull-down-strength = <18>;
+				nvidia,pull-up-strength = <18>;
+			};
+		};
+
+		sdmmc3_schmitt_enable_state: sdmmc3_schmitt_enable {
+			 sdmmc3 {
+				 nvidia,pins = "sdmmc3_cmd_pp1", "sdmmc3_dat0_pp5", "sdmmc3_dat1_pp4", "sdmmc3_dat2_pp3", "sdmmc3_dat3_pp2";
+				 nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+			 };
+		 };
+
+		sdmmc3_schmitt_disable_state: sdmmc3_schmitt_disable {
+			sdmmc3 {
+				nvidia,pins = "sdmmc3_cmd_pp1", "sdmmc3_dat0_pp5", "sdmmc3_dat1_pp4", "sdmmc3_dat2_pp3", "sdmmc3_dat3_pp2";
+				nvidia,schmitt = <TEGRA_PIN_DISABLE>;
+			};
+		};
+
+		sdmmc3_clk_schmitt_enable_state: sdmmc3_clk_schmitt_enable {
+			sdmmc3 {
+				nvidia,pins = "sdmmc3_clk_pp0";
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+			};
+		};
+
+		sdmmc3_clk_schmitt_disable_state: sdmmc3_clk_schmitt_disable {
+			sdmmc3 {
+				nvidia,pins = "sdmmc3_clk_pp0";
+				nvidia,schmitt = <TEGRA_PIN_DISABLE>;
+			};
+		};
+
+		sdmmc3_drv_code_1_8V: sdmmc3_drv_code {
+			sdmmc3 {
+				nvidia,pins = "drive_sdmmc3";
+				nvidia,pull-down-strength = <21>;
+				nvidia,pull-up-strength = <17>;
+			};
+		};
+
+		sdmmc3_default_drv_code_3_3V: sdmmc3_default_drv_code {
+			sdmmc3 {
+				nvidia,pins = "drive_sdmmc3";
+				nvidia,pull-down-strength = <18>;
+				nvidia,pull-up-strength = <18>;
+			};
+		};
+	};
+};

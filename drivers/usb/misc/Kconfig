@@ -255,3 +255,10 @@ config USB_LINK_LAYER_TEST
 	  This driver is for generating specific traffic for Super Speed Link
 	  Layer Test Device. Say Y only when you want to conduct USB Super Speed
 	  Link Layer Test for host controllers.
+
+config USB_NV_SHIELD_PDA
+	tristate "USB Nvidia Shield PDA driver support"
+	depends on USB
+	help
+	  This driver communicates with the microcontorller on PDA which
+	  controls the states of PDA.

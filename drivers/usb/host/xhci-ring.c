@@ -1,6 +1,7 @@
 /*
  * xHCI host controller driver
  *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (C) 2008 Intel Corp.
  *
  * Author: Sarah Sharp
@@ -66,6 +67,7 @@
 
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+#include <linux/usb/phy.h>
 #include "xhci.h"
 #include "xhci-trace.h"
 
@@ -1499,6 +1501,7 @@ static void handle_port_status(struct xhci_hcd *xhci,
 	struct xhci_bus_state *bus_state;
 	__le32 __iomem **port_array;
 	bool bogus_port_status = false;
+	struct usb_device *udev;
 
 	/* Port status change events always have a successful completion code */
 	if (GET_COMP_CODE(le32_to_cpu(event->generic.field[2])) != COMP_SUCCESS) {
@@ -1642,6 +1645,36 @@ static void handle_port_status(struct xhci_hcd *xhci,
 		xhci_test_and_clear_bit(xhci, port_array, faked_port_index,
 					PORT_PLC);
 
+	/* notify the otg driver of B's connection logic to detect a connect
+	 * event of the B-device goes here
+	 */
+	xhci_dbg(xhci, "otg_port = %d, fake_port_index = %d, speed = %s\n",
+		hcd->self.otg_port, faked_port_index,
+		(hcd->speed == HCD_USB3) ? "SS" : "HS/FS/LS");
+
+	/* check if the otg_port caused port status change */
+	if (hcd->self.otg_port == (faked_port_index + 1) && (temp & PORT_CSC)) {
+		enum usb_device_speed speed = USB_SPEED_UNKNOWN;
+
+		xhci_dbg(xhci, "otgport caused portstatus 0x%x change\n", temp);
+
+		/* now check if the port status change is because of
+		 * connect or disconnect
+		 */
+		slot_id = xhci_find_slot_id_by_port(hcd, xhci,
+				faked_port_index + 1);
+		udev = xhci->devs[slot_id]->udev;
+		if (((temp & PORT_PLS_MASK) == XDEV_U0) ||
+			((temp & PORT_PLS_MASK) == XDEV_POLLING)) {
+			if (hcd->usb_phy)
+				usb_phy_notify_connect(hcd->usb_phy, speed);
+		} else if (((temp & PORT_PLS_MASK) == XDEV_U3) ||
+				((temp & PORT_PLS_MASK) == XDEV_RXDETECT) ||
+				((temp & PORT_PLS_MASK) == XDEV_INACTIVE)) {
+			if (hcd->usb_phy)
+				usb_phy_notify_disconnect(hcd->usb_phy, speed);
+		}
+	}
 cleanup:
 	/* Update event ring dequeue pointer before dropping the lock */
 	inc_deq(xhci, xhci->event_ring);
@@ -2056,6 +2089,7 @@ static int process_isoc_td(struct xhci_hcd *xhci, struct xhci_td *td,
 		skip_td = true;
 		break;
 	case COMP_TX_ERR:
+		xhci->xhci_ereport.comp_tx_err++;
 		frame->status = -EPROTO;
 		if (event_trb != td->last_trb)
 			return 0;
@@ -2335,6 +2369,7 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 		break;
 	case COMP_SPLIT_ERR:
 	case COMP_TX_ERR:
+		xhci->xhci_ereport.comp_tx_err++;
 		xhci_dbg(xhci, "Transfer error on endpoint\n");
 		status = -EPROTO;
 		break;
@@ -2464,6 +2499,8 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 		if (!event_seg) {
 			if (!ep->skip ||
 			    !usb_endpoint_xfer_isoc(&td->urb->ep->desc)) {
+				static bool printit = true;
+				static unsigned long lastprint;
 				/* Some host controllers give a spurious
 				 * successful event after a short transfer.
 				 * Ignore it.
@@ -2475,14 +2512,23 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 					goto cleanup;
 				}
 				/* HC is busted, give up! */
-				xhci_err(xhci,
+				if (!printit &&
+					time_is_before_jiffies(lastprint))
+					printit = true;
+
+				if (printit) {
+					xhci_err_ratelimited(xhci,
 					"ERROR Transfer event TRB DMA ptr not "
 					"part of current TD ep_index %d "
 					"comp_code %u\n", ep_index,
 					trb_comp_code);
-				trb_in_td(xhci, ep_ring->deq_seg,
+					printit = false;
+					lastprint = jiffies +
+						msecs_to_jiffies(5000);
+					trb_in_td(xhci, ep_ring->deq_seg,
 					  ep_ring->dequeue, td->last_trb,
 					  event_dma, true);
+				}
 				return -ESHUTDOWN;
 			}
 
@@ -2531,7 +2577,10 @@ cleanup:
 
 		handling_skipped_tds = ep->skip &&
 			trb_comp_code != COMP_MISSED_INT &&
-			trb_comp_code != COMP_PING_ERR;
+			trb_comp_code != COMP_PING_ERR &&
+			trb_comp_code != COMP_OVERRUN &&
+			trb_comp_code != COMP_UNDERRUN &&
+			trb_comp_code != COMP_STOP;
 
 		/*
 		 * Do not update event ring dequeue pointer if we're in a loop
@@ -2743,6 +2792,7 @@ hw_died:
 
 	return IRQ_HANDLED;
 }
+EXPORT_SYMBOL_GPL(xhci_irq);
 
 irqreturn_t xhci_msi_irq(int irq, void *hcd)
 {
@@ -3069,6 +3119,7 @@ static int queue_bulk_sg_tx(struct xhci_hcd *xhci, gfp_t mem_flags,
 		struct urb *urb, int slot_id, unsigned int ep_index)
 {
 	struct xhci_ring *ep_ring;
+	struct xhci_ep_ctx *ep_ctx;
 	unsigned int num_trbs;
 	struct urb_priv *urb_priv;
 	struct xhci_td *td;
@@ -3112,6 +3163,18 @@ static int queue_bulk_sg_tx(struct xhci_hcd *xhci, gfp_t mem_flags,
 				ep_index, urb->stream_id,
 				1, urb, 1, mem_flags);
 		if (ret < 0)
+			return ret;
+		/*
+		 * We haven't actually checked whether transfer ring has
+		 * space for num_trbs (we have checked only for num_trbs-1).
+		 * Check and expand if necessary for the extra ZLP TRB.
+		 */
+		ep_ctx = xhci_get_ep_ctx(xhci, xhci->devs[slot_id]->out_ctx,
+				ep_index);
+		ret = prepare_ring(xhci, ep_ring,
+				   le32_to_cpu(ep_ctx->ep_info) & EP_STATE_MASK,
+				   num_trbs, mem_flags);
+		if (ret)
 			return ret;
 	}
 
@@ -3169,6 +3232,8 @@ static int queue_bulk_sg_tx(struct xhci_hcd *xhci, gfp_t mem_flags,
 			field |= TRB_IOC;
 		} else if (zero_length_needed && num_trbs == 1) {
 			trb_buff_len = 0;
+			urb_priv->td[1]->start_seg = ep_ring->enq_seg;
+			urb_priv->td[1]->first_trb = ep_ring->enqueue;
 			urb_priv->td[1]->last_trb = ep_ring->enqueue;
 			field |= TRB_IOC;
 		}
@@ -3216,6 +3281,16 @@ static int queue_bulk_sg_tx(struct xhci_hcd *xhci, gfp_t mem_flags,
 		 */
 		this_sg_len -= trb_buff_len;
 		if (this_sg_len == 0) {
+			/*
+			 * When ZLP is needed and we are down to the last TRB
+			 * (ZLP TRB), skip further bookkeeping and go for
+			 * another TRB cycle.
+			 *
+			 * Note: num_sgs and sg details will stay the same for
+			 * the next loop iteration.
+			 */
+			if (zero_length_needed && num_trbs == 1)
+				continue;
 			--num_sgs;
 			if (num_sgs == 0)
 				break;
@@ -3245,6 +3320,7 @@ int xhci_queue_bulk_tx(struct xhci_hcd *xhci, gfp_t mem_flags,
 		struct urb *urb, int slot_id, unsigned int ep_index)
 {
 	struct xhci_ring *ep_ring;
+	struct xhci_ep_ctx *ep_ctx;
 	struct urb_priv *urb_priv;
 	struct xhci_td *td;
 	int num_trbs;
@@ -3303,6 +3379,19 @@ int xhci_queue_bulk_tx(struct xhci_hcd *xhci, gfp_t mem_flags,
 				1, urb, 1, mem_flags);
 		if (ret < 0)
 			return ret;
+
+		/*
+		 * We haven't actually checked whether transfer ring has
+		 * space for num_trbs (we have checked only for num_trbs-1).
+		 * Check and expand if necessary for the extra ZLP TRB.
+		 */
+		ep_ctx = xhci_get_ep_ctx(xhci, xhci->devs[slot_id]->out_ctx,
+				ep_index);
+		ret = prepare_ring(xhci, ep_ring,
+				   le32_to_cpu(ep_ctx->ep_info) & EP_STATE_MASK,
+				   num_trbs, mem_flags);
+		if (ret)
+			return ret;
 	}
 
 	td = urb_priv->td[0];
@@ -3350,6 +3439,8 @@ int xhci_queue_bulk_tx(struct xhci_hcd *xhci, gfp_t mem_flags,
 			field |= TRB_IOC;
 		} else if (zero_length_needed && num_trbs == 1) {
 			trb_buff_len = 0;
+			urb_priv->td[1]->start_seg = ep_ring->enq_seg;
+			urb_priv->td[1]->first_trb = ep_ring->enqueue;
 			urb_priv->td[1]->last_trb = ep_ring->enqueue;
 			field |= TRB_IOC;
 		}

@@ -1,0 +1,270 @@
+/*
+ * tegra186-quill-e3301-1080-a00-00-base.dts Quill-CHAR A00 Board
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-quill-common-e3301-0000-a00.dtsi"
+#include "tegra186-platforms/tegra186-quill-char-power-tree-e3301-1080-a00-00.dtsi"
+#include "tegra186-plugin-manager/tegra186-quill-e3301-0000-a00-plugin-manager.dtsi"
+#include "tegra186-prod/tegra186-priv-quill-char-e3301-1080-a00-prod.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "3301:1080:A0";
+	nvidia,proc-boardid = "3301:1080:A0";
+
+	chosen {
+		board-has-eeprom;
+		bootargs ="console=ttyS0,115200";
+		stdout-path = &uarta;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "quill-char";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	ufshci@2450000 {
+		status = "disabled";
+	};
+
+	pinctrl@3520000 {
+		status = "okay";
+		pinctrl-0 = <&tegra_padctl_pinmux_default>;
+		pinctrl-names = "default";
+		tegra_padctl_pinmux_default: pinmux {
+			usb2-micro-AB {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb3-micro-AB {
+				nvidia,lanes = "usb3-1";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb2-std-A-port2 {
+				nvidia,lanes = "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port2 {
+				nvidia,lanes = "usb3-2";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+		};
+	};
+
+	pwm@3280000 {
+		status = "disabled";
+	};
+
+	pwm@32a0000 {
+		status = "disabled";
+	};
+
+	pwm@c340000 {
+		status = "disabled";
+	};
+
+
+	sound {
+		status = "disabled";
+	};
+
+	adma@2930000 {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+
+		admaif@290f000 {
+			status = "disabled";
+		};
+
+		sfc@2902000 {
+			status = "disabled";
+		};
+
+		sfc@2902200 {
+			status = "disabled";
+		};
+
+		sfc@2902400 {
+			status = "disabled";
+		};
+
+		sfc@2902600 {
+			status = "disabled";
+		};
+
+		amixer@290bb00 {
+			status = "disabled";
+		};
+
+		i2s@2901000 {
+			status = "disabled";
+		};
+
+		i2s@2901100 {
+			status = "disabled";
+		};
+
+		i2s@2901200 {
+			status = "disabled";
+		};
+
+		i2s@2901300 {
+			status = "disabled";
+		};
+
+		i2s@2901400 {
+			status = "disabled";
+		};
+
+		i2s@2901500 {
+			status = "disabled";
+		};
+
+		amx@2903000 {
+			status = "disabled";
+		};
+
+		amx@2903100 {
+			status = "disabled";
+		};
+
+		amx@2903200 {
+			status = "disabled";
+		};
+
+		amx@2903300 {
+			status = "disabled";
+		};
+
+		adx@2903800 {
+			status = "disabled";
+		};
+
+		adx@2903900 {
+			status = "disabled";
+		};
+
+		adx@2903a00 {
+			status = "disabled";
+		};
+
+		adx@2903b00 {
+			status = "disabled";
+		};
+
+		dmic@2904000 {
+			status = "disabled";
+		};
+
+		afc@2907000 {
+			status = "disabled";
+		};
+
+		afc@2907100 {
+			status = "disabled";
+		};
+
+		afc@2907200 {
+			status = "disabled";
+		};
+
+		afc@2907300 {
+			status = "disabled";
+		};
+
+		afc@2907400 {
+			status = "disabled";
+		};
+
+		afc@2907500 {
+			status = "disabled";
+		};
+
+		mvc@290a000 {
+			status = "disabled";
+		};
+
+		mvc@290a200 {
+			status = "disabled";
+		};
+
+		spdif@2906000 {
+			status = "disabled";
+		};
+
+		iqc@290e000 {
+			status = "disabled";
+		};
+
+		asrc@2910000 {
+			status = "disabled";
+		};
+
+		arad@290e400 {
+			status = "disabled";
+		};
+
+		ope@2908000 {
+			status = "disabled";
+
+			peq@2908100 {
+				status = "disabled";
+			};
+
+			mbdrc@2908200 {
+				status = "disabled";
+			};
+		};
+
+		dspk@2905000 {
+			status = "disabled";
+		};
+
+		dspk@2905100 {
+			status = "disabled";
+		};
+	};
+
+	spdif-dit.0@0 {
+		status = "disabled";
+	};
+
+	spdif-dit.1@1 {
+		status = "disabled";
+	};
+
+	spdif-dit.2@2 {
+		status = "disabled";
+	};
+
+	spdif-dit.3@3 {
+		status = "disabled";
+	};
+
+	adsp_audio {
+		status = "disabled";
+	};
+};

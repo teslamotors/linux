@@ -1,0 +1,127 @@
+/*
+ * tegra124-green-arrow-p2267-io-common.dtsi: Common IO file for Green Arrow
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/* This file is mainly for IO-Peripherals like SPI/I2C/USB/UART etc */
+
+/ {
+	serial@70006000 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006200 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006300 {
+		compatible = "nvidia,tegra20-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
+		status = "okay";
+	};
+
+	i2c@7000d000 {
+		nvidia,bit-banging-xfer-after-shutdown;
+	};
+
+
+	i2c@7000c000 {
+		rt5639: rt5639.0-001c@1c {
+			compatible = "realtek,rt5639";
+			reg = <0x1c>;
+		};
+	};
+
+	spi@7000d400 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	spi@7000da00 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	pmc@7000e400 {
+		status = "okay";
+		nvidia,invert-interrupt;
+		nvidia,cpu-suspend-freq = <204000>;
+	};
+
+	extcon {
+		compatible = "simple-bus";
+		device_type = "external-connection";
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	psy_extcon {
+		compatible = "power-supply-extcon";
+		power-supply,extcon-dev = "tegra-udc";
+		extcon-cables = <&udc 1 &udc 2 &udc 3
+				&udc 4 &udc 5 &udc 6
+				&udc 7 &udc 8 &udc 9
+				&udc 10 &udc 11 &udc 12 &udc 13 &otg 0 &otg 1>;
+		extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
+				"qc2-charger", "downstream-charger","fast-charger",
+				"slow-charger", "apple-500ma", "apple-1a",
+				"apple-2a", "ACA NV-Charger", "ACA RID-B", "ACA RID-C", "y-cable", "ACA RID-A";
+				status = "okay";
+	};
+
+	extcon {
+		extcon_cable_xlate: extcon@0 {
+			compatible = "extcon-cable-xlate";
+			reg = <0x0>;
+			extcon-name = "cable-xlate";
+			output-cable-names = "USB", "USB-Host", "ACA-A", "Y-Cable", "ACA-B", "ACA-C", "ACA-NV";
+			extcon-cables = <&palmas_extcon 0 &palmas_extcon 1 &palmas_extcon 2 &palmas_extcon 3 &palmas_extcon 4>;
+			extcon-cable-names = "vbus", "id", "aca-ra", "aca-rb", "aca-rc";
+			cable-new-states = <0x0     0x0     0x3F    0x0 0x0
+					0x0     0x1     0x3F    0x1   0x0
+					0x2     0x1     0x3F    0x0   0x0
+					0x0     0x2     0x3F    0x2   0x0
+					0x0     0x3     0x3F    0x8   0x0
+					0x2     0x3     0x3F    0x2   0x0
+					0x3     0x1     0x3F    0x0   0x0
+					0x3     0x2     0x3F    0x2   0x0
+					0x0     0x5     0x3F    0x4   0x0
+					0x0     0x11    0x3F    0x20  0x0
+					0x11     0x1    0x3F    0x1  0x0
+					0x0     0x8     0x3F    0x10  0x0>;
+			#extcon-cells = <1>;
+			status = "disabled";
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-rt5639";
+		nvidia,codec_name = "rt5639.0-001c";
+		nvidia,codec_dai_name = "rt5639-aif1";
+		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) 0>;
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(H, 4) 0>;
+		nvidia,use_codec_jd_irq = <1>;
+		nvidia,i2s-param-hifi = <1 1 2 16 48000 2 1536000>;
+		nvidia,i2s-param-bt = <3 1 0 16 8000 1 512000>;
+		nvidia,i2s-param-baseband = <0 1 2 16 16000 2 1024000>;
+	};
+};

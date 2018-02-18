@@ -38,7 +38,7 @@ struct mtd_blktrans_dev {
 	struct mutex lock;
 	int devnum;
 	bool bg_stop;
-	unsigned long size;
+	unsigned long long size;
 	int readonly;
 	int open;
 	struct kref ref;
@@ -61,11 +61,11 @@ struct mtd_blktrans_ops {
 
 	/* Access functions */
 	int (*readsect)(struct mtd_blktrans_dev *dev,
-		    unsigned long block, char *buffer);
+		    unsigned long long block, char *buffer);
 	int (*writesect)(struct mtd_blktrans_dev *dev,
-		     unsigned long block, char *buffer);
+		     unsigned long long block, char *buffer);
 	int (*discard)(struct mtd_blktrans_dev *dev,
-		       unsigned long block, unsigned nr_blocks);
+		       unsigned long long block, unsigned nr_blocks);
 	void (*background)(struct mtd_blktrans_dev *dev);
 
 	/* Block layer ioctls */

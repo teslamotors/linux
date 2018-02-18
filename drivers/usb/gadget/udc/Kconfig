@@ -124,6 +124,38 @@ config USB_OMAP
 	   dynamically linked module called "omap_udc" and force all
 	   gadget drivers to also be dynamically linked.
 
+config USB_TEGRA
+	tristate "Nvidia Highspeed USB 2.0 device controller"
+	depends on ARCH_TEGRA
+	select USB_GADGET_DUALSPEED
+	help
+	   Enables TEGRA USB 2.0 pheripheral driver.
+
+	   Say "y" to link the driver statically, or "m" to build a
+	   dynamically linked module called "tegra_udc" and force all
+	   gadget drivers to also be dynamically linked.
+
+config USB_TEGRA_XUDC
+	tristate "NVIDIA Superspeed USB 3.0 Device Controller"
+	depends on ARCH_TEGRA_21x_SOC || ARCH_TEGRA_18x_SOC
+	default n
+	help
+	   Enables TEGRA USB 3.0 device mode controller driver.
+
+	   Say "y" to link the driver statically, or "m" to build a
+	   dynamically linked module called "tegra_xudc" and force all
+	   gadget drivers to also be dynamically linked.
+
+config PLAT_FPGA_T210
+	bool "Enable Nvidia USB 3.0 Device Controller on Platform FPGA"
+	depends on USB_TEGRA_XUDC
+	help
+	  Say 'Y' to turn on support for USB 3.0 Device Controller on T210
+	  Platform FPGA.
+	  It is used to add code specific to Platform Emulation.
+
+	  if unsure, say N.
+
 config USB_PXA25X
 	tristate "PXA 25x or IXP 4xx"
 	depends on (ARCH_PXA && PXA25x) || ARCH_IXP4XX
@@ -400,3 +432,9 @@ config USB_DUMMY_HCD
 # first and will be selected by default.
 
 endmenu
+config USB_TEGRA_CD
+	bool "TEGRA USB charger detection"
+	depends on ARCH_TEGRA || PLATFORM_TEGRA
+	default n
+	help
+	   Say y to enable tegra charger detection driver.

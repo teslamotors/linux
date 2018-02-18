@@ -187,6 +187,7 @@ static inline void pci_ioremap_set_mem_type(int mem_type) {}
 #endif
 
 extern int pci_ioremap_io(unsigned int offset, phys_addr_t phys_addr);
+extern void pci_iounmap_io(unsigned int offset);
 
 /*
  * Now, pick up the machine-defined IO definitions

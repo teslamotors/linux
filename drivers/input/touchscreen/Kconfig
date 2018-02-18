@@ -14,6 +14,17 @@ if INPUT_TOUCHSCREEN
 config OF_TOUCHSCREEN
 	def_tristate INPUT
 	depends on INPUT && OF
+config TOUCHSCREEN_LR388K7
+	tristate "Sharp LR388K7 touchscreen"
+	depends on SPI_MASTER
+	help
+	Say Y here if you have a LR388K7 and want to enable
+	support for the built-in touchscreen.
+
+	If unsure, say N.
+
+	To compile this driver as a module, choose M here: the
+	module will be called lr388k7.
 
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
@@ -543,6 +554,19 @@ config TOUCHSCREEN_MIGOR
 	  To compile this driver as a module, choose M here: the
 	  module will be called migor_ts.
 
+config TOUCHSCREEN_PANJIT_I2C
+	tristate "PANJIT I2C touchscreen driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable PANJIT I2C capacitive touchscreen support,
+	  covering devices such as the MGG1010AI06 and EGG1010AI06
+
+	  If unsure, say N
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called panjit_i2c.
+
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
 	select SERIO
@@ -961,5 +985,42 @@ config TOUCHSCREEN_ZFORCE
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called zforce_ts.
+
+config TOUCHSCREEN_RM31080A
+	tristate "RAYDIUM_31080A based touchscreens"
+	depends on SPI_MASTER
+	help
+	  Say Y here if you have a touchscreen interface using the
+	  RAYDIUM_T31080A controller, and your board-specific initialization
+	  code includes that in its table of SPI devices.
+
+	  If unsure, say N (but it's safe to say "Y").
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called RAYDIUM_31080A.
+
+config TOUCHSCREEN_SYN_RMI4_SPI
+	tristate "RMI4 SPI Support"
+	depends on SPI_MASTER
+	help
+	  Say Y here if you want to support RMI4 devices connect
+	  to an SPI bus.
+
+	  If unsure, say Y.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called rmi-spi.
+
+config TOUCHSCREEN_MAXIM_STI
+	tristate "Maxim SmartTouch Imager touchscreen"
+	depends on SPI_MASTER
+	help
+	  Say Y here if you want to enable support for Maxim SmartTouch Imager
+	  touchscreen in SPI mode.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called maxim_sti.
 
 endif

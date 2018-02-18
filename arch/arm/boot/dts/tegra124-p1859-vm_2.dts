@@ -1,0 +1,390 @@
+/*
+ * arch/arm/boot/dts/tegra124-p1859-lk.dts
+ *
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+ /dts-v1/;
+
+/ {
+	/* smmu and ivc drivers are called very early in the kernel init
+	 * call sequence (core_initcall). smmu driver as such is a consumer
+	 * of ivc and depends on it.
+	 * Keeping the ivc node at the very top in the device tree ensures
+	 * that probe for ivc is called before the smmu driver probe.
+	 * Without this virtualized smmu driver probe will fail.
+	 */
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "ok";
+	};
+};
+
+#include "tegra124-p1859.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 p1859";
+	compatible = "nvidia,p1859", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "p1859";
+		};
+	};
+
+	i2c@7000c400 {
+		status = "disabled";
+	};
+
+	serial@70006000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	serial@70006040 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	serial@70006300 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	spi@7000d400 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	spi@7000d600 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	spi@7000d800 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	spi@7000dc00 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	ehci@7d004000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	ehci@7d008000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	udc@7d000000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	otg@7d000000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	xusb@70090000 {
+		status = "disabled";
+	};
+
+	chosen {
+		nvidia,tegra124-virt-audio-slave;
+	};
+
+	ahub {
+		status = "disabled";
+	};
+
+	tegra-vcm30t124-alt {
+		status = "disabled";
+	};
+
+	virt-ahub-apbif {
+		compatible = "nvidia,tegra124-virt-ahub-slave";
+		reg = <0x0 0x70300000 0x0 0x200>,
+			<0x0 0x70300200 0x0 0x200>;
+		dmas =	<&apbdma 1>, <&apbdma 1>, <&apbdma 2>, <&apbdma 2>,
+			<&apbdma 3>, <&apbdma 3>, <&apbdma 4>, <&apbdma 4>,
+			<&apbdma 6>, <&apbdma 6>, <&apbdma 7>, <&apbdma 7>,
+			<&apbdma 12>, <&apbdma 12>, <&apbdma 13>, <&apbdma 13>,
+			<&apbdma 14>, <&apbdma 14>, <&apbdma 29>, <&apbdma 29>;
+		dma-names =	"rx0", "tx0", "rx1", "tx1", "rx2", "tx2",
+				"rx3", "tx3", "rx4", "tx4", "rx5", "tx5",
+				"rx6", "tx6", "rx7", "tx7", "rx8", "tx8",
+				"rx9", "tx9";
+		status = "okay";
+
+		virt-snd-slave {
+			compatible = "nvidia,tegra124-virt-machine-slave";
+			cardname = "tegra-virt-pcm-vm2";
+			iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		/*
+		** The default asound.conf file for the VMs expect the apbif channels
+		** to be (0, 1, 2, 3) if the apbif_group_id is set to 1 and
+		** (4, 5, 6, 7, 8, 9) if the apbif_group_id is set to 2. If random apbif
+		** channels has to be assigned, corresponding change has to be made in
+		** the asound.conf file also.
+		*/
+			apbif_group_id = <2>;
+			apbif_ch_num = <6>;
+			apbif_ch_list = <4>, <5>, <6>, <7>, <8>, <9>;
+			status = "okay";
+		};
+	};
+
+	pcie-controller {
+		status = "disabled";
+	};
+
+	sata@70020000 {
+		status = "disabled";
+	};
+
+	sdhci@700b0600 {
+		status = "disabled";
+	};
+	sdhci@700b0000 {
+		status = "disabled";
+	};
+
+	sdhci@700b0400 {
+		status = "disabled";
+	};
+
+	/* Disable device nodes enabled by default in tegra124-soc.dtsi */
+	gpio@6000d000 {
+		status = "disabled";
+	};
+
+	pwm@7000a000 {
+		status = "disabled";
+	};
+
+	i2c@7000c000 {
+		status = "disabled";
+	};
+
+	i2c@7000c400 {
+		status = "disabled";
+	};
+
+	i2c@7000c500 {
+		status = "disabled";
+	};
+
+	i2c@7000c700 {
+		status = "disabled";
+	};
+
+	i2c@7000d000 {
+		status = "disabled";
+	};
+
+	i2c@7000d100 {
+		status = "disabled";
+	};
+
+	efuse@7000f800 {
+		status = "disabled";
+        };
+
+	apbdma: dma@60020000 {
+		dma-channels = <16>;
+		nvidia,start-dma-channel-index = <16>;
+		status = "okay";
+	};
+
+	vic {
+		status = "disabled";
+	};
+	dfll@70110000 {
+		status = "disabled";
+	};
+
+	soctherm@0x700E2000 {
+		status = "disabled";
+	};
+
+	bluedroid_pm {
+		status = "disabled";
+	};
+
+	/* Hypervisor related nodes */
+	hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+	};
+
+	iommu {
+		compatible = "nvidia,tegra124-smmu-hv";
+		ivc_queue = <&tegra_hv 14>;
+		domains = <
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS2)
+			&gpu_as TEGRA_SWGROUP_CELLS(GPUB)
+			&dc_as TEGRA_SWGROUP_CELLS2(DC, DC12)
+			&dc_as TEGRA_SWGROUP_CELLS(DCB)
+			&common_as TEGRA_SWGROUP_CELLS(AFI)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC1A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC2A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC3A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC4A)
+			&host1x_as TEGRA_SWGROUP_CELLS9(EPP, HC, HDA, VI, ISP, ISP2B, VIC, MSENC, TSEC)
+			&nvavp_as TEGRA_SWGROUP_CELLS3(AVPC, A9AVP, VDE)
+			&common_as 0xFFFFFFFF 0xFFFFFFFF>;
+
+		address-space-prop {
+			gpu_as: gpu {
+				iova-start = <0x0 0x00100000>;
+				iova-size = <0x0 0x3FEFFFFF>;
+				alignment = <0x20000>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+			host1x_as: host1x {
+				iova-start = <0x0 0x40100000>;
+				iova-size = <0x0 0x3FEFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+			nvavp_as: nvavp {
+				iova-start = <0x0 0xE8000000>;
+				iova-size = <0x0 0xDFFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+		};
+	};
+
+	host1x {
+		reg = <0x0 0x50000000 0x0 0x00030000>;
+
+		virtual-dev = <1>;
+
+		iommus = <&smmu TEGRA_SWGROUP_EPP>,
+			<&smmu TEGRA_SWGROUP_HC>,
+			<&smmu TEGRA_SWGROUP_HDA>;
+
+		ivc-queue0 = <&tegra_hv 8>;
+		ivc-queue1 = <&tegra_hv 9>;
+		ivc-queue2 = <&tegra_hv 10>;
+
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "disabled";
+		};
+
+		vi {
+			status = "disabled";
+		};
+
+		isp@54600000 {
+			status = "disabled";
+		};
+
+		isp@54680000 {
+			status = "disabled";
+		};
+
+		vic {
+			compatible = "nvidia,tegra124-vhost-vic";
+		};
+
+		msenc {
+			compatible = "nvidia,tegra124-vhost-msenc";
+		};
+
+		tsec {
+			status = "disabled";
+		};
+	};
+
+	gk20a {
+                status = "disabled";
+	};
+
+	gk20a-vgpu {
+		compatible = "nvidia,tegra124-gk20a-vgpu";
+		nvidia,host1x = <&host1x>;
+		reg = <0x0 0x58000000 0x0 0x01000000>;
+		iommus = <&smmu TEGRA_SWGROUP_GPU &smmu TEGRA_SWGROUP_GPUB>;
+
+		ivc-queue3 = <&tegra_hv 11>;
+		ivc-queue4 = <&tegra_hv 12>;
+	};
+
+	/* the virtual serial device node */
+	tegra_hv_comm {
+		compatible = "nvidia,tegra-hv-comm";
+		status = "okay";
+		/* ivc channel to use definition (second one in tegra_hv) */
+		ivc = <&tegra_hv 1>;
+	};
+
+	tegra_hv_net {
+		compatible = "nvidia,tegra-hv-net";
+		status = "okay";
+		ivc = <&tegra_hv 2>;
+	};
+
+	tegra_hv_wdt {
+		compatible = "nvidia,tegra-hv-wdt";
+		status = "okay";
+		ivc = <&tegra_hv 16>;
+	};
+
+	snor {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	bcmdhd_wlan {
+		status = "disabled";
+	};
+
+	chosen {
+		nvidia,tegra_dvfs_cpu_enable = <0>;
+		nvidia,tegra_dvfs_gpu_enable = <0>;
+	};
+
+	reserved-memory {
+		ivm0: carveout0 {
+			compatible = "nvidia,ivm_carveout";
+                        reg = <0x0 0x70c00000 0x0 0x04c00000>;
+			ivm = <&tegra_hv 0>;
+			alloc = <1>;
+			no-map;
+		};
+	};
+
+	tegra-carveouts {
+		iommus = <&smmu TEGRA_SWGROUP_HC>;
+		status = "okay";
+		memory-region = <&iram &ivm0>;
+	};
+};

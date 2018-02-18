@@ -1,0 +1,68 @@
+/*
+ * tegra186-vcm31-p2382-common.dtsi: tegra186-vcm31-p2382-common dtsi for k4.4
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+        sdhci@3460000 { /* SDMMC_D: Used for eMMc */
+		uhs-mask = <0x60>;   /* Disable HS200/HS400 */
+		status = "okay";
+		vddio_sdmmc-supply = <0x0>;
+		vddio_sd_slot-supply = <0x0>;
+		vqmmc-supply = <&vdd_1v8>;
+		vmmc-supply = <&spmic_otp_sd3>;
+        };
+
+	sdhci@3400000 {
+		/* 7F: disable all UHS mode */
+                uhs-mask = <0x7F>;
+		vqmmc-supply = <&spmic_ldo3>;
+		vmmc-supply = <&en_vdd_sdcard1>;
+		vddio_sdmmc-supply = <0x0>;
+		vddio_sd_slot-supply = <0x0>;
+		cd-inverted;
+		wp-inverted;
+		status = "okay";
+	};
+
+	sdhci@3440000 {
+		/* 7F: disable all UHS mode */
+                uhs-mask = <0x7F>;
+		vqmmc-supply = <&spmic_ldo5>;
+		vmmc-supply = <&en_vdd_sdcard3>;
+		vddio_sdmmc-supply = <0x0>;
+		vddio_sd_slot-supply = <0x0>;
+		cd-inverted;
+		wp-inverted;
+		status = "okay";
+	};
+
+	spi@c260000 { /* Tegra SPI2 <-> VCM SPIA: Dirana */
+		cs-gpios = <&tegra_gpio TEGRA_GPIO(N,0) 0>;
+		spi@0 {
+			controller-data {
+				/delete-property/ nvidia,chipselect-gpio;
+			};
+		};
+	};
+
+	/*
+	 * FIXME : when auatmotive team switchs to k4.4 from k3.18
+	 *   1. serial index will be moved from ttyS0 to ttyS1 in os_args in cfg
+	 *   2. remove serial0/1 alias below
+	 */
+	aliases {
+		serial1 = &uarta;
+		serial0 = &uartb;
+	};
+};

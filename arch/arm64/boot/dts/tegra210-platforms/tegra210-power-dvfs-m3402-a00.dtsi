@@ -1,0 +1,127 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+/ {
+
+	dfll-ovr@70110000 {
+		status = "disabled";
+	};
+
+	dfll-max16989@70110000 {
+		status = "disabled";
+		compatible = "nvidia,tegra210-dfll";
+		reg = <0x0 0x70110000 0x0 0x400>;
+		out-clock-name="dfll_cpu";
+		board-params = <&dfll_max16989_parms>;
+		i2c-pmic-integration = <&i2c_dfll>;
+
+		i2c_dfll: dfll-max16989-integration {
+			pmic-i2c-address = <0x74>;
+			pmic-i2c-voltage-register = <0x07>;
+			i2c-fs-rate = <400000>;
+			sel-conversion-slope = <1>;
+		};
+
+		dfll_max16989_parms: dfll-max16989-board-params {
+			sample-rate = <12500>;
+			fixed-output-forcing;
+			cf = <10>;
+			ci = <0>;
+			cg = <2>;
+			droop-cut-value = <0xf>;
+			droop-restore-ramp = <0x0>;
+			scale-out-ramp = <0x0>;
+		};
+	};
+
+	cpu_edp {
+		status = "disabled";
+		nvidia,edp_limit = <25000>;
+	};
+
+	gpu_edp {
+		status = "disabled";
+		nvidia,edp_limit = <20000>;
+	};
+
+	dvfs_rails {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vdd-cpu-rail-ovr@0 {
+			status = "disabled";
+		};
+
+		vdd-gpu-rail-ovr@1 {
+			status = "disabled";
+		};
+
+
+		vdd-cpu-rail-max16989@2 {
+			status = "okay";
+			reg = <2>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_cpu-supply = <&cpu_gpu_max16989_reg>;
+			vmin-cdev = <&cpu_vmin_cdev>;
+		};
+
+		vdd-gpu-rail-max16989@3 {
+			status = "okay";
+			reg = <3>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_gpu-supply = <&cpu_gpu_max16989_reg>;
+			vmin-cdev = <&cpu_vmin_cdev>;
+		};
+
+		vdd-core-rail-max16989@4 {
+			status = "disabled";
+		};
+
+		cpu_vmin_cdev: vdd-cpu-vmin-cdev@5 {
+			reg = <5>;
+			cooling-min-state = <0>;
+			cooling-max-state = <1>;
+			#cooling-cells = <2>;
+			compatible = "nvidia,tegra210-rail-vmin-cdev";
+			cdev-type = "cpu_cold";
+			nvidia,constraint;
+			nvidia,trips = <&cpu_vmin1 950>;
+		};
+
+		core_vmin_cdev: vdd-core-vmin-cdev@6 {
+			reg = <6>;
+			cooling-min-state = <0>;
+			cooling-max-state = <1>;
+			#cooling-cells = <2>;
+			compatible = "nvidia,tegra210-rail-vmin-cdev";
+			cdev-type = "core_cold";
+			nvidia,constraint;
+			nvidia,trips = <&core_vmin1 950>;
+		};
+
+		gpu_scaling_cdev: vdd-gpu-scaling-cdev@7 {
+			reg = <7>;
+			cooling-min-state = <0>;
+			cooling-max-state = <1>;
+			#cooling-cells = <2>;
+			compatible = "nvidia,tegra210-rail-scaling-cdev";
+			cdev-type = "gpu_scaling";
+			nvidia,constraint;
+			nvidia,trips = <&gpu_scaling0 950 &gpu_scaling1 0>;
+		};
+	};
+
+};

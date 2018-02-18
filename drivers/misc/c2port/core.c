@@ -3,6 +3,7 @@
  *
  *  Copyright (c) 2007 Rodolfo Giometti <giometti@linux.it>
  *  Copyright (c) 2007 Eurotech S.p.A. <info@eurotech.it>
+ *  Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -45,6 +46,9 @@ static struct class *c2port_class;
 #define C2PORT_REVID		0x01
 #define C2PORT_FPCTL		0x02
 #define C2PORT_FPDAT		0xB4
+#define C2PORT_XRAMD		0x84
+#define C2PORT_XRAMAL		0xAD
+#define C2PORT_XRAMAH		0xC7
 
 /* C2 interface commands */
 #define C2PORT_GET_VERSION	0x01
@@ -52,6 +56,10 @@ static struct class *c2port_class;
 #define C2PORT_BLOCK_READ	0x06
 #define C2PORT_BLOCK_WRITE	0x07
 #define C2PORT_PAGE_ERASE	0x08
+#define C2PORT_DIRECT_READ	0x09
+#define C2PORT_DIRECT_WRITE	0x0A
+#define C2PORT_INDIRECT_READ	0x0B
+#define C2PORT_INDIRECT_WRITE	0x0C
 
 /* C2 status return codes */
 #define C2PORT_INVALID_COMMAND	0x00
@@ -546,6 +554,64 @@ static ssize_t c2port_store_flash_access(struct device *dev,
 static DEVICE_ATTR(flash_access, 0644, c2port_show_flash_access,
 		   c2port_store_flash_access);
 
+int mcu_halted(struct c2port_device *c2dev)
+{
+	u8 status;
+	c2port_write_ar(c2dev, C2PORT_FPCTL);
+	c2port_read_dr(c2dev, &status);
+	if (status & 0x01)
+		return 1;
+	return 0;
+}
+
+static ssize_t c2port_show_ram_access(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct c2port_device *c2dev = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", mcu_halted(c2dev));
+}
+
+static ssize_t c2port_store_ram_access(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	ssize_t ret;
+	int status;
+	struct c2port_device *c2dev = dev_get_drvdata(dev);
+	ret = sscanf(buf, "%d", &status);
+	if (ret != 1) {
+		dev_err(dev, "Invalid access parameter!\n");
+		return -EINVAL;
+	}
+	mutex_lock(&c2dev->mutex);
+	c2port_write_ar(c2dev, C2PORT_FPCTL);
+	/* Halt device */
+	if (status == 1)
+		c2port_write_dr(c2dev, 0x01);
+	else
+		c2port_write_dr(c2dev, 0x00);
+	mutex_unlock(&c2dev->mutex);
+	return count;
+}
+static DEVICE_ATTR(ram_access, 0644, c2port_show_ram_access,
+		  c2port_store_ram_access);
+
+static ssize_t c2port_store_rest_halt_access(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	struct c2port_device *c2dev = dev_get_drvdata(dev);
+
+	c2port_reset(c2dev);
+	c2port_write_ar(c2dev, C2PORT_FPCTL);
+	c2port_write_dr(c2dev, 0x02);
+	c2port_write_dr(c2dev, 0x04);
+	c2port_write_dr(c2dev, 0x01);
+
+	return count;
+}
+static DEVICE_ATTR(reset_halt, 0200, NULL, c2port_store_rest_halt_access);
+
 static ssize_t __c2port_write_flash_erase(struct c2port_device *dev)
 {
 	u8 status;
@@ -860,6 +926,355 @@ static ssize_t c2port_write_flash_data(struct file *filp, struct kobject *kobj,
 static BIN_ATTR(flash_data, 0644, c2port_read_flash_data,
 		c2port_write_flash_data, 0);
 
+/* helper function to implement ram/sfr/xram read/write */
+/* is_8bit is used for detect overflow in address format*/
+static inline bool is_8bit(u16 word)
+{
+	if (word & 0xff00)
+		return false;
+	return true;
+}
+
+static inline bool addr_valid8bit(u16 addr, u16 size)
+{
+	return is_8bit(addr) && is_8bit(size) &&
+		is_8bit(addr + size - 1);
+}
+/* Get address space size */
+static ssize_t get_ram_size(struct c2port_device *dev)
+{
+	return dev->ops->ram_size;
+}
+
+static ssize_t get_sfr_size(struct c2port_device *dev)
+{
+	return dev->ops->sfr_size;
+}
+
+static ssize_t get_xram_size(struct c2port_device *dev)
+{
+	return dev->ops->xram_size;
+}
+
+/* calculate how many bytes to read/write */
+static ssize_t calc_bytes(loff_t start, u16 mem_size, u16 expected_size)
+{
+	if (start > mem_size)
+		return 0;
+	if (start + expected_size > mem_size)
+		return mem_size - start;
+	return expected_size;
+}
+
+/* Send target address to C2 port, format: 1byte addr, 1byte size */
+static ssize_t send_addr_ram(struct c2port_device *dev, u16 addr, u16 size)
+{
+	int ret;
+
+	/* Overflow dectction */
+	if (!addr_valid8bit(addr, size)) {
+		dev_err(dev->dev, "Address/size overflow!\n");
+		return -EINVAL;
+	}
+
+	/* Write start address */
+	c2port_write_dr(dev, addr);
+	ret = c2port_poll_in_busy(dev);
+	if (ret < 0)
+		return ret;
+
+	/* Send address block size */
+	c2port_write_dr(dev, size);
+	ret = c2port_poll_in_busy(dev);
+	return ret;
+}
+/* Externl RAM address format: 2byte addr, size not used for XRAM */
+/* Address is increased automatically when write/read to XRAMD */
+static ssize_t send_addr_xram(struct c2port_device *dev, u16 addr, u16 size)
+{
+	int ret;
+
+	/* Write start address */
+	/* Low byte */
+	c2port_write_ar(dev, C2PORT_XRAMAL);
+	c2port_write_dr(dev, (u8) addr);
+	ret = c2port_poll_in_busy(dev);
+	if (ret < 0)
+		return ret;
+	/* High byte */
+	c2port_write_ar(dev, C2PORT_XRAMAH);
+	c2port_write_dr(dev, (u8) (addr >> 8));
+	ret = c2port_poll_in_busy(dev);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+/* Write FPDAT command, XRAM manipulation doesn't need it */
+static ssize_t write_command(struct c2port_device *c2dev, u8 command)
+{
+	int ret;
+	u8 status;
+
+	c2port_write_ar(c2dev, C2PORT_FPDAT);
+	c2port_write_dr(c2dev, command);
+
+	/* Wait for command status */
+	ret = c2port_poll_in_busy(c2dev);
+	if (ret < 0)
+		return ret;
+
+	/* Wait for status information */
+	ret = c2port_poll_out_ready(c2dev);
+	if (ret < 0)
+		return ret;
+
+	/* Read command status */
+	ret = c2port_read_dr(c2dev, &status);
+	if (ret < 0)
+		return ret;
+	if (status != C2PORT_COMMAND_OK)
+		return -EBUSY;
+	return 0;
+}
+/* Read bytes for SFR/internal memory */
+static ssize_t read_bytes_common(struct c2port_device *dev, char *buffer,
+						 u16 nread)
+{
+	int i;
+	u8 ret;
+	/* Read flash block */
+	for (i = 0; i < nread; i++) {
+		ret = c2port_poll_out_ready(dev);
+		if (ret < 0)
+			return ret;
+
+		ret = c2port_read_dr(dev, buffer + i);
+		if (ret < 0)
+			return ret;
+	}
+	return nread;
+}
+
+static ssize_t write_bytes_common(struct c2port_device *dev, char *buffer,
+							u16 nwrite)
+{
+	int i;
+	int ret;
+
+	for (i = 0; i < nwrite; i++) {
+		ret = c2port_write_dr(dev, *(buffer + i));
+		if (ret < 0)
+			return ret;
+
+		ret = c2port_poll_in_busy(dev);
+		if (ret < 0)
+			return ret;
+	}
+	return nwrite;
+}
+
+static ssize_t read_bytes_xram(struct c2port_device *dev, char *buffer,
+							u16 nread)
+{
+	int i;
+	u8 ret;
+	/* Switch to read/write of XRAMD */
+	c2port_write_ar(dev, C2PORT_XRAMD);
+
+	for (i = 0; i < nread; i++) {
+		/* No need to poll out ready */
+		ret = c2port_read_dr(dev, buffer + i);
+		if (ret < 0)
+			return ret;
+	}
+	return nread;
+}
+
+static ssize_t write_bytes_xram(struct c2port_device *dev, char *buffer,
+							u16 nwrite)
+{
+	int i;
+	int ret;
+	/* Switch to read/write of XRAMD */
+	c2port_write_ar(dev, C2PORT_XRAMD);
+
+	for (i = 0; i < nwrite; i++) {
+		ret = c2port_write_dr(dev, *(buffer + i));
+		if (ret < 0)
+			return ret;
+		/* No needn to poll in busy */
+	}
+	return nwrite;
+}
+
+/* desciption for every operation */
+struct c2port_internal_operation {
+	/* address access type */
+	ssize_t (*get_addr_size)(struct c2port_device *dev);
+	/* Which command to write to FPDAT register */
+	u8 command;
+	/* Send address and how many bytes/blocks to read/write */
+	ssize_t (*send_addr_and_count) (struct c2port_device *dev,
+					u16 start_addr, u16 count);
+	/* functions to execute read/write */
+	ssize_t (*operation) (struct c2port_device *dev, char *buffer,
+				u16 count);
+};
+
+/* Operations for manipulating internal ram */
+static struct c2port_internal_operation read_iram_ops = {
+	.get_addr_size = get_ram_size,
+	.command = C2PORT_INDIRECT_READ,
+	.send_addr_and_count = send_addr_ram,
+	.operation = read_bytes_common
+};
+
+static struct c2port_internal_operation write_iram_ops = {
+	.get_addr_size = get_ram_size,
+	.command = C2PORT_INDIRECT_WRITE,
+	.send_addr_and_count = send_addr_ram,
+	.operation = write_bytes_common
+};
+
+/* Operations for manipulating special function registers */
+static struct c2port_internal_operation read_sfr_ops = {
+	.get_addr_size = get_sfr_size,
+	.command = C2PORT_DIRECT_READ,
+	.send_addr_and_count = send_addr_ram,
+	.operation = read_bytes_common
+};
+
+static struct c2port_internal_operation write_sfr_ops = {
+	.get_addr_size = get_sfr_size,
+	.command = C2PORT_DIRECT_WRITE,
+	.send_addr_and_count = send_addr_ram,
+	.operation = write_bytes_common
+};
+
+/* Operations for manipulating XRAM and USB FIFO */
+static struct c2port_internal_operation read_xram_ops = {
+	.get_addr_size = get_xram_size,
+	/* No FPDAT operation */
+	.command = 0,
+	.send_addr_and_count = send_addr_xram,
+	.operation = read_bytes_xram
+};
+
+static struct c2port_internal_operation write_xram_ops = {
+	.get_addr_size = get_xram_size,
+	/* No FPDAT operation */
+	.command = 0,
+	.send_addr_and_count = send_addr_xram,
+	.operation = write_bytes_xram
+};
+
+/* General framework manipulating RAM/SFR/XRAM */
+static ssize_t c2port_operation_execute(struct c2port_internal_operation *c2op,
+					struct file *filp, struct kobject *kobj,
+					char *buffer, loff_t offset,
+					size_t count)
+{
+	struct c2port_device *c2dev = dev_get_drvdata(container_of(kobj,
+						struct  device, kobj));
+	ssize_t ret;
+	u16 nreadwrite = (u16)count;
+
+	if (!c2dev->access || !mcu_halted(c2dev))
+		return -EBUSY;
+
+	mutex_lock(&c2dev->mutex);
+
+	nreadwrite = calc_bytes(offset, c2op->get_addr_size(c2dev), nreadwrite);
+	if (nreadwrite == 0) {
+		ret = 0;
+		goto out;
+	}
+	/* Send command to FPDAT */
+	if (c2op->command != 0) {
+		ret = write_command(c2dev, c2op->command);
+		if (ret < 0) {
+			dev_err(c2dev->dev, "cannot write %s C2 command\n",
+					c2dev->name);
+			goto out;
+		}
+	}
+
+	/* Send address and count */
+	ret = c2op->send_addr_and_count(c2dev, offset, nreadwrite);
+	if (ret < 0) {
+		dev_err(c2dev->dev, "cannot write %s C2 ram adress: 0x%02x\n",
+				c2dev->name, (int)offset);
+		goto out;
+	}
+	/* do read/write */
+	ret = c2op->operation(c2dev, buffer, nreadwrite);
+	if (ret < 0)
+		dev_err(c2dev->dev, "cannot manipulate %s C2 ram data\n",
+				c2dev->name);
+out:
+	mutex_unlock(&c2dev->mutex);
+	return ret;
+}
+
+static ssize_t c2port_read_internal_ram(struct file *filp, struct kobject *kobj,
+					struct bin_attribute *attr,
+					char *buffer, loff_t offset,
+					size_t count)
+{
+	return c2port_operation_execute(&read_iram_ops, filp, kobj, buffer,
+					offset, count);
+}
+
+static ssize_t c2port_write_internal_ram(struct file *filp,
+					 struct kobject *kobj,
+					 struct bin_attribute *attr,
+					 char *buffer, loff_t offset,
+					 size_t count)
+{
+	return c2port_operation_execute(&write_iram_ops, filp, kobj, buffer,
+					offset, count);
+}
+/* size is computed at run-time */
+static BIN_ATTR(internal_ram, 0644, c2port_read_internal_ram,
+		c2port_write_internal_ram, 0);
+
+static ssize_t c2port_read_sfr(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buffer, loff_t offset, size_t count)
+{
+	return c2port_operation_execute(&read_sfr_ops, filp, kobj, buffer,
+					offset, count);
+}
+
+static ssize_t c2port_write_sfr(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buffer, loff_t offset, size_t count)
+{
+	return c2port_operation_execute(&write_sfr_ops, filp, kobj, buffer,
+					offset, count);
+}
+/* size is computed at run-time */
+static BIN_ATTR(sfr, 0644, c2port_read_sfr, c2port_write_sfr, 0);
+
+static ssize_t c2port_read_xram(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buffer, loff_t offset, size_t count)
+{
+	return c2port_operation_execute(&read_xram_ops, filp, kobj, buffer,
+					offset, count);
+}
+
+static ssize_t c2port_write_xram(struct file *filp, struct kobject *kobj,
+				 struct bin_attribute *attr,
+				 char *buffer, loff_t offset, size_t count)
+{
+	return c2port_operation_execute(&write_xram_ops, filp, kobj, buffer,
+					offset, count);
+}
+/* size is computed at run-time */
+static BIN_ATTR(xram, 0644, c2port_read_xram, c2port_write_xram, 0);
+
 /*
  * Class attributes
  */
@@ -874,11 +1289,16 @@ static struct attribute *c2port_attrs[] = {
 	&dev_attr_rev_id.attr,
 	&dev_attr_flash_access.attr,
 	&dev_attr_flash_erase.attr,
+	&dev_attr_ram_access.attr,
+	&dev_attr_reset_halt.attr,
 	NULL,
 };
 
 static struct bin_attribute *c2port_bin_attrs[] = {
 	&bin_attr_flash_data,
+	&bin_attr_internal_ram,
+	&bin_attr_sfr,
+	&bin_attr_xram,
 	NULL,
 };
 
@@ -923,6 +1343,15 @@ struct c2port_device *c2port_device_register(char *name,
 	c2dev->id = ret;
 
 	bin_attr_flash_data.size = ops->blocks_num * ops->block_size;
+	if (ops->ram_size) {
+		bin_attr_internal_ram.size = ops->ram_size;
+	}
+	if (ops->sfr_size) {
+		bin_attr_sfr.size = ops->sfr_size;
+	}
+	if (ops->xram_size) {
+		bin_attr_xram.size = ops->xram_size;
+	}
 
 	c2dev->dev = device_create(c2port_class, NULL, 0, c2dev,
 				   "c2port%d", c2dev->id);

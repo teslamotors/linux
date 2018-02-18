@@ -1,0 +1,45 @@
+/*
+ * arch/arm/boot/dts/tegra124-ardbeg-e1792-1100-a00-01.dts
+ *
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+/dts-v1/;
+
+#include "tegra124-ardbeg-e1780-1000-a03-common.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-power-tree-e1733-1000-a00.dtsi"
+
+/ {
+	nvidia,boardids = "1792:1100:00:;1733:1000:00";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,proc-boardid = "1780:1000:03";
+	nvidia,pmu-boardid = "1733:1000:00";
+
+	i2c@7000d000 {
+		as3722@40 {
+			adc_extcon {
+				ams,extcon-name = "as3722-extcon";
+			};
+
+			regulators {
+				sd2 {
+					regulator-min-microvolt = <1200000>;
+					regulator-max-microvolt = <1200000>;
+				};
+			};
+		};
+	};
+};

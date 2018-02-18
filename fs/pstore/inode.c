@@ -2,6 +2,7 @@
  * Persistent Storage - ramfs parts.
  *
  * Copyright (C) 2010 Intel Corporation <tony.luck@intel.com>
+ * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -120,13 +121,86 @@ static const struct seq_operations pstore_ftrace_seq_ops = {
 	.show	= pstore_ftrace_seq_show,
 };
 
+struct pstore_rtrace_seq_data {
+	const void *ptr;
+	size_t off;
+	size_t size;
+};
+
+#define RTRACE_REC_SIZE sizeof(struct pstore_rtrace_record)
+
+static void *pstore_rtrace_seq_start(struct seq_file *s, loff_t *pos)
+{
+	struct pstore_private *ps = s->private;
+	struct pstore_rtrace_seq_data *data;
+
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
+	if (!data)
+		return NULL;
+
+	data->off = ps->size % RTRACE_REC_SIZE;
+	data->off += *pos * RTRACE_REC_SIZE;
+	if (data->off + RTRACE_REC_SIZE > ps->size) {
+		kfree(data);
+		return NULL;
+	}
+
+	return data;
+
+}
+
+static void pstore_rtrace_seq_stop(struct seq_file *s, void *v)
+{
+	kfree(v);
+}
+
+static void *pstore_rtrace_seq_next(struct seq_file *s, void *v, loff_t *pos)
+{
+	struct pstore_private *ps = s->private;
+	struct pstore_rtrace_seq_data *data = v;
+
+	data->off += RTRACE_REC_SIZE;
+	if (data->off + RTRACE_REC_SIZE > ps->size)
+		return NULL;
+
+	(*pos)++;
+	return data;
+}
+
+static int pstore_rtrace_seq_show(struct seq_file *s, void *v)
+{
+	struct pstore_private *ps = s->private;
+	struct pstore_rtrace_seq_data *data = v;
+	struct pstore_rtrace_record *rec = (void *)(ps->data + data->off);
+
+	if (rec->event == RTRACE_WRITE)
+		seq_printf(s, "%d %c %p %x <- %p  %pF\n",
+			rec->cpu, rec->event == RTRACE_READ ? 'R' : 'W',
+			(void *)rec->raddr, (unsigned int)rec->value,
+			(void *)rec->caller, (void *)rec->caller);
+	else
+		seq_printf(s, "%d %c %p <- %p  %pF\n",
+			rec->cpu, rec->event == RTRACE_READ ? 'R' : 'W',
+			(void *)rec->raddr, (void *)rec->caller,
+			(void *)rec->caller);
+
+	return 0;
+}
+
+static const struct seq_operations pstore_rtrace_seq_ops = {
+	.start	= pstore_rtrace_seq_start,
+	.next	= pstore_rtrace_seq_next,
+	.stop	= pstore_rtrace_seq_stop,
+	.show	= pstore_rtrace_seq_show,
+};
+
 static ssize_t pstore_file_read(struct file *file, char __user *userbuf,
 						size_t count, loff_t *ppos)
 {
 	struct seq_file *sf = file->private_data;
 	struct pstore_private *ps = sf->private;
 
-	if (ps->type == PSTORE_TYPE_FTRACE)
+	if (ps->type == PSTORE_TYPE_FTRACE || ps->type == PSTORE_TYPE_RTRACE)
 		return seq_read(file, userbuf, count, ppos);
 	return simple_read_from_buffer(userbuf, count, ppos, ps->data, ps->size);
 }
@@ -140,6 +214,8 @@ static int pstore_file_open(struct inode *inode, struct file *file)
 
 	if (ps->type == PSTORE_TYPE_FTRACE)
 		sops = &pstore_ftrace_seq_ops;
+	else if (ps->type == PSTORE_TYPE_RTRACE)
+		sops = &pstore_rtrace_seq_ops;
 
 	err = seq_open(file, sops);
 	if (err < 0)
@@ -316,32 +392,41 @@ int pstore_mkfile(enum pstore_type_id type, char *psname, u64 id, int count,
 
 	switch (type) {
 	case PSTORE_TYPE_DMESG:
-		sprintf(name, "dmesg-%s-%lld%s", psname, id,
-						compressed ? ".enc.z" : "");
+		scnprintf(name, sizeof(name), "dmesg-%s-%lld%s",
+			  psname, id, compressed ? ".enc.z" : "");
 		break;
 	case PSTORE_TYPE_CONSOLE:
-		sprintf(name, "console-%s-%lld", psname, id);
+		scnprintf(name, sizeof(name), "console-%s", psname);
 		break;
 	case PSTORE_TYPE_FTRACE:
-		sprintf(name, "ftrace-%s-%lld", psname, id);
+		scnprintf(name, sizeof(name), "ftrace-%s", psname);
+		break;
+	case PSTORE_TYPE_RTRACE:
+		sprintf(name, "rtrace-%s", psname);
 		break;
 	case PSTORE_TYPE_MCE:
-		sprintf(name, "mce-%s-%lld", psname, id);
+		scnprintf(name, sizeof(name), "mce-%s-%lld", psname, id);
 		break;
 	case PSTORE_TYPE_PPC_RTAS:
-		sprintf(name, "rtas-%s-%lld", psname, id);
+		scnprintf(name, sizeof(name), "rtas-%s-%lld", psname, id);
 		break;
 	case PSTORE_TYPE_PPC_OF:
-		sprintf(name, "powerpc-ofw-%s-%lld", psname, id);
+		scnprintf(name, sizeof(name), "powerpc-ofw-%s-%lld",
+			  psname, id);
 		break;
 	case PSTORE_TYPE_PPC_COMMON:
-		sprintf(name, "powerpc-common-%s-%lld", psname, id);
+		scnprintf(name, sizeof(name), "powerpc-common-%s-%lld",
+			  psname, id);
+		break;
+	case PSTORE_TYPE_PMSG:
+		scnprintf(name, sizeof(name), "pmsg-%s-%lld", psname, id);
 		break;
 	case PSTORE_TYPE_UNKNOWN:
-		sprintf(name, "unknown-%s-%lld", psname, id);
+		scnprintf(name, sizeof(name), "unknown-%s-%lld", psname, id);
 		break;
 	default:
-		sprintf(name, "type%d-%s-%lld", type, psname, id);
+		scnprintf(name, sizeof(name), "type%d-%s-%lld",
+			  type, psname, id);
 		break;
 	}
 

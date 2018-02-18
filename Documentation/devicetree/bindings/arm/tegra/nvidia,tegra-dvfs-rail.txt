@@ -1,0 +1,217 @@
+NVIDIA Tegra DVFS rail data in the board DTS file:
+
+Required properties:
+- compatible : Must be one of the following
+	"nvidia,tegra210-dvfs-rail"
+
+- vdd_cpu-supply : Must contain phandle pointing to the regulator for CPU rail.
+- vdd_gpu-supply : Must contain phandle pointing to the regulator for GPU rail.
+- vdd_core-supply : Must contain phandle pointing to the regulator for SoC rail.
+
+One and only one of the above properties must be specified for each rail node.
+
+Optional properties:
+- vdd_cpu_dfll-supply : Must contain phandle pointing to the regulator for CPU
+rail in DFLL closed loop mode. This property is required if 'vdd_cpu-supply'
+property is pointing to fixed regulator node. Otherwise, it is ignored.
+- vmin-cdev : phandle pointing to the cooling device node that contains
+properties applied to minimum rail voltage management with temperature
+- vmax-cdev : phandle pointing to the cooling device node that contains
+properties applied to maximum rail voltage management with temperature
+- scaling-cdev : phandle pointing to the cooling device node that contains
+properties applied to scaling rail voltage with temperature
+
+- status : standard device availability property
+- reg : can be any number but same as used in the node name
+
+NVIDIA Tegra DVFS cooling device data in the board DTS file:
+
+Required properties:
+- the required cooling device properties from binding thermal.txt
+- compatible : Must be one of the following
+	"nvidia,tegra210-rail-vmin-cdev"
+	"nvidia,tegra210-rail-vmax-cdev"
+	"nvidia,tegra210-rail-scaling-cdev"
+- nvidia,trips : an ordered list of phandles with optional specifiers;
+each phandle must point to the trip point node in one of the thermal zones,
+phnadle specifier if present contains voltage constraint (in mV) corresponding
+to trip point temperature
+
+Trips list in "nvidia,tegra210-rail-vmin-cdev" compatible node:
+- must have constraints specifying minimum rail voltage
+- at least one phandle + constraint pair must be specified; multiple pairs
+must have ascending order of trip-point temperatures, and descending order
+of constraints (decreasing voltage/temperature relation)
+- each trip point referenced in the list must be mapped to the respective
+cooling device according to thermal.txt binding with both minimum cooling
+device and maximum cooling device state equal to the position index of the
+respective phandle in the trip point list
+- the 1st constraint is applied in temperature interval below the 1st trip
+point; all other constraints are applied below the corresponding trip point and
+above the previous trip point; no constraint is applied above the last trip.
+
+Trips list in "nvidia,tegra210-rail-vmax-cdev" compatible node:
+- must have constraints specifying maximum rail voltage
+- at least one phandle + constraint pair must be specified; multiple pairs
+must have ascending order of trip-point temperatures, and descending order
+of constraints (decreasing voltage/temperature relation)
+- each trip point referenced in the list must be mapped to the respective
+cooling device according to thermal.txt binding with both minimum cooling device
+state and maximum cooling device state equal to the position index of the
+respective phandle in the trip point list
+- no constraints applied below the 1st trip point; all constraints except the
+last one are applied in temperature interval above the corresponding trip point
+and below the next trip-point; the last constraint applied above the last trip.
+
+Trips list in "nvidia,tegra210-rail-scaling-cdev" compatible node:
+- must have constraints specifying minimum rail voltage
+- at least two phandle + constraint pairs must be specified; multiple pairs
+must have ascending order of trip-point temperatures
+- the 1st trip point in the list is for reference only and should not be mapped
+to cooling device; all other trip point referenced in the list must be mapped to
+the respective cooling device according to thermal.txt binding with both minimum
+cooling device state and maximum cooling device state equal to the position
+index of the respective phandle in the trip point list minus one
+- the 1st constraint is applied below the 2nd trip point; the other constraints
+except the last one are applied in temperature interval above the corresponding
+trip point and below the next trip point; the last constraint applied above the
+last trip point.
+
+Optional properties:
+- nvidia,constraint : nvidia,trips list entries include constraint specifier;
+if this property is not present, list includes only trip point phandles
+- cdev-type : cooling device type to be used for device registration; if not
+present, the rail property name that contains phandle to the device will be
+used
+
+- status : standard device availability property
+- reg : can be any number but same as used in the node name
+
+DVFS rail nodes can be placed at root, or included into dvfs-rails parent node.
+In the latter case "reg" property is required, and parent node must be specified
+as simple bus with the following required properties:
+
+- compatible : Must be "simple-bus"
+- #address-cells: Must be 1.
+- #size-cells: Must be 0.
+
+Example:
+
+dvfs_rails {
+	compatible = "simple-bus";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	vdd-cpu-rail@0 {
+		reg = <0>;
+		compatible = "nvidia,tegra210-dvfs-rail";
+		vdd_cpu-supply = <&pmicxxx_sd0>;
+		vmin-cdev = <&cpu_vmin_cdev>;
+	};
+
+	vdd-core-rail@1 {
+		reg = <1>;
+		compatible = "nvidia,tegra210-dvfs-rail";
+		vdd_core-supply = <&pmicxxx_sd1>;
+	};
+
+	vdd-gpu-rail@2 {
+		reg = <2>;
+		compatible = "nvidia,tegra210-dvfs-rail";
+		vdd_gpu-supply = <&pmicxxx_sd6>;
+		scaling-cdev = <&gpu_scaling_cdev>;
+	};
+
+	cpu_vmin_cdev: vdd-cpu-vmin-cdev@5 {
+		reg = <5>;
+		cooling-min-state = <0>;
+		cooling-max-state = <2>;
+		#cooling-cells = <2>;
+		compatible = "nvidia,tegra210-rail-vmin-cdev";
+		cdev-type = "cpu_cold";
+		nvidia,constraint;
+		nvidia,trips = <&cpu_vmin1 950 &cpu_vmin2 900>;
+	};
+
+	gpu_scaling_cdev: vdd-gpu-scaling-cdev@7 {
+		reg = <7>;
+		cooling-min-state = <0>;
+		cooling-max-state = <1>;
+		#cooling-cells = <2>;
+		compatible = "nvidia,tegra210-rail-scaling-cdev";
+		cdev-type = "gpu_scaling";
+		nvidia,constraint;
+		nvidia,trips = <&gpu_scaling0 950 &gpu_scaling1 0>;
+	};
+};
+
+...
+
+thermal-zones {
+	CPU_therm {
+		trips {
+			cpu_vmin1: cpu-vmin1 {
+				temperature = <20000>;
+				hysteresis = <1000>;
+				type = "active";
+			};
+			cpu_vmin1: cpu-vmin2 {
+				temperature = <50000>;
+				hysteresis = <1000>;
+				type = "active";
+			};
+		};
+		cooling-maps {
+			vdd-cpu-map1 {
+				trip = <&cpu_vmin1>;
+				cooling-device = <&cpu_vmin_cdev 1 1>;
+			};
+			vdd-cpu-map2 {
+				trip = <&cpu_vmin2>;
+				cooling-device = <&cpu_vmin_cdev 2 2>;
+			};
+		};
+	};
+	GPU_therm {
+		trips {
+			/* Reference only trip, not mapped */
+			gpu_scaling0: gpu-scaling0 {
+				temperature = <(-10000)>;
+				hysteresis = <0>;
+				type = "active";
+			};
+
+			gpu_scaling1: gpu-scaling1 {
+				temperature = <20000>;
+				hysteresis = <1000>;
+				type = "active";
+			};
+		};
+		cooling-maps {
+			vdd-gpu-map1 {
+				trip = <&gpu_scaling1>;
+				cooling-device = <&gpu_scaling_cdev 1 1>;
+			};
+		};
+	};
+};
+
+Example with CPU rail scaled in DFLL closed loop mode,
+and fixed when PLL is used as CPU clock source :
+
+dvfs_rails {
+	compatible = "simple-bus";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	vdd-cpu-rail@0 {
+		reg = <0>;
+		compatible = "nvidia,tegra210-dvfs-rail";
+		vdd_cpu-supply = <&cpu_fixed_reg>;
+		vdd_cpu_dfll-supply = <&cpu_pwm_reg>;
+	};
+
+	vdd-core-rail@1 {
+		reg = <1>;
+	....
+};

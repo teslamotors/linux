@@ -1,7 +1,7 @@
 /*
  * Tegra host1x Syncpoints
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (C) 2010-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,6 +25,7 @@
 #include <linux/sched.h>
 
 #include "intr.h"
+#include "fence.h"
 
 struct host1x;
 
@@ -49,6 +50,9 @@ struct host1x_syncpt {
 
 	/* interrupt data */
 	struct host1x_syncpt_intr intr;
+
+	/* sync timeline data */
+	struct host1x_sync_timeline *timeline;
 };
 
 /* Initialize sync point array  */
@@ -105,6 +109,15 @@ u32 host1x_syncpt_load(struct host1x_syncpt *sp);
 
 /* Check if the given syncpoint value has already passed */
 bool host1x_syncpt_is_expired(struct host1x_syncpt *sp, u32 thresh);
+
+/*
+ * Check if syncpoint value thresh_a or thresh_b will be triggered earlier.
+ * Returns -1 if thresh_a will be triggered before thresh_b,
+ *          0 if at the same time, or
+ *          1 if threst_b will be triggered before thresh_a.
+ */
+int host1x_syncpt_compare(struct host1x_syncpt *syncpt, u32 thresh_a,
+			  u32 thresh_b);
 
 /* Save host1x sync point state into shadow registers. */
 void host1x_syncpt_save(struct host1x *host);

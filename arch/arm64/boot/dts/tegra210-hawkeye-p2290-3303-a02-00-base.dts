@@ -1,0 +1,40 @@
+/*
+ * Hawkeye P2290 A02 wifi+LTE FFD board.
+ *	NVPN: 699-82290-3303-200
+ *	variant: WWAN_3GB_F0_POR
+ *	SKU: 3303
+ *	assembly version: TM671D & Wi-Fi + LTE
+ *	LPDDR4 capacity: 3 GB
+ *	optional features: no NFC + no sensor hub + no barometer
+ *	manufacturing phase : POR
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra210-hawkeye-p2290-3303-a01-00-base.dts"
+#include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a02.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-sensor-p2290-1100-a02.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "2290:3303:A02";
+	nvidia,proc-boardid = "2290:3303:A02";
+
+	i2c@7000c400 {
+		tps65132@3e {
+			tps65132_outn: outn {
+			   ti,active-discharge-gpio = <&gpio TEGRA_GPIO(A, 0) 0>;
+			   ti,active-discharge-time = <2000>; /* in us */
+		   };
+		};
+	};
+};

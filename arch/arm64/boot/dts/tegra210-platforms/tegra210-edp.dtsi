@@ -1,0 +1,154 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#define C_TO_K(x) (x+273)
+
+#define MAKE_EDP_TRIP(proc, temp) \
+	proc##_edp_##temp: proc##_edp@temp { \
+		temperature = <temp##000>; \
+		hysteresis = <1000>; \
+		type = "active"; \
+	}
+
+#define MAP_CPU_EDP(temp) \
+	map_cpu_edp_##temp { \
+		trip = <&cpu_edp_##temp>; \
+		cooling-device = <&cpu_edp (C_TO_K(temp)) (C_TO_K(temp))>; \
+	}
+
+#define MAP_GPU_EDP(temp) \
+	map_gpu_edp_##temp { \
+		trip = <&gpu_edp_##temp>; \
+		cooling-device = <&gpu_edp (C_TO_K(temp)) (C_TO_K(temp))>; \
+	}
+/ {
+	cpu_edp: cpu_edp {
+		compatible = "nvidia,tegra124-cpu-edp-capping";
+		nvidia,freq_step = <19200000>;
+		nvidia,edp_clk = "cpu_g";
+		nvidia,tegra-ppm-cdyn = <950000 1425000 2650000 3125000>;
+		nvidia,tegra-ppm-leakage_weights = <470 670 890 1050>;
+		nvidia,tegra-ppm-min_leakage = <30>;
+		nvidia,tegra-ppm-coeff_scale = <1000>;
+		nvidia,tegra-ppm-leakage_coeffs = <
+			(-3659484) (-3057294) (1608816) (-130989)
+			(0) (16683670) (-6372503) (485507)
+			(14655002) (-26112773) (8205917) (-591269)
+			(-10647137) (12310458) (-3409306) (234894)
+			(-7870522) (9114646) (-2628260) (184970)
+			(37697412) (-36540739) (9732641) (-663683)
+			(-55266862) (47580771) (-11862699) (786028)
+			(25060188) (-19917376) (4713214) (-304265)
+			(6898136) (-5246483) (1212138) (-78791)
+			(-26152713) (19228121) (-4319724) (276509)
+			(32507089) (-23196812) (5075934) (-320077)
+			(-13139773) (9150717) (-1955349) (121584)
+			(-816630) (570621) (-123575) (7766)
+			(2973598) (-2042153) (434622) (-27022)
+			(-3565514) (2408959) (-504033) (31003)
+			(1398871) (-931712) (191840) (-11679)
+		>;
+		#cooling-cells = <2>;
+	};
+
+	gpu_edp: gpu_edp {
+		compatible = "nvidia,tegra124-gpu-edp-capping";
+		nvidia,freq_step = <38400000>;
+		nvidia,edp_clk = "gbus";
+		nvidia,edp_cap_clk = "edp.gbus";
+		nvidia,tegra-ppm-cdyn = <15280000>;
+		nvidia,tegra-ppm-min_leakage = <30>;
+		nvidia,tegra-ppm-coeff_scale = <10000>;
+		nvidia,tegra-ppm-leakage_coeffs = <
+			(-17243455) (25069722) (-4350965) (47111)
+			(0) (-49318981) (8802223) (126501)
+			(65925639) (14146024) (-3028302) (-469651)
+			(-48391329) (9992903) (-1393390) (292526)
+			(24525724) (-26734720) (3602635) (4879)
+			(-43919111) (66581891) (-8303207) (-191584)
+			(0) (-43894936) (4294143) (448220)
+			(18479207) (4812968) (241159) (-244282)
+			(-38575764) (23590651) (-3370486) (104656)
+			(117185142) (-71852031) (10137058) (-295590)
+			(-113678383) (69920301) (-9681838) (253400)
+			(35052444) (-21660992) (2928184) (-64038)
+			(5857748) (-3401697) (511587) (-20776)
+			(-18454930) (10714029) (-1605108) (64415)
+			(18839983) (-10931791) (1629343) (-64265)
+			(-6226455) (3611786) (-535417) (20666)
+		>;
+		#cooling-cells = <2>;
+	};
+
+	thermal-zones {
+		CPU-therm {
+			trips {
+				MAKE_EDP_TRIP(cpu, 23);
+				MAKE_EDP_TRIP(cpu, 40);
+				MAKE_EDP_TRIP(cpu, 50);
+				MAKE_EDP_TRIP(cpu, 60);
+				MAKE_EDP_TRIP(cpu, 70);
+				MAKE_EDP_TRIP(cpu, 74);
+				MAKE_EDP_TRIP(cpu, 78);
+				MAKE_EDP_TRIP(cpu, 82);
+				MAKE_EDP_TRIP(cpu, 86);
+				MAKE_EDP_TRIP(cpu, 90);
+				MAKE_EDP_TRIP(cpu, 94);
+				MAKE_EDP_TRIP(cpu, 98);
+				MAKE_EDP_TRIP(cpu, 102);
+			};
+			cooling-maps {
+				MAP_CPU_EDP(23);
+				MAP_CPU_EDP(40);
+				MAP_CPU_EDP(50);
+				MAP_CPU_EDP(60);
+				MAP_CPU_EDP(70);
+				MAP_CPU_EDP(74);
+				MAP_CPU_EDP(78);
+				MAP_CPU_EDP(82);
+				MAP_CPU_EDP(86);
+				MAP_CPU_EDP(90);
+				MAP_CPU_EDP(94);
+				MAP_CPU_EDP(98);
+				MAP_CPU_EDP(102);
+			};
+		};
+		Tdiode_tegra {
+			trips {
+				MAKE_EDP_TRIP(gpu, 20);
+				MAKE_EDP_TRIP(gpu, 50);
+				MAKE_EDP_TRIP(gpu, 70);
+				MAKE_EDP_TRIP(gpu, 80);
+				MAKE_EDP_TRIP(gpu, 90);
+				MAKE_EDP_TRIP(gpu, 95);
+				MAKE_EDP_TRIP(gpu, 100);
+				MAKE_EDP_TRIP(gpu, 105);
+			};
+			cooling-maps {
+				MAP_GPU_EDP(20);
+				MAP_GPU_EDP(50);
+				MAP_GPU_EDP(70);
+				MAP_GPU_EDP(80);
+				MAP_GPU_EDP(90);
+				MAP_GPU_EDP(95);
+				MAP_GPU_EDP(100);
+				MAP_GPU_EDP(105);
+			};
+		};
+	};
+};

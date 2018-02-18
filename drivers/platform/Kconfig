@@ -5,4 +5,15 @@ if GOLDFISH
 source "drivers/platform/goldfish/Kconfig"
 endif
 
+config PLATFORM_TEGRA
+	bool "NVIDIA Tegra platform"
+	default y if ARCH_TEGRA
+	help
+	  Enable support for misc Tegra drivers.
+
+if PLATFORM_TEGRA
+source "drivers/platform/tegra/Kconfig"
+source "drivers/platform/tegra/nvadsp/Kconfig"
+endif
+
 source "drivers/platform/chrome/Kconfig"

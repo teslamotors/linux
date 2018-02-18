@@ -15,11 +15,50 @@ Required properties:
 
 Optional properties:
 --------------------
+- ams,backup-battery-chargable: boolean property: Tells whether battery is
+	chargeable or not. Absence of this property means battery is not
+	chargeable.
+- ams,battery-backup-charge-current: Backup Battery Charge Current. It can be
+	50uA, 100uA, 200uA and 400uA. The macros are defined on
+	dt-binding/mfd/as3722.h.
+		AS3722_BBCCUR_50UA
+		AS3722_BBCCUR_200UA
+		AS3722_BBCCUR_100UA
+		AS3722_BBCCUR_400UA
+	if this property is not present then 50uA will be default.
+
+- ams,battery-backup-bypass-out-resistor: boolean property. Enable or Bypass
+	output resistor during Backup Battery Charging. Absence of this
+	property will enable the output register.
+- ams,battery-backup-charge-mode: Various charging mode for backup battery,
+	dt-binding/mfd/as3722.h.
+		AS3722_BBCMODE_OFF: Backup battery charger is disabled.
+		AS3722_BBCMODE_ACTIVE: Charger is enabled in active state mode.
+		AS3722_BBCMODE_ACT_STBY: Charger is enabled in active and
+					standby modes.
+		AS3722_BBCMODE_ACT_STBY_OFF:Charger is enabled in active and
+					standby and power off mode.
+- ams,battery-backup-charge-voltage-maximum: boolean type, This sets the
+	charging voltage to maximum.
+		Device supports two level 2.5V and 3.0V
 - ams,enable-internal-int-pullup: Boolean property, to enable internal pullup on
 	interrupt pin. Missing this will disable internal pullup on INT pin.
 - ams,enable-internal-i2c-pullup: Boolean property, to enable internal pullup on
 	i2c scl/sda pins. Missing this will disable internal pullup on i2c
 	scl/sda lines.
+- ams,oc-pg-mask: Enable or disable various powergood or overcurrent or
+	ac_ok mask. The multiple values can be ORed when provided the
+	value of this property. include/dt-binding/mfd/as3722 defines the
+	macro for different masks.
+		AS3722_OC_PG_MASK_AC_OK: AC_OK PG_OC mask
+		AS3722_OC_PG_MASK_GPIO3
+		AS3722_OC_PG_MASK_GPIO4
+		AS3722_OC_PG_MASK_GPIO5
+		AS3722_OC_PG_MASK_PWRGOOD_SD0
+		AS3722_OC_PG_MASK_OVCURR_SD0
+		AS3722_OC_PG_MASK_VRESFALL
+		AS3722_OC_PG_MASK_POWERGOOD_SD6
+		AS3722_OC_PG_MASK_OVCURR_SD6
 
 Optional submodule and their properties:
 =======================================
@@ -128,6 +167,42 @@ The device node should have the following properties to enable this
 functionality
 ams,system-power-controller: Boolean, to enable the power off functionality
         through this device.
+
+ADC-Extcon:
+===========
+AS3722 supports 10 bit ADC for measuring several voltages and currents to
+perform function like battery monitoring, temperature supervision, button press
+detection, etc. There are two convertor internally. ADC0 is binded to iio framework
+for all consumers of IIO. ADC1 is configured during boot for threshold setting and
+mode setting. Convertor works time multiplexed.
+Extcon is AS3722 USB comparator used on ADC1 convertor.
+Following are properties which is needed:
+    Required properties:
+    -------------------
+	- #io-channel-cells = Number of cells in an IIO specifier; Its set to 1 as as3722
+                            has multiple adc channels
+
+    Optional properties:
+    -------------------
+        - extcon-name: Name of extcon connection.
+	- ams,enable-adc1-continuous-mode: bool to select continious mode.
+	- ams,enable-low-voltage-range: boot to select low voltage range.
+	- ams,adc-channel: ADC channel to be used.
+	- ams,hi-threshold: higher threshold limit for detection.
+	- ams,low-threshold: lower threshold limit for detection.
+
+Thermal:
+=========
+AS3722 has thermal sensors for SD0, SD1, and SD6 and supports over-temperature
+alarm interrupts.  The device node should have the following optional property
+to support thermal sensors:
+- ams,sd0-adc-ch: ADC channel for sd0 regulator temp, it has four possible
+  channels: 16, 17, 18, 19.
+- ams,sd1-adc-ch: ADC channel for sd1 regulator temp, it has one possible
+  channel: 20.
+- ams,sd6-adc-ch: ADC channel for sd6 regulator temp, it has two possible
+  channels: 21, 22.
+- #thermal-sensor-cells: from the common thermal binding; shall be set to 1.
 
 Example:
 --------

@@ -1,0 +1,18 @@
+* LTR659 proximity sensor
+
+Required properties:
+- compatible: must be "lite-on,ltr659"
+- reg: i2c address of the device. It is 0x23.
+- threshold: threshold of proximity value to detect head near/far from sensor.
+- vdd-supply: regulator supply for chip
+- vled-supply: regulator supply for led anode.
+
+Example:
+
+	ltr659@23 {
+		compatible = "lite-on,ltr659";
+		reg = <0x23>;
+		threshold = <125>;
+		vdd-supply = <&palmas_smps9>;
+		vled-supply = <&palmas_smps8>;
+	};

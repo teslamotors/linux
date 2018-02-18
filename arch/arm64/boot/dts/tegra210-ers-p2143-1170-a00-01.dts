@@ -1,0 +1,77 @@
+/*
+ * This is to support ERS E2143 with E2174 - MAX77621 PMIC.
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra210-ers-e2220-1170-a00-00-common.dts"
+#include "tegra210-platforms/tegra210-ers-p2143-emc.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	 i2c@7000d000 {
+		max77621@1b {
+			 status = "okay";
+		};
+
+		max77621@1c {
+			status = "okay";
+		};
+	};
+
+	pwm_regulators {
+		pwm-regulator@0 {
+			status = "disabled";
+		};
+
+		pwm-regulator@1 {
+			status = "disabled";
+		};
+	};
+
+	dfll-ovr@70110000 {
+		status = "disabled";
+	};
+
+	dfll-max77621@70110000 {
+		status = "okay";
+	};
+
+	dvfs_rails {
+		vdd-cpu-rail-ovr@0 {
+			status = "disabled";
+		};
+
+		vdd-gpu-rail-ovr@1 {
+			status = "disabled";
+		};
+
+		vdd-cpu-rail-max77621@2 {
+			status = "okay";
+		};
+
+		vdd-gpu-rail-max77621@3 {
+			status = "okay";
+		};
+	};
+
+	thermal-zones {
+		PMIC-Die-max77621-0 {
+			status = "okay";
+		};
+
+		PMIC-Die-max77621-1 {
+			status = "okay";
+		};
+	};
+};

@@ -2,7 +2,7 @@ VERSION = 3
 PATCHLEVEL = 18
 SUBLEVEL = 69
 EXTRAVERSION =
-NAME = Diseased Newt
+NAME = Shuffling Zombie Juror
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
@@ -609,7 +609,9 @@ all: vmlinux
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
+ifneq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
 KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
+endif
 KBUILD_CFLAGS	+= $(call cc-disable-warning,frame-address,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-truncation)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
@@ -620,7 +622,11 @@ KBUILD_AFLAGS	+= $(call cc-option,-fno-PIE)
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
 else
+ifdef CONFIG_LESS_GCC_OPT
+KBUILD_CFLAGS	+= -O1
+else
 KBUILD_CFLAGS	+= -O2
+endif
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
@@ -680,6 +686,7 @@ KBUILD_CFLAGS += $(stackp-flag)
 ifeq ($(COMPILER),clang)
 KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
 KBUILD_CPPFLAGS += $(call cc-option,-Wno-unknown-warning-option,)
+KBUILD_CPPFLAGS += $(call cc-option,-Wno-asm-operand-widths,)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, format-invalid-specifier)
 KBUILD_CFLAGS += $(call cc-disable-warning, gnu)
@@ -725,6 +732,16 @@ ifdef CONFIG_DEBUG_INFO_DWARF4
 KBUILD_CFLAGS	+= $(call cc-option, -gdwarf-4,)
 endif
 
+ifeq ($(CONFIG_ARCH_TEGRA_18x_SOC),y)
+KBUILD_CFLAGS += -I$(srctree)/../t18x/include
+KBUILD_CFLAGS += -I$(srctree)/../nvgpu-t18x/include
+KBUILD_CFLAGS += -I$(srctree)/../nvhost-t18x/include
+endif
+KBUILD_CFLAGS += -I$(srctree)/../nvgpu/include
+KBUILD_CFLAGS += -I$(srctree)/../nvhost/include
+KBUILD_CFLAGS += -I$(srctree)/../display/include
+KBUILD_CFLAGS += -I$(srctree)/../nvmap/include
+
 ifdef CONFIG_DEBUG_INFO_REDUCED
 KBUILD_CFLAGS 	+= $(call cc-option, -femit-struct-debug-baseonly) \
 		   $(call cc-option,-fno-var-tracking)
@@ -746,7 +763,9 @@ endif
 
 # We trigger additional mismatches with less inlining
 ifdef CONFIG_DEBUG_SECTION_MISMATCH
+ifneq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
 KBUILD_CFLAGS += $(call cc-option, -fno-inline-functions-called-once)
+endif
 endif
 
 # arch Makefile may override CC so keep this after arch Makefile is included
@@ -1041,7 +1060,7 @@ firmware_install: FORCE
 # Kernel headers
 
 #Default location for installed headers
-export INSTALL_HDR_PATH = $(objtree)/usr
+export INSTALL_HDR_PATH ?= $(objtree)/usr
 
 hdr-inst := -rR -f $(srctree)/scripts/Makefile.headersinst obj
 

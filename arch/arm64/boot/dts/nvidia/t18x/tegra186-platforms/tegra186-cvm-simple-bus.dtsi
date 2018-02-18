@@ -1,0 +1,34 @@
+/*
+ * tegra186-cvm-simple-bus.dtsi: Simple bus for CVM modules.
+ * The buses are like fixed regulators, extcon etc.
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+
+	/* Fixed regulators simple bus */
+	fixed-regulators {
+			compatible = "simple-bus";
+			device_type = "fixed-regulators";
+			#address-cells = <1>;
+			#size-cells = <0>;
+	};
+
+	/* Extcon simple bus */
+	external-connection {
+		compatible = "simple-bus";
+		device_type = "external-connection";
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+};

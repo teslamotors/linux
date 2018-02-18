@@ -1,0 +1,83 @@
+/*
+ * arch/arm64/boot/dts/tegra186-soc/tegra186-a57-cpuidle.dtsi
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/ {
+	cpus {
+
+		A57_CORE_POWER_STATES: a57_core_power_states {
+			compatible = "nvidia,tegra186-cpuidle-a57";
+
+			A57_C1: c1 {
+				compatible = "nvidia,tegra186-cpuidle-a57";
+				state-name = "Clock gated";
+				wakeup-latency-us = <1>;
+				min-residency-us = <1>;
+				power = <70>;
+				pmstate = <0x1>;
+				status = "okay";
+			};
+			A57_C7: c7 {
+				compatible = "nvidia,tegra186-cpuidle-a57";
+				state-name = "Core powergate";
+				wakeup-latency-us = <130>;
+				min-residency-us = <1000>;
+				power = <60>;
+				pmstate = <0x7>;
+				arm,psci-suspend-param= <0x40000007>;
+				status = "okay";
+			};
+		};
+
+		a57_cluster_power_states {
+			compatible = "nvidia,tegra186-cpuidle-a57-cluster";
+			cc1 {
+				state-name = "Cluster clock gated";
+				wakeup-latency-us = <1>;
+				min-residency-us = <1>;
+				power = <65>;
+				pmstate = <0x1>;
+				status = "okay";
+			};
+			cc6 {
+				state-name = "Cluster powergate";
+				wakeup-latency-us = <50>;
+				min-residency-us = <500>;
+				power = <19>;
+				pmstate = <0x6>;
+				status = "disabled";
+			};
+			cc7 {
+				state-name = "Cluster railgate";
+				wakeup-latency-us = <80>;
+				min-residency-us = <800>;
+				power = <5>;
+				pmstate = <0x7>;
+				status = "disabled";
+			};
+		};
+
+		a57_crossover_thresholds {
+			compatible = "nvidia,tegra186-cpuidle-a57-thresholds";
+
+			thresholds {
+				crossover_cc1_cc6       = <500>;
+				crossover_cc1_cc7       = <700>;
+			};
+		};
+	};
+};

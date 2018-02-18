@@ -228,6 +228,13 @@ config USB_NET_CDC_EEM
 	  IEEE 802 "local assignment" bit is set in the address, a "usbX"
 	  name is used instead.
 
+config USB_NET_CDC_EEM_ETHER_ONLY
+	boolean "CDC EEM supports the network interface ethX only"
+	depends on USB_NET_CDC_EEM
+	default n
+	help
+	  This option creates an interface named "ethX" only.
+
 config USB_NET_CDC_NCM
 	tristate "CDC NCM support"
 	depends on USB_USBNET
@@ -536,6 +543,15 @@ config USB_CDC_PHONET
 	  cellular modem, as found on most Nokia handsets with the
 	  "PC suite" USB profile.
 
+config USB_CDC_MHI
+	tristate "CDC MHI support"
+	depends on MHI
+	help
+	  This option is for Renesas wireless modem.
+	  Choose this option to support MHI over USB interface to
+	  Renesas Wireless Modem. Tristate by default. Automatically selected based
+	  on CONFIG_MHI.
+
 config USB_IPHETH
 	tristate "Apple iPhone USB Ethernet driver"
 	default n
@@ -571,5 +587,20 @@ config USB_VL600
 	  4G modem from Verizon:
 
 	  http://ubuntuforums.org/showpost.php?p=10589647&postcount=17
+
+config USB_NET_RAW_IP
+	tristate "RAW-IP Driver for XMM6260 modems"
+	help
+	  Choose this option if you have a XMM6260 modem device with RAW-IP suport.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called rmnet.
+
+config USB_NET_SMSC95XX_VOH_MODE
+	bool "VOH mode for SMSC95XX"
+	depends on USB_NET_SMSC95XX
+	default n
+	help
+	  This option enables VOH mode which is required for SMSC compliance.
 
 endif # USB_NET_DRIVERS

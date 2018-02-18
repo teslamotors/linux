@@ -1,0 +1,358 @@
+/*
+ * tegra186-quill-e3301-1099-a00-00-base.dts Quill-SLT A00 Board
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-quill-common-e3301-0000-a00.dtsi"
+#include "tegra186-platforms/tegra186-quill-slt-power-tree-e3301-1099-a00-00.dtsi"
+#include "tegra186-plugin-manager/tegra186-quill-e3301-0000-a00-plugin-manager.dtsi"
+#include "tegra186-plugin-manager/tegra186-quill-slt-e3301-1099-a00-00-plugin-manager.dtsi"
+#include "tegra186-prod/tegra186-priv-quill-slt-e3301-1099-a00-prod.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "3301:1099:A0";
+	nvidia,proc-boardid = "3301:1099:A0";
+
+	chosen {
+		board-has-eeprom;
+		bootargs ="console=ttyS0,115200";
+		stdout-path = &uarta;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "quill-slt";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	mttcan@c310000 {
+		status = "okay";
+		gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 0) GPIO_ACTIVE_HIGH>;
+		gpio_can_en = <&tegra_gpio TEGRA_GPIO(AA, 1) GPIO_ACTIVE_HIGH>;
+		mram-params = <0 16 16 8 8 8 16 16 16>;
+		tx-config = <8 8 0 64>;
+		rx-config = <64 64 64>;
+	};
+
+	mttcan@c320000 {
+		status = "okay";
+		gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 6) GPIO_ACTIVE_HIGH>;
+		gpio_can_en = <&tegra_gpio TEGRA_GPIO(AA, 7) GPIO_ACTIVE_HIGH>;
+		mram-params = <0 16 16 8 8 8 16 16 16>;
+		tx-config = <8 8 0 64>;
+		rx-config = <64 64 64>;
+	};
+
+	pinctrl@3520000 {
+		status = "okay";
+		pinctrl-0 = <&tegra_padctl_pinmux_default>;
+		pinctrl-names = "default";
+		tegra_padctl_pinmux_default: pinmux {
+			usb2-micro-AB {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb3-micro-AB {
+				nvidia,lanes = "usb3-1";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb2-std-A-port2 {
+				nvidia,lanes = "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port2 {
+				nvidia,lanes = "usb3-2";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+		};
+	};
+	pcie-controller@10003000 {
+		nvidia,lane-map = <0x211>;
+		status = "okay";
+		pci@1,0 {
+			status = "okay";
+		};
+		pci@2,0 {
+			status = "okay";
+		};
+		pci@3,0 {
+			status = "okay";
+		};
+	};
+
+	pwm@3280000 {
+		status = "disabled";
+	};
+
+	pwm@32a0000 {
+		status = "disabled";
+	};
+
+	pwm@c340000 {
+		status = "disabled";
+	};
+
+
+	host1x {
+		nvdisplay@15200000 {
+			status = "okay";
+		};
+
+		nvdisplay@15210000 {
+			status = "okay";
+		};
+
+		sor {
+			dp-display {
+				status = "disabled";
+			};
+		};
+
+		sor1 {
+			hdmi-display {
+				status = "okay";
+			};
+		};
+
+		sor1 {
+			status = "okay";
+			hdmi-display {
+				status = "okay";
+				nvidia,edid = <0xffffff 0xffffff00 0x10ac38a0 0x554d3433 0xf130103 0x80351e78 0xeeee91a3 0x544c9926 0xf5054a5 0x4b00714f 0x8180d1c0 0x1010101 0x1010101 0x101023a 0x80187138 0x2d40582c 0x4500132a 0x2100001e 0xff 0x593138 0x33443934 0x4133344d 0x550a0000 0xfc0044 0x454c4c20 0x53323430 0x39570a20 0xfd 0x324c1e 0x5311000a 0x20202020 0x202000bb>;
+
+				disp-default-out {
+					nvidia,out-xres = <0x780>;
+					nvidia,out-yres = <0x438>;
+				};
+
+				display-timings {
+
+					1920x1080-32 {
+						clock-frequency = <0x8d9ee20>;
+						hactive = <0x780>;
+						vactive = <0x438>;
+						hfront-porch = <0x58>;
+						hback-porch = <0x94>;
+						hsync-len = <0x2c>;
+						vfront-porch = <0x4>;
+						vback-porch = <0x24>;
+						vsync-len = <0x5>;
+						nvidia,h-ref-to-sync = <0x1>;
+						nvidia,v-ref-to-sync = <0x1>;
+					};
+				};
+
+			};
+		};
+
+		dpaux@155c0000 {
+			status = "disabled";
+		};
+		dpaux@15040000 {
+			status = "okay";
+		};
+	};
+
+	sound {
+		status = "disabled";
+	};
+
+	adma@2930000 {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+
+		admaif@290f000 {
+			status = "disabled";
+		};
+
+		sfc@2902000 {
+			status = "disabled";
+		};
+
+		sfc@2902200 {
+			status = "disabled";
+		};
+
+		sfc@2902400 {
+			status = "disabled";
+		};
+
+		sfc@2902600 {
+			status = "disabled";
+		};
+
+		amixer@290bb00 {
+			status = "disabled";
+		};
+
+		i2s@2901000 {
+			status = "disabled";
+		};
+
+		i2s@2901100 {
+			status = "disabled";
+		};
+
+		i2s@2901200 {
+			status = "disabled";
+		};
+
+		i2s@2901300 {
+			status = "disabled";
+		};
+
+		i2s@2901400 {
+			status = "disabled";
+		};
+
+		i2s@2901500 {
+			status = "disabled";
+		};
+
+		amx@2903000 {
+			status = "disabled";
+		};
+
+		amx@2903100 {
+			status = "disabled";
+		};
+
+		amx@2903200 {
+			status = "disabled";
+		};
+
+		amx@2903300 {
+			status = "disabled";
+		};
+
+		adx@2903800 {
+			status = "disabled";
+		};
+
+		adx@2903900 {
+			status = "disabled";
+		};
+
+		adx@2903a00 {
+			status = "disabled";
+		};
+
+		adx@2903b00 {
+			status = "disabled";
+		};
+
+		dmic@2904000 {
+			status = "disabled";
+		};
+
+		afc@2907000 {
+			status = "disabled";
+		};
+
+		afc@2907100 {
+			status = "disabled";
+		};
+
+		afc@2907200 {
+			status = "disabled";
+		};
+
+		afc@2907300 {
+			status = "disabled";
+		};
+
+		afc@2907400 {
+			status = "disabled";
+		};
+
+		afc@2907500 {
+			status = "disabled";
+		};
+
+		mvc@290a000 {
+			status = "disabled";
+		};
+
+		mvc@290a200 {
+			status = "disabled";
+		};
+
+		spdif@2906000 {
+			status = "disabled";
+		};
+
+		iqc@290e000 {
+			status = "disabled";
+		};
+
+		asrc@2910000 {
+			status = "disabled";
+		};
+
+		arad@290e400 {
+			status = "disabled";
+		};
+
+		ope@2908000 {
+			status = "disabled";
+
+			peq@2908100 {
+				status = "disabled";
+			};
+
+			mbdrc@2908200 {
+				status = "disabled";
+			};
+		};
+
+		dspk@2905000 {
+			status = "disabled";
+		};
+
+		dspk@2905100 {
+			status = "disabled";
+		};
+	};
+
+	spdif-dit.0@0 {
+		status = "disabled";
+	};
+
+	spdif-dit.1@1 {
+		status = "disabled";
+	};
+
+	spdif-dit.2@2 {
+		status = "disabled";
+	};
+
+	spdif-dit.3@3 {
+		status = "disabled";
+	};
+
+	adsp_audio {
+		status = "disabled";
+	};
+};

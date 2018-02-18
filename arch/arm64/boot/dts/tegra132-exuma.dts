@@ -1,0 +1,26 @@
+/dts-v1/;
+
+#define TEGRA132_PACKAGE_IS_MID
+#include "tegra132-soc-shield.dtsi"
+
+/ {
+	model = "exuma_sim";
+	compatible = "nvidia,exuma", "nvidia,tegra132";
+	nvidia,dtsfilename = __FILE__;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	/* chosen */
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "exuma_sim";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x40000000 >;
+	};
+};

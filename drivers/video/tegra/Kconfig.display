@@ -1,0 +1,372 @@
+comment "NVIDIA Tegra Display Driver options"
+
+config TEGRA_DC_CMU
+	bool "Tegra Color Management Unit"
+	depends on TEGRA_DC && !TEGRA_NVDISPLAY
+	default y
+	help
+	  Say Y here to enable Tegra color management unit.
+	  Enabled by default to support color correction for panels.
+	  It is used to make the representation of color match
+	  across displays.
+
+config TEGRA_DC_CMU_V2
+	bool "Tegra Color Management Unit(Version 2)"
+	depends on TEGRA_DC && TEGRA_NVDISPLAY
+	default y
+	help
+	  Say Y here to enable Tegra color management unit.
+	  Enabled by default to support color correction for panels.
+	  It is used to make the representation of color match
+	  across displays.
+
+config TEGRA_NVDISPLAY
+        bool "Tegra NvDisplay Architecture Support"
+	depends on TEGRA_DC
+	help
+	    Enable the support for NvDisplay Architecture
+	    If unsure, say N
+
+config TEGRA_DC_CDE
+	bool "Tegra Color Decompression Engine"
+	depends on TEGRA_DC && (ARCH_TEGRA_21x_SOC || TEGRA_NVDISPLAY)
+	default y
+	help
+	  Say Y here to enable Tegra color decompression engine
+	  Enabled by default to support compressed framebuffer.
+	  It is used to save bandwidth on memory request with surfaces created
+	  by graphics. The amount of memory required for a surface is the same,
+	  but compression bit tags are used to indicate if a block contains
+	  infomation on a larger number of pixels.
+
+config TEGRA_DC_WIN_H
+	bool "Use Window H instead of Cursor"
+	depends on TEGRA_DC && ARCH_TEGRA_14x_SOC
+	default y if ANDROID
+	help
+	  Say Y here to default to using the cursor hardware as a simple window.
+	  This window is labeled H for Hybrid.
+	  It is useful to enable for environments that need to blend multiple windows.
+	  For environments that are mouse oriented, the mouse cursor is the preferred mode.
+
+config TEGRA_DC_SCAN_COLUMN
+	bool
+	depends on TEGRA_DC && (ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC || TEGRA_NVDISPLAY)
+	default y
+	help
+	  Enables access to scan column mode for providing 90 and 270 rotation.
+	  The pixel format for a surface using scancolumn must be encoding
+	  using BlockLinear.
+	  Failure to use proper pixel format will result in EINVAL errors.
+
+config TEGRA_DC_BLENDER_GEN2
+	bool
+	depends on TEGRA_DC
+	default y
+
+config TEGRA_DC_BLENDER_DEPTH
+	bool "Program blender depth for overlays"
+	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC || TEGRA_NVDISPLAY)
+	default y
+	help
+	  This option is required for chips that support it.
+	  Disabling this means multiple windows will not be blended correctly.
+	  This may be acceptable in situations where windows never overlap or
+	  if there is there are no overlays and only base.
+
+config TEGRA_DC_BLOCK_LINEAR
+	bool "Support Block Linear encoding"
+	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC || TEGRA_NVDISPLAY)
+	default y
+	help
+	  A swizzled format that makes vertical walks of a surface
+	  consume less bandwidth than a traditional pitched linear
+	  pixel format.
+	  This needs to be enabled on chips that support it.
+
+config TEGRA_DC_INTERLACE
+	bool
+	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC || TEGRA_NVDISPLAY)
+	default y
+	help
+	  Support output in interlaced formats on chips that support it.
+	  This requires that a carefully constructed set of surfaces are
+	  used that match the needs of the interlaced mode.
+	  With this enabled HDMI 1080i is possible. But 480i is not, due
+	  to the lack of pixel doubling support.
+
+config TEGRA_DC_64BIT_SUPPORT
+	bool "64-bit addressing in DC"
+	depends on TEGRA_DC && (ARCH_TEGRA_13x_SOC || ARCH_TEGRA_21x_SOC)
+	default y
+	help
+	  T12x/T21x LPAE support in dc driver.
+	  This is needed to support buffers whose physical address does
+	  not fit into 32-bits.
+	  Default is to enable it on 64-bit platforms.
+
+config TEGRA_DC_CLOCK_GEN2
+	bool
+	depends on TEGRA_DC
+	default y if ARCH_TEGRA_12x_SOC
+	help
+	  T12x redefined pll usages for pll_d and pll_d2.
+
+config TEGRA_CSC
+	bool "Tegra Color Space Converter (version 1)"
+	depends on TEGRA_DC && !TEGRA_NVDISPLAY
+	default y
+	help
+	  Color Space converter support for Tegra display controller.
+	  This will only be enabled for chips that support 3X3 CSC matrices.
+
+config TEGRA_CSC_V2
+	bool "Tegra Color Space Converter (version 2)"
+	depends on TEGRA_DC && TEGRA_NVDISPLAY
+	default y
+	help
+	  Color Space converter support for Tegra display controller.
+	  This will only be enabled for chips that support 4X3 CSC matrices.
+
+config TEGRA_LUT
+	bool "Tegra Look Up Table (version 1)"
+	depends on TEGRA_DC && !TEGRA_NVDISPLAY
+	default y
+	help
+	  LUT support for Tegra display controller.
+	  This will only be enabled for chips which support
+	  8bits per color and have separate hardware registers
+	  to write those palette values.
+
+config TEGRA_LUT_V2
+	bool "Tegra Look Up Table (version 2)"
+	depends on TEGRA_DC && TEGRA_NVDISPLAY
+	default y
+	help
+	  LUT support for Tegra display controller.
+	  This will only be enabled for chips which can support
+	  16bits per color. Hardware has only register to
+	  program the base address for entire palette array.
+
+config TEGRA_NVSD
+	bool "Tegra SmartDimmer"
+	depends on TEGRA_DC && !TEGRA_NVDISPLAY
+	default y
+	help
+	  Smart Dimmer support for Tegra display controller.
+
+config TEGRA_SD_GEN2
+	bool "Tegra SD Gen2"
+	depends on TEGRA_DC && TEGRA_NVSD
+	default y
+	help
+	  Smart Dimmer Gen2 support for Tegra display controller.
+
+config TEGRA_DC_TEMPORAL_DITHER
+	bool
+	depends on TEGRA_DC
+	default y
+
+config FB_TEGRA
+	tristate "Tegra Framebuffer driver"
+	depends on TEGRA_DC && FB = y
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	default FB && !ADF
+	help
+	  Framebuffer device support for the Tegra display controller.
+
+config ADF_TEGRA
+	tristate "Tegra ADF driver"
+	depends on TEGRA_DC && ADF
+	default ADF
+	select ADF_FBDEV
+	select ADF_MEMBLOCK
+	help
+	  ADF device support for the Tegra display controller.
+
+config ADF_TEGRA_FBDEV
+	bool "Tegra ADF fbdev support"
+	depends on ADF_TEGRA
+	help
+	  Enables fbdev compatibility in the ADF Tegra driver.
+
+config TEGRA_DC_EXTENSIONS
+	bool "Tegra Display Controller Extensions"
+	depends on TEGRA_DC && ADF_TEGRA = n
+	default y
+	help
+	  Provides additional IOCTLs exposing display controller specific features
+	  to user space applications.
+
+config TEGRA_DSI
+	bool "Enable DSI panel."
+	depends on TEGRA_DC && TEGRA_MIPI_CAL
+	help
+	  Say Y here to enable the DSI panel.
+
+config TEGRA_DSI2EDP_TC358767
+	bool "Enable DSI2EDP TC358767 bridge."
+	help
+	  Say Y here to enable the DSI2EDP TOSHIBA 358767 adapter.
+
+config TEGRA_DSI2EDP_SN65DSI86
+	bool "Enable DSI2EDP SN65DSI86 bridge."
+	help
+	  Say Y here to enable the DSI2EDP TI SN65DSI86 adapter.
+
+config TEGRA_DSI2LVDS_SN65DSI85
+	bool "Enable DSI2LVDS SN65DSI85 bridge."
+	help
+	  Say Y here to enable the DSI2LVDS TI SN65DSI85 adapter.
+
+config TEGRA_DP
+	bool "Enable eDP panel."
+	default  y
+	help
+	  Say Y here to enable eDP panel.
+
+config TEGRA_HDMI2_0
+	bool "Enable hdmi2.0"
+	depends on TEGRA_DC
+	default n
+	help
+	  Say Y here to enable HDMI 2.0.
+	  Supported by sor-hdmi only.
+	  Suported on T21x and later chips only.
+	  Disabled by default since most chips are using older controller at present.
+
+config TEGRA_HDMI2GMSL_MAX929x
+	bool "Enable HDMI-to-GMSL MAX929x bridge."
+	help
+	  Say Y here to enable the Maxim Integrated MAX929x driver.
+	  This bridge chip converts SOR->HDMI output to GMSL.
+	  Driver supports MAX9291 and MAX9293 chips, ignoring HDCP on the latter.
+
+config TEGRA_HDA_DC
+	bool "Enable HDA DC driver"
+	depends on TEGRA_HDMI2_0 || (TEGRA_DP && (ARCH_TEGRA_21x_SOC || ARCH_TEGRA_18x_SOC))
+	default y
+	help
+	  Say Y here to enable separate HDA driver in DC space.
+	  Separate HDA driver is written to support both DP/HDMI from same code.
+	  Removes redundancy of HDA code, so it doesn't get duplicated for each client.
+	  Supported for T21x and later chips only which have HDMI2_0 or DP enabled.
+
+config TEGRA_LVDS
+	bool "Enable LVDS panel."
+	depends on ARCH_TEGRA_12x_SOC
+	default n
+	help
+	  Say Y here to enable LVDS panel.
+	  This option is for the T12x/T13x family of SOR controllers. And provide single link LVDS.
+	  It is different from the RGB output on Tegra2/3.
+	  Default is to disable it, as it is rarely used.
+
+config TEGRA_HDMI
+	bool "Enable HDMI support."
+	depends on TEGRA_DC && (ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_14x_SOC)
+	default y
+	help
+	  Say Y here to enable HDMI output
+	  This option is for the Tegra2/3/12x/13x family of HDMI output resource.
+	  It is not for the newer Tegra21x family of HDMI, which uses sor/dp instead.
+	  Default is to enable it for chips that support it.
+
+config TEGRA_HDMI2FPD
+	bool
+
+config TEGRA_HDMI2FPD_DS90UH949
+	bool "DS90UH949 FPDLink Serializer"
+	depends on I2C
+	select TEGRA_HDMI2FPD
+	help
+	  Say Y here to enable HDMI2FPD serializer bridge
+	  This is a driver for FPDLink Serializer DS90UH949.
+	  This option is required when HDMI output is converted to FPD output
+	  using DS90UH949 serializer chip.
+
+config TEGRA_NVSR
+	bool "Enable NVSR support."
+	default  n
+	help
+	   Say Y here to enable NVSR support.
+
+config TEGRA_VRR
+	bool "Enable VRR Support"
+	default  n
+	help
+	  Say Y here to support VRR.
+
+config TEGRA_HDMIVRR
+	bool "Enable HDMIVRR Support."
+	default  n
+	help
+	  Say Y here to support HDMIVRR. HDMIVRR monitor supports variable
+	  refresh rate so that the display scanout matches graphics rendering
+	  speed. It is enabled to improve user experience for games and videos.
+
+config TEGRA_NVHDCP
+	bool "Support NVHDCP content protection on HDMI"
+	depends on TEGRA_HDMI
+	help
+	  Say Y here to support NVHDCP upstream and downstream protocols, this
+	  requires a correctly fused chip to negotiate keys.
+	  It is only needed if you have an application that cares about checking
+	  for HDCP security while playing protected content. You do not need this
+	  option to simply display a GUI on an HDMI TV. An HDMI TV will display
+	  unprotected content just fine.
+
+config TEGRA_HDMIHDCP
+	bool "Support HDCP content protection on HDMI2_0"
+	depends on TEGRA_HDMI2_0
+	help
+	  Say Y here to support HDCP upstream and downstream protocols for HDMI2_0,
+	  this requires a correctly fused chip to negotiate keys.
+	  It is only needed if you have an application that cares about checking
+	  for HDCP security while playing protected content. You do not need this
+	  option to simply display a GUI on an HDMI TV. An HDMI TV will display
+	  unprotected content just fine.
+
+config TEGRA_DEBUG_HDCP
+	bool "Support Debug mode for HDCP on HDMI2_0"
+	depends on TEGRA_HDMIHDCP
+	default n
+	help
+	  Say Y here to expose debugfs nodes for HDCP content protection on HDMI2_0.
+	  It is only required if you need to modify the number of retries for HDCP
+	  authentication.
+
+config TEGRA_HDMI_74MHZ_LIMIT
+	bool "Support only up to 74.25 MHz HDMI pixel frequency"
+	depends on TEGRA_HDMI
+	help
+	  Say Y here to make kernel report only low bandwidth modes.
+	  Useful only for boards which can't deliver 148.50 MHz.
+
+config TEGRA_YUV_BYPASS_MODE_FILTER
+	bool "Filter-out YUV bypass modes"
+	default n
+	help
+	  Display driver parses all the YUV modes specified in EDID of a given sink.
+	  But T210 does not have hardware support for any of the YUV modes and T186 hardware
+	  supports only YUV422 and YUV444 modes. Say Y here to filter out all YUV modes on
+	  T210 platforms and to filter out YUV420 modes on T186 platforms. These modes will
+	  not be exposed to upper layers, including userspace.
+
+config TEGRA_DC_FAKE_PANEL_SUPPORT
+	bool "Enables fake panel and NULL OR support"
+	depends on TEGRA_DC
+	default y
+	help
+	  Select Y to enable support for the
+	  Display Controller to output to
+	  fake panel or NULL Output Resource.
+	  Used for silicon characterization and
+	  automated testing. should not be enabled
+	  for production.
+
+trysource "../t18x/drivers/video/tegra/Kconfig"
+trysource "../t18x/drivers/video/tegra/Kconfig.t18x"
+trysource "drivers/video/tegra/Kconfig.t18x"

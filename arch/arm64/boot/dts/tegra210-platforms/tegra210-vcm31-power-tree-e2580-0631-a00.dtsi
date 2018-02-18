@@ -1,0 +1,255 @@
+/*
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "tegra210-ers-pmic-e2174-1101-a00.dtsi"
+#include "tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
+#include "tegra210-overrides/tegra210-power-dvfs-override-vcm31.dtsi"
+
+/ {
+	i2c@7000d000 {
+		max77620@3c {
+			regulators {
+				sd2 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					maxim,suspend-fps-source = <MAX77620_FPS_SRC_NONE>;
+				};
+
+				ldo0 {
+					regulator-enable-ramp-delay = <26>;
+					regulator-disable-ramp-delay = <626>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo1 {
+					regulator-enable-ramp-delay = <22>;
+					regulator-disable-ramp-delay = <630>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo2 {
+					regulator-enable-ramp-delay = <62>;
+					regulator-disable-ramp-delay = <650>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo3 {
+					regulator-enable-ramp-delay = <50>;
+					regulator-disable-ramp-delay = <1110>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo5 {
+					regulator-enable-ramp-delay = <62>;
+					regulator-disable-ramp-delay = <640>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo6 {
+					regulator-enable-ramp-delay = <36>;
+					regulator-disable-ramp-delay = <674>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo7 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					maxim,suspend-fps-source = <MAX77620_FPS_SRC_NONE>;
+				};
+			};
+		};
+	};
+
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vdd_3v3: regulator@1 {
+			compatible = "regulator-fixed-sync";
+			reg = <1>;
+			regulator-name = "vdd-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+			gpio = <&max77620 3 0>;
+			enable-active-high;
+		};
+
+		lp_pwr_rails_en: regulator@2 {
+			compatible = "regulator-fixed-sync";
+			reg = <2>;
+			regulator-name = "lp_pwr_rails_en";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-boot-on;
+			gpio = <&max77620 7 0>;
+			enable-active-high;
+			vin-supply = <&max77620_ldo0>;
+		};
+
+		en_vdd_sd: regulator@4 {
+			compatible = "regulator-fixed-sync";
+			reg = <4>;
+			regulator-name = "en_vdd_sd";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio TEGRA_GPIO(Z, 4) 0>;
+			enable-active-high;
+			vin-supply = <&vdd_3v3>;
+		};
+
+		usb_vbus1: regulator@14 {
+			compatible = "regulator-fixed-sync";
+			reg = <14>;
+			regulator-name = "usb-vbus1";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(CC, 4) 0>;
+			enable-active-high;
+		};
+
+		usb_vbus2: regulator@15 {
+			compatible = "regulator-fixed-sync";
+			reg = <15>;
+			regulator-name = "usb-vbus2";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+			enable-active-high;
+		};
+
+		vdd_dummy: regulator@17 {
+			compatible = "regulator-fixed";
+			reg = <17>;
+			regulator-name = "vdd_dummy";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			regulator-always-on;
+		};
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_hdmi-supply = <&max77620_ldo8>;
+			avdd_hdmi_pll-supply = <&vdd_dummy>;
+			vdd_hdmi_5v0-supply = <&vdd_dummy>;
+		};
+
+		vi {
+			avdd_dsi_csi-supply = <&lp_pwr_rails_en>;
+		};
+	};
+
+	sound {
+		ldoen-supply = <&vdd_dummy>;
+		spkvdd-supply = <&vdd_dummy>;
+		dbvdd-supply = <&vdd_dummy>;
+		dmicvdd-supply = <&vdd_dummy>;
+	};
+
+	xusb@70090000 {
+		usb_vbus0-supply = <&vdd_dummy>;
+		usb_vbus1-supply = <&usb_vbus1>;
+		usb_vbus2-supply = <&usb_vbus2>;
+		usb_vbus3-supply = <&vdd_dummy>;
+		hvdd_usb-supply = <&vdd_dummy>;
+		avdd_pll_utmip-supply = <&vdd_dummy>;
+		vddio_hsic-supply = <&max77620_ldo0>;
+		avddio_usb-supply = <&max77620_ldo1>;
+		dvdd_sata-supply = <&max77620_ldo1>;
+		avddio_pll_uerefe-supply = <&vdd_dummy>;
+	};
+
+	xudc@700d0000 {
+		hvdd_usb-supply = <&vdd_dummy>;
+		avdd_pll_utmip-supply = <&vdd_dummy>;
+		avddio_usb-supply = <&max77620_ldo1>;
+		avddio_pll_uerefe-supply = <&vdd_dummy>;
+	};
+
+	xotg {
+		usb_vbus-supply = <&vdd_dummy>;
+	};
+
+	xusb_padctl {
+		avdd_pll_uerefe-supply = <&max77620_ldo7>;
+		hvdd_pex_pll_e-supply = <&max77620_sd3>;
+		dvdd_pex_pll-supply = <&max77620_ldo1>;
+		hvddio_pex-supply = <&max77620_sd3>;
+		dvddio_pex-supply = <&max77620_ldo1>;
+		hvdd_sata-supply = <&max77620_sd3>;
+		dvdd_sata_pll-supply = <&max77620_ldo8>;
+		hvddio_sata-supply = <&max77620_sd3>;
+		dvddio_sata-supply = <&max77620_ldo8>;
+	};
+
+	/* SDMMC 4 for EMMC */
+	sdhci@700b0600 {
+		vddio_sdmmc-supply = <&max77620_sd3>;
+	};
+
+	/* SDMMC 3 for 2nd wifi */
+	sdhci@700b0400 {
+		vddio_sdmmc-supply = <&max77620_sd3>;
+		vddio_sd_slot-supply = <&vdd_3v3>;
+	};
+
+	/* SDMMC 2 for wifi */
+	sdhci@700b0200 {
+		vddio_sdmmc-supply = <&vdd_dummy>;
+		vddio_sd_slot-supply = <&vdd_dummy>;
+	};
+
+	/* SDMMC 1 for SD Card */
+	sdhci@700b0000 {
+		vddio_sdmmc-supply = <&max77620_ldo2>;
+		vddio_sd_slot-supply = <&en_vdd_sd>;
+	};
+
+	sata@70020000 {
+		hvdd_sata-supply = <&vdd_dummy>;
+		hvdd_pex_pll_e-supply = <&vdd_dummy>;
+		l0_hvddio_sata-supply = <&vdd_dummy>;
+		l0_dvddio_sata-supply = <&max77620_ldo1>;
+		dvdd_sata_pll-supply = <&max77620_ldo1>;
+	};
+
+	pmc-iopower {
+		iopower-sys-supply = <&vdd_dummy>;
+		iopower-uart-supply = <&vdd_dummy>;
+		iopower-audio-supply = <&vdd_dummy>;
+		iopower-cam-supply = <&vdd_dummy>;
+		iopower-pex-ctrl-supply = <&vdd_dummy>;
+		iopower-sdmmc1-supply = <&vdd_dummy>;
+		iopower-sdmmc3-supply = <&vdd_dummy>;
+		iopower-sdmmc4-supply = <&vdd_dummy>;
+		iopower-audio-hv-supply = <&vdd_dummy>;
+		iopower-debug-supply = <&vdd_dummy>;
+		iopower-dmic-supply = <&vdd_dummy>;
+		iopower-gpio-supply = <&vdd_dummy>;
+		iopower-spi-supply = <&vdd_dummy>;
+		iopower-spi-hv-supply = <&vdd_dummy>;
+		iopower-sdmmc2-supply = <&vdd_dummy>;
+		iopower-dp-supply = <&vdd_dummy>;
+	};
+};

@@ -1547,6 +1547,13 @@ config SHMEM
 	  option replaces shmem and tmpfs with the much simpler ramfs code,
 	  which may be appropriate on small systems without swap.
 
+config SHMEM_ALL_RAM
+	bool "Allow shmem to use all RAM" if EXPERT
+	depends on SHMEM
+	help
+	  By default, shmem is only allowed to use half of RAM. With this
+	  enabled, it is allowed to use all of the RAM.
+
 config AIO
 	bool "Enable AIO support" if EXPERT
 	default y

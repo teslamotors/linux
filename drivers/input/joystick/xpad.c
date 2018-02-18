@@ -78,6 +78,8 @@
 #include <linux/stat.h>
 #include <linux/module.h>
 #include <linux/usb/input.h>
+#define CREATE_TRACE_POINTS
+#include <trace/events/joystick.h>
 
 #define DRIVER_AUTHOR "Marko Friedemann <mfr@bmx-chemnitz.de>"
 #define DRIVER_DESC "X-Box pad driver"
@@ -647,19 +649,23 @@ static void xpad_irq_in(struct urb *urb)
 
 	switch (xpad->xtype) {
 	case XTYPE_XBOX360:
+		trace_joystick_irq("Joystick_xpad360_process_packet");
 		xpad360_process_packet(xpad, 0, xpad->idata);
 		break;
 	case XTYPE_XBOX360W:
+		trace_joystick_irq("Joystick_xpad360w_process_packet");
 		xpad360w_process_packet(xpad, 0, xpad->idata);
 		break;
 	case XTYPE_XBOXONE:
 		xpadone_process_packet(xpad, 0, xpad->idata);
 		break;
 	default:
+		trace_joystick_irq("Joystick_xpad_process_packet");
 		xpad_process_packet(xpad, 0, xpad->idata);
 	}
 
 exit:
+	trace_joystick_irq("Joystick_xpad_usb_submit_urb");
 	retval = usb_submit_urb(urb, GFP_ATOMIC);
 	if (retval)
 		dev_err(dev, "%s - usb_submit_urb failed with result %d\n",

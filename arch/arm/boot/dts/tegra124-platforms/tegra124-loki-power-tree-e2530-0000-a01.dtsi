@@ -1,0 +1,13 @@
+#include "tegra124-platforms/tegra124-loki-pmic-e2530-0000-a01.dtsi"
+#include "tegra124-platforms/tegra124-loki-fixed-e2530-0000-a00.dtsi"
+
+/ {
+	xusb@70090000 {
+		usb_vbus1-supply = <&en_battery>;
+		usb_vbus2-supply = <&en_battery>;
+		hvdd_usb-supply = <&palmas_ldousb>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		vddio_hsic-supply = <&palmas_ldo3>;
+		avddio_usb-supply = <&palmas_ldo1>;
+	};
+};

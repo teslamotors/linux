@@ -46,6 +46,8 @@ static inline int dma_set_mask(struct device *dev, u64 mask)
 	return get_dma_ops(dev)->set_dma_mask(dev, mask);
 }
 
+void set_dummy_dma_ops(struct device *dev);
+
 #ifdef __arch_page_to_dma
 #error Please update to __arch_pfn_to_dma
 #endif

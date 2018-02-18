@@ -2540,6 +2540,34 @@ static int __exit atmci_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int atmci_runtime_suspend(struct device *dev)
+{
+	struct atmel_mci *host = dev_get_drvdata(dev);
+
+	clk_disable_unprepare(host->mck);
+
+	pinctrl_pm_select_sleep_state(dev);
+
+	return 0;
+}
+
+static int atmci_runtime_resume(struct device *dev)
+{
+	struct atmel_mci *host = dev_get_drvdata(dev);
+
+	pinctrl_pm_select_default_state(dev);
+
+	return clk_prepare_enable(host->mck);
+}
+#endif
+
+static const struct dev_pm_ops atmci_dev_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
+				pm_runtime_force_resume)
+	SET_RUNTIME_PM_OPS(atmci_runtime_suspend, atmci_runtime_resume, NULL)
+};
+
 static struct platform_driver atmci_driver = {
 	.remove		= __exit_p(atmci_remove),
 	.driver		= {

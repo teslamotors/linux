@@ -1,0 +1,58 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	dfll@70110000 {
+		board-params = <&{/cpu_dfll_board_params}>;
+		status = "okay";
+		pwm_dfll: pwm-pmic-integration {
+			compatible = "nvidia,tegra124-dfll-pwm";
+			pwm-1wire-buffer;
+			pwm-data-gpio = <&gpio TEGRA_GPIO(X, 0) 0>;
+			pwm-buffer-ctrl-gpio = <&gpio TEGRA_GPIO(S, 5) 1>;
+			#pwm-cells = <2>;
+			pwm-regulator = <&cpu_pwm_reg>;
+		};
+	};
+
+	cpu_dfll_board_params {
+		sample-rate = <50000>;
+		fixed-output-forcing;
+		cf = <10>;
+		ci = <0>;
+		cg = <2>;
+		droop-cut-value = <0xf>;
+		droop-restore-ramp = <0x0>;
+		scale-out-ramp = <0x0>;
+	};
+
+	pwm_regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu_pwm_reg: pwm-regulator@0 {
+			reg = <0>;
+			compatible = "regulator-pwm";
+			pwms = <&pwm_dfll 0 2500>;
+			regulator-name = "vdd-cpu-pwm-reg";
+			regulator-min-microvolt = <675000>;
+			regulator-max-microvolt = <1275000>;
+			regulator-init-microvolt = <1000000>;
+			regulator-always-on;
+			regulator-boot-on;
+			regulator-n-voltages = <33>;
+			voltage-time-sel = <80>;
+			idle-gpio = <&gpio TEGRA_GPIO(X, 2) 0>;
+
+			consumers {
+				c1 {
+					regulator-consumer-supply = "vdd_cpu";
+				};
+			};
+		};
+	};
+
+	cpu_edp {
+		nvidia,regulator_idle_limit = <5000>;
+	};
+};

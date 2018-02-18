@@ -1,5 +1,6 @@
 /* -----------------------------------------------------------------------------
  * Copyright (c) 2011 Ozmo Inc
+ * Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
  * Released under the GNU General Public License Version 2 (GPLv2).
  *
  * This file provides the implementation of a USB host controller device that
@@ -30,30 +31,29 @@
 #include <linux/export.h>
 #include "linux/usb/hcd.h"
 #include <asm/unaligned.h>
-#include "ozdbg.h"
 #include "ozusbif.h"
+#include "oztrace.h"
 #include "ozurbparanoia.h"
 #include "ozhcd.h"
+#include "ozpd.h"
+#include "ozproto.h"
+#include "ozusbsvc.h"
 
-/*
- * Number of units of buffering to capture for an isochronous IN endpoint before
- * allowing data to be indicated up.
- */
-#define OZ_IN_BUFFERING_UNITS	100
+#define OZ_HUB_DEBOUNCE_TIMEOUT	1500
 
 /* Name of our platform device.
  */
 #define OZ_PLAT_DEV_NAME	"ozwpan"
-
+/* Maximum number of free urb links that can be kept in the pool.
+ */
+#define OZ_MAX_LINK_POOL_SIZE	16
+/* Get endpoint object from the containing link.
+ */
+#define ep_from_link(__e) container_of((__e), struct oz_endpoint, link)
 /*EP0 timeout before ep0 request is again added to TX queue. (13*8 = 98mSec)
  */
 #define EP0_TIMEOUT_COUNTER 13
-
-/* Debounce time HCD driver should wait before unregistering.
- */
-#define OZ_HUB_DEBOUNCE_TIMEOUT 1500
-
-/*
+/*------------------------------------------------------------------------------
  * Used to link urbs together and also store some status information for each
  * urb.
  * A cache of these are kept in a pool to reduce number of calls to kmalloc.
@@ -67,17 +67,14 @@ struct oz_urb_link {
 	unsigned submit_counter;
 };
 
-static struct kmem_cache *oz_urb_link_cache;
-
 /* Holds state information about a USB endpoint.
  */
-#define OZ_EP_BUFFER_SIZE_ISOC  (1024 * 24)
-#define OZ_EP_BUFFER_SIZE_INT   512
 struct oz_endpoint {
 	struct list_head urb_list;	/* List of oz_urb_link items. */
 	struct list_head link;		/* For isoc ep, links in to isoc
 					   lists of oz_port. */
 	struct timespec timestamp;
+	int credit2;
 	int credit;
 	int credit_ceiling;
 	u8 ep_num;
@@ -87,14 +84,28 @@ struct oz_endpoint {
 	int in_ix;
 	int out_ix;
 	int buffered_units;
+	u8 max_buffer_units;
 	unsigned flags;
 	int start_frame;
+	u8 next_frame;
+	u8 lost_frames;
+	u16 dropped_frames;
+	struct timespec timestamp2;
 };
-
 /* Bits in the flags field. */
-#define OZ_F_EP_BUFFERING	0x1
-#define OZ_F_EP_HAVE_STREAM	0x2
+#define OZ_F_EP_BUFFERING			(1<<0)
+#define OZ_F_EP_HAVE_STREAM			(1<<1)
+#define OZ_F_EP_ISOC_FRAME_NUM_VALID		(1<<2)
+#define OZ_F_EP_ISOC_FRAME_TIME_SET		(1<<3)
+#define OZ_F_EP_ISOC_DUPLICATE_FRAME		(1<<4)
+#define OZ_F_EP_HAVE_REF_CLK_STREAM		(1<<5)
 
+/* Buffer_size.
+Total size of buffer (in bytes) for the endpoint buffer for isochronous data,
+and for stashing BULK or INT data if a URB is not available.
+*/
+#define OZ_EP_BUFFER_SIZE_ISOC  (1024*24)
+#define OZ_EP_BUFFER_SIZE_INT   (512)
 /* Holds state information about a USB interface.
  */
 struct oz_interface {
@@ -121,14 +132,14 @@ struct oz_port {
 	struct list_head isoc_out_ep;
 	struct list_head isoc_in_ep;
 };
-
 #define OZ_PORT_F_PRESENT	0x1
 #define OZ_PORT_F_CHANGED	0x2
 #define OZ_PORT_F_DYING		0x4
 
 /* Data structure in the private context area of struct usb_hcd.
+ * Keep OZ_NB_PORTS same as OZ_MAX_PDS in ozappif.h
  */
-#define OZ_NB_PORTS	8
+#define OZ_NB_PORTS	4
 struct oz_hcd {
 	spinlock_t hcd_lock;
 	struct list_head urb_pending_list;
@@ -139,12 +150,11 @@ struct oz_hcd {
 	uint flags;
 	struct usb_hcd *hcd;
 };
-
 /* Bits in flags field.
  */
 #define OZ_HDC_F_SUSPENDED	0x1
 
-/*
+/*------------------------------------------------------------------------------
  * Static function prototypes.
  */
 static int oz_hcd_start(struct usb_hcd *hcd);
@@ -184,19 +194,20 @@ static void oz_process_ep0_urb(struct oz_hcd *ozhcd, struct urb *urb,
 static struct oz_urb_link *oz_remove_urb(struct oz_endpoint *ep,
 		struct urb *urb);
 static void oz_hcd_clear_orphanage(struct oz_hcd *ozhcd, int status);
-
-/*
+/*------------------------------------------------------------------------------
  * Static external variables.
  */
 static struct platform_device *g_plat_dev;
 static struct oz_hcd *g_ozhcd;
 static DEFINE_SPINLOCK(g_hcdlock);	/* Guards g_ozhcd. */
 static const char g_hcd_name[] = "Ozmo WPAN";
+static struct list_head *g_link_pool;
+static int g_link_pool_size;
+static DEFINE_SPINLOCK(g_link_lock);
 static DEFINE_SPINLOCK(g_tasklet_lock);
 static struct tasklet_struct g_urb_process_tasklet;
 static struct tasklet_struct g_urb_cancel_tasklet;
 static atomic_t g_pending_urbs = ATOMIC_INIT(0);
-static atomic_t g_usb_frame_number = ATOMIC_INIT(0);
 static const struct hc_driver g_oz_hc_drv = {
 	.description =		g_hcd_name,
 	.product_desc =		"Ozmo Devices WPAN",
@@ -227,8 +238,7 @@ static struct platform_driver g_oz_plat_drv = {
 		.owner = THIS_MODULE,
 	},
 };
-
-/*
+/*------------------------------------------------------------------------------
  * Gets our private context area (which is of type struct oz_hcd) from the
  * usb_hcd structure.
  * Context: any
@@ -237,8 +247,7 @@ static inline struct oz_hcd *oz_hcd_private(struct usb_hcd *hcd)
 {
 	return (struct oz_hcd *)hcd->hcd_priv;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Searches list of ports to find the index of the one with a specified  USB
  * bus address. If none of the ports has the bus address then the connection
  * port is returned, if there is one or -1 otherwise.
@@ -248,38 +257,92 @@ static int oz_get_port_from_addr(struct oz_hcd *ozhcd, u8 bus_addr)
 {
 	int i;
 
-	for (i = 0; i < OZ_NB_PORTS; i++) {
-		if (ozhcd->ports[i].bus_addr == bus_addr)
-			return i;
+	if (0 != bus_addr) {
+		for (i = 0; i < OZ_NB_PORTS; i++) {
+			if (ozhcd->ports[i].bus_addr == bus_addr)
+				return i;
+		}
+
+		return -1;
 	}
 	return ozhcd->conn_port;
 }
+/*------------------------------------------------------------------------------
+ * Context: unknown
+ */
+static inline int oz_usb_get_frame_number(void)
+{
+	struct timespec ts;
+	getrawmonotonic(&ts);
+	return (int)(div64_u64(timespec_to_ns(&ts), NSEC_PER_MSEC));
+}
 
-/*
+/*------------------------------------------------------------------------------
+ * Allocates an urb link, first trying the pool but going to heap if empty.
  * Context: any
  */
 static struct oz_urb_link *oz_alloc_urb_link(void)
 {
-	return kmem_cache_alloc(oz_urb_link_cache, GFP_ATOMIC);
+	struct oz_urb_link *urbl = NULL;
+	unsigned long irq_state;
+	spin_lock_irqsave(&g_link_lock, irq_state);
+	if (g_link_pool) {
+		urbl = container_of(g_link_pool, struct oz_urb_link, link);
+		g_link_pool = urbl->link.next;
+		--g_link_pool_size;
+	}
+	spin_unlock_irqrestore(&g_link_lock, irq_state);
+	if (urbl == NULL)
+		urbl = kmalloc(sizeof(struct oz_urb_link), GFP_ATOMIC);
+	return urbl;
 }
-
-/*
+/*------------------------------------------------------------------------------
+ * Frees an urb link by putting it in the pool if there is enough space or
+ * deallocating it to heap otherwise.
  * Context: any
  */
 static void oz_free_urb_link(struct oz_urb_link *urbl)
 {
-	if (!urbl)
-		return;
-
-	kmem_cache_free(oz_urb_link_cache, urbl);
+	if (urbl) {
+		unsigned long irq_state;
+		spin_lock_irqsave(&g_link_lock, irq_state);
+		if (g_link_pool_size < OZ_MAX_LINK_POOL_SIZE) {
+			urbl->link.next = g_link_pool;
+			g_link_pool = &urbl->link;
+			urbl = NULL;
+			g_link_pool_size++;
+		}
+		spin_unlock_irqrestore(&g_link_lock, irq_state);
+		if (urbl)
+			kfree(urbl);
+	}
 }
-
-/*
+/*------------------------------------------------------------------------------
+ * Deallocates all the urb links in the pool.
+ * Context: unknown
+ */
+static void oz_empty_link_pool(void)
+{
+	struct list_head *e;
+	unsigned long irq_state;
+	spin_lock_irqsave(&g_link_lock, irq_state);
+	e = g_link_pool;
+	g_link_pool = NULL;
+	g_link_pool_size = 0;
+	spin_unlock_irqrestore(&g_link_lock, irq_state);
+	while (e) {
+		struct oz_urb_link *urbl =
+			container_of(e, struct oz_urb_link, link);
+		e = e->next;
+		kfree(urbl);
+	}
+}
+/*------------------------------------------------------------------------------
  * Allocates endpoint structure and optionally a buffer. If a buffer is
  * allocated it immediately follows the endpoint structure.
  * Context: softirq
  */
-static struct oz_endpoint *oz_ep_alloc(int buffer_size, gfp_t mem_flags)
+static struct oz_endpoint *oz_ep_alloc(gfp_t mem_flags, int buffer_size)
 {
 	struct oz_endpoint *ep =
 		kzalloc(sizeof(struct oz_endpoint)+buffer_size, mem_flags);
@@ -287,6 +350,7 @@ static struct oz_endpoint *oz_ep_alloc(int buffer_size, gfp_t mem_flags)
 		INIT_LIST_HEAD(&ep->urb_list);
 		INIT_LIST_HEAD(&ep->link);
 		ep->credit = -1;
+		getrawmonotonic(&ep->timestamp2);
 		if (buffer_size) {
 			ep->buffer_size = buffer_size;
 			ep->buffer = (u8 *)(ep+1);
@@ -294,27 +358,25 @@ static struct oz_endpoint *oz_ep_alloc(int buffer_size, gfp_t mem_flags)
 	}
 	return ep;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Pre-condition: Must be called with g_tasklet_lock held and interrupts
  * disabled.
  * Context: softirq or process
  */
-static struct oz_urb_link *oz_uncancel_urb(struct oz_hcd *ozhcd,
-		struct urb *urb)
+struct oz_urb_link *oz_uncancel_urb(struct oz_hcd *ozhcd, struct urb *urb)
 {
 	struct oz_urb_link *urbl;
-
-	list_for_each_entry(urbl, &ozhcd->urb_cancel_list, link) {
+	struct list_head *e;
+	list_for_each(e, &ozhcd->urb_cancel_list) {
+		urbl = container_of(e, struct oz_urb_link, link);
 		if (urb == urbl->urb) {
-			list_del_init(&urbl->link);
+			list_del_init(e);
 			return urbl;
 		}
 	}
 	return NULL;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * This is called when we have finished processing an urb. It unlinks it from
  * the ep and returns it to the core.
  * Context: softirq or process
@@ -324,9 +386,23 @@ static void oz_complete_urb(struct usb_hcd *hcd, struct urb *urb,
 {
 	struct oz_hcd *ozhcd = oz_hcd_private(hcd);
 	unsigned long irq_state;
-	struct oz_urb_link *cancel_urbl;
-
+	struct oz_urb_link *cancel_urbl = NULL;
 	spin_lock_irqsave(&g_tasklet_lock, irq_state);
+
+	if (usb_pipeisoc(urb->pipe)) {
+		if (status < 0) {
+			int i;
+			urb->transfer_buffer_length = 0;
+			for (i = 0; i < urb->number_of_packets; i++) {
+				urb->iso_frame_desc[i].actual_length = 0;
+				urb->iso_frame_desc[i].status = status;
+			}
+		} else {
+			/* ISOC checks transfer_buffer_length */
+			urb->transfer_buffer_length = urb->actual_length;
+		}
+	}
+	oz_trace_urb_out(urb, status);
 	usb_hcd_unlink_urb_from_ep(hcd, urb);
 	/* Clear hcpriv which will prevent it being put in the cancel list
 	 * in the event that an attempt is made to cancel it.
@@ -347,7 +423,7 @@ static void oz_complete_urb(struct usb_hcd *hcd, struct urb *urb,
 	 */
 	spin_unlock(&g_tasklet_lock);
 	if (oz_forget_urb(urb)) {
-		oz_dbg(ON, "ERROR Unknown URB %p\n", urb);
+		oz_trace("OZWPAN: ERROR Unknown URB %p\n", urb);
 	} else {
 		atomic_dec(&g_pending_urbs);
 		usb_hcd_giveback_urb(hcd, urb, status);
@@ -357,8 +433,7 @@ static void oz_complete_urb(struct usb_hcd *hcd, struct urb *urb,
 	if (cancel_urbl)
 		oz_free_urb_link(cancel_urbl);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Deallocates an endpoint including deallocating any associated stream and
  * returning any queued urbs to the core.
  * Context: softirq
@@ -366,9 +441,9 @@ static void oz_complete_urb(struct usb_hcd *hcd, struct urb *urb,
 static void oz_ep_free(struct oz_port *port, struct oz_endpoint *ep)
 {
 	if (port) {
-		LIST_HEAD(list);
+		struct list_head list;
 		struct oz_hcd *ozhcd = port->ozhcd;
-
+		INIT_LIST_HEAD(&list);
 		if (ep->flags & OZ_F_EP_HAVE_STREAM)
 			oz_usb_stream_delete(port->hpd, ep->ep_num);
 		/* Transfer URBs to the orphanage while we hold the lock. */
@@ -379,15 +454,12 @@ static void oz_ep_free(struct oz_port *port, struct oz_endpoint *ep)
 		list_splice_tail(&list, &ozhcd->orphanage);
 		spin_unlock_bh(&ozhcd->hcd_lock);
 	}
-	oz_dbg(ON, "Freeing endpoint memory\n");
 	kfree(ep);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
-static void oz_complete_buffered_urb(struct oz_port *port,
-			struct oz_endpoint *ep,
+void oz_complete_buffered_urb(struct oz_port *port, struct oz_endpoint *ep,
 			struct urb *urb)
 {
 	int data_len, available_space, copy_len;
@@ -417,23 +489,20 @@ static void oz_complete_buffered_urb(struct oz_port *port,
 		ep->out_ix = 0;
 
 	ep->buffered_units--;
-	oz_dbg(ON, "Trying to give back buffered frame of size=%d\n",
-	       available_space);
 	oz_complete_urb(port->ozhcd->hcd, urb, 0);
 }
 
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 static int oz_enqueue_ep_urb(struct oz_port *port, u8 ep_addr, int in_dir,
 			struct urb *urb, u8 req_id)
 {
 	struct oz_urb_link *urbl;
-	struct oz_endpoint *ep = NULL;
+	struct oz_endpoint *ep;
 	int err = 0;
-
 	if (ep_addr >= OZ_NB_ENDPOINTS) {
-		oz_dbg(ON, "%s: Invalid endpoint number\n", __func__);
+		oz_trace("Invalid endpoint number in oz_enqueue_ep_urb().\n");
 		return -EINVAL;
 	}
 	urbl = oz_alloc_urb_link();
@@ -452,19 +521,25 @@ static int oz_enqueue_ep_urb(struct oz_port *port, u8 ep_addr, int in_dir,
 	 */
 	if (urb->unlinked) {
 		spin_unlock_bh(&port->ozhcd->hcd_lock);
-		oz_dbg(ON, "urb %p unlinked so complete immediately\n", urb);
+		oz_trace("urb %p unlinked so complete immediately\n", urb);
 		oz_complete_urb(port->ozhcd->hcd, urb, 0);
 		oz_free_urb_link(urbl);
 		return 0;
 	}
-
-	if (in_dir)
-		ep = port->in_ep[ep_addr];
-	else
-		ep = port->out_ep[ep_addr];
-	if (!ep) {
-		err = -ENOMEM;
-		goto out;
+	if (in_dir) {
+		if (port->in_ep[ep_addr]) {
+			ep = port->in_ep[ep_addr];
+		} else {
+			err = -EINVAL;
+			goto out;
+		}
+	} else {
+		if (port->out_ep[ep_addr]) {
+			ep = port->out_ep[ep_addr];
+		} else {
+			err = -EINVAL;
+			goto out;
+		}
 	}
 
 	/*For interrupt endpoint check for buffered data
@@ -478,7 +553,7 @@ static int oz_enqueue_ep_urb(struct oz_port *port, u8 ep_addr, int in_dir,
 		return 0;
 	}
 
-	if (port->hpd) {
+	if (ep && port->hpd) {
 		list_add_tail(&urbl->link, &ep->urb_list);
 		if (!in_dir && ep_addr && (ep->credit < 0)) {
 			getrawmonotonic(&ep->timestamp);
@@ -493,8 +568,7 @@ out:
 		oz_free_urb_link(urbl);
 	return err;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Removes an urb from the queue in the endpoint.
  * Returns 0 if it is found and -EIDRM otherwise.
  * Context: softirq
@@ -504,7 +578,6 @@ static int oz_dequeue_ep_urb(struct oz_port *port, u8 ep_addr, int in_dir,
 {
 	struct oz_urb_link *urbl = NULL;
 	struct oz_endpoint *ep;
-
 	spin_lock_bh(&port->ozhcd->hcd_lock);
 	if (in_dir)
 		ep = port->in_ep[ep_addr];
@@ -512,9 +585,8 @@ static int oz_dequeue_ep_urb(struct oz_port *port, u8 ep_addr, int in_dir,
 		ep = port->out_ep[ep_addr];
 	if (ep) {
 		struct list_head *e;
-
 		list_for_each(e, &ep->urb_list) {
-			urbl = list_entry(e, struct oz_urb_link, link);
+			urbl = container_of(e, struct oz_urb_link, link);
 			if (urbl->urb == urb) {
 				list_del_init(e);
 				break;
@@ -527,8 +599,7 @@ static int oz_dequeue_ep_urb(struct oz_port *port, u8 ep_addr, int in_dir,
 		oz_free_urb_link(urbl);
 	return urbl ? 0 : -EIDRM;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Finds an urb given its request id.
  * Context: softirq
  */
@@ -537,16 +608,15 @@ static struct urb *oz_find_urb_by_id(struct oz_port *port, int ep_ix,
 {
 	struct oz_hcd *ozhcd = port->ozhcd;
 	struct urb *urb = NULL;
-	struct oz_urb_link *urbl;
+	struct oz_urb_link *urbl = NULL;
 	struct oz_endpoint *ep;
 
 	spin_lock_bh(&ozhcd->hcd_lock);
 	ep = port->out_ep[ep_ix];
 	if (ep) {
 		struct list_head *e;
-
 		list_for_each(e, &ep->urb_list) {
-			urbl = list_entry(e, struct oz_urb_link, link);
+			urbl = container_of(e, struct oz_urb_link, link);
 			if (urbl->req_id == req_id) {
 				urb = urbl->urb;
 				list_del_init(e);
@@ -561,8 +631,36 @@ static struct urb *oz_find_urb_by_id(struct oz_port *port, int ep_ix,
 		oz_free_urb_link(urbl);
 	return urb;
 }
-
-/*
+/*------------------------------------------------------------------------------
+ * Finds an urbl given request it, then set submit_count to 1, thus heartbeat
+ * count this value up to EP0_TIMEOUT.
+ */
+void oz_hcd_mark_urb_submitted(void *hport, int ep_ix, u8 req_id)
+{
+	struct oz_port *port = (struct oz_port *)hport;
+	struct oz_hcd *ozhcd = port->ozhcd;
+	struct oz_urb_link *urbl = 0;
+	struct oz_endpoint *ep;
+	unsigned long irq_state;
+	unsigned found = 0;
+	spin_lock_bh(&ozhcd->hcd_lock);
+	spin_lock_irqsave(&g_tasklet_lock, irq_state);
+	ep = port->out_ep[ep_ix];
+	if (ep) {
+		struct list_head *e;
+		list_for_each(e, &ep->urb_list) {
+			urbl = container_of(e, struct oz_urb_link, link);
+			if (urbl->req_id == req_id) {
+				urbl->submit_counter = 1;
+				found = 1;
+				break;
+			}
+		}
+	}
+	spin_unlock_irqrestore(&g_tasklet_lock, irq_state);
+	spin_unlock_bh(&ozhcd->hcd_lock);
+}
+/*------------------------------------------------------------------------------
  * Pre-condition: Port lock must be held.
  * Context: softirq
  */
@@ -576,14 +674,12 @@ static void oz_acquire_port(struct oz_port *port, void *hpd)
 	oz_usb_get(hpd);
 	port->hpd = hpd;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 static struct oz_hcd *oz_hcd_claim(void)
 {
 	struct oz_hcd *ozhcd;
-
 	spin_lock_bh(&g_hcdlock);
 	ozhcd = g_ozhcd;
 	if (ozhcd)
@@ -591,8 +687,7 @@ static struct oz_hcd *oz_hcd_claim(void)
 	spin_unlock_bh(&g_hcdlock);
 	return ozhcd;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 static inline void oz_hcd_put(struct oz_hcd *ozhcd)
@@ -600,8 +695,7 @@ static inline void oz_hcd_put(struct oz_hcd *ozhcd)
 	if (ozhcd)
 		usb_put_hcd(ozhcd->hcd);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * This is called by the protocol handler to notify that a PD has arrived.
  * We allocate a port to associate with the PD and create a structure for
  * endpoint 0. This port is made the connection port.
@@ -613,74 +707,83 @@ static inline void oz_hcd_put(struct oz_hcd *ozhcd)
  * probably very rare indeed.
  * Context: softirq
  */
-struct oz_port *oz_hcd_pd_arrived(void *hpd)
+void *oz_hcd_pd_arrived(void *hpd)
 {
 	int i;
-	struct oz_port *hport;
-	struct oz_hcd *ozhcd;
+	void *hport = NULL;
+	struct oz_hcd *ozhcd = NULL;
 	struct oz_endpoint *ep;
-
+	static int n = OZ_NB_PORTS;
+	int j;
 	ozhcd = oz_hcd_claim();
-	if (!ozhcd)
+	if (ozhcd == NULL)
 		return NULL;
 	/* Allocate an endpoint object in advance (before holding hcd lock) to
 	 * use for out endpoint 0.
 	 */
-	ep = oz_ep_alloc(0, GFP_ATOMIC);
-	if (!ep)
-		goto err_put;
-
+	ep = oz_ep_alloc(GFP_ATOMIC, 0);
 	spin_lock_bh(&ozhcd->hcd_lock);
-	if (ozhcd->conn_port >= 0)
-		goto err_unlock;
-
+	if (ozhcd->conn_port >= 0) {
+		spin_unlock_bh(&ozhcd->hcd_lock);
+		goto out;
+	}
+	j = n;
 	for (i = 0; i < OZ_NB_PORTS; i++) {
-		struct oz_port *port = &ozhcd->ports[i];
-
+		struct oz_port *port;
+		if (++j >= OZ_NB_PORTS)
+			j = 0;
+		port  = &ozhcd->ports[j];
 		spin_lock(&port->port_lock);
-		if (!(port->flags & (OZ_PORT_F_PRESENT | OZ_PORT_F_CHANGED))) {
+		if ((port->flags & OZ_PORT_F_PRESENT) == 0) {
 			oz_acquire_port(port, hpd);
+			port->bus_addr = 0;
+			port->config_num = 0;
 			spin_unlock(&port->port_lock);
 			break;
 		}
 		spin_unlock(&port->port_lock);
 	}
-	if (i == OZ_NB_PORTS)
-		goto err_unlock;
-
-	ozhcd->conn_port = i;
-	hport = &ozhcd->ports[i];
-	hport->out_ep[0] = ep;
-	spin_unlock_bh(&ozhcd->hcd_lock);
-	if (ozhcd->flags & OZ_HDC_F_SUSPENDED)
-		usb_hcd_resume_root_hub(ozhcd->hcd);
-	usb_hcd_poll_rh_status(ozhcd->hcd);
+	if (i < OZ_NB_PORTS) {
+		ozhcd->conn_port = j;
+		/* Attach out endpoint 0.
+		 */
+		ozhcd->ports[j].out_ep[0] = ep;
+		ep = NULL;
+		hport = &ozhcd->ports[j];
+		spin_unlock_bh(&ozhcd->hcd_lock);
+		if (ozhcd->flags & OZ_HDC_F_SUSPENDED) {
+			oz_trace_msg(H, "usb_hcd_resume_root_hub()\n");
+			usb_hcd_resume_root_hub(ozhcd->hcd);
+		}
+		n = j;
+		oz_trace_msg(H, "usb_hcd_poll_rh()\n");
+		usb_hcd_poll_rh_status(ozhcd->hcd);
+	} else {
+		spin_unlock_bh(&ozhcd->hcd_lock);
+	}
+out:
+	if (ep) /* ep is non-null if not used. */
+		oz_ep_free(NULL, ep);
 	oz_hcd_put(ozhcd);
-
 	return hport;
-
-err_unlock:
-	spin_unlock_bh(&ozhcd->hcd_lock);
-	oz_ep_free(NULL, ep);
-err_put:
-	oz_hcd_put(ozhcd);
-	return NULL;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * This is called by the protocol handler to notify that the PD has gone away.
  * We need to deallocate all resources and then request that the root hub is
  * polled. We release the reference we hold on the PD.
  * Context: softirq
  */
-void oz_hcd_pd_departed(struct oz_port *port)
+void oz_hcd_pd_departed(void *hport)
 {
+	struct oz_port *port = (struct oz_port *)hport;
 	struct oz_hcd *ozhcd;
 	void *hpd;
+	struct usb_hcd *hcd;
 	struct oz_endpoint *ep = NULL;
 
+	oz_trace("%s:\n", __func__);
 	if (port == NULL) {
-		oz_dbg(ON, "%s: port = 0\n", __func__);
+		oz_trace("%s: port = 0\n", __func__);
 		return;
 	}
 	ozhcd = port->ozhcd;
@@ -691,7 +794,6 @@ void oz_hcd_pd_departed(struct oz_port *port)
 	spin_lock_bh(&ozhcd->hcd_lock);
 	if ((ozhcd->conn_port >= 0) &&
 		(port == &ozhcd->ports[ozhcd->conn_port])) {
-		oz_dbg(ON, "Clearing conn_port\n");
 		ozhcd->conn_port = -1;
 	}
 	spin_lock(&port->port_lock);
@@ -707,7 +809,7 @@ void oz_hcd_pd_departed(struct oz_port *port)
 	port->config_num = 0;
 	port->flags &= ~(OZ_PORT_F_PRESENT | OZ_PORT_F_DYING);
 	port->flags |= OZ_PORT_F_CHANGED;
-	port->status &= ~(USB_PORT_STAT_CONNECTION | USB_PORT_STAT_ENABLE);
+	port->status &= ~(USB_PORT_STAT_CONNECTION|USB_PORT_STAT_ENABLE);
 	port->status |= (USB_PORT_STAT_C_CONNECTION << 16);
 	/* If there is an endpont 0 then clear the pointer while we hold
 	 * the spinlock be we deallocate it after releasing the lock.
@@ -719,11 +821,13 @@ void oz_hcd_pd_departed(struct oz_port *port)
 	spin_unlock_bh(&port->port_lock);
 	if (ep)
 		oz_ep_free(port, ep);
+	hcd = ozhcd->hcd;
+	clear_bit(HCD_FLAG_POLL_RH, &hcd->flags);
+	oz_trace_msg(H, "usb_hcd_poll_rh_status()\n");
 	usb_hcd_poll_rh_status(ozhcd->hcd);
 	oz_usb_put(hpd);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 void oz_hcd_pd_reset(void *hpd, void *hport)
@@ -732,8 +836,7 @@ void oz_hcd_pd_reset(void *hpd, void *hport)
 	 */
 	struct oz_port *port = (struct oz_port *)hport;
 	struct oz_hcd *ozhcd = port->ozhcd;
-
-	oz_dbg(ON, "PD Reset\n");
+	oz_trace("PD Reset\n");
 	spin_lock_bh(&port->port_lock);
 	port->flags |= OZ_PORT_F_CHANGED;
 	port->status |= USB_PORT_STAT_RESET;
@@ -742,8 +845,7 @@ void oz_hcd_pd_reset(void *hpd, void *hport)
 	oz_clean_endpoints_for_config(ozhcd->hcd, port);
 	usb_hcd_poll_rh_status(ozhcd->hcd);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 void oz_hcd_get_desc_cnf(void *hport, u8 req_id, int status, const u8 *desc,
@@ -753,15 +855,12 @@ void oz_hcd_get_desc_cnf(void *hport, u8 req_id, int status, const u8 *desc,
 	struct urb *urb;
 	int err = 0;
 
-	oz_dbg(ON, "oz_hcd_get_desc_cnf length = %d offs = %d tot_size = %d\n",
-	       length, offset, total_size);
 	urb = oz_find_urb_by_id(port, 0, req_id);
 	if (!urb)
 		return;
 	if (status == 0) {
 		int copy_len;
 		int required_size = urb->transfer_buffer_length;
-
 		if (required_size > total_size)
 			required_size = total_size;
 		copy_len = required_size-offset;
@@ -773,7 +872,6 @@ void oz_hcd_get_desc_cnf(void *hport, u8 req_id, int status, const u8 *desc,
 			struct usb_ctrlrequest *setup =
 				(struct usb_ctrlrequest *)urb->setup_packet;
 			unsigned wvalue = le16_to_cpu(setup->wValue);
-
 			if (oz_enqueue_ep_urb(port, 0, 0, urb, req_id))
 				err = -ENOMEM;
 			else if (oz_usb_get_desc_req(port->hpd, req_id,
@@ -790,50 +888,7 @@ void oz_hcd_get_desc_cnf(void *hport, u8 req_id, int status, const u8 *desc,
 	urb->actual_length = total_size;
 	oz_complete_urb(port->ozhcd->hcd, urb, 0);
 }
-
-/*
- * Context: softirq
- */
-static void oz_display_conf_type(u8 t)
-{
-	switch (t) {
-	case USB_REQ_GET_STATUS:
-		oz_dbg(ON, "USB_REQ_GET_STATUS - cnf\n");
-		break;
-	case USB_REQ_CLEAR_FEATURE:
-		oz_dbg(ON, "USB_REQ_CLEAR_FEATURE - cnf\n");
-		break;
-	case USB_REQ_SET_FEATURE:
-		oz_dbg(ON, "USB_REQ_SET_FEATURE - cnf\n");
-		break;
-	case USB_REQ_SET_ADDRESS:
-		oz_dbg(ON, "USB_REQ_SET_ADDRESS - cnf\n");
-		break;
-	case USB_REQ_GET_DESCRIPTOR:
-		oz_dbg(ON, "USB_REQ_GET_DESCRIPTOR - cnf\n");
-		break;
-	case USB_REQ_SET_DESCRIPTOR:
-		oz_dbg(ON, "USB_REQ_SET_DESCRIPTOR - cnf\n");
-		break;
-	case USB_REQ_GET_CONFIGURATION:
-		oz_dbg(ON, "USB_REQ_GET_CONFIGURATION - cnf\n");
-		break;
-	case USB_REQ_SET_CONFIGURATION:
-		oz_dbg(ON, "USB_REQ_SET_CONFIGURATION - cnf\n");
-		break;
-	case USB_REQ_GET_INTERFACE:
-		oz_dbg(ON, "USB_REQ_GET_INTERFACE - cnf\n");
-		break;
-	case USB_REQ_SET_INTERFACE:
-		oz_dbg(ON, "USB_REQ_SET_INTERFACE - cnf\n");
-		break;
-	case USB_REQ_SYNCH_FRAME:
-		oz_dbg(ON, "USB_REQ_SYNCH_FRAME - cnf\n");
-		break;
-	}
-}
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 static void oz_hcd_complete_set_config(struct oz_port *port, struct urb *urb,
@@ -841,7 +896,6 @@ static void oz_hcd_complete_set_config(struct oz_port *port, struct urb *urb,
 {
 	int rc = 0;
 	struct usb_hcd *hcd = port->ozhcd->hcd;
-
 	if (rcode == 0) {
 		port->config_num = config_num;
 		oz_clean_endpoints_for_config(hcd, port);
@@ -854,8 +908,7 @@ static void oz_hcd_complete_set_config(struct oz_port *port, struct urb *urb,
 	}
 	oz_complete_urb(hcd, urb, rc);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 static void oz_hcd_complete_set_interface(struct oz_port *port, struct urb *urb,
@@ -863,27 +916,27 @@ static void oz_hcd_complete_set_interface(struct oz_port *port, struct urb *urb,
 {
 	struct usb_hcd *hcd = port->ozhcd->hcd;
 	int rc = 0;
+	if (rcode == 0) {
+		if (port->config_num > 0) {
+			struct usb_host_config *config;
+			struct usb_host_interface *intf;
 
-	if ((rcode == 0) && (port->config_num > 0)) {
-		struct usb_host_config *config;
-		struct usb_host_interface *intf;
-
-		oz_dbg(ON, "Set interface %d alt %d\n", if_num, alt);
-		oz_clean_endpoints_for_interface(hcd, port, if_num);
-		config = &urb->dev->config[port->config_num-1];
-		intf = &config->intf_cache[if_num]->altsetting[alt];
-		if (oz_build_endpoints_for_interface(hcd, port, intf,
-			GFP_ATOMIC))
+			oz_clean_endpoints_for_interface(hcd, port, if_num);
+			config = &urb->dev->config[port->config_num-1];
+			intf = &config->intf_cache[if_num]->altsetting[alt];
+			if (oz_build_endpoints_for_interface(hcd, port, intf,
+				GFP_ATOMIC))
+				rc = -ENOMEM;
+			else
+				port->iface[if_num].alt = alt;
+		} else
 			rc = -ENOMEM;
-		else
-			port->iface[if_num].alt = alt;
 	} else {
 		rc = -ENOMEM;
 	}
 	oz_complete_urb(hcd, urb, rc);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 void oz_hcd_control_cnf(void *hport, u8 req_id, u8 rcode, const u8 *data,
@@ -896,10 +949,9 @@ void oz_hcd_control_cnf(void *hport, u8 req_id, u8 rcode, const u8 *data,
 	unsigned windex;
 	unsigned wvalue;
 
-	oz_dbg(ON, "oz_hcd_control_cnf rcode=%u len=%d\n", rcode, data_len);
 	urb = oz_find_urb_by_id(port, 0, req_id);
 	if (!urb) {
-		oz_dbg(ON, "URB not found\n");
+		oz_trace("URB not found: %p\n", urb);
 		return;
 	}
 	setup = (struct usb_ctrlrequest *)urb->setup_packet;
@@ -907,7 +959,6 @@ void oz_hcd_control_cnf(void *hport, u8 req_id, u8 rcode, const u8 *data,
 	wvalue = le16_to_cpu(setup->wValue);
 	if ((setup->bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD) {
 		/* Standard requests */
-		oz_display_conf_type(setup->bRequest);
 		switch (setup->bRequest) {
 		case USB_REQ_SET_CONFIGURATION:
 			oz_hcd_complete_set_config(port, urb, rcode,
@@ -923,8 +974,6 @@ void oz_hcd_control_cnf(void *hport, u8 req_id, u8 rcode, const u8 *data,
 
 	} else {
 		int copy_len;
-
-		oz_dbg(ON, "VENDOR-CLASS - cnf\n");
 		if (data_len) {
 			if (data_len <= urb->transfer_buffer_length)
 				copy_len = data_len;
@@ -936,23 +985,24 @@ void oz_hcd_control_cnf(void *hport, u8 req_id, u8 rcode, const u8 *data,
 		oz_complete_urb(hcd, urb, 0);
 	}
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq-serialized
  */
 static int oz_hcd_buffer_data(struct oz_endpoint *ep, const u8 *data,
-			      int data_len)
+				int data_len)
 {
 	int space;
 	int copy_len;
-
 	if (!ep->buffer)
 		return -1;
 	space = ep->out_ix-ep->in_ix-1;
 	if (space < 0)
 		space += ep->buffer_size;
 	if (space < (data_len+1)) {
-		oz_dbg(ON, "Buffer full\n");
+		oz_trace_msg(I, "EP:%02X u:%d FULL len:%d spc:%d\n",
+				ep->ep_num | USB_DIR_IN,
+				ep->buffered_units,
+				data_len, space);
 		return -1;
 	}
 	ep->buffer[ep->in_ix] = (u8)data_len;
@@ -974,8 +1024,188 @@ static int oz_hcd_buffer_data(struct oz_endpoint *ep, const u8 *data,
 	ep->buffered_units++;
 	return 0;
 }
+/*------------------------------------------------------------------------------
+ */
+static int oz_hcd_buffer_frame(struct oz_endpoint *ep,
+				u8 frame, const u8 *data, int data_len)
+{
+	int space;
+	int copy_len;
+	struct timespec ts, delta;
+	int delta_ms;
 
-/*
+	if (!ep->buffer)
+		return -1;
+
+
+	getrawmonotonic(&ts);
+	delta = timespec_sub(ts, ep->timestamp2);
+	delta_ms = div64_u64(timespec_to_ns(&delta)+5000, NSEC_PER_MSEC);
+	ep->timestamp2 = ts;
+
+	if (delta_ms >= (ep->max_buffer_units/2)) {
+		oz_trace_msg(M,
+			"Network outage: %dms #%02X\n", delta_ms, frame);
+	}
+
+	space = ep->out_ix-ep->in_ix-1;
+	if (space < 0)
+		space += ep->buffer_size;
+	if (space < (data_len+2)) {
+		oz_trace_msg(I, "EP:%02X u:%d FULL len:%d spc:%d\n",
+				ep->ep_num | USB_DIR_IN,
+				ep->buffered_units,
+				data_len, space);
+		return -1;
+	}
+
+	ep->buffer[ep->in_ix] = frame;
+	if (++ep->in_ix == ep->buffer_size)
+		ep->in_ix = 0;
+
+	ep->buffer[ep->in_ix] = (u8)data_len;
+	if (++ep->in_ix == ep->buffer_size)
+		ep->in_ix = 0;
+
+	copy_len = ep->buffer_size - ep->in_ix;
+	if (copy_len > data_len)
+		copy_len = data_len;
+	memcpy(&ep->buffer[ep->in_ix], data, copy_len);
+
+	if (copy_len < data_len) {
+		memcpy(ep->buffer, data+copy_len, data_len-copy_len);
+		ep->in_ix = data_len-copy_len;
+	} else {
+		ep->in_ix += copy_len;
+	}
+	if (ep->in_ix == ep->buffer_size)
+		ep->in_ix = 0;
+	ep->buffered_units++;
+
+	if (ep->buffered_units >= ep->max_buffer_units*2) {
+		int len;
+		while (ep->buffered_units > ep->max_buffer_units) {
+			/* Skip out frame number field. */
+			if (++ep->out_ix == ep->buffer_size)
+				ep->out_ix = 0;
+
+			len = ep->buffer[ep->out_ix];
+			if (++ep->out_ix == ep->buffer_size)
+				ep->out_ix = 0;
+
+			copy_len = ep->buffer_size - ep->out_ix;
+			if (copy_len > len)
+				copy_len = len;
+			if (copy_len < len)
+				ep->out_ix = len - copy_len;
+			else
+				ep->out_ix += copy_len;
+
+			if (ep->out_ix == ep->buffer_size)
+				ep->out_ix = 0;
+
+			ep->buffered_units--;
+		}
+		ep->flags &= ~OZ_F_EP_ISOC_FRAME_NUM_VALID;
+	}
+
+	return 0;
+}
+/*------------------------------------------------------------------------------
+ * Context: unknown
+ */
+void oz_hcd_advance_buffered_frame(struct oz_endpoint *ep)
+{
+	if (ep->buffered_units) {
+		int len;
+		int copy_len;
+		int out_ix;
+		ep->buffered_units--;
+
+		out_ix = ep->out_ix;
+		if (++out_ix == ep->buffer_size)
+			out_ix = 0;
+
+		len = ep->buffer[out_ix];
+		if (++out_ix == ep->buffer_size)
+			out_ix = 0;
+		copy_len = ep->buffer_size - out_ix;
+		if (copy_len > len)
+			copy_len = len;
+		if (copy_len < len)
+			out_ix = len-copy_len;
+		else
+			out_ix += copy_len;
+
+		if (out_ix == ep->buffer_size)
+			out_ix = 0;
+		ep->out_ix = out_ix;
+	}
+}
+/*------------------------------------------------------------------------------
+ */
+#define oz_hcd_get_next_queued_frame(ep)\
+	((ep)->buffer[(ep)->out_ix])
+/*------------------------------------------------------------------------------
+ */
+int oz_hcd_copy_isoc_frame(struct oz_endpoint *ep,
+				u8 *buffer, int update)
+{
+	int len = 0;
+	int out_ix = ep->out_ix;
+	int copy_len;
+
+	if (ep->buffered_units) {
+
+		if (++out_ix == ep->buffer_size)
+			out_ix = 0;
+
+		len = ep->buffer[out_ix];
+		if (++out_ix == ep->buffer_size)
+			out_ix = 0;
+		copy_len = ep->buffer_size - out_ix;
+		if (copy_len > len)
+			copy_len = len;
+
+		memcpy(buffer, &ep->buffer[out_ix], copy_len);
+		if (copy_len < len) {
+			memcpy(buffer+copy_len, ep->buffer, len-copy_len);
+			out_ix = len-copy_len;
+		} else
+			out_ix += copy_len;
+
+		if (out_ix == ep->buffer_size)
+			out_ix = 0;
+
+		if (update) {
+			ep->out_ix = out_ix;
+			ep->buffered_units--;
+		}
+	}
+	return len;
+}
+/*------------------------------------------------------------------------------
+ * Context: unknown
+ */
+void oz_hcd_isoc_frame(void *hport, u8 endpoint, u8 frame,
+				const u8 *data, int data_len)
+{
+	struct oz_port *port = (struct oz_port *)hport;
+	struct oz_endpoint *ep;
+	struct oz_hcd *ozhcd = port->ozhcd;
+	spin_lock_bh(&ozhcd->hcd_lock);
+	ep = port->in_ep[endpoint & USB_ENDPOINT_NUMBER_MASK];
+	if (ep == NULL)
+		goto done;
+	switch (ep->attrib & USB_ENDPOINT_XFERTYPE_MASK) {
+	case USB_ENDPOINT_XFER_ISOC:
+		oz_hcd_buffer_frame(ep, frame, data, data_len);
+		break;
+	}
+done:
+	spin_unlock_bh(&ozhcd->hcd_lock);
+}
+/*------------------------------------------------------------------------------
  * Context: softirq-serialized
  */
 void oz_hcd_data_ind(void *hport, u8 endpoint, const u8 *data, int data_len)
@@ -983,7 +1213,6 @@ void oz_hcd_data_ind(void *hport, u8 endpoint, const u8 *data, int data_len)
 	struct oz_port *port = (struct oz_port *)hport;
 	struct oz_endpoint *ep;
 	struct oz_hcd *ozhcd = port->ozhcd;
-
 	spin_lock_bh(&ozhcd->hcd_lock);
 	ep = port->in_ep[endpoint & USB_ENDPOINT_NUMBER_MASK];
 	if (ep == NULL)
@@ -997,7 +1226,6 @@ void oz_hcd_data_ind(void *hport, u8 endpoint, const u8 *data, int data_len)
 					struct oz_urb_link, link);
 			struct urb *urb;
 			int copy_len;
-
 			list_del_init(&urbl->link);
 			spin_unlock_bh(&ozhcd->hcd_lock);
 			urb = urbl->urb;
@@ -1010,27 +1238,39 @@ void oz_hcd_data_ind(void *hport, u8 endpoint, const u8 *data, int data_len)
 			urb->actual_length = copy_len;
 			oz_complete_urb(port->ozhcd->hcd, urb, 0);
 			return;
+		} else {
+			oz_hcd_buffer_data(ep, data, data_len);
 		}
-		oz_dbg(ON, "buffering frame as URB is not available\n");
-		oz_hcd_buffer_data(ep, data, data_len);
 		break;
 	case USB_ENDPOINT_XFER_ISOC:
-		oz_hcd_buffer_data(ep, data, data_len);
+		if (oz_hcd_buffer_data(ep, data, data_len) != 0) {
+			int len;
+			int copy_len;
+			while (ep->buffered_units > ep->max_buffer_units) {
+				len = ep->buffer[ep->out_ix];
+				if (++ep->out_ix == ep->buffer_size)
+					ep->out_ix = 0;
+				copy_len = ep->buffer_size - ep->out_ix;
+				if (copy_len > len)
+					copy_len = len;
+				if (copy_len < len)
+					ep->out_ix = len - copy_len;
+				else
+					ep->out_ix += copy_len;
+
+				if (ep->out_ix == ep->buffer_size)
+					ep->out_ix = 0;
+
+				ep->buffered_units--;
+			}
+			ep->flags |= OZ_F_EP_BUFFERING;
+		}
 		break;
 	}
 done:
 	spin_unlock_bh(&ozhcd->hcd_lock);
 }
-
-/*
- * Context: unknown
- */
-static inline int oz_usb_get_frame_number(void)
-{
-	return atomic_inc_return(&g_usb_frame_number);
-}
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 int oz_hcd_heartbeat(void *hport)
@@ -1038,21 +1278,24 @@ int oz_hcd_heartbeat(void *hport)
 	int rc = 0;
 	struct oz_port *port = (struct oz_port *)hport;
 	struct oz_hcd *ozhcd = port->ozhcd;
-	struct oz_urb_link *urbl, *n;
-	LIST_HEAD(xfr_list);
+	struct oz_urb_link *urbl;
+	struct list_head xfr_list;
+	struct list_head *e;
+	struct list_head *n;
 	struct urb *urb;
 	struct oz_endpoint *ep;
 	struct timespec ts, delta;
-
 	getrawmonotonic(&ts);
+	INIT_LIST_HEAD(&xfr_list);
 	/* Check the OUT isoc endpoints to see if any URB data can be sent.
 	 */
 	spin_lock_bh(&ozhcd->hcd_lock);
-	list_for_each_entry(ep, &port->isoc_out_ep, link) {
+	list_for_each(e, &port->isoc_out_ep) {
+		ep = ep_from_link(e);
 		if (ep->credit < 0)
 			continue;
 		delta = timespec_sub(ts, ep->timestamp);
-		ep->credit += div_u64(timespec_to_ns(&delta), NSEC_PER_MSEC);
+		ep->credit += div64_u64(timespec_to_ns(&delta), NSEC_PER_MSEC);
 		if (ep->credit > ep->credit_ceiling)
 			ep->credit = ep->credit_ceiling;
 		ep->timestamp = ts;
@@ -1071,9 +1314,10 @@ int oz_hcd_heartbeat(void *hport)
 	spin_unlock_bh(&ozhcd->hcd_lock);
 	/* Send to PD and complete URBs.
 	 */
-	list_for_each_entry_safe(urbl, n, &xfr_list, link) {
+	list_for_each_safe(e, n, &xfr_list) {
+		urbl = container_of(e, struct oz_urb_link, link);
 		urb = urbl->urb;
-		list_del_init(&urbl->link);
+		list_del_init(e);
 		urb->error_count = 0;
 		urb->start_frame = oz_usb_get_frame_number();
 		oz_usb_send_isoc(port->hpd, urbl->ep_num, urb);
@@ -1083,59 +1327,177 @@ int oz_hcd_heartbeat(void *hport)
 	/* Check the IN isoc endpoints to see if any URBs can be completed.
 	 */
 	spin_lock_bh(&ozhcd->hcd_lock);
-	list_for_each_entry(ep, &port->isoc_in_ep, link) {
+	list_for_each(e, &port->isoc_in_ep) {
+		struct oz_endpoint *ep = ep_from_link(e);
+		int complete_frames = 0;
 		if (ep->flags & OZ_F_EP_BUFFERING) {
-			if (ep->buffered_units >= OZ_IN_BUFFERING_UNITS) {
+			if (ep->buffered_units >= ep->max_buffer_units) {
 				ep->flags &= ~OZ_F_EP_BUFFERING;
 				ep->credit = 0;
+				ep->credit2 = 0;
 				ep->timestamp = ts;
 				ep->start_frame = 0;
+				ep->dropped_frames = 0;
 			}
-			continue;
+			/* continue; */
 		}
 		delta = timespec_sub(ts, ep->timestamp);
-		ep->credit += div_u64(timespec_to_ns(&delta), NSEC_PER_MSEC);
+		ep->credit += div64_u64(timespec_to_ns(&delta)+5000,
+						NSEC_PER_MSEC);
 		ep->timestamp = ts;
-		list_for_each_entry_safe(urbl, n, &ep->urb_list, link) {
+		while (!list_empty(&ep->urb_list)) {
+			struct oz_urb_link *urbl =
+				list_first_entry(&ep->urb_list,
+					struct oz_urb_link, link);
 			struct urb *urb = urbl->urb;
 			int len = 0;
-			int copy_len;
 			int i;
+			u8 frame;
+			u8 proc = 0;
+			#define STREAM_PROC_INSERT_SILENCE_FRAME	1
+			#define STREAM_PROC_DUPLICATE_FRAME		2
+			#define STREAM_PROC_SKIP_FRAME			4
 
-			if (ep->credit  < urb->number_of_packets)
-				break;
-			if (ep->buffered_units < urb->number_of_packets)
-				break;
 			urb->actual_length = 0;
 			for (i = 0; i < urb->number_of_packets; i++) {
-				len = ep->buffer[ep->out_ix];
-				if (++ep->out_ix == ep->buffer_size)
-					ep->out_ix = 0;
-				copy_len = ep->buffer_size - ep->out_ix;
-				if (copy_len > len)
-					copy_len = len;
-				memcpy(urb->transfer_buffer,
-					&ep->buffer[ep->out_ix], copy_len);
-				if (copy_len < len) {
-					memcpy(urb->transfer_buffer+copy_len,
-						ep->buffer, len-copy_len);
-					ep->out_ix = len-copy_len;
-				} else
-					ep->out_ix += copy_len;
-				if (ep->out_ix == ep->buffer_size)
-					ep->out_ix = 0;
+				complete_frames++;
+				proc = 0;
+				do {
+					if (ep->flags & OZ_F_EP_BUFFERING) {
+						/*oz_trace_msg(M, "EP_BUFFERING %d/%d\n",
+								ep->buffered_units,
+								ep->max_buffer_units);
+						*/
+						proc = STREAM_PROC_INSERT_SILENCE_FRAME;
+						if (ep->flags & OZ_F_EP_ISOC_FRAME_NUM_VALID) {
+							if (++ep->lost_frames >= 128) {
+								/* Untracable */
+								ep->flags &=
+									~OZ_F_EP_ISOC_FRAME_NUM_VALID;
+							} else
+								ep->next_frame++;
+						}
+						break;
+					}
+
+					/* No frame */
+					if (ep->buffered_units == 0) {
+						oz_trace_msg(I,
+							"EP:%02X Buffer under run #%02X\n",
+							ep->ep_num | USB_DIR_IN,
+							ep->next_frame);
+						proc = STREAM_PROC_INSERT_SILENCE_FRAME;
+						ep->flags |= OZ_F_EP_BUFFERING;
+						ep->next_frame++;
+						ep->lost_frames = 1;
+						break;
+					}
+
+					frame = oz_hcd_get_next_queued_frame(ep);
+
+					if (ep->flags & OZ_F_EP_ISOC_FRAME_NUM_VALID) {
+						/* Advance pointer, and try again.*/
+						if ((frame - ep->next_frame) & 0x80) {
+							oz_trace_msg(I,
+								"Too late:#%02X #%02X\n",
+								ep->next_frame, frame);
+							oz_hcd_advance_buffered_frame(ep);
+							continue;
+						}
+						/* Drop frame, insert slience frame.*/
+						if (frame - ep->next_frame) {
+							/*
+							oz_trace_msg(I,
+								"Drop frame:#%02X #%02X\n",
+								ep->next_frame, frame);
+							*/
+							ep->dropped_frames++;
+							ep->next_frame++;
+							proc = STREAM_PROC_INSERT_SILENCE_FRAME;
+							break;
+						}
+						/*
+						if (frame == ??) {
+							oz_trace_msg(M, "Too much:%02X %02X\n",
+								ep->next_frame, frame);
+							oz_hcd_advance_buffered_frame(ep);
+							continue;
+						}
+						if (frame == ??) {
+							oz_trace_msg(M, "Dup:%02X %02X\n",
+								ep->next_frame, frame);
+							op = STREAM_PROC_DUPLICATE_FRAME;
+							break;
+						}
+						*/
+					} else
+						oz_trace_msg(I, "Frame#%02X\n", frame);
+
+					ep->next_frame = frame + 1;
+					ep->flags |= OZ_F_EP_ISOC_FRAME_NUM_VALID;
+					break;
+				} while (1);
+
+				switch (proc) {
+				case STREAM_PROC_INSERT_SILENCE_FRAME:
+					len = urb->transfer_buffer_length
+						 / urb->number_of_packets;
+					memset(urb->transfer_buffer, 0, len);
+					break;
+				case STREAM_PROC_SKIP_FRAME:
+					break;
+				case STREAM_PROC_DUPLICATE_FRAME:
+					len = oz_hcd_copy_isoc_frame(
+						ep,
+						&(((u8 *)urb->transfer_buffer)
+							[urb->actual_length]),
+						0);
+					break;
+				default:
+					len = oz_hcd_copy_isoc_frame(
+						ep,
+						&(((u8 *)urb->transfer_buffer)
+							[urb->actual_length]),
+						1);
+					break;
+				}
+
+				/* update urb */
 				urb->iso_frame_desc[i].offset =
 					urb->actual_length;
 				urb->actual_length += len;
 				urb->iso_frame_desc[i].actual_length = len;
 				urb->iso_frame_desc[i].status = 0;
 			}
-			ep->buffered_units -= urb->number_of_packets;
+
 			urb->error_count = 0;
 			urb->start_frame = ep->start_frame;
 			ep->start_frame += urb->number_of_packets;
 			list_move_tail(&urbl->link, &xfr_list);
 			ep->credit -= urb->number_of_packets;
+			ep->credit2 += urb->number_of_packets;
+		}
+
+		if (complete_frames != 8) {
+			oz_trace_msg(I, "Complete %d frames\n", complete_frames);
+		}
+
+		if (ep->credit2 >= 1000)
+		{
+			static int buffered_units=-1;
+			static int max_buffer_units=-1;
+			{
+				int diff = ep->buffered_units - buffered_units;
+				oz_trace_msg(I, "u:%d o:%d b:%d d:%d\n",
+						ep->credit2,
+						ep->credit2 + diff,
+						ep->buffered_units,
+						ep->dropped_frames);
+				ep->dropped_frames = 0;
+				buffered_units = ep->buffered_units;
+				max_buffer_units = ep->max_buffer_units;
+			}
+			ep->credit2 = 0;
 		}
 	}
 	if (!list_empty(&port->isoc_out_ep) || !list_empty(&port->isoc_in_ep))
@@ -1143,9 +1505,10 @@ int oz_hcd_heartbeat(void *hport)
 	spin_unlock_bh(&ozhcd->hcd_lock);
 	/* Complete the filled URBs.
 	 */
-	list_for_each_entry_safe(urbl, n, &xfr_list, link) {
+	list_for_each_safe(e, n, &xfr_list) {
+		urbl = container_of(e, struct oz_urb_link, link);
 		urb = urbl->urb;
-		list_del_init(&urbl->link);
+		list_del_init(e);
 		oz_free_urb_link(urbl);
 		oz_complete_urb(port->ozhcd->hcd, urb, 0);
 	}
@@ -1154,29 +1517,36 @@ int oz_hcd_heartbeat(void *hport)
 	 */
 	ep = port->out_ep[0];
 	if (ep) {
+		struct list_head *e;
+		struct list_head *n;
 		spin_lock_bh(&ozhcd->hcd_lock);
-		list_for_each_entry_safe(urbl, n, &ep->urb_list, link) {
+		list_for_each_safe(e, n, &ep->urb_list) {
+			urbl = container_of(e, struct oz_urb_link, link);
 			if (urbl->submit_counter > EP0_TIMEOUT_COUNTER) {
-				oz_dbg(ON, "Request 0x%p timeout\n", urbl->urb);
-				list_move_tail(&urbl->link, &xfr_list);
+				oz_trace_msg(M, "URB:%08X timeout %02X\n",
+					(unsigned int)((uintptr_t)urbl->urb),
+					urbl->req_id);
+				list_move_tail(e, &xfr_list);
 				urbl->submit_counter = 0;
-			} else {
+			} else if (urbl->submit_counter) {
 				urbl->submit_counter++;
 			}
 		}
 		if (!list_empty(&ep->urb_list))
 			rc = 1;
 		spin_unlock_bh(&ozhcd->hcd_lock);
-		list_for_each_entry_safe(urbl, n, &xfr_list, link) {
-			oz_dbg(ON, "Resending request to PD\n");
+		e = xfr_list.next;
+		while (e != &xfr_list) {
+			urbl = container_of(e, struct oz_urb_link, link);
+			e = e->next;
+			oz_trace_msg(M, "Resending request to PD.\n");
 			oz_process_ep0_urb(ozhcd, urbl->urb, GFP_ATOMIC);
 			oz_free_urb_link(urbl);
 		}
 	}
 	return rc;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 static int oz_build_endpoints_for_interface(struct usb_hcd *hcd,
@@ -1185,12 +1555,17 @@ static int oz_build_endpoints_for_interface(struct usb_hcd *hcd,
 {
 	struct oz_hcd *ozhcd = port->ozhcd;
 	int i;
-	int if_ix = intf->desc.bInterfaceNumber;
+	int if_ix;
 	int request_heartbeat = 0;
 
-	oz_dbg(ON, "interface[%d] = %p\n", if_ix, intf);
+	if (intf == NULL)
+		return -ENOMEM;
+
+	if_ix = intf->desc.bInterfaceNumber;
+	oz_trace("interface[%d] = %p\n", if_ix, intf);
 	if (if_ix >= port->num_iface || port->iface == NULL)
 		return -ENOMEM;
+
 	for (i = 0; i < intf->desc.bNumEndpoints; i++) {
 		struct usb_host_endpoint *hep = &intf->endpoint[i];
 		u8 ep_addr = hep->desc.bEndpointAddress;
@@ -1198,7 +1573,6 @@ static int oz_build_endpoints_for_interface(struct usb_hcd *hcd,
 		struct oz_endpoint *ep;
 		int buffer_size = 0;
 
-		oz_dbg(ON, "%d bEndpointAddress = %x\n", i, ep_addr);
 		if (ep_addr & USB_ENDPOINT_DIR_MASK) {
 			switch (hep->desc.bmAttributes &
 						USB_ENDPOINT_XFERTYPE_MASK) {
@@ -1211,7 +1585,7 @@ static int oz_build_endpoints_for_interface(struct usb_hcd *hcd,
 			}
 		}
 
-		ep = oz_ep_alloc(buffer_size, mem_flags);
+		ep = oz_ep_alloc(mem_flags, buffer_size);
 		if (!ep) {
 			oz_clean_endpoints_for_interface(hcd, port, if_ix);
 			return -ENOMEM;
@@ -1220,10 +1594,10 @@ static int oz_build_endpoints_for_interface(struct usb_hcd *hcd,
 		ep->ep_num = ep_num;
 		if ((ep->attrib & USB_ENDPOINT_XFERTYPE_MASK)
 			== USB_ENDPOINT_XFER_ISOC) {
-			oz_dbg(ON, "wMaxPacketSize = %d\n",
-			       usb_endpoint_maxp(&hep->desc));
 			ep->credit_ceiling = 200;
 			if (ep_addr & USB_ENDPOINT_DIR_MASK) {
+				ep->max_buffer_units =
+					 oz_get_up_max_buffer_units(port->hpd);
 				ep->flags |= OZ_F_EP_BUFFERING;
 			} else {
 				ep->flags |= OZ_F_EP_HAVE_STREAM;
@@ -1256,8 +1630,7 @@ static int oz_build_endpoints_for_interface(struct usb_hcd *hcd,
 	}
 	return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 static void oz_clean_endpoints_for_interface(struct usb_hcd *hcd,
@@ -1266,12 +1639,12 @@ static void oz_clean_endpoints_for_interface(struct usb_hcd *hcd,
 	struct oz_hcd *ozhcd = port->ozhcd;
 	unsigned mask;
 	int i;
-	LIST_HEAD(ep_list);
-	struct oz_endpoint *ep, *n;
+	struct list_head ep_list;
 
-	oz_dbg(ON, "Deleting endpoints for interface %d\n", if_ix);
+	oz_trace("Deleting endpoints for interface %d\n", if_ix);
 	if (if_ix >= port->num_iface)
 		return;
+	INIT_LIST_HEAD(&ep_list);
 	spin_lock_bh(&ozhcd->hcd_lock);
 	mask = port->iface[if_ix].ep_mask;
 	port->iface[if_ix].ep_mask = 0;
@@ -1295,13 +1668,14 @@ static void oz_clean_endpoints_for_interface(struct usb_hcd *hcd,
 		}
 	}
 	spin_unlock_bh(&ozhcd->hcd_lock);
-	list_for_each_entry_safe(ep, n, &ep_list, link) {
+	while (!list_empty(&ep_list)) {
+		struct oz_endpoint *ep =
+			list_first_entry(&ep_list, struct oz_endpoint, link);
 		list_del_init(&ep->link);
 		oz_ep_free(port, ep);
 	}
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 static int oz_build_endpoints_for_config(struct usb_hcd *hcd,
@@ -1311,12 +1685,11 @@ static int oz_build_endpoints_for_config(struct usb_hcd *hcd,
 	struct oz_hcd *ozhcd = port->ozhcd;
 	int i;
 	int num_iface = config->desc.bNumInterfaces;
-
 	if (num_iface) {
 		struct oz_interface *iface;
 
-		iface = kmalloc_array(num_iface, sizeof(struct oz_interface),
-					mem_flags | __GFP_ZERO);
+		iface = kmalloc(num_iface*sizeof(struct oz_interface),
+				mem_flags | __GFP_ZERO);
 		if (!iface)
 			return -ENOMEM;
 		spin_lock_bh(&ozhcd->hcd_lock);
@@ -1336,8 +1709,7 @@ fail:
 	oz_clean_endpoints_for_config(hcd, port);
 	return -1;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  */
 static void oz_clean_endpoints_for_config(struct usb_hcd *hcd,
@@ -1345,28 +1717,24 @@ static void oz_clean_endpoints_for_config(struct usb_hcd *hcd,
 {
 	struct oz_hcd *ozhcd = port->ozhcd;
 	int i;
-
-	oz_dbg(ON, "Deleting endpoints for configuration\n");
+	oz_trace("Deleting endpoints for configuration.\n");
 	for (i = 0; i < port->num_iface; i++)
 		oz_clean_endpoints_for_interface(hcd, port, i);
 	spin_lock_bh(&ozhcd->hcd_lock);
 	if (port->iface) {
-		oz_dbg(ON, "Freeing interfaces object\n");
 		kfree(port->iface);
 		port->iface = NULL;
 	}
 	port->num_iface = 0;
 	spin_unlock_bh(&ozhcd->hcd_lock);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: tasklet
  */
 static void *oz_claim_hpd(struct oz_port *port)
 {
-	void *hpd;
+	void *hpd = NULL;
 	struct oz_hcd *ozhcd = port->ozhcd;
-
 	spin_lock_bh(&ozhcd->hcd_lock);
 	hpd = port->hpd;
 	if (hpd)
@@ -1374,8 +1742,7 @@ static void *oz_claim_hpd(struct oz_port *port)
 	spin_unlock_bh(&ozhcd->hcd_lock);
 	return hpd;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: tasklet
  */
 static void oz_process_ep0_urb(struct oz_hcd *ozhcd, struct urb *urb,
@@ -1385,7 +1752,7 @@ static void oz_process_ep0_urb(struct oz_hcd *ozhcd, struct urb *urb,
 	unsigned windex;
 	unsigned wvalue;
 	unsigned wlength;
-	void *hpd;
+	void *hpd = NULL;
 	u8 req_id;
 	int rc = 0;
 	unsigned complete = 0;
@@ -1393,8 +1760,7 @@ static void oz_process_ep0_urb(struct oz_hcd *ozhcd, struct urb *urb,
 	int port_ix = -1;
 	struct oz_port *port = NULL;
 
-	oz_dbg(URB, "[%s]:(%p)\n", __func__, urb);
-	port_ix = oz_get_port_from_addr(ozhcd, urb->dev->devnum);
+	port_ix = oz_get_port_from_addr(ozhcd, (usb_pipedevice(urb->pipe)));
 	if (port_ix < 0) {
 		rc = -EPIPE;
 		goto out;
@@ -1402,8 +1768,8 @@ static void oz_process_ep0_urb(struct oz_hcd *ozhcd, struct urb *urb,
 	port =  &ozhcd->ports[port_ix];
 	if (((port->flags & OZ_PORT_F_PRESENT) == 0)
 		|| (port->flags & OZ_PORT_F_DYING)) {
-		oz_dbg(ON, "Refusing URB port_ix = %d devnum = %d\n",
-		       port_ix, urb->dev->devnum);
+		oz_trace("Refusing URB port_ix = %d devnum = %d\n",
+			port_ix, urb->dev->devnum);
 		rc = -EPIPE;
 		goto out;
 	}
@@ -1414,16 +1780,10 @@ static void oz_process_ep0_urb(struct oz_hcd *ozhcd, struct urb *urb,
 	windex = le16_to_cpu(setup->wIndex);
 	wvalue = le16_to_cpu(setup->wValue);
 	wlength = le16_to_cpu(setup->wLength);
-	oz_dbg(CTRL_DETAIL, "bRequestType = %x\n", setup->bRequestType);
-	oz_dbg(CTRL_DETAIL, "bRequest = %x\n", setup->bRequest);
-	oz_dbg(CTRL_DETAIL, "wValue = %x\n", wvalue);
-	oz_dbg(CTRL_DETAIL, "wIndex = %x\n", windex);
-	oz_dbg(CTRL_DETAIL, "wLength = %x\n", wlength);
 
 	req_id = port->next_req_id++;
 	hpd = oz_claim_hpd(port);
 	if (hpd == NULL) {
-		oz_dbg(ON, "Cannot claim port\n");
 		rc = -EPIPE;
 		goto out;
 	}
@@ -1433,31 +1793,23 @@ static void oz_process_ep0_urb(struct oz_hcd *ozhcd, struct urb *urb,
 		 */
 		switch (setup->bRequest) {
 		case USB_REQ_GET_DESCRIPTOR:
-			oz_dbg(ON, "USB_REQ_GET_DESCRIPTOR - req\n");
 			break;
 		case USB_REQ_SET_ADDRESS:
-			oz_dbg(ON, "USB_REQ_SET_ADDRESS - req\n");
-			oz_dbg(ON, "Port %d address is 0x%x\n",
-			       ozhcd->conn_port,
-			       (u8)le16_to_cpu(setup->wValue));
 			spin_lock_bh(&ozhcd->hcd_lock);
 			if (ozhcd->conn_port >= 0) {
 				ozhcd->ports[ozhcd->conn_port].bus_addr =
 					(u8)le16_to_cpu(setup->wValue);
-				oz_dbg(ON, "Clearing conn_port\n");
 				ozhcd->conn_port = -1;
 			}
 			spin_unlock_bh(&ozhcd->hcd_lock);
 			complete = 1;
 			break;
 		case USB_REQ_SET_CONFIGURATION:
-			oz_dbg(ON, "USB_REQ_SET_CONFIGURATION - req\n");
 			break;
 		case USB_REQ_GET_CONFIGURATION:
 			/* We short circuit this case and reply directly since
 			 * we have the selected configuration number cached.
 			 */
-			oz_dbg(ON, "USB_REQ_GET_CONFIGURATION - reply now\n");
 			if (urb->transfer_buffer_length >= 1) {
 				urb->actual_length = 1;
 				*((u8 *)urb->transfer_buffer) =
@@ -1471,26 +1823,21 @@ static void oz_process_ep0_urb(struct oz_hcd *ozhcd, struct urb *urb,
 			/* We short circuit this case and reply directly since
 			 * we have the selected interface alternative cached.
 			 */
-			oz_dbg(ON, "USB_REQ_GET_INTERFACE - reply now\n");
 			if (urb->transfer_buffer_length >= 1) {
 				urb->actual_length = 1;
 				*((u8 *)urb->transfer_buffer) =
 					port->iface[(u8)windex].alt;
-				oz_dbg(ON, "interface = %d alt = %d\n",
-				       windex, port->iface[(u8)windex].alt);
 				complete = 1;
 			} else {
 				rc = -EPIPE;
 			}
 			break;
 		case USB_REQ_SET_INTERFACE:
-			oz_dbg(ON, "USB_REQ_SET_INTERFACE - req\n");
 			break;
 		}
 	}
 	if (!rc && !complete) {
 		int data_len = 0;
-
 		if ((setup->bRequestType & USB_DIR_IN) == 0)
 			data_len = wlength;
 		urb->actual_length = data_len;
@@ -1516,14 +1863,12 @@ static void oz_process_ep0_urb(struct oz_hcd *ozhcd, struct urb *urb,
 	oz_usb_put(hpd);
 out:
 	if (rc || complete) {
-		oz_dbg(ON, "Completing request locally\n");
 		oz_complete_urb(ozhcd->hcd, urb, rc);
 	} else {
 		oz_usb_request_heartbeat(port->hpd);
 	}
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: tasklet
  */
 static int oz_urb_process(struct oz_hcd *ozhcd, struct urb *urb)
@@ -1531,7 +1876,6 @@ static int oz_urb_process(struct oz_hcd *ozhcd, struct urb *urb)
 	int rc = 0;
 	struct oz_port *port = urb->hcpriv;
 	u8 ep_addr;
-
 	/* When we are paranoid we keep a list of urbs which we check against
 	 * before handing one back. This is just for debugging during
 	 * development and should be turned off in the released driver.
@@ -1544,21 +1888,20 @@ static int oz_urb_process(struct oz_hcd *ozhcd, struct urb *urb)
 	/* Check if there is a device at the port - refuse if not.
 	 */
 	if ((port->flags & OZ_PORT_F_PRESENT) == 0)
-		return -EPIPE;
+		return -ENODEV;
 	ep_addr = usb_pipeendpoint(urb->pipe);
 	if (ep_addr) {
 		/* If the request is not for EP0 then queue it.
 		 */
 		if (oz_enqueue_ep_urb(port, ep_addr, usb_pipein(urb->pipe),
 			urb, 0))
-			rc = -EPIPE;
+			rc = -ENOENT;
 	} else {
 		oz_process_ep0_urb(ozhcd, urb, GFP_ATOMIC);
 	}
 	return rc;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: tasklet
  */
 static void oz_urb_process_tasklet(unsigned long unused)
@@ -1566,9 +1909,7 @@ static void oz_urb_process_tasklet(unsigned long unused)
 	unsigned long irq_state;
 	struct urb *urb;
 	struct oz_hcd *ozhcd = oz_hcd_claim();
-	struct oz_urb_link *urbl, *n;
 	int rc = 0;
-
 	if (ozhcd == NULL)
 		return;
 	/* This is called from a tasklet so is in softirq context but the urb
@@ -1576,7 +1917,10 @@ static void oz_urb_process_tasklet(unsigned long unused)
 	 * appropriately while removing urbs.
 	 */
 	spin_lock_irqsave(&g_tasklet_lock, irq_state);
-	list_for_each_entry_safe(urbl, n, &ozhcd->urb_pending_list, link) {
+	while (!list_empty(&ozhcd->urb_pending_list)) {
+		struct oz_urb_link *urbl =
+			list_first_entry(&ozhcd->urb_pending_list,
+				struct oz_urb_link, link);
 		list_del_init(&urbl->link);
 		spin_unlock_irqrestore(&g_tasklet_lock, irq_state);
 		urb = urbl->urb;
@@ -1589,8 +1933,7 @@ static void oz_urb_process_tasklet(unsigned long unused)
 	spin_unlock_irqrestore(&g_tasklet_lock, irq_state);
 	oz_hcd_put(ozhcd);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * This function searches for the urb in any of the lists it could be in.
  * If it is found it is removed from the list and completed. If the urb is
  * being processed then it won't be in a list so won't be found. However, the
@@ -1606,14 +1949,13 @@ static void oz_urb_cancel(struct oz_port *port, u8 ep_num, struct urb *urb)
 	struct oz_hcd *ozhcd;
 	unsigned long irq_state;
 	u8 ix;
-
 	if (port == NULL) {
-		oz_dbg(ON, "%s: ERROR: (%p) port is null\n", __func__, urb);
+		oz_trace("%s: urb=%p port is null\n", __func__, urb);
 		return;
 	}
 	ozhcd = port->ozhcd;
 	if (ozhcd == NULL) {
-		oz_dbg(ON, "%s; ERROR: (%p) ozhcd is null\n", __func__, urb);
+		oz_trace("%s: urb=%p ozhcd is null\n", __func__, urb);
 		return;
 	}
 
@@ -1621,7 +1963,7 @@ static void oz_urb_cancel(struct oz_port *port, u8 ep_num, struct urb *urb)
 	 */
 	spin_lock_irqsave(&g_tasklet_lock, irq_state);
 	list_for_each(e, &ozhcd->urb_cancel_list) {
-		urbl = list_entry(e, struct oz_urb_link, link);
+		urbl = container_of(e, struct oz_urb_link, link);
 		if (urb == urbl->urb) {
 			list_del_init(e);
 			spin_unlock_irqrestore(&g_tasklet_lock, irq_state);
@@ -1635,10 +1977,10 @@ static void oz_urb_cancel(struct oz_port *port, u8 ep_num, struct urb *urb)
 	 */
 	spin_lock_irqsave(&ozhcd->hcd_lock, irq_state);
 	list_for_each(e, &ozhcd->orphanage) {
-		urbl = list_entry(e, struct oz_urb_link, link);
+		urbl = container_of(e, struct oz_urb_link, link);
 		if (urbl->urb == urb) {
 			list_del(e);
-			oz_dbg(ON, "Found urb in orphanage\n");
+			oz_trace("Found urb in orphanage urb=%p\n", urb);
 			goto out;
 		}
 	}
@@ -1654,24 +1996,24 @@ out2:
 	if (urbl) {
 		urb->actual_length = 0;
 		oz_free_urb_link(urbl);
-		oz_complete_urb(ozhcd->hcd, urb, -EPIPE);
+		oz_complete_urb(ozhcd->hcd, urb, -ENOENT);
 	}
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: tasklet
  */
 static void oz_urb_cancel_tasklet(unsigned long unused)
 {
 	unsigned long irq_state;
 	struct urb *urb;
-	struct oz_urb_link *urbl, *n;
 	struct oz_hcd *ozhcd = oz_hcd_claim();
-
 	if (ozhcd == NULL)
 		return;
 	spin_lock_irqsave(&g_tasklet_lock, irq_state);
-	list_for_each_entry_safe(urbl, n, &ozhcd->urb_cancel_list, link) {
+	while (!list_empty(&ozhcd->urb_cancel_list)) {
+		struct oz_urb_link *urbl =
+			list_first_entry(&ozhcd->urb_cancel_list,
+				struct oz_urb_link, link);
 		list_del_init(&urbl->link);
 		spin_unlock_irqrestore(&g_tasklet_lock, irq_state);
 		urb = urbl->urb;
@@ -1683,24 +2025,23 @@ static void oz_urb_cancel_tasklet(unsigned long unused)
 	spin_unlock_irqrestore(&g_tasklet_lock, irq_state);
 	oz_hcd_put(ozhcd);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static void oz_hcd_clear_orphanage(struct oz_hcd *ozhcd, int status)
 {
 	if (ozhcd) {
-		struct oz_urb_link *urbl, *n;
-
-		list_for_each_entry_safe(urbl, n, &ozhcd->orphanage, link) {
+		struct oz_urb_link *urbl;
+		while (!list_empty(&ozhcd->orphanage)) {
+			urbl = list_first_entry(&ozhcd->orphanage,
+				struct oz_urb_link, link);
 			list_del(&urbl->link);
 			oz_complete_urb(ozhcd->hcd, urbl->urb, status);
 			oz_free_urb_link(urbl);
 		}
 	}
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static int oz_hcd_start(struct usb_hcd *hcd)
@@ -1710,22 +2051,21 @@ static int oz_hcd_start(struct usb_hcd *hcd)
 	hcd->uses_new_polling = 1;
 	return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static void oz_hcd_stop(struct usb_hcd *hcd)
 {
+	oz_trace("%s:\n", __func__);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static void oz_hcd_shutdown(struct usb_hcd *hcd)
 {
+	oz_trace("%s:\n", __func__);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Called to queue an urb for the device.
  * This function should return a non-zero error code if it fails the urb but
  * should not call usb_hcd_giveback_urb().
@@ -1735,32 +2075,29 @@ static int oz_hcd_urb_enqueue(struct usb_hcd *hcd, struct urb *urb,
 				gfp_t mem_flags)
 {
 	struct oz_hcd *ozhcd = oz_hcd_private(hcd);
-	int rc;
+	int rc = 0;
 	int port_ix;
 	struct oz_port *port;
 	unsigned long irq_state;
 	struct oz_urb_link *urbl;
-
-	oz_dbg(URB, "%s: (%p)\n",  __func__, urb);
 	if (unlikely(ozhcd == NULL)) {
-		oz_dbg(URB, "Refused urb(%p) not ozhcd\n", urb);
-		return -EPIPE;
+		oz_trace("Refused urb(%p) not ozhcd.\n", urb);
+		return -ENODEV;
 	}
 	if (unlikely(hcd->state != HC_STATE_RUNNING)) {
-		oz_dbg(URB, "Refused urb(%p) not running\n", urb);
-		return -EPIPE;
+		oz_trace("Refused urb(%p) not running.\n", urb);
+		return -ENODEV;
 	}
-	port_ix = oz_get_port_from_addr(ozhcd, urb->dev->devnum);
+	port_ix = oz_get_port_from_addr(ozhcd, (usb_pipedevice(urb->pipe)));
 	if (port_ix < 0)
-		return -EPIPE;
+		return -ENODEV;
 	port =  &ozhcd->ports[port_ix];
 	if (port == NULL)
-		return -EPIPE;
-	if (!(port->flags & OZ_PORT_F_PRESENT) ||
-				(port->flags & OZ_PORT_F_CHANGED)) {
-		oz_dbg(ON, "Refusing URB port_ix = %d devnum = %d\n",
-		       port_ix, urb->dev->devnum);
-		return -EPIPE;
+		return -ENODEV;
+	if ((port->flags & OZ_PORT_F_PRESENT) == 0) {
+		oz_trace("Refusing URB port_ix = %d devnum = %d\n",
+			port_ix, urb->dev->devnum);
+		return -ENODEV;
 	}
 	urb->hcpriv = port;
 	/* Put request in queue for processing by tasklet.
@@ -1770,6 +2107,7 @@ static int oz_hcd_urb_enqueue(struct usb_hcd *hcd, struct urb *urb,
 		return -ENOMEM;
 	urbl->urb = urb;
 	spin_lock_irqsave(&g_tasklet_lock, irq_state);
+	oz_trace_urb_in(urb);
 	rc = usb_hcd_link_urb_to_ep(hcd, urb);
 	if (unlikely(rc)) {
 		spin_unlock_irqrestore(&g_tasklet_lock, irq_state);
@@ -1782,22 +2120,22 @@ static int oz_hcd_urb_enqueue(struct usb_hcd *hcd, struct urb *urb,
 	atomic_inc(&g_pending_urbs);
 	return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: tasklet
  */
 static struct oz_urb_link *oz_remove_urb(struct oz_endpoint *ep,
 				struct urb *urb)
 {
-	struct oz_urb_link *urbl;
-
+	struct oz_urb_link *urbl = NULL;
+	struct list_head *e;
 	if (unlikely(ep == NULL))
-		return NULL;
-
-	list_for_each_entry(urbl, &ep->urb_list, link) {
+		return 0;
+	list_for_each(e, &ep->urb_list) {
+		urbl = container_of(e, struct oz_urb_link, link);
 		if (urbl->urb == urb) {
-			list_del_init(&urbl->link);
+			list_del_init(e);
 			if (usb_pipeisoc(urb->pipe)) {
+				oz_trace_msg(M, "oz_remove_urb:%p\n", urb);
 				ep->credit -= urb->number_of_packets;
 				if (ep->credit < 0)
 					ep->credit = 0;
@@ -1805,21 +2143,19 @@ static struct oz_urb_link *oz_remove_urb(struct oz_endpoint *ep,
 			return urbl;
 		}
 	}
-	return NULL;
+	return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Called to dequeue a previously submitted urb for the device.
  * Context: any
  */
 static int oz_hcd_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 {
 	struct oz_hcd *ozhcd = oz_hcd_private(hcd);
-	struct oz_urb_link *urbl;
+	struct oz_urb_link *urbl = NULL;
 	int rc;
 	unsigned long irq_state;
 
-	oz_dbg(URB, "%s: (%p)\n",  __func__, urb);
 	urbl = oz_alloc_urb_link();
 	if (unlikely(urbl == NULL))
 		return -ENOMEM;
@@ -1849,33 +2185,30 @@ static int oz_hcd_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 	}
 	return rc;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static void oz_hcd_endpoint_disable(struct usb_hcd *hcd,
 				struct usb_host_endpoint *ep)
 {
+	oz_trace("%s:\n", __func__);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static void oz_hcd_endpoint_reset(struct usb_hcd *hcd,
 				struct usb_host_endpoint *ep)
 {
+	oz_trace("%s:\n", __func__);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static int oz_hcd_get_frame_number(struct usb_hcd *hcd)
 {
-	oz_dbg(ON, "oz_hcd_get_frame_number\n");
 	return oz_usb_get_frame_number();
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: softirq
  * This is called as a consquence of us calling usb_hcd_poll_rh_status() and we
  * always do that in softirq context.
@@ -1887,25 +2220,24 @@ static int oz_hcd_hub_status_data(struct usb_hcd *hcd, char *buf)
 
 	buf[0] = 0;
 	buf[1] = 0;
-
 	spin_lock_bh(&ozhcd->hcd_lock);
 	for (i = 0; i < OZ_NB_PORTS; i++) {
 		if (ozhcd->ports[i].flags & OZ_PORT_F_CHANGED) {
-			oz_dbg(HUB, "Port %d changed\n", i);
-			ozhcd->ports[i].flags &= ~OZ_PORT_F_CHANGED;
 			if (i < 7)
-				buf[0] |= 1 << (i + 1);
+				buf[0] |= 1<<(i+1);
 			else
-				buf[1] |= 1 << (i - 7);
+				buf[1] |= 1<<(i-7);
 		}
 	}
+	oz_trace_msg(H, "HUBSTS : %02X%02X\n",
+			(unsigned char)(buf[1]), (unsigned char)(buf[0]));
 	spin_unlock_bh(&ozhcd->hcd_lock);
-	if (buf[0] != 0 || buf[1] != 0)
+	if (buf[1] != 0 || buf[0] != 0)
 		return 2;
-	return 0;
+	else
+		return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: process
  */
 static void oz_get_hub_descriptor(struct usb_hcd *hcd,
@@ -1914,73 +2246,80 @@ static void oz_get_hub_descriptor(struct usb_hcd *hcd,
 	memset(desc, 0, sizeof(*desc));
 	desc->bDescriptorType = 0x29;
 	desc->bDescLength = 9;
-	desc->wHubCharacteristics = (__force __u16)cpu_to_le16(0x0001);
+	desc->wHubCharacteristics = (__force __u16)
+			__constant_cpu_to_le16(0x0001);
 	desc->bNbrPorts = OZ_NB_PORTS;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: process
  */
 static int oz_set_port_feature(struct usb_hcd *hcd, u16 wvalue, u16 windex)
 {
 	struct oz_port *port;
+	int err = 0;
 	u8 port_id = (u8)windex;
 	struct oz_hcd *ozhcd = oz_hcd_private(hcd);
 	unsigned set_bits = 0;
 	unsigned clear_bits = 0;
+	void *hpd;
 
 	if ((port_id < 1) || (port_id > OZ_NB_PORTS))
-		return -EPIPE;
+		return -ENODEV;
 	port = &ozhcd->ports[port_id-1];
 	switch (wvalue) {
 	case USB_PORT_FEAT_CONNECTION:
-		oz_dbg(HUB, "USB_PORT_FEAT_CONNECTION\n");
+		oz_trace("USB_PORT_FEAT_CONNECTION\n");
 		break;
 	case USB_PORT_FEAT_ENABLE:
-		oz_dbg(HUB, "USB_PORT_FEAT_ENABLE\n");
+		oz_trace("USB_PORT_FEAT_ENABLE\n");
 		break;
 	case USB_PORT_FEAT_SUSPEND:
-		oz_dbg(HUB, "USB_PORT_FEAT_SUSPEND\n");
+		oz_trace("USB_PORT_FEAT_SUSPEND\n");
 		break;
 	case USB_PORT_FEAT_OVER_CURRENT:
-		oz_dbg(HUB, "USB_PORT_FEAT_OVER_CURRENT\n");
+		oz_trace("USB_PORT_FEAT_OVER_CURRENT\n");
 		break;
 	case USB_PORT_FEAT_RESET:
-		oz_dbg(HUB, "USB_PORT_FEAT_RESET\n");
+		oz_trace("USB_PORT_FEAT_RESET\n");
 		set_bits = USB_PORT_STAT_ENABLE | (USB_PORT_STAT_C_RESET<<16);
 		clear_bits = USB_PORT_STAT_RESET;
 		ozhcd->ports[port_id-1].bus_addr = 0;
+		hpd = oz_claim_hpd(&ozhcd->ports[port_id-1]);
+		if (hpd != NULL) {
+			oz_usb_reset_device(hpd);
+			oz_usb_put(hpd);
+		}
 		break;
 	case USB_PORT_FEAT_POWER:
-		oz_dbg(HUB, "USB_PORT_FEAT_POWER\n");
+		oz_trace("USB_PORT_FEAT_POWER\n");
 		set_bits |= USB_PORT_STAT_POWER;
 		break;
 	case USB_PORT_FEAT_LOWSPEED:
-		oz_dbg(HUB, "USB_PORT_FEAT_LOWSPEED\n");
+		oz_trace("USB_PORT_FEAT_LOWSPEED\n");
 		break;
 	case USB_PORT_FEAT_C_CONNECTION:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_CONNECTION\n");
+		oz_trace("USB_PORT_FEAT_C_CONNECTION\n");
 		break;
 	case USB_PORT_FEAT_C_ENABLE:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_ENABLE\n");
+		oz_trace("USB_PORT_FEAT_C_ENABLE\n");
 		break;
 	case USB_PORT_FEAT_C_SUSPEND:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_SUSPEND\n");
+		oz_trace("USB_PORT_FEAT_C_SUSPEND\n");
 		break;
 	case USB_PORT_FEAT_C_OVER_CURRENT:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_OVER_CURRENT\n");
+		oz_trace("USB_PORT_FEAT_C_OVER_CURRENT\n");
 		break;
 	case USB_PORT_FEAT_C_RESET:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_RESET\n");
+		oz_trace("USB_PORT_FEAT_C_RESET\n");
 		break;
 	case USB_PORT_FEAT_TEST:
-		oz_dbg(HUB, "USB_PORT_FEAT_TEST\n");
+		oz_trace("USB_PORT_FEAT_TEST\n");
 		break;
 	case USB_PORT_FEAT_INDICATOR:
-		oz_dbg(HUB, "USB_PORT_FEAT_INDICATOR\n");
+		oz_trace("USB_PORT_FEAT_INDICATOR\n");
 		break;
 	default:
-		oz_dbg(HUB, "Other %d\n", wvalue);
+		oz_trace("Other %d\n", wvalue);
 		break;
 	}
 	if (set_bits || clear_bits) {
@@ -1989,73 +2328,79 @@ static int oz_set_port_feature(struct usb_hcd *hcd, u16 wvalue, u16 windex)
 		port->status |= set_bits;
 		spin_unlock_bh(&port->port_lock);
 	}
-	oz_dbg(HUB, "Port[%d] status = 0x%x\n", port_id, port->status);
-	return 0;
-}
 
-/*
+	oz_trace_msg(H, "Port[%d]: %08X\n", port_id,
+		ozhcd->ports[port_id-1].status);
+	return err;
+}
+/*------------------------------------------------------------------------------
  * Context: process
  */
 static int oz_clear_port_feature(struct usb_hcd *hcd, u16 wvalue, u16 windex)
 {
 	struct oz_port *port;
+	int err = 0;
 	u8 port_id = (u8)windex;
 	struct oz_hcd *ozhcd = oz_hcd_private(hcd);
 	unsigned clear_bits = 0;
 
 	if ((port_id < 1) || (port_id > OZ_NB_PORTS))
-		return -EPIPE;
+		return -ENODEV;
 	port = &ozhcd->ports[port_id-1];
 	switch (wvalue) {
 	case USB_PORT_FEAT_CONNECTION:
-		oz_dbg(HUB, "USB_PORT_FEAT_CONNECTION\n");
+		oz_trace("USB_PORT_FEAT_CONNECTION\n");
 		break;
 	case USB_PORT_FEAT_ENABLE:
-		oz_dbg(HUB, "USB_PORT_FEAT_ENABLE\n");
+		oz_trace("USB_PORT_FEAT_ENABLE\n");
 		clear_bits = USB_PORT_STAT_ENABLE;
 		break;
 	case USB_PORT_FEAT_SUSPEND:
-		oz_dbg(HUB, "USB_PORT_FEAT_SUSPEND\n");
+		oz_trace("USB_PORT_FEAT_SUSPEND\n");
 		break;
 	case USB_PORT_FEAT_OVER_CURRENT:
-		oz_dbg(HUB, "USB_PORT_FEAT_OVER_CURRENT\n");
+		oz_trace("USB_PORT_FEAT_OVER_CURRENT\n");
 		break;
 	case USB_PORT_FEAT_RESET:
-		oz_dbg(HUB, "USB_PORT_FEAT_RESET\n");
+		oz_trace("USB_PORT_FEAT_RESET\n");
 		break;
 	case USB_PORT_FEAT_POWER:
-		oz_dbg(HUB, "USB_PORT_FEAT_POWER\n");
+		oz_trace("USB_PORT_FEAT_POWER\n");
 		clear_bits |= USB_PORT_STAT_POWER;
 		break;
 	case USB_PORT_FEAT_LOWSPEED:
-		oz_dbg(HUB, "USB_PORT_FEAT_LOWSPEED\n");
+		oz_trace("USB_PORT_FEAT_LOWSPEED\n");
 		break;
 	case USB_PORT_FEAT_C_CONNECTION:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_CONNECTION\n");
+		oz_trace("USB_PORT_FEAT_C_CONNECTION\n");
 		clear_bits = (USB_PORT_STAT_C_CONNECTION << 16);
+		spin_lock_bh(&port->port_lock);
+		port->flags |= OZ_PORT_F_CHANGED;
+		spin_unlock_bh(&port->port_lock);
+
 		break;
 	case USB_PORT_FEAT_C_ENABLE:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_ENABLE\n");
+		oz_trace("USB_PORT_FEAT_C_ENABLE\n");
 		clear_bits = (USB_PORT_STAT_C_ENABLE << 16);
 		break;
 	case USB_PORT_FEAT_C_SUSPEND:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_SUSPEND\n");
+		oz_trace("USB_PORT_FEAT_C_SUSPEND\n");
 		break;
 	case USB_PORT_FEAT_C_OVER_CURRENT:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_OVER_CURRENT\n");
+		oz_trace("USB_PORT_FEAT_C_OVER_CURRENT\n");
 		break;
 	case USB_PORT_FEAT_C_RESET:
-		oz_dbg(HUB, "USB_PORT_FEAT_C_RESET\n");
+		oz_trace("USB_PORT_FEAT_C_RESET\n");
 		clear_bits = (USB_PORT_FEAT_C_RESET << 16);
 		break;
 	case USB_PORT_FEAT_TEST:
-		oz_dbg(HUB, "USB_PORT_FEAT_TEST\n");
+		oz_trace("USB_PORT_FEAT_TEST\n");
 		break;
 	case USB_PORT_FEAT_INDICATOR:
-		oz_dbg(HUB, "USB_PORT_FEAT_INDICATOR\n");
+		oz_trace("USB_PORT_FEAT_INDICATOR\n");
 		break;
 	default:
-		oz_dbg(HUB, "Other %d\n", wvalue);
+		oz_trace("Other %d\n", wvalue);
 		break;
 	}
 	if (clear_bits) {
@@ -2063,30 +2408,28 @@ static int oz_clear_port_feature(struct usb_hcd *hcd, u16 wvalue, u16 windex)
 		port->status &= ~clear_bits;
 		spin_unlock_bh(&port->port_lock);
 	}
-	oz_dbg(HUB, "Port[%d] status = 0x%x\n",
-	       port_id, ozhcd->ports[port_id-1].status);
-	return 0;
-}
 
-/*
+	oz_trace_msg(H, "Port[%d]: %08X\n", port_id,
+		ozhcd->ports[port_id-1].status);
+	return err;
+}
+/*------------------------------------------------------------------------------
  * Context: process
  */
 static int oz_get_port_status(struct usb_hcd *hcd, u16 windex, char *buf)
 {
 	struct oz_hcd *ozhcd;
-	u32 status;
-
+	u32 status = 0;
 	if ((windex < 1) || (windex > OZ_NB_PORTS))
-		return -EPIPE;
+		return -ENODEV;
 	ozhcd = oz_hcd_private(hcd);
-	oz_dbg(HUB, "GetPortStatus windex = %d\n", windex);
+	ozhcd->ports[windex-1].flags &= ~OZ_PORT_F_CHANGED;
 	status = ozhcd->ports[windex-1].status;
 	put_unaligned(cpu_to_le32(status), (__le32 *)buf);
-	oz_dbg(HUB, "Port[%d] status = %x\n", windex, status);
+	oz_trace_msg(H, "Port[%d]: %08X\n", windex, status);
 	return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: process
  */
 static int oz_hcd_hub_control(struct usb_hcd *hcd, u16 req_type, u16 wvalue,
@@ -2094,9 +2437,12 @@ static int oz_hcd_hub_control(struct usb_hcd *hcd, u16 req_type, u16 wvalue,
 {
 	int err = 0;
 
+	oz_trace_msg(H, "HUBCTL: %04X %04X %04X %04X\n",
+		req_type, wvalue, windex, wlength);
+
 	switch (req_type) {
 	case ClearHubFeature:
-		oz_dbg(HUB, "ClearHubFeature: %d\n", req_type);
+		oz_trace("ClearHubFeature: %d\n", req_type);
 		break;
 	case ClearPortFeature:
 		err = oz_clear_port_feature(hcd, wvalue, windex);
@@ -2105,26 +2451,26 @@ static int oz_hcd_hub_control(struct usb_hcd *hcd, u16 req_type, u16 wvalue,
 		oz_get_hub_descriptor(hcd, (struct usb_hub_descriptor *)buf);
 		break;
 	case GetHubStatus:
-		oz_dbg(HUB, "GetHubStatus: req_type = 0x%x\n", req_type);
-		put_unaligned(cpu_to_le32(0), (__le32 *)buf);
+		oz_trace("GetHubStatus: req_type = 0x%x\n",
+			req_type);
+		put_unaligned(__constant_cpu_to_le32(0), (__le32 *)buf);
 		break;
 	case GetPortStatus:
 		err = oz_get_port_status(hcd, windex, buf);
 		break;
 	case SetHubFeature:
-		oz_dbg(HUB, "SetHubFeature: %d\n", req_type);
+		oz_trace("SetHubFeature: %d\n", req_type);
 		break;
 	case SetPortFeature:
 		err = oz_set_port_feature(hcd, wvalue, windex);
 		break;
 	default:
-		oz_dbg(HUB, "Other: %d\n", req_type);
+		oz_trace("Other: %d\n", req_type);
 		break;
 	}
 	return err;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: process
  */
 static int oz_hcd_bus_suspend(struct usb_hcd *hcd)
@@ -2138,8 +2484,7 @@ static int oz_hcd_bus_suspend(struct usb_hcd *hcd)
 	spin_unlock_bh(&ozhcd->hcd_lock);
 	return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: process
  */
 static int oz_hcd_bus_resume(struct usb_hcd *hcd)
@@ -2153,12 +2498,13 @@ static int oz_hcd_bus_resume(struct usb_hcd *hcd)
 	spin_unlock_bh(&ozhcd->hcd_lock);
 	return 0;
 }
-
+/*------------------------------------------------------------------------------
+ */
 static void oz_plat_shutdown(struct platform_device *dev)
 {
+	oz_trace("%s:\n", __func__);
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: process
  */
 static int oz_plat_probe(struct platform_device *dev)
@@ -2170,7 +2516,7 @@ static int oz_plat_probe(struct platform_device *dev)
 
 	hcd = usb_create_hcd(&g_oz_hc_drv, &dev->dev, dev_name(&dev->dev));
 	if (hcd == NULL) {
-		oz_dbg(ON, "Failed to created hcd object OK\n");
+		oz_trace("Failed to created hcd object\n");
 		return -ENOMEM;
 	}
 	ozhcd = oz_hcd_private(hcd);
@@ -2183,28 +2529,24 @@ static int oz_plat_probe(struct platform_device *dev)
 	spin_lock_init(&ozhcd->hcd_lock);
 	for (i = 0; i < OZ_NB_PORTS; i++) {
 		struct oz_port *port = &ozhcd->ports[i];
-
 		port->ozhcd = ozhcd;
 		port->flags = 0;
 		port->status = 0;
 		port->bus_addr = 0xff;
 		spin_lock_init(&port->port_lock);
 	}
-	err = usb_add_hcd(hcd, 0, 0);
+	err = usb_add_hcd(hcd, -1, 0);
 	if (err) {
-		oz_dbg(ON, "Failed to add hcd object OK\n");
+		oz_trace("Failed to add hcd object\n");
 		usb_put_hcd(hcd);
 		return -1;
 	}
-	device_wakeup_enable(hcd->self.controller);
-
 	spin_lock_bh(&g_hcdlock);
 	g_ozhcd = ozhcd;
 	spin_unlock_bh(&g_hcdlock);
 	return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static int oz_plat_remove(struct platform_device *dev)
@@ -2219,49 +2561,40 @@ static int oz_plat_remove(struct platform_device *dev)
 	if (ozhcd == g_ozhcd)
 		g_ozhcd = NULL;
 	spin_unlock_bh(&g_hcdlock);
-	oz_dbg(ON, "Clearing orphanage\n");
-	oz_hcd_clear_orphanage(ozhcd, -EPIPE);
-	oz_dbg(ON, "Removing hcd\n");
+	oz_hcd_clear_orphanage(ozhcd, -ENODEV);
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
+	oz_empty_link_pool();
 	return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static int oz_plat_suspend(struct platform_device *dev, pm_message_t msg)
 {
+	oz_trace("%s:\n", __func__);
 	return 0;
 }
-
-
-/*
+/*------------------------------------------------------------------------------
  * Context: unknown
  */
 static int oz_plat_resume(struct platform_device *dev)
 {
+	oz_trace("%s:\n", __func__);
 	return 0;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: process
  */
 int oz_hcd_init(void)
 {
 	int err;
-
 	if (usb_disabled())
 		return -ENODEV;
-
-	oz_urb_link_cache = KMEM_CACHE(oz_urb_link, 0);
-	if (!oz_urb_link_cache)
-		return -ENOMEM;
 
 	tasklet_init(&g_urb_process_tasklet, oz_urb_process_tasklet, 0);
 	tasklet_init(&g_urb_cancel_tasklet, oz_urb_cancel_tasklet, 0);
 	err = platform_driver_register(&g_oz_plat_drv);
-	oz_dbg(ON, "platform_driver_register() returned %d\n", err);
 	if (err)
 		goto error;
 	g_plat_dev = platform_device_alloc(OZ_PLAT_DEV_NAME, -1);
@@ -2269,11 +2602,9 @@ int oz_hcd_init(void)
 		err = -ENOMEM;
 		goto error1;
 	}
-	oz_dbg(ON, "platform_device_alloc() succeeded\n");
 	err = platform_device_add(g_plat_dev);
 	if (err)
 		goto error2;
-	oz_dbg(ON, "platform_device_add() succeeded\n");
 	return 0;
 error2:
 	platform_device_put(g_plat_dev);
@@ -2282,11 +2613,10 @@ error1:
 error:
 	tasklet_disable(&g_urb_process_tasklet);
 	tasklet_disable(&g_urb_cancel_tasklet);
-	oz_dbg(ON, "oz_hcd_init() failed %d\n", err);
+	oz_trace("HCD Init failed: %d\n", err);
 	return err;
 }
-
-/*
+/*------------------------------------------------------------------------------
  * Context: process
  */
 void oz_hcd_term(void)
@@ -2296,6 +2626,5 @@ void oz_hcd_term(void)
 	tasklet_kill(&g_urb_cancel_tasklet);
 	platform_device_unregister(g_plat_dev);
 	platform_driver_unregister(&g_oz_plat_drv);
-	oz_dbg(ON, "Pending urbs:%d\n", atomic_read(&g_pending_urbs));
-	kmem_cache_destroy(oz_urb_link_cache);
+	oz_trace("Pending urbs:%d\n", atomic_read(&g_pending_urbs));
 }

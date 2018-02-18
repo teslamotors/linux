@@ -1,0 +1,46 @@
+Device tree binding for NVIDIA Tegra186 Ethernet QOS Controller
+=================================================================
+
+The Tegra186 EQOS (Ethernet QOS) device is an Ethernet controller which
+supports Quality of Service features.
+
+
+Required properties:
+- compatible: should be "synopsys,dwc_eth_qos"
+- reg: Physical base address and length of registers.
+- interrupts: An array of tuples specifying IRQ number for each tx/rx queue.
+- nvidia,csr_clock_speed: Specifies number of clocks in a microsecond.
+	Controls reference time for LPI timers when EEE is enabled.
+- nvidia,local-mac-address: Assigned MAC addressed.  This is
+	populated by BL.
+- clocks: Specifies the needed clocks.
+- clock-names: Specifies the names of the needed clocks.
+- resets: Specifies the reset line.
+- reset-names: Specifies the name of the reset line.
+- nvidia,use_multi_queues: If specified, enables multi queue support.
+	Default is use_multi_queues is specified.  Otherwise, only
+	one queue is enabled.
+- nvidia,ptp_ref_clock_speed: Specified in microseconds.
+- nvidia,rxq_enable_ctrl: An array where each entry specifies operating
+	mode for rx queue.
+- nvidia,queue_prio: An array where each entry specifies priority of
+	tx and rx queue.
+- nvidia,phy-reset-gpio: Specifies gpio pin for resetting PHY.
+- nvidia,phy-intr-gpio: Specifies gpio pin for PHY interrupts.
+- nvidia,phy-max-frame-size: Specifies maximum frame size supported by
+	PHY in kilobytes.  Default is 10kb.   Will determine maximum
+	jumbo frame size allowed.
+
+Optional properties:
+- nvidia,use_tagged_ptp: If specified, enables tagged PTP.
+- nvidia,ptp_dma_ch: Specifies channel to route PTP packets.
+	Channel 0 is default.
+- nvidia,intr_mode: Specifies if only one IRQ is enabled or one for each
+	channel.  Default is one IRQ.
+- nvidia,chan_mode: Specifies operating mode for each channel's irq handler.
+	Only applicable if intr_mode is "1". Default is NAPI.
+- nvidia,chan_napi_quota: Specifies number of tx/rx completions to process
+	when napi handler is called.  Default is "64".
+- nvidia,pause_frames: Used to disable/enable PAUSE frames support.
+	Default is enabled.
+

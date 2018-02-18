@@ -1,0 +1,25 @@
+/ {
+	dfll@70110000 {
+		board-params = <&{/cpu_dfll_board_params}>;
+		i2c-pmic-integration = <&{/cpu_dfll_pmic_integration}>;
+		status = "okay";
+	};
+
+	cpu_dfll_board_params {
+		sample-rate = <12500>;
+		fixed-output-forcing;
+		cf = <10>;
+		ci = <0>;
+		cg = <2>;
+		droop-cut-value = <0xf>;
+		droop-restore-ramp = <0x0>;
+		scale-out-ramp = <0x0>;
+	};
+
+	cpu_dfll_pmic_integration {
+		pmic-i2c-address = <0xb0>;
+		pmic-i2c-voltage-register = <0x23>;
+		i2c-fs-rate = <400000>;
+		sel-conversion-slope = <1>;
+	};
+};

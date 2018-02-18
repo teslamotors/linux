@@ -2187,7 +2187,15 @@ int rtl_pci_probe(struct pci_dev *pdev,
 		return err;
 	}
 
-	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
+	err = pci_set_dma_mask(pdev, DMA_BIT_MASK(64));
+	if (!err) {
+		if (pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(64))) {
+			RT_ASSERT(false,
+				  "Unable to obtain 64bit DMA for consistent allocations\n");
+			err = -ENOMEM;
+			goto fail1;
+		}
+	} else {
 		if (pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32))) {
 			RT_ASSERT(false,
 				  "Unable to obtain 32bit DMA for consistent allocations\n");

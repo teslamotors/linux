@@ -1,0 +1,125 @@
+/*
+ * tegra186-quill-e3301-1000-a00-00-base.dts Quill-PB A00 Board
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-quill-common-e3301-0000-a00.dtsi"
+#include "tegra186-platforms/tegra186-quill-pb-power-tree-e3301-1000-a00-00.dtsi"
+#include "tegra186-platforms/tegra186-quill-camera-e3323-a00.dtsi"
+#include "tegra186-modules/tegra186-cvb-e3320-1000-a00.dtsi"
+#include "tegra186-modules/tegra186-super-module-e2614-p2597-1000-a00.dtsi"
+#include "tegra186-plugin-manager/tegra186-quill-e3301-0000-a00-plugin-manager.dtsi"
+#include "tegra186-plugin-manager/tegra186-quill-display-plugin-manager.dtsi"
+#include "tegra186-prod/tegra186-priv-quill-pb-e3301-1000-a00-prod.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "3301:1000:A0";
+	nvidia,proc-boardid = "3301:1000:A0";
+
+	chosen {
+		board-has-eeprom;
+		bootargs ="console=ttyS0,115200";
+		stdout-path = &uarta;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "quill-pb";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	pinctrl@3520000 {
+		status = "okay";
+		pinctrl-0 = <&tegra_padctl_pinmux_default>;
+		pinctrl-names = "default";
+		tegra_padctl_pinmux_default: pinmux {
+			usb2-micro-AB {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb3-micro-AB {
+				nvidia,lanes = "usb3-1";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb2-std-A-port2 {
+				nvidia,lanes = "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port2 {
+				nvidia,lanes = "usb3-2";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			hsic {
+				nvidia,lanes = "hsic-0";
+				nvidia,function = "hsic";
+			};
+		};
+	};
+	pcie-controller@10003000 {
+		nvidia,lane-map = <0x211>;
+		status = "okay";
+		pci@1,0 {
+			status = "okay";
+		};
+		pci@2,0 {
+			status = "okay";
+		};
+		pci@3,0 {
+			status = "okay";
+		};
+	};
+
+	i2c@3160000 {
+		lp8557-backlight-s-wuxga-8-0@2c {
+			status = "okay";
+		};
+	};
+
+	host1x {
+		sor {
+			status = "okay";
+			hdmi-display {
+				status = "okay";
+				nvidia,audio-switch-name = "hdmi_audio";
+				disp-default-out {
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;
+				};
+			};
+			dp-display {
+				status = "disabled";
+			};
+		};
+		sor1 {
+			status = "okay";
+			nvidia,audio-switch-name = "hdmi_audio";
+			hdmi-display {
+				status = "okay";
+				disp-default-out {
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;
+				};
+			};
+			dp-display {
+				status = "disabled";
+			};
+		};
+	};
+};

@@ -63,6 +63,34 @@ config DEVFREQ_GOV_USERSPACE
 	  Otherwise, the governor does not change the frequnecy
 	  given at the initialization.
 
+config DEVFREQ_GOV_WMARK_SIMPLE
+	tristate "Simple Watermark"
+	help
+	  Sets the frequency based on monitor watermark events.
+	  This governor returns the next frequency from frequency table
+	  based on type watermark event.
+
+config DEVFREQ_GOV_WMARK_ACTIVE
+	tristate "Active Watermark"
+	help
+	  Sets the frequency based on monitor watermark events.
+	  This governor calculates relation between current load and
+	  target load. The next frequency is calculated by multiplying
+	  this relation with the current frequency.
+
+	  The watermark values are updated so that the watermarks are
+	  triggered when the above algorithm would change the frequency.
+
+config DEVFREQ_GOV_POD_SCALING
+	tristate "Power On Demand Scaling"
+	help
+	  Sets the frequency based on two properties:
+	    (1) The governor receives activity throughput hints that
+	    indicate whether scaling up or down is required
+	    (2) the load of the devices is estimated using busy times
+	    from device profile to determine if the frequency should
+	    be altered.
+
 comment "DEVFREQ Drivers"
 
 config ARM_EXYNOS4_BUS_DEVFREQ

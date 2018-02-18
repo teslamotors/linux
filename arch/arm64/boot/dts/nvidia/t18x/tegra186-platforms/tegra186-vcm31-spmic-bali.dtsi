@@ -1,0 +1,145 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/mfd/max77620.h>
+#include <dt-bindings/regulator/regulator.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include "tegra186-platforms-simple-bus.dtsi"
+#include <dt-bindings/linux/driver-info.h>
+
+/ {
+	bpmp_i2c {
+		spmic: spmic@3c {
+			compatible = "maxim,max20024";
+			reg = <0x3c>;
+
+#ifdef WAKEUP_VIA_PM_IRQ_INTERRUPT_CONTROLLER
+			interrupt-parent = <&pm_irq>;
+#endif
+			interrupts = <0 209 IRQ_TYPE_NONE>;
+
+			#interrupt-cells = <2>;
+                        interrupt-controller;
+
+			gpio-controller;
+			#gpio-cells = <2>;
+
+			maxim,system-pmic-power-off;
+
+			maxim,avoid-rtc-bulk-register-write;
+
+			watchdog {
+				status = "disabled";
+				maxim,wdt-boot-timeout = <32>;
+				maxim,wdt-suspend-timeout = <120>;
+			};
+
+			backup-battery {
+				status = "disabled";
+			};
+
+			regulators {
+				spmic_ldo3: ldo3 {
+					regulator-name = "vddio-sdmmc1";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <3300000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+					regulator-enable-ramp-delay = <50>;
+					regulator-disable-ramp-delay = <1110>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+
+				};
+
+				spmic_ldo5: ldo5 {
+					regulator-name = "vddio-sdmmc3";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <3300000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+					regulator-enable-ramp-delay = <50>;
+					regulator-disable-ramp-delay = <1110>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+
+
+			};
+		};
+	};
+
+	fixed-regulators {
+		vdd_3v3: regulator@0 {
+			compatible = "regulator-fixed-sync";
+			reg = <0>;
+			regulator-name = "vdd-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+
+		vdd_dummy: regulator@2 {
+			compatible = "regulator-fixed";
+			reg = <2>;
+			regulator-name = "vdd_dummy";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			regulator-always-on;
+		};
+
+		vdd_dummy_1v8: regulator@3 {
+			compatible = "regulator-fixed";
+			reg = <3>;
+			regulator-name = "vdd_dummy_1v8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+		};
+
+		en_vdd_sdcard1: regulator@4 {
+			compatible = "regulator-fixed-sync";
+			reg = <4>;
+			regulator-name = "en-vdd-sdcard1";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(J, 5) 0>;
+			enable-active-high;
+		};
+
+		en_vdd_sdcard3: regulator@5 {
+			compatible = "regulator-fixed-sync";
+			reg = <5>;
+			regulator-name = "en-vdd-sdcard3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(J, 6) 0>;
+			enable-active-high;
+		};
+
+		/* FIXME: vdd_wl_bt is needed to be controlled by driver. */
+		vdd_wl_bt: regulator@6 {
+			compatible = "regulator-fixed-sync";
+			reg = <6>;
+			status = "disabled";
+			regulator-name = "vdd_wl_bt";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			enable-active-high;
+			regulator-enable-ramp-delay = <500>;
+			regulator-always-on;
+		};
+	};
+};

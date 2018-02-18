@@ -5,6 +5,15 @@
 
 menu "Triggers - standalone"
 
+config IIO_HRTIMER_TRIGGER
+	tristate "HRTIMER trigger"
+	help
+	  Provides support for using HRTIMER entries as IIO triggers.
+	  If unsure, say N (but it's safe to say "Y").
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called iio-trig-hrtimer.
+
 config IIO_INTERRUPT_TRIGGER
 	tristate "Generic interrupt trigger"
 	help

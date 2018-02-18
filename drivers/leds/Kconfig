@@ -24,6 +24,19 @@ config LEDS_CLASS
 
 comment "LED drivers"
 
+config LEDS_MAX77660
+	tristate "LED Support for Maxim MAX77660"
+	depends on LEDS_CLASS || MFD_MAX77660
+	help
+	  This option enables the led support for Maxim PMIC MAX77660.
+
+config LEDS_MAX8831
+	tristate "LED Support for Maxim MAX8831"
+	depends on LEDS_CLASS
+	help
+	  This option enables the led support for Maxim LED
+	  controller MAX8831.
+
 config LEDS_88PM860X
 	tristate "LED Support for Marvell 88PM860x PMIC"
 	depends on LEDS_CLASS
@@ -504,6 +517,13 @@ config LEDS_VERSATILE
 	help
 	  This option enabled support for the LEDs on the ARM Versatile
 	  and RealView boards. Say Y to enabled these.
+config LEDS_CY8C
+	tristate "LED support for CY8C4014 I2C LED"
+	depends on LEDS_CLASS
+	depends on I2C
+	help
+	  This option enables support for CY8C4014 based LED through I2C.
+	  Driver support brightness control and hardware-assisted blinking.
 
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"

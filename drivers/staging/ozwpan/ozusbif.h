@@ -13,6 +13,10 @@
 void oz_usb_get(void *hpd);
 void oz_usb_put(void *hpd);
 
+/* Reset device.
+*/
+void oz_usb_reset_device(void *hpd);
+
 /* Stream functions.
  */
 int oz_usb_stream_create(void *hpd, u8 ep_num);
@@ -23,7 +27,7 @@ int oz_usb_stream_delete(void *hpd, u8 ep_num);
 int oz_usb_control_req(void *hpd, u8 req_id, struct usb_ctrlrequest *setup,
 		const u8 *data, int data_len);
 int oz_usb_get_desc_req(void *hpd, u8 req_id, u8 req_type, u8 desc_type,
-	u8 index, __le16 windex, int offset, int len);
+	u8 index, u16 windex, int offset, int len);
 int oz_usb_send_isoc(void *hpd, u8 ep_num, struct urb *urb);
 void oz_usb_request_heartbeat(void *hpd);
 
@@ -34,10 +38,19 @@ void oz_hcd_get_desc_cnf(void *hport, u8 req_id, int status,
 void oz_hcd_control_cnf(void *hport, u8 req_id, u8 rcode,
 	const u8 *data, int data_len);
 
+void oz_hcd_mark_urb_submitted(void *hport, int ep_ix, u8 req_id);
+
 /* Indication functions.
  */
 void oz_hcd_data_ind(void *hport, u8 endpoint, const u8 *data, int data_len);
 
+void oz_hcd_isoc_frame(void *hport, u8 endpoint,
+	u8 frame, const u8 *data, int data_len);
+
 int oz_hcd_heartbeat(void *hport);
+
+/* Get information.
+ */
+u8 oz_get_up_max_buffer_units(void *hpd);
 
 #endif /* _OZUSBIF_H */

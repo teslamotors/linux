@@ -1,0 +1,191 @@
+/*
+ * tegra210_adma.h - Tegra ADMA driver.
+ *
+ * Author: Dara Ramesh <dramesh@nvidia.com>
+ *
+ * Copyright (C) 2014-2016, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ *
+ */
+
+#ifndef __MACH_TEGRA_ADMA_H
+#define __MACH_TEGRA_ADMA_H
+
+#include <linux/platform_device.h>
+
+/* Register offsets from ADMA*_BASE */
+#define ADMA_CH_CMD						0x00
+#define ADMA_CH_SOFT_RESET					0x04
+#define ADMA_CH_STATUS						0x0c
+#define ADMA_CH_INT_STATUS					0x10
+#define ADMA_CH_INT_SET						0x18
+#define ADMA_CH_INT_CLEAR					0x1c
+#define ADMA_CH_CTRL						0x24
+#define ADMA_CH_CONFIG						0x28
+#define ADMA_CH_AHUB_FIFO_CTRL					0x2c
+#define ADMA_CH_TC_STATUS					0x30
+#define ADMA_CH_LOWER_SOURCE_ADDR				0x34
+#define ADMA_CH_LOWER_TARGET_ADDR				0x3c
+#define ADMA_CH_TC						0x44
+#define ADMA_CH_LOWER_DESC_ADDR					0x48
+#define ADMA_CH_TRANSFER_STATUS					0x54
+
+#define ADMA_GLOBAL_CMD						0x00
+#define ADMA_GLOBAL_SOFT_RESET					0x04
+#define ADMA_GLOBAL_CG						0x08
+#define ADMA_GLOBAL_STATUS					0x10
+#define ADMA_GLOBAL_INT_STATUS					0x14
+#define ADMA_GLOBAL_INT_MASK					0x18
+#define ADMA_GLOBAL_INT_SET					0x1c
+#define ADMA_GLOBAL_INT_CLEAR					0x20
+#define ADMA_GLOBAL_CTRL					0x24
+#define ADMA_GLOBAL_CH_INT_STATUS				0x28
+#define ADMA_GLOBAL_CH_ENABLE_STATUS				0x2c
+#define ADMA_GLOBAL_TX_REQUESTORS				0x30
+#define ADMA_GLOBAL_RX_REQUESTORS				0x34
+#define ADMA_GLOBAL_TRIGGERS					0x38
+#define ADMA_GLOBAL_TRANSFER_ERROR_LOG				0x3c
+#define ADMA_LAST_REG						0x44
+
+/* Fields in ADMA_CH_STATUS */
+#define ADMA_CH_STATUS_CURRENT_SOURCE_MEMORY_BUFFER_SHIFT	20
+#define ADMA_CH_STATUS_CURRENT_TARGET_MEMORY_BUFFER_SHIFT	16
+#define ADMA_CH_STATUS_OUTSTANDING_TRANSFERS_SHIFT		2
+#define ADMA_CH_STATUS_TRANSFER_PAUSED_SHIFT			1
+#define ADMA_CH_STATUS_TRANSFER_PAUSED				BIT(1)
+#define ADMA_CH_STATUS_TRANSFER_ENABLED				BIT(0)
+
+/* Fields in ADMA_CH_CTRL  */
+#define ADMA_CH_CTRL_TX_REQUEST_SELECT_SHIFT			28
+#define ADMA_CH_CTRL_TX_REQUEST_SELECT_MASK	\
+	(15 << ADMA_CH_CTRL_TX_REQUEST_SELECT_SHIFT)
+#define ADMA_CH_CTRL_RX_REQUEST_SELECT_SHIFT			24
+#define ADMA_CH_CTRL_RX_REQUEST_SELECT_MASK	\
+	(15 << ADMA_CH_CTRL_RX_REQUEST_SELECT_SHIFT)
+#define ADMA_CH_CTRL_TRIGGER_SELECT_SHIFT			16
+#define ADMA_CH_CTRL_TRANSFER_DIRECTION_SHIFT			12
+#define ADMA_CH_CTRL_TRANSFER_DIRECTION_MASK	\
+	(15 << ADMA_CH_CTRL_TRANSFER_DIRECTION_SHIFT)
+#define ADMA_CH_CTRL_TRANSFER_MODE_SHIFT			8
+#define ADMA_CH_CTRL_TRANSFER_MODE_MASK		\
+	(7 << ADMA_CH_CTRL_TRANSFER_MODE_SHIFT)
+#define ADMA_CH_CTRL_TRIGGER_ENABLE_SHIFT			2
+#define ADMA_CH_CTRL_FLOWCTRL_ENABLE_SHIFT			1
+#define ADMA_CH_CTRL_TRANSFER_PAUSE_SHIFT			0
+#define ADMA_CH_CTRL_TRANSFER_PAUSE_MASK	\
+	(1 << ADMA_CH_CTRL_TRANSFER_PAUSE_SHIFT)
+
+#define ADMA_CH_CTRL_TRANSFER_PAUSE				BIT(0)
+#define ADMA_CH_CTRL_FLOWCTRL_ENABLE				BIT(1)
+
+/* Fields in ADMA_CH_CONFIG  */
+#define ADMA_CH_CONFIG_SOURCE_MEMORY_BUFFER_SHIFT		28
+#define ADMA_CH_CONFIG_SOURCE_MEMORY_BUFFER_MASK	\
+	(7 << ADMA_CH_CONFIG_SOURCE_MEMORY_BUFFER_SHIFT)
+#define ADMA_CH_CONFIG_TARGET_MEMORY_BUFFER_SHIFT		24
+#define ADMA_CH_CONFIG_TARGET_MEMORY_BUFFER_MASK	\
+	(7 << ADMA_CH_CONFIG_TARGET_MEMORY_BUFFER_SHIFT)
+#define ADMA_CH_CONFIG_BURST_SIZE_SHIFT				20
+#define ADMA_CH_CONFIG_BURST_SIZE_MASK		\
+	(7 << ADMA_CH_CONFIG_BURST_SIZE_SHIFT)
+#define ADMA_CH_CONFIG_SOURCE_ADDR_WRAP_SHIFT			16
+#define ADMA_CH_CONFIG_TARGET_ADDR_WRAP_SHIFT			12
+#define ADMA_CH_CONFIG_WEIGHT_FOR_WRR_SHIFT			3
+
+#define ADMA_CH_CONFIG_MAX_MEM_BUFFERS				8
+
+/* Fields in ADMA_CH_AHUB_FIFO_CTRL  */
+#define ADMA_CH_AHUB_FIFO_CTRL_FETCHING_POLICY_SHIFT		31
+#define ADMA_CH_AHUB_FIFO_CTRL_OVERFLOW_THRESHOLD_SHIFT	24
+#define ADMA_CH_AHUB_FIFO_CTRL_STARVATION_THRESHOLD_SHIFT	16
+#define ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_SHIFT		8
+#define ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_MASK	\
+	(15 << ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_SHIFT)
+#define ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_SHIFT		0
+#define ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_MASK	\
+	(15 << ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_SHIFT)
+
+#define ADMA_CH_INT_TD_STATUS					BIT(0)
+
+/* Fields in ADMA_CH_TRANSFER_STATUS */
+#define ADMA_CH_TRANSFER_DONE_COUNT_SHIFT				0
+#define ADMA_CH_TRANSFER_DONE_COUNT_MASK	\
+	(0xFFFF << ADMA_CH_TRANSFER_DONE_COUNT_SHIFT)
+
+/* Fields in ADMA_GLOBAL_CTRL  */
+#define ADMA_GLOBAL_CTRL_TRANSFER_PAUSE				BIT(0)
+#define ADMA_GLOBAL_CTRL_TRANSFER_PAUSE_SHIFT			0
+#define ADMA_GLOBAL_CTRL_OUTSTANDING_MEM_READS_SHIFT		8
+#define ADMA_GLOBAL_CTRL_OUTSTANDING_MEM_WRITES_SHIFT		16
+#define ADMA_GLOBAL_CTRL_TRANSFER_PAUSE_MASK	\
+	(1 << ADMA_GLOBAL_CTRL_TRANSFER_PAUSE_SHIFT)
+#define ADMA_GLOBAL_CTRL_OUTSTANDING_MEM_READS_MASK	\
+	(15 << ADMA_GLOBAL_CTRL_OUTSTANDING_MEM_READS_SHIFT)
+#define ADMA_GLOBAL_CTRL_OUTSTANDING_MEM_WRITES_MASK	\
+	(15 << ADMA_GLOBAL_CTRL_OUTSTANDING_MEM_WRITES_SHIFT)
+
+/* Maximum adma transfer 1GB size */
+#define ADMA_MAX_TRANSFER_SIZE					0x40000000
+#define ADMA_NAME_SIZE						16
+#define TRANSFER_ENABLE						1
+
+/*
+ * If any burst is in flight and ADMA paused then this is the time to complete
+ * on-flight burst and update ADMA status register.
+ */
+#define TEGRA_ADMA_BURST_COMPLETE_TIME	20
+
+#define TEGRA_ADMA_STATUS_COUNT_MASK		0xFFFC
+#define CH_REG_SIZE	0x80
+
+enum tegra_adma_fetching_policy {
+	BURST_BASED = 0,
+	THRESHOLD_BASED = 1,
+};
+
+enum tegra_adma_addr {
+	ADDR1,
+	GLOBAL_REG,
+	ADMA_MAX_ADDR,
+};
+enum tegra_adma_burst_size {
+	WORD_1 = 1,
+	WORDS_2 = 2,
+	WORDS_4 = 3,
+	WORDS_8 = 4,
+	WORDS_16 = 5,
+};
+
+enum tegra_adma_mode {
+	ADMA_MODE_ONESHOT = 1,
+	ADMA_MODE_CONTINUOUS = 2,
+	ADMA_MODE_LINKED_LIST = 4,
+};
+
+enum tegra_adma_transfer_direction {
+	MEMORY_TO_MEMORY = 1,
+	AHUB_TO_MEMORY = 2,
+	MEMORY_TO_AHUB = 4,
+	AHUB_TO_AHUB = 8,
+};
+
+static inline int tegra_adma_init(struct platform_device *pdev,
+				  void __iomem *adma_addr[])
+{
+	return 0;
+}
+
+#endif

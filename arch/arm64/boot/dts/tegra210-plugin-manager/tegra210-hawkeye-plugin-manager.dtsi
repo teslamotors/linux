@@ -1,0 +1,151 @@
+/*
+- * tegra210-hawkeye-plugin-manager.dtsi: Hawkeye Plugin Manager dtsi.
+- *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+/ {
+	plugin-manager {
+		fragement@0 {
+			odm-data = "battery-connected";
+			override@0 {
+				target = <&battery_charger>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@1 {
+				target = <&battery_gauge>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@1 {
+			odm-data = "enable-debug-console";
+			override@0 {
+				target = <&uart_overjack>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@2 {
+			odm-data = "enable-tegra-wdt";
+			override@0 {
+				target = <&tegra_watchdog>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@3 {
+			odm-data = "enable-pmic-wdt";
+			override@0 {
+				target = <&pmic_watchdog>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@4 {
+			odm-data = "enable-utmi1-snps";
+			override@0 {
+				target = <&udc>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@1 {
+				target = <&otg>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@5 {
+			odm-data = "enable-utmi1-xusb";
+			override@0 {
+				target = <&psy_extcon>;
+				_overlay_ {
+					status = "okay";
+					extcon-cables = <&usb_cd 1 &usb_cd 2 &usb_cd 3
+						&usb_cd 4 &usb_cd 5 &usb_cd 6
+						&usb_cd 7 &usb_cd 8 &usb_cd 9>;
+					extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
+						"qc2-charger", "downstream-charger", "slow-charger",
+						"apple-500ma", "apple-1a", "apple-2a";
+				};
+			};
+
+			override@1 {
+				target = <&usb_cd>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@2 {
+				target = <&xudc>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@3 {
+				target = <&xotg>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@4 {
+				target = <&udc>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+
+			override@5 {
+				target = <&otg>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+
+			override@6 {
+				target = <&extcon_cable_xlate>;
+				_overlay_ {
+					cable-insert-delay = <1>;
+				};
+			};
+		};
+
+		fragement@6 {
+			odm-data = "soft-watchdog-timer";
+			override@0 {
+				target = <&soft_wdt>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+	};
+};

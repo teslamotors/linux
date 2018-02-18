@@ -50,6 +50,7 @@ enum {
 
 struct wl1251_platform_data {
 	int power_gpio;
+	int (*set_carddetect)(int val);
 	/* SDIO only: IRQ number if WLAN_IRQ line is used, 0 for SDIO IRQs */
 	int irq;
 	bool use_eeprom;

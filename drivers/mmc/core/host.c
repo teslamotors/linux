@@ -249,6 +249,7 @@ static inline void mmc_host_clk_init(struct mmc_host *host)
 	host->clk_gated = false;
 	INIT_DELAYED_WORK(&host->clk_gate_work, mmc_host_clk_gate_work);
 	spin_lock_init(&host->clk_lock);
+	spin_lock_init(&host->cmd_dump_lock);
 	mutex_init(&host->clk_gate_mutex);
 }
 
@@ -359,7 +360,7 @@ int mmc_of_parse(struct mmc_host *host)
 	/* Parse Card Detection */
 	if (of_find_property(np, "non-removable", &len)) {
 		host->caps |= MMC_CAP_NONREMOVABLE;
-	} else {
+	} else if (of_find_property(np, "get-cd", &len)) {
 		cd_cap_invert = of_property_read_bool(np, "cd-inverted");
 
 		if (of_find_property(np, "broken-cd", &len))
@@ -434,6 +435,8 @@ int mmc_of_parse(struct mmc_host *host)
 		host->caps2 |= MMC_CAP2_FULL_PWR_CYCLE;
 	if (of_find_property(np, "keep-power-in-suspend", &len))
 		host->pm_caps |= MMC_PM_KEEP_POWER;
+	if (of_find_property(np, "ignore-pm-notify", &len))
+		host->pm_caps |= MMC_PM_IGNORE_PM_NOTIFY;
 	if (of_find_property(np, "enable-sdio-wakeup", &len))
 		host->pm_caps |= MMC_PM_WAKE_SDIO_IRQ;
 	if (of_find_property(np, "mmc-ddr-1_8v", &len))
@@ -473,9 +476,12 @@ EXPORT_SYMBOL(mmc_of_parse);
  *
  *	Initialise the per-host structure.
  */
+#ifdef CONFIG_GC_SEPARATE
+void mmc_poll_queue_status_register(struct work_struct *work);
+#endif
 struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 {
-	int err;
+	int i, err;
 	struct mmc_host *host;
 
 	host = kzalloc(sizeof(struct mmc_host) + extra, GFP_KERNEL);
@@ -513,6 +519,9 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	host->pm_notify.notifier_call = mmc_pm_notify;
 #endif
 
+	memset(host->mmc_queue_state_sum, 0 ,
+		sizeof(host->mmc_queue_state_sum));
+
 	/*
 	 * By default, hosts do not support SGIO or large requests.
 	 * They have to set these according to their abilities.
@@ -523,6 +532,24 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	host->max_req_size = PAGE_CACHE_SIZE;
 	host->max_blk_size = 512;
 	host->max_blk_count = PAGE_CACHE_SIZE / 512;
+	for (i = 0; i < EMMC_MAX_QUEUE_DEPTH; i++)
+		host->areq_que[i] = NULL;
+	atomic_set(&host->areq_cnt, 0);
+	atomic_set(&host->read_cnt, 0);
+#ifdef CONFIG_GC_SEPARATE
+	atomic_set(&host->cmd13p_count, 0);
+	atomic_set(&host->cmd13p_write_first, 0);
+	atomic_set(&host->gc_status, GC_UNKNOWN);
+#endif
+
+	host->state = 0;
+
+	spin_lock_init(&host->que_lock);
+#ifdef CONFIG_GC_SEPARATE
+	INIT_DELAYED_WORK(&host->poll_ready, mmc_poll_queue_status_register);
+#endif
+
+	init_waitqueue_head(&host->cmp_que);
 
 	return host;
 
@@ -560,7 +587,8 @@ int mmc_add_host(struct mmc_host *host)
 	mmc_host_clk_sysfs_init(host);
 
 	mmc_start_host(host);
-	register_pm_notifier(&host->pm_notify);
+	if (!(host->pm_flags & MMC_PM_IGNORE_PM_NOTIFY))
+		register_pm_notifier(&host->pm_notify);
 
 	return 0;
 }
@@ -577,7 +605,9 @@ EXPORT_SYMBOL(mmc_add_host);
  */
 void mmc_remove_host(struct mmc_host *host)
 {
-	unregister_pm_notifier(&host->pm_notify);
+	if (!(host->pm_flags & MMC_PM_IGNORE_PM_NOTIFY))
+		unregister_pm_notifier(&host->pm_notify);
+
 	mmc_stop_host(host);
 
 #ifdef CONFIG_DEBUG_FS

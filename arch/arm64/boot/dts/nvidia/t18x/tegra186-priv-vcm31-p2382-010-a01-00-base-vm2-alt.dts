@@ -1,0 +1,60 @@
+/*
+ * tegra186-priv-vcm31-p2382-010-a01-00-base-vm2.dts: P2382(sunstreaker) base vm2 dts
+ * file
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-priv-vcm31-p2382-010-a01-00-base-vm2.dts"
+
+/ {
+	mailbox@3538000 {
+		status = "okay";
+	};
+
+	xhci@3530000 {
+		status = "okay";
+	};
+
+	pinctrl@3520000 {
+		status = "okay";
+	};
+
+	pinmux@2430000 {
+                status = "okay";
+        };
+
+        gpio@2200000 {
+                status = "okay";
+        };
+
+	bpmp_i2c {
+		status = "okay";
+	};
+
+	efuse@3820000 {
+		status = "okay";
+	};
+
+	/* FIXME: Actual regulator for this is vdd_mdm. */
+	pinctrl@3520000 {
+		vbus-1-supply = <&vdd_1v8>;
+	};
+
+	sdhci@3460000 {
+		status = "okay";
+	};
+
+	spi@c260000 {
+		status = "okay";
+	};
+};

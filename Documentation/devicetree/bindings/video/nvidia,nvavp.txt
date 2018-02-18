@@ -1,0 +1,15 @@
+Device-Tree bindings for tegra nvavp driver
+
+Required properties:
+- compatible: value should be "nvidia,tegra114-nvavp"/"nvidia,tegra124-nvavp"/"nvidia,tegra30-nvavp"
+- reg: physical base address of mailbox, nvavp vector table
+- interrupts: interrupt number to the cpu.
+
+Note: nvavp should is child of the host1x
+Example:
+	nvavp {
+		compatible = "nvidia,tegra114-nvavp";
+		interrupts = <0 4 0x04>; /* mailbox AVP IRQ */
+		reg = <0x60001000 0x0000e200>;
+	};
+

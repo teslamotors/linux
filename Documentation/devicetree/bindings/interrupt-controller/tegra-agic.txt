@@ -1,0 +1,53 @@
+Tegra AGIC Interrupt Controller Bindings
+----------------------------------------
+
+AGIC is based on generic interrupt controller ARM IP GIC400. The
+GIC-400 complies to AMBA AXI4 protocol and Version 2 of the ARM
+GIC Architecture Specification. The GIC-400 implements the GICv2
+Security Extension.
+
+Required properties:
+ - compatible: should be set to "nvidia,tegra210-agic"
+ - reg: should contain AGIC distributor and cpu interface base
+   address
+ - interrupt-controller: detect this node as an interrupt-controller
+ - no-gic-extension: This gic is standalone int controller and does
+   not have external interrupt controller to support.
+ - not-per-cpu: This gic is shared between the CPU's and the adsp and
+   does not provide per-cpu interface.
+ - interrupts: The Agic is a secondary GIC, hence requires the
+   interrupt number which is wired to the primary GIC.
+
+Example:
+	tegra_agic: agic-controller {
+		compatible = "nvidia,tegra210-agic";
+		interrupt-controller;
+		#interrupt-cells = <4>;
+		no-gic-extension;
+		not-per-cpu;
+		reg = <0x0 0x702f9000 0x0 0x2000>,
+		      <0x0 0x702fa000 0x0 0x2000>;
+		interrupts = <0 102 0xf04>;
+	};
+
+
+The devices using AGIC as interrupt-parent need to add a 4 cell property
+for an interrupt to be used. The first 3 cell properties are same as that
+for a GIC interrupt. The last cell represents the default routing of the
+interrupt.
+
+Example:
+	adsp {
+	     compatible = "nvidia,tegra210-adsp";
+	     interrupt-parent = <&tegra_agic>;
+	     interrupts = <GIC_SPI INT_AMISC_MBOX_EMPTY1 IRQ_TYPE_LEVEL_HIGH ROUTE_TO_HOST>, /* MBOX SEND */
+			     <GIC_SPI INT_AMISC_MBOX_FULL0 IRQ_TYPE_LEVEL_HIGH ROUTE_TO_HOST>, /* MBOX RECV */
+			     <GIC_SPI INT_ADSP_WDT IRQ_TYPE_LEVEL_HIGH ROUTE_TO_HOST>, /* Watchdog */
+			     <GIC_SPI INT_WFI IRQ_TYPE_LEVEL_HIGH ROUTE_TO_HOST>, /* WFI */
+			     <GIC_SPI INT_AMC_ERR IRQ_TYPE_LEVEL_HIGH ROUTE_TO_HOST>, /* AMC ERR IRQ */
+			     <GIC_SPI INT_ADSP_ACTMON IRQ_TYPE_LEVEL_HIGH ROUTE_TO_HOST>, /* ADSP ACTMON IRQ */
+			     <GIC_SPI INT_AMISC_MBOX_EMPTY0 IRQ_TYPE_LEVEL_HIGH ROUTE_TO_ADSP>, /* ADSP MBOX SEND */
+			     <GIC_SPI INT_AMISC_MBOX_FULL1 IRQ_TYPE_LEVEL_HIGH ROUTE_TO_ADSP>, /* ADSP MBOX RECV */
+			     <GIC_SPI INT_AMISC_MBOX_FULL2 IRQ_TYPE_LEVEL_HIGH ROUTE_TO_ADSP>; /* ADSP FIQ HANDLER */
+	     status = "disabled";
+	};

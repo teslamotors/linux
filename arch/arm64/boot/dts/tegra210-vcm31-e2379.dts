@@ -1,0 +1,45 @@
+/*
+ * T210- DSC
+ *
+ * arch/arm64/boot/dts/tegra210-vcm31-e2379.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra210-vcm31-e2379-common.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-extcon-p2530-0930-e01.dtsi"
+/ {
+	compatible = "nvidia,foster-e", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,fastboot-usb-pid = <0x7100>;
+
+	host1x {
+		sor1 {
+			hdmi-display {
+				disp-default-out {
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;
+				};
+			};
+		};
+	};
+
+	extcon {
+		vbus_gpio_extcon: extcon@1 {
+			gpios = <&gpio TEGRA_GPIO(Z, 2) 0 &max77620 0 0>;
+		};
+	};
+};

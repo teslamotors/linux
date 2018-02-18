@@ -1,0 +1,50 @@
+Tegra Smartdimmer Driver
+------------------------
+
+This file documents the the DT bindings of the smartdimmer driver for Tegra
+186.
+
+Required properties:
+- #status: Set to "okay" to enable smartdimmer at boot or "disabled" to turn
+  off
+- #nvidia,sw-update-delay: The frame delay while setting gain vis-a-vis
+  backlight change. Set to 0, 1, 2, or 3 to determine  number of frames to
+  skip while applying gain
+- #nvidia,aggressiveness: Sets the smartdimmer aggressiveness. This affects
+  the maximum number of pixels that can be saturated.The following are
+  allowed values:
+  1 - 5%
+  2 - 10%
+  3 - 15%
+  4 - 20%
+  5 - 25%
+- #nvidia,gain_table: Table of the gain that needs to be applied across 32
+  buckets representing different pixel groups from 0 to 255. The array is
+  flattened from a 2D array of gain tables of 32 entries each representing
+  the 32 buckets.
+- #nvidia,backlight_table: Table of the backlight compensation corresponding
+  to the gain table applied
+
+
+Example:
+
+smartdimmer {
+	status = "disabled";
+	nvidia,sw-update-delay = <0>;
+	nvidia,aggressiveness = <5>;
+	nvidia,sd-window-enable = <0>;
+	nvidia,gain_table = <
+		0x4000 0x4000 0x4000 0x4000 0x4000 0x4000 0x4000 0x4000
+		0x4000 0x4000 0x4000 0x4000 0x4000 0x4000 0x4000 0x4000
+		0x4000 0x4000 0x4000 0x4000 0x4000 0x4000 0x4000 0x4000
+		0x4000 0x4000 0x4000 0x4000 0x4000 0x4000 0x4000 0x4000
+		......
+	>;
+	nvidia,backlight_table = <
+		255 245 235 226 217 209 201 194 187 180 174 168 162 157
+		152 147 142 138 134 130 126 122 119 115 112 109 106 103
+		100 98 95 93 90 88 86 84 82 80 78 76 74 73 71 69 68 66
+		65 63 62 61 59
+	>;
+}
+

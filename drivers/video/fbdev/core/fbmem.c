@@ -1054,7 +1054,7 @@ EXPORT_SYMBOL(fb_set_var);
 
 int
 fb_blank(struct fb_info *info, int blank)
-{	
+{
 	struct fb_event event;
 	int ret = -EINVAL, early_ret;
 
@@ -1200,7 +1200,9 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		console_unlock();
 		break;
 	case FBIOBLANK:
+		pr_debug("FBIOBLANK acquiring console_lock\n");
 		console_lock();
+		pr_debug("FBIOBLANK console_lock taken\n");
 		if (!lock_fb_info(info)) {
 			console_unlock();
 			return -ENODEV;
@@ -1210,6 +1212,7 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		info->flags &= ~FBINFO_MISC_USEREVENT;
 		unlock_fb_info(info);
 		console_unlock();
+		pr_debug("FBIOBLANK console_unlock done\n");
 		break;
 	default:
 		if (!lock_fb_info(info))
@@ -1248,7 +1251,9 @@ struct fb_fix_screeninfo32 {
 	compat_caddr_t		mmio_start;
 	u32			mmio_len;
 	u32			accel;
-	u16			reserved[3];
+	u16			capabilities;
+	u16			max_clk_rate;
+	u16			colorimetry;
 };
 
 struct fb_cmap32 {
@@ -1320,8 +1325,9 @@ static int do_fscreeninfo_to_user(struct fb_fix_screeninfo *fix,
 
 	err |= put_user(fix->mmio_len, &fix32->mmio_len);
 	err |= put_user(fix->accel, &fix32->accel);
-	err |= copy_to_user(fix32->reserved, fix->reserved,
-			    sizeof(fix->reserved));
+	err |= put_user(fix->capabilities, &fix32->capabilities);
+	err |= put_user(fix->max_clk_rate, &fix32->max_clk_rate);
+	err |= put_user(fix->colorimetry, &fix32->colorimetry);
 
 	if (err)
 		return -EFAULT;
@@ -1653,7 +1659,7 @@ static int do_register_framebuffer(struct fb_info *fb_info)
 			fb_info->pixmap.access_align = 32;
 			fb_info->pixmap.flags = FB_PIXMAP_DEFAULT;
 		}
-	}	
+	}
 	fb_info->pixmap.offset = 0;
 
 	if (!fb_info->pixmap.blit_x)

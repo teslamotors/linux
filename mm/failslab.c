@@ -5,14 +5,29 @@ static struct {
 	struct fault_attr attr;
 	u32 ignore_gfp_wait;
 	int cache_filter;
+	u32 size;
 } failslab = {
 	.attr = FAULT_ATTR_INITIALIZER,
 	.ignore_gfp_wait = 1,
 	.cache_filter = 0,
+	.size = 0,
 };
+
+static void fail_dump(struct fault_attr *attr)
+{
+	if (attr->verbose > 0)
+		printk(KERN_NOTICE "FAULT_INJECTION: forcing a failure\n");
+	if (attr->verbose > 1)
+		dump_stack();
+}
 
 bool should_failslab(size_t size, gfp_t gfpflags, unsigned long cache_flags)
 {
+	if (failslab.size && size > failslab.size) {
+		fail_dump(&failslab.attr);
+		return true;
+	}
+
 	if (gfpflags & __GFP_NOFAIL)
 		return false;
 
@@ -46,6 +61,10 @@ static int __init failslab_debugfs_init(void)
 		goto fail;
 	if (!debugfs_create_bool("cache-filter", mode, dir,
 				&failslab.cache_filter))
+		goto fail;
+
+	if (!debugfs_create_u32("size", mode, dir,
+				&failslab.size))
 		goto fail;
 
 	return 0;

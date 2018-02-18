@@ -1,0 +1,55 @@
+/*
+ * T210- VCM3.1 E2379-B00 Drive-PX
+ *
+ * arch/arm64/boot/dts/tegra210-vcm31-e2379-0000-b00-00-b.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra210-vcm31-e2379-b00-common.dtsi"
+
+/ {
+	model = "drive-px-b";
+	compatible = "nvidia,drive-px", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+
+	xusb_pad_ctl: xusb_padctl {
+		/*
+		 *ss_portmap
+		 *SSP3 -> USB2P2 -> USB_C (0x2...)
+		 *SSP2 -> USB2P0 -> USB_A (0x.0..)
+		 *SSP1 not routed through any lanes (0x..7.)
+		 *SSP0 not routed through any lanes (0x...7)
+		 */
+		/*
+		 *lane_owner
+		 *SSP3 -> PEX lane 4 -> T210S01: PEX_USB3_L1 (0x4...)
+		 *SSP2 -> PEX lane 3 -> T210S01: PEX_USB3_L3 (0x.3..)
+		 *SSP1 and 0 not routed through any lanes  (0x..FF)
+		 */
+		nvidia,ss_ports = <TEGRA_XHCI_SS_P0 TEGRA_XHCI_UNUSED_PORT TEGRA_XHCI_UNUSED_LANE TEGRA_XHCI_PORT_STD
+				   TEGRA_XHCI_SS_P1 TEGRA_XHCI_UNUSED_PORT TEGRA_XHCI_UNUSED_LANE TEGRA_XHCI_PORT_STD
+				   TEGRA_XHCI_SS_P2 TEGRA_XHCI_USB2_P0 TEGRA_XHCI_LANE_3 TEGRA_XHCI_PORT_OTG
+				   TEGRA_XHCI_SS_P3 TEGRA_XHCI_USB2_P2 TEGRA_XHCI_LANE_4 TEGRA_XHCI_PORT_STD>;
+		status = "okay";
+	};
+
+	xusb@70090000 {
+		nvidia,portmap = <0x0E08>;
+		status = "okay";
+	};
+};

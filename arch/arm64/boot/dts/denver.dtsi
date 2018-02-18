@@ -1,0 +1,20 @@
+/ {
+	power_states: denver_power_states {
+		compatible = "nvidia,denver";
+
+		c1 {
+			state-name = "Clock gated";
+			latency = <1>;
+			residency = <1>;
+			power = <70>;
+			pmstate = <0x0>;
+		};
+		cc4 {
+			state-name = "Retention";
+			latency = <500>;
+			residency = <2000>;
+			power = <19>;
+			pmstate = <0x9>;
+		};
+	};
+};

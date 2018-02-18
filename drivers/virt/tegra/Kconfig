@@ -1,0 +1,31 @@
+config	TEGRA_VIRTUALIZATION
+	bool "Tegra Virtualization support"
+	depends on ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC || ARCH_TEGRA_18x_SOC
+	select VIRTUALIZATION
+	default n
+	help
+	  Enable Tegra Virtualization support; turning this option on
+	  enables features like the tegra virtualization manager and
+	  all others than depend on it.
+
+	  Select y to enable virtualization features on the tegra platforms
+	  that support it.
+
+config TEGRA_HV_MANAGER
+	bool "Nvidia Tegra hypervisor management & IVC"
+	depends on TEGRA_VIRTUALIZATION
+	select TEGRA_IVC
+	help
+	  The NVIDIA hypervisor management driver provides IVC channels
+	  configured by the hypervisor.
+
+	  Select Y to enable
+
+config TEGRA_VIRT_SUPPORT_BOOTDATA
+	bool "Expose Boot data passed by bootloader"
+	depends on TEGRA_VIRTUALIZATION
+	default n
+	help
+	  When enabled Boot data passed by bootloader is exposed via chosen node of device tree.
+
+	  Select Y to enable

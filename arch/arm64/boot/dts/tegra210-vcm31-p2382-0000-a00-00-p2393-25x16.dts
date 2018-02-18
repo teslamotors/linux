@@ -1,0 +1,76 @@
+/*
+ * T210- VCM3.1
+ *
+ * arch/arm64/boot/dts/tegra210-vcm31-p2382-0000-a00-00-p2393.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+/dts-v1/;
+/memreserve/ 0x80000000 0x00020000;
+
+#include "tegra210-vcm31-p2382-common.dtsi"
+#include "tegra210-platforms/tegra210-vcm31-disp-p2382-a00-p2393.dtsi"
+#include "tegra210-display-p2393-0000-a00-panel-dsi-25x16.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	i2c@7000c000 { /* GEN1 */
+		status = "okay";
+		sn65dsi86@2d {
+			compatible = "ti,sn65dsi86";
+			reg = <0x2d>;
+			status = "okay";
+			ti,pll-refclk-cfg = <0x4>;
+			ti,dsi-cfg1 = <0x80>;
+			ti,dsi-cha-clk-range = <0x50>;
+			ti,dsi-chb-clk-range = <0x50>;
+			ti,disable-assr = <1>;
+			ti,dp-ssc-cfg = <0x30>;
+			ti,video-cha-line-low = <0x0>;
+			ti,video-cha-line-high = <0x05>;
+			ti,video-chb-line-low = <0x0>;
+			ti,video-chb-line-high = <0x05>;
+			ti,cha-vert-disp-size-low = <0x40>;
+			ti,cha-vert-disp-size-high = <0x6>;
+			ti,h-pulse-width-low = <0x20>;
+			ti,h-pulse-width-high = <0x80>;
+			ti,v-pulse-width-low = <0x06>;
+			ti,v-pulse-width-high = <0x0>;
+			ti,h-back-porch = <0x50>;
+			ti,v-back-porch = <0x25>;
+			ti,h-front-porch = <0x30>;
+			ti,v-front-porch = <0x03>;
+		};
+	};
+
+	host1x {
+		dsi {
+			nvidia,dsi-controller-vs = <1>;
+			status = "okay";
+			panel-dsi-1080p-p2382 {
+				status = "disable";
+			};
+			panel-s-wqxga-10-1 {
+				nvidia,dsi-edp-bridge = <TEGRA_DSI_ENABLE>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>;
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>;
+				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>;
+				nvidia,panel-bridge-en-0-gpio = <&gpio TEGRA_GPIO(S, 1) 0>;
+			};
+		};
+	};
+};

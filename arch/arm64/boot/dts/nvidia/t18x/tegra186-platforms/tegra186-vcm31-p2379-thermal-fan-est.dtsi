@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	thermal_fan_est_shared_data: tfesd {
+		secret = <37>;
+		toffset = <0>;
+		polling_period = <5000>; /* Update temp every 5sec */
+		ndevs = <2>;
+		cdev_type = "pwm-fan";
+		tzp_governor_name = "pid_thermal_gov";
+		status = "okay";
+
+		dev1 {
+			dev_data = "Tegra_tx";
+			group = <0>;
+			/* Apply Tegra_tx value 100% in real time */
+			coeffs = <100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+		};
+
+		dev2 {
+			dev_data = "Tegra_rx";
+			group = <1>;
+			/* Apply Tegra_rx value 100% in real time */
+			coeffs = <100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+		};
+	};
+
+	thermal-fan-est {
+		compatible = "thermal-fan-est";
+		name = "thermal-fan-est";
+		num_resources = <0>;
+		shared_data = <&thermal_fan_est_shared_data>;
+		trip_length = <10>;
+		/*
+		 * This table corresponds to active_pwm table.
+		 * Ex, set active_pwm[1] when temp is over 55C,
+		 * back to active_pwm[0] when temp cooldown to 35C.
+		 */
+		active_trip_temps = <0 55000 65000 75000 85000
+				95000 105000 160000 170000 180000>;
+		active_hysteresis = <0 10000 5000 5000 5000
+				5000 10000 0 0 0>;
+		status = "okay";
+	};
+};

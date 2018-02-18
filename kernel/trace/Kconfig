@@ -77,6 +77,9 @@ config EVENT_TRACING
 	select CONTEXT_SWITCH_TRACER
 	bool
 
+config GPU_TRACEPOINTS
+	bool
+
 config CONTEXT_SWITCH_TRACER
 	bool
 
@@ -341,6 +344,17 @@ config FTRACE_SYSCALLS
 	select KALLSYMS
 	help
 	  Basic tracer to catch the syscall entry and exit events.
+
+config FTRACE_PRINTK
+	bool "Trace based printk"
+	depends on TRACING
+	default y
+	help
+	  Enables ftrace based printk logging.  This is enabled by default
+	  when TRACING is enabled.  Disabling this would drop all printk
+	  messages destined for ftrace buffer.
+
+	  Say Y if unsure.
 
 config TRACER_SNAPSHOT
 	bool "Create a snapshot trace buffer"
@@ -702,6 +716,39 @@ config RING_BUFFER_STARTUP_TEST
 	 other similar details.
 
 	 If unsure, say N
+
+config TRACELEVEL
+	bool "Add capability to prioritize traces"
+	depends on EVENT_TRACING
+	help
+	  This option allows subsystem programmers to add priorities to trace
+	  events by calling to tracelevel_register. Traces of high priority
+	  will automatically be enabled on kernel boot, and users can change
+	  the the trace level in a kernel parameter.
+
+config TRACEDUMP
+	bool "Dumping functionality for ftrace"
+	depends on FUNCTION_TRACER
+	help
+	  This option adds functionality to dump tracing data in several forms
+	  Data can be dumped in ascii form or as raw pages from the tracing
+	  ring buffers, along with the saved cmdlines. This is specified by
+	  the module parameter tracedump_ascii. Data will be compressed
+	  using zlib.
+
+config TRACEDUMP_PANIC
+	bool "Tracedump to console on panic"
+	depends on TRACEDUMP
+	help
+	  With this option, tracedump will automatically dump to the console
+	  on a kernel panic.
+
+config TRACEDUMP_PROCFS
+	bool "Tracedump via proc file"
+	depends on TRACEDUMP
+	help
+	  With this option, tracedump can be dumped from user space by reading
+	  from /proc/tracedump.
 
 endif # FTRACE
 

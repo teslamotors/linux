@@ -1,0 +1,115 @@
+source drivers/devfreq/Kconfig
+
+source arch/arm/mach-tegra/Kconfig
+
+config ARCH_TEGRA_13x_SOC
+	bool "Tegra 13x family SOC"
+	select CPU_V8
+	select DENVER_CPU
+	select ARM_GIC
+	select ARCH_REQUIRE_GPIOLIB
+	select USB_ARCH_HAS_EHCI if USB_SUPPORT
+	select USB_EHCI_TEGRA if USB_SUPPORT
+	select USB_ULPI if USB_SUPPORT
+	select USB_ULPI_VIEWPORT if USB_SUPPORT
+	select REPORT_PRESENT_CPUS if TEGRA_CPUQUIET
+	select ARCH_SUPPORTS_MSI if PCI_TEGRA
+	select PCI_MSI if PCI_TEGRA
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS if TEGRA_NVMAP
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS_ON_ONE_CPU if TEGRA_NVMAP
+	select ARCH_TEGRA_HAS_CL_DVFS
+	select TEGRA_DUAL_CBUS
+	select ARCH_TEGRA_VIC
+	select SOC_BUS
+	select THERMAL
+	select PM_GENERIC_DOMAINS if PM
+	select RESET_CONTROLLER
+	select MACH_HAS_SND_SOC_TEGRA_MAX98090 if SND_SOC
+	select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
+	select ZONE_DMA if !TEGRA_IOMMU_SMMU
+	select CMA
+	help
+	  Support for NVIDIA Tegra 13x family of SoCs, based upon the
+	  NVIDIA Denver CPU
+
+config ARCH_TEGRA_21x_SOC
+	bool "Tegra 21x family SOC"
+	select CPU_V8
+	select ARM_GIC
+	select ARCH_REQUIRE_GPIOLIB
+	select USB_ARCH_HAS_EHCI if USB_SUPPORT
+	select USB_EHCI_TEGRA if USB_SUPPORT
+	select USB_ULPI if USB_SUPPORT
+	select USB_ULPI_VIEWPORT if USB_SUPPORT
+	select REPORT_PRESENT_CPUS if TEGRA_CPUQUIET
+	select ARCH_SUPPORTS_MSI if PCI_TEGRA
+	select PCI_MSI if PCI_TEGRA
+	select ARCH_TEGRA_HAS_CL_DVFS
+	select TEGRA_DUAL_CBUS
+	select ARCH_TEGRA_VIC
+	select ARCH_TEGRA_APE
+	select RESET_CONTROLLER
+	select SOC_BUS
+	select THERMAL
+	select PM_GENERIC_DOMAINS if PM
+	select PINCTRL
+	select PINCTRL_TEGRA210
+	select PADCTRL
+	select SYSTEM_PMIC
+	select HAVE_FUNCTION_TRACER
+	select CMA
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS if TEGRA_NVMAP
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS_ON_ONE_CPU if TEGRA_NVMAP
+	select TEGRA_ISOMGR
+	select TEGRA_ISOMGR_SYSFS
+	select ARCH_HAS_PASR if STAGING
+	select SKIP_LATE_PASR_SETUP if PASR
+	help
+	  Support for NVIDIA Tegra 21x family of SoCs, based upon the
+	  NVIDIA Denver CPU
+
+config ARCH_TEGRA_VCM31T210
+	bool "Enable VCM31 T210 MCM"
+	select ARCH_TEGRA_21x_SOC
+	help
+	  Support for NVIDIA VCM31 T210, based on the Tegra210 SoC
+
+config ARCH_TEGRA_APE
+	bool "Tegra Audio Processing Engine(APE) present"
+	default n
+	help
+	  Say Y here if the SOC supports
+	  the Tegra Audio Processing Engine (APE)
+	  which handles audio specific
+	  tasks.
+
+config MACH_GRENADA
+	bool "Grenada board"
+	select TEGRA_FPGA_PLATFORM
+	help
+	  Support for NVIDIA GRENADA FPGA development platform
+
+config MACH_EXUMA
+	bool "Exuma board"
+	select TEGRA_FPGA_PLATFORM
+	help
+	  Support for NVIDIA Exuma FPGA development platform
+
+config MACH_T132REF
+	bool "T132REF board"
+	depends on ARCH_TEGRA_13x_SOC
+	select SYSEDP_FRAMEWORK
+	help
+	  Support for NVIDIA Exuma FPGA development platform
+
+config TEGRA_HMP_CLUSTER_CONTROL
+	bool "HMP Cluster control"
+	help
+	  Supports a cluster switch model for heterogenous clusters.
+
+config TEGRA_THERMAL_THROTTLE
+	bool "Enable throttling of CPU speed on overtemp"
+	depends on CPU_FREQ
+	depends on THERMAL
+	help
+	  Also requires enabling a temperature sensor such as NCT1008.

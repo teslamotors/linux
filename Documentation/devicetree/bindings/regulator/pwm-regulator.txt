@@ -25,3 +25,53 @@ Example:
 		regulator-max-microvolt = <1114000>;
 		regulator-name = "vdd_logic";
 	};
+
+
+
+NVIDIA PWM controlled regulators
+
+Required properties:
+- compatible		  : Must be "regulator-pwm".
+- pwms			  : Must be pwm-list specified by pwm binding pwm.txt
+- regulator-min-microvolt : Must be smallest voltage at pwm duty cycle 0%
+- regulator-max-microvolt : Must be largest voltage at pwm duty cycle 100%
+			    (must be above min; if equal, then use a fixed
+			    regulator)
+
+Optional properties:
+- regulator-n-voltages	: number of voltages, if specified implies evenly
+			  distributed duty cycle levels; must be at least 2
+- voltage-time-sel	: time in microseconds of voltage transition between
+                          voltage levels (specified if regulator settling time
+                          is independent of voltage change; for regulators with
+                          fixed slew-rate use regulator-ramp-delay property)
+
+Control GPIOs specified according to gpio binding in gpio.txt
+- enable-gpio		: GPIO to use to enable/disable the regulator
+- idle-gpio		: GPIO to use to enter/exit regulator idle mode
+- standby-gpio		: GPIO to use to enter/exit regulator standby mode
+
+Any property defined as part of the pwm user binding in pwm.txt.
+Any property defined as part of the core regulator binding in regulator.txt.
+
+Example:
+
+	pwm: pwm-controller {
+		#pwm-cells = <2>;
+	};
+
+	abc_pwm_reg: pwm-regulator {
+		compatible = "regulator-pwm";
+		pwms = <&pwm 0 3000>;
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <2500000>;
+
+		regulator-name = "vdd-abc-pwm-reg";
+		regulator-enable-ramp-delay = <700>;
+		regulator-boot-on;
+
+		regulator-n-voltages = <64>;
+		voltage-time-sel = <50>;
+		enable-gpio = <&gpio0 21 0x0>;
+		standby-gpio = <&gpio0 22 0x0>;
+	};

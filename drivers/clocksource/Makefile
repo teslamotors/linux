@@ -1,3 +1,7 @@
+GCOV_PROFILE		:= y
+
+subdir-ccflags-y	+= -Werror
+
 obj-$(CONFIG_CLKSRC_OF)	+= clksrc-of.o
 obj-$(CONFIG_ATMEL_PIT)		+= timer-atmel-pit.o
 obj-$(CONFIG_ATMEL_TCB_CLKSRC)	+= tcb_clksrc.o
@@ -27,7 +31,7 @@ obj-$(CONFIG_ARCH_U300)		+= timer-u300.o
 obj-$(CONFIG_SUN4I_TIMER)	+= sun4i_timer.o
 obj-$(CONFIG_SUN5I_HSTIMER)	+= timer-sun5i.o
 obj-$(CONFIG_MESON6_TIMER)	+= meson6_timer.o
-obj-$(CONFIG_ARCH_TEGRA)	+= tegra20_timer.o
+#obj-$(CONFIG_ARCH_TEGRA)	+= tegra20_timer.o
 obj-$(CONFIG_VT8500_TIMER)	+= vt8500_timer.o
 obj-$(CONFIG_ARCH_NSPIRE)	+= zevio-timer.o
 obj-$(CONFIG_ARCH_BCM_MOBILE)	+= bcm_kona_timer.o
@@ -46,3 +50,10 @@ obj-$(CONFIG_CLKSRC_METAG_GENERIC)	+= metag_generic.o
 obj-$(CONFIG_ARCH_HAS_TICK_BROADCAST)	+= dummy_timer.o
 obj-$(CONFIG_ARCH_KEYSTONE)		+= timer-keystone.o
 obj-$(CONFIG_CLKSRC_VERSATILE)		+= versatile.o
+
+obj-$(CONFIG_CLK_SRC_TEGRA_TIMER)       += tegra-nvtimers.o
+obj-$(CONFIG_CLK_SRC_TEGRA_TIMER)       += tegra-wakeup-nvtimers.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC)	+= tegra210_timer.o
+ifneq ($(CONFIG_ARM64),y)
+obj-$(CONFIG_ARM_ARCH_TIMER)            += tegra-tsc-timer.o
+endif

@@ -47,9 +47,7 @@ struct pps_source_info {
 };
 
 struct pps_event_time {
-#ifdef CONFIG_NTP_PPS
 	struct timespec ts_raw;
-#endif /* CONFIG_NTP_PPS */
 	struct timespec ts_real;
 };
 
@@ -63,6 +61,8 @@ struct pps_device {
 	__u32 clear_sequence;			/* PPS' clear event seq # */
 	struct pps_ktime assert_tu;
 	struct pps_ktime clear_tu;
+	struct pps_ktime assert_raw_tu;
+	struct pps_ktime clear_raw_tu;
 	int current_mode;			/* PPS mode at event time */
 
 	unsigned int last_ev;			/* last PPS event id */
@@ -111,29 +111,16 @@ static inline void timespec_to_pps_ktime(struct pps_ktime *kt,
 	kt->nsec = ts.tv_nsec;
 }
 
-#ifdef CONFIG_NTP_PPS
-
 static inline void pps_get_ts(struct pps_event_time *ts)
 {
 	getnstime_raw_and_real(&ts->ts_raw, &ts->ts_real);
 }
 
-#else /* CONFIG_NTP_PPS */
-
-static inline void pps_get_ts(struct pps_event_time *ts)
-{
-	getnstimeofday(&ts->ts_real);
-}
-
-#endif /* CONFIG_NTP_PPS */
-
 /* Subtract known time delay from PPS event time(s) */
 static inline void pps_sub_ts(struct pps_event_time *ts, struct timespec delta)
 {
 	ts->ts_real = timespec_sub(ts->ts_real, delta);
-#ifdef CONFIG_NTP_PPS
 	ts->ts_raw = timespec_sub(ts->ts_raw, delta);
-#endif
 }
 
 #endif /* LINUX_PPS_KERNEL_H */

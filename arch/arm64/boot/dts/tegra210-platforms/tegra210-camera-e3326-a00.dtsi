@@ -1,0 +1,320 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/media/camera.h>
+#include <dt-bindings/platform/t210/t210.h>
+
+/ {
+	host1x {
+		vi {
+			num-channels = <1>;
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					vi_in0: endpoint {
+						remote-endpoint = <&ov5693_out0>;
+					};
+				};
+			};
+		};
+
+		i2c@546c0000 {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+
+			status = "okay";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			ov5693_c@36 {
+				compatible = "nvidia,ov5693";
+				/* I2C device address */
+				reg = <0x36>;
+
+				/* V4L2 device node location */
+				devnode = "video0";
+
+				/* Physical dimensions of sensor */
+				physical_w = "3.674";
+				physical_h = "2.738";
+
+				/* Define any required hw resources needed by driver */
+				/* ie. clocks, io pins, power sources */
+				avdd-reg = "vana";
+				iovdd-reg = "vif";
+
+				/**
+				* A modeX node is required to support v4l2 driver
+				* implementation with NVIDIA camera software stack
+				*
+				* mclk_khz = "";
+				* Standard MIPI driving clock, typically 24MHz
+				*
+				* num_lanes = "";
+				* Number of lane channels sensor is programmed to output
+				*
+				* tegra_sinterface = "";
+				* The base tegra serial interface lanes are connected to
+				*
+				* discontinuous_clk = "";
+				* The sensor is programmed to use a discontinuous clock on MIPI lanes
+				*
+				* dpcm_enable = "true";
+				* The sensor is programmed to use a DPCM modes
+				*
+				* cil_settletime = "";
+				* MIPI lane settle time value.
+				* A "0" value attempts to autocalibrate based on mclk_multiplier
+				*
+				*
+				*
+				*
+				* active_w = "";
+				* Pixel active region width
+				*
+				* active_h = "";
+				* Pixel active region height
+				*
+				* pixel_t = "";
+				* The sensor readout pixel pattern
+				*
+				* readout_orientation = "0";
+				* Based on camera module orientation.
+				* Only change readout_orientation if you specifically
+				* Program a different readout order for this mode
+				*
+				* line_length = "";
+				* Pixel line length (width) for sensor mode.
+				* This is used to calibrate features in our camera stack.
+				*
+				* mclk_multiplier = "";
+				* Multiplier to MCLK to help time hardware capture sequence
+				* TODO: Assign to PLL_Multiplier as well until fixed in core
+				*
+				* pix_clk_hz = "";
+				* Sensor pixel clock used for calculations like exposure and framerate
+				*
+				*
+				*
+				*
+				* inherent_gain = "";
+				* Gain obtained inherently from mode (ie. pixel binning)
+				*
+				* min_gain_val = ""; (floor to 6 decimal places)
+				* max_gain_val = ""; (floor to 6 decimal places)
+				* Gain limits for mode
+				*
+				* min_exp_time = ""; (ceil to integer)
+				* max_exp_time = ""; (ceil to integer)
+				* Exposure Time limits for mode (us)
+				*
+				*
+				* min_hdr_ratio = "";
+				* max_hdr_ratio = "";
+				* HDR Ratio limits for mode
+				*
+				* min_framerate = "";
+				* max_framerate = "";
+				* Framerate limits for mode (fps)
+				*/
+				mode0 { // OV5693_MODE_2592X1944
+					mclk_khz = "24000";
+					num_lanes = "2";
+					tegra_sinterface = "serial_c";
+					discontinuous_clk = "no";
+					dpcm_enable = "false";
+					cil_settletime = "0";
+
+					active_w = "2592";
+					active_h = "1944";
+					pixel_t = "bayer_bggr";
+					readout_orientation = "90";
+					line_length = "2688";
+					inherent_gain = "1";
+					mclk_multiplier = "17.0";
+					pix_clk_hz = "160000000";
+
+					min_gain_val = "1.0";
+					max_gain_val = "16";
+					min_hdr_ratio = "1";
+					max_hdr_ratio = "64";
+					min_framerate = "1.816577";
+					max_framerate = "30";
+					min_exp_time = "34";
+					max_exp_time = "550385";
+				};
+
+				mode1 { //OV5693_MODE_2592X1458
+					mclk_khz = "24000";
+					num_lanes = "2";
+					tegra_sinterface = "serial_c";
+					discontinuous_clk = "no";
+					dpcm_enable = "false";
+					cil_settletime = "0";
+
+					active_w = "2592";
+					active_h = "1458";
+					pixel_t = "bayer_bggr";
+					readout_orientation = "90";
+					line_length = "2688";
+					inherent_gain = "1";
+					mclk_multiplier = "17.0";
+					pix_clk_hz = "160000000";
+
+					min_gain_val = "1.0";
+					max_gain_val = "16";
+					min_hdr_ratio = "1";
+					max_hdr_ratio = "64";
+					min_framerate = "1.816577";
+					max_framerate = "30";
+					min_exp_time = "34";
+					max_exp_time = "550385";
+				};
+
+				mode2 { //OV5693_MODE_1280X720
+					mclk_khz = "24000";
+					num_lanes = "2";
+					tegra_sinterface = "serial_c";
+					discontinuous_clk = "no";
+					dpcm_enable = "false";
+					cil_settletime = "0";
+
+					active_w = "1280";
+					active_h = "720";
+					pixel_t = "bayer_bggr";
+					readout_orientation = "90";
+					line_length = "1752";
+					inherent_gain = "1";
+					mclk_multiplier = "17.0";
+					pix_clk_hz = "160000000";
+
+					min_gain_val = "1.0";
+					max_gain_val = "16";
+					min_hdr_ratio = "1";
+					max_hdr_ratio = "64";
+					min_framerate = "2.787078";
+					max_framerate = "120";
+					min_exp_time = "22";
+					max_exp_time = "358733";
+				};
+
+				// HDR Modes
+				mode3 { //OV5693_MODE_2592X1944_HDR
+					mclk_khz = "24000";
+					num_lanes = "2";
+					tegra_sinterface = "serial_c";
+					discontinuous_clk = "no";
+					dpcm_enable = "false";
+					cil_settletime = "0";
+
+					active_w = "2592";
+					active_h = "1944";
+					pixel_t = "hdr_bggr";
+					readout_orientation = "90";
+					line_length = "3696";
+					inherent_gain = "1";
+					mclk_multiplier = "19.0";
+					pix_clk_hz = "176000000";
+
+					min_gain_val = "1.0";
+					max_gain_val = "16";
+					min_hdr_ratio = "1";
+					max_hdr_ratio = "64";
+					min_framerate = "1.453262";
+					max_framerate = "24";
+					min_exp_time = "42";
+					max_exp_time = "687981";
+				};
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@0 {
+						reg = <0>;
+						ov5693_out0: endpoint {
+							csi-port = <2>;
+							bus-width = <2>;
+							remote-endpoint = <&vi_in0>;
+						};
+					};
+				};
+			};
+		};
+	};
+
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+		/**
+		* Physical settings to calculate max ISO BW
+		*
+		* num_csi_lanes = <>;
+		* Total number of CSI lanes when all cameras are active
+		*
+		* max_lane_speed = <>;
+		* Max lane speed in Kbit/s
+		*
+		* min_bits_per_pixel = <>;
+		* Min bits per pixel
+		*
+		* vi_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the VI ISO case
+		*
+		* vi_bw_margin_pct = <>;
+		* Vi bandwidth margin in percentage
+		*
+		* isp_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the ISP ISO case
+		*
+		* isp_bw_margin_pct = <>;
+		* Isp bandwidth margin in percentage
+		*/
+		num_csi_lanes = <4>;
+		max_lane_speed = <1500000>;
+		min_bits_per_pixel = <10>;
+		vi_peak_byte_per_pixel = <2>;
+		vi_bw_margin_pct = <25>;
+		isp_peak_byte_per_pixel = <2>;
+		isp_bw_margin_pct = <25>;
+
+		/**
+		* The general guideline for naming badge_info contains 3 parts, and is as follows,
+		* The first part is the camera_board_id for the module; if the module is in a FFD
+		* platform, then use the platform name for this part.
+		* The second part contains the position of the module, ex. “rear” or “front”.
+		* The third part contains the last 6 characters of a part number which is found
+		* in the module's specsheet from the vender.
+		*/
+		modules {
+			module0 {
+				badge = "e3326_front_P5V27C";
+				position = "rear";
+				orientation = "1";
+				drivernode0 {
+					/* Declare PCL support driver (classically known as guid)  */
+					pcl_id = "v4l2_soc_sensor";
+					/* Declare the device-tree hierarchy to driver instance */
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov5693_c@36";
+				};
+				drivernode1 {
+					/* Declare PCL support driver (classically known as guid)  */
+					pcl_id = "v4l2_focuser_stub";
+				};
+			};
+		};
+	};
+};

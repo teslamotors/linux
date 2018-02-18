@@ -1,0 +1,77 @@
+== Introduction ==
+
+Hardware module which controls the pins voltages, routing etc are
+designated as pad controllers. Each pad controller must be represented
+as a node in device tree just like any other hardware module.
+
+Hardware modules whose signals are affected by pad configuration are
+designated client devices. Again, each client device must be represented
+as a node in device tree, just like any other hardware module.
+
+Specifying padcontrol information for devices
+======================================
+
+1) PadCtrl user nodes
+---------------------
+
+Padctrl users should specify a list of pad controllers that they want to use
+with a property containing a "pad-controllers":
+
+	pad-controllers ::= <single-padctrl> [padctrl-list]
+	single-padctrl ::= <padctrl-phandle> <padctrl-specifier>
+	padctrl-phandle : phandle to Pad controller node
+	padctrl-specifier : array of #padctrl-cells specifying the given Pad
+			(controller specific)
+
+Pad properties should be named "pad-controllers". The exact meaning of
+each padctrl property must be documented in the device tree binding
+for each device.
+An optional property "pad-names" may contain a list of strings to label
+each of the padctrl devices listed in the "pad-controllers" property. If no
+"pad-names" property is given, the name of the user node will be used as
+fallback.
+
+Drivers for devices that use more than a single padctrl device can use the
+"pad-names" property to map the name of the padctrl device requested by the
+padctrl_get() call to an index into the list given by the " pad-controllers"
+property.
+
+The following example could be used to describe a padctrl based client device:
+
+	padctrl: padctrl {
+		#padctrl-cells = <2>;
+	};
+
+	[...]
+
+	sdmmc1 {
+		padctrls = <&padctrl 12>;
+		pad-names = "sdmmc";
+	};
+
+	sdmmc3 {
+		padctrls = <&padctrl 13>;
+		pad-names = "sdmmc";
+	};
+
+Note that in the example above, specifying the "pad-names" is for "sdmmc" pads.
+
+padctrl-specifier typically encodes the chip-relative pad number.
+
+
+2) Pad controller nodes
+-----------------------
+
+Pad controller nodes must specify the number of cells used for the
+specifier using the '#padctrl-cells' property.
+
+An example PWM controller might look like this:
+
+	tegra_pmc: pmc@7000e400 {
+		compatible = "nvidia,tegra210-pmc";
+		#padcontroller-cells = <1>;
+	};
+
+Pad controller binding will tell the details of the option if
+#padcontroller-cells are more than zero.
+

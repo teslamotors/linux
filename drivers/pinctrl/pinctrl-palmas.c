@@ -411,7 +411,7 @@ PULL_UP_DN(chrg_det,	PU_PD_OD,	PALMAS_PU_PD_INPUT_CTRL3,	0x10,	0x0,	-1,	0x10);
 PULL_UP_DN(pwrhold,	PU_PD_OD,	PALMAS_PU_PD_INPUT_CTRL3,	0x4,	0x0,	-1,	0x4);
 PULL_UP_DN(msecure,	PU_PD_OD,	PALMAS_PU_PD_INPUT_CTRL3,	0x1,	0x0,	-1,	0x1);
 PULL_UP_DN(id,		USB_OTG,	PALMAS_USB_ID_CTRL_SET,		0x40,	0x0,	0x40,	-1);
-PULL_UP_DN(gpio0,	GPIO,		PALMAS_PU_PD_GPIO_CTRL1,	0x04,	0,	-1,	1);
+PULL_UP_DN(gpio0,	GPIO,		PALMAS_PU_PD_GPIO_CTRL1,	0x01,	0,	-1,	1);
 PULL_UP_DN(gpio1,	GPIO,		PALMAS_PU_PD_GPIO_CTRL1,	0x0C,	0,	0x8,	0x4);
 PULL_UP_DN(gpio2,	GPIO,		PALMAS_PU_PD_GPIO_CTRL1,	0x30,	0x0,	0x20,	0x10);
 PULL_UP_DN(gpio3,	GPIO,		PALMAS_PU_PD_GPIO_CTRL1,	0x40,	0x0,	-1,	0x40);
@@ -685,8 +685,7 @@ static int palmas_pinctrl_get_func_groups(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
-static int palmas_pinctrl_set_mux(struct pinctrl_dev *pctldev,
-		unsigned function,
+static int palmas_pinctrl_enable(struct pinctrl_dev *pctldev, unsigned function,
 		unsigned group)
 {
 	struct palmas_pctrl_chip_info *pci = pinctrl_dev_get_drvdata(pctldev);
@@ -743,7 +742,7 @@ static const struct pinmux_ops palmas_pinmux_ops = {
 	.get_functions_count = palmas_pinctrl_get_funcs_count,
 	.get_function_name = palmas_pinctrl_get_func_name,
 	.get_function_groups = palmas_pinctrl_get_func_groups,
-	.set_mux = palmas_pinctrl_set_mux,
+	.set_mux = palmas_pinctrl_enable,
 };
 
 static int palmas_pinconf_get(struct pinctrl_dev *pctldev,
@@ -892,6 +891,9 @@ static int palmas_pinconf_set(struct pinctrl_dev *pctldev,
 		param = pinconf_to_config_param(configs[i]);
 		param_val = pinconf_to_config_argument(configs[i]);
 
+		if (param == PIN_CONFIG_BIAS_PULL_PIN_DEFAULT)
+			continue;
+
 		switch (param) {
 		case PIN_CONFIG_BIAS_DISABLE:
 		case PIN_CONFIG_BIAS_PULL_UP:
@@ -960,15 +962,32 @@ static int palmas_pinconf_set(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
+static int palmas_pinconf_group_get(struct pinctrl_dev *pctldev,
+				unsigned group, unsigned long *config)
+{
+	dev_err(pctldev->dev, "palmas_pinconf_group_get op not supported\n");
+	return -ENOTSUPP;
+}
+
+static int palmas_pinconf_group_set(struct pinctrl_dev *pctldev,
+				unsigned group, unsigned long *configs,
+				unsigned num_configs)
+{
+	dev_err(pctldev->dev, "palmas_pinconf_group_set op not supported\n");
+	return -ENOTSUPP;
+}
+
 static const struct pinconf_ops palmas_pinconf_ops = {
 	.pin_config_get = palmas_pinconf_get,
 	.pin_config_set = palmas_pinconf_set,
+	.pin_config_group_get = palmas_pinconf_group_get,
+	.pin_config_group_set = palmas_pinconf_group_set,
 };
 
 static struct pinctrl_desc palmas_pinctrl_desc = {
-	.pctlops = &palmas_pinctrl_ops,
-	.pmxops = &palmas_pinmux_ops,
-	.confops = &palmas_pinconf_ops,
+	.pctlops = (struct pinctrl_ops *)&palmas_pinctrl_ops,
+	.pmxops = (struct pinmux_ops *)&palmas_pinmux_ops,
+	.confops = (struct pinconf_ops *)&palmas_pinconf_ops,
 	.owner = THIS_MODULE,
 };
 
@@ -995,13 +1014,214 @@ static struct of_device_id palmas_pinctrl_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, palmas_pinctrl_of_match);
 
+static int palmas_pinctrl_set_single_pin_config(
+	struct palmas_pctrl_chip_info *pci,
+	struct palmas_pinctrl_config *muxcfg)
+{
+	int pin_id;
+	int group_nr;
+	int param_val;
+	int param;
+	int ret = 0;
+	int mux_opt;
+	int i;
+	unsigned long config;
+
+	if (!muxcfg->pin) {
+		dev_err(pci->dev, "No pin name\n");
+		return -EINVAL;
+	}
+
+	pin_id = pin_get_from_name(pci->pctl, muxcfg->pin);
+	if (pin_id < 0) {
+		dev_err(pci->dev, " Pin %s not found\n", muxcfg->pin);
+		return ret;
+	}
+
+	/* Configure function */
+	if (!muxcfg->function)
+		goto skip_function;
+
+	for (group_nr = 0; group_nr < pci->num_pin_groups; ++group_nr) {
+		if (pci->pin_groups[group_nr].pins[0] == pin_id)
+			break;
+	}
+
+	if (group_nr == pci->num_pin_groups) {
+		dev_err(pci->dev,
+			"Pinconf is not supported for pin-id %d\n", pin_id);
+		return -ENOTSUPP;
+	}
+
+	mux_opt = -1;
+	for (i = 0; i < pci->num_functions; ++i) {
+		if (!strcmp(muxcfg->function, pci->functions[i].name)) {
+			mux_opt = i;
+			break;
+		}
+	}
+	if (mux_opt < 0) {
+		dev_err(pci->dev, "Pinmux function %s not supported\n",
+			muxcfg->function);
+		return -EINVAL;
+	}
+
+	ret = palmas_pinctrl_enable(pci->pctl, mux_opt, group_nr);
+	if (ret < 0) {
+		dev_err(pci->dev,
+			"Pinconf config for pin %s failed %d\n",
+			muxcfg->pin, ret);
+		return ret;
+	}
+
+skip_function:
+
+	/* Configure bias pull */
+	if (!muxcfg->prop_bias_pull)
+		goto skip_bias_pull;
+	if (!strcmp(muxcfg->prop_bias_pull, "pull-up"))
+		param = PIN_CONFIG_BIAS_PULL_UP;
+	else if (!strcmp(muxcfg->prop_bias_pull, "pull-down"))
+		param = PIN_CONFIG_BIAS_PULL_DOWN;
+	else if (!strcmp(muxcfg->prop_bias_pull, "normal"))
+		param = PIN_CONFIG_BIAS_DISABLE;
+	else {
+		dev_err(pci->dev, "Unknown bias-pull setting %s\n",
+			muxcfg->prop_bias_pull);
+		goto skip_bias_pull;
+	}
+	config = pinconf_to_config_packed(param, 0);
+	ret = palmas_pinconf_set(pci->pctl, pin_id, &config, 1);
+	if (ret < 0) {
+		dev_err(pci->dev, "bias-pull setting failed: %d\n", ret);
+		return ret;
+	}
+
+skip_bias_pull:
+	/* Configure open drain */
+	if (!muxcfg->prop_open_drain)
+		goto skip_open_drain;
+	param = PIN_CONFIG_DRIVE_OPEN_DRAIN;
+	if (!strcmp(muxcfg->prop_bias_pull, "enable"))
+		param_val = 1;
+	else
+		param_val = 0;
+	config = pinconf_to_config_packed(param, param_val);
+	ret = palmas_pinconf_set(pci->pctl, pin_id, &config, 1);
+	if (ret < 0) {
+		dev_err(pci->dev, "Opendrain setting failed: %d\n", ret);
+		return ret;
+	}
+
+skip_open_drain:
+	return ret;
+}
+
+static int palmas_pinctrl_init_muxed_parameter(
+	struct palmas_pctrl_chip_info *pci)
+{
+	struct palmas *palmas = pci->palmas;
+	unsigned int reg;
+	int ret;
+
+	/* PAD1 muxing */
+	ret = palmas_read(palmas, PALMAS_PU_PD_OD_BASE,
+				PALMAS_PRIMARY_SECONDARY_PAD1, &reg);
+	if (ret < 0) {
+		dev_err(pci->dev, "SECONDARY_PAD1 read failed %d\n", ret);
+		return ret;
+	}
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_0))
+		palmas->gpio_muxed |= PALMAS_GPIO_0_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_1_MUXED;
+	else if ((reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_MASK) ==
+			(2 << PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_SHIFT))
+		palmas->led_muxed |= PALMAS_LED1_MUXED;
+	else if ((reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_MASK) ==
+			(3 << PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_SHIFT))
+		palmas->pwm_muxed |= PALMAS_PWM1_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_2_MUXED;
+	else if ((reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_MASK) ==
+			(2 << PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_SHIFT))
+		palmas->led_muxed |= PALMAS_LED2_MUXED;
+	else if ((reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_MASK) ==
+			(3 << PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_SHIFT))
+		palmas->pwm_muxed |= PALMAS_PWM2_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_3))
+		palmas->gpio_muxed |= PALMAS_GPIO_3_MUXED;
+
+	/* PAD2 muxing */
+	ret = palmas_read(palmas, PALMAS_PU_PD_OD_BASE,
+				PALMAS_PRIMARY_SECONDARY_PAD2, &reg);
+	if (ret < 0) {
+		dev_err(pci->dev, "SECONDARY_PAD2 read failed %d\n", ret);
+		return ret;
+	}
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_4))
+		palmas->gpio_muxed |= PALMAS_GPIO_4_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_5_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_6))
+		palmas->gpio_muxed |= PALMAS_GPIO_6_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_7_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_7_MUXED;
+
+	/* PAD3 muxing */
+	ret = palmas_read(palmas, PALMAS_PU_PD_OD_BASE,
+				PALMAS_PRIMARY_SECONDARY_PAD3, &reg);
+	if (ret < 0) {
+		dev_err(pci->dev, "SECONDARY_PAD3 read failed %d\n", ret);
+		return ret;
+	}
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD3_DVFS2))
+		palmas->gpio_muxed |= PALMAS_GPIO_6_MUXED;
+
+	/* PAD4 muxing */
+	ret = palmas_read(palmas, PALMAS_PU_PD_OD_BASE,
+				PALMAS_PRIMARY_SECONDARY_PAD4, &reg);
+	if (ret < 0) {
+		dev_err(pci->dev, "SECONDARY_PAD4 read failed %d\n", ret);
+		return ret;
+	}
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_8_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_8_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_9_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_9_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_10_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_10_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_11_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_11_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_12_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_12_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_14_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_14_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_15_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_15_MUXED;
+
+	dev_info(pci->dev, "Muxing GPIO %x, PWM %x, LED %x\n",
+		palmas->gpio_muxed, palmas->pwm_muxed, palmas->led_muxed);
+
+	return 0;
+}
+
 static int palmas_pinctrl_probe(struct platform_device *pdev)
 {
 	struct palmas_pctrl_chip_info *pci;
 	const struct palmas_pinctrl_data *pinctrl_data = &tps65913_pinctrl_data;
+	struct palmas_pinctrl_platform_data *pctrl_pdata = NULL;
+	struct palmas_platform_data *pdata;
 	int ret;
 	bool enable_dvfs1 = false;
 	bool enable_dvfs2 = false;
+	struct palmas *palmas;
+	int i;
+
+	pdata = dev_get_platdata(pdev->dev.parent);
+	if (pdata)
+		pctrl_pdata = pdata->pinctrl_pdata;
+	palmas = dev_get_drvdata(pdev->dev.parent);
 
 	if (pdev->dev.of_node) {
 		const struct of_device_id *match;
@@ -1011,6 +1231,16 @@ static int palmas_pinctrl_probe(struct platform_device *pdev)
 					"ti,palmas-enable-dvfs1");
 		enable_dvfs2 = of_property_read_bool(pdev->dev.of_node,
 					"ti,palmas-enable-dvfs2");
+	} else {
+		if (palmas->id == TPS80036)
+			pinctrl_data = &tps80036_pinctrl_data;
+		else
+			pinctrl_data = &tps65913_pinctrl_data;
+	}
+
+	if (pctrl_pdata) {
+		enable_dvfs1 = pctrl_pdata->dvfs1_enable;
+		enable_dvfs2 = pctrl_pdata->dvfs2_enable;
 	}
 
 	pci = devm_kzalloc(&pdev->dev, sizeof(*pci), GFP_KERNEL);
@@ -1020,7 +1250,7 @@ static int palmas_pinctrl_probe(struct platform_device *pdev)
 	}
 
 	pci->dev = &pdev->dev;
-	pci->palmas = dev_get_drvdata(pdev->dev.parent);
+	pci->palmas = palmas;
 
 	pci->pins = palmas_pins_desc;
 	pci->num_pins = ARRAY_SIZE(palmas_pins_desc);
@@ -1048,7 +1278,33 @@ static int palmas_pinctrl_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Couldn't register pinctrl driver\n");
 		return -ENODEV;
 	}
+
+	if (pctrl_pdata) {
+		for (i = 0; i < pctrl_pdata->num_pinctrl; ++i) {
+			struct palmas_pinctrl_config *pcfg;
+
+			pcfg =  &pctrl_pdata->pincfg[i];
+			ret = palmas_pinctrl_set_single_pin_config(pci, pcfg);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+				   "palmas pinctrl pin-%d config failed %d\n",
+				    i, ret);
+				goto scrub;
+			}
+		}
+	}
+
+	ret = palmas_pinctrl_init_muxed_parameter(pci);
+	if (ret < 0) {
+		dev_err(&pdev->dev,
+			"palmas pinctrl muxed init failed: %d\n", ret);
+		goto scrub;
+	}
+
 	return 0;
+scrub:
+	pinctrl_unregister(pci->pctl);
+	return ret;
 }
 
 static int palmas_pinctrl_remove(struct platform_device *pdev)
@@ -1069,7 +1325,17 @@ static struct platform_driver palmas_pinctrl_driver = {
 	.remove = palmas_pinctrl_remove,
 };
 
-module_platform_driver(palmas_pinctrl_driver);
+static int __init palmas_pinctrl_init(void)
+{
+	return platform_driver_register(&palmas_pinctrl_driver);
+}
+subsys_initcall(palmas_pinctrl_init);
+
+static void __exit palmas_pinctrl_exit(void)
+{
+	platform_driver_unregister(&palmas_pinctrl_driver);
+}
+module_exit(palmas_pinctrl_exit);
 
 MODULE_DESCRIPTION("Palmas pin control driver");
 MODULE_AUTHOR("Laxman Dewangan<ldewangan@nvidia.com>");

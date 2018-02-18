@@ -1,0 +1,36 @@
+/*
+ * arch/arm64/boot/dts/tegra210-loki-e-p2530-0131-e02-00.dts
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra210-loki-e-p2530-0131-e01-00.dts"
+#include "tegra210-platforms/tegra210-loki-rail-delay-p2530-0999-e02.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	extcon {
+		extcon@1 {
+			extcon-adc-jack,states = <0x1    0     20
+						  0x2    240   265
+						  0x4    1120  1165
+						  0x8    755   785
+						  0x10   430   475>;
+		};
+	};
+};

@@ -65,6 +65,12 @@ enum ion_heap_type {
 					   caches must be managed manually */
 
 /**
+ * cache maintenance flags
+ */
+#define ION_CACHEMAINT_FOR_DEVICE (1<<0)  /* sync buffer for the device */
+#define ION_CACHEMAINT_FOR_CPU    (1<<1)  /* sync buffer for the CPU */
+
+/**
  * DOC: Ion Userspace API
  *
  * create a client by opening /dev/ion
@@ -127,6 +133,28 @@ struct ion_custom_data {
 	unsigned long arg;
 };
 
+/**
+ * struct ion_cachemaint_data - metadata passed from userspace for
+ * cache maintenance
+ * @fd:        a file descriptor representing the buffer
+ * @ptr:       ptr to start of the cache maintenance region
+ * @length:    length of cache maintenance operation
+ * @flags:     cachemaint flags specifying the operation
+ */
+struct ion_cachemaint_data {
+	int fd;
+	unsigned long ptr;
+	size_t length;
+	unsigned int flags;
+};
+
+/**
+ * ION_DUMMY_CUSTOM_CMD_CACHEMAINT - cache maintenance
+ */
+#define ION_DUMMY_CUSTOM_CMD_CACHEMAINT					\
+	_IOWR(ION_DUMMY_MAGIC, 1, struct ion_dummy_custom_cmd_cachemaint)
+
+
 #define ION_IOC_MAGIC		'I'
 
 /**
@@ -184,6 +212,28 @@ struct ion_custom_data {
  * this will make the buffer in memory coherent.
  */
 #define ION_IOC_SYNC		_IOWR(ION_IOC_MAGIC, 7, struct ion_fd_data)
+
+/**
+ * DOC: ION_IOC_CACHEMAINT - cache maintenance for CPU/device shared buffer
+ *
+ * Performs cache maintenance for persistent buffers shared by CPU and
+ * device for non-coherent I/O systems. A typical use pattern is as
+ * follows:
+ *   1) CPU reads/modifies buffer data
+ *   2) do cachemaint for device
+ *   3) device reads/modifies buffer data
+ *   4) do cachemaint for CPU
+ *   5) goto 1
+ * Remark that it may be tempting to combine steps 2 and 4 and do
+ * cachemaint for both. However, this is not generally safe, as CPU
+ * might perform speculative reads to fill up the cache.
+ *
+ * Also note that cache maintenance operations can be conservative. In
+ * general, the start of the operation is rounded down to a cacheline
+ * border and the end of the operation is rounded up, respectively.
+ */
+#define ION_IOC_CACHEMAINT					\
+	_IOW(ION_IOC_MAGIC, 8, struct ion_cachemaint_data)
 
 /**
  * DOC: ION_IOC_CUSTOM - call architecture specific ion ioctl

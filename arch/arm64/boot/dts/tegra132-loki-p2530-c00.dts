@@ -1,0 +1,15 @@
+#include "tegra132-loki.dts"
+#include "tegra124-platforms/tegra124-loki-powermon-e2530-a01.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	i2c@7000c400 {
+		ina3221x@40 {
+			channel@0 {
+				ti,shunt-resistor-mohm = <5>;
+			};
+		};
+	};
+};
+

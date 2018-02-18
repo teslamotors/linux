@@ -1,0 +1,38 @@
+EXTCON FOR GPIO-STATES
+
+Required Properties:
+ - compatible : Should be "extcon-gpio-states";
+
+Optional Properties:
+ - extcon-gpio,name: Name of extcon device.
+ - gpios: List of teh gpios.
+ - extcon-gpio,irq-flags: IRQ flags for GPIO.
+ - extcon-gpio,debounce: Debounce time in ms.
+ - extcon-gpio,wait-for-gpio-scan: Wait timeout for scanning all gpio states
+	after chnage found in gpio and debounce timeof gpio is completed.
+ - extcon-gpio,out-cable-names: Output cable names.
+ - extcon-gpio,cable-states: GPIO states and ther corresponding output cable
+	state. This is array of the data for table as
+		gpio-state <-> output cable-state
+- cable-connected-on-boot: Cable connected on boot. It should be cable index
+	in the output cable names. The number start from 0. Absence of this
+	property will be assume as there is no cable connected. This property
+	will be valid if there is no gpios provided for cable states.
+- wakeup-source: Boolean, device can wake-up the system.
+
+
+This driver also supports the extcon interface for different cable without
+gpios. On this case, if property cable-connected-on-boot provided then
+it will be consider this as the default cable otherwise it will assume
+that there is no cable connected. Later on, through extcon sysfs, the
+state can be chnaged.
+
+extcon-gpio {
+	compatible = "extcon-gpio-states";
+       	gpio = <&gpio 20 0 &gpio 30 0>;
+	extcon-gpio,cable-states = <0x00 0x00
+				    0x01 0x01
+				    0x02 0x02
+				    0x03 0x4>;
+	extcon-gpio,out-cable-names = "vbus", "host", "otg-y-cable";
+};

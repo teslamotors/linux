@@ -1,0 +1,10 @@
+config INTER_TEGRA_SPI
+	tristate "interconnected between Tegras spi driver"
+	depends on SPI
+	default n
+	help
+	  This driver provides support for spi communication between Tegras.
+	  providing control enable send/receive via sysfs
+
+	  This driver can also be built as a module. If so, the module
+	  will be called inter_tegra_spi.

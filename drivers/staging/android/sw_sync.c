@@ -126,7 +126,7 @@ void sw_sync_timeline_inc(struct sw_sync_timeline *obj, u32 inc)
 {
 	obj->value += inc;
 
-	sync_timeline_signal(&obj->obj);
+	sync_timeline_signal(&obj->obj, 0);
 }
 EXPORT_SYMBOL(sw_sync_timeline_inc);
 

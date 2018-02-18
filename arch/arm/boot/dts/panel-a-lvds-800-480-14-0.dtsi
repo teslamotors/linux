@@ -1,0 +1,53 @@
+/*
+ * arch/arm/boot/dts/panel-a-lvds-800-480-14-0.dtsi
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+
+/ {
+	host1x {
+		sor {
+			panel-lvds-800-480 {
+				status = "disabled";
+				compatible = "lvds,display";
+				nvidia,edid = [00 FF FF FF FF FF FF 00 04 21 00 00 00 00 00 00
+						01 00 01 03 00 00 00 00 00 00 00 00 00 00 00 00
+						00 00 00 00 00 00 01 01 01 01 01 01 01 01 01 01
+						01 01 01 01 01 01 FE 0C 20 00 31 E0 2D 10 40 40
+						43 00 00 00 00 00 00 00 00 00 00 10 00 00 00 00
+						00 00 00 00 00 00 00 00 00 00 00 00 00 10 00 00
+						00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 10
+						00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 61];
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_LVDS>;
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-pins = <TEGRA_DC_OUT_PIN_H_SYNC TEGRA_DC_OUT_PIN_POL_LOW
+							   TEGRA_DC_OUT_PIN_V_SYNC TEGRA_DC_OUT_PIN_POL_LOW
+							   TEGRA_DC_OUT_PIN_PIXEL_CLOCK TEGRA_DC_OUT_PIN_POL_LOW
+							   TEGRA_DC_OUT_PIN_DATA_ENABLE TEGRA_DC_OUT_PIN_POL_HIGH>;
+					nvidia,out-depth = <18>;
+					nvidia,out-parent-clk = "pll_d_out0";
+					nvidia,dither = <TEGRA_DC_ORDERED_DITHER>;
+				};
+			};
+		};
+	};
+};

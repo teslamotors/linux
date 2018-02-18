@@ -1,0 +1,54 @@
+/*
+ * SS-Char E3340-1080-A00 specific Prod configuration.
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ */
+
+#include "tegra186-soc/tegra186-soc-vcm-prod.dtsi"
+
+/ {
+
+	spi@3210000 {
+		prod-settings {
+			mask-one-style;
+			/* enabled for spi flash rom */
+			prod_c_cs0 {
+			    prod = <0x04 0x0000003f 0x00000008>;
+			};
+			/* enabled for spi loopback mode */
+			prod_c_cs1 {
+			    prod = <0x04 0x00000fc0 0x0000043f>;
+			};
+		};
+	};
+
+	spi@3230000 {
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+			/* enabled for spi flash rom only */
+			    prod = <0x04 0x0000003f 0x00000008>;
+			/* enabled for spi loopback mode and flash rom */
+			    /* prod = <0x04 0x00000fff 0x00000408>; */
+			};
+		};
+	};
+
+	spi@3240000 {
+		status = "okay";
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+			/* enabled for spi flash rom only */
+			    prod = <0x04 0x0000003f 0x00000008>;
+			/* enabled for spi loopback mode and flash rom */
+			    /* prod = <0x04 0x00000fff 0x00000408>; */
+			};
+		};
+	};
+};

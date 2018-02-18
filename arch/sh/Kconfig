@@ -129,9 +129,6 @@ config STACKTRACE_SUPPORT
 config LOCKDEP_SUPPORT
 	def_bool y
 
-config HAVE_LATENCYTOP_SUPPORT
-	def_bool y
-
 config ARCH_HAS_ILOG2_U32
 	def_bool n
 
@@ -223,7 +220,6 @@ config ARCH_SHMOBILE
 	bool
 	select ARCH_SUSPEND_POSSIBLE
 	select PM
-	select PM_RUNTIME
 
 config CPU_HAS_PMU
        depends on CPU_SH4 || CPU_SH4A

@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include "tegra124-tn8-fixed-e1936-1000-common.dtsi"
+
+/ {
+
+	regulators {
+
+                vdd_ts_1v8: regulator@7  {
+                        compatible = "regulator-fixed-sync";
+                        reg = <7>;
+                        regulator-name = "vdd_ts_1v8";
+                        regulator-min-microvolt = <1800000>;
+                        regulator-max-microvolt = <1800000>;
+                        vin-supply = <&palmas_smps8>;
+
+                        consumers {
+                                                        c1 {
+                                                                regulator-consumer-supply = "dvdd";
+                                                                regulator-consumer-device = "spi0.0";
+                                                        };
+                        };
+                };
+
+                avdd_ts_3v0: regulator@8  {
+                        compatible = "regulator-fixed-sync";
+                        reg = <8>;
+                        regulator-name = "avdd_ts_3v0";
+                        regulator-min-microvolt = <3000000>;
+                        regulator-max-microvolt = <3000000>;
+                        vin-supply = <&ldo3_reg>;
+
+                         consumers {
+                                                        c1 {
+                                                                regulator-consumer-supply = "avdd";
+                                                                regulator-consumer-device = "spi0.0";
+                                                        };
+                        };
+                };
+	};
+};

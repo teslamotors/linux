@@ -145,6 +145,7 @@ struct soc_camera_subdev_desc {
 
 	/* sensor driver private platform data */
 	void *drv_priv;
+	void *dev_priv;
 
 	/*
 	 * Set unbalanced_power to true to deal with legacy drivers, failing to
@@ -209,6 +210,7 @@ struct soc_camera_link {
 	unsigned long flags;
 
 	void *priv;
+	void *dev_priv;
 
 	/* Set by platforms to handle misbehaving drivers */
 	bool unbalanced_power;

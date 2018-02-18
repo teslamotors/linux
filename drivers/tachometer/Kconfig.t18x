@@ -1,0 +1,19 @@
+menuconfig TACHOMETER
+	bool "Tachometer support"
+	help
+	  Say Y here to Tachometer support
+
+	  This framework provides a generic interface to Tach
+	  devices.
+
+if TACHOMETER
+
+config TACHOMETER_TEGRA
+	bool "Tegra Tachometer client driver"
+	depends on ARCH_TEGRA_18x_SOC && TACHOMETER
+	help
+	  This option enables Tegra Tachometer client driver
+
+	  Tegra Tachometer driver used to measure the speed
+	  of PWM based fan in terms of RPM.
+endif

@@ -38,6 +38,8 @@ struct pn_sock {
 	u16		sobject;
 	u16		dobject;
 	u8		resource;
+	u8		resource_type;
+	u8		resource_subtype;
 };
 
 static inline struct pn_sock *pn_sk(struct sock *sk)
@@ -48,6 +50,8 @@ static inline struct pn_sock *pn_sk(struct sock *sk)
 extern const struct proto_ops phonet_dgram_ops;
 
 void pn_sock_init(void);
+struct sock *pn_find_sock_by_sa_and_skb(struct net *net,
+		const struct sockaddr_pn *spn, struct sk_buff *skb);
 struct sock *pn_find_sock_by_sa(struct net *net, const struct sockaddr_pn *sa);
 void pn_deliver_sock_broadcast(struct net *net, struct sk_buff *skb);
 void phonet_get_local_port_range(int *min, int *max);
@@ -115,5 +119,28 @@ int phonet_sysctl_init(void);
 void phonet_sysctl_exit(void);
 int isi_register(void);
 void isi_unregister(void);
+
+#ifdef CONFIG_PHONET_DEBUG
+#define ACTIVATE_PHONET_DEBUG
+#else
+#undef ACTIVATE_PHONET_DEBUG
+#endif
+
+#ifdef ACTIVATE_PHONET_DEBUG
+extern enum phonet_debug_state {
+	OFF = 0,
+	ON,
+	DATA,
+} phonet_dbg_state;
+
+#define PN_PRINTK(...) \
+	do { if (OFF != phonet_dbg_state) \
+		printk(KERN_DEBUG "PHONET: " __VA_ARGS__); } while (0)
+#define PN_DATA_PRINTK(...) \
+	do { if (DATA == phonet_dbg_state) printk(__VA_ARGS__); } while (0)
+#else
+#define PN_PRINTK(...)
+#define PN_DATA_PRINTK(...)
+#endif
 
 #endif

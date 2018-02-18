@@ -1,0 +1,203 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-vcm31-spmic-p2379-0000-c00-00.dtsi"
+
+/ {
+	ether_qos@2490000 {
+		vddio_sys_enet_bias-supply = <&vdd_1v8>;
+		vddio_enet-supply = <&spmic_otp_sd3>;
+		phy_vdd_1v8-supply = <&vdd_1v8>;
+		phy_ovdd_rgmii-supply = <&spmic_otp_sd3>;
+		phy_pllvdd-supply = <&spmic_otp_sd3>;
+	};
+
+        host1x {
+		nvdisplay@15200000 {
+			vdd_hdmi_5v0-supply = <&sys_5v0>;
+			vdd-dp-pad-supply = <&spmic_otp_ldo7>;
+			vdd-edp-sec-mode-supply = <&spmic_otp_ldo7>;
+			vdd-dp-pwr-supply = <&sys_3v3>;
+			avdd-dp-pll-supply = <&vdd_1v8>;
+			avdd_dsi_csi-supply = <&spmic_otp_sd1>;
+			avdd_hdmi-supply = <&spmic_otp_ldo7>;
+			avdd_hdmi_pll-supply = <&vdd_1v8>;
+		};
+		nvdisplay@15210000 {
+			vdd_hdmi_5v0-supply = <&sys_5v0>;
+			vdd-dp-pad-supply = <&spmic_otp_ldo7>;
+			vdd-edp-sec-mode-supply = <&spmic_otp_ldo7>;
+			vdd-dp-pwr-supply = <&sys_3v3>;
+			avdd-dp-pll-supply = <&vdd_1v8>;
+			avdd_dsi_csi-supply = <&spmic_otp_sd1>;
+			avdd_hdmi-supply = <&spmic_otp_ldo7>;
+			avdd_hdmi_pll-supply = <&vdd_1v8>;
+		};
+		nvdisplay@15220000 {
+			vdd_hdmi_5v0-supply = <&sys_5v0>;
+			vdd-dp-pad-supply = <&spmic_otp_ldo7>;
+			vdd-edp-sec-mode-supply = <&spmic_otp_ldo7>;
+			vdd-dp-pwr-supply = <&sys_3v3>;
+			avdd-dp-pll-supply = <&vdd_1v8>;
+			avdd_hdmi-supply = <&spmic_otp_ldo7>;
+			avdd_hdmi_pll-supply = <&vdd_1v8>;
+		};
+		nvcsi@150c0000 {
+			nvidia,csi_regulator = "vdd";
+			vdd-supply = <&spmic_otp_sd1>;
+		};
+        };
+
+	sdhci@3460000 { /* SDMMC_D/4 */
+		vddio_sdmmc-supply = <&vdd_1v8>;
+	};
+
+	xhci@3530000 {
+		avddio_usb-supply = <&spmic_otp_sd3>;
+		avdd_pll_utmip-supply = <&vdd_1v8>;
+		hvdd_usb-supply =  <&vdd_1v8>;
+	};
+
+	xudc@3550000 {
+		avdd-usb-supply = <&spmic_otp_sd3>;
+		dvdd-pex-supply = <&spmic_otp_ldo7>;
+		hvdd-pex-supply =  <&vdd_1v8>;
+		dvdd-pex-pll-supply = <&spmic_otp_ldo7>;
+		hvdd-pex-pll-supply = <&vdd_1v8>;
+	};
+
+	pcie-controller@10003000 {
+		dvdd-pex-supply = <&spmic_otp_ldo7>;
+		hvdd-pex-pll-supply = <&vdd_1v8>;
+		hvdd-pex-supply = <&vdd_1v8>;
+		vddio-pexctl-aud-supply = <&vdd_1v8>;
+	};
+
+	pinctrl@3520000 {
+		vbus-2-supply = <&vdd_usb2_5v>;
+		vddio-hsic-supply = <&spmic_otp_sd1>;
+		hvdd_pex_pll-supply = <&vdd_1v8>;
+		hvdd_pex-supply = <&vdd_1v8>;
+		dvdd_pex-supply = <&spmic_otp_ldo7>;
+		avdd_usb-supply = <&spmic_otp_sd3>;
+		vclamp_usb-supply = <&vdd_1v8>;
+		avdd_pll_erefeut-supply = <&spmic_otp_ldo0>;
+	};
+
+	i2c@3160000 { /* Tegra I2C1 - VCM I2CA */
+		tegra_nct72: onsemi,nct72@4c {
+			vdd-supply = <&vdd_1v8>;
+		};
+	};
+
+	pmc-iopower {
+		iopower-sys-supply = <&spmic_otp_ldo6>;
+		iopower-uart-supply = <&vdd_1v8>;
+		iopower-conn-supply = <&vdd_1v8>;
+		iopower-edp-supply = <&vdd_1v8>;
+		iopower-pex-ctrl-audio-supply = <&vdd_1v8>;
+		iopower-ufs-supply = <&spmic_otp_sd1>;
+		iopower-ddr0-supply = <&spmic_otp_sd0>;
+		iopower-ddr1-supply = <&spmic_otp_sd0>;
+		iopower-csi-dsi-supply = <&spmic_otp_sd1>;
+		iopower-cam-supply = <&vdd_1v8>;
+		iopower-sdmmc4-supply = <&vdd_1v8>;
+		iopower-audio-hv-supply = <&spmic_otp_sd3>;
+		iopower-dbg-supply = <&vdd_1v8>;
+		iopower-spi-supply = <&vdd_1v8>;
+		iopower-ao-supply = <&spmic_otp_ldo6>;
+		iopower-ao-hv-supply = <&spmic_otp_ldo2>;
+		iopower-dmic-hv-supply =  <&spmic_otp_sd3>;
+		iopower-sdmmc2-hv-supply = <&spmic_otp_sd3>;
+	};
+
+	pwm-fan {
+		vdd-fan-supply = <&sys_5v0>;
+	};
+
+	fixed-regulators {
+		sys_3v3: regulator@0 {
+			compatible = "regulator-fixed";
+			reg = <0>;
+			regulator-name = "sys-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+
+		sys_5v0: regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <1>;
+			regulator-name = "sys-5v0";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			regulator-always-on;
+		};
+
+		vdd_1v8: regulator@2 {
+			compatible = "regulator-fixed-sync";
+			reg = <2>;
+			regulator-name = "vdd-1v8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&spmic_otp_sd2>;
+			regulator-always-on;
+			enable-active-high;
+		};
+
+		vdd_rtc: regulator@3 {
+			compatible = "regulator-fixed-sync";
+			reg = <3>;
+			regulator-name = "vdd-rtc";
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
+			vin-supply = <&spmic_otp_ldo4>;
+			regulator-always-on;
+		};
+
+		vdd_usb2_5v: regulator@4 {
+			compatible = "regulator-fixed-sync";
+			reg = <4>;
+			regulator-name = "vdd-usb2-5v";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(L, 5) 0>;
+			enable-active-high;
+			vin-supply = <&vdd_1v8>;
+		};
+		mxm_pwr_gpio_1: regulator@5 {
+			compatible = "regulator-fixed-sync";
+			reg = <5>;
+			regulator-name = "mxm-pwr-gpio-1";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(B, 4) 0>;
+			startup-delay-us = <100000>;	/* 100 ms */
+			enable-active-high;
+			regulator-always-on;
+		};
+		mxm_pwr_en: regulator@6 {
+			compatible = "regulator-fixed-sync";
+			reg = <6>;
+			regulator-name = "mxm-pwr_en";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(C, 0) 0>;
+			startup-delay-us = <100000>;	/* 100 ms */
+			enable-active-high;
+			regulator-always-on;
+			vin-supply = <&mxm_pwr_gpio_1>;
+		};
+	};
+};

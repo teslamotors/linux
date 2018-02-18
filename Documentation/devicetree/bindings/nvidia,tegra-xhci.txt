@@ -1,0 +1,88 @@
+Tegra SOC XUSB controllers
+
+The device node for a USB controller that is part of a Tegra
+SOC is as described below:
+
+Required properties :
+XHCI:
+ - compatible : Should be "nvidia,tegraxxx-xhci" where xxx represents chipid
+   supported so far are 114,124,132,210
+ - nvidia,portmap : List of all ports (2.0/3.0) available for XUSB controller
+   Each bit represents port and bit is set for ports controlled by XUSB.
+   If a port is also OTG port (assigned in otg_portmap), it is necessary to
+   clear the corresponding bit here for host driver to check ownership
+   runtime and program port capability correctly.
+   0-7 bits represent USB3.0 ports with Port 0 on LSB.
+   8-15 bits represent USB2.0 ports with Port 0 on bit 8.
+   16-23 bits represent HSIC ports with Port 0 on bit 16.
+   Ex: <0x0e02> represents following ports are enabled
+   USB3.0 Port1 & USB2.0 Port 1,2,3.
+ - nvidia,common_padctl : reference to pad control dt which has details
+   about port mapping. Padctl is also used by xudc driver.
+ - nvidia,hsic_power_on_at_boot: Specify all HSIC ports that needs to be
+   powered up at boot time.
+PADCTL:
+ - nvidia,ss_ports : tuples mapping ss_ports, usb2_ports, ss lanes, otg property.
+   Tuples to be filled in following format
+   < ss_port_num usb2_port_num lane_num is_otg >
+   Add as many ss ports as that are supported on the board.
+   Refer to dt-bindings/usb/tegra_xhci.h for fillings the ss_ports
+   property.
+   - ss_port_num
+     TEGRA_XHCI_SS_Px should be used to represent a ss port, where x denotes
+     port num (0, 1, 2, 3)
+   - usb2_port_num
+     TEGRA_XHCI_USB2_Px should be used to represent a usb2 port, where x denotes
+     port num (0, 1, 2, 3)
+     if a ss port does not have matching usb2_port, use TEGRA_XHCI_UNUSED_PORT
+     to mark unused port.
+   - lane_num
+     TEGRA_XHCI_LANE_x should be used to represent a ss lanes, where x denotes
+     lane number.
+     if a ss_port does not have matching lane, use TEGRA_XHCI_UNUSED_LANE
+     to mark unused. This will remove superspeed capability for that port.
+   - is_otg
+     Use TEGRA_XHCI_PORT_OTG if port is a otg port or
+     TEGRA_XHCI_PORT_STD to indicate standard A host port.
+
+   Example:
+   nvidia, ss_ports = < TEGRA_XHCI_SS_P0 TEGRA_XHCI_USB2_P3 TEGRA_XCHI_LANE_0 TEGRA_XHCI_PORT_STD
+			TEGRA_XHCI_SS_P1 TEGRA_XHCI_USB2_P2 TEGRA_XHCI_UNUSED_LANE TEGRA_XHCI_PORT_OTG
+			TEGRA_XHCI_SS_P2 TEGRA_XHCI_UNUSED_PORT TEGRA_XHCI_UNUSED_LANE TEGRA_XHCI_PORT_STD
+			TEGRA_XHCI_SS_P3 TEGRA_XHCI_UNUSED_PORT TEGRA_XHCI_UNUSED_LANE TEGRA_XHCI_PORT_STD>;
+
+   This DT property indicates that
+   1. Connector 1 has SS_P0 mapped to USB2_P3 and using Lane 0 and it is a STD-A port.
+   2. Connector 2 has SS_P1 mapped to USB2_P2 but LANE is un used, which means this port looses the
+      ss-capability and works in hs-mode only and it is a otg-port.
+   3. Connector 3 has unmapped USB2 port which means that the SS port is disabled, same for Connector 4.
+   4. If an SS port does not have a mapped USB2 port then we can ignore the reset of the properties for
+      that port.
+
+Optional properties:
+  - nvidia,gpio_controls_muxed_ss_lanes : SATA lane on some boards is muxed
+    between SATA and XUSB. This property indicates if SATA lane is muxed and
+    controlled by gpio or is it dedicated to XUSB. Assumed no gpio is present
+    if this property is not defined.
+  - nvidia,gpio_ss1_sata : reference to gpio that controls SATA lane muxed
+    between XUSB & SATA. Only valid if above property is set. XUSB will be
+    selected by setting this gpio to 1 in the driver.
+  - utmi_padX : X can take number of USB2.0 ports on device.
+    Ex: utmi_pad0, utmi_pad3
+    provides details about vbus type used and ref to enable pin
+    Over current detection is possible if vbus is controlled by XUSB.
+    If not defined, vbus is assumed to be fixed and controlled by regulator
+    framework. It contains 2 sub nodes.
+    - nvidia,vbus_en_type : vbus source for XUSB ports. Possible values
+      are 0-2 explained below. Defaults to zero when not defined.
+      0 = VBUS enabled by GPIO, without PADCTL OC detection
+        vbus is controlled by gpio and owned by regulator framework.
+	XUSB padctl over current detection is disabled.
+      1 = VBUS enabled by GPIO, with PADCTL OC detection
+        vbus is controlled by gpio and owned by regulator framework.
+	XUSB padctl over current detection is enabled
+      2 = VBUS enabled by XUSB PADCTL with OC detection
+        vbus is controlled by XUSB driver using VBUS_EN pins.
+	XUSB padctl overcurrent detection is disabled.
+    - nvidia,vbus_en_pin : If vbus is controlled by XUSB, enable pin for
+      controlling vbus.

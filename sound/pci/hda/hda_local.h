@@ -751,6 +751,7 @@ struct parsed_hdmi_eld {
 	/*
 	 * all fields will be cleared before updating ELD
 	 */
+	bool	lpcm_sad_ready;
 	int	baseline_len;
 	int	eld_ver;
 	int	cea_edid_ver;
@@ -783,6 +784,8 @@ int snd_hdmi_parse_eld(struct hda_codec *codec, struct parsed_hdmi_eld *e,
 void snd_hdmi_show_eld(struct hda_codec *codec, struct parsed_hdmi_eld *e);
 void snd_hdmi_eld_update_pcm_info(struct parsed_hdmi_eld *e,
 			      struct hda_pcm_stream *hinfo);
+int hdmi_update_lpcm_sad_eld (struct hda_codec *codec, hda_nid_t nid,
+				     struct hdmi_eld *e);
 
 int snd_hdmi_get_eld_ati(struct hda_codec *codec, hda_nid_t nid,
 			 unsigned char *buf, int *eld_size,

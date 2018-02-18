@@ -1,0 +1,118 @@
+/*
+ * tegra186-sunstreaker-e3340-1099-a00-00-base.dts Sunstreaker-SLT A00 Board
+ *
+ * Copyright (c) 2015-2016 NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-sunstreaker-common-e3340-0000-a00.dtsi"
+#include "tegra186-platforms/tegra186-sunstreaker-slt-power-tree-e3340-1099-a00-00.dtsi"
+#include "tegra186-plugin-manager/tegra186-sunstreaker-e3340-0000-a00-plugin-manager.dtsi"
+#include "tegra186-platforms/tegra186-sunstreaker-char-e3340-a00-disp.dsti"
+#include "tegra186-platforms/mods-display.dtsi"
+#include "tegra186-prod/tegra186-priv-sunstreaker-slt-e3340-1099-a00-00-prod.dtsi"
+#include "tegra186-plugin-manager/tegra186-sunstreaker-slt-e3340-1099-a00-00-plugin-manager.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "3340:1099:A0";
+	nvidia,proc-boardid = "3340:1099:A0";
+
+	chosen {
+		board-has-eeprom;
+		bootargs ="console=ttyS0,115200";
+		stdout-path = &uarta;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "sunstreaker";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	i2c@3160000 {
+		i2cmux@71 {
+			vcc-supply = <&spmic_sd3>;
+		};
+	};
+
+	xudc@3550000 {
+		status = "okay";
+		phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(1)>;
+		phy-names = "usb2", "usb3";
+	};
+
+	xhci@3530000 {
+		status = "okay";
+		phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(1)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(2)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(1)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(2)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_HSIC_P(0)>;
+		phy-names = "utmi-0", "utmi-1", "utmi-2", "usb3-1","usb3-0",
+			"usb3-2", "hsic-0";
+	};
+
+	pinctrl@3520000 {
+		status = "okay";
+		pinctrl-0 = <&sunstreak_default>;
+		pinctrl-names = "default";
+		tegra_padctl_pinmux_default: sunstreak_default: pinmux {
+			usb2-std-A-port0 {
+				nvidia,lanes = "otg-1";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port0 {
+				nvidia,lanes = "usb3-0";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb2-micro-AB {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb3-micro-AB {
+				nvidia,lanes = "usb3-1";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb2-std-A-port2 {
+				nvidia,lanes = "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port2 {
+				nvidia,lanes = "usb3-2";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+		};
+	};
+
+	tegra-hsp@3c00000 {
+		status = "okay";
+	};
+
+	tegra-hsp@b150000 {
+		status = "okay";
+	};
+	rtcpu@b000000 {
+		status = "okay";
+	};
+};

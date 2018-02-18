@@ -1,0 +1,117 @@
+/*
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/ {
+	aliases {
+		sdhci0 = &sdmmc1;
+		sdhci1 = &sdmmc2;
+		sdhci2 = &sdmmc3;
+		sdhci3 = &sdmmc4;
+	};
+
+	sdmmc4: sdhci@700b0600 {
+		tap-delay = <4>;
+		trim-delay = <8>;
+		nvidia,is-ddr-tap-delay;
+		nvidia,ddr-tap-delay = <0>;
+		mmc-ocr-mask = <0>;
+		dqs-trim-delay = <40>;
+		dqs-trim-delay-hs533 = <24>;
+		max-clk-limit = <200000000>;
+		bus-width = <8>;
+		built-in;
+		calib-3v3-offsets = <0x0505>;
+		calib-1v8-offsets = <0x0505>;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
+		nvidia,en-io-trim-volt;
+		nvidia,is-emmc;
+		nvidia,enable-cq;
+		ignore-pm-notify;
+		keep-power-in-suspend;
+		non-removable;
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		mmc-ddr-1_8v;
+		mmc-hs200-1_8v;
+		mmc-hs400-1_8v;
+		pll_source = "pll_p";
+	};
+
+	sdmmc3: sdhci@700b0400 {
+		tap-delay = <1>;
+		trim-delay = <3>;
+		max-clk-limit = <204000000>;
+		ddr-clk-limit = <48000000>;
+		bus-width = <4>;
+		calib-3v3-offsets = <0x007D>;
+		calib-1v8-offsets = <0x7B7B>;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
+		pll_source = "pll_p";
+		keep-power-in-suspend;
+		ignore-pm-notify;
+		non-removable;
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		nvidia,en-io-trim-volt;
+		nvidia,en-periodic-calib;
+	};
+
+	sdmmc2: sdhci@700b0200 {
+		tap-delay = <4>;
+		trim-delay = <8>;
+		mmc-ocr-mask = <0>;
+		max-clk-limit = <204000000>;
+		ddr-clk-limit = <41000000>;
+		bus-width = <4>;
+		calib-3v3-offsets = <0x0505>;
+		calib-1v8-offsets = <0x0505>;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
+		default-drive-type = <1>;
+		pll_source = "pll_p";
+		non-removable;
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		keep-power-in-suspend;
+		ignore-pm-notify;
+		nvidia,en-io-trim-volt;
+	};
+
+	sdmmc1: sdhci@700b0000 {
+		tap-delay = <4>;
+		trim-delay = <2>;
+		max-clk-limit = <204000000>;
+		ddr-clk-limit = <48000000>;
+		bus-width = <4>;
+		mmc-ocr-mask = <3>;
+		calib-3v3-offsets = <0x007D>;
+		calib-1v8-offsets = <0x7B7B>;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
+		cd-gpios = <&gpio TEGRA_GPIO_PZ1 0>;
+		pll_source = "pll_p";
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		nvidia,en-io-trim-volt;
+		nvidia,en-periodic-calib;
+		keep-power-in-suspend;
+		ignore-pm-notify;
+	};
+};

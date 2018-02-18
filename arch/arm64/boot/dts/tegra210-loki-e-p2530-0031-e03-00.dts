@@ -1,0 +1,37 @@
+/*
+ * arch/arm64/boot/dts/tegra210-loki-e-p2530-0031-e03-00.dts
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra210-loki-e-p2530-0031-e02-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	udc@7d000000 {
+		nvidia,dcp-current-limit-ua = <3000000>;
+	};
+
+	usb_cd@7009f000 {
+		nvidia,dcp-current-limit-ua = <3000000>;
+	};
+
+	touch-leds-pwm-rework {
+		status = "okay";
+	};
+};

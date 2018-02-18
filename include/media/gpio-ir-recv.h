@@ -17,6 +17,7 @@ struct gpio_ir_recv_platform_data {
 	int		gpio_nr;
 	bool		active_low;
 	u64		allowed_protos;
+	u32		min_delay;
 	const char	*map_name;
 };
 

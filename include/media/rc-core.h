@@ -95,6 +95,7 @@ enum rc_filter_type {
  * @last_protocol: protocol of last keypress
  * @last_scancode: scancode of last keypress
  * @last_toggle: toggle value of last command
+ * @min_delay: optional minimum delay to send IR event reset for raw IR decoding
  * @timeout: optional time after which device stops sending data
  * @min_timeout: minimum timeout supported by device
  * @max_timeout: maximum timeout supported by device
@@ -151,6 +152,7 @@ struct rc_dev {
 	enum rc_type			last_protocol;
 	u32				last_scancode;
 	u8				last_toggle;
+	u32				min_delay;
 	u32				timeout;
 	u32				min_timeout;
 	u32				max_timeout;
