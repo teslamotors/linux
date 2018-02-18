@@ -33,6 +33,8 @@ struct of_phandle_args;
  * @of_reset_n_cells: number of cells in reset line specifiers
  * @of_xlate: translation function to translate from specifier as found in the
  *            device tree to id as given to the reset control ops
+ * @consumer_map: Mapping function for non-DT reset driver to map with
+ *	      client and connection name.
  * @nr_resets: number of reset controls in this reset controller device
  */
 struct reset_controller_dev {
@@ -43,6 +45,8 @@ struct reset_controller_dev {
 	int of_reset_n_cells;
 	int (*of_xlate)(struct reset_controller_dev *rcdev,
 			const struct of_phandle_args *reset_spec);
+	int (*consumer_map)(struct reset_controller_dev *rcdev,
+			struct device *dev, const char *conn);
 	unsigned int nr_resets;
 };
 

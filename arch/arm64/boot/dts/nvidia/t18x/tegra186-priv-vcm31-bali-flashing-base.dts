@@ -1,0 +1,250 @@
+/*
+ * tegra186-priv-vcm31-bali-flashing.dts: bali dts file
+ *
+ * Copyright (c) 2015 - 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-vcm31-bali-flashing.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "bali:0010";
+	nvidia,proc-boardid = "bali:0010";
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "bali_t188";
+		};
+	};
+
+	cpus {
+		cpu@0 {
+			status = "disabled";
+		};
+
+		cpu@1 {
+			status = "disabled";
+		};
+
+		cpu@2 {
+			status = "okay";
+		};
+
+		cpu@3 {
+			status = "okay";
+		};
+
+		cpu@4 {
+			status = "okay";
+		};
+
+		cpu@5 {
+			status = "okay";
+		};
+	};
+
+	serial@c280000 {
+		status = "disabled";
+	};
+
+	serial@3100000 {
+		status = "disabled";
+	};
+
+	serial@3130000 {
+		status = "disabled";
+	};
+
+	ether_qos@2490000 {
+		status = "disabled";
+	};
+
+	ether_qos_virt_test@2490000 {
+		status = "disabled";
+	};
+
+	thermal-zones {
+		Tdiode_tegra {
+			status = "disabled";
+		};
+	};
+
+	host1x {
+		status = "disabled";
+	};
+
+	nvdisplay@15200000 {
+		 status = "disabled";
+	};
+
+	nvdisplay@15210000 {
+		status = "disabled";
+	};
+
+	dsi {
+		status = "disabled";
+	};
+
+	nvenc@154c0000 {
+		status = "disabled";
+	};
+
+	nvdec@15480000 {
+		status = "disabled";
+	};
+
+	nvjpg@15380000 {
+		status = "disabled";
+	};
+
+	sor {
+		status = "disabled";
+	};
+
+	dp-display {
+		status = "disabled";
+	};
+
+	sor1 {
+		status = "disabled";
+	};
+
+	hdmi-display {
+		status = "disabled";
+	};
+
+	dpaux@155c0000 {
+		status = "disabled";
+	};
+
+	dpaux@15040000 {
+		status = "disabled";
+	};
+
+	gp10b {
+		status = "disabled";
+	};
+
+	pcie-controller@10003000 {
+		status = "disabled";
+	};
+
+	sound_ref {
+		status = "disabled";
+	};
+
+	adma@2930000 {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+	};
+
+	spdif-dit.0@0 {
+		status = "disabled";
+	};
+
+	spdif-dit.1@1 {
+		status = "disabled";
+	};
+
+	spdif-dit.2@2 {
+		status = "disabled";
+	};
+
+	spdif-dit.3@3 {
+		status = "disabled";
+	};
+
+	hda@3510000 {
+		status = "disabled";
+	};
+
+	adsp_audio {
+		status = "disabled";
+	};
+
+	adsp@2993000 {
+		status = "disabled";
+	};
+
+	mttcan@c310000 {
+		status = "disabled";
+	};
+
+	mttcan@c320000 {
+		status = "disabled";
+	};
+
+	mipical {
+		status = "disabled";
+	};
+
+	bluedroid_pm {
+		status = "disabled";
+	};
+
+	bcmdhd_pcie_wlan {
+		status = "disabled";
+	};
+
+	isc-mgr.0 {
+		status = "disabled";
+	};
+
+	isc-mgr.1 {
+		status = "disabled";
+	};
+
+	isc-mgr.2 {
+		status = "disabled";
+	};
+
+	backlight {
+		status = "disabled";
+	};
+
+	panel-s-wqxga-10-1-bl {
+		status = "disabled";
+	};
+
+	i2c@3160000 {
+		onsemi,nct72@4c {
+			status = "disabled";
+		};
+		touch-controller@4b {
+			status = "disabled";
+		};
+		tmpm32xi2c@61 {
+			status = "disabled";
+		};
+		ds1050-backlight@2f {
+			status = "disabled";
+		};
+		sn65dsi86@2d {
+			status = "disabled";
+		};
+
+	};
+
+	sdhci@3440000 { /* SDMMC_C  4-bit*/
+		status = "disabled";
+	};
+
+};

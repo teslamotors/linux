@@ -1,7 +1,7 @@
 /*
  * Tegra host1x Interrupt Management
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (C) 2010-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -42,6 +42,14 @@ enum host1x_intr_action {
 	 * 'data' points to a wait_queue_head_t
 	 */
 	HOST1X_INTR_ACTION_WAKEUP_INTERRUPTIBLE,
+
+	/*
+	 * Signal a sync framework timeline.
+	 * 'data' points to a host1x_sync_timeline
+	 */
+	HOST1X_INTR_ACTION_SIGNAL_TIMELINE,
+
+	HOST1X_INTR_ACTION_NOTIFY,
 
 	HOST1X_INTR_ACTION_COUNT
 };
@@ -86,10 +94,11 @@ int host1x_intr_add_action(struct host1x *host, u32 id, u32 thresh,
  */
 void host1x_intr_put_ref(struct host1x *host, u32 id, void *ref);
 
-/* Initialize host1x sync point interrupt */
-int host1x_intr_init(struct host1x *host, unsigned int irq_sync);
+/* Initialize host1x general and sync point interrupts */
+int host1x_intr_init(struct host1x *host, unsigned int irq_gen,
+		     unsigned int irq_sync);
 
-/* Deinitialize host1x sync point interrupt */
+/* Deinitialize host1x general and sync point interrupts */
 void host1x_intr_deinit(struct host1x *host);
 
 /* Enable host1x sync point interrupt */

@@ -1,0 +1,348 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/dts-v1/;
+
+#define TEGRA132_PACKAGE_IS_MID
+#include "tegra132-soc-shield.dtsi"
+#include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-power-tree-e1936-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-pinmux-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sysedp-p1761-1270-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-thermal-zone-p1761-1270-a00.dtsi"
+#include "tegra132-platforms/tegra132-bowmore-powermon-e1971-1100-a00.dtsi"
+#include "tegra132-tn8-dfll.dtsi"
+#include "tegra132-platforms/tegra132-bowmore-sensor-e1934-1000-a00.dtsi"
+#include "tegra132-platforms/tegra132-bowmore-camera-a00.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
+#include "panel-p-wuxga-10-1.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
+#include "tegra132-platforms/tegra132-sdhci.dtsi"
+#include <dt-bindings/thermal/thermal.h>
+#include "tegra132-platforms/tegra132-modem-common.dtsi"
+
+/ {
+	model = "bowmore";
+	compatible = "nvidia,bowmore", "nvidia,tegra132";
+	nvidia,boardids = "1971:1100:00;1936:1000:00";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,proc-boardid = "1971:1100:00";
+	nvidia,pmu-boardid = "1936:1000:00";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb earlycon=uart8250,mmio32,0x70006300";
+		stdout-path = &uartd;
+		linux,initrd-start = <0x82080000>;
+		linux,initrd-end = <0x824B5300>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "bowmore";
+		};
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-a-wuxga-8-0 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+			};
+			panel-p-wuxga-10-1 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+			};
+		};
+	};
+
+	serial@70006000 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006200 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006300 {
+		compatible = "nvidia,tegra20-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
+		status = "okay";
+	};
+
+	i2c@7000c000 {
+		clock-frequency = <100000>;
+
+	};
+
+	i2c@7000c400 {
+		pca9546@71 {
+			vcc-supply = <&palmas_smps9>;
+		};
+
+		battery-gauge@0b {
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+
+		battery-charger@6b {
+			/delete-property/interrupt-parent;
+			/delete-property/interrupts;
+			charger {
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			};
+		};
+	};
+
+
+	i2c@7000d000 {
+		nvidia,bit-banging-xfer-after-shutdown;
+
+		palmas: tps65913 {
+			palams_thermal: thermal {
+				status = "okay";
+			};
+
+			pmic {
+				regulators {
+					palmas_smps9: smps9 {
+						regulator-always-on;
+						regulator-boot-on;
+					};
+				};
+			};
+		};
+	};
+
+	memory@0x80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	spi@7000d400 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	spi@7000d800 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	spi@7000da00 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	pmc@7000e400 {
+		status = "okay";
+		nvidia,invert-interrupt;
+		nvidia,suspend-mode = <0>;
+		nvidia,cpu-pwr-good-time = <2000>;
+		nvidia,cpu-pwr-off-time = <2000>;
+		nvidia,core-pwr-good-time = <3845 3845>;
+		nvidia,core-pwr-off-time = <2000>;
+		nvidia,core-power-req-active-high;
+		nvidia,sys-clock-req-active-high;
+	};
+
+	xusb@70090000 {
+		/* nvidia,uses_external_pmic;
+		nvidia,gpio_controls_muxed_ss_lanes; */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,portmap = <0x703>; /* SSP0, SSP1 USB2P0, USB2P1, USBP2 */
+		nvidia,ss_portmap = <0x20>; /* SSP0 on USB2P0, SSP1 on USB2P2 */
+		nvidia,lane_owner = <6>; /* USB3P0 USB3P1 */
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		/* hsic config values in order defined in structure */
+		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x22 0>;
+		status = "okay";
+	};
+
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+		usb_vbus-supply = <&usb0_vbus>;
+		status = "okay";
+	};
+
+	denver_cpuidle_pmic {
+		type = <4>; /* TI TPS65913 2.3 */
+		retention-voltage = <11>; /* vert = .55V */
+		lock = <0>;
+	};
+
+	dummy_cool_dev: dummy-cool-dev {
+			compatible = "dummy-cooling-dev";
+			#cooling-cells = <2>; /* min followed by max */
+	};
+
+	thermal-zones {
+	       PMIC-Die {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&palams_thermal>;
+
+			trips {
+				die_temp_thresh: hot-die {
+					temperature = <120000>;
+					type = "active";
+					hysteresis = <0>;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&die_temp_thresh>;
+					cooling-device = <&dummy_cool_dev THERMAL_NO_LIMIT
+								THERMAL_NO_LIMIT>;
+					contribution = <100>;
+					cdev-type = "emergency-balanced";
+				};
+			};
+		};
+
+		Battery {
+			status = "disabled";
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&fg_lc709203f>;
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+	};
+
+	psy_extcon {
+		compatible = "power-supply-extcon";
+		extcon-cables = <&udc 1 &udc 2 &udc 3
+				&udc 4 &udc 5 &udc 6
+				&udc 7 &udc 8 &udc 9
+				&udc 10 &otg 0>;
+		extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
+				"qc2-charger", "downstream-charger","fast-charger",
+				"slow-charger", "apple-500ma", "apple-1a",
+				"apple-2a", "y-cable";
+	};
+
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,reset-gpio = <&gpio TEGRA_GPIO(X, 1) 0>;
+		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) 0>;
+		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) 0>;
+		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) 0>;
+		interrupt-parent = <&gpio>;
+		interrupts = <166 0x01>;
+    };
+
+	ehci@7d004000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		vddio_hsic-supply = <&ldo5_reg>;
+		status = "disabled";
+	};
+
+	therm_est_sensor {
+		subdev {
+			subdev_names = "Tdiode", "Tboard";
+
+			coeff_set@0 {
+				toffset = <4034>;
+				coeffs = <
+					3 0 0 0 1 0 (-1) 0 1 0 0 1 1 0 0 0 0 1 2 2
+					1 1 2 8 6 (-8) (-13) (-9) (-9) (-8) (-17) (-18) (-18) (-16) 2 17 15 27 42 60
+				>;
+			};
+		};
+	};
+
+	sysedp_batmon_calc {
+		dt-override-status-odm-data = <0x00C00000 0x00400000>;
+	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
+
+	sdhci@700b0600 {
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		status = "okay";
+	};
+
+	sdhci@700b0000 {
+		status = "okay";
+	};
+
+	cpu_edp {
+		nvidia,edp_limit = <16800>;
+	};
+	gpu_edp {
+		nvidia,edp_limit = <11200>;
+	};
+};

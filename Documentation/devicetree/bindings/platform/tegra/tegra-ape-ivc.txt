@@ -1,0 +1,76 @@
+NVIDIA Tegra APE aux CPU, with communication via the "IVC" IPC protocol.
+
+APE is an aux CPU which talks to CCPLEX over IVC.
+
+Its assumed that the APE FW implements IVC, and uses HSP IRQs as part of IVC.
+Its also assumed that the APE FW expects AST regions 0/1/2 are already set up
+for the APE to access FW in DRAM, SYSRAM if applicable, and the IVC memory.
+
+== APE top-level node ==
+
+The APE core is represented by the top-level node including direct HW resources
+such as clocks, resets etc.
+
+Required properties:
+- compatible: should be "nvidia,tegra186-ape-ivc" for T18x.
+- reg: Address entries (APE BASE, APE IVC CPU AST, APE IVC DMA AST)
+  Formatted as per standard rules for this property.
+- reg-names: "ape-evp", "ast-cpu", "ast-dma" as per the reg property.
+- clocks: Should contain an entry for each entry in clock-names.
+  See ../clock/clock-bindings.txt for details.
+- clock-names: Names of the clocks required by APE.
+  Must include following entries:
+  - ahub
+  - apb2ape
+  - ape
+  - adsp
+  - adspneon
+- resets: Should contain an entry for each entry in reset-names.
+  See ../reset/reset.txt for details.
+- reset-names: Names of the resets required for APE.
+  Must include following entries:
+  - adspdbg
+  - adspintf
+  - adspneon
+  - adspperiph
+  - adspscu
+  - adspwdt
+  - ape
+  - adsp
+- nvidia,ivc-channels: IVC channel layout. See ./tegra-sce-ivc.txt.
+
+Optional properties:
+- nvidia,stream-id: should contain the SMMU Stream ID used.
+
+== APE sub nodes ==
+
+* hsp
+
+Describes the hardware synchronization primitive(s) used.
+See ./tegra-sce-ivc.txt for details (syntax is the same).
+
+== Possible example ==
+
+tegra_ape: rtcpu@2993000 {
+	compatible = "nvidia,tegra186-ape-ivc";
+	reg =	<0 0x02993000 0 0x1000>,
+		<0 0x02994000 0 0x2000>,
+		<0 0x02996000 0 0x2000>;
+	reg-names = "ape-evp", "ast-cpu", "ast-dma";
+	clocks =
+		<&tegra_car TEGRA186_CLK_AHUB>,
+		<&tegra_car TEGRA186_CLK_APB2APE>,
+		<&tegra_car TEGRA186_CLK_APE>,
+		<&tegra_car TEGRA186_CLK_ADSP>,
+		<&tegra_car TEGRA186_CLK_ADSPNEON>;
+	clock-names =
+		"ahub",
+		"apb2ape",
+		"ape",
+		"adsp",
+		"adspneon";
+	resets = <&tegra_car TEGRA186_RESET_ADSP_ALL>;
+	reset-names = "adsp-all";
+
+	/* See ./tegra-sce-ivc.txt for generic IVC example */
+};

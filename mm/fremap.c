@@ -37,7 +37,7 @@ static void zap_pte(struct mm_struct *mm, struct vm_area_struct *vma,
 
 	if (pte_present(pte)) {
 		flush_cache_page(vma, addr, pte_pfn(pte));
-		pte = ptep_clear_flush(vma, addr, ptep);
+		pte = ptep_clear_flush_notify(vma, addr, ptep);
 		page = vm_normal_page(vma, addr, pte);
 		if (page) {
 			if (pte_dirty(pte))
@@ -258,9 +258,12 @@ get_write_lock:
 		vma->vm_flags = vm_flags;
 	}
 
-	mmu_notifier_invalidate_range_start(mm, start, start + size);
+	/* XXX: using MMU_MIGRATE as it is OK. Need to optimize this */
+	mmu_notifier_invalidate_range_start(vma, start, start + size,
+					    MMU_MIGRATE);
 	err = vma->vm_ops->remap_pages(vma, start, size, pgoff);
-	mmu_notifier_invalidate_range_end(mm, start, start + size);
+	mmu_notifier_invalidate_range_end(vma, start, start + size,
+					  MMU_MIGRATE);
 
 	/*
 	 * We can't clear VM_NONLINEAR because we'd have to do

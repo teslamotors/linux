@@ -1,0 +1,207 @@
+OV5693_IOCTL_SET_MODE:          set sensor mode
+usage:
+
+struct ov5693_mode {
+        int res_x;
+        int res_y;
+        int fps;
+        __u32 frame_length;
+        __u32 coarse_time;
+        __u32 coarse_time_short;
+        __u16 gain;
+        __u8 hdr_en;
+};
+
+     struct ov5693_mode mode;
+     ioctl(fd, OV5693_IOCTL_SET_MODE , &mode);
+
+     inputs:
+
+     parameters of the mode to set
+
+     outputs:      none
+
+     error return:
+
+     EINVAL      - out of range input data
+
+
+OV5693_IOCTL_GET_STATUS:          get module status
+usage:
+
+     u8 status;
+     ioctl(fd, OV5693_IOCTL_GET_STATUS , &status);
+
+     inputs:
+
+     outputs:      always returns 0
+
+     error return:
+
+
+OV5693_IOCTL_SET_GROUP_HOLD:          set group parameters
+usage:
+
+struct ov5693_ae {
+        __u32 frame_length;
+        __u8  frame_length_enable;
+        __u32 coarse_time;
+        __u32 coarse_time_short;
+        __u8  coarse_time_enable;
+        __s32 gain;
+        __u8  gain_enable;
+};
+
+     struct ov5693_ae ar;
+     ioctl(fd, OV5693_IOCTL_SET_GROUP_HOLD , &ae);
+
+     inputs:
+
+     outputs:      always returns 0
+
+     error return:
+
+
+OV5693_IOCTL_SET_FRAME_LENGTH:          set sensor frame length
+usage:
+
+     u32 len;
+     ioctl(fd, OV5693_IOCTL_SET_FRAME_LENGTH , len);
+
+     inputs:
+
+     sensor frame length
+
+     outputs:      none
+
+     error return:
+
+
+OV5693_IOCTL_SET_COARSE_TIME:          set coarse time
+usage:
+
+     u32 param;
+     ioctl(fd, OV5693_IOCTL_SET_COARSE_TIME , param);
+
+     inputs:
+
+     coarse time
+
+     outputs:      none
+
+     error return:
+
+
+OV5693_IOCTL_SET_HDR_COARSE_TIME:          set hdr coarse time
+usage:
+
+struct ov5693_hdr {
+        __u32 coarse_time_long;
+        __u32 coarse_time_short;
+};
+
+     struct ov5693_hdr param;
+     ioctl(fd, OV5693_IOCTL_SET_HDR_COARSE_TIME , &param);
+
+     inputs:
+
+     coarse time
+
+     outputs:      none
+
+     error return:
+
+
+OV5693_IOCTL_SET_GAIN:          set gain value
+usage:
+
+     u32 gain;
+     ioctl(fd, OV5693_IOCTL_SET_GAIN , gain);
+
+     inputs:
+
+     value of the gain to set
+
+     outputs:      none
+
+     error return:
+
+
+OV5693_IOCTL_GET_FUSEID:          get fuse id
+usage:
+
+struct nvc_fuseid {
+        __u32 size;
+        __u8 data[16];
+};
+
+     struct nvc_fuseid fuseid;
+     ioctl(fd, OV5693_IOCTL_GET_FUSEID , &fuseid);
+
+     inputs:	none
+
+     outputs:      fuse id
+
+     error return:
+
+
+OV5693_IOCTL_READ_OTP_BANK:          read otp bank data
+usage:
+
+struct ov5693_otp_bank {
+        __u32 id;
+        __u8  buf[16];
+};
+
+     struct ov5693_otp_bank data;
+     ioctl(fd, OV5693_IOCTL_READ_OTP_BANK , &data);
+
+     inputs:	none
+
+     outputs:      otp bank data
+
+     error return:
+
+
+OV5693_IOCTL_SET_CAL_DATA:          write calibration data
+usage:
+
+struct ov5693_cal_data {
+        int loaded;
+        int rg_ratio;
+        int bg_ratio;
+        int rg_ratio_typical;
+        int bg_ratio_typical;
+        __u8 lenc[62];
+};
+
+     struct ov5693_cal_data data;
+     ioctl(fd, OV5693_IOCTL_SET_CAL_DATA , &data);
+
+     inputs:	calibration data
+
+     outputs:      none
+
+     error return:
+
+
+OV5693_IOCTL_GET_CAL_DATA:          read calibration data
+usage:
+
+struct ov5693_cal_data {
+        int loaded;
+        int rg_ratio;
+        int bg_ratio;
+        int rg_ratio_typical;
+        int bg_ratio_typical;
+        __u8 lenc[62];
+};
+
+     struct ov5693_cal_data data;
+     ioctl(fd, OV5693_IOCTL_GET_CAL_DATA , &data);
+
+     inputs:	none
+
+     outputs:  calibration data
+
+     error return:

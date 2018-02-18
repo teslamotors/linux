@@ -48,6 +48,7 @@
 #define SST49LF040B	        0x0050
 #define SST49LF008A		0x005a
 #define AT49BV6416		0x00d6
+#define MSP14LV320		0x227E
 
 static int cfi_amdstd_read (struct mtd_info *, loff_t, size_t, size_t *, u_char *);
 static int cfi_amdstd_write_words(struct mtd_info *, loff_t, size_t, size_t *, const u_char *);
@@ -206,9 +207,17 @@ static void fixup_use_write_buffers(struct mtd_info *mtd)
 {
 	struct map_info *map = mtd->priv;
 	struct cfi_private *cfi = map->fldrv_priv;
+	struct cfi_pri_amdstd *extp = cfi->cmdset_priv;
+
 	if (cfi->cfiq->BufWriteTimeoutTyp) {
 		pr_debug("Using buffer write method\n" );
 		mtd->_write = cfi_amdstd_write_buffers;
+
+		if (extp->SiliconRevision >= 0x1C) {
+			mtd->writesize = 512;
+			mtd->flags &= ~MTD_BIT_WRITEABLE;
+			printk(KERN_INFO "Enabling Spansion 65nm mode, writesize = 512 bytes\n");
+		}
 	}
 }
 
@@ -361,6 +370,17 @@ static void fixup_s29ns512p_sectors(struct mtd_info *mtd)
 	pr_warning("%s: Bad S29NS512P CFI data; adjust to 512 sectors\n", mtd->name);
 }
 
+static void fixup_msp14lv320(struct mtd_info *mtd)
+{
+	struct map_info *map = mtd->priv;
+	struct cfi_private *cfi = map->fldrv_priv;
+	cfi->cfiq->MaxBufWriteSize = 8;
+	cfi->cfiq->WordWriteTimeoutTyp = 10;
+	cfi->cfiq->BufWriteTimeoutTyp = 10;
+	cfi->cfiq->BlockEraseTimeoutTyp = 12;
+	mtd->_write = cfi_amdstd_write_buffers;
+}
+
 /* Used to fix CFI-Tables of chips without Extended Query Tables */
 static struct cfi_fixup cfi_nopri_fixup_table[] = {
 	{ CFI_MFR_SST, 0x234a, fixup_sst39vf }, /* SST39VF1602 */
@@ -405,6 +425,7 @@ static struct cfi_fixup jedec_fixup_table[] = {
 	{ CFI_MFR_SST, SST49LF004B, fixup_use_fwh_lock },
 	{ CFI_MFR_SST, SST49LF040B, fixup_use_fwh_lock },
 	{ CFI_MFR_SST, SST49LF008A, fixup_use_fwh_lock },
+	{ CFI_MFR_AMD, MSP14LV320, fixup_msp14lv320 }, /* MSP14LV320 */
 	{ 0, 0, NULL }
 };
 
@@ -1786,9 +1807,6 @@ static int cfi_amdstd_write_words(struct mtd_info *mtd, loff_t to, size_t len,
 }
 
 
-/*
- * FIXME: interleaved mode not tested, and probably not supported!
- */
 static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 				    unsigned long adr, const u_char *buf,
 				    int len)
@@ -1803,8 +1821,8 @@ static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 				usecs_to_jiffies(chip->buffer_write_time_max);
 	int ret = -EIO;
 	unsigned long cmd_adr;
-	int z, words;
-	map_word datum;
+	int z, words, prolog, epilog, buflen = len;
+	map_word datum, uninitialized_var(pdat), uninitialized_var(edat);
 
 	adr += chip->start;
 	cmd_adr = adr;
@@ -1825,6 +1843,21 @@ static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 	ENABLE_VPP(map);
 	xip_disable(map, chip, cmd_adr);
 
+	/* If start is not bus-aligned, prepend old contents of flash */
+	prolog = (adr & (map_bankwidth(map)-1));
+	if (prolog) {
+		adr -= prolog;
+		cmd_adr -= prolog;
+		len += prolog;
+		pdat = map_read(map, adr);
+	}
+	/* If end is not bus-aligned, append old contents of flash */
+	epilog = ((adr + len) & (map_bankwidth(map)-1));
+	if (epilog) {
+		len += map_bankwidth(map)-epilog;
+		edat = map_read(map, adr + len - map_bankwidth(map));
+	}
+
 	cfi_send_gen_cmd(0xAA, cfi->addr_unlock1, chip->start, map, cfi, cfi->device_type, NULL);
 	cfi_send_gen_cmd(0x55, cfi->addr_unlock2, chip->start, map, cfi, cfi->device_type, NULL);
 
@@ -1838,8 +1871,21 @@ static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 	map_write(map, CMD(words - 1), cmd_adr);
 	/* Write data */
 	z = 0;
+	if (prolog) {
+		datum = map_word_load_partial(map, pdat, buf, prolog,
+				min_t(int, buflen,
+					map_bankwidth(map) - prolog));
+		map_write(map, datum, adr);
+
+		z += map_bankwidth(map);
+		buf += map_bankwidth(map) - prolog;
+	}
 	while(z < words * map_bankwidth(map)) {
-		datum = map_word_load(map, buf);
+		if (epilog && z >= (words-1) * map_bankwidth(map))
+			datum = map_word_load_partial(map, edat,
+					buf, 0, epilog);
+		else
+			datum = map_word_load(map, buf);
 		map_write(map, datum, adr + z);
 
 		z += map_bankwidth(map);
@@ -1901,7 +1947,6 @@ static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 	cfi_send_gen_cmd(0xF0, cfi->addr_unlock1, chip->start, map, cfi,
 			 cfi->device_type, NULL);
 	xip_enable(map, chip, adr);
-	/* FIXME - should have reset delay before continuing */
 
 	printk(KERN_WARNING "MTD %s(): software timeout, address:0x%.8lx.\n",
 	       __func__, adr);
@@ -1930,36 +1975,12 @@ static int cfi_amdstd_write_buffers(struct mtd_info *mtd, loff_t to, size_t len,
 	chipnum = to >> cfi->chipshift;
 	ofs = to  - (chipnum << cfi->chipshift);
 
-	/* If it's not bus-aligned, do the first word write */
-	if (ofs & (map_bankwidth(map)-1)) {
-		size_t local_len = (-ofs)&(map_bankwidth(map)-1);
-		if (local_len > len)
-			local_len = len;
-		ret = cfi_amdstd_write_words(mtd, ofs + (chipnum<<cfi->chipshift),
-					     local_len, retlen, buf);
-		if (ret)
-			return ret;
-		ofs += local_len;
-		buf += local_len;
-		len -= local_len;
-
-		if (ofs >> cfi->chipshift) {
-			chipnum ++;
-			ofs = 0;
-			if (chipnum == cfi->numchips)
-				return 0;
-		}
-	}
-
-	/* Write buffer is worth it only if more than one word to write... */
-	while (len >= map_bankwidth(map) * 2) {
+	while (len) {
 		/* We must not cross write block boundaries */
 		int size = wbufsize - (ofs & (wbufsize-1));
 
 		if (size > len)
 			size = len;
-		if (size % map_bankwidth(map))
-			size -= size % map_bankwidth(map);
 
 		ret = do_write_buffer(map, &cfi->chips[chipnum],
 				      ofs, buf, size);
@@ -1977,16 +1998,6 @@ static int cfi_amdstd_write_buffers(struct mtd_info *mtd, loff_t to, size_t len,
 			if (chipnum == cfi->numchips)
 				return 0;
 		}
-	}
-
-	if (len) {
-		size_t retlen_dregs = 0;
-
-		ret = cfi_amdstd_write_words(mtd, ofs + (chipnum<<cfi->chipshift),
-					     len, &retlen_dregs, buf);
-
-		*retlen += retlen_dregs;
-		return ret;
 	}
 
 	return 0;

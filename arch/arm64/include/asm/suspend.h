@@ -1,7 +1,7 @@
 #ifndef __ASM_SUSPEND_H
 #define __ASM_SUSPEND_H
 
-#define NR_CTX_REGS 11
+#define NR_CTX_REGS 12
 
 /*
  * struct cpu_suspend_ctx must be 16-byte aligned since it is allocated on
@@ -21,8 +21,8 @@ struct sleep_save_sp {
 	phys_addr_t save_ptr_stash_phys;
 };
 
-extern int __cpu_suspend(unsigned long arg, int (*fn)(unsigned long));
 extern void cpu_resume(void);
-extern int cpu_suspend(unsigned long);
+extern int cpu_suspend(unsigned long arg, int (*fn)(unsigned long));
+extern int system_suspend(void);
 
 #endif

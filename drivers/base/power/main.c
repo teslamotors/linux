@@ -32,6 +32,7 @@
 #include <linux/cpufreq.h>
 #include <linux/cpuidle.h>
 #include <linux/timer.h>
+#include <linux/wakeup_reason.h>
 
 #include "../base.h"
 #include "power.h"
@@ -53,10 +54,17 @@ static LIST_HEAD(dpm_prepared_list);
 static LIST_HEAD(dpm_suspended_list);
 static LIST_HEAD(dpm_late_early_list);
 static LIST_HEAD(dpm_noirq_list);
+static LIST_HEAD(dpm_noirq_late_early_list);
 
 struct suspend_stats suspend_stats;
 static DEFINE_MUTEX(dpm_list_mtx);
 static pm_message_t pm_transition;
+
+static void dpm_drv_timeout(unsigned long data);
+struct dpm_drv_wd_data {
+	struct device *dev;
+	struct task_struct *tsk;
+};
 
 static int async_error;
 
@@ -341,6 +349,40 @@ static pm_callback_t pm_noirq_op(const struct dev_pm_ops *ops, pm_message_t stat
 	return NULL;
 }
 
+/**
+ * pm_noirq_late_early_op - Return the PM operation appropriate for given PM event.
+ * @ops: PM operations to choose from.
+ * @state: PM transition of the system being carried out.
+ *
+ * Runtime PM is disabled for @dev while this function is being executed.
+ */
+static pm_callback_t pm_noirq_late_early_op(const struct dev_pm_ops *ops,
+				      pm_message_t state)
+{
+	switch (state.event) {
+#ifdef CONFIG_SUSPEND
+	case PM_EVENT_SUSPEND:
+		return ops->suspend_noirq_late;
+	case PM_EVENT_RESUME:
+		return ops->resume_noirq_early;
+#endif /* CONFIG_SUSPEND */
+#ifdef CONFIG_HIBERNATE_CALLBACKS
+	case PM_EVENT_FREEZE:
+	case PM_EVENT_QUIESCE:
+		return ops->freeze_noirq_late;
+	case PM_EVENT_HIBERNATE:
+		return ops->poweroff_noirq_late;
+	case PM_EVENT_THAW:
+	case PM_EVENT_RECOVER:
+		return ops->thaw_noirq_early;
+	case PM_EVENT_RESTORE:
+		return ops->restore_noirq_early;
+#endif /* CONFIG_HIBERNATE_CALLBACKS */
+	}
+
+	return NULL;
+}
+
 static void pm_dev_dbg(struct device *dev, pm_message_t state, char *info)
 {
 	dev_dbg(dev, "%s%s%s\n", info, pm_verb(state.event),
@@ -460,9 +502,91 @@ static void dpm_watchdog_clear(struct dpm_watchdog *wd)
 #endif
 
 /*------------------------- Resume routines -------------------------*/
+/**
+ * device_resume_noirq_early - Execute an "early noirq resume" callback
+ * for given device.
+ * @dev: Device to handle.
+ * @state: PM transition of the system being carried out.
+ *
+ * The driver of @dev will not receive interrupts while this function is being
+ * executed.
+ */
+static int device_resume_noirq_early(struct device *dev, pm_message_t state)
+{
+	pm_callback_t callback = NULL;
+	char *info = NULL;
+	int error = 0;
+
+	TRACE_DEVICE(dev);
+	TRACE_RESUME(0);
+
+	if (dev->power.syscore)
+		goto out;
+
+	if (dev->pm_domain) {
+		info = "noirq early power domain ";
+		callback = pm_noirq_late_early_op(&dev->pm_domain->ops, state);
+	} else if (dev->type && dev->type->pm) {
+		info = "noirq early type ";
+		callback = pm_noirq_late_early_op(dev->type->pm, state);
+	} else if (dev->class && dev->class->pm) {
+		info = "noirq early class ";
+		callback = pm_noirq_late_early_op(dev->class->pm, state);
+	} else if (dev->bus && dev->bus->pm) {
+		info = "noirq early bus ";
+		callback = pm_noirq_late_early_op(dev->bus->pm, state);
+	}
+
+	if (!callback && dev->driver && dev->driver->pm) {
+		info = "noirq early driver ";
+		callback = pm_noirq_late_early_op(dev->driver->pm, state);
+	}
+
+	error = dpm_run_callback(callback, dev, state, info);
+
+ out:
+	TRACE_RESUME(error);
+	return error;
+}
 
 /**
- * device_resume_noirq - Execute an "early resume" callback for given device.
+ * dpm_resume_noirq_early - Execute "early noirq resume" callbacks for
+ * all devices.
+ * @state: PM transition of the system being carried out.
+ *
+ * Call the "early noirq" resume handlers for all devices in
+ * dpm_noirq_late_early_list and enable device drivers to receive interrupts.
+ */
+static void dpm_resume_noirq_early(pm_message_t state)
+{
+	ktime_t starttime = ktime_get();
+
+	mutex_lock(&dpm_list_mtx);
+	while (!list_empty(&dpm_noirq_late_early_list)) {
+		struct device *dev = to_device(dpm_noirq_late_early_list.next);
+		int error;
+
+		get_device(dev);
+		list_move_tail(&dev->power.entry, &dpm_noirq_list);
+		mutex_unlock(&dpm_list_mtx);
+
+		error = device_resume_noirq_early(dev, state);
+		if (error) {
+			suspend_stats.failed_resume_noirq_early++;
+			dpm_save_failed_step(SUSPEND_RESUME_NOIRQ_EARLY);
+			dpm_save_failed_dev(dev_name(dev));
+			pm_dev_err(dev, state, "early noirq", error);
+		}
+
+		mutex_lock(&dpm_list_mtx);
+		put_device(dev);
+	}
+	mutex_unlock(&dpm_list_mtx);
+	dpm_show_time(starttime, state, "early noirq");
+}
+
+/**
+ * device_resume_noirq - Execute an "noirq resume" callback for given device.
  * @dev: Device to handle.
  * @state: PM transition of the system being carried out.
  * @async: If true, the device is being resumed asynchronously.
@@ -716,6 +840,7 @@ void dpm_resume_early(pm_message_t state)
  */
 void dpm_resume_start(pm_message_t state)
 {
+	dpm_resume_noirq_early(state);
 	dpm_resume_noirq(state);
 	dpm_resume_early(state);
 }
@@ -825,6 +950,30 @@ static void async_resume(void *data, async_cookie_t cookie)
 	if (error)
 		pm_dev_err(dev, pm_transition, " async", error);
 	put_device(dev);
+}
+
+/**
+ *	dpm_drv_timeout - Driver suspend / resume watchdog handler
+ *	@data: struct device which timed out
+ *
+ * 	Called when a driver has timed out suspending or resuming.
+ * 	There's not much we can do here to recover so
+ * 	BUG() out for a crash-dump
+ *
+ */
+static void dpm_drv_timeout(unsigned long data)
+{
+	struct dpm_drv_wd_data *wd_data = (void *)data;
+	struct device *dev = wd_data->dev;
+	struct task_struct *tsk = wd_data->tsk;
+
+	printk(KERN_EMERG "**** DPM device timeout: %s (%s)\n", dev_name(dev),
+	       (dev->driver ? dev->driver->name : "no driver"));
+
+	printk(KERN_EMERG "dpm suspend stack:\n");
+	show_stack(tsk, NULL);
+
+	BUG();
 }
 
 /**
@@ -1000,6 +1149,94 @@ static pm_message_t resume_event(pm_message_t sleep_state)
 		return PMSG_RESTORE;
 	}
 	return PMSG_ON;
+}
+/**
+ * device_suspend_noirq_late - Execute a "late noirq suspend" callback for
+ * given device.
+ * @dev: Device to handle.
+ * @state: PM transition of the system being carried out.
+ *
+ * The driver of @dev will not receive interrupts while this function is being
+ * executed.
+ */
+static int device_suspend_noirq_late(struct device *dev, pm_message_t state)
+{
+	pm_callback_t callback = NULL;
+	char *info = NULL;
+
+	if (dev->power.syscore)
+		return 0;
+
+	if (dev->pm_domain) {
+		info = "late noirq power domain ";
+		callback = pm_noirq_late_early_op(&dev->pm_domain->ops, state);
+	} else if (dev->type && dev->type->pm) {
+		info = "late noirq type ";
+		callback = pm_noirq_late_early_op(dev->type->pm, state);
+	} else if (dev->class && dev->class->pm) {
+		info = "late noirq class ";
+		callback = pm_noirq_late_early_op(dev->class->pm, state);
+	} else if (dev->bus && dev->bus->pm) {
+		info = "late noirq bus ";
+		callback = pm_noirq_late_early_op(dev->bus->pm, state);
+	}
+
+	if (!callback && dev->driver && dev->driver->pm) {
+		info = "late noirq driver ";
+		callback = pm_noirq_late_early_op(dev->driver->pm, state);
+	}
+
+	return dpm_run_callback(callback, dev, state, info);
+}
+
+/**
+ * dpm_suspend_noirq_late - Execute "late noirq suspend" callbacks for
+ * all devices.
+ * @state: PM transition of the system being carried out.
+ *
+ * Prevent device drivers from receiving interrupts and call the
+ * "late noirq" suspend handlers for all non-sysdev devices.
+ */
+static int dpm_suspend_noirq_late(pm_message_t state)
+{
+	ktime_t starttime = ktime_get();
+	int error = 0;
+
+	/* irqs already disabled */
+	mutex_lock(&dpm_list_mtx);
+	while (!list_empty(&dpm_noirq_list)) {
+		struct device *dev = to_device(dpm_noirq_list.prev);
+
+		get_device(dev);
+		mutex_unlock(&dpm_list_mtx);
+
+		error = device_suspend_noirq_late(dev, state);
+
+		mutex_lock(&dpm_list_mtx);
+		if (error) {
+			pm_dev_err(dev, state, " late noirq", error);
+			suspend_stats.failed_suspend_noirq_late++;
+			dpm_save_failed_step(SUSPEND_SUSPEND_NOIRQ_LATE);
+			dpm_save_failed_dev(dev_name(dev));
+			put_device(dev);
+			break;
+		}
+		if (!list_empty(&dev->power.entry))
+			list_move(&dev->power.entry,
+					&dpm_noirq_late_early_list);
+		put_device(dev);
+
+		if (pm_wakeup_pending()) {
+			error = -EBUSY;
+			break;
+		}
+	}
+	mutex_unlock(&dpm_list_mtx);
+	if (error)
+		dpm_resume_noirq_early(resume_event(state));
+	else
+		dpm_show_time(starttime, state, "late noirq");
+	return error;
 }
 
 /**
@@ -1296,6 +1533,13 @@ int dpm_suspend_end(pm_message_t state)
 		return error;
 	}
 
+	error = dpm_suspend_noirq_late(state);
+	if (error) {
+		dpm_resume_noirq(resume_event(state));
+		dpm_resume_early(resume_event(state));
+		return error;
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(dpm_suspend_end);
@@ -1337,6 +1581,9 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 	pm_callback_t callback = NULL;
 	char *info = NULL;
 	int error = 0;
+	struct timer_list timer;
+	struct dpm_drv_wd_data data;
+	char suspend_abort[MAX_SUSPEND_ABORT_LEN];
 	DECLARE_DPM_WATCHDOG_ON_STACK(wd);
 
 	dpm_wait_for_children(dev, async);
@@ -1354,12 +1601,23 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 		pm_wakeup_event(dev, 0);
 
 	if (pm_wakeup_pending()) {
+		pm_get_active_wakeup_sources(suspend_abort,
+			MAX_SUSPEND_ABORT_LEN);
+		log_suspend_abort_reason(suspend_abort);
 		async_error = -EBUSY;
 		goto Complete;
 	}
 
 	if (dev->power.syscore)
 		goto Complete;
+	
+	data.dev = dev;
+	data.tsk = get_current();
+	init_timer_on_stack(&timer);
+	timer.expires = jiffies + HZ * 12;
+	timer.function = dpm_drv_timeout;
+	timer.data = (unsigned long)&data;
+	add_timer(&timer);
 
 	if (dev->power.direct_complete) {
 		if (pm_runtime_status_suspended(dev)) {
@@ -1439,6 +1697,9 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 
 	device_unlock(dev);
 	dpm_watchdog_clear(&wd);
+
+	del_timer_sync(&timer);
+	destroy_timer_on_stack(&timer);
 
  Complete:
 	complete_all(&dev->power.completion);

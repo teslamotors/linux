@@ -33,6 +33,7 @@
 #include <linux/serial_reg.h>
 #include <linux/serial.h>
 #include <linux/serial_8250.h>
+#include <linux/of.h>
 #include <asm/io.h>
 #include <asm/serial.h>
 
@@ -158,6 +159,15 @@ static int __init early_serial8250_setup(struct earlycon_device *device,
 }
 EARLYCON_DECLARE(uart8250, early_serial8250_setup);
 EARLYCON_DECLARE(uart, early_serial8250_setup);
+
+static int __init early_serial8250_mmio32_setup(struct earlycon_device *device,
+						const char *options)
+{
+	device->port.iotype = UPIO_MEM32;
+	return early_serial8250_setup(device, options);
+}
+OF_EARLYCON_DECLARE(tegra210, "nvidia,tegra210-uart", early_serial8250_mmio32_setup);
+OF_EARLYCON_DECLARE(tegra20, "nvidia,tegra20-uart", early_serial8250_mmio32_setup);
 
 int __init setup_early_serial8250_console(char *cmdline)
 {

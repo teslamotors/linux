@@ -1,0 +1,286 @@
+/*
+ * tegra186-tesla-hw25a: DTS for HW2.5A (Primary Parker)
+ *
+ * Copyright (c) 2017, Tesla Motors.  All rights reserved.
+ *
+ * Based on Drive PX2 DTS files:
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+*/
+
+#include "tegra186-tesla-das-hw20-rev-c.dts"
+
+/ {
+	model = "Tesla DAS HW2.5A";
+	compatible = "tesla,das-hw25a", "nvidia,tegra186";
+
+	nvidia,dtsfilename = __FILE__;
+
+	/delete-node/thermal-fan-est;
+	thermal-fan-est {
+		status = "disabled";
+	};
+
+	pinmux@2430000 {
+		common {
+			/*
+			 * BOARD Revision ID Straps. Pinmux in the
+			 * bootchain has these pins pulled down and disabled.
+			 * Enable them here.
+			 */
+			parka_board_id1: sdmmc3_dat0_pg2 {
+				nvidia,pins = "sdmmc3_dat0_pg2";
+				nvidia,function = "sdmmc3";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+			parka_board_id2: sdmmc3_dat1_pg3 {
+				nvidia,pins = "sdmmc3_dat1_pg3";
+				nvidia,function = "sdmmc3";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+			parka_board_id3: sdmmc3_dat2_pg4 {
+				nvidia,pins = "sdmmc3_dat2_pg4";
+				nvidia,function = "sdmmc3";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+			parka_board_id4: sdmmc3_dat3_pg5 {
+				nvidia,pins = "sdmmc3_dat3_pg5";
+				nvidia,function = "sdmmc3";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+		};
+	};
+	fixed-regulators {
+	    /delete-node/regulator@5;
+	    /delete-node/regulator@6;
+	    /delete-node/regulator@9;
+
+		/* 1V1 FPDlink enable */
+		vdd_qdser: regulator@5 {
+			compatible = "regulator-fixed-sync";
+			reg = <5>;
+			regulator-name = "vdd-qdser";
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(N, 1) 0>;
+			enable-active-high;
+			regulator-always-on;
+		};
+
+		/* 1V8 FPDlink enable */
+		regulator@6 {
+			compatible = "regulator-fixed-sync";
+			reg = <6>;
+			regulator-name = "park-1v8-fpd-en";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(N, 4) 0>;
+			startup-delay-us = <100000>;    /* 100 ms */
+			enable-active-high;
+			regulator-always-on;
+		};
+
+		/* FPDlink enable */
+		regulator@7 {
+			compatible = "regulator-fixed-sync";
+			reg = <7>;
+			regulator-name = "park-fpd-en";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(EE, 2) 0>;
+			enable-active-high;
+			regulator-always-on;
+		};
+
+		regulator@14 {
+			compatible = "regulator-fixed-sync";
+			reg = <14>;
+			regulator-name = "park-dd1-npd";
+			regulator-min-microvolt = <0>;
+			regulator-max-microvolt = <0>;
+			gpio = <&tegra_gpio TEGRA_GPIO(Y, 0) 1>;
+			enable-active-high;
+			regulator-always-on;
+		};
+
+		regulator@15 {
+			compatible = "regulator-fixed-sync";
+			reg = <15>;
+			regulator-name = "park-qd1-npd";
+			regulator-min-microvolt = <0>;
+			regulator-max-microvolt = <0>;
+			gpio = <&tegra_gpio TEGRA_GPIO(V, 1) 1>;
+			enable-active-high;
+			regulator-always-on;
+		};
+
+		regulator@16 {
+			compatible = "regulator-fixed-sync";
+			reg = <16>;
+			regulator-name = "park-qd2-npd";
+			regulator-min-microvolt = <0>;
+			regulator-max-microvolt = <0>;
+			gpio = <&tegra_gpio TEGRA_GPIO(W, 4) 1>;
+			startup-delay-us = <100000>;    /* 100 ms */
+			enable-active-high;
+			regulator-always-on;
+		};
+
+	};
+
+	padctl: pinctrl@3520000 {
+		p2379_default: pinmux {
+			usb2-std-A-port2 {
+				nvidia,lanes = "otg-1";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+		};
+	};
+
+	serial@c280000 { /* Tegra UARTC <-> Aurix UART: Debug console  */
+		/*to maintain 115200 baud, clock frequecy changed with 480MHz*/
+		clock-frequency = <480000000>;
+	};
+
+	xhci@3530000 {
+		phys = <&padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+			<&padctl TEGRA_PADCTL_PHY_USB3_P(0)>,
+			<&padctl TEGRA_PADCTL_PHY_UTMI_P(1)>;
+		phy-names = "utmi-0", "usb3-0", "utmi-1";
+	};
+
+	/delete-node/isc-mgr.0;
+	/delete-node/isc-mgr.1;
+	/delete-node/isc-mgr.2;
+	/delete-node/isc-mgr.3;
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <7>;
+		csi-port = <0>; /* Second CSI port for the quad-2 deserializer */
+		default-power-on;
+		runtime-pwrctrl-off;
+		interrupt-parent = <&tegra_gpio>;
+		/* interrupts = <TEGRA_GPIO(EE, 2) 2>; */ /* GMSLA_STATUS_OC : falling edge sensitive */
+		/* interrupts = <TEGRA_GPIO(Y, 2) 2>;*/ /* GMSLA_LOCKOUT : falling edge sensitive */
+		status = "okay";
+
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <7>;
+		csi-port = <2>;
+		pwdn-gpios = <
+			&tegra_gpio TEGRA_GPIO(Y, 5) GPIO_ACTIVE_HIGH   /* PARK-RB-CAM-PWR-EN - Tegra(PY.05) */
+			&tegra_gpio TEGRA_GPIO(L, 6) GPIO_ACTIVE_HIGH   /* PARK-LB-CAM-PWR-EN - Tegra(PL.06) */
+			&tegra_gpio TEGRA_GPIO(N, 0) GPIO_ACTIVE_HIGH   /* PARK-NAR-CAM-PWR-EN - Tegra(PN.00) */
+			&tegra_gpio TEGRA_GPIO(I, 4) GPIO_ACTIVE_HIGH   /* PARK-BU-CAM-PWR-EN */
+		>;
+		default-power-on;
+		runtime-pwrctrl-off;
+		interrupt-parent = <&tegra_gpio>;
+		/*interrupts = <TEGRA_GPIO(FF, 0) 2>;*/ /* GMSLB_STATUS_OC : falling edge sensitive */
+		/*interrupts = <TEGRA_GPIO(Y, 5) 2>;*/ /* GMSLB_LOCKOUT : falling edge sensitive */
+		status = "okay";
+	};
+
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <1>;
+		csi-port = <4>;
+		pwdn-gpios = <
+			&tegra_gpio TEGRA_GPIO(I, 0) GPIO_ACTIVE_HIGH   /* PARK-MAIN-CAM-PWR-EN - Tegra(PI.00) */
+			&tegra_gpio TEGRA_GPIO(J, 6) GPIO_ACTIVE_HIGH   /* PARK-RR-CAM-PWR-EN - TegraBall(PJ.06) */
+			&tegra_gpio TEGRA_GPIO(Y, 1) GPIO_ACTIVE_HIGH   /* PARK-LR-CAM-PWR-EN - TegraBall(PY.01) */
+			&tegra_gpio TEGRA_GPIO(B, 4) GPIO_ACTIVE_HIGH   /* PARK-FE-CAM-PWR-EN - Tegra(PB.04)  */
+		>;
+		default-power-on;
+		runtime-pwrctrl-off;
+		interrupt-parent = <&tegra_gpio>;
+		interrupts = <TEGRA_GPIO(V, 7) 2>; /* GMSLC_STATUS_OC : falling edge sensitive */
+		/*interrupts = <TEGRA_GPIO(Y, 6) 2>;*/ /* GMSLC_LOCKOUT : falling edge sensitive */
+		status = "okay";
+
+	};
+
+	isc-mgr.3 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <1>;
+		pwdn-gpios = <
+			&tegra_gpio TEGRA_GPIO(I, 6) GPIO_ACTIVE_HIGH   /* PARK-SC-CAM-PWR-EN */
+		>;
+		default-power-on;
+		runtime-pwrctrl-off;
+		interrupt-parent = <&tegra_gpio>;
+		/*interrupts = <TEGRA_GPIO(Y, 5) 2>;*/ /* GMSLB_LOCKOUT : falling edge sensitive */
+		status = "okay";
+	};
+
+	host1x {
+		sor {
+			hdmi-display {
+			   /*
+				* Force a TI949 720p edid to be compatible with ICE backup-camera feed.
+				*
+				*   Valid Checksum: TRUE
+				*	EDID Header: OK
+				*	EISA ID: TXN
+				*	Product Code: 949
+				*	Serial Number: 1
+				*	Manufacture Date: 28/2014
+				*	EDID Version: 1.3
+				*	Number of Extensions: 0
+				*	Checksum: 0x58
+                *
+				*	Pixel Clock: 74.25MHz
+				*	Horizontal Active: 1280
+				*	Horizontal Blanking: 370
+				*	Vertical Active: 720
+				*	Vertical Blanking: 30
+				*	Horizontal Sync Offset: 110
+				*	Horizontal Sync Pulse: 80
+				*	Vertical Sync Offset: 5
+				*	Vertical Sync Pulse: 5
+				*	Horizontal Display Size: 512
+				*	Vertical Display Size: 288
+				*	Horizontal Border: 0
+				*	Vertical Border: 0
+				*	Interlaced: false
+				*	Stereo Mode: 0
+				*	Sync Type: 3
+				*/
+				nvidia,edid = [
+						00 ff ff ff ff ff ff 00 53 0e 49 09 01 00 00 00
+						1c 18 01 03 80 34 20 78 0a ec 18 a3 54 46 98 25
+						0f 48 4c 00 00 00 01 01 01 01 01 01 01 01 01 01
+						01 01 01 01 01 01 01 1d 00 72 51 d0 1e 20 6e 50
+						55 00 00 20 21 00 00 18 00 00 00 fd 00 3b 3d 62
+						64 08 00 0a 20 20 20 20 20 20 00 00 00 fc 00 54
+						49 2d 44 53 39 30 55 78 39 34 39 0a 00 00 00 10
+						00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 58
+					];
+			};
+		};
+	};
+};

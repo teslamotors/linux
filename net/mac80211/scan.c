@@ -759,9 +759,20 @@ static void ieee80211_scan_state_suspend(struct ieee80211_local *local,
 	/* disable PS */
 	ieee80211_offchannel_return(local);
 
+#ifndef CONFIG_MAC80211_SCAN_ABORT
 	*next_delay = HZ / 5;
 	/* afterwards, resume scan & go to next channel */
 	local->next_scan_state = SCAN_RESUME;
+#else
+	if (local->next_scan_state == SCAN_SUSPEND) {
+		*next_delay = HZ / 5;
+		/* afterwards, resume scan & go to next channel */
+		local->next_scan_state = SCAN_RESUME;
+	} else {
+		*next_delay = 0;
+		local->next_scan_state = SCAN_ABORT;
+	}
+#endif
 }
 
 static void ieee80211_scan_state_resume(struct ieee80211_local *local,
@@ -852,6 +863,9 @@ void ieee80211_scan_work(struct work_struct *work)
 			ieee80211_scan_state_send_probe(local, &next_delay);
 			break;
 		case SCAN_SUSPEND:
+#ifdef CONFIG_MAC80211_SCAN_ABORT
+		case SCAN_SUSPEND_ABORT:
+#endif
 			ieee80211_scan_state_suspend(local, &next_delay);
 			break;
 		case SCAN_RESUME:

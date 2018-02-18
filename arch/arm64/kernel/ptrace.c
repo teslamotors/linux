@@ -27,6 +27,7 @@
 #include <linux/smp.h>
 #include <linux/ptrace.h>
 #include <linux/user.h>
+#include <linux/seccomp.h>
 #include <linux/security.h>
 #include <linux/init.h>
 #include <linux/signal.h>
@@ -551,6 +552,32 @@ static int tls_set(struct task_struct *target, const struct user_regset *regset,
 	return ret;
 }
 
+static int system_call_get(struct task_struct *target,
+			   const struct user_regset *regset,
+			   unsigned int pos, unsigned int count,
+			   void *kbuf, void __user *ubuf)
+{
+	int syscallno = task_pt_regs(target)->syscallno;
+
+	return user_regset_copyout(&pos, &count, &kbuf, &ubuf,
+				   &syscallno, 0, -1);
+}
+
+static int system_call_set(struct task_struct *target,
+			   const struct user_regset *regset,
+			   unsigned int pos, unsigned int count,
+			   const void *kbuf, const void __user *ubuf)
+{
+	int syscallno, ret;
+
+	ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &syscallno, 0, -1);
+	if (ret)
+		return ret;
+
+	task_pt_regs(target)->syscallno = syscallno;
+	return ret;
+}
+
 enum aarch64_regset {
 	REGSET_GPR,
 	REGSET_FPR,
@@ -559,6 +586,7 @@ enum aarch64_regset {
 	REGSET_HW_BREAK,
 	REGSET_HW_WATCH,
 #endif
+	REGSET_SYSTEM_CALL,
 };
 
 static const struct user_regset aarch64_regsets[] = {
@@ -608,12 +636,67 @@ static const struct user_regset aarch64_regsets[] = {
 		.set = hw_break_set,
 	},
 #endif
+	[REGSET_SYSTEM_CALL] = {
+		.core_note_type = NT_ARM_SYSTEM_CALL,
+		.n = 1,
+		.size = sizeof(int),
+		.align = sizeof(int),
+		.get = system_call_get,
+		.set = system_call_set,
+	},
 };
 
 static const struct user_regset_view user_aarch64_view = {
 	.name = "aarch64", .e_machine = EM_AARCH64,
 	.regsets = aarch64_regsets, .n = ARRAY_SIZE(aarch64_regsets)
 };
+
+static int ptrace_read_user(struct task_struct *tsk, unsigned long off,
+				   unsigned long __user *ret)
+{
+	unsigned long tmp;
+
+	if (off & 3)
+		return -EIO;
+
+	if (off == COMPAT_PT_TEXT_ADDR)
+		tmp = tsk->mm->start_code;
+	else if (off == COMPAT_PT_DATA_ADDR)
+		tmp = tsk->mm->start_data;
+	else if (off == COMPAT_PT_TEXT_END_ADDR)
+		tmp = tsk->mm->end_code;
+	else if (off < sizeof(struct user_pt_regs))
+		return copy_regset_to_user(tsk, task_user_regset_view(current),
+					   REGSET_GPR, off,
+					   sizeof(unsigned long), ret);
+	else
+		return -EIO;
+
+	return put_user(tmp, ret);
+}
+
+static int ptrace_write_user(struct task_struct *tsk, unsigned long off,
+				    unsigned long val)
+{
+	int ret;
+	mm_segment_t old_fs = get_fs();
+
+	if (off & 3 || off >= COMPAT_USER_SZ)
+		return -EIO;
+
+	if (off >= sizeof(struct user_pt_regs))
+		return 0;
+
+	set_fs(KERNEL_DS);
+	ret = copy_regset_from_user(tsk, task_user_regset_view(current),
+				    REGSET_GPR, off,
+				    sizeof(unsigned int),
+				    &val);
+	set_fs(old_fs);
+
+	return ret;
+}
+
 
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
@@ -1082,7 +1165,26 @@ const struct user_regset_view *task_user_regset_view(struct task_struct *task)
 long arch_ptrace(struct task_struct *child, long request,
 		 unsigned long addr, unsigned long data)
 {
-	return ptrace_request(child, request, addr, data);
+	int ret;
+	unsigned long __user *datap = (unsigned long __user *)data;
+
+	switch (request) {
+	case PTRACE_PEEKUSR:
+		/* read the word at location addr in the USER area. */
+		ret = ptrace_read_user(child, addr, datap);
+		break;
+
+	case PTRACE_POKEUSR:
+		/* write the word at location addr in the USER area */
+		ret = ptrace_write_user(child, addr, data);
+		break;
+
+	default:
+		ret = ptrace_request(child, request, addr, data);
+		break;
+	}
+
+	return ret;
 }
 
 enum ptrace_syscall_dir {
@@ -1114,6 +1216,10 @@ static void tracehook_report_syscall(struct pt_regs *regs,
 
 asmlinkage int syscall_trace_enter(struct pt_regs *regs)
 {
+	/* Do the secure computing check first; failures should be fast. */
+	if (secure_computing() == -1)
+		return -1;
+
 	if (test_thread_flag(TIF_SYSCALL_TRACE))
 		tracehook_report_syscall(regs, PTRACE_SYSCALL_ENTER);
 

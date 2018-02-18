@@ -70,6 +70,11 @@ extern int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs,
 extern int __i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs,
 			  int num);
 
+/* Change bus clock rate for i2c adapter */
+extern int i2c_set_adapter_bus_clk_rate(struct i2c_adapter *adap, int bus_rate);
+extern int i2c_get_adapter_bus_clk_rate(struct i2c_adapter *adap);
+
+
 /* This is the very generalized SMBus access routine. You probably do not
    want to use this, though; one of the functions below may be much easier,
    and probably just as fast.
@@ -435,6 +440,9 @@ struct i2c_adapter {
 	int retries;
 	struct device dev;		/* the adapter device */
 
+	bool cancel_xfer_on_shutdown;
+	bool atomic_xfer_only;
+
 	int nr;
 	char name[48];
 	struct completion dev_released;
@@ -443,6 +451,7 @@ struct i2c_adapter {
 	struct list_head userspace_clients;
 
 	struct i2c_bus_recovery_info *bus_recovery_info;
+	unsigned long bus_clk_rate;
 };
 #define to_i2c_adapter(d) container_of(d, struct i2c_adapter, dev)
 
@@ -474,6 +483,8 @@ int i2c_for_each_dev(void *data, int (*fn)(struct device *, void *));
 /* Adapter locking functions, exported for shared pin cases */
 void i2c_lock_adapter(struct i2c_adapter *);
 void i2c_unlock_adapter(struct i2c_adapter *);
+void i2c_shutdown_adapter(struct i2c_adapter *adapter);
+void i2c_shutdown_clear_adapter(struct i2c_adapter *adapter);
 
 /*flags for the client struct: */
 #define I2C_CLIENT_PEC	0x04		/* Use Packet Error Checking */
@@ -523,7 +534,6 @@ extern void i2c_clients_command(struct i2c_adapter *adap,
 
 extern struct i2c_adapter *i2c_get_adapter(int nr);
 extern void i2c_put_adapter(struct i2c_adapter *adap);
-
 
 /* Return the functionality mask */
 static inline u32 i2c_get_functionality(struct i2c_adapter *adap)
@@ -576,5 +586,19 @@ static inline struct i2c_adapter *of_find_i2c_adapter_by_node(struct device_node
 	return NULL;
 }
 #endif /* CONFIG_OF */
+
+/* Bus clear logic using the GPIO */
+#ifdef CONFIG_I2C_ALGO_BUSCLEAR
+int i2c_algo_busclear_gpio(struct device *dev, int scl_gpio,
+	int scl_gpio_flags, int sda_gpio, int sda_gpio_flags,
+	int max_retry_clock, int clock_speed_hz);
+#else
+static inline int i2c_algo_busclear_gpio(struct device *dev, int scl_gpio,
+	int scl_gpio_flags, int sda_gpio, int sda_gpio_flags,
+	int max_retry_clock, int clock_speed_hz)
+{
+	return -EINVAL;
+}
+#endif /* CONFIG_I2C_ALGO_BUSCLEAR */
 
 #endif /* _LINUX_I2C_H */

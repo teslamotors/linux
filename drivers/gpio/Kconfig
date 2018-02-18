@@ -520,6 +520,13 @@ config GPIO_MAX732X_IRQ
 	  Say yes here to enable the max732x to be used as an interrupt
 	  controller. It requires the driver to be built in the kernel.
 
+config GPIO_MAX77663
+	bool "GPIO suport for PMIC MAX77663"
+	depends on MFD_MAX77663
+	help
+	  Say yes here to enable the max77663 to be used as gpio controller.
+	  It requires the driver to be built in the kernel.
+
 config GPIO_MC9S08DZ60
 	bool "MX35 3DS BOARD MC9S08DZ60 GPIO functions"
 	depends on I2C=y && MACH_MX35_3DS
@@ -679,6 +686,15 @@ config GPIO_ADP5588
 	help
 	  This option enables support for 18 GPIOs found
 	  on Analog Devices ADP5588 GPIO Expanders.
+
+config GPIO_AS3720
+	tristate "ams AS3720 GPIO support"
+	depends on MFD_AS3720
+	help
+	  This option enables support for on-chip GPIOs found on
+	  AS3720 PMIC from ams.
+	  To compile this driver as a module, choose M here: the module will
+	  be called as3720-gpio.
 
 config GPIO_ADP5588_IRQ
 	bool "Interrupt controller support for ADP5588"
@@ -859,13 +875,6 @@ config GPIO_JANZ_TTL
 	  This driver provides support for driving the pins in output
 	  mode only. Input mode is not supported.
 
-config GPIO_PALMAS
-	bool "TI PALMAS series PMICs GPIO"
-	depends on MFD_PALMAS
-	help
-	  Select this option to enable GPIO driver for the TI PALMAS
-	  series chip family.
-
 config GPIO_TPS6586X
 	bool "TPS6586X GPIO"
 	depends on MFD_TPS6586X
@@ -879,6 +888,28 @@ config GPIO_TPS65910
 	help
 	  Select this option to enable GPIO driver for the TPS65910
 	  chip family.
+
+config GPIO_PALMAS
+	bool "PALMAS GPIO"
+	depends on MFD_PALMAS
+	help
+	  Select this option to enable GPIO driver for the Palmas
+	  chip familly.
+	  
+config GPIO_MAX77660
+	bool "GPIO suport for PMIC MAX77660"
+	depends on MFD_MAX77660
+	help
+	  Say yes here to enable the max77660 to be used as gpio controller.
+	  It requires the driver to be built in the kernel.
+
+config GPIO_MAX77620
+	bool "GPIO suport for PMIC MAX77620"
+	depends on MFD_MAX77620
+	help
+	  Say yes here to enable the max77620 to be used as gpio controller.
+	  MAX77620 PMIC has 8 pins that can be configured as GPIOs. The
+	  driver also provides interrupt support for each of the gpios.
 
 config GPIO_MSIC
 	bool "Intel MSIC mixed signal gpio support"
@@ -905,5 +936,24 @@ config GPIO_VIPERBOARD
           See viperboard API specification and Nano
           River Tech's viperboard.h for detailed meaning
           of the module parameters.
+
+config GPIO_TMPM32X
+	tristate "GPIO support for TMPM32x"
+	depends on MACH_P1889
+	help
+	  Say yes here to access the GPIO signals of TMPM32x
+	  Toshiba MCU. There is only UART channel as a communication
+	  interface between Tegra and MCU chip.
+
+config GPIO_TMPM32X_I2C
+	tristate "GPIO support for TMPM32x through I2C"
+	select GPIOLIB_IRQCHIP
+	help
+	  Say yes here to access the GPIO signals of TMPM32x
+	  Toshiba MCU through I2C.
+
+trysource "../t18x/drivers/gpio/Kconfig"
+trysource "../t18x/drivers/gpio/Kconfig.t18x"
+trysource "drivers/gpio/Kconfig.t18x"
 
 endif

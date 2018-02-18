@@ -1,5 +1,6 @@
 /*
  * Copyright 2012  Google, Inc.
+ * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -106,26 +107,13 @@ static const struct file_operations pstore_knob_fops = {
 
 void pstore_register_ftrace(void)
 {
-	struct dentry *dir;
 	struct dentry *file;
 
-	if (!psinfo->write_buf)
+	if (!psinfo->write_buf || !psinfo->debugfs_dir)
 		return;
 
-	dir = debugfs_create_dir("pstore", NULL);
-	if (!dir) {
-		pr_err("%s: unable to create pstore directory\n", __func__);
-		return;
-	}
-
-	file = debugfs_create_file("record_ftrace", 0600, dir, NULL,
-				   &pstore_knob_fops);
-	if (!file) {
+	file = debugfs_create_file("record_ftrace", 0600, psinfo->debugfs_dir,
+				   NULL, &pstore_knob_fops);
+	if (!file)
 		pr_err("%s: unable to create record_ftrace file\n", __func__);
-		goto err_file;
-	}
-
-	return;
-err_file:
-	debugfs_remove(dir);
 }

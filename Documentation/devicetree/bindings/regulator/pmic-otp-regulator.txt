@@ -1,0 +1,20 @@
+PMIC OTP regulators
+
+Required properties:
+- compatible: Must be "regulator-pmic-otp"
+
+Optional properties:
+None
+
+Any property defined as part of the core regulator
+binding, defined in regulator.txt, can also be used.
+
+Example:
+
+	spmic_ldo3: pmic-otp@0 {
+		compatible = "regulator-pmic-otp"
+		regulator-name = "spmic-ldo3";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-boot-on;
+	};

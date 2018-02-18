@@ -15,6 +15,21 @@ config PRINTK_TIME
 	  The behavior is also controlled by the kernel command line
 	  parameter printk.time=1. See Documentation/kernel-parameters.txt
 
+config CONSOLE_LOGLEVEL_DEFAULT
+	int "Default console loglevel (1-15)"
+	range 1 15
+	default "7"
+	help
+	  Default loglevel to determine what will be printed on the console.
+
+	  Setting a default here is equivalent to passing in loglevel=<x> in
+	  the kernel bootargs. loglevel=<x> continues to override whatever
+	  value is specified here as well.
+
+	  Note: This does not affect the log level of un-prefixed prink()
+	  usage in the kernel. That is controlled by the MESSAGE_LOGLEVEL_DEFAULT
+	  option.
+
 config MESSAGE_LOGLEVEL_DEFAULT
 	int "Default message log level (1-7)"
 	range 1 7
@@ -25,6 +40,10 @@ config MESSAGE_LOGLEVEL_DEFAULT
 	  This was hard-coded to KERN_WARNING since at least 2.6.10 but folks
 	  that are auditing their logs closely may want to set it to a lower
 	  priority.
+
+	  Note: This does not affect what message level gets printed on the console
+	  by default. To change that, use loglevel=<x> in the kernel bootargs,
+	  or pick a different CONSOLE_LOGLEVEL_DEFAULT configuration value.
 
 config BOOT_PRINTK_DELAY
 	bool "Delay each boot printk message by N milliseconds"
@@ -507,6 +526,14 @@ config DEBUG_KMEMLEAK_DEFAULT_OFF
 	  Say Y here to disable kmemleak by default. It can then be enabled
 	  on the command line via kmemleak=on.
 
+config DEBUG_KMEMLEAK_SCAN_ON
+	bool "Enable kmemleak auto scan thread on boot up"
+	default y
+	depends on DEBUG_KMEMLEAK
+	help
+	  Kmemleak scan is cpu intensive and can stall user tasks at times.
+	  Say N here to disable kmemleak auto scan thread at boot up.
+
 config DEBUG_STACK_USAGE
 	bool "Stack utilization instrumentation"
 	depends on DEBUG_KERNEL && !IA64 && !PARISC && !METAG
@@ -637,6 +664,16 @@ source "lib/Kconfig.kmemcheck"
 
 endmenu # "Memory Debugging"
 
+config LESS_GCC_OPT
+	bool "Compile with -O1 for debugging"
+	depends on DEBUG_KERNEL
+	default n
+	help
+	  Enable this if you are using a source level debugger and
+	  experience poor correlation between the program counter
+	  and the source display.  This will reduce kernel peformance
+	  and is only used when debugging.
+
 config DEBUG_SHIRQ
 	bool "Debug shared IRQ handlers"
 	depends on DEBUG_KERNEL && !PREEMPT_RT_BASE
@@ -668,14 +705,26 @@ config LOCKUP_DETECTOR
 	  The overhead should be minimal.  A periodic hrtimer runs to
 	  generate interrupts and kick the watchdog task every 4 seconds.
 	  An NMI is generated every 10 seconds or so to check for hardlockups.
+	  If NMIs are not available on the platform, every 12 seconds the
+	  hrtimer interrupt on one cpu will be used to check for hardlockups
+	  on the next cpu.
 
 	  The frequency of hrtimer and NMI events and the soft and hard lockup
 	  thresholds can be controlled through the sysctl watchdog_thresh.
 
-config HARDLOCKUP_DETECTOR
+config HARDLOCKUP_DETECTOR_NMI
 	def_bool y
 	depends on LOCKUP_DETECTOR && !HAVE_NMI_WATCHDOG
 	depends on PERF_EVENTS && HAVE_PERF_EVENTS_NMI
+
+config HARDLOCKUP_DETECTOR_OTHER_CPU
+	def_bool y
+	depends on LOCKUP_DETECTOR && SMP
+	depends on !HARDLOCKUP_DETECTOR_NMI && !HAVE_NMI_WATCHDOG
+
+config HARDLOCKUP_DETECTOR
+	def_bool y
+	depends on HARDLOCKUP_DETECTOR_NMI || HARDLOCKUP_DETECTOR_OTHER_CPU
 
 config BOOTPARAM_HARDLOCKUP_PANIC
 	bool "Panic (Reboot) On Hard Lockups"
@@ -1445,7 +1494,6 @@ config FAULT_INJECTION_STACKTRACE_FILTER
 
 config LATENCYTOP
 	bool "Latency measuring infrastructure"
-	depends on HAVE_LATENCYTOP_SUPPORT
 	depends on DEBUG_KERNEL
 	depends on STACKTRACE_SUPPORT
 	depends on PROC_FS

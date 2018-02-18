@@ -1,0 +1,53 @@
+/*
+ * tegra186-soc-actmon.dtsi: Tegra186 soc dtsi file for central actmon instances
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	actmon@d230000 {
+		status = "disabled";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		/* tegra186 central actmon */
+		compatible = "nvidia,tegra186-cactmon";
+		reg = <0x0 0x0d230000 0x0 0x1000>; /* ACTMON_BASE */
+		interrupts = <0 TEGRA186_IRQ_ACTMON IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&tegra_car TEGRA186_CLK_ACTMON>;
+		clock-names = "actmon";
+		#stream-id-cells = <1>;
+		resets = <&tegra_car TEGRA186_RESET_ACTMON>;
+		reset-names = "actmon_rst";
+		nvidia,sample_period = /bits/ 8 <7>;
+
+		mc_all {	/* MC_ALL actmon device */
+			#address-cells = <1>;
+			#size-cells = <0>;
+			nvidia,reg_offs = <0x100>;
+			nvidia,irq_mask = <0x2>;
+			/* EMC_PLLP_FREQ + 2000 */
+			nvidia,suspend_freq = <204000>;
+			nvidia,boost_freq_step = <204000>;
+			nvidia,boost_up_coef = <200>;
+			nvidia,boost_down_coef = <50>;
+			nvidia,boost_up_threshold = <30>;
+			nvidia,boost_down_threshold = <20>;
+			nvidia,up_wmark_window = /bits/ 8 <3>;
+			nvidia,down_wmark_window = /bits/ 8 <2>;
+			nvidia,avg_window_log2 = /bits/ 8 <6>;
+			/* emc_freq / actmon_freq = 1600MHz / 19.2 MHz */
+			nvidia,count_weight = <0x53>;
+			nvidia,type = <1>;
+			status = "disabled";
+		};
+       };
+};

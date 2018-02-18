@@ -1,0 +1,21 @@
+#include "tegra124-ardbeg-e1780-1000-a03-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	i2c@7000c400 {
+		pca9546@71 {
+			i2c@1 {
+				ina230@43{
+					.resistor = <10>;
+				};
+				ina230@45{
+					.resistor = <10>;
+				};
+				ina230@49{
+					.resistor = <10>;
+				};
+			};
+		};
+	};
+};

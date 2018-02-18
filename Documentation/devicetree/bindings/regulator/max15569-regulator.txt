@@ -1,0 +1,31 @@
+MAX15569 Voltage regulators
+
+Required properties:
+- compatible: Must be one of the following.
+	"maxim,max15569",
+	"maxim,max16989",
+- reg: I2C slave address
+- regulator-max-microvolt: largest voltage consumers may set
+
+
+Optional properties:
+- enable-gpio: Enable GPIO for regulator.
+
+Any property defined as part of the core regulator binding, defined in
+regulator.txt, can also be used.
+
+Example:
+	max16989@38 {
+		compatible = "maxim,max16989";
+		reg = <0x38>;
+		regulator-name = "max16989-vdd-gpu";
+		regulator-min-microvolt = <500000>;
+		regulator-max-microvolt = <1500000>;
+		enable-gpio = <&gpio TEGRA_GPIO(R, 2) 0>;
+		regulator-enable-ramp-delay = <210>;
+		consumers {
+			c1 {
+				regulator-consumer-supply = "vdd_gpu";
+			};
+		};
+	};

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (C) 2013-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -598,11 +598,14 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
 
 	/* step 2 */
+
+#ifndef CONFIG_DRM_TEGRA_DOWNSTREAM
 	err = tegra_io_rail_power_on(TEGRA_IO_RAIL_LVDS);
 	if (err < 0) {
 		dev_err(sor->dev, "failed to power on I/O rail: %d\n", err);
 		goto unlock;
 	}
+#endif
 
 	usleep_range(5, 100);
 
@@ -1098,11 +1101,13 @@ static int tegra_output_sor_disable(struct tegra_output *output)
 		}
 	}
 
+#ifndef CONFIG_DRM_TEGRA_DOWNSTREAM
 	err = tegra_io_rail_power_off(TEGRA_IO_RAIL_LVDS);
 	if (err < 0) {
 		dev_err(sor->dev, "failed to power off I/O rail: %d\n", err);
 		goto unlock;
 	}
+#endif
 
 	reset_control_assert(sor->rst);
 	clk_disable_unprepare(sor->clk);

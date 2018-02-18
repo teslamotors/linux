@@ -158,6 +158,7 @@ extern int allocate_resource(struct resource *root, struct resource *new,
 						       resource_size_t),
 			     void *alignf_data);
 struct resource *lookup_resource(struct resource *root, resource_size_t start);
+struct resource *locate_resource(struct resource *root, resource_size_t addr);
 int adjust_resource(struct resource *res, resource_size_t start,
 		    resource_size_t size);
 resource_size_t resource_alignment(struct resource *res);

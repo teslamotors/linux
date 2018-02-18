@@ -28,12 +28,32 @@ config EXTCON_ARIZONA
 	  with Wolfson Arizona devices. These are audio CODECs with
 	  advanced audio accessory detection support.
 
+config EXTCON_CABLE_XLATE
+	tristate "Cable translator based on different cable type"
+	help
+	  Say Y here to enable cable translator which receives the cable states
+	  from different extcon and report as different cable state based on the
+	  state table.
+
+config EXTCON_MAX77665
+	tristate "MAX77665 EXTCON Support"
+	depends on MFD_MAX77665 && EXTCON
+	help
+	 If you say yes here you get support for the MUIC device of
+	 Maxim MAX77665 PMIC.
+
 config EXTCON_GPIO
 	tristate "GPIO extcon support"
 	depends on GPIOLIB
 	help
 	  Say Y here to enable GPIO based extcon support. Note that GPIO
 	  extcon supports single state per extcon instance.
+
+config EXTCON_GPIO_OTG
+	tristate "GPIO/IIO channel based OTG extcon support"
+	depends on GPIOLIB && IIO
+	help
+	  Say Y here to enable GPIO/IIO channel based extcon support.
 
 config EXTCON_MAX14577
 	tristate "MAX14577/77836 EXTCON Support"
@@ -64,11 +84,11 @@ config EXTCON_MAX8997
 	  detector and switch.
 
 config EXTCON_PALMAS
-	tristate "Palmas USB EXTCON support"
+	tristate "PALMAS EXTCON Support"
 	depends on MFD_PALMAS
 	help
-	  Say Y here to enable support for USB peripheral and USB host
-	  detection by palmas usb.
+	 If you say yes here you get support for the VBUS detection and notification
+	 through extcon framework from Palmas PMIC.
 
 config EXTCON_RT8973A
 	tristate "RT8973A EXTCON support"

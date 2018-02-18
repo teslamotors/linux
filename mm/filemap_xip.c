@@ -198,7 +198,8 @@ retry:
 			BUG_ON(pte_dirty(pteval));
 			pte_unmap_unlock(pte, ptl);
 			/* must invalidate_page _before_ freeing the page */
-			mmu_notifier_invalidate_page(mm, address);
+			mmu_notifier_invalidate_page(mm, vma, address,
+						     MMU_MIGRATE);
 			page_cache_release(page);
 		}
 	}

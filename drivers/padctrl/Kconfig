@@ -1,0 +1,22 @@
+menuconfig PADCTRL
+	bool "Pad controller support"
+	help
+	  Say Y here to enable pad controller support
+
+	  This framework provides a generic interface to PAD
+	  devices.
+
+if PADCTRL
+
+config PADCTRL_TEGRA210_PMC
+	bool "Tegra210 PMC PADCTRL driver"
+	depends on ARCH_TEGRA
+	help
+	  This option enables Tegra 210 PMC padctrl driver
+
+	  Tegra210 PMC padctrl driver which controls the pad
+	  to supply either 1.8V or 3.3V.
+
+trysource "../t18x/drivers/padctrl/Kconfig.t18x"
+trysource "drivers/padctrl/Kconfig.t18x"
+endif

@@ -1,0 +1,14 @@
+#include "tegra124-loki-common.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	i2c@7000c000 {
+		 battery-charger@6b {
+			charger {
+				ti,pre-charge-current-limit-milliamp = <512>;
+				ti,charge-term-current-limit-milliamp = <256>;
+			};
+		};
+	};
+};

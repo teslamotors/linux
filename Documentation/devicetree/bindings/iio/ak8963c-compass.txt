@@ -1,0 +1,54 @@
+* AKM 8963/8975/09911 compass sensor
+
+nvi_ (NVI = NVidia/Invensense) drivers use the NVidia Sensor (NVS) framework.
+See the nvs.txt documentation for NVS DT capabilities.
+The nvi_ak89xx compass sensor driver supports the AK8963, AK8975, and
+AK09911 devices as stand-alone or behind an Invensense MPU.
+
+Required properties:
+- compatible: Device or generic name.
+	      Supported device names:
+	      - ak,ak89xx
+	      - ak,ak8963
+	      - ak,ak8975
+	      - ak,ak09911
+  Note: If the part is known and is populated, then it can be specified:
+	Example: compatible = "ak,ak8963";
+	When specifying a device this way, the driver will assume this specific
+	device is populated during system boot and will not verify its
+	existence.  If, however, the device is unknown or may not be populated,
+	then the label, ak89xx, (Example: compatible = "ak,ak89xx";),
+	must be used.  This tells the driver to find which device is used.  If
+	the device is not found, the driver will unload itself.  This requires
+	regulators to be setup correctly for the probe function.
+- reg: i2c address of the device. It should be 0x0C or 0x0D.
+  Note: the AKM09911 also supports I2C addresses 0x0E and 0x0F.
+
+Optional properties:
+- status: set to "ok" or "okay" for normal operation.  Set to anything else
+	  to unload the driver without ever communicating with the device.
+  Note: The "anything else" above is typically "disabled".
+	Since the driver will unload without communicating with the device, the
+	device will be left in its POR state.
+- magnetic_field_disable: Setting this property to <1> will disable the device
+                          and unload the driver.
+- vdd-supply: regulator supply for the chip
+- vid-supply: regulator supply for the chip
+  Note: These are required if the driver is to control the regulators.
+- magnetic_field_matrix:  Orientation matrix for this device.
+- nvi_config: This configures the device's I2C connection.
+              The string options are: auto
+	                              mpu
+	                              host
+	      auto = the driver will auto detect the connection.
+	      mpu = the device is connected to an Invensense auxilary bus.
+	      host = the device is connected to the host AP.
+	      If this property is not defined, auto will be used.
+
+Example:
+	ak89xx@0d {
+		compatible = "ak,ak89xx";
+                reg = <0x0d>;
+                magnetic_field_matrix = [ff 00 00 00 ff 00 00 00 01];
+        };
+

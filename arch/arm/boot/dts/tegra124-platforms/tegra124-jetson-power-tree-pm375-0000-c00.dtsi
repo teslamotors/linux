@@ -1,0 +1,77 @@
+/*
+ * arch/arm/boot/dts/tegra124-platforms/tegra124-jetson-power-tree-pm375-0000-c00.dtsi
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "tegra124-platforms/tegra124-jetson_tk1-pmic-pm375-0000-c00-00.dtsi"
+#include "tegra124-platforms/tegra124-jetson_tk1-fixed-pm375-0000-c00-00.dtsi"
+
+/ {
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&as3722_ldo2>;
+			avdd_lcd-supply = <&as3722_gpio4_supply>;
+			dvdd_lcd-supply = <&reg_1v8_supply>;
+			vdd_lcd_bl-supply = <&vdd_lcd_bl>;
+			vdd_lcd_bl_en-supply = <&vdd_lcd_bl_en>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&as3722_sd4>;
+			avdd_hdmi_pll-supply = <&avdd_hdmi_pll>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+
+		vi {
+			avdd_dsi_csi-supply = <&as3722_ldo2>;
+		};
+	};
+
+	efuse@7000f800 {
+		vpp_fuse-supply = <&as3722_ldo11>;
+	};
+
+	power-detect {
+		pwrdet-pex-ctl-supply = <&as3722_sd4>;
+		pwrdet-nand-supply = <&as3722_sd5>;
+		pwrdet-sdmmc1-supply = <&as3722_sd5>;
+		pwrdet-sdmmc4-supply = <&as3722_sd5>;
+		pwrdet-audio-supply = <&as3722_sd5>;
+		pwrdet-uart-supply = <&as3722_sd5>;
+		pwrdet-bb-supply = <&as3722_sd5>;
+		pwrdet-cam-supply = <&as3722_ldo1>;
+		pwrdet-mipi-supply = <&as3722_ldo2>;
+		pwrdet-sdmmc3-supply = <&as3722_ldo6>;
+		pwrdet-hv-supply = <&as3722_gpio2_supply>;
+	};
+	xusb@70090000 {
+		usb_vbus0-supply = <&usb0_vbus>;
+		usb_vbus1-supply = <&usb1_usb2_vbus>;
+		usb_vbus2-supply = <&usb1_usb2_vbus>;
+		hvdd_usb-supply = <&as3722_gpio2_supply>;
+		avdd_pll_utmip-supply = <&reg_1v8_supply>;
+		vddio_hsic-supply = <&as3722_ldo2>;
+		avddio_usb-supply = <&as3722_sd4>;
+	};
+
+	cpu_edp {
+		nvidia,edp_limit = <15000>;
+	};
+};

@@ -1,0 +1,51 @@
+* Nvidia USB tegra device controller
+
+This file documents the properties used by the tegra-udc driver.
+
+Required properties:
+- compatible: Should be similar to "nvidia,tegra210-udc"
+- reg: Specify start address and registers count details
+- interrupts: Specify the interrupts IRQ info for device
+
+Optional properties:
+- nvidia,port-otg: Specify whether given port supports otg or not.
+- nvidia,charging-supported: Specify whether needs charging through USB.
+- nvidia,enable-pmu-vbus-detection: Specify whether vbus detection is supported from PMU.
+- nvidia,enable-aca-nv-charger-detection: Enables aca-nv-charger detection.
+- nvidia,enable-aca-rid-detection: Enables ACA ID resistances detection.
+- nvidia,id-detection-type: Specify how usb id detection type on the platform.
+	0 - if detection is through USB controller
+	1 - if detection is through PMU extcon
+	2 - if enable through sysfs interface.
+- nvidia,qc2-input-voltage: Specify the input voltage needed to support QC2.0 charger.
+	TEGRA_USB_QC2_5V - if input voltage is 5V
+	TEGRA_USB_QC2_9V - if input voltage is 9V
+	TEGRA_USB_QC2_12V - if input voltage is 12V
+	TEGRA_USB_QC2_20V - if input voltage is 20V
+- nvidia,qc2-current-limit-ua: Specify the QC2.0 charger current limit in microamperes.
+- nvidia,dcp-current-limit-ua: If needs to overried standard DCP charger current limit (1.5A), specify the value in microamperes.
+- nvidia,enable-xhci-host: Specify whether this port is taken by XUSB.
+- avdd_usb-supply: Specify the phandle of corresponding regulator device tree node.
+- avdd_pll_utmip-supply: Specify the phandle of corresponding regulator device tree node.
+- usb_bat_chg-supply: Specify the phandle of corresponding current regulator device tree node.
+- extcon-cables: Specify the phandles and index of different extcon needed.
+- extcon-cable-names: Specify the cable names needed from extcon.
+
+Example:
+	udc@0x7d000000 {
+		compatible = "nvidia,tegra210-udc";
+		reg = <0x0 0x7d000000 0x0 0x4000>;
+		interrupts = <0 20 0x04>;
+
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,qc2-input-voltage = <TEGRA_USB_QC2_9V>;
+		nvidia,qc2-current-limit-ua = <1200000>;
+		nvidia,dcp-current-limit-ua = <1800000>;
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_bat_chg-supply = <&battery_charger>;
+		status = "okay";
+	};
+

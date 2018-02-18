@@ -1,0 +1,17 @@
+/dts-v1/;
+
+#include "tegra132-norrin-pm374-0001-common.dtsi"
+#include "tegra132-platforms/tegra132-norrin-powermon-pm374-0001-a00-00.dtsi"
+
+/ {
+	nvidia,boardids = "374:0001:00";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,proc-boardid = "374:0001:00";
+
+	i2c@7000d000 {
+		as3722@40 {
+			ams,major-rev = <1>;
+			ams,minor-rev = <1>;
+		};
+	};
+};

@@ -593,9 +593,51 @@ exit:
 	return count;
 }
 
+static int pinconf_pin_prop_show(struct seq_file *s, void *d)
+{
+	struct pinctrl_dev *pctldev = s->private;
+	const struct pinctrl_ops *pctlops = pctldev->desc->pctlops;
+	unsigned ngroups = pctlops->get_groups_count(pctldev);
+	struct dbg_cfg *dbg = &pinconf_dbg_conf;
+	unsigned selector = 0;
+	unsigned l;
+
+	while (selector < ngroups) {
+		const char *gname = pctlops->get_group_name(pctldev, selector);
+
+		l = strlen(gname);
+		if (strnicmp(gname, dbg->pin_name, l) == 0) {
+			seq_printf(s, "PinName: %s", dbg->pin_name);
+			seq_printf(s, "Pin Properties:");
+			pinconf_dump_group(pctldev, s, selector, gname);
+			seq_printf(s, "\n");
+			return 0;
+		}
+		selector++;
+	}
+
+	seq_printf(s, "Incorrect Pin Name!\n");
+	return 0;
+}
+
+static ssize_t pinconf_pin_prop_write(struct file *s,
+		const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct dbg_cfg *dbg = &pinconf_dbg_conf;
+
+	if (copy_from_user(dbg->pin_name, user_buf, sizeof(dbg->pin_name)))
+		return -EFAULT;
+	return count;
+}
+
 static int pinconf_dbg_config_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, pinconf_dbg_config_print, inode->i_private);
+}
+
+static int pinconf_pin_prop_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, pinconf_pin_prop_show, inode->i_private);
 }
 
 static const struct file_operations pinconf_dbg_pinconfig_fops = {
@@ -607,6 +649,14 @@ static const struct file_operations pinconf_dbg_pinconfig_fops = {
 	.owner = THIS_MODULE,
 };
 
+static const struct file_operations pinconf_get_pin_prop_fops = {
+	.open = pinconf_pin_prop_open,
+	.write = pinconf_pin_prop_write,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+	.owner = THIS_MODULE,
+};
 void pinconf_init_device_debugfs(struct dentry *devroot,
 			 struct pinctrl_dev *pctldev)
 {
@@ -616,6 +666,9 @@ void pinconf_init_device_debugfs(struct dentry *devroot,
 			    devroot, pctldev, &pinconf_groups_ops);
 	debugfs_create_file("pinconf-config",  (S_IRUGO | S_IWUSR | S_IWGRP),
 			    devroot, pctldev, &pinconf_dbg_pinconfig_fops);
+	debugfs_create_file("pinconf-pin-prop",  (S_IRUGO | S_IWUSR | S_IWGRP),
+				devroot, pctldev, &pinconf_get_pin_prop_fops);
+
 }
 
 #endif

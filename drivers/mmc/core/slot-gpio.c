@@ -33,6 +33,7 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 	struct mmc_host *host = dev_id;
 
 	host->trigger_card_event = true;
+	host->rem_card_present = (mmc_gpio_get_cd(host) == 0);
 	mmc_detect_change(host, msecs_to_jiffies(200));
 
 	return IRQ_HANDLED;
@@ -218,7 +219,7 @@ int mmc_gpio_request_cd(struct mmc_host *host, unsigned int gpio,
 			return ret;
 	}
 
-	ctx->override_cd_active_level = true;
+	ctx->override_cd_active_level = false;
 	ctx->cd_gpio = gpio_to_desc(gpio);
 
 	return 0;

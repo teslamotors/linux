@@ -1,0 +1,81 @@
+/*
+ * tegra186-soc-eqos.dtsi: Ethernet QOS DTSI file.
+ *
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+
+#define MAKE_EQOS_TRIP(name, temp, hyst) \
+	eqos_##name: eqos-##name@temp { \
+		temperature = <(temp)>; \
+		hysteresis = <hyst>; \
+		type = "active"; \
+	}
+
+#define MAP_EQOS(name, state) \
+	map_eqos_##name { \
+		trip = <&eqos_##name>; \
+		cooling-device = <&eqos_cool_dev state state>; \
+		cdev-type = "tegra-eqos"; \
+	}
+
+
+/ {
+        ether_qos@2490000 {
+                compatible = "nvidia,eqos";
+                reg = <0x0 0x02490000 0x0 0x10000        /* EQOS Base Register */
+		       0x0 0x02439000 0x0 0x00000074>;   /* PADS registers */
+		reg-names = "eqos_base", "eqos_pads";
+		interrupts = 	<0 194 0x4>,	/* common */
+				<0 195 0x4>,	/* power */
+				<0 190 0x4>,	/* rx0 */
+				<0 186 0x4>,	/* tx0 */
+				<0 191 0x4>,	/* rx1 */
+				<0 187 0x4>,	/* tx1 */
+				<0 192 0x4>,	/* rx2 */
+				<0 188 0x4>,	/* tx2 */
+				<0 193 0x4>,	/* rx3 */
+				<0 189 0x4>;	/* tx3 */
+		nvidia,csr_clock_speed = <0x19>; /* CSR clock speed 25MHz */
+		nvidia,iso_bw = <81920>; /* sum of read and write bw, 80Mb/s */
+		/* bootloader should update MAC address */
+		nvidia,local-mac-address = <0x00 0x00 0x00 0x00 0x00 0x00>;
+		clocks = <&tegra_car TEGRA186_CLK_EQOS_AXI>,
+			<&tegra_car TEGRA186_CLK_EQOS_RX>,
+			<&tegra_car TEGRA186_CLK_EQOS_PTP_REF>,
+			<&tegra_car TEGRA186_CLK_EQOS_TX>,
+			<&tegra_car TEGRA186_CLK_AXI_CBB>;
+		clock-names = "eqos_axi", "eqos_rx", "eqos_ptp_ref", "eqos_tx", "axi_cbb";
+		resets = <&tegra_car TEGRA186_RESET_EQOS>;
+		reset-names = "eqos_rst";
+		#stream-id-cells = <1>;
+		status = "disabled";
+		eqos_cool_dev: eqos-cool-dev {
+			cooling-min-state = <0>;
+			cooling-max-state = <5>;
+			#cooling-cells = <2>;
+		};
+        };
+
+        ether_qos_virt_test@2490000 {
+		compatible = "synopsys,dwc_eqos_virt_test";
+		reg = <0x0 0x02490000 0x0 0x10000
+			0x0 0x024a0000 0x0 0x10000>;
+		status = "disabled";
+        };
+
+};

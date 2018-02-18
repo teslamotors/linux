@@ -89,6 +89,15 @@ extern const u8 tuning_blk_pattern_8bit[MMC_TUNING_BLK_PATTERN_8BIT_SIZE];
 #define MMC_APP_CMD              55   /* ac   [31:16] RCA        R1  */
 #define MMC_GEN_CMD              56   /* adtc [0] RD/WR          R1  */
 
+  /* class 11 */
+#define MMC_QUEUED_TASK_PARAMS   44   /* ac   [31:0] data addr   R1  */
+#define MMC_QUEUED_TASK_ADDRESS  45   /* ac   [31:0] data addr   R1  */
+#define MMC_EXECUTE_READ_TASK    46   /* adtc [31:0] data addr   R1  */
+#define MMC_EXECUTE_WRITE_TASK   47   /* adtc [31:0] data addr   R1  */
+#define MMC_CMDQ_TASK_MGMT       48   /* ac                      R1b */
+/* Flushing a large amount of cached data may take a long time. */
+#define MMC_FLUSH_REQ_TIMEOUT_MS 90000 /* msec */
+
 static inline bool mmc_op_multi(u32 opcode)
 {
 	return opcode == MMC_WRITE_MULTIPLE_BLOCK ||
@@ -113,11 +122,11 @@ static inline bool mmc_op_multi(u32 opcode)
 	s : status bit
 	r : detected and set for the actual command response
 	x : detected and set during command execution. the host must poll
-            the card by sending status command in order to read these bits.
-  Clear condition
+		the card by sending status command in order to read these bits.
+	Clear condition
 	a : according to the card state
 	b : always related to the previous command. Reception of
-            a valid command will clear it (with a delay of one command)
+		a valid command will clear it (with a delay of one command)
 	c : clear by read
  */
 
@@ -142,6 +151,9 @@ static inline bool mmc_op_multi(u32 opcode)
 #define R1_ERASE_RESET		(1 << 13)	/* sr, c */
 #define R1_STATUS(x)            (x & 0xFFFFE000)
 #define R1_CURRENT_STATE(x)	((x & 0x00001E00) >> 9)	/* sx, b (4 bits) */
+#ifdef CONFIG_GC_SEPERATE
+#define R1_GC_STATE(x)		((x & 0x00000010) >> 4)	/* GC check bit  */
+#endif
 #define R1_READY_FOR_DATA	(1 << 8)	/* sx, a */
 #define R1_SWITCH_ERROR		(1 << 7)	/* sx, c */
 #define R1_EXCEPTION_EVENT	(1 << 6)	/* sr, a */
@@ -276,7 +288,10 @@ struct _mmc_csd {
 /*
  * EXT_CSD fields
  */
-
+#define EXT_CSD_CMDQ_MODE_EN		15	/* R/W */
+#define EXT_CSD_FFU_STATUS		26	/* R */
+#define EXT_CSD_MODE_OPERATION_CODES	29	/* W */
+#define EXT_CSD_MODE_CONFIG		30	/* R/W */
 #define EXT_CSD_FLUSH_CACHE		32      /* W */
 #define EXT_CSD_CACHE_CTRL		33      /* R/W */
 #define EXT_CSD_POWER_OFF_NOTIFICATION	34	/* R/W */
@@ -285,6 +300,8 @@ struct _mmc_csd {
 #define EXT_CSD_EXP_EVENTS_STATUS	54	/* RO, 2 bytes */
 #define EXT_CSD_EXP_EVENTS_CTRL		56	/* R/W, 2 bytes */
 #define EXT_CSD_DATA_SECTOR_SIZE	61	/* R */
+#define EXT_CSD_QRDY_SUPPORT		96	/* RO */
+#define EXT_CSD_CMDQ_QRDY_FUNCTION	97	/* R/W */
 #define EXT_CSD_GP_SIZE_MULT		143	/* R/W */
 #define EXT_CSD_PARTITION_SETTING_COMPLETED 155	/* R/W */
 #define EXT_CSD_PARTITION_ATTRIBUTE	156	/* R/W */
@@ -296,11 +313,13 @@ struct _mmc_csd {
 #define EXT_CSD_SANITIZE_START		165     /* W */
 #define EXT_CSD_WR_REL_PARAM		166	/* RO */
 #define EXT_CSD_RPMB_MULT		168	/* RO */
+#define EXT_CSD_FW_CONFIG		169	/* R/W */
 #define EXT_CSD_BOOT_WP			173	/* R/W */
 #define EXT_CSD_ERASE_GROUP_DEF		175	/* R/W */
 #define EXT_CSD_PART_CONFIG		179	/* R/W */
 #define EXT_CSD_ERASED_MEM_CONT		181	/* RO */
 #define EXT_CSD_BUS_WIDTH		183	/* R/W */
+#define EXT_CSD_STROBE_SUPPORT		184	/* RO */
 #define EXT_CSD_HS_TIMING		185	/* R/W */
 #define EXT_CSD_POWER_CLASS		187	/* R/W */
 #define EXT_CSD_REV			192	/* RO */
@@ -332,6 +351,16 @@ struct _mmc_csd {
 #define EXT_CSD_GENERIC_CMD6_TIME	248	/* RO */
 #define EXT_CSD_CACHE_SIZE		249	/* RO, 4 bytes */
 #define EXT_CSD_PWR_CL_DDR_200_360	253	/* RO */
+#define EXT_CSD_CMDQ_DEPTH		307	/* RO */
+#define EXT_CSD_CMDQ_SUPPORT		308	/* RO */
+#define EXT_CSD_PRE_EOL_INFO		267	/* RO */
+#define EXT_CSD_DEVICE_LIFE_EST_TYP_A	268	/* RO */
+#define EXT_CSD_DEVICE_LIFE_EST_TYP_B	269	/* RO */
+#define EXT_CSD_NUM_OF_FW_SEC_PROG     302     /* RO */
+#define EXT_CSD_FFU_ARG			487     /* RO, 4 bytes */
+#define EXT_CSD_OPERATION_CODE_TIMEOUT	491     /* RO */
+#define EXT_CSD_FFU_FEATURES		492     /* RO */
+#define EXT_CSD_SUPPORTED_MODE		493     /* RO */
 #define EXT_CSD_TAG_UNIT_SIZE		498	/* RO */
 #define EXT_CSD_DATA_TAG_SUPPORT	499	/* RO */
 #define EXT_CSD_MAX_PACKED_WRITES	500	/* RO */
@@ -362,6 +391,7 @@ struct _mmc_csd {
 #define EXT_CSD_CMD_SET_SECURE		(1<<1)
 #define EXT_CSD_CMD_SET_CPSECURE	(1<<2)
 
+#define EXT_CSD_CARD_TYPE_MASK	0xFF	/* Mask out reserved bits */
 #define EXT_CSD_CARD_TYPE_HS_26	(1<<0)	/* Card can run at 26MHz */
 #define EXT_CSD_CARD_TYPE_HS_52	(1<<1)	/* Card can run at 52MHz */
 #define EXT_CSD_CARD_TYPE_HS	(EXT_CSD_CARD_TYPE_HS_26 | \
@@ -387,6 +417,7 @@ struct _mmc_csd {
 #define EXT_CSD_BUS_WIDTH_8	2	/* Card is in 8 bit mode */
 #define EXT_CSD_DDR_BUS_WIDTH_4	5	/* Card is in 4 bit DDR mode */
 #define EXT_CSD_DDR_BUS_WIDTH_8	6	/* Card is in 8 bit DDR mode */
+#define EXT_CSD_STROBE_MODE	0x86	/* Card is in Enhanced Strobe mode */
 
 #define EXT_CSD_TIMING_BC	0	/* Backwards compatility */
 #define EXT_CSD_TIMING_HS	1	/* High speed */

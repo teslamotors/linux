@@ -1,0 +1,78 @@
+* Tegra Hypervisor manager (tegra_hv)
+
+Required properties:
+- compatible: Should be "nvidia,tegra-hv".
+
+Optional properties:
+- server-to-peers: Array of guest IDs of the peers this guest is server to.
+Note that if you use loopbacks at least your guest ID should be included.
+
+Required sub-node:
+- queues: configuration about this guest
+
+  Required properties:
+  - #address-cells: Should be <1>
+  - #size-cells: Should be <0>
+
+  Any other sub-nodes contain each ivc channel configuration; Properties
+  required are:
+    - reg: ID of the channel (single cell address)
+    - peers: Tupple of guest IDs this channel pertains to. If none of them is
+    the running guest's ID, then the ivc channel entry is ignored.
+    - nframes: Number of queue entries
+    - frame-size: Size of each frame in bytes. Note that it's good practice to
+    keep this aligned to 16.
+
+Example:
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+
+		server-to-peers = <0 1>;
+
+		queues {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* guest 0 <-> guest 1 (frame based) */
+			ivc0 {
+				reg = <0>;
+				peers = <0 1>;
+				nframes = <2>;
+				frame-size = <50>;
+			};
+
+			/* guest 0 <-> guest 1 (comm) */
+			ivc1 {
+				reg = <1>;
+				peers = <0 1>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+			/* guest 0 <-> guest 1 (net) */
+			ivc2 {
+				reg = <2>;
+				peers = <0 1>;
+				nframes = <32>;
+				frame-size = <1536>;
+			};
+
+			/* guest 0 <-> guest 0 (loop) */
+			ivc5 {
+				reg = <5>;
+				peers = <0 0>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+			/* guest 0 <-> guest 0 (loop) */
+			ivc6 {
+				reg = <6>;
+				peers = <0 0>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+		};
+	};

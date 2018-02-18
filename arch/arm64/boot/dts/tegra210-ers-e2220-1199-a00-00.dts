@@ -1,0 +1,55 @@
+/*
+ * arch/arm64/boot/dts/tegra210-ers-e2220-1199-a00-00.dts
+ *
+ * Copyright (c) 20155555, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra210-ers-e2220-1170-a00-00-common.dts"
+#include "tegra210-platforms/tegra210-ers-1199-emc.dtsi"
+
+/ {
+	chosen {
+		nvidia,tegra-shield-sku;
+        };
+
+	sdhci@700b0200 {
+		nvidia,is-ddr-tap-delay;
+		nvidia,ddr-tap-delay = <0>;
+		dqs-trim-delay = <40>;
+		dqs-trim-delay-hs533 = <24>;
+		max-clk-limit = <266000000>;
+		bus-width = <8>;
+		uhs-mask = <0x60>;
+		built-in;
+		vddio_sdmmc-supply = <&max77620_sd3>;
+		vddio_sd_slot-supply = <&vdd_3v3>;
+		nvidia,dll-calib-needed;
+		nvidia,is-emmc;
+	};
+	i2c@7000c000 {
+		pca9546@71 {
+			i2c@3 {
+				gpio@76 {
+					pcie-mux {
+						gpio-output-low = <12 14 15>;
+						gpio-output-high = <5 6 11 13>;
+					};
+				};
+			};
+		};
+	};
+};

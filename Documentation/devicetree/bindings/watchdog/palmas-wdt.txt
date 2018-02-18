@@ -1,0 +1,27 @@
+Palmas Watchdog Timer.
+
+Palmas watchdog timer support driver for configuring the watchdog inside
+the Palmas series PMICs.
+
+Required properties:
+-compatible: Must be "ti,palmas-wdt" or "ti,palmas-watchdog".
+
+Optional properties:
+-ti,watchdog-init-timeout: Watchdog initial time period if it need
+	to be start during system initialisation without user space.
+-ti,watchdog-interrupt-mode: bool, Watchdog timer support two modes, Periodic
+	and interrupt mode. Enable interrupt mode with this property. Absence
+	of this property will set to periodic mode.
+
+This node should be under the Palmas main node.
+
+Example:
+	palmas@58 {
+		::::
+		watchdog {
+			compatible = "ti,palmas-watchdog";
+			ti,watchdog-init-timeout = <64>;
+			ti,watchdog-interrupt-mode;
+		};
+		::::
+	};

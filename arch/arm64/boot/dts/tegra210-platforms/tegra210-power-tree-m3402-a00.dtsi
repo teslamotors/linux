@@ -1,0 +1,167 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-platforms/tegra210-pmic-m3402-a00.dtsi"
+
+/ {
+
+	efuse@7000f800 {
+		vpp_fuse-supply = <&max20024_sd3>;
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_hdmi-supply = <&max20024_ldo7>;
+			avdd_hdmi_pll-supply = <&max20024_sd2>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+			avdd_lcd-supply = <&vdd_disp_3v0>;	/* FIXME */
+			dvdd_lcd-supply = <&max20024_sd2>;	/* 1v8 */
+			vdd_lcd_bl_en-supply = <&lcd_bl_en>;	/* FIXME */
+			vdd_ds_1v8-supply = <&vdd_dummy>;
+			vdd_lcd_bl-supply = <&vdd_dummy>;
+	};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&max20024_ldo7>;
+			avdd_hdmi_pll-supply = <&max20024_sd2>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+			avdd_lcd-supply = <&vdd_disp_3v0>;
+			dvdd_lcd-supply = <&max20024_sd2>;
+			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
+			/* dp */
+			vdd-dp-pwr-supply = <&vdd_dummy>;
+			avdd-dp-pll-supply = <&vdd_dummy>;
+			vdd-edp-sec-mode-supply = <&vdd_dummy>;
+			vdd-dp-pad-supply = <&vdd_dummy>;
+		};
+
+		vi {
+		};
+	};
+
+	sound {
+		/* FIXME */
+		ldoen-supply = <&vdd_sys_boost>;
+		spkvdd-supply = <&vdd_sys_boost>;
+		dbvdd-supply = <&vdd_sys_boost>;
+		dmicvdd-supply = <&max20024_sd3>;
+	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&max20024_sd3>;
+		avdd_pll_utmip-supply = <&max20024_sd2>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	xusb@70090000 {
+		usb_vbus0-supply = <&battery_reg>;
+		usb_vbus1-supply = <&usb_vbus1>;
+		usb_vbus2-supply = <&usb_vbus2>;
+		usb_vbus3-supply = <&usb_vbus3>;
+		hvdd_usb-supply = <&max20024_sd3>;    /* 3v3 rail */
+		avdd_pll_utmip-supply = <&max20024_sd2>;  /* 1v8 rail */
+		avddio_usb-supply = <&max20024_ldo7>;    /* 1v05 rail */
+		dvdd_sata-supply = <&max20024_ldo7>;
+		avddio_pll_uerefe-supply = <&max20024_ldo7>;
+	};
+
+	xudc@700d0000 {
+		usb_vbus0-supply = <&battery_reg>;
+		hvdd_usb-supply = <&max20024_sd3>;
+		avdd_pll_utmip-supply = <&max20024_sd2>;
+		avddio_usb-supply = <&max20024_ldo7>;
+		avddio_pll_uerefe-supply = <&max20024_ldo7>;
+	};
+
+	otg@7d000000 {
+		usb_vbus-supply = <&battery_reg>;
+	};
+
+	sata@70020000 {
+		hvdd_sata-supply = <&max20024_sd2>;
+		hvdd_pex_pll_e-supply = <&max20024_sd2>;
+		l0_hvddio_sata-supply = <&max20024_sd2>;
+		l0_dvddio_sata-supply = <&max20024_ldo7>;
+		dvdd_sata_pll-supply = <&max20024_ldo7>;
+	};
+
+	bluedroid_pm {
+		/* FIXME */
+		avdd-supply = <&battery_reg>;
+		dvdd-supply = <&max20024_sd3>;
+	};
+
+	pcie-controller {
+		dvdd-pex-pll-supply = <&max20024_ldo7>;
+		l0-dvddio-pex-supply = <&max20024_ldo7>;
+		l1-dvddio-pex-supply = <&max20024_ldo7>;
+		l2-dvddio-pex-supply = <&max20024_ldo7>;
+		l3-dvddio-pex-supply = <&max20024_ldo7>;
+		l4-dvddio-pex-supply = <&max20024_ldo7>;
+		l5-dvddio-pex-supply = <&max20024_ldo7>;
+		l6-dvddio-pex-supply = <&max20024_ldo7>;
+		hvdd-pex-pll-e-supply = <&max20024_sd2>;
+		l0-hvddio-pex-supply = <&max20024_sd2>;
+		l1-hvddio-pex-supply = <&max20024_sd2>;
+		l2-hvddio-pex-supply = <&max20024_sd2>;
+		l3-hvddio-pex-supply = <&max20024_sd2>;
+		l4-hvddio-pex-supply = <&max20024_sd2>;
+		l5-hvddio-pex-supply = <&max20024_sd2>;
+		l6-hvddio-pex-supply = <&max20024_sd2>;
+		vddio-pex-ctl-supply = <&max20024_sd2>;
+	};
+
+	ahub {    /* FIXME */
+		i2s@702d1000 {
+			regulator-supplies = "vdd-1v8-audio-hv",
+					"vdd-1v8-audio-hv-bias";
+			vdd-1v8-audio-hv-supply = <&max20024_sd2>;
+			vdd-1v8-audio-hv-bias-supply = <&max20024_sd2>;
+		};
+
+		i2s@702d1100 {
+			regulator-supplies = "vdd-1v8-spi-hv",
+					"vdd-1v8-spi-hv-bias";
+			vdd-1v8-spi-hv-supply = <&max20024_sd2>;
+			vdd-1v8-spi-hv-bias-supply = <&max20024_sd2>;
+		};
+
+		i2s@702d1300 {
+			regulator-supplies = "vddio-dmic";
+			vddio-dmic-supply = <&max20024_sd3>;
+		};
+	};
+
+	ehci@7d004000 {
+		avdd_usb-supply = <&max20024_sd3>;
+		avdd_pll_utmip-supply = <&max20024_sd2>;
+		/* FIXME: this is not used by M3402 */
+		vddio_hsic-supply = <&max20024_sd1>;
+	};
+
+	tegra-supply-tests {
+		/* FIXME */
+		vdd-core-supply=<&max20024_sd1>;
+	};
+
+	spi@7000da00 {    /* FIXME */
+		spi-touch@0 {
+			avdd-supply = <&max20024_sd3>;
+			dvdd-supply = <&max20024_sd2>;
+		};
+	};
+};

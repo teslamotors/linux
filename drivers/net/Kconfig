@@ -360,4 +360,20 @@ config VMXNET3
 
 source "drivers/net/hyperv/Kconfig"
 
+config MHI_NETDEV
+           bool "MHI net device"
+	   depends on USB_NET
+           default y if MHI
+           help
+            This is the net device manadatory used by MHI stack
+
+config TEGRA_HV_NET
+	tristate "Tegra Hypervisor Network"
+	depends on TEGRA_HV_MANAGER
+	help
+	  Add support for emulating a network device on tegra hypervisor systems.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tegra_hv_net.
+
 endif # NETDEVICES

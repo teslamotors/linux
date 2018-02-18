@@ -1,0 +1,54 @@
+Tegra GPU EDP Management
+
+Any technique for constraining peak current (or power) consumption of
+a power rail constitutes EDP management. An EDP management technique
+is "dynamic" if its operation depends on parameters which vary at runtime.
+
+This document describes a binding for configuring the dynamic EDP
+management algorithm commonly used to manage EDP on the VDD_GPU rail
+of Tegra devices.
+
+The algorithm dynamically limits GPU frequency as a function of
+temperature. It computes the maximum allowable frequency using
+- the GPU's voltage/frequency curve (queried at runtime)
+- the VDD_GPU leakage (queried at runtime)
+- a GPU power model (expressed according to nvidia,tegra-ppm.txt)
+
+Required properties:
+- compatible: the value "nvidia,tegra124-gpu-edp-capping"
+- nvidia,edp_limit: the EDP limit expressed in mA
+- nvidia,edp_clk: a string or phandle idenitfying the clock whose
+    voltage/frequency curve needs to be queried
+- nvidia,freq_step: the granularity in kHz of allowable clock frequencies
+- nvidia,edp_cap_clk: a string or phandle identifying the
+    clock that the algorithm should use to cap edp_clk frequency
+- the many required properties from binding nvidia,tegra-ppm.txt
+
+Example:
+	gpu_edp {
+		compatible = "nvidia,tegra124-gpu-edp-capping";
+		nvidia,freq_step = <12000000>;
+		nvidia,edp_clk = "gbus";
+		nvidia,edp_cap_clk = "edp.gbus";
+		nvidia,tegra-ppm-cdyn = <10646000>;
+		nvidia,tegra-ppm-min_leakage = <30>;
+		nvidia,tegra-ppm-leakage_coeffs = <
+			(  -208796792) (   37746202) (  -9648869) (   725660)
+			(   704446675) ( -133808535) (  34470023) ( -2464142)
+			(  -783701649) (  146557393) ( -38623024) (  2654269)
+			(   292709580) (  -51246839) (  13984499) (  -934964)
+			(   115095343) (  -65602614) (  11251896) (  -838394)
+			(  -394753929) (  263095142) ( -49006854) (  3326269)
+			(   441644020) ( -313320338) (  61612126) ( -3916786)
+			(  -164021554) (  118634317) ( -24406245) (  1517573)
+			(   -38857760) (   12243796) (  -1964159) (   181232)
+			(   143265078) (  -71110695) (  13985680) (  -917947)
+			(  -171456530) (   98906114) ( -21261015) (  1216159)
+			(    67437536) (  -40520060) (   9265259) (  -484818)
+			(     1795940) (    -345535) (     83004) (   -20007)
+			(    -8549105) (    6333235) (  -1479815) (   115441)
+			(    12192546) (  -10880741) (   2632212) (  -161404)
+			(    -5328587) (    4953756) (  -1215038) (    64556)
+			>;
+		nvidia,edp_limit = <11200>;
+	};

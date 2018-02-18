@@ -1,0 +1,201 @@
+/*
+ * tegra186-sunstreaker-e3340-1080-a00-00-base.dts Sunstreaker-CHAR A00 Board
+ *
+ * Copyright (c) 2015-2016 NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-sunstreaker-common-e3340-0000-a00.dtsi"
+#include "tegra186-platforms/tegra186-sunstreaker-char-power-tree-e3340-1080-a00-00.dtsi"
+#include "tegra186-platforms/tegra186-sunstreaker-char-e3340-a00-disp.dsti"
+#include "tegra186-plugin-manager/tegra186-sunstreaker-e3340-0000-a00-plugin-manager.dtsi"
+#include "tegra186-prod/tegra186-priv-sunstreaker-char-e3340-1080-a00-prod.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "3340:1080:A0";
+	nvidia,proc-boardid = "3340:1080:A0";
+
+	chosen {
+		board-has-eeprom;
+		bootargs ="console=ttyS0,115200";
+		stdout-path = &uarta;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "sunstreaker";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	spi@3270000 {/* QSPI NOR */
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <1>;
+			spi-max-frequency = <136000000>;
+			controller-data {
+					nvidia,x1-len-limit = <16>;
+					nvidia,x1-bus-speed = <136000000>; /* In Mhz */
+					nvidia,x1-dymmy-cycle = <0>;
+					nvidia,x4-bus-speed = <136000000>;
+					nvidia,x4-dymmy-cycle = <8>;
+					nvidia,ifddr-div2-sdr = <1>;
+					nvidia,x4-is-ddr=<1>;
+			};
+		};
+
+		spiflash@1 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "s25fs512s";
+			reg = <0>;
+			spi-max-frequency = <136000000>;
+			partition@0 {
+				label = "Whole_flash";
+				reg = <0x00000000 0x4000000>;
+			};
+			controller-data {
+				nvidia,x1-len-limit = <16>;
+				nvidia,x1-bus-speed = <136000000>; /* In Mhz */
+				nvidia,x1-dymmy-cycle = <8>;
+				nvidia,x4-bus-speed = <136000000>;
+				nvidia,x4-dymmy-cycle = <8>;
+				nvidia,ifddr-div2-sdr = <1>;
+				nvidia,x4-is-ddr=<1>;
+			};
+		};
+	};
+
+
+	xudc@3550000 {
+		status = "okay";
+		phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(1)>;
+		phy-names = "usb2", "usb3";
+	};
+
+	xhci@3530000 {
+		status = "okay";
+		phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(1)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(2)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(1)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(2)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_HSIC_P(0)>;
+		phy-names = "utmi-0", "utmi-1", "utmi-2", "usb3-1","usb3-0",
+			"usb3-2", "hsic-0";
+	};
+
+	pinctrl@3520000 {
+		status = "okay";
+		pinctrl-0 = <&sunstreak_default>;
+		pinctrl-names = "default";
+		sunstreak_default: pinmux {
+			usb2-std-A-port0 {
+				nvidia,lanes = "otg-1";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port0 {
+				nvidia,lanes = "usb3-0";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb2-micro-AB {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb3-micro-AB {
+				nvidia,lanes = "usb3-1";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb2-std-A-port2 {
+				nvidia,lanes = "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port2 {
+				nvidia,lanes = "usb3-2";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			hsic {
+				nvidia,lanes = "hsic-0";
+				nvidia,function = "hsic";
+			};
+		};
+	};
+	pcie-controller@10003000 {
+		nvidia,lane-map = <0x211>;
+		status = "okay";
+		pci@1,0 {
+			status = "okay";
+		};
+		pci@2,0 {
+			status = "okay";
+		};
+		pci@3,0 {
+			status = "okay";
+		};
+	};
+
+	i2c@3160000 {
+		gpio@22 {
+			disable-sdcard1-power-enable {
+				gpio-input = <6>;
+			};
+		};
+	};
+
+	fixed-regulators {
+		regulator@110 {
+			status = "disabled";
+		};
+
+		regulator@111 {
+			status = "disabled";
+		};
+	};
+
+	pwm@3280000 {
+		status = "okay";
+	};
+
+	pwm@32a0000 {
+		status = "okay";
+	};
+
+	pwm@c340000 {
+		status = "okay";
+	};
+
+	tegra-hsp@3c00000 {
+		status = "okay";
+	};
+
+	tegra-hsp@b150000 {
+		status = "okay";
+	};
+	rtcpu@b000000 {
+		status = "okay";
+	};
+	cpuidle {
+		compatible = "nvidia,tegra18x-cpuidle";
+		status = "okay";
+	};
+};

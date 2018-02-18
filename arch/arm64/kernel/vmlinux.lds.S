@@ -8,6 +8,7 @@
 #include <asm/thread_info.h>
 #include <asm/memory.h>
 #include <asm/page.h>
+#include <asm/pgtable.h>
 
 #include "image.h"
 
@@ -32,6 +33,17 @@ jiffies = jiffies_64;
 	*(.hyp.text)					\
 	VMLINUX_SYMBOL(__hyp_text_end) = .;
 
+#ifdef CONFIG_DEBUG_ALIGN_RODATA
+#define ALIGN_DEBUG_RO			. = ALIGN(1<<SECTION_SHIFT);
+#define ALIGN_DEBUG_RO_MIN(min)		ALIGN_DEBUG_RO
+#elif defined(CONFIG_DEBUG_RODATA)
+#define ALIGN_DEBUG_RO			. = ALIGN(1<<PAGE_SHIFT);
+#define ALIGN_DEBUG_RO_MIN(min)		ALIGN_DEBUG_RO
+#else
+#define ALIGN_DEBUG_RO
+#define ALIGN_DEBUG_RO_MIN(min)		. = ALIGN(min);
+#endif
+
 SECTIONS
 {
 	/*
@@ -48,12 +60,13 @@ SECTIONS
 		*(.discard.*)
 	}
 
-	. = PAGE_OFFSET + TEXT_OFFSET;
+	. = PAGE_OFFSET_LD + TEXT_OFFSET;
 
 	.head.text : {
 		_text = .;
 		HEAD_TEXT
 	}
+	ALIGN_DEBUG_RO
 	.text : {			/* Real text segment		*/
 		_stext = .;		/* Text and read-only data	*/
 			__exception_text_start = .;
@@ -70,19 +83,26 @@ SECTIONS
 		*(.got)			/* Global offset table		*/
 	}
 
+	ALIGN_DEBUG_RO
 	RO_DATA(PAGE_SIZE)
 	EXCEPTION_TABLE(8)
 	NOTES
+	ALIGN_DEBUG_RO
 	_etext = .;			/* End of text and rodata section */
 
-	. = ALIGN(PAGE_SIZE);
+	ALIGN_DEBUG_RO_MIN(PAGE_SIZE)
 	__init_begin = .;
 
 	INIT_TEXT_SECTION(8)
 	.exit.text : {
 		ARM_EXIT_KEEP(EXIT_TEXT)
 	}
-	. = ALIGN(16);
+	.init.arch.info : {
+		__arch_info_begin = .;
+		*(.arch.info.init)
+		__arch_info_end = .;
+	}
+	ALIGN_DEBUG_RO_MIN(16)
 	.init.data : {
 		INIT_DATA
 		INIT_SETUP(16)
@@ -140,4 +160,4 @@ ASSERT(((__hyp_idmap_text_start + PAGE_SIZE) > __hyp_idmap_text_end),
 /*
  * If padding is applied before .head.text, virt<->phys conversions will fail.
  */
-ASSERT(_text == (PAGE_OFFSET + TEXT_OFFSET), "HEAD is misaligned")
+ASSERT(_text == (PAGE_OFFSET_LD + TEXT_OFFSET), "HEAD is misaligned")

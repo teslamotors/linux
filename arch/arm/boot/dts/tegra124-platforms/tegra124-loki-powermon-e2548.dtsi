@@ -1,0 +1,86 @@
+/ {
+	i2c@7000c400 {
+		ina3221x@40 {
+			compatible = "ti,ina3221x";
+			reg = <0x40>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7607>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_CPU";
+				ti,shunt-resistor-mohm = <5>;
+			};
+
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_BAT";
+				ti,shunt-resistor-mohm = <5>;
+				ti,current-critical-limit-ma = <6800>;
+			};
+
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_VBUS";
+				ti,shunt-resistor-mohm = <20>;
+			};
+		};
+
+		ina3221x@41 {
+			compatible = "ti,ina3221x";
+			reg = <0x41>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7607>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_DDR";
+				ti,shunt-resistor-mohm = <30>;
+			};
+
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_SOC";
+				ti,shunt-resistor-mohm = <30>;
+			};
+
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_GPU";
+				ti,shunt-resistor-mohm = <10>;
+			};
+		};
+
+		ina3221x@42 {
+			compatible = "ti,ina3221x";
+			reg = <0x42>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7607>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_3V3_SYS";
+				ti,shunt-resistor-mohm = <30>;
+			};
+
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_EMMC";
+				ti,shunt-resistor-mohm = <30>;
+			};
+
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_MDM";
+				ti,shunt-resistor-mohm = <20>;
+			};
+		};
+
+	};
+};

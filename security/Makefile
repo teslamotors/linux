@@ -9,6 +9,10 @@ subdir-$(CONFIG_SECURITY_TOMOYO)        += tomoyo
 subdir-$(CONFIG_SECURITY_APPARMOR)	+= apparmor
 subdir-$(CONFIG_SECURITY_YAMA)		+= yama
 
+ifneq ($(filter y,$(CONFIG_TRUSTED_LITTLE_KERNEL) $(CONFIG_OTE_TRUSTY)),)
+subdir-y				+= tlk_driver
+endif
+
 # always enable default capabilities
 obj-y					+= commoncap.o
 obj-$(CONFIG_MMU)			+= min_addr.o
@@ -23,6 +27,10 @@ obj-$(CONFIG_SECURITY_TOMOYO)		+= tomoyo/
 obj-$(CONFIG_SECURITY_APPARMOR)		+= apparmor/
 obj-$(CONFIG_SECURITY_YAMA)		+= yama/
 obj-$(CONFIG_CGROUP_DEVICE)		+= device_cgroup.o
+
+ifneq ($(filter y,$(CONFIG_TRUSTED_LITTLE_KERNEL) $(CONFIG_OTE_TRUSTY)),)
+obj-y					+= tlk_driver/built-in.o
+endif
 
 # Object integrity file lists
 subdir-$(CONFIG_INTEGRITY)		+= integrity

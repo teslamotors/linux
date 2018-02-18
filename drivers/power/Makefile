@@ -1,10 +1,14 @@
+GCOV_PROFILE := y
+
 ccflags-$(CONFIG_POWER_SUPPLY_DEBUG) := -DDEBUG
+subdir-ccflags-y += -Werror
 
 power_supply-y				:= power_supply_core.o
 power_supply-$(CONFIG_SYSFS)		+= power_supply_sysfs.o
 power_supply-$(CONFIG_LEDS_TRIGGERS)	+= power_supply_leds.o
 
 obj-$(CONFIG_POWER_SUPPLY)	+= power_supply.o
+obj-$(CONFIG_POWER_SUPPLY_EXTCON)	+= power_supply_extcon.o
 obj-$(CONFIG_GENERIC_ADC_BATTERY)	+= generic-adc-battery.o
 
 obj-$(CONFIG_PDA_POWER)		+= pda_power.o
@@ -28,11 +32,23 @@ obj-$(CONFIG_BATTERY_COLLIE)	+= collie_battery.o
 obj-$(CONFIG_BATTERY_IPAQ_MICRO) += ipaq_micro_battery.o
 obj-$(CONFIG_BATTERY_WM97XX)	+= wm97xx_battery.o
 obj-$(CONFIG_BATTERY_SBS)	+= sbs-battery.o
+obj-$(CONFIG_BATTERY_LC709203F)	+= lc709203f_battery.o
+obj-$(CONFIG_CHARGER_BQ2419X)   += bq2419x-charger.o bq2419x-charger-st8.o
+obj-$(CONFIG_CHARGER_BQ2471X)	+= bq2471x-charger.o
+obj-$(CONFIG_CHARGER_BQ2477X)	+= bq2477x-charger.o
 obj-$(CONFIG_BATTERY_BQ27x00)	+= bq27x00_battery.o
+obj-$(CONFIG_CHARGER_TPS8003X)	+= tps80031-charger.o
+obj-$(CONFIG_CHARGER_PALMAS)	+= palmas-charger.o
+obj-$(CONFIG_BATTERY_GAUGE_TPS8003X) += tps80031_battery_gauge.o
+obj-$(CONFIG_CHARGER_SMB349)	+= smb349-charger.o
+obj-$(CONFIG_CHARGER_MAX77665)	+= max77665-charger.o
 obj-$(CONFIG_BATTERY_DA9030)	+= da9030_battery.o
 obj-$(CONFIG_BATTERY_DA9052)	+= da9052-battery.o
 obj-$(CONFIG_BATTERY_MAX17040)	+= max17040_battery.o
 obj-$(CONFIG_BATTERY_MAX17042)	+= max17042_battery.o
+obj-$(CONFIG_BATTERY_MAX17048)	+= max17048_battery.o
+obj-$(CONFIG_BATTERY_BQ27441)	+= bq27441_battery.o
+obj-$(CONFIG_BATTERY_PALMAS)	+= palmas_battery.o
 obj-$(CONFIG_BATTERY_Z2)	+= z2_battery.o
 obj-$(CONFIG_BATTERY_S3C_ADC)	+= s3c_adc_battery.o
 obj-$(CONFIG_BATTERY_TWL4030_MADC)	+= twl4030_madc_battery.o
@@ -59,3 +75,9 @@ obj-$(CONFIG_POWER_AVS)		+= avs/
 obj-$(CONFIG_CHARGER_SMB347)	+= smb347-charger.o
 obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
 obj-$(CONFIG_POWER_RESET)	+= reset/
+obj-$(CONFIG_MAX8907C_CHARGER)	+= max8907c-charger.o
+obj-$(CONFIG_CHARGER_EXTCON_MAX77660)	+= max77660-charger-extcon.o
+CFLAGS_tegra_bpc_mgmt.o		= -Werror
+obj-$(CONFIG_TEGRA_BPC_MGMT)	+= tegra_bpc_mgmt.o
+obj-$(CONFIG_BATTERY_CHARGER_GAUGE_COMM) += battery-charger-gauge-comm.o
+obj-$(CONFIG_BATTERY_CW201X)	+= cw201x_battery.o

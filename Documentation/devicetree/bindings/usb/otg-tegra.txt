@@ -1,0 +1,42 @@
+* Nvidia USB tegra otg controller
+
+This file documents the properties used by the tegra-otg driver.
+
+Required properties:
+- compatible: Should be similar to "nvidia,tegra132-otg"
+- reg: Specify start address and registers count details
+- interrupts: Specify the interrupts IRQ info for device
+
+Optional properties:
+- nvidia,turn-off-vbus-in-lp0: Specify whether vbus should be powered power during LP0.
+- nvidia,enable-y-cable-detection: Enables y-cable detection.
+- nvidia,enable-aca-nv-charger-detection: Enables aca-nv-charger detection.
+- nvidia,enable-aca-rid-detection: Enables ACA ID resistances detection.
+- nvidia,enable-pmu-vbus-detection: Enables vbus detection through PMU.
+- nvidia,id-detection-type: Specify how usb id detection type on the platform.
+    0 - if detection is through USB controller
+    1 - if detection is through PMU extcon
+    2 - if enable through sysfs interface.
+- nvidia,enable-host-peripheral-transitions: Enables host to peripheral transitions
+  and vice versa
+- nvidia,enable-xhci-host: Specify whether this port is taken by XUSB.
+- extcon-cables: Specify the phandles and index of different extcon needed.
+- extcon-cable-names: Specify the cable names needed from extcon.
+- usb_vbus-supply: Specify the phandle to the vbus regulator device tree node.
+- usb_bat_chg-supply: Specify the phandle of corresponding current regulator device tree node.
+
+Example:
+        otg@0x7d000000 {
+                compatible = "nvidia,tegra132-otg";
+                reg = <0x0 0x7d000000 0x0 0x4000>;
+                interrupts = <0 20 0x04>;
+
+                nvidia,enable-y-cable-detection;
+                nvidia,enable-pmu-vbus-detection;
+                nvidia,id-detection-type = <1>;
+                extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
+                extcon-cable-names = "vbus", "id";
+                #extcon-cells = <1>;
+                usb_vbus-supply = <&usb0_vbus>;
+                status = "okay";
+        };

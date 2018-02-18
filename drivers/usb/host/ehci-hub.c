@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2001-2004 by David Brownell
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -223,7 +224,7 @@ static void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 	spin_unlock_irq(&ehci->lock);
 }
 
-static int ehci_bus_suspend (struct usb_hcd *hcd)
+int ehci_bus_suspend (struct usb_hcd *hcd)
 {
 	struct ehci_hcd		*ehci = hcd_to_ehci (hcd);
 	int			port;
@@ -370,10 +371,11 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 	hrtimer_cancel(&ehci->hrtimer);
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ehci_bus_suspend);
 
 
 /* caller has locked the root hub, and should reset/reinit on error */
-static int ehci_bus_resume (struct usb_hcd *hcd)
+int ehci_bus_resume (struct usb_hcd *hcd)
 {
 	struct ehci_hcd		*ehci = hcd_to_ehci (hcd);
 	u32			temp;
@@ -513,6 +515,7 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 	spin_unlock_irq(&ehci->lock);
 	return -ESHUTDOWN;
 }
+EXPORT_SYMBOL_GPL(ehci_bus_resume);
 
 #else
 
@@ -615,6 +618,10 @@ ehci_hub_status_data (struct usb_hcd *hcd, char *buf)
 	int		ports, i, retval = 1;
 	unsigned long	flags;
 	u32		ppcd = ~0;
+
+	/* if !USB_SUSPEND, root hub timers won't get shut down ... */
+	if (ehci->rh_state != EHCI_RH_RUNNING)
+		return 0;
 
 	/* init status to no-changes */
 	buf [0] = 0;

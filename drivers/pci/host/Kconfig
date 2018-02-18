@@ -31,8 +31,18 @@ config PCI_IMX6
 	select PCIE_DW
 
 config PCI_TEGRA
-	bool "NVIDIA Tegra PCIe controller"
-	depends on ARCH_TEGRA
+	tristate "NVIDIA Tegra PCIe controller"
+	select ARCH_TEGRA_HAS_PCIE
+	depends on PLATFORM_TEGRA
+	help
+	  Adds PCIe Host controller driver for tegra based systems
+
+config ARCH_TEGRA_HAS_PCIE
+	bool "Architecture has PCIe controller"
+
+config TEGRA_PCI_USES_UPHY
+	bool
+	depends on PCI_TEGRA
 
 config PCI_RCAR_GEN2
 	bool "Renesas R-Car Gen2 Internal PCI controller"

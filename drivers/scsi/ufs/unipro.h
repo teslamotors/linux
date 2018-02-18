@@ -2,6 +2,7 @@
  * drivers/scsi/ufs/unipro.h
  *
  * Copyright (C) 2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -70,6 +71,10 @@
 #define PA_MAXRXSPEEDFAST	0x1541
 #define PA_MAXRXSPEEDSLOW	0x1542
 #define PA_TXLINKSTARTUPHS	0x1544
+#define PA_TxHsG1SyncLength	0x1552
+#define PA_TxHsG2SyncLength	0x1554
+#define PA_TxHsG3SyncLength	0x1556
+#define PA_Local_TX_LCC_Enable	0x155E
 #define PA_TXSPEEDFAST		0x1565
 #define PA_TXSPEEDSLOW		0x1566
 #define PA_REMOTEVERINFO	0x15A0
@@ -197,6 +202,13 @@ enum ufs_hs_gear_tag {
 #define T_CPORTMODE		0x402B
 #define T_TC0TXMAXSDUSIZE	0x4060
 #define T_TC1TXMAXSDUSIZE	0x4061
+
+/*
+ * DME Attributes
+ */
+#define DME_FC0PROTECTIONTIMEOUTVAL	0xD041
+#define DME_TC0REPLAYTIMEOUTVAL		0xD042
+#define DME_AFC0REQTIMEOUTVAL		0xD043
 
 /* Boolean attribute values */
 enum {

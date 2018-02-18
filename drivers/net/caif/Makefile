@@ -12,3 +12,8 @@ obj-$(CONFIG_CAIF_HSI) += caif_hsi.o
 
 # Virtio interface
 obj-$(CONFIG_CAIF_VIRTIO) += caif_virtio.o
+
+# Tegra specific SPI slave physical interfaces module
+CFLAGS_tegra_caif_sspi.o	= -Werror
+tegra_cfspi_slave-objs := tegra_caif_sspi.o
+obj-$(CONFIG_TEGRA_SPI_CAIF) += tegra_cfspi_slave.o

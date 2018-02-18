@@ -7,6 +7,7 @@
  *
  * Copyright (C) 1999 Hewlett-Packard Co.
  * Copyright (C) 1999 Stephane Eranian <eranian@hpl.hp.com>
+ * Copyright (C) 2016 NVIDIA CORPORATION. All rights reserved.
  */
 #ifndef _LINUX_RTC_H_
 #define _LINUX_RTC_H_
@@ -115,6 +116,7 @@ struct rtc_device
 	struct work_struct irqwork;
 	/* Some hardware can't support UIE mode */
 	int uie_unsupported;
+	bool system_shutting;
 
 #ifdef CONFIG_RTC_INTF_DEV_UIE_EMUL
 	struct work_struct uie_task;
@@ -140,6 +142,7 @@ extern struct rtc_device *devm_rtc_device_register(struct device *dev,
 extern void rtc_device_unregister(struct rtc_device *rtc);
 extern void devm_rtc_device_unregister(struct device *dev,
 					struct rtc_device *rtc);
+void rtc_device_shutdown(struct rtc_device *rtc);
 
 extern int rtc_read_time(struct rtc_device *rtc, struct rtc_time *tm);
 extern int rtc_set_time(struct rtc_device *rtc, struct rtc_time *tm);
@@ -195,6 +198,13 @@ static inline bool is_leap_year(unsigned int year)
 extern int rtc_hctosys_ret;
 #else
 #define rtc_hctosys_ret -ENODEV
+#endif
+
+#ifdef CONFIG_RTC_HCTOSYS
+int rtc_hctosys(void);
+void set_systohc_rtc_time(void);
+#else
+static inline void set_systohc_rtc_time(void){};
 #endif
 
 #endif /* _LINUX_RTC_H_ */

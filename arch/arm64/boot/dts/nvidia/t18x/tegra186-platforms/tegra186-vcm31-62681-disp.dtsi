@@ -1,0 +1,309 @@
+/*
+ * tegra186-vcm31-62681-disp.dtsi: VCM3.1 based 62681
+ * display dtsi.
+ *
+ * Copyright (c) 2016-2017, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+
+#include "tegra186-display-62681-panel-dsi-2820x720.dtsi"
+#include "tegra186-hdmi.dtsi"
+
+/ {
+	host1x {
+		status = "okay";
+
+		nvdisplay@15200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-win = <0>;
+			win-mask = <0x03>;
+			nvidia,dc-ctrlnum = <0>;
+			nvidia,dc-or-node = "/host1x/dsi";
+		};
+
+		nvdisplay@15210000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-win = <2>;
+			win-mask = <0x0c>;
+			nvidia,dc-ctrlnum = <1>;
+			nvidia,dc-or-node = "/host1x/sor";
+		};
+
+		nvdisplay@15220000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-win = <4>;
+			win-mask = <0x30>;
+			nvidia,dc-ctrlnum = <2>;
+			nvidia,dc-or-node = "/host1x/sor1";
+		};
+
+		sor{
+			status = "okay";
+			nvidia,xbar-ctrl = <2 1 0 3 4>;
+			nvidia,ddc-i2c-bus = <&dp_aux_ch0_i2c>;
+			nvidia,hpd-gpio = <&tegra_gpio TEGRA_GPIO(P, 0) GPIO_ACTIVE_LOW>;
+
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-parent-clk = "plld2";
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <1920>;
+					nvidia,out-yres = <1080>;
+				};
+			};
+
+			prod-settings {
+				prod_list_hdmi_board = "prod_c_hdmi_0m_54m", "prod_c_hdmi_54m_75m",
+				                       "prod_c_hdmi_75m_150m", "prod_c_hdmi_150m_300m",
+				                       "prod_c_hdmi_300m_600m";
+				prod_c_hdmi_0m_54m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050000
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x38000440
+							0x00000138 0xffffffff 0x333A3A3A
+							0x00000148 0xffffffff 0x00000000
+							0x000005a0 0x0040ff00 0x00401000
+							0x000005a8 0xff000000 0x52000000
+						>;
+					};
+				};
+				prod_c_hdmi_54m_75m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050100
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x38000440
+							0x00000138 0xffffffff 0x333A3A3A
+							0x00000148 0xffffffff 0x00000000
+							0x000005a0 0x0040ff00 0x00404000
+							0x000005a8 0xff000000 0x42000000
+						>;
+					};
+				};
+				prod_c_hdmi_75m_150m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050300
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x3C002440
+							0x00000138 0xffffffff 0x33333333
+							0x00000148 0xffffffff 0x00000000
+							0x000005a0 0x0040ff00 0x00A06600
+							0x000005a8 0xff000000 0x32000000
+						>;
+					};
+				};
+				prod_c_hdmi_150m_300m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050300
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x3C000440
+							0x00000138 0xffffffff 0x333F3F3F
+							0x00000148 0xffffffff 0x00070707
+							0x000005a0 0x0040ff00 0x00A06600
+							0x000005a8 0xff000000 0x32000000
+						>;
+					};
+				};
+				prod_c_hdmi_300m_600m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050300
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x3C000440
+							0x00000138 0xffffffff 0x333F3F3F
+							0x00000148 0xffffffff 0x00070707
+							0x000005a0 0x0040ff00 0x00406600
+							0x000005a8 0xff000000 0x32000000
+						>;
+					};
+				};
+			};
+		};
+
+		sor1 {
+			status = "okay";
+			nvidia,xbar-ctrl = <2 1 0 3 4>;
+			nvidia,ddc-i2c-bus = <&dp_aux_ch1_i2c>;
+			nvidia,hpd-gpio = <&tegra_gpio TEGRA_GPIO(P, 1) GPIO_ACTIVE_LOW>;
+
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-parent-clk = "plld3";
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <1920>;
+					nvidia,out-yres = <1080>;
+				};
+			};
+
+			prod-settings {
+				prod_list_hdmi_board = "prod_c_hdmi_0m_54m", "prod_c_hdmi_54m_75m",
+				                       "prod_c_hdmi_75m_150m", "prod_c_hdmi_150m_300m",
+				                       "prod_c_hdmi_300m_600m";
+				prod_c_hdmi_0m_54m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050000
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x38000440
+							0x00000138 0xffffffff 0x333A3A3A
+							0x00000148 0xffffffff 0x00000000
+							0x000005a0 0x0040ff00 0x00401000
+							0x000005a8 0xff000000 0x52000000
+						>;
+					};
+				};
+				prod_c_hdmi_54m_75m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050100
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x38000440
+							0x00000138 0xffffffff 0x333A3A3A
+							0x00000148 0xffffffff 0x00000000
+							0x000005a0 0x0040ff00 0x00404000
+							0x000005a8 0xff000000 0x42000000
+						>;
+					};
+				};
+				prod_c_hdmi_75m_150m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050300
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x3C002440
+							0x00000138 0xffffffff 0x33333333
+							0x00000148 0xffffffff 0x00000000
+							0x000005a0 0x0040ff00 0x00A06600
+							0x000005a8 0xff000000 0x32000000
+						>;
+					};
+				};
+				prod_c_hdmi_150m_300m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050300
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x3C000440
+							0x00000138 0xffffffff 0x333F3F3F
+							0x00000148 0xffffffff 0x00070707
+							0x000005a0 0x0040ff00 0x00A06600
+							0x000005a8 0xff000000 0x32000000
+						>;
+					};
+				};
+				prod_c_hdmi_300m_600m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050300
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x3C000440
+							0x00000138 0xffffffff 0x333F3F3F
+							0x00000148 0xffffffff 0x00070707
+							0x000005a0 0x0040ff00 0x00406600
+							0x000005a8 0xff000000 0x32000000
+						>;
+					};
+				};
+			};
+		};
+
+		dpaux@155c0000 {
+			status = "okay";
+		};
+
+		dpaux@15040000 {
+			status = "okay";
+		};
+
+		dsi {   /* dsi@15300000 */
+			status = "okay";
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+
+			panel-a-2820x720-10-1_8-6 {
+				status = "okay";
+				nvidia,dsi-video-burst-mode = <TEGRA_DSI_VIDEO_NONE_BURST_MODE>;
+				nvidia,dsi-refresh-rate = <60>;
+				nvidia,dsi-edp-bridge = <TEGRA_DSI_DISABLE>;
+
+				nvidia,dsi-n-data-lanes = <4>;
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_DSI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-parent-clk = "pll_d_out1";
+					nvidia,out-xres = <2820>;
+					nvidia,out-yres = <720>;
+				};
+				display-timings {
+					2880x720-32 {
+						clock-frequency = <137000000>;
+						hactive = <2820>;
+						vactive = <720>;
+						hfront-porch = <48>;
+						hback-porch = <80>;
+						hsync-len = <32>;
+						vfront-porch = <3>;
+						vback-porch = <37>;
+						vsync-len = <6>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+			};
+		};
+	};
+
+	i2c@31b0000 {  //i2c5, dp_aux_ch0_i2c
+		status = "okay";
+	};
+	i2c@3190000 {  //i2c3, dp_aux_ch1_i2c
+		status = "okay";
+	};
+
+	mipical {
+		status = "okay";
+	};
+
+	backlight {
+		pwms = <&tegra_pwm1 0 40161>;
+	};
+
+	tegra_pwm1: pwm@3280000 {
+		status = "okay";
+	};
+};

@@ -1,0 +1,15 @@
+#
+# nvi-mpu driver for Invensense MPU devices and combos
+#
+
+config NVI_MPU
+	tristate "Invensense MPU devices"
+	depends on I2C && SYSFS && IIO && IIO_KFIFO_BUF && IIO_TRIGGER && !INV_MPU
+	select NVS_IIO
+	default n
+	help
+	  This driver supports the Invensense MPU devices.
+	  This includes MPU6050/MPU65XX/MPU9X50
+	  This driver can be built as a module. The module will be called
+	  nvi-mpu.
+

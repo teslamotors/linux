@@ -1,0 +1,65 @@
+/*
+ * arch/arm64/boot/dts/tegra186-platforms/tegra186-hdmi.dtsi
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+        host1x {
+		sor1 {
+                        status = "okay";
+                        nvidia,ddc-i2c-bus = <&dp_aux_ch1_i2c>;
+
+                        hdmi-display {
+                                status = "okay";
+                                compatible = "hdmi,display";
+                                disp-default-out {
+                                        nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+                                        nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-parent-clk = "plld2";
+                                        nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+                                        nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <4096>; /* 4096 p*/
+					nvidia,out-yres = <2160>; /* 2160 p*/
+				};
+			};
+		};
+
+		sor {
+			status = "okay";
+			nvidia,ddc-i2c-bus = <&dp_aux_ch0_i2c>;
+
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-parent-clk = "plld3";
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <4096>; /* 4096 p*/
+					nvidia,out-yres = <2160>; /* 2160 p*/
+				};
+			};
+		};
+	};
+};
+

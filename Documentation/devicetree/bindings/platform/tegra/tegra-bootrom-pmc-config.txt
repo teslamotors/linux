@@ -1,0 +1,46 @@
+The Tegra Bootrom has feature to send i2c commnds to device during boot.
+This helps to set the desired rail voltage and any required configuration
+on PMIC before system boot.
+
+This driver provides the interface to make the list of command which bootrom
+understand from the high level needs. User can provide the requiremets from DT
+as the PMIC/device specific commands and driver translates this to PMC level
+programming which bootrom reads and sends the command.
+
+For more details, pelase refer bootrom DFD.
+
+Here is the details of the device-tree bindings.
+
+tegra-pmc {
+	::::
+	bootrom-commands {
+		nvidia,command-retries-count = <u32>;
+		nvidia,delay-between-commands-us = <u32>;
+		nvidia,wait-before-start-bus-clear-us = <u32>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		commands@3c {
+			nvidia,command-names = "pmic-rails";
+			reg = <0x3c>;
+			nvidia,enable-8bit-register;
+			nvidia,enable-8bit-data;
+			nvidia,controller-type-i2c;
+			nvidia,controller-id = <4>;
+			nvidia,enable-controller-reset;
+			nvidia,write-commands = <reg1 data1
+						reg2 data2
+						reg3 data3
+						reg4 data4
+						reg5 data5>;
+		};
+
+		coammnds@12 {
+			command-names = "i2c-expander";
+			reg = <0x12>;
+			::::
+		};
+		::::
+	};
+};

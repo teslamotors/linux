@@ -162,7 +162,6 @@ static const struct regmap_config tps65090_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
 	.max_register = TOTAL_NUM_REG,
-	.num_reg_defaults_raw = TOTAL_NUM_REG,
 	.cache_type = REGCACHE_RBTREE,
 	.volatile_reg = is_volatile_reg,
 };

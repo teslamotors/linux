@@ -94,6 +94,17 @@ static void __inet_twsk_kill(struct inet_timewait_sock *tw,
 void inet_twsk_free(struct inet_timewait_sock *tw)
 {
 	struct module *owner = tw->tw_prot->owner;
+
+	/* WAR: If tw's tw_death_node is still in the hash list,
+	 * do not free its memory to prevent from kernel panic
+	 * in the future; and since it is hashed,
+	 * whether early or late, in the end it will be freed.
+	 */
+	if (tw->tw_death_node.pprev) {
+		pr_debug("An attempt to free hashed TW sock is prevented\n");
+		return;
+	}
+
 	twsk_destructor((struct sock *)tw);
 #ifdef SOCK_REFCNT_DEBUG
 	pr_debug("%s timewait_sock %p released\n", tw->tw_prot->name, tw);

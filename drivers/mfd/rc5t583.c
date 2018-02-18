@@ -1,7 +1,7 @@
 /*
  * Core driver access RC5T583 power management chip.
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  * Author: Laxman dewangan <ldewangan@nvidia.com>
  *
  * Based on code

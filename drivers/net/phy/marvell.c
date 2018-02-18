@@ -15,6 +15,19 @@
  * option) any later version.
  *
  */
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/errno.h>
@@ -77,6 +90,13 @@
 
 #define MII_M1111_COPPER		0
 #define MII_M1111_FIBER			1
+
+#define MII_88E1512_COPPER		0
+#define MII_88E1512_FIBER		1
+
+#define MARVEL_88E1512_PAGE18			18
+#define MARVEL_88E1512_G_CTRL_REG		20
+#define MARVEL_88E1512_MODE_RGMII_1000X		2
 
 #define MII_88E1121_PHY_MSCR_PAGE	2
 #define MII_88E1121_PHY_MSCR_REG	21
@@ -379,6 +399,24 @@ static int m88e1318_config_aneg(struct phy_device *phydev)
 	return m88e1121_config_aneg(phydev);
 }
 
+static int m88e1512_config_aneg(struct phy_device *phydev)
+{
+	/* Do nothing: auto-neng not required in RGMII-1000-X */
+	return 0;
+}
+
+static int m88e1512_read_status(struct phy_device *phydev)
+{
+	int val = 0;
+
+	/* set the fibre reg page */
+	val = phy_write(phydev, MII_MARVELL_PHY_PAGE, MII_88E1512_FIBER);
+	if (val < 0)
+		return val;
+
+	return genphy_read_status(phydev);
+}
+
 static int m88e1510_config_aneg(struct phy_device *phydev)
 {
 	int err;
@@ -388,6 +426,63 @@ static int m88e1510_config_aneg(struct phy_device *phydev)
 		return err;
 
 	return marvell_of_reg_init(phydev);
+}
+
+static int m88e1512_config_init(struct phy_device *phydev)
+{
+	int val, ret, timeout = 20;
+
+	phydev->autoneg = AUTONEG_DISABLE;
+	phydev->duplex = DUPLEX_FULL;
+
+	/* Set the page to 18, to program General control register 1 */
+	ret = phy_write(phydev, MII_MARVELL_PHY_PAGE, MARVEL_88E1512_PAGE18);
+	if (ret < 0)
+		goto err;
+
+	val = phy_read(phydev, MARVEL_88E1512_G_CTRL_REG);
+	if (val < 0) {
+		ret = val;
+		goto err;
+	}
+
+	/* RGMII to 1000BASE-X */
+	val = (val & 0xfffc) | MARVEL_88E1512_MODE_RGMII_1000X;
+
+	ret = phy_write(phydev, MARVEL_88E1512_G_CTRL_REG, val);
+	if (ret < 0)
+		goto err;
+
+	/* set the fibre reg page */
+	val = phy_write(phydev, MII_MARVELL_PHY_PAGE, MII_88E1512_FIBER);
+	if (val < 0) {
+		ret = val;
+		goto err;
+	}
+
+	/* apply software reset*/
+	val = phy_read(phydev, MII_BMCR);
+	if (val < 0) {
+		ret = val;
+		goto err;
+	}
+
+	val = (val & 0x7fff) | BMCR_RESET;
+
+	ret = phy_write(phydev, MII_BMCR, val);
+	if (ret < 0)
+		goto err;
+
+	/* wait until reset clear or timeout*/
+	while ((phy_read(phydev, MII_BMCR) & BMCR_RESET) && timeout) {
+		msleep(1);
+		timeout--;
+	}
+	return m88e1512_read_status(phydev);
+err:
+	/* set the fibre reg page default */
+	ret = phy_write(phydev, MII_MARVELL_PHY_PAGE, MII_88E1512_FIBER);
+	return ret;
 }
 
 static int m88e1116r_config_init(struct phy_device *phydev)
@@ -1053,6 +1148,16 @@ static struct phy_driver marvell_drivers[] = {
 		.driver = { .owner = THIS_MODULE },
 	},
 	{
+		.phy_id = MARVELL_PHY_ID_88E1512,
+		.phy_id_mask = MARVELL_PHY_ID_MASK,
+		.name = "Marvell 88E1512",
+		.features = PHY_GBIT_FEATURES | SUPPORTED_Pause,
+		.config_aneg = &m88e1512_config_aneg,
+		.config_init = &m88e1512_config_init,
+		.read_status = &m88e1512_read_status,
+		.driver = { .owner = THIS_MODULE },
+	},
+	{
 		.phy_id = MARVELL_PHY_ID_88E1510,
 		.phy_id_mask = MARVELL_PHY_ID_MASK,
 		.name = "Marvell 88E1510",
@@ -1095,6 +1200,7 @@ static struct mdio_device_id __maybe_unused marvell_tbl[] = {
 	{ MARVELL_PHY_ID_88E1240, MARVELL_PHY_ID_MASK },
 	{ MARVELL_PHY_ID_88E1318S, MARVELL_PHY_ID_MASK },
 	{ MARVELL_PHY_ID_88E1116R, MARVELL_PHY_ID_MASK },
+	{ MARVELL_PHY_ID_88E1512, MARVELL_PHY_ID_MASK },
 	{ MARVELL_PHY_ID_88E1510, MARVELL_PHY_ID_MASK },
 	{ }
 };

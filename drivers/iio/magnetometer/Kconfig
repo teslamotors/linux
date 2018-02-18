@@ -39,6 +39,19 @@ config MAG3110
 	  To compile this driver as a module, choose M here: the module
 	  will be called mag3110.
 
+config NVI_AK89XX
+	tristate "Asahi Kasei AK89XX 3-Axis Magnetometer"
+	depends on I2C
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	select NVS_IIO
+	help
+	  Say yes here to build support for Asahi Kasei AK89XX 3-Axis
+	  Magnetometer that can be connected via Invensense MPU.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called nvi-ak89xx.
+
 config HID_SENSOR_MAGNETOMETER_3D
 	depends on HID_SENSOR_HUB
 	select IIO_BUFFER

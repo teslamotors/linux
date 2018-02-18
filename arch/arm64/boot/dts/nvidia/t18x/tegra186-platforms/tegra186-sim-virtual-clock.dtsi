@@ -1,0 +1,103 @@
+/*
+ * arch/arm64/boot/dts/tegra186-platforms/tegra186-sim-virtual-clock.dtsi
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/ {
+	kfuse@0x3830000 {
+		clocks = <&clk32k_in>;
+		clock-names = "kfuse";
+	};
+
+	host1x {
+		clocks = <&clk32k_in>, <&clk32k_in>;
+		clock-names = "host1x", "actmon";
+
+		nvcsi@150c0000 {
+			clocks = <&clk32k_in>, <&clk32k_in>;
+			clock-names = "nvcsi", "nvcsilp";
+		};
+
+		vi@15700000 {
+
+			clocks = <&clk32k_in>, <&clk32k_in>,
+				 <&clk32k_in>;
+			clock-names = "vi", "nvcsi", "nvcsilp";
+		};
+
+		isp@15600000 {
+			clocks = <&clk32k_in>;
+			clock-names = "isp";
+		};
+
+		dsi {
+			clocks = <&clk32k_in>;
+			clock-names = "clk32k_in";
+		};
+
+		vic@15340000 {
+			clocks = <&clk32k_in>;
+			clock-names = "vic";
+		};
+
+		nvenc@154c0000 {
+			clocks = <&clk32k_in>;
+			clock-names = "nvenc";
+		};
+
+		nvdec@15480000 {
+			clocks = <&clk32k_in>, <&clk32k_in>;
+			clock-names = "nvdec", "kfuse";
+		};
+
+		nvjpg@15380000 {
+			clocks = <&clk32k_in>;
+			clock-names = "nvjpg";
+		};
+
+		tsec@15500000 {
+			clocks = <&clk32k_in>;
+			clock-names = "tsec";
+		};
+
+		tsecb@15100000 {
+			clocks = <&clk32k_in>;
+			clock-names = "tsecb";
+		};
+
+		se@15810000 {
+			clocks = <&clk32k_in>, <&clk32k_in>;
+			clock-names = "se", "entropy";
+		};
+
+		se@15820000 {
+			clocks = <&clk32k_in>, <&clk32k_in>;
+			clock-names = "se", "entropy";
+		};
+
+		se@15830000 {
+			clocks = <&clk32k_in>, <&clk32k_in>;
+			clock-names = "se", "entropy";
+		};
+
+		se@15840000 {
+			clocks = <&clk32k_in>, <&clk32k_in>;
+			clock-names = "se", "entropy";
+		};
+	};
+};

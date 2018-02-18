@@ -1,0 +1,76 @@
+config TEGRA_GRHOST
+        tristate "Tegra graphics host driver"
+        help
+          Driver for the Tegra graphics host hardware.
+
+config TEGRA_GRHOST_ISP
+        depends on TEGRA_GRHOST
+        tristate "Tegra image processing pipeline support"
+        default y
+        help
+          Driver for the Tegra image processing pipeline (ISP)
+          To compile this driver as a module, choose M here:
+          the  module will be called nvhost-isp.
+
+config TEGRA_GRHOST_VIC
+        depends on TEGRA_GRHOST && ARCH_TEGRA_18x_SOC
+        tristate "Tegra VIC support"
+        default y
+        help
+          Driver for the Tegra Video Image Compositor is an falcon
+          based engine used image composition.
+
+config TEGRA_GRHOST_NVDEC
+        depends on TEGRA_GRHOST
+        tristate "Tegra NVDEC support"
+        default y
+        help
+          Driver for the Tegra NVDEC is an engine which
+          can be used for decoding various multimedia formats.
+
+config TEGRA_GRHOST_NVENC
+        depends on TEGRA_GRHOST
+        tristate "Tegra NVENC support"
+        default y
+        help
+          Driver for the Tegra NVENC is an engine which
+          can be used for encoding various multimedia formats.
+
+config TEGRA_GRHOST_NVJPG
+        depends on TEGRA_GRHOST
+        tristate "Tegra NVJPG support"
+        default y
+        help
+          Driver for the Tegra NVJPG is an engine which
+          can be used for JPEG encoding and decoding.
+
+config TEGRA_GRHOST_TSEC
+        depends on TEGRA_GRHOST
+        tristate "Tegra TSEC support"
+        default y
+        help
+          Driver for the Tegra TSEC is falcon based engine which
+          provides security.
+
+config TEGRA_GRHOST_DEFAULT_TIMEOUT
+        depends on TEGRA_GRHOST
+        int "Default timeout for submits"
+        default 10000
+        help
+          Default timeout for jobs in milliseconds. Set to zero for no timeout.
+
+config TEGRA_GRHOST_SYNC
+        depends on TEGRA_GRHOST || TEGRA_HOST1X
+        bool "Tegra host synchronization objects"
+        default y
+        select SYNC
+        help
+          Add tegra host backend for the cross driver synchronization framework.
+          Allows creating sync fence file descriptors from Tegra host syncpoints.
+
+config NVDEC_BOOTLOADER
+	depends on TEGRA_GRHOST_NVDEC
+	bool "Enable use of nvdec bootloader"
+	help
+	  Say Y here if you want to enable nvdec bootloader
+	  If unsure, say N

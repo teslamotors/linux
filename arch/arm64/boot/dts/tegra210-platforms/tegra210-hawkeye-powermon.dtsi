@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/ {
+	i2c@7000c400 {
+		ina3221x: ina3221x@40 {
+			compatible = "ti,ina3221x";
+			reg = <0x40>;
+			ti,trigger-config = <0x7003>;
+			/*
+			 * continuous scan configuration
+			 *    channels 0/1/2 enabled, 16 samples/ave, 140 usec
+			 *    shunt/bus conversion time, continuous shunt/bus
+			 *    mode
+			 */
+			ti,continuous-config = <0x7407>;
+			ti,enable-forced-continuous;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			#io-channel-cells = <1>;
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_BATT";
+			};
+
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_VBUS";
+			};
+
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_MODEM";
+			};
+		};
+	};
+};

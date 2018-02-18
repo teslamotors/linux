@@ -1,0 +1,56 @@
+NVIDIA Tegra IVC channel bindings
+
+Each IVC channel represents the unique communication protocol defined
+between kernel running on CCPLEX CPUs and remote CPU core. Each IVC
+channel has two memory buffers, one for each direction. The RX buffer
+is for messages sent by the remote CPU, the TX channel for
+messages sent to the remote CPU.
+
+Both IPC memory buffers are have two headers followed by data
+frames. The first write header is updated only by the producer and the
+second read header is updated only by the consumer. The header and
+frame sizes are multiples of 64-byte cache lines.
+
+== IVC channel top-level node ==
+
+List of IVC channels implemented by remote core to talk to CCPLEX.
+The top-level node defines the AST region shared by IVC channels below
+it.
+
+Required properties:
+- #address-cells: Number of address cells in each subnode.
+  Must be set to <1>.
+- #size-cells: Number of size cells in each subnode.
+  Must be set to <0>.
+
+== IVC channel sub nodes ==
+
+Each IVC channel implemented by the remote CPU must be represented as
+a separate child node within the top-level node.
+
+Required properties:
+- compatible: Should represent the protocol to be used on this IVC channel.
+  See other binding documents in this directory for potential values.
+  For example:
+  "nvidia,tegra186-ivc-protocol-echo" for ivc echo test channel.
+- reg: Address of the rx and tx buffers, respectively, inside the IVC region.
+  Must be a multiple of 64.
+- nvidia,frame-size: Size of the data frame. Must be a multiple of 64.
+- nvidia,frame-count: Number of frames in rx or tx buffers.
+
+Optional properties:
+- reg-names: Names of the rx and tx buffers, respectively.
+
+Example:
+
+ivc-channels {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	echo@0 {
+		compatible = "nvidia,tegra186-ivc-protocol-echo";
+		reg = <0x0000>, <0x0480>;
+		reg-names = "rx-echo", "tx-echo";
+		nvidia,frame-size = <64>;
+		nvidia,frame-count = <16>;
+	};
+}

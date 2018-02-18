@@ -1,0 +1,55 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "tegra210-jetson-common-power-tree-p2530-0930-e03.dtsi"
+
+/ {
+	pmc-iopower {
+		iopower-sys-supply = <&max77620_sd3>;
+		iopower-uart-supply = <&max77620_sd3>;
+		iopower-audio-supply = <&max77620_sd3>;
+		iopower-cam-supply = <&max77620_sd3>;
+		iopower-pex-ctrl-supply = <&max77620_sd3>;
+		iopower-sdmmc1-supply = <&max77620_ldo2>;
+		iopower-sdmmc3-supply = <&max77620_sd3>;
+		iopower-sdmmc4-supply = <&max77620_sd3>;
+		iopower-audio-hv-supply = <&max77620_sd3>;
+		iopower-debug-supply = <&max77620_sd3>;
+		iopower-dmic-supply = <&max77620_sd3>;
+		iopower-gpio-supply = <&vdd_3v3>;
+		iopower-spi-supply = <&max77620_sd3>;
+		iopower-spi-hv-supply = <&max77620_sd3>;
+		iopower-sdmmc2-supply = <&max77620_sd3>;
+		iopower-dp-supply = <&max77620_sd3>;
+	};
+
+	i2c@7000c000 {
+		icm20628@68 {
+			vlogic-supply = <&max77620_sd3>;
+			vdd-supply = <&max77620_sd3>;
+		};
+
+		ak8963c@0c {
+			vid-supply = <&max77620_sd3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		jsa1127@39 {
+			vdd-supply = <&vdd_3v3>;
+		};
+	};
+};

@@ -2,6 +2,9 @@
 # Makefile for sensor chip drivers.
 #
 
+GCOV_PROFILE := y
+
+ccflags-y += -Werror
 obj-$(CONFIG_HWMON)		+= hwmon.o
 obj-$(CONFIG_HWMON_VID)		+= hwmon-vid.o
 
@@ -40,6 +43,7 @@ obj-$(CONFIG_SENSORS_ADT7X10)	+= adt7x10.o
 obj-$(CONFIG_SENSORS_ADT7310)	+= adt7310.o
 obj-$(CONFIG_SENSORS_ADT7410)	+= adt7410.o
 obj-$(CONFIG_SENSORS_ADT7411)	+= adt7411.o
+obj-$(CONFIG_SENSORS_ADT7461)	+= adt7461.o
 obj-$(CONFIG_SENSORS_ADT7462)	+= adt7462.o
 obj-$(CONFIG_SENSORS_ADT7470)	+= adt7470.o
 obj-$(CONFIG_SENSORS_ADT7475)	+= adt7475.o
@@ -153,6 +157,10 @@ obj-$(CONFIG_SENSORS_W83L785TS)	+= w83l785ts.o
 obj-$(CONFIG_SENSORS_W83L786NG)	+= w83l786ng.o
 obj-$(CONFIG_SENSORS_WM831X)	+= wm831x-hwmon.o
 obj-$(CONFIG_SENSORS_WM8350)	+= wm8350-hwmon.o
+obj-$(CONFIG_SENSORS_INA219)	+= ina219.o
+obj-$(CONFIG_SENSORS_INA230)	+= ina230.o
+obj-$(CONFIG_SENSORS_INA3221)	+= ina3221.o
+obj-$(CONFIG_SENSORS_TMON_TMP411)	+= tmon-tmp411.o
 
 obj-$(CONFIG_PMBUS)		+= pmbus/
 

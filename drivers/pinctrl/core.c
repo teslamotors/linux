@@ -119,6 +119,7 @@ struct pinctrl_dev *get_pinctrl_dev_from_devname(const char *devname)
 
 	return NULL;
 }
+EXPORT_SYMBOL_GPL(get_pinctrl_dev_from_devname);
 
 struct pinctrl_dev *get_pinctrl_dev_from_of_node(struct device_node *np)
 {
@@ -136,6 +137,7 @@ struct pinctrl_dev *get_pinctrl_dev_from_of_node(struct device_node *np)
 
 	return NULL;
 }
+EXPORT_SYMBOL_GPL(get_pinctrl_dev_from_of_node);
 
 /**
  * pin_get_from_name() - look up a pin number from a name
@@ -512,6 +514,53 @@ out:
 EXPORT_SYMBOL_GPL(pinctrl_find_gpio_range_from_pin);
 
 /**
+ * pinctrl_get_pin_id_from_gpio() - Get pinID from the gpio
+ * @pctldev: the pin controller device to look in
+ * @gpio: GPIO number whose pinid need to be find.
+ */
+int pinctrl_get_pin_id_from_gpio(struct pinctrl_dev *pctldev,
+		unsigned gpio)
+{
+	struct pinctrl_gpio_range *range;
+	int ret;
+
+	range = pinctrl_match_gpio_range(pctldev, gpio);
+	if (!range) {
+		pr_err("Pincontrol does not have gpio %d\n", gpio);
+		return -EINVAL;
+	}
+
+	/* Convert to the pin controllers number space */
+	ret = gpio - range->base + range->pin_base;
+	return ret;
+}
+
+/**
+ * pinctrl_get_pinctrl_dev_pin_id_from_gpio() - Get pinID and pincontrol dev
+ * from the gpio. It returns the pinctrl device handle and pin id for the gpio
+ * which it belongs to.
+ * @gpio: GPIO number whose pinid need to be find.
+ */
+int pinctrl_get_pinctrl_dev_pin_id_from_gpio(unsigned gpio,
+	struct pinctrl_dev **pctl_dev, unsigned *pin_id)
+{
+	struct pinctrl_dev *pctldev;
+	struct pinctrl_gpio_range *range;
+	int ret;
+
+	ret = pinctrl_get_device_gpio_range(gpio, &pctldev, &range);
+	if (ret < 0) {
+		pr_err("Pincontrol not found for gpio %d\n", gpio);
+		return ret;
+	}
+
+	*pctl_dev = pctldev;
+	*pin_id = gpio - range->base + range->pin_base;
+
+	return ret;
+}
+
+/**
  * pinctrl_remove_gpio_range() - remove a range of GPIOs fro a pin controller
  * @pctldev: pin controller device to remove the range from
  * @range: the GPIO range to remove
@@ -555,6 +604,48 @@ int pinctrl_get_group_selector(struct pinctrl_dev *pctldev,
 		pin_group);
 
 	return -EINVAL;
+}
+
+/**
+ * pinctrl_get_group_selector_from_pin() - returns the group selector for a pin
+ * @pctldev: the pin controller handling the group
+ * @pin: the pin id on the look up
+ */
+int pinctrl_get_group_selector_from_pin(struct pinctrl_dev *pctldev,
+			unsigned int pin)
+{
+	const struct pinctrl_ops *ops = pctldev->desc->pctlops;
+	unsigned ngroups, selector;
+	bool found = false;
+
+	mutex_lock(&pctldev->mutex);
+
+	ngroups = ops->get_groups_count(pctldev);
+	for (selector = 0; selector < ngroups; ++selector) {
+		const unsigned *pins;
+		unsigned num_pins;
+		int ret;
+
+		ret = ops->get_group_pins(pctldev, selector, &pins, &num_pins);
+		if (ret < 0) {
+			dev_err(pctldev->dev,
+				"Not getting group pins for selector %u\n",
+				selector);
+			continue;
+		}
+		if (num_pins != 1) {
+			dev_dbg(pctldev->dev,
+				"Multiple pins for the selector %u\n",
+				selector);
+			continue;
+		}
+		if (pins[0] == pin) {
+			found = true;
+			break;
+		}
+	}
+	mutex_unlock(&pctldev->mutex);
+	return found ? selector : -EINVAL;
 }
 
 /**
@@ -842,7 +933,14 @@ static struct pinctrl *create_pinctrl(struct device *dev)
 			mutex_unlock(&pinctrl_maps_mutex);
 			return ERR_PTR(ret);
 		}
+		if (ret < 0) {
+			dev_err(dev, "add setting for %s:map %s failed:%d\n",
+				devname, map->name, ret);
+			goto break_loop;
+		}
 	}
+
+break_loop:
 	mutex_unlock(&pinctrl_maps_mutex);
 
 	if (ret < 0) {
@@ -1054,6 +1152,65 @@ unapply_new_state:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(pinctrl_select_state);
+
+int pinctrl_configure_user_state(struct pinctrl_dev *pctldev,
+		const char *user_state_name)
+{
+	struct pinctrl_setting *setting, *setting2;
+	struct pinctrl_state *user_state;
+	int ret;
+
+	if (!pctldev || IS_ERR(pctldev->p)) {
+		pr_err("The pincontrol driver is not valid\n");
+		return -EINVAL;
+	}
+
+	user_state = pinctrl_lookup_state(pctldev->p, user_state_name);
+	if (IS_ERR(user_state)) {
+		ret = PTR_ERR(user_state);
+		dev_info(pctldev->dev, "lookup the user state %s not found\n",
+			user_state_name);
+		return ret;
+	}
+
+	list_for_each_entry(setting, &user_state->settings, node) {
+		switch (setting->type) {
+		case PIN_MAP_TYPE_MUX_GROUP:
+			ret = pinmux_enable_setting(setting);
+			break;
+		case PIN_MAP_TYPE_CONFIGS_PIN:
+		case PIN_MAP_TYPE_CONFIGS_GROUP:
+			ret = pinconf_apply_setting(setting);
+			break;
+		default:
+			ret = -EINVAL;
+			break;
+		}
+
+		if (ret < 0)
+			goto unapply_new_state;
+	}
+	return 0;
+
+unapply_new_state:
+	dev_err(pctldev->dev, "Error applying setting, reverse things back\n");
+
+	list_for_each_entry(setting2, &user_state->settings, node) {
+		if (&setting2->node == &setting->node)
+			break;
+		/*
+		 * All we can do here is pinmux_disable_setting.
+		 * That means that some pins are muxed differently now
+		 * than they were before applying the setting (We can't
+		 * "unmux a pin"!), but it's not a big deal since the pins
+		 * are free to be muxed by another apply_setting.
+		 */
+		if (setting2->type == PIN_MAP_TYPE_MUX_GROUP)
+			pinmux_disable_setting(setting2);
+	}
+	return ret;
+}
+EXPORT_SYMBOL_GPL(pinctrl_configure_user_state);
 
 static void devm_pinctrl_release(struct device *dev, void *res)
 {
@@ -1774,6 +1931,9 @@ struct pinctrl_dev *pinctrl_register(struct pinctrl_desc *pctldesc,
 						    PINCTRL_STATE_SLEEP);
 		if (IS_ERR(pctldev->hog_sleep))
 			dev_dbg(dev, "failed to lookup the sleep state\n");
+	} else {
+		dev_err(dev, "pinctrl_get failed: %ld\n", PTR_ERR(pctldev->p));
+		goto out_err;
 	}
 
 	pinctrl_init_device_debugfs(pctldev);
@@ -1823,6 +1983,69 @@ void pinctrl_unregister(struct pinctrl_dev *pctldev)
 	mutex_unlock(&pinctrldev_list_mutex);
 }
 EXPORT_SYMBOL_GPL(pinctrl_unregister);
+
+static void devm_pinctrl_dev_release(struct device *dev, void *res)
+{
+	struct pinctrl_dev *pctldev = *(struct pinctrl_dev **)res;
+
+	pinctrl_unregister(pctldev);
+}
+
+static int devm_pinctrl_dev_match(struct device *dev, void *res, void *data)
+{
+	struct pctldev **r = res;
+
+	if (WARN_ON(!r || !*r))
+		return 0;
+
+	return *r == data;
+}
+
+/**
+ * devm_pinctrl_register() - Resource managed version of pinctrl_register().
+ * @dev: parent device for this pin controller
+ * @pctldesc: descriptor for this pin controller
+ * @driver_data: private pin controller data for this pin controller
+ *
+ * Returns an error pointer if pincontrol register failed. Otherwise
+ * it returns valid pinctrl handle.
+ *
+ * The pinctrl device will be automatically released when the device is unbound.
+ */
+struct pinctrl_dev *devm_pinctrl_register(struct device *dev,
+					  struct pinctrl_desc *pctldesc,
+					  void *driver_data)
+{
+	struct pinctrl_dev **ptr, *pctldev;
+
+	ptr = devres_alloc(devm_pinctrl_dev_release, sizeof(*ptr), GFP_KERNEL);
+	if (!ptr)
+		return ERR_PTR(-ENOMEM);
+
+	pctldev = pinctrl_register(pctldesc, dev, driver_data);
+	if (IS_ERR(pctldev)) {
+		devres_free(ptr);
+		return pctldev;
+	}
+
+	*ptr = pctldev;
+	devres_add(dev, ptr);
+
+	return pctldev;
+}
+EXPORT_SYMBOL_GPL(devm_pinctrl_register);
+
+/**
+ * devm_pinctrl_unregister() - Resource managed version of pinctrl_unregister().
+ * @dev: device for which which resource was allocated
+ * @pctldev: the pinctrl device to unregister.
+ */
+void devm_pinctrl_unregister(struct device *dev, struct pinctrl_dev *pctldev)
+{
+	WARN_ON(devres_release(dev, devm_pinctrl_dev_release,
+			       devm_pinctrl_dev_match, pctldev));
+}
+EXPORT_SYMBOL_GPL(devm_pinctrl_unregister);
 
 static int __init pinctrl_init(void)
 {

@@ -1,0 +1,26 @@
+/*
+ * T210- DCM
+ *
+ * arch/arm64/boot/dts/tegra210-m3402-0000-a00-00.dts
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+/dts-v1/;
+/memreserve/ 0x80000000 0x00020000;
+
+#include "tegra210-m3402-common.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+};

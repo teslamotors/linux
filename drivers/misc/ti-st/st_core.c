@@ -45,6 +45,9 @@ static void add_channel_to_table(struct st_data_s *st_gdata,
 	/* list now has the channel id as index itself */
 	st_gdata->list[new_proto->chnl_id] = new_proto;
 	st_gdata->is_registered[new_proto->chnl_id] = true;
+#ifdef CONFIG_ST_HOST_WAKE
+	st_host_wake_notify(new_proto->chnl_id, ST_PROTO_REGISTERED);
+#endif
 }
 
 static void remove_channel_from_table(struct st_data_s *st_gdata,
@@ -53,6 +56,9 @@ static void remove_channel_from_table(struct st_data_s *st_gdata,
 	pr_info("%s: id %d\n", __func__, proto->chnl_id);
 /*	st_gdata->list[proto->chnl_id] = NULL; */
 	st_gdata->is_registered[proto->chnl_id] = false;
+#ifdef CONFIG_ST_HOST_WAKE
+	st_host_wake_notify(proto->chnl_id, ST_PROTO_UNREGISTERED);
+#endif
 }
 
 /*
@@ -124,7 +130,6 @@ static void st_send_frame(unsigned char chnl_id, struct st_data_s *st_gdata)
 			(st_gdata->list[chnl_id]->priv_data, st_gdata->rx_skb)
 			     != 0)) {
 			pr_err(" proto stack %d's ->recv failed", chnl_id);
-			kfree_skb(st_gdata->rx_skb);
 			return;
 		}
 	} else {
@@ -553,6 +558,10 @@ long st_register(struct st_proto_s *new_proto)
 		/* release lock previously held - re-locked below */
 		spin_unlock_irqrestore(&st_gdata->lock, flags);
 
+#ifdef CONFIG_ST_HOST_WAKE
+		/*Enable Voltage regulation*/
+		st_vltg_regulation(ST_VLTG_REG_ENABLE);
+#endif
 		/* this may take a while to complete
 		 * since it involves BT fw download
 		 */
@@ -567,6 +576,11 @@ long st_register(struct st_proto_s *new_proto)
 				spin_unlock_irqrestore(&st_gdata->lock, flags);
 				clear_bit(ST_REG_PENDING, &st_gdata->st_state);
 			}
+
+#ifdef CONFIG_ST_HOST_WAKE
+			/*Disable Voltage regulation*/
+			st_vltg_regulation(ST_VLTG_REG_DISABLE);
+#endif
 			return -EINVAL;
 		}
 
@@ -606,7 +620,6 @@ long st_register(struct st_proto_s *new_proto)
 		add_channel_to_table(st_gdata, new_proto);
 		st_gdata->protos_registered++;
 		new_proto->write = st_write;
-
 		/* lock already held before entering else */
 		spin_unlock_irqrestore(&st_gdata->lock, flags);
 		return err;
@@ -649,7 +662,6 @@ long st_unregister(struct st_proto_s *proto)
 	if ((st_gdata->protos_registered == ST_EMPTY) &&
 	    (!test_bit(ST_REG_PENDING, &st_gdata->st_state))) {
 		pr_info(" all chnl_ids unregistered ");
-
 		/* stop traffic on tty */
 		if (st_gdata->tty) {
 			tty_ldisc_flush(st_gdata->tty);
@@ -658,6 +670,11 @@ long st_unregister(struct st_proto_s *proto)
 
 		/* all chnl_ids now unregistered */
 		st_kim_stop(st_gdata->kim_data);
+
+#ifdef CONFIG_ST_HOST_WAKE
+		/*Disable Voltage regulation*/
+		st_vltg_regulation(ST_VLTG_REG_DISABLE);
+#endif
 		/* disable ST LL */
 		st_ll_disable(st_gdata);
 	}

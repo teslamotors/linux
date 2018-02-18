@@ -1,0 +1,93 @@
+/*
+ * tegra210-t18x-interposer-p3310-1000-a00-00.dts: T18X interposer
+ *		T210 + E2226 (T210 to T186 interposer) +
+ *		P3310 (T186 CVM board) +
+ *		P2597 (Jetson CVB)
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-t18x-interposer-e3301-p3310-common.dtsi"
+#include "tegra210-platforms/tegra210-t18x-interposer-power-tree-p3310-1000-a00-00.dtsi"
+#include "tegra210-platforms/tegra210-t18x-interposer-pinmux-p3310-1000-a00-00.dtsi"
+#include "tegra210-platforms/tegra210-t18x-interposer-touch.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-keys-p2597-2180-a00.dtsi"
+
+#define EXTCON_NONE             0
+#define EXTCON_USB              1
+#define EXTCON_USB_Host         2
+
+/ {
+	model = "t18x-interposer";
+	compatible = "nvidia,t18x-interposer", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+
+	nvidia,proc-boardid = "p3310:1000:A0";
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "t18x-interposer";
+		};
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&max77620_sd1>;
+			avdd_lcd-supply = <&en_avdd_disp_3v3>;
+			dvdd_lcd-supply = <&en_vdd_disp_1v8>;
+			avdd_lcd_1v2-supply = <&dis_vdd_1v2>;
+			vdd_ts_3v3-supply = <&en_vdd_ts_hv_3v3>;
+			vdd_ts_1v8-supply = <&en_vdd_ts_1v8>;
+		};
+	};
+
+	i2c@546c0000 {
+		avdd_dsi_csi-supply = <&max77620_sd1>;
+	};
+
+	extcon {
+		vbus_gpio_extcon: extcon@1 {
+			compatible = "extcon-gpio-states";
+			reg = <0x1>;
+			extcon-gpio,name = "VBUS";
+			extcon-gpio,cable-states = <0x3 0x1
+						    0x0 0x2
+						    0x1 0x2
+						    0x2 0x1>;
+			gpios = <&gpio TEGRA_GPIO(Z, 0) 0 &max77620 0 0>;
+			extcon-gpio,out-cable-name-strings = "USB", "USB-Host";
+			extcon-gpio,out-cable-names = <EXTCON_USB EXTCON_USB_Host EXTCON_NONE>;
+			#extcon-cells = <1>;
+		};
+	};
+
+	udc@7d000000 {
+		extcon-cables = <&vbus_gpio_extcon 0>;
+		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+	};
+
+	otg@7d000000 {
+		extcon-cables = <&vbus_gpio_extcon 0 &vbus_gpio_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+	};
+
+	spi@7000d600 {
+		spi-touch-sharp19x12@0 {
+		status = "okay";
+		};
+	};
+};

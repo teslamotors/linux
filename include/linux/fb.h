@@ -48,6 +48,8 @@ struct device_node;
 #define FB_MISC_PRIM_COLOR	1
 #define FB_MISC_1ST_DETAIL	2	/* First Detailed Timing is preferred */
 #define FB_MISC_HDMI		4
+#define FB_MISC_HDMI_FORUM	8	/* hdmi2.0 and beyond */
+
 struct fb_chroma {
 	__u32 redx;	/* in fraction of 1024 */
 	__u32 greenx;
@@ -87,6 +89,7 @@ struct fb_monspecs {
 	__u8  revision;			/* ...and revision */
 	__u8  max_x;			/* Maximum horizontal size (cm) */
 	__u8  max_y;			/* Maximum vertical size (cm) */
+	__u8  bpc;			/* bits per prim-color - 0:unknown */
 };
 
 struct fb_cmap_user {
@@ -726,13 +729,23 @@ extern int fb_videomode_from_videomode(const struct videomode *vm,
 				       struct fb_videomode *fbmode);
 
 /* drivers/video/modedb.c */
-#define VESA_MODEDB_SIZE 34
+#define VESA_MODEDB_SIZE 88
+#define DMT_SIZE 88
+#define CEA_861_D_MODEDB_SIZE 65
+#define CEA_861_F_MODEDB_SIZE 108
+#define CEA_MODEDB_SIZE (CEA_861_F_MODEDB_SIZE)
+#define HDMI_EXT_MODEDB_SIZE 5
+#define FB_MODE_TOLERANCE_DEFAULT 5
+
 extern void fb_var_to_videomode(struct fb_videomode *mode,
 				const struct fb_var_screeninfo *var);
 extern void fb_videomode_to_var(struct fb_var_screeninfo *var,
 				const struct fb_videomode *mode);
 extern int fb_mode_is_equal(const struct fb_videomode *mode1,
 			    const struct fb_videomode *mode2);
+extern int fb_mode_is_equal_tolerance(const struct fb_videomode *mode1,
+				      const struct fb_videomode *mode2,
+				      unsigned int tolerance);
 extern int fb_add_videomode(const struct fb_videomode *mode,
 			    struct list_head *head);
 extern void fb_delete_videomode(const struct fb_videomode *mode,
@@ -777,9 +790,18 @@ struct fb_videomode {
 	u32 flag;
 };
 
+struct dmt_videomode {
+	u32 dmt_id;
+	u32 std_2byte_code;
+	u32 cvt_3byte_code;
+	const struct fb_videomode *mode;
+};
+
 extern const char *fb_mode_option;
 extern const struct fb_videomode vesa_modes[];
-extern const struct fb_videomode cea_modes[64];
+extern const struct fb_videomode cea_modes[];
+extern const struct fb_videomode hdmi_ext_modes[];
+extern const struct dmt_videomode dmt_modes[];
 
 struct fb_modelist {
 	struct list_head list;

@@ -78,6 +78,12 @@ config MTD_DATAFLASH_OTP
 	  other key product data.  The second half is programmed with a
 	  unique-to-each-chip bit pattern at the factory.
 
+config MTD_NAND_TEGRA
+	tristate "Support for NAND Controller on NVIDIA Tegra"
+	depends on ARCH_TEGRA
+	help
+	  Enables NAND flash support for NVIDIA's Tegra family of chips.
+
 config MTD_M25P80
 	tristate "Support most SPI Flash chips (AT26DF, M25P, W25X, ...)"
 	depends on SPI_MASTER && MTD_SPI_NOR
@@ -111,6 +117,18 @@ config MTD_SST25L
 
 	  Set up your spi devices with the right board-specific platform data,
 	  if you want to specify device partitioning.
+
+config MTD_QSPI_FLASH
+	tristate "Support Quad SPI Flash chips (S25FL512S,MT25QL512AB)"
+	depends on (SPI_MASTER && QSPI_TEGRA)
+	help
+	  This enables access to Quad SPI flash chips, used for
+	  program and data storage.
+
+          It includes support for Spansion S25FL512 and Micron MT25QL512AB
+          QSPI flashes. It provides support for Normal/Fast/Dual Output/
+          Quad Output/Dual IO/Quad IO/DDR Fast/DDR Dual IO/DDR Quad IO read,
+          Page Program/Quad Page program write, sector and bulk erase modes.
 
 config MTD_BCM47XXSFLASH
 	tristate "R/O support for serial flash on BCMA bus"

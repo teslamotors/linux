@@ -1,7 +1,7 @@
 /*
  * ams AS3722 pin control and GPIO driver.
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -249,6 +249,7 @@ static int as3722_pinctrl_set(struct pinctrl_dev *pctldev, unsigned function,
 		return ret;
 	}
 	as_pci->gpio_control[group].io_function = function;
+	val = val & AS3722_GPIO_IOSF_MASK;
 
 	switch (val) {
 	case AS3722_GPIO_IOSF_SD0_OUT:
@@ -323,6 +324,34 @@ static int as3722_pinctrl_gpio_set_direction(struct pinctrl_dev *pctldev,
 				AS3722_GPIO_MODE_MASK, mode);
 }
 
+static void as3722_gpio_set_value(struct as3722_pctrl_info *as_pci,
+		unsigned offset, int value)
+{
+	struct as3722 *as3722 = as_pci->as3722;
+	int en_invert;
+	u32 val;
+	int ret;
+
+	ret = as3722_read(as3722, AS3722_GPIOn_CONTROL_REG(offset), &val);
+	if (ret < 0) {
+		dev_err(as_pci->dev,
+			"GPIO_CONTROL%d_REG read failed: %d\n", offset, ret);
+		return;
+	}
+	en_invert = !!(val & AS3722_GPIO_INV);
+
+	if (value)
+		val = (en_invert) ? 0 : AS3722_GPIOn_SIGNAL(offset);
+	else
+		val = (en_invert) ? AS3722_GPIOn_SIGNAL(offset) : 0;
+
+	ret = as3722_update_bits(as3722, AS3722_GPIO_SIGNAL_OUT_REG,
+			AS3722_GPIOn_SIGNAL(offset), val);
+	if (ret < 0)
+		dev_err(as_pci->dev,
+			"GPIO_SIGNAL_OUT_REG update failed: %d\n", ret);
+}
+
 static const struct pinmux_ops as3722_pinmux_ops = {
 	.get_functions_count	= as3722_pinctrl_get_funcs_count,
 	.get_function_name	= as3722_pinctrl_get_func_name,
@@ -383,11 +412,13 @@ static int as3722_pinconf_set(struct pinctrl_dev *pctldev,
 {
 	struct as3722_pctrl_info *as_pci = pinctrl_dev_get_drvdata(pctldev);
 	enum pin_config_param param;
+	u16 param_val;
 	int mode_prop;
-	int i;
+	int i, ret;
 
 	for (i = 0; i < num_configs; i++) {
 		param = pinconf_to_config_param(configs[i]);
+		param_val = pinconf_to_config_argument(configs[i]);
 		mode_prop = as_pci->gpio_control[pin].mode_prop;
 
 		switch (param) {
@@ -413,6 +444,13 @@ static int as3722_pinconf_set(struct pinctrl_dev *pctldev,
 		case PIN_CONFIG_DRIVE_OPEN_DRAIN:
 			mode_prop |= AS3722_GPIO_MODE_OPEN_DRAIN;
 			break;
+
+		case PIN_CONFIG_OUTPUT:
+			as3722_gpio_set_value(as_pci, pin, param_val);
+			ret = as3722_pinctrl_gpio_set_direction(pctldev, NULL, pin, 0);
+			if (ret < 0)
+				dev_err(as_pci->dev, "Not able to set direction\n");
+			return ret;
 
 		default:
 			dev_err(as_pci->dev, "Properties not supported\n");
@@ -492,29 +530,8 @@ static void as3722_gpio_set(struct gpio_chip *chip, unsigned offset,
 		int value)
 {
 	struct as3722_pctrl_info *as_pci = to_as_pci(chip);
-	struct as3722 *as3722 = as_pci->as3722;
-	int en_invert;
-	u32 val;
-	int ret;
 
-	ret = as3722_read(as3722, AS3722_GPIOn_CONTROL_REG(offset), &val);
-	if (ret < 0) {
-		dev_err(as_pci->dev,
-			"GPIO_CONTROL%d_REG read failed: %d\n", offset, ret);
-		return;
-	}
-	en_invert = !!(val & AS3722_GPIO_INV);
-
-	if (value)
-		val = (en_invert) ? 0 : AS3722_GPIOn_SIGNAL(offset);
-	else
-		val = (en_invert) ? AS3722_GPIOn_SIGNAL(offset) : 0;
-
-	ret = as3722_update_bits(as3722, AS3722_GPIO_SIGNAL_OUT_REG,
-			AS3722_GPIOn_SIGNAL(offset), val);
-	if (ret < 0)
-		dev_err(as_pci->dev,
-			"GPIO_SIGNAL_OUT_REG update failed: %d\n", ret);
+	as3722_gpio_set_value(as_pci, offset, value);
 }
 
 static int as3722_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
@@ -640,7 +657,18 @@ static struct platform_driver as3722_pinctrl_driver = {
 	.probe = as3722_pinctrl_probe,
 	.remove = as3722_pinctrl_remove,
 };
-module_platform_driver(as3722_pinctrl_driver);
+
+static int __init as3722_pinctrl_init(void)
+{
+	return platform_driver_register(&as3722_pinctrl_driver);
+}
+subsys_initcall(as3722_pinctrl_init);
+
+static void __exit as3722_pinctrl_exit(void)
+{
+	platform_driver_unregister(&as3722_pinctrl_driver);
+}
+module_exit(as3722_pinctrl_exit);
 
 MODULE_ALIAS("platform:as3722-pinctrl");
 MODULE_DESCRIPTION("AS3722 pin control and GPIO driver");

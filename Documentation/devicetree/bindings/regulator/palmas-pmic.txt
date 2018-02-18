@@ -8,6 +8,7 @@ Required properties:
   ti,tps65913-pmic
   ti,tps65914-pmic
   ti,tps65917-pmic
+  ti,tps80036-pmic
 and also the generic series names
   ti,palmas-pmic
 - interrupt-parent : The parent interrupt controller which is palmas.
@@ -17,6 +18,12 @@ and also the generic series names
 
 Optional properties:
 - ti,ldo6-vibrator : ldo6 is in vibrator mode
+- ti,config_flags: Configuration flags.
+		0x1: Force off on suspendi.
+		0x2: Trackign enable.
+		0x4: Tracking disable on suspend.
+- ti,tracking-regulator: Tracking regulator phandle.
+- gpio-extcontrol: GPIO for external control.
 
 Optional nodes:
 - regulators : Must contain a sub-node per regulator from the list below.
@@ -27,7 +34,8 @@ Optional nodes:
 
 	       For ti,palmas-pmic - smps12, smps123, smps3 depending on OTP,
 	       smps45, smps457, smps7 depending on variant, smps6, smps[8-9],
-	       smps10_out2, smps10_out1, ldo[1-9], ldoln, ldousb.
+	       smps10_out2, smps10_out1, ldo[1-14], ldoln, ldousb, regen[1-5],
+	       regen7, sysen1, sysen2.
 
 	       Optional sub-node properties:
 	       ti,warm-reset - maintain voltage during warm reset(boolean)

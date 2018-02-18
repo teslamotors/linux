@@ -2125,10 +2125,21 @@ static int nfs_validate_text_mount_data(void *options,
 	int port = 0;
 	int max_namelen = PAGE_SIZE;
 	int max_pathlen = NFS_MAXPATHLEN;
+	int rc;
 	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
 
 	if (nfs_parse_mount_options((char *)options, args) == 0)
 		return -EINVAL;
+	rc = nfs_parse_devname(dev_name,
+				   &args->nfs_server.hostname,
+				   max_namelen,
+				   &args->nfs_server.export_path,
+				   max_pathlen);
+
+	args->nfs_server.addrlen = rpc_pton(args->net,
+			args->nfs_server.hostname,
+			strlen(args->nfs_server.hostname),
+			sap, sizeof(args->nfs_server.address));
 
 	if (!nfs_verify_server_address(sap))
 		goto out_no_address;
@@ -2150,11 +2161,7 @@ static int nfs_validate_text_mount_data(void *options,
 
 	nfs_set_port(sap, &args->nfs_server.port, port);
 
-	return nfs_parse_devname(dev_name,
-				   &args->nfs_server.hostname,
-				   max_namelen,
-				   &args->nfs_server.export_path,
-				   max_pathlen);
+	return rc;
 
 #if !IS_ENABLED(CONFIG_NFS_V4)
 out_v4_not_compiled:

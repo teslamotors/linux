@@ -311,7 +311,7 @@ config SERIAL_SIRFSOC_CONSOLE
 
 config SERIAL_TEGRA
 	tristate "NVIDIA Tegra20/30 SoC serial controller"
-	depends on ARCH_TEGRA && TEGRA20_APB_DMA
+	depends on ARCH_TEGRA && TEGRA20_APB_DMA || PLATFORM_TEGRA && TEGRA186_GPC_DMA
 	select SERIAL_CORE
 	help
 	  Support for the on-chip UARTs on the NVIDIA Tegra series SOCs
@@ -1573,9 +1573,31 @@ config SERIAL_MEN_Z135
 	  This driver can also be build as a module. If so, the module will be called
 	  men_z135_uart.ko
 
+config TEGRA_HV_COMM
+	tristate "Tegra Hypervisor Communication"
+	depends on TEGRA_HV_MANAGER
+	help
+	  Add support for emulating a TTY device over the Tegra Hypervisor interface.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tegra_hv_comm.
+
+config SERIAL_UBLOX_GPS
+       tristate "u-blox 6 I2C GPS support"
+       depends on I2C
+       default n
+       help
+         This driver uses i2c to communicate with the u-blox 6 GPS module
+         and has a serial tty device interface to the user-space, making
+         it easy to read/write data from/to the GPS.
+
 endmenu
 
 config SERIAL_MCTRL_GPIO
 	tristate
+
+trysource "../t18x/drivers/tty/serial/Kconfig"
+trysource "../t18x/drivers/tty/serial/Kconfig.t18x"
+trysource "drivers/tty/serial/Kconfig.18x"
 
 endif # TTY

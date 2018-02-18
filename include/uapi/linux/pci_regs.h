@@ -625,7 +625,8 @@
 #define PCI_EXT_CAP_ID_SECPCI	0x19	/* Secondary PCIe Capability */
 #define PCI_EXT_CAP_ID_PMUX	0x1A	/* Protocol Multiplexing */
 #define PCI_EXT_CAP_ID_PASID	0x1B	/* Process Address Space ID */
-#define PCI_EXT_CAP_ID_MAX	PCI_EXT_CAP_ID_PASID
+#define PCI_EXT_CAP_ID_L1SS	0x1E	/* L1 Substates */
+#define PCI_EXT_CAP_ID_MAX	PCI_EXT_CAP_ID_L1SS
 
 #define PCI_EXT_CAP_DSN_SIZEOF	12
 #define PCI_EXT_CAP_MCAST_ENDPOINT_SIZEOF 40
@@ -900,5 +901,35 @@
 #define PCI_TPH_CAP_ST_MASK	0x07FF0000	/* st table mask */
 #define PCI_TPH_CAP_ST_SHIFT	16	/* st table shift */
 #define PCI_TPH_BASE_SIZEOF	12	/* size with no st table */
+
+/* L1SS capability */
+#define PCI_L1SS_CAP		0x04	/* L1SS Capability Register */
+#define  PCI_L1SS_CAP_L1PM_MASK	0x0F	/* L1 PM Substate Supported */
+#define  PCI_L1SS_CAP_PM_L12S	0x01	/* PCI-PM L1.2 Supported */
+#define  PCI_L1SS_CAP_PM_L11S	0x02	/* PCI-PM L1.1 Supported */
+#define  PCI_L1SS_CAP_ASPM_L12S	0x04	/* ASPM L1.2 Supported */
+#define  PCI_L1SS_CAP_ASPM_L11S	0x08	/* ASPM L1.1 Supported */
+#define  PCI_L1SS_CAP_L1PMS		0x10	/* L1 PM Substate Supported */
+#define  PCI_L1SS_CAP_CM_RTM_MASK	0xFF00	/* Common mode restore time */
+#define  PCI_L1SS_CAP_CM_RTM_SHIFT	8	/* Common mode restore mask */
+#define  PCI_L1SS_CAP_PWRN_SCL_MASK	0x30000	/* T_POWER_ON scale mask */
+#define  PCI_L1SS_CAP_PWRN_SCL_SHIFT	16	/* T_POWER_ON scale shift */
+#define  PCI_L1SS_CAP_PWRN_VAL_MASK	0xF80000	/* T_POWER_ON val mask */
+#define  PCI_L1SS_CAP_PWRN_VAL_SHIFT	19	/* T_POWER_ON val shift */
+#define  PCI_L1SS_CAP_PWRN_VS_MASK	0xFF0000	/* T_POWER_ON val mask */
+#define PCI_L1SS_CTRL1		0x08	/* L1SS control 1 register */
+#define  PCI_L1SS_CTRL1_PM_L12S	0x01	/* PCI-PM L1.2 Enable */
+#define  PCI_L1SS_CTRL1_PM_L11S	0x02	/* PCI-PM L1.1 Enable */
+#define  PCI_L1SS_CTRL1_ASPM_L12S	0x04	/* ASPM L1.2 Enable */
+#define  PCI_L1SS_CTRL1_ASPM_L11S	0x08	/* ASPM L1.1 Enable */
+#define  PCI_L1SS_CTRL1_ASPM_L11SC	0x0C	/* ASPM L1SS Enable */
+#define  PCI_L1SS_CTRL1_CMRT_MASK	0xFF00	/* CM restore time mask */
+#define  PCI_L1SS_CTRL1_CMRT_SHIFT	8	/* CM restore time shift */
+#define  PCI_L1SS_CTRL1_L12TH_VAL_SHIFT	16	/* L1.2 threshold val shift */
+#define  PCI_L1SS_CTRL1_L12TH_SCALE_SHIFT	29	/* L1.2 threshold scale shift */
+#define PCI_L1SS_CTRL2		0x0C	/* L1SS control 2 register */
+#define PCI_L1SS_CTRL2_PWRN_SCL_MASK	0x03	/* L1SS ctrl 2 reg scale mask */
+#define PCI_L1SS_CTRL2_PWRN_VAL_MASK	0xF8	/* L1SS ctrl 2 reg val mask */
+#define PCI_L1SS_CTRL2_PWRN_VAL_SHIFT	3	/* L1SS ctrl 2 reg val shift */
 
 #endif /* LINUX_PCI_REGS_H */

@@ -1,0 +1,52 @@
+#
+# Trusty
+#
+
+menu "Trusty"
+
+config TRUSTY
+	tristate "Trusty"
+	default n
+
+config TRUSTY_FIQ
+	tristate
+	depends on TRUSTY
+
+config TRUSTY_FIQ_ARM
+	tristate
+	depends on TRUSTY
+	depends on ARM
+	select FIQ_GLUE
+	select TRUSTY_FIQ
+	default y
+
+config TRUSTY_FIQ_ARM64
+	tristate
+	depends on TRUSTY
+	depends on ARM64
+	select FIQ_GLUE
+	select TRUSTY_FIQ
+	default y
+
+config TRUSTY_LOG
+	tristate
+	depends on TRUSTY
+	default y
+
+config TRUSTY_VIRTIO
+	tristate "Trusty virtio support"
+	depends on TRUSTY
+	select VIRTIO
+	default y
+
+config TRUSTY_VIRTIO_IPC
+	tristate "Trusty Virtio IPC driver"
+	depends on TRUSTY_VIRTIO
+	default y
+	help
+	  This module adds support for communications with Trusty Services
+
+	  If you choose to build a module, it'll be called trusty-ipc.
+	  Say N if unsure.
+
+endmenu

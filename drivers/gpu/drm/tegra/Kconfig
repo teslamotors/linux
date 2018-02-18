@@ -1,6 +1,6 @@
 config DRM_TEGRA
 	tristate "NVIDIA Tegra DRM"
-	depends on ARCH_TEGRA || (ARM && COMPILE_TEST)
+	depends on (ARCH_TEGRA || PLATFORM_TEGRA) || (ARM && COMPILE_TEST)
 	depends on DRM
 	depends on RESET_CONTROLLER
 	select DRM_KMS_HELPER
@@ -14,6 +14,13 @@ config DRM_TEGRA
 	  will be called tegra-drm.
 
 if DRM_TEGRA
+
+config DRM_TEGRA_DOWNSTREAM
+	bool "Execute in downstream configuration"
+	default y
+	select VIDEOBUF2_DMA_CONTIG
+	help
+	  Choose this option if you are building driver in Tegra downstream.
 
 config DRM_TEGRA_FBDEV
 	bool "Enable legacy fbdev support"

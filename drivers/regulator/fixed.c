@@ -34,6 +34,7 @@
 struct fixed_voltage_data {
 	struct regulator_desc desc;
 	struct regulator_dev *dev;
+	struct fixed_voltage_config *config;
 };
 
 
@@ -73,7 +74,7 @@ of_get_fixed_voltage_config(struct device *dev)
 		return ERR_PTR(-EINVAL);
 	}
 
-	if (init_data->constraints.boot_on)
+	if (init_data->constraints.boot_on | init_data->constraints.always_on)
 		config->enabled_at_boot = true;
 
 	config->gpio = of_get_named_gpio(np, "gpio", 0);
@@ -135,6 +136,7 @@ static int reg_fixed_voltage_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to allocate supply name\n");
 		return -ENOMEM;
 	}
+	drvdata->config = config;
 	drvdata->desc.type = REGULATOR_VOLTAGE;
 	drvdata->desc.owner = THIS_MODULE;
 	drvdata->desc.ops = &fixed_voltage_ops;
@@ -195,6 +197,61 @@ static int reg_fixed_voltage_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static void reg_fixed_voltage_shutdown(struct platform_device *pdev)
+{
+	struct fixed_voltage_data *drvdata = platform_get_drvdata(pdev);
+	struct fixed_voltage_config *config = drvdata->config;
+	struct regulation_constraints *constraints = NULL;
+
+	if (!config->init_data)
+		return;
+
+	constraints = &config->init_data->constraints;
+	if (gpio_is_valid(config->gpio) && constraints->disable_on_shutdown)
+		gpio_set_value_cansleep(config->gpio, !config->enable_high);
+}
+
+#ifdef CONFIG_PM_SLEEP
+static int reg_fixed_voltage_suspend(struct device *dev)
+{
+	struct fixed_voltage_data *drvdata = dev_get_drvdata(dev);
+	struct fixed_voltage_config *config = drvdata->config;
+	struct regulation_constraints *constraints = NULL;
+
+	if (!config->init_data)
+		return 0;
+
+	constraints = &config->init_data->constraints;
+	if (gpio_is_valid(config->gpio) && constraints->disable_on_suspend)
+		gpio_set_value_cansleep(config->gpio, !config->enable_high);
+
+	return 0;
+}
+
+static int reg_fixed_voltage_resume(struct device *dev)
+{
+	struct fixed_voltage_data *drvdata = dev_get_drvdata(dev);
+	struct fixed_voltage_config *config = drvdata->config;
+	struct regulation_constraints *constraints = NULL;
+
+	if (!config->init_data)
+		return 0;
+
+	constraints = &config->init_data->constraints;
+	if (gpio_is_valid(config->gpio) && constraints->disable_on_suspend) {
+		gpio_set_value_cansleep(config->gpio, config->enable_high);
+		regulator_wait_for_enable_time(drvdata->dev);
+	}
+
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops reg_fixed_voltage_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(reg_fixed_voltage_suspend,
+			reg_fixed_voltage_resume)
+};
+
 #if defined(CONFIG_OF)
 static const struct of_device_id fixed_of_match[] = {
 	{ .compatible = "regulator-fixed", },
@@ -205,10 +262,12 @@ MODULE_DEVICE_TABLE(of, fixed_of_match);
 
 static struct platform_driver regulator_fixed_voltage_driver = {
 	.probe		= reg_fixed_voltage_probe,
+	.shutdown	= reg_fixed_voltage_shutdown,
 	.driver		= {
 		.name		= "reg-fixed-voltage",
 		.owner		= THIS_MODULE,
 		.of_match_table = of_match_ptr(fixed_of_match),
+		.pm		= &reg_fixed_voltage_pm_ops,
 	},
 };
 
@@ -223,6 +282,42 @@ static void __exit regulator_fixed_voltage_exit(void)
 	platform_driver_unregister(&regulator_fixed_voltage_driver);
 }
 module_exit(regulator_fixed_voltage_exit);
+
+
+#if defined(CONFIG_OF)
+static const struct of_device_id fixed_sync_of_match[] = {
+	{ .compatible = "regulator-fixed-sync", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, fixed_sync_of_match);
+#endif
+
+static const struct dev_pm_ops reg_fixed_sync_voltage_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(reg_fixed_voltage_suspend,
+			reg_fixed_voltage_resume)
+};
+
+static struct platform_driver regulator_fixed_sync_voltage_driver = {
+	.probe		= reg_fixed_voltage_probe,
+	.driver		= {
+		.name		= "reg-fixed-sync-voltage",
+		.owner		= THIS_MODULE,
+		.of_match_table = of_match_ptr(fixed_sync_of_match),
+		.pm		= &reg_fixed_sync_voltage_pm_ops,
+	},
+};
+
+static int __init regulator_fixed_sync_voltage_init(void)
+{
+	return platform_driver_register(&regulator_fixed_sync_voltage_driver);
+}
+subsys_initcall_sync(regulator_fixed_sync_voltage_init);
+
+static void __exit regulator_fixed_sync_voltage_exit(void)
+{
+	platform_driver_unregister(&regulator_fixed_sync_voltage_driver);
+}
+module_exit(regulator_fixed_sync_voltage_exit);
 
 MODULE_AUTHOR("Mark Brown <broonie@opensource.wolfsonmicro.com>");
 MODULE_DESCRIPTION("Fixed voltage regulator");

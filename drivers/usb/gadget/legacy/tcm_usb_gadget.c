@@ -2453,6 +2453,11 @@ static void usbg_detach(struct usbg_tpg *tpg)
 	usb_composite_unregister(&usbg_driver);
 }
 
+/* This is to avoid the conflicting definitions with the module_init/exit
+ * functions in the android.c when the UASP is loaded as part of the Android
+ * Gadget framework
+ */
+#ifndef UASP_ANDROID_GADGET
 static int __init usb_target_gadget_init(void)
 {
 	int ret;
@@ -2467,6 +2472,7 @@ static void __exit usb_target_gadget_exit(void)
 	usbg_deregister_configfs();
 }
 module_exit(usb_target_gadget_exit);
+#endif
 
 MODULE_AUTHOR("Sebastian Andrzej Siewior <bigeasy@linutronix.de>");
 MODULE_DESCRIPTION("usb-gadget fabric");

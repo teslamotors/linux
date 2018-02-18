@@ -20,6 +20,7 @@
  *
  */
 
+#include <linux/highmem.h>
 #include <linux/clocksource.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -35,6 +36,10 @@
 
 #define CREATE_TRACE_POINTS
 #include "hda_intel_trace.h"
+
+#ifdef CONFIG_SND_HDA_VPR
+extern struct device tegra_vpr_dev;
+#endif
 
 /* DSP lock helpers */
 #ifdef CONFIG_SND_HDA_DSP_LOADER
@@ -105,6 +110,7 @@ static void azx_stream_reset(struct azx *chip, struct azx_dev *azx_dev)
 	while (!((val = azx_sd_readb(chip, azx_dev, SD_CTL)) &
 		 SD_CTL_STREAM_RESET) && --timeout)
 		;
+	udelay(100); /* WAR: Delay added to avoid mcerr */
 	val &= ~SD_CTL_STREAM_RESET;
 	azx_sd_writeb(chip, azx_dev, SD_CTL, val);
 	udelay(3);
@@ -882,6 +888,30 @@ static struct snd_pcm_ops azx_pcm_ops = {
 static void azx_pcm_free(struct snd_pcm *pcm)
 {
 	struct azx_pcm *apcm = pcm->private_data;
+#ifdef CONFIG_SND_HDA_VPR
+	int s;
+	for (s = 0; s <= SNDRV_PCM_STREAM_LAST; s++) {
+		struct snd_pcm_substream *substream;
+		for (substream = pcm->streams[s].substream;
+		     substream; substream = substream->next) {
+				struct snd_dma_buffer *dma_buf =
+						&substream->dma_buffer;
+				if (dma_buf->addr) {
+					dma_free_attrs(&tegra_vpr_dev,
+						dma_buf->bytes,
+						(void *)dma_buf->addr,
+						dma_buf->addr,
+						&apcm->chip->dmaattrs);
+				}
+				if (dma_buf->area) {
+					kunmap(dma_buf->private_data);
+					dma_buf->area = NULL;
+					dma_buf->private_data = NULL;
+				}
+		}
+	}
+#endif
+
 	if (apcm) {
 		list_del(&apcm->list);
 		kfree(apcm);
@@ -933,11 +963,52 @@ static int azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
 	}
 	/* buffer pre-allocation */
 	size = CONFIG_SND_HDA_PREALLOC_SIZE * 1024;
+	size = PAGE_ALIGN(size);
 	if (size > MAX_PREALLOC_SIZE)
 		size = MAX_PREALLOC_SIZE;
+
+#ifdef CONFIG_SND_HDA_VPR
+	chip->buf_size = size;
+	for (s = 0; s <= SNDRV_PCM_STREAM_LAST; s++) {
+		struct snd_pcm_substream *substream;
+		for (substream = pcm->streams[s].substream;
+		     substream; substream = substream->next) {
+			DEFINE_DMA_ATTRS(dmaattrs);
+			struct page *page;
+
+			chip->dmaattrs = dmaattrs;
+			(void)dma_alloc_attrs(&tegra_vpr_dev,
+				chip->buf_size, &chip->iova_addr,
+				DMA_MEMORY_NOMAP, &chip->dmaattrs);
+			if (dma_mapping_error(&tegra_vpr_dev,
+					chip->iova_addr)) {
+				chip->iova_addr = 0;
+				err = -ENOMEM;
+				goto dma_alloc_fail;
+			}
+			dev_info(chip->card->dev,
+				"iova_addr=%pad\n", &chip->iova_addr);
+			page = phys_to_page(chip->iova_addr);
+			substream->dma_buffer.area = kmap(page);
+			substream->dma_buffer.private_data = page;
+			substream->dma_buffer.addr = chip->iova_addr;
+			substream->dma_buffer.bytes = size;
+			substream->dma_buffer.dev.dev = chip->card->dev;
+			substream->dma_buffer.dev.type = SNDRV_DMA_TYPE_DEV;
+			if (substream->dma_buffer.bytes > 0)
+				substream->buffer_bytes_max =
+				   substream->dma_buffer.bytes;
+			substream->dma_max = MAX_PREALLOC_SIZE;
+			continue;
+dma_alloc_fail:
+			return err;
+		}
+	}
+#else
 	snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV_SG,
 					      chip->card->dev,
 					      size, MAX_PREALLOC_SIZE);
+#endif
 	/* link to codec */
 	pcm->dev = &codec->dev;
 	return 0;
@@ -1300,14 +1371,20 @@ static unsigned int azx_single_get_response(struct hda_bus *bus,
 static int azx_send_cmd(struct hda_bus *bus, unsigned int val)
 {
 	struct azx *chip = bus->private_data;
+	unsigned int ret = 0;
 
 	if (chip->disabled)
 		return 0;
+
+	pm_runtime_get_sync(chip->card->dev);
 	chip->last_cmd[azx_command_addr(val)] = val;
 	if (chip->single_cmd)
-		return azx_single_send_cmd(bus, val);
+		ret = azx_single_send_cmd(bus, val);
 	else
-		return azx_corb_send_cmd(bus, val);
+		ret = azx_corb_send_cmd(bus, val);
+	pm_runtime_put(chip->card->dev);
+
+	return ret;
 }
 
 /* get a response */
@@ -1315,12 +1392,18 @@ static unsigned int azx_get_response(struct hda_bus *bus,
 				     unsigned int addr)
 {
 	struct azx *chip = bus->private_data;
+	unsigned int ret = 0;
 	if (chip->disabled)
 		return 0;
+
+	pm_runtime_get_sync(chip->card->dev);
 	if (chip->single_cmd)
-		return azx_single_get_response(bus, addr);
+		ret = azx_single_get_response(bus, addr);
 	else
-		return azx_rirb_get_response(bus, addr);
+		ret = azx_rirb_get_response(bus, addr);
+	pm_runtime_put(chip->card->dev);
+
+	return ret;
 }
 
 #ifdef CONFIG_SND_HDA_DSP_LOADER
@@ -1648,6 +1731,7 @@ void azx_stop_chip(struct azx *chip)
 	/* disable interrupts */
 	azx_int_disable(chip);
 	azx_int_clear(chip);
+	synchronize_irq(chip->irq);
 
 	/* disable CORB/RIRB */
 	azx_free_cmd_io(chip);
@@ -1671,7 +1755,7 @@ irqreturn_t azx_interrupt(int irq, void *dev_id)
 	u8 sd_status;
 	int i;
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 	if (chip->driver_caps & AZX_DCAPS_PM_RUNTIME)
 		if (!pm_runtime_active(chip->card->dev))
 			return IRQ_NONE;

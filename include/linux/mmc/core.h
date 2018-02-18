@@ -1,6 +1,8 @@
 /*
  *  linux/include/linux/mmc/core.h
  *
+ * Copyright (C) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -48,6 +50,7 @@ struct mmc_command {
 #define MMC_RSP_NONE	(0)
 #define MMC_RSP_R1	(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE)
 #define MMC_RSP_R1B	(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE|MMC_RSP_BUSY)
+#define MMC_RSP_R1B_CQ	(MMC_RSP_PRESENT|MMC_RSP_136)
 #define MMC_RSP_R2	(MMC_RSP_PRESENT|MMC_RSP_136|MMC_RSP_CRC)
 #define MMC_RSP_R3	(MMC_RSP_PRESENT)
 #define MMC_RSP_R4	(MMC_RSP_PRESENT)
@@ -104,6 +107,7 @@ struct mmc_command {
 };
 
 struct mmc_data {
+	bool			is_adma3_flush_ready;
 	unsigned int		timeout_ns;	/* data timeout (in ns, max 80ms) */
 	unsigned int		timeout_clks;	/* data timeout (in clocks) */
 	unsigned int		blksz;		/* data block size */
@@ -131,19 +135,28 @@ struct mmc_request {
 	struct mmc_command	*cmd;
 	struct mmc_data		*data;
 	struct mmc_command	*stop;
+	struct mmc_command	*task_mgmt;
 
 	struct completion	completion;
 	void			(*done)(struct mmc_request *);/* completion function */
 	struct mmc_host		*host;
+	struct mmc_cmdq_req	*cmdq_req;
+	struct request		*req; /* associated block request */
+	struct mmc_async_req	*areq;
+	int	   data_early;
 };
 
 struct mmc_card;
 struct mmc_async_req;
+struct mmc_cmdq_req;
 
 extern int mmc_stop_bkops(struct mmc_card *);
 extern int mmc_read_bkops_status(struct mmc_card *);
 extern struct mmc_async_req *mmc_start_req(struct mmc_host *,
 					   struct mmc_async_req *, int *);
+extern int mmc_cmdq_start_req(struct mmc_host *host,
+		struct mmc_cmdq_req *cmdq_req);
+extern void mmc_blk_cmdq_req_done(struct mmc_request *mrq);
 extern int mmc_interrupt_hpi(struct mmc_card *);
 extern void mmc_wait_for_req(struct mmc_host *, struct mmc_request *);
 extern int mmc_wait_for_cmd(struct mmc_host *, struct mmc_command *, int);
@@ -153,8 +166,20 @@ extern int mmc_wait_for_app_cmd(struct mmc_host *, struct mmc_card *,
 extern void mmc_start_bkops(struct mmc_card *card, bool from_exception);
 extern int __mmc_switch(struct mmc_card *, u8, u8, u8, unsigned int, bool,
 			bool, bool);
+extern int mmc_hs400_to_ddr(struct mmc_card *card);
+extern int mmc_ddr_to_hs400(struct mmc_card *card);
+extern int mmc_hs200_to_ddr(struct mmc_card *card);
+extern int mmc_ddr_to_hs200(struct mmc_card *card);
 extern int mmc_switch(struct mmc_card *, u8, u8, u8, unsigned int);
 extern int mmc_send_ext_csd(struct mmc_card *card, u8 *ext_csd);
+extern int __mmc_switch_cmdq_mode(struct mmc_command *cmd, u8 set, u8 index,
+		u8 value, unsigned int timeout_ms,
+		bool use_busy_signal, bool ignore_timeout);
+extern int mmc_cmdq_halt(struct mmc_host *host, bool enable);
+extern void mmc_cmdq_post_req(struct mmc_host *host, struct mmc_request *mrq,
+		int err);
+extern int mmc_cmdq_discard(struct mmc_host *host, u32 tag, bool all);
+extern int mmc_cmdq_support_qbr(struct mmc_host *host);
 
 #define MMC_ERASE_ARG		0x00000000
 #define MMC_SECURE_ERASE_ARG	0x80000000

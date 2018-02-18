@@ -1994,6 +1994,16 @@ DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x10f1, quirk_disable_aspm_l0s);
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x10f4, quirk_disable_aspm_l0s);
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x1508, quirk_disable_aspm_l0s);
 
+
+static void quirk_disable_aspm_l1l0s(struct pci_dev *dev)
+{
+	dev_info(&dev->dev, "Disabling ASPM for PLX-8724\n");
+	pci_disable_link_state(dev, PCIE_LINK_STATE_L0S |
+				    PCIE_LINK_STATE_L1);
+}
+
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_PLX, 0x8724, quirk_disable_aspm_l1l0s);
+
 static void fixup_rev1_53c810(struct pci_dev *dev)
 {
 	/* rev 1 ncr53c810 chips don't set the class at all which means
@@ -2387,6 +2397,7 @@ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_NVIDIA,
 			PCI_DEVICE_ID_NVIDIA_MCP55_BRIDGE_V4,
 			nvbridge_check_legacy_irq_routing);
 
+#ifndef CONFIG_PLATFORM_TEGRA
 static int ht_check_msi_mapping(struct pci_dev *dev)
 {
 	int pos, ttl = 48;
@@ -2597,6 +2608,7 @@ DECLARE_PCI_FIXUP_RESUME_EARLY(PCI_VENDOR_ID_NVIDIA, PCI_ANY_ID, nv_msi_ht_cap_q
 
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_AL, PCI_ANY_ID, nv_msi_ht_cap_quirk_all);
 DECLARE_PCI_FIXUP_RESUME_EARLY(PCI_VENDOR_ID_AL, PCI_ANY_ID, nv_msi_ht_cap_quirk_all);
+#endif
 
 static void quirk_msi_intx_disable_bug(struct pci_dev *dev)
 {

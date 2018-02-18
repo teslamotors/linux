@@ -163,6 +163,7 @@ static int iio_sysfs_trigger_probe(int id)
 	iio_trigger_set_drvdata(t->trig, t);
 
 	init_irq_work(&t->work, iio_sysfs_trigger_work);
+	t->work.flags = IRQ_WORK_HARD_IRQ;
 
 	ret = iio_trigger_register(t->trig);
 	if (ret)
@@ -173,7 +174,7 @@ static int iio_sysfs_trigger_probe(int id)
 	return 0;
 
 out2:
-	iio_trigger_put(t->trig);
+	iio_trigger_free(t->trig);
 free_t:
 	kfree(t);
 out1:

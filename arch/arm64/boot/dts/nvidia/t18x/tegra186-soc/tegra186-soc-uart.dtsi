@@ -1,0 +1,149 @@
+/*
+ * tegra186-soc-uart.dtsi: Tegra186 soc dtsi file for UART instances
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	uarta: serial@3100000 {
+		compatible = "nvidia,tegra210-uart";
+		#stream-id-cells = <1>;
+		reg = <0x0 0x03100000 0x0 0x40>;
+		reg-shift = <2>;
+		interrupts = <0 TEGRA186_IRQ_UARTA 0x04>;
+		nvidia,memory-clients = <14>;
+		nvidia,dma-request-selector = <&gpcdma 8>;
+		dmas = <&gpcdma 8>, <&gpcdma 8>;
+		dma-names = "rx", "tx";
+		clocks = <&tegra_car TEGRA186_CLK_UARTA>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "serial", "parent";
+		resets = <&tegra_car TEGRA186_RESET_UARTA>;
+		reset-names = "serial";
+		status = "disabled";
+	};
+
+	uartb: serial@3110000 {
+		compatible = "nvidia,tegra186-hsuart";
+		#stream-id-cells = <1>;
+		reg = <0x0 0x03110000 0x0 0x40>;
+		reg-shift = <2>;
+		interrupts = <0 TEGRA186_IRQ_UARTB 0x04>;
+		nvidia,memory-clients = <14>;
+		nvidia,dma-request-selector = <&gpcdma 9>;
+		dmas = <&gpcdma 9>, <&gpcdma 9>;
+		dma-names = "rx", "tx";
+		clocks = <&tegra_car TEGRA186_CLK_UARTB>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "serial", "parent";
+		resets = <&tegra_car TEGRA186_RESET_UARTB>;
+		reset-names = "serial";
+		status = "disabled";
+	};
+
+	uartc: serial@c280000 {
+		compatible = "nvidia,tegra186-hsuart";
+		#stream-id-cells = <1>;
+		reg = <0x0 0xc280000 0x0 0x40>;
+		reg-shift = <2>;
+		interrupts = <0 TEGRA186_IRQ_UARTC 0x04>;
+		nvidia,memory-clients = <14>;
+		nvidia,dma-request-selector = <&gpcdma 3>;
+		dmas = <&gpcdma 3>, <&gpcdma 3>;
+		dma-names = "rx", "tx";
+		clocks = <&tegra_car TEGRA186_CLK_UARTC>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "serial", "parent";
+		resets = <&tegra_car TEGRA186_RESET_UARTC>;
+		reset-names = "serial";
+		status = "disabled";
+	};
+
+	uartd: serial@3130000 {
+		compatible = "nvidia,tegra186-hsuart";
+		#stream-id-cells = <1>;
+		reg = <0x0 0x03130000 0x0 0x40>;
+		reg-shift = <2>;
+		interrupts = <0 TEGRA186_IRQ_UARTD 0x04>;
+		nvidia,memory-clients = <14>;
+		nvidia,dma-request-selector = <&gpcdma 19>;
+		dmas = <&gpcdma 19>, <&gpcdma 19>;
+		dma-names = "rx", "tx";
+		clocks = <&tegra_car TEGRA186_CLK_UARTD>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "serial", "parent";
+		resets = <&tegra_car TEGRA186_RESET_UARTD>;
+		reset-names = "serial";
+		status = "disabled";
+	};
+
+	uarte: serial@3140000 {
+		compatible = "nvidia,tegra186-hsuart";
+		#stream-id-cells = <1>;
+		reg = <0x0 0x03140000 0x0 0x40>;
+		reg-shift = <2>;
+		interrupts = <0 TEGRA186_IRQ_UARTE 0x04>;
+		nvidia,memory-clients = <14>;
+		nvidia,dma-request-selector = <&gpcdma 20>;
+		dmas = <&gpcdma 20>, <&gpcdma 20>;
+		dma-names = "rx", "tx";
+		clocks = <&tegra_car TEGRA186_CLK_UARTE>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "serial", "parent";
+		resets = <&tegra_car TEGRA186_RESET_UARTE>;
+		reset-names = "serial";
+		status = "disabled";
+	};
+
+	uartf: serial@3150000 {
+		compatible = "nvidia,tegra186-hsuart";
+		#stream-id-cells = <1>;
+		reg = <0x0 0x03150000 0x0 0x40>;
+		reg-shift = <2>;
+		interrupts = <0 TEGRA186_IRQ_UARTF 0x04>;
+		nvidia,memory-clients = <14>;
+		nvidia,dma-request-selector = <&gpcdma 12>;
+		dmas = <&gpcdma 12>, <&gpcdma 12>;
+		dma-names = "rx", "tx";
+		clocks = <&tegra_car TEGRA186_CLK_UARTF>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "serial", "parent";
+		resets = <&tegra_car TEGRA186_RESET_UARTF>;
+		reset-names = "serial";
+		status = "disabled";
+	};
+
+	uartg: serial@c290000 {
+		compatible = "nvidia,tegra186-hsuart";
+		#stream-id-cells = <1>;
+		reg = <0x0 0xc290000 0x0 0x40>;
+		reg-shift = <2>;
+		interrupts = <0 TEGRA186_IRQ_UARTG 0x04>;
+		nvidia,memory-clients = <14>;
+		nvidia,dma-request-selector = <&gpcdma 2>;
+		dmas = <&gpcdma 2>, <&gpcdma 2>;
+		dma-names = "rx", "tx";
+		clocks = <&tegra_car TEGRA186_CLK_UARTG>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+		clock-names = "serial", "parent";
+		resets = <&tegra_car TEGRA186_RESET_UARTG>;
+		reset-names = "serial";
+		status = "disabled";
+	};
+
+	combined-uart {
+		compatible = "nvidia,tegra186-combined-uart";
+		reg = <0x0 0x3c10000 0x0 0x4   /* TOP0_HSP_SM_0_1_BASE */
+		       0x0 0xc170000 0x0 0x4>; /* AON_HSP_SM_2_3_BASE */
+		status = "okay";
+	};
+};

@@ -20,6 +20,12 @@
 
 #include <asm/ptrace.h>
 
+#ifdef CONFIG_SERROR_HANDLER
+#define SERROR_BITS "4"
+#else
+#define SERROR_BITS "0"
+#endif
+
 /*
  * CPU interrupt mask handling.
  */
@@ -38,7 +44,7 @@ static inline unsigned long arch_local_irq_save(void)
 static inline void arch_local_irq_enable(void)
 {
 	asm volatile(
-		"msr	daifclr, #2		// arch_local_irq_enable"
+		"msr	daifclr, #(2 |" SERROR_BITS ") // arch_local_irq_enable"
 		:
 		:
 		: "memory");
@@ -73,21 +79,23 @@ static inline unsigned long arch_local_save_flags(void)
 	return flags;
 }
 
+static inline int arch_irqs_disabled_flags(unsigned long flags)
+{
+	return flags & PSR_I_BIT;
+}
+
 /*
  * restore saved IRQ state
  */
 static inline void arch_local_irq_restore(unsigned long flags)
 {
-	asm volatile(
-		"msr	daif, %0		// arch_local_irq_restore"
-	:
-	: "r" (flags)
-	: "memory");
-}
+	if (!arch_irqs_disabled_flags(flags))
+		asm volatile(
+			"msr	daifclr, #2		// arch_local_irq_restore"
+		:
+		:
+		: "memory");
 
-static inline int arch_irqs_disabled_flags(unsigned long flags)
-{
-	return flags & PSR_I_BIT;
 }
 
 /*
@@ -110,8 +118,10 @@ static inline int arch_irqs_disabled_flags(unsigned long flags)
 		: : "r" (flags) : "memory");				\
 	} while (0)
 
-#define local_dbg_enable()	asm("msr	daifclr, #8" : : : "memory")
-#define local_dbg_disable()	asm("msr	daifset, #8" : : : "memory")
+#define local_dbg_enable()						\
+asm("msr daifclr, #(8 |" SERROR_BITS ")" : : : "memory")
+
+#define local_dbg_disable() asm("msr daifset, #8" : : : "memory")
 
 #endif
 #endif

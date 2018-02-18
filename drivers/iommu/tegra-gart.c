@@ -160,7 +160,7 @@ static int gart_iommu_attach_dev(struct iommu_domain *domain,
 	struct gart_client *client, *c;
 	int err = 0;
 
-	gart = gart_handle;
+	gart = dev_get_drvdata(dev->parent);
 	if (!gart)
 		return -EINVAL;
 	domain->priv = gart;
@@ -426,7 +426,7 @@ static struct platform_driver tegra_gart_driver = {
 	.remove		= tegra_gart_remove,
 	.driver = {
 		.owner	= THIS_MODULE,
-		.name	= "tegra-gart",
+		.name	= "tegra_gart",
 		.pm	= &tegra_gart_pm_ops,
 		.of_match_table = tegra_gart_of_match,
 	},

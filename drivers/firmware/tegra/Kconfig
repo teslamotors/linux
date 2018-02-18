@@ -1,0 +1,9 @@
+menu "Tegra BPMP Driver"
+
+config TEGRA_BPMP
+	bool "Tegra BPMP driver"
+	default n
+	help
+	  Manages firmware running on Tegra BPMP
+
+endmenu

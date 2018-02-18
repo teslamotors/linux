@@ -1,0 +1,47 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+/ {
+	i2c@7000c000 {
+		icm20628@69 {
+			compatible = "invensense,mpu6xxx";
+			reg = <0x69>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(S, 0) 0x01>;
+			invensense,orientation = [ff 00 00 00 ff 00 00 00 01];
+			accelerometer_matrix = [ff 00 00 00 ff 00 00 00 01];
+			gyroscope_matrix = [ff 00 00 00 ff 00 00 00 01];
+		};
+
+		ak8963c@0d {
+			compatible = "ak,ak89xx";
+			reg = <0x0d>;
+			orientation = [ff 00 00 00 ff 00 00 00 01];
+			magnetic_field_matrix = [ff 00 00 00 ff 00 00 00 01];
+		};
+
+		cm3218@48 {
+			compatible = "capella,cm3218";
+			reg = <0x48>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(X, 3) 0x01>;
+		};
+	};
+
+};

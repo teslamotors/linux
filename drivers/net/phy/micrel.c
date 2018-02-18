@@ -390,6 +390,16 @@ static int ksz9031_config_init(struct phy_device *phydev)
 				MII_KSZ9031RN_TX_DATA_PAD_SKEW, 4,
 				tx_data_skews, 4);
 	}
+
+	/* program RGMII control signal PAD skew */
+	ksz9031_extended_write(phydev, OP_DATA, 2, MII_KSZ9031RN_CONTROL_PAD_SKEW, 0x70);
+
+	/* program RGMII Tx PAD skew */
+	ksz9031_extended_write(phydev, OP_DATA, 2, MII_KSZ9031RN_TX_DATA_PAD_SKEW, 0x0);
+
+	/* program RGMII CLK PAD skew */
+	ksz9031_extended_write(phydev, OP_DATA, 2, MII_KSZ9031RN_CLK_PAD_SKEW, 0x3fef);
+
 	return 0;
 }
 
@@ -628,8 +638,6 @@ static struct phy_driver ksphy_driver[] = {
 	.read_status	= genphy_read_status,
 	.ack_interrupt	= kszphy_ack_interrupt,
 	.config_intr	= ksz9021_config_intr,
-	.suspend	= genphy_suspend,
-	.resume		= genphy_resume,
 	.driver		= { .owner = THIS_MODULE, },
 }, {
 	.phy_id		= PHY_ID_KSZ8873MLL,

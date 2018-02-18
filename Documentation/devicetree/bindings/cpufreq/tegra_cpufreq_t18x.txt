@@ -1,0 +1,81 @@
+* Device tree binding for Nvidia Tegra18x cpufreq driver for EDVD device
+--------------------------------------------
+
+This document defines the device-specific binding for the Tegra18x cpufreq
+driver. It should not contain bindings for generic tegra cpufreq driver
+which are common across all the tegra cpufreq platform driver.
+
+The Tegra18x cpufreq driver adjusts CPU frequency by writing voltage and
+freq hint in EDVD per core volt freq request registers. It calculates per
+core cpufreq by reading per core cycle counters. Cycles are measured by
+reading EDVD per core clock count registers and divided by ref clock counter.
+The ressult is multiplied by ref clock.
+
+Tegra18x cpufreq driver considers these EDVD registers as device to measure
+and adjust cpu freq. There is one instance of EDVD for the Denver cluster
+and one for the A57 cluster.
+
+Required properties:
+- compatible: should be "nvidia,tegra18x-cpufreq".
+- reg: an array of four 64-bit unsigned integers.
+       the base address and size for Denver EDVD aperture and the base
+       address and size for the A57 EDVD aperture.
+
+- status: "okay" or "disabled" to enable/disable the node.
+
+Optional properties:
+- freq_table_step_size:
+  Cpu frequency table step size. If not provided, default value 4.
+
+  For example, if list of original available frequencies(in KHz) are:
+  345600 384000 422400 460800 499200 537600 576000 614400 652800 691200
+  729600 768000 806400 844800 883200 921600 960000 998400 1036800 1075200
+  1113600 1152000 1190400 1228800 1267200 1305600 1344000 1382400 1420800
+  1459200 1497600 1536000 1574400 1612800 1651200 1689600 1728000 1766400
+  1804800 1843200
+
+  Setting freq_table_step_size to 1 will include all these frequencies in
+  cpufreq table as available frequencies.
+
+  Setting freq_table_step_size to 2 will skip alternative entries and will
+  include remaining entries in cpufreq table as available frequencies.
+  With freq_table_step_size as 2, cpufreq table available frequencies will be:
+  345600 422400 499200 576000 652800 729600 806400 883200 960000 1036800
+  1113600 1190400 1267200 1344000 1420800 1497600 1574400 1651200 1728000
+  1804800 1843200
+
+  Similarly, freq_table_step_size of value 3 will skip every 2nd and 3rd entries
+  in groups of 3 entries consecutively.
+
+- nvidia,enable-autocc3: Enable auto_cc3.
+  Auto cc3 is the idle state where freq request is not considered for the cpus
+  in WFI/WFE.
+
+
+Example 1:
+----------
+       cpufreq@e070000 {
+               compatible = "nvidia,tegra18x-cpufreq";
+               reg = <0x0 0x0e070000 0x0 0x1000>, /* M/Denver cluster */
+                     <0x0 0x0e060000 0x0 0x1000>; /* B/ARM cluster */
+               status = "disabled";
+       };
+
+Example 2:
+----------
+       cpufreq@e070000 {
+               compatible = "nvidia,tegra18x-cpufreq";
+               reg = <0x0 0x0e070000 0x0 0x1000>, /* M/Denver cluster */
+                     <0x0 0x0e060000 0x0 0x1000>; /* B/ARM cluster */
+               freq_table_step_size = /bits/ 16 <1>;
+       };
+
+Example 3: cpufreq and auto-cc3 enabled
+----------
+       cpufreq@e070000 {
+               compatible = "nvidia,tegra18x-cpufreq";
+               reg = <0x0 0x0e070000 0x0 0x1000>, /* M/Denver cluster */
+                     <0x0 0x0e060000 0x0 0x1000>; /* B/ARM cluster */
+               status = "okay";
+               nvidia,enable-autocc3;
+       };

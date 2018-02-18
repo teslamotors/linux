@@ -43,6 +43,11 @@ struct iio_event_interface {
 	struct mutex		read_lock;
 };
 
+bool iio_event_enabled(const struct iio_event_interface *ev_int)
+{
+	return !!test_bit(IIO_BUSY_BIT_POS, &ev_int->flags);
+}
+
 /**
  * iio_push_event() - try to add event to the list for userspace reading
  * @indio_dev:		IIO device structure
@@ -59,7 +64,7 @@ int iio_push_event(struct iio_dev *indio_dev, u64 ev_code, s64 timestamp)
 	int copied;
 
 	/* Does anyone care? */
-	if (test_bit(IIO_BUSY_BIT_POS, &ev_int->flags)) {
+	if (iio_event_enabled(ev_int)) {
 
 		ev.id = ev_code;
 		ev.timestamp = timestamp;
@@ -174,8 +179,14 @@ int iio_event_getfd(struct iio_dev *indio_dev)
 	if (ev_int == NULL)
 		return -ENODEV;
 
-	if (test_and_set_bit(IIO_BUSY_BIT_POS, &ev_int->flags))
-		return -EBUSY;
+	fd = mutex_lock_interruptible(&indio_dev->mlock);
+	if (fd)
+		return fd;
+
+	if (test_and_set_bit(IIO_BUSY_BIT_POS, &ev_int->flags)) {
+		fd = -EBUSY;
+		goto unlock;
+	}
 
 	iio_device_get(indio_dev);
 
@@ -188,6 +199,8 @@ int iio_event_getfd(struct iio_dev *indio_dev)
 		kfifo_reset_out(&ev_int->det_events);
 	}
 
+unlock:
+	mutex_unlock(&indio_dev->mlock);
 	return fd;
 }
 
@@ -492,6 +505,7 @@ int iio_device_register_eventset(struct iio_dev *indio_dev)
 
 error_free_setup_event_lines:
 	iio_free_chan_devattr_list(&indio_dev->event_interface->dev_attr_list);
+	mutex_destroy(&indio_dev->event_interface->read_lock);
 	kfree(indio_dev->event_interface);
 	indio_dev->event_interface = NULL;
 	return ret;
@@ -517,5 +531,6 @@ void iio_device_unregister_eventset(struct iio_dev *indio_dev)
 		return;
 	iio_free_chan_devattr_list(&indio_dev->event_interface->dev_attr_list);
 	kfree(indio_dev->event_interface->group.attrs);
+	mutex_destroy(&indio_dev->event_interface->read_lock);
 	kfree(indio_dev->event_interface);
 }

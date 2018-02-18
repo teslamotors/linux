@@ -2,6 +2,8 @@
  * f_fs.c -- user mode file system API for USB composite function controllers
  *
  * Copyright (C) 2010 Samsung Electronics
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
  * Author: Michal Nazarewicz <mina86@mina86.com>
  *
  * Based on inode.c (GadgetFS) which was:
@@ -622,6 +624,9 @@ static const struct file_operations ffs_ep0_operations = {
 	.release =	ffs_ep0_release,
 	.unlocked_ioctl =	ffs_ep0_ioctl,
 	.poll =		ffs_ep0_poll,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl =	ffs_ep0_ioctl,
+#endif
 };
 
 
@@ -1103,6 +1108,9 @@ static const struct file_operations ffs_epfile_operations = {
 	.aio_read =	ffs_epfile_aio_read,
 	.release =	ffs_epfile_release,
 	.unlocked_ioctl =	ffs_epfile_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl =	ffs_epfile_ioctl,
+#endif
 };
 
 
@@ -1673,6 +1681,7 @@ static int ffs_func_eps_enable(struct ffs_function *func)
 
 		ep->ep->driver_data = ep;
 		ep->ep->desc = ds;
+		config_ep_by_speed(ffs->gadget, &func->function, ep->ep);
 
 		if (needs_comp_desc) {
 			comp_desc = (struct usb_ss_ep_comp_descriptor *)(ds +
@@ -2785,7 +2794,7 @@ static int _ffs_func_bind(struct usb_configuration *c,
 		struct ffs_ep *ptr;
 
 		ptr = vla_ptr(vlabuf, d, eps);
-		ptr[ret].num = -1;
+		ptr[ret - 1].num = -1;
 	}
 
 	/* Save pointers

@@ -1,0 +1,52 @@
+/*
+ * arch/arm/boot/dts/tegra124-platforms/tegra124-tn8-sysedp-p1761-1270-a03.dtsi
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/ {
+	sysedp_batmon_calc {
+		compatible = "nvidia,tegra124-sysedp_batmon_calc";
+		ocv_lut = <
+			100 4322580
+			80  4084489
+			60  3913651
+			40  3795200
+			20  3700276
+			0   3500000
+		>;
+		ibat_lut = <
+			600    9000
+			(-600) 9000
+			(-700) 0
+		>;
+		rbat_data = <
+			67033	67033	65082	65563	74248	101262	142941	142941
+			67004	67004	65118	64381	73787	100638	142065	142065
+			67103	67103	65371	64000	70778	90388	114825	114825
+			67408	67408	65894	64533	70229	87182	104433	104433
+			68272	68272	67117	65945	71666	89842	108942	108942
+			72328	72328	71869	71538	81803	95724	118174	118174
+		>;
+		temp_axis = <600 450 300 220 150 50 0 (-100)>;
+		capacity_axis = <100 80 60 40 20 0>;
+		power_supply = "battery";
+		r_const = <40000>;
+		vsys_min = <3000000>;
+		status = "disabled";
+	};
+};

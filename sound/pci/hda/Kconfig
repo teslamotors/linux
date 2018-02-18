@@ -22,7 +22,7 @@ config SND_HDA_INTEL
 
 config SND_HDA_TEGRA
 	tristate "NVIDIA Tegra HD Audio"
-	depends on ARCH_TEGRA
+	depends on ARCH_TEGRA ||  ARCH_TEGRA_18x_SOC
 	select SND_HDA
 	help
 	  Say Y here to support the HDA controller present in NVIDIA
@@ -34,6 +34,13 @@ config SND_HDA_TEGRA
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called snd-hda-tegra.
+
+config SND_HDA_VPR
+	tristate "Allocate PCM DMA buffer in video protected region"
+	depends on SND_HDA_TEGRA && ARCH_TEGRA_21x_SOC
+	depends on TEGRA_NVMAP
+	help
+	  Say Y here to allocate PCM DMA buffer in video protected region
 
 if SND_HDA
 

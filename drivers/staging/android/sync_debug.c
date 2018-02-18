@@ -86,7 +86,7 @@ static void sync_print_pt(struct seq_file *s, struct sync_pt *pt, bool fence)
 	int status = 1;
 	struct sync_timeline *parent = sync_pt_parent(pt);
 
-	if (fence_is_signaled_locked(&pt->base))
+	if (fence_is_signaled_locked(&pt->base, 0))
 		status = pt->base.status;
 
 	seq_printf(s, "  %s%spt %s",
@@ -240,11 +240,11 @@ void sync_dump(void)
 			char c = s.buf[i + DUMP_CHUNK];
 
 			s.buf[i + DUMP_CHUNK] = 0;
-			pr_cont("%s", s.buf + i);
+			pr_debug("%s", s.buf + i);
 			s.buf[i + DUMP_CHUNK] = c;
 		} else {
 			s.buf[s.count] = 0;
-			pr_cont("%s", s.buf + i);
+			pr_debug("%s", s.buf + i);
 		}
 	}
 }

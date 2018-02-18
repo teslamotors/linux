@@ -4,6 +4,7 @@
  * Maintainer: Alan Stern <stern@rowland.harvard.edu>
  *
  * Copyright (c) 2000-2004 by David Brownell
+ * Copyright (c) 2013-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -39,6 +40,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/debugfs.h>
 #include <linux/slab.h>
+#include <linux/uaccess.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -338,7 +340,7 @@ static void ehci_turn_off_all_ports(struct ehci_hcd *ehci)
  * Halt HC, turn off all ports, and let the BIOS use the companion controllers.
  * Must be called with interrupts enabled and the lock not held.
  */
-static void ehci_silence_controller(struct ehci_hcd *ehci)
+void ehci_silence_controller(struct ehci_hcd *ehci)
 {
 	ehci_halt(ehci);
 
@@ -353,12 +355,13 @@ static void ehci_silence_controller(struct ehci_hcd *ehci)
 	ehci_readl(ehci, &ehci->regs->configured_flag);
 	spin_unlock_irq(&ehci->lock);
 }
+EXPORT_SYMBOL_GPL(ehci_silence_controller);
 
 /* ehci_shutdown kick in for silicon on any bus (not just pci, etc).
  * This forcibly disables dma and IRQs, helping kexec and other cases
  * where the next system software may expect clean state.
  */
-static void ehci_shutdown(struct usb_hcd *hcd)
+void ehci_shutdown(struct usb_hcd *hcd)
 {
 	struct ehci_hcd	*ehci = hcd_to_ehci(hcd);
 
@@ -372,6 +375,7 @@ static void ehci_shutdown(struct usb_hcd *hcd)
 
 	hrtimer_cancel(&ehci->hrtimer);
 }
+EXPORT_SYMBOL_GPL(ehci_shutdown);
 
 /*-------------------------------------------------------------------------*/
 
@@ -680,7 +684,7 @@ EXPORT_SYMBOL_GPL(ehci_setup);
 
 /*-------------------------------------------------------------------------*/
 
-static irqreturn_t ehci_irq (struct usb_hcd *hcd)
+irqreturn_t ehci_irq (struct usb_hcd *hcd)
 {
 	struct ehci_hcd		*ehci = hcd_to_ehci (hcd);
 	u32			status, masked_status, pcd_status = 0, cmd;
@@ -827,6 +831,7 @@ dead:
 		usb_hcd_poll_rh_status(hcd);
 	return IRQ_HANDLED;
 }
+EXPORT_SYMBOL_GPL(ehci_irq);
 
 /*-------------------------------------------------------------------------*/
 

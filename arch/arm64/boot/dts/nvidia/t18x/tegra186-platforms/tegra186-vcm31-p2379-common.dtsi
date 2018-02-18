@@ -1,0 +1,403 @@
+/*
+ * tegra186-vcm31-p2379-common.dtsi: VCM3.1 based P2379(DPX2)
+ * common dtsi.
+ *
+ * Copyright (c) 2016 - 2017, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/types.h>
+#include <dt-bindings/input/atmel_mxt_ts.h>
+/dts-v1/;
+
+/memreserve/ 0x80000000 0x00010000;
+
+#include "tegra186-platforms/tegra186-vcm31.dtsi"
+#include "tegra186-platforms/tegra186-vcm31-power-tree-p2379-0000-c00-00.dtsi"
+#include "tegra186-vcm31-p2379-pwm-fan.dtsi"
+#include "tegra186-vcm31-p2379-thermal-fan-est.dtsi"
+
+/ {
+        model = "p2379_t186";
+        compatible = "nvidia,p2379_t186", "nvidia,tegra186";
+
+        nvidia,dtbbuildtime = __DATE__, __TIME__;
+        #address-cells = <2>;
+        #size-cells = <2>;
+
+	pmc@c360000 {
+		io-pad-defaults {
+			sdmmc1-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+
+			sdmmc3-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+		};
+	};
+
+	serial@3100000 { /* Tegra UARTA */
+		status = "disabled";
+	};
+
+	spi@3210000 { /* Tegra SPI1 <-> VCM SPIB: Inter Tegra Master */
+		status = "okay";
+		inter_tegra_spi_master: spi@0 {
+			#thermal-sensor-cells = <0>;
+			compatible = "inter-tegra-spi";
+			reg = <0>;
+			spi-cpha;
+			spi-max-frequency = <5000000>;
+			is-master;
+			send_period_ms = <5000>;
+			send_tz_type = "Tdiode_tegra";
+		};
+	};
+
+	spi@c260000 { /* Tegra SPI2 <-> VCM SPIA: Aurix slave */
+		compatible = "nvidia,tegra186-spi-slave";
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <25000000>;
+		};
+	};
+
+	spi@3230000 { /* Tegra SPI3 <-> VCM SPID: Inter Tegra slave*/
+		status = "okay";
+		compatible = "nvidia,tegra186-spi-slave";
+		inter_tegra_spi_slave: spi@0 {
+			#thermal-sensor-cells = <0>;
+			compatible = "inter-tegra-spi";
+			reg = <0>;
+			spi-cpha;
+			spi-max-frequency = <5000000>;
+			receive_timeout_ms = <10000>;
+			controller-data {
+				nvidia,variable-length-transfer;
+			};
+		};
+	};
+
+	thermal-zones {
+		Tegra_tx {
+			status = "okay";
+			polling-delay = <0>;
+			polling-delay-passive = <0>;
+			thermal-sensors = <&inter_tegra_spi_master>;
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+		};
+
+		Tegra_rx {
+			status = "okay";
+			polling-delay = <0>;
+			polling-delay-passive = <0>;
+			thermal-sensors = <&inter_tegra_spi_slave>;
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+		};
+	};
+
+	i2c@3160000 { /* Tegra I2C1 - VCM I2CA: Temp sensor */
+		clock-frequency = <400000>;
+		status = "okay";
+	};
+
+	i2c@c240000 { /* Tegra I2C2 <-> VCM I2CB: CSI E-F */
+		clock-frequency = <400000>;
+		status = "okay";
+	};
+
+	i2c@3180000 { /* Tegra I2C3 - VCM I2CD: CSI C-D */
+		clock-frequency = <400000>;
+		status = "okay";
+	};
+
+	i2c@31c0000 { /* Tegra I2C7 - MID DPX2 I2CE: DSI to LVDS*/
+		clock-frequency = <400000>;
+		status = "okay";
+	};
+
+	i2c@c250000 { /* Tegra I2C8 <-> VCM I2CC: CSI A-B */
+		clock-frequency = <400000>;
+		status = "okay";
+	};
+
+	i2c@31e0000 {
+		clock-frequency = <400000>;
+		status = "okay";
+	};
+
+        sdhci@3460000 { /* SDMMC_D: Used for eMMc */
+                        status = "okay";
+                        uhs-mask = <0x00>;
+        };
+
+	padctl: pinctrl@3520000 {
+		status = "okay";
+		pinctrl-0 = <&p2379_padctl_default>;
+		pinctrl-names = "default";
+		p2379_padctl_default: pinmux {
+			usb2-ftdi-hub-port1 {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb2-std-A-port1 {
+				nvidia,lanes = "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port1 {
+				nvidia,lanes = "usb3-0";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+		};
+	};
+
+	external-connection {
+		/* P2379 doesn't have ID/VBUS detection */
+		id_gpio_extcon: extcon@0 {
+			status="okay";
+			compatible = "extcon-gpio";
+			extcon-gpio,name = "USB-ID";
+			extcon-gpio,cable-name = "USB-Host";
+			#extcon-cells = <1>;
+		};
+		vbus_gpio_extcon: extcon@1 {
+			status="okay";
+			compatible = "extcon-gpio";
+			extcon-gpio,name = "USB-VBUS";
+			extcon-gpio,default-connected;
+			extcon-gpio,cable-name = "USB";
+			#extcon-cells = <1>;
+		};
+	};
+
+	mailbox@3538000 {
+		status = "okay";
+	};
+
+	xudc@3550000 {
+		status = "okay";
+		extcon-cables = <&vbus_gpio_extcon 0>;
+		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+		phys = <&padctl TEGRA_PADCTL_PHY_UTMI_P(0)>;
+		phy-names = "usb2";
+	};
+
+	xhci@3530000 {
+		status = "okay";
+		extcon-cables = <&id_gpio_extcon 0>;
+		extcon-cable-names = "id";
+		#extcon-cells = <1>;
+		phys = <&padctl TEGRA_PADCTL_PHY_UTMI_P(2)>,
+			<&padctl TEGRA_PADCTL_PHY_USB3_P(0)>;
+		phy-names = "utmi-2", "usb3-0";
+	};
+
+	pcie-controller@10003000 {
+		/*
+		 * Even though the board is using PCIe root ports in  4_0_0
+		 * configuration, we have to provide 4_0_1 to the driver.
+		 * as driver only support following configs
+		 * 1. X4_X0_X1
+		 * 2. X2_X1_X1
+		 * 3. X1_X1_X1
+		 */
+		nvidia,lane-map = <0x401>;
+		status = "okay";
+		pci@1,0 {
+			status = "okay";
+			nvidia,num-lanes = <0x4>;
+			/* C00 uses PEX MXM connector
+			 * port for connecting dGPU
+			 */
+			nvidia,has-mxm-port;
+			nvidia,pwr-gd-gpio =
+				<&tegra_gpio TEGRA_GPIO(B, 6) 0>;
+		};
+		pci@2,0 {
+			status = "disabled";
+		};
+	};
+
+	ahub {
+		status = "disabled";
+	};
+
+	adma@2930000{
+		status = "disabled";
+	};
+
+        adsp_audio {
+		status = "disabled";
+        };
+
+	spdif-dit.0@0 {
+		status = "disabled";
+        };
+
+	spdif-dit.1@1 {
+		status = "disabled";
+        };
+
+	spdif-dit.2@2 {
+		status = "disabled";
+        };
+
+	spdif-dit.3@3 {
+		status = "disabled";
+        };
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <7>;
+		csi-port = <0>;
+		pwdn-gpios = < &tegra_gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_HIGH >;  /* GMSLA_PWRDN */
+		interrupt-parent = <&tegra_gpio>;
+		interrupts = <TEGRA_GPIO(EE, 2) 2>; /* GMSLA_STATUS_OC : falling edge sensitive */
+		/*interrupts = <TEGRA_GPIO(Y, 2) 2>;*/ /* GMSLA_LOCKOUT : falling edge sensitive */
+		status = "okay";
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <2>;
+		pwdn-gpios = < &tegra_gpio TEGRA_GPIO(V, 5) GPIO_ACTIVE_HIGH >;  /* GMSLB_PWRDN */
+		interrupt-parent = <&tegra_gpio>;
+		interrupts = <TEGRA_GPIO(FF, 0) 2>; /* GMSLB_STATUS_OC : falling edge sensitive */
+		/*interrupts = <TEGRA_GPIO(Y, 5) 2>;*/ /* GMSLB_LOCKOUT : falling edge sensitive */
+		status = "okay";
+	};
+
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <1>;
+		csi-port = <4>;
+		pwdn-gpios = < &tegra_gpio TEGRA_GPIO(U, 5) GPIO_ACTIVE_HIGH >;  /* GMSLC_PWRDN */
+		interrupt-parent = <&tegra_gpio>;
+		interrupts = <TEGRA_GPIO(V, 7) 2>; /* GMSLC_STATUS_OC : falling edge sensitive */
+		/*interrupts = <TEGRA_GPIO(Y, 6) 2>;*/ /* GMSLC_LOCKOUT : falling edge sensitive */
+		status = "okay";
+	};
+
+	sdhci@3400000 {
+		status = "disabled";
+	};
+
+	sdhci@3440000 {
+		status = "disabled";
+	};
+
+	pwm@c340000 {
+		status = "okay";
+	};
+
+        ptm_a57_0: ptm@9840000 {
+                status = "okay";
+        };
+
+        ptm_a57_1: ptm@9940000 {
+                status = "okay";
+        };
+
+        ptm_a57_2: ptm@9a40000 {
+                status = "okay";
+        };
+
+        ptm_a57_3: ptm@9b40000 {
+                status = "okay";
+        };
+
+        funnel_bccplex@9010000 {
+                status = "okay";
+        };
+
+        funnel_major@8010000 {
+                status = "okay";
+        };
+
+        replicator@0x8040000 {
+                status = "okay";
+        };
+
+        etf@8030000 {
+                status = "okay";
+        };
+
+        tpiu@8060000 {
+                status = "okay";
+        };
+
+	pmc-iopower {
+		status = "disabled";
+	};
+
+	bpmp {
+		bpmpthermal {
+			status = "okay";
+		};
+	};
+
+	cpus {
+		status = "disabled";
+
+	};
+
+	soft_wdt:soft_watchdog {
+		compatible = "softdog-platform";
+		status = "okay";
+	};
+
+	mttcan@c310000 {
+		gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 0) GPIO_ACTIVE_LOW>;
+		mram-params = <0 16 16 8 8 8 16 16 16>;
+		tx-config = <8 8 0 64>;
+		rx-config = <64 64 64>;
+		status = "okay";
+	};
+
+	mttcan@c320000 {
+		gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 6) GPIO_ACTIVE_LOW>;
+		mram-params = <0 16 16 8 8 8 16 16 16>;
+		tx-config = <8 8 0 64>;
+		rx-config = <64 64 64>;
+		status = "okay";
+	};
+
+	i2c@3160000 {
+		tegra_nct72: onsemi,nct72@4c {
+			offset = <(-12)>; /* -3C */
+			ext {
+				shutdown-limit = <105>;
+			};
+		};
+	};
+
+	tegra_wdt:watchdog@30c0000 {
+		nvidia,shutdown-timeout = <0>;
+		nvidia,disable-remote-interrupt;
+		status = "okay";
+	};
+};
+

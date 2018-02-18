@@ -155,6 +155,9 @@ struct reset_control *of_reset_control_get(struct device_node *node,
 	mutex_lock(&reset_controller_list_mutex);
 	rcdev = NULL;
 	list_for_each_entry(r, &reset_controller_list, list) {
+		if (!r->of_node)
+			continue;
+
 		if (args.np == r->of_node) {
 			rcdev = r;
 			break;
@@ -190,6 +193,55 @@ struct reset_control *of_reset_control_get(struct device_node *node,
 EXPORT_SYMBOL_GPL(of_reset_control_get);
 
 /**
+ * non_reset_control_get - Lookup and obtain a reference to a reset controller.
+ * @node: device to be reset by the controller
+ * @id: reset line name
+ *
+ * Returns a struct reset_control or IS_ERR() condition containing errno.
+ *
+ * Use of id names is optional.
+ */
+static struct reset_control *non_of_reset_control_get(struct device *dev,
+					   const char *id)
+{
+	struct reset_control *rstc = ERR_PTR(-EPROBE_DEFER);
+	struct reset_controller_dev *r, *rcdev;
+	int rstc_id = -EINVAL;
+
+	mutex_lock(&reset_controller_list_mutex);
+	rcdev = NULL;
+	list_for_each_entry(r, &reset_controller_list, list) {
+		if (!r->consumer_map)
+			continue;
+
+		rstc_id = r->consumer_map(r, dev, id);
+		if (rstc_id >= 0) {
+			rcdev = r;
+			break;
+		}
+	}
+
+	if (!rcdev) {
+		mutex_unlock(&reset_controller_list_mutex);
+		return ERR_PTR(-EPROBE_DEFER);
+	}
+
+	try_module_get(rcdev->owner);
+	mutex_unlock(&reset_controller_list_mutex);
+
+	rstc = kzalloc(sizeof(*rstc), GFP_KERNEL);
+	if (!rstc) {
+		module_put(rcdev->owner);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	rstc->rcdev = rcdev;
+	rstc->id = rstc_id;
+
+	return rstc;
+}
+
+/**
  * reset_control_get - Lookup and obtain a reference to a reset controller.
  * @dev: device to be reset by the controller
  * @id: reset line name
@@ -206,9 +258,17 @@ struct reset_control *reset_control_get(struct device *dev, const char *id)
 		return ERR_PTR(-EINVAL);
 
 	rstc = of_reset_control_get(dev->of_node, id);
+	if (!IS_ERR(rstc)) {
+		rstc->dev = dev;
+		goto done;
+	}
+
+	/* Try with non-of reset control */
+	rstc = non_of_reset_control_get(dev, id);
 	if (!IS_ERR(rstc))
 		rstc->dev = dev;
 
+done:
 	return rstc;
 }
 EXPORT_SYMBOL_GPL(reset_control_get);

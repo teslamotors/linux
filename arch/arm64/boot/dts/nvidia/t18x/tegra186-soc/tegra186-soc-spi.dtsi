@@ -1,0 +1,107 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/ {
+	aliases {
+		spi0 = &spi0;
+		spi1 = &spi1;
+		spi2 = &spi2;
+		spi3 = &spi3;
+	};
+
+	spi0: spi@3210000 {
+		compatible = "nvidia,tegra186-spi";
+		reg = <0x0 0x03210000 0x0 0x10000>;
+		interrupts = <0 36 0x04>;
+		nvidia,dma-request-selector = <&gpcdma 15>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#stream-id-cells = <1>;
+		dmas = <&gpcdma 15>, <&gpcdma 15>;
+		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
+		clocks = <&tegra_car TEGRA186_CLK_SPI1>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>,
+			<&tegra_car TEGRA186_CLK_CLK_M>;
+		clock-names = "spi", "pll_p", "clk_m";
+		resets = <&tegra_car TEGRA186_RESET_SPI1>;
+		reset-names = "spi";
+		status = "disabled";
+	};
+
+	spi1: spi@c260000 {
+		compatible = "nvidia,tegra186-spi";
+		reg = <0x0 0x0c260000 0x0 0x10000>;
+		interrupts = <0 37 0x04>;
+		nvidia,dma-request-selector = <&gpcdma 16>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#stream-id-cells = <1>;
+		dmas = <&gpcdma 16>, <&gpcdma 16>;
+		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "osc";
+		spi-max-frequency = <25000000>;
+		clocks = <&tegra_car TEGRA186_CLK_SPI2>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>,
+			<&tegra_car TEGRA186_CLK_OSC>;
+		clock-names = "spi", "pll_p", "osc";
+		resets = <&tegra_car TEGRA186_RESET_SPI2>;
+		reset-names = "spi";
+		status = "disabled";
+	};
+
+	spi2: spi@3230000 {
+		compatible = "nvidia,tegra186-spi";
+		reg = <0x0 0x03230000 0x0 0x10000>;
+		interrupts = <0 38 0x04>;
+		nvidia,dma-request-selector = <&gpcdma 17>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#stream-id-cells = <1>;
+		dmas = <&gpcdma 17>, <&gpcdma 17>;
+		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
+		clocks = <&tegra_car TEGRA186_CLK_SPI3>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>,
+			<&tegra_car TEGRA186_CLK_CLK_M>;
+		clock-names = "spi", "pll_p", "clk_m";
+		resets = <&tegra_car TEGRA186_RESET_SPI3>;
+		reset-names = "spi";
+		status = "disabled";
+	};
+
+	spi3: spi@3240000 {
+		compatible = "nvidia,tegra186-spi";
+		reg = <0x0 0x03240000 0x0 0x10000>;
+		interrupts = <0 39 0x04>;
+		nvidia,dma-request-selector = <&gpcdma 18>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#stream-id-cells = <1>;
+		dmas = <&gpcdma 18>, <&gpcdma 18>;
+		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
+		clocks = <&tegra_car TEGRA186_CLK_SPI4>,
+			<&tegra_car TEGRA186_CLK_PLLP_OUT0>,
+			<&tegra_car TEGRA186_CLK_CLK_M>;
+		clock-names = "spi", "pll_p", "clk_m";
+		resets = <&tegra_car TEGRA186_RESET_SPI4>;
+		reset-names = "spi";
+		status = "disabled";
+	};
+};

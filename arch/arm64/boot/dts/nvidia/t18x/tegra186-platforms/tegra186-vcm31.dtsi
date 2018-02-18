@@ -1,0 +1,207 @@
+/*
+ * tegra186-vcm31.dtsi: VCM3.1 board specific dtsi file for all VCM31 boards.
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra186-soc/tegra186-soc-vcm.dtsi"
+#include "tegra186-platforms/tegra186-sunstreaker-eqos.dtsi"
+#include "tegra186-platforms/tegra186-vcm31-thermal.dtsi"
+#include "tegra186-soc/tegra186-soc-audio.dtsi"
+#include "tegra186-platforms/tegra186-platforms-simple-bus.dtsi"
+#include "tegra186-platforms/tegra186-vcm31-camera-sce.dtsi"
+
+#include <dt-bindings/sound/tegra-asoc-alt.h>
+/ {
+	serial@3100000 { /* Tegra UARTA  <-> VCM UART A */
+		compatible = "nvidia,tegra186-hsuart";
+		status = "okay";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x70000000 >;
+	};
+
+	serial@3110000 { /* Tegra UARTB <->  VCM UART B: Debug console*/
+		compatible = "nvidia,tegra210-uart";
+		skip-reconfig;
+		status = "okay";
+	};
+
+	chosen {
+		bootargs ="mem=1024M@2048M console=ttyS0,115200 earlycon=uart8250,mmio32,0x3110000";
+		stdout-path = &uartb;
+	};
+
+	spi@3210000 {
+		status = "disabled";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@c260000 {
+		status = "disabled";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@3230000 {
+		status = "disabled";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@3240000 {
+		status = "disabled";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@3270000 {/* QSPI NOR */
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <1>;
+			spi-max-frequency = <136000000>;
+			controller-data {
+					nvidia,x1-len-limit = <16>;
+					nvidia,x1-bus-speed = <136000000>; /* In Mhz */
+					nvidia,x1-dymmy-cycle = <0>;
+					nvidia,x4-bus-speed = <136000000>;
+					nvidia,x4-dymmy-cycle = <8>;
+					nvidia,ifddr-div2-sdr = <1>;
+					nvidia,x4-is-ddr=<1>;
+			};
+		};
+
+		spiflash@1 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "s25fs512s";
+			reg = <0>;
+			spi-max-frequency = <136000000>;
+			partition@0 {
+				label = "Whole_flash";
+				reg = <0x00000000 0x4000000>;
+			};
+			controller-data {
+				nvidia,x1-len-limit = <16>;
+				nvidia,x1-bus-speed = <136000000>; /* In Mhz */
+				nvidia,x1-dymmy-cycle = <8>;
+				nvidia,x4-bus-speed = <136000000>;
+				nvidia,x4-dymmy-cycle = <8>;
+				nvidia,ifddr-div2-sdr = <1>;
+				nvidia,x4-is-ddr=<1>;
+			};
+		};
+	};
+
+	sdhci@3460000 { /* SDMMC_D: Used for eMMC */
+		status = "okay";
+		uhs-mask = <0x40>;
+		nvidia,is-emmc;
+		built-in;
+		full-pwr-cycle;
+		power-off-rail;
+	};
+
+	sdhci@3440000 { /* SDMMC_C  sd card 4-bit*/
+		status = "okay";
+		cd-gpios = <&tegra_gpio TEGRA_GPIO(P, 5) 0>;
+		wp-gpios = <&tegra_gpio TEGRA_GPIO(P, 3) 0>;
+		mmc-ocr-mask = <3>;
+		/delete-property/ non-removable;
+		uhs-mask = <0x1F>;
+	};
+
+	sdhci@3400000 { /* SDMMC_A  sd card 4-bit*/
+		status = "okay";
+		cd-gpios = <&tegra_gpio TEGRA_GPIO(P, 6) 0>;
+		wp-gpios = <&tegra_gpio TEGRA_GPIO(P, 4) 0>;
+		/delete-property/ ignore-pm-notify;
+		uhs-mask = <0x1F>;
+	};
+
+	/* FIXME: Check which I2C are common across all VCM31 T186 platforms */
+	i2c@3160000 { /* Tegra I2C1 - VCM I2CA */
+		status = "okay";
+	};
+
+	i2c@c240000 { /* Tegra I2C2 - VCM I2CB */
+		status = "okay";
+	};
+
+	i2c@3180000 { /* Tegra I2C3 - VCM I2CD */
+		status = "okay";
+	};
+
+	i2c@3190000 { /* Tegra I2C4 - VCM DP_AUX1 */
+		status = "okay";
+	};
+
+	bpmp_i2c {
+		status = "okay";
+	};
+
+	i2c@31b0000 { /* Tegra I2C6 - VCM DP_AUX0 */
+		status = "okay";
+	};
+
+	i2c@31c0000 { /* Tegra I2C7 */
+		status = "disabled";
+	};
+
+	i2c@c250000 { /* Tegra I2C8 - VCM I2CC */
+		status = "okay";
+	};
+
+	i2c@31e0000 { /* Tegra I2C9 */
+		status = "disabled";
+	};
+
+	pmc@c360000 {
+		/*export: SCRATCH_99*/
+		export-pmc-scratch-reg-offset = <0xadc>;
+		export-pmc-scratch-reg-name = "boot-chain-type";
+		status = "okay";
+	};
+
+	pmc@c370000 {
+		nvidia,invert-pmic-interrupt-polarity;
+	};
+
+	cpufreq@e070000 {
+		freq_table_step_size = /bits/ 16 <1>;
+	};
+
+	tegra-hsp@3c00000 {
+		status = "okay";
+	};
+
+	mipical {
+		status = "okay";
+	};
+};

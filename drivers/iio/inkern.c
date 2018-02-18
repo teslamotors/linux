@@ -572,6 +572,60 @@ err_unlock:
 }
 EXPORT_SYMBOL_GPL(iio_read_channel_processed);
 
+int iio_read_channel_raw_dual(struct iio_channel *chan, int *val, int *val2)
+{
+	int ret;
+
+	mutex_lock(&chan->indio_dev->info_exist_lock);
+	if (chan->indio_dev->info == NULL) {
+		ret = -ENODEV;
+		goto err_unlock;
+	}
+
+	if (iio_channel_has_info(chan->channel, IIO_CHAN_INFO_RAW_DUAL))
+		ret = iio_channel_read(chan, val, val2, IIO_CHAN_INFO_RAW_DUAL);
+	else
+		ret = -ENXIO;
+
+err_unlock:
+	mutex_unlock(&chan->indio_dev->info_exist_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(iio_read_channel_raw_dual);
+
+int iio_read_channel_processed_dual(struct iio_channel *chan, int *val,
+				    int *val2)
+{
+	int ret;
+
+	mutex_lock(&chan->indio_dev->info_exist_lock);
+	if (chan->indio_dev->info == NULL) {
+		ret = -ENODEV;
+		goto err_unlock;
+	}
+
+	if (iio_channel_has_info(chan->channel, IIO_CHAN_INFO_PROCESSED_DUAL)) {
+		ret = iio_channel_read(chan, val, val2,
+				       IIO_CHAN_INFO_PROCESSED_DUAL);
+	} else {
+		ret = iio_channel_read(chan, val, val2, IIO_CHAN_INFO_RAW_DUAL);
+		if (ret < 0)
+			goto err_unlock;
+		ret = iio_convert_raw_to_processed_unlocked(chan, *val, val, 1);
+		if (ret < 0)
+			goto err_unlock;
+		ret = iio_convert_raw_to_processed_unlocked(chan, *val2, val2,
+							    1);
+	}
+
+err_unlock:
+	mutex_unlock(&chan->indio_dev->info_exist_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(iio_read_channel_processed_dual);
+
 int iio_read_channel_scale(struct iio_channel *chan, int *val, int *val2)
 {
 	int ret;

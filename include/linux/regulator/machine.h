@@ -33,6 +33,7 @@ struct regulator;
  * STATUS:   Regulator can be enabled and disabled.
  * DRMS:     Dynamic Regulator Mode Switching is enabled for this regulator.
  * BYPASS:   Regulator can be put into bypass mode
+ * CONTROL:  Dynamic change control mode of Regulator i.e I2C or PWM.
  */
 
 #define REGULATOR_CHANGE_VOLTAGE	0x1
@@ -41,6 +42,7 @@ struct regulator;
 #define REGULATOR_CHANGE_STATUS		0x8
 #define REGULATOR_CHANGE_DRMS		0x10
 #define REGULATOR_CHANGE_BYPASS		0x20
+#define REGULATOR_CHANGE_CONTROL	0x40
 
 /**
  * struct regulator_state - regulator state during low power system states
@@ -70,6 +72,7 @@ struct regulator_state {
  *
  * @min_uV: Smallest voltage consumers may set.
  * @max_uV: Largest voltage consumers may set.
+ * @init_uV: Initial voltage consumers may set.
  * @uV_offset: Offset applied to voltages from consumer to compensate for
  *             voltage drops.
  *
@@ -84,6 +87,12 @@ struct regulator_state {
  *           started.  If the regulator is not enabled by the hardware or
  *           bootloader then it will be enabled when the constraints are
  *           applied.
+ * @enable_active_discharge: Enable active discharge.
+ * @disable_active_discharge: Disable active discharge.
+ *	    Both enable_active_discharge and disable_active_discharge can not
+ *	    be set together. if both are flase then POR default will be the
+ *	    option.
+ *
  * @apply_uV: Apply the voltage constraint when initialising.
  * @ramp_disable: Disable ramp delay when initialising or when setting voltage.
  *
@@ -97,6 +106,12 @@ struct regulator_state {
  * @initial_mode: Mode to set at startup.
  * @ramp_delay: Time to settle down after voltage change (unit: uV/us)
  * @enable_time: Turn-on time of the rails (unit: microseconds)
+ * @disable_time: Turn-off time of the rails (unit: microseconds)
+ * @ramp_delay_scale: x multiplier in % for increasing/decreasing ramp delay.
+ *                 100% is 1x, 150% is 1.5x and so on.
+ * @disable_on_suspend: Disable rail on suspend. This is only applicable if
+ *                    rail is always ON.
+ * @disable_on_shutdown: Disable rail on shutdown explictily.
  */
 struct regulation_constraints {
 
@@ -105,6 +120,7 @@ struct regulation_constraints {
 	/* voltage output range (inclusive) - for voltage control */
 	int min_uV;
 	int max_uV;
+	int init_uV;
 
 	int uV_offset;
 
@@ -130,14 +146,27 @@ struct regulation_constraints {
 	/* mode to set on startup */
 	unsigned int initial_mode;
 
+	/* mode to be set on sleep mode */
+	unsigned int sleep_mode;
+
 	unsigned int ramp_delay;
 	unsigned int enable_time;
+	unsigned int ramp_delay_scale;
+	unsigned int disable_time;
 
 	/* constraint flags */
 	unsigned always_on:1;	/* regulator never off when system is on */
 	unsigned boot_on:1;	/* bootloader/firmware enabled regulator */
 	unsigned apply_uV:1;	/* apply uV constraint if min == max */
 	unsigned ramp_disable:1; /* disable ramp delay */
+	unsigned boot_off:1;	/* bootloader/firmware disabled regulator */
+	unsigned bypass_on:1;	/* Bypass ON */
+	unsigned int ignore_current_constraint_init:1;
+	unsigned disable_parent_after_enable:1; /* SW based overcurrent protection */
+	unsigned disable_on_suspend:1; /* Disable rail on suspend */
+	unsigned disable_on_shutdown:1; /* Disable rail on shutdown */
+	unsigned enable_active_discharge:1;
+	unsigned disable_active_discharge:1;
 };
 
 /**

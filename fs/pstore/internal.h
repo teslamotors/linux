@@ -1,3 +1,23 @@
+/*
+ * Persistent Storage
+ *
+ * Copyright (C) 2010 Intel Corporation <tony.luck@intel.com>
+ * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
 #ifndef __PSTORE_INTERNAL_H__
 #define __PSTORE_INTERNAL_H__
 
@@ -17,6 +37,14 @@ struct pstore_ftrace_record {
 #ifndef PSTORE_CPU_IN_IP
 	unsigned int cpu;
 #endif
+};
+
+struct pstore_rtrace_record {
+	unsigned int cpu;
+	unsigned int event;
+	unsigned long caller;
+	unsigned long raddr;
+	long value;
 };
 
 static inline void
@@ -43,6 +71,18 @@ pstore_ftrace_decode_cpu(struct pstore_ftrace_record *rec)
 extern void pstore_register_ftrace(void);
 #else
 static inline void pstore_register_ftrace(void) {}
+#endif
+
+#ifdef CONFIG_PSTORE_PMSG
+extern void pstore_register_pmsg(void);
+#else
+static inline void pstore_register_pmsg(void) {}
+#endif
+
+#ifdef CONFIG_PSTORE_RTRACE
+extern void pstore_register_rtrace(void);
+#else
+static inline void pstore_register_rtrace(void) {}
 #endif
 
 extern struct pstore_info *psinfo;

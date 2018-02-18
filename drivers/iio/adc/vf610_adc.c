@@ -436,7 +436,14 @@ static irqreturn_t vf610_adc_isr(int irq, void *dev_id)
 	coco = readl(info->regs + VF610_REG_ADC_HS);
 	if (coco & VF610_ADC_HS_COCO0) {
 		info->value = vf610_adc_read_data(info);
-		complete(&info->completion);
+		if (iio_buffer_enabled(indio_dev)) {
+			info->buffer[0] = info->value;
+			iio_push_to_buffers_with_timestamp(indio_dev,
+					info->buffer,
+					iio_get_time_ns(indio_dev));
+			iio_trigger_notify_done(indio_dev->trig);
+		} else
+			complete(&info->completion);
 	}
 
 	return IRQ_HANDLED;

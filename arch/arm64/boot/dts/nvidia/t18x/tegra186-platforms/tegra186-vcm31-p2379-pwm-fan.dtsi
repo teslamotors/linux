@@ -1,0 +1,48 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+
+/ {
+	pwm_fan_shared_data: pfsd {
+		num_resources = <0>;
+		secret = <47>;
+		active_steps = <10>;
+		active_rpm = <1400 2300 3700 4500 4900 4900 4900 4900 4900 4900>;
+		active_rru = <20 20 10 10 10 1 1 1 1 1>;
+		active_rrd = <20 20 10 10 10 1 1 1 1 1>;
+		state_cap_lookup = <2 2 2 2 3 3 3 4 4 4>;
+		/* PWM freq = 1/ pwm_period = 37KHz*/
+		pwm_period = <27027>; /* nanoseconds */
+		pwm_id = <0>;
+		step_time = <100>; /* milliseconds */
+		state_cap = <5>; /* Cap pwm max to 256 = active_pwm[5] */
+		active_pwm_max = <256>;
+		tach_gpio =  <TEGRA_GPIO(FF, 2)>;
+		tach_period = <400>;
+		pwm_gpio = <TEGRA_GPIO(V, 6)>; /* TEGRA_GPIO_PV6 */
+		status = "okay";
+	};
+
+	pwm-fan {
+		compatible = "pwm-fan";
+		shared_data = <&pwm_fan_shared_data>;
+		/* use "pwm_pin" and "pwm_pin_group", only when function and
+		   SFIO mode of pwm pin is not set as "gp_pwm" and "SFIO" in
+		   default pinmux table */
+		pwm_pin = "GPIO_SEN6_PV6";
+		pwm_pin_group = "gpio_sen6_pv6";
+		/* duty =    <0 40  60  70  80 100 100 100 100 100>; */
+		active_pwm = <0 102 154 179 205 256 256 256 256 256>;
+		status = "okay";
+	};
+};

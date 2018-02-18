@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ */
+
 #ifndef _LINUX_POLL_H
 #define _LINUX_POLL_H
 
@@ -94,6 +98,7 @@ struct poll_wqueues {
 
 extern void poll_initwait(struct poll_wqueues *pwq);
 extern void poll_freewait(struct poll_wqueues *pwq);
+extern int pollwake(wait_queue_t *wait, unsigned mode, int sync, void *key);
 extern int poll_schedule_timeout(struct poll_wqueues *pwq, int state,
 				 ktime_t *expires, unsigned long slack);
 extern long select_estimate_accuracy(struct timespec *tv);

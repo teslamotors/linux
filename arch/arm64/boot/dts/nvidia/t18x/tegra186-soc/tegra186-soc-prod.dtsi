@@ -1,0 +1,857 @@
+/*
+ * tegra186-soc-prod.dtsi: Mobile family SoC specific DTSI file with required prod values.
+ *
+ * Copyright (c) 2016-2017, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/ {
+
+	pcie-controller@10003000 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			prod_c_pad {
+				prod = <
+					0x000000C8 0xFFFFFFFF 0x80b880b8	// PADS_REFCLK_CFG0		31:0	 0x80b880b8
+					0x000000CC 0xFFFFFFFF 0x000480b8	// PADS_REFCLK_CFG1		31:0	 0x000480b8
+				>;
+			};
+		};
+	};
+
+	ether_qos@2490000 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			tx_tristate_enable {
+				prod = <
+					0x00000018 0x00000050 0x00000010	// PADCTL_SDMMC2_HV_EQOS_TD0_0
+					0x00000010 0x00000050 0x00000010	// PADCTL_SDMMC2_HV_EQOS_TD1_0
+					0x00000008 0x00000050 0x00000010	// PADCTL_SDMMC2_HV_EQOS_TD2_0
+					0x00000000 0x00000050 0x00000010	// PADCTL_SDMMC2_HV_EQOS_TD3_0
+					0x00000054 0x00000050 0x00000010	// PADCTL_SDMMC2_HV_EQOS_TXC_0
+					0x00000064 0x00000050 0x00000010	// PADCTL_SDMMC2_HV_EQOS_TX_CTL_0
+				>;
+			};
+			tx_tristate_disable {
+				prod = <
+					0x00000018 0x00000050 0x00000000	// PADCTL_SDMMC2_HV_EQOS_TD0_0
+					0x00000010 0x00000050 0x00000000	// PADCTL_SDMMC2_HV_EQOS_TD1_0
+					0x00000008 0x00000050 0x00000000	// PADCTL_SDMMC2_HV_EQOS_TD2_0
+					0x00000000 0x00000050 0x00000000	// PADCTL_SDMMC2_HV_EQOS_TD3_0
+					0x00000054 0x00000050 0x00000000	// PADCTL_SDMMC2_HV_EQOS_TXC_0
+					0x00000064 0x00000050 0x00000000	// PADCTL_SDMMC2_HV_EQOS_TX_CTL_0
+				>;
+			};
+		};
+	};
+
+	sdhci@3460000 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			comp-vref-default {
+				prod = <0x00001E0 0x0000000F 0x7>;
+			};
+			comp-vref-1v8 {
+				prod = <0x00001E0 0x0000000F 0x7>;
+			};
+			comp-vref-3v3 {
+				prod = <0x00001E0 0x0000000F 0x7>;
+			};
+			tap-delay-ddr {
+				prod = <0x0000100 0x00FF0000 0x90000>;
+			};
+			trim-delay-ddr {
+				prod = <0x0000100 0x1F000000 0x5000000>;
+			};
+			tap-delay-default {
+				prod = <0x0000100 0x00FF0000 0x90000>;
+			};
+			tun-iterations-hs200 {
+				prod = <0x00001C0 0x000E000 0x0004000>;
+			};
+			tun-iterations-hs400 {
+				prod = <0x00001C0 0x000E000 0x0004000>;
+			};
+			tun-iterations-sdr104 {
+				prod = <0x00001C0 0x000E000 0x0004000>;
+			};
+			tun-iterations-sdr50 {
+				prod = <0x00001C0 0x000E000 0x0008000>;
+			};
+			tun-iterations-hs533 {
+				prod = <0x00001C0 0x000E000 0x0002000>;
+			};
+			prod-reset {
+				prod = <
+					0x0000100 0x1FFF000E 0x5090028	// SDMMC_VENDOR_CLOCK_CNTRL_0	28:24=TRIM_VAL	0x5
+									//				23:16=TAP_VAL	0x9
+									//				05:05=SDR50_TUNING_OVERRIDE	0x1
+									//				03:03=PADPIPE_CLKEN_OVERRIDE	0x1
+									// 				02:02=SPI_MODE_CLKEN_OVERRIDE	0x0
+									// 				01:01=INPUT_IO_CLK	0x0
+					0x00001C0 0x08001FC0 0x8000040	// SDMMC_VENDOR_TUNING_CNTRL0_0	12:06=MUL_M	0x1
+									//				27:27=RETUNING_REQ_EN_ON_CRC_ERR_DETECTION	0x1
+					0x00001C4 0x00000077 0x0	// SDMMC_VENDOR_TUNING_CNTRL1_0 02:00=STEP_SIZE_SDR50	0x0
+									// 				06:04=STEP_SIZE_SDR104_HS200	0x0
+					0x0000120 0x00020001 0x00001	// SDMMC_VENDOR_MISC_CNTRL_0	0:0=ERASE_TIMEOUT_LIMIT	0x1
+									// 				17:17=SDMMC_SPARE1[1]	0x0
+					0x0000128 0x43000000 0x00000000	// SDMMC_VENDOR_MISC_CNTRL2_0	30:30=SDMMC_CLK_OVR_ON 0x0
+									//				25:25=ADMA3_CLKEN_OVERRIDE	0x0
+									//				24:24=CQE_CLKEN_OVERRIDE	0x0
+				>;
+			};
+			autocal-en {
+				prod = <
+					0x00001E4 0x30070000 0x30000000	// SDMMC_AUTO_CAL_CONFIG_0	29:29=AUTO_CAL_ENABLE	0x1
+									//				28:28=AUTO_CAL_SLW_OVERRIDE	0x1
+									//				18:16=AUTO_CAL_STEP	0x0
+				>;
+			};
+			autocal-pu-pd-offset-hs533-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x0505>;
+			};
+			autocal-pu-pd-offset-hs400-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x0505>;
+			};
+			autocal-pu-pd-offset-default-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x0000>;
+			};
+			autocal-pu-pd-offset-default-3v3 {
+				prod = <0x00001E4 0x00007F7F 0x0000>;
+			};
+		};
+	};
+
+	sdhci@3440000 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			comp-vref-default {
+				prod = <0x00001E0 0x0000000F 0x7>;
+			};
+			comp-vref-3v3 {
+				prod = <0x00001E0 0x0000000F 0x1>;
+			};
+			comp-vref-1v8 {
+				prod = <0x00001E0 0x0000000F 0x2>;
+			};
+			tap-delay-ddr {
+				prod = <0x0000100 0x00FF0000 0xB0000>;
+			};
+			trim-delay-ddr {
+				prod = <0x0000100 0x1F000000 0x5000000>;
+			};
+			tap-delay-default {
+				prod = <0x0000100 0x00FF0000 0xB0000>;
+			};
+			tun-iterations-sdr104 {
+				prod = <0x00001C0 0x000E000 0x0004000>;
+			};
+			tun-iterations-sdr50 {
+				prod = <0x00001C0 0x000E000 0x0008000>;
+			};
+			prod-reset {
+				prod = <
+					0x0000100 0x1FFF000E 0x5090028	// SDMMC_VENDOR_CLOCK_CNTRL_0	28:24=TRIM_VAL	0x5
+									//				23:16=TAP_VAL	0x9
+									//				05:05=SDR50_TUNING_OVERRIDE	0x1
+									//				03:03=PADPIPE_CLKEN_OVERRIDE	0x1
+									// 				02:02=SPI_MODE_CLKEN_OVERRIDE	0x0
+									// 				01:01=INPUT_IO_CLK	0x0
+					0x00001C0 0x08001FC0 0x8000040	// SDMMC_VENDOR_TUNING_CNTRL0_0	12:06=MUL_M	0x1
+									//				27:27=RETUNING_REQ_EN_ON_CRC_ERR_DETECTION	0x1
+					0x00001C4 0x00000077 0x0	// SDMMC_VENDOR_TUNING_CNTRL1_0 02:00=STEP_SIZE_SDR50	0x0
+									// 				06:04=STEP_SIZE_SDR104_HS200	0x0
+					0x0000120 0x00020001 0x00001	// SDMMC_VENDOR_MISC_CNTRL_0	0:0=ERASE_TIMEOUT_LIMIT	0x1
+									// 				17:17=SDMMC_SPARE1[1]	0x0
+					0x0000128 0x43000000 0x00000000	// SDMMC_VENDOR_MISC_CNTRL2_0	30:30=SDMMC_CLK_OVR_ON 0x0
+									//				25:25=ADMA3_CLKEN_OVERRIDE	0x0
+									//				24:24=CQE_CLKEN_OVERRIDE	0x0
+				>;
+			};
+			autocal-en {
+				prod = <
+					0x00001E4 0x30070000 0x30000000	// SDMMC_AUTO_CAL_CONFIG_0	29:29=AUTO_CAL_ENABLE	0x1
+									//				28:28=AUTO_CAL_SLW_OVERRIDE	0x1
+									//				18:16=AUTO_CAL_STEP	0x0
+				>;
+			};
+			autocal-pu-pd-offset-default-3v3 {
+				prod = <0x00001E4 0x00007F7F 0x7A00>;
+			};
+			autocal-pu-pd-offset-default-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x7A00>;
+			};
+			autocal-pu-pd-offset-hs-3v3 {
+				prod = <0x00001E4 0x00007F7F 0x7A00>;
+			};
+			autocal-pu-pd-offset-hs-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x6A76>;
+			};
+			autocal-pu-pd-offset-sdr104-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x7A00>;
+			};
+		};
+	};
+
+	sdhci@3400000 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			comp-vref-default {
+				prod = <0x00001E0 0x0000000F 0x7>;
+			};
+			comp-vref-3v3 {
+				prod = <0x00001E0 0x0000000F 0x1>;
+			};
+			comp-vref-1v8 {
+				prod = <0x00001E0 0x0000000F 0x2>;
+			};
+			tap-delay-default {
+				prod = <0x0000100 0x00FF0000 0xB0000>;
+			};
+			tun-iterations-sdr104 {
+				prod = <0x00001C0 0x000E000 0x0004000>;
+			};
+			tun-iterations-sdr50 {
+				prod = <0x00001C0 0x000E000 0x0008000>;
+			};
+			prod-reset {
+				prod = <
+					0x0000100 0x1FFF000E 0x5090028	// SDMMC_VENDOR_CLOCK_CNTRL_0	28:24=TRIM_VAL	0x5
+									//				23:16=TAP_VAL	0x9
+									//				05:05=SDR50_TUNING_OVERRIDE	0x1
+									//				03:03=PADPIPE_CLKEN_OVERRIDE	0x1
+									// 				02:02=SPI_MODE_CLKEN_OVERRIDE	0x0
+									// 				01:01=INPUT_IO_CLK	0x0
+					0x00001C0 0x08001FC0 0x8000040	// SDMMC_VENDOR_TUNING_CNTRL0_0	12:06=MUL_M	0x1
+									//				27:27=RETUNING_REQ_EN_ON_CRC_ERR_DETECTION	0x1
+					0x00001C4 0x00000077 0x0	// SDMMC_VENDOR_TUNING_CNTRL1_0 02:00=STEP_SIZE_SDR50	0x0
+									// 				06:04=STEP_SIZE_SDR104_HS200	0x0
+					0x0000120 0x00020001 0x00001	// SDMMC_VENDOR_MISC_CNTRL_0	0:0=ERASE_TIMEOUT_LIMIT	0x1
+									// 				17:17=SDMMC_SPARE1[1]	0x0
+					0x0000128 0x43000000 0x00000000	// SDMMC_VENDOR_MISC_CNTRL2_0	30:30=SDMMC_CLK_OVR_ON 0x0
+									//				25:25=ADMA3_CLKEN_OVERRIDE	0x0
+									//				24:24=CQE_CLKEN_OVERRIDE	0x0
+				>;
+			};
+			autocal-en {
+				prod = <
+					0x00001E4 0x30070000 0x30000000	// SDMMC_AUTO_CAL_CONFIG_0	29:29=AUTO_CAL_ENABLE	0x1
+									//				28:28=AUTO_CAL_SLW_OVERRIDE	0x1
+									//				18:16=AUTO_CAL_STEP	0x0
+				>;
+			};
+			autocal-pu-pd-offset-default-3v3 {
+				prod = <0x00001E4 0x00007F7F 0x0000>;
+			};
+			autocal-pu-pd-offset-default-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x0000>;
+			};
+			autocal-pu-pd-offset-hs-3v3 {
+				prod = <0x00001E4 0x00007F7F 0x0000>;
+			};
+			autocal-pu-pd-offset-hs-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x0000>;
+			};
+			autocal-pu-pd-offset-sdr104-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x0503>;
+			};
+			autocal-pu-pd-offset-sdr50-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x0>;
+			};
+		};
+	};
+
+	pinctrl@3520000 {
+		prod-settings {
+			#prod-cells = <4>;
+			mask-one-style;
+			prod_c_bias {
+				prod = <0 0x284 0x00000038 0x38>;
+			};
+			prod_c_hsic0 {
+				prod = <0 0x344 0x0000007f 0x2d>;
+			};
+			prod_c_utmi0 {
+				prod = <0 0x88 0x01fe0000 0xcc0000>;
+			};
+			prod_c_utmi1 {
+				prod = <0 0xc8 0x01fe0000 0xcc0000>;
+			};
+			prod_c_utmi2 {
+				prod = <0 0x108 0x01fe0000 0xcc0000>;
+			};
+			prod_c_ss0 {
+				prod = <0 0x14 0xf7ffffff 0x1010002
+					0 0x14 0xf7ffffff 0x1040032
+					0 0x14 0xf7ffffff 0x1070022
+					0 0x14 0xf7ffffff 0x1352587
+					0 0x14 0xf7ffffff 0x1490fc7
+					0 0x14 0xf7ffffff 0x1520001
+					0 0x14 0xf7ffffff 0x1533c0f
+					0 0x14 0xf7ffffff 0x156c00f
+					0 0x14 0xf7ffffff 0x15dff07
+					0 0x14 0xf7ffffff 0x15e141a>;
+			};
+			prod_c_ss1 {
+				prod = <1 0x14 0xf7ffffff 0x1010002
+					1 0x14 0xf7ffffff 0x1040032
+					1 0x14 0xf7ffffff 0x1070022
+					1 0x14 0xf7ffffff 0x1352587
+					1 0x14 0xf7ffffff 0x1490fc7
+					1 0x14 0xf7ffffff 0x1520001
+					1 0x14 0xf7ffffff 0x1533c0f
+					1 0x14 0xf7ffffff 0x156c00f
+					1 0x14 0xf7ffffff 0x15dff07
+					1 0x14 0xf7ffffff 0x15e141a>;
+			};
+			prod_c_ss2 {
+				prod = <2 0x14 0xf7ffffff 0x1010002
+					2 0x14 0xf7ffffff 0x1040032
+					2 0x14 0xf7ffffff 0x1070022
+					2 0x14 0xf7ffffff 0x1352587
+					2 0x14 0xf7ffffff 0x1490fc7
+					2 0x14 0xf7ffffff 0x1520001
+					2 0x14 0xf7ffffff 0x1533c0f
+					2 0x14 0xf7ffffff 0x156c00f
+					2 0x14 0xf7ffffff 0x15dff07
+					2 0x14 0xf7ffffff 0x15e141a>;
+			};
+		};
+	};
+
+	ahci-sata@3507000 {
+		prod-settings {
+			#prod-cells = <4>;
+			mask-one-style;
+			prod {
+				prod = <
+					1 0x0000052C 0xFFFFFFFF 0x00031CE0	// T_SATA0_SPARE_3		31:0
+					1 0x00000338 0x10000000 0x10000000	// T_SATA0_AHCI_HBA_CYA_1_0     BIT(28)
+				>;
+			};
+		};
+	};
+
+	host1x {
+		sor1 {
+			prod-settings {
+				#prod-cells = <3>;
+				mask-one-style;
+				prod_list_hdmi_soc = "prod_c_hdmi_0m_54m", "prod_c_hdmi_54m_111m",
+						     "prod_c_hdmi_111m_223m", "prod_c_hdmi_223m_300m",
+						     "prod_c_hdmi_300m_600m";
+				prod_c_hdmi_0m_54m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050000
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00000000
+						0x000005a8 0xff000000 0x54000000
+					>;
+				};
+				prod_c_hdmi_54m_111m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050100
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00400000
+						0x000005a8 0xff000000 0x44000000
+					>;
+				};
+				prod_c_hdmi_111m_223m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x373A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00400000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				prod_c_hdmi_223m_300m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333D3D3D
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00404000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				prod_c_hdmi_300m_600m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301900
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333D3D3D
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00406000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				/* HDMI prod-settings for fall-back to old DT config
+				 * when prod_list_hdmi_soc/board are not found */
+				prod_c_54M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050000
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00000000
+						0x000005a8 0xff000000 0x54000000
+					>;
+				};
+				prod_c_75M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050100
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00400000
+						0x000005a8 0xff000000 0x44000000
+					>;
+				};
+				prod_c_150M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x373A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00400000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				prod_c_300M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333D3D3D
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00404000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				prod_c_600M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301900
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333D3D3D
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00406000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				prod_c_dp {
+					prod = <
+						0x0000058c 0x0f0f0f10 0x05050310	//SOR_NV_PDISP_SOR_PLL0_0	27:24=ICHPMP		0x05
+											//				19:16=FILTER		0x05
+											//				11:08=VCOCAP		0x03
+											//				04:04=RESISTORSEL	0x01
+						0x00000590 0x03000100 0x00000100	//SOR_NV_PDISP_SOR_PLL1_0	25:24=LVDSCM		0x00
+											//				08:08=TMDS_TERM		0x01
+						0x00000594 0xf0000000 0x00000000	//SOR_NV_PDISP_SOR_PLL2_0	31:28=PLL_MDIV		0x00
+						0x00000598 0x00002ff0 0x00002440	//SOR_NV_PDISP_SOR_PLL3_0	13:13=PLVVDD_MODE	0x01
+											//				11:08=AVDD10_LEVEL	0x04
+											//				07:04=AVDD14_LEVEL	0x04
+						0x0000059c 0x00401800 0x00000000	//SOR_NV_PDISP_SOR_PLL4_0	22:22=ENABLE_LCKDET	0x00
+											//				12:11=PLL_MODE		0x00
+						0x000005a0 0x00400000 0x00400000	//SOR_NV_PDISP_SOR_DP_PADCTL0_0	22:22=ENABLE		0x01
+						0x000005a8 0xff000000 0x34000000	//SOR_NV_PDISP_SOR_DP_PADCTL2_0 31:24=SPAREPLL		0x34
+						0x00000070 0xffffffff 0x00000000	//SOR_NV_PDISP_SOR_LVDS_0
+						0x00000180 0x00000001 0x00000001	//SOR_NV_PDISP_SOR_DP_SPARE0_0	00:00=SEQ_ENABLE	0x01
+					>;
+				};
+				prod_c_hbr {
+					prod = <
+						0x00000590 0x00f00000 0x00300000	//SOR_NV_PDISP_SOR_PLL1_0	23:20=LOADADJ		0x03
+					>;
+				};
+				prod_c_hbr2 {
+					prod = <
+						0x00000590 0x00f00000 0x00400000	//SOR_NV_PDISP_SOR_PLL1_0	23:20=LOADADJ		0x04
+					>;
+				};
+				prod_c_rbr {
+					prod = <
+						0x00000590 0x00f00000 0x00300000	//SOR_NV_PDISP_SOR_PLL1_0	23:20=LOADADJ		0x03
+					>;
+				};
+			};
+		};
+
+		sor {
+			prod-settings {
+				#prod-cells = <3>;
+				mask-one-style;
+				prod_list_hdmi_soc = "prod_c_hdmi_0m_54m", "prod_c_hdmi_54m_111m",
+						     "prod_c_hdmi_111m_223m", "prod_c_hdmi_223m_300m",
+						     "prod_c_hdmi_300m_600m";
+				prod_c_hdmi_0m_54m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050000
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00000000
+						0x000005a8 0xff000000 0x54000000
+					>;
+				};
+				prod_c_hdmi_54m_111m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050100
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00400000
+						0x000005a8 0xff000000 0x44000000
+					>;
+				};
+				prod_c_hdmi_111m_223m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x373A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00400000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				prod_c_hdmi_223m_300m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333D3D3D
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00404000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				prod_c_hdmi_300m_600m {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301900
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333D3D3D
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00406000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				/* HDMI prod-settings for fall-back to old DT config
+				 * when prod_list_hdmi_soc/board are not found */
+				prod_c_54M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050000
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00000000
+						0x000005a8 0xff000000 0x54000000
+					>;
+				};
+				prod_c_75M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050100
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00400000
+						0x000005a8 0xff000000 0x44000000
+					>;
+				};
+				prod_c_150M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x373A3A3A
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00400000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				prod_c_300M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301F00
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333D3D3D
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00404000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+				prod_c_600M {
+					prod = <
+						0x0000058c 0x0f0f0f00 0x05050300
+						0x00000590 0x00f01f00 0x00301900
+						0x00000598 0xff000ff0 0x38000440
+						0x00000138 0xffffffff 0x333D3D3D
+						0x00000148 0xffffffff 0x00000000
+						0x000005a0 0x0040ff00 0x00406000
+						0x000005a8 0xff000000 0x34000000
+					>;
+				};
+
+				prod_c_dp {
+					prod = <
+						0x0000058c 0x0f0f0f10 0x05050310	//SOR_NV_PDISP_SOR_PLL0_0	27:24=ICHPMP		0x05
+											//				19:16=FILTER		0x05
+											//				11:08=VCOCAP		0x03
+											//				04:04=RESISTORSEL	0x01
+						0x00000590 0x03000100 0x00000100	//SOR_NV_PDISP_SOR_PLL1_0	25:24=LVDSCM		0x00
+											//				08:08=TMDS_TERM		0x01
+						0x00000594 0xf0000000 0x00000000	//SOR_NV_PDISP_SOR_PLL2_0	31:28=PLL_MDIV		0x00
+						0x00000598 0x00002ff0 0x00002440	//SOR_NV_PDISP_SOR_PLL3_0	13:13=PLVVDD_MODE	0x01
+											//				11:08=AVDD10_LEVEL	0x04
+											//				07:04=AVDD14_LEVEL	0x04
+						0x0000059c 0x00401800 0x00000000	//SOR_NV_PDISP_SOR_PLL4_0	22:22=ENABLE_LCKDET	0x00
+											//				12:11=PLL_MODE		0x00
+						0x000005a0 0x00400000 0x00400000	//SOR_NV_PDISP_SOR_DP_PADCTL0_0	22:22=ENABLE		0x01
+						0x000005a8 0xff000000 0x34000000	//SOR_NV_PDISP_SOR_DP_PADCTL2_0 31:24=SPAREPLL		0x34
+						0x00000070 0xffffffff 0x00000000	//SOR_NV_PDISP_SOR_LVDS_0
+						0x00000180 0x00000001 0x00000001	//SOR_NV_PDISP_SOR_DP_SPARE0_0	00:00=SEQ_ENABLE	0x01
+					>;
+				};
+				prod_c_hbr {
+					prod = <
+						0x00000590 0x00f00000 0x00300000	//SOR_NV_PDISP_SOR_PLL1_0	23:20=LOADADJ		0x03
+					>;
+				};
+				prod_c_hbr2 {
+					prod = <
+						0x00000590 0x00f00000 0x00400000	//SOR_NV_PDISP_SOR_PLL1_0	23:20=LOADADJ		0x04
+					>;
+				};
+				prod_c_rbr {
+					prod = <
+						0x00000590 0x00f00000 0x00300000	//SOR_NV_PDISP_SOR_PLL1_0	23:20=LOADADJ		0x03
+					>;
+				};
+			};
+		};
+		dpaux@155c0000 {
+			prod-settings {
+				#prod-cells = <3>;
+				mask-one-style;
+
+				prod_c_dpaux_dp {
+					prod = <
+						0x00000124 0x000037fe 0x00002462
+						>;
+					};
+				prod_c_dpaux_hdmi {
+					prod = <
+						0x00000124 0x00000700 0x00000400
+						>;
+					};
+				};
+			};
+		dpaux@15040000 {
+			prod-settings {
+				#prod-cells = <3>;
+				mask-one-style;
+
+				prod_c_dpaux_dp {
+					prod = <
+						0x00000124 0x000037fe 0x00002462
+						>;
+					};
+				prod_c_dpaux_hdmi {
+					prod = <
+						0x00000124 0x00000700 0x00000400
+						>;
+					};
+				};
+			};
+
+		dsi {
+			prod-settings {
+				#prod-cells = <3>;
+				mask-one-style;
+				dsi-padctrl-prod {
+					prod = < 0x00000024 0x03F0FC3F 0x00000000	/* DSI_PADCTL_A_OUTPUT_DELAY_TRIMMER_0 */
+						0x00000028 0x00333333 0x00000000	/* DSI_PADCTL_A_PRE_EMPHASIS_0 */
+						0x00000030 0x00FFFFFF 0x00000000	/* DSI_PADCTL_A_LP_DRVR_IMPEDANCE_CTRL_0 */
+						0x00000034 0x00FFFFFF 0x00777777	/* DSI_PADCTL_A_LP_DRVR_SLEW_RATE_CTRL_0 */
+
+						0x00000054 0x03F0FC3F 0x00000000	/* DSI_PADCTL_B_OUTPUT_DELAY_TRIMMER_0 */
+						0x00000058 0x00333333 0x00000000	/* DSI_PADCTL_B_PRE_EMPHASIS_0 */
+						0x00000060 0x00FFFFFF 0x00000000	/* DSI_PADCTL_B_LP_DRVR_IMPEDANCE_CTRL_0 */
+						0x00000064 0x00FFFFFF 0x00777777	/* DSI_PADCTL_B_LP_DRVR_SLEW_RATE_CTRL_0 */
+
+						0x00000084 0x03F0FC3F 0x00000000	/* DSI_PADCTL_C_OUTPUT_DELAY_TRIMMER_0 */
+						0x00000088 0x00333333 0x00000000	/* DSI_PADCTL_C_PRE_EMPHASIS_0 */
+						0x00000090 0x00FFFFFF 0x00000000	/* DSI_PADCTL_C_LP_DRVR_IMPEDANCE_CTRL_0 */
+						0x00000094 0x00FFFFFF 0x00777777	/* DSI_PADCTL_C_LP_DRVR_SLEW_RATE_CTRL_0 */
+
+						0x000000B4 0x03F0FC3F 0x00000000	/* DSI_PADCTL_D_OUTPUT_DELAY_TRIMMER_0 */
+						0x000000B8 0x00333333 0x00000000	/* DSI_PADCTL_D_PRE_EMPHASIS_0 */
+						0x000000C0 0x00FFFFFF 0x00000000	/* DSI_PADCTL_D_LP_DRVR_IMPEDANCE_CTRL_0 */
+						0x000000C4 0x00FFFFFF 0x00777777	/* DSI_PADCTL_D_LP_DRVR_SLEW_RATE_CTRL_0 */
+					>;
+				};
+			};
+		};
+	};
+
+	i2c@c240000 {
+		prod-settings {
+			mask-one-style;
+			prod_i2c_sm {
+				prod = <0x00000094 0x00003F00 0x00000300
+					0x0000006c 0xFFFF0000 0x00160000>;
+			};
+		};
+	};
+
+	i2c@3190000 {
+		prod-settings {
+			mask-one-style;
+			prod_i2c_sm {
+				prod = <0x00000094 0x00003F00 0x00000300
+					0x0000006c 0xFFFF0000 0x00160000>;
+			};
+		};
+	};
+
+	i2c@31b0000 {
+		prod-settings {
+			mask-one-style;
+			prod_i2c_sm {
+				prod = <0x00000094 0x00003F00 0x00000300
+					0x0000006c 0xFFFF0000 0x00160000>;
+			};
+		};
+	};
+
+	csi_mipical {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			prod {
+				soc {
+					prod = <
+						0x00000004 0x3f000010 0x2a000010
+						0x00000018 0x00200000 0x00200000
+						0x0000001C 0x00200000 0x00200000
+						0x00000020 0x00200000 0x00200000
+						0x00000024 0x00200000 0x00200000
+						0x00000028 0x00200000 0x00200000
+						0x0000002C 0x00200000 0x00200000
+						0x0000003C 0x00200000 0x00000000
+						0x00000040 0x00200000 0x00000000
+						0x00000044 0x00200000 0x00000000
+						0x00000048 0x00200000 0x00000000>;
+				};
+				soc_a01 {
+					status = "disabled";
+					prod = <
+						0x00000018 0x0000f81f 0x00001010
+						0x0000001C 0x0000f81f 0x00001010
+						0x00000020 0x0000f81f 0x00001010
+						0x00000024 0x0000f81f 0x00001010
+						0x00000028 0x0000f81f 0x00001010
+						0x0000002C 0x0000f81f 0x00001010>;
+				};
+				csi_mipical_prod_soc_a02: soc_a02 {
+					status = "okay";
+					prod = <
+						0x00000004 0x00000002 0x00000002
+						0x00000018 0x0000f81f 0x00000000
+						0x0000001C 0x0000f81f 0x00000000
+						0x00000020 0x0000f81f 0x00000000
+						0x00000024 0x0000f81f 0x00000000
+						0x00000028 0x0000f81f 0x00000000
+						0x0000002C 0x0000f81f 0x00000000>;
+				};
+			};
+		};
+	};
+
+	mipical {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			prod {
+/* SOC dtsi entries : module=DC, manual=mipi_cal, chip_rev is DC,  mode = DSI */
+				soc {
+					prod = <
+						0x00000000 0x00000001 0x00000000
+						0x00000018 0x00200000 0x00000000
+						0x0000001C 0x00200000 0x00000000
+						0x00000020 0x00200000 0x00000000
+						0x00000024 0x00200000 0x00000000
+						0x00000028 0x00200000 0x00000000
+						0x0000002C 0x00200000 0x00000000
+						0x0000003C 0x003f1f1f 0x00200000
+						0x00000068 0x003f0000 0x00270000
+						0x00000040 0x003f1f1f 0x00200000
+						0x0000006C 0x003f0000 0x00270000
+						0x00000044 0x003f1f1f 0x00200000
+						0x00000074 0x003f0000 0x00270000
+						0x00000048 0x003f1f1f 0x00200000
+						0x00000078 0x003f0000 0x00270000
+						0x0000005C 0x00000003 0x00000000>;
+				};
+/* SOC_A01 dtsi entries : module=DC, manual=mipi_cal, chip_rev is A01, mode is DC */
+				mipical_prod_soc_a01: soc_a01 {
+					status = "disabled";
+					prod = <
+						0x00000018 0x0000f81f 0x00001010
+						0x0000001C 0x0000f81f 0x00001010
+						0x00000020 0x0000f81f 0x00001010
+						0x00000024 0x0000f81f 0x00001010
+						0x00000028 0x0000f81f 0x00001010
+						0x0000002C 0x0000f81f 0x00001010>;
+				};
+/* SOC_A02 dtsi entries : module=DC, manual=mipi_cal, chip_rev is A02, mode is DC */
+				mipical_prod_soc_a02: soc_a02 {
+					status = "okay";
+					prod = <
+						0x00000018 0x0000f81f 0x00000000
+						0x0000001C 0x0000f81f 0x00000000
+						0x00000020 0x0000f81f 0x00000000
+						0x00000024 0x0000f81f 0x00000000
+						0x00000028 0x0000f81f 0x00000000
+						0x0000002C 0x0000f81f 0x00000000>;
+				};
+			};
+		};
+	};
+};

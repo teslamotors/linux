@@ -1,0 +1,285 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/mfd/max77620.h>
+#include <dt-bindings/regulator/regulator.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/linux/driver-info.h>
+
+/ {
+	bpmp_i2c {
+		spmic: spmic@3c {
+			compatible = "maxim,max20024";
+			reg = <0x3c>;
+
+#ifdef WAKEUP_VIA_PM_IRQ_INTERRUPT_CONTROLLER
+			interrupt-parent = <&pm_irq>;
+#endif
+			interrupts = <0 209 IRQ_TYPE_NONE>;
+
+			#interrupt-cells = <2>;
+                        interrupt-controller;
+
+			gpio-controller;
+			#gpio-cells = <2>;
+
+			maxim,enable-clock32k-out;
+
+			maxim,device-state-on-disabled-event = <MAX77620_FPS_INACTIVE_STATE_SLEEP>;
+
+			maxim,system-pmic-power-off;
+
+			maxim,avoid-rtc-bulk-register-write;
+
+			maxim,hot-die-threshold-temp = <110000>;
+			#thermal-sensor-cells = <0>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&spmic_default>;
+
+			gpio-init-names = "default";
+			gpio-init-0 = <&spmic_gpio_default>;
+
+			spmic_default: pinmux@0 {
+				pin_gpio0 {
+					pins = "gpio0";
+					function = "gpio";
+				};
+
+				pin_gpio1 {
+					pins = "gpio1";
+					function = "fps-out";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+				};
+
+				pin_gpio2 {
+					pins = "gpio2";
+					function = "fps-out";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+				};
+
+				pin_gpio3 {
+					pins = "gpio3";
+					function = "fps-out";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+				};
+
+				pin_gpio4 {
+					pins = "gpio4";
+					function = "32k-out1";
+					drive-push-pull = <1>;
+				};
+
+				pin_gpio6 {
+					pins = "gpio6";
+					function = "gpio";
+					drive-push-pull = <1>;
+				};
+
+				pin_gpio7 {
+					pins = "gpio7";
+					function = "gpio";
+					drive-push-pull = <0>;
+				};
+			};
+
+			spmic_gpio_default:gpio_default {
+				gpio-output-high = <6 7>;
+			};
+
+			spmic_wdt:watchdog {
+				maxim,wdt-boot-timeout = <32>;
+				maxim,wdt-suspend-timeout = <120>;
+				status = "disabled";
+			};
+
+			fps {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				fps0 {
+					reg = <0>;
+					maxim,shutdown-fps-time-period-us = <2560>;
+					maxim,suspend-fps-time-period-us = <640>;
+					maxim,fps-event-source = <MAX77620_FPS_EVENT_SRC_EN0>;
+				};
+
+				fps1 {
+					reg = <1>;
+					maxim,shutdown-fps-time-period-us = <2560>;
+					maxim,suspend-fps-time-period-us = <640>;
+					maxim,fps-event-source = <MAX77620_FPS_EVENT_SRC_EN1>;
+				};
+
+				fps2 {
+					reg = <2>;
+					maxim,shutdown-fps-time-period-us = <2560>;
+					maxim,suspend-fps-time-period-us = <640>;
+					maxim,fps-event-source = <MAX77620_FPS_EVENT_SRC_EN0>;
+				};
+			};
+
+			backup-battery {
+				maxim,backup-battery-charging-current = <100>;
+				maxim,backup-battery-charging-voltage = <3000000>;
+				maxim,backup-battery-output-resister = <100>;
+				status = "disabled";
+			};
+
+			regulators {
+				in-ldo3-supply = <&spmic_sd3>;
+				in-ldo5-supply = <&spmic_sd3>;
+				in-ldo7-8-supply = <&spmic_sd1>;
+
+				spmic_sd0: sd0 {
+					regulator-name = "vddio-ddr";
+					regulator-always-on;
+					regulator-boot-on;
+					regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_sd1: sd1 {
+					regulator-name = "avdd_dsi_csi";
+					regulator-min-microvolt = <1200000>;
+					regulator-max-microvolt = <1200000>;
+					regulator-always-on;
+					regulator-boot-on;
+					regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_sd2: sd2 {
+					regulator-name = "vdd-1v8";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+					regulator-boot-on;
+					regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_sd3: sd3 {
+					regulator-name = "vdd-3v3-sys";
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-always-on;
+					regulator-boot-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_sd4: sd4 {
+					regulator-name = "spmic-sd4";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo0: ldo0 {
+					regulator-name = "vdd-1v8-pll";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo1: ldo1 {
+					regulator-name = "spmic-ldo1";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo2: ldo2 {
+					regulator-name = "3v3-fsync-buf";
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo3: ldo3 {
+					regulator-name = "vddio-sdmmc1";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <3300000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+				};
+
+				spmic_ldo4: ldo4 {
+					regulator-name = "vdd-rtc";
+					regulator-min-microvolt = <1000000>;
+					regulator-max-microvolt = <1000000>;
+					regulator-always-on;
+					regulator-boot-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo5: ldo5 {
+					regulator-name = "vddio-sdmmc3";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <3300000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+				};
+
+				spmic_ldo6: ldo6 {
+					regulator-name = "vdd-1v8-sys";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+					regulator-boot-on;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo7: ldo7 {
+					regulator-name = "vdd-pex-1v05";
+					regulator-min-microvolt = <1050000>;
+					regulator-max-microvolt = <1050000>;
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo8: ldo8 {
+					regulator-name = "spmic-ldo8";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+			};
+		};
+	};
+
+	dummy_cool_dev: dummy-cool-dev {
+		compatible = "dummy-cooling-dev";
+		#cooling-cells = <2>; /* min followed by max */
+		status = "disabled";
+	};
+
+	thermal-zones {
+		PMIC-Die {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+
+			thermal-sensors = <&spmic>;
+			trips {
+				die_temp_thresh: hot-die {
+					temperature = <120000>;
+					type = "active";
+					hysteresis = <0>;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&die_temp_thresh>;
+					cooling-device = <&dummy_cool_dev THERMAL_NO_LIMIT
+								THERMAL_NO_LIMIT>;
+					contribution = <100>;
+					cdev-type = "emergency-balanced";
+				};
+			};
+		};
+	};
+};

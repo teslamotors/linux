@@ -1,7 +1,9 @@
 #
 # Makefile for the kernel serial device drivers.
 #
+GCOV_PROFILE := y
 
+ccflags-y += -Werror
 obj-$(CONFIG_SERIAL_CORE) += serial_core.o
 obj-$(CONFIG_SERIAL_21285) += 21285.o
 
@@ -86,6 +88,7 @@ obj-$(CONFIG_SERIAL_MXS_AUART) += mxs-auart.o
 obj-$(CONFIG_SERIAL_LANTIQ)	+= lantiq.o
 obj-$(CONFIG_SERIAL_XILINX_PS_UART) += xilinx_uartps.o
 obj-$(CONFIG_SERIAL_SIRFSOC) += sirfsoc_uart.o
+CFLAGS_serial-tegra.o		= -Werror
 obj-$(CONFIG_SERIAL_TEGRA) += serial-tegra.o
 obj-$(CONFIG_SERIAL_AR933X)   += ar933x_uart.o
 obj-$(CONFIG_SERIAL_EFM32_UART) += efm32-uart.o
@@ -93,6 +96,8 @@ obj-$(CONFIG_SERIAL_ARC)	+= arc_uart.o
 obj-$(CONFIG_SERIAL_RP2)	+= rp2.o
 obj-$(CONFIG_SERIAL_FSL_LPUART)	+= fsl_lpuart.o
 obj-$(CONFIG_SERIAL_MEN_Z135)	+= men_z135_uart.o
+obj-$(CONFIG_TEGRA_HV_COMM)	+= tegra_hv_comm.o
 
 # GPIOLIB helpers for modem control lines
 obj-$(CONFIG_SERIAL_MCTRL_GPIO)	+= serial_mctrl_gpio.o
+obj-$(CONFIG_SERIAL_UBLOX_GPS) += ublox6-gps-i2c.o

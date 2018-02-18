@@ -52,6 +52,10 @@ config OF_NET
 	depends on NETDEVICES
 	def_bool y
 
+config OF_PLUGIN_MANAGER
+	def_bool y
+	depends on ARCH_TEGRA || PLATFORM_TEGRA
+
 config OF_MDIO
 	def_tristate PHYLIB
 	depends on PHYLIB

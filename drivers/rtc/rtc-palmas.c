@@ -4,8 +4,9 @@
  * RTC driver for TI Palma series devices like TPS65913,
  * TPS65914 power management IC.
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012 - 2013, NVIDIA CORPORATION.  All rights reserved.
  *
+ * Author: Kasoju Mallikarjun <mkasoju@nvidia.com>
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or
@@ -73,6 +74,9 @@ static int palmas_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	tm->tm_mon = bcd2bin(rtc_data[4]) - 1;
 	tm->tm_year = bcd2bin(rtc_data[5]) + 100;
 
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n",
+		__func__, tm->tm_year, tm->tm_mon, tm->tm_mday,
+		tm->tm_hour, tm->tm_min, tm->tm_sec);
 	return ret;
 }
 
@@ -88,6 +92,10 @@ static int palmas_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	rtc_data[3] = bin2bcd(tm->tm_mday);
 	rtc_data[4] = bin2bcd(tm->tm_mon + 1);
 	rtc_data[5] = bin2bcd(tm->tm_year - 100);
+
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n",
+		__func__, tm->tm_year, tm->tm_mon, tm->tm_mday,
+		tm->tm_hour, tm->tm_min, tm->tm_sec);
 
 	/* Stop RTC while updating the RTC time registers */
 	ret = palmas_update_bits(palmas, PALMAS_RTC_BASE, PALMAS_RTC_CTRL_REG,
@@ -144,6 +152,10 @@ static int palmas_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	alm->time.tm_mon = bcd2bin(alarm_data[4]) - 1;
 	alm->time.tm_year = bcd2bin(alarm_data[5]) + 100;
 
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n", __func__,
+		alm->time.tm_year, alm->time.tm_mon, alm->time.tm_mday,
+		alm->time.tm_hour, alm->time.tm_min, alm->time.tm_sec);
+
 	ret = palmas_read(palmas, PALMAS_RTC_BASE, PALMAS_RTC_INTERRUPTS_REG,
 			&int_val);
 	if (ret < 0) {
@@ -174,6 +186,10 @@ static int palmas_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	alarm_data[3] = bin2bcd(alm->time.tm_mday);
 	alarm_data[4] = bin2bcd(alm->time.tm_mon + 1);
 	alarm_data[5] = bin2bcd(alm->time.tm_year - 100);
+
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n", __func__,
+		alm->time.tm_year, alm->time.tm_mon, alm->time.tm_mday,
+		alm->time.tm_hour, alm->time.tm_min, alm->time.tm_sec);
 
 	ret = palmas_bulk_write(palmas, PALMAS_RTC_BASE,
 		PALMAS_ALARM_SECONDS_REG, alarm_data, PALMAS_NUM_TIME_REGS);
@@ -237,11 +253,21 @@ static int palmas_rtc_probe(struct platform_device *pdev)
 {
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
 	struct palmas_rtc *palmas_rtc = NULL;
+	struct palmas_platform_data *palmas_pdata;
+	struct palmas_rtc_platform_data *rtc_pdata = NULL;
 	int ret;
 	bool enable_bb_charging = false;
 	bool high_bb_charging;
 
-	if (pdev->dev.of_node) {
+
+	palmas_pdata = dev_get_platdata(pdev->dev.parent);
+	if (palmas_pdata)
+		rtc_pdata = palmas_pdata->rtc_pdata;
+
+	if (rtc_pdata) {
+		enable_bb_charging = rtc_pdata->backup_battery_chargeable;
+		high_bb_charging = rtc_pdata->backup_battery_charge_high_current;
+	} else if (pdev->dev.of_node) {
 		enable_bb_charging = of_property_read_bool(pdev->dev.of_node,
 					"ti,backup-battery-chargeable");
 		high_bb_charging = of_property_read_bool(pdev->dev.of_node,
@@ -250,8 +276,10 @@ static int palmas_rtc_probe(struct platform_device *pdev)
 
 	palmas_rtc = devm_kzalloc(&pdev->dev, sizeof(struct palmas_rtc),
 			GFP_KERNEL);
-	if (!palmas_rtc)
+	if (!palmas_rtc) {
+		dev_err(&pdev->dev, "Memory allocation failed.\n");
 		return -ENOMEM;
+	}
 
 	/* Clear pending interrupts */
 	ret = palmas_clear_interrupts(&pdev->dev);
@@ -260,6 +288,7 @@ static int palmas_rtc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	palmas->rtc = palmas_rtc;
 	palmas_rtc->dev = &pdev->dev;
 	platform_set_drvdata(pdev, palmas_rtc);
 
@@ -289,6 +318,14 @@ static int palmas_rtc_probe(struct platform_device *pdev)
 		}
 	}
 
+	ret = palmas_write(palmas, PALMAS_RTC_BASE,
+				PALMAS_RTC_INTERRUPTS_REG, 0);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "RTC_INTERRUPTS_REG write failed: %d\n",
+				ret);
+		return ret;
+	}
+
 	/* Start RTC */
 	ret = palmas_update_bits(palmas, PALMAS_RTC_BASE, PALMAS_RTC_CTRL_REG,
 			PALMAS_RTC_CTRL_REG_STOP_RTC,
@@ -298,24 +335,26 @@ static int palmas_rtc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	palmas_rtc->irq = platform_get_irq(pdev, 0);
+	palmas_rtc->irq = palmas_irq_get_virq(palmas, PALMAS_RTC_ALARM_IRQ);
+	dev_dbg(&pdev->dev, "RTC interrupt %d\n", palmas_rtc->irq);
 
 	device_init_wakeup(&pdev->dev, 1);
-	palmas_rtc->rtc = devm_rtc_device_register(&pdev->dev, pdev->name,
-				&palmas_rtc_ops, THIS_MODULE);
+	palmas_rtc->rtc = rtc_device_register(pdev->name, &pdev->dev,
+		&palmas_rtc_ops, THIS_MODULE);
 	if (IS_ERR(palmas_rtc->rtc)) {
 		ret = PTR_ERR(palmas_rtc->rtc);
 		dev_err(&pdev->dev, "RTC register failed, err = %d\n", ret);
 		return ret;
 	}
 
-	ret = devm_request_threaded_irq(&pdev->dev, palmas_rtc->irq, NULL,
+	ret = request_threaded_irq(palmas_rtc->irq, NULL,
 			palmas_rtc_interrupt,
 			IRQF_TRIGGER_LOW | IRQF_ONESHOT |
 			IRQF_EARLY_RESUME,
 			dev_name(&pdev->dev), palmas_rtc);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "IRQ request failed, err = %d\n", ret);
+		rtc_device_unregister(palmas_rtc->rtc);
 		return ret;
 	}
 
@@ -324,7 +363,11 @@ static int palmas_rtc_probe(struct platform_device *pdev)
 
 static int palmas_rtc_remove(struct platform_device *pdev)
 {
+	struct palmas_rtc *palmas_rtc = platform_get_drvdata(pdev);
+
 	palmas_rtc_alarm_irq_enable(&pdev->dev, 0);
+	free_irq(palmas_rtc->irq, palmas_rtc);
+	rtc_device_unregister(palmas_rtc->rtc);
 	return 0;
 }
 
@@ -333,8 +376,20 @@ static int palmas_rtc_suspend(struct device *dev)
 {
 	struct palmas_rtc *palmas_rtc = dev_get_drvdata(dev);
 
-	if (device_may_wakeup(dev))
+	if (device_may_wakeup(dev)) {
+		int ret;
+		struct rtc_wkalrm alm;
+
 		enable_irq_wake(palmas_rtc->irq);
+		ret = palmas_rtc_read_alarm(dev, &alm);
+		if (!ret)
+			dev_info(dev, "%s() alrm %d time %d %d %d %d %d %d\n",
+				__func__, alm.enabled,
+				alm.time.tm_year, alm.time.tm_mon,
+				alm.time.tm_mday, alm.time.tm_hour,
+				alm.time.tm_min, alm.time.tm_sec);
+	}
+
 	return 0;
 }
 
@@ -342,17 +397,28 @@ static int palmas_rtc_resume(struct device *dev)
 {
 	struct palmas_rtc *palmas_rtc = dev_get_drvdata(dev);
 
-	if (device_may_wakeup(dev))
+	if (device_may_wakeup(dev)) {
+		struct rtc_time tm;
+		int ret;
+
 		disable_irq_wake(palmas_rtc->irq);
+		ret = palmas_rtc_read_time(dev, &tm);
+		if (!ret)
+			dev_info(dev, "%s() %d %d %d %d %d %d\n",
+				__func__, tm.tm_year, tm.tm_mon, tm.tm_mday,
+				tm.tm_hour, tm.tm_min, tm.tm_sec);
+	}
+
 	return 0;
 }
 #endif
 
-static SIMPLE_DEV_PM_OPS(palmas_rtc_pm_ops, palmas_rtc_suspend,
-			 palmas_rtc_resume);
+static const struct dev_pm_ops palmas_rtc_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(palmas_rtc_suspend, palmas_rtc_resume)
+};
 
 #ifdef CONFIG_OF
-static const struct of_device_id of_palmas_rtc_match[] = {
+static struct of_device_id of_palmas_rtc_match[] = {
 	{ .compatible = "ti,palmas-rtc"},
 	{ },
 };
@@ -374,5 +440,6 @@ module_platform_driver(palmas_rtc_driver);
 
 MODULE_ALIAS("platform:palmas_rtc");
 MODULE_DESCRIPTION("TI PALMAS series RTC driver");
+MODULE_AUTHOR("Kasoju Mallikarjun <mkasoju@nvidia.com>");
 MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
 MODULE_LICENSE("GPL v2");

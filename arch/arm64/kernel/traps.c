@@ -47,6 +47,7 @@ static const char *handler[]= {
 
 int show_unhandled_signals = 1;
 
+#ifdef CONFIG_DEBUG_VERBOSE_OOPS
 /*
  * Dump out the contents of some memory nicely...
  */
@@ -88,13 +89,16 @@ static void dump_mem(const char *lvl, const char *str, unsigned long bottom,
 
 	set_fs(fs);
 }
+#endif
 
 static void dump_backtrace_entry(unsigned long where, unsigned long stack)
 {
 	print_ip_sym(where);
+#ifdef CONFIG_DEBUG_VERBOSE_OOPS
 	if (in_exception_text(where))
 		dump_mem("", "Exception stack", stack,
 			 stack + sizeof(struct pt_regs));
+#endif
 }
 
 static void dump_instr(const char *lvl, struct pt_regs *regs)
@@ -205,10 +209,16 @@ static int __die(const char *str, int err, struct thread_info *thread,
 		 TASK_COMM_LEN, tsk->comm, task_pid_nr(tsk), thread + 1);
 
 	if (!user_mode(regs) || in_interrupt()) {
+#ifdef CONFIG_DEBUG_VERBOSE_OOPS
 		dump_mem(KERN_EMERG, "Stack: ", regs->sp,
 			 THREAD_SIZE + (unsigned long)task_stack_page(tsk));
+#endif
+
 		dump_backtrace(regs, tsk);
+
+#ifdef CONFIG_DEBUG_VERBOSE_OOPS
 		dump_instr(KERN_EMERG, regs);
+#endif
 	}
 
 	return ret;
@@ -223,10 +233,13 @@ void die(const char *str, struct pt_regs *regs, int err)
 {
 	struct thread_info *thread = current_thread_info();
 	int ret;
+	unsigned long flags;
+
+	local_irq_save(flags);
 
 	oops_enter();
 
-	raw_spin_lock_irq(&die_lock);
+	raw_spin_lock(&die_lock);
 	console_verbose();
 	bust_spinlocks(1);
 	ret = __die(str, err, thread, regs);
@@ -236,13 +249,16 @@ void die(const char *str, struct pt_regs *regs, int err)
 
 	bust_spinlocks(0);
 	add_taint(TAINT_DIE, LOCKDEP_NOW_UNRELIABLE);
-	raw_spin_unlock_irq(&die_lock);
+	raw_spin_unlock(&die_lock);
 	oops_exit();
 
 	if (in_interrupt())
 		panic("Fatal exception in interrupt");
 	if (panic_on_oops)
 		panic("Fatal exception");
+
+	local_irq_restore(flags);
+
 	if (ret != NOTIFY_STOP)
 		do_exit(SIGSEGV);
 }
@@ -259,6 +275,68 @@ void arm64_notify_die(const char *str, struct pt_regs *regs,
 	}
 }
 
+static LIST_HEAD(undef_hook);
+static DEFINE_RAW_SPINLOCK(undef_lock);
+
+void register_undef_hook(struct undef_hook *hook)
+{
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&undef_lock, flags);
+	list_add(&hook->node, &undef_hook);
+	raw_spin_unlock_irqrestore(&undef_lock, flags);
+}
+
+void unregister_undef_hook(struct undef_hook *hook)
+{
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&undef_lock, flags);
+	list_del(&hook->node);
+	raw_spin_unlock_irqrestore(&undef_lock, flags);
+}
+
+static int call_undef_hook(struct pt_regs *regs)
+{
+	struct undef_hook *hook;
+	unsigned long flags;
+	u32 instr;
+	int (*fn)(struct pt_regs *regs, u32 instr) = NULL;
+	void __user *pc = (void __user *)instruction_pointer(regs);
+
+	if (!user_mode(regs)) {
+		instr = *((u32 *)pc);
+	} else if (compat_thumb_mode(regs)) {
+		/* 16-bit Thumb instruction */
+		if (get_user(instr, (u16 __user *)pc))
+			goto exit;
+		instr = le16_to_cpu(instr);
+		if (aarch32_insn_is_wide(instr)) {
+			u32 instr2;
+
+			if (get_user(instr2, (u16 __user *)(pc + 2)))
+				goto exit;
+			instr2 = le16_to_cpu(instr2);
+			instr = (instr << 16) | instr2;
+		}
+	} else {
+		/* 32-bit ARM instruction */
+		if (get_user(instr, (u32 __user *)pc))
+			goto exit;
+		instr = le32_to_cpu(instr);
+	}
+
+	raw_spin_lock_irqsave(&undef_lock, flags);
+	list_for_each_entry(hook, &undef_hook, node)
+		if ((instr & hook->instr_mask) == hook->instr_val &&
+			(regs->pstate & hook->pstate_mask) == hook->pstate_val)
+			fn = hook->fn;
+
+	raw_spin_unlock_irqrestore(&undef_lock, flags);
+exit:
+	return fn ? fn(regs, instr) : 1;
+}
+
 asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 {
 	siginfo_t info;
@@ -266,6 +344,9 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 
 	/* check for AArch32 breakpoint instructions */
 	if (!aarch32_break_handler(regs))
+		return;
+
+	if (call_undef_hook(regs) == 0)
 		return;
 
 	if (show_unhandled_signals && unhandled_signal(current, SIGILL) &&
@@ -307,6 +388,31 @@ asmlinkage long do_ni_syscall(struct pt_regs *regs)
 	return sys_ni_syscall();
 }
 
+#ifdef CONFIG_SERROR_HANDLER
+static LIST_HEAD(serr_hook);
+static DEFINE_RAW_SPINLOCK(serr_lock);
+
+void register_serr_hook(struct serr_hook *hook)
+{
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&serr_lock, flags);
+	list_add(&hook->node, &serr_hook);
+	raw_spin_unlock_irqrestore(&serr_lock, flags);
+}
+EXPORT_SYMBOL(register_serr_hook);
+
+void unregister_serr_hook(struct serr_hook *hook)
+{
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&serr_lock, flags);
+	list_del(&hook->node);
+	raw_spin_unlock_irqrestore(&serr_lock, flags);
+}
+EXPORT_SYMBOL(unregister_serr_hook);
+#endif
+
 /*
  * bad_mode handles the impossible case in the exception vector. This is always
  * fatal.
@@ -314,7 +420,7 @@ asmlinkage long do_ni_syscall(struct pt_regs *regs)
 asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 {
 	console_verbose();
-
+ 
 	pr_crit("Bad mode in %s handler detected, code 0x%08x\n",
 		handler[reason], esr);
 
@@ -330,12 +436,33 @@ asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 asmlinkage void bad_el0_sync(struct pt_regs *regs, int reason, unsigned int esr)
 {
 	siginfo_t info;
+#ifdef CONFIG_SERROR_HANDLER
+	struct serr_hook *hook;
+	unsigned long flags;
+#endif
 	void __user *pc = (void __user *)instruction_pointer(regs);
+
 	console_verbose();
 
-	pr_crit("Bad EL0 synchronous exception detected on CPU%d, code 0x%08x\n",
-		smp_processor_id(), esr);
+#ifdef CONFIG_SERROR_HANDLER
+	raw_spin_lock_irqsave(&serr_lock, flags);
+	list_for_each_entry(hook, &serr_hook, node)
+		if (hook->fn(regs, reason, esr, hook->priv)) {
+			raw_spin_unlock_irqrestore(&serr_lock, flags);
+			return;
+		}
+#endif
+
+	pr_crit("CPU%d: Bad mode in %s handler detected, code 0x%08x\n",
+		smp_processor_id(), handler[reason], esr);
+
+#ifdef CONFIG_SERROR_HANDLER
+	raw_spin_unlock_irqrestore(&serr_lock, flags);
+#endif
+
+#ifdef CONFIG_DEBUG_VERBOSE_OOPS
 	__show_regs(regs);
+#endif
 
 	info.si_signo = SIGILL;
 	info.si_errno = 0;

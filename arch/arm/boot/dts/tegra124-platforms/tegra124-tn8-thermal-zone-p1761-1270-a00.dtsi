@@ -1,0 +1,230 @@
+#include <dt-bindings/thermal/thermal.h>
+
+/ {
+	tboard_thermistor: generic-adc-thermal@1 {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&palams_gpadc 1>;
+		io-channel-names = "sensor-channel";
+		adc-temp-lookup-table = "linear-table";
+		lower-temperature = <(-40000)>;
+		upper-temperature = <125000>;
+		step-temperature = <1000>;
+		adc-temperature-map = <2578 2577 2576 2575 2574
+					2573 2572 2571 2569 2568
+					2567 2565 2563 2561 2559
+					2557 2555 2553 2550 2548
+					2545 2542 2539 2536 2532
+					2529 2525 2521 2517 2512
+					2507 2502 2497 2492 2486
+					2480 2473 2467 2460 2452
+					2445 2437 2428 2419 2410
+					2401 2391 2380 2369 2358
+					2346 2334 2322 2308 2295
+					2281 2266 2251 2236 2219
+					2203 2186 2168 2150 2131
+					2112 2092 2072 2052 2030
+					2009 1987 1964 1941 1918
+					1894 1870 1845 1820 1795
+					1769 1743 1717 1691 1664
+					1637 1610 1583 1555 1528
+					1500 1472 1445 1417 1390
+					1362 1334 1307 1280 1253
+					1226 1199 1172 1146 1120
+					1094 1069 1044 1019 994
+					970 946 922 899 877 854
+					832 811 789 769 748 729
+					709 690 671 653 635 618
+					601 584 568 552 537 522
+					507 493 479 465 452 439
+					427 415 403 391 380 369
+					359 349 339 329 320 310
+					302 293 285 277 269 261
+					254 247 240 233 226 220
+					214 208>;
+	};
+
+	tdiode_sensor: generic-adc-thermal@3 {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&palams_gpadc 3>;
+		io-channel-names = "sensor-channel";
+		dual-mode-adc-read;
+		adc-temp-lookup-table = "tdiode-equation";
+		lower-temperature = <(-25000)>;
+		upper-temperature = <125000>;
+		tdiode-m1 = <0xffffffff 0xffa8df1e>;
+		tdiode-m2 = <0xffffffff 0xffabc63d>;
+		tdiode-b1 = <0x24b 0xbbf09930>;
+		tdiode-b2 = <0x258 0x8d7fedc8>;
+		tdiode-k = <2>;
+	};
+
+	tbat_temp: generic-adc-thermal@5 {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		status = "disabled";
+		io-channels = <&palams_gpadc 5>;
+		io-channel-names = "sensor-channel";
+		adc-temp-lookup-table = "linear-table-min-max-avg";
+		lower-temperature = <(-40000)>;
+		upper-temperature = <125000>;
+		step-temperature = <1000>;
+		adc-temperature-map = <2315 2361 2401 2299 2345 2386
+					2283 2329 2369 2266 2312 2352
+					2248 2294 2335 2230 2276 2316
+					2211 2257 2297 2191 2237 2278
+					2171 2217 2258 2150 2196 2237
+					2129 2175 2215 2107 2153 2193
+					2085 2130 2170 2062 2107 2147
+					2038 2083 2123 2014 2059 2099
+					1990 2034 2074 1964 2008 2048
+					1939 1982 2022 1913 1956 1995
+					1886 1929 1968 1860 1902 1941
+					1832 1874 1913 1805 1846 1884
+					1777 1818 1856 1749 1789 1827
+					1720 1760 1797 1692 1731 1767
+					1663 1701 1737 1634 1672 1707
+					1604 1642 1677 1575 1612 1646
+					1546 1582 1616 1516 1552 1585
+					1487 1522 1554 1457 1491 1524
+					1428 1461 1493 1399 1431 1462
+					1369 1401 1432 1340 1371 1401
+					1311 1342 1371 1283 1312 1341
+					1254 1283 1311 1226 1254 1281
+					1198 1225 1252 1170 1197 1222
+					1143 1169 1193 1116 1141 1165
+					1089 1113 1137 1062 1086 1109
+					1036 1059 1081 1011 1033 1054
+					986 1007 1028 961 982 1002
+					936 956 976 912 932 951
+					889 908 926 866 884 901
+					843 861 877 821 838 854
+					799 815 831 778 793 809
+					757 772 787 737 751 765
+					717 731 744 697 711 724
+					678 691 704 659 672 685
+					641 654 666 623 635 648
+					605 618 630 588 600 613
+					571 584 596 555 567 579
+					540 551 563 524 536 548
+					509 521 532 495 506 517
+					481 492 503 467 478 489
+					454 464 475 441 451 462
+					428 439 449 416 426 437
+					404 414 424 392 402 413
+					381 391 401 370 380 390
+					360 369 379 349 359 369
+					340 349 358 330 339 348
+					321 330 339 311 320 329
+					303 311 320 294 303 311
+					286 294 303 278 286 295
+					270 278 286 262 270 279
+					255 263 271 248 256 264
+					241 249 256 234 242 249
+					228 235 243 222 229 236
+					215 223 230 210 217 224
+					204 211 218 198 205 212
+					193 199 206 188 194 201
+					183 189 195 178 184 190
+					173 179 185 168 174 180
+					164 170 176 159 165 171
+					155 161 167 151 157 162
+					147 152 158 143 149 154
+					139 145 150 136 141 146
+					132 137 143 129 134 139
+					125 130 135 122 127 132
+					119 124 129 116 121 125
+					113 118 122 110 115 119
+					107 112 116 105 109 113
+					102 106 111 100 104 108
+					97 101 105 95 99 103
+					92 96 100 90 94 98
+					88 92 96 86 89 93
+					84 87 91 82 85 89
+					80 83 87 78 81 85
+					76 79 83 74 77 81
+					72 75 79 70 74 77
+					69 72 75 67 70 74
+					66 69 72 64 67 70
+					63 65 69 61 64 67
+					60 63 65 58 61 64
+					57 60 63 56 58 61
+					54 57 60 53 56 58
+					52 55 57 51 53 56
+					50 52 55 49 51 54>;
+	};
+
+	dummy_cool_dev: dummy-cool-dev {
+			compatible = "dummy-cooling-dev";
+			#cooling-cells = <2>; /* min followed by max */
+	};
+
+	thermal-zones {
+		Tboard {
+			polling-delay = <15000>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tboard_thermistor>;
+
+			trips {
+				therm_est_trip: therm_est_trip {
+					temperature = <40000>;
+					type = "active";
+					hysteresis = <1000>;
+					writable;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&therm_est_trip>;
+					cooling-device = <&dummy_cool_dev THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+					contribution = <100>;
+					cdev-type = "therm_est_activ";
+				};
+			};
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+		};
+
+		Tdiode {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tdiode_sensor>;
+		};
+
+		Battery {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tbat_temp>;
+			status = "disabled";
+		};
+
+		PMIC-Die {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&palams_thermal>;
+			status = "disabled";
+
+			trips {
+				die_temp_thresh: hot-die {
+					temperature = <120000>;
+					type = "active";
+					hysteresis = <0>;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&die_temp_thresh>;
+					cooling-device = <&dummy_cool_dev THERMAL_NO_LIMIT
+								THERMAL_NO_LIMIT>;
+					contribution = <100>;
+					cdev-type = "emergency-balanced";
+				};
+			};
+		};
+	};
+};

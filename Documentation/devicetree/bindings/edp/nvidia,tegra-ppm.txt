@@ -1,0 +1,34 @@
+Tegra Processor Power Model
+
+The node for any device with a single significant voltage rail, a
+single significant clock domain, and N cores may implement this binding
+to indicate a power model for the device.
+
+The power model, known as tegra_ppm (or Tegra Processor Power Model),
+can be described concisely as follows:
+
+    total_power = V * (I_active + I_leakage * weight[active_cores])
+    I_active = C[active_cores] * V * F
+    I_leakage = max( min_leakage, leakage_model(V, IDDQ, T) )
+
+leakage_model is a tricubic polynomial. It computes leakage in mA
+based on voltage in Volts, quiescient current in Amps, and temperature
+in deciCelcius. These unusual units serve to keep the coefficients at
+a similar order of magnitude and thus alleviate one source of
+quantization error in the model.
+
+Required properties:
+- nvidia,tegra-ppm-cdyn: An array of N capacitances in femtofarads. The first
+      entry applies when 1 core is active. The last entry applies when all N
+      are active.
+- nvidia,tegra-ppm-leakage_coeffs: An array of 64 coefficients for the leakage
+      model. Each coefficient is a 32-bit two's complement integer.
+
+Optional properties
+- nvidia,tegra-ppm-leakage_weights: An array of N weights expressed permill.
+      The first entry applies when 1 core is active. The last entry applies
+      when all N cores are active. If not specified and N=1, defaults to 1000
+      (i.e. unity).
+- nvidia,tegra-ppm-coeff_scale: scale factor for the leakage coefficients. If
+      not specified, defaults to 10^5.
+- nvidia,tegra-ppm-min_leakage: leakage floor in mA

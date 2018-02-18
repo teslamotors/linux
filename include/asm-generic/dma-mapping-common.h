@@ -26,6 +26,26 @@ static inline dma_addr_t dma_map_single_attrs(struct device *dev, void *ptr,
 	return addr;
 }
 
+static inline dma_addr_t dma_map_single_at_attrs(struct device *dev, void *ptr,
+					      dma_addr_t handle,
+					      size_t size,
+					      enum dma_data_direction dir,
+					      struct dma_attrs *attrs)
+{
+	struct dma_map_ops *ops = get_dma_ops(dev);
+	dma_addr_t addr;
+
+	kmemcheck_mark_initialized(ptr, size);
+	BUG_ON(!valid_dma_direction(dir));
+	addr = ops->map_page_at(dev, virt_to_page(ptr), handle,
+			     (unsigned long)ptr & ~PAGE_MASK, size,
+			     dir, attrs);
+	debug_dma_map_page(dev, virt_to_page(ptr),
+			   (unsigned long)ptr & ~PAGE_MASK, size,
+			   dir, addr, true);
+	return addr;
+}
+
 static inline void dma_unmap_single_attrs(struct device *dev, dma_addr_t addr,
 					  size_t size,
 					  enum dma_data_direction dir,
@@ -172,6 +192,9 @@ dma_sync_sg_for_device(struct device *dev, struct scatterlist *sg,
 }
 
 #define dma_map_single(d, a, s, r) dma_map_single_attrs(d, a, s, r, NULL)
+#define dma_map_single_at(d, a, h, s, r)		\
+	dma_map_single_at_attrs(d, a, h, s, r, NULL)
+#define dma_map_linear(d, a, s, r) dma_map_linear_attrs(d, a, s, r, NULL)
 #define dma_unmap_single(d, a, s, r) dma_unmap_single_attrs(d, a, s, r, NULL)
 #define dma_map_sg(d, s, n, r) dma_map_sg_attrs(d, s, n, r, NULL)
 #define dma_unmap_sg(d, s, n, r) dma_unmap_sg_attrs(d, s, n, r, NULL)

@@ -1,0 +1,9 @@
+#include "tegra124-loki-fixed-e2545-0000-common.dtsi"
+
+/ {
+	regulators {
+		regulator@2 {
+			gpio = <&gpio TEGRA_GPIO(FF, 0) 0>;
+		};
+	};
+};

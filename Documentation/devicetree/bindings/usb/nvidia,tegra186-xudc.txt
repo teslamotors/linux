@@ -1,0 +1,50 @@
+Device tree binding for NVIDIA Tegra XUSB device mode controller (XUDC)
+============================
+
+The Tegra XUDC controller supports both USB 2.0 HighSpeed/FullSpeed and
+USB 3.0 SuperSpeed protocols.
+
+Required properties:
+--------------------
+ - compatible: For Tegra186, must contain "nvidia,tegra186-xudc".
+
+Required properties for Tegra186:
+---------------------------------
+ - avdd-usb-supply: 3.3V supply to USB 2.0 pads.
+ - dvdd-pex-supply: 1.0V supply to PEX USB 3.0 pads.
+ - hvdd-pex-supply: 1.8V high-voltage supply to PEX USB 3.0 pads.
+ - dvdd-pex-pll-supply: 1.0V supply to PEX USB 3.0 PLL.
+ - hvdd-pex-pll-supply: 1.8V high-voltage supply to PEX PLL.
+
+ - phys: Must contain an entry for each entry in phy-names.
+   See ../phy/phy-bindings.txt for details.
+ - phy-names: Should include an entry for each PHY used by the controller.
+   Names must be "usb2", and "usb3" if support SuperSpeed device mode.
+   - "usb3" phy, SuperSpeed (SSTX+/SSTX-/SSRX+/SSRX-) data lines
+   - "usb2" phy, USB 2.0 (D+/D-) data lines
+
+Optional properties:
+--------------------
+ - extcon-cables: OTG support. Must contains an excon-cable entry which detects
+   USB VBUS pin. See ../extcon/extcon-gpio-states.txt for details.
+   When the extcon cable state is 1, OTG port will transition to device mode.
+ - extcon-cable-names: Must be "vbus".
+
+Example:
+--------
+	xudc@3550000 {
+		compatible = "nvidia,tegra186-xudc";
+		phys = <&padctl TEGRA_PADCTL_PHY_UTMI_P(0)>, /* USB 3.0 micro-AB, J503 */
+			<&padctl TEGRA_PADCTL_PHY_USB3_P(1)>; /* USB 3.0 micro-AB, J503 */
+		phy-names = "usb2", "usb3";
+
+		avdd-usb-supply = <&spmic_sd3_3v3>;
+		dvdd-pex-supply = <&spmic_ldo7_1v0>;
+		hvdd-pex-supply =  <&vdd_1v8_sw>;
+		dvdd-pex-pll-supply = <&spmic_ldo7_1v0>;
+		hvdd-pex-pll-supply = <&vdd_1v8_sw>;
+
+		extcon-cables = <&vbus_id_extcon 0>;
+		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+	};

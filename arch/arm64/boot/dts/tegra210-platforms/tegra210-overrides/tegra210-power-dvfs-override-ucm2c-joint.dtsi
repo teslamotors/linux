@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2015 NVIDIA CORPORATION. All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+/*
+ * DVFS overrides for T210 sku 0x8F UCM2 (always on) personality in commercial
+ * temperature range with joint CPU/GPU rails.
+ *
+ * Recommended to copy the contents of this file to final .dts file for
+ * the respective platform. If file is included "as is", the #include statement
+ * should be placed after .dtsi with dvfs_rail node definition is included.
+ */
+
+/ {
+	chosen {
+		nvidia,tegra-joint_xpu_rail;
+		nvidia,tegra-always-on-personality;
+	};
+
+	dvfs_rails {
+		vdd-cpu-vmax-cdev@8 {
+			nvidia,trips = <&cpu_vmax1 1120 &cpu_vmax2 1090>;
+		};
+
+		vdd-gpu-vmax-cdev@9 {
+			nvidia,trips = <&gpu_vmax1 1090>;
+		};
+
+		vdd-core-vmax-cdev@10 {
+			nvidia,trips = <&core_vmax1 1090>;
+		};
+	};
+
+	dfll-ovr@70110000 {
+		dfll_ovr_params: dfll-ovr-board-params {
+			/delete-property/ fixed-output-forcing;
+			no-output-forcing;
+		};
+	};
+
+	dfll-max77621@70110000 {
+		dfll_max77621_parms: dfll-max77621-board-params {
+			/delete-property/ fixed-output-forcing;
+			no-output-forcing;
+		};
+	};
+};
+
+

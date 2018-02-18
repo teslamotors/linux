@@ -96,12 +96,12 @@ void sync_timeline_destroy(struct sync_timeline *obj)
 	/*
 	 * signal any children that their parent is going away.
 	 */
-	sync_timeline_signal(obj);
+	sync_timeline_signal(obj, 0);
 	sync_timeline_put(obj);
 }
 EXPORT_SYMBOL(sync_timeline_destroy);
 
-void sync_timeline_signal(struct sync_timeline *obj)
+void sync_timeline_signal(struct sync_timeline *obj, u64 timestamp)
 {
 	unsigned long flags;
 	LIST_HEAD(signaled_pts);
@@ -113,7 +113,7 @@ void sync_timeline_signal(struct sync_timeline *obj)
 
 	list_for_each_entry_safe(pt, next, &obj->active_list_head,
 				 active_list) {
-		if (fence_is_signaled_locked(&pt->base))
+		if (fence_is_signaled_locked(&pt->base, timestamp))
 			list_del_init(&pt->active_list);
 	}
 
@@ -234,6 +234,12 @@ void sync_fence_put(struct sync_fence *fence)
 	fput(fence->file);
 }
 EXPORT_SYMBOL(sync_fence_put);
+
+void sync_fence_get(struct sync_fence *fence)
+{
+	get_file(fence->file);
+}
+EXPORT_SYMBOL(sync_fence_get);
 
 void sync_fence_install(struct sync_fence *fence, int fd)
 {
@@ -368,6 +374,40 @@ int sync_fence_cancel_async(struct sync_fence *fence,
 }
 EXPORT_SYMBOL(sync_fence_cancel_async);
 
+static void sync_fence_dump(struct sync_fence *fence)
+{
+	struct sync_pt *__pt = NULL;
+	struct sync_timeline *__obj = NULL;
+	char val[32];
+	char current_val[32];
+	int i;
+
+	for (i = 0; i < fence->num_fences; i++) {
+		struct fence *pt = fence->cbs[i].sync_pt;
+
+		val[0] = '\0';
+		current_val[0] = '\0';
+
+		if (pt->ops->fence_value_str)
+			pt->ops->fence_value_str(pt, val, sizeof(val));
+
+		if (pt->ops->timeline_value_str)
+			pt->ops->timeline_value_str(pt,
+				current_val,
+				sizeof(current_val));
+
+		pr_info("name=[%s:%s], current value=%s waiting value=%s\n",
+			pt->ops->get_driver_name(pt),
+			pt->ops->get_timeline_name(pt), current_val, val);
+
+		__pt = container_of(pt, struct sync_pt, base);
+		__obj = sync_pt_parent(__pt);
+	}
+
+	if (__obj && __obj->ops->platform_debug_dump)
+		__obj->ops->platform_debug_dump(__pt);
+}
+
 int sync_fence_wait(struct sync_fence *fence, long timeout)
 {
 	long ret;
@@ -392,6 +432,7 @@ int sync_fence_wait(struct sync_fence *fence, long timeout)
 		if (timeout) {
 			pr_info("fence timeout on [%p] after %dms\n", fence,
 				jiffies_to_msecs(timeout));
+			sync_fence_dump(fence);
 			sync_dump();
 		}
 		return -ETIME;
@@ -400,6 +441,7 @@ int sync_fence_wait(struct sync_fence *fence, long timeout)
 	ret = atomic_read(&fence->status);
 	if (ret) {
 		pr_info("fence error %ld on [%p]\n", ret, fence);
+		sync_fence_dump(fence);
 		sync_dump();
 	}
 	return ret;
@@ -465,6 +507,13 @@ static bool android_fence_enable_signaling(struct fence *fence)
 	return true;
 }
 
+static void android_fence_disable_signaling(struct fence *fence)
+{
+	struct sync_pt *pt = container_of(fence, struct sync_pt, base);
+
+	list_del_init(&pt->active_list);
+}
+
 static int android_fence_fill_driver_data(struct fence *fence,
 					  void *data, int size)
 {
@@ -508,6 +557,7 @@ static const struct fence_ops android_fence_ops = {
 	.get_driver_name = android_fence_get_driver_name,
 	.get_timeline_name = android_fence_get_timeline_name,
 	.enable_signaling = android_fence_enable_signaling,
+	.disable_signaling = android_fence_disable_signaling,
 	.signaled = android_fence_signaled,
 	.wait = fence_default_wait,
 	.release = android_fence_release,
@@ -519,12 +569,10 @@ static const struct fence_ops android_fence_ops = {
 static void sync_fence_free(struct kref *kref)
 {
 	struct sync_fence *fence = container_of(kref, struct sync_fence, kref);
-	int i, status = atomic_read(&fence->status);
+	int i;
 
 	for (i = 0; i < fence->num_fences; ++i) {
-		if (status)
-			fence_remove_callback(fence->cbs[i].sync_pt,
-					      &fence->cbs[i].cb);
+		fence_remove_callback(fence->cbs[i].sync_pt, &fence->cbs[i].cb);
 		fence_put(fence->cbs[i].sync_pt);
 	}
 
@@ -727,3 +775,11 @@ static const struct file_operations sync_fence_fops = {
 	.compat_ioctl = sync_fence_ioctl,
 };
 
+struct sync_pt *sync_pt_from_fence(struct fence *fence)
+{
+	if (fence->ops != &android_fence_ops)
+		return NULL;
+
+	return container_of(fence, struct sync_pt, base);
+}
+EXPORT_SYMBOL(sync_pt_from_fence);

@@ -1,0 +1,65 @@
+/*
+ * tegra186-sunstreaker-eqos.dtsi: Ethernet QOS DTSI file.  Common
+ * for all sunstreaker boards.
+ *
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+#include <dt-bindings/gpio/tegra-gpio.h>
+/ {
+        ether_qos@2490000 {
+		nvidia,use_multi_queues;
+		/* PTP_ref clock speed in MHz */
+		nvidia,ptp_ref_clock_speed = <125>;
+		/* rxq_enable_ctrl = <rx0 rx1 rx2 rx3>
+		 * 0x0 = Not enabled, 0x1 = Enabled for AV
+		 * 0x2 = Enabled for Legacy, 0x3 = Reserved
+		 */
+		nvidia,rxq_enable_ctrl = <2 1 1 1>;
+		nvidia,queue_prio = <0 7 2 3>;
+
+		nvidia,use_tagged_ptp;
+		nvidia,ptp_dma_ch = <1>;
+
+		nvidia,chan_napi_quota = <64 64 64 64>;
+		nvidia,pause_frames = <1>; /*0=enable, 1=disable */
+		nvidia,phy-reset-gpio = <&tegra_gpio TEGRA_GPIO(M, 4) 0>;
+		nvidia,phy-intr-gpio = <&tegra_gpio TEGRA_GPIO(M, 5) 0>;
+		nvidia,phy-max-frame-size = <10>;	/* size in kbytes */
+		nvidia,eth_iso_enable = <1>; /*1=enable, 0=disable */
+        };
+
+	thermal-zones {
+		Tdiode_tegra {
+			trips {
+				MAKE_EQOS_TRIP(m40, -40000, 5000);
+				MAKE_EQOS_TRIP(m5, -5000, 5000);
+				MAKE_EQOS_TRIP(p30, 30000, 5000);
+				MAKE_EQOS_TRIP(p65, 65000, 5000);
+				MAKE_EQOS_TRIP(p100, 100000, 5000);
+			};
+
+			cooling-maps {
+				MAP_EQOS(m40, 1);
+				MAP_EQOS(m5, 2);
+				MAP_EQOS(p30, 3);
+				MAP_EQOS(p65, 4);
+				MAP_EQOS(p100, 5);
+			};
+		};
+	};
+
+};

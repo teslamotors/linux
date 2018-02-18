@@ -1,6 +1,7 @@
 #
 # linux/drivers/mtd/devices/Makefile
 #
+GCOV_PROFILE := y
 
 obj-$(CONFIG_MTD_DOCG3)		+= docg3.o
 obj-$(CONFIG_MTD_SLRAM)		+= slram.o
@@ -16,6 +17,9 @@ obj-$(CONFIG_MTD_SPEAR_SMI)	+= spear_smi.o
 obj-$(CONFIG_MTD_SST25L)	+= sst25l.o
 obj-$(CONFIG_MTD_BCM47XXSFLASH)	+= bcm47xxsflash.o
 obj-$(CONFIG_MTD_ST_SPI_FSM)    += st_spi_fsm.o
+obj-$(CONFIG_MTD_QSPI_FLASH)	+= qspi_mtd.o
+CFLAGS_tegra_nand.o		= -Werror
+obj-$(CONFIG_MTD_NAND_TEGRA)	+= tegra_nand.o
 
 
 CFLAGS_docg3.o			+= -I$(src)

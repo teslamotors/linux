@@ -1,0 +1,61 @@
+bq27441 battery
+~~~~~~~~~~~~~~~~
+
+Required properties :
+ - compatible : Should contain "ti,bq27441".
+ - ti,tz-name : Thermal zone name.
+Optional properties :
+ - ti,design-capacity : The designed battery capacity used for
+   gauge's predictions. in mAh.
+ - ti,design-energy : The designed battery energy. in mWh.
+ - ti,taper-rate : The current threshold below which your charger
+   IC is set to stop charging once it considers the battery to be
+   full. in mA.
+ - ti,terminate-voltage : Should be set to the minimum operating
+   voltage of your system. This is the target where the gauge
+   typically reports 0% capacity. in mV.
+ - ti,v-at-chg-term : Voltage at charge termination. in mV.
+ - ti,kernel-threshold-soc: Minimum SoC for kernel read from device.
+        Bootloader jumps to kernel when SoC is more than this value.
+        Driver make this SoC as 0% before reporting it to the framework.
+ - ti,kernel-maximum-soc: Maximum SoC for kernel read from device.
+        Kernel read maximum SoC from device for given battery. Kernel
+        translate the SoC to 100% before reporting to framework if it
+        reads equal/more than this value.
+ - ti,enable-temp-prop:should enable temp prop if platform supports
+        battery temp reading through fuel gauge chip or ADC channel.
+
+Note:
+Battery current monitoring:
+	Driver supports the battery current monitoring through IIO interface
+	and if platform supports it then following properties are required to
+	enable it as per iio-binding.txt.
+
+	io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL)>;
+	io-channel-names = "battery-current";
+
+	Here iio-channel name for battry current is "battery-current".
+
+Vbus input power monitoring:
+        Driver supports the vbus input power monitoring through IIO interface
+        and if platform supports it then following properties are required to
+        enable it as per iio-binding.txt.
+
+        io-channels = <&ina3221x INA3221_CHAN_INDEX(1, POWER, NORMAL)>;
+        io-channel-names = "vbus-input-power";
+
+        Here iio-channel name for battry current is "vbus-input-power".
+
+Example:
+
+	bq27441@55 {
+		compatible = "ti,bq27441";
+		ti,design-capacity = <7800>;
+		ti,design-energy = <28314>;
+		ti,taper-rate = <167>;
+		ti,terminate-voltage = <3150>;
+		ti,v-at-chg-term = <4200>;
+		ti,tz-name = "battery-temp";
+		ti,kernel-threshold-soc = <5>;
+		ti,kernel-maximum-soc = <99>;
+	};

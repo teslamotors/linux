@@ -31,6 +31,9 @@ source "drivers/video/fbdev/Kconfig"
 endmenu
 
 source "drivers/video/backlight/Kconfig"
+source "drivers/video/adf/Kconfig"
+
+source "drivers/video/tegra/Kconfig"
 
 config VGASTATE
        tristate
@@ -51,5 +54,17 @@ if FB || SGI_NEWPORT_CONSOLE
 
 endif
 
+
+config DS90UH925Q_SER
+	bool "DS90UH925Q FPDLink Serializer"
+	depends on I2C
+	help
+	  This is a driver for FPDLink Serializer DS90UH925Q.
+
+config DS90UB947
+	bool "DS90UB947-Q1 1080p OpenLDS to FPD-Link III Serializer driver"
+	default n
+	help
+		Enable support for TI DS90UB947-Q1 LVDS-to-FPD-Link Serializer driver.
 
 endmenu

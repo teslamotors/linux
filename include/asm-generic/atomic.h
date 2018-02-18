@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2007 Red Hat, Inc. All Rights Reserved.
  * Written by David Howells (dhowells@redhat.com)
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public Licence
@@ -127,6 +128,10 @@ ATOMIC_OP(or, |)
  */
 #ifndef atomic_read
 #define atomic_read(v)	ACCESS_ONCE((v)->counter)
+#endif
+
+#ifndef cpu_relaxed_read_atomic
+#define cpu_relaxed_read_atomic(v) atomic_read(v)
 #endif
 
 /**

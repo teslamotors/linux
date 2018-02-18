@@ -1,0 +1,20 @@
+max929x properties
+
+Required properties:
+- compatible:
+	Should be one of
+		maxim,max9291
+		maxim,max9293
+- reg: I2C address (7-bit unshifted)
+
+Optional properties:
+- maxim,enable-gpio: gpio to enable vs. reset the chip
+
+Example:
+	max9291@40 {
+		compatible = "maxim,max9291";
+		reg = <0x40>;
+		status = "okay";
+		maxim,enable-gpio = <&tegra_gpio TEGRA_GPIO(O, 1) 0>;
+	};
+

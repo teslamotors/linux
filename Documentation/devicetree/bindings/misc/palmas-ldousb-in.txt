@@ -1,0 +1,24 @@
+Dynamic ldousb input selection based on input voltage
+
+Required Properties:
+- compatible: Must be "ti,palmas-ldousb-in"
+- ti,ldousb-in-threshold-voltage: Threshold voltage on input to change
+               inputs i.e. IN1 or IN2. The unit is uV.
+- ti,enable-in1-above-threshold: Boolean type. Enable IN1 above threshold.
+               If this property is not available then enable IN2 on aboe
+               threshold.
+- ti,threshold-voltage-tolerance: Switch to above threshold input if the input
+               voltage is beyond threshold + tolerance. The unit is uV.
+- ldousb-in1-supply: IN1 regualtor supply.
+- ldousb-in2-supply: IN2 regulator supply.
+
+Example:
+palmas_ldousb_in {
+	compatible = "ti,palmas-ldousb-in";
+	ti,ldousb-in-threshold-voltage = <3500000>;
+	ti,threshold-voltage-tolerance = <200000>;
+	ti,enable-in1-above-threshold;
+	ldousb-in1-supply = <&palmas_smps10_out2>;
+	ldousb_in2-supply = <&vdd_ac_bat_reg>;
+};
+

@@ -1,0 +1,107 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/ {
+	tegra_pwm1: pwm@3280000 {
+		compatible = "nvidia,tegra186-pwm";
+		reg = <0x0 0x3280000 0x0 0x10000>;
+		clocks = <&tegra_car TEGRA186_CLK_PWM1>;
+		clock-names = "pwm";
+		#pwm-cells = <2>;
+		resets = <&tegra_car TEGRA186_RESET_PWM1>;
+		reset-names = "pwm";
+		status = "disabled";
+	};
+
+	tegra_pwm2: pwm@3290000 {
+		compatible = "nvidia,tegra186-pwm";
+		reg = <0x0 0x3290000 0x0 0x10000>;
+		clocks = <&tegra_car TEGRA186_CLK_PWM2>;
+		clock-names = "pwm";
+		#pwm-cells = <2>;
+		resets = <&tegra_car TEGRA186_RESET_PWM2>;
+		reset-names = "pwm";
+		status = "disabled";
+	};
+
+	tegra_pwm3: pwm@32a0000 {
+		compatible = "nvidia,tegra186-pwm";
+		reg = <0x0 0x32a0000 0x0 0x10000>;
+		clocks = <&tegra_car TEGRA186_CLK_PWM3>;
+		clock-names = "pwm";
+		#pwm-cells = <2>;
+		resets = <&tegra_car TEGRA186_RESET_PWM3>;
+		reset-names = "pwm";
+		status = "disabled";
+	};
+
+	tegra_pwm4: pwm@c340000 {
+		compatible = "nvidia,tegra186-pwm";
+		reg = <0x0 0xc340000 0x0 0x10000>;
+		clocks = <&tegra_car TEGRA186_CLK_PWM4>;
+		clock-names = "pwm";
+		#pwm-cells = <2>;
+		resets = <&tegra_car TEGRA186_RESET_PWM4>;
+		reset-names = "pwm";
+		status = "disabled";
+	};
+
+	tegra_pwm5: pwm@32c0000 {
+		compatible = "nvidia,tegra186-pwm";
+		reg = <0x0 0x32c0000 0x0 0x10000>;
+		clocks = <&tegra_car TEGRA186_CLK_PWM5>;
+		clock-names = "pwm";
+		#pwm-cells = <2>;
+		resets = <&tegra_car TEGRA186_RESET_PWM5>;
+		reset-names = "pwm";
+		status = "disabled";
+	};
+
+	tegra_pwm6: pwm@32d0000 {
+		compatible = "nvidia,tegra186-pwm";
+		reg = <0x0 0x32d0000 0x0 0x10000>;
+		clocks = <&tegra_car TEGRA186_CLK_PWM6>;
+		clock-names = "pwm";
+		#pwm-cells = <2>;
+		resets = <&tegra_car TEGRA186_RESET_PWM6>;
+		reset-names = "pwm";
+		status = "disabled";
+	};
+
+	tegra_pwm7: pwm@32e0000 {
+		compatible = "nvidia,tegra186-pwm";
+		reg = <0x0 0x32e0000 0x0 0x10000>;
+		clocks = <&tegra_car TEGRA186_CLK_PWM7>;
+		clock-names = "pwm";
+		#pwm-cells = <2>;
+		resets = <&tegra_car TEGRA186_RESET_PWM7>;
+		reset-names = "pwm";
+		status = "disabled";
+	};
+
+	tegra_pwm8: pwm@32f0000 {
+		compatible = "nvidia,tegra186-pwm";
+		reg = <0x0 0x32f0000 0x0 0x10000>;
+		clocks = <&tegra_car TEGRA186_CLK_PWM8>;
+		clock-names = "pwm";
+		#pwm-cells = <2>;
+		resets = <&tegra_car TEGRA186_RESET_PWM8>;
+		reset-names = "pwm";
+		status = "disabled";
+	};
+};

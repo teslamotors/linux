@@ -56,6 +56,14 @@ Required properties:
 - dma-names: Must include the following entries:
   - rx
   - tx
+- prod-settings: holds the controller specific production settings
+  - prod_c_<speed_mode>: holds the prod settings for a particular frequency,
+    For example:"prod_c_sm" for 100KHz(Standard mode)
+		"prod_c_fm" for 400KHz(Fast mode)
+		"prod_c_fmplus" for 1MHz(Fast mode plus)
+		"prod_c_hs" for 3.4MHz(High speed)
+  - prod: This is set of tuples used to program the registers through prod setting API.
+    The fields of each tuple are [offset, bitmask, value]
 
 Example:
 
@@ -72,4 +80,11 @@ Example:
 		dmas = <&apbdma 16>, <&apbdma 16>;
 		dma-names = "rx", "tx";
 		status = "disabled";
+		prod-settings {
+			prod_cm_sm {
+				prod = <
+					0x6c 0xffff0000 0x00190000
+					0x94 0x00003f00 0x00000200>;
+			};
+		};
 	};

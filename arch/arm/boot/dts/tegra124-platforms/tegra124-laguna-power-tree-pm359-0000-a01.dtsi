@@ -1,0 +1,82 @@
+/*
+ * arch/arm/boot/dts/tegra124-platforms/tegra124-laguna-power-tree-pm359-0000-a01.dtsi
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "tegra124-platforms/tegra124-pm359-pmic.dtsi"
+#include "tegra124-platforms/tegra124-pm358-fixed.dtsi"
+
+/ {
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&as3722_ldo2>;
+			avdd_lcd-supply = <&as3722_gpio4_supply>;
+			dvdd_lcd-supply = <&reg_1v8_supply>;
+			vdd_ds_1v8-supply = <&reg_1v8_supply>;
+			vdd_1v2_en-supply = <&reg_dcdc_1v2>;
+			vdd_lcd_bl-supply = <&vdd_lcd_bl>;
+			vdd_lcd_bl_en-supply = <&vdd_lcd_bl_en>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&as3722_sd4>;
+			avdd_hdmi_pll-supply = <&avdd_hdmi_pll>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+		vi {
+			avdd_dsi_csi-supply = <&as3722_ldo2>;
+		};
+	};
+
+	pcie-controller {
+		hvdd-pex-supply = <&reg_3v3_supply>;
+		hvdd-pex-pll-e-supply = <&reg_3v3_supply>;
+		dvddio-pex-supply = <&as3722_sd4>;
+		avddio-pex-supply = <&as3722_sd4>;
+		avdd-pex-pll-supply = <&as3722_sd4>;
+		vddio-pex-ctl-supply = <&as3722_sd4>;
+	};
+
+	sata@70020000 {
+		avdd_sata-supply = <&as3722_sd4>;
+		vdd_sata-supply = <&as3722_sd4>;
+		avdd_sata_pll-supply =<&as3722_sd4>;
+		hvdd_sata-supply = <&as3722_gpio2_supply>;
+		vddio_pex_sata-supply = <&vdd_ac_bat>;
+        };
+
+	/* Populate fuse supply */
+	efuse@7000f800 {
+		vpp_fuse-supply = <&as3722_ldo11>;
+	};
+
+	power-detect {
+		pwrdet-pex-ctl-supply = <&as3722_sd4>;
+		pwrdet-nand-supply = <&as3722_sd5>;
+		pwrdet-sdmmc1-supply = <&as3722_sd5>;
+		pwrdet-sdmmc4-supply = <&as3722_sd5>;
+		pwrdet-audio-supply = <&as3722_sd5>;
+		pwrdet-uart-supply = <&as3722_sd5>;
+		pwrdet-bb-supply = <&as3722_sd5>;
+		pwrdet-cam-supply = <&as3722_ldo1>;
+		pwrdet-mipi-supply = <&as3722_ldo2>;
+		pwrdet-sdmmc3-supply = <&as3722_ldo6>;
+		pwrdet-hv-supply = <&as3722_gpio2_supply>;
+	};
+};

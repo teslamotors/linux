@@ -1,0 +1,44 @@
+/ {
+	pinmux: pinmux@70000868 {
+		pinctrl-names = "default", "drive", "unused", "suspend";
+		pinctrl-0 = <&pinmux_default>;
+		pinctrl-1 = <&drive_default>;
+		pinctrl-2 = <&pinmux_unused_lowpower>;
+		pinctrl-3 = <&pinmux_suspend>;
+
+		pinmux_default: common {
+
+			dap_mclk1_req_pee2 {
+				nvidia,pins = "dap_mclk1_req_pee2";
+				nvidia,function = "sata";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+
+			pff2 {
+				nvidia,pins = "pff2";
+				nvidia,function = "sata";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+
+			dap1_dout_pn2 {
+				nvidia,pins = "dap1_dout_pn2";
+				nvidia,function = "sata";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+			};
+		};
+
+		/* On suspend, make dap_mclk1_req to pull up */
+		pinmux_suspend: pins_on_suspend {
+			dap_mclk1_req_pee2 {
+				nvidia,pins = "dap_mclk1_req_pee2";
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+			};
+		};
+	};
+};

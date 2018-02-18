@@ -1,0 +1,34 @@
+/*
+ * tegra186-priv-vcm31-cuba.dts: cuba dts file
+ *
+ * Copyright (c) 2015 - 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-vcm31-cuba-common.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "cuba:0010";
+	nvidia,proc-boardid = "cuba:0010";
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "cuba_t186";
+		};
+	};
+};

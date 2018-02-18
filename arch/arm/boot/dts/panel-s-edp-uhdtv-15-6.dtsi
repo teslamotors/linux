@@ -1,0 +1,131 @@
+/*
+ * arch/arm/boot/dts/panel-s-edp-uhdtv-15-6.dtsi
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+
+/ {
+	host1x {
+		sor {
+			panel-s-edp-uhdtv-15-6 {
+				status = "disabled";
+				compatible = "s-edp,uhdtv-15-6";
+				nvidia,tx-pu-disable = <1>;
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_DP>;
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-pins = <TEGRA_DC_OUT_PIN_H_SYNC TEGRA_DC_OUT_PIN_POL_LOW
+							   TEGRA_DC_OUT_PIN_V_SYNC TEGRA_DC_OUT_PIN_POL_LOW
+							   TEGRA_DC_OUT_PIN_PIXEL_CLOCK TEGRA_DC_OUT_PIN_POL_LOW
+							   TEGRA_DC_OUT_PIN_DATA_ENABLE TEGRA_DC_OUT_PIN_POL_HIGH>;
+					nvidia,out-depth = <24>;
+					nvidia,out-parent-clk = "pll_d_out0";
+					nvidia,out-width = <346>;
+					nvidia,out-height = <194>;
+					nvidia,out-xres = <3840>;
+					nvidia,out-yres = <2160>;
+				};
+				display-timings {
+					3840x2160-32 {
+						clock-frequency = <522090000>;
+						hactive = <3840>;
+						vactive = <2160>;
+						hfront-porch = <48>;
+						hback-porch = <80>;
+						hsync-len = <32>;
+						vfront-porch = <3>;
+						vback-porch = <54>;
+						vsync-len = <5>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+				dp-lt-settings {
+					lt-setting@0 {
+						nvidia,drive-current = <DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0>;
+						nvidia,lane-preemphasis = <PRE_EMPHASIS_L0 PRE_EMPHASIS_L0 PRE_EMPHASIS_L0 PRE_EMPHASIS_L0>;
+						nvidia,post-cursor = <POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0>;
+						nvidia,tx-pu = <0>;
+						nvidia,load-adj = <0x3>;
+					};
+					lt-setting@1 {
+						nvidia,drive-current = <DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0>;
+						nvidia,lane-preemphasis = <PRE_EMPHASIS_L0 PRE_EMPHASIS_L0 PRE_EMPHASIS_L0 PRE_EMPHASIS_L0>;
+						nvidia,post-cursor = <POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0>;
+						nvidia,tx-pu = <0>;
+						nvidia,load-adj = <0x4>;
+					};
+					lt-setting@2 {
+						nvidia,drive-current = <DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0>;
+						nvidia,lane-preemphasis = <PRE_EMPHASIS_L1 PRE_EMPHASIS_L1 PRE_EMPHASIS_L1 PRE_EMPHASIS_L1>;
+						nvidia,post-cursor = <POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0>;
+						nvidia,tx-pu = <0>;
+						nvidia,load-adj = <0x6>;
+					};
+				};
+				smartdimmer {
+					status = "okay";
+					nvidia,use-auto-pwm = <0>;
+					nvidia,hw-update-delay = <0>;
+					nvidia,bin-width = <0xffffffff>;
+					nvidia,aggressiveness = <5>;
+					nvidia,use-vid-luma = <0>;
+					nvidia,phase-in-settings = <0>;
+					nvidia,phase-in-adjustments = <0>;
+					nvidia,k-limit-enable = <1>;
+					nvidia,k-limit = <200>;
+					nvidia,sd-window-enable = <0>;
+					nvidia,soft-clipping-enable= <1>;
+					nvidia,soft-clipping-threshold = <128>;
+					nvidia,smooth-k-enable = <0>;
+					nvidia,smooth-k-incr = <64>;
+					nvidia,coeff = <5 9 2>;
+					nvidia,fc = <0 0>;
+					nvidia,blp = <1024 255>;
+					nvidia,bltf = <57 65 73 82
+						       92 103 114 125
+						       138 150 164 178
+						       193 208 224 241>;
+					nvidia,lut = <255 255 255
+						      199 199 199
+						      153 153 153
+						      116 116 116
+						      85 85 85
+						      59 59 59
+						      36 36 36
+						      17 17 17
+						      0 0 0>;
+					nvidia,use-vpulse2 = <1>;
+					nvidia,bl-device-name = "pwm-backlight";
+				};
+			};
+		};
+	};
+	backlight {
+		panel-s-edp-uhdtv-15-6-bl {
+			status = "disabled";
+			compatible = "s-edp,uhdtv-15-6-bl";
+			pwms = <&tegra_pwm 1 5000000>;
+			max-brightness = <255>;
+			default-brightness = <224>;
+		};
+	};
+};

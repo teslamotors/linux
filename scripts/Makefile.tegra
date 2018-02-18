@@ -1,0 +1,22 @@
+#
+# Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms and conditions of the GNU General Public License,
+# version 2, as published by the Free Software Foundation.
+#
+# This program is distributed in the hope it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+define tegra_include
+  ifneq ("$(wildcard $(kbuild-dir)/Makefile.$(1))", "")
+    include $(kbuild-dir)/Makefile.$(1)
+    EXTRA_CFLAGS += -I$(srctree)/../$(1)/include
+  endif
+endef
+
+$(foreach suffix, \
+	t18x nvgpu nvgpu-t18x nvhost nvhost-t18x nvmap nvmap-t18x display, \
+	$(eval $(call tegra_include,$(suffix))))

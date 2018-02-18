@@ -1,0 +1,25 @@
+/*
+ * tegra186-quill-p3310-1000-a00-00-base-mods-display.dts:
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-quill-p3310-1000-a00-00-base.dts"
+
+/ {
+	host1x {
+		nvdisplay@15220000 {
+			status = "disabled";
+		};
+
+	}; /* host1x */
+};

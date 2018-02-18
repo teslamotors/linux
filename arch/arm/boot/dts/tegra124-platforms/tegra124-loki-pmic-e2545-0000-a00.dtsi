@@ -1,0 +1,95 @@
+#include "tegra124-platforms/tegra124-loki-pmic-e2545-0000-common.dtsi"
+
+/ {
+	i2c@7000d000 {
+		tps65913 {
+			pmic {
+				regulators {
+					palmas_smps7: smps7 {
+						regulator-name = "vddio-ddr";
+						regulator-min-microvolt = <1350000>;
+						regulator-max-microvolt = <1350000>;
+						regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+						regulator-always-on;
+						regulator-boot-on;
+
+						consumers {
+							c0 {
+								regulator-consumer-supply = "vddio_ddr";
+							};
+							c1 {
+								regulator-consumer-supply = "vddio_ddr_mclk";
+							};
+						};
+					};
+
+					palmas_ldo1: ldo1 {
+						regulator-name = "avdd-pll";
+						regulator-min-microvolt = <1050000>;
+						regulator-max-microvolt = <1050000>;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_PIN_NSLEEP>;
+
+						consumers {
+							c0 {
+								regulator-consumer-supply = "avdd_pll_m";
+							};
+							c1 {
+								regulator-consumer-supply = "avdd_pll_ap_c2_c3";
+							};
+							c2 {
+								regulator-consumer-supply = "avdd_pll_cud2dpd";
+							};
+							c3 {
+								regulator-consumer-supply = "avdd_pll_c4";
+							};
+							c4 {
+								regulator-consumer-supply = "avdd_lvds0_io";
+							};
+							c5 {
+								regulator-consumer-supply = "vddio_ddr_hs";
+							};
+							c6 {
+								regulator-consumer-supply = "avdd_pll_erefe";
+							};
+							c7 {
+								regulator-consumer-supply = "avdd_pll_x";
+							};
+							c8 {
+								regulator-consumer-supply = "avdd_pll_cg";
+							};
+							c13 {
+								regulator-consumer-supply = "vdd_sata";
+								regulator-consumer-device = "tegra-sata.0";
+							};
+							c14 {
+								regulator-consumer-supply = "avdd_sata";
+								regulator-consumer-device = "tegra-sata.0";
+							};
+							c15 {
+								regulator-consumer-supply = "avdd_sata_pll";
+								regulator-consumer-device = "tegra-sata.0";
+							};
+						};
+					};
+
+					palmas_ldo5: ldo5 {
+						regulator-name = "avdd-hdmi-pll";
+						regulator-min-microvolt = <1200000>;
+						regulator-max-microvolt = <1200000>;
+
+						consumers {
+							c0 {
+								regulator-consumer-supply = "avdd_hdmi_pll";
+								regulator-consumer-device = "tegradc.0";
+							};
+							c1 {
+								regulator-consumer-supply = "avdd_hdmi_pll";
+								regulator-consumer-device = "tegradc.1";
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};

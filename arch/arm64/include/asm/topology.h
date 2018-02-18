@@ -24,6 +24,16 @@ void init_cpu_topology(void);
 void store_cpu_topology(unsigned int cpuid);
 const struct cpumask *cpu_coregroup_mask(int cpu);
 
+#define arch_scale_cpu_capacity arm64_arch_scale_cpu_capacity
+struct sched_domain;
+extern unsigned long arm64_arch_scale_cpu_capacity(struct sched_domain *sd,
+							int cpu);
+#ifdef CONFIG_CPU_FREQ
+#define arch_scale_freq_capacity arm64_arch_scale_freq_capacity
+extern unsigned long arm64_arch_scale_freq_capacity(struct sched_domain *sd,
+							int cpu);
+#endif
+
 #else
 
 static inline void init_cpu_topology(void) { }

@@ -1,0 +1,23 @@
+Tegra ADMA AST (ADAST) bindings
+-------------------------------
+
+The ADMA AST (ADAST) maps local ADMA addresses to physical
+addresses. It can also control properties for those regions.
+
+Required properties:
+
+- None
+
+Optional properties:
+
+- nvidia,adast: should specify ADAST regions with a tuple of u64 values:
+  <region_number, region_control, slave_base, mask, master_base>.
+
+  ADMA can specify zero or more AST regions. As 2 out of 8 regions (0 & 1) of
+  AST are used by boot-loader, only 6 regions can be specified here.
+
+Examples:
+
+1) nvidia,adast =  <0x0 0x3 0x0 0x00008008 0x0 0x40000000 0x0 0x20000000 0x0 0x40000000>;
+2) nvidia,adast =  <0x0 0x3 0x0 0x00008008 0x0 0x40000000 0x0 0x20000000 0x0 0x40000000>,
+		   <0x0 0x4 0x0 0x00008008 0x0 0x60000000 0x0 0x10000000 0x0 0x60000000>;

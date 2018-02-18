@@ -1,0 +1,49 @@
+#include "tegra210-loki-e-p2530-0031-e00-00.dts"
+#include "tegra210-platforms/tegra210-loki-e-emc-a01.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	i2c@7000c400 {
+		ads1015@4a {
+			ti,enable-continuous-mode;
+			ti,continuous-channel-number = <4>;
+			ti,maximum-retries = <6>;
+			ti,adc-valid-threshold-ranges= <(-100)     30
+							40    78
+							382   418
+							220   242
+							122   136
+							2000  2047>;
+		};
+	};
+
+	extcon {
+		extcon@1 {
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(A, 2) GPIO_ACTIVE_HIGH>;
+			extcon-adc-jack,irq-flags = <2>;
+			extcon-adc-jack,debounce-ms = <500>;
+			extcon-adc-jack,states = <0x1   (-100)       30
+						0x2     40      78
+						0x4     382     418
+						0x8     220     242
+						0x10    122     136>;
+		};
+
+		extcon@2 {
+			cable-states = <0x0	0x3F	0x0
+					0x1	0x3F	0x1
+					0x2	0x3F	0x2
+					0x4	0x3F	0x4
+					0x5	0x3F	0x4
+					0x3	0x3F	0x8
+					0x8	0x3F	0x10
+					0x9	0x3F	0x10
+					0x10	0x3F	0x20
+					0x11	0x3F	0x20
+					0x20	0x3F	0x40
+					0x21	0x3F	0x40>;
+		};
+	};
+};

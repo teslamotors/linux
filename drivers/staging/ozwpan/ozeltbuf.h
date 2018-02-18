@@ -23,7 +23,7 @@ struct oz_elt_stream {
 	u8 id;
 };
 
-#define OZ_MAX_ELT_PAYLOAD	255
+#define OZ_MAX_ELT_PAYLOAD	1024
 struct oz_elt_info {
 	struct list_head link;
 	struct list_head link_order;
@@ -32,21 +32,26 @@ struct oz_elt_info {
 	oz_elt_callback_t callback;
 	long context;
 	struct oz_elt_stream *stream;
-	u8 data[sizeof(struct oz_elt) + OZ_MAX_ELT_PAYLOAD];
+	u8 data[sizeof(struct oz_ext_elt) + OZ_MAX_ELT_PAYLOAD];
 	int length;
+	unsigned magic;
 };
 /* Flags values */
 #define OZ_EI_F_MARKED		0x1
+#define OZ_EI_F_EXT_ELM		0x2
 
 struct oz_elt_buf {
 	spinlock_t lock;
 	struct list_head stream_list;
 	struct list_head order_list;
 	struct list_head isoc_list;
+	struct list_head *elt_pool;
+	int free_elts;
+	int max_free_elts;
 	u8 tx_seq_num[OZ_NB_APPS];
 };
 
-void oz_elt_buf_init(struct oz_elt_buf *buf);
+int oz_elt_buf_init(struct oz_elt_buf *buf);
 void oz_elt_buf_term(struct oz_elt_buf *buf);
 struct oz_elt_info *oz_elt_info_alloc(struct oz_elt_buf *buf);
 void oz_elt_info_free(struct oz_elt_buf *buf, struct oz_elt_info *ei);
@@ -60,6 +65,7 @@ int oz_queue_elt_info(struct oz_elt_buf *buf, u8 isoc, u8 id,
 int oz_select_elts_for_tx(struct oz_elt_buf *buf, u8 isoc, unsigned *len,
 		unsigned max_len, struct list_head *list);
 int oz_are_elts_available(struct oz_elt_buf *buf);
+void oz_trim_elt_pool(struct oz_elt_buf *buf);
 
 #endif /* _OZELTBUF_H */
 

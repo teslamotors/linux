@@ -3,6 +3,7 @@
  *
  *  Copyright (c) 2007 Rodolfo Giometti <giometti@linux.it>
  *  Copyright (c) 2007 Eurotech S.p.A. <info@eurotech.it>
+ *  Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -42,6 +43,12 @@ struct c2port_ops {
 	/* Flash layout */
 	unsigned short block_size;	/* flash block size in bytes */
 	unsigned short blocks_num;	/* flash blocks number */
+	/* INTERNAL RAM layout */
+	unsigned short ram_size;
+	/* SFR layout */
+	unsigned short sfr_size;
+	/* XRAM layout */
+	unsigned short xram_size;
 
 	/* Enable or disable the access to C2 port */
 	void (*access)(struct c2port_device *dev, int status);

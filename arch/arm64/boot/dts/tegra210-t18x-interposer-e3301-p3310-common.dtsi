@@ -1,0 +1,357 @@
+/*
+ * tegra210-t18x-interposer-e3301-p3310-common.dtsi: Common DTSI for
+ *	E3301-* and P3310-*.
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+/dts-v1/;
+
+/memreserve/ 0x80000000 0x00020000;
+
+#include "tegra210-t18x-interposer-common.dtsi"
+#include "tegra210-platforms/tegra210-sdhci.dtsi"
+#include "panel-s-wuxga-8-0.dtsi"
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	pmc@7000e400 {
+		nvidia,invert-interrupt;
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x80000000 >;
+	};
+
+	sdhci@700b0600 { /* SDMMC4 for EMMC */
+		max-clk-limit = <266000000>;
+		uhs-mask = <0x0>;
+		built-in;
+		power-off-rail;
+		nvidia,enable-hs533-mode;
+		pll_source = "pll_p", "pll_c4_out1";
+		status = "okay";
+	};
+
+    xusb_padctl { /* Put common control config here */
+	avdd_pll_uerefe-supply = <&max77620_ldo7>;
+	hvdd_pex_pll_e-supply = <&max77620_sd3>;
+	dvdd_pex_pll-supply = <&max77620_ldo1>;
+	hvddio_pex-supply = <&max77620_sd3>;
+	dvddio_pex-supply = <&max77620_ldo1>;
+	hvdd_sata-supply = <&max77620_sd3>;
+	dvdd_sata_pll-supply = <&max77620_ldo8>;
+	hvddio_sata-supply = <&max77620_sd3>;
+	dvddio_sata-supply = <&max77620_ldo8>;
+	nvidia,ss_portmap = <0x21>;
+	nvidia,lane_owner = <0xff56>; /* Use 0xF to disable lane assign */
+	nvidia,lane-map = <0x14>;
+	status = "okay";
+    };
+
+
+	sdhci@700b0400 {
+		mmc-ocr-mask = <0>;
+		default-drv-type = <1>;
+		uhs-mask = <0x1c>;
+		power-off-rail;
+		status = "disabled";
+	};
+
+	sdhci@700b0200 { /* SDMMC2 for Wifi */
+		nvidia,is-ddr-tap-delay;
+		nvidia,ddr-tap-delay = <0>;
+		uhs-mask = <0x8>;
+		power-off-rail;
+		status = "disabled";
+	};
+
+	sdhci@700b0000 { /* SDMMC1 for SD card */
+		uhs-mask = <0x8>;
+		power-off-rail;
+		nvidia,sd-device;
+		wp-gpios = <&gpio TEGRA_GPIO_PZ4 0>;
+		status = "okay";
+	};
+
+	serial@70006040 {
+		status = "okay";
+	};
+
+	spi@7000da00 {
+		status = "ok";
+	};
+
+	spi@7000d400 {
+		status = "okay";
+	};
+
+	extcon {
+		extcon@0 {
+			status = "disabled";
+		};
+	};
+
+	i2c@7000c400 {
+		nvidia,clock-always-on;
+	};
+
+	i2c@7000d000 {
+		clock-frequency = <1000000>;
+	};
+
+	i2c@7000c000 {
+		status = "okay";
+		lp8557-backlight-s-wuxga-8-0@2c {
+			status = "okay";
+			disable-on-kernel-charging;
+			compatible = "ti,lp8557";
+			reg = <0x2c>;
+
+			bl-name = "pwm-backlight"; /* Match liblights naming expectations */
+			init-brt = /bits/ 8 <0xFF>; /* Max brightness */
+			dev-ctrl = /bits/ 8 <0x80>; /* PWM, enable standby mode */
+			pwm-period = <29334>;
+
+			pwm-names = "lp8557";
+			pwms = <&tegra_pwm 0 29334>;
+
+			bl-measured = < 0 1 2 3 4 5 5 6
+					7 8 9 10 11 11 12 13
+					14 15 15 16 17 18 19 20
+					21 22 22 23 24 25 26 27
+					28 29 30 31 31 32 33 34
+					35 36 37 37 38 39 40 41
+					41 42 43 44 45 46 47 48
+					48 49 50 51 52 53 54 54
+					55 56 57 58 58 59 60 61
+					62 63 64 65 66 67 68 69
+					70 71 72 73 74 75 75 76
+					77 78 79 80 81 82 83 84
+					85 86 87 88 89 90 91 92
+					93 94 94 95 96 97 98 99
+					100 101 102 104 105 106 107 108
+					109 110 111 112 113 114 115 116
+					117 118 119 120 121 122 123 125
+					126 127 128 129 130 131 132 133
+					134 135 136 137 138 139 140 141
+					142 143 144 146 147 148 149 150
+					151 152 153 154 155 156 157 158
+					159 160 161 162 163 164 165 167
+					168 169 170 171 172 173 174 175
+					176 178 179 180 181 182 183 184
+					185 186 187 188 189 190 191 192
+					193 194 195 196 197 199 200 201
+					202 203 204 205 206 207 208 210
+					211 212 213 214 215 216 217 219
+					220 221 222 223 225 226 227 228
+					229 230 231 233 234 235 236 237
+					238 239 240 241 242 244 245 246
+					247 248 249 250 251 253 254 255 >;
+
+			bl-curve = < 0 1 1 2 2 3 3 4
+					4 5 5 6 7 7 8 8
+					9 9 10 10 11 11 12 12
+					13 14 14 15 15 16 16 17
+					17 18 18 19 20 20 21 21
+					22 22 23 23 24 24 25 25
+					26 27 27 28 28 29 29 30
+					30 31 31 32 33 33 34 34
+					35 35 36 36 37 37 38 38
+					39 40 40 41 41 42 42 43
+					43 44 44 45 46 46 47 47
+					48 48 49 49 50 50 51 52
+					52 53 53 54 54 55 55 56
+					56 57 57 58 59 59 60 60
+					61 61 62 62 63 63 64 65
+					65 66 66 67 67 68 68 69
+					69 70 70 71 72 72 73 73
+					74 74 75 75 76 76 77 78
+					78 79 79 80 80 81 81 82
+					82 83 83 84 85 85 86 86
+					87 87 88 88 89 89 90 92
+					94 96 97 99 101 103 105 107
+					109 110 112 114 116 118 120 122
+					123 125 127 129 131 133 134 136
+					138 140 142 144 146 147 149 151
+					153 155 157 159 160 162 164 166
+					168 170 172 173 175 177 179 181
+					183 185 186 188 190 192 194 196
+					198 199 201 203 205 207 209 211
+					212 214 216 218 220 222 223 225
+					227 229 231 233 235 236 238 240
+					242 244 246 248 249 251 253 255 >;
+
+			/* 5 LED string */
+			rom_14h {
+				rom-addr = /bits/ 8 <0x14>;
+				rom-val = /bits/ 8 <0x9f>;
+			};
+
+			/*Boost freq 1MHZ*/
+			rom_13h {
+				rom-addr = /bits/ 8 <0x13>;
+				rom-val = /bits/ 8 <0x01>;
+			};
+
+			/*20mA max */
+			rom_11h {
+				rom-addr = /bits/ 8 <0x11>;
+				rom-val = /bits/ 8 <0x05>;
+			};
+		};
+	};
+
+	backlight {
+		status="okay";
+		disable-on-kernel-charging;
+		panel-s-wuxga-8-0-bl {
+			status = "okay";
+			};
+		};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-s-wuxga-8-0 {
+				status="okay";
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,panel-rst-gpio = <&tca9539_77 0 0>; /* GPIO expander 7n77 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
+				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
+				nvidia,dsi-refresh-rate = <75>;
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+				vrr-settings {
+					nvidia,vrr_min_fps = <30>;
+				};
+				display-timings {
+					1200x1920-32-75Hz {
+						clock-frequency = <193224000>;
+						hactive = <1200>;
+						vactive = <1920>;
+						hfront-porch = <107>;
+						hback-porch = <20>;
+						hsync-len = <1>;
+						vfront-porch = <12>;
+						vback-porch = <7>;
+						vsync-len = <1>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <11>;
+					};
+				};
+			};
+		};
+	};
+
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,turn-off-vbus-in-lp0;
+		nvidia,id-detection-type = <1>;
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		status = "okay";
+	};
+
+	pcie-controller@1003000 {
+		nvidia,lane-map = <0x14>;
+		dvdd-pex-pll-supply = <&max77620_ldo7>;
+		l0-dvddio-pex-supply = <&max77620_ldo7>;
+		l1-dvddio-pex-supply = <&max77620_ldo7>;
+		l2-dvddio-pex-supply = <&max77620_ldo7>;
+		l3-dvddio-pex-supply = <&max77620_ldo7>;
+		l4-dvddio-pex-supply = <&max77620_ldo7>;
+		l5-dvddio-pex-supply = <&max77620_ldo7>;
+		l6-dvddio-pex-supply = <&max77620_ldo7>;
+		hvdd-pex-pll-e-supply = <&max77620_sd2>;
+		l0-hvddio-pex-supply = <&max77620_sd2>;
+		l1-hvddio-pex-supply = <&max77620_sd2>;
+		l2-hvddio-pex-supply = <&max77620_sd2>;
+		l3-hvddio-pex-supply = <&max77620_sd2>;
+		l4-hvddio-pex-supply = <&max77620_sd2>;
+		l5-hvddio-pex-supply = <&max77620_sd2>;
+		l6-hvddio-pex-supply = <&max77620_sd2>;
+		vddio-pex-ctl-supply = <&max77620_sd2>;
+		status = "okay";
+
+		pci@1,0 {
+			nvidia,disable-clock-request;
+			status = "okay";
+		};
+
+		pci@2,0 {
+			nvidia,disable-clock-request;
+			status = "okay";
+		};
+	};
+
+	gpio: gpio@6000d000 {
+		gpio-init-1 = <&wlan_default>;
+
+		wlan_default: wlan-default {
+			gpio-input = <
+				TEGRA_GPIO(V, 3)
+				>;
+			gpio-output-high = <
+				TEGRA_GPIO(V, 4)
+				TEGRA_GPIO(T, 0)
+				>;
+		};
+	};
+
+	bcmdhd_wlan {
+		compatible = "android,bcmdhd_wlan";
+		wlan-pwr-gpio = <&gpio TEGRA_GPIO(V, 4) 0>;
+		status = "okay";
+	};
+
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		/*bluedroid_pm,reset-gpio = <&gpio TEGRA_GPIO(V, 4) 0>;*/
+		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(Y, 1) 0>;
+		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(K, 5) 0>;
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(Y, 1) 0x01>;
+	};
+};

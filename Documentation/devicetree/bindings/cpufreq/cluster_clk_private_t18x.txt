@@ -1,0 +1,32 @@
+cluster clock private device for t18x
+-----------------------------
+tegra18x cluster parameters can be overriden by cluster clock private registers.
+These registers are not exposed to ARM_SW and can only be updated by MCE. For Hw
+verification these registers are exposed to ARM_SW. For final release these
+registers have to be made private and these bindings have to be removed
+from ARM_SW.
+
+Required properties:
+- compatible: "nvidia,t18x-cluster-clk-priv".
+- reg: base address and size for below cluster clocks.
+       sys_clock
+       b_cluster_clk_priv
+       b_cluster_clk_pub
+       m_cluster_clk_priv
+       m_cluster_clk_pub
+
+- status: "okay" or "disabled" to enable/disable the node.
+
+Optional properties:
+
+
+Example:
+--------
+	cluster_clk_priv@0x0e0b0000  {
+		compatible = "nvidia,t18x-cluster-clk-priv";
+			#address-cells = <2>;
+			#size-cells = <2>;
+		reg = < 0x0 0x0e0a0000 0x0 0x64 >, /* B cluster clk priv base */
+		      < 0x0 0x0e0b0000 0x0 0x64 >; /* m cluster clk priv base */
+		status = "disabled";
+	};

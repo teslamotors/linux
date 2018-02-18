@@ -1,0 +1,4 @@
+#include "tegra132-loki-p2530-c00.dts"
+ / {
+	nvidia,dtsfilename = __FILE__;
+};

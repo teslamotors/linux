@@ -1,0 +1,67 @@
+NVIDIA Tegra114 SPI controller.
+
+Required properties:
+- compatible : should be "nvidia,tegra114-spi".
+- reg: Should contain SPI registers location and length.
+- interrupts: Should contain SPI interrupts.
+- nvidia,dma-request-selector : The Tegra DMA controller's phandle and
+  request selector for this SPI controller.
+
+Recommended properties:
+- spi-max-frequency: Definition as per
+                     Documentation/devicetree/bindings/spi/spi-bus.txt
+Optional properties:
+- nvidia,clock-always-on: Enable clock of spi always.
+- nvidia,polling-mode: Use polling method instead of interrupts
+- nvidia,boost-reg-access: In T210 and earlier chips SPI register access
+	is dependant on SPI clock frequency. Setting this option would
+	allow SPI clock frequency to be boosted. Benefitial when running
+	SPI at low frequencies with cpu based transfers. Default false.
+- nvidia,disable-runtime-pm: disable runtime power management for SPI.
+	SPI uses very low power and runtime pm can be overhead for smaller
+	transfers. This option allows disabling runtime pm.
+- nvidia,maximum-dma-buffer-size: Maximum dma buffer size per transfer.
+	If this is not available then 16K will be default. The value should
+	be unit of byte.
+
+spi-client device controller properties:
+  Below properties should be defined under 'controller-data' child node
+- nvidia,enable-hw-based-cs: (Boolean) Use the HW based CS if enabled.
+- nvidia,tx-clk-tap-delay: Delays the clock going out to the external device
+  with this tap value.
+- nvidia,rx-clk-tap-delay: Delays the clock coming in from the external device
+  with this tap value.
+- nvidia,cs-setup-clk-count: CS setup timing parameter.
+- nvidia,cs-hold-clk-count: CS hold timing parameter.
+- nvidia,cs-inactive-cycles: Cycles to be inactive between two packets.
+  CS Inactive between packets is disabled if value of this is zero.
+- nvidia,clk-delay-between-packets: Clock delay  between packets by keeping
+		CS active. For this, it is required to pass the Chip select
+		as GPIO.
+- nvidia,chipselect-gpio: Chipselect GPIO number as per gpio binding.
+
+Example:
+spi@7000d600 {
+	compatible = "nvidia,tegra114-spi";
+	reg = <0x7000d600 0x200>;
+	interrupts = <0 82 0x04>;
+	nvidia,dma-request-selector = <&apbdma 16>;
+	spi-max-frequency = <25000000>;
+	nvidia,clock-always-on;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "disabled";
+
+	<spi-client>@<bus_num> {
+		...
+		...
+		controller-data {
+			nvidia,enable-hw-based-cs;
+			nvidia,cs-setup-clk-count = <10>;
+			nvidia,cs-hold-clk-count = <10>;
+			nvidia,rx-clk-tap-delay = <0>;
+			nvidia,tx-clk-tap-delay = <16>;
+		};
+		...
+	};
+};

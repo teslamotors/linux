@@ -20,6 +20,7 @@ int mmc_app_send_scr(struct mmc_card *card, u32 *scr);
 int mmc_sd_switch(struct mmc_card *card, int mode, int group,
 	u8 value, u8 *resp);
 int mmc_app_sd_status(struct mmc_card *card, void *ssr);
-
+int mmc_send_speed_class_ctrl(struct mmc_host *host,
+	unsigned int speed_class_ctrl_arg);
 #endif
 

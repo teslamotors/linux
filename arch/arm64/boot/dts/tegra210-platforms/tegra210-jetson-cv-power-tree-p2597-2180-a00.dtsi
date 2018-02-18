@@ -1,0 +1,385 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include <dt-bindings/padctrl/tegra210-pads.h>
+#include "tegra210-jetson-common-power-tree-p2530-0930-e03.dtsi"
+
+/ {
+
+	i2c@7000d000 {
+		max77620@3c {
+			pinmux@0 {
+				pin_gpio1 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+				};
+
+				pin_gpio2 {
+					pins = "gpio2";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+				};
+
+				pin_gpio3 {
+					pins = "gpio3";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <4>;
+					maxim,active-fps-power-down-slot = <3>;
+				};
+			};
+
+			fps {
+				fps0 {
+					maxim,shutdown-fps-time-period-us = <1280>;
+				};
+
+				fps1 {
+					maxim,shutdown-fps-time-period-us = <1280>;
+				};
+			};
+
+			regulators {
+				sd0 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					maxim,active-fps-power-up-slot = <1>;
+					maxim,active-fps-power-down-slot = <6>;
+					regulator-ramp-delay = <27500>;
+				};
+
+				sd1 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <5>;
+					maxim,active-fps-power-down-slot = <2>;
+					regulator-ramp-delay = <27500>;
+				};
+
+				sd2 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					maxim,active-fps-power-up-slot = <2>;
+					maxim,active-fps-power-down-slot = <5>;
+					regulator-ramp-delay = <27500>;
+				};
+
+				sd3 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <3>;
+					maxim,active-fps-power-down-slot = <4>;
+					regulator-ramp-delay = <27500>;
+				};
+
+				sd4 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-ramp-delay = <27500>;
+				};
+
+				ldo0 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-enable-ramp-delay = <84>;
+					regulator-disable-ramp-delay = <14700>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <750>;
+				};
+
+				ldo1 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <3>;
+					regulator-enable-ramp-delay = <34>;
+					regulator-disable-ramp-delay = <660>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <350>;
+				};
+
+				ldo2 {
+					regulator-name = "vddio-sdmmc1";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-enable-ramp-delay = <300>;
+					regulator-disable-ramp-delay = <64000>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <950>;
+				};
+
+				ldo3 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-ramp-delay = <100000>;
+				};
+
+				ldo4 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+					maxim,active-fps-power-up-slot = <1>;
+					maxim,active-fps-power-down-slot = <6>;
+					regulator-enable-ramp-delay = <23>;
+					regulator-disable-ramp-delay = <1100>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <250>;
+				};
+
+				ldo5 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-ramp-delay = <100000>;
+				};
+
+				ldo6 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_NONE>;
+					maxim,active-fps-power-up-slot = <0>;
+					maxim,active-fps-power-down-slot = <7>;
+					regulator-ramp-delay = <100000>;
+				};
+
+				ldo7 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					maxim,active-fps-power-up-slot = <3>;
+					maxim,active-fps-power-down-slot = <4>;
+					regulator-enable-ramp-delay = <124>;
+					regulator-disable-ramp-delay = <24000>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <1200>;
+				};
+
+				ldo8 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+					maxim,active-fps-power-up-slot = <6>;
+					maxim,active-fps-power-down-slot = <1>;
+					regulator-enable-ramp-delay = <93>;
+					regulator-disable-ramp-delay = <10000>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <900>;
+				};
+			};
+		};
+	};
+
+	regulators {
+		compatible = "simple-bus";
+		device_type = "fixed-regulators";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		max77620_gpio7: regulator@2 {
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			vin-supply = <&max77620_ldo7>;
+		};
+
+		en_vdd_sd: regulator@4 {
+			gpio = <&gpio TEGRA_GPIO(Z, 3) 0>;
+		};
+
+		en_vdd_cam: regulator@5 {
+			gpio = <&tca9539_77 9 1>;
+		};
+
+		vdd_hdmi: regulator@7 {
+			gpio = <&tca9539_74 12 1>;
+			vin-supply = <&vdd_3v3>;
+		};
+
+		vdd_fan: regulator@13 {
+			gpio = <&tca9539_74 4 0>;
+		};
+
+		en_vdd_ts_1v8: regulator@201 {
+			compatible = "regulator-fixed-sync";
+			reg = <201>;
+			regulator-name = "en-vdd-ts-1v8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&tca9539_74 1 1>;
+			enable-active-high;
+		};
+
+		en_vdd_ts_hv_3v3: regulator@202 {
+			compatible = "regulator-fixed-sync";
+			reg = <202>;
+			regulator-name = "en-vdd-ts-hv-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&tca9539_74 2 1>;
+			enable-active-high;
+		};
+
+		en_avdd_disp_3v3: regulator@203 {
+			compatible = "regulator-fixed-sync";
+			reg = <203>;
+			regulator-name = "en-vdd-disp-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-boot-on;
+			gpio = <&tca9539_74 3 1>;
+			enable-active-high;
+		};
+
+
+		en_mdm_pwr_3v7: regulator@204 {
+			compatible = "regulator-fixed-sync";
+			reg = <204>;
+			regulator-name = "en-mdm-pwr-3v7";
+			regulator-min-microvol = <3700000>;
+			regulator-max-microvol = <3700000>;
+			gpio = <&tca9539_74 7 1>;
+			enable-active-high;
+		};
+
+		en_dvdd_disp_1v8: regulator@205 {
+			compatible = "regulator-fixed-sync";
+			reg = <205>;
+			regulator-name = "en-vdd-disp-1v8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-boot-on;
+			gpio = <&tca9539_74 9 1>;
+			enable-active-high;
+		};
+
+		en_vdd_cam_hv_2v8: regulator@206 {
+			compatible = "regulator-fixed-sync";
+			reg = <206>;
+			regulator-name = "en-vdd-cam-hv-2v8";
+			regulator-min-microvol = <2800000>;
+			regulator-max-microvol = <2800000>;
+			gpio = <&tca9539_74 13 1>;
+			enable-active-high;
+		};
+
+		en_vdd_eth_5v0: regulator@207 {
+			compatible = "regulator-fixed-sync";
+			reg = <207>;
+			regulator-name = "rtl-5v0";
+			regulator-min-microvol = <5000000>;
+			regulator-max-microvol = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(H, 1) 0>;
+			enable-active-high;
+		};
+
+		en_usb_vbus2: regulator@208 {
+			compatible = "regulator-fixed-sync";
+			reg = <208>;
+			regulator-name = "en-usb-vbus2";
+			regulator-min-microvol = <5000000>;
+			regulator-max-microvol = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+			enable-active-high;
+		};
+
+		en_vdd_cam_1v2: regulator@209 {
+			compatible = "regulator-fixed-sync";
+			reg = <209>;
+			regulator-name = "en-vdd-cam-1v2";
+			regulator-min-microvol = <1200000>;
+			regulator-max-microvol = <1200000>;
+			vin-supply = <&vdd_3v3>;
+			gpio = <&tca9539_77 3 1>;
+			enable-active-high;
+		};
+
+		en_vdd_vcm_2v8: regulator@210 {
+			compatible = "regulator-fixed-sync";
+			reg = <210>;
+			regulator-name = "en-vdd-vcm-2v8";
+			regulator-min-microvol = <2800000>;
+			regulator-max-microvol = <2800000>;
+			vin-supply = <&vdd_3v3>;
+			gpio = <&gpio TEGRA_GPIO(S, 4) 0>;
+			enable-active-high;
+		};
+	};
+
+	host1x {
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&max77620_ldo0>;
+			avdd_lcd-supply = <&en_avdd_disp_3v3>;
+			dvdd_lcd-supply = <&en_dvdd_disp_1v8>;
+			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
+			vdd_lcd_bl-supply = <&vdd_3v3>;
+
+			/* eDP */
+			vdd_ds_1v8-supply  = <&en_dvdd_disp_1v8>;
+			avdd_io_edp-supply = <&max77620_gpio7>;
+		};
+
+		vi {
+			avdd_dsi_csi-supply = <&max77620_ldo0>;
+		};
+	};
+
+	pwm-fan {
+		vdd-fan-supply = <&vdd_fan>;
+	};
+
+	otg@7d000000 {
+		usb_vbus-supply = <&usb_vbus1>;
+	};
+
+	xusb@70090000 {
+		usb_vbus1-supply = <&en_vdd_eth_5v0>;
+		usb_vbus2-supply = <&en_usb_vbus2>;
+	};
+
+	spi@7000da00 {
+		spi-touch19x12@0 {
+			avdd-supply = <&en_vdd_ts_hv_3v3>;
+			dvdd-supply = <&en_vdd_ts_1v8>;
+		};
+	};
+
+	pmc-iopower {
+		iopower-sys-supply = <&max77620_sd3>;
+		iopower-uart-supply = <&max77620_sd3>;
+		iopower-audio-supply = <&max77620_sd3>;
+		iopower-cam-supply = <&max77620_sd3>;
+		iopower-pex-ctrl-supply = <&max77620_sd3>;
+		iopower-sdmmc1-supply = <&max77620_ldo2>;
+		iopower-sdmmc3-supply = <&max77620_sd3>;
+		iopower-sdmmc4-supply = <&max77620_sd3>;
+		iopower-audio-hv-supply = <&max77620_sd3>;
+		iopower-debug-supply = <&max77620_sd3>;
+		iopower-dmic-supply = <&max77620_sd3>;
+		iopower-gpio-supply = <&max77620_sd3>;
+		iopower-spi-supply = <&max77620_sd3>;
+		iopower-spi-hv-supply = <&max77620_sd3>;
+		iopower-sdmmc2-supply = <&max77620_sd3>;
+		iopower-dp-supply = <&max77620_sd3>;
+	};
+
+	pmc@7000e400 {
+		io-pad-defaults {
+			audio-hv {
+				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+			};
+
+			spi-hv {
+				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+			};
+
+			gpio {
+				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+			};
+			sdmmc3 {
+				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+			};
+		};
+	};
+};

@@ -1,0 +1,74 @@
+nvgpu-t18x := $(call tegra-path,nvgpu-t18x,drivers/gpu/nvgpu)
+
+nvgpu-y += \
+	$(nvgpu-t18x)/gp10b/gr_gp10b.o  \
+	$(nvgpu-t18x)/gp10b/gr_ctx_gp10b.o  \
+	$(nvgpu-t18x)/gp10b/ce_gp10b.o \
+	$(nvgpu-t18x)/gp10b/mc_gp10b.o  \
+	$(nvgpu-t18x)/gp10b/fifo_gp10b.o  \
+	$(nvgpu-t18x)/gp10b/ltc_gp10b.o \
+	$(nvgpu-t18x)/gp10b/mm_gp10b.o \
+	$(nvgpu-t18x)/gp10b/fb_gp10b.o \
+	$(nvgpu-t18x)/gp10b/pmu_gp10b.o \
+	$(nvgpu-t18x)/gp10b/hal_gp10b.o \
+	$(nvgpu-t18x)/gp10b/rpfb_gp10b.o \
+	$(nvgpu-t18x)/gp10b/gp10b_gating_reglist.o \
+	$(nvgpu-t18x)/gp10b/regops_gp10b.o \
+	$(nvgpu-t18x)/gp10b/cde_gp10b.o \
+	$(nvgpu-t18x)/gp10b/therm_gp10b.o \
+	$(nvgpu-t18x)/gp10b/fecs_trace_gp10b.o \
+	$(nvgpu-t18x)/gp10b/gp10b_sysfs.o \
+	$(nvgpu-t18x)/gp10b/gp10b.o \
+	$(nvgpu-t18x)/gp106/hal_gp106.o \
+	$(nvgpu-t18x)/gp106/mm_gp106.o \
+	$(nvgpu-t18x)/gp106/pmu_gp106.o \
+	$(nvgpu-t18x)/gp106/gr_gp106.o \
+	$(nvgpu-t18x)/gp106/gr_ctx_gp106.o \
+	$(nvgpu-t18x)/gp106/acr_gp106.o \
+	$(nvgpu-t18x)/gp106/sec2_gp106.o \
+	$(nvgpu-t18x)/gp106/fifo_gp106.o \
+	$(nvgpu-t18x)/gp106/ltc_gp106.o \
+	$(nvgpu-t18x)/gp106/fb_gp106.o \
+	$(nvgpu-t18x)/gp106/bios_gp106.o \
+	$(nvgpu-t18x)/gp106/regops_gp106.o \
+	$(nvgpu-t18x)/pstate/pstate.o \
+	$(nvgpu-t18x)/clk/clk_vin.o \
+	$(nvgpu-t18x)/clk/clk_fll.o \
+	$(nvgpu-t18x)/clk/clk_domain.o \
+	$(nvgpu-t18x)/clk/clk_prog.o \
+	$(nvgpu-t18x)/clk/clk_vf_point.o \
+	$(nvgpu-t18x)/clk/clk_arb.o \
+	$(nvgpu-t18x)/clk/clk_freq_controller.o \
+	$(nvgpu-t18x)/perf/vfe_var.o \
+	$(nvgpu-t18x)/perf/vfe_equ.o \
+	$(nvgpu-t18x)/perf/perf.o \
+	$(nvgpu-t18x)/clk/clk.o \
+	$(nvgpu-t18x)/gp106/clk_gp106.o \
+	$(nvgpu-t18x)/gp106/clk_arb_gp106.o \
+	$(nvgpu-t18x)/gp106/gp106_gating_reglist.o \
+	$(nvgpu-t18x)/gp106/xve_gp106.o \
+	$(nvgpu-t18x)/gp106/therm_gp106.o \
+	$(nvgpu-t18x)/gp106/pmu_mclk_gp106.o \
+	$(nvgpu-t18x)/volt/volt_rail.o \
+	$(nvgpu-t18x)/volt/volt_dev.o \
+	$(nvgpu-t18x)/volt/volt_policy.o \
+	$(nvgpu-t18x)/volt/volt_pmu.o \
+	$(nvgpu-t18x)/pmgr/pwrdev.o \
+	$(nvgpu-t18x)/pmgr/pmgr.o \
+	$(nvgpu-t18x)/pmgr/pmgrpmu.o \
+	$(nvgpu-t18x)/pmgr/pwrmonitor.o \
+	$(nvgpu-t18x)/pmgr/pwrpolicy.o \
+	$(nvgpu-t18x)/therm/thrm.o \
+	$(nvgpu-t18x)/therm/thrmdev.o \
+	$(nvgpu-t18x)/therm/thrmchannel.o \
+	$(nvgpu-t18x)/therm/thrmpmu.o \
+	$(nvgpu-t18x)/lpwr/rppg.o \
+	$(nvgpu-t18x)/lpwr/lpwr.o
+
+nvgpu-$(CONFIG_TEGRA_GK20A) += $(nvgpu-t18x)/gp10b/platform_gp10b_tegra.o
+
+nvgpu-$(CONFIG_TEGRA_GR_VIRTUALIZATION) += \
+	$(nvgpu-t18x)/vgpu/gp10b/vgpu_hal_gp10b.o  \
+	$(nvgpu-t18x)/vgpu/gp10b/vgpu_gr_gp10b.o  \
+	$(nvgpu-t18x)/vgpu/gp10b/vgpu_mm_gp10b.o \
+	$(nvgpu-t18x)/vgpu/gp10b/vgpu_fifo_gp10b.o

@@ -1,0 +1,117 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-vcm31-power-tree-p2379-0000-c01-00.dtsi"
+
+/ {
+
+	/* using VBUS2_EN for USB2A */
+	pinctrl@3520000 {
+		/delete-property/ vbus-2-supply;
+		vbus-0-supply = <&vdd_usb2_5v>;
+	};
+
+	/* Do not turn off LDO3, LDO3 is set to 1.8v in BCT PMIC */
+	bpmp_i2c {
+		spmic: spmic@3c {
+			regulators {
+				spmic_ldo3: ldo3 {
+					regulator-always-on;
+				};
+			};
+		};
+	};
+
+	fixed-regulators {
+
+		/delete-node/regulator@5;
+		/delete-node/regulator@6;
+
+		mxm_pwr_gpio_2: regulator@5 {
+			compatible = "regulator-fixed-sync";
+			reg = <5>;
+			regulator-name = "mxm-pwr-gpio-2";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(D, 0) 0>;
+			startup-delay-us = <5000>;	/* 5 ms */
+			enable-active-high;
+			regulator-always-on;
+		};
+		mxm_pwr_en: regulator@8{
+			compatible = "regulator-fixed-sync";
+			reg = <8>;
+			regulator-name = "mxm-pwr_en";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(C, 0) 0>;
+			startup-delay-us = <100000>;	/* 100 ms */
+			enable-active-high;
+			regulator-always-on;
+			vin-supply = <&mxm_pwr_gpio_2>;
+		};
+		fpd_1v1_en: regulator@9 {
+			compatible = "regulator-fixed-sync";
+			reg = <9>;
+			regulator-name = "park-fpd-1v1-en";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(N, 1) 0>;
+			enable-active-high;
+			regulator-always-on;
+		};
+		fpd_1v8_en: regulator@10{
+			compatible = "regulator-fixed-sync";
+			reg = <10>;
+			regulator-name = "park-1v8-fpd-en";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(N, 4) 0>;
+			startup-delay-us = <100000>;
+			enable-active-high;
+			regulator-always-on;
+			vin-supply = <&fpd_1v1_en>;
+		};
+		park_fpd_en: regulator@12 {
+			compatible = "regulator-fixed-sync";
+			reg = <12>;
+			regulator-name = "park-fpd-en";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(EE, 2) 0>;
+			enable-active-high;
+			regulator-always-on;
+		};
+		hdmi_term_en: regulator@13 {
+			compatible = "regulator-fixed-sync";
+			reg = <13>;
+			regulator-name = "park-hdmi-term-en";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(C, 2) 0>;
+			enable-active-high;
+			regulator-always-on;
+		};
+		main_dser_clk_en: regulator@14 {
+			compatible = "regulator-fixed-sync";
+			reg = <14>;
+			regulator-name = "park-main-dser-clk-en";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(T, 3) 0>;
+			enable-active-high;
+			regulator-always-on;
+		};
+	};
+};

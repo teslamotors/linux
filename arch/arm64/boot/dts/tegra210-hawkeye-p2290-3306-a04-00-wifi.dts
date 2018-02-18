@@ -1,0 +1,65 @@
+/*
+ * Hawkeye P2290 A04 wifi MP board.
+ *      NVPN: 699-82290-3306-400
+ *      variant: WWAN_3GB_F0_MP
+ *      SKU: 3306
+ *      assembly version: TM671D & Wi-Fi only
+ *      LPDDR4 capacity: 3 GB
+ *      optional features: no NFC + no sensor hub + no barometer
+ *      manufacturing phase : MP
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra210-hawkeye-p2290-3304-a04-00-wifi.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "2290:3306:A04";
+	nvidia,proc-boardid = "2290:3306:A04";
+
+	i2c@7000c000 {
+		cy8c_panel@09 {
+			compatible = "nvidia,cy8c_panel";
+			reg = <0x09>;
+			enable-gpio = <&gpio TEGRA_GPIO(K, 1) 0>;
+			max-xfer-sz = <64>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+	};
+
+	/* On A04 the cy8c microcontroller is used to enabled
+	* the panel. This is done in part by by using the GPIO
+	* that was formerly used to enable the vdd_lcd_1v8
+	* regulator. Disable this regulator now, so that there's
+	* no contention for the GPIO */
+	regulators {
+		vdd_lcd_1v8: regulator@5 {
+			status = "disabled";
+		};
+	};
+
+	i2c@7000c400 {
+		tps61280@75 {
+			status = "disabled";
+		};
+	};
+
+	gpio@6000d000 {
+		modem-regulator {
+			gpio-output-low = <TEGRA_GPIO(E, 0)
+					   TEGRA_GPIO(E, 1)>;
+			gpio-output-high = <TEGRA_GPIO(E, 5)>;
+		};
+	};
+};

@@ -1,0 +1,100 @@
+/*
+ * arch/arm64/boot/dts/tegra210-platforms/tegra210-therm-est.dtsi
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include <dt-bindings/thermal/thermal.h>
+
+/{
+	therm_est_sensor {
+		compatible = "nvidia,therm-est";
+		#thermal-sensor-cells = <0>;
+		polling-period = <1100>;
+		tc1 = <10>;
+		tc2 = <1>;
+		use_activator = <1>;
+
+		subdev {
+			subdev_names = "Tdiode_tegra", "Tboard_tegra";
+
+			coeff_set@0 {
+				toffset = <9793>;
+				coeffs = <
+					2 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 0 0 (-1) (-7)
+					(-11) (-7) (-5) (-3) (-3) (-2) (-1) 0 0 0 1 1 1 2 2 3 4 6 11 18
+				>;
+			};
+		};
+	};
+
+	thermal-zones {
+		therm_est {
+			polling-delay = <0>;
+			polling-delay-passive = <6000>;
+
+			thermal-sensors = <&{/therm_est_sensor}>;
+
+			trips {
+				skin_trip {
+					temperature = <45000>;
+					hysteresis = <0>;
+					type = "passive";
+					writable;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&{/thermal-zones/therm_est/trips/skin_trip}>;
+					cdev-type = "skin-balanced";
+					cooling-device = <&{/bthrot_cdev/skin_balanced} THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+
+			thermal-zone-params {
+				governor-name = "adaptive_skin";
+				tskin_tran_threshold = <500>;
+				tskin_std_threshold = <1000>;
+				target_state_tdp = <7>;
+				tj_tran_threshold = <2000>;
+				tj_std_threshold = <3000>;
+				tj_std_fup_threshold = <5000>;
+			};
+		};
+
+		Tboard_tegra {
+			trips {
+				tegra_tboard_trip: therm_est_trip {
+					temperature = <40000>;
+					type = "active";
+					hysteresis = <1000>;
+					writable;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					cdev-type = "therm_est_activ";
+					cooling-device = <&dummy_cool_dev 1 1>;
+					trip = <&tegra_tboard_trip>;
+				};
+			};
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+		};
+	};
+};

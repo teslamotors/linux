@@ -28,6 +28,8 @@ enum migrate_reason {
 
 #ifdef CONFIG_MIGRATION
 
+extern int migrate_replace_page(struct page *oldpage, struct page *newpage);
+
 extern void putback_movable_pages(struct list_head *l);
 extern int migrate_page(struct address_space *,
 			struct page *, struct page *, enum migrate_mode);
@@ -47,6 +49,9 @@ extern int migrate_page_move_mapping(struct address_space *mapping,
 		struct buffer_head *head, enum migrate_mode mode,
 		int extra_count);
 #else
+
+static inline int migrate_replace_page(struct page *oldpage,
+		struct page *newpage) { return -ENOSYS; }
 
 static inline void putback_movable_pages(struct list_head *l) {}
 static inline int migrate_pages(struct list_head *l, new_page_t new,

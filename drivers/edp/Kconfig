@@ -1,0 +1,8 @@
+menu "SYSEDP Framework"
+
+config SYSEDP_FRAMEWORK
+	bool "System EDP framework"
+	default n
+	help
+	  SYSEDP-framework implements system peak current management
+endmenu

@@ -37,6 +37,7 @@ struct seq_file;
  *	per-device info for a certain group in debugfs
  * @pin_config_config_dbg_show: optional debugfs display hook that will decode
  *	and display a driver's pin configuration parameter
+ * @pin_config_get_max_custom_config: Get maximum custom pin conifg.
  */
 struct pinconf_ops {
 #ifdef CONFIG_GENERIC_PINCONF
@@ -68,6 +69,7 @@ struct pinconf_ops {
 	void (*pin_config_config_dbg_show) (struct pinctrl_dev *pctldev,
 					    struct seq_file *s,
 					    unsigned long config);
+	int (*pin_config_get_max_custom_config) (struct pinctrl_dev *pctldev);
 };
 
 #endif

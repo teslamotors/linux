@@ -1,0 +1,73 @@
+* NVIDIA Tegra Power Domains
+
+Tegra processors include support for multiple power domains which are used
+to gate power to one or more peripherals on the processor.
+
+Required Properties:
+- compatible: should be one of the following.
+	- "tegra-power-domains"
+	- "nvidia,tegra210-mc-clk-pd"
+	- "nvidia,tegra210-ape-pd"
+	- "nvidia,tegra210-adsp-pd"
+	- "nvidia,tegra210-host1x-pd"
+	- "nvidia,tegra210-tsec-pd"
+	- "nvidia,tegra210-nvdec-pd"
+	- "nvidia,tegra210-ve-pd"
+	- "nvidia,tegra210-ve2-pd"
+	- "nvidia,tegra210-vic03-pd"
+	- "nvidia,tegra210-msenc-pd"
+	- "nvidia,tegra210-nvjpg-pd"
+	- "nvidia,tegra210-pcie-pd"
+	- "nvidia,tegra210-sata-pd"
+	- "nvidia,tegra210-disa-pd"
+	- "nvidia,tegra210-disb-pd"
+	- "nvidia,tegra210-xusba-pd"
+	- "nvidia,tegra210-xusbb-pd"
+	- "nvidia,tegra210-xusbc-pd"
+
+	- "nvidia,tegra132-mc-clk-pd"
+	- "nvidia,tegra132-ape-pd"
+	- "nvidia,tegra132-adsp-pd"
+	- "nvidia,tegra132-host1x-pd"
+	- "nvidia,tegra132-tsec-pd"
+	- "nvidia,tegra132-nvdec-pd"
+	- "nvidia,tegra132-ve-pd"
+	- "nvidia,tegra132-ve2-pd"
+	- "nvidia,tegra132-vic03-pd"
+	- "nvidia,tegra132-msenc-pd"
+	- "nvidia,tegra132-nvjpg-pd"
+	- "nvidia,tegra132-gpu-pd"
+	- "nvidia,tegra132-pcie-pd"
+	- "nvidia,tegra132-sata-pd"
+	- "nvidia,tegra132-disa-pd"
+	- "nvidia,tegra132-disb-pd"
+	- "nvidia,tegra132-xusba-pd"
+	- "nvidia,tegra132-xusbb-pd"
+	- "nvidia,tegra132-xusbc-pd"
+	- "nvidia,tegra132-nvavp-pd"
+	- "nvidia,tegra132-vde-pd"
+
+- #power-domain-cells: number of cells in power domain specifier;
+
+Optional properties:
+- power-domains: A phandle and PM domain specifier as defined by bindings of
+		the power controller specified by phandle.
+
+Example:
+	host1x_pd: host1x-pd {
+		compatible = "nvidia,tegra210-host1x-pd";
+		is_off;
+		host1x;
+		#power-domain-cells = <0>;
+		power-domains = <&mc_clk_pd>;
+	};
+
+- wakeup-disable: PM domain consumers devices, which can not wakeup the system
+		 during sleep, should have this property in their DT node.
+
+Example:
+	adsp {
+		compatible = "nvidia,tegra210-adsp";
+		status = "disabled";
+		wakeup-disable;
+	};

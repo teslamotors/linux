@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+/ {
+
+	i2c@7000d000 {
+		max77620@3c {
+			regulators {
+				ldo0 {
+					regulator-enable-ramp-delay = <46>;
+					regulator-disable-ramp-delay = <3154>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <300>;
+				};
+
+				ldo1 {
+					regulator-enable-ramp-delay = <20>;
+					regulator-disable-ramp-delay = <480>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo2 {
+					regulator-enable-ramp-delay = <178>;
+					regulator-disable-ramp-delay = <13906>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <650>;
+				};
+
+				ldo3 {
+					regulator-enable-ramp-delay = <56>;
+					regulator-disable-ramp-delay = <1050>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo4 {
+					regulator-enable-ramp-delay = <16>;
+					regulator-disable-ramp-delay = <892>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <160>;
+				};
+
+				ldo5 {
+					regulator-enable-ramp-delay = <68>;
+					regulator-disable-ramp-delay = <416>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <212>;
+				};
+
+				ldo6 {
+					regulator-enable-ramp-delay = <54>;
+					regulator-disable-ramp-delay = <462>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <300>;
+				};
+
+				ldo7 {
+					regulator-enable-ramp-delay = <88>;
+					regulator-disable-ramp-delay = <26420>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <850>;
+				};
+
+				ldo8 {
+					regulator-enable-ramp-delay = <24>;
+					regulator-disable-ramp-delay = <3270>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <250>;
+				};
+			};
+		};
+	};
+};
+

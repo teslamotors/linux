@@ -1,0 +1,43 @@
+System-EDP Reactive Capping:
+
+Required properties:
+- compatible: "nvidia,tegra124-sysedp_reactive_capping"
+- nvidia,max_capping_mw: This defines the maximum allowed power for this consumer
+  in milliwatts.
+- nvidia,step_alarm_mw: When the interrupt is triggered, increase the consumer's
+  power by this amount in milliwatts.
+- nvidia,step_relax_mw: After relax_ms time since the last interrupt has fired,
+  reduce this consumer's required power by this amount in milliwatts.
+- nvidia,relax_ms: This defines the delay in milliseconds after an interrupt
+  triggers before relaxing this consumer's power requirements.
+- interrupt-parent: This points to the parent device that will own the
+  translation of the interrupt lines.
+- interrupts: This provides the mapping to the parent which will translate
+  the interrupt into the virtual irq value and flags used by
+  request_threaded_irq(). Only 1 interrupt (2 values) should be defined.
+
+Optional properties:
+- nvidia,threshold_warning: If used, this node provides a message to be printed
+  when this consumer's interrupt gets trigerred.
+
+Required sub-nodes:
+- sysedpc: This node contains one subnode which needs one property defined:
+
+Require parameter inside sysedpc subnode
+  - nvidia,name: This is the name of the sysedp consumer defined
+
+Example:
+	sysedp_reactive_capping@1 {
+		compatible = "nvidia,tegra124-sysedp_reactive_capping";
+		nvidia,max_capping_mw = <15000>;
+		nvidia,step_alarm_mw = <1000>;
+		nvidia,step_relax_mw = <500>;
+		nvidia,relax_ms = <250>;
+		nvidia,threshold_warning = "WARNING - SYSTEM Voltage Droop detected, please refer to the Power management application note";
+		interrupt-parent = <&soctherm>;
+		interrupts = <1 0x2002>;
+
+		sysedpc {
+			nvidia,name = "voltmon_oc1";
+		}
+	};

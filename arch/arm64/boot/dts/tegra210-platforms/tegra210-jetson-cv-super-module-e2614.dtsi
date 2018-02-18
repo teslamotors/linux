@@ -1,0 +1,157 @@
+/*
+ * Jetson-CV Super Module peripherals
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+/ {
+	i2c@7000c000 {
+		nvidia,clock-always-on;
+
+		tca6416_20: tca6416@20 {
+			compatible = "ti,tca6416";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x20>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(X, 0) 0x0>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			gpio-init-names = "default";
+			gpio-init-0 = <&tca6416_20_default>;
+			status = "disabled";
+			tca6416_20_default: default {
+				gpio-output-low = <1>;
+			};
+		};
+
+		icm20628_68: icm20628@68 {
+			compatible = "invensense,mpu6xxx";
+			reg = <0x68>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(X, 2) 0x01>;
+			accelerometer_matrix = [00 ff 00 01 00 00 00 00 01];
+			gyroscope_matrix = [00 ff 00 01 00 00 00 00 01];
+			status = "disabled";
+		};
+
+		ak8963_0d: ak8963@0d {
+			compatible = "ak,ak89xx";
+			reg = <0x0d>;
+			magnetic_field_matrix = [00 ff 00 01 00 00 00 00 01];
+			magnetic_field_delay_us_min = <16666>;
+			status = "disabled";
+		};
+
+		bmp280_77: bmp280@77 {
+			compatible = "bmp,bmpX80";
+			reg = <0x77>;
+			pressure_delay_us_min = <16666>;
+			status = "disabled";
+		};
+
+		cm32180_48: cm32180@48 {
+			compatible = "capella,cm32180";
+			reg = <0x48>;
+			gpio_irq = <&gpio TEGRA_GPIO(X, 3) GPIO_ACTIVE_LOW>;
+			light_uncalibrated_lo = <1>;
+			light_calibrated_lo = <150>;
+			light_uncalibrated_hi = <95000>;
+			light_calibrated_hi = <1750000>;
+			status = "disabled";
+		};
+
+		iqs263@44 {
+			compatible = "azoteq,iqs2x3";
+			reg = <0x44>;
+			gpio_rdy = <&tca6416_20 1 GPIO_ACTIVE_LOW>;
+			gpio_sar = <&gpio TEGRA_GPIO(V, 5) GPIO_ACTIVE_HIGH>;
+			gpio_sar_dev = "SAR_touch";
+			irq_trigger_edge = <1>;
+			os_options = <0>;
+			stream_mode = <2>;
+			263suspend_0 = [01 0D 01 FF];
+			263suspend_1 = [03 0B 00 0A 0A FF FF FF];
+			263suspend_2 = [01 09 10 FF];
+			263suspend_3 = [FF FF];
+			263suspend_4 = [FF FF];
+			263suspend_5 = [05 09 80 40 00 00 00 FF FF FF FF FF];
+			263suspend_6 = [03 0A FF FF FF FF FF FF];
+			263suspend_7 = [01 0B 0F FF];
+			263suspend_8 = [FF FF];
+			263init_0 = [05 09 80 04 10 07 0F FF 04 FF FF FF];
+			263init_1 = [01 0D 07 FF];
+			263init_2 = [01 01 00 FF];
+			263init_3 = [05 07 1D 0A 0C 00 11 FF FF FF FF FF];
+			263init_4 = [04 08 B2 D9 D8 00 FF FF FF FF];
+			263init_5 = [08 0A 08 03 03 03 0C 00 64 14 FF FF FF FF FF FF FF FF];
+			263init_6 = [03 0B 00 A5 B4 FF FF FF];
+			263en_prox_0 = [01 09 10 FF];
+			263en_prox_1 = [FF FF];
+			263en_prox_2 = [FF FF];
+			263en_prox_3 = [FF FF];
+			263en_prox_4 = [FF FF];
+			263en_prox_5 = [02 09 00 54 FF FF];
+			263en_prox_6 = [FF FF];
+			status = "disabled";
+		};
+
+		i2cmux_70: i2cmux@70 {
+			compatible = "nxp,pca9546";
+			reg = <0x70>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			vcc-supply = <&vdd_3v3>;
+			status = "disabled";
+			i2c@0 {
+				reg = <0>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@1 {
+				reg = <1>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@2 {
+				reg = <2>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@3 {
+				reg = <3>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				rt5658_b00: rt5659.10-001a@1a {
+					compatible = "realtek,rt5658";
+					reg = <0x1a>;
+					status = "disabled";
+				};
+			};
+		};
+
+		rt5658_a00: rt5659.0-001a@1a {
+			compatible = "realtek,rt5658";
+			reg = <0x1a>;
+			status = "disabled";
+		};
+	};
+
+	spi@7000d600 {
+		status = "disabled";
+	};
+};

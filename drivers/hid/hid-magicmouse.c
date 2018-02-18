@@ -3,6 +3,7 @@
  *
  *   Copyright (c) 2010 Michael Poole <mdpoole@troilus.org>
  *   Copyright (c) 2010 Chase Douglas <chase.douglas@canonical.com>
+ *   Copyright (c) 2014 NVIDIA Corporation.  All rights reserved.
  */
 
 /*
@@ -471,7 +472,7 @@ static int magicmouse_input_mapping(struct hid_device *hdev,
 	return 0;
 }
 
-static void magicmouse_input_configured(struct hid_device *hdev,
+static int magicmouse_input_configured(struct hid_device *hdev,
 		struct hid_input *hi)
 
 {
@@ -483,6 +484,7 @@ static void magicmouse_input_configured(struct hid_device *hdev,
 		/* clean msc->input to notify probe() of the failure */
 		msc->input = NULL;
 	}
+	return ret;
 }
 
 

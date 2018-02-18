@@ -39,6 +39,18 @@ config MFD_AS3722
 	  controllers, 11 LDOs, RTC, automatic battery, temperature and
 	  over current monitoring, GPIOs, ADC and a watchdog.
 
+config MFD_MAX77620
+	bool "Maxim MAX77620"
+	select MFD_CORE
+	select REGMAP_I2C
+	select REGMAP_IRQ
+	depends on I2C=y
+	help
+	  Say yes here to add support for Maxim's Max77620. This only
+	  enables the I2C core functionality of the the device. The individual
+	  components for GPIO/ RTC/ Regulator and others need to be enabled by
+	  their corresponding menus.
+
 config PMIC_ADP5520
 	bool "Analog Devices ADP5520/01 MFD PMIC Core Support"
 	depends on I2C=y
@@ -78,6 +90,35 @@ config MFD_AXP20X
 	  This driver include only the core APIs. You have to select individual
 	  components like regulators or the PEK (Power Enable Key) under the
 	  corresponding menus.
+
+config MFD_AIC3256
+	bool "Support Texas Instruments AIC3256"
+	select REGMAP
+	select MFD_CORE
+	help
+	  Support for Texas Instrument TLV320AIC3256 low power audio SoC
+	  This includes the I2C driver and the core APIs _only, you have to
+	  select individual components.
+
+config MFD_AIC3256_I2C
+	tristate "Support Texas Instruments AIC3256 platform with I2C"
+	select MFD_AIC3256
+	select REGMAP_I2C
+	depends on I2C
+	help
+	  Support for the Texas Instruments TLV320AIC3256 family of audio SoC
+	  core functionality controlled via I2C.
+	  Please select individual components.
+
+config MFD_AIC3256_SPI
+	tristate "Support Texas Instruments AIC3256  platform with SPI"
+	select MFD_AIC3256
+	select REGMAP_SPI
+	depends on SPI_MASTER
+	help
+	  Support for the Texas Instruments TLV320AIC3256 family of audio SoC
+	  core functionality controlled via SPI.
+	  Please select individual components.
 
 config MFD_CROS_EC
 	tristate "ChromeOS Embedded Controller"
@@ -392,6 +433,20 @@ config MFD_MAX14577
 	  additional drivers must be enabled in order to use the functionality
 	  of the device.
 
+config MFD_MAX77665
+	bool "Maxim Semiconductor MAX77665 Companion PMIC Support"
+	depends on I2C=y
+	select MFD_CORE
+	select REGMAP_I2C
+	select REGMAP_IRQ
+	help
+	  Say yes here to support for Maxim Semiconductor MAX77665.
+	  This is a Power Management IC with Flash, Fuel Gauge, Haptic,
+	  MUIC controls on chip.
+	  This driver provides common support for accessing the device;
+	  additional drivers must be enabled in order to use the functionality
+	  of the device.
+
 config MFD_MAX77686
 	bool "Maxim Semiconductor MAX77686/802 PMIC Support"
 	depends on I2C=y
@@ -431,6 +486,13 @@ config MFD_MAX8907
 	  a Power Management IC. This driver provides common support for
 	  accessing the device; additional drivers must be enabled in order
 	  to use the functionality of the device.
+
+config GPADC_TPS80031
+	bool "Support for TI TPS80031 Gpadc driver"
+	depends on  MFD_TPS80031
+	help
+	  If you say yes here you get support for the TPS80031 gpadc
+	  Module.
 
 config MFD_MAX8925
 	bool "Maxim Semiconductor MAX8925 PMIC Support"
@@ -511,6 +573,39 @@ config MFD_RETU
 	help
 	  Retu and Tahvo are a multi-function devices found on Nokia
 	  Internet Tablets (770, N800 and N810).
+
+config AIC3XXX_I2C_REGMAP
+	bool "I2C regmap support for TI AIC3XXX codecs"
+	depends on I2C=y
+	select REGMAP_I2C
+	default n
+	help
+	  Support for the Texas Instruments TLV320AIC3XXX family of audio SoC
+	  core functionality controlled via I2C.
+	  Please select individual components.
+
+config AIC3XXX_SPI_REGMAP
+	bool "SPI regmap support for TI AIC3XXX codecs"
+	depends on SPI=y
+	select REGMAP_SPI
+	default n
+	help
+	  Support for the Texas Instruments TLV320AIC3XXX family of audio SoC
+	  core functionality controlled via SPI.
+	  Please select individual components.
+
+config AIC3XXX_CORE
+	bool "Support for AIC3XXX audio codec"
+	select MFD_CORE
+	select AIC3XXX_SPI_REGMAP
+	select AIC3XXX_I2C_REGMAP
+	default n
+	help
+	  Say yes here if you want support for Texas Instruments AIC3XXX audio
+	  codec.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the
+	  functionality of the device (audio, vibra).
 
 config MFD_PCF50633
 	tristate "NXP PCF50633"
@@ -739,6 +834,13 @@ config AB3100_OTP
 	  programmable memory) support. This exposes a sysfs file to read
 	  out OTP values.
 
+config MFD_MAX8831
+	bool "Support Maxim LED MAX8831 with I2C"
+	depends on I2C=y
+	select REGMAP_I2C
+	help
+	  Say yes here to support for Maxim LED MAX8831 with I2C.
+
 config AB8500_CORE
 	bool "ST-Ericsson AB8500 Mixed Signal Power Management chip"
 	depends on ABX500_CORE && MFD_DB8500_PRCMU
@@ -898,11 +1000,45 @@ config MFD_PALMAS
 	bool "TI Palmas series chips"
 	select MFD_CORE
 	select REGMAP_I2C
-	select REGMAP_IRQ
 	depends on I2C=y
 	help
 	  If you say yes here you get support for the Palmas
 	  series of PMIC chips from Texas Instruments.
+
+config MFD_MAX8907C
+	tristate "Maxim Semiconductor MAX8907C PMIC Support"
+	select MFD_CORE
+	depends on I2C
+	help
+	  Say yes here to support for Maxim Semiconductor MAX8907C. This is
+	  a Power Management IC. This driver provies common support for
+	  accessing the device, additional drivers must be enabled in order
+	  to use the functionality of the device.
+
+config MFD_MAX77663
+	tristate "Maxim Semiconductor MAX77663 PMIC Support"
+	select MFD_CORE
+	depends on I2C
+	help
+	  Say yes here to support for Maxim Semiconductor MAX77663. This is
+	  a Power Management IC. This driver provies common support for
+	  accessing the device, additional drivers must be enabled in order
+	  to use the functionality of the device.
+
+config MFD_AS3720
+	tristate "Support for ams AS3720 PMIC"
+	select MFD_CORE
+	depends on I2C=y
+	select REGMAP_I2C
+	select REGMAP_IRQ
+	help
+	  Core support for the ams AS3720 PMIC. Additional
+	  drivers must be enabled in order to use the functionality of the
+	  device.
+	  Related drivers are:
+		* ams AS3720 PMIC regulators
+		* ams AS3720 GPIO
+		* ams AS3720 RTC
 
 config TPS6105X
 	tristate "TI TPS61050/61052 Boost Converters"
@@ -1240,6 +1376,17 @@ config MFD_WM8997
 	help
 	  Support for Wolfson Microelectronics WM8997 low power audio SoC
 
+config MFD_TPS6591X
+	bool "TPS6591x Power Management chips"
+	depends on I2C && GPIOLIB
+	select MFD_CORE
+	help
+	  If you say yes here you get support for the TPS6591X series of
+	  Power Management chips.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the
+	  functionality of the device.
+
 config MFD_WM8400
 	bool "Wolfson Microelectronics WM8400"
 	select MFD_CORE
@@ -1253,6 +1400,18 @@ config MFD_WM8400
 
 config MFD_WM831X
 	bool
+
+config MFD_RICOH583
+	bool "Ricoh RC5T583 Power Management system device"
+	depends on I2C && GPIOLIB
+	select MFD_CORE
+	default n
+	help
+	  If you say yes here you get support for the RICOH583 Power
+	  Management system device.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the
+	  functionality of the device.
 
 config MFD_WM831X_I2C
 	bool "Wolfson Microelectronics WM831x/2x PMICs with I2C"
@@ -1317,6 +1476,18 @@ config MFD_STW481X
 	  Select this option to enable the STw481x chip driver used
 	  in various ST Microelectronics and ST-Ericsson embedded
 	  Nomadik series.
+
+config MFD_MAX77660
+	bool "Maxim Semiconductor MAX77660 PMIC Support"
+	select MFD_CORE
+	select REGMAP_I2C
+	select REGMAP_IRQ
+	depends on I2C=y
+	help
+	Say yes here to support for Maxim Semiconductor MAX77660. This is
+	a Power Management IC. This driver provies common support for
+	accessing the device, additional drivers must be enabled in order
+	to use the functionality of the device.
 
 menu "Multimedia Capabilities Port drivers"
 	depends on ARCH_SA1100

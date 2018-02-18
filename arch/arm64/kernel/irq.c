@@ -29,6 +29,9 @@
 #include <linux/seq_file.h>
 #include <linux/ratelimit.h>
 
+
+#include <asm/mach/arch.h>
+
 unsigned long irq_err_count;
 
 int arch_show_interrupts(struct seq_file *p, int prec)
@@ -51,6 +54,7 @@ void __init set_handle_irq(void (*handle_irq)(struct pt_regs *))
 void __init init_IRQ(void)
 {
 	irqchip_init();
+
 	if (!handle_arch_irq)
 		panic("No interrupt controller found.");
 }

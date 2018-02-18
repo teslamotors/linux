@@ -1,0 +1,112 @@
+NVIDIA Tegra210 pinmux controller
+
+The Tegra210 pinctrl binding is very similar to other pinctrl bindings,
+as described in nvidia,tegra20-pinmux.txt, nvidia,tegra30-pinmux.txt and
+nvidia,tegra114-pinmux.txt. In fact, this document assumes that binding as
+a baseline, and only documents the differences between the two bindings.
+
+Required properties:
+- compatible: "nvidia,tegra210-pinmux"
+- reg: Should contain the register physical address and length for each of
+  the pad control and mux registers. The first bank of address must be the
+  driver strength pad control register address and second bank address must
+  be pinmux register address.
+
+Tegra210 adds the following optional properties for pin configuration subnodes:
+- nvidia,io-high-voltage: Integer. Enable high voltage (3.3V) for HVIN pads.
+   0: low (1.8V), 1: high (3.3V, default).
+The following pin property has been deprecated for T210:
+- nvidia,rcv-sel
+
+As with Tegra20, Terga30 and Tegra114, see the Tegra TRM for complete details regarding
+which groups support which functionality.
+
+Valid values for pin and group names are:
+
+  per-pin mux groups:
+
+    These all support nvidia,function, nvidia,tristate, nvidia,pull,
+    nvidia,enable-input, nvidia,lock.  Some support nvidia,open-drain
+    nvidia,high-speed-mode, nvidia,schmitt and nvidia,drive-type
+    HVIN pads support nvidia,io-high-voltage.
+
+    sdmmc1_cmd_pm1, sdmmc1_dat3_pm2, sdmmc1_dat2_pm3, sdmmc1_dat1_pm4, sdmmc1_dat0_pm5,
+    uart2_rx_pg1, uart2_tx_pg0, uart2_rts_pg2, uart2_cts_pg3, uart3_tx_pd1, uart3_rx_pd2,
+    uart3_cts_pd4, uart3_rts_pd3, gen1_i2c_scl_pj1, gen1_i2c_sda_pj0, dap4_fs_pj4, dap4_din_pj5,
+    dap4_dout_pj6, dap4_sclk_pj7, pk0, pk1, pk3, pk4, pk2, pk7, gen2_i2c_scl_pj2, gen2_i2c_sda_pj3,
+    cam1_mclk_ps0, cam2_mclk_ps1, cam_i2c_scl_ps2, cam_i2c_sda_ps3, jtag_rtck, pwr_i2c_scl_py3,
+    pwr_i2c_sda_py4, clk_32k_out_py5, core_pwr_req, cpu_pwr_req, pwr_int_n, clk_32k_in,
+    dap1_fs_pb0, dap1_din_pb1, dap1_dout_pb2, dap1_sclk_pb3, spdif_in_pcc3, spdif_out_pcc2,
+    dap2_fs_paa0, dap2_din_paa2, dap2_dout_paa3, dap2_sclk_paa1, dvfs_pwm_pbb1, gpio_x1_aud_pbb3,
+    gpio_x3_aud_pbb4, dvfs_clk_pbb2, sdmmc3_clk_pp0, sdmmc3_cmd_pp1, sdmmc3_dat0_pp5, sdmmc3_dat1_pp4,
+    sdmmc3_dat2_pp3, sdmmc3_dat3_pp2, pex_l0_rst_n_pa0, pex_l0_clkreq_n_pa1, pex_wake_n_pa2,
+    pex_l1_rst_n_pa3, pex_l1_clkreq_n_pa4, hdmi_cec_pcc0, sata_led_active_pa5, spi1_mosi_pc0,
+    spi1_miso_pc1, spi1_sck_pc2, spi1_cs0_pc3, spi1_cs1_pc4, spi2_mosi_pb4, spi2_miso_pb5,
+    spi2_sck_pb6, spi2_cs0_pb7, spi2_cs1_pdd0, spi4_mosi_pc7, spi4_miso_pd0, spi4_sck_pc5,
+    spi4_cs0_pc6, qspi_sck_pee0, qspi_cs_n_pee1, qspi_io0_pee2, qspi_io1_pee3, qspi_io2_pee4,
+    qspi_io3_pee5, dmic1_clk_pe0, dmic1_dat_pe1, dmic2_clk_pe2, dmic2_dat_pe3, dmic3_clk_pe4,
+    dmic3_dat_pe5, gen3_i2c_scl_pf0, gen3_i2c_sda_pf1, uart1_tx_pu0, uart1_rx_pu1, uart1_rts_pu2,
+    uart1_cts_pu3, uart4_tx_pi4, uart4_rx_pi5, uart4_rts_pi6, uart4_cts_pi7, batt_bcl, clk_req,
+    shutdown, aud_mclk_pbb0, gpio_pcc7, hdmi_int_dp_hpd_pcc1, wifi_en_ph0, wifi_rst_ph1,
+    wifi_wake_ap_ph2, ap_wake_bt_ph3, bt_rst_ph4, bt_wake_ap_ph5, ap_wake_nfc_ph7, nfc_en_pi0,
+    nfc_int_pi1, gps_en_pi2, gps_rst_pi3, cam_rst_ps4, cam_af_en_ps5, cam_flash_en_ps6,
+    cam1_pwdn_ps7, cam2_pwdn_pt0, cam1_strobe_pt1, lcd_te_py2, lcd_bl_pwm_pv0, lcd_bl_en_pv1,
+    lcd_rst_pv2, lcd_gpio1_pv3, lcd_gpio2_pv4, ap_ready_pv5, touch_rst_pv6, touch_clk_pv7,
+    modem_wake_ap_px0, touch_int_px1, motion_int_px2, als_prox_int_px3, temp_alert_px4,
+    button_power_on_px5, button_vol_up_px6, button_vol_down_px7, button_slide_sw_py0,
+    button_home_py1, pa6, pe6, pe7, ph6, pk5, pk6, pl0, pl1, pz0, pz1, pz2, pz3, pz4,
+    pz5, usb_vbus_en0_pcc4, usb_vbus_en1_pcc5, dp_hpd0_pcc6.
+
+  drive groups:
+
+    Most but not all support nvidia,pull-down-strength, nvidia,pull-up-strength,
+    nvidia,slew-rate-rising and nvidia,slew-rate-falling.
+
+    als_prox_int, ap_ready, ap_wake_bt, ap_wake_nfc, aud_mclk, batt_bcl, bt_rst, bt_wake_ap,
+    button_home, button_power_on, button_slide_sw, button_vol_down, button_vol_up, cam1_mclk,
+    cam1_pwdn, cam1_strobe, cam2_mclk, cam2_pwdn, cam_af_en, cam_flash_en, cam_i2c_scl, cam_i2c_sda,
+    cam_rst, clk_32k_in, clk_32k_out, clk_req, core_pwr_req, cpu_pwr_req, dap1_din, dap1_dout,
+    dap1_fs, dap1_sclk, dap2_din, dap2_dout, dap2_fs, dap2_sclk, dap4_din, dap4_dout, dap4_fs,
+    dap4_sclk, dmic1_clk, dmic1_dat, dmic2_clk, dmic2_dat, dmic3_clk, dmic3_dat, dp_hpd0, dvfs_clk,
+    dvfs_pwm, gen1_i2c_scl, gen1_i2c_sda, gen2_i2c_scl, gen2_i2c_sda, gen3_i2c_scl, gen3_i2c_sda,
+    pa6, pcc7, pe6, pe7, ph6, pk0, pk1, pk2, pk3, pk4, pk5, pk6, pk7, pl0, pl1, pz0, pz1, pz2, pz3,
+    pz4, pz5, gpio_x1_aud, gpio_x3_aud, gps_en, gps_rst, hdmi_cec, hdmi_int_dp_hpd, jtag_rtck,
+    lcd_bl_en, lcd_bl_pwm, lcd_gpio1, lcd_gpio2, lcd_rst, lcd_te, modem_wake_ap, motion_int, nfc_en,
+    nfc_int, pex_l0_clkreq_n, pex_l0_rst_n, pex_l1_clkreq_n, pex_l1_rst_n, pex_wake_n, pwr_i2c_scl,
+    pwr_i2c_sda, pwr_int_n, qspi_sck, sata_led_active, shutdown, spdif_in, spdif_out, spi1_cs0, spi1_cs1,
+    spi1_miso, spi1_mosi, spi1_sck, spi2_cs0, spi2_cs1, spi2_miso, spi2_mosi, spi2_sck, spi4_cs0,
+    spi4_miso, spi4_mosi, spi4_sck, temp_alert, touch_clk, touch_int, touch_rst, uart1_cts, uart1_rts,
+    uart1_rx, uart1_tx, uart2_cts, uart2_rts, uart2_rx, uart2_tx, uart3_cts, uart3_rts, uart3_rx,
+    uart3_tx, uart4_cts, uart4_rts, uart4_rx, uart4_tx, usb_vbus_en0, usb_vbus_en1, wifi_en, wifi_rst,
+    wifi_wake_ap.
+
+Example:
+
+	pinmux: pinmux {
+		compatible = "nvidia,tegra210-pinmux";
+		reg = <0x0 0x700008d4 0x0 0x299		/* Pad control registers */
+		       0x0 0x70003000 0x0 0x290>;	/* PinMux registers */
+	};
+
+Example dtsi file extract:
+	pinmux: pinmux {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinmux_default>;
+
+		pinmux_default: common {
+			sdmmc3_clk_pp0 {
+				nvidia,pins = "sdmmc3_clk_pp0";
+				nvidia,function = "sdmmc3";
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+			sdmmc1_dat0_pm5 {
+				nvidia,pins = "sdmmc1_dat0_pm5";
+				nvidia,function = "sdmmc1";
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};

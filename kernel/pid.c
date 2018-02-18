@@ -38,6 +38,7 @@
 #include <linux/syscalls.h>
 #include <linux/proc_ns.h>
 #include <linux/proc_fs.h>
+#include <linux/kmemleak.h>
 
 #define pid_hashfn(nr, ns)	\
 	hash_long((unsigned long)nr + (unsigned long)ns, pidhash_shift)
@@ -302,6 +303,8 @@ struct pid *alloc_pid(struct pid_namespace *ns)
 	pid = kmem_cache_alloc(ns->pid_cachep, GFP_KERNEL);
 	if (!pid)
 		goto out;
+
+	kmemleak_not_leak(pid);
 
 	tmp = ns;
 	pid->level = ns->level;

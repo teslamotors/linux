@@ -6,6 +6,8 @@
  * Author: Xenia Ragiadakou
  * Email : burzalodowa@gmail.com
  *
+ * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -21,6 +23,8 @@
 #include "xhci.h"
 
 #define XHCI_MSG_MAX	500
+#undef TRACE_INCLUDE_FILE
+#define TRACE_INCLUDE_FILE xhci-trace
 
 DECLARE_EVENT_CLASS(xhci_log_msg,
 	TP_PROTO(struct va_format *vaf),
@@ -144,8 +148,5 @@ DEFINE_EVENT(xhci_log_event, xhci_cmd_completion,
 
 #undef TRACE_INCLUDE_PATH
 #define TRACE_INCLUDE_PATH .
-
-#undef TRACE_INCLUDE_FILE
-#define TRACE_INCLUDE_FILE xhci-trace
 
 #include <trace/define_trace.h>

@@ -393,3 +393,29 @@ int mmc_app_sd_status(struct mmc_card *card, void *ssr)
 
 	return 0;
 }
+
+int mmc_send_speed_class_ctrl(struct mmc_host *host,
+	unsigned int speed_class_ctrl_arg)
+{
+	int err = 0;
+	struct mmc_command cmd = {
+			.opcode = SD_SPEED_CLASS_CONTROL,
+			.arg = (speed_class_ctrl_arg << 28),
+			.flags = MMC_RSP_R1B | MMC_CMD_AC | MMC_RSP_BUSY,
+		};
+
+	BUG_ON(!host);
+	BUG_ON(speed_class_ctrl_arg > 3);
+	err = mmc_wait_for_cmd(host, &cmd, MMC_CMD_RETRIES);
+	if (err)
+		return err;
+
+	/*
+	 * If the host does not wait while the card signals busy, then we will
+	 * will have to wait the max busy indication timeout.
+	 */
+	if (!(host->caps & MMC_CAP_WAIT_WHILE_BUSY))
+		mmc_delay(1000);
+	return err;
+}
+

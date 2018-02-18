@@ -636,6 +636,7 @@ int usb_match_device(struct usb_device *dev, const struct usb_device_id *id)
 
 	return 1;
 }
+EXPORT_SYMBOL(usb_match_device);
 
 /* returns 0 if no match, 1 if match */
 int usb_match_one_id_intf(struct usb_device *dev,
@@ -1434,6 +1435,12 @@ int usb_suspend(struct device *dev, pm_message_t msg)
 {
 	struct usb_device	*udev = to_usb_device(dev);
 
+	if (udev->bus->skip_resume) {
+		if (udev->state == USB_STATE_SUSPENDED)
+			return 0;
+		else
+			return -EBUSY;
+	}
 	unbind_no_pm_drivers_interfaces(udev);
 
 	/* From now on we are sure all drivers support suspend/resume
@@ -1463,6 +1470,9 @@ int usb_resume(struct device *dev, pm_message_t msg)
 	struct usb_device	*udev = to_usb_device(dev);
 	int			status;
 
+	if (udev->bus->skip_resume)
+		return 0;
+
 	/* For all calls, take the device back to full power and
 	 * tell the PM core in case it was autosuspended previously.
 	 * Unbind the interfaces that will need rebinding later,
@@ -1485,10 +1495,6 @@ int usb_resume(struct device *dev, pm_message_t msg)
 		status = 0;
 	return status;
 }
-
-#endif /* CONFIG_PM */
-
-#ifdef CONFIG_PM_RUNTIME
 
 /**
  * usb_enable_autosuspend - allow a USB device to be autosuspended
@@ -1884,7 +1890,7 @@ int usb_set_usb2_hardware_lpm(struct usb_device *udev, int enable)
 	return ret;
 }
 
-#endif /* CONFIG_PM_RUNTIME */
+#endif /* CONFIG_PM */
 
 struct bus_type usb_bus_type = {
 	.name =		"usb",

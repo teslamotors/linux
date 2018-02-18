@@ -1,0 +1,82 @@
+/*
+ * tegra186-quill-mfg-e3301-1099-a01-00-plugin-manager.dtsi
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	plugin-manager {
+		pcie-for-mods@0 {
+			odm-data = "mods-build";
+			override@0 {
+				target = <&tegra_gpio>;
+				_overlay_ {
+					wifi_over_pcie {
+						status = "okay";
+					};
+					pcie0_lane2_mux {
+						status = "okay";
+					};
+				};
+			};
+
+			override@1 {
+				target = <&gpio_i2c_0_24>;
+				_overlay_ {
+					pcie0_lane1_mux {
+						status = "okay";
+					};
+					pcie2_lane0_mux {
+						status = "okay";
+					};
+				};
+			};
+
+			override@2 {
+				target = <&tegra_xudc>;
+				_overlay_ {
+					phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>;
+					phy-names = "usb2";
+				};
+			};
+
+			override@3 {
+				target = <&tegra_xhci>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+
+			override@4 {
+				target = <&tegra_padctl_pinmux_default>;
+				_overlay_ {
+					usb3-std-A-port0 {
+						status = "disabled";
+					};
+					usb3-micro-AB {
+						status = "disabled";
+					};
+					usb3-std-A-port2 {
+						status = "disabled";
+					};
+				};
+			};
+
+			override@5 {
+				target = <&tegra_pcie>;
+				_overlay_ {
+					nvidia,lane-map = <0x401>;
+				};
+			};
+		};
+	};
+};

@@ -1,0 +1,120 @@
+/*
+ * tegra186-priv-guam-b-base.dts: guam-b base dts
+ * file
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-vcm31-fiji-common.dtsi"
+#include "tegra186-platforms/tegra186-power-tree-guam-b.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "guam-b:0000";
+	nvidia,proc-boardid = "guam-b:0000";
+	model = "guam-b";
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "guam-b";
+		};
+	};
+
+	/*Redefine USB ports */
+	padctl: pinctrl@3520000 {
+		p2379_default: pinmux {
+
+			usb2-std-A-port1 {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+		};
+	};
+
+	sdhci@3460000 { /* SDMMC_D: Used for eMMC */
+		status = "disabled";
+	};
+
+
+	pcie-controller@10003000 {
+		pci@1,0 {
+			status = "disabled";
+		};
+	};
+
+	adma@2930000 {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+	};
+	sound_ref {
+		status = "disabled";
+	};
+	adsp_audio {
+		status = "disabled";
+	};
+
+	/* CSI-EF */
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <1>;
+		csi-port = <4>;
+		default-power-on;
+		pwdn-gpios = < &tegra_gpio TEGRA_GPIO(V, 1) GPIO_ACTIVE_HIGH   /* QD1-PWR-DOWN */
+			&tegra_gpio TEGRA_GPIO(Y, 5) GPIO_ACTIVE_HIGH   /* PARK-MAIN-CAM-PWR-EN - TegraBall(PY.05) */
+			&tegra_gpio TEGRA_GPIO(J, 6) GPIO_ACTIVE_HIGH   /* PARK-RR-CAM-PWR-EN - TegraBall(PJ.06) */
+			&tegra_gpio TEGRA_GPIO(B, 4) GPIO_ACTIVE_HIGH   /* PARK-FE-CAM-PWR-EN - Tegra(PB.04)  */
+			&tegra_gpio TEGRA_GPIO(Y, 1) GPIO_ACTIVE_HIGH   /* PARK-LR-CAM-PWR-EN - TegraBall(PY.01) */ >;
+		runtime-pwrctrl-off;
+		interrupt-parent = <&tegra_gpio>;
+		status = "okay";
+	};
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		status = "disabled";
+	};
+	/* CSI-B */
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <1>;
+		default-power-on;
+		runtime-pwrctrl-off;
+		interrupt-parent = <&tegra_gpio>;
+		status = "okay";
+	};
+
+	host1x {
+		sor{
+			status = "disabled";
+		};
+		dpaux@15040000 {
+			status = "disabled";
+		};
+	};
+	dpaux1 {
+		status = "disabled";
+	};
+	uarta: serial@3100000 {
+		status = "disabled";
+	};
+	ether_qos@2490000 {
+		fixed-link{
+			speed = <1000>;
+			full-duplex;
+		};
+	};
+};

@@ -1,0 +1,545 @@
+/*
+ * P2382(Sunstreaker) specific Prod configuration.
+ *
+ * Copyright (c) 2016-2017, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ */
+
+#include "tegra186-soc/tegra186-soc-vcm-prod.dtsi"
+
+/ {
+
+	pinctrl@3520000 {
+		nvidia,sata-use-prods;
+		prod-settings {
+			#prod-cells = <4>;
+			mask-one-style;
+			prod_c_bias {
+				board {
+					prod = <0 0x284 0x00000038 0x38>; //XUSB_PADCTL_USB2_BIAS_PAD_CTL
+				};
+			};
+			prod_c_utmi0 {
+				board {
+					prod = <
+						0 0x88 0x01fe0000 0x00cc0000 //XUSB_PADCTL_USB2_OTG_PAD0_CTL_0
+						0 0x94 0x000001cf 0x00000000 //XUSB_PADCTL_USB2_OTG_PAD0_CTL_3
+					>;
+				};
+			};
+			prod_c_utmi2 {
+				board {
+					prod = <
+						0 0x108 0x01fe0000 0x00cc0000 //XUSB_PADCTL_USB2_OTG_PAD2_CTL_0
+						0 0x114 0x000001cf 0x00000000 //XUSB_PADCTL_USB2_OTG_PAD2_CTL_3
+					>;
+				};
+			};
+			prod_c_sata {
+				board {
+					prod = <5 0x80 0x3f3f3f3f 0x23271f19
+						5 0x00 0x03000000 0x0
+						5 0x8c 0x003f003f 0x000a0007>;
+				};
+			};
+		};
+	};
+
+	host1x {
+		sor{
+			prod-settings {
+				prod_c_hbr {
+					board {
+						prod = <
+							0x00000590 0x00F00000 0x00300000
+						>;
+					};
+				};
+				prod_c_hbr2 {
+					board {
+						prod = <
+							0x00000590 0x00F00000 0x00400000
+						>;
+					};
+
+				};
+				prod_c_rbr {
+					board {
+						prod = <
+							0x00000590 0x00F00000 0x00300000
+						>;
+					};
+				};
+			};
+		};
+
+		sor1 {
+			prod-settings {
+				prod_list_hdmi_board = "prod_c_hdmi_0m_54m", "prod_c_hdmi_54m_75m",
+				                       "prod_c_hdmi_75m_150m", "prod_c_hdmi_150m_200m",
+				                       "prod_c_hdmi_200m_300m", "prod_c_hdmi_300m_600m";
+				prod_c_hdmi_0m_54m {
+					board {
+						prod = <
+							0x00000138 0xFFFFFFFF 0x28282828
+							0x00000148 0xFFFFFFFF 0x00000000
+							0x0000058C 0x0F0F0F00 0x05050000
+							0x00000590 0x00F01F00 0x00001300
+							0x00000598 0xFF000FF0 0x38000440
+							0x000005A0 0x0040FF00 0x00401000
+							0x000005A8 0xFF000000 0x54000000
+						>;
+					};
+				};
+				prod_c_hdmi_54m_75m {
+					board {
+						prod = <
+							0x00000138 0xFFFFFFFF 0x2F2F2F2F
+							0x00000148 0xFFFFFFFF 0x00000000
+							0x0000058C 0x0F0F0F00 0x05050100
+							0x00000590 0x00F01F00 0x00301300
+							0x00000598 0xFF000FF0 0x38000440
+							0x000005A0 0x0040FF00 0x00404000
+							0x000005A8 0xFF000000 0x44000000
+						>;
+					};
+				};
+				prod_c_hdmi_75m_150m {
+					board {
+						prod = <
+							0x00000138 0xFFFFFFFF 0x33333333
+							0x00000148 0xFFFFFFFF 0x00000000
+							0x0000058C 0x0F0F0F00 0x05050300
+							0x00000590 0x00F01F00 0x00301300
+							0x00000598 0xFF000FF0 0x38000440
+							0x000005A0 0x0040FF00 0x00406600
+							0x000005A8 0xFF000000 0x34000000
+						>;
+					};
+				};
+				prod_c_hdmi_150m_200m {
+					board {
+						prod = <
+							0x00000138 0xFFFFFFFF 0x33333333
+							0x00000148 0xFFFFFFFF 0x10101010
+							0x0000058C 0x0F0F0F00 0x05050300
+							0x00000590 0x00F01F00 0x00301300
+							0x00000598 0xFF000FF0 0x38000440
+							0x000005A0 0x0040FF00 0x00406600
+							0x000005A8 0xFF000000 0x34000000
+						>;
+					};
+				};
+				prod_c_hdmi_200m_300m {
+					board {
+						prod = <
+							0x0000058c 0x0f0f0f00 0x05050300
+							0x00000590 0x00f01f00 0x00301300
+							0x00000598 0xff000ff0 0x3C000440
+							0x00000138 0xffffffff 0x333F3F3F
+							0x00000148 0xffffffff 0x001F1F1F
+							0x000005a0 0x0040ff00 0x00406600
+							0x000005a8 0xff000000 0x34000000
+						>;
+					};
+				};
+				prod_c_hdmi_300m_600m {
+					board {
+						prod = <
+							0x00000138 0xFFFFFFFF 0x333F3F3F
+							0x00000148 0xFFFFFFFF 0x07070707
+							0x0000058C 0x0F0F0F00 0x05050300
+							0x00000590 0x00F01F00 0x00301300
+							0x00000598 0xFF000FF0 0x3C000440
+							0x000005A0 0x0040FF00 0x00406600
+							0x000005A8 0xFF000000 0x34000000
+						>;
+					};
+				};
+			};
+		};
+
+		dsi {
+			prod-settings {
+				dsi-padctrl-prod {
+					board {
+						prod = <
+							0x00000024 0x03F0FC3F 0x00000000
+							0x00000028 0x00333333 0x00000000
+							0x00000030 0x00FFFFFF 0x00000000
+							0x00000034 0x00FFFFFF 0x00777777
+							0x00000054 0x03F0FC3F 0x00000000
+							0x00000058 0x00333333 0x00000000
+							0x00000060 0x00FFFFFF 0x00000000
+							0x00000064 0x00FFFFFF 0x00777777
+							0x00000084 0x03F0FC3F 0x00000000
+							0x00000088 0x00333333 0x00000000
+							0x00000090 0x00FFFFFF 0x00000000
+							0x00000094 0x00FFFFFF 0x00777777
+							0x000000B4 0x03F0FC3F 0x00000000
+							0x000000B8 0x00333333 0x00000000
+							0x000000C0 0x00FFFFFF 0x00000000
+							0x000000C4 0x00FFFFFF 0x00777777
+						>;
+					};
+				};
+			};
+		};
+
+		dpaux@155c0000 {
+			prod-settings {
+				prod_c_dpaux {
+					board {
+						prod = <
+							0x00000124 0x000037FC 0x0000249C
+						>;
+					};
+				};
+			};
+		};
+	};
+
+	i2c@3160000 { //i2c
+		prod-settings {
+			mask-one-style;
+			prod_c_sm {
+				board {
+					prod = <
+						0x00000000 0x00007000 0x00002000 //I2C_I2C_CFG - debounce count
+						0x0000006C 0xFFFF0000 0x00160000 //I2C_I2C_INTERFACE_TIMING
+						0x00000094 0x00003F3F 0x00000304
+					>;
+				};
+			};
+		};
+	};
+
+	i2c@3180000 { //i2c
+		prod-settings {
+			mask-one-style;
+			prod_c_fm {
+				board {
+					prod = <
+						0x00000000 0x00007000 0x00002000 //I2C_I2C_CFG - debounce count
+						0x0000006C 0xFFFF0000 0x00190000 //I2C_I2C_INTERFACE_TIMING
+						0x00000094 0x00003F3F 0x00000204
+					>;
+				};
+			};
+		};
+	};
+
+	i2c@3190000 {  //i2c3, dp_aux_ch1_i2c
+		prod-settings {
+			mask-one-style;
+			prod_c_sm {
+				board {
+					prod = <0x0000006C 0xFFFF0000 0x00160000
+						0x00000094 0x00003F3F 0x00000304>;
+				};
+			};
+		};
+	};
+
+	i2c@c240000 { //i2c
+		prod-settings {
+			mask-one-style;
+			prod_c_sm {
+				board {
+					prod = <
+						0x00000000 0x00007000 0x00002000 //I2C_I2C_CFG - debounce count
+						0x0000006C 0xFFFF0000 0x00160000 //I2C_I2C_INTERFACE_TIMING
+						0x00000094 0x00003F3F 0x00000304
+					>;
+				};
+			};
+		};
+	};
+
+	i2c@c250000 { //i2c
+		prod-settings {
+			mask-one-style;
+			prod_c_fm {
+				board {
+					prod = <
+						0x00000000 0x00007000 0x00002000 //I2C_I2C_CFG - debounce count
+						0x0000006C 0xFFFF0000 0x00190000 //I2C_I2C_INTERFACE_TIMING
+						0x00000094 0x00003F3F 0x00000204
+					>;
+				};
+			};
+		};
+	};
+
+	ahci-sata@3507000 {
+		prod-settings {
+			mask-one-style;
+			prod {
+				board {
+					prod = <
+						1 0x00000680 0x00000001 0x1
+						1 0x00000690 0x3FFFFFFF 0x00000715	// T_SATA0_CHX_PHY_CTRL1_GEN1	31:0
+						1 0x00000694 0x3FFFFFFF 0x0000A018	// T_SATA0_CHX_PHY_CTRL1_GEN2	31:0
+						1 0x00000680 0x00000001 0x0
+					>;
+				};
+			};
+		};
+	};
+
+	csi_mipical {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			prod {
+				board {
+					prod = <
+						0x00000000 0x00000001 0x00000000
+						0x00000004 0x3f000010 0x2a000000
+						0x00000018 0x00200000 0x00200000
+						0x0000001C 0x00200000 0x00200000
+						0x00000020 0x00200000 0x00200000
+						0x00000024 0x00200000 0x00200000
+						0x00000028 0x00200000 0x00200000
+						0x0000002C 0x00200000 0x00200000
+						0x0000003C 0x00200000 0x00000000
+						0x00000040 0x00200000 0x00000000
+						0x00000044 0x00200000 0x00000000
+						0x00000048 0x00200000 0x00000000
+					>;
+				};
+				board_soc_a01 {
+					status = "disabled";
+					prod = <
+						0x00000018 0x0000f81f 0x00001010
+						0x0000001C 0x0000f81f 0x00001010
+						0x00000020 0x0000f81f 0x00001010
+						0x00000024 0x0000f81f 0x00001010
+						0x00000028 0x0000f81f 0x00001010
+						0x0000002C 0x0000f81f 0x00001010
+					 >;
+				};
+				board_soc_a02 {
+					status = "okay";
+					prod = <
+						0x00000018 0x0000f81f 0x00000000
+						0x0000001C 0x0000f81f 0x00000000
+						0x00000020 0x0000f81f 0x00000000
+						0x00000024 0x0000f81f 0x00000000
+						0x00000028 0x0000f81f 0x00000000
+						0x0000002C 0x0000f81f 0x00000000
+					>;
+				};
+			};
+		};
+	};
+
+	pcie-controller@10003000 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			prod_c_pad {
+				prod = <
+					0X000000C8 0XF07CF07C 0X80388038	// PADS_REFCLK_CFG0		31:0	 0X80388038
+					0X000000CC 0X0000F07C 0X00008038	// PADS_REFCLK_CFG1		31:0	 0X00008038
+					0X000000D0 0X00000138 0X00000028	// PADS_REFCLK_BIAS		31:0	 0X00000028
+				>;
+			};
+		};
+	};
+
+	sdhci@3460000 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			autocal-pu-pd-offset-hs200-1v8 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0000>;
+				};
+			};
+			autocal-pu-pd-offset-hs400-1v8 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0505>;
+				};
+			};
+			trim-delay-default {
+				board {
+					prod = <0x0000100 0x1F000000 0x5000000>;
+				};
+			};
+			tun-iterations-hs200 {
+				board {
+					prod = <0x00001C0 0x000E000 0x0004000>;
+				};
+			};
+			tun-iterations-hs400 {
+				board {
+					prod = <0x00001C0 0x000E000 0x0004000>;
+				};
+			};
+			prod-reset {
+				board {
+					prod = <
+						0x00001C0 0x03fc1FF8 0x50	// SDMMC_VENDOR_TUNING_CNTRL0_0	25:18=START_TAP_VAL   0x0
+										//				12:06=MUL_M	0x1
+										//				05:03=DIV_N     0x2
+						0x00001C4 0x00000070 0x0	// SDMMC_VENDOR_TUNING_CNTRL1_0 06:04=STEP_SIZE_SDR104_HS200	0x0
+					>;
+				};
+			};
+			autocal-en {
+				board {
+					prod = <
+						0x00001E4 0x20000000 0x20000000	// SDMMC_AUTO_CAL_CONFIG_0	29:29=AUTO_CAL_ENABLE	0x1
+					>;
+				};
+			};
+		};
+	};
+
+	sdhci@3440000 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			autocal-pu-pd-offset-default-3v3 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0003>;
+				};
+			};
+			autocal-pu-pd-offset-default-1v8 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0003>;
+				};
+			};
+			autocal-pu-pd-offset-sdr50-1v8 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0003>;
+				};
+			};
+			autocal-pu-pd-offset-sdr104-1v8 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0003>;
+				};
+			};
+			trim-delay-default {
+				board {
+					prod = <0x0000100 0x1F000000 0x5000000>;
+				};
+			};
+			tap-delay-default {
+				board {
+					prod = <0x0000100 0x00ff0000 0xb0000>;
+				};
+			};
+		};
+	};
+
+	sdhci@3400000 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			autocal-pu-pd-offset-default-3v3 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0000>;
+				};
+			};
+			autocal-pu-pd-offset-default-1v8 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0000>;
+				};
+			};
+			autocal-pu-pd-offset--sdr50-1v8 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0000>;
+				};
+			};
+			autocal-pu-pd-offset--sdr104-1v8 {
+				board {
+					prod = <0x00001E4 0x00007F7F 0x0503>;
+				};
+			};
+			trim-delay-default {
+				board {
+					prod = <0x0000100 0x1F000000 0x5000000>;
+				};
+			};
+			tap-delay-default {
+				board {
+					prod = <0x0000100 0x00ff0000 0xb0000>;
+				};
+			};
+		};
+	};
+        /*SPIB*/
+	spi@3210000 {
+		status = "okay";
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+				board {
+					prod = <0x04 0x00000fff 0x00000000
+						0x08 0x000000ff 0x00000000
+						0x0c 0x0000003f 0x00000020>;
+				};
+			};
+			prod_c_cs1 {
+				board {
+					prod = <0x04 0x00000fff 0x00000000
+						0x08 0x0000ff00 0x00000000
+						0x0c 0x00003f00 0x00002000>;
+                                };
+			};
+		};
+	};
+
+        /*SPIC*/
+	spi@3240000 {
+		status = "okay";
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+				board {
+				    prod = <0x04 0x00000fff 0x00000000
+					    0x08 0x000000ff 0x00000000
+					    0x0c 0x0000003f 0x00000020>;
+				};
+			};
+		};
+	};
+
+        /*SPIA*/
+	spi@c260000 {
+		status = "okay";
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+				board {
+				    prod = <0x04 0x00000fff 0x00000000
+					    0x08 0x000000ff 0x00000000
+					    0x0c 0x0000003f 0x0000000a>;
+				};
+			};
+		};
+	};
+
+        /*QSPI*/
+	spi@3270000 {
+		status = "okay";
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+				board {
+				    prod = <0x04 0x00000fff 0x00000000
+		                            0x08 0x000000ff 0x00000000
+		                            0x0c 0x0000003f 0x00000020
+		                            0x198 0x1f1f1f1f 0x00000000>;
+				};
+			};
+		};
+	};
+
+};

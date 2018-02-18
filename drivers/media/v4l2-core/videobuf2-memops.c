@@ -49,6 +49,12 @@ struct vm_area_struct *vb2_get_vma(struct vm_area_struct *vma)
 
 	memcpy(vma_copy, vma, sizeof(*vma));
 
+	if (vma_copy->vm_ops && vma_copy->vm_ops->open)
+		vma_copy->vm_ops->open(vma_copy);
+
+	if (vma->vm_ops && vma->vm_ops->close)
+		vma->vm_ops->close(vma);
+
 	vma_copy->vm_mm = NULL;
 	vma_copy->vm_next = NULL;
 	vma_copy->vm_prev = NULL;

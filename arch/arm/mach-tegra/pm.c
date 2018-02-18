@@ -37,6 +37,7 @@
 #include <asm/smp_plat.h>
 #include <asm/suspend.h>
 #include <asm/tlbflush.h>
+#include <mach/io_dpd.h>
 
 #include "flowctrl.h"
 #include "iomap.h"

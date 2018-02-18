@@ -1,0 +1,110 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+/ {
+	plugin-manager {
+		fragement@0 {
+			ids = ">=2180-1000-300";
+			override@0 {
+				target = <&ina3221x>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@1 {
+			ids = "2614-0000-000", "2614-0000-100";
+			override@0 {
+				target = <&tca6416_20>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@1 {
+				target = <&icm20628_68>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@2 {
+				target = <&ak8963_0d>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@3 {
+				target = <&bmp280_77>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@4 {
+				target = <&cm32180_48>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@5 {
+				target = <&i2cmux_70>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@2 {
+			ids = "2614-0000-000";
+			override@0 {
+				target = <&rt5658_a00>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@1 {
+				target = <&sound_card>;
+				_overlay_ {
+					nvidia,dai-link-1 {
+						codec-dai = <&rt5658_a00>;
+					};
+				};
+			};
+		};
+
+		fragement@3 {
+			ids = "2614-0000-100";
+			override@0 {
+				target = <&rt5658_b00>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@1 {
+				target = <&sound_card>;
+				_overlay_ {
+					nvidia,dai-link-1 {
+						codec-dai = <&rt5658_b00>;
+					};
+				};
+			};
+		};
+	};
+};

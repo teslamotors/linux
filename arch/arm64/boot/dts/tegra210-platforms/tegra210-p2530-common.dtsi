@@ -1,0 +1,293 @@
+/*
+ * arch/arm64/boot/dts/tegra210-platforms/tegra210-p2530-common.dtsi
+ *
+ * Copyright (c) 2014 - 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra210-platforms/tegra210-thermal-nct72-p2530.dtsi"
+#include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
+#include "tegra210-platforms/tegra210-ers-clk-init.dtsi"
+
+/ {
+	nvidia,boardids = "2530:0032:E0";
+	nvidia,proc-boardid = "2530:0032:E0";
+	nvidia,pmu-boardid = "2530:0032:E0";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		fastboot-instructions = "Tap on power button to navigate menu options.\nHold down power button for 2 sec and release for selecting an option\n";
+	};
+
+	pmc@7000e400 {
+		nvidia,invert-interrupt;
+	};
+
+	sdhci@700b0600 {
+		max-clk-limit = <266000000>;
+		uhs-mask = <0x00>;
+		built-in;
+		power-off-rail;
+		nvidia,enable-hs533-mode;
+		pll_source = "pll_p", "pll_c4_out1";
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		mmc-ocr-mask = <0>;
+		default-drv-type = <1>;
+		uhs-mask = <0x1c>;
+		power-off-rail;
+		nvidia,update-pinctrl-settings;
+		pinctrl-names = "sdmmc_schmitt_enable", "sdmmc_schmitt_disable", "sdmmc_clk_schmitt_enable", "sdmmc_clk_schmitt_disable", "sdmmc_drv_code", "sdmmc_default_drv_code";
+		pinctrl-0 = <&sdmmc3_schmitt_enable_state>;
+		pinctrl-1 = <&sdmmc3_schmitt_disable_state>;
+		pinctrl-2 = <&sdmmc3_clk_schmitt_enable_state>;
+		pinctrl-3 = <&sdmmc3_clk_schmitt_disable_state>;
+		pinctrl-4 = <&sdmmc3_drv_code_1_8V>;
+		pinctrl-5 = <&sdmmc3_default_drv_code_3_3V>;
+		status = "disabled";
+	};
+
+	sdhci@700b0200 {
+		nvidia,is-ddr-tap-delay;
+		nvidia,ddr-tap-delay = <0>;
+		uhs-mask = <0x8>;
+		power-off-rail;
+		status = "okay";
+	};
+
+	sdhci@700b0000 {
+		uhs-mask = <0xc>;
+		power-off-rail;
+		nvidia,update-pinctrl-settings;
+		pinctrl-names = "sdmmc_schmitt_enable", "sdmmc_schmitt_disable", "sdmmc_clk_schmitt_enable", "sdmmc_clk_schmitt_disable", "sdmmc_drv_code", "sdmmc_default_drv_code";
+		pinctrl-0 = <&sdmmc1_schmitt_enable_state>;
+		pinctrl-1 = <&sdmmc1_schmitt_disable_state>;
+		pinctrl-2 = <&sdmmc1_clk_schmitt_enable_state>;
+		pinctrl-3 = <&sdmmc1_clk_schmitt_disable_state>;
+		pinctrl-4 = <&sdmmc1_drv_code_1_8V>;
+		pinctrl-5 = <&sdmmc1_default_drv_code_3_3V>;
+		nvidia,sd-device;
+		status = "okay";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x80000000 >;
+	};
+
+	adma@702e2000  {
+		dma-channels = <10>;
+		status = "okay";
+	};
+
+
+	ahub {
+		i2s@702d1000 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			regulator-supplies = "vdd-1v8-audio-hv", "vdd-1v8-audio-hv-bias";
+			vdd-1v8-audio-hv-supply = <&max77620_sd3>;
+			vdd-1v8-audio-hv-bias-supply = <&max77620_sd3>;
+		};
+
+		i2s@702d1300 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			regulator-supplies = "vddio-dmic";
+			vddio-dmic-supply = <&max77620_sd3>;
+		};
+	};
+
+	wifi-antenna-tuning {
+		status = "disabled";
+	};
+
+	soctherm@0x700E2000 {
+		throttle@oc1 {
+			device_type = "throttlectl";
+			oc-alarm-id = <1>;
+			priority = <50>;
+			mode = "brief";
+			intr;
+			active_low;
+			count_threshold = <100>;
+			filter = <5100000>;
+			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
+					&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
+		};
+		throttle@oc3 {
+			device_type = "throttlectl";
+			oc-alarm-id = <3>;
+			priority = <49>;
+			mode = "brief";
+			intr;
+			active_low;
+			count_threshold = <15>;
+			filter = <5100000>;
+			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
+					&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
+		};
+		throttle_dev@cpu_medium {
+			dividend = <63>;
+			divisor = <255>;
+			duration = <0>;
+			step = <0>;
+		};
+		throttle_dev@gpu_medium {
+			level = "medium_throttling";
+		};
+	};
+
+	thermal-zones {
+		CPU-therm {
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+				max_err_temp = <9000>;
+				max_err_gain = <1000>;
+				gain_p = <1000>;
+				gain_d = <0>;
+				up_compensation = <20>;
+				down_compensation = <20>;
+			};
+			trips {
+				cpu_critical {
+					temperature = <102500>;
+					hysteresis = <0>;
+					type = "critical";
+					writable;
+				};
+				cpu_heavy {
+					temperature = <98500>;
+					hysteresis = <0>;
+					type = "hot";
+					writable;
+				};
+				cpu_throttle {
+					temperature = <89000>;
+					hysteresis = <0>;
+					type = "passive";
+					writable;
+				};
+			};
+			cooling-maps {
+				map0 {
+					trip = <&{/thermal-zones/CPU-therm/trips/cpu_critical}>;
+					cdev-type = "tegra-shutdown";
+					cooling-device = <&{/soctherm@0x700E2000/throttle@critical}
+						THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				map1 {
+					trip = <&{/thermal-zones/CPU-therm/trips/cpu_heavy}>;
+					cdev-type = "tegra-heavy";
+					cooling-device = <&{/soctherm@0x700E2000/throttle@heavy}
+						THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				map2 {
+					trip = <&{/thermal-zones/CPU-therm/trips/cpu_throttle}>;
+					cdev-type = "cpu-balanced";
+					cooling-device = <&{/bthrot_cdev/cpu_balanced}
+						THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+		GPU-therm {
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+				max_err_temp = <9000>;
+				max_err_gain = <1000>;
+				gain_p = <1000>;
+				gain_d = <0>;
+				up_compensation = <20>;
+				down_compensation = <20>;
+			};
+			trips {
+				gpu_critical {
+					temperature = <103000>;
+					hysteresis = <0>;
+					type = "critical";
+					writable;
+				};
+				gpu_heavy {
+					temperature = <100000>;
+					hysteresis = <0>;
+					type = "hot";
+					writable;
+				};
+				gpu_throttle {
+					temperature = <90500>;
+					hysteresis = <0>;
+					type = "passive";
+					writable;
+				};
+			};
+			cooling-maps {
+				map0 {
+					trip = <&{/thermal-zones/GPU-therm/trips/gpu_critical}>;
+					cdev-type = "tegra-shutdown";
+					cooling-device = <&{/soctherm@0x700E2000/throttle@critical}
+						THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				map1 {
+					trip = <&{/thermal-zones/GPU-therm/trips/gpu_heavy}>;
+					cdev-type = "tegra-heavy";
+					cooling-device = <&{/soctherm@0x700E2000/throttle@heavy}
+						THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				map2 {
+					trip = <&{/thermal-zones/GPU-therm/trips/gpu_throttle}>;
+					cdev-type = "gpu-balanced";
+					cooling-device = <&{/bthrot_cdev/gpu_balanced}
+						THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+		LCPU-therm {
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+				max_err_temp = <9000>;
+				max_err_gain = <1000>;
+				gain_p = <1000>;
+				gain_d = <0>;
+				up_compensation = <20>;
+				down_compensation = <20>;
+			};
+		};
+		PLL-therm {
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+				max_err_temp = <9000>;
+				max_err_gain = <1000>;
+				gain_p = <1000>;
+				gain_d = <0>;
+				up_compensation = <20>;
+				down_compensation = <20>;
+			};
+		};
+
+		Tboard_tegra {
+			status = "okay";
+		};
+		Tdiode_tegra {
+			status = "okay";
+		};
+	};
+};
+

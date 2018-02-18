@@ -1,0 +1,47 @@
+Thermal estimator driver.
+
+Properties :
+ - compatible : Should contain "nvidia,therm-est".
+ - polling-period : Polling wait times for thermal estimation, in milliseconds.
+ - tc1 : Coefficient 1 for thermal trend calculation.
+ - tc2 : Coefficient 2 for thermal trend calculation.
+ - node for subdev : Node for subdevice information. Required.
+
+Properties in subdev node : Required.
+ - subdev_names : list of strings. It contains list of the name of the therm
+		zones used for estimation.
+ - node for coeff_set : contains a set of zone specific coefficients+offset.
+			This node can be numerous.
+
+Properties in coeff_set : Required. Can be numerous.
+ - toffset : Temperature offset for thermal estimation, in milli-celsius.
+ - coeffs : An array of coefficients, the number of entries should be twenty
+	per sub device.
+
+Example:
+
+	therm_est_sensor {
+		device_type = "therm-est-subdev";
+		polling-period = <1100>;
+		tc1 = <10>;
+		tc2 = <1>;
+		subdev {
+			subdev_names = "Tdiode_tegra", "Tboard_tegra";
+
+			coeff_set@0 {
+				toffset = <9793>;
+				coeffs = <
+					2 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 0 0 (-1) (-7)
+					(-11) (-7) (-5) (-3) (-3) (-2) (-1) 0 0 0 1 1 1 2 2 3 4 6 11 18
+				>;
+			};
+
+			coeff_set@1 {
+				toffset = <708>;
+				coeffs = <
+					-1 -1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 0 (-1) (-3) (-9)
+					(-6) (-4) (-1) 0 0 0 0 0 0 0 1 1 1 2 2 5 7 10 17 20
+				>;
+			};
+		};
+	};

@@ -1,0 +1,7 @@
+#include "tegra124-loki-common.dtsi"
+#include "tegra124-platforms/tegra124-loki-powermon-e2548.dtsi"
+#include "tegra124-platforms/tegra124-loki-power-tree-e2545-0000-a00.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+};

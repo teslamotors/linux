@@ -3,6 +3,7 @@
  *
  * (C) Copyright 2002-2004, 2007 Greg Kroah-Hartman <greg@kroah.com>
  * (C) Copyright 2007 Novell Inc.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Released under the GPL v2 only.
  *
@@ -21,6 +22,8 @@
 #include <linux/suspend.h>
 #include <linux/kexec.h>
 #include "pci.h"
+
+#include <mach/tegra_smmu.h> /* FIXME */
 
 struct pci_dynid {
 	struct list_head node;
@@ -1105,7 +1108,7 @@ static int pci_pm_restore(struct device *dev)
 
 #endif /* !CONFIG_HIBERNATE_CALLBACKS */
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 
 static int pci_pm_runtime_suspend(struct device *dev)
 {
@@ -1201,16 +1204,6 @@ static int pci_pm_runtime_idle(struct device *dev)
 	return ret;
 }
 
-#else /* !CONFIG_PM_RUNTIME */
-
-#define pci_pm_runtime_suspend	NULL
-#define pci_pm_runtime_resume	NULL
-#define pci_pm_runtime_idle	NULL
-
-#endif /* !CONFIG_PM_RUNTIME */
-
-#ifdef CONFIG_PM
-
 static const struct dev_pm_ops pci_dev_pm_ops = {
 	.prepare = pci_pm_prepare,
 	.suspend = pci_pm_suspend,
@@ -1232,11 +1225,15 @@ static const struct dev_pm_ops pci_dev_pm_ops = {
 
 #define PCI_PM_OPS_PTR	(&pci_dev_pm_ops)
 
-#else /* !COMFIG_PM_OPS */
+#else /* !CONFIG_PM */
+
+#define pci_pm_runtime_suspend	NULL
+#define pci_pm_runtime_resume	NULL
+#define pci_pm_runtime_idle	NULL
 
 #define PCI_PM_OPS_PTR	NULL
 
-#endif /* !COMFIG_PM_OPS */
+#endif /* !CONFIG_PM */
 
 /**
  * __pci_register_driver - register a new pci driver
@@ -1416,6 +1413,15 @@ EXPORT_SYMBOL(pci_bus_type);
 
 static int __init pci_driver_init(void)
 {
-	return bus_register(&pci_bus_type);
+	int err;
+
+	err = bus_register(&pci_bus_type);
+	if (err)
+		return err;
+
+#ifdef CONFIG_TEGRA_IOMMU_SMMU
+	bus_register_notifier(&pci_bus_type, &tegra_smmu_device_pci_nb);
+#endif
+	return 0;
 }
 postcore_initcall(pci_driver_init);

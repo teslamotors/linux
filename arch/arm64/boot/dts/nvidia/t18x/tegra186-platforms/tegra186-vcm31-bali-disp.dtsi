@@ -1,0 +1,162 @@
+/*
+ * tegra186-vcm31-bali-disp.dtsi: VCM3.1 based bali display dtsi.
+ *
+ * Copyright (c) 2015-2017, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	host1x {
+		status = "okay";
+
+		nvdisplay@15200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-win = <0>;
+			nvidia,dc-ctrlnum = <0>;
+			nvidia,dc-or-node = "/host1x/sor";
+			//win-mask = <0x07>;
+		};
+
+		nvdisplay@15210000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-win = <3>;
+			nvidia,dc-ctrlnum = <1>;
+			nvidia,dc-or-node = "/host1x/sor1";
+			//win-mask = <0x38>;
+		};
+
+		nvdisplay@15220000 {
+			status = "disabled";
+		};
+
+		dsi { /* dsi@15300000 */
+			status = "disabled";
+		};
+
+		sor {
+			status = "okay";
+			nvidia,xbar-ctrl = <2 1 0 3 4>;
+                        nvidia,ddc-i2c-bus = <&dp_aux_ch0_i2c>;
+			nvidia,hpd-gpio = <&tegra_gpio TEGRA_GPIO(P, 0) 1>;
+
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+                                nvidia,edid =
+                                   [00 FF FF FF FF FF FF 00 04 21 00 00 00 00 00 00
+                                        01 00 01 03 00 00 00 00 00 00 00 00 00 00 00 00
+                                        00 00 00 00 00 00 01 01 01 01 01 01 01 01 01 01
+                                        01 01 01 01 01 01 00 23 80 80 70 D0 09 20 28 28
+                                        42 00 00 00 00 00 00 00 00 00 00 10 00 00 00 00
+                                        00 00 00 00 00 00 00 00 00 00 00 00 00 10 00 00
+                                        00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 10
+                                        00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 7E];
+
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-pins = <TEGRA_DC_OUT_PIN_H_SYNC TEGRA_DC_OUT_PIN_POL_LOW
+										TEGRA_DC_OUT_PIN_V_SYNC TEGRA_DC_OUT_PIN_POL_LOW>;
+					nvidia,out-parent-clk = "plld2";
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <1920>;
+					nvidia,out-yres = <720>;
+				};
+
+				display-timings {
+					1920x720-32 {
+						clock-frequency = <89600000>;
+						hactive = <1920>;
+						vactive = <720>;
+						hfront-porch = <40>;
+						hback-porch = <48>;
+						hsync-len = <40>;
+						vfront-porch = <4>;
+						vback-porch = <3>;
+						vsync-len = <2>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+			};
+		};
+
+
+		sor1 {
+			status = "okay";
+			nvidia,xbar-ctrl = <2 1 0 3 4>;
+			nvidia,ddc-i2c-bus = <&dp_aux_ch1_i2c>;
+			nvidia,hpd-gpio = <&tegra_gpio TEGRA_GPIO(P, 1) 1>;
+
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+                                nvidia,edid =
+                                   [00 FF FF FF FF FF FF 00 04 21 00 00 00 00 00 00
+                                        01 00 01 03 00 00 00 00 00 00 00 00 00 00 00 00
+                                        00 00 00 00 00 00 01 01 01 01 01 01 01 01 01 01
+                                        01 01 01 01 01 01 00 23 80 80 70 D0 09 20 28 28
+                                        42 00 00 00 00 00 00 00 00 00 00 10 00 00 00 00
+                                        00 00 00 00 00 00 00 00 00 00 00 00 00 10 00 00
+                                        00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 10
+                                        00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 7E];
+
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-pins = <TEGRA_DC_OUT_PIN_H_SYNC TEGRA_DC_OUT_PIN_POL_LOW
+										TEGRA_DC_OUT_PIN_V_SYNC TEGRA_DC_OUT_PIN_POL_LOW>;
+					nvidia,out-parent-clk = "plld3";
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <1920>;
+					nvidia,out-yres = <720>;
+				};
+
+				display-timings {
+					1920x720-32 {
+						clock-frequency = <89600000>;
+						hactive = <1920>;
+						vactive = <720>;
+						hfront-porch = <40>;
+						hback-porch = <48>;
+						hsync-len = <40>;
+						vfront-porch = <4>;
+						vback-porch = <3>;
+						vsync-len = <2>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+			};
+
+		};
+
+		dpaux@155c0000 {
+			status = "okay";
+		};
+
+		dpaux@15040000 {
+			status = "okay";
+		};
+	};
+};

@@ -247,4 +247,7 @@
 /* MESON */
 #define PORT_MESON	109
 
+/* Tegra HV */
+#define PORT_TEGRA_HV	110
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */

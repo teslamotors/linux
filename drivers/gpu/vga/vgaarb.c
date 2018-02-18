@@ -6,6 +6,7 @@
  * (C) Copyright 2005 Benjamin Herrenschmidt <benh@kernel.crashing.org>
  * (C) Copyright 2007 Paulo R. Zanoni <przanoni@gmail.com>
  * (C) Copyright 2007, 2009 Tiago Vignatti <vignatti@freedesktop.org>
+ * Copyright (c) 2015, NVIDIA CORPORATION, All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -1091,8 +1092,10 @@ static ssize_t vga_arb_write(struct file *file, const char __user * buf,
 		vgadev = vgadev_find(pdev);
 		pr_debug("vgaarb: vgadev %p\n", vgadev);
 		if (vgadev == NULL) {
-			pr_err("vgaarb: this pci device is not a vga device\n");
-			pci_dev_put(pdev);
+			if (pdev) {
+				pr_err("vgaarb: this pci device is not a vga device\n");
+				pci_dev_put(pdev);
+			}
 			ret_val = -ENODEV;
 			goto done;
 		}

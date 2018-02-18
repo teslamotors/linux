@@ -4,6 +4,7 @@
  *  Copyright(C) 2005-2006, Thomas Gleixner <tglx@linutronix.de>
  *  Copyright(C) 2005-2007, Red Hat, Inc., Ingo Molnar
  *  Copyright(C) 2006-2007  Timesys Corp., Thomas Gleixner
+ *  Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  *  High-resolution kernel timers
  *
@@ -1172,6 +1173,23 @@ int hrtimer_try_to_cancel(struct hrtimer *timer)
 }
 EXPORT_SYMBOL_GPL(hrtimer_try_to_cancel);
 
+int hrtimer_try_to_cancel_relaxed(struct hrtimer *timer)
+{
+	struct hrtimer_clock_base *base;
+	unsigned long flags;
+	int ret = -1;
+
+	base = lock_hrtimer_base(timer, &flags);
+
+	if (!hrtimer_callback_running_relaxed(timer))
+		ret = remove_hrtimer(timer, base);
+
+	unlock_hrtimer_base(timer, &flags);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(hrtimer_try_to_cancel_relaxed);
+
 /**
  * hrtimer_cancel - cancel a timer and wait for the handler to finish.
  * @timer:	the timer to be cancelled
@@ -1183,7 +1201,7 @@ EXPORT_SYMBOL_GPL(hrtimer_try_to_cancel);
 int hrtimer_cancel(struct hrtimer *timer)
 {
 	for (;;) {
-		int ret = hrtimer_try_to_cancel(timer);
+		int ret = hrtimer_try_to_cancel_relaxed(timer);
 
 		if (ret >= 0)
 			return ret;

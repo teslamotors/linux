@@ -1,0 +1,590 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/media/camera.h>
+#include <dt-bindings/platform/t210/t210.h>
+
+/* camera control gpio definitions */
+/ {
+	host1x {
+		vi@15700000 {
+			num-channels = <6>;
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					vi_in0: endpoint {
+						remote-endpoint = <&csi_out0>;
+					};
+				};
+				port@1 {
+					reg = <1>;
+					vi_in1: endpoint {
+						remote-endpoint = <&csi_out1>;
+					};
+				};
+				port@2 {
+					reg = <2>;
+					vi_in2: endpoint {
+						remote-endpoint = <&csi_out2>;
+					};
+				};
+				port@3 {
+					reg = <3>;
+					vi_in3: endpoint {
+						remote-endpoint = <&csi_out3>;
+					};
+				};
+				port@4 {
+					reg = <4>;
+					vi_in4: endpoint {
+						remote-endpoint = <&csi_out4>;
+					};
+				};
+				port@5 {
+					reg = <5>;
+					vi_in5: endpoint {
+						remote-endpoint = <&csi_out5>;
+					};
+				};
+			};
+		};
+
+		nvcsi@150c0000 {
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					csi_in0: endpoint@0 {
+						bus-width = <2>;
+						remote-endpoint = <&imx219_out0>;
+					};
+				};
+				port@1 {
+					reg = <1>;
+					csi_out0: endpoint@1 {
+						remote-endpoint = <&vi_in0>;
+					};
+				};
+				port@2 {
+					reg = <2>;
+					csi_in1: endpoint@2 {
+						bus-width = <2>;
+						remote-endpoint = <&imx219_out1>;
+					};
+				};
+				port@3 {
+					reg = <3>;
+					csi_out1: endpoint@3 {
+						remote-endpoint = <&vi_in1>;
+					};
+				};
+				port@4 {
+					reg = <4>;
+					csi_in2: endpoint@4 {
+						bus-width = <2>;
+						remote-endpoint = <&imx219_out2>;
+					};
+				};
+				port@5 {
+					reg = <5>;
+					csi_out2: endpoint@5 {
+						remote-endpoint = <&vi_in2>;
+					};
+				};
+				port@6 {
+					reg = <6>;
+					csi_in3: endpoint@6 {
+						bus-width = <2>;
+						remote-endpoint = <&imx219_out3>;
+					};
+				};
+				port@7 {
+					reg = <7>;
+					csi_out3: endpoint@7 {
+						remote-endpoint = <&vi_in3>;
+					};
+				};
+				port@8 {
+					reg = <8>;
+					csi_in4: endpoint@8 {
+						bus-width = <2>;
+						remote-endpoint = <&imx219_out4>;
+					};
+				};
+				port@9 {
+					reg = <9>;
+					csi_out4: endpoint@9 {
+						remote-endpoint = <&vi_in4>;
+					};
+				};
+				port@10 {
+					reg = <10>;
+					csi_in5: endpoint@10 {
+						bus-width = <2>;
+						remote-endpoint = <&imx219_out5>;
+					};
+				};
+				port@11 {
+					reg = <11>;
+					csi_out5: endpoint@11 {
+						remote-endpoint = <&vi_in5>;
+					};
+				};
+			};
+		};
+	};
+
+	i2c@3180000 {
+		tca9548@77 {
+			i2c@0 {
+				imx219_a@10 {
+					compatible = "nvidia,imx219";
+					reg = <0x10>;
+
+					physical_w = "5.095";
+					physical_h = "4.930";
+
+					sensor_model ="imx219";
+					dovdd-supply = <&en_vdd_cam>;
+					avdd-reg = "vana";
+					dvdd-reg = "vdig";
+					iovdd-reg = "dovdd";
+					devnode = "video0";
+
+					mode0 { // IMX219_MODE_3280X2464
+						mclk_khz = "24000";
+						num_lanes = "2";
+						tegra_sinterface = "serial_a";
+						discontinuous_clk = "yes";
+						cil_settletime = "0";
+						active_w = "3280";
+						active_h = "2464";
+						pixel_t = "bayer_rggb";
+						readout_orientation = "90";
+						line_length = "3448";
+						inherent_gain = "1";
+						mclk_multiplier = "25";
+						pix_clk_hz = "224000000";
+
+						min_gain_val = "1.0";
+						max_gain_val = "16.0";
+						min_hdr_ratio = "1";
+						max_hdr_ratio = "64";
+						min_framerate = "1.462526";
+						max_framerate = "21";
+						min_exp_time = "13";
+						max_exp_time = "683709";
+					};
+					ports {
+						#address-cells = <1>;
+						#size-cells = <0>;
+
+						port@0 {
+							reg = <0>;
+							imx219_out0: endpoint {
+								csi-port = <0>;
+								bus-width = <2>;
+								remote-endpoint = <&csi_in0>;
+							};
+						};
+					};
+				};
+			};
+			i2c@1 {
+				imx219_b@10 {
+					compatible = "nvidia,imx219";
+					reg = <0x10>;
+
+					physical_w = "5.095";
+					physical_h = "4.930";
+
+					sensor_model ="imx219";
+					avdd-reg = "vana";
+					dvdd-reg = "vdig";
+					iovdd-reg = "dovdd";
+					devnode = "video1";
+
+					mode0 { // IMX219_MODE_3280X2464
+						mclk_khz = "24000";
+						num_lanes = "2";
+						tegra_sinterface = "serial_b";
+						discontinuous_clk = "yes";
+						cil_settletime = "0";
+
+						active_w = "3280";
+						active_h = "2464";
+						pixel_t = "bayer_rggb";
+						readout_orientation = "90";
+						line_length = "3448";
+						inherent_gain = "1";
+						mclk_multiplier = "25";
+						pix_clk_hz = "224000000";
+
+						min_gain_val = "1.0";
+						max_gain_val = "16.0";
+						min_hdr_ratio = "1";
+						max_hdr_ratio = "64";
+						min_framerate = "1.462526";
+						max_framerate = "21";
+						min_exp_time = "13";
+						max_exp_time = "683709";
+					};
+					ports {
+						#address-cells = <1>;
+						#size-cells = <0>;
+
+						port@0 {
+							reg = <0>;
+							imx219_out1: endpoint {
+								csi-port = <1>;
+								bus-width = <2>;
+								remote-endpoint = <&csi_in1>;
+							};
+						};
+					};
+				};
+			};
+			i2c@2 {
+				imx219_c@10 {
+					compatible = "nvidia,imx219";
+					reg = <0x10>;
+
+					physical_w = "5.095";
+					physical_h = "4.930";
+
+					sensor_model ="imx219";
+					avdd-reg = "vana";
+					dvdd-reg = "vdig";
+					iovdd-reg = "dovdd";
+					devnode = "video2";
+
+					mode0 { // IMX219_MODE_3280X2464
+						mclk_khz = "24000";
+						num_lanes = "2";
+						tegra_sinterface = "serial_c";
+						discontinuous_clk = "yes";
+						cil_settletime = "0";
+
+						active_w = "3280";
+						active_h = "2464";
+						pixel_t = "bayer_rggb";
+						readout_orientation = "90";
+						line_length = "3448";
+						inherent_gain = "1";
+						mclk_multiplier = "25";
+						pix_clk_hz = "224000000";
+
+						min_gain_val = "1.0";
+						max_gain_val = "16.0";
+						min_hdr_ratio = "1";
+						max_hdr_ratio = "64";
+						min_framerate = "1.462526";
+						max_framerate = "21";
+						min_exp_time = "13";
+						max_exp_time = "683709";
+					};
+					ports {
+						#address-cells = <1>;
+						#size-cells = <0>;
+
+						port@0 {
+							reg = <0>;
+							imx219_out2: endpoint {
+								csi-port = <2>;
+								bus-width = <2>;
+								remote-endpoint = <&csi_in2>;
+							};
+						};
+					};
+				};
+			};
+			i2c@3 {
+				imx219_d@10 {
+					compatible = "nvidia,imx219";
+					reg = <0x10>;
+
+					physical_w = "5.095";
+					physical_h = "4.930";
+
+					sensor_model ="imx219";
+					avdd-reg = "vana";
+					dvdd-reg = "vdig";
+					iovdd-reg = "dovdd";
+					devnode = "video3";
+
+					mode0 { // IMX219_MODE_3280X2464
+						mclk_khz = "24000";
+						num_lanes = "2";
+						tegra_sinterface = "serial_d";
+						discontinuous_clk = "yes";
+						cil_settletime = "0";
+
+						active_w = "3280";
+						active_h = "2464";
+						pixel_t = "bayer_rggb";
+						readout_orientation = "90";
+						line_length = "3448";
+						inherent_gain = "1";
+						mclk_multiplier = "25";
+						pix_clk_hz = "224000000";
+
+						min_gain_val = "1.0";
+						max_gain_val = "16.0";
+						min_hdr_ratio = "1";
+						max_hdr_ratio = "64";
+						min_framerate = "1.462526";
+						max_framerate = "21";
+						min_exp_time = "13";
+						max_exp_time = "683709";
+					};
+					ports {
+						#address-cells = <1>;
+						#size-cells = <0>;
+
+						port@0 {
+							reg = <0>;
+							imx219_out3: endpoint {
+								csi-port = <3>;
+								bus-width = <2>;
+								remote-endpoint = <&csi_in3>;
+							};
+						};
+					};
+				};
+			};
+			i2c@4 {
+				imx219_e@10 {
+					compatible = "nvidia,imx219";
+					reg = <0x10>;
+
+					physical_w = "5.095";
+					physical_h = "4.930";
+
+					sensor_model ="imx219";
+					avdd-reg = "vana";
+					dvdd-reg = "vdig";
+					iovdd-reg = "dovdd";
+					devnode = "video4";
+
+					mode0 { // IMX219_MODE_3280X2464
+						mclk_khz = "24000";
+						num_lanes = "2";
+						tegra_sinterface = "serial_e";
+						discontinuous_clk = "yes";
+						cil_settletime = "0";
+
+						active_w = "3280";
+						active_h = "2464";
+						pixel_t = "bayer_rggb";
+						readout_orientation = "90";
+						line_length = "3448";
+						inherent_gain = "1";
+						mclk_multiplier = "25";
+						pix_clk_hz = "224000000";
+
+						min_gain_val = "1.0";
+						max_gain_val = "16.0";
+						min_hdr_ratio = "1";
+						max_hdr_ratio = "64";
+						min_framerate = "1.462526";
+						max_framerate = "21";
+						min_exp_time = "13";
+						max_exp_time = "683709";
+					};
+					ports {
+						#address-cells = <1>;
+						#size-cells = <0>;
+
+						port@0 {
+							reg = <0>;
+							imx219_out4: endpoint {
+								csi-port = <4>;
+								bus-width = <2>;
+								remote-endpoint = <&csi_in4>;
+							};
+						};
+					};
+				};
+			};
+			i2c@5 {
+				imx219_f@10 {
+					compatible = "nvidia,imx219";
+					reg = <0x10>;
+
+					physical_w = "5.095";
+					physical_h = "4.930";
+
+					sensor_model ="imx219";
+					avdd-reg = "vana";
+					dvdd-reg = "vdig";
+					iovdd-reg = "dovdd";
+					devnode = "video5";
+
+					mode0 { // IMX219_MODE_3280X2464
+						mclk_khz = "24000";
+						num_lanes = "2";
+						tegra_sinterface = "serial_f";
+						discontinuous_clk = "yes";
+						cil_settletime = "0";
+
+						active_w = "3280";
+						active_h = "2464";
+						pixel_t = "bayer_rggb";
+						readout_orientation = "90";
+						line_length = "3448";
+						inherent_gain = "1";
+						mclk_multiplier = "25";
+						pix_clk_hz = "224000000";
+
+						min_gain_val = "1.0";
+						max_gain_val = "16.0";
+						min_hdr_ratio = "1";
+						max_hdr_ratio = "64";
+						min_framerate = "1.462526";
+						max_framerate = "21";
+						min_exp_time = "13";
+						max_exp_time = "683709";
+					};
+					ports {
+						#address-cells = <1>;
+						#size-cells = <0>;
+
+						port@0 {
+							reg = <0>;
+							imx219_out5: endpoint {
+								csi-port = <5>;
+								bus-width = <2>;
+								remote-endpoint = <&csi_in5>;
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};
+
+/* camera control gpio definitions */
+/ {
+
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+
+		/**
+		* Physical settings to calculate max ISO BW
+		*
+		* num_csi_lanes = <>;
+		* Total number of CSI lanes when all cameras are active
+		*
+		* max_lane_speed = <>;
+		* Max lane speed in Kbit/s
+		*
+		* min_bits_per_pixel = <>;
+		* Min bits per pixel
+		*
+		* vi_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the VI ISO case
+		*
+		* vi_bw_margin_pct = <>;
+		* Vi bandwidth margin in percentage
+		*
+		* max_pixel_rate = <>;
+		* Max pixel rate in Kpixel/s for the ISP ISO case
+		*
+		* isp_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the ISP ISO case
+		*
+		* isp_bw_margin_pct = <>;
+		* Isp bandwidth margin in percentage
+		*/
+		num_csi_lanes = <12>;
+		max_lane_speed = <1500000>;
+		min_bits_per_pixel = <10>;
+		vi_peak_byte_per_pixel = <2>;
+		vi_bw_margin_pct = <25>;
+		isp_peak_byte_per_pixel = <5>;
+		isp_bw_margin_pct = <25>;
+
+		/**
+		 * The general guideline for naming badge_info contains 3 parts, and is as follows,
+		 * The first part is the camera_board_id for the module; if the module is in a FFD
+		 * platform, then use the platform name for this part.
+		 * The second part contains the position of the module, ex. “rear” or “front”.
+		 * The third part contains the last 6 characters of a part number which is found
+		 * in the module's specsheet from the vender.
+		 */
+		modules {
+			module0 {
+				badge = "e3322_bottomleft_A815P2";
+				position = "bottomleft";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/i2c@3180000/tca9548@77/i2c@0/imx219_a@10";
+				};
+			};
+			module1 {
+				badge = "e3322_centerleft_A815P2";
+				position = "centerleft";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/i2c@3180000/tca9548@77/i2c@1/imx219_b@10";
+				};
+			};
+			module2 {
+				badge = "e3322_centerright_A815P2";
+				position = "centerright";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/i2c@3180000/tca9548@77/i2c@2/imx219_c@10";
+				};
+			};
+			module3 {
+				badge = "e3322_topleft_A815P2";
+				position = "topleft";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/i2c@3180000/tca9548@77/i2c@3/imx219_d@10";
+				};
+			};
+			module4 {
+				badge = "e3322_bottomright_A815P2";
+				position = "bottomright";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/i2c@3180000/tca9548@77/i2c@4/imx219_e@10";
+				};
+			};
+			module5 {
+				badge = "e3322_topright_A815P2";
+				position = "topright";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/i2c@3180000/tca9548@77/i2c@5/imx219_f@10";
+				};
+			};
+		};
+	};
+};

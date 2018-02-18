@@ -1,0 +1,61 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/ {
+	trusty {
+		compatible = "android,trusty-smc-v1";
+		ranges;
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		irq {
+			compatible = "android,trusty-irq-v1";
+		};
+
+		fiq {
+			compatible = "android,trusty-fiq-v1";
+			ranges;
+			#address-cells = <2>;
+			#size-cells = <2>;
+
+			fiq-debugger {
+				compatible = "android,trusty-fiq-v1-tegra-uart";
+				reg = <0x0 0x70006000 0x0 0x40>;
+				interrupts = <0 36 0x04
+					      0 16 0x04>;
+				interrupt-names = "fiq", "signal";
+			};
+
+			watchdog {
+				compatible = "nvidia,tegra-wdt";
+				reg = <0x0 0x60005100 0x0 0x20
+				       0x0 0x60005070 0x0 0x08>;
+				interrupts = <0 123 0x04>;
+				interrupt-names = "fiq";
+			};
+		};
+
+		virtio {
+			compatible = "android,trusty-virtio-v1";
+		};
+
+		log {
+			compatible = "android,trusty-log-v1";
+		};
+	};
+};

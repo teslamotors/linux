@@ -1,0 +1,148 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra186-quill-spmic-p3310-1000-a00-00.dtsi"
+#include "tegra186-cvb-slt-p2598-a00-e3340-1099-a00-00.dtsi"
+
+/ {
+
+	fixed-regulators {
+		battery_reg: regulator@0 {
+			compatible = "regulator-fixed";
+			reg = <0>;
+			regulator-name = "vdd-ac-bat";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			regulator-always-on;
+		};
+
+		vdd_1v8_ap: regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <101>;
+			regulator-name = "vdd-1v8-ap";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+			regulator-boot-on;
+		};
+
+		vdd_usb1_5v_con: regulator@113 {
+			compatible = "regulator-fixed";
+			reg = <113>;
+			regulator-name = "vdd-usb1-5v-con";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(L, 5) 0>;
+			enable-active-high;
+		};
+
+		vdd_usb2_5v_con: regulator@114 {
+			compatible = "regulator-fixed";
+			reg = <114>;
+			regulator-name = "vdd-usb2-5v-con";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+		};
+	};
+
+	ether_qos@2490000 {
+		vddio_sys_enet_bias-supply = <&spmic_sd2>;
+		vddio_enet-supply = <&spmic_sd3>;
+		phy_vdd_1v8-supply = <&spmic_sd2>;
+		phy_ovdd_rgmii-supply = <&spmic_sd3>;
+		phy_pllvdd-supply = <&spmic_sd1>;
+	};
+
+	host1x {
+		nvdisplay@15200000 {
+			avdd_lcd-supply = <&vdd_dis_3v3_lcd>;
+			dvdd_lcd-supply = <&vdd_lcd_1v8_dis>;
+			avdd_dsi_csi-supply = <&spmic_sd1>;
+		};
+		nvdisplay@15210000 {
+			avdd_hdmi-supply = <&spmic_ldo7>;
+			avdd_hdmi_pll-supply = <&spmic_sd2>;
+			vdd_hdmi_5v0-supply = <&vddio_5v0_hdmi>;
+		};
+	};
+
+	sdhci@3460000 {
+		vddio_sdmmc-supply = <&spmic_sd2>;
+		vddio_sd_slot-supply = <&spmic_sd3>;
+		vqmmc-supply = <&spmic_sd2>;
+		vmmc-supply = <&spmic_sd3>;
+	};
+
+	sdhci@3440000 {
+		vddio_sdmmc-supply = <&spmic_ldo5>;
+		vddio_sd_slot-supply = <&spmic_sd2>;
+		vqmmc-supply = <&spmic_ldo5>;
+		vmmc-supply = <&spmic_sd2>;
+	};
+
+	sdhci@3420000 {
+		vddio_sdmmc-supply = <&spmic_sd2>;
+		vddio_sd_slot-supply = <&spmic_sd3>;
+		vqmmc-supply = <&spmic_sd2>;
+		vmmc-supply = <&spmic_sd3>;
+	};
+
+	sdhci@3400000 {
+		vddio_sdmmc-supply = <&spmic_ldo3>;
+		vmmc-supply = <&spmic_ldo3>;
+	};
+
+	xhci@3530000 {
+		avddio_usb-supply = <&spmic_sd3>;
+		avdd_pll_utmip-supply = <&spmic_sd2>;
+		hvdd_usb-supply =  <&spmic_sd2>;
+	};
+
+	xudc@3550000 {
+		avdd-usb-supply = <&spmic_sd3>;
+		dvdd-pex-supply = <&spmic_ldo7>;
+		hvdd-pex-supply =  <&spmic_sd2>;
+		dvdd-pex-pll-supply = <&spmic_ldo7>;
+		hvdd-pex-pll-supply = <&spmic_sd2>;
+	};
+
+	pinctrl@3520000 {
+		vbus-0-supply = <&vdd_usb0_5v_con>;
+		vbus-1-supply = <&vdd_usb1_5v_con>;
+		vbus-2-supply = <&vdd_usb2_5v_con>;
+		vbus-3-supply = <&vdd_usb2_5v_con>;
+		vddio-hsic-supply = <&vdd_usb2_5v_con>;
+		hvdd_pex_pll-supply = <&spmic_sd2>;
+		hvdd_pex-supply = <&spmic_sd2>;
+		dvdd_pex-supply = <&spmic_ldo7>;
+		avdd_usb-supply = <&spmic_sd3>;
+		vclamp_usb-supply = <&spmic_sd2>;
+		avdd_pll_erefeut-supply = <&spmic_sd2>;
+	};
+
+	pcie-controller@10003000 {
+		dvdd-pex-supply = <&spmic_ldo7>;
+		hvdd-pex-pll-supply = <&spmic_sd2>;
+		hvdd-pex-supply = <&spmic_sd2>;
+		vddio-pexctl-aud-supply = <&spmic_sd2>;
+	};
+
+	i2c@c250000 {
+		onsemi,nct72@4c {
+			vdd-supply = <&vdd_1v8_ap>;
+		};
+	};
+
+};

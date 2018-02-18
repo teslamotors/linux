@@ -1,0 +1,139 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-vcm31-spmic-bali.dtsi"
+
+/ {
+	ether_qos@2490000 {
+		vddio_sys_enet_bias-supply = <&vdd_dummy_1v8>;
+		vddio_enet-supply = <&vdd_3v3>;
+		phy_vdd_1v8-supply = <&vdd_dummy_1v8>;
+		phy_ovdd_rgmii-supply = <&vdd_dummy>;
+		phy_pllvdd-supply = <&vdd_dummy>;
+	};
+
+        host1x {
+		nvdisplay@15200000 {
+			vdd_hdmi_5v0-supply = <&vdd_dummy>;
+			avdd_hdmi-supply = <&vdd_dummy>;
+			avdd_hdmi_pll-supply = <&vdd_dummy>;
+			vdd-dp-pad-supply = <&vdd_dummy_1v8>;
+			vdd-edp-sec-mode-supply = <&vdd_dummy_1v8>;
+			vdd-dp-pwr-supply = <&vdd_dummy>;
+			avdd-dp-pll-supply = <&vdd_dummy>;
+		};
+		nvdisplay@15210000 {
+			vdd_hdmi_5v0-supply = <&vdd_dummy>;
+			avdd_hdmi-supply = <&vdd_dummy>;
+			avdd_hdmi_pll-supply = <&vdd_dummy>;
+			vdd-dp-pad-supply = <&vdd_dummy_1v8>;
+			vdd-edp-sec-mode-supply = <&vdd_dummy_1v8>;
+			vdd-dp-pwr-supply = <&vdd_dummy>;
+			avdd-dp-pll-supply = <&vdd_dummy>;
+		};
+		nvdisplay@15220000 {
+			vdd_hdmi_5v0-supply = <&vdd_dummy>;
+			avdd_hdmi-supply = <&vdd_dummy>;
+			avdd_hdmi_pll-supply = <&vdd_dummy>;
+			vdd-dp-pad-supply = <&vdd_dummy_1v8>;
+			vdd-edp-sec-mode-supply = <&vdd_dummy_1v8>;
+			vdd-dp-pwr-supply = <&vdd_dummy>;
+			avdd-dp-pll-supply = <&vdd_dummy>;
+		};
+		nvcsi@150c0000 {
+			nvidia,csi_regulator = "dummy";
+			dummy-supply = <&vdd_dummy>;
+		};
+        };
+
+	sdhci@3460000 { /* SDMMC_D/4 */
+		vddio_sdmmc-supply = <&vdd_dummy_1v8>;
+		vddio_sd_slot-supply = <&vdd_3v3>;
+	};
+
+	sdhci@3440000 {
+		vddio_sdmmc-supply = <&spmic_ldo5>;
+		vddio_sd_slot-supply = <&en_vdd_sdcard3>;
+	};
+
+	sdhci@3400000 {
+		vddio_sdmmc-supply = <&spmic_ldo3>;
+		vddio_sd_slot-supply = <&en_vdd_sdcard1>;
+	};
+
+	xhci@3530000 {
+		avddio_usb-supply = <&vdd_dummy>;
+		avdd_pll_utmip-supply = <&vdd_dummy>;
+		hvdd_usb-supply =  <&vdd_dummy>;
+	};
+
+	xudc@3550000 {
+		avdd-usb-supply = <&vdd_dummy>;
+		dvdd-pex-supply = <&vdd_dummy>;
+		hvdd-pex-supply =  <&vdd_dummy>;
+		dvdd-pex-pll-supply = <&vdd_dummy>;
+		hvdd-pex-pll-supply = <&vdd_dummy>;
+	};
+
+	pcie-controller@10003000 {
+		dvdd-pex-supply = <&vdd_dummy>;
+		hvdd-pex-pll-supply = <&vdd_dummy>;
+		hvdd-pex-supply = <&vdd_dummy>;
+		vddio-pexctl-aud-supply = <&vdd_dummy>;
+	};
+
+	ahci-sata@3507000 {
+		target-3v3-supply = <&vdd_dummy>;
+	};
+
+	pinctrl@3520000 {
+		vbus-0-supply = <&vdd_usb0_5v>;
+		vbus-1-supply = <&vdd_dummy>;
+		vbus-2-supply = <&vdd_usb2_5v>;
+		vbus-3-supply = <&vdd_dummy>;
+		vddio-hsic-supply = <&vdd_dummy>;
+		hvdd_pex_pll-supply = <&vdd_dummy>;
+		hvdd_pex-supply = <&vdd_dummy>;
+		dvdd_pex-supply = <&vdd_dummy>;
+		avdd_usb-supply = <&vdd_dummy>;
+		vclamp_usb-supply = <&vdd_dummy>;
+		avdd_pll_erefeut-supply = <&vdd_dummy>;
+	};
+
+	fixed-regulators {
+		vdd_usb0_5v: regulator@7 {
+			compatible = "regulator-fixed";
+			reg = <7>;
+			regulator-name = "vdd-usb0-5v";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(L, 4) 0>;
+			enable-active-high;
+			gpio-open-drain;
+			vin-supply = <&vdd_dummy>;
+		};
+
+		vdd_usb2_5v: regulator@8 {
+			compatible = "regulator-fixed";
+			reg = <8>;
+			regulator-name = "vdd-usb2-5v";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&tegra_gpio TEGRA_GPIO(L, 5) 0>;
+			enable-active-high;
+			gpio-open-drain;
+			vin-supply = <&vdd_dummy>;
+		};
+	};
+};

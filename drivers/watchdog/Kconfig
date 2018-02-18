@@ -53,6 +53,24 @@ comment "Watchdog Device Drivers"
 
 # Architecture Independent
 
+config AS3722_WATCHDOG
+	tristate "AS3722 watchdog"
+	depends on MFD_AS3722
+	select WATCHDOG_CORE
+	help
+	  Support for the watchdog in the AMS AS3722 PMIC.  When
+	  the watchdog triggers the system will be reset/Off based on
+	  configuration.
+
+config PALMAS_WATCHDOG
+	tristate "PALMAS watchdog"
+	depends on MFD_PALMAS
+	select WATCHDOG_CORE
+	help
+	  Support for the watchdog in the TI Palmas PMIC PMICs.  When
+	  the watchdog triggers the system will be reset/Off based on
+	  configuration.
+
 config SOFT_WATCHDOG
 	tristate "Software watchdog"
 	select WATCHDOG_CORE
@@ -63,6 +81,14 @@ config SOFT_WATCHDOG
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called softdog.
+
+config SOFT_PLATFORM_WATCHDOG
+	tristate "Software watchdog platform driver"
+	select WATCHDOG_CORE
+	help
+	  A software monitoring watchdog platform device driver. This will fail to
+	  reboot your system from some situations that the hardware watchdog will
+	  recover from. Equally it's a lot cheaper to install.
 
 config DA9052_WATCHDOG
         tristate "Dialog DA9052 Watchdog"
@@ -267,6 +293,26 @@ config DW_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called dw_wdt.
 
+config TEGRA_WATCHDOG
+	tristate "Tegra watchdog"
+	depends on ARCH_TEGRA
+	help
+	  Say Y here to include support for the watchdog timer
+	  embedded in NVIDIA Tegra SoCs.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tegra_wdt.
+
+config TEGRA_HV_WATCHDOG
+	tristate "Tegra Hypervisor watchdog"
+	depends on TEGRA_HV_MANAGER
+	help
+	  Say Y here to include support for the watchdog timer
+	  embedded in NVIDIA Tegra Hypervisor systems.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tegra_hv_wdt.
+
 config EP93XX_WATCHDOG
 	tristate "EP93xx Watchdog"
 	depends on ARCH_EP93XX
@@ -377,6 +423,20 @@ config TWL4030_WATCHDOG
 	  Support for TI TWL4030 watchdog.  Say 'Y' here to enable the
 	  watchdog timer support for TWL4030 chips.
 
+config MAX77620_WATCHDOG
+	tristate "Maxim MAX77620 Watchdog Timer"
+	depends on MFD_MAX77620
+	help
+	  Support for Maxim MAX77620 watchdog timer. Say 'Y' here
+	  to enable the watchdog timer support for MAX77620 chips.
+
+config MAX77660_SYSTEM_WATCHDOG
+	tristate "Maxim MAX77660 System Watchdog Timer"
+	depends on MFD_MAX77660
+	help
+	  Support for Maxim MAX77660 System watch dog timer. Say 'Y' here
+	  to enable the watchdog timer support for MAX77660 chips.
+
 config STMP3XXX_RTC_WATCHDOG
 	tristate "Freescale STMP3XXX & i.MX23/28 watchdog"
 	depends on RTC_DRV_STMP
@@ -470,17 +530,6 @@ config SIRFSOC_WATCHDOG
 	help
 	  Support for CSR SiRFprimaII and SiRFatlasVI watchdog. When
 	  the watchdog triggers the system will be reset.
-
-config TEGRA_WATCHDOG
-	tristate "Tegra watchdog"
-	depends on (ARCH_TEGRA || COMPILE_TEST) && HAS_IOMEM
-	select WATCHDOG_CORE
-	help
-	  Say Y here to include support for the watchdog timer
-	  embedded in NVIDIA Tegra SoCs.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called tegra_wdt.
 
 config QCOM_WDT
 	tristate "QCOM watchdog"
@@ -1527,5 +1576,9 @@ config USBPCWATCHDOG
 	  module will be called pcwd_usb.
 
 	  Most people will say N.
+
+trysource "../t18x/drivers/watchdog/Kconfig"
+trysource "../t18x/drivers/watchdog/Kconfig.t18x"
+trysource "drivers/watchdog/Kconfig.t18x"
 
 endif # WATCHDOG

@@ -1,0 +1,92 @@
+DT binding document for INA3221 iio/meter driver.
+
+Required properties:
+- compatible: Must be "ti,ina3221x".
+- reg: I2C slave address of device.
+
+- ti,trigger-config: Trigger configuration for the device in trigger mode.
+- ti,continuous-config:  Device configuration in continuous mode. In this mode
+	device will keep scanning the inputs.
+- address-cells: Number of address in child node. Must be 1.
+- size-cells: Size of address cell. Must be 0.
+
+Optional sub-nodes:
+	Device has 3 input channels and channel specific information
+is provided through the child node. Each channel will have different child
+node. The channel number is identified by the reg properties on each of node.
+Required subnode properties:
+- reg: channel number. 0 for channel 0, 1 for channel 1 and 2 for channel 2.
+- ti,rail-mae: Name of the channel in string.
+
+Optional subnode properties:
+- ti,current-warning-limit-ma: Cureent warning limit for the given channel.
+- ti,current-critical-limit-ma: Current critical limit for the given channel.
+- ti,shunt-resistor-mohm: Shunt register in milli ohm.
+
+IIO channel properties:
+It follows same mechanism for iio properties detailed on ../iio-bindings.txt
+The iio cells size must be 1.
+	#io-channel-cells = <1>;
+The ina3221 driver provides following monitoring:
+	voltage, current, current_trigger, power, power_trigger.
+	The sequence of index assigned in drivers are:
+		voltage, current, current_trigger, power, power_trigger
+	The above monitoring is provided for channel 0, 1 and 2.
+The sysfs are
+	in_voltage0_input, in_current0_input, in_current0_trigger_input
+	in_power0_input, in_power0_trigger_input
+	in_voltage1_input, in_current1_input, in_current1_trigger_input,
+	in_power1_input, in_power1_trigger_input
+	in_voltage2_input, in_current2_input, in_current2_trigger_input,
+	in_power2_input,in_power2_trigger_input
+The channel index are in above sequence starting from 0.
+
+To ease the DT entry, the macros are added in header dt-bindings/iio/meter/ina3221x.h
+The Voltage/current/power macros are defines and can be use with INA3221_CHAN_INDEX to
+get the proper index.
+Example: For Channel 0, normal power it is INA3221_CHAN_INDEX(0, POWER, NORMAL)
+for channel 2, normal current it is INA3221_CHAN_INDEX(2, CURRENT, NORMAL).
+
+The typical macro for voltage/current and powers are:
+	INA3221_VOLTAGE, INA3221_CURRENT, INA3221_POWER
+The typical macro for normal/trigger are INA3221_NORMAL and INA3221_TRIGGER.
+
+The INA3221_CHAN_INDEX defined as:
+#define INA3221_CHAN_INDEX(chan, type, add) (chan * 5 + INA3221_##type + INA3221_##add)
+
+Example:
+	ina3221x@40 {
+		compatible = "ti,ina3221x";
+		reg = <0x40>;
+		ti,trigger-config = <0x7003>;
+		ti,continuous-config = <0x7c07>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#io-channel-cells = <1>;
+
+		channel@0 {
+			reg = <0x0>;
+			ti,rail-name = "VDD_BAT";
+			ti,current-warning-limit-ma = <8000>;
+			ti,current-critical-limit-ma = <9000>;
+			ti,shunt-resistor-mohm = <1>;
+		};
+
+		channel@1 {
+			reg = <0x1>;
+			ti,rail-name = "VDD_CPU";
+			ti,shunt-resistor-mohm = <1>;
+		};
+
+		channel@2 {
+			reg = <0x2>;
+			ti,rail-name = "VDD_GPU";
+			ti,shunt-resistor-mohm = <1>;
+		};
+	};
+
+
+clients {
+	io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL)>;
+	io-channel-names = "battery-current"
+}

@@ -1,0 +1,15 @@
+config TEGRA_COMBINED_UART
+	bool "Tegra combined UART"
+	depends on ARCH_TEGRA_18x_SOC
+	default n
+	help
+	  Tegra combined UART is a client-server model which allows a server
+	  running on SPE to multiplex a single UART controller amongst multiple
+	  UART clients.
+
+	  This config enables the Linux client driver. Instead of
+	  directly bit banging the UART controller, the client driver
+	  communicates with the SPE server using mailbox registers. The SPE
+	  server multiplexes the UART controller amongst the various clients.
+	  This allows all the clients to send output and receive input through a
+	  single UART controller.

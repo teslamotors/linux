@@ -102,7 +102,7 @@ ENTRY(cpu_do_idle)
 	ret
 ENDPROC(cpu_do_idle)
 
-#ifdef CONFIG_ARM64_CPU_SUSPEND
+#ifdef CONFIG_CPU_PM
 /**
  * cpu_do_suspend - save CPU registers context
  *
@@ -119,13 +119,30 @@ ENTRY(cpu_do_suspend)
 	mrs	x9, vbar_el1
 	mrs	x10, mdscr_el1
 	mrs	x11, oslsr_el1
-	mrs	x12, sctlr_el1
 	stp	x2, x3, [x0]
+	mrs	x2, midr_el1
+	/*
+	 * cpuactlr_el1 is not defined on denver since it is an
+	 * implementation defined register. Accessing this on Denver
+	 * would cause undefined instruction exception on Denver.
+	 * So, skip accessing the register on Denver.
+	 */
+	lsr	x2, x2, #24
+	cmp	x2, #0x4e
+	beq	skip_actrl_save
+	mrs	x12, s3_1_c15_c2_0
+skip_actrl_save:
+	mrs	x13, sctlr_el1
 	stp	x4, x5, [x0, #16]
 	stp	x6, x7, [x0, #32]
 	stp	x8, x9, [x0, #48]
 	stp	x10, x11, [x0, #64]
-	str	x12, [x0, #80]
+	/*
+	 * Save x12 irrespective of it has actrl_el1's contents as it is
+	 * only redundant but not incorrect as it won't be restored on
+	 * Denver
+	 */
+	stp	x12, x13, [x0, #80]
 	ret
 ENDPROC(cpu_do_suspend)
 
@@ -148,7 +165,7 @@ ENTRY(cpu_do_resume)
 	ldp	x6, x7, [x0, #32]
 	ldp	x8, x9, [x0, #48]
 	ldp	x10, x11, [x0, #64]
-	ldr	x12, [x0, #80]
+	ldp	x12, x13, [x0, #80]
 	msr	tpidr_el0, x2
 	msr	tpidrro_el0, x3
 	msr	contextidr_el1, x4
@@ -164,7 +181,20 @@ ENTRY(cpu_do_resume)
 	 */
 	ubfx	x11, x11, #1, #1
 	msr	oslar_el1, x11
-	mov	x0, x12
+	mrs	x2, midr_el1
+	/*
+	 * cpuactlr_el1 is an implementation defined register
+	 * and Denver uses it to indicate the power state to enter.
+	 * If restored same value on restore then it is possible
+	 * that CPU would enter unexpected power state on next WFI.
+	 * Hence skip restoring this register for Denver.
+	 */
+	lsr	x2, x2, #24
+	cmp	x2, #0x4e
+	beq	skip_actlr_restore
+	msr	s3_1_c15_c2_0, x12
+skip_actlr_restore:
+	mov	x0, x13
 	dsb	nsh		// Make sure local tlb invalidation completed
 	isb
 	ret
@@ -199,9 +229,12 @@ ENTRY(__cpu_setup)
 	tlbi	vmalle1is			// invalidate I + D TLBs
 	dsb	ish
 
+__cpu_setup_post_flush:
+
 	mov	x0, #3 << 20
 	msr	cpacr_el1, x0			// Enable FP/ASIMD
-	msr	mdscr_el1, xzr			// Reset mdscr_el1
+	mov	x0, #1 << 14			// Enable MDSCR_EL1.HDE
+	msr	mdscr_el1, x0			// only set HDE in mdscr_el1
 	isb					// Unmask debug exceptions now,
 	enable_dbg				// since this is per-cpu
 	/*
@@ -244,6 +277,36 @@ ENTRY(__cpu_setup)
 	msr	tcr_el1, x10
 	ret					// return to head.S
 ENDPROC(__cpu_setup)
+
+ENTRY(__cortexa53_cpu_setup)
+	/*
+	 * no need to flush cache and invalidate tlb and btbs because
+	 * cortex-a53 invalidates them already during reset
+	 */
+	b	__cpu_setup_post_flush
+ENDPROC(__cortexa53_cpu_setup)
+
+ENTRY(__cortexa57_cpu_setup)
+
+	mrs	x0, s3_1_c15_c2_0
+	/* enable non-cacheable streaming enhancement */
+	orr	x0, x0, #(1<<24)
+	msr	s3_1_c15_c2_0, x0
+	mrs	x0, s3_1_c11_c0_2
+	and	x1, x0, #7
+	cmp	x1, #2
+	b.eq	__cpu_setup_post_flush
+	mov	x1, #7
+	bic	x0, x0, x1
+	orr	x0, x0, #2			// set data RAM latency to 3
+	/*
+	 * no need to flush cache and invalidate tlb and btbs because
+	 * cortex-a57 invalidates them already during reset
+	 */
+	msr	s3_1_c11_c0_2, x0
+
+	b	__cpu_setup_post_flush
+ENDPROC(__cortexa57_cpu_setup)
 
 	/*
 	 *                 n n            T

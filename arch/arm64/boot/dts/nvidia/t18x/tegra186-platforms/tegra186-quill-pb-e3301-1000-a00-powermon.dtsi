@@ -1,0 +1,454 @@
+/*
+ * tegra186-quill-pb-e3301-1000-a00-powermon.dtsi: Tegra186 power monitor dtsi
+ *			file on Quill e3301
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	i2c@3160000 {
+		ina3221x@40 {
+			compatible = "ti,ina3221x";
+			reg = <0x40>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7c07>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_GPU_REG";
+				ti,shunt-resistor-mohm = <1>;
+			};
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_SOC_REG";
+				ti,shunt-resistor-mohm = <1>;
+			};
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_SDO";
+				ti,shunt-resistor-mohm = <1>;
+			};
+		};
+
+		ina3221x@41 {
+			compatible = "ti,ina3221x";
+			reg = <0x41>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7c07>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_IN_RS";
+				ti,shunt-resistor-mohm = <1>;
+			};
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_CPU_REG";
+				ti,shunt-resistor-mohm = <1>;
+			};
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_SRAM_REG";
+				ti,shunt-resistor-mohm = <1>;
+			};
+		};
+
+		i2cmux@71 {
+			compatible = "nxp,pca9546";
+			reg = <0x71>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			i2c@0 {
+				reg = <0>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+
+			i2c@1 {
+				reg = <1>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				ina230@40{
+					compatible = "ti,ina230x";
+					reg = <0x40>;
+					ti,rail-name = "VDD_3V3_ENET";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina230@41{
+					compatible = "ti,ina230x";
+					reg = <0x41>;
+					ti,rail-name = "VDD_3V3_EMMC_CORE";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <50>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina230@42{
+					compatible = "ti,ina230x";
+					reg = <0x42>;
+					ti,rail-name = "VDD_SYS_5V0";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina230@43{
+					compatible = "ti,ina230x";
+					reg = <0x43>;
+					ti,rail-name = "VDD_IN_RS";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina230@44{
+					compatible = "ti,ina230x";
+					reg = <0x44>;
+					ti,rail-name = "VDD_CVM_PREG_C2";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina230@45{
+					compatible = "ti,ina230x";
+					reg = <0x45>;
+					ti,rail-name = "SYS_3V8_AO";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina230@46{
+					compatible = "ti,ina230x";
+					reg = <0x46>;
+					ti,rail-name = "SYS_3V8_C2";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina230@47{
+					compatible = "ti,ina230x";
+					reg = <0x47>;
+					ti,rail-name = "VDD_CVM_PREG_C1";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina230@48{
+					compatible = "ti,ina230x";
+					reg = <0x48>;
+					ti,rail-name = "VDD_SYS_3V3_AO";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <10>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+			};
+
+			i2c@2 {
+				reg = <2>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				ina226@48 {
+					compatible = "ti,ina226x";
+					reg = <0x48>;
+					ti,rail-name = "VDD_SD0";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina226@49 {
+					compatible = "ti,ina226x";
+					reg = <0x49>;
+					ti,rail-name = "VDD_CPU_REG";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina226@4A {
+					compatible = "ti,ina226x";
+					reg = <0x4A>;
+					ti,rail-name = "VDD_SRAM_REG";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+                                };
+
+				ina226@4B {
+					compatible = "ti,ina226x";
+					reg = <0x4B>;
+					ti,rail-name = "VDD_GPU_REG";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+				ina226@4C {
+					compatible = "ti,ina226x";
+					reg = <0x4C>;
+					ti,rail-name = "VDD_SOC_REG";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+				ina226@4D {
+					compatible = "ti,ina226x";
+					reg = <0x4D>;
+					ti,rail-name = "VDD_1V8_EMMC";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <100>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+				ina226@4E {
+					compatible = "ti,ina226x";
+					reg = <0x4E>;
+					ti,rail-name = "VDD_1V05_PEX";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <10>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+				ina226@4F {
+					compatible = "ti,ina226x";
+					reg = <0x4F>;
+					ti,rail-name = "PMIC_LDO6_OUT";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <50>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+			};
+
+			i2c@3 {
+				reg = <3>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				ina226@40 {
+					compatible = "ti,ina226x";
+					reg = <0x40>;
+					ti,rail-name = "VDD_RTC";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <100>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina226@41 {
+					compatible = "ti,ina226x";
+					reg = <0x41>;
+					ti,rail-name = "VDD_1V1_SD0_OUT";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina226@42 {
+					compatible = "ti,ina226x";
+					reg = <0x42>;
+					ti,rail-name = "VDD_GPU";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina226@43 {
+					compatible = "ti,ina226x";
+					reg = <0x43>;
+					ti,rail-name = "VDD_MCPU";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina226@44 {
+					compatible = "ti,ina226x";
+					reg = <0x44>;
+					ti,rail-name = "VDD_SOC";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina226@45 {
+					compatible = "ti,ina226x";
+					reg = <0x45>;
+					ti,rail-name = "VDD_1V8_SD2";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+
+				ina226@46 {
+					compatible = "ti,ina226x";
+					reg = <0x46>;
+					ti,rail-name = "VDD_SRAM";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+				ina226@47 {
+					compatible = "ti,ina226x";
+					reg = <0x47>;
+					ti,rail-name = "VDD_BCPU";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <1>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+				ina226@48 {
+					compatible = "ti,ina226x";
+					reg = <0x48>;
+					ti,rail-name = "VDD_VCLAMP_USB";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <100>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+				ina226@49 {
+					compatible = "ti,ina226x";
+					reg = <0x49>;
+					ti,rail-name = "VDD_1V8_HDMI_DP";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <50>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+				ina226@4A {
+					compatible = "ti,ina226x";
+					reg = <0x4A>;
+					ti,rail-name = "VDD_1V8_SD2_OUT_DDR";
+					ti,continuous-config = <0x0407>;
+					ti,trigger-config = <0x0403>;
+					ti,resistor = <10>;
+					ti,calibration-data = <0x7FFF>;
+					ti,power-lsb = <6866>;
+					ti,divisor = <25>;
+					ti,precision-multiplier = <1000>;
+				};
+			};
+		};
+	};
+};

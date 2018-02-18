@@ -9,9 +9,12 @@
 #include <linux/rmap.h>
 #include <linux/swap.h>
 #include <linux/swapops.h>
+#include <linux/dma-contiguous.h>
 
 #include <linux/sched.h>
 #include <linux/rwsem.h>
+#include <linux/migrate.h>
+
 #include <asm/pgtable.h>
 
 #include "internal.h"
@@ -32,6 +35,8 @@ static struct page *no_page_table(struct vm_area_struct *vma,
 	return NULL;
 }
 
+#define FOLL_CMA 0x10000000
+
 /*
  * FOLL_FORCE can write to even unwritable pte's, but only
  * after we've gone through a COW cycle and they are dirty.
@@ -49,6 +54,7 @@ static struct page *follow_page_pte(struct vm_area_struct *vma,
 	struct page *page;
 	spinlock_t *ptl;
 	pte_t *ptep, pte;
+	bool replace_page = false;
 
 retry:
 	if (unlikely(pmd_bad(*pmd)))
@@ -89,8 +95,16 @@ retry:
 		page = pte_page(pte);
 	}
 
-	if (flags & FOLL_GET)
+	if ((flags & FOLL_CMA) && (flags & FOLL_GET) &&
+		dma_contiguous_should_replace_page(page))
+		/*
+		 * Don't get ref on page.
+		 * Let __get_user_pages replace the CMA page with non-CMA.
+		 */
+		replace_page = true;
+	else if (flags & FOLL_GET)
 		get_page_foll(page);
+
 	if (flags & FOLL_TOUCH) {
 		if ((flags & FOLL_WRITE) &&
 		    !pte_dirty(pte) && !PageDirty(page))
@@ -125,6 +139,8 @@ retry:
 		}
 	}
 	pte_unmap_unlock(ptep, ptl);
+	if (replace_page)
+		return (struct page *)((ulong)page + 1);
 	return page;
 bad_page:
 	pte_unmap_unlock(ptep, ptl);
@@ -275,6 +291,8 @@ static int faultin_page(struct task_struct *tsk, struct vm_area_struct *vma,
 	unsigned int fault_flags = 0;
 	int ret;
 
+	if (*flags & FOLL_DURABLE)
+		fault_flags |= FAULT_FLAG_NO_CMA;
 	if (*flags & FOLL_WRITE)
 		fault_flags |= FAULT_FLAG_WRITE;
 	if (nonblocking)
@@ -363,6 +381,47 @@ static int check_vma_flags(struct vm_area_struct *vma, unsigned long gup_flags)
 }
 
 /**
+ * replace_cma_page() - migrate page out of CMA page blocks
+ * @page:	source page to be migrated
+ *
+ * Returns either the old page (if migration was not possible) or the pointer
+ * to the newly allocated page (with additional reference taken).
+ *
+ * get_user_pages() might take a reference to a page for a long period of time,
+ * what prevent such page from migration. This is fatal to the preffered usage
+ * pattern of CMA pageblocks. This function replaces the given user page with
+ * a new one allocated from NON-MOVABLE pageblock, so locking CMA page can be
+ * avoided.
+ */
+static inline struct page *migrate_replace_cma_page(struct page *page)
+{
+	struct page *newpage = alloc_page(GFP_HIGHUSER);
+
+	if (!newpage)
+		goto out;
+
+	/*
+	 * Take additional reference to the new page to ensure it won't get
+	 * freed after migration procedure end.
+	 */
+	get_page_foll(newpage);
+
+	if (migrate_replace_page(page, newpage) == 0) {
+		put_page(newpage);
+		return newpage;
+	}
+
+	put_page(newpage);
+	__free_page(newpage);
+out:
+	/*
+	 * Migration errors in case of get_user_pages() might not
+	 * be fatal to CMA itself, so better don't fail here.
+	 */
+	return page;
+}
+
+/**
  * __get_user_pages() - pin user pages in memory
  * @tsk:	task_struct of target task
  * @mm:		mm_struct of target mm
@@ -444,6 +503,7 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 		struct page *page;
 		unsigned int foll_flags = gup_flags;
 		unsigned int page_increm;
+		static DEFINE_MUTEX(s_follow_page_lock);
 
 		/* first iteration or cross vma bound */
 		if (!vma || start >= vma->vm_end) {
@@ -476,9 +536,11 @@ retry:
 		if (unlikely(fatal_signal_pending(current)))
 			return i ? i : -ERESTARTSYS;
 		cond_resched();
-		page = follow_page_mask(vma, start, foll_flags, &page_mask);
+		page = follow_page_mask(vma, start,
+				foll_flags | FOLL_CMA, &page_mask);
 		if (!page) {
 			int ret;
+
 			ret = faultin_page(tsk, vma, start, &foll_flags,
 					nonblocking);
 			switch (ret) {
@@ -495,8 +557,54 @@ retry:
 			}
 			BUG();
 		}
-		if (IS_ERR(page))
+		if (IS_ERR(page)) {
 			return i ? i : PTR_ERR(page);
+		}
+
+		/* Page would have lsb set when CMA page need replacement. */
+		if (((ulong)page & 0x1) == 0x1) {
+			struct page *old_page;
+			unsigned int fault_flags = 0;
+
+			mutex_lock(&s_follow_page_lock);
+			page = (struct page *)((ulong)page & ~0x1);
+			old_page = page;
+			wait_on_page_locked_timeout(page);
+			page = migrate_replace_cma_page(page);
+			/* migration might be successful. vma mapping
+			 * might have changed if there had been a write
+			 * fault from other accesses before migration
+			 * code locked the page. Follow the page again
+			 * to get the latest mapping. If migration was
+			 * successful, follow again would get
+			 * non-CMA page. If there had been a write
+			 * page fault, follow page and CMA page
+			 * replacement(if necessary) would restart with
+			 * new page.
+			 */
+			if (page == old_page)
+				wait_on_page_locked_timeout(page);
+			if (foll_flags & FOLL_WRITE) {
+				/* page would be marked as old during
+				 * migration. To make it young, call
+				 * handle_mm_fault.
+				 * This to avoid the sanity check
+				 * failures in the calling code, which
+				 * check for pte write permission
+				 * bits.
+				 */
+				fault_flags |= FAULT_FLAG_WRITE;
+				handle_mm_fault(mm, vma,
+					start, fault_flags);
+			}
+			foll_flags = gup_flags;
+			mutex_unlock(&s_follow_page_lock);
+			goto retry;
+		}
+
+		BUG_ON(dma_contiguous_should_replace_page(page) &&
+			(foll_flags & FOLL_GET));
+
 		if (pages) {
 			pages[i] = page;
 			flush_anon_page(vma, page, start);
@@ -579,74 +687,6 @@ int fixup_user_fault(struct task_struct *tsk, struct mm_struct *mm,
 	}
 	return 0;
 }
-
-/*
- * get_user_pages() - pin user pages in memory
- * @tsk:	the task_struct to use for page fault accounting, or
- *		NULL if faults are not to be recorded.
- * @mm:		mm_struct of target mm
- * @start:	starting user address
- * @nr_pages:	number of pages from start to pin
- * @write:	whether pages will be written to by the caller
- * @force:	whether to force access even when user mapping is currently
- *		protected (but never forces write access to shared mapping).
- * @pages:	array that receives pointers to the pages pinned.
- *		Should be at least nr_pages long. Or NULL, if caller
- *		only intends to ensure the pages are faulted in.
- * @vmas:	array of pointers to vmas corresponding to each page.
- *		Or NULL if the caller does not require them.
- *
- * Returns number of pages pinned. This may be fewer than the number
- * requested. If nr_pages is 0 or negative, returns 0. If no pages
- * were pinned, returns -errno. Each page returned must be released
- * with a put_page() call when it is finished with. vmas will only
- * remain valid while mmap_sem is held.
- *
- * Must be called with mmap_sem held for read or write.
- *
- * get_user_pages walks a process's page tables and takes a reference to
- * each struct page that each user address corresponds to at a given
- * instant. That is, it takes the page that would be accessed if a user
- * thread accesses the given user virtual address at that instant.
- *
- * This does not guarantee that the page exists in the user mappings when
- * get_user_pages returns, and there may even be a completely different
- * page there in some cases (eg. if mmapped pagecache has been invalidated
- * and subsequently re faulted). However it does guarantee that the page
- * won't be freed completely. And mostly callers simply care that the page
- * contains data that was valid *at some point in time*. Typically, an IO
- * or similar operation cannot guarantee anything stronger anyway because
- * locks can't be held over the syscall boundary.
- *
- * If write=0, the page must not be written to. If the page is written to,
- * set_page_dirty (or set_page_dirty_lock, as appropriate) must be called
- * after the page is finished with, and before put_page is called.
- *
- * get_user_pages is typically used for fewer-copy IO operations, to get a
- * handle on the memory by some means other than accesses via the user virtual
- * addresses. The pages may be submitted for DMA to devices or accessed via
- * their kernel linear mapping (via the kmap APIs). Care should be taken to
- * use the correct cache flushing APIs.
- *
- * See also get_user_pages_fast, for performance critical applications.
- */
-long get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
-		unsigned long start, unsigned long nr_pages, int write,
-		int force, struct page **pages, struct vm_area_struct **vmas)
-{
-	int flags = FOLL_TOUCH;
-
-	if (pages)
-		flags |= FOLL_GET;
-	if (write)
-		flags |= FOLL_WRITE;
-	if (force)
-		flags |= FOLL_FORCE;
-
-	return __get_user_pages(tsk, mm, start, nr_pages, flags, pages, vmas,
-				NULL);
-}
-EXPORT_SYMBOL(get_user_pages);
 
 /**
  * get_dump_page() - pin user page in memory while writing it to core dump

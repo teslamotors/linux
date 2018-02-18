@@ -1,0 +1,56 @@
+/*
+ * arch/arm64/boot/dts/tegra210-platforms/tegra210-thermal-Tdiode-skin.dtsi
+ *
+ * Copyright (c) 2014 - 2015, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/thermal/thermal.h>
+
+/ {
+	thermal-zones {
+		Tdiode_skin {
+			status = "disabled";
+			polling-delay = <1000>;
+			polling-delay-passive = <6000>;
+			thermal-sensors = <&tegra_nct72_skin 1>;
+
+			trips {
+				skin_tdiode_trip1: therm_est_trip {
+					temperature = <50000>;
+					type = "passive";
+					hysteresis = <0>;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					cdev-type = "skin-balanced";
+					cooling-device = <&{/bthrot_cdev/skin_balanced} THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+					trip = <&skin_tdiode_trip1>;
+				};
+			};
+
+			thermal-zones-params {
+				governor-name = "adaptive_skin";
+				tskin_tran_threshold = <500>;
+				tskin_std_threshold = <1000>;
+				target_state_tdp = <7>;
+				tj_tran_threshold = <2000>;
+				tj_std_threshold = <3000>;
+				tj_std_fup_threshold = <5000>;
+			};
+		};
+	};
+};

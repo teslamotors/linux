@@ -1,0 +1,62 @@
+/*
+ * tegra210-jetson-e-shim-p2530-0000-a00.dtsi: Jetson-E SHIM level DTSI file.
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+/ {
+	udc@7d000000 {
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x00000000>;
+	};
+
+        otg@7d000000 {
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x00000000>;
+	};
+
+	xudc@700d0000 {
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
+	};
+
+	xotg {
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
+	};
+
+	host1x {
+		dsi {
+			panel-s-wqxga-10-1 {
+				status = "disabled";
+			};
+			panel-a-wuxga-8-0 {
+				status = "disabled";
+			};
+		};
+	};
+
+	i2c@7000d000 {
+		max77620@3c {
+			watchdog {
+				status = "disabled";
+				dt-override-status-odm-data = <0x00020000 0x00020000>;
+			};
+		};
+	};
+
+	watchdog@60005100 {
+		status = "disabled";
+		dt-override-status-odm-data = <0x00010000 0x00010000>;
+	};
+};

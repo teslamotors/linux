@@ -2,6 +2,7 @@
 /* The industrial I/O core
  *
  * Copyright (c) 2008 Jonathan Cameron
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -22,6 +23,8 @@
 enum iio_chan_info_enum {
 	IIO_CHAN_INFO_RAW = 0,
 	IIO_CHAN_INFO_PROCESSED,
+	IIO_CHAN_INFO_RAW_DUAL,
+	IIO_CHAN_INFO_PROCESSED_DUAL,
 	IIO_CHAN_INFO_SCALE,
 	IIO_CHAN_INFO_OFFSET,
 	IIO_CHAN_INFO_CALIBSCALE,
@@ -37,6 +40,12 @@ enum iio_chan_info_enum {
 	IIO_CHAN_INFO_HARDWAREGAIN,
 	IIO_CHAN_INFO_HYSTERESIS,
 	IIO_CHAN_INFO_INT_TIME,
+	IIO_CHAN_INFO_THRESHOLD_LOW,
+	IIO_CHAN_INFO_THRESHOLD_HIGH,
+	IIO_CHAN_INFO_BATCH_FLAGS,
+	IIO_CHAN_INFO_BATCH_PERIOD,
+	IIO_CHAN_INFO_BATCH_TIMEOUT,
+	IIO_CHAN_INFO_BATCH_FLUSH,
 };
 
 enum iio_shared_by {
@@ -272,21 +281,17 @@ static inline bool iio_channel_has_info(const struct iio_chan_spec *chan,
 		},							\
 }
 
-/**
- * iio_get_time_ns() - utility function to get a time stamp for events etc
- **/
-static inline s64 iio_get_time_ns(void)
-{
-	return ktime_get_real_ns();
-}
+s64 iio_get_time_ns(const struct iio_dev *indio_dev);
+unsigned int iio_get_time_res(const struct iio_dev *indio_dev);
 
 /* Device operating modes */
 #define INDIO_DIRECT_MODE		0x01
 #define INDIO_BUFFER_TRIGGERED		0x02
+#define INDIO_BUFFER_SOFTWARE		0x04
 #define INDIO_BUFFER_HARDWARE		0x08
 
 #define INDIO_ALL_BUFFER_MODES					\
-	(INDIO_BUFFER_TRIGGERED | INDIO_BUFFER_HARDWARE)
+	(INDIO_BUFFER_TRIGGERED | INDIO_BUFFER_HARDWARE | INDIO_BUFFER_SOFTWARE)
 
 #define INDIO_MAX_RAW_ELEMENTS		4
 
@@ -326,6 +331,16 @@ struct iio_dev;
  * @update_scan_mode:	function to configure device and scan buffer when
  *			channels have changed
  * @debugfs_reg_access:	function to read or write register value of device
+ * @hwfifo_set_watermark: function pointer to set the current hardware
+ *			fifo watermark level; see hwfifo_* entries in
+ *			Documentation/ABI/testing/sysfs-bus-iio for details on
+ *			how the hardware fifo operates
+ * @hwfifo_flush_to_buffer: function pointer to flush the samples stored
+ *			in the hardware fifo to the device buffer. The driver
+ *			should not flush more than count samples. The function
+ *			must return the number of samples flushed, 0 if no
+ *			samples were flushed or a negative integer if no samples
+ *			were flushed and there was an error.
  **/
 struct iio_info {
 	struct module			*driver_module;
@@ -385,6 +400,9 @@ struct iio_info {
 	int (*debugfs_reg_access)(struct iio_dev *indio_dev,
 				  unsigned reg, unsigned writeval,
 				  unsigned *readval);
+	int (*hwfifo_set_watermark)(struct iio_dev *indio_dev, unsigned val);
+	int (*hwfifo_flush_to_buffer)(struct iio_dev *indio_dev,
+				      unsigned count);
 };
 
 /**
@@ -434,6 +452,7 @@ struct iio_buffer_setup_ops {
  * @chan_attr_group:	[INTERN] group for all attrs in base directory
  * @name:		[DRIVER] name of the device.
  * @info:		[DRIVER] callbacks and constant info from driver
+ * @clock_id:		[INTERN] timestamping clock posix identifier
  * @info_exist_lock:	[INTERN] lock to prevent use during removal
  * @setup_ops:		[DRIVER] callbacks to call before and after buffer
  *			enable/disable
@@ -473,6 +492,7 @@ struct iio_dev {
 	struct attribute_group		chan_attr_group;
 	const char			*name;
 	const struct iio_info		*info;
+	clockid_t			clock_id;
 	struct mutex			info_exist_lock;
 	const struct iio_buffer_setup_ops	*setup_ops;
 	struct cdev			chrdev;
@@ -485,6 +505,8 @@ struct iio_dev {
 	struct dentry			*debugfs_dentry;
 	unsigned			cached_reg_addr;
 #endif
+	bool				multi_link;
+	char				*link_name;
 };
 
 const struct iio_chan_spec
@@ -496,15 +518,25 @@ void devm_iio_device_unregister(struct device *dev, struct iio_dev *indio_dev);
 int iio_push_event(struct iio_dev *indio_dev, u64 ev_code, s64 timestamp);
 
 extern struct bus_type iio_bus_type;
+extern const char * const iio_chan_type_name_spec[];
 
 /**
  * iio_device_put() - reference counted deallocation of struct device
- * @indio_dev: 		IIO device structure containing the device
+ * @indio_dev: IIO device structure containing the device
  **/
 static inline void iio_device_put(struct iio_dev *indio_dev)
 {
 	if (indio_dev)
 		put_device(&indio_dev->dev);
+}
+
+/**
+ * iio_device_get_clock() - Retrieve current timestamping clock for the device
+ * @indio_dev: IIO device structure containing the device
+ */
+static inline clockid_t iio_device_get_clock(const struct iio_dev *indio_dev)
+{
+	return indio_dev->clock_id;
 }
 
 /**
@@ -583,7 +615,8 @@ void devm_iio_trigger_free(struct device *dev, struct iio_trigger *iio_trig);
 static inline bool iio_buffer_enabled(struct iio_dev *indio_dev)
 {
 	return indio_dev->currentmode
-		& (INDIO_BUFFER_TRIGGERED | INDIO_BUFFER_HARDWARE);
+		& (INDIO_BUFFER_TRIGGERED | INDIO_BUFFER_HARDWARE |
+		   INDIO_BUFFER_SOFTWARE);
 }
 
 /**

@@ -1,0 +1,374 @@
+/*
+ * tegra124-green-arrow-p2267-pmic-e1936-1000-a00.dtsi: Palmas PMIC
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/mfd/palmas.h>
+
+/ {
+	i2c@7000d000 {
+		palmas: tps65913 {
+			compatible = "ti,palmas";
+			reg = <0x58>;
+			interrupts = <0 86 0>;
+
+			#interrupt-cells = <2>;
+			interrupt-controller;
+
+			palmas_gpio: gpio {
+				compatible = "ti,palmas-gpio";
+				gpio-controller;
+				#gpio-cells = <2>;
+			};
+
+			rtc {
+				compatible = "ti,palmas-rtc";
+				interrupt-parent = <&palmas>;
+				interrupts = <8 0>;
+			};
+
+			palams_thermal: thermal {
+				compatible = "ti,palmas-thermal";
+				#thermal-sensor-cells = <0>;
+				interrupt-parent = <&palmas>;
+				interrupts = <5 0>;
+				ti,hot-die-threshold-temp = <120000>;
+				status = "disabled";
+			};
+
+			pinmux {
+				compatible = "ti,tps65913-pinctrl";
+				pinctrl-names = "default";
+				pinctrl-0 = <&palmas_default>;
+
+				palmas_default: pinmux {
+					powergood {
+						pins = "powergood";
+						function = "powergood";
+					};
+
+					vac {
+						pins = "vac";
+						function = "vac";
+					};
+
+					pin_gpio0 {
+						pins = "gpio0";
+						function = "id";
+						bias-pull-up;
+					};
+
+					pin_gpio1 {
+						pins = "gpio1";
+						function = "gpio";
+						bias-pull-up;
+					};
+
+					pin_gpio6 {
+						pins = "gpio2", "gpio3", "gpio4", "gpio6", "gpio7";
+						function = "gpio";
+					};
+
+					pin_gpio5 {
+						pins = "gpio5";
+						function = "clk32kgaudio";
+					};
+				};
+			};
+
+			palmas_extcon: extcon {
+				compatible = "ti,palmas-usb";
+				ti,wakeup;
+				#extcon-cells = <1>;
+				ti,enable-id-detection;
+				ti,enable-vbus-detection;
+			};
+
+			watchdog {
+				compatible = "ti,palmas-watchdog";
+				ti,watchdog-init-timeout = <600>;
+				ti,watchdog-interrupt-mode;
+				dt-override-status-odm-data = <0x80000000 0x80000000>;
+				status = "disabled";
+			};
+
+			power_pm {
+				compatible = "ti,palmas-pm";
+				system-pmic-power-off;
+			};
+
+			palmas_ldousb_in {
+				compatible = "ti,palmas-ldousb-in";
+				ti,ldousb-in-threshold-voltage = <3500000>;
+				ti,threshold-voltage-tolerance = <100000>;
+				ti,enable-in1-above-threshold;
+				ldousb-in1-supply = <&vdd_ac_bat_reg>;
+				ldousb-in2-supply = <&palmas_smps10_out2>;
+			};
+
+			palams_gpadc: gpadc {
+				compatible = "ti,palmas-gpadc";
+				interrupt-parent = <&palmas>;
+				interrupts = <18 0
+					      16 0
+					      17 0>;
+				ti,channel0-current-microamp = <5>;
+				ti,channel3-current-microamp = <400>;
+				ti,enable-channel3-dual-current;
+				ti,enable-extended-delay;
+				#io-channel-cells = <1>;
+			};
+
+                        clock {
+                                compatible = "ti,palmas-clk";
+
+                                clk32k_kg {
+                                        ti,clock-boot-enable;
+                                };
+
+                                clk32k_kg_audio {
+                                        ti,clock-boot-enable;
+                                };
+                        };
+
+			pmic {
+				compatible = "ti,tps65913-pmic", "ti,palmas-pmic";
+				ldo1-in-supply = <&palmas_smps6>;
+				ldo2-in-supply = <&palmas_smps10_out2>;
+				ldo3-in-supply = <&palmas_smps10_out2>;
+				ldo5-in-supply = <&palmas_smps8>;
+				ldo9-in-supply = <&palmas_smps9>;
+				ldoln-in-supply = <&palmas_smps10_out2>;
+				ldousb-in-supply = <&palmas_smps10_out2>;
+
+				regulators {
+					smps123 {
+						regulator-name = "vdd_cpu";
+						regulator-min-microvolt = <650000>;
+						regulator-max-microvolt = <1400000>;
+						regulator-always-on;
+						regulator-boot-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_ENABLE1>;
+						ti,config-flags = <8>;
+					};
+
+					smps45 {
+						regulator-name = "vdd_gpu";
+						regulator-min-microvolt = <700000>;
+						regulator-max-microvolt = <1400000>;
+						regulator-init-microvolt = <1000000>;
+						regulator-boot-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_ENABLE2>;
+						ti,ext-enable-gpio = <&gpio TEGRA_GPIO(R, 5) 0>;
+					};
+
+					palmas_smps6: smps6 {
+						regulator-name = "vddio-ddr";
+						regulator-always-on;
+						regulator-boot-on;
+					};
+
+					smps7 {
+						regulator-name = "vdd_core";
+						regulator-min-microvolt = <700000>;
+						regulator-max-microvolt = <1400000>;
+						regulator-always-on;
+						regulator-boot-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
+					};
+
+					palmas_smps8: smps8 {
+						regulator-name = "vdd-1v8";
+						regulator-always-on;
+						regulator-boot-on;
+						consumers {
+							c1 {
+								regulator-consumer-supply = "vddio_sdmmc";
+								regulator-consumer-device = "sdhci-tegra.0";
+							};
+							c2 {
+								regulator-consumer-supply = "vddio_sdmmc";
+								regulator-consumer-device = "sdhci-tegra.3";
+							};
+							c3 {
+								regulator-consumer-supply = "avdd_pll_utmip";
+								regulator-consumer-device = "tegra-ehci.0";
+							};
+						};
+					};
+
+					palmas_smps9: smps9 {
+						regulator-name = "vdd-snsr";
+						regulator-min-microvolt = <2800000>;
+						regulator-max-microvolt = <2800000>;
+						regulator-always-on;
+						regulator-boot-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
+						consumers {
+							c1 {
+								regulator-consumer-supply = "vddio_sd_slot";
+								regulator-consumer-device = "sdhci-tegra.3";
+							};
+							c2 {
+								regulator-consumer-supply = "vddio_sd_slot";
+								regulator-consumer-device = "sdhci-tegra.2";
+							};
+						};
+					};
+
+					palmas_smps10_out1: smps10_out1 {
+						regulator-name = "vdd-out1-5v0";
+						regulator-min-microvolt = <3750000>;
+						regulator-max-microvolt = <3750000>;
+					};
+
+					palmas_smps10_out2: smps10_out2 {
+						regulator-name = "vdd-out2-5v0";
+						regulator-min-microvolt = <3750000>;
+						regulator-max-microvolt = <3750000>;
+						regulator-always-on;
+						regulator-boot-on;
+						regulator-disable-on-suspend;
+					};
+
+					ldo1 {
+						regulator-name = "avid-pll";
+						regulator-always-on;
+						regulator-boot-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
+					};
+
+					ldo2_reg: ldo2 {
+						regulator-name = "avdd-lcd";
+						regulator-min-microvolt = <3000000>;
+						regulator-max-microvolt = <3000000>;
+					};
+
+					ldo3_reg: ldo3 {
+						regulator-name = "vdd-touch";
+						regulator-min-microvolt = <3300000>;
+						regulator-max-microvolt = <3300000>;
+					};
+
+					ldo4_reg: ldo4 {
+						regulator-name = "avdd-cam1";
+						regulator-min-microvolt = <2700000>;
+						regulator-max-microvolt = <2700000>;
+					};
+
+					ldo5_reg: ldo5 {
+						regulator-name = "avdd-dsi-csi";
+						regulator-min-microvolt = <1200000>;
+						regulator-max-microvolt = <1200000>;
+					};
+
+					vpp_fuse: ldo6 {
+						regulator-name = "vpp-fuse";
+						regulator-min-microvolt = <1800000>;
+						regulator-max-microvolt = <1800000>;
+					};
+
+					ldo7_reg: ldo7 {
+						regulator-name = "avdd-cam-af";
+						regulator-min-microvolt = <2700000>;
+						regulator-max-microvolt = <2700000>;
+					};
+
+					ldo8 {
+						regulator-name = "vdd-rtc";
+						regulator-min-microvolt = <950000>;
+						regulator-max-microvolt = <950000>;
+						regulator-always-on;
+						regulator-boot-on;
+					};
+
+					palmas_ldo9: ldo9 {
+						regulator-name = "vddio-sdmmc-2";
+						regulator-min-microvolt = <1800000>;
+						regulator-max-microvolt = <3300000>;
+						ti,bypass-voltage = <2700000>;
+						consumers {
+							c1 {
+								regulator-consumer-supply = "vddio_sdmmc";
+								regulator-consumer-device = "sdhci-tegra.2";
+							};
+						};
+					};
+
+					ldoln_reg: ldoln {
+						regulator-name = "vddio-hv";
+						regulator-always-on;
+						regulator-boot-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
+					};
+
+					ldousb_reg: ldousb {
+						regulator-name = "avdd-usb";
+						regulator-always-on;
+						regulator-boot-on;
+						consumers {
+							c1 {
+								regulator-consumer-supply = "avdd_usb";
+								regulator-consumer-device = "tegra-ehci.0";
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+
+	i2c@7000c400 {
+		battery-charger@6b {
+			compatible = "ti,bq2419x";
+			reg = <0x6b>;
+
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
+
+			battery_charger: charger {
+				status = "disabled";
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+				regulator-name = "batt_regulator";
+				regulator-max-microamp = <3000000>;
+				ti,disbale-suspend-during-charging;
+				ti,charge-voltage-limit-millivolt = <4352>;
+				ti,charge-term-current-limit-milliamp = <128>;
+				ti,ir-comp-voltage-millivolt = <1>;
+				ti,ir-comp-resister-ohm = <1>;
+				ti,pre-charge-current-limit-milliamp = <256>;
+				ti,thermal-regulation-threshold-degc = <120>;
+			};
+
+			usb0_vbus: vbus {
+				regulator-name = "vbus_regulator";
+				ti,otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
+			};
+		};
+
+		battery-gauge@55 {
+			status = "disabled";
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			compatible = "ti,bq27441";
+			reg = <0x55>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(Q, 5) 0x0>;
+			ti,design-capacity = <5200>;
+			ti,design-energy = <19760>;
+			ti,taper-rate = <318>;
+			ti,terminate-voltage = <2700>;
+			ti,v-at-chg-term = <4340>;
+		};
+	};
+};

@@ -1,0 +1,241 @@
+/*
+ * tegra186-quill-p3310-1000-a00-plugin-manager.dtsi: P3310 plugin manager
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	plugin-manager {
+		fragement@0 {
+			odm-data = "enable-tegra-wdt";
+			override@0 {
+				target = <&tegra_wdt>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@1 {
+			odm-data = "disable-tegra-wdt";
+			override@0 {
+				target = <&tegra_pmc>;
+				_overlay_ {
+					nvidia,enable-halt-in-fiq;
+				};
+			};
+		};
+
+		fragement@2 {
+			odm-data = "enable-pmic-wdt";
+			override@0 {
+				target = <&spmic_wdt>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@4 {
+			odm-data = "enable-tegra-wdt",
+					"enable-pmic-wdt",
+					"enable-denver-wdt";
+			override@0 {
+				target = <&soft_wdt>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+		};
+
+		fragement@6 {
+			odm-data = "mods-build";
+			override@0 {
+				target = <&xusb_mbox>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+			override@1 {
+				target = <&tegra_padctl>;
+				_overlay_ {
+					delete-target-property = "mboxes";
+				};
+			};
+			override@2 {
+				target = <&smmu>;
+				_overlay_ {
+					mmu-masters = <&host1x				TEGRA_SID_HC
+											TEGRA_SID_HC_VM0
+											TEGRA_SID_HC_VM1
+											TEGRA_SID_HC_VM2
+											TEGRA_SID_HC_VM3
+											TEGRA_SID_HC_VM4
+											TEGRA_SID_HC_VM5
+											TEGRA_SID_HC_VM6
+											TEGRA_SID_HC_VM7>,
+						      <&{/host1x/nvcsi@150c0000}	TEGRA_SID_NVCSI>,
+						      <&{/host1x/vic@15340000}		TEGRA_SID_VIC>,
+						      <&{/host1x/vi@15700000}		TEGRA_SID_VI>,
+						      <&{/host1x/isp@15600000}		TEGRA_SID_ISP>,
+						      <&{/host1x/nvdec@15480000}	TEGRA_SID_NVDEC>,
+						      <&{/host1x/nvenc@154c0000}	TEGRA_SID_NVENC>,
+						      <&{/host1x/nvjpg@15380000}	TEGRA_SID_NVJPG>,
+						      <&{/host1x/nvdisplay@15200000}	TEGRA_SID_NVDISPLAY>,
+						      <&{/host1x/nvdisplay@15210000}	TEGRA_SID_NVDISPLAY>,
+						      <&{/host1x/nvdisplay@15220000}	TEGRA_SID_NVDISPLAY>,
+						      <&{/host1x/tsec@15500000}		TEGRA_SID_TSEC>,
+						      <&{/host1x/tsecb@15100000}	TEGRA_SID_TSECB>,
+						      <&{/host1x/se@15810000}		TEGRA_SID_SE>,
+						      <&{/host1x/se@15820000}		TEGRA_SID_SE1>,
+						      <&{/host1x/se@15830000}		TEGRA_SID_SE2>,
+						      <&{/host1x/se@15840000}		TEGRA_SID_SE3>,
+						      <&{/smmu_test}			TEGRA_SID_SMMU_TEST>,
+						      <&{/gp10b}			TEGRA_SID_GPUB>,
+						      <&host1x_ctx0			TEGRA_SID_HOST1X_CTX0>,
+						      <&host1x_ctx1			TEGRA_SID_HOST1X_CTX1>,
+						      <&host1x_ctx2			TEGRA_SID_HOST1X_CTX2>,
+						      <&host1x_ctx3			TEGRA_SID_HOST1X_CTX3>,
+						      <&host1x_ctx4			TEGRA_SID_HOST1X_CTX4>,
+						      <&host1x_ctx5			TEGRA_SID_HOST1X_CTX5>,
+						      <&host1x_ctx6			TEGRA_SID_HOST1X_CTX6>,
+						      <&host1x_ctx7			TEGRA_SID_HOST1X_CTX7>,
+
+						      /* Non-host devices. */
+						      <&{/adsp@2993000}		TEGRA_SID_APE>,
+						      <&{/rtcpu@2993000}	TEGRA_SID_APE>,
+						      <&{/ether_qos@2490000}	TEGRA_SID_EQOS>,
+						      <&{/sdhci@3460000}	TEGRA_SID_SDMMC4A>,
+						      <&{/sdhci@3440000}	TEGRA_SID_SDMMC3A>,
+						      <&{/sdhci@3420000}	TEGRA_SID_SDMMC2A>,
+						      <&{/sdhci@3400000}	TEGRA_SID_SDMMC1A>,
+						      <&{/ufshci@2450000}	TEGRA_SID_UFSHC>,
+						      <&{/xhci@3530000}		TEGRA_SID_XUSB_HOST>,
+						      <&{/xudc@3550000}		TEGRA_SID_XUSB_DEV>,
+						      <&{/hda@3510000}		TEGRA_SID_HDA>,
+						      <&tegra_adsp_audio	TEGRA_SID_APE>,
+						      <&{/sound}		TEGRA_SID_APE>,
+						      <&{/sound_ref}		TEGRA_SID_APE>,
+						      <&{/pcie-controller@10003000} TEGRA_SID_AFI>,
+						      <&{/ahci-sata@3507000}	TEGRA_SID_SATA2>,
+						      <&{/aon@c160000}		TEGRA_SID_AON>,
+						      <&{/rtcpu@b000000}	TEGRA_SID_SCE>,
+						      <&{/bpmp}			TEGRA_SID_BPMP>;
+				};
+			};
+
+			override@3 {
+				target = <&gpcdma>;
+				_overlay_ {
+					nvidia,bypass-smmu;
+				};
+			};
+
+			override@4 {
+				target = <&sdmmc3>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+
+			override@5 {
+				target = <&sdmmc1>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+
+		};
+
+		fragement@7 {
+			odm-data = "enable-high-speed-uart";
+			override@0 {
+				target = <&uarta>;
+				_overlay_ {
+					compatible = "nvidia,tegra186-hsuart";
+				};
+			};
+		};
+
+		fragement@8 {
+			odm-data = "enable-sdmmc-hwcq";
+			override@0 {
+				target = <&sdmmc4>;
+				_overlay_ {
+					nvidia,enable-hwcq;
+				};
+			};
+		};
+		fragement@9 {
+			odm-data = "enable-ufs-on-uphy-lane5";
+			override@0 {
+				target = <&tegra_ufs>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@1 {
+				target = <&tegra_sata>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+			override@3 {
+				target = <&gen1_i2c>;
+				_overlay_ {
+					gpio@76 {
+						ufs_lane5_mux {
+							status = "okay";
+						};
+						sata_lane5_mux {
+							status = "disabled";
+						};
+					};
+				};
+			};
+		};
+		fragement@10 {
+			odm-data = "enable-ufs-on-uphy-lane4";
+			override@0 {
+				target = <&tegra_ufs>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@1 {
+				target = <&tegra_sata>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+			override@3 {
+				target = <&gen1_i2c>;
+				_overlay_ {
+					gpio@76 {
+						pcie0_lane4_mux {
+							status = "disabled";
+						};
+						ufs_lane4_mux {
+							status = "okay";
+						};
+						sata_lane5_mux {
+							status = "disabled";
+						};
+						ufs_lane5_mux {
+							status = "okay";
+						};
+					};
+				};
+			};
+		};
+	};
+};

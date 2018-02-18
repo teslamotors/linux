@@ -30,3 +30,7 @@ config FORCEDETH
 	  will be called forcedeth.
 
 endif # NET_VENDOR_NVIDIA
+
+trysource "../t18x/drivers/net/ethernet/nvidia/eqos/Kconfig"
+trysource "../t18x/drivers/net/ethernet/nvidia/eqos/Kconfig.t18x"
+trysource "drivers/net/ethernet/nvidia/eqos/Kconfig.t18x"

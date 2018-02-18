@@ -1,0 +1,301 @@
+/*
+ * T210- DSC
+ *
+ * arch/arm64/boot/dts/tegra210-vcm31-p2382-0000-a00-00-vm1.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/dts-v1/;
+/memreserve/ 0x80000000 0x00020000;
+/ {
+	/* smmu and ivc drivers are called very early in the kernel init
+	 * call sequence (core_initcall). smmu driver as such is a consumer
+	 * of ivc and depends on it.
+	 * Keeping the ivc node at the very top in the device tree ensures
+	 * that probe for ivc is called before the smmu driver probe.
+	 * Without this virtualized smmu driver probe will fail.
+	 */
+
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+	};
+};
+
+#include "tegra210-vcm31-p2382-common.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	chosen {
+		nvidia,tegra-hypervisor-mode;
+	};
+
+	iommu {
+		compatible = "nvidia,tegra124-smmu-hv";
+		#asids = <20>;
+		ivc_queue = <&tegra_hv 0>;
+		mempool_id = <&tegra_hv 0>;
+
+		domains = <
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS2)
+			&dc_as TEGRA_SWGROUP_CELLS2(DC, DC12)
+			&dc_as TEGRA_SWGROUP_CELLS(DCB)
+			&common_as TEGRA_SWGROUP_CELLS(AFI)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC1A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC2A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC3A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC4A)
+			/* For now, GPU shares address space with host1x */
+			&host1x_as TEGRA_SWGROUP_CELLS12(EPP, HC, HDA, VI, ISP, ISP2B, VIC, MSENC, TSEC, NVJPG, NVDEC, GPUB)
+			&ape_as TEGRA_SWGROUP_CELLS(APE)
+			&common_as 0xFFFFFFFF 0xFFFFFFFF>;
+
+		address-space-prop {
+			host1x_as: host1x {
+				iova-start = <0x0 0x98100000>;
+				iova-size = <0x0 0x63EFFFFF>;
+				alignment = <0x20000>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+			ape_as: ape {
+				iova-start = <0x0 0x80000000>;
+				iova-size = <0x0 0x7FFFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+		};
+	};
+
+	dma@60020000 {
+		dma-channels = <16>;
+		status = "okay";
+	};
+
+	sdhci@700b0600 {
+		status = "disabled";
+	};
+
+	bpmp {
+		compatible = "nvidia,tegra210-bpmp-none";
+		status = "disabled";
+	};
+
+	i2c@7000c000 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 2>;
+	};
+
+	i2c@7000c400 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 2>;
+	};
+
+	i2c@7000c500 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 2>;
+	};
+
+	i2c@7000c700 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 2>;
+	};
+
+	i2c@7000d000 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 2>;
+	};
+
+	i2c@7000d100 {
+		compatible = "nvidia,tegra210-i2c-hv";
+		ivc_queue = <&tegra_hv 2>;
+	};
+
+	tegra_hv_net {
+		compatible = "nvidia,tegra-hv-net";
+		status = "okay";
+		ivc = <&tegra_hv 6>;
+	};
+
+	timer@60005000 {
+		status = "disabled";
+	};
+
+	host1x {
+		virtual-dev = <1>;
+
+		ivc-queue0 = <&tegra_hv 12>;
+		ivc-queue1 = <&tegra_hv 13>;
+		ivc-queue2 = <&tegra_hv 14>;
+
+		iommus = <&smmu TEGRA_SWGROUP_EPP>,
+			<&smmu TEGRA_SWGROUP_HC>,
+			<&smmu TEGRA_SWGROUP_HDA>;
+
+		vic {
+			compatible = "nvidia,tegra210-vhost-vic";
+		};
+
+		nvdec {
+			compatible = "nvidia,tegra210-vhost-nvdec";
+		};
+
+		nvjpg {
+			compatible = "nvidia,tegra210-vhost-nvjpg";
+		};
+
+		vi {
+			compatible = "nvidia,tegra210-vhost-vi";
+		};
+
+		isp@54600000 {
+			compatible = "nvidia,tegra210-vhost-isp";
+		};
+
+		isp@54680000 {
+			compatible = "nvidia,tegra210-vhost-isp";
+		};
+
+		nvenc {
+			compatible = "nvidia,tegra210-vhost-nvenc";
+		};
+
+		/delete-node/ dpaux;
+		/delete-node/ sor;
+
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "disabled";
+		};
+
+		tsec {
+			status = "disabled";
+		};
+
+		tsecb {
+			status = "disabled";
+		};
+	};
+
+	gpu {
+		status = "disabled";
+	};
+
+	vgpu {
+		compatible = "nvidia,tegra124-gk20a-vgpu";
+		nvidia,host1x = <&host1x>;
+		reg = <0x0 0x58000000 0x0 0x01000000>;
+		iommus = <&smmu TEGRA_SWGROUP_GPU &smmu TEGRA_SWGROUP_GPUB>;
+
+		ivc-queue3 = <&tegra_hv 15>;
+		ivc-queue4 = <&tegra_hv 16>;
+	};
+
+	tegra_hv_wdt {
+		compatible = "nvidia,tegra-hv-wdt";
+		status = "okay";
+		ivc = <&tegra_hv 4>;
+	};
+
+	dfll-max16989@70110000 {
+		status = "disabled";
+	};
+
+	dvfs_rails {
+		gpu_scaling_cdev: vdd-gpu-scaling-cdev@7 {
+			status = "disabled";
+		};
+	};
+
+	thermal-zones {
+		Tdiode_tegra {
+			status = "disabled";
+		};
+	};
+
+	i2c@7000c000 {
+		tegra_nct72: onsemi,nct72@4c {
+			status = "disabled";
+		};
+	};
+
+	i2c@7000d000 {
+		cpu_max16989_reg: max16989@3a {
+			status = "disabled";
+		};
+
+		gpu_max16989_reg: max16989@3b {
+			status = "disabled";
+		};
+
+		soc_max16989_reg: max16989@38 {
+			status = "disabled";
+		};
+	};
+
+	watchdog@60005100 {
+		status = "disabled";
+	};
+
+	sound {
+		status = "disabled";
+	};
+
+	sound_ref {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+	};
+
+	adsp_audio {
+		status = "disabled";
+	};
+
+	adsp {
+		status = "disabled";
+	};
+
+	adma: adma@702e2000 {
+		status = "okay";
+		dma-channels = <2>;
+	};
+
+	virt-alt-pcm {
+		compatible = "nvidia,tegra210-virt-pcm";
+		status = "okay";
+
+		iommus = <&smmu TEGRA_SWGROUP_APE>;
+		power-domains = <&ape_pd>;
+		wakeup-disable;
+
+		cardname = "tegra-virt-pcm-vm1";
+
+		dmas = <&adma 1>, <&adma 1>, <&adma 2>, <&adma 2>;
+		dma-names = "rx1", "tx1", "rx2", "tx2";
+
+		ivc_queue = <&tegra_hv 23>;
+
+		admaif_ch_num = <2>;
+		admaif_ch_list = <1>, <2>;
+	};
+};

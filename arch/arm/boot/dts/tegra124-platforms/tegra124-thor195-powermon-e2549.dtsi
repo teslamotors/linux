@@ -1,0 +1,31 @@
+/ {
+	i2c@7000c400 {
+		ina3221x@40 {
+			compatible = "ti,ina3221x";
+			reg = <0x40>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7727>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_BATT";
+				ti,shunt-resistor-mohm = <10>;
+				ti,current-critical-limit-ma = <6800>;
+			};
+
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_VBUS";
+				ti,shunt-resistor-mohm = <10>;
+			};
+
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_MODEM";
+				ti,shunt-resistor-mohm = <10>;
+			};
+		};
+	};
+};

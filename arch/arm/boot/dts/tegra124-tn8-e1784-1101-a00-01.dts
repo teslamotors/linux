@@ -1,0 +1,13 @@
+#include "tegra124-tn8-e1784-1101-a00.dts"
+
+/ {
+	thermal-zones {
+		Battery {
+			status = "disabled";
+		};
+	};
+
+	sysedp_batmon_calc {
+		status = "disabled";
+	};
+};

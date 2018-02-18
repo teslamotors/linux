@@ -183,6 +183,7 @@ int pinctrl_dt_to_map(struct pinctrl *p)
 	int size, config;
 	phandle phandle;
 	struct device_node *np_config;
+	int name_count;
 
 	/* CONFIG_OF enabled, p->dev not instantiated from DT */
 	if (!np) {
@@ -195,14 +196,21 @@ int pinctrl_dt_to_map(struct pinctrl *p)
 	/* We may store pointers to property names within the node */
 	of_node_get(np);
 
+	name_count = of_property_count_strings(np, "pinctrl-names");
+
 	/* For each defined state ID */
 	for (state = 0; ; state++) {
 		/* Retrieve the pinctrl-* property */
 		propname = kasprintf(GFP_KERNEL, "pinctrl-%d", state);
 		prop = of_find_property(np, propname, &size);
 		kfree(propname);
-		if (!prop)
-			break;
+		if (!prop) {
+			if (state < name_count)
+				continue;
+			else
+				break;
+		}
+
 		list = prop->value;
 		size /= sizeof(*list);
 

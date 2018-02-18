@@ -1,0 +1,44 @@
+/*
+ * arch/arm/boot/dts/tegra124-ardbeg-e1780-1000-a00-00.dts
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+/dts-v1/;
+
+#include "tegra124-ardbeg-e1780-1000-a00-common.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-power-tree-e1735-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-e1780-e1735-dfll.dtsi"
+
+/ {
+	nvidia,boardids = "1780:1000:00:B:3;1735:1000:01:D:3";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,proc-boardid = "1780:1000:00:B:3";
+	nvidia,pmu-boardid = "1735:1000:01:D:3";
+
+	i2c@7000d000 {
+		tps65913@58 {
+			extcon {
+				 extcon-name = "palmas-extcon";
+			};
+		};
+	};
+	i2c@7000c400 {
+		battery-gauge@0b {
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+	};
+};

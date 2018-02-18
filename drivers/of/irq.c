@@ -7,6 +7,8 @@
  *    Copyright (C) 1996-2001 Cort Dougan
  *  Adapted for Power Macintosh by Paul Mackerras
  *    Copyright (C) 1996 Paul Mackerras (paulus@cs.anu.edu.au)
+ *  Added check for availability of IC in DT
+ *    Copyright (C) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -495,6 +497,10 @@ void __init of_irq_init(const struct of_device_id *matches)
 		if (!of_find_property(np, "interrupt-controller", NULL) ||
 				!of_device_is_available(np))
 			continue;
+
+		if (!of_device_is_available(np))
+			continue;
+
 		/*
 		 * Here, we allocate and populate an intc_desc with the node
 		 * pointer, interrupt-parent device_node etc.

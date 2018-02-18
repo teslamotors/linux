@@ -272,6 +272,9 @@ static void fw_free_buf(struct firmware_buf *buf)
 static char fw_path_para[256];
 static const char * const fw_path[] = {
 	fw_path_para,
+	"/system/etc/firmware",
+	"/vendor/firmware",
+	"/system/vendor/firmware",
 	"/lib/firmware/updates/" UTS_RELEASE,
 	"/lib/firmware/updates",
 	"/lib/firmware/" UTS_RELEASE,
@@ -1123,41 +1126,43 @@ _request_firmware(const struct firmware **firmware_p, const char *name,
 		goto out;
 
 	ret = 0;
-	timeout = firmware_loading_timeout();
-	if (opt_flags & FW_OPT_NOWAIT) {
-		timeout = usermodehelper_read_lock_wait(timeout);
-		if (!timeout) {
-			dev_dbg(device, "firmware: %s loading timed out\n",
-				name);
-			ret = -EBUSY;
-			goto out;
-		}
-	} else {
-		ret = usermodehelper_read_trylock();
-		if (WARN_ON(ret)) {
-			dev_err(device, "firmware: %s will not be loaded\n",
-				name);
-			goto out;
-		}
-	}
-
 	ret = fw_get_filesystem_firmware(device, fw->priv);
 	if (ret) {
+
 		if (!(opt_flags & FW_OPT_NO_WARN))
 			dev_warn(device,
 				 "Direct firmware load for %s failed with error %d\n",
 				 name, ret);
+
+		timeout = firmware_loading_timeout();
+		if (opt_flags & FW_OPT_NOWAIT) {
+			timeout = usermodehelper_read_lock_wait(timeout);
+			if (!timeout) {
+				dev_dbg(device, "firmware: %s loading timed out\n",
+					name);
+				ret = -EBUSY;
+				goto out;
+			}
+		} else {
+			ret = usermodehelper_read_trylock();
+			if (WARN_ON(ret)) {
+				dev_err(device, "firmware: %s will not be loaded\n",
+					name);
+				goto out;
+			}
+		}
+
 		if (opt_flags & FW_OPT_USERHELPER) {
 			dev_warn(device, "Falling back to user helper\n");
 			ret = fw_load_from_user_helper(fw, name, device,
 						       opt_flags, timeout);
 		}
+
+		usermodehelper_read_unlock();
 	}
 
 	if (!ret)
 		ret = assign_firmware_buf(fw, device, opt_flags);
-
-	usermodehelper_read_unlock();
 
  out:
 	if (ret < 0) {

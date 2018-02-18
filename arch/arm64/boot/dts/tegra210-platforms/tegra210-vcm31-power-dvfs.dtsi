@@ -1,0 +1,130 @@
+/*
+ * Copyright (c) 2015 NVIDIA CORPORATION. All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/clk/tegra210-clk.h>
+#include "tegra210-vcm31-thermal.dtsi"
+#include "tegra210-power-dvfs.dtsi"
+
+/ {
+	dfll-max16989@70110000 {
+		status = "okay";
+		compatible = "nvidia,tegra210-dfll";
+		reg = <0x0 0x70110000 0x0 0x400>;
+		out-clock-name="dfll_cpu";
+		clocks = <&tegra_car TEGRA210_CLK_ID_DFLL_CPU>,
+			 <&tegra_car TEGRA210_CLK_ID_DFLL_SOC>,
+			 <&tegra_car TEGRA210_CLK_ID_DFLL_REF>,
+			 <&tegra_car TEGRA210_CLK_ID_CPU_G>,
+			 <&tegra_car TEGRA210_CLK_ID_I2C5>;
+		clock-names = "dfll_cpu", "soc", "ref", "safe_dvfs", "i2c";
+		board-params = <&dfll_max16989_parms>;
+		i2c-pmic-integration = <&i2c_dfll>;
+
+		i2c_dfll: dfll-max16989-integration {
+			pmic-i2c-address = <0x74>;
+			pmic-i2c-voltage-register = <0x07>;
+			i2c-fs-rate = <400000>;
+			sel-conversion-slope = <1>;
+		};
+
+		dfll_max16989_parms: dfll-max16989-board-params {
+			sample-rate = <12500>;
+			fixed-output-forcing;
+			cf = <10>;
+			ci = <0>;
+			cg = <2>;
+			droop-cut-value = <0xf>;
+			droop-restore-ramp = <0x0>;
+			scale-out-ramp = <0x0>;
+		};
+	};
+
+	dvfs_rails {
+		vdd-cpu-rail-max16989@2 {
+			status = "okay";
+			reg = <2>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_cpu-supply = <&cpu_max16989_reg>;
+			vmin-cdev = <&cpu_vmin_cdev>;
+			vmax-cdev = <&cpu_vmax_cdev>;
+		};
+
+		vdd-gpu-rail-max16989@3 {
+			status = "okay";
+			reg = <3>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_gpu-supply = <&gpu_max16989_reg>;
+			scaling-cdev = <&gpu_scaling_cdev>;
+			vmax-cdev = <&gpu_vmax_cdev>;
+		};
+
+		vdd-core-rail-max16989@4 {
+			status = "okay";
+			reg = <4>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_core-supply = <&soc_max16989_reg>;
+			vmin-cdev = <&core_vmin_cdev>;
+			vmax-cdev = <&core_vmax_cdev>;
+		};
+
+		gpu_scaling_cdev: vdd-gpu-scaling-cdev@7 {
+			status = "okay";
+			nvidia,trips = <&gpu_scaling0 918 &gpu_scaling1 0
+					&gpu_scaling2 0 &gpu_scaling3 0
+					&gpu_scaling4 0 &gpu_scaling5 0>;
+
+		};
+	};
+
+	thermal-zones {
+		Tdiode_tegra {
+			trips {
+				gpu-scaling0 {
+					temperature = <(-40000)>;
+				};
+			};
+		};
+	};
+
+	cpufreq {
+		compatible = "nvidia,tegra210-cpufreq";
+		status = "okay";
+		cpu-scaling-data {
+			freq-table = <
+				204000
+				306000
+				408000
+				510000
+				612000
+				714000
+				816000
+				918000
+				1020000
+				1122000
+				1224000
+				1326000
+				1428000
+				1530000
+				1606500
+				1632000
+			>;
+			preserve-across-suspend;
+		};
+	};
+
+	chosen {
+		nvidia,t210-vcm31-sku;
+	};
+};

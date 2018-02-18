@@ -1,0 +1,83 @@
+#include "tegra132-bowmore-e1971-1100-a00-00.dts"
+
+/ {
+	pinmux {
+		unused_lowpower {
+			pex_l0_clkreq_n_pdd2 {
+				nvidia,pins = "pex_l0_clkreq_n_pdd2";
+				nvidia,function = "pe0";
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+			pex_l0_rst_n_pdd1 {
+				nvidia,pins = "pex_l0_rst_n_pdd1";
+				nvidia,function = "pe0";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+			pex_wake_n_pdd3 {
+				nvidia,pins = "pex_wake_n_pdd3";
+				nvidia,function = "pe";
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+			dap3_fs_pp0 {
+				nvidia,pins = "dap3_fs_pp0";
+				nvidia,function = "safe";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+			dap3_sclk_pp3 {
+				nvidia,pins = "dap3_sclk_pp3";
+				nvidia,function = "safe";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};
+
+	regulators {
+		hvdd_pex_3v3: regulator@9 {
+			compatible = "regulator-fixed";
+			regulator-name = "reg-3v3-supply";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio TEGRA_GPIO(P, 0) GPIO_ACTIVE_HIGH>;
+			enable-active-high;
+		};
+		hvdd_pex_1v05: regulator@10 {
+			compatible = "regulator-fixed";
+			regulator-name = "avdd-pll-pex";
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			gpio = <&gpio TEGRA_GPIO(P, 3) GPIO_ACTIVE_HIGH>;
+			enable-active-high;
+		};
+	};
+
+	pcie-controller {
+		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
+		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
+		nvidia,lane-map = <0x04>;
+		hvdd-pex-supply = <&hvdd_pex_3v3>;
+		hvdd-pex-pll-e-supply = <&hvdd_pex_3v3>;
+		dvddio-pex-supply = <&hvdd_pex_1v05>;
+		avddio-pex-supply = <&hvdd_pex_1v05>;
+		avdd-pex-pll-supply = <&hvdd_pex_1v05>;
+		vddio-pex-ctl-supply = <&hvdd_pex_1v05>;
+		status = "okay";
+
+		pci@1,0 {
+			status = "okay";
+		};
+
+		pci@2,0 {
+			status = "disabled";
+		};
+	};
+};

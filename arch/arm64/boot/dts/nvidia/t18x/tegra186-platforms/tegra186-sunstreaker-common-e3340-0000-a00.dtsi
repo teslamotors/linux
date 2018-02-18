@@ -1,0 +1,573 @@
+/*
+ * tegra186-sunstreaker-common-e3340-0000-a00.dtsi: Sunstreaker common dtsi.
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/types.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+/dts-v1/;
+
+/memreserve/ 0x80000000 0x00010000;
+
+#include "tegra186-soc/tegra186-soc-vcm.dtsi"
+#include "tegra186-platforms-simple-bus.dtsi"
+#include "panel-s-wuxga-8-0.dtsi"
+#include "tegra186-sunstreaker-e3340-powermon.dtsi"
+#include "tegra186-platforms/tegra186-sunstreaker-eqos.dtsi"
+#include "tegra186-hdmi.dtsi"
+#include "tegra186-dp.dtsi"
+#include "tegra186-platforms/tegra186-sunstreaker-thermal.dtsi"
+
+#define EXTCON_NONE		0
+#define EXTCON_USB             1
+#define EXTCON_USB_Host        2
+
+/ {
+        model = "sunstreaker_3340";
+        compatible = "nvidia,sunstreaker_3340", "nvidia,tegra186";
+
+        nvidia,dtbbuildtime = __DATE__, __TIME__;
+        #address-cells = <2>;
+        #size-cells = <2>;
+
+	pmc@c360000 {
+		io-pad-defaults {
+			sdmmc1-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+			sdmmc2-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+			sdmmc3-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+		};
+	};
+
+	pmc@c370000 {
+		nvidia,invert-pmic-interrupt-polarity;
+	};
+
+	serial@3100000 {
+		compatible = "nvidia,tegra210-uart", "nvidia,tegra186-hsuart";
+		console-port;
+		sqa-automation-port;
+		skip-reconfig;
+		status = "okay";
+	};
+
+	serial@3110000 {
+		compatible = "nvidia,tegra186-hsuart";
+		status = "okay";
+	};
+
+	serial@3130000 {
+		compatible = "nvidia,tegra186-hsuart";
+		status = "okay";
+	};
+
+	spi@3210000 {
+		status = "okay";
+	};
+
+	spi@3230000 {
+		status = "okay";
+	};
+
+	spi@3240000 {
+		status = "okay";
+	};
+
+	mttcan@c310000 {
+		gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 0) GPIO_ACTIVE_HIGH>;
+		gpio_can_en = <&tegra_gpio TEGRA_GPIO(AA, 1) GPIO_ACTIVE_HIGH>;
+		mram-params = <0 16 16 8 8 8 16 16 16>;
+		tx-config = <8 8 0 64>;
+		rx-config = <64 64 64>;
+		status = "okay";
+	};
+
+	mttcan@c320000 {
+		gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 6) GPIO_ACTIVE_HIGH>;
+		gpio_can_en = <&tegra_gpio TEGRA_GPIO(AA, 7) GPIO_ACTIVE_HIGH>;
+		mram-params = <0 16 16 8 8 8 16 16 16>;
+		tx-config = <8 8 0 64>;
+		rx-config = <64 64 64>;
+		status = "okay";
+	};
+
+	sdhci@3460000 {
+		uhs-mask = <0x0>; /*enable HS400 mode*/
+		nvidia,enable-strobe-mode;
+		status = "okay";
+		prod-settings {
+			#prod-cells = <3>;
+			trim-delay-hs200 {
+				prod = <0x0000100 0x1F000000 0x9000000>;
+			};
+		};
+	};
+
+	sdhci@3440000 {
+		cd-gpios = <&tegra_gpio TEGRA_GPIO(P, 5) 0>;
+		status = "disabled";
+		prod-settings {
+			autocal-pu-pd-offset-sdr104-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x6E78>;
+			};
+			autocal-pu-pd-offset-sdr50-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x6E78>;
+			};
+			autocal-pu-pd-offset-hs-3v3 {
+				prod = <0x00001E4 0x00007F7F 0x6A76>;
+			};
+			autocal-pu-pd-offset-hs-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x6A76>;
+			};
+			autocal-pu-pd-offset-default-3v3 {
+				prod = <0x00001E4 0x00007F7F 0x6A73>;
+			};
+			autocal-pu-pd-offset-default-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x6A73>;
+			};
+		};
+	};
+
+	sdhci@3420000 {
+		status = "disabled";
+	};
+
+	sdhci@3400000 {
+		cd-gpios = <&tegra_gpio TEGRA_GPIO(P, 6) 0>;
+		uhs-mask = <0x8>;
+		status = "okay";
+		prod-settings {
+			autocal-pu-pd-offset-sdr104-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x7378>;
+			};
+			autocal-pu-pd-offset-sdr50-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x7378>;
+			};
+			autocal-pu-pd-offset-default-1v8 {
+				prod = <0x00001E4 0x00007F7F 0x7676>;
+			};
+			autocal-pu-pd-offset-default-3v3 {
+				prod = <0x00001E4 0x00007F7F 0x7676>;
+			};
+		};
+	};
+
+	ahci-sata@3507000 {
+		status = "okay";
+	};
+
+	host1x {
+		nvcsi@150c0000 {
+			status = "disabled";
+		};
+
+		vi@15700000 {
+			status = "disabled";
+		};
+
+		isp@15600000 {
+			status = "disabled";
+		};
+
+		dsi {	/* dsi@15300000 */
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "disabled";
+			panel-s-wuxga-8-0 {
+				smartdimmer {
+					status = "disabled";
+				};
+			};
+		};
+	};
+
+	adsp_audio {
+		compr-ops = <1>;
+		num-plugin = <4>;
+		status = "disabled";
+		plugin-info-1 {
+			plugin-name = "mp3-dec1";
+			firmware-name = "nvmp3dec.elf";
+			widget-name = "MP3-DEC1";
+		};
+		plugin-info-2 {
+			plugin-name = "spkprot";
+			firmware-name = "nvspkprot.elf";
+			widget-name = "SPKPROT-SW";
+		};
+		plugin-info-3 {
+			plugin-name = "src";
+			firmware-name = "nvsrc.elf";
+			widget-name = "SRC";
+		};
+		plugin-info-4 {
+			plugin-name = "aac-dec1";
+			firmware-name = "nvaacdec.elf";
+			widget-name = "AAC-DEC1";
+		};
+	};
+
+	adma@2930000 {
+		dma-channels = <10>;
+	};
+
+	hda@3510000 {
+		status = "disabled";
+       };
+
+	sound {
+		compatible = "nvidia,tegra-audio-t186ref-mobile-rt565x";
+		nvidia,model = "tegra-snd-t186ref-mobile-rt565x";
+		nvidia,num-codec-link = <2>;
+		nvidia,num-clk = <8>;
+		nvidia,clk-rates = < 282240000	/* PLLA_x11025_RATE */
+				     11289600	/* AUD_MCLK_x11025_RATE */
+				     45158400	/* PLLA_OUT0_x11025_RATE */
+				     45158400	/* AHUB_x11025_RATE */
+				     368640000  /* PLLA_x8000_RATE */
+				     12288000	/* AUD_MCLK_x8000_RATE */
+				     36864000	/* PLLA_OUT0_x8000_RATE */
+				     36864000 >;/* AHUB_x8000_RATE */
+		clocks = <&tegra_car TEGRA186_CLK_PLLP_OUT0>,
+			<&tegra_car TEGRA186_CLK_PLLA>,
+			<&tegra_car TEGRA186_CLK_PLL_A_OUT0>,
+			<&tegra_car TEGRA186_CLK_AHUB>,
+			<&tegra_car TEGRA186_CLK_CLK_M>,
+			<&tegra_car TEGRA186_CLK_AUD_MCLK>;
+		clock-names = "pll_p_out1", "pll_a", "pll_a_out0", "ahub",
+				"clk_m", "extern1";
+		resets = <&tegra_car TEGRA186_RESET_AUD_MCLK>;
+		reset-names = "extern1_rst";
+
+		status = "disabled";
+		nvidia,audio-routing =
+			"y Headphone",		"y OUT",
+			"y IN",			"y Mic",
+			"z Headphone",		"z OUT",
+			"z IN",			"z Mic";
+
+		nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			link-name = "spdif-dit-0";
+			cpu-dai = <&tegra_i2s2>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "I2S2";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bitclock-inversion;
+			frame-inversion;
+			bit-format = "s16_le";
+			bclk_ratio = <4>;
+			srate = <48000>;
+			num-channel = <1>;
+			ignore_suspend;
+			name-prefix = "y";
+		};
+		nvidia,dai-link-2 {
+			link-name = "spdif-dit-1";
+			cpu-dai = <&tegra_i2s3>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "I2S3";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s16_le";
+			bclk_ratio = <1>;
+			srate = <48000>;
+			num-channel = <2>;
+			ignore_suspend;
+			name-prefix = "z";
+		};
+	};
+
+	backlight {
+		panel-s-wuxga-8-0-bl {
+			pwms = <&tegra_pwm1 0 40161>;
+		};
+	};
+
+	soft_wdt: soft_watchdog {
+		compatible = "softdog-platform";
+		status = "okay";
+	};
+
+	external-connection {
+		vbus_id_extcon: extcon@1 {
+			compatible = "extcon-gpio-states";
+			reg = <0x1>;
+			extcon-gpio,name = "VBUS";
+			extcon-gpio,out-cable-name-strings = "USB", "USB-Host";
+			extcon-gpio,out-cable-names = <EXTCON_USB EXTCON_USB_Host EXTCON_NONE>;
+			extcon-gpio,cable-states = <0x3 0x0
+						    0x0 0x2
+						    0x1 0x2
+						    0x2 0x1>;
+			gpios = <&tegra_gpio TEGRA_GPIO(FF, 4) 0 &spmic 0 0>;
+			#extcon-cells = <1>;
+		};
+	};
+
+	mailbox@3538000 {
+		status = "okay";
+	};
+
+	xudc@3550000 {
+		extcon-cables = <&vbus_id_extcon 0>;
+		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+	};
+
+	xhci@3530000 {
+		nvidia,pmc-usb-wakes-disabled;
+		extcon-cables = <&vbus_id_extcon 1>;
+		extcon-cable-names = "id";
+		#extcon-cells = <1>;
+	};
+
+	bwmgr {
+		status = "okay";
+	};
+
+	stm@8070000 {
+		status = "okay";
+	};
+
+        ptm_a57_0: ptm@9840000 {
+                status = "okay";
+        };
+
+        ptm_a57_1: ptm@9940000 {
+                status = "okay";
+        };
+
+        ptm_a57_2: ptm@9a40000 {
+                status = "okay";
+        };
+
+        ptm_a57_3: ptm@9b40000 {
+                status = "okay";
+        };
+
+        funnel_bccplex@9010000 {
+                status = "okay";
+        };
+
+        funnel_major@8010000 {
+                status = "okay";
+        };
+
+        replicator@0x8040000 {
+                status = "okay";
+        };
+
+        etf@8030000 {
+                status = "okay";
+        };
+
+        tpiu@8060000 {
+                status = "okay";
+        };
+
+	cpus {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+
+		admaif@290f000 {
+			status = "disabled";
+		};
+
+		sfc@2902000 {
+			status = "disabled";
+		};
+
+		sfc@2902200 {
+			status = "disabled";
+		};
+
+		sfc@2902400 {
+			status = "disabled";
+		};
+
+		sfc@2902600 {
+			status = "disabled";
+		};
+
+		spkprot@2908c00 {
+			status = "disabled";
+		};
+
+		amixer@290bb00 {
+			status = "disabled";
+		};
+
+		i2s@2901000 {
+			status = "disabled";
+		};
+
+		i2s@2901100 {
+			status = "disabled";
+		};
+
+		i2s@2901200 {
+			status = "disabled";
+		};
+
+		i2s@2901300 {
+			status = "disabled";
+		};
+
+		i2s@2901400 {
+			status = "disabled";
+		};
+
+		i2s@2901500 {
+			status = "disabled";
+		};
+
+		amx@2903000 {
+			status = "disabled";
+		};
+
+		amx@2903100 {
+			status = "disabled";
+		};
+
+		amx@2903200 {
+			status = "disabled";
+		};
+
+		amx@2903300 {
+			status = "disabled";
+		};
+
+		adx@2903800 {
+			status = "disabled";
+		};
+
+		adx@2903900 {
+			status = "disabled";
+		};
+
+		adx@2903a00 {
+			status = "disabled";
+		};
+
+		adx@2903b00 {
+			status = "disabled";
+		};
+
+		dmic@2904000 {
+			status = "disabled";
+		};
+
+		afc@2907000 {
+			status = "disabled";
+		};
+
+		afc@2907100 {
+			status = "disabled";
+		};
+
+		afc@2907200 {
+			status = "disabled";
+		};
+
+		afc@2907300 {
+			status = "disabled";
+		};
+
+		afc@2907400 {
+			status = "disabled";
+		};
+
+		afc@2907500 {
+			status = "disabled";
+		};
+
+		mvc@290a000 {
+			status = "disabled";
+		};
+
+		mvc@290a200 {
+			status = "disabled";
+		};
+
+		spdif@2906000 {
+			status = "disabled";
+		};
+
+		iqc@290e000 {
+			status = "disabled";
+		};
+
+		asrc@2910000 {
+			status = "disabled";
+		};
+
+		arad@290e400 {
+			status = "disabled";
+		};
+
+		ope@2908000 {
+			status = "disabled";
+
+			peq@2908100 {
+				status = "disabled";
+			};
+
+			mbdrc@2908200 {
+				status = "disabled";
+			};
+		};
+
+		dspk@2905000 {
+			status = "disabled";
+		};
+
+		dspk@2905100 {
+			status = "disabled";
+		};
+	};
+
+	spdif-dit.0@0 {
+		status = "disabled";
+	};
+
+	spdif-dit.1@1 {
+		status = "disabled";
+	};
+
+	spdif-dit.2@2 {
+		status = "disabled";
+	};
+
+	spdif-dit.3@3 {
+		status = "disabled";
+	};
+};
+

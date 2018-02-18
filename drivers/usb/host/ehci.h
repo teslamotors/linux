@@ -225,6 +225,11 @@ struct ehci_hcd {			/* one per controller */
 	unsigned		has_synopsys_hc_bug:1; /* Synopsys HC */
 	unsigned		frame_index_bug:1; /* MosChip (AKA NetMos) */
 	unsigned		need_oc_pp_cycle:1; /* MPC834X port power */
+#ifdef CONFIG_USB_EHCI_TEGRA
+	unsigned		controller_resets_phy:1;
+	unsigned		controller_remote_wakeup:1;
+	unsigned		broken_hostpc_phcd:1;
+#endif
 	unsigned		imx28_write_fix:1; /* For Freescale i.MX28 */
 
 	/* required for usb32 quirk */
@@ -261,6 +266,10 @@ struct ehci_hcd {			/* one per controller */
 	u8			tt_budget[EHCI_BANDWIDTH_SIZE];
 						/* us budgeted per uframe */
 	struct list_head	tt_list;
+	/*
+	 * OTG controllers and transceivers need software interaction
+	 */
+	struct usb_phy	*transceiver;
 
 	/* platform-specific data -- must come last */
 	unsigned long		priv[0] __aligned(sizeof(s64));
@@ -864,10 +873,15 @@ struct ehci_driver_overrides {
 extern void	ehci_init_driver(struct hc_driver *drv,
 				const struct ehci_driver_overrides *over);
 extern int	ehci_setup(struct usb_hcd *hcd);
+extern irqreturn_t ehci_irq (struct usb_hcd *hcd);
+extern void	ehci_shutdown(struct usb_hcd *hcd);
+extern void	ehci_silence_controller(struct ehci_hcd *ehci);
 extern int	ehci_handshake(struct ehci_hcd *ehci, void __iomem *ptr,
 				u32 mask, u32 done, int usec);
 
 #ifdef CONFIG_PM
+extern int 	ehci_bus_resume(struct usb_hcd *hcd);
+extern int	ehci_bus_suspend(struct usb_hcd *hcd);
 extern int	ehci_suspend(struct usb_hcd *hcd, bool do_wakeup);
 extern int	ehci_resume(struct usb_hcd *hcd, bool hibernated);
 #endif	/* CONFIG_PM */

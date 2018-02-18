@@ -1,0 +1,79 @@
+/*
+ * arch/arm/boot/dts/tegra124-platforms/tegra124-tn8-power-tree-e1936-1000-a03.dtsi
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "tegra124-tn8-pmic-e1936-1000-a00.dtsi"
+#include "tegra124-tn8-fixed-e1936-1000-a03.dtsi"
+
+/ {
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&ldo5_reg>;
+			avdd_lcd-supply = <&ldo2_reg>;
+			dvdd_lcd-supply = <&vddio_dvdd_lcd>;
+			vdd_lcd_bl_en-supply = <&en_lcd_bl>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&ldoln_reg>;
+			avdd_hdmi_pll-supply = <&vdd_hdmi_n5>;
+			vdd_hdmi_5v0-supply = <&vddio_hdmi_5v0>;
+		};
+		vi {
+			avdd_dsi_csi-supply = <&ldo5_reg>;
+		};
+	};
+
+	/* Populate fuse supply */
+	efuse@7000f800 {
+		vpp_fuse-supply = <&vpp_fuse>;
+	};
+
+	power-detect {
+		pwrdet-nand-supply = <&palmas_smps8>;
+		pwrdet-sdmmc1-supply = <&palmas_smps8>;
+		pwrdet-sdmmc4-supply = <&palmas_smps8>;
+		pwrdet-audio-supply = <&palmas_smps8>;
+		pwrdet-uart-supply = <&palmas_smps8>;
+		pwrdet-bb-supply = <&palmas_smps8>;
+		pwrdet-mipi-supply = <&ldo5_reg>;
+		pwrdet-sdmmc3-supply = <&palmas_ldo9>;
+		pwrdet-hv-supply = <&ldoln_reg>;
+		pwrdet-pex-ctl-supply = <&ldousb_reg>;
+		pwrdet-cam-supply = <&vdd_cam_af>;
+	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	otg@7d000000 {
+		usb_bat_chg-supply = <&battery_charger>;
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+
+	ehci@7d000000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+};

@@ -1,0 +1,266 @@
+/*
+ * Copyright (c) 2014-2015 NVIDIA CORPORATION. All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/clk/tegra210-clk.h>
+
+/ {
+	dfll-ovr@70110000 {
+		status = "okay";
+		compatible = "nvidia,tegra210-dfll";
+		reg = <0x0 0x70110000 0x0 0x400>;
+		out-clock-name="dfll_cpu";
+		clocks = <&tegra_car TEGRA210_CLK_ID_DFLL_CPU>,
+			 <&tegra_car TEGRA210_CLK_ID_DFLL_SOC>,
+			 <&tegra_car TEGRA210_CLK_ID_DFLL_REF>,
+			 <&tegra_car TEGRA210_CLK_ID_CPU_G>,
+			 <&tegra_car TEGRA210_CLK_ID_I2C5>;
+		clock-names = "dfll_cpu", "soc", "ref", "safe_dvfs", "i2c";
+		calibrate-force-vmin;
+		board-params = <&dfll_ovr_params>;
+
+		pwm_dfll: pwm-pmic-integration {
+			compatible = "nvidia,tegra210-dfll-pwm";
+			pwm-1wire-direct;
+			pwm-data-gpio = <&gpio TEGRA_GPIO(BB, 1) 0>;
+			#pwm-cells = <2>;
+			pwm-regulator = <&cpu_ovr_reg>;
+		};
+
+		dfll_ovr_params: dfll-ovr-board-params {
+			sample-rate = <25000>;
+			fixed-output-forcing;
+			cf = <6>;
+			ci = <0>;
+			cg = <2>;
+			droop-cut-value = <0xf>;
+			droop-restore-ramp = <0x0>;
+			scale-out-ramp = <0x0>;
+		};
+	};
+
+	dfll-max77621@70110000 {
+		status = "disabled";
+		compatible = "nvidia,tegra210-dfll";
+		reg = <0x0 0x70110000 0x0 0x400>;
+		out-clock-name="dfll_cpu";
+		clocks = <&tegra_car TEGRA210_CLK_ID_DFLL_CPU>,
+			 <&tegra_car TEGRA210_CLK_ID_DFLL_SOC>,
+			 <&tegra_car TEGRA210_CLK_ID_DFLL_REF>,
+			 <&tegra_car TEGRA210_CLK_ID_CPU_G>,
+			 <&tegra_car TEGRA210_CLK_ID_I2C5>;
+		clock-names = "dfll_cpu", "soc", "ref", "safe_dvfs", "i2c";
+		board-params = <&dfll_max77621_parms>;
+		i2c-pmic-integration = <&i2c_dfll>;
+
+		i2c_dfll: dfll-max77621-integration {
+			pmic-i2c-address = <0x36>;
+			pmic-i2c-voltage-register = <0x01>;
+			i2c-fs-rate = <400000>;
+			sel-conversion-slope = <1>;
+		};
+
+		dfll_max77621_parms: dfll-max77621-board-params {
+			sample-rate = <12500>;
+			fixed-output-forcing;
+			cf = <10>;
+			ci = <0>;
+			cg = <2>;
+			droop-cut-value = <0xf>;
+			droop-restore-ramp = <0x0>;
+			scale-out-ramp = <0x0>;
+		};
+	};
+
+	dfll-max16989@70110000 {
+		status = "disabled";
+		compatible = "nvidia,tegra210-dfll";
+		reg = <0x0 0x70110000 0x0 0x400>;
+		out-clock-name="dfll_cpu";
+		clocks = <&tegra_car TEGRA210_CLK_ID_DFLL_CPU>,
+			<&tegra_car TEGRA210_CLK_ID_DFLL_SOC>,
+			<&tegra_car TEGRA210_CLK_ID_DFLL_REF>,
+			<&tegra_car TEGRA210_CLK_ID_CPU_G>,
+			<&tegra_car TEGRA210_CLK_ID_I2C5>;
+		clock-names = "dfll_cpu", "soc", "ref", "safe_dvfs", "i2c";
+		board-params = <&dfll_max16989_parms>;
+		i2c-pmic-integration = <&i2c_dfll_16989>;
+
+		i2c_dfll_16989: dfll-max16989-integration {
+			pmic-i2c-address = <0x3a>;
+			pmic-i2c-voltage-register = <0x07>;
+			i2c-fs-rate = <400000>;
+			sel-conversion-slope = <1>;
+		};
+
+		dfll_max16989_parms: dfll-max16989-board-params {
+			sample-rate = <12500>;
+			fixed-output-forcing;
+			cf = <10>;
+			ci = <0>;
+			cg = <2>;
+			droop-cut-value = <0xf>;
+			droop-restore-ramp = <0x0>;
+			scale-out-ramp = <0x0>;
+		};
+	};
+
+	pwm_regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu_ovr_reg: pwm-regulator@0 {
+			status = "okay";
+			reg = <0>;
+			compatible = "regulator-pwm";
+			pwms = <&pwm_dfll 0 2500>;
+			regulator-name = "vdd_cpu";
+			regulator-min-microvolt = <708000>;
+			regulator-max-microvolt = <1322400>;
+			regulator-init-microvolt = <1000000>;
+			regulator-always-on;
+			regulator-boot-on;
+			regulator-n-voltages = <33>;
+			voltage-time-sel = <80>;
+		};
+
+		gpu_ovr_reg: pwm-regulator@1 {
+			status = "okay";
+			reg = <1>;
+			compatible = "regulator-pwm";
+			pwms = <&tegra_pwm 1 4880>;
+			regulator-name = "vdd_gpu";
+			regulator-min-microvolt = <710000>;
+			regulator-max-microvolt = <1320000>;
+			regulator-init-microvolt = <1000000>;
+			regulator-n-voltages = <62>;
+			regulator-enable-ramp-delay = <1000>;
+			enable-gpio = <&max77620 6 0>;
+			voltage-time-sel = <80>;
+		};
+	};
+
+	cpu_edp {
+		status = "okay";
+		nvidia,edp_limit = <25000>;
+	};
+
+	gpu_edp {
+		status = "okay";
+		nvidia,edp_limit = <20000>;
+	};
+
+	dvfs_rails {
+		vdd-cpu-rail-ovr@0 {
+			status = "okay";
+			reg = <0>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_cpu-supply = <&cpu_ovr_reg>;
+			vmin-cdev = <&cpu_vmin_cdev>;
+			vmax-cdev = <&cpu_vmax_cdev>;
+		};
+
+		vdd-gpu-rail-ovr@1 {
+			status = "okay";
+			reg = <1>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_gpu-supply = <&gpu_ovr_reg>;
+			scaling-cdev = <&gpu_scaling_cdev>;
+			vmax-cdev = <&gpu_vmax_cdev>;
+		};
+
+
+		vdd-cpu-rail-max77621@2 {
+			status = "disabled";
+			reg = <2>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_cpu-supply = <&cpu_max77621_reg>;
+			vmin-cdev = <&cpu_vmin_cdev>;
+			vmax-cdev = <&cpu_vmax_cdev>;
+		};
+
+		vdd-gpu-rail-max77621@3 {
+			status = "disabled";
+			reg = <3>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_gpu-supply = <&gpu_max77621_reg>;
+			scaling-cdev = <&gpu_scaling_cdev>;
+			vmax-cdev = <&gpu_vmax_cdev>;
+		};
+
+		vdd-core-rail-max77620@4 {
+			status = "disabled";
+			reg = <4>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_core-supply = <&max77620_sd0>;
+			vmin-cdev = <&core_vmin_cdev>;
+			vmax-cdev = <&core_vmax_cdev>;
+		};
+
+		vdd-cpu-rail-max16989@5 {
+			status = "disabled";
+			reg = <5>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vmin-cdev = <&cpu_vmin_cdev>;
+			vmax-cdev = <&cpu_vmax_cdev>;
+		};
+
+		vdd-gpu-rail-max16989@6 {
+			status = "disabled";
+			reg = <6>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			scaling-cdev = <&gpu_scaling_cdev>;
+			vmax-cdev = <&gpu_vmax_cdev>;
+		};
+
+		vdd-core-rail-max16989@7 {
+			status = "disabled";
+			reg = <7>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vmin-cdev = <&core_vmin_cdev>;
+			vmax-cdev = <&core_vmax_cdev>;
+		};
+	};
+};
+
+#include "tegra210-power-dvfs.dtsi"
+
+/ {
+	dvfs_rails {
+		vdd-cpu-vmin-cdev@5 {
+			status = "okay";
+		};
+
+		vdd-core-vmin-cdev@6 {
+			status = "okay";
+		};
+
+		vdd-gpu-scaling-cdev@7 {
+			status = "okay";
+		};
+
+		vdd-cpu-vmax-cdev@8 {
+			status = "okay";
+		};
+
+		vdd-gpu-vmax-cdev@9 {
+			status = "okay";
+		};
+
+		vdd-core-vmax-cdev@10 {
+			status = "okay";
+		};
+	};
+};

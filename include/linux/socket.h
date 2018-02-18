@@ -180,7 +180,9 @@ struct ucred {
 #define AF_ALG		38	/* Algorithm sockets		*/
 #define AF_NFC		39	/* NFC sockets			*/
 #define AF_VSOCK	40	/* vSockets			*/
-#define AF_MAX		41	/* For now.. */
+#define AF_MHI          41      /* MHI sockets                  */
+#define AF_RAW          42      /* RAW sockets                  */
+#define AF_MAX		43	/* For now.. */
 
 /* Protocol families, same as address families. */
 #define PF_UNSPEC	AF_UNSPEC
@@ -225,6 +227,8 @@ struct ucred {
 #define PF_ALG		AF_ALG
 #define PF_NFC		AF_NFC
 #define PF_VSOCK	AF_VSOCK
+#define PF_MHI          AF_MHI
+#define PF_RAW          AF_RAW
 #define PF_MAX		AF_MAX
 
 /* Maximum queue length specifiable by listen.  */

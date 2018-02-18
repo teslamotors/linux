@@ -14,6 +14,11 @@ Required properties:
 - reset-names: Must include the following entries:
   - pwm
 
+
+Optional properties:
+- pwm,use-pretty-good-alogorithm: Use pretty good algorithm for the 10Hz to
+	30KHz to get better divisor and multiplier.
+
 Example:
 
 	pwm: pwm@7000a000 {

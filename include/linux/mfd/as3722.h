@@ -2,7 +2,7 @@
  * as3722 definitions
  *
  * Copyright (C) 2013 ams
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * Author: Florian Lobmaier <florian.lobmaier@ams.com>
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
@@ -26,6 +26,9 @@
 #ifndef __LINUX_MFD_AS3722_H__
 #define __LINUX_MFD_AS3722_H__
 
+#include <linux/i2c.h>
+#include <linux/mutex.h>
+#include <linux/mfd/as3722-plat.h>
 #include <linux/regmap.h>
 
 /* AS3722 registers */
@@ -152,6 +155,9 @@
 #define AS3722_ASIC_ID2_REG				0x91
 #define AS3722_LOCK_REG					0x9E
 #define AS3722_FUSE7_REG				0xA7
+#define AS3722_FUSE15					0xAF
+#define AS3722_ASIC_ID3_REG				0xCC
+#define AS3722_NCELL_MASK				0x03
 #define AS3722_MAX_REGISTER				0xF4
 
 #define AS3722_SD0_EXT_ENABLE_MASK			0x03
@@ -239,6 +245,7 @@
 #define AS3722_SD5_MODE_FAST				BIT(2)
 #define AS3722_SD6_MODE_FAST				BIT(4)
 
+#define AS3722_FORCE_RESET				BIT(0)
 #define AS3722_POWER_OFF				BIT(1)
 
 #define AS3722_INTERRUPT_MASK1_LID			BIT(0)
@@ -277,23 +284,16 @@
 #define AS3722_INTERRUPT_MASK4_OCCUR_ALARM_SD6		BIT(6)
 #define AS3722_INTERRUPT_MASK4_ADC			BIT(7)
 
-#define AS3722_ADC1_INTERVAL_TIME			BIT(0)
-#define AS3722_ADC1_INT_MODE_ON				BIT(1)
-#define AS3722_ADC_BUF_ON				BIT(2)
-#define AS3722_ADC1_LOW_VOLTAGE_RANGE			BIT(5)
-#define AS3722_ADC1_INTEVAL_SCAN			BIT(6)
-#define AS3722_ADC1_INT_MASK				BIT(7)
-
-#define AS3722_ADC_MSB_VAL_MASK				0x7F
-#define AS3722_ADC_LSB_VAL_MASK				0x07
-
-#define AS3722_ADC0_CONV_START				BIT(7)
-#define AS3722_ADC0_CONV_NOTREADY			BIT(7)
-#define AS3722_ADC0_SOURCE_SELECT_MASK			0x1F
-
-#define AS3722_ADC1_CONV_START				BIT(7)
-#define AS3722_ADC1_CONV_NOTREADY			BIT(7)
-#define AS3722_ADC1_SOURCE_SELECT_MASK			0x1F
+#define AS3722_ADC1_MASK_INTERVAL_TIME			BIT(0)
+#define AS3722_ADC1_MASK_INT_MODE_ON			BIT(1)
+#define AS3722_ADC_MASK_BUF_ON				BIT(2)
+#define AS3722_ADC_MASK_LOW_VOLTAGE_RANGE		BIT(5)
+#define AS3722_ADC1_MASK_INTEVAL_SCAN			BIT(6)
+#define AS3722_ADC_MASK_CONV_START			BIT(7)
+#define AS3722_ADC_MASK_CONV_NOTREADY			BIT(7)
+#define AS3722_ADC_MASK_SOURCE_SELECT			0x1F
+#define AS3722_ADC_MASK_MSB_VAL				0x7F
+#define AS3722_ADC_MASK_LSB_VAL				0x07
 
 /* GPIO modes */
 #define AS3722_GPIO_MODE_MASK				0x07
@@ -318,6 +318,7 @@
 #define AS3722_GPIO_IOSF_VOLTAGE_STBY			AS3722_GPIO_IOSF_VAL(5)
 #define AS3722_GPIO_IOSF_SD0_OUT			AS3722_GPIO_IOSF_VAL(6)
 #define AS3722_GPIO_IOSF_PWR_GOOD_OUT			AS3722_GPIO_IOSF_VAL(7)
+#define AS3722_GPIO_IOSF_SD0_OUT			AS3722_GPIO_IOSF_VAL(6)
 #define AS3722_GPIO_IOSF_Q32K_OUT			AS3722_GPIO_IOSF_VAL(8)
 #define AS3722_GPIO_IOSF_WATCHDOG_IN			AS3722_GPIO_IOSF_VAL(9)
 #define AS3722_GPIO_IOSF_SOFT_RESET_IN			AS3722_GPIO_IOSF_VAL(11)
@@ -339,12 +340,43 @@
 #define AS3722_WATCHDOG_TIMER_MAX			0x7F
 #define AS3722_WATCHDOG_ON				BIT(0)
 #define AS3722_WATCHDOG_SW_SIG				BIT(0)
+#define AS3722_WATCHDOG_MODE_MASK			0x06
 
 #define AS3722_EXT_CONTROL_ENABLE1			0x1
 #define AS3722_EXT_CONTROL_ENABLE2			0x2
 #define AS3722_EXT_CONTROL_ENABLE3			0x3
 
 #define AS3722_FUSE7_SD0_LOW_VOLTAGE			BIT(4)
+
+#define AS3722_CTRL_SEQ1_AC_OK_PWR_ON			BIT(0)
+
+#define AS3722_BBCCUR_MASK				0x18
+#define AS3722_BBCCUR_VAL(n)				((n)  << 3)
+#define AS3722_BBCCUR_50UA				AS3722_BBCCUR_VAL(0)
+#define AS3722_BBCCUR_200UA				AS3722_BBCCUR_VAL(1)
+#define AS3722_BBCCUR_100UA				AS3722_BBCCUR_VAL(2)
+#define AS3722_BBCCUR_400UA				AS3722_BBCCUR_VAL(3)
+#define AS3722_BBCRESOFF_MASK				BIT(2)
+#define AS3722_BBCMODE_MASK				0x03
+#define AS3722_BBCMODE_OFF				0
+#define AS3722_BBCMODE_ACTIVE				1
+#define AS3722_BBCMODE_ACT_STBY				2
+#define AS3722_BBCMODE_ACT_STBY_OFF			3
+
+#define AS3722_PG_AC_OK_INV_MASK			BIT(0)
+#define AS3722_PG_AC_OK_MASK				BIT(1)
+#define AS3722_PG_GPIO3_MASK				BIT(2)
+#define AS3722_PG_GPIO4_MASK				BIT(3)
+#define AS3722_PG_GPIO5_MASK				BIT(4)
+#define AS3722_PG_PWRGOOD_SD0_MASK			BIT(5)
+#define AS3722_PG_OVCURR_SD0_MASK			BIT(6)
+#define AS3722_PG_VRESFALL_MASK				BIT(7)
+
+#define AS3722_OC_PG_INVERT_MASK			BIT(0)
+#define AS3722_PG_VMASK_TIME_MASK			(3 << 1)
+#define AS3722_PG_SD6_OVC_ALARM_MASK			(7 << 3)
+#define AS3722_PG_POWERGOOD_SD6_MASK			BIT(6)
+#define AS3722_PG_OVCURR_SD6_MASK			BIT(7)
 
 /* Interrupt IDs */
 enum as3722_irq {
@@ -386,12 +418,91 @@ enum as3722_irq {
 struct as3722 {
 	struct device *dev;
 	struct regmap *regmap;
+	struct i2c_client *client;
+	DECLARE_BITMAP(volatile_vsel_registers, AS3722_LDO11_VOLTAGE_REG);
 	int chip_irq;
 	unsigned long irq_flags;
+	int irq_base;
 	bool en_intern_int_pullup;
 	bool en_intern_i2c_pullup;
+	bool en_ac_ok_pwr_on;
 	struct regmap_irq_chip_data *irq_data;
+	u32 major_rev;
+	u32 minor_rev;
+	struct mutex mutex_config;
+	bool shutdown;
+	bool backup_battery_chargable;
+	bool battery_backup_enable_bypass;
+	u32 backup_battery_charge_current;
+	u32 battery_backup_charge_mode;
+	u32 oc_pg_mask;
 };
+
+
+
+
+#define AS3722_SDn_CTRL(n)                              BIT(n)
+
+#define AS3722_ENABLE_CTRL1_REG                         0x3C
+#define AS3722_ENABLE_CTRL2_REG                         0x3D
+#define AS3722_ENABLE_CTRL3_REG                         0x3E
+#define AS3722_ENABLE_CTRL4_REG                         0x3F
+#define AS3722_ENABLE_CTRL5_REG                         0x40
+
+#define AS3722_OVCURRENT_REG                            0x5A
+#define AS3722_OVCURRENT_DEB_REG                        0x5B
+
+#define AS3722_SD0_EXT_ENABLE_MASK                      0x03
+#define AS3722_SD1_EXT_ENABLE_MASK                      0x0C
+#define AS3722_SD2_EXT_ENABLE_MASK                      0x30
+#define AS3722_SD3_EXT_ENABLE_MASK                      0xC0
+#define AS3722_SD4_EXT_ENABLE_MASK                      0x03
+#define AS3722_SD5_EXT_ENABLE_MASK                      0x0C
+#define AS3722_SD6_EXT_ENABLE_MASK                      0x30
+#define AS3722_LDO0_EXT_ENABLE_MASK                     0x03
+#define AS3722_LDO1_EXT_ENABLE_MASK                     0x0C
+#define AS3722_LDO2_EXT_ENABLE_MASK                     0x30
+#define AS3722_LDO3_EXT_ENABLE_MASK                     0xC0
+#define AS3722_LDO4_EXT_ENABLE_MASK                     0x03
+#define AS3722_LDO5_EXT_ENABLE_MASK                     0x0C
+#define AS3722_LDO6_EXT_ENABLE_MASK                     0x30
+#define AS3722_LDO7_EXT_ENABLE_MASK                     0xC0
+#define AS3722_LDO9_EXT_ENABLE_MASK                     0x0C
+#define AS3722_LDO10_EXT_ENABLE_MASK                    0x30
+#define AS3722_LDO11_EXT_ENABLE_MASK                    0xC0
+
+
+/* AS3722 register bits and bit masks */
+#define AS3722_LDO0_VSEL_MASK                           0x1F
+#define AS3722_LDO0_VSEL_MIN                            0x01
+#define AS3722_LDO0_VSEL_MAX                            0x12
+#define AS3722_LDO0_NUM_VOLT                            0x12
+#define AS3722_LDO3_VSEL_MASK                           0x3F
+#define AS3722_LDO3_VSEL_MIN                            0x01
+#define AS3722_LDO3_NUM_VOLT                            0x2D
+#define AS3722_LDO_VSEL_MASK                            0x7F
+#define AS3722_LDO_VSEL_MIN                             0x01
+#define AS3722_LDO_VSEL_MAX                             0x7F
+#define AS3722_LDO_VSEL_DNU_MIN                         0x25
+#define AS3722_LDO_VSEL_DNU_MAX                         0x3F
+
+#define AS3722_LDO0_CTRL                                BIT(0)
+#define AS3722_LDO1_CTRL                                BIT(1)
+#define AS3722_LDO2_CTRL                                BIT(2)
+#define AS3722_LDO3_CTRL                                BIT(3)
+#define AS3722_LDO4_CTRL                                BIT(4)
+#define AS3722_LDO5_CTRL                                BIT(5)
+#define AS3722_LDO6_CTRL                                BIT(6)
+#define AS3722_LDO7_CTRL                                BIT(7)
+#define AS3722_LDO9_CTRL                                BIT(1)
+#define AS3722_LDO10_CTRL                               BIT(2)
+#define AS3722_LDO11_CTRL                               BIT(3)
+
+
+
+
+
+
 
 static inline int as3722_read(struct as3722 *as3722, u32 reg, u32 *dest)
 {
@@ -415,14 +526,93 @@ static inline int as3722_block_write(struct as3722 *as3722, u32 reg,
 	return regmap_bulk_write(as3722->regmap, reg, data, count);
 }
 
+#define AS3722_RTC_REP_WAKEUP_EN			BIT(0)
+#define AS3722_RTC_ALARM_WAKEUP_EN			BIT(1)
+#define AS3722_RTC_ON					BIT(2)
+#define AS3722_RTC_IRQMODE				BIT(3)
+#define AS3722_RTC_CLK32K_OUT_EN			BIT(5)
+
 static inline int as3722_update_bits(struct as3722 *as3722, u32 reg,
 		u32 mask, u8 val)
 {
 	return regmap_update_bits(as3722->regmap, reg, mask, val);
 }
 
+static inline void as3722_allow_atomic_xfer(struct as3722 *as3722)
+{
+	i2c_shutdown_clear_adapter(as3722->client->adapter);
+}
+
 static inline int as3722_irq_get_virq(struct as3722 *as3722, int irq)
 {
 	return regmap_irq_get_virq(as3722->irq_data, irq);
+}
+
+static inline bool as3722_device_rev(struct as3722 *as3722, u32 major_rev,
+		u32 minor_rev)
+{
+	if ((as3722->major_rev == major_rev) &&
+			(as3722->minor_rev == minor_rev))
+		return true;
+	else
+		return false;
+}
+
+static inline bool as3722_device_rev_eq_later(struct as3722 *as3722,
+	u32 major_rev, u32 minor_rev)
+{
+	u32 minor;
+
+	if (as3722->major_rev < major_rev)
+		return false;
+
+	if (as3722->major_rev > major_rev)
+		return true;
+
+	minor = as3722->minor_rev;
+	if (as3722->minor_rev >= 10)
+		minor = as3722->minor_rev / 10;
+
+	if (minor < minor_rev)
+		return false;
+
+	return true;
+}
+
+/* as3722 adc channel */
+enum {
+	AS3722_ADC_CH_SD0,
+	AS3722_ADC_CH_SD1,
+	AS3722_ADC_CH_SD6,
+	AS3722_ADC_CH_DTEMP,
+	AS3722_ADC_CH_VSUP,
+	AS3722_ADC_CH_GPIO1,
+	AS3722_ADC_CH_GPIO2,
+	AS3722_ADC_CH_GPIO3,
+	AS3722_ADC_CH_GPIO4,
+	AS3722_ADC_CH_GPIO6,
+	AS3722_ADC_CH_GPIO7,
+	AS3722_ADC_CH_VBAT,
+	AS3722_ADC_CH_ADC1,
+	AS3722_ADC_CH_ADC2,
+	AS3722_ADC_CH_TBD1,
+	AS3722_ADC_CH_TBD2,
+	AS3722_ADC_CH_T1SD0,
+	AS3722_ADC_CH_T2SD0,
+	AS3722_ADC_CH_T3SD0,
+	AS3722_ADC_CH_T4SD0,
+	AS3722_ADC_CH_TSD1,
+	AS3722_ADC_CH_T1SD6,
+	AS3722_ADC_CH_T2SD6,
+	AS3722_ADC_CH_MAX,
+};
+
+#define AS3722_DATASHEET_NAME(_name)	"as3722-gpadc-chan-"#_name
+
+#define AS3722_GPADC_IIO_MAP(chan, _consumer, _comsumer_channel_name)	\
+{									\
+	.adc_channel_label = AS3722_DATASHEET_NAME(chan),		\
+	.consumer_dev_name = _consumer,					\
+	.consumer_channel = _comsumer_channel_name,			\
 }
 #endif /* __LINUX_MFD_AS3722_H__ */

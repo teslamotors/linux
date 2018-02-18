@@ -61,7 +61,7 @@ config ATA_ACPI
 
 config SATA_ZPODD
 	bool "SATA Zero Power Optical Disc Drive (ZPODD) support"
-	depends on ATA_ACPI && PM_RUNTIME
+	depends on ATA_ACPI && PM
 	default n
 	help
 	  This option adds support for SATA Zero Power Optical Disc
@@ -142,14 +142,42 @@ config AHCI_SUNXI
 
 	  If unsure, say N.
 
-config AHCI_TEGRA
-	tristate "NVIDIA Tegra124 AHCI SATA support"
-	depends on ARCH_TEGRA
+config LEGACY_AHCI_TEGRA
+	tristate "NVIDIA Legacy Tegra AHCI SATA support"
+	select ARCH_TEGRA_HAS_SATA
 	help
-	  This option enables support for the NVIDIA Tegra124 SoC's
+	  This option enables support for the NVIDIA Tegra124/Tegra21x SoC's
 	  onboard AHCI SATA.
 
 	  If unsure, say N.
+
+config ARCH_TEGRA_HAS_SATA
+	bool
+
+config SATA_AHCI_TEGRA
+	tristate "TEGRA AHCI SATA support"
+	select ARCH_TEGRA_HAS_SATA
+	help
+	  This option enables support for TEGRA AHCI Serial ATA.
+
+	  If unsure, say N.
+
+config TEGRA_SATA_IDLE_POWERGATE
+	bool "TEGRA SATA idle power-gating"
+	depends on SATA_AHCI_TEGRA && PM && PM_RUNTIME
+	help
+	  This option enables power-gating during SATA idling.
+	  This option should not be enabled if sata clocks are in dvfs_table.
+
+	  If unsure, say N.
+
+config TEGRA_AHCI_CONTEXT_RESTORE
+       bool "TEGRA Context save and Restore"
+       depends on TEGRA_SATA_IDLE_POWERGATE
+       default n
+       help
+         This option enables saving context and restoring it back during
+         ELPG Entry and ELPG exit.
 
 config AHCI_XGENE
 	tristate "APM X-Gene 6.0Gbps AHCI SATA host controller support"

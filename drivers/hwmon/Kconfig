@@ -216,6 +216,16 @@ config SENSORS_ADT7411
 	  This driver can also be built as a module. If so, the module
 	  will be called adt7411.
 
+config SENSORS_ADT7461
+	tristate "Analog Devices ADT7461"
+	depends on I2C && EXPERIMENTAL
+	help
+	  If you say yes here you get support for the Analog Devices
+	  ADT7461 temperature monitoring chips.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called adt7461.
+
 config SENSORS_ADT7462
 	tristate "Analog Devices ADT7462"
 	depends on I2C
@@ -1487,6 +1497,17 @@ config SENSORS_VEXPRESS
 	  the ARM Ltd's Versatile Express platform. It can provide wide
 	  range of information like temperature, power, energy.
 
+config SENSORS_TMON_TMP411
+	tristate "Temperature Monitor driver for TMP411 and NVT210"
+	depends on !SENSORS_TMP401 && !SENSORS_LM90
+	default n
+	help
+	  This driver supports TMP411 and NVT210 sensors. It is used to update
+	  registers dynamically based on the curret temperature.
+
+	  If you say yes here temperature monitoring support for TMP411 and NVT210
+	  will be available.
+
 config SENSORS_VIA_CPUTEMP
 	tristate "VIA CPU temperature sensor"
 	depends on X86
@@ -1679,6 +1700,27 @@ config SENSORS_ULTRA45
 	help
 	  This driver provides support for the Ultra45 workstation environmental
 	  sensors.
+
+config SENSORS_INA219
+	tristate "Texas Instruments INA219 POWER MONITOR SENSOR DRIVER"
+	depends on I2C
+	default n
+	help
+		Support for the TI INA219 power monitor sensor.
+
+config SENSORS_INA230
+	tristate "TI INA230/INA226/HPA02149/HPA01112 POWER MONITOR SENSOR DRIVER"
+	depends on I2C
+	help
+	  Support for the TI INA230/INA226/HPA02149/HPA01112 power monitor
+	  sensor.
+
+config SENSORS_INA3221
+	tristate "Texas Instruments INA3221 POWER MONITOR SENSOR DRIVER"
+	depends on I2C
+	default n
+	help
+	  Support for the TI INA3221 power monitor sensor.
 
 if ACPI
 

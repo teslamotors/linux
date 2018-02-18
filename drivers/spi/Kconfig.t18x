@@ -1,0 +1,14 @@
+config QSPI_TEGRA186
+	tristate "Nvidia Tegra18x QSPI Controller"
+	depends on ARCH_TEGRA_18x_SOC && TEGRA186_GPC_DMA 
+	select QSPI_TEGRA
+	help
+	  QSPI driver for Nvidia Tegra210 QSPI Controller interface. This controller
+	  is different from the spi controller and first time introduces on Tegra210 soc.
+
+config SPI_TEGRA186_AON
+	bool "Tegra18x AON SPI proxy driver"
+	depends on ARCH_TEGRA_18x_SOC
+	default y
+	select TEGRA_IVC
+	select TEGRA_HSP

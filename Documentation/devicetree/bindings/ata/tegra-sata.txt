@@ -14,6 +14,7 @@ Required properties :
   - cml1
   - pll_e
 - resets : Must contain an entry for each entry in reset-names.
+  - pll_e
   See ../reset/reset.txt for details.
 - reset-names : Must include the following entries:
   - sata
@@ -23,8 +24,19 @@ Required properties :
   See ../phy/phy-bindings.txt for details.
 - phy-names : Must include the following entries:
   - sata-phy : XUSB PADCTL SATA PHY
-- hvdd-supply : Defines the SATA HVDD regulator
-- vddio-supply : Defines the SATA VDDIO regulator
-- avdd-supply : Defines the SATA AVDD regulator
 - target-5v-supply : Defines the SATA 5V power regulator
 - target-12v-supply : Defines the SATA 12V power regulator
+- nvidia,disable-features : Defines features to be disabled
+ - devslp
+ - hipm
+ - dipm
+ - slumber
+ - partial
+ - ncq
+- nvidia,link-flags : Defines link flags
+ - max_power
+ - min_power
+ - med_power
+- pinctrl-names : Define pinctrls for devslp pin
+ - pinctrl-0: the pincontrol settings to configure devslp pin
+ - pinctrl-1: the pincontrol settings to place devslp pin in pull up state

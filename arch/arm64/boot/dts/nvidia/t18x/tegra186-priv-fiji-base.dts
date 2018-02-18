@@ -1,0 +1,267 @@
+/*
+ * tegra186-priv-fiji-base.dts: fiji base dts
+ * file
+ *
+ * Copyright (c) 2016-2017, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+#include "tegra186-platforms/tegra186-vcm31-fiji-common.dtsi"
+#include "tegra186-platforms/tegra186-power-tree-fiji.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "fiji:0000";
+	nvidia,proc-boardid = "fiji:0000";
+	model = "fiji";
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "fiji_t186a";
+		};
+	};
+
+
+	/* dGPU support */
+	pcie-controller@10003000 {
+		pci@1,0 {
+			status = "okay";
+			nvidia,has-mxm-port;
+			nvidia,pwr-gd-gpio =
+				<&tegra_gpio TEGRA_GPIO(B, 6) 0>;
+		};
+		pcie_cool_dev: pcie-cool-dev {
+			cooling-min-state = <0>;
+			cooling-max-state = <1>;
+			#cooling-cells = <2>;
+		};
+	};
+
+	adma@2930000 {
+		status = "okay";
+		dma-channels = <10>;
+	};
+
+	ahub {
+		status = "okay";
+		arad@290e400 {
+			status = "okay";
+		};
+	    i2s@2901000 {
+	        status = "okay";
+	    };
+	    i2s@2901100 {
+			status = "disabled";
+		};
+	    i2s@2901200 {
+			status = "disabled";
+		};
+	    i2s@2901300 {
+			status = "disabled";
+		};
+	    i2s@2901400 {
+			status = "disabled";
+		};
+	    i2s@2901500 {
+			status = "disabled";
+		};
+	};
+	sound_ref {
+		status = "okay";
+		compatible = "nvidia,tegra-audio-t186ref-p2382";
+		nvidia,model = "tegra186-snd-p2382";
+		nvidia,num-clk = <8>;
+		nvidia,clk-rates = < 248371200	/* PLLA_x11025_RATE */
+				     11289600	/* AUD_MCLK_x11025_RATE */
+				     49674240	/* PLLA_OUT0_x11025_RATE */
+				     49674240	/* AHUB_x11025_RATE */
+				     245760000  /* PLLA_x8000_RATE */
+				     12288000	/* AUD_MCLK_x8000_RATE */
+				     245760000	/* PLLA_OUT0_x8000_RATE */
+				     49152000 >;/* AHUB_x8000_RATE */
+		clocks =<&tegra_car TEGRA186_CLK_PLLP_OUT0>,
+			<&tegra_car TEGRA186_CLK_PLLA>,
+			<&tegra_car TEGRA186_CLK_PLL_A_OUT0>,
+			<&tegra_car TEGRA186_CLK_AHUB>,
+			<&tegra_car TEGRA186_CLK_CLK_M>,
+			<&tegra_car TEGRA186_CLK_AUD_MCLK>;
+		clock-names = "pll_p_out1", "pll_a", "pll_a_out0", "ahub", "clk_m",
+			"extern1";
+		resets = <&tegra_car TEGRA186_RESET_AUD_MCLK>;
+		reset-names = "extern1_rst";
+		nvidia,num-codec-link = <1>;
+		nvidia,num-amx = <0>;
+		nvidia,num-adx = <0>;
+		nvidia,audio-routing =
+			"Headphone-d", "d OUT";
+		nvidia,xbar = <&tegra_axbar>;
+		nvidia,dai-link-1 {
+			link-name = "p2382-audio-dsp-tdm1-1";
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s16_le";
+			bclk_ratio = <1>;
+			srate = <44100>;
+			num-channel = <2>;
+			name-prefix = "d";
+		};
+	};
+	adsp_audio {
+		status = "disabled";
+	};
+
+	/* re-configure isc mgr */
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <7>;
+		csi-port = <2>;
+		pwdn-gpios = < &tegra_gpio TEGRA_GPIO(V, 1) GPIO_ACTIVE_HIGH   /* QD1-PWR-DOWN */
+			&tegra_gpio TEGRA_GPIO(Y, 5) GPIO_ACTIVE_HIGH   /* PARK-RB-CAM-PWR-EN - Tegra(PY.05) */
+			&tegra_gpio TEGRA_GPIO(L, 6) GPIO_ACTIVE_HIGH   /* PARK-LB-CAM-PWR-EN - Tegra(PL.06) */
+			&tegra_gpio TEGRA_GPIO(N, 0) GPIO_ACTIVE_HIGH   /* PARK-NAR-CAM-PWR-EN - Tegra(PN.00) */
+			&tegra_gpio TEGRA_GPIO(B, 4) GPIO_ACTIVE_HIGH   /* PARK-FE-CAM-PWR-EN - Tegra(PB.04)  */ >;
+		default-power-on;
+		runtime-pwrctrl-off;
+		interrupt-parent = <&tegra_gpio>;
+		interrupts = <TEGRA_GPIO(V, 3) 2>; /* QD1-LOCk : falling edge sensitive */
+		status = "okay";
+	};
+	/* CSI-EF */
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <4>;
+		default-power-on;
+		pwdn-gpios = < &tegra_gpio TEGRA_GPIO(V, 2) GPIO_ACTIVE_HIGH   /* QD2-PWR-DOWN */
+			&tegra_gpio TEGRA_GPIO(I, 0) GPIO_ACTIVE_LOW   /* PARK-MAIN-CAM-PWR-EN - TegraBall(PI.00) */
+			&tegra_gpio TEGRA_GPIO(J, 6) GPIO_ACTIVE_HIGH   /* PARK-RR-CAM-PWR-EN - TegraBall(PJ.06) */
+			&tegra_gpio TEGRA_GPIO(Y, 1) GPIO_ACTIVE_HIGH   /* PARK-LR-CAM-PWR-EN - TegraBall(PY.01) */ >;
+		runtime-pwrctrl-off;
+		interrupt-parent = <&tegra_gpio>;
+		interrupts = <TEGRA_GPIO(V, 4) 2>; /* QD2-LOCK : falling edge sensitive */
+		status = "okay";
+	};
+	/* CSI-B */
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <6>;
+		csi-port = <1>;
+		default-power-on;
+		runtime-pwrctrl-off;
+		interrupt-parent = <&tegra_gpio>;
+		status = "okay";
+	};
+	/*  Remove DSI display, disable hot-plug for hdmi1. hdmi1 is enabled only for I2C4 */
+	host1x {
+		sor{
+			hdmi-display {
+				disp-default-out {
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;
+					nvidia,out-hotplug-state = <1>; /*TEGRA_HPD_STATE_FORCE_ASSERT*/
+				};
+				display-timings {
+					1920x1080-30 {
+						clock-frequency = <70000000>;
+						hactive = <1920>;
+						vactive = <1080>;
+						hfront-porch = <26>;
+						hback-porch = <80>;
+						hsync-len = <32>;
+						vfront-porch = <9>;
+						vback-porch = <26>;
+						vsync-len = <10>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+			};
+		};
+		dpaux@15040000 {
+			status = "okay";
+			compatible = "nvidia,tegra186-dpaux1-padctl";
+			pinctrl-names = "default";
+			pinctrl-0 = <&dpaux_default>;
+			dpaux_default: pinmux@0 {
+				dpaux1_pins {
+					pins = "dpaux1-1";
+					function = "i2c";
+				};
+			};
+		};
+	};
+	dpaux1 {
+		status = "okay";
+	};
+	spi2: spi@3230000 {
+		status = "okay";
+	};
+	uarta: serial@3100000 {
+		status = "okay";
+	};
+	i2c@31e0000 {
+		mxm_temp: tempsensor@4c {
+			#thermal-sensor-cells = <0>;
+			compatible = "maxim,max6649";
+			reg = <0x4c>;
+			sensor-name = "max6649";
+			supported-hwrev = <1>;
+			offset = <0>;
+			conv-rate = <0x06>;
+			extended-rage = <0>;
+			vdd-supply = <&mxm_pwr_en>;
+		};
+	};
+	i2c@31c0000 {
+		ds90uh949@0c {
+			compatible = "ti,ds90uh949";
+			reg = <0x0C>;
+			status = "okay";
+			sor-instance = <0>;
+			ti,enable-gpio = <&tegra_gpio TEGRA_GPIO(O, 0) 0>;
+		};
+	};
+	thermal-zones {
+		MXM_tegra {
+			status = "okay";
+			polling-delay = <1000>;
+			polling-delay-passive = <1000>;
+			thermal-sensors = <&mxm_temp 0>;
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+			trips {
+				pcie_mxm: pcie-mxm@60000 {
+					temperature = <(00250)>;
+					hysteresis = <5000>;
+					type = "active";
+				};
+			};
+
+			cooling-maps {
+				map_pcie_mxm {
+					trip = <&pcie_mxm>;
+					cooling-device = <&pcie_cool_dev 1 1>;
+					cdev-type = "tegra-pcie";
+				};
+			};
+		};
+	};
+};

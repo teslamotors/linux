@@ -18,6 +18,7 @@
 #include <linux/clocksource.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
+#include <linux/dma-mapping.h>
 
 /*
  * registers
@@ -312,6 +313,12 @@ struct azx {
 	unsigned long addr;
 	void __iomem *remap_addr;
 	int irq;
+
+#ifdef CONFIG_SND_HDA_VPR
+	dma_addr_t iova_addr;
+	struct dma_attrs dmaattrs;
+	unsigned int buf_size;
+#endif
 
 	/* locks */
 	spinlock_t reg_lock;

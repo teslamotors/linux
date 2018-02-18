@@ -2,7 +2,8 @@
  *  i2c-algo-pca.c i2c driver algorithms for PCA9564 adapters
  *    Copyright (C) 2004 Arcom Control Systems
  *    Copyright (C) 2008 Pengutronix
- *
+ *    Copyright (C) 2013 NVIDIA Corporation
+
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -23,17 +24,38 @@
 #include <linux/i2c.h>
 #include <linux/i2c-algo-pca.h>
 
-#define DEB1(fmt, args...) do { if (i2c_debug >= 1)			\
-				 printk(KERN_DEBUG fmt, ## args); } while (0)
-#define DEB2(fmt, args...) do { if (i2c_debug >= 2)			\
-				 printk(KERN_DEBUG fmt, ## args); } while (0)
-#define DEB3(fmt, args...) do { if (i2c_debug >= 3)			\
-				 printk(KERN_DEBUG fmt, ## args); } while (0)
+#define DEB1(fmt, args...) \
+do {  \
+	if (i2c_debug >= 1)	\
+		printk(KERN_DEBUG fmt, ## args); \
+} while (0)
+
+#define DEB2(fmt, args...) \
+do {  \
+	if (i2c_debug >= 2)	\
+		printk(KERN_DEBUG fmt, ## args); \
+} while (0)
+
+#define DEB3(fmt, args...) \
+do {  \
+	if (i2c_debug >= 3)	\
+		printk(KERN_DEBUG fmt, ## args); \
+} while (0)
 
 static int i2c_debug;
 
 #define pca_outw(adap, reg, val) adap->write_byte(adap->data, reg, val)
 #define pca_inw(adap, reg) adap->read_byte(adap->data, reg)
+#define pca_lock(adap) \
+do { \
+	if (adap->request_access) \
+		adap->request_access(adap->data); \
+} while (0)
+#define pca_unlock(adap) \
+do { \
+	if (adap->release_access) \
+		adap->release_access(adap->data); \
+} while (0)
 
 #define pca_status(adap) pca_inw(adap, I2C_PCA_STA)
 #define pca_clock(adap) adap->i2c_clock
@@ -66,6 +88,10 @@ static int pca_start(struct i2c_algo_pca_data *adap)
 	DEB2("=== START\n");
 	sta |= I2C_PCA_CON_STA;
 	sta &= ~(I2C_PCA_CON_STO|I2C_PCA_CON_SI);
+	if (adap->mode == I2C_PCA_BUFFERED_MODE)
+		sta |= I2C_PCA_CON_MODE;
+
+	DEB2("I2C PCA CON ::%x\n", sta);
 	pca_set_con(adap, sta);
 	return pca_wait(adap);
 }
@@ -81,6 +107,9 @@ static int pca_repeated_start(struct i2c_algo_pca_data *adap)
 	DEB2("=== REPEATED START\n");
 	sta |= I2C_PCA_CON_STA;
 	sta &= ~(I2C_PCA_CON_STO|I2C_PCA_CON_SI);
+	if (adap->mode == I2C_PCA_BUFFERED_MODE)
+		sta |= I2C_PCA_CON_MODE;
+
 	pca_set_con(adap, sta);
 	return pca_wait(adap);
 }
@@ -100,6 +129,10 @@ static void pca_stop(struct i2c_algo_pca_data *adap)
 	DEB2("=== STOP\n");
 	sta |= I2C_PCA_CON_STO;
 	sta &= ~(I2C_PCA_CON_STA|I2C_PCA_CON_SI);
+
+	if (adap->mode == I2C_PCA_BUFFERED_MODE)
+		sta |= I2C_PCA_CON_MODE;
+
 	pca_set_con(adap, sta);
 }
 
@@ -128,6 +161,63 @@ static int pca_address(struct i2c_algo_pca_data *adap,
 	return pca_wait(adap);
 }
 
+static int pca_setup_rx_buffered(struct i2c_algo_pca_data *adap,
+						struct i2c_msg *msg)
+{
+	int sta = pca_get_con(adap);
+	int ret;
+	int addr = ((0x7f & msg->addr) << 1);
+	if (msg->flags & I2C_M_RD)
+		addr |= 1;
+	DEB2("=== SLAVE ADDRESS %#04x+%c=%#04x\n",
+	msg->addr, msg->flags & I2C_M_RD ? 'R' : 'W', addr);
+
+	pca_outw(adap, I2C_PCA_DAT, addr);
+
+	sta &= ~(I2C_PCA_CON_STO|I2C_PCA_CON_STA|I2C_PCA_CON_SI);
+	sta |= I2C_PCA_CON_MODE;
+
+	pca_set_con(adap, sta);
+	ret =  pca_wait(adap);
+	return ret;
+
+}
+
+static void pca_rx_buffer(struct i2c_algo_pca_data *adap,
+			struct i2c_msg *msg, int transfer_len, int index)
+{
+	int i;
+	for (i = 0; i < transfer_len; i++)
+		msg->buf[index + i] = pca_inw(adap, I2C_PCA_DAT);
+
+}
+
+static int pca_tx_buffer(struct i2c_algo_pca_data *adap,
+	struct i2c_msg *msg, int transfer_len, int index, int restart)
+{
+	int sta = pca_get_con(adap);
+	int i = 0;
+	int ret;
+	if (restart) {
+		int addr = ((0x7f & msg->addr) << 1);
+	if (msg->flags & I2C_M_RD)
+		addr |= 1;
+	DEB2("=== SLAVE ADDRESS %#04x+%c=%#04x\n",
+	msg->addr, msg->flags & I2C_M_RD ? 'R' : 'W', addr);
+
+	pca_outw(adap, I2C_PCA_DAT, addr);
+	}
+	for (i = 0; i < transfer_len; i++)
+		pca_outw(adap, I2C_PCA_DAT, msg->buf[i + index]);
+
+	sta &= ~(I2C_PCA_CON_STO|I2C_PCA_CON_STA|I2C_PCA_CON_SI);
+	sta |= I2C_PCA_CON_MODE;
+
+	pca_set_con(adap, sta);
+	ret = pca_wait(adap);
+	return ret;
+
+}
 /*
  * Transmit a byte.
  *
@@ -177,6 +267,265 @@ static int pca_rx_ack(struct i2c_algo_pca_data *adap,
 	return pca_wait(adap);
 }
 
+
+static void pca_set_count(struct  i2c_algo_pca_data *adap, int count,
+							char last_buf)
+{
+
+	pca_outw(adap, I2C_PCA_INDPTR, I2C_PCA_ICOUNT);
+	if (last_buf)
+		pca_outw(adap, I2C_PCA_IND, count | I2C_PCA_CON_AA);
+	else
+		pca_outw(adap, I2C_PCA_IND, count);
+}
+
+static int pca_xfer_buffered(struct i2c_adapter *i2c_adap,
+		    struct i2c_msg *msgs,
+		    int num)
+{
+	struct i2c_algo_pca_data *adap = i2c_adap->algo_data;
+	struct i2c_msg *msg = NULL;
+	int curmsg;
+	int numbytes = 0;
+	int state;
+	int ret;
+	int completed = 1;
+	unsigned long timeout = jiffies + i2c_adap->timeout;
+	int transfer_len = 0;
+	int last_buf = 0;
+	state = 0;
+
+	pca_lock(adap);
+	state = pca_status(adap);
+	while (state != 0xf8) {
+		if (time_before(jiffies, timeout)) {
+			pca_unlock(adap);
+			msleep(10);
+
+			pca_lock(adap);
+			state = pca_status(adap);
+		} else {
+			dev_dbg(&i2c_adap->dev, "bus is not idle. status is " \
+				"%#04x\n", state);
+			pca_unlock(adap);
+			return -EBUSY;
+		}
+	}
+
+	DEB1("{{{ XFER %d messages\n", num);
+
+	if (i2c_debug >= 2) {
+		for (curmsg = 0; curmsg < num; curmsg++) {
+			int addr, i;
+			msg = &msgs[curmsg];
+
+			addr = (0x7f & msg->addr) ;
+
+			if (msg->flags & I2C_M_RD)
+				printk(KERN_INFO "    [%02d] RD %d bytes from %#02x [%#02x, ...]\n",
+				       curmsg, msg->len, addr, (addr << 1) | 1);
+			else {
+				printk(KERN_INFO "    [%02d] WR %d bytes to %#02x [%#02x%s",
+				       curmsg, msg->len, addr, addr << 1,
+				       msg->len == 0 ? "" : ", ");
+				for (i = 0; i < msg->len; i++)
+					printk("%#04x%s", msg->buf[i],
+						i == msg->len - 1 ? "" : ", ");
+				printk("]\n");
+			}
+		}
+	}
+	curmsg = 0;
+	ret = -EIO;
+	while (curmsg < num) {
+		state = pca_status(adap);
+		msg = &msgs[curmsg];
+
+		DEB3("STATE is 0x%02x\n", state);
+		switch (state) {
+		case 0xf8: /* On reset or stop the bus is idle */
+			/* Increse len by 1 byte for slave address */
+			if (msg->len > (adap->buf_size))
+				pca_set_count(adap, adap->buf_size + 1, 0);
+			else
+				pca_set_count(adap, msg->len + 1,
+						msg->flags & I2C_M_RD ? 1 : 0);
+
+			completed = pca_start(adap);
+			break;
+
+		case 0x08: /* A START condition has been transmitted */
+		case 0x10: /* A repeated start condition has been transmitted */
+
+		if (msg->len > adap->buf_size) {
+			last_buf = 0;
+			transfer_len = adap->buf_size;
+		} else {
+			last_buf = 1;
+			transfer_len = msg->len;
+		}
+		if (msg->flags	& I2C_M_RD) {
+			pca_set_count(adap,
+				transfer_len,
+				msg->flags & I2C_M_RD ? last_buf : 0);
+			pca_setup_rx_buffered(adap, msg);
+		} else {
+			pca_tx_buffer(adap, msg, transfer_len, numbytes, 1);
+			numbytes += transfer_len;
+		}
+		break;
+		case 0x18:
+	 /* SLA+W has been transmitted; ACK has been received */
+		case 0x28:
+	/* Data byte in I2CDAT has been transmitted; ACK has been received */
+
+		if (numbytes <  msg->len) {
+			int remaining = msg->len - numbytes;
+
+			if (remaining  > adap->buf_size)
+				transfer_len = adap->buf_size;
+			else
+				transfer_len = remaining;
+
+			pca_set_count(adap, transfer_len, 0);
+
+			pca_tx_buffer(adap, msg, transfer_len, numbytes, 0);
+			numbytes += transfer_len;
+			break;
+
+		}
+		curmsg++; numbytes = 0;
+
+		if (curmsg == num)
+			pca_stop(adap);
+		else
+			completed = pca_repeated_start(adap);
+		break;
+
+		case 0x20:
+	/* SLA+W has been transmitted; NOT ACK has been received */
+		DEB2("NOT ACK received after SLA+W\n");
+		pca_stop(adap);
+		ret = -ENXIO;
+		goto out;
+
+		case 0x40:
+	 /* SLA+R has been transmitted; ACK has been received */
+		completed = pca_rx_ack(adap, msg->len > 1);
+		break;
+
+		case 0x50:
+	 /* Data bytes has been received; ACK has been returned */
+
+		pca_rx_buffer(adap, msg, transfer_len, numbytes);
+		numbytes += transfer_len;
+
+		if (numbytes < msg->len) {
+			int remaining = msg->len - numbytes;
+			if (remaining  > adap->buf_size) {
+				last_buf = 0;
+				transfer_len = adap->buf_size;
+			} else {
+				last_buf = 1;
+				transfer_len = remaining;
+			}
+
+			pca_set_count(adap, transfer_len,
+					msg->flags & I2C_M_RD ? last_buf : 0);
+			pca_setup_rx_buffered(adap, msg);
+			break;
+
+		}
+		curmsg++; numbytes = 0;
+		if (curmsg == num)
+			pca_stop(adap);
+		else
+			completed = pca_repeated_start(adap);
+		break;
+
+		case 0x48:
+	/* SLA+R has been transmitted; NOT ACK has been received */
+		DEB2("NOT ACK received after SLA+R\n");
+		pca_stop(adap);
+		ret = -ENXIO;
+		goto out;
+
+		case 0x30:
+	/* Data byte in I2CDAT has been transmitted; NOT ACK has been received*/
+		DEB2("NOT ACK received after data byte\n");
+		pca_stop(adap);
+		goto out;
+
+		case 0x38:
+	/* Arbitration lost during SLA+W, SLA+R or data bytes */
+		DEB2("Arbitration lost\n");
+		/*
+		 * The PCA9564 data sheet (2006-09-01) says "A
+		 * START condition will be transmitted when the
+		 * bus becomes free (STOP or SCL and SDA high)"
+		 * when the STA bit is set (p. 11).
+		 *
+		 * In case this won't work, try pca_reset()
+		 * instead.
+		 */
+		pca_start(adap);
+		goto out;
+
+		case 0x58:
+	/* Data byte has been received; NOT ACK has been returned */
+		pca_rx_buffer(adap, msg, transfer_len, numbytes);
+		numbytes += transfer_len;
+
+
+		if (numbytes == msg->len) {
+			curmsg++; numbytes = 0;
+			if (curmsg == num)
+				pca_stop(adap);
+			else
+				completed = pca_repeated_start(adap);
+		} else {
+			DEB2("NOT ACK sent after data byte received. " \
+			     "Not final byte. numbytes %d. len %d\n", \
+			     numbytes, msg->len);
+			pca_stop(adap);
+			goto out;
+		}
+		break;
+		case 0x70: /* Bus error - SDA stuck low */
+		DEB2("BUS ERROR - SDA Stuck low\n");
+		pca_reset(adap);
+		goto out;
+		case 0x90: /* Bus error - SCL stuck low */
+		DEB2("BUS ERROR - SCL Stuck low\n");
+		pca_reset(adap);
+		goto out;
+		case 0x00:
+	/* Bus error during master or slave mode due to illegal START or
+	STOP condition */
+		DEB2("BUS ERROR - Illegal START or STOP\n");
+		pca_reset(adap);
+		goto out;
+		default:
+		dev_err(&i2c_adap->dev, "unhandled SIO state 0x%02x\n", state);
+		break;
+		}
+
+		if (!completed)
+			goto out;
+	}
+
+	ret = curmsg;
+ out:
+	DEB1("}}} transferred %d/%d messages. " \
+	     "status is %#04x. control is %#04x\n",
+	     curmsg, num, pca_status(adap),
+	     pca_get_con(adap));
+
+	pca_unlock(adap);
+
+	return ret;
+}
+
 static int pca_xfer(struct i2c_adapter *i2c_adap,
 		    struct i2c_msg *msgs,
 		    int num)
@@ -194,7 +543,7 @@ static int pca_xfer(struct i2c_adapter *i2c_adap,
 		if (time_before(jiffies, timeout)) {
 			msleep(10);
 		} else {
-			dev_dbg(&i2c_adap->dev, "bus is not idle. status is "
+			dev_dbg(&i2c_adap->dev, "bus is not idle. status is " \
 				"%#04x\n", state);
 			return -EBUSY;
 		}
@@ -217,12 +566,12 @@ static int pca_xfer(struct i2c_adapter *i2c_adap,
 				       curmsg, msg->len, addr, addr << 1,
 				       msg->len == 0 ? "" : ", ");
 				for (i = 0; i < msg->len; i++)
-					printk("%#04x%s", msg->buf[i], i == msg->len - 1 ? "" : ", ");
+					printk("%#04x%s", msg->buf[i],
+						i == msg->len - 1 ? "" : ", ");
 				printk("]\n");
 			}
 		}
 	}
-
 	curmsg = 0;
 	ret = -EIO;
 	while (curmsg < num) {
@@ -241,8 +590,10 @@ static int pca_xfer(struct i2c_adapter *i2c_adap,
 			completed = pca_address(adap, msg);
 			break;
 
-		case 0x18: /* SLA+W has been transmitted; ACK has been received */
-		case 0x28: /* Data byte in I2CDAT has been transmitted; ACK has been received */
+		case 0x18:
+	/* SLA+W has been transmitted; ACK has been received */
+		case 0x28:
+	/* Data byte in I2CDAT has been transmitted; ACK has been received */
 			if (numbytes < msg->len) {
 				completed = pca_tx_byte(adap,
 							msg->buf[numbytes]);
@@ -256,17 +607,20 @@ static int pca_xfer(struct i2c_adapter *i2c_adap,
 				completed = pca_repeated_start(adap);
 			break;
 
-		case 0x20: /* SLA+W has been transmitted; NOT ACK has been received */
+		case 0x20:
+	/* SLA+W has been transmitted; NOT ACK has been received */
 			DEB2("NOT ACK received after SLA+W\n");
 			pca_stop(adap);
 			ret = -ENXIO;
 			goto out;
 
-		case 0x40: /* SLA+R has been transmitted; ACK has been received */
+		case 0x40:
+	 /* SLA+R has been transmitted; ACK has been received */
 			completed = pca_rx_ack(adap, msg->len > 1);
 			break;
 
-		case 0x50: /* Data bytes has been received; ACK has been returned */
+		case 0x50:
+	/* Data bytes has been received; ACK has been returned */
 			if (numbytes < msg->len) {
 				pca_rx_byte(adap, &msg->buf[numbytes], 1);
 				numbytes++;
@@ -281,18 +635,22 @@ static int pca_xfer(struct i2c_adapter *i2c_adap,
 				completed = pca_repeated_start(adap);
 			break;
 
-		case 0x48: /* SLA+R has been transmitted; NOT ACK has been received */
+		case 0x48:
+	/* SLA+R has been transmitted; NOT ACK has been received */
 			DEB2("NOT ACK received after SLA+R\n");
 			pca_stop(adap);
 			ret = -ENXIO;
 			goto out;
 
-		case 0x30: /* Data byte in I2CDAT has been transmitted; NOT ACK has been received */
+		case 0x30:
+	/* Data byte in I2CDAT has been transmitted;
+	 * NOT ACK has been received */
 			DEB2("NOT ACK received after data byte\n");
 			pca_stop(adap);
 			goto out;
 
-		case 0x38: /* Arbitration lost during SLA+W, SLA+R or data bytes */
+		case 0x38:
+	/* Arbitration lost during SLA+W, SLA+R or data bytes */
 			DEB2("Arbitration lost\n");
 			/*
 			 * The PCA9564 data sheet (2006-09-01) says "A
@@ -306,7 +664,9 @@ static int pca_xfer(struct i2c_adapter *i2c_adap,
 			pca_start(adap);
 			goto out;
 
-		case 0x58: /* Data byte has been received; NOT ACK has been returned */
+		case 0x58:
+	 /* Data byte has been received;
+	  * NOT ACK has been returned */
 			if (numbytes == msg->len - 1) {
 				pca_rx_byte(adap, &msg->buf[numbytes], 0);
 				curmsg++; numbytes = 0;
@@ -315,7 +675,7 @@ static int pca_xfer(struct i2c_adapter *i2c_adap,
 				else
 					completed = pca_repeated_start(adap);
 			} else {
-				DEB2("NOT ACK sent after data byte received. "
+				DEB2("NOT ACK sent after data byte received. " \
 				     "Not final byte. numbytes %d. len %d\n",
 				     numbytes, msg->len);
 				pca_stop(adap);
@@ -330,12 +690,16 @@ static int pca_xfer(struct i2c_adapter *i2c_adap,
 			DEB2("BUS ERROR - SCL Stuck low\n");
 			pca_reset(adap);
 			goto out;
-		case 0x00: /* Bus error during master or slave mode due to illegal START or STOP condition */
+		case 0x00:
+	 /* Bus error during master or slave mode due to illegal START
+	or STOP condition */
 			DEB2("BUS ERROR - Illegal START or STOP\n");
 			pca_reset(adap);
 			goto out;
 		default:
-			dev_err(&i2c_adap->dev, "unhandled SIO state 0x%02x\n", state);
+			dev_err(&i2c_adap->dev,
+				"unhandled SIO state 0x%02x\n",
+				state);
 			break;
 		}
 
@@ -345,7 +709,7 @@ static int pca_xfer(struct i2c_adapter *i2c_adap,
 
 	ret = curmsg;
  out:
-	DEB1("}}} transferred %d/%d messages. "
+	DEB1("}}} transferred %d/%d messages. " \
 	     "status is %#04x. control is %#04x\n",
 	     curmsg, num, pca_status(adap),
 	     pca_get_con(adap));
@@ -359,6 +723,11 @@ static u32 pca_func(struct i2c_adapter *adap)
 
 static const struct i2c_algorithm pca_algo = {
 	.master_xfer	= pca_xfer,
+	.functionality	= pca_func,
+};
+
+static const struct i2c_algorithm pca_algo_buffered = {
+	.master_xfer	= pca_xfer_buffered,
 	.functionality	= pca_func,
 };
 
@@ -389,12 +758,11 @@ static int pca_init(struct i2c_adapter *adap)
 {
 	struct i2c_algo_pca_data *pca_data = adap->algo_data;
 
-	adap->algo = &pca_algo;
-
 	if (pca_probe_chip(adap) == I2C_PCA_CHIP_9564) {
 		static int freqs[] = {330, 288, 217, 146, 88, 59, 44, 36};
 		int clock;
 
+		adap->algo = &pca_algo;
 		if (pca_data->i2c_clock > 7) {
 			switch (pca_data->i2c_clock) {
 			case 330000:
@@ -428,12 +796,12 @@ static int pca_init(struct i2c_adapter *adap)
 			pca_data->i2c_clock = I2C_PCA_CON_59kHz;
 			}
 		} else {
-			printk(KERN_WARNING "%s: "
-				"Choosing the clock frequency based on "
-				"index is deprecated."
+			printk(KERN_WARNING "%s: " \
+				"Choosing the clock frequency based on " \
+				"index is deprecated." \
 				" Use the nominal frequency.\n", adap->name);
 		}
-
+		pca_data->mode = I2C_PCA_BYTE_MODE;
 		pca_reset(pca_data);
 
 		clock = pca_clock(pca_data);
@@ -455,15 +823,16 @@ static int pca_init(struct i2c_adapter *adap)
 		 * maximum clock rate for each mode
 		 */
 		int raise_fall_time;
+		adap->algo = &pca_algo_buffered;
 
 		if (pca_data->i2c_clock > 1265800) {
-			printk(KERN_WARNING "%s: I2C clock speed too high."
+			printk(KERN_WARNING "%s: I2C clock speed too high." \
 				" Using 1265.8kHz.\n", adap->name);
 			pca_data->i2c_clock = 1265800;
 		}
 
 		if (pca_data->i2c_clock < 60300) {
-			printk(KERN_WARNING "%s: I2C clock speed too low."
+			printk(KERN_WARNING "%s: I2C clock speed too low." \
 				" Using 60.3kHz.\n", adap->name);
 			pca_data->i2c_clock = 60300;
 		}
@@ -520,6 +889,9 @@ static int pca_init(struct i2c_adapter *adap)
 		pca_outw(pca_data, I2C_PCA_IND, thi);
 
 		pca_set_con(pca_data, I2C_PCA_CON_ENSIO);
+		pca_data->mode = I2C_PCA_BUFFERED_MODE;
+		pca_data->buf_size = I2C_PCA_CHIP_9665_BUFSIZE - 1;
+
 	}
 	udelay(500); /* 500 us for oscilator to stabilise */
 
@@ -553,8 +925,9 @@ int i2c_pca_add_numbered_bus(struct i2c_adapter *adap)
 }
 EXPORT_SYMBOL(i2c_pca_add_numbered_bus);
 
-MODULE_AUTHOR("Ian Campbell <icampbell@arcom.com>, "
-	"Wolfram Sang <w.sang@pengutronix.de>");
+MODULE_AUTHOR("Ian Campbell <icampbell@arcom.com>, " \
+	"Wolfram Sang <w.sang@pengutronix.de>" \
+	"Nitin Sehgal <nsehgal@nvidia.com>");
 MODULE_DESCRIPTION("I2C-Bus PCA9564/PCA9665 algorithm");
 MODULE_LICENSE("GPL");
 

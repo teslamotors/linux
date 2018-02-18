@@ -41,6 +41,19 @@ config MPL3115
           To compile this driver as a module, choose M here: the module
           will be called mpl3115.
 
+config NVI_BMPX80
+	tristate "Bosch Digital pressure sensor"
+	depends on I2C
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	select NVS_IIO
+	help
+	  Say yes here to build support for Bosch pressure sensor
+	  that can be connected via Invensense MPU.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called nvi-bmpX80.
+
 config IIO_ST_PRESS
 	tristate "STMicroelectronics pressure sensor Driver"
 	depends on (I2C || SPI_MASTER) && SYSFS

@@ -40,8 +40,8 @@ struct mtdblk_dev {
 	int count;
 	struct mutex cache_mutex;
 	unsigned char *cache_data;
-	unsigned long cache_offset;
-	unsigned int cache_size;
+	unsigned long long cache_offset;
+	unsigned long long cache_size;
 	enum { STATE_EMPTY, STATE_CLEAN, STATE_DIRTY } cache_state;
 };
 
@@ -63,7 +63,7 @@ static void erase_callback(struct erase_info *done)
 	wake_up(wait_q);
 }
 
-static int erase_write (struct mtd_info *mtd, unsigned long pos,
+static int erase_write (struct mtd_info *mtd, unsigned long long pos,
 			int len, const char *buf)
 {
 	struct erase_info erase;
@@ -90,7 +90,7 @@ static int erase_write (struct mtd_info *mtd, unsigned long pos,
 	if (ret) {
 		set_current_state(TASK_RUNNING);
 		remove_wait_queue(&wait_q, &wait);
-		printk (KERN_WARNING "mtdblock: erase of region [0x%lx, 0x%x] "
+		printk (KERN_WARNING "mtdblock: erase of region [0x%llx, 0x%x] "
 				     "on \"%s\" failed\n",
 			pos, len, mtd->name);
 		return ret;
@@ -121,7 +121,7 @@ static int write_cached_data (struct mtdblk_dev *mtdblk)
 		return 0;
 
 	pr_debug("mtdblock: writing cached data for \"%s\" "
-			"at 0x%lx, size 0x%x\n", mtd->name,
+			"at 0x%llx, size 0x%llx\n", mtd->name,
 			mtdblk->cache_offset, mtdblk->cache_size);
 
 	ret = erase_write (mtd, mtdblk->cache_offset,
@@ -140,25 +140,24 @@ static int write_cached_data (struct mtdblk_dev *mtdblk)
 	return 0;
 }
 
-
-static int do_cached_write (struct mtdblk_dev *mtdblk, unsigned long pos,
+static int do_cached_write (struct mtdblk_dev *mtdblk, unsigned long long pos,
 			    int len, const char *buf)
 {
 	struct mtd_info *mtd = mtdblk->mbd.mtd;
-	unsigned int sect_size = mtdblk->cache_size;
+	unsigned long long sect_size = mtdblk->cache_size;
 	size_t retlen;
 	int ret;
 
-	pr_debug("mtdblock: write on \"%s\" at 0x%lx, size 0x%x\n",
+	pr_debug("mtdblock: write on \"%s\" at 0x%llx, size 0x%x\n",
 		mtd->name, pos, len);
 
 	if (!sect_size)
 		return mtd_write(mtd, pos, len, &retlen, buf);
 
 	while (len > 0) {
-		unsigned long sect_start = (pos/sect_size)*sect_size;
-		unsigned int offset = pos - sect_start;
-		unsigned int size = sect_size - offset;
+		unsigned long long sect_start = pos & ~(sect_size-1);
+		unsigned long long offset = pos - sect_start;
+		unsigned long long size = sect_size - offset;
 		if( size > len )
 			size = len;
 
@@ -211,24 +210,24 @@ static int do_cached_write (struct mtdblk_dev *mtdblk, unsigned long pos,
 }
 
 
-static int do_cached_read (struct mtdblk_dev *mtdblk, unsigned long pos,
+static int do_cached_read (struct mtdblk_dev *mtdblk, unsigned long long pos,
 			   int len, char *buf)
 {
 	struct mtd_info *mtd = mtdblk->mbd.mtd;
-	unsigned int sect_size = mtdblk->cache_size;
+	unsigned long long sect_size = mtdblk->cache_size;
 	size_t retlen;
 	int ret;
 
-	pr_debug("mtdblock: read on \"%s\" at 0x%lx, size 0x%x\n",
+	pr_debug("mtdblock: read on \"%s\" at 0x%llx, size 0x%x\n",
 			mtd->name, pos, len);
 
 	if (!sect_size)
 		return mtd_read(mtd, pos, len, &retlen, buf);
 
 	while (len > 0) {
-		unsigned long sect_start = (pos/sect_size)*sect_size;
-		unsigned int offset = pos - sect_start;
-		unsigned int size = sect_size - offset;
+		unsigned long long sect_start = pos & ~(sect_size-1);
+		unsigned long long offset = pos - sect_start;
+		unsigned long long size = sect_size - offset;
 		if (size > len)
 			size = len;
 
@@ -258,14 +257,14 @@ static int do_cached_read (struct mtdblk_dev *mtdblk, unsigned long pos,
 }
 
 static int mtdblock_readsect(struct mtd_blktrans_dev *dev,
-			      unsigned long block, char *buf)
+			      unsigned long long block, char *buf)
 {
 	struct mtdblk_dev *mtdblk = container_of(dev, struct mtdblk_dev, mbd);
 	return do_cached_read(mtdblk, block<<9, 512, buf);
 }
 
 static int mtdblock_writesect(struct mtd_blktrans_dev *dev,
-			      unsigned long block, char *buf)
+			      unsigned long long block, char *buf)
 {
 	struct mtdblk_dev *mtdblk = container_of(dev, struct mtdblk_dev, mbd);
 	if (unlikely(!mtdblk->cache_data && mtdblk->cache_size)) {

@@ -1,0 +1,62 @@
+* Invensense ICM-20628 and MPUxxxx Gyro/Accelerometer(/compass) sensors
+
+This driver uses the NVidia Sensor (NVS) framework.
+See the nvs.txt documentation for NVS DT capabilities.
+The nvi sensor driver supports the ICM, MPU6xxx and MPU9xxx devices.
+
+Required properties:
+- compatible: Device or generic name.
+	      Supported device names:
+	      - invensense,mpu6xxx
+	      - invensense,mpu6050
+	      - invensense,mpu6500
+	      - invensense,mpu6515
+	      - invensense,mpu9150
+	      - invensense,mpu9250
+	      - invensense,mpu9350
+	      - invensense,icm20628
+  Note: If the part is known and is populated, then it can be specified:
+	Example: compatible = "invensense,icm20628";
+	When specifying a device this way, the driver will assume this specific
+	device is populated during system boot and will not verify its
+	existence.  If, however, the device is unknown or may not be populated,
+	then the label, mpu6xxx, (Example: compatible = "invensense,mpu6xxx";),
+	must be used.  This tells the driver to find which device is used.  If
+	the device is not found, the driver will unload itself.  This requires
+	regulators to be setup correctly for the probe function.
+- reg: i2c address of the device. It should be 0x68 or 0x69.
+- interrupt-parent:  GPIO number
+- interrupts:  GPIO macro
+
+Optional properties:
+- status: set to "ok" or "okay" for normal operation.  Set to anything else
+	  to unload the driver without ever communicating with the device.
+  Note: The "anything else" above is typically "disabled".
+	Since the driver will unload without communicating with the device, the
+	device will be left in its POR state.
+- accelerometer_disable: Setting this property to <1> will disable the
+                         accelerometer.
+- gyroscope_disable: Setting this property to <1> will disable the gyroscope.
+- gyro_temp_disable: Setting this property to <1> will disable the gyroscope
+                     temperature sensor.
+  Note: To disable the entire device so that the driver unloads, all sensors
+        must be disabled:
+	accelerometer_disable = <1>;
+	gyroscope_disable = <1>;
+	gyro_temp_disable = <1>;
+- vdd-supply: regulator supply for the chip
+- vlogic-supply: regulator supply for the chip
+  Note: These are required if the driver is to control the regulators.
+- accelerometer_matrix:  Orientation matrix for this device.
+- gyroscope_matrix:  Orientation matrix for this device.
+
+Example:
+	icm20628@69 {
+		compatible = "invensense,mpu6xxx";
+                reg = <0x69>;
+                interrupt-parent = <&gpio>;
+                interrupts = <TEGRA_GPIO(X, 2) 0x01>;
+		accelerometer_matrix = [00 ff 00 ff 00 00 00 00 ff];
+		gyroscope_matrix = [00 ff 00 ff 00 00 00 00 ff];
+	};
+

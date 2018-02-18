@@ -1,0 +1,64 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	/* Need to enable wifi_en pin during boot for PCIe enumeration */
+	gpio@2200000 {
+		gpio-init-1 = <&wlan_default>;
+
+		wlan_default: wlan-default {
+			gpio-input = <
+				TEGRA_GPIO(FF, 3)
+				>;
+			gpio-output-high = <
+				TEGRA_GPIO(N, 0)
+				>;
+		};
+	};
+
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,reset-gpio = <&tegra_gpio TEGRA_GPIO(L, 7) 0>;
+		bluedroid_pm,host-wake-gpio = <&tegra_gpio TEGRA_GPIO(FF, 4) 0>;
+		bluedroid_pm,ext-wake-gpio = <&tegra_gpio TEGRA_GPIO(Y, 4) 0>;
+		interrupt-parent = <&tegra_gpio>;
+		interrupts = <TEGRA_GPIO(FF, 4) 0x01>;
+	};
+
+	bcm4359: bcmdhd_pcie_wlan {
+		compatible = "android,bcmdhd_pcie_wlan";
+		interrupt-parent = <&tegra_gpio>;
+		interrupts = <TEGRA_GPIO(FF, 3) 0x14>;
+		wlan-pwr-gpio = <&tegra_gpio TEGRA_GPIO(N, 0) 0>;
+		fw_path = "/system/vendor/firmware/fw_bcmdhd.bin";
+		nv_path = "/system/etc/nvram_4359_b1.txt";
+		status = "okay";
+	};
+
+	bcm4354: bcmdhd_wlan {
+		compatible = "android,bcmdhd_wlan";
+		interrupt-parent = <&tegra_gpio>;
+		interrupts = <TEGRA_GPIO(FF, 3) 0x14>;
+		wlan-pwr-gpio = <&tegra_gpio TEGRA_GPIO(N, 0) 0>;
+		fw_path = "/system/vendor/firmware/fw_bcmdhd_4354.bin";
+		nv_path = "/system/etc/nvram_quill_4354.txt";
+		status = "disabled";
+	};
+};

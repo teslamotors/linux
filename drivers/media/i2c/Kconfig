@@ -474,6 +474,36 @@ config VIDEO_APTINA_PLL
 config VIDEO_SMIAPP_PLL
 	tristate
 
+
+config VIDEO_IMX214
+        tristate "IMX214 camera sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This driver supports IMX214 camera sensor from Sony
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called imx214.
+
+config VIDEO_LC898212
+	tristate "LC898212 focuser support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This driver supports LC898212 camera focuser
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called lc898212.
+
+config VIDEO_OV5693
+        tristate "OV5693 camera sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV5693 camera.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called imx214.
+
+
 config VIDEO_OV7640
 	tristate "OmniVision OV7640 sensor support"
 	depends on I2C && VIDEO_V4L2
@@ -500,6 +530,35 @@ config VIDEO_OV9650
 	---help---
 	  This is a V4L2 sensor-level driver for the Omnivision
 	  OV9650 and OV9652 camera sensors.
+
+config VIDEO_OV23850
+        tristate "OmniVision OV23850 sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This driver supports OmniVision OV23850 camera sensor
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called ov23850.
+
+config VIDEO_IMX219
+	tristate "IMX219 camera sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This is a Video4Linux2 sensor-level driver for Sony
+	  imx219 camera.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called imx219.
+
+config VIDEO_OV10823
+	tristate "OmniVision OV10823 camera sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This is a Video4Linux2 sensor driver for the OmniVision
+	  OV10823 camera sensor, for use with the tegra isp.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called ov10823.
 
 config VIDEO_VS6624
 	tristate "ST VS6624 sensor support"

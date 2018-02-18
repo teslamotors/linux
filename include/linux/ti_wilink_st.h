@@ -389,7 +389,12 @@ void st_ll_disable(struct st_data_s *);
  * various funcs used by ST core to set/get the various PM states
  * of the chip.
  */
+
+#ifdef CONFIG_TI_ST
 unsigned long st_ll_getstate(struct st_data_s *);
+#else
+static inline unsigned long st_ll_getstate(struct st_data_s *ll){ return 0; }
+#endif
 unsigned long st_ll_sleep_state(struct st_data_s *, unsigned char);
 void st_ll_wakeup(struct st_data_s *);
 
@@ -448,4 +453,15 @@ struct ti_st_plat_data {
 	int (*chip_awake) (struct kim_data_s *);
 };
 
+/*ST states used in st_host_wake driver*/
+#define ST_PROTO_UNREGISTERED  0
+#define ST_PROTO_REGISTERED    1
+
+void st_host_wake_notify(int, int);
+
+/*ST Voltage regulation state*/
+#define ST_VLTG_REG_DISABLE    0
+#define ST_VLTG_REG_ENABLE     1
+
+void st_vltg_regulation(int);
 #endif /* TI_WILINK_ST_H */

@@ -65,8 +65,12 @@ static void tegra_fb_destroy(struct drm_framebuffer *framebuffer)
 	for (i = 0; i < fb->num_planes; i++) {
 		struct tegra_bo *bo = fb->planes[i];
 
-		if (bo)
+		if (bo) {
+			if (bo->pages && bo->vaddr)
+				vunmap(bo->vaddr);
+
 			drm_gem_object_unreference_unlocked(&bo->gem);
+		}
 	}
 
 	drm_framebuffer_cleanup(framebuffer);
@@ -254,6 +258,16 @@ static int tegra_fbdev_probe(struct drm_fb_helper *helper,
 	offset = info->var.xoffset * bytes_per_pixel +
 		 info->var.yoffset * fb->pitches[0];
 
+	if (bo->pages) {
+		bo->vaddr = vmap(bo->pages, bo->num_pages, VM_MAP,
+				 pgprot_writecombine(PAGE_KERNEL));
+		if (!bo->vaddr) {
+			dev_err(drm->dev, "failed to vmap() framebuffer\n");
+			err = -ENOMEM;
+			goto destroy;
+		}
+	}
+
 	drm->mode_config.fb_base = (resource_size_t)bo->paddr;
 	info->screen_base = (void __iomem *)bo->vaddr + offset;
 	info->screen_size = size;
@@ -289,6 +303,11 @@ static struct tegra_fbdev *tegra_fbdev_create(struct drm_device *drm)
 	return fbdev;
 }
 
+static void tegra_fbdev_free(struct tegra_fbdev *fbdev)
+{
+	kfree(fbdev);
+}
+
 static int tegra_fbdev_init(struct tegra_fbdev *fbdev,
 			    unsigned int preferred_bpp,
 			    unsigned int num_crtc,
@@ -322,7 +341,7 @@ fini:
 	return err;
 }
 
-static void tegra_fbdev_free(struct tegra_fbdev *fbdev)
+static void tegra_fbdev_exit(struct tegra_fbdev *fbdev)
 {
 	struct fb_info *info = fbdev->base.fbdev;
 
@@ -345,7 +364,7 @@ static void tegra_fbdev_free(struct tegra_fbdev *fbdev)
 	}
 
 	drm_fb_helper_fini(&fbdev->base);
-	kfree(fbdev);
+	tegra_fbdev_free(fbdev);
 }
 
 void tegra_fbdev_restore_mode(struct tegra_fbdev *fbdev)
@@ -393,6 +412,15 @@ int tegra_drm_fb_prepare(struct drm_device *drm)
 	return 0;
 }
 
+void tegra_drm_fb_free(struct drm_device *drm)
+{
+#ifdef CONFIG_DRM_TEGRA_FBDEV
+	struct tegra_drm *tegra = drm->dev_private;
+
+	tegra_fbdev_free(tegra->fbdev);
+#endif
+}
+
 int tegra_drm_fb_init(struct drm_device *drm)
 {
 #ifdef CONFIG_DRM_TEGRA_FBDEV
@@ -413,6 +441,6 @@ void tegra_drm_fb_exit(struct drm_device *drm)
 #ifdef CONFIG_DRM_TEGRA_FBDEV
 	struct tegra_drm *tegra = drm->dev_private;
 
-	tegra_fbdev_free(tegra->fbdev);
+	tegra_fbdev_exit(tegra->fbdev);
 #endif
 }

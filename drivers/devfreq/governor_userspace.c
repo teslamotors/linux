@@ -75,9 +75,9 @@ static ssize_t show_freq(struct device *dev, struct device_attribute *attr,
 	data = devfreq->data;
 
 	if (data->valid)
-		err = sprintf(buf, "%lu\n", data->user_frequency);
+		err = snprintf(buf, PAGE_SIZE, "%lu\n", data->user_frequency);
 	else
-		err = sprintf(buf, "undefined\n");
+		err = snprintf(buf, PAGE_SIZE, "undefined\n");
 	mutex_unlock(&devfreq->lock);
 	return err;
 }

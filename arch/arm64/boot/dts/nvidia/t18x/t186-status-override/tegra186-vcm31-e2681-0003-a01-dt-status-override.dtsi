@@ -1,0 +1,483 @@
+/*
+ * tegra186-vcm31-e2681-0003-a01-dt-status-override.dtsi:
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	ufshci@2450000 {
+		status = "disabled";
+	};
+
+	i2c@3160000 {
+		gpio@76 {
+			xusb_lane0_mux {
+				status = "disabled";
+			};
+
+			pcie1_lane0_mux {
+				status = "disabled";
+			};
+
+			xusb_lane1_mux {
+				status = "disabled";
+			};
+
+			pcie0_lane1_mux {
+				status = "disabled";
+			};
+
+			xusb_lane2_mux {
+				status = "disabled";
+			};
+
+			pcie0_lane2_mux {
+				status = "disabled";
+			};
+
+			pcie2_lane3_mux {
+				status = "disabled";
+			};
+
+			pcie0_lane3_mux {
+				status = "disabled";
+			};
+
+			ufs_lane4_mux {
+				status = "disabled";
+			};
+
+			pcie0_lane4_mux {
+				status = "disabled";
+			};
+
+			ufs_lane5_mux {
+				status = "disabled";
+			};
+
+			sata_lane5_mux {
+				status = "disabled";
+			};
+		};
+
+		gpio@75 {
+
+			xusb_lane0_mux {
+				status = "disabled";
+			};
+
+			pcie1_lane0_mux {
+				status = "disabled";
+			};
+
+			xusb_lane1_mux {
+				status = "disabled";
+			};
+
+			pcie0_lane1_mux {
+				status = "disabled";
+			};
+
+			xusb_lane2_mux {
+				status = "disabled";
+			};
+
+			pcie0_lane2_mux {
+				status = "disabled";
+			};
+
+			pcie2_lane3_mux {
+				status = "disabled";
+			};
+
+			pcie0_lane3_mux {
+				status = "disabled";
+			};
+
+			ufs_lane4_mux {
+				status = "disabled";
+			};
+
+			pcie0_lane4_mux {
+				status = "disabled";
+			};
+
+			ufs_lane5_mux {
+				status = "disabled";
+			};
+
+			sata_lane5_mux {
+				status = "disabled";
+			};
+		};
+	};
+
+	i2c@31c0000 {
+		status = "disabled";
+	};
+
+	i2c@31e0000 {
+		status = "disabled";
+	};
+
+	pwm@3280000 {
+		status = "disabled";
+	};
+
+	pwm@3290000 {
+		status = "disabled";
+	};
+
+	pwm@32a0000 {
+		status = "disabled";
+	};
+
+	pwm@c340000 {
+		status = "disabled";
+	};
+
+	pwm@32c0000 {
+		status = "disabled";
+	};
+
+	pwm@32d0000 {
+		status = "disabled";
+	};
+
+	pwm@32e0000 {
+		status = "disabled";
+	};
+
+	pwm@32f0000 {
+		status = "disabled";
+	};
+
+
+
+	serial@c290000 {
+		status = "disabled";
+	};
+
+	ether_qos@2490000 {
+		status = "okay";
+	};
+
+	ether_qos_virt_test@2490000 {
+		status = "disabled";
+	};
+
+	mc-clk-pd {
+		status = "disabled";
+	};
+
+	ape-pd {
+		status = "disabled";
+	};
+
+	host-pd {
+		status = "disabled";
+	};
+
+	tsec-pd {
+		status = "disabled";
+	};
+
+	nvdec-pd {
+		status = "disabled";
+	};
+
+	ispa-pd {
+		status = "disabled";
+	};
+
+	ve-pd {
+		status = "disabled";
+	};
+
+	vic03-pd {
+		status = "disabled";
+	};
+
+	msenc-pd {
+		status = "disabled";
+	};
+
+	nvjpg-pd {
+		status = "disabled";
+	};
+
+	gpu-pd {
+		status = "disabled";
+	};
+
+	pcie-pd {
+		status = "disabled";
+	};
+
+	sata-pd {
+		status = "disabled";
+	};
+
+	disa-pd {
+		status = "disabled";
+	};
+
+	disb-pd {
+		status = "disabled";
+	};
+
+	disc-pd {
+		status = "disabled";
+	};
+
+	xusba-pd {
+		status = "disabled";
+	};
+
+	xusbb-pd {
+		status = "disabled";
+	};
+
+	xusbc-pd {
+		status = "disabled";
+	};
+
+
+	usb_cd@7009f000 {
+		status = "disabled";
+	};
+
+	mailbox@3538000 {
+		status = "okay";
+	};
+
+	xhci@3530000 {
+		status = "okay";
+	};
+
+	xudc@3550000 {
+		status = "okay";
+	};
+
+	pinctrl@3520000 {
+		status = "okay";
+	};
+
+	tachometer@39c0000 {
+		status = "disabled";
+	};
+
+	pmc-iopower {
+		status = "disabled";
+	};
+
+
+	interrupt-controller@3000000 {
+		status = "disabled";
+	};
+
+	tegra-hsp@3c00000 {
+		status = "disabled";
+	};
+
+	chipid@100000 {
+		status = "disabled";
+	};
+
+	bpmp {
+		status = "okay";
+
+		bpmpthermal {
+			status = "disabled";
+		};
+	};
+
+	watchdog@30c0000 {
+		status = "disabled";
+	};
+
+	watchdog@30c0000 {
+		status = "disabled";
+	};
+
+	roc-flush@e080000 {
+		status = "disabled";
+	};
+
+	cpuidle {
+		status = "disabled";
+	};
+
+        efuse@3820000 {
+                status = "disabled";
+        };
+
+	rtc@c2a0000 {
+		status = "disabled";
+	};
+
+	cpus {
+		status = "disabled";
+
+		a57_core_power_states {
+
+			c1 {
+				status = "disabled";
+			};
+
+			c7 {
+				status = "disabled";
+			};
+		};
+
+		a57_cluster_power_states {
+
+			cc1 {
+				status = "disabled";
+			};
+
+			cc6 {
+				status = "disabled";
+			};
+
+			cc7 {
+				status = "disabled";
+			};
+		};
+
+		denver_core_power_states {
+
+			c1 {
+				status = "disabled";
+			};
+
+			c6 {
+				status = "disabled";
+			};
+
+			c7 {
+				status = "disabled";
+			};
+		};
+
+		denver_cluster_power_states {
+
+			cc1 {
+				status = "disabled";
+			};
+
+			cc6 {
+				status = "disabled";
+			};
+
+			cc7 {
+				status = "disabled";
+			};
+		};
+	};
+
+	backlight {
+
+		panel-a-edp-1080p-14-0-bl {
+			status = "disabled";
+		};
+
+		panel-s-wuxga-8-0-bl {
+			status = "disabled";
+		};
+
+		panel-s-edp-uhdtv-15-6-bl {
+			status = "disabled";
+		};
+	};
+
+	hyp {
+		status = "disabled";
+	};
+
+	external-connection {
+		status = "okay";
+	};
+
+	dummy-cool-dev {
+		status = "disabled";
+	};
+
+	thermal-zones {
+		status = "disabled";
+
+		Tboard_tegra {
+			status = "disabled";
+
+			thermal-zone-params {
+			};
+		};
+
+		Tdiode_tegra {
+			status = "disabled";
+
+			thermal-zone-params {
+			};
+		};
+	};
+
+	gpio-keys {
+		status = "disabled";
+	};
+
+	bluedroid_pm {
+		status = "okay";
+	};
+
+	bcmdhd_pcie_wlan {
+		status = "okay";
+	};
+
+	sound {
+		status = "disabled";
+	};
+
+	aon@c160000 {
+		status = "disabled";
+	};
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <7>;
+		csi-port = <0>;
+		pwdn-gpios = < &tegra_gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_HIGH	/* GMSL_IN1_PDN */
+			&tegra_gpio TEGRA_GPIO(I, 4) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN1 */
+			&tegra_gpio TEGRA_GPIO(I, 5) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN2 */
+			&tegra_gpio TEGRA_GPIO(I, 6) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN3 */
+			&tegra_gpio TEGRA_GPIO(I, 7) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN4 */>;
+		status = "okay";
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <2>;
+		pwdn-gpios = < &tegra_gpio TEGRA_GPIO(V, 5) GPIO_ACTIVE_HIGH	/* GMSL_IN2_PDN */
+			&tegra_gpio TEGRA_GPIO(B, 4) GPIO_ACTIVE_HIGH		/* CSI2_TV_EN3 */
+			&tegra_gpio TEGRA_GPIO(B, 5) GPIO_ACTIVE_HIGH		/* CSI2_TV_EN4 */>;
+		status = "okay";
+	};
+
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <4>;
+		pwdn-gpios = < &tegra_gpio TEGRA_GPIO(A, 5) GPIO_ACTIVE_HIGH >;
+		default-power-on;
+		status = "okay";
+	};
+};

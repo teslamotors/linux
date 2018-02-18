@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2016, NVIDIA Corporation. All rights reserved.
  *      uvc_v4l2.c  --  USB Video Class driver - V4L2 API
  *
  *      Copyright (C) 2005-2010
@@ -559,9 +560,9 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	struct uvc_streaming *stream = handle->stream;
 	long ret = 0;
 
-	switch (cmd) {
+	switch (_IOC_NR(cmd)) {
 	/* Query capabilities */
-	case VIDIOC_QUERYCAP:
+	case _IOC_NR(VIDIOC_QUERYCAP):
 	{
 		struct v4l2_capability *cap = arg;
 
@@ -583,11 +584,11 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	}
 
 	/* Priority */
-	case VIDIOC_G_PRIORITY:
+	case _IOC_NR(VIDIOC_G_PRIORITY):
 		*(u32 *)arg = v4l2_prio_max(vdev->prio);
 		break;
 
-	case VIDIOC_S_PRIORITY:
+	case _IOC_NR(VIDIOC_S_PRIORITY):
 		ret = v4l2_prio_check(vdev->prio, handle->vfh.prio);
 		if (ret < 0)
 			return ret;
@@ -596,10 +597,10 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 					*(u32 *)arg);
 
 	/* Get, Set & Query control */
-	case VIDIOC_QUERYCTRL:
+	case _IOC_NR(VIDIOC_QUERYCTRL):
 		return uvc_query_v4l2_ctrl(chain, arg);
 
-	case VIDIOC_G_CTRL:
+	case _IOC_NR(VIDIOC_G_CTRL):
 	{
 		struct v4l2_control *ctrl = arg;
 		struct v4l2_ext_control xctrl;
@@ -618,7 +619,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		break;
 	}
 
-	case VIDIOC_S_CTRL:
+	case _IOC_NR(VIDIOC_S_CTRL):
 	{
 		struct v4l2_control *ctrl = arg;
 		struct v4l2_ext_control xctrl;
@@ -646,10 +647,10 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		break;
 	}
 
-	case VIDIOC_QUERYMENU:
+	case _IOC_NR(VIDIOC_QUERYMENU):
 		return uvc_query_v4l2_menu(chain, arg);
 
-	case VIDIOC_G_EXT_CTRLS:
+	case _IOC_NR(VIDIOC_G_EXT_CTRLS):
 	{
 		struct v4l2_ext_controls *ctrls = arg;
 		struct v4l2_ext_control *ctrl = ctrls->controls;
@@ -672,12 +673,12 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		break;
 	}
 
-	case VIDIOC_S_EXT_CTRLS:
+	case _IOC_NR(VIDIOC_S_EXT_CTRLS):
 		ret = v4l2_prio_check(vdev->prio, handle->vfh.prio);
 		if (ret < 0)
 			return ret;
 		/* Fall through */
-	case VIDIOC_TRY_EXT_CTRLS:
+	case _IOC_NR(VIDIOC_TRY_EXT_CTRLS):
 	{
 		struct v4l2_ext_controls *ctrls = arg;
 		struct v4l2_ext_control *ctrl = ctrls->controls;
@@ -699,7 +700,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 
 		ctrls->error_idx = 0;
 
-		if (cmd == VIDIOC_S_EXT_CTRLS)
+		if (_IOC_NR(cmd) == _IOC_NR(VIDIOC_S_EXT_CTRLS))
 			ret = uvc_ctrl_commit(handle,
 					      ctrls->controls, ctrls->count);
 		else
@@ -708,7 +709,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	}
 
 	/* Get, Set & Enum input */
-	case VIDIOC_ENUMINPUT:
+	case _IOC_NR(VIDIOC_ENUMINPUT):
 	{
 		const struct uvc_entity *selector = chain->selector;
 		struct v4l2_input *input = arg;
@@ -746,7 +747,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		break;
 	}
 
-	case VIDIOC_G_INPUT:
+	case _IOC_NR(VIDIOC_G_INPUT):
 	{
 		u8 input;
 
@@ -766,7 +767,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		break;
 	}
 
-	case VIDIOC_S_INPUT:
+	case _IOC_NR(VIDIOC_S_INPUT):
 	{
 		u32 input = *(u32 *)arg + 1;
 
@@ -793,7 +794,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	}
 
 	/* Try, Get, Set & Enum format */
-	case VIDIOC_ENUM_FMT:
+	case _IOC_NR(VIDIOC_ENUM_FMT):
 	{
 		struct v4l2_fmtdesc *fmt = arg;
 		struct uvc_format *format;
@@ -819,14 +820,14 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		break;
 	}
 
-	case VIDIOC_TRY_FMT:
+	case _IOC_NR(VIDIOC_TRY_FMT):
 	{
 		struct uvc_streaming_control probe;
 
 		return uvc_v4l2_try_format(stream, arg, &probe, NULL, NULL);
 	}
 
-	case VIDIOC_S_FMT:
+	case _IOC_NR(VIDIOC_S_FMT):
 		ret = v4l2_prio_check(vdev->prio, handle->vfh.prio);
 		if (ret < 0)
 			return ret;
@@ -836,11 +837,11 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 
 		return uvc_v4l2_set_format(stream, arg);
 
-	case VIDIOC_G_FMT:
+	case _IOC_NR(VIDIOC_G_FMT):
 		return uvc_v4l2_get_format(stream, arg);
 
 	/* Frame size enumeration */
-	case VIDIOC_ENUM_FRAMESIZES:
+	case _IOC_NR(VIDIOC_ENUM_FRAMESIZES):
 	{
 		struct v4l2_frmsizeenum *fsize = arg;
 		struct uvc_format *format = NULL;
@@ -869,7 +870,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	}
 
 	/* Frame interval enumeration */
-	case VIDIOC_ENUM_FRAMEINTERVALS:
+	case _IOC_NR(VIDIOC_ENUM_FRAMEINTERVALS):
 	{
 		struct v4l2_frmivalenum *fival = arg;
 		struct uvc_format *format = NULL;
@@ -929,10 +930,10 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	}
 
 	/* Get & Set streaming parameters */
-	case VIDIOC_G_PARM:
+	case _IOC_NR(VIDIOC_G_PARM):
 		return uvc_v4l2_get_streamparm(stream, arg);
 
-	case VIDIOC_S_PARM:
+	case _IOC_NR(VIDIOC_S_PARM):
 		ret = v4l2_prio_check(vdev->prio, handle->vfh.prio);
 		if (ret < 0)
 			return ret;
@@ -943,7 +944,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		return uvc_v4l2_set_streamparm(stream, arg);
 
 	/* Cropping and scaling */
-	case VIDIOC_CROPCAP:
+	case _IOC_NR(VIDIOC_CROPCAP):
 	{
 		struct v4l2_cropcap *ccap = arg;
 
@@ -965,12 +966,12 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		break;
 	}
 
-	case VIDIOC_G_CROP:
-	case VIDIOC_S_CROP:
+	case _IOC_NR(VIDIOC_G_CROP):
+	case _IOC_NR(VIDIOC_S_CROP):
 		return -ENOTTY;
 
 	/* Buffers & streaming */
-	case VIDIOC_REQBUFS:
+	case _IOC_NR(VIDIOC_REQBUFS):
 		ret = v4l2_prio_check(vdev->prio, handle->vfh.prio);
 		if (ret < 0)
 			return ret;
@@ -990,7 +991,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		ret = 0;
 		break;
 
-	case VIDIOC_QUERYBUF:
+	case _IOC_NR(VIDIOC_QUERYBUF):
 	{
 		struct v4l2_buffer *buf = arg;
 
@@ -999,8 +1000,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 
 		return uvc_query_buffer(&stream->queue, buf);
 	}
-
-	case VIDIOC_CREATE_BUFS:
+	case _IOC_NR(VIDIOC_CREATE_BUFS):
 	{
 		struct v4l2_create_buffers *cb = arg;
 
@@ -1010,21 +1010,20 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 
 		return uvc_create_buffers(&stream->queue, cb);
 	}
-
-	case VIDIOC_QBUF:
+	case _IOC_NR(VIDIOC_QBUF):
 		if (!uvc_has_privileges(handle))
 			return -EBUSY;
 
 		return uvc_queue_buffer(&stream->queue, arg);
 
-	case VIDIOC_DQBUF:
+	case _IOC_NR(VIDIOC_DQBUF):
 		if (!uvc_has_privileges(handle))
 			return -EBUSY;
 
 		return uvc_dequeue_buffer(&stream->queue, arg,
 			file->f_flags & O_NONBLOCK);
 
-	case VIDIOC_STREAMON:
+	case _IOC_NR(VIDIOC_STREAMON):
 	{
 		int *type = arg;
 
@@ -1046,7 +1045,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		break;
 	}
 
-	case VIDIOC_STREAMOFF:
+	case _IOC_NR(VIDIOC_STREAMOFF):
 	{
 		int *type = arg;
 
@@ -1063,7 +1062,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		return uvc_video_enable(stream, 0);
 	}
 
-	case VIDIOC_SUBSCRIBE_EVENT:
+	case _IOC_NR(VIDIOC_SUBSCRIBE_EVENT):
 	{
 		struct v4l2_event_subscription *sub = arg;
 
@@ -1076,32 +1075,32 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		}
 	}
 
-	case VIDIOC_UNSUBSCRIBE_EVENT:
+	case _IOC_NR(VIDIOC_UNSUBSCRIBE_EVENT):
 		return v4l2_event_unsubscribe(&handle->vfh, arg);
 
-	case VIDIOC_DQEVENT:
+	case _IOC_NR(VIDIOC_DQEVENT):
 		return v4l2_event_dequeue(&handle->vfh, arg,
 					  file->f_flags & O_NONBLOCK);
 
 	/* Analog video standards make no sense for digital cameras. */
-	case VIDIOC_ENUMSTD:
-	case VIDIOC_QUERYSTD:
-	case VIDIOC_G_STD:
-	case VIDIOC_S_STD:
+	case _IOC_NR(VIDIOC_ENUMSTD):
+	case _IOC_NR(VIDIOC_QUERYSTD):
+	case _IOC_NR(VIDIOC_G_STD):
+	case _IOC_NR(VIDIOC_S_STD):
 
-	case VIDIOC_OVERLAY:
+	case _IOC_NR(VIDIOC_OVERLAY):
 
-	case VIDIOC_ENUMAUDIO:
-	case VIDIOC_ENUMAUDOUT:
+	case _IOC_NR(VIDIOC_ENUMAUDIO):
+	case _IOC_NR(VIDIOC_ENUMAUDOUT):
 
-	case VIDIOC_ENUMOUTPUT:
+	case _IOC_NR(VIDIOC_ENUMOUTPUT):
 		uvc_trace(UVC_TRACE_IOCTL, "Unsupported ioctl 0x%08x\n", cmd);
 		return -ENOTTY;
 
-	case UVCIOC_CTRL_MAP:
+	case _IOC_NR(UVCIOC_CTRL_MAP):
 		return uvc_ioctl_ctrl_map(chain, arg);
 
-	case UVCIOC_CTRL_QUERY:
+	case _IOC_NR(UVCIOC_CTRL_QUERY):
 		return uvc_xu_ctrl_query(chain, arg);
 
 	default:
@@ -1287,13 +1286,13 @@ static long uvc_v4l2_compat_ioctl32(struct file *file,
 	mm_segment_t old_fs;
 	long ret;
 
-	switch (cmd) {
-	case UVCIOC_CTRL_MAP32:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(UVCIOC_CTRL_MAP32):
 		cmd = UVCIOC_CTRL_MAP;
 		ret = uvc_v4l2_get_xu_mapping(&karg.xmap, up);
 		break;
 
-	case UVCIOC_CTRL_QUERY32:
+	case _IOC_NR(UVCIOC_CTRL_QUERY32):
 		cmd = UVCIOC_CTRL_QUERY;
 		ret = uvc_v4l2_get_xu_query(&karg.xqry, up);
 		break;
@@ -1310,12 +1309,12 @@ static long uvc_v4l2_compat_ioctl32(struct file *file,
 	if (ret < 0)
 		return ret;
 
-	switch (cmd) {
-	case UVCIOC_CTRL_MAP:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(UVCIOC_CTRL_MAP):
 		ret = uvc_v4l2_put_xu_mapping(&karg.xmap, up);
 		break;
 
-	case UVCIOC_CTRL_QUERY:
+	case _IOC_NR(UVCIOC_CTRL_QUERY):
 		ret = uvc_v4l2_put_xu_query(&karg.xqry, up);
 		break;
 	}

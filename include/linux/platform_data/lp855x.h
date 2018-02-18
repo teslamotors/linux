@@ -136,6 +136,8 @@ struct lp855x_rom_data {
 		Only valid when mode is PWM_BASED.
  * @size_program : total size of lp855x_rom_data
  * @rom_data : list of new eeprom/eprom registers
+ * @bl_measured : pwm vs. brightness response linearization LUT
+ * @bl_curve : backlight transfer function
  */
 struct lp855x_platform_data {
 	const char *name;
@@ -144,6 +146,44 @@ struct lp855x_platform_data {
 	unsigned int period_ns;
 	int size_program;
 	struct lp855x_rom_data *rom_data;
+	u8 *bl_measured;
+	u8 *bl_curve;
 };
+
+enum lp855x_brightness_ctrl_mode {
+	PWM_BASED = 1,
+	REGISTER_BASED,
+};
+
+
+struct lp855x;
+
+/*
+ * struct lp855x_device_config
+ * @pre_init_device: init device function call before updating the brightness
+ * @reg_brightness: register address for brigthenss control
+ * @reg_devicectrl: register address for device control
+ * @post_init_device: late init device function call
+ */
+struct lp855x_device_config {
+	int (*pre_init_device)(struct lp855x *);
+	u8 reg_brightness;
+	u8 reg_devicectrl;
+	int (*post_init_device)(struct lp855x *);
+};
+
+struct lp855x {
+	const char *chipname;
+	enum lp855x_chip_id chip_id;
+	enum lp855x_brightness_ctrl_mode mode;
+	struct lp855x_device_config *cfg;
+	struct i2c_client *client;
+	struct backlight_device *bl;
+	struct device *dev;
+	struct lp855x_platform_data *pdata;
+	struct pwm_device *pwm;
+	int (*notify)(struct device *, int brightness);
+};
+
 
 #endif

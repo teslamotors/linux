@@ -1,0 +1,54 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <tegra186-modules/tegra186-camera-e3326-a00.dtsi>
+#include "dt-bindings/clock/tegra186-clock.h"
+
+#define CAM0_RST_L	TEGRA_GPIO(R, 5)
+#define CAM0_PWDN	TEGRA_GPIO(R, 0)
+
+/* camera control gpio definitions */
+
+/ {
+	i2c@3180000 {
+		ov5693_c@36 {
+			/* Define any required hw resources needed by driver */
+			/* ie. clocks, io pins, power sources */
+			/* mclk-index indicates the index of the */
+			/* mclk-name with in the clock-names array */
+
+			clocks = <&tegra_car TEGRA186_CLK_EXTPERIPH1>,
+					 <&tegra_car TEGRA186_CLK_PLLP_OUT0>;
+			clock-names = "extperiph1", "pllp_grtba";
+			mclk = "extperiph1";
+			clock-frequency = <24000000>;
+			reset-gpios = <&tegra_gpio CAM0_RST_L GPIO_ACTIVE_HIGH>;
+			pwdn-gpios = <&tegra_gpio CAM0_PWDN GPIO_ACTIVE_HIGH>;
+			vana-supply = <&en_vdd_cam_hv_2v8>;
+			vif-supply = <&en_vdd_cam>;
+		};
+	};
+
+	gpio: gpio@2200000 {
+		camera-control {
+			gpio-output-low = <
+				CAM0_RST_L
+				CAM0_PWDN
+				>;
+		};
+	};
+};

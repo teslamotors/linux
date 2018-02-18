@@ -1,0 +1,57 @@
+* Soltech JSA-1127 ambient light sensor
+
+nvs_ drivers use the NVidia Sensor (NVS) framework.
+See the nvs.txt documentation for NVS DT capabilities.
+
+Required properties:
+- compatible: must be "solteamopto,jsa1127"
+- reg: i2c address of the device. It can be 0x29, 0x39 or 0x44.
+
+Optional properties:
+- status: set to "ok" or "okay" for normal operation.  Set to anything else
+	  to unload the driver without ever communicating with the device.
+  Note: The "anything else" above is typically "disabled".
+	Since the driver will unload without communicating with the device, the
+	device will be left in its POR state.
+- light_disable: Setting this property to <1> will disable the device and
+		 unload the driver.
+- vdd-supply: regulator supply for the chip
+  Note: This is required if the driver is to control the regulator.
+Format:	light_mode_settingname
+Where:	'light' refers to the light sensor classification
+	'mode' refers to data collection mode:
+		hwm = hardware mode
+		swm = software mode
+		hyb = hybrid mode
+	'settingname' is a named identifier and rather free-form, can include more underscores if desired
+
+Valid Properties:
+light_hwm_resolution_ival	:
+light_hwm_resolution_fval	:
+light_hwm_maxrange_ival		:
+light_hwm_maxrange_fval		:
+light_hwm_interval		: Time capture interval in ms.  5000 = 5 seconds.
+light_hyb_resolution_ival	:
+light_hyb_resolution_fval	:
+light_hyb_maxrange_ival		:
+light_hyb_maxrange_fval		:
+light_hyb_interval		: Time capture interval in ms.  5000 = 5 seconds.
+
+Future Properties (not yet implemented):
+light_swm_resolution_ival	:
+light_swm_resolution_fval	:
+light_swm_maxrange_ival		:
+light_swm_maxrange_fval		:
+light_swm_interval		: Time capture interval in ms.  5000 = 5 seconds.
+
+
+Example:
+                jsa1127@39 {
+                        compatible = "solteamopto,jsa1127";
+                        reg = <0x39>;
+                        light_hyb_resolution_ival = <20>;
+                        light_hyb_resolution_fval = <0>;
+                        light_hwm_maxrange_ival = <6553>;
+                        light_hwm_maxrange_fval = <400000>;
+                };
+

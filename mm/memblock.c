@@ -1349,6 +1349,25 @@ phys_addr_t __init_memblock memblock_end_of_DRAM(void)
 	return (memblock.memory.regions[idx].base + memblock.memory.regions[idx].size);
 }
 
+phys_addr_t __init_memblock memblock_end_of_4G(void)
+{
+	int i = 0;
+
+	if ((u64)memblock_end_of_DRAM() <= (u64)SZ_2G * (u64)2)
+		return memblock_end_of_DRAM();
+
+	for (i = memblock.memory.cnt - 1; i >= 0; i--) {
+		if ((u64)memblock.memory.regions[i].base +
+			(u64)memblock.memory.regions[i].size <=
+			(u64)SZ_2G * (u64)2) {
+			return memblock.memory.regions[i].base +
+				memblock.memory.regions[i].size;
+		}
+	}
+
+	return 0;
+}
+
 void __init memblock_enforce_memory_limit(phys_addr_t limit)
 {
 	phys_addr_t max_addr = (phys_addr_t)ULLONG_MAX;

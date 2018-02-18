@@ -1101,7 +1101,7 @@ static int i2c_hid_resume(struct device *dev)
 }
 #endif
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 static int i2c_hid_runtime_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -1149,7 +1149,45 @@ static struct i2c_driver i2c_hid_driver = {
 	.id_table	= i2c_hid_id_table,
 };
 
-module_i2c_driver(i2c_hid_driver);
+static const struct hid_device_id hid_i2chid_table[] = {
+	{ HID_DEVICE(BUS_I2C, HID_GROUP_GENERIC, HID_ANY_ID, HID_ANY_ID) },
+	{ }
+};
+
+static struct hid_driver hid_i2chid_driver = {
+	.name = "generic-i2c",
+	.id_table = hid_i2chid_table,
+};
+
+static int __init i2chid_init(void)
+{
+	int retval;
+
+	retval = hid_register_driver(&hid_i2chid_driver);
+	if (retval)
+		goto hid_register_fail;
+
+	retval = i2c_add_driver(&i2c_hid_driver);
+	if (retval)
+		goto i2c_register_fail;
+
+	return 0;
+
+i2c_register_fail:
+	hid_unregister_driver(&hid_i2chid_driver);
+
+hid_register_fail:
+	return retval;
+}
+
+static void __exit i2chid_exit(void)
+{
+	i2c_del_driver(&i2c_hid_driver);
+	hid_unregister_driver(&hid_i2chid_driver);
+}
+
+module_init(i2chid_init);
+module_exit(i2chid_exit);
 
 MODULE_DESCRIPTION("HID over I2C core driver");
 MODULE_AUTHOR("Benjamin Tissoires <benjamin.tissoires@gmail.com>");

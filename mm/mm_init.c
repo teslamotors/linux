@@ -146,6 +146,38 @@ static __init int set_mminit_loglevel(char *str)
 early_param("mminit_loglevel", set_mminit_loglevel);
 #endif /* CONFIG_DEBUG_MEMORY_INIT */
 
+#ifdef CONFIG_CMA
+static unsigned int cma_threshold = 85;
+
+unsigned int cma_threshold_get(void)
+{
+	return cma_threshold;
+}
+
+static ssize_t cma_threshold_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", cma_threshold);
+}
+
+static ssize_t cma_threshold_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int threshold;
+
+	sscanf(buf, "%u", &threshold);
+	if (threshold >= 0 && threshold <= 100) {
+		cma_threshold = threshold;
+		return count;
+	}
+
+	return -EINVAL;
+}
+
+static struct kobj_attribute cma_threshold_attr =
+	__ATTR(cma_threshold, 0644, cma_threshold_show, cma_threshold_store);
+#endif
+
 struct kobject *mm_kobj;
 EXPORT_SYMBOL_GPL(mm_kobj);
 
@@ -196,10 +228,18 @@ __initcall(mm_compute_batch_init);
 
 static int __init mm_sysfs_init(void)
 {
+	int ret = 0;
+
 	mm_kobj = kobject_create_and_add("mm", kernel_kobj);
 	if (!mm_kobj)
 		return -ENOMEM;
 
-	return 0;
+#ifdef CONFIG_CMA
+	ret = sysfs_create_file(mm_kobj, &cma_threshold_attr.attr);
+	if (ret < 0)
+		kobject_put(mm_kobj);
+#endif
+
+	return ret;
 }
 postcore_initcall(mm_sysfs_init);

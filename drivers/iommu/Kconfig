@@ -160,17 +160,75 @@ config TEGRA_IOMMU_GART
 	  Enables support for remapping discontiguous physical memory
 	  shared with the operating system into contiguous I/O virtual
 	  space through the GART (Graphics Address Relocation Table)
-	  hardware included on Tegra SoCs.
+	  hardware included on Tegra 2 SoCs.
+
+config OF_TEGRA_IOMMU_SMMU
+	bool
+	depends on PLATFORM_TEGRA
 
 config TEGRA_IOMMU_SMMU
 	bool "Tegra SMMU IOMMU Support"
-	depends on ARCH_TEGRA && TEGRA_AHB
+	depends on ARCH_TEGRA
 	select IOMMU_API
+	select ARM_DMA_USE_IOMMU
+	select OF_TEGRA_IOMMU_SMMU
 	help
 	  Enables support for remapping discontiguous physical memory
 	  shared with the operating system into contiguous I/O virtual
 	  space through the SMMU (System Memory Management Unit)
 	  hardware included on Tegra SoCs.
+
+config TEGRA_IOMMU_SMMU_NOTLB
+	bool "Disable TLB for Tegra SMMU"
+	depends on TEGRA_IOMMU_SMMU
+	help
+	  For debugging purpose, disable IOMMU cache(TLB)
+
+config TEGRA_IOMMU_SMMU_NOPTC
+	bool "Disable PTC for Tegra SMMU"
+	depends on TEGRA_IOMMU_SMMU
+	help
+	  For debugging purpose, disable IOMMU cache(PTC)
+
+config TEGRA_IOMMU_SMMU_NO4MB
+	bool "Disable 4MB page for Tegra SMMU"
+	depends on TEGRA_IOMMU_SMMU
+	help
+	  For debugging purpose, disable 4MB page and only use 4KB
+
+config TEGRA_IOMMU_SMMU_HV
+	bool "Tegra SMMU IOMMU virtualization Support"
+	depends on TEGRA_IOMMU_SMMU && TEGRA_HV_MANAGER
+	default y
+	help
+	  Enables support for para-virtualized smmu client driver. Client
+	  driver is written to communicate with smmu server partition by
+	  using IVC (Inter VM Commuication) framework.
+
+config TEGRA_IOMMU_SMMU_LINEAR
+	bool "Physical RAM IOVA Liner Mapping Support"
+	depends on TEGRA_IOMMU_SMMU && !PLATFORM_ENABLE_IOMMU
+	default y
+	help
+	  Enables support for linear mapping between physical address
+	  and IO virtual address for RAM. With this enabled, H/W can
+	  expect virt_to_phys() to work even if it's behined the
+	  IOMMU'able bus. Otherwise DMA API should be used correctly
+	  in device drivers.
+
+config TEGRA_ERRATA_1053704
+	bool "Tegra errata: SMMU Hit-Under-Miss FIFO Out-of-Order"
+	depends on TEGRA_IOMMU_SMMU
+	depends on ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC || ARCH_TEGRA_14x_SOC
+	help
+	  SMMU TLB entry invalidate, while hit-under-miss(HUM) FIFO
+	  has pending transaction(s) based on the TLB entry, can cause
+	  violation of transactions ordering requirement at SMMU, if
+	  the subsequent transaction to the same IOVA address gets PTE
+	  into a different TLB entry. If this happens, The new
+	  transaction(s) can bypass pending transaction(s) and can
+	  lead to memory corruption. The workaround is not to flush
+	  TLB entry, which has pending transactions in HUM FIFO.
 
 config EXYNOS_IOMMU
 	bool "Exynos IOMMU Support"
@@ -293,7 +351,8 @@ config ARM_SMMU
 	bool "ARM Ltd. System MMU (SMMU) Support"
 	depends on ARM64 || (ARM_LPAE && OF)
 	select IOMMU_API
-	select ARM_DMA_USE_IOMMU if ARM
+	select ARM_DMA_USE_IOMMU if (ARM || ARM64)
+	select OF_TEGRA_IOMMU_SMMU if (ARM || ARM64)
 	help
 	  Support for implementations of the ARM System MMU architecture
 	  versions 1 and 2. The driver supports both v7l and v8l table
@@ -301,5 +360,9 @@ config ARM_SMMU
 
 	  Say Y here if your SoC includes an IOMMU device implementing
 	  the ARM SMMU architecture.
+
+config ARM_SMMU_WAR
+	bool
+	depends on ARM_SMMU
 
 endif # IOMMU_SUPPORT

@@ -1,0 +1,41 @@
+DT binding document for INA230 iio/meter driver.
+
+Required properties:
+- compatible: Must be one of
+	"ti,ina226", "ti,ina230", "ti,hpa01112", "ti,hpa02149".
+- reg: I2C slave address of device.
+
+- ti,rail-name: Name of the rail for whose monitoring is required.
+- ti,trigger-config: Trigger configuration for the device in trigger mode.
+- ti,continuous-config:  Device configuration in continuous mode. In this mode
+	device will keep scanning the inputs.
+- address-cells: Number of address in child node. Must be 1.
+- size-cells: Size of address cell. Must be 0.
+
+Optional properties:
+- ti,current-threshold: Threshold current for alert generation.
+- ti,enable-alert-latch: Boolean to tell whether alert is latched or not.
+- ti,resistor: Resistor value.
+- ti,minimum-core-online: Minimum online cpu for starting the monitoring.
+- ti,calibration-data: Calibration data.
+- ti,power-lsb: LSB power.
+- ti,divisor: Divisor.
+- ti,shunt-resistor-mohm: Shunt resistance in milliohm.
+- ti,precision-multiplier: Precision multplier.
+- ti,shunt-polartiy-inverted: Boolean to tell whether shunt polarity is
+	inverted or not.
+
+Example:
+	ina230@41{
+		compatible = "ti,ina230x";
+		reg = <0x41>;
+		ti,rail-name = "VDD_BAT_CHG";
+		ti,continuous-config = <0x0407>;
+		ti,trigger-config = <0x0403>;
+		ti,calibration-data = <0x0E90>;
+		ti,resistor = <5>; 
+		ti,power-lsb = <6866>;
+		ti,divisor = <25>;
+		ti,precision-multiplier = <1000>;
+	}; 
+

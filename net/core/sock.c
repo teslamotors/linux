@@ -87,6 +87,8 @@
  *		modify it under the terms of the GNU General Public License
  *		as published by the Free Software Foundation; either version
  *		2 of the License, or (at your option) any later version.
+ *
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -133,6 +135,7 @@
 #include <net/netprio_cgroup.h>
 
 #include <linux/filter.h>
+#include <linux/eventpoll.h>
 
 #include <trace/events/sock.h>
 
@@ -2611,6 +2614,129 @@ void sk_common_release(struct sock *sk)
 	sock_put(sk);
 }
 EXPORT_SYMBOL(sk_common_release);
+
+#define APK_NAME_MAX_LEN 108
+#define PROCESS_ID_LENGTH 20
+
+char *sk_get_waiting_task_cmdline(struct sock *sk, char *cmdline)
+{
+	bool softirq_enabled = false;
+	int res = 0;
+	unsigned int len;
+	char *program_name = cmdline;
+	struct task_struct *task = NULL;
+	struct mm_struct *mm = NULL;
+	char *apk_path_prefix = "/data/data/";
+	wait_queue_t *wq = NULL;
+	struct list_head *lh = NULL;
+	struct socket_wq *sk_wq = NULL;
+	wait_queue_func_t wait_func;
+	enum pid_type type;
+	struct pid *pid = NULL;
+	struct fown_struct *fown = NULL;
+	struct file *file;
+
+	*program_name = '\0';
+
+	if (!sk || !sk->sk_wq)
+		goto out;
+	lh = sk->sk_wq->wait.task_list.next;
+	if (!wq_has_sleeper(sk->sk_wq)) {
+		sk_wq = sk->sk_wq;
+		if (sk_wq->fasync_list && sk_wq->fasync_list->fa_file) {
+			fown = &sk_wq->fasync_list->fa_file->f_owner;
+			pid = fown->pid;
+			type = fown->pid_type;
+			do_each_pid_task(pid, type, task) {
+				if (task)
+					break;
+			} while_each_pid_task(pid, type, task);
+		}
+	} else {
+		lh = sk->sk_wq->wait.task_list.next;
+		wq = list_entry(lh, wait_queue_t, task_list);
+
+		wait_func = wq->func;
+		if (wait_func == pollwake)
+			task = ((struct poll_wqueues *)
+				(wq->private))->polling_task;
+		else if (wait_func == default_wake_function)
+			task = (struct task_struct *)(wq->private);
+		else if (wait_func == ep_poll_callback)
+			task = (struct task_struct *)(wq->private);
+		else if (wait_func == autoremove_wake_function)
+			task = (struct task_struct *)(wq->private);
+		else
+			pr_warning("Unknown wakeup:%p.\n", wait_func);
+
+		if (task)
+			task = get_thread_process(task);
+	}
+
+#ifdef CONFIG_EPOLL
+	if (!task) {
+		file = sk->sk_socket->file;
+		if (file)
+			task = get_epoll_file_task(file);
+	}
+#endif
+
+	if (!task && sk && sk->sk_socket)
+		task = SOCK_INODE(sk->sk_socket)->i_private;
+
+	if (!task) {
+		pr_warning("Can't find a process for this sock.\n");
+		goto out;
+	}
+
+	if (softirq_count()) {
+		softirq_enabled = true;
+		local_bh_enable();
+	}
+
+	mm = get_task_mm(task);
+	if (mm && mm->arg_end) {
+		len = mm->arg_end - mm->arg_start;
+
+		if (len > APK_NAME_MAX_LEN)
+			len = APK_NAME_MAX_LEN;
+
+		res = access_process_vm(task, mm->arg_start, cmdline, len, 0);
+
+		if (res > 0 && cmdline[res-1] != '\0' && len < APK_NAME_MAX_LEN) {
+			len = strnlen(cmdline, res);
+			if (len < res)
+				res = len;
+		}
+
+		if (res > APK_NAME_MAX_LEN)
+			cmdline[APK_NAME_MAX_LEN-1] = '\0';
+
+		len = strlen(apk_path_prefix);
+		if (!strncmp(apk_path_prefix, program_name, len))
+			program_name += len;
+		else
+			program_name = strrchr(cmdline, '/');
+
+		if (program_name == NULL)
+			program_name = cmdline;
+		else
+			program_name++;
+	}
+
+	if (mm)
+		mmput(mm);
+
+	if (softirq_enabled)
+		local_bh_disable();
+
+	len = strlen(program_name);
+	snprintf(program_name + len, PROCESS_ID_LENGTH," %d", task->pid);
+out:
+	return program_name;
+}
+EXPORT_SYMBOL(sk_get_waiting_task_cmdline);
+
 
 #ifdef CONFIG_PROC_FS
 #define PROTO_INUSE_NR	64	/* should be enough for the first time */

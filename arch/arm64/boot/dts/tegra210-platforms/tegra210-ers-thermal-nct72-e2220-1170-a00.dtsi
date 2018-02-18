@@ -1,0 +1,48 @@
+/*
+ * arch/arm64/boot/dts/tegra210-platforms/tegra210-ers-thermal-nct72-e2220-1170-a00.dtsi
+ *
+ * Copyright (c) 2014 - 2015, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/* THERMAL gpio definitions */
+#define TEMP_ALERT		TEGRA_GPIO(X, 4)
+
+/ {
+	i2c@7000c500 {
+		tegra_nct72: onsemi,nct72@4c {
+			#thermal-sensor-cells = <1>;
+			compatible = "onsemi,nct72";
+			reg = <0x4c>;
+			sensor-name = "tegra";
+			supported-hwrev = <1>;
+			offset = <0>;
+			conv-rate = <0x06>;
+			extended-rage = <1>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEMP_ALERT IRQ_TYPE_LEVEL_LOW>;
+			vdd-supply = <&max77620_sd3>;
+			temp-alert-gpio = <&gpio TEMP_ALERT 0>;
+			loc {
+				shutdown-limit = <120>;
+			};
+			ext {
+				shutdown-limit = <105>;
+			};
+		};
+	};
+};

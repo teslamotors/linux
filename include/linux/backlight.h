@@ -12,6 +12,9 @@
 #include <linux/fb.h>
 #include <linux/mutex.h>
 #include <linux/notifier.h>
+#ifdef CONFIG_SYSEDP_FRAMEWORK
+#include <linux/sysedp.h>
+#endif
 
 /* Notes on locking:
  *
@@ -45,8 +48,18 @@ enum backlight_notification {
 	BACKLIGHT_UNREGISTERED,
 };
 
+enum backlight_device_notification {
+	BACKLIGHT_DEVICE_PRE_BRIGHTNESS_CHANGE,
+	BACKLIGHT_DEVICE_POST_BRIGHTNESS_CHANGE,
+};
+
 struct backlight_device;
 struct fb_info;
+
+struct backlight_device_brightness_info {
+	struct device *dev;
+	int brightness;
+};
 
 struct backlight_ops {
 	unsigned int options;
@@ -106,6 +119,9 @@ struct backlight_device {
 	/* The framebuffer notifier block */
 	struct notifier_block fb_notif;
 
+	/* Notifier for backlight status update */
+	struct blocking_notifier_head notifier;
+
 	/* list entry of all registered backlight devices */
 	struct list_head entry;
 
@@ -115,8 +131,17 @@ struct backlight_device {
 	bool fb_bl_on[FB_MAX];
 
 	int use_count;
+
+#ifdef CONFIG_SYSEDP_FRAMEWORK
+	struct sysedp_consumer *sysedpc;
+#endif
 };
 
+#ifdef CONFIG_SYSEDP_FRAMEWORK
+
+void backlight_update_status(struct backlight_device *bd);
+
+#else
 static inline void backlight_update_status(struct backlight_device *bd)
 {
 	mutex_lock(&bd->update_lock);
@@ -124,6 +149,11 @@ static inline void backlight_update_status(struct backlight_device *bd)
 		bd->ops->update_status(bd);
 	mutex_unlock(&bd->update_lock);
 }
+#endif
+
+extern struct backlight_device *get_backlight_device_by_name(char *name);
+extern struct backlight_device *get_backlight_device_by_node(
+		struct device_node *np);
 
 extern struct backlight_device *backlight_device_register(const char *name,
 	struct device *dev, void *devdata, const struct backlight_ops *ops,
@@ -140,6 +170,14 @@ extern void backlight_force_update(struct backlight_device *bd,
 extern bool backlight_device_registered(enum backlight_type type);
 extern int backlight_register_notifier(struct notifier_block *nb);
 extern int backlight_unregister_notifier(struct notifier_block *nb);
+
+extern int backlight_device_register_notifier(struct backlight_device *bd,
+		struct notifier_block *nb);
+extern int backlight_device_unregister_notifier(struct backlight_device *bd,
+		struct notifier_block *nb);
+
+extern int backlight_device_notifier_call_chain(struct backlight_device *bd,
+		unsigned long event, void *data);
 
 #define to_backlight_device(obj) container_of(obj, struct backlight_device, dev)
 

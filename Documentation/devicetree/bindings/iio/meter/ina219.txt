@@ -1,0 +1,34 @@
+DT binding document for INA219 iio/meter driver.
+
+Required properties:
+- compatible: Must be one of
+	"ti,ina219"
+- reg: I2C slave address of device.
+
+- ti,rail-name: Name of the rail for whose monitoring is required.
+- ti,trigger-config: Trigger configuration for the device in trigger mode.
+- ti,continuous-config:  Device configuration in continuous mode. In this mode
+	device will keep scanning the inputs.
+- address-cells: Number of address in child node. Must be 1.
+- size-cells: Size of address cell. Must be 0.
+
+Optional properties:
+- ti,calibration-data: Calibration data.
+- ti,power-lsb: LSB power.
+- ti,divisor: Divisor.
+- ti,shunt-resistor-mohm: Shunt resistance in milliohm.
+- ti,precision-multiplier: Precision multplier.
+
+Example:
+	ina219@41{
+		compatible = "ti,ina219x";
+		reg = <0x41>;
+		ti,rail-name = "VDD_BAT_CHG";
+		ti,continuous-config = <0x0407>;
+		ti,trigger-config = <0x0403>;
+		ti,calibration-data = <0x0E90>;
+		ti,power-lsb = <6866>;
+		ti,divisor = <25>;
+		ti,precision-multiplier = <1000>;
+	}; 
+

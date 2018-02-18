@@ -223,4 +223,15 @@ config CLKSRC_VERSATILE
 	  ARM Versatile, RealView and Versatile Express reference
 	  platforms.
 
+config CLK_SRC_TEGRA_TIMER
+	bool "Clocksource for tegra based SOC's"
+	depends on ARCH_TEGRA
+	def_bool y if !ARCH_TEGRA_21x_SOC
+	help
+	  Use the always on PRCMU Timer as sched_clock
+
+trysource "../t18x/drivers/clocksource/Kconfig"
+trysource "../t18x/drivers/clocksource/Kconfig.t18x"
+trysource "drivers/clocksource/Kconfig.t18x"
+
 endmenu

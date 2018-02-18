@@ -12,6 +12,18 @@
  * option) any later version.
  *
  */
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
@@ -34,7 +46,9 @@
 #include <linux/mdio.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
+#include <linux/brcmphy.h>
 #include <linux/atomic.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/irq.h>
 
@@ -465,10 +479,10 @@ int phy_start_aneg(struct phy_device *phydev)
 	if (phydev->state != PHY_HALTED) {
 		if (AUTONEG_ENABLE == phydev->autoneg) {
 			phydev->state = PHY_AN;
-			phydev->link_timeout = PHY_AN_TIMEOUT;
+			phydev->link_timeout = jiffies + PHY_AN_TIMEOUT * HZ;
 		} else {
 			phydev->state = PHY_FORCING;
-			phydev->link_timeout = PHY_FORCE_TIMEOUT;
+			phydev->link_timeout = jiffies + PHY_FORCE_TIMEOUT * HZ;
 		}
 	}
 
@@ -492,6 +506,7 @@ void phy_start_machine(struct phy_device *phydev)
 {
 	queue_delayed_work(system_power_efficient_wq, &phydev->state_queue, HZ);
 }
+EXPORT_SYMBOL(phy_start_machine);
 
 /**
  * phy_stop_machine - stop the PHY state machine tracking
@@ -530,6 +545,19 @@ static void phy_error(struct phy_device *phydev)
 	mutex_unlock(&phydev->lock);
 }
 
+static bool t18x_eqos_fpga_got_phy_intr(struct net_device *ndev)
+{
+	bool ret = false;
+
+	if (readl((void *)ndev->base_addr + EQOS_CLOCK_CONTROL) & BIT(31)) {
+		pr_info("phy_intr received\n");
+		ret = true;
+	} else {
+		pr_info("power_intr received\n");
+	}
+	return ret;
+}
+
 /**
  * phy_interrupt - PHY interrupt handler
  * @irq: interrupt line
@@ -544,6 +572,18 @@ static irqreturn_t phy_interrupt(int irq, void *phy_dat)
 
 	if (PHY_HALTED == phydev->state)
 		return IRQ_NONE;		/* It can't be ours.  */
+
+	/* check if this is PHY interrupt on FPGA system where phy_int
+	 * is shared with power_intr
+	 * PHY_ID_BCM89610 has lower 4bit `0` and phy_id holds rev_id in it
+	 */
+	if (tegra_platform_is_unit_fpga() &&
+		PHY_ID_BCM89610 == (phydev->phy_id & ~0xf)) {
+		struct mii_bus *bus = phydev->bus;
+		struct net_device *ndev = bus->priv;
+		if (!t18x_eqos_fpga_got_phy_intr(ndev))
+			return IRQ_NONE;
+	}
 
 	/* The MDIO bus is not allowed to be written in interrupt
 	 * context, so we need to disable the irq here.  A work
@@ -611,7 +651,11 @@ phy_err:
 int phy_start_interrupts(struct phy_device *phydev)
 {
 	atomic_set(&phydev->irq_disable, 0);
-	if (request_irq(phydev->irq, phy_interrupt, 0, "phy_interrupt",
+	/* phy intr is shared with power_intr on FPGA system */
+	if (request_irq(phydev->irq, phy_interrupt,
+			tegra_platform_is_unit_fpga() ?
+			IRQF_SHARED : IRQF_TRIGGER_LOW,
+			"phy_interrupt",
 			phydev) < 0) {
 		pr_warn("%s: Can't get IRQ %d (PHY)\n",
 			phydev->bus->name, phydev->irq);
@@ -707,6 +751,8 @@ void phy_stop(struct phy_device *phydev)
 {
 	mutex_lock(&phydev->lock);
 
+	phydev->phy_start_time = 0;
+
 	if (PHY_HALTED == phydev->state)
 		goto out_unlock;
 
@@ -744,6 +790,8 @@ void phy_start(struct phy_device *phydev)
 {
 	mutex_lock(&phydev->lock);
 
+	phydev->phy_start_time = jiffies;
+
 	switch (phydev->state) {
 	case PHY_STARTING:
 		phydev->state = PHY_PENDING;
@@ -757,6 +805,16 @@ void phy_start(struct phy_device *phydev)
 		break;
 	}
 	mutex_unlock(&phydev->lock);
+
+	/*
+	 * Just started the phy. Restart the phy_state_machine
+	 * poll with an aggressive interval.
+	 */
+	if (phydev->irq == PHY_POLL) {
+		cancel_delayed_work_sync(&phydev->state_queue);
+		queue_delayed_work(system_power_efficient_wq, &phydev->state_queue,
+						   msecs_to_jiffies(PHY_STATE_TIME_AGGRESSIVE_MSEC));
+	}
 }
 EXPORT_SYMBOL(phy_start);
 
@@ -786,7 +844,7 @@ void phy_state_machine(struct work_struct *work)
 	case PHY_UP:
 		needs_aneg = true;
 
-		phydev->link_timeout = PHY_AN_TIMEOUT;
+		phydev->link_timeout = jiffies + PHY_AN_TIMEOUT * HZ;
 
 		break;
 	case PHY_AN:
@@ -813,7 +871,7 @@ void phy_state_machine(struct work_struct *work)
 			netif_carrier_on(phydev->attached_dev);
 			phydev->adjust_link(phydev->attached_dev);
 
-		} else if (0 == phydev->link_timeout--)
+		} else if (time_after(jiffies, phydev->link_timeout))
 			needs_aneg = true;
 		break;
 	case PHY_NOLINK:
@@ -829,7 +887,7 @@ void phy_state_machine(struct work_struct *work)
 
 				if (!err) {
 					phydev->state = PHY_AN;
-					phydev->link_timeout = PHY_AN_TIMEOUT;
+					phydev->link_timeout = jiffies + PHY_AN_TIMEOUT * HZ;
 					break;
 				}
 			}
@@ -847,7 +905,7 @@ void phy_state_machine(struct work_struct *work)
 			phydev->state = PHY_RUNNING;
 			netif_carrier_on(phydev->attached_dev);
 		} else {
-			if (0 == phydev->link_timeout--)
+			if (time_after(jiffies, phydev->link_timeout))
 				needs_aneg = true;
 		}
 
@@ -918,7 +976,7 @@ void phy_state_machine(struct work_struct *work)
 				phydev->adjust_link(phydev->attached_dev);
 			} else {
 				phydev->state = PHY_AN;
-				phydev->link_timeout = PHY_AN_TIMEOUT;
+				phydev->link_timeout = jiffies + PHY_AN_TIMEOUT * HZ;
 			}
 		} else {
 			err = phy_read_status(phydev);
@@ -949,8 +1007,20 @@ void phy_state_machine(struct work_struct *work)
 	if (err < 0)
 		phy_error(phydev);
 
-	queue_delayed_work(system_power_efficient_wq, &phydev->state_queue,
-			   PHY_STATE_TIME * HZ);
+	/*
+	 * Use aggressive poll interval with in the first second
+	 * of calling phy start.
+	 */
+	if (phydev->irq == PHY_POLL) {
+		unsigned long delay = PHY_STATE_TIME * HZ;
+
+		if (phydev->phy_start_time &&
+			time_before(jiffies, phydev->phy_start_time + HZ))
+			delay = msecs_to_jiffies(PHY_STATE_TIME_AGGRESSIVE_MSEC);
+
+		queue_delayed_work(system_power_efficient_wq, &phydev->state_queue,
+						   delay);
+	}
 }
 
 void phy_mac_interrupt(struct phy_device *phydev, int new_link)

@@ -1,6 +1,7 @@
 /* The industrial I/O core
  *
  * Copyright (c) 2008 Jonathan Cameron
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -50,7 +51,7 @@ static const char * const iio_direction[] = {
 	[1] = "out",
 };
 
-static const char * const iio_chan_type_name_spec[] = {
+const char * const iio_chan_type_name_spec[] = {
 	[IIO_VOLTAGE] = "voltage",
 	[IIO_CURRENT] = "current",
 	[IIO_POWER] = "power",
@@ -70,12 +71,30 @@ static const char * const iio_chan_type_name_spec[] = {
 	[IIO_CCT] = "cct",
 	[IIO_PRESSURE] = "pressure",
 	[IIO_HUMIDITYRELATIVE] = "humidityrelative",
+	[IIO_ORIENTATION] = "orientation",
+	[IIO_GRAVITY] = "gravity",
+	[IIO_LINEAR_ACCEL] = "linearaccel",
+	[IIO_HUMIDITY] = "humidity",
+	[IIO_MAGN_UNCAL] = "magnuncal",
+	[IIO_ANGLVEL_UNCAL] = "anglveluncal",
+	[IIO_GAME_ROT] = "gamerot",
+	[IIO_MOTION] = "motion",
+	[IIO_STEP] = "step",
+	[IIO_STEP_COUNT] = "stepcount",
+	[IIO_GEOMAGN_ROT] = "geomagnrot",
+	[IIO_HEART_RATE] = "heartrate",
+	[IIO_GESTURE_WAKE] = "gesturewake",
+	[IIO_GESTURE_GLANCE] = "gestureglance",
+	[IIO_GESTURE_PICKUP] = "gesturepickup",
+	[IIO_GENERIC] = "generic_sensor",
 };
+EXPORT_SYMBOL(iio_chan_type_name_spec);
 
 static const char * const iio_modifier_names[] = {
 	[IIO_MOD_X] = "x",
 	[IIO_MOD_Y] = "y",
 	[IIO_MOD_Z] = "z",
+	[IIO_MOD_COS] = "cos",
 	[IIO_MOD_ROOT_SUM_SQUARED_X_Y] = "sqrt(x^2+y^2)",
 	[IIO_MOD_SUM_SQUARED_X_Y_Z] = "x^2+y^2+z^2",
 	[IIO_MOD_LIGHT_BOTH] = "both",
@@ -91,28 +110,45 @@ static const char * const iio_modifier_names[] = {
 	[IIO_MOD_NORTH_TRUE] = "from_north_true",
 	[IIO_MOD_NORTH_MAGN_TILT_COMP] = "from_north_magnetic_tilt_comp",
 	[IIO_MOD_NORTH_TRUE_TILT_COMP] = "from_north_true_tilt_comp",
+	[IIO_MOD_X_UNCALIB] = "x_uncalib",
+	[IIO_MOD_Y_UNCALIB] = "y_uncalib",
+	[IIO_MOD_Z_UNCALIB] = "z_uncalib",
+	[IIO_MOD_X_BIAS] = "x_bias",
+	[IIO_MOD_Y_BIAS] = "y_bias",
+	[IIO_MOD_Z_BIAS] = "z_bias",
+	[IIO_MOD_STATUS] = "status",
+	[IIO_MOD_BPM] = "bpm"
 };
 
 /* relies on pairs of these shared then separate */
 static const char * const iio_chan_info_postfix[] = {
 	[IIO_CHAN_INFO_RAW] = "raw",
 	[IIO_CHAN_INFO_PROCESSED] = "input",
+	[IIO_CHAN_INFO_RAW_DUAL] = "raw_dual",
+	[IIO_CHAN_INFO_PROCESSED_DUAL] = "input_dual",
 	[IIO_CHAN_INFO_SCALE] = "scale",
 	[IIO_CHAN_INFO_OFFSET] = "offset",
 	[IIO_CHAN_INFO_CALIBSCALE] = "calibscale",
 	[IIO_CHAN_INFO_CALIBBIAS] = "calibbias",
 	[IIO_CHAN_INFO_PEAK] = "peak_raw",
 	[IIO_CHAN_INFO_PEAK_SCALE] = "peak_scale",
-	[IIO_CHAN_INFO_QUADRATURE_CORRECTION_RAW] = "quadrature_correction_raw",
+	[IIO_CHAN_INFO_QUADRATURE_CORRECTION_RAW] =
+	"quadrature_correction_raw",
 	[IIO_CHAN_INFO_AVERAGE_RAW] = "mean_raw",
-	[IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY]
-	= "filter_low_pass_3db_frequency",
+	[IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY] =
+	"filter_low_pass_3db_frequency",
 	[IIO_CHAN_INFO_SAMP_FREQ] = "sampling_frequency",
 	[IIO_CHAN_INFO_FREQUENCY] = "frequency",
 	[IIO_CHAN_INFO_PHASE] = "phase",
 	[IIO_CHAN_INFO_HARDWAREGAIN] = "hardwaregain",
 	[IIO_CHAN_INFO_HYSTERESIS] = "hysteresis",
 	[IIO_CHAN_INFO_INT_TIME] = "integration_time",
+	[IIO_CHAN_INFO_THRESHOLD_LOW] = "threshold_low",
+	[IIO_CHAN_INFO_THRESHOLD_HIGH] = "threshold_high",
+	[IIO_CHAN_INFO_BATCH_FLAGS] = "batch_flags",
+	[IIO_CHAN_INFO_BATCH_PERIOD] = "batch_period",
+	[IIO_CHAN_INFO_BATCH_TIMEOUT] = "batch_timeout",
+	[IIO_CHAN_INFO_BATCH_FLUSH] = "flush",
 };
 
 /**
@@ -139,6 +175,86 @@ ssize_t iio_read_const_attr(struct device *dev,
 	return sprintf(buf, "%s\n", to_iio_const_attr(attr)->string);
 }
 EXPORT_SYMBOL(iio_read_const_attr);
+
+static int iio_device_set_clock(struct iio_dev *indio_dev, clockid_t clock_id)
+{
+	int ret;
+	const struct iio_event_interface *ev_int = indio_dev->event_interface;
+
+	ret = mutex_lock_interruptible(&indio_dev->mlock);
+	if (ret)
+		return ret;
+	if ((ev_int && iio_event_enabled(ev_int)) ||
+	    iio_buffer_enabled(indio_dev)) {
+		mutex_unlock(&indio_dev->mlock);
+		return -EBUSY;
+	}
+	indio_dev->clock_id = clock_id;
+	mutex_unlock(&indio_dev->mlock);
+
+	return 0;
+}
+
+/**
+ * iio_get_time_ns() - utility function to get a time stamp for events etc
+ * @indio_dev: device
+ */
+s64 iio_get_time_ns(const struct iio_dev *indio_dev)
+{
+	struct timespec tp;
+
+	switch (iio_device_get_clock(indio_dev)) {
+	case CLOCK_REALTIME:
+		ktime_get_real_ts(&tp);
+		break;
+	case CLOCK_MONOTONIC:
+		ktime_get_ts(&tp);
+		break;
+	case CLOCK_MONOTONIC_RAW:
+		getrawmonotonic(&tp);
+		break;
+	case CLOCK_REALTIME_COARSE:
+		tp = current_kernel_time();
+		break;
+	case CLOCK_MONOTONIC_COARSE:
+		tp = get_monotonic_coarse();
+		break;
+	case CLOCK_BOOTTIME:
+		get_monotonic_boottime(&tp);
+		break;
+	case CLOCK_TAI:
+		timekeeping_clocktai(&tp);
+		break;
+	default:
+		BUG();
+	}
+
+	return timespec_to_ns(&tp);
+}
+EXPORT_SYMBOL(iio_get_time_ns);
+
+/**
+ * iio_get_time_res() - utility function to get time stamp clock resolution in
+ *                      nano seconds.
+ * @indio_dev: device
+ */
+unsigned int iio_get_time_res(const struct iio_dev *indio_dev)
+{
+	switch (iio_device_get_clock(indio_dev)) {
+	case CLOCK_REALTIME:
+	case CLOCK_MONOTONIC:
+	case CLOCK_MONOTONIC_RAW:
+	case CLOCK_BOOTTIME:
+	case CLOCK_TAI:
+		return MONOTONIC_RES_NSEC;
+	case CLOCK_REALTIME_COARSE:
+	case CLOCK_MONOTONIC_COARSE:
+		return LOW_RES_NSEC;
+	default:
+		BUG();
+	}
+}
+EXPORT_SYMBOL(iio_get_time_res);
 
 static int __init iio_init(void)
 {
@@ -855,11 +971,91 @@ static ssize_t iio_show_dev_name(struct device *dev,
 
 static DEVICE_ATTR(name, S_IRUGO, iio_show_dev_name, NULL);
 
+static ssize_t iio_show_timestamp_clock(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	const struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	const clockid_t clk = iio_device_get_clock(indio_dev);
+	const char *name;
+	ssize_t sz;
+
+	switch (clk) {
+	case CLOCK_REALTIME:
+		name = "realtime\n";
+		sz = sizeof("realtime\n");
+		break;
+	case CLOCK_MONOTONIC:
+		name = "monotonic\n";
+		sz = sizeof("monotonic\n");
+		break;
+	case CLOCK_MONOTONIC_RAW:
+		name = "monotonic_raw\n";
+		sz = sizeof("monotonic_raw\n");
+		break;
+	case CLOCK_REALTIME_COARSE:
+		name = "realtime_coarse\n";
+		sz = sizeof("realtime_coarse\n");
+		break;
+	case CLOCK_MONOTONIC_COARSE:
+		name = "monotonic_coarse\n";
+		sz = sizeof("monotonic_coarse\n");
+		break;
+	case CLOCK_BOOTTIME:
+		name = "boottime\n";
+		sz = sizeof("boottime\n");
+		break;
+	case CLOCK_TAI:
+		name = "tai\n";
+		sz = sizeof("tai\n");
+		break;
+	default:
+		BUG();
+	}
+
+	memcpy(buf, name, sz);
+	return sz;
+}
+
+static ssize_t iio_store_timestamp_clock(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t len)
+{
+	clockid_t clk;
+	int ret;
+
+	if (sysfs_streq(buf, "realtime"))
+		clk = CLOCK_REALTIME;
+	else if (sysfs_streq(buf, "monotonic"))
+		clk = CLOCK_MONOTONIC;
+	else if (sysfs_streq(buf, "monotonic_raw"))
+		clk = CLOCK_MONOTONIC_RAW;
+	else if (sysfs_streq(buf, "realtime_coarse"))
+		clk = CLOCK_REALTIME_COARSE;
+	else if (sysfs_streq(buf, "monotonic_coarse"))
+		clk = CLOCK_MONOTONIC_COARSE;
+	else if (sysfs_streq(buf, "boottime"))
+		clk = CLOCK_BOOTTIME;
+	else if (sysfs_streq(buf, "tai"))
+		clk = CLOCK_TAI;
+	else
+		return -EINVAL;
+
+	ret = iio_device_set_clock(dev_to_iio_dev(dev), clk);
+	if (ret)
+		return ret;
+
+	return len;
+}
+
+static DEVICE_ATTR(current_timestamp_clock, S_IRUGO | S_IWUSR,
+		   iio_show_timestamp_clock, iio_store_timestamp_clock);
+
 static int iio_device_register_sysfs(struct iio_dev *indio_dev)
 {
 	int i, ret = 0, attrcount, attrn, attrcount_orig = 0;
 	struct iio_dev_attr *p;
-	struct attribute **attr;
+	struct attribute **attr, *clk = NULL;
 
 	/* First count elements in any existing group */
 	if (indio_dev->info->attrs) {
@@ -874,15 +1070,24 @@ static int iio_device_register_sysfs(struct iio_dev *indio_dev)
 	 */
 	if (indio_dev->channels)
 		for (i = 0; i < indio_dev->num_channels; i++) {
-			ret = iio_device_add_channel_sysfs(indio_dev,
-							   &indio_dev
-							   ->channels[i]);
+			const struct iio_chan_spec *chan =
+				&indio_dev->channels[i];
+
+			if (chan->type == IIO_TIMESTAMP)
+				clk = &dev_attr_current_timestamp_clock.attr;
+
+			ret = iio_device_add_channel_sysfs(indio_dev, chan);
 			if (ret < 0)
 				goto error_clear_attrs;
 			attrcount += ret;
 		}
 
+	if (indio_dev->event_interface)
+		clk = &dev_attr_current_timestamp_clock.attr;
+
 	if (indio_dev->name)
+		attrcount++;
+	if (clk)
 		attrcount++;
 
 	indio_dev->chan_attr_group.attrs = kcalloc(attrcount + 1,
@@ -904,6 +1109,8 @@ static int iio_device_register_sysfs(struct iio_dev *indio_dev)
 		indio_dev->chan_attr_group.attrs[attrn++] = &p->dev_attr.attr;
 	if (indio_dev->name)
 		indio_dev->chan_attr_group.attrs[attrn++] = &dev_attr_name.attr;
+	if (clk)
+		indio_dev->chan_attr_group.attrs[attrn++] = clk;
 
 	indio_dev->groups[indio_dev->groupcounter++] =
 		&indio_dev->chan_attr_group;
@@ -1181,7 +1388,39 @@ int iio_device_register(struct iio_dev *indio_dev)
 	if (ret < 0)
 		goto error_cdev_del;
 
+	if (indio_dev->multi_link) {
+		indio_dev->link_name = kasprintf(GFP_KERNEL, "iio_device_%u",
+						 indio_dev->dev.devt);
+		if (indio_dev->link_name == NULL) {
+			dev_err(indio_dev->dev.parent,
+				"Failed to create link name\n");
+			goto error_del_device;
+		}
+
+		ret = sysfs_create_link(&indio_dev->dev.parent->kobj,
+					&indio_dev->dev.kobj,
+					indio_dev->link_name);
+		if (ret) {
+			dev_err(indio_dev->dev.parent,
+				"Failed to create link for %s %d\n",
+				indio_dev->link_name, ret);
+			kfree(indio_dev->link_name);
+			goto error_del_device;
+		}
+	} else {
+		ret = sysfs_create_link(&indio_dev->dev.parent->kobj,
+					&indio_dev->dev.kobj, "iio_device");
+		if (ret) {
+			dev_err(indio_dev->dev.parent,
+				"Failed to create link for iio_device %d\n",
+				ret);
+			goto error_del_device;
+		}
+	}
+
 	return 0;
+error_del_device:
+	device_del(&indio_dev->dev);
 error_cdev_del:
 	cdev_del(&indio_dev->chrdev);
 error_unreg_eventset:
@@ -1216,6 +1455,7 @@ void iio_device_unregister(struct iio_dev *indio_dev)
 	iio_buffer_wakeup_poll(indio_dev);
 
 	mutex_unlock(&indio_dev->info_exist_lock);
+	kfree(indio_dev->link_name);
 }
 EXPORT_SYMBOL(iio_device_unregister);
 

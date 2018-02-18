@@ -1,0 +1,190 @@
+/*
+ * Copyright (c) 2015 - 2016, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/thermal/thermal.h>
+#include "tegra186-platforms/tegra186-balanced-throttle-sunstreaker.dtsi"
+
+/* THERMAL gpio definitions */
+#define TEMP_ALERT		TEGRA_GPIO(V, 0)
+
+/ {
+	i2c@c250000 {
+
+		status = "okay";
+		tegra_nct72: onsemi,nct72@4c {
+			status = "okay";
+			#thermal-sensor-cells = <1>;
+			compatible = "onsemi,nct72";
+			reg = <0x4c>;
+			sensor-name = "tmp451-ext";
+			supported-hwrev = <1>;
+			offset = <(-44)>;
+			conv-rate = <0x06>;
+			extended-rage = <1>;
+			interrupt-parent = <&tegra_gpio>;
+			interrupts = <TEMP_ALERT IRQ_TYPE_LEVEL_LOW>;
+			temp-alert-gpio = <&tegra_gpio TEMP_ALERT 0>;
+
+			/* vdd-supply defined in power tree */
+
+			loc {
+				/* set to maximum for not having local  shutdown */
+				shutdown-limit = <190>;
+			};
+			ext {
+				shutdown-limit = <109>;
+			};
+		};
+	};
+
+	thermal-zones {
+		Tboard_tegra {
+			status = "okay";
+			polling-delay = <0>;
+			polling-delay-passive = <0>;
+			thermal-sensors = <&tegra_nct72 0>;
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+		};
+
+		Tdiode_tegra {
+			status = "okay";
+			polling-delay = <0>;
+			polling-delay-passive = <1000>;
+			thermal-sensors = <&tegra_nct72 1>;
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+			trips {
+				trip_critical {
+					/* keep this below HW shutdown to log alerts */
+					temperature = <109000>;
+					type = "critical";
+					hysteresis = <0>;
+					writable;
+				};
+			};
+		};
+
+		BCPU-therm {
+			status = "okay";
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+			trips {
+				trip_critical {
+					temperature = <100000>;
+					type = "critical";
+					hysteresis = <0>;
+					writable;
+				};
+				trip_bthrot {
+					temperature = <127000>;
+					type = "passive";
+					hysteresis = <0>;
+					writable;
+				};
+			};
+			cooling-maps {
+				map0 {
+					trip = <&{/thermal-zones/BCPU-therm/trips/trip_bthrot}>;
+					cdev-type = "cpu-balanced";
+					cooling-device = <&{/bthrot_cdev/cpu_balanced} THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+
+		MCPU-therm {
+			status = "okay";
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+			trips {
+				trip_critical {
+					temperature = <100000>;
+					type = "critical";
+					hysteresis = <0>;
+					writable;
+				};
+				trip_bthrot {
+					temperature = <127000>;
+					type = "passive";
+					hysteresis = <0>;
+					writable;
+				};
+			};
+			cooling-maps {
+				map0 {
+					trip = <&{/thermal-zones/MCPU-therm/trips/trip_bthrot}>;
+					cdev-type = "cpu-balanced";
+					cooling-device = <&{/bthrot_cdev/cpu_balanced} THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+
+		GPU-therm {
+			status = "okay";
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
+
+			trips {
+				trip_bthrot {
+					temperature = <127000>;
+					type = "passive";
+					hysteresis = <0>;
+					writable;
+				};
+			};
+			cooling-maps {
+				map0 {
+					trip = <&{/thermal-zones/GPU-therm/trips/trip_bthrot}>;
+					cdev-type = "gpu-balanced";
+					cooling-device = <&{/bthrot_cdev/gpu_balanced} THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+
+		PLL-therm {
+			status = "okay";
+		};
+
+		AO-therm {
+			status = "okay";
+			trips {
+				trip_critical {
+					temperature = <100500>;
+					type = "critical";
+					hysteresis = <0>;
+					writable;
+				};
+			};
+		};
+	};
+};
+

@@ -1,0 +1,62 @@
+config TEGRA_HSP
+	bool "Enable Tegra Hardware Synchronization Primitives driver"
+	depends on ARCH_TEGRA_18x_SOC
+	default y
+
+config TEGRA186_PMC
+        bool "Tegra Power Management Controller"
+	depends on ARCH_TEGRA_18x_SOC
+        default y
+        help
+          Enable Tegra186 PMC.
+
+config TEGRA_AST
+	bool "Enable Tegra Address Space Translation Driver"
+	depends on ARCH_TEGRA_18x_SOC
+	default y
+
+config TEGRA_AON
+	bool "Tegra AON driver"
+	depends on ARCH_TEGRA_18x_SOC
+	default y
+	select TEGRA_IVC
+	select TEGRA_HSP
+
+config TEGRA_ARI_MCA
+	tristate "Tegra Abstract Request Interface (ARI) Machine Check"
+	select SERROR_HANDLER
+	help
+	  The Tegra Abstract Request Interface (ARI) Machine Check handler. This
+	  handles the Machine Check registers that are accessible via ARI.
+
+config TEGRA_BRIDGE_MCA
+	tristate "AXI/APB Bridge Machine Check"
+	select SERROR_HANDLER
+	help
+	  The Tegra AXI/APB Bridge Machine Check handler. This
+	  handes the SERRs from failed AXI/APB transactions.
+
+config TEGRA_A57_SERR
+        tristate "A57 SError Handler"
+	select SERROR_HANDLER
+	help
+	  The A57 SError Handler.  This handles the SERRs from A57 cores,
+	  specifically L1 ECC errors.
+
+config TEGRA_18X_SERROR
+        tristate "Tegra18 SError handler"
+        depends on ARCH_TEGRA_18x_SOC
+        select DENVER_MCA
+	select TEGRA_ARI_MCA
+	select TEGRA_BRIDGE_MCA
+	select TEGRA_A57_SERR
+        help
+          The Tegra18 SError handler. This handles Denver SErrors, A57 SErrors,
+	  CCPLEX errors, and fabric slave errors.
+
+config TEGRA_CAMERA_RTCPU
+	bool "Enable Tegra Camera RTCPU Driver"
+	depends on ARCH_TEGRA_18x_SOC
+	select TEGRA_IVC
+	select TEGRA_HSP
+	select TEGRA_AST

@@ -1,0 +1,58 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/spi/rm31080a_platform.h>
+/ {
+	spi@7000da00 {
+		status = "okay";
+		spi-max-frequency = <12000000>;
+		prod-settings {
+			prod_c_cs0 {
+			    prod = <0x04 0xfffff03f 0x00000400>;
+			};
+		};
+		spi-touch19x12@0 {
+			compatible = "raydium,rm_ts_spidev";
+			status = "disabled";
+			reg = <0>; /* spi chip select 0 */
+			spi-max-frequency = <12000000>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(X, 1) 0x01>; /* GPIO_PX1 */
+			reset-gpio = <&gpio TEGRA_GPIO(V, 6) 0>; /* GPIO_PV6 */
+			config = <0>;
+			platform-id = <RM_PLATFORM_T008_2>;
+			name-of-clock = "clk_out_2";
+			name-of-clock-con = "extern2";
+			avdd-supply = <&max77620_ldo5>;
+			dvdd-supply = <&max77620_ldo6>;
+		};
+		spi-touch25x16@0 {
+			compatible = "raydium,rm_ts_spidev";
+			status = "disabled";
+			reg = <0>; /* spi chip select 0 */
+			spi-max-frequency = <12000000>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(X, 1) 0x01>; /* GPIO_PX1 */
+			reset-gpio = <&gpio TEGRA_GPIO(V, 6) 0>; /* GPIO_PV6 */
+			config = <0>;
+			platform-id = <RM_PLATFORM_A010>;
+			name-of-clock = "clk_out_2";
+			name-of-clock-con = "extern2";
+			avdd-supply = <&max77620_ldo5>;
+			dvdd-supply = <&max77620_ldo6>;
+		};
+		spi-touch14x8@0 {
+			compatible = "raydium,rm_ts_spidev";
+			status = "disabled";
+			reg = <0>; /* spi chip select 0 */
+			spi-max-frequency = <12000000>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(X, 1) 0x01>; /* GPIO_PX1 */
+			reset-gpio = <&gpio TEGRA_GPIO(V, 6) 0>; /* GPIO_PV6 */
+			config = <0>;
+			platform-id = <RM_PLATFORM_L005>;
+			name-of-clock = "clk_out_2";
+			name-of-clock-con = "extern2";
+			avdd-supply = <&max77620_ldo5>;
+			dvdd-supply = <&max77620_ldo6>;
+		};
+	};
+};

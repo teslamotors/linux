@@ -119,6 +119,8 @@ static int crypto_aead_report(struct sk_buff *skb, struct crypto_alg *alg)
 
 	strncpy(raead.type, "aead", sizeof(raead.type));
 	strncpy(raead.geniv, aead->geniv ?: "<built-in>", sizeof(raead.geniv));
+	if (0 != raead.geniv[sizeof(raead.geniv) - 1])
+		return -EMSGSIZE;	/* not null terminated */
 
 	raead.blocksize = alg->cra_blocksize;
 	raead.maxauthsize = aead->maxauthsize;
@@ -204,6 +206,8 @@ static int crypto_nivaead_report(struct sk_buff *skb, struct crypto_alg *alg)
 
 	strncpy(raead.type, "nivaead", sizeof(raead.type));
 	strncpy(raead.geniv, aead->geniv, sizeof(raead.geniv));
+	if (0 != raead.geniv[sizeof(raead.geniv) - 1])
+		return -EMSGSIZE;	/* not null terminated */
 
 	raead.blocksize = alg->cra_blocksize;
 	raead.maxauthsize = aead->maxauthsize;

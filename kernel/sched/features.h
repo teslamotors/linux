@@ -36,11 +36,6 @@ SCHED_FEAT(CACHE_HOT_BUDDY, true)
  */
 SCHED_FEAT(WAKEUP_PREEMPTION, true)
 
-/*
- * Use arch dependent cpu capacity functions
- */
-SCHED_FEAT(ARCH_CAPACITY, true)
-
 SCHED_FEAT(HRTICK, false)
 SCHED_FEAT(DOUBLE_TICK, false)
 SCHED_FEAT(LB_BIAS, true)
@@ -63,7 +58,7 @@ SCHED_FEAT(PREEMPT_LAZY, true)
 SCHED_FEAT(TTWU_QUEUE, true)
 #endif
 SCHED_FEAT(FORCE_SD_OVERLAP, false)
-SCHED_FEAT(RT_RUNTIME_SHARE, true)
+SCHED_FEAT(RT_RUNTIME_SHARE, false)
 SCHED_FEAT(LB_MIN, false)
 
 /*
@@ -89,3 +84,9 @@ SCHED_FEAT(NUMA_FAVOUR_HIGHER, true)
  */
 SCHED_FEAT(NUMA_RESIST_LOWER, false)
 #endif
+
+/*
+ * Make load balance and wake paths capacity aware to optimize
+ * throughput for heterogenous multi-processor systems (ex: big.LITTLE)
+ */
+SCHED_FEAT(CAPACITY_AWARE, false)

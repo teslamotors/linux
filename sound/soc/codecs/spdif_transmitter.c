@@ -30,11 +30,13 @@
 			SNDRV_PCM_FMTBIT_S24_LE)
 
 static const struct snd_soc_dapm_widget dit_widgets[] = {
-	SND_SOC_DAPM_OUTPUT("spdif-out"),
+	SND_SOC_DAPM_OUTPUT("OUT"),
+	SND_SOC_DAPM_INPUT("IN"),
 };
 
 static const struct snd_soc_dapm_route dit_routes[] = {
-	{ "spdif-out", NULL, "Playback" },
+	{ "OUT", NULL, "Playback" },
+	{ "Capture", NULL, "IN" },
 };
 
 static struct snd_soc_codec_driver soc_codec_spdif_dit = {
@@ -48,6 +50,13 @@ static struct snd_soc_dai_driver dit_stub_dai = {
 	.name		= "dit-hifi",
 	.playback 	= {
 		.stream_name	= "Playback",
+		.channels_min	= 1,
+		.channels_max	= 384,
+		.rates		= STUB_RATES,
+		.formats	= STUB_FORMATS,
+	},
+	.capture	= {
+		.stream_name	= "Capture",
 		.channels_min	= 1,
 		.channels_max	= 384,
 		.rates		= STUB_RATES,

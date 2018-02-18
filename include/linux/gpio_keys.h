@@ -28,7 +28,7 @@ struct gpio_keys_button {
 	int debounce_interval;
 	bool can_disable;
 	int value;
-	unsigned int irq;
+	int irq;
 };
 
 /**
@@ -50,6 +50,7 @@ struct gpio_keys_platform_data {
 	int (*enable)(struct device *dev);
 	void (*disable)(struct device *dev);
 	const char *name;
+	int (*wakeup_key)(void);
 };
 
 #endif

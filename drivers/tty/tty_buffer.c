@@ -350,6 +350,12 @@ int tty_insert_flip_string_flags(struct tty_port *port,
 }
 EXPORT_SYMBOL(tty_insert_flip_string_flags);
 
+int tty_buffer_get_level(struct tty_port *port)
+{
+	return atomic_read(&port->buf.mem_used) * 100 / port->buf.mem_limit;
+}
+EXPORT_SYMBOL(tty_buffer_get_level);
+
 /**
  *	tty_schedule_flip	-	push characters to ldisc
  *	@port: tty port to push from

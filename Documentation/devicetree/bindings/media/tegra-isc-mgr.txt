@@ -1,0 +1,31 @@
+NVIDIA tegra isc mgr driver
+
+This file documents the properties used by the isc-mgr driver in tegra platform
+
+Required properties:
+- compatible : Should be "nvidia,isc-mgr"
+- i2c-bus : Should contain the i2c bus number that the device is attached to tegra for controlling the isc
+- csi-port : Should contain the csi port number that the device is attached to tegra for image streaming
+
+Optional properties:
+- pwdn-gpios : Should contain the list for gpios to control power in order of aggregator and camera instances
+- pwr-items : Map power items to the GPIO item specified in the pwdn-gpios list, starting from 0. For example,
+              pwr-item 0 is for the deserializer, while pwr-item 1, 2, 3, 4 are for links 0, 1, 2, 3
+- default-power-on : If this property is used, while probing the device, pwdn-gpios are powered on
+- interrupt-parent : Should contain interrupt parent for gpio interrupt
+- interrupts : Should contain the gpio number that is connected to status pin in isc device
+
+Example:
+isc-mgr.0 {
+    compatible = "nvidia,isc-mgr";
+    i2c-bus = <2>;
+    csi-port = <0>;
+    pwdn-gpios = < &gpio TEGRA_GPIO(X, 1) GPIO_ACTIVE_HIGH  /* GMSL_IN1_PDN */
+        &gpio TEGRA_GPIO(H, 2) GPIO_ACTIVE_HIGH     /* TA_TV1_TV2_ENA */
+        &gpio TEGRA_GPIO(H, 5) GPIO_ACTIVE_HIGH>;   /* TA_TV3_TV4_ENA */
+    pwr-items =  <0 1 1 2 2>; /* map pwr-items to pwdn-gpios */
+    /* default-power-on; */ /* Deactivate pwdn-gpios */
+    interrupt-parent = <&gpio>;
+    interrupts = <TEGRA_GPIO(V, 2) 2>; /* gpio PS3 : falling edge sensitive */
+    status = "okay";
+};

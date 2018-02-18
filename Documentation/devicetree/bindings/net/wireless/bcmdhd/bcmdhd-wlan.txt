@@ -1,0 +1,78 @@
+* bcmdhd-wlan devicetree bindings
+
+This file documents the properties used by the bcmdhd-wlan driver.
+
+Required properties:
+- compatible : Must be "android,tegra-bcmdhd-wlan"
+
+Optional properties:
+- "wlan-pwr-gpio" is a gpio to power on/off wifi chip
+- "wlan-rst-gpio" is a gpio to reset wifi chip
+- "interrupts" is a wake on wireless gpio interrupt pin
+- "edp-consumer-name" is required to populate wifi edp consumer name
+
+MAC address properties (using the of_get_mac_address() function,
+checked in this order):
+- 'mac-address' is the "most recent" MAC address (6 octet binary property)
+- 'local-mac-address' is the default MAC address (6 octet binary property)
+- 'address' is supposed to contain a virtual address of the register set, but
+  some DTS files have redefined this property to be the MAC address
+  (6 octet binary property)
+- 'mac-address-chosen-dtb-node' is the property name of a string property under
+  the /chosen dtb node which contains the MAC address string
+  "xx:xx:xx:xx:xx:xx"
+- 'mac-address-file' is a string property which contains the path of a file
+  which contains the MAC address string "xx:xx:xx:xx:xx:xx"
+
+Example:
+bcmdhd_wlan {
+	compatible = "android,tegra-bcmdhd-wlan";
+	interrupt-parent = <&gpio>;
+	interrupts = <165 0x14>;
+	wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
+	wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+	edp-consumer-name = "primary-wifi";
+	/* possible methods of specifying MAC address
+	 * (in first to last order)
+	 */
+	mac-address = [00 04 4b fe ed be];
+	local-mac-address = [00 04 4b fe ed bf];
+	/* the next method requires the /chosen dtb node to have a string
+	 * property named "nvidia,wifi-mac" which contains the MAC address
+	 * string "xx:xx:xx:xx:xx:xx"
+	 */
+	mac-address-chosen-dtb-node = "nvidia,wifi-mac";
+	/* the next method requires the filesystem file
+	 * /mnt/factory/wifi/wifi_mac.txt to contain the MAC address string
+	 * "xx:xx:xx:xx:xx:xx"
+	 */
+	mac-address-file = "/mnt/factory/wifi/wifi_mac.txt";
+};
+===============================================================================
+* bcmdhd2-wlan devicetree bindings
+
+This file documents the properties used by the bcmdhd2-wlan driver.
+
+Required properties:
+- compatible : Must be "nvidia,tegra-bcmdhd2-wlan"
+
+Optional properties:
+- "wlan-pwr-gpio" is a gpio to power on/off wifi chip
+- "wlan-rst-gpio" is a gpio to reset wifi chip
+- "interrupts" is a wake on wireless gpio interrupt pin
+- "edp-consumer-name" is required to populate wifi edp consumer name
+
+MAC address properties (using the of_get_mac_address() function):
+- the bcmdhd2 2nd driver instance is no longer used, so new features
+  (such as using the of_get_mac_address() function to get the MAC address)
+  have not been ported to bcmdhd2 driver
+
+Example:
+bcm4329_wlan2_ {
+	compatible = "nvidia,tegra-bcmdhd2-wlan";
+	interrupt-parent = <&gpio>;
+	interrupts = <165 0x14>;
+	wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
+	wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+	edp-consumer-name = "secondary-wifi";
+};

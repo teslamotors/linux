@@ -23,6 +23,13 @@
 #include <asm/ptrace.h>
 #include <asm/thread_info.h>
 
+#ifdef CONFIG_SERROR_HANDLER
+#define SERROR_BITS 4
+#else
+#define SERROR_BITS 0
+#endif
+
+
 /*
  * Stack pushing/popping (register pairs only). Equivalent to store decrement
  * before, load increment after.
@@ -43,7 +50,7 @@
 	.endm
 
 	.macro	enable_irq
-	msr	daifclr, #2
+	msr	daifclr, #(2 | SERROR_BITS)
 	.endm
 
 /*
@@ -62,11 +69,11 @@
  * Enable and disable debug exceptions.
  */
 	.macro	disable_dbg
-	msr	daifset, #8
+	msr	daifclr, #(8 | SERROR_BITS)
 	.endm
 
 	.macro	enable_dbg
-	msr	daifclr, #8
+	msr	daifclr, #(8 | SERROR_BITS)
 	.endm
 
 	.macro	disable_step_tsk, flgs, tmp
@@ -93,7 +100,7 @@
  * are self-synchronising.
  */
 	.macro	enable_dbg_and_irq
-	msr	daifclr, #(8 | 2)
+	msr	daifclr, #(8 | 2 | SERROR_BITS)
 	.endm
 
 /*

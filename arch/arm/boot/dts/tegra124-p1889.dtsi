@@ -1,0 +1,480 @@
+/*
+ * arch/arm/boot/dts/tegra124-p1889.dts
+ *
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/*
+ * tegra124-p1889.dtsi is the board dtsi file representing the p1889
+ * board. Since the same p1889 board is supported in multiple ways eg
+ * ardbeg, virtual machines, p1889 linux etc, this file needs to be
+ * included and then the required changes should be made in the
+ * corresponding dts
+ */
+
+#include "tegra124-vcm30_t124.dtsi"
+#include <panel-a-edp-1080p-14-0.dtsi>
+#include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
+#include <dt-bindings/gpio/tmpm32x-gpio.h>
+#include <tegra124-platforms/tegra124-pmic-vcm30t124-max20024.dtsi>
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	mcu_gpio: tmpm32x-gpio {
+		compatible = "nvidia,tmpm32x-gpio";
+		gpio-controller;
+		#gpio-cells = <2>;
+		nvidia,ttyport = "/dev/ttyTHS2";
+		status = "okay";
+	};
+
+	host1x {
+		hdmi {
+			nvidia,hpd-gpio = <&gpio 0xFFFFFFFF 1>; /* hotplug less HDMI */
+			nvidia,ddc-i2c-bus = <&p1889_hdmi_ddc>;
+		};
+
+		sor {
+			status = "okay";
+			panel-a-edp-1080p-14-0 {
+				disp-default-out {
+					nvidia,out-max-pixclk = <3367>;
+					nvidia,dither = <TEGRA_DC_ORDERED_DITHER>;
+					nvidia,out-depth = <0>; /* let EDID set */
+				};
+			};
+		};
+
+		dpaux {
+			status = "okay";
+		};
+
+		/* tegradc.0 */
+		dc@54200000 {
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,cmu-enable = <1>;
+			status = "okay";
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			status = "okay";
+		};
+	};
+
+	p1889_hdmi_ddc: i2c@7000c400 {
+		clock-frequency = <100000>;
+	};
+
+	i2c@7000c000 {
+		saf775x@1c {
+			compatible = "saf775x";
+			reg = <0x1c>;
+		};
+		touch-controller@4b {
+			compatible = "atmel,maxtouch";
+			reg = <0x4b>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(V, 1) 0x0>;
+			atmel,irq_flags = <IRQ_TYPE_LEVEL_LOW>;
+			status = "okay";
+		};
+	};
+
+	i2c@7000d000 {
+		status = "okay";
+
+		max16989@3a {
+			compatible = "maxim,max16989";
+			reg = <0x3a>;
+			regulator-name = "max16989-vdd-cpu";
+			regulator-min-microvolt = <500000>;
+			regulator-max-microvolt = <1500000>;
+			consumers {
+				c1 {
+					regulator-consumer-supply = "vdd_cpu";
+				};
+			};
+		};
+
+		max16989@38 {
+			compatible = "maxim,max16989";
+			reg = <0x38>;
+			regulator-name = "max16989-vdd-gpu";
+			regulator-min-microvolt = <500000>;
+			regulator-max-microvolt = <1500000>;
+			maxim,enable-gpio = <&gpio TEGRA_GPIO(R, 2) 0>;
+			regulator-enable-ramp-delay = <210>;
+			consumers {
+				c1 {
+					regulator-consumer-supply = "vdd_gpu";
+				};
+			};
+		};
+
+		max20024@3c {
+			regulators {
+				ldo5 {
+					status = "okay";
+				};
+			};
+		};
+	};
+
+	regulators {
+                compatible = "simple-bus";
+                device_type = "fixed-regulators";
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                vdd_fuse: regulator@1 {
+                        compatible = "regulator-fixed-sync";
+                        regulator-name = "vdd_fuse";
+                        regulator-min-microvolt = <3300000>;
+                        regulator-max-microvolt = <3300000>;
+                        gpio = <&max20024 0 0>;
+                        enable-active-high;
+                };
+        };
+
+
+        /* Populate fuse supply */
+        efuse@7000f800 {
+                vpp_fuse-supply = <&vdd_fuse>;
+        };
+
+	i2c@7000c400 {
+		nvidia,clock-always-on;
+		tca6408_20: tca6408@20 {
+			compatible = "ti,tca6408";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x20>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(V, 0) 0x0>;
+			gpio-init-names = "default";
+			gpio-init-0 = <&tca6408_20_default>;
+			tca6408_20_default: default {
+				gpio-input = <1 2 7>;
+				gpio-output-low = <0 3 6>;
+				gpio-output-high = <4 5>;
+			};
+		};
+		a3g4250d_68: a3g4250d@68 {
+			compatible = "stm,a3g4250d";
+			reg = <0x68>;
+			gyroscope_matrix = [00 ff 00 ff 00 00 00 00 ff];
+		};
+		ais328dq_18: ais328dq@18 {
+			compatible = "stm,ais328dq";
+			reg = <0x18>;
+			accelerometer_matrix = [00 ff 00 ff 00 00 00 00 ff];
+		};
+		bmp280_76: bmp280@76 {
+			compatible = "bmp,bmp280";
+			nvi_config = "host";
+			reg = <0x76>;
+		};
+	};
+
+	modem {
+		compatible = "nvidia,icera-i500";
+		/* XHCI_UTMI phy type */
+		nvidia,phy-type = <2>;
+		nvidia,mdm-en-gpio = <&tca6408_20 0 GPIO_ACTIVE_HIGH>;
+		nvidia,reset-gpio = <&gpio TEGRA_GPIO(R, 1) GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+
+	serial@70006000 {
+		status = "okay";
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
+		status = "okay";
+	};
+
+	serial@70006200 {
+		status = "okay";
+	};
+
+	serial@70006300 {
+		status = "okay";
+	};
+
+	spi@7000d400 {
+		status = "okay";
+	};
+
+	spi@7000d600 {
+		status = "okay";
+	};
+
+	spi@7000d800 {
+		status = "okay";
+	};
+
+	spi@7000dc00 {
+		status = "okay";
+	};
+
+	xusb@70090000 {
+		nvidia,portmap = <0x103>;
+		nvidia,ss_portmap = <0x11>;
+		nvidia,lane_owner = <0x6>;
+		status = "okay";
+	};
+
+	ahub {
+		status = "okay";
+
+		i2s@70301000 {
+			status = "okay";
+		};
+		i2s@70301100 {
+			status = "okay";
+		};
+		i2s@70301200 {
+			fsync-width = <0>;
+			status = "okay";
+		};
+		i2s@70301300 {
+			status = "okay";
+		};
+		i2s@70301400 {
+			status = "okay";
+		};
+		spdif@70306000 {
+			status = "okay";
+		};
+		amx@70303000 {
+			status = "okay";
+		};
+		adx@70303800 {
+			status = "okay";
+		};
+		amx@70303100 {
+			status = "okay";
+		};
+		adx@70303900 {
+			status = "okay";
+		};
+		dam@70302000 {
+			status = "okay";
+		};
+		dam@70302200 {
+			status = "okay";
+		};
+		dam@70302400 {
+			status = "okay";
+		};
+		afc@70307000 {
+			status = "okay";
+		};
+		afc@70307100 {
+			status = "okay";
+		};
+		afc@70307200 {
+			status = "okay";
+		};
+		afc@70307300 {
+			status = "okay";
+		};
+		afc@70307400 {
+			status = "okay";
+		};
+		afc@70307500 {
+			status = "okay";
+		};
+	};
+
+	pcie-controller {
+		status = "okay";
+
+		pci@1,0 {
+			status = "okay";
+		};
+
+		pci@2,0 {
+			status = "okay";
+		};
+	};
+
+	sata@70020000 {
+		status = "okay";
+	};
+
+	sdhci@700b0000 {
+		status = "okay";
+	};
+
+	sdhci@700b0600 {
+		pwr-off-during-lp0 = <1>;
+		status = "okay";
+	};
+
+	sdhci@700b0200 {
+		/delete-property/ built-in;
+		/delete-property/ nvidia,disable-auto-cal;
+		cd-gpios = <&tca6408_20 1 0>;
+		wp-gpios = <&tca6408_20 2 0>;
+		uhs-mask = <0x7F>;
+		tap-delay = <0x5>;
+		trim-delay = <0x3>;
+		mmc-ocr-mask = <3>;
+		bus-width = <4>;
+		max-clk-limit = <50000000>;
+		pll_source = "pll_c", "pll_p";
+		vmmc-supply = <&vmmc_dummy>;
+		cd_wakeup_incapable = <1>;
+		calib-3v3-offsets = <0x710A>;
+		calib-1v8-offsets = <0x710A>;
+		auto-cal-step = <0x7>;
+		/* clock freq based on mode */
+		fixed-clock-freq = <25500000 24000000 24000000 47000000 24000000 47000000 0 0 0 0 0>;
+		nvidia,enable-ext-loopback;
+		nvidia,auto-cal-slew-override;
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		vddio_sdmmc-supply = <&max20024_ldo5>;
+		status = "okay";
+	};
+
+	snor {
+		status = "okay";
+	};
+
+	ehci@7d000000 {
+		nvidia,is-intf-utmi;
+		status = "disabled";
+	};
+
+	ehci@7d004000 {
+		nvidia,is-intf-utmi;
+		status = "okay";
+	};
+
+	ehci@7d008000 {
+		nvidia,is-intf-utmi;
+		status = "okay";
+	};
+
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,shutdown-gpio = <&mcu_gpio TMPM32X_GPIO(D, 2) GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+	bcmdhd_wlan {
+		compatible = "android,bcmdhd_wlan";
+		wlan-pwr-gpio = <&mcu_gpio TMPM32X_GPIO(D, 1) GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
+	cpu_dfll_pmic_integration {
+		pmic-i2c-address = <0x74>;
+		pmic-i2c-voltage-register = <0x07>;
+		i2c-fs-rate = <400000>;
+		sel-conversion-slope = <1>;
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		gpio_sys_12 {
+			label = "Power";
+			linux,code = <KEY_POWER>;
+			gpios = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_LOW>;
+			gpio-key,wakeup;
+		};
+	};
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <3>;
+		csi-port = <0>;
+		pwdn-gpios = <&gpio TEGRA_GPIO(Q, 1) GPIO_ACTIVE_HIGH	/* GMSL_IN1_PDN */
+			&gpio TEGRA_GPIO(I, 5) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN1 */
+			&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN2 */
+			&gpio TEGRA_GPIO(K, 0) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN3 */
+			&gpio TEGRA_GPIO(K, 1) GPIO_ACTIVE_HIGH>;	/* CSI1_TV_EN4 */
+		/* default-power-on; */
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(S, 3) 2>; /* GMSL_IN1_STATUS_OC : falling edge sensitive */
+		status = "okay";
+
+		aggregator@6a {
+			addr = <0x6a>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		serializer0@40 {
+			addr = <0x40>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		sensor0@30 {
+			addr = <0x30>;  /* 7 bit slave address */
+			reg_len = <16>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <2>;
+		pwdn-gpios = <&gpio TEGRA_GPIO(Q, 2) GPIO_ACTIVE_HIGH	/* GMSL_IN2_PDN */
+			&gpio TEGRA_GPIO(K, 3) GPIO_ACTIVE_HIGH		/* CSI2_TV_EN1 */
+			&gpio TEGRA_GPIO(EE, 1) GPIO_ACTIVE_HIGH	/* CSI2_TV_EN2 */
+			&gpio TEGRA_GPIO(R, 5) GPIO_ACTIVE_HIGH		/* CSI2_TV_EN3 */
+			&gpio TEGRA_GPIO(R, 6) GPIO_ACTIVE_HIGH>;	/* CSI2_TV_EN4 */
+		/* default-power-on; */
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(R, 3) 2>; /* GMSL_IN2_STATUS_OC : falling edge sensitive */
+		status = "okay";
+
+		aggregator@6a {
+			addr = <0x6a>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		serializer0@40 {
+			addr = <0x40>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		sensor0@30 {
+			addr = <0x30>;  /* 7 bit slave address */
+			reg_len = <16>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
+};

@@ -1,0 +1,62 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	sdhci@700b0600 {
+		tap-delay = <4>;
+		trim-delay = <4>;
+		nvidia,is-ddr-trim-delay;
+		ddr-trim-delay = <0>;
+		mmc-ocr-mask = <0>;
+		max-clk-limit = <51000000>;
+		max-frequency = <51000000>;
+		ddr-clk-limit = <51000000>;
+		bus-width = <8>;
+		built-in;
+		calib-3v3-offsets = <0x0202>;
+		calib-1v8-offsets = <0x0202>;
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		non-removable;
+		nvidia,is-emmc;
+		keep-power-in-suspend;
+		ignore-pm-notify;
+		mmc-ddr-1_8v;
+		uhs-mask = <0x7F>;
+		pll_source = "pll_p";
+	};
+
+	sdhci@700b0400 {
+		tap-delay = <0>;
+		trim-delay = <3>;
+		max-clk-limit = <48000000>;
+		max-frequency = <48000000>;
+		bus-width = <4>;
+		calib-3v3-offsets = <0x7676>;
+		calib-1v8-offsets = <0x7676>;
+		cd-gpios = <&gpio TEGRA_GPIO(V, 2) GPIO_ACTIVE_LOW>;
+		cap-mmc-highspeed;
+		cap-sd-highspeed;
+		nvidia,sd-device;
+		keep-power-in-suspend;
+		ignore-pm-notify;
+		uhs-mask = <0x7F>;
+		pll_source = "pll_p";
+	};
+
+	sdhci@700b0000 {
+		tap-delay = <0>;
+		trim-delay = <2>;
+		max-clk-limit = <48000000>;
+		max-frequency = <48000000>;
+		ddr-clk-limit = <48000000>;
+		bus-width = <4>;
+		mmc-ocr-mask = <0>;
+		calib-3v3-offsets = <0x7676>;
+		calib-1v8-offsets = <0x7676>;
+		pll_source = "pll_p";
+		non-removable;
+		keep-power-in-suspend;
+		uhs-mask = <0x7F>;
+		ignore-pm-notify;
+	};
+};

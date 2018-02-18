@@ -1,0 +1,186 @@
+/*
+ * arch/arm64/boot/dts/tegra186-sim-hdmi.dtsi
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/display/tegra-dc.h>
+
+/ {
+	host1x {
+		sor1 {
+			status = "okay";
+			/*nvidia,ddc-i2c-bus = <&hdmi_ddc>;*/
+			/*nvidia,hpd-gpio = <&tegra_gpio 0xFFFFFFFF 1>;*/ /* hotplug less */
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-parent-clk = "plld2";
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <720>;
+					nvidia,out-yres = <480>;
+				};
+				display-timings {
+					720x480-32 {
+						clock-frequency = <27000000>;
+						hactive = <720>;
+						vactive = <480>;
+						hfront-porch = <26>;
+						hback-porch = <80>;
+						hsync-len = <32>;
+						vfront-porch = <9>;
+						vback-porch = <26>;
+						vsync-len = <10>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+				tmds-config {
+					tmds-cfg@0 {
+						version = <1 0>;
+						pclk = <27000000>;
+						pll0 = <0x01003010>;
+						pll1 = <0x00301b00>;
+						pe-current = <0x00000000>;
+						drive-current = <0x1c1c1c1c>;
+						peak-current = <0x00000000>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000400>;
+					};
+					tmds-cfg@1 {
+						version = <1 0>;
+						pclk = <74250000>;
+						pll0 = <0x01003110>;
+						pll1 = <0x00301500>;
+						pe-current = <0x00000000>;
+						drive-current = <0x23232323>;
+						peak-current = <0x00000000>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000400>;
+					};
+					tmds-cfg@2 {
+						version = <1 0>;
+						pclk = <148500000>;
+						pll0 = <0x01003310>;
+						pll1 = <0x10300f00>;
+						pe-current = <0x00000000>;
+						drive-current = <0x2a2c2c2a>;
+						peak-current = <0x00000000>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000400>;
+					};
+					tmds-cfg@3 {
+						version = <1 0>;
+						pclk = <0x7fffffff>;
+						pll0 = <0x01003f10>;
+						pll1 = <0x10300700>;
+						pe-current = <0x00000000>;
+						drive-current = <0x30323333>;
+						peak-current = <0x10101010>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000600>;
+					};
+				};
+			};
+		};
+
+		sor {
+			status = "okay";
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-parent-clk = "plld2";
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <720>;
+					nvidia,out-yres = <480>;
+				};
+				display-timings {
+					720x480-32 {
+						clock-frequency = <27000000>;
+						hactive = <720>;
+						vactive = <480>;
+						hfront-porch = <26>;
+						hback-porch = <80>;
+						hsync-len = <32>;
+						vfront-porch = <9>;
+						vback-porch = <26>;
+						vsync-len = <10>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+				tmds-config {
+					tmds-cfg@0 {
+						version = <1 0>;
+						pclk = <27000000>;
+						pll0 = <0x01003010>;
+						pll1 = <0x00301b00>;
+						pe-current = <0x00000000>;
+						drive-current = <0x1c1c1c1c>;
+						peak-current = <0x00000000>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000400>;
+					};
+					tmds-cfg@1 {
+						version = <1 0>;
+						pclk = <74250000>;
+						pll0 = <0x01003110>;
+						pll1 = <0x00301500>;
+						pe-current = <0x00000000>;
+						drive-current = <0x23232323>;
+						peak-current = <0x00000000>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000400>;
+					};
+					tmds-cfg@2 {
+						version = <1 0>;
+						pclk = <148500000>;
+						pll0 = <0x01003310>;
+						pll1 = <0x10300f00>;
+						pe-current = <0x00000000>;
+						drive-current = <0x2a2c2c2a>;
+						peak-current = <0x00000000>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000400>;
+					};
+					tmds-cfg@3 {
+						version = <1 0>;
+						pclk = <0x7fffffff>;
+						pll0 = <0x01003f10>;
+						pll1 = <0x10300700>;
+						pe-current = <0x00000000>;
+						drive-current = <0x30323333>;
+						peak-current = <0x10101010>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000600>;
+					};
+				};
+			};
+		};
+	};
+	/*hdmi_ddc: i2c@7000c700 {
+		clock-frequency = <100000>;
+	};*/
+};

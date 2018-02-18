@@ -1,0 +1,18 @@
+config ARCH_TEGRA_18x_SOC_PRIVATE
+	bool "Tegra 18x family SOC"
+	select CPU_V8
+	select ARM_GIC
+	select COMMON_CLK
+	select SOC_BUS
+	select ARCH_REQUIRE_GPIOLIB
+	select PINCTRL
+	select PINCTRL_TEGRA186
+	select ARCH_SUPPORTS_MSI if PCI_TEGRA
+	select PCI_MSI if PCI_TEGRA
+	select ARCH_TEGRA_APE
+	select GPIO_TEGRA186
+	select ARCH_HAS_RESET_CONTROLLER
+	select ARM64_CPU_SUSPEND
+	default n
+	help
+	  Support for NVIDIA Tegra 18x family of SoCs

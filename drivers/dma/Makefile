@@ -1,5 +1,10 @@
+GCOV_PROFILE := y
+
 subdir-ccflags-$(CONFIG_DMADEVICES_DEBUG)  := -DDEBUG
 subdir-ccflags-$(CONFIG_DMADEVICES_VDEBUG) += -DVERBOSE_DEBUG
+subdir-ccflags-y += -Werror
+subdir-ccflags-y += -I$(srctree)/../t18x
+subdir-ccflags-y += -I$(srctree)
 
 obj-$(CONFIG_DMA_ENGINE) += dmaengine.o
 obj-$(CONFIG_DMA_VIRTUAL_CHANNELS) += virt-dma.o
@@ -29,6 +34,8 @@ obj-$(CONFIG_SIRF_DMA) += sirf-dma.o
 obj-$(CONFIG_TI_EDMA) += edma.o
 obj-$(CONFIG_STE_DMA40) += ste_dma40.o ste_dma40_ll.o
 obj-$(CONFIG_TEGRA20_APB_DMA) += tegra20-apb-dma.o
+obj-$(CONFIG_TEGRA210_ADMA) += tegra210-adma.o
+obj-$(CONFIG_TEGRA186_ADMA) += tegra210-adma.o
 obj-$(CONFIG_S3C24XX_DMAC) += s3c24xx-dma.o
 obj-$(CONFIG_PL330_DMA) += pl330.o
 obj-$(CONFIG_PCH_DMA) += pch_dma.o

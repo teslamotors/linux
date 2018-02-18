@@ -1,0 +1,51 @@
+/* Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/ {
+	i2c@7000c000 {
+		mpu6515@69 {
+			compatible = "invensense,mpu6515";
+			reg = <0x69>;
+			interrupt-parent = <&gpio>;
+			interrupts = <144 0x01>;
+			invensense,int_config = <0x10>;
+			invensense,level_shifter = <0>;
+			accelerometer_matrix = [01 00 00 00 01 00 00 00 01];
+			gyroscope_matrix = [01 00 00 00 01 00 00 00 01];
+			invensense,sec_slave_type = <0>;
+			invensense,key = [4e cc 7e eb f6 1e 35 22
+					  00 34 0d 65 32 e9 94 89];
+			vlogic-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
+		};
+
+		ak8963c@0d {
+			compatible = "ak,ak8963";
+			reg = <0x0d>;
+			magnetic_field_matrix = [ff 00 00 00 ff 00 00 00 01];
+			config = "mpu";
+			vid-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
+		};
+
+		max44006@44 {
+			compatible = "maxim,max44006";
+			reg = <0x44>;
+			vcc-supply = <&palmas_smps8>;
+		};
+	};
+};

@@ -14,7 +14,6 @@
 #include <linux/iio/iio.h>
 #include <linux/iio/trigger.h>
 #include <linux/interrupt.h>
-
 #include <linux/iio/common/st_sensors.h>
 
 

@@ -1,0 +1,167 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "tegra210-soc-shield.dtsi"
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/padctrl/tegra210-pads.h>
+#include "tegra210-platforms/tegra210-prods.dtsi"
+#include "tegra210-platforms/tegra210-ers-touch-e1937-1000-a00.dtsi"
+#include "tegra210-platforms/tegra210-modem-common.dtsi"
+
+/ {
+	nvidia,dtbbuildtime = __DATE__, __TIME__;
+
+	serial@70006000 {
+		compatible = "nvidia,tegra210-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
+		enable-rx-poll-timer;
+		status = "okay";
+	};
+
+	serial@70006200 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006300 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	pmc@7000e400 {
+		io-pad-defaults {
+			pex-bias {
+				nvidia,deep-power-down-enable;
+			};
+
+			pex-clk1 {
+				nvidia,deep-power-down-enable;
+			};
+
+			pex-clk2 {
+				nvidia,deep-power-down-enable;
+			};
+		};
+
+		bootrom-commands {
+			nvidia,command-retries-count = <2>;
+			nvidia,delay-between-commands-us = <10>;
+			nvidia,wait-before-start-bus-clear-us = <10>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+	};
+
+	extcon {
+		id_gpio_extcon: extcon@0 {
+			compatible = "extcon-gpio";
+			reg = <0x0>;
+			extcon-gpio,name = "ID";
+			gpio = <&max77620 0 0>;
+			extcon-gpio,connection-state-low;
+			extcon-gpio,cable-name = "USB-Host";
+			#extcon-cells = <1>;
+		};
+	};
+
+	usb_cd: usb_cd@7009f000 {
+		compatible = "nvidia,tegra210-usb-cd";
+		reg = <0x0 0x7009f000 0x0 0x1000>;
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x1000000 0x1000000>;
+	};
+
+	psy_extcon_xudc {
+		compatible = "power-supply-extcon";
+		extcon-cables = <&usb_cd 1 &usb_cd 2 &usb_cd 3
+				&usb_cd 4 &usb_cd 5 &usb_cd 6
+				&usb_cd 7 &usb_cd 8 &usb_cd 9>;
+		extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
+				"qc2-charger", "downstream-charger", "slow-charger",
+				"apple-500ma", "apple-1a", "apple-2a";
+		status = "disabled";
+		dt-override-status-odm-data = <0x1000000 0x1000000>;
+	};
+
+        psy_extcon {
+                compatible = "power-supply-extcon";
+                extcon-cables = <&udc 1 &udc 2 &udc 3
+                                &udc 4 &udc 5 &udc 6
+                                &udc 7 &udc 8 &udc 9
+                                &udc 10 &udc 11 &udc 12 &udc 13 &otg 0 &otg 1>;
+                extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
+                                "qc2-charger", "downstream-charger","fast-charger",
+                                "slow-charger", "apple-500ma", "apple-1a",
+                                "apple-2a", "ACA NV-Charger", "ACA RID-B", "ACA RID-C", "y-cable", "ACA RID-A";
+				status = "disabled";
+        };
+
+	ehci@7d004000 {
+		avdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		vddio_hsic-supply = <&max77620_ldo0>;
+		status = "disabled";
+	};
+
+	watchdog@60005100 {
+		dt-override-status-odm-data = <0x00010000 0x00010000>;
+		nvidia,enable-on-init;
+		nvidia,heartbeat-init = <120>;
+	};
+
+	tegra-supply-tests {
+		compatible = "nvidia,tegra-supply-tests";
+		vdd-core-supply=<&max77620_sd0>;
+	};
+
+	camera-pcl {
+		dpd {
+			compatible = "nvidia,csi-dpd";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			num = <6>;
+			csia {
+				reg = <0x0 0x0 0x0 0x0>;
+			};
+			csib {
+				reg = <0x0 0x1 0x0 0x0>;
+			};
+			csic {
+				reg = <0x1 0x0a 0x0 0x0>;
+			};
+			csid {
+				reg = <0x1 0x0b 0x0 0x0>;
+			};
+			csie {
+				reg = <0x1 0x0c 0x0 0x0>;
+			};
+			csif {
+				reg = <0x1 0x0d 0x0 0x0>;
+			};
+		};
+	};
+
+	rollback-protection {
+		device-name = "sdmmc";
+		device-method = <0x1 0x00000002>;  /* type (0x1 = ioctl), argument */
+		status = "disabled";
+	};
+};

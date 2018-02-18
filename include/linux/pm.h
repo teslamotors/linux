@@ -33,6 +33,7 @@
  */
 extern void (*pm_power_off)(void);
 extern void (*pm_power_off_prepare)(void);
+extern void (*pm_power_reset)(void);
 
 struct device; /* we have a circular dep with device.h */
 #ifdef CONFIG_VT_CONSOLE_SLEEP
@@ -313,6 +314,12 @@ struct dev_pm_ops {
 	int (*thaw_noirq)(struct device *dev);
 	int (*poweroff_noirq)(struct device *dev);
 	int (*restore_noirq)(struct device *dev);
+	int (*suspend_noirq_late)(struct device *dev);
+	int (*resume_noirq_early)(struct device *dev);
+	int (*freeze_noirq_late)(struct device *dev);
+	int (*thaw_noirq_early)(struct device *dev);
+	int (*poweroff_noirq_late)(struct device *dev);
+	int (*restore_noirq_early)(struct device *dev);
 	int (*runtime_suspend)(struct device *dev);
 	int (*runtime_resume)(struct device *dev);
 	int (*runtime_idle)(struct device *dev);
@@ -342,7 +349,7 @@ struct dev_pm_ops {
 #define SET_LATE_SYSTEM_SLEEP_PM_OPS(suspend_fn, resume_fn)
 #endif
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 #define SET_RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn) \
 	.runtime_suspend = suspend_fn, \
 	.runtime_resume = resume_fn, \
@@ -351,14 +358,7 @@ struct dev_pm_ops {
 #define SET_RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn)
 #endif
 
-#ifdef CONFIG_PM
-#define SET_PM_RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn) \
-	.runtime_suspend = suspend_fn, \
-	.runtime_resume = resume_fn, \
-	.runtime_idle = idle_fn,
-#else
-#define SET_PM_RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn)
-#endif
+#define SET_PM_RUNTIME_PM_OPS	SET_RUNTIME_PM_OPS
 
 /*
  * Use this if you want to use the same suspend and resume callbacks for suspend
@@ -550,6 +550,9 @@ struct pm_subsys_data {
 #ifdef CONFIG_PM_CLK
 	struct list_head clock_list;
 #endif
+#ifndef CONFIG_COMMON_CLK
+	struct mutex clocks_mutex;
+#endif
 #ifdef CONFIG_PM_GENERIC_DOMAINS
 	struct pm_domain_data *domain_data;
 #endif
@@ -576,7 +579,7 @@ struct dev_pm_info {
 #else
 	unsigned int		should_wakeup:1;
 #endif
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 	struct timer_list	suspend_timer;
 	unsigned long		timer_expires;
 	struct work_struct	work;

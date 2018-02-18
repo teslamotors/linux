@@ -1,0 +1,23 @@
+config ARCH_HAS_PASR
+	bool
+
+config PASR
+	bool "DDR Partial Array Self-Refresh"
+	depends on ARCH_HAS_PASR
+	---help---
+	  PASR consists on masking the refresh of unused segments or banks
+	  when DDR is in self-refresh state.
+
+config SKIP_LATE_PASR_SETUP
+	bool "skip late PASR setup"
+	def_bool n
+	depends on PASR
+	---help---
+	  PASR has its own spin lock which is initialized during the late setup.
+	  In few implementations this lock is not needed as other locks protect pasr code
+	  from race. Use this config to disable pasr's explicit locking in such cases.
+
+config PASR_DEBUG
+	bool "Add PASR debug prints"
+	def_bool n
+	depends on PASR

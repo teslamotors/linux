@@ -27,6 +27,7 @@
 #include <linux/cn_proc.h>
 #include <linux/compat.h>
 
+#undef CONFIG_EVENT_TRACING
 
 /*
  * ptrace a task: make the debugger its new parent and

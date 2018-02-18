@@ -1,0 +1,506 @@
+* MAX77620/MAX2004 Power management IC.
+
+Required properties:
+-------------------
+- compatible: Must be "maxim,max77620" or "maxim,max20024"
+- reg: I2C device address.
+- interrupt-controller: MAX77620 has internal interrupt controller which takes the
+  interrupt request from internal sub-blocks like RTC, regulators, GPIOs as well
+  as external input.
+- #interrupt-cells: Should be set to 2 for IRQ number and flags.
+  The first cell is the IRQ number. IRQ numbers for different interrupt source
+  of MAX77620 are defined at dt-bindings/mfd/max77620.h
+  The second cell is the flags, encoded as the trigger masks from binding document
+	interrupts.txt, using dt-bindings/irq.
+
+This device also support the power OFF and power reset of system.
+Following properties are used for this purpose:
+- maxim,system-pmic-power-off: Boolean, This device will be used for system
+	power OFF. Host will issue i2c command to PMIC to power OFF system.
+- maxim,system-pmic-power-reset: Boolean, This device will used for system
+	power reset. Host will issue i2c command to PMIC to reset system.
+- maxim,system-power-controller: Boolean, This device will be use as
+	system power controller and used for power OFF and power reset
+	of system. Host issue necessary command to PMIC.
+- maxim,avoid-power-off-commands: Boolean, Avoid power off commands when powering
+	off device.
+- maxim,power-reset-gpio-states: Two dimensional array type, This property
+	provides the option to set the PMIC GPIOs on desired state just
+	before power OFF or power reset of system. Values are provided as
+	follows:
+		maxim,power-reset-gpio-states = <6 0
+						7 1>;
+		Means GPIO6 will set as LOW and GPIO7 will set as HIGH
+		just before power OFF and reset of system.
+
+Optional properties:
+-------------------
+
+Optional submodule and their properties:
+=======================================
+
+Flexible power sequence configuration
+====================================
+This sub-node configure the FPS of the device. Device has 3 FPS as FPS0, FPS1
+and FPS2. The FPS sub node name is "fps" and their child has register property
+to reprsent FPS number.
+The property for fps child nodes as:
+Required properties:
+	-reg: FPS number like 0, 1, 2 for FPS0, FPS1 and FPS2 respectively.
+Optinal properties:
+	-maxim,fps-time-period: U32 for the FPS time period.
+	-maxim,active-fps-time-period: Active state FPS time period.
+	-maxim,suspend-fps-time-period: Suspend state FPS time period.
+	-maxim,fps-enable-input: FPS enable source like EN0, EN1 or SW. The
+			macros are defined on dt-bindings/mfd/max77620.h for
+			different enable source.
+				FPS_EN_SRC_EN0 for EN0 enable source.
+				FPS_EN_SRC_EN1 for En1 enable source.
+				FPS_EN_SRC_SW for SW based control.
+	-maxim,fps-sw-enable: Boolean, applicable if enable input is SW.
+			If this property present then enable the FPS else
+			disable FPS.
+	-maxim,device-state-on-disabled-event: u32, describe the PMIC state when
+			FPS event cleared (set to LOW) whether it should go to
+			sleep state or low-power state.
+			Following are valid values:
+			-MAX77620_FPS_INACTIVE_STATE_SLEEP: To set the PMIC
+				state to sleep.
+			-MAX77620_FPS_INACTIVE_STATE_LOW_POWER: To set the PMIC
+				state to low power.
+	-maxim,en0-delay: u32, to configure default debounce circuit delay
+			if value is 0, to add one second delay to the
+			debounce circuit for EN0 if value is 1.
+			applicable for max77620
+
+RTC:
+====
+Device support RTC. The driver displaysthe alarm time in suspend and current
+time in resume. The option is provided through DT to avoid this prints.
+Optional properties:
+	- maxim,disable-time-print-suspend-resume: Disable time display
+		in suspend and resume in RTC driver. This will reduce the
+		suspend/resume delay as RTC register read is 16ms delay by
+		HW.
+	- maxim,disable-rtc: Disable RTC driver
+
+Pinmux and GPIO:
+===============
+Device has 8 GPIO pins which can be configured as GPIO as well as the special IO
+functions.
+
+Please refer to pinctrl-bindings.txt in this directory for details of the
+common pinctrl bindings used by client devices, including the meaning of the
+phrase "pin configuration node".
+
+Following are properties which is needed if GPIO and pinmux functionality
+is required:
+    Required properties:
+    -------------------
+	- gpio-controller: Marks the device node as a GPIO controller.
+	- #gpio-cells: Number of GPIO cells. Refer to binding document
+			gpio/gpio.txt
+
+    Optional properties:
+    --------------------
+	Following properties are require if pin control setting is required
+	at boot.
+	- pinctrl-names: A pinctrl state named "default" be defined, using the
+		bindings in pinctrl/pinctrl-binding.txt.
+	- pinctrl[0...n]: Properties to contain the phandle that refer to
+		different nodes of pin control settings. These nodes represents
+		the pin control setting of state 0 to state n. Each of these
+		nodes contains different subnodes to represents some desired
+		configuration for a list of pins. This configuration can
+		include the mux function to select on those pin(s), and
+		various pin configuration parameters, such as pull-up,
+		open drain.
+
+		Each subnode have following properties:
+		Required properties:
+		    - pins: List of pins. Valid values of pins properties are:
+				gpio0, gpio1, gpio2, gpio3, gpio4, gpio5,
+				gpio6, gpio7, nrstio
+
+		Optional properties:
+			function, drive-push-pull, drive-open-drain,
+			bias-pull-up, bias-pull-down.
+				Definitions are in the pinmux dt binding
+			devicetree/bindings/pinctrl/pinctrl-bindings.txt
+			Absense of properties will leave the configuration
+			on default.
+
+			Valid values for function properties are:
+				gpio, lpm-control-in, fps-out, 32k-out,
+				sd0-dvs-in, sd1-dvs-in, reference-out
+			Theres is also customised property for the GPIO1,
+				GPIO2 and GPIO3.
+			- maxim,fps-source: FPS source for the gpios. Valid
+				values are FPS_SRC_0, FPS_SRC_1, FPS_SRC_2
+				and FPS_SRC_NONE.
+				Absense of this property will leave the pin on
+				default.
+			- maxim,fps-power-up-period: Power up period/slot on
+				given FPS. Valid values are 0 to 7.
+			- maxim,fps-power-up-slot: Power up period/slot on
+				given FPS. Valid values are 0 to 7.
+			- maxim,fps-power-down-period: Power down period/slot
+				on given FPS. Valid values are 0 to 7.
+			- maxim,fps-power-down-slot: Power down period/slot
+				on given FPS. Valid values are 0 to 7.
+			- maxim,suspend-fps-source: Suspend state FPS source.
+			- maxim,suspend-fps-power-down-slot: Suspend state
+				power down slot.
+			- maxim,suspend-fps-power-up-slot: Suspend state power
+				up slot.
+			- maxim,power-ok: boolean, gpio1 pin or nrstio pin mapped to
+				power-ok based on this dt property value available
+				in gpio1 or nrstio pincontrol node.
+				applicable for max20024.
+
+Regulators:
+===========
+Device has multiple DCDC(sd[0-3] and LDOs(ld[0-8]). The node "regulators" is
+require if regulator functionality is needed.
+
+Following are properties of regulator subnode.
+
+    Optional properties:
+    -------------------
+	The input supply of regulators are the optional properties on the
+	regulator node. The input supply of these regulators are provided
+	through following properties:
+		in-sd0-supply: Input supply for SD0, INA-SD0 or INB-SD0 pins.
+		in-sd1-supply: Input supply for SD1.
+		in-sd2-supply: Input supply for SD2.
+		in-sd3-supply: Input supply for SD3.
+		in-ldo0-1-supply: Input supply for LDO0 and LDO1.
+		in-ldo2-supply: Input supply for LDO2.
+		in-ldo3-5-supply: Input supply for LDO3 and LDO5
+		in-ldo4-6-supply: Input supply for LDO4 and LDO6.
+		in-ldo7-8-supply: Input supply for LDO7 and LDO8.
+
+
+    Optional sub nodes for regulators:
+    ---------------------------------
+	The subnodes name is the name of regulator and it must be one of:
+	sd[0-3], ldo[0-8]
+
+	Each sub-node should contain the constraints and initialization
+	information for that regulator. See regulator.txt for a description
+	of standard properties for these sub-nodes.
+	Additional optional custom properties  are listed below.
+		maxim,fps-source: FPS source. The macros are defined at
+				dt-bindings/mfd/max77620.h
+		maxim,shutdown-fps-source: Same as maxim,fps-source, but it
+				will apply during shutdown of system.
+		maxim,fps-power-up-period: Power up slot for rail on given FPS.
+		maxim,fps-power-up-slot: Power up slot for rail on given FPS.
+		maxim,fps-power-down-period: Power down slot for rail on given
+				FPS.
+		maxim,fps-power-down-slot: Power down slot for rail on given
+				FPS.
+		maxim,enable-group-low-power: Enable Group low power mode.
+		maxim,enable-sd0-en2-control: Enable EN2 pincontrol for SD0.
+			This property is only applicable for SD0.
+		maxim,disable-active-discharge: Boolean, disable active
+			discharge.
+		maxim,disable-remote-sense-on-suspend: Boolean, disable
+			remote sense on suspend and re-enable on resume.
+			If this property is not there then no change on
+			configuration.
+		maxim,suspend-fps-source: Suspend state FPS source of rail.
+		maxim,suspend-fps-power-up-slot: Suspend state FPS power
+			up slot.
+		maxim,suspend-fps-power-down-slot: Suspend state FPS power
+			down slot.
+		maxim,power-ok-control: Possible values are 0 or 1.
+			1: Enables POK(Power OK) to control nRST_IO and GPIO1
+			POK function.
+			0: Disables POK control.
+
+			If POK mapping is enabled for GPIO1/nRST_IO then,
+			GPIO1/nRST_IO pins are HIGH only if all rails
+			that have POK control enabled are HIGH.
+			If any of the rails goes down(which are enabled for POK
+			control) then, GPIO1/nRST_IO goes LOW.
+
+			To know whether POK mapping to GPIO1/nRST_IO is
+			enabled or not, refer MAX20024 data sheet.
+
+			This property is valid for max20024 only.
+
+		maxim,ramp-rate-setting:
+			integer, ramp rate(uV/us) setting to be
+			configured to the device.
+			The platform may have different ramp
+			rate than advertised ramp rate if it has
+			design variation from Maxim's
+			recommended. On this case, platform
+			specific ramp rate is used for ramp time
+			calculation and this property is used
+			for device register configurations.
+			The measured ramp rate of platform is
+			provided by the regulator-ramp-delay
+			as described in <devicetree/bindings/
+			regulator/regulator.txt>.
+			Maxim Max77620 supports following ramp
+			delay:
+			  SD: 13.75mV/us, 27.5mV/us, 55mV/us
+			  LDOs: 5mV/us, 100mV/us
+
+Note: If the measured ramp delay is same as advertised ramp delay then it is not
+required to provide the ramp delay with property "maxim,ramp-rate-setting". The
+ramp rate can be provided by the regulator-ramp-delay which will be used for
+ramp time calculation for voltage change as well as for device configuration.
+
+Backup Battery:
+==============
+This sub-node configure charging backup battery of the device. Device has
+support of charging the backup battery. The subnode name is "backup-battery".
+The property for backup-battery child nodes as:
+Presense of this child node will enable the backup battery charging.
+
+Optinal properties:
+	-maxim,backup-battery-charging-current: Charging current setting.
+			The device supports 50/100/200/400/600/800uA.
+			If this property is unavailable then it will
+			charge with 50uA.
+	-maxim,backup-battery-charging-voltage: Charging Voltage Limit Setting.
+			Device supports 2500000/3000000/3300000/350000uV.
+			Default will be set to 2500mV. The voltage will be roundoff
+			to nearest lower side if other than above is configured.
+	-maxim,backup-battery-output-resister: Output resistor on Ohm.
+			Device supports 100/1000/3000/6000 Ohms.
+Low-Battery Monitor:
+==================
+This sub-node configure low battery monitor configuration registers. Device has
+support for low-battery monitor configuration through child DT node
+"low-battery-monitor".
+
+Optinal properties:
+	- maxim,low-battery-dac-enable: Enable low battery DAC.
+	- maxim,low-battery-dac-disable: Disable low battery DAC.
+	- maxim,low-battery-shutdown-enable: Enable low battery shutdown.
+	- maxim,low-battery-shutdown-disable: Disable low battery shutdown.
+	- maxim,low-battery-reset-enable: Enable low battery reset.
+	- maxim,low-battery-reset-disable: Disable low battery reset.
+Watchdog:
+==============
+This sub-node configure watchdog timer of the device. Device has watchdog
+for monitoring system health. If WDT expire, system get reset.
+
+Optinal properties:
+	-maxim,wdt-timeout: Watchdog timeout.
+Watchdog:
+==============
+This sub-node configure watchdog timer of the device. Device has watchdog
+for monitoring system health. If WDT expire, system get reset.
+
+Optinal properties:
+	-maxim,wdt-timeout: Watchdog timeout.
+	-maxim,wdt-clear-time: Watch dog clear time, should be less than
+			timeout.
+	-maxim,otp-wdtt: Boolean, OTP wdt.
+	-maxim,otp-wdten: Boolean, OTP WDT enable.
+	-maxim,maxim,wdt-suspend-enable-from-user: Boolean, disable wdt on suspend at bootime and
+	enable/disable wdt on suspend from sysfs interface.
+
+	This node status can be disabled and if it is disabled then WDT will
+be OFF on system.
+
+Example:
+--------
+#include <dt-bindings/mfd/max77620.h>
+...
+max77620@3c {
+	compatible = "maxim,max77620";
+	reg = <0x3c>;
+
+	interrupt-parent = <&intc>;
+	interrupts = <0 86 IRQ_TYPE_NONE>;
+
+
+Example:
+--------
+#include <dt-bindings/mfd/max77620.h>
+...
+max77620@3c {
+	compatible = "maxim,max77620";
+	reg = <0x3c>;
+
+	interrupt-parent = <&intc>;
+	interrupts = <0 86 IRQ_TYPE_NONE>;
+
+	interrupt-controller;
+	#interrupt-cells = <2>;
+
+	gpio-controller;
+	#gpio-cells = <2>;
+
+	backup-battery {
+		maxim,backup-battery-charging-current = <100>;
+		maxim,backup-battery-charging-voltage = <3000000>;
+		maxim,backup-battery-output-resister = <100>;
+	};
+
+	pinmux@0 {
+		pin_gpio0 {
+			pins = "gpio0";
+			function = "gpio";
+		};
+
+		pin_gpio1 {
+			pins = "gpio1";
+			function = "fps-out";
+			maxim,active-fps-source = <MAX77620_FPS_SRC_0>;
+		};
+
+		pin_nrstio {
+			pins = "nrstio";
+			function = "power-ok";
+			maxim,power-ok = <0>;
+		};
+	};
+
+	fps {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		fps@0 {
+			reg = <0>;
+			maxim,fps-time-period = <100>;
+			maxim,fps-enable-input = <FPS_EN_SRC_EN0>;
+		};
+
+		fps@1 {
+			reg = <1>;
+			maxim,fps-time-period = <100>;
+			maxim,fps-enable-input = <FPS_EN_SRC_EN1>;
+		};
+
+		fps@2 {
+			reg = <2>;
+			maxim,fps-time-period = <100>;
+			maxim,fps-enable-input = <FPS_EN_SRC_SW>;
+		};
+	};
+
+	watchdog {
+		maxim,wdt-timeout = <16>;
+		maxim,wdt-clear-time = <13>;
+	};
+
+	regulators {
+		in-ldo0-1-supply = <&max77620_sd2>;
+		in-ldo7-8-supply = <&max77620_sd2>;
+
+		max77620_sd0: sd0 {
+			regulator-name = "vdd-core";
+			regulator-min-microvolt = <600000>;
+			regulator-max-microvolt = <1400000>;
+			regulator-boot-on;
+			regulator-always-on;
+			maxim,fps-source = <FPS_SRC_1>;
+			regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+		};
+
+		max77620_sd1: sd1 {
+			regulator-name = "vddio-ddr";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-always-on;
+			regulator-boot-on;
+			regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+			maxim,fps-source = <FPS_SRC_0>;
+		};
+
+		max77620_sd2: sd2 {
+			regulator-name = "vdd-pre-reg";
+			regulator-min-microvolt = <1350000>;
+			regulator-max-microvolt = <1350000>;
+			maxim,fps-source = <FPS_SRC_1>;
+		};
+
+		max77620_sd3: sd3 {
+			regulator-name = "vdd-1v8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_0>;
+			regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+		};
+
+		max77620_ldo0: ldo0 {
+			regulator-name = "avdd-sys";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo1: ldo1 {
+			regulator-name = "vdd-pex";
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo2: ldo2 {
+			regulator-name = "vddio-sdmmc3";
+			maxim,power-ok-control = <0>;
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <3300000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo3: ldo3 {
+			regulator-name = "vdd-cam-hv";
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo4: ldo4 {
+			regulator-name = "vdd-rtc";
+			regulator-min-microvolt = <1250000>;
+			regulator-max-microvolt = <1250000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_0>;
+		};
+
+		max77620_ldo5: ldo5 {
+			regulator-name = "avdd-ts-hv";
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo6: ldo6 {
+			regulator-name = "vdd-ts";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo7: ldo7 {
+			regulator-name = "vdd-gen-pll-edp";
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_1>;
+		};
+
+		max77620_ldo8: ldo8 {
+			regulator-name = "vdd-hdmi-dp";
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+	};
+};

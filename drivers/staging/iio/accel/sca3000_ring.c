@@ -141,9 +141,9 @@ static int sca3000_ring_get_bytes_per_datum(struct iio_buffer *r)
 	return 6;
 }
 
-static bool sca3000_ring_buf_data_available(struct iio_buffer *r)
+static size_t sca3000_ring_buf_data_available(struct iio_buffer *r)
 {
-	return r->stufftoread;
+	return r->stufftoread ? r->watermark : 0;
 }
 
 static IIO_BUFFER_ENABLE_ATTR;

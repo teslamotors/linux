@@ -1,7 +1,7 @@
  /***************************************************************************
  *
  * Copyright (C) 2007-2008 SMSC
- *
+ * Copyright (c) 2012-2014 NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -68,22 +68,30 @@ struct smsc95xx_priv {
 	spinlock_t mac_cr_lock;
 	u8 features;
 	u8 suspend_flags;
+	bool in_pm_context;
+	bool mac_set;
 };
 
 static bool turbo_mode = true;
 module_param(turbo_mode, bool, 0644);
 MODULE_PARM_DESC(turbo_mode, "Enable multiple frames per Rx transaction");
 
+static u8 mac_addr[6] = {0};
+static bool smsc_mac_addr_set;
+module_param_array_named(mac_addr, mac_addr, byte, NULL, 0);
+MODULE_PARM_DESC(mac_addr, "SMSC command line MAC address");
+
 static int __must_check __smsc95xx_read_reg(struct usbnet *dev, u32 index,
 					    u32 *data, int in_pm)
 {
+	struct smsc95xx_priv *pdata = (struct smsc95xx_priv *)(dev->data[0]);
 	u32 buf;
 	int ret;
 	int (*fn)(struct usbnet *, u8, u8, u16, u16, void *, u16);
 
 	BUG_ON(!dev);
 
-	if (!in_pm)
+	if ((!in_pm) && (!pdata->in_pm_context))
 		fn = usbnet_read_cmd;
 	else
 		fn = usbnet_read_cmd_nopm;
@@ -104,13 +112,14 @@ static int __must_check __smsc95xx_read_reg(struct usbnet *dev, u32 index,
 static int __must_check __smsc95xx_write_reg(struct usbnet *dev, u32 index,
 					     u32 data, int in_pm)
 {
+	struct smsc95xx_priv *pdata = (struct smsc95xx_priv *)(dev->data[0]);
 	u32 buf;
 	int ret;
 	int (*fn)(struct usbnet *, u8, u8, u16, u16, const void *, u16);
 
 	BUG_ON(!dev);
 
-	if (!in_pm)
+	if ((!in_pm) && (!pdata->in_pm_context))
 		fn = usbnet_write_cmd;
 	else
 		fn = usbnet_write_cmd_nopm;
@@ -551,6 +560,56 @@ static int smsc95xx_phy_update_flowcontrol(struct usbnet *dev, u8 duplex,
 	return smsc95xx_write_reg(dev, AFC_CFG, afc_cfg);
 }
 
+#ifdef CONFIG_USB_NET_SMSC95XX_VOH_MODE
+static int smsc95xx_set_voh_mode(struct net_device *netdev, int phy_id)
+{
+	int val;
+	unsigned long start_time;
+
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x0400);
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x0);
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x0400);
+	smsc95xx_mdio_write(netdev, phy_id, 0x17, 0x85e8);
+
+	start_time = jiffies;
+
+	do {
+		val = smsc95xx_mdio_read(netdev, phy_id, 0x14);
+		if (!(val & 0x4000))
+			break;
+		netdev_dbg(netdev, "mii reg 14 = %x\n", val);
+	} while (!time_after(jiffies, start_time + HZ));
+
+	if (val & 0x4000)
+		netdev_dbg(netdev, "timeout reading mii!\n");
+
+
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x4416);
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x86c0);
+
+	start_time = jiffies;
+
+	do {
+		val = smsc95xx_mdio_read(netdev, phy_id, 0x14);
+		if (!(val & 0x8000))
+			break;
+	} while (!time_after(jiffies, start_time + HZ));
+
+	if (val & 0x8000)
+		netdev_dbg(netdev, "timeout reading mii!\n");
+
+	val = smsc95xx_mdio_read(netdev, phy_id, 0x15);
+
+	if (val & 0x0300) {
+		netdev_info(netdev, "smsc9500: VOH mode enabled\n");
+		return 0;
+	} else {
+		netdev_warn(netdev, "smsc9500: problem enabling VOH mode\n");
+		return -1;
+	}
+}
+#endif
+
 static int smsc95xx_link_reset(struct usbnet *dev)
 {
 	struct smsc95xx_priv *pdata = (struct smsc95xx_priv *)(dev->data[0]);
@@ -568,6 +627,10 @@ static int smsc95xx_link_reset(struct usbnet *dev)
 	ret = smsc95xx_write_reg(dev, INT_STS, INT_STS_CLEAR_ALL_);
 	if (ret < 0)
 		return ret;
+
+#ifdef CONFIG_USB_NET_SMSC95XX_VOH_MODE
+	smsc95xx_set_voh_mode(dev->net, mii->phy_id);
+#endif
 
 	mii_check_media(mii, 1, 1);
 	mii_ethtool_gset(&dev->mii, &ecmd);
@@ -765,6 +828,8 @@ static int smsc95xx_ioctl(struct net_device *netdev, struct ifreq *rq, int cmd)
 
 static void smsc95xx_init_mac_address(struct usbnet *dev)
 {
+	struct smsc95xx_priv *pdata = (struct smsc95xx_priv *)(dev->data[0]);
+
 	/* try reading mac address from EEPROM */
 	if (smsc95xx_read_eeprom(dev, EEPROM_MAC_OFFSET, ETH_ALEN,
 			dev->net->dev_addr) == 0) {
@@ -773,6 +838,16 @@ static void smsc95xx_init_mac_address(struct usbnet *dev)
 			netif_dbg(dev, ifup, dev->net, "MAC address read from EEPROM\n");
 			return;
 		}
+	}
+
+	/* try reading mac address from command line */
+	if (is_valid_ether_addr(mac_addr) && !smsc_mac_addr_set) {
+		memcpy(dev->net->dev_addr, mac_addr, sizeof(mac_addr));
+		smsc_mac_addr_set = true;
+		pdata->mac_set = true;
+		netif_dbg(dev, ifup, dev->net,
+				"MAC address read from command line");
+		return;
 	}
 
 	/* no eeprom, or eeprom values are invalid. generate random MAC */
@@ -1122,6 +1197,8 @@ static int smsc95xx_bind(struct usbnet *dev, struct usb_interface *intf)
 
 	spin_lock_init(&pdata->mac_cr_lock);
 
+	pdata->mac_set = false;
+
 	if (DEFAULT_TX_CSUM_ENABLE)
 		dev->net->features |= NETIF_F_HW_CSUM;
 	if (DEFAULT_RX_CSUM_ENABLE)
@@ -1160,6 +1237,8 @@ static void smsc95xx_unbind(struct usbnet *dev, struct usb_interface *intf)
 {
 	struct smsc95xx_priv *pdata = (struct smsc95xx_priv *)(dev->data[0]);
 	if (pdata) {
+		if (pdata->mac_set)
+			smsc_mac_addr_set = false;
 		netif_dbg(dev, ifdown, dev->net, "free pdata\n");
 		kfree(pdata);
 		pdata = NULL;
@@ -1717,9 +1796,15 @@ static int smsc95xx_resume(struct usb_interface *intf)
 static int smsc95xx_reset_resume(struct usb_interface *intf)
 {
 	struct usbnet *dev = usb_get_intfdata(intf);
+	struct smsc95xx_priv *pdata = (struct smsc95xx_priv *)(dev->data[0]);
 	int ret;
 
+	/* Flag that smsc device gets powered down during suspend state.
+	 * Reset and reconfigure the smsc chip during reset_resume
+	 */
+	pdata->in_pm_context = true;
 	ret = smsc95xx_reset(dev);
+	pdata->in_pm_context = false;
 	if (ret < 0)
 		return ret;
 
@@ -2003,6 +2088,11 @@ static const struct usb_device_id products[] = {
 	},
 	{
 		/* SMSC LAN89530 USB Ethernet Device */
+		USB_DEVICE(0x0424, 0x9E08),
+		.driver_info = (unsigned long) &smsc95xx_info,
+	},
+	{
+		/* SMSC89530 USB Ethernet Device on Automotive VCM */
 		USB_DEVICE(0x0424, 0x9E08),
 		.driver_info = (unsigned long) &smsc95xx_info,
 	},

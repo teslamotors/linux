@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2001-2002 by David Brownell
+ * Copyright (c) 2013-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,6 +20,29 @@
 /* this file is part of ehci-hcd.c */
 
 #ifdef CONFIG_DYNAMIC_DEBUG
+#define PTC_SHIFT			16
+#define PTC_MASK			(0xF << PTC_SHIFT)
+#define TEST_MODE_DISABLE	0
+#define J_STATE				1
+#define K_STATE				2
+#define SE0_NAK				3
+#define PACKET				4
+#define FORCE_ENABLE_HS		5
+#define FORCE_ENABLE_FS		6
+#define FORCE_ENABLE_LS		7
+#define TESTMODES_SIZE		8
+
+static char *testmodes[TESTMODES_SIZE] = {
+	"TEST_MODE_DISABLE",
+	"J_STATE",
+	"K_STATE",
+	"SE0",
+	"PACKET",
+	"FORCE_ENABLE_HS",
+	"FORCE_ENABLE_FS",
+	"FORCE_ENABLE_LS"
+};
+
 
 /* check the values in the HCSPARAMS register
  * (host controller _Structural_ parameters)
@@ -337,6 +361,9 @@ static int debug_async_open(struct inode *, struct file *);
 static int debug_bandwidth_open(struct inode *, struct file *);
 static int debug_periodic_open(struct inode *, struct file *);
 static int debug_registers_open(struct inode *, struct file *);
+static int debug_testmodes_open(struct inode *, struct file *);
+static ssize_t debug_testmodes_write(struct file *file,
+			const char __user *buffer, size_t count, loff_t *ppos);
 
 static ssize_t debug_output(struct file*, char __user*, size_t, loff_t*);
 static int debug_close(struct inode *, struct file *);
@@ -366,6 +393,14 @@ static const struct file_operations debug_registers_fops = {
 	.owner		= THIS_MODULE,
 	.open		= debug_registers_open,
 	.read		= debug_output,
+	.release	= debug_close,
+	.llseek		= default_llseek,
+};
+static const struct file_operations debug_testmodes_fops = {
+	.owner		= THIS_MODULE,
+	.open		= debug_testmodes_open,
+	.read		= debug_output,
+	.write		= debug_testmodes_write,
 	.release	= debug_close,
 	.llseek		= default_llseek,
 };
@@ -935,6 +970,33 @@ done:
 	return buf->alloc_size - size;
 }
 
+static ssize_t fill_testmodes_buffer(struct debug_buffer *buf)
+{
+	struct usb_hcd      *hcd;
+	struct ehci_hcd     *ehci;
+	unsigned long       flags;
+	unsigned            temp, size, i, ptc;
+	char                *next;
+
+	hcd = bus_to_hcd(buf->bus);
+	ehci = hcd_to_ehci(hcd);
+	next = buf->output_buf;
+	size = buf->alloc_size;
+	spin_lock_irqsave(&ehci->lock, flags);
+	ptc = (ehci_readl(ehci, &ehci->regs->port_status[0])
+			& PTC_MASK) >> PTC_SHIFT;
+	for (i = 0; i < TESTMODES_SIZE; i++) {
+		if (ptc == i)
+			temp = scnprintf(next, size, "-> %s\n", testmodes[i]);
+		else
+			temp = scnprintf(next, size, "   %s\n", testmodes[i]);
+		size -= temp;
+		next += temp;
+	}
+	spin_unlock_irqrestore(&ehci->lock, flags);
+	return buf->alloc_size - size;
+}
+
 static struct debug_buffer *alloc_buffer(struct usb_bus *bus,
 				ssize_t (*fill_func)(struct debug_buffer *))
 {
@@ -1046,6 +1108,68 @@ static int debug_registers_open(struct inode *inode, struct file *file)
 	return file->private_data ? 0 : -ENOMEM;
 }
 
+static int debug_testmodes_open(struct inode *inode, struct file *file)
+{
+	struct debug_buffer *buf;
+	buf = alloc_buffer(inode->i_private, fill_testmodes_buffer);
+
+	if (!buf)
+		return -ENOMEM;
+
+	buf->alloc_size = (sizeof(void *) == 4 ? 6 : 8)*PAGE_SIZE;
+	file->private_data = buf;
+	return 0;
+}
+
+static ssize_t debug_testmodes_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *ppos)
+{
+	struct usb_hcd		*hcd;
+	struct ehci_hcd		*ehci;
+	struct usb_device	*hub;
+	char buf[50];
+	size_t len, slen;
+	int i;
+	int status = -1;
+	u32 val;
+
+	hcd = bus_to_hcd(((struct debug_buffer *)file->private_data)->bus);
+	ehci = hcd_to_ehci(hcd);
+	hub = hcd->self.root_hub;
+
+	len = min(count, (size_t) sizeof(buf) - 1);
+	if (copy_from_user(buf, buffer, len))
+		return -EFAULT;
+	buf[len] = '\0';
+	if (len > 0 && buf[len - 1] == '\n')
+		buf[len - 1] = '\0';
+
+	for (i = 0; i < TESTMODES_SIZE; i++) {
+		slen = strlen(testmodes[i]);
+		if (!strncmp(buf, testmodes[i], slen)) {
+
+			/*clear the last testmode*/
+			val = ehci_readl(ehci, &ehci->regs->port_status[0])
+				& ~PORT_RWC_BITS;
+			val &= ~(PTC_MASK | PORT_RWC_BITS);
+			ehci_writel(ehci, val, &ehci->regs->port_status[0]);
+
+			/*issue the new testmode*/
+			val = ehci_readl(ehci, &ehci->regs->port_status[0]);
+			val |= (i << PTC_SHIFT) & PTC_MASK;
+			val &= ~PORT_RWC_BITS;
+			ehci_writel(ehci, val, &ehci->regs->port_status[0]);
+
+			status = 0;
+			break;
+		}
+	}
+	if (status >= 0)
+		return count;
+	else
+		return -EINVAL;
+}
+
 static inline void create_debug_files (struct ehci_hcd *ehci)
 {
 	struct usb_bus *bus = &ehci_to_hcd(ehci)->self;
@@ -1068,6 +1192,10 @@ static inline void create_debug_files (struct ehci_hcd *ehci)
 
 	if (!debugfs_create_file("registers", S_IRUGO, ehci->debug_dir, bus,
 						    &debug_registers_fops))
+		goto file_error;
+
+	if (!debugfs_create_file("testmode", S_IRUGO, ehci->debug_dir, bus,
+							&debug_testmodes_fops))
 		goto file_error;
 
 	return;

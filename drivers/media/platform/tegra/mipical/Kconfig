@@ -1,0 +1,11 @@
+config TEGRA_MIPI_CAL
+	depends on TEGRA_DC || TEGRA_CAMERA_PLATFORM
+	bool "Enable MIPI Cal driver"
+	default y
+	select REGMAP
+	select REGMAP_MMIO
+	help
+	  Provides an interfaces to do MIPI calibration for both DSI and CSI blocks.
+	  You will always want this enabled if you are using either Camera or Display.
+	  Disabling this can cause issues for drivers that depend on it being present.
+	  Leaving this on is harmless even if no drivers that need it are enabled.

@@ -1,0 +1,39 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-jetson-cv-p2597-2180-a00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	host1x {
+		dc@54200000 {
+			status = "disabled";
+		};
+
+		dc@54240000 {
+			nvidia,dc-or-node = "/host1x/sor1";
+		};
+	};
+
+	i2c@7000c400 {
+		lp8557-backlight-a-wuxga-8-0@2c {
+			status = "disabled";
+		};
+	};
+
+	backlight {
+		status = "disabled";
+	};
+};

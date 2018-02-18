@@ -4,6 +4,7 @@
  * This code is based on drivers/scsi/ufs/ufshcd.c
  * Copyright (C) 2011-2013 Samsung India Software Operations
  * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Authors:
  *	Santosh Yaraganavi <santosh.sy@samsung.com>
@@ -51,13 +52,19 @@
 
 /* NOP OUT retries waiting for NOP IN response */
 #define NOP_OUT_RETRIES    10
-/* Timeout after 30 msecs if NOP OUT hangs without response */
-#define NOP_OUT_TIMEOUT    30 /* msecs */
+/* Fix me: Need to fineTune the Value on silicon
+ * Timeout after 100 msecs if NOP OUT hangs without response
+ */
+
+#define NOP_OUT_TIMEOUT    100 /* msecs */
 
 /* Query request retries */
 #define QUERY_REQ_RETRIES 10
-/* Query request timeout */
-#define QUERY_REQ_TIMEOUT 30 /* msec */
+/* Query request timeout
+ * Fix me: Need to fineTune the Value on silicon
+ * Timeout after 100 msecs if Query Request hangs without response
+ */
+#define QUERY_REQ_TIMEOUT 100 /* msec */
 
 /* Task management command timeout */
 #define TM_CMD_TIMEOUT	100 /* msecs */
@@ -1073,12 +1080,14 @@ static void ufshcd_disable_intr(struct ufs_hba *hba, u32 intrs)
  * @upiu_flags: flags required in the header
  * @cmd_dir: requests data direction
  */
-static void ufshcd_prepare_req_desc_hdr(struct ufshcd_lrb *lrbp,
-		u32 *upiu_flags, enum dma_data_direction cmd_dir)
+static void ufshcd_prepare_req_desc_hdr(struct ufs_hba *hba,
+		struct ufshcd_lrb *lrbp, u32 *upiu_flags,
+		enum dma_data_direction cmd_dir)
 {
 	struct utp_transfer_req_desc *req_desc = lrbp->utr_descriptor_ptr;
 	u32 data_direction;
 	u32 dword_0;
+	int utrd_command_type;
 
 	if (cmd_dir == DMA_FROM_DEVICE) {
 		data_direction = UTP_DEVICE_TO_HOST;
@@ -1091,7 +1100,13 @@ static void ufshcd_prepare_req_desc_hdr(struct ufshcd_lrb *lrbp,
 		*upiu_flags = UPIU_CMD_FLAGS_NONE;
 	}
 
-	dword_0 = data_direction | (lrbp->command_type
+	/* UFS host version_2 supports only 0x1(UFS) as a utrd command type*/
+	if (hba->ufs_version == UFSHCI_VERSION_20)
+		utrd_command_type = UTP_CMD_TYPE_UFS;
+	else
+		utrd_command_type = lrbp->command_type;
+
+	dword_0 = data_direction | (utrd_command_type
 				<< UPIU_COMMAND_TYPE_OFFSET);
 	if (lrbp->intr_cmd)
 		dword_0 |= UTP_REQ_DESC_INT_CMD;
@@ -1197,7 +1212,7 @@ static int ufshcd_compose_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	switch (lrbp->command_type) {
 	case UTP_CMD_TYPE_SCSI:
 		if (likely(lrbp->cmd)) {
-			ufshcd_prepare_req_desc_hdr(lrbp, &upiu_flags,
+			ufshcd_prepare_req_desc_hdr(hba, lrbp, &upiu_flags,
 					lrbp->cmd->sc_data_direction);
 			ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
 		} else {
@@ -1205,7 +1220,7 @@ static int ufshcd_compose_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		}
 		break;
 	case UTP_CMD_TYPE_DEV_MANAGE:
-		ufshcd_prepare_req_desc_hdr(lrbp, &upiu_flags, DMA_NONE);
+		ufshcd_prepare_req_desc_hdr(hba, lrbp, &upiu_flags, DMA_NONE);
 		if (hba->dev_cmd.type == DEV_CMD_TYPE_QUERY)
 			ufshcd_prepare_utp_query_req_upiu(
 					hba, lrbp, upiu_flags);
@@ -2787,7 +2802,6 @@ static int ufshcd_slave_alloc(struct scsi_device *sdev)
 
 	/* Mode sense(6) is not supported by UFS, so use Mode sense(10) */
 	sdev->use_10_for_ms = 1;
-	scsi_set_tag_type(sdev, MSG_SIMPLE_TAG);
 
 	/* allow SCSI layer to restart the device in case of errors */
 	sdev->allow_restart = 1;

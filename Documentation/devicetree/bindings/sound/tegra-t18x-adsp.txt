@@ -1,0 +1,26 @@
+Tegra ADSP bindings
+-------------------
+
+These are additional bindings compared to exiting ADSP bindings.
+
+Required properties:
+ - compatible:			should be set to "nvidia,tegra18x-adsp" for native or
+				should be set to "nvidia,tegra18x-adsp-hv" for HV for t18x
+
+Optional properties:
+- nvidia,adsp_os_secload: shall be added when boot-loader has securely loaded
+	adsp firmware image into carve out memory.
+
+Example:
+	adsp {
+             compatible = "nvidia,tegra18x-adsp";
+	     ...
+	     nvidia,adsp_os_secload;
+	};
+	or
+	adsp {
+             compatible = "nvidia,tegra18x-adsp-hv";
+	     ...
+	     nvidia,adsp_os_secload;
+	};
+

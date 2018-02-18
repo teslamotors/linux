@@ -1,6 +1,7 @@
 #
 # Makefile for the linux kernel.
 #
+obj-$(CONFIG_ARM_PSCI_FW)	+= psci.o
 obj-$(CONFIG_DMI)		+= dmi_scan.o
 obj-$(CONFIG_DMI_SYSFS)		+= dmi-sysfs.o
 obj-$(CONFIG_EDD)		+= edd.o
@@ -15,3 +16,4 @@ obj-$(CONFIG_FIRMWARE_MEMMAP)	+= memmap.o
 obj-$(CONFIG_GOOGLE_FIRMWARE)	+= google/
 obj-$(CONFIG_EFI)		+= efi/
 obj-$(CONFIG_UEFI_CPER)		+= efi/
+obj-$(CONFIG_TEGRA_BPMP)	+= tegra/

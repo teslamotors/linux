@@ -1,0 +1,109 @@
+/*
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/media/camera.h>
+
+/ {
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+		/**
+		* Physical settings to calculate max ISO BW
+		*
+		* num_csi_lanes = <>;
+		* Total number of CSI lanes when all cameras are active
+		*
+		* max_lane_speed = <>;
+		* Max lane speed in Kbit/s
+		*
+		* min_bits_per_pixel = <>;
+		* Min bits per pixel
+		*
+		* vi_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the VI ISO case
+		*
+		* vi_bw_margin_pct = <>;
+		* Vi bandwidth margin in percentage
+		*
+		* isp_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the ISP ISO case
+		*
+		* isp_bw_margin_pct = <>;
+		* Isp bandwidth margin in percentage
+		*/
+		num_csi_lanes = <2>;
+		max_lane_speed = <1500000>;
+		min_bits_per_pixel = <10>;
+		vi_peak_byte_per_pixel = <2>;
+		vi_bw_margin_pct = <25>;
+		isp_peak_byte_per_pixel = <2>;
+		isp_bw_margin_pct = <25>;
+	};
+
+	camera-pcl {
+		compatible = "nvidia,tegra210-camera", "simple-bus";
+		configuration = <0xAA55AA55>;
+
+		modules {
+			module1: module1@modules {
+				compatible = "sensor,front";
+				badge_info = "loki_front_P2528";
+
+				sensor {
+					profile = <&ov7695>;
+					platformdata = "t210ref_ov7695_pdata";
+				};
+			};
+		};
+
+		profiles {
+			ov7695: ov7695@6_0021 {
+				index = <1>;
+				chipname = "pcl_OV7695";
+				type = "sensor";
+				guid = "s_OV7695";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <6>;
+				addr = <0x21>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vif2";
+				drivername = "ov7695";
+				detect = <0x0002 0x300A 0xFFFF 0x7695>;
+				devid = <0x7695>;
+				poweron = <
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
+					CAMERA_WAITMS(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(40)
+					CAMERA_GPIO_SET(TEGRA_GPIO(S, 7))
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+		};
+	};
+};

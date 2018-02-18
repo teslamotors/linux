@@ -1,0 +1,126 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/ {
+	host1x {
+		sor1 {
+			prod-settings {
+				prod_c_dp {
+					    prod = <
+						0x0000005c 0xf0fff0ef 0x01000310	// SOR_NV_PDISP_SOR_PLL0_0	27:24=ICHPMP		0x01
+											//				11:08=VCOCAP		0x03
+											//				04:04=RESISTORSEL	0x01
+						0x00000060 0xfcfffeff 0x00000100	// SOR_NV_PDISP_SOR_PLL1_0	25:24=LVDSCM		0x00
+											//				08:08=TMDS_TERM		0x01
+						0x00000068 0xffffdfff 0x00002000	// SOR_NV_PDISP_SOR_PLL3_0	13:13=PLVVDD_MODE	0x01
+						0x00000070 0x00000000 0x00000000	// SOR_NV_PDISP_SOR_LVDS_0
+						0x00000180 0xfffffffe 0x00000001	// SOR_NV_PDISP_SOR_DP_SPARE0_0 00:00=SEQ_ENABLE	0x01
+					    >;
+				};
+			};
+		};
+	};
+	pinmux@70000868 {
+		prod-settings {
+			#prod-cells = <4>;
+			prod {
+				status = "disabled";
+				nvidia,prod-boot-init;
+				prod = <0 0x28 0x0E0E0FF3 0x00605008
+					0 0x2C 0x0E0E0FF3 0x00605008
+					0 0x30 0x0E0E0FF3 0x00605008
+					0 0x34 0x0E0E0FF3 0x00605008
+					0 0x130 0x0E0E0FF3 0x00605008
+					0 0x38 0x0E0E0FF3 0x0050500C
+					0 0x18 0x0F003FF3 0x0029400C
+					0 0xa8 0x0F003FF3 0x0029400C
+					0 0x94 0x0E0E0FF3 0x0050500C
+					0 0x00 0x0E0E0FF3 0x0050500C
+					0 0x58 0x0E0E0FF3 0xF0000000
+					0 0x5C 0x0E0E0FF3 0xF0000000
+					0 0x0C 0x08080F33 0x03F37000
+					0 0xbC 0x0E0E0FF3 0xF1717000
+					0 0x50 0x0E0E0FF3 0xF1717000>;
+			};
+		};
+	};
+
+	xusb@70090000 {
+		prod-settings {
+			#prod-cells = <4>;
+			prod {
+			    prod = <
+				3 0x000000b8 0xffffffe3 0x0000001c
+			    >;
+			};
+			prod_c_utmi0 {
+			    prod = <
+				3 0x000000a0 0xffff003f 0x0000c380
+			    >;
+			};
+			prod_c_utmi1 {
+			    prod = <
+				3 0x000000a4 0xffff003f 0x00000380
+			    >;
+			};
+			prod_c_utmi2 {
+			    prod = <
+				3 0x000000a8 0xffff003f 0x00000380
+			    >;
+			};
+			prod_c_ss0 {
+			    prod = <
+				3 0x00000058 0x0000000f 0x26f070f0
+				3 0x00000068 0x00000000 0x002008EE
+				3 0x00000078 0xcfffffff 0x10000000
+				3 0x00000090 0xfffffeff 0x00000100
+			    >;
+			};
+			prod_c_ss1 {
+			    prod = <
+				3 0x0000005c 0x0000000f 0x26f070f0
+				3 0x0000006c 0x00000000 0x002008EE
+				3 0x0000007c 0xcfffffff 0x10000000
+				3 0x00000094 0xfffffeff 0x00000100
+			    >;
+			};
+			prod_c_sata0 {
+			    prod = <
+				3 0x0000014c 0xcfffffff 0x10000000
+				3 0x00000158 0xfffffeff 0x00000100
+			    >;
+			};
+			prod_c_hsic0 {
+			    prod = <
+				3 0x000000d0 0xffffff00 0x00000011
+				3 0x000000c0 0xffff0000 0x0000008a
+				3 0x000000c8 0xfffffffe 0x00000001
+				3 0x000000e0 0xffffffc0 0x00000022
+			    >;
+			};
+			prod_c_hsic1 {
+			    prod = <
+				3 0x000000d4 0xffffff00 0x00000011
+				3 0x000000c4 0xffff0000 0x0000008a
+				3 0x000000cc 0xfffffffe 0x00000001
+				3 0x000000e0 0xffffffc0 0x00000022
+			    >;
+			};
+		};
+	};
+};

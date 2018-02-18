@@ -1,0 +1,68 @@
+Device tree binding for NVIDIA Tegra186 DPAUX PINCTL
+====================================================
+
+The Tegra186 DPAUX PINCTL driver manages the DPAUX muxing
+
+This document defines the device-specific binding for the Tegra186 DPAUX PINCTL
+driver. This driver models dpaux pins to be muxed as either in I2C or DISPLAY.
+
+Refer to pinctrl-bindings.txt in this directory for generic information about
+pin controller device tree bindings.
+
+Required properties:
+--------------------
+- compatible: Must be "nvidia,tegra186-dpaux-pinctrl" or
+		"nvidia,tegra186-dpaux1-pinctrl"
+the dpaux node should be updated with the compatible string:
+		"nvidia,tegra186-dpaux-padctl" or
+		"nvidia,tegra186-dpaux1-padctl" respectively.
+
+Optional Pinmux properties:
+--------------------------
+Following properties are required if default setting of pins are required
+at boot.
+- pinctrl-names: A pinctrl state named per <pinctrl-binding.txt>.
+- pinctrl[0...n]: Properties to contain the phandle for pinctrl states per
+		<pinctrl-binding.txt>.
+
+The pin configurations are defined as child of the pinctrl states node. Each
+sub-node have following properties:
+
+Required properties:
+------------------
+- pins: List of pins. Valid values of pins properties are:
+		dpaux1-1, dpaux-0
+
+Valid values for function properties are: i2c, display
+
+Child nodes contain the pinmux configurations following the conventions from
+the pinctrl-bindings.txt document. Typically a single, static configuration is
+given and applied at boot time.
+
+Example:
+========
+
+Board file extract:
+-------------------
+
+	# DPAUX1 muxed to I2C mode
+	host1x {
+		...
+		dpaux@15040000 {
+		...
+		compatible = "nvidia,tegra186-dpaux1-padctl";
+		pinctrl-names = "default";
+		pinctrl-0 = <&dpaux_default>;
+		dpaux_default: pinmux@0 {
+			dpaux1_pins {
+				pins = "dpaux1-1";
+				function = "i2c";
+			};
+		};
+		...
+	}
+	...
+	dpaux1 {
+		compatible = "nvidia,tegra186-dpaux1-pinctrl";
+		status = "okay";
+	};

@@ -672,7 +672,6 @@ static int io_init(struct ubi_device *ubi, int max_beb_per1024)
 	}
 
 	if (ubi->mtd->type == MTD_NORFLASH) {
-		ubi_assert(ubi->mtd->writesize == 1);
 		ubi->nor_flash = 1;
 	}
 

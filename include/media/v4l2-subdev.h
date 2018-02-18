@@ -40,6 +40,8 @@
 #define V4L2_SUBDEV_IR_TX_NOTIFY		_IOW('v', 1, u32)
 #define V4L2_SUBDEV_IR_TX_FIFO_SERVICE_REQ	0x00000001
 
+#define	V4L2_DEVICE_NOTIFY_EVENT		_IOW('v', 2, struct v4l2_event)
+
 struct v4l2_device;
 struct v4l2_ctrl_handler;
 struct v4l2_event_subscription;
@@ -484,6 +486,18 @@ struct v4l2_subdev_ir_ops {
 				struct v4l2_subdev_ir_parameters *params);
 };
 
+/*
+ * Used for storing subdev pad information. This structure only needs
+ * to be passed to the pad op if the 'which' field of the main argument
+ * is set to V4L2_SUBDEV_FORMAT_TRY. For V4L2_SUBDEV_FORMAT_ACTIVE it is
+ * safe to pass NULL.
+ */
+struct v4l2_subdev_pad_config {
+	struct v4l2_mbus_framefmt try_fmt;
+	struct v4l2_rect try_crop;
+	struct v4l2_rect try_compose;
+};
+
 /**
  * struct v4l2_subdev_pad_ops - v4l2-subdev pad level operations
  * @get_frame_desc: get the current low level media bus frame parameters.
@@ -610,6 +624,8 @@ struct v4l2_subdev {
 	struct video_device *devnode;
 	/* pointer to the physical device, if any */
 	struct device *dev;
+	/* The device_node of the subdev, usually the same as dev->of_node. */
+	struct device_node *of_node;
 	/* Links this subdev to a global subdev_list or @notifier->done list. */
 	struct list_head async_list;
 	/* Pointer to respective struct v4l2_async_subdev. */

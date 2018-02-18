@@ -1,0 +1,19 @@
+GCOV_PROFILE := y
+ccflags-y += -I../nvhost/drivers/video/tegra/host
+ccflags-y += -Idrivers/video/tegra/host
+ccflags-y += -Werror
+
+ifeq ($(CONFIG_ARCH_TEGRA_18x_SOC),y)
+ccflags-y += -I../nvhost-t18x/drivers/video/tegra/host/
+endif
+
+
+nvhost-vhost-objs  = \
+	vhost.o \
+	vhost_intr.o \
+	vhost_syncpt.o \
+	vhost_channel.o \
+	vhost_cdma.o \
+	vhost_client.o
+
+obj-$(CONFIG_TEGRA_GRHOST) += nvhost-vhost.o

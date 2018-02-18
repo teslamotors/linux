@@ -1,0 +1,133 @@
+/*
+ * T210- DSC
+ *
+ * arch/arm64/boot/dts/tegra210-vcm30t210.dts
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra210-ers-e2220-1170-a00-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,fastboot-usb-pid = <0x7100>;
+
+	spi@7000d400 {
+		earSmart: earSmart-codec@0 {
+			adnc,gpiob-gpio = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	spi@7000d600 {
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+	spi@7000d800 {
+		compatible = "nvidia,tegra210-spi-slave";
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@7000da00 {
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@70410000 {
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <1>;
+			spi-max-frequency = <133000000>;
+
+			controller-data {
+				nvidia,x1-len-limit = <16>;
+				nvidia,x1-bus-speed = <50>; /* In Mhz */
+				nvidia,x1-dymmy-cycle = <0>;
+				nvidia,x4-bus-speed = <80>;
+				nvidia,x4-dymmy-cycle = <8>;
+			};
+
+		};
+
+		spiflash@1 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "s25fs512s";
+			reg = <0>;
+			spi-max-frequency = <133000000>;
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000000 0x1000000>;
+			};
+			controller-data {
+				nvidia,x1-len-limit = <16>;
+				nvidia,x1-bus-speed = <50>; /* In Mhz */
+				nvidia,x1-dymmy-cycle = <0>;
+				nvidia,x4-bus-speed = <80>;
+				nvidia,x4-dymmy-cycle = <8>;
+			};
+		};
+	};
+
+	pinmux: pinmux@700008d4 {
+		pinmux_default: common {
+
+			dvfs_pwm_pbb1 {
+				nvidia,function = "spi3";
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			dvfs_clk_pbb2 {
+				nvidia,function = "spi3";
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			gpio_x1_aud_pbb3 {
+				nvidia,function = "spi3";
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			gpio_x3_aud_pbb4 {
+				nvidia,function = "spi3";
+			};
+
+			qspi_cs_n_pee1 {
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			qspi_io2_pee4 {
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+		};
+	};
+
+};

@@ -3,6 +3,7 @@
  *
  * This code is based on drivers/scsi/ufs/ufshci.h
  * Copyright (C) 2011-2013 Samsung India Software Operations
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Authors:
  *	Santosh Yaraganavi <santosh.sy@samsung.com>
@@ -91,6 +92,7 @@ enum {
 enum {
 	UFSHCI_VERSION_10 = 0x00010000,
 	UFSHCI_VERSION_11 = 0x00010100,
+	UFSHCI_VERSION_20 = 0x00000200,
 };
 
 /*

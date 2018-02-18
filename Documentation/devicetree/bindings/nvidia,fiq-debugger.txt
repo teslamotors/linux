@@ -1,0 +1,18 @@
+NVIDIA FIQ debugger for Tegra
+
+Required properties:
+- compatible: this driver is compatible with "nvidia,fiq-debugger"
+
+Optional properties:
+- use-console-port: the driver will search for serial port with property
+		"console-port" to attach the debugger's console
+- use-wdt-irq: the driver will use watchdog's IRQ as a FIQ source
+- interrupts: interrupt can be specified explicitly
+- reg: the uart register space can be specified explicitly
+
+Example:
+	tegra_fiq_debugger {
+		compatible = "nvidia,fiq-debugger";
+		use-console-port;
+		interrupts = <0 123 0x4>; /* or, alternatively, use-wdt-irq; */
+	};

@@ -1,0 +1,19 @@
+config SND_SOC_TEGRA_VIRT_ALT
+        tristate "IVC client for Tegra virt audio"
+        depends on TEGRA_HV_MANAGER
+        help
+	  Say Y or M here if you want to add support for tegra virtual ivc communication
+	  for audio client. This ivc communication module is common for all virtualized
+	  tegra platforms. This is used by both pcm and control interfaces. This module
+	  uses hypervisor IVC APIs for communication with audio server.
+
+config SND_SOC_TEGRA_VIRT_T210REF_PCM
+	tristate "Tegra210 virt PCM driver"
+	depends on TEGRA_HV_MANAGER
+	depends on SND_SOC_TEGRA_ALT
+	select SND_SOC_TEGRA_VIRT_ALT
+	help
+	  Say Y or M if you want to add support for Tegra210 para-virtualized PCM audio.
+	  The pcm driver exposes a number of playback and capture pcm interfaces. It uses
+	  the native pcm driver for dma interface and ivc communication module for ivc.
+	  The number of interfaces exposed is configurable via device tree.

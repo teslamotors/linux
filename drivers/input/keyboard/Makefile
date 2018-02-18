@@ -1,6 +1,7 @@
 #
 # Makefile for the input core drivers.
 #
+GCOV_PROFILE_tegra-kbc.o := y
 
 # Each configuration option enables a list of files.
 
@@ -55,6 +56,7 @@ obj-$(CONFIG_KEYBOARD_STOWAWAY)		+= stowaway.o
 obj-$(CONFIG_KEYBOARD_ST_KEYSCAN)	+= st-keyscan.o
 obj-$(CONFIG_KEYBOARD_SUNKBD)		+= sunkbd.o
 obj-$(CONFIG_KEYBOARD_TC3589X)		+= tc3589x-keypad.o
+CFLAGS_tegra-kbc.o			= -Werror
 obj-$(CONFIG_KEYBOARD_TEGRA)		+= tegra-kbc.o
 obj-$(CONFIG_KEYBOARD_TWL4030)		+= twl4030_keypad.o
 obj-$(CONFIG_KEYBOARD_XTKBD)		+= xtkbd.o

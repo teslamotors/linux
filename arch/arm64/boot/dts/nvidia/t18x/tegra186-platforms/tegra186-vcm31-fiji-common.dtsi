@@ -1,0 +1,105 @@
+/*
+ * tegra186-vcm31-fiji-common.dtsi: fiji common dts
+ * file
+ *
+ * Copyright (c) 2016-2017, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-vcm31-p2379-common.dtsi"
+#include "tegra186-vcm31-62379-disp.dtsi"
+#include "../tegra186-prod/tegra186-priv-vcm31-p2379-0000-c01-00-prod-a.dtsi"
+
+/ {
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+
+	/*Redefine USB ports */
+	padctl: pinctrl@3520000 {
+		p2379_default: pinmux {
+
+			/delete-node/ usb2-ftdi-hub-port1;
+
+			usb2-std-A-port1 {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port1 {
+				nvidia,lanes = "usb3-0";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+		};
+	};
+	external-connection {
+		id_gpio_extcon: extcon@0 {
+			/* Set OTG port as Host */
+			extcon-gpio,default-connected;
+		};
+	};
+	/*only HOST mode */
+	xudc@3550000 {
+		status = "disabled";
+	};
+
+	/* HOST mode for USB2A, USB3A */
+	xhci@3530000 {
+		phys = <&padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+				 <&padctl TEGRA_PADCTL_PHY_USB3_P(0)>;
+		phy-names = "utmi-0", "usb3-0";
+	};
+
+	/* remove isc mgr */
+	/delete-node/ isc-mgr.0;
+	/delete-node/ isc-mgr.1;
+	/delete-node/ isc-mgr.2;
+
+	/*  Remove DSI display, disable hot-plug for hdmi1. hdmi1 is enabled only for I2C4 */
+	host1x {
+		nvdisplay@15210000 {
+			status = "disabled";
+		};
+		nvdisplay@15220000 {
+			status = "disabled";
+		};
+		sor1 {
+			status = "disabled";
+		};
+		/delete-node/ dsi;
+	};
+	i2c@3190000 { //i2c7,
+	};
+	i2c@31c0000 {
+		/delete-node/ max9291@40;
+		/delete-node/ sn65dsi85@2c;
+		/delete-node/ ds90ub947-q1@0C;
+	};
+	spi1: spi@c260000 {
+		status = "disabled";
+	};
+	spi2: spi@3230000 {
+		status = "disabled";
+	};
+	spi3: spi@3240000 {
+		status = "disabled";
+	};
+	pwm-fan {
+		/delete-property/ pwm_pin;
+		/delete-property/ pwm_pin_group;
+		status = "disabled";
+	};
+	thermal-fan-est {
+		status = "disabled";
+	};
+};

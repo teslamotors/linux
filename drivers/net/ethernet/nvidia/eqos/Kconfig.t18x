@@ -1,0 +1,41 @@
+# Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms and conditions of the GNU General Public License,
+# version 2, as published by the Free Software Foundation.
+#
+# This program is distributed in the hope it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+
+config EQOS
+	tristate "NVIDIA Tegra Ethernet QOS driver"
+	default n
+
+	---help---
+	  If you have a network (Ethernet) card belonging to this class, say Y
+	  and read the Ethernet-HOWTO, available from
+	  <http://www.tldp.org/docs.html#howto>.
+
+	  Note that the answer to this question doesn't directly affect the
+	  kernel: saying N will just cause the configurator to skip all
+	  the questions about NVIDIA cards. If you say Y, you will be asked for
+	  your specific card in the following questions.
+
+config DISABLE_VLAN_FWD_TO_REAL_IF
+	bool "Disable VLAN RX Packet forwarding to Real ethernet Interface"
+	depends on EQOS
+	default n
+
+	---help---
+		This disables support to forward VLAN tagged packets to the
+		Real interface. If enabled, VLAN tagged packets are only forwarded
+		to the Virtual interface.
+
+		If unsure, say n.
+
+config DEBUGFS_OBJ
+	bool "Enable DEBUGFS_OBJ"
+	depends on EQOS
+	default n

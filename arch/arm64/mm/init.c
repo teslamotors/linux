@@ -41,9 +41,16 @@
 #include <asm/tlb.h>
 #include <asm/alternative.h>
 
+#include <asm/mach/arch.h>
+
 #include "mm.h"
 
+/* FIXME */
+#if !defined(CONFIG_MACH_EXUMA) && !defined(CONFIG_MACH_GRENADA)
 phys_addr_t memstart_addr __read_mostly = 0;
+#else
+phys_addr_t memstart_addr __read_mostly = 0x80000000;
+#endif
 
 #ifdef CONFIG_BLK_DEV_INITRD
 static int __init early_initrd(char *p)
@@ -114,9 +121,11 @@ static void __init zone_sizes_init(unsigned long min, unsigned long max)
 }
 
 #ifdef CONFIG_HAVE_ARCH_PFN_VALID
+#define PFN_MASK ((1UL << (64 - PAGE_SHIFT)) - 1)
+
 int pfn_valid(unsigned long pfn)
 {
-	return memblock_is_memory(pfn << PAGE_SHIFT);
+	return (pfn & PFN_MASK) == pfn && memblock_is_memory(pfn << PAGE_SHIFT);
 }
 EXPORT_SYMBOL(pfn_valid);
 #endif
@@ -126,7 +135,7 @@ static void arm64_memory_present(void)
 {
 }
 #else
-static void arm64_memory_present(void)
+static void __init arm64_memory_present(void)
 {
 	struct memblock_region *reg;
 
@@ -151,6 +160,12 @@ void __init arm64_memblock_init(void)
 #endif
 
 	early_init_fdt_scan_reserved_mem();
+
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
+	/* reserve any platform specific memblock areas */
+	if (machine_desc->reserve)
+		machine_desc->reserve();
+#endif
 
 	/* 4GB maximum for 32-bit only capable devices */
 	if (IS_ENABLED(CONFIG_ZONE_DMA))
@@ -325,6 +340,7 @@ void __init mem_init(void)
 
 void free_initmem(void)
 {
+	fixup_init();
 	free_initmem_default(0);
 	free_alternatives_memory();
 }

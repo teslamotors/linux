@@ -1,0 +1,46 @@
+Maxim touch.
+
+Required properties:
+- compatible.
+- reg.
+- spi-max-frequency.
+- interrupt-parent.
+- interrupts.
+- maxim_sti,reset-gpio.
+- maxim_sti,touch_fusion.
+- maxim_sti,config_file.
+- maxim_sti,fw_name.
+- maxim_sti,nl_family.
+- maxim_sti,nl_mc_groups.
+- maxim_sti,chip_access_method.
+- maxim_sti,default_reset_state.
+- maxim_sti,tx_buf_size.
+- maxim_sti,rx_buf_size.
+
+Sample:
+	spi@7000d400 {
+		maxim_sti@0 {
+			status = "okay";
+			compatible = "maxim,maxim_sti";
+			spi-max-frequency = <12000000>;
+			reg = <0>; /* chip select */
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(K, 2) 0x02>;
+			maxim_sti,reset-gpio = <TEGRA_GPIO(K, 4)>;
+			maxim_sti,touch_fusion = "/vendor/bin/touch_fusion";
+			maxim_sti,config_file = "/vendor/firmware/touch_fusion.cfg";
+			maxim_sti,fw_name = "maxim_fp35.bin";
+			maxim_sti,nl_family = "touch_fusion";
+			maxim_sti,nl_mc_groups = <5>;
+			maxim_sti,chip_access_method = <2>;
+			maxim_sti,default_reset_state = <0>;
+			maxim_sti,tx_buf_size = <4100>;
+			maxim_sti,rx_buf_size = <4100>;
+			controller-data {
+				nvidia,enable-hw-based-cs;
+				nvidia,rx-clk-tap-delay = <0>;
+				nvidia,tx-clk-tap-delay = <0>;
+			};
+		};
+	};
+

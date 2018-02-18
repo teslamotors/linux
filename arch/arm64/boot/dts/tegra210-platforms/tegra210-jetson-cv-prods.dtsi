@@ -1,0 +1,201 @@
+/*
+ * Copyright (c) 2015-2017, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/ {
+	pinmux@700008d4 {
+		prod-settings {
+			i2c0_override_prod {
+				nvidia,prod-boot-init;
+				prod = <
+					0 0x0D4 0xFFFE0FFF 0x00000000
+					0 0x0D8 0xFFFE0FFF 0x00000000
+				>;
+			};
+			i2c1_override_prod {
+				nvidia,prod-boot-init;
+				prod = <
+					0 0x0DC 0xFFFE0FFF 0x00000000
+					0 0x0E0 0xFFFE0FFF 0x00000000
+				>;
+			};
+			i2c2_override_prod {
+				nvidia,prod-boot-init;
+				prod = <
+					0 0x0E4 0xFFFE0FFF 0x00000000
+					0 0x0E8 0xFFFE0FFF 0x00000000
+				>;
+			};
+			i2c4_override_prod {
+				nvidia,prod-boot-init;
+				prod = <
+					0 0x198 0xFFFE0FFF 0x00000000
+					0 0x19C 0xFFFE0FFF 0x00000000
+					1 0x0DC 0xFFFFFEFF 0x00000100
+					1 0x0E0 0xFFFFFEFF 0x00000100
+				>;
+			};
+		};
+	};
+
+	i2c@7000c700 {
+		prod-settings {
+			#prod-cells = <3>;
+			mask-one-style;
+			prod_i2c_sm {
+				prod = <
+					0x0000006C 0xFFFFFFFF 0x00140002
+					0x00000094 0x00003F00 0x00000400
+				>;
+			};
+		};
+	};
+	host1x {
+		sor1 {
+			prod-settings {
+				prod_list_hdmi_board = "prod_c_hdmi_0m_54m", "prod_c_hdmi_54m_75m",
+				                       "prod_c_hdmi_75m_150m", "prod_c_hdmi_150m_300m",
+				                       "prod_c_hdmi_300m_600m";
+				prod_c_hdmi_0m_54m {
+					board {
+						prod = <
+							0x0000005c 0xf0fff8ff 0x01000000        // SOR_NV_PDISP_SOR_PLL0_0      11:08=VCOCAP            0x0
+												//                              27:24=ICHPMP            0x1
+							0x00000060 0xff0fe0ff 0x00301300        // SOR_NV_PDISP_SOR_PLL1_0      08:08=TMDS_TERM         0x1
+												//                              12:09=TMDS_TERMADJ      0x9
+												//                              23:20=LOADADJ           0x3
+							0x00000068 0xf0ffffff 0x08000000        // SOR_NV_PSIDP_SOR_PLL3_0      27:24=BG_VREF_LEVEL     0x8
+							0x00000138 0x00000000 0x333A3A3A        // SOR_NV_PDISP_SOR_LANE_DRIVE_CURRENT0_0
+												//                              31:24=LANE3_DP_LANE3    0x33
+												//                              23:16=LANE2_DP_LANE0    0x3A
+												//                              15:08=LANE1_DP_LANE1    0x3A
+												//                              07:00=LANE0_DP_LANE2    0x3A
+							0x00000148 0x00000000 0x00000000        // SOR_NV_PDISP_SOR_LANE_PREEMPHASIS0_0
+												//                              31:24=LANE3_DP_LANE3    0x00
+												//                              23:16=LANE2_DP_LANE0    0x00
+												//                              15:08=LANE1_DP_LANE1    0x00
+												//                              07:00=LANE0_DP_LANE2    0x00
+							0x00000170 0xffbf00ff 0x00401000        // SOR_NV_PDISP_SOR_DP_PADCTL0_0
+												//                              22:22=TX_PU             0x1
+												//                              15:08=TX_PU_VALUE       0x10
+						>;
+					};
+				};
+				prod_c_hdmi_54m_75m {
+					board {
+						prod = <
+							0x0000005c 0xf0fff8ff 0x01000100	// SOR_NV_PDISP_SOR_PLL0_0	11:08=VCOCAP		0x1
+												//				27:24=ICHPMP		0x1
+							0x00000060 0xff0fe0ff 0x00301300	// SOR_NV_PDISP_SOR_PLL1_0	08:08=TMDS_TERM		0x1
+												//				12:09=TMDS_TERMADJ	0x9
+												//				23:20=LOADADJ		0x3
+							0x00000068 0xf0ffffff 0x08000000	// SOR_NV_PSIDP_SOR_PLL3_0	27:24=BG_VREF_LEVEL	0x8
+							0x00000138 0x00000000 0x333A3A3A	// SOR_NV_PDISP_SOR_LANE_DRIVE_CURRENT0_0
+												//				31:24=LANE3_DP_LANE3	0x33
+												//				23:16=LANE2_DP_LANE0	0x3A
+												//				15:08=LANE1_DP_LANE1	0x3A
+												//				07:00=LANE0_DP_LANE2	0x3A
+							0x00000148 0x00000000 0x00000000	// SOR_NV_PDISP_SOR_LANE_PREEMPHASIS0_0
+												//				31:24=LANE3_DP_LANE3	0x00
+												//				23:16=LANE2_DP_LANE0	0x00
+												//				15:08=LANE1_DP_LANE1	0x00
+												//				07:00=LANE0_DP_LANE2	0x00
+							0x00000170 0xffbf00ff 0x00404000	// SOR_NV_PDISP_SOR_DP_PADCTL0_0
+												//				22:22=TX_PU		0x1
+												//				15:08=TX_PU_VALUE	0x40
+						>;
+					};
+				};
+				prod_c_hdmi_75m_150m {
+					board {
+						prod = <
+							0x0000005c 0xf0fff8ff 0x01000300	// SOR_NV_PDISP_SOR_PLL0_0	11:08=VCOCAP		0x3
+												//				27:24=ICHPMP		0x1
+							0x00000060 0xff0fe0ff 0x00301300	// SOR_NV_PDISP_SOR_PLL1_0	08:08=TMDS_TERM		0x1
+												//				12:09=TMDS_TERMADJ	0x9
+												//				23:20=LOADADJ		0x3
+							0x00000068 0xf0ffffff 0x08000000	// SOR_NV_PSIDP_SOR_PLL3_0	27:24=BG_VREF_LEVEL	0x8
+							0x00000138 0x00000000 0x333A3A3A	// SOR_NV_PDISP_SOR_LANE_DRIVE_CURRENT0_0
+												//				31:24=LANE3_DP_LANE3	0x33
+												//				23:16=LANE2_DP_LANE0	0x3A
+												//				15:08=LANE1_DP_LANE1	0x3A
+												//				07:00=LANE0_DP_LANE2	0x3A
+							0x00000148 0x00000000 0x00000000	// SOR_NV_PDISP_SOR_LANE_PREEMPHASIS0_0
+												//				31:24=LANE3_DP_LANE3	0x00
+												//				23:16=LANE2_DP_LANE0	0x00
+												//				15:08=LANE1_DP_LANE1	0x00
+												//				07:00=LANE0_DP_LANE2	0x00
+							0x00000170 0xffbf00ff 0x00406600	// SOR_NV_PDISP_SOR_DP_PADCTL0_0
+												//				22:22=TX_PU		0x1
+												//				15:08=TX_PU_VALUE	0x66
+						>;
+					};
+				};
+				prod_c_hdmi_150m_300m {
+					board {
+						prod = <
+							0x0000005c 0xf0fff8ff 0x01000300	// SOR_NV_PDISP_SOR_PLL0_0	11:08=VCOCAP		0x3
+												//				27:24=ICHPMP		0x1
+							0x00000060 0xff0fe0ff 0x00301300	// SOR_NV_PDISP_SOR_PLL1_0	08:08=TMDS_TERM		0x1
+												//				12:09=TMDS_TERMADJ	0x9
+												//				23:20=LOADADJ		0x3
+							0x00000068 0xf0ffffff 0x0A000000	// SOR_NV_PSIDP_SOR_PLL3_0	27:24=BG_VREF_LEVEL	0xA
+							0x00000138 0x00000000 0x333F3F3F	// SOR_NV_PDISP_SOR_LANE_DRIVE_CURRENT0_0
+												//				31:24=LANE3_DP_LANE3	0x33
+												//				23:16=LANE2_DP_LANE0	0x3F
+												//				15:08=LANE1_DP_LANE1	0x3F
+												//				07:00=LANE0_DP_LANE2	0x3F
+							0x00000148 0x00000000 0x00171717	// SOR_NV_PDISP_SOR_LANE_PREEMPHASIS0_0
+												//				31:24=LANE3_DP_LANE3	0x00
+												//				23:16=LANE2_DP_LANE0	0x17
+												//				15:08=LANE1_DP_LANE1	0x17
+												//				07:00=LANE0_DP_LANE2	0x17
+							0x00000170 0xffbf00ff 0x00406600	// SOR_NV_PDISP_SOR_DP_PADCTL0_0
+												//				22:22=TX_PU		0x1
+												//				15:08=TX_PU_VALUE	0x66
+						>;
+					};
+				};
+				prod_c_hdmi_300m_600m {
+					board {
+						prod = <
+							0x0000005c 0xf0fff8ff 0x01000300	// SOR_NV_PDISP_SOR_PLL0_0	11:08=VCOCAP		0x3
+												//				27:24=ICHPMP		0x1
+							0x00000060 0xff0fe0ff 0x00301F00	// SOR_NV_PDISP_SOR_PLL1_0	08:08=TMDS_TERM		0x1
+												//				12:09=TMDS_TERMADJ	0xF
+												//				23:20=LOADADJ		0x3
+							0x00000068 0xf0ffffff 0x08000000	// SOR_NV_PSIDP_SOR_PLL3_0	27:24=BG_VREF_LEVEL	0x8
+							0x00000138 0x00000000 0x333E3E3E	// SOR_NV_PDISP_SOR_LANE_DRIVE_CURRENT0_0
+												//				31:24=LANE3_DP_LANE3	0x33
+												//				23:16=LANE2_DP_LANE0	0x3E
+												//				15:08=LANE1_DP_LANE1	0x3E
+												//				07:00=LANE0_DP_LANE2	0x3E
+							0x00000148 0x00000000 0x00070707	// SOR_NV_PDISP_SOR_LANE_PREEMPHASIS0_0
+												//				31:24=LANE3_DP_LANE3	0x00
+												//				23:16=LANE2_DP_LANE0	0x07
+												//				15:08=LANE1_DP_LANE1	0x07
+												//				07:00=LANE0_DP_LANE2	0x07
+							0x00000170 0xffbf00ff 0x00406600	// SOR_NV_PDISP_SOR_DP_PADCTL0_0
+												//				22:22=TX_PU		0x1
+												//				15:08=TX_PU_VALUE	0x66
+						>;
+					};
+				};
+			};
+		};
+	};
+};

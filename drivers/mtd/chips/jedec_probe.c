@@ -68,6 +68,7 @@
 #define MBM29LV800TA	0x22DA
 #define MBM29LV400TC	0x22B9
 #define MBM29LV400BC	0x22BA
+#define MSP14LV320      0x227E
 
 /* Hyundai */
 #define HY29F002T	0x00B0
@@ -284,7 +285,7 @@ struct amd_flash_info {
 #define SIZE_2MiB   21
 #define SIZE_4MiB   22
 #define SIZE_8MiB   23
-
+#define SIZE_512MiB 29
 
 /*
  * Please keep this list ordered by manufacturer!
@@ -1872,6 +1873,17 @@ static const struct amd_flash_info jedec_table[] = {
 			ERASEINFO(0x02000, 2),
 			ERASEINFO(0x04000, 1),
 		}
+	}, {
+		.mfr_id		= CFI_MFR_AMD,
+		.dev_id		= MSP14LV320,
+		.name		= "FDI NOR MV14LV320",
+		.devtypes	= CFI_DEVICETYPE_X16,
+		.uaddr		= MTD_UADDR_0x0AAA_0x0554, /* x16 */
+		.dev_size	= SIZE_512MiB,
+		.cmd_set	= P_ID_AMD_STD,
+		.nr_regions	= 1,
+		.regions	= {
+			ERASEINFO(0x40000, 2048),																	}
 	}
 };
 

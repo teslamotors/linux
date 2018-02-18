@@ -3,6 +3,7 @@
  *
  * Copyright (C) 1995-1999 Russell King
  * Copyright (C) 2012 ARM Ltd.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -33,6 +34,7 @@
 #include <asm/hw_breakpoint.h>
 #include <asm/ptrace.h>
 #include <asm/types.h>
+#include <asm/relaxed.h>
 
 #ifdef __KERNEL__
 #define STACK_TOP_MAX		TASK_SIZE_64
@@ -76,12 +78,29 @@ struct cpu_context {
 
 struct thread_struct {
 	struct cpu_context	cpu_context;	/* cpu context */
-	unsigned long		tp_value;
+	unsigned long		tp_value;	/* TLS register */
+#ifdef CONFIG_COMPAT
+	unsigned long		tp2_value;
+#endif
 	struct fpsimd_state	fpsimd_state;
 	unsigned long		fault_address;	/* fault info */
 	unsigned long		fault_code;	/* ESR_EL1 value */
 	struct debug_info	debug;		/* debugging */
 };
+
+#ifdef CONFIG_COMPAT
+#define task_user_tls(t)						\
+({									\
+	unsigned long *__tls;						\
+	if (is_compat_thread(task_thread_info(t)))			\
+		__tls = &(t)->thread.tp2_value;				\
+	else								\
+		__tls = &(t)->thread.tp_value;				\
+	__tls;								\
+ })
+#else
+#define task_user_tls(t)	(&(t)->thread.tp_value)
+#endif
 
 #define INIT_THREAD  {	}
 
@@ -131,6 +150,8 @@ unsigned long get_wchan(struct task_struct *p);
 #define cpu_relax()			barrier()
 #define cpu_relax_lowlatency()                cpu_relax()
 
+#define cpu_read_relax()		wfe()
+
 /* Thread switching */
 extern struct task_struct *cpu_switch_to(struct task_struct *prev,
 					 struct task_struct *next);
@@ -147,13 +168,13 @@ extern struct task_struct *cpu_switch_to(struct task_struct *prev,
 #define ARCH_HAS_PREFETCH
 static inline void prefetch(const void *ptr)
 {
-	asm volatile("prfm pldl1keep, %a0\n" : : "p" (ptr));
+	asm volatile("prfm pldl1keep, %0\n" : : "Q" (ptr));
 }
 
 #define ARCH_HAS_PREFETCHW
 static inline void prefetchw(const void *ptr)
 {
-	asm volatile("prfm pstl1keep, %a0\n" : : "p" (ptr));
+	asm volatile("prfm pstl1keep, %0\n" : : "Q" (ptr));
 }
 
 #define ARCH_HAS_SPINLOCK_PREFETCH
@@ -165,5 +186,7 @@ static inline void spin_lock_prefetch(const void *x)
 #define HAVE_ARCH_PICK_MMAP_LAYOUT
 
 #endif
+
+#include <asm-generic/processor.h>
 
 #endif /* __ASM_PROCESSOR_H */

@@ -1,0 +1,210 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/ {
+	ahub {
+		status = "okay";
+
+		admaif@0x702d0000 {
+			status = "okay";
+		};
+
+		ope@702d8000 {
+			status = "okay";
+
+			peq@702d8100 {
+				status = "okay";
+			};
+
+			mbdrc@702d8200 {
+				status = "okay";
+			};
+		};
+
+		ope@702d8400 {
+			status = "okay";
+
+			peq@702d8500 {
+				status = "okay";
+			};
+
+			mbdrc@702d8600 {
+				status = "okay";
+			};
+		};
+
+		sfc@702d2000 {
+			status = "okay";
+		};
+
+		sfc@702d2200 {
+			status = "okay";
+		};
+
+		sfc@702d2400 {
+			status = "okay";
+		};
+
+		sfc@702d2600 {
+			status = "okay";
+		};
+
+		spkprot@702d8c00 {
+			status = "okay";
+		};
+
+		mvc@702da000 {
+			status = "okay";
+		};
+
+		mvc@0x702da200 {
+			status = "okay";
+		};
+
+		amixer@702dbb00 {
+			status = "okay";
+		};
+
+		i2s@702d1000 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			status = "okay";
+		};
+
+		i2s@702d1100 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			status = "okay";
+		};
+
+		i2s@702d1200 {
+			prod-name = "i2s2_prod";
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			status = "okay";
+		};
+
+		i2s@702d1300 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			status = "okay";
+		};
+
+		i2s@702d1400 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			status = "okay";
+		};
+
+		dmic@702d4000 {
+			status = "okay";
+		};
+
+		dmic@702d4100 {
+			status = "okay";
+		};
+
+		dmic@702d4200 {
+			status = "okay";
+		};
+
+		amx@702d3000 {
+			status = "okay";
+		};
+
+		amx@702d3100 {
+			status = "okay";
+		};
+
+		adx@702d3800 {
+			status = "okay";
+		};
+
+		adx@702d3900 {
+			status = "okay";
+		};
+
+		afc@702d7000 {
+			status = "okay";
+		};
+
+		afc@702d7100 {
+			status = "okay";
+		};
+
+		afc@702d7200 {
+			status = "okay";
+		};
+
+		afc@702d7300 {
+			status = "okay";
+		};
+
+		afc@702d7400 {
+			status = "okay";
+		};
+
+		afc@702d7500 {
+			status = "okay";
+		};
+
+		mvc@702da000 {
+			status = "okay";
+		};
+
+		mvc@702da200 {
+			status = "okay";
+		};
+
+		spdif@702d6000 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			status = "okay";
+		};
+	};
+
+	spdif_dit0: spdif-dit.0@0 {
+		compatible = "linux,spdif-dit";
+		reg = <0x0 0x0 0x0 0x0>;
+	};
+
+	spdif_dit1: spdif-dit.1@1 {
+		compatible = "linux,spdif-dit";
+		reg = <0x0 0x1 0x0 0x0>;
+	};
+
+	spdif_dit2: spdif-dit.2@2 {
+		compatible = "linux,spdif-dit";
+		reg = <0x0 0x2 0x0 0x0>;
+	};
+
+	spdif_dit3: spdif-dit.3@3 {
+		compatible = "linux,spdif-dit";
+		reg = <0x0 0x03 0x0 0x0>;
+	};
+
+	adsp_audio {
+		status = "okay";
+	};
+};

@@ -121,7 +121,6 @@ struct i2c_adapter *i2c_add_mux_adapter(struct i2c_adapter *parent,
 	priv->mux_priv = mux_priv;
 	priv->chan_id = chan_id;
 	priv->select = select;
-	priv->deselect = deselect;
 
 	/* Need to do algo dynamically because we don't know ahead
 	 * of time what sort of physical adapter we'll be dealing with.
@@ -156,6 +155,7 @@ struct i2c_adapter *i2c_add_mux_adapter(struct i2c_adapter *parent,
 	 */
 	if (mux_dev->of_node) {
 		struct device_node *child;
+		bool enable_deselect;
 		u32 reg;
 
 		for_each_child_of_node(mux_dev->of_node, child) {
@@ -164,9 +164,15 @@ struct i2c_adapter *i2c_add_mux_adapter(struct i2c_adapter *parent,
 				continue;
 			if (chan_id == reg) {
 				priv->adap.dev.of_node = child;
+				enable_deselect = of_property_read_bool(child,
+						"i2c-mux,deselect-on-exit");
+				if (enable_deselect) 
+					priv->deselect = deselect;
 				break;
 			}
 		}
+	} else {
+		priv->deselect = deselect;
 	}
 
 	if (force_nr) {

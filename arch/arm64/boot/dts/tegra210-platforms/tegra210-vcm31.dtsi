@@ -1,0 +1,439 @@
+/*
+ * arch/arm64/boot/dts/tegra210-vcm31.dtsi
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra210-common.dtsi"
+#include "tegra210-platforms/tegra210-sdhci.dtsi"
+#include "tegra210-platforms/tegra210-edp.dtsi"
+#include "tegra210-platforms/tegra210-sysedp.dtsi"
+#include "tegra210-platforms/tegra210-audio.dtsi"
+
+#include "tegra210-platforms/tegra210-vcm31-power-tree.dtsi"
+#include "tegra210-platforms/tegra210-vcm31-power-dvfs.dtsi"
+#include "tegra210-platforms/tegra210-vcm31t210-emc.dtsi"
+#include "tegra210-platforms/tegra210-ers-clk-init.dtsi"
+#include "tegra210-platforms/tegra210-pinmux-drive-sdmmc-common.dtsi"
+#include <panel-a-edp-1080p-14-0.dtsi>
+
+#include <dt-bindings/sound/tegra-asoc-alt.h>
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+
+#define EXTCON_NONE             0
+#define EXTCON_USB              1
+#define EXTCON_USB_Host         2
+
+/ {
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0x70006040";
+		stdout-path = &uartb;
+	};
+
+	serial@70006000 {
+		status = "okay";
+		compatible = "nvidia,tegra114-hsuart";
+	};
+
+	serial@70006040 { /* debug console */
+		compatible = "nvidia,tegra210-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
+		enable-rx-poll-timer;
+		status = "okay";
+	};
+
+	serial@70006200 {
+		status = "disabled";
+	};
+
+	serial@70006300 {
+		status = "disabled";
+	};
+
+	spi@7000d400 {
+		status = "disable";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@7000d600 {
+		status = "disabled";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@7000d800 {
+		status = "disabled";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@7000da00 {
+		status = "disabled";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
+	spi@70410000 { /* qspi nor */
+		status = "okay";
+
+		nvidia,x4-is-ddr=<1>;
+
+		spi@0 {
+			compatible = "spidev";
+			reg = <1>;
+			spi-max-frequency = <133000000>;
+
+			controller-data {
+				nvidia,x1-len-limit = <16>;
+				nvidia,x1-bus-speed = <133000000>; /* In Mhz */
+				nvidia,x1-dymmy-cycle = <0>;
+				nvidia,x4-bus-speed = <133000000>;
+				nvidia,x4-dymmy-cycle = <8>;
+				nvidia,ifddr-div2-sdr = <1>;
+				nvidia,x4-is-ddr=<1>;
+			};
+		};
+
+		spiflash@1 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "s25fs512s";
+			reg = <0>;
+			spi-max-frequency = <133000000>;
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000000 0x4000000>;
+			};
+			controller-data {
+				nvidia,x1-len-limit = <16>;
+				nvidia,x1-bus-speed = <133000000>; /* In Mhz */
+				nvidia,x1-dymmy-cycle = <0>;
+				nvidia,x4-bus-speed = <133000000>;
+				nvidia,x4-dymmy-cycle = <8>;
+				nvidia,ifddr-div2-sdr = <1>;
+				nvidia,x4-is-ddr=<1>;
+			};
+		};
+	};
+
+	sdhci@700b0000 { /* sd card */
+		cd-gpios = <&gpio TEGRA_GPIO_PZ1 0>;
+		wp-gpios = <&gpio TEGRA_GPIO_PZ4 0>;
+		nvidia,sd-device;
+		status = "disabled";
+	};
+
+	sdhci@700b0200 {
+		status = "disabled";
+	};
+
+	sdhci@700b0400 { /* sd card */
+		cd-gpios = <&gpio TEGRA_GPIO_PZ2 0>;
+		wp-gpios = <&gpio TEGRA_GPIO_PZ3 0>;
+		nvidia,sd-device;
+		status = "disabled";
+	};
+
+	sdhci@700b0600 { /* eMMC */
+		uhs-mask = <0x40>;
+		built-in;
+		pll_source = "pll_p", "pll_c4_out2";
+		power-off-rail;
+		status = "okay";
+	};
+
+	i2c@7000c000 { /* GEN1 */
+		clock-frequency = <400000>;
+		status = "okay";
+	};
+
+	i2c@7000c400 { /* GEN2 */
+		clock-frequency = <400000>;
+		status = "okay";
+	};
+
+	i2c@7000c500 { /* GEN3 */
+		clock-frequency = <400000>;
+		status = "okay";
+	};
+
+	/* FIXME: check if it common accross all board */
+	i2c@546c0000 {
+		status = "okay";
+	};
+
+	hdmi_ddc: i2c@7000c700 { /* DDC */
+		clock-frequency = <100000>;
+		status = "diabled";
+	};
+
+	sata@70020000 {
+		status = "disabled";
+		nvidia,enable-sata-port;
+	};
+
+	pcie-controller@1003000 {
+		status = "disabled";
+		/* FIXME: check on lane map */
+		nvidia,lane-map = <0x08>;
+		pci@1,0 {
+			status = "disabled";
+			nvidia,num-lanes = <0x2>;
+		};
+
+		pci@2,0 {
+			status = "disabled";
+			nvidia,num-lanes = <0x1>;
+		};
+
+	};
+
+	/* FIXME: need to check with different boards vbus/id setting */
+	extcon {
+		compatible = "simple-bus";
+		device_type = "external-connection";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		extcon@0 {
+			status = "disabled";
+			gpio = <&max20024 0 0>;
+		};
+
+		vbus_gpio_extcon: extcon@1 {
+			compatible = "extcon-gpio-states";
+			reg = <0x1>;
+			extcon-gpio,name = "VBUS";
+			/*
+			 * Array of gstate,cstate pairs. Each pair shows how to
+			 * map GPIO signal values into cable values as defined
+			 * by the consumer in question.  Here:
+			 *
+			 * cstate[x].bit0 -> VBUS cable
+			 * cstate[x].bit1 -> nID cable
+			 *
+			 * Since we don't support VBUS sensing, in gadget mode
+			 * (cstate[x].bit1 == 0), set cstate[x].bit0 to 1.
+			 */
+			extcon-gpio,cable-states = <0x3 0x1
+						0x0 0x2
+						0x1 0x2
+						0x2 0x1>;
+			/* Z.00 is an unused GPIO in our reference platform */
+			gpios = <&gpio TEGRA_GPIO(Z, 0) 0 &max20024 0 0>;
+			extcon-gpio,out-cable-name-strings = "USB", "USB-Host";
+			extcon-gpio,out-cable-names = <EXTCON_USB EXTCON_USB_Host EXTCON_NONE>;
+			wakeup-source;
+			#extcon-cells = <1>;
+		};
+	};
+
+	xusb_pad_ctl: xusb_padctl {
+		nvidia,ss_portmap = <0x2770>;
+		nvidia,lane_owner = <0x43F6>; /* Use 0xF to disable lane assign */
+		nvidia,otg_portmap = <0x0100>;
+		status = "disabled";
+	};
+
+	xusb@70090000 {
+		/* nvidia,uses_external_pmic;
+		/* nvidia,gpio_controls_muxed_ss_lanes; */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		nvidia,portmap = <0x0E0C>;
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		status = "disabled";
+	};
+
+	xudc@700d0000 {
+		extcon-cables = <&vbus_gpio_extcon 0 &vbus_gpio_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		nvidia,portmap = <0x0108>;
+		#extcon-cells = <1>;
+		status = "disabled";
+	};
+
+	xotg {
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		#extcon-cells = <1>;
+		status = "disabled";
+		extcon-cables = <&vbus_gpio_extcon 1>;
+		extcon-cable-names = "id";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x80000000 >;
+	};
+
+	pmc@7000e400 {
+		nvidia,invert-interrupt;
+		io-pad-defaults {
+			audio-hv {
+				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+			};
+
+			gpio {
+				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_3_3V>;
+			};
+
+			spi-hv {
+				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+			};
+		};
+	};
+
+	tegra-aotag {
+		status = "disabled";
+	};
+
+	/* Display/gpu properties start */
+	/* FIXME: Is it common accross all baords */
+	host1x {
+		status = "okay";
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			/* nvidia,cmu-enable = <1>; */
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+
+		sor {
+			status = "okay";
+			panel-a-edp-1080p-14-0 {
+				status = "okay";
+				disp-default-out {
+					nvidia,out-depth = <24>;
+				};
+			};
+		};
+
+		dpaux {
+			status = "okay";
+		};
+
+		dpaux1 {
+			status = "okay";
+		};
+
+		sor1 {
+			status = "okay";
+			nvidia,ddc-i2c-bus = <&hdmi_ddc>;
+			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(CC, 1) 1>; /* PN7 */
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-parent-clk = "pll_d2";
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+				};
+			};
+		};
+	};
+
+	/* Audio properties start */
+	adsp_audio {
+		compr-ops = <0>;
+		num-plugin = <2>;
+		plugin-info-1 {
+			plugin-name = "reverb";
+			firmware-name = "libnvreverbfx.elf";
+			widget-name = "REVERB";
+			param-type = <2>; /* SNDRV_CTL_ELEM_TYPE_INTEGER */
+		};
+		plugin-info-2 {
+			plugin-name = "wire";
+			firmware-name = "libnvwirefx.elf";
+			widget-name = "WIRE";
+		};
+	};
+
+	adma@702e2000  {
+		dma-channels = <10>;
+		status = "okay";
+	};
+
+	/* FIXME: Is it common accross all baords */
+	ahub {
+		status = "okay";
+		i2s@702d1100 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			fsync-width = <0>;
+		};
+		/* enable I2S4_CYA bit to select i2s4b pin */
+		i2s@702d1300 {
+			enable-cya;
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-t210ref-mobile-foster";
+		nvidia,model = "tegra-snd-t210ref-mobile-es755";
+		nvidia,num-codec-link = <1>;
+
+		nvidia,audio-routing =
+			"y Headphone", 	"y OUT",
+			"y IN",		"y Mic";
+
+		nvidia,xbar = <&tegra_axbar>;
+	};
+
+	clock {
+		t210-clk-init-table {
+			clkinit-1 = <
+			/* clock id			parent id	rate		ctrl flags */
+			TEGRA210_CLK_ID_GBUS_GM20B_USER	0		844800000	0
+			TEGRA210_CLK_ID_SBUS_VCM_USER	0		408000000	1
+			TEGRA210_CLK_ID_SBUS_VCM_AHB_USER 0		408000000	1
+			TEGRA210_CLK_ID_SBUS_VCM_APB_USER 0		204000000	1
+			0 >;
+		};
+	};
+};

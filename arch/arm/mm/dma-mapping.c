@@ -1018,6 +1018,9 @@ static inline dma_addr_t __alloc_iova(struct dma_iommu_mapping *mapping,
 	if (order > CONFIG_ARM_DMA_IOMMU_ALIGNMENT)
 		order = CONFIG_ARM_DMA_IOMMU_ALIGNMENT;
 
+	if (mapping->alignment && order > get_order(mapping->alignment))
+		order = get_order(mapping->alignment);
+
 	count = PAGE_ALIGN(size) >> PAGE_SHIFT;
 	align = (1 << order) - 1;
 

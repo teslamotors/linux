@@ -1,0 +1,150 @@
+/*
+ * arch/arm/boot/dts/tegra124-tn8-e1784-1101-a00.dts
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+/dts-v1/;
+
+#include "tegra124-tn8.dtsi"
+#include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
+#include "tegra124-platforms/tegra124-tn8-emc-p1761-1270-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-power-tree-e1936-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sensor-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-pinmux-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-gpio-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-powermon-e1784-1101-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-camera-p1761-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sysedp-e1780-1100-a02.dtsi"
+#include "panel-a-wxga-8-0.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
+#include "tegra124-platforms/tegra124-tn8-hdmi-p1761-1270-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-thermal-zone-p1761-1270-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-usb-devices.dtsi"
+#include "tegra124-platforms/tegra124-tn8-comms.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 TN8 FFD";
+	compatible = "nvidia,tn8", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "1784:1101:0";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "tn8";
+		};
+	};
+
+	i2c@7000c400 {
+		pca9546@71 {
+			vcc-supply = <&palmas_smps9>;
+		};
+
+		iqs253@44 {
+			status = "disabled";
+		};
+
+		battery-gauge@36 {
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+
+		battery-charger@6b {
+			charger {
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			};
+		};
+	};
+
+	pinmux@70000868 {
+		unused_lowpower {
+			pi5 {
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-a-wxga-8-0 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,dsi-boardinfo = <1761 0 0 0>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+			panel-a-wuxga-8-0 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,dsi-boardinfo = <1761 0 0 1>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+		};
+	};
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
+
+	thermal-zones {
+		Battery {
+			thermal-sensors = <&fg_lc709203f>;
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+	};
+
+	sysedp_batmon_calc {
+		dt-override-status-odm-data = <0x00C00000 0x00400000>;
+	};
+};
+

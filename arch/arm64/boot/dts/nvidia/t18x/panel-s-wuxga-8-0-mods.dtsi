@@ -1,0 +1,97 @@
+/*
+ * arch/arm/boot/dts/panel-s-wuxga-8-0-mods.dtsi
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+
+/ {
+	host1x {
+		dsi {
+			panel-s-wuxga-8-0-mods {
+				status = "disabled";
+				compatible = "s,wuxga-8-0-mods";
+				nvidia,dsi-instance = <DSI_INSTANCE_0>;
+				nvidia,dsi-n-data-lanes = <8>;
+				nvidia,dsi-pixel-format = <TEGRA_DSI_PIXEL_FORMAT_24BIT_P>;
+				nvidia,dsi-refresh-rate = <60>;
+				nvidia,dsi-video-data-type = <TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE>;
+				nvidia,dsi-video-clock-mode = <TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS>;
+				nvidia,dsi-video-burst-mode = <TEGRA_DSI_VIDEO_NONE_BURST_MODE>;
+				nvidia,dsi-ganged-type = <TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT>;
+				nvidia,dsi-ganged-swap-links = <1>;
+				nvidia,dsi-ganged-write-to-all-links = <1>;
+				nvidia,dsi-controller-vs = <DSI_VS_1>;
+				nvidia,dsi-virtual-channel = <TEGRA_DSI_VIRTUAL_CHANNEL_0>;
+				nvidia,dsi-panel-reset = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-ulpm-not-support = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-suspend-stop-stream-late = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-power-saving-suspend = <TEGRA_DSI_ENABLE>;
+				nvidia,default_color_space = <1>;	/*default color profile:adobeRGB*/
+				nvidia,dsi-init-cmd =
+							/* Long  Packet: <PACKETTYPE[u8] COMMANDID[u8] PAYLOADCOUNT[u16] ECC[u8] PAYLOAD[..] CHECKSUM[u16]> */
+							/* Short Packet: <PACKETTYPE[u8] COMMANDID[u8] DATA0[u8] DATA1[u8] ECC[u8]> */
+							/* For DSI packets each DT cell is interpreted as u8 not u32 */
+
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_EXIT_SLEEP_MODE 0x0 0x0>,
+							/* This panel has a very sensitive power on/off sequence.
+							 * Send a few more frames for safety. No max limit from vendor. */
+							<TEGRA_DSI_SEND_FRAME 10>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_SET_DISPLAY_ON 0x0 0x0>;
+				nvidia,dsi-n-init-cmd = <3>;
+				nvidia,dsi-suspend-cmd =
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_SET_DISPLAY_OFF 0x0 0x0>,
+							<TEGRA_DSI_SEND_FRAME 3>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_ENTER_SLEEP_MODE 0x0 0x0>,
+							<TEGRA_DSI_SEND_FRAME 10>;
+				nvidia,dsi-n-suspend-cmd = <4>;
+				nvidia,dsi-pkt-seq =
+					<CMD_VS LEN_SHORT PKT_LP LINE_STOP>,
+					<CMD_HS LEN_SHORT PKT_LP LINE_STOP>,
+					<CMD_HS LEN_SHORT PKT_LP LINE_STOP>,
+					<CMD_HS LEN_SHORT CMD_RGB_24BPP LEN_HACTIVE3 CMD_BLNK LEN_HFP LINE_STOP>,
+					<CMD_HS LEN_SHORT PKT_LP LINE_STOP>,
+					<CMD_HS LEN_SHORT CMD_RGB_24BPP LEN_HACTIVE3 CMD_BLNK LEN_HFP LINE_STOP>;
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_DSI>;
+					nvidia,out-width = <107>;
+					nvidia,out-height = <172>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-parent-clk = "pll_d";
+					nvidia,out-xres = <4096>;
+					nvidia,out-yres = <2160>;
+				};
+				display-timings {
+					1920x1080-32 {
+						clock-frequency = <148500000>;
+						hactive = <1920>;
+						vactive = <1080>;
+						hfront-porch = <88>;
+						hback-porch = <148>;
+						hsync-len = <44>;
+						vfront-porch = <4>;
+						vback-porch = <36>;
+						vsync-len = <5>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+			};
+		};
+	};
+};

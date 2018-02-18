@@ -703,22 +703,33 @@ static int ahci_set_lpm(struct ata_link *link, enum ata_lpm_policy policy,
 	if (hpriv->cap & HOST_CAP_ALPM) {
 		u32 cmd = readl(port_mmio + PORT_CMD);
 
+		cmd |= PORT_CMD_ICC_ACTIVE;
+		writel(cmd, port_mmio + PORT_CMD);
+		readl(port_mmio + PORT_CMD);
+
+		/* wait 10ms to be sure we've come out of LPM state */
+		ata_msleep(ap, 10);
+		cmd = readl(port_mmio + PORT_CMD);
+
 		if (policy == ATA_LPM_MAX_POWER || !(hints & ATA_LPM_HIPM)) {
 			cmd &= ~(PORT_CMD_ASP | PORT_CMD_ALPE);
-			cmd |= PORT_CMD_ICC_ACTIVE;
 
 			writel(cmd, port_mmio + PORT_CMD);
 			readl(port_mmio + PORT_CMD);
-
-			/* wait 10ms to be sure we've come out of LPM state */
-			ata_msleep(ap, 10);
 		} else {
 			cmd |= PORT_CMD_ALPE;
-			if (policy == ATA_LPM_MIN_POWER)
+			if ((policy == ATA_LPM_MIN_POWER) &&
+						(hpriv->cap & HOST_CAP_SSC)) {
 				cmd |= PORT_CMD_ASP;
+				cmd |= PORT_CMD_ICC_SLUMBER;
+			} else if (hpriv->cap & HOST_CAP_PART) {
+				cmd &= ~PORT_CMD_ASP;
+				cmd |= PORT_CMD_ICC_PARTIAL;
+			}
 
 			/* write out new cmd value */
 			writel(cmd, port_mmio + PORT_CMD);
+			readl(port_mmio + PORT_CMD);
 		}
 	}
 

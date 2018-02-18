@@ -1,0 +1,187 @@
+/*
+ * arch/arm64/boot/dts/tegra186-fpga-cl34563539-private.dtsi
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+#include "dt-bindings/pinctrl/pinctrl-tegra-padctl.h"
+
+/ {
+	asim {
+		status = "disabled";
+	};
+
+	clock@5000000 {
+		status = "okay";
+	};
+
+	ethernet@0x7ffff000 {
+		status = "disabled";
+	};
+
+	tachometer@39c0000 {
+		status = "okay";
+	};
+
+	sdhci@3460000 {
+		uhs-mask = <0x0>;
+		nvidia,enable-strobe-mode;
+		max-clk-limit = <6400000>;
+		status = "okay";
+        };
+
+	sdhci@3440000 {
+		bus-width = <4>;
+		mmc-ocr-mask = <3>;
+		uhs-mask = <0x1C>;
+		power-gpios = <180>;
+		nvidia,sd-device;
+		max-clk-limit = <12800000>;
+		status = "okay";
+        };
+
+	mailbox@3538000 {
+		status = "okay";
+	};
+
+	xudc@3550000 {
+		status = "okay";
+		avdd-usb-supply = <&battery_reg>;
+		dvdd-pex-supply = <&battery_reg>;
+		hvdd-pex-supply = <&battery_reg>;
+		dvdd-pex-pll-supply = <&battery_reg>;
+		hvdd-pex-pll-supply = <&battery_reg>;
+
+		phys = <&sysfpga_padctl TEGRA_PADCTL_PHY_USB3_P(0)>,
+			<&sysfpga_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>;
+		phy-names = "usb3", "usb2";
+	};
+
+	xhci@3530000 {
+		status = "okay";
+
+		avddio_usb-supply = <&battery_reg>;
+		avdd_pll_utmip-supply = <&battery_reg>;
+		hvdd_usb-supply = <&battery_reg>;
+
+		phys = 	<&sysfpga_padctl TEGRA_PADCTL_PHY_USB3_P(1)>,
+			<&sysfpga_padctl TEGRA_PADCTL_PHY_UTMI_P(1)>,
+			<&sysfpga_padctl TEGRA_PADCTL_PHY_UTMI_P(2)>;
+
+		phy-names = "usb3-1", "utmi-1", "utmi-2";
+	};
+
+	sysfpga_padctl: pinctrl@3520000 {
+		status = "okay";
+
+		vbus-0-supply = <&battery_reg>;
+		vbus-1-supply = <&battery_reg>;
+		vbus-2-supply = <&battery_reg>;
+		vbus-3-supply = <&battery_reg>;
+		vddio_hsic-supply = <&battery_reg>;
+
+		/* use virtual clocks for fpga */
+		clocks = <&clk32k_in>, <&clk32k_in>;
+		pinctrl-0 = <&sysfpga_default>;
+		pinctrl-names = "default";
+		sysfpga_default: pinmux {
+			host-mode-utmi-pads {
+				nvidia,lanes = "otg-1", "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			host-mode-ss-port {
+				nvidia,lanes = "usb3-1";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			device-mode-utmi-pads {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_DEVICE_ONLY>;
+			};
+			device-mode-ss-port {
+				nvidia,lanes = "usb3-0";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_DEVICE_ONLY>;
+			};
+		};
+	};
+
+	host1x: host1x {
+		dpaux@155c0000 {
+			status = "disabled";
+		};
+
+		dpaux@15040000 {
+			status = "disabled";
+		};
+
+		dsi {
+			status = "disabled";
+		};
+
+		isp@15600000 {
+			status = "disabled";
+		};
+
+		nvcsi@150c0000 {
+			status = "disabled";
+		};
+
+		nvdec@15480000 {
+			status = "disabled";
+		};
+
+		nvdisplay@15200000 {
+			status = "disabled";
+		};
+
+		nvdisplay@15210000 {
+			status = "disabled";
+		};
+
+		nvdisplay@15220000 {
+			status = "disabled";
+		};
+
+		nvenc@154c0000 {
+			status = "disabled";
+		};
+
+		nvjpg@15380000 {
+			status = "disabled";
+		};
+
+		sor {
+			status = "disabled";
+		};
+
+		sor1 {
+			status = "disabled";
+		};
+
+		vi@15700000 {
+			status = "disabled";
+		};
+
+		vic@15340000 {
+			status = "disabled";
+		};
+	};
+
+	bwmgr {
+		status = "okay";
+	};
+};

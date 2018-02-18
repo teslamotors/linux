@@ -1,0 +1,62 @@
+What:		/sys/bus/coresight/devices/<memory_map>.stm/enable_source
+Date:		February 2015
+KernelVersion:	3.20
+Contact:	Mathieu Poirier <mathieu.poirier@xxxxxxxxxx>
+Description:	(RW) Enable/disable tracing on this specific trace macrocell.
+		Enabling the trace macrocell implies it has been configured
+		properly and a sink has been identidifed for it.  The path
+		of coresight components linking the source to the sink is
+		configured and managed automatically by the coresight framework.
+
+What:		/sys/bus/coresight/devices/<memory_map>.stm/entities
+Date:		February 2015
+KernelVersion:	3.20
+Contact:	Mathieu Poirier <mathieu.poirier@xxxxxxxxxx>
+Description:	(RW) Controls which entities have been allowed to use the
+		stimulus ports, regarless of the channel they were assigned.
+		Entity definition can be found in
+		include/uapi/linux/coresight-stm32.h
+
+What:		/sys/bus/coresight/devices/<memory_map>.stm/hwevent_enable
+Date:		February 2015
+KernelVersion:	3.20
+Contact:	Mathieu Poirier <mathieu.poirier@xxxxxxxxxx>
+Description:	(RW) Provides access to the HW event enable register, used in
+		conjunction with HW event bank select register.
+
+What:		/sys/bus/coresight/devices/<memory_map>.stm/hwevent_select
+Date:		February 2015
+KernelVersion:	3.20
+Contact:	Mathieu Poirier <mathieu.poirier@xxxxxxxxxx>
+Description:	(RW) Gives access to the HW event block select register
+		(STMHEBSR) in order to configure up to 256 channels.  Used in
+		conjunction with "hwevent_enable" register as described above.
+
+What:		/sys/bus/coresight/devices/<memory_map>.stm/port_enable
+Date:		February 2015
+KernelVersion:	3.20
+Contact:	Mathieu Poirier <mathieu.poirier@xxxxxxxxxx>
+Description:	(RW) Provides access to the stimlus port enable register
+		(STMSPER).  Used in conjunction with "port_select" described
+		below.
+
+What:		/sys/bus/coresight/devices/<memory_map>.stm/port_select
+Date:		February 2015
+KernelVersion:	3.20
+Contact:	Mathieu Poirier <mathieu.poirier@xxxxxxxxxx>
+Description:	(RW) Used to determine which bank of stimulus port bit in
+		register STMSPER (see above) apply to.
+
+What:		/sys/bus/coresight/devices/<memory_map>.stm/status
+Date:		February 2015
+KernelVersion:	3.20
+Contact:	Mathieu Poirier <mathieu.poirier@xxxxxxxxxx>
+Description:	(R) List various control and status registers.  The specific
+		layout and content is driver specific.
+
+What:		/sys/bus/coresight/devices/<memory_map>.stm/traceid
+Date:		February 2015
+KernelVersion:	3.20
+Contact:	Mathieu Poirier <mathieu.poirier@xxxxxxxxxx>
+Description:	(RW) Holds the trace ID that will appear in the trace stream
+		coming from this trace entity.

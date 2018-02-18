@@ -1,0 +1,58 @@
+Device tree binding for NVIDIA Tegra XUSB host mode controller (XHCI)
+============================
+
+The Tegra xHCI controller complies to xHCI specifications which supports
+both USB 2.0 HighSpeed/FullSpeed/LowSpeed and USB 3.0 SuperSpeed protocols.
+
+Required properties:
+--------------------
+ - compatible: For Tegra186, must contain "nvidia,tegra186-xhci".
+ - mboxes: Must contain an entry for the XUSB mailbox channel.
+   See ../mailbox/mailbox.txt for details.
+ - mbox-names: Must include the following entries:
+   - xusb
+
+Required properties for Tegra186:
+---------------------------------
+ - avddio_usb-supply: 3.3V supply to USB 2.0 pads.
+ - avdd_pll_utmip-supply: 1.8V supply to UTMI PLL.
+ - hvdd_usb-supply: 1.8V supply to PEX USB 3.0 pads.
+
+ - phys: Must contain an entry for each entry in phy-names.
+   See ../phy/phy-bindings.txt for details.
+ - phy-names: Should include an entry for each PHY used by the controller.
+   Names must be of the form "<type>-<number>" where <type> is one of "utmi",
+   "hsic", or "usb3" and <number> is a 0-based index.
+   On Tegra186, there may be up to:
+   - 3 USB3 PHYs, SuperSpeed (SSTX+/SSTX-/SSRX+/SSRX-) data lines
+   - 3 UTMI PHYs, USB 2.0 (D+/D-) data lines
+   - 1 HSIC PHYs, HSIC (DATA/STROBE) data lines
+
+Optional properties:
+--------------------
+ - nvidia,pmc-usb-wakes-disabled: set if platform doesn't support/require waking system from
+   suspend with USB events.
+ - extcon-cables: OTG support. Must contains an excon-cable entry which detects
+   USB ID pin. See ../extcon/extcon-gpio-states.txt for details.
+   When the extcon cable state is 1, OTG port will transition to host mode.
+ - extcon-cable-names: Must be "id".
+
+Example:
+--------
+	xhci@3530000 {
+		compatible = "nvidia,tegra186-xhci";
+		mboxes = <&xusb_mbox>;
+		mbox-names = "xusb";
+		phys = <&padctl TEGRA_PADCTL_PHY_UTMI_P(0)>, /* USB 2.0 micro-AB, J20 */
+			<&padctl TEGRA_PADCTL_PHY_UTMI_P(1)>, /* USB 3.0 STD-A, J19 */
+			<&padctl TEGRA_PADCTL_PHY_USB3_P(1)>; /* USB 3.0 STD-A, J19 */
+		phy-names = "utmi-0", "utmi-1", "usb3-1";
+
+		avddio_usb-supply = <&spmic_sd3_3v3>;
+		avdd_pll_utmip-supply = <&spmic_sd2_1v8>;
+		hvdd_usb-supply =  <&spmic_sd2_1v8>;
+
+		extcon-cables = <&vbus_id_extcon 1>;
+		extcon-cable-names = "id";
+		#extcon-cells = <1>;
+	};

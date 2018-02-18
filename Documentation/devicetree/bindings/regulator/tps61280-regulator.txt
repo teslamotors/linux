@@ -1,0 +1,110 @@
+* TI TPS61280 Voltage Regulator
+
+Required properties:
+- compatible:	must be "ti,tps61280".
+- reg:		the i2c slave address of the regulator.
+
+Any standard regulator properties (Documentation/binding/regulator/regulator.txt)
+can be used to configure the TI TPS61280 Voltage output.
+
+Optional properties:
+VSEL Pin control: 
+================ 
+	Vsel pin is used for multiple functionality like as
+		- DVS voltage selection
+		- Sleep voltage control
+		- Mode selection.
+	Based on DT property of node, the desired function is selected.
+DVS Voltage selection: As device has two VOUT register, the voltage output
+	is selected by VSEL pin. The required properties to configure the
+	DVS through VSEL pin is:
+	ti,enable-vsel-controlled-dvs: boolean, Enable VSEL for DVS.
+	ti,vsel-pin-gpio: GPIO number on which Host has connected to this
+			device.
+	ti,vsel-pin-default-state: u32, Default state of the VSEL pin
+			during boot.
+
+Sleep voltage control: As there is two voltage output registers, it can set
+	for normal state vout and sleep state vout. On this case, the host
+	can control the normal/sleep state vout via VSEL pin. Required
+	properties to configure the sleep through VSEL pin is:
+	ti,enable-vsel-controlled-sleep: boolean, Enable VSEL pin for
+			Sleep control.
+	ti,vsel-pin-default-state: Vsel default state for active mode.
+
+Mode selection: VSEL pin is also used for selecting different mode i.e.
+	force PWM vs auto PWM mode. The required properties to configure
+	the mode through VSEL pin are:
+	ti,enable-vsel-controlled-mode: boolean, enable mode control through
+			VSEL pin.
+	ti,vsel-pin-gpio: GPIO number on which host connected to this device
+			for VSEL pin control.
+
+	If property "ti,enable-vsel-controlled-mode" is not available then
+	property "ti,vsel-pin-gpio" is not used and mode control is done via
+	register access ia I2C.
+	If property "ti,enable-vsel-controlled-mode" is available then
+	mode control is done via the gpio "ti,vsel-pin-gpio".
+
+Enable pin control:
+================== 
+	EN pin of device control the enable/disable of the regulator output.
+	This pin can be controlled by host. The required properties for
+	configuring regulator control via EN pin are:
+	ti,enable-en-pin-control: Boolean, enable EN pin control.
+	ti,en-pin-gpio: Enable pin GPIO to which host is connected.
+
+	If property "ti,enable-en-pin-control" is not there then there is no
+	meaning of property "ti,en-pin-gpio" and regulator is controlled by
+	register access through I2C.
+	If property "ti,enable-en-pin-control" is available then regulator
+	enable/disable is done via toggling gpio "ti,en-pin-gpio".
+
+	EN pin:
+		HIGH: Regulator enable.
+		LOW: Regulator disable.
+
+
+nBYP pin (Bypass) control:
+========================= 
+	Bypass mode is controlled through the register configuration as well
+	as via the nBYP pin. If bypass mode is controlled through nBYP pin
+	then following properties are required:
+	ti,enable-bypass-pin-control: Boolean, enable bypass pin control.
+	ti,bypass-pin-gpio: Bypass pin GPIO to which host is connected.
+
+	If property "ti,enable-bypass-pin-control" is not there then property
+	"ti,bypass-pin-gpio" is not used and bypass configuration is done
+	through register access via I2C.
+	If property "ti,enable-bypass-pin-control" is there then bypass
+	configuration is done via toggling gpio "ti,bypass-pin-gpio"
+
+	Bypass OFF:
+		nBYP LOW: pin is LOW
+		device active in forced pass-through mode.
+	Bypass ON:
+		nByp high: Pin is HIGH
+		device active in auto mode (dc/dc boost, pass through)
+
+Example:
+
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		reg = <0x75>;
+		regulator-name = "vdd-modem";
+		regulator-min-microvolt = <3500000>;
+		regulator-max-microvolt = <4000000>;
+		regulator-init-microvolt = <3600000>;
+		regulator-boot-on;
+		regulator-always-on;
+		regulator-bypass-on;
+
+		ti,enable-en-pin-control;
+		ti,en-pin-gpio = <&gpio TEGRA_GPIO(E, 0), 0>;
+
+		ti,enable-bypass-pin-control;
+		ti,bypass-pin-gpio = <&gpio TEGRA_GPIO(E, 5), 0>;
+
+		ti,enable-vsel-controlled-mode;
+		ti,vsel-pin-gpio = <&gpio TEGRA_GPIO(E, 1), 0>;
+	};

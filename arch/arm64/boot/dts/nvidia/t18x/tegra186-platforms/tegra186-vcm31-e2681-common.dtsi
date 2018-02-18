@@ -1,0 +1,512 @@
+/*
+ * tegra186-vcm31-e2681-common.dtsi: VCM3.1 based E2681 A01
+ * common dtsi.
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/types.h>
+#include <dt-bindings/gpio/tmpm32x-gpio.h>
+/dts-v1/;
+
+/memreserve/ 0x80000000 0x00010000;
+
+#include "tegra186-platforms/tegra186-vcm31.dtsi"
+#include "tegra186-platforms/tegra186-vcm31-power-tree-e2681-003-a01-00.dtsi"
+
+#define EXTCON_NONE		0
+#define EXTCON_USB             1
+#define EXTCON_USB_Host        2
+
+/ {
+        model = "t186-vcm31-e2681";
+        compatible = "nvidia,t186-vcm31-e2681", "nvidia,tegra186";
+
+        nvidia,dtbbuildtime = __DATE__, __TIME__;
+        #address-cells = <2>;
+        #size-cells = <2>;
+
+	pmc@c360000 {
+		io-pad-defaults {
+			sdmmc1-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+
+			sdmmc3-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+		};
+	};
+
+	serial@c280000 { /* TEGRA UARTC <-> VCM UARTC: satellite Radio */
+		status = "okay";
+	};
+
+	serial@3130000 { /* Tegra UARTD <-> VCM UARTD: BT */
+		status = "okay";
+	};
+
+	spi@3210000 { /* Tegra SPI1 <-> VCM SPIB: Display AIC */
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <1>;
+			spi-max-frequency = <25000000>;
+		};
+	};
+
+	spi@c260000 { /* Tegra SPI2 <-> VCM SPIA: Dirana */
+		status = "okay";
+		spi@0 {
+			compatible = "saf775x";
+			reg = <0>;
+			spi-max-frequency = <4000000>;
+			spi-cpha;
+			controller-data {
+				nvidia,clk-delay-between-packets = <10>;
+				nvidia,chipselect-gpio = <&tegra_gpio TEGRA_GPIO(N,0) 0>;
+			};
+		};
+	};
+
+	spi@3230000 { /* Tegra SPI3 <-> VCM SPID: HD, DAB AIC, */
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <25000000>;
+		};
+	};
+
+	spi@3240000 { /* Tegra SPI4 <-> VCM SPIC: MCU */
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <25000000>;
+		};
+	};
+
+	i2c@3160000 { /* Tegra I2C1 - VCM I2CA */
+		clock-frequency = <400000>;
+		saf775x@1c {
+			 compatible = "saf775x";
+			 reg = <0x1c>;
+			 status = "okay";
+		};
+
+		tmpm32xi2c_61: tmpm32xi2c@61 {
+			compatible = "nvidia,tmpm32xi2c";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x61>;
+			gpio-init-names = "default", "pwr_on_default";
+			gpio-init-0 = <&tmpm32xi2c_default>;
+			gpio-init-1 = <&tmpm32xi2c_default_pwr_on>;
+			tmpm32xi2c_default: default {
+				gpio-output-high = <
+					TMPM32X_GPIO(D, 1) /* FIXME: D1 is BT_HOST_wake, supposed to be input */
+					TMPM32X_GPIO(L, 6)
+					>;
+			};
+			tmpm32xi2c_default_pwr_on: pwr_on_default {
+			};
+		};
+	};
+
+	i2c@c240000 { /* Tegra I2C2 <-> VCM I2CB */
+		nvidia,clock-always-on;
+		a3g4250d_68: a3g4250d@68 {
+			compatible = "stm,a3g4250d";
+			reg = <0x68>;
+			gyroscope_matrix = [ff 00 00 00 ff 00 00 00 01];
+		};
+		ais328dq_18: ais328dq@18 {
+			compatible = "stm,ais328dq";
+			reg = <0x18>;
+			accelerometer_matrix = [ff 00 00 00 ff 00 00 00 01];
+		};
+	};
+
+	i2c@3180000 { /* Tegra I2C3 - VCM I2CD */
+		status = "okay";
+	};
+
+
+	bluedroid_pm { /* BCM89359 */
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,shutdown-gpio = <&tegra_gpio TEGRA_GPIO(Y, 0) 0>;
+		avdd-supply = <&vdd_wl_bt>;
+	};
+
+	gpio@2200000 {
+		gpio-init-1 = <&wlan_default>;
+
+		wlan_default: wlan-default {
+			gpio-output-high = <
+				TEGRA_GPIO(Y, 5)
+				>;
+		};
+	};
+
+	bcmdhd_pcie_wlan {
+			compatible = "android,bcmdhd_pcie_wlan";
+			wlan-pwr-gpio = <&tegra_gpio TEGRA_GPIO(Y, 5) GPIO_ACTIVE_HIGH>;
+			fw_path = "/system/vendor/firmware/fw_bcmdhd.bin";
+			nv_path = "/system/etc/nvram_murata_4359_b1.txt";
+			status = "okay";
+	};
+
+	fixed-regulators {
+
+		vdd_wl_bt: regulator@6 {
+			status = "okay";
+		};
+	};
+
+	saf775x { /* dirana3 */
+		status = "okay";
+		compatible = "nvidia,tegra-saf775x";
+		id = <0>;
+		rst-gpio = <&tmpm32xi2c_61 TMPM32X_GPIO(A, 7) 0>;
+	};
+
+	pinctrl@3520000 {
+		status = "okay";
+		pinctrl-0 = <&p2382_padctl_default>;
+		pinctrl-names = "default";
+		p2382_padctl_default: pinmux {
+			usb2-std-A-port1 {
+				nvidia,lanes = "otg-0";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb3-std-A-port1 {
+				nvidia,lanes = "usb3-1";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb2-modem {
+				nvidia,lanes = "otg-1";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb2-std-A-port2 {
+				nvidia,lanes = "otg-2";
+				nvidia,function = "xusb";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+			usb3-std-A-port2 {
+				nvidia,lanes = "usb3-2";
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+			};
+                        usb3-std-A-port0 {
+                                nvidia,lanes = "usb3-0";
+                                nvidia,port-cap = <TEGRA_PADCTL_PORT_HOST_ONLY>;
+                        };
+
+		};
+	};
+
+	bpmp_i2c {
+		spmic: spmic@3c {
+			pinctrl-names = "default";
+			pinctrl-0 = <&spmic_default>;
+			spmic_default: pinmux@0 {
+				pin_gpio0 { /* USB ID */
+				pins = "gpio0";
+				function = "gpio";
+				};
+			};
+		};
+	};
+
+	external-connection {
+		vbus_id_extcon: extcon@1 {
+			compatible = "extcon-gpio-states";
+			reg = <0x1>;
+			extcon-gpio,name = "VBUS";
+			/*
+			 * Array of gstate,cstate pairs. Each pair shows how to
+			 * map GPIO signal values into cable values as defined
+			 * by the consumer in question.  Here:
+			 *
+			 * cstate[x].bit0 -> VBUS cable
+			 * cstate[x].bit1 -> nID cable
+			 *
+			 * Since we don't support VBUS sensing, in gadget mode
+			 * (cstate[x].bit1 == 0), set cstate[x].bit0 to 1.
+			 */
+			extcon-gpio,cable-states = <0x3 0x1
+						0x0 0x2
+						0x1 0x2
+						0x2 0x1>;
+			/* C.00 is an unused GPIO in our reference platform */
+			gpios = <&tegra_gpio TEGRA_GPIO(C, 0) 0 &spmic 0 0>;
+			extcon-gpio,out-cable-name-strings = "USB", "USB-Host";
+			extcon-gpio,out-cable-names = <EXTCON_USB EXTCON_USB_Host EXTCON_NONE>;
+			#extcon-cells = <1>;
+		};
+	};
+
+	mailbox@3538000 {
+		status = "okay";
+	};
+
+	xudc@3550000 {
+		status = "okay";
+		extcon-cables = <&vbus_id_extcon 0>;
+		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+		phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(1)>;
+		phy-names = "usb2", "usb3";
+	};
+
+	xhci@3530000 {
+		status = "okay";
+		extcon-cables = <&vbus_id_extcon 1>;
+		extcon-cable-names = "id";
+		#extcon-cells = <1>;
+		phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(1)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(2)>,
+                        <&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(0)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(1)>,
+			<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(2)>;
+		phy-names = "utmi-0", "utmi-1", "utmi-2", "usb3-0", "usb3-1", "usb3-2";
+	};
+
+	pcie-controller@10003000 {
+		nvidia,lane-map = <0x211>;
+		status = "okay";
+	        pci@1,0 {
+                        status = "okay";
+                };
+		pci@2,0 {
+			status = "okay";
+		};
+	};
+
+	mttcan@c310000 {
+		gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 0) GPIO_ACTIVE_HIGH>;
+		gpio_can_en = <&tegra_gpio TEGRA_GPIO(AA, 1) GPIO_ACTIVE_HIGH>;
+		mram-params = <0 16 16 8 8 8 16 16 16>;
+	};
+
+	mttcan@c320000 {
+		gpio_can_stb = <&tegra_gpio TEGRA_GPIO(AA, 6) GPIO_ACTIVE_HIGH>;
+		gpio_can_en = <&tegra_gpio TEGRA_GPIO(AA, 7) GPIO_ACTIVE_HIGH>;
+		mram-params = <0 16 16 8 8 8 16 16 16>;
+	};
+	ahci-sata@3507000 {
+		status = "okay";
+	};
+
+	ahub {
+		arad@290e400 {
+			status = "okay";
+		};
+	};
+
+	sound_ref {
+		status = "okay";
+		compatible = "nvidia,tegra-audio-t186ref-p2382";
+		nvidia,model = "tegra186-snd-p2382";
+		nvidia,num-clk = <8>;
+		nvidia,clk-rates = < 282240000  /* PLLA_x11025_RATE */
+				     11289600   /* AUD_MCLK_x11025_RATE */
+				     45158400   /* PLLA_OUT0_x11025_RATE */
+				     45158400   /* AHUB_x11025_RATE */
+				     368640000  /* PLLA_x8000_RATE */
+				     12288000   /* AUD_MCLK_x8000_RATE */
+				     184319970  /* PLLA_OUT0_x8000_RATE */
+				     49151992 >;/* AHUB_x8000_RATE */
+		clocks =<&tegra_car TEGRA186_CLK_PLLP_OUT0>,
+			<&tegra_car TEGRA186_CLK_PLLA>,
+			<&tegra_car TEGRA186_CLK_PLL_A_OUT0>,
+			<&tegra_car TEGRA186_CLK_AHUB>,
+			<&tegra_car TEGRA186_CLK_CLK_M>,
+			<&tegra_car TEGRA186_CLK_AUD_MCLK>;
+		clock-names = "pll_p_out1", "pll_a", "pll_a_out0", "ahub", "clk_m",
+			"extern1";
+		resets = <&tegra_car TEGRA186_RESET_AUD_MCLK>;
+		reset-names = "extern1_rst";
+		nvidia,num-codec-link = <3>;
+		nvidia,num-amx = <4>;
+		nvidia,num-adx = <4>;
+		nvidia,amx-slot-size = <32 32 32 32>;
+		nvidia,adx-slot-size = <32 32 32 32>;
+		nvidia,amx1-slot-map = <
+			/* jack 0 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* jack 1 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* jack 2 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* jack 3 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)>;
+
+		nvidia,adx1-slot-map = <
+			/* jack 0 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* jack 1 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* jack 2 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* jack 3 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)>;
+
+		nvidia,audio-routing =
+			"Headphone-x", "x OUT",
+			"x IN", "LineIn-x",
+			"Headphone-y", "y OUT",
+			"y IN", "LineIn-y",
+			"Headphone-d", "d OUT",
+			"d IN", "LineIn-d";
+
+		nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			link-name = "p2382-audio-dsp-tdm1-1";
+			cpu-dai = <&tegra_i2s3>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "I2S3";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			format = "dsp_a";
+			bitclock-master;
+			frame-master;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s32_le";
+			bclk_ratio = <1>;
+			srate = <48000>;
+			num-channel = <8>;
+			name-prefix = "x";
+		};
+
+		nvidia,dai-link-2 {
+			link-name = "p2382-audio-dsp-tdm1-2";
+			cpu-dai = <&tegra_i2s4>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "I2S4";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			format = "dsp_a";
+			bitclock-master;
+			frame-master;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s32_le";
+			bclk_ratio = <1>;
+			srate = <48000>;
+			num-channel = <8>;
+			name-prefix = "y";
+		};
+
+		nvidia,dai-link-3 {
+			link-name = "dummy-playback";
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&spdif_dit2>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			format = "dsp_a";
+			bitclock-master;
+			frame-master;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s32_le";
+			bclk_ratio = <1>;
+			srate = <48000>;
+			num-channel = <8>;
+			name-prefix = "d";
+		};
+	};
+
+	adsp_audio {
+		status = "okay";
+	};
+
+	sdhci@3420000 {
+		status = "disabled";
+	};
+	sdhci@3400000 {
+		status = "disabled";
+	};
+	sdhci@3460000 {
+		status = "disabled";
+	};
+
+
+};
+

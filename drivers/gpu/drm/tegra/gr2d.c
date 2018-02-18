@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA Corporation.
+ * Copyright (C) 2012-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -84,27 +84,18 @@ static void gr2d_close_channel(struct tegra_drm_context *context)
 	host1x_channel_put(context->channel);
 }
 
-static int gr2d_is_addr_reg(struct device *dev, u32 class, u32 offset)
+static int gr2d_is_addr_reg(struct device *dev, u32 class, u32 offset, u32 val)
 {
 	struct gr2d *gr2d = dev_get_drvdata(dev);
 
-	switch (class) {
-	case HOST1X_CLASS_HOST1X:
-		if (offset == 0x2b)
-			return 1;
+	if (class != HOST1X_CLASS_GR2D && class != HOST1X_CLASS_GR2D_SB)
+		return 0;
 
-		break;
+	if (offset >= GR2D_NUM_REGS)
+		return 0;
 
-	case HOST1X_CLASS_GR2D:
-	case HOST1X_CLASS_GR2D_SB:
-		if (offset >= GR2D_NUM_REGS)
-			break;
-
-		if (test_bit(offset, gr2d->addr_regs))
-			return 1;
-
-		break;
-	}
+	if (test_bit(offset, gr2d->addr_regs))
+		return 1;
 
 	return 0;
 }

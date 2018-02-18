@@ -1,0 +1,147 @@
+NVIDIA Tegra SCE aux CPU, with communication via the "IVC" IPC protocol.
+
+SCE is an aux CPU which talks to CCPLEX over IVC.
+
+The SCE FW implements IVC, and uses HSP IRQs as part of IVC.  The
+SCE FW expects AST regions 0/1/2 are already set up for the SCE to
+access FW in DRAM, SYSRAM if applicable, and the IVC memory.
+
+== SCE top-level node ==
+
+The SCE core is represented by the top-level node including direct HW resources
+such as clocks, resets etc.
+
+Required properties:
+- compatible: Should be "nvidia,tegra186-sce-ivc" for T18x.
+- reg: Address entries (SCE EVP, SCE PM. SCE CFG BASE, SCE CPU AST,
+  SCE DMA AST)
+  Formatted as per standard rules for this property.
+- reg-names: "sce-evp",  "sce-pm", "sce-cfg", "ast-cpu", "ast-dma"
+  as per the reg property.
+- clock-names: Names of the clocks required by SCE.
+  Must include following entry:
+  - sce-apb
+- clocks: Should contain an entry for each entry in clock-names.
+  See ../clock/clock-bindings.txt for details.
+- reset-names: Names of the resets required for SCE.
+  Must include following entries:
+  - sce-apb
+  - sce-nsysporeset
+  - sce-nreset
+  - sce-dbgresetn
+  - sce-presetdbgn
+  - sce-actmon
+  - sce-pm
+  - sce-dma
+  - sce-hsp
+  - tsctnsce
+  - sce-tke
+  - sce-gte
+  - sce-cfg
+- resets: Should contain an entry for each entry in reset-names.
+  See ../reset/reset.txt for details.
+- nvidia,ivc-channels: List of IVC channel regions.
+  For each IVC channel regions (usually, there is only one region):
+  - an OF phandle pointing to the list,
+  - the region number for Tegra AST,
+  - the base address of the region in the remote processor (for address space
+    translation),
+  - the length of the region in bytes (must be a power of two).
+  For IVC channel details, please refer to: ./tegra-ivc-channel.txt
+
+Optional properties:
+- nvidia,stream-id: should contain the SMMU Stream ID used.
+
+== SCE sub nodes ==
+
+* hsp
+
+Describes the hardware synchronization primitive(s) used between CCPLEX
+and SCE to signal incoming IVC messages or IVC write room.
+
+Required property:
+- compatible: Should match with the device driver implementing the
+    cross-processor synchronization primitive.
+
+If the HSP doorbell is used for IVC notifications:
+
+- compatible: "nvidia,tegra186-hsp-doorbell"
+
+- nvidia,hsp-doorbell: <HSP-phandle HSP-ID HSP-DB>
+  * HSP is a set of HW synchronization primitives used in Tegra to allow
+    multiple processors to share resources and communicate together.
+  * HSP-ID is NVIDIA Tegra HSP unique source ID for SCE, used in IPC.
+  * HSP-DB is NVIDIA Tegra HSP unique doorbell number allotted to SCE.
+    A HSP doorbell allows a set of source agents in Tegra to request the
+    attention of specified target agent. In general the agents are processors
+    and doorbell used as part of an IPC protocol.
+  * For more HSP details, refer: ./tegra-hsp.txt.
+
+If the HSP shared mailbox is used for IVC notifications:
+
+- nvidia,hsp-shared-mailbox: <HSP-phandle MBOX-NUMBER HSP-phandle MBOX-NUMBER...>
+  * HSP is a set of HW synchronization primitives used in Tegra to allow
+    multiple processors to share resources and communicate together.
+  * MBOX-NUMBER is number of shared mailbox pair
+  * For more HSP details, refer: ../tegra-hsp.txt.
+
+- nvidia,hsp-shared-mailbox-names:
+  Must include following entry:
+  - ivc-pair
+
+If the HSP shared mailbox is used for boot synchronization:
+
+- nvidia,hsp-shared-mailbox: <HSP-phandle MBOX-NUMBER...>
+- nvidia,hsp-shared-mailbox-names:
+  Must include following entry:
+  - cmd-pair
+
+== Possible example ==
+
+tegra_sce: rtcpu@b000000 {
+	compatible = "nvidia,tegra186-sce-ivc";
+	nvidia,stream-id = <TEGRA_SID_RCE>;
+	reg =	<0 0xb000000 0 0x1000>,
+		<0 0xb1f0000 0 0x40000>,
+		<0 0xb230000 0 0x10000>,
+		<0 0xb040000 0 0x10000>,
+                <0 0xb050000 0 0x10000>;
+	reg-names = "sce-evp", "sce-pm", "sce-cfg", "ast-cpu", "ast-dma";
+	clocks = <&tegra_car TEGRA186_CLK_SCE_APB>;
+	clock-names = "sce-apb";
+	resets =
+		<&tegra_car TEGRA186_RESET_SCE_APB>,
+		<&tegra_car TEGRA186_RESET_SCE_NSYSPORESET>,
+		<&tegra_car TEGRA186_RESET_SCE_NRESET>,
+		<&tegra_car TEGRA186_RESET_SCE_DBGRESETN>,
+		<&tegra_car TEGRA186_RESET_SCE_PRESETDBGN>,
+		<&tegra_car TEGRA186_RESET_SCE_ACTMON>,
+		<&tegra_car TEGRA186_RESET_SCE_PM>,
+		<&tegra_car TEGRA186_RESET_SCE_DMA>,
+		<&tegra_car TEGRA186_RESET_SCE_HSP>,
+		<&tegra_car TEGRA186_RESET_TSCTNSCE>,
+		<&tegra_car TEGRA186_RESET_SCE_TKE>,
+		<&tegra_car TEGRA186_RESET_SCE_GTE>,
+		<&tegra_car TEGRA186_RESET_SCE_CFG>;
+	reset-names =
+		"sce-apb",
+		"sce-nsysporeset",
+		"sce-nreset",
+		"sce-dbgresetn",
+		"sce-presetdbgn",
+		"sce-actmon",
+		"sce-pm",
+		"sce-dma",
+		"sce-hsp",
+		"tsctnsce",
+		"sce-tke",
+		"sce-gte",
+		"sce-cfg";
+	nvidia,ivc-channels = <&tegra_camera_ivc 0x90000000 0x10000>;
+
+	hsp {
+		compatible = "nvidia,tegra186-hsp-mailbox";
+		nvidia,hsp-shared-mailbox = <&sce_hsp 1 &sce_hsp 7>;
+		nvidia,hsp-shared-mailbox-names = "ivc-pair", "cmd-pair";
+	};
+};

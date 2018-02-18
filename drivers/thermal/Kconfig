@@ -64,6 +64,21 @@ config THERMAL_DEFAULT_GOV_FAIR_SHARE
 	  devices based on their 'contribution' to a zone. The
 	  contribution should be provided through platform data.
 
+config THERMAL_DEFAULT_GOV_ADAPTIVE_SKIN
+	bool
+	prompt "adaptive skin thermal governor"
+	select THERMAL_GOV_ADAPTIVE_SKIN
+	help
+	  Use the adaptive skin thermal governor as default.
+
+config THERMAL_DEFAULT_GOV_PID
+	bool
+	prompt "pid_thermal_gov"
+	select THERMAL_GOV_PID
+	help
+	  Use the PID thermal governor as default. This throttles the
+	  devices based on output values of PID controller.
+
 config THERMAL_DEFAULT_GOV_USER_SPACE
 	bool "user_space"
 	select THERMAL_GOV_USER_SPACE
@@ -93,6 +108,19 @@ config THERMAL_GOV_BANG_BANG
 	  Say 'Y' here if you want to use two point temperature regulation
 	  used for fans without throttling.  Some fan drivers depend on this
 	  governor to be enabled (e.g. acerhdf).
+
+config THERMAL_GOV_PID
+	bool "PID thermal governor"
+	help
+	  This governor manages thermals based on output values of
+	  PID controller.
+
+config THERMAL_GOV_ADAPTIVE_SKIN
+	bool
+	prompt "adaptive skin thermal governor"
+	help
+	  This governor throttles clocks based on skin temperature and
+	  heat source(s) of the skin temperature like CPU and GPU.
 
 config THERMAL_GOV_USER_SPACE
 	bool "User_space thermal governor"
@@ -134,6 +162,15 @@ config IMX_THERMAL
 	  It supports one critical trip point and one passive trip point.  The
 	  cpufreq is used as the cooling device to throttle CPUs when the
 	  passive trip is crossed.
+
+config GENERIC_ADC_THERMAL
+	tristate
+	prompt "Generic ADC thermal sensor support using IIO framework"
+	depends on THERMAL
+	depends on IIO
+	help
+	  Enable support for the generic ADC thermal sensor driver
+	  using IIO framework.
 
 config SPEAR_THERMAL
 	bool "SPEAr thermal sensor driver"
@@ -252,6 +289,62 @@ config INT340X_THERMAL
 config ACPI_THERMAL_REL
 	tristate
 	depends on ACPI
+
+config PWM_FAN
+	tristate "PWM Fan driver"
+	depends on THERMAL
+	help
+	  Enables the fan driver that is controlled by pwm
+
+config PALMAS_THERMAL
+	tristate "TI Palmas Thermal driver"
+	depends on MFD_PALMAS
+	help
+	 Palmas series pmic chip supports hot die interrupt configurable for 4
+	 different critical temperature thresholds from which we can notify
+	 thermal core to orderly power off the system.
+
+config MAX77620_THERMAL
+        tristate "Maxim 77620 Thermal driver"
+        depends on MFD_MAX77620
+        help
+         Max77620 pmic chip supports hot die interrupt configurable for two
+         different critical temperature thresholds from which we can notify
+         thermal core to orderly power off the system.
+
+config AS3722_THERMAL
+       bool "AMS AS3722 thermal driver"
+       depends on THERMAL_OF && MFD_AS3722
+       default n
+       help
+         AS3722 thermal driver which detects temperature trips
+         on regulators due to high current drainage.It then provides
+         current temp on the regulators using ADC and uses platform
+         cooling hooks to throttle CPU/GPU speeds.
+
+config SENSORS_TMP006
+	tristate "Skin Temperature Sensor"
+	depends on I2C
+	help
+	 Say yes here if you wish to include the skin Temperature sensor.
+
+	 To compile this driver as a module, choose M here: the
+	 module will be called tmp006. If unsure, say N here.
+
+config TEGRA_AOTAG
+	depends on PLATFORM_TEGRA
+	depends on THERMAL
+	bool "Tegra Always-On-Thermal-Alert-Generator"
+	default y
+	help
+	  Support for Tegra Always-On thermal Alert Generator
+
+config MODEM_THERMAL
+	bool "Modem thermal driver support"
+	default n
+	help
+	  Thermal zone driver that user space communicates with to relay modem
+	  temperature sensor information.
 
 menu "Texas Instruments thermal drivers"
 source "drivers/thermal/ti-soc-thermal/Kconfig"

@@ -1,0 +1,108 @@
+/*
+ * tegra186-quill-e3301-0000-a00-plugin-manager.dtsi: E3301 plugin manager
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-quill-odm-data-plugin-manager.dtsi"
+
+/ {
+	eeprom-manager {
+		data-size = <0x100>;
+		boardid-with-revision = <3301>;
+		bus@0 {
+			i2c-bus = <&gen8_i2c>;
+			eeprom@0 {
+				slave-address = <0x50>;
+				label = "cvm";
+			};
+			eeprom@1 {
+				slave-address = <0x57>;
+				label = "cvb";
+			};
+		};
+		bus@1 {
+			i2c-bus = <&gen2_i2c>;
+			eeprom@0 {
+				slave-address = <0x51>;
+			};
+		};
+		bus@2 {
+			i2c-bus = <&gen1_i2c>;
+			eeprom@0 {
+				slave-address = <0x50>;
+			};
+		};
+		bus@3 {
+			i2c-bus = <&cam_i2c>;
+			eeprom@0 {
+				slave-address = <0x54>;
+				label = "cam";
+				enable-gpio = <2 9>;
+				/* Hard code chip_id 2 in DT for now,
+				 * Refer to http://git-master/r/#/c/1178868/5/include/drivers/tegrabl_gpio.h@23
+				 * Should change back after bootloader DT support enabled in gpio driver
+				 */
+			};
+		};
+	};
+	plugin-manager {
+		fragement-e3301-a01@1 {
+			ids = "3301-1000-100";
+			override@0 {
+				target = <&ina3221x_41>;
+				_overlay_ {
+					channel@1 {
+						ti,shunt-resistor-mohm = <10>;
+					};
+				};
+			};
+		};
+
+		e3301-a02-char@0 {
+			ids = ">=3301-1080-200";
+			override@0 {
+				target = <&spmic_ldo8>;
+				_overlay_ {
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-always-on;
+					regulator-boot-on;
+					status = "okay";
+				};
+			};
+			override@1 {
+				target = <&tegra_pmc_iopower>;
+				_overlay_ {
+					iopower-dmic-hv-supply =  <&spmic_ldo8>;
+					iopower-audio-hv-supply = <&spmic_ldo8>;
+				};
+			};
+		};
+
+		e3301-a02-slt-char@0 {
+			ids = ">=3301-1080-200", ">=3301-1099-200";
+			override@0 {
+				target = <&enable_fan_tach>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@1 {
+				target = <&tegra_pwm5>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+	};
+};

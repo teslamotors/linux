@@ -1,7 +1,9 @@
 #
 # Makefile for the i2c bus drivers.
 #
+GCOV_PROFILE := y
 
+ccflags-y += -Werror
 # ACPI drivers
 obj-$(CONFIG_I2C_SCMI)		+= i2c-scmi.o
 
@@ -77,7 +79,12 @@ obj-$(CONFIG_I2C_SIRF)		+= i2c-sirf.o
 obj-$(CONFIG_I2C_ST)		+= i2c-st.o
 obj-$(CONFIG_I2C_STU300)	+= i2c-stu300.o
 obj-$(CONFIG_I2C_SUN6I_P2WI)	+= i2c-sun6i-p2wi.o
+CFLAGS_i2c-tegra.o		 = -Werror
 obj-$(CONFIG_I2C_TEGRA)		+= i2c-tegra.o
+obj-$(CONFIG_I2C_TEGRA_HV)	+= i2c-tegra-hv-common.o i2c-tegra-hv.o
+obj-$(CONFIG_I2C_TEGRA_VI)	+= i2c-tegra-vi.o
+CFLAGS_i2c-slave-tegra.o	 = -Werror
+obj-$(CONFIG_I2C_SLAVE_TEGRA)   += i2c-slave-tegra.o
 obj-$(CONFIG_I2C_VERSATILE)	+= i2c-versatile.o
 obj-$(CONFIG_I2C_WMT)		+= i2c-wmt.o
 obj-$(CONFIG_I2C_OCTEON)	+= i2c-octeon.o
@@ -100,6 +107,7 @@ obj-$(CONFIG_I2C_BCM_KONA)	+= i2c-bcm-kona.o
 obj-$(CONFIG_I2C_CROS_EC_TUNNEL)	+= i2c-cros-ec-tunnel.o
 obj-$(CONFIG_I2C_ELEKTOR)	+= i2c-elektor.o
 obj-$(CONFIG_I2C_PCA_ISA)	+= i2c-pca-isa.o
+obj-$(CONFIG_I2C_PCA_GMI)	+= i2c-pca-gmi.o
 obj-$(CONFIG_I2C_SIBYTE)	+= i2c-sibyte.o
 obj-$(CONFIG_SCx200_ACB)	+= scx200_acb.o
 

@@ -1,0 +1,218 @@
+/*
+ * arch/arm/boot/dts/tegra124-tn8-p1761-1270-a02.dts
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+/dts-v1/;
+
+#include "tegra124-tn8.dtsi"
+#include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
+#include "tegra124-platforms/tegra124-tn8-emc-p1761-1270-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-power-tree-e1936-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sensor-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-pinmux-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-gpio-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sysedp-p1761-1270-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-powermon-p1761-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-camera-p1761-a00.dtsi"
+#include "panel-a-wxga-8-0.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
+#include "tegra124-platforms/tegra124-tn8-hdmi-p1761-1270-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-thermal-zone-p1761-1270-a00.dtsi"
+#include <dt-bindings/iio/meter/ina3221x.h>
+#include "tegra124-platforms/tegra124-tn8-usb-devices.dtsi"
+#include "tegra124-platforms/tegra124-tn8-cmu-p1761-1270-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-comms.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 TN8 FFD";
+	compatible = "nvidia,tn8", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "1761:1270:2";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "tn8";
+		};
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-a-wxga-8-0 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,dsi-boardinfo = <1761 0 0 0>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+			panel-a-wuxga-8-0 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,dsi-boardinfo = <1761 0 0 1>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE TEGRA_DC_OUT_INITIALIZED_MODE>;
+				};
+				smartdimmer {
+					status = "disabled";
+				};
+			};
+		};
+	};
+
+	i2c@7000c400 {
+		battery-gauge@0b {
+			onsemi,kernel-threshold-soc = <2>;
+			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL)>;
+			io-channel-names = "battery-current";
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+
+		battery-charger@6b {
+			charger {
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			};
+		};
+	};
+
+	i2c@7000c000 {
+		max44006@44 {
+			maxim,gain = <1>;
+			maxim,als-resolution = "0.75";
+		};
+	};
+
+	i2c@7000d000 {
+		tps65913 {
+			thermal {
+				status = "okay";
+			};
+		};
+	};
+
+	sysedp_batmon_calc {
+		status = "okay";
+	};
+
+	thermal-zones {
+		PMIC-Die {
+			status = "okay";
+		};
+
+		Battery {
+			 thermal-sensors = <&fg_lc709203f>;
+			 dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+	};
+
+	psy_extcon {
+		power-supply,y-cable-extcon-dev = "tegra-otg";
+	};
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+		panel-a-wuxga-8-0-bl {
+			/* Kernel applies bl_measured[] to map 125 to 135 for
+			 *  backlight linearity.
+			 * Setting kernel default brightness level to 125 to
+			 *  match bootloader default brightness level 135 for
+			 *  seamless boot.
+			 * For detail, see bl-measured property in
+			 *  /backlight/panel-a-wuxga-8-0-bl.
+			 */
+			default-brightness = <125>;
+		};
+	};
+
+	pwm@7000a000 {
+		pwm,use-pretty-good-alogorithm;
+	};
+
+	udc@7d000000 {
+		nvidia,id-detection-type = <1>;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,enable-aca-rid-detection;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 2 &extcon_cable_xlate 5>;
+		extcon-cable-names = "vbus", "aca-rb", "aca-rc";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		nvidia,enable-y-cable-detection;
+		nvidia,enable-aca-rid-detection;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 1 &extcon_cable_xlate 2 &extcon_cable_xlate 3 &extcon_cable_xlate 4 &extcon_cable_xlate 5>;
+		extcon-cable-names = "vbus", "id", "aca-ra", "y-cable", "aca-rb", "aca-rc";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+	ehci@7d000000 {
+		nvidia,port-otg;
+		nvidia,has-hostpc;
+		nvidia,turn_off_vbus_on_lp0;
+		nvidia,id-detection-type = <2>;
+		nvidia,hssync-start-delay = <0>;
+		nvidia,idle-wait-delay = <17>;
+		nvidia,elastic-limit = <16>;
+		nvidia,term-range-adj = <6>;
+		nvidia,xcvr-setup = <15>;
+		nvidia,xcvr-lsfslew = <2>;
+		nvidia,xcvr-lsrslew = <2>;
+		nvidia,xcvr-use-fuses;
+		nvidia,vbus-oc-map = <4>;
+		nvidia,xcvr-setup-offset = <0>;
+		status = "disabled";
+	};
+};
+

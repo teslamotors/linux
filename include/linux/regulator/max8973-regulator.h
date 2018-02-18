@@ -52,20 +52,31 @@
  * struct max8973_regulator_platform_data - max8973 regulator platform data.
  *
  * @reg_init_data: The regulator init data.
+ * @junction_temp_warning: Junction temp warning threshold, temp is in
+ *              milli-celcius i.e. 120000 for 120degC.
+ * irq_flags: IRQ flags to register interrupts.
  * @control_flags: Control flags which are ORed value of above flags to
  *		configure device.
  * @enable_ext_control: Enable the voltage enable/disable through external
  *		control signal from EN input pin. If it is false then
  *		voltage output will be enabled/disabled through EN bit of
  *		device register.
+ * @enable_dvs_sleep_control: Enable sleep control of the rail through the
+ * 		DVS pin.
  * @dvs_gpio: GPIO for dvs. It should be -1 if this is tied with fixed logic.
+ * @enable_gpio: GPIO for enable pin if it is connected and gpio controlled.
+ * 		 It should be -1 if this is inot gpio controlled.
  * @dvs_def_state: Default state of dvs. 1 if it is high else 0.
  */
 struct max8973_regulator_platform_data {
 	struct regulator_init_data *reg_init_data;
 	unsigned long control_flags;
+	int junction_temp_warning;
+	int irq_flags;
 	bool enable_ext_control;
+	bool enable_dvs_sleep_control;
 	int dvs_gpio;
+	int enable_gpio;
 	unsigned dvs_def_state:1;
 };
 

@@ -1,0 +1,174 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	regulators {
+		compatible = "simple-bus";
+		device_type = "fixed-regulators";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		battery_reg: regulator@0 {
+			compatible = "regulator-fixed";
+			reg = <0>;
+			regulator-name = "vdd-ac-bat";
+			consumers {
+				c1 {
+					regulator-consumer-supply = "dvdd-pex-pll";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c2 {
+					regulator-consumer-supply = "hvdd-pex-pll-e";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c3 {
+					regulator-consumer-supply = "l0-hvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c4 {
+					regulator-consumer-supply = "l0-dvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c5 {
+					regulator-consumer-supply = "l1-hvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c6 {
+					regulator-consumer-supply = "l1-dvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c7 {
+					regulator-consumer-supply = "l2-hvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c8 {
+					regulator-consumer-supply = "l2-dvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c9 {
+					regulator-consumer-supply = "l3-hvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c10 {
+					regulator-consumer-supply = "l3-dvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c11 {
+					regulator-consumer-supply = "l4-hvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c12 {
+					regulator-consumer-supply = "l4-dvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c13 {
+					regulator-consumer-supply = "l5-hvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c14 {
+					regulator-consumer-supply = "l5-dvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c15 {
+					regulator-consumer-supply = "l6-hvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c16 {
+					regulator-consumer-supply = "l6-dvddio-pex";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c17 {
+					regulator-consumer-supply = "vddio-pex-ctl";
+					regulator-consumer-device = "pcie-controller.3";
+				};
+				c18 {
+					regulator-consumer-supply = "vdd33a";
+				};
+				c19 {
+					regulator-consumer-supply = "vddvario";
+				};
+				c20 {
+					regulator-consumer-supply = "avdd_usb";
+					regulator-consumer-device = "tegra-udc.0";
+				};
+				c21 {
+					regulator-consumer-supply = "vddio_sdmmc";
+					regulator-consumer-device = "sdhci-tegra.3";
+				};
+				c22 {
+					regulator-consumer-supply = "vddio_sd_slot";
+					regulator-consumer-device = "sdhci-tegra.3";
+				};
+				c23 {
+					regulator-consumer-supply = "vqmmc";
+					regulator-consumer-device = "sdhci-tegra.3";
+				};
+				c24 {
+					regulator-consumer-supply = "vmmc";
+					regulator-consumer-device = "sdhci-tegra.3";
+				};
+				c25 {
+					regulator-consumer-supply = "vddio_sd_slot";
+					regulator-consumer-device = "sdhci-tegra.2";
+				};
+				c26 {
+					regulator-consumer-supply = "vqmmc";
+					regulator-consumer-device = "sdhci-tegra.2";
+				};
+				c27 {
+					regulator-consumer-supply = "vmmc";
+					regulator-consumer-device = "sdhci-tegra.2";
+				};
+				c28 {
+					regulator-consumer-supply = "vddio_sdmmc";
+					regulator-consumer-device = "sdhci-tegra.1";
+				};
+				c29 {
+					regulator-consumer-supply = "vddio_sd_slot";
+					regulator-consumer-device = "sdhci-tegra.1";
+				};
+				c30 {
+					regulator-consumer-supply = "vqmmc";
+					regulator-consumer-device = "sdhci-tegra.1";
+				};
+				c31 {
+					regulator-consumer-supply = "vmmc";
+					regulator-consumer-device = "sdhci-tegra.1";
+				};
+				c32 {
+					regulator-consumer-supply = "vdd_core";
+				};
+			};
+		};
+
+		/* "max*" lables just resolve references from disabled devices */
+		max77620: gpu_max77621_reg: cpu_max77621_reg: en_vdd_cpu_fixed: regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <1>;
+			regulator-name = "vdd_cpu_fixed";
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+		};
+
+		max77620_sd0: regulator@2 {
+			compatible = "regulator-fixed";
+			reg = <2>;
+			regulator-name = "vdd_core_fixed";
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+		};
+	};
+
+	gpio_regulator: gpio-regulator {
+		compatible = "regulator-gpio";
+		regulator-name = "vddio-sdmmc";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpios = <&gpio TEGRA_GPIO(Z, 4) 0>;
+		states = <1800000 0x0
+			3300000 0x1>;
+		enable-active-high;
+	};
+};

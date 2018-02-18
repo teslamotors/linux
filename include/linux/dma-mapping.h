@@ -31,6 +31,13 @@ struct dma_map_ops {
 			       unsigned long offset, size_t size,
 			       enum dma_data_direction dir,
 			       struct dma_attrs *attrs);
+
+	dma_addr_t (*map_page_at)(struct device *dev, struct page *page,
+				  dma_addr_t dma_handle,
+				  unsigned long offset, size_t size,
+				  enum dma_data_direction dir,
+				  struct dma_attrs *attrs);
+
 	void (*unmap_page)(struct device *dev, dma_addr_t dma_handle,
 			   size_t size, enum dma_data_direction dir,
 			   struct dma_attrs *attrs);
@@ -59,6 +66,17 @@ struct dma_map_ops {
 #ifdef ARCH_HAS_DMA_GET_REQUIRED_MASK
 	u64 (*get_required_mask)(struct device *dev);
 #endif
+	dma_addr_t (*iova_alloc)(struct device *dev, size_t size,
+				 struct dma_attrs *attrs);
+	dma_addr_t (*iova_alloc_at)(struct device *dev, dma_addr_t *dma_addr,
+				    size_t size, struct dma_attrs *attrs);
+	void (*iova_free)(struct device *dev, dma_addr_t addr, size_t size,
+			  struct dma_attrs *attrs);
+	size_t (*iova_get_free_total)(struct device *dev);
+	size_t (*iova_get_free_max)(struct device *dev);
+
+	phys_addr_t (*iova_to_phys)(struct device *dev, dma_addr_t iova);
+
 	int is_phys;
 };
 
@@ -196,6 +214,29 @@ static inline int dma_get_cache_alignment(void)
 #define DMA_MEMORY_IO			0x02
 #define DMA_MEMORY_INCLUDES_CHILDREN	0x04
 #define DMA_MEMORY_EXCLUSIVE		0x08
+#define DMA_MEMORY_NOMAP		0x10
+
+struct dma_resize_notifier_ops {
+	int (*resize)(phys_addr_t, size_t);
+};
+
+struct dma_resize_notifier {
+	struct dma_resize_notifier_ops *ops;
+};
+
+struct dma_declare_info {
+	const char *name;
+	bool resize;
+	phys_addr_t base;
+	size_t size;
+	struct device *cma_dev;
+	struct dma_resize_notifier notifier;
+};
+
+struct dma_coherent_stats {
+	phys_addr_t base;
+	size_t size;
+};
 
 #ifndef ARCH_HAS_DMA_DECLARE_COHERENT_MEMORY
 static inline int

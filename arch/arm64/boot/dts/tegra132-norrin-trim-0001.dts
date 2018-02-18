@@ -1,0 +1,96 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "tegra132-norrin-pm374-0001-a01-00.dts"
+
+
+/ {
+
+	chosen {
+		linux,initrd-start = <0x81680000>;
+	};
+	genericSim {
+		platform-bootargs = "androidboot.genericSim=1";
+	};
+	cpus {
+		cpu@1 {
+			status = "disabled";
+		};
+	};
+
+	hda@70030000 {
+		status = "disabled";
+	};
+
+	i2c@7000c000 {
+		cm32181@48 {
+			status = "disabled";
+		};
+	};
+        host1x: host1x {
+		nvavp {
+			status = "disabled";
+		};
+		vi {
+			status = "disabled";
+		};
+		msenc {
+			status = "disabled";
+		};
+		isp@54600000 {
+			status = "disabled";
+		};
+		isp@54680000 {
+			status = "disabled";
+		};
+
+	};
+	camera-pcl {
+		status = "disabled";
+	};
+	tegra_ahub_apbif: ahub {
+		status = "disabled";
+	};
+	serial@70006200 {
+		status = "disabled";
+	};
+	serial@70006300 {
+		status = "okay";
+	};
+	sata@70020000 {
+		status="disabled";
+	};
+	spi0: spi@7000d400 {
+		status="disabled";
+	};
+	spi1: spi@7000d600 {
+		status="disabled";
+	};
+	spi2: spi@7000d800 {
+		status="disabled";
+	};
+	spi3: spi@7000da00 {
+		status="disabled";
+	};
+	spi4: spi@7000dc00 {
+		status="disabled";
+	};
+	spi5: spi@7000de00 {
+		status="disabled";
+	};
+};

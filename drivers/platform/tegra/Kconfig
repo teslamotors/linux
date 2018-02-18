@@ -1,0 +1,297 @@
+
+# Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms and conditions of the GNU General Public License,
+# version 2, as published by the Free Software Foundation.
+#
+# This program is distributed in the hope it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+comment "NVIDIA Tegra options"
+
+config TEGRA_CLK_FRAMEWORK
+	bool "Tegra clock framework"
+	default y
+	help
+	  Enable Tegra clock framework.
+
+config TEGRA_MC
+	bool "Tegra MC"
+	default y
+	help
+	  Enable Tegra MC.
+
+config TEGRA_MC_DOMAINS
+	bool "Enable Tegra MC PM domain"
+	depends on TEGRA_MC
+	depends on PM_GENERIC_DOMAINS
+	default n
+	help
+	  When enabled, clock gates MC when it's not needed.
+
+config TEGRA_WAKEUP_MONITOR
+	bool "Enable tegra wakeup monitor"
+	depends on PM_SLEEP && ANDROID_INTF_ALARM_DEV
+	help
+	  This option enables support for the monitor of tegra wakeups, it will
+	  send out wakeup source and uevents which indicate suspend_prepare and
+	  post_suspend.
+
+config TEGRA_COMMON
+	bool "Tegra common support"
+	default y
+	help
+	  Enable Tegra common support.
+
+config TEGRA_DEVICES
+	bool "Tegra devices"
+	default y
+	help
+	  Enable misc Tegra devices.
+
+config TEGRA3_PM
+	bool "Tegra3 power and cluster management"
+	default y
+	help
+	  Enable Tegra3 power and cluster management.
+
+config TEGRA_PMC
+	bool "Tegra PMC"
+	default y
+	help
+	  Enable Tegra PMC.
+
+config TEGRA210_BOOTROM_PMC
+	bool "Tegra210 bootrom commands from PMC"
+	depends on TEGRA_PMC
+	help
+	  Tegra210 bootrom has the feature to issue i2c commands to
+	  external device like PMIC to send commands. These commands
+	  are needed to pass through PMC on specific format.
+	  This driver supports the formatting of data as per bootrom
+	  need
+
+config TEGRA_POWERGATE
+	bool "Tegra powergate support"
+	default y
+	help
+	  Enable Tegra powergate support.
+
+config TEGRA_CORE_VOLT_CAP
+	bool "Tegra core voltage cap support."
+	depends on TEGRA_CLK_FRAMEWORK
+	default y
+	help
+	  Enable Tegra core voltage cap support.
+
+config TEGRA_BOARD_COMMON
+	bool "Tegra common board support"
+	default y
+	help
+	  Enable Tegra common board support.
+
+config TEGRA_BOOTLOADER_DEBUG
+	tristate "Creates sys-fs interface dumping registers read by bootloader"
+	default n
+	select TEGRA_BOOTLOADER_DEBUG_INIT
+	help
+	  When enabled, tegra_bootloader_verify_regs sys-fs is created.
+
+config TEGRA_BOOTLOADER_DEBUG_INIT
+	bool
+	depends on TEGRA_BOOTLOADER_DEBUG
+
+config TEGRA_BPMP_SCLK_SKIP
+	bool "Let bpmp firmware own the sclk skipper h/w"
+	depends on TEGRA_BPMP && ARCH_TEGRA_21x_SOC
+	default n
+	help
+	  When enabled, sclk skipper set rate will be delegated to bpmp firmware
+
+config TEGRA_CBUS_CAN_USE_SKIPPERS
+	bool "Allow to use clock skippers on cbus users"
+	depends on ARCH_TEGRA_21x_SOC
+	default n
+	help
+	  When enabled, clock skippers for cbus modules can be used to provide
+	  fine granularity clock rate control
+
+config TEGRA_CAMERA_MIPI_CAL
+	bool "Tegra camera MIPI calibration"
+	default y
+	help
+	  Enable Tegra camera MIPI calibration.
+
+config TEGRA_KFUSE
+	bool "Tegra kfuse support"
+	default y
+	help
+	  Enable Tegra kfuse support. The kfuse block stores downstream and
+	  upstream HDCP keys for use by the HDMI module.
+
+config TEGRA_SOCTHERM
+	bool "Enable soctherm"
+	default y
+        help
+	  Enables use of soctherm for thermal management.
+
+config TEGRA_EDP_LIMITS
+	bool "Enforce electrical design limits on CPU rail"
+	depends on CPU_FREQ
+	depends on THERMAL
+	default n
+	select TEGRA_PROC_POWER_MODEL
+	help
+	  Limit maximum CPU frequency based on temperature and number
+	  of on-line CPUs to keep CPU rail current within power supply
+	  capabilities.
+
+config TEGRA_GPU_EDP
+       bool "GPU EDP management"
+       depends on THERMAL
+       select TEGRA_PROC_POWER_MODEL
+       default n
+       help
+         Limit maximum GPU frequency based on temperature
+         to keep GPU rail current within power supply
+         capabilities.
+
+config TEGRA_CENTRAL_ACTMON
+	bool "Tegra Activity Monitor"
+	depends on ARCH_TEGRA_18x_SOC || ARCH_TEGRA_21x_SOC
+	default n
+	help
+	  Actmon is a hardware block that can be used to track the activity of
+	  certain hardware units. It can boost EMC clock depending
+	  on the memory trafic among various client. It is called central actmon
+	  as it monitors central activity for example MC activity. HW fabric of
+	  central and unit actmon is different. If unsure, say Y here.
+
+config TEGRA_IVC
+	bool "Tegra IVC protocol support"
+	default n
+	help
+	  Enable the Tegra IVC library, which implements a lockless, shared-
+	  memory queue.
+
+config TEGRA_USB_SHARED_PAD
+	bool "Enable shared pad control for Tegra11x/Tegra12x/Tegra13x/Tegra21x"
+	depends on ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_13x_SOC || ARCH_TEGRA_21x_SOC
+	default y
+	help
+	  Add shared pad controls for pcie, sata, and usb.
+
+config TEGRA_FIQ_DEBUGGER
+        bool "Enable the FIQ serial debugger on Tegra"
+        default n
+        select FIQ_DEBUGGER
+        help
+          Enables the FIQ serial debugger on Tegra
+
+config TEGRA_NVDUMPER
+	bool "Enable nvdumper"
+	depends on ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_13x_SOC || ARCH_TEGRA_21x_SOC || ARCH_TEGRA_18x_SOC
+	default y
+	help
+	  This is debug feature to dump whole memory when system crashes.
+
+config DENVER_CPU
+	bool "Denver CPU"
+	help
+	  Support for NVIDIA Denver CPU
+
+config DENVER_DEBUG
+	bool "Denver Hardware Debug Tools"
+	depends on DENVER_CPU
+	help
+	  This enables drivers that allow debugging the Denver CPU internals.
+
+config DENVER_MCA
+	tristate "Denver Machine Check Handler"
+	depends on DENVER_CPU
+	select SERROR_HANDLER
+	help
+	  The Denver Machine Check handler. It collects and reports errors from
+	  the Denver CPUs.
+
+config TEGRA_BWMGR
+	bool "Enable EMC Bandwidth Manager"
+	depends on COMMON_CLK
+	default n
+	help
+	  Enables Bandwidth manager support for EMC clock. Required when using Common Clock Framework
+
+config TEGRA_ISOMGR
+	bool "Isochronous Bandwidth Manager "
+	help
+	  When enabled, drivers for ISO units can obtain ISO BW.
+	  The memory controller (MC) for each Tegra platform can supply
+	  a limited amount of isochronous (real-time) bandwidth.  When
+	  enabled, isomgr will manage a pool of ISO BW.
+
+config TEGRA_ISOMGR_POOL_KB_PER_SEC
+	int "Size of isomgr pool "
+	default 0
+	help
+	  Set this maximum ISO BW (in Kbytes/sec) that platform supports.
+	  The memory controller (MC) for each Tegra platform can supply
+	  a limited amount of isochronous (real-time) bandwidth.  Each
+	  platform must specify the maximum amount of ISO BW that isomgr
+	  should manage.
+
+config TEGRA_ISOMGR_SYSFS
+	bool "Visibility into Isochronous Bandwidth Manager state "
+	depends on TEGRA_ISOMGR
+	help
+	  When enabled, sysfs can be used to query isomgr state.
+	  This is used for visibility into isomgr state.  It could
+	  be useful in debug or in understanding performance on a
+	  running system.
+
+config TEGRA_ISOMGR_MAX_ISO_BW_QUIRK
+	bool "Relax Max ISO Bw limit"
+	depends on TEGRA_ISOMGR
+	default y
+	help
+	  When enabled, allows system with less ISO bw continue to
+	  work. This is necessary for systems running at lower
+	  EMC clock freq or on FPGA.
+
+config TEGRA_13x_SERROR
+	tristate "Tegra13 SError handler"
+	depends on ARCH_TEGRA_13x_SOC
+	select DENVER_MCA
+	help
+	  The Tegra13 SError handler. This handles Denver SErrors.
+
+config TEGRA_MODS_OF
+	bool "Allow to dynamically change DTB at runtime to insert 'mods' node"
+	select OF_DYNAMIC
+	select OF_RESOLVE
+	default n
+	help
+	  In the Common Clock Framework (starting T18x), platform drivers can
+	  use DTB to acsess clocks. Mods clock driver needs to insert 'mods'
+	  node in live dtb at driver initialisation and add all clocks that it
+	  needs to that node. The 2 OF_ configs help to do that.
+
+config TEGRA_FIRMWARES_CLASS
+	bool
+	default n
+
+config TEGRA_FIRMWARES_INVENTORY
+	tristate "Tegra firmwares inventory"
+	select TEGRA_FIRMWARES_CLASS
+	default y
+	help
+	  Register version readers for firmwares
+
+trysource "../t18x/drivers/platform/tegra/Kconfig"
+trysource "../t18x/drivers/platform/tegra/Kconfig.t18x"
+trysource "drivers/platform/tegra/Kconfig.t18x"

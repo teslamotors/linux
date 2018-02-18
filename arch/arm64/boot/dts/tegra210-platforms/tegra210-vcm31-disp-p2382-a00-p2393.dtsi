@@ -1,0 +1,108 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <panel-a-edp-1080p-14-0.dtsi>
+#include "tegra210-display-p2393-0000-a00-panel-dsi-1080p.dtsi"
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+
+/ {
+
+	i2c@7000c000 { /* GEN1 */
+		status = "okay";
+		sn65dsi86@2d {
+			compatible = "ti,sn65dsi86";
+			reg = <0x2d>;
+			status = "okay";
+			ti,enable-gpio = <&gpio TEGRA_GPIO(S, 1) 0>;
+			ti,pll-refclk-cfg = <0x4>;
+			ti,dsi-cha-clk-range = <0x61>;
+			ti,disable-assr = <1>;
+			ti,dp-ssc-cfg = <0x30>;
+			ti,h-pulse-width-low = <0x2c>;
+			ti,h-pulse-width-high = <0x0>;
+			ti,v-pulse-width-low = <0x05>;
+			ti,v-pulse-width-high = <0x80>;
+			ti,h-back-porch = <0x94>;
+			ti,v-back-porch = <0x24>;
+			ti,h-front-porch = <0x58>;
+			ti,v-front-porch = <0x04>;
+		};
+	};
+
+	host1x {
+		status = "okay";
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			/* nvidia,cmu-enable = <1>; */
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+
+		sor {
+			status = "disable";
+		};
+
+		dpaux {
+			status = "disable";
+		};
+
+		dpaux1 {
+			status = "okay";
+		};
+
+		sor1 {
+			status = "okay";
+			nvidia,ddc-i2c-bus = <&hdmi_ddc>;
+			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(CC, 1) 1>; /* PN7 */
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_LOW>;
+					nvidia,out-parent-clk = "pll_d2";
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+				};
+			};
+		};
+
+		dsi {
+			nvidia,dsi-controller-vs = <1>;
+			status = "okay";
+			panel-dsi-1080p-p2382 {
+				nvidia,dsi-edp-bridge = <TEGRA_DSI_ENABLE>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>;
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>;
+				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>;
+				nvidia,panel-bridge-en-0-gpio = <&gpio TEGRA_GPIO(S, 1) 0>;
+			};
+		};
+	};
+};

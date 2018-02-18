@@ -11,6 +11,7 @@
 #ifndef __LINUX_V4L2_MEDIABUS_H
 #define __LINUX_V4L2_MEDIABUS_H
 
+#include <linux/media-bus-format.h>
 #include <linux/types.h>
 #include <linux/videodev2.h>
 
@@ -37,7 +38,7 @@
 enum v4l2_mbus_pixelcode {
 	V4L2_MBUS_FMT_FIXED = 0x0001,
 
-	/* RGB - next is 0x100e */
+	/* RGB - next is 0x1010 */
 	V4L2_MBUS_FMT_RGB444_2X8_PADHI_BE = 0x1001,
 	V4L2_MBUS_FMT_RGB444_2X8_PADHI_LE = 0x1002,
 	V4L2_MBUS_FMT_RGB555_2X8_PADHI_BE = 0x1003,
@@ -51,6 +52,8 @@ enum v4l2_mbus_pixelcode {
 	V4L2_MBUS_FMT_RGB888_2X12_BE = 0x100b,
 	V4L2_MBUS_FMT_RGB888_2X12_LE = 0x100c,
 	V4L2_MBUS_FMT_ARGB8888_1X32 = 0x100d,
+	V4L2_MBUS_FMT_RGBA8888_4X8_BE = 0x100e,
+	V4L2_MBUS_FMT_RGBA8888_4X8_LE = 0x100f,
 
 	/* YUV (including grey) - next is 0x2024 */
 	V4L2_MBUS_FMT_Y8_1X8 = 0x2001,

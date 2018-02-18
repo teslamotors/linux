@@ -1,0 +1,58 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	gpio: gpio@6000d000 {
+		gpio-init-1 = <&wlan_default>;
+
+		wlan_default: wlan-default {
+			gpio-input = <
+				TEGRA_GPIO(U, 5)
+				>;
+			gpio-output-high = <
+				TEGRA_GPIO(X, 7)
+				TEGRA_GPIO(CC, 5)
+				>;
+		};
+	};
+
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,reset-gpio = <&gpio TEGRA_GPIO(X, 1) 0>;
+		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) 0>;
+		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) 0>;
+		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) 0>;
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(U, 6) 0x01>;
+	};
+
+	bcmdhd_wlan {
+		compatible = "android,bcmdhd_wlan";
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(U, 5) 0x14>;
+		wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
+		wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+		status = "okay";
+		/* wifi MAC address */
+		mac-address-chosen-dtb-node = "nvidia,wifi-mac";
+		mac-address-file = "/mnt/factory/wifi/wifi_mac.txt";
+	};
+};

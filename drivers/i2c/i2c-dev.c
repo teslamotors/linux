@@ -34,6 +34,7 @@
 #include <linux/i2c-dev.h>
 #include <linux/jiffies.h>
 #include <linux/uaccess.h>
+#include <linux/reboot.h>
 
 /*
  * An i2c_dev represents an i2c_adapter ... an I2C or SMBus master, not a
@@ -52,6 +53,8 @@ struct i2c_dev {
 #define I2C_MINORS	256
 static LIST_HEAD(i2c_dev_list);
 static DEFINE_SPINLOCK(i2c_dev_list_lock);
+
+static bool is_reboot;
 
 static struct i2c_dev *i2c_dev_get_by_minor(unsigned index)
 {
@@ -141,6 +144,12 @@ static ssize_t i2cdev_read(struct file *file, char __user *buf, size_t count,
 
 	struct i2c_client *client = file->private_data;
 
+	if (is_reboot) {
+		dev_dbg(&client->adapter->dev,
+			"ignore read for the reboot\n");
+		return -EBUSY;
+	}
+
 	if (count > 8192)
 		count = 8192;
 
@@ -164,6 +173,12 @@ static ssize_t i2cdev_write(struct file *file, const char __user *buf,
 	int ret;
 	char *tmp;
 	struct i2c_client *client = file->private_data;
+
+	if (is_reboot) {
+		dev_dbg(&client->adapter->dev,
+			"ignore write for the reboot\n");
+		return -EBUSY;
+	}
 
 	if (count > 8192)
 		count = 8192;
@@ -415,6 +430,12 @@ static long i2cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct i2c_client *client = file->private_data;
 	unsigned long funcs;
 
+	if (is_reboot) {
+		dev_dbg(&client->adapter->dev,
+			"ignore ioctl for the reboot\n");
+		return -EBUSY;
+	}
+
 	dev_dbg(&client->adapter->dev, "ioctl, cmd=0x%02x, arg=0x%02lx\n",
 		cmd, arg);
 
@@ -488,6 +509,12 @@ static int i2cdev_open(struct inode *inode, struct file *file)
 	struct i2c_adapter *adap;
 	struct i2c_dev *i2c_dev;
 
+	if (is_reboot) {
+		pr_debug("i2c-dev: i2c-%d: ignore open for the reboot\n",
+			minor);
+		return -EBUSY;
+	}
+
 	i2c_dev = i2c_dev_get_by_minor(minor);
 	if (!i2c_dev)
 		return -ENODEV;
@@ -519,6 +546,12 @@ static int i2cdev_open(struct inode *inode, struct file *file)
 static int i2cdev_release(struct inode *inode, struct file *file)
 {
 	struct i2c_client *client = file->private_data;
+
+	if (is_reboot) {
+		dev_dbg(&client->adapter->dev,
+			"ignore release for the reboot\n");
+		return -EBUSY;
+	}
 
 	i2c_put_adapter(client->adapter);
 	kfree(client);
@@ -611,6 +644,23 @@ static struct notifier_block i2cdev_notifier = {
 	.notifier_call = i2cdev_notifier_call,
 };
 
+static int i2cdev_reboot_notifier_call(struct notifier_block *nb,
+				unsigned long action, void *data)
+{
+	switch (action) {
+	case SYS_RESTART:
+	case SYS_HALT:
+	case SYS_POWER_OFF:
+		is_reboot = true;
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block i2cdev_reboot_notifier = {
+	.notifier_call = i2cdev_reboot_notifier_call,
+};
+
 /* ------------------------------------------------------------------------- */
 
 /*
@@ -639,11 +689,19 @@ static int __init i2c_dev_init(void)
 	if (res)
 		goto out_unreg_class;
 
+	/* Register reboot notifier to track system reboot status */
+	is_reboot = false;
+	res = register_reboot_notifier(&i2cdev_reboot_notifier);
+	if (res)
+		goto out_unreg_bus_notifier;
+
 	/* Bind to already existing adapters right away */
 	i2c_for_each_dev(NULL, i2cdev_attach_adapter);
 
 	return 0;
 
+out_unreg_bus_notifier:
+	bus_unregister_notifier(&i2c_bus_type, &i2cdev_notifier);
 out_unreg_class:
 	class_destroy(i2c_dev_class);
 out_unreg_chrdev:
@@ -655,6 +713,7 @@ out:
 
 static void __exit i2c_dev_exit(void)
 {
+	unregister_reboot_notifier(&i2cdev_reboot_notifier);
 	bus_unregister_notifier(&i2c_bus_type, &i2cdev_notifier);
 	i2c_for_each_dev(NULL, i2cdev_detach_adapter);
 	class_destroy(i2c_dev_class);

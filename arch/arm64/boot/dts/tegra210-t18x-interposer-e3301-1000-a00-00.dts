@@ -1,0 +1,31 @@
+/*
+ * tegra210-t18x-interposer-p3310-1000-a00-00.dts: T18X interposer
+ *		T210 + E2226 (T210 to T186 interposer) +
+ *		P3301-1000-a00 (T186 CVM board bringup SKU) +
+ *		P2597 (Jetson CVB)
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-t18x-interposer-e3301-p3310-common.dtsi"
+#include "tegra210-platforms/tegra210-t18x-interposer-power-tree-e3301-1000-a00-00.dtsi"
+#include "tegra210-platforms/tegra210-t18x-interposer-pinmux-e3301-1000-a00-00.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-keys-p2597-2180-a00.dtsi"
+
+/ {
+	model = "t18x-interposer";
+	compatible = "nvidia,t18x-interposer", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+
+	nvidia,proc-boardid = "e3301:1000:A0";
+};

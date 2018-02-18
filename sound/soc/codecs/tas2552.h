@@ -50,6 +50,11 @@
 #define TAS2552_WCLK_MASK		0x07
 #define TAS2552_CLASSD_EN_MASK	(1 << 7)
 
+#define TAS2552_PLL_SRC_MCLK		(0x0 << 4)
+#define TAS2552_PLL_SRC_BCLK		(0x1 << 4)
+#define TAS2552_PLL_SRC_IVCLKIN		(0x2 << 4)
+#define TAS2552_PLL_SRC_1_8_FIXED	(0x3 << 4)
+
 /* CFG2 Register Masks */
 #define TAS2552_CLASSD_EN		(1 << 7)
 #define TAS2552_BOOST_EN		(1 << 6)
@@ -68,54 +73,50 @@
 #define TAS2552_DAIFMT_RIGHT_J		(1 << 4)
 #define TAS2552_DAIFMT_LEFT_J		(0x11 << 3)
 
-#define TAS2552_PLL_SRC_MCLK	0x00
-#define TAS2552_PLL_SRC_BCLK	(1 << 3)
-#define TAS2552_PLL_SRC_IVCLKIN	(1 << 4)
-#define TAS2552_PLL_SRC_1_8_FIXED (0x11 << 3)
 
-#define TAS2552_DIN_SRC_SEL_MUTED	0x00
-#define TAS2552_DIN_SRC_SEL_LEFT	(1 << 4)
-#define TAS2552_DIN_SRC_SEL_RIGHT	(1 << 5)
-#define TAS2552_DIN_SRC_SEL_AVG_L_R	(0x11 << 4)
+#define TAS2552_DIN_SRC_SEL_MUTED	(0x0 << 3)
+#define TAS2552_DIN_SRC_SEL_LEFT	(0x1 << 3)
+#define TAS2552_DIN_SRC_SEL_RIGHT	(0x2 << 3)
+#define TAS2552_DIN_SRC_SEL_AVG_L_R	(0x3 << 3)
 
 #define TAS2552_PDM_IN_SEL		(1 << 5)
 #define TAS2552_I2S_OUT_SEL		(1 << 6)
-#define TAS2552_ANALOG_IN_SEL	(1 << 7)
+#define TAS2552_ANALOG_IN_SEL		(1 << 7)
 
 /* CFG3 WCLK Dividers */
 #define TAS2552_8KHZ		0x00
-#define TAS2552_11_12KHZ	(1 << 1)
-#define TAS2552_16KHZ		(1 << 2)
-#define TAS2552_22_24KHZ	(1 << 3)
-#define TAS2552_32KHZ		(1 << 4)
-#define TAS2552_44_48KHZ	(1 << 5)
-#define TAS2552_88_96KHZ	(1 << 6)
-#define TAS2552_176_192KHZ	(1 << 7)
+#define TAS2552_11_12KHZ	0x01
+#define TAS2552_16KHZ		0x02
+#define TAS2552_22_24KHZ	0x03)
+#define TAS2552_32KHZ		0x04)
+#define TAS2552_44_48KHZ	0x05)
+#define TAS2552_88_96KHZ	0x06
+#define TAS2552_176_192KHZ	0x07
 
 /* OUTPUT_DATA register */
-#define TAS2552_PDM_DATA_I		0x00
-#define TAS2552_PDM_DATA_V		(1 << 6)
-#define TAS2552_PDM_DATA_I_V	(1 << 7)
-#define TAS2552_PDM_DATA_V_I	(0x11 << 6)
+#define TAS2552_PDM_DATA_I		(0x00 << 6)
+#define TAS2552_PDM_DATA_V		(0x01 << 6)
+#define TAS2552_PDM_DATA_I_V		(0x02 << 6)
+#define TAS2552_PDM_DATA_V_I		(0x03 << 6)
 
 /* PDM CFG Register */
-#define TAS2552_PDM_DATA_ES_RISE 0x4
+#define TAS2552_PDM_DATA_ES_RISE	(0x1 << 2)
 
-#define TAS2552_PDM_PLL_CLK_SEL 0x00
-#define TAS2552_PDM_IV_CLK_SEL	(1 << 1)
-#define TAS2552_PDM_BCLK_SEL	(1 << 2)
-#define TAS2552_PDM_MCLK_SEL	(1 << 3)
+#define TAS2552_PDM_PLL_CLK_SEL		0x0
+#define TAS2552_PDM_IV_CLK_SEL		0x1
+#define TAS2552_PDM_BCLK_SEL		0x2
+#define TAS2552_PDM_MCLK_SEL		0x3
 
 /* Boost pass-through register */
 #define TAS2552_APT_DELAY_50	0x00
-#define TAS2552_APT_DELAY_75	(1 << 1)
-#define TAS2552_APT_DELAY_125	(1 << 2)
-#define TAS2552_APT_DELAY_200	(1 << 3)
+#define TAS2552_APT_DELAY_75	0x01
+#define TAS2552_APT_DELAY_125	0x02
+#define TAS2552_APT_DELAY_200	0x03
 
-#define TAS2552_APT_THRESH_2_5		0x00
-#define TAS2552_APT_THRESH_1_7		(1 << 3)
-#define TAS2552_APT_THRESH_1_4_1_1	(1 << 4)
-#define TAS2552_APT_THRESH_2_1_7	(0x11 << 2)
+#define TAS2552_APT_THRESH_2_5		(0x00 << 2)
+#define TAS2552_APT_THRESH_1_7		(0x01 << 2)
+#define TAS2552_APT_THRESH_1_4_1_1	(0x02 << 2)
+#define TAS2552_APT_THRESH_2_1_7	(0x03 << 2)
 
 /* PLL Control Register */
 #define TAS2552_245MHZ_CLK			24576000

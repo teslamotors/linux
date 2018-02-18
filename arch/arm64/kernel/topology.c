@@ -19,6 +19,7 @@
 #include <linux/nodemask.h>
 #include <linux/of.h>
 #include <linux/sched.h>
+#include <linux/cpufreq.h>
 
 #include <asm/cputype.h>
 #include <asm/topology.h>
@@ -161,6 +162,53 @@ static int __init parse_cluster(struct device_node *cluster, int depth)
 	return 0;
 }
 
+static DEFINE_PER_CPU(unsigned long, cpu_capacity);
+
+unsigned long arm64_arch_scale_cpu_capacity(struct sched_domain *sd, int cpu)
+{
+	unsigned long cap = per_cpu(cpu_capacity, cpu);
+
+	if (!cap)
+		return SCHED_CAPACITY_SCALE;
+
+	return cap;
+}
+
+static void update_cpu_capacity(int cpu, unsigned long cap)
+{
+	if (cap > SCHED_CAPACITY_SCALE)
+		cap = SCHED_CAPACITY_SCALE;
+
+	per_cpu(cpu_capacity, cpu) = cap;
+}
+
+static void __init init_cpu_capacity(void)
+{
+	int cpu;
+	struct device_node *cn;
+
+	for_each_possible_cpu(cpu) {
+		u32 val;
+
+		cn = of_get_cpu_node(cpu, NULL);
+		if (!cn) {
+			pr_err("%s: CPU%d device node missing\n",
+				__func__, cpu);
+			return;
+		}
+
+		if (of_property_read_u32(cn, "cpu-capacity", &val)) {
+			pr_err("%s: Missing cpu-capacity property\n",
+				cn->full_name);
+			continue;
+		}
+
+		pr_info("CPU%d capacity=%u\n", cpu, val);
+
+		update_cpu_capacity(cpu, val);
+	}
+}
+
 static int __init parse_dt_topology(void)
 {
 	struct device_node *cn, *map;
@@ -271,6 +319,95 @@ topology_populated:
 	update_siblings_masks(cpuid);
 }
 
+#ifdef CONFIG_CPU_FREQ
+
+static DEFINE_PER_CPU(unsigned long, cur_freq);
+static DEFINE_PER_CPU(unsigned long, max_freq);
+static DEFINE_PER_CPU(unsigned long, freq_cap);
+
+unsigned long arm64_arch_scale_freq_capacity(struct sched_domain *sd, int cpu)
+{
+	unsigned long freq_capacity = per_cpu(freq_cap, cpu);
+
+	if (!freq_capacity || freq_capacity > SCHED_CAPACITY_SCALE)
+		return SCHED_CAPACITY_SCALE;
+
+	return freq_capacity;
+}
+
+static void update_freq_capacity(int cpu)
+{
+	unsigned long cur = per_cpu(cur_freq, cpu);
+	unsigned long max = per_cpu(max_freq, cpu);
+
+	if (!max || !cur) {
+		per_cpu(freq_cap, cpu) = 0;
+		return;
+	}
+
+	per_cpu(freq_cap, cpu) = (cur * SCHED_CAPACITY_SCALE) / max;
+}
+
+static int cpufreq_callback(struct notifier_block *nb,
+					unsigned long val, void *data)
+{
+	struct cpufreq_freqs *freqs = data;
+	int cpu = freqs->cpu;
+
+	if (val != CPUFREQ_POSTCHANGE)
+		return NOTIFY_OK;
+
+	per_cpu(cur_freq, cpu) = freqs->new;
+	update_freq_capacity(cpu);
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block cpufreq_notifier = {
+	.notifier_call  = cpufreq_callback,
+};
+
+static int cpufreq_policy_callback(struct notifier_block *nb,
+					unsigned long val, void *data)
+{
+	int i;
+	struct cpufreq_policy *policy = data;
+
+	if (val != CPUFREQ_NOTIFY || !policy)
+		return NOTIFY_OK;
+
+	for_each_cpu(i, policy->cpus) {
+		/* max achievable freq. doesn't change after boot */
+		if (per_cpu(max_freq, i))
+			continue;
+
+		per_cpu(max_freq, i) = policy->cpuinfo.max_freq;
+		update_freq_capacity(i);
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block cpufreq_policy_notifier = {
+	.notifier_call = cpufreq_policy_callback,
+};
+
+static int __init register_cpufreq_notifier(void)
+{
+	int ret;
+
+	ret = cpufreq_register_notifier(&cpufreq_notifier,
+						CPUFREQ_TRANSITION_NOTIFIER);
+	if (ret)
+		return ret;
+
+	ret = cpufreq_register_notifier(&cpufreq_policy_notifier,
+						CPUFREQ_POLICY_NOTIFIER);
+	return ret;
+}
+core_initcall(register_cpufreq_notifier);
+#endif
+
 static void __init reset_cpu_topology(void)
 {
 	unsigned int cpu;
@@ -299,4 +436,6 @@ void __init init_cpu_topology(void)
 	 */
 	if (parse_dt_topology())
 		reset_cpu_topology();
+
+	init_cpu_capacity();
 }

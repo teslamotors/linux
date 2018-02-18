@@ -5,6 +5,11 @@
 #define I2C_PCA_CHIP_9564	0x00
 #define I2C_PCA_CHIP_9665	0x01
 
+
+#define	I2C_PCA_CHIP_9665_BUFSIZE	64
+#define I2C_PCA_BYTE_MODE	0x0
+#define I2C_PCA_BUFFERED_MODE	0x1
+
 /* Internal period for PCA9665 oscilator */
 #define I2C_PCA_OSC_PER		3 /* e10-8s */
 
@@ -50,19 +55,24 @@
 #define I2C_PCA_CON_STA		0x20 /* Start */
 #define I2C_PCA_CON_STO		0x10 /* Stop */
 #define I2C_PCA_CON_SI		0x08 /* Serial Interrupt */
+#define	I2C_PCA_CON_MODE	0x01 /* Mode */
 #define I2C_PCA_CON_CR		0x07 /* Clock Rate (MASK) */
 
 struct i2c_algo_pca_data {
-	void 				*data;	/* private low level data */
+	void				*data;	/* private low level data */
 	void (*write_byte)		(void *data, int reg, int val);
 	int  (*read_byte)		(void *data, int reg);
 	int  (*wait_for_completion)	(void *data);
 	void (*reset_chip)		(void *data);
+	void (*request_access)		(void *data);
+	void (*release_access)		(void *data);
 	/* For PCA9564, use one of the predefined frequencies:
 	 * 330000, 288000, 217000, 146000, 88000, 59000, 44000, 36000
 	 * For PCA9665, use the frequency you want here. */
 	unsigned int			i2c_clock;
 	unsigned int			chip;
+	unsigned int			mode;
+	unsigned int			buf_size;
 };
 
 int i2c_pca_add_bus(struct i2c_adapter *);

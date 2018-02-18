@@ -329,6 +329,7 @@ config MMU_NOTIFIER
 config KSM
 	bool "Enable KSM for page merging"
 	depends on MMU
+	default y
 	help
 	  Enable Kernel Samepage Merging: KSM periodically scans those areas
 	  of an application's address space that an app has advised may be
@@ -618,3 +619,17 @@ config MAX_STACK_SIZE_MB
 	  changed to a smaller value in which case that is used.
 
 	  A sane initial value is 80 MB.
+
+if STAGING
+config HMM
+	bool "Enable heterogeneous memory management (HMM)"
+	depends on MMU
+	select MMU_NOTIFIER
+	default n
+	help
+	  Heterogeneous memory management provide infrastructure for a device
+	  to mirror a process address space into an hardware mmu or into any
+	  things supporting pagefault like event.
+
+	  If unsure, say N to disable hmm.
+endif # STAGING

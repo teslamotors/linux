@@ -3,6 +3,7 @@
  *
  * Copyright © 2002 Robert Kaiser <rkaiser@sysgo.de>
  * Copyright © 2002-2010 David Woodhouse <dwmw2@infradead.org>
+ * Copyright (C) 2014, NVIDIA Corporation.  All rights reserved.
  *
  * NAND support by Christian Gan <cgan@iders.ca>
  *
@@ -528,6 +529,40 @@ static int concat_lock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 	return err;
 }
 
+static int concat_is_locked(struct mtd_info *mtd, loff_t ofs, uint64_t len)
+{
+	struct mtd_concat *concat = CONCAT(mtd);
+	int i, err = -EINVAL;
+
+	for (i = 0; i < concat->num_subdev; i++) {
+		struct mtd_info *subdev = concat->subdev[i];
+		uint64_t size;
+
+		if (ofs >= subdev->size) {
+			size = 0;
+			ofs -= subdev->size;
+			continue;
+		}
+		if (ofs + len > subdev->size)
+			size = subdev->size - ofs;
+		else
+			size = len;
+
+		err = mtd_is_locked(subdev, ofs, size);
+		if (err)
+			break;
+
+		len -= size;
+		if (len == 0)
+			break;
+
+		err = -EINVAL;
+		ofs = 0;
+	}
+
+	return err;
+}
+
 static int concat_unlock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 {
 	struct mtd_concat *concat = CONCAT(mtd);
@@ -797,6 +832,7 @@ struct mtd_info *mtd_concat_create(struct mtd_info *subdev[],	/* subdevices to c
 	concat->mtd._sync = concat_sync;
 	concat->mtd._lock = concat_lock;
 	concat->mtd._unlock = concat_unlock;
+	concat->mtd._is_locked = concat_is_locked;
 	concat->mtd._suspend = concat_suspend;
 	concat->mtd._resume = concat_resume;
 	concat->mtd._get_unmapped_area = concat_get_unmapped_area;

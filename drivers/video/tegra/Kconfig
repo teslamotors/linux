@@ -1,0 +1,56 @@
+comment "NVIDIA Tegra Display Driver options"
+
+trysource "../nvhost/drivers/video/tegra/Kconfig"
+trysource "../nvhost/drivers/video/tegra/Kconfig.nvhost"
+trysource "drivers/video/tegra/Kconfig.nvhost"
+
+trysource "../nvmap/drivers/video/tegra/nvmap/Kconfig.nvmap"
+trysource "drivers/video/tegra/nvmap/Kconfig.nvmap"
+
+config TEGRA_GR_VIRTUALIZATION
+	bool "Tegra graphics virtualization support"
+	default n
+	depends on TEGRA_HV_MANAGER
+	help
+	  Adds Tegra graphics virtualization (host and gpu) support to client
+	  drivers.
+
+config TEGRA_DC
+	tristate "Tegra Display Contoller"
+	depends on (ARCH_TEGRA || PLATFORM_TEGRA) && (TEGRA_GRHOST || TEGRA_HOST1X) && I2C
+	select BACKLIGHT_CLASS_DEVICE
+	select FB_MODE_HELPERS
+	help
+	  Tegra display controller support.
+	  Enable this to access the Tegra display controller using either framebuffer
+	  console interface and a proprietary dc-ext interface or with ADF.
+
+trysource "../display/drivers/video/tegra/Kconfig.display"
+trysource "drivers/video/tegra/Kconfig.display"
+
+config TEGRA_CAMERA
+	bool "Enable support for tegra camera/isp hardware"
+	depends on ARCH_TEGRA
+	default y
+	help
+	  Enables support for the Tegra camera interface
+
+	  If unsure, say Y
+
+config TEGRA_CAMERA_PLATFORM
+	bool "Enable tegra camera platform driver"
+	depends on PLATFORM_TEGRA
+	default y
+	help
+	  Enables tegra camera platform driver
+
+	  If unsure, say Y
+
+config NVHOST_BONDOUT_CHECK
+	bool "Check device presence through bondout registers"
+	depends on ARCH_TEGRA && ARM64
+	default n
+	help
+	  Say Y here if you want to check nvhost client unit presence
+	  in pre-silicon systems.
+	  If unsure, say N

@@ -1,0 +1,16 @@
+/dts-v1/;
+
+#include "tegra124-norrin-pm374-0001-common.dtsi"
+
+/ {
+	nvidia,boardids = "374:0001:00";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,proc-boardid = "374:0001:00";
+
+	i2c@7000d000 {
+		as3722@40 {
+			ams,major-rev = <1>;
+			ams,minor-rev = <1>;
+		};
+	};
+};

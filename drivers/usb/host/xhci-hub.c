@@ -23,6 +23,7 @@
 
 #include <linux/slab.h>
 #include <asm/unaligned.h>
+#include <linux/usb/otg.h>
 
 #include "xhci.h"
 #include "xhci-trace.h"
@@ -405,7 +406,7 @@ static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 			port_change_bit, wIndex, port_status);
 }
 
-static int xhci_get_ports(struct usb_hcd *hcd, __le32 __iomem ***port_array)
+int xhci_get_ports(struct usb_hcd *hcd, __le32 __iomem ***port_array)
 {
 	int max_ports;
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
@@ -420,6 +421,7 @@ static int xhci_get_ports(struct usb_hcd *hcd, __le32 __iomem ***port_array)
 
 	return max_ports;
 }
+EXPORT_SYMBOL_GPL(xhci_get_ports);
 
 void xhci_set_link_state(struct xhci_hcd *xhci, __le32 __iomem **port_array,
 				int port_id, u32 link_state)
@@ -758,6 +760,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 	u16 link_state = 0;
 	u16 wake_mask = 0;
 	u16 timeout = 0;
+	u16 test_selector = 0;
 
 	max_ports = xhci_get_ports(hcd, &port_array);
 	bus_state = &xhci->bus_state[hcd_index(hcd)];
@@ -833,6 +836,8 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			wake_mask = wIndex & 0xff00;
 		/* The MSB of wIndex is the U1/U2 timeout */
 		timeout = (wIndex & 0xff00) >> 8;
+		if (wValue == USB_PORT_FEAT_TEST)
+			test_selector = (wIndex & 0xff00) >> 8;
 		wIndex &= 0xff;
 		if (!wIndex || wIndex > max_ports)
 			goto error;
@@ -879,6 +884,25 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			spin_lock_irqsave(&xhci->lock, flags);
 
 			xhci_set_link_state(xhci, port_array, wIndex, XDEV_U3);
+
+#ifdef CONFIG_USB_OTG
+			/* Now port state is U3/suspend state
+			 * call start_hnp
+			 * first notify the otg driver
+			 */
+			xhci_dbg(xhci, "otg_port = %d, b_hnp_enable=%d\n",
+				hcd->self.otg_port, hcd->self.b_hnp_enable);
+
+			if (hcd->self.otg_port == (wIndex + 1)) {
+				/* A-Host is suspending signal to B-device
+				 * if HNP is enabled to start hnp & switch roles
+				 */
+				if (hcd->usb_phy)
+					usb_phy_set_suspend(hcd->usb_phy, 1);
+				if (hcd->self.b_hnp_enable)
+					otg_start_hnp(xhci->phy->otg);
+			}
+#endif
 
 			spin_unlock_irqrestore(&xhci->lock, flags);
 			msleep(10); /* wait device to enter */
@@ -1006,6 +1030,27 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			temp |= PORT_U2_TIMEOUT(timeout);
 			writel(temp, port_array[wIndex] + PORTPMSC);
 			break;
+		/* XHCI 4.19.6 */
+		case USB_PORT_FEAT_TEST:
+			/*
+			 * Test modes are only supported
+			 * on USB 2.0 protocol Root Hub ports,
+			 */
+			if (hcd->speed != HCD_USB2)
+				goto error;
+
+			if (!test_selector || test_selector > 5)
+				goto error;
+
+			if (xhci_halt(xhci))
+				goto error;
+
+			/* Start test mode in PORTPMSC */
+			temp = xhci_readl(xhci, port_array[wIndex] + 1);
+			temp = xhci_port_state_to_neutral(temp);
+			temp |= test_selector << 28;
+			xhci_writel(xhci, temp, port_array[wIndex] + 1);
+			break;
 		default:
 			goto error;
 		}
@@ -1093,6 +1138,7 @@ error:
 	spin_unlock_irqrestore(&xhci->lock, flags);
 	return retval;
 }
+EXPORT_SYMBOL_GPL(xhci_hub_control);
 
 /*
  * Returns 0 if the status hasn't changed, or the number of bytes in buf.
@@ -1154,6 +1200,7 @@ int xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 	spin_unlock_irqrestore(&xhci->lock, flags);
 	return status ? retval : 0;
 }
+EXPORT_SYMBOL_GPL(xhci_hub_status_data);
 
 #ifdef CONFIG_PM
 
@@ -1203,7 +1250,7 @@ int xhci_bus_suspend(struct usb_hcd *hcd)
 			set_bit(port_index, &bus_state->bus_suspended);
 		}
 		/* USB core sets remote wake mask for USB 3.0 hubs,
-		 * including the USB 3.0 roothub, but only if CONFIG_PM_RUNTIME
+		 * including the USB 3.0 roothub, but only if CONFIG_PM
 		 * is enabled, so also enable remote wake here.
 		 */
 		if (hcd->self.root_hub->do_remote_wakeup) {
@@ -1221,6 +1268,14 @@ int xhci_bus_suspend(struct usb_hcd *hcd)
 		if (t1 != t2)
 			writel(t2, port_array[port_index]);
 	}
+
+	/* Wait for port enter U3 state */
+	if (bus_state->bus_suspended) {
+		spin_unlock_irqrestore(&xhci->lock, flags);
+		msleep(10);
+		spin_lock_irqsave(&xhci->lock, flags);
+	}
+
 	hcd->state = HC_STATE_SUSPENDED;
 	bus_state->next_statechange = jiffies + msecs_to_jiffies(10);
 	spin_unlock_irqrestore(&xhci->lock, flags);
@@ -1266,7 +1321,8 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 		else
 			temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
 		if (test_bit(port_index, &bus_state->bus_suspended) &&
-		    (temp & PORT_PLS_MASK)) {
+		    (temp & PORT_PLS_MASK) &&
+		    !test_bit(port_index, &bus_state->resuming_ports)) {
 			if (DEV_SUPERSPEED(temp)) {
 				xhci_set_link_state(xhci, port_array,
 							port_index, XDEV_U0);

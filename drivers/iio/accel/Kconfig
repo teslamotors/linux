@@ -19,18 +19,26 @@ config BMA180
 
 config BMC150_ACCEL
 	tristate "Bosch BMC150 Accelerometer Driver"
-	depends on I2C
 	select IIO_BUFFER
 	select IIO_TRIGGERED_BUFFER
+	select REGMAP
+	select BMC150_ACCEL_I2C if I2C
+	select BMC150_ACCEL_SPI if SPI
 	help
 	  Say yes here to build support for the following Bosch accelerometers:
 	  BMC150, BMI055, BMA250E, BMA222E, BMA255, BMA280.
 
-	  Currently this only supports the device via an i2c interface.
-
 	  This is a combo module with both accelerometer and magnetometer.
 	  This driver is only implementing accelerometer part, which has
 	  its own address and register map.
+
+config BMC150_ACCEL_I2C
+	tristate
+	select REGMAP_I2C
+
+config BMC150_ACCEL_SPI
+	tristate
+	select REGMAP_SPI
 
 config HID_SENSOR_ACCEL_3D
 	depends on HID_SENSOR_HUB
@@ -73,6 +81,25 @@ config IIO_ST_ACCEL_SPI_3AXIS
 	depends on IIO_ST_ACCEL_3AXIS
 	depends on IIO_ST_SENSORS_SPI
 
+config SMI130_ACCEL
+	tristate "Bosch SMI130 Accelerometer Driver"
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	select REGMAP
+	select SMI130_ACCEL_I2C if I2C
+	select SMI130_ACCEL_SPI if SPI
+	help
+	  Say yes here to build support for the following Bosch accelerometers:
+	  SMI130
+
+	  This is a combo module with both accelerometer and gyroscope.
+	  This driver is only implementing accelerometer part, which has
+	  its own address and register map.
+
+config SMI130_ACCEL_SPI
+	tristate
+	select REGMAP_SPI
+
 config KXSD9
 	tristate "Kionix KXSD9 Accelerometer Driver"
 	depends on SPI
@@ -104,5 +131,15 @@ config KXCJK1013
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called kxcjk-1013.
+
+config NVS_AIS328DQ
+	tristate "STMicroelectronics accelerometer AIS328DQ"
+	depends on I2C
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	select NVS_IIO
+	help
+	  Say yes here to build support for STMicroelectronics AIS328DQ
+	  accelerometer using NVS (NVidia Sensor framework).
 
 endmenu

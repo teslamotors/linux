@@ -1,0 +1,62 @@
+/*
+ * Quill-MFG P3310-1000-A03 specific Prod configuration.
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ */
+
+#include "tegra186-soc/tegra186-soc-cvm-prod.dtsi"
+
+/ {
+	spi@3210000 {
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+			/* enabled for spi flash rom */
+			    prod = <0x04 0x00000fc0 0x00000400>;
+			/* enabled for spi loopback mode */
+			    /*prod = <0x04 0x00000fc0 0x00000400>;*/
+			};
+		};
+	};
+
+	spi@c260000 {
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+			/* enabled for spi flash rom */
+			    prod = <0x04 0x00000fc0 0x00000400>;
+			/* enabled for spi loopback mode */
+			    /*prod = <0x04 0x00000fc0 0x00000400>;*/
+			};
+		};
+	};
+
+	spi@3230000 {
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+			/* enabled for spi flash rom only */
+			    prod = <0x04 0x0000003f 0x00000008>;
+			/* enabled for spi loopback mode */
+			    /*prod = <0x04 0x00000fc0 0x0000043f>;*/
+			};
+		};
+	};
+
+	spi@3240000 {
+		prod-settings {
+			mask-one-style;
+			prod_c_cs0 {
+			/* enabled for spi flash rom only */
+			    prod = <0x04 0x0000003f 0x00000008>;
+			/* enabled for spi loopback mode */
+			    /*prod = <0x04 0x00000fc0 0x0000043f>;*/
+			};
+		};
+	};
+};

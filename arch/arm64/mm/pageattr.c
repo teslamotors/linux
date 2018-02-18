@@ -51,9 +51,13 @@ static int change_memory_common(unsigned long addr, int numpages,
 		WARN_ON_ONCE(1);
 	}
 
-	if (!is_module_address(start) || !is_module_address(end - 1))
+#ifndef CONFIG_DEBUG_PAGEALLOC
+	if (start < MODULES_VADDR || start >= MODULES_END)
 		return -EINVAL;
 
+	if (end < MODULES_VADDR || end >= MODULES_END)
+		return -EINVAL;
+#endif
 	if (!numpages)
 		return 0;
 
@@ -98,3 +102,18 @@ int set_memory_x(unsigned long addr, int numpages)
 					__pgprot(PTE_PXN));
 }
 EXPORT_SYMBOL_GPL(set_memory_x);
+
+#ifdef CONFIG_DEBUG_PAGEALLOC
+void kernel_map_pages(struct page *page, int numpages, int enable)
+{
+	unsigned long addr = (unsigned long)phys_to_virt(page_to_phys(page));
+	if (enable)
+		change_memory_common(addr, numpages,
+					__pgprot(PTE_VALID),
+					__pgprot(0));
+	else
+		change_memory_common(addr, numpages,
+					__pgprot(0),
+					__pgprot(PTE_VALID));
+}
+#endif

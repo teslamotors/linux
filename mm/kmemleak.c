@@ -545,10 +545,10 @@ static struct kmemleak_object *create_object(unsigned long ptr, size_t size,
 	/* task information */
 	if (in_irq()) {
 		object->pid = 0;
-		strncpy(object->comm, "hardirq", sizeof(object->comm));
+		strlcpy(object->comm, "hardirq", sizeof(object->comm));
 	} else if (in_softirq()) {
 		object->pid = 0;
-		strncpy(object->comm, "softirq", sizeof(object->comm));
+		strlcpy(object->comm, "softirq", sizeof(object->comm));
 	} else {
 		object->pid = current->pid;
 		/*
@@ -557,7 +557,7 @@ static struct kmemleak_object *create_object(unsigned long ptr, size_t size,
 		 * dependency issues with current->alloc_lock. In the worst
 		 * case, the command line is not correct.
 		 */
-		strncpy(object->comm, current->comm, sizeof(object->comm));
+		strlcpy(object->comm, current->comm, sizeof(object->comm));
 	}
 
 	/* kernel backtrace */
@@ -1429,16 +1429,10 @@ static void kmemleak_scan(void)
 
 }
 
-/*
- * Thread function performing automatic memory scanning. Unreferenced objects
- * at the end of a memory scan are reported but only the first time.
- */
-static int kmemleak_scan_thread(void *arg)
+static void sleep_on_first_run(void)
 {
+#ifdef CONFIG_DEBUG_KMEMLEAK_SCAN_ON
 	static int first_run = 1;
-
-	pr_info("Automatic memory scanning thread started\n");
-	set_user_nice(current, 10);
 
 	/*
 	 * Wait before the first scan to allow the system to fully initialize.
@@ -1447,6 +1441,19 @@ static int kmemleak_scan_thread(void *arg)
 		first_run = 0;
 		ssleep(SECS_FIRST_SCAN);
 	}
+#endif
+}
+
+/*
+ * Thread function performing automatic memory scanning. Unreferenced objects
+ * at the end of a memory scan are reported but only the first time.
+ */
+static int kmemleak_scan_thread(void *arg)
+{
+	pr_info("Automatic memory scanning thread started\n");
+	set_user_nice(current, 10);
+
+	sleep_on_first_run();
 
 	while (!kthread_should_stop()) {
 		signed long timeout = jiffies_scan_wait;
@@ -1923,9 +1930,11 @@ static int __init kmemleak_late_init(void)
 				     &kmemleak_fops);
 	if (!dentry)
 		pr_warning("Failed to create the debugfs kmemleak file\n");
+#ifdef CONFIG_DEBUG_KMEMLEAK_SCAN_ON
 	mutex_lock(&scan_mutex);
 	start_scan_thread();
 	mutex_unlock(&scan_mutex);
+#endif
 
 	pr_info("Kernel memory leak detector initialized\n");
 

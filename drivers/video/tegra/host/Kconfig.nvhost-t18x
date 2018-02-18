@@ -1,0 +1,7 @@
+config TEGRA_GRHOST_NVCSI
+	bool "Tegra NVCSI support"
+	depends on TEGRA_GRHOST && ARCH_TEGRA_18x_SOC
+	default y
+	help
+	  Enables support for camera CSI support under nvhost
+	  Say N here if not sure.

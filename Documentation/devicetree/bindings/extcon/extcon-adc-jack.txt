@@ -1,0 +1,26 @@
+ADC jack extcon driver
+
+Required Properties:
+- compatible : Must be "extcon-adc-jack";
+- extcon-adc-jack,states: States of the cable and min/max of ADC.
+	The array should be define as
+	<state1, adc1_min, adc1_max,
+	 state2, adc2_min, adc2_max>;
+	extcon-adc-jack can be refer for more details.
+- extcon-adc-jack,cable-names: Cable names. Multiple names can be provided
+	here.
+- extcon-adc-jack,name: name of the extcon device.
+
+Optional Properties:
+- extcon-adc-jack,handling-delay: ADC read should be read after this much of
+		time.
+- extcon-adc-jack,irq-flags: irq flags used for the @irq
+- io-channel-names: Name of the channel on IIO.
+
+extcon-adc-jack {
+	compatible = "extcon-adc-jack";
+	interrupt = <8 0>;
+	extcon-adc-jack,cable-names = "ID", "ID-A";
+	extcon-adc-jack,states = <1 100 200
+				  3 300 400>;
+};

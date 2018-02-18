@@ -1,0 +1,68 @@
+/*
+ * tegra186-quill-p3310-1000-a00-powermon.dtsi: Tegra186 power monitor
+ *				dtsi file on Quill P3310
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	i2c@3160000 {
+		ina3221x_40: ina3221x@40 {
+			compatible = "ti,ina3221x";
+			reg = <0x40>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7c07>;
+			ti,enable-forced-continuous;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_SYS_GPU";
+				ti,shunt-resistor-mohm = <5>;
+			};
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_SYS_SOC";
+				ti,shunt-resistor-mohm = <5>;
+			};
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_4V0_WIFI";
+				ti,shunt-resistor-mohm = <10>;
+			};
+		};
+		ina3221x_41: ina3221x@41 {
+			compatible = "ti,ina3221x";
+			reg = <0x41>;
+			ti,trigger-config = <0x7003>;
+			ti,continuous-config = <0x7c07>;
+			ti,enable-forced-continuous;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_IN";
+				ti,shunt-resistor-mohm = <1>;
+			};
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_SYS_CPU";
+				ti,shunt-resistor-mohm = <5>;
+			};
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_SYS_SRAM";
+				ti,shunt-resistor-mohm = <5>;
+			};
+		};
+	};
+};

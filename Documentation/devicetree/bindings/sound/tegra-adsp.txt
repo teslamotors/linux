@@ -1,0 +1,40 @@
+Tegra ADSP bindings
+-------------------
+
+The Audio DSP (ADSP) handles audio related modules.
+
+Required properties:
+ - compatible:			should be set to "nvidia,tegra210-adsp" for t210
+ - reg:				should contain ADSP registers' location and length
+ - nvidia,adsp_mem:		should contain Memory address and sizes of ADSP OS, APP, ARAM
+ - nvidia,adsp_unit_fpga:	should be added if ADSP is on Unit-FPGA
+ - nvidia,adsp_unit_fpga_reset:	should be added if ADSP is on Unit-FPGA. The first element
+				contains the ASSERT value and the second element should
+				contain the DEASSERT value. The ASSERT is ignored if the
+				value is equal to 0.
+ - nvidia,adsp-evp-base:	should contain the base EVP address and the size of EVP in bytes
+
+Optional properties:
+ - nvidia,adsp_freq: should contain adsp boot up freq, multiple of 51.2 MHz
+ - nvidia,ape_freq: should contain ape boot up freq, half of adsp_freq
+ - nvidia,ape_emc_freq:	should contain appropriate emc freq w.r.t above
+			adsp and ape freq
+
+Example:
+	adsp {
+	     compatible = "nvidia,tegra210-adsp";
+	     reg = <0x0 0x702ef000 0x0 0x1000>, /* AMC */
+		   <0x0 0x702ec000 0x0 0x2000>, /* AMISC */
+		   <0x0 0x702ee000 0x0 0x1000>, /* ABRIDGE */
+		   <0x0 0x702dc800 0x0 0x0>, /* FPGA RESET REG */
+		   <0x0 0x01000000 0x0 0x6f2c0000>, /* DRAM MAP1 */
+		   <0x0 0x70300000 0x0 0x8fd00000>; /* DRAM MAP2 */
+	     nvidia,adsp_mem = <0x80300000 0x01000000>, /* ADSP OS */
+			       <0x80B00000 0x00800000>; /* ADSP APP */
+	     nvidia,adsp_unit_fpga_reset = <0x0 0x00000040>;
+	     nvidia,adsp_mem = <0x80300000 0x1000>;
+	     nvidia,adsp_freq = <819000>; /* in KHz */
+	     nvidia,ape_freq = <409500>; /* in KHz */
+	     nvidia,ape_emc_freq = <102000>; /* in KHz */
+	     nvidia,adsp-evp-base = <0x702ef700 0x00000040>;
+	};

@@ -1,0 +1,26 @@
+* power_suppl_extcon devicetree bindings
+This driver responsible for generating UI notification fro USB and AC
+power supply.
+
+Required properties:
+- compatible : Must be "power-supply-extcon"
+
+Required properties:
+-------------------
+- extcon-cables: Extcon device handles.
+- extcon-cable-names: name of power supply cables. Must be:
+		"usb-charger", "ta-charger", "qc2-charger", "maxim-charger",
+		"fast-charger", "slow-charger", "downstream-charger"
+		"apple-500ma", "apple-1a", "apple-2a", "y-cable"
+
+Optional properties:
+-------------------
+- power-supply,extcon-dev: Extcon device name for the charger cables.
+- power-supply,y-cable-extcon-dev: extcon device name for the y-cable.
+
+Example:
+	psy_extcon {
+		compatible = "power-supply-extcon";
+		extcon-cables = <&ehanlde 0> <&ehandle 1> ...;
+		extcon-cable-names = "usb-charger", "ta-charger", ...;
+	};

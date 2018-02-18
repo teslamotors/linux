@@ -26,25 +26,22 @@
 #include "proc-macros.S"
 
 /*
- *	__flush_dcache_all()
+ *	v8_op_dcache_all op
  *
- *	Flush the whole D-cache.
+ * op=cisw, Flush the whole D-cache.
+ * op=csw, Clean the whole D-cache.
  *
  *	Corrupted registers: x0-x7, x9-x11
  */
-__flush_dcache_all:
-	dmb	sy				// ensure ordering with previous memory accesses
-	mrs	x0, clidr_el1			// read clidr
-	and	x3, x0, #0x7000000		// extract loc from clidr
-	lsr	x3, x3, #23			// left align loc bit field
-	cbz	x3, finished			// if loc is 0, then no need to clean
+.macro v8_op_dcache_all op			// op=csw clean, op=cisw flush
+	cbz	x3, 5f			// if loc is 0, then no need to clean
 	mov	x10, #0				// start clean at cache level 0
-loop1:
+1:
 	add	x2, x10, x10, lsr #1		// work out 3x current cache level
 	lsr	x1, x0, x2			// extract cache type bits from clidr
 	and	x1, x1, #7			// mask of the bits for current cache only
 	cmp	x1, #2				// see what cache we have at this level
-	b.lt	skip				// skip if no cache, or just i-cache
+	b.lt	4f				// skip if no cache, or just i-cache
 	save_and_disable_irqs x9		// make CSSELR and CCSIDR access atomic
 	msr	csselr_el1, x10			// select current cache level in csselr
 	isb					// isb to sych the new cssr&csidr
@@ -57,29 +54,93 @@ loop1:
 	clz	w5, w4				// find bit position of way size increment
 	mov	x7, #0x7fff
 	and	x7, x7, x1, lsr #13		// extract max number of the index size
-loop2:
+2:
 	mov	x9, x4				// create working copy of max way size
-loop3:
+3:
 	lsl	x6, x9, x5
 	orr	x11, x10, x6			// factor way and cache number into x11
 	lsl	x6, x7, x2
 	orr	x11, x11, x6			// factor index number into x11
-	dc	cisw, x11			// clean & invalidate by set/way
+	dc	\op, x11			// op=csw/cisw, clean/flush by set/way
 	subs	x9, x9, #1			// decrement the way
-	b.ge	loop3
+	b.ge	3b
 	subs	x7, x7, #1			// decrement the index
-	b.ge	loop2
-skip:
+	b.ge	2b
+4:
 	add	x10, x10, #2			// increment cache number
 	cmp	x3, x10
-	b.gt	loop1
-finished:
+	b.gt	1b
+5:
 	mov	x10, #0				// swith back to cache level 0
 	msr	csselr_el1, x10			// select current cache level in csselr
 	dsb	sy
 	isb
 	ret
+.endm
+
+/*
+ *	__flush_dcache_all()
+ *
+ *	Flush the whole D-cache.
+ *
+ *	Corrupted registers: x0-x7, x9-x11
+ */
+ENTRY(__flush_dcache_all)
+	.weak	__flush_dcache_all
+	dmb	sy				// ensure ordering with previous memory accesses
+	mrs	x0, clidr_el1			// read clidr
+	and	x3, x0, #0x7000000		// extract loc from clidr
+	lsr	x3, x3, #23			// left align loc bit field
+
+	v8_op_dcache_all cisw
 ENDPROC(__flush_dcache_all)
+
+/*
+ *	__clean_dcache_all()
+ *
+ *	Clean the whole D-cache.
+ *
+ *	Corrupted registers: x0-x7, x9-x11
+ */
+ENTRY(__clean_dcache_all)
+	.weak	__clean_dcache_all
+	dmb	sy				// ensure ordering with previous memory accesses
+	mrs	x0, clidr_el1			// read clidr
+	and	x3, x0, #0x7000000		// extract loc from clidr
+	lsr	x3, x3, #23			// left align loc bit field
+
+	v8_op_dcache_all csw
+ENDPROC(__clean_dcache_all)
+
+/*
+ *	__flush_dcache_louis()
+ *
+ *	Flush D-cache to the level of unification inner shareable
+ *
+ *	Corrupted registers: x0-x7, x9-x11
+ */
+ENTRY(__flush_dcache_louis)
+	dmb	sy				// ensure ordering with previous memory accesses
+	mrs	x0, clidr_el1			// read clidr
+	and	x3, x0, #0xe00000		// extract louis from clidr
+	lsr	x3, x3, #20			// left align louis bit field
+	v8_op_dcache_all cisw
+ENDPROC(__flush_dcache_louis)
+
+/*
+ *	__clean_dcache_louis()
+ *
+ *	Clean D-cache to the level of unification inner shareable
+ *
+ *	Corrupted registers: x0-x7, x9-x11
+ */
+ENTRY(__clean_dcache_louis)
+	dsb	sy				// ensure ordering with previous memory accesses
+	mrs	x0, clidr_el1			// read clidr
+	and	x3, x0, #0xe00000		// extract louis from clidr
+	lsr	x3, x3, #20			// left align louis bit field
+	v8_op_dcache_all csw
+ENDPROC(__clean_dcache_louis)
 
 /*
  *	flush_cache_all()
@@ -91,12 +152,25 @@ ENDPROC(__flush_dcache_all)
  *	unification in a single instruction.
  */
 ENTRY(flush_cache_all)
+	.weak	flush_cache_all
 	mov	x12, lr
 	bl	__flush_dcache_all
 	mov	x0, #0
 	ic	ialluis				// I+BTB cache invalidate
 	ret	x12
 ENDPROC(flush_cache_all)
+
+/*
+ *	flush_cache_louis()
+ *
+ *	Actually a clean should be sufficient for PG entry
+ */
+ENTRY(flush_dcache_louis)
+	mov	x12, lr
+	bl	__flush_dcache_louis
+	mov	x0, #0
+	ret	x12
+ENDPROC(flush_dcache_louis)
 
 /*
  *	flush_icache_range(start,end)
@@ -168,6 +242,28 @@ ENTRY(__flush_dcache_area)
 	dsb	sy
 	ret
 ENDPROC(__flush_dcache_area)
+
+/*
+ *	__clean_dcache_area(kaddr)
+ *
+ *	Ensure that the data held in the passed area is cleaned from the
+ *	cache.
+ *
+ *	- kaddr   - kernel address
+ *	- size    - size in question
+ */
+ENTRY(__clean_dcache_area)
+	dcache_line_size x2, x3
+	add	x1, x0, x1
+	sub	x3, x2, #1
+	bic	x0, x0, x3
+1:	dc	cvac, x0			// clean D line / unified line
+	add	x0, x0, x2
+	cmp	x0, x1
+	b.lo	1b
+	dsb	sy
+	ret
+ENDPROC(__clean_dcache_area)
 
 /*
  *	__inval_cache_range(start, end)

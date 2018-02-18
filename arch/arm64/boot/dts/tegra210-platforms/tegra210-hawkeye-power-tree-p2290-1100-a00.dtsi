@@ -1,0 +1,341 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra210-hawkeye-pmic-p2290-1100-a00.dtsi"
+#include "tegra210-hawkeye-fixed-p2290-1100-a00.dtsi"
+#include "tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
+
+/ {
+
+	dfll-ovr@70110000 {
+		status = "disabled";
+	};
+
+	dfll-max77621@70110000 {
+		status = "okay";
+	};
+
+	pwm_regulators {
+		pwm-regulator@0 {
+			status = "disabled";
+		};
+
+		pwm-regulator@1 {
+			status = "disabled";
+		};
+	};
+
+	i2c@7000d000 {
+		max77620@3c {
+			regulators {
+				ldo0 {
+					regulator-enable-ramp-delay = <78>;
+					regulator-disable-ramp-delay = <2280>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <650>;
+				};
+
+				ldo2 {
+					regulator-enable-ramp-delay = <200>;
+					regulator-disable-ramp-delay = <3300>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <600>;
+				};
+
+				ldo3 {
+					regulator-enable-ramp-delay = <156>;
+					regulator-disable-ramp-delay = <5430>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <550>;
+				};
+
+				ldo4 {
+					regulator-enable-ramp-delay = <20>;
+					regulator-disable-ramp-delay = <390>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo5 {
+					regulator-enable-ramp-delay = <440>;
+					regulator-disable-ramp-delay = <7650>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <1400>;
+				};
+
+				ldo6 {
+					regulator-enable-ramp-delay = <162>;
+					regulator-disable-ramp-delay = <4500>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <900>;
+				};
+
+				ldo7 {
+					regulator-enable-ramp-delay = <74>;
+					regulator-disable-ramp-delay = <7125>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <700>;
+				};
+
+				ldo8 {
+					regulator-enable-ramp-delay = <26>;
+					regulator-disable-ramp-delay = <1575>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <250>;
+				};
+			};
+		};
+	};
+
+	regulators {
+		regulator@4 {
+			regulator-enable-ramp-delay = <1300>;
+			regulator-disable-ramp-delay = <2800>;
+		};
+
+		regulator@3 {
+			regulator-enable-ramp-delay = <160>;
+			regulator-disable-ramp-delay = <2000>;
+		};
+
+		regulator@5 {
+			regulator-enable-ramp-delay = <200>;
+			regulator-disable-ramp-delay = <2800>;
+		};
+
+		regulator@6 {
+			regulator-enable-ramp-delay = <1400>;
+		};
+
+		regulator@9 {
+			regulator-enable-ramp-delay = <500>;
+			regulator-disable-ramp-delay = <4500>;
+		};
+
+		regulator@12 {
+			regulator-enable-ramp-delay = <200>;
+			regulator-disable-ramp-delay = <8000>;
+		};
+
+		regulator@13 {
+			regulator-enable-ramp-delay = <600>;
+			regulator-disable-ramp-delay = <3000>;
+		};
+	};
+
+	dvfs_rails {
+		vdd-cpu-rail-ovr@0 {
+			status = "disabled";
+		};
+
+		vdd-gpu-rail-ovr@1 {
+			status = "disabled";
+		};
+
+		vdd-cpu-rail-max77621@2 {
+			status = "okay";
+		};
+
+		vdd-gpu-rail-max77621@3 {
+			status = "okay";
+		};
+	};
+
+	cpuidle {
+		vdd-cpu-supply = <&cpu_max77621_reg>;
+		cc4-microvolt = <618750>;
+	};
+
+	i2c@546c0000 {
+		bus-pullup-supply = <&en_vdd_cam>;
+	};
+
+	spi@7000da00 {
+		spi-touch-raydium19x12@0 {
+			avdd-supply = <&max77620_ldo5>;
+			dvdd-supply = <&max77620_ldo6>;
+		};
+		spi-touch-sharp19x12@0 {
+			avdd-supply = <&max77620_ldo5>;
+			dvdd-supply = <&max77620_ldo6>;
+		};
+	};
+
+	xudc@700d0000 {
+		hvdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		avddio_usb-supply = <&vdd_3v3>;
+		avddio_pll_uerefe-supply = <&max77620_ldo7>;
+	};
+
+	xotg {
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+
+	usb_cd@7009f000 {
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	otg@7d000000 {
+		usb_vbus-supply = <&usb0_vbus>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	ehci@7d000000 {
+		avdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+
+	modem {
+		vdd-supply = <&tps61280>;
+	};
+
+	sdhci@700b0600 {
+		vddio_sdmmc-supply = <&max77620_sd3>; /* SDMMC4 for EMMC on hawkeye */
+		vddio_sd_slot-supply = <&vdd_3v3>;
+	};
+
+	sdhci@700b0400 {
+		vddio_sdmmc-supply = <&max77620_ldo2>; /* SDMMC3 for SD card on hawkeye */
+		vddio_sd_slot-supply = <&vdd_sdcard>;
+	};
+
+	sdhci@700b0200 {
+		vddio_sdmmc-supply = <&max77620_sd3>; /* SDMMC2 for Wifi on hawkeye */
+		vddio_sd_slot-supply = <&vdd_3v3>;
+	};
+
+	sdhci@700b0000 {
+		vddio_sdmmc-supply = <&max77620_sd3>; /* SDMMC1 for 2nd Wifi on hawkeye */
+		vddio_sd_slot-supply = <&vdd_3v3>;
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&mipi_1v2>;
+			avdd_lcd-supply = <&vdd_lcd_3v0>;
+			dvdd_lcd-supply = <&vdd_lcd_1v8>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&max77620_ldo8>;
+			avdd_hdmi_pll-supply = <&max77620_sd3>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+
+		vi {
+			avdd_dsi_csi-supply = <&mipi_1v2>;
+		};
+
+		vii2c {
+			avdd_dsi_csi-supply = <&mipi_1v2>;
+		};
+	};
+
+	bluedroid_pm {
+		avdd-supply = <&battery_reg>;
+		dvdd-supply = <&max77620_sd3>;
+	};
+
+	pmc-iopower {
+		iopower-sys-supply = <&max77620_sd3>;
+		iopower-uart-supply = <&max77620_sd3>;
+		iopower-audio-supply = <&max77620_sd3>;
+		iopower-cam-supply = <&max77620_sd3>;
+		iopower-pex-ctrl-supply = <&max77620_sd3>;
+		iopower-sdmmc1-supply = <&max77620_sd3>;
+		iopower-sdmmc3-supply = <&max77620_ldo2>;
+		iopower-sdmmc4-supply = <&max77620_sd3>;
+		iopower-audio-hv-supply = <&max77620_sd3>;
+		iopower-debug-supply = <&max77620_sd3>;
+		iopower-dmic-supply = <&max77620_sd3>;
+		iopower-gpio-supply = <&max77620_sd3>;
+		iopower-spi-supply = <&max77620_sd3>;
+		iopower-spi-hv-supply = <&max77620_sd3>;
+		iopower-sdmmc2-supply = <&max77620_sd3>;
+		iopower-dp-supply = <&max77620_sd3>;
+	};
+
+	thermal-zones {
+		PMIC-Die-max77621-0 {
+			status = "okay";
+		};
+
+		PMIC-Die-max77621-1 {
+			status = "okay";
+		};
+
+                PMIC-Die-tps61280 {
+                        status = "okay";
+                };
+	};
+
+	sound {
+		ldoen-supply = <&vdd_sys_boost>;
+		spkvdd-supply = <&vdd_sys_boost>;
+		dbvdd-supply = <&vdd_sys_boost>;
+		avdd-supply = <&vdd_sys_boost>;
+		dmicvdd-supply = <&max77620_sd3>;
+	};
+
+	pmc@7000e400 {
+		bootrom-commands {
+			reset-commands {
+				nvidia,command-retries-count = <2>;
+				nvidia,delay-between-commands-us = <10>;
+				nvidia,wait-before-start-bus-clear-us = <10>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				commands@4-003c {
+					nvidia,command-names = "pmic-rails";
+					reg = <0x3c>;
+					nvidia,enable-8bit-register;
+					nvidia,enable-8bit-data;
+					nvidia,controller-type-i2c;
+					nvidia,controller-id = <4>;
+					nvidia,enable-controller-reset;
+					nvidia,write-commands = <0x00000016 0x00000020>;
+				};
+			};
+			power-off-commands {
+				nvidia,command-retries-count = <2>;
+				nvidia,delay-between-commands-us = <10>;
+				nvidia,wait-before-start-bus-clear-us = <10>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				commands@4-003c {
+					nvidia,command-names = "pmic-rails";
+					reg = <0x3c>;
+					nvidia,enable-8bit-register;
+					nvidia,enable-8bit-data;
+					nvidia,controller-type-i2c;
+					nvidia,controller-id = <4>;
+					nvidia,enable-controller-reset;
+					nvidia,write-commands = <0x3B 0x01
+								0x42 0x5B
+								0x41 0xF8>;
+				};
+			};
+		};
+	};
+};

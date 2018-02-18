@@ -1,0 +1,62 @@
+NVIDIA Tegra114 Display Controller
+==================================
+
+1) The dc node:
+ dc node must be contained in host1x parent node. This node represents
+ NVIDIA Tegra114 Display controller.
+
+ Required properties:
+ - name: dc
+ - compatible: Should contain "nvidia,tegra114-dc".
+ - reg: Physical base address and length of the controller's registers.
+ - interrupts: The interrupt outputs from the controller.
+ - nvidia,memory-clients: This is the "swgroup" ID in the Tegra TRM term.
+ - nvidia,dc-flags: can be 0 or below flags
+   TEGRA_DC_FLAG_ENABLED is to enable display controller in probe time.
+   TEGRA_DC_FLAG_SET_EARLY_MODE together with TEGRA_DC_FLAG_ENABLED is to enable
+   early modeset during kernel boot.
+ - nvidia,emc-clk-rate: Initially required embedded memory controller clk rate.
+ - nvidia,cmu-enable: Toggle switch for color management unit.
+ - nvidia,low-v-win: If low_v_win is set, we can lower vdd_core when that windows
+   is the only one active.
+ - nvidia,fb-bpp: Bits per pixel of fb.
+ - nvidia,fb-flags: Window is updated in display controller device probe. Should be TEGRA_FB_FLIP_ON_PROBE,
+   or 0
+ - avdd_hdmi-supply: phandle to the regulator device tree node for HDMI supply voltage,
+   HDMI_AVDD.
+ - avdd_hdmi_pll-supply: phandle to the regulator device tree node for HDMI pll supply.
+ - vdd_hdmi_5v0-supply: phandle to the regulator device tree node for HDMI 5V source.
+
+Example
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			compatible = "nvidia,tegra114-dc";
+			reg = <0x54200000 0x00040000>;
+			interrupts = <0 73 0x04>;
+			nvidia,memory-clients = <2>;
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			compatible = "nvidia,tegra114-dc";
+			reg = <0x54240000 0x00040000>;
+			interrupts = <0 74 0x04>;
+			nvidia,memory-clients = <3>;
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+			avdd_hdmi-supply = <&palmas_ldoln>;
+			avdd_hdmi_pll-supply = <&palmas_ldo1>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+	}

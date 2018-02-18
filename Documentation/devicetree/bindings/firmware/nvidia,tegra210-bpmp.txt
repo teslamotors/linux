@@ -1,0 +1,14 @@
+NVIDIA BPMP data
+
+Required properties:
+- compatible: "nvidia,tegra210-bpmp"
+- carveout-start: Starting physical address of the BPMP carveout area (DRAM
+  area associated with bpmp firmware)
+- carveout-size: Size of the BPMP carveout area
+
+Example:
+	bpmp {
+		compatible = "nvidia,tegra210-bpmp";
+		carveout-start = <0x80005000>;
+		carveout-size = <0x10000>;
+	};

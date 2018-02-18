@@ -1,0 +1,62 @@
+Tegra NOR
+
+Required Properties
+- compatible: "nvidia,tegra124-nor"
+- reg: address range of tegra-nor block
+- interrupts: irq to be used
+- nvidia,timing-default - pair of uint32 values
+- nvidia,timing-read = pair of uint32 values
+- nvidia,nor-mux-mode = Mux mode to be used
+- nvidia,nor-read-mode = Mode of operation for SYNC memories
+	Aysnc mode = 0x0
+	Page Mode  = 0x1
+	Burst Mode = 0x2
+
+- nvidia,nor-page-length - Number of words in page if page mode selected
+	Unsupported = 0x0
+	4 word page = 0x1
+	8 word page = 0x2
+	16 word page = 0x3
+
+- nvidia,nor-ready-active - Device Ready Active status
+	WithData = 0x0
+	BeforeData = 0x1
+
+- nvidia,flash-map-name - Name of the flash to be probed
+- nvidia,flash-width - flash width
+- nvidia,num-chips - Number of chip selects. These many number of
+		     cs-info child nodes should be present.
+
+- use-advanced-sector-protection - If present PPB protect enabled
+- nvidia,cs - Chipselect number
+- nvidia,num_cs_gpio - Non-zero if gpio used
+- nvidia,gpio-cs - GPIO number
+- nvidia,phy_addr - U64 Physical address
+- nvidia,phy_size - Size
+
+- nvidia,gmi_wait_pin - Name of gmi_wait_pin specific to platform
+
+Example:
+
+	snor {
+		reg = <0x0 0x70009000 0x0 0x1000>,
+		      <0x0 0x48000000 0x0 0x04000000>;
+		nvidia,timing-default = <0x30300273>, <0x00030302>;
+		nvidia,timing-read = <0x30300273>, <0x00030302>;
+		nvidia,nor-mux-mode = <0x0>;
+		nvidia,nor-read-mode = <0x1>;
+		nvidia,nor-page-length = <0x2>;
+		nvidia,nor-ready-active = <0x0>;
+		nvidia,flash-map-name = "cfi_probe";
+		nvidia,flash-width = <0x2>;
+		nvidia,num-chips = <0x1>;
+		use-advanced-sector-protection;
+		status = "okay";
+		cs-info@0 {
+			nvidia,cs = <0x0>;
+			nvidia,num_cs_gpio = <0x0>;
+			nvidia,phy_addr = <0x0 0x48000000>;
+			nvidia,phy_size = <0x04000000>;
+		};
+
+	};

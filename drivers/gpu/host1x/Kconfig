@@ -11,6 +11,15 @@ config TEGRA_HOST1X
 
 if TEGRA_HOST1X
 
+config TEGRA_HOST1X_DOWNSTREAM
+	bool "Execute in downstream configuration"
+	default y
+	help
+	  Choose this option if you are building driver in Tegra downstream.
+
+	  Enabling this option makes the driver to assume that downstream
+	  frameworks are available.
+
 config TEGRA_HOST1X_FIREWALL
 	bool "Enable HOST1X security firewall"
 	default y

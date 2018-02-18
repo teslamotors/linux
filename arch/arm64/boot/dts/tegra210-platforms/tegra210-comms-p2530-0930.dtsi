@@ -1,0 +1,39 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	gpio: gpio@6000d000 {
+		gpio-init-1 = <&wlan_default>;
+
+		wlan_default: wlan-default {
+			gpio-input = <
+				TEGRA_GPIO(H, 2)
+				TEGRA_GPIO(I, 1)
+				>;
+			gpio-output-high = <
+				TEGRA_GPIO(H, 0)
+				TEGRA_GPIO(I, 0)
+				>;
+		};
+	};
+
+	bluedroid_pm { /* BT BCM43340 in P2530 Compute Module */
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,reset-gpio = <&gpio TEGRA_GPIO(H, 4) 0>;
+		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(H, 5) 0>;
+		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(H, 3) 0>;
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(H, 5) 0x01>;
+	};
+
+	bcmdhd_wlan { /* WLAN BCM43340 in P2530 Compute Module */
+		compatible = "android,bcmdhd_wlan";
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(H, 2) 0x14>;
+		wlan-pwr-gpio = <&gpio TEGRA_GPIO(H, 0) 0>;
+		status = "okay";
+		/* wifi MAC address */
+		mac-address-chosen-dtb-node = "nvidia,wifi-mac";
+		mac-address-file = "/mnt/factory/wifi/wifi_mac.txt";
+	};
+};

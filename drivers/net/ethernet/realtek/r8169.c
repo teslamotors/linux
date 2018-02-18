@@ -841,7 +841,7 @@ struct rtl8169_private {
 		} phy_action;
 	} *rtl_fw;
 #define RTL_FIRMWARE_UNKNOWN	ERR_PTR(-EAGAIN)
-
+	bool napi_disabled_in_suspend;
 	u32 ocp_base;
 };
 
@@ -1847,7 +1847,11 @@ static int rtl8169_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 
 static const char *rtl_lookup_firmware_name(struct rtl8169_private *tp)
 {
+#ifdef CONFIG_R8169_FW_LOAD
 	return rtl_chip_infos[tp->mac_version].fw_name;
+#else
+	return NULL;
+#endif
 }
 
 static void rtl8169_get_drvinfo(struct net_device *dev,
@@ -7488,7 +7492,9 @@ static void rtl8169_down(struct net_device *dev)
 
 	del_timer_sync(&tp->timer);
 
-	napi_disable(&tp->napi);
+	/* call napi_disable only when it is not already disabled in suspend */
+	if (!tp->napi_disabled_in_suspend)
+		napi_disable(&tp->napi);
 	netif_stop_queue(dev);
 
 	rtl8169_hw_reset(tp);
@@ -7594,6 +7600,7 @@ static int rtl_open(struct net_device *dev)
 	set_bit(RTL_FLAG_TASK_ENABLED, tp->wk.flags);
 
 	napi_enable(&tp->napi);
+	tp->napi_disabled_in_suspend = false;
 
 	rtl8169_init_phy(dev, tp);
 
@@ -7676,6 +7683,7 @@ static void rtl8169_net_suspend(struct net_device *dev)
 
 	rtl_lock_work(tp);
 	napi_disable(&tp->napi);
+	tp->napi_disabled_in_suspend = true;
 	clear_bit(RTL_FLAG_TASK_ENABLED, tp->wk.flags);
 	rtl_unlock_work(tp);
 
@@ -7704,6 +7712,7 @@ static void __rtl8169_resume(struct net_device *dev)
 
 	rtl_lock_work(tp);
 	napi_enable(&tp->napi);
+	tp->napi_disabled_in_suspend = false;
 	set_bit(RTL_FLAG_TASK_ENABLED, tp->wk.flags);
 	rtl_unlock_work(tp);
 
@@ -8101,8 +8110,8 @@ static int rtl_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 		tp->cp_cmd |= PCIDAC;
 		dev->features |= NETIF_F_HIGHDMA;
 	} else {
-		rc = pci_set_dma_mask(pdev, DMA_BIT_MASK(32));
-		if (rc < 0) {
+		if ((pci_set_dma_mask(pdev, DMA_BIT_MASK(64)) < 0) &&
+			(pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) < 0) {
 			netif_err(tp, probe, dev, "DMA configuration failed\n");
 			goto err_out_free_res_3;
 		}

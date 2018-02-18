@@ -95,7 +95,7 @@ void read_boot_clock(struct timespec *ts)
 	__read_boot_clock(ts);
 }
 
-int __init register_persistent_clock(clock_access_fn read_boot,
+int register_persistent_clock(clock_access_fn read_boot,
 				     clock_access_fn read_persistent)
 {
 	/* Only allow the clockaccess functions to be registered once */

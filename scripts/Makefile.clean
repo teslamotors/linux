@@ -7,6 +7,8 @@ src := $(obj)
 PHONY := __clean
 __clean:
 
+include scripts/Kbuild.include
+
 # Shorthand for $(Q)$(MAKE) scripts/Makefile.clean obj=dir
 # Usage:
 # $(Q)$(MAKE) $(clean)=dir
@@ -14,7 +16,11 @@ clean := -f $(srctree)/scripts/Makefile.clean obj
 
 # The filename Kbuild has precedence over Makefile
 kbuild-dir := $(if $(filter /%,$(src)),$(src),$(srctree)/$(src))
-include $(if $(wildcard $(kbuild-dir)/Kbuild), $(kbuild-dir)/Kbuild, $(kbuild-dir)/Makefile)
+kbuild-file := $(if $(wildcard $(kbuild-dir)/Kbuild),$(kbuild-dir)/Kbuild, $(kbuild-dir)/Makefile)
+ifneq ("$(wildcard $(kbuild-file))", "")
+include $(kbuild-file)
+endif
+include $(srctree)/scripts/Makefile.tegra
 
 # Figure out what we need to build from the various variables
 # ==========================================================================

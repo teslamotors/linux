@@ -1,0 +1,121 @@
+NVIDIA TEGRA210 DisplayPort
+===========================
+
+1) The dp-display node:
+ dp-display node must be contained in sor1 parent node. This node represents NVIDIA TEGRA210 DisplayPort.
+
+ Required properties:
+ - name: dp-display
+ - compatible: Should contain "dp, display".
+
+ Optional properties:
+ - nvidia,hpd-gpio: Specifies a GPIO used for hotplug detection.
+   This GPIO is used internally by the DPAUX and should not be explicitly
+   touched by the DP driver itself.
+ - nvidia,tx-pu-disable: Specifies whether TX_PU is disabled.
+ - nvidia,lanes: Specifies the number of connected data lanes
+
+ 1.A) NVIDIA Display Default Output Settings
+ This must be contained in dp-display parent node. This is default output settings.
+
+ Required properties:
+ - name: Should be "disp-default-out".
+ - nvidia,out-type: Output type. Should be TEGRA_DC_OUT_DP.
+ - nvidia,out-width: Width in struct fb_var_screeninfo. width of picture in mm.
+ - nvidia,out-height: Height in struct fb_var_screeninfo. height of picture in mm.
+ - nvidia,out-rotation: It specifies panel rotation in degree.
+ - nvidia,out-flags: One item or an array of several tuples of items can be chosen.
+   List of items is TEGRA_DC_OUT_HOTPLUG_HIGH, TEGRA_DC_OUT_HOTPLUG_LOW,
+   TEGRA_DC_OUT_NVHDCP_POLICY_ON_DEMAND, TEGRA_DC_OUT_NVHDCP_POLICY_ALWAYS_ON,
+   TEGRA_DC_OUT_CONTINUOUS_MODE, TEGRA_DC_OUT_ONE_SHOT_MODE,
+   TEGRA_DC_OUT_N_SHOT_MODE, TEGRA_DC_OUT_ONE_SHOT_LP_MODE,
+   TEGRA_DC_OUT_INITIALIZED_MODE and TEGRA_DC_OUT_HOTPLUG_WAKE_LP0.
+   If several items are written, bitwise OR is operated for them, internally.
+ - nvidia,out-hdcp-policy: One of TEGRA_DC_OUT_HDCP_POLICY_ALWAYS_ON,
+   TEGRA_DC_OUT_HDCP_POLICY_ALWAYS_OFF
+ - nvidia,out-parent-clk: Parent clk for display controller.
+ - nvidia,out-max-pixclk: Maximum pixel clock in pico-seconds.
+ - nvidia,dither: Dither option. Should be TEGRA_DC_UNDEFINED_DITHER or
+   TEGRA_DC_DISABLE_DITHER or TEGRA_DC_ORDERED_DITHER or TEGRA_DC_ERRDIFF_DITHER
+   or TEGRA_DC_TEMPORAL_DITHER.
+ - nvidia,out-align: Display data alignment. Should be TEGRA_DC_ALIGN_MSB or TEGRA_DC_ALIGN_LSB.
+ - nvidia,out-order: Display data order. Should be TEGRA_DC_ORDER_RED_BLUE or
+   TEGRA_DC_ORDER_BLUE_RED.
+ - nvidia,out-depth: Display base color size. 3, 6, 8, 9, 12, 15, 16, 18, and 24 for
+   BASE_COLOR_SIZE111, BASE_COLOR_SIZE222, BASE_COLOR_SIZE332, BASE_COLOR_SIZE333,
+   BASE_COLOR_SIZE444, BASE_COLOR_SIZE555, BASE_COLOR_SIZE565, BASE_COLOR_SIZE666,
+   and BASE_COLOR_SIZE888, respectively. In default, BASE_COLOR_SIZE888 is chosen.
+ - nvidia,out-xres: Visible resolution for width.
+ - nvidia,out-yres: Visible resolution for height.
+ Optional properties:
+ - is_ext_dp_panel: Specifies whether this is an external panel or an eDP panel.
+ - nvidia,link-bw: Specifies the preferred link bandwidth to use for main DP link.
+
+ 1.B) the dp-lt-settings node:
+ The dp-lt-settings node holds link training settings for dp.
+
+ 1.B.i) the lt-setting nodes
+ Each lt-setting node specifies drive current, preemphasis, and post-cursor values for
+ link training. The "nvidia,drive-current", "nvidia,lane-preemphasis", and "nvidia,post-cursor"
+ properties must contain an entry for each lane.
+
+ Required properties:
+ - nvidia,drive-current: Tuple of drive-current values. Values can be DRIVE_CURRENT_L0,
+   DRIVE_CURRENT_L1, DRIVE_CURRENT_L2, or DRIVE_CURRENT_L3.
+ - nvidia,lane-preemphasis: Tuple of lane preemphasis values. Values can be PRE_EMPHASIS_L0,
+   PRE_EMPHASIS_L1, PRE_EMPHASIS_L2, or PRE_EMPHASIS_L3.
+ - nvidia,post-cursor: Tuple of post-cursor values. Values can be POST_CURSOR2_L0,
+   POST_CURSOR2_L1, POST_CURSOR2_L2, or POST_CURSOR2_L3.
+ Optional properties:
+ - nvidia,tx-pu: Specifies TX_PU value.
+ - nvidia,load-adj: Specifies LOADADJ value. Can be 0x3, 0x4, or 0x6.
+
+
+Example
+
+host1x {
+    sor1 {
+        dp-display {
+            status = "okay";
+            compatible = "dp, display";
+            nvidia,hpd-gpio = <&gpio TEGRA_GPIO(CC, 1) 1>; /* PN7 */
+            nvidia,tx-pu-disable = <1>;
+            nvidia,is_ext_dp_panel = <1>;
+            disp-default-out {
+                nvidia,out-type = <TEGRA_DC_OUT_DP>;
+                nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+                nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+                nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+                nvidia,out-pins = <TEGRA_DC_OUT_PIN_H_SYNC TEGRA_DC_OUT_PIN_POL_LOW
+                                   TEGRA_DC_OUT_PIN_V_SYNC TEGRA_DC_OUT_PIN_POL_LOW
+                                   TEGRA_DC_OUT_PIN_PIXEL_CLOCK TEGRA_DC_OUT_PIN_POL_LOW
+                                   TEGRA_DC_OUT_PIN_DATA_ENABLE TEGRA_DC_OUT_PIN_POL_HIGH>;
+                nvidia,out-depth = <18>;
+                nvidia,out-parent-clk = "pll_d2";
+            };
+            dp-lt-settings {
+                lt-setting@0 {
+                    nvidia,drive-current = <DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0>;
+                    nvidia,lane-preemphasis = <PRE_EMPHASIS_L0 PRE_EMPHASIS_L0 PRE_EMPHASIS_L0 PRE_EMPHASIS_L0>;
+                    nvidia,post-cursor = <POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0>;
+                    nvidia,tx-pu = <0>;
+                    nvidia,load-adj = <0x3>;
+                };
+                lt-setting@1 {
+                    nvidia,drive-current = <DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0>;
+                    nvidia,lane-preemphasis = <PRE_EMPHASIS_L0 PRE_EMPHASIS_L0 PRE_EMPHASIS_L0 PRE_EMPHASIS_L0>;
+                    nvidia,post-cursor = <POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0>;
+                    nvidia,tx-pu = <0>;
+                    nvidia,load-adj = <0x4>;
+                };
+                lt-setting@2 {
+                    nvidia,drive-current = <DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0 DRIVE_CURRENT_L0>;
+                    nvidia,lane-preemphasis = <PRE_EMPHASIS_L1 PRE_EMPHASIS_L1 PRE_EMPHASIS_L1 PRE_EMPHASIS_L1>;
+                    nvidia,post-cursor = <POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0 POST_CURSOR2_L0>;
+                    nvidia,tx-pu = <0>;
+                    nvidia,load-adj = <0x6>;
+                };
+            };
+        };
+    };
+};

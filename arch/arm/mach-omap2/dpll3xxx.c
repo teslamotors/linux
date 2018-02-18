@@ -410,7 +410,7 @@ int omap3_noncore_dpll_enable(struct clk_hw *hw)
 	struct clk_hw_omap *clk = to_clk_hw_omap(hw);
 	int r;
 	struct dpll_data *dd;
-	struct clk *parent;
+	struct clk_hw *parent;
 
 	dd = clk->dpll_data;
 	if (!dd)
@@ -427,13 +427,13 @@ int omap3_noncore_dpll_enable(struct clk_hw *hw)
 		}
 	}
 
-	parent = __clk_get_parent(hw->clk);
+	parent = __clk_get_hw(__clk_get_parent(hw->clk));
 
 	if (__clk_get_rate(hw->clk) == __clk_get_rate(dd->clk_bypass)) {
-		WARN_ON(parent != dd->clk_bypass);
+		WARN_ON(parent != __clk_get_hw(dd->clk_bypass));
 		r = _omap3_noncore_dpll_bypass(clk);
 	} else {
-		WARN_ON(parent != dd->clk_ref);
+		WARN_ON(parent != __clk_get_hw(dd->clk_ref));
 		r = _omap3_noncore_dpll_lock(clk);
 	}
 
@@ -470,8 +470,11 @@ void omap3_noncore_dpll_disable(struct clk_hw *hw)
  * target rate if it hasn't been done already, then program and lock
  * the DPLL.  Returns -EINVAL upon error, or 0 upon success.
  */
-int omap3_noncore_dpll_set_rate(struct clk_hw *hw, unsigned long rate,
-					unsigned long parent_rate)
+long omap3_noncore_dpll_determine_rate(struct clk_hw *hw, unsigned long rate,
+				       unsigned long min_rate,
+				       unsigned long max_rate,
+				       unsigned long *best_parent_rate,
+				       struct clk_hw **best_parent_clk)
 {
 	struct clk_hw_omap *clk = to_clk_hw_omap(hw);
 	struct clk *new_parent = NULL;
@@ -517,12 +520,9 @@ int omap3_noncore_dpll_set_rate(struct clk_hw *hw, unsigned long rate,
 		if (dd->last_rounded_rate == 0)
 			return -EINVAL;
 
-		/* Freqsel is available only on OMAP343X devices */
-		if (ti_clk_features.flags & TI_CLK_DPLL_HAS_FREQSEL) {
-			freqsel = _omap3_dpll_compute_freqsel(clk,
-						dd->last_rounded_n);
-			WARN_ON(!freqsel);
-		}
+		if (__clk_get_hw(__clk_get_parent(hw->clk)) !=
+		    __clk_get_hw(dd->clk_ref))
+			return -EINVAL;
 
 		pr_debug("%s: %s: set rate: locking rate to %lu.\n",
 			 __func__, __clk_get_name(hw->clk), rate);

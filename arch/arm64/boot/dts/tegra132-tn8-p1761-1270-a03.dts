@@ -1,0 +1,153 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/dts-v1/;
+
+#include "tegra132-tn8.dtsi"
+#include "tegra124-platforms/tegra124-tn8-power-tree-e1936-1000-a03.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sensor-p1761-1270-a03.dtsi"
+#include "tegra124-platforms/tegra124-tn8-pinmux-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-gpio-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sysedp-p1761-1270-a02.dtsi"
+#include "tegra132-platforms/tegra132-tn8-keys-p1761-1270-a03.dtsi"
+#include "tegra132-platforms/tegra132-tn8-emc-p1761-1270-a03.dtsi"
+#include "tegra124-platforms/tegra124-tn8-powermon-p1761-a02.dtsi"
+#include "tegra132-tn8-dfll.dtsi"
+#include "tegra124-platforms/tegra124-tn8-camera-p1761-1270-a03.dtsi"
+#include "tegra124-platforms/tegra124-tn8-thermal-zone-p1761-1270-a00.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
+#include "tegra124-platforms/tegra124-tn8-hdmi-p1761-1270-a03.dtsi"
+#include "tegra132-platforms/tegra132-sdhci.dtsi"
+#include "tegra124-platforms/tegra124-tn8-comms.dtsi"
+
+/ {
+	model = "tn8";
+	compatible = "nvidia,tn8", "nvidia,tegra132";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "1761:1270:3";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb earlycon=uart8250,mmio32,0x70006300";
+		stdout-path = &uartd;
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "tn8";
+		};
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-a-wuxga-8-0 {
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+		};
+	};
+
+	i2c@7000c400 {
+		battery-gauge@0b {
+			onsemi,kernel-threshold-soc = < 2 >;
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+
+		battery-charger@6b {
+			charger {
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			};
+		};
+	};
+
+	i2c@7000d000 {
+		tps65913 {
+			thermal {
+				status = "okay";
+			};
+		};
+	};
+
+	thermal-zones {
+	       PMIC-Die {
+			status = "okay";
+		};
+
+		Battery {
+			status = "disabled";
+			thermal-sensors = <&fg_lc709203f>;
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+	};
+
+	denver_cpuidle_pmic {
+		type = <4>; /* TI TPS65913 2.3 */
+		retention-voltage = <11>; /* vret = .55V */
+		lock = <0>;
+       };
+
+	sysedp_batmon_calc {
+		dt-override-status-odm-data = <0x00C00000 0x00400000>;
+	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
+
+	sdhci@700b0600 {
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		status = "okay";
+	};
+
+	sdhci@700b0000 {
+		status = "okay";
+	};
+
+};
+

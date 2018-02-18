@@ -494,8 +494,8 @@ static void intr_callback(struct urb *urb)
 		return;
 	/* -EPIPE:  should clear the halt */
 	default:
-		dev_info(&urb->dev->dev, "%s: intr status %d\n",
-			 dev->netdev->name, status);
+		dev_info_ratelimited(&urb->dev->dev, "%s: intr status %d\n",
+			dev->netdev->name, status);
 		goto resubmit;
 	}
 

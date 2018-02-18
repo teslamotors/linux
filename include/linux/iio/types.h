@@ -1,6 +1,7 @@
 /* industrial I/O data types needed both in and out of kernel
  *
  * Copyright (c) 2008 Jonathan Cameron
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -30,6 +31,22 @@ enum iio_chan_type {
 	IIO_CCT,
 	IIO_PRESSURE,
 	IIO_HUMIDITYRELATIVE,
+	IIO_ORIENTATION,
+	IIO_GRAVITY,
+	IIO_LINEAR_ACCEL,
+	IIO_HUMIDITY,
+	IIO_MAGN_UNCAL,
+	IIO_ANGLVEL_UNCAL,
+	IIO_GAME_ROT,
+	IIO_MOTION,
+	IIO_STEP,
+	IIO_STEP_COUNT,
+	IIO_GEOMAGN_ROT,
+	IIO_HEART_RATE,
+	IIO_GESTURE_WAKE,
+	IIO_GESTURE_GLANCE,
+	IIO_GESTURE_PICKUP,
+	IIO_GENERIC,
 };
 
 enum iio_modifier {
@@ -37,6 +54,7 @@ enum iio_modifier {
 	IIO_MOD_X,
 	IIO_MOD_Y,
 	IIO_MOD_Z,
+	IIO_MOD_COS,
 	IIO_MOD_X_AND_Y,
 	IIO_MOD_X_AND_Z,
 	IIO_MOD_Y_AND_Z,
@@ -59,7 +77,15 @@ enum iio_modifier {
 	IIO_MOD_NORTH_MAGN,
 	IIO_MOD_NORTH_TRUE,
 	IIO_MOD_NORTH_MAGN_TILT_COMP,
-	IIO_MOD_NORTH_TRUE_TILT_COMP
+	IIO_MOD_NORTH_TRUE_TILT_COMP,
+	IIO_MOD_X_UNCALIB,
+	IIO_MOD_Y_UNCALIB,
+	IIO_MOD_Z_UNCALIB,
+	IIO_MOD_X_BIAS,
+	IIO_MOD_Y_BIAS,
+	IIO_MOD_Z_BIAS,
+	IIO_MOD_STATUS,
+	IIO_MOD_BPM,
 };
 
 enum iio_event_type {

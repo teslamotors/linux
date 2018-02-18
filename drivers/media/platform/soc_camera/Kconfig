@@ -89,3 +89,4 @@ config VIDEO_ATMEL_ISI
 	  This module makes the ATMEL Image Sensor Interface available
 	  as a v4l2 device.
 
+source "drivers/media/platform/soc_camera/tegra_camera/Kconfig"

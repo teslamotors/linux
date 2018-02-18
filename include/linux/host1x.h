@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2009-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,17 +24,39 @@
 
 enum host1x_class {
 	HOST1X_CLASS_HOST1X = 0x1,
+	HOST1X_CLASS_NVENC = 0x21,
+	HOST1X_CLASS_VI = 0x30,
+	HOST1X_CLASS_ISPA = 0x32,
+	HOST1X_CLASS_ISPB = 0x34,
 	HOST1X_CLASS_GR2D = 0x51,
 	HOST1X_CLASS_GR2D_SB = 0x52,
+	HOST1X_CLASS_VIC = 0x5D,
 	HOST1X_CLASS_GR3D = 0x60,
+	HOST1X_CLASS_NVJPG = 0xC0,
+	HOST1X_CLASS_TSEC = 0xE0,
+	HOST1X_CLASS_TSECB = 0xE1,
+	HOST1X_CLASS_NVDEC = 0xF0,
 };
 
 struct host1x_client;
+struct host1x;
 
 struct host1x_client_ops {
 	int (*init)(struct host1x_client *client);
 	int (*exit)(struct host1x_client *client);
+	int (*get_clk_rate)(struct host1x_client *client, u64 *data,
+			u32 type);
+	int (*set_clk_rate)(struct host1x_client *client, u64 data,
+			u32 type);
 };
+
+struct host1x_characteristics {
+	__u64 flags;
+
+	__u32 num_syncpts;
+};
+
+struct host1x_characteristics *host1x_get_chara(struct host1x *host1x);
 
 struct host1x_client {
 	struct list_head list;
@@ -54,6 +76,7 @@ struct host1x_client {
  * host1x buffer objects
  */
 
+struct sync_fence;
 struct host1x_bo;
 struct sg_table;
 
@@ -135,6 +158,8 @@ struct host1x_syncpt *host1x_syncpt_get(struct host1x *host, u32 id);
 u32 host1x_syncpt_id(struct host1x_syncpt *sp);
 u32 host1x_syncpt_read_min(struct host1x_syncpt *sp);
 u32 host1x_syncpt_read_max(struct host1x_syncpt *sp);
+u32 host1x_syncpt_read(struct host1x_syncpt *sp);
+void host1x_syncpt_update_min(struct host1x_syncpt *sp);
 int host1x_syncpt_incr(struct host1x_syncpt *sp);
 u32 host1x_syncpt_incr_max(struct host1x_syncpt *sp, u32 incrs);
 int host1x_syncpt_wait(struct host1x_syncpt *sp, u32 thresh, long timeout,
@@ -142,10 +167,16 @@ int host1x_syncpt_wait(struct host1x_syncpt *sp, u32 thresh, long timeout,
 struct host1x_syncpt *host1x_syncpt_request(struct device *dev,
 					    unsigned long flags);
 void host1x_syncpt_free(struct host1x_syncpt *sp);
+bool host1x_syncpt_is_expired(struct host1x_syncpt *sp, u32 thresh);
+void host1x_syncpt_reset(struct host1x_syncpt *sp);
 
 struct host1x_syncpt_base *host1x_syncpt_get_base(struct host1x_syncpt *sp);
 u32 host1x_syncpt_base_id(struct host1x_syncpt_base *base);
 
+int host1x_intr_register_notifier(struct host1x_syncpt *sp,
+				  u32 thresh,
+				  void (*callback)(void *, int),
+				  void *private_data);
 /*
  * host1x channel
  */
@@ -173,6 +204,17 @@ struct host1x_reloc {
 		unsigned long offset;
 	} target;
 	unsigned long shift;
+};
+
+struct host1x_syncpt_fence {
+	u32 id;
+	u32 threshold;
+};
+
+struct host1x_job_syncpt {
+	u32 id;
+	u32 incrs;
+	u32 end;
 };
 
 struct host1x_job {
@@ -206,10 +248,10 @@ struct host1x_job {
 	dma_addr_t *gather_addr_phys;
 	dma_addr_t *reloc_addr_phys;
 
-	/* Sync point id, number of increments and end related to the submit */
-	u32 syncpt_id;
-	u32 syncpt_incrs;
-	u32 syncpt_end;
+	/* Sync point ids, numbers of increments and ends related to the
+	 * submit */
+	unsigned int num_syncpts;
+	struct host1x_job_syncpt *syncpts;
 
 	/* Maximum time to wait for this job */
 	unsigned int timeout;
@@ -224,24 +266,37 @@ struct host1x_job {
 	u8 *gather_copy_mapped;
 
 	/* Check if register is marked as an address reg */
-	int (*is_addr_reg)(struct device *dev, u32 reg, u32 class);
+	int (*is_addr_reg)(struct device *dev, u32 reg, u32 class, u32 val);
 
-	/* Request a SETCLASS to this class */
-	u32 class;
+	/* Function to reset the engine in case timeout occurs */
+	void (*reset)(struct device *dev);
+
 
 	/* Add a channel wait for previous ops to complete */
 	bool serialize;
+
+	struct host1x_bo *error_notifier_bo;
+	u64 error_notifier_offset;
 };
 
 struct host1x_job *host1x_job_alloc(struct host1x_channel *ch,
 				    u32 num_cmdbufs, u32 num_relocs,
-				    u32 num_waitchks);
+				    u32 num_waitchks, u32 num_syncpts);
 void host1x_job_add_gather(struct host1x_job *job, struct host1x_bo *mem_id,
-			   u32 words, u32 offset);
+			   u32 words, u32 offset,
+			   struct sync_fence *pre_fence,
+			   u32 class_id);
+void host1x_job_add_client_gather_address(struct host1x_job *job,
+					 struct host1x_bo *bo,
+					 u32 words,
+					 u32 class_id,
+					 dma_addr_t gather_address);
 struct host1x_job *host1x_job_get(struct host1x_job *job);
 void host1x_job_put(struct host1x_job *job);
 int host1x_job_pin(struct host1x_job *job, struct device *dev);
 void host1x_job_unpin(struct host1x_job *job);
+
+bool host1x_channel_gather_filter_enabled(struct host1x *host);
 
 /*
  * subdevice probe infrastructure
@@ -250,16 +305,28 @@ void host1x_job_unpin(struct host1x_job *job);
 struct host1x_device;
 
 struct host1x_driver {
+	struct device_driver driver;
+
 	const struct of_device_id *subdevs;
 	struct list_head list;
-	const char *name;
 
 	int (*probe)(struct host1x_device *device);
 	int (*remove)(struct host1x_device *device);
+	void (*shutdown)(struct host1x_device *device);
 };
 
-int host1x_driver_register(struct host1x_driver *driver);
+static inline struct host1x_driver *
+to_host1x_driver(struct device_driver *driver)
+{
+	return container_of(driver, struct host1x_driver, driver);
+}
+
+int host1x_driver_register_full(struct host1x_driver *driver,
+				struct module *owner);
 void host1x_driver_unregister(struct host1x_driver *driver);
+
+#define host1x_driver_register(driver) \
+	host1x_driver_register_full(driver, THIS_MODULE)
 
 struct host1x_device {
 	struct host1x_driver *driver;
@@ -272,6 +339,8 @@ struct host1x_device {
 
 	struct mutex clients_lock;
 	struct list_head clients;
+
+	bool registered;
 };
 
 static inline struct host1x_device *to_host1x_device(struct device *dev)
@@ -290,5 +359,112 @@ struct tegra_mipi_device;
 struct tegra_mipi_device *tegra_mipi_request(struct device *device);
 void tegra_mipi_free(struct tegra_mipi_device *device);
 int tegra_mipi_calibrate(struct tegra_mipi_device *device);
+
+struct host1x_sync_pt;
+struct sync_pt;
+struct sync_fence;
+
+#ifdef CONFIG_SYNC
+
+/*
+ * Creates a new sync framework syncpoint based on host1x syncpoint id and
+ * threshold.
+ */
+struct host1x_sync_pt *host1x_sync_pt_create(struct host1x *host,
+				      struct host1x_syncpt *syncpt,
+				      u32 threshold);
+/*
+ * Extracts host1x syncpoint and threshold from a sync framework syncpoint.
+ * If `pt` is not a sync framework syncpoint created using
+ * host1x_sync_pt_create, returns false. Otherwise, returns true and fills
+ * output parameters `syncpt` and `threshold`.
+ */
+bool host1x_sync_pt_extract(struct sync_pt *pt, struct host1x_syncpt **syncpt,
+			    u32 *threshold);
+
+/*
+ * Adds host1x waits to the command pushbuffer for any host1x syncpoint backed
+ * non-expired syncpoints in `fence`. Returns true if the fence contains
+ * non-host1x-backed sync points.
+ */
+bool host1x_sync_fence_wait(struct sync_fence *fence,
+			    struct host1x *host,
+			    struct host1x_channel *ch);
+
+int host1x_sync_fence_set_name(int fence_fd, const char *name);
+u32 host1x_sync_pt_thresh(struct sync_pt *__pt);
+u32 host1x_sync_pt_id(struct sync_pt *__pt);
+int host1x_sync_num_fences(struct sync_fence *fence);
+struct sync_fence *host1x_sync_fdget(int fd);
+struct sync_fence *host1x_sync_create_fence(struct host1x *host,
+				    struct host1x_syncpt_fence *syncpt_fences,
+				    u32 num_fences, const char *name);
+int host1x_sync_create_fence_fd(struct host1x *host,
+				struct host1x_syncpt_fence *syncpt_fences,
+				u32 num_fences, const char *name,
+				int *fence_fd);
+int host1x_sync_create_fence_single(struct host1x *host,
+				    u32 id, u32 thresh,
+				    const char *name,
+				    int *fence_fd);
+
+#else
+
+static inline bool host1x_sync_fence_wait(struct sync_fence *fence,
+			    struct host1x *host,
+			    struct host1x_channel *ch)
+{
+	return false;
+}
+
+static inline int host1x_sync_fence_set_name(int fence_fd, const char *name)
+{
+	return -ENOSYS;
+}
+
+static inline u32 host1x_sync_pt_thresh(struct sync_pt *__pt)
+{
+	return 0;
+}
+
+static inline u32 host1x_sync_pt_id(struct sync_pt *__pt)
+{
+	return 0;
+}
+
+static inline int host1x_sync_num_fences(struct sync_fence *fence)
+{
+	return -EINVAL;
+}
+
+static inline struct sync_fence *host1x_sync_fdget(int fd)
+{
+	return NULL;
+}
+
+static inline struct sync_fence *host1x_sync_create_fence(struct host1x *host,
+				    struct host1x_syncpt_fence *syncpt_fences,
+				    u32 num_fences, const char *name)
+{
+	return NULL;
+}
+
+static inline int host1x_sync_create_fence_fd(struct host1x *host,
+				struct host1x_syncpt_fence *syncpt_fences,
+				u32 num_fences, const char *name,
+				int *fence_fd)
+{
+	return -EINVAL;
+}
+
+static inline int host1x_sync_create_fence_single(struct host1x *host,
+						  u32 id, u32 thresh,
+						  const char *name,
+						  int *fence_fd)
+{
+	return -EINVAL;
+}
+
+#endif /* CONFIG_SYNC */
 
 #endif

@@ -191,4 +191,7 @@ static inline void debug_dma_assert_idle(struct page *page)
 
 #endif /* CONFIG_DMA_API_DEBUG */
 
+/* get architecture specific interesting data */
+char *debug_dma_platformdata(struct device *dev);
+
 #endif /* __DMA_DEBUG_H */

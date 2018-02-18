@@ -311,6 +311,21 @@ config CRYPTO_DEV_S5P
 	  Select this to offload Samsung S5PV210 or S5PC110, Exynos from AES
 	  algorithms execution.
 
+config CRYPTO_DEV_TEGRA_SE
+	tristate "Tegra SE driver for crypto algorithms"
+	depends on !ARCH_TEGRA_2x_SOC
+	select CRYPTO_AES
+	help
+	  This option allows you to have support of Security Engine for crypto acceleration.
+
+trysource "../t18x/drivers/crypto/Kconfig"
+trysource "../t18x/drivers/crypto/Kconfig.t18x"
+trysource "drivers/crypto/Kconfig.t18x"
+
+trysource "../t18x/drivers/crypto/elliptic/Kconfig"
+trysource "../t18x/drivers/crypto/elliptic/Kconfig.t18x"
+trysource "drivers/crypto/elliptic/Kconfig.t18x"
+
 config CRYPTO_DEV_NX
 	bool "Support for IBM Power7+ in-Nest cryptographic acceleration"
 	depends on PPC64 && IBMVIO && !CPU_LITTLE_ENDIAN

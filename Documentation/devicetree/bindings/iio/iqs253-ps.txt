@@ -1,0 +1,521 @@
+* IQS2x3 proximity sensor
+
+nvs_ drivers use the NVidia Sensor (NVS) framework.
+See the nvs.txt documentation for NVS DT capabilities.
+The nvs_iqs2x3 proximity sensor driver supports the IQS253 and IQS263 devices.
+
+Required properties:
+- compatible: Device or generic name.
+	      Supported device names:
+	      - azoteq,iqs2x3
+	      - azoteq,iqs253
+	      - azoteq,iqs263
+  Note: If the part is known and is populated, then it can be specified:
+	Example: compatible = "azoteq,iqs263";
+	When specifying a device this way, the driver will assume this specific
+	device is populated during system boot and will not verify its
+	existence.  If, however, the device is unknown or may not be populated,
+	then the label, iqs2x3, (Example: compatible = "azoteq,iqs2x3";),
+	must be used.  This tells the driver to find which device is used.  If
+	the device is not found, the driver will unload itself.  This requires
+	regulators to be setup correctly for the probe function.
+- reg: i2c address of the device. It is one of 0x44-0x47.
+- gpio_rdy: GPIO to be used for the I2C handshake with the sensor.
+  Note: the gpio_rdy GPIO will be used as an interrupt also.
+
+The IQS devices have a very versatile register set.  So much so that the entire
+register set values can be different among platforms.  Because of this, the way
+and the values used are defined in the device tree.  The driver will read in
+the DT block of data for each command into a buffer and parse the byte stream
+to execute the command.
+The format for each entry of the command is as follows:
+	u8 LENGTH	// The number of data byte pairs (data[N] / 2).
+	u8 REGISTER	// The register to write to.
+	u8 DATA[N]	// The stream of data bytes.  See below description.
+The DATA[N] contains N number of register values first and then N number of a
+mask byte corresponding to the Nth data byte.  For example, if 0x12, 0x34 is to
+be written to a register, and only bits 4:1 are to be written for the first
+byte, then the byte stream would be: 0x12, 0x34, 0x1E, 0xFF.  Where 0x1E is the
+mask for the first byte 0x12, and 0xFF is the mask for the second byte 0x34.
+The entry for this example if the register is, say, 0x56, would be:
+02, 56, 12, 34, 1E, FF
+
+The IQS has a funky register set in that each register has its own register
+length.  The reason LENGTH is still used is that maybe only the first few bytes
+of a register are to be written.  For example, a register that is 20 bytes long
+can get by with defining, say 4 for LENGTH, and only the first 4 bytes will be
+written.
+
+The DT labeling mechanism is based on the part number and the command to be
+accomplished. Currently there are four main commands: initialization, enable,
+disable, and event.  For each label, a "_?" is appended where ? is a decimal
+number starting at 0.  Note the driver will put the entries in the sequence
+defined by ? and not by the order defined in the DT.
+An example for initialization of the IQS263 part in the DT is as follows:
+	263init_0 = [05 09 40 03 00 01 03 FF FF FF FF FF]; // 5 bytes to reg 9
+	263init_1 = [01 0D 09 FF]; // 1 byte written to register 0x0D
+	263init_2 = [01 01 00 FF]; // 1 byte written to register 0x01
+	263init_3 = [05 07 1B 08 08 00 11 FF FF FF FF FF]; // 5 bytes to reg 7
+	263init_4 = [08 0A 08 10 10 02 04 08 14 3F FF FF FF FF FF FF FF FF];
+	263init_5 = [03 0B 00 64 80 FF FF FF]; // 3 bytes written to reg 0x0B
+
+The IQS parts have two "virtual" sensors: SAR_proximity and SAR_touch.
+The "virtual" means that the NVS framework will split these two sensors so that
+the system will see two individual sensors.
+The SAR_proximity detects objects near the platform whereas the SAR_touch
+detects actual touches with the platform (assuming it's the screen).
+Because there are two sensors, there are two enable labels: <part>en_prox and
+<part>en_touch.
+Here is a DT example of the enable commands for both sensors:
+	263en_prox_0 = [01 09 10 18];	// 1 byte written to register 0x09
+	263en_prox_1 = [FF 00];		// this is an I2C write with no delay.
+	263en_prox_2 = [01 09 08 18];	// 1 byte written to register 0x09
+	263en_touch_0 = [01 09 10 18];	// 1 byte written to register 0x09
+	263en_touch_1 = [FF 00];	// write flush.  See description below.
+	263en_touch_2 = [01 09 08 18];	// 1 byte written to register 0x09
+Here are the possible disable command labels:
+	263dis_prox_?
+	263dis_touch_?
+	253dis_prox_?
+	253dis_touch_?
+The disable commands do not need to write to the registers to put the device to
+sleep.  When the driver sees that all the sensors are disabled it will handle
+the global sleep.
+The event command allows any necessary action whenever the device receives an
+event:
+	263event_?
+	253event_?
+If partial ATI is enabled, the driver will automatically handle the reseeding.
+The suspend command allows any necessary action whenever the driver receives
+notification of a suspend:
+	263suspend_?
+	253suspend_?
+The external state is the sar_external_status function that an external driver
+can call to notify the IQS driver of an external status.  It's purpose is for
+WARs and is therefore defined by the WAR implemented in the device tree byte
+stream "external_lo" and "external_hi" when the external state transitions to
+low and high respectively.
+	263external_lo_?
+	253external_lo_?
+	263external_hi_?
+	253external_hi_?
+
+Due to the IQS device's design for communicating with the device, each entry,
+which represents an I2C transaction, is actually stacked so that the entire
+command is executed as a single I2C transaction.  That is, I2C restarts are
+done instead of I2C stops.  For situations where it is desired to write the
+transactions thus far and have a delay within the command entries, the LENGTH
+can be set to FF.  This tells the driver's byte stream parsing engine to
+execute the I2C transactions thus far and if a millisecond delay is to also be
+done, then the following byte contains the number of milliseconds to wait,
+otherwise the following byte's value is 0.
+The FF does NOT need to be entered at the end of a byte stream command.  The
+driver's byte stream parsing engine will automatically execute the I2C
+transactions.
+It is strongly recommended to not use the flush write within an event command
+byte stream.
+
+FYI, internally to the driver, the byte stream terminates when LENGTH is 0.
+This is handled automatically by the driver's DT parsing, but is an FYI so that
+0 is never used for LENGTH.
+The driver's DT parsing engine has error checking and will exit with an error
+of "ERR: NOMEM @ %s" where %s will be the DT label where things went south.
+The error can be due to truly out of buffer memory to non-existent register or
+incorrect register length.  Once the driver has loaded, a debug feature that
+will dump the parsed byte stream can be done by doing the following at the
+device's sysfs directory in an adb terminal prompt:
+#echo 0xXXYYZZ1E > nvs
+where XX = part device ID (0x29=IQS253, 0x3C=IQS263)
+           If XX is 0, then the part in use will be used.
+      YY = command
+           Possible commands are:
+	   1: initialization
+	   2: enable
+	   3: disable
+	   4: event
+	   5: suspend
+	   6: delta (see delta options far below)
+	   7: external state low
+	   8: external state high
+	   If YY is 0, then all the commands will be displayed.
+      ZZ = device
+	   Possible devices are:
+	   1: SAR_proximiy
+	   2: SAR_touch
+	   If ZZ is 0, then all the devices will be displayed.
+Ideally, the 0x1E command would always be used.  However, if not all the data
+or corruption is displayed due to an undersized buffer (out of the driver's
+control) then the above formatting allows less data to be shown at once.
+#cat nvs
+The results for 0x1001E will be something like:
+	iqs263 initialization:
+	len=5 reg=9 data/mask=40/ff 3/ff 0/ff 1/ff 3/ff
+	len=1 reg=d data/mask=9/ff
+	len=1 reg=1 data/mask=0/ff
+	len=5 reg=7 data/mask=1b/ff 8/ff 8/ff 0/ff 11/ff
+	len=8 reg=a data/mask=8/ff 10/ff 10/ff 2/ff 4/ff 8/ff 14/ff 3f/ff
+	len=3 reg=b data/mask=0/ff 64/ff 80/ff
+The results for 0x2001E will be something like:
+	iqs263 SAR_proximity enable:
+	len=1 reg=9 data/mask=10/18
+	flush write and mdelay=0
+	len=1 reg=9 data/mask=8/18
+	iqs263 SAR_touch enable:
+	<empty>
+
+Also, a register dump can be done:
+#echo 4 > nvs
+#cat nvs
+During the tuning process, a debug feature can write a byte to a register:
+#echo 0xXXYYZZ1D > nvs
+where XX = the register
+      YY = the register offset
+      ZZ = the byte value
+Other driver debug commands:
+#echo 0x??1C > nvs
+writes ?? to the gpio_sar GPIO.
+#echo 0x??1B > nvs
+writes ?? to the gpio_rdy GPIO.
+#echo 0x1A > nvs
+switches the gpio_rdy GPIO to input.
+#echo 0x19 > nvs
+toggles SAR GPIO status message spew.
+#echo 0x18 > nvs
+toggles external state status message spew.
+
+For overall status information:
+#echo 10 > nvs
+#cat nvs
+The results will be something like:
+	IQS driver v. 21
+	ATI redo count=0
+	os_options=0
+	stream_mode=2
+	watchdog_timeout_ms=30000
+	i2c_ss_delay_ns=1000000
+	i2c_retry=10
+	gpio_rdy_retry=25
+	gpio_rdy_delay_count=2000
+	gpio_rdy_delay_us_min=100
+	gpio_rdy_delay_us_max=1000
+	gpio_rdy 1=1
+	gpio_sar 173=0
+	gpio_sar_assert_polarity=0
+	gpio_sar_dev_assert=SAR_proximity
+	gpio_sar_dev_deassert=SAR_proximity
+	gpio_sar_suspend_assert=1
+	deferred_resume_ms=3000
+	resume=0
+	SAR_delta_channel_mask=5
+	SAR_delta_average_count=10
+	irq=2
+	irq_disable=0
+	irq_trigger_edge=0
+	SAR_proximity_binary_hw=1
+	SAR_touch_binary_hw=1
+When this status is read, the ATI redo count will reset to 0.
+
+In the case the part populated could be either IQS253 or IQS263, both the 253
+and 263 commands can be defined in the DT.  The driver will use the one
+according to the part identified.
+
+Optional properties:
+- status: set to "ok" or "okay" for normal operation.  Set to anything else
+	  to unload the driver without ever communicating with the device.
+  Note: The "anything else" above is typically "disabled".
+	Since the driver will unload without communicating with the device, the
+	device will be left in its POR state.
+	This device's POR comes up in an operational mode and will draw power.
+	If it is desired to unload the driver leaving the device in a low power
+	sleep state, then use the individual sensor disable mechanism below.
+- SAR_proximity_disable: Setting this property to <1> will disable the
+                         SAR proximity.
+- SAR_touch_disable: Setting this property to <1> will disable the
+                           touch sensor.
+  Note: To disable the entire device so that the driver unloads, all sensors
+        must be disabled:
+	SAR_proximity_disable = <1>;
+	SAR_touch_disable = <1>;
+- vddhi-supply: regulator supply for the chip
+  Note: This is required if the driver is to control the regulator.
+- gpio_sar: GPIO to be used for sending proximity event for SAR sensor.
+  Note: The gpio_sar define is not required if the following is true:
+	- The device's PO pin is wired to the device requiring the SAR event.
+	- The assert level is high.
+	- The IQS SAR_proximity is configured as a binary value.
+- gpio_sar_assert_polarity: assert level of the GPIO for the SAR event.
+  Note: gpio_sar_assert_polarity is ONLY for the SAR GPIO and is not needed if
+	the GPIO assert value is low since low is the SAR GPIO assert default.
+	It may still be defined as low (gpio_sar_assert_polarity = <0>;)
+	however.
+- gpio_sar_dev_deassert: Which IQS device controls the deassertion of the SAR
+                         GPIO.  In other words, the SAR GPIO will deassert
+			 according to the gpio_sar_assert_polarity when the
+			 sensor specified in gpio_sar_dev_deassert deasserts.
+- gpio_sar_dev_assert: Which IQS device controls the assertion of the SAR GPIO.
+                       In other words, the SAR GPIO will assert according to
+		       the gpio_sar_assert_polarity when the sensor specified
+		       in gpio_sar_dev_assert asserts.
+  Note: The SAR GPIO can also be used for debug purposes.  When set to one of
+        the debug options, the SAR GPIO will not be controlled by one of the
+	SAR sensors but instead the debug function.
+	The gpio_sar_dev options are:
+	- SAR_proximity
+	- SAR_touch
+	- SAR_delta
+	- debug_i2c
+	SAR_proximity is the default if no entry is made.
+	Due to this device's I2C "issues", the debug_i2c option will assert the
+	SAR GPIO (according to the gpio_sar_assert_polarity) when an I2C
+	transaction is about to start and deasserts when the I2C transaction
+	finishes.
+- SAR_<device>_debounce_lo: Each SAR sensor (proximity and touch) in HW binary
+                            mode can be debounced.  To enable this feature, set
+			    this option to a value > 0.  The lo feature will
+			    allow the data state to go low only after the
+			    number of consecutive low reads defined here.
+- SAR_<device>_debounce_hi: Each SAR sensor (proximity and touch) in HW binary
+                            mode can be debounced.  To enable this feature, set
+			    this option to a value > 0.  The hi feature will
+			    allow the data state to go high only after the
+			    number of consecutive high reads defined here.
+ Note: For the SAR_<device>_debounce_X feature the following devices are:
+       - proximity
+       - touch
+       It is allowed to define only one level.  For example, if only:
+       SAR_proximity_debounce_hi = <5>;
+       is defined, then the SAR_proximity device's data output will only
+       go high after 5 consecutive reads of it being high.  When the
+       SAR_proximity goes low, it is immediately reported as low.  If the lo is
+       defined, then it would only go back to low after the consecutive low
+       reads defined.
+       When the device is enabled with this feature enabled, the data state is
+       assumed low.  In other words, if the device's data state when enabled
+       is low, it will be reported as low.
+       The default value for this is 0 which disables the feature.
+
+- gpio_sar_suspend_assert: If the device is not configured to operate during
+			   suspend then this determines the SAR GPIO setting
+			   during suspend:
+			   -1 = DISABLE: SAR GPIO remains at current state from
+			                 when device was operational.
+		           0 = !ASSERT: GPIO is not asserted according to
+			                gpio_sar_assert_polarity.
+		           1 = ASSERT: GPIO is asserted according to
+		                       gpio_sar_assert_polarity.
+- os_options: If the IQS device is to be controlled by the OS then set this
+	      value to 2.  The default is 0.
+	      The options are:
+	      0 = IQS_OS_NONE: SAR sensor names all begin with "SAR".
+	      1 = IQS_OS_VISIBLE: SAR sensor names all begin with "sar".
+	      2 = IQS_OS_CONTROL: SAR sensor names all begin with "sar" and the
+	                          OS can control enable.
+  Note: The visibility to the OS is controlled by changing the case of the
+        "SAR" part of the sensor's name.  The NVS HAL looks for the lower case
+	version of the sensor name via the NVS framework's NvspDriver
+	structure.  When os_options is > 0 the NVS HAL is able to find the SAR
+	sensors and populate the OS sensor list.  However, unless os_options is
+	set to IQS_OS_CONTROL, the OS will be tricked into thinking it has
+	control.  In other words, if os_options is not set to IQS_OS_CONTROL
+	the SAR is automatically enabled when the driver loads and the enable
+	control is ignored.
+- irq_trigger_edge: Set to 1 if interrupt is to configured as
+		    IRQF_TRIGGER_FALLING.  Otherwise the interrupt will be
+		    configured as IRQF_TRIGGER_LOW.  Using IRQF_TRIGGER_LOW
+		    addresses false triggers while the interrupt is disabled
+		    during the forced communication protocol.
+- stream_mode: The device triggers an interrupt on every device data cycle.
+  Note: As mentioned above, the IQS devices have an, um, interesting mechanism
+        for communication where there is a small window of time where the
+	device will respond to I2C commands (the reason for I2C transaction
+	stacking).  When stream mode is disabled, the driver uses a combination
+	of disabling/enabling the interrupt, which also doubles in forcing the
+	communication window, and reading the device's status and data via
+	stream and event modes.  The mechanism allows the device to not
+	interrupt the AP unless an event has occured, thereby saving power.
+	However, depending on how the device is configured by the DT commands,
+	it may be desirable to disable this feature and continually stream the
+	data instead.
+	If the IQS has the slider enabled the device will stream automatically
+	during a slider event.  In this case, the disabling/enabling stream
+	mode mechanism above may not be needed and can be disabled by entering
+	the auto value for steam_mode.
+	Possible stream_mode values are:
+	0 = OFF: Event mode will automatically be enabled by the driver and the
+	         above communication mechanism described above used.
+	1 = ON:  Streaming mode is enabled.  No special communication mechanism
+	         is needed since driver gets constantly interrupted with a comm
+		 window.  However, the interrupts may be throttled (disabled
+		 for a period).
+	2 = AUTO: Event mode is enabled but the special communication mechanism
+	          described above is not used.  Instead, it is expected and
+		  required that the device be configured with the slider
+		  enabled to allow for automatic device initiated streaming.
+- watchdog_timeout_ms: When streaming mode is disabled, a watchdog can
+		       periodically stream the data to confirm the device's
+		       status.
+  Note: The watchdog timer is actually recommended by Azoteq.
+	If this is not defined, the default will be 30 seconds.
+- deferred_resume_ms: The delay in milliseconds of when to execute the resume.
+                      Due to the time consumed trying to communicate with the
+		      device, suspend and resume can be adversely affected.
+		      This setting allows resume to be deferred for the amount
+		      of time specified; consider the situation where the
+		      system resumes for a very short period and then suspends
+		      again.  If this situation happened within this deferred
+		      resume time, then the whole process of resuming and
+		      suspending again would not require any communication with
+		      the device thereby not affecting the overall system.
+- i2c_retry: The number of times to try an I2C transaction before bailing.
+- gpio_rdy_retry: The number of times to try forcing a communication window.
+  Note: When I2C communication is attempted outside the communication window by
+	pulling the gpio_rdy GPIO low (the GPIO also doubles as the interrupt),
+	the i2c_retry and gpio_rdy_retry provide the limits before the driver
+	will consider the communication attempt a failure.
+	The defaults are 10 and 25 respectively.  The sequence of events for a
+	communication attempt are:
+	1. disable gpio_rdy interrupt
+	2. assert gpio_rdy GPIO low
+	3. wait 11ms according to Azotec spec
+	4. release gpio_rdy GPIO
+	5. gpio_rdy_retry--
+	5. wait ~750us according to Azotec spec
+	6. if gpio_rdy not low and gpio_rdy_retry > 0 then step 2.
+	If all is well so far, do I2C transaction(s), but if an I2C failure,
+	then repeat above steps. This is done i2c_retry times before exiting as
+	a failure.
+	BTW, this is all done according to the Azotec spec.
+- gpio_rdy_delay_count: The delay loop count of polling for the GPIO RDY signal
+                        to go low.
+- gpio_rdy_delay_us_min: The minimum delay in microseconds of the delay in the
+			 loop of polling for the GPIO RDY signal to go low.
+- gpio_rdy_delay_us_max: The maximum delay in microseconds of the delay in the
+			 loop of polling for the GPIO RDY signal to go low.
+  Note: The gpio_rdy_delay_* variables are used in the function that checks for
+        the gpio_rdy GPIO low level in a loop.  If the level is high a sleep is
+	done using the gpio_rdy_delay_us_min/max and the loop continues for
+	gpio_rdy_delay_count interations.
+- i2c_ss_delay_ns: The I2C bus must be idle for 100us after an I2C transaction
+                   with the IQS device or it will hold the I2C clock low.  This
+		   WAR is already accounted for in the driver but the delay can
+		   be redefined here.
+There may a situation where intermittent noise on a channel is causing
+unreliable data.  If this is the case, the delta options below can help
+determine the proximity state.  This is accomplished by creating virtual delta
+SW sensors for each channel.  Each SW sensor created will have the name
+SAR_delta_chX, where X is the channel number and the data acquired is the delta
+data from the HW pertaining to that channel.  By defining a delta algorithm in
+the device tree that can use each SW sensor's data, a global SW delta sensor
+named SAR_delta is used as the final result of the algorithm.  Each algorithm
+entry in device tree uses the following stucture:
+struct iqs_delta_tst {
+	int ch;
+	int lt;
+	int gt;
+};
+The DT algorithm uses two levels of conditionals.  The first level uses the
+label SAR_delta_test_X_Y, where X is the entry number and Y is one of the
+members of the iqs_delta_tst structure.  If all of the first level entrie's
+conditions result as true, then the second level of conditionals named
+SAR_delta_test_true_X_Y are executed.  If any of the first level entrie's
+conditions result in false, then the second level of conditionals named
+SAR_delta_test_false_X_Y are executed.  The result of the second level of
+conditionals is the data for the SAR_delta virtual SW sensor.
+Four entries are allowed for each level of conditionals.  Each entry must not
+use a negative value.  Each entry must have a valid channel (0 - 3) and at
+least one of the conditional values.  Here are how the conditionals are used,
+where d[ch] is the channels SAR_delta_chX delta data which may be a moving
+average if that feature is enabled (see SAR_delta_average_count below):
+Entry:
+	SAR_delta_test_0_ch = <0>;
+	SAR_delta_test_0_lt = <50>;
+Conditional:
+	if (d[0] < 50)
+Entry:
+	SAR_delta_test_0_ch = <1>;
+	SAR_delta_test_0_gt = <50>;
+Conditional:
+	if (d[1] > 50)
+Entry:
+	SAR_delta_test_0_ch = <2>;
+	SAR_delta_test_0_lt = <50>;
+	SAR_delta_test_0_gt = <100>;
+Conditional:
+	if (d[2] < 50 || d[2] > 100)
+Entry:
+	SAR_delta_test_0_ch = <3>;
+	SAR_delta_test_0_lt = <100>;
+	SAR_delta_test_0_gt = <50>;
+Conditional:
+	if (d[3] > 50 && d[3] < 100)
+Note how ranges can be used depending on whether the lt value is less than or
+greater than the gt value.
+The conditionals can be displayed at runtime with the following command in the
+driver space:
+#echo 0x6001E > nvs
+The following are the results from the DT example below:
+#cat nvs
+DELTA conditions:
+SAR_delta_test:
+if (ch2 < 75)
+if SAR_delta_test_true:
+if (ch0 > 5)
+if (ch2 > 5 && ch2 < 50)
+if SAR_delta_test_false:
+if (ch0 > 5)
+if (ch2 > 75 && ch2 < 90)
+
+- SAR_delta_channel_mask: The channel mask of the SW delta sensors to create.
+			  A value of 0 disables the feature.  The default is 0.
+- SAR_delta_average_count: The delta values for each channel can use a moving
+                           average.  This value sets the number of samples to
+			   use for each average calculation.  A value < 2
+			   disables the feature.  The default is 0.
+
+And finally, an example:
+
+	iqs263@44 {
+		compatible = "azoteq,iqs2x3";
+		reg = <0x44>;
+		vddhi-supply = <&vdd_3v3>;
+		gpio_rdy = <&gpio TEGRA_GPIO(A, 1) GPIO_ACTIVE_LOW>;
+		gpio_sar = <&gpio TEGRA_GPIO(V, 5) GPIO_ACTIVE_HIGH>;
+		gpio_sar_dev = "SAR_touch";
+		stream_mode = <2>;
+		os_options = <0>;
+                263suspend_0 = [01 0D 01 FF];
+                263suspend_1 = [03 0B 00 0A 0A FF FF FF];
+                263suspend_2 = [01 09 10 FF];
+                263suspend_3 = [FF FF];
+                263suspend_4 = [FF FF];
+                263suspend_5 = [05 09 80 40 00 00 00 FF FF FF FF FF];
+                263suspend_6 = [03 0A FF FF FF FF FF FF];
+                263suspend_7 = [01 0B 0F FF];
+		263init_0 = [05 09 80 04 10 07 0F FF FF FF FF FF];
+		263init_1 = [01 0D 07 FF];
+		263init_2 = [01 01 00 FF];
+		263init_3 = [05 07 1D 0A 0C 00 11 FF FF FF FF FF];
+		263init_4 = [04 08 B2 D9 D8 00 FF FF FF FF];
+		263init_5 = [08 0A 08 03 03 03 0C 00 64 14 FF FF FF FF FF FF FF FF];
+		263init_6 = [03 0B 00 A5 B4 FF FF FF];
+		263en_prox_0 = [01 09 10 FF];
+		263en_prox_1 = [FF FF];
+		263en_prox_2 = [FF FF];
+		263en_prox_3 = [FF FF];
+		263en_prox_4 = [FF FF];
+		263en_prox_5 = [02 09 00 54 FF FF];
+		SAR_delta_channel_mask = <0x5>;
+		SAR_delta_average_count = <10>;
+		SAR_delta_test_0_ch = <2>;
+		SAR_delta_test_0_lt = <75>;
+		SAR_delta_test_true_0_ch = <0>;
+		SAR_delta_test_true_0_gt = <5>;
+		SAR_delta_test_true_1_ch = <2>;
+		SAR_delta_test_true_1_lt = <50>;
+		SAR_delta_test_true_1_gt = <5>;
+		SAR_delta_test_false_0_ch = <0>;
+		SAR_delta_test_false_0_gt = <5>;
+		SAR_delta_test_false_1_ch = <2>;
+		SAR_delta_test_false_1_lt = <90>;
+		SAR_delta_test_false_1_gt = <75>;
+	};

@@ -32,6 +32,30 @@ Optional properties:
 			  that the frequency is set by the parent clock or a
 			  fixed rate clock source.
 
+- nvidia,enable-rx-calib : Enables rx calibration functionality.
+			   It is required for UFS High Speed modes.
+- nvidia,enable-x2-config : Enables 2 lane register programming support.
+			   Should be enabled if 2 lanes are dedicated to UFS.
+- nvidia,enable-hs-mode : Flag to enable UFS High Speed modes.
+- nvidia,mask-fast-auto-mode :  Flag to disable fast auto mode.
+				When enabled UFS Fast auto mode will not be supported and
+				fast mode will be supported.
+- nvidia,mask-hs-mode-b : Flag to disable hs_rate_b series.
+			  When enabled UFS hs_rate_b series will not be supported and
+			  hs_rate_a series will be supported.
+- ufs_tegra->max_hs_gear : Flag to set Max UFS HS Gear. Values are defined as below.
+			   UFS_HS_G1 = <1>;
+			   UFS_HS_G2 = <2>;
+		           UFS_HS_G3 = <3>;
+- ufs_tegra->max_hs_gear : Flag to set Max UFS PWM Gear. Values are defined as below.
+			   UFS_PWM_G1 = <1>;
+			   UFS_PWM_G2 = <2>;
+			   UFS_PWM_G3 = <3>;
+			   UFS_PWM_G4 = <4>;
+			   UFS_PWM_G5 = <5>;
+			   UFS_PWM_G6 = <6>;
+			   UFS_PWM_G7 = <7>;
+
 Note: If above properties are not defined it can be assumed that the supply
 regulators or clocks are always on.
 

@@ -1,0 +1,8 @@
+/*
+ * Need this file to avoid OTA issue.
+ */
+#include "tegra124-tn8-p1761-1270-a03.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+};

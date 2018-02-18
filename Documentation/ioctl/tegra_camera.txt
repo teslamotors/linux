@@ -1,0 +1,69 @@
+TEGRA_CAMERA_IOCTL_ENABLE:          enable clock
+usage:
+     uint clock_id;
+     ioctl(fd, TEGRA_CAMERA_IOCTL_ENABLE , &clock_id);
+
+     inputs:
+
+     Clock ID
+
+     outputs:      none
+
+     error return:
+
+     notes: a dummy ioctl for backward compatibility. Doesn't do anything.
+
+
+
+TEGRA_CAMERA_IOCTL_DISABLE:          disable clock
+usage:
+     uint clock_id;
+     ioctl(fd, TEGRA_CAMERA_IOCTL_DISABLE , &clock_id);
+
+     inputs:
+
+     Clock ID
+
+     outputs:      none
+
+     error return:
+
+     notes: a dummy ioctl for backward compatibility. Doesn't do anything.
+
+TEGRA_CAMERA_IOCTL_RESET:          reset clock
+usage:
+     uint clock_id;
+     ioctl(fd, TEGRA_CAMERA_IOCTL_RESET , &clock_id);
+
+     inputs:
+
+     Clock ID
+
+     outputs:      none
+
+     error return:
+
+     notes: a dummy ioctl for backward compatibility. Doesn't do anything.
+
+
+TEGRA_CAMERA_IOCTL_CLK_SET_RATE:          set clock rate
+
+struct tegra_camera_clk_info {
+        uint id;
+        uint clk_id;
+        unsigned long rate;
+        uint flag;
+};
+
+usage:
+     tegra_camera_clk_info clock_info;
+     ioctl(fd, TEGRA_CAMERA_IOCTL_CLK_SET_RATE , &clock_info);
+
+     inputs:
+
+     Information about the clock and new rate
+
+     outputs:      none
+
+     error return:
+     EINVAL      - out of range input data

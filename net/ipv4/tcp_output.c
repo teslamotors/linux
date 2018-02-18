@@ -42,6 +42,14 @@
 #include <linux/gfp.h>
 #include <linux/module.h>
 
+/* allow Tegra qdisc to restrict tcp rx datarate */
+#ifdef CONFIG_NET_SCH_TEGRA
+uint tcp_window_divisor = 1;
+uint tcp_window_max = 0;
+module_param(tcp_window_divisor, uint, 0644);
+module_param(tcp_window_max, uint, 0644);
+#endif
+
 /* People can turn this off for buggy TCP's found in printers etc. */
 int sysctl_tcp_retrans_collapse __read_mostly = 1;
 
@@ -197,7 +205,7 @@ u32 tcp_default_init_rwnd(u32 mss)
 	 * (RFC 3517, Section 4, NextSeg() rule (2)). Further place a
 	 * limit when mss is larger than 1460.
 	 */
-	u32 init_rwnd = TCP_INIT_CWND * 2;
+	u32 init_rwnd = sysctl_tcp_default_init_rwnd;
 
 	if (mss > 1460)
 		init_rwnd = max((1460 * init_rwnd) / mss, 2U);
@@ -300,6 +308,14 @@ static u16 tcp_select_window(struct sock *sk)
 		new_win = min(new_win, MAX_TCP_WINDOW);
 	else
 		new_win = min(new_win, (65535U << tp->rx_opt.rcv_wscale));
+
+#ifdef CONFIG_NET_SCH_TEGRA
+	if ((tcp_window_max > 0) && (new_win > tcp_window_max)) {
+		pr_debug("%s: tcp_window_max %u: new_win %d -> %d\n",
+			__func__, tcp_window_max, new_win, tcp_window_max);
+		new_win = min(new_win, tcp_window_max);
+	}
+#endif
 
 	/* RFC1323 scaling applied */
 	new_win >>= tp->rx_opt.rcv_wscale;
@@ -959,6 +975,17 @@ static int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 		th->window	= htons(min(tp->rcv_wnd, 65535U));
 	} else {
 		th->window	= htons(tcp_select_window(sk));
+#ifdef CONFIG_NET_SCH_TEGRA
+		if (tcp_window_divisor > 1) {
+			unsigned short window = ntohs(th->window);
+			pr_debug("%s: skb %p len %d window %hu"
+				" scale %d tp->rcv_wnd %lu\n",
+				__func__, skb, skb->len, window,
+				tp->rx_opt.rcv_wscale, tp->rcv_wnd);
+			window /= tcp_window_divisor;
+			th->window = htons(window);
+		}
+#endif
 	}
 	th->check		= 0;
 	th->urg_ptr		= 0;

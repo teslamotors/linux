@@ -1,0 +1,112 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+/ {
+	i2c@7000c000 {
+		icm20628@69 {
+			compatible = "invensense,mpu6xxx";
+			reg = <0x69>;
+			vdd-supply = <&max77620_sd3>;		/* E2290 Main Board	*/
+			vlogic-supply = <&max77620_sd3>;	/* E2290 Main Board	*/
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(X, 2) 0x01>;
+			accelerometer_matrix = [00 01 00 ff 00 00 00 00 01];
+			gyroscope_matrix = [00 01 00 ff 00 00 00 00 01];
+			gyroscope_delay_us_max = <100000>;
+		};
+
+		ak8963@0d {
+			compatible = "ak,ak89xx";
+			reg = <0x0d>;
+			vdd-supply = <&vdd_3v3>;		/* E2290 Main Board	*/
+			vid-supply = <&max77620_sd3>;		/* E2290 Main Board	*/
+			magnetic_field_matrix = [00 01 00 ff 00 00 00 00 01];
+			magnetic_field_delay_us_min = <16666>;
+		};
+
+		cm32180@48 {
+			compatible = "capella,cm3218x";
+			reg = <0x48>;
+			vdd-supply = <&vdd_3v3>;		/* P2297 Flex Cable	*/
+			gpio_irq = <&gpio TEGRA_GPIO(X, 3) GPIO_ACTIVE_LOW>;
+			cm32180_dynamic_resolution_index_limit_low = <0>;
+			cm32180_dynamic_resolution_index_limit_high = <3>;
+			cm32180_lux_maximum = <3000000>;
+			light_report_count = <2>;
+			light_threshold_lo = <0>;
+			light_threshold_hi = <1>;
+			cm32180_nld_thr_i_hi_0 = <2625>;
+			cm32180_nld_thr_i_lo_1 = <1310>;
+			cm32180_nld_thr_i_hi_1 = <4025>;
+			cm32180_nld_thr_i_lo_2 = <2005>;
+			cm32180_nld_thr_i_hi_2 = <3800>;
+			cm32180_nld_thr_i_lo_3 = <1850>;
+			light_uncalibrated_lo = <730>;
+			light_uncalibrated_hi = <24810>;
+			light_calibrated_lo = <8400>;
+			light_calibrated_hi = <310000>;
+		};
+
+		ltr659ps@23 {
+			compatible = "liteon,ltrX5X";
+			reg = <0x23>;
+			vdd-supply = <&vdd_3v3>;		/* P2297 Flex Cable	*/
+		};
+	};
+
+	i2c@7000c400 {
+		iqs263@44 {
+			compatible = "azoteq,iqs2x3";
+			reg = <0x44>;
+			vddhi-supply = <&vdd_3v3>;		/* P2293 Flex Cable	*/
+			gpio_rdy = <&gpio TEGRA_GPIO(A, 1) GPIO_ACTIVE_LOW>;
+			gpio_sar = <&gpio TEGRA_GPIO(V, 5) GPIO_ACTIVE_HIGH>;
+			SAR_proximity_flags = <0>;
+			SAR_touch_flags = <0>;
+			deferred_resume_ms = <3000>;
+			os_options = <0>;
+			stream_mode = <0>;
+			gpio_sar_dev_assert = "SAR_proximity";
+			gpio_sar_dev_deassert = "SAR_proximity";
+			263suspend_0 = [01 0D 01 FF];
+			263suspend_1 = [03 0B 00 0A 0A FF FF FF];
+			263suspend_2 = [01 09 10 FF];
+			263suspend_3 = [FF FF];
+			263suspend_4 = [FF FF];
+			263suspend_5 = [05 09 80 40 00 00 00 FF FF FF FF FF];
+			263suspend_6 = [03 0A FF FF FF FF FF FF];
+			263suspend_7 = [01 0B 0F FF];
+			263suspend_8 = [FF FF];
+			263init_0 = [05 09 80 02 10 07 0F FF 04 FF FF FF];
+			263init_1 = [01 0D 01 FF];
+			263init_2 = [01 01 00 FF];
+			263init_3 = [05 07 1D 0A 0C 00 A2 FF FF FF FF FF];
+			263init_4 = [04 08 B2 D9 D8 00 FF FF FF FF];
+			263init_5 = [08 0A 08 FF FF FF 0C 00 64 14 FF FF FF FF FF FF FF FF];
+			263init_6 = [03 0B 00 01 7D FF FF FF];
+			263en_prox_0 = [01 09 10 FF];
+			263en_prox_1 = [FF FF];
+			263en_prox_2 = [FF FF];
+			263en_prox_3 = [FF FF];
+			263en_prox_4 = [FF FF];
+			263en_prox_5 = [02 09 00 C0 FF FF];
+			263en_prox_6 = [FF FF];
+		};
+	};
+};

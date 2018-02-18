@@ -1239,6 +1239,9 @@ static inline int hci_check_conn_params(u16 min, u16 max, u16 latency,
 int hci_register_cb(struct hci_cb *hcb);
 int hci_unregister_cb(struct hci_cb *hcb);
 
+int hci_register_notifier(struct notifier_block *nb);
+int hci_unregister_notifier(struct notifier_block *nb);
+
 struct hci_request {
 	struct hci_dev		*hdev;
 	struct sk_buff_head	cmd_q;

@@ -1,7 +1,7 @@
 /*
  * Tegra host1x Channel
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2016, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -129,3 +129,19 @@ void host1x_channel_free(struct host1x_channel *channel)
 	kfree(channel);
 }
 EXPORT_SYMBOL(host1x_channel_free);
+
+bool host1x_channel_gather_filter_enabled(struct host1x *host)
+{
+	return host->info->gather_filter_enabled;
+}
+EXPORT_SYMBOL(host1x_channel_gather_filter_enabled);
+
+void host1x_channel_enable_gather_filter(struct host1x_channel *channel)
+{
+	struct host1x *host = dev_get_drvdata(channel->dev->parent);
+
+	if (!host1x_channel_gather_filter_enabled(host))
+		return;
+
+	return host1x_hw_channel_enable_gather_filter(host, channel);
+}

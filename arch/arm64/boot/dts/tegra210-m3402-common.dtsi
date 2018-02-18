@@ -1,0 +1,491 @@
+/*
+ * T210-
+ *
+ * arch/arm64/boot/dts/tegra210-m3402-common.dtsi
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-soc-shield.dtsi"
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/padctrl/tegra210-pads.h>
+#include "tegra210-platforms/tegra210-prods.dtsi"
+
+#include "tegra210-platforms/tegra210-edp.dtsi"
+#include "tegra210-platforms/tegra210-sysedp.dtsi"
+#include "tegra210-platforms/tegra210-audio.dtsi"
+
+#include "tegra210-platforms/tegra210-power-tree-m3402-a00.dtsi"
+#include "tegra210-platforms/tegra210-power-dvfs-m3402-a00.dtsi"
+#include "tegra210-platforms/tegra210-emc-m3402-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-clk-init.dtsi"
+#include "tegra210-platforms/tegra210-pinmux-drive-sdmmc-common.dtsi"
+
+#include "tegra210-platforms/tegra210-vcm31-disp-m3402-a00-e2603.dtsi"
+
+#include <dt-bindings/sound/tegra-asoc-alt.h>
+
+#include <dt-bindings/input/input.h>
+
+#define EXTCON_NONE		0
+#define EXTCON_USB		1
+#define EXTCON_USB_Host		2
+
+/ {
+	model = "m3402";
+	compatible = "nvidia,m3402", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+	/*nvidia,boardids = "2382:0000:000";*/
+
+	/* Place holder for Boardinfo,this will be updated by QB
+	* by reading the values from BCT partition
+	*/
+	nvidia,boardinfo {
+		macids {
+			mac0-interface = "0000";
+			mac0-address = <00 00 00 00 00 00>;
+			mac0-address-string = "00 00 00 00 00 00";
+		};
+		skuinfo {
+			skustring = "000-00000-0000-000";
+			skuver = "00";
+		};
+		prodinfo {
+			prodstring = "000-00000-0000-000";
+			prodver = "0";
+		};
+		serialnuminfo {
+			serialnumstring = "0000000";
+			version = "0";
+		};
+	};
+
+	cpuidle {
+		cc4-no-retention;
+	};
+
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0x70006040";
+		stdout-path = &uartb;
+	};
+
+	serial@70006000 {
+		status = "disabled";
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra210-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
+		status = "okay";
+	};
+
+	serial@70006200 {
+		status = "disabled";
+	};
+
+	serial@70006300 {
+		status = "disabled";
+	};
+
+	gpu-dvfs-rework {
+		status = "disabled";
+	};
+
+	sata@70020000 {
+		status = "okay";
+		nvidia,enable-sata-port;
+	};
+
+	extcon {
+		compatible = "simple-bus";
+		device_type = "external-connection";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		extcon@0 {
+			gpio = <&max20024 0 0>;
+			status = "disabled";
+		};
+
+		vbus_gpio_extcon: extcon@1 {
+			  compatible = "extcon-gpio-states";
+			  reg = <0x1>;
+			  extcon-gpio,name = "VBUS";
+			  extcon-gpio,cable-states = <0x3 0x0
+						      0x0 0x1
+						      0x1 0x2
+						      0x2 0x1>;
+			  gpios = <&gpio TEGRA_GPIO(Z, 0) 0 &max20024 0 0>;
+			  extcon-gpio,out-cable-name-strings = "USB", "USB-Host";
+			  extcon-gpio,out-cable-names = <EXTCON_USB EXTCON_USB_Host EXTCON_NONE>;
+			  #extcon-cells = <1>;
+			  extcon-gpio,debounce = <0x900000>;
+		  };
+	};
+
+	xusb_pad_ctl: xusb_padctl {
+		nvidia,ss_portmap = <0x7771>;
+		/* Use 0xF to disable lane assign */
+		nvidia,lane_owner = <0xFFF6>;
+		nvidia,otg_portmap = <0x0100>;
+		/*
+		 *nvidia,lane-map = <0x00000002>;
+		 *nvidia,enable-sata-port;
+		 */
+		status = "okay";
+	};
+
+	xusb@70090000 {
+
+		/*
+		 *portmap - bit-field indicating which non-OTG ports are
+		 *		controlled by XHCI (SSP3 and USB2P2)
+		 *bit[0-3]  : SS ports 0 to 3
+		 *bit[8-11] : HS ports 0 to 3
+		 */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		nvidia,portmap = <0x0E01>;
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		status = "okay";
+	};
+
+	xudc@700d0000 {
+
+		/*
+		 *portmap - bit-field indicating which non-OTG ports are
+		 *		controlled by XUDC (None)
+		 *bit[0-3]  : SS ports 0 to 3
+		 *bit[8-11] : HS ports 0 to 3
+		 */
+		extcon-cables = <&vbus_gpio_extcon 0 &vbus_gpio_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		nvidia,portmap = <0x0100>;
+		#extcon-cells = <1>;
+		status = "okay";
+		extcon-cables = <&vbus_gpio_extcon 0 &vbus_gpio_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+	};
+
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		#extcon-cells = <1>;
+		status = "disabled";
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&vbus_gpio_extcon 0>;
+		extcon-cable-names = "vbus";
+	};
+
+	otg@7d000000 {
+		#extcon-cells = <1>;
+		status = "okay";
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&vbus_gpio_extcon 0 &vbus_gpio_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+	};
+
+	spi@7000da00 {
+		status = "disabled";
+		spi@0 {
+			compatible = "saf36xx";
+			spi-max-frequency = <4000000>;
+			spi-cpha;
+			reg = <0>;
+		};
+		spi-touch19x12@0 {
+			avdd-supply = <&vdd_dummy>;
+			dvdd-supply = <&vdd_dummy>;
+		};
+		spi-touch25x16@0 {
+			avdd-supply = <&vdd_dummy>;
+			dvdd-supply = <&vdd_dummy>;
+		};
+		spi-touch14x8@0 {
+			avdd-supply = <&vdd_dummy>;
+			dvdd-supply = <&vdd_dummy>;
+		};
+	};
+
+	pcie-controller {
+		status = "okay";
+		nvidia,lane-map = <0x14>;
+		pci@1,0 {
+			status = "okay";
+			nvidia,num-lanes = <4>;
+		};
+
+		pci@2,0 {
+			status = "disabled";
+		};
+	};
+
+	watchdog@60005100 {
+		status = "disabled";
+	};
+
+	pwm-leds {
+		compatible = "pwm-leds";
+		lightbar {
+			label = "led_lightbar";
+			pwms = <&tegra_pwm 0 10000000>;
+			gpios = <&gpio TEGRA_GPIO(V, 0) GPIO_ACTIVE_LOW>;
+			max-brightness = <255>;
+			default-brightness = <255>;
+			linux,default-trigger = "default-on";
+		};
+	};
+
+	thermal-zones {
+		CPU_therm {
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+				max_err_temp = <9000>;
+				max_err_gain = <1000>;
+				gain_p = <1000>;
+				gain_d = <0>;
+				up_compensation = <20>;
+				down_compensation = <20>;
+			};
+
+			trips {
+				cpu_critical {
+					temperature = <99000>;
+					hysteresis = <0>;
+					type = "critical";
+					writable;
+				};
+
+				cpu_heavy {
+					temperature = <95000>;
+					hysteresis = <0>;
+					type = "hot";
+					writable;
+				};
+
+				cpu_throttle {
+					temperature = <85500>;
+					hysteresis = <0>;
+					type = "passive";
+					writable;
+				};
+
+				cpu_vmin1: cpu-vmin1 {
+					temperature = <20000>;
+					hysteresis = <1000>;
+					type = "active";
+					writable;
+				};
+			};
+			cooling-maps {
+
+				map0 {
+					trip = <
+			&{/thermal-zones/CPU_therm/trips/cpu_critical}>;
+					cdev-type = "tegra-shutdown";
+					cooling-device = <
+			&{/soctherm@0x700E2000/throttle@critical}
+					THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				map1 {
+					trip = <
+			&{/thermal-zones/CPU_therm/trips/cpu_heavy}>;
+					cdev-type = "tegra-heavy";
+					cooling-device = <
+			&{/soctherm@0x700E2000/throttle@heavy}
+					THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				map2 {
+					trip = <
+			&{/thermal-zones/CPU_therm/trips/cpu_throttle}>;
+					cdev-type = "cpu-balanced";
+					cooling-device = <
+			&{/bthrot_cdev/cpu_balanced}
+					THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				vdd-cpu-map1 {
+					trip = <&cpu_vmin1>;
+					cooling-device = <&cpu_vmin_cdev 1 1>;
+				};
+			};
+		};
+
+		GPU_therm {
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+				max_err_temp = <9000>;
+				max_err_gain = <1000>;
+				gain_p = <1000>;
+				gain_d = <0>;
+				up_compensation = <20>;
+				down_compensation = <20>;
+			};
+
+			trips {
+				gpu_critical {
+					temperature = <97500>;
+					hysteresis = <0>;
+					type = "critical";
+					writable;
+				};
+				gpu_heavy {
+					temperature = <94500>;
+					hysteresis = <0>;
+					type = "hot";
+					writable;
+				};
+				gpu_throttle {
+					temperature = <85000>;
+					hysteresis = <0>;
+					type = "passive";
+					writable;
+				};
+				gpu_scaling0: gpu-scaling0 {
+					temperature = <(-10000)>;
+					hysteresis = <0>;
+					type = "active";
+				};
+
+				gpu_scaling1: gpu-scaling1 {
+					temperature = <20000>;
+					hysteresis = <1000>;
+					type = "active";
+					writable;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <
+			&{/thermal-zones/GPU_therm/trips/gpu_critical}>;
+					cdev-type = "tegra-shutdown";
+					cooling-device = <
+			&{/soctherm@0x700E2000/throttle@critical}
+					THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				map1 {
+					trip = <
+			&{/thermal-zones/GPU_therm/trips/gpu_heavy}>;
+					cdev-type = "tegra-heavy";
+					cooling-device = <
+			&{/soctherm@0x700E2000/throttle@heavy}
+					THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				map2 {
+					trip = <
+			&{/thermal-zones/GPU_therm/trips/gpu_throttle}>;
+					cdev-type = "gpu-balanced";
+					cooling-device = <
+			&{/bthrot_cdev/gpu_balanced}
+					THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+				vdd-gpu-map1 {
+					trip = <&gpu_scaling1>;
+					cooling-device = <
+						&gpu_scaling_cdev 1 1>;
+				};
+			};
+		};
+
+		MEM_therm {
+			trips {
+				mem_critical {
+					temperature = <97500>;
+					hysteresis = <0>;
+					type = "critical";
+					writable;
+				};
+			};
+			cooling-maps {
+				map0 {
+					trip = <
+			&{/thermal-zones/MEM_therm/trips/mem_critical}>;
+					cdev-type = "tegra-shutdown";
+					cooling-device = <
+			&{/soctherm@0x700E2000/throttle@critical}
+					THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+
+		PLL_therm {
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+				max_err_temp = <9000>;
+				max_err_gain = <1000>;
+				gain_p = <1000>;
+				gain_d = <0>;
+				up_compensation = <20>;
+				down_compensation = <20>;
+			};
+			trips {
+				pll_critical {
+					temperature = <100000>;
+					hysteresis = <0>;
+					type = "critical";
+					writable;
+				};
+
+				core_vmin1: core-vmin1 {
+					temperature = <20000>;
+					hysteresis = <1000>;
+					type = "active";
+					writable;
+				};
+			};
+			cooling-maps {
+				map0 {
+					trip = <
+			&{/thermal-zones/PLL_therm/trips/pll_critical}>;
+					cdev-type = "tegra-shutdown";
+					cooling-device = <
+			&{/soctherm@0x700E2000/throttle@critical}
+					THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+
+				vdd-core-map1 {
+					trip = <&core_vmin1>;
+					cooling-device = <&core_vmin_cdev 1 1>;
+				};
+			};
+		};
+
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x80000000 >;
+	};
+
+	adma@702e2000  {
+		interrupts = <0 24 0x04
+			0 25 0x04
+			0 26 0x04
+			0 27 0x04
+			0 28 0x04
+			0 29 0x04
+			0 30 0x04
+			0 31 0x04
+			0 32 0x04
+			0 33 0x04>;
+		dma-channels = <10>;
+		status = "okay";
+	};
+
+};

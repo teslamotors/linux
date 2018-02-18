@@ -1,0 +1,128 @@
+#include <dt-bindings/thermal/thermal.h>
+
+/ {
+	tboard_thermistor: generic-adc-thermal@1 {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&palams_gpadc 1>;
+		io-channel-names = "sensor-channel";
+		adc-temp-lookup-table = "linear-table";
+		lower-temperature = <(-40000)>;
+		upper-temperature = <125000>;
+		step-temperature = <1000>;
+		adc-temperature-map = <4082 4082 4081 4079 4078
+					4077 4075 4074 4072 4071
+					4068 4067 4065 4063 4060
+					4058 4055 4053 4050 4047
+					4043 4040 4036 4033 4028
+					4023 4019 4015 4010 4004
+					3998 3992 3987 3980 3973
+					3964 3958 3950 3942 3932
+					3922 3913 3904 3893 3881
+					3868 3857 3845 3832 3817
+					3801 3788 3773 3757 3739
+					3719 3703 3685 3666 3644
+					3621 3601 3580 3557 3532
+					3504 3481 3456 3429 3400
+					3368 3342 3314 3283 3250
+					3214 3184 3153 3119 3082
+					3043 3010 2975 2938 2899
+					2856 2821 2784 2744 2702
+					2658 2621 2582 2541 2498
+					2452 2414 2374 2332 2288
+					2242 2204 2164 2123 2079
+					2034 1996 1958 1917 1875
+					1832 1795 1758 1719 1679
+					1638 1604 1568 1532 1495
+					1456 1424 1392 1358 1324
+					1289 1259 1229 1199 1167
+					1135 1109 1082 1054 1026
+					997 973 949 924 899 874
+					853 831 809 787 765 746
+					727 707 688 668 652 635
+					618 601 584 569 555 540
+					525 510 498 485 472 459
+					446>;
+	};
+
+	tdiode_sensor: generic-adc-thermal@3 {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&palams_gpadc 3>;
+		io-channel-names = "sensor-channel";
+		dual-mode-adc-read;
+		adc-temp-lookup-table = "tdiode-equation";
+		lower-temperature = <(-25000)>;
+		upper-temperature = <125000>;
+		tdiode-m1 = <0xffffffff 0xffa8df1e>;
+		tdiode-m2 = <0xffffffff 0xffabc63d>;
+		tdiode-b1 = <0x24b 0xbbf09930>;
+		tdiode-b2 = <0x258 0x8d7fedc8>;
+		tdiode-k = <2>;
+	};
+
+	tbat_sensor: generic-adc-thermal@4 {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&palams_gpadc 4>;
+		io-channel-names = "sensor-channel";
+		adc-temp-lookup-table = "linear-table";
+		lower-temperature = <(-40000)>;
+		upper-temperature = <125000>;
+		step-temperature = <1000>;
+		adc-temperature-map = <3906 3896 3886 3875 3862
+					3847 3836 3823 3809 3793
+					3776 3761 3746 3729 3710
+					3689 3672 3653 3633 3611
+					3586 3566 3544 3521 3495
+					3466 3443 3418 3391 3361
+					3330 3303 3275 3244 3212
+					3176 3147 3115 3082 3046
+					3008 2976 2942 2906 2868
+					2827 2793 2757 2719 2679
+					2636 2601 2564 2525 2484
+					2440 2404 2367 2328 2286
+					2243 2207 2170 2131 2090
+					2048 2013 1976 1939 1899
+					1859 1825 1790 1754 1717
+					1678 1646 1613 1579 1544
+					1508 1478 1447 1416 1383
+					1350 1322 1294 1264 1235
+					1204 1179 1153 1126 1099
+					1072 1048 1025 1001 976
+					952 931 909 888 866
+					844 825 806 787 767
+					748 731 714 697 680
+					662 647 633 617 602
+					587 573 560 546 533
+					519 507 495 483 471
+					459 448 437 427 416
+					405 396 386 377 367
+					358 349 341 333 324
+					316 309 301 294 287
+					279 273 266 260 254
+					247 242 236 230 225
+					219 214 209 204 199
+					195>;
+		};
+
+	thermal-zones {
+		Tboard {
+			polling-delay = <1500>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tboard_thermistor>;
+		};
+
+		Tdiode {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tdiode_sensor>;
+		};
+
+		Battery {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tbat_sensor>;
+		};
+	};
+};

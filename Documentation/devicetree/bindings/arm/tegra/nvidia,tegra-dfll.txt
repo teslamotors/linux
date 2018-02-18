@@ -1,0 +1,245 @@
+NVIDIA Tegra DFLL clock source node. Tegra SoC DTS level data.
+
+Required properties:
+- compatible : Must be one of the following
+	"nvidia,tegra210-dfll"
+	"nvidia,tegra132-dfll"
+	"nvidia,tegra124-dfll"
+	"nvidia,tegra148-dfll"
+	"nvidia,tegra114-dfll"
+- reg : Must contain the starting physical address and length for the DFLL's
+  MMIO register space including the DFLL-to-I2C controller interface and the
+  DFLL's I2C controller. If DFLL configuration and I2C register spaces are
+  not contiguous, 2 separate ranges should be specified with configuration
+  range as the first one.
+- out-clock-name : Must contain a "dfll_cpu" string, name of the DFLL output
+  clock.
+- clock-names : required for "nvidia,tegra210-dfll" compatible device only.
+  Must list the following names: "dfll_cpu", "ref", "soc", "i2c", "safe_dvfs".
+- clocks : required for "nvidia,tegra210-dfll" compatible device only.
+  Must provide Tegra CAR phandle and clock specifier pairs for each clock in
+  the clock-names list.
+
+Optional properties:
+- status : device availability -- managed by the DT integration code.
+
+Examples:
+
+dfll@70110000 {
+        compatible = "nvidia,tegra124-dfll";
+        reg = <0x70110000 0x400>;
+        out-clock-name = "dfll_cpu";
+        status = "disabled";
+};
+
+dfll@70040084 {
+	compatible = "nvidia,tegra132-dfll";
+	reg = <0x70040084 0x40>,
+	      <0x70110000 0x400>;
+	out-clock-name="dfll_cpu";
+	status = "disabled";
+};
+
+dfll-max77621@70110000 {
+	status = "disabled";
+	compatible = "nvidia,tegra210-dfll";
+	reg = <0x0 0x70110000 0x0 0x400>;
+	out-clock-name="dfll_cpu";
+	clocks = <&tegra_car TEGRA210_CLK_ID_DFLL_CPU>,
+		 <&tegra_car TEGRA210_CLK_ID_DFLL_SOC>,
+		 <&tegra_car TEGRA210_CLK_ID_DFLL_REF>,
+		 <&tegra_car TEGRA210_CLK_ID_CPU_G>,
+		 <&tegra_car TEGRA210_CLK_ID_I2C5>;
+	clock-names = "dfll_cpu", "soc", "ref", "safe_dvfs", "i2c";
+};
+
+NVIDIA Tegra DFLL clock source node. DTS board level data.
+
+Required properties:
+- board-params : phandle pointing to the board-specific configuration data
+  for this DFLL instance.
+
+Optional properties:
+- i2c-quiet-output-workaround : If the DFLL IP block version implemented on
+  this SoC requires the I2C output to the PMIC to be quiesced before disabling
+  it, this property should be set.
+- monitor-data-new-workaround : If the DFLL IP block version implemented on
+  this SoC may erroneously clear DFLL monitor data new indicator, this property
+  should be set.
+- dynamic-output-lut-workaround : If the DFLL IP block version implemented on
+  this SoC does not support dynamic change of DFLL output limits register
+  fields, this property should be set.
+
+  Tegra210 SoC flow controller can override DFLL settings depending on SoC CPU
+  power state. The following properties provide configuration options for DFLL
+  calibration on such platform. They are applied only to "nvidia,tegra210-dfll"
+  compatible DFLL.
+- defer-force-calibrate :
+  "set" - target DFLL rates are calibrated accurately, minimum reached voltage
+  is one PMIC step above minimum allowed voltage;
+  "not set" - DFLL rates may deviate by 2-3 reference clock rates above the
+  target, minimum reached voltage is at minimum allowed level.
+- calibrate-force-vmin :
+  "set" - DFLL rates are calibrated accurately, minimum reached voltage is at
+  minimum allowed level, DFLL may be under-clocked by 2-3 reference clock rates
+  for 3 sampling periods during calibration
+  "not set" - DFLL is accurate or over-clocked depending on defer-force-calibrate
+  setting.
+
+- status : device availability -- managed by the DT integration code.
+
+- i2c-pmic-integration : phandle pointing to the integration data for
+  PMIC controlled by this DFLL instance via I2C interface.
+
+Optional subnode:
+- pwm-pmic-integration : should have integration data for PMIC controlled by
+  this DFLL instance via PWM interface.
+
+Note that one and only one of 'i2c-pmic-integration', or 'pwm-pmic-integration',
+must be included.
+
+Example:
+
+dfll@70110000 {
+        board-params = <&{/cpu_dfll_board_params}>;
+        i2c-pmic-integration = <&{/cpu_dfll_pmic_integration}>;
+        status = "okay";
+};
+
+
+DFLL board parameters node
+
+Required properties:
+- sample-rate : control loop sample rate (in Hz).
+- cf : I2C: duration to force the PMIC voltage after frequency change.
+- cg : loop gain (signed) - determined during board characterization.
+- ci : loop integral gain selector.
+- droop-cut-value : DFLL output clock throttle setting at voltage droop event.
+- droop-restore-ramp : DFLL clock recovery rate after a voltage droop event.
+- scale-out-ramp : DFLL clock output scaling ramp rate.
+
+Optional properties:
+- cg-scale : if present, divide loop gain by 8 (see 'cg' above).
+
+- fixed-output-forcing : force PMIC voltage during req change for a fixed time.
+- auto-output-forcing  : force PMIC voltage during req change for a dynamic time.
+- no-output-forcing    : don't force PMIC voltage output during request change.
+Note that one and only one of 'fixed-output-forcing', or 'auto-output-forcing',
+or 'no-output-forcing' must be specified.
+
+Example:
+
+cpu_dfll_board_params {
+        sample-rate = <12500>;
+        fixed-output-forcing;
+        cf = <10>;
+        ci = <0>;
+        cg = <2>;
+        droop-cut-value = <0xf>;
+        droop-restore-ramp = <0x0>;
+        scale-out-ramp = <0x0>;
+};
+
+
+DFLL I2C PMIC integration node
+
+Required properties:
+- pmic-i2c-address : PMIC I2C bus address.
+- pmic-i2c-voltage-register : internal PMIC address of the select-output-voltage
+  register (vsel register) for the rail that supplies the DFLL.
+- sel-slope : slope coefficient for linear conversion of selector values exposed
+  by regulator framework into PMIC vsel register settings.
+- i2c-fs-rate : I2C bus rate in Hz, in FS mode.
+
+Optional properties:
+- i2c-10-bit-addresses : PMIC requires a 10-bit I2C address.
+- i2c-hs-rate : use HS I2C bus mode to communicate with the PMIC, at this rate
+  in Hz.
+- i2c-hs-master-code : I2C master code to use - only applies in HS mode; must
+  be set if i2c-hs-rate is set, ignored otherwise.
+- sel-offset : offset coefficient for linear conversion of selector values
+  exposed by regulator framework into PMIC vsel register settings (offset zero,
+  if not present).
+- pmic-undershoot-gb : PMIC undershoot guard-band in mV (zero, if not present).
+
+Example:
+
+cpu_dfll_pmic_integration {
+        pmic-i2c-address = <0xb0>;
+        pmic-i2c-voltage-register = <0x23>;
+        i2c-fs-rate = <400000>;
+        sel-conversion-slope = <1>;
+        pmic-undershoot-gb = <100>;
+};
+
+DFLL PWM PMIC integration node
+
+Required properties:
+- compatible : Must be one of the following
+	"nvidia,tegra132-dfll-pwm"
+	"nvidia,tegra124-dfll-pwm"
+- pwm-data-gpio : DFLL PWM data GPIO.
+
+- #pwm-cells : Number of cells in PWM regulator specification, must be 2.
+- pwm-regulator : phandle pointing to the node of regulator controlled by DFLL.
+  PWM regulator properties are defined by pwm-regulator.txt binding; pwm-list
+  of the regulator node must refer to PWM PMIC integration node, and include 2
+  cells in the spec: cell 0 for PWM channel number within DFLL, and cell 1 for
+  PWM period in nanoseconds.
+
+Optional properties:
+- pwm-1wire-buffer : DFLL is connected to PMIC by 1 wire (data only) via external
+  buffer with tri-state control.
+- pwm-1wire-direct : DFLL is directly connected to PMIC by 1 wire (data only).
+- pwm-2wire        : DFLL is directly connected to PMIC by 2 wires (data/clock).
+Note that one and only one of 'pwm-1wire-buffer', or 'pwm-1wire-direct',
+or 'pwm-2wire' must be specified.
+
+- pwm-buffer-ctrl-gpio : External buffer control GPIO.
+  Must be specified if 'pwm-1wire-buffer' property is present.
+- pwm-clk-gpio : DFLL PWM clock GPIO.
+  Must be specified if 'pwm-2wire' property is present.
+- pwm-delta-mode : Stop PWM clock when no changes.
+  Can be specified if 'pwm-2wire' property is present.
+
+Example:
+
+dfll@70110000 {
+        board-params = <&{/cpu_dfll_board_params}>;
+        status = "okay";
+	pwm_dfll: pwm-pmic-integration {
+		compatible = "nvidia,tegra124-dfll-pwm";
+		pwm-1wire-buffer;
+		pwm-data-gpio = <&gpio TEGRA_GPIO(X, 0) 0>;
+		pwm-buffer-ctrl-gpio = <&gpio TEGRA_GPIO(S, 5) 1>;
+		#pwm-cells = <2>;
+		pwm-regulator = <&cpu_pwm_reg>;
+	};
+};
+
+pwm_regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+	cpu_pwm_reg: pwm-regulator@0 {
+		reg = <0>;
+		compatible = "regulator-pwm";
+		pwms = <&pwm_dfll 0 2500>;
+		regulator-name = "vdd-cpu-pwm-reg";
+		regulator-min-microvolt = <675000>;
+		regulator-max-microvolt = <1275000>;
+		regulator-init-microvolt = <1000000>;
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-n-voltages = <33>;
+		voltage-time-sel = <80>;
+		idle-gpio = <&gpio TEGRA_GPIO(X, 2) 0>;
+
+		consumers {
+			c1 {
+				regulator-consumer-supply = "vdd_cpu";
+			};
+		};
+	};
+};

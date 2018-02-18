@@ -1,0 +1,12 @@
+config TEGRA186_GPC_DMA
+	bool "NVIDIA Tegra186 GPC DMA support"
+	depends on ARCH_TEGRA_18x_SOC
+	select DMA_ENGINE
+	help
+	  Support for the NVIDIA Tegra186 GPC DMA controller driver. The
+	  DMA controller is having multiple DMA channel which can be
+	  configured for different peripherals like UART, SPI, etc which
+	  are on APB bus.
+	  This DMA controller transfers data from memory to peripheral fifo
+	  or vice versa. It also supports memory to memory data transfer.
+

@@ -4,3 +4,6 @@
 #
 obj-$(CONFIG_TI_ST) 		+= st_drv.o
 st_drv-objs			:= st_core.o st_kim.o st_ll.o
+obj-$(CONFIG_ST_GPS)            += gps_drv.o
+obj-$(CONFIG_ST_HCI)		+= tty_hci.o
+obj-$(CONFIG_ST_HOST_WAKE)	+= st_host_wake.o

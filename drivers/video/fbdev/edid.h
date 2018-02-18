@@ -121,8 +121,8 @@
 #define INTERLACED         (FLAGS&128)
 #define SYNC_TYPE          (FLAGS&3<<3)	/* bits 4,3 */
 #define SYNC_SEPARATE      (3<<3)
-#define HSYNC_POSITIVE     (FLAGS & 4)
-#define VSYNC_POSITIVE     (FLAGS & 2)
+#define HSYNC_POSITIVE     (FLAGS & 2)
+#define VSYNC_POSITIVE     (FLAGS & 4)
 
 #define V_MIN_RATE              block[ 5 ]
 #define V_MAX_RATE              block[ 6 ]
@@ -134,5 +134,40 @@
 #define DPMS_ACTIVE_OFF		(1 << 5)
 #define DPMS_SUSPEND		(1 << 6)
 #define DPMS_STANDBY		(1 << 7)
+
+enum {
+	CEA_DATA_BLOCK_RSVD0,
+	CEA_DATA_BLOCK_AUDIO,
+	CEA_DATA_BLOCK_VIDEO,
+	CEA_DATA_BLOCK_VENDOR,
+	CEA_DATA_BLOCK_SPEAKER_ALLOC,
+	CEA_DATA_BLOCK_VESA_DISP_TRANS_CHAR,
+	CEA_DATA_BLOCK_RSVD1,
+	CEA_DATA_BLOCK_EXT,
+	CEA_DATA_BLOCK_MAX_CNT,
+};
+
+enum {
+	/* video blocks */
+	CEA_DATA_BLOCK_EXT_VCDB = 0, /* video capability data block */
+	CEA_DATA_BLOCK_EXT_VSVDB = 1, /* vendor specific video data block */
+	CEA_DATA_BLOCK_EXT_VESA_DDDB = 2, /* VESA display device data block */
+	CEA_DATA_BLOCK_EXT_VESA_VTBE = 3, /* VESA video timing block ext */
+	CEA_DATA_BLOCK_EXT_HDMI_VDB = 4, /* rsvd for HDMI video data block */
+	CEA_DATA_BLOCK_EXT_CDB = 5, /* colorimetry data block */
+	/* 6-12 rsvd for other video related blocks */
+	CEA_DATA_BLOCK_EXT_VFPDB = 13, /* video format preference data block */
+	CEA_DATA_BLOCK_EXT_Y420VDB = 14, /* YCbCr 4:2:0 video data block */
+	CEA_DATA_BLOCK_EXT_Y420CMDB = 15, /* YCbCr 4:2:0 cap map data block */
+
+	/* audio blocks */
+	CEA_DATA_BLOCK_EXT_CEA_MAF = 16, /* rsvd CEA misc audio fields */
+	CEA_DATA_BLOCK_EXT_VSADB = 17, /* vendor specific audio data block */
+	CEA_DATA_BLOCK_EXT_HDMI_ADB = 18, /* rsvd HDMI audio data block */
+	/* 19-31 rsvd for other audio related blocks */
+
+	CEA_DATA_BLOCK_EXT_IDB = 32, /* infoframe data block */
+	/* 33-255 rsvd */
+};
 
 #endif /* __EDID_H__ */

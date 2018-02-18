@@ -736,6 +736,28 @@ struct resource *lookup_resource(struct resource *root, resource_size_t start)
 	return res;
 }
 
+/**
+ * locate_resource - find an existing resource by an address that falls
+ * within the resource's range.
+ * @root: root resource descriptor
+ * @addr: resource address
+ *
+ * Returns a pointer to the resource if found, NULL otherwise
+ */
+struct resource *locate_resource(struct resource *root, resource_size_t addr)
+{
+	struct resource *res;
+
+	read_lock(&resource_lock);
+	for (res = root->child; res; res = res->sibling) {
+		if (addr >= res->start && addr <= res->end)
+			break;
+	}
+	read_unlock(&resource_lock);
+
+	return res;
+}
+
 /*
  * Insert a resource into the resource tree. If successful, return NULL,
  * otherwise return the conflicting resource (compare to __request_resource())

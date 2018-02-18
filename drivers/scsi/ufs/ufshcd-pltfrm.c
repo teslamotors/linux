@@ -36,22 +36,11 @@
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
+#include <linux/of_platform.h>
 
 #include "ufshcd.h"
 
 static const struct of_device_id ufs_of_match[];
-static struct ufs_hba_variant_ops *get_variant_ops(struct device *dev)
-{
-	if (dev->of_node) {
-		const struct of_device_id *match;
-
-		match = of_match_node(ufs_of_match, dev->of_node);
-		if (match)
-			return (struct ufs_hba_variant_ops *)match->data;
-	}
-
-	return NULL;
-}
 
 static int ufshcd_parse_clock_info(struct ufs_hba *hba)
 {
@@ -261,12 +250,8 @@ static int ufshcd_pltfrm_resume(struct device *dev)
 {
 	return ufshcd_system_resume(dev_get_drvdata(dev));
 }
-#else
-#define ufshcd_pltfrm_suspend	NULL
-#define ufshcd_pltfrm_resume	NULL
-#endif
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_SCSI_UFSHCD_PLATFORM_PM
 static int ufshcd_pltfrm_runtime_suspend(struct device *dev)
 {
 	return ufshcd_runtime_suspend(dev_get_drvdata(dev));
@@ -279,11 +264,14 @@ static int ufshcd_pltfrm_runtime_idle(struct device *dev)
 {
 	return ufshcd_runtime_idle(dev_get_drvdata(dev));
 }
-#else /* !CONFIG_PM_RUNTIME */
+#endif
+#else /* !CONFIG_PM */
+#define ufshcd_pltfrm_suspend	NULL
+#define ufshcd_pltfrm_resume	NULL
 #define ufshcd_pltfrm_runtime_suspend	NULL
 #define ufshcd_pltfrm_runtime_resume	NULL
 #define ufshcd_pltfrm_runtime_idle	NULL
-#endif /* CONFIG_PM_RUNTIME */
+#endif /* CONFIG_PM */
 
 static void ufshcd_pltfrm_shutdown(struct platform_device *pdev)
 {
@@ -303,6 +291,9 @@ static int ufshcd_pltfrm_probe(struct platform_device *pdev)
 	struct resource *mem_res;
 	int irq, err;
 	struct device *dev = &pdev->dev;
+	struct device_node *node = pdev->dev.of_node;
+	struct device_node *ufs_variant_node;
+	struct platform_device *ufs_variant_pdev;
 
 	mem_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	mmio_base = devm_ioremap_resource(dev, mem_res);
@@ -324,7 +315,23 @@ static int ufshcd_pltfrm_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	hba->vops = get_variant_ops(&pdev->dev);
+	err = of_platform_populate(node, NULL, NULL, &pdev->dev);
+	if (err)
+		dev_err(&pdev->dev,
+			"%s: of_platform_populate() failed\n", __func__);
+
+	ufs_variant_node = of_get_next_available_child(node, NULL);
+
+	if (!ufs_variant_node) {
+		dev_dbg(&pdev->dev, "failed to find ufs_variant_node child\n");
+	} else {
+		ufs_variant_pdev = of_find_device_by_node(ufs_variant_node);
+
+		if (ufs_variant_pdev) {
+			__module_get(ufs_variant_pdev->dev.driver->owner);
+			hba->vops = dev_get_drvdata(&ufs_variant_pdev->dev);
+		}
+	}
 
 	err = ufshcd_parse_clock_info(hba);
 	if (err) {
@@ -368,23 +375,38 @@ out:
 static int ufshcd_pltfrm_remove(struct platform_device *pdev)
 {
 	struct ufs_hba *hba =  platform_get_drvdata(pdev);
+	struct device_node *node = pdev->dev.of_node;
+	struct device_node *ufs_variant_node;
+	struct platform_device *ufs_variant_pdev;
+
+	ufs_variant_node = of_get_next_available_child(node, NULL);
+
+	if (!ufs_variant_node)
+		dev_dbg(&pdev->dev, "no ufs_variant_node found\n");
+	else
+		ufs_variant_pdev = of_find_device_by_node(ufs_variant_node);
 
 	pm_runtime_get_sync(&(pdev)->dev);
 	ufshcd_remove(hba);
+	if (ufs_variant_node)
+		module_put(ufs_variant_pdev->dev.driver->owner);
 	return 0;
 }
 
 static const struct of_device_id ufs_of_match[] = {
-	{ .compatible = "jedec,ufs-1.1"},
+	{ .compatible = "jedec,ufs-1.1",
+	},
 	{},
 };
 
 static const struct dev_pm_ops ufshcd_dev_pm_ops = {
 	.suspend	= ufshcd_pltfrm_suspend,
 	.resume		= ufshcd_pltfrm_resume,
+#ifdef CONFIG_SCSI_UFSHCD_PLATFORM_PM
 	.runtime_suspend = ufshcd_pltfrm_runtime_suspend,
 	.runtime_resume  = ufshcd_pltfrm_runtime_resume,
 	.runtime_idle    = ufshcd_pltfrm_runtime_idle,
+#endif
 };
 
 static struct platform_driver ufshcd_pltfrm_driver = {
@@ -393,7 +415,6 @@ static struct platform_driver ufshcd_pltfrm_driver = {
 	.shutdown = ufshcd_pltfrm_shutdown,
 	.driver	= {
 		.name	= "ufshcd",
-		.owner	= THIS_MODULE,
 		.pm	= &ufshcd_dev_pm_ops,
 		.of_match_table = ufs_of_match,
 	},

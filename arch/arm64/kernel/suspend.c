@@ -1,8 +1,25 @@
+/*
+ * Copyright (C) 2013 ARM Ltd.
+ * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <linux/export.h>
 #include <linux/ftrace.h>
 #include <linux/percpu.h>
 #include <linux/slab.h>
 #include <asm/cacheflush.h>
-#include <asm/cpu_ops.h>
 #include <asm/debug-monitors.h>
 #include <asm/pgtable.h>
 #include <asm/memory.h>
@@ -52,34 +69,14 @@ void __init cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void *))
 	hw_breakpoint_restore = hw_bp_restore;
 }
 
-/**
- * cpu_suspend() - function to enter a low-power state
- * @arg: argument to pass to CPU suspend operations
- *
- * Return: 0 on success, -EOPNOTSUPP if CPU suspend hook not initialized, CPU
- * operations back-end error code otherwise.
- */
-int cpu_suspend(unsigned long arg)
-{
-	int cpu = smp_processor_id();
-
-	/*
-	 * If cpu_ops have not been registered or suspend
-	 * has not been initialized, cpu_suspend call fails early.
-	 */
-	if (!cpu_ops[cpu] || !cpu_ops[cpu]->cpu_suspend)
-		return -EOPNOTSUPP;
-	return cpu_ops[cpu]->cpu_suspend(arg);
-}
-
 /*
- * __cpu_suspend
+ * cpu_suspend
  *
  * arg: argument to pass to the finisher function
  * fn: finisher function pointer
  *
  */
-int __cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
+int cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
 {
 	struct mm_struct *mm = current->active_mm;
 	int ret;
@@ -111,7 +108,7 @@ int __cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
 		 * We are resuming from reset with TTBR0_EL1 set to the
 		 * idmap to enable the MMU; restore the active_mm mappings in
 		 * TTBR0_EL1 unless the active_mm == &init_mm, in which case
-		 * the thread entered __cpu_suspend with TTBR0_EL1 set to
+		 * the thread entered cpu_suspend with TTBR0_EL1 set to
 		 * reserved TTBR0 page tables and should be restored as such.
 		 */
 		if (mm == &init_mm)
@@ -147,6 +144,7 @@ int __cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
 
 	return ret;
 }
+EXPORT_SYMBOL(cpu_suspend);
 
 struct sleep_save_sp sleep_save_sp;
 phys_addr_t sleep_idmap_phys;

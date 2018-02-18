@@ -286,3 +286,12 @@ config MAC80211_DEBUG_COUNTERS
 	  and show them in debugfs.
 
 	  If unsure, say N.
+
+config MAC80211_SCAN_ABORT
+	bool "Support to abort a scan request on tx"
+	depends on MAC80211
+	depends on WIRELESS
+	default n
+	---help---
+	  Add support for aborting scan requests.
+	  This is only for ChromeOs, because it will affect Android P2P.

@@ -2,6 +2,8 @@
 # Makefile for the video capture/playback device drivers.
 #
 
+GCOV_PROFILE := y
+
 obj-$(CONFIG_VIDEO_VINO) += indycam.o
 obj-$(CONFIG_VIDEO_VINO) += vino.o
 
@@ -48,5 +50,7 @@ obj-$(CONFIG_SOC_CAMERA)		+= soc_camera/
 obj-$(CONFIG_VIDEO_RENESAS_VSP1)	+= vsp1/
 
 obj-y	+= omap/
+obj-$(CONFIG_PLATFORM_TEGRA) += tegra/
 
 ccflags-y += -I$(srctree)/drivers/media/i2c
+ccflags-y += -I$(srctree)/../nvhost/drivers/video/tegra/host

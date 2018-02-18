@@ -77,7 +77,7 @@ static int do_blktrans_request(struct mtd_blktrans_ops *tr,
 			       struct mtd_blktrans_dev *dev,
 			       struct request *req)
 {
-	unsigned long block, nsect;
+	unsigned long long block, nsect;
 	char *buf;
 
 	block = blk_rq_pos(req) << 9 >> tr->blkshift;

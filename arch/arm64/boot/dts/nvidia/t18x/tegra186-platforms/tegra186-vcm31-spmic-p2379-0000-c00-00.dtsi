@@ -1,0 +1,246 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <dt-bindings/mfd/max77620.h>
+#include <dt-bindings/regulator/regulator.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include "tegra186-platforms-simple-bus.dtsi"
+#include <dt-bindings/linux/driver-info.h>
+
+/ {
+	bpmp_i2c {
+		spmic: spmic@3c {
+			compatible = "maxim,max20024";
+			reg = <0x3c>;
+
+#ifdef WAKEUP_VIA_PM_IRQ_INTERRUPT_CONTROLLER
+			interrupt-parent = <&pm_irq>;
+#endif
+			interrupts = <0 209 IRQ_TYPE_NONE>;
+
+			#interrupt-cells = <2>;
+                        interrupt-controller;
+
+			gpio-controller;
+			#gpio-cells = <2>;
+
+			maxim,system-pmic-power-off;
+
+			maxim,avoid-rtc-bulk-register-write;
+
+			watchdog {
+				status = "disabled";
+				maxim,wdt-boot-timeout = <32>;
+				maxim,wdt-suspend-timeout = <120>;
+			};
+
+			backup-battery {
+				status = "disabled";
+			};
+
+			spmic_default: pinmux@0 {
+
+				pin_gpio2 {
+					pins = "gpio2";
+					function = "fps-out";
+					maxim,active-fps-source = <MAX77620_FPS_SRC_1>;
+				};
+
+				pin_gpio3 {
+					pins = "gpio3";
+					function = "fps-out";
+				};
+			};
+
+			fps {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				fps0 {
+					reg = <0>;
+					maxim,shutdown-fps-time-period-us = <640>;
+				};
+
+				fps1 {
+					reg = <1>;
+					maxim,shutdown-fps-time-period-us = <640>;
+				};
+			};
+
+			regulators {
+				spmic_sd0: sd0 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_sd1: sd1 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_sd2: sd2 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_sd3: sd3 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_sd4: sd4 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo0: ldo0 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo1: ldo1 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo2: ldo2 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo3: ldo3 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo4: ldo4 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo5: ldo5 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo6: ldo6 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo7: ldo7 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+
+				spmic_ldo8: ldo8 {
+					maxim,active-fps-source = <MAX77620_FPS_SRC_DEF>;
+				};
+			};
+		};
+	};
+
+	spmic-otp-regulators {
+		compatible = "simple-bus";
+		device_type = "spmic-otp-regulator";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		spmic_otp_sd0: otp-regulator@0 {
+			compatible = "regulator-pmic-otp";
+			reg = <0>;
+			regulator-name = "vdd-1v1";
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
+		};
+
+		spmic_otp_sd1: otp-regulator@1 {
+			compatible = "regulator-pmic-otp";
+			reg = <1>;
+			regulator-name = "vdd-1v2";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+		};
+
+		spmic_otp_sd2: otp-regulator@2 {
+			compatible = "regulator-pmic-otp";
+			reg = <2>;
+			regulator-name = "vdd-1v8-ddr";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		spmic_otp_sd3: otp-regulator@3 {
+			compatible = "regulator-pmic-otp";
+			reg = <3>;
+			regulator-name = "vdd-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+		};
+
+		spmic_otp_sd4: otp-regulator@4 {
+			compatible = "regulator-pmic-otp";
+			reg = <4>;
+			regulator-name = "spmic-sd4";
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
+		};
+
+		spmic_otp_ldo0: otp-regulator@5 {
+			compatible = "regulator-pmic-otp";
+			reg = <5>;
+			regulator-name = "vdd-1v8-pll";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		spmic_otp_ldo1: otp-regulator@6 {
+			compatible = "regulator-pmic-otp";
+			reg = <6>;
+			regulator-name = "spmic-ldo1";
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <800000>;
+		};
+
+		spmic_otp_ldo2: otp-regulator@7 {
+			compatible = "regulator-pmic-otp";
+			reg = <7>;
+			regulator-name = "vdd-v3v-ao";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+		};
+
+		spmic_otp_ldo4: otp-regulator@9 {
+			compatible = "regulator-pmic-otp";
+			reg = <9>;
+			regulator-name = "en-vdd-rtc";
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
+		};
+
+		spmic_otp_ldo6: otp-regulator@11 {
+			compatible = "regulator-pmic-otp";
+			reg = <11>;
+			regulator-name = "vdd-1v8-ao";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		spmic_otp_ldo7: otp-regulator@12 {
+			compatible = "regulator-pmic-otp";
+			reg = <12>;
+			regulator-name = "vdd-1v05";
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			vin-supply = <&spmic_otp_sd1>;
+		};
+
+		spmic_otp_ldo8: otp-regulator@13 {
+			compatible = "regulator-pmic-otp";
+			reg = <13>;
+			regulator-name = "spmic-ldo8";
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <800000>;
+			vin-supply = <&spmic_otp_sd1>;
+		};
+	};
+};

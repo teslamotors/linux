@@ -3,6 +3,7 @@
  *
  * Utility definitions for the FunctionFS
  *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (c) 2013 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
  *
@@ -264,6 +265,7 @@ struct f_fs_opts {
 	struct ffs_dev			*dev;
 	unsigned			refcnt;
 	bool				no_configfs;
+	void				*private_data;
 };
 
 static inline struct f_fs_opts *to_f_fs_opts(struct usb_function_instance *fi)

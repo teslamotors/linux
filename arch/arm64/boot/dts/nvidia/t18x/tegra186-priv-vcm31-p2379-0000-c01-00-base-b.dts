@@ -1,0 +1,131 @@
+/*
+ * tegra186-priv-vcm31-p2379-0000-c01-00-base-b.dts: P2379-C01 TB base dts
+ * file
+ *
+ * Copyright (c) 2016-2017, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-platforms/tegra186-vcm31-p2379-common.dtsi"
+#include "tegra186-platforms/tegra186-vcm31-power-tree-p2379-0000-c01-00.dtsi"
+#include "tegra186-platforms/tegra186-vcm31-62379-disp.dtsi"
+#include "tegra186-prod/tegra186-priv-vcm31-p2379-0000-c01-00-prod-b.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "p2379:0000:C01";
+	nvidia,proc-boardid = "p2379:0000:C01";
+	model = "drive-px2-b";
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x70000000>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "p2379c01_t186b";
+		};
+	};
+
+	pcie-controller@10003000 {
+		nvidia,boot-detect-delay = <2000>;
+                pci@1,0 {
+                        status = "okay";
+                };
+        };
+
+	padctl: pinctrl@3520000 {
+		p2379_padctl_default: pinmux {
+
+			/delete-node/ usb2-ftdi-hub-port1;
+
+			usb2-std-A-port1 {
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+			usb3-std-A-port1 {
+				nvidia,port-cap = <TEGRA_PADCTL_PORT_OTG_CAP>;
+			};
+		};
+	};
+
+	external-connection {
+		id_gpio_extcon: extcon@0 {
+			/* Set OTG port as Host */
+			extcon-gpio,default-connected;
+		};
+	};
+
+	xudc@3550000 {
+		status = "okay";
+		extcon-cables = <&vbus_gpio_extcon 0>;
+		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+		phys = <&padctl TEGRA_PADCTL_PHY_UTMI_P(2)>,
+			<&padctl TEGRA_PADCTL_PHY_USB3_P(0)>;
+		phy-names = "usb2", "usb3";
+	};
+
+	isc-mgr.0 {
+		/* This node is to control the aggregator connected to Tegra A on Tegra B */
+		aggregator_ta@48 {
+			addr = <0x48>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+		aggregator@6a {
+			addr = <0x6a>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
+
+	isc-mgr.1 {
+		/* This node is to control the aggregator connected to Tegra A on Tegra B */
+		aggregator_ta@48 {
+			addr = <0x48>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+		aggregator@6a {
+			addr = <0x6a>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
+
+	isc-mgr.2 {
+		/* This node is to control the aggregator connected to Tegra A on Tegra B */
+		aggregator_ta@48 {
+			addr = <0x48>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+		aggregator@6a {
+			addr = <0x6a>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
+
+	host1x {
+		sor1 {
+			prod-settings {
+				prod_c_hdmi_75m_150m {
+					board-tegra-b {
+						status = "okay";
+					};
+				};
+			};
+		};
+	};
+};

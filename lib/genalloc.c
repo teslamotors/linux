@@ -23,6 +23,7 @@
  * CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG.
  *
  * Copyright 2005 (C) Jes Sorensen <jes@trained-monkey.org>
+ * Copyright (C) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This source code is licensed under the GNU General Public License,
  * Version 2.  See the file COPYING for more details.
@@ -36,6 +37,7 @@
 #include <linux/genalloc.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <asm/relaxed.h>
 
 static inline size_t chunk_size(const struct gen_pool_chunk *chunk)
 {
@@ -47,13 +49,17 @@ static int set_bits_ll(unsigned long *addr, unsigned long mask_to_set)
 	unsigned long val, nval;
 
 	nval = *addr;
-	do {
+	val = nval;
+	if (val & mask_to_set)
+		return -EBUSY;
+	cpu_relax();
+	while ((nval = cmpxchg(addr, val, val | mask_to_set)) != val) {
+		cpu_relaxed_read_long(addr);
 		val = nval;
 		if (val & mask_to_set)
 			return -EBUSY;
-		cpu_relax();
-	} while ((nval = cmpxchg(addr, val, val | mask_to_set)) != val);
-
+		cpu_read_relax();
+	}
 	return 0;
 }
 
@@ -62,13 +68,17 @@ static int clear_bits_ll(unsigned long *addr, unsigned long mask_to_clear)
 	unsigned long val, nval;
 
 	nval = *addr;
-	do {
+	val = nval;
+	if ((val & mask_to_clear) != mask_to_clear)
+		return -EBUSY;
+	cpu_relax();
+	while ((nval = cmpxchg(addr, val, val & ~mask_to_clear)) != val) {
+		cpu_relaxed_read_long(addr);
 		val = nval;
 		if ((val & mask_to_clear) != mask_to_clear)
 			return -EBUSY;
-		cpu_relax();
-	} while ((nval = cmpxchg(addr, val, val & ~mask_to_clear)) != val);
-
+		cpu_read_relax();
+	}
 	return 0;
 }
 
@@ -259,27 +269,33 @@ void gen_pool_destroy(struct gen_pool *pool)
 EXPORT_SYMBOL(gen_pool_destroy);
 
 /**
- * gen_pool_alloc - allocate special memory from the pool
+ * gen_pool_alloc_addr - allocate special memory from the pool
  * @pool: pool to allocate from
  * @size: number of bytes to allocate from the pool
+ * @alloc_addr: if non-zero, allocate starting at alloc_addr.
  *
  * Allocate the requested number of bytes from the specified pool.
  * Uses the pool allocation function (with first-fit algorithm by default).
  * Can not be used in NMI handler on architectures without
  * NMI-safe cmpxchg implementation.
  */
-unsigned long gen_pool_alloc(struct gen_pool *pool, size_t size)
+unsigned long gen_pool_alloc_addr(struct gen_pool *pool, size_t size,
+				    unsigned long alloc_addr)
 {
 	struct gen_pool_chunk *chunk;
 	unsigned long addr = 0;
 	int order = pool->min_alloc_order;
 	int nbits, start_bit = 0, end_bit, remain;
+	int alloc_bit_needed = 0;
 
 #ifndef CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG
 	BUG_ON(in_nmi());
 #endif
 
 	if (size == 0)
+		return 0;
+
+	if (alloc_addr & ((1 << order) - 1))
 		return 0;
 
 	nbits = (size + (1UL << order) - 1) >> order;
@@ -289,9 +305,20 @@ unsigned long gen_pool_alloc(struct gen_pool *pool, size_t size)
 			continue;
 
 		end_bit = chunk_size(chunk) >> order;
+		if (alloc_addr) {
+			if (alloc_addr < chunk->start_addr ||
+				alloc_addr >= chunk->end_addr)
+				continue;
+			if (alloc_addr + size > chunk->end_addr)
+				return 0;
+			alloc_bit_needed = start_bit =
+				(alloc_addr - chunk->start_addr) >> order;
+		}
 retry:
 		start_bit = pool->algo(chunk->bits, end_bit, start_bit, nbits,
 				pool->data);
+		if (alloc_addr && alloc_bit_needed != start_bit)
+			return 0;
 		if (start_bit >= end_bit)
 			continue;
 		remain = bitmap_set_ll(chunk->bits, start_bit, nbits);
@@ -310,7 +337,7 @@ retry:
 	rcu_read_unlock();
 	return addr;
 }
-EXPORT_SYMBOL(gen_pool_alloc);
+EXPORT_SYMBOL(gen_pool_alloc_addr);
 
 /**
  * gen_pool_dma_alloc - allocate special memory from the pool for DMA usage

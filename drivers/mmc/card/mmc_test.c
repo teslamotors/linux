@@ -23,6 +23,7 @@
 #include <linux/uaccess.h>
 #include <linux/seq_file.h>
 #include <linux/module.h>
+#include <linux/kernel.h>
 
 #define RESULT_OK		0
 #define RESULT_FAIL		1
@@ -169,6 +170,96 @@ struct mmc_test_async_req {
 	struct mmc_async_req areq;
 	struct mmc_test_card *test;
 };
+
+struct mmc_test_parameter {
+	const char *name;
+	long value;
+	long (*exec)(struct mmc_test_card *);
+	const char *input;
+};
+
+static long mmc_test_set_testcase(struct mmc_test_card *test);
+static long mmc_test_set_clock(struct mmc_test_card *test);
+static long mmc_test_set_bus_width(struct mmc_test_card *test);
+static long mmc_test_set_timing(struct mmc_test_card *test);
+
+
+static struct mmc_test_parameter mmc_test_parameter[] = {
+	{
+		.name = "Testcase Number",
+		.value = 1,
+		.exec = mmc_test_set_testcase,
+		.input = "-n",
+	},
+	{
+		.name = "Clock Rate",
+		.value = -1,
+		.exec = mmc_test_set_clock,
+		.input = "-c",
+	},
+	{
+		.name = "Bus Width",
+		.value = -1,
+		.exec = mmc_test_set_bus_width,
+		.input = "-b",
+	},
+	{
+		.name = "Timing",
+		.value = -1,
+		.exec = mmc_test_set_timing,
+		.input = "-t",
+	},
+};
+
+static long mmc_test_set_testcase(struct mmc_test_card *test)
+{
+	return mmc_test_parameter[0].value;
+}
+
+static long mmc_test_set_clock(struct mmc_test_card *test)
+{
+	long clock = mmc_test_parameter[1].value;
+	if (-1 == clock)
+		return test->card->host->ios.clock;
+	WARN_ON(clock < test->card->host->f_min);
+	if (clock > test->card->host->f_max)
+		clock = test->card->host->f_max;
+
+	test->card->host->ios.clock = clock;
+
+	return test->card->host->ios.clock;
+}
+
+static long mmc_test_set_bus_width(struct mmc_test_card *test)
+{
+	long bus_width = mmc_test_parameter[2].value;
+	if (-1 == bus_width)
+		return test->card->host->ios.bus_width;
+
+	test->card->host->ios.bus_width = bus_width;
+
+	return test->card->host->ios.bus_width = bus_width;
+}
+
+static long mmc_test_set_timing(struct mmc_test_card *test)
+{
+	long timing = mmc_test_parameter[3].value;
+	if (-1 == timing)
+		return test->card->host->ios.timing;
+	test->card->host->ios.timing = timing;
+
+	return test->card->host->ios.timing;
+}
+
+static void mmc_test_set_parameters(struct mmc_test_card *test)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(mmc_test_parameter); i++) {
+		printk(KERN_INFO "Parameter[%s] set to [%ld]\n",
+			mmc_test_parameter[i].name,
+			mmc_test_parameter[i].exec(test));
+	}
+}
 
 /*******************************************************************/
 /*  General helper functions                                       */
@@ -2697,6 +2788,8 @@ static void mmc_test_run(struct mmc_test_card *test, int testcase)
 
 	mmc_claim_host(test->card->host);
 
+	mmc_test_set_parameters(test);
+
 	for (i = 0;i < ARRAY_SIZE(mmc_test_cases);i++) {
 		struct mmc_test_general_result *gr;
 
@@ -2809,6 +2902,23 @@ static void mmc_test_free_result(struct mmc_card *card)
 
 static LIST_HEAD(mmc_test_file_test);
 
+static void mmc_test_usage(struct seq_file *sf)
+{
+	int i = 0;
+
+	seq_printf(sf, "\nHow to run test:"
+			"\necho <testcase> [[param1 value1].... ] > test"
+			"\nExample:: echo 1 -b 4 -c 2500000 -t 2"
+			"\n\nSupported parameters in sequence\n");
+
+	for (i = 0; i < ARRAY_SIZE(mmc_test_parameter); i++) {
+		seq_printf(sf, "Parameter%d Name:[%s] option:[%s]\n",
+			i + 1, mmc_test_parameter[i].name,
+			mmc_test_parameter[i].input);
+	}
+	seq_printf(sf, "\'-1\' passed to take default value\n\n\n");
+}
+
 static int mtf_test_show(struct seq_file *sf, void *data)
 {
 	struct mmc_card *card = (struct mmc_card *)sf->private;
@@ -2843,19 +2953,96 @@ static int mtf_test_open(struct inode *inode, struct file *file)
 	return single_open(file, mtf_test_show, inode->i_private);
 }
 
+static int mmc_test_extract_parameters(char *data_buf)
+{
+	char *running = NULL;
+	char *token = NULL;
+	const char delimiters[] = " ";
+	long value;
+	int i;
+	int set = 0;
+
+	running = data_buf;
+
+	/*Example:
+	 * echo <testcasenumber> [[param1 value1] [param1 value1]] > test
+	 * $] echo 1 > test | Execute testcase 1
+	 * $] echo 1 -c 2500000 | execute tesecase 1 and set clock to 2500000
+	 * $] echo 1 -b 4 -c 2500000 -t 2 |
+	 *	execute tesecase 1, set clock to 2500000, set bus_width 4,
+	 *	and set timing to 2
+	*/
+
+	while ((token = strsep(&running, delimiters))) {
+		if (kstrtol(token, 10, &value)) {
+			/* [Param1 value1] combination
+			 * Compare with available param list
+			 */
+			for (i = 0; i < ARRAY_SIZE(mmc_test_parameter); i++) {
+				if (!strcmp(mmc_test_parameter[i].input,
+						token)) {
+					/* Valid Option, extract following
+					 * value and save it
+					 */
+					token = strsep(&running, delimiters);
+					if (kstrtol(token, 10,
+					    &(mmc_test_parameter[i].value))) {
+
+						printk(KERN_ERR "wrong parameter value\n");
+						return -EINVAL;
+					} else {
+						break;
+					}
+				}
+			}
+			if (i == ARRAY_SIZE(mmc_test_parameter)) {
+				printk(KERN_ERR "uknown mmc_test option\n");
+				return -EINVAL;
+			}
+		} else {
+			/* Testcase number */
+			if (!set) {
+				mmc_test_parameter[0].value = value;
+				set = 1;
+			} else {
+				printk(KERN_ERR "invalid options");
+				return -EINVAL;
+			}
+		}
+	}
+	return 0;
+}
+
 static ssize_t mtf_test_write(struct file *file, const char __user *buf,
 	size_t count, loff_t *pos)
 {
 	struct seq_file *sf = (struct seq_file *)file->private_data;
 	struct mmc_card *card = (struct mmc_card *)sf->private;
 	struct mmc_test_card *test;
+	char *data_buf = NULL;
 	long testcase;
 	int ret;
 
 	ret = kstrtol_from_user(buf, count, 10, &testcase);
 	if (ret)
 		return ret;
+	data_buf = kzalloc(count+1, GFP_KERNEL);
+	if (data_buf == NULL)
+		return -ENOMEM;
 
+	if (copy_from_user(data_buf, buf, count)) {
+		kfree(data_buf);
+		return -EFAULT;
+	}
+	if (mmc_test_extract_parameters(data_buf)) {
+		mmc_test_usage(sf);
+		kfree(data_buf);
+		return -EFAULT;
+	}
+
+	kfree(data_buf);
+
+	testcase = mmc_test_parameter[0].value;
 	test = kzalloc(sizeof(struct mmc_test_card), GFP_KERNEL);
 	if (!test)
 		return -ENOMEM;

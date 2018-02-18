@@ -147,6 +147,10 @@ void __init sched_clock_register(u64 (*read)(void), int bits,
 	raw_write_seqcount_end(&cd.seq);
 
 	r = rate;
+	/*
+	 * Use 4MHz instead of 1MHz so that things like 1.832Mhz show as
+	 * 1832Khz
+	 */
 	if (r >= 4000000) {
 		r /= 1000000;
 		r_unit = 'M';
@@ -199,7 +203,7 @@ static int sched_clock_suspend(void)
 
 static void sched_clock_resume(void)
 {
-	cd.epoch_cyc = read_sched_clock();
+	update_sched_clock();
 	hrtimer_start(&sched_clock_timer, cd.wrap_kt, HRTIMER_MODE_REL);
 	cd.suspended = false;
 }

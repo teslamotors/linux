@@ -1,0 +1,89 @@
+Tegra CPU EDP Management
+
+Any technique for constraining peak current (or power) consumption of
+a power rail constitutes EDP management. An EDP management technique
+is "dynamic" if its operation depends on parameters which vary at runtime.
+
+This document describes a binding for configuring the dynamic EDP
+management algorithm commonly used to manage EDP on the VDD_CPU rail
+of Tegra devices.
+
+The algorithm dynamically limits CPU frequency as a function of
+temperature, number of cores active, and which cluster is active. (The
+algorithm assumes that VDD_CPU powers one or more CPU clusters which
+run mutually exclusively). The algorithm computes the maximum
+allowable frequency using
+
+- the active cluster's voltage/frequency curve (queried at runtime)
+- the VDD_CPU leakage (queried at runtime)
+- the active cluster's CPU power model (expressed
+     according to nvidia,tegra-ppm.txt)
+
+Required properties:
+- compatible: the value "nvidia,tegra124-cpu-edp-capping"
+- nvidia,edp_limit: the EDP limit expressed in mA
+
+Optional properties:
+- the optional properties supported by binding nvidia,tegra-ppm.txt
+- nvidia,power_model: an ordered list of phandles. The corresponding nodes
+    each contain the properties for a single cluster. Omitting
+    nvidia,power_model indicates a single cluster whose properties are found
+    in this very node.
+- nvidia,regulator_idle_limit: the current limit in mA which the VDD_CPU
+    regulator can drive in its "idle" mode.
+
+Required per-cluster properties:
+- the required properties from binding nvidia,tegra-ppm.txt
+- nvidia,edp_clk: a string or phandle naming the cluster's clock
+- nvidia,freq_step: the granularity in kHz of allowable clock frequencies
+
+Optional per-cluster properties:
+- nvidia,hard_cap: a list N frequency caps in kHz assuming the cluster has
+    N cores. These caps are applied regardless of temperature.
+
+Example:
+
+	cpu_edp {
+		compatible = "nvidia,tegra124-cpu-edp-capping";
+		nvidia,freq_step = <12750000>;
+		nvidia,edp_clk = "cpu_g";
+		nvidia,tegra-ppm-cdyn = <950000 1399000 2166000 3041000>;
+		nvidia,tegra-ppm-leakage_weights = <450 670 870 1000>;
+		nvidia,tegra-ppm-min_leakage = <30>;
+		nvidia,tegra-ppm-leakage_coeffs = <
+			  (-309609464) (197786326) (-40763150) (1613941)
+			  .... // 60 additional values omitted for brevity
+			>;
+		nvidia,edp_limit = <14000>;
+	};
+
+Example with two clusters:
+
+        cpu_edp {
+                compatible = "nvidia,tegra124-cpu-edp-capping";
+                nvidia,power_model = <&{/cpu_edp/cluster0}
+                                      &{/cpu_edp/cluster1}>;
+		nvidia,edp_limit = <14000>;
+                cluster0 {
+                        nvidia,freq_step = <12750000>;
+                        nvidia,edp_clk = "cpu_g";
+                        nvidia,tegra-ppm-cdyn = <950000 1399000 2166000 3041000>;
+                        nvidia,tegra-ppm-leakage_weights = <450 670 870 1000>;
+                        nvidia,tegra-ppm-min_leakage = <30>;
+                        nvidia,tegra-ppm-leakage_coeffs = <
+					... // 64 values omitted for brevity
+                                >;
+                };
+                cluster1 {
+                        nvidia,freq_step = <25500000>;
+                        nvidia,edp_clk = "cpu_lp";
+                        nvidia,tegra-ppm-cdyn = <450000 839000>;
+                        nvidia,tegra-ppm-leakage_weights = <670 1000>;
+                        nvidia,tegra-ppm-min_leakage = <16>;
+                        nvidia,tegra-ppm-leakage_coeffs = <
+					... // 64 values omitted for brevity
+                                >;
+                };
+        };
+
+

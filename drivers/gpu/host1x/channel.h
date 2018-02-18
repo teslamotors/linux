@@ -1,7 +1,7 @@
 /*
  * Tegra host1x Channel
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2016, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -42,5 +42,7 @@ int host1x_channel_list_init(struct host1x *host);
 
 #define host1x_for_each_channel(host, channel)				\
 	list_for_each_entry(channel, &host->chlist.list, list)
+
+void host1x_channel_enable_gather_filter(struct host1x_channel *channel);
 
 #endif

@@ -21,6 +21,16 @@ config PSTORE_CONSOLE
 	  When the option is enabled, pstore will log all kernel
 	  messages, even if no oops or panic happened.
 
+config PSTORE_PMSG
+	bool "Log user space messages"
+	depends on PSTORE
+	help
+	  When the option is enabled, pstore will export a character
+	  interface /dev/pmsg0 to log user space messages. On reboot
+	  data can be retrieved from /sys/fs/pstore/pmsg-ramoops-[ID].
+
+	  If unsure, say N.
+
 config PSTORE_FTRACE
 	bool "Persistent function tracer"
 	depends on PSTORE
@@ -31,6 +41,28 @@ config PSTORE_FTRACE
 	  ram buffer that can be decoded and dumped after reboot through
 	  pstore filesystem. It can be used to determine what function
 	  was last called before a reset or panic.
+
+	  If unsure, say N.
+
+config PSTORE_RTRACE
+	bool "Persistent register tracer"
+	depends on PSTORE
+	depends on DEBUG_FS
+	help
+	  With this option kernel traces register read/write calls into a
+	  persistent ram buffer that can be decoded and dumped after reboot
+	  through pstore filesystem. It can be used to determine what register
+	  access happened before a reset or panic.
+
+	  If unsure, say N.
+
+config PSTORE_RTRACE_ENABLE_AT_STARTUP
+	bool "Enable persistent register tracer"
+	depends on PSTORE_RTRACE
+	help
+	  With this option, PSTORE_RTRACE is enabled automatically at startup.
+	  It also can be enabled/disabled by writing 1/0 to
+	  '/sys/kernel/debug/pstore/record_rtrace'
 
 	  If unsure, say N.
 

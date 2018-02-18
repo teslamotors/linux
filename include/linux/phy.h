@@ -127,6 +127,7 @@ static inline const char *phy_modes(phy_interface_t interface)
 
 #define PHY_INIT_TIMEOUT	100000
 #define PHY_STATE_TIME		1
+#define PHY_STATE_TIME_AGGRESSIVE_MSEC 100
 #define PHY_FORCE_TIMEOUT	10
 #define PHY_AN_TIMEOUT		10
 
@@ -397,13 +398,15 @@ struct phy_device {
 
 	int autoneg;
 
-	int link_timeout;
 
 	/*
 	 * Interrupt number for this PHY
 	 * -1 means no interrupt
 	 */
 	int irq;
+
+	unsigned long link_timeout;
+	unsigned long phy_start_time;
 
 	/* private data pointer */
 	/* For use by PHYs to maintain extra state */

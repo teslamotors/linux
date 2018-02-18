@@ -1,0 +1,91 @@
+/*
+ * tegra186-quill-display-plugin-manager.dtsi: Display override DTSI file.
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/ {
+	plugin-manager {
+		fragment-e3320-a00@1 {
+			ids = "3320-1000-000", "3320-1100-000";
+			overrides@0 {
+				target = <&{/i2c@3160000/tps65132@3e/outp}>;
+				_overlay_ {
+					ti,enable-gpio = <&gpio_i2c_0_21 2 0>;
+				};
+			};
+			overrides@1 {
+				target = <&{/i2c@3160000/tps65132@3e/outn}>;
+				_overlay_ {
+					ti,enable-gpio = <&gpio_i2c_0_21 3 0>;
+				};
+			};
+		};
+
+		fragment-e3320-a01@1 {
+			ids = "3320-1000-100", "3320-1000-200";
+			overrides@0 {
+				target = <&{/i2c@3160000/tps65132@3e/outp}>;
+				_overlay_ {
+					ti,enable-gpio = <&gpio_i2c_0_77 4 0>;
+				};
+			};
+			overrides@1 {
+				target = <&{/i2c@3160000/tps65132@3e/outn}>;
+				_overlay_ {
+					delete-target-property = "ti,disable-active-discharge";
+					ti,enable-gpio = <&gpio_i2c_0_21 2 0>;
+					ti,active-discharge-gpio = <&gpio_i2c_0_21 3 0>;
+					ti,active-discharge-time = <2000>; /* in us */
+				};
+			};
+			overrides@2 {
+				target = <&en_vdd_disp_1v8>;
+				_overlay_ {
+					gpio = <&gpio_i2c_0_21 0 0>;
+				};
+			};
+		};
+
+		fragment-e1639-sharp-25x16@2 {
+			ids = "1639-1000-001";
+			overrides@0 {
+				target = <&{/i2c@c240000/lp8556-backlight-s-wqxga-10-1@2c}>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			overrides@1 {
+				target = <&vdd_bl_en>;
+				_overlay_ {
+					gpio = <&tegra_gpio TEGRA_GPIO(U, 3) 1>;
+					enable-active-high;
+					regulator-boot-on;
+					regulator-always-on;
+				};
+			};
+			overrides@2 {
+				target = <&{/host1x/dsi/panel-s-wuxga-8-0}>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+
+			overrides@3 {
+				target = <&{/host1x/dsi/panel-s-wqxga-10-1}>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+	};
+};

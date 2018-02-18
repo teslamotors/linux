@@ -1,0 +1,93 @@
+/*
+ * tegra186-quill-common-p3310-1000-a00.dtsi: Quill common dtsi.
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-quill-common.dtsi"
+#include "tegra186-quill-p3310-1000-a00-powermon.dtsi"
+#include "tegra186-quill-thermal.dtsi"
+
+#define EXTCON_NONE		0
+#define EXTCON_USB             1
+#define EXTCON_USB_Host        2
+
+/ {
+        model = "quill-3310";
+        compatible = "nvidia,quill-3310", "nvidia,tegra186";
+
+        #address-cells = <2>;
+        #size-cells = <2>;
+
+	pmc@c360000 {
+		io-pad-defaults {
+			sdmmc1-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+			sdmmc2-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+			sdmmc3-hv {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+		};
+	};
+
+	spi@3210000 {
+		status = "okay";
+	};
+
+	spi@3240000 {
+		status = "okay";
+	};
+
+	tegra_gpio: gpio@2200000 {
+		wifi_over_pcie: wifi_over_pcie {
+			gpio-output-low = <TEGRA_GPIO(R, 4)>;
+			status = "disabled";
+		};
+		pcie0_lane2_mux: pcie0_lane2_mux {
+			gpio-output-low = <TEGRA_GPIO(R, 3)>;
+			status = "disabled";
+		};
+		e3325_sdio_rst {
+			gpio-output-high = <TEGRA_GPIO(B, 6)>;
+			status = "disabled";
+		};
+		e3325_lane0_mux {
+			gpio-output-low = <TEGRA_GPIO(B, 4)>;
+			status = "disabled";
+		};
+	};
+
+	ahci-sata@3507000 {
+		status = "okay";
+	};
+
+	external-connection {
+		vbus_id_extcon: extcon@1 {
+			compatible = "extcon-gpio-states";
+			reg = <0x1>;
+			extcon-gpio,name = "VBUS";
+			extcon-gpio,cable-states = <0x3 0x0
+						    0x0 0x2
+						    0x1 0x2
+						    0x2 0x1>;
+			gpios = <&tegra_gpio TEGRA_GPIO(X, 7) 0 &spmic 0 0>;
+			extcon-gpio,out-cable-name-strings = "USB", "USB-Host";
+			extcon-gpio,out-cable-names = <EXTCON_USB EXTCON_USB_Host EXTCON_NONE>;
+			wakeup-source;
+			#extcon-cells = <1>;
+		};
+	};
+};
+

@@ -1,0 +1,75 @@
+System-EDP
+
+Required properties:
+- compatible: "nvidia,tegra124-sysedp"
+
+Optional properties:
+- nvidia,margin: This defines the margin when calculating the budget
+  for dynamic capping.
+- nvidia,min_budget: This defines the minimum budget for dynamic capping.
+- nvidia,initial_budget: This is the initial power budget listed in milliwatts.
+  If the system does not include sysedp_batmon_calc device, this budget will
+  be used as a fixed budget for the system.  If this option is not present,
+  the initial budget will be set to 1000000 mW.
+
+Optional Child Nodes:
+- consumers: This node contains a set of subnodes describing different
+  devices on the system and their power consumption states.
+
+Optional subnodes of consumers:
+- consumerX - These nodes define the power consumption state for one
+  consumer device on the system.
+
+Required properties of each consumerX node:
+- nvidia,consumer_name: This property is the name of the consumer.
+- nvidia,states: This property lists the operating power state of the consumer
+  in milliwatts. For example, if "nvidia,states" is set to "<0 300>", then
+  that consumer will consume either 0mW or 300mW depending on the state set
+  by that consumer.
+
+Example:
+	sysedp {
+		compatible = "nvidia,tegra124-sysedp";
+		nvidia,margin = <0>;
+		nvidia,min_budget = <0>;
+		nvidia,initial_budget = <30000>;
+
+		consumers {
+			consumer1 {
+				nvidia,consumer_name = "ov5693";
+				nvidia,states = <0 300>;
+			};
+			consumer2 {
+				nvidia,consumer_name = "mt9m114";
+				nvidia,states = <0 150>;
+			};
+			consumer3 {
+				nvidia,consumer_name = "speaker";
+				nvidia,states = <0 1080>;
+			};
+			consumer4 {
+				nvidia,consumer_name = "wifi";
+				nvidia,states = <0 1020>;
+			};
+			consumer5 {
+				nvidia,consumer_name = "pwm-backlight";
+				nvidia,states = <0 125 250 375 500 625 750 875 1000 1125 1250>;
+			};
+			consumer6 {
+				nvidia,consumer_name = "sdhci-tegra.2";
+				nvidia,states = <0 966>;
+			};
+			consumer7 {
+				nvidia,consumer_name = "sdhci-tegra.3";
+				nvidia,states = <0 966>;
+			};
+			consumer8 {
+				nvidia,consumer_name = "as364x";
+				nvidia,states = <0 350 700 1050 1400 1750 2100 2450 2800 3150 3500>;
+			};
+			consumer9 {
+				nvidia,consumer_name = "modem";
+				nvidia,states = <0 4100>;
+			};
+		};
+	};

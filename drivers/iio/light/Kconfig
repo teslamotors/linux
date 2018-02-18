@@ -192,4 +192,90 @@ config VCNL4000
 	 To compile this driver as a module, choose M here: the
 	 module will be called vcnl4000.
 
+config NVS_CM3217
+	tristate "Capella CM3217 ALS"
+	select NVS_IIO
+	select NVS_LIGHT
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	depends on I2C
+	help
+	  Say Y here for Capella Microsystems, Inc. CM3217
+	  Ambient Light Sensor (ALS) support.
+
+	  The driver uses the NVS (NVidia Sensor) IIO, light framework.
+
+config NVS_CM3218
+	tristate "Capella CM3218 ALS"
+	select NVS_IIO
+	select NVS_LIGHT
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	depends on I2C
+	help
+	  Say Y here for Capella Microsystems, Inc. CM3218 and CM32181
+	  Ambient Light Sensor (ALS) driver support.
+
+	  The driver uses the NVS (NVidia Sensor) IIO, light framework.
+
+config NVS_ISL2902X
+	tristate "INTERSIL ISL2902X ALS/Proximity"
+	select NVS_IIO
+	select NVS_LIGHT
+	select NVS_PROXIMITY
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	depends on I2C
+	help
+	  Say Y here for Intersil ISL29028 and ISL29029
+	  Ambient Light Sensor (ALS) and proximity driver
+	  support.
+
+	  The driver uses the NVS (NVidia Sensor) IIO, light and
+	  proximity framework.
+
+config NVS_JSA1127
+	tristate "SOLTEAMOPTO JSA1127 ALS"
+	select NVS_IIO
+	select NVS_LIGHT
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	depends on I2C
+	help
+	  Say Y here for Solteamopto JSA1127
+	  Ambient Light Sensor (ALS) driver support.
+
+	  The driver uses the NVS (NVidia Sensor) IIO, light framework.
+
+config NVS_LTR659
+	tristate "LITEON LTR-659PS or LTR_558ALS"
+	select NVS_IIO
+	select NVS_LIGHT
+	select NVS_PROXIMITY
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	depends on I2C
+	help
+	  Say Y here for LITEON LTR-659PS or LTR-558ALS
+	  ALS/proximity sensor driver support.
+
+	  The driver uses the NVS (NVidia Sensor) IIO, light and
+	  proximity framework.
+
+config NVS_MAX4400X
+	tristate "Maxim MAX4400X ALS/Proximity"
+	select NVS_IIO
+	select NVS_LIGHT
+	select NVS_PROXIMITY
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	depends on I2C
+	help
+	  Say Y here for Maxim MAX44005 and MAX44006/MAX44008
+	  Ambient Light Sensor (ALS) support.
+	  Proximity is supported on the MAX44005.
+
+	  The driver uses the NVS (NVidia Sensor) IIO, light and
+	  proximity framework.
+
 endmenu

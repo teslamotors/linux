@@ -96,6 +96,7 @@ struct spi_device {
 #define	SPI_TX_QUAD	0x200			/* transmit with 4 wires */
 #define	SPI_RX_DUAL	0x400			/* receive with 2 wires */
 #define	SPI_RX_QUAD	0x800			/* receive with 4 wires */
+#define	SPI_LSBYTE_FIRST	0x1000		/* per-word bytes-on-wire */
 	int			irq;
 	void			*controller_state;
 	void			*controller_data;
@@ -461,6 +462,8 @@ struct spi_master {
 	/* dummy data for full duplex devices */
 	void			*dummy_rx;
 	void			*dummy_tx;
+
+	int (*spi_cs_low)(struct spi_device *spi, bool state);
 };
 
 static inline void *spi_master_get_devdata(struct spi_master *master)
@@ -1048,5 +1051,12 @@ spi_unregister_device(struct spi_device *spi)
 
 extern const struct spi_device_id *
 spi_get_device_id(const struct spi_device *sdev);
+
+/**
+ * spi_cs_low - set chip select pin state
+ * @spi: device for which chip select pin state to be set
+ * state: if true chip select pin will be kept low else high
+ */
+extern int spi_cs_low(struct spi_device *spi, bool state);
 
 #endif /* __LINUX_SPI_H */

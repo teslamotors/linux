@@ -1,0 +1,29 @@
+* NVIDIA Tegra Watchdog controller
+
+Required properties:
+
+- compatible: Should be "nvidia,tegra-wdt"
+- reg: Should contain WDT and corresponding timer source
+  registers location and length.
+
+Optional properties:
+
+- interrupts: interrupt number to the cpu
+- nvidia,expiry-count: total expiry count of WDT (1 if not specified)
+- nvidia,enable-on-init: Toggle switch for enable during init
+- nvidia,heartbeat-init: default timeout in secs (120 secs if not specified)
+- nvidia,extend-watchdog-suspend: Boolean. Extend the disable of watchdog
+	timer to syscore suspend and re-eanble on syscore resume. If this
+	is selected then do not disable watchdog timer in device suspend
+	otherwise disable in device suspend.
+
+Examples:
+
+watchdog@60005100 {
+	compatible = "nvidia,tegra-wdt";
+	reg = <0x0 0x60005100 0x0 0x20		/* WDT0 registers */
+		0x0 0x60005070 0x0 0x8>;	/* TMR7 registers */
+	interrupts = <0 123 0x04>;
+	nvidia,expiry-count = <4>;
+	status = "disabled";
+};

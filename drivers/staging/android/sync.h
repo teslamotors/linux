@@ -47,6 +47,7 @@ struct sync_fence;
  *			  to userspace by SYNC_IOC_FENCE_INFO.
  * @timeline_value_str: fill str with the value of the sync_timeline's counter
  * @pt_value_str:	fill str with the value of the sync_pt
+ * @get_pt_name:	fill str with the name of the sync_pt
  */
 struct sync_timeline_ops {
 	const char *driver_name;
@@ -75,6 +76,12 @@ struct sync_timeline_ops {
 
 	/* optional */
 	void (*pt_value_str)(struct sync_pt *pt, char *str, int size);
+
+	/* optional */
+	void (*get_pt_name)(struct sync_pt *pt, char *str, int size);
+
+	/* optional */
+	void (*platform_debug_dump)(struct sync_pt *pt);
 };
 
 /**
@@ -126,6 +133,8 @@ struct sync_pt {
 	struct list_head	child_list;
 	struct list_head	active_list;
 };
+
+extern struct sync_pt *sync_pt_from_fence(struct fence *fence);
 
 static inline struct sync_timeline *sync_pt_parent(struct sync_pt *pt)
 {
@@ -218,11 +227,13 @@ void sync_timeline_destroy(struct sync_timeline *obj);
 /**
  * sync_timeline_signal() - signal a status change on a sync_timeline
  * @obj:	sync_timeline to signal
+ * @timestamp:	timestamp in ns format. use 0 to let sync framework
+ *		get the timestamp for you
  *
  * A sync implementation should call this any time one of it's sync_pts
  * has signaled or has an error condition.
  */
-void sync_timeline_signal(struct sync_timeline *obj);
+void sync_timeline_signal(struct sync_timeline *obj, u64 timestamp);
 
 /**
  * sync_pt_create() - creates a sync pt
@@ -287,6 +298,14 @@ struct sync_fence *sync_fence_fdget(int fd);
  * all it's sync_pts will be freed
  */
 void sync_fence_put(struct sync_fence *fence);
+
+/**
+ * sync_fence_get() - gets a reference of a sync fence
+ * @fence:	fence to get
+ *
+ * Gets a reference on @fence.
+ */
+void sync_fence_get(struct sync_fence *fence);
 
 /**
  * sync_fence_install() - installs a fence into a file descriptor

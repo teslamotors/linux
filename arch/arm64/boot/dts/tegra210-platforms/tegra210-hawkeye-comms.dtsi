@@ -1,0 +1,179 @@
+/*
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "tegra210-comms.dtsi"
+
+/ {
+	bcm4329_wlan2_ {
+		compatible = "nvidia,tegra-bcmdhd2-wlan";
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(I, 1) 0x14>;
+		wlan-pwr-gpio = <&gpio TEGRA_GPIO(I, 0) 0>;
+/*
+		wlan-rst-gpio = <&gpio TEGRA_GPIO(I, xxx) 0>;
+*/
+		status = "disabled";
+	};
+
+	bcmdhd_wlan {
+		fw_path = "/system/vendor/firmware/fw_bcmdhd.bin";
+		nv_path = "/system/etc/nvram_hawkeye_4354.txt";
+		sdhci-host = <&sdmmc2>;
+		pwr-retry-cnt = <5>;
+		/* wifi MAC address */
+		mac-address-chosen-dtb-node = "nvidia,wifi-mac";
+		mac-address-file = "/mnt/factory/wifi/wifi_mac.txt";
+		country_code_map {
+			CC1 {
+				iso_abbrev = "XV";
+				custom_locale = "XZ";
+				custom_locale_rev = <992>;
+			};
+			CC2 {
+				iso_abbrev = "US";
+				custom_locale = "US";
+				custom_locale_rev = <937>;
+			};
+			CC3 {
+				iso_abbrev = "CA";
+				custom_locale = "CA";
+				custom_locale_rev = <961>;
+			};
+			CC4 {
+				iso_abbrev = "AT";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC5 {
+				iso_abbrev = "BE";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC6 {
+				iso_abbrev = "BG";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC7 {
+				iso_abbrev = "HR";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC8 {
+				iso_abbrev = "CZ";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC9 {
+				iso_abbrev = "DK";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC10 {
+				iso_abbrev = "FR";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC11 {
+				iso_abbrev = "DE";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC12 {
+				iso_abbrev = "GR";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC13 {
+				iso_abbrev = "HU";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC14 {
+				iso_abbrev = "IT";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC15 {
+				iso_abbrev = "NL";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC16 {
+				iso_abbrev = "NO";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC17 {
+				iso_abbrev = "PL";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC18 {
+				iso_abbrev = "PT";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC19 {
+				iso_abbrev = "RO";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC20 {
+				iso_abbrev = "SK";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC21 {
+				iso_abbrev = "ES";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC22 {
+				iso_abbrev = "SE";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC23 {
+				iso_abbrev = "CH";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC24 {
+				iso_abbrev = "GB";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC25 {
+				iso_abbrev = "EU";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC26 {
+				iso_abbrev = "E0";
+				custom_locale = "DE";
+				custom_locale_rev = <991>;
+			};
+			CC27 {
+				iso_abbrev = "IN";
+				custom_locale = "Q2";
+				custom_locale_rev = <998>;
+			};
+		};
+	};
+};

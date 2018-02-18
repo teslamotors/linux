@@ -91,6 +91,24 @@ TRACE_EVENT(pstate_sample,
 #define _PWR_EVENT_AVOID_DOUBLE_DEFINING
 
 #define PWR_EVENT_EXIT -1
+
+enum {
+	CPU_SUSPEND_START,
+	CPU_SUSPEND_DONE
+};
+
+enum {
+	POWER_CPU_UP_START,
+	POWER_CPU_UP_DONE,
+	POWER_CPU_DOWN_START,
+	POWER_CPU_DOWN_DONE,
+};
+
+enum {
+	POWER_CPU_SCALE_START,
+	POWER_CPU_SCALE_DONE,
+};
+
 #endif
 
 #define pm_verb_symbolic(event) \
@@ -103,6 +121,70 @@ TRACE_EVENT(pstate_sample,
 		{ PM_EVENT_THAW, "thaw" }, \
 		{ PM_EVENT_RESTORE, "restore" }, \
 		{ PM_EVENT_RECOVER, "recover" })
+
+TRACE_EVENT(cpu_suspend,
+
+	TP_PROTO(unsigned int state, unsigned int ts),
+
+	TP_ARGS(state, ts),
+
+	TP_STRUCT__entry(
+		__field(u32, state)
+		__field(u32, ts)
+	),
+
+	TP_fast_assign(
+		__entry->state = state;
+		__entry->ts = ts;
+	),
+
+	TP_printk("state %u, time %u", __entry->state, __entry->ts)
+);
+
+TRACE_EVENT(cpu_hotplug,
+
+	TP_PROTO(unsigned int cpu_id, int state),
+
+	TP_ARGS(cpu_id, state),
+
+	TP_STRUCT__entry(
+		__field(u32, cpu_id)
+		__field(u32, state)
+	),
+
+	TP_fast_assign(
+		__entry->cpu_id = cpu_id;
+		__entry->state = state;
+	),
+
+	TP_printk("cpu_id=%lu, state=%lu",
+		  (unsigned long)__entry->cpu_id,
+		  (unsigned long)__entry->state)
+);
+
+TRACE_EVENT(cpu_scale,
+
+	TP_PROTO(unsigned int cpu_id, unsigned int freq, int state),
+
+	TP_ARGS(cpu_id, freq, state),
+
+	TP_STRUCT__entry(
+		__field(u64, cpu_id)
+		__field(u32, freq)
+		__field(u32, state)
+	),
+
+	TP_fast_assign(
+		__entry->cpu_id = cpu_id;
+		__entry->freq = freq;
+		__entry->state = state;
+	),
+
+	TP_printk("cpu_id=%lu, freq=%lu, state=%lu",
+		  (unsigned long)__entry->cpu_id,
+		  (unsigned long)__entry->freq,
+		  (unsigned long)__entry->state)
+);
 
 DEFINE_EVENT(cpu, cpu_frequency,
 
@@ -258,6 +340,39 @@ DEFINE_EVENT(clock, clock_disable,
 );
 
 DEFINE_EVENT(clock, clock_set_rate,
+
+	TP_PROTO(const char *name, unsigned int state, unsigned int cpu_id),
+
+	TP_ARGS(name, state, cpu_id)
+);
+
+TRACE_EVENT(clock_set_parent,
+
+	TP_PROTO(const char *name, const char *parent_name),
+
+	TP_ARGS(name, parent_name),
+
+	TP_STRUCT__entry(
+		__string(       name,           name            )
+		__string(       parent_name,    parent_name     )
+	),
+
+	TP_fast_assign(
+		__assign_str(name, name);
+		__assign_str(parent_name, parent_name);
+	),
+
+	TP_printk("%s parent=%s", __get_str(name), __get_str(parent_name))
+);
+
+DEFINE_EVENT(clock, clock_set_start,
+
+	TP_PROTO(const char *name, unsigned int state, unsigned int cpu_id),
+
+	TP_ARGS(name, state, cpu_id)
+);
+
+DEFINE_EVENT(clock, clock_set_done,
 
 	TP_PROTO(const char *name, unsigned int state, unsigned int cpu_id),
 
@@ -467,6 +582,34 @@ DEFINE_EVENT(dev_pm_qos_request, dev_pm_qos_remove_request,
 
 	TP_ARGS(name, type, new_value)
 );
+
+TRACE_EVENT(powergate,
+
+	TP_PROTO(const char *func, const char *name, int id, bool start, int ret),
+
+	TP_ARGS(func, name, id, start, ret),
+
+	TP_STRUCT__entry(
+		__field(const char *, func);
+		__field(const char *, name)
+		__field(int, id)
+		__field(bool, start)
+		__field(int, ret)
+	),
+
+	TP_fast_assign(
+		__entry->func = func;
+		__entry->name = name;
+		__entry->id = id;
+		__entry->start = start;
+		__entry->ret = ret;
+	),
+
+	TP_printk("%s called for %s with id = %u at %s ret = %u\n",
+		 __entry->func, __entry->name, (unsigned int)__entry->id,
+		(__entry->start)?"ENTRY":"EXIT", (unsigned int)__entry->ret)
+);
+
 #endif /* _TRACE_POWER_H */
 
 /* This part must be outside protection */

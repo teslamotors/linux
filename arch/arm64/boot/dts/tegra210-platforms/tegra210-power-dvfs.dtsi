@@ -1,0 +1,146 @@
+/*
+ * Copyright (c) 2014-2015 NVIDIA CORPORATION. All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#define SET_MAP_TRIP(tdomain, cdomain, vtype, num, temp)		\
+	trips {								\
+		tdomain##_##vtype##num: tdomain-vtype##num {		\
+			temperature = <temp>;				\
+			hysteresis = <1000>;				\
+			type = "active";				\
+		};							\
+	};								\
+	cooling-maps {							\
+		tdomain-vtype-map##num {				\
+			trip = <&tdomain##_##vtype##num>;		\
+			cooling-device = <&cdomain##_##vtype##_cdev num num>; \
+		};							\
+	}
+
+/ {
+	dvfs_rails {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu_vmin_cdev: vdd-cpu-vmin-cdev@5 {
+			status = "disabled";
+			reg = <5>;
+			cooling-min-state = <0>;
+			cooling-max-state = <1>;
+			#cooling-cells = <2>;
+			compatible = "nvidia,tegra210-rail-vmin-cdev";
+			cdev-type = "cpu_cold";
+			nvidia,constraint;
+			nvidia,trips = <&cpu_vmin1 950>;
+		};
+
+		core_vmin_cdev: vdd-core-vmin-cdev@6 {
+			status = "disabled";
+			reg = <6>;
+			cooling-min-state = <0>;
+			cooling-max-state = <1>;
+			#cooling-cells = <2>;
+			compatible = "nvidia,tegra210-rail-vmin-cdev";
+			cdev-type = "core_cold";
+			nvidia,constraint;
+			nvidia,trips = <&core_vmin1 950>;
+		};
+
+		gpu_scaling_cdev: vdd-gpu-scaling-cdev@7 {
+			status = "disabled";
+			reg = <7>;
+			cooling-min-state = <0>;
+			cooling-max-state = <5>;
+			#cooling-cells = <2>;
+			compatible = "nvidia,tegra210-rail-scaling-cdev";
+			cdev-type = "gpu_scaling";
+			nvidia,constraint;
+			nvidia,trips = <&gpu_scaling0 950 &gpu_scaling1 0
+					&gpu_scaling2 0 &gpu_scaling3 0
+					&gpu_scaling4 0 &gpu_scaling5 0>;
+		};
+
+		cpu_vmax_cdev: vdd-cpu-vmax-cdev@8 {
+			status = "disabled";
+			reg = <8>;
+			cooling-min-state = <0>;
+			cooling-max-state = <1>;
+			#cooling-cells = <2>;
+			compatible = "nvidia,tegra210-rail-vmax-cdev";
+			cdev-type = "cpu_hot";
+			nvidia,constraint;
+			nvidia,trips = <&cpu_vmax1 1170 &cpu_vmax2 1132>;
+		};
+
+		gpu_vmax_cdev: vdd-gpu-vmax-cdev@9 {
+			status = "disabled";
+			reg = <9>;
+			cooling-min-state = <0>;
+			cooling-max-state = <1>;
+			#cooling-cells = <2>;
+			compatible = "nvidia,tegra210-rail-vmax-cdev";
+			cdev-type = "gpu_hot";
+			nvidia,constraint;
+			nvidia,trips = <&gpu_vmax1 1132>;
+		};
+
+		core_vmax_cdev: vdd-core-vmax-cdev@10 {
+			status = "disabled";
+			reg = <10>;
+			cooling-min-state = <0>;
+			cooling-max-state = <1>;
+			#cooling-cells = <2>;
+			compatible = "nvidia,tegra210-rail-vmax-cdev";
+			cdev-type = "core_hot";
+			nvidia,constraint;
+			nvidia,trips = <&core_vmax1 1132>;
+		};
+	};
+
+	thermal-zones {
+		Tdiode_tegra {
+			SET_MAP_TRIP(cpu, cpu, vmin, 1, 15000);
+		};
+		Tdiode_tegra {
+			trips {
+				/* Reference only trip, not mapped */
+				gpu_scaling0: gpu-scaling0 {
+					temperature = <(-25000)>;
+					hysteresis = <0>;
+					type = "active";
+				};
+			};
+			SET_MAP_TRIP(gpu, gpu, scaling, 1, 15000);
+			SET_MAP_TRIP(gpu, gpu, scaling, 2, 30000);
+			SET_MAP_TRIP(gpu, gpu, scaling, 3, 50000);
+			SET_MAP_TRIP(gpu, gpu, scaling, 4, 70000);
+			SET_MAP_TRIP(gpu, gpu, scaling, 5, 105000);
+
+			SET_MAP_TRIP(gpu, gpu, vmax, 1, 83000);
+		};
+		Tdiode_tegra {
+			SET_MAP_TRIP(core, core, vmin, 1, 15000);
+			SET_MAP_TRIP(core, core, vmax, 1, 86000);
+		};
+		CPU-therm {
+			SET_MAP_TRIP(cpu, cpu, vmax, 1, 66000);
+			SET_MAP_TRIP(cpu, cpu, vmax, 2, 86000);
+		};
+		LCPU-therm {
+			SET_MAP_TRIP(lcpu, cpu, vmax, 1, 66000);
+			SET_MAP_TRIP(lcpu, cpu, vmax, 2, 86000);
+		};
+	};
+};
+

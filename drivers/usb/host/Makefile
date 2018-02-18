@@ -1,6 +1,7 @@
 #
 # Makefile for USB Host Controller Drivers
 #
+GCOV_PROFILE := y
 
 # tell define_trace.h where to find the xhci trace header
 CFLAGS_xhci-trace.o := -I$(src)
@@ -15,6 +16,9 @@ fhci-$(CONFIG_FHCI_DEBUG) += fhci-dbg.o
 xhci-hcd-y := xhci.o xhci-mem.o
 xhci-hcd-y += xhci-ring.o xhci-hub.o xhci-dbg.o
 xhci-hcd-y += xhci-trace.o
+ifeq ($(CONFIG_ARCH_TEGRA_21x_SOC),y)
+	xhci-hcd-y 		+= xhci-tegra-t210-padctl.o
+endif
 
 xhci-plat-hcd-y := xhci-plat.o
 ifneq ($(CONFIG_USB_XHCI_MVEBU), )
@@ -24,6 +28,7 @@ ifneq ($(CONFIG_USB_XHCI_RCAR), )
 	xhci-plat-hcd-y		+= xhci-rcar.o
 endif
 
+obj-$(CONFIG_USB_XHCI_TEGRA)    += xhci-tegra.o
 obj-$(CONFIG_USB_WHCI_HCD)	+= whci/
 
 obj-$(CONFIG_PCI)		+= pci-quirks.o

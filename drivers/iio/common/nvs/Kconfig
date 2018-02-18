@@ -1,0 +1,32 @@
+#
+# NVidiaSensor IIO common
+#
+config NVS_IIO
+	tristate "Common module for NVSensor IIO drivers"
+	depends on SYSFS && IIO && IIO_KFIFO_BUF && IIO_TRIGGER
+	default n
+	help
+	  Say Y here for IIO NVSensor framework support.
+	  This is a common module for NVS (NVidia Sensor)
+	  IIO (Industrial Input/Output) drivers (nvs_<device>).
+
+config NVS_LIGHT
+	tristate "Common module for NVSensor light drivers"
+	depends on SYSFS && IIO && IIO_KFIFO_BUF && IIO_TRIGGER
+	default n
+	help
+	  Say Y here for the NVSensor framework for ambient light sensors.
+
+	  This is required for NVS (NVidia Sensor) drivers (nvs_<device>)
+	  that control an ambient light sensor (ALS) in their device.
+	  This is typically autoselected by these drivers.
+
+config NVS_PROXIMITY
+	tristate "Common module for NVSensor proximity drivers"
+	depends on SYSFS && IIO && IIO_KFIFO_BUF && IIO_TRIGGER
+	default n
+	help
+	  Say Y here for the NVSensor framework for proximity sensors.
+	  This is required for NVS (NVidia Sensor) drivers (nvs_<device>)
+	  that control a proximity sensor in their device.
+

@@ -1,0 +1,385 @@
+/*
+ * tegra124-green-arrow-p2267-base-a00.dts: DTS file for Green Arrow base
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/dts-v1/;
+
+#include "tegra124-soc-shield.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-pinmux-p2267-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-p2267-io-common.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-power-tree-p2267-e1936-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-touch.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-p2267-sensor-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-keys-p2267-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-dfll.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-camera-p2267-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-usb-devices.dtsi"
+#include "tegra124-platforms/tegra124-tn8-hdmi-p1761-1270-a03.dtsi"
+#include "panel-s-wuxga-7-0.dtsi"
+#include "panel-s-wuxga-8-0.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
+
+#include "tegra124-platforms/tegra124-green-arrow-thermal-zone-p2267-1000-a00.dtsi"
+
+/* TODO: comm's dtsi should be included after GPIO dtsi */
+#include "tegra124-platforms/tegra124-green-arrow-comms.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 Green Arrow FFD";
+	compatible = "nvidia,green-arrow", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "green-arrow";
+		};
+	};
+
+	gpio: gpio@6000d000 {
+		camera_control {
+			gpio-output-low = <
+				TEGRA_GPIO(BB, 3)
+				TEGRA_GPIO(BB, 5)
+				TEGRA_GPIO(BB, 6)
+				TEGRA_GPIO(BB, 7)
+				>;
+		};
+	};
+
+	camera-pcl {
+		profiles {
+			ov5693@x_0010 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <0>;
+				avdd-supply = <&ldo4_reg>;
+				dvdd-supply = <&ldo7_reg>;
+				dovdd-supply = <&en_vdd_cam_1v8>;
+				cam2-gpios = <&gpio TEGRA_GPIO(BB, 5) 1>;
+			};
+			ad5823@x_000c {
+				use_of_node = "yes";
+				vdd-supply = <&ldo7_reg>;
+				vif-supply = <&en_vdd_cam_1v8>;
+				af-pwdn-gpios = <&gpio TEGRA_GPIO(BB, 7) 1>;
+			};
+			imx132@x_0036 {
+				use_of_node = "yes";
+				dev_name = "imx132";
+				num = <1>;
+				vana-supply = <&ldo7_reg>;
+				vdig-supply = <&en_vdd_cam_1v2>;
+				vif-supply = <&en_vdd_cam_1v8>;
+				cam2-gpios = <&gpio TEGRA_GPIO(BB, 6) 1>;
+			};
+		};
+		dpd {
+			compatible = "nvidia,csi-dpd";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			default-enable;
+			num = <5>;
+			csia {
+				reg = <0x0 0x0 0x0 0x0>;
+			};
+			csib {
+				reg = <0x0 0x1 0x0 0x0>;
+			};
+			csic {
+				reg = <0x1 0x0a 0x0 0x0>;
+			};
+			csid {
+				reg = <0x1 0x0b 0x0 0x0>;
+			};
+			csie {
+				reg = <0x1 0x0c 0x0 0x0>;
+			};
+		};
+	};
+
+	i2c@7000d000 {
+		palmas: tps65913 {
+			thermal {
+				status = "okay";
+			};
+
+			gpadc {
+				ti,auto-conversion-period-ms = <500>;
+				auto_conv0 {
+					ti,adc-channel-number = <3>;
+					ti,adc-low-threshold = <1980>;
+					ti,enable-shutdown;
+				};
+			};
+
+			pmic {
+				regulators {
+					ldo3 {
+						regulator-min-microvolt = <3300000>;
+						regulator-max-microvolt = <3300000>;
+						regulator-enable-ramp-delay = <3000>;
+						ti,disable-pull-down;
+					};
+				};
+			};
+		};
+	};
+
+	regulator {
+		regulator@8  {
+			vin-supply = <&ldo3_reg>;
+			regulator-disable-parent-after-enable;
+		};
+	};
+
+	generic-adc-thermal@5 {
+		status = "okay";
+	};
+
+	thermal-zones {
+		PMIC-Die {
+			status = "okay";
+		};
+
+		Battery {
+			status = "okay";
+		};
+	};
+
+	watchdog@60005100 {
+		status = "disabled";
+		nvidia,enable-on-init;
+		nvidia,heartbeat-init = <120>;
+		dt-override-status-odm-data = <0x80000000 0x80000000>;
+	};
+
+	soft_watchdog {
+		compatible = "softdog-platform";
+		status = "disabled";
+		dt-override-status-odm-data = <0x80000000 0x00000000>;
+	};
+
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,turn-off-vbus-in-lp0;
+		nvidia,dcp-current-limit-ua = <3000000>;
+		nvidia,qc2-input-voltage = <TEGRA_USB_QC2_12V>;
+		nvidia,qc2-current-limit-ua = <1200000>;
+		nvidia,id-detection-type = <1>;
+		nvidia,enable-pmu-vbus-detection;
+		extcon-cables = <&palmas_extcon 0>;
+		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+	ehci@7d000000 {
+		nvidia,port-otg;
+		nvidia,has-hostpc;
+		nvidia,turn_off_vbus_on_lp0;
+		nvidia,id-detection-type = <2>;
+		nvidia,hssync-start-delay = <0>;
+		nvidia,idle-wait-delay = <17>;
+		nvidia,elastic-limit = <16>;
+		nvidia,term-range-adj = <6>;
+		nvidia,xcvr-setup = <15>;
+		nvidia,xcvr-lsfslew = <2>;
+		nvidia,xcvr-lsrslew = <2>;
+		nvidia,xcvr-use-fuses;
+		nvidia,vbus-oc-map = <4>;
+		nvidia,xcvr-setup-offset = <0>;
+		status = "disabled";
+	};
+
+	memory@0x80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-a-wuxga-8-0 {
+				/* Enabling this node explicitly for initial panel support */
+				status = "okay";
+				nvidia,dsi-boardinfo = <1761 0 0 1>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+			panel-s-wuxga-7-0 {
+				nvidia,dsi-boardinfo = <1761 0 0 1>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+			panel-s-wuxga-8-0 {
+				nvidia,dsi-boardinfo = <1761 0 0 1>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+		};
+	};
+
+	backlight {
+		status = "okay";
+		disable-on-kernel-charging;
+
+		panel-a-wuxga-8-0-bl {
+			/* Enabling this node explicitly for initial panel support */
+			status = "okay";
+		};
+	};
+
+	i2c@7000c400 {
+		status = "okay";
+		lp8557-backlight-a-wuxga-8-0@2c {
+			/* Enabling this node explicitly for initial panel support */
+			status = "okay";
+			compatible = "ti,lp8557";
+			reg = <0x2c>;
+
+			bl-name = "pwm-backlight"; /* Match liblights naming expectations */
+			init-brt = /bits/ 8 <0xFF>; /* Max brightness */
+			dev-ctrl = /bits/ 8 <0x80>; /* PWM, enable standby mode */
+			pwm-period = <29334>;
+
+			pwm-names = "lp8557";
+			pwms = <&tegra_pwm 1 29334>;
+
+			/* 3 LED string */
+			rom_14h {
+				rom-addr = /bits/ 8 <0x14>;
+				rom-val = /bits/ 8 <0x87>;
+			};
+
+			/*Boost freq 1MHZ*/
+			rom_13h {
+				rom-addr = /bits/ 8 <0x13>;
+				rom-val = /bits/ 8 <0x01>;
+			};
+		};
+
+		lp8557-backlight-s-wuxga-7-0@2c {
+			status = "disabled";
+			compatible = "ti,lp8557";
+			reg = <0x2c>;
+
+			bl-name = "pwm-backlight"; /* Match liblights naming expectations */
+			init-brt = /bits/ 8 <0xFF>; /* Max brightness */
+			dev-ctrl = /bits/ 8 <0x80>; /* PWM, enable standby mode */
+			pwm-period = <29334>;
+
+			pwm-names = "lp8557";
+			pwms = <&tegra_pwm 1 29334>;
+
+			/* 5 LED string */
+			rom_14h {
+				rom-addr = /bits/ 8 <0x14>;
+				rom-val = /bits/ 8 <0x9f>;
+			};
+
+			/*Boost freq 1MHZ*/
+			rom_13h {
+				rom-addr = /bits/ 8 <0x13>;
+				rom-val = /bits/ 8 <0x01>;
+			};
+		};
+
+		lp8557-backlight-s-wuxga-8-0@2c {
+			status = "disabled";
+			compatible = "ti,lp8557";
+			reg = <0x2c>;
+
+			bl-name = "pwm-backlight"; /* Match liblights naming expectations */
+			init-brt = /bits/ 8 <0xFF>; /* Max brightness */
+			dev-ctrl = /bits/ 8 <0x80>; /* PWM, enable standby mode */
+			pwm-period = <29334>;
+
+			pwm-names = "lp8557";
+			pwms = <&tegra_pwm 1 29334>;
+
+			/* 5 LED string */
+			rom_14h {
+				rom-addr = /bits/ 8 <0x14>;
+				rom-val = /bits/ 8 <0x9f>;
+			};
+
+			/*Boost freq 1MHZ*/
+			rom_13h {
+				rom-addr = /bits/ 8 <0x13>;
+				rom-val = /bits/ 8 <0x01>;
+			};
+		};
+	};
+
+	therm_est_sensor {
+		status = "okay";
+		subdev {
+			subdev_names = "Tdiode", "Tboard";
+		};
+	};
+
+	rollback-protection {
+		device-name = "sdmmc";
+		device-method = <0x1 0x00000002>;  /* type (0x1 = ioctl), argument */
+		status = "okay";
+	};
+};

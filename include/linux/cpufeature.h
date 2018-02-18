@@ -43,16 +43,16 @@
  * For a list of legal values for 'feature', please consult the file
  * 'asm/cpufeature.h' of your favorite architecture.
  */
-#define module_cpu_feature_match(x, __init)			\
+#define module_cpu_feature_match(x, __mod_init_f)			\
 static struct cpu_feature const cpu_feature_match_ ## x[] =	\
 	{ { .feature = cpu_feature(x) }, { } };			\
 MODULE_DEVICE_TABLE(cpu, cpu_feature_match_ ## x);		\
 								\
-static int cpu_feature_match_ ## x ## _init(void)		\
+static int __init cpu_feature_match_ ## x ## _init(void)	\
 {								\
 	if (!cpu_have_feature(cpu_feature(x)))			\
 		return -ENODEV;					\
-	return __init();					\
+	return __mod_init_f();					\
 }								\
 module_init(cpu_feature_match_ ## x ## _init)
 

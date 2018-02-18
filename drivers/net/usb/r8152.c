@@ -599,6 +599,42 @@ enum rtl_version {
 	RTL_VER_MAX
 };
 
+enum rtl_cmd {
+	RTLTOOL_PLA_OCP_READ_DWORD = 0,
+	RTLTOOL_PLA_OCP_WRITE_DWORD,
+	RTLTOOL_USB_OCP_READ_DWORD,
+	RTLTOOL_USB_OCP_WRITE_DWORD,
+	RTLTOOL_PLA_OCP_READ,
+	RTLTOOL_PLA_OCP_WRITE,
+	RTLTOOL_USB_OCP_READ,
+	RTLTOOL_USB_OCP_WRITE,
+	RTLTOOL_USB_INFO,
+	RTL_ENABLE_USB_DIAG,
+	RTL_DISABLE_USB_DIAG,
+
+	RTLTOOL_INVALID
+};
+
+struct usb_device_info {
+	__u16		idVendor;
+	__u16		idProduct;
+	__u16		bcdDevice;
+	__u8		dev_addr[8];
+	char		devpath[16];
+};
+
+struct rtltool_cmd {
+	__u32	cmd;
+	__u32	offset;
+	__u32	byteen;
+	__u32	data;
+	void	*buf;
+	struct usb_device_info nic_info;
+	struct sockaddr ifru_addr;
+	struct sockaddr ifru_netmask;
+	struct sockaddr ifru_hwaddr;
+};
+
 enum tx_csum_stat {
 	TX_CSUM_SUCCESS = 0,
 	TX_CSUM_TSO,
@@ -1958,6 +1994,7 @@ static void rtl_set_eee_plus(struct r8152 *tp)
 	u32 ocp_data;
 	u8 speed;
 
+	set_tx_qlen(tp);
 	speed = rtl8152_get_speed(tp);
 	if (speed & _10bps) {
 		ocp_data = ocp_read_word(tp, MCU_TYPE_PLA, PLA_EEEP_CR);
@@ -3581,6 +3618,146 @@ static struct ethtool_ops ops = {
 	.set_eee = rtl_ethtool_set_eee,
 };
 
+static int rtltool_ioctl(struct r8152 *tp, struct ifreq *ifr)
+{
+	struct rtltool_cmd my_cmd, *myptr;
+	struct usb_device_info *uinfo;
+	struct usb_device *udev;
+	__le32	ocp_data;
+	void	*buffer;
+	int	ret;
+
+	myptr = (struct rtltool_cmd *)ifr->ifr_data;
+	if (copy_from_user(&my_cmd, myptr, sizeof(my_cmd)))
+		return -EFAULT;
+
+	ret = 0;
+
+	switch (my_cmd.cmd) {
+	case RTLTOOL_PLA_OCP_READ_DWORD:
+		pla_ocp_read(tp, (u16)my_cmd.offset, sizeof(ocp_data),
+			     &ocp_data);
+		my_cmd.data = __le32_to_cpu(ocp_data);
+
+		if (copy_to_user(myptr, &my_cmd, sizeof(my_cmd))) {
+			ret = -EFAULT;
+			break;
+		}
+		break;
+
+	case RTLTOOL_PLA_OCP_WRITE_DWORD:
+		ocp_data = __cpu_to_le32(my_cmd.data);
+		pla_ocp_write(tp, (u16)my_cmd.offset, (u16)my_cmd.byteen,
+				   sizeof(ocp_data), &ocp_data);
+		break;
+
+	case RTLTOOL_USB_OCP_READ_DWORD:
+		usb_ocp_read(tp, (u16)my_cmd.offset, sizeof(ocp_data),
+			     &ocp_data);
+		my_cmd.data = __le32_to_cpu(ocp_data);
+
+		if (copy_to_user(myptr, &my_cmd, sizeof(my_cmd))) {
+			ret = -EFAULT;
+			break;
+		}
+		break;
+
+
+	case RTLTOOL_USB_OCP_WRITE_DWORD:
+		ocp_data = __cpu_to_le32(my_cmd.data);
+		usb_ocp_write(tp, (u16)my_cmd.offset, (u16)my_cmd.byteen,
+				   sizeof(ocp_data), &ocp_data);
+		break;
+
+	case RTLTOOL_PLA_OCP_READ:
+		buffer = kmalloc(my_cmd.data, GFP_KERNEL);
+		if (!buffer) {
+			ret = -ENOMEM;
+			break;
+		}
+
+		pla_ocp_read(tp, (u16)my_cmd.offset, my_cmd.data, buffer);
+
+		if (copy_to_user(myptr->buf, buffer, my_cmd.data))
+			ret = -EFAULT;
+
+		kfree(buffer);
+		break;
+
+	case RTLTOOL_PLA_OCP_WRITE:
+		buffer = kmalloc(my_cmd.data, GFP_KERNEL);
+		if (!buffer) {
+			ret = -ENOMEM;
+			break;
+		}
+
+		if (copy_from_user(buffer, myptr->buf, my_cmd.data)) {
+			ret = -EFAULT;
+			kfree(buffer);
+			break;
+		}
+
+		pla_ocp_write(tp, (u16)my_cmd.offset, (u16)my_cmd.byteen,
+				   my_cmd.data, buffer);
+		kfree(buffer);
+		break;
+
+	case RTLTOOL_USB_OCP_READ:
+		buffer = kmalloc(my_cmd.data, GFP_KERNEL);
+		if (!buffer) {
+			ret = -ENOMEM;
+			break;
+		}
+
+		usb_ocp_read(tp, (u16)my_cmd.offset, my_cmd.data, buffer);
+
+		if (copy_to_user(myptr->buf, buffer, my_cmd.data))
+			ret = -EFAULT;
+
+		kfree(buffer);
+		break;
+
+	case RTLTOOL_USB_OCP_WRITE:
+		buffer = kmalloc(my_cmd.data, GFP_KERNEL);
+		if (!buffer) {
+			ret = -ENOMEM;
+			break;
+		}
+
+		if (copy_from_user(buffer, myptr->buf, my_cmd.data)) {
+			ret = -EFAULT;
+			kfree(buffer);
+			break;
+		}
+
+		usb_ocp_write(tp, (u16)my_cmd.offset, (u16)my_cmd.byteen,
+				   my_cmd.data, buffer);
+		kfree(buffer);
+		break;
+
+	case RTLTOOL_USB_INFO:
+		uinfo = (struct usb_device_info *)&my_cmd.nic_info;
+		udev = tp->udev;
+		uinfo->idVendor = __le16_to_cpu(udev->descriptor.idVendor);
+		uinfo->idProduct = __le16_to_cpu(udev->descriptor.idProduct);
+		uinfo->bcdDevice = __le16_to_cpu(udev->descriptor.bcdDevice);
+		memcpy(uinfo->devpath, udev->devpath, sizeof(udev->devpath));
+		pla_ocp_read(tp, PLA_IDR, sizeof(uinfo->dev_addr),
+			     uinfo->dev_addr);
+
+		if (copy_to_user(myptr, &my_cmd, sizeof(my_cmd)))
+			ret = -EFAULT;
+
+		break;
+
+	default:
+		ret = -EOPNOTSUPP;
+		break;
+	}
+
+	return ret;
+}
+
 static int rtl8152_ioctl(struct net_device *netdev, struct ifreq *rq, int cmd)
 {
 	struct r8152 *tp = netdev_priv(netdev);
@@ -3613,6 +3790,10 @@ static int rtl8152_ioctl(struct net_device *netdev, struct ifreq *rq, int cmd)
 		mutex_lock(&tp->control);
 		r8152_mdio_write(tp, data->reg_num, data->val_in);
 		mutex_unlock(&tp->control);
+		break;
+
+	case SIOCDEVPRIVATE:
+		res = rtltool_ioctl(tp, rq);
 		break;
 
 	default:

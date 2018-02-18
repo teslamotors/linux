@@ -38,5 +38,5 @@ struct sbs_platform_data {
 	int i2c_retry_count;
 	int poll_retry_count;
 };
-
+extern int sbs_battery_detect(void);
 #endif

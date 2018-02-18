@@ -1,0 +1,28 @@
+#include "tegra124-loki-common.dtsi"
+#include "tegra124-platforms/tegra124-loki-powermon-p2530-a01.dtsi"
+#include "tegra124-platforms/tegra124-loki-power-tree-e2530-0000-a01.dtsi"
+#include "tegra124-platforms/tegra124-loki-gpio-pinmux-e2530.dtsi"
+#include "tegra124-platforms/tegra124-loki-thermal-zone-p2530-0000-a01.dtsi"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	i2c@7000d000 {
+		tps65913 {
+			gpadc {
+				ti,auto-conversion-period-ms = <1000>;
+				auto_conv1 {
+					ti,adc-channel-number = <4>;
+					ti,adc-low-threshold = <952>;
+					ti,enable-shutdown;
+				};
+
+				auto_conv0 {
+					ti,adc-channel-number = <1>;
+					ti,adc-low-threshold = <765>;
+					ti,enable-shutdown;
+				};
+			};
+		};
+	};
+};

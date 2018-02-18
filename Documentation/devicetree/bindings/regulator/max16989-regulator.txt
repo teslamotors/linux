@@ -1,0 +1,59 @@
+Maxim MAX16989 Automotive Low-voltage 2-channel Step-Down controller.
+Device supportss two voltage output and there is 2 sets of registers
+for voltage output vout1 and vout2. These outputs are independent and
+their input/control pins are also different. Theire is 2 i2c address
+for the device, one for vout1 and other for vout2.
+
+The properties defined here is single voltage output. Two nodes are
+needed for 22 voltage outputs.
+
+Required properties:
+- compatible:	must be "maxim,max16989"
+- reg:		The i2c slave address of the regulator.
+
+Any standard regulator properties (Documentation/devicetree/bindings/regulator/
+regulator.txt) can be used to configure the voltage output of this device.
+
+Optional properties:
+- regulator-voltage-steps: Voltage steps. Must be 10000uV or 12500uV.
+	Absence of this property will set voltage steps to 12500mV.
+- maxim,enable-clk-spread-spectrum: Boolean, Enable clock 3% spread spectrum.
+- maxim,enable-gpio: GPIO number connected to EN pin to enable/disable the
+	voltage output.
+- maxim,enable-external-fpwm: Boolean, enable extern control FPWM. The
+	FPWM will be controlled by SYNC IO control signal.
+- maxim,fpwm-sync-gpio: GPIO number connected to SYNC IO pin from Host to
+	control the FPWM/SKIP mode. If valid GPIO is provided then external
+	control of FPWM will be selected even if property "maxim,enable-
+	external-fpwm" is not available.
+- maxim,enable-sync-output: Boolean, Enable sync pin as output.
+- maxim,tracking-device-i2c-address: I2C address of the MAX20024 which is
+	used for LDO4 voltage tracking. If this property is available and
+	voltage step is 12500uV then tracking will be enabled.
+-maxim,slew-rate: Slew rate configuration for soft start and rising dvs
+	in mV/us. Tables are
+	Soft startup(mV/us)	Rising DVS (mV/us)	value
+		22			22		0
+		11			22		1
+		5.5			22		2
+		11			11		3
+		5.5			11		4
+		5.5			5.5		5
+
+Maximum voltage is selected from regulator-max-microvolt property. If this
+is not provided then it will be assumed that the maximum voltage is the
+device supported maximum voltage.
+
+All GPIOs numbers are provided as per the DT binding document
+(Documentation/devicetree/bindings/gpio/gpio.txt).
+
+Example:
+
+	max16989@1b {
+		compatible = "maxim,max16989";
+		reg = <0x1b>;
+
+		regulator-min-microvolt = <935000>;
+		regulator-max-microvolt = <1200000>;
+		maxim,enable-gpio = <&gpio 20 0>;
+	};

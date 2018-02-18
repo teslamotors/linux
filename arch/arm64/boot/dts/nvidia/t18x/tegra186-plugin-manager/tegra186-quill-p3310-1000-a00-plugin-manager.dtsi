@@ -1,0 +1,212 @@
+/*
+ * tegra186-quill-p3310-1000-a00-plugin-manager.dtsi: P3310 plugin manager
+ *
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra186-quill-odm-data-plugin-manager.dtsi"
+#include "tegra186-quill-p3310-1000-300-plugin-manager.dtsi"
+
+/ {
+	eeprom-manager {
+		data-size = <0x100>;
+		boardid-with-revision = <3310>;
+		boardid-with-config = <3310>;
+		bus@0 {
+			i2c-bus = <&gen8_i2c>;
+			eeprom@0 {
+				slave-address = <0x50>;
+				label = "cvm";
+			};
+			eeprom@1 {
+				slave-address = <0x57>;
+				label = "cvb";
+			};
+		};
+		bus@1 {
+			i2c-bus = <&gen2_i2c>;
+			eeprom@0 {
+				slave-address = <0x51>;
+			};
+		};
+		bus@2 {
+			i2c-bus = <&gen1_i2c>;
+			eeprom@0 {
+				slave-address = <0x50>;
+			};
+		};
+		bus@3 {
+			i2c-bus = <&cam_i2c>;
+			eeprom@0 {
+				slave-address = <0x54>;
+				label = "cam";
+				enable-gpio = <2 9>;
+			};
+		};
+	};
+	plugin-manager {
+		fragment-devslp@0 {
+			ids = ">=3310-1000-200";
+			override@0 {
+				target = <&{/ahci-sata@3507000}>;
+				_overlay_ {
+					gpios = <&spmic 7 0>;
+				};
+			};
+			override@1 {
+				target = <&{/bpmp_i2c/spmic@3c/pinmux@0}>;
+				_overlay_ {
+					pin_gpio7 {
+						drive-push-pull = <1>;
+					};
+				};
+			};
+		};
+		e3325_xusb {
+			odm-data = "enable-xusb-on-uphy-lane0";
+			override@0 {
+				target = <&tegra_padctl_pinmux_default>;
+				_overlay_ {
+					e3325-usb3-std-A-HS {
+						status = "okay";
+					};
+					e3325-usb3-std-A-SS {
+						status = "okay";
+					};
+				};
+			};
+			override@1 {
+				target = <&{/xhci@3530000}>;
+				_overlay_ {
+					phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+							<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(1)>,
+							<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(1)>,
+							<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(2)>,
+							<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(0)>;
+					phy-names = "utmi-0", "utmi-1", "usb3-1", "utmi-2", "usb3-0";
+				};
+			};
+			override@2 {
+				target = <&tegra_gpio>;
+				_overlay_ {
+					e3325_sdio_rst {
+						status = "okay";
+					};
+					e3325_lane0_mux {
+						status = "okay";
+					};
+				};
+			};
+			override@3 {
+				target = <&tegra_pcie>;
+				_overlay_ {
+					nvidia,lane-map = <0x210>;
+				};
+			};
+		};
+		fragment-b00-pcie-config {
+			ids = ">=3310-1000-500";
+			override@0 {
+				target = <&tegra_pcie>;
+				_overlay_ {
+					nvidia,lane-map = <0x401>;
+				};
+			};
+		};
+		fragment-comms-chip {
+			ids = ">=3310-1000-500";
+			override@0 {
+				target = <&bcm4354>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@1 {
+				target = <&bcm4359>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+		};
+		fragment-b00-xusb-config {
+			enable-override-on-all-matches;
+			odm-data = "enable-pcie-on-uphy-lane0"; /* this odm-data has reverse meaning for B00 and above boards */
+			ids = ">=3310-1000-500";
+			override@1 {
+				target = <&{/xhci@3530000}>;
+				_overlay_ {
+					phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+						<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(1)>,
+						<&tegra_padctl TEGRA_PADCTL_PHY_USB3_P(0)>,
+						<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(2)>;
+					phy-names = "utmi-0", "utmi-1", "usb3-0", "utmi-2";
+				};
+			};
+			override@2 {
+				target = <&tegra_gpio>;
+				_overlay_ {
+					e3325_lane0_mux {
+						status = "okay";
+					};
+				};
+			};
+		};
+		fragment-b00-sdmmc3-config {
+			ids = ">=3310-1000-500";
+			override@0 {
+				target = <&sdmmc3>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+		fragment-b00-pcie-lane0-config {
+			enable-override-on-all-matches;
+			odm-data = "enable-xusb-on-uphy-lane0"; /* this odm-data has reverse meaning for B00 and above boards */
+			ids = ">=3310-1000-500";
+			override@0 {
+				target = <&tegra_padctl_pinmux_default>;
+				_overlay_ {
+					e3325-usb3-std-A-SS {
+						status = "disabled";
+					};
+					usb3-std-A-port2 {
+						status = "disabled";
+					};
+				};
+			};
+			override@1 {
+				target = <&{/xhci@3530000}>;
+				_overlay_ {
+					phys = <&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(0)>,
+						<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(1)>,
+						<&tegra_padctl TEGRA_PADCTL_PHY_UTMI_P(2)>;
+					phy-names = "utmi-0", "utmi-1", "utmi-2";
+				};
+			};
+			override@2 {
+				target = <&tegra_gpio>;
+				_overlay_ {
+					pcie0_lane2_mux {
+						status = "okay";
+					};
+					e3325_lane0_mux {
+						status = "disabled";
+					};
+					e3325_sdio_rst {
+						status = "disabled";
+					};
+				};
+			};
+		};
+	};
+};

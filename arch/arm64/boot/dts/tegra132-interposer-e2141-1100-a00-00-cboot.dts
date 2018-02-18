@@ -1,0 +1,5 @@
+/* TO BE REMOVE */
+/dts-v1/;
+/ {
+	nvidia,dtsfilename = __FILE__;
+};

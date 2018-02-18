@@ -1,0 +1,168 @@
+/*
+ * arch/arm/boot/dts/tegra124-android-p1859-vm.dts
+ *
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+ /dts-v1/;
+
+/* This file is for Vibrante 3.0 Android */
+/ {
+	/* smmu and ivc drivers are called very early in the kernel init
+	 * call sequence (core_initcall). smmu driver as such is a consumer
+	 * of ivc and depends on it.
+	 * Keeping the ivc node at the very top in the device tree ensures
+	 * that probe for ivc is called before the smmu driver probe.
+	 * Without this virtualized smmu driver probe will fail.
+	 */
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+	};
+};
+
+#include "tegra124-p1859.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 p1859";
+	compatible = "nvidia,p1859", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "p1859";
+		};
+	};
+
+	tegra_hv_wdt {
+		compatible = "nvidia,tegra-hv-wdt";
+		status = "okay";
+		ivc = <&tegra_hv 9>;
+	};
+
+	iommu {
+		compatible = "nvidia,tegra124-smmu-hv";
+		#asids = <120>;
+		ivc_queue = <&tegra_hv 8>;
+		domains = <
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)
+			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS2)
+			&gpu_as TEGRA_SWGROUP_CELLS(GPUB)
+			&dc_as TEGRA_SWGROUP_CELLS2(DC, DC12)
+			&dc_as TEGRA_SWGROUP_CELLS(DCB)
+			&common_as TEGRA_SWGROUP_CELLS(AFI)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC1A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC2A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC3A)
+			&common_as TEGRA_SWGROUP_CELLS(SDMMC4A)
+			&host1x_as TEGRA_SWGROUP_CELLS9(EPP, HC, HDA, VI, ISP, ISP2B, VIC, MSENC, TSEC)
+			&nvavp_as TEGRA_SWGROUP_CELLS3(AVPC, A9AVP, VDE)
+			&common_as 0xFFFFFFFF 0xFFFFFFFF>;
+
+		address-space-prop {
+			gpu_as: gpu {
+				iova-start = <0x0 0x80100000>;
+				iova-size = <0x0 0x7BEFFFFF>;
+				alignment = <0x20000>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+
+			host1x_as: host1x {
+				iova-start = <0x0 0x80000000>;
+				iova-size = <0x0 0x77EFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+
+			nvavp_as: nvavp {
+				iova-start = <0x0 0x80000000>;
+				iova-size = <0x0 0x67FFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+		};
+	};
+
+	chosen {
+		nvidia,tegra_dvfs_cpu_enable = <0>;
+		nvidia,tegra_dvfs_gpu_enable = <0>;
+	};
+
+	soctherm@0x700E2000 {
+		status = "disabled";
+	};
+
+	i2c@7000d000 {
+		status = "okay";
+
+		max16989@3a {
+			status = "disabled";
+		};
+
+		max16989@38 {
+			status = "disabled";
+		};
+	};
+
+	dfll@70110000 {
+		status = "disabled";
+	};
+
+	gpio: gpio@6000d000 {
+		gpio_default: default {
+		gpio-output-high = <TEGRA_GPIO(R, 0)
+				TEGRA_GPIO(R, 2)>;
+		};
+	};
+
+	host1x {
+		virtual-dev = <1>;
+
+		iommus = <&smmu TEGRA_SWGROUP_EPP>,
+			<&smmu TEGRA_SWGROUP_HC>,
+			<&smmu TEGRA_SWGROUP_HDA>;
+
+		ivc-queue0 = <&tegra_hv 3>;
+		ivc-queue1 = <&tegra_hv 4>;
+		ivc-queue2 = <&tegra_hv 5>;
+
+		vic {
+			compatible = "nvidia,tegra124-vhost-vic";
+		};
+	};
+
+	gk20a {
+		status = "disabled";
+	};
+
+	gk20a-vgpu {
+		compatible = "nvidia,tegra124-gk20a-vgpu";
+		nvidia,host1x = <&host1x>;
+		reg = <0x0 0x58000000 0x0 0x01000000>;
+		iommus = <&smmu TEGRA_SWGROUP_GPU &smmu TEGRA_SWGROUP_GPUB>;
+
+		ivc-queue3 = <&tegra_hv 6>;
+		ivc-queue4 = <&tegra_hv 7>;
+	};
+
+	tegra-carveouts {
+		iommus = <&smmu TEGRA_SWGROUP_HC>;
+	};
+};
