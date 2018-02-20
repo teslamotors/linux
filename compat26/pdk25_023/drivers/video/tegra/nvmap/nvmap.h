@@ -112,6 +112,7 @@ struct nvmap_client {
 	size_t				iovm_limit;
 	struct mutex			ref_lock;
 	bool				super;
+	bool				privileged;
 	atomic_t			count;
 	struct task_struct		*task;
 	struct list_head		list;

@@ -618,6 +618,7 @@ struct nvmap_client *nvmap_create_client(struct nvmap_device *dev,
 
 	client->name = name;
 	client->super = true;
+	client->privileged = false;
 	client->dev = dev;
 	/* TODO: allocate unique IOVMM client for each nvmap client */
 	client->share = &dev->iovmm_master;
@@ -758,6 +759,12 @@ static int nvmap_open(struct inode *inode, struct file *filp)
 
 	priv->super = (filp->f_op == &nvmap_super_fops);
 
+	/* root and node owner are privileged */
+	if (uid_eq(current_real_cred()->uid, GLOBAL_ROOT_UID) ||
+	   (uid_eq(current_real_cred()->uid, inode->i_uid))) {
+		priv->privileged = true;
+	}
+
 	filp->private_data = priv;
 	return 0;
 }
@@ -797,6 +804,8 @@ static long nvmap_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int err = 0;
 	void __user *uarg = (void __user *)arg;
+	struct nvmap_client *client =
+		(struct nvmap_client *)filp->private_data;
 
 	if (_IOC_TYPE(cmd) != NVMAP_IOC_MAGIC)
 		return -ENOTTY;
@@ -812,9 +821,15 @@ static long nvmap_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (err)
 		return -EFAULT;
 
+	if (!client->privileged) {
+		nvmap_err(client,
+			"nvmap_ioctl not supported in unprivileged process");
+		return -EACCES;
+	}
+
 	switch (cmd) {
 	case NVMAP_IOC_CLAIM:
-		nvmap_warn(filp->private_data, "preserved handles not"
+		nvmap_warn(client, "preserved handles not"
 			   "supported\n");
 		err = -ENODEV;
 		break;
