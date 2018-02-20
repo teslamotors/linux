@@ -417,6 +417,19 @@ config SND_SOC_INTEL_BXT_GPMRB_MACH
 	   Say Y if you have such a device
 	   If unsure select "N".
 
+config SND_SOC_INTEL_BXT_ULL_MACH
+	tristate "ASoC ULL reference driver with dummy codec"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_COMPRESS
+	select DW_DMAC
+	default n
+	help
+	   This adds support for ASoC ULL machine driver with a DSP loop and
+	   Dummy I2S audio codec. Serves as a basic example with no processing
+	   modules embedded in the loop.
+	   Say Y if you have such a device.
+	   If unsure select "N".
+
 config SND_SOC_INTEL_APLI_LHCRB_DUMMY_MACH
 	tristate "ASoC Audio driver for APLI LHCRB Dummy Codec"
 	depends on X86_INTEL_LPSS && I2C
