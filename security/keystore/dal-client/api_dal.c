@@ -207,7 +207,7 @@ static int handle_command_response(int res, int response_code, int *retry,
 				__func__, res);
 		return res;
 	} else if (res == 0 &&
-			(response_code >> 16) == EXCEPTION_KEY_REWRAPPED) {
+			response_code == EXCEPTION_KEY_REWRAPPED) {
 		*retry = 0;
 		ks_info(KBUILD_MODNAME ": %s command exception: %d\n",
 				__func__, response_code);
@@ -690,6 +690,7 @@ int dal_keystore_load_key(const uint8_t *client_ticket,
 	index += wrapped_key_size;
 
 cmd_retry:
+	output_len = wrapped_key_size;
 	res = send_and_receive(commandId, input, index,
 			&out_buf, &output_len, &response_code);
 
@@ -706,7 +707,7 @@ cmd_retry:
 		ks_err(KBUILD_MODNAME ": %s Error in send_and_receive: command id = %d %d\n",
 				__func__, commandId, res);
 
-		if (res == -EAGAIN && output_len) {
+		if (res == -EAGAIN && output_len && out_buf) {
 			/* The key was re-wrapped with current SEED
 			 * so client has to update it. */
 			memcpy(wrapped_key, out_buf, output_len);
