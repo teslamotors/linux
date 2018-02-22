@@ -71,8 +71,8 @@
 #include <linux/io.h>
 
 #include <linux/vhm/vhm_ioctl_defs.h>
-#include <linux/vhm/cwp_hv_defs.h>
-#include <linux/vhm/cwp_vhm_mm.h>
+#include <linux/vhm/acrn_hv_defs.h>
+#include <linux/vhm/acrn_vhm_mm.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 #include <linux/vhm/vhm_hypercall.h>
 

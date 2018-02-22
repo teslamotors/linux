@@ -52,7 +52,7 @@
  */
 
 /**
- * @file cwp_vhm_ioreq.h
+ * @file acrn_vhm_ioreq.h
  *
  * @brief Virtio and Hypervisor Module(VHM) ioreq APIs
  */

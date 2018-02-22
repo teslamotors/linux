@@ -49,7 +49,7 @@
  *
  */
 #include <linux/types.h>
-#include <linux/vhm/cwp_hv_defs.h>
+#include <linux/vhm/acrn_hv_defs.h>
 #include <linux/vhm/vhm_hypercall.h>
 
 inline long hcall_get_api_version(unsigned long api_version)

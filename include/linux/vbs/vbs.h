@@ -63,8 +63,8 @@
 #define _VBS_H_
 
 #include <linux/vbs/vbs_common_if.h>
-#include <linux/vhm/cwp_common.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
+#include <linux/vhm/acrn_common.h>
+#include <linux/vhm/acrn_vhm_ioreq.h>
 
 /**
  * enum IORangeType - type of registers to be handled in VBS-K

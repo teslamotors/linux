@@ -56,10 +56,10 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 #include <asm/processor.h>
-#include <linux/vhm/cwp_hv_defs.h>
+#include <linux/vhm/acrn_hv_defs.h>
 #include <linux/vhm/vhm_ioctl_defs.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
-#include <linux/vhm/cwp_vhm_mm.h>
+#include <linux/vhm/acrn_vhm_ioreq.h>
+#include <linux/vhm/acrn_vhm_mm.h>
 #include <linux/vhm/vhm_hypercall.h>
 
 LIST_HEAD(vhm_vm_list);

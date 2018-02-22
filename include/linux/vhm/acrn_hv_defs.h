@@ -55,7 +55,7 @@
 /*
  * Common structures for CWP/VHM/DM
  */
-#include "cwp_common.h"
+#include "acrn_common.h"
 
 /*
  * Common structures for HV/VHM

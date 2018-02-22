@@ -53,7 +53,7 @@
 #define	_VHM_IOCTL_DEFS_H_
 
 /* Commmon structures for CWP/VHM/DM */
-#include "cwp_common.h"
+#include "acrn_common.h"
 
 /*
  * Commmon IOCTL ID defination for VHM/DM

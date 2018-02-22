@@ -63,7 +63,7 @@
 #include <linux/module.h>
 #include <linux/vbs/vq.h>
 #include <linux/vbs/vbs.h>
-#include <linux/vhm/cwp_vhm_mm.h>
+#include <linux/vhm/acrn_vhm_mm.h>
 
 /* helper function for remote memory map */
 void * paddr_guest2host(struct ctx *ctx, uintptr_t gaddr, size_t len)

@@ -52,7 +52,7 @@
  */
 
 /**
- * @file cwp_vhm_mm.h
+ * @file acrn_vhm_mm.h
  *
  * @brief Virtio and Hypervisor Module memory manager APIs
  */

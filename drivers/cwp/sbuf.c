@@ -57,7 +57,7 @@
 
 #include <linux/gfp.h>
 #include <asm/pgtable.h>
-#include <linux/vhm/cwp_hv_defs.h>
+#include <linux/vhm/acrn_hv_defs.h>
 #include <linux/vhm/vhm_hypercall.h>
 #include "sbuf.h"
 

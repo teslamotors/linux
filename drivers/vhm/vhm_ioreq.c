@@ -60,8 +60,8 @@
 #include <linux/mm.h>
 #include <linux/poll.h>
 #include <linux/delay.h>
-#include <linux/vhm/cwp_common.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
+#include <linux/vhm/acrn_common.h>
+#include <linux/vhm/acrn_vhm_ioreq.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 #include <linux/vhm/vhm_hypercall.h>
 

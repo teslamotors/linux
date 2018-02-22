@@ -34,10 +34,10 @@
 #include <linux/wait.h>
 #include <linux/sched.h>
 
-#include <linux/vhm/cwp_hv_defs.h>
-#include <linux/vhm/cwp_common.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
-#include <linux/vhm/cwp_vhm_mm.h>
+#include <linux/vhm/acrn_hv_defs.h>
+#include <linux/vhm/acrn_common.h>
+#include <linux/vhm/acrn_vhm_ioreq.h>
+#include <linux/vhm/acrn_vhm_mm.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 
 #include <i915_drv.h>
