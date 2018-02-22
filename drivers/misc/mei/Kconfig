@@ -44,4 +44,5 @@ config INTEL_MEI_TXE
 	  Supported SoCs:
 	  Intel Bay Trail
 
+source "drivers/misc/mei/dal/Kconfig"
 source "drivers/misc/mei/spd/Kconfig"
