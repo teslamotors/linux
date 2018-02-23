@@ -2229,20 +2229,20 @@ static int sdw_get_stream_tag(char *key, int *stream_tag)
 key_check_not_required:
 	for (i = 0; i < SDW_NUM_STREAM_TAGS; i++) {
 		if (!stream_tags[i].ref_count) {
-			stream_tags[i].ref_count++;
 			*stream_tag = stream_tags[i].stream_tag;
 			mutex_init(&stream_tags[i].stream_lock);
 			sdw_rt = kzalloc(sizeof(struct sdw_runtime),
 					GFP_KERNEL);
+			if (!sdw_rt) {
+				ret = -ENOMEM;
+				mutex_unlock(&sdw_core.core_lock);
+				goto out;
+			}
+			stream_tags[i].ref_count++;
 			INIT_LIST_HEAD(&sdw_rt->slv_rt_list);
 			INIT_LIST_HEAD(&sdw_rt->mstr_rt_list);
 			sdw_rt->stream_state = SDW_STATE_INIT_STREAM_TAG;
 			stream_tags[i].sdw_rt = sdw_rt;
-			if (!stream_tags[i].sdw_rt) {
-				stream_tags[i].ref_count--;
-				ret = -ENOMEM;
-				goto out;
-			}
 			if (key)
 				strlcpy(stream_tags[i].key, key,
 					SDW_MAX_STREAM_TAG_KEY_SIZE);
