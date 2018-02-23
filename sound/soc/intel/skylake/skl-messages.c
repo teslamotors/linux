@@ -374,7 +374,7 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 {
 	struct bra_conf *bra_data = &ctx->bra_pipe_data[mstr_num];
 	struct skl_pipe *host_cpr_pipe = NULL;
-	struct skl_pipe_params host_cpr_params, link_cpr_params;
+	struct skl_pipe_params host_cpr_params;
 	struct skl_module_cfg *host_cpr_cfg = NULL, *link_cpr_cfg = NULL;
 	struct skl_module *host_cpr_mod = NULL, *link_cpr_mod = NULL;
 	int ret;
@@ -532,8 +532,6 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 
 	memcpy(link_cpr_cfg, host_cpr_cfg,
 			sizeof(struct skl_module_cfg));
-	memcpy(&link_cpr_params, &host_cpr_params,
-			sizeof(struct skl_pipe_params));
 
 	link_cpr_cfg->id.instance_id = 2;
 	link_cpr_cfg->id.pvt_id = skl_get_pvt_id(ctx,
