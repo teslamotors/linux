@@ -646,7 +646,7 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 {
 	struct bra_conf *bra_data = &ctx->bra_pipe_data[mstr_num];
 	struct skl_pipe *link_cpr_pipe = NULL;
-	struct skl_pipe_params link_cpr_params, host_cpr_params;
+	struct skl_pipe_params link_cpr_params;
 	struct skl_module *host_cpr_mod = NULL, *link_cpr_mod = NULL;
 	struct skl_module_cfg *link_cpr_cfg = NULL, *host_cpr_cfg = NULL;
 	int ret;
@@ -827,8 +827,6 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 
 	memcpy(host_cpr_cfg, link_cpr_cfg,
 			sizeof(struct skl_module_cfg));
-	memcpy(&host_cpr_params, &link_cpr_params,
-			sizeof(struct skl_pipe_params));
 
 	host_cpr_cfg->id.instance_id = 4;
 	host_cpr_cfg->id.pvt_id = skl_get_pvt_id(ctx,
@@ -840,7 +838,6 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 	host_cpr_cfg->dev_type = SKL_DEVICE_HDAHOST;
 	host_cpr_cfg->hw_conn_type = SKL_CONN_SINK;
 	link_cpr_params.host_dma_id = (bra_data->cp_stream_tag - 1);
-	host_cpr_params.host_dma_id = (bra_data->cp_stream_tag - 1);
 	host_cpr_cfg->formats_config[SKL_PARAM_INIT].caps_size = 0;
 	host_cpr_cfg->m_in_pin = kcalloc(host_cpr_cfg->module->max_input_pins,
 					sizeof(*host_cpr_cfg->m_in_pin),
