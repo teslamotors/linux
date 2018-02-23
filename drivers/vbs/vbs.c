@@ -1,6 +1,6 @@
 /*
- * Clearwater Pass (CWP) Project
- * Virtio Backend Service (VBS) for CWP hypervisor
+ * ACRN Project
+ * Virtio Backend Service (VBS) for ACRN hypervisor
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -54,7 +54,7 @@
  * Hao Li <hao.l.li@intel.com>
  *  Created Virtio Backend Service (VBS) framework:
  *  - VBS-K is a kernel-level virtio framework that can be used for
- *    virtio backend driver development for CWP hypervisor.
+ *    virtio backend driver development for ACRN hypervisor.
  *  - VBS-K should be working with VBS-U (Virtio Backend Service in
  *    User) together, in order to connect with virtio frontend driver.
  *  - VBS-K mainly handles data plane part of a virtio backend driver,
@@ -90,7 +90,7 @@ long virtio_dev_register(struct virtio_dev_info *dev)
 						dev->dev_notify,
 						dev->name);
 	if (dev->_ctx.vhm_client_id < 0) {
-		pr_err("failed to create client of cwp ioreq!\n");
+		pr_err("failed to create client of ioreq!\n");
 		goto err;
 	}
 
@@ -99,7 +99,7 @@ long virtio_dev_register(struct virtio_dev_info *dev)
 				    dev->io_range_start,
 				    dev->io_range_start + dev->io_range_len - 1);
 	if (ret < 0) {
-		pr_err("failed to add iorange to cwp ioreq!\n");
+		pr_err("failed to add iorange to ioreq!\n");
 		goto err;
 	}
 
@@ -113,7 +113,7 @@ long virtio_dev_register(struct virtio_dev_info *dev)
 
 	dev->_ctx.req_buf = cwp_ioreq_get_reqbuf(dev->_ctx.vhm_client_id);
 	if (dev->_ctx.req_buf == NULL) {
-		pr_err("failed in cwp_ioreq_get_reqbuf!\n");
+		pr_err("failed in ioreq_get_reqbuf!\n");
 		goto range_err;
 	}
 
@@ -318,4 +318,4 @@ module_exit(vbs_exit);
 MODULE_VERSION("0.1");
 MODULE_AUTHOR("Intel Corporation");
 MODULE_LICENSE("GPL and additional rights");
-MODULE_DESCRIPTION("Virtio Backend Service framework for CWP hypervisor");
+MODULE_DESCRIPTION("Virtio Backend Service framework for ACRN hypervisor");

@@ -1,6 +1,6 @@
 /*
- * Clearwater Pass (CWP) Project
- * Virtio Backend Service (VBS) for CWP hypervisor
+ * ACRN Project
+ * Virtio Backend Service (VBS) for ACRN hypervisor
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -52,9 +52,9 @@
  *
  * Chris Torek <torek @ torek net>
  * Hao Li <hao.l.li@intel.com>
- *  Created Virtqueue APIs for CWP VBS framework:
+ *  Created Virtqueue APIs for ACRN VBS framework:
  *  - VBS-K is a kernel-level virtio framework that can be used for
- *    virtio backend driver development for CWP hypervisor.
+ *    virtio backend driver development for ACRN hypervisor.
  *  - Virtqueue APIs abstract away the details of the internal data
  *    structures of virtqueue, so that callers could easily access
  *    the data from guest through virtqueues.

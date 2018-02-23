@@ -1,6 +1,6 @@
 /*
- * Clearwater Pass (CWP) Project
- * Virtio Backend Service (VBS) for CWP hypervisor
+ * ACRN Project
+ * Virtio Backend Service (VBS) for ACRN hypervisor
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -491,4 +491,4 @@ module_exit(vbs_rng_exit);
 MODULE_VERSION("0.1");
 MODULE_AUTHOR("Intel Corporation");
 MODULE_LICENSE("GPL and additional rights");
-MODULE_DESCRIPTION("Virtio Backend Service reference driver on CWP hypervisor");
+MODULE_DESCRIPTION("Virtio Backend Service reference driver on ACRN hypervisor");

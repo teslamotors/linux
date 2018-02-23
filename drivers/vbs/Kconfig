@@ -1,29 +1,29 @@
 #
-# This Kconfig describes VBS for CWP hypervisor
+# This Kconfig describes VBS for ACRN hypervisor
 #
 config VBS
-	tristate "Enable VBS framework for CWP hypervisor"
+	tristate "Enable VBS framework for ACRN hypervisor"
 	depends on CWP
 	default n
 	---help---
 	  This option is selected by any driver which needs to use
-	  the Virtio Backend Service (VBS) framework on Clearwater
-	  Pass hypervisor.
+	  the Virtio Backend Service (VBS) framework on ACRN
+	  hypervisor.
 
 config VBS_DEBUG
-	bool "CWP VBS debugging"
+	bool "ACRN VBS debugging"
 	depends on VBS != n
 	default n
 	---help---
 	  This is an option for use by developers; most people should
-	  say N here.  This enables CWP VBS debugging.
+	  say N here.  This enables ACRN VBS debugging.
 
 config VBS_RNG
-	tristate "CWP VBS reference driver: virtio RNG"
+	tristate "ACRN VBS reference driver: virtio RNG"
 	depends on VBS != n
 	default n
 	---help---
-	  Say M or * here to enable a VBS-K reference driver for CWP
+	  Say M or * here to enable a VBS-K reference driver for ACRN 
 	  hypervisor, virtio RNG driver, to work with virtio-rng
 	  frontend driver in guest.
 	  The reference driver shows an example on how to use VBS-K
