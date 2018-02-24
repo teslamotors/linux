@@ -1,6 +1,6 @@
 config CWP_VHM
 	bool "Intel CWP Hypervisor Virtio and Hypervisor service Module (VHM)"
-	depends on CWP
+	depends on ACRN
 	depends on DMA_CMA
 	depends on PCI_MSI
 	depends on !INTEL_IOMMU

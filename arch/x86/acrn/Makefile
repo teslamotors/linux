@@ -1,2 +1,2 @@
 # SPDX-License-Identifier: GPL-2.0
-obj-$(CONFIG_CWP)	+= cwp.o
+obj-$(CONFIG_ACRN_HV)	+= acrn_hv.o
