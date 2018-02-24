@@ -2648,7 +2648,7 @@ out:
 }
 
 #define GEN8_PDPES    4
-static int gvt_emit_pdps(struct intel_vgpu_workload *workload)
+int gvt_emit_pdps(struct intel_vgpu_workload *workload)
 {
 	const int num_cmds = GEN8_PDPES * 2;
 	struct drm_i915_gem_request *req = workload->req;
@@ -2682,15 +2682,6 @@ static int shadow_workload_ring_buffer(struct intel_vgpu_workload *workload)
 	int ring_id = workload->ring_id;
 	int ret;
 
-	/* we consider this as an workaround to avoid the situation that
-	 * PDP's not updated, and right now we only limit it to BXT platform
-	 * since it's not reported on the other platforms
-	 */
-	if (IS_BROXTON(vgpu->gvt->dev_priv)) {
-		ret = gvt_emit_pdps(workload);
-		if (ret)
-			return ret;
-	}
 	guest_rb_size = _RING_CTL_BUF_SIZE(workload->rb_ctl);
 
 	/* calculate workload ring buffer size */

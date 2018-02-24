@@ -295,6 +295,20 @@ int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload)
 	gvt_dbg_sched("ring id %d get i915 gem request %p\n", ring_id, rq);
 
 	workload->req = i915_gem_request_get(rq);
+
+	/* we consider this as an workaround to avoid the situation that
+	 * PDP's not updated, and right now we only limit it to BXT platform
+	 * since it's not reported on the other platforms
+	 */
+	if (IS_BROXTON(vgpu->gvt->dev_priv)) {
+		ret = gvt_emit_pdps(workload);
+		if (ret) {
+			i915_gem_request_put(rq);
+			workload->req = NULL;
+			goto err_unpin;
+		}
+	}
+
 	ret = copy_workload_to_ring_buffer(workload);
 	if (ret)
 		goto err_unpin;
