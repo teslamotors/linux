@@ -284,7 +284,7 @@ static long vhm_dev_ioctl(struct file *filep,
 	case IC_CREATE_IOREQ_CLIENT: {
 		int client_id;
 
-		client_id = acrn_ioreq_create_fallback_client(vm->vmid, "cwpdm");
+		client_id = acrn_ioreq_create_fallback_client(vm->vmid, "acrndm");
 		if (client_id < 0)
 			return -EFAULT;
 		return client_id;

@@ -128,7 +128,7 @@ struct ioreq_client {
 static struct ioreq_client *clients[MAX_CLIENT];
 static DECLARE_BITMAP(client_bitmap, MAX_CLIENT);
 
-static void cwp_ioreq_notify_client(struct ioreq_client *client);
+static void acrn_ioreq_notify_client(struct ioreq_client *client);
 
 static inline bool is_range_type(uint32_t type)
 {
@@ -267,7 +267,7 @@ static void acrn_ioreq_destroy_client_pervm(struct ioreq_client *client,
 	while (!waitqueue_active(&client->wq) && !client->kthread_exit)
 		msleep(10);
 	client->destroying = true;
-	cwp_ioreq_notify_client(client);
+	acrn_ioreq_notify_client(client);
 
 	spin_lock_irqsave(&client->range_lock, flags);
 	list_for_each_safe(pos, tmp, &client->range_list) {
@@ -588,7 +588,7 @@ void acrn_ioreq_unintercept_bdf(int client_id)
 	client->pci_func = -1;
 }
 
-static void cwp_ioreq_notify_client(struct ioreq_client *client)
+static void acrn_ioreq_notify_client(struct ioreq_client *client)
 {
 	/* if client thread is in waitqueue, wake up it */
 	if (waitqueue_active(&client->wq))
@@ -718,7 +718,7 @@ static bool bdf_match(struct ioreq_client *client)
 		client->pci_func == cached_func);
 }
 
-static struct ioreq_client *cwp_ioreq_find_client_by_request(struct vhm_vm *vm,
+static struct ioreq_client *acrn_ioreq_find_client_by_request(struct vhm_vm *vm,
 	struct vhm_request *req)
 {
 	struct list_head *pos, *range_pos;
@@ -783,7 +783,7 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 		if (req->valid && (req->processed == REQ_STATE_PENDING)) {
 			if (handle_cf8cfc(vm, req, i))
 				continue;
-			client = cwp_ioreq_find_client_by_request(vm, req);
+			client = acrn_ioreq_find_client_by_request(vm, req);
 			if (client == NULL) {
 				pr_err("vhm-ioreq: failed to "
 						"find ioreq client -> "
@@ -801,7 +801,7 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 	list_for_each(pos, &vm->ioreq_client_list) {
 		client = container_of(pos, struct ioreq_client, list);
 		if (has_pending_request(client))
-			cwp_ioreq_notify_client(client);
+			acrn_ioreq_notify_client(client);
 	}
 	spin_unlock(&vm->ioreq_client_lock);
 
