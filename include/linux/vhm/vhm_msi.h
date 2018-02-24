@@ -56,6 +56,6 @@
 
 struct msi_desc;
 struct msi_msg;
-void cwp_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg);
+void acrn_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg);
 
 #endif

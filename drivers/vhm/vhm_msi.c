@@ -93,7 +93,7 @@ static struct msi_msg cwp_notify_msix_remap(struct msi_desc *entry,
 	return remapped_msg;
 }
 
-void cwp_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg)
+void acrn_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg)
 {
 	struct pci_dev *dev = msi_desc_to_pci_dev(entry);
 	struct msi_msg fmsg;
