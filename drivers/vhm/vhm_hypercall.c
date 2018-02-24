@@ -54,96 +54,96 @@
 
 inline long hcall_get_api_version(unsigned long api_version)
 {
-	return cwp_hypercall1(HC_GET_API_VERSION, api_version);
+	return acrn_hypercall1(HC_GET_API_VERSION, api_version);
 }
 
 inline long hcall_create_vm(unsigned long vminfo)
 {
-	return cwp_hypercall1(HC_CREATE_VM, vminfo);
+	return acrn_hypercall1(HC_CREATE_VM, vminfo);
 }
 
 inline long hcall_start_vm(unsigned long vmid)
 {
-	return  cwp_hypercall1(HC_START_VM, vmid);
+	return  acrn_hypercall1(HC_START_VM, vmid);
 }
 
 inline long hcall_pause_vm(unsigned long vmid)
 {
-	return cwp_hypercall1(HC_PAUSE_VM, vmid);
+	return acrn_hypercall1(HC_PAUSE_VM, vmid);
 }
 
 inline long hcall_destroy_vm(unsigned long vmid)
 {
-	return  cwp_hypercall1(HC_DESTROY_VM, vmid);
+	return  acrn_hypercall1(HC_DESTROY_VM, vmid);
 }
 
 inline long hcall_setup_sbuf(unsigned long sbuf_head)
 {
-	return cwp_hypercall1(HC_SETUP_SBUF, sbuf_head);
+	return acrn_hypercall1(HC_SETUP_SBUF, sbuf_head);
 }
 
 inline long hcall_set_memmap(unsigned long vmid, unsigned long memmap)
 {
-	return cwp_hypercall2(HC_VM_SET_MEMMAP, vmid, memmap);
+	return acrn_hypercall2(HC_VM_SET_MEMMAP, vmid, memmap);
 }
 
 inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer)
 {
-	return cwp_hypercall2(HC_SET_IOREQ_BUFFER, vmid, buffer);
+	return acrn_hypercall2(HC_SET_IOREQ_BUFFER, vmid, buffer);
 }
 
 inline long hcall_notify_req_finish(unsigned long vmid, unsigned long vcpu)
 {
-	return cwp_hypercall2(HC_NOTIFY_REQUEST_FINISH, vmid, vcpu);
+	return acrn_hypercall2(HC_NOTIFY_REQUEST_FINISH, vmid, vcpu);
 }
 
 inline long hcall_assert_irqline(unsigned long vmid, unsigned long irq)
 {
-	return cwp_hypercall2(HC_ASSERT_IRQLINE, vmid, irq);
+	return acrn_hypercall2(HC_ASSERT_IRQLINE, vmid, irq);
 }
 
 inline long hcall_deassert_irqline(unsigned long vmid, unsigned long irq)
 {
-	return cwp_hypercall2(HC_DEASSERT_IRQLINE, vmid, irq);
+	return acrn_hypercall2(HC_DEASSERT_IRQLINE, vmid, irq);
 }
 
 inline long hcall_pulse_irqline(unsigned long vmid, unsigned long irq)
 {
-	return cwp_hypercall2(HC_PULSE_IRQLINE, vmid, irq);
+	return acrn_hypercall2(HC_PULSE_IRQLINE, vmid, irq);
 }
 
 inline long hcall_inject_msi(unsigned long vmid, unsigned long msi)
 {
-	return cwp_hypercall2(HC_INJECT_MSI, vmid, msi);
+	return acrn_hypercall2(HC_INJECT_MSI, vmid, msi);
 }
 
 inline long hcall_assign_ptdev(unsigned long vmid, unsigned long bdf)
 {
-	return cwp_hypercall2(HC_ASSIGN_PTDEV, vmid, bdf);
+	return acrn_hypercall2(HC_ASSIGN_PTDEV, vmid, bdf);
 }
 
 inline long hcall_deassign_ptdev(unsigned long vmid, unsigned long bdf)
 {
-	return cwp_hypercall2(HC_DEASSIGN_PTDEV, vmid, bdf);
+	return acrn_hypercall2(HC_DEASSIGN_PTDEV, vmid, bdf);
 }
 
 inline long hcall_set_ptdev_intr_info(unsigned long vmid, unsigned long pt_irq)
 {
-	return cwp_hypercall2(HC_SET_PTDEV_INTR_INFO, vmid, pt_irq);
+	return acrn_hypercall2(HC_SET_PTDEV_INTR_INFO, vmid, pt_irq);
 }
 
 inline long hcall_reset_ptdev_intr_info(unsigned long vmid,
 		unsigned long pt_irq)
 {
-	return cwp_hypercall2(HC_RESET_PTDEV_INTR_INFO, vmid, pt_irq);
+	return acrn_hypercall2(HC_RESET_PTDEV_INTR_INFO, vmid, pt_irq);
 }
 
 inline long hcall_remap_pci_msix(unsigned long vmid, unsigned long msi)
 {
-	return  cwp_hypercall2(HC_VM_PCI_MSIX_REMAP, vmid, msi);
+	return  acrn_hypercall2(HC_VM_PCI_MSIX_REMAP, vmid, msi);
 }
 
 inline long hcall_vm_gpa2hpa(unsigned long vmid, unsigned long addr)
 {
-	return  cwp_hypercall2(HC_VM_GPA2HPA, vmid, addr);
+	return  acrn_hypercall2(HC_VM_GPA2HPA, vmid, addr);
 }

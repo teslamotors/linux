@@ -242,7 +242,7 @@ static long vhm_dev_ioctl(struct file *filep,
 				sizeof(struct acrn_create_vcpu)))
 			return -EFAULT;
 
-		ret = cwp_hypercall2(HC_CREATE_VCPU, vm->vmid,
+		ret = acrn_hypercall2(HC_CREATE_VCPU, vm->vmid,
 				virt_to_phys(&cv));
 		if (ret < 0) {
 			pr_err("vhm: failed to create vcpu %d!\n", cv.vcpu_id);

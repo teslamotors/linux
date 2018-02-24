@@ -52,7 +52,7 @@
 #ifndef VHM_HYPERCALL_H
 #define VHM_HYPERCALL_H
 
-static inline long cwp_hypercall0(unsigned long hcall_id)
+static inline long acrn_hypercall0(unsigned long hcall_id)
 {
 
 	/* x86-64 System V ABI register usage */
@@ -68,7 +68,7 @@ static inline long cwp_hypercall0(unsigned long hcall_id)
 	return result;
 }
 
-static inline long cwp_hypercall1(unsigned long hcall_id, unsigned long param1)
+static inline long acrn_hypercall1(unsigned long hcall_id, unsigned long param1)
 {
 
 	/* x86-64 System V ABI register usage */
@@ -84,7 +84,7 @@ static inline long cwp_hypercall1(unsigned long hcall_id, unsigned long param1)
 	return result;
 }
 
-static inline long cwp_hypercall2(unsigned long hcall_id, unsigned long param1,
+static inline long acrn_hypercall2(unsigned long hcall_id, unsigned long param1,
 		unsigned long param2)
 {
 
@@ -101,7 +101,7 @@ static inline long cwp_hypercall2(unsigned long hcall_id, unsigned long param1,
 	return result;
 }
 
-static inline long cwp_hypercall3(unsigned long hcall_id, unsigned long param1,
+static inline long acrn_hypercall3(unsigned long hcall_id, unsigned long param1,
 		unsigned long param2, unsigned long param3)
 {
 
@@ -118,7 +118,7 @@ static inline long cwp_hypercall3(unsigned long hcall_id, unsigned long param1,
 	return result;
 }
 
-static inline long cwp_hypercall4(unsigned long hcall_id, unsigned long param1,
+static inline long acrn_hypercall4(unsigned long hcall_id, unsigned long param1,
 		unsigned long param2, unsigned long param3,
 		unsigned long param4)
 {
