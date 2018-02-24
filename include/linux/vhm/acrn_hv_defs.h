@@ -106,9 +106,9 @@
 #define HC_ID_DBG_BASE              0x60UL
 #define HC_SETUP_SBUF               _HC_ID(HC_ID, HC_ID_DBG_BASE + 0x00)
 
-#define CWP_DOM0_VMID (0UL)
-#define CWP_INVALID_VMID (-1)
-#define CWP_INVALID_HPA (-1UL)
+#define ACRN_DOM0_VMID (0UL)
+#define ACRN_INVALID_VMID (-1)
+#define ACRN_INVALID_HPA (-1UL)
 
 /* Generic memory attributes */
 #define	MEM_ACCESS_READ                 0x00000001

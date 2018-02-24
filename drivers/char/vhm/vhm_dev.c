@@ -118,7 +118,7 @@ static int vhm_dev_open(struct inode *inodep, struct file *filep)
 
 	if (!vm)
 		return -ENOMEM;
-	vm->vmid = CWP_INVALID_VMID;
+	vm->vmid = ACRN_INVALID_VMID;
 	vm->dev = vhm_device;
 
 	INIT_LIST_HEAD(&vm->memseg_list);
@@ -177,7 +177,7 @@ static long vhm_dev_ioctl(struct file *filep,
 		pr_err("vhm: invalid VM !\n");
 		return -EFAULT;
 	}
-	if ((vm->vmid == CWP_INVALID_VMID) && (ioctl_num != IC_CREATE_VM)) {
+	if ((vm->vmid == ACRN_INVALID_VMID) && (ioctl_num != IC_CREATE_VM)) {
 		pr_err("vhm: invalid VM ID !\n");
 		return -EFAULT;
 	}
@@ -192,7 +192,7 @@ static long vhm_dev_ioctl(struct file *filep,
 
 		ret = hcall_create_vm(virt_to_phys(&created_vm));
 		if ((ret < 0) ||
-			(created_vm.vmid == CWP_INVALID_VMID)) {
+			(created_vm.vmid == ACRN_INVALID_VMID)) {
 			pr_err("vhm: failed to create VM from Hypervisor !\n");
 			return -EFAULT;
 		}
@@ -231,7 +231,7 @@ static long vhm_dev_ioctl(struct file *filep,
 			pr_err("failed to destroy VM %ld\n", vm->vmid);
 			return -EFAULT;
 		}
-		vm->vmid = CWP_INVALID_VMID;
+		vm->vmid = ACRN_INVALID_VMID;
 		break;
 	}
 
