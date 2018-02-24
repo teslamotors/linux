@@ -86,7 +86,7 @@ long virtio_dev_register(struct virtio_dev_info *dev)
 	 */
 	dev->name[15] = '\0';
 	dev->_ctx.vhm_client_id =
-			cwp_ioreq_create_client(dev->_ctx.vmid,
+			acrn_ioreq_create_client(dev->_ctx.vmid,
 						dev->dev_notify,
 						dev->name);
 	if (dev->_ctx.vhm_client_id < 0) {
@@ -94,7 +94,7 @@ long virtio_dev_register(struct virtio_dev_info *dev)
 		goto err;
 	}
 
-	ret = cwp_ioreq_add_iorange(dev->_ctx.vhm_client_id,
+	ret = acrn_ioreq_add_iorange(dev->_ctx.vhm_client_id,
 				    dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 				    dev->io_range_start,
 				    dev->io_range_start + dev->io_range_len - 1);
@@ -111,36 +111,36 @@ long virtio_dev_register(struct virtio_dev_info *dev)
 	}
 	dev->_ctx.max_vcpu = info.max_vcpu;
 
-	dev->_ctx.req_buf = cwp_ioreq_get_reqbuf(dev->_ctx.vhm_client_id);
+	dev->_ctx.req_buf = acrn_ioreq_get_reqbuf(dev->_ctx.vhm_client_id);
 	if (dev->_ctx.req_buf == NULL) {
 		pr_err("failed in ioreq_get_reqbuf!\n");
 		goto range_err;
 	}
 
-	cwp_ioreq_attach_client(dev->_ctx.vhm_client_id, 0);
+	acrn_ioreq_attach_client(dev->_ctx.vhm_client_id, 0);
 
 	return 0;
 
 range_err:
-	cwp_ioreq_del_iorange(dev->_ctx.vhm_client_id,
+	acrn_ioreq_del_iorange(dev->_ctx.vhm_client_id,
 			      dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 			      dev->io_range_start,
 			      dev->io_range_start + dev->io_range_len);
 
 err:
-	cwp_ioreq_destroy_client(dev->_ctx.vhm_client_id);
+	acrn_ioreq_destroy_client(dev->_ctx.vhm_client_id);
 
 	return -EINVAL;
 }
 
 long virtio_dev_deregister(struct virtio_dev_info *dev)
 {
-	cwp_ioreq_del_iorange(dev->_ctx.vhm_client_id,
+	acrn_ioreq_del_iorange(dev->_ctx.vhm_client_id,
 			      dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 			      dev->io_range_start,
 			      dev->io_range_start + dev->io_range_len);
 
-	cwp_ioreq_destroy_client(dev->_ctx.vhm_client_id);
+	acrn_ioreq_destroy_client(dev->_ctx.vhm_client_id);
 
 	return 0;
 }
@@ -181,7 +181,7 @@ int virtio_vq_index_get(struct virtio_dev_info *dev, int req_cnt)
 					val = req->reqs.mmio_request.value;
 			}
 			req->processed = REQ_STATE_SUCCESS;
-			cwp_ioreq_complete_request(dev->_ctx.vhm_client_id, i);
+			acrn_ioreq_complete_request(dev->_ctx.vhm_client_id, i);
 		}
 	}
 

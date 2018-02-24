@@ -88,7 +88,7 @@ void put_vm(struct vhm_vm *vm)
 	if (vm->refcnt == 0) {
 		list_del(&vm->list);
 		free_guest_mem(vm);
-		cwp_ioreq_free(vm);
+		acrn_ioreq_free(vm);
 		kfree(vm);
 		pr_info("vhm: freed vm\n");
 	}

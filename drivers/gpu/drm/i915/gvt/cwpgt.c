@@ -103,7 +103,7 @@ void cwpgt_instance_destroy(struct intel_vgpu *vgpu)
 				info->vm_id, info->client);
 
 		if (info->client != 0)
-			cwp_ioreq_destroy_client(info->client);
+			acrn_ioreq_destroy_client(info->client);
 
 		if (info->vm)
 			put_vm(info->vm);
@@ -214,7 +214,7 @@ static int cwpgt_emulation_thread(void *priv)
 
 	set_freezable();
 	while (1) {
-		cwp_ioreq_attach_client(info->client, 1);
+		acrn_ioreq_attach_client(info->client, 1);
 
 		if (kthread_should_stop())
 			return 0;
@@ -246,7 +246,7 @@ static int cwpgt_emulation_thread(void *priv)
 
 				req->processed = REQ_STATE_SUCCESS;
 				/* complete request */
-				if (cwp_ioreq_complete_request(info->client,
+				if (acrn_ioreq_complete_request(info->client,
 						vcpu))
 					gvt_err("failed complete request\n");
 			}
@@ -298,7 +298,7 @@ struct intel_vgpu *cwpgt_instance_create(domid_t vm_id,
 	gvt_dbg_core("get vm req_buf from vm_id %d\n", vm_id);
 
 	/* create client: no handler -> handle request by itself */
-	info->client = cwp_ioreq_create_client(vm_id, NULL, "ioreq gvt-g");
+	info->client = acrn_ioreq_create_client(vm_id, NULL, "ioreq gvt-g");
 	if (info->client < 0) {
 		gvt_err("failed to create ioreq client for vm id %d\n", vm_id);
 		goto err;
@@ -314,14 +314,14 @@ struct intel_vgpu *cwpgt_instance_create(domid_t vm_id,
 	info->nr_vcpu = vm_info.max_vcpu;
 
 	/* get req buf */
-	info->req_buf = cwp_ioreq_get_reqbuf(info->client);
+	info->req_buf = acrn_ioreq_get_reqbuf(info->client);
 	if (info->req_buf == NULL) {
 		gvt_err("failed to get req_buf for client %d\n", info->client);
 		goto err;
 	}
 
 	/* trap config space access */
-	cwp_ioreq_intercept_bdf(info->client, 0, 2, 0);
+	acrn_ioreq_intercept_bdf(info->client, 0, 2, 0);
 
 	thread = kthread_run(cwpgt_emulation_thread, vgpu,
 			"cwpgt_emulation:%d", vm_id);
@@ -663,10 +663,10 @@ static int cwpgt_set_wp_page(unsigned long handle, u64 gfn)
 	gvt_dbg_core("set wp page for gfn 0x%llx\n", gfn);
 
 	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
-	ret = cwp_ioreq_add_iorange(info->client, REQ_WP, gfn << PAGE_SHIFT,
+	ret = acrn_ioreq_add_iorange(info->client, REQ_WP, gfn << PAGE_SHIFT,
 				((gfn + 1) << PAGE_SHIFT) - 1);
 	if (ret) {
-		gvt_err("failed cwp_ioreq_add_iorange for gfn 0x%llx\n", gfn);
+		gvt_err("failed acrn_ioreq_add_iorange for gfn 0x%llx\n", gfn);
 		return ret;
 	}
 	ret = update_memmap_attr(info->vm_id, gfn << PAGE_SHIFT,
@@ -694,10 +694,10 @@ static int cwpgt_unset_wp_page(unsigned long handle, u64 gfn)
 			gfn);
 		return ret;
 	}
-	ret = cwp_ioreq_del_iorange(info->client, REQ_WP, gfn << PAGE_SHIFT,
+	ret = acrn_ioreq_del_iorange(info->client, REQ_WP, gfn << PAGE_SHIFT,
 				((gfn + 1) << PAGE_SHIFT) - 1);
 	if (ret)
-		gvt_err("failed cwp_ioreq_del_iorange for gfn 0x%llx\n", gfn);
+		gvt_err("failed acrn_ioreq_del_iorange for gfn 0x%llx\n", gfn);
 	return ret;
 }
 
@@ -807,10 +807,10 @@ static int cwpgt_set_trap_area(unsigned long handle, u64 start,
 			start, end, map);
 
 	if (map)
-		ret = cwp_ioreq_add_iorange(info->client, REQ_MMIO,
+		ret = acrn_ioreq_add_iorange(info->client, REQ_MMIO,
 					start, end);
 	else
-		ret = cwp_ioreq_del_iorange(info->client, REQ_MMIO,
+		ret = acrn_ioreq_del_iorange(info->client, REQ_MMIO,
 					start, end);
 	if (ret)
 		gvt_err("failed set trap, start 0x%llx, end 0x%llx, map %d\n",
@@ -844,10 +844,10 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 		}
 
 		/* mmio access is trapped like memory write protection */
-		rc = cwp_ioreq_add_iorange(info->client, REQ_WP, pfn << PAGE_SHIFT,
+		rc = acrn_ioreq_add_iorange(info->client, REQ_WP, pfn << PAGE_SHIFT,
 					((pfn + mmio_size_fn) << PAGE_SHIFT) - 1);
 		if (rc) {
-			gvt_err("failed cwp_ioreq_add_iorange for pfn 0x%lx\n", pfn);
+			gvt_err("failed acrn_ioreq_add_iorange for pfn 0x%lx\n", pfn);
 			return rc;
 		}
 		rc = update_memmap_attr(info->vm_id, pfn << PAGE_SHIFT,
@@ -866,11 +866,11 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 					pfn, mfn, rc);
 			return rc;
 		}
-		rc = cwp_ioreq_add_iorange(info->client, REQ_MMIO,
+		rc = acrn_ioreq_add_iorange(info->client, REQ_MMIO,
 				(pfn << PAGE_SHIFT) + VGT_PVINFO_PAGE,
 				((pfn + 1) << PAGE_SHIFT) + VGT_PVINFO_PAGE - 1);
 		if (rc) {
-			gvt_err("failed cwp_ioreq_add_iorange for pfn 0x%lx\n",
+			gvt_err("failed acrn_ioreq_add_iorange for pfn 0x%lx\n",
 				(pfn << PAGE_SHIFT) + VGT_PVINFO_PAGE);
 			return rc;
 		}
@@ -892,16 +892,16 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 					pfn, mfn, rc);
 			return rc;
 		}
-		rc = cwp_ioreq_del_iorange(info->client, REQ_WP, pfn << PAGE_SHIFT,
+		rc = acrn_ioreq_del_iorange(info->client, REQ_WP, pfn << PAGE_SHIFT,
 					((pfn + mmio_size_fn) << PAGE_SHIFT) - 1);
 		if (rc) {
-			gvt_err("failed cwp_ioreq_add_iorange for pfn 0x%lx\n", pfn);
+			gvt_err("failed acrn_ioreq_add_iorange for pfn 0x%lx\n", pfn);
 			return rc;
 		}
-		rc = cwp_ioreq_add_iorange(info->client, REQ_MMIO, pfn << PAGE_SHIFT,
+		rc = acrn_ioreq_add_iorange(info->client, REQ_MMIO, pfn << PAGE_SHIFT,
 					((pfn + mmio_size_fn) << PAGE_SHIFT) - 1);
 		if (rc) {
-			gvt_err("failed cwp_ioreq_del_iorange for pfn 0x%lx\n", pfn);
+			gvt_err("failed acrn_ioreq_del_iorange for pfn 0x%lx\n", pfn);
 			return rc;
 		}
 

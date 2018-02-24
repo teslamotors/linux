@@ -66,7 +66,7 @@
 typedef	int (*ioreq_handler_t)(int client_id, int req);
 
 /**
- * cwp_ioreq_create_client - create ioreq client
+ * acrn_ioreq_create_client - create ioreq client
  *
  * @vmid: ID to identify guest
  * @handler: ioreq_handler of ioreq client
@@ -79,20 +79,20 @@ typedef	int (*ioreq_handler_t)(int client_id, int req);
  *
  * Return: client id on success, <0 on error
  */
-int cwp_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
+int acrn_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
 	char *name);
 
 /**
- * cwp_ioreq_destroy_client - destroy ioreq client
+ * acrn_ioreq_destroy_client - destroy ioreq client
  *
  * @client_id: client id to identify ioreq client
  *
  * Return:
  */
-void cwp_ioreq_destroy_client(int client_id);
+void acrn_ioreq_destroy_client(int client_id);
 
 /**
- * cwp_ioreq_add_iorange - add iorange monitored by ioreq client
+ * acrn_ioreq_add_iorange - add iorange monitored by ioreq client
  *
  * @client_id: client id to identify ioreq client
  * @type: iorange type
@@ -101,11 +101,11 @@ void cwp_ioreq_destroy_client(int client_id);
  *
  * Return: 0 on success, <0 on error
  */
-int cwp_ioreq_add_iorange(int client_id, uint32_t type,
+int acrn_ioreq_add_iorange(int client_id, uint32_t type,
 	long start, long end);
 
 /**
- * cwp_ioreq_del_iorange - del iorange monitored by ioreq client
+ * acrn_ioreq_del_iorange - del iorange monitored by ioreq client
  *
  * @client_id: client id to identify ioreq client
  * @type: iorange type
@@ -114,21 +114,21 @@ int cwp_ioreq_add_iorange(int client_id, uint32_t type,
  *
  * Return: 0 on success, <0 on error
  */
-int cwp_ioreq_del_iorange(int client_id, uint32_t type,
+int acrn_ioreq_del_iorange(int client_id, uint32_t type,
 	long start, long end);
 
 /**
- * cwp_ioreq_get_reqbuf - get request buffer
+ * acrn_ioreq_get_reqbuf - get request buffer
  * request buffer is shared by all clients in one guest
  *
  * @client_id: client id to identify ioreq client
  *
  * Return: pointer to request buffer, NULL on error
  */
-struct vhm_request *cwp_ioreq_get_reqbuf(int client_id);
+struct vhm_request *acrn_ioreq_get_reqbuf(int client_id);
 
 /**
- * cwp_ioreq_attach_client - start handle request for ioreq client
+ * acrn_ioreq_attach_client - start handle request for ioreq client
  * If request is handled out of client thread context, this function is
  * only called once to be ready to handle new request.
  *
@@ -141,29 +141,29 @@ struct vhm_request *cwp_ioreq_get_reqbuf(int client_id);
  *
  * Return: 0 on success, <0 on error, 1 if ioreq client is destroying
  */
-int cwp_ioreq_attach_client(int client_id, bool check_kthread_stop);
+int acrn_ioreq_attach_client(int client_id, bool check_kthread_stop);
 
 /**
- * cwp_ioreq_distribute_request - deliver request to corresponding client
+ * acrn_ioreq_distribute_request - deliver request to corresponding client
  *
  * @vm: pointer to guest
  *
  * Return: 0 always
  */
-int cwp_ioreq_distribute_request(struct vhm_vm *vm);
+int acrn_ioreq_distribute_request(struct vhm_vm *vm);
 
 /**
- * cwp_ioreq_complete_request - notify guest request handling is completed
+ * acrn_ioreq_complete_request - notify guest request handling is completed
  *
  * @client_id: client id to identify ioreq client
  * @vcpu: identify request submitter
  *
  * Return: 0 on success, <0 on error
  */
-int cwp_ioreq_complete_request(int client_id, uint64_t vcpu);
+int acrn_ioreq_complete_request(int client_id, uint64_t vcpu);
 
 /**
- * cwp_ioreq_intercept_bdf - set intercept bdf info of ioreq client
+ * acrn_ioreq_intercept_bdf - set intercept bdf info of ioreq client
  *
  * @client_id: client id to identify ioreq client
  * @bus: bus number
@@ -172,21 +172,21 @@ int cwp_ioreq_complete_request(int client_id, uint64_t vcpu);
  *
  * Return:
  */
-void cwp_ioreq_intercept_bdf(int client_id, int bus, int dev, int func);
+void acrn_ioreq_intercept_bdf(int client_id, int bus, int dev, int func);
 
 /**
- * cwp_ioreq_unintercept_bdf - clear intercept bdf info of ioreq client
+ * acrn_ioreq_unintercept_bdf - clear intercept bdf info of ioreq client
  *
  * @client_id: client id to identify ioreq client
  *
  * Return:
  */
-void cwp_ioreq_unintercept_bdf(int client_id);
+void acrn_ioreq_unintercept_bdf(int client_id);
 
 /* IOReq APIs */
-int cwp_ioreq_init(struct vhm_vm *vm, unsigned long vma);
-void cwp_ioreq_free(struct vhm_vm *vm);
-int cwp_ioreq_create_fallback_client(unsigned long vmid, char *name);
+int acrn_ioreq_init(struct vhm_vm *vm, unsigned long vma);
+void acrn_ioreq_free(struct vhm_vm *vm);
+int acrn_ioreq_create_fallback_client(unsigned long vmid, char *name);
 unsigned int vhm_dev_poll(struct file *filep, poll_table *wait);
 
 #endif

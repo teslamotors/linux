@@ -275,7 +275,7 @@ static long vhm_dev_ioctl(struct file *filep,
 
 	case IC_SET_IOREQ_BUFFER: {
 		/* init ioreq buffer */
-		ret = cwp_ioreq_init(vm, (unsigned long)ioctl_param);
+		ret = acrn_ioreq_init(vm, (unsigned long)ioctl_param);
 		if (ret < 0)
 			return ret;
 		break;
@@ -284,7 +284,7 @@ static long vhm_dev_ioctl(struct file *filep,
 	case IC_CREATE_IOREQ_CLIENT: {
 		int client_id;
 
-		client_id = cwp_ioreq_create_fallback_client(vm->vmid, "cwpdm");
+		client_id = acrn_ioreq_create_fallback_client(vm->vmid, "cwpdm");
 		if (client_id < 0)
 			return -EFAULT;
 		return client_id;
@@ -293,14 +293,14 @@ static long vhm_dev_ioctl(struct file *filep,
 	case IC_DESTROY_IOREQ_CLIENT: {
 		int client = ioctl_param;
 
-		cwp_ioreq_destroy_client(client);
+		acrn_ioreq_destroy_client(client);
 		break;
 	}
 
 	case IC_ATTACH_IOREQ_CLIENT: {
 		int client = ioctl_param;
 
-		return cwp_ioreq_attach_client(client, 0);
+		return acrn_ioreq_attach_client(client, 0);
 	}
 
 	case IC_NOTIFY_REQUEST_FINISH: {
@@ -310,7 +310,7 @@ static long vhm_dev_ioctl(struct file *filep,
 					sizeof(notify)))
 			return -EFAULT;
 
-		ret = cwp_ioreq_complete_request(notify.client_id, notify.vcpu);
+		ret = acrn_ioreq_complete_request(notify.client_id, notify.vcpu);
 		if (ret < 0)
 			return -EFAULT;
 		break;
@@ -543,7 +543,7 @@ static void io_req_tasklet(unsigned long data)
 		if (!vm || !vm->req_buf)
 			break;
 
-		cwp_ioreq_distribute_request(vm);
+		acrn_ioreq_distribute_request(vm);
 	}
 
 	if (atomic_read(&ioreq_retry) > 0) {
