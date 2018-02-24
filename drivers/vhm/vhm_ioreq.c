@@ -863,7 +863,7 @@ unsigned int vhm_dev_poll(struct file *filep, poll_table *wait)
 
 int cwp_ioreq_init(struct vhm_vm *vm, unsigned long vma)
 {
-	struct cwp_set_ioreq_buffer set_buffer;
+	struct acrn_set_ioreq_buffer set_buffer;
 	struct page *page;
 	int ret;
 

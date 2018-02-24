@@ -184,10 +184,10 @@ static long vhm_dev_ioctl(struct file *filep,
 
 	switch (ioctl_num) {
 	case IC_CREATE_VM: {
-		struct cwp_create_vm created_vm;
+		struct acrn_create_vm created_vm;
 
 		if (copy_from_user(&created_vm, (void *)ioctl_param,
-			sizeof(struct cwp_create_vm)))
+			sizeof(struct acrn_create_vm)))
 			return -EFAULT;
 
 		ret = hcall_create_vm(virt_to_phys(&created_vm));
@@ -198,7 +198,7 @@ static long vhm_dev_ioctl(struct file *filep,
 		}
 
 		if (copy_to_user((void *)ioctl_param, &created_vm,
-			sizeof(struct cwp_create_vm)))
+			sizeof(struct acrn_create_vm)))
 			return -EFAULT;
 
 		vm->vmid = created_vm.vmid;
@@ -236,10 +236,10 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_CREATE_VCPU: {
-		struct cwp_create_vcpu cv;
+		struct acrn_create_vcpu cv;
 
 		if (copy_from_user(&cv, (void *)ioctl_param,
-				sizeof(struct cwp_create_vcpu)))
+				sizeof(struct acrn_create_vcpu)))
 			return -EFAULT;
 
 		ret = cwp_hypercall2(HC_CREATE_VCPU, vm->vmid,
@@ -317,7 +317,7 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_ASSERT_IRQLINE: {
-		struct cwp_irqline irq;
+		struct acrn_irqline irq;
 
 		if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
 			return -EFAULT;
@@ -330,7 +330,7 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 	case IC_DEASSERT_IRQLINE: {
-		struct cwp_irqline irq;
+		struct acrn_irqline irq;
 
 		if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
 			return -EFAULT;
@@ -343,7 +343,7 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 	case IC_PULSE_IRQLINE: {
-		struct cwp_irqline irq;
+		struct acrn_irqline irq;
 
 		if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
 			return -EFAULT;
@@ -358,7 +358,7 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_INJECT_MSI: {
-		struct cwp_msi_entry msi;
+		struct acrn_msi_entry msi;
 
 		if (copy_from_user(&msi, (void *)ioctl_param, sizeof(msi)))
 			return -EFAULT;
@@ -473,7 +473,7 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_VM_PCI_MSIX_REMAP: {
-		struct cwp_vm_pci_msix_remap msix_remap;
+		struct acrn_vm_pci_msix_remap msix_remap;
 
 		if (copy_from_user(&msix_remap,
 			(void *)ioctl_param, sizeof(msix_remap)))

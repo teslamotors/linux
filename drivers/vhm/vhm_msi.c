@@ -61,7 +61,7 @@
 static struct msi_msg cwp_notify_msix_remap(struct msi_desc *entry,
 				struct msi_msg *msg)
 {
-	volatile struct cwp_vm_pci_msix_remap notify;
+	volatile struct acrn_vm_pci_msix_remap notify;
 	struct pci_dev *dev = msi_desc_to_pci_dev(entry);
 	struct msi_msg remapped_msg = *msg;
 	u16 msgctl;

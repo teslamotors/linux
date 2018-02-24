@@ -115,7 +115,7 @@ int vhm_get_vm_info(unsigned long vmid, struct vm_info *info)
 int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
 		unsigned long msi_data)
 {
-	struct cwp_msi_entry msi;
+	struct acrn_msi_entry msi;
 	int ret;
 
 	/* msi_addr: addr[19:12] with dest vcpu id */
