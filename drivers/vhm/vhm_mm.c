@@ -223,7 +223,7 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 		type = MAP_MEM;
 	} else {
 		guest_gpa = memmap->gpa;
-		host_gpa = cwp_hpa2gpa(memmap->hpa);
+		host_gpa = acrn_hpa2gpa(memmap->hpa);
 		mem_type = MEM_TYPE_UC;
 		mem_access_right = (memmap->prot & MEM_ACCESS_RIGHT_MASK);
 		type = MAP_MMIO;

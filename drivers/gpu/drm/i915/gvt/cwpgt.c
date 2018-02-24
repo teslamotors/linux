@@ -670,7 +670,7 @@ static int cwpgt_set_wp_page(unsigned long handle, u64 gfn)
 		return ret;
 	}
 	ret = update_memmap_attr(info->vm_id, gfn << PAGE_SHIFT,
-				cwp_hpa2gpa(hpa), 0x1000,
+				acrn_hpa2gpa(hpa), 0x1000,
 				MEM_TYPE_WB,
 				(MEM_ACCESS_READ | MEM_ACCESS_EXEC));
 	if (ret)
@@ -688,7 +688,7 @@ static int cwpgt_unset_wp_page(unsigned long handle, u64 gfn)
 	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
 	/* TODO: need to read back default value before write */
 	ret = update_memmap_attr(info->vm_id, gfn << PAGE_SHIFT,
-			cwp_hpa2gpa(hpa), 0x1000, MEM_TYPE_WB, MEM_ACCESS_RWX);
+			acrn_hpa2gpa(hpa), 0x1000, MEM_TYPE_WB, MEM_ACCESS_RWX);
 	if (ret) {
 		gvt_err("failed update_memmap_attr unset for gfn 0x%llx\n",
 			gfn);

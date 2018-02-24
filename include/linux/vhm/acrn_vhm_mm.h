@@ -64,7 +64,7 @@
 #include <linux/vhm/vhm_vm_mngt.h>
 
 /**
- * cwp_hpa2gpa - physical address conversion
+ * acrn_hpa2gpa - physical address conversion
  *
  * convert host physical address (hpa) to guest physical address (gpa)
  * gpa and hpa is 1:1 mapping for service OS
@@ -73,7 +73,7 @@
  *
  * Return: guest physical address
  */
-static inline unsigned long  cwp_hpa2gpa(unsigned long hpa)
+static inline unsigned long  acrn_hpa2gpa(unsigned long hpa)
 {
 	return hpa;
 }
