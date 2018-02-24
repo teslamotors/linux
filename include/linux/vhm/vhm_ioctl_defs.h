@@ -49,10 +49,10 @@
  * @brief Virtio and Hypervisor Module definition for ioctl to user space
  */
 
-#ifndef	_VHM_IOCTL_DEFS_H_
-#define	_VHM_IOCTL_DEFS_H_
+#ifndef __VHM_IOCTL_DEFS_H__
+#define __VHM_IOCTL_DEFS_H__
 
-/* Commmon structures for CWP/VHM/DM */
+/* Commmon structures for ACRN/VHM/DM */
 #include "acrn_common.h"
 
 /*
@@ -195,4 +195,4 @@ struct api_version {
 	uint32_t minor_version;
 };
 
-#endif /* VHM_IOCTL_DEFS_H */
+#endif /* __VHM_IOCTL_DEFS_H__ */

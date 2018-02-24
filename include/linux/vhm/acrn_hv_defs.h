@@ -49,11 +49,11 @@
  *
  */
 
-#ifndef CWP_HV_DEFS_H
-#define CWP_HV_DEFS_H
+#ifndef __ACRN_HV_DEFS_H__
+#define __ACRN_HV_DEFS_H__
 
 /*
- * Common structures for CWP/VHM/DM
+ * Common structures for ACRN/VHM/DM
  */
 #include "acrn_common.h"
 
@@ -180,4 +180,4 @@ struct hc_api_version {
 	uint32_t minor_version;
 } __attribute__((aligned(8)));
 
-#endif /* CWP_HV_DEFS_H */
+#endif /* __ACRN_HV_DEFS_H__ */

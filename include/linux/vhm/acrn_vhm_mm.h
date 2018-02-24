@@ -57,8 +57,8 @@
  * @brief Virtio and Hypervisor Module memory manager APIs
  */
 
-#ifndef __CWP_VHM_MM_H__
-#define __CWP_VHM_MM_H__
+#ifndef __ACRN_VHM_MM_H__
+#define __ACRN_VHM_MM_H__
 
 #include <linux/vhm/vhm_ioctl_defs.h>
 #include <linux/vhm/vhm_vm_mngt.h>

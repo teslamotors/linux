@@ -56,9 +56,9 @@ static void __init acrn_init_platform(void)
 {
 	pv_cpu_ops.cpu_khz = cpu_khz_from_acrn;
 
-#ifdef CONFIG_CWP_VHM
+#ifdef CONFIG_ACRN_VHM
 	pv_irq_ops.write_msi = cwp_write_msi_msg;
-#endif /* CONFIG_CWP_VHM */
+#endif /* CONFIG_ACRN_VHM */
 }
 
 static void acrn_pin_vcpu(int cpu)

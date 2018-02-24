@@ -51,8 +51,8 @@
  *
  */
 
-#ifndef __CWP_VHM_MSI_H__
-#define __CWP_VHM_MSI_H__
+#ifndef __VHM_MSI_H__
+#define __VHM_MSI_H__
 
 struct msi_desc;
 struct msi_msg;

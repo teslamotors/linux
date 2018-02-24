@@ -59,8 +59,8 @@
  *
  * @brief Virtio and Hypervisor Module(VHM) management APIs
  */
-#ifndef VHM_VM_MNGT_H
-#define VHM_VM_MNGT_H
+#ifndef __VHM_VM_MNGT_H__
+#define __VHM_VM_MNGT_H__
 
 #include <linux/list.h>
 

@@ -49,8 +49,8 @@
  *
  */
 
-#ifndef VHM_HYPERCALL_H
-#define VHM_HYPERCALL_H
+#ifndef __VHM_HYPERCALL_H__
+#define __VHM_HYPERCALL_H__
 
 static inline long acrn_hypercall0(unsigned long hcall_id)
 {
@@ -162,4 +162,4 @@ inline long hcall_reset_ptdev_intr_info(unsigned long vmid,
 inline long hcall_remap_pci_msix(unsigned long vmid, unsigned long msi);
 inline long hcall_vm_gpa2hpa(unsigned long vmid, unsigned long addr);
 
-#endif /* VHM_HYPERCALL_H */
+#endif /* __VHM_HYPERCALL_H__ */

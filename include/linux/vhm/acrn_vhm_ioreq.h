@@ -57,8 +57,8 @@
  * @brief Virtio and Hypervisor Module(VHM) ioreq APIs
  */
 
-#ifndef __CWP_VHM_IOREQ_H__
-#define __CWP_VHM_IOREQ_H__
+#ifndef __ACRN_VHM_IOREQ_H__
+#define __ACRN_VHM_IOREQ_H__
 
 #include <linux/poll.h>
 #include <linux/vhm/vhm_vm_mngt.h>

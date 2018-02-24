@@ -49,11 +49,11 @@
  *
  */
 
-#ifndef CWP_COMMON_H
-#define CWP_COMMON_H
+#ifndef __ACRN_COMMON_H__
+#define __ACRN_COMMON_H__
 
 /*
- * Common structures for CWP/VHM/DM
+ * Common structures for ACRN/VHM/DM
  */
 
 /*
@@ -117,7 +117,7 @@ struct vhm_request {
 	} reqs;
 
 	/* True: valid req which need VHM to process.
-	 * CWP write, VHM read only
+	 * ACRN write, VHM read only
 	 **/
 	int32_t valid;
 
@@ -127,7 +127,7 @@ struct vhm_request {
 	/* 1: VHM had processed and success
 	 *  0: VHM had not yet processed
 	 * -1: VHM failed to process. Invalid request
-	 * VHM write, CWP read only
+	 * VHM write, ACRN read only
 	 **/
 	int32_t processed;
 } __attribute__((aligned(256)));
@@ -206,4 +206,4 @@ struct acrn_vm_pci_msix_remap {
  */
 #define GUEST_CFG_OFFSET 	0xd0000
 
-#endif /* CWP_COMMON_H */
+#endif /* __ACRN_COMMON_H__ */
