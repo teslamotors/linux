@@ -49,7 +49,7 @@ static unsigned long cpu_khz_from_acrn(void)
 
 static uint32_t __init acrn_detect(void)
 {
-	return hypervisor_cpuid_base("CWPCWPCWP\0\0", 0);
+	return hypervisor_cpuid_base("ACRNACRNACRN", 0);
 }
 
 static void __init acrn_init_platform(void)
