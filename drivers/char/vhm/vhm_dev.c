@@ -86,7 +86,7 @@
 
 #include <asm/hypervisor.h>
 
-#define  DEVICE_NAME "cwp_vhm"
+#define  DEVICE_NAME "acrn_vhm"
 #define  CLASS_NAME  "vhm"
 
 #define VHM_API_VERSION_MAJOR	1
