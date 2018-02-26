@@ -10,5 +10,5 @@ kvm/
 uml/
 	- User Mode Linux, builds/runs Linux kernel as a userspace program.
 
-cwp/
-	- Clearwater Pass Project. See also http://xxxx
+acrn/
+	- ACRN Project. See also http://xxxx

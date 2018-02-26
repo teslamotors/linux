@@ -1,7 +1,7 @@
 .. -*- coding: utf-8; mode: rst -*-
 
 =============================
-Clearwater Pass (CWP) Project
+ACRN Project
 =============================
 
 .. toctree::
