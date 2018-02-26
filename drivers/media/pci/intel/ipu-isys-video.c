@@ -466,6 +466,11 @@ const struct ipu_isys_pixelformat *ipu_isys_video_try_fmt_vid_mplane(
 	mpix->pixelformat = pfmt->pixelformat;
 	mpix->num_planes = 1;
 
+	mpix->width = clamp(mpix->width, IPU_ISYS_MIN_WIDTH,
+			    IPU_ISYS_MAX_WIDTH);
+	mpix->height = clamp(mpix->height, IPU_ISYS_MIN_HEIGHT,
+			     IPU_ISYS_MAX_HEIGHT);
+
 	if (!av->packed)
 		mpix->plane_fmt[0].bytesperline =
 		    mpix->width * DIV_ROUND_UP(pfmt->bpp_planar ?
@@ -503,8 +508,16 @@ const struct ipu_isys_pixelformat *ipu_isys_video_try_fmt_vid_mplane(
 		    max(mpix->plane_fmt[0].bytesperline,
 			av->isys->pdata->ipdata->isys_dma_overshoot)), 1U);
 
+	memset(mpix->plane_fmt[0].reserved, 0,
+	       sizeof(mpix->plane_fmt[0].reserved));
+
 	if (mpix->field == V4L2_FIELD_ANY)
 		mpix->field = V4L2_FIELD_NONE;
+	/* Use defaults */
+	mpix->colorspace = V4L2_COLORSPACE_RAW;
+	mpix->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+	mpix->quantization = V4L2_QUANTIZATION_DEFAULT;
+	mpix->xfer_func = V4L2_XFER_FUNC_DEFAULT;
 
 	return pfmt;
 }
