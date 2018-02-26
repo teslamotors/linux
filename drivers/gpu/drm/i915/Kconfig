@@ -124,14 +124,14 @@ config DRM_I915_GVT_KVMGT
 	help
 	  Choose this option if you want to enable KVMGT support for
 	  Intel GVT-g.
-config DRM_I915_GVT_CWP_GVT
-	bool "Enable CWP support for Intel GVT-g"
+config DRM_I915_GVT_ACRN_GVT
+	bool "Enable ACRN support for Intel GVT-g"
 	depends on DRM_I915_GVT
 	depends on ACRN
 	default n
 	help
-          Choose this option if you want to enable CWP_GVT support for
-          Intel GVT-g under CWP hypervisor environment.
+          Choose this option if you want to enable ACRN_GVT support for
+          Intel GVT-g under ACRN hypervisor environment.
 
 menu "drm/i915 Debugging"
 depends on DRM_I915

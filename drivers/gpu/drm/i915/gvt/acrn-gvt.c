@@ -1,5 +1,5 @@
 /*
- * Interfaces coupled to CWP
+ * Interfaces coupled to ACRN
  *
  * Copyright(c) 2011-2013 Intel Corporation. All rights reserved.
  *
@@ -43,10 +43,10 @@
 #include <i915_drv.h>
 #include <i915_pvinfo.h>
 #include <gvt/gvt.h>
-#include "cwpgt.h"
+#include "acrn-gvt.h"
 
 MODULE_AUTHOR("Intel Corporation");
-MODULE_DESCRIPTION("CWPGT mediated passthrough driver");
+MODULE_DESCRIPTION("ACRNGT mediated passthrough driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1");
 
@@ -57,16 +57,16 @@ do {    if (x) break;                                                       \
 } while (0)
 
 
-struct kobject *cwp_gvt_ctrl_kobj;
-static struct kset *cwp_gvt_kset;
-static DEFINE_MUTEX(cwp_gvt_sysfs_lock);
+struct kobject *acrn_gvt_ctrl_kobj;
+static struct kset *acrn_gvt_kset;
+static DEFINE_MUTEX(acrn_gvt_sysfs_lock);
 
-struct gvt_cwpgt cwpgt_priv;
+struct gvt_acrngt acrngt_priv;
 const struct intel_gvt_ops *intel_gvt_ops;
 
 static void disable_domu_plane(int pipe, int plane)
 {
-	struct drm_i915_private *dev_priv = cwpgt_priv.gvt->dev_priv;
+	struct drm_i915_private *dev_priv = acrngt_priv.gvt->dev_priv;
 
 	I915_WRITE(PLANE_CTL(pipe, plane), 0);
 
@@ -74,14 +74,14 @@ static void disable_domu_plane(int pipe, int plane)
 	POSTING_READ(PLANE_SURF(pipe, plane));
 }
 
-void cwpgt_instance_destroy(struct intel_vgpu *vgpu)
+void acrngt_instance_destroy(struct intel_vgpu *vgpu)
 {
 	int pipe, plane;
-	struct cwpgt_hvm_dev *info = NULL;
-	struct intel_gvt *gvt = cwpgt_priv.gvt;
+	struct acrngt_hvm_dev *info = NULL;
+	struct intel_gvt *gvt = acrngt_priv.gvt;
 
 	if (vgpu) {
-		info = (struct cwpgt_hvm_dev *)vgpu->handle;
+		info = (struct acrngt_hvm_dev *)vgpu->handle;
 		if (info && info->emulation_thread != NULL)
 			kthread_stop(info->emulation_thread);
 
@@ -112,7 +112,7 @@ void cwpgt_instance_destroy(struct intel_vgpu *vgpu)
 	}
 }
 
-static bool cwpgt_write_cfg_space(struct intel_vgpu *vgpu,
+static bool acrngt_write_cfg_space(struct intel_vgpu *vgpu,
 	unsigned int port, unsigned int bytes, unsigned long val)
 {
 	if (intel_gvt_ops->emulate_cfg_write(vgpu, port, &val, bytes)) {
@@ -122,7 +122,7 @@ static bool cwpgt_write_cfg_space(struct intel_vgpu *vgpu,
 	return true;
 }
 
-static bool cwpgt_read_cfg_space(struct intel_vgpu *vgpu,
+static bool acrngt_read_cfg_space(struct intel_vgpu *vgpu,
 	unsigned int port, unsigned int bytes, unsigned long *val)
 {
 	unsigned long data;
@@ -135,14 +135,14 @@ static bool cwpgt_read_cfg_space(struct intel_vgpu *vgpu,
 	return true;
 }
 
-static int cwpgt_hvm_pio_emulation(struct intel_vgpu *vgpu,
+static int acrngt_hvm_pio_emulation(struct intel_vgpu *vgpu,
 						struct vhm_request *req)
 {
 	if (req->reqs.pci_request.direction == REQUEST_READ) {
 		/* PIO READ */
 		gvt_dbg_core("handle pio read emulation at port 0x%x\n",
 			req->reqs.pci_request.reg);
-		if (!cwpgt_read_cfg_space(vgpu,
+		if (!acrngt_read_cfg_space(vgpu,
 			req->reqs.pci_request.reg,
 			req->reqs.pci_request.size,
 			(unsigned long *)&req->reqs.pci_request.value)) {
@@ -155,7 +155,7 @@ static int cwpgt_hvm_pio_emulation(struct intel_vgpu *vgpu,
 		gvt_dbg_core("handle pio write emulation at address 0x%x, "
 			"value 0x%x\n",
 			req->reqs.pci_request.reg, req->reqs.pci_request.value);
-		if (!cwpgt_write_cfg_space(vgpu,
+		if (!acrngt_write_cfg_space(vgpu,
 			req->reqs.pci_request.reg,
 			req->reqs.pci_request.size,
 			(unsigned long)req->reqs.pci_request.value)) {
@@ -167,7 +167,7 @@ static int cwpgt_hvm_pio_emulation(struct intel_vgpu *vgpu,
 	return 0;
 }
 
-static int cwpgt_hvm_mmio_emulation(struct intel_vgpu *vgpu,
+static int acrngt_hvm_mmio_emulation(struct intel_vgpu *vgpu,
 		struct vhm_request *req)
 {
 	if (req->reqs.mmio_request.direction == REQUEST_READ) {
@@ -200,10 +200,10 @@ static int cwpgt_hvm_mmio_emulation(struct intel_vgpu *vgpu,
 	return 0;
 }
 
-static int cwpgt_emulation_thread(void *priv)
+static int acrngt_emulation_thread(void *priv)
 {
 	struct intel_vgpu *vgpu = (struct intel_vgpu *)priv;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)vgpu->handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)vgpu->handle;
 	struct vhm_request *req;
 
 	int vcpu, ret;
@@ -228,11 +228,11 @@ static int cwpgt_emulation_thread(void *priv)
 						req->type);
 				switch (req->type) {
 				case REQ_PCICFG:
-					ret = cwpgt_hvm_pio_emulation(vgpu, req);
+					ret = acrngt_hvm_pio_emulation(vgpu, req);
 					break;
 				case REQ_MMIO:
 				case REQ_WP:
-					ret = cwpgt_hvm_mmio_emulation(vgpu, req);
+					ret = acrngt_hvm_mmio_emulation(vgpu, req);
 					break;
 				default:
 					gvt_err("Unknown ioreq type %x\n",
@@ -257,28 +257,28 @@ static int cwpgt_emulation_thread(void *priv)
 	return 0;
 }
 
-struct intel_vgpu *cwpgt_instance_create(domid_t vm_id,
+struct intel_vgpu *acrngt_instance_create(domid_t vm_id,
 					struct intel_vgpu_type *vgpu_type)
 {
-	struct cwpgt_hvm_dev *info;
+	struct acrngt_hvm_dev *info;
 	struct intel_vgpu *vgpu;
 	int ret = 0;
 	struct task_struct *thread;
 	struct vm_info vm_info;
 
-	gvt_dbg_core("cwpgt_instance_create enter\n");
-	if (!intel_gvt_ops || !cwpgt_priv.gvt)
+	gvt_dbg_core("acrngt_instance_create enter\n");
+	if (!intel_gvt_ops || !acrngt_priv.gvt)
 		return NULL;
 
-	vgpu = intel_gvt_ops->vgpu_create(cwpgt_priv.gvt, vgpu_type);
+	vgpu = intel_gvt_ops->vgpu_create(acrngt_priv.gvt, vgpu_type);
 	if (IS_ERR(vgpu)) {
 		gvt_err("failed to create vgpu\n");
 		return NULL;
 	}
 
-	info = kzalloc(sizeof(struct cwpgt_hvm_dev), GFP_KERNEL);
+	info = kzalloc(sizeof(struct acrngt_hvm_dev), GFP_KERNEL);
 	if (info == NULL) {
-		gvt_err("failed to alloc cwpgt_hvm_dev\n");
+		gvt_err("failed to alloc acrngt_hvm_dev\n");
 		goto err;
 	}
 
@@ -288,7 +288,7 @@ struct intel_vgpu *cwpgt_instance_create(domid_t vm_id,
 
 	if ((info->vm = find_get_vm(vm_id)) == NULL) {
 		gvt_err("failed to get vm %d\n", vm_id);
-		cwpgt_instance_destroy(vgpu);
+		acrngt_instance_destroy(vgpu);
 		return NULL;
 	}
 	if (info->vm->req_buf == NULL) {
@@ -323,8 +323,8 @@ struct intel_vgpu *cwpgt_instance_create(domid_t vm_id,
 	/* trap config space access */
 	acrn_ioreq_intercept_bdf(info->client, 0, 2, 0);
 
-	thread = kthread_run(cwpgt_emulation_thread, vgpu,
-			"cwpgt_emulation:%d", vm_id);
+	thread = kthread_run(acrngt_emulation_thread, vgpu,
+			"acrngt_emulation:%d", vm_id);
 	if (IS_ERR(thread)) {
 		gvt_err("failed to run emulation thread for vm %d\n", vm_id);
 		goto err;
@@ -336,7 +336,7 @@ struct intel_vgpu *cwpgt_instance_create(domid_t vm_id,
 	return vgpu;
 
 err:
-	cwpgt_instance_destroy(vgpu);
+	acrngt_instance_destroy(vgpu);
 	return NULL;
 }
 
@@ -364,72 +364,72 @@ static ssize_t kobj_attr_store(struct kobject *kobj,
 	return ret;
 }
 
-const struct sysfs_ops cwpgt_kobj_sysfs_ops = {
+const struct sysfs_ops acrngt_kobj_sysfs_ops = {
 	.show   = kobj_attr_show,
 	.store  = kobj_attr_store,
 };
 
-static ssize_t cwpgt_sysfs_vgpu_id(struct kobject *kobj,
+static ssize_t acrngt_sysfs_vgpu_id(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
 	int i;
 
 	for (i = 0; i < GVT_MAX_VGPU_INSTANCE; i++) {
-		if (cwpgt_priv.vgpus[i] &&
-			(kobj == &((struct cwpgt_hvm_dev *)
-				(cwpgt_priv.vgpus[i]->handle))->kobj)) {
-			return sprintf(buf, "%d\n", cwpgt_priv.vgpus[i]->id);
+		if (acrngt_priv.vgpus[i] &&
+			(kobj == &((struct acrngt_hvm_dev *)
+				(acrngt_priv.vgpus[i]->handle))->kobj)) {
+			return sprintf(buf, "%d\n", acrngt_priv.vgpus[i]->id);
 		}
 	}
 	return 0;
 }
 
-static struct kobj_attribute cwpgt_vm_attr =
-__ATTR(vgpu_id, 0440, cwpgt_sysfs_vgpu_id, NULL);
+static struct kobj_attribute acrngt_vm_attr =
+__ATTR(vgpu_id, 0440, acrngt_sysfs_vgpu_id, NULL);
 
 
-static struct attribute *cwpgt_vm_attrs[] = {
-	&cwpgt_vm_attr.attr,
+static struct attribute *acrngt_vm_attrs[] = {
+	&acrngt_vm_attr.attr,
 	NULL,   /* need to NULL terminate the list of attributes */
 };
 
-static struct kobj_type cwpgt_instance_ktype = {
-	.sysfs_ops  = &cwpgt_kobj_sysfs_ops,
-	.default_attrs = cwpgt_vm_attrs,
+static struct kobj_type acrngt_instance_ktype = {
+	.sysfs_ops  = &acrngt_kobj_sysfs_ops,
+	.default_attrs = acrngt_vm_attrs,
 };
 
-static int cwpgt_sysfs_add_instance(struct cwpgt_hvm_params *vp)
+static int acrngt_sysfs_add_instance(struct acrngt_hvm_params *vp)
 {
 	int ret = 0;
 	struct intel_vgpu *vgpu;
-	struct cwpgt_hvm_dev *info;
+	struct acrngt_hvm_dev *info;
 
-	struct intel_vgpu_type type = cwpgt_priv.gvt->types[0];
+	struct intel_vgpu_type type = acrngt_priv.gvt->types[0];
 
 	/* todo: wa patch due to plane restriction patches are not porting */
-	cwpgt_priv.gvt->pipe_info[1].plane_owner[0] = 1;
-	cwpgt_priv.gvt->pipe_info[1].plane_owner[1] = 1;
-	cwpgt_priv.gvt->pipe_info[1].plane_owner[2] = 1;
-	cwpgt_priv.gvt->pipe_info[1].plane_owner[3] = 1;
+	acrngt_priv.gvt->pipe_info[1].plane_owner[0] = 1;
+	acrngt_priv.gvt->pipe_info[1].plane_owner[1] = 1;
+	acrngt_priv.gvt->pipe_info[1].plane_owner[2] = 1;
+	acrngt_priv.gvt->pipe_info[1].plane_owner[3] = 1;
 
 	type.low_gm_size = vp->aperture_sz * VMEM_1MB;
 	type.high_gm_size = (vp->gm_sz - vp->aperture_sz) * VMEM_1MB;
 	type.fence = vp->fence_sz;
-	mutex_lock(&cwp_gvt_sysfs_lock);
-	vgpu = cwpgt_instance_create(vp->vm_id, &type);
-	mutex_unlock(&cwp_gvt_sysfs_lock);
+	mutex_lock(&acrn_gvt_sysfs_lock);
+	vgpu = acrngt_instance_create(vp->vm_id, &type);
+	mutex_unlock(&acrn_gvt_sysfs_lock);
 	if (vgpu == NULL) {
-		gvt_err("cwpgt_sysfs_add_instance failed.\n");
+		gvt_err("acrngt_sysfs_add_instance failed.\n");
 		ret = -EINVAL;
 	} else {
-		info = (struct cwpgt_hvm_dev *) vgpu->handle;
+		info = (struct acrngt_hvm_dev *) vgpu->handle;
 		info->vm_id = vp->vm_id;
-		cwpgt_priv.vgpus[vgpu->id - 1] = vgpu;
-		gvt_dbg_core("add cwpgt instance for vm-%d with vgpu-%d.\n",
+		acrngt_priv.vgpus[vgpu->id - 1] = vgpu;
+		gvt_dbg_core("add acrngt instance for vm-%d with vgpu-%d.\n",
 			vp->vm_id, vgpu->id);
 
-		kobject_init(&info->kobj, &cwpgt_instance_ktype);
-		info->kobj.kset = cwp_gvt_kset;
+		kobject_init(&info->kobj, &acrngt_instance_ktype);
+		info->kobj.kset = acrn_gvt_kset;
 		/* add kobject, NULL parent indicates using kset as parent */
 		ret = kobject_add(&info->kobj, NULL, "vm%u", info->vm_id);
 		if (ret) {
@@ -444,45 +444,45 @@ static int cwpgt_sysfs_add_instance(struct cwpgt_hvm_params *vp)
 static struct intel_vgpu *vgpu_from_id(int vm_id)
 {
 	int i;
-	struct cwpgt_hvm_dev *hvm_dev = NULL;
+	struct acrngt_hvm_dev *hvm_dev = NULL;
 
 	/* vm_id is negtive in del_instance call */
 	if (vm_id < 0)
 		vm_id = -vm_id;
 	for (i = 0; i < GVT_MAX_VGPU_INSTANCE; i++)
-		if (cwpgt_priv.vgpus[i]) {
-			hvm_dev = (struct cwpgt_hvm_dev *)
-					cwpgt_priv.vgpus[i]->handle;
+		if (acrngt_priv.vgpus[i]) {
+			hvm_dev = (struct acrngt_hvm_dev *)
+					acrngt_priv.vgpus[i]->handle;
 			if (hvm_dev && (vm_id == hvm_dev->vm_id))
-				return cwpgt_priv.vgpus[i];
+				return acrngt_priv.vgpus[i];
 		}
 	return NULL;
 }
 
-static int cwpgt_sysfs_del_instance(struct cwpgt_hvm_params *vp)
+static int acrngt_sysfs_del_instance(struct acrngt_hvm_params *vp)
 {
 	int ret = 0;
 	struct intel_vgpu *vgpu = vgpu_from_id(vp->vm_id);
-	struct cwpgt_hvm_dev *info = NULL;
+	struct acrngt_hvm_dev *info = NULL;
 
 	if (vgpu) {
-		info = (struct cwpgt_hvm_dev *) vgpu->handle;
+		info = (struct acrngt_hvm_dev *) vgpu->handle;
 		gvt_dbg_core("remove vm-%d sysfs node.\n", vp->vm_id);
 		kobject_put(&info->kobj);
 
-		mutex_lock(&cwp_gvt_sysfs_lock);
-		cwpgt_priv.vgpus[vgpu->id - 1] = NULL;
-		cwpgt_instance_destroy(vgpu);
-		mutex_unlock(&cwp_gvt_sysfs_lock);
+		mutex_lock(&acrn_gvt_sysfs_lock);
+		acrngt_priv.vgpus[vgpu->id - 1] = NULL;
+		acrngt_instance_destroy(vgpu);
+		mutex_unlock(&acrn_gvt_sysfs_lock);
 	}
 
 	return ret;
 }
 
-static ssize_t cwpgt_sysfs_instance_manage(struct kobject *kobj,
+static ssize_t acrngt_sysfs_instance_manage(struct kobject *kobj,
 		struct kobj_attribute *attr, const char *buf, size_t count)
 {
-	struct cwpgt_hvm_params vp;
+	struct acrngt_hvm_params vp;
 	int param_cnt;
 	char param_str[64];
 	int rc;
@@ -513,8 +513,8 @@ static ssize_t cwpgt_sysfs_instance_manage(struct kobject *kobj,
 		return -EINVAL;
 	}
 
-	rc = (vp.vm_id > 0) ? cwpgt_sysfs_add_instance(&vp) :
-		cwpgt_sysfs_del_instance(&vp);
+	rc = (vp.vm_id > 0) ? acrngt_sysfs_add_instance(&vp) :
+		acrngt_sysfs_del_instance(&vp);
 
 	return rc < 0 ? rc : count;
 }
@@ -524,54 +524,54 @@ static ssize_t show_plane_owner(struct kobject *kobj,
 {
 	return sprintf(buf, "Planes:\nPipe A: %d %d %d %d\n"
 				"Pipe B: %d %d %d %d\nPipe C: %d %d %d\n",
-		cwpgt_priv.gvt->pipe_info[PIPE_A].plane_owner[PLANE_PRIMARY],
-		cwpgt_priv.gvt->pipe_info[PIPE_A].plane_owner[PLANE_SPRITE0],
-		cwpgt_priv.gvt->pipe_info[PIPE_A].plane_owner[PLANE_SPRITE1],
-		cwpgt_priv.gvt->pipe_info[PIPE_A].plane_owner[PLANE_SPRITE2],
-		cwpgt_priv.gvt->pipe_info[PIPE_B].plane_owner[PLANE_PRIMARY],
-		cwpgt_priv.gvt->pipe_info[PIPE_B].plane_owner[PLANE_SPRITE0],
-		cwpgt_priv.gvt->pipe_info[PIPE_B].plane_owner[PLANE_SPRITE1],
-		cwpgt_priv.gvt->pipe_info[PIPE_B].plane_owner[PLANE_SPRITE2],
-		cwpgt_priv.gvt->pipe_info[PIPE_C].plane_owner[PLANE_PRIMARY],
-		cwpgt_priv.gvt->pipe_info[PIPE_C].plane_owner[PLANE_SPRITE0],
-		cwpgt_priv.gvt->pipe_info[PIPE_C].plane_owner[PLANE_SPRITE1]);
+		acrngt_priv.gvt->pipe_info[PIPE_A].plane_owner[PLANE_PRIMARY],
+		acrngt_priv.gvt->pipe_info[PIPE_A].plane_owner[PLANE_SPRITE0],
+		acrngt_priv.gvt->pipe_info[PIPE_A].plane_owner[PLANE_SPRITE1],
+		acrngt_priv.gvt->pipe_info[PIPE_A].plane_owner[PLANE_SPRITE2],
+		acrngt_priv.gvt->pipe_info[PIPE_B].plane_owner[PLANE_PRIMARY],
+		acrngt_priv.gvt->pipe_info[PIPE_B].plane_owner[PLANE_SPRITE0],
+		acrngt_priv.gvt->pipe_info[PIPE_B].plane_owner[PLANE_SPRITE1],
+		acrngt_priv.gvt->pipe_info[PIPE_B].plane_owner[PLANE_SPRITE2],
+		acrngt_priv.gvt->pipe_info[PIPE_C].plane_owner[PLANE_PRIMARY],
+		acrngt_priv.gvt->pipe_info[PIPE_C].plane_owner[PLANE_SPRITE0],
+		acrngt_priv.gvt->pipe_info[PIPE_C].plane_owner[PLANE_SPRITE1]);
 }
 
-static struct kobj_attribute cwpgt_instance_attr =
-__ATTR(create_gvt_instance, 0220, NULL, cwpgt_sysfs_instance_manage);
+static struct kobj_attribute acrngt_instance_attr =
+__ATTR(create_gvt_instance, 0220, NULL, acrngt_sysfs_instance_manage);
 
 static struct kobj_attribute plane_owner_attr =
 __ATTR(plane_owner_show, 0440, show_plane_owner, NULL);
 
-static struct attribute *cwpgt_ctrl_attrs[] = {
-	&cwpgt_instance_attr.attr,
+static struct attribute *acrngt_ctrl_attrs[] = {
+	&acrngt_instance_attr.attr,
 	&plane_owner_attr.attr,
 	NULL,   /* need to NULL terminate the list of attributes */
 };
 
-static struct kobj_type cwpgt_ctrl_ktype = {
-	.sysfs_ops  = &cwpgt_kobj_sysfs_ops,
-	.default_attrs = cwpgt_ctrl_attrs,
+static struct kobj_type acrngt_ctrl_ktype = {
+	.sysfs_ops  = &acrngt_kobj_sysfs_ops,
+	.default_attrs = acrngt_ctrl_attrs,
 };
 
-int cwpgt_sysfs_init(struct intel_gvt *gvt)
+int acrngt_sysfs_init(struct intel_gvt *gvt)
 {
 	int ret;
 
-	cwp_gvt_kset = kset_create_and_add("gvt", NULL, kernel_kobj);
-	if (!cwp_gvt_kset) {
+	acrn_gvt_kset = kset_create_and_add("gvt", NULL, kernel_kobj);
+	if (!acrn_gvt_kset) {
 		ret = -ENOMEM;
 		goto kset_fail;
 	}
 
-	cwp_gvt_ctrl_kobj = kzalloc(sizeof(struct kobject), GFP_KERNEL);
-	if (!cwp_gvt_ctrl_kobj) {
+	acrn_gvt_ctrl_kobj = kzalloc(sizeof(struct kobject), GFP_KERNEL);
+	if (!acrn_gvt_ctrl_kobj) {
 		ret = -ENOMEM;
 		goto ctrl_fail;
 	}
 
-	cwp_gvt_ctrl_kobj->kset = cwp_gvt_kset;
-	ret = kobject_init_and_add(cwp_gvt_ctrl_kobj, &cwpgt_ctrl_ktype,
+	acrn_gvt_ctrl_kobj->kset = acrn_gvt_kset;
+	ret = kobject_init_and_add(acrn_gvt_ctrl_kobj, &acrngt_ctrl_ktype,
 			NULL, "control");
 	if (ret) {
 		ret = -EINVAL;
@@ -581,60 +581,60 @@ int cwpgt_sysfs_init(struct intel_gvt *gvt)
 	return 0;
 
 kobj_fail:
-	kobject_put(cwp_gvt_ctrl_kobj);
+	kobject_put(acrn_gvt_ctrl_kobj);
 ctrl_fail:
-	kset_unregister(cwp_gvt_kset);
+	kset_unregister(acrn_gvt_kset);
 kset_fail:
 	return ret;
 }
 
-void cwpgt_sysfs_del(void)
+void acrngt_sysfs_del(void)
 {
-	kobject_put(cwp_gvt_ctrl_kobj);
-	kset_unregister(cwp_gvt_kset);
+	kobject_put(acrn_gvt_ctrl_kobj);
+	kset_unregister(acrn_gvt_kset);
 }
 
-static int cwpgt_host_init(struct device *dev, void *gvt, const void *ops)
+static int acrngt_host_init(struct device *dev, void *gvt, const void *ops)
 {
 	int ret = -EFAULT;
 
 	if (!gvt || !ops)
 		return -EINVAL;
 
-	cwpgt_priv.gvt = (struct intel_gvt *)gvt;
+	acrngt_priv.gvt = (struct intel_gvt *)gvt;
 	intel_gvt_ops = (const struct intel_gvt_ops *)ops;
 
-	ret = cwpgt_sysfs_init(cwpgt_priv.gvt);
+	ret = acrngt_sysfs_init(acrngt_priv.gvt);
 	if (ret) {
-		gvt_err("failed call cwpgt_sysfs_init, error: %d\n", ret);
-		cwpgt_priv.gvt = NULL;
+		gvt_err("failed call acrngt_sysfs_init, error: %d\n", ret);
+		acrngt_priv.gvt = NULL;
 		intel_gvt_ops = NULL;
 	}
 
 	return ret;
 }
 
-static void cwpgt_host_exit(struct device *dev, void *gvt)
+static void acrngt_host_exit(struct device *dev, void *gvt)
 {
-	cwpgt_sysfs_del();
-	cwpgt_priv.gvt = NULL;
+	acrngt_sysfs_del();
+	acrngt_priv.gvt = NULL;
 	intel_gvt_ops = NULL;
 }
 
-static int cwpgt_attach_vgpu(void *vgpu, unsigned long *handle)
+static int acrngt_attach_vgpu(void *vgpu, unsigned long *handle)
 {
 	return 0;
 }
 
-static void cwpgt_detach_vgpu(unsigned long handle)
+static void acrngt_detach_vgpu(unsigned long handle)
 {
 	return;
 }
 
-static int cwpgt_inject_msi(unsigned long handle, u32 addr_lo, u16 data)
+static int acrngt_inject_msi(unsigned long handle, u32 addr_lo, u16 data)
 {
 	int ret;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	gvt_dbg_core("inject msi irq, addr 0x%x, data 0x%hx\n", addr_lo, data);
 
 	ret = vhm_inject_msi(info->vm_id, addr_lo, data);
@@ -643,7 +643,7 @@ static int cwpgt_inject_msi(unsigned long handle, u32 addr_lo, u16 data)
 	return ret;
 }
 
-static unsigned long cwpgt_virt_to_mfn(void *addr)
+static unsigned long acrngt_virt_to_mfn(void *addr)
 {
 	uint64_t    gpa;
 	uint64_t    hpa;
@@ -655,11 +655,11 @@ static unsigned long cwpgt_virt_to_mfn(void *addr)
 	return (unsigned long) (hpa >> PAGE_SHIFT);
 }
 
-static int cwpgt_set_wp_page(unsigned long handle, u64 gfn)
+static int acrngt_set_wp_page(unsigned long handle, u64 gfn)
 {
 	int ret;
 	unsigned long hpa;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	gvt_dbg_core("set wp page for gfn 0x%llx\n", gfn);
 
 	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
@@ -678,11 +678,11 @@ static int cwpgt_set_wp_page(unsigned long handle, u64 gfn)
 	return ret;
 }
 
-static int cwpgt_unset_wp_page(unsigned long handle, u64 gfn)
+static int acrngt_unset_wp_page(unsigned long handle, u64 gfn)
 {
 	int ret;
 	unsigned long hpa;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	gvt_dbg_core("unset wp page for gfx 0x%llx\n", gfn);
 
 	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
@@ -701,11 +701,11 @@ static int cwpgt_unset_wp_page(unsigned long handle, u64 gfn)
 	return ret;
 }
 
-static int cwpgt_read_gpa(unsigned long handle, unsigned long gpa,
+static int acrngt_read_gpa(unsigned long handle, unsigned long gpa,
 				void *buf, unsigned long len)
 {
 	void *va = NULL;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	gvt_dbg_core("read gpa 0x%lx with len 0x%lx\n", gpa, len);
 
 	va = map_guest_phys(info->vm_id, gpa, len);
@@ -734,11 +734,11 @@ static int cwpgt_read_gpa(unsigned long handle, unsigned long gpa,
 	return 0;
 }
 
-static int cwpgt_write_gpa(unsigned long handle, unsigned long gpa,
+static int acrngt_write_gpa(unsigned long handle, unsigned long gpa,
 				void *buf, unsigned long len)
 {
 	void *va = NULL;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	gvt_dbg_core("write gpa 0x%lx with len 0x%lx\n", gpa, len);
 
 	va = map_guest_phys(info->vm_id, gpa, len);
@@ -767,21 +767,21 @@ static int cwpgt_write_gpa(unsigned long handle, unsigned long gpa,
 	return 0;
 }
 
-static unsigned long cwpgt_gfn_to_pfn(unsigned long handle, unsigned long gfn)
+static unsigned long acrngt_gfn_to_pfn(unsigned long handle, unsigned long gfn)
 {
 	unsigned long hpa;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	gvt_dbg_core("convert gfn 0x%lx to pfn\n", gfn);
 
 	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
 	return hpa >> PAGE_SHIFT;
 }
 
-static int cwpgt_map_gfn_to_mfn(unsigned long handle, unsigned long gfn,
+static int acrngt_map_gfn_to_mfn(unsigned long handle, unsigned long gfn,
 				unsigned long mfn, unsigned int nr, bool map)
 {
 	int ret;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	gvt_dbg_core("map/unmap gfn 0x%lx to mfn 0x%lx with %u pages, map %d\n",
 		gfn, mfn, nr, map);
 
@@ -798,11 +798,11 @@ static int cwpgt_map_gfn_to_mfn(unsigned long handle, unsigned long gfn,
 	return ret;
 }
 
-static int cwpgt_set_trap_area(unsigned long handle, u64 start,
+static int acrngt_set_trap_area(unsigned long handle, u64 start,
 							u64 end, bool map)
 {
 	int ret;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	gvt_dbg_core("set trap area, start 0x%llx, end 0x%llx, map %d\n",
 			start, end, map);
 
@@ -818,28 +818,28 @@ static int cwpgt_set_trap_area(unsigned long handle, u64 start,
 	return ret;
 }
 
-static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
+static int acrngt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 {
 	int rc;
 	unsigned long mfn, shared_mfn;
 	unsigned long pfn = start >> PAGE_SHIFT;
-	u32 mmio_size_fn = cwpgt_priv.gvt->device_info.mmio_size >> PAGE_SHIFT;
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	u32 mmio_size_fn = acrngt_priv.gvt->device_info.mmio_size >> PAGE_SHIFT;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 
 	if (map) {
-		mfn = cwpgt_virt_to_mfn(info->vgpu->mmio.vreg);
-		rc = cwpgt_map_gfn_to_mfn(handle, pfn, mfn, mmio_size_fn, map);
+		mfn = acrngt_virt_to_mfn(info->vgpu->mmio.vreg);
+		rc = acrngt_map_gfn_to_mfn(handle, pfn, mfn, mmio_size_fn, map);
 		if (rc) {
-			gvt_err("cwpgt: map pfn %lx to mfn %lx fail with ret %d\n",
+			gvt_err("acrn-gvt: map pfn %lx to mfn %lx fail with ret %d\n",
 					pfn, mfn, rc);
 			return rc;
 		}
 
 		/* map the shared page to guest */
-		shared_mfn = cwpgt_virt_to_mfn(info->vgpu->mmio.shared_page);
-		rc = cwpgt_map_gfn_to_mfn(handle, pfn + mmio_size_fn, shared_mfn, 1, map);
+		shared_mfn = acrngt_virt_to_mfn(info->vgpu->mmio.shared_page);
+		rc = acrngt_map_gfn_to_mfn(handle, pfn + mmio_size_fn, shared_mfn, 1, map);
 		if (rc) {
-			gvt_err("cwpgt: map shared page fail with ret %d\n", rc);
+			gvt_err("acrn-gvt: map shared page fail with ret %d\n", rc);
 			return rc;
 		}
 
@@ -859,10 +859,10 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 			gvt_err("failed update_memmap_attr set for pfn 0x%lx\n", pfn);
 
 		/* scratch reg access is trapped like mmio access, 1 page */
-		rc = cwpgt_map_gfn_to_mfn(handle, pfn + (VGT_PVINFO_PAGE >> PAGE_SHIFT),
+		rc = acrngt_map_gfn_to_mfn(handle, pfn + (VGT_PVINFO_PAGE >> PAGE_SHIFT),
 					mfn + (VGT_PVINFO_PAGE >> PAGE_SHIFT), 1, 0);
 		if (rc) {
-			gvt_err("cwpgt: map pfn %lx to mfn %lx fail with ret %d\n",
+			gvt_err("acrn-gvt: map pfn %lx to mfn %lx fail with ret %d\n",
 					pfn, mfn, rc);
 			return rc;
 		}
@@ -885,10 +885,10 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 			gvt_err("failed update_memmap_attr set for gfn 0x%lx\n",
 				pfn + mmio_size_fn);
 	} else {
-		mfn = cwpgt_virt_to_mfn(info->vgpu->mmio.vreg);
-		rc = cwpgt_map_gfn_to_mfn(handle, pfn, mfn, mmio_size_fn, map);
+		mfn = acrngt_virt_to_mfn(info->vgpu->mmio.vreg);
+		rc = acrngt_map_gfn_to_mfn(handle, pfn, mfn, mmio_size_fn, map);
 		if (rc) {
-			gvt_err("cwpgt: map pfn %lx to mfn %lx fail with ret %d\n",
+			gvt_err("acrn-gvt: map pfn %lx to mfn %lx fail with ret %d\n",
 					pfn, mfn, rc);
 			return rc;
 		}
@@ -906,19 +906,19 @@ static int cwpgt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 		}
 
 		/* unmap the shared page to guest */
-		shared_mfn = cwpgt_virt_to_mfn(info->vgpu->mmio.shared_page);
-		rc = cwpgt_map_gfn_to_mfn(handle, pfn + mmio_size_fn, shared_mfn, 1, map);
+		shared_mfn = acrngt_virt_to_mfn(info->vgpu->mmio.shared_page);
+		rc = acrngt_map_gfn_to_mfn(handle, pfn + mmio_size_fn, shared_mfn, 1, map);
 		if (rc) {
-			gvt_err("cwpgt: map shared page fail with ret %d\n", rc);
+			gvt_err("acrn-gvt: map shared page fail with ret %d\n", rc);
 			return rc;
 		}
 	}
 	return rc;
 }
 
-static int cwp_pause_domain(unsigned long handle)
+static int acrn_pause_domain(unsigned long handle)
 {
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	if (info == NULL)
 		return 0;
 
@@ -927,9 +927,9 @@ static int cwp_pause_domain(unsigned long handle)
 	return 0;
 }
 
-static int cwp_unpause_domain(unsigned long handle)
+static int acrn_unpause_domain(unsigned long handle)
 {
-	struct cwpgt_hvm_dev *info = (struct cwpgt_hvm_dev *)handle;
+	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
 	if (info == NULL)
 		return 0;
 
@@ -938,48 +938,48 @@ static int cwp_unpause_domain(unsigned long handle)
 	return 0;
 }
 
-static int cwpgt_dom0_ready(void)
+static int acrngt_dom0_ready(void)
 {
 	char *env[] = {"GVT_DOM0_READY=1", NULL};
-	if(!cwp_gvt_ctrl_kobj)
+	if(!acrn_gvt_ctrl_kobj)
 		return 0;
-	gvt_dbg_core("cwpgt: Dom 0 ready to accept Dom U guests\n");
-	return kobject_uevent_env(cwp_gvt_ctrl_kobj, KOBJ_ADD, env);
+	gvt_dbg_core("acrngt: Dom 0 ready to accept Dom U guests\n");
+	return kobject_uevent_env(acrn_gvt_ctrl_kobj, KOBJ_ADD, env);
 }
 
-struct intel_gvt_mpt cwp_gvt_mpt = {
-	//.detect_host = cwpgt_detect_host,
-	.host_init = cwpgt_host_init,
-	.host_exit = cwpgt_host_exit,
-	.attach_vgpu = cwpgt_attach_vgpu,
-	.detach_vgpu = cwpgt_detach_vgpu,
-	.inject_msi = cwpgt_inject_msi,
-	.from_virt_to_mfn = cwpgt_virt_to_mfn,
-	.set_wp_page = cwpgt_set_wp_page,
-	.unset_wp_page = cwpgt_unset_wp_page,
-	.read_gpa = cwpgt_read_gpa,
-	.write_gpa = cwpgt_write_gpa,
-	.gfn_to_mfn = cwpgt_gfn_to_pfn,
-	.map_gfn_to_mfn = cwpgt_map_gfn_to_mfn,
-	.set_trap_area = cwpgt_set_trap_area,
-	.set_pvmmio = cwpgt_set_pvmmio,
-	.pause_domain = cwp_pause_domain,
-	.unpause_domain= cwp_unpause_domain,
-	.dom0_ready = cwpgt_dom0_ready,
+struct intel_gvt_mpt acrn_gvt_mpt = {
+	//.detect_host = acrngt_detect_host,
+	.host_init = acrngt_host_init,
+	.host_exit = acrngt_host_exit,
+	.attach_vgpu = acrngt_attach_vgpu,
+	.detach_vgpu = acrngt_detach_vgpu,
+	.inject_msi = acrngt_inject_msi,
+	.from_virt_to_mfn = acrngt_virt_to_mfn,
+	.set_wp_page = acrngt_set_wp_page,
+	.unset_wp_page = acrngt_unset_wp_page,
+	.read_gpa = acrngt_read_gpa,
+	.write_gpa = acrngt_write_gpa,
+	.gfn_to_mfn = acrngt_gfn_to_pfn,
+	.map_gfn_to_mfn = acrngt_map_gfn_to_mfn,
+	.set_trap_area = acrngt_set_trap_area,
+	.set_pvmmio = acrngt_set_pvmmio,
+	.pause_domain = acrn_pause_domain,
+	.unpause_domain= acrn_unpause_domain,
+	.dom0_ready = acrngt_dom0_ready,
 };
-EXPORT_SYMBOL_GPL(cwp_gvt_mpt);
+EXPORT_SYMBOL_GPL(acrn_gvt_mpt);
 
-static int __init cwpgt_init(void)
+static int __init acrngt_init(void)
 {
 	/* todo: to support need implment check_gfx_iommu_enabled func */
-	gvt_dbg_core("cwpgt loaded\n");
+	gvt_dbg_core("acrngt loaded\n");
 	return 0;
 }
 
-static void __exit cwpgt_exit(void)
+static void __exit acrngt_exit(void)
 {
-	gvt_dbg_core("cwpgt: unloaded\n");
+	gvt_dbg_core("acrngt: unloaded\n");
 }
 
-module_init(cwpgt_init);
-module_exit(cwpgt_exit);
+module_init(acrngt_init);
+module_exit(acrngt_exit);
