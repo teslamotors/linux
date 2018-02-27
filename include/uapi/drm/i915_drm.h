@@ -263,6 +263,7 @@ typedef struct _drm_i915_sarea {
 #define DRM_I915_PERF_ADD_CONFIG	0x37
 #define DRM_I915_PERF_REMOVE_CONFIG	0x38
 #define DRM_I915_GEM_GVTBUFFER		0x39
+#define DRM_I915_GEM_ACCESS_USERDATA	0x3c
 
 #define DRM_IOCTL_I915_INIT		DRM_IOW( DRM_COMMAND_BASE + DRM_I915_INIT, drm_i915_init_t)
 #define DRM_IOCTL_I915_FLUSH		DRM_IO ( DRM_COMMAND_BASE + DRM_I915_FLUSH)
@@ -322,6 +323,7 @@ typedef struct _drm_i915_sarea {
 #define DRM_IOCTL_I915_PERF_REMOVE_CONFIG	DRM_IOW(DRM_COMMAND_BASE + DRM_I915_PERF_REMOVE_CONFIG, __u64)
 
 #define DRM_IOCTL_I915_GEM_GVTBUFFER		DRM_IOWR(DRM_COMMAND_BASE + DRM_I915_GEM_GVTBUFFER, struct drm_i915_gem_gvtbuffer)
+#define DRM_IOCTL_I915_GEM_ACCESS_USERDATA	DRM_IOWR(DRM_COMMAND_BASE + DRM_I915_GEM_ACCESS_USERDATA, struct drm_i915_gem_access_userdata)
 
 /* Allow drivers to submit batchbuffers directly to hardware, relying
  * on the security mechanisms provided by hardware.
@@ -400,10 +402,20 @@ typedef struct drm_i915_irq_wait {
 #define I915_PARAM_MIN_EU_IN_POOL	 39
 #define I915_PARAM_MMAP_GTT_VERSION	 40
 
-/* Query whether DRM_I915_GEM_EXECBUFFER2 supports user defined execution
+/*
+ * Query whether DRM_I915_GEM_EXECBUFFER2 supports user defined execution
  * priorities and the driver will attempt to execute batches in priority order.
+ * The param returns a capability bitmask, nonzero implies that the scheduler
+ * is enabled, with different features present according to the mask.
+ *
+ * The initial priority for each batch is supplied by the context and is
+ * controlled via I915_CONTEXT_PARAM_PRIORITY.
  */
 #define I915_PARAM_HAS_SCHEDULER	 41
+#define   I915_SCHEDULER_CAP_ENABLED	(1ul << 0)
+#define   I915_SCHEDULER_CAP_PRIORITY	(1ul << 1)
+#define   I915_SCHEDULER_CAP_PREEMPTION	(1ul << 2)
+
 #define I915_PARAM_HUC_STATUS		 42
 
 /* Query whether DRM_I915_GEM_EXECBUFFER2 supports the ability to opt-out of
@@ -1150,6 +1162,21 @@ struct drm_i915_gem_get_tiling {
 	__u32 phys_swizzle_mode;
 };
 
+struct drm_i915_gem_access_userdata {
+	/** Handle of the buffer whose userdata will be accessed */
+	__u32 handle;
+
+	/**
+	 * Userdata:  This quantity is user defined
+	 */
+	__u32 userdata;
+
+	/**
+	 * Write: 0=read userdata, 1=write userdata
+	 */
+	__u32 write;
+};
+
 struct drm_i915_gem_get_aperture {
 	/** Total size of the aperture used by i915_gem_execbuffer, in bytes */
 	__u64 aper_size;
@@ -1312,14 +1339,16 @@ struct drm_i915_reg_read {
 	 * be specified
 	 */
 	__u64 offset;
+#define I915_REG_READ_8B_WA BIT(0)
+
 	__u64 val; /* Return value */
 };
 /* Known registers:
  *
  * Render engine timestamp - 0x2358 + 64bit - gen7+
  * - Note this register returns an invalid value if using the default
- *   single instruction 8byte read, in order to workaround that use
- *   offset (0x2538 | 1) instead.
+ *   single instruction 8byte read, in order to workaround that pass
+ *   flag I915_REG_READ_8B_WA in offset field.
  *
  */
 
@@ -1362,6 +1391,10 @@ struct drm_i915_gem_context_param {
 #define I915_CONTEXT_PARAM_GTT_SIZE	0x3
 #define I915_CONTEXT_PARAM_NO_ERROR_CAPTURE	0x4
 #define I915_CONTEXT_PARAM_BANNABLE	0x5
+#define I915_CONTEXT_PARAM_PRIORITY	0x6
+#define   I915_CONTEXT_MAX_USER_PRIORITY	1023 /* inclusive */
+#define   I915_CONTEXT_DEFAULT_PRIORITY		0
+#define   I915_CONTEXT_MIN_USER_PRIORITY	-1023 /* inclusive */
 	__u64 value;
 };
 

@@ -2814,8 +2814,8 @@ i915_gem_reset_prepare_engine(struct intel_engine_cs *engine)
 	 * Turning off the engine->irq_tasklet until the reset is over
 	 * prevents the race.
 	 */
-	tasklet_kill(&engine->irq_tasklet);
-	tasklet_disable(&engine->irq_tasklet);
+	tasklet_kill(&engine->execlists.irq_tasklet);
+	tasklet_disable(&engine->execlists.irq_tasklet);
 
 	if (engine->irq_seqno_barrier)
 		engine->irq_seqno_barrier(engine);
@@ -2994,7 +2994,7 @@ void i915_gem_reset(struct drm_i915_private *dev_priv)
 
 void i915_gem_reset_finish_engine(struct intel_engine_cs *engine)
 {
-	tasklet_enable(&engine->irq_tasklet);
+	tasklet_enable(&engine->execlists.irq_tasklet);
 	kthread_unpark(engine->breadcrumbs.signaler);
 }
 
@@ -3026,9 +3026,6 @@ static void nop_submit_request(struct drm_i915_gem_request *request)
 
 static void engine_set_wedged(struct intel_engine_cs *engine)
 {
-	struct drm_i915_gem_request *request;
-	unsigned long flags;
-
 	/* We need to be sure that no thread is running the old callback as
 	 * we install the nop handler (otherwise we would submit a request
 	 * to hardware that will never complete). In order to prevent this
@@ -3038,40 +3035,7 @@ static void engine_set_wedged(struct intel_engine_cs *engine)
 	engine->submit_request = nop_submit_request;
 
 	/* Mark all executing requests as skipped */
-	spin_lock_irqsave(&engine->timeline->lock, flags);
-	list_for_each_entry(request, &engine->timeline->requests, link)
-		if (!i915_gem_request_completed(request))
-			dma_fence_set_error(&request->fence, -EIO);
-	spin_unlock_irqrestore(&engine->timeline->lock, flags);
-
-	/*
-	 * Clear the execlists queue up before freeing the requests, as those
-	 * are the ones that keep the context and ringbuffer backing objects
-	 * pinned in place.
-	 */
-
-	if (i915.enable_execlists) {
-		struct execlist_port *port = engine->execlist_port;
-		unsigned long flags;
-		unsigned int n;
-
-		spin_lock_irqsave(&engine->timeline->lock, flags);
-
-		for (n = 0; n < ARRAY_SIZE(engine->execlist_port); n++)
-			i915_gem_request_put(port_request(&port[n]));
-		memset(engine->execlist_port, 0, sizeof(engine->execlist_port));
-		engine->execlist_queue = RB_ROOT;
-		engine->execlist_first = NULL;
-
-		spin_unlock_irqrestore(&engine->timeline->lock, flags);
-
-		/* The port is checked prior to scheduling a tasklet, but
-		 * just in case we have suspended the tasklet to do the
-		 * wedging make sure that when it wakes, it decides there
-		 * is no work to do by clearing the irq_posted bit.
-		 */
-		clear_bit(ENGINE_IRQ_EXECLIST, &engine->irq_posted);
-	}
+	engine->cancel_requests(engine);
 
 	/* Mark all pending requests as complete so that any concurrent
 	 * (lockless) lookup doesn't try and wait upon the request as we
@@ -4781,7 +4745,7 @@ bool intel_sanitize_semaphores(struct drm_i915_private *dev_priv, int value)
 		return false;
 
 	/* TODO: make semaphores and Execlists play nicely together */
-	if (i915.enable_execlists)
+	if (i915_modparams.enable_execlists)
 		return false;
 
 	if (value >= 0)
@@ -4802,7 +4766,7 @@ int i915_gem_init(struct drm_i915_private *dev_priv)
 
 	dev_priv->mm.unordered_timeline = dma_fence_context_alloc(1);
 
-	if (!i915.enable_execlists) {
+	if (!i915_modparams.enable_execlists) {
 		dev_priv->gt.resume = intel_legacy_submission_resume;
 		dev_priv->gt.cleanup_engine = intel_engine_cleanup;
 	} else {
@@ -5167,6 +5131,39 @@ i915_gem_object_create_from_data(struct drm_i915_private *dev_priv,
 fail:
 	i915_gem_object_put(obj);
 	return ERR_PTR(err);
+}
+
+/**
+ * i915_gem_access_userdata_ioctl -Reads/writes userdata for the object
+ * @dev: DRM device
+ * @data: struct drm_i915_gem_access_userdata
+ * @file: GEM object info
+ *
+ * Set/Get 32-bit private user defined data stored with a given GEM object.
+ */
+int
+i915_gem_access_userdata_ioctl(struct drm_device *dev, void *data,
+			       struct drm_file *file)
+{
+	struct drm_i915_gem_access_userdata *args = data;
+	struct drm_i915_gem_object *obj;
+
+	obj = i915_gem_object_lookup(file, args->handle);
+	if (!obj)
+		return -ENOENT;
+
+	mutex_lock(&dev->struct_mutex);
+
+	if (args->write)
+		obj->userdata = args->userdata;
+	else
+		args->userdata = obj->userdata;
+
+	mutex_unlock(&dev->struct_mutex);
+
+	i915_gem_object_put(obj);
+
+	return 0;
 }
 
 struct scatterlist *

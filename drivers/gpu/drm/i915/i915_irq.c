@@ -1309,10 +1309,11 @@ static void snb_gt_irq_handler(struct drm_i915_private *dev_priv,
 static void
 gen8_cs_irq_handler(struct intel_engine_cs *engine, u32 iir, int test_shift)
 {
+	struct intel_engine_execlists * const execlists = &engine->execlists;
 	bool tasklet = false;
 
 	if (iir & (GT_CONTEXT_SWITCH_INTERRUPT << test_shift)) {
-		if (port_count(&engine->execlist_port[0])) {
+		if (READ_ONCE(engine->execlists.active)) {
 			__set_bit(ENGINE_IRQ_EXECLIST, &engine->irq_posted);
 			tasklet = true;
 		}
@@ -1320,7 +1321,7 @@ gen8_cs_irq_handler(struct intel_engine_cs *engine, u32 iir, int test_shift)
 
 	if (iir & (GT_RENDER_USER_INTERRUPT << test_shift)) {
 		notify_ring(engine);
-		tasklet |= i915.enable_guc_submission;
+		tasklet |= i915_modparams.enable_guc_submission;
 	}
 
 	if ((iir & (GT_RENDER_CS_MASTER_ERROR_INTERRUPT << test_shift)) &&
@@ -1330,7 +1331,7 @@ gen8_cs_irq_handler(struct intel_engine_cs *engine, u32 iir, int test_shift)
 	}
 
 	if (tasklet)
-		tasklet_hi_schedule(&engine->irq_tasklet);
+		tasklet_hi_schedule(&execlists->irq_tasklet);
 }
 
 static irqreturn_t gen8_gt_irq_ack(struct drm_i915_private *dev_priv,

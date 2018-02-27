@@ -46,4 +46,5 @@ int intel_gvt_scan_and_shadow_ringbuffer(struct intel_vgpu_workload *workload);
 
 int intel_gvt_scan_and_shadow_wa_ctx(struct intel_shadow_wa_ctx *wa_ctx);
 
+int gvt_emit_pdps(struct intel_vgpu_workload *workload);
 #endif

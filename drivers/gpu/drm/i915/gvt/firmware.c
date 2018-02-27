@@ -234,7 +234,7 @@ int intel_gvt_load_firmware(struct intel_gvt *gvt)
 
 	firmware->mmio = mem;
 
-	if (i915.disable_gvt_fw_loading)
+	if (i915_modparams.disable_gvt_fw_loading)
 		goto expose_firmware;
 
 	path = kmalloc(PATH_MAX, GFP_KERNEL);
