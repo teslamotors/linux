@@ -414,12 +414,6 @@ int ipu_isys_vidioc_enum_fmt(struct file *file, void *fh,
 
 	f->flags = 0;
 
-	if (*supported_codes == MEDIA_BUS_FMT_FIXED) {
-		/* FIXME: No proper pixel format. Use 0. */
-		f->pixelformat = 0;
-		return 0;
-	}
-
 	/* Code found */
 	for (pfmt = av->pfmts; pfmt->bpp; pfmt++)
 		if (pfmt->code == *supported_codes)
@@ -570,6 +564,10 @@ static void fmt_mp_to_sp(struct v4l2_pix_format *pix,
 	pix->bytesperline = mpix->plane_fmt[0].bytesperline;
 	pix->sizeimage = mpix->plane_fmt[0].sizeimage;
 	pix->flags = mpix->flags;
+	pix->colorspace = mpix->colorspace;
+	pix->ycbcr_enc = mpix->ycbcr_enc;
+	pix->quantization = mpix->quantization;
+	pix->xfer_func = mpix->xfer_func;
 }
 
 static int vidioc_g_fmt_vid_cap(struct file *file, void *fh,
