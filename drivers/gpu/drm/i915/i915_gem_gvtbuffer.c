@@ -254,21 +254,25 @@ i915_gem_gvtbuffer_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) {
-		unsigned int tiling_mode;
+		unsigned int tiling_mode = I915_TILING_NONE;
+		unsigned int stride = 0;
+
 		switch (args->tiled << 10) {
 		case PLANE_CTL_TILED_LINEAR:
-			tiling_mode = I915_TILING_NONE;
+			/* Default valid value */
 			break;
 		case PLANE_CTL_TILED_X:
 			tiling_mode = I915_TILING_X;
+			stride = args->stride;
 			break;
 		case PLANE_CTL_TILED_Y:
 			tiling_mode = I915_TILING_Y;
+			stride = args->stride;
 			break;
 		default:
 			DRM_ERROR("gvt: tiling mode %d not supported\n", args->tiled);
 		}
-		obj->tiling_and_stride = tiling_mode | args->stride;
+		obj->tiling_and_stride = tiling_mode | stride;
 	} else {
 		obj->tiling_and_stride = (args->tiled ? I915_TILING_X : I915_TILING_NONE) |
 			                 (args->tiled ? args->stride : 0);

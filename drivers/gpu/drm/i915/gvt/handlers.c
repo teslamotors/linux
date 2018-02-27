@@ -1261,7 +1261,7 @@ static int pvinfo_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 		ret = handle_g2v_notification(vgpu, data);
 		break;
 	case _vgtif_reg(enable_pvmmio):
-		if (i915.enable_pvmmio) {
+		if (i915_modparams.enable_pvmmio) {
 			if (set_pvmmio(vgpu, !!data)) {
 				vgpu_vreg(vgpu, offset) = 0;
 				break;
