@@ -205,9 +205,9 @@ int virtio_pci_legacy_probe(struct virtio_pci_device *vp_dev)
 	struct pci_dev *pci_dev = vp_dev->pci_dev;
 	int rc;
 
-#ifdef CONFIG_CWP_VIRTIO_DEVICES
+#ifdef CONFIG_ACRN_VIRTIO_DEVICES
 	/*
-	 * To support CWP virtio devices which haven't obtained valid
+	 * To support ACRN virtio devices which haven't obtained valid
 	 * virtio VID:DID in time, we relax the probing conditions a little.
 	 */
 	if (pci_dev->vendor == PCI_VENDOR_ID_REDHAT_QUMRANET &&
@@ -217,7 +217,7 @@ int virtio_pci_legacy_probe(struct virtio_pci_device *vp_dev)
 	/* We only own devices >= 0x1000 and <= 0x103f: leave the rest. */
 	if (pci_dev->device < 0x1000 || pci_dev->device > 0x103f)
 		return -ENODEV;
-#endif /* CONFIG_CWP_VIRTIO_DEVICES */
+#endif /* CONFIG_ACRN_VIRTIO_DEVICES */
 
 	if (pci_dev->revision != VIRTIO_PCI_ABI_VERSION) {
 		printk(KERN_ERR "virtio_pci: expected ABI version %d, got %d\n",
