@@ -27,7 +27,7 @@
 #include <linux/trusty/trusty.h>
 
 #define EVMM_SMC_HC_ID 0x74727500
-#define CWP_SMC_HC_ID  0x80000071
+#define ACRN_SMC_HC_ID 0x80000071
 
 struct trusty_state;
 
@@ -72,9 +72,9 @@ static inline ulong smc_evmm(ulong r0, ulong r1, ulong r2, ulong r3)
 	return r0;
 }
 
-static inline ulong smc_cwp(ulong r0, ulong r1, ulong r2, ulong r3)
+static inline ulong smc_acrn(ulong r0, ulong r1, ulong r2, ulong r3)
 {
-	register unsigned long smc_id asm("r8") = CWP_SMC_HC_ID;
+	register unsigned long smc_id asm("r8") = ACRN_SMC_HC_ID;
 	asm_smc_vmcall(smc_id, r0, r1, r2, r3);
 	return r0;
 }
@@ -463,8 +463,8 @@ static void trusty_init_smc(int vmm_id)
 {
 	if (vmm_id == VMM_ID_EVMM) {
 		smc = smc_evmm;
-	} else if (vmm_id == VMM_ID_CWP) {
-		smc = smc_cwp;
+	} else if (vmm_id == VMM_ID_ACRN) {
+		smc = smc_acrn;
 	} else {
 		pr_err("%s: No smc supports VMM[%d](sig:%s)!",
 				__func__, vmm_id, vmm_signature[vmm_id]);

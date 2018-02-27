@@ -93,13 +93,13 @@ void *trusty_wall_per_cpu_item_ptr(struct device *dev, unsigned int cpu,
 
 enum {
 	VMM_ID_EVMM = 0,
-	VMM_ID_CWP,
+	VMM_ID_ACRN,
 	VMM_SUPPORTED_NUM
 };
 
 static const char *vmm_signature[] = {
 	[VMM_ID_EVMM] = "EVMMEVMMEVMM",
-	[VMM_ID_CWP]  = "CWPCWPCWP\0\0"
+	[VMM_ID_ACRN] = "ACRNACRNACRN"
 };
 
 /* Detect VMM and return vmm_id */
