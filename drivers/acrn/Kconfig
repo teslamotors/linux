@@ -1,12 +1,13 @@
 config ACRN_SHARED_BUFFER
 	bool "Intel ACRN SHARED BUFFER"
+	depends on ACRN_VHM
 	---help---
 	  Ring buffer shared between ACRN Hypervisor and its SOS.
 	  Help ACRN performance profiling.
 
 config ACRN_TRACE
 	tristate "Intel ACRN Hypervisor Trace support"
-	select ACRN_SHARED_BUFFER
+	depends on ACRN_SHARED_BUFFER
 	---help---
 		This is the Trace driver for the Intel ACRN hypervisor.
 		You can say y to build it into the kernel, or m to build
@@ -14,7 +15,7 @@ config ACRN_TRACE
 
 config ACRN_HVLOG
 	bool "Intel ACRN Hypervisor Logmsg support"
-	select ACRN_SHARED_BUFFER
+	depends on ACRN_SHARED_BUFFER
 	---help---
 		This is the Trace driver for the Intel ACRN hypervisor log.
 		You can say y to build it into the kernel.

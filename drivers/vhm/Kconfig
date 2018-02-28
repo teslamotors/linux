@@ -3,7 +3,6 @@ config ACRN_VHM
 	depends on ACRN
 	depends on DMA_CMA
 	depends on PCI_MSI
-	depends on !INTEL_IOMMU
 	depends on !VMAP_STACK
 	default n
 	---help---

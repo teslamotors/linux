@@ -2,7 +2,7 @@
 # This Kconfig describes VBS for ACRN hypervisor
 #
 config VBS
-	tristate "Enable VBS framework for ACRN hypervisor"
+	bool "Enable VBS framework for ACRN hypervisor"
 	depends on ACRN
 	default n
 	---help---
@@ -19,7 +19,7 @@ config VBS_DEBUG
 	  say N here.  This enables ACRN VBS debugging.
 
 config VBS_RNG
-	tristate "ACRN VBS reference driver: virtio RNG"
+	bool "ACRN VBS reference driver: virtio RNG"
 	depends on VBS != n
 	default n
 	---help---
