@@ -113,15 +113,27 @@ isa_config_try_fmt_vid_out_mplane(struct ipu_isys_video *av,
 
 	mpix->plane_fmt[ISA_CFG_BUF_PLANE_PG].bytesperline = 0;
 	mpix->plane_fmt[ISA_CFG_BUF_PLANE_PG].sizeimage =
-	    ALIGN(max_t(u32, sizeof(struct ia_css_process_group_light),
-			mpix->plane_fmt[ISA_CFG_BUF_PLANE_PG].sizeimage),
-		  av->isys->line_align);
+		ALIGN(clamp(mpix->plane_fmt[ISA_CFG_BUF_PLANE_PG].sizeimage,
+			    (u32)sizeof(struct ia_css_process_group_light),
+			    UINT_MAX - av->isys->line_align),
+		      av->isys->line_align);
 
 	mpix->plane_fmt[ISA_CFG_BUF_PLANE_DATA].bytesperline = 0;
 	mpix->plane_fmt[ISA_CFG_BUF_PLANE_DATA].sizeimage =
-	    ALIGN(max(1U,
-		      mpix->plane_fmt[ISA_CFG_BUF_PLANE_DATA].sizeimage),
-		  av->isys->line_align);
+		ALIGN(clamp(mpix->plane_fmt[ISA_CFG_BUF_PLANE_DATA].sizeimage,
+			    1U, UINT_MAX - av->isys->line_align),
+		       av->isys->line_align);
+
+	memset(mpix->plane_fmt[ISA_CFG_BUF_PLANE_PG].reserved, 0,
+	       sizeof(mpix->plane_fmt[ISA_CFG_BUF_PLANE_PG].reserved));
+	memset(mpix->plane_fmt[ISA_CFG_BUF_PLANE_DATA].reserved, 0,
+	       sizeof(mpix->plane_fmt[ISA_CFG_BUF_PLANE_DATA].reserved));
+
+	mpix->colorspace = V4L2_COLORSPACE_RAW;
+	mpix->xfer_func = V4L2_XFER_FUNC_DEFAULT;
+	mpix->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+	mpix->quantization = V4L2_QUANTIZATION_DEFAULT;
+	mpix->field = V4L2_FIELD_NONE;
 
 	return pfmt;
 }
@@ -149,13 +161,61 @@ static int isa_config_vidioc_try_fmt_vid_out_mplane(struct file *file, void *fh,
 	return 0;
 }
 
+static int vidioc_enum_output(struct file *file, void *fh,
+			      struct v4l2_output *output)
+{
+	if (output->index > 0)
+		return -EINVAL;
+
+	strlcpy(output->name, "camera", sizeof(output->name));
+	output->type = V4L2_INPUT_TYPE_CAMERA;
+
+	return 0;
+}
+
+static int vidioc_g_output(struct file *file, void *fh, unsigned int *output)
+{
+	*output = 0;
+
+	return 0;
+}
+
+static int vidioc_s_output(struct file *file, void *fh, unsigned int output)
+{
+	return output ? -EINVAL : 0;
+}
+
+static int vidioc_enum_input(struct file *file, void *fh,
+			     struct v4l2_input *input)
+{
+	if (input->index > 0)
+		return -EINVAL;
+	strlcpy(input->name, "camera", sizeof(input->name));
+	input->type = V4L2_INPUT_TYPE_CAMERA;
+
+	return 0;
+}
+
+static int vidioc_g_input(struct file *file, void *fh, unsigned int *input)
+{
+	*input = 0;
+
+	return 0;
+}
+
+static int vidioc_s_input(struct file *file, void *fh, unsigned int input)
+{
+	return input ? -EINVAL : 0;
+}
+
 static const struct v4l2_ioctl_ops isa_config_ioctl_ops = {
 	.vidioc_querycap = ipu_isys_vidioc_querycap,
-	.vidioc_enum_fmt_vid_cap = ipu_isys_vidioc_enum_fmt,
+	.vidioc_enum_fmt_vid_out_mplane = ipu_isys_vidioc_enum_fmt,
 	.vidioc_g_fmt_vid_out_mplane = isa_config_vidioc_g_fmt_vid_out_mplane,
 	.vidioc_s_fmt_vid_out_mplane = isa_config_vidioc_s_fmt_vid_out_mplane,
 	.vidioc_try_fmt_vid_out_mplane =
 	    isa_config_vidioc_try_fmt_vid_out_mplane,
+	.vidioc_enum_fmt_vid_cap_mplane = ipu_isys_vidioc_enum_fmt,
 	.vidioc_g_fmt_vid_cap_mplane = isa_config_vidioc_g_fmt_vid_out_mplane,
 	.vidioc_s_fmt_vid_cap_mplane = isa_config_vidioc_s_fmt_vid_out_mplane,
 	.vidioc_try_fmt_vid_cap_mplane =
@@ -169,6 +229,12 @@ static const struct v4l2_ioctl_ops isa_config_ioctl_ops = {
 	.vidioc_streamon = vb2_ioctl_streamon,
 	.vidioc_streamoff = vb2_ioctl_streamoff,
 	.vidioc_expbuf = vb2_ioctl_expbuf,
+	.vidioc_enum_output = vidioc_enum_output,
+	.vidioc_g_output = vidioc_g_output,
+	.vidioc_s_output = vidioc_s_output,
+	.vidioc_enum_input = vidioc_enum_input,
+	.vidioc_g_input = vidioc_g_input,
+	.vidioc_s_input = vidioc_s_input,
 };
 
 static const struct v4l2_subdev_core_ops isa_sd_core_ops = {
@@ -982,6 +1048,8 @@ int ipu_isys_isa_init(struct ipu_isys_isa *isa,
 		 IPU_ISYS_ENTITY_PREFIX " ISA config");
 	isa->av_config.isys = isys;
 	isa->av_config.pfmts = isa_config_pfmts;
+	isa->av_config.mpix.width = fmt.format.width;
+	isa->av_config.mpix.height = fmt.format.height;
 	isa->av_config.try_fmt_vid_mplane = isa_config_try_fmt_vid_out_mplane;
 	isa->av_config.prepare_firmware_stream_cfg =
 	    isa_prepare_firmware_stream_cfg_param;
@@ -1009,6 +1077,8 @@ int ipu_isys_isa_init(struct ipu_isys_isa *isa,
 		 IPU_ISYS_ENTITY_PREFIX " ISA 3A stats");
 	isa->av_3a.isys = isys;
 	isa->av_3a.pfmts = isa_config_pfmts;
+	isa->av_3a.mpix.width = fmt.format.width;
+	isa->av_3a.mpix.height = fmt.format.height;
 	isa->av_3a.try_fmt_vid_mplane = isa_config_try_fmt_vid_out_mplane;
 	isa->av_3a.prepare_firmware_stream_cfg =
 	    isa_prepare_firmware_stream_cfg_param;
