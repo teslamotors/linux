@@ -1955,6 +1955,9 @@ int sdw_bs_pre_bnkswtch_post(struct sdw_runtime *sdw_rt, int bs_state)
 
 		/* Get bus structure for master */
 		mstr_bs_act = master_to_bus(mstr_rt_act->mstr);
+		if (!mstr_bs_act)
+			return -EINVAL;
+
 		ops = mstr_bs_act->mstr->driver->mstr_port_ops;
 
 		/*
@@ -2416,6 +2419,9 @@ int sdw_pre_en_dis_unprep_op(struct sdw_mstr_runtime *sdw_mstr_rt,
 
 	/* Get bus structure for master */
 	sdw_mstr_bs = master_to_bus(sdw_mstr_rt->mstr);
+	if (!sdw_mstr_bs)
+		return -EINVAL;
+
 	sdw_mstr = sdw_mstr_bs->mstr;
 
 	/*
@@ -2487,6 +2493,9 @@ int sdw_bus_calc_bw(struct sdw_stream_tag *stream_tag, bool enable)
 
 		/* Get bus structure for master */
 		sdw_mstr_bs = master_to_bus(sdw_mstr_rt->mstr);
+		if (!sdw_mstr_bs)
+			return -EINVAL;
+
 		sdw_mstr = sdw_mstr_bs->mstr;
 		ret = sdw_pre_en_dis_unprep_op(sdw_mstr_rt, sdw_rt,
 				SDW_STATE_PREPARE_STREAM);
@@ -2508,6 +2517,9 @@ enable_stream:
 			(sdw_rt->stream_state != SDW_STATE_PREPARE_STREAM))
 			return 0;
 		sdw_mstr_bs = master_to_bus(sdw_mstr_rt->mstr);
+		if (!sdw_mstr_bs)
+			return -EINVAL;
+
 		sdw_mstr = sdw_mstr_bs->mstr;
 
 		ret = sdw_pre_en_dis_unprep_op(sdw_mstr_rt, sdw_rt,
@@ -2557,6 +2569,9 @@ int sdw_bus_calc_bw_dis(struct sdw_stream_tag *stream_tag, bool unprepare)
 
 		/* Get bus structure for master */
 		sdw_mstr_bs = master_to_bus(sdw_mstr_rt->mstr);
+		if (!sdw_mstr_bs)
+			return -EINVAL;
+
 		sdw_mstr = sdw_mstr_bs->mstr;
 		ret = sdw_pre_en_dis_unprep_op(sdw_mstr_rt, sdw_rt,
 				SDW_STATE_DISABLE_STREAM);
@@ -2577,6 +2592,9 @@ unprepare_stream:
 			return 0;
 
 		sdw_mstr_bs = master_to_bus(sdw_mstr_rt->mstr);
+		if (!sdw_mstr_bs)
+			return -EINVAL;
+
 		sdw_mstr = sdw_mstr_bs->mstr;
 		ret = sdw_pre_en_dis_unprep_op(sdw_mstr_rt, sdw_rt,
 				SDW_STATE_UNPREPARE_STREAM);
