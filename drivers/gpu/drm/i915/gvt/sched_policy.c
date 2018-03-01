@@ -191,7 +191,7 @@ static struct intel_vgpu *find_busy_vgpu(struct gvt_sched_data *sched_data,
 }
 
 /* in nanosecond */
-#define GVT_DEFAULT_TIME_SLICE 5000000
+#define GVT_DEFAULT_TIME_SLICE 1000000
 
 static void tbs_sched_func(struct gvt_sched_data *sched_data, enum intel_engine_id ring_id)
 {
@@ -214,6 +214,8 @@ static void tbs_sched_func(struct gvt_sched_data *sched_data, enum intel_engine_
 				&sched_data->lru_runq_head[ring_id]);
 
 		gvt_dbg_sched("pick next vgpu %d\n", vgpu->id);
+	} else {
+		scheduler->next_vgpu[ring_id] = gvt->idle_vgpu;
 	}
 out:
 	if (scheduler->next_vgpu[ring_id]) {

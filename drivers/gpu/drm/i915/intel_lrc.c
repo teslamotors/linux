@@ -528,6 +528,19 @@ static void inject_preempt_context(struct intel_engine_cs *engine)
 	ce->ring->tail &= (ce->ring->size - 1);
 	ce->lrc_reg_state[CTX_RING_TAIL+1] = ce->ring->tail;
 
+	if (intel_vgpu_active(engine->i915) && i915_modparams.enable_pvmmio) {
+		u32 __iomem *elsp_data = engine->i915->shared_page->elsp_data;
+
+		spin_lock(&engine->i915->shared_page_lock);
+		writel(0, elsp_data);
+		writel(0, elsp_data + 1);
+		writel(upper_32_bits(ce->lrc_desc), elsp_data + 2);
+		writel(lower_32_bits(ce->lrc_desc), elsp);
+		spin_unlock(&engine->i915->shared_page_lock);
+
+		return;
+	}
+
 	for (n = execlists_num_ports(&engine->execlists); --n; )
 		elsp_write(0, elsp);
 
@@ -536,7 +549,8 @@ static void inject_preempt_context(struct intel_engine_cs *engine)
 
 static bool can_preempt(struct intel_engine_cs *engine)
 {
-	return INTEL_INFO(engine->i915)->has_logical_ring_preemption;
+	return !intel_vgpu_active(engine->i915) &&
+		INTEL_INFO(engine->i915)->has_logical_ring_preemption;
 }
 
 static void execlists_dequeue(struct intel_engine_cs *engine)
