@@ -187,5 +187,5 @@ obj-$(CONFIG_FSI)		+= fsi/
 obj-$(CONFIG_TEE)		+= tee/
 obj-$(CONFIG_MULTIPLEXER)	+= mux/
 obj-$(CONFIG_SDW)		+= sdw/
-obj-$(CONFIG_CWP) 		+= vhm/
-obj-$(CONFIG_CWP)		+= cwp/
+obj-$(CONFIG_ACRN_VHM) 		+= vhm/
+obj-$(CONFIG_ACRN)		+= acrn/

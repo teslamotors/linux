@@ -771,7 +771,7 @@ config QUEUED_LOCK_STAT
 	  behavior of paravirtualized queued spinlocks and report
 	  them on debugfs.
 
-source "arch/x86/cwp/Kconfig"
+source "arch/x86/acrn/Kconfig"
 
 source "arch/x86/xen/Kconfig"
 

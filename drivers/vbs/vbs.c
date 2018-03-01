@@ -1,13 +1,13 @@
 /*
- * Clearwater Pass (CWP) Project
- * Virtio Backend Service (VBS) for CWP hypervisor
+ * ACRN Project
+ * Virtio Backend Service (VBS) for ACRN hypervisor
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ * Copyright (c) 2018 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -22,7 +22,7 @@
  *
  * BSD LICENSE
  *
- * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ * Copyright (c) 2018 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,7 +54,7 @@
  * Hao Li <hao.l.li@intel.com>
  *  Created Virtio Backend Service (VBS) framework:
  *  - VBS-K is a kernel-level virtio framework that can be used for
- *    virtio backend driver development for CWP hypervisor.
+ *    virtio backend driver development for ACRN hypervisor.
  *  - VBS-K should be working with VBS-U (Virtio Backend Service in
  *    User) together, in order to connect with virtio frontend driver.
  *  - VBS-K mainly handles data plane part of a virtio backend driver,
@@ -86,20 +86,20 @@ long virtio_dev_register(struct virtio_dev_info *dev)
 	 */
 	dev->name[15] = '\0';
 	dev->_ctx.vhm_client_id =
-			cwp_ioreq_create_client(dev->_ctx.vmid,
+			acrn_ioreq_create_client(dev->_ctx.vmid,
 						dev->dev_notify,
 						dev->name);
 	if (dev->_ctx.vhm_client_id < 0) {
-		pr_err("failed to create client of cwp ioreq!\n");
+		pr_err("failed to create client of ioreq!\n");
 		goto err;
 	}
 
-	ret = cwp_ioreq_add_iorange(dev->_ctx.vhm_client_id,
+	ret = acrn_ioreq_add_iorange(dev->_ctx.vhm_client_id,
 				    dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 				    dev->io_range_start,
 				    dev->io_range_start + dev->io_range_len - 1);
 	if (ret < 0) {
-		pr_err("failed to add iorange to cwp ioreq!\n");
+		pr_err("failed to add iorange to ioreq!\n");
 		goto err;
 	}
 
@@ -111,36 +111,36 @@ long virtio_dev_register(struct virtio_dev_info *dev)
 	}
 	dev->_ctx.max_vcpu = info.max_vcpu;
 
-	dev->_ctx.req_buf = cwp_ioreq_get_reqbuf(dev->_ctx.vhm_client_id);
+	dev->_ctx.req_buf = acrn_ioreq_get_reqbuf(dev->_ctx.vhm_client_id);
 	if (dev->_ctx.req_buf == NULL) {
-		pr_err("failed in cwp_ioreq_get_reqbuf!\n");
+		pr_err("failed in ioreq_get_reqbuf!\n");
 		goto range_err;
 	}
 
-	cwp_ioreq_attach_client(dev->_ctx.vhm_client_id, 0);
+	acrn_ioreq_attach_client(dev->_ctx.vhm_client_id, 0);
 
 	return 0;
 
 range_err:
-	cwp_ioreq_del_iorange(dev->_ctx.vhm_client_id,
+	acrn_ioreq_del_iorange(dev->_ctx.vhm_client_id,
 			      dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 			      dev->io_range_start,
 			      dev->io_range_start + dev->io_range_len);
 
 err:
-	cwp_ioreq_destroy_client(dev->_ctx.vhm_client_id);
+	acrn_ioreq_destroy_client(dev->_ctx.vhm_client_id);
 
 	return -EINVAL;
 }
 
 long virtio_dev_deregister(struct virtio_dev_info *dev)
 {
-	cwp_ioreq_del_iorange(dev->_ctx.vhm_client_id,
+	acrn_ioreq_del_iorange(dev->_ctx.vhm_client_id,
 			      dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 			      dev->io_range_start,
 			      dev->io_range_start + dev->io_range_len);
 
-	cwp_ioreq_destroy_client(dev->_ctx.vhm_client_id);
+	acrn_ioreq_destroy_client(dev->_ctx.vhm_client_id);
 
 	return 0;
 }
@@ -181,7 +181,7 @@ int virtio_vq_index_get(struct virtio_dev_info *dev, int req_cnt)
 					val = req->reqs.mmio_request.value;
 			}
 			req->processed = REQ_STATE_SUCCESS;
-			cwp_ioreq_complete_request(dev->_ctx.vhm_client_id, i);
+			acrn_ioreq_complete_request(dev->_ctx.vhm_client_id, i);
 		}
 	}
 
@@ -318,4 +318,4 @@ module_exit(vbs_exit);
 MODULE_VERSION("0.1");
 MODULE_AUTHOR("Intel Corporation");
 MODULE_LICENSE("GPL and additional rights");
-MODULE_DESCRIPTION("Virtio Backend Service framework for CWP hypervisor");
+MODULE_DESCRIPTION("Virtio Backend Service framework for ACRN hypervisor");

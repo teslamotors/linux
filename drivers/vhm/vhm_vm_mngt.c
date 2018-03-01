@@ -56,10 +56,10 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 #include <asm/processor.h>
-#include <linux/vhm/cwp_hv_defs.h>
+#include <linux/vhm/acrn_hv_defs.h>
 #include <linux/vhm/vhm_ioctl_defs.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
-#include <linux/vhm/cwp_vhm_mm.h>
+#include <linux/vhm/acrn_vhm_ioreq.h>
+#include <linux/vhm/acrn_vhm_mm.h>
 #include <linux/vhm/vhm_hypercall.h>
 
 LIST_HEAD(vhm_vm_list);
@@ -88,7 +88,7 @@ void put_vm(struct vhm_vm *vm)
 	if (vm->refcnt == 0) {
 		list_del(&vm->list);
 		free_guest_mem(vm);
-		cwp_ioreq_free(vm);
+		acrn_ioreq_free(vm);
 		kfree(vm);
 		pr_info("vhm: freed vm\n");
 	}
@@ -115,7 +115,7 @@ int vhm_get_vm_info(unsigned long vmid, struct vm_info *info)
 int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
 		unsigned long msi_data)
 {
-	struct cwp_msi_entry msi;
+	struct acrn_msi_entry msi;
 	int ret;
 
 	/* msi_addr: addr[19:12] with dest vcpu id */

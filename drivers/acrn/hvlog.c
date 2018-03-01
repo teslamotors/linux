@@ -1,5 +1,5 @@
 /*
- * CWP Hypervisor logmsg
+ * ACRN Hypervisor logmsg
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -52,7 +52,7 @@
  * Li Fei <fei1.li@intel.com>
  *
  */
-#define pr_fmt(fmt) "CWP HVLog: " fmt
+#define pr_fmt(fmt) "ACRN HVLog: " fmt
 
 #include <linux/memblock.h>
 #include <linux/kernel.h>
@@ -74,12 +74,12 @@
 	for ((idx) = 0; (idx) < (hvlog_type); (idx)++)
 
 enum sbuf_hvlog_index {
-	CWP_CURRNET_HVLOG = 0,
-	CWP_LAST_HVLOG,
-	CWP_HVLOG_TYPE
+	ACRN_CURRNET_HVLOG = 0,
+	ACRN_LAST_HVLOG,
+	ACRN_HVLOG_TYPE
 };
 
-struct cwp_hvlog {
+struct acrn_hvlog {
 	struct miscdevice miscdev;
 	shared_buf_t *sbuf;
 	atomic_t open_cnt;
@@ -128,68 +128,68 @@ static inline shared_buf_t *hvlog_mark_unread(shared_buf_t *sbuf)
 	return sbuf;
 }
 
-static int cwp_hvlog_open(struct inode *inode, struct file *filp)
+static int hvlog_open(struct inode *inode, struct file *filp)
 {
-	struct cwp_hvlog *cwp_hvlog;
+	struct acrn_hvlog *acrn_hvlog;
 
-	cwp_hvlog = container_of(filp->private_data,
-				struct cwp_hvlog, miscdev);
-	pr_debug("%s, %s\n", __func__, cwp_hvlog->miscdev.name);
+	acrn_hvlog = container_of(filp->private_data,
+				struct acrn_hvlog, miscdev);
+	pr_debug("%s, %s\n", __func__, acrn_hvlog->miscdev.name);
 
-	if (cwp_hvlog->pcpu_num >= PCPU_NRS) {
+	if (acrn_hvlog->pcpu_num >= PCPU_NRS) {
 		pr_err("%s, invalid pcpu_num: %d\n",
-				__func__, cwp_hvlog->pcpu_num);
+				__func__, acrn_hvlog->pcpu_num);
 		return -EIO;
 	}
 
 	/* More than one reader at the same time could get data messed up */
-	if (atomic_cmpxchg(&cwp_hvlog->open_cnt, 0, 1) != 0)
+	if (atomic_cmpxchg(&acrn_hvlog->open_cnt, 0, 1) != 0)
 		return -EBUSY;
 
-	filp->private_data = cwp_hvlog;
+	filp->private_data = acrn_hvlog;
 
 	return 0;
 }
 
-static int cwp_hvlog_release(struct inode *inode, struct file *filp)
+static int hvlog_release(struct inode *inode, struct file *filp)
 {
-	struct cwp_hvlog *cwp_hvlog;
+	struct acrn_hvlog *acrn_hvlog;
 
-	cwp_hvlog = filp->private_data;
+	acrn_hvlog = filp->private_data;
 
-	pr_debug("%s, %s\n", __func__, cwp_hvlog->miscdev.name);
+	pr_debug("%s, %s\n", __func__, acrn_hvlog->miscdev.name);
 
-	if (cwp_hvlog->pcpu_num >= PCPU_NRS) {
+	if (acrn_hvlog->pcpu_num >= PCPU_NRS) {
 		pr_err("%s, invalid pcpu_num: %d\n",
-				__func__, cwp_hvlog->pcpu_num);
+				__func__, acrn_hvlog->pcpu_num);
 		return -EIO;
 	}
 
-	atomic_dec(&cwp_hvlog->open_cnt);
+	atomic_dec(&acrn_hvlog->open_cnt);
 	filp->private_data = NULL;
 
 	return 0;
 }
 
-static ssize_t cwp_hvlog_read(struct file *filp, char __user *buf,
+static ssize_t hvlog_read(struct file *filp, char __user *buf,
 				size_t count, loff_t *offset)
 {
 	char data[LOG_ENTRY_SIZE];
-	struct cwp_hvlog *cwp_hvlog;
+	struct acrn_hvlog *acrn_hvlog;
 	int ret;
 
-	cwp_hvlog = (struct cwp_hvlog *)filp->private_data;
+	acrn_hvlog = (struct acrn_hvlog *)filp->private_data;
 
-	pr_debug("%s, %s\n", __func__, cwp_hvlog->miscdev.name);
+	pr_debug("%s, %s\n", __func__, acrn_hvlog->miscdev.name);
 
-	if (cwp_hvlog->pcpu_num >= PCPU_NRS) {
+	if (acrn_hvlog->pcpu_num >= PCPU_NRS) {
 		pr_err("%s, invalid pcpu_num: %d\n",
-				__func__, cwp_hvlog->pcpu_num);
+				__func__, acrn_hvlog->pcpu_num);
 		return -EIO;
 	}
 
-	if (cwp_hvlog->sbuf != NULL) {
-		ret = sbuf_get(cwp_hvlog->sbuf, (uint8_t *)&data);
+	if (acrn_hvlog->sbuf != NULL) {
+		ret = sbuf_get(acrn_hvlog->sbuf, (uint8_t *)&data);
 		if (ret > 0) {
 			if (copy_to_user(buf, &data, ret))
 				return -EFAULT;
@@ -201,85 +201,85 @@ static ssize_t cwp_hvlog_read(struct file *filp, char __user *buf,
 	return 0;
 }
 
-static const struct file_operations cwp_hvlog_fops = {
+static const struct file_operations hvlog_fops = {
 	.owner  = THIS_MODULE,
-	.open   = cwp_hvlog_open,
-	.release = cwp_hvlog_release,
-	.read = cwp_hvlog_read,
+	.open   = hvlog_open,
+	.release = hvlog_release,
+	.read = hvlog_read,
 };
 
-static struct cwp_hvlog cwp_hvlog_devs[CWP_HVLOG_TYPE][PCPU_NRS] = {
-	[CWP_CURRNET_HVLOG] = {
+static struct acrn_hvlog hvlog_devs[ACRN_HVLOG_TYPE][PCPU_NRS] = {
+	[ACRN_CURRNET_HVLOG] = {
 		{
 			.miscdev = {
-				.name   = "cwp_hvlog_cur_0",
+				.name   = "acrn_hvlog_cur_0",
 				.minor  = MISC_DYNAMIC_MINOR,
-				.fops   = &cwp_hvlog_fops,
+				.fops   = &hvlog_fops,
 			},
 			.pcpu_num = 0,
 		},
 		{
 			.miscdev = {
-				.name   = "cwp_hvlog_cur_1",
+				.name   = "acrn_hvlog_cur_1",
 				.minor  = MISC_DYNAMIC_MINOR,
-				.fops   = &cwp_hvlog_fops,
+				.fops   = &hvlog_fops,
 			},
 			.pcpu_num = 1,
 		},
 		{
 			.miscdev = {
-				.name   = "cwp_hvlog_cur_2",
+				.name   = "acrn_hvlog_cur_2",
 				.minor  = MISC_DYNAMIC_MINOR,
-				.fops   = &cwp_hvlog_fops,
+				.fops   = &hvlog_fops,
 			},
 			.pcpu_num = 2,
 		},
 		{
 			.miscdev = {
-				.name   = "cwp_hvlog_cur_3",
+				.name   = "acrn_hvlog_cur_3",
 				.minor  = MISC_DYNAMIC_MINOR,
-				.fops   = &cwp_hvlog_fops,
+				.fops   = &hvlog_fops,
 			},
 			.pcpu_num = 3,
 		},
 	},
-	[CWP_LAST_HVLOG] = {
+	[ACRN_LAST_HVLOG] = {
 		{
 			.miscdev = {
-				.name   = "cwp_hvlog_last_0",
+				.name   = "acrn_hvlog_last_0",
 				.minor  = MISC_DYNAMIC_MINOR,
-				.fops   = &cwp_hvlog_fops,
+				.fops   = &hvlog_fops,
 			},
 			.pcpu_num = 0,
 		},
 		{
 			.miscdev = {
-				.name   = "cwp_hvlog_last_1",
+				.name   = "acrn_hvlog_last_1",
 				.minor  = MISC_DYNAMIC_MINOR,
-				.fops   = &cwp_hvlog_fops,
+				.fops   = &hvlog_fops,
 			},
 			.pcpu_num = 1,
 		},
 		{
 			.miscdev = {
-				.name   = "cwp_hvlog_last_2",
+				.name   = "acrn_hvlog_last_2",
 				.minor  = MISC_DYNAMIC_MINOR,
-				.fops   = &cwp_hvlog_fops,
+				.fops   = &hvlog_fops,
 			},
 			.pcpu_num = 2,
 		},
 		{
 			.miscdev = {
-				.name   = "cwp_hvlog_last_3",
+				.name   = "acrn_hvlog_last_3",
 				.minor  = MISC_DYNAMIC_MINOR,
-				.fops   = &cwp_hvlog_fops,
+				.fops   = &hvlog_fops,
 			},
 			.pcpu_num = 3,
 		},
 	}
 };
 
-static int __init cwp_hvlog_init(void)
+static int __init acrn_hvlog_init(void)
 {
 	int ret = 0;
 	int i, j, idx;
@@ -321,9 +321,9 @@ static int __init cwp_hvlog_init(void)
 			continue;
 
 		foreach_cpu(pcpu_id, PCPU_NRS) {
-			cwp_hvlog_devs[CWP_LAST_HVLOG][pcpu_id].sbuf =
+			hvlog_devs[ACRN_LAST_HVLOG][pcpu_id].sbuf =
 					hvlog_mark_unread(sbuf0[pcpu_id]);
-			cwp_hvlog_devs[CWP_CURRNET_HVLOG][pcpu_id].sbuf =
+			hvlog_devs[ACRN_CURRNET_HVLOG][pcpu_id].sbuf =
 				sbuf_construct(ele_num, ele_size,
 					logbuf_base1 + size * pcpu_id);
 		}
@@ -336,40 +336,40 @@ static int __init cwp_hvlog_init(void)
 				continue;
 
 			foreach_cpu(pcpu_id, PCPU_NRS) {
-				cwp_hvlog_devs[CWP_LAST_HVLOG][pcpu_id].sbuf =
+				hvlog_devs[ACRN_LAST_HVLOG][pcpu_id].sbuf =
 					hvlog_mark_unread(sbuf1[pcpu_id]);
 			}
 		}
 		foreach_cpu(pcpu_id, PCPU_NRS) {
-			cwp_hvlog_devs[CWP_CURRNET_HVLOG][pcpu_id].sbuf =
+			hvlog_devs[ACRN_CURRNET_HVLOG][pcpu_id].sbuf =
 				sbuf_construct(ele_num, ele_size,
 					logbuf_base0 + size * pcpu_id);
 		}
 		sbuf_constructed = true;
 	}
 
-	idx = CWP_CURRNET_HVLOG;
+	idx = ACRN_CURRNET_HVLOG;
 	{
 		foreach_cpu(pcpu_id, PCPU_NRS) {
-			ret = sbuf_share_setup(pcpu_id, CWP_HVLOG,
-					cwp_hvlog_devs[idx][pcpu_id].sbuf);
+			ret = sbuf_share_setup(pcpu_id, ACRN_HVLOG,
+					hvlog_devs[idx][pcpu_id].sbuf);
 			if (ret < 0) {
 				pr_err("Failed to setup %s, errno %d\n",
-				cwp_hvlog_devs[idx][pcpu_id].miscdev.name, ret);
+				hvlog_devs[idx][pcpu_id].miscdev.name, ret);
 				goto setup_err;
 			}
 		}
 	}
 
-	foreach_hvlog_type(idx, CWP_HVLOG_TYPE) {
+	foreach_hvlog_type(idx, ACRN_HVLOG_TYPE) {
 		foreach_cpu(pcpu_id, PCPU_NRS) {
-			atomic_set(&cwp_hvlog_devs[idx][pcpu_id].open_cnt, 0);
+			atomic_set(&hvlog_devs[idx][pcpu_id].open_cnt, 0);
 
 			ret = misc_register(
-					&cwp_hvlog_devs[idx][pcpu_id].miscdev);
+					&hvlog_devs[idx][pcpu_id].miscdev);
 			if (ret < 0) {
 				pr_err("Failed to register %s, errno %d\n",
-				cwp_hvlog_devs[idx][pcpu_id].miscdev.name, ret);
+				hvlog_devs[idx][pcpu_id].miscdev.name, ret);
 				goto reg_err;
 			}
 		}
@@ -380,53 +380,53 @@ static int __init cwp_hvlog_init(void)
 reg_err:
 	foreach_hvlog_type(i, idx) {
 		foreach_cpu(j, PCPU_NRS) {
-			misc_deregister(&cwp_hvlog_devs[i][j].miscdev);
+			misc_deregister(&hvlog_devs[i][j].miscdev);
 		}
 	}
 
 	foreach_cpu(j, pcpu_id) {
-		misc_deregister(&cwp_hvlog_devs[idx][j].miscdev);
+		misc_deregister(&hvlog_devs[idx][j].miscdev);
 	}
 
 	pcpu_id = PCPU_NRS;
 setup_err:
-	idx = CWP_CURRNET_HVLOG;
+	idx = ACRN_CURRNET_HVLOG;
 	{
 		foreach_cpu(j, pcpu_id) {
-			sbuf_share_setup(j, CWP_HVLOG, 0);
-			sbuf_deconstruct(cwp_hvlog_devs[idx][j].sbuf);
+			sbuf_share_setup(j, ACRN_HVLOG, 0);
+			sbuf_deconstruct(hvlog_devs[idx][j].sbuf);
 		}
 	}
 
 	return ret;
 }
 
-static void __exit cwp_hvlog_exit(void)
+static void __exit acrn_hvlog_exit(void)
 {
 	int idx;
 	uint32_t pcpu_id;
 
 	pr_info("%s\n", __func__);
 
-	foreach_hvlog_type(idx, CWP_HVLOG_TYPE) {
+	foreach_hvlog_type(idx, ACRN_HVLOG_TYPE) {
 		foreach_cpu(pcpu_id, PCPU_NRS) {
-			misc_deregister(&cwp_hvlog_devs[idx][pcpu_id].miscdev);
+			misc_deregister(&hvlog_devs[idx][pcpu_id].miscdev);
 		}
 	}
 
-	idx = CWP_CURRNET_HVLOG;
+	idx = ACRN_CURRNET_HVLOG;
 	{
 		foreach_cpu(pcpu_id, PCPU_NRS) {
-			sbuf_share_setup(pcpu_id, CWP_HVLOG, 0);
-			sbuf_deconstruct(cwp_hvlog_devs[idx][pcpu_id].sbuf);
+			sbuf_share_setup(pcpu_id, ACRN_HVLOG, 0);
+			sbuf_deconstruct(hvlog_devs[idx][pcpu_id].sbuf);
 		}
 	}
 }
 
-module_init(cwp_hvlog_init);
-module_exit(cwp_hvlog_exit);
+module_init(acrn_hvlog_init);
+module_exit(acrn_hvlog_exit);
 
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Intel Corp., http://www.intel.com");
-MODULE_DESCRIPTION("Driver for the Intel CWP Hypervisor Logmsg");
+MODULE_DESCRIPTION("Driver for the Intel ACRN Hypervisor Logmsg");
 MODULE_VERSION("0.1");

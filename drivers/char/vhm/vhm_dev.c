@@ -77,16 +77,16 @@
 #include <linux/pci.h>
 #include <linux/list.h>
 
-#include <linux/vhm/cwp_hv_defs.h>
+#include <linux/vhm/acrn_hv_defs.h>
 #include <linux/vhm/vhm_ioctl_defs.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
-#include <linux/vhm/cwp_vhm_mm.h>
+#include <linux/vhm/acrn_vhm_ioreq.h>
+#include <linux/vhm/acrn_vhm_mm.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 #include <linux/vhm/vhm_hypercall.h>
 
 #include <asm/hypervisor.h>
 
-#define  DEVICE_NAME "cwp_vhm"
+#define  DEVICE_NAME "acrn_vhm"
 #define  CLASS_NAME  "vhm"
 
 #define VHM_API_VERSION_MAJOR	1
@@ -118,7 +118,7 @@ static int vhm_dev_open(struct inode *inodep, struct file *filep)
 
 	if (!vm)
 		return -ENOMEM;
-	vm->vmid = CWP_INVALID_VMID;
+	vm->vmid = ACRN_INVALID_VMID;
 	vm->dev = vhm_device;
 
 	INIT_LIST_HEAD(&vm->memseg_list);
@@ -177,28 +177,28 @@ static long vhm_dev_ioctl(struct file *filep,
 		pr_err("vhm: invalid VM !\n");
 		return -EFAULT;
 	}
-	if ((vm->vmid == CWP_INVALID_VMID) && (ioctl_num != IC_CREATE_VM)) {
+	if ((vm->vmid == ACRN_INVALID_VMID) && (ioctl_num != IC_CREATE_VM)) {
 		pr_err("vhm: invalid VM ID !\n");
 		return -EFAULT;
 	}
 
 	switch (ioctl_num) {
 	case IC_CREATE_VM: {
-		struct cwp_create_vm created_vm;
+		struct acrn_create_vm created_vm;
 
 		if (copy_from_user(&created_vm, (void *)ioctl_param,
-			sizeof(struct cwp_create_vm)))
+			sizeof(struct acrn_create_vm)))
 			return -EFAULT;
 
 		ret = hcall_create_vm(virt_to_phys(&created_vm));
 		if ((ret < 0) ||
-			(created_vm.vmid == CWP_INVALID_VMID)) {
+			(created_vm.vmid == ACRN_INVALID_VMID)) {
 			pr_err("vhm: failed to create VM from Hypervisor !\n");
 			return -EFAULT;
 		}
 
 		if (copy_to_user((void *)ioctl_param, &created_vm,
-			sizeof(struct cwp_create_vm)))
+			sizeof(struct acrn_create_vm)))
 			return -EFAULT;
 
 		vm->vmid = created_vm.vmid;
@@ -231,18 +231,18 @@ static long vhm_dev_ioctl(struct file *filep,
 			pr_err("failed to destroy VM %ld\n", vm->vmid);
 			return -EFAULT;
 		}
-		vm->vmid = CWP_INVALID_VMID;
+		vm->vmid = ACRN_INVALID_VMID;
 		break;
 	}
 
 	case IC_CREATE_VCPU: {
-		struct cwp_create_vcpu cv;
+		struct acrn_create_vcpu cv;
 
 		if (copy_from_user(&cv, (void *)ioctl_param,
-				sizeof(struct cwp_create_vcpu)))
+				sizeof(struct acrn_create_vcpu)))
 			return -EFAULT;
 
-		ret = cwp_hypercall2(HC_CREATE_VCPU, vm->vmid,
+		ret = acrn_hypercall2(HC_CREATE_VCPU, vm->vmid,
 				virt_to_phys(&cv));
 		if (ret < 0) {
 			pr_err("vhm: failed to create vcpu %d!\n", cv.vcpu_id);
@@ -275,7 +275,7 @@ static long vhm_dev_ioctl(struct file *filep,
 
 	case IC_SET_IOREQ_BUFFER: {
 		/* init ioreq buffer */
-		ret = cwp_ioreq_init(vm, (unsigned long)ioctl_param);
+		ret = acrn_ioreq_init(vm, (unsigned long)ioctl_param);
 		if (ret < 0)
 			return ret;
 		break;
@@ -284,7 +284,7 @@ static long vhm_dev_ioctl(struct file *filep,
 	case IC_CREATE_IOREQ_CLIENT: {
 		int client_id;
 
-		client_id = cwp_ioreq_create_fallback_client(vm->vmid, "cwpdm");
+		client_id = acrn_ioreq_create_fallback_client(vm->vmid, "acrndm");
 		if (client_id < 0)
 			return -EFAULT;
 		return client_id;
@@ -293,14 +293,14 @@ static long vhm_dev_ioctl(struct file *filep,
 	case IC_DESTROY_IOREQ_CLIENT: {
 		int client = ioctl_param;
 
-		cwp_ioreq_destroy_client(client);
+		acrn_ioreq_destroy_client(client);
 		break;
 	}
 
 	case IC_ATTACH_IOREQ_CLIENT: {
 		int client = ioctl_param;
 
-		return cwp_ioreq_attach_client(client, 0);
+		return acrn_ioreq_attach_client(client, 0);
 	}
 
 	case IC_NOTIFY_REQUEST_FINISH: {
@@ -310,14 +310,14 @@ static long vhm_dev_ioctl(struct file *filep,
 					sizeof(notify)))
 			return -EFAULT;
 
-		ret = cwp_ioreq_complete_request(notify.client_id, notify.vcpu);
+		ret = acrn_ioreq_complete_request(notify.client_id, notify.vcpu);
 		if (ret < 0)
 			return -EFAULT;
 		break;
 	}
 
 	case IC_ASSERT_IRQLINE: {
-		struct cwp_irqline irq;
+		struct acrn_irqline irq;
 
 		if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
 			return -EFAULT;
@@ -330,7 +330,7 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 	case IC_DEASSERT_IRQLINE: {
-		struct cwp_irqline irq;
+		struct acrn_irqline irq;
 
 		if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
 			return -EFAULT;
@@ -343,7 +343,7 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 	case IC_PULSE_IRQLINE: {
-		struct cwp_irqline irq;
+		struct acrn_irqline irq;
 
 		if (copy_from_user(&irq, (void *)ioctl_param, sizeof(irq)))
 			return -EFAULT;
@@ -358,7 +358,7 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_INJECT_MSI: {
-		struct cwp_msi_entry msi;
+		struct acrn_msi_entry msi;
 
 		if (copy_from_user(&msi, (void *)ioctl_param, sizeof(msi)))
 			return -EFAULT;
@@ -473,7 +473,7 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_VM_PCI_MSIX_REMAP: {
-		struct cwp_vm_pci_msix_remap msix_remap;
+		struct acrn_vm_pci_msix_remap msix_remap;
 
 		if (copy_from_user(&msix_remap,
 			(void *)ioctl_param, sizeof(msix_remap)))
@@ -543,7 +543,7 @@ static void io_req_tasklet(unsigned long data)
 		if (!vm || !vm->req_buf)
 			break;
 
-		cwp_ioreq_distribute_request(vm);
+		acrn_ioreq_distribute_request(vm);
 	}
 
 	if (atomic_read(&ioreq_retry) > 0) {
@@ -591,11 +591,6 @@ static int __init vhm_init(void)
 	struct hc_api_version api_version = {0, 0};
 
 	pr_info("vhm: initializing\n");
-
-	if (x86_hyper_type != X86_HYPER_CWP) {
-		pr_err("vhm: not support cwp hypervisor!\n");
-		return -EINVAL;
-	}
 
 	if (hcall_get_api_version(virt_to_phys(&api_version)) < 0) {
 		pr_err("vhm: failed to get api version from Hypervisor !\n");

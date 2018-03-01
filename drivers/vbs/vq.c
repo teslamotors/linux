@@ -1,13 +1,13 @@
 /*
- * Clearwater Pass (CWP) Project
- * Virtio Backend Service (VBS) for CWP hypervisor
+ * ACRN Project
+ * Virtio Backend Service (VBS) for ACRN hypervisor
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ * Copyright (c) 2018 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -22,7 +22,7 @@
  *
  * BSD LICENSE
  *
- * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ * Copyright (c) 2018 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,9 +52,9 @@
  *
  * Chris Torek <torek @ torek net>
  * Hao Li <hao.l.li@intel.com>
- *  Created Virtqueue APIs for CWP VBS framework:
+ *  Created Virtqueue APIs for ACRN VBS framework:
  *  - VBS-K is a kernel-level virtio framework that can be used for
- *    virtio backend driver development for CWP hypervisor.
+ *    virtio backend driver development for ACRN hypervisor.
  *  - Virtqueue APIs abstract away the details of the internal data
  *    structures of virtqueue, so that callers could easily access
  *    the data from guest through virtqueues.
@@ -63,7 +63,7 @@
 #include <linux/module.h>
 #include <linux/vbs/vq.h>
 #include <linux/vbs/vbs.h>
-#include <linux/vhm/cwp_vhm_mm.h>
+#include <linux/vhm/acrn_vhm_mm.h>
 
 /* helper function for remote memory map */
 void * paddr_guest2host(struct ctx *ctx, uintptr_t gaddr, size_t len)

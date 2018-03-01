@@ -49,10 +49,10 @@
  *
  */
 
-#ifndef VHM_HYPERCALL_H
-#define VHM_HYPERCALL_H
+#ifndef __VHM_HYPERCALL_H__
+#define __VHM_HYPERCALL_H__
 
-static inline long cwp_hypercall0(unsigned long hcall_id)
+static inline long acrn_hypercall0(unsigned long hcall_id)
 {
 
 	/* x86-64 System V ABI register usage */
@@ -68,7 +68,7 @@ static inline long cwp_hypercall0(unsigned long hcall_id)
 	return result;
 }
 
-static inline long cwp_hypercall1(unsigned long hcall_id, unsigned long param1)
+static inline long acrn_hypercall1(unsigned long hcall_id, unsigned long param1)
 {
 
 	/* x86-64 System V ABI register usage */
@@ -84,7 +84,7 @@ static inline long cwp_hypercall1(unsigned long hcall_id, unsigned long param1)
 	return result;
 }
 
-static inline long cwp_hypercall2(unsigned long hcall_id, unsigned long param1,
+static inline long acrn_hypercall2(unsigned long hcall_id, unsigned long param1,
 		unsigned long param2)
 {
 
@@ -101,7 +101,7 @@ static inline long cwp_hypercall2(unsigned long hcall_id, unsigned long param1,
 	return result;
 }
 
-static inline long cwp_hypercall3(unsigned long hcall_id, unsigned long param1,
+static inline long acrn_hypercall3(unsigned long hcall_id, unsigned long param1,
 		unsigned long param2, unsigned long param3)
 {
 
@@ -118,7 +118,7 @@ static inline long cwp_hypercall3(unsigned long hcall_id, unsigned long param1,
 	return result;
 }
 
-static inline long cwp_hypercall4(unsigned long hcall_id, unsigned long param1,
+static inline long acrn_hypercall4(unsigned long hcall_id, unsigned long param1,
 		unsigned long param2, unsigned long param3,
 		unsigned long param4)
 {
@@ -162,4 +162,4 @@ inline long hcall_reset_ptdev_intr_info(unsigned long vmid,
 inline long hcall_remap_pci_msix(unsigned long vmid, unsigned long msi);
 inline long hcall_vm_gpa2hpa(unsigned long vmid, unsigned long addr);
 
-#endif /* VHM_HYPERCALL_H */
+#endif /* __VHM_HYPERCALL_H__ */

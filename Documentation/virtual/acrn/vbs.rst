@@ -2,8 +2,7 @@
 Virtio and Backend Service (VBS)
 ================================
 
-The Virtio and Backend Service (VBS) in part of Clearwater Pass (CWP)
-Project.
+The Virtio and Backend Service (VBS) in part of ACRN Project.
 
 The VBS can be further divided into two parts: VBS in user space (VBS-U)
 and VBS in kernel space (VBS-K).

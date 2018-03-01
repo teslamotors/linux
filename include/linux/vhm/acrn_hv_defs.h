@@ -49,13 +49,13 @@
  *
  */
 
-#ifndef CWP_HV_DEFS_H
-#define CWP_HV_DEFS_H
+#ifndef __ACRN_HV_DEFS_H__
+#define __ACRN_HV_DEFS_H__
 
 /*
- * Common structures for CWP/VHM/DM
+ * Common structures for ACRN/VHM/DM
  */
-#include "cwp_common.h"
+#include "acrn_common.h"
 
 /*
  * Common structures for HV/VHM
@@ -106,9 +106,9 @@
 #define HC_ID_DBG_BASE              0x60UL
 #define HC_SETUP_SBUF               _HC_ID(HC_ID, HC_ID_DBG_BASE + 0x00)
 
-#define CWP_DOM0_VMID (0UL)
-#define CWP_INVALID_VMID (-1)
-#define CWP_INVALID_HPA (-1UL)
+#define ACRN_DOM0_VMID (0UL)
+#define ACRN_INVALID_VMID (-1)
+#define ACRN_INVALID_HPA (-1UL)
 
 /* Generic memory attributes */
 #define	MEM_ACCESS_READ                 0x00000001
@@ -180,4 +180,4 @@ struct hc_api_version {
 	uint32_t minor_version;
 } __attribute__((aligned(8)));
 
-#endif /* CWP_HV_DEFS_H */
+#endif /* __ACRN_HV_DEFS_H__ */
