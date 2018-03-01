@@ -60,8 +60,8 @@
 #include <linux/mm.h>
 #include <linux/poll.h>
 #include <linux/delay.h>
-#include <linux/vhm/cwp_common.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
+#include <linux/vhm/acrn_common.h>
+#include <linux/vhm/acrn_vhm_ioreq.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 #include <linux/vhm/vhm_hypercall.h>
 
@@ -108,7 +108,7 @@ struct ioreq_client {
 	 *   if client provides a handler, it means vhm need create a kthread
 	 *   to call the handler while there is ioreq.
 	 *   if client doesn't provide a handler, client should handle ioreq
-	 *   in its own context when calls cwp_ioreq_attach_client.
+	 *   in its own context when calls acrn_ioreq_attach_client.
 	 *
 	 *   NOTE: for fallback client, there is no ioreq handler.
 	 */
@@ -128,7 +128,7 @@ struct ioreq_client {
 static struct ioreq_client *clients[MAX_CLIENT];
 static DECLARE_BITMAP(client_bitmap, MAX_CLIENT);
 
-static void cwp_ioreq_notify_client(struct ioreq_client *client);
+static void acrn_ioreq_notify_client(struct ioreq_client *client);
 
 static inline bool is_range_type(uint32_t type)
 {
@@ -164,7 +164,7 @@ static void free_client(int i)
 	}
 }
 
-int cwp_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
+int acrn_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
 	char *name)
 {
 	struct vhm_vm *vm;
@@ -220,7 +220,7 @@ int cwp_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
 	return client_id;
 }
 
-int cwp_ioreq_create_fallback_client(unsigned long vmid, char *name)
+int acrn_ioreq_create_fallback_client(unsigned long vmid, char *name)
 {
 	struct vhm_vm *vm;
 	int client_id;
@@ -240,7 +240,7 @@ int cwp_ioreq_create_fallback_client(unsigned long vmid, char *name)
 		return -EINVAL;
 	}
 
-	client_id = cwp_ioreq_create_client(vmid, NULL, name);
+	client_id = acrn_ioreq_create_client(vmid, NULL, name);
 	if (unlikely(client_id < 0)) {
 		put_vm(vm);
 		return -EINVAL;
@@ -254,7 +254,7 @@ int cwp_ioreq_create_fallback_client(unsigned long vmid, char *name)
 	return client_id;
 }
 
-static void cwp_ioreq_destroy_client_pervm(struct ioreq_client *client,
+static void acrn_ioreq_destroy_client_pervm(struct ioreq_client *client,
 		struct vhm_vm *vm)
 {
 	struct list_head *pos, *tmp;
@@ -267,7 +267,7 @@ static void cwp_ioreq_destroy_client_pervm(struct ioreq_client *client,
 	while (!waitqueue_active(&client->wq) && !client->kthread_exit)
 		msleep(10);
 	client->destroying = true;
-	cwp_ioreq_notify_client(client);
+	acrn_ioreq_notify_client(client);
 
 	spin_lock_irqsave(&client->range_lock, flags);
 	list_for_each_safe(pos, tmp, &client->range_list) {
@@ -287,7 +287,7 @@ static void cwp_ioreq_destroy_client_pervm(struct ioreq_client *client,
 		vm->ioreq_fallback_client = -1;
 }
 
-void cwp_ioreq_destroy_client(int client_id)
+void acrn_ioreq_destroy_client(int client_id)
 {
 	struct vhm_vm *vm;
 	struct ioreq_client *client;
@@ -311,7 +311,7 @@ void cwp_ioreq_destroy_client(int client_id)
 		return;
 	}
 
-	cwp_ioreq_destroy_client_pervm(client, vm);
+	acrn_ioreq_destroy_client_pervm(client, vm);
 
 	put_vm(vm);
 }
@@ -335,7 +335,7 @@ static void __attribute__((unused)) dump_iorange(struct ioreq_client *client)
  * NOTE: here just add iorange entry directly, no check for the overlap..
  * please client take care of it
  */
-int cwp_ioreq_add_iorange(int client_id, uint32_t type,
+int acrn_ioreq_add_iorange(int client_id, uint32_t type,
 	long start, long end)
 {
 	struct ioreq_client *client;
@@ -375,7 +375,7 @@ int cwp_ioreq_add_iorange(int client_id, uint32_t type,
 	return 0;
 }
 
-int cwp_ioreq_del_iorange(int client_id, uint32_t type,
+int acrn_ioreq_del_iorange(int client_id, uint32_t type,
 	long start, long end)
 {
 	struct ioreq_client *client;
@@ -439,7 +439,7 @@ static inline bool has_pending_request(struct ioreq_client *client)
 		return false;
 }
 
-struct vhm_request *cwp_ioreq_get_reqbuf(int client_id)
+struct vhm_request *acrn_ioreq_get_reqbuf(int client_id)
 {
 	struct ioreq_client *client;
 	struct vhm_vm *vm;
@@ -498,7 +498,7 @@ static int ioreq_client_thread(void *data)
 	return 0;
 }
 
-int cwp_ioreq_attach_client(int client_id, bool check_kthread_stop)
+int acrn_ioreq_attach_client(int client_id, bool check_kthread_stop)
 {
 	struct ioreq_client *client;
 
@@ -550,7 +550,7 @@ int cwp_ioreq_attach_client(int client_id, bool check_kthread_stop)
 	return 0;
 }
 
-void cwp_ioreq_intercept_bdf(int client_id, int bus, int dev, int func)
+void acrn_ioreq_intercept_bdf(int client_id, int bus, int dev, int func)
 {
 	struct ioreq_client *client;
 
@@ -569,7 +569,7 @@ void cwp_ioreq_intercept_bdf(int client_id, int bus, int dev, int func)
 	client->pci_func = func;
 }
 
-void cwp_ioreq_unintercept_bdf(int client_id)
+void acrn_ioreq_unintercept_bdf(int client_id)
 {
 	struct ioreq_client *client;
 
@@ -588,7 +588,7 @@ void cwp_ioreq_unintercept_bdf(int client_id)
 	client->pci_func = -1;
 }
 
-static void cwp_ioreq_notify_client(struct ioreq_client *client)
+static void acrn_ioreq_notify_client(struct ioreq_client *client)
 {
 	/* if client thread is in waitqueue, wake up it */
 	if (waitqueue_active(&client->wq))
@@ -718,7 +718,7 @@ static bool bdf_match(struct ioreq_client *client)
 		client->pci_func == cached_func);
 }
 
-static struct ioreq_client *cwp_ioreq_find_client_by_request(struct vhm_vm *vm,
+static struct ioreq_client *acrn_ioreq_find_client_by_request(struct vhm_vm *vm,
 	struct vhm_request *req)
 {
 	struct list_head *pos, *range_pos;
@@ -770,7 +770,7 @@ static struct ioreq_client *cwp_ioreq_find_client_by_request(struct vhm_vm *vm,
 	return NULL;
 }
 
-int cwp_ioreq_distribute_request(struct vhm_vm *vm)
+int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 {
 	struct vhm_request *req;
 	struct list_head *pos;
@@ -783,7 +783,7 @@ int cwp_ioreq_distribute_request(struct vhm_vm *vm)
 		if (req->valid && (req->processed == REQ_STATE_PENDING)) {
 			if (handle_cf8cfc(vm, req, i))
 				continue;
-			client = cwp_ioreq_find_client_by_request(vm, req);
+			client = acrn_ioreq_find_client_by_request(vm, req);
 			if (client == NULL) {
 				pr_err("vhm-ioreq: failed to "
 						"find ioreq client -> "
@@ -801,14 +801,14 @@ int cwp_ioreq_distribute_request(struct vhm_vm *vm)
 	list_for_each(pos, &vm->ioreq_client_list) {
 		client = container_of(pos, struct ioreq_client, list);
 		if (has_pending_request(client))
-			cwp_ioreq_notify_client(client);
+			acrn_ioreq_notify_client(client);
 	}
 	spin_unlock(&vm->ioreq_client_lock);
 
 	return 0;
 }
 
-int cwp_ioreq_complete_request(int client_id, uint64_t vcpu)
+int acrn_ioreq_complete_request(int client_id, uint64_t vcpu)
 {
 	struct ioreq_client *client;
 	int ret;
@@ -861,9 +861,9 @@ unsigned int vhm_dev_poll(struct file *filep, poll_table *wait)
 	return ret;
 }
 
-int cwp_ioreq_init(struct vhm_vm *vm, unsigned long vma)
+int acrn_ioreq_init(struct vhm_vm *vm, unsigned long vma)
 {
-	struct cwp_set_ioreq_buffer set_buffer;
+	struct acrn_set_ioreq_buffer set_buffer;
 	struct page *page;
 	int ret;
 
@@ -896,14 +896,14 @@ int cwp_ioreq_init(struct vhm_vm *vm, unsigned long vma)
 	return 0;
 }
 
-void cwp_ioreq_free(struct vhm_vm *vm)
+void acrn_ioreq_free(struct vhm_vm *vm)
 {
 	struct list_head *pos, *tmp;
 
 	list_for_each_safe(pos, tmp, &vm->ioreq_client_list) {
 		struct ioreq_client *client =
 			container_of(pos, struct ioreq_client, list);
-		cwp_ioreq_destroy_client_pervm(client, vm);
+		acrn_ioreq_destroy_client_pervm(client, vm);
 	}
 
 	if (vm->req_buf && vm->pg) {

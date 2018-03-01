@@ -71,8 +71,8 @@
 #include <linux/io.h>
 
 #include <linux/vhm/vhm_ioctl_defs.h>
-#include <linux/vhm/cwp_hv_defs.h>
-#include <linux/vhm/cwp_vhm_mm.h>
+#include <linux/vhm/acrn_hv_defs.h>
+#include <linux/vhm/acrn_vhm_mm.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 #include <linux/vhm/vhm_hypercall.h>
 
@@ -223,7 +223,7 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 		type = MAP_MEM;
 	} else {
 		guest_gpa = memmap->gpa;
-		host_gpa = cwp_hpa2gpa(memmap->hpa);
+		host_gpa = acrn_hpa2gpa(memmap->hpa);
 		mem_type = MEM_TYPE_UC;
 		mem_access_right = (memmap->prot & MEM_ACCESS_RIGHT_MASK);
 		type = MAP_MMIO;

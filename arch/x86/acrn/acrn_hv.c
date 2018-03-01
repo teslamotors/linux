@@ -1,5 +1,5 @@
 /*
- * CWP hypervisor support
+ * ACRN hypervisor support
  *
  * Copyright (C) 2017 Intel Corporation. All rights reserved.
  *
@@ -35,7 +35,7 @@
 #include <asm/hypervisor.h>
 #include <linux/vhm/vhm_msi.h>
 
-static unsigned long cpu_khz_from_cwp(void)
+static unsigned long cpu_khz_from_acrn(void)
 {
 	unsigned int eax, ebx, ecx, edx;
 
@@ -47,40 +47,43 @@ static unsigned long cpu_khz_from_cwp(void)
 	return (unsigned long)eax;
 }
 
-static uint32_t __init cwp_detect(void)
+static uint32_t __init acrn_detect(void)
 {
-	return hypervisor_cpuid_base("CWPCWPCWP\0\0", 0);
+	return hypervisor_cpuid_base("ACRNACRNACRN", 0);
 }
 
-static void __init cwp_init_platform(void)
+static void __init acrn_init_platform(void)
 {
-	pv_cpu_ops.cpu_khz = cpu_khz_from_cwp;
-	pv_irq_ops.write_msi = cwp_write_msi_msg;
+	pv_cpu_ops.cpu_khz = cpu_khz_from_acrn;
+
+#ifdef CONFIG_ACRN_VHM
+	pv_irq_ops.write_msi = acrn_write_msi_msg;
+#endif /* CONFIG_ACRN_VHM */
 }
 
-static void cwp_pin_vcpu(int cpu)
+static void acrn_pin_vcpu(int cpu)
 {
 	/* do nothing here now */
 }
 
-static bool cwp_x2apic_available(void)
+static bool acrn_x2apic_available(void)
 {
 	/* do not support x2apic */
 	return false;
 }
 
-static void __init cwp_init_mem_mapping(void)
+static void __init acrn_init_mem_mapping(void)
 {
 	/* do nothing here now */
 }
 
-const struct hypervisor_x86 x86_hyper_cwp = {
-	.name                   = "CWP",
-	.detect                 = cwp_detect,
-	.type                 	= X86_HYPER_CWP,
-	.init.init_platform     = cwp_init_platform,
-	.runtime.pin_vcpu       = cwp_pin_vcpu,
-	.init.x2apic_available  = cwp_x2apic_available,
-	.init.init_mem_mapping	= cwp_init_mem_mapping,
+const struct hypervisor_x86 x86_hyper_acrn = {
+	.name                   = "ACRN",
+	.detect                 = acrn_detect,
+	.type                 	= X86_HYPER_ACRN,
+	.init.init_platform     = acrn_init_platform,
+	.runtime.pin_vcpu       = acrn_pin_vcpu,
+	.init.x2apic_available  = acrn_x2apic_available,
+	.init.init_mem_mapping	= acrn_init_mem_mapping,
 };
-EXPORT_SYMBOL(x86_hyper_cwp);
+EXPORT_SYMBOL(x86_hyper_acrn);

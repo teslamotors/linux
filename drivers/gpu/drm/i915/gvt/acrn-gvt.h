@@ -22,11 +22,11 @@
  *
  */
 
-#ifndef INTEL_GVT_CWPGT_H
-#define INTEL_GVT_CWPGT_H
+#ifndef INTEL_GVT_ACRNGT_H
+#define INTEL_GVT_ACRNGT_H
 
 extern struct intel_gvt *gvt_instance;
-extern const struct intel_gvt_ops *cwp_intel_gvt_ops;
+extern const struct intel_gvt_ops *acrn_intel_gvt_ops;
 
 #define MAX_HVM_VCPUS_SUPPORTED 127
 
@@ -35,11 +35,11 @@ extern const struct intel_gvt_ops *cwp_intel_gvt_ops;
 typedef uint16_t domid_t;
 
 /*
- * cwpgt_hvm_dev is a wrapper of a vGPU instance which is reprensented by the
- * intel_vgpu structure. Under cwp hypervisor, the cwpgt_instance stands for a
+ * acrngt_hvm_dev is a wrapper of a vGPU instance which is reprensented by the
+ * intel_vgpu structure. Under acrn hypervisor, the acrngt_instance stands for a
  * HVM device, which the related resource.
  */
-struct cwpgt_hvm_dev {
+struct acrngt_hvm_dev {
 	domid_t vm_id;
 	struct kobject kobj;
 	struct intel_vgpu *vgpu;
@@ -52,7 +52,7 @@ struct cwpgt_hvm_dev {
 	struct vhm_vm *vm;
 };
 
-struct cwpgt_hvm_params {
+struct acrngt_hvm_params {
 	int vm_id;
 	int aperture_sz; /* in MB */
 	int gm_sz;  /* in MB */
@@ -60,22 +60,22 @@ struct cwpgt_hvm_params {
 };
 
 /*
- * struct gvt_cwpgt should be a single instance to share global
- * information for CWPGT module.
+ * struct gvt_acrngt should be a single instance to share global
+ * information for ACRNGT module.
  */
 #define GVT_MAX_VGPU_INSTANCE 15
-struct gvt_cwpgt {
+struct gvt_acrngt {
 	struct intel_gvt *gvt;
 	struct intel_vgpu *vgpus[GVT_MAX_VGPU_INSTANCE];
 };
 
-static ssize_t cwpgt_sysfs_instance_manage(struct kobject *kobj,
+static ssize_t acrngt_sysfs_instance_manage(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count);
-static ssize_t cwpgt_sysfs_vgpu_id(struct kobject *kobj,
+static ssize_t acrngt_sysfs_vgpu_id(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf);
 
-struct intel_vgpu *cwpgt_instance_create(domid_t vm_id,
+struct intel_vgpu *acrngt_instance_create(domid_t vm_id,
 		struct intel_vgpu_type *type);
-void cwpgt_instance_destroy(struct intel_vgpu *vgpu);
+void acrngt_instance_destroy(struct intel_vgpu *vgpu);
 
 #endif

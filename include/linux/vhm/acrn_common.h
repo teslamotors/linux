@@ -49,11 +49,11 @@
  *
  */
 
-#ifndef CWP_COMMON_H
-#define CWP_COMMON_H
+#ifndef __ACRN_COMMON_H__
+#define __ACRN_COMMON_H__
 
 /*
- * Common structures for CWP/VHM/DM
+ * Common structures for ACRN/VHM/DM
  */
 
 /*
@@ -117,7 +117,7 @@ struct vhm_request {
 	} reqs;
 
 	/* True: valid req which need VHM to process.
-	 * CWP write, VHM read only
+	 * ACRN write, VHM read only
 	 **/
 	int32_t valid;
 
@@ -127,7 +127,7 @@ struct vhm_request {
 	/* 1: VHM had processed and success
 	 *  0: VHM had not yet processed
 	 * -1: VHM failed to process. Invalid request
-	 * VHM write, CWP read only
+	 * VHM write, ACRN read only
 	 **/
 	int32_t processed;
 } __attribute__((aligned(256)));
@@ -140,7 +140,7 @@ struct vhm_request_buffer {
 } __attribute__((aligned(4096)));
 
 /* Common API params */
-struct cwp_create_vm {
+struct acrn_create_vm {
 	int32_t vmid;	/* OUT: return vmid to VHM. Keep it first field */
 	uint32_t vcpu_num;	/* IN: VM vcpu number */
 	uint8_t	 GUID[16];	/* IN: GUID of this vm */
@@ -148,12 +148,12 @@ struct cwp_create_vm {
 	uint8_t  reserved[31];	/* Reserved for future use */
 } __attribute__((aligned(8)));
 
-struct cwp_create_vcpu {
+struct acrn_create_vcpu {
 	uint32_t vcpu_id;	/* IN: vcpu id */
 	uint32_t pcpu_id;	/* IN: pcpu id */
 } __attribute__((aligned(8)));
 
-struct cwp_set_ioreq_buffer {
+struct acrn_set_ioreq_buffer {
 	uint64_t req_buf;			/* IN: gpa of per VM request_buffer*/
 } __attribute__((aligned(8)));
 
@@ -162,11 +162,11 @@ struct cwp_set_ioreq_buffer {
  * IOAPIC: inject interrupt to IOAPIC
  * ISA: inject interrupt to both PIC and IOAPIC
  */
-#define	CWP_INTR_TYPE_ISA	0
-#define	CWP_INTR_TYPE_IOAPIC	1
+#define	ACRN_INTR_TYPE_ISA	0
+#define	ACRN_INTR_TYPE_IOAPIC	1
 
 /* For ISA, PIC, IOAPIC etc */
-struct cwp_irqline {
+struct acrn_irqline {
 	uint32_t intr_type;
 	uint32_t reserved;
 	uint64_t pic_irq;        /* IN: for ISA type */
@@ -174,17 +174,17 @@ struct cwp_irqline {
 } __attribute__((aligned(8)));
 
 /* For MSI type inject */
-struct cwp_msi_entry {
+struct acrn_msi_entry {
 	uint64_t msi_addr;	/* IN: addr[19:12] with dest vcpu id */
 	uint64_t msi_data;	/* IN: data[7:0] with vector */
 } __attribute__((aligned(8)));
 
 /* For NMI inject */
-struct cwp_nmi_entry {
+struct acrn_nmi_entry {
 	int64_t vcpuid;		/* IN: -1 means vcpu0 */
 } __attribute__((aligned(8)));
 
-struct cwp_vm_pci_msix_remap {
+struct acrn_vm_pci_msix_remap {
 	uint16_t virt_bdf;	/* IN: Device virtual BDF# */
 	uint16_t phys_bdf;	/* IN: Device physical BDF# */
 	uint16_t msi_ctl;		/* IN: PCI MSI/x cap control data */
@@ -206,4 +206,4 @@ struct cwp_vm_pci_msix_remap {
  */
 #define GUEST_CFG_OFFSET 	0xd0000
 
-#endif /* CWP_COMMON_H */
+#endif /* __ACRN_COMMON_H__ */

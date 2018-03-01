@@ -576,9 +576,9 @@ int virtio_pci_modern_probe(struct virtio_pci_device *vp_dev)
 
 	check_offsets();
 
-#ifdef CONFIG_CWP_VIRTIO_DEVICES
+#ifdef CONFIG_ACRN_VIRTIO_DEVICES
 	/*
-	 * To support CWP virtio devices which haven't obtained valid
+	 * To support ACRN virtio devices which haven't obtained valid
 	 * virtio VID:DID in time, we relax the probing conditions a little.
 	 */
 	if (pci_dev->vendor == PCI_VENDOR_ID_REDHAT_QUMRANET &&
@@ -595,7 +595,7 @@ int virtio_pci_modern_probe(struct virtio_pci_device *vp_dev)
 		return -ENODEV;
 
 	if (pci_dev->device < 0x1040) {
-#endif /* CONFIG_CWP_VIRTIO_DEVICES */
+#endif /* CONFIG_ACRN_VIRTIO_DEVICES */
 		/* Transitional devices: use the PCI subsystem device id as
 		 * virtio device id, same as legacy driver always did.
 		 */

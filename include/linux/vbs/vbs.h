@@ -1,13 +1,13 @@
 /*
- * Clearwater Pass (CWP) Project
- * Virtio Backend Service (VBS) for CWP hypervisor
+ * ACRN Project
+ * Virtio Backend Service (VBS) for ACRN hypervisor
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ * Copyright (c) 2018 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -22,7 +22,7 @@
  *
  * BSD LICENSE
  *
- * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ * Copyright (c) 2018 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,7 +54,7 @@
  * Hao Li <hao.l.li@intel.com>
  *  Define data structures and runtime control APIs for VBS framework.
  *  - VBS-K is a kernel-level virtio framework that can be used for
- *    virtio backend driver development for CWP hypervisor.
+ *    virtio backend driver development for ACRN hypervisor.
  *  - VBS-K should be working with VBS-U (Virtio Backend Service in
  *    User) together, in order to connect with virtio frontend driver.
  */
@@ -63,8 +63,8 @@
 #define _VBS_H_
 
 #include <linux/vbs/vbs_common_if.h>
-#include <linux/vhm/cwp_common.h>
-#include <linux/vhm/cwp_vhm_ioreq.h>
+#include <linux/vhm/acrn_common.h>
+#include <linux/vhm/acrn_vhm_ioreq.h>
 
 /**
  * enum IORangeType - type of registers to be handled in VBS-K

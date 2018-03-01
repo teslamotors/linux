@@ -53,15 +53,15 @@
 
 #include <linux/msi.h>
 #include <linux/pci.h>
-#include <linux/vhm/cwp_hv_defs.h>
+#include <linux/vhm/acrn_hv_defs.h>
 #include <linux/vhm/vhm_hypercall.h>
 
 #include "../pci/pci.h"
 
-static struct msi_msg cwp_notify_msix_remap(struct msi_desc *entry,
+static struct msi_msg acrn_notify_msix_remap(struct msi_desc *entry,
 				struct msi_msg *msg)
 {
-	volatile struct cwp_vm_pci_msix_remap notify;
+	volatile struct acrn_vm_pci_msix_remap notify;
 	struct pci_dev *dev = msi_desc_to_pci_dev(entry);
 	struct msi_msg remapped_msg = *msg;
 	u16 msgctl;
@@ -93,7 +93,7 @@ static struct msi_msg cwp_notify_msix_remap(struct msi_desc *entry,
 	return remapped_msg;
 }
 
-void cwp_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg)
+void acrn_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg)
 {
 	struct pci_dev *dev = msi_desc_to_pci_dev(entry);
 	struct msi_msg fmsg;
@@ -103,7 +103,7 @@ void cwp_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg)
 	} else if (entry->msi_attrib.is_msix) {
 		void __iomem *base = pci_msix_desc_addr(entry);
 
-		fmsg = cwp_notify_msix_remap(entry, msg);
+		fmsg = acrn_notify_msix_remap(entry, msg);
 
 		writel(fmsg.address_lo, base + PCI_MSIX_ENTRY_LOWER_ADDR);
 		writel(fmsg.address_hi, base + PCI_MSIX_ENTRY_UPPER_ADDR);
@@ -112,7 +112,7 @@ void cwp_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg)
 		int pos = dev->msi_cap;
 		u16 msgctl;
 
-		fmsg = cwp_notify_msix_remap(entry, msg);
+		fmsg = acrn_notify_msix_remap(entry, msg);
 
 		pci_read_config_word(dev, pos + PCI_MSI_FLAGS, &msgctl);
 		msgctl &= ~PCI_MSI_FLAGS_QSIZE;

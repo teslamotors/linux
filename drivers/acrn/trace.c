@@ -1,6 +1,6 @@
 /*
 *
-* CWP Trace module
+* ACRN Trace module
 *
 * This file is provided under a dual BSD/GPLv2 license.  When using or
 * redistributing this file, you may do so under either license.
@@ -54,7 +54,7 @@
 *
 */
 
-#define pr_fmt(fmt) "CWPTrace: " fmt
+#define pr_fmt(fmt) "ACRNTrace: " fmt
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -93,7 +93,7 @@ static inline int get_id_from_devname(struct file *filep)
 	char id_str[16];
 	struct miscdevice *dev = filep->private_data;
 
-	strncpy(id_str, (void *)dev->name + sizeof("cwp_trace_") - 1, 16);
+	strncpy(id_str, (void *)dev->name + sizeof("acrn_trace_") - 1, 16);
 	id_str[15] = '\0';
 	err = kstrtoul(&id_str[0], 10, (unsigned long *)&cpuid);
 
@@ -114,7 +114,7 @@ static inline int get_id_from_devname(struct file *filep)
  * file_operations functions
  *
  ***********************************************************************/
-static int cwp_trace_open(struct inode *inode, struct file *filep)
+static int trace_open(struct inode *inode, struct file *filep)
 {
 	int cpuid = get_id_from_devname(filep);
 
@@ -131,7 +131,7 @@ static int cwp_trace_open(struct inode *inode, struct file *filep)
 	return 0;
 }
 
-static int cwp_trace_release(struct inode *inode, struct file *filep)
+static int trace_release(struct inode *inode, struct file *filep)
 {
 	int cpuid = get_id_from_devname(filep);
 
@@ -144,7 +144,7 @@ static int cwp_trace_release(struct inode *inode, struct file *filep)
 	return 0;
 }
 
-static int cwp_trace_mmap(struct file *filep, struct vm_area_struct *vma)
+static int trace_mmap(struct file *filep, struct vm_area_struct *vma)
 {
 	int cpuid = get_id_from_devname(filep);
 	phys_addr_t paddr;
@@ -167,56 +167,51 @@ static int cwp_trace_mmap(struct file *filep, struct vm_area_struct *vma)
 	return 0;
 }
 
-static const struct file_operations cwp_trace_fops = {
+static const struct file_operations trace_fops = {
 	.owner  = THIS_MODULE,
-	.open   = cwp_trace_open,
-	.release = cwp_trace_release,
-	.mmap   = cwp_trace_mmap,
+	.open   = trace_open,
+	.release = trace_release,
+	.mmap   = trace_mmap,
 };
 
-static struct miscdevice cwp_trace_dev0 = {
-	.name   = "cwp_trace_0",
+static struct miscdevice trace_dev0 = {
+	.name   = "acrn_trace_0",
 	.minor  = MISC_DYNAMIC_MINOR,
-	.fops   = &cwp_trace_fops,
+	.fops   = &trace_fops,
 };
 
-static struct miscdevice cwp_trace_dev1 = {
-	.name   = "cwp_trace_1",
+static struct miscdevice trace_dev1 = {
+	.name   = "acrn_trace_1",
 	.minor  = MISC_DYNAMIC_MINOR,
-	.fops   = &cwp_trace_fops,
+	.fops   = &trace_fops,
 };
 
-static struct miscdevice cwp_trace_dev2 = {
-	.name   = "cwp_trace_2",
+static struct miscdevice trace_dev2 = {
+	.name   = "acrn_trace_2",
 	.minor  = MISC_DYNAMIC_MINOR,
-	.fops   = &cwp_trace_fops,
+	.fops   = &trace_fops,
 };
 
-static struct miscdevice cwp_trace_dev3 = {
-	.name   = "cwp_trace_3",
+static struct miscdevice trace_dev3 = {
+	.name   = "acrn_trace_3",
 	.minor  = MISC_DYNAMIC_MINOR,
-	.fops   = &cwp_trace_fops,
+	.fops   = &trace_fops,
 };
 
-static struct miscdevice *cwp_trace_devs[4] = {
-	&cwp_trace_dev0,
-	&cwp_trace_dev1,
-	&cwp_trace_dev2,
-	&cwp_trace_dev3,
+static struct miscdevice *trace_devs[4] = {
+	&trace_dev0,
+	&trace_dev1,
+	&trace_dev2,
+	&trace_dev3,
 };
 
 /*
- * cwp_trace_init()
+ * acrn_trace_init()
  */
-static int __init cwp_trace_init(void)
+static int __init acrn_trace_init(void)
 {
 	int ret = 0;
 	int i, cpu;
-
-	if (x86_hyper_type != X86_HYPER_CWP) {
-		pr_err("cwp_trace: not support cwp hypervisor!\n");
-		return -EINVAL;
-	}
 
 	/* TBD: we could get the native cpu number by hypercall later */
 	pr_info("%s, cpu_num %d\n", __func__, nr_cpus);
@@ -239,7 +234,7 @@ static int __init cwp_trace_init(void)
 	}
 
 	foreach_cpu(cpu, pcpu_num) {
-		ret = sbuf_share_setup(cpu, CWP_TRACE, sbuf_per_cpu[cpu]);
+		ret = sbuf_share_setup(cpu, ACRN_TRACE, sbuf_per_cpu[cpu]);
 		if (ret < 0) {
 			pr_err("Failed to setup SBuf, cpuid %d\n", cpu);
 			goto out_sbuf;
@@ -247,9 +242,9 @@ static int __init cwp_trace_init(void)
 	}
 
 	foreach_cpu(cpu, pcpu_num) {
-		ret = misc_register(cwp_trace_devs[cpu]);
+		ret = misc_register(trace_devs[cpu]);
 		if (ret < 0) {
-			pr_err("Failed to register cwp_trace_%d, errno %d\n",
+			pr_err("Failed to register acrn_trace_%d, errno %d\n",
 				cpu, ret);
 			goto out_dereg;
 		}
@@ -259,12 +254,12 @@ static int __init cwp_trace_init(void)
 
 out_dereg:
 	for (i = --cpu; i >= 0; i--)
-		misc_deregister(cwp_trace_devs[i]);
+		misc_deregister(trace_devs[i]);
 	cpu = pcpu_num;
 
 out_sbuf:
 	for (i = --cpu; i >= 0; i--)
-		sbuf_share_setup(i, CWP_TRACE, NULL);
+		sbuf_share_setup(i, ACRN_TRACE, NULL);
 	cpu = pcpu_num;
 
 out_free:
@@ -275,9 +270,9 @@ out_free:
 }
 
 /*
- * cwp_trace_exit()
+ * acrn_trace_exit()
  */
-static void __exit cwp_trace_exit(void)
+static void __exit acrn_trace_exit(void)
 {
 	int cpu;
 
@@ -285,20 +280,20 @@ static void __exit cwp_trace_exit(void)
 
 	foreach_cpu(cpu, pcpu_num) {
 		/* deregister devices */
-		misc_deregister(cwp_trace_devs[cpu]);
+		misc_deregister(trace_devs[cpu]);
 
 		/* set sbuf pointer to NULL in HV */
-		sbuf_share_setup(cpu, CWP_TRACE, NULL);
+		sbuf_share_setup(cpu, ACRN_TRACE, NULL);
 
 		/* free sbuf, sbuf_per_cpu[cpu] should be set NULL */
 		sbuf_free(sbuf_per_cpu[cpu]);
 	}
 }
 
-module_init(cwp_trace_init);
-module_exit(cwp_trace_exit);
+module_init(acrn_trace_init);
+module_exit(acrn_trace_exit);
 
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Intel Corp., http://www.intel.com");
-MODULE_DESCRIPTION("Driver for the Intel CWP Hypervisor Trace");
+MODULE_DESCRIPTION("Driver for the Intel ACRN Hypervisor Trace");
 MODULE_VERSION("0.1");

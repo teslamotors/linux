@@ -68,9 +68,9 @@
 #define OVERWRITE_EN	(1ULL << 1) /* whether overwrite is enabled */
 
 enum sbuf_type {
-	CWP_TRACE,
-	CWP_HVLOG,
-	CWP_SBUF_TYPE_MAX,
+	ACRN_TRACE,
+	ACRN_HVLOG,
+	ACRN_SBUF_TYPE_MAX,
 };
 /**
  * (sbuf) head + buf (store (ele_num - 1) elements at most)

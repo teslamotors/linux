@@ -1,13 +1,13 @@
 /*
- * Clearwater Pass (CWP) Project
- * Virtio Backend Service (VBS) for CWP hypervisor
+ * ACRN Project
+ * Virtio Backend Service (VBS) for ACRN hypervisor
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ * Copyright (c) 2018 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -22,7 +22,7 @@
  *
  * BSD LICENSE
  *
- * Copyright (c) 2017 Intel Corporation. All rights reserved.
+ * Copyright (c) 2018 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -124,15 +124,17 @@ static int vbs_rng_connection_cnt = 0;
 /* function declarations */
 static int handle_kick(int client_id, int req_cnt);
 static void vbs_rng_reset(struct vbs_rng *rng);
-static void vbs_rng_disable_vq(struct vbs_rng *rng,
-			       struct virtio_vq_info *vq);
+static void vbs_rng_stop(struct vbs_rng *rng);
+static void vbs_rng_flush(struct vbs_rng *rng);
+#ifdef RUNTIME_CTRL
 static int vbs_rng_enable_vq(struct vbs_rng *rng,
 			     struct virtio_vq_info *vq);
+static void vbs_rng_disable_vq(struct vbs_rng *rng,
+			       struct virtio_vq_info *vq);
 static void vbs_rng_stop_vq(struct vbs_rng *rng,
 			      struct virtio_vq_info *vq);
-static void vbs_rng_stop(struct vbs_rng *rng);
 static void vbs_rng_flush_vq(struct vbs_rng *rng, int index);
-static void vbs_rng_flush(struct vbs_rng *rng);
+#endif
 
 /* hash table related functions */
 static void vbs_rng_hash_init(void)
@@ -347,17 +349,6 @@ static int vbs_rng_release(struct inode *inode, struct file *f)
 	return 0;
 }
 
-static struct hwrng get_hwrng(struct vbs_rng *rng)
-{
-	return rng->hwrng;
-}
-
-/* Set feature bits in kernel side device */
-static int vbs_rng_set_features(struct vbs_rng *rng, u64 features)
-{
-	return 0;
-}
-
 static long vbs_rng_ioctl(struct file *f, unsigned int ioctl,
 			    unsigned long arg)
 {
@@ -424,16 +415,28 @@ static void vbs_rng_reset(struct vbs_rng *rng)
 }
 
 /* device specific function */
-static void vbs_rng_disable_vq(struct vbs_rng *rng,
-			       struct virtio_vq_info *vq)
+static void vbs_rng_stop(struct vbs_rng *rng)
+{
+	virtio_dev_deregister(&rng->dev);
+}
+
+/* device specific function */
+static void vbs_rng_flush(struct vbs_rng *rng)
 {
 }
 
+#ifdef RUNTIME_CTRL
 /* device specific function */
 static int vbs_rng_enable_vq(struct vbs_rng *rng,
 			     struct virtio_vq_info *vq)
 {
 	return 0;
+}
+
+/* device specific function */
+static void vbs_rng_disable_vq(struct vbs_rng *rng,
+			       struct virtio_vq_info *vq)
+{
 }
 
 /* device specific function */
@@ -443,20 +446,21 @@ static void vbs_rng_stop_vq(struct vbs_rng *rng,
 }
 
 /* device specific function */
-static void vbs_rng_stop(struct vbs_rng *rng)
-{
-	virtio_dev_deregister(&rng->dev);
-}
-
-/* device specific function */
 static void vbs_rng_flush_vq(struct vbs_rng *rng, int index)
 {
 }
 
-/* device specific function */
-static void vbs_rng_flush(struct vbs_rng *rng)
+static struct hwrng get_hwrng(struct vbs_rng *rng)
 {
+	return rng->hwrng;
 }
+
+/* Set feature bits in kernel side device */
+static int vbs_rng_set_features(struct vbs_rng *rng, u64 features)
+{
+	return 0;
+}
+#endif
 
 static const struct file_operations vbs_rng_fops = {
 	.owner          = THIS_MODULE,
@@ -487,4 +491,4 @@ module_exit(vbs_rng_exit);
 MODULE_VERSION("0.1");
 MODULE_AUTHOR("Intel Corporation");
 MODULE_LICENSE("GPL and additional rights");
-MODULE_DESCRIPTION("Virtio Backend Service reference driver on CWP hypervisor");
+MODULE_DESCRIPTION("Virtio Backend Service reference driver on ACRN hypervisor");

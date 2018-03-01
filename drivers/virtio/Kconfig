@@ -79,14 +79,14 @@ config VIRTIO_MMIO_CMDLINE_DEVICES
 
 	 If unsure, say 'N'.
 
-config CWP_VIRTIO_DEVICES
-	bool "Support for CWP virtio devices drivers in frontend/guest"
+config ACRN_VIRTIO_DEVICES
+	bool "Support for ACRN virtio devices drivers in frontend/guest"
 	default n
 	depends on VIRTIO_PCI
 	---help---
-          CWP virtio devices support in frontend/guest.
+          ACRN virtio devices support in frontend/guest.
 
-	  This option enables support for CWP virtio devices which use Intel
+	  This option enables support for ACRN virtio devices which use Intel
 	  vendor ID and device IDs, by extending virtio frontend framework
 	  a little bit so that virtio PCI driver could be loaded for these
 	  devices.
