@@ -733,7 +733,12 @@ execlist_cancel_port_requests(struct intel_engine_execlists *execlists)
 		struct drm_i915_gem_request *rq = port_request(port);
 
 		GEM_BUG_ON(!execlists->active);
-		execlists_context_status_change(rq, INTEL_CONTEXT_SCHEDULE_PREEMPTED);
+
+		execlists_context_status_change(rq,
+					i915_gem_request_completed(rq) ?
+					INTEL_CONTEXT_SCHEDULE_OUT :
+					INTEL_CONTEXT_SCHEDULE_PREEMPTED);
+
 		i915_gem_request_put(rq);
 
 		memset(port, 0, sizeof(*port));
