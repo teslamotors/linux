@@ -1671,6 +1671,25 @@ static void execlists_reset(struct intel_engine_cs *engine,
 
 	spin_unlock_irqrestore(&engine->timeline->lock, flags);
 
+	/* If a preemption was pending when the reset occurred, and no
+	 * active request was found when the reset completed, it is
+	 * possible that the preemption context was hit by the reset.
+	 * We must assume that the context is corrupted so repair it.
+	 */
+	if (execlists_is_active(execlists, EXECLISTS_ACTIVE_PREEMPT) &&
+	    !request) {
+		struct i915_gem_context *ctx = engine->i915->preempt_context;
+		ce = &ctx->engine[engine->id];
+
+		execlists_init_reg_state(ce->lrc_reg_state,
+					 ctx, engine, ce->ring);
+		ce->lrc_reg_state[CTX_RING_BUFFER_START+1] =
+			i915_ggtt_offset(ce->ring->vma);
+		ce->lrc_reg_state[CTX_RING_HEAD+1] = ce->ring->tail;
+
+		return;
+	}
+
 	/* If the request was innocent, we leave the request in the ELSP
 	 * and will try to replay it on restarting. The context image may
 	 * have been corrupted by the reset, in which case we may have
