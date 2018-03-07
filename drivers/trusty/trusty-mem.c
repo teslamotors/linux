@@ -77,7 +77,7 @@ static int get_mem_attr(struct page *page, pgprot_t pgprot)
 		return -EINVAL;
 	}
 #elif defined(CONFIG_X86)
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
 	/* The porting to CHT kernel (3.14.55) is in the #else clause.
 	** For BXT kernel (4.1.0), the function get_page_memtype() is static.
 	**
@@ -93,7 +93,7 @@ static int get_mem_attr(struct page *page, pgprot_t pgprot)
 	** with SMP, which only allow UNCACHED.
 	*/
 	return NS_MAIR_NORMAL_UNCACHED;
-	#else
+#else
 	unsigned long type;
 	int ret_mem_attr = 0;
 
@@ -124,7 +124,7 @@ static int get_mem_attr(struct page *page, pgprot_t pgprot)
 		ret_mem_attr = -EINVAL;
 	}
 	return ret_mem_attr;
-	#endif
+#endif
 #else
 	return 0;
 #endif

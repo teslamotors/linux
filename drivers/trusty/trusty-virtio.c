@@ -15,6 +15,7 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
+#include <linux/version.h>
 
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -337,9 +338,15 @@ static struct virtqueue *_find_vq(struct virtio_device *vdev,
 	dev_info(&vdev->dev, "vring%d: va(pa)  %p(%llx) qsz %d notifyid %d\n",
 		 id, tvr->vaddr, (u64)tvr->paddr, tvr->elem_num, tvr->notifyid);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 	tvr->vq = vring_new_virtqueue(id, tvr->elem_num, tvr->align,
 				      vdev, true, true, tvr->vaddr,
 				      trusty_virtio_notify, callback, name);
+#else
+	tvr->vq = vring_new_virtqueue(id, tvr->elem_num, tvr->align,
+				      vdev, true, tvr->vaddr,
+				      trusty_virtio_notify, callback, name);
+#endif
 	if (!tvr->vq) {
 		dev_err(&vdev->dev, "vring_new_virtqueue %s failed\n",
 			name);
@@ -356,12 +363,19 @@ err_new_virtqueue:
 	return ERR_PTR(-ENOMEM);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 static int trusty_virtio_find_vqs(struct virtio_device *vdev, unsigned nvqs,
 				  struct virtqueue *vqs[],
 				  vq_callback_t *callbacks[],
 				  const char * const names[],
 				  const bool *ctx,
 				  struct irq_affinity *desc)
+#else
+static int trusty_virtio_find_vqs(struct virtio_device *vdev, unsigned nvqs,
+				  struct virtqueue *vqs[],
+				  vq_callback_t *callbacks[],
+				  const char * const names[])
+#endif
 {
 	uint i;
 	int ret;
