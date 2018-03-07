@@ -30,7 +30,7 @@
 #define CHANNELS_QUAD 4
 #define CHANNELS_EIGHT 8
 
-#define DEF_BT_MODEM_RATE_INDEX 0x0
+#define DEF_BT_RATE_INDEX 0x0
 
 static int dummy_codecs;
 module_param(dummy_codecs, int, 0444);
@@ -50,24 +50,24 @@ enum {
 	BXT_AUDIO_MIC,
 	BXT_AUDIO_DIRANA,
 	BXT_AUDIO_TESTPIN,
-	BXT_AUDIO_BT,
-	BXT_AUDIO_MODEM,
+	BXT_AUDIO_HFP1,
+	BXT_AUDIO_HFP2,
 	BXT_AUDIO_HDMI,
 };
 
 
-static unsigned int gpmrb_bt_modem_rates[] = {
+static unsigned int gpmrb_bt_rates[] = {
 	8000,
 	16000,
 };
 
 /* sound card controls */
-static const char * const bt_modem_rate[] = {"8K", "16K"};
+static const char * const bt_rate[] = {"8K", "16K"};
 
-static const struct soc_enum bt_modem_rate_enum =
-	SOC_ENUM_SINGLE_EXT(2, bt_modem_rate);
+static const struct soc_enum bt_rate_enum =
+	SOC_ENUM_SINGLE_EXT(2, bt_rate);
 
-static int bt_modem_sample_rate_get(struct snd_kcontrol *kcontrol,
+static int bt_sample_rate_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_card *card = snd_kcontrol_chip(kcontrol);
@@ -77,7 +77,7 @@ static int bt_modem_sample_rate_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int bt_modem_sample_rate_put(struct snd_kcontrol *kcontrol,
+static int bt_sample_rate_put(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_card *card = snd_kcontrol_chip(kcontrol);
@@ -92,8 +92,8 @@ static int bt_modem_sample_rate_put(struct snd_kcontrol *kcontrol,
 }
 static const struct snd_kcontrol_new broxton_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Speaker"),
-	SOC_ENUM_EXT("BT/Modem Rate", bt_modem_rate_enum,
-			bt_modem_sample_rate_get, bt_modem_sample_rate_put),
+	SOC_ENUM_EXT("BT Rate", bt_rate_enum,
+			bt_sample_rate_get, bt_sample_rate_put),
 };
 
 static const struct snd_soc_dapm_widget broxton_widgets[] = {
@@ -105,10 +105,10 @@ static const struct snd_soc_dapm_widget broxton_widgets[] = {
 	SND_SOC_DAPM_MIC("HdmiIn", NULL),
 	SND_SOC_DAPM_MIC("TestPinCp", NULL),
 	SND_SOC_DAPM_HP("TestPinPb", NULL),
-	SND_SOC_DAPM_MIC("BtHfpDl", NULL),
-	SND_SOC_DAPM_HP("BtHfpUl", NULL),
-	SND_SOC_DAPM_MIC("ModemDl", NULL),
-	SND_SOC_DAPM_HP("ModemUl", NULL),
+	SND_SOC_DAPM_SPK("Hfp1Pb", NULL),
+	SND_SOC_DAPM_MIC("Hfp1Cp", NULL),
+	SND_SOC_DAPM_SPK("Hfp2Pb", NULL),
+	SND_SOC_DAPM_MIC("Hfp2Cp", NULL),
 };
 
 static const struct snd_soc_dapm_route broxton_gpmrb_map[] = {
@@ -138,20 +138,20 @@ static const struct snd_soc_dapm_route broxton_gpmrb_map[] = {
 	{ "TestPinPb", NULL, "ssp5 Tx"},
 	{ "ssp5 Tx", NULL, "TestPin_ssp5_out"},
 
-	{ "BtHfp_ssp0_in", NULL, "ssp0 Rx"},
-	{ "ssp0 Rx", NULL, "BtHfpDl"},
+	{ "hfp1_in", NULL, "ssp0 Rx"},
+	{ "ssp0 Rx", NULL, "Hfp1Cp"},
 
-	{ "BtHfpUl", NULL, "ssp0 Tx"},
-	{ "ssp0 Tx", NULL, "BtHfp_ssp0_out"},
+	{ "Hfp1Pb", NULL, "ssp0 Tx"},
+	{ "ssp0 Tx", NULL, "hfp1_out"},
 
-	{ "Modem_ssp3_in", NULL, "ssp3 Rx"},
-	{ "ssp3 Rx", NULL, "ModemDl"},
+	{ "hfp2_in", NULL, "ssp0 Rx"},
+	{ "ssp0 Rx", NULL, "Hfp2Cp"},
 
-	{ "ModemUl", NULL, "ssp3 Tx"},
-	{ "ssp3 Tx", NULL, "Modem_ssp3_out"},
+	{ "Hfp2Pb", NULL, "ssp0 Tx"},
+	{ "ssp0 Tx", NULL, "hfp2_out"},
 };
 
-static int broxton_ssp0_ssp3_fixup(struct snd_soc_pcm_runtime *rtd,
+static int broxton_ssp0_fixup(struct snd_soc_pcm_runtime *rtd,
 			struct snd_pcm_hw_params *params)
 {
 	struct snd_interval *rate = hw_param_interval(params,
@@ -159,16 +159,13 @@ static int broxton_ssp0_ssp3_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	struct snd_soc_card *card =  rtd->card;
 	struct bxtp_gpmrb_prv *drv = snd_soc_card_get_drvdata(card);
-	struct snd_mask *fmt = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
 	/* SSP0 operates with a BT Transceiver */
-	rate->min = rate->max = gpmrb_bt_modem_rates[drv->srate];
+	rate->min = rate->max = gpmrb_bt_rates[drv->srate];
 
-	snd_mask_none(fmt);
-	snd_mask_set(fmt, SNDRV_PCM_FORMAT_S32_LE);
 	return 0;
 }
 
-static int broxton_gpmrb_bt_modem_startup(struct snd_pcm_substream *substream)
+static int broxton_gpmrb_bt_startup(struct snd_pcm_substream *substream)
 {
 	int ret;
 
@@ -194,8 +191,8 @@ out:
 	return ret;
 }
 
-static struct snd_soc_ops broxton_gpmrb_bt_modem_ops = {
-	.startup = broxton_gpmrb_bt_modem_startup,
+static struct snd_soc_ops broxton_gpmrb_bt_ops = {
+	.startup = broxton_gpmrb_bt_startup,
 };
 
 static int broxton_gpmrb_dirana_startup(struct snd_pcm_substream *substream)
@@ -392,9 +389,9 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.nonatomic = 1,
 		.dynamic = 1,
 	},
-	[BXT_AUDIO_BT] = {
-		.name = "BtHfp Port",
-		.stream_name = "BtHfp",
+	[BXT_AUDIO_HFP1] = {
+		.name = "HFP1 Port",
+		.stream_name = "HFP1",
 		.cpu_dai_name = "System Pin 7",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -407,11 +404,11 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.symmetric_samplebits = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
-		.ops = &broxton_gpmrb_bt_modem_ops,
+		.ops = &broxton_gpmrb_bt_ops,
 	},
-	[BXT_AUDIO_MODEM] = {
-		.name = "Modem Port",
-		.stream_name = "Modem",
+	[BXT_AUDIO_HFP2] = {
+		.name = "HFP2 Port",
+		.stream_name = "HFP2",
 		.cpu_dai_name = "System Pin 8",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -424,7 +421,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.symmetric_samplebits = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
-		.ops = &broxton_gpmrb_bt_modem_ops,
+		.ops = &broxton_gpmrb_bt_ops,
 	},
 	[BXT_AUDIO_HDMI] = {
 		.name = "HDMI Port",
@@ -490,7 +487,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.dpcm_capture = 1,
 		.dpcm_playback = 1,
 		.no_pcm = 1,
-		.be_hw_params_fixup = broxton_ssp0_ssp3_fixup,
+		.be_hw_params_fixup = broxton_ssp0_fixup,
 	},
 	{
 		/* SSP1 - HDMI-In */
@@ -546,19 +543,6 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.platform_name = "0000:00:0e.0",
 		.dpcm_capture = 1,
 		.no_pcm = 1,
-	},
-	{
-		/* SSP3 - Modem */
-		.name = "SSP3-Codec",
-		.be_id = 1,
-		.cpu_dai_name = "SSP3 Pin",
-		.codec_name = "snd-soc-dummy",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = "0000:00:0e.0",
-		.dpcm_capture = 1,
-		.dpcm_playback = 1,
-		.no_pcm = 1,
-		.be_hw_params_fixup = broxton_ssp0_ssp3_fixup,
 	},
 	{
 		/* SSP4 - Amplifier */
@@ -626,7 +610,7 @@ static int broxton_audio_probe(struct platform_device *pdev)
 	if (!drv)
 		return -ENOMEM;
 
-	drv->srate = DEF_BT_MODEM_RATE_INDEX;
+	drv->srate = DEF_BT_RATE_INDEX;
 	snd_soc_card_set_drvdata(&broxton_gpmrb, drv);
 
 	ret_val = snd_soc_register_card(&broxton_gpmrb);
