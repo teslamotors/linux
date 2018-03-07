@@ -275,6 +275,8 @@ static inline void slow_down_io(void)
 
 static inline unsigned long cpu_khz_from_paravirt(void)
 {
+	if (pv_cpu_ops.cpu_khz == NULL)
+		return 0;
 	return PVOP_CALL0(unsigned long, pv_cpu_ops.cpu_khz);
 }
 
