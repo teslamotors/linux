@@ -3687,8 +3687,10 @@ bool intel_can_enable_sagv(struct drm_atomic_state *state)
 		return false;
 
 	/* Since we're now guaranteed to only have one active CRTC... */
-	pipe = ffs(intel_state->active_crtcs) - 1;
-	crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
+	crtc = get_intel_crtc_from_index(dev,
+			ffs(intel_state->active_crtcs) - 1);
+	if (!crtc)
+		return false;
 	cstate = to_intel_crtc_state(crtc->base.state);
 
 	if (crtc->base.state->adjusted_mode.flags & DRM_MODE_FLAG_INTERLACE)

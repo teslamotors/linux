@@ -391,13 +391,20 @@ static int pipeconf_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 	u32 data;
 	struct drm_device *dev = &vgpu->gvt->dev_priv->drm;
 	unsigned int pipe = SKL_PLANE_REG_TO_PIPE(offset);
+	struct intel_crtc *crtc;
+
+	crtc = intel_get_crtc_for_pipe(vgpu->gvt->dev_priv, pipe);
+	if (!crtc) {
+		DRM_ERROR("No CRTC for pipe=%d\n", pipe);
+		return 0;
+	}
 
 	write_vreg(vgpu, offset, p_data, bytes);
 	data = vgpu_vreg(vgpu, offset);
 
 	if (data & PIPECONF_ENABLE) {
 		vgpu_vreg(vgpu, offset) |= I965_PIPECONF_ACTIVE;
-		dev->driver->enable_vblank(dev, pipe);
+		dev->driver->enable_vblank(dev, drm_crtc_index(&crtc->base));
 	} else {
 		vgpu_vreg(vgpu, offset) &= ~I965_PIPECONF_ACTIVE;
 	}

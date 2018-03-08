@@ -489,17 +489,21 @@ static void bdw_update_port_irq(struct drm_i915_private *dev_priv,
  * @enabled_irq_mask: mask of interrupt bits to enable
  */
 void bdw_update_pipe_irq(struct drm_i915_private *dev_priv,
-			 enum pipe pipe,
+			 unsigned int crtc_index,
 			 uint32_t interrupt_mask,
 			 uint32_t enabled_irq_mask)
 {
 	uint32_t new_val;
+	enum pipe pipe;
 
 	lockdep_assert_held(&dev_priv->irq_lock);
 
 	WARN_ON(enabled_irq_mask & ~interrupt_mask);
 
 	if (WARN_ON(!intel_irqs_enabled(dev_priv)))
+		return;
+
+	if(get_pipe_from_crtc_index(&dev_priv->drm, crtc_index, &pipe))
 		return;
 
 	new_val = dev_priv->de_irq_mask[pipe];
@@ -769,9 +773,14 @@ static u32 i915_get_vblank_counter(struct drm_device *dev, unsigned int pipe)
 	return (((high1 << 8) | low) + (pixel >= vbl_start)) & 0xffffff;
 }
 
-static u32 g4x_get_vblank_counter(struct drm_device *dev, unsigned int pipe)
+static u32 g4x_get_vblank_counter(struct drm_device *dev,
+		unsigned int crtc_index)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
+	enum pipe pipe;
+
+	if(get_pipe_from_crtc_index(dev, crtc_index, &pipe))
+		return 0;
 
 	return I915_READ(PIPE_FRMCOUNT_G4X(pipe));
 }
@@ -833,17 +842,20 @@ static int __intel_get_crtc_scanline(struct intel_crtc *crtc)
 	return (position + crtc->scanline_offset) % vtotal;
 }
 
-static bool i915_get_crtc_scanoutpos(struct drm_device *dev, unsigned int pipe,
-				     bool in_vblank_irq, int *vpos, int *hpos,
-				     ktime_t *stime, ktime_t *etime,
-				     const struct drm_display_mode *mode)
+static bool i915_get_crtc_scanoutpos(struct drm_device *dev, unsigned int crtc_index,
+				    bool in_vblank_irq, int *vpos, int *hpos,
+				    ktime_t *stime, ktime_t *etime,
+				    const struct drm_display_mode *mode)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct intel_crtc *intel_crtc = intel_get_crtc_for_pipe(dev_priv,
-								pipe);
+	struct intel_crtc *intel_crtc;
+	enum pipe pipe;
 	int position;
 	int vbl_start, vbl_end, hsync_start, htotal, vtotal;
 	unsigned long irqflags;
+
+	intel_crtc = get_intel_crtc_from_index(dev, crtc_index);
+	pipe = intel_crtc->pipe;
 
 	if (WARN_ON(!mode->crtc_clock)) {
 		DRM_DEBUG_DRIVER("trying to get scanoutpos for disabled "
@@ -1553,7 +1565,12 @@ static void display_pipe_crc_irq_handler(struct drm_i915_private *dev_priv,
 	struct drm_driver *driver = dev_priv->drm.driver;
 	uint32_t crcs[5];
 	int head, tail;
+	u32 frame;
 
+	if (!crtc) {
+		DRM_DEBUG_KMS("No CRTC available for pipe %d\n", pipe);
+		return;
+	}
 	spin_lock(&pipe_crc->lock);
 	if (pipe_crc->source) {
 		if (!pipe_crc->entries) {
@@ -1573,7 +1590,8 @@ static void display_pipe_crc_irq_handler(struct drm_i915_private *dev_priv,
 
 		entry = &pipe_crc->entries[head];
 
-		entry->frame = driver->get_vblank_counter(&dev_priv->drm, pipe);
+		entry->frame = driver->get_vblank_counter(&dev_priv->drm,
+				drm_crtc_index(&crtc->base));
 		entry->crc[0] = crc0;
 		entry->crc[1] = crc1;
 		entry->crc[2] = crc2;
@@ -1607,9 +1625,9 @@ static void display_pipe_crc_irq_handler(struct drm_i915_private *dev_priv,
 		crcs[2] = crc2;
 		crcs[3] = crc3;
 		crcs[4] = crc4;
-		drm_crtc_add_crc_entry(&crtc->base, true,
-				       drm_crtc_accurate_vblank_count(&crtc->base),
-				       crcs);
+		frame = driver->get_vblank_counter(&dev_priv->drm,
+				drm_crtc_index(&crtc->base));
+		drm_crtc_add_crc_entry(&crtc->base, true, frame, crcs);
 	}
 }
 #else
@@ -2417,6 +2435,7 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 	irqreturn_t ret = IRQ_NONE;
 	u32 iir;
 	enum pipe pipe;
+	struct intel_crtc *crtc;
 
 	if (master_ctl & GEN8_DE_MISC_IRQ) {
 		iir = I915_READ(GEN8_DE_MISC_IIR);
@@ -2495,8 +2514,9 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 		ret = IRQ_HANDLED;
 		I915_WRITE(GEN8_DE_PIPE_IIR(pipe), iir);
 
+		crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
 		if (iir & GEN8_PIPE_VBLANK) {
-			drm_handle_vblank(&dev_priv->drm, pipe);
+			drm_handle_vblank(&dev_priv->drm, drm_crtc_index(&crtc->base));
 #if IS_ENABLED(CONFIG_DRM_I915_GVT)
 			gvt_notify_vblank(dev_priv, pipe);
 #endif
