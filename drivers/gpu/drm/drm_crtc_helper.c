@@ -185,6 +185,8 @@ static void __drm_helper_disable_unused_functions(struct drm_device *dev)
 				(*crtc_funcs->disable)(crtc);
 			else
 				(*crtc_funcs->dpms)(crtc, DRM_MODE_DPMS_OFF);
+			if (!crtc->primary)
+				continue;
 			crtc->primary->fb = NULL;
 		}
 	}
@@ -538,6 +540,9 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set,
 	BUG_ON(set->fb && set->num_connectors == 0);
 
 	crtc_funcs = set->crtc->helper_private;
+
+	if (!set->crtc->primary)
+		return -EINVAL;
 
 	if (!set->mode)
 		set->fb = NULL;
@@ -950,6 +955,8 @@ void drm_helper_resume_force_mode(struct drm_device *dev)
 
 		if (!crtc->enabled)
 			continue;
+		if (!crtc->primary)
+			continue;
 
 		ret = drm_crtc_helper_set_mode(crtc, &crtc->mode,
 					       crtc->x, crtc->y, crtc->primary->fb);
@@ -1071,6 +1078,9 @@ int drm_helper_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 {
 	struct drm_plane_state *plane_state;
 	struct drm_plane *plane = crtc->primary;
+
+	if (!plane)
+		return -EINVAL;
 
 	if (plane->funcs->atomic_duplicate_state)
 		plane_state = plane->funcs->atomic_duplicate_state(plane);

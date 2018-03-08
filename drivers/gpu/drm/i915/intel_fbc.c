@@ -1061,6 +1061,8 @@ void intel_fbc_choose_crtc(struct drm_i915_private *dev_priv,
 			to_intel_plane_state(plane_state);
 		struct intel_crtc_state *intel_crtc_state;
 		struct intel_crtc *crtc = to_intel_crtc(plane_state->crtc);
+		struct drm_plane *primary = crtc ? crtc->base.primary : NULL;
+		struct intel_plane *intel_plane = primary ? to_intel_plane(primary) : NULL;
 
 		if (!intel_plane_state->base.visible)
 			continue;
@@ -1068,7 +1070,8 @@ void intel_fbc_choose_crtc(struct drm_i915_private *dev_priv,
 		if (fbc_on_pipe_a_only(dev_priv) && crtc->pipe != PIPE_A)
 			continue;
 
-		if (fbc_on_plane_a_only(dev_priv) && crtc->plane != PLANE_A)
+		if (fbc_on_plane_a_only(dev_priv) && (!primary ||
+				 intel_plane->id != PLANE_PRIMARY))
 			continue;
 
 		intel_crtc_state = to_intel_crtc_state(
