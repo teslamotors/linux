@@ -3165,6 +3165,11 @@ intel_info(const struct drm_i915_private *dev_priv)
 #define GT_FREQUENCY_MULTIPLIER 50
 #define GEN9_FREQ_SCALER 3
 
+#define BITS_PER_PIPE 8
+#define AVAIL_PLANE_PER_PIPE(dev_priv, mask, pipe)  \
+	(((mask) >> (pipe) * BITS_PER_PIPE) & \
+	   ((1 << ((INTEL_INFO(dev_priv)->num_sprites[pipe]) + 1)) - 1))
+
 #include "i915_trace.h"
 
 static inline bool intel_vtd_active(void)

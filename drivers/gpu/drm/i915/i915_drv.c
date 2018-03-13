@@ -1308,6 +1308,24 @@ static void i915_driver_unregister(struct drm_i915_private *dev_priv)
 	i915_gem_shrinker_cleanup(dev_priv);
 }
 
+static inline int get_max_avail_pipes(struct drm_i915_private *dev_priv)
+{
+	enum pipe pipe;
+	int index = 0;
+
+	if (!intel_vgpu_active(dev_priv) ||
+	    !i915_modparams.avail_planes_per_pipe)
+		return INTEL_INFO(dev_priv)->num_pipes;
+
+	for_each_pipe(dev_priv, pipe) {
+		if (AVAIL_PLANE_PER_PIPE(dev_priv, i915_modparams.avail_planes_per_pipe,
+					pipe))
+			index++;
+	}
+
+	return index;
+}
+
 /**
  * i915_driver_load - setup chip and create an initial config
  * @pdev: PCI device
@@ -1325,6 +1343,7 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 		(struct intel_device_info *)ent->driver_data;
 	struct drm_i915_private *dev_priv;
 	int ret;
+	int num_crtcs = 0;
 
 	/* Enable nuclear pageflip on ILK+ */
 	if (!i915_modparams.nuclear_pageflip && match_info->gen < 5)
@@ -1376,9 +1395,9 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 	 * of the i915_driver_init_/i915_driver_register functions according
 	 * to the role/effect of the given init step.
 	 */
-	if (INTEL_INFO(dev_priv)->num_pipes) {
-		ret = drm_vblank_init(&dev_priv->drm,
-				      INTEL_INFO(dev_priv)->num_pipes);
+	num_crtcs = get_max_avail_pipes(dev_priv);
+	if (num_crtcs) {
+		ret = drm_vblank_init(&dev_priv->drm, num_crtcs);
 		if (ret)
 			goto out_cleanup_hw;
 	}

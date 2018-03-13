@@ -5248,14 +5248,36 @@ static void intel_pre_plane_update(struct intel_crtc_state *old_crtc_state,
 		intel_update_watermarks(crtc);
 }
 
+static void disable_primary_plane(struct drm_i915_private *dev_priv, int pipe)
+{
+	u32 val;
+
+	val = I915_READ(PLANE_CTL(pipe, PLANE_PRIMARY));
+	if (val & PLANE_CTL_ENABLE) {
+		I915_WRITE(PLANE_CTL(pipe, PLANE_PRIMARY), 0);
+		I915_WRITE(PLANE_SURF(pipe, PLANE_PRIMARY), 0);
+		POSTING_READ(PLANE_SURF(pipe, PLANE_PRIMARY));
+	}
+}
+
 static void intel_crtc_disable_planes(struct drm_crtc *crtc, unsigned plane_mask)
 {
 	struct drm_device *dev = crtc->dev;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 	struct drm_plane *p;
 	int pipe = intel_crtc->pipe;
 
 	intel_crtc_dpms_overlay_disable(intel_crtc);
+
+	/*
+	 * On BIOS based systems, if Dom0 doesn't own Plane 0 (Primary Plane),
+	 * then during modeset, it wouldn't be able to disable this plane and
+	 * this can lead to unexpected behavior after the modeset. Therefore,
+	 * disable the primary plane if it was enabled by the BIOS/GOP.
+	 */
+	if (dev_priv->gvt && i915_modparams.avail_planes_per_pipe)
+		disable_primary_plane(dev_priv, pipe);
 
 	drm_for_each_plane_mask(p, dev, plane_mask)
 		to_intel_plane(p)->disable_plane(to_intel_plane(p), intel_crtc);
@@ -11451,7 +11473,8 @@ static void verify_wm_state(struct drm_crtc *crtc,
 	const enum pipe pipe = intel_crtc->pipe;
 	int plane, level, max_level = ilk_wm_max_level(dev_priv);
 
-	if (INTEL_GEN(dev_priv) < 9 || !new_state->active)
+	if (INTEL_GEN(dev_priv) < 9 || !new_state->active ||
+	    i915_modparams.avail_planes_per_pipe)
 		return;
 
 	skl_pipe_wm_get_hw_state(crtc, &hw_wm);
@@ -13391,6 +13414,109 @@ fail:
 }
 
 static struct intel_plane *
+intel_skl_plane_create(struct drm_i915_private *dev_priv, enum pipe pipe,
+		       int plane, bool is_primary)
+{
+	struct intel_plane *intel_plane = NULL;
+	struct intel_plane_state *state = NULL;
+	unsigned long possible_crtcs;
+	const uint32_t *plane_formats;
+	unsigned int supported_rotations, plane_type;
+	unsigned int num_formats;
+	const uint64_t *modifiers;
+	int ret;
+
+	intel_plane = kzalloc(sizeof(*intel_plane), GFP_KERNEL);
+	if (!intel_plane) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	state = intel_create_plane_state(&intel_plane->base);
+	if (!state) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	intel_plane->base.state = &state->base;
+	intel_plane->can_scale = false;
+	state->scaler_id = -1;
+	intel_plane->pipe = pipe;
+
+	/*
+	 * On gen2/3 only plane A can do FBC, but the panel fitter and LVDS
+	 * port is hooked to pipe B. Hence we want plane A feeding pipe B.
+	 */
+	if (is_primary) {
+		intel_plane->plane = (enum plane) pipe;
+		intel_plane->check_plane = intel_check_primary_plane;
+		plane_type = DRM_PLANE_TYPE_PRIMARY;
+	} else {
+		intel_plane->plane = plane;
+		intel_plane->check_plane = intel_check_sprite_plane;
+		plane_type = DRM_PLANE_TYPE_OVERLAY;
+	}
+
+	if (plane == PLANE_PRIMARY) {
+		intel_plane->frontbuffer_bit = INTEL_FRONTBUFFER_PRIMARY(pipe);
+		intel_plane->update_plane = skylake_update_primary_plane;
+		intel_plane->disable_plane = skylake_disable_primary_plane;
+		intel_plane->get_hw_state = skl_plane_get_hw_state;
+	} else {
+		intel_plane->frontbuffer_bit = INTEL_FRONTBUFFER_SPRITE(pipe, plane);
+		intel_plane->update_plane = skl_update_plane;
+		intel_plane->disable_plane = skl_disable_plane;
+		intel_plane->get_hw_state = skl_plane_get_hw_state;
+	}
+
+	intel_plane->id = plane;
+	plane_formats = skl_primary_formats;
+
+	if (pipe < PIPE_C)
+		modifiers = skl_format_modifiers_ccs;
+	else
+		modifiers = skl_format_modifiers_noccs;
+
+	num_formats = ARRAY_SIZE(skl_primary_formats);
+
+	/*
+	 * Drop final format (NV12) for pipes or hardware steppings
+	 * that don't support it.
+	 */
+	if (IS_BXT_REVID(dev_priv, 0, BXT_REVID_C0) || pipe >= PIPE_C
+			|| plane >= 2)
+		num_formats--;
+
+
+	possible_crtcs = (1 << dev_priv->drm.mode_config.num_crtc);
+	ret = drm_universal_plane_init(&dev_priv->drm, &intel_plane->base,
+			possible_crtcs, &intel_plane_funcs,
+			plane_formats, num_formats,
+			modifiers,
+			plane_type,
+			"plane %d%c", plane+1, pipe_name(pipe));
+
+	if (ret)
+		goto fail;
+
+	supported_rotations = DRM_MODE_ROTATE_0;
+	if (INTEL_GEN(dev_priv) >= 4)
+		drm_plane_create_rotation_property(&intel_plane->base,
+						   DRM_MODE_ROTATE_0,
+						   supported_rotations);
+
+	drm_plane_helper_add(&intel_plane->base, &intel_plane_helper_funcs);
+
+	return intel_plane;
+
+fail:
+	kfree(state);
+	kfree(intel_plane);
+
+	return ERR_PTR(ret);
+}
+
+static struct intel_plane *
 intel_cursor_plane_create(struct drm_i915_private *dev_priv,
 			  enum pipe pipe)
 {
@@ -13487,6 +13613,79 @@ static void intel_crtc_init_scalers(struct intel_crtc *crtc,
 	}
 
 	scaler_state->scaler_id = -1;
+}
+
+static int intel_crtc_init_restrict_planes(struct drm_i915_private *dev_priv,
+					   enum pipe pipe, int planes_mask)
+{
+	struct intel_crtc *intel_crtc;
+	struct intel_crtc_state *crtc_state;
+	struct intel_plane *primary = NULL, *intel_plane = NULL;
+	bool is_primary = true;
+	int plane, ret;
+
+	intel_crtc = kzalloc(sizeof(*intel_crtc), GFP_KERNEL);
+	if (!intel_crtc)
+		return -ENOMEM;
+
+	crtc_state = kzalloc(sizeof(*crtc_state), GFP_KERNEL);
+	if (!crtc_state) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+	intel_crtc->config = crtc_state;
+	intel_crtc->base.state = &crtc_state->base;
+	crtc_state->base.crtc = &intel_crtc->base;
+
+	for_each_universal_plane(dev_priv, pipe, plane) {
+		if (planes_mask & BIT(plane)) {
+			intel_plane = intel_skl_plane_create(dev_priv,
+					pipe, plane, is_primary);
+			if (IS_ERR(intel_plane)) {
+				DRM_DEBUG_KMS(" plane %d failed for pipe %d\n", plane, pipe);
+				ret = PTR_ERR(intel_plane);
+				goto fail;
+			}
+			if (is_primary) {
+				primary = intel_plane;
+				is_primary = false;
+			}
+			DRM_DEBUG_KMS(" plane %d created for pipe %d\n", plane, pipe);
+			intel_crtc->plane_ids_mask |= BIT(intel_plane->id);
+		}
+	}
+
+	ret = drm_crtc_init_with_planes(&dev_priv->drm,
+			&intel_crtc->base,
+			primary ? &primary->base : NULL, NULL,
+			&intel_crtc_funcs,
+			"pipe %c", pipe_name(pipe));
+	if (ret)
+		goto fail;
+
+	intel_crtc->pipe = pipe;
+	intel_crtc->plane = primary ? primary->plane : 0;
+
+	dev_priv->plane_to_crtc_mapping[intel_crtc->plane] = intel_crtc;
+	dev_priv->pipe_to_crtc_mapping[intel_crtc->pipe] = intel_crtc;
+
+	drm_crtc_helper_add(&intel_crtc->base, &intel_helper_funcs);
+
+	intel_color_init(&intel_crtc->base);
+
+	WARN_ON(drm_crtc_index(&intel_crtc->base) != intel_crtc->pipe);
+
+	return 0;
+
+fail:
+	/*
+	 * drm_mode_config_cleanup() will free up any
+	 * crtcs/planes already initialized.
+	 */
+	kfree(crtc_state);
+	kfree(intel_crtc);
+
+	return ret;
 }
 
 static int intel_crtc_init(struct drm_i915_private *dev_priv, enum pipe pipe)
@@ -14597,12 +14796,27 @@ fail:
 	drm_modeset_acquire_fini(&ctx);
 }
 
+
+static int intel_sanitize_plane_restriction(struct drm_i915_private *dev_priv)
+{
+	/*plane restriction feature is only for APL for now*/
+	if (!IS_BROXTON(dev_priv) ||
+	    !i915_modparams.enable_initial_modeset) {
+		i915_modparams.avail_planes_per_pipe = 0;
+		DRM_INFO("Turning off Plane Restrictions feature\n");
+	}
+
+	return i915_modparams.avail_planes_per_pipe;
+}
+
 int intel_modeset_init(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	enum pipe pipe;
 	struct intel_crtc *crtc;
+	unsigned int  planes_mask[I915_MAX_PIPES];
+	unsigned int avail_plane_per_pipe_mask = 0;
 
 	drm_mode_config_init(dev);
 
@@ -14673,10 +14887,29 @@ int intel_modeset_init(struct drm_device *dev)
 		      INTEL_INFO(dev_priv)->num_pipes,
 		      INTEL_INFO(dev_priv)->num_pipes > 1 ? "s" : "");
 
+	avail_plane_per_pipe_mask = intel_sanitize_plane_restriction(dev_priv);
+	DRM_DEBUG_KMS("avail_planes_per_pipe = 0x%x \n", i915_modparams.avail_planes_per_pipe);
+	DRM_DEBUG_KMS("domain_plane_owners = 0x%llx \n", i915_modparams.domain_plane_owners);
+
+	for_each_pipe(dev_priv, pipe) {
+		planes_mask[pipe] = AVAIL_PLANE_PER_PIPE(dev_priv,
+							 avail_plane_per_pipe_mask, pipe);
+		DRM_DEBUG_KMS("for pipe %d plane_mask = %d \n", pipe, planes_mask[pipe]);
+	}
+
 	for_each_pipe(dev_priv, pipe) {
 		int ret;
 
-		ret = intel_crtc_init(dev_priv, pipe);
+		if (!i915_modparams.avail_planes_per_pipe) {
+			ret = intel_crtc_init(dev_priv, pipe);
+		} else {
+			if (!intel_vgpu_active(dev_priv) || (intel_vgpu_active(dev_priv)
+							 && planes_mask[pipe])) {
+				ret = intel_crtc_init_restrict_planes(dev_priv,
+								      pipe,
+								      planes_mask[pipe]);
+			}
+		}
 		if (ret) {
 			drm_mode_config_cleanup(dev);
 			return ret;
@@ -15103,11 +15336,16 @@ static void intel_modeset_readout_hw_state(struct drm_device *dev)
 			struct intel_crtc_state *crtc_state;
 
 			crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
-			crtc_state = to_intel_crtc_state(crtc->base.state);
+			if (!crtc) {
+				encoder->base.crtc = NULL;
+			} else {
+				crtc_state =
+					to_intel_crtc_state(crtc->base.state);
 
-			encoder->base.crtc = &crtc->base;
-			crtc_state->output_types |= 1 << encoder->type;
-			encoder->get_config(encoder, crtc_state);
+				encoder->base.crtc = &crtc->base;
+				crtc_state->output_types |= 1 << encoder->type;
+				encoder->get_config(encoder, crtc_state);
+			}
 		} else {
 			encoder->base.crtc = NULL;
 		}
@@ -15248,9 +15486,11 @@ intel_modeset_setup_hw_state(struct drm_device *dev,
 	for_each_pipe(dev_priv, pipe) {
 		crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
 
-		intel_sanitize_crtc(crtc, ctx);
-		intel_dump_pipe_config(crtc, crtc->config,
-				       "[setup_hw_state]");
+		if (crtc) {
+			intel_sanitize_crtc(crtc, ctx);
+			intel_dump_pipe_config(crtc, crtc->config,
+					"[setup_hw_state]");
+		}
 	}
 
 	intel_modeset_update_connector_atomic_state(dev);

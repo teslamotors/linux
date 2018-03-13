@@ -53,7 +53,7 @@ static inline bool fbc_on_pipe_a_only(struct drm_i915_private *dev_priv)
 
 static inline bool fbc_on_plane_a_only(struct drm_i915_private *dev_priv)
 {
-	return INTEL_GEN(dev_priv) < 4;
+	return INTEL_GEN(dev_priv) < 4 || INTEL_GEN(dev_priv) >= 9;
 }
 
 static inline bool no_fbc_on_multiple_pipes(struct drm_i915_private *dev_priv)

@@ -47,6 +47,8 @@ static __always_inline void seq_print_param(struct seq_file *m,
 		seq_printf(m, "i915_modparams.%s=%d\n", name, *(const int *)x);
 	else if (!__builtin_strcmp(type, "unsigned int"))
 		seq_printf(m, "i915_modparams.%s=%u\n", name, *(const unsigned int *)x);
+	else if (!__builtin_strcmp(type, "unsigned long long"))
+		seq_printf(m, "i915_modparams.%s=%llu\n", name, *(const unsigned long long *)x);
 	else if (!__builtin_strcmp(type, "char *"))
 		seq_printf(m, "i915_modparams.%s=%s\n", name, *(const char **)x);
 	else

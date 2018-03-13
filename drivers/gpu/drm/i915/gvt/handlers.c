@@ -3119,8 +3119,14 @@ static int init_bxt_mmio_info(struct intel_gvt *gvt)
 	MMIO_PLANES_DH(_REG_701C0, D_BXT, NULL, skl_plane_mmio_write);
 	MMIO_PLANES_DH(_REG_701C4, D_BXT, NULL, skl_plane_mmio_write);
 
-	MMIO_PLANES_SDH(_PLANE_WM_BASE, 4 * 8, D_BXT, NULL, skl_plane_mmio_write);
-	MMIO_PLANES_DH(PLANE_WM_TRANS, D_BXT, NULL, skl_plane_mmio_write);
+	if (i915_modparams.avail_planes_per_pipe) {
+		MMIO_PLANES_SDH(_PLANE_WM_BASE, 4 * 8, D_BXT, NULL, NULL);
+		MMIO_PLANES_DH(PLANE_WM_TRANS, D_BXT, NULL, NULL);
+	} else {
+		MMIO_PLANES_SDH(_PLANE_WM_BASE, 4 * 8, D_BXT, NULL, skl_plane_mmio_write);
+		MMIO_PLANES_DH(PLANE_WM_TRANS, D_BXT, NULL, skl_plane_mmio_write);
+	}
+
 	MMIO_PLANES_DH(PLANE_NV12_BUF_CFG, D_BXT, NULL, NULL);
 	MMIO_PLANES_DH(PLANE_BUF_CFG, D_BXT, NULL, NULL);
 
