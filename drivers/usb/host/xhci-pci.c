@@ -26,6 +26,7 @@
 #include <linux/acpi.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/otg.h>
+#include <linux/platform_device.h>
 
 #include "xhci.h"
 #include "xhci-trace.h"
@@ -88,6 +89,35 @@ static int xhci_pci_reinit(struct xhci_hcd *xhci, struct pci_dev *pdev)
 	/* If This capbility is found, register host on PHY for OTG purpose */
 	if (pdev->vendor == PCI_VENDOR_ID_INTEL && retval) {
 		hcd = xhci_to_hcd(xhci);
+
+		hcd->usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
+
+		if (IS_ERR_OR_NULL(hcd->usb_phy)) {
+			/* Unable to get phy, very likely intel_usb_dr_phy
+			 * platform device not yet allocated. Possible
+			 * race with another drivers.
+			 */
+			int ret;
+			xhci->usb2_phy = platform_device_alloc(
+								"intel_usb_dr_phy", 0);
+			if (xhci->usb2_phy) {
+				xhci->usb2_phy->dev.parent = &pdev->dev;
+					ret = platform_device_add(xhci->usb2_phy);
+				if (ret) {
+					platform_device_put(xhci->usb2_phy);
+					return ret;
+				}
+			} else {
+				/* In case of a race and another driver allocate
+				 * intel_usb_dr_phy platform device earlier, check
+				 * whether phy is already available. If not return error.
+				 */
+				hcd->usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
+				if (IS_ERR_OR_NULL(hcd->usb_phy))
+					return -ENOMEM;
+			}
+		}
+
 		hcd->usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
 
 		if (!IS_ERR_OR_NULL(hcd->usb_phy)) {
@@ -362,6 +392,8 @@ static void xhci_pci_remove(struct pci_dev *dev)
 
 	xhci = hcd_to_xhci(pci_get_drvdata(dev));
 	xhci->xhc_state |= XHCI_STATE_REMOVING;
+	if(xhci->usb2_phy)
+		platform_device_unregister(xhci->usb2_phy);
 	if (xhci->shared_hcd) {
 		usb_remove_hcd(xhci->shared_hcd);
 		usb_put_hcd(xhci->shared_hcd);
