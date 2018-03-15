@@ -439,6 +439,15 @@ static void gen8_shadow_pid_cid(struct intel_vgpu_workload *workload)
 	intel_ring_advance(workload->req, cs);
 }
 
+static int sanitize_priority(int priority)
+{
+	if (priority > I915_CONTEXT_MAX_USER_PRIORITY)
+		return I915_CONTEXT_MAX_USER_PRIORITY;
+	else if (priority < I915_CONTEXT_MIN_USER_PRIORITY)
+		return I915_CONTEXT_MIN_USER_PRIORITY;
+	return priority;
+}
+
 static int dispatch_workload(struct intel_vgpu_workload *workload)
 {
 	int ring_id = workload->ring_id;
@@ -497,6 +506,8 @@ out:
 	if (!IS_ERR_OR_NULL(workload->req)) {
 		gvt_dbg_sched("ring id %d submit workload to i915 %p\n",
 				ring_id, workload->req);
+		shadow_ctx->priority = i915_modparams.gvt_workload_priority =
+			sanitize_priority(i915_modparams.gvt_workload_priority);
 		i915_add_request(workload->req);
 		workload->dispatched = true;
 	}
