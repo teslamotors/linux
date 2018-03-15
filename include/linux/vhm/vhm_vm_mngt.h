@@ -96,6 +96,7 @@ struct vhm_vm {
 	struct list_head ioreq_client_list;
 	struct vhm_request_buffer *req_buf;
 	struct page *pg;
+	int hugetlb_enabled;
 };
 
 /**

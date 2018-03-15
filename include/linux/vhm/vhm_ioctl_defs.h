@@ -121,19 +121,30 @@ struct vm_memseg {
 
 /**
  * struct vm_memmap - EPT memory mapping info for guest
- *
- * @type: memory mapping type
- * @gpa: guest physical start address of memory mapping
- * @hpa: host physical start address of memory
- * @len: the length of memory range mapped
- * @prot: memory mapping attribute
  */
 struct vm_memmap {
+	/** @type: memory mapping type */
 	uint32_t type;
-	uint32_t reserved;
+	/** @using_vma: using vma_base to get vm0_gpa,
+	 * only for type == VM_SYSTEM
+	 */
+	uint32_t using_vma;
+	/** @gpa: user OS guest physical start address of memory mapping */
 	uint64_t gpa;
-	uint64_t hpa;	/* only for type == VM_MMIO */
+	/** union */
+	union {
+		/** @hpa: host physical start address of memory,
+		 * only for type == VM_MMIO
+		 */
+		uint64_t hpa;
+		/** @vma_base: service OS user virtual start address of
+		 * memory, only for type == VM_SYSMEM && using_vma == true
+		 */
+		uint64_t vma_base;
+	};
+	/** @len: the length of memory range mapped */
 	uint64_t len;	/* mmap length */
+	/** @prot: memory mapping attribute */
 	uint32_t prot;	/* RWX */
 };
 
