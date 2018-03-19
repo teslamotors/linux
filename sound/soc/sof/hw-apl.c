@@ -1391,17 +1391,12 @@ static irqreturn_t cnl_irq_thread(int irq, void *context)
 		/* handle messages from DSP */
 		snd_sof_ipc_msgs_rx(sdev);
 
-		/* clear busy interrupt */
+		/* clear busy interrupt to tell dsp controller this */
+		/* interrupt has been accepted, not trigger it again */
 		snd_sof_dsp_update_bits_forced(sdev, APL_DSP_BAR,
 					       CNL_DSP_REG_HIPCTDR,
 					       CNL_DSP_REG_HIPCTDR_BUSY,
 					       CNL_DSP_REG_HIPCTDR_BUSY);
-
-		/* set done bit to ack dsp */
-		snd_sof_dsp_update_bits_forced(sdev, APL_DSP_BAR,
-					       CNL_DSP_REG_HIPCTDA,
-					       CNL_DSP_REG_HIPCTDA_DONE,
-					       CNL_DSP_REG_HIPCTDA_DONE);
 
 		ret = IRQ_HANDLED;
 	}
@@ -1438,13 +1433,7 @@ static int apl_cmd_done(struct snd_sof_dev *sdev)
 
 static int cnl_cmd_done(struct snd_sof_dev *sdev)
 {
-	/* clear busy interrupt */
-	snd_sof_dsp_update_bits_forced(sdev, APL_DSP_BAR,
-				       CNL_DSP_REG_HIPCTDR,
-				       CNL_DSP_REG_HIPCTDR_BUSY,
-				       CNL_DSP_REG_HIPCTDR_BUSY);
-
-	/* set done bit to ack dsp */
+	/* set done bit to ack dsp the msg has been processed */
 	snd_sof_dsp_update_bits_forced(sdev, APL_DSP_BAR,
 				       CNL_DSP_REG_HIPCTDA,
 				       CNL_DSP_REG_HIPCTDA_DONE,
