@@ -173,6 +173,8 @@ struct decode_info {
 #define OP_MEDIA_GATEWAY_STATE                  OP_3D_MEDIA(0x2, 0x0, 0x3)
 #define OP_MEDIA_STATE_FLUSH                    OP_3D_MEDIA(0x2, 0x0, 0x4)
 
+#define OP_MEDIA_POOL_STATE                     OP_3D_MEDIA(0x2, 0x0, 0x5)
+
 #define OP_MEDIA_OBJECT                         OP_3D_MEDIA(0x2, 0x1, 0x0)
 #define OP_MEDIA_OBJECT_PRT                     OP_3D_MEDIA(0x2, 0x1, 0x2)
 #define OP_MEDIA_OBJECT_WALKER                  OP_3D_MEDIA(0x2, 0x1, 0x3)
@@ -811,7 +813,7 @@ static bool is_shadowed_mmio(unsigned int offset)
 	return ret;
 }
 
-static inline bool is_force_nonpriv_mmio(unsigned int offset)
+bool is_force_nonpriv_mmio(unsigned int offset)
 {
 	return (offset >= 0x24d0 && offset < 0x2500);
 }
@@ -863,6 +865,15 @@ static int cmd_reg_handler(struct parser_exec_state *s,
 		patch_value(s, cmd_ptr(s, index), VGT_PVINFO_PAGE);
 	}
 
+	/* Re-direct the non-context MMIO access to VGT_SCRATCH_REG, it
+	 * has no functional impact to HW.
+	 */
+	if (!strcmp(cmd, "lri") || !strcmp(cmd, "lrr-dst")
+		|| !strcmp(cmd, "lrm") || !strcmp(cmd, "pipe_ctrl")) {
+		if (intel_gvt_mmio_is_non_context(gvt, offset))
+			patch_value(s, cmd_ptr(s, index), VGT_SCRATCH_REG);
+	}
+
 	/* TODO: Update the global mask if this MMIO is a masked-MMIO */
 	intel_gvt_mmio_set_cmd_accessed(gvt, offset);
 	return 0;
@@ -899,6 +910,34 @@ static int cmd_handler_lri(struct parser_exec_state *s)
 		if (ret)
 			break;
 		ret |= cmd_reg_handler(s, cmd_reg(s, i), i, "lri");
+
+		if (s->vgpu->entire_nonctxmmio_checked
+			&& intel_gvt_mmio_is_non_context(s->vgpu->gvt, cmd_reg(s, i))) {
+			int offset = cmd_reg(s, i);
+			int value = cmd_val(s, i + 1);
+			u32 *host_cache = s->vgpu->gvt->mmio.mmio_host_cache;
+
+			if (intel_gvt_mmio_has_mode_mask(s->vgpu->gvt, offset)) {
+				u32 mask = value >> 16;
+
+				vgpu_vreg(s->vgpu, offset) =
+					(vgpu_vreg(s->vgpu, offset) & ~mask)
+					| (value & mask);
+			} else {
+				vgpu_vreg(s->vgpu, offset) = value;
+			}
+
+			if (host_cache[cmd_reg(s, i) >> 2] !=
+				vgpu_vreg(s->vgpu, offset)) {
+
+				gvt_err("vgpu%d unexpected non-context MMIOs"
+					"access by cmd 0x%x:0x%x,0x%x\n",
+					s->vgpu->id,
+					(u32)cmd_reg(s, i),
+					cmd_val(s, i + 1),
+					host_cache[cmd_reg(s, i) >> 2]);
+			}
+		}
 	}
 	return ret;
 }
@@ -1209,7 +1248,8 @@ static int gen8_check_mi_display_flip(struct parser_exec_state *s,
 	if (!info->async_flip)
 		return 0;
 
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv) ||
+			IS_BROXTON(dev_priv)) {
 		stride = vgpu_vreg(s->vgpu, info->stride_reg) & GENMASK(9, 0);
 		tile = (vgpu_vreg(s->vgpu, info->ctrl_reg) &
 				GENMASK(12, 10)) >> 10;
@@ -1237,7 +1277,8 @@ static int gen8_update_plane_mmio_from_mi_display_flip(
 
 	set_mask_bits(&vgpu_vreg(vgpu, info->surf_reg), GENMASK(31, 12),
 		      info->surf_val << 12);
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv) ||
+			IS_BROXTON(dev_priv)) {
 		set_mask_bits(&vgpu_vreg(vgpu, info->stride_reg), GENMASK(9, 0),
 			      info->stride_val);
 		set_mask_bits(&vgpu_vreg(vgpu, info->ctrl_reg), GENMASK(12, 10),
@@ -1261,7 +1302,8 @@ static int decode_mi_display_flip(struct parser_exec_state *s,
 
 	if (IS_BROADWELL(dev_priv))
 		return gen8_decode_mi_display_flip(s, info);
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
+	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv) ||
+			IS_BROXTON(dev_priv))
 		return skl_decode_mi_display_flip(s, info);
 
 	return -ENODEV;
@@ -1274,6 +1316,7 @@ static int check_mi_display_flip(struct parser_exec_state *s,
 
 	if (IS_BROADWELL(dev_priv)
 		|| IS_SKYLAKE(dev_priv)
+		|| IS_BROXTON(dev_priv)
 		|| IS_KABYLAKE(dev_priv))
 		return gen8_check_mi_display_flip(s, info);
 	return -ENODEV;
@@ -1287,6 +1330,7 @@ static int update_plane_mmio_from_mi_display_flip(
 
 	if (IS_BROADWELL(dev_priv)
 		|| IS_SKYLAKE(dev_priv)
+		|| IS_BROXTON(dev_priv)
 		|| IS_KABYLAKE(dev_priv))
 		return gen8_update_plane_mmio_from_mi_display_flip(s, info);
 	return -ENODEV;
@@ -1568,6 +1612,7 @@ static int batch_buffer_needs_scan(struct parser_exec_state *s)
 	struct intel_gvt *gvt = s->vgpu->gvt;
 
 	if (IS_BROADWELL(gvt->dev_priv) || IS_SKYLAKE(gvt->dev_priv)
+		|| IS_BROXTON(gvt->dev_priv)
 		|| IS_KABYLAKE(gvt->dev_priv)) {
 		/* BDW decides privilege based on address space */
 		if (cmd_val(s, 0) & (1 << 8))
@@ -2278,6 +2323,9 @@ static struct cmd_info cmd_info[] = {
 	{"GPGPU_WALKER", OP_GPGPU_WALKER, F_LEN_VAR, R_RCS, D_ALL,
 		0, 8, NULL},
 
+	{"MEDIA_POOL_STATE", OP_MEDIA_POOL_STATE, F_LEN_VAR, R_RCS, D_ALL, 0, 16,
+		NULL},
+
 	{"MEDIA_VFE_STATE", OP_MEDIA_VFE_STATE, F_LEN_VAR, R_RCS, D_ALL, 0, 16,
 		NULL},
 
@@ -2599,11 +2647,39 @@ out:
 	return ret;
 }
 
+#define GEN8_PDPES    4
+int gvt_emit_pdps(struct intel_vgpu_workload *workload)
+{
+	const int num_cmds = GEN8_PDPES * 2;
+	struct drm_i915_gem_request *req = workload->req;
+	struct intel_engine_cs *engine = req->engine;
+	u32 *cs;
+	u32 *pdps = (u32 *)workload->shadow_mm->shadow_page_table;
+	int i;
+
+	cs = intel_ring_begin(req, num_cmds * 2 + 2);
+	if (IS_ERR(cs))
+		return PTR_ERR(cs);
+
+	*cs++ = MI_LOAD_REGISTER_IMM(num_cmds);
+	for (i = 0; i < GEN8_PDPES; i++) {
+		*cs++ = i915_mmio_reg_offset(GEN8_RING_PDP_LDW(engine, i));
+		*cs++ = pdps[i * 2];
+		*cs++ = i915_mmio_reg_offset(GEN8_RING_PDP_UDW(engine, i));
+		*cs++ = pdps[i * 2 + 1];
+	}
+	*cs++ = MI_NOOP;
+	intel_ring_advance(req, cs);
+
+	return 0;
+}
+
 static int shadow_workload_ring_buffer(struct intel_vgpu_workload *workload)
 {
 	struct intel_vgpu *vgpu = workload->vgpu;
 	unsigned long gma_head, gma_tail, gma_top, guest_rb_size;
-	u32 *cs;
+	void *shadow_ring_buffer_va;
+	int ring_id = workload->ring_id;
 	int ret;
 
 	guest_rb_size = _RING_CTL_BUF_SIZE(workload->rb_ctl);
@@ -2616,34 +2692,42 @@ static int shadow_workload_ring_buffer(struct intel_vgpu_workload *workload)
 	gma_tail = workload->rb_start + workload->rb_tail;
 	gma_top = workload->rb_start + guest_rb_size;
 
-	/* allocate shadow ring buffer */
-	cs = intel_ring_begin(workload->req, workload->rb_len / sizeof(u32));
-	if (IS_ERR(cs))
-		return PTR_ERR(cs);
+	if (workload->rb_len > vgpu->reserve_ring_buffer_size[ring_id]) {
+		void *va = vgpu->reserve_ring_buffer_va[ring_id];
+		/* realloc the new ring buffer if needed */
+		vgpu->reserve_ring_buffer_va[ring_id] =
+			krealloc(va, workload->rb_len, GFP_KERNEL);
+		if (!vgpu->reserve_ring_buffer_va[ring_id]) {
+			gvt_vgpu_err("fail to alloc reserve ring buffer\n");
+			return -ENOMEM;
+		}
+		vgpu->reserve_ring_buffer_size[ring_id] = workload->rb_len;
+	}
+
+	shadow_ring_buffer_va = vgpu->reserve_ring_buffer_va[ring_id];
 
 	/* get shadow ring buffer va */
-	workload->shadow_ring_buffer_va = cs;
+	workload->shadow_ring_buffer_va = shadow_ring_buffer_va;
 
 	/* head > tail --> copy head <-> top */
 	if (gma_head > gma_tail) {
 		ret = copy_gma_to_hva(vgpu, vgpu->gtt.ggtt_mm,
-				      gma_head, gma_top, cs);
+				      gma_head, gma_top, shadow_ring_buffer_va);
 		if (ret < 0) {
 			gvt_vgpu_err("fail to copy guest ring buffer\n");
 			return ret;
 		}
-		cs += ret / sizeof(u32);
+		shadow_ring_buffer_va += ret;
 		gma_head = workload->rb_start;
 	}
 
 	/* copy head or start <-> tail */
-	ret = copy_gma_to_hva(vgpu, vgpu->gtt.ggtt_mm, gma_head, gma_tail, cs);
+	ret = copy_gma_to_hva(vgpu, vgpu->gtt.ggtt_mm, gma_head, gma_tail,
+				shadow_ring_buffer_va);
 	if (ret < 0) {
 		gvt_vgpu_err("fail to copy guest ring buffer\n");
 		return ret;
 	}
-	cs += ret / sizeof(u32);
-	intel_ring_advance(workload->req, cs);
 	return 0;
 }
 

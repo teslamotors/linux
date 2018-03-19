@@ -434,9 +434,16 @@ void intel_uncore_resume_early(struct drm_i915_private *dev_priv)
 	i915_check_and_clear_faults(dev_priv);
 }
 
+void intel_uncore_runtime_resume(struct drm_i915_private *dev_priv)
+{
+	iosf_mbi_register_pmic_bus_access_notifier(
+		&dev_priv->uncore.pmic_bus_access_nb);
+}
+
 void intel_uncore_sanitize(struct drm_i915_private *dev_priv)
 {
-	i915.enable_rc6 = sanitize_rc6_option(dev_priv, i915.enable_rc6);
+	i915_modparams.enable_rc6 =
+		sanitize_rc6_option(dev_priv, i915_modparams.enable_rc6);
 
 	/* BIOS often leaves RC6 enabled, but disable it for hw init */
 	intel_sanitize_gt_powersave(dev_priv);
@@ -487,6 +494,57 @@ void intel_uncore_forcewake_get(struct drm_i915_private *dev_priv,
 	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 	__intel_uncore_forcewake_get(dev_priv, fw_domains);
 	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
+}
+
+/**
+ * intel_uncore_forcewake_user_get - claim forcewake on behalf of userspace
+ * @dev_priv: i915 device instance
+ *
+ * This function is a wrapper around intel_uncore_forcewake_get() to acquire
+ * the GT powerwell and in the process disable our debugging for the
+ * duration of userspace's bypass.
+ */
+void intel_uncore_forcewake_user_get(struct drm_i915_private *dev_priv)
+{
+	spin_lock_irq(&dev_priv->uncore.lock);
+	if (!dev_priv->uncore.user_forcewake.count++) {
+		intel_uncore_forcewake_get__locked(dev_priv, FORCEWAKE_ALL);
+
+		/* Save and disable mmio debugging for the user bypass */
+		dev_priv->uncore.user_forcewake.saved_mmio_check =
+			dev_priv->uncore.unclaimed_mmio_check;
+		dev_priv->uncore.user_forcewake.saved_mmio_debug =
+			i915_modparams.mmio_debug;
+
+		dev_priv->uncore.unclaimed_mmio_check = 0;
+		i915_modparams.mmio_debug = 0;
+	}
+	spin_unlock_irq(&dev_priv->uncore.lock);
+}
+
+/**
+ * intel_uncore_forcewake_user_put - release forcewake on behalf of userspace
+ * @dev_priv: i915 device instance
+ *
+ * This function complements intel_uncore_forcewake_user_get() and releases
+ * the GT powerwell taken on behalf of the userspace bypass.
+ */
+void intel_uncore_forcewake_user_put(struct drm_i915_private *dev_priv)
+{
+	spin_lock_irq(&dev_priv->uncore.lock);
+	if (!--dev_priv->uncore.user_forcewake.count) {
+		if (intel_uncore_unclaimed_mmio(dev_priv))
+			dev_info(dev_priv->drm.dev,
+				 "Invalid mmio detected during user access\n");
+
+		dev_priv->uncore.unclaimed_mmio_check =
+			dev_priv->uncore.user_forcewake.saved_mmio_check;
+		i915_modparams.mmio_debug =
+			dev_priv->uncore.user_forcewake.saved_mmio_debug;
+
+		intel_uncore_forcewake_put__locked(dev_priv, FORCEWAKE_ALL);
+	}
+	spin_unlock_irq(&dev_priv->uncore.lock);
 }
 
 /**
@@ -790,7 +848,8 @@ __unclaimed_reg_debug(struct drm_i915_private *dev_priv,
 		 "Unclaimed %s register 0x%x\n",
 		 read ? "read from" : "write to",
 		 i915_mmio_reg_offset(reg)))
-		i915.mmio_debug--; /* Only report the first N failures */
+		/* Only report the first N failures */
+		i915_modparams.mmio_debug--;
 }
 
 static inline void
@@ -799,7 +858,7 @@ unclaimed_reg_debug(struct drm_i915_private *dev_priv,
 		    const bool read,
 		    const bool before)
 {
-	if (likely(!i915.mmio_debug))
+	if (likely(!i915_modparams.mmio_debug))
 		return;
 
 	__unclaimed_reg_debug(dev_priv, reg, read, before);
@@ -1171,8 +1230,15 @@ static int i915_pmic_bus_access_notifier(struct notifier_block *nb,
 		 * bus, which will be busy after this notification, leading to:
 		 * "render: timed out waiting for forcewake ack request."
 		 * errors.
+		 *
+		 * The notifier is unregistered during intel_runtime_suspend(),
+		 * so it's ok to access the HW here without holding a RPM
+		 * wake reference -> disable wakeref asserts for the time of
+		 * the access.
 		 */
+		disable_rpm_wakeref_asserts(dev_priv);
 		intel_uncore_forcewake_get(dev_priv, FORCEWAKE_ALL);
+		enable_rpm_wakeref_asserts(dev_priv);
 		break;
 	case MBI_PMIC_BUS_ACCESS_END:
 		intel_uncore_forcewake_put(dev_priv, FORCEWAKE_ALL);
@@ -1241,72 +1307,65 @@ void intel_uncore_fini(struct drm_i915_private *dev_priv)
 	intel_uncore_forcewake_reset(dev_priv, false);
 }
 
-#define GEN_RANGE(l, h) GENMASK((h) - 1, (l) - 1)
-
-static const struct register_whitelist {
-	i915_reg_t offset_ldw, offset_udw;
-	uint32_t size;
-	/* supported gens, 0x10 for 4, 0x30 for 4 and 5, etc. */
-	uint32_t gen_bitmask;
-} whitelist[] = {
-	{ .offset_ldw = RING_TIMESTAMP(RENDER_RING_BASE),
-	  .offset_udw = RING_TIMESTAMP_UDW(RENDER_RING_BASE),
-	  .size = 8, .gen_bitmask = GEN_RANGE(4, 9) },
-};
+static const struct reg_whitelist {
+	i915_reg_t offset_ldw;
+	i915_reg_t offset_udw;
+	u16 gen_mask;
+	u8 size;
+} reg_read_whitelist[] = { {
+	.offset_ldw = RING_TIMESTAMP(RENDER_RING_BASE),
+	.offset_udw = RING_TIMESTAMP_UDW(RENDER_RING_BASE),
+	.gen_mask = INTEL_GEN_MASK(4, 10),
+	.size = 8
+} };
 
 int i915_reg_read_ioctl(struct drm_device *dev,
 			void *data, struct drm_file *file)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_i915_reg_read *reg = data;
-	struct register_whitelist const *entry = whitelist;
-	unsigned size;
-	i915_reg_t offset_ldw, offset_udw;
-	int i, ret = 0;
+	struct reg_whitelist const *entry;
+	unsigned int flags;
+	int remain;
+	int ret = 0;
 
-	for (i = 0; i < ARRAY_SIZE(whitelist); i++, entry++) {
-		if (i915_mmio_reg_offset(entry->offset_ldw) == (reg->offset & -entry->size) &&
-		    (INTEL_INFO(dev_priv)->gen_mask & entry->gen_bitmask))
+	entry = reg_read_whitelist;
+	remain = ARRAY_SIZE(reg_read_whitelist);
+	while (remain) {
+		u32 entry_offset = i915_mmio_reg_offset(entry->offset_ldw);
+
+		GEM_BUG_ON(!is_power_of_2(entry->size));
+		GEM_BUG_ON(entry->size > 8);
+		GEM_BUG_ON(entry_offset & (entry->size - 1));
+
+		if (INTEL_INFO(dev_priv)->gen_mask & entry->gen_mask &&
+		    entry_offset == (reg->offset & -entry->size))
 			break;
+		entry++;
+		remain--;
 	}
 
-	if (i == ARRAY_SIZE(whitelist))
+	if (!remain)
 		return -EINVAL;
 
-	/* We use the low bits to encode extra flags as the register should
-	 * be naturally aligned (and those that are not so aligned merely
-	 * limit the available flags for that register).
-	 */
-	offset_ldw = entry->offset_ldw;
-	offset_udw = entry->offset_udw;
-	size = entry->size;
-	size |= reg->offset ^ i915_mmio_reg_offset(offset_ldw);
+	flags = reg->offset & (entry->size - 1);
 
 	intel_runtime_pm_get(dev_priv);
-
-	switch (size) {
-	case 8 | 1:
-		reg->val = I915_READ64_2x32(offset_ldw, offset_udw);
-		break;
-	case 8:
-		reg->val = I915_READ64(offset_ldw);
-		break;
-	case 4:
-		reg->val = I915_READ(offset_ldw);
-		break;
-	case 2:
-		reg->val = I915_READ16(offset_ldw);
-		break;
-	case 1:
-		reg->val = I915_READ8(offset_ldw);
-		break;
-	default:
+	if (entry->size == 8 && flags == I915_REG_READ_8B_WA)
+		reg->val = I915_READ64_2x32(entry->offset_ldw,
+					    entry->offset_udw);
+	else if (entry->size == 8 && flags == 0)
+		reg->val = I915_READ64(entry->offset_ldw);
+	else if (entry->size == 4 && flags == 0)
+		reg->val = I915_READ(entry->offset_ldw);
+	else if (entry->size == 2 && flags == 0)
+		reg->val = I915_READ16(entry->offset_ldw);
+	else if (entry->size == 1 && flags == 0)
+		reg->val = I915_READ8(entry->offset_ldw);
+	else
 		ret = -EINVAL;
-		goto out;
-	}
-
-out:
 	intel_runtime_pm_put(dev_priv);
+
 	return ret;
 }
 
@@ -1567,12 +1626,14 @@ int __intel_wait_for_register_fw(struct drm_i915_private *dev_priv,
 }
 
 /**
- * intel_wait_for_register - wait until register matches expected state
+ * __intel_wait_for_register - wait until register matches expected state
  * @dev_priv: the i915 device
  * @reg: the register to read
  * @mask: mask to apply to register value
  * @value: expected value
- * @timeout_ms: timeout in millisecond
+ * @fast_timeout_us: fast timeout in microsecond for atomic/tight wait
+ * @slow_timeout_ms: slow timeout in millisecond
+ * @out_value: optional placeholder to hold registry value
  *
  * This routine waits until the target register @reg contains the expected
  * @value after applying the @mask, i.e. it waits until ::
@@ -1583,14 +1644,17 @@ int __intel_wait_for_register_fw(struct drm_i915_private *dev_priv,
  *
  * Returns 0 if the register matches the desired condition, or -ETIMEOUT.
  */
-int intel_wait_for_register(struct drm_i915_private *dev_priv,
+int __intel_wait_for_register(struct drm_i915_private *dev_priv,
 			    i915_reg_t reg,
 			    u32 mask,
 			    u32 value,
-			    unsigned int timeout_ms)
+			    unsigned int fast_timeout_us,
+			    unsigned int slow_timeout_ms,
+			    u32 *out_value)
 {
 	unsigned fw =
 		intel_uncore_forcewake_for_reg(dev_priv, reg, FW_REG_READ);
+	u32 reg_value;
 	int ret;
 
 	might_sleep();
@@ -1600,14 +1664,18 @@ int intel_wait_for_register(struct drm_i915_private *dev_priv,
 
 	ret = __intel_wait_for_register_fw(dev_priv,
 					   reg, mask, value,
-					   2, 0, NULL);
+					   fast_timeout_us, 0, &reg_value);
 
 	intel_uncore_forcewake_put__locked(dev_priv, fw);
 	spin_unlock_irq(&dev_priv->uncore.lock);
 
 	if (ret)
-		ret = wait_for((I915_READ_NOTRACE(reg) & mask) == value,
-			       timeout_ms);
+		ret = __wait_for(reg_value = I915_READ_NOTRACE(reg),
+				 (reg_value & mask) == value,
+				 slow_timeout_ms * 1000, 10, 1000);
+
+	if (out_value)
+		*out_value = reg_value;
 
 	return ret;
 }
@@ -1662,7 +1730,7 @@ typedef int (*reset_func)(struct drm_i915_private *, unsigned engine_mask);
 
 static reset_func intel_get_gpu_reset(struct drm_i915_private *dev_priv)
 {
-	if (!i915.reset)
+	if (!i915_modparams.reset)
 		return NULL;
 
 	if (INTEL_INFO(dev_priv)->gen >= 8)
@@ -1722,7 +1790,7 @@ bool intel_has_reset_engine(struct drm_i915_private *dev_priv)
 {
 	return (dev_priv->info.has_reset_engine &&
 		!dev_priv->guc.execbuf_client &&
-		i915.reset >= 2);
+		i915_modparams.reset >= 2);
 }
 
 int intel_guc_reset(struct drm_i915_private *dev_priv)
@@ -1747,15 +1815,15 @@ bool intel_uncore_unclaimed_mmio(struct drm_i915_private *dev_priv)
 bool
 intel_uncore_arm_unclaimed_mmio_detection(struct drm_i915_private *dev_priv)
 {
-	if (unlikely(i915.mmio_debug ||
+	if (unlikely(i915_modparams.mmio_debug ||
 		     dev_priv->uncore.unclaimed_mmio_check <= 0))
 		return false;
 
 	if (unlikely(intel_uncore_unclaimed_mmio(dev_priv))) {
 		DRM_DEBUG("Unclaimed register detected, "
 			  "enabling oneshot unclaimed register reporting. "
-			  "Please use i915.mmio_debug=N for more information.\n");
-		i915.mmio_debug++;
+			  "Please use i915_modparams.mmio_debug=N for more information.\n");
+		i915_modparams.mmio_debug++;
 		dev_priv->uncore.unclaimed_mmio_check--;
 		return true;
 	}

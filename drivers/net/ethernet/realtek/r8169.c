@@ -1388,7 +1388,7 @@ DECLARE_RTL_COND(rtl_ocp_tx_cond)
 {
 	void __iomem *ioaddr = tp->mmio_addr;
 
-	return RTL_R8(IBISR0) & 0x02;
+	return RTL_R8(IBISR0) & 0x20;
 }
 
 static void rtl8168ep_stop_cmac(struct rtl8169_private *tp)
@@ -1396,7 +1396,7 @@ static void rtl8168ep_stop_cmac(struct rtl8169_private *tp)
 	void __iomem *ioaddr = tp->mmio_addr;
 
 	RTL_W8(IBCR2, RTL_R8(IBCR2) & ~0x01);
-	rtl_msleep_loop_wait_low(tp, &rtl_ocp_tx_cond, 50, 2000);
+	rtl_msleep_loop_wait_high(tp, &rtl_ocp_tx_cond, 50, 2000);
 	RTL_W8(IBISR0, RTL_R8(IBISR0) | 0x20);
 	RTL_W8(IBCR0, RTL_R8(IBCR0) & ~0x01);
 }
@@ -2025,21 +2025,6 @@ out:
 	return ret;
 }
 
-static int rtl8169_set_settings(struct net_device *dev, struct ethtool_cmd *cmd)
-{
-	struct rtl8169_private *tp = netdev_priv(dev);
-	int ret;
-
-	del_timer_sync(&tp->timer);
-
-	rtl_lock_work(tp);
-	ret = rtl8169_set_speed(dev, cmd->autoneg, ethtool_cmd_speed(cmd),
-				cmd->duplex, cmd->advertising);
-	rtl_unlock_work(tp);
-
-	return ret;
-}
-
 static netdev_features_t rtl8169_fix_features(struct net_device *dev,
 	netdev_features_t features)
 {
@@ -2166,6 +2151,27 @@ static int rtl8169_get_link_ksettings(struct net_device *dev,
 	return rc;
 }
 
+static int rtl8169_set_link_ksettings(struct net_device *dev,
+				      const struct ethtool_link_ksettings *cmd)
+{
+	struct rtl8169_private *tp = netdev_priv(dev);
+	int rc;
+	u32 advertising;
+
+	if (!ethtool_convert_link_mode_to_legacy_u32(&advertising,
+	    cmd->link_modes.advertising))
+		return -EINVAL;
+
+	del_timer_sync(&tp->timer);
+
+	rtl_lock_work(tp);
+	rc = rtl8169_set_speed(dev, cmd->base.autoneg, cmd->base.speed,
+			       cmd->base.duplex, advertising);
+	rtl_unlock_work(tp);
+
+	return rc;
+}
+
 static void rtl8169_get_regs(struct net_device *dev, struct ethtool_regs *regs,
 			     void *p)
 {
@@ -2233,19 +2239,14 @@ static bool rtl8169_do_counters(struct net_device *dev, u32 counter_cmd)
 	void __iomem *ioaddr = tp->mmio_addr;
 	dma_addr_t paddr = tp->counters_phys_addr;
 	u32 cmd;
-	bool ret;
 
 	RTL_W32(CounterAddrHigh, (u64)paddr >> 32);
+	RTL_R32(CounterAddrHigh);
 	cmd = (u64)paddr & DMA_BIT_MASK(32);
 	RTL_W32(CounterAddrLow, cmd);
 	RTL_W32(CounterAddrLow, cmd | counter_cmd);
 
-	ret = rtl_udelay_loop_wait_low(tp, &rtl_counters_cond, 10, 1000);
-
-	RTL_W32(CounterAddrLow, 0);
-	RTL_W32(CounterAddrHigh, 0);
-
-	return ret;
+	return rtl_udelay_loop_wait_low(tp, &rtl_counters_cond, 10, 1000);
 }
 
 static bool rtl8169_reset_counters(struct net_device *dev)
@@ -2367,7 +2368,6 @@ static const struct ethtool_ops rtl8169_ethtool_ops = {
 	.get_drvinfo		= rtl8169_get_drvinfo,
 	.get_regs_len		= rtl8169_get_regs_len,
 	.get_link		= ethtool_op_get_link,
-	.set_settings		= rtl8169_set_settings,
 	.get_msglevel		= rtl8169_get_msglevel,
 	.set_msglevel		= rtl8169_set_msglevel,
 	.get_regs		= rtl8169_get_regs,
@@ -2379,6 +2379,7 @@ static const struct ethtool_ops rtl8169_ethtool_ops = {
 	.get_ts_info		= ethtool_op_get_ts_info,
 	.nway_reset		= rtl8169_nway_reset,
 	.get_link_ksettings	= rtl8169_get_link_ksettings,
+	.set_link_ksettings	= rtl8169_set_link_ksettings,
 };
 
 static void rtl8169_get_mac_version(struct rtl8169_private *tp,

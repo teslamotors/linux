@@ -47,7 +47,6 @@
 #include <linux/stringify.h>
 #include <linux/bitops.h>
 #include <linux/gfp.h>
-#include <linux/kmemcheck.h>
 #include <linux/random.h>
 #include <linux/jhash.h>
 
@@ -3225,8 +3224,6 @@ static void __lockdep_init_map(struct lockdep_map *lock, const char *name,
 {
 	int i;
 
-	kmemcheck_mark_initialized(lock, sizeof(*lock));
-
 	for (i = 0; i < NR_LOCKDEP_CACHING_CLASSES; i++)
 		lock->class_cache[i] = NULL;
 
@@ -4780,7 +4777,8 @@ void lockdep_invariant_state(bool force)
 	 * Verify the former, enforce the latter.
 	 */
 	WARN_ON_ONCE(!force && current->lockdep_depth);
-	invalidate_xhlock(&xhlock(current->xhlock_idx));
+	if (current->xhlocks)
+		invalidate_xhlock(&xhlock(current->xhlock_idx));
 }
 
 static int cross_lock(struct lockdep_map *lock)

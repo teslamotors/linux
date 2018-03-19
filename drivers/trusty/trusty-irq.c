@@ -59,6 +59,15 @@ struct trusty_irq_state {
 
 static enum cpuhp_state trusty_irq_online;
 
+#define TRUSTY_VMCALL_PENDING_INTR 0x74727505
+static inline void set_pending_intr_to_lk(uint8_t vector)
+{
+	__asm__ __volatile__(
+		"vmcall"
+		::"a"(TRUSTY_VMCALL_PENDING_INTR), "b"(vector)
+		);
+}
+
 static void trusty_irq_enable_pending_irqs(struct trusty_irq_state *is,
 					   struct trusty_irq_irqset *irqset,
 					   bool percpu)
@@ -530,9 +539,9 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	unsigned long irq_flags;
 	struct trusty_irq_state *is;
 
-	ret = trusty_check_cpuid(NULL);
+	ret = trusty_detect_vmm();
 	if (ret < 0) {
-		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		dev_err(&pdev->dev, "Cannot detect VMM which supports trusty!");
 		return -EINVAL;
 	}
 

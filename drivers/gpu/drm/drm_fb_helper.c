@@ -1350,6 +1350,7 @@ retry:
 		replaced  = drm_property_replace_blob(&crtc_state->degamma_lut,
 						      NULL);
 		replaced |= drm_property_replace_blob(&crtc_state->ctm, NULL);
+		replaced |= drm_property_replace_blob(&crtc_state->ctm_post_offset, NULL);
 		replaced |= drm_property_replace_blob(&crtc_state->gamma_lut,
 						      gamma_lut);
 		crtc_state->color_mgmt_changed |= replaced;
@@ -1809,6 +1810,10 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 
 	if (crtc_count == 0 || sizes.fb_width == -1 || sizes.fb_height == -1) {
 		DRM_INFO("Cannot find any crtc or sizes\n");
+
+		/* First time: disable all crtc's.. */
+		if (!fb_helper->deferred_setup && !READ_ONCE(fb_helper->dev->master))
+			restore_fbdev_mode(fb_helper);
 		return -EAGAIN;
 	}
 

@@ -42,6 +42,10 @@
 #include "intel_drv.h"
 #include "intel_frontbuffer.h"
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+#include "gvt.h"
+#endif
+
 #define I915_GFP_DMA (GFP_KERNEL | __GFP_HIGHMEM)
 
 /**
@@ -180,7 +184,7 @@ int intel_sanitize_enable_ppgtt(struct drm_i915_private *dev_priv,
 		return 0;
 	}
 
-	if (INTEL_GEN(dev_priv) >= 8 && i915.enable_execlists) {
+	if (INTEL_GEN(dev_priv) >= 8 && i915_modparams.enable_execlists) {
 		if (has_full_48bit_ppgtt)
 			return 3;
 
@@ -1878,12 +1882,12 @@ static void gtt_write_workarounds(struct drm_i915_private *dev_priv)
 	 * called on driver load and after a GPU reset, so you can place
 	 * workarounds here even if they get overwritten by GPU reset.
 	 */
-	/* WaIncreaseDefaultTLBEntries:chv,bdw,skl,bxt,kbl,glk,cfl */
+	/* WaIncreaseDefaultTLBEntries:chv,bdw,skl,bxt,kbl,glk,cfl,cnl */
 	if (IS_BROADWELL(dev_priv))
 		I915_WRITE(GEN8_L3_LRA_1_GPGPU, GEN8_L3_LRA_1_GPGPU_DEFAULT_VALUE_BDW);
 	else if (IS_CHERRYVIEW(dev_priv))
 		I915_WRITE(GEN8_L3_LRA_1_GPGPU, GEN8_L3_LRA_1_GPGPU_DEFAULT_VALUE_CHV);
-	else if (IS_GEN9_BC(dev_priv))
+	else if (IS_GEN9_BC(dev_priv) || IS_GEN10(dev_priv))
 		I915_WRITE(GEN8_L3_LRA_1_GPGPU, GEN9_L3_LRA_1_GPGPU_DEFAULT_VALUE_SKL);
 	else if (IS_GEN9_LP(dev_priv))
 		I915_WRITE(GEN8_L3_LRA_1_GPGPU, GEN9_L3_LRA_1_GPGPU_DEFAULT_VALUE_BXT);
@@ -1896,7 +1900,7 @@ int i915_ppgtt_init_hw(struct drm_i915_private *dev_priv)
 	/* In the case of execlists, PPGTT is enabled by the context descriptor
 	 * and the PDPs are contained within the context itself.  We don't
 	 * need to do anything here. */
-	if (i915.enable_execlists)
+	if (i915_modparams.enable_execlists)
 		return 0;
 
 	if (!USES_PPGTT(dev_priv))
@@ -2202,7 +2206,15 @@ static int bxt_vtd_ggtt_insert_page__cb(void *_arg)
 {
 	struct insert_page *arg = _arg;
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_pause_user_domains(arg->vm->i915);
+#endif
 	gen8_ggtt_insert_page(arg->vm, arg->addr, arg->offset, arg->level, 0);
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_unpause_user_domains(arg->vm->i915);
+#endif
 	bxt_vtd_ggtt_wa(arg->vm);
 
 	return 0;
@@ -2229,7 +2241,15 @@ static int bxt_vtd_ggtt_insert_entries__cb(void *_arg)
 {
 	struct insert_entries *arg = _arg;
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_pause_user_domains(arg->vm->i915);
+#endif
 	gen8_ggtt_insert_entries(arg->vm, arg->vma, arg->level, 0);
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_unpause_user_domains(arg->vm->i915);
+#endif
 	bxt_vtd_ggtt_wa(arg->vm);
 
 	return 0;
@@ -2255,7 +2275,15 @@ static int bxt_vtd_ggtt_clear_range__cb(void *_arg)
 {
 	struct clear_range *arg = _arg;
 
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_pause_user_domains(arg->vm->i915);
+#endif
 	gen8_ggtt_clear_range(arg->vm, arg->start, arg->length);
+#if IS_ENABLED(CONFIG_DRM_I915_GVT)
+	if (intel_gvt_active(arg->vm->i915))
+		gvt_unpause_user_domains(arg->vm->i915);
+#endif
 	bxt_vtd_ggtt_wa(arg->vm);
 
 	return 0;
@@ -2558,17 +2586,20 @@ int i915_gem_init_ggtt(struct drm_i915_private *dev_priv)
 	if (ret)
 		return ret;
 
-	/* Clear any non-preallocated blocks */
-	drm_mm_for_each_hole(entry, &ggtt->base.mm, hole_start, hole_end) {
-		DRM_DEBUG_KMS("clearing unused GTT space: [%lx, %lx]\n",
-			      hole_start, hole_end);
-		ggtt->base.clear_range(&ggtt->base, hole_start,
-				       hole_end - hole_start);
-	}
+	if (!intel_vgpu_active(dev_priv)) {
+		/* Clear any non-preallocated blocks */
+		drm_mm_for_each_hole(entry, &ggtt->base.mm, hole_start,
+				hole_end) {
+			DRM_DEBUG_KMS("clearing unused GTT space: [%lx, %lx]\n",
+					hole_start, hole_end);
+			ggtt->base.clear_range(&ggtt->base, hole_start,
+					hole_end - hole_start);
+		}
 
-	/* And finally clear the reserved guard page */
-	ggtt->base.clear_range(&ggtt->base,
-			       ggtt->base.total - PAGE_SIZE, PAGE_SIZE);
+		/* And finally clear the reserved guard page */
+		ggtt->base.clear_range(&ggtt->base,
+				ggtt->base.total - PAGE_SIZE, PAGE_SIZE);
+	}
 
 	if (USES_PPGTT(dev_priv) && !USES_FULL_PPGTT(dev_priv)) {
 		ret = i915_gem_init_aliasing_ppgtt(dev_priv);
@@ -3014,7 +3045,7 @@ int i915_ggtt_probe_hw(struct drm_i915_private *dev_priv)
 	 * currently don't have any bits spare to pass in this upper
 	 * restriction!
 	 */
-	if (HAS_GUC(dev_priv) && i915.enable_guc_loading) {
+	if (HAS_GUC(dev_priv) && i915_modparams.enable_guc_loading) {
 		ggtt->base.total = min_t(u64, ggtt->base.total, GUC_GGTT_TOP);
 		ggtt->mappable_end = min(ggtt->mappable_end, ggtt->base.total);
 	}

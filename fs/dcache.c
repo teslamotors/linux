@@ -231,7 +231,7 @@ static inline int dentry_cmp(const struct dentry *dentry, const unsigned char *c
 {
 	/*
 	 * Be careful about RCU walk racing with rename:
-	 * use 'lockless_dereference' to fetch the name pointer.
+	 * use 'READ_ONCE' to fetch the name pointer.
 	 *
 	 * NOTE! Even if a rename will mean that the length
 	 * was not loaded atomically, we don't care. The
@@ -245,7 +245,7 @@ static inline int dentry_cmp(const struct dentry *dentry, const unsigned char *c
 	 * early because the data cannot match (there can
 	 * be no NUL in the ct/tcount data)
 	 */
-	const unsigned char *cs = lockless_dereference(dentry->d_name.name);
+	const unsigned char *cs = READ_ONCE(dentry->d_name.name);
 
 	return dentry_string_cmp(cs, ct, tcount);
 }
@@ -2705,8 +2705,6 @@ static void swap_names(struct dentry *dentry, struct dentry *target)
 			 */
 			unsigned int i;
 			BUILD_BUG_ON(!IS_ALIGNED(DNAME_INLINE_LEN, sizeof(long)));
-			kmemcheck_mark_initialized(dentry->d_iname, DNAME_INLINE_LEN);
-			kmemcheck_mark_initialized(target->d_iname, DNAME_INLINE_LEN);
 			for (i = 0; i < DNAME_INLINE_LEN / sizeof(long); i++) {
 				swap(((long *) &dentry->d_iname)[i],
 				     ((long *) &target->d_iname)[i]);

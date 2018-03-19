@@ -1533,6 +1533,35 @@ void intel_ddi_disable_transcoder_func(struct drm_i915_private *dev_priv,
 	I915_WRITE(reg, val);
 }
 
+int intel_ddi_toggle_hdcp_signalling(struct intel_encoder *intel_encoder,
+				     bool enable)
+{
+	struct drm_device *dev = intel_encoder->base.dev;
+	struct drm_i915_private *dev_priv = to_i915(dev);
+	enum pipe pipe = 0;
+	int ret = 0;
+	uint32_t tmp;
+
+	if (WARN_ON(!intel_display_power_get_if_enabled(dev_priv,
+						intel_encoder->power_domain)))
+		return -ENXIO;
+
+	if (WARN_ON(!intel_encoder->get_hw_state(intel_encoder, &pipe))) {
+		ret = -EIO;
+		goto out;
+	}
+
+	tmp = I915_READ(TRANS_DDI_FUNC_CTL(pipe));
+	if (enable)
+		tmp |= TRANS_DDI_HDCP_SIGNALLING;
+	else
+		tmp &= ~TRANS_DDI_HDCP_SIGNALLING;
+	I915_WRITE(TRANS_DDI_FUNC_CTL(pipe), tmp);
+out:
+	intel_display_power_put(dev_priv, intel_encoder->power_domain);
+	return ret;
+}
+
 bool intel_ddi_connector_get_hw_state(struct intel_connector *intel_connector)
 {
 	struct drm_device *dev = intel_connector->base.dev;
@@ -1554,7 +1583,7 @@ bool intel_ddi_connector_get_hw_state(struct intel_connector *intel_connector)
 		goto out;
 	}
 
-	if (port == PORT_A)
+	if (port == PORT_A && !intel_vgpu_active(dev_priv))
 		cpu_transcoder = TRANSCODER_EDP;
 	else
 		cpu_transcoder = (enum transcoder) pipe;
@@ -2334,6 +2363,12 @@ static void intel_enable_ddi(struct intel_encoder *intel_encoder,
 
 	if (pipe_config->has_audio)
 		intel_audio_codec_enable(intel_encoder, pipe_config, conn_state);
+
+
+	/* Enable hdcp if it's desired */
+	if (conn_state->content_protection ==
+	    DRM_MODE_CONTENT_PROTECTION_DESIRED)
+		intel_hdcp_enable(to_intel_connector(conn_state->connector));
 }
 
 static void intel_disable_ddi(struct intel_encoder *intel_encoder,
@@ -2342,6 +2377,8 @@ static void intel_disable_ddi(struct intel_encoder *intel_encoder,
 {
 	struct drm_encoder *encoder = &intel_encoder->base;
 	int type = intel_encoder->type;
+
+	intel_hdcp_disable(to_intel_connector(old_conn_state->connector));
 
 	if (old_crtc_state->has_audio)
 		intel_audio_codec_disable(intel_encoder);
@@ -2541,7 +2578,7 @@ static bool intel_ddi_compute_config(struct intel_encoder *encoder,
 
 	WARN(type == INTEL_OUTPUT_UNKNOWN, "compute_config() on unknown output!\n");
 
-	if (port == PORT_A)
+	if (port == PORT_A && !intel_vgpu_active(dev_priv))
 		pipe_config->cpu_transcoder = TRANSCODER_EDP;
 
 	if (type == INTEL_OUTPUT_HDMI)
@@ -2632,11 +2669,18 @@ void intel_ddi_init(struct drm_i915_private *dev_priv, enum port port)
 		}
 	}
 
-	init_hdmi = (dev_priv->vbt.ddi_port_info[port].supports_dvi ||
+	/*
+	 * For port A check whether vgpu is active and we have a monitor
+	 * attached to port A.
+	 * */
+	init_hdmi = (intel_vgpu_active(dev_priv) && port == PORT_A &&
+			(I915_READ(GEN8_DE_PORT_ISR) & BXT_DE_PORT_HP_DDIA)) ||
+			(dev_priv->vbt.ddi_port_info[port].supports_dvi ||
 		     dev_priv->vbt.ddi_port_info[port].supports_hdmi);
 	init_dp = dev_priv->vbt.ddi_port_info[port].supports_dp;
 
-	if (intel_bios_is_lspcon_present(dev_priv, port)) {
+	if (!intel_vgpu_active(dev_priv) &&
+			intel_bios_is_lspcon_present(dev_priv, port)) {
 		/*
 		 * Lspcon device needs to be driven with DP connector
 		 * with special detection sequence. So make sure DP
@@ -2739,7 +2783,8 @@ void intel_ddi_init(struct drm_i915_private *dev_priv, enum port port)
 
 	/* In theory we don't need the encoder->type check, but leave it just in
 	 * case we have some really bad VBTs... */
-	if (intel_encoder->type != INTEL_OUTPUT_EDP && init_hdmi) {
+	if ((intel_vgpu_active(dev_priv) ||
+		(intel_encoder->type != INTEL_OUTPUT_EDP && init_hdmi))) {
 		if (!intel_ddi_init_hdmi_connector(intel_dig_port))
 			goto err;
 	}

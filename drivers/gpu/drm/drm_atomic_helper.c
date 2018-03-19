@@ -3179,6 +3179,8 @@ void __drm_atomic_helper_crtc_duplicate_state(struct drm_crtc *crtc,
 		drm_property_blob_get(state->degamma_lut);
 	if (state->ctm)
 		drm_property_blob_get(state->ctm);
+	if (state->ctm_post_offset)
+		drm_property_blob_get(state->ctm_post_offset);
 	if (state->gamma_lut)
 		drm_property_blob_get(state->gamma_lut);
 	state->mode_changed = false;
@@ -3228,6 +3230,7 @@ void __drm_atomic_helper_crtc_destroy_state(struct drm_crtc_state *state)
 	drm_property_blob_put(state->mode_blob);
 	drm_property_blob_put(state->degamma_lut);
 	drm_property_blob_put(state->ctm);
+	drm_property_blob_put(state->ctm_post_offset);
 	drm_property_blob_put(state->gamma_lut);
 }
 EXPORT_SYMBOL(__drm_atomic_helper_crtc_destroy_state);
@@ -3609,6 +3612,7 @@ int drm_atomic_helper_legacy_gamma_set(struct drm_crtc *crtc,
 	/* Reset DEGAMMA_LUT and CTM properties. */
 	replaced  = drm_property_replace_blob(&crtc_state->degamma_lut, NULL);
 	replaced |= drm_property_replace_blob(&crtc_state->ctm, NULL);
+	replaced |= drm_property_replace_blob(&crtc_state->ctm_post_offset, NULL);
 	replaced |= drm_property_replace_blob(&crtc_state->gamma_lut, blob);
 	crtc_state->color_mgmt_changed |= replaced;
 

@@ -1875,7 +1875,7 @@ static int bnxt_poll_work(struct bnxt *bp, struct bnxt_napi *bnapi, int budget)
 			 * here forever if we consistently cannot allocate
 			 * buffers.
 			 */
-			else if (rc == -ENOMEM)
+			else if (rc == -ENOMEM && budget)
 				rx_pkts++;
 			else if (rc == -EBUSY)	/* partial completion */
 				break;
@@ -1961,7 +1961,7 @@ static int bnxt_poll_nitroa0(struct napi_struct *napi, int budget)
 				cpu_to_le32(RX_CMPL_ERRORS_CRC_ERROR);
 
 			rc = bnxt_rx_pkt(bp, bnapi, &raw_cons, &event);
-			if (likely(rc == -EIO))
+			if (likely(rc == -EIO) && budget)
 				rx_pkts++;
 			else if (rc == -EBUSY)	/* partial completion */
 				break;
@@ -8218,8 +8218,9 @@ static void bnxt_shutdown(struct pci_dev *pdev)
 	if (netif_running(dev))
 		dev_close(dev);
 
+	bnxt_ulp_shutdown(bp);
+
 	if (system_state == SYSTEM_POWER_OFF) {
-		bnxt_ulp_shutdown(bp);
 		bnxt_clear_int_mode(bp);
 		pci_wake_from_d3(pdev, bp->wol);
 		pci_set_power_state(pdev, PCI_D3hot);

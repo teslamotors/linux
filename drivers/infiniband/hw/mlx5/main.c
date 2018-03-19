@@ -1276,7 +1276,8 @@ static int mlx5_ib_alloc_transport_domain(struct mlx5_ib_dev *dev, u32 *tdn)
 		return err;
 
 	if ((MLX5_CAP_GEN(dev->mdev, port_type) != MLX5_CAP_PORT_TYPE_ETH) ||
-	    !MLX5_CAP_GEN(dev->mdev, disable_local_lb))
+	    (!MLX5_CAP_GEN(dev->mdev, disable_local_lb_uc) &&
+	     !MLX5_CAP_GEN(dev->mdev, disable_local_lb_mc)))
 		return err;
 
 	mutex_lock(&dev->lb_mutex);
@@ -1294,7 +1295,8 @@ static void mlx5_ib_dealloc_transport_domain(struct mlx5_ib_dev *dev, u32 tdn)
 	mlx5_core_dealloc_transport_domain(dev->mdev, tdn);
 
 	if ((MLX5_CAP_GEN(dev->mdev, port_type) != MLX5_CAP_PORT_TYPE_ETH) ||
-	    !MLX5_CAP_GEN(dev->mdev, disable_local_lb))
+	    (!MLX5_CAP_GEN(dev->mdev, disable_local_lb_uc) &&
+	     !MLX5_CAP_GEN(dev->mdev, disable_local_lb_mc)))
 		return;
 
 	mutex_lock(&dev->lb_mutex);
@@ -1415,6 +1417,7 @@ static struct ib_ucontext *mlx5_ib_alloc_ucontext(struct ib_device *ibdev,
 	}
 
 	INIT_LIST_HEAD(&context->vma_private_list);
+	mutex_init(&context->vma_private_list_mutex);
 	INIT_LIST_HEAD(&context->db_page_list);
 	mutex_init(&context->db_page_mutex);
 
@@ -1576,7 +1579,9 @@ static void  mlx5_ib_vma_close(struct vm_area_struct *area)
 	 * mlx5_ib_disassociate_ucontext().
 	 */
 	mlx5_ib_vma_priv_data->vma = NULL;
+	mutex_lock(mlx5_ib_vma_priv_data->vma_private_list_mutex);
 	list_del(&mlx5_ib_vma_priv_data->list);
+	mutex_unlock(mlx5_ib_vma_priv_data->vma_private_list_mutex);
 	kfree(mlx5_ib_vma_priv_data);
 }
 
@@ -1596,10 +1601,13 @@ static int mlx5_ib_set_vma_data(struct vm_area_struct *vma,
 		return -ENOMEM;
 
 	vma_prv->vma = vma;
+	vma_prv->vma_private_list_mutex = &ctx->vma_private_list_mutex;
 	vma->vm_private_data = vma_prv;
 	vma->vm_ops =  &mlx5_ib_vm_ops;
 
+	mutex_lock(&ctx->vma_private_list_mutex);
 	list_add(&vma_prv->list, vma_head);
+	mutex_unlock(&ctx->vma_private_list_mutex);
 
 	return 0;
 }
@@ -1642,6 +1650,7 @@ static void mlx5_ib_disassociate_ucontext(struct ib_ucontext *ibcontext)
 	 * mlx5_ib_vma_close.
 	 */
 	down_write(&owning_mm->mmap_sem);
+	mutex_lock(&context->vma_private_list_mutex);
 	list_for_each_entry_safe(vma_private, n, &context->vma_private_list,
 				 list) {
 		vma = vma_private->vma;
@@ -1656,6 +1665,7 @@ static void mlx5_ib_disassociate_ucontext(struct ib_ucontext *ibcontext)
 		list_del(&vma_private->list);
 		kfree(vma_private);
 	}
+	mutex_unlock(&context->vma_private_list_mutex);
 	up_write(&owning_mm->mmap_sem);
 	mmput(owning_mm);
 	put_task_struct(owning_process);
@@ -3097,6 +3107,8 @@ static int create_umr_res(struct mlx5_ib_dev *dev)
 	qp->real_qp    = qp;
 	qp->uobject    = NULL;
 	qp->qp_type    = MLX5_IB_QPT_REG_UMR;
+	qp->send_cq    = init_attr->send_cq;
+	qp->recv_cq    = init_attr->recv_cq;
 
 	attr->qp_state = IB_QPS_INIT;
 	attr->port_num = 1;
@@ -4151,7 +4163,8 @@ static void *mlx5_ib_add(struct mlx5_core_dev *mdev)
 	}
 
 	if ((MLX5_CAP_GEN(mdev, port_type) == MLX5_CAP_PORT_TYPE_ETH) &&
-	    MLX5_CAP_GEN(mdev, disable_local_lb))
+	    (MLX5_CAP_GEN(mdev, disable_local_lb_uc) ||
+	     MLX5_CAP_GEN(mdev, disable_local_lb_mc)))
 		mutex_init(&dev->lb_mutex);
 
 	dev->ib_active = true;

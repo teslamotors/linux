@@ -220,26 +220,26 @@ int intel_gvt_load_firmware(struct intel_gvt *gvt)
 	void *mem;
 	int ret;
 
-	path = kmalloc(PATH_MAX, GFP_KERNEL);
-	if (!path)
-		return -ENOMEM;
-
 	mem = kmalloc(info->cfg_space_size, GFP_KERNEL);
-	if (!mem) {
-		kfree(path);
+	if (!mem)
 		return -ENOMEM;
-	}
 
 	firmware->cfg_space = mem;
 
 	mem = kmalloc(info->mmio_size, GFP_KERNEL);
 	if (!mem) {
-		kfree(path);
 		kfree(firmware->cfg_space);
 		return -ENOMEM;
 	}
 
 	firmware->mmio = mem;
+
+	if (i915_modparams.disable_gvt_fw_loading)
+		goto expose_firmware;
+
+	path = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!path)
+		return -ENOMEM;
 
 	sprintf(path, "%s/vid_0x%04x_did_0x%04x_rid_0x%02x.golden_hw_state",
 		 GVT_FIRMWARE_PATH, pdev->vendor, pdev->device,
@@ -248,6 +248,7 @@ int intel_gvt_load_firmware(struct intel_gvt *gvt)
 	gvt_dbg_core("request hw state firmware %s...\n", path);
 
 	ret = request_firmware(&fw, path, &dev_priv->drm.pdev->dev);
+
 	kfree(path);
 
 	if (ret)

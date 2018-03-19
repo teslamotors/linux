@@ -259,13 +259,13 @@ static int trusty_log_probe(struct platform_device *pdev)
 {
 	struct trusty_log_state *s;
 	int result;
-	u32 vmm_signature;
+	int vmm_id;
 	phys_addr_t pa;
 	struct deadloop_dump *dump;
 
-	result = trusty_check_cpuid(&vmm_signature);
-	if (result < 0) {
-		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+	vmm_id = trusty_detect_vmm();
+	if (vmm_id < 0) {
+		dev_err(&pdev->dev, "Cannot detect VMM which supports trusty!");
 		return -EINVAL;
 	}
 
@@ -321,7 +321,7 @@ static int trusty_log_probe(struct platform_device *pdev)
 		goto error_panic_notifier;
 	}
 
-	if(vmm_signature == EVMM_SIGNATURE_VMM) {
+	if(vmm_id == VMM_ID_EVMM) {
 		/* allocate debug buffer for vmm panic dump */
 		g_vmm_debug_buf = __get_free_pages(GFP_KERNEL | __GFP_ZERO, 2);
 		if (!g_vmm_debug_buf) {

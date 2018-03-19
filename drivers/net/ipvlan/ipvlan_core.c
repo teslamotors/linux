@@ -375,6 +375,7 @@ static int ipvlan_process_v4_outbound(struct sk_buff *skb)
 		.flowi4_oif = dev->ifindex,
 		.flowi4_tos = RT_TOS(ip4h->tos),
 		.flowi4_flags = FLOWI_FLAG_ANYSRC,
+		.flowi4_mark = skb->mark,
 		.daddr = ip4h->daddr,
 		.saddr = ip4h->saddr,
 	};
@@ -409,7 +410,7 @@ static int ipvlan_process_v6_outbound(struct sk_buff *skb)
 	struct dst_entry *dst;
 	int err, ret = NET_XMIT_DROP;
 	struct flowi6 fl6 = {
-		.flowi6_iif = dev->ifindex,
+		.flowi6_oif = dev->ifindex,
 		.daddr = ip6h->daddr,
 		.saddr = ip6h->saddr,
 		.flowi6_flags = FLOWI_FLAG_ANYSRC,

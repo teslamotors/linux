@@ -53,6 +53,8 @@ struct desc_struct;
 struct task_struct;
 struct cpumask;
 struct flush_tlb_info;
+struct msi_desc;
+struct msi_msg;
 
 /*
  * Wrapper type for pointers to code which uses the non-standard
@@ -134,7 +136,7 @@ struct pv_cpu_ops {
 	void (*alloc_ldt)(struct desc_struct *ldt, unsigned entries);
 	void (*free_ldt)(struct desc_struct *ldt, unsigned entries);
 
-	void (*load_sp0)(struct tss_struct *tss, struct thread_struct *t);
+	void (*load_sp0)(unsigned long sp0);
 
 	void (*set_iopl_mask)(unsigned mask);
 
@@ -174,6 +176,8 @@ struct pv_cpu_ops {
 
 	void (*start_context_switch)(struct task_struct *prev);
 	void (*end_context_switch)(struct task_struct *next);
+
+	unsigned long (*cpu_khz)(void);
 } __no_randomize_layout;
 
 struct pv_irq_ops {
@@ -194,6 +198,7 @@ struct pv_irq_ops {
 	void (*safe_halt)(void);
 	void (*halt)(void);
 
+	void (*write_msi)(struct msi_desc *entry, struct msi_msg *msg);
 } __no_randomize_layout;
 
 struct pv_mmu_ops {
@@ -217,7 +222,7 @@ struct pv_mmu_ops {
 	/* TLB operations */
 	void (*flush_tlb_user)(void);
 	void (*flush_tlb_kernel)(void);
-	void (*flush_tlb_single)(unsigned long addr);
+	void (*flush_tlb_one_user)(unsigned long addr);
 	void (*flush_tlb_others)(const struct cpumask *cpus,
 				 const struct flush_tlb_info *info);
 

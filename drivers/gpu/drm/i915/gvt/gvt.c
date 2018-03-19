@@ -42,6 +42,7 @@ struct intel_gvt_host intel_gvt_host;
 static const char * const supported_hypervisors[] = {
 	[INTEL_GVT_HYPERVISOR_XEN] = "XEN",
 	[INTEL_GVT_HYPERVISOR_KVM] = "KVM",
+	[INTEL_GVT_HYPERVISOR_ACRN] = "ACRN",
 };
 
 static const struct intel_gvt_ops intel_gvt_ops = {
@@ -90,6 +91,11 @@ int intel_gvt_init_host(void)
 				symbol_get(kvmgt_mpt), "kvmgt");
 		intel_gvt_host.hypervisor_type = INTEL_GVT_HYPERVISOR_KVM;
 #endif
+		/* not in Xen. Try ACRN */
+		intel_gvt_host.mpt = try_then_request_module(
+				symbol_get(acrn_gvt_mpt), "acrn-gvt");
+		intel_gvt_host.hypervisor_type = INTEL_GVT_HYPERVISOR_ACRN;
+		printk("acrn-gvt %s\n", intel_gvt_host.mpt?"found":"not found");
 	}
 
 	/* Fail to load MPT modules - bail out */
@@ -109,10 +115,13 @@ static void init_device_info(struct intel_gvt *gvt)
 	struct pci_dev *pdev = gvt->dev_priv->drm.pdev;
 
 	if (IS_BROADWELL(gvt->dev_priv) || IS_SKYLAKE(gvt->dev_priv)
+		|| IS_BROXTON(gvt->dev_priv)
 		|| IS_KABYLAKE(gvt->dev_priv)) {
 		info->max_support_vgpus = 8;
 		info->cfg_space_size = 256;
 		info->mmio_size = 2 * 1024 * 1024;
+		/* order of mmio size. assert(2^order == mmio_size) */
+		info->mmio_size_order = 9;
 		info->mmio_bar = 0;
 		info->gtt_start_offset = 8 * 1024 * 1024;
 		info->gtt_entry_size = 8;
@@ -174,6 +183,46 @@ static int init_service_thread(struct intel_gvt *gvt)
 		return PTR_ERR(gvt->service_thread);
 	}
 	return 0;
+}
+
+void intel_gvt_init_pipe_info(struct intel_gvt *gvt);
+
+/*
+ * When enabling multi-plane in DomU, an issue is that the PLANE_BUF_CFG
+ * register cannot be updated dynamically, since Dom0 has no idea of the
+ * plane information of DomU's planes, so here we statically allocate the
+ * ddb entries for all the possible enabled planes.
+ */
+static void intel_gvt_init_ddb(struct intel_gvt *gvt)
+{
+	struct drm_i915_private *dev_priv = gvt->dev_priv;
+	struct skl_ddb_allocation *ddb = &gvt->ddb;
+	unsigned int pipe_size, ddb_size, plane_size, plane_cnt;
+	u16 start, end;
+	enum pipe pipe;
+	enum plane_id plane;
+
+	ddb_size = INTEL_INFO(dev_priv)->ddb_size;
+	ddb_size -= 4; /* 4 blocks for bypass path allocation */
+	pipe_size = ddb_size / INTEL_INFO(dev_priv)->num_pipes;
+
+	memset(ddb, 0, sizeof(*ddb));
+	for_each_pipe(dev_priv, pipe) {
+		start = pipe * ddb_size / INTEL_INFO(dev_priv)->num_pipes;
+		end = start + pipe_size;
+		ddb->plane[pipe][PLANE_CURSOR].start = end - 8;
+		ddb->plane[pipe][PLANE_CURSOR].end = end;
+
+		plane_cnt = (INTEL_INFO(dev_priv)->num_sprites[pipe] + 1);
+		plane_size = (pipe_size - 8) / plane_cnt;
+
+		for_each_universal_plane(dev_priv, pipe, plane) {
+			ddb->plane[pipe][plane].start = start +
+				(plane * (pipe_size - 8) / plane_cnt);
+			ddb->plane[pipe][plane].end =
+				ddb->plane[pipe][plane].start + plane_size;
+		}
+	}
 }
 
 /**
@@ -248,6 +297,7 @@ int intel_gvt_init_device(struct drm_i915_private *dev_priv)
 	idr_init(&gvt->vgpu_idr);
 	spin_lock_init(&gvt->scheduler.mmio_context_lock);
 	mutex_init(&gvt->lock);
+	mutex_init(&gvt->sched_lock);
 	gvt->dev_priv = dev_priv;
 
 	init_device_info(gvt);
@@ -292,6 +342,9 @@ int intel_gvt_init_device(struct drm_i915_private *dev_priv)
 	if (ret)
 		goto out_clean_thread;
 
+	intel_gvt_init_pipe_info(gvt);
+	intel_gvt_init_ddb(gvt);
+
 	ret = intel_gvt_hypervisor_host_init(&dev_priv->drm.pdev->dev, gvt,
 				&intel_gvt_ops);
 	if (ret) {
@@ -335,4 +388,42 @@ out_clean_idr:
 	idr_destroy(&gvt->vgpu_idr);
 	kfree(gvt);
 	return ret;
+}
+
+int gvt_pause_user_domains(struct drm_i915_private *dev_priv)
+{
+	struct intel_vgpu *vgpu;
+	int id, ret = 0;
+
+	if (!intel_gvt_active(dev_priv))
+		return 0;
+
+	for_each_active_vgpu(dev_priv->gvt, vgpu, id) {
+		ret = intel_gvt_hypervisor_pause_domain(vgpu);
+	}
+
+	return ret;
+}
+
+int gvt_unpause_user_domains(struct drm_i915_private *dev_priv)
+{
+	struct intel_vgpu *vgpu;
+	int id, ret = 0;
+
+	if (!intel_gvt_active(dev_priv))
+		return 0;
+
+	for_each_active_vgpu(dev_priv->gvt, vgpu, id) {
+		ret = intel_gvt_hypervisor_unpause_domain(vgpu);
+	}
+
+	return ret;
+}
+
+int gvt_dom0_ready(struct drm_i915_private *dev_priv)
+{
+	if (!intel_gvt_active(dev_priv))
+		return 0;
+
+	return intel_gvt_hypervisor_dom0_ready();
 }

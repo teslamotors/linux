@@ -215,4 +215,9 @@ source "drivers/sdw/Kconfig"
 
 source "drivers/opp/Kconfig"
 
+source "drivers/vbs/Kconfig"
+
+source "drivers/acrn/Kconfig"
+
+source "drivers/vhm/Kconfig"
 endmenu

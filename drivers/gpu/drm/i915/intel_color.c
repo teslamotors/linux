@@ -91,19 +91,16 @@ static void ctm_mult_by_limited(uint64_t *result, int64_t *input)
 {
 	int i;
 
-	for (i = 0; i < 9; i++)
-		result[i] = 0;
-
-	for (i = 0; i < 3; i++) {
-		int64_t user_coeff = input[i * 3 + i];
+	for (i = 0; i < 9; i++) {
+		int64_t user_coeff = input[i];
 		uint64_t limited_coeff = CTM_COEFF_LIMITED_RANGE >> 2;
 		uint64_t abs_coeff = clamp_val(CTM_COEFF_ABS(user_coeff),
 					       0,
 					       CTM_COEFF_4_0 - 1) >> 2;
 
-		result[i * 3 + i] = (limited_coeff * abs_coeff) >> 27;
+		result[i] = (limited_coeff * abs_coeff) >> 28;
 		if (CTM_COEFF_NEGATIVE(user_coeff))
-			result[i * 3 + i] |= CTM_COEFF_SIGN;
+			result[i] |= CTM_COEFF_SIGN;
 	}
 }
 
@@ -224,13 +221,34 @@ static void i9xx_load_csc_matrix(struct drm_crtc_state *crtc_state)
 
 	if (INTEL_GEN(dev_priv) > 6) {
 		uint16_t postoff = 0;
+		uint16_t postoff_red = 0;
+		uint16_t postoff_green = 0;
+		uint16_t postoff_blue = 0;
 
-		if (intel_crtc_state->limited_color_range)
+		if (intel_crtc_state->limited_color_range) {
 			postoff = (16 * (1 << 12) / 255) & 0x1fff;
+			postoff_red = postoff;
+			postoff_green = postoff;
+			postoff_blue = postoff;
+		}
 
-		I915_WRITE(PIPE_CSC_POSTOFF_HI(pipe), postoff);
-		I915_WRITE(PIPE_CSC_POSTOFF_ME(pipe), postoff);
-		I915_WRITE(PIPE_CSC_POSTOFF_LO(pipe), postoff);
+		if (crtc_state->ctm_post_offset) {
+			struct drm_color_ctm_post_offset *ctm_post_offset =
+				(struct drm_color_ctm_post_offset *)crtc_state->ctm_post_offset->data;
+
+			/* Convert to U0.12 format. */
+			postoff_red = ctm_post_offset->red >> 4;
+			postoff_green = ctm_post_offset->green >> 4;
+			postoff_blue = ctm_post_offset->blue >> 4;
+
+			postoff_red = clamp_val(postoff_red, postoff, 0xfff);
+			postoff_green = clamp_val(postoff_green, postoff, 0xfff);
+			postoff_blue = clamp_val(postoff_blue, postoff, 0xfff);
+		}
+
+		I915_WRITE(PIPE_CSC_POSTOFF_HI(pipe), postoff_red);
+		I915_WRITE(PIPE_CSC_POSTOFF_ME(pipe), postoff_green);
+		I915_WRITE(PIPE_CSC_POSTOFF_LO(pipe), postoff_blue);
 
 		I915_WRITE(PIPE_CSC_MODE(pipe), 0);
 	} else {

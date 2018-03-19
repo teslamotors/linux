@@ -231,18 +231,25 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	if (func->num != 2)
 		return 0;
 
+#ifdef CONFIG_PM_SLEEP
 	dhd_mmc_suspend = TRUE;
+#endif
+
 	sdioh = sdio_get_drvdata(func);
 	err = bcmsdh_suspend(sdioh->bcmsdh);
 	if (err) {
+#ifdef CONFIG_PM_SLEEP
 		dhd_mmc_suspend = FALSE;
+#endif
 		return err;
 	}
 
 	sdio_flags = sdio_get_host_pm_caps(func);
 	if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
 		sd_err(("%s: can't keep power while host is suspended\n", __FUNCTION__));
+#ifdef CONFIG_PM_SLEEP
 		dhd_mmc_suspend = FALSE;
+#endif
 		return  -EINVAL;
 	}
 
@@ -250,7 +257,9 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	err = sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
 	if (err) {
 		sd_err(("%s: error while trying to keep power\n", __FUNCTION__));
+#ifdef CONFIG_PM_SLEEP
 		dhd_mmc_suspend = FALSE;
+#endif
 		return err;
 	}
 	smp_mb();
@@ -268,7 +277,9 @@ static int bcmsdh_sdmmc_resume(struct device *pdev)
 		return 0;
 
 	sdioh = sdio_get_drvdata(func);
+#ifdef CONFIG_PM_SLEEP
 	dhd_mmc_suspend = FALSE;
+#endif
 
 	smp_mb();
 	return 0;

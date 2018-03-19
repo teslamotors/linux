@@ -189,17 +189,29 @@ void lots_o_noops_around_write(int *write_to_me)
 #define u64 uint64_t
 
 #ifdef __i386__
-#define SYS_mprotect_key 380
-#define SYS_pkey_alloc	 381
-#define SYS_pkey_free	 382
+
+#ifndef SYS_mprotect_key
+# define SYS_mprotect_key 380
+#endif
+#ifndef SYS_pkey_alloc
+# define SYS_pkey_alloc	 381
+# define SYS_pkey_free	 382
+#endif
 #define REG_IP_IDX REG_EIP
 #define si_pkey_offset 0x14
+
 #else
-#define SYS_mprotect_key 329
-#define SYS_pkey_alloc	 330
-#define SYS_pkey_free	 331
+
+#ifndef SYS_mprotect_key
+# define SYS_mprotect_key 329
+#endif
+#ifndef SYS_pkey_alloc
+# define SYS_pkey_alloc	 330
+# define SYS_pkey_free	 331
+#endif
 #define REG_IP_IDX REG_RIP
 #define si_pkey_offset 0x20
+
 #endif
 
 void dump_mem(void *dumpme, int len_bytes)
@@ -379,34 +391,6 @@ pid_t fork_lazy_child(void)
 		}
 	}
 	return forkret;
-}
-
-void davecmp(void *_a, void *_b, int len)
-{
-	int i;
-	unsigned long *a = _a;
-	unsigned long *b = _b;
-
-	for (i = 0; i < len / sizeof(*a); i++) {
-		if (a[i] == b[i])
-			continue;
-
-		dprintf3("[%3d]: a: %016lx b: %016lx\n", i, a[i], b[i]);
-	}
-}
-
-void dumpit(char *f)
-{
-	int fd = open(f, O_RDONLY);
-	char buf[100];
-	int nr_read;
-
-	dprintf2("maps fd: %d\n", fd);
-	do {
-		nr_read = read(fd, &buf[0], sizeof(buf));
-		write(1, buf, nr_read);
-	} while (nr_read > 0);
-	close(fd);
 }
 
 #define PKEY_DISABLE_ACCESS    0x1

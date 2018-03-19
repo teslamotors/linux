@@ -53,6 +53,7 @@
 
 #include "i915_params.h"
 #include "i915_reg.h"
+#include "i915_pvinfo.h"
 #include "i915_utils.h"
 
 #include "intel_uncore.h"
@@ -93,7 +94,7 @@
 #define I915_STATE_WARN(condition, format...) ({			\
 	int __ret_warn_on = !!(condition);				\
 	if (unlikely(__ret_warn_on))					\
-		if (!WARN(i915.verbose_state_checks, format))		\
+		if (!WARN(i915_modparams.verbose_state_checks, format))	\
 			DRM_ERROR(format);				\
 	unlikely(__ret_warn_on);					\
 })
@@ -767,6 +768,7 @@ struct intel_csr {
 	func(has_l3_dpf); \
 	func(has_llc); \
 	func(has_logical_ring_contexts); \
+	func(has_logical_ring_preemption); \
 	func(has_overlay); \
 	func(has_pipe_cxsr); \
 	func(has_pooled_eu); \
@@ -780,7 +782,8 @@ struct intel_csr {
 	func(cursor_needs_physical); \
 	func(hws_needs_physical); \
 	func(overlay_needs_physical); \
-	func(supports_tv);
+	func(supports_tv); \
+	func(has_ipc);
 
 struct sseu_dev_info {
 	u8 slice_mask;
@@ -842,6 +845,7 @@ struct intel_device_info {
 	u8 gen;
 	u16 gen_mask;
 	enum intel_platform platform;
+	u8 gt; /* GT number, 0 if undefined */
 	u8 ring_mask; /* Rings supported by the HW */
 	u8 num_rings;
 #define DEFINE_FLAG(name) u8 name:1
@@ -956,6 +960,7 @@ struct i915_gpu_state {
 			pid_t pid;
 			u32 handle;
 			u32 hw_id;
+			int priority;
 			int ban_score;
 			int active;
 			int guilty;
@@ -978,11 +983,13 @@ struct i915_gpu_state {
 			long jiffies;
 			pid_t pid;
 			u32 context;
+			int priority;
 			int ban_score;
 			u32 seqno;
 			u32 head;
 			u32 tail;
-		} *requests, execlist[2];
+		} *requests, execlist[EXECLIST_MAX_PORTS];
+		unsigned int num_ports;
 
 		struct drm_i915_error_waiter {
 			char comm[TASK_COMM_LEN];
@@ -1324,14 +1331,6 @@ struct intel_gen6_power_mgmt {
 
 	/* manual wa residency calculations */
 	struct intel_rps_ei ei;
-
-	/*
-	 * Protects RPS/RC6 register access and PCU communication.
-	 * Must be taken after struct_mutex if nested. Note that
-	 * this lock may be held for long periods of time when
-	 * talking to hw - so only take it when talking to hw!
-	 */
-	struct mutex hw_lock;
 };
 
 /* defined intel_pm.c */
@@ -2164,6 +2163,8 @@ struct drm_i915_private {
 	const struct intel_device_info info;
 
 	void __iomem *regs;
+	struct gvt_shared_page *shared_page;
+	spinlock_t shared_page_lock;
 
 	struct intel_uncore uncore;
 
@@ -2197,8 +2198,11 @@ struct drm_i915_private {
 	wait_queue_head_t gmbus_wait_queue;
 
 	struct pci_dev *bridge_dev;
-	struct i915_gem_context *kernel_context;
 	struct intel_engine_cs *engine[I915_NUM_ENGINES];
+	/* Context used internally to idle the GPU and setup initial state */
+	struct i915_gem_context *kernel_context;
+	/* Context only to be used for injecting preemption commands */
+	struct i915_gem_context *preempt_context;
 	struct i915_vma *semaphore;
 
 	struct drm_dma_handle *status_page_dmah;
@@ -2351,6 +2355,14 @@ struct drm_i915_private {
 	/* Cannot be determined by PCIID. You must always read a register. */
 	u32 edram_cap;
 
+	/*
+	 * Protects RPS/RC6 register access and PCU communication.
+	 * Must be taken after struct_mutex if nested. Note that
+	 * this lock may be held for long periods of time when
+	 * talking to hw - so only take it when talking to hw!
+	 */
+	struct mutex pcu_lock;
+
 	/* gen6+ rps state */
 	struct intel_gen6_power_mgmt rps;
 
@@ -2392,7 +2404,13 @@ struct drm_i915_private {
 		 * This is limited in execlists to 21 bits.
 		 */
 		struct ida hw_ida;
-#define MAX_CONTEXT_HW_ID (1<<21) /* exclusive */
+#ifdef CONFIG_DRM_I915_GVT
+	/* In case of virtualization, 3-bits of vgt-id will be added to hw_id */
+#define SIZE_CONTEXT_HW_ID (18)
+#else
+#define SIZE_CONTEXT_HW_ID (21)
+#endif
+#define MAX_CONTEXT_HW_ID (1<<SIZE_CONTEXT_HW_ID) /* exclusive */
 	} contexts;
 
 	u32 fdi_rx_config;
@@ -2817,23 +2835,21 @@ intel_info(const struct drm_i915_private *dev_priv)
 #define INTEL_REVID(dev_priv)	((dev_priv)->drm.pdev->revision)
 
 #define GEN_FOREVER (0)
+
+#define INTEL_GEN_MASK(s, e) ( \
+	BUILD_BUG_ON_ZERO(!__builtin_constant_p(s)) + \
+	BUILD_BUG_ON_ZERO(!__builtin_constant_p(e)) + \
+	GENMASK((e) != GEN_FOREVER ? (e) - 1 : BITS_PER_LONG - 1, \
+		(s) != GEN_FOREVER ? (s) - 1 : 0) \
+)
+
 /*
  * Returns true if Gen is in inclusive range [Start, End].
  *
  * Use GEN_FOREVER for unbound start and or end.
  */
-#define IS_GEN(dev_priv, s, e) ({ \
-	unsigned int __s = (s), __e = (e); \
-	BUILD_BUG_ON(!__builtin_constant_p(s)); \
-	BUILD_BUG_ON(!__builtin_constant_p(e)); \
-	if ((__s) != GEN_FOREVER) \
-		__s = (s) - 1; \
-	if ((__e) == GEN_FOREVER) \
-		__e = BITS_PER_LONG - 1; \
-	else \
-		__e = (e) - 1; \
-	!!((dev_priv)->info.gen_mask & GENMASK((__e), (__s))); \
-})
+#define IS_GEN(dev_priv, s, e) \
+	(!!((dev_priv)->info.gen_mask & INTEL_GEN_MASK((s), (e))))
 
 /*
  * Return true if revision is in range [since,until] inclusive.
@@ -3012,9 +3028,9 @@ intel_info(const struct drm_i915_private *dev_priv)
 
 #define HAS_LOGICAL_RING_CONTEXTS(dev_priv) \
 		((dev_priv)->info.has_logical_ring_contexts)
-#define USES_PPGTT(dev_priv)		(i915.enable_ppgtt)
-#define USES_FULL_PPGTT(dev_priv)	(i915.enable_ppgtt >= 2)
-#define USES_FULL_48BIT_PPGTT(dev_priv)	(i915.enable_ppgtt == 3)
+#define USES_PPGTT(dev_priv)		(i915_modparams.enable_ppgtt)
+#define USES_FULL_PPGTT(dev_priv)	(i915_modparams.enable_ppgtt >= 2)
+#define USES_FULL_48BIT_PPGTT(dev_priv)	(i915_modparams.enable_ppgtt == 3)
 
 #define HAS_OVERLAY(dev_priv)		 ((dev_priv)->info.has_overlay)
 #define OVERLAY_NEEDS_PHYSICAL(dev_priv) \
@@ -3064,6 +3080,8 @@ intel_info(const struct drm_i915_private *dev_priv)
 
 #define HAS_RUNTIME_PM(dev_priv) ((dev_priv)->info.has_runtime_pm)
 #define HAS_64BIT_RELOC(dev_priv) ((dev_priv)->info.has_64bit_reloc)
+
+#define HAS_IPC(dev_priv)		 ((dev_priv)->info.has_ipc)
 
 /*
  * For now, anything with a GuC requires uCode loading, and then supports
@@ -3210,7 +3228,7 @@ static inline void i915_queue_hangcheck(struct drm_i915_private *dev_priv)
 {
 	unsigned long delay;
 
-	if (unlikely(!i915.enable_hangcheck))
+	if (unlikely(!i915_modparams.enable_hangcheck))
 		return;
 
 	/* Don't continually defer the hangcheck so that it is always run at
@@ -3238,7 +3256,7 @@ static inline bool intel_gvt_active(struct drm_i915_private *dev_priv)
 	return dev_priv->gvt;
 }
 
-static inline bool intel_vgpu_active(struct drm_i915_private *dev_priv)
+static inline bool intel_vgpu_active(const struct drm_i915_private *dev_priv)
 {
 	return dev_priv->vgpu.active;
 }
@@ -3630,6 +3648,9 @@ int i915_gem_object_attach_phys(struct drm_i915_gem_object *obj,
 int i915_gem_open(struct drm_i915_private *i915, struct drm_file *file);
 void i915_gem_release(struct drm_device *dev, struct drm_file *file);
 
+int i915_gem_access_userdata_ioctl(struct drm_device *dev, void *data,
+				   struct drm_file *file);
+
 int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
 				    enum i915_cache_level cache_level);
 
@@ -3697,6 +3718,8 @@ int i915_perf_remove_config_ioctl(struct drm_device *dev, void *data,
 void i915_oa_init_reg_state(struct intel_engine_cs *engine,
 			    struct i915_gem_context *ctx,
 			    uint32_t *reg_state);
+int i915_gem_gvtbuffer_ioctl(struct drm_device *dev, void *data,
+			     struct drm_file *file);
 
 /* i915_gem_evict.c */
 int __must_check i915_gem_evict_something(struct i915_address_space *vm,
@@ -3881,6 +3904,7 @@ extern int intel_setup_gmbus(struct drm_i915_private *dev_priv);
 extern void intel_teardown_gmbus(struct drm_i915_private *dev_priv);
 extern bool intel_gmbus_is_valid_pin(struct drm_i915_private *dev_priv,
 				     unsigned int pin);
+extern int intel_gmbus_output_aksv(struct i2c_adapter *adapter);
 
 extern struct i2c_adapter *
 intel_gmbus_get_adapter(struct drm_i915_private *dev_priv, unsigned int pin);
@@ -4105,7 +4129,11 @@ u64 intel_rc6_residency_us(struct drm_i915_private *dev_priv,
 static inline uint##x##_t __raw_i915_read##x(const struct drm_i915_private *dev_priv, \
 					     i915_reg_t reg) \
 { \
-	return read##s(dev_priv->regs + i915_mmio_reg_offset(reg)); \
+	if (!intel_vgpu_active(dev_priv) || !i915_modparams.enable_pvmmio || \
+		likely(!in_mmio_read_trap_list((reg).reg))) \
+		return read##s(dev_priv->regs + i915_mmio_reg_offset(reg)); \
+	dev_priv->shared_page->reg_addr = i915_mmio_reg_offset(reg); \
+	return read##s(dev_priv->regs + i915_mmio_reg_offset(vgtif_reg(pv_mmio))); \
 }
 
 #define __raw_write(x, s) \
@@ -4333,11 +4361,12 @@ int remap_io_mapping(struct vm_area_struct *vma,
 		     unsigned long addr, unsigned long pfn, unsigned long size,
 		     struct io_mapping *iomap);
 
-static inline bool
-intel_engine_can_store_dword(struct intel_engine_cs *engine)
+static inline int intel_hws_csb_write_index(struct drm_i915_private *i915)
 {
-	return __intel_engine_can_store_dword(INTEL_GEN(engine->i915),
-					      engine->class);
+	if (INTEL_GEN(i915) >= 10)
+		return CNL_HWS_CSB_WRITE_INDEX;
+	else
+		return I915_HWS_CSB_WRITE_INDEX;
 }
 
 #endif

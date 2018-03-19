@@ -147,9 +147,9 @@ static int trusty_wall_probe(struct platform_device *pdev)
 	int ret;
 	struct trusty_wall_dev_state *s;
 
-	ret = trusty_check_cpuid(NULL);
+	ret = trusty_detect_vmm();
 	if (ret < 0) {
-		dev_err(&pdev->dev, "CPUID Error: Cannot find eVmm in trusty driver initialization!");
+		dev_err(&pdev->dev, "Cannot detect VMM which supports trusty!");
 		return -EINVAL;
 	}
 

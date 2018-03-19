@@ -673,6 +673,54 @@ TRACE_EVENT(i915_gem_ring_flush,
 		      __entry->invalidate, __entry->flush)
 );
 
+TRACE_EVENT(i915_gem_multi_domains,
+	    TP_PROTO(struct drm_i915_gem_request *req),
+	    TP_ARGS(req),
+
+	    TP_STRUCT__entry(
+			     __field(u32, dev)
+			     __field(u32, ctx)
+			     __field(u32, ring)
+			     __field(u32, seqno)
+			     __field(u32, global)
+			     __field(int, prio_req)
+			     __field(int, prio_ctx)
+			     __field(bool, shadow_ctx)
+			     __field(u32, hw_id)
+			     __field(int, vgt_id)
+			     __field(u32, pid)
+			     ),
+
+	    TP_fast_assign(
+			   __entry->dev = req->i915->drm.primary->index;
+			   __entry->ring = req->engine->id;
+			   __entry->ctx = req->fence.context;
+			   __entry->seqno = req->fence.seqno;
+			   __entry->global = req->global_seqno;
+			   __entry->prio_req = req->priotree.priority;
+			   __entry->prio_ctx = req->ctx->priority;
+			   __entry->shadow_ctx = is_shadow_context(req->ctx);
+			   __entry->hw_id = req->ctx->hw_id;
+			   __entry->vgt_id = get_vgt_id(req->ctx);
+			   __entry->pid = is_shadow_context(req->ctx) ?
+				get_pid_shadowed(req->ctx, req->engine) :
+				pid_nr(req->ctx->pid);
+			   ),
+
+	    TP_printk("dev=%u, ring=%u, ctx=%u, seqno=%u, global=%u, "
+		      "priority=%d (%d), is_shadow_ctx=%u, hw_id=%u, "
+		      "vgt_id=%u, pid=%u", __entry->dev,  __entry->ring,
+		      __entry->ctx, __entry->seqno, __entry->global,
+		      __entry->prio_req, __entry->prio_ctx, __entry->shadow_ctx,
+		      __entry->hw_id, __entry->vgt_id, __entry->pid)
+);
+
+DEFINE_EVENT(i915_gem_multi_domains, i915_gem_request_add_domain,
+	    TP_PROTO(struct drm_i915_gem_request *req),
+	    TP_ARGS(req)
+);
+
+
 DECLARE_EVENT_CLASS(i915_gem_request,
 	    TP_PROTO(struct drm_i915_gem_request *req),
 	    TP_ARGS(req),

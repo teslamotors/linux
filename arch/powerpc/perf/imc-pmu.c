@@ -309,6 +309,19 @@ static int ppc_nest_imc_cpu_offline(unsigned int cpu)
 		return 0;
 
 	/*
+	 * Check whether nest_imc is registered. We could end up here if the
+	 * cpuhotplug callback registration fails. i.e, callback invokes the
+	 * offline path for all successfully registered nodes. At this stage,
+	 * nest_imc pmu will not be registered and we should return here.
+	 *
+	 * We return with a zero since this is not an offline failure. And
+	 * cpuhp_setup_state() returns the actual failure reason to the caller,
+	 * which in turn will call the cleanup routine.
+	 */
+	if (!nest_pmus)
+		return 0;
+
+	/*
 	 * Now that this cpu is one of the designated,
 	 * find a next cpu a) which is online and b) in same chip.
 	 */
@@ -467,7 +480,7 @@ static int nest_imc_event_init(struct perf_event *event)
 	 * Nest HW counter memory resides in a per-chip reserve-memory (HOMER).
 	 * Get the base memory addresss for this cpu.
 	 */
-	chip_id = topology_physical_package_id(event->cpu);
+	chip_id = cpu_to_chip_id(event->cpu);
 	pcni = pmu->mem_info;
 	do {
 		if (pcni->id == chip_id) {
@@ -524,19 +537,19 @@ static int nest_imc_event_init(struct perf_event *event)
  */
 static int core_imc_mem_init(int cpu, int size)
 {
-	int phys_id, rc = 0, core_id = (cpu / threads_per_core);
+	int nid, rc = 0, core_id = (cpu / threads_per_core);
 	struct imc_mem_info *mem_info;
 
 	/*
 	 * alloc_pages_node() will allocate memory for core in the
 	 * local node only.
 	 */
-	phys_id = topology_physical_package_id(cpu);
+	nid = cpu_to_node(cpu);
 	mem_info = &core_imc_pmu->mem_info[core_id];
 	mem_info->id = core_id;
 
 	/* We need only vbase for core counters */
-	mem_info->vbase = page_address(alloc_pages_node(phys_id,
+	mem_info->vbase = page_address(alloc_pages_node(nid,
 					  GFP_KERNEL | __GFP_ZERO | __GFP_THISNODE |
 					  __GFP_NOWARN, get_order(size)));
 	if (!mem_info->vbase)
@@ -797,14 +810,14 @@ static int core_imc_event_init(struct perf_event *event)
 static int thread_imc_mem_alloc(int cpu_id, int size)
 {
 	u64 ldbar_value, *local_mem = per_cpu(thread_imc_mem, cpu_id);
-	int phys_id = topology_physical_package_id(cpu_id);
+	int nid = cpu_to_node(cpu_id);
 
 	if (!local_mem) {
 		/*
 		 * This case could happen only once at start, since we dont
 		 * free the memory in cpu offline path.
 		 */
-		local_mem = page_address(alloc_pages_node(phys_id,
+		local_mem = page_address(alloc_pages_node(nid,
 				  GFP_KERNEL | __GFP_ZERO | __GFP_THISNODE |
 				  __GFP_NOWARN, get_order(size)));
 		if (!local_mem)

@@ -77,6 +77,15 @@ void i915_check_vgpu(struct drm_i915_private *dev_priv)
 
 	dev_priv->vgpu.caps = __raw_i915_read32(dev_priv, vgtif_reg(vgt_caps));
 
+	/* If guest wants to enable pvmmio, it needs to enable it explicitly
+	 * through vgt_if interface, and then read back the enable state from
+	 * gvt layer.
+	 */
+	__raw_i915_write32(dev_priv, vgtif_reg(enable_pvmmio),
+			i915_modparams.enable_pvmmio);
+	i915_modparams.enable_pvmmio = __raw_i915_read16(dev_priv,
+			vgtif_reg(enable_pvmmio));
+
 	dev_priv->vgpu.active = true;
 	DRM_INFO("Virtual GPU for Intel GVT-g detected.\n");
 }

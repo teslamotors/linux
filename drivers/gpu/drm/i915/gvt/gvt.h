@@ -52,6 +52,7 @@
 enum {
 	INTEL_GVT_HYPERVISOR_XEN = 0,
 	INTEL_GVT_HYPERVISOR_KVM,
+	INTEL_GVT_HYPERVISOR_ACRN,
 };
 
 struct intel_gvt_host {
@@ -67,6 +68,7 @@ struct intel_gvt_device_info {
 	u32 max_support_vgpus;
 	u32 cfg_space_size;
 	u32 mmio_size;
+	u32 mmio_size_order;
 	u32 mmio_bar;
 	unsigned long msi_cap_offset;
 	u32 gtt_start_offset;
@@ -96,6 +98,7 @@ struct intel_vgpu_fence {
 struct intel_vgpu_mmio {
 	void *vreg;
 	void *sreg;
+	struct gvt_shared_page *shared_page;
 	bool disable_warn_untrack;
 };
 
@@ -150,7 +153,7 @@ struct intel_vgpu {
 	bool pv_notified;
 	bool failsafe;
 	unsigned int resetting_eng;
-	void *sched_data;
+	void *sched_data[I915_NUM_ENGINES];
 	struct vgpu_sched_ctl sched_ctl;
 
 	struct intel_vgpu_fence fence;
@@ -165,6 +168,9 @@ struct intel_vgpu {
 	struct list_head workload_q_head[I915_NUM_ENGINES];
 	struct kmem_cache *workloads;
 	atomic_t running_workload_num;
+	/* 1/2K for each reserve ring buffer */
+	void *reserve_ring_buffer_va[I915_NUM_ENGINES];
+	int reserve_ring_buffer_size[I915_NUM_ENGINES];
 	DECLARE_BITMAP(tlb_handle_pending, I915_NUM_ENGINES);
 	struct i915_gem_context *shadow_ctx;
 	DECLARE_BITMAP(shadow_ctx_desc_updated, I915_NUM_ENGINES);
@@ -185,6 +191,8 @@ struct intel_vgpu {
 		atomic_t released;
 	} vdev;
 #endif
+
+	bool entire_nonctxmmio_checked;
 };
 
 struct intel_gvt_gm {
@@ -223,10 +231,15 @@ struct intel_gvt_mmio {
 #define F_CMD_ACCESSED	(1 << 5)
 /* This reg could be accessed by unaligned address */
 #define F_UNALIGN	(1 << 6)
+/* This reg is not in the context */
+#define F_NON_CONTEXT	(1 << 7)
+
 
 	struct gvt_mmio_block *mmio_block;
 	unsigned int num_mmio_block;
 
+	void *mmio_host_cache;
+	bool host_cache_initialized;
 	DECLARE_HASHTABLE(mmio_info_table, INTEL_GVT_MMIO_HASH_BITS);
 	unsigned int num_tracked_mmio;
 };
@@ -243,6 +256,7 @@ struct intel_gvt_opregion {
 };
 
 #define NR_MAX_INTEL_VGPU_TYPES 20
+
 struct intel_vgpu_type {
 	char name[16];
 	unsigned int avail_instance;
@@ -253,8 +267,34 @@ struct intel_vgpu_type {
 	enum intel_vgpu_edid resolution;
 };
 
+struct intel_dom0_plane_regs {
+	u32 plane_ctl;
+	u32 plane_stride;
+	u32 plane_pos;
+	u32 plane_size;
+	u32 plane_keyval;
+	u32 plane_keymsk;
+	u32 plane_keymax;
+	u32 plane_offset;
+	u32 plane_aux_dist;
+	u32 plane_aux_offset;
+	u32 plane_surf;
+	u32 plane_wm[8];
+	u32 plane_wm_trans;
+};
+
+struct intel_gvt_pipe_info {
+	enum pipe pipe_num;
+	int owner;
+	struct intel_gvt *gvt;
+	struct work_struct vblank_work;
+	struct intel_dom0_plane_regs dom0_regs[I915_MAX_PLANES - 1];
+	int plane_owner[I915_MAX_PLANES - 1];
+};
+
 struct intel_gvt {
 	struct mutex lock;
+	struct mutex sched_lock;
 	struct drm_i915_private *dev_priv;
 	struct idr vgpu_idr;	/* vGPU IDR pool */
 
@@ -276,6 +316,9 @@ struct intel_gvt {
 	struct task_struct *service_thread;
 	wait_queue_head_t service_thread_wq;
 	unsigned long service_request;
+	struct intel_gvt_pipe_info pipe_info[I915_MAX_PIPES];
+
+	struct skl_ddb_allocation ddb;
 };
 
 static inline struct intel_gvt *to_gvt(struct drm_i915_private *i915)
@@ -482,6 +525,9 @@ int intel_vgpu_init_opregion(struct intel_vgpu *vgpu, u32 gpa);
 
 int intel_vgpu_emulate_opregion_request(struct intel_vgpu *vgpu, u32 swsci);
 void populate_pvinfo_page(struct intel_vgpu *vgpu);
+int gvt_pause_user_domains(struct drm_i915_private *dev_priv);
+int gvt_unpause_user_domains(struct drm_i915_private *dev_priv);
+int gvt_dom0_ready(struct drm_i915_private *dev_priv);
 
 int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload);
 
@@ -581,7 +627,35 @@ static inline bool intel_gvt_mmio_has_mode_mask(
 	return gvt->mmio.mmio_attribute[offset >> 2] & F_MODE_MASK;
 }
 
+ /**
+ * intel_gvt_mmio_is_non_context - check a MMIO is non-context
+ * @gvt: a GVT device
+ * @offset: register offset
+ *
+ */
+static inline bool intel_gvt_mmio_is_non_context(
+			struct intel_gvt *gvt, unsigned int offset)
+{
+	return gvt->mmio.mmio_attribute[offset >> 2] & F_NON_CONTEXT;
+}
+
+/**
+ * intel_gvt_mmio_set_non_context - mark a MMIO is non-context
+ * @gvt: a GVT device
+ * @offset: register offset
+ *
+ */
+static inline void intel_gvt_mmio_set_non_context(
+			struct intel_gvt *gvt, unsigned int offset)
+{
+	gvt->mmio.mmio_attribute[offset >> 2] |= F_NON_CONTEXT;
+}
+
 #include "trace.h"
+
+void intel_gvt_mark_noncontext_mmios(struct intel_gvt *gvt);
+bool is_force_nonpriv_mmio(unsigned int offset);
+
 #include "mpt.h"
 
 #endif

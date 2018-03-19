@@ -18,6 +18,7 @@
 #include <linux/trusty/sm_err.h>
 #include <linux/device.h>
 #include <linux/pagemap.h>
+#include <asm/hypervisor.h>
 
 
 #if IS_ENABLED(CONFIG_TRUSTY)
@@ -85,41 +86,32 @@ static inline void trusty_nop_init(struct trusty_nop *nop,
 void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop);
 void trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop);
 
-#define TRUSTY_VMCALL_PENDING_INTR 0x74727505
-static inline void set_pending_intr_to_lk(uint8_t vector)
-{
-#ifdef CONFIG_X86
-	__asm__ __volatile__(
-		"vmcall"
-		::"a"(TRUSTY_VMCALL_PENDING_INTR), "b"(vector)
-	);
-#endif
-}
-
 void trusty_update_wall_info(struct device *dev, void *va, size_t sz);
 void *trusty_wall_base(struct device *dev);
 void *trusty_wall_per_cpu_item_ptr(struct device *dev, unsigned int cpu,
 				   u32 item_id, size_t exp_sz);
 
-/* CPUID leaf 0x3 is used because eVMM will trap this leaf.*/
-#define EVMM_SIGNATURE_CORP 0x43544E49  /* "INTC", edx */
-#define EVMM_SIGNATURE_VMM  0x4D4D5645  /* "EVMM", ecx */
+enum {
+	VMM_ID_EVMM = 0,
+	VMM_ID_ACRN,
+	VMM_SUPPORTED_NUM
+};
 
-static inline int trusty_check_cpuid(u32 *vmm_signature)
+static const char *vmm_signature[] = {
+	[VMM_ID_EVMM] = "EVMMEVMMEVMM",
+	[VMM_ID_ACRN] = "ACRNACRNACRN"
+};
+
+/* Detect VMM and return vmm_id */
+static inline int trusty_detect_vmm(void)
 {
-	u32 eax, ebx, ecx, edx;
-
-	cpuid(3, &eax, &ebx, &ecx, &edx);
-	if ((ecx != EVMM_SIGNATURE_VMM) ||
-	    (edx != EVMM_SIGNATURE_CORP)) {
-		return -EINVAL;
+	int i;
+	for (i = 0; i < VMM_SUPPORTED_NUM; i++) {
+		if (hypervisor_cpuid_base(vmm_signature[i], 0))
+			return i;
 	}
 
-	if(vmm_signature) {
-		*vmm_signature = ecx;
-	}
-
-	return 0;
+	return -EINVAL;
 }
 
 /* High 32 bits of unsigned 64-bit integer*/

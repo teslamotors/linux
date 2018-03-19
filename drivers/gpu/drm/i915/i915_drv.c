@@ -49,6 +49,7 @@
 #include "i915_drv.h"
 #include "i915_trace.h"
 #include "i915_vgpu.h"
+#include "intel_uc.h"
 #include "intel_drv.h"
 #include "intel_uc.h"
 
@@ -58,12 +59,12 @@ static unsigned int i915_load_fail_count;
 
 bool __i915_inject_load_failure(const char *func, int line)
 {
-	if (i915_load_fail_count >= i915.inject_load_failure)
+	if (i915_load_fail_count >= i915_modparams.inject_load_failure)
 		return false;
 
-	if (++i915_load_fail_count == i915.inject_load_failure) {
+	if (++i915_load_fail_count == i915_modparams.inject_load_failure) {
 		DRM_INFO("Injecting failure at checkpoint %u [%s:%d]\n",
-			 i915.inject_load_failure, func, line);
+			 i915_modparams.inject_load_failure, func, line);
 		return true;
 	}
 
@@ -106,8 +107,8 @@ __i915_printk(struct drm_i915_private *dev_priv, const char *level,
 
 static bool i915_error_injected(struct drm_i915_private *dev_priv)
 {
-	return i915.inject_load_failure &&
-	       i915_load_fail_count == i915.inject_load_failure;
+	return i915_modparams.inject_load_failure &&
+	       i915_load_fail_count == i915_modparams.inject_load_failure;
 }
 
 #define i915_load_error(dev_priv, fmt, ...)				     \
@@ -146,6 +147,9 @@ static enum intel_pch intel_virt_detect_pch(struct drm_i915_private *dev_priv)
 	} else if (IS_COFFEELAKE(dev_priv) || IS_CANNONLAKE(dev_priv)) {
 		ret = PCH_CNP;
 		DRM_DEBUG_KMS("Assuming CannonPoint PCH\n");
+	} else if (IS_BROXTON(dev_priv)) {
+		ret = PCH_NONE;
+		DRM_DEBUG_KMS("Assuming None PCH for BXT\n");
 	}
 
 	return ret;
@@ -320,7 +324,7 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		value = USES_PPGTT(dev_priv);
 		break;
 	case I915_PARAM_HAS_SEMAPHORES:
-		value = i915.semaphores;
+		value = i915_modparams.semaphores;
 		break;
 	case I915_PARAM_HAS_SECURE_BATCHES:
 		value = capable(CAP_SYS_ADMIN);
@@ -339,7 +343,8 @@ static int i915_getparam(struct drm_device *dev, void *data,
 			return -ENODEV;
 		break;
 	case I915_PARAM_HAS_GPU_RESET:
-		value = i915.enable_hangcheck && intel_has_gpu_reset(dev_priv);
+		value = i915_modparams.enable_hangcheck &&
+			intel_has_gpu_reset(dev_priv);
 		if (value && intel_has_reset_engine(dev_priv))
 			value = 2;
 		break;
@@ -365,9 +370,18 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		value = i915_gem_mmap_gtt_version();
 		break;
 	case I915_PARAM_HAS_SCHEDULER:
-		value = dev_priv->engine[RCS] &&
-			dev_priv->engine[RCS]->schedule;
+		value = 0;
+		if (dev_priv->engine[RCS] && dev_priv->engine[RCS]->schedule) {
+			value |= I915_SCHEDULER_CAP_ENABLED;
+			value |= I915_SCHEDULER_CAP_PRIORITY;
+
+			if (INTEL_INFO(dev_priv)->has_logical_ring_preemption &&
+			    i915_modparams.enable_execlists &&
+			    !i915_modparams.enable_guc_submission)
+				value |= I915_SCHEDULER_CAP_PREEMPTION;
+		}
 		break;
+
 	case I915_PARAM_MMAP_VERSION:
 		/* Remember to bump this if the version changes! */
 	case I915_PARAM_HAS_GEM:
@@ -872,6 +886,7 @@ static int i915_driver_init_early(struct drm_i915_private *dev_priv,
 	device_info->gen_mask = BIT(device_info->gen - 1);
 
 	spin_lock_init(&dev_priv->irq_lock);
+	spin_lock_init(&dev_priv->shared_page_lock);
 	spin_lock_init(&dev_priv->gpu_error.lock);
 	mutex_init(&dev_priv->backlight_lock);
 	spin_lock_init(&dev_priv->uncore.lock);
@@ -889,6 +904,14 @@ static int i915_driver_init_early(struct drm_i915_private *dev_priv,
 	ret = i915_workqueues_init(dev_priv);
 	if (ret < 0)
 		goto err_engines;
+
+	if (IS_BROXTON(dev_priv)) {
+		struct intel_device_info *info = mkwrite_device_info(dev_priv);
+
+		info->num_sprites[PIPE_A] = 2;
+		info->num_sprites[PIPE_B] = 2;
+		info->num_sprites[PIPE_C] = 1;
+	}
 
 	/* This must be called before any calls to HAS_PCH_* */
 	intel_detect_pch(dev_priv);
@@ -974,6 +997,9 @@ static void i915_mmio_cleanup(struct drm_i915_private *dev_priv)
 
 	intel_teardown_mchbar(dev_priv);
 	pci_iounmap(pdev, dev_priv->regs);
+	if (intel_vgpu_active(dev_priv) && dev_priv->shared_page)
+		pci_iounmap(pdev, dev_priv->shared_page);
+
 }
 
 /**
@@ -1001,6 +1027,21 @@ static int i915_driver_init_mmio(struct drm_i915_private *dev_priv)
 
 	intel_uncore_init(dev_priv);
 
+	if (intel_vgpu_active(dev_priv) && i915_modparams.enable_pvmmio) {
+		u32 bar = 0;
+		u32 mmio_size = 2 * 1024 * 1024;
+
+		/* Map a share page from the end of 2M mmio region in bar0. */
+		dev_priv->shared_page = (struct gvt_shared_page *)
+			pci_iomap_range(dev_priv->drm.pdev, bar,
+			mmio_size, PAGE_SIZE);
+		if (dev_priv->shared_page == NULL) {
+			ret = -EIO;
+			DRM_ERROR("ivi: failed to map share page.\n");
+			goto err_uncore;
+		}
+	}
+
 	ret = intel_engines_init_mmio(dev_priv);
 	if (ret)
 		goto err_uncore;
@@ -1010,6 +1051,8 @@ static int i915_driver_init_mmio(struct drm_i915_private *dev_priv)
 	return 0;
 
 err_uncore:
+	if (intel_vgpu_active(dev_priv) && dev_priv->shared_page)
+		pci_iounmap(dev_priv->drm.pdev, dev_priv->shared_page);
 	intel_uncore_fini(dev_priv);
 err_bridge:
 	pci_dev_put(dev_priv->bridge_dev);
@@ -1030,22 +1073,25 @@ static void i915_driver_cleanup_mmio(struct drm_i915_private *dev_priv)
 
 static void intel_sanitize_options(struct drm_i915_private *dev_priv)
 {
-	i915.enable_execlists =
+	i915_modparams.enable_execlists =
 		intel_sanitize_enable_execlists(dev_priv,
-						i915.enable_execlists);
+						i915_modparams.enable_execlists);
 
 	/*
-	 * i915.enable_ppgtt is read-only, so do an early pass to validate the
+	 * i915_modparams.enable_ppgtt is read-only, so do an early pass to validate the
 	 * user's requested state against the hardware/driver capabilities.  We
 	 * do this now so that we can print out any log messages once rather
 	 * than every time we check intel_enable_ppgtt().
 	 */
-	i915.enable_ppgtt =
-		intel_sanitize_enable_ppgtt(dev_priv, i915.enable_ppgtt);
-	DRM_DEBUG_DRIVER("ppgtt mode: %i\n", i915.enable_ppgtt);
+	i915_modparams.enable_ppgtt =
+		intel_sanitize_enable_ppgtt(dev_priv,
+					    i915_modparams.enable_ppgtt);
+	DRM_DEBUG_DRIVER("ppgtt mode: %i\n", i915_modparams.enable_ppgtt);
 
-	i915.semaphores = intel_sanitize_semaphores(dev_priv, i915.semaphores);
-	DRM_DEBUG_DRIVER("use GPU semaphores? %s\n", yesno(i915.semaphores));
+	i915_modparams.semaphores =
+		intel_sanitize_semaphores(dev_priv, i915_modparams.semaphores);
+	DRM_DEBUG_DRIVER("use GPU semaphores? %s\n",
+			 yesno(i915_modparams.semaphores));
 
 	intel_uc_sanitize_options(dev_priv);
 
@@ -1276,7 +1322,7 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 	int ret;
 
 	/* Enable nuclear pageflip on ILK+ */
-	if (!i915.nuclear_pageflip && match_info->gen < 5)
+	if (!i915_modparams.nuclear_pageflip && match_info->gen < 5)
 		driver.driver_features &= ~DRIVER_ATOMIC;
 
 	ret = -ENOMEM;
@@ -1340,7 +1386,7 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	intel_runtime_pm_enable(dev_priv);
 
-	dev_priv->ipc_enabled = false;
+	intel_init_ipc(dev_priv);
 
 	if (IS_ENABLED(CONFIG_DRM_I915_DEBUG))
 		DRM_INFO("DRM_I915_DEBUG enabled\n");
@@ -1693,6 +1739,7 @@ static int i915_drm_resume(struct drm_device *dev)
 	intel_guc_resume(dev_priv);
 
 	intel_modeset_init_hw(dev);
+	intel_init_clock_gating(dev_priv);
 
 	spin_lock_irq(&dev_priv->irq_lock);
 	if (dev_priv->display.hpd_irq_setup)
@@ -2591,6 +2638,8 @@ static int intel_runtime_resume(struct device *kdev)
 		ret = vlv_resume_prepare(dev_priv, true);
 	}
 
+	intel_uncore_runtime_resume(dev_priv);
+
 	/*
 	 * No point of rolling back things in case of an error, as the best
 	 * we can do is to hope that things will still work (and disable RPM).
@@ -2607,6 +2656,8 @@ static int intel_runtime_resume(struct device *kdev)
 	 */
 	if (!IS_VALLEYVIEW(dev_priv) && !IS_CHERRYVIEW(dev_priv))
 		intel_hpd_init(dev_priv);
+
+	intel_enable_ipc(dev_priv);
 
 	enable_rpm_wakeref_asserts(dev_priv);
 
@@ -2738,6 +2789,8 @@ static const struct drm_ioctl_desc i915_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(I915_PERF_OPEN, i915_perf_open_ioctl, DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(I915_PERF_ADD_CONFIG, i915_perf_add_config_ioctl, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(I915_PERF_REMOVE_CONFIG, i915_perf_remove_config_ioctl, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(I915_GEM_GVTBUFFER, i915_gem_gvtbuffer_ioctl, DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(I915_GEM_ACCESS_USERDATA, i915_gem_access_userdata_ioctl, DRM_RENDER_ALLOW),
 };
 
 static struct drm_driver driver = {

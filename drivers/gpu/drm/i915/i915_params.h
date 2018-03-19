@@ -68,7 +68,11 @@
 	func(bool, nuclear_pageflip); \
 	func(bool, enable_dp_mst); \
 	func(bool, enable_dpcd_backlight); \
-	func(bool, enable_gvt)
+	func(bool, enable_gvt); \
+	func(bool, enable_pvmmio); \
+	func(bool, enable_gvt_oos); \
+	func(bool, enable_conformance_check); \
+	func(bool, disable_gvt_fw_loading);
 
 #define MEMBER(T, member) T member
 struct i915_params {
@@ -76,7 +80,7 @@ struct i915_params {
 };
 #undef MEMBER
 
-extern struct i915_params i915 __read_mostly;
+extern struct i915_params i915_modparams __read_mostly;
 
 #endif
 

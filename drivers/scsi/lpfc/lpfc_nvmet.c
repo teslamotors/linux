@@ -1138,9 +1138,14 @@ lpfc_nvmet_create_targetport(struct lpfc_hba *phba)
 #endif
 	if (error) {
 		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_DISC,
-				"6025 Cannot register NVME targetport "
-				"x%x\n", error);
+				"6025 Cannot register NVME targetport x%x: "
+				"portnm %llx nodenm %llx segs %d qs %d\n",
+				error,
+				pinfo.port_name, pinfo.node_name,
+				lpfc_tgttemplate.max_sgl_segments,
+				lpfc_tgttemplate.max_hw_queues);
 		phba->targetport = NULL;
+		phba->nvmet_support = 0;
 
 		lpfc_nvmet_cleanup_io_context(phba);
 
@@ -1152,9 +1157,11 @@ lpfc_nvmet_create_targetport(struct lpfc_hba *phba)
 		lpfc_printf_log(phba, KERN_INFO, LOG_NVME_DISC,
 				"6026 Registered NVME "
 				"targetport: %p, private %p "
-				"portnm %llx nodenm %llx\n",
+				"portnm %llx nodenm %llx segs %d qs %d\n",
 				phba->targetport, tgtp,
-				pinfo.port_name, pinfo.node_name);
+				pinfo.port_name, pinfo.node_name,
+				lpfc_tgttemplate.max_sgl_segments,
+				lpfc_tgttemplate.max_hw_queues);
 
 		atomic_set(&tgtp->rcv_ls_req_in, 0);
 		atomic_set(&tgtp->rcv_ls_req_out, 0);
@@ -1457,6 +1464,7 @@ static struct lpfc_nvmet_ctxbuf *
 lpfc_nvmet_replenish_context(struct lpfc_hba *phba,
 			     struct lpfc_nvmet_ctx_info *current_infop)
 {
+#if (IS_ENABLED(CONFIG_NVME_TARGET_FC))
 	struct lpfc_nvmet_ctxbuf *ctx_buf = NULL;
 	struct lpfc_nvmet_ctx_info *get_infop;
 	int i;
@@ -1504,6 +1512,7 @@ lpfc_nvmet_replenish_context(struct lpfc_hba *phba,
 		get_infop = get_infop->nvmet_ctx_next_cpu;
 	}
 
+#endif
 	/* Nothing found, all contexts for the MRQ are in-flight */
 	return NULL;
 }

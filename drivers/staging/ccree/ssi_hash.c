@@ -1781,7 +1781,7 @@ static int ssi_ahash_import(struct ahash_request *req, const void *in)
 	struct device *dev = &ctx->drvdata->plat_dev->dev;
 	struct ahash_req_ctx *state = ahash_request_ctx(req);
 	u32 tmp;
-	int rc;
+	int rc = 0;
 
 	memcpy(&tmp, in, sizeof(u32));
 	if (tmp != CC_EXPORT_MAGIC) {
@@ -1790,9 +1790,12 @@ static int ssi_ahash_import(struct ahash_request *req, const void *in)
 	}
 	in += sizeof(u32);
 
-	rc = ssi_hash_init(state, ctx);
-	if (rc)
-		goto out;
+	/* call init() to allocate bufs if the user hasn't */
+	if (!state->digest_buff) {
+		rc = ssi_hash_init(state, ctx);
+		if (rc)
+			goto out;
+	}
 
 	dma_sync_single_for_cpu(dev, state->digest_buff_dma_addr,
 				ctx->inter_digestsize, DMA_BIDIRECTIONAL);

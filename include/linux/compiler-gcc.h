@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-#ifndef __LINUX_COMPILER_H
+#ifndef __LINUX_COMPILER_TYPES_H
 #error "Please don't include <linux/compiler-gcc.h> directly, include <linux/compiler.h> instead."
 #endif
 
@@ -167,8 +167,6 @@
 
 #if GCC_VERSION >= 40100
 # define __compiletime_object_size(obj) __builtin_object_size(obj, 0)
-
-#define __nostackprotector	__attribute__((__optimize__("no-stack-protector")))
 #endif
 
 #if GCC_VERSION >= 40300
@@ -195,6 +193,11 @@
 # define __compiletime_error(message) __attribute__((error(message)))
 #endif /* __CHECKER__ */
 #endif /* GCC_VERSION >= 40300 */
+
+#if GCC_VERSION >= 40400
+#define __optimize(level)	__attribute__((__optimize__(level)))
+#define __nostackprotector	__optimize("no-stack-protector")
+#endif /* GCC_VERSION >= 40400 */
 
 #if GCC_VERSION >= 40500
 

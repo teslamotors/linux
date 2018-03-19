@@ -333,11 +333,13 @@ EXPORT_SYMBOL(blk_stop_queue);
 void blk_sync_queue(struct request_queue *q)
 {
 	del_timer_sync(&q->timeout);
+	cancel_work_sync(&q->timeout_work);
 
 	if (q->mq_ops) {
 		struct blk_mq_hw_ctx *hctx;
 		int i;
 
+		cancel_delayed_work_sync(&q->requeue_work);
 		queue_for_each_hw_ctx(q, hctx, i)
 			cancel_delayed_work_sync(&hctx->run_work);
 	} else {
@@ -604,8 +606,8 @@ void blk_set_queue_dying(struct request_queue *q)
 		spin_lock_irq(q->queue_lock);
 		blk_queue_for_each_rl(rl, q) {
 			if (rl->rq_pool) {
-				wake_up(&rl->wait[BLK_RW_SYNC]);
-				wake_up(&rl->wait[BLK_RW_ASYNC]);
+				wake_up_all(&rl->wait[BLK_RW_SYNC]);
+				wake_up_all(&rl->wait[BLK_RW_ASYNC]);
 			}
 		}
 		spin_unlock_irq(q->queue_lock);
@@ -657,6 +659,15 @@ void blk_cleanup_queue(struct request_queue *q)
 		__blk_drain_queue(q, true);
 	queue_flag_set(QUEUE_FLAG_DEAD, q);
 	spin_unlock_irq(lock);
+
+	/*
+	 * make sure all in-progress dispatch are completed because
+	 * blk_freeze_queue() can only complete all requests, and
+	 * dispatch may still be in-progress since we dispatch requests
+	 * from more than one contexts
+	 */
+	if (q->mq_ops)
+		blk_mq_quiesce_queue(q);
 
 	/* for synchronous bio-based driver finish in-flight integrity i/o */
 	blk_flush_integrity();
@@ -844,6 +855,7 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
 	setup_timer(&q->backing_dev_info->laptop_mode_wb_timer,
 		    laptop_mode_timer_fn, (unsigned long) q);
 	setup_timer(&q->timeout, blk_rq_timed_out_timer, (unsigned long) q);
+	INIT_WORK(&q->timeout_work, NULL);
 	INIT_LIST_HEAD(&q->queue_head);
 	INIT_LIST_HEAD(&q->timeout_list);
 	INIT_LIST_HEAD(&q->icq_list);

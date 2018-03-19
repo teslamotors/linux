@@ -173,6 +173,10 @@ extern "C" {
 		DRM_MODE_REFLECT_X | \
 		DRM_MODE_REFLECT_Y)
 
+/* Content Protection Flags */
+#define DRM_MODE_CONTENT_PROTECTION_UNDESIRED	0
+#define DRM_MODE_CONTENT_PROTECTION_DESIRED     1
+#define DRM_MODE_CONTENT_PROTECTION_ENABLED     2
 
 struct drm_mode_modeinfo {
 	__u32 clock;
@@ -578,6 +582,13 @@ struct drm_mode_crtc_lut {
 struct drm_color_ctm {
 	/* Conversion matrix in S31.32 format. */
 	__s64 matrix[9];
+};
+
+struct drm_color_ctm_post_offset {
+	/* Data is U0.16 fixed point format. */
+	__u16 red;
+	__u16 green;
+	__u16 blue;
 };
 
 struct drm_color_lut {

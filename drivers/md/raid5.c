@@ -1818,8 +1818,11 @@ static void ops_complete_reconstruct(void *stripe_head_ref)
 		struct r5dev *dev = &sh->dev[i];
 
 		if (dev->written || i == pd_idx || i == qd_idx) {
-			if (!discard && !test_bit(R5_SkipCopy, &dev->flags))
+			if (!discard && !test_bit(R5_SkipCopy, &dev->flags)) {
 				set_bit(R5_UPTODATE, &dev->flags);
+				if (test_bit(STRIPE_EXPAND_READY, &sh->state))
+					set_bit(R5_Expanded, &dev->flags);
+			}
 			if (fua)
 				set_bit(R5_WantFUA, &dev->flags);
 			if (sync)
@@ -2675,13 +2678,13 @@ static void raid5_error(struct mddev *mddev, struct md_rdev *rdev)
 	pr_debug("raid456: error called\n");
 
 	spin_lock_irqsave(&conf->device_lock, flags);
+	set_bit(Faulty, &rdev->flags);
 	clear_bit(In_sync, &rdev->flags);
 	mddev->degraded = raid5_calc_degraded(conf);
 	spin_unlock_irqrestore(&conf->device_lock, flags);
 	set_bit(MD_RECOVERY_INTR, &mddev->recovery);
 
 	set_bit(Blocked, &rdev->flags);
-	set_bit(Faulty, &rdev->flags);
 	set_mask_bits(&mddev->sb_flags, 0,
 		      BIT(MD_SB_CHANGE_DEVS) | BIT(MD_SB_CHANGE_PENDING));
 	pr_crit("md/raid:%s: Disk failure on %s, disabling device.\n"
@@ -7154,6 +7157,13 @@ static int raid5_run(struct mddev *mddev)
 		else if (!mddev->reshape_backwards &&
 			 diff > min_offset_diff)
 			min_offset_diff = diff;
+	}
+
+	if ((test_bit(MD_HAS_JOURNAL, &mddev->flags) || journal_dev) &&
+	    (mddev->bitmap_info.offset || mddev->bitmap_info.file)) {
+		pr_notice("md/raid:%s: array cannot have both journal and bitmap\n",
+			  mdname(mddev));
+		return -EINVAL;
 	}
 
 	if (mddev->reshape_position != MaxSector) {

@@ -68,7 +68,6 @@ static void failsafe_emulate_mmio_rw(struct intel_vgpu *vgpu, uint64_t pa,
 		return;
 
 	gvt = vgpu->gvt;
-	mutex_lock(&gvt->lock);
 	offset = intel_vgpu_gpa_to_mmio_offset(vgpu, pa);
 	if (reg_is_mmio(gvt, offset)) {
 		if (read)
@@ -106,7 +105,6 @@ static void failsafe_emulate_mmio_rw(struct intel_vgpu *vgpu, uint64_t pa,
 						p_data, bytes);
 		}
 	}
-	mutex_unlock(&gvt->lock);
 }
 
 /**
@@ -119,19 +117,17 @@ static void failsafe_emulate_mmio_rw(struct intel_vgpu *vgpu, uint64_t pa,
  * Returns:
  * Zero on success, negative error code if failed
  */
-int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
+int intel_vgpu_emulate_mmio_read_locked(struct intel_vgpu *vgpu, uint64_t pa,
 		void *p_data, unsigned int bytes)
 {
 	struct intel_gvt *gvt = vgpu->gvt;
 	unsigned int offset = 0;
 	int ret = -EINVAL;
 
-
 	if (vgpu->failsafe) {
 		failsafe_emulate_mmio_rw(vgpu, pa, p_data, bytes, true);
 		return 0;
 	}
-	mutex_lock(&gvt->lock);
 
 	if (atomic_read(&vgpu->gtt.n_write_protected_guest_page)) {
 		struct intel_vgpu_guest_page *gp;
@@ -146,7 +142,6 @@ int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
 					ret, gp->gfn, pa, *(u32 *)p_data,
 					bytes);
 			}
-			mutex_unlock(&gvt->lock);
 			return ret;
 		}
 	}
@@ -168,13 +163,11 @@ int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
 				p_data, bytes);
 		if (ret)
 			goto err;
-		mutex_unlock(&gvt->lock);
 		return ret;
 	}
 
 	if (WARN_ON_ONCE(!reg_is_mmio(gvt, offset))) {
 		ret = intel_gvt_hypervisor_read_gpa(vgpu, pa, p_data, bytes);
-		mutex_unlock(&gvt->lock);
 		return ret;
 	}
 
@@ -191,12 +184,22 @@ int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
 		goto err;
 
 	intel_gvt_mmio_set_accessed(gvt, offset);
-	mutex_unlock(&gvt->lock);
 	return 0;
 err:
 	gvt_vgpu_err("fail to emulate MMIO read %08x len %d\n",
 			offset, bytes);
-	mutex_unlock(&gvt->lock);
+	return ret;
+}
+
+int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
+		void *p_data, unsigned int bytes)
+{
+	int ret;
+
+	mutex_lock(&vgpu->gvt->lock);
+	ret = intel_vgpu_emulate_mmio_read_locked(vgpu, pa, p_data, bytes);
+	mutex_unlock(&vgpu->gvt->lock);
+
 	return ret;
 }
 
@@ -210,7 +213,7 @@ err:
  * Returns:
  * Zero on success, negative error code if failed
  */
-int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
+int intel_vgpu_emulate_mmio_write_locked(struct intel_vgpu *vgpu, uint64_t pa,
 		void *p_data, unsigned int bytes)
 {
 	struct intel_gvt *gvt = vgpu->gvt;
@@ -221,8 +224,6 @@ int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 		failsafe_emulate_mmio_rw(vgpu, pa, p_data, bytes, false);
 		return 0;
 	}
-
-	mutex_lock(&gvt->lock);
 
 	if (atomic_read(&vgpu->gtt.n_write_protected_guest_page)) {
 		struct intel_vgpu_guest_page *gp;
@@ -237,7 +238,6 @@ int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 					ret, gp->gfn, pa,
 					*(u32 *)p_data, bytes);
 			}
-			mutex_unlock(&gvt->lock);
 			return ret;
 		}
 	}
@@ -259,13 +259,11 @@ int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 				p_data, bytes);
 		if (ret)
 			goto err;
-		mutex_unlock(&gvt->lock);
 		return ret;
 	}
 
 	if (WARN_ON_ONCE(!reg_is_mmio(gvt, offset))) {
 		ret = intel_gvt_hypervisor_write_gpa(vgpu, pa, p_data, bytes);
-		mutex_unlock(&gvt->lock);
 		return ret;
 	}
 
@@ -273,16 +271,34 @@ int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 	if (ret < 0)
 		goto err;
 
+	if (vgpu->entire_nonctxmmio_checked
+		&& intel_gvt_mmio_is_non_context(vgpu->gvt, offset)
+		&& vgpu_vreg(vgpu, offset)
+			!= *(u32 *)(vgpu->gvt->mmio.mmio_host_cache + offset)) {
+		gvt_err("vgpu%d unexpected non-context MMIO change at 0x%x:0x%x,0x%x\n",
+			vgpu->id, offset, vgpu_vreg(vgpu, offset),
+			*(u32 *)(vgpu->gvt->mmio.mmio_host_cache + offset));
+	}
+
 	intel_gvt_mmio_set_accessed(gvt, offset);
-	mutex_unlock(&gvt->lock);
 	return 0;
 err:
 	gvt_vgpu_err("fail to emulate MMIO write %08x len %d\n", offset,
 		     bytes);
-	mutex_unlock(&gvt->lock);
 	return ret;
 }
 
+int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
+		void *p_data, unsigned int bytes)
+{
+	int ret;
+
+	mutex_lock(&vgpu->gvt->lock);
+	ret = intel_vgpu_emulate_mmio_write_locked(vgpu, pa, p_data, bytes);
+	mutex_unlock(&vgpu->gvt->lock);
+
+	return ret;
+}
 
 /**
  * intel_vgpu_reset_mmio - reset virtual MMIO space
@@ -315,6 +331,18 @@ void intel_vgpu_reset_mmio(struct intel_vgpu *vgpu, bool dmlr)
 		memcpy(vgpu->mmio.sreg, mmio, GVT_GEN8_MMIO_RESET_OFFSET);
 	}
 
+	/* below vreg init value are got from handler.c,
+	 * which won't change during vgpu life cycle
+	 */
+	vgpu_vreg(vgpu, 0xe651c) = 1 << 17;
+	vgpu_vreg(vgpu, 0xe661c) = 1 << 17;
+	vgpu_vreg(vgpu, 0xe671c) = 1 << 17;
+	vgpu_vreg(vgpu, 0xe681c) = 1 << 17;
+	vgpu_vreg(vgpu, 0xe6c04) = 3;
+	vgpu_vreg(vgpu, 0xe6e1c) = 0x2f << 16;
+
+	/* Non-context MMIOs need entire check again if mmio/vgpu reset */
+	vgpu->entire_nonctxmmio_checked = false;
 }
 
 /**
@@ -328,11 +356,13 @@ int intel_vgpu_init_mmio(struct intel_vgpu *vgpu)
 {
 	const struct intel_gvt_device_info *info = &vgpu->gvt->device_info;
 
-	vgpu->mmio.vreg = vzalloc(info->mmio_size * 2);
-	if (!vgpu->mmio.vreg)
+	vgpu->mmio.sreg = vzalloc(info->mmio_size);
+	vgpu->mmio.vreg = (void *)__get_free_pages(GFP_KERNEL,
+			info->mmio_size_order);
+	vgpu->mmio.shared_page = (struct gvt_shared_page *) __get_free_pages(
+			GFP_KERNEL, 0);
+	if (!vgpu->mmio.vreg || !vgpu->mmio.sreg || !vgpu->mmio.shared_page)
 		return -ENOMEM;
-
-	vgpu->mmio.sreg = vgpu->mmio.vreg + info->mmio_size;
 
 	intel_vgpu_reset_mmio(vgpu, true);
 
@@ -346,6 +376,10 @@ int intel_vgpu_init_mmio(struct intel_vgpu *vgpu)
  */
 void intel_vgpu_clean_mmio(struct intel_vgpu *vgpu)
 {
-	vfree(vgpu->mmio.vreg);
-	vgpu->mmio.vreg = vgpu->mmio.sreg = NULL;
+	const struct intel_gvt_device_info *info = &vgpu->gvt->device_info;
+
+	vfree(vgpu->mmio.sreg);
+	free_pages((unsigned long) vgpu->mmio.vreg, info->mmio_size_order);
+	free_pages((unsigned long) vgpu->mmio.shared_page, 0);
+	vgpu->mmio.vreg = vgpu->mmio.sreg = vgpu->mmio.shared_page = NULL;
 }

@@ -23,6 +23,7 @@
 
 #include <linux/module.h>
 #include <linux/usb.h>
+#include <linux/usb/quirks.h>
 #include <linux/firmware.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
@@ -272,6 +273,7 @@ static const struct usb_device_id blacklist_table[] = {
 	{ USB_DEVICE(0x0cf3, 0xe301), .driver_info = BTUSB_QCA_ROME },
 	{ USB_DEVICE(0x0cf3, 0xe360), .driver_info = BTUSB_QCA_ROME },
 	{ USB_DEVICE(0x0489, 0xe092), .driver_info = BTUSB_QCA_ROME },
+	{ USB_DEVICE(0x0489, 0xe09f), .driver_info = BTUSB_QCA_ROME },
 	{ USB_DEVICE(0x0489, 0xe0a2), .driver_info = BTUSB_QCA_ROME },
 	{ USB_DEVICE(0x04ca, 0x3011), .driver_info = BTUSB_QCA_ROME },
 	{ USB_DEVICE(0x04ca, 0x3016), .driver_info = BTUSB_QCA_ROME },
@@ -391,9 +393,8 @@ static const struct usb_device_id blacklist_table[] = {
 #define BTUSB_FIRMWARE_LOADED	7
 #define BTUSB_FIRMWARE_FAILED	8
 #define BTUSB_BOOTING		9
-#define BTUSB_RESET_RESUME	10
-#define BTUSB_DIAG_RUNNING	11
-#define BTUSB_OOB_WAKE_ENABLED	12
+#define BTUSB_DIAG_RUNNING	10
+#define BTUSB_OOB_WAKE_ENABLED	11
 
 struct btusb_data {
 	struct hci_dev       *hdev;
@@ -1944,6 +1945,18 @@ static int btusb_recv_event_intel(struct hci_dev *hdev, struct sk_buff *skb)
 			}
 		}
 	}
+	else if (skb->len >= sizeof(struct hci_event_hdr)) {
+		struct hci_event_hdr *hdr;
+
+		hdr = (struct hci_event_hdr *) skb->data;
+
+		if (hdr->evt == HCI_EV_CMD_COMPLETE) {
+			*(__u8 *)(skb->data + 2) = 1;
+		} else if (hdr->evt == HCI_EV_CMD_STATUS) {
+			*(__u8 *)(skb->data + 3) = 1;
+		}
+    }
+
 
 	return hci_recv_frame(hdev, skb);
 }
@@ -3101,9 +3114,9 @@ static int btusb_probe(struct usb_interface *intf,
 
 		/* QCA Rome devices lose their updated firmware over suspend,
 		 * but the USB hub doesn't notice any status change.
-		 * Explicitly request a device reset on resume.
+		 * explicitly request a device reset on resume.
 		 */
-		set_bit(BTUSB_RESET_RESUME, &data->flags);
+		interface_to_usbdev(intf)->quirks |= USB_QUIRK_RESET_RESUME;
 	}
 
 #ifdef CONFIG_BT_HCIBTUSB_RTL
@@ -3114,7 +3127,7 @@ static int btusb_probe(struct usb_interface *intf,
 		 * but the USB hub doesn't notice any status change.
 		 * Explicitly request a device reset on resume.
 		 */
-		set_bit(BTUSB_RESET_RESUME, &data->flags);
+		interface_to_usbdev(intf)->quirks |= USB_QUIRK_RESET_RESUME;
 	}
 #endif
 
@@ -3278,14 +3291,6 @@ static int btusb_suspend(struct usb_interface *intf, pm_message_t message)
 		enable_irq_wake(data->oob_wake_irq);
 		enable_irq(data->oob_wake_irq);
 	}
-
-	/* Optionally request a device reset on resume, but only when
-	 * wakeups are disabled. If wakeups are enabled we assume the
-	 * device will stay powered up throughout suspend.
-	 */
-	if (test_bit(BTUSB_RESET_RESUME, &data->flags) &&
-	    !device_may_wakeup(&data->udev->dev))
-		data->udev->reset_resume = 1;
 
 	return 0;
 }

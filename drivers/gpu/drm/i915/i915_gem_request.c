@@ -186,7 +186,7 @@ i915_priotree_init(struct i915_priotree *pt)
 	INIT_LIST_HEAD(&pt->signalers_list);
 	INIT_LIST_HEAD(&pt->waiters_list);
 	INIT_LIST_HEAD(&pt->link);
-	pt->priority = INT_MIN;
+	pt->priority = I915_PRIORITY_INVALID;
 }
 
 static int reset_all_global_seqno(struct drm_i915_private *i915, u32 seqno)
@@ -587,6 +587,13 @@ i915_gem_request_alloc(struct intel_engine_cs *engine,
 
 	lockdep_assert_held(&dev_priv->drm.struct_mutex);
 
+	/*
+	 * Preempt contexts are reserved for exclusive use to inject a
+	 * preemption context switch. They are never to be used for any trivial
+	 * request!
+	 */
+	GEM_BUG_ON(ctx == dev_priv->preempt_context);
+
 	/* ABI: Before userspace accesses the GPU (e.g. execbuffer), report
 	 * EIO if the GPU is already wedged.
 	 */
@@ -906,6 +913,7 @@ void __i915_add_request(struct drm_i915_gem_request *request, bool flush_caches)
 
 	lockdep_assert_held(&request->i915->drm.struct_mutex);
 	trace_i915_gem_request_add(request);
+	trace_i915_gem_request_add_domain(request);
 
 	/* Make sure that no request gazumped us - if it was allocated after
 	 * our i915_gem_request_alloc() and called __i915_add_request() before

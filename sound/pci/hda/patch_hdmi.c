@@ -55,11 +55,11 @@ MODULE_PARM_DESC(static_hdmi_pcm, "Don't restrict PCM parameters per ELD info");
 #define is_kabylake(codec) ((codec)->core.vendor_id == 0x8086280b)
 #define is_geminilake(codec) (((codec)->core.vendor_id == 0x8086280d) || \
 				((codec)->core.vendor_id == 0x80862800))
-#define is_cnl(codec) ((codec)->core.vendor_id == 0x8086280c)
+#define is_cannonlake(codec) ((codec)->core.vendor_id == 0x8086280c)
 #define is_haswell_plus(codec) (is_haswell(codec) || is_broadwell(codec) \
 				|| is_skylake(codec) || is_broxton(codec) \
 				|| is_kabylake(codec)) || is_geminilake(codec) \
-				|| is_cnl(codec)
+				|| is_cannonlake(codec)
 #define is_valleyview(codec) ((codec)->core.vendor_id == 0x80862882)
 #define is_cherryview(codec) ((codec)->core.vendor_id == 0x80862883)
 #define is_valleyview_plus(codec) (is_valleyview(codec) || is_cherryview(codec))

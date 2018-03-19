@@ -51,6 +51,7 @@ i915-y += i915_cmd_parser.o \
 	  i915_trace_points.o \
 	  i915_vma.o \
 	  intel_breadcrumbs.o \
+	  i915_gem_gvtbuffer.o \
 	  intel_engine_cs.o \
 	  intel_hangcheck.o \
 	  intel_lrc.o \
@@ -85,6 +86,7 @@ i915-y += intel_audio.o \
 	  intel_fbc.o \
 	  intel_fifo_underrun.o \
 	  intel_frontbuffer.o \
+	  intel_hdcp.o \
 	  intel_hotplug.o \
 	  intel_modes.o \
 	  intel_overlay.o \

@@ -1842,8 +1842,13 @@ static noinline int btrfs_ioctl_subvol_setflags(struct file *file,
 
 	ret = btrfs_update_root(trans, fs_info->tree_root,
 				&root->root_key, &root->root_item);
+	if (ret < 0) {
+		btrfs_end_transaction(trans);
+		goto out_reset;
+	}
 
-	btrfs_commit_transaction(trans);
+	ret = btrfs_commit_transaction(trans);
+
 out_reset:
 	if (ret)
 		btrfs_set_root_flags(&root->root_item, root_flags);
@@ -2216,7 +2221,7 @@ static noinline int btrfs_search_path_in_tree(struct btrfs_fs_info *info,
 	if (!path)
 		return -ENOMEM;
 
-	ptr = &name[BTRFS_INO_LOOKUP_PATH_MAX];
+	ptr = &name[BTRFS_INO_LOOKUP_PATH_MAX - 1];
 
 	key.objectid = tree_id;
 	key.type = BTRFS_ROOT_ITEM_KEY;

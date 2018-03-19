@@ -213,6 +213,9 @@ struct drm_i915_gem_object {
 	/** Record of address bit 17 of each page at last unbind. */
 	unsigned long *bit_17;
 
+	/** Object userdata */
+	u32 userdata;
+
 	union {
 		struct i915_gem_userptr {
 			uintptr_t ptr;

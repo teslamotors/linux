@@ -184,7 +184,7 @@ static __ref void *spp_getpage(void)
 	void *ptr;
 
 	if (after_bootmem)
-		ptr = (void *) get_zeroed_page(GFP_ATOMIC | __GFP_NOTRACK);
+		ptr = (void *) get_zeroed_page(GFP_ATOMIC);
 	else
 		ptr = alloc_bootmem_pages(PAGE_SIZE);
 
@@ -256,7 +256,7 @@ static void __set_pte_vaddr(pud_t *pud, unsigned long vaddr, pte_t new_pte)
 	 * It's enough to flush this one mapping.
 	 * (PGE mappings get flushed as well)
 	 */
-	__flush_tlb_one(vaddr);
+	__flush_tlb_one_kernel(vaddr);
 }
 
 void set_pte_vaddr_p4d(p4d_t *p4d_page, unsigned long vaddr, pte_t new_pte)
@@ -1426,16 +1426,16 @@ int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node)
 
 #if defined(CONFIG_MEMORY_HOTPLUG_SPARSE) && defined(CONFIG_HAVE_BOOTMEM_INFO_NODE)
 void register_page_bootmem_memmap(unsigned long section_nr,
-				  struct page *start_page, unsigned long size)
+				  struct page *start_page, unsigned long nr_pages)
 {
 	unsigned long addr = (unsigned long)start_page;
-	unsigned long end = (unsigned long)(start_page + size);
+	unsigned long end = (unsigned long)(start_page + nr_pages);
 	unsigned long next;
 	pgd_t *pgd;
 	p4d_t *p4d;
 	pud_t *pud;
 	pmd_t *pmd;
-	unsigned int nr_pages;
+	unsigned int nr_pmd_pages;
 	struct page *page;
 
 	for (; addr < end; addr = next) {
@@ -1482,9 +1482,9 @@ void register_page_bootmem_memmap(unsigned long section_nr,
 			if (pmd_none(*pmd))
 				continue;
 
-			nr_pages = 1 << (get_order(PMD_SIZE));
+			nr_pmd_pages = 1 << get_order(PMD_SIZE);
 			page = pmd_page(*pmd);
-			while (nr_pages--)
+			while (nr_pmd_pages--)
 				get_page_bootmem(section_nr, page++,
 						 SECTION_INFO);
 		}

@@ -37,10 +37,10 @@
 #define _GVT_SCHEDULER_H_
 
 struct intel_gvt_workload_scheduler {
-	struct intel_vgpu *current_vgpu;
-	struct intel_vgpu *next_vgpu;
+	struct intel_vgpu *current_vgpu[I915_NUM_ENGINES];
+	struct intel_vgpu *next_vgpu[I915_NUM_ENGINES];
 	struct intel_vgpu_workload *current_workload[I915_NUM_ENGINES];
-	bool need_reschedule;
+	bool need_reschedule[I915_NUM_ENGINES];
 
 	spinlock_t mmio_context_lock;
 	/* can be null when owner is host */
@@ -85,6 +85,7 @@ struct intel_vgpu_workload {
 	bool dispatched;
 	bool shadowed;
 	int status;
+	unsigned int guilty_count;
 
 	struct intel_vgpu_mm *shadow_mm;
 
@@ -140,5 +141,9 @@ void intel_gvt_wait_vgpu_idle(struct intel_vgpu *vgpu);
 int intel_vgpu_init_gvt_context(struct intel_vgpu *vgpu);
 
 void intel_vgpu_clean_gvt_context(struct intel_vgpu *vgpu);
+
+void release_shadow_wa_ctx(struct intel_shadow_wa_ctx *wa_ctx);
+
+extern bool gvt_shadow_wa_ctx;
 
 #endif

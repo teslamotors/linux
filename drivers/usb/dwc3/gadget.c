@@ -268,7 +268,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
 {
 	const struct usb_endpoint_descriptor *desc = dep->endpoint.desc;
 	struct dwc3		*dwc = dep->dwc;
-	u32			timeout = 500;
+	u32			timeout = 1000;
 	u32			reg;
 
 	int			cmd_status = 0;
@@ -1858,8 +1858,8 @@ static inline bool platform_is_bxtp(void)
 {
 #ifdef CONFIG_X86_64
 	if ((boot_cpu_data.x86_model == 0x5c)
-		&& (boot_cpu_data.x86_mask >= 0x8)
-		&& (boot_cpu_data.x86_mask <= 0xf))
+		&& (boot_cpu_data.x86_stepping >= 0x8)
+		&& (boot_cpu_data.x86_stepping <= 0xf))
 		return true;
 #endif
 	return false;
@@ -2812,6 +2812,8 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 		dwc->gadget.speed = USB_SPEED_LOW;
 		break;
 	}
+
+	dwc->eps[1]->endpoint.maxpacket = dwc->gadget.ep0->maxpacket;
 
 	/* Enable USB2 LPM Capability */
 

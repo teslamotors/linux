@@ -141,6 +141,27 @@ static struct render_mmio gen9_render_mmio_list[] __cacheline_aligned = {
 	{RCS, _MMIO(0x20e4), 0xffff, false},
 };
 
+void intel_gvt_mark_noncontext_mmios(struct intel_gvt *gvt)
+{
+	struct render_mmio *mmio;
+	int i, array_size;
+
+	if (IS_SKYLAKE(gvt->dev_priv)
+		|| IS_BROXTON(gvt->dev_priv)) {
+		mmio = gen9_render_mmio_list;
+		array_size = ARRAY_SIZE(gen9_render_mmio_list);
+	} else {
+		mmio = gen8_render_mmio_list;
+		array_size = ARRAY_SIZE(gen8_render_mmio_list);
+	}
+
+	for (i = 0; i < array_size; i++, mmio++) {
+		if (mmio->in_context)
+			continue;
+		intel_gvt_mmio_set_non_context(gvt, mmio->reg.reg);
+	}
+}
+
 static u32 gen9_render_mocs[I915_NUM_ENGINES][64];
 static u32 gen9_render_mocs_L3[32];
 
@@ -172,7 +193,8 @@ static void handle_tlb_pending_event(struct intel_vgpu *vgpu, int ring_id)
 	 */
 	fw = intel_uncore_forcewake_for_reg(dev_priv, reg,
 					    FW_REG_READ | FW_REG_WRITE);
-	if (ring_id == RCS && (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)))
+	if (ring_id == RCS && (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)
+				|| IS_BROXTON(dev_priv)))
 		fw |= FORCEWAKE_RENDER;
 
 	intel_uncore_forcewake_get(dev_priv, fw);
@@ -271,6 +293,7 @@ static void switch_mmio_to_vgpu(struct intel_vgpu *vgpu, int ring_id)
 	i915_reg_t last_reg = _MMIO(0);
 
 	if (IS_SKYLAKE(vgpu->gvt->dev_priv)
+		|| IS_BROXTON(dev_priv)
 		|| IS_KABYLAKE(vgpu->gvt->dev_priv)) {
 		mmio = gen9_render_mmio_list;
 		array_size = ARRAY_SIZE(gen9_render_mmio_list);
@@ -293,7 +316,7 @@ static void switch_mmio_to_vgpu(struct intel_vgpu *vgpu, int ring_id)
 		 */
 		if (mmio->in_context &&
 				((ctx_ctrl & inhibit_mask) != inhibit_mask) &&
-				i915.enable_execlists)
+				i915_modparams.enable_execlists)
 			continue;
 
 		if (mmio->mask)
@@ -325,7 +348,8 @@ static void switch_mmio_to_host(struct intel_vgpu *vgpu, int ring_id)
 	u32 v;
 	int i, array_size;
 
-	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv)
+			|| IS_BROXTON(dev_priv)) {
 		mmio = gen9_render_mmio_list;
 		array_size = ARRAY_SIZE(gen9_render_mmio_list);
 		restore_mocs(vgpu, ring_id);
@@ -402,4 +426,109 @@ void intel_gvt_switch_mmio(struct intel_vgpu *pre,
 		switch_mmio_to_vgpu(next, ring_id);
 
 	intel_uncore_forcewake_put(dev_priv, FORCEWAKE_ALL);
+}
+
+#define gvt_host_reg(gvt, reg) 	\
+	(*(u32 *)(gvt->mmio.mmio_host_cache + reg))	\
+
+#define MMIO_COMPARE(vgpu, reg, mask) ({			\
+	int ret;						\
+	u32 value = vgpu_vreg(vgpu, reg);			\
+	u32 host_value = gvt_host_reg(vgpu->gvt, reg);		\
+								\
+	if (mask) {						\
+		value &= mask;					\
+		host_value &= mask;				\
+	}							\
+	if (host_value == value) {				\
+		ret = 0;					\
+	} else {						\
+		gvt_err("vgpu%d unconformance mmio 0x%x:0x%x,0x%x\n",	\
+			vgpu->id, reg,				\
+			vgpu_vreg(vgpu, reg),			\
+			gvt_host_reg(vgpu->gvt, reg));		\
+		ret = -EINVAL;					\
+	}							\
+	ret;							\
+	})
+
+static int noncontext_mmio_compare(struct intel_vgpu *vgpu, int ring_id)
+{
+	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
+	struct render_mmio *mmio, *mmio_list;
+	int i, array_size;
+	struct intel_engine_cs *engine = dev_priv->engine[ring_id];
+
+	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) {
+		mmio_list = gen9_render_mmio_list;
+		array_size = ARRAY_SIZE(gen9_render_mmio_list);
+	} else {
+		mmio_list = gen8_render_mmio_list;
+		array_size = ARRAY_SIZE(gen8_render_mmio_list);
+	}
+
+	for (i = 0, mmio = mmio_list; i < array_size; i++, mmio++) {
+		if (mmio->ring_id != ring_id || mmio->in_context
+			|| is_force_nonpriv_mmio(mmio->reg.reg)
+			|| mmio->reg.reg == RING_MODE_GEN7(engine).reg)
+			continue;
+
+		if (MMIO_COMPARE(vgpu, mmio->reg.reg, mmio->mask))
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void get_host_mmio_snapshot(struct intel_gvt *gvt)
+{
+	struct drm_i915_private *dev_priv = gvt->dev_priv;
+	struct render_mmio *mmio, *mmio_list;
+	int i, array_size;
+
+	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) {
+		mmio_list = gen9_render_mmio_list;
+		array_size = ARRAY_SIZE(gen9_render_mmio_list);
+	} else {
+		mmio_list = gen8_render_mmio_list;
+		array_size = ARRAY_SIZE(gen8_render_mmio_list);
+	}
+
+	if (!gvt->mmio.host_cache_initialized) {
+		/* Snapshot all the non-context MMIOs */
+		for (i = 0, mmio = mmio_list; i < array_size; i++, mmio++) {
+
+			if (mmio->in_context)
+				continue;
+
+			gvt_host_reg(gvt, mmio->reg.reg) =
+						I915_READ_FW(mmio->reg);
+			if (mmio->mask)
+				gvt_host_reg(gvt, mmio->reg.reg) &= mmio->mask;
+		}
+
+		gvt->mmio.host_cache_initialized = true;
+	}
+}
+
+int intel_gvt_vgpu_conformance_check(struct intel_vgpu *vgpu, int ring_id)
+{
+
+	int ret;
+
+	/* Entire non-context MMIOs check only need once */
+	if (!vgpu->entire_nonctxmmio_checked)
+		vgpu->entire_nonctxmmio_checked = true;
+	else
+		return 0;
+
+	get_host_mmio_snapshot(vgpu->gvt);
+
+	ret = noncontext_mmio_compare(vgpu, ring_id);
+	if (ret)
+		goto err;
+
+	return 0;
+err:
+	return ret;
 }
