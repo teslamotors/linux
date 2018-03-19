@@ -809,6 +809,7 @@ struct sof_ipc_window {
 struct sof_ipc_dma_trace_params {
 	struct sof_ipc_hdr hdr;
 	struct sof_ipc_host_buffer buffer;
+	uint32_t stream_tag;
 }  __attribute__((packed));
 
 /* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS */

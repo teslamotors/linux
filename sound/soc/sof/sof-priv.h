@@ -371,6 +371,7 @@ struct snd_sof_dev {
 	/* DMA for Trace */
 	struct snd_dma_buffer dmatb;
 	struct snd_dma_buffer dmatp;
+	struct snd_sof_hda_stream *dtrace_stream;
 	int dma_trace_pages;
 	wait_queue_head_t trace_sleep;
 	u32 host_offset;
