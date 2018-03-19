@@ -231,6 +231,7 @@ static int sof_acpi_probe(struct platform_device *pdev)
 #endif
 
 	/* get ops for platform */
+	new_mach_data = NULL;
 	ops = sof_acpi_get_ops(desc, &new_mach_data);
 	if (!ops) {
 		dev_err(dev, "error: no matching ACPI descriptor ops\n");

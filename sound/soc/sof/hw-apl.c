@@ -522,7 +522,7 @@ static int apl_trigger(struct snd_sof_dev *sdev,
 static int apl_transfer_fw(struct snd_sof_dev *sdev, int stream_tag);
 static int apl_prepare(struct snd_sof_dev *sdev, unsigned int format,
 		       unsigned int size, struct snd_dma_buffer *dmab,
-		       int direction, int stream_tags);
+		       int direction);
 static int apl_stream_prepare(struct snd_sof_dev *sdev,
 			      struct snd_pcm_substream *substream,
 			      struct snd_pcm_hw_params *params);
@@ -722,17 +722,17 @@ static int apl_stream_prepare(struct snd_sof_dev *sdev,
 {
 	struct snd_sof_hda_stream *stream = substream->runtime->private_data;
 	struct snd_sof_hda_dev *hdev = &sdev->hda;
-	struct snd_dma_buffer *dmab;// = substream->runtime->dma_buffer_p;
+	struct snd_dma_buffer *dmab;
 	int ret, timeout = APL_STREAM_RESET_TIMEOUT;
 	u32 val, mask;
 	u32 *bdl, size = params_buffer_bytes(params);
-
-	stream->substream = substream;
 
 	if (!stream) {
 		dev_err(sdev->dev, "error: no stream available\n");
 		return -ENODEV;
 	}
+
+	stream->substream = substream;
 
 	/* decouple host and link DMA */
 	mask = 0x1 << stream->index;
@@ -887,7 +887,7 @@ error:
 
 static int apl_prepare(struct snd_sof_dev *sdev, unsigned int format,
 		       unsigned int size, struct snd_dma_buffer *dmab,
-		       int direction, int stream_tag)
+		       int direction)
 {
 	struct snd_sof_hda_stream *stream = NULL;
 	struct snd_sof_hda_dev *hdev = &sdev->hda;
@@ -896,18 +896,7 @@ static int apl_prepare(struct snd_sof_dev *sdev, unsigned int format,
 	u32 val, mask;
 	u32 *bdl;
 
-	if (stream_tag) {
-		/* get the playback stream */
-		for (i = 0; i < hdev->num_playback; i++) {
-			if (hdev->pstream[i].open && hdev->pstream[i].stream_tag
-				== stream_tag) {
-				stream = &hdev->pstream[i];
-				break;
-			}
-		}
-		goto has_stream;
-	}
-
+	/* get an unused stream */
 	if (direction == SNDRV_PCM_STREAM_PLAYBACK) {
 		/* get an unused playback stream */
 		for (i = 0; i < hdev->num_playback; i++) {
@@ -940,7 +929,6 @@ static int apl_prepare(struct snd_sof_dev *sdev, unsigned int format,
 		return ret;
 	}
 
-has_stream:
 	stream->format_val = format;
 	stream->bufsize = size;
 
@@ -2121,9 +2109,9 @@ static int apl_init(struct snd_sof_dev *sdev,
 		goto err;
 	}
 
-	// prepare DMA for code loader use
+	/* prepare DMA for code loader stream */
 	stream_tag = apl_prepare(sdev, 0x40, fwsize, &sdev->dmab,
-				 SNDRV_PCM_STREAM_PLAYBACK, 0);
+				 SNDRV_PCM_STREAM_PLAYBACK);
 
 	if (stream_tag <= 0) {
 		dev_err(sdev->dev, "error: dma prepare for fw loading err: %x\n",
@@ -2508,7 +2496,8 @@ static int apl_remove(struct snd_sof_dev *sdev)
 				SOF_HDA_INT_CTRL_EN | SOF_HDA_INT_GLOBAL_EN, 0);
 
 	/* disable cores */
-	apl_disable_core(sdev, chip->cores_mask);
+	if (chip)
+		apl_disable_core(sdev, chip->cores_mask);
 
 	/* disable DSP */
 	snd_sof_dsp_update_bits(sdev, APL_PP_BAR, SOF_HDA_REG_PP_PPCTL,

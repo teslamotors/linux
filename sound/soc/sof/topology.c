@@ -351,14 +351,12 @@ static void sof_parse_tokens(struct snd_soc_component *scomp,
 			     int priv_size)
 {
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
-	int size, asize;
+	int asize;
 
 	while (priv_size > 0) {
 		asize = array->size;
 
-		/* validate size */
-		priv_size -= asize;
-		if (size < 0) {
+		if (asize < 0) {
 			dev_err(sdev->dev, "error: invalid array size 0x%x\n",
 				asize);
 			return;
@@ -389,6 +387,8 @@ static void sof_parse_tokens(struct snd_soc_component *scomp,
 
 		/* next array */
 		array = (void *)array + asize;
+		/* update and validate remained size */
+		priv_size -= asize;
 	}
 }
 
