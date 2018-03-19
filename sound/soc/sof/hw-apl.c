@@ -519,14 +519,6 @@ static int apl_trigger(struct snd_sof_dev *sdev,
 	return ret;
 }
 
-static int apl_transfer_fw(struct snd_sof_dev *sdev, int stream_tag);
-static int apl_prepare(struct snd_sof_dev *sdev, unsigned int format,
-		       unsigned int size, struct snd_dma_buffer *dmab,
-		       int direction);
-static int apl_stream_prepare(struct snd_sof_dev *sdev,
-			      struct snd_pcm_substream *substream,
-			      struct snd_pcm_hw_params *params);
-
 int apl_stream_trigger(struct snd_sof_dev *sdev,
 		       struct snd_pcm_substream *substream,
 		       int cmd)
@@ -716,35 +708,34 @@ found:
 	return 0;
 }
 
-static int apl_stream_prepare(struct snd_sof_dev *sdev,
-			      struct snd_pcm_substream *substream,
-			      struct snd_pcm_hw_params *params)
+/*
+ * prepare for common hdac registers settings, for both code loader
+ * and normal stream.
+ */
+static int apl_hdac_prepare(struct snd_sof_dev *sdev,
+			    struct snd_sof_hda_stream *stream,
+			    struct snd_dma_buffer *dmab,
+			    struct snd_pcm_hw_params *params)
 {
-	struct snd_sof_hda_stream *stream = substream->runtime->private_data;
 	struct snd_sof_hda_dev *hdev = &sdev->hda;
-	struct snd_dma_buffer *dmab;
 	int ret, timeout = APL_STREAM_RESET_TIMEOUT;
 	u32 val, mask;
-	u32 *bdl, size = params_buffer_bytes(params);
+	u32 *bdl;
 
 	if (!stream) {
 		dev_err(sdev->dev, "error: no stream available\n");
 		return -ENODEV;
 	}
 
-	stream->substream = substream;
-
 	/* decouple host and link DMA */
 	mask = 0x1 << stream->index;
 	snd_sof_dsp_update_bits(sdev, APL_PP_BAR, SOF_HDA_REG_PP_PPCTL,
 				mask, mask);
 
-	dmab = substream->runtime->dma_buffer_p;
-
-	stream->format_val = (get_sample_code(params_rate(params)) << 8) |
-		(get_bits_code(params_width(params)) << 4) |
-		(params_channels(params) - 1);
-	stream->bufsize = size;
+	if (!dmab) {
+		dev_err(sdev->dev, "error: no dma buffer allocated!\n");
+		return -ENODEV;
+	}
 
 	/* clear stream status */
 	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR, stream->sd_offset,
@@ -806,10 +797,11 @@ static int apl_stream_prepare(struct snd_sof_dev *sdev,
 	stream->frags = 0;
 
 	bdl = (u32 *)stream->bdl.area;
-	ret = apl_stream_setup_bdl(sdev, dmab, stream, &bdl, size, params);
+	ret = apl_stream_setup_bdl(sdev, dmab, stream, &bdl,
+				   stream->bufsize, params);
 	if (ret < 0) {
 		dev_dbg(sdev->dev, "error: set up bdl fail\n");
-		goto error;
+		return ret;
 	}
 
 	/* set up stream descriptor for DMA */
@@ -867,6 +859,38 @@ static int apl_stream_prepare(struct snd_sof_dev *sdev,
 		stream->fifo_size = 0;
 	}
 
+	return ret;
+}
+
+static int apl_stream_prepare(struct snd_sof_dev *sdev,
+			      struct snd_pcm_substream *substream,
+			      struct snd_pcm_hw_params *params)
+{
+	struct snd_sof_hda_stream *stream = substream->runtime->private_data;
+	struct snd_dma_buffer *dmab;
+	int ret;
+	u32 size = params_buffer_bytes(params);
+
+	if (!stream) {
+		dev_err(sdev->dev, "error: no stream available\n");
+		return -ENODEV;
+	}
+
+	stream->substream = substream;
+
+	dmab = substream->runtime->dma_buffer_p;
+
+	stream->format_val = (get_sample_code(params_rate(params)) << 8) |
+		(get_bits_code(params_width(params)) << 4) |
+		(params_channels(params) - 1);
+	stream->bufsize = size;
+
+	ret = apl_hdac_prepare(sdev, stream, dmab, params);
+	if (ret < 0) {
+		dev_err(sdev->dev, "error: hdac prepare failed: %x\n", ret);
+		return ret;
+	}
+
 	/* disable SPIB, to enable buffer wrap for stream */
 	apl_spib_config(sdev, stream, APL_SPIB_DISABLE, 0);
 
@@ -879,22 +903,16 @@ static int apl_stream_prepare(struct snd_sof_dev *sdev,
 			(7 + stream->stream_tag - 1), (u32)0x10000);
 
 	return stream->stream_tag;
-
-error:
-	snd_dma_free_pages(dmab);
-	return ret;
 }
 
-static int apl_prepare(struct snd_sof_dev *sdev, unsigned int format,
-		       unsigned int size, struct snd_dma_buffer *dmab,
-		       int direction)
+static int apl_cl_prepare(struct snd_sof_dev *sdev, unsigned int format,
+			  unsigned int size, struct snd_dma_buffer *dmab,
+			  int direction)
 {
 	struct snd_sof_hda_stream *stream = NULL;
 	struct snd_sof_hda_dev *hdev = &sdev->hda;
 	struct pci_dev *pci = sdev->pci;
-	int ret, timeout = APL_STREAM_RESET_TIMEOUT, i;
-	u32 val, mask;
-	u32 *bdl;
+	int ret, i;
 
 	/* get an unused stream */
 	if (direction == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -932,131 +950,10 @@ static int apl_prepare(struct snd_sof_dev *sdev, unsigned int format,
 	stream->format_val = format;
 	stream->bufsize = size;
 
-	/* decouple host and link DMA */
-	mask = 0x1 << stream->index;
-	snd_sof_dsp_update_bits(sdev, APL_PP_BAR, SOF_HDA_REG_PP_PPCTL,
-				mask, mask);
-
-	/* clear stream status */
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR, stream->sd_offset,
-				SOF_HDA_CL_DMA_SD_INT_MASK |
-				SOF_HDA_SD_CTL_DMA_START, 0);
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR,
-				stream->sd_offset + SOF_HDA_ADSP_REG_CL_SD_STS,
-				SOF_HDA_CL_DMA_SD_INT_MASK,
-				SOF_HDA_CL_DMA_SD_INT_MASK);
-
-	/* stream reset */
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR, stream->sd_offset, 0x1, 0x1);
-	udelay(3);
-	do {
-		val = snd_sof_dsp_read(sdev, APL_HDA_BAR, stream->sd_offset);
-		if (val & 0x1)
-			break;
-	} while (--timeout);
-	if (timeout == 0) {
-		dev_err(sdev->dev, "error: stream reset failed\n");
-		return -EINVAL;
-	}
-
-	timeout = APL_STREAM_RESET_TIMEOUT;
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR, stream->sd_offset, 0x1, 0x0);
-
-	/* wait for hardware to report that stream is out of reset */
-	udelay(3);
-	do {
-		val = snd_sof_dsp_read(sdev, APL_HDA_BAR, stream->sd_offset);
-		if ((val & 0x1) == 0)
-			break;
-	} while (--timeout);
-	if (timeout == 0) {
-		dev_err(sdev->dev, "error: timeout waiting for stream reset\n");
-		return -EINVAL;
-	}
-
-	if (stream->posbuf)
-		*stream->posbuf = 0;
-
-	/* reset BDL address */
-	snd_sof_dsp_write(sdev, APL_HDA_BAR,
-			  stream->sd_offset + SOF_HDA_ADSP_REG_CL_SD_BDLPL,
-			  0x0);
-	snd_sof_dsp_write(sdev, APL_HDA_BAR,
-			  stream->sd_offset + SOF_HDA_ADSP_REG_CL_SD_BDLPU,
-			  0x0);
-
-	/* clear stream status */
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR, stream->sd_offset,
-				SOF_HDA_CL_DMA_SD_INT_MASK |
-				SOF_HDA_SD_CTL_DMA_START, 0);
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR,
-				stream->sd_offset + SOF_HDA_ADSP_REG_CL_SD_STS,
-				SOF_HDA_CL_DMA_SD_INT_MASK,
-				SOF_HDA_CL_DMA_SD_INT_MASK);
-
-	stream->frags = 0;
-
-	bdl = (u32 *)stream->bdl.area;
-	ret = apl_stream_setup_bdl(sdev, dmab, stream, &bdl, size, NULL);
+	ret = apl_hdac_prepare(sdev, stream, dmab, NULL);
 	if (ret < 0) {
-		dev_dbg(sdev->dev, "error: set up bdl fail\n");
+		dev_err(sdev->dev, "error: hdac prepare failed: %x\n", ret);
 		goto error;
-	}
-
-	/* set up stream descriptor for DMA */
-	/* program stream tag */
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR, stream->sd_offset,
-				SOF_HDA_CL_SD_CTL_STREAM_TAG_MASK,
-				stream->stream_tag <<
-				SOF_HDA_CL_SD_CTL_STREAM_TAG_SHIFT);
-
-	/* program cyclic buffer length */
-	snd_sof_dsp_write(sdev, APL_HDA_BAR,
-			  stream->sd_offset + SOF_HDA_ADSP_REG_CL_SD_CBL,
-			  stream->bufsize);
-
-	/* program stream format */
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR,
-				stream->sd_offset +
-				SOF_HDA_ADSP_REG_CL_SD_FORMAT,
-				0xffff, stream->format_val);
-
-	/* program last valid index */
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR,
-				stream->sd_offset +
-				SOF_HDA_ADSP_REG_CL_SD_LVI,
-				0xffff, (stream->frags - 1));
-
-	/* program BDL address */
-	snd_sof_dsp_write(sdev, APL_HDA_BAR,
-			  stream->sd_offset + SOF_HDA_ADSP_REG_CL_SD_BDLPL,
-			  (u32)stream->bdl.addr);
-	snd_sof_dsp_write(sdev, APL_HDA_BAR,
-			  stream->sd_offset + SOF_HDA_ADSP_REG_CL_SD_BDLPU,
-			  upper_32_bits(stream->bdl.addr));
-
-	/* enable position buffer */
-	if (!(snd_sof_dsp_read(sdev, APL_HDA_BAR, SOF_HDA_ADSP_DPLBASE) &
-	      SOF_HDA_ADSP_DPLBASE_ENABLE))
-		snd_sof_dsp_write(sdev, APL_HDA_BAR, SOF_HDA_ADSP_DPLBASE,
-				  (u32)hdev->posbuffer.addr |
-				  SOF_HDA_ADSP_DPLBASE_ENABLE);
-
-	/* set interrupt enable bits */
-	snd_sof_dsp_update_bits(sdev, APL_HDA_BAR, stream->sd_offset,
-				SOF_HDA_CL_DMA_SD_INT_MASK,
-				SOF_HDA_CL_DMA_SD_INT_MASK);
-
-	/* read FIFO size */
-	if (stream->direction == SNDRV_PCM_STREAM_PLAYBACK) {
-		stream->fifo_size =
-			snd_sof_dsp_read(sdev, APL_HDA_BAR,
-					 stream->sd_offset +
-					 SOF_HDA_ADSP_REG_CL_SD_FIFOSIZE)
-			& 0xffff;
-		stream->fifo_size += 1;
-	} else {
-		stream->fifo_size = 0;
 	}
 
 	apl_spib_config(sdev, stream, APL_SPIB_ENABLE, size);
@@ -2038,6 +1935,41 @@ static int apl_stream_init(struct snd_sof_dev *sdev)
 	return 0;
 }
 
+static int apl_stream_reset(struct snd_sof_dev *sdev)
+{
+	struct snd_sof_hda_dev *hdev = &sdev->hda;
+	struct snd_sof_hda_stream *stream;
+	int i;
+
+	if (hdev->posbuffer.area)
+		/* free position buffer */
+		snd_dma_free_pages(&hdev->posbuffer);
+
+	if (hdev->ringbuffer.area)
+		/* free ring buffer */
+		snd_dma_free_pages(&hdev->ringbuffer);
+
+	/* free capture streams */
+	for (i = 0; i < hdev->num_capture; i++) {
+		stream = &hdev->cstream[i];
+
+		if (stream->bdl.area)
+			/* free bdl buffer */
+			snd_dma_free_pages(&stream->bdl);
+	}
+
+	/* free playback streams */
+	for (i = 0; i < hdev->num_playback; i++) {
+		stream = &hdev->pstream[i];
+
+		if (stream->bdl.area)
+			/* free bdl buffer */
+			snd_dma_free_pages(&stream->bdl);
+	}
+
+	return 0;
+}
+
 static const struct snd_sof_chip_info chip_info[] = {
 {
 	.id = 0x5a98,
@@ -2110,8 +2042,8 @@ static int apl_init(struct snd_sof_dev *sdev,
 	}
 
 	/* prepare DMA for code loader stream */
-	stream_tag = apl_prepare(sdev, 0x40, fwsize, &sdev->dmab,
-				 SNDRV_PCM_STREAM_PLAYBACK);
+	stream_tag = apl_cl_prepare(sdev, 0x40, fwsize, &sdev->dmab,
+				    SNDRV_PCM_STREAM_PLAYBACK);
 
 	if (stream_tag <= 0) {
 		dev_err(sdev->dev, "error: dma prepare for fw loading err: %x\n",
@@ -2506,7 +2438,7 @@ static int apl_remove(struct snd_sof_dev *sdev)
 	free_irq(sdev->ipc_irq, sdev);
 	free_irq(sdev->pci->irq, sdev);
 
-	return 0;
+	return apl_stream_reset(sdev);
 }
 
 /* appololake ops */
