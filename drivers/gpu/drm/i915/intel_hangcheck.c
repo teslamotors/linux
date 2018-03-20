@@ -266,7 +266,7 @@ engine_stuck(struct intel_engine_cs *engine, u64 acthd)
 	 */
 	tmp = I915_READ_CTL(engine);
 	if (tmp & RING_WAIT) {
-		i915_handle_error(dev_priv, 0,
+		i915_handle_error(dev_priv, BIT(engine->id),
 				  "Kicking stuck wait on %s",
 				  engine->name);
 		I915_WRITE_CTL(engine, tmp);
@@ -278,7 +278,7 @@ engine_stuck(struct intel_engine_cs *engine, u64 acthd)
 		default:
 			return ENGINE_DEAD;
 		case 1:
-			i915_handle_error(dev_priv, 0,
+			i915_handle_error(dev_priv, ALL_ENGINES,
 					  "Kicking stuck semaphore on %s",
 					  engine->name);
 			I915_WRITE_CTL(engine, tmp);
