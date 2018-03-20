@@ -1544,6 +1544,34 @@ static int gen9_init_render_ring(struct intel_engine_cs *engine)
 	return init_workarounds_ring(engine);
 }
 
+static struct drm_i915_gem_request *
+execlists_reset_prepare(struct intel_engine_cs *engine)
+{
+	/* Prevent request submission to the hardware until we have
+	 * completed the reset in i915_gem_reset_finish(). If a request
+	 * is completed by one engine, it may then queue a request
+	 * to a second via its engine->irq_tasklet *just* as we are
+	 * calling engine->init_hw() and also writing the ELSP.
+	 * Turning off the engine->irq_tasklet until the reset is over
+	 * prevents the race.
+	 *
+	 * Note that this needs to be a single atomic operation on the
+	 * tasklet (flush existing tasks, prevent new tasks) to prevent
+	 * a race between reset and set-wedged. It is not, so we do the best
+	 * we can atm and make sure we don't lock the machine up in the more
+	 * common case of recursively being called from set-wedged from inside
+	 * i915_reset.
+	 */
+	if (!atomic_read(&engine->execlists.irq_tasklet.count))
+		tasklet_kill(&engine->execlists.irq_tasklet);
+	tasklet_disable(&engine->execlists.irq_tasklet);
+
+	if (engine->irq_seqno_barrier)
+		engine->irq_seqno_barrier(engine);
+
+	return i915_gem_find_active_request(engine);
+}
+
 static void reset_irq(struct intel_engine_cs *engine)
 {
 	struct drm_i915_private *dev_priv = engine->i915;
@@ -1567,8 +1595,8 @@ static void reset_irq(struct intel_engine_cs *engine)
 	clear_bit(ENGINE_IRQ_EXECLIST, &engine->irq_posted);
 }
 
-static void reset_common_ring(struct intel_engine_cs *engine,
-			      struct drm_i915_gem_request *request)
+static void execlists_reset(struct intel_engine_cs *engine,
+			    struct drm_i915_gem_request *request)
 {
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 	struct intel_context *ce;
@@ -1628,6 +1656,11 @@ static void reset_common_ring(struct intel_engine_cs *engine,
 
 	/* Reset WaIdleLiteRestore:bdw,skl as well */
 	unwind_wa_tail(request);
+}
+
+static void execlists_reset_finish(struct intel_engine_cs *engine)
+{
+	tasklet_enable(&engine->execlists.irq_tasklet);
 }
 
 static int intel_logical_ring_emit_pdps(struct drm_i915_gem_request *req)
@@ -1938,7 +1971,10 @@ logical_ring_default_vfuncs(struct intel_engine_cs *engine)
 {
 	/* Default vfuncs which can be overriden by each engine. */
 	engine->init_hw = gen8_init_common_ring;
-	engine->reset_hw = reset_common_ring;
+
+	engine->reset.prepare = execlists_reset_prepare;
+	engine->reset.reset = execlists_reset;
+	engine->reset.finish = execlists_reset_finish;
 
 	engine->context_pin = execlists_context_pin;
 	engine->context_unpin = execlists_context_unpin;

@@ -2793,7 +2793,7 @@ static bool engine_stalled(struct intel_engine_cs *engine)
 struct drm_i915_gem_request *
 i915_gem_reset_prepare_engine(struct intel_engine_cs *engine)
 {
-	struct drm_i915_gem_request *request = NULL;
+	struct drm_i915_gem_request *request;
 
 	/* Prevent the signaler thread from updating the request
 	 * state (by calling dma_fence_signal) as we are processing
@@ -2806,29 +2806,7 @@ i915_gem_reset_prepare_engine(struct intel_engine_cs *engine)
 	 */
 	kthread_park(engine->breadcrumbs.signaler);
 
-	/* Prevent request submission to the hardware until we have
-	 * completed the reset in i915_gem_reset_finish(). If a request
-	 * is completed by one engine, it may then queue a request
-	 * to a second via its engine->irq_tasklet *just* as we are
-	 * calling engine->init_hw() and also writing the ELSP.
-	 * Turning off the engine->irq_tasklet until the reset is over
-	 * prevents the race.
-	 *
-	 * Note that this needs to be a single atomic operation on the
-	 * tasklet (flush existing tasks, prevent new tasks) to prevent
-	 * a race between reset and set-wedged. It is not, so we do the best
-	 * we can atm and make sure we don't lock the machine up in the more
-	 * common case of recursively being called from set-wedged from inside
-	 * i915_reset.
-	 */
-	if (!atomic_read(&engine->execlists.irq_tasklet.count))
-		tasklet_kill(&engine->execlists.irq_tasklet);
-	tasklet_disable(&engine->execlists.irq_tasklet);
-
-	if (engine->irq_seqno_barrier)
-		engine->irq_seqno_barrier(engine);
-
-	request = i915_gem_find_active_request(engine);
+	request = engine->reset.prepare(engine);
 	if (request && request->fence.error == -EIO)
 		request = ERR_PTR(-EIO); /* Previous reset failed! */
 
@@ -2969,7 +2947,7 @@ void i915_gem_reset_engine(struct intel_engine_cs *engine,
 	}
 
 	/* Setup the CS to resume from the breadcrumb of the hung request */
-	engine->reset_hw(engine, request);
+	engine->reset.reset(engine, request);
 }
 
 void i915_gem_reset(struct drm_i915_private *dev_priv)
@@ -3002,7 +2980,8 @@ void i915_gem_reset(struct drm_i915_private *dev_priv)
 
 void i915_gem_reset_finish_engine(struct intel_engine_cs *engine)
 {
-	tasklet_enable(&engine->execlists.irq_tasklet);
+	engine->reset.finish(engine);
+
 	kthread_unpark(engine->breadcrumbs.signaler);
 }
 

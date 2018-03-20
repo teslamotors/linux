@@ -364,6 +364,13 @@ struct intel_engine_cs {
 	void		(*reset_hw)(struct intel_engine_cs *engine,
 				    struct drm_i915_gem_request *req);
 
+	struct {
+		struct drm_i915_gem_request *(*prepare)(struct intel_engine_cs *engine);
+		void (*reset)(struct intel_engine_cs *engine,
+			      struct drm_i915_gem_request *rq);
+		void (*finish)(struct intel_engine_cs *engine);
+	} reset;
+
 	void		(*set_default_submission)(struct intel_engine_cs *engine);
 
 	struct intel_ring *(*context_pin)(struct intel_engine_cs *engine,
