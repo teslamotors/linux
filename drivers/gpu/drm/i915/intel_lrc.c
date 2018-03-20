@@ -1968,7 +1968,7 @@ static void i915_error_reset(struct work_struct *work) {
 	struct intel_engine_cs *engine =
 		container_of(work, struct intel_engine_cs,
 			     reset_work);
-	i915_handle_error(engine->i915, 1 << engine->id,
+	i915_handle_error(engine->i915, 1 << engine->id, I915_ERROR_CAPTURE,
 			"Received error interrupt from engine %d",
 			engine->id);
 }

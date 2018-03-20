@@ -1913,7 +1913,6 @@ static int i915_resume_switcheroo(struct drm_device *dev)
 /**
  * i915_reset - reset chip after a hang
  * @i915: #drm_i915_private to reset
- * @flags: Instructions
  *
  * Reset the chip.  Useful if a hang is detected. Marks the device as wedged
  * on failure.
@@ -1928,7 +1927,7 @@ static int i915_resume_switcheroo(struct drm_device *dev)
  *   - re-init interrupt state
  *   - re-init display
  */
-void i915_reset(struct drm_i915_private *i915, unsigned int flags)
+void i915_reset(struct drm_i915_private *i915)
 {
 	struct i915_gpu_error *error = &i915->gpu_error;
 	int ret;
@@ -1943,8 +1942,9 @@ void i915_reset(struct drm_i915_private *i915, unsigned int flags)
 	if (!i915_gem_unset_wedged(i915))
 		goto wakeup;
 
-	if (!(flags & I915_RESET_QUIET))
-		dev_notice(i915->drm.dev, "Resetting chip after gpu hang\n");
+	if (error->reason)
+		dev_notice(i915->drm.dev,
+			   "Resetting chip for %s\n", error->reason);
 	error->reset_count++;
 
 	disable_irq(i915->drm.irq);
@@ -2013,7 +2013,7 @@ error:
 /**
  * i915_reset_engine - reset GPU engine to recover from a hang
  * @engine: engine to reset
- * @flags: options
+ * @msg: reason for GPU reset; or NULL for no dev_notice()
  *
  * Reset a specific GPU engine. Useful if a hang is detected.
  * Returns zero on successful reset or otherwise an error code.
@@ -2023,7 +2023,7 @@ error:
  *  - reset engine (which will force the engine to idle)
  *  - re-init/configure engine
  */
-int i915_reset_engine(struct intel_engine_cs *engine, unsigned int flags)
+int i915_reset_engine(struct intel_engine_cs *engine, const char *msg)
 {
 	struct i915_gpu_error *error = &engine->i915->gpu_error;
 	struct drm_i915_gem_request *active_request;
@@ -2038,10 +2038,9 @@ int i915_reset_engine(struct intel_engine_cs *engine, unsigned int flags)
 		goto out;
 	}
 
-	if (!(flags & I915_RESET_QUIET)) {
+	if (msg)
 		dev_notice(engine->i915->drm.dev,
-			   "Resetting %s after gpu hang\n", engine->name);
-	}
+			   "Resetting %s for %s\n", engine->name, msg);
 	error->reset_engine_count[engine->id]++;
 
 	ret = intel_gpu_reset(engine->i915, intel_engine_flag(engine));

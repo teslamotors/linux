@@ -342,7 +342,7 @@ static int igt_global_reset(void *arg)
 	mutex_lock(&i915->drm.struct_mutex);
 	reset_count = i915_reset_count(&i915->gpu_error);
 
-	i915_reset(i915, I915_RESET_QUIET);
+	i915_reset(i915);
 
 	if (i915_reset_count(&i915->gpu_error) == reset_count) {
 		pr_err("No GPU reset recorded!\n");
@@ -378,7 +378,7 @@ static int igt_reset_engine(void *arg)
 		reset_engine_count = i915_reset_engine_count(&i915->gpu_error,
 							     engine);
 
-		err = i915_reset_engine(engine, I915_RESET_QUIET);
+		err = i915_reset_engine(engine, NULL);
 		if (err) {
 			pr_err("i915_reset_engine failed\n");
 			break;
@@ -511,7 +511,7 @@ static int igt_reset_active_engines(void *arg)
 
 		set_bit(I915_RESET_ENGINE + engine->id, &i915->gpu_error.flags);
 		do {
-			err = i915_reset_engine(engine, I915_RESET_QUIET);
+			err = i915_reset_engine(engine, NULL);
 			if (err) {
 				pr_err("i915_reset_engine(%s) failed, err=%d\n",
 				       engine->name, err);
@@ -718,7 +718,7 @@ static int igt_reset_queue(void *arg)
 
 			reset_count = fake_hangcheck(prev);
 
-			i915_reset(i915, I915_RESET_QUIET);
+			i915_reset(i915);
 
 			GEM_BUG_ON(test_bit(I915_RESET_HANDOFF,
 					    &i915->gpu_error.flags));
@@ -819,7 +819,7 @@ static int igt_handle_error(void *arg)
 	engine->hangcheck.stalled = true;
 	engine->hangcheck.seqno = intel_engine_get_seqno(engine);
 
-	i915_handle_error(i915, intel_engine_flag(engine), "%s", __func__);
+	i915_handle_error(i915, intel_engine_flag(engine), 0, NULL);
 
 	xchg(&i915->gpu_error.first_error, error);
 
