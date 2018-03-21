@@ -203,6 +203,9 @@ int snd_sof_init_trace(struct snd_sof_dev *sdev)
 	params.buffer.offset = 0;
 	params.buffer.pages = sdev->dma_trace_pages;
 
+	init_waitqueue_head(&sdev->trace_sleep);
+	sdev->host_offset = 0;
+
 	/* send IPC to the DSP */
 	ret = sof_ipc_tx_message(sdev->ipc,
 				 params.hdr.cmd, &params, sizeof(params),
@@ -213,8 +216,6 @@ int snd_sof_init_trace(struct snd_sof_dev *sdev)
 		goto table_err;
 	}
 
-	init_waitqueue_head(&sdev->trace_sleep);
-	sdev->host_offset = 0;
 	sdev->dtrace_is_enabled = true;
 	return 0;
 
