@@ -343,6 +343,7 @@ struct snd_sof_dev {
 	void __iomem *bar[SND_SOF_BARS];	/* DSP base address */
 	int mmio_bar;
 	int mailbox_bar;
+	size_t dsp_oops_offset;
 
 	/* debug */
 	struct dentry *debugfs_root;
