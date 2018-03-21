@@ -791,6 +791,10 @@ static void execlists_cancel_requests(struct intel_engine_cs *engine)
 	execlists->first = NULL;
 	GEM_BUG_ON(port_isset(execlists->port));
 
+	/* Mark all CS interrupts as complete */
+	smp_store_mb(execlists->active, 0);
+	synchronize_irq(engine->i915->drm.irq);
+
 	/*
 	 * The port is checked prior to scheduling a tasklet, but
 	 * just in case we have suspended the tasklet to do the
