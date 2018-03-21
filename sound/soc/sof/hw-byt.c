@@ -220,6 +220,13 @@ static void byt_get_windows(struct snd_sof_dev *sdev)
 						    elem->offset + MBOX_OFFSET,
 						    elem->size, "regs");
 			break;
+		case SOF_IPC_REGION_EXCEPTION:
+			sdev->dsp_oops_offset = elem->offset + MBOX_OFFSET;
+			snd_sof_debugfs_create_item(sdev,
+						    sdev->bar[BYT_DSP_BAR] +
+						    elem->offset + MBOX_OFFSET,
+						    elem->size, "exception");
+			break;
 		default:
 			dev_err(sdev->dev, "error: get illegal window info\n");
 			return;
@@ -306,12 +313,10 @@ static void byt_get_registers(struct snd_sof_dev *sdev,
 			      u32 *stack, size_t stack_words)
 {
 	/* first read regsisters */
-	byt_mailbox_read(sdev, sdev->host_box.offset + EXCEPT_OFFSET,
-			 xoops, sizeof(*xoops));
+	byt_mailbox_read(sdev, sdev->dsp_oops_offset, xoops, sizeof(*xoops));
 
 	/* the get the stack */
-	byt_mailbox_read(sdev, sdev->host_box.offset + EXCEPT_OFFSET +
-			 sizeof(*xoops), stack,
+	byt_mailbox_read(sdev, sdev->dsp_oops_offset + sizeof(*xoops), stack,
 			 stack_words * sizeof(u32));
 }
 
@@ -385,7 +390,14 @@ static irqreturn_t byt_irq_thread(int irq, void *context)
 	ipcd = snd_sof_dsp_read64(sdev, BYT_DSP_BAR, SHIM_IPCD);
 	if (ipcd & SHIM_BYT_IPCD_BUSY) {
 		/* Handle messages from DSP Core */
-		snd_sof_ipc_msgs_rx(sdev);
+		if ((ipcd & SOF_IPC_PANIC_MAGIC_MASK) == SOF_IPC_PANIC_MAGIC) {
+			dev_err(sdev->dev, "error : DSP panic!\n");
+			snd_sof_dsp_cmd_done(sdev);
+			snd_sof_dsp_dbg_dump(sdev, SOF_DBG_REGS | SOF_DBG_MBOX);
+			snd_sof_trace_notify_for_error(sdev);
+		} else {
+			snd_sof_ipc_msgs_rx(sdev);
+		}
 	}
 
 	/* continue to send any remaining messages... */
