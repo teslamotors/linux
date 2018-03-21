@@ -128,6 +128,10 @@ struct snd_sof_dsp_ops {
 			   struct snd_sof_mod_hdr *hdr);
 	int (*fw_ready)(struct snd_sof_dev *sdev, u32 msg_id);
 
+	/* host DMA trace initialization */
+	int (*trace_init)(struct snd_sof_dev *sdev, u32 *stream_tag);
+	int (*trace_release)(struct snd_sof_dev *sdev);
+	int (*trace_trigger)(struct snd_sof_dev *sdev, int cmd);
 };
 
 struct snd_sof_pdata;

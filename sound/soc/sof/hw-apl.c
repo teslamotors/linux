@@ -862,6 +862,62 @@ static int apl_hdac_prepare(struct snd_sof_dev *sdev,
 	return ret;
 }
 
+static int apl_trace_prepare(struct snd_sof_dev *sdev)
+{
+	struct snd_sof_hda_stream *stream = sdev->dtrace_stream;
+	struct snd_dma_buffer *dmab = &sdev->dmatb;
+
+	stream->bufsize = sdev->dmatb.bytes;
+
+	return apl_hdac_prepare(sdev, stream, dmab, NULL);
+}
+
+static int apl_trace_init(struct snd_sof_dev *sdev, u32 *stream_tag)
+{
+	struct snd_sof_hda_dev *hdev = &sdev->hda;
+	int i;
+
+	sdev->dtrace_stream = NULL;
+
+	/*
+	 * iterate capture stream array and find the first available one for
+	 * DMA trace transferring.
+	 * TODO: Currently only the first capture stream is available. In the
+	 * future, DMA trace should use the last one capture stream for
+	 * avoiding conflict with normal capture stream.
+	 */
+	for (i = 0; i < hdev->num_capture; i++) {
+		if (!hdev->cstream[i].open) {
+			hdev->cstream[i].open = true;
+			sdev->dtrace_stream = &hdev->cstream[i];
+			*stream_tag = sdev->dtrace_stream->stream_tag;
+			break;
+		}
+	}
+
+	/* initialize capture stream, set BDL address and return corresponding
+	 * stream tag which will be sent to the firmware by IPC message.
+	 */
+	return apl_trace_prepare(sdev);
+}
+
+static int apl_trace_release(struct snd_sof_dev *sdev)
+{
+	if (sdev->dtrace_stream) {
+		sdev->dtrace_stream->open = false;
+		sdev->dtrace_stream = NULL;
+		return 0;
+	}
+
+	dev_dbg(sdev->dev, "DMA trace stream is not opened!\n");
+	return -ENODEV;
+}
+
+static int apl_trace_trigger(struct snd_sof_dev *sdev, int cmd)
+{
+	return apl_trigger(sdev, sdev->dtrace_stream, cmd);
+}
+
 static int apl_stream_prepare(struct snd_sof_dev *sdev,
 			      struct snd_pcm_substream *substream,
 			      struct snd_pcm_hw_params *params)
@@ -2488,6 +2544,11 @@ struct snd_sof_dsp_ops snd_sof_apl_ops = {
 
 	/* firmware run */
 	.run = apl_run_firmware,
+
+	/* trace callback */
+	.trace_init = apl_trace_init,
+	.trace_release = apl_trace_release,
+	.trace_trigger = apl_trace_trigger,
 };
 EXPORT_SYMBOL(snd_sof_apl_ops);
 
@@ -2537,7 +2598,12 @@ struct snd_sof_dsp_ops snd_sof_cnl_ops = {
 	.load_firmware = apl_load_firmware,
 
 	/* firmware run */
-	.run = apl_run_firmware
+	.run = apl_run_firmware,
+
+	/* trace callback */
+	.trace_init = apl_trace_init,
+	.trace_release = apl_trace_release,
+	.trace_trigger = apl_trace_trigger,
 };
 EXPORT_SYMBOL(snd_sof_cnl_ops);
 
