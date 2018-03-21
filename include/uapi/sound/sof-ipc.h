@@ -764,6 +764,7 @@ enum sof_ipc_region {
 	SOF_IPC_REGION_DEBUG,
 	SOF_IPC_REGION_STREAM,
 	SOF_IPC_REGION_REGS,
+	SOF_IPC_REGION_EXCEPTION,
 };
 
 struct sof_ipc_ext_data_hdr {
