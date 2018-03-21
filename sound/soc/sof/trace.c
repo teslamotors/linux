@@ -206,6 +206,14 @@ int snd_sof_init_trace(struct snd_sof_dev *sdev)
 	init_waitqueue_head(&sdev->trace_sleep);
 	sdev->host_offset = 0;
 
+	ret = snd_sof_dma_trace_init(sdev, &params.stream_tag);
+	if (ret < 0) {
+		dev_err(sdev->dev,
+			"error: fail in snd_sof_dma_trace_init %d\n", ret);
+		goto table_err;
+	}
+	dev_dbg(sdev->dev, "stream_tag: %d\n", params.stream_tag);
+
 	/* send IPC to the DSP */
 	ret = sof_ipc_tx_message(sdev->ipc,
 				 params.hdr.cmd, &params, sizeof(params),
@@ -213,6 +221,13 @@ int snd_sof_init_trace(struct snd_sof_dev *sdev)
 	if (ret < 0) {
 		dev_err(sdev->dev,
 			"error: can't set params for DMA for trace %d\n", ret);
+		goto table_err;
+	}
+
+	ret = snd_sof_dma_trace_trigger(sdev, SNDRV_PCM_TRIGGER_START);
+	if (ret < 0) {
+		dev_err(sdev->dev,
+			"error: snd_sof_dma_trace_trigger: start: %d\n", ret);
 		goto table_err;
 	}
 
@@ -253,8 +268,20 @@ void snd_sof_trace_notify_for_error(struct snd_sof_dev *sdev)
 
 void snd_sof_release_trace(struct snd_sof_dev *sdev)
 {
+	int ret;
+
 	if (!sdev->dtrace_is_enabled)
 		return;
+
+	ret = snd_sof_dma_trace_trigger(sdev, SNDRV_PCM_TRIGGER_STOP);
+	if (ret < 0)
+		dev_err(sdev->dev,
+			"error: snd_sof_dma_trace_trigger: stop: %d\n", ret);
+
+	ret = snd_sof_dma_trace_release(sdev);
+	if (ret < 0)
+		dev_err(sdev->dev,
+			"error: fail in snd_sof_dma_trace_release %d\n", ret);
 
 	snd_dma_free_pages(&sdev->dmatb);
 	snd_dma_free_pages(&sdev->dmatp);

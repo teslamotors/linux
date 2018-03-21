@@ -193,6 +193,32 @@ static inline int snd_sof_dsp_cmd_done(struct snd_sof_dev *sdev)
 		return 0;
 }
 
+/* host DMA trace */
+static inline int snd_sof_dma_trace_init(struct snd_sof_dev *sdev,
+					 u32 *stream_tag)
+{
+	if (sdev->ops->trace_init)
+		return sdev->ops->trace_init(sdev, stream_tag);
+	else
+		return 0;
+}
+
+static inline int snd_sof_dma_trace_release(struct snd_sof_dev *sdev)
+{
+	if (sdev->ops->trace_release)
+		return sdev->ops->trace_release(sdev);
+	else
+		return 0;
+}
+
+static inline int snd_sof_dma_trace_trigger(struct snd_sof_dev *sdev, int cmd)
+{
+	if (sdev->ops->trace_trigger)
+		return sdev->ops->trace_trigger(sdev, cmd);
+	else
+		return 0;
+}
+
 int snd_sof_dsp_update_bits_unlocked(struct snd_sof_dev *sdev, u32 bar,
 				     u32 offset, u32 mask, u32 value);
 
