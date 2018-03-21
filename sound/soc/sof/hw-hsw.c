@@ -293,12 +293,10 @@ static void hsw_get_registers(struct snd_sof_dev *sdev,
 			      u32 *stack, size_t stack_words)
 {
 	/* first read regsisters */
-	hsw_mailbox_read(sdev, sdev->host_box.offset + EXCEPT_OFFSET,
-			 xoops, sizeof(*xoops));
+	hsw_mailbox_read(sdev, sdev->dsp_oops_offset, xoops, sizeof(*xoops));
 
 	/* the get the stack */
-	hsw_mailbox_read(sdev, sdev->host_box.offset + EXCEPT_OFFSET +
-			 sizeof(*xoops), stack,
+	hsw_mailbox_read(sdev, sdev->dsp_oops_offset + sizeof(*xoops), stack,
 			 stack_words * sizeof(u32));
 }
 
@@ -376,7 +374,14 @@ static irqreturn_t hsw_irq_thread(int irq, void *context)
 	/* new message from DSP */
 	if (ipcd & SHIM_IPCD_BUSY) {
 		/* Handle messages from DSP Core */
-		snd_sof_ipc_msgs_rx(sdev);
+		if ((ipcd & SOF_IPC_PANIC_MAGIC_MASK) == SOF_IPC_PANIC_MAGIC) {
+			dev_err(sdev->dev, "error : DSP panic!\n");
+			snd_sof_dsp_cmd_done(sdev);
+			snd_sof_dsp_dbg_dump(sdev, SOF_DBG_REGS | SOF_DBG_MBOX);
+			snd_sof_trace_notify_for_error(sdev);
+		} else {
+			snd_sof_ipc_msgs_rx(sdev);
+		}
 	}
 
 	/* continue to send any remaining messages... */
@@ -449,6 +454,13 @@ static void hsw_get_windows(struct snd_sof_dev *sdev)
 						    sdev->bar[HSW_DSP_BAR] +
 						    elem->offset + MBOX_OFFSET,
 						    elem->size, "regs");
+			break;
+		case SOF_IPC_REGION_EXCEPTION:
+			sdev->dsp_oops_offset = elem->offset + MBOX_OFFSET;
+			snd_sof_debugfs_create_item(sdev,
+						    sdev->bar[HSW_DSP_BAR] +
+						    elem->offset + MBOX_OFFSET,
+						    elem->size, "exception");
 			break;
 		default:
 			dev_err(sdev->dev, "error: get illegal window info\n");
