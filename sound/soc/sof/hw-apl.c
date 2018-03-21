@@ -351,10 +351,10 @@ static void apl_get_registers(struct snd_sof_dev *sdev,
 			      u32 *stack, size_t stack_words)
 {
 	/* first read regsisters */
-	apl_block_read(sdev, APL_SRAM_REG_FW_END, xoops, sizeof(*xoops));
+	apl_block_read(sdev, sdev->dsp_oops_offset, xoops, sizeof(*xoops));
 
 	/* the get the stack */
-	apl_block_read(sdev, APL_SRAM_REG_FW_END + sizeof(*xoops), stack,
+	apl_block_read(sdev, sdev->dsp_oops_offset + sizeof(*xoops), stack,
 		       stack_words * sizeof(u32));
 }
 
@@ -1098,6 +1098,16 @@ static void apl_get_windows(struct snd_sof_dev *sdev)
 						    (elem->id),
 						    elem->size, "regs");
 			break;
+		case SOF_IPC_REGION_EXCEPTION:
+			sdev->dsp_oops_offset = elem->offset +
+						SRAM_WINDOW_OFFSET(elem->id);
+			snd_sof_debugfs_create_item(sdev,
+						    sdev->bar[APL_DSP_BAR] +
+						    elem->offset +
+						    SRAM_WINDOW_OFFSET
+						    (elem->id),
+						    elem->size, "exception");
+			break;
 		default:
 			dev_err(sdev->dev, "error: get illegal window info\n");
 			return;
@@ -1241,7 +1251,14 @@ static irqreturn_t apl_irq_thread(int irq, void *context)
 			 msg, msg_ext);
 
 		/* handle messages from DSP */
-		snd_sof_ipc_msgs_rx(sdev);
+		if ((hipct & SOF_IPC_PANIC_MAGIC_MASK) == SOF_IPC_PANIC_MAGIC) {
+			dev_err(sdev->dev, "error : DSP panic!\n");
+			snd_sof_dsp_cmd_done(sdev);
+			snd_sof_dsp_dbg_dump(sdev, SOF_DBG_REGS | SOF_DBG_MBOX);
+			snd_sof_trace_notify_for_error(sdev);
+		} else {
+			snd_sof_ipc_msgs_rx(sdev);
+		}
 
 		/* clear busy interrupt */
 		snd_sof_dsp_update_bits_forced(sdev, APL_DSP_BAR,
@@ -1330,7 +1347,15 @@ static irqreturn_t cnl_irq_thread(int irq, void *context)
 			 msg, msg_ext);
 
 		/* handle messages from DSP */
-		snd_sof_ipc_msgs_rx(sdev);
+		if ((hipctdr & SOF_IPC_PANIC_MAGIC_MASK) ==
+		   SOF_IPC_PANIC_MAGIC) {
+			dev_err(sdev->dev, "error : DSP panic!\n");
+			snd_sof_dsp_cmd_done(sdev);
+			snd_sof_dsp_dbg_dump(sdev, SOF_DBG_REGS | SOF_DBG_MBOX);
+			snd_sof_trace_notify_for_error(sdev);
+		} else {
+			snd_sof_ipc_msgs_rx(sdev);
+		}
 
 		/* clear busy interrupt to tell dsp controller this */
 		/* interrupt has been accepted, not trigger it again */
