@@ -265,6 +265,7 @@ void snd_sof_trace_notify_for_error(struct snd_sof_dev *sdev)
 		wake_up(&sdev->trace_sleep);
 	}
 }
+EXPORT_SYMBOL(snd_sof_trace_notify_for_error);
 
 void snd_sof_release_trace(struct snd_sof_dev *sdev)
 {
