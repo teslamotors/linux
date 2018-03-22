@@ -1858,6 +1858,7 @@ struct xhci_hcd {
 	struct timer_list	comp_mode_recovery_timer;
 	u32			port_status_u0;
 	u16			test_mode;
+	struct platform_device	*usb2_phy;
 /* Compliance Mode Timer Triggered every 2 seconds */
 #define COMP_MODE_RCVRY_MSECS 2000
 
