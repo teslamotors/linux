@@ -351,14 +351,16 @@ static irqreturn_t hsw_irq_handler(int irq, void *context)
 static irqreturn_t hsw_irq_thread(int irq, void *context)
 {
 	struct snd_sof_dev *sdev = (struct snd_sof_dev *)context;
-	u32 ipcx, ipcd;
+	u32 ipcx, ipcd, hdr;
 
 	ipcx = snd_sof_dsp_read(sdev, HSW_DSP_BAR, SHIM_IPCX);
 
 	/* reply message from DSP */
 	if (ipcx & SHIM_IPCX_DONE) {
 		/* Handle Immediate reply from DSP Core */
-		snd_sof_ipc_reply(sdev, ipcx);
+		hsw_mailbox_read(sdev, sdev->host_box.offset, &hdr,
+				 sizeof(hdr));
+		snd_sof_ipc_reply(sdev, hdr);
 
 		/* clear DONE bit - tell DSP we have completed */
 		snd_sof_dsp_update_bits_unlocked(sdev, HSW_DSP_BAR, SHIM_IPCX,
