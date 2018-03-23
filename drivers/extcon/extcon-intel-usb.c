@@ -49,10 +49,10 @@ static int intel_usb_mux_notifier(struct notifier_block *nb,
 	u32 val;
 
 	if (mux->edev.state)
-		val = CFG0_SW_IDPIN_EN | CFG0_SW_DRD_STATIC_HOST;
+		val = CFG0_SW_IDPIN_EN | CFG0_SW_DRD_STATIC_HOST | CFG0_SW_SWITCH_EN;
 	else
 		val = CFG0_SW_IDPIN_EN | CFG0_SW_IDPIN | CFG0_SW_VBUS_VALID |
-		      CFG0_SW_DRD_STATIC_DEV;
+		      CFG0_SW_DRD_STATIC_DEV | CFG0_SW_SWITCH_EN ;
 
 	writel(val, mux->regs);
 	return NOTIFY_OK;
@@ -63,6 +63,7 @@ struct intel_usb_mux *intel_usb_mux_register(struct device *dev,
 {
 	struct intel_usb_mux *mux;
 	int ret;
+	u32 val;
 
 	mux = kzalloc(sizeof(*mux), GFP_KERNEL);
 	if (!mux)
@@ -73,6 +74,10 @@ struct intel_usb_mux *intel_usb_mux_register(struct device *dev,
 		kfree(mux);
 		return ERR_PTR(-ENOMEM);
 	}
+
+	val = CFG0_SW_IDPIN_EN | CFG0_SW_IDPIN | CFG0_SW_VBUS_VALID |
+			CFG0_SW_DRD_STATIC_DEV | CFG0_SW_SWITCH_EN;
+	writel(val, mux->regs);
 
 	mux->edev.dev.parent = dev;
 	mux->edev.supported_cable = intel_mux_cable;
