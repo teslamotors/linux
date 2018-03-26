@@ -887,9 +887,6 @@ static int apl_trace_init(struct snd_sof_dev *sdev, u32 *stream_tag)
 	/*
 	 * iterate capture stream array and find the first available one for
 	 * DMA trace transferring.
-	 * TODO: Currently only the first capture stream is available. In the
-	 * future, DMA trace should use the last one capture stream for
-	 * avoiding conflict with normal capture stream.
 	 */
 	for (i = 0; i < hdev->num_capture; i++) {
 		if (!hdev->cstream[i].open) {
@@ -900,7 +897,14 @@ static int apl_trace_init(struct snd_sof_dev *sdev, u32 *stream_tag)
 		}
 	}
 
-	/* initialize capture stream, set BDL address and return corresponding
+	if (!sdev->dtrace_stream) {
+		dev_err(sdev->dev,
+			"error: no available capture stream for DMA trace\n");
+		return -ENODEV;
+	}
+
+	/*
+	 * initialize capture stream, set BDL address and return corresponding
 	 * stream tag which will be sent to the firmware by IPC message.
 	 */
 	return apl_trace_prepare(sdev);
