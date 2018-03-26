@@ -118,10 +118,14 @@ static uint8_t tdf8532_single_read(struct tdf8532_priv *dev_data,
 
 	ret = i2c_master_recv(dev_data->i2c, *repl_buff, recv_len);
 
+	if (ret < 0)
+		goto out_free;
+
 	print_hex_dump_debug("tdf8532-codec: Rx:", DUMP_PREFIX_NONE, 32, 1,
 				*repl_buff, recv_len, false);
 
-	if (ret < 0 || ret != recv_len) {
+	if (ret != recv_len) {
+		ret = -EIO;
 		dev_err(dev, "i2c recv packet size: %d (expected: %d)\n",
 				ret, recv_len);
 		goto out_free;
@@ -147,10 +151,8 @@ static int tdf8532_get_dev_info(struct tdf8532_priv *dev_data)
 		return ret;
 
 	ret = tdf8532_single_read(dev_data, &repl_buff);
-	if (ret < 0) {
-		kfree(repl_buff);
+	if (ret < 0)
 		return ret;
-	}
 
 	id = (struct get_ident_repl *)repl_buff;
 
@@ -171,11 +173,10 @@ static int tdf8532_get_state(struct tdf8532_priv *dev_data, u8 *state)
 
 	ret = tdf8532_single_read(dev_data, &repl_buff);
 	if (ret < 0)
-		goto out_free;
+		goto out;
 
 	*state = ((struct get_dev_status_repl *)repl_buff)->state;
 
-out_free:
 	kfree(repl_buff);
 out:
 	return ret;
@@ -194,7 +195,7 @@ static int tdf8532_dump_dev_error(struct tdf8532_priv *dev_data)
 
 	ret = tdf8532_single_read(dev_data, &repl_buff);
 	if (ret < 0)
-		goto out_free;
+		goto out;
 
 	error = ((struct get_error_repl *)repl_buff)->error;
 
@@ -203,7 +204,6 @@ static int tdf8532_dump_dev_error(struct tdf8532_priv *dev_data)
 		ret = -EIO;
 	}
 
-out_free:
 	kfree(repl_buff);
 out:
 	return ret;
