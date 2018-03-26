@@ -635,32 +635,53 @@ static int apl_stream_setup_bdl(struct snd_sof_dev *sdev,
 	return offset;
 }
 
+static struct snd_sof_hda_stream *
+apl_pstream_get(struct snd_sof_dev *sdev,
+		struct snd_sof_hda_dev *hdev)
+{
+	struct snd_sof_hda_stream *stream = NULL;
+	int i;
+
+	/* get an unused playback stream */
+	for (i = 0; i < hdev->num_playback; i++) {
+		if (!hdev->pstream[i].open) {
+			hdev->pstream[i].open = true;
+			stream = &hdev->pstream[i];
+			break;
+		}
+	}
+	return stream;
+}
+
+static struct snd_sof_hda_stream *
+apl_cstream_get(struct snd_sof_dev *sdev,
+		struct snd_sof_hda_dev *hdev)
+{
+	struct snd_sof_hda_stream *stream = NULL;
+	int i;
+
+	/* get an unused capture stream */
+	for (i = 0; i < hdev->num_capture; i++) {
+		if (!hdev->cstream[i].open) {
+			hdev->cstream[i].open = true;
+			stream = &hdev->cstream[i];
+			break;
+		}
+	}
+	return stream;
+}
+
 int apl_pcm_open(struct snd_sof_dev *sdev,
 		 struct snd_pcm_substream *substream)
 {
-	struct snd_sof_hda_stream *stream = NULL;
+	struct snd_sof_hda_stream *stream;
 	struct snd_sof_hda_dev *hdev = &sdev->hda;
 	int i;
 
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		/* get an unused playback stream */
-		for (i = 0; i < hdev->num_playback; i++) {
-			if (!hdev->pstream[i].open) {
-				hdev->pstream[i].open = true;
-				stream = &hdev->pstream[i];
-				break;
-			}
-		}
-	} else {
-		/* get an unused capture stream */
-		for (i = 0; i < hdev->num_capture; i++) {
-			if (!hdev->cstream[i].open) {
-				hdev->cstream[i].open = true;
-				stream = &hdev->cstream[i];
-				break;
-			}
-		}
-	}
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		stream = apl_pstream_get(sdev, hdev);
+	else
+		stream = apl_cstream_get(sdev, hdev);
 
 	if (!stream) {
 		dev_err(sdev->dev, "error: no stream available\n");
@@ -680,7 +701,7 @@ int apl_pcm_close(struct snd_sof_dev *sdev,
 	int i;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		/* get an unused playback stream */
+		/* find used playback stream */
 		for (i = 0; i < hdev->num_playback; i++) {
 			if (hdev->pstream[i].open &&
 			    hdev->pstream[i].stream_tag == stream->stream_tag) {
@@ -689,7 +710,7 @@ int apl_pcm_close(struct snd_sof_dev *sdev,
 			}
 		}
 	} else {
-		/* get an unused capture stream */
+		/* find used capture stream */
 		for (i = 0; i < hdev->num_capture; i++) {
 			if (hdev->cstream[i].open &&
 			    hdev->cstream[i].stream_tag == stream->stream_tag) {
@@ -880,28 +901,16 @@ static int apl_trace_prepare(struct snd_sof_dev *sdev)
 static int apl_trace_init(struct snd_sof_dev *sdev, u32 *stream_tag)
 {
 	struct snd_sof_hda_dev *hdev = &sdev->hda;
-	int i;
 
-	sdev->dtrace_stream = NULL;
-
-	/*
-	 * iterate capture stream array and find the first available one for
-	 * DMA trace transferring.
-	 */
-	for (i = 0; i < hdev->num_capture; i++) {
-		if (!hdev->cstream[i].open) {
-			hdev->cstream[i].open = true;
-			sdev->dtrace_stream = &hdev->cstream[i];
-			*stream_tag = sdev->dtrace_stream->stream_tag;
-			break;
-		}
-	}
+	sdev->dtrace_stream = apl_cstream_get(sdev, hdev);
 
 	if (!sdev->dtrace_stream) {
 		dev_err(sdev->dev,
 			"error: no available capture stream for DMA trace\n");
 		return -ENODEV;
 	}
+
+	*stream_tag = sdev->dtrace_stream->stream_tag;
 
 	/*
 	 * initialize capture stream, set BDL address and return corresponding
@@ -979,25 +988,11 @@ static int apl_cl_prepare(struct snd_sof_dev *sdev, unsigned int format,
 	struct pci_dev *pci = sdev->pci;
 	int ret, i;
 
-	/* get an unused stream */
 	if (direction == SNDRV_PCM_STREAM_PLAYBACK) {
-		/* get an unused playback stream */
-		for (i = 0; i < hdev->num_playback; i++) {
-			if (!hdev->pstream[i].open) {
-				hdev->pstream[i].open = true;
-				stream = &hdev->pstream[i];
-				break;
-			}
-		}
+		stream = apl_pstream_get(sdev, hdev);
 	} else {
-		/* get an unused capture stream */
-		for (i = 0; i < hdev->num_capture; i++) {
-			if (!hdev->cstream[i].open) {
-				hdev->cstream[i].open = true;
-				stream = &hdev->cstream[i];
-				break;
-			}
-		}
+		dev_err(sdev->dev, "error: code loading DMA is playback only\n");
+		return -EINVAL;
 	}
 
 	if (!stream) {
