@@ -23,10 +23,10 @@
 static int __tdf8532_build_pkt(struct tdf8532_priv *dev_data, va_list valist,
 					u8 *payload)
 {
+	const u8 cmd_offset = 3;
+	u8 *cmd_payload;
 	int param;
 	u8 len;
-	u8 *cmd_payload;
-	const u8 cmd_offset = 3;
 
 	payload[HEADER_TYPE] = MSG_TYPE_STX;
 	payload[HEADER_PKTID] = dev_data->pkt_id;
@@ -51,11 +51,11 @@ static int __tdf8532_build_pkt(struct tdf8532_priv *dev_data, va_list valist,
 static int __tdf8532_single_write(struct tdf8532_priv *dev_data,
 					int dummy, ...)
 {
+	struct device *dev = &(dev_data->i2c->dev);
+	u8 payload[255];
 	va_list valist;
 	u8 len;
-	u8 payload[255];
 	int ret = 0;
-	struct device *dev = &(dev_data->i2c->dev);
 
 	va_start(valist, dummy);
 
@@ -79,8 +79,8 @@ static int __tdf8532_single_write(struct tdf8532_priv *dev_data,
 static uint8_t tdf8532_read_wait_ack(struct tdf8532_priv *dev_data,
 						unsigned long timeout_val)
 {
-	uint8_t ack_repl[HEADER_SIZE] = {0, 0, 0};
 	unsigned long timeout = jiffies + timeout_val;
+	uint8_t ack_repl[HEADER_SIZE] = {0, 0, 0};
 	int ret;
 
 	do {
@@ -102,9 +102,9 @@ out:
 static uint8_t tdf8532_single_read(struct tdf8532_priv *dev_data,
 					char **repl_buff)
 {
-	int ret;
-	uint8_t recv_len;
 	struct device *dev = &(dev_data->i2c->dev);
+	uint8_t recv_len;
+	int ret;
 
 	ret = tdf8532_read_wait_ack(dev_data, msecs_to_jiffies(ACK_TIMEOUT));
 
@@ -138,9 +138,9 @@ out:
 
 static int tdf8532_get_dev_info(struct tdf8532_priv *dev_data)
 {
-	int ret;
-	char *repl_buff = NULL;
 	struct get_ident_repl *id;
+	char *repl_buff = NULL;
+	int ret;
 
 	ret = tdf8532_amp_write(dev_data, GET_IDENT);
 	if (ret < 0)
@@ -162,8 +162,8 @@ static int tdf8532_get_dev_info(struct tdf8532_priv *dev_data)
 
 static int tdf8532_get_state(struct tdf8532_priv *dev_data, u8 *state)
 {
-	int ret = 0;
 	char *repl_buff = NULL;
+	int ret = 0;
 
 	ret = tdf8532_amp_write(dev_data, GET_DEV_STATUS);
 	if (ret < 0)
@@ -183,10 +183,10 @@ out:
 
 static int tdf8532_dump_dev_error(struct tdf8532_priv *dev_data)
 {
-	u8 error;
-	int ret = 0;
-	char *repl_buff = NULL;
 	struct device *dev = &(dev_data->i2c->dev);
+	char *repl_buff = NULL;
+	int ret = 0;
+	u8 error;
 
 	ret = tdf8532_amp_write(dev_data, GET_ERROR);
 	if (ret < 0)
@@ -212,10 +212,10 @@ out:
 static int __tdf8532_wait_state(struct tdf8532_priv *dev_data, u8 req_state,
 					unsigned long timeout_val, u8 or_higher)
 {
-	int ret;
-	u8 state;
-	struct device *dev = &(dev_data->i2c->dev);
 	unsigned long timeout = jiffies + msecs_to_jiffies(timeout_val);
+	struct device *dev = &(dev_data->i2c->dev);
+	u8 state;
+	int ret;
 
 	do {
 		ret = tdf8532_get_state(dev_data, &state);
@@ -304,9 +304,11 @@ out:
 static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 		struct snd_soc_dai *dai)
 {
-	int ret = 0;
 	struct snd_soc_codec *codec = dai->codec;
-	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(codec);
+	struct tdf8532_priv *tdf8532;
+	int ret = 0;
+
+	tdf8532 = snd_soc_codec_get_drvdata(codec);
 
 	dev_dbg(codec->dev, "%s: cmd = %d\n", __func__, cmd);
 
@@ -331,8 +333,8 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 
 static int tdf8532_mute(struct snd_soc_dai *dai, int mute)
 {
-	struct snd_soc_codec *codec = dai->codec;
 	struct tdf8532_priv *tdf8532 = snd_soc_codec_get_drvdata(dai->codec);
+	struct snd_soc_codec *codec = dai->codec;
 
 	dev_dbg(codec->dev, "%s\n", __func__);
 
@@ -368,9 +370,9 @@ static struct snd_soc_dai_driver tdf8532_dai[] = {
 static int tdf8532_i2c_probe(struct i2c_client *i2c,
 				const struct i2c_device_id *id)
 {
-	int ret;
-	struct tdf8532_priv *dev_data;
 	struct device *dev = &(i2c->dev);
+	struct tdf8532_priv *dev_data;
+	int ret;
 
 	dev_dbg(&i2c->dev, "%s\n", __func__);
 
