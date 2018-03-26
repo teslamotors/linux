@@ -866,10 +866,15 @@ static int apl_trace_prepare(struct snd_sof_dev *sdev)
 {
 	struct snd_sof_hda_stream *stream = sdev->dtrace_stream;
 	struct snd_dma_buffer *dmab = &sdev->dmatb;
+	int ret;
 
 	stream->bufsize = sdev->dmatb.bytes;
 
-	return apl_hdac_prepare(sdev, stream, dmab, NULL);
+	ret = apl_hdac_prepare(sdev, stream, dmab, NULL);
+	if (ret < 0)
+		dev_err(sdev->dev, "error: hdac prepare failed: %x\n", ret);
+
+	return ret;
 }
 
 static int apl_trace_init(struct snd_sof_dev *sdev, u32 *stream_tag)
