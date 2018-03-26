@@ -775,6 +775,8 @@ enum tc_setup_type {
 	TC_SETUP_CLSFLOWER,
 	TC_SETUP_CLSMATCHALL,
 	TC_SETUP_CLSBPF,
+	TC_SETUP_BLOCK,
+	TC_SETUP_CBS,
 };
 
 /* These structures hold the attributes of xdp state that are being passed
