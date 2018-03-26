@@ -14,6 +14,7 @@
 #include <linux/i2c.h>
 #include <linux/jiffies.h>
 #include <linux/time.h>
+#include <linux/delay.h>
 #include <linux/acpi.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
@@ -70,6 +71,7 @@ static int __tdf8532_single_write(struct tdf8532_priv *dev_data,
 	if (ret < 0)
 		dev_err(dev, "i2c send packet returned: %d\n", ret);
 
+	mdelay(2);
 	dev_data->pkt_id++;
 
 	return ret;
@@ -131,6 +133,7 @@ static uint8_t tdf8532_single_read(struct tdf8532_priv *dev_data,
 		goto out_free;
 	}
 
+	mdelay(1);
 	return recv_len;
 
 out_free:
