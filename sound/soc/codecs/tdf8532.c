@@ -21,6 +21,9 @@
 #include <sound/pcm_params.h>
 #include "tdf8532.h"
 
+/* forward declarations */
+static int tdf8532_check_dev_error(struct tdf8532_priv *dev_data);
+
 static int __tdf8532_build_pkt(struct tdf8532_priv *dev_data, va_list valist,
 					u8 *payload)
 {
@@ -49,7 +52,7 @@ static int __tdf8532_build_pkt(struct tdf8532_priv *dev_data, va_list valist,
 }
 
 /* Use macro instead */
-static int __tdf8532_single_write(struct tdf8532_priv *dev_data,
+static int __tdf8532_single_write(struct tdf8532_priv *dev_data, int check_err,
 					int dummy, ...)
 {
 	struct device *dev = &(dev_data->i2c->dev);
@@ -72,11 +75,14 @@ static int __tdf8532_single_write(struct tdf8532_priv *dev_data,
 		dev_err(dev, "i2c send packet returned: %d\n", ret);
 
 	mdelay(2);
+
+	if (check_err)
+		ret = tdf8532_check_dev_error(dev_data);
+
 	dev_data->pkt_id++;
 
 	return ret;
 }
-
 
 static uint8_t tdf8532_read_wait_ack(struct tdf8532_priv *dev_data,
 						unsigned long timeout_val)
@@ -185,7 +191,7 @@ out:
 	return ret;
 }
 
-static int tdf8532_dump_dev_error(struct tdf8532_priv *dev_data)
+static int tdf8532_check_dev_error(struct tdf8532_priv *dev_data)
 {
 	struct device *dev = &(dev_data->i2c->dev);
 	char *repl_buff = NULL;
@@ -248,24 +254,17 @@ static int tdf8532_start_play(struct tdf8532_priv *tdf8532)
 {
 	int ret;
 
-	ret = tdf8532_amp_write(tdf8532, SET_CHNL_ENABLE,
+	ret = tdf8532_amp_write_check_err(tdf8532, SET_CHNL_ENABLE,
 			CHNL_MASK(tdf8532->channels));
 
 	if (ret < 0)
 		return ret;
 
-	ret = tdf8532_dump_dev_error(tdf8532);
+	ret = tdf8532_amp_write_check_err(tdf8532, SET_CLK_STATE, CLK_CONNECT);
 	if (ret < 0)
 		return ret;
 
-	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_CONNECT);
-	if (ret < 0)
-		return ret;
-
-	ret = tdf8532_dump_dev_error(tdf8532);
-
-	if (ret >= 0)
-		ret = tdf8532_wait_state_or_higher(tdf8532, STATE_PLAY,
+	ret = tdf8532_wait_state_or_higher(tdf8532, STATE_PLAY,
 				ACK_TIMEOUT);
 
 	return ret;
@@ -276,12 +275,8 @@ static int tdf8532_stop_play(struct tdf8532_priv *tdf8532)
 {
 	int ret;
 
-	ret = tdf8532_amp_write(tdf8532, SET_CHNL_DISABLE,
+	ret = tdf8532_amp_write_check_err(tdf8532, SET_CHNL_DISABLE,
 			CHNL_MASK(tdf8532->channels));
-	if (ret < 0)
-		goto out;
-
-	ret = tdf8532_dump_dev_error(tdf8532);
 	if (ret < 0)
 		goto out;
 
@@ -289,11 +284,8 @@ static int tdf8532_stop_play(struct tdf8532_priv *tdf8532)
 	if (ret < 0)
 		goto out;
 
-	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_DISCONNECT);
-	if (ret < 0)
-		goto out;
-
-	ret = tdf8532_dump_dev_error(tdf8532);
+	ret = tdf8532_amp_write_check_err(tdf8532, SET_CLK_STATE,
+						CLK_DISCONNECT);
 	if (ret < 0)
 		goto out;
 
