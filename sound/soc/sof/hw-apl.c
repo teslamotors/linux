@@ -694,7 +694,7 @@ static int apl_cstream_put(struct snd_sof_dev *sdev, int stream_tag)
 	struct snd_sof_hda_dev *hdev = &sdev->hda;
 	int i;
 
-	/* find used playback stream */
+	/* find used capture stream */
 	for (i = 0; i < hdev->num_capture; i++) {
 		if (hdev->cstream[i].open &&
 		    hdev->cstream[i].stream_tag == stream_tag) {
