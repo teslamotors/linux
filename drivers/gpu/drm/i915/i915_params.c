@@ -82,6 +82,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.avail_planes_per_pipe = 0,
 	.domain_plane_owners = 0,
 	.bg_color = 0x00000000,
+	.gvt_emulate_hdmi = true,
 };
 
 i915_param_named(modeset, int, 0400,
@@ -318,4 +319,5 @@ MODULE_PARM_DESC(domain_plane_owners, "plane owners for each domain and for each
 module_param_named_unsafe(bg_color, i915_modparams.bg_color, uint, 0400);
 MODULE_PARM_DESC(bg_color, "Set the background (canvas) color");
 
-
+module_param_named(gvt_emulate_hdmi, i915_modparams.gvt_emulate_hdmi, bool, 0400);
+MODULE_PARM_DESC(gvt_emulate_hdmi, "GVT-g emulate HDMI or DP port for Guest OS.");

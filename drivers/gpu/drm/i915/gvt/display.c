@@ -481,9 +481,15 @@ int setup_virtual_monitors(struct intel_vgpu *vgpu)
 {
 	struct intel_connector *connector = NULL;
 	struct drm_connector_list_iter conn_iter;
+	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
 	int pipe = 0;
 	int ret = 0;
-	int port = 0;
+	int type = i915_modparams.gvt_emulate_hdmi ? GVT_HDMI_A : GVT_DP_A;
+	int port = PORT_B;
+
+	/* BXT have to use port A for HDMI to support 3 HDMI monitors */
+	if (IS_BROXTON(dev_priv))
+		port = PORT_A;
 
 	drm_connector_list_iter_begin(&vgpu->gvt->dev_priv->drm, &conn_iter);
 	for_each_intel_connector_iter(connector, &conn_iter) {
@@ -497,10 +503,12 @@ int setup_virtual_monitors(struct intel_vgpu *vgpu)
 			port = enc_to_dig_port(
 					&(connector->encoder->base))->port;
 			ret = setup_virtual_monitor(vgpu, port,
-				GVT_HDMI_A + port, 0,
-				connector->detect_edid, false);
+				type, 0, connector->detect_edid,
+				!i915_modparams.gvt_emulate_hdmi);
 			if (ret)
 				return ret;
+			type++;
+			port++;
 		}
 	}
 	return 0;
