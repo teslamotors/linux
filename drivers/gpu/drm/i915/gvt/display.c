@@ -220,7 +220,7 @@ static void emulate_monitor_status_change(struct intel_vgpu *vgpu)
 			vgpu_vreg(vgpu, PORT_CLK_SEL(PORT_B)) |=
 				PORT_CLK_SEL_LCPLL_810;
 		}
-		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_B)) |= DDI_BUF_CTL_ENABLE;
+		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_B)) &= ~DDI_BUF_CTL_ENABLE;
 		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_B)) &= ~DDI_BUF_IS_IDLE;
 		vgpu_vreg(vgpu, SDEISR) |= SDE_PORTB_HOTPLUG_CPT;
 	}
@@ -240,7 +240,7 @@ static void emulate_monitor_status_change(struct intel_vgpu *vgpu)
 			vgpu_vreg(vgpu, PORT_CLK_SEL(PORT_C)) |=
 				PORT_CLK_SEL_LCPLL_810;
 		}
-		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_C)) |= DDI_BUF_CTL_ENABLE;
+		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_C)) &= ~DDI_BUF_CTL_ENABLE;
 		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_C)) &= ~DDI_BUF_IS_IDLE;
 		vgpu_vreg(vgpu, SFUSE_STRAP) |= SFUSE_STRAP_DDIC_DETECTED;
 	}
@@ -260,7 +260,7 @@ static void emulate_monitor_status_change(struct intel_vgpu *vgpu)
 			vgpu_vreg(vgpu, PORT_CLK_SEL(PORT_D)) |=
 				PORT_CLK_SEL_LCPLL_810;
 		}
-		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_D)) |= DDI_BUF_CTL_ENABLE;
+		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_D)) &= ~DDI_BUF_CTL_ENABLE;
 		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_D)) &= ~DDI_BUF_IS_IDLE;
 		vgpu_vreg(vgpu, SFUSE_STRAP) |= SFUSE_STRAP_DDID_DETECTED;
 	}
