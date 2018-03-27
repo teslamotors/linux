@@ -147,7 +147,7 @@ void intel_gvt_mark_noncontext_mmios(struct intel_gvt *gvt)
 	int i, array_size;
 
 	if (IS_SKYLAKE(gvt->dev_priv)
-		|| IS_BROXTON(gvt->dev_priv)) {
+		|| IS_BROXTON(gvt->dev_priv) || IS_KABYLAKE(gvt->dev_priv)) {
 		mmio = gen9_render_mmio_list;
 		array_size = ARRAY_SIZE(gen9_render_mmio_list);
 	} else {
@@ -459,7 +459,8 @@ static int noncontext_mmio_compare(struct intel_vgpu *vgpu, int ring_id)
 	int i, array_size;
 	struct intel_engine_cs *engine = dev_priv->engine[ring_id];
 
-	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv) ||
+	    IS_KABYLAKE(dev_priv)) {
 		mmio_list = gen9_render_mmio_list;
 		array_size = ARRAY_SIZE(gen9_render_mmio_list);
 	} else {
@@ -486,7 +487,8 @@ static void get_host_mmio_snapshot(struct intel_gvt *gvt)
 	struct render_mmio *mmio, *mmio_list;
 	int i, array_size;
 
-	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv) ||
+	    IS_KABYLAKE(dev_priv)) {
 		mmio_list = gen9_render_mmio_list;
 		array_size = ARRAY_SIZE(gen9_render_mmio_list);
 	} else {

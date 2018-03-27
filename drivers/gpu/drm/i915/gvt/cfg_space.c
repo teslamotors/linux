@@ -300,6 +300,12 @@ int intel_vgpu_emulate_cfg_write(struct intel_vgpu *vgpu, unsigned int offset,
 		break;
 
 	case INTEL_GVT_PCI_OPREGION:
+		/*
+                 * To support virtual display, we need to override the real VBT in the
+                 * OpRegion. So here we don't report OpRegion to guest.
+                 */
+		if (IS_KABYLAKE(vgpu->gvt->dev_priv))
+			return 0;
 		if (WARN_ON(!IS_ALIGNED(offset, 4)))
 			return -EINVAL;
 		ret = intel_vgpu_init_opregion(vgpu, *(u32 *)p_data);

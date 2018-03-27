@@ -477,7 +477,7 @@ void intel_gvt_init_pipe_info(struct intel_gvt *gvt)
 	}
 }
 
-int bxt_setup_virtual_monitors(struct intel_vgpu *vgpu)
+int setup_virtual_monitors(struct intel_vgpu *vgpu)
 {
 	struct intel_connector *connector = NULL;
 	struct drm_connector_list_iter conn_iter;
@@ -506,7 +506,7 @@ int bxt_setup_virtual_monitors(struct intel_vgpu *vgpu)
 	return 0;
 }
 
-void bxt_clean_virtual_monitors(struct intel_vgpu *vgpu)
+void clean_virtual_monitors(struct intel_vgpu *vgpu)
 {
 	int port = 0;
 
@@ -529,9 +529,9 @@ void intel_vgpu_clean_display(struct intel_vgpu *vgpu)
 {
 	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
 
-	if (IS_BROXTON(dev_priv))
-		bxt_clean_virtual_monitors(vgpu);
-	else if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
+	if (IS_BROXTON(dev_priv) || IS_KABYLAKE(dev_priv))
+		clean_virtual_monitors(vgpu);
+	else if (IS_SKYLAKE(dev_priv))
 		clean_virtual_dp_monitor(vgpu, PORT_D);
 	else
 		clean_virtual_dp_monitor(vgpu, PORT_B);
@@ -553,9 +553,9 @@ int intel_vgpu_init_display(struct intel_vgpu *vgpu, u64 resolution)
 
 	intel_vgpu_init_i2c_edid(vgpu);
 
-	if (IS_BROXTON(dev_priv))
-		return bxt_setup_virtual_monitors(vgpu);
-	else if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
+	if (IS_BROXTON(dev_priv) || IS_KABYLAKE(dev_priv))
+		return setup_virtual_monitors(vgpu);
+	else if (IS_SKYLAKE(dev_priv))
 		return setup_virtual_monitor(vgpu,
 				PORT_D, GVT_DP_D, resolution, NULL, true);
 	else

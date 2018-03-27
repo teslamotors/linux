@@ -253,7 +253,8 @@ i915_gem_gvtbuffer_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
-	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv) ||
+	    IS_KABYLAKE(dev_priv)) {
 		unsigned int tiling_mode = I915_TILING_NONE;
 		unsigned int stride = 0;
 
