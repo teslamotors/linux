@@ -86,10 +86,11 @@ struct get_dev_status_repl {
 
 /* Helpers */
 #define CHNL_MASK(channels) (u8)((0x00FF << channels) >> 8)
-
+#define DUMMY 0
 #define tdf8532_amp_write(dev_data, ...)\
-	__tdf8532_single_write(dev_data, 0, AMP_MOD, __VA_ARGS__, END)
-
+	__tdf8532_single_write(dev_data, 0, DUMMY, AMP_MOD, __VA_ARGS__, END)
+#define tdf8532_amp_write_check_err(dev_data, ...)\
+	__tdf8532_single_write(dev_data, 1, DUMMY, AMP_MOD, __VA_ARGS__, END)
 #define tdf8532_wait_state(dev_data, state, tm)\
 	__tdf8532_wait_state(dev_data, state, tm, 0)
 
