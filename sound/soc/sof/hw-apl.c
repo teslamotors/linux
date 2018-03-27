@@ -636,9 +636,9 @@ static int apl_stream_setup_bdl(struct snd_sof_dev *sdev,
 }
 
 static struct snd_sof_hda_stream *
-apl_pstream_get(struct snd_sof_dev *sdev,
-		struct snd_sof_hda_dev *hdev)
+apl_pstream_get(struct snd_sof_dev *sdev)
 {
+	struct snd_sof_hda_dev *hdev = &sdev->hda;
 	struct snd_sof_hda_stream *stream = NULL;
 	int i;
 
@@ -654,9 +654,9 @@ apl_pstream_get(struct snd_sof_dev *sdev,
 }
 
 static struct snd_sof_hda_stream *
-apl_cstream_get(struct snd_sof_dev *sdev,
-		struct snd_sof_hda_dev *hdev)
+apl_cstream_get(struct snd_sof_dev *sdev)
 {
+	struct snd_sof_hda_dev *hdev = &sdev->hda;
 	struct snd_sof_hda_stream *stream = NULL;
 	int i;
 
@@ -671,17 +671,51 @@ apl_cstream_get(struct snd_sof_dev *sdev,
 	return stream;
 }
 
+static int apl_pstream_put(struct snd_sof_dev *sdev, int stream_tag)
+{
+	struct snd_sof_hda_dev *hdev = &sdev->hda;
+	int i;
+
+	/* find used playback stream */
+	for (i = 0; i < hdev->num_playback; i++) {
+		if (hdev->pstream[i].open &&
+		    hdev->pstream[i].stream_tag == stream_tag) {
+			hdev->pstream[i].open = false;
+			return 0;
+		}
+	}
+
+	dev_dbg(sdev->dev, "stream_tag %d not opened!\n", stream_tag);
+	return -ENODEV;
+}
+
+static int apl_cstream_put(struct snd_sof_dev *sdev, int stream_tag)
+{
+	struct snd_sof_hda_dev *hdev = &sdev->hda;
+	int i;
+
+	/* find used playback stream */
+	for (i = 0; i < hdev->num_capture; i++) {
+		if (hdev->cstream[i].open &&
+		    hdev->cstream[i].stream_tag == stream_tag) {
+			hdev->cstream[i].open = false;
+			return 0;
+		}
+	}
+
+	dev_dbg(sdev->dev, "stream_tag %d not opened!\n", stream_tag);
+	return -ENODEV;
+}
+
 int apl_pcm_open(struct snd_sof_dev *sdev,
 		 struct snd_pcm_substream *substream)
 {
 	struct snd_sof_hda_stream *stream;
-	struct snd_sof_hda_dev *hdev = &sdev->hda;
-	int i;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		stream = apl_pstream_get(sdev, hdev);
+		stream = apl_pstream_get(sdev);
 	else
-		stream = apl_cstream_get(sdev, hdev);
+		stream = apl_cstream_get(sdev);
 
 	if (!stream) {
 		dev_err(sdev->dev, "error: no stream available\n");
@@ -697,33 +731,18 @@ int apl_pcm_close(struct snd_sof_dev *sdev,
 		  struct snd_pcm_substream *substream)
 {
 	struct snd_sof_hda_stream *stream = substream->runtime->private_data;
-	struct snd_sof_hda_dev *hdev = &sdev->hda;
-	int i;
+	int ret;
 
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		/* find used playback stream */
-		for (i = 0; i < hdev->num_playback; i++) {
-			if (hdev->pstream[i].open &&
-			    hdev->pstream[i].stream_tag == stream->stream_tag) {
-				hdev->pstream[i].open = false;
-				goto found;
-			}
-		}
-	} else {
-		/* find used capture stream */
-		for (i = 0; i < hdev->num_capture; i++) {
-			if (hdev->cstream[i].open &&
-			    hdev->cstream[i].stream_tag == stream->stream_tag) {
-				hdev->cstream[i].open = false;
-				goto found;
-			}
-		}
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		ret = apl_pstream_put(sdev, stream->stream_tag);
+	else
+		ret = apl_cstream_put(sdev, stream->stream_tag);
+
+	if (ret) {
+		dev_dbg(sdev->dev, "stream %s not opened!\n", substream->name);
+		return -ENODEV;
 	}
 
-	dev_dbg(sdev->dev, "stream %s not opened!\n", substream->name);
-	return -ENODEV;
-
-found:
 	/* unbinding pcm substream to hda stream */
 	substream->runtime->private_data = NULL;
 	return 0;
@@ -777,7 +796,7 @@ static int apl_hdac_prepare(struct snd_sof_dev *sdev,
 	} while (--timeout);
 	if (timeout == 0) {
 		dev_err(sdev->dev, "error: stream reset failed\n");
-		return -EINVAL;
+		return -ETIMEDOUT;
 	}
 
 	timeout = APL_STREAM_RESET_TIMEOUT;
@@ -792,7 +811,7 @@ static int apl_hdac_prepare(struct snd_sof_dev *sdev,
 	} while (--timeout);
 	if (timeout == 0) {
 		dev_err(sdev->dev, "error: timeout waiting for stream reset\n");
-		return -EINVAL;
+		return -ETIMEDOUT;
 	}
 
 	if (stream->posbuf)
@@ -900,9 +919,7 @@ static int apl_trace_prepare(struct snd_sof_dev *sdev)
 
 static int apl_trace_init(struct snd_sof_dev *sdev, u32 *stream_tag)
 {
-	struct snd_sof_hda_dev *hdev = &sdev->hda;
-
-	sdev->dtrace_stream = apl_cstream_get(sdev, hdev);
+	sdev->dtrace_stream = apl_cstream_get(sdev);
 
 	if (!sdev->dtrace_stream) {
 		dev_err(sdev->dev,
@@ -968,14 +985,6 @@ static int apl_stream_prepare(struct snd_sof_dev *sdev,
 	/* disable SPIB, to enable buffer wrap for stream */
 	apl_spib_config(sdev, stream, APL_SPIB_DISABLE, 0);
 
-	snd_sof_dsp_write(sdev, APL_HDA_BAR, stream->sd_offset +
-			SOF_HDA_PPHC_BASE + SOF_HDA_PPHC_INTERVAL *
-			(7 + stream->stream_tag - 1), (u32)0x4);
-
-	snd_sof_dsp_write(sdev, APL_HDA_BAR, stream->sd_offset +
-			SOF_HDA_PPHC_BASE + 0x08 + SOF_HDA_PPHC_INTERVAL *
-			(7 + stream->stream_tag - 1), (u32)0x10000);
-
 	return stream->stream_tag;
 }
 
@@ -984,12 +993,11 @@ static int apl_cl_prepare(struct snd_sof_dev *sdev, unsigned int format,
 			  int direction)
 {
 	struct snd_sof_hda_stream *stream = NULL;
-	struct snd_sof_hda_dev *hdev = &sdev->hda;
 	struct pci_dev *pci = sdev->pci;
-	int ret, i;
+	int ret;
 
 	if (direction == SNDRV_PCM_STREAM_PLAYBACK) {
-		stream = apl_pstream_get(sdev, hdev);
+		stream = apl_pstream_get(sdev);
 	} else {
 		dev_err(sdev->dev, "error: code loading DMA is playback only\n");
 		return -EINVAL;
