@@ -37,6 +37,33 @@ static int intel_hdcp_poll_ksv_fifo(struct intel_digital_port *intel_dig_port,
 	return 0;
 }
 
+static bool hdcp_key_loadable(struct drm_i915_private *dev_priv)
+{
+	struct i915_power_domains *power_domains = &dev_priv->power_domains;
+	struct i915_power_well *power_well;
+	bool enabled = false;
+
+	mutex_lock(&power_domains->lock);
+
+	/* PG1 (power well #1) needs to be enabled */
+	for_each_power_well(dev_priv, power_well) {
+		if (power_well->id == SKL_DISP_PW_1) {
+			enabled = power_well->ops->is_enabled(dev_priv,
+							      power_well);
+			break;
+		}
+	}
+	mutex_unlock(&power_domains->lock);
+
+	/*
+	 * Another req for hdcp key loadability is enabled state of pll for
+	 * cdclk. Without active crtc we wont land here. So we are assuming that
+	 * cdclk is already on.
+	 */
+
+	return enabled;
+}
+
 static void intel_hdcp_clear_keys(struct drm_i915_private *dev_priv)
 {
 	I915_WRITE(HDCP_KEY_CONF, HDCP_CLEAR_KEYS_TRIGGER);
@@ -48,6 +75,10 @@ static int intel_hdcp_load_keys(struct drm_i915_private *dev_priv)
 {
 	int ret;
 	u32 val;
+
+	val = I915_READ(HDCP_KEY_STATUS);
+	if ((val & HDCP_KEY_LOAD_DONE) && (val & HDCP_KEY_LOAD_STATUS))
+		return 0;
 
 	/*
 	 * On HSW and BDW HW loads the HDCP1.4 Key when Display comes
@@ -166,10 +197,16 @@ int intel_hdcp_auth_downstream(struct intel_digital_port *intel_dig_port,
 		return -EPERM;
 	}
 
-	/* If there are no downstream devices, we're all done. */
+	/*
+	 * When repeater reports 0 device count, HDCP1.4 spec allows disabling
+	 * the HDCP encryption. That implies that repeater can't have its own
+	 * display. As there is no consumption of encrypted content in the
+	 * repeater with 0 downstream devices, we are failing the
+	 * authentication.
+	 */
 	num_downstream = DRM_HDCP_NUM_DOWNSTREAM(bstatus[0]);
 	if (num_downstream == 0)
-		return 0;
+		return -EINVAL;
 
 	ksv_fifo = kzalloc(num_downstream * DRM_HDCP_KSV_LEN, GFP_KERNEL);
 	if (!ksv_fifo)
@@ -391,7 +428,7 @@ static int intel_hdcp_auth(struct intel_digital_port *intel_dig_port,
 	struct drm_i915_private *dev_priv;
 	enum port port;
 	unsigned long r0_prime_gen_start;
-	int ret, i;
+	int ret, i, tries = 2;
 	union {
 		u32 reg[2];
 		u8 shim[DRM_HDCP_AN_LEN];
@@ -404,11 +441,27 @@ static int intel_hdcp_auth(struct intel_digital_port *intel_dig_port,
 		u32 reg;
 		u8 shim[DRM_HDCP_RI_LEN];
 	} ri;
-	bool repeater_present;
+	bool repeater_present, hdcp_capable;
 
 	dev_priv = intel_dig_port->base.base.dev->dev_private;
 
 	port = intel_dig_port->base.port;
+
+	/*
+	 * Detects whether the display is HDCP capable. Although we check for
+	 * valid Bksv below, the HDCP over DP spec requires that we check
+	 * whether the display supports HDCP before we write An. For HDMI
+	 * displays, this is not necessary.
+	 */
+	if (shim->hdcp_capable) {
+		ret = shim->hdcp_capable(intel_dig_port, &hdcp_capable);
+		if (ret)
+			return ret;
+		if (!hdcp_capable) {
+			DRM_ERROR("Panel is not HDCP capable\n");
+			return -EINVAL;
+		}
+	}
 
 	/* Initialize An with 2 random values and acquire it */
 	for (i = 0; i < 2; i++)
@@ -432,11 +485,19 @@ static int intel_hdcp_auth(struct intel_digital_port *intel_dig_port,
 	r0_prime_gen_start = jiffies;
 
 	memset(&bksv, 0, sizeof(bksv));
-	ret = shim->read_bksv(intel_dig_port, bksv.shim);
-	if (ret)
-		return ret;
-	else if (!intel_hdcp_is_ksv_valid(bksv.shim))
+
+	/* HDCP spec states that we must retry the bksv if it is invalid */
+	for (i = 0; i < tries; i++) {
+		ret = shim->read_bksv(intel_dig_port, bksv.shim);
+		if (ret)
+			return ret;
+		if (intel_hdcp_is_ksv_valid(bksv.shim))
+			break;
+	}
+	if (i == tries) {
+		DRM_ERROR("HDCP failed, Bksv is invalid\n");
 		return -ENODEV;
+	}
 
 	I915_WRITE(PORT_HDCP_BKSVLO(port), bksv.reg[0]);
 	I915_WRITE(PORT_HDCP_BKSVHI(port), bksv.reg[1]);
@@ -518,14 +579,15 @@ static int _intel_hdcp_disable(struct intel_connector *connector)
 	enum port port = intel_dig_port->base.port;
 	int ret;
 
+	DRM_DEBUG_KMS("[%s:%d] HDCP is being disabled...\n",
+		      connector->base.name, connector->base.base.id);
+
 	I915_WRITE(PORT_HDCP_CONF(port), 0);
 	if (intel_wait_for_register(dev_priv, PORT_HDCP_STATUS(port), ~0, 0,
 				    20)) {
 		DRM_ERROR("Failed to disable HDCP, timeout clearing status\n");
 		return -ETIMEDOUT;
 	}
-
-	intel_hdcp_clear_keys(dev_priv);
 
 	ret = connector->hdcp_shim->toggle_signalling(intel_dig_port, false);
 	if (ret) {
@@ -540,10 +602,13 @@ static int _intel_hdcp_disable(struct intel_connector *connector)
 static int _intel_hdcp_enable(struct intel_connector *connector)
 {
 	struct drm_i915_private *dev_priv = connector->base.dev->dev_private;
-	int i, ret;
+	int i, ret, tries = 3;
 
-	if (!(I915_READ(SKL_FUSE_STATUS) & SKL_FUSE_PG_DIST_STATUS(1))) {
-		DRM_ERROR("PG1 is disabled, cannot load keys\n");
+	DRM_DEBUG_KMS("[%s:%d] HDCP is being enabled...\n",
+		      connector->base.name, connector->base.base.id);
+
+	if (!hdcp_key_loadable(dev_priv)) {
+		DRM_ERROR("HDCP key Load is not possible\n");
 		return -ENXIO;
 	}
 
@@ -558,14 +623,21 @@ static int _intel_hdcp_enable(struct intel_connector *connector)
 		return ret;
 	}
 
-	ret = intel_hdcp_auth(conn_to_dig_port(connector),
-			      connector->hdcp_shim);
-	if (ret) {
-		DRM_ERROR("Failed to authenticate HDCP (%d)\n", ret);
-		return ret;
+	/* Incase of authentication failures, HDCP spec expects reauth. */
+	for (i = 0; i < tries; i++) {
+		ret = intel_hdcp_auth(conn_to_dig_port(connector),
+				      connector->hdcp_shim);
+		if (!ret)
+			return 0;
+
+		DRM_DEBUG_KMS("HDCP Auth failure (%d)\n", ret);
+
+		/* Ensuring HDCP encryption and signalling are stopped. */
+		_intel_hdcp_disable(connector);
 	}
 
-	return 0;
+	DRM_ERROR("HDCP authentication failed (%d tries/%d)\n", tries, ret);
+	return ret;
 }
 
 static void intel_hdcp_check_work(struct work_struct *work)
@@ -718,8 +790,9 @@ int intel_hdcp_check_link(struct intel_connector *connector)
 		goto out;
 
 	if (!(I915_READ(PORT_HDCP_STATUS(port)) & HDCP_STATUS_ENC)) {
-		DRM_ERROR("HDCP check failed: link is not encrypted, %x\n",
-			   I915_READ(PORT_HDCP_STATUS(port)));
+		DRM_ERROR("%s:%d HDCP check failed: link is not encrypted,%x\n",
+			  connector->base.name, connector->base.base.id,
+			  I915_READ(PORT_HDCP_STATUS(port)));
 		ret = -ENXIO;
 		connector->hdcp_value = DRM_MODE_CONTENT_PROTECTION_DESIRED;
 		schedule_work(&connector->hdcp_prop_work);
@@ -736,7 +809,8 @@ int intel_hdcp_check_link(struct intel_connector *connector)
 		goto out;
 	}
 
-	DRM_DEBUG_KMS("HDCP link failed, retrying authentication\n");
+	DRM_DEBUG_KMS("[%s:%d] HDCP link failed, retrying authentication\n",
+		      connector->base.name, connector->base.base.id);
 
 	ret = _intel_hdcp_disable(connector);
 	if (ret) {
