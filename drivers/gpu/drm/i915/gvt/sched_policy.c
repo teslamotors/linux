@@ -63,16 +63,20 @@ struct gvt_sched_data {
 	struct list_head lru_runq_head[I915_NUM_ENGINES];
 };
 
-static void vgpu_update_timeslice(struct intel_vgpu *pre_vgpu,
-					enum intel_engine_id ring_id)
+static void vgpu_update_timeslice(struct intel_vgpu *vgpu,
+		enum intel_engine_id ring_id, ktime_t cur_time)
 {
 	ktime_t delta_ts;
-	struct vgpu_sched_data *vgpu_data = pre_vgpu->sched_data[ring_id];
+	struct vgpu_sched_data *vgpu_data;
 
-	delta_ts = vgpu_data->sched_out_time - vgpu_data->sched_in_time;
+	if (vgpu == NULL || vgpu == vgpu->gvt->idle_vgpu)
+		return;
 
-	vgpu_data->sched_time += delta_ts;
-	vgpu_data->left_ts -= delta_ts;
+	vgpu_data = vgpu->sched_data[ring_id];
+	delta_ts = ktime_sub(cur_time, vgpu_data->sched_in_time);
+	vgpu_data->sched_time = ktime_add(vgpu_data->sched_time, delta_ts);
+	vgpu_data->left_ts = ktime_sub(vgpu_data->left_ts, delta_ts);
+	vgpu_data->sched_in_time = cur_time;
 }
 
 #define GVT_TS_BALANCE_PERIOD_MS 100
@@ -149,11 +153,7 @@ static void try_to_schedule_next_vgpu(struct intel_gvt *gvt,
 		return;
 
 	cur_time = ktime_get();
-	if (scheduler->current_vgpu[ring_id]) {
-		vgpu_data = scheduler->current_vgpu[ring_id]->sched_data[ring_id];
-		vgpu_data->sched_out_time = cur_time;
-		vgpu_update_timeslice(scheduler->current_vgpu[ring_id], ring_id);
-	}
+	vgpu_update_timeslice(scheduler->current_vgpu[ring_id], ring_id, cur_time);
 	vgpu_data = scheduler->next_vgpu[ring_id]->sched_data[ring_id];
 	vgpu_data->sched_in_time = cur_time;
 
@@ -231,12 +231,13 @@ void intel_gvt_schedule(struct intel_gvt *gvt)
 	static ktime_t check_time;
 	enum intel_engine_id i;
 	struct intel_engine_cs *engine;
+	ktime_t cur_time;
 
 	mutex_lock(&gvt->sched_lock);
+	cur_time = ktime_get();
 
 	if (test_and_clear_bit(INTEL_GVT_REQUEST_SCHED,
 				(void *)&gvt->service_request)) {
-		ktime_t cur_time = ktime_get();
 
 		if (ktime_sub(cur_time, check_time) >=
 				GVT_TS_BALANCE_PERIOD_MS * NSEC_PER_MSEC) {
@@ -247,8 +248,10 @@ void intel_gvt_schedule(struct intel_gvt *gvt)
 	}
 	clear_bit(INTEL_GVT_REQUEST_EVENT_SCHED, (void *)&gvt->service_request);
 
-	for_each_engine(engine, gvt->dev_priv, i)
+	for_each_engine(engine, gvt->dev_priv, i) {
+		vgpu_update_timeslice(gvt->scheduler.current_vgpu[i], i, cur_time);
 		tbs_sched_func(sched_data, i);
+	}
 
 	mutex_unlock(&gvt->sched_lock);
 }
