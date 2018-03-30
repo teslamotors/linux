@@ -2472,6 +2472,12 @@ u64 gk20a_vm_map(struct vm_gk20a *vm,
 	else
 		bfr.pgsz_idx = gmmu_page_size_small;
 
+	if ((mapping_size > bfr.size) ||
+	    (buffer_offset > (bfr.size - mapping_size))) {
+		err = -EINVAL;
+		goto clean_up;
+	}
+
 	/* If FIX_OFFSET is set, pgsz is determined at address allocation
 	 * time. The alignment at address alloc time must be the same as
 	 * the alignment determined by gmmu_select_page_size().

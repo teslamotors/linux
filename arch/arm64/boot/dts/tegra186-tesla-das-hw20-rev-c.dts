@@ -544,6 +544,20 @@
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
+
+			/*
+			 * Configure PADCTL_SYS_GPIO_DIS2_0 as GP, PULL_DOWN, HSIO
+			 * to be used by GP_PWM2.
+			 */
+			gpio_dis2_pu2 {
+				nvidia,pins = "gpio_dis2_pu2";
+				nvidia,function = "gp";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,is_sfio = <TEGRA_PIN_ENABLE>;
+			};
+
 		};
 	};
 
@@ -2204,6 +2218,14 @@
 	pps {
 		compatible = "pps-gpio";
 		gpios = <&tegra_gpio TEGRA_GPIO(O, 1) GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
+	/*
+	 * A33 - GP_PWM2
+	 * Used as PWM to DS90UB964 GPIO1 for frame sync pulse
+	 */
+	tegra_pwm2: pwm@3290000 {
 		status = "okay";
 	};
 };

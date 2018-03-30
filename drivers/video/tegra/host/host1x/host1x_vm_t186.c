@@ -32,7 +32,7 @@ static int host1x_vm_init(struct nvhost_vm *vm)
 	do {
 		pdev = iommu_context_dev_allocate();
 		if (!pdev)
-			mdelay(1);
+			msleep(1);
 	} while (!pdev);
 
 	vm->pdev = pdev;

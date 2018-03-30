@@ -2420,7 +2420,7 @@
 		       <&tegra_car TEGRA186_CLK_CLK_M>;
 		clock-names = "fuse", "clk_m";
 		/*nvidia,tz = <&aotag>;
-		nvidia,temp-range = <29000 101000>;*/
+		nvidia,temp-range = <4000 101000>;*/
 		status = "disabled";
 	};
 

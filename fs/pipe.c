@@ -407,7 +407,12 @@ pipe_write(struct kiocb *iocb, struct iov_iter *from)
 			int copied;
 
 			if (!page) {
-				page = alloc_page(GFP_HIGHUSER);
+				gfp_t gfp_mask = GFP_HIGHUSER;
+
+				if (filp->f_flags & O_NONBLOCK)
+					gfp_mask = (gfp_mask | __GFP_NOWARN) & ~__GFP_WAIT;
+
+				page = alloc_page(gfp_mask);
 				if (unlikely(!page)) {
 					ret = ret ? : -ENOMEM;
 					break;

@@ -991,13 +991,20 @@ thermal_cooling_device_cur_state_store(struct device *dev,
 				       const char *buf, size_t count)
 {
 	struct thermal_cooling_device *cdev = to_cooling_device(dev);
-	unsigned long state;
-	int result;
+	unsigned long state, max_state;
+	int result, ret;
 
 	if (!sscanf(buf, "%ld\n", &state))
 		return -EINVAL;
 
 	if ((long)state < 0)
+		return -EINVAL;
+
+	ret = cdev->ops->get_max_state(cdev, &max_state);
+	if (ret)
+		return ret;
+
+	if (state > max_state)
 		return -EINVAL;
 
 	result = cdev->ops->set_cur_state(cdev, state);

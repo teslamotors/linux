@@ -22,6 +22,7 @@
  */
 
 struct squashfs_stream {
+	struct mutex  mutex;
 	void		*stream;
 };
 
@@ -38,6 +39,7 @@ void *squashfs_decompressor_create(struct squashfs_sb_info *msblk,
 
 	for_each_possible_cpu(cpu) {
 		stream = per_cpu_ptr(percpu, cpu);
+		mutex_init(&stream->mutex);
 		stream->stream = msblk->decompressor->init(msblk, comp_opts);
 		if (IS_ERR(stream->stream)) {
 			err = PTR_ERR(stream->stream);
@@ -79,10 +81,18 @@ int squashfs_decompress(struct squashfs_sb_info *msblk, struct buffer_head **bh,
 {
 	struct squashfs_stream __percpu *percpu =
 			(struct squashfs_stream __percpu *) msblk->stream;
-	struct squashfs_stream *stream = get_cpu_ptr(percpu);
-	int res = msblk->decompressor->decompress(msblk, stream->stream, bh, b,
+	struct squashfs_stream *stream = per_cpu_ptr(percpu, smp_processor_id());
+	int res;
+
+	/*
+	 * Even if we get migrated to a different cpu, mutex
+	 * will prevent two tasks running on two different cpu's
+	 * stepping on to the same buffer.
+	 */
+	mutex_lock(&stream->mutex);
+	res = msblk->decompressor->decompress(msblk, stream->stream, bh, b,
 		offset, length, output);
-	put_cpu_ptr(stream);
+	mutex_unlock(&stream->mutex);
 
 	if (res < 0)
 		ERROR("%s decompression failed, data probably corrupt\n",
