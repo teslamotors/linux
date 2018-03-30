@@ -228,7 +228,7 @@ out:
 void intel_gvt_schedule(struct intel_gvt *gvt)
 {
 	struct gvt_sched_data *sched_data = gvt->scheduler.sched_data;
-	static uint64_t timer_check;
+	static ktime_t check_time;
 	enum intel_engine_id i;
 	struct intel_engine_cs *engine;
 
@@ -236,7 +236,11 @@ void intel_gvt_schedule(struct intel_gvt *gvt)
 
 	if (test_and_clear_bit(INTEL_GVT_REQUEST_SCHED,
 				(void *)&gvt->service_request)) {
-		if (!(timer_check++ % GVT_TS_BALANCE_PERIOD_MS)) {
+		ktime_t cur_time = ktime_get();
+
+		if (ktime_sub(cur_time, check_time) >=
+				GVT_TS_BALANCE_PERIOD_MS * NSEC_PER_MSEC) {
+			check_time = cur_time;
 			for_each_engine(engine, gvt->dev_priv, i)
 				gvt_balance_timeslice(sched_data, i);
 		}
