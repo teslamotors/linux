@@ -310,6 +310,7 @@ void intel_vgpu_reset_mmio(struct intel_vgpu *vgpu, bool dmlr)
 	struct intel_gvt *gvt = vgpu->gvt;
 	const struct intel_gvt_device_info *info = &gvt->device_info;
 	void  *mmio = gvt->firmware.mmio;
+	struct drm_i915_private *dev_priv = gvt->dev_priv;
 
 	if (dmlr) {
 		memcpy(vgpu->mmio.vreg, mmio, info->mmio_size);
@@ -340,6 +341,12 @@ void intel_vgpu_reset_mmio(struct intel_vgpu *vgpu, bool dmlr)
 	vgpu_vreg(vgpu, 0xe681c) = 1 << 17;
 	vgpu_vreg(vgpu, 0xe6c04) = 3;
 	vgpu_vreg(vgpu, 0xe6e1c) = 0x2f << 16;
+
+	if (HAS_HUC_UCODE(dev_priv)) {
+		mmio_hw_access_pre(dev_priv);
+		vgpu_vreg(vgpu, HUC_STATUS2) = I915_READ(HUC_STATUS2);
+		mmio_hw_access_post(dev_priv);
+	}
 
 	/* Non-context MMIOs need entire check again if mmio/vgpu reset */
 	vgpu->entire_nonctxmmio_checked = false;
