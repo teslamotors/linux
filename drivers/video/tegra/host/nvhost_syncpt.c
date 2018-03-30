@@ -824,8 +824,7 @@ static u32 nvhost_get_syncpt(struct nvhost_syncpt *sp, bool client_managed,
 		if (id)
 			break;
 		mutex_unlock(&sp->syncpt_mutex);
-		schedule();
-		mdelay(1);
+		msleep(1);
 		mutex_lock(&sp->syncpt_mutex);
 	} while (!time_after(jiffies, timeout));
 

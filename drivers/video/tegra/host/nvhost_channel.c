@@ -234,7 +234,7 @@ int nvhost_channel_map(struct nvhost_device_data *pdata,
 					    max_channels);
 		if (index >= max_channels) {
 			mutex_unlock(&host->chlist_mutex);
-			mdelay(1);
+			msleep(1);
 			mutex_lock(&host->chlist_mutex);
 		}
 	} while (index >= max_channels);
