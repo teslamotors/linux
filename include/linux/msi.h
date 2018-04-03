@@ -141,7 +141,7 @@ void free_msi_entry(struct msi_desc *entry);
 void __pci_read_msi_msg(struct msi_desc *entry, struct msi_msg *msg);
 
 void native_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg);
-#ifdef CONFIG_PARAVIRT
+#if defined(CONFIG_PARAVIRT) && defined(CONFIG_X86)
 #include <asm/paravirt.h>
 #define __pci_write_msi_msg write_msi_msg_paravirt
 #else
