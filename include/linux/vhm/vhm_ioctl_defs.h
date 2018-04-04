@@ -101,6 +101,10 @@
 #define IC_SET_PTDEV_INTR_INFO         _IC_ID(IC_ID, IC_ID_PCI_BASE + 0x03)
 #define IC_RESET_PTDEV_INTR_INFO       _IC_ID(IC_ID, IC_ID_PCI_BASE + 0x04)
 
+/* Power management */
+#define IC_ID_PM_BASE                   0x60UL
+#define IC_PM_GET_CPU_STATE            _IC_ID(IC_ID, IC_ID_PM_BASE + 0x00)
+
 /**
  * struct vm_memseg - memory segment info for guest
  *

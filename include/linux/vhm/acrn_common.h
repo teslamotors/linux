@@ -206,4 +206,27 @@ struct acrn_vm_pci_msix_remap {
  */
 #define GUEST_CFG_OFFSET 	0xd0000
 
+struct cpu_px_data {
+	uint64_t core_frequency;	/* megahertz */
+	uint64_t power;			/* milliWatts */
+	uint64_t transition_latency;	/* microseconds */
+	uint64_t bus_master_latency;	/* microseconds */
+	uint64_t control;		/* control value */
+	uint64_t status;		/* success indicator */
+} __attribute__((aligned(8)));
+
+#define PMCMD_VMID_MASK		0xff000000
+#define PMCMD_VCPUID_MASK	0x00ff0000
+#define PMCMD_STATE_NUM_MASK	0x0000ff00
+#define PMCMD_TYPE_MASK		0x000000ff
+
+#define PMCMD_VMID_SHIFT	24
+#define PMCMD_VCPUID_SHIFT	16
+#define PMCMD_STATE_NUM_SHIFT	8
+
+enum pm_cmd_type {
+	PMCMD_GET_PX_CNT,
+	PMCMD_GET_PX_DATA,
+};
+
 #endif /* __ACRN_COMMON_H__ */
