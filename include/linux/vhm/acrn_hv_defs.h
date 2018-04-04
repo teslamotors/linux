@@ -106,6 +106,10 @@
 #define HC_ID_DBG_BASE              0x60UL
 #define HC_SETUP_SBUF               _HC_ID(HC_ID, HC_ID_DBG_BASE + 0x00)
 
+/* Power management */
+#define HC_ID_PM_BASE               0x80UL
+#define HC_PM_GET_CPU_STATE         _HC_ID(HC_ID, HC_ID_PM_BASE + 0x00)
+
 #define ACRN_DOM0_VMID (0UL)
 #define ACRN_INVALID_VMID (-1)
 #define ACRN_INVALID_HPA (-1UL)

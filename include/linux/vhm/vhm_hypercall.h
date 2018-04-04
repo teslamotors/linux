@@ -144,6 +144,7 @@ inline long hcall_pause_vm(unsigned long vmid);
 inline long hcall_destroy_vm(unsigned long vmid);
 inline long hcall_query_vm_state(unsigned long vmid);
 inline long hcall_setup_sbuf(unsigned long sbuf_head);
+inline long hcall_get_cpu_state(unsigned long cmd, unsigned long state_pa);
 inline long hcall_set_memmap(unsigned long vmid,
 		unsigned long memmap);
 inline long hcall_set_ioreq_buffer(unsigned long vmid,
