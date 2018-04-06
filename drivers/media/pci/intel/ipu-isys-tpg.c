@@ -90,7 +90,6 @@ static const char *const tpg_mode_items[] = {
 	"Ramp",
 	"Checkerboard",	/* Does not work, disabled. */
 	"Frame Based Colour",
-	NULL,
 };
 
 static struct v4l2_ctrl_config tpg_mode = {
