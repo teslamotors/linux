@@ -117,14 +117,14 @@ static const struct snd_soc_dapm_route broxton_gpmrb_map[] = {
 	{ "Speaker", NULL, "ssp4 Tx"},
 	{ "ssp4 Tx", NULL, "codec0_out"},
 
-	{ "tuner_in", NULL, "ssp2 Rx"},
-	{ "ssp2 Rx", NULL, "DiranaTunerCp"},
+	{ "tuner_in", NULL, "ssp2-b Rx"},
+	{ "ssp2-b Rx", NULL, "DiranaTunerCp"},
 
-	{ "aux_in", NULL, "ssp2 Rx"},
-	{ "ssp2 Rx", NULL, "DiranaAuxCp"},
+	{ "aux_in", NULL, "ssp2-c Rx"},
+	{ "ssp2-c Rx", NULL, "DiranaAuxCp"},
 
-	{ "mic_in", NULL, "ssp2 Rx"},
-	{ "ssp2 Rx", NULL, "DiranaMicCp"},
+	{ "mic_in", NULL, "ssp2-d Rx"},
+	{ "ssp2-d Rx", NULL, "DiranaMicCp"},
 
 	{ "DiranaPb", NULL, "ssp2 Tx"},
 	{ "ssp2 Tx", NULL, "dirana_out"},
@@ -511,8 +511,40 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.platform_name = "0000:00:0e.0",
-		.dpcm_capture = 1,
 		.dpcm_playback = 1,
+		.no_pcm = 1,
+	},
+	{
+		/* SSP2-B - Dirana */
+		.name = "SSP2-B-Codec",
+		.be_id = 1,
+		.cpu_dai_name = "SSP2-B Pin",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "0000:00:0e.0",
+		.dpcm_capture = 1,
+		.no_pcm = 1,
+	},
+	{
+		/* SSP2-C - Dirana */
+		.name = "SSP2-C-Codec",
+		.be_id = 1,
+		.cpu_dai_name = "SSP2-C Pin",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "0000:00:0e.0",
+		.dpcm_capture = 1,
+		.no_pcm = 1,
+	},
+	{
+		/* SSP2-D - Dirana */
+		.name = "SSP2-D-Codec",
+		.be_id = 1,
+		.cpu_dai_name = "SSP2-D Pin",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "0000:00:0e.0",
+		.dpcm_capture = 1,
 		.no_pcm = 1,
 	},
 	{
