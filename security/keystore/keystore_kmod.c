@@ -148,16 +148,16 @@ int add_to_blacklist(const char *uuid_str)
 	uuid_be uuid;
 	int ret = 0;
 
-	ret = dal_uuid_be_to_bin(uuid_str, &uuid);
+	ret = dal_uuid_parse(uuid_str, &uuid);
 	if (ret != DAL_KDI_SUCCESS) {
-		pr_err(KBUILD_MODNAME ": %s dal_uuid_be_to_bin failed\n",
+		pr_err(KBUILD_MODNAME ": %s dal_uuid_parse failed\n",
 									__func__);
 	} else {
-		pr_err(KBUILD_MODNAME ": %s dal_uuid_be_to_bin succeeded\n",
+		pr_err(KBUILD_MODNAME ": %s dal_uuid_parse succeeded\n",
 									__func__);
 	}
 
-	ret = dal_set_ta_exclusive_access(uuid);
+	ret = dal_set_ta_exclusive_access(&uuid);
 	if (ret != DAL_KDI_SUCCESS) {
 		pr_err(KBUILD_MODNAME ": %s dal_set_ta_exclusive_access failed\n",
 									__func__);
