@@ -25,10 +25,14 @@ struct ipu_isys;
 	(__n >= NR_OF_CSI2_SOURCE_PADS ? \
 		(NR_OF_CSI2_PADS - 2) : \
 		(__n + NR_OF_CSI2_SINK_PADS)); })
+#ifdef IPU_META_DATA_SUPPORT
 #define NR_OF_CSI2_META_PADS		1
 #define NR_OF_CSI2_PADS			\
 	(NR_OF_CSI2_SINK_PADS + NR_OF_CSI2_SOURCE_PADS + NR_OF_CSI2_META_PADS)
 #define CSI2_PAD_META			(NR_OF_CSI2_PADS - 1)
+#else
+#define NR_OF_CSI2_PADS	(NR_OF_CSI2_SINK_PADS + NR_OF_CSI2_SOURCE_PADS)
+#endif
 
 #define IPU_ISYS_SHORT_PACKET_BUFFER_NUM	VIDEO_MAX_FRAME
 #define IPU_ISYS_SHORT_PACKET_WIDTH	32
@@ -90,7 +94,9 @@ struct ipu_isys_csi2 {
 	struct ipu_isys *isys;
 	struct ipu_isys_subdev asd;
 	struct ipu_isys_video av[NR_OF_CSI2_SOURCE_PADS];
+#ifdef IPU_META_DATA_SUPPORT
 	struct ipu_isys_video av_meta;
+#endif
 	struct completion eof_completion;
 
 	void __iomem *base;
