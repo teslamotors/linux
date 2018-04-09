@@ -197,12 +197,16 @@ static int subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
 {
 	struct ipu_isys_csi2 *csi2 = to_ipu_isys_csi2(sd);
 
-	if (sub->type != V4L2_EVENT_FRAME_SYNC)
-		return -EINVAL;
-
 	dev_dbg(&csi2->isys->adev->dev, "sub->id %u\n", sub->id);
 
-	return v4l2_event_subscribe(fh, sub, 10, NULL);
+	switch (sub->type) {
+	case V4L2_EVENT_FRAME_SYNC:
+		return v4l2_event_subscribe(fh, sub, 10, NULL);
+	case V4L2_EVENT_CTRL:
+		return v4l2_ctrl_subscribe_event(fh, sub);
+	default:
+		return -EINVAL;
+	}
 }
 
 static const struct v4l2_subdev_core_ops csi2_sd_core_ops = {
