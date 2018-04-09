@@ -4511,6 +4511,7 @@ static int skl_compute_plane_wm(const struct drm_i915_private *dev_priv,
 				uint16_t ddb_allocation,
 				int level,
 				const struct skl_wm_params *wp,
+				const struct skl_wm_level *result_prev,
 				struct skl_wm_level *result /* out */)
 {
 	const struct drm_plane_state *pstate = &intel_pstate->base;
@@ -4575,6 +4576,15 @@ static int skl_compute_plane_wm(const struct drm_i915_private *dev_priv,
 		} else {
 			res_blocks++;
 		}
+
+		/*
+		 * Make sure result blocks for higher latency levels are atleast
+		 * as high as level below the current level.
+		 * Assumption in DDB algorithm optimization for special cases.
+		 * Also covers Display WA #1125 for RC.
+		 */
+		if (result_prev->plane_res_b > res_blocks)
+			res_blocks = result_prev->plane_res_b;
 	}
 
 	if (res_blocks >= ddb_allocation || res_lines > 31) {
@@ -4637,6 +4647,13 @@ skl_compute_wm_levels(const struct drm_i915_private *dev_priv,
 	for (level = 0; level <= max_level; level++) {
 		struct skl_wm_level *result = plane_id ? &wm->uv_wm[level] :
 							  &wm->wm[level];
+		struct skl_wm_level *result_prev;
+
+		if (level)
+			result_prev = plane_id ? &wm->uv_wm[level - 1] :
+						  &wm->wm[level - 1];
+		else
+			result_prev = plane_id ? &wm->uv_wm[0] : &wm->wm[0];
 
 		ret = skl_compute_plane_wm(dev_priv,
 					   cstate,
@@ -4644,6 +4661,7 @@ skl_compute_wm_levels(const struct drm_i915_private *dev_priv,
 					   ddb_blocks,
 					   level,
 					   wm_params,
+					   result_prev,
 					   result);
 		if (ret)
 			return ret;
