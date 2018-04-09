@@ -8,6 +8,7 @@
 #include <media/ipu-isys.h>
 #include <media/media-entity.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-dma-contig.h>
 
@@ -171,6 +172,8 @@ static const struct v4l2_ioctl_ops isa_config_ioctl_ops = {
 };
 
 static const struct v4l2_subdev_core_ops isa_sd_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 };
 
 static int set_stream(struct v4l2_subdev *sd, int enable)
@@ -922,7 +925,8 @@ int ipu_isys_isa_init(struct ipu_isys_isa *isa,
 				    NR_OF_ISA_PADS,
 				    NR_OF_ISA_STREAMS,
 				    NR_OF_ISA_SOURCE_PADS,
-				    NR_OF_ISA_SINK_PADS, 0);
+				    NR_OF_ISA_SINK_PADS,
+				    V4L2_SUBDEV_FL_HAS_EVENTS);
 	if (rval)
 		goto fail;
 
