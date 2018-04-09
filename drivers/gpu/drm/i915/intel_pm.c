@@ -3988,9 +3988,9 @@ int skl_check_pipe_max_pixel_rate(struct intel_crtc *intel_crtc,
 static unsigned int
 skl_plane_relative_data_rate(const struct intel_crtc_state *cstate,
 			     const struct drm_plane_state *pstate,
-			     int y)
+			     const int plane)
 {
-	struct intel_plane *plane = to_intel_plane(pstate->plane);
+	struct intel_plane *intel_plane = to_intel_plane(pstate->plane);
 	struct intel_plane_state *intel_pstate = to_intel_plane_state(pstate);
 	uint32_t data_rate;
 	uint32_t width = 0, height = 0;
@@ -4004,9 +4004,9 @@ skl_plane_relative_data_rate(const struct intel_crtc_state *cstate,
 	fb = pstate->fb;
 	format = fb->format->format;
 
-	if (plane->id == PLANE_CURSOR)
+	if (intel_plane->id == PLANE_CURSOR)
 		return 0;
-	if (y && format != DRM_FORMAT_NV12)
+	if (plane == 1 && format != DRM_FORMAT_NV12)
 		return 0;
 
 	/*
@@ -4017,18 +4017,13 @@ skl_plane_relative_data_rate(const struct intel_crtc_state *cstate,
 	width = drm_rect_width(&intel_pstate->base.src) >> 16;
 	height = drm_rect_height(&intel_pstate->base.src) >> 16;
 
-	/* for planar format */
-	if (format == DRM_FORMAT_NV12) {
-		if (y)  /* y-plane data rate */
-			data_rate = width * height *
-				fb->format->cpp[0];
-		else    /* uv-plane data rate */
-			data_rate = (width / 2) * (height / 2) *
-				fb->format->cpp[1];
-	} else {
-		/* for packed formats */
-		data_rate = width * height * fb->format->cpp[0];
+	/* UV plane does 1/2 pixel sub-sampling */
+	if (plane == 1 && format == DRM_FORMAT_NV12) {
+		width /= 2;
+		height /= 2;
 	}
+
+	data_rate = width * height * fb->format->cpp[plane];
 
 	down_scale_amount = skl_plane_downscale_amount(cstate, intel_pstate);
 
@@ -4042,8 +4037,8 @@ skl_plane_relative_data_rate(const struct intel_crtc_state *cstate,
  */
 static unsigned int
 skl_get_total_relative_data_rate(struct intel_crtc_state *intel_cstate,
-				 unsigned *plane_data_rate,
-				 unsigned *plane_y_data_rate)
+				 unsigned int *plane_data_rate,
+				 unsigned int *uv_plane_data_rate)
 {
 	struct drm_crtc_state *cstate = &intel_cstate->base;
 	struct drm_atomic_state *state = cstate->state;
@@ -4059,17 +4054,17 @@ skl_get_total_relative_data_rate(struct intel_crtc_state *intel_cstate,
 		enum plane_id plane_id = to_intel_plane(plane)->id;
 		unsigned int rate;
 
-		/* packed/uv */
+		/* packed/y */
 		rate = skl_plane_relative_data_rate(intel_cstate,
 						    pstate, 0);
 		plane_data_rate[plane_id] = rate;
 
 		total_data_rate += rate;
 
-		/* y-plane */
+		/* uv-plane */
 		rate = skl_plane_relative_data_rate(intel_cstate,
 						    pstate, 1);
-		plane_y_data_rate[plane_id] = rate;
+		uv_plane_data_rate[plane_id] = rate;
 
 		total_data_rate += rate;
 	}
@@ -4078,8 +4073,7 @@ skl_get_total_relative_data_rate(struct intel_crtc_state *intel_cstate,
 }
 
 static uint16_t
-skl_ddb_min_alloc(const struct drm_plane_state *pstate,
-		  const int y)
+skl_ddb_min_alloc(const struct drm_plane_state *pstate, const int plane)
 {
 	struct drm_framebuffer *fb = pstate->fb;
 	struct intel_plane_state *intel_pstate = to_intel_plane_state(pstate);
@@ -4090,8 +4084,8 @@ skl_ddb_min_alloc(const struct drm_plane_state *pstate,
 	if (WARN_ON(!fb))
 		return 0;
 
-	/* For packed formats, no y-plane, return 0 */
-	if (y && fb->format->format != DRM_FORMAT_NV12)
+	/* For packed formats, and uv-plane, return 0 */
+	if (plane == 1 && fb->format->format != DRM_FORMAT_NV12)
 		return 0;
 
 	/* For Non Y-tile return 8-blocks */
@@ -4110,15 +4104,12 @@ skl_ddb_min_alloc(const struct drm_plane_state *pstate,
 	src_h = drm_rect_height(&intel_pstate->base.src) >> 16;
 
 	/* Halve UV plane width and height for NV12 */
-	if (fb->format->format == DRM_FORMAT_NV12 && !y) {
+	if (plane == 1) {
 		src_w /= 2;
 		src_h /= 2;
 	}
 
-	if (fb->format->format == DRM_FORMAT_NV12 && !y)
-		plane_bpp = fb->format->cpp[1];
-	else
-		plane_bpp = fb->format->cpp[0];
+	plane_bpp = fb->format->cpp[plane];
 
 	if (drm_rotation_90_or_270(pstate->rotation)) {
 		switch (plane_bpp) {
@@ -4146,7 +4137,7 @@ skl_ddb_min_alloc(const struct drm_plane_state *pstate,
 
 static void
 skl_ddb_calc_min(const struct intel_crtc_state *cstate, int num_active,
-		 uint16_t *minimum, uint16_t *y_minimum)
+		 uint16_t *minimum, uint16_t *uv_minimum)
 {
 	const struct drm_plane_state *pstate;
 	struct drm_plane *plane;
@@ -4161,7 +4152,7 @@ skl_ddb_calc_min(const struct intel_crtc_state *cstate, int num_active,
 			continue;
 
 		minimum[plane_id] = skl_ddb_min_alloc(pstate, 0);
-		y_minimum[plane_id] = skl_ddb_min_alloc(pstate, 1);
+		uv_minimum[plane_id] = skl_ddb_min_alloc(pstate, 1);
 	}
 
 	minimum[PLANE_CURSOR] = skl_cursor_allocation(num_active);
@@ -4179,17 +4170,17 @@ skl_allocate_pipe_ddb(struct intel_crtc_state *cstate,
 	struct skl_ddb_entry *alloc = &cstate->wm.skl.ddb;
 	uint16_t alloc_size, start;
 	uint16_t minimum[I915_MAX_PLANES] = {};
-	uint16_t y_minimum[I915_MAX_PLANES] = {};
+	uint16_t uv_minimum[I915_MAX_PLANES] = {};
 	unsigned int total_data_rate;
 	enum plane_id plane_id;
 	int num_active;
-	unsigned plane_data_rate[I915_MAX_PLANES] = {};
-	unsigned plane_y_data_rate[I915_MAX_PLANES] = {};
+	unsigned int plane_data_rate[I915_MAX_PLANES] = {};
+	unsigned int uv_plane_data_rate[I915_MAX_PLANES] = {};
 	uint16_t total_min_blocks = 0;
 
 	/* Clear the partitioning for disabled planes. */
 	memset(ddb->plane[pipe], 0, sizeof(ddb->plane[pipe]));
-	memset(ddb->y_plane[pipe], 0, sizeof(ddb->y_plane[pipe]));
+	memset(ddb->uv_plane[pipe], 0, sizeof(ddb->uv_plane[pipe]));
 
 	if (WARN_ON(!state))
 		return 0;
@@ -4204,7 +4195,7 @@ skl_allocate_pipe_ddb(struct intel_crtc_state *cstate,
 	if (alloc_size == 0)
 		return 0;
 
-	skl_ddb_calc_min(cstate, num_active, minimum, y_minimum);
+	skl_ddb_calc_min(cstate, num_active, minimum, uv_minimum);
 
 	/*
 	 * 1. Allocate the mininum required blocks for each active plane
@@ -4214,7 +4205,7 @@ skl_allocate_pipe_ddb(struct intel_crtc_state *cstate,
 
 	for_each_plane_id_on_crtc(intel_crtc, plane_id) {
 		total_min_blocks += minimum[plane_id];
-		total_min_blocks += y_minimum[plane_id];
+		total_min_blocks += uv_minimum[plane_id];
 	}
 
 	if (total_min_blocks > alloc_size) {
@@ -4236,14 +4227,14 @@ skl_allocate_pipe_ddb(struct intel_crtc_state *cstate,
 	 */
 	total_data_rate = skl_get_total_relative_data_rate(cstate,
 							   plane_data_rate,
-							   plane_y_data_rate);
+							   uv_plane_data_rate);
 	if (total_data_rate == 0)
 		return 0;
 
 	start = alloc->start;
 	for_each_plane_id_on_crtc(intel_crtc, plane_id) {
-		unsigned int data_rate, y_data_rate;
-		uint16_t plane_blocks, y_plane_blocks = 0;
+		unsigned int data_rate, uv_data_rate;
+		uint16_t plane_blocks, uv_plane_blocks;
 
 		if (plane_id == PLANE_CURSOR)
 			continue;
@@ -4267,21 +4258,20 @@ skl_allocate_pipe_ddb(struct intel_crtc_state *cstate,
 
 		start += plane_blocks;
 
-		/*
-		 * allocation for y_plane part of planar format:
-		 */
-		y_data_rate = plane_y_data_rate[plane_id];
+		/* Allocate DDB for UV plane for planar format/NV12 */
+		uv_data_rate = uv_plane_data_rate[plane_id];
 
-		y_plane_blocks = y_minimum[plane_id];
-		y_plane_blocks += div_u64((uint64_t)alloc_size * y_data_rate,
-					total_data_rate);
+		uv_plane_blocks = uv_minimum[plane_id];
+		uv_plane_blocks += div_u64((uint64_t)alloc_size * uv_data_rate,
+					   total_data_rate);
 
-		if (y_data_rate) {
-			ddb->y_plane[pipe][plane_id].start = start;
-			ddb->y_plane[pipe][plane_id].end = start + y_plane_blocks;
+		if (uv_data_rate) {
+			ddb->uv_plane[pipe][plane_id].start = start;
+			ddb->uv_plane[pipe][plane_id].end =
+				start + uv_plane_blocks;
 		}
 
-		start += y_plane_blocks;
+		start += uv_plane_blocks;
 	}
 
 	return 0;
@@ -4419,9 +4409,7 @@ skl_compute_plane_wm_params(const struct drm_i915_private *dev_priv,
 		wp->width = drm_rect_width(&intel_pstate->base.src) >> 16;
 	}
 
-	wp->cpp = (fb->format->format == DRM_FORMAT_NV12) ? fb->format->cpp[1] :
-							    fb->format->cpp[0];
-
+	wp->cpp = fb->format->cpp[0];
 	if (drm_rotation_90_or_270(pstate->rotation)) {
 
 		switch (wp->cpp) {
@@ -4614,6 +4602,9 @@ skl_compute_wm_levels(const struct drm_i915_private *dev_priv,
 			return ret;
 	}
 
+	if (intel_pstate->base.fb->format->format == DRM_FORMAT_NV12)
+		wm->is_planar = true;
+
 	return 0;
 }
 
@@ -4799,19 +4790,25 @@ static void skl_pv_write_plane_wm(struct intel_crtc *intel_crtc,
 	}
 	tmp_plane_wm.plane_trans_wm_level = skl_calc_wm_level(&wm->trans_wm);
 
-	entry = &ddb->plane[pipe][plane_id];
+	if (wm->is_planar)
+		entry = &ddb->uv_plane[pipe][plane_id];
+	else
+		entry = &ddb->plane[pipe][plane_id];
+
 	if (entry->end)
 		tmp_plane_wm.plane_buf_cfg =
 			(entry->end - 1) << 16 | entry->start;
 	else
 		tmp_plane_wm.plane_buf_cfg = 0;
 
-	spin_lock(&dev_priv->shared_page_lock);
-	for (i = 0; i < sizeof(struct pv_plane_wm_update) / 4; i++)
-		writel(*((u32 *)(&tmp_plane_wm) + i), pv_plane_wm + i);
-	skl_ddb_entry_write(dev_priv, PLANE_NV12_BUF_CFG(pipe, plane_id),
-			    &ddb->y_plane[pipe][plane_id]);
-	spin_unlock(&dev_priv->shared_page_lock);
+	if (wm->is_planar) {
+		spin_lock(&dev_priv->shared_page_lock);
+		for (i = 0; i < sizeof(struct pv_plane_wm_update) / 4; i++)
+			writel(*((u32 *)(&tmp_plane_wm) + i), pv_plane_wm + i);
+		skl_ddb_entry_write(dev_priv, PLANE_NV12_BUF_CFG(pipe, plane_id),
+				    &ddb->plane[pipe][plane_id]);
+		spin_unlock(&dev_priv->shared_page_lock);
+	}
 }
 
 static void skl_write_plane_wm(struct intel_crtc *intel_crtc,
@@ -4875,8 +4872,17 @@ static void skl_write_plane_wm(struct intel_crtc *intel_crtc,
 
 	skl_ddb_entry_write(dev_priv, PLANE_BUF_CFG(pipe, plane_id),
 			    &ddb->plane[pipe][plane_id]);
-	skl_ddb_entry_write(dev_priv, PLANE_NV12_BUF_CFG(pipe, plane_id),
-			    &ddb->y_plane[pipe][plane_id]);
+	if (wm->is_planar) {
+		skl_ddb_entry_write(dev_priv, PLANE_BUF_CFG(pipe, plane_id),
+				    &ddb->uv_plane[pipe][plane_id]);
+		skl_ddb_entry_write(dev_priv,
+				    PLANE_NV12_BUF_CFG(pipe, plane_id),
+				    &ddb->plane[pipe][plane_id]);
+	} else {
+		skl_ddb_entry_write(dev_priv, PLANE_BUF_CFG(pipe, plane_id),
+				    &ddb->plane[pipe][plane_id]);
+		I915_WRITE(PLANE_NV12_BUF_CFG(pipe, plane_id), 0x0);
+	}
 }
 
 static void skl_write_cursor_wm(struct intel_crtc *intel_crtc,
@@ -4992,8 +4998,8 @@ skl_ddb_add_affected_planes(struct intel_crtc_state *cstate)
 
 		if (skl_ddb_entry_equal(&cur_ddb->plane[pipe][plane_id],
 					&new_ddb->plane[pipe][plane_id]) &&
-		    skl_ddb_entry_equal(&cur_ddb->y_plane[pipe][plane_id],
-					&new_ddb->y_plane[pipe][plane_id]))
+		    skl_ddb_entry_equal(&cur_ddb->uv_plane[pipe][plane_id],
+					&new_ddb->uv_plane[pipe][plane_id]))
 			continue;
 
 		plane_state = drm_atomic_get_plane_state(state, plane);
@@ -5095,8 +5101,8 @@ skl_copy_ddb_for_pipe(struct skl_ddb_values *dst,
 		      struct skl_ddb_values *src,
 		      enum pipe pipe)
 {
-	memcpy(dst->ddb.y_plane[pipe], src->ddb.y_plane[pipe],
-	       sizeof(dst->ddb.y_plane[pipe]));
+	memcpy(dst->ddb.uv_plane[pipe], src->ddb.uv_plane[pipe],
+	       sizeof(dst->ddb.uv_plane[pipe]));
 	memcpy(dst->ddb.plane[pipe], src->ddb.plane[pipe],
 	       sizeof(dst->ddb.plane[pipe]));
 }
