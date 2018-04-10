@@ -235,10 +235,29 @@ static const struct v4l2_subdev_pad_ops tpg_sd_pad_ops = {
 	.enum_mbus_code = ipu_isys_subdev_enum_mbus_code,
 };
 
-static struct v4l2_subdev_ops tpg_sd_ops = {
+static int subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
+			   struct v4l2_event_subscription *sub)
+{
+	switch (sub->type) {
 #ifdef IPU_TPG_SOF
-	.core = &tpg_sd_core_ops,
+	case V4L2_EVENT_FRAME_SYNC:
+		return v4l2_event_subscribe(fh, sub, 10, NULL);
 #endif
+	case V4L2_EVENT_CTRL:
+		return v4l2_ctrl_subscribe_event(fh, sub);
+	default:
+		return -EINVAL;
+	}
+};
+
+/* V4L2 subdev core operations */
+static const struct v4l2_subdev_core_ops tpg_sd_core_ops = {
+	.subscribe_event = subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
+static struct v4l2_subdev_ops tpg_sd_ops = {
+	.core = &tpg_sd_core_ops,
 	.video = &tpg_sd_video_ops,
 	.pad = &tpg_sd_pad_ops,
 };
@@ -282,7 +301,8 @@ int ipu_isys_tpg_init(struct ipu_isys_tpg *tpg,
 				    NR_OF_TPG_PADS,
 				    NR_OF_TPG_STREAMS,
 				    NR_OF_TPG_SOURCE_PADS,
-				    NR_OF_TPG_SINK_PADS, 0);
+				    NR_OF_TPG_SINK_PADS,
+				    V4L2_SUBDEV_FL_HAS_EVENTS);
 	if (rval)
 		return rval;
 
@@ -290,9 +310,6 @@ int ipu_isys_tpg_init(struct ipu_isys_tpg *tpg,
 	tpg->asd.sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
 #else
 	tpg->asd.sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
-#endif
-#ifdef IPU_TPG_SOF
-	tpg->asd.sd.flags |= V4L2_SUBDEV_FL_HAS_EVENTS;
 #endif
 	tpg->asd.pad[TPG_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 
