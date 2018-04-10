@@ -202,6 +202,10 @@
 #define MOD_DATA_OFFSET		12
 #define SET_LARGE_CFG_FW_CONFIG		7
 
+#define DSP_EXCEP_CORE_MASK		0x3
+#define DSP_EXCEP_STACK_SIZE_SHIFT	2
+#define SKL_FW_RSRCE_EVNT_DATA_SZ	6
+
 enum skl_ipc_msg_target {
 	IPC_FW_GEN_MSG = 0,
 	IPC_MOD_MSG = 1
@@ -227,6 +231,28 @@ enum skl_ipc_glb_type {
 	IPC_GLB_LOAD_LIBRARY = 24,
 	IPC_GLB_NOTIFY = 26,
 	IPC_GLB_MAX_IPC_MSG_NUMBER = 31 /* Maximum message number */
+};
+
+/* Resource Event Types */
+enum skl_ipc_resource_event_type {
+	SKL_BUDGET_VIOLATION = 0,
+	SKL_MIXER_UNDERRUN = 1,
+	SKL_STREAM_DATA_SEGMENT = 2,
+	SKL_PROCESS_DATA_ERR = 3,
+	SKL_STACK_OVERFLOW = 4,
+	SKL_BUFFERING_MODE_CHANGED = 5,
+	SKL_GATEWAY_UNDERRUN = 6,
+	SKL_GATEWAY_OVERRUN = 7,
+	SKL_EDF_DOMAIN_UNSTABLE = 8,
+	SKL_WCLK_SAMPLE_COUNT = 9,
+	SKL_GATEWAY_HIGH_THRESHOLD = 10,
+	SKL_GATEWAY_LOW_THRESHOLD = 11,
+	SKL_I2S_BCE_DETECTED = 12,
+	SKL_I2S_CLK_STATE_CHANGED = 13,
+	SKL_I2S_SINK_MODE_CHANGED = 14,
+	SKL_I2S_SOURCE_MODE_CHANGED = 15,
+	SKL_SRE_DRIFT_TOO_HIGH = 16,
+	SKL_INVALID_RESORUCE_EVENT_TYPE = 17
 };
 
 enum skl_ipc_glb_reply {
@@ -294,6 +320,13 @@ enum skl_ipc_module_msg {
 	IPC_MOD_SET_D0IX = 8,
 	IPC_MOD_DELETE_INSTANCE = 11
 };
+
+struct skl_event_notify {
+	u32 resource_type;
+	u32 resource_id;
+	u32 event_type;
+	u32 event_data[SKL_FW_RSRCE_EVNT_DATA_SZ];
+} __packed;
 
 void skl_ipc_tx_data_copy(struct ipc_message *msg, char *tx_data,
 		size_t tx_size)
@@ -454,6 +487,98 @@ skl_process_log_buffer(struct sst_dsp *sst, struct skl_ipc_header header)
 	skl_dsp_put_log_buff(sst, core);
 }
 
+static void
+skl_parse_resource_event(struct skl_sst *skl, struct skl_ipc_header header)
+{
+	struct skl_event_notify notify;
+	struct sst_dsp *sst = skl->dsp;
+
+	/* read the message contents from mailbox */
+	sst_dsp_inbox_read(sst, &notify, sizeof(struct skl_event_notify));
+
+	/* notify user about the event type */
+	switch (notify.event_type) {
+
+	case SKL_BUDGET_VIOLATION:
+		dev_err(sst->dev, "MCPS Budget Violation: %x\n",
+					header.primary);
+		break;
+	case SKL_MIXER_UNDERRUN:
+		dev_err(sst->dev, "Mixer Underrun Detected: %x\n",
+					header.primary);
+		break;
+	case SKL_STREAM_DATA_SEGMENT:
+		dev_err(sst->dev, "Stream Data Segment: %x\n",
+					header.primary);
+		break;
+	case SKL_PROCESS_DATA_ERR:
+		dev_err(sst->dev, "Process Data Error: %x\n",
+					header.primary);
+		break;
+	case SKL_STACK_OVERFLOW:
+		dev_err(sst->dev, "Stack Overflow: %x\n",
+					header.primary);
+		break;
+	case SKL_BUFFERING_MODE_CHANGED:
+		dev_err(sst->dev, "Buffering Mode Changed: %x\n",
+					header.primary);
+		break;
+	case SKL_GATEWAY_UNDERRUN:
+		dev_err(sst->dev, "Gateway Underrun Detected: %x\n",
+					header.primary);
+		break;
+	case SKL_GATEWAY_OVERRUN:
+		dev_err(sst->dev, "Gateway Overrun Detected: %x\n",
+					header.primary);
+		break;
+	case SKL_WCLK_SAMPLE_COUNT:
+		dev_err(sst->dev,
+			"FW Wclk and Sample count Notif Detected: %x\n",
+					header.primary);
+		break;
+	case SKL_GATEWAY_HIGH_THRESHOLD:
+		dev_err(sst->dev, "IPC gateway reached high threshold: %x\n",
+					header.primary);
+		break;
+	case SKL_GATEWAY_LOW_THRESHOLD:
+		dev_err(sst->dev, "IPC gateway reached low threshold: %x\n",
+					header.primary);
+		break;
+	case SKL_I2S_BCE_DETECTED:
+		dev_err(sst->dev, "Bit Count Error detected on I2S port: %x\n",
+					header.primary);
+		break;
+	case SKL_I2S_CLK_STATE_CHANGED:
+		dev_err(sst->dev, "Clock detected/loss on I2S port: %x\n",
+					header.primary);
+		break;
+	case SKL_I2S_SINK_MODE_CHANGED:
+		dev_err(sst->dev, "I2S Sink started/stopped dropping \
+			data in non-blk mode: %x\n", header.primary);
+		break;
+	case SKL_I2S_SOURCE_MODE_CHANGED:
+		dev_err(sst->dev, "I2S Source started/stopped generating 0's \
+			in non-blk mode: %x\n", header.primary);
+		break;
+	case SKL_SRE_DRIFT_TOO_HIGH:
+		dev_err(sst->dev,
+			"Frequency drift exceeded limit in SRE: %x\n",
+					header.primary);
+		break;
+	case SKL_INVALID_RESORUCE_EVENT_TYPE:
+		dev_err(sst->dev, "Invalid type: %x\n", header.primary);
+		break;
+	default:
+		dev_err(sst->dev, "ipc: Unhandled resource event=%x",
+					header.primary);
+		break;
+	}
+
+	print_hex_dump(KERN_DEBUG, "Params:",
+			DUMP_PREFIX_OFFSET, 8, 4,
+			&notify, sizeof(struct skl_event_notify), false);
+}
+
 int skl_ipc_process_notification(struct sst_generic_ipc *ipc,
 		struct skl_ipc_header header)
 {
@@ -468,8 +593,7 @@ int skl_ipc_process_notification(struct sst_generic_ipc *ipc,
 			break;
 
 		case IPC_GLB_NOTIFY_RESOURCE_EVENT:
-			dev_err(ipc->dev, "MCPS Budget Violation: %x\n",
-						header.primary);
+			skl_parse_resource_event(skl, header);
 			break;
 
 		case IPC_GLB_NOTIFY_FW_READY:
