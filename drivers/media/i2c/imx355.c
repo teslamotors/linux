@@ -7,6 +7,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 
 
 #define IMX355_REG_MODE_SELECT		0x0100
@@ -1280,6 +1281,10 @@ static void imx355_update_pad_format(struct imx355 *imx355,
 	fmt->format.height = mode->height;
 	fmt->format.code = imx355_get_format_code(imx355);
 	fmt->format.field = V4L2_FIELD_NONE;
+	fmt->format.colorspace = V4L2_COLORSPACE_DEFAULT;
+	fmt->format.xfer_func = V4L2_XFER_FUNC_DEFAULT;
+	fmt->format.ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+	fmt->format.quantization = V4L2_QUANTIZATION_DEFAULT;
 }
 
 static int imx355_do_get_pad_format(struct imx355 *imx355,
@@ -1537,6 +1542,11 @@ static int imx355_identify_module(struct imx355 *imx355)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops imx355_subdev_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops imx355_video_ops = {
 	.s_stream = imx355_set_stream,
 };
@@ -1549,6 +1559,7 @@ static const struct v4l2_subdev_pad_ops imx355_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops imx355_subdev_ops = {
+	.core = &imx355_subdev_core_ops,
 	.video = &imx355_video_ops,
 	.pad = &imx355_pad_ops,
 };
@@ -1693,7 +1704,8 @@ static int imx355_probe(struct i2c_client *client,
 
 	/* Initialize subdev */
 	imx355->sd.internal_ops = &imx355_internal_ops;
-	imx355->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	imx355->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+				V4L2_SUBDEV_FL_HAS_EVENTS;
 	imx355->sd.entity.ops = &imx355_subdev_entity_ops;
 	imx355->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
