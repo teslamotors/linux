@@ -7,6 +7,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 
 
 #define IMX319_REG_MODE_SELECT		0x0100
@@ -1986,6 +1987,10 @@ static void imx319_update_pad_format(struct imx319 *imx319,
 	fmt->format.height = mode->height;
 	fmt->format.code = imx319_get_format_code(imx319);
 	fmt->format.field = V4L2_FIELD_NONE;
+	fmt->format.colorspace = V4L2_COLORSPACE_DEFAULT;
+	fmt->format.xfer_func = V4L2_XFER_FUNC_DEFAULT;
+	fmt->format.ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+	fmt->format.quantization = V4L2_QUANTIZATION_DEFAULT;
 }
 
 static int imx319_do_get_pad_format(struct imx319 *imx319,
@@ -2243,6 +2248,11 @@ static int imx319_identify_module(struct imx319 *imx319)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops imx319_subdev_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops imx319_video_ops = {
 	.s_stream = imx319_set_stream,
 };
@@ -2255,6 +2265,7 @@ static const struct v4l2_subdev_pad_ops imx319_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops imx319_subdev_ops = {
+	.core = &imx319_subdev_core_ops,
 	.video = &imx319_video_ops,
 	.pad = &imx319_pad_ops,
 };
@@ -2399,7 +2410,8 @@ static int imx319_probe(struct i2c_client *client,
 
 	/* Initialize subdev */
 	imx319->sd.internal_ops = &imx319_internal_ops;
-	imx319->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	imx319->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+				V4L2_SUBDEV_FL_HAS_EVENTS;
 	imx319->sd.entity.ops = &imx319_subdev_entity_ops;
 	imx319->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
