@@ -76,6 +76,8 @@ void i915_check_vgpu(struct drm_i915_private *dev_priv)
 	}
 
 	dev_priv->vgpu.caps = __raw_i915_read32(dev_priv, vgtif_reg(vgt_caps));
+	dev_priv->vgpu.scaler_owned =
+			__raw_i915_read32(dev_priv, vgtif_reg(scaler_owned));
 
 	/* If guest wants to enable pvmmio, it needs to enable it explicitly
 	 * through vgt_if interface, and then read back the enable state from

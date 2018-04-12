@@ -540,6 +540,7 @@ struct intel_initial_plane_config {
 struct intel_scaler {
 	int in_use;
 	uint32_t mode;
+	int owned;
 };
 
 struct intel_crtc_scaler_state {
