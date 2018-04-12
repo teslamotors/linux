@@ -79,7 +79,8 @@
 	func(bool, disable_gvt_fw_loading); \
 	func(int, gvt_workload_priority); \
 	func(bool, enable_initial_modeset); \
-	func(bool, gvt_emulate_hdmi);
+	func(bool, gvt_emulate_hdmi); \
+	func(int, domain_scaler_owner);
 
 #define MEMBER(T, member) T member
 struct i915_params {

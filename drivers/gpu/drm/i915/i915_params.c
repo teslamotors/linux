@@ -83,6 +83,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.domain_plane_owners = 0,
 	.bg_color = 0x00000000,
 	.gvt_emulate_hdmi = true,
+	.domain_scaler_owner = 0x21100,
 };
 
 i915_param_named(modeset, int, 0400,
@@ -321,3 +322,27 @@ MODULE_PARM_DESC(bg_color, "Set the background (canvas) color");
 
 module_param_named(gvt_emulate_hdmi, i915_modparams.gvt_emulate_hdmi, bool, 0400);
 MODULE_PARM_DESC(gvt_emulate_hdmi, "GVT-g emulate HDMI or DP port for Guest OS.");
+
+module_param_named_unsafe(domain_scaler_owner,
+			  i915_modparams.domain_scaler_owner, int, 0400);
+/* pipeA Scaler = BITS 0-7 pipeB scaler = 8-15, pipeC = 16-19
+ *
+ * +----------+------------+-------------+------------+
+ * |unused    |  Pipe C    |   Pipe B    |   Pipe A   |
+ * +----------+------------+-------------+------------+
+ * 31       20 19        16 15           8 7           0
+ *
+ * Each nibble represents domain id. 0 for Dom0, 1,2,3...0xF for DomUs
+ * eg: domain_plane_owners = 0x00030210 // 0x000|3|02|10
+ * plane                 domain
+ * scaler_owner1A -0
+ * scaler_owner2A -1
+ * scaler_owner3A -2
+ * scaler_owner4A -0
+ * scaler_owner1B -3
+ * scaler_owner2B -0
+ *
+ */
+MODULE_PARM_DESC(domain_scaler_owner, "scaler owners for each domain and for\n"
+	"each pipe ids can be from 0-F, eg domain_scaler_owners = 0x00030210\n"
+	"scaler owner: 1C:3 2B:0 1B:2 2A:1 1A:0 (0x0 - default value)\n");

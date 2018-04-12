@@ -58,6 +58,10 @@
 #define _REG_701C4(pipe, plane) (0x701c4 + pipe * 0x1000 + plane * 0x100)
 #define _REG_701AC(pipe, plane) (0x701ac + pipe * 0x1000 + plane * 0x100)
 
+#define SKL_PS_REG_TO_PIPE(reg) (((reg) >> 11) & 0x3)
+#define SKL_PS_REG_TO_SCALER(reg) (((reg) >> 8) & 0x3)
+#define SKL_PS_REG_VALUE_TO_PLANE(val) (((val) >> 25) & 0x7)
+
 #define SKL_PLANE_REG_TO_PIPE(reg) (((reg) >> 12) & 0x3)
 #define SKL_PLANE_REG_TO_PLANE(reg) ((((reg) & 0xFFF) - 0x180) >> 8)
 #define SKL_FLIP_EVENT(pipe, plane) (PRIMARY_A_FLIP_DONE + (plane)*3 + pipe)

@@ -465,15 +465,33 @@ int bxt_check_planes(struct intel_vgpu *vgpu, int pipe)
 	return ret;
 }
 
+#define BITS_PER_DOMAIN 4
+#define MAX_SCALERS_PER_DOMAIN 2
+
+#define DOMAIN_SCALER_OWNER(owner, pipe, scaler) \
+	((((owner) >> (pipe) * BITS_PER_DOMAIN * MAX_SCALERS_PER_DOMAIN) >>  \
+	BITS_PER_DOMAIN * (scaler)) & 0xf)
+
 void intel_gvt_init_pipe_info(struct intel_gvt *gvt)
 {
-	int pipe;
+	enum pipe pipe;
+	unsigned int scaler;
+	unsigned int domain_scaler_owner = i915_modparams.domain_scaler_owner;
+	struct drm_i915_private *dev_priv = gvt->dev_priv;
 
 	for (pipe = PIPE_A; pipe <= PIPE_C; pipe++) {
 		gvt->pipe_info[pipe].pipe_num = pipe;
 		gvt->pipe_info[pipe].gvt = gvt;
 		INIT_WORK(&gvt->pipe_info[pipe].vblank_work,
 				intel_gvt_vblank_work);
+		/* Each nibble represents domain id
+		 * ids can be from 0-F. 0 for Dom0, 1,2,3...0xF for DomUs
+		 * scaler_owner[i] holds the id of the domain that owns it,
+		 * eg:0,1,2 etc
+		 */
+		for_each_universal_scaler(dev_priv, pipe, scaler)
+			gvt->pipe_info[pipe].scaler_owner[scaler] =
+			DOMAIN_SCALER_OWNER(domain_scaler_owner, pipe, scaler);
 	}
 }
 
