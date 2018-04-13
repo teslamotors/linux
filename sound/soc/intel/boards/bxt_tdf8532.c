@@ -77,6 +77,7 @@ static const struct snd_soc_dapm_route broxton_tdf8532_map[] = {
 #endif
 };
 
+#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 static int bxt_tdf8532_ssp2_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
 {
@@ -88,6 +89,7 @@ static int bxt_tdf8532_ssp2_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+#endif
 
 /* broxton digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link broxton_tdf8532_dais[] = {

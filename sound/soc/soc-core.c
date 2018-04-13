@@ -2996,11 +2996,13 @@ int snd_soc_dai_program_stream_tag(struct snd_pcm_substream *substream,
 	for (i = 0; i < rtd->num_codecs; i++) {
 		codec_dai = rtd->codec_dais[i];
 		codec_dai_ops = codec_dai->driver->ops;
-		if (codec_dai_ops->program_stream_tag)
+		if (codec_dai_ops->program_stream_tag) {
 			ret = codec_dai_ops->program_stream_tag(substream,
 				codec_dai, stream_tag);
-			if (ret)
+		}
+			if (ret) {
 				return ret;
+			}
 	}
 	return ret;
 
