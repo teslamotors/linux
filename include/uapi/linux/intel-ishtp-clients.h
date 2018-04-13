@@ -18,8 +18,6 @@
 #define _INTEL_ISHTP_CLIENTS_H
 
 #include <linux/uuid.h>
-#include <linux/mutex.h>
-#include <linux/miscdevice.h>
 
 /*
  * This IOCTL is used to associate the current file descriptor with a
