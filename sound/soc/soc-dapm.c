@@ -3682,7 +3682,7 @@ static int snd_soc_dai_link_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		/*substream.stream = SNDRV_PCM_STREAM_CAPTURE;*/
 		substream.stream = SNDRV_PCM_STREAM_PLAYBACK;
-		if (source->driver->ops && source->driver->ops->startup) {
+		if (source->driver->ops->startup) {
 			ret = source->driver->ops->startup(&substream, source);
 			if (ret < 0) {
 				dev_err(source->dev,
@@ -3697,7 +3697,7 @@ static int snd_soc_dai_link_event(struct snd_soc_dapm_widget *w,
 
 		/*substream.stream = SNDRV_PCM_STREAM_PLAYBACK;*/
 		substream.stream = SNDRV_PCM_STREAM_CAPTURE;
-		if (sink->driver->ops && sink->driver->ops->startup) {
+		if (sink->driver->ops->startup) {
 			ret = sink->driver->ops->startup(&substream, sink);
 			if (ret < 0) {
 				dev_err(sink->dev,
@@ -3727,13 +3727,13 @@ static int snd_soc_dai_link_event(struct snd_soc_dapm_widget *w,
 		ret = 0;
 
 		source->active--;
-		if (source->driver->ops && source->driver->ops->shutdown) {
+		if (source->driver->ops->shutdown) {
 			substream.stream = SNDRV_PCM_STREAM_CAPTURE;
 			source->driver->ops->shutdown(&substream, source);
 		}
 
 		sink->active--;
-		if (sink->driver->ops && sink->driver->ops->shutdown) {
+		if (sink->driver->ops->shutdown) {
 			substream.stream = SNDRV_PCM_STREAM_PLAYBACK;
 			sink->driver->ops->shutdown(&substream, sink);
 		}
@@ -4004,6 +4004,9 @@ int snd_soc_dapm_link_dai_widgets(struct snd_soc_card *card)
 		default:
 			continue;
 		}
+
+		if (!dai_w->priv)
+			continue;
 
 		dai = dai_w->priv;
 
