@@ -29,6 +29,7 @@
 #include <linux/types.h>
 #include <linux/uuid.h>
 #include <linux/uaccess.h>
+#include <linux/mutex.h>
 
 #include "ishtp-dev.h"
 #include "client.h"
