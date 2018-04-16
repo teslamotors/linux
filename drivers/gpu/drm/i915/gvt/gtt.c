@@ -311,9 +311,9 @@ static inline int gtt_set_entry64(void *pt,
 
 #define GTT_HAW 46
 
-#define ADDR_1G_MASK (((1UL << (GTT_HAW - 30 + 1)) - 1) << 30)
-#define ADDR_2M_MASK (((1UL << (GTT_HAW - 21 + 1)) - 1) << 21)
-#define ADDR_4K_MASK (((1UL << (GTT_HAW - 12 + 1)) - 1) << 12)
+#define ADDR_1G_MASK (((1UL << (GTT_HAW - 30)) - 1) << 30)
+#define ADDR_2M_MASK (((1UL << (GTT_HAW - 21)) - 1) << 21)
+#define ADDR_4K_MASK (((1UL << (GTT_HAW - 12)) - 1) << 12)
 
 static unsigned long gen8_gtt_get_pfn(struct intel_gvt_gtt_entry *e)
 {
@@ -1359,12 +1359,15 @@ static int ppgtt_handle_guest_write_page_table_bytes(void *gp,
 			return ret;
 	} else {
 		if (!test_bit(index, spt->post_shadow_bitmap)) {
+			int type = spt->shadow_page.type;
+
 			ppgtt_get_shadow_entry(spt, &se, index);
 			ret = ppgtt_handle_guest_entry_removal(gpt, &se, index);
 			if (ret)
 				return ret;
+			ops->set_pfn(&se, vgpu->gtt.scratch_pt[type].page_mfn);
+			ppgtt_set_shadow_entry(spt, &se, index);
 		}
-
 		ppgtt_set_post_shadow(spt, index);
 	}
 

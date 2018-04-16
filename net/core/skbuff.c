@@ -41,7 +41,6 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
-#include <linux/kmemcheck.h>
 #include <linux/mm.h>
 #include <linux/interrupt.h>
 #include <linux/in.h>
@@ -234,14 +233,12 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
 	shinfo = skb_shinfo(skb);
 	memset(shinfo, 0, offsetof(struct skb_shared_info, dataref));
 	atomic_set(&shinfo->dataref, 1);
-	kmemcheck_annotate_variable(shinfo->destructor_arg);
 
 	if (flags & SKB_ALLOC_FCLONE) {
 		struct sk_buff_fclones *fclones;
 
 		fclones = container_of(skb, struct sk_buff_fclones, skb1);
 
-		kmemcheck_annotate_bitfield(&fclones->skb2, flags1);
 		skb->fclone = SKB_FCLONE_ORIG;
 		refcount_set(&fclones->fclone_ref, 1);
 
@@ -301,7 +298,6 @@ struct sk_buff *__build_skb(void *data, unsigned int frag_size)
 	shinfo = skb_shinfo(skb);
 	memset(shinfo, 0, offsetof(struct skb_shared_info, dataref));
 	atomic_set(&shinfo->dataref, 1);
-	kmemcheck_annotate_variable(shinfo->destructor_arg);
 
 	return skb;
 }
@@ -1181,11 +1177,11 @@ int skb_copy_ubufs(struct sk_buff *skb, gfp_t gfp_mask)
 	int i, new_frags;
 	u32 d_off;
 
-	if (!num_frags)
-		return 0;
-
 	if (skb_shared(skb) || skb_unclone(skb, gfp_mask))
 		return -EINVAL;
+
+	if (!num_frags)
+		goto release;
 
 	new_frags = (__skb_pagelen(skb) + PAGE_SIZE - 1) >> PAGE_SHIFT;
 	for (i = 0; i < new_frags; i++) {
@@ -1242,6 +1238,7 @@ int skb_copy_ubufs(struct sk_buff *skb, gfp_t gfp_mask)
 	__skb_fill_page_desc(skb, new_frags - 1, head, 0, d_off);
 	skb_shinfo(skb)->nr_frags = new_frags;
 
+release:
 	skb_zcopy_clear(skb, false);
 	return 0;
 }
@@ -1283,7 +1280,6 @@ struct sk_buff *skb_clone(struct sk_buff *skb, gfp_t gfp_mask)
 		if (!n)
 			return NULL;
 
-		kmemcheck_annotate_bitfield(n, flags1);
 		n->fclone = SKB_FCLONE_UNAVAILABLE;
 	}
 
@@ -3657,8 +3653,6 @@ normal:
 
 		skb_shinfo(nskb)->tx_flags |= skb_shinfo(head_skb)->tx_flags &
 					      SKBTX_SHARED_FRAG;
-		if (skb_zerocopy_clone(nskb, head_skb, GFP_ATOMIC))
-			goto err;
 
 		while (pos < offset + len) {
 			if (i >= nfrags) {
@@ -3683,6 +3677,8 @@ normal:
 			}
 
 			if (unlikely(skb_orphan_frags(frag_skb, GFP_ATOMIC)))
+				goto err;
+			if (skb_zerocopy_clone(nskb, frag_skb, GFP_ATOMIC))
 				goto err;
 
 			*nskb_frag = *frag;
@@ -4175,7 +4171,7 @@ int sock_queue_err_skb(struct sock *sk, struct sk_buff *skb)
 
 	skb_queue_tail(&sk->sk_error_queue, skb);
 	if (!sock_flag(sk, SOCK_DEAD))
-		sk->sk_data_ready(sk);
+		sk->sk_error_report(sk);
 	return 0;
 }
 EXPORT_SYMBOL(sock_queue_err_skb);
@@ -4296,7 +4292,7 @@ void skb_complete_tx_timestamp(struct sk_buff *skb,
 	struct sock *sk = skb->sk;
 
 	if (!skb_may_tx_timestamp(sk, false))
-		return;
+		goto err;
 
 	/* Take a reference to prevent skb_orphan() from freeing the socket,
 	 * but only if the socket refcount is not zero.
@@ -4305,7 +4301,11 @@ void skb_complete_tx_timestamp(struct sk_buff *skb,
 		*skb_hwtstamps(skb) = *hwtstamps;
 		__skb_complete_tx_timestamp(skb, sk, SCM_TSTAMP_SND, false);
 		sock_put(sk);
+		return;
 	}
+
+err:
+	kfree_skb(skb);
 }
 EXPORT_SYMBOL_GPL(skb_complete_tx_timestamp);
 

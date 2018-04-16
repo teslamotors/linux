@@ -607,6 +607,7 @@ static inline void safexcel_handle_result_descriptor(struct safexcel_crypto_priv
 		ndesc = ctx->handle_result(priv, ring, sreq->req,
 					   &should_complete, &ret);
 		if (ndesc < 0) {
+			kfree(sreq);
 			dev_err(priv->dev, "failed to handle result (%d)", ndesc);
 			return;
 		}
@@ -788,7 +789,7 @@ static int safexcel_probe(struct platform_device *pdev)
 		return PTR_ERR(priv->base);
 	}
 
-	priv->clk = of_clk_get(dev->of_node, 0);
+	priv->clk = devm_clk_get(&pdev->dev, NULL);
 	if (!IS_ERR(priv->clk)) {
 		ret = clk_prepare_enable(priv->clk);
 		if (ret) {

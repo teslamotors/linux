@@ -21,6 +21,7 @@
 #include <asm/tlbflush.h>
 #include <asm/page.h>
 #include <asm/code-patching.h>
+#include <asm/setup.h>
 
 static int __patch_instruction(unsigned int *addr, unsigned int instr)
 {
@@ -146,11 +147,8 @@ int patch_instruction(unsigned int *addr, unsigned int instr)
 	 * During early early boot patch_instruction is called
 	 * when text_poke_area is not ready, but we still need
 	 * to allow patching. We just do the plain old patching
-	 * We use slab_is_available and per cpu read * via this_cpu_read
-	 * of text_poke_area. Per-CPU areas might not be up early
-	 * this can create problems with just using this_cpu_read()
 	 */
-	if (!slab_is_available() || !this_cpu_read(text_poke_area))
+	if (!this_cpu_read(*PTRRELOC(&text_poke_area)))
 		return __patch_instruction(addr, instr);
 
 	local_irq_save(flags);
@@ -302,6 +300,11 @@ int instr_is_relative_branch(unsigned int instr)
 		return 0;
 
 	return instr_is_branch_iform(instr) || instr_is_branch_bform(instr);
+}
+
+int instr_is_relative_link_branch(unsigned int instr)
+{
+	return instr_is_relative_branch(instr) && (instr & BRANCH_SET_LINK);
 }
 
 static unsigned long branch_iform_target(const unsigned int *instr)

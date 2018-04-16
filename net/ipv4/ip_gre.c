@@ -303,8 +303,10 @@ static int erspan_rcv(struct sk_buff *skb, struct tnl_ptk_info *tpi,
 				return PACKET_REJECT;
 
 			md = ip_tunnel_info_opts(&tun_dst->u.tun_info);
-			if (!md)
+			if (!md) {
+				dst_release((struct dst_entry *)tun_dst);
 				return PACKET_REJECT;
+			}
 
 			md->index = index;
 			info = &tun_dst->u.tun_info;
@@ -408,11 +410,13 @@ static int gre_rcv(struct sk_buff *skb)
 	if (unlikely(tpi.proto == htons(ETH_P_ERSPAN))) {
 		if (erspan_rcv(skb, &tpi, hdr_len) == PACKET_RCVD)
 			return 0;
+		goto out;
 	}
 
 	if (ipgre_rcv(skb, &tpi, hdr_len) == PACKET_RCVD)
 		return 0;
 
+out:
 	icmp_send(skb, ICMP_DEST_UNREACH, ICMP_PORT_UNREACH, 0);
 drop:
 	kfree_skb(skb);
@@ -579,8 +583,8 @@ static void erspan_fb_xmit(struct sk_buff *skb, struct net_device *dev,
 	if (gre_handle_offloads(skb, false))
 		goto err_free_rt;
 
-	if (skb->len > dev->mtu) {
-		pskb_trim(skb, dev->mtu);
+	if (skb->len > dev->mtu + dev->hard_header_len) {
+		pskb_trim(skb, dev->mtu + dev->hard_header_len);
 		truncate = true;
 	}
 
@@ -731,8 +735,8 @@ static netdev_tx_t erspan_xmit(struct sk_buff *skb,
 	if (skb_cow_head(skb, dev->needed_headroom))
 		goto free_skb;
 
-	if (skb->len - dev->hard_header_len > dev->mtu) {
-		pskb_trim(skb, dev->mtu);
+	if (skb->len > dev->mtu + dev->hard_header_len) {
+		pskb_trim(skb, dev->mtu + dev->hard_header_len);
 		truncate = true;
 	}
 
@@ -1274,6 +1278,7 @@ static const struct net_device_ops erspan_netdev_ops = {
 static void ipgre_tap_setup(struct net_device *dev)
 {
 	ether_setup(dev);
+	dev->max_mtu = 0;
 	dev->netdev_ops	= &gre_tap_netdev_ops;
 	dev->priv_flags &= ~IFF_TX_SKB_SHARING;
 	dev->priv_flags	|= IFF_LIVE_ADDR_CHANGE;

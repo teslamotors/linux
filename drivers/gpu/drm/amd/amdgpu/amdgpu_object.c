@@ -46,6 +46,8 @@ static void amdgpu_ttm_bo_destroy(struct ttm_buffer_object *tbo)
 
 	amdgpu_bo_kunmap(bo);
 
+	if (bo->gem_base.import_attach)
+		drm_prime_gem_destroy(&bo->gem_base, bo->tbo.sg);
 	drm_gem_object_release(&bo->gem_base);
 	amdgpu_bo_unref(&bo->parent);
 	if (!list_empty(&bo->shadow_list)) {
@@ -391,6 +393,9 @@ int amdgpu_bo_create_restricted(struct amdgpu_device *adev,
 	r = ttm_bo_init_reserved(&adev->mman.bdev, &bo->tbo, size, type,
 				 &bo->placement, page_align, !kernel, NULL,
 				 acc_size, sg, resv, &amdgpu_ttm_bo_destroy);
+	if (unlikely(r != 0))
+		return r;
+
 	bytes_moved = atomic64_read(&adev->num_bytes_moved) -
 		      initial_bytes_moved;
 	if (adev->mc.visible_vram_size < adev->mc.real_vram_size &&
@@ -399,9 +404,6 @@ int amdgpu_bo_create_restricted(struct amdgpu_device *adev,
 		amdgpu_cs_report_moved_bytes(adev, bytes_moved, bytes_moved);
 	else
 		amdgpu_cs_report_moved_bytes(adev, bytes_moved, 0);
-
-	if (unlikely(r != 0))
-		return r;
 
 	if (kernel)
 		bo->tbo.priority = 1;

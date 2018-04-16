@@ -9413,44 +9413,62 @@ lpfc_sli4_pci_mem_setup(struct lpfc_hba *phba)
 		lpfc_sli4_bar0_register_memmap(phba, if_type);
 	}
 
-	if ((if_type == LPFC_SLI_INTF_IF_TYPE_0) &&
-	    (pci_resource_start(pdev, PCI_64BIT_BAR2))) {
-		/*
-		 * Map SLI4 if type 0 HBA Control Register base to a kernel
-		 * virtual address and setup the registers.
-		 */
-		phba->pci_bar1_map = pci_resource_start(pdev, PCI_64BIT_BAR2);
-		bar1map_len = pci_resource_len(pdev, PCI_64BIT_BAR2);
-		phba->sli4_hba.ctrl_regs_memmap_p =
-				ioremap(phba->pci_bar1_map, bar1map_len);
-		if (!phba->sli4_hba.ctrl_regs_memmap_p) {
-			dev_printk(KERN_ERR, &pdev->dev,
-			   "ioremap failed for SLI4 HBA control registers.\n");
+	if (if_type == LPFC_SLI_INTF_IF_TYPE_0) {
+		if (pci_resource_start(pdev, PCI_64BIT_BAR2)) {
+			/*
+			 * Map SLI4 if type 0 HBA Control Register base to a
+			 * kernel virtual address and setup the registers.
+			 */
+			phba->pci_bar1_map = pci_resource_start(pdev,
+								PCI_64BIT_BAR2);
+			bar1map_len = pci_resource_len(pdev, PCI_64BIT_BAR2);
+			phba->sli4_hba.ctrl_regs_memmap_p =
+					ioremap(phba->pci_bar1_map,
+						bar1map_len);
+			if (!phba->sli4_hba.ctrl_regs_memmap_p) {
+				dev_err(&pdev->dev,
+					   "ioremap failed for SLI4 HBA "
+					    "control registers.\n");
+				error = -ENOMEM;
+				goto out_iounmap_conf;
+			}
+			phba->pci_bar2_memmap_p =
+					 phba->sli4_hba.ctrl_regs_memmap_p;
+			lpfc_sli4_bar1_register_memmap(phba);
+		} else {
+			error = -ENOMEM;
 			goto out_iounmap_conf;
 		}
-		phba->pci_bar2_memmap_p = phba->sli4_hba.ctrl_regs_memmap_p;
-		lpfc_sli4_bar1_register_memmap(phba);
 	}
 
-	if ((if_type == LPFC_SLI_INTF_IF_TYPE_0) &&
-	    (pci_resource_start(pdev, PCI_64BIT_BAR4))) {
-		/*
-		 * Map SLI4 if type 0 HBA Doorbell Register base to a kernel
-		 * virtual address and setup the registers.
-		 */
-		phba->pci_bar2_map = pci_resource_start(pdev, PCI_64BIT_BAR4);
-		bar2map_len = pci_resource_len(pdev, PCI_64BIT_BAR4);
-		phba->sli4_hba.drbl_regs_memmap_p =
-				ioremap(phba->pci_bar2_map, bar2map_len);
-		if (!phba->sli4_hba.drbl_regs_memmap_p) {
-			dev_printk(KERN_ERR, &pdev->dev,
-			   "ioremap failed for SLI4 HBA doorbell registers.\n");
-			goto out_iounmap_ctrl;
-		}
-		phba->pci_bar4_memmap_p = phba->sli4_hba.drbl_regs_memmap_p;
-		error = lpfc_sli4_bar2_register_memmap(phba, LPFC_VF0);
-		if (error)
+	if (if_type == LPFC_SLI_INTF_IF_TYPE_0) {
+		if (pci_resource_start(pdev, PCI_64BIT_BAR4)) {
+			/*
+			 * Map SLI4 if type 0 HBA Doorbell Register base to
+			 * a kernel virtual address and setup the registers.
+			 */
+			phba->pci_bar2_map = pci_resource_start(pdev,
+								PCI_64BIT_BAR4);
+			bar2map_len = pci_resource_len(pdev, PCI_64BIT_BAR4);
+			phba->sli4_hba.drbl_regs_memmap_p =
+					ioremap(phba->pci_bar2_map,
+						bar2map_len);
+			if (!phba->sli4_hba.drbl_regs_memmap_p) {
+				dev_err(&pdev->dev,
+					   "ioremap failed for SLI4 HBA"
+					   " doorbell registers.\n");
+				error = -ENOMEM;
+				goto out_iounmap_ctrl;
+			}
+			phba->pci_bar4_memmap_p =
+					phba->sli4_hba.drbl_regs_memmap_p;
+			error = lpfc_sli4_bar2_register_memmap(phba, LPFC_VF0);
+			if (error)
+				goto out_iounmap_all;
+		} else {
+			error = -ENOMEM;
 			goto out_iounmap_all;
+		}
 	}
 
 	return 0;
@@ -11404,14 +11422,6 @@ lpfc_pci_remove_one_s4(struct pci_dev *pdev)
 	/* Remove FC host and then SCSI host with the physical port */
 	fc_remove_host(shost);
 	scsi_remove_host(shost);
-
-	/* Perform ndlp cleanup on the physical port.  The nvme and nvmet
-	 * localports are destroyed after to cleanup all transport memory.
-	 */
-	lpfc_cleanup(vport);
-	lpfc_nvmet_destroy_targetport(phba);
-	lpfc_nvme_destroy_localport(vport);
-
 	/*
 	 * Bring down the SLI Layer. This step disables all interrupts,
 	 * clears the rings, discards all mailbox commands, and resets
@@ -11420,6 +11430,15 @@ lpfc_pci_remove_one_s4(struct pci_dev *pdev)
 	lpfc_debugfs_terminate(vport);
 	lpfc_sli4_hba_unset(phba);
 
+	/* Perform ndlp cleanup on the physical port.  The nvme and nvmet
+	 * localports are destroyed after to cleanup all transport memory.
+	 */
+	lpfc_cleanup(vport);
+	lpfc_nvmet_destroy_targetport(phba);
+	lpfc_nvme_destroy_localport(vport);
+
+
+	lpfc_stop_hba_timers(phba);
 	spin_lock_irq(&phba->hbalock);
 	list_del_init(&vport->listentry);
 	spin_unlock_irq(&phba->hbalock);

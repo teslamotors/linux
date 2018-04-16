@@ -729,26 +729,29 @@ static struct mlxsw_sp_fib *mlxsw_sp_vr_fib(const struct mlxsw_sp_vr *vr,
 static struct mlxsw_sp_vr *mlxsw_sp_vr_create(struct mlxsw_sp *mlxsw_sp,
 					      u32 tb_id)
 {
+	struct mlxsw_sp_fib *fib4;
+	struct mlxsw_sp_fib *fib6;
 	struct mlxsw_sp_vr *vr;
 	int err;
 
 	vr = mlxsw_sp_vr_find_unused(mlxsw_sp);
 	if (!vr)
 		return ERR_PTR(-EBUSY);
-	vr->fib4 = mlxsw_sp_fib_create(vr, MLXSW_SP_L3_PROTO_IPV4);
-	if (IS_ERR(vr->fib4))
-		return ERR_CAST(vr->fib4);
-	vr->fib6 = mlxsw_sp_fib_create(vr, MLXSW_SP_L3_PROTO_IPV6);
-	if (IS_ERR(vr->fib6)) {
-		err = PTR_ERR(vr->fib6);
+	fib4 = mlxsw_sp_fib_create(vr, MLXSW_SP_L3_PROTO_IPV4);
+	if (IS_ERR(fib4))
+		return ERR_CAST(fib4);
+	fib6 = mlxsw_sp_fib_create(vr, MLXSW_SP_L3_PROTO_IPV6);
+	if (IS_ERR(fib6)) {
+		err = PTR_ERR(fib6);
 		goto err_fib6_create;
 	}
+	vr->fib4 = fib4;
+	vr->fib6 = fib6;
 	vr->tb_id = tb_id;
 	return vr;
 
 err_fib6_create:
-	mlxsw_sp_fib_destroy(vr->fib4);
-	vr->fib4 = NULL;
+	mlxsw_sp_fib_destroy(fib4);
 	return ERR_PTR(err);
 }
 
@@ -1531,11 +1534,8 @@ static void mlxsw_sp_router_neigh_ent_ipv4_process(struct mlxsw_sp *mlxsw_sp,
 	dipn = htonl(dip);
 	dev = mlxsw_sp->router->rifs[rif]->dev;
 	n = neigh_lookup(&arp_tbl, &dipn, dev);
-	if (!n) {
-		netdev_err(dev, "Failed to find matching neighbour for IP=%pI4h\n",
-			   &dip);
+	if (!n)
 		return;
-	}
 
 	netdev_dbg(dev, "Updating neighbour with IP=%pI4h\n", &dip);
 	neigh_event_send(n, NULL);
@@ -1562,11 +1562,8 @@ static void mlxsw_sp_router_neigh_ent_ipv6_process(struct mlxsw_sp *mlxsw_sp,
 
 	dev = mlxsw_sp->router->rifs[rif]->dev;
 	n = neigh_lookup(&nd_tbl, &dip, dev);
-	if (!n) {
-		netdev_err(dev, "Failed to find matching neighbour for IP=%pI6c\n",
-			   &dip);
+	if (!n)
 		return;
-	}
 
 	netdev_dbg(dev, "Updating neighbour with IP=%pI6c\n", &dip);
 	neigh_event_send(n, NULL);
@@ -2536,7 +2533,7 @@ static void __mlxsw_sp_nexthop_neigh_update(struct mlxsw_sp_nexthop *nh,
 {
 	if (!removing)
 		nh->should_offload = 1;
-	else if (nh->offloaded)
+	else
 		nh->should_offload = 0;
 	nh->update = 1;
 }
@@ -3034,6 +3031,9 @@ mlxsw_sp_fib4_entry_offload_unset(struct mlxsw_sp_fib_entry *fib_entry)
 {
 	struct mlxsw_sp_nexthop_group *nh_grp = fib_entry->nh_group;
 	int i;
+
+	if (!list_is_singular(&nh_grp->fib_list))
+		return;
 
 	for (i = 0; i < nh_grp->count; i++) {
 		struct mlxsw_sp_nexthop *nh = &nh_grp->nexthops[i];

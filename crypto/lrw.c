@@ -313,7 +313,7 @@ static void exit_crypt(struct skcipher_request *req)
 	rctx->left = 0;
 
 	if (rctx->ext)
-		kfree(rctx->ext);
+		kzfree(rctx->ext);
 }
 
 static int do_encrypt(struct skcipher_request *req, int err)
@@ -610,8 +610,10 @@ static int create(struct crypto_template *tmpl, struct rtattr **tb)
 		ecb_name[len - 1] = 0;
 
 		if (snprintf(inst->alg.base.cra_name, CRYPTO_MAX_ALG_NAME,
-			     "lrw(%s)", ecb_name) >= CRYPTO_MAX_ALG_NAME)
-			return -ENAMETOOLONG;
+			     "lrw(%s)", ecb_name) >= CRYPTO_MAX_ALG_NAME) {
+			err = -ENAMETOOLONG;
+			goto err_drop_spawn;
+		}
 	}
 
 	inst->alg.base.cra_flags = alg->base.cra_flags & CRYPTO_ALG_ASYNC;

@@ -267,7 +267,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
 {
 	const struct usb_endpoint_descriptor *desc = dep->endpoint.desc;
 	struct dwc3		*dwc = dep->dwc;
-	u32			timeout = 500;
+	u32			timeout = 1000;
 	u32			reg;
 
 	int			cmd_status = 0;
@@ -2773,6 +2773,8 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 		dwc->gadget.speed = USB_SPEED_LOW;
 		break;
 	}
+
+	dwc->eps[1]->endpoint.maxpacket = dwc->gadget.ep0->maxpacket;
 
 	/* Enable USB2 LPM Capability */
 

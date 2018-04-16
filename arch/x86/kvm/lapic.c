@@ -266,9 +266,14 @@ static inline void kvm_apic_set_ldr(struct kvm_lapic *apic, u32 id)
 	recalculate_apic_map(apic->vcpu->kvm);
 }
 
+static inline u32 kvm_apic_calc_x2apic_ldr(u32 id)
+{
+	return ((id >> 4) << 16) | (1 << (id & 0xf));
+}
+
 static inline void kvm_apic_set_x2apic_id(struct kvm_lapic *apic, u32 id)
 {
-	u32 ldr = ((id >> 4) << 16) | (1 << (id & 0xf));
+	u32 ldr = kvm_apic_calc_x2apic_ldr(id);
 
 	WARN_ON_ONCE(id != apic->vcpu->vcpu_id);
 
@@ -1939,14 +1944,13 @@ void kvm_lapic_set_base(struct kvm_vcpu *vcpu, u64 value)
 
 void kvm_lapic_reset(struct kvm_vcpu *vcpu, bool init_event)
 {
-	struct kvm_lapic *apic;
+	struct kvm_lapic *apic = vcpu->arch.apic;
 	int i;
 
-	apic_debug("%s\n", __func__);
+	if (!apic)
+		return;
 
-	ASSERT(vcpu);
-	apic = vcpu->arch.apic;
-	ASSERT(apic != NULL);
+	apic_debug("%s\n", __func__);
 
 	/* Stop the timer in case it's a reset to an active apic */
 	hrtimer_cancel(&apic->lapic_timer.timer);
@@ -2102,7 +2106,6 @@ int kvm_create_lapic(struct kvm_vcpu *vcpu)
 	 */
 	vcpu->arch.apic_base = MSR_IA32_APICBASE_ENABLE;
 	static_key_slow_inc(&apic_sw_disabled.key); /* sw disabled at reset */
-	kvm_lapic_reset(vcpu, false);
 	kvm_iodevice_init(&apic->dev, &apic_mmio_ops);
 
 	return 0;
@@ -2196,6 +2199,7 @@ static int kvm_apic_state_fixup(struct kvm_vcpu *vcpu,
 {
 	if (apic_x2apic_mode(vcpu->arch.apic)) {
 		u32 *id = (u32 *)(s->regs + APIC_ID);
+		u32 *ldr = (u32 *)(s->regs + APIC_LDR);
 
 		if (vcpu->kvm->arch.x2apic_format) {
 			if (*id != vcpu->vcpu_id)
@@ -2206,6 +2210,10 @@ static int kvm_apic_state_fixup(struct kvm_vcpu *vcpu,
 			else
 				*id <<= 24;
 		}
+
+		/* In x2APIC mode, the LDR is fixed and based on the id */
+		if (set)
+			*ldr = kvm_apic_calc_x2apic_ldr(*id);
 	}
 
 	return 0;
@@ -2501,7 +2509,6 @@ void kvm_apic_accept_events(struct kvm_vcpu *vcpu)
 
 	pe = xchg(&apic->pending_events, 0);
 	if (test_bit(KVM_APIC_INIT, &pe)) {
-		kvm_lapic_reset(vcpu, true);
 		kvm_vcpu_reset(vcpu, true);
 		if (kvm_vcpu_is_bsp(apic->vcpu))
 			vcpu->arch.mp_state = KVM_MP_STATE_RUNNABLE;

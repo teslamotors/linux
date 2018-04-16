@@ -31,7 +31,6 @@
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_rect.h>
 
-
 /* Might need a hrtimer here? */
 #define VMWGFX_PRESENT_RATE ((HZ / 60 > 0) ? HZ / 60 : 1)
 
@@ -697,7 +696,6 @@ vmw_du_plane_duplicate_state(struct drm_plane *plane)
 	vps->pinned = 0;
 
 	/* Mapping is managed by prepare_fb/cleanup_fb */
-	memset(&vps->guest_map, 0, sizeof(vps->guest_map));
 	memset(&vps->host_map, 0, sizeof(vps->host_map));
 	vps->cpp = 0;
 
@@ -760,11 +758,6 @@ vmw_du_plane_destroy_state(struct drm_plane *plane,
 
 
 	/* Should have been freed by cleanup_fb */
-	if (vps->guest_map.virtual) {
-		DRM_ERROR("Guest mapping not freed\n");
-		ttm_bo_kunmap(&vps->guest_map);
-	}
-
 	if (vps->host_map.virtual) {
 		DRM_ERROR("Host mapping not freed\n");
 		ttm_bo_kunmap(&vps->host_map);
@@ -2537,9 +2530,12 @@ void vmw_kms_helper_buffer_finish(struct vmw_private *dev_priv,
  * Helper to be used if an error forces the caller to undo the actions of
  * vmw_kms_helper_resource_prepare.
  */
-void vmw_kms_helper_resource_revert(struct vmw_resource *res)
+void vmw_kms_helper_resource_revert(struct vmw_validation_ctx *ctx)
 {
-	vmw_kms_helper_buffer_revert(res->backup);
+	struct vmw_resource *res = ctx->res;
+
+	vmw_kms_helper_buffer_revert(ctx->buf);
+	vmw_dmabuf_unreference(&ctx->buf);
 	vmw_resource_unreserve(res, false, NULL, 0);
 	mutex_unlock(&res->dev_priv->cmdbuf_mutex);
 }
@@ -2556,9 +2552,13 @@ void vmw_kms_helper_resource_revert(struct vmw_resource *res)
  * interrupted by a signal.
  */
 int vmw_kms_helper_resource_prepare(struct vmw_resource *res,
-				    bool interruptible)
+				    bool interruptible,
+				    struct vmw_validation_ctx *ctx)
 {
 	int ret = 0;
+
+	ctx->buf = NULL;
+	ctx->res = res;
 
 	if (interruptible)
 		ret = mutex_lock_interruptible(&res->dev_priv->cmdbuf_mutex);
@@ -2578,6 +2578,8 @@ int vmw_kms_helper_resource_prepare(struct vmw_resource *res,
 						    res->dev_priv->has_mob);
 		if (ret)
 			goto out_unreserve;
+
+		ctx->buf = vmw_dmabuf_reference(res->backup);
 	}
 	ret = vmw_resource_validate(res);
 	if (ret)
@@ -2585,7 +2587,7 @@ int vmw_kms_helper_resource_prepare(struct vmw_resource *res,
 	return 0;
 
 out_revert:
-	vmw_kms_helper_buffer_revert(res->backup);
+	vmw_kms_helper_buffer_revert(ctx->buf);
 out_unreserve:
 	vmw_resource_unreserve(res, false, NULL, 0);
 out_unlock:
@@ -2601,11 +2603,13 @@ out_unlock:
  * @out_fence: Optional pointer to a fence pointer. If non-NULL, a
  * ref-counted fence pointer is returned here.
  */
-void vmw_kms_helper_resource_finish(struct vmw_resource *res,
-			     struct vmw_fence_obj **out_fence)
+void vmw_kms_helper_resource_finish(struct vmw_validation_ctx *ctx,
+				    struct vmw_fence_obj **out_fence)
 {
-	if (res->backup || out_fence)
-		vmw_kms_helper_buffer_finish(res->dev_priv, NULL, res->backup,
+	struct vmw_resource *res = ctx->res;
+
+	if (ctx->buf || out_fence)
+		vmw_kms_helper_buffer_finish(res->dev_priv, NULL, ctx->buf,
 					     out_fence, NULL);
 
 	vmw_resource_unreserve(res, false, NULL, 0);
@@ -2870,4 +2874,15 @@ int vmw_kms_set_config(struct drm_mode_set *set,
 		set->mode->type = 0;
 
 	return drm_atomic_helper_set_config(set, ctx);
+}
+
+
+/**
+ * vmw_kms_lost_device - Notify kms that modesetting capabilities will be lost
+ *
+ * @dev: Pointer to the drm device
+ */
+void vmw_kms_lost_device(struct drm_device *dev)
+{
+	drm_atomic_helper_shutdown(dev);
 }

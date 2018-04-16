@@ -198,10 +198,15 @@ static u32 rsnd_ssi_run_mods(struct rsnd_dai_stream *io)
 {
 	struct rsnd_mod *ssi_mod = rsnd_io_to_mod_ssi(io);
 	struct rsnd_mod *ssi_parent_mod = rsnd_io_to_mod_ssip(io);
+	u32 mods;
 
-	return rsnd_ssi_multi_slaves_runtime(io) |
-		1 << rsnd_mod_id(ssi_mod) |
-		1 << rsnd_mod_id(ssi_parent_mod);
+	mods = rsnd_ssi_multi_slaves_runtime(io) |
+		1 << rsnd_mod_id(ssi_mod);
+
+	if (ssi_parent_mod)
+		mods |= 1 << rsnd_mod_id(ssi_parent_mod);
+
+	return mods;
 }
 
 u32 rsnd_ssi_multi_slaves_runtime(struct rsnd_dai_stream *io)
@@ -444,25 +449,29 @@ static bool rsnd_ssi_pointer_update(struct rsnd_mod *mod,
 				    int byte)
 {
 	struct rsnd_ssi *ssi = rsnd_mod_to_ssi(mod);
+	bool ret = false;
+	int byte_pos;
 
-	ssi->byte_pos += byte;
+	byte_pos = ssi->byte_pos + byte;
 
-	if (ssi->byte_pos >= ssi->next_period_byte) {
+	if (byte_pos >= ssi->next_period_byte) {
 		struct snd_pcm_runtime *runtime = rsnd_io_to_runtime(io);
 
 		ssi->period_pos++;
 		ssi->next_period_byte += ssi->byte_per_period;
 
 		if (ssi->period_pos >= runtime->periods) {
-			ssi->byte_pos = 0;
+			byte_pos = 0;
 			ssi->period_pos = 0;
 			ssi->next_period_byte = ssi->byte_per_period;
 		}
 
-		return true;
+		ret = true;
 	}
 
-	return false;
+	WRITE_ONCE(ssi->byte_pos, byte_pos);
+
+	return ret;
 }
 
 /*
@@ -833,7 +842,7 @@ static int rsnd_ssi_pointer(struct rsnd_mod *mod,
 	struct rsnd_ssi *ssi = rsnd_mod_to_ssi(mod);
 	struct snd_pcm_runtime *runtime = rsnd_io_to_runtime(io);
 
-	*pointer = bytes_to_frames(runtime, ssi->byte_pos);
+	*pointer = bytes_to_frames(runtime, READ_ONCE(ssi->byte_pos));
 
 	return 0;
 }

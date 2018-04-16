@@ -553,7 +553,7 @@ static DEFINE_PER_CPU(struct clock_event_device, lapic_events);
 
 static u32 hsx_deadline_rev(void)
 {
-	switch (boot_cpu_data.x86_mask) {
+	switch (boot_cpu_data.x86_stepping) {
 	case 0x02: return 0x3a; /* EP */
 	case 0x04: return 0x0f; /* EX */
 	}
@@ -563,7 +563,7 @@ static u32 hsx_deadline_rev(void)
 
 static u32 bdx_deadline_rev(void)
 {
-	switch (boot_cpu_data.x86_mask) {
+	switch (boot_cpu_data.x86_stepping) {
 	case 0x02: return 0x00000011;
 	case 0x03: return 0x0700000e;
 	case 0x04: return 0x0f00000c;
@@ -575,7 +575,7 @@ static u32 bdx_deadline_rev(void)
 
 static u32 skx_deadline_rev(void)
 {
-	switch (boot_cpu_data.x86_mask) {
+	switch (boot_cpu_data.x86_stepping) {
 	case 0x03: return 0x01000136;
 	case 0x04: return 0x02000014;
 	}
@@ -1645,7 +1645,7 @@ static __init void try_to_enable_x2apic(int remap_mode)
 		 * under KVM
 		 */
 		if (max_physical_apicid > 255 ||
-		    !hypervisor_x2apic_available()) {
+		    !x86_init.hyper.x2apic_available()) {
 			pr_info("x2apic: IRQ remapping doesn't support X2APIC mode\n");
 			x2apic_disable();
 			return;

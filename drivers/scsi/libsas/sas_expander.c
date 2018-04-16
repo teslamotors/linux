@@ -293,6 +293,7 @@ static void sas_set_ex_phy(struct domain_device *dev, int phy_id, void *rsp)
 	phy->phy->minimum_linkrate = dr->pmin_linkrate;
 	phy->phy->maximum_linkrate = dr->pmax_linkrate;
 	phy->phy->negotiated_linkrate = phy->linkrate;
+	phy->phy->enabled = (phy->linkrate != SAS_PHY_DISABLED);
 
  skip:
 	if (new_phy)
@@ -686,7 +687,7 @@ int sas_smp_get_phy_events(struct sas_phy *phy)
 	res = smp_execute_task(dev, req, RPEL_REQ_SIZE,
 			            resp, RPEL_RESP_SIZE);
 
-	if (!res)
+	if (res)
 		goto out;
 
 	phy->invalid_dword_count = scsi_to_u32(&resp[12]);
@@ -695,6 +696,7 @@ int sas_smp_get_phy_events(struct sas_phy *phy)
 	phy->phy_reset_problem_count = scsi_to_u32(&resp[24]);
 
  out:
+	kfree(req);
 	kfree(resp);
 	return res;
 
@@ -2145,7 +2147,7 @@ void sas_smp_handler(struct bsg_job *job, struct Scsi_Host *shost,
 		struct sas_rphy *rphy)
 {
 	struct domain_device *dev;
-	unsigned int reslen = 0;
+	unsigned int rcvlen = 0;
 	int ret = -EINVAL;
 
 	/* no rphy means no smp target support (ie aic94xx host) */
@@ -2179,12 +2181,12 @@ void sas_smp_handler(struct bsg_job *job, struct Scsi_Host *shost,
 
 	ret = smp_execute_task_sg(dev, job->request_payload.sg_list,
 			job->reply_payload.sg_list);
-	if (ret > 0) {
-		/* positive number is the untransferred residual */
-		reslen = ret;
+	if (ret >= 0) {
+		/* bsg_job_done() requires the length received  */
+		rcvlen = job->reply_payload.payload_len - ret;
 		ret = 0;
 	}
 
 out:
-	bsg_job_done(job, ret, reslen);
+	bsg_job_done(job, ret, rcvlen);
 }

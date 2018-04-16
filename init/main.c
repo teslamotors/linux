@@ -69,12 +69,12 @@
 #include <linux/kgdb.h>
 #include <linux/ftrace.h>
 #include <linux/async.h>
-#include <linux/kmemcheck.h>
 #include <linux/sfi.h>
 #include <linux/shmem_fs.h>
 #include <linux/slab.h>
 #include <linux/perf_event.h>
 #include <linux/ptrace.h>
+#include <linux/pti.h>
 #include <linux/blkdev.h>
 #include <linux/elevator.h>
 #include <linux/sched_clock.h>
@@ -504,6 +504,10 @@ static void __init mm_init(void)
 	pgtable_init();
 	vmalloc_init();
 	ioremap_huge_init();
+	/* Should be run before the first non-init thread is created */
+	init_espfix_bsp();
+	/* Should be run after espfix64 is set up. */
+	pti_init();
 }
 
 asmlinkage __visible void __init start_kernel(void)
@@ -673,10 +677,6 @@ asmlinkage __visible void __init start_kernel(void)
 #ifdef CONFIG_X86
 	if (efi_enabled(EFI_RUNTIME_SERVICES))
 		efi_enter_virtual_mode();
-#endif
-#ifdef CONFIG_X86_ESPFIX64
-	/* Should be run before the first non-init thread is created */
-	init_espfix_bsp();
 #endif
 	thread_stack_cache_init();
 	cred_init();

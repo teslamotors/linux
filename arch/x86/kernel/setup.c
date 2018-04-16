@@ -376,14 +376,6 @@ static void __init reserve_initrd(void)
 	    !ramdisk_image || !ramdisk_size)
 		return;		/* No initrd provided by bootloader */
 
-	/*
-	 * If SME is active, this memory will be marked encrypted by the
-	 * kernel when it is accessed (including relocation). However, the
-	 * ramdisk image was loaded decrypted by the bootloader, so make
-	 * sure that it is encrypted before accessing it.
-	 */
-	sme_early_encrypt(ramdisk_image, ramdisk_end - ramdisk_image);
-
 	initrd_start = 0;
 
 	mapped_size = memblock_mem_size(max_pfn_mapped);
@@ -936,9 +928,6 @@ void __init setup_arch(char **cmdline_p)
 		set_bit(EFI_BOOT, &efi.flags);
 		set_bit(EFI_64BIT, &efi.flags);
 	}
-
-	if (efi_enabled(EFI_BOOT))
-		efi_memblock_x86_reserve_range();
 #endif
 
 	x86_init.oem.arch_setup();
@@ -992,6 +981,8 @@ void __init setup_arch(char **cmdline_p)
 
 	parse_early_param();
 
+	if (efi_enabled(EFI_BOOT))
+		efi_memblock_x86_reserve_range();
 #ifdef CONFIG_MEMORY_HOTPLUG
 	/*
 	 * Memory used by the kernel cannot be hot-removed because Linux
@@ -1247,20 +1238,13 @@ void __init setup_arch(char **cmdline_p)
 
 	kasan_init();
 
-#ifdef CONFIG_X86_32
-	/* sync back kernel address range */
-	clone_pgd_range(initial_page_table + KERNEL_PGD_BOUNDARY,
-			swapper_pg_dir     + KERNEL_PGD_BOUNDARY,
-			KERNEL_PGD_PTRS);
-
 	/*
-	 * sync back low identity map too.  It is used for example
-	 * in the 32-bit EFI stub.
+	 * Sync back kernel address range.
+	 *
+	 * FIXME: Can the later sync in setup_cpu_entry_areas() replace
+	 * this call?
 	 */
-	clone_pgd_range(initial_page_table,
-			swapper_pg_dir     + KERNEL_PGD_BOUNDARY,
-			min(KERNEL_PGD_PTRS, KERNEL_PGD_BOUNDARY));
-#endif
+	sync_initial_page_table();
 
 	tboot_probe();
 

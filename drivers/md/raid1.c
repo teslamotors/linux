@@ -810,11 +810,15 @@ static void flush_pending_writes(struct r1conf *conf)
 	spin_lock_irq(&conf->device_lock);
 
 	if (conf->pending_bio_list.head) {
+		struct blk_plug plug;
 		struct bio *bio;
+
 		bio = bio_list_get(&conf->pending_bio_list);
 		conf->pending_count = 0;
 		spin_unlock_irq(&conf->device_lock);
+		blk_start_plug(&plug);
 		flush_bio_list(conf, bio);
+		blk_finish_plug(&plug);
 	} else
 		spin_unlock_irq(&conf->device_lock);
 }
@@ -990,14 +994,6 @@ static void wait_barrier(struct r1conf *conf, sector_t sector_nr)
 	_wait_barrier(conf, idx);
 }
 
-static void wait_all_barriers(struct r1conf *conf)
-{
-	int idx;
-
-	for (idx = 0; idx < BARRIER_BUCKETS_NR; idx++)
-		_wait_barrier(conf, idx);
-}
-
 static void _allow_barrier(struct r1conf *conf, int idx)
 {
 	atomic_dec(&conf->nr_pending[idx]);
@@ -1009,14 +1005,6 @@ static void allow_barrier(struct r1conf *conf, sector_t sector_nr)
 	int idx = sector_to_idx(sector_nr);
 
 	_allow_barrier(conf, idx);
-}
-
-static void allow_all_barriers(struct r1conf *conf)
-{
-	int idx;
-
-	for (idx = 0; idx < BARRIER_BUCKETS_NR; idx++)
-		_allow_barrier(conf, idx);
 }
 
 /* conf->resync_lock should be held */
@@ -1325,12 +1313,12 @@ static void raid1_write_request(struct mddev *mddev, struct bio *bio,
 			sigset_t full, old;
 			prepare_to_wait(&conf->wait_barrier,
 					&w, TASK_INTERRUPTIBLE);
-			if (bio_end_sector(bio) <= mddev->suspend_lo ||
-			    bio->bi_iter.bi_sector >= mddev->suspend_hi ||
-			    (mddev_is_clustered(mddev) &&
+			if ((bio_end_sector(bio) <= mddev->suspend_lo ||
+			     bio->bi_iter.bi_sector >= mddev->suspend_hi) &&
+			    (!mddev_is_clustered(mddev) ||
 			     !md_cluster_ops->area_resyncing(mddev, WRITE,
-				     bio->bi_iter.bi_sector,
-				     bio_end_sector(bio))))
+							bio->bi_iter.bi_sector,
+							bio_end_sector(bio))))
 				break;
 			sigfillset(&full);
 			sigprocmask(SIG_BLOCK, &full, &old);
@@ -1654,8 +1642,12 @@ static void print_conf(struct r1conf *conf)
 
 static void close_sync(struct r1conf *conf)
 {
-	wait_all_barriers(conf);
-	allow_all_barriers(conf);
+	int idx;
+
+	for (idx = 0; idx < BARRIER_BUCKETS_NR; idx++) {
+		_wait_barrier(conf, idx);
+		_allow_barrier(conf, idx);
+	}
 
 	mempool_destroy(conf->r1buf_pool);
 	conf->r1buf_pool = NULL;

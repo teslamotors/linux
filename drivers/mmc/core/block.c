@@ -65,6 +65,7 @@ MODULE_ALIAS("mmc:block");
 #define MMC_BLK_TIMEOUT_MS  (10 * 60 * 1000)        /* 10 minute timeout */
 #define MMC_SANITIZE_REQ_TIMEOUT 240000
 #define MMC_EXTRACT_INDEX_FROM_ARG(x) ((x & 0x00FF0000) >> 16)
+#define MMC_EXTRACT_VALUE_FROM_ARG(x) ((x & 0x0000FF00) >> 8)
 
 #define mmc_req_rel_wr(req)	((req->cmd_flags & REQ_FUA) && \
 				  (rq_data_dir(req) == WRITE))
@@ -119,6 +120,10 @@ struct mmc_blk_data {
 	struct device_attribute force_ro;
 	struct device_attribute power_ro_lock;
 	int	area_type;
+
+	/* debugfs files (only in main mmc_blk_data) */
+	struct dentry *status_dentry;
+	struct dentry *ext_csd_dentry;
 };
 
 static DEFINE_MUTEX(open_lock);
@@ -204,9 +209,14 @@ static ssize_t power_ro_lock_store(struct device *dev,
 
 	/* Dispatch locking to the block layer */
 	req = blk_get_request(mq->queue, REQ_OP_DRV_OUT, __GFP_RECLAIM);
+	if (IS_ERR(req)) {
+		count = PTR_ERR(req);
+		goto out_put;
+	}
 	req_to_mmc_queue_req(req)->drv_op = MMC_DRV_OP_BOOT_WP;
 	blk_execute_rq(mq->queue, NULL, req, 0);
 	ret = req_to_mmc_queue_req(req)->drv_op_result;
+	blk_put_request(req);
 
 	if (!ret) {
 		pr_info("%s: Locking boot partition ro until next power on\n",
@@ -219,7 +229,7 @@ static ssize_t power_ro_lock_store(struct device *dev,
 				set_disk_ro(part_md->disk, 1);
 			}
 	}
-
+out_put:
 	mmc_blk_put(md);
 	return count;
 }
@@ -530,6 +540,24 @@ static int __mmc_blk_ioctl_cmd(struct mmc_card *card, struct mmc_blk_data *md,
 	}
 
 	/*
+	 * Make sure the cache of the PARTITION_CONFIG register and
+	 * PARTITION_ACCESS bits is updated in case the ioctl ext_csd write
+	 * changed it successfully.
+	 */
+	if ((MMC_EXTRACT_INDEX_FROM_ARG(cmd.arg) == EXT_CSD_PART_CONFIG) &&
+	    (cmd.opcode == MMC_SWITCH)) {
+		struct mmc_blk_data *main_md = dev_get_drvdata(&card->dev);
+		u8 value = MMC_EXTRACT_VALUE_FROM_ARG(cmd.arg);
+
+		/*
+		 * Update cache so the next mmc_blk_part_switch call operates
+		 * on up-to-date data.
+		 */
+		card->ext_csd.part_config = value;
+		main_md->part_curr = value & EXT_CSD_PART_CONFIG_ACC_MASK;
+	}
+
+	/*
 	 * According to the SD specs, some commands require a delay after
 	 * issuing the command.
 	 */
@@ -580,6 +608,10 @@ static int mmc_blk_ioctl_cmd(struct mmc_blk_data *md,
 	req = blk_get_request(mq->queue,
 		idata->ic.write_flag ? REQ_OP_DRV_OUT : REQ_OP_DRV_IN,
 		__GFP_RECLAIM);
+	if (IS_ERR(req)) {
+		err = PTR_ERR(req);
+		goto cmd_done;
+	}
 	idatas[0] = idata;
 	req_to_mmc_queue_req(req)->drv_op = MMC_DRV_OP_IOCTL;
 	req_to_mmc_queue_req(req)->drv_op_data = idatas;
@@ -643,6 +675,10 @@ static int mmc_blk_ioctl_multi_cmd(struct mmc_blk_data *md,
 	req = blk_get_request(mq->queue,
 		idata[0]->ic.write_flag ? REQ_OP_DRV_OUT : REQ_OP_DRV_IN,
 		__GFP_RECLAIM);
+	if (IS_ERR(req)) {
+		err = PTR_ERR(req);
+		goto cmd_err;
+	}
 	req_to_mmc_queue_req(req)->drv_op = MMC_DRV_OP_IOCTL;
 	req_to_mmc_queue_req(req)->drv_op_data = idata;
 	req_to_mmc_queue_req(req)->ioc_count = num_of_cmds;
@@ -2314,6 +2350,8 @@ static int mmc_dbg_card_status_get(void *data, u64 *val)
 
 	/* Ask the block layer about the card status */
 	req = blk_get_request(mq->queue, REQ_OP_DRV_IN, __GFP_RECLAIM);
+	if (IS_ERR(req))
+		return PTR_ERR(req);
 	req_to_mmc_queue_req(req)->drv_op = MMC_DRV_OP_GET_CARD_STATUS;
 	blk_execute_rq(mq->queue, NULL, req, 0);
 	ret = req_to_mmc_queue_req(req)->drv_op_result;
@@ -2321,6 +2359,7 @@ static int mmc_dbg_card_status_get(void *data, u64 *val)
 		*val = ret;
 		ret = 0;
 	}
+	blk_put_request(req);
 
 	return ret;
 }
@@ -2347,10 +2386,15 @@ static int mmc_ext_csd_open(struct inode *inode, struct file *filp)
 
 	/* Ask the block layer for the EXT CSD */
 	req = blk_get_request(mq->queue, REQ_OP_DRV_IN, __GFP_RECLAIM);
+	if (IS_ERR(req)) {
+		err = PTR_ERR(req);
+		goto out_free;
+	}
 	req_to_mmc_queue_req(req)->drv_op = MMC_DRV_OP_GET_EXT_CSD;
 	req_to_mmc_queue_req(req)->drv_op_data = &ext_csd;
 	blk_execute_rq(mq->queue, NULL, req, 0);
 	err = req_to_mmc_queue_req(req)->drv_op_result;
+	blk_put_request(req);
 	if (err) {
 		pr_err("FAILED %d\n", err);
 		goto out_free;
@@ -2362,6 +2406,7 @@ static int mmc_ext_csd_open(struct inode *inode, struct file *filp)
 
 	if (n != EXT_CSD_STR_LEN) {
 		err = -EINVAL;
+		kfree(ext_csd);
 		goto out_free;
 	}
 
@@ -2396,7 +2441,7 @@ static const struct file_operations mmc_dbg_ext_csd_fops = {
 	.llseek		= default_llseek,
 };
 
-static int mmc_blk_add_debugfs(struct mmc_card *card)
+static int mmc_blk_add_debugfs(struct mmc_card *card, struct mmc_blk_data *md)
 {
 	struct dentry *root;
 
@@ -2406,26 +2451,51 @@ static int mmc_blk_add_debugfs(struct mmc_card *card)
 	root = card->debugfs_root;
 
 	if (mmc_card_mmc(card) || mmc_card_sd(card)) {
-		if (!debugfs_create_file("status", S_IRUSR, root, card,
-					 &mmc_dbg_card_status_fops))
+		md->status_dentry =
+			debugfs_create_file("status", S_IRUSR, root, card,
+					    &mmc_dbg_card_status_fops);
+		if (!md->status_dentry)
 			return -EIO;
 	}
 
 	if (mmc_card_mmc(card)) {
-		if (!debugfs_create_file("ext_csd", S_IRUSR, root, card,
-					 &mmc_dbg_ext_csd_fops))
+		md->ext_csd_dentry =
+			debugfs_create_file("ext_csd", S_IRUSR, root, card,
+					    &mmc_dbg_ext_csd_fops);
+		if (!md->ext_csd_dentry)
 			return -EIO;
 	}
 
 	return 0;
 }
 
+static void mmc_blk_remove_debugfs(struct mmc_card *card,
+				   struct mmc_blk_data *md)
+{
+	if (!card->debugfs_root)
+		return;
+
+	if (!IS_ERR_OR_NULL(md->status_dentry)) {
+		debugfs_remove(md->status_dentry);
+		md->status_dentry = NULL;
+	}
+
+	if (!IS_ERR_OR_NULL(md->ext_csd_dentry)) {
+		debugfs_remove(md->ext_csd_dentry);
+		md->ext_csd_dentry = NULL;
+	}
+}
 
 #else
 
-static int mmc_blk_add_debugfs(struct mmc_card *card)
+static int mmc_blk_add_debugfs(struct mmc_card *card, struct mmc_blk_data *md)
 {
 	return 0;
+}
+
+static void mmc_blk_remove_debugfs(struct mmc_card *card,
+				   struct mmc_blk_data *md)
+{
 }
 
 #endif /* CONFIG_DEBUG_FS */
@@ -2467,7 +2537,7 @@ static int mmc_blk_probe(struct mmc_card *card)
 	}
 
 	/* Add two debugfs entries */
-	mmc_blk_add_debugfs(card);
+	mmc_blk_add_debugfs(card, md);
 
 	pm_runtime_set_autosuspend_delay(&card->dev, 3000);
 	pm_runtime_use_autosuspend(&card->dev);
@@ -2493,6 +2563,7 @@ static void mmc_blk_remove(struct mmc_card *card)
 {
 	struct mmc_blk_data *md = dev_get_drvdata(&card->dev);
 
+	mmc_blk_remove_debugfs(card, md);
 	mmc_blk_remove_parts(card, md);
 	pm_runtime_get_sync(&card->dev);
 	mmc_claim_host(card->host);

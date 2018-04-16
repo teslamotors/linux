@@ -675,15 +675,11 @@ static struct raid_type *get_raid_type_by_ll(const int level, const int layout)
 	return NULL;
 }
 
-/*
- * Conditionally change bdev capacity of @rs
- * in case of a disk add/remove reshape
- */
-static void rs_set_capacity(struct raid_set *rs)
+/* Adjust rdev sectors */
+static void rs_set_rdev_sectors(struct raid_set *rs)
 {
 	struct mddev *mddev = &rs->md;
 	struct md_rdev *rdev;
-	struct gendisk *gendisk = dm_disk(dm_table_get_md(rs->ti->table));
 
 	/*
 	 * raid10 sets rdev->sector to the device size, which
@@ -692,8 +688,16 @@ static void rs_set_capacity(struct raid_set *rs)
 	rdev_for_each(rdev, mddev)
 		if (!test_bit(Journal, &rdev->flags))
 			rdev->sectors = mddev->dev_sectors;
+}
 
-	set_capacity(gendisk, mddev->array_sectors);
+/*
+ * Change bdev capacity of @rs in case of a disk add/remove reshape
+ */
+static void rs_set_capacity(struct raid_set *rs)
+{
+	struct gendisk *gendisk = dm_disk(dm_table_get_md(rs->ti->table));
+
+	set_capacity(gendisk, rs->md.array_sectors);
 	revalidate_disk(gendisk);
 }
 
@@ -1674,8 +1678,11 @@ static void do_table_event(struct work_struct *ws)
 	struct raid_set *rs = container_of(ws, struct raid_set, md.event_work);
 
 	smp_rmb(); /* Make sure we access most actual mddev properties */
-	if (!rs_is_reshaping(rs))
+	if (!rs_is_reshaping(rs)) {
+		if (rs_is_raid10(rs))
+			rs_set_rdev_sectors(rs);
 		rs_set_capacity(rs);
+	}
 	dm_table_event(rs->ti->table);
 }
 
@@ -2143,13 +2150,6 @@ static int super_load(struct md_rdev *rdev, struct md_rdev *refdev)
 	struct dm_raid_superblock *refsb;
 	uint64_t events_sb, events_refsb;
 
-	rdev->sb_start = 0;
-	rdev->sb_size = bdev_logical_block_size(rdev->meta_bdev);
-	if (rdev->sb_size < sizeof(*sb) || rdev->sb_size > PAGE_SIZE) {
-		DMERR("superblock size of a logical block is no longer valid");
-		return -EINVAL;
-	}
-
 	r = read_disk_sb(rdev, rdev->sb_size, false);
 	if (r)
 		return r;
@@ -2494,6 +2494,17 @@ static int analyse_superblocks(struct dm_target *ti, struct raid_set *rs)
 		if (test_bit(Journal, &rdev->flags))
 			continue;
 
+		if (!rdev->meta_bdev)
+			continue;
+
+		/* Set superblock offset/size for metadata device. */
+		rdev->sb_start = 0;
+		rdev->sb_size = bdev_logical_block_size(rdev->meta_bdev);
+		if (rdev->sb_size < sizeof(struct dm_raid_superblock) || rdev->sb_size > PAGE_SIZE) {
+			DMERR("superblock size of a logical block is no longer valid");
+			return -EINVAL;
+		}
+
 		/*
 		 * Skipping super_load due to CTR_FLAG_SYNC will cause
 		 * the array to undergo initialization again as
@@ -2504,9 +2515,6 @@ static int analyse_superblocks(struct dm_target *ti, struct raid_set *rs)
 		 * that the "sync" directive is disallowed during the reshape.
 		 */
 		if (test_bit(__CTR_FLAG_SYNC, &rs->ctr_flags))
-			continue;
-
-		if (!rdev->meta_bdev)
 			continue;
 
 		r = super_load(rdev, freshest);
@@ -3844,11 +3852,10 @@ static int raid_preresume(struct dm_target *ti)
 		mddev->resync_min = mddev->recovery_cp;
 	}
 
-	rs_set_capacity(rs);
-
 	/* Check for any reshape request unless new raid set */
 	if (test_and_clear_bit(RT_FLAG_RESHAPE_RS, &rs->runtime_flags)) {
 		/* Initiate a reshape. */
+		rs_set_rdev_sectors(rs);
 		mddev_lock_nointr(mddev);
 		r = rs_start_reshape(rs);
 		mddev_unlock(mddev);
@@ -3876,6 +3883,10 @@ static void raid_resume(struct dm_target *ti)
 
 	mddev->ro = 0;
 	mddev->in_sync = 0;
+
+	/* Only reduce raid set size before running a disk removing reshape. */
+	if (mddev->delta_disks < 0)
+		rs_set_capacity(rs);
 
 	/*
 	 * Keep the RAID set frozen if reshape/rebuild flags are set.

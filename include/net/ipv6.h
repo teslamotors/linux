@@ -291,6 +291,7 @@ int ipv6_flowlabel_opt_get(struct sock *sk, struct in6_flowlabel_req *freq,
 			   int flags);
 int ip6_flowlabel_init(void);
 void ip6_flowlabel_cleanup(void);
+bool ip6_autoflowlabel(struct net *net, const struct ipv6_pinfo *np);
 
 static inline void fl6_sock_release(struct ip6_flowlabel *fl)
 {
@@ -727,7 +728,7 @@ static inline int ipv6_addr_diff(const struct in6_addr *a1, const struct in6_add
 __be32 ipv6_select_ident(struct net *net,
 			 const struct in6_addr *daddr,
 			 const struct in6_addr *saddr);
-void ipv6_proxy_select_ident(struct net *net, struct sk_buff *skb);
+__be32 ipv6_proxy_select_ident(struct net *net, struct sk_buff *skb);
 
 int ip6_dst_hoplimit(struct dst_entry *dst);
 

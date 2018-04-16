@@ -1698,12 +1698,16 @@ static int bnxt_async_event_process(struct bnxt *bp,
 
 		if (BNXT_VF(bp))
 			goto async_event_process_exit;
-		if (data1 & 0x20000) {
+
+		/* print unsupported speed warning in forced speed mode only */
+		if (!(link_info->autoneg & BNXT_AUTONEG_SPEED) &&
+		    (data1 & 0x20000)) {
 			u16 fw_speed = link_info->force_link_speed;
 			u32 speed = bnxt_fw_to_ethtool_speed(fw_speed);
 
-			netdev_warn(bp->dev, "Link speed %d no longer supported\n",
-				    speed);
+			if (speed != SPEED_UNKNOWN)
+				netdev_warn(bp->dev, "Link speed %d no longer supported\n",
+					    speed);
 		}
 		set_bit(BNXT_LINK_SPEED_CHNG_SP_EVENT, &bp->sp_event);
 		/* fall thru */
@@ -1875,7 +1879,7 @@ static int bnxt_poll_work(struct bnxt *bp, struct bnxt_napi *bnapi, int budget)
 			 * here forever if we consistently cannot allocate
 			 * buffers.
 			 */
-			else if (rc == -ENOMEM)
+			else if (rc == -ENOMEM && budget)
 				rx_pkts++;
 			else if (rc == -EBUSY)	/* partial completion */
 				break;
@@ -1961,7 +1965,7 @@ static int bnxt_poll_nitroa0(struct napi_struct *napi, int budget)
 				cpu_to_le32(RX_CMPL_ERRORS_CRC_ERROR);
 
 			rc = bnxt_rx_pkt(bp, bnapi, &raw_cons, &event);
-			if (likely(rc == -EIO))
+			if (likely(rc == -EIO) && budget)
 				rx_pkts++;
 			else if (rc == -EBUSY)	/* partial completion */
 				break;
@@ -8218,8 +8222,9 @@ static void bnxt_shutdown(struct pci_dev *pdev)
 	if (netif_running(dev))
 		dev_close(dev);
 
+	bnxt_ulp_shutdown(bp);
+
 	if (system_state == SYSTEM_POWER_OFF) {
-		bnxt_ulp_shutdown(bp);
 		bnxt_clear_int_mode(bp);
 		pci_wake_from_d3(pdev, bp->wol);
 		pci_set_power_state(pdev, PCI_D3hot);

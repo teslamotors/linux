@@ -532,6 +532,7 @@ static int key_extract(struct sk_buff *skb, struct sw_flow_key *key)
 			return -EINVAL;
 
 		skb_reset_network_header(skb);
+		key->eth.type = skb->protocol;
 	} else {
 		eth = eth_hdr(skb);
 		ether_addr_copy(key->eth.src, eth->h_source);
@@ -545,15 +546,23 @@ static int key_extract(struct sk_buff *skb, struct sw_flow_key *key)
 		if (unlikely(parse_vlan(skb, key)))
 			return -ENOMEM;
 
-		skb->protocol = parse_ethertype(skb);
-		if (unlikely(skb->protocol == htons(0)))
+		key->eth.type = parse_ethertype(skb);
+		if (unlikely(key->eth.type == htons(0)))
 			return -ENOMEM;
+
+		/* Multiple tagged packets need to retain TPID to satisfy
+		 * skb_vlan_pop(), which will later shift the ethertype into
+		 * skb->protocol.
+		 */
+		if (key->eth.cvlan.tci & htons(VLAN_TAG_PRESENT))
+			skb->protocol = key->eth.cvlan.tpid;
+		else
+			skb->protocol = key->eth.type;
 
 		skb_reset_network_header(skb);
 		__skb_push(skb, skb->data - skb_mac_header(skb));
 	}
 	skb_reset_mac_len(skb);
-	key->eth.type = skb->protocol;
 
 	/* Network layer. */
 	if (key->eth.type == htons(ETH_P_IP)) {
@@ -584,7 +593,8 @@ static int key_extract(struct sk_buff *skb, struct sw_flow_key *key)
 			key->ip.frag = OVS_FRAG_TYPE_LATER;
 			return 0;
 		}
-		if (nh->frag_off & htons(IP_MF))
+		if (nh->frag_off & htons(IP_MF) ||
+			skb_shinfo(skb)->gso_type & SKB_GSO_UDP)
 			key->ip.frag = OVS_FRAG_TYPE_FIRST;
 		else
 			key->ip.frag = OVS_FRAG_TYPE_NONE;
@@ -700,6 +710,9 @@ static int key_extract(struct sk_buff *skb, struct sw_flow_key *key)
 
 		if (key->ip.frag == OVS_FRAG_TYPE_LATER)
 			return 0;
+		if (skb_shinfo(skb)->gso_type & SKB_GSO_UDP)
+			key->ip.frag = OVS_FRAG_TYPE_FIRST;
+
 		/* Transport layer. */
 		if (key->ip.proto == NEXTHDR_TCP) {
 			if (tcphdr_ok(skb)) {

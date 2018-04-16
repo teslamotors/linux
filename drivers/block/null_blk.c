@@ -467,7 +467,6 @@ static void nullb_device_release(struct config_item *item)
 {
 	struct nullb_device *dev = to_nullb_device(item);
 
-	badblocks_exit(&dev->badblocks);
 	null_free_device_storage(dev, false);
 	null_free_dev(dev);
 }
@@ -578,6 +577,10 @@ static struct nullb_device *null_alloc_dev(void)
 
 static void null_free_dev(struct nullb_device *dev)
 {
+	if (!dev)
+		return;
+
+	badblocks_exit(&dev->badblocks);
 	kfree(dev);
 }
 
@@ -1985,8 +1988,10 @@ static int __init null_init(void)
 
 	for (i = 0; i < nr_devices; i++) {
 		dev = null_alloc_dev();
-		if (!dev)
+		if (!dev) {
+			ret = -ENOMEM;
 			goto err_dev;
+		}
 		ret = null_add_dev(dev);
 		if (ret) {
 			null_free_dev(dev);

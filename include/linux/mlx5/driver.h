@@ -36,6 +36,7 @@
 #include <linux/kernel.h>
 #include <linux/completion.h>
 #include <linux/pci.h>
+#include <linux/irq.h>
 #include <linux/spinlock_types.h>
 #include <linux/semaphore.h>
 #include <linux/slab.h>
@@ -431,8 +432,8 @@ struct mlx5_core_srq {
 	struct mlx5_core_rsc_common	common; /* must be first */
 	u32		srqn;
 	int		max;
-	int		max_gs;
-	int		max_avail_gather;
+	size_t		max_gs;
+	size_t		max_avail_gather;
 	int		wqe_shift;
 	void (*event)	(struct mlx5_core_srq *, enum mlx5_event);
 
@@ -546,6 +547,7 @@ struct mlx5_core_sriov {
 };
 
 struct mlx5_irq_info {
+	cpumask_var_t mask;
 	char name[MLX5_MAX_IRQ_NAME];
 };
 
@@ -792,7 +794,7 @@ struct mlx5_core_dev {
 	struct mlx5e_resources  mlx5e_res;
 	struct {
 		struct mlx5_rsvd_gids	reserved_gids;
-		atomic_t                roce_en;
+		u32			roce_en;
 	} roce;
 #ifdef CONFIG_MLX5_FPGA
 	struct mlx5_fpga_device *fpga;
@@ -1015,7 +1017,7 @@ int mlx5_create_map_eq(struct mlx5_core_dev *dev, struct mlx5_eq *eq, u8 vecidx,
 		       enum mlx5_eq_type type);
 int mlx5_destroy_unmap_eq(struct mlx5_core_dev *dev, struct mlx5_eq *eq);
 int mlx5_start_eqs(struct mlx5_core_dev *dev);
-int mlx5_stop_eqs(struct mlx5_core_dev *dev);
+void mlx5_stop_eqs(struct mlx5_core_dev *dev);
 int mlx5_vector2eqn(struct mlx5_core_dev *dev, int vector, int *eqn,
 		    unsigned int *irqn);
 int mlx5_core_attach_mcg(struct mlx5_core_dev *dev, union ib_gid *mgid, u32 qpn);
@@ -1193,7 +1195,23 @@ enum {
 static inline const struct cpumask *
 mlx5_get_vector_affinity(struct mlx5_core_dev *dev, int vector)
 {
-	return pci_irq_get_affinity(dev->pdev, MLX5_EQ_VEC_COMP_BASE + vector);
+	const struct cpumask *mask;
+	struct irq_desc *desc;
+	unsigned int irq;
+	int eqn;
+	int err;
+
+	err = mlx5_vector2eqn(dev, MLX5_EQ_VEC_COMP_BASE + vector, &eqn, &irq);
+	if (err)
+		return NULL;
+
+	desc = irq_to_desc(irq);
+#ifdef CONFIG_GENERIC_IRQ_EFFECTIVE_AFF_MASK
+	mask = irq_data_get_effective_affinity_mask(&desc->irq_data);
+#else
+	mask = desc->irq_common_data.affinity;
+#endif
+	return mask;
 }
 
 #endif /* MLX5_DRIVER_H */

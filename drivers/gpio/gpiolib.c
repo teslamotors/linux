@@ -723,6 +723,9 @@ static irqreturn_t lineevent_irq_thread(int irq, void *p)
 	struct gpioevent_data ge;
 	int ret, level;
 
+	/* Do not leak kernel stack to userspace */
+	memset(&ge, 0, sizeof(ge));
+
 	ge.timestamp = ktime_get_real_ns();
 	level = gpiod_get_value_cansleep(le->desc);
 
@@ -3337,7 +3340,8 @@ struct gpio_desc *__must_check gpiod_get_index(struct device *dev,
 		return desc;
 	}
 
-	status = gpiod_request(desc, con_id);
+	/* If a connection label was passed use that, else use the device name as label */
+	status = gpiod_request(desc, con_id ? con_id : dev_name(dev));
 	if (status < 0)
 		return ERR_PTR(status);
 

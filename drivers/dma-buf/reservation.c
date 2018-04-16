@@ -266,8 +266,7 @@ EXPORT_SYMBOL(reservation_object_add_excl_fence);
 * @dst: the destination reservation object
 * @src: the source reservation object
 *
-* Copy all fences from src to dst. Both src->lock as well as dst-lock must be
-* held.
+* Copy all fences from src to dst. dst-lock must be held.
 */
 int reservation_object_copy_fences(struct reservation_object *dst,
 				   struct reservation_object *src)
@@ -277,33 +276,62 @@ int reservation_object_copy_fences(struct reservation_object *dst,
 	size_t size;
 	unsigned i;
 
-	src_list = reservation_object_get_list(src);
+	rcu_read_lock();
+	src_list = rcu_dereference(src->fence);
 
+retry:
 	if (src_list) {
-		size = offsetof(typeof(*src_list),
-				shared[src_list->shared_count]);
+		unsigned shared_count = src_list->shared_count;
+
+		size = offsetof(typeof(*src_list), shared[shared_count]);
+		rcu_read_unlock();
+
 		dst_list = kmalloc(size, GFP_KERNEL);
 		if (!dst_list)
 			return -ENOMEM;
 
-		dst_list->shared_count = src_list->shared_count;
-		dst_list->shared_max = src_list->shared_count;
-		for (i = 0; i < src_list->shared_count; ++i)
-			dst_list->shared[i] =
-				dma_fence_get(src_list->shared[i]);
+		rcu_read_lock();
+		src_list = rcu_dereference(src->fence);
+		if (!src_list || src_list->shared_count > shared_count) {
+			kfree(dst_list);
+			goto retry;
+		}
+
+		dst_list->shared_count = 0;
+		dst_list->shared_max = shared_count;
+		for (i = 0; i < src_list->shared_count; ++i) {
+			struct dma_fence *fence;
+
+			fence = rcu_dereference(src_list->shared[i]);
+			if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT,
+				     &fence->flags))
+				continue;
+
+			if (!dma_fence_get_rcu(fence)) {
+				kfree(dst_list);
+				src_list = rcu_dereference(src->fence);
+				goto retry;
+			}
+
+			if (dma_fence_is_signaled(fence)) {
+				dma_fence_put(fence);
+				continue;
+			}
+
+			dst_list->shared[dst_list->shared_count++] = fence;
+		}
 	} else {
 		dst_list = NULL;
 	}
+
+	new = dma_fence_get_rcu_safe(&src->fence_excl);
+	rcu_read_unlock();
 
 	kfree(dst->staged);
 	dst->staged = NULL;
 
 	src_list = reservation_object_get_list(dst);
-
 	old = reservation_object_get_excl(dst);
-	new = reservation_object_get_excl(src);
-
-	dma_fence_get(new);
 
 	preempt_disable();
 	write_seqcount_begin(&dst->seq);
@@ -427,13 +455,15 @@ long reservation_object_wait_timeout_rcu(struct reservation_object *obj,
 					 unsigned long timeout)
 {
 	struct dma_fence *fence;
-	unsigned seq, shared_count, i = 0;
+	unsigned seq, shared_count;
 	long ret = timeout ? timeout : 1;
+	int i;
 
 retry:
 	shared_count = 0;
 	seq = read_seqcount_begin(&obj->seq);
 	rcu_read_lock();
+	i = -1;
 
 	fence = rcu_dereference(obj->fence_excl);
 	if (fence && !test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
@@ -449,14 +479,14 @@ retry:
 		fence = NULL;
 	}
 
-	if (!fence && wait_all) {
+	if (wait_all) {
 		struct reservation_object_list *fobj =
 						rcu_dereference(obj->fence);
 
 		if (fobj)
 			shared_count = fobj->shared_count;
 
-		for (i = 0; i < shared_count; ++i) {
+		for (i = 0; !fence && i < shared_count; ++i) {
 			struct dma_fence *lfence = rcu_dereference(fobj->shared[i]);
 
 			if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT,

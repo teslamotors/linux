@@ -1204,12 +1204,14 @@ static int wmfw_add_ctl(struct wm_adsp *dsp, struct wm_coeff_ctl *ctl)
 		kcontrol->put = wm_coeff_put_acked;
 		break;
 	default:
-		kcontrol->get = wm_coeff_get;
-		kcontrol->put = wm_coeff_put;
-
-		ctl->bytes_ext.max = ctl->len;
-		ctl->bytes_ext.get = wm_coeff_tlv_get;
-		ctl->bytes_ext.put = wm_coeff_tlv_put;
+		if (kcontrol->access & SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK) {
+			ctl->bytes_ext.max = ctl->len;
+			ctl->bytes_ext.get = wm_coeff_tlv_get;
+			ctl->bytes_ext.put = wm_coeff_tlv_put;
+		} else {
+			kcontrol->get = wm_coeff_get;
+			kcontrol->put = wm_coeff_put;
+		}
 		break;
 	}
 
@@ -1733,7 +1735,7 @@ static int wm_adsp_load(struct wm_adsp *dsp)
 		 le64_to_cpu(footer->timestamp));
 
 	while (pos < firmware->size &&
-	       pos - firmware->size > sizeof(*region)) {
+	       sizeof(*region) < firmware->size - pos) {
 		region = (void *)&(firmware->data[pos]);
 		region_name = "Unknown";
 		reg = 0;
@@ -1782,8 +1784,8 @@ static int wm_adsp_load(struct wm_adsp *dsp)
 			 regions, le32_to_cpu(region->len), offset,
 			 region_name);
 
-		if ((pos + le32_to_cpu(region->len) + sizeof(*region)) >
-		    firmware->size) {
+		if (le32_to_cpu(region->len) >
+		    firmware->size - pos - sizeof(*region)) {
 			adsp_err(dsp,
 				 "%s.%d: %s region len %d bytes exceeds file length %zu\n",
 				 file, regions, region_name,
@@ -2253,7 +2255,7 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 
 	blocks = 0;
 	while (pos < firmware->size &&
-	       pos - firmware->size > sizeof(*blk)) {
+	       sizeof(*blk) < firmware->size - pos) {
 		blk = (void *)(&firmware->data[pos]);
 
 		type = le16_to_cpu(blk->type);
@@ -2327,8 +2329,8 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 		}
 
 		if (reg) {
-			if ((pos + le32_to_cpu(blk->len) + sizeof(*blk)) >
-			    firmware->size) {
+			if (le32_to_cpu(blk->len) >
+			    firmware->size - pos - sizeof(*blk)) {
 				adsp_err(dsp,
 					 "%s.%d: %s region len %d bytes exceeds file length %zu\n",
 					 file, blocks, region_name,

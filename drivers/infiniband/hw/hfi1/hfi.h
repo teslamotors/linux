@@ -1047,6 +1047,8 @@ struct hfi1_devdata {
 	u64 z_send_schedule;
 
 	u64 __percpu *send_schedule;
+	/* number of reserved contexts for VNIC usage */
+	u16 num_vnic_contexts;
 	/* number of receive contexts in use by the driver */
 	u32 num_rcv_contexts;
 	/* number of pio send contexts in use by the driver */
@@ -1127,7 +1129,6 @@ struct hfi1_devdata {
 	u16 pcie_lnkctl;
 	u16 pcie_devctl2;
 	u32 pci_msix0;
-	u32 pci_lnkctl3;
 	u32 pci_tph2;
 
 	/*

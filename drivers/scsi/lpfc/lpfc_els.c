@@ -2088,15 +2088,16 @@ lpfc_cmpl_els_prli(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 	ndlp = (struct lpfc_nodelist *) cmdiocb->context1;
 	spin_lock_irq(shost->host_lock);
 	ndlp->nlp_flag &= ~NLP_PRLI_SND;
+
+	/* Driver supports multiple FC4 types.  Counters matter. */
+	vport->fc_prli_sent--;
+	ndlp->fc4_prli_sent--;
 	spin_unlock_irq(shost->host_lock);
 
 	lpfc_debugfs_disc_trc(vport, LPFC_DISC_TRC_ELS_CMD,
 		"PRLI cmpl:       status:x%x/x%x did:x%x",
 		irsp->ulpStatus, irsp->un.ulpWord[4],
 		ndlp->nlp_DID);
-
-	/* Ddriver supports multiple FC4 types.  Counters matter. */
-	vport->fc_prli_sent--;
 
 	/* PRLI completes to NPort <nlp_DID> */
 	lpfc_printf_vlog(vport, KERN_INFO, LOG_ELS,
@@ -2111,7 +2112,6 @@ lpfc_cmpl_els_prli(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 
 	if (irsp->ulpStatus) {
 		/* Check for retry */
-		ndlp->fc4_prli_sent--;
 		if (lpfc_els_retry(phba, cmdiocb, rspiocb)) {
 			/* ELS command is being retried */
 			goto out;
@@ -2189,6 +2189,15 @@ lpfc_issue_els_prli(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 	    vport->nvmei_support)
 		ndlp->nlp_fc4_type |= NLP_FC4_NVME;
 	local_nlp_type = ndlp->nlp_fc4_type;
+
+	/* This routine will issue 1 or 2 PRLIs, so zero all the ndlp
+	 * fields here before any of them can complete.
+	 */
+	ndlp->nlp_type &= ~(NLP_FCP_TARGET | NLP_FCP_INITIATOR);
+	ndlp->nlp_type &= ~(NLP_NVME_TARGET | NLP_NVME_INITIATOR);
+	ndlp->nlp_fcp_info &= ~NLP_FCP_2_DEVICE;
+	ndlp->nlp_flag &= ~NLP_FIRSTBURST;
+	ndlp->nvme_fb_size = 0;
 
  send_next_prli:
 	if (local_nlp_type & NLP_FC4_FCP) {
@@ -2298,6 +2307,13 @@ lpfc_issue_els_prli(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 	elsiocb->iocb_cmpl = lpfc_cmpl_els_prli;
 	spin_lock_irq(shost->host_lock);
 	ndlp->nlp_flag |= NLP_PRLI_SND;
+
+	/* The vport counters are used for lpfc_scan_finished, but
+	 * the ndlp is used to track outstanding PRLIs for different
+	 * FC4 types.
+	 */
+	vport->fc_prli_sent++;
+	ndlp->fc4_prli_sent++;
 	spin_unlock_irq(shost->host_lock);
 	if (lpfc_sli_issue_iocb(phba, LPFC_ELS_RING, elsiocb, 0) ==
 	    IOCB_ERROR) {
@@ -2308,12 +2324,6 @@ lpfc_issue_els_prli(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 		return 1;
 	}
 
-	/* The vport counters are used for lpfc_scan_finished, but
-	 * the ndlp is used to track outstanding PRLIs for different
-	 * FC4 types.
-	 */
-	vport->fc_prli_sent++;
-	ndlp->fc4_prli_sent++;
 
 	/* The driver supports 2 FC4 types.  Make sure
 	 * a PRLI is issued for all types before exiting.
@@ -7430,6 +7440,8 @@ lpfc_els_timeout_handler(struct lpfc_vport *vport)
 	timeout = (uint32_t)(phba->fc_ratov << 1);
 
 	pring = lpfc_phba_elsring(phba);
+	if (unlikely(!pring))
+		return;
 
 	if ((phba->pport->load_flag & FC_UNLOADING))
 		return;
@@ -9310,6 +9322,9 @@ void lpfc_fabric_abort_nport(struct lpfc_nodelist *ndlp)
 
 	pring = lpfc_phba_elsring(phba);
 
+	if (unlikely(!pring))
+		return;
+
 	spin_lock_irq(&phba->hbalock);
 	list_for_each_entry_safe(piocb, tmp_iocb, &phba->fabric_iocb_list,
 				 list) {
@@ -9416,7 +9431,7 @@ lpfc_sli4_els_xri_aborted(struct lpfc_hba *phba,
 				rxid, 1);
 
 			/* Check if TXQ queue needs to be serviced */
-			if (!(list_empty(&pring->txq)))
+			if (pring && !list_empty(&pring->txq))
 				lpfc_worker_wake_up(phba);
 			return;
 		}

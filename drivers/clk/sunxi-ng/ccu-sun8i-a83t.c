@@ -354,9 +354,9 @@ static SUNXI_CCU_GATE(bus_tdm_clk,	"bus-tdm",	"apb1",
 static SUNXI_CCU_GATE(bus_i2c0_clk,	"bus-i2c0",	"apb2",
 		      0x06c, BIT(0), 0);
 static SUNXI_CCU_GATE(bus_i2c1_clk,	"bus-i2c1",	"apb2",
-		      0x06c, BIT(0), 0);
+		      0x06c, BIT(1), 0);
 static SUNXI_CCU_GATE(bus_i2c2_clk,	"bus-i2c2",	"apb2",
-		      0x06c, BIT(0), 0);
+		      0x06c, BIT(2), 0);
 static SUNXI_CCU_GATE(bus_uart0_clk,	"bus-uart0",	"apb2",
 		      0x06c, BIT(16), 0);
 static SUNXI_CCU_GATE(bus_uart1_clk,	"bus-uart1",	"apb2",
@@ -493,8 +493,8 @@ static SUNXI_CCU_MUX_WITH_GATE(tcon0_clk, "tcon0", tcon0_parents,
 				 0x118, 24, 3, BIT(31), CLK_SET_RATE_PARENT);
 
 static const char * const tcon1_parents[] = { "pll-video1" };
-static SUNXI_CCU_MUX_WITH_GATE(tcon1_clk, "tcon1", tcon1_parents,
-				 0x11c, 24, 3, BIT(31), CLK_SET_RATE_PARENT);
+static SUNXI_CCU_M_WITH_MUX_GATE(tcon1_clk, "tcon1", tcon1_parents,
+				 0x11c, 0, 4, 24, 2, BIT(31), CLK_SET_RATE_PARENT);
 
 static SUNXI_CCU_GATE(csi_misc_clk, "csi-misc", "osc24M", 0x130, BIT(16), 0);
 

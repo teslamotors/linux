@@ -35,6 +35,10 @@
 #define _TLS_OFFLOAD_H
 
 #include <linux/types.h>
+#include <asm/byteorder.h>
+#include <linux/socket.h>
+#include <linux/tcp.h>
+#include <net/tcp.h>
 
 #include <uapi/linux/tls.h>
 
@@ -164,7 +168,7 @@ static inline bool tls_is_pending_open_record(struct tls_context *tls_ctx)
 
 static inline void tls_err_abort(struct sock *sk)
 {
-	sk->sk_err = -EBADMSG;
+	sk->sk_err = EBADMSG;
 	sk->sk_error_report(sk);
 }
 

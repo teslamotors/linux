@@ -67,6 +67,9 @@ struct nvme_rdma_request {
 	struct nvme_request	req;
 	struct ib_mr		*mr;
 	struct nvme_rdma_qe	sqe;
+	union nvme_result	result;
+	__le16			status;
+	refcount_t		ref;
 	struct ib_sge		sge[1 + NVME_RDMA_MAX_INLINE_SEGMENTS];
 	u32			num_sge;
 	int			nents;
@@ -85,7 +88,6 @@ enum nvme_rdma_queue_flags {
 
 struct nvme_rdma_queue {
 	struct nvme_rdma_qe	*rsp_ring;
-	atomic_t		sig_count;
 	int			queue_size;
 	size_t			cmnd_capsule_len;
 	struct nvme_rdma_ctrl	*ctrl;
@@ -518,7 +520,6 @@ static int nvme_rdma_alloc_queue(struct nvme_rdma_ctrl *ctrl,
 		queue->cmnd_capsule_len = sizeof(struct nvme_command);
 
 	queue->queue_size = queue_size;
-	atomic_set(&queue->sig_count, 0);
 
 	queue->cm_id = rdma_create_id(&init_net, nvme_rdma_cm_handler, queue,
 			RDMA_PS_TCP, IB_QPT_RC);
@@ -1177,6 +1178,7 @@ static int nvme_rdma_map_data(struct nvme_rdma_queue *queue,
 	req->num_sge = 1;
 	req->inline_data = false;
 	req->mr->need_inval = false;
+	refcount_set(&req->ref, 2); /* send and recv completions */
 
 	c->common.flags |= NVME_CMD_SGL_METABUF;
 
@@ -1213,25 +1215,24 @@ static int nvme_rdma_map_data(struct nvme_rdma_queue *queue,
 
 static void nvme_rdma_send_done(struct ib_cq *cq, struct ib_wc *wc)
 {
-	if (unlikely(wc->status != IB_WC_SUCCESS))
+	struct nvme_rdma_qe *qe =
+		container_of(wc->wr_cqe, struct nvme_rdma_qe, cqe);
+	struct nvme_rdma_request *req =
+		container_of(qe, struct nvme_rdma_request, sqe);
+	struct request *rq = blk_mq_rq_from_pdu(req);
+
+	if (unlikely(wc->status != IB_WC_SUCCESS)) {
 		nvme_rdma_wr_error(cq, wc, "SEND");
-}
+		return;
+	}
 
-/*
- * We want to signal completion at least every queue depth/2.  This returns the
- * largest power of two that is not above half of (queue size + 1) to optimize
- * (avoid divisions).
- */
-static inline bool nvme_rdma_queue_sig_limit(struct nvme_rdma_queue *queue)
-{
-	int limit = 1 << ilog2((queue->queue_size + 1) / 2);
-
-	return (atomic_inc_return(&queue->sig_count) & (limit - 1)) == 0;
+	if (refcount_dec_and_test(&req->ref))
+		nvme_end_request(rq, req->status, req->result);
 }
 
 static int nvme_rdma_post_send(struct nvme_rdma_queue *queue,
 		struct nvme_rdma_qe *qe, struct ib_sge *sge, u32 num_sge,
-		struct ib_send_wr *first, bool flush)
+		struct ib_send_wr *first)
 {
 	struct ib_send_wr wr, *bad_wr;
 	int ret;
@@ -1240,31 +1241,12 @@ static int nvme_rdma_post_send(struct nvme_rdma_queue *queue,
 	sge->length = sizeof(struct nvme_command),
 	sge->lkey   = queue->device->pd->local_dma_lkey;
 
-	qe->cqe.done = nvme_rdma_send_done;
-
 	wr.next       = NULL;
 	wr.wr_cqe     = &qe->cqe;
 	wr.sg_list    = sge;
 	wr.num_sge    = num_sge;
 	wr.opcode     = IB_WR_SEND;
-	wr.send_flags = 0;
-
-	/*
-	 * Unsignalled send completions are another giant desaster in the
-	 * IB Verbs spec:  If we don't regularly post signalled sends
-	 * the send queue will fill up and only a QP reset will rescue us.
-	 * Would have been way to obvious to handle this in hardware or
-	 * at least the RDMA stack..
-	 *
-	 * Always signal the flushes. The magic request used for the flush
-	 * sequencer is not allocated in our driver's tagset and it's
-	 * triggered to be freed by blk_cleanup_queue(). So we need to
-	 * always mark it as signaled to ensure that the "wr_cqe", which is
-	 * embedded in request's payload, is not freed when __ib_process_cq()
-	 * calls wr_cqe->done().
-	 */
-	if (nvme_rdma_queue_sig_limit(queue) || flush)
-		wr.send_flags |= IB_SEND_SIGNALED;
+	wr.send_flags = IB_SEND_SIGNALED;
 
 	if (first)
 		first->next = &wr;
@@ -1314,6 +1296,12 @@ static struct blk_mq_tags *nvme_rdma_tagset(struct nvme_rdma_queue *queue)
 	return queue->ctrl->tag_set.tags[queue_idx - 1];
 }
 
+static void nvme_rdma_async_done(struct ib_cq *cq, struct ib_wc *wc)
+{
+	if (unlikely(wc->status != IB_WC_SUCCESS))
+		nvme_rdma_wr_error(cq, wc, "ASYNC");
+}
+
 static void nvme_rdma_submit_async_event(struct nvme_ctrl *arg, int aer_idx)
 {
 	struct nvme_rdma_ctrl *ctrl = to_rdma_ctrl(arg);
@@ -1335,10 +1323,12 @@ static void nvme_rdma_submit_async_event(struct nvme_ctrl *arg, int aer_idx)
 	cmd->common.flags |= NVME_CMD_SGL_METABUF;
 	nvme_rdma_set_sg_null(cmd);
 
+	sqe->cqe.done = nvme_rdma_async_done;
+
 	ib_dma_sync_single_for_device(dev, sqe->dma, sizeof(*cmd),
 			DMA_TO_DEVICE);
 
-	ret = nvme_rdma_post_send(queue, sqe, &sge, 1, NULL, false);
+	ret = nvme_rdma_post_send(queue, sqe, &sge, 1, NULL);
 	WARN_ON_ONCE(ret);
 }
 
@@ -1359,14 +1349,19 @@ static int nvme_rdma_process_nvme_rsp(struct nvme_rdma_queue *queue,
 	}
 	req = blk_mq_rq_to_pdu(rq);
 
-	if (rq->tag == tag)
-		ret = 1;
+	req->status = cqe->status;
+	req->result = cqe->result;
 
 	if ((wc->wc_flags & IB_WC_WITH_INVALIDATE) &&
 	    wc->ex.invalidate_rkey == req->mr->rkey)
 		req->mr->need_inval = false;
 
-	nvme_end_request(rq, cqe->status, cqe->result);
+	if (refcount_dec_and_test(&req->ref)) {
+		if (rq->tag == tag)
+			ret = 1;
+		nvme_end_request(rq, req->status, req->result);
+	}
+
 	return ret;
 }
 
@@ -1603,31 +1598,11 @@ nvme_rdma_timeout(struct request *rq, bool reserved)
  * We cannot accept any other command until the Connect command has completed.
  */
 static inline blk_status_t
-nvme_rdma_queue_is_ready(struct nvme_rdma_queue *queue, struct request *rq)
+nvme_rdma_is_ready(struct nvme_rdma_queue *queue, struct request *rq)
 {
-	if (unlikely(!test_bit(NVME_RDMA_Q_LIVE, &queue->flags))) {
-		struct nvme_command *cmd = nvme_req(rq)->cmd;
-
-		if (!blk_rq_is_passthrough(rq) ||
-		    cmd->common.opcode != nvme_fabrics_command ||
-		    cmd->fabrics.fctype != nvme_fabrics_type_connect) {
-			/*
-			 * reconnecting state means transport disruption, which
-			 * can take a long time and even might fail permanently,
-			 * fail fast to give upper layers a chance to failover.
-			 * deleting state means that the ctrl will never accept
-			 * commands again, fail it permanently.
-			 */
-			if (queue->ctrl->ctrl.state == NVME_CTRL_RECONNECTING ||
-			    queue->ctrl->ctrl.state == NVME_CTRL_DELETING) {
-				nvme_req(rq)->status = NVME_SC_ABORT_REQ;
-				return BLK_STS_IOERR;
-			}
-			return BLK_STS_RESOURCE; /* try again later */
-		}
-	}
-
-	return 0;
+	if (unlikely(!test_bit(NVME_RDMA_Q_LIVE, &queue->flags)))
+		return nvmf_check_init_req(&queue->ctrl->ctrl, rq);
+	return BLK_STS_OK;
 }
 
 static blk_status_t nvme_rdma_queue_rq(struct blk_mq_hw_ctx *hctx,
@@ -1639,14 +1614,13 @@ static blk_status_t nvme_rdma_queue_rq(struct blk_mq_hw_ctx *hctx,
 	struct nvme_rdma_request *req = blk_mq_rq_to_pdu(rq);
 	struct nvme_rdma_qe *sqe = &req->sqe;
 	struct nvme_command *c = sqe->data;
-	bool flush = false;
 	struct ib_device *dev;
 	blk_status_t ret;
 	int err;
 
 	WARN_ON_ONCE(rq->tag < 0);
 
-	ret = nvme_rdma_queue_is_ready(queue, rq);
+	ret = nvme_rdma_is_ready(queue, rq);
 	if (unlikely(ret))
 		return ret;
 
@@ -1668,13 +1642,13 @@ static blk_status_t nvme_rdma_queue_rq(struct blk_mq_hw_ctx *hctx,
 		goto err;
 	}
 
+	sqe->cqe.done = nvme_rdma_send_done;
+
 	ib_dma_sync_single_for_device(dev, sqe->dma,
 			sizeof(struct nvme_command), DMA_TO_DEVICE);
 
-	if (req_op(rq) == REQ_OP_FLUSH)
-		flush = true;
 	err = nvme_rdma_post_send(queue, sqe, req->sge, req->num_sge,
-			req->mr->need_inval ? &req->reg_wr.wr : NULL, flush);
+			req->mr->need_inval ? &req->reg_wr.wr : NULL);
 	if (unlikely(err)) {
 		nvme_rdma_unmap_data(queue, rq);
 		goto err;

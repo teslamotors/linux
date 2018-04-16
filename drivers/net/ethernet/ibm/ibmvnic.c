@@ -927,6 +927,7 @@ static int ibmvnic_open(struct net_device *netdev)
 	}
 
 	rc = __ibmvnic_open(netdev);
+	netif_carrier_on(netdev);
 	mutex_unlock(&adapter->reset_lock);
 
 	return rc;
@@ -2207,6 +2208,12 @@ static irqreturn_t ibmvnic_interrupt_rx(int irq, void *instance)
 {
 	struct ibmvnic_sub_crq_queue *scrq = instance;
 	struct ibmvnic_adapter *adapter = scrq->adapter;
+
+	/* When booting a kdump kernel we can hit pending interrupts
+	 * prior to completing driver initialization.
+	 */
+	if (unlikely(adapter->state != VNIC_OPEN))
+		return IRQ_NONE;
 
 	adapter->rx_stats_buffers[scrq->scrq_num].interrupts++;
 
@@ -3899,6 +3906,7 @@ static int ibmvnic_probe(struct vio_dev *dev, const struct vio_device_id *id)
 	if (rc)
 		goto ibmvnic_init_fail;
 
+	netif_carrier_off(netdev);
 	rc = register_netdev(netdev);
 	if (rc) {
 		dev_err(&dev->dev, "failed to register netdev rc=%d\n", rc);

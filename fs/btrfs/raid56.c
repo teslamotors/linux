@@ -1348,6 +1348,7 @@ static int find_bio_stripe(struct btrfs_raid_bio *rbio,
 		stripe_start = stripe->physical;
 		if (physical >= stripe_start &&
 		    physical < stripe_start + rbio->stripe_len &&
+		    stripe->dev->bdev &&
 		    bio->bi_disk == stripe->dev->bdev->bd_disk &&
 		    bio->bi_partno == stripe->dev->bdev->bd_partno) {
 			return i;
@@ -1432,14 +1433,13 @@ static int fail_bio_stripe(struct btrfs_raid_bio *rbio,
  */
 static void set_bio_pages_uptodate(struct bio *bio)
 {
-	struct bio_vec bvec;
-	struct bvec_iter iter;
+	struct bio_vec *bvec;
+	int i;
 
-	if (bio_flagged(bio, BIO_CLONED))
-		bio->bi_iter = btrfs_io_bio(bio)->iter;
+	ASSERT(!bio_flagged(bio, BIO_CLONED));
 
-	bio_for_each_segment(bvec, bio, iter)
-		SetPageUptodate(bvec.bv_page);
+	bio_for_each_segment_all(bvec, bio, i)
+		SetPageUptodate(bvec->bv_page);
 }
 
 /*
