@@ -526,6 +526,45 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 
+	case IC_PM_GET_CPU_STATE: {
+		uint64_t cmd;
+
+		if (copy_from_user(&cmd,
+				(void *)ioctl_param, sizeof(cmd)))
+			return -EFAULT;
+
+		switch (cmd & PMCMD_TYPE_MASK) {
+		case PMCMD_GET_PX_CNT: {
+			uint8_t px_cnt;
+
+			ret = hcall_get_cpu_state(cmd, virt_to_phys(&px_cnt));
+			if (ret < 0)
+				return -EFAULT;
+
+			if (copy_to_user((void *)ioctl_param,
+					&px_cnt, sizeof(px_cnt)))
+					ret = -EFAULT;
+
+			break;
+		}
+		case PMCMD_GET_PX_DATA: {
+			struct cpu_px_data px_data;
+
+			ret = hcall_get_cpu_state(cmd, virt_to_phys(&px_data));
+			if (ret < 0)
+				return -EFAULT;
+
+			if (copy_to_user((void *)ioctl_param,
+					&px_data, sizeof(px_data)))
+					ret = -EFAULT;
+			break;
+		}
+		default:
+			ret = -EFAULT;
+			break;
+		}
+	}
+
 	default:
 		pr_warn("Unknown IOCTL 0x%x\n", ioctl_num);
 		ret = 0;
