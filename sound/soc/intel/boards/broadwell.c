@@ -130,6 +130,7 @@ static const struct snd_soc_ops broadwell_rt286_ops = {
 	.hw_params = broadwell_rt286_hw_params,
 };
 
+#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 static int broadwell_rtd_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct sst_pdata *pdata = dev_get_platdata(rtd->platform->dev);
@@ -147,6 +148,7 @@ static int broadwell_rtd_init(struct snd_soc_pcm_runtime *rtd)
 
 	return 0;
 }
+#endif
 
 /* broadwell digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link broadwell_rt286_dais[] = {
@@ -159,7 +161,9 @@ static struct snd_soc_dai_link broadwell_rt286_dais[] = {
 		.dynamic = 1,
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
+#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 		.init = broadwell_rtd_init,
+#endif
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST, SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,

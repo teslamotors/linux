@@ -137,7 +137,7 @@ struct skl {
 	bool mod_set_get_status;
 	struct ep_group_cnt grp_cnt;
 	struct skl_fw_cfg_info cfg;
-	struct sst_acpi_mach *mach;
+	struct snd_soc_acpi_mach *mach;
 	bool use_tplg_pcm;
 };
 
