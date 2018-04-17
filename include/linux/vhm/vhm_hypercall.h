@@ -142,6 +142,7 @@ inline long hcall_create_vm(unsigned long vminfo);
 inline long hcall_start_vm(unsigned long vmid);
 inline long hcall_pause_vm(unsigned long vmid);
 inline long hcall_destroy_vm(unsigned long vmid);
+inline long hcall_restart_vm(unsigned long vmid);
 inline long hcall_query_vm_state(unsigned long vmid);
 inline long hcall_setup_sbuf(unsigned long sbuf_head);
 inline long hcall_get_cpu_state(unsigned long cmd, unsigned long state_pa);

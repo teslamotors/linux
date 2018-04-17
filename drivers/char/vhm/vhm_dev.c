@@ -231,6 +231,15 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 
+	case IC_RESTART_VM: {
+		ret = hcall_restart_vm(vm->vmid);
+		if (ret < 0) {
+			pr_err("vhm: failed to restart VM %ld!\n", vm->vmid);
+			return -EFAULT;
+		}
+		break;
+	}
+
 	case IC_DESTROY_VM: {
 		ret = hcall_destroy_vm(vm->vmid);
 		if (ret < 0) {
