@@ -270,13 +270,13 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 	unsigned long guest_gpa, host_gpa;
 
 	/* hugetlb use vma to do the mapping */
-	if (memmap->type == VM_SYSMEM && memmap->using_vma)
+	if (memmap->type == VM_MEMMAP_SYSMEM && memmap->using_vma)
 		return hugepage_map_guest(vm, memmap);
 
 	mutex_lock(&vm->seg_lock);
 
 	/* cma or mmio */
-	if (memmap->type == VM_SYSMEM) {
+	if (memmap->type == VM_MEMMAP_SYSMEM) {
 		list_for_each_entry(seg, &vm->memseg_list, list) {
 			if (seg->gpa == memmap->gpa
 				&& seg->len == memmap->len)
