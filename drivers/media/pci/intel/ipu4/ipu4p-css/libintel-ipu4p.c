@@ -345,6 +345,8 @@ static void frame_buff_set_abi_to_api(
 
 	api->send_irq_sof = abi->send_irq_sof;
 	api->send_irq_eof = abi->send_irq_eof;
+	api->send_irq_capture_ack = abi->send_irq_capture_ack;
+	api->send_irq_capture_done = abi->send_irq_capture_done;
 }
 
 int ipu_fw_isys_complex_cmd(struct ipu_isys *isys,

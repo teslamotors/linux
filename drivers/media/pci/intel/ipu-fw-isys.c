@@ -217,4 +217,11 @@ void ipu_fw_isys_dump_frame_buff_set(struct device *dev,
 	dev_dbg(dev, "send_irq_eof 0x%x\n", buf->send_irq_eof);
 	dev_dbg(dev, "send_resp_sof 0x%x\n", buf->send_resp_sof);
 	dev_dbg(dev, "send_resp_eof 0x%x\n", buf->send_resp_eof);
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
+	dev_dbg(dev, "send_irq_capture_ack 0x%x\n", buf->send_irq_capture_ack);
+	dev_dbg(dev, "send_irq_capture_done 0x%x\n", buf->send_irq_capture_done);
+#endif
+#ifdef IPU_OTF_SUPPORT
+	dev_dbg(dev, "frame_counter 0x%x\n", buf->frame_counter);
+#endif
 }

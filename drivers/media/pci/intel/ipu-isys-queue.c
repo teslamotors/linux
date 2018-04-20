@@ -495,6 +495,10 @@ void ipu_isys_buffer_list_to_ipu_fw_isys_frame_buff_set(
 	set->send_resp_sof = 1;
 	set->send_irq_eof = 1;
 	set->send_resp_eof = 1;
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
+	set->send_irq_capture_ack = 1;
+	set->send_irq_capture_done = 1;
+#endif
 
 	list_for_each_entry(ib, &bl->head, head) {
 		if (ib->type == IPU_ISYS_VIDEO_BUFFER) {
@@ -1327,6 +1331,10 @@ int ipu_isys_req_prepare(struct media_device *mdev,
 	set->send_resp_sof = 1;
 	set->send_irq_eof = 1;
 	set->send_resp_eof = 1;
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
+	set->send_irq_capture_ack = 1;
+	set->send_irq_capture_done = 1;
+#endif
 
 	spin_lock_irqsave(&ireq->lock, flags);
 

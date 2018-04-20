@@ -678,6 +678,10 @@ struct ipu_fw_isys_frame_buff_set_abi {
 	struct ipu_fw_isys_param_pin_abi process_group_light;
 	u8 send_irq_sof;
 	u8 send_irq_eof;
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
+	u8 send_irq_capture_ack;
+	u8 send_irq_capture_done;
+#endif
 	u8 send_resp_sof;
 	u8 send_resp_eof;
 	u8 reserved;
