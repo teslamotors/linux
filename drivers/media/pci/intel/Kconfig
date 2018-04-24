@@ -44,3 +44,8 @@ config VIDEO_INTEL_IPU_FW_LIB
 	---help---
 	If selected, the firmware hostlib css would be compiled
 
+config VIDEO_INTEL_ICI
+	bool "Compile for ICI driver"
+	---help---
+	If selected ICI driver will be compiled
+
