@@ -156,7 +156,7 @@ int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
 	return ret;
 }
 
-static int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
+int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len,
 	unsigned int mem_type, unsigned int mem_access_right,
 	unsigned int type)
@@ -205,61 +205,6 @@ int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
 		mem_type, mem_access_right, MAP_MEM);
-}
-
-static int hugepage_map_guest(struct vhm_vm *vm, struct vm_memmap *memmap)
-{
-	struct page *page;
-	unsigned long len, guest_gpa, vma;
-	unsigned int type;
-	unsigned int mem_type, mem_access_right;
-	int ret;
-
-	if (vm == NULL || memmap == NULL)
-		return -EINVAL;
-
-	len = memmap->len;
-	vma = memmap->vma_base;
-	guest_gpa = memmap->gpa;
-
-	while (len > 0) {
-		unsigned long vm0_gpa, pagesize;
-
-		ret = get_user_pages_fast(vma, 1, 1, &page);
-		if (unlikely(ret != 1) || (page == NULL)) {
-			pr_err("failed to pin huge page!\n");
-			return -ENOMEM;
-		}
-
-		vm0_gpa = page_to_phys(page);
-		pagesize = PAGE_SIZE << compound_order(page);
-
-		ret = add_guest_memseg(vm, vm0_gpa, guest_gpa, pagesize);
-		if (ret < 0) {
-			pr_err("failed to add memseg for huge page!\n");
-			put_page(page);
-			return ret;
-		}
-
-		/* TODO: do batch hypercall for multi ept mapping */
-		mem_type = MEM_TYPE_WB;
-		mem_access_right = (memmap->prot & MEM_ACCESS_RIGHT_MASK);
-		type = MAP_MEM;
-		if (_mem_set_memmap(vm->vmid, guest_gpa, vm0_gpa, pagesize,
-				mem_type, mem_access_right, type) < 0) {
-			pr_err("vhm: failed to set memmap %ld!\n", vm->vmid);
-			put_page(page);
-			return -EFAULT;
-		}
-
-		len -= pagesize;
-		vma += pagesize;
-		guest_gpa += pagesize;
-	}
-
-	vm->hugetlb_enabled = 1;
-
-	return 0;
 }
 
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
@@ -315,17 +260,15 @@ void free_guest_mem(struct vhm_vm *vm)
 {
 	struct guest_memseg *seg;
 
+	if (vm->hugetlb_enabled)
+		return hugepage_free_guest(vm);
+
 	mutex_lock(&vm->seg_lock);
 	while (!list_empty(&vm->memseg_list)) {
 		seg = list_first_entry(&vm->memseg_list,
 				struct guest_memseg, list);
-		if (vm->hugetlb_enabled) {
-			/* just put_page to unpin huge page */
-			put_page(pfn_to_page(seg->vm0_gpa >> PAGE_SHIFT));
-		} else {
-			if (!_free_memblk(vm->dev, seg->vm0_gpa, seg->len))
-				pr_warn("failed to free memblk\n");
-		}
+		if (!_free_memblk(vm->dev, seg->vm0_gpa, seg->len))
+			pr_warn("failed to free memblk\n");
 		list_del(&seg->list);
 		kfree(seg);
 	}
@@ -412,6 +355,9 @@ int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma)
 	size_t len = vma->vm_end - vma->vm_start;
 	int ret;
 
+	if (vm->hugetlb_enabled)
+		return -EINVAL;
+
 	mutex_lock(&vm->seg_lock);
 	list_for_each_entry(seg, &vm->memseg_list, list) {
 		if (seg->gpa != offset || seg->len != len)
@@ -456,7 +402,10 @@ void *map_guest_phys(unsigned long vmid, u64 guest_phys, size_t size)
 	if (vm == NULL)
 		return NULL;
 
-	ret = do_map_guest_phys(vm, guest_phys, size);
+	if (vm->hugetlb_enabled)
+		ret = hugepage_map_guest_phys(vm, guest_phys, size);
+	else
+		ret = do_map_guest_phys(vm, guest_phys, size);
 
 	put_vm(vm);
 
@@ -492,7 +441,11 @@ int unmap_guest_phys(unsigned long vmid, u64 guest_phys)
 		return -ESRCH;
 	}
 
-	ret = do_unmap_guest_phys(vm, guest_phys);
+	if (vm->hugetlb_enabled)
+		ret = hugepage_unmap_guest_phys(vm, guest_phys);
+	else
+		ret = do_unmap_guest_phys(vm, guest_phys);
+
 	put_vm(vm);
 	return ret;
 }

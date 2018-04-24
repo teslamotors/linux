@@ -67,6 +67,10 @@
 extern struct list_head vhm_vm_list;
 extern struct mutex vhm_vm_list_lock;
 
+#define HUGEPAGE_2M_HLIST_ARRAY_SIZE	16
+#define HUGEPAGE_1G_HLIST_ARRAY_SIZE	1
+#define HUGEPAGE_HLIST_ARRAY_SIZE	(HUGEPAGE_2M_HLIST_ARRAY_SIZE + \
+						HUGEPAGE_1G_HLIST_ARRAY_SIZE)
 /**
  * struct vhm_vm - data structure to track guest
  *
@@ -77,6 +81,8 @@ extern struct mutex vhm_vm_list_lock;
  * @refcnt: reference count of guest
  * @seg_lock:  mutex to protect memseg_list
  * @memseg_list: list of memseg
+ * @hugepage_lock:  mutex to protect hugepage_hlist
+ * @hugepage_hlist: hash list of hugepage
  * @max_gfn: maximum guest page frame number
  * @ioreq_client_lock: spinlock to protect ioreq_client_list
  * @ioreq_client_list: list of ioreq clients
@@ -91,6 +97,8 @@ struct vhm_vm {
 	long refcnt;
 	struct mutex seg_lock;
 	struct list_head memseg_list;
+	struct mutex hugepage_lock;
+	struct hlist_head hugepage_hlist[HUGEPAGE_HLIST_ARRAY_SIZE];
 	int max_gfn;
 	spinlock_t ioreq_client_lock;
 	struct list_head ioreq_client_list;
