@@ -8571,7 +8571,8 @@ static void skylake_get_pfit_config(struct intel_crtc *crtc,
 	/* find scaler attached to this pipe */
 	for (i = 0; i < crtc->num_scalers; i++) {
 		ps_ctrl = I915_READ(SKL_PS_CTRL(crtc->pipe, i));
-		if (ps_ctrl & PS_SCALER_EN && !(ps_ctrl & PS_PLANE_SEL_MASK)) {
+		if (ps_ctrl & PS_SCALER_EN && !(ps_ctrl & PS_PLANE_SEL_MASK) &&
+		    scaler_state->scalers[i].owned) {
 			id = i;
 			pipe_config->pch_pfit.enabled = true;
 			pipe_config->pch_pfit.pos = I915_READ(SKL_PS_WIN_POS(crtc->pipe, i));
@@ -13638,6 +13639,11 @@ static void intel_crtc_init_scalers(struct intel_crtc *crtc,
 
 		scaler->in_use = 0;
 		scaler->mode = PS_SCALER_MODE_DYN;
+		scaler->owned = 1;
+		if (intel_vgpu_active(dev_priv) &&
+			 !(1 << (crtc->pipe * SKL_NUM_SCALERS + i) &
+			  dev_priv->vgpu.scaler_owned))
+			scaler->owned = 0;
 	}
 
 	scaler_state->scaler_id = -1;
