@@ -1314,7 +1314,8 @@ static inline int get_max_avail_pipes(struct drm_i915_private *dev_priv)
 	int index = 0;
 
 	if (!intel_vgpu_active(dev_priv) ||
-	    !i915_modparams.avail_planes_per_pipe)
+	    !i915_modparams.avail_planes_per_pipe ||
+	    !i915_modparams.enable_initial_modeset)
 		return INTEL_INFO(dev_priv)->num_pipes;
 
 	for_each_pipe(dev_priv, pipe) {
