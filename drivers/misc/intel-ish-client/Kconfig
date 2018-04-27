@@ -1,0 +1,15 @@
+menu "Intel ISH Client support"
+	depends on INTEL_ISH_HID
+
+config INTEL_ISH_CLIENT
+	tristate "Intel Integrated Sensor Hub Client"
+	help
+	  The Integrated Sensor Hub (ISH) supports many clients, Intel ISH client
+	  driver supports following clients:
+	  SMHI client: calibration & perfermance & menufacture tool interface
+	  trace configure client: ISHFW trace parameter configure interface
+	  trace tool client: ISHFW trace log output interface
+	  loader client: loading customized ISHFW interface
+
+	  Say Y here if you want to support Intel ISH clients. If unsure, say N.
+endmenu
