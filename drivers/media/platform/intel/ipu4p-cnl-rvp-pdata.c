@@ -93,7 +93,7 @@ static struct crlmodule_platform_data ar0231at_pdata = {
 };
 #endif
 
-#ifdef CONFIG_VIDEO_MAX9286
+#if IS_ENABLED(CONFIG_VIDEO_MAX9286)
 #define DS_MAX9286_LANES                4
 #define DS_MAX9286_I2C_ADAPTER_B        3
 #define DS_MAX9286_I2C_ADDRESS          0x48
@@ -170,7 +170,7 @@ static struct ipu_isys_subdev_pdata pdata = {
 		&imx355_sd2,
 		&imx319_sd,
 		&ak7375_sd,
-#ifdef CONFIG_VIDEO_MAX9286
+#if IS_ENABLED(CONFIG_VIDEO_MAX9286)
 		&max9286_b_sd,
 #endif
 		NULL,
