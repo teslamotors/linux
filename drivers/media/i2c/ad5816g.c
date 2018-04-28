@@ -167,7 +167,6 @@ static int ad5816g_vcm_init(struct v4l2_subdev *sd)
 static int ad5816g_t_focus_vcm(struct v4l2_subdev *sd, s32 val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct ad5816g_device *ad5816g_dev = subdev_to_ad5816g_dev(sd);
 	int ret;
 	u16 data;
 
