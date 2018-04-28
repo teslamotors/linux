@@ -67,18 +67,28 @@ static int rpmb_release(struct inode *inode, struct file *fp)
 	return 0;
 }
 
+static size_t rpmb_ioc_frames_len(struct rpmb_dev *rdev, size_t nframes)
+{
+	if (rdev->ops->type == RPMB_TYPE_NVME)
+		return rpmb_ioc_frames_len_nvme(nframes);
+	else
+		return rpmb_ioc_frames_len_jdec(nframes);
+}
+
 /**
  * rpmb_cmd_copy_from_user - copy rpmb command from the user space
  *
+ * @rdev: rpmb device
  * @cmd:  internal cmd structure
  * @ucmd: user space cmd structure
  *
  * Return: 0 on success, <0 on error
  */
-static int rpmb_cmd_copy_from_user(struct rpmb_cmd *cmd,
+static int rpmb_cmd_copy_from_user(struct rpmb_dev *rdev,
+				   struct rpmb_cmd *cmd,
 				   struct rpmb_ioc_cmd __user *ucmd)
 {
-	struct rpmb_frame *frames;
+	void *frames;
 	u64 frames_ptr;
 
 	if (get_user(cmd->flags, &ucmd->flags))
@@ -95,7 +105,7 @@ static int rpmb_cmd_copy_from_user(struct rpmb_cmd *cmd,
 		return -EFAULT;
 
 	frames = memdup_user(u64_to_user_ptr(frames_ptr),
-			     rpmb_ioc_frames_len_jdec(cmd->nframes));
+			     rpmb_ioc_frames_len(rdev, cmd->nframes));
 	if (IS_ERR(frames))
 		return PTR_ERR(frames);
 
@@ -106,12 +116,14 @@ static int rpmb_cmd_copy_from_user(struct rpmb_cmd *cmd,
 /**
  * rpmb_cmd_copy_to_user - copy rpmb command to the user space
  *
+ * @rdev: rpmb device
  * @ucmd: user space cmd structure
  * @cmd:  internal cmd structure
  *
  * Return: 0 on success, <0 on error
  */
-static int rpmb_cmd_copy_to_user(struct rpmb_ioc_cmd __user *ucmd,
+static int rpmb_cmd_copy_to_user(struct rpmb_dev *rdev,
+				 struct rpmb_ioc_cmd __user *ucmd,
 				 struct rpmb_cmd *cmd)
 {
 	u64 frames_ptr;
@@ -121,7 +133,7 @@ static int rpmb_cmd_copy_to_user(struct rpmb_ioc_cmd __user *ucmd,
 
 	/* some archs have issues with 64bit get_user */
 	if (copy_to_user(u64_to_user_ptr(frames_ptr), cmd->frames,
-			 rpmb_ioc_frames_len_jdec(cmd->nframes)))
+			 rpmb_ioc_frames_len(rdev, cmd->nframes)))
 		return -EFAULT;
 
 	return 0;
@@ -167,7 +179,7 @@ static long rpmb_ioctl_seq_cmd(struct rpmb_dev *rdev,
 
 	ucmds = (struct rpmb_ioc_cmd __user *)ptr->cmds;
 	for (i = 0; i < ncmds; i++) {
-		ret = rpmb_cmd_copy_from_user(&cmds[i], &ucmds[i]);
+		ret = rpmb_cmd_copy_from_user(rdev, &cmds[i], &ucmds[i]);
 		if (ret)
 			goto out;
 	}
@@ -177,7 +189,7 @@ static long rpmb_ioctl_seq_cmd(struct rpmb_dev *rdev,
 		goto out;
 
 	for (i = 0; i < ncmds; i++) {
-		ret = rpmb_cmd_copy_to_user(&ucmds[i], &cmds[i]);
+		ret = rpmb_cmd_copy_to_user(rdev, &ucmds[i], &cmds[i]);
 		if (ret)
 			goto out;
 	}
