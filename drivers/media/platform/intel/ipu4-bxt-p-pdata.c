@@ -467,7 +467,7 @@ static struct ipu_isys_subdev_info ov9281_crl_sd = {
 };
 #endif
 
-#ifdef CONFIG_VIDEO_BU64295
+#if IS_ENABLED(CONFIG_VIDEO_BU64295)
 
 #define BU64295_VCM_ADDR	0x0c
 #define BU64295_NAME		"bu64295"
@@ -574,7 +574,7 @@ static struct ipu_isys_subdev_info adv7481b_eval_crl_sd = {
 };
 #endif
 
-#ifdef CONFIG_VIDEO_AGGREGATOR_STUB
+#if IS_ENABLED(CONFIG_VIDEO_AGGREGATOR_STUB)
 
 #define VIDEO_AGGRE_LANES	4
 #define VIDEO_AGGRE_I2C_ADDRESS	0x3b
@@ -688,7 +688,7 @@ static struct crlmodule_platform_data ov10640_pdata = {
 };
 #endif
 
-#ifdef CONFIG_VIDEO_TI964
+#if IS_ENABLED(CONFIG_VIDEO_TI964)
 #define TI964_I2C_ADAPTER	0
 #define TI964_I2C_ADAPTER_2	7
 #define TI964_I2C_ADDRESS	0x3d
@@ -983,7 +983,7 @@ static struct ipu_isys_subdev_pdata pdata = {
 #ifdef CONFIG_INTEL_IPU4_OV9281
 		&ov9281_crl_sd,
 #endif
-#ifdef CONFIG_VIDEO_BU64295
+#if IS_ENABLED(CONFIG_VIDEO_BU64295)
 		&bu64295_sd,
 #endif
 #ifdef CONFIG_INTEL_IPU4_ADV7481
@@ -993,11 +993,11 @@ static struct ipu_isys_subdev_pdata pdata = {
 		&adv7481_eval_crl_sd,
 		&adv7481b_eval_crl_sd,
 #endif
-#ifdef CONFIG_VIDEO_AGGREGATOR_STUB
+#if IS_ENABLED(CONFIG_VIDEO_AGGREGATOR_STUB)
 		&video_aggre_stub_sd,
 		&video_aggre_b_stub_sd,
 #endif
-#ifdef CONFIG_VIDEO_TI964
+#if IS_ENABLED(CONFIG_VIDEO_TI964)
 		&ti964_sd,
 		&ti964_sd_2,
 #endif
