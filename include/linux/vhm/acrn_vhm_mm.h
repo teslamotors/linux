@@ -199,4 +199,12 @@ int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg);
  */
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap);
 
+int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
+	unsigned long host_gpa, unsigned long len,
+	unsigned int mem_type, unsigned int mem_access_right,
+	unsigned int type);
+int hugepage_map_guest(struct vhm_vm *vm, struct vm_memmap *memmap);
+void hugepage_free_guest(struct vhm_vm *vm);
+void *hugepage_map_guest_phys(struct vhm_vm *vm, u64 guest_phys, size_t size);
+int hugepage_unmap_guest_phys(struct vhm_vm *vm, u64 guest_phys);
 #endif

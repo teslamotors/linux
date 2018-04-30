@@ -112,6 +112,7 @@ static DEFINE_MUTEX(table_iomems_lock);
 static int vhm_dev_open(struct inode *inodep, struct file *filep)
 {
 	struct vhm_vm *vm;
+	int i;
 
 	vm = kzalloc(sizeof(struct vhm_vm), GFP_KERNEL);
 	pr_info("vhm_dev_open: opening device node\n");
@@ -124,11 +125,16 @@ static int vhm_dev_open(struct inode *inodep, struct file *filep)
 	INIT_LIST_HEAD(&vm->memseg_list);
 	mutex_init(&vm->seg_lock);
 
+	for (i = 0; i < HUGEPAGE_HLIST_ARRAY_SIZE; i++)
+		INIT_HLIST_HEAD(&vm->hugepage_hlist[i]);
+	mutex_init(&vm->hugepage_lock);
+
 	INIT_LIST_HEAD(&vm->ioreq_client_list);
 	spin_lock_init(&vm->ioreq_client_lock);
 
 	vm_mutex_lock(&vhm_vm_list_lock);
 	vm->refcnt = 1;
+	vm->hugetlb_enabled = 0;
 	vm_list_add(&vm->list);
 	vm_mutex_unlock(&vhm_vm_list_lock);
 	filep->private_data = vm;
