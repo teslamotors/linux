@@ -110,31 +110,25 @@ static bool _free_memblk(struct device *dev, u64 vm0_gpa, size_t len)
 	return dma_release_from_contiguous(dev, page, count);
 }
 
-int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
+static int add_guest_memseg(struct vhm_vm *vm, unsigned long vm0_gpa,
+	unsigned long guest_gpa, unsigned long len)
 {
 	struct guest_memseg *seg;
-	u64 vm0_gpa;
 	int max_gfn;
 
 	seg = kzalloc(sizeof(struct guest_memseg), GFP_KERNEL);
 	if (seg == NULL)
 		return -ENOMEM;
 
-	vm0_gpa = _alloc_memblk(vm->dev, memseg->len);
-	if (vm0_gpa == 0ULL) {
-		kfree(seg);
-		return -ENOMEM;
-	}
-
 	seg->vm0_gpa = vm0_gpa;
-	seg->len = memseg->len;
-	seg->gpa = memseg->gpa;
+	seg->gpa = guest_gpa;
+	seg->len = len;
 
 	max_gfn = (seg->gpa + seg->len) >> PAGE_SHIFT;
 	if (vm->max_gfn < max_gfn)
 		vm->max_gfn = max_gfn;
 
-	pr_info("VHM: alloc memseg with len=0x%lx, vm0_gpa=0x%llx,"
+	pr_info("VHM: add memseg with len=0x%lx, vm0_gpa=0x%llx,"
 		" and its guest gpa = 0x%llx, vm max_gfn 0x%x\n",
 		seg->len, seg->vm0_gpa, seg->gpa, vm->max_gfn);
 
@@ -146,7 +140,23 @@ int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
 	return 0;
 }
 
-static int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
+int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg)
+{
+	unsigned long vm0_gpa;
+	int ret;
+
+	vm0_gpa = _alloc_memblk(vm->dev, memseg->len);
+	if (vm0_gpa == 0ULL)
+		return -ENOMEM;
+
+	ret = add_guest_memseg(vm, vm0_gpa, memseg->gpa, memseg->len);
+	if (ret < 0)
+		_free_memblk(vm->dev, vm0_gpa, memseg->len);
+
+	return ret;
+}
+
+int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len,
 	unsigned int mem_type, unsigned int mem_access_right,
 	unsigned int type)
@@ -204,9 +214,14 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 	unsigned int mem_type, mem_access_right;
 	unsigned long guest_gpa, host_gpa;
 
+	/* hugetlb use vma to do the mapping */
+	if (memmap->type == VM_MEMMAP_SYSMEM && memmap->using_vma)
+		return hugepage_map_guest(vm, memmap);
+
 	mutex_lock(&vm->seg_lock);
 
-	if (memmap->type == VM_SYSMEM) {
+	/* cma or mmio */
+	if (memmap->type == VM_MEMMAP_SYSMEM) {
 		list_for_each_entry(seg, &vm->memseg_list, list) {
 			if (seg->gpa == memmap->gpa
 				&& seg->len == memmap->len)
@@ -244,6 +259,9 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 void free_guest_mem(struct vhm_vm *vm)
 {
 	struct guest_memseg *seg;
+
+	if (vm->hugetlb_enabled)
+		return hugepage_free_guest(vm);
 
 	mutex_lock(&vm->seg_lock);
 	while (!list_empty(&vm->memseg_list)) {
@@ -337,6 +355,9 @@ int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma)
 	size_t len = vma->vm_end - vma->vm_start;
 	int ret;
 
+	if (vm->hugetlb_enabled)
+		return -EINVAL;
+
 	mutex_lock(&vm->seg_lock);
 	list_for_each_entry(seg, &vm->memseg_list, list) {
 		if (seg->gpa != offset || seg->len != len)
@@ -381,7 +402,10 @@ void *map_guest_phys(unsigned long vmid, u64 guest_phys, size_t size)
 	if (vm == NULL)
 		return NULL;
 
-	ret = do_map_guest_phys(vm, guest_phys, size);
+	if (vm->hugetlb_enabled)
+		ret = hugepage_map_guest_phys(vm, guest_phys, size);
+	else
+		ret = do_map_guest_phys(vm, guest_phys, size);
 
 	put_vm(vm);
 
@@ -417,7 +441,11 @@ int unmap_guest_phys(unsigned long vmid, u64 guest_phys)
 		return -ESRCH;
 	}
 
-	ret = do_unmap_guest_phys(vm, guest_phys);
+	if (vm->hugetlb_enabled)
+		ret = hugepage_unmap_guest_phys(vm, guest_phys);
+	else
+		ret = do_unmap_guest_phys(vm, guest_phys);
+
 	put_vm(vm);
 	return ret;
 }
