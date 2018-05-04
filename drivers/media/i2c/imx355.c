@@ -50,6 +50,11 @@
 
 /* Test Pattern Control */
 #define IMX355_REG_TEST_PATTERN		0x0600
+#define IMX355_TEST_PATTERN_DISABLED		0
+#define IMX355_TEST_PATTERN_SOLID_COLOR		1
+#define IMX355_TEST_PATTERN_COLOR_BARS		2
+#define IMX355_TEST_PATTERN_GRAY_COLOR_BARS	3
+#define IMX355_TEST_PATTERN_PN9			4
 
 /* Flip Control */
 #define IMX355_REG_ORIENTATION		0x0101
@@ -819,10 +824,18 @@ static const struct imx355_reg mode_820x616_regs[] = {
 
 static const char * const imx355_test_pattern_menu[] = {
 	"Disabled",
-	"Solid color",
 	"100% color bars",
+	"Solid color",
 	"Fade to gray color bars",
 	"PN9"
+};
+
+static const int imx355_test_pattern_val[] = {
+	IMX355_TEST_PATTERN_DISABLED,
+	IMX355_TEST_PATTERN_COLOR_BARS,
+	IMX355_TEST_PATTERN_SOLID_COLOR,
+	IMX355_TEST_PATTERN_GRAY_COLOR_BARS,
+	IMX355_TEST_PATTERN_PN9,
 };
 
 /* Configurations for supported link frequencies */
@@ -1163,7 +1176,8 @@ static int imx355_update_digital_gain(struct imx355 *imx355, u32 d_gain)
 static int imx355_enable_test_pattern(struct imx355 *imx355, u32 pattern)
 {
 	return imx355_write_reg(imx355, IMX355_REG_TEST_PATTERN,
-				 IMX355_REG_VALUE_16BIT, pattern);
+				IMX355_REG_VALUE_16BIT,
+				imx355_test_pattern_val[pattern]);
 }
 
 static int imx355_set_ctrl(struct v4l2_ctrl *ctrl)
