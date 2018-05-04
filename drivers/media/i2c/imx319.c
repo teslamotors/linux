@@ -50,6 +50,11 @@
 
 /* Test Pattern Control */
 #define IMX319_REG_TEST_PATTERN		0x0600
+#define IMX319_TEST_PATTERN_DISABLED		0
+#define IMX319_TEST_PATTERN_SOLID_COLOR		1
+#define IMX319_TEST_PATTERN_COLOR_BARS		2
+#define IMX319_TEST_PATTERN_GRAY_COLOR_BARS	3
+#define IMX319_TEST_PATTERN_PN9			4
 
 /* Flip Control */
 #define IMX319_REG_ORIENTATION		0x0101
@@ -1591,10 +1596,18 @@ static const struct imx319_reg mode_1280x720_regs[] = {
 
 static const char * const imx319_test_pattern_menu[] = {
 	"Disabled",
-	"Solid color",
 	"100% color bars",
+	"Solid color",
 	"Fade to gray color bars",
 	"PN9"
+};
+
+static const int imx319_test_pattern_val[] = {
+	IMX319_TEST_PATTERN_DISABLED,
+	IMX319_TEST_PATTERN_COLOR_BARS,
+	IMX319_TEST_PATTERN_SOLID_COLOR,
+	IMX319_TEST_PATTERN_GRAY_COLOR_BARS,
+	IMX319_TEST_PATTERN_PN9,
 };
 
 /* Configurations for supported link frequencies */
@@ -1869,7 +1882,8 @@ static int imx319_update_digital_gain(struct imx319 *imx319, u32 d_gain)
 static int imx319_enable_test_pattern(struct imx319 *imx319, u32 pattern)
 {
 	return imx319_write_reg(imx319, IMX319_REG_TEST_PATTERN,
-				 IMX319_REG_VALUE_16BIT, pattern);
+				IMX319_REG_VALUE_16BIT,
+				imx319_test_pattern_val[pattern]);
 }
 
 static int imx319_set_ctrl(struct v4l2_ctrl *ctrl)
