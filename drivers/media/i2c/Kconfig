@@ -665,6 +665,12 @@ config VIDEO_OV13858
 	  This is a Video4Linux2 sensor-level driver for the OmniVision
 	  OV13858 camera.
 
+config VIDEO_MAX9286
+	tristate "MAX96705/MAX9286 Serializer/Deserializer"
+	depends on I2C && VIDEO_V4L2 && REGMAP_I2C
+	---help---
+	This is a MAXIM 96705 Serializer and MAXIM 9286 CSI-2 Deserializer driver.
+
 config VIDEO_VS6624
 	tristate "ST VS6624 sensor support"
 	depends on VIDEO_V4L2 && I2C
@@ -778,6 +784,8 @@ config VIDEO_S5K5BAF
 
 source "drivers/media/i2c/smiapp/Kconfig"
 source "drivers/media/i2c/et8ek8/Kconfig"
+source "drivers/media/i2c/crlmodule/Kconfig"
+source "drivers/media/i2c/lc898122/Kconfig"
 
 config VIDEO_S5C73M3
 	tristate "Samsung S5C73M3 sensor support"
@@ -901,5 +909,40 @@ if SOC_CAMERA
 endif
 
 endmenu
+
+config VIDEO_LM3643
+	tristate "LM3643 led flash controller support"
+	select REGMAP_I2C
+
+config VIDEO_BU64295
+	tristate "bu64295 voice coil support"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	This is a driver for the ROHM BU64295 camera lens voice coil.
+
+config VIDEO_AD5816G
+	tristate "ad5816g voice coil support"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	This driver is for ad5816g camera lens voice coil.
+
+config VIDEO_VCM_STUB
+	tristate "stub vcm support"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	This driver is a VCM stub driver for verification.
+
+config VIDEO_TI964
+	tristate "TI964 driver support"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	This is a driver for TI964 camera.
+
+config VIDEO_AS3638
+	tristate "AS3638 flash driver support"
+	depends on I2C && VIDEO_V4L2 && MEDIA_CONTROLLER
+	depends on MEDIA_CAMERA_SUPPORT
+	---help---
+	 This is a driver for the AS3638 triple flash controller.
 
 endif
