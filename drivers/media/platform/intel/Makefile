@@ -18,5 +18,6 @@ endif
 ccflags-y += -I$(srcpath)/$(src)/../../../../include/
 ccflags-y += -I$(srcpath)/$(src)/../../pci/intel/
 
+obj-$(CONFIG_INTEL_IPU4_ICI_BXT_P_PDATA)   += ipu4-ici-bxt-p-pdata.o
 obj-$(CONFIG_INTEL_IPU4_BXT_P_PDATA)   += ipu4-bxt-p-pdata.o
 obj-$(CONFIG_INTEL_IPU4P_CNL_RVP_PDATA)   += ipu4p-cnl-rvp-pdata.o
