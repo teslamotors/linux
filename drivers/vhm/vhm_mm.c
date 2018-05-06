@@ -199,6 +199,20 @@ int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
 		0, 0,  MAP_UNMAP);
 }
 
+int set_memmaps(struct set_memmaps *memmaps)
+{
+	if (memmaps == NULL)
+		return -EINVAL;
+	if (memmaps->memmaps_num > 0) {
+		if (hcall_set_memmaps(virt_to_phys(memmaps)) < 0) {
+			pr_err("vhm: failed to set memmaps!\n");
+			return -EFAULT;
+		}
+	}
+
+	return 0;
+}
+
 int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len,
 	unsigned int mem_type, unsigned int mem_access_right)

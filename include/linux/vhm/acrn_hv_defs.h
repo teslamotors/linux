@@ -94,6 +94,7 @@
 #define HC_ID_MEM_BASE              0x40UL
 #define HC_VM_SET_MEMMAP            _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x00)
 #define HC_VM_GPA2HPA               _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x01)
+#define HC_VM_SET_MEMMAPS           _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x02)
 
 /* PCI assignment*/
 #define HC_ID_PCI_BASE              0x50UL
@@ -147,6 +148,37 @@ struct vm_set_memmap {
 
 	/* IN: mem attr */
 	uint32_t prot;
+} __attribute__((aligned(8)));
+
+struct memory_map {
+	uint32_t type;
+
+	/* IN: mem attr */
+	uint32_t prot;
+
+	/* IN: beginning guest GPA to map */
+	uint64_t remote_gpa;
+
+	/* IN: VM0's GPA which foreign gpa will be mapped to */
+	uint64_t vm0_gpa;
+
+	/* IN: length of the range */
+	uint64_t length;
+} __attribute__((aligned(8)));
+
+struct set_memmaps {
+	/*IN: vmid for this hypercall */
+	uint64_t vmid;
+
+	/* IN: multi memmaps numbers */
+	uint32_t memmaps_num;
+
+	/* IN:
+	 * the gpa of memmaps buffer, point to the memmaps array:
+	 *  	struct memory_map memmap_array[memmaps_num]
+	 * the max buffer size is one page.
+	 */
+	uint64_t memmaps_gpa;
 } __attribute__((aligned(8)));
 
 struct sbuf_setup_param {
