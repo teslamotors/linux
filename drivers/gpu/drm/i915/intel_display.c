@@ -10720,7 +10720,7 @@ int intel_plane_atomic_calc_changes(struct drm_crtc_state *crtc_state,
 	    !needs_scaling(old_plane_state))
 		pipe_config->disable_lp_wm = true;
 
-	if (plane->type != DRM_PLANE_TYPE_CURSOR) {
+	if (plane->id != PLANE_CURSOR) {
 		ret = intel_plane_state_check_blend(plane_state);
 		if (ret)
 			return ret;
