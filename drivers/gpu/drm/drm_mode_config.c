@@ -357,6 +357,12 @@ static int drm_mode_create_standard_properties(struct drm_device *dev)
 		return -ENOMEM;
 	dev->mode_config.prop_blend_func = prop;
 
+	prop = drm_property_create_rgba(dev, DRM_MODE_PROP_ATOMIC,
+					"blend_color");
+	if (!prop)
+		return -ENOMEM;
+	dev->mode_config.prop_blend_color = prop;
+
 	return 0;
 }
 
