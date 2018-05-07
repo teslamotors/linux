@@ -578,6 +578,8 @@ static long vhm_dev_ioctl(struct file *filep,
 			ret = -EFAULT;
 			break;
 		}
+
+		break;
 	}
 
 	default:
