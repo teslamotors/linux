@@ -527,6 +527,7 @@ struct intel_plane_state {
 	 * blending related hw states
 	 */
 	enum i915_alpha alpha;
+	bool use_plane_alpha;
 
 	struct drm_intel_sprite_colorkey ckey;
 };
