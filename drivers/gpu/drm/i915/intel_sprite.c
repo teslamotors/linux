@@ -1567,6 +1567,7 @@ intel_sprite_plane_create(struct drm_i915_private *dev_priv,
 	drm_plane_create_rotation_property(&intel_plane->base,
 					   DRM_MODE_ROTATE_0,
 					   supported_rotations);
+	intel_plane_add_blend_properties(intel_plane);
 
 	drm_plane_helper_add(&intel_plane->base, &intel_plane_helper_funcs);
 
