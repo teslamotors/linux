@@ -57,6 +57,9 @@ intel_create_plane_state(struct drm_plane *plane)
 	state->base.plane = plane;
 	state->base.rotation = DRM_MODE_ROTATE_0;
 	state->base.blend_mode.func = DRM_BLEND_FUNC(AUTO, AUTO);
+	state->base.blend_mode.color = drm_rgba(16,
+						0xffff, 0xffff,
+						0xffff, 0xffff);
 	state->ckey.flags = I915_SET_COLORKEY_NONE;
 
 	return state;

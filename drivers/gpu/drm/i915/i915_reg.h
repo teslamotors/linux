@@ -6416,6 +6416,10 @@ enum {
 #define PLANE_KEYMAX(pipe, plane)	\
 	_MMIO_PLANE(plane, _PLANE_KEYMAX_1(pipe), _PLANE_KEYMAX_2(pipe))
 
+#define PLANE_KEYMAX_ALPHA_MASK			0x00ffffff
+#define PLANE_KEY_MASK_ALPHA_EN			31
+#define PLANE_KEY_MAX_ALPHA_SHIFT		24
+
 #define _PLANE_BUF_CFG_1_B			0x7127c
 #define _PLANE_BUF_CFG_2_B			0x7137c
 #define _PLANE_BUF_CFG_1(pipe)	\
