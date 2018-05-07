@@ -544,9 +544,15 @@ error:
 	return ret;
 }
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 2)
 static void ipu_psys_watchdog(unsigned long data)
 {
 	struct ipu_psys_kcmd *kcmd = (struct ipu_psys_kcmd *)data;
+#else
+static void ipu_psys_watchdog(struct timer_list *t)
+{
+	struct ipu_psys_kcmd *kcmd = from_timer(kcmd, t, watchdog);
+#endif
 	struct ipu_psys *psys = kcmd->fh->psys;
 
 	queue_work(IPU_PSYS_WORK_QUEUE, &psys->watchdog_work);
@@ -693,9 +699,13 @@ int ipu_psys_kcmd_new(struct ipu_psys_command *cmd, struct ipu_psys_fh *fh)
 
 	ipu_psys_resource_alloc_init(&kcmd->resource_alloc);
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 2)
 	init_timer(&kcmd->watchdog);
 	kcmd->watchdog.data = (unsigned long)kcmd;
 	kcmd->watchdog.function = &ipu_psys_watchdog;
+#else
+	timer_setup(&kcmd->watchdog, ipu_psys_watchdog, 0);
+#endif
 
 	if (cmd->min_psys_freq) {
 		kcmd->constraint.min_freq = cmd->min_psys_freq;
