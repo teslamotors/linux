@@ -31,6 +31,10 @@ struct drm_crtc;
 struct drm_printer;
 struct drm_modeset_acquire_ctx;
 
+struct drm_blend_mode {
+	uint64_t func;
+};
+
 /**
  * struct drm_plane_state - mutable plane state
  * @plane: backpointer to the plane
@@ -107,6 +111,9 @@ struct drm_plane_state {
 
 	/* Plane rotation */
 	unsigned int rotation;
+
+	/* GL-style plane blending factors */
+	struct drm_blend_mode blend_mode;
 
 	/* Plane zpos */
 	unsigned int zpos;
