@@ -741,6 +741,11 @@ struct drm_mode_config {
 	struct drm_property *gamma_lut_size_property;
 
 	/**
+	 * @prop_blend_func: GL-style plane blending factors
+	 */
+	struct drm_property *prop_blend_func;
+
+	/**
 	 * @suggested_x_property: Optional connector property with a hint for
 	 * the position of the output on the host's screen.
 	 */
