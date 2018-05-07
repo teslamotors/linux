@@ -1059,6 +1059,9 @@ static int start_stream_firmware(struct ipu_isys_video *av,
 	if (ip->csi2 && !v4l2_ctrl_g_ctrl(ip->csi2->store_csi2_header))
 		stream_cfg->input_pins[0].mipi_store_mode =
 		    IPU_FW_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER;
+	else if (ip->tpg && !v4l2_ctrl_g_ctrl(ip->tpg->store_csi2_header))
+		stream_cfg->input_pins[0].mipi_store_mode =
+		    IPU_FW_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER;
 
 	stream_cfg->src = ip->source;
 	stream_cfg->vc = 0;
@@ -1387,6 +1390,7 @@ int ipu_isys_video_prepare_streaming(struct ipu_isys_video *av,
 	ip->csi2_be = NULL;
 	ip->csi2_be_soc = NULL;
 	ip->csi2 = NULL;
+	ip->tpg = NULL;
 	ip->seq_index = 0;
 	memset(ip->seq, 0, sizeof(ip->seq));
 

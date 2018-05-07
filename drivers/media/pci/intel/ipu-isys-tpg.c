@@ -105,6 +105,16 @@ static struct v4l2_ctrl_config tpg_mode = {
 	.qmenu = tpg_mode_items,
 };
 
+static const struct v4l2_ctrl_config csi2_header_cfg = {
+	.id = V4L2_CID_IPU_STORE_CSI2_HEADER,
+	.name = "Store CSI-2 Headers",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = 0,
+	.max = 1,
+	.step = 1,
+	.def = 1,
+};
+
 static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 {
 	struct ipu_isys_tpg *tpg = to_ipu_isys_tpg(sd);
@@ -150,6 +160,8 @@ static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 	}
 
 	v4l2_ctrl_new_custom(&tpg->asd.ctrl_handler, &tpg_mode, NULL);
+	tpg->store_csi2_header =
+		v4l2_ctrl_new_custom(&tpg->asd.ctrl_handler, &csi2_header_cfg, NULL);
 }
 
 static void tpg_set_ffmt(struct v4l2_subdev *sd,
@@ -197,7 +209,25 @@ const struct ipu_isys_pixelformat *ipu_isys_tpg_try_fmt(struct ipu_isys_video
 							v4l2_pix_format_mplane
 							*mpix)
 {
-	return ipu_isys_video_try_fmt_vid_mplane(av, mpix, 1);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+	struct media_entity entity = av->vdev.entity;
+	struct v4l2_subdev *sd =
+		media_entity_to_v4l2_subdev(entity.links[0].source->entity);
+#else
+	struct media_link *link = list_first_entry(&av->vdev.entity.links,
+						   struct media_link, list);
+	struct v4l2_subdev *sd =
+		media_entity_to_v4l2_subdev(link->source->entity);
+#endif
+	struct ipu_isys_tpg *tpg;
+
+	if (!sd)
+		return NULL;
+
+	tpg = to_ipu_isys_tpg(sd);
+
+	return ipu_isys_video_try_fmt_vid_mplane(av, mpix,
+		v4l2_ctrl_g_ctrl(tpg->store_csi2_header));
 }
 
 static const struct v4l2_subdev_pad_ops tpg_sd_pad_ops = {

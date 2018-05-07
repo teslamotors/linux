@@ -81,6 +81,7 @@ struct ipu_isys_tpg {
 	struct v4l2_ctrl *llp;
 	struct v4l2_ctrl *fll;
 	struct v4l2_ctrl *pixel_rate;
+	struct v4l2_ctrl *store_csi2_header;
 };
 
 #define to_ipu_isys_tpg(sd)		\
