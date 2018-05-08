@@ -837,7 +837,7 @@ struct crl_register_read_rep ov13858_sensor_otp_read_regset[] = {
 };
 #endif
 
-
+#if 0
 static struct crl_arithmetic_ops ov13858_frame_desc_width_ops[] = {
 	{
 	 .op = CRL_ASSIGNMENT,
@@ -875,6 +875,7 @@ static struct crl_frame_desc ov13858_frame_desc[] = {
 		.csi2_data_type.entity_val = 0x12,
 	},
 };
+#endif
 
 /* Power items, they are enabled in the order they are listed here */
 static struct crl_power_seq_entity ov13858_power_items[] = {
