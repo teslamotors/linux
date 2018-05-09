@@ -17,7 +17,7 @@ static const struct ipu_fw_resource_definitions default_defs = {
 
 	.num_dfm_ids = IPU_FW_PSYS_N_DEV_DFM_ID,
 
-	.cell_mem_row = IPU_FW_PSYS_N_DATA_MEM_TYPE_ID,
+	.cell_mem_row = IPU_FW_PSYS_N_MEM_TYPE_ID,
 	.cell_mem = &ipu_fw_psys_cell_mem[0][0],
 
 	.process.ext_mem_id = offsetof(struct ipu_fw_psys_process,
