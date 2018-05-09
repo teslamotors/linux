@@ -1152,6 +1152,22 @@ struct i915_drrs {
 	enum drrs_support_type type;
 };
 
+struct splash_screen_info {
+	struct list_head link;
+	const struct firmware *fw;
+	struct drm_i915_gem_object *obj;
+	char *connector_name;
+	char *image_name;
+	int width;
+	int height;
+	int pitch;
+	int crtc_x;
+	int crtc_y;
+	int crtc_w;
+	int crtc_h;
+	struct drm_framebuffer *fb;
+};
+
 struct i915_psr {
 	struct mutex lock;
 	bool sink_support;
@@ -1596,6 +1612,9 @@ struct i915_gpu_error {
 	/** Number of times an engine has been reset */
 	u32 reset_engine_count[I915_NUM_ENGINES];
 
+	/** Reason for the current *global* reset */
+	const char *reason;
+
 	/**
 	 * Waitqueue to signal when a hang is detected. Used to for waiters
 	 * to release the struct_mutex for the reset to procede.
@@ -1906,6 +1925,7 @@ struct i915_workarounds {
 struct i915_virtual_gpu {
 	bool active;
 	u32 caps;
+	u32 scaler_owned;
 };
 
 /* used in computing the new watermarks state */
@@ -2320,6 +2340,8 @@ struct drm_i915_private {
 	struct intel_pipe_crc pipe_crc[I915_MAX_PIPES];
 #endif
 
+	struct work_struct initial_modeset_work;
+
 	/* dpll and cdclk state is protected by connection_mutex */
 	int num_shared_dpll;
 	struct intel_shared_dpll shared_dplls[I915_NUM_PLLS];
@@ -2381,6 +2403,8 @@ struct drm_i915_private {
 	/* list of fbdev register on this device */
 	struct intel_fbdev *fbdev;
 	struct work_struct fbdev_suspend_work;
+
+	struct list_head splash_list;
 
 	struct drm_property *broadcast_rgb_property;
 	struct drm_property *force_audio_property;
@@ -3145,6 +3169,11 @@ intel_info(const struct drm_i915_private *dev_priv)
 #define GT_FREQUENCY_MULTIPLIER 50
 #define GEN9_FREQ_SCALER 3
 
+#define BITS_PER_PIPE 8
+#define AVAIL_PLANE_PER_PIPE(dev_priv, mask, pipe)  \
+	(((mask) >> (pipe) * BITS_PER_PIPE) & \
+	   ((1 << ((INTEL_INFO(dev_priv)->num_sprites[pipe]) + 1)) - 1))
+
 #include "i915_trace.h"
 
 static inline bool intel_vtd_active(void)
@@ -3194,10 +3223,8 @@ extern void i915_driver_unload(struct drm_device *dev);
 extern int intel_gpu_reset(struct drm_i915_private *dev_priv, u32 engine_mask);
 extern bool intel_has_gpu_reset(struct drm_i915_private *dev_priv);
 
-#define I915_RESET_QUIET BIT(0)
-extern void i915_reset(struct drm_i915_private *i915, unsigned int flags);
-extern int i915_reset_engine(struct intel_engine_cs *engine,
-			     unsigned int flags);
+extern void i915_reset(struct drm_i915_private *i915);
+extern int i915_reset_engine(struct intel_engine_cs *engine, const char *msg);
 
 extern bool intel_has_reset_engine(struct drm_i915_private *dev_priv);
 extern int intel_guc_reset(struct drm_i915_private *dev_priv);
@@ -3241,10 +3268,12 @@ static inline void i915_queue_hangcheck(struct drm_i915_private *dev_priv)
 			   &dev_priv->gpu_error.hangcheck_work, delay);
 }
 
-__printf(3, 4)
+__printf(4, 5)
 void i915_handle_error(struct drm_i915_private *dev_priv,
 		       u32 engine_mask,
+		       unsigned long flags,
 		       const char *fmt, ...);
+#define I915_ERROR_CAPTURE BIT(0)
 
 extern void intel_irq_init(struct drm_i915_private *dev_priv);
 extern void intel_irq_fini(struct drm_i915_private *dev_priv);
@@ -3288,18 +3317,18 @@ ilk_disable_display_irq(struct drm_i915_private *dev_priv, uint32_t bits)
 	ilk_update_display_irq(dev_priv, bits, 0);
 }
 void bdw_update_pipe_irq(struct drm_i915_private *dev_priv,
-			 enum pipe pipe,
+			 unsigned int crtc_index,
 			 uint32_t interrupt_mask,
 			 uint32_t enabled_irq_mask);
 static inline void bdw_enable_pipe_irq(struct drm_i915_private *dev_priv,
-				       enum pipe pipe, uint32_t bits)
+				       unsigned int crtc_index, uint32_t bits)
 {
-	bdw_update_pipe_irq(dev_priv, pipe, bits, bits);
+	bdw_update_pipe_irq(dev_priv, crtc_index, bits, bits);
 }
 static inline void bdw_disable_pipe_irq(struct drm_i915_private *dev_priv,
-					enum pipe pipe, uint32_t bits)
+					unsigned int crtc_index, uint32_t bits)
 {
-	bdw_update_pipe_irq(dev_priv, pipe, bits, 0);
+	bdw_update_pipe_irq(dev_priv, crtc_index, bits, 0);
 }
 void ibx_display_interrupt_update(struct drm_i915_private *dev_priv,
 				  uint32_t interrupt_mask,
@@ -3373,6 +3402,12 @@ struct drm_i915_gem_object *
 i915_gem_object_create_from_data(struct drm_i915_private *dev_priv,
 				 const void *data, size_t size);
 void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *file);
+struct drm_i915_gem_object *i915_gem_object_create_splash_pages(
+					struct drm_i915_private *dev_priv,
+					struct page **pages, u32 n_pages);
+struct drm_i915_gem_object *i915_gem_object_create_splash(
+					struct drm_i915_private *dev_priv,
+					const u8 *ptr, u32 n_pages);
 void i915_gem_free_object(struct drm_gem_object *obj);
 
 static inline void i915_gem_drain_freed_objects(struct drm_i915_private *i915)

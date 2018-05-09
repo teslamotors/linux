@@ -355,6 +355,30 @@ struct drm_property *drm_property_create_bool(struct drm_device *dev, int flags,
 EXPORT_SYMBOL(drm_property_create_bool);
 
 /**
+ * drm_property_create_rgba - create a new RGBA property type
+ * @dev: drm device
+ * @flags: flags specifying the property type
+ * @name: name of the property
+ *
+ * This creates a new generic drm property which can then be attached to a drm
+ * object with drm_object_attach_property. The returned property object must be
+ * freed with drm_property_destroy.
+ *
+ * Userspace should use the DRM_RGBA() macro to build values with the proper
+ * bit layout.
+ *
+ * Returns:
+ * A pointer to the newly created property on success, NULL on failure.
+ */
+struct drm_property *drm_property_create_rgba(struct drm_device *dev, int flags,
+					      const char *name)
+{
+	return drm_property_create_range(dev, flags, name,
+					 0, GENMASK_ULL(63, 0));
+}
+EXPORT_SYMBOL(drm_property_create_rgba);
+
+/**
  * drm_property_add_enum - add a possible value to an enumeration property
  * @property: enumeration property to change
  * @index: index of the new enumeration

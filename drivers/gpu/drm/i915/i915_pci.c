@@ -491,7 +491,6 @@ static const struct intel_device_info intel_broxton_info __initconst = {
 	GEN9_LP_FEATURES,
 	.platform = INTEL_BROXTON,
 	.ddb_size = 512,
-	.has_reset_engine = false,
 };
 
 static const struct intel_device_info intel_geminilake_info __initconst = {

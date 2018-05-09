@@ -311,7 +311,8 @@ int intel_atomic_setup_scalers(struct drm_i915_private *dev_priv,
 		if (*scaler_id < 0) {
 			/* find a free scaler */
 			for (j = 0; j < intel_crtc->num_scalers; j++) {
-				if (!scaler_state->scalers[j].in_use) {
+				if (!scaler_state->scalers[j].in_use &&
+				    scaler_state->scalers[j].owned == 1) {
 					scaler_state->scalers[j].in_use = 1;
 					*scaler_id = j;
 					DRM_DEBUG_KMS("Attached scaler id %u.%u to %s:%d\n",
@@ -335,10 +336,13 @@ int intel_atomic_setup_scalers(struct drm_i915_private *dev_priv,
 			 * scaler 0 operates in high quality (HQ) mode.
 			 * In this case use scaler 0 to take advantage of HQ mode
 			 */
-			*scaler_id = 0;
-			scaler_state->scalers[0].in_use = 1;
-			scaler_state->scalers[0].mode = PS_SCALER_MODE_HQ;
-			scaler_state->scalers[1].in_use = 0;
+			if (scaler_state->scalers[0].owned == 1) {
+				*scaler_id = 0;
+				scaler_state->scalers[0].in_use = 1;
+				scaler_state->scalers[0].mode =
+						PS_SCALER_MODE_HQ;
+				scaler_state->scalers[1].in_use = 0;
+			}
 		} else {
 			scaler_state->scalers[*scaler_id].mode = PS_SCALER_MODE_DYN;
 		}

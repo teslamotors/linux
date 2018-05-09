@@ -540,9 +540,16 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 
 	/* Find the largest fb */
 	for_each_crtc(dev, crtc) {
-		struct drm_i915_gem_object *obj =
-			intel_fb_obj(crtc->primary->state->fb);
+		struct drm_i915_gem_object *obj;
 		intel_crtc = to_intel_crtc(crtc);
+
+		if (!crtc->primary) {
+			DRM_DEBUG_KMS("pipe %c has no primary plane\n",
+				      pipe_name(intel_crtc->pipe));
+			continue;
+		}
+
+		obj = intel_fb_obj(crtc->primary->state->fb);
 
 		if (!crtc->state->active || !obj) {
 			DRM_DEBUG_KMS("pipe %c not active or no fb, skipping\n",

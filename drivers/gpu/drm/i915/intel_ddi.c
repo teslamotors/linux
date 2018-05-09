@@ -2783,8 +2783,8 @@ void intel_ddi_init(struct drm_i915_private *dev_priv, enum port port)
 
 	/* In theory we don't need the encoder->type check, but leave it just in
 	 * case we have some really bad VBTs... */
-	if ((intel_vgpu_active(dev_priv) ||
-		(intel_encoder->type != INTEL_OUTPUT_EDP && init_hdmi))) {
+	if ((intel_vgpu_active(dev_priv) && IS_BROXTON(dev_priv)) ||
+		(intel_encoder->type != INTEL_OUTPUT_EDP && init_hdmi)) {
 		if (!intel_ddi_init_hdmi_connector(intel_dig_port))
 			goto err;
 	}

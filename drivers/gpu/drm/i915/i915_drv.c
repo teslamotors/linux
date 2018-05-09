@@ -684,9 +684,11 @@ static int i915_load_modeset_init(struct drm_device *dev)
 	if (INTEL_INFO(dev_priv)->num_pipes == 0)
 		return 0;
 
-	ret = intel_fbdev_init(dev);
-	if (ret)
-		goto cleanup_gem;
+	if (!i915_modparams.enable_initial_modeset) {
+		ret = intel_fbdev_init(dev);
+		if (ret)
+			goto cleanup_gem;
+	}
 
 	/* Only enable hotplug handling once the fbdev is fully set up. */
 	intel_hpd_init(dev_priv);
@@ -1278,7 +1280,10 @@ static void i915_driver_register(struct drm_i915_private *dev_priv)
 	 * irqs are fully enabled. We do it last so that the async config
 	 * cannot run before the connectors are registered.
 	 */
-	intel_fbdev_initial_config_async(dev);
+	if (i915_modparams.enable_initial_modeset)
+		intel_initial_mode_config_init(dev);
+	else
+		intel_fbdev_initial_config_async(dev);
 }
 
 /**
@@ -1303,6 +1308,25 @@ static void i915_driver_unregister(struct drm_i915_private *dev_priv)
 	i915_gem_shrinker_cleanup(dev_priv);
 }
 
+static inline int get_max_avail_pipes(struct drm_i915_private *dev_priv)
+{
+	enum pipe pipe;
+	int index = 0;
+
+	if (!intel_vgpu_active(dev_priv) ||
+	    !i915_modparams.avail_planes_per_pipe ||
+	    !i915_modparams.enable_initial_modeset)
+		return INTEL_INFO(dev_priv)->num_pipes;
+
+	for_each_pipe(dev_priv, pipe) {
+		if (AVAIL_PLANE_PER_PIPE(dev_priv, i915_modparams.avail_planes_per_pipe,
+					pipe))
+			index++;
+	}
+
+	return index;
+}
+
 /**
  * i915_driver_load - setup chip and create an initial config
  * @pdev: PCI device
@@ -1320,6 +1344,7 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 		(struct intel_device_info *)ent->driver_data;
 	struct drm_i915_private *dev_priv;
 	int ret;
+	int num_crtcs = 0;
 
 	/* Enable nuclear pageflip on ILK+ */
 	if (!i915_modparams.nuclear_pageflip && match_info->gen < 5)
@@ -1371,9 +1396,9 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 	 * of the i915_driver_init_/i915_driver_register functions according
 	 * to the role/effect of the given init step.
 	 */
-	if (INTEL_INFO(dev_priv)->num_pipes) {
-		ret = drm_vblank_init(&dev_priv->drm,
-				      INTEL_INFO(dev_priv)->num_pipes);
+	num_crtcs = get_max_avail_pipes(dev_priv);
+	if (num_crtcs) {
+		ret = drm_vblank_init(&dev_priv->drm, num_crtcs);
 		if (ret)
 			goto out_cleanup_hw;
 	}
@@ -1420,6 +1445,11 @@ void i915_driver_unload(struct drm_device *dev)
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 
 	i915_driver_unregister(dev_priv);
+
+	if (!i915_modparams.enable_initial_modeset)
+		intel_fbdev_fini(dev_priv);
+	else
+		intel_initial_mode_config_fini(dev);
 
 	if (i915_gem_suspend(dev_priv))
 		DRM_ERROR("failed to idle hardware; continuing to unload!\n");
@@ -1503,7 +1533,8 @@ static int i915_driver_open(struct drm_device *dev, struct drm_file *file)
  */
 static void i915_driver_lastclose(struct drm_device *dev)
 {
-	intel_fbdev_restore_mode(dev);
+	if (!i915_modparams.enable_initial_modeset)
+		intel_fbdev_restore_mode(dev);
 	vga_switcheroo_process_delayed_switch();
 }
 
@@ -1882,7 +1913,6 @@ static int i915_resume_switcheroo(struct drm_device *dev)
 /**
  * i915_reset - reset chip after a hang
  * @i915: #drm_i915_private to reset
- * @flags: Instructions
  *
  * Reset the chip.  Useful if a hang is detected. Marks the device as wedged
  * on failure.
@@ -1897,7 +1927,7 @@ static int i915_resume_switcheroo(struct drm_device *dev)
  *   - re-init interrupt state
  *   - re-init display
  */
-void i915_reset(struct drm_i915_private *i915, unsigned int flags)
+void i915_reset(struct drm_i915_private *i915)
 {
 	struct i915_gpu_error *error = &i915->gpu_error;
 	int ret;
@@ -1912,8 +1942,9 @@ void i915_reset(struct drm_i915_private *i915, unsigned int flags)
 	if (!i915_gem_unset_wedged(i915))
 		goto wakeup;
 
-	if (!(flags & I915_RESET_QUIET))
-		dev_notice(i915->drm.dev, "Resetting chip after gpu hang\n");
+	if (error->reason)
+		dev_notice(i915->drm.dev,
+			   "Resetting chip for %s\n", error->reason);
 	error->reset_count++;
 
 	disable_irq(i915->drm.irq);
@@ -1982,7 +2013,7 @@ error:
 /**
  * i915_reset_engine - reset GPU engine to recover from a hang
  * @engine: engine to reset
- * @flags: options
+ * @msg: reason for GPU reset; or NULL for no dev_notice()
  *
  * Reset a specific GPU engine. Useful if a hang is detected.
  * Returns zero on successful reset or otherwise an error code.
@@ -1992,7 +2023,7 @@ error:
  *  - reset engine (which will force the engine to idle)
  *  - re-init/configure engine
  */
-int i915_reset_engine(struct intel_engine_cs *engine, unsigned int flags)
+int i915_reset_engine(struct intel_engine_cs *engine, const char *msg)
 {
 	struct i915_gpu_error *error = &engine->i915->gpu_error;
 	struct drm_i915_gem_request *active_request;
@@ -2000,18 +2031,17 @@ int i915_reset_engine(struct intel_engine_cs *engine, unsigned int flags)
 
 	GEM_BUG_ON(!test_bit(I915_RESET_ENGINE + engine->id, &error->flags));
 
-	if (!(flags & I915_RESET_QUIET)) {
-		dev_notice(engine->i915->drm.dev,
-			   "Resetting %s after gpu hang\n", engine->name);
-	}
-	error->reset_engine_count[engine->id]++;
-
 	active_request = i915_gem_reset_prepare_engine(engine);
-	if (IS_ERR(active_request)) {
-		DRM_DEBUG_DRIVER("Previous reset failed, promote to full reset\n");
+	if (IS_ERR_OR_NULL(active_request)) {
+		/* Either the previous reset failed, or we pardon the reset. */
 		ret = PTR_ERR(active_request);
 		goto out;
 	}
+
+	if (msg)
+		dev_notice(engine->i915->drm.dev,
+			   "Resetting %s for %s\n", engine->name, msg);
+	error->reset_engine_count[engine->id]++;
 
 	ret = intel_gpu_reset(engine->i915, intel_engine_flag(engine));
 	if (ret) {
