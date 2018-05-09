@@ -167,7 +167,7 @@ int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
 	set_memmap.remote_gpa = guest_gpa;
 	set_memmap.vm0_gpa = host_gpa;
 	set_memmap.length = len;
-	set_memmap.prot = ((mem_type & MEM_TYPE_MASK) |
+	set_memmap.prot = set_memmap.prot_2 = ((mem_type & MEM_TYPE_MASK) |
 			(mem_access_right & MEM_ACCESS_RIGHT_MASK));
 
 	/* hypercall to notify hv the guest EPT setting*/

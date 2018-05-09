@@ -135,7 +135,9 @@ struct vm_set_memmap {
 #define MAP_MMIO	1
 #define MAP_UNMAP	2
 	uint32_t type;
-	uint32_t reserved;
+
+	/* IN: mem attr */
+	uint32_t prot;
 
 	/* IN: beginning guest GPA to map */
 	uint64_t remote_gpa;
@@ -146,8 +148,7 @@ struct vm_set_memmap {
 	/* IN: length of the range */
 	uint64_t length;
 
-	/* IN: mem attr */
-	uint32_t prot;
+	uint32_t prot_2;
 } __attribute__((aligned(8)));
 
 struct memory_map {
