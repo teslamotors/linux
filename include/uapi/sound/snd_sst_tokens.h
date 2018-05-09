@@ -222,6 +222,17 @@
  * %SKL_TKN_MM_U32_NUM_IN_FMT:  Number of input formats
  * %SKL_TKN_MM_U32_NUM_OUT_FMT: Number of output formats
  *
+ * %SKL_TKN_U32_ASTATE_IDX:     Table Index for the A-State entry to be filled
+ *                              with kcps and clock source
+ *
+ * %SKL_TKN_U32_ASTATE_COUNT:   Number of valid entries in A-State table
+ *
+ * %SKL_TKN_U32_ASTATE_KCPS:    Specifies the core load threshold (in kilo
+ *                              cycles per second) below which DSP is clocked
+ *                              from source specified by clock source.
+ *
+ * %SKL_TKN_U32_ASTATE_CLK_SRC: Clock source for A-State entry
+ *
  * %SKL_TKN_U32_AGG_NUM_MASTERS:
  *                              Number of aggregated masters
  *
@@ -251,6 +262,8 @@
  *
  * %SKL_TKN_U32_DMA_MIN_SIZE:   Minimum DMA buffer size
  *
+ *
+ * %SKL_TKN_U32_FMT_CFG_IDX:    Format config index
  *
  * module_id and loadable flags dont have tokens as these values will be
  * read from the DSP FW manifest
@@ -339,6 +352,10 @@ enum SKL_TKNS {
 	SKL_TKN_MM_U32_NUM_IN_FMT,
 	SKL_TKN_MM_U32_NUM_OUT_FMT,
 
+	SKL_TKN_U32_ASTATE_IDX,
+	SKL_TKN_U32_ASTATE_COUNT,
+	SKL_TKN_U32_ASTATE_KCPS,
+	SKL_TKN_U32_ASTATE_CLK_SRC,
 	SKL_TKN_U32_AGG_NUM_MASTERS,
 	SKL_TKN_U32_AGG_LINK_ID,
 	SKL_TKN_U32_AGG_CH_MASK,
@@ -350,7 +367,16 @@ enum SKL_TKNS {
 	SKL_TKN_U32_DMA_SIZE,
 	SKL_TKN_U32_DMA_MAX_SIZE,
 	SKL_TKN_U32_DMA_MIN_SIZE,
-	SKL_TKN_MAX = SKL_TKN_U32_DMA_MIN_SIZE,
+	SKL_TKN_U32_SCH_TYPE,
+	SKL_TKN_U32_SCH_SIZE,
+	SKL_TKN_U32_SCH_SYS_TICK_MUL,
+	SKL_TKN_U32_SCH_SYS_TICK_DIV,
+	SKL_TKN_U32_SCH_SYS_TICK_LL_SRC,
+	SKL_TKN_U32_SCH_SYS_TICK_CFG_LEN,
+	SKL_TKN_U32_SCH_SYS_TICK_CFG,
+
+	SKL_TKN_U32_FMT_CFG_IDX,
+	SKL_TKN_MAX = SKL_TKN_U32_FMT_CFG_IDX,
 };
 
 /*

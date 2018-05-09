@@ -28,7 +28,7 @@
 #include <linux/firmware.h>
 #include <linux/delay.h>
 #include <sound/pcm.h>
-#include "../common/sst-acpi.h"
+#include <sound/soc-acpi.h>
 #include <sound/hda_register.h>
 #include <sound/hdaudio.h>
 #include <sound/hda_i915.h>
@@ -507,24 +507,40 @@ static int skl_free(struct hdac_ext_bus *ebus)
 	return 0;
 }
 
-static int skl_machine_device_register(struct skl *skl, void *driver_data)
+static int skl_find_machine(struct skl *skl, void *driver_data)
 {
+	struct snd_soc_acpi_mach *mach = driver_data;
 	struct hdac_bus *bus = ebus_to_hbus(&skl->ebus);
-	struct platform_device *pdev;
-	struct sst_acpi_mach *mach = driver_data;
-	int ret;
 
 	if (IS_ENABLED(CONFIG_SND_SOC_RT700) ||
 	    IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA))
 		goto out;
 
-	mach = sst_acpi_find_machine(mach);
+	mach = snd_soc_acpi_find_machine(mach);
 	if (mach == NULL) {
 		dev_err(bus->dev, "No matching machine driver found\n");
 		return -ENODEV;
 	}
+
 out:
+
 	skl->fw_name = mach->fw_filename;
+	skl->mach = mach;
+	if (mach->pdata) {
+		skl->use_tplg_pcm =
+			((struct skl_machine_pdata *)mach->pdata)->use_tplg_pcm;
+	}
+
+	return 0;
+}
+
+static int skl_machine_device_register(struct skl *skl)
+{
+	struct hdac_bus *bus = ebus_to_hbus(&skl->ebus);
+	struct snd_soc_acpi_mach *mach = skl->mach;
+	struct platform_device *pdev;
+	int ret;
+
 	pdev = platform_device_alloc(mach->drv_name, -1);
 	if (pdev == NULL) {
 		dev_err(bus->dev, "platform device alloc failed\n");
@@ -690,18 +706,30 @@ static void skl_probe_work(struct work_struct *work)
 	skl_codec_create(ebus);
 #endif
 
-	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI)) {
-		err = snd_hdac_display_power(bus, false);
-		if (err < 0) {
-			dev_err(bus->dev, "Cannot turn off display power on i915\n");
-			return;
-		}
-	}
-
 	/* register platform dai and controls */
 	err = skl_platform_register(bus->dev);
 	if (err < 0)
 		return;
+
+	if (bus->ppcap) {
+		err = skl_machine_device_register(skl);
+		if (err < 0) {
+			dev_err(bus->dev,
+				"machine device register failed with err: %d\n",
+				err);
+			goto out_err;
+		}
+	}
+
+	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI)) {
+		err = snd_hdac_display_power(bus, false);
+		if (err < 0) {
+			dev_err(bus->dev, "Cannot turn off display power on i915\n");
+			skl_machine_device_unregister(skl);
+			return;
+		}
+	}
+
 	/*
 	 * we are done probing so decrement link counts
 	 */
@@ -887,15 +915,14 @@ nhlt_continue:
 
 	/* check if dsp is there */
 	if (bus->ppcap) {
-		err = skl_machine_device_register(skl,
-				  (void *)pci_id->driver_data);
+		err = skl_find_machine(skl, (void *)pci_id->driver_data);
 		if (err < 0)
 			goto out_nhlt_free;
 
 		err = skl_init_dsp(skl);
 		if (err < 0) {
 			dev_dbg(bus->dev, "error failed to register dsp\n");
-			goto out_mach_free;
+			goto out_nhlt_free;
 		}
 		skl->skl_sst->enable_miscbdcge = skl_enable_miscbdcge;
 
@@ -916,8 +943,6 @@ nhlt_continue:
 
 out_dsp_free:
 	skl_free_dsp(skl);
-out_mach_free:
-	skl_machine_device_unregister(skl);
 out_nhlt_free:
 	skl_nhlt_free(skl->nhlt);
 out_free:
@@ -975,33 +1000,33 @@ static void skl_remove(struct pci_dev *pci)
 	dev_set_drvdata(&pci->dev, NULL);
 }
 
-static struct sst_codecs skl_codecs = {
+static struct snd_soc_acpi_codecs skl_codecs = {
 	.num_codecs = 1,
 	.codecs = {"10508825"}
 };
 
-static struct sst_codecs kbl_codecs = {
+static struct snd_soc_acpi_codecs kbl_codecs = {
 	.num_codecs = 1,
 	.codecs = {"10508825"}
 };
 
-static struct sst_codecs bxt_codecs = {
+static struct snd_soc_acpi_codecs bxt_codecs = {
 	.num_codecs = 1,
 	.codecs = {"MX98357A"}
 };
 
-static struct sst_codecs kbl_poppy_codecs = {
+static struct snd_soc_acpi_codecs kbl_poppy_codecs = {
 	.num_codecs = 1,
 	.codecs = {"10EC5663"}
 };
 
-static struct sst_codecs kbl_5663_5514_codecs = {
+static struct snd_soc_acpi_codecs kbl_5663_5514_codecs = {
 	.num_codecs = 2,
 	.codecs = {"10EC5663", "10EC5514"}
 };
 
 
-static struct sst_acpi_mach sst_skl_devdata[] = {
+static struct snd_soc_acpi_mach sst_skl_devdata[] = {
 	{
 		.id = "INT343A",
 		.drv_name = "skl_alc286s_i2s",
@@ -1011,7 +1036,7 @@ static struct sst_acpi_mach sst_skl_devdata[] = {
 		.id = "INT343B",
 		.drv_name = "skl_n88l25_s4567",
 		.fw_filename = "intel/dsp_fw_release.bin",
-		.machine_quirk = sst_acpi_codec_list,
+		.machine_quirk = snd_soc_acpi_codec_list,
 		.quirk_data = &skl_codecs,
 		.pdata = &skl_dmic_data
 	},
@@ -1019,14 +1044,14 @@ static struct sst_acpi_mach sst_skl_devdata[] = {
 		.id = "MX98357A",
 		.drv_name = "skl_n88l25_m98357a",
 		.fw_filename = "intel/dsp_fw_release.bin",
-		.machine_quirk = sst_acpi_codec_list,
+		.machine_quirk = snd_soc_acpi_codec_list,
 		.quirk_data = &skl_codecs,
 		.pdata = &skl_dmic_data
 	},
 	{}
 };
 
-static struct sst_acpi_mach sst_bxtp_devdata[] = {
+static struct snd_soc_acpi_mach sst_bxtp_devdata[] = {
 	{
 		.id = "INT343A",
 		.drv_name = "bxt_alc298s_i2s",
@@ -1036,7 +1061,7 @@ static struct sst_acpi_mach sst_bxtp_devdata[] = {
 		.id = "DLGS7219",
 		.drv_name = "bxt_da7219_max98357a_i2s",
 		.fw_filename = "intel/dsp_fw_bxtn.bin",
-		.machine_quirk = sst_acpi_codec_list,
+		.machine_quirk = snd_soc_acpi_codec_list,
 		.quirk_data = &bxt_codecs,
 	},
 	{
@@ -1047,7 +1072,7 @@ static struct sst_acpi_mach sst_bxtp_devdata[] = {
 	{}
 };
 
-static struct sst_acpi_mach sst_kbl_devdata[] = {
+static struct snd_soc_acpi_mach sst_kbl_devdata[] = {
 	{
 		.id = "INT343A",
 		.drv_name = "kbl_alc286s_i2s",
@@ -1057,7 +1082,7 @@ static struct sst_acpi_mach sst_kbl_devdata[] = {
 		.id = "INT343B",
 		.drv_name = "kbl_n88l25_s4567",
 		.fw_filename = "intel/dsp_fw_kbl.bin",
-		.machine_quirk = sst_acpi_codec_list,
+		.machine_quirk = snd_soc_acpi_codec_list,
 		.quirk_data = &kbl_codecs,
 		.pdata = &skl_dmic_data
 	},
@@ -1065,7 +1090,7 @@ static struct sst_acpi_mach sst_kbl_devdata[] = {
 		.id = "MX98357A",
 		.drv_name = "kbl_n88l25_m98357a",
 		.fw_filename = "intel/dsp_fw_kbl.bin",
-		.machine_quirk = sst_acpi_codec_list,
+		.machine_quirk = snd_soc_acpi_codec_list,
 		.quirk_data = &kbl_codecs,
 		.pdata = &skl_dmic_data
 	},
@@ -1073,7 +1098,7 @@ static struct sst_acpi_mach sst_kbl_devdata[] = {
 		.id = "MX98927",
 		.drv_name = "kbl_r5514_5663_max",
 		.fw_filename = "intel/dsp_fw_kbl.bin",
-		.machine_quirk = sst_acpi_codec_list,
+		.machine_quirk = snd_soc_acpi_codec_list,
 		.quirk_data = &kbl_5663_5514_codecs,
 		.pdata = &skl_dmic_data
 	},
@@ -1081,7 +1106,7 @@ static struct sst_acpi_mach sst_kbl_devdata[] = {
 		.id = "MX98927",
 		.drv_name = "kbl_rt5663_m98927",
 		.fw_filename = "intel/dsp_fw_kbl.bin",
-		.machine_quirk = sst_acpi_codec_list,
+		.machine_quirk = snd_soc_acpi_codec_list,
 		.quirk_data = &kbl_poppy_codecs,
 		.pdata = &skl_dmic_data
 	},
@@ -1094,7 +1119,7 @@ static struct sst_acpi_mach sst_kbl_devdata[] = {
 	{}
 };
 
-static struct sst_acpi_mach sst_glk_devdata[] = {
+static struct snd_soc_acpi_mach sst_glk_devdata[] = {
 	{
 		.id = "INT343A",
 		.drv_name = "glk_alc298s_i2s",
@@ -1103,7 +1128,7 @@ static struct sst_acpi_mach sst_glk_devdata[] = {
 	{}
 };
 
-static const struct sst_acpi_mach sst_cnl_devdata[] = {
+static const struct snd_soc_acpi_mach sst_cnl_devdata[] = {
 #if !IS_ENABLED(CONFIG_SND_SOC_RT700)
 	{
 		.id = "INT34C2",
@@ -1118,7 +1143,7 @@ static const struct sst_acpi_mach sst_cnl_devdata[] = {
 #endif
 };
 
-static struct sst_acpi_mach sst_icl_devdata[] = {
+static struct snd_soc_acpi_mach sst_icl_devdata[] = {
 #if IS_ENABLED(CONFIG_SND_SOC_RT700)
 	{ "dummy", "icl_rt700", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
 #elif IS_ENABLED(CONFIG_SND_SOC_WM5110)

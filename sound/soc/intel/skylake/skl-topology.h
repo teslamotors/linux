@@ -56,6 +56,7 @@
 #define SKL_MAX_MODULE_FORMATS		64
 #define SKL_MAX_MODULE_RESOURCES	32
 #define MAX_NUM_CHANNELS	8
+#define SKL_MAX_PARAMS_TYPES	4
 
 enum skl_channel_index {
 	SKL_CHANNEL_LEFT = 0,
@@ -245,9 +246,18 @@ struct skl_mod_inst_map {
 	u16 inst_id;
 };
 
+struct skl_uuid_inst_map {
+	u16 inst_id;
+	u16 reserved;
+	uuid_le mod_uuid;
+} __packed;
+
 struct skl_kpb_params {
 	u32 num_modules;
-	struct skl_mod_inst_map map[0];
+	union {
+		struct skl_mod_inst_map map[0];
+		struct skl_uuid_inst_map map_uuid[0];
+	} u;
 };
 
 struct skl_gain_module_config {
@@ -424,6 +434,7 @@ struct skl_module_cfg {
 	struct skl_module *module;
 	int res_idx;
 	int fmt_idx;
+	int fmt_cfg_idx;
 	u8 domain;
 	bool homogenous_inputs;
 	bool homogenous_outputs;
@@ -460,7 +471,7 @@ struct skl_module_cfg {
 	enum skl_hw_conn_type  hw_conn_type;
 	enum skl_module_state m_state;
 	struct skl_pipe *pipe;
-	struct skl_specific_cfg formats_config;
+	struct skl_specific_cfg formats_config[SKL_MAX_PARAMS_TYPES];
 	struct skl_pipe_mcfg mod_cfg[SKL_MAX_MODULES_IN_PIPE];
 	struct skl_gain_data *gain_data;
 };
@@ -597,7 +608,7 @@ int skl_get_module_params(struct skl_sst *ctx, u32 *params, int size,
 
 struct skl_module_cfg *skl_tplg_be_get_cpr_module(struct snd_soc_dai *dai,
 								int stream);
-int is_skl_dsp_widget_type(struct snd_soc_dapm_widget *w);
+int is_skl_dsp_widget_type(struct snd_soc_dapm_widget *w, struct device *dev);
 
 enum skl_bitdepth skl_get_bit_depth(int params);
 int skl_pcm_host_dma_prepare(struct device *dev,
@@ -609,8 +620,9 @@ int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
 int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
 			 struct snd_ctl_elem_value *ucontrol);
 
-int skl_dai_load(struct snd_soc_component *cmp,
-		 struct snd_soc_dai_driver *pcm_dai);
+int skl_dai_load(struct snd_soc_component *, int index,
+		struct snd_soc_dai_driver *dai_drv,
+		struct snd_soc_tplg_pcm *pcm, struct snd_soc_dai *dai);
 int skl_tplg_change_notification_get(struct snd_kcontrol *kcontrol,
 			unsigned int __user *data, unsigned int size);
 struct snd_kcontrol *skl_search_notify_kctl(struct skl_sst *skl,
@@ -621,4 +633,6 @@ void skl_delete_notify_kctl_list(struct skl_sst *skl_sst);
 struct snd_kcontrol *skl_get_notify_kcontrol(struct skl_sst *skl,
 				struct snd_card *card, u32 notify_id);
 
+void skl_tplg_add_moduleid_in_bind_params(struct skl *skl,
+				struct snd_soc_dapm_widget *w);
 #endif

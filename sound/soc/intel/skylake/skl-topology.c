@@ -359,19 +359,24 @@ void skl_tplg_d0i3_put(struct skl *skl, enum d0i3_capability caps)
  * SKL DSP driver modelling uses only few DAPM widgets so for rest we will
  * ignore. This helpers checks if the SKL driver handles this widget type
  */
-int is_skl_dsp_widget_type(struct snd_soc_dapm_widget *w)
+int is_skl_dsp_widget_type(struct snd_soc_dapm_widget *w,
+				  struct device *dev)
 {
-	switch (w->id) {
-	case snd_soc_dapm_dai_link:
-	case snd_soc_dapm_dai_in:
-	case snd_soc_dapm_aif_in:
-	case snd_soc_dapm_aif_out:
-	case snd_soc_dapm_dai_out:
-	case snd_soc_dapm_switch:
-		return false;
-	default:
-		return true;
+	if (w->dapm->dev == dev) {
+		switch (w->id) {
+		case snd_soc_dapm_dai_link:
+		case snd_soc_dapm_dai_in:
+		case snd_soc_dapm_aif_in:
+		case snd_soc_dapm_aif_out:
+		case snd_soc_dapm_dai_out:
+		case snd_soc_dapm_switch:
+			return false;
+		default:
+			return true;
+		}
 	}
+
+	return false;
 }
 
 /*
@@ -657,7 +662,7 @@ static int skl_tplg_update_be_blob(struct snd_soc_dapm_widget *w,
 	struct skl_module_iface *m_iface = &m_cfg->module->formats[fmt_idx];
 
 	/* check if we already have blob */
-	if (m_cfg->formats_config.caps_size > 0)
+	if (m_cfg->formats_config[SKL_PARAM_INIT].caps_size > 0)
 		return 0;
 
 	dev_dbg(ctx->dev, "Applying default cfg blob\n");
@@ -693,8 +698,8 @@ static int skl_tplg_update_be_blob(struct snd_soc_dapm_widget *w,
 	cfg = skl_get_ep_blob(skl, m_cfg->vbus_id, link_type,
 					s_fmt, ch, s_freq, dir, dev_type);
 	if (cfg) {
-		m_cfg->formats_config.caps_size = cfg->size;
-		m_cfg->formats_config.caps = (u32 *) &cfg->caps;
+		m_cfg->formats_config[SKL_PARAM_INIT].caps_size = cfg->size;
+		m_cfg->formats_config[SKL_PARAM_INIT].caps = (u32 *) &cfg->caps;
 	} else {
 		dev_err(ctx->dev, "Blob NULL for id %x type %d dirn %d\n",
 					m_cfg->vbus_id, link_type, dir);
@@ -935,9 +940,10 @@ int skl_tplg_set_module_params(struct snd_soc_dapm_widget *w,
 	struct skl_algo_data *bc;
 	struct skl_specific_cfg *sp_cfg;
 
-	if (mconfig->formats_config.caps_size > 0 &&
-		mconfig->formats_config.set_params == SKL_PARAM_SET) {
-		sp_cfg = &mconfig->formats_config;
+	if (mconfig->formats_config[SKL_PARAM_SET].caps_size > 0 &&
+		mconfig->formats_config[SKL_PARAM_SET].set_params ==
+							SKL_PARAM_SET) {
+		sp_cfg = &mconfig->formats_config[SKL_PARAM_SET];
 		ret = skl_set_module_params(ctx, sp_cfg->caps,
 					sp_cfg->caps_size,
 					sp_cfg->param_id, mconfig);
@@ -987,8 +993,10 @@ static int skl_tplg_set_module_init_data(struct snd_soc_dapm_widget *w)
 			if (bc->set_params != SKL_PARAM_INIT)
 				continue;
 
-			mconfig->formats_config.caps = (u32 *)bc->params;
-			mconfig->formats_config.caps_size = bc->size;
+			mconfig->formats_config[SKL_PARAM_INIT].caps =
+							(u32 *)bc->params;
+			mconfig->formats_config[SKL_PARAM_INIT].caps_size =
+								bc->size;
 
 			break;
 		}
@@ -1360,7 +1368,7 @@ static void skl_init_single_module_pipe(struct snd_soc_dapm_widget *w,
 	snd_soc_dapm_widget_for_each_source_path(w, p) {
 		src_w = p->source;
 
-		if ((src_w->priv != NULL) && is_skl_dsp_widget_type(src_w)) {
+		if ((src_w->priv != NULL) && is_skl_dsp_widget_type(src_w, skl->skl_sst->dev)) {
 			mcfg = src_w->priv;
 			if ((list_is_singular(&mcfg->pipe->w_list)) &&
 						(src_w->power_check(src_w)))
@@ -1378,7 +1386,7 @@ static int skl_fill_sink_instance_id(struct skl_sst *ctx, u32 *params,
 	if (mcfg->m_type == SKL_MODULE_TYPE_KPB) {
 		struct skl_kpb_params *kpb_params =
 				(struct skl_kpb_params *)params;
-		struct skl_mod_inst_map *inst = kpb_params->map;
+		struct skl_mod_inst_map *inst = kpb_params->u.map;
 
 		for (i = 0; i < kpb_params->num_modules; i++) {
 			pvt_id = skl_get_pvt_instance_id_map(ctx, inst->mod_id,
@@ -1425,9 +1433,10 @@ static int skl_tplg_set_module_bind_params(struct snd_soc_dapm_widget *w,
 			return 0;
 	}
 
-	if (mconfig->formats_config.caps_size > 0 &&
-		mconfig->formats_config.set_params == SKL_PARAM_BIND) {
-		sp_cfg = &mconfig->formats_config;
+	if (mconfig->formats_config[SKL_PARAM_BIND].caps_size > 0 &&
+		mconfig->formats_config[SKL_PARAM_BIND].set_params ==
+							SKL_PARAM_BIND) {
+		sp_cfg = &mconfig->formats_config[SKL_PARAM_BIND];
 		ret = skl_set_module_params(ctx, sp_cfg->caps,
 					sp_cfg->caps_size,
 					sp_cfg->param_id, mconfig);
@@ -1463,6 +1472,75 @@ static int skl_tplg_set_module_bind_params(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int skl_tplg_find_moduleid_from_uuid(struct skl *skl,
+					const struct snd_kcontrol_new *k)
+{
+	struct soc_bytes_ext *sb = (void *) k->private_value;
+	struct skl_algo_data *bc = (struct skl_algo_data *)sb->dobj.private;
+	struct skl_kpb_params *uuid_params, *params;
+	struct hdac_bus *bus = ebus_to_hbus(skl_to_ebus(skl));
+	int i, size, module_id;
+
+	if (bc->set_params == SKL_PARAM_BIND && bc->max) {
+		uuid_params = (struct skl_kpb_params *)bc->params;
+		size = uuid_params->num_modules *
+			sizeof(struct skl_mod_inst_map) +
+			sizeof(uuid_params->num_modules);
+
+		params = devm_kzalloc(bus->dev, size, GFP_KERNEL);
+		if (!params)
+			return -ENOMEM;
+
+		params->num_modules = uuid_params->num_modules;
+
+		for (i = 0; i < uuid_params->num_modules; i++) {
+			module_id = skl_get_module_id(skl->skl_sst,
+				&uuid_params->u.map_uuid[i].mod_uuid);
+			if (module_id < 0) {
+				devm_kfree(bus->dev, params);
+				return -EINVAL;
+			}
+
+			params->u.map[i].mod_id = module_id;
+			params->u.map[i].inst_id =
+				uuid_params->u.map_uuid[i].inst_id;
+		}
+
+		devm_kfree(bus->dev, bc->params);
+		bc->params = (char *)params;
+		bc->max = size;
+	}
+
+	return 0;
+}
+
+/*
+ * Retrieve the module id from UUID mentioned in the
+ * post bind params
+ */
+void skl_tplg_add_moduleid_in_bind_params(struct skl *skl,
+				struct snd_soc_dapm_widget *w)
+{
+	struct skl_module_cfg *mconfig = w->priv;
+	int i;
+
+	/*
+	 * Post bind params are used for only for KPB
+	 * to set copier instances to drain the data
+	 * in fast mode
+	 */
+	if (mconfig->m_type != SKL_MODULE_TYPE_KPB)
+		return;
+
+	for (i = 0; i < w->num_kcontrols; i++)
+		if ((w->kcontrol_news[i].access &
+			SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK) &&
+			(skl_tplg_find_moduleid_from_uuid(skl,
+			&w->kcontrol_news[i]) < 0))
+			dev_err(skl->skl_sst->dev,
+				"%s: invalid kpb post bind params\n",
+				__func__);
+}
 
 static int skl_tplg_module_add_deferred_bind(struct skl *skl,
 	struct skl_module_cfg *src, struct skl_module_cfg *dst)
@@ -1521,7 +1599,7 @@ static int skl_tplg_bind_sinks(struct snd_soc_dapm_widget *w,
 
 		next_sink = p->sink;
 
-		if (!is_skl_dsp_widget_type(p->sink))
+		if (!is_skl_dsp_widget_type(p->sink, ctx->dev))
 			return skl_tplg_bind_sinks(p->sink, skl, src_w, src_mconfig);
 
 		/*
@@ -1530,7 +1608,7 @@ static int skl_tplg_bind_sinks(struct snd_soc_dapm_widget *w,
 		 * they are ones used for SKL so check that first
 		 */
 		if ((p->sink->priv != NULL) &&
-					is_skl_dsp_widget_type(p->sink)) {
+				is_skl_dsp_widget_type(p->sink, ctx->dev)) {
 
 			sink = p->sink;
 			sink_mconfig = sink->priv;
@@ -1644,7 +1722,7 @@ static struct snd_soc_dapm_widget *skl_get_src_dsp_widget(
 		 * ones used for SKL so check that first
 		 */
 		if ((p->source->priv != NULL) &&
-					is_skl_dsp_widget_type(p->source)) {
+				is_skl_dsp_widget_type(p->source, ctx->dev)) {
 			return p->source;
 		}
 	}
@@ -2305,7 +2383,8 @@ static int skl_tplg_mic_control_get(struct snd_kcontrol *kcontrol,
 static int skl_fill_mic_sel_params(struct skl_module_cfg *mconfig,
 	struct skl_mic_sel_config *mic_cfg, struct device *dev)
 {
-	struct skl_specific_cfg *sp_cfg = &mconfig->formats_config;
+	struct skl_specific_cfg *sp_cfg =
+				&mconfig->formats_config[SKL_PARAM_INIT];
 
 	sp_cfg->caps_size = sizeof(struct skl_mic_sel_config);
 	sp_cfg->set_params = SKL_PARAM_SET;
@@ -2708,7 +2787,7 @@ skl_tplg_fe_get_cpr_module(struct snd_soc_dai *dai, int stream)
 		w = dai->playback_widget;
 		snd_soc_dapm_widget_for_each_sink_path(w, p) {
 			if (p->connect && p->sink->power &&
-					!is_skl_dsp_widget_type(p->sink))
+				!is_skl_dsp_widget_type(p->sink, dai->dev))
 				continue;
 
 			if (p->sink->priv) {
@@ -2721,7 +2800,7 @@ skl_tplg_fe_get_cpr_module(struct snd_soc_dai *dai, int stream)
 		w = dai->capture_widget;
 		snd_soc_dapm_widget_for_each_source_path(w, p) {
 			if (p->connect && p->source->power &&
-					!is_skl_dsp_widget_type(p->source))
+				!is_skl_dsp_widget_type(p->source, dai->dev))
 				continue;
 
 			if (p->source->priv) {
@@ -2866,8 +2945,8 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 				GFP_KERNEL);
 		if (!sdw_cfg)
 			return -ENOMEM;
-		mconfig->formats_config.caps_size = (((sizeof(u32)) *
-			(mconfig->sdw_agg.num_masters) * 2)
+		mconfig->formats_config[SKL_PARAM_INIT].caps_size =
+			(((sizeof(u32)) * (mconfig->sdw_agg.num_masters) * 2)
 			+ (2 * (sizeof(u32))));
 
 		sdw_cfg->count = mconfig->sdw_agg.num_masters;
@@ -2882,7 +2961,7 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 			}
 		}
 		sdw_cfg->count = mconfig->sdw_agg.num_masters;
-		mconfig->formats_config.caps = (u32 *) sdw_cfg;
+		mconfig->formats_config[SKL_PARAM_INIT].caps = (u32 *) sdw_cfg;
 		return 0;
 	}
 
@@ -2893,8 +2972,9 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
 					dev_type);
 
 	if (cfg) {
-		mconfig->formats_config.caps_size = cfg->size;
-		mconfig->formats_config.caps = (u32 *) &cfg->caps;
+		mconfig->formats_config[SKL_PARAM_INIT].caps_size = cfg->size;
+		mconfig->formats_config[SKL_PARAM_INIT].caps =
+							(u32 *) &cfg->caps;
 	} else {
 		dev_err(dai->dev, "Blob NULL for id %x type %d dirn %d\n",
 					mconfig->vbus_id, link_type,
@@ -2915,7 +2995,7 @@ static int skl_tplg_be_set_src_pipe_params(struct snd_soc_dai *dai,
 	int ret = -EIO;
 
 	snd_soc_dapm_widget_for_each_source_path(w, p) {
-		if (p->connect && is_skl_dsp_widget_type(p->source) &&
+		if (p->connect && is_skl_dsp_widget_type(p->source, dai->dev) &&
 						p->source->priv) {
 
 			ret = skl_tplg_be_fill_pipe_params(dai,
@@ -2940,7 +3020,7 @@ static int skl_tplg_be_set_sink_pipe_params(struct snd_soc_dai *dai,
 	int ret = -EIO;
 
 	snd_soc_dapm_widget_for_each_sink_path(w, p) {
-		if (p->connect && is_skl_dsp_widget_type(p->sink) &&
+		if (p->connect && is_skl_dsp_widget_type(p->sink, dai->dev) &&
 						p->sink->priv) {
 
 			ret = skl_tplg_be_fill_pipe_params(dai,
@@ -3807,19 +3887,26 @@ static int skl_tplg_get_token(struct device *dev,
 
 		break;
 
+	case SKL_TKN_U32_FMT_CFG_IDX:
+		if (tkn_elem->value > SKL_MAX_PARAMS_TYPES)
+			return -EINVAL;
+
+		mconfig->fmt_cfg_idx = tkn_elem->value;
+		break;
+
 	case SKL_TKN_U32_CAPS_SIZE:
-		mconfig->formats_config.caps_size =
+		mconfig->formats_config[mconfig->fmt_cfg_idx].caps_size =
 			tkn_elem->value;
 
 		break;
 
 	case SKL_TKN_U32_CAPS_SET_PARAMS:
-		mconfig->formats_config.set_params =
+		mconfig->formats_config[mconfig->fmt_cfg_idx].set_params =
 				tkn_elem->value;
 		break;
 
 	case SKL_TKN_U32_CAPS_PARAMS_ID:
-		mconfig->formats_config.param_id =
+		mconfig->formats_config[mconfig->fmt_cfg_idx].param_id =
 				tkn_elem->value;
 		break;
 
@@ -3958,6 +4045,25 @@ static int skl_tplg_get_desc_blocks(struct device *dev,
 	return -EINVAL;
 }
 
+static int skl_tplg_get_caps_data(struct device *dev, char *data,
+					struct skl_module_cfg *mconfig)
+{
+	int idx;
+
+	idx = mconfig->fmt_cfg_idx;
+	if (mconfig->formats_config[idx].caps_size > 0) {
+		mconfig->formats_config[idx].caps = (u32 *)devm_kzalloc(dev,
+					mconfig->formats_config[idx].caps_size,
+					GFP_KERNEL);
+		if (mconfig->formats_config[idx].caps == NULL)
+			return -ENOMEM;
+		memcpy(mconfig->formats_config[idx].caps, data,
+				mconfig->formats_config[idx].caps_size);
+	}
+
+	return mconfig->formats_config[idx].caps_size;
+}
+
 /*
  * Parse the private data for the token and corresponding value.
  * The private data can have multiple data blocks. So, a data block
@@ -4011,18 +4117,14 @@ static int skl_tplg_get_pvt_data(struct snd_soc_tplg_dapm_widget *tplg_w,
 		if (block_type == SKL_TYPE_TUPLE) {
 			ret = skl_tplg_get_tokens(dev, data,
 					skl, mconfig, block_size);
-
-			if (ret < 0)
-				return ret;
-
-			--num_blocks;
 		} else {
-			if (mconfig->formats_config.caps_size > 0)
-				memcpy(mconfig->formats_config.caps, data,
-					mconfig->formats_config.caps_size);
-			--num_blocks;
-			ret = mconfig->formats_config.caps_size;
+			ret = skl_tplg_get_caps_data(dev, data, mconfig);
 		}
+
+		if (ret < 0)
+			return ret;
+
+		--num_blocks;
 		off += ret;
 	}
 
@@ -4071,7 +4173,7 @@ void skl_cleanup_resources(struct skl *skl)
 	skl->resource.mcps = 0;
 
 	list_for_each_entry(w, &card->widgets, list) {
-		if (is_skl_dsp_widget_type(w) && (w->priv != NULL))
+		if (is_skl_dsp_widget_type(w, ctx->dev) && w->priv != NULL)
 			skl_clear_pin_config(soc_platform, w);
 	}
 
@@ -4085,7 +4187,7 @@ void skl_cleanup_resources(struct skl *skl)
  * information to the driver about module and pipeline parameters which DSP
  * FW expects like ids, resource values, formats etc
  */
-static int skl_tplg_widget_load(struct snd_soc_component *cmpnt,
+static int skl_tplg_widget_load(struct snd_soc_component *cmpnt, int index,
 				struct snd_soc_dapm_widget *w,
 				struct snd_soc_tplg_dapm_widget *tplg_w)
 {
@@ -4117,6 +4219,9 @@ static int skl_tplg_widget_load(struct snd_soc_component *cmpnt,
 	 * module is load for a use case
 	 */
 	mconfig->id.module_id = -1;
+
+	/* To provide backward compatibility, set default as SKL_PARAM_INIT */
+	mconfig->fmt_cfg_idx = SKL_PARAM_INIT;
 
 	/* Parse private data for tuples */
 	ret = skl_tplg_get_pvt_data(tplg_w, skl, bus->dev, mconfig);
@@ -4205,6 +4310,7 @@ static int skl_init_enum_data(struct device *dev, struct soc_enum *se,
 }
 
 static int skl_tplg_control_load(struct snd_soc_component *cmpnt,
+				int index,
 				struct snd_kcontrol_new *kctl,
 				struct snd_soc_tplg_ctl_hdr *hdr)
 {
@@ -4444,12 +4550,14 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 		struct snd_soc_tplg_vendor_value_elem *tkn_elem,
 		struct skl *skl)
 {
-	int tkn_count = 0, ret;
+	int tkn_count = 0, ret, size;
 	static int mod_idx, res_val_idx, intf_val_idx, dir, pin_idx;
 	static int dma_cfg_idx;
 	struct skl_module_res *res = NULL;
 	struct skl_module_iface *fmt = NULL;
 	struct skl_module *mod = NULL;
+	static struct skl_astate_config *astate_table;
+	static int astate_cfg_idx, count;
 	int i;
 
 	if (skl->modules) {
@@ -4480,6 +4588,46 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 
 	case SKL_TKN_MM_U8_MOD_IDX:
 		mod_idx = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_ASTATE_COUNT:
+		if (astate_table != NULL) {
+			dev_err(dev, "More than one entry for A-State count");
+			return -EINVAL;
+		}
+
+		if (tkn_elem->value > SKL_MAX_ASTATE_CFG) {
+			dev_err(dev, "Invalid A-State count %d\n",
+				tkn_elem->value);
+			return -EINVAL;
+		}
+
+		size = tkn_elem->value * sizeof(struct skl_astate_config) +
+				sizeof(count);
+		skl->cfg.astate_cfg = devm_kzalloc(dev, size, GFP_KERNEL);
+		if (!skl->cfg.astate_cfg)
+			return -ENOMEM;
+
+		astate_table = skl->cfg.astate_cfg->astate_table;
+		count = skl->cfg.astate_cfg->count = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_ASTATE_IDX:
+		if (tkn_elem->value >= count) {
+			dev_err(dev, "Invalid A-State index %d\n",
+				tkn_elem->value);
+			return -EINVAL;
+		}
+
+		astate_cfg_idx = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_ASTATE_KCPS:
+		astate_table[astate_cfg_idx].kcps = tkn_elem->value;
+		break;
+
+	case SKL_TKN_U32_ASTATE_CLK_SRC:
+		astate_table[astate_cfg_idx].clk_src = tkn_elem->value;
 		break;
 
 	case SKL_TKN_U32_DMA_TYPE:
@@ -4751,7 +4899,7 @@ static int skl_tplg_get_manifest_data(struct snd_soc_tplg_manifest *manifest,
 	return 0;
 }
 
-static int skl_manifest_load(struct snd_soc_component *cmpnt,
+static int skl_manifest_load(struct snd_soc_component *cmpnt, int index,
 				struct snd_soc_tplg_manifest *manifest)
 {
 	struct hdac_ext_bus *ebus = snd_soc_component_get_drvdata(cmpnt);
@@ -4832,7 +4980,7 @@ static int skl_tplg_create_pipe_widget_list(struct snd_soc_platform *platform)
 	struct skl_pipe *pipe;
 
 	list_for_each_entry(w, &platform->component.card->widgets, list) {
-		if (is_skl_dsp_widget_type(w) && w->priv != NULL) {
+		if (is_skl_dsp_widget_type(w, platform->dev) && w->priv) {
 			mcfg = w->priv;
 			pipe = mcfg->pipe;
 
