@@ -47,6 +47,8 @@ static __always_inline void seq_print_param(struct seq_file *m,
 		seq_printf(m, "i915_modparams.%s=%d\n", name, *(const int *)x);
 	else if (!__builtin_strcmp(type, "unsigned int"))
 		seq_printf(m, "i915_modparams.%s=%u\n", name, *(const unsigned int *)x);
+	else if (!__builtin_strcmp(type, "unsigned long long"))
+		seq_printf(m, "i915_modparams.%s=%llu\n", name, *(const unsigned long long *)x);
 	else if (!__builtin_strcmp(type, "char *"))
 		seq_printf(m, "i915_modparams.%s=%s\n", name, *(const char **)x);
 	else
@@ -3006,15 +3008,23 @@ static void intel_crtc_info(struct seq_file *m, struct intel_crtc *intel_crtc)
 	struct drm_device *dev = &dev_priv->drm;
 	struct drm_crtc *crtc = &intel_crtc->base;
 	struct intel_encoder *intel_encoder;
-	struct drm_plane_state *plane_state = crtc->primary->state;
-	struct drm_framebuffer *fb = plane_state->fb;
+	struct drm_plane_state *plane_state;
+	struct drm_framebuffer *fb;
 
-	if (fb)
-		seq_printf(m, "\tfb: %d, pos: %dx%d, size: %dx%d\n",
+	if (!crtc->primary) {
+		seq_puts(m, "\tno primary plane\n");
+	} else {
+		plane_state = crtc->primary->state;
+		fb = plane_state->fb;
+
+		if (fb)
+			seq_printf(m, "\tfb: %d, pos: %dx%d, size: %dx%d\n",
 			   fb->base.id, plane_state->src_x >> 16,
 			   plane_state->src_y >> 16, fb->width, fb->height);
-	else
-		seq_puts(m, "\tprimary plane disabled\n");
+		else
+			seq_puts(m, "\tprimary plane disabled\n");
+	}
+
 	for_each_encoder_on_crtc(dev, crtc, intel_encoder)
 		intel_encoder_info(m, intel_crtc, intel_encoder);
 }
@@ -3259,15 +3269,28 @@ static int i915_display_info(struct seq_file *m, void *unused)
 
 			intel_crtc_info(m, crtc);
 
-			seq_printf(m, "\tcursor visible? %s, position (%d, %d), size %dx%d, addr 0x%08x\n",
-				   yesno(cursor->base.state->visible),
-				   cursor->base.state->crtc_x,
-				   cursor->base.state->crtc_y,
-				   cursor->base.state->crtc_w,
-				   cursor->base.state->crtc_h,
-				   cursor->cursor.base);
+			if (cursor) {
+				seq_printf(m, "\tcursor visible? %s, position (%d, %d), size %dx%d, addr 0x%08x\n",
+						yesno(cursor->base.state->visible),
+						cursor->base.state->crtc_x,
+						cursor->base.state->crtc_y,
+						cursor->base.state->crtc_w,
+						cursor->base.state->crtc_h,
+						cursor->cursor.base);
+			} else {
+				seq_puts(m, "\tNo cursor plane available on this platform\n");
+			}
+
 			intel_scaler_info(m, crtc);
 			intel_plane_info(m, crtc);
+		}
+		if (INTEL_GEN(dev_priv) >= 9 && pipe_config->base.active) {
+			struct drm_rgba background = pipe_config->base.background_color;
+
+			seq_printf(m, "\tbackground color (10bpc): r=%x g=%x b=%x\n",
+				   DRM_RGBA_REDBITS(background, 10),
+				   DRM_RGBA_GREENBITS(background, 10),
+				   DRM_RGBA_BLUEBITS(background, 10));
 		}
 
 		seq_printf(m, "\tunderrun reporting: cpu=%s pch=%s \n",
@@ -4239,7 +4262,8 @@ i915_wedged_set(void *data, u64 val)
 		engine->hangcheck.stalled = true;
 	}
 
-	i915_handle_error(i915, val, "Manually setting wedged to %llu", val);
+	i915_handle_error(i915, val, I915_ERROR_CAPTURE,
+			  "Manually set wedged engine mask = %llx", val);
 
 	wait_on_bit(&i915->gpu_error.flags,
 		    I915_RESET_HANDOFF,

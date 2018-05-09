@@ -563,6 +563,8 @@ static __always_inline void err_print_param(struct drm_i915_error_state_buf *m,
 		err_printf(m, "i915_modparams.%s=%d\n", name, *(const int *)x);
 	else if (!__builtin_strcmp(type, "unsigned int"))
 		err_printf(m, "i915_modparams.%s=%u\n", name, *(const unsigned int *)x);
+	else if (!__builtin_strcmp(type, "unsigned long long"))
+		err_printf(m, "i915_modparams.%s=%llu\n", name, *(const unsigned long long *)x);
 	else if (!__builtin_strcmp(type, "char *"))
 		err_printf(m, "i915_modparams.%s=%s\n", name, *(const char **)x);
 	else

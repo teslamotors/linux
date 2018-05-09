@@ -205,6 +205,21 @@ unsigned int drm_rotation_simplify(unsigned int rotation,
 EXPORT_SYMBOL(drm_rotation_simplify);
 
 /**
+ * drm_mode_create_background_color_property - create CRTC color property
+ * @dev: DRM device
+ *
+ * Creates a property to represent CRTC background/canvas color.  Called by a
+ * driver the first time it's needed, must be attached to desired CRTC's.
+ */
+struct drm_property *
+drm_mode_create_background_color_property(struct drm_device *dev)
+{
+	return drm_property_create_rgba(dev, DRM_MODE_PROP_ATOMIC,
+					"background_color");
+}
+EXPORT_SYMBOL(drm_mode_create_background_color_property);
+
+/**
  * drm_plane_create_zpos_property - create mutable zpos property
  * @plane: drm plane
  * @zpos: initial value of zpos property

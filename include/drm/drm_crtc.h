@@ -91,6 +91,12 @@ struct drm_plane_helper_funcs;
  * @connector_mask: bitmask of (1 << drm_connector_index(connector)) of attached connectors
  * @encoder_mask: bitmask of (1 << drm_encoder_index(encoder)) of attached encoders
  * @mode_blob: &drm_property_blob for @mode
+ * @degamma_lut: Lookup table for converting framebuffer pixel data
+ *	before apply the conversion matrix
+ * @ctm: Transformation matrix
+ * @gamma_lut: Lookup table for converting pixel data after the
+ *	conversion matrix
+ * @background_color: background/canvas color of regions not covered by planes
  * @state: backpointer to global drm_atomic_state
  *
  * Note that the distinction between @enable and @active is rather subtile:
@@ -260,6 +266,10 @@ struct drm_crtc_state {
 	 * userspace one frame too late. This doesn't allow for a real atomic
 	 * update, but it should avoid tearing.
 	 */
+
+	/* CRTC background color */
+	struct drm_rgba background_color;
+
 	struct drm_pending_vblank_event *event;
 
 	struct drm_atomic_state *state;

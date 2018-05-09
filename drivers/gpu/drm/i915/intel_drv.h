@@ -540,6 +540,7 @@ struct intel_initial_plane_config {
 struct intel_scaler {
 	int in_use;
 	uint32_t mode;
+	int owned;
 };
 
 struct intel_crtc_scaler_state {
@@ -1426,6 +1427,9 @@ struct drm_display_mode *intel_crtc_mode_get(struct drm_device *dev,
 enum pipe intel_get_pipe_from_connector(struct intel_connector *connector);
 int intel_get_pipe_from_crtc_id(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
+int get_pipe_from_crtc_index(struct drm_device *dev, unsigned int index, enum pipe *pipe);
+struct intel_crtc *get_intel_crtc_from_index(struct drm_device *dev,
+					     unsigned int index);
 enum transcoder intel_pipe_to_cpu_transcoder(struct drm_i915_private *dev_priv,
 					     enum pipe pipe);
 static inline bool
@@ -1445,7 +1449,12 @@ intel_crtc_has_dp_encoder(const struct intel_crtc_state *crtc_state)
 static inline void
 intel_wait_for_vblank(struct drm_i915_private *dev_priv, enum pipe pipe)
 {
-	drm_wait_one_vblank(&dev_priv->drm, pipe);
+	struct intel_crtc *crtc;
+
+	crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
+	if (crtc)
+		drm_wait_one_vblank(&dev_priv->drm,
+				    drm_crtc_index(&crtc->base));
 }
 static inline void
 intel_wait_for_vblank_if_active(struct drm_i915_private *dev_priv, int pipe)
@@ -1697,6 +1706,10 @@ static inline void intel_fbdev_restore_mode(struct drm_device *dev)
 {
 }
 #endif
+
+/* initial modesetting support */
+extern void intel_initial_mode_config_init(struct drm_device *dev);
+extern void intel_initial_mode_config_fini(struct drm_device *dev);
 
 /* intel_fbc.c */
 void intel_fbc_choose_crtc(struct drm_i915_private *dev_priv,
@@ -1986,6 +1999,13 @@ int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv);
 void intel_pipe_update_start(struct intel_crtc *crtc);
 void intel_pipe_update_end(struct intel_crtc *crtc);
+int intel_check_sprite_plane(struct intel_plane *plane,
+		struct intel_crtc_state *crtc_state,
+		struct intel_plane_state *state);
+void skl_update_plane(struct intel_plane *plane,
+		const struct intel_crtc_state *crtc_state,
+		const struct intel_plane_state *plane_state);
+void skl_disable_plane(struct intel_plane *plane, struct intel_crtc *crtc);
 bool skl_plane_get_hw_state(struct intel_plane *plane);
 
 /* intel_tv.c */
