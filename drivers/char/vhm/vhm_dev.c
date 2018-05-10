@@ -231,6 +231,15 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 
+	case IC_RESTART_VM: {
+		ret = hcall_restart_vm(vm->vmid);
+		if (ret < 0) {
+			pr_err("vhm: failed to restart VM %ld!\n", vm->vmid);
+			return -EFAULT;
+		}
+		break;
+	}
+
 	case IC_DESTROY_VM: {
 		ret = hcall_destroy_vm(vm->vmid);
 		if (ret < 0) {
@@ -540,15 +549,16 @@ static long vhm_dev_ioctl(struct file *filep,
 			return -EFAULT;
 
 		switch (cmd & PMCMD_TYPE_MASK) {
-		case PMCMD_GET_PX_CNT: {
-			uint8_t px_cnt;
+		case PMCMD_GET_PX_CNT:
+		case PMCMD_GET_CX_CNT: {
+			uint64_t pm_info;
 
-			ret = hcall_get_cpu_state(cmd, virt_to_phys(&px_cnt));
+			ret = hcall_get_cpu_state(cmd, virt_to_phys(&pm_info));
 			if (ret < 0)
 				return -EFAULT;
 
 			if (copy_to_user((void *)ioctl_param,
-					&px_cnt, sizeof(px_cnt)))
+					&pm_info, sizeof(pm_info)))
 					ret = -EFAULT;
 
 			break;
@@ -565,10 +575,24 @@ static long vhm_dev_ioctl(struct file *filep,
 					ret = -EFAULT;
 			break;
 		}
+		case PMCMD_GET_CX_DATA: {
+			struct cpu_cx_data cx_data;
+
+			ret = hcall_get_cpu_state(cmd, virt_to_phys(&cx_data));
+			if (ret < 0)
+				return -EFAULT;
+
+			if (copy_to_user((void *)ioctl_param,
+					&cx_data, sizeof(cx_data)))
+					ret = -EFAULT;
+			break;
+		}
 		default:
 			ret = -EFAULT;
 			break;
 		}
+
+		break;
 	}
 
 	default:
