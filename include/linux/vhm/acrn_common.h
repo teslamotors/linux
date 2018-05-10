@@ -303,6 +303,30 @@ struct acrn_vm_pci_msix_remap {
  * @brief Info The power state data of a VCPU.
  *
  */
+
+#define SPACE_SYSTEM_MEMORY     0
+#define SPACE_SYSTEM_IO         1
+#define SPACE_PCI_CONFIG        2
+#define SPACE_Embedded_Control  3
+#define SPACE_SMBUS             4
+#define SPACE_PLATFORM_COMM     10
+#define SPACE_FFixedHW          0x7F
+
+struct acpi_generic_address {
+	uint8_t 	space_id;
+	uint8_t 	bit_width;
+	uint8_t 	bit_offset;
+	uint8_t 	access_size;
+	uint64_t	address;
+} __attribute__((aligned(8)));
+
+struct cpu_cx_data {
+	struct acpi_generic_address cx_reg;
+	uint8_t 	type;
+	uint32_t	latency;
+	uint64_t	power;
+} __attribute__((aligned(8)));
+
 struct cpu_px_data {
 	uint64_t core_frequency;	/* megahertz */
 	uint64_t power;			/* milliWatts */
@@ -315,8 +339,10 @@ struct cpu_px_data {
 /**
  * @brief Info PM command from DM/VHM.
  *
- * The command would specify request type(i.e. get px count or data) for
- * specific VM and specific VCPU with specific state number.like P(n).
+ * The command would specify request type(e.g. get px count or data) for
+ * specific VM and specific VCPU with specific state number.
+ * For Px, PMCMD_STATE_NUM means Px number from 0 to (MAX_PSTATE - 1),
+ * For Cx, PMCMD_STATE_NUM means Cx entry index from 1 to MAX_CX_ENTRY.
  */
 #define PMCMD_VMID_MASK		0xff000000
 #define PMCMD_VCPUID_MASK	0x00ff0000
@@ -330,6 +356,8 @@ struct cpu_px_data {
 enum pm_cmd_type {
 	PMCMD_GET_PX_CNT,
 	PMCMD_GET_PX_DATA,
+	PMCMD_GET_CX_CNT,
+	PMCMD_GET_CX_DATA,
 };
 
 /**
