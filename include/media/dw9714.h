@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2015 - 2018 Intel Corporation
  *
  * Based on ATOMISP dw9714 implementation by
