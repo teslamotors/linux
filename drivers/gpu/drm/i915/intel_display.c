@@ -5206,6 +5206,22 @@ intel_pre_disable_primary_noatomic(struct drm_crtc *crtc)
 		intel_wait_for_vblank(dev_priv, pipe);
 }
 
+static bool needs_nv12_wa(struct drm_i915_private *dev_priv,
+			  const struct intel_crtc_state *crtc_state)
+{
+	if (!crtc_state->nv12_planes)
+		return false;
+
+	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv))
+		return false;
+
+	if ((INTEL_GEN(dev_priv) == 9 && !IS_GEMINILAKE(dev_priv)) ||
+	    IS_CANNONLAKE(dev_priv))
+		return true;
+
+	return false;
+}
+
 static void intel_post_plane_update(struct intel_crtc_state *old_crtc_state)
 {
 	struct intel_crtc *crtc = to_intel_crtc(old_crtc_state->base.crtc);
@@ -5228,7 +5244,6 @@ static void intel_post_plane_update(struct intel_crtc_state *old_crtc_state)
 			to_intel_plane_state(primary->state);
 		struct intel_plane_state *old_primary_state =
 			to_intel_plane_state(old_pri_state);
-		struct drm_framebuffer *fb = primary_state->base.fb;
 
 		intel_fbc_post_update(crtc);
 
@@ -5236,15 +5251,12 @@ static void intel_post_plane_update(struct intel_crtc_state *old_crtc_state)
 		    (needs_modeset(&pipe_config->base) ||
 		     !old_primary_state->base.visible))
 			intel_post_enable_primary(&crtc->base);
-
-		/* Display WA 827 */
-		if ((INTEL_GEN(dev_priv) == 9 && !IS_GEMINILAKE(dev_priv)) ||
-		    IS_CANNONLAKE(dev_priv)) {
-			if (fb && fb->format->format == DRM_FORMAT_NV12)
-				skl_wa_clkgate(dev_priv, crtc->pipe, false);
-		}
-
 	}
+
+	/* Display WA 827 */
+	if (needs_nv12_wa(dev_priv, old_crtc_state) &&
+	    !needs_nv12_wa(dev_priv, pipe_config))
+		skl_wa_clkgate(dev_priv, crtc->pipe, false);
 }
 
 static void intel_pre_plane_update(struct intel_crtc_state *old_crtc_state,
@@ -5266,14 +5278,6 @@ static void intel_pre_plane_update(struct intel_crtc_state *old_crtc_state,
 			to_intel_plane_state(primary->state);
 		struct intel_plane_state *old_primary_state =
 			to_intel_plane_state(old_pri_state);
-		struct drm_framebuffer *fb = primary_state->base.fb;
-
-		/* Display WA 827 */
-		if ((INTEL_GEN(dev_priv) == 9 && !IS_GEMINILAKE(dev_priv)) ||
-		    IS_CANNONLAKE(dev_priv)) {
-			if (fb && fb->format->format == DRM_FORMAT_NV12)
-				skl_wa_clkgate(dev_priv, crtc->pipe, true);
-		}
 
 		intel_fbc_pre_update(crtc, pipe_config, primary_state);
 
@@ -5281,6 +5285,11 @@ static void intel_pre_plane_update(struct intel_crtc_state *old_crtc_state,
 		    (modeset || !primary_state->base.visible))
 			intel_pre_disable_primary(&crtc->base);
 	}
+
+	/* Display WA 827 */
+	if (!needs_nv12_wa(dev_priv, old_crtc_state) &&
+	    needs_nv12_wa(dev_priv, pipe_config))
+		skl_wa_clkgate(dev_priv, crtc->pipe, true);
 
 	/*
 	 * Vblank time updates from the shadow to live plane control register
