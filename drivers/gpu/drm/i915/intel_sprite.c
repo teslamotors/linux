@@ -1140,7 +1140,8 @@ intel_check_sprite_plane(struct intel_plane *plane,
 		src_y = src->y1 >> 16;
 		src_h = drm_rect_height(src) >> 16;
 
-		if (format_is_yuv(fb->format->format)) {
+		if (format_is_yuv(fb->format->format) &&
+		    fb->format->format != DRM_FORMAT_NV12) {
 			src_x &= ~1;
 			src_w &= ~1;
 
