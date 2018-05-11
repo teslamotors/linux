@@ -365,6 +365,15 @@ config SND_SOC_INTEL_BXTP_IVI_M3_MACH
 	   Say Y or m if you have such a device. This is a recommended option.
 	   If unsure select "N".
 
+config SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH
+	tristate "ASoC Audio driver for BXTP IVI GENERIC with Dummy Codecs"
+	depends on MFD_INTEL_LPSS && I2C && ACPI
+	help
+	   This adds support for ASoC machine driver for Broxton-P platforms
+	   with Dummy I2S audio codec for IVI generic topology.
+	   Say Y or m if you have such a device. This is a recommended option.
+	   If unsure select "N".
+
 endif ## SND_SOC_INTEL_SKYLAKE
 
 endif ## SND_SOC_INTEL_MACH
