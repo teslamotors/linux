@@ -49,3 +49,8 @@ config VIDEO_INTEL_ICI
 	---help---
 	If selected ICI driver will be compiled
 
+config VIDEO_INTEL_UOS
+	bool "Compile driver per UOS"
+	---help---
+	If selected UOS driver components will be compiled
+
