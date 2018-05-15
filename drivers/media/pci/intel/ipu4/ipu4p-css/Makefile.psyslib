@@ -1,0 +1,15 @@
+ifneq ($(EXTERNAL_BUILD), 1)
+srcpath := $(srctree)
+endif
+
+# note: this file only defines INCLUDES paths for lib2600psys
+include $(srcpath)/$(src)/ipu4p-css/Makefile.ipu4ppsys_inc
+
+IPU_PSYSLIB_ROOT = $(srcpath)/$(src)/ipu4p-css/lib2600psys/lib
+HOST_DEFINES += -DPSYS_SERVER_ON_SPC
+HOST_DEFINES += -DCFG_VIED_SUBSYSTEM_ACCESS_LIB_IMPL=1
+
+ccflags-y += $(IPU_PSYSLIB_INC) $(HOST_DEFINES)
+
+obj-$(CONFIG_VIDEO_INTEL_IPU)		+= ipu4p-css/lib2600psys/
+

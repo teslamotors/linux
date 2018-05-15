@@ -1,0 +1,12 @@
+config VIDEO_CRLMODULE
+	tristate "CRL Module sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	depends on MEDIA_CAMERA_SUPPORT
+	---help---
+	  This is a generic driver for CRL based camera modules.
+config CRLMODULE_RD_NVM_TO_VCM
+        bool "CRL Module sensor pass value to vcm"
+        depends on VIDEO_CRLMODULE
+        ---help---
+          This is a driver for sensors that pass nvm value to
+          control vcm.

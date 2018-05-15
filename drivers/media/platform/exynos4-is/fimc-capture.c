@@ -871,7 +871,7 @@ static int fimc_get_sensor_frame_desc(struct v4l2_subdev *sensor,
 	int pad;
 
 	for (i = 0; i < num_planes; i++)
-		fd.entry[i].length = plane_fmt[i].sizeimage;
+		fd.entry[i].size.length = plane_fmt[i].sizeimage;
 
 	pad = sensor->entity.num_pads - 1;
 	if (try)
@@ -886,11 +886,11 @@ static int fimc_get_sensor_frame_desc(struct v4l2_subdev *sensor,
 		return -EINVAL;
 
 	for (i = 0; i < num_planes; i++)
-		plane_fmt[i].sizeimage = fd.entry[i].length;
+		plane_fmt[i].sizeimage = fd.entry[i].size.length;
 
-	if (fd.entry[0].length > FIMC_MAX_JPEG_BUF_SIZE) {
+	if (fd.entry[0].size.length > FIMC_MAX_JPEG_BUF_SIZE) {
 		v4l2_err(sensor->v4l2_dev,  "Unsupported buffer size: %u\n",
-			 fd.entry[0].length);
+			 fd.entry[0].size.length);
 
 		return -EINVAL;
 	}
