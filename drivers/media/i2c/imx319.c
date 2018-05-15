@@ -2498,7 +2498,7 @@ static const struct dev_pm_ops imx319_pm_ops = {
 
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id imx319_acpi_ids[] = {
-	{ "IMX319" },
+	{ "SONY319A" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(acpi, imx319_acpi_ids);
@@ -2509,7 +2509,9 @@ static struct i2c_driver imx319_i2c_driver = {
 		.name = "imx319",
 		.owner = THIS_MODULE,
 		.pm = &imx319_pm_ops,
-		/*.acpi_match_table = ACPI_PTR(imx319_acpi_ids),*/
+#ifdef CONFIG_ACPI
+		.acpi_match_table = ACPI_PTR(imx319_acpi_ids),
+#endif
 	},
 	.probe = imx319_probe,
 	.remove = imx319_remove,
