@@ -52,6 +52,54 @@ static void set_context_pdp_root_pointer(
 		pdp_pair[i].val = pdp[7 - i];
 }
 
+/*
+ * when populating shadow ctx from guest, we should not overrride oa related
+ * registers, so that they will not be overlapped by guest oa configs. Thus
+ * made it possible to capture oa data from host for both host and guests.
+ */
+static void sr_oa_regs(struct intel_vgpu_workload *workload,
+		u32 *reg_state, bool save)
+{
+	struct drm_i915_private *dev_priv = workload->vgpu->gvt->dev_priv;
+	u32 ctx_oactxctrl = dev_priv->perf.oa.ctx_oactxctrl_offset;
+	u32 ctx_flexeu0 = dev_priv->perf.oa.ctx_flexeu0_offset;
+	int i = 0;
+	u32 flex_mmio[] = {
+		i915_mmio_reg_offset(EU_PERF_CNTL0),
+		i915_mmio_reg_offset(EU_PERF_CNTL1),
+		i915_mmio_reg_offset(EU_PERF_CNTL2),
+		i915_mmio_reg_offset(EU_PERF_CNTL3),
+		i915_mmio_reg_offset(EU_PERF_CNTL4),
+		i915_mmio_reg_offset(EU_PERF_CNTL5),
+		i915_mmio_reg_offset(EU_PERF_CNTL6),
+	};
+
+	if (!workload || !reg_state || workload->ring_id != RCS)
+		return;
+
+	if (save) {
+		workload->oactxctrl = reg_state[ctx_oactxctrl + 1];
+
+		for (i = 0; i < ARRAY_SIZE(workload->flex_mmio); i++) {
+			u32 state_offset = ctx_flexeu0 + i * 2;
+
+			workload->flex_mmio[i] = reg_state[state_offset + 1];
+		}
+	} else {
+		reg_state[ctx_oactxctrl] =
+			i915_mmio_reg_offset(GEN8_OACTXCONTROL);
+		reg_state[ctx_oactxctrl + 1] = workload->oactxctrl;
+
+		for (i = 0; i < ARRAY_SIZE(workload->flex_mmio); i++) {
+			u32 state_offset = ctx_flexeu0 + i * 2;
+			u32 mmio = flex_mmio[i];
+
+			reg_state[state_offset] = mmio;
+			reg_state[state_offset + 1] = workload->flex_mmio[i];
+		}
+	}
+}
+
 static bool enable_lazy_shadow_ctx = true;
 static int populate_shadow_context(struct intel_vgpu_workload *workload)
 {
@@ -141,6 +189,7 @@ static int populate_shadow_context(struct intel_vgpu_workload *workload)
 	page = i915_gem_object_get_page(ctx_obj, LRC_STATE_PN);
 	shadow_ring_context = kmap(page);
 
+	sr_oa_regs(workload, (u32 *)shadow_ring_context, true);
 #define COPY_REG(name) \
 	intel_gvt_hypervisor_read_gpa(vgpu, workload->ring_context_gpa \
 		+ RING_CTX_OFF(name.val), &shadow_ring_context->name.val, 4)
@@ -165,6 +214,7 @@ static int populate_shadow_context(struct intel_vgpu_workload *workload)
 			sizeof(*shadow_ring_context),
 			GTT_PAGE_SIZE - sizeof(*shadow_ring_context));
 
+	sr_oa_regs(workload, (u32 *)shadow_ring_context, false);
 	kunmap(page);
 	return 0;
 }
@@ -184,19 +234,8 @@ static int shadow_context_status_change(struct notifier_block *nb,
 	enum intel_engine_id ring_id = req->engine->id;
 	struct intel_vgpu_workload *workload;
 
-	if (!is_gvt_request(req)) {
-		spin_lock_bh(&scheduler->mmio_context_lock);
-		if (action == INTEL_CONTEXT_SCHEDULE_IN &&
-		    scheduler->engine_owner[ring_id]) {
-			/* Switch ring from vGPU to host. */
-			intel_gvt_switch_mmio(scheduler->engine_owner[ring_id],
-					      NULL, ring_id);
-			scheduler->engine_owner[ring_id] = NULL;
-		}
-		spin_unlock_bh(&scheduler->mmio_context_lock);
-
+	if (!is_gvt_request(req))
 		return NOTIFY_OK;
-	}
 
 	workload = scheduler->current_workload[ring_id];
 	if (unlikely(!workload))
@@ -204,24 +243,12 @@ static int shadow_context_status_change(struct notifier_block *nb,
 
 	switch (action) {
 	case INTEL_CONTEXT_SCHEDULE_IN:
-		spin_lock_bh(&scheduler->mmio_context_lock);
-		if (workload->vgpu != scheduler->engine_owner[ring_id]) {
-			/* Switch ring from host to vGPU or vGPU to vGPU. */
-			intel_gvt_switch_mmio(scheduler->engine_owner[ring_id],
-					      workload->vgpu, ring_id);
-			scheduler->engine_owner[ring_id] = workload->vgpu;
-		} else
-			gvt_dbg_sched("skip ring %d mmio switch for vgpu%d\n",
-				      ring_id, workload->vgpu->id);
-		spin_unlock_bh(&scheduler->mmio_context_lock);
 		atomic_set(&workload->shadow_ctx_active, 1);
 		break;
 	case INTEL_CONTEXT_SCHEDULE_OUT:
-	case INTEL_CONTEXT_SCHEDULE_PREEMPTED:
 		atomic_set(&workload->shadow_ctx_active, 0);
 		break;
 	default:
-		WARN_ON(1);
 		return NOTIFY_OK;
 	}
 	wake_up(&workload->shadow_ctx_status_wq);
@@ -412,6 +439,15 @@ static void gen8_shadow_pid_cid(struct intel_vgpu_workload *workload)
 	intel_ring_advance(workload->req, cs);
 }
 
+static int sanitize_priority(int priority)
+{
+	if (priority > I915_CONTEXT_MAX_USER_PRIORITY)
+		return I915_CONTEXT_MAX_USER_PRIORITY;
+	else if (priority < I915_CONTEXT_MIN_USER_PRIORITY)
+		return I915_CONTEXT_MIN_USER_PRIORITY;
+	return priority;
+}
+
 static int dispatch_workload(struct intel_vgpu_workload *workload)
 {
 	int ring_id = workload->ring_id;
@@ -470,6 +506,8 @@ out:
 	if (!IS_ERR_OR_NULL(workload->req)) {
 		gvt_dbg_sched("ring id %d submit workload to i915 %p\n",
 				ring_id, workload->req);
+		shadow_ctx->priority = i915_modparams.gvt_workload_priority =
+			sanitize_priority(i915_modparams.gvt_workload_priority);
 		i915_add_request(workload->req);
 		workload->dispatched = true;
 	}

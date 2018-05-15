@@ -56,26 +56,28 @@ struct trusty_smc_interface {
 
 static ulong (*smc)(ulong, ulong, ulong, ulong);
 
-#define asm_smc_vmcall(smc_id, rdi, rsi, rdx, rbx) \
-do { \
-	__asm__ __volatile__( \
-	"vmcall; \n" \
-	: "=D"(rdi) \
-	: "r"(smc_id), "D"(rdi), "S"(rsi), "d"(rdx), "b"(rbx) \
-	); \
-} while (0)
-
 static inline ulong smc_evmm(ulong r0, ulong r1, ulong r2, ulong r3)
 {
 	register unsigned long smc_id asm("rax") = EVMM_SMC_HC_ID;
-	asm_smc_vmcall(smc_id, r0, r1, r2, r3);
+	__asm__ __volatile__(
+		"vmcall; \n"
+		: "=D"(r0)
+		: "r"(smc_id), "D"(r0), "S"(r1), "d"(r2), "b"(r3)
+	);
+
 	return r0;
 }
 
 static inline ulong smc_acrn(ulong r0, ulong r1, ulong r2, ulong r3)
 {
 	register unsigned long smc_id asm("r8") = ACRN_SMC_HC_ID;
-	asm_smc_vmcall(smc_id, r0, r1, r2, r3);
+	__asm__ __volatile__(
+		"vmcall; \n"
+		: "=D"(r0)
+		: "r"(smc_id), "D"(r0), "S"(r1), "d"(r2), "b"(r3)
+		: "rax"
+	);
+
 	return r0;
 }
 

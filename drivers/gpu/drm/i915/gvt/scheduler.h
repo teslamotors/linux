@@ -111,6 +111,10 @@ struct intel_vgpu_workload {
 	/* shadow batch buffer */
 	struct list_head shadow_bb;
 	struct intel_shadow_wa_ctx wa_ctx;
+
+	/* oa registers */
+	u32 oactxctrl;
+	u32 flex_mmio[7];
 };
 
 /* Intel shadow batch buffer is a i915 gem object */

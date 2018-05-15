@@ -139,7 +139,7 @@
  * SMC_SC_DESTROY_WALL - notifies secure side that previously specifies SM Wall
  * object should be released usually as part of normal shutdown sequence.
  */
-#define SMC_FC_GET_WALL_SIZE	SMC_FASTCALL_NR(SMC_ENTITY_SECURE_MONITOR, 12)
+#define SMC_FC_GET_WALL_SIZE	SMC_FASTCALL_NR(SMC_ENTITY_SECURE_MONITOR, 20)
 #define SMC_SC_SETUP_WALL	SMC_STDCALL_NR(SMC_ENTITY_SECURE_MONITOR,  12)
 #define SMC_SC_DESTROY_WALL	SMC_STDCALL_NR(SMC_ENTITY_SECURE_MONITOR,  13)
 

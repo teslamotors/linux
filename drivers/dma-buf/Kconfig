@@ -30,4 +30,6 @@ config SW_SYNC
 	  WARNING: improper use of this can result in deadlocking kernel
 	  drivers from userspace. Intended for test and debug only.
 
+source "drivers/dma-buf/hyper_dmabuf/Kconfig"
+
 endmenu

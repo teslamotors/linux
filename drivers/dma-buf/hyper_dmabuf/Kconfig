@@ -1,0 +1,71 @@
+menu "hyper_dmabuf options"
+
+config HYPER_DMABUF
+	bool "Enables hyper dmabuf driver"
+	default y
+
+choice
+	prompt "Hypervisor"
+	depends on HYPER_DMABUF
+	default HYPER_DMABUF_XEN
+
+config HYPER_DMABUF_XEN
+	bool "Configure hyper_dmabuf for XEN hypervisor"
+	depends on HYPER_DMABUF && XEN
+	help
+	  Configuring hyper_dmabuf driver for XEN hypervisor
+
+config HYPER_DMABUF_ACRN
+	bool "Configure hyper_dmabuf for ACRN hypervisor"
+	depends on HYPER_DMABUF && ACRN_VIRTIO_DEVICES
+	help
+	  Configuring hyper_dmabuf driver for ACRN hypervisor
+endchoice
+
+choice
+        prompt "Virtio driver type"
+        depends on HYPER_DMABUF && HYPER_DMABUF_ACRN
+        default HYPER_DMABUF_VIRTIO_BE
+
+config HYPER_DMABUF_VIRTIO_BE
+	depends on VBS && DRM_I915_GVT
+	bool "Configure hyper_dmabuf as virtio backend"
+	help
+	  Configuring hyper_dmabuf driver as virtio backend
+
+config HYPER_DMABUF_VIRTIO_FE
+	depends on ACRN_VIRTIO_DEVICES
+	bool "Configure hyper_dmabuf as virtio frontend"
+	help
+	  Configuring hyper_dmabuf driver as virtio frontend
+endchoice
+
+config HYPER_DMABUF_SYSFS
+	bool "Enable sysfs information about hyper DMA buffers"
+	default y
+	depends on HYPER_DMABUF
+	help
+	  Expose information about imported and exported buffers using
+	  hyper_dmabuf driver
+
+config HYPER_DMABUF_EVENT_GEN
+	bool "Enable event-generation and polling operation"
+	default n
+	depends on HYPER_DMABUF
+	help
+	  With this config enabled, hyper_dmabuf driver on the importer side
+	  generates events and queue those up in the event list whenever a new
+	  shared DMA-BUF is available. Events in the list can be retrieved by
+	  read operation.
+
+config HYPER_DMABUF_XEN_AUTO_RX_CH_ADD
+	bool "Enable automatic rx-ch add with 10 secs interval"
+	default y
+	depends on HYPER_DMABUF && HYPER_DMABUF_XEN
+	help
+	  If enabled, driver reads a node in xenstore every 10 seconds
+	  to check whether there is any tx comm ch configured by another
+	  domain then initialize matched rx comm ch automatically for any
+	  existing tx comm chs.
+
+endmenu

@@ -21,7 +21,10 @@
 #include <linux/poll.h>
 #include <linux/idr.h>
 #include <linux/completion.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 #include <linux/sched/signal.h>
+#endif
 #include <linux/sched.h>
 #include <linux/compat.h>
 #include <linux/uio.h>
@@ -1558,7 +1561,11 @@ static int tipc_virtio_probe(struct virtio_device *vdev)
 	vds->cdev_name[sizeof(vds->cdev_name)-1] = '\0';
 
 	/* find tx virtqueues (rx and tx and in this order) */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 	err = vdev->config->find_vqs(vdev, 2, vqs, vq_cbs, vq_names, NULL, NULL);
+#else
+	err = vdev->config->find_vqs(vdev, 2, vqs, vq_cbs, vq_names);
+#endif
 	if (err)
 		goto err_find_vqs;
 

@@ -57,6 +57,7 @@
 
 #include <linux/gfp.h>
 #include <asm/pgtable.h>
+#include <asm/hypervisor.h>
 #include <linux/vhm/acrn_hv_defs.h>
 #include <linux/vhm/vhm_hypercall.h>
 #include "sbuf.h"
@@ -169,6 +170,9 @@ EXPORT_SYMBOL(sbuf_get);
 int sbuf_share_setup(uint32_t pcpu_id, uint32_t sbuf_id, shared_buf_t *sbuf)
 {
 	struct sbuf_setup_param ssp;
+
+	if (x86_hyper_type != X86_HYPER_ACRN)
+		return -ENODEV;
 
 	ssp.pcpu_id = pcpu_id;
 	ssp.sbuf_id = sbuf_id;

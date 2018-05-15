@@ -25,6 +25,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/acpi.h>
 #include <linux/delay.h>
+#include <linux/usb/phy.h>
 
 #define PCI_DEVICE_ID_SYNOPSYS_HAPSUSB3		0xabcd
 #define PCI_DEVICE_ID_SYNOPSYS_HAPSUSB3_AXI	0xabce
@@ -129,16 +130,27 @@ static int dwc3_pci_quirks(struct dwc3_pci *dwc)
 		    pdev->device == PCI_DEVICE_ID_INTEL_BXT_M ||
 		    pdev->device == PCI_DEVICE_ID_INTEL_APL ) {
 
-			dwc->usb2_phy = platform_device_alloc(
-							"intel_usb_dr_phy", 0);
-			if (!dwc->usb2_phy)
-				return -ENOMEM;
-
-			dwc->usb2_phy->dev.parent = &pdev->dev;
-	                ret = platform_device_add(dwc->usb2_phy);
-		        if (ret) {
-			        platform_device_put(dwc->usb2_phy);
-				return ret;
+			if (IS_ERR_OR_NULL(usb_get_phy(USB_PHY_TYPE_USB2))) {
+				/* Unable to get phy, very likely intel_usb_dr_phy
+				 * platform device not yet allocated. Possible
+				 * race with another drivers.
+				 */
+				dwc->usb2_phy = platform_device_alloc(
+								"intel_usb_dr_phy", 0);
+				if (dwc->usb2_phy) {
+					dwc->usb2_phy->dev.parent = &pdev->dev;
+					ret = platform_device_add(dwc->usb2_phy);
+					if (ret) {
+						platform_device_put(dwc->usb2_phy);
+						return ret;
+					}
+				} else if (IS_ERR_OR_NULL(usb_get_phy(USB_PHY_TYPE_USB2))) {
+					/* In case of a race and another driver allocate
+					 * intel_usb_dr_phy platform device earlier, check
+					 * whether phy is already available. If not return error.
+					 */
+					return -ENOMEM;
+				}
 			}
 		}
 

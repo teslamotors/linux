@@ -590,6 +590,9 @@ static int __init vhm_init(void)
 	unsigned long flag;
 	struct hc_api_version api_version = {0, 0};
 
+	if (x86_hyper_type != X86_HYPER_ACRN)
+		return -ENODEV;
+
 	pr_info("vhm: initializing\n");
 
 	if (hcall_get_api_version(virt_to_phys(&api_version)) < 0) {
