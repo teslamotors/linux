@@ -1,0 +1,5 @@
+config VIDEO_LC898122
+	tristate "lc898122 voice coil support"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	This is a driver for the LC898122 camera lens voice coil.

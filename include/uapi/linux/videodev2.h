@@ -149,6 +149,10 @@ enum v4l2_buf_type {
 	V4L2_BUF_TYPE_PRIVATE              = 0x80,
 };
 
+#define V4L2_BUF_TYPE_TYPE_MASK		0x000000ff
+#define V4L2_BUF_TYPE_SUBSTREAM_MASK	0x0000ff00
+#define V4L2_BUF_TYPE_SUBSTREAM_SHIFT	8
+
 #define V4L2_TYPE_IS_MULTIPLANAR(type)			\
 	((type) == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE	\
 	 || (type) == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
@@ -609,10 +613,44 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_SGBRG12P v4l2_fourcc('p', 'G', 'C', 'C')
 #define V4L2_PIX_FMT_SGRBG12P v4l2_fourcc('p', 'g', 'C', 'C')
 #define V4L2_PIX_FMT_SRGGB12P v4l2_fourcc('p', 'R', 'C', 'C')
+#define V4L2_PIX_FMT_SBGGR14 v4l2_fourcc('B', 'G', '1', '4') /* 14  BGBG.. GRGR.. */
+#define V4L2_PIX_FMT_SGBRG14 v4l2_fourcc('G', 'B', '1', '4') /* 14  GBGB.. RGRG.. */
+#define V4L2_PIX_FMT_SGRBG14 v4l2_fourcc('B', 'A', '1', '4') /* 14  GRGR.. BGBG.. */
+#define V4L2_PIX_FMT_SRGGB14 v4l2_fourcc('R', 'G', '1', '4') /* 14  RGRG.. GBGB.. */
+	/* 14bit raw bayer packed, 7 bytes for every 4 pixels */
+#define V4L2_PIX_FMT_SBGGR14P v4l2_fourcc('p', 'B', 'E', 'E')
+#define V4L2_PIX_FMT_SGBRG14P v4l2_fourcc('p', 'G', 'E', 'E')
+#define V4L2_PIX_FMT_SGRBG14P v4l2_fourcc('p', 'g', 'E', 'E')
+#define V4L2_PIX_FMT_SRGGB14P v4l2_fourcc('p', 'R', 'E', 'E')
 #define V4L2_PIX_FMT_SBGGR16 v4l2_fourcc('B', 'Y', 'R', '2') /* 16  BGBG.. GRGR.. */
 #define V4L2_PIX_FMT_SGBRG16 v4l2_fourcc('G', 'B', '1', '6') /* 16  GBGB.. RGRG.. */
 #define V4L2_PIX_FMT_SGRBG16 v4l2_fourcc('G', 'R', '1', '6') /* 16  GRGR.. BGBG.. */
 #define V4L2_PIX_FMT_SRGGB16 v4l2_fourcc('R', 'G', '1', '6') /* 16  RGRG.. GBGB.. */
+
+/* Raw bayer vector formats. */
+#define V4L2_PIX_FMT_SBGGR8_16V32      v4l2_fourcc('b', 'V', '0', 'A')
+#define V4L2_PIX_FMT_SGBRG8_16V32      v4l2_fourcc('b', 'V', '0', 'B')
+#define V4L2_PIX_FMT_SGRBG8_16V32      v4l2_fourcc('b', 'V', '0', 'C')
+#define V4L2_PIX_FMT_SRGGB8_16V32      v4l2_fourcc('b', 'V', '0', 'D')
+#define V4L2_PIX_FMT_SBGGR10V32                v4l2_fourcc('b', 'V', '0', 'E')
+#define V4L2_PIX_FMT_SGBRG10V32                v4l2_fourcc('b', 'V', '0', 'F')
+#define V4L2_PIX_FMT_SGRBG10V32                v4l2_fourcc('b', 'V', '0', 'G')
+#define V4L2_PIX_FMT_SRGGB10V32                v4l2_fourcc('b', 'V', '0', 'H')
+#define V4L2_PIX_FMT_SBGGR12V32                v4l2_fourcc('b', 'V', '0', 'I')
+#define V4L2_PIX_FMT_SGBRG12V32                v4l2_fourcc('b', 'V', '0', 'J')
+#define V4L2_PIX_FMT_SGRBG12V32                v4l2_fourcc('b', 'V', '0', 'K')
+#define V4L2_PIX_FMT_SRGGB12V32                v4l2_fourcc('b', 'V', '0', 'L')
+
+/* BEGIN remove once the user space has been updated */
+#define V4L2_PIX_FMT_SBGGR8V32 v4l2_fourcc('b', 'V', '0', 'A')
+#define V4L2_PIX_FMT_SGBRG8V32 v4l2_fourcc('b', 'V', '0', 'B')
+#define V4L2_PIX_FMT_SGRBG8V32 v4l2_fourcc('b', 'V', '0', 'C')
+#define V4L2_PIX_FMT_SRGGB8V32 v4l2_fourcc('b', 'V', '0', 'D')
+/* END remove once the user space has been updated */
+
+/* YUV vector formats. */
+#define V4L2_PIX_FMT_UYVY_V32          v4l2_fourcc('y', 'V', '3', '2')
+#define V4L2_PIX_FMT_YUYV420_V32       v4l2_fourcc('y', '0', '3', '2')
 
 /* HSV formats */
 #define V4L2_PIX_FMT_HSV24 v4l2_fourcc('H', 'S', 'V', '3')
@@ -902,6 +940,7 @@ struct v4l2_plane {
  * @length:	size in bytes of the buffer (NOT its payload) for single-plane
  *		buffers (when type != *_MPLANE); number of elements in the
  *		planes array for multi-plane buffers
+ * @request: this buffer should use this request
  *
  * Contains data exchanged by application and driver using one of the Streaming
  * I/O methods.
@@ -925,7 +964,7 @@ struct v4l2_buffer {
 		__s32		fd;
 	} m;
 	__u32			length;
-	__u32			reserved2;
+	__u32			request;
 	__u32			reserved;
 };
 
