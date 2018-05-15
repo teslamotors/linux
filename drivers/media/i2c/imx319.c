@@ -81,6 +81,34 @@ struct imx319_mode {
 	struct imx319_reg_list reg_list;
 };
 
+struct imx319 {
+	struct v4l2_subdev sd;
+	struct media_pad pad;
+
+	struct v4l2_ctrl_handler ctrl_handler;
+	/* V4L2 Controls */
+	struct v4l2_ctrl *link_freq;
+	struct v4l2_ctrl *pixel_rate;
+	struct v4l2_ctrl *vblank;
+	struct v4l2_ctrl *hblank;
+	struct v4l2_ctrl *exposure;
+	struct v4l2_ctrl *vflip;
+	struct v4l2_ctrl *hflip;
+
+	/* Current mode */
+	const struct imx319_mode *cur_mode;
+
+	/*
+	 * Mutex for serialized access:
+	 * Protect sensor set pad format and start/stop streaming safely.
+	 * Protect access to sensor v4l2 controls.
+	 */
+	struct mutex mutex;
+
+	/* Streaming on/off */
+	bool streaming;
+};
+
 static const struct imx319_reg imx319_global_regs[] = {
 	{ 0x0136, 0x13 },
 	{ 0x0137, 0x33 },
@@ -1699,31 +1727,10 @@ static const struct imx319_mode supported_modes[] = {
 	},
 };
 
-struct imx319 {
-	struct v4l2_subdev sd;
-	struct media_pad pad;
-
-	struct v4l2_ctrl_handler ctrl_handler;
-	/* V4L2 Controls */
-	struct v4l2_ctrl *link_freq;
-	struct v4l2_ctrl *pixel_rate;
-	struct v4l2_ctrl *vblank;
-	struct v4l2_ctrl *hblank;
-	struct v4l2_ctrl *exposure;
-	struct v4l2_ctrl *vflip;
-	struct v4l2_ctrl *hflip;
-
-	/* Current mode */
-	const struct imx319_mode *cur_mode;
-
-	/* Mutex for serialized access */
-	struct mutex mutex;
-
-	/* Streaming on/off */
-	bool streaming;
-};
-
-#define to_imx319(_sd)	container_of(_sd, struct imx319, sd)
+static inline struct imx319 *to_imx319(struct v4l2_subdev *_sd)
+{
+	return container_of(_sd, struct imx319, sd);
+}
 
 /* Get bayer order based on flip setting. */
 static __u32 imx319_get_format_code(struct imx319 *imx319)
@@ -1838,9 +1845,8 @@ static int imx319_write_reg_list(struct imx319 *imx319,
 static int imx319_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct imx319 *imx319 = to_imx319(sd);
-	struct v4l2_mbus_framefmt *try_fmt = v4l2_subdev_get_try_format(sd,
-									fh->pad,
-									0);
+	struct v4l2_mbus_framefmt *try_fmt =
+		v4l2_subdev_get_try_format(sd, fh->pad, 0);
 
 	mutex_lock(&imx319->mutex);
 
@@ -1870,7 +1876,7 @@ static int imx319_update_digital_gain(struct imx319 *imx319, u32 d_gain)
 static int imx319_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx319 *imx319 = container_of(ctrl->handler,
-					       struct imx319, ctrl_handler);
+					     struct imx319, ctrl_handler);
 	struct i2c_client *client = v4l2_get_subdevdata(&imx319->sd);
 	s64 max;
 	int ret;
@@ -1893,7 +1899,6 @@ static int imx319_set_ctrl(struct v4l2_ctrl *ctrl)
 	if (pm_runtime_get_if_in_use(&client->dev) <= 0)
 		return 0;
 
-	ret = 0;
 	switch (ctrl->id) {
 	case V4L2_CID_ANALOGUE_GAIN:
 		/* Analog gain = 1024/(1024 - ctrl->val) times */
@@ -1923,6 +1928,7 @@ static int imx319_set_ctrl(struct v4l2_ctrl *ctrl)
 				       imx319->vflip->val << 1);
 		break;
 	default:
+		ret = -EINVAL;
 		dev_info(&client->dev,
 			 "ctrl(id:0x%x,val:0x%x) is not handled\n",
 			 ctrl->id, ctrl->val);
@@ -2112,8 +2118,8 @@ static int imx319_start_streaming(struct imx319 *imx319)
 	reg_list = &imx319_global_setting;
 	ret = imx319_write_reg_list(imx319, reg_list);
 	if (ret) {
-		dev_err(&client->dev,
-			"%s failed to set global settings\n", __func__);
+		dev_err(&client->dev, "%s failed to set global settings\n",
+			__func__);
 		return ret;
 	}
 
@@ -2279,7 +2285,6 @@ static int imx319_init_controls(struct imx319 *imx319)
 	if (ret)
 		return ret;
 
-	mutex_init(&imx319->mutex);
 	ctrl_hdlr->lock = &imx319->mutex;
 	imx319->link_freq = v4l2_ctrl_new_int_menu(ctrl_hdlr,
 				&imx319_ctrl_ops,
@@ -2352,7 +2357,6 @@ static int imx319_init_controls(struct imx319 *imx319)
 
 error:
 	v4l2_ctrl_handler_free(ctrl_hdlr);
-	mutex_destroy(&imx319->mutex);
 
 	return ret;
 }
@@ -2360,7 +2364,6 @@ error:
 static void imx319_free_controls(struct imx319 *imx319)
 {
 	v4l2_ctrl_handler_free(imx319->sd.ctrl_handler);
-	mutex_destroy(&imx319->mutex);
 }
 
 static int imx319_probe(struct i2c_client *client,
@@ -2373,6 +2376,8 @@ static int imx319_probe(struct i2c_client *client,
 	if (!imx319)
 		return -ENOMEM;
 
+	mutex_init(&imx319->mutex);
+
 	/* Initialize subdev */
 	v4l2_i2c_subdev_init(&imx319->sd, client, &imx319_subdev_ops);
 
@@ -2380,15 +2385,17 @@ static int imx319_probe(struct i2c_client *client,
 	ret = imx319_identify_module(imx319);
 	if (ret) {
 		dev_err(&client->dev, "failed to find sensor: %d\n", ret);
-		return ret;
+		goto error_probe;
 	}
 
 	/* Set default mode to max resolution */
 	imx319->cur_mode = &supported_modes[0];
 
 	ret = imx319_init_controls(imx319);
-	if (ret)
-		return ret;
+	if (ret) {
+		dev_err(&client->dev, "failed to init controls: %d\n", ret);
+		goto error_probe;
+	}
 
 	/* Initialize subdev */
 	imx319->sd.internal_ops = &imx319_internal_ops;
@@ -2424,7 +2431,9 @@ error_media_entity:
 
 error_handler_free:
 	imx319_free_controls(imx319);
-	dev_err(&client->dev, "%s failed:%d\n", __func__, ret);
+
+error_probe:
+	mutex_destroy(&imx319->mutex);
 
 	return ret;
 }
@@ -2446,6 +2455,7 @@ static int imx319_remove(struct i2c_client *client)
 	pm_runtime_disable(&client->dev);
 	pm_runtime_set_suspended(&client->dev);
 	pm_runtime_put_noidle(&client->dev);
+	mutex_destroy(&imx319->mutex);
 
 	return 0;
 }
