@@ -1724,19 +1724,11 @@ static int imx355_probe(struct i2c_client *client,
 	imx355->sd.internal_ops = &imx355_internal_ops;
 	imx355->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	imx355->sd.entity.ops = &imx355_subdev_entity_ops;
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 4, 0)
 	imx355->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
-#else
-	imx355->sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
-#endif
 
 	/* Initialize source pad */
 	imx355->pad.flags = MEDIA_PAD_FL_SOURCE;
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 4, 0)
 	ret = media_entity_pads_init(&imx355->sd.entity, 1, &imx355->pad);
-#else
-	ret = media_entity_init(&imx355->sd.entity, 1, &imx355->pad, 0);
-#endif
 	if (ret) {
 		dev_err(&client->dev, "%s failed:%d\n", __func__, ret);
 		goto error_handler_free;
