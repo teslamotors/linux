@@ -8,12 +8,6 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 
-#ifndef V4L2_CID_DIGITAL_GAIN
-#define V4L2_CID_DIGITAL_GAIN V4L2_CID_GAIN
-#endif
-
-#define IMX355_REG_VALUE_08BIT		1
-#define IMX355_REG_VALUE_16BIT		2
 
 #define IMX355_REG_MODE_SELECT		0x0100
 #define IMX355_MODE_STANDBY		0x00
@@ -58,9 +52,6 @@
 
 /* Flip Control */
 #define IMX355_REG_ORIENTATION		0x0101
-
-/* Number of frames to skip */
-#define IMX355_NUM_OF_SKIP_FRAMES	2
 
 struct imx355_reg {
 	u16 address;
@@ -1153,7 +1144,6 @@ static int imx355_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	try_fmt->code = imx355_get_format_code(imx355);
 	try_fmt->field = V4L2_FIELD_NONE;
 
-	/* No crop or compose */
 	mutex_unlock(&imx355->mutex);
 
 	return 0;
@@ -1163,21 +1153,12 @@ static int imx355_update_digital_gain(struct imx355 *imx355, u32 d_gain)
 {
 	int ret;
 
-	ret = imx355_write_reg(imx355, IMX355_REG_DPGA_USE_GLOBAL_GAIN,
-			       IMX355_REG_VALUE_08BIT, 1);
+	ret = imx355_write_reg(imx355, IMX355_REG_DPGA_USE_GLOBAL_GAIN, 1, 1);
 	if (ret)
 		return ret;
 
 	/* Digital gain = (d_gain & 0xFF00) + (d_gain & 0xFF)/256 times */
-	return imx355_write_reg(imx355, IMX355_REG_DIG_GAIN_GLOBAL,
-				IMX355_REG_VALUE_16BIT, d_gain);
-}
-
-static int imx355_enable_test_pattern(struct imx355 *imx355, u32 pattern)
-{
-	return imx355_write_reg(imx355, IMX355_REG_TEST_PATTERN,
-				IMX355_REG_VALUE_16BIT,
-				imx355_test_pattern_val[pattern]);
+	return imx355_write_reg(imx355, IMX355_REG_DIG_GAIN_GLOBAL, 2, d_gain);
 }
 
 static int imx355_set_ctrl(struct v4l2_ctrl *ctrl)
@@ -1211,32 +1192,29 @@ static int imx355_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_ANALOGUE_GAIN:
 		/* Analog gain = 1024/(1024 - ctrl->val) times */
 		ret = imx355_write_reg(imx355, IMX355_REG_ANALOG_GAIN,
-					IMX355_REG_VALUE_16BIT, ctrl->val);
+				       2, ctrl->val);
 		break;
 	case V4L2_CID_DIGITAL_GAIN:
 		ret = imx355_update_digital_gain(imx355, ctrl->val);
 		break;
 	case V4L2_CID_EXPOSURE:
 		ret = imx355_write_reg(imx355, IMX355_REG_EXPOSURE,
-					IMX355_REG_VALUE_16BIT,
-					ctrl->val);
+				       2, ctrl->val);
 		break;
 	case V4L2_CID_VBLANK:
 		/* Update FLL that meets expected vertical blanking */
-		ret = imx355_write_reg(imx355, IMX355_REG_FLL,
-					IMX355_REG_VALUE_16BIT,
-					imx355->cur_mode->height
-					  + ctrl->val);
+		ret = imx355_write_reg(imx355, IMX355_REG_FLL, 2,
+				       imx355->cur_mode->height + ctrl->val);
 		break;
 	case V4L2_CID_TEST_PATTERN:
-		ret = imx355_enable_test_pattern(imx355, ctrl->val);
+		ret = imx355_write_reg(imx355, IMX355_REG_TEST_PATTERN,
+				       2, imx355_test_pattern_val[ctrl->val]);
 		break;
 	case V4L2_CID_HFLIP:
 	case V4L2_CID_VFLIP:
-		ret = imx355_write_reg(imx355, IMX355_REG_ORIENTATION,
-					IMX355_REG_VALUE_08BIT,
-					imx355->hflip->val |
-					imx355->vflip->val << 1);
+		ret = imx355_write_reg(imx355, IMX355_REG_ORIENTATION, 1,
+				       imx355->hflip->val |
+				       imx355->vflip->val << 1);
 		break;
 	default:
 		dev_info(&client->dev,
@@ -1417,13 +1395,6 @@ imx355_set_pad_format(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int imx355_get_skip_frames(struct v4l2_subdev *sd, u32 *frames)
-{
-	*frames = IMX355_NUM_OF_SKIP_FRAMES;
-
-	return 0;
-}
-
 /* Start streaming */
 static int imx355_start_streaming(struct imx355 *imx355)
 {
@@ -1454,15 +1425,14 @@ static int imx355_start_streaming(struct imx355 *imx355)
 		return ret;
 
 	return imx355_write_reg(imx355, IMX355_REG_MODE_SELECT,
-				 IMX355_REG_VALUE_08BIT,
-				 IMX355_MODE_STREAMING);
+				1, IMX355_MODE_STREAMING);
 }
 
 /* Stop streaming */
 static int imx355_stop_streaming(struct imx355 *imx355)
 {
 	return imx355_write_reg(imx355, IMX355_REG_MODE_SELECT,
-				 IMX355_REG_VALUE_08BIT, IMX355_MODE_STANDBY);
+				1, IMX355_MODE_STANDBY);
 }
 
 static int imx355_set_stream(struct v4l2_subdev *sd, int enable)
@@ -1549,8 +1519,7 @@ static int imx355_identify_module(struct imx355 *imx355)
 	int ret;
 	u32 val;
 
-	ret = imx355_read_reg(imx355, IMX355_REG_CHIP_ID,
-			       IMX355_REG_VALUE_16BIT, &val);
+	ret = imx355_read_reg(imx355, IMX355_REG_CHIP_ID, 2, &val);
 	if (ret)
 		return ret;
 
@@ -1573,14 +1542,9 @@ static const struct v4l2_subdev_pad_ops imx355_pad_ops = {
 	.enum_frame_size = imx355_enum_frame_size,
 };
 
-static const struct v4l2_subdev_sensor_ops imx355_sensor_ops = {
-	.g_skip_frames = imx355_get_skip_frames,
-};
-
 static const struct v4l2_subdev_ops imx355_subdev_ops = {
 	.video = &imx355_video_ops,
 	.pad = &imx355_pad_ops,
-	.sensor = &imx355_sensor_ops,
 };
 
 static const struct media_entity_operations imx355_subdev_entity_ops = {
@@ -1790,22 +1754,18 @@ static const struct dev_pm_ops imx355_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(imx355_suspend, imx355_resume)
 };
 
-#ifdef CONFIG_ACPI
 static const struct acpi_device_id imx355_acpi_ids[] = {
 	{"SONY355A"},
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(acpi, imx355_acpi_ids);
-#endif
 
 static struct i2c_driver imx355_i2c_driver = {
 	.driver = {
 		.name = "imx355",
 		.owner = THIS_MODULE,
 		.pm = &imx355_pm_ops,
-#ifdef CONFIG_ACPI
 		.acpi_match_table = ACPI_PTR(imx355_acpi_ids),
-#endif
 	},
 	.probe = imx355_probe,
 	.remove = imx355_remove,
