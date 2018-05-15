@@ -81,6 +81,34 @@ struct imx355_mode {
 	struct imx355_reg_list reg_list;
 };
 
+struct imx355 {
+	struct v4l2_subdev sd;
+	struct media_pad pad;
+
+	struct v4l2_ctrl_handler ctrl_handler;
+	/* V4L2 Controls */
+	struct v4l2_ctrl *link_freq;
+	struct v4l2_ctrl *pixel_rate;
+	struct v4l2_ctrl *vblank;
+	struct v4l2_ctrl *hblank;
+	struct v4l2_ctrl *exposure;
+	struct v4l2_ctrl *vflip;
+	struct v4l2_ctrl *hflip;
+
+	/* Current mode */
+	const struct imx355_mode *cur_mode;
+
+	/*
+	 * Mutex for serialized access:
+	 * Protect sensor set pad format and start/stop streaming safely.
+	 * Protect access to sensor v4l2 controls.
+	 */
+	struct mutex mutex;
+
+	/* Streaming on/off */
+	bool streaming;
+};
+
 static const struct imx355_reg imx355_global_regs[] = {
 	{ 0x0136, 0x13 },
 	{ 0x0137, 0x33 },
@@ -122,7 +150,7 @@ static const struct imx355_reg imx355_global_regs[] = {
 	{ 0x5963, 0x01 },
 };
 
-struct imx355_reg_list imx355_global_setting = {
+static const struct imx355_reg_list imx355_global_setting = {
 	.num_of_regs = ARRAY_SIZE(imx355_global_regs),
 	.regs = imx355_global_regs,
 };
@@ -993,31 +1021,10 @@ static const struct imx355_mode supported_modes[] = {
 	},
 };
 
-struct imx355 {
-	struct v4l2_subdev sd;
-	struct media_pad pad;
-
-	struct v4l2_ctrl_handler ctrl_handler;
-	/* V4L2 Controls */
-	struct v4l2_ctrl *link_freq;
-	struct v4l2_ctrl *pixel_rate;
-	struct v4l2_ctrl *vblank;
-	struct v4l2_ctrl *hblank;
-	struct v4l2_ctrl *exposure;
-	struct v4l2_ctrl *vflip;
-	struct v4l2_ctrl *hflip;
-
-	/* Current mode */
-	const struct imx355_mode *cur_mode;
-
-	/* Mutex for serialized access */
-	struct mutex mutex;
-
-	/* Streaming on/off */
-	bool streaming;
-};
-
-#define to_imx355(_sd)	container_of(_sd, struct imx355, sd)
+static inline struct imx355 *to_imx355(struct v4l2_subdev *_sd)
+{
+	return container_of(_sd, struct imx355, sd);
+}
 
 /* Get bayer order based on flip setting. */
 static __u32 imx355_get_format_code(struct imx355 *imx355)
@@ -1108,7 +1115,7 @@ static int imx355_write_regs(struct imx355 *imx355,
 
 	for (i = 0; i < len; i++) {
 		ret = imx355_write_reg(imx355, regs[i].address, 1,
-					regs[i].val);
+				       regs[i].val);
 		if (ret) {
 			dev_err_ratelimited(
 				&client->dev,
@@ -1132,9 +1139,8 @@ static int imx355_write_reg_list(struct imx355 *imx355,
 static int imx355_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct imx355 *imx355 = to_imx355(sd);
-	struct v4l2_mbus_framefmt *try_fmt = v4l2_subdev_get_try_format(sd,
-									fh->pad,
-									0);
+	struct v4l2_mbus_framefmt *try_fmt =
+		v4l2_subdev_get_try_format(sd, fh->pad, 0);
 
 	mutex_lock(&imx355->mutex);
 
@@ -1164,7 +1170,7 @@ static int imx355_update_digital_gain(struct imx355 *imx355, u32 d_gain)
 static int imx355_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx355 *imx355 = container_of(ctrl->handler,
-					       struct imx355, ctrl_handler);
+					     struct imx355, ctrl_handler);
 	struct i2c_client *client = v4l2_get_subdevdata(&imx355->sd);
 	s64 max;
 	int ret;
@@ -1187,7 +1193,6 @@ static int imx355_set_ctrl(struct v4l2_ctrl *ctrl)
 	if (pm_runtime_get_if_in_use(&client->dev) <= 0)
 		return 0;
 
-	ret = 0;
 	switch (ctrl->id) {
 	case V4L2_CID_ANALOGUE_GAIN:
 		/* Analog gain = 1024/(1024 - ctrl->val) times */
@@ -1217,6 +1222,7 @@ static int imx355_set_ctrl(struct v4l2_ctrl *ctrl)
 				       imx355->vflip->val << 1);
 		break;
 	default:
+		ret = -EINVAL;
 		dev_info(&client->dev,
 			 "ctrl(id:0x%x,val:0x%x) is not handled\n",
 			 ctrl->id, ctrl->val);
@@ -1573,7 +1579,6 @@ static int imx355_init_controls(struct imx355 *imx355)
 	if (ret)
 		return ret;
 
-	mutex_init(&imx355->mutex);
 	ctrl_hdlr->lock = &imx355->mutex;
 	imx355->link_freq = v4l2_ctrl_new_int_menu(ctrl_hdlr,
 				&imx355_ctrl_ops,
@@ -1646,7 +1651,6 @@ static int imx355_init_controls(struct imx355 *imx355)
 
 error:
 	v4l2_ctrl_handler_free(ctrl_hdlr);
-	mutex_destroy(&imx355->mutex);
 
 	return ret;
 }
@@ -1654,7 +1658,6 @@ error:
 static void imx355_free_controls(struct imx355 *imx355)
 {
 	v4l2_ctrl_handler_free(imx355->sd.ctrl_handler);
-	mutex_destroy(&imx355->mutex);
 }
 
 static int imx355_probe(struct i2c_client *client,
@@ -1667,6 +1670,8 @@ static int imx355_probe(struct i2c_client *client,
 	if (!imx355)
 		return -ENOMEM;
 
+	mutex_init(&imx355->mutex);
+
 	/* Initialize subdev */
 	v4l2_i2c_subdev_init(&imx355->sd, client, &imx355_subdev_ops);
 
@@ -1674,15 +1679,17 @@ static int imx355_probe(struct i2c_client *client,
 	ret = imx355_identify_module(imx355);
 	if (ret) {
 		dev_err(&client->dev, "failed to find sensor: %d\n", ret);
-		return ret;
+		goto error_probe;
 	}
 
 	/* Set default mode to max resolution */
 	imx355->cur_mode = &supported_modes[0];
 
 	ret = imx355_init_controls(imx355);
-	if (ret)
-		return ret;
+	if (ret) {
+		dev_err(&client->dev, "failed to init controls: %d\n", ret);
+		goto error_probe;
+	}
 
 	/* Initialize subdev */
 	imx355->sd.internal_ops = &imx355_internal_ops;
@@ -1718,7 +1725,9 @@ error_media_entity:
 
 error_handler_free:
 	imx355_free_controls(imx355);
-	dev_err(&client->dev, "%s failed:%d\n", __func__, ret);
+
+error_probe:
+	mutex_destroy(&imx355->mutex);
 
 	return ret;
 }
@@ -1740,6 +1749,7 @@ static int imx355_remove(struct i2c_client *client)
 	pm_runtime_disable(&client->dev);
 	pm_runtime_set_suspended(&client->dev);
 	pm_runtime_put_noidle(&client->dev);
+	mutex_destroy(&imx355->mutex);
 
 	return 0;
 }
