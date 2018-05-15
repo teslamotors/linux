@@ -23,7 +23,10 @@
 #define ADV7481_HDMI_I2C_ADDRESS	0xe0
 #define ADV7481_CVBS_I2C_ADDRESS	0xe1
 static struct crlmodule_lite_platform_data adv7481_hdmi_pdata_lite = {
+#if (!IS_ENABLED(CONFIG_VIDEO_INTEL_UOS))
+// 	xshutdown GPIO pin unavailable on ACRN UOS
 	.xshutdown = GPIO_BASE + 63,
+#endif
 	.lanes = ADV7481_HDMI_LANES,
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){600000000},
@@ -51,7 +54,10 @@ static struct ipu_isys_subdev_info adv7481_hdmi_crl_sd_lite = {
 };
 
 static struct crlmodule_lite_platform_data adv7481_cvbs_pdata_lite = {
+#if (!IS_ENABLED(CONFIG_VIDEO_INTEL_UOS))
+// 	xshutdown GPIO pin unavailable on ACRN UOS
 	.xshutdown = GPIO_BASE + 63,
+#endif
 	.lanes = ADV7481_CVBS_LANES,
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){600000000},

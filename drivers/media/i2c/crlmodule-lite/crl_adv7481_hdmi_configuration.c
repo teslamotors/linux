@@ -520,12 +520,13 @@ static irq_handler_t adv7481_irq_handler(unsigned int irq, void *dev_id,
         return (irq_handler_t)IRQ_HANDLED;
 }
 
+// irq GPIO ping unavailable on ACRN UOS
+#if (!IS_ENABLED(CONFIG_VIDEO_INTEL_UOS))
 static int unregister_gpio_irq(void)
 {
         gpio_free(ADV7481_GPIO);
         return 0;
 }
-
 
 static int register_gpio_irq(struct i2c_client *client)
 {
@@ -559,12 +560,16 @@ static int register_gpio_irq(struct i2c_client *client)
 
         return res;
 }
+#endif
 
 int adv7481_sensor_init(struct i2c_client *client)
 {
 	dev_dbg(&client->dev, "%s ADV7481_sensor_init\n", __func__);
 	irq_workqueue = create_workqueue("adv7481_irq_workqueue");
+// irq GPIO ping unavailable on ACRN UOS
+#if (!IS_ENABLED(CONFIG_VIDEO_INTEL_UOS))
 	register_gpio_irq(client);
+#endif
 	setup_timer(&hot_plug_reset_timer, adv_hpa_reset_callback, (unsigned long) client);
 
 	CREATE_ATTRIBUTE(dev_attr_hdmi_cable_connected);
@@ -582,7 +587,10 @@ int adv7481_sensor_cleanup(struct i2c_client *client)
 	dev_dbg(&client->dev, "%s: ADV7481_sensor_cleanup\n", __func__);
 	if (irq_workqueue != NULL) {
 		free_irq(gpio_to_irq(ADV7481_GPIO), client);
+// irq GPIO ping unavailable on ACRN UOS
+#if (!IS_ENABLED(CONFIG_VIDEO_INTEL_UOS))
 		unregister_gpio_irq();
+#endif
 		del_timer(&hot_plug_reset_timer);
 		flush_workqueue(irq_workqueue);
 	        destroy_workqueue(irq_workqueue);
