@@ -116,11 +116,6 @@ struct snd_sof_dsp_ops {
 				     struct snd_pcm_substream *substream,
 				     struct snd_pcm_hw_params *params);
 
-	/* host stream trigger */
-	int (*host_stream_trigger)(struct snd_sof_dev *sdev,
-				   struct snd_pcm_substream *substream,
-				   int cmd);
-
 	/* FW loading */
 	int (*load_firmware)(struct snd_sof_dev *sof_dev,
 			     const struct firmware *fw);

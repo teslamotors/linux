@@ -197,7 +197,6 @@ static int sof_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct snd_sof_pcm *spcm = rtd->sof;
 	struct sof_ipc_stream stream;
 	struct sof_ipc_reply reply;
-	const struct snd_sof_dsp_ops *ops = sdev->ops;
 	int ret = 0;
 
 	/* nothing todo for BE */
@@ -235,9 +234,6 @@ static int sof_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	/* send IPC to the DSP */
 	ret = sof_ipc_tx_message(sdev->ipc, stream.hdr.cmd, &stream,
 				 sizeof(stream), &reply, sizeof(reply));
-
-	if (ops && ops->host_stream_trigger)
-		ret = ops->host_stream_trigger(sdev, substream, cmd);
 
 	return ret;
 }
