@@ -8,12 +8,6 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 
-#ifndef V4L2_CID_DIGITAL_GAIN
-#define V4L2_CID_DIGITAL_GAIN V4L2_CID_GAIN
-#endif
-
-#define IMX319_REG_VALUE_08BIT		1
-#define IMX319_REG_VALUE_16BIT		2
 
 #define IMX319_REG_MODE_SELECT		0x0100
 #define IMX319_MODE_STANDBY		0x00
@@ -58,9 +52,6 @@
 
 /* Flip Control */
 #define IMX319_REG_ORIENTATION		0x0101
-
-/* Number of frames to skip */
-#define IMX319_NUM_OF_SKIP_FRAMES	0
 
 struct imx319_reg {
 	u16 address;
@@ -1859,7 +1850,6 @@ static int imx319_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	try_fmt->code = imx319_get_format_code(imx319);
 	try_fmt->field = V4L2_FIELD_NONE;
 
-	/* No crop or compose */
 	mutex_unlock(&imx319->mutex);
 
 	return 0;
@@ -1869,21 +1859,12 @@ static int imx319_update_digital_gain(struct imx319 *imx319, u32 d_gain)
 {
 	int ret;
 
-	ret = imx319_write_reg(imx319, IMX319_REG_DPGA_USE_GLOBAL_GAIN,
-			       IMX319_REG_VALUE_08BIT, 1);
+	ret = imx319_write_reg(imx319, IMX319_REG_DPGA_USE_GLOBAL_GAIN, 1, 1);
 	if (ret)
 		return ret;
 
 	/* Digital gain = (d_gain & 0xFF00) + (d_gain & 0xFF)/256 times */
-	return imx319_write_reg(imx319, IMX319_REG_DIG_GAIN_GLOBAL,
-				IMX319_REG_VALUE_16BIT, d_gain);
-}
-
-static int imx319_enable_test_pattern(struct imx319 *imx319, u32 pattern)
-{
-	return imx319_write_reg(imx319, IMX319_REG_TEST_PATTERN,
-				IMX319_REG_VALUE_16BIT,
-				imx319_test_pattern_val[pattern]);
+	return imx319_write_reg(imx319, IMX319_REG_DIG_GAIN_GLOBAL, 2, d_gain);
 }
 
 static int imx319_set_ctrl(struct v4l2_ctrl *ctrl)
@@ -1917,32 +1898,29 @@ static int imx319_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_ANALOGUE_GAIN:
 		/* Analog gain = 1024/(1024 - ctrl->val) times */
 		ret = imx319_write_reg(imx319, IMX319_REG_ANALOG_GAIN,
-					IMX319_REG_VALUE_16BIT, ctrl->val);
+				       2, ctrl->val);
 		break;
 	case V4L2_CID_DIGITAL_GAIN:
 		ret = imx319_update_digital_gain(imx319, ctrl->val);
 		break;
 	case V4L2_CID_EXPOSURE:
 		ret = imx319_write_reg(imx319, IMX319_REG_EXPOSURE,
-					IMX319_REG_VALUE_16BIT,
-					ctrl->val);
+				       2, ctrl->val);
 		break;
 	case V4L2_CID_VBLANK:
 		/* Update FLL that meets expected vertical blanking */
-		ret = imx319_write_reg(imx319, IMX319_REG_FLL,
-					IMX319_REG_VALUE_16BIT,
-					imx319->cur_mode->height
-					  + ctrl->val);
+		ret = imx319_write_reg(imx319, IMX319_REG_FLL, 2,
+				       imx319->cur_mode->height + ctrl->val);
 		break;
 	case V4L2_CID_TEST_PATTERN:
-		ret = imx319_enable_test_pattern(imx319, ctrl->val);
+		ret = imx319_write_reg(imx319, IMX319_REG_TEST_PATTERN,
+				       2, imx319_test_pattern_val[ctrl->val]);
 		break;
 	case V4L2_CID_HFLIP:
 	case V4L2_CID_VFLIP:
-		ret = imx319_write_reg(imx319, IMX319_REG_ORIENTATION,
-					IMX319_REG_VALUE_08BIT,
-					imx319->hflip->val |
-					imx319->vflip->val << 1);
+		ret = imx319_write_reg(imx319, IMX319_REG_ORIENTATION, 1,
+				       imx319->hflip->val |
+				       imx319->vflip->val << 1);
 		break;
 	default:
 		dev_info(&client->dev,
@@ -2123,13 +2101,6 @@ imx319_set_pad_format(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int imx319_get_skip_frames(struct v4l2_subdev *sd, u32 *frames)
-{
-	*frames = IMX319_NUM_OF_SKIP_FRAMES;
-
-	return 0;
-}
-
 /* Start streaming */
 static int imx319_start_streaming(struct imx319 *imx319)
 {
@@ -2160,15 +2131,14 @@ static int imx319_start_streaming(struct imx319 *imx319)
 		return ret;
 
 	return imx319_write_reg(imx319, IMX319_REG_MODE_SELECT,
-				 IMX319_REG_VALUE_08BIT,
-				 IMX319_MODE_STREAMING);
+				1, IMX319_MODE_STREAMING);
 }
 
 /* Stop streaming */
 static int imx319_stop_streaming(struct imx319 *imx319)
 {
 	return imx319_write_reg(imx319, IMX319_REG_MODE_SELECT,
-				 IMX319_REG_VALUE_08BIT, IMX319_MODE_STANDBY);
+				1, IMX319_MODE_STANDBY);
 }
 
 static int imx319_set_stream(struct v4l2_subdev *sd, int enable)
@@ -2255,8 +2225,7 @@ static int imx319_identify_module(struct imx319 *imx319)
 	int ret;
 	u32 val;
 
-	ret = imx319_read_reg(imx319, IMX319_REG_CHIP_ID,
-			       IMX319_REG_VALUE_16BIT, &val);
+	ret = imx319_read_reg(imx319, IMX319_REG_CHIP_ID, 2, &val);
 	if (ret)
 		return ret;
 
@@ -2279,14 +2248,9 @@ static const struct v4l2_subdev_pad_ops imx319_pad_ops = {
 	.enum_frame_size = imx319_enum_frame_size,
 };
 
-static const struct v4l2_subdev_sensor_ops imx319_sensor_ops = {
-	.g_skip_frames = imx319_get_skip_frames,
-};
-
 static const struct v4l2_subdev_ops imx319_subdev_ops = {
 	.video = &imx319_video_ops,
 	.pad = &imx319_pad_ops,
-	.sensor = &imx319_sensor_ops,
 };
 
 static const struct media_entity_operations imx319_subdev_entity_ops = {
@@ -2496,22 +2460,18 @@ static const struct dev_pm_ops imx319_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(imx319_suspend, imx319_resume)
 };
 
-#ifdef CONFIG_ACPI
 static const struct acpi_device_id imx319_acpi_ids[] = {
 	{ "SONY319A" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(acpi, imx319_acpi_ids);
-#endif
 
 static struct i2c_driver imx319_i2c_driver = {
 	.driver = {
 		.name = "imx319",
 		.owner = THIS_MODULE,
 		.pm = &imx319_pm_ops,
-#ifdef CONFIG_ACPI
 		.acpi_match_table = ACPI_PTR(imx319_acpi_ids),
-#endif
 	},
 	.probe = imx319_probe,
 	.remove = imx319_remove,
