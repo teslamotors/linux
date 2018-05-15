@@ -1792,10 +1792,9 @@ static const struct dev_pm_ops imx355_pm_ops = {
 
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id imx355_acpi_ids[] = {
-	{ "IMX355" },
+	{"SONY355A"},
 	{ /* sentinel */ }
 };
-
 MODULE_DEVICE_TABLE(acpi, imx355_acpi_ids);
 #endif
 
@@ -1804,7 +1803,9 @@ static struct i2c_driver imx355_i2c_driver = {
 		.name = "imx355",
 		.owner = THIS_MODULE,
 		.pm = &imx355_pm_ops,
-		/*.acpi_match_table = ACPI_PTR(imx355_acpi_ids),*/
+#ifdef CONFIG_ACPI
+		.acpi_match_table = ACPI_PTR(imx355_acpi_ids),
+#endif
 	},
 	.probe = imx355_probe,
 	.remove = imx355_remove,
