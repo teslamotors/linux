@@ -3007,6 +3007,7 @@ intel_info(const struct drm_i915_private *dev_priv)
 #define BXT_REVID_B0		0x3
 #define BXT_REVID_B_LAST	0x8
 #define BXT_REVID_C0		0x9
+#define BXT_REVID_D0		0xC
 
 #define IS_BXT_REVID(dev_priv, since, until) \
 	(IS_BROXTON(dev_priv) && IS_REVID(dev_priv, since, until))
