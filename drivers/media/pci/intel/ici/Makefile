@@ -36,7 +36,7 @@ $(shell cp -f $(srcpath)/$(src)/../ipu4/ipu-platform-resources.h $(srcpath)/$(sr
 intel-ipu4-mod-$(IPU_STEP)-objs			+= \
 						../ipu.o \
 						../ipu-bus.o \
-						../ipu-dma.o \
+						ici-dma.o \
 						../ipu-buttress.o \
 						../ipu-trace.o \
 						../ipu-cpd.o \
