@@ -1034,14 +1034,12 @@ static __u32 imx355_get_format_code(struct imx355 *imx355)
 	 * Only one bayer order is supported.
 	 * It depends on the flip settings.
 	 */
-	__u32 codes[] = {
-		MEDIA_BUS_FMT_SRGGB10_1X10,
-		MEDIA_BUS_FMT_SGRBG10_1X10,
-		MEDIA_BUS_FMT_SGBRG10_1X10,
-		MEDIA_BUS_FMT_SBGGR10_1X10
+	static const __u32 codes[2][2] = {
+		{ MEDIA_BUS_FMT_SRGGB10_1X10, MEDIA_BUS_FMT_SGRBG10_1X10, },
+		{ MEDIA_BUS_FMT_SGBRG10_1X10, MEDIA_BUS_FMT_SBGGR10_1X10, },
 	};
 
-	return codes[imx355->hflip->val | (imx355->vflip->val << 1)];
+	return codes[imx355->vflip->val][imx355->hflip->val];
 }
 
 /* Read registers up to 4 at a time */
@@ -1301,39 +1299,6 @@ static int imx355_get_pad_format(struct v4l2_subdev *sd,
 	return ret;
 }
 
-/*
- * Calculate resolution distance
- */
-static int
-imx355_get_resolution_dist(const struct imx355_mode *mode,
-			    struct v4l2_mbus_framefmt *framefmt)
-{
-	return abs(mode->width - framefmt->width) +
-	       abs(mode->height - framefmt->height);
-}
-
-/*
- * Find the closest supported resolution to the requested resolution
- */
-static const struct imx355_mode *
-imx355_find_best_fit(struct imx355 *imx355,
-		      struct v4l2_subdev_format *fmt)
-{
-	int i, dist, cur_best_fit = 0, cur_best_fit_dist = -1;
-	struct v4l2_mbus_framefmt *framefmt = &fmt->format;
-
-	for (i = 0; i < ARRAY_SIZE(supported_modes); i++) {
-		dist = imx355_get_resolution_dist(&supported_modes[i],
-						   framefmt);
-		if (cur_best_fit_dist == -1 || dist < cur_best_fit_dist) {
-			cur_best_fit_dist = dist;
-			cur_best_fit = i;
-		}
-	}
-
-	return &supported_modes[cur_best_fit];
-}
-
 static int
 imx355_set_pad_format(struct v4l2_subdev *sd,
 		       struct v4l2_subdev_pad_config *cfg,
@@ -1355,7 +1320,9 @@ imx355_set_pad_format(struct v4l2_subdev *sd,
 	 */
 	fmt->format.code = imx355_get_format_code(imx355);
 
-	mode = imx355_find_best_fit(imx355, fmt);
+	mode = v4l2_find_nearest_size(supported_modes,
+		ARRAY_SIZE(supported_modes), width, height,
+		fmt->format.width, fmt->format.height);
 	imx355_update_pad_format(imx355, mode, fmt);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
 		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
