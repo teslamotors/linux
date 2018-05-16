@@ -1740,14 +1740,12 @@ static __u32 imx319_get_format_code(struct imx319 *imx319)
 	 * Only one bayer order is supported.
 	 * It depends on the flip settings.
 	 */
-	__u32 codes[] = {
-		MEDIA_BUS_FMT_SRGGB10_1X10,
-		MEDIA_BUS_FMT_SGRBG10_1X10,
-		MEDIA_BUS_FMT_SGBRG10_1X10,
-		MEDIA_BUS_FMT_SBGGR10_1X10
+	static const __u32 codes[2][2] = {
+		{ MEDIA_BUS_FMT_SRGGB10_1X10, MEDIA_BUS_FMT_SGRBG10_1X10, },
+		{ MEDIA_BUS_FMT_SGBRG10_1X10, MEDIA_BUS_FMT_SBGGR10_1X10, },
 	};
 
-	return codes[imx319->hflip->val | (imx319->vflip->val << 1)];
+	return codes[imx319->vflip->val][imx319->hflip->val];
 }
 
 /* Read registers up to 4 at a time */
@@ -2007,39 +2005,6 @@ static int imx319_get_pad_format(struct v4l2_subdev *sd,
 	return ret;
 }
 
-/*
- * Calculate resolution distance
- */
-static int
-imx319_get_resolution_dist(const struct imx319_mode *mode,
-			    struct v4l2_mbus_framefmt *framefmt)
-{
-	return abs(mode->width - framefmt->width) +
-	       abs(mode->height - framefmt->height);
-}
-
-/*
- * Find the closest supported resolution to the requested resolution
- */
-static const struct imx319_mode *
-imx319_find_best_fit(struct imx319 *imx319,
-		      struct v4l2_subdev_format *fmt)
-{
-	int i, dist, cur_best_fit = 0, cur_best_fit_dist = -1;
-	struct v4l2_mbus_framefmt *framefmt = &fmt->format;
-
-	for (i = 0; i < ARRAY_SIZE(supported_modes); i++) {
-		dist = imx319_get_resolution_dist(&supported_modes[i],
-						   framefmt);
-		if (cur_best_fit_dist == -1 || dist < cur_best_fit_dist) {
-			cur_best_fit_dist = dist;
-			cur_best_fit = i;
-		}
-	}
-
-	return &supported_modes[cur_best_fit];
-}
-
 static int
 imx319_set_pad_format(struct v4l2_subdev *sd,
 		       struct v4l2_subdev_pad_config *cfg,
@@ -2061,7 +2026,9 @@ imx319_set_pad_format(struct v4l2_subdev *sd,
 	 */
 	fmt->format.code = imx319_get_format_code(imx319);
 
-	mode = imx319_find_best_fit(imx319, fmt);
+	mode = v4l2_find_nearest_size(supported_modes,
+		ARRAY_SIZE(supported_modes), width, height,
+		fmt->format.width, fmt->format.height);
 	imx319_update_pad_format(imx319, mode, fmt);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
 		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
