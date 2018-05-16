@@ -1172,7 +1172,7 @@ static int imx355_set_ctrl(struct v4l2_ctrl *ctrl)
 	 * Applying V4L2 control value only happens
 	 * when power is up for streaming
 	 */
-	if (pm_runtime_get_if_in_use(&client->dev) <= 0)
+	if (pm_runtime_get_if_in_use(&client->dev) == 0)
 		return 0;
 
 	switch (ctrl->id) {
@@ -1547,7 +1547,8 @@ static int imx355_init_controls(struct imx355 *imx355)
 				0,
 				0,
 				link_freq_menu_items);
-	imx355->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+	if (imx355->link_freq)
+		imx355->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	/* pixel_rate = link_freq * 2 * nr_of_lanes / bits_per_sample */
 	pixel_rate = (link_freq_menu_items[0] * 2 * 4) / 10;
@@ -1570,7 +1571,8 @@ static int imx355_init_controls(struct imx355 *imx355)
 	imx355->hblank = v4l2_ctrl_new_std(
 				ctrl_hdlr, &imx355_ctrl_ops, V4L2_CID_HBLANK,
 				hblank, hblank, 1, hblank);
-	imx355->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+	if (imx355->hblank)
+		imx355->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	exposure_max = mode->fll_def - 10;
 	imx355->exposure = v4l2_ctrl_new_std(
@@ -1675,10 +1677,9 @@ static int imx355_probe(struct i2c_client *client,
 	 * Device is already turned on by i2c-core with ACPI domain PM.
 	 * Enable runtime PM and turn off the device.
 	 */
-	pm_runtime_get_noresume(&client->dev);
 	pm_runtime_set_active(&client->dev);
 	pm_runtime_enable(&client->dev);
-	pm_runtime_put(&client->dev);
+	pm_runtime_idle(&client->dev);
 
 	return 0;
 
@@ -1703,14 +1704,9 @@ static int imx355_remove(struct i2c_client *client)
 	media_entity_cleanup(&sd->entity);
 	imx355_free_controls(imx355);
 
-	/*
-	 * Disable runtime PM but keep the device turned on.
-	 * i2c-core with ACPI domain PM will turn off the device.
-	 */
-	pm_runtime_get_sync(&client->dev);
 	pm_runtime_disable(&client->dev);
 	pm_runtime_set_suspended(&client->dev);
-	pm_runtime_put_noidle(&client->dev);
+
 	mutex_destroy(&imx355->mutex);
 
 	return 0;
