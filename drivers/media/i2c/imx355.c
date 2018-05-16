@@ -1,6 +1,7 @@
 // SPDX-License_Identifier: GPL-2.0
 // Copyright (C) 2017 - 2018 Intel Corporation
 
+#include <asm/unaligned.h>
 #include <linux/acpi.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
@@ -8,7 +9,6 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-event.h>
-
 
 #define IMX355_REG_MODE_SELECT		0x0100
 #define IMX355_MODE_STANDBY		0x00
@@ -1049,32 +1049,31 @@ static int imx355_read_reg(struct imx355 *imx355, u16 reg, u32 len, u32 *val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx355->sd);
 	struct i2c_msg msgs[2];
-	u8 *data_be_p;
+	u8 addr_buf[2];
+	u8 data_buf[4] = { 0 };
 	int ret;
-	u32 data_be = 0;
-	u16 reg_addr_be = cpu_to_be16(reg);
 
 	if (len > 4)
 		return -EINVAL;
 
-	data_be_p = (u8 *)&data_be;
+	put_unaligned_be16(reg, addr_buf);
 	/* Write register address */
 	msgs[0].addr = client->addr;
 	msgs[0].flags = 0;
-	msgs[0].len = 2;
-	msgs[0].buf = (u8 *)&reg_addr_be;
+	msgs[0].len = ARRAY_SIZE(addr_buf);
+	msgs[0].buf = addr_buf;
 
 	/* Read data from register */
 	msgs[1].addr = client->addr;
 	msgs[1].flags = I2C_M_RD;
 	msgs[1].len = len;
-	msgs[1].buf = &data_be_p[4 - len];
+	msgs[1].buf = &data_buf[4 - len];
 
 	ret = i2c_transfer(client->adapter, msgs, ARRAY_SIZE(msgs));
 	if (ret != ARRAY_SIZE(msgs))
 		return -EIO;
 
-	*val = be32_to_cpu(data_be);
+	*val = get_unaligned_be32(data_buf);
 
 	return 0;
 }
@@ -1083,23 +1082,13 @@ static int imx355_read_reg(struct imx355 *imx355, u16 reg, u32 len, u32 *val)
 static int imx355_write_reg(struct imx355 *imx355, u16 reg, u32 len, u32 val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx355->sd);
-	int buf_i, val_i;
-	u8 buf[6], *val_p;
+	u8 buf[6];
 
 	if (len > 4)
 		return -EINVAL;
 
-	buf[0] = reg >> 8;
-	buf[1] = reg & 0xff;
-
-	val = cpu_to_be32(val);
-	val_p = (u8 *)&val;
-	buf_i = 2;
-	val_i = 4 - len;
-
-	while (val_i < 4)
-		buf[buf_i++] = val_p[val_i++];
-
+	put_unaligned_be16(reg, buf);
+	put_unaligned_be32(val << (8 * (4 - len)), buf + 2);
 	if (i2c_master_send(client, buf, len + 2) != len + 2)
 		return -EIO;
 
@@ -1128,12 +1117,6 @@ static int imx355_write_regs(struct imx355 *imx355,
 	}
 
 	return 0;
-}
-
-static int imx355_write_reg_list(struct imx355 *imx355,
-				  const struct imx355_reg_list *r_list)
-{
-	return imx355_write_regs(imx355, r_list->regs, r_list->num_of_regs);
 }
 
 /* Open sub-device */
@@ -1415,7 +1398,7 @@ static int imx355_start_streaming(struct imx355 *imx355)
 
 	/* Global Setting */
 	reg_list = &imx355_global_setting;
-	ret = imx355_write_reg_list(imx355, reg_list);
+	ret = imx355_write_regs(imx355, reg_list->regs, reg_list->num_of_regs);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set global settings\n",
 			__func__);
@@ -1424,7 +1407,7 @@ static int imx355_start_streaming(struct imx355 *imx355)
 
 	/* Apply default values of current mode */
 	reg_list = &imx355->cur_mode->reg_list;
-	ret = imx355_write_reg_list(imx355, reg_list);
+	ret = imx355_write_regs(imx355, reg_list->regs, reg_list->num_of_regs);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
 		return ret;
