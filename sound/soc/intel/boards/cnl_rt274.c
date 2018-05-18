@@ -36,7 +36,7 @@
 #include "../../codecs/hdac_hdmi.h"
 #include "../../codecs/rt274.h"
 
-#define CNL_FREQ_OUT		19200000
+#define CNL_FREQ_OUT		24000000
 #define CNL_BE_FIXUP_RATE	48000
 #define RT274_CODEC_DAI		"rt274-aif1"
 #define CNL_NAME_SIZE		32
@@ -73,8 +73,10 @@ static int cnl_rt274_clock_control(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_dapm_context *dapm = w->dapm;
 	struct snd_soc_card *card = dapm->card;
-	int ret = 0, ratio = 100;
-	struct snd_soc_dai *codec_dai = cnl_get_codec_dai(card,
+	int ret = 0;
+	int ratio = 100;
+
+	struct snd_soc_dai *codec_dai = snd_soc_card_get_codec_dai(card,
 							  RT274_CODEC_DAI);
 	if (!codec_dai)
 		return -EINVAL;
