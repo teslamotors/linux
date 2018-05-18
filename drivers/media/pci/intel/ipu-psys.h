@@ -218,12 +218,13 @@ long ipu_psys_compat_ioctl32(struct file *file, unsigned int cmd,
 #endif
 
 void ipu_psys_setup_hw(struct ipu_psys *psys);
-void ipu_psys_reset(struct ipu_psys *psys);
 void ipu_psys_handle_events(struct ipu_psys *psys);
 int ipu_psys_kcmd_new(struct ipu_psys_command *cmd, struct ipu_psys_fh *fh);
 int ipu_psys_kcmd_queue(struct ipu_psys *psys, struct ipu_psys_kcmd *kcmd);
 void ipu_psys_kcmd_complete(struct ipu_psys *psys,
 			    struct ipu_psys_kcmd *kcmd, int error);
+void ipu_psys_run_next(struct ipu_psys *psys);
+void ipu_psys_watchdog_work(struct work_struct *work);
 int ipu_psys_kcmd_abort(struct ipu_psys *psys,
 			struct ipu_psys_kcmd *kcmd, int error);
 void ipu_psys_kcmd_free(struct ipu_psys_kcmd *kcmd);
