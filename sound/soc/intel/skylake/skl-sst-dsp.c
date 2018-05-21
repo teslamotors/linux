@@ -278,6 +278,7 @@ int skl_dsp_disable_core(struct sst_dsp *ctx, unsigned int core_mask)
 
 	return ret;
 }
+EXPORT_SYMBOL(skl_dsp_disable_core);
 
 int skl_dsp_boot(struct sst_dsp *ctx)
 {

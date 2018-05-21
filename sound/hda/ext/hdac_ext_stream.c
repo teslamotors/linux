@@ -504,7 +504,6 @@ void snd_hdac_ext_stop_streams(struct hdac_ext_bus *ebus)
 	if (bus->chip_init) {
 		list_for_each_entry(stream, &bus->stream_list, list)
 			snd_hdac_stream_stop(stream);
-		snd_hdac_bus_stop_chip(bus);
 	}
 }
 EXPORT_SYMBOL_GPL(snd_hdac_ext_stop_streams);

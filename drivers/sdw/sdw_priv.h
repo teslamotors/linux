@@ -199,7 +199,7 @@ struct sdw_runtime {
 
 struct sdw_slv_status {
 	struct list_head node;
-	enum sdw_slave_status status[SOUNDWIRE_MAX_DEVICES];
+	enum sdw_slave_status status[SOUNDWIRE_MAX_DEVICES+1];
 };
 
 /** Bus structure which handles bus related information */

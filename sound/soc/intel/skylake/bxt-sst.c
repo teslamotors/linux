@@ -59,7 +59,7 @@
 /* Delay before scheduling D0i3 entry */
 #define BXT_D0I3_DELAY 5000
 
-#define BXT_FW_ROM_INIT_RETRY 3
+#define BXT_FW_INIT_RETRY 3
 
 #define GET_SSP_BASE(N)	(N > 4 ? 0x2000 : 0x4000)
 
@@ -270,30 +270,42 @@ static int bxt_load_base_firmware(struct sst_dsp *ctx)
 	stripped_fw.size = ctx->fw->size;
 	skl_dsp_strip_extended_manifest(&stripped_fw);
 
-
-	for (i = 0; i < BXT_FW_ROM_INIT_RETRY; i++) {
+	for (i = 0; i < BXT_FW_INIT_RETRY; i++) {
 		ret = sst_bxt_prepare_fw(ctx, stripped_fw.data, stripped_fw.size);
+		if (ret < 0) {
+			dev_err(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+				sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+				sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+
+			dev_err(ctx->dev, "Itertion %d Core En/ROM load fail:%d\n",
+					i, ret);
+			continue;
+		}
+		dev_dbg(ctx->dev, "Itertion %d ROM load Success:%d\n",
+				i, ret);
+
+		ret = sst_transfer_fw_host_dma(ctx);
+		if (ret < 0) {
+			dev_err(ctx->dev, "Itertion %d Transfer firmware failed %d\n",
+					i, ret);
+			dev_info(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+				sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+				sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+
+			skl_dsp_core_power_down(ctx, SKL_DSP_CORE_MASK(1));
+			skl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
+			continue;
+		}
+		dev_dbg(ctx->dev, "Itertion %d FW transfer Success:%d\n",
+				i, ret);
+
 		if (ret == 0)
 			break;
 	}
 
 	if (ret < 0) {
-		dev_err(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
-			sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
-			sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
-
-		dev_err(ctx->dev, "Core En/ROM load fail:%d\n", ret);
+		dev_err(ctx->dev, "Firmware download failed\n");
 		goto sst_load_base_firmware_failed;
-	}
-
-	ret = sst_transfer_fw_host_dma(ctx);
-	if (ret < 0) {
-		dev_err(ctx->dev, "Transfer firmware failed %d\n", ret);
-		dev_info(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
-			sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
-			sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
-
-		skl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
 	} else {
 		dev_dbg(ctx->dev, "Firmware download successful\n");
 		ret = wait_event_timeout(skl->boot_wait, skl->boot_complete,
