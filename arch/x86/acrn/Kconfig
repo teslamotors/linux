@@ -5,7 +5,7 @@
 
 config ACRN
 	bool "ACRN guest support"
-	depends on X86
+	depends on X86_64
 	depends on PARAVIRT
 	help
 	  This is the Linux ACRN port.  Enabling this will allow the
