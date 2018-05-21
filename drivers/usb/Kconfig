@@ -199,6 +199,6 @@ config USB_ULPI_BUS
 	  be called ulpi.
 
 config USB_ROLE_SWITCH
-	tristate
+	tristate "USB role switch support"
 
 endif # USB_SUPPORT
