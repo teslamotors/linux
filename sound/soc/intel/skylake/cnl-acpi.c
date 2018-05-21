@@ -129,7 +129,7 @@ int cnl_sdw_get_master_caps(struct device *dev,
 	acpi_string path_sdw_ctrl = {"SCD"};
 	char path[SDW_PATH_CTRL_MAX];
 
-	strcpy(path, path_sdw_ctrl);
+	strlcpy(path, path_sdw_ctrl, sizeof(path));
 	sdw_acpi_mstr_map_data(m_cap, dev, path_sdw_ctrl, path);
 	if (!m_cap) {
 		dev_err(dev, "SoundWire controller mapping failed...\n");

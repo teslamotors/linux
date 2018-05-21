@@ -362,7 +362,7 @@ struct skl_log_state_msg {
 	uint32_t  fifo_full_timer_period;
 
 	u32	core_mask;
-	struct	skl_log_state logs_core[2];
+	struct	skl_log_state logs_core[4];
 };
 
 struct SystemTime {
