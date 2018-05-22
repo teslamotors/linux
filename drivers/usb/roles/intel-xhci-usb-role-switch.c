@@ -167,6 +167,10 @@ static int intel_xhci_usb_probe(struct platform_device *pdev)
 	if (IS_ERR(data->role_sw))
 		return PTR_ERR(data->role_sw);
 
+	intel_xhci_usb_set_role(dev, USB_ROLE_HOST);
+	msleep(10);
+	intel_xhci_usb_set_role(dev, USB_ROLE_DEVICE);
+
 	return 0;
 }
 
