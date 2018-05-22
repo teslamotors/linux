@@ -1148,7 +1148,7 @@ static int start_stream_firmware(struct ipu_isys_video *av,
 				       to_dma_addr(msg),
 				       sizeof(*stream_cfg),
 				       IPU_FW_ISYS_SEND_TYPE_STREAM_OPEN);
-	ipu_put_fw_mgs_buffer(av->isys, (u64) stream_cfg);
+	ipu_put_fw_mgs_buffer(av->isys, (uintptr_t) stream_cfg);
 
 	if (rval < 0) {
 		dev_err(dev, "can't open stream (%d)\n", rval);
@@ -1203,7 +1203,7 @@ static int start_stream_firmware(struct ipu_isys_video *av,
 				buf, to_dma_addr(msg),
 				sizeof(*buf),
 				IPU_FW_ISYS_SEND_TYPE_STREAM_START_AND_CAPTURE);
-		ipu_put_fw_mgs_buffer(av->isys, (u64) buf);
+		ipu_put_fw_mgs_buffer(av->isys, (uintptr_t) buf);
 	} else {
 		rval = ipu_fw_isys_simple_cmd(av->isys,
 					ip->stream_handle,

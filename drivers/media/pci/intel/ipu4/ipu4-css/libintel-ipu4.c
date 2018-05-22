@@ -277,8 +277,7 @@ static void isa_cfg_abi_to_api(const struct ipu_fw_isys_isa_cfg_abi *abi,
 {
 	unsigned int i;
 
-	for (i = 0; i < min(N_IPU_FW_ISYS_RESOLUTION_INFO,
-			    N_IA_CSS_ISYS_RESOLUTION_INFO); i++)
+	for (i = 0; i < N_IA_CSS_ISYS_RESOLUTION_INFO; i++)
 		resolution_abi_to_api(&abi->isa_res[i], &api->isa_res[i]);
 
 	api->blc_enabled = abi->cfg.blc;
@@ -312,8 +311,7 @@ static void stream_cfg_abi_to_api(struct ipu_fw_isys_stream_cfg_data_abi *abi,
 	api->isl_use = abi->isl_use;
 	api->compfmt = abi->compfmt;
 	isa_cfg_abi_to_api(&abi->isa_cfg, &api->isa_cfg);
-	for (i = 0; i < min(N_IPU_FW_ISYS_CROPPING_LOCATION,
-			    N_IA_CSS_ISYS_CROPPING_LOCATION); i++)
+	for (i = 0; i < N_IA_CSS_ISYS_CROPPING_LOCATION; i++)
 		cropping_abi_to_api(&abi->crop[i], &api->crop[i]);
 
 	api->send_irq_sof_discarded = abi->send_irq_sof_discarded;

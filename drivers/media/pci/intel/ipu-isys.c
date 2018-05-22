@@ -1124,7 +1124,7 @@ void ipu_cleanup_fw_msg_bufs(struct ipu_isys *isys)
 void ipu_put_fw_mgs_buffer(struct ipu_isys *isys, u64 data)
 {
 	struct isys_fw_msgs *msg;
-	u64 *ptr = (u64 *) data;
+	u64 *ptr = (u64 *)(unsigned long)data;
 
 	if (!ptr)
 		return;

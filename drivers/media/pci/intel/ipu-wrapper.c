@@ -265,7 +265,7 @@ void shared_memory_free(int mmid, u64 addr)
 	struct my_css_memory_buffer_item *buf = NULL;
 	unsigned long flags;
 
-	if ((void *)addr == &alloc_cookie)
+	if ((void *)(unsigned long)addr == &alloc_cookie)
 		return;
 
 	might_sleep();
@@ -305,7 +305,7 @@ u32 shared_memory_map(int ssid, int mmid, u64 addr)
 	struct my_css_memory_buffer_item *buf = NULL;
 	unsigned long flags;
 
-	if ((void *)addr == &alloc_cookie)
+	if ((void *)(unsigned long)addr == &alloc_cookie)
 		return 0;
 
 	spin_lock_irqsave(&mine->lock, flags);
@@ -340,9 +340,9 @@ void shared_memory_store_8(int mmid, u64 addr, u8 data)
 		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
 		__func__, addr, data);
 
-	*((u8 *) addr) = data;
+	*((u8 *)(unsigned long) addr) = data;
 	/*Invalidate the cache lines to flush the content to ddr. */
-	clflush_cache_range((void *)addr, sizeof(u8));
+	clflush_cache_range((void *)(unsigned long)addr, sizeof(u8));
 }
 
 /**
@@ -355,9 +355,9 @@ void shared_memory_store_16(int mmid, u64 addr, u16 data)
 		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
 		__func__, addr, data);
 
-	*((u16 *) addr) = data;
+	*((u16 *)(unsigned long) addr) = data;
 	/*Invalidate the cache lines to flush the content to ddr. */
-	clflush_cache_range((void *)addr, sizeof(u16));
+	clflush_cache_range((void *)(unsigned long) addr, sizeof(u16));
 }
 
 /**
@@ -370,9 +370,9 @@ void shared_memory_store_32(int mmid, u64 addr, u32 data)
 		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
 		__func__, addr, data);
 
-	*((u32 *) addr) = data;
+	*((u32 *)(unsigned long) addr) = data;
 	/* Invalidate the cache lines to flush the content to ddr. */
-	clflush_cache_range((void *)addr, sizeof(u32));
+	clflush_cache_range((void *)(unsigned long) addr, sizeof(u32));
 }
 
 /**
@@ -382,7 +382,7 @@ void shared_memory_store_32(int mmid, u64 addr, u32 data)
 void shared_memory_store(int mmid, u64 addr, const void *data, size_t bytes)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%lx bytes = 0x%lx\n", __func__,
+		"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,
 		(unsigned long)addr, bytes);
 
 	if (!data) {
@@ -390,14 +390,14 @@ void shared_memory_store(int mmid, u64 addr, const void *data, size_t bytes)
 			"%s: data ptr is null\n", __func__);
 	} else {
 		const u8 *pdata = data;
-		u8 *paddr = (u8 *) addr;
+		u8 *paddr = (u8 *)(unsigned long)addr;
 		size_t i = 0;
 
 		for (; i < bytes; ++i)
 			*paddr++ = *pdata++;
 
 		/* Invalidate the cache lines to flush the content to ddr. */
-		clflush_cache_range((void *)addr, bytes);
+		clflush_cache_range((void *)(unsigned long) addr, bytes);
 	}
 }
 
@@ -408,11 +408,11 @@ void shared_memory_store(int mmid, u64 addr, const void *data, size_t bytes)
 void shared_memory_zero(int mmid, u64 addr, size_t bytes)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%llx data = 0x%lx\n",
-		__func__, addr, bytes);
+		"access: %s: Enter addr = 0x%llx data = 0x%zx\n",
+		__func__, (unsigned long long)addr, bytes);
 
-	memset((void *)addr, 0, bytes);
-	clflush_cache_range((void *)addr, bytes);
+	memset((void *)(unsigned long)addr, 0, bytes);
+	clflush_cache_range((void *)(unsigned long)addr, bytes);
 }
 
 /**
@@ -427,8 +427,8 @@ u8 shared_memory_load_8(int mmid, u64 addr)
 		"access: %s: Enter addr = 0x%llx\n", __func__, addr);
 
 	/* Invalidate the cache lines to flush the content to ddr. */
-	clflush_cache_range((void *)addr, sizeof(u8));
-	data = *(u8 *) addr;
+	clflush_cache_range((void *)(unsigned long)addr, sizeof(u8));
+	data = *(u8 *)(unsigned long) addr;
 	return data;
 }
 
@@ -444,8 +444,8 @@ u16 shared_memory_load_16(int mmid, u64 addr)
 		"access: %s: Enter addr = 0x%llx\n", __func__, addr);
 
 	/* Invalidate the cache lines to flush the content to ddr. */
-	clflush_cache_range((void *)addr, sizeof(u16));
-	data = *(u16 *) addr;
+	clflush_cache_range((void *)(unsigned long)addr, sizeof(u16));
+	data = *(u16 *)(unsigned long)addr;
 	return data;
 }
 
@@ -461,8 +461,8 @@ u32 shared_memory_load_32(int mmid, u64 addr)
 		"access: %s: Enter addr = 0x%llx\n", __func__, addr);
 
 	/* Invalidate the cache lines to flush the content to ddr. */
-	clflush_cache_range((void *)addr, sizeof(u32));
-	data = *(u32 *) addr;
+	clflush_cache_range((void *)(unsigned long)addr, sizeof(u32));
+	data = *(u32 *)(unsigned long)addr;
 	return data;
 }
 
@@ -473,7 +473,7 @@ u32 shared_memory_load_32(int mmid, u64 addr)
 void shared_memory_load(int mmid, u64 addr, void *data, size_t bytes)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%lx bytes = 0x%lx\n", __func__,
+		"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,
 		(unsigned long)addr, bytes);
 
 	if (!data) {
@@ -482,11 +482,11 @@ void shared_memory_load(int mmid, u64 addr, void *data, size_t bytes)
 
 	} else {
 		u8 *pdata = data;
-		u8 *paddr = (u8 *) addr;
+		u8 *paddr = (u8 *)(unsigned long)addr;
 		size_t i = 0;
 
 		/* Invalidate the cache lines to flush the content to ddr. */
-		clflush_cache_range((void *)addr, bytes);
+		clflush_cache_range((void *)(unsigned long)addr, bytes);
 		for (; i < bytes; ++i)
 			*pdata++ = *paddr++;
 	}

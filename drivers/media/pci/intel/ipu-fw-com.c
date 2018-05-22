@@ -273,11 +273,11 @@ void *ipu_fw_com_prepare(struct ipu_fw_com_cfg *cfg,
 	ctx->specific_vied_addr = ctx->dma_addr + offset;
 	offset += roundup(cfg->specific_size, 8);
 
-	ctx->ibuf_host_addr = (u64)(ctx->dma_buffer + offset);
+	ctx->ibuf_host_addr = (uintptr_t)(ctx->dma_buffer + offset);
 	ctx->ibuf_vied_addr = ctx->dma_addr + offset;
 	offset += sizeinput;
 
-	ctx->obuf_host_addr = (u64)(ctx->dma_buffer + offset);
+	ctx->obuf_host_addr = (uintptr_t)(ctx->dma_buffer + offset);
 	ctx->obuf_vied_addr = ctx->dma_addr + offset;
 	offset += sizeoutput;
 
@@ -415,7 +415,7 @@ void *ipu_send_get_token(struct ipu_fw_com_context *ctx, int q_nbr)
 
 	index = curr_index(q_dmem, DIR_SEND);
 
-	return (void *)q->host_address + (index * q->token_size);
+	return (void *)(unsigned long)q->host_address + (index * q->token_size);
 }
 EXPORT_SYMBOL_GPL(ipu_send_get_token);
 
@@ -424,7 +424,8 @@ void ipu_send_put_token(struct ipu_fw_com_context *ctx, int q_nbr)
 	struct sys_queue *q = &ctx->input_queue[q_nbr];
 	void __iomem *q_dmem = ctx->dmem_addr + q->wr_reg * 4;
 	int index = curr_index(q_dmem, DIR_SEND);
-	void *addr = (void *)q->host_address + (index * q->token_size);
+	void *addr = (void *)(unsigned long)q->host_address +
+				(index * q->token_size);
 
 	clflush_cache_range(addr, q->token_size);
 
@@ -454,7 +455,7 @@ void *ipu_recv_get_token(struct ipu_fw_com_context *ctx, int q_nbr)
 	if (packets <= 0)
 		return NULL;
 
-	addr = (void *)q->host_address + (rd * q->token_size);
+	addr = (void *)(unsigned long)q->host_address + (rd * q->token_size);
 	clflush_cache_range(addr, q->token_size);
 
 	return addr;

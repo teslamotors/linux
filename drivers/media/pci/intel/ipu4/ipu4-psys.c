@@ -592,7 +592,7 @@ static int ipu_psys_config_legacy_pg(struct ipu_psys_kcmd *kcmd)
 		}
 	}
 
-	ipu_fw_psys_pg_set_token(kcmd, (u64) kcmd);
+	ipu_fw_psys_pg_set_token(kcmd, (uintptr_t) kcmd);
 
 	ret = ipu_fw_psys_pg_submit(kcmd);
 	if (ret) {
@@ -715,7 +715,7 @@ int ipu_psys_kcmd_new(struct ipu_psys_command *cmd, struct ipu_psys_fh *fh)
 
 	pg_size = ipu_fw_psys_pg_get_size(kcmd);
 	if (pg_size > kcmd->kpg->pg_size) {
-		dev_dbg(&psys->adev->dev, "pg size mismatch %lu %lu\n",
+		dev_dbg(&psys->adev->dev, "pg size mismatch %zu %zu\n",
 			pg_size, kcmd->kpg->pg_size);
 		ret = -EINVAL;
 		goto error;
@@ -759,7 +759,7 @@ void ipu_psys_handle_events(struct ipu_psys *psys)
 			break;
 
 		error = false;
-		kcmd = (struct ipu_psys_kcmd *)event.token;
+		kcmd = (struct ipu_psys_kcmd *)(unsigned long)event.token;
 		error = IS_ERR_OR_NULL(kcmd) ? true : false;
 
 		dev_dbg(&psys->adev->dev, "psys received event status:%d\n",
