@@ -37,7 +37,6 @@ static const struct snd_soc_dapm_widget broxton_tdf8532_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route broxton_tdf8532_map[] = {
-
 	/* Speaker BE connections */
 	{ "Speaker", NULL, "ssp4 Tx"},
 	{ "ssp4 Tx", NULL, "codec0_out"},
@@ -76,9 +75,8 @@ static const struct snd_soc_dapm_route broxton_tdf8532_map[] = {
 	{ "ssp3 Tx", NULL, "Modem_ssp3_out"},
 };
 
-#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 static int bxt_tdf8532_ssp2_fixup(struct snd_soc_pcm_runtime *rtd,
-				struct snd_pcm_hw_params *params)
+				  struct snd_pcm_hw_params *params)
 {
 	struct snd_mask *fmt = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
 
@@ -88,7 +86,6 @@ static int bxt_tdf8532_ssp2_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
-#endif
 
 /* broxton digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link broxton_tdf8532_dais[] = {
@@ -382,7 +379,7 @@ static struct snd_soc_dai_link broxton_tdf8532_dais[] = {
 };
 
 static int bxt_add_dai_link(struct snd_soc_card *card,
-			struct snd_soc_dai_link *link)
+			    struct snd_soc_dai_link *link)
 {
 	link->platform_name = "0000:00:0e.0";
 	link->nonatomic = 1;
