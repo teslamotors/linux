@@ -14,6 +14,7 @@
 
 #include "ici-isys-frame-buf.h"
 #include "ici-isys-pipeline.h"
+#include "virtio/intel-ipu4-virtio-common.h"
 
 struct ici_ioctl_ops;
 struct ici_frame_plane;
@@ -29,6 +30,9 @@ struct ici_stream_device {
 	int minor;			/* driver minor */
 	unsigned long flags;		/* stream device state machine */
 	const struct ici_ioctl_ops *ipu_ioctl_ops;
+	//Mediator param
+	int virt_dev_id;
+	struct ipu4_virtio_priv *virt_priv;
 };
 
 struct ici_ioctl_ops {
