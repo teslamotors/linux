@@ -30,3 +30,13 @@ config RPMB_SIM
 	  suitable only for testing of the RPMB subsystem or RPMB applications
 	  prior to RPMB key provisioning.
           Most people should say N here.
+
+config VIRTIO_RPMB
+	tristate "Virtio RPMB character device interface /dev/vrpmb"
+	default n
+	depends on VIRTIO
+	select RPMB
+	help
+	  Say yes here if you want to access virtio RPMB from user space
+	  via character device interface /dev/vrpmb.
+	  This device interface is only for guest/frontend virtio driver.
