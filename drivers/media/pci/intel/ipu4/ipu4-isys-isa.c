@@ -349,8 +349,8 @@ static void isa_set_ffmt(struct v4l2_subdev *sd,
 	case ISA_PAD_CONFIG:
 	case ISA_PAD_3A:
 		ffmt->code = MEDIA_BUS_FMT_FIXED;
-		ffmt->width = IPU_ISYS_MIN_WIDTH;
-		ffmt->height = IPU_ISYS_MIN_HEIGHT;
+		ffmt->width = 0;
+		ffmt->height = 0;
 		fmt->format = *ffmt;
 		return;
 	case ISA_PAD_SOURCE_SCALED: {
