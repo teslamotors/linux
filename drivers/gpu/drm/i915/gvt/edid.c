@@ -450,6 +450,9 @@ void intel_gvt_i2c_handle_aux_ch_write(struct intel_vgpu *vgpu,
 	}
 
 	msg_length = AUX_CTL_MSG_LENGTH(value);
+	if (WARN_ON(msg_length <= 0 || msg_length > 20))
+		return;
+
 	for (rxsize = 0; rxsize < msg_length; rxsize += 4)
 		intel_dp_unpack_aux(vgpu_vreg(vgpu, offset + 4 + rxsize),
 				rxbuf + rxsize, msg_length - rxsize);
