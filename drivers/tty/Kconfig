@@ -467,4 +467,7 @@ config VCC
 	depends on SUN_LDOMS
 	help
 	  Support for Sun logical domain consoles.
+
+source "drivers/tty/cbc/Kconfig"
+
 endif # TTY
