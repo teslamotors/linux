@@ -1600,7 +1600,7 @@ static int sof_route_load(struct snd_soc_component *scomp, int index,
 	struct snd_sof_widget *source_swidget, *sink_swidget;
 	struct snd_sof_pcm *spcm;
 	struct sof_ipc_reply reply;
-	int ret;
+	int ret = 0;
 
 	memset(&connect, 0, sizeof(connect));
 	connect.hdr.size = sizeof(connect);
@@ -1640,24 +1640,39 @@ static int sof_route_load(struct snd_soc_component *scomp, int index,
 
 	connect.sink_id = sink_swidget->comp_id;
 
-	ret = sof_ipc_tx_message(sdev->ipc,
-				 connect.hdr.cmd, &connect, sizeof(connect),
-				 &reply, sizeof(reply));
+	/* Some virtual routes and widgets may been added in topology for
+	 * compatibility. For virtual routes, both sink and source are not
+	 * buffer. Since only buffer linked to component is supported by
+	 * FW, others are reported as error, add check in route function,
+	 * do not send it to FW when both source and sink are not buffer
+	 */
+	if (source_swidget->id != snd_soc_dapm_buffer &&
+	    sink_swidget->id != snd_soc_dapm_buffer) {
+		dev_dbg(sdev->dev, "warning: neither Linked source component %s nor sink component %s is of buffer type, ignoring link\n",
+			route->source, route->sink);
+	} else {
+		ret = sof_ipc_tx_message(sdev->ipc,
+					 connect.hdr.cmd,
+					 &connect, sizeof(connect),
+					 &reply, sizeof(reply));
 
-	/* check IPC return value */
-	if (ret < 0) {
-		dev_err(sdev->dev, "error: failed to add route sink %s control %s source %s\n",
-			route->sink, route->control ? route->control : "none",
-			route->source);
-		return ret;
-	}
+		/* check IPC return value */
+		if (ret < 0) {
+			dev_err(sdev->dev, "error: failed to add route sink %s control %s source %s\n",
+				route->sink,
+				route->control ? route->control : "none",
+				route->source);
+			return ret;
+		}
 
-	/* check IPC reply */
-	if (reply.error < 0) {
-		dev_err(sdev->dev, "error: DSP failed to add route sink %s control %s source %s result %d\n",
-			route->sink, route->control ? route->control : "none",
-			route->source, reply.error);
-		//return ret; // TODO:
+		/* check IPC reply */
+		if (reply.error < 0) {
+			dev_err(sdev->dev, "error: DSP failed to add route sink %s control %s source %s result %d\n",
+				route->sink,
+				route->control ? route->control : "none",
+				route->source, reply.error);
+			return reply.error;
+		}
 	}
 
 	return ret;
