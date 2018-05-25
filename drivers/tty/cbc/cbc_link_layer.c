@@ -264,7 +264,8 @@ u8 cbc_core_on_receive_cbc_serial_data(u8 length, const u8 *rx_buf)
 	return number_of_bytes_accepted;
 }
 
-static void _cbc_link_layer_checksum(u8 *rx_cvh_frame, u8 frame_length)
+static void _cbc_link_layer_checksum(u8 *rx_cvh_frame, u8 frame_length,
+						struct cbc_buffer *buffer)
 {
 	u8 expected_checksum = 0U;
 	u8 checksum = 0U;
@@ -302,6 +303,17 @@ static void _cbc_link_layer_checksum(u8 *rx_cvh_frame, u8 frame_length)
 			rx_cvh_frame[1]
 			& CBC_SEQUENCE_COUNTER_WIDTH_MASK;
 		}
+
+		/* Increment seq. counter. */
+		rx_sequence_counter++;
+		rx_sequence_counter &=
+		CBC_SEQUENCE_COUNTER_WIDTH_MASK;
+
+		/* Forward frame to Mux. layer. */
+		buffer->frame_length = frame_length;
+		cbc_mux_multiplexer_process_rx_buffer(buffer);
+		cbc_link_release_rx_data(frame_length);
+		last_rx_frame_valid = 1;
 	}
 
 }
@@ -361,21 +373,7 @@ void cbc_link_layer_rx_handler(void)
 			} else if (bytes_avail >= frame_length) {
 				/* ok */
 				_cbc_link_layer_checksum(rx_cvh_frame,
-							 frame_length);
-
-				/* Increment seq. counter. */
-				rx_sequence_counter++;
-				rx_sequence_counter &=
-				CBC_SEQUENCE_COUNTER_WIDTH_MASK;
-
-				/* Forward frame to Mux. layer. */
-				buffer->frame_length = frame_length;
-				cbc_mux_multiplexer_process_rx_buffer(
-							buffer);
-				cbc_link_release_rx_data(frame_length);
-
-					last_rx_frame_valid = 1;
-				 /* else */
+							 frame_length, buffer);
 				number_of_bytes_expected = 0;
 			} else {
 				/*
