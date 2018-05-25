@@ -26,6 +26,23 @@ TRACE_EVENT(ipu_sof_seqid,
 	);
 #endif
 
+#ifdef IPU_EOF_SEQID_TRACE
+TRACE_EVENT(ipu_eof_seqid,
+	    TP_PROTO(unsigned int seqid, unsigned int csiport,
+		     unsigned int csivc),
+	    TP_ARGS(seqid, csiport, csivc),
+	    TP_STRUCT__entry(__field(unsigned int, seqid)
+			     __field(unsigned int, csiport)
+			     __field(unsigned int, csivc)
+	    ),
+	    TP_fast_assign(__entry->seqid = seqid;
+			   __entry->csiport = csiport;
+			   __entry->csivc = csivc;),
+	    TP_printk("seqid<%u>,csiport<%u>,csivc<%u>", __entry->seqid,
+		      __entry->csiport, __entry->csivc)
+	);
+#endif
+
 #ifdef IPU_PERF_REG_TRACE
 TRACE_EVENT(ipu_perf_reg,
 	    TP_PROTO(unsigned int addr, unsigned int val),

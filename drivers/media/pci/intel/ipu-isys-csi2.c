@@ -19,6 +19,7 @@
 
 #define CREATE_TRACE_POINTS
 #define IPU_SOF_SEQID_TRACE
+#define IPU_EOF_SEQID_TRACE
 #include "ipu-trace-event.h"
 
 static const u32 csi2_supported_codes_pad_sink[] = {
@@ -900,6 +901,8 @@ void ipu_isys_csi2_eof_event(struct ipu_isys_csi2 *csi2, unsigned int vc)
 
 	if (ip) {
 		frame_sequence = atomic_read(&ip->sequence);
+
+		trace_ipu_eof_seqid(frame_sequence, csi2->index, vc);
 
 		dev_dbg(&csi2->isys->adev->dev,
 			"eof_event::csi2-%i sequence: %i, vc: %d, stream_id: %d\n",
