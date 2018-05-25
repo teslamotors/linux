@@ -15,7 +15,7 @@
 
 static DEFINE_IDA(index_ida);
 
-struct ipu4_virtio_fe_priv {
+struct ipu4_virtio_uos {
 	struct virtqueue *vq;
 	struct completion have_data;
 	char name[25];
@@ -25,12 +25,13 @@ struct ipu4_virtio_fe_priv {
 	int vmid;
 };
 
+
 /* Assuming there will be one FE instance per VM */
-static struct ipu4_virtio_fe_priv *ipu4_virtio_fe;
+static struct ipu4_virtio_uos *ipu4_virtio_fe;
 
 static void ipu_virtio_fe_tx_done(struct virtqueue *vq)
 {
-	struct ipu4_virtio_fe_priv *priv = vq->vdev->priv;
+	struct ipu4_virtio_uos *priv = vq->vdev->priv;
 
 	/* We can get spurious callbacks, e.g. shared IRQs + virtio_pci. */
 	if (!virtqueue_get_buf(priv->vq, &priv->data_avail))
@@ -41,7 +42,7 @@ static void ipu_virtio_fe_tx_done(struct virtqueue *vq)
 }
 
 /* The host will fill any buffer we give it with sweet, sweet randomness. */
-static void ipu_virtio_fe_register_buffer(struct ipu4_virtio_fe_priv *vi, void *buf, size_t size)
+static void ipu_virtio_fe_register_buffer(struct ipu4_virtio_uos *vi, void *buf, size_t size)
 {
 	struct scatterlist sg;
 
@@ -56,9 +57,9 @@ static void ipu_virtio_fe_register_buffer(struct ipu4_virtio_fe_priv *vi, void *
 static int ipu_virtio_fe_probe_common(struct virtio_device *vdev)
 {
 	int err, index;
-	struct ipu4_virtio_fe_priv *priv = NULL;
+	struct ipu4_virtio_uos *priv = NULL;
 
-	priv = kzalloc(sizeof(struct ipu4_virtio_fe_priv), GFP_KERNEL);
+	priv = kzalloc(sizeof(struct ipu4_virtio_uos), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
@@ -91,7 +92,7 @@ err_ida:
 
 static void ipu_virtio_fe_remove_common(struct virtio_device *vdev)
 {
-	struct ipu4_virtio_fe_priv *priv = vdev->priv;
+	struct ipu4_virtio_uos *priv = vdev->priv;
 
 	priv->data_avail = 0;
 	complete(&priv->have_data);
@@ -105,7 +106,7 @@ static void ipu_virtio_fe_remove_common(struct virtio_device *vdev)
 static int ipu_virtio_fe_send_req(int vmid, struct ipu4_virtio_req *req,
 			      int wait)
 {
-	struct ipu4_virtio_fe_priv *priv = ipu4_virtio_fe;
+	struct ipu4_virtio_uos *priv = ipu4_virtio_fe;
 	struct ipu4_virtio_req *tx_req;
 	int ret = 0;
 	int timeout = 1000;
@@ -125,8 +126,7 @@ static int ipu_virtio_fe_send_req(int vmid, struct ipu4_virtio_req *req,
 
 	if (wait) {
 		while (timeout--) {
-			if (tx_req->stat !=
-				IPU4_REQ_NOT_RESPONDED)
+			if (tx_req->stat !=	IPU4_REQ_NOT_RESPONDED)
 				break;
 			usleep_range(100, 120);
 		}
@@ -139,7 +139,7 @@ static int ipu_virtio_fe_send_req(int vmid, struct ipu4_virtio_req *req,
 }
 static int ipu_virtio_fe_get_vmid(void)
 {
-	struct ipu4_virtio_fe_priv *priv = ipu4_virtio_fe;
+	struct ipu4_virtio_uos *priv = ipu4_virtio_fe;
 
 	if (ipu4_virtio_fe == NULL) {
 		printk(KERN_ERR	"IPU Backend not connected\n");
@@ -171,7 +171,7 @@ static void virt_remove(struct virtio_device *vdev)
 
 static void virt_scan(struct virtio_device *vdev)
 {
-	struct ipu4_virtio_fe_priv *vi = (struct ipu4_virtio_fe_priv *)vdev->priv;
+	struct ipu4_virtio_uos *vi = (struct ipu4_virtio_uos *)vdev->priv;
 	int timeout = 1000;
 
 	if (vi == NULL) {

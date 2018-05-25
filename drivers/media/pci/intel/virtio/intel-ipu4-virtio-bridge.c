@@ -85,7 +85,7 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op8 - Number of planes
 			 * op9 - flags
 			 */
-			printk(KERN_INFO "VBS SET_FMT: virtual_dev_id:%d actual_fd:%d\n", req->op[2], req->op[3]);
+			printk(KERN_INFO "VBS SET_FMT: Width:%d Height:%d\n", req->op[2], req->op[3]);
 			req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_ENUM_NODES:
@@ -125,8 +125,9 @@ void intel_ipu4_virtio_create_req(struct ipu4_virtio_req *req,
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
-			for (i = 0; i < 2; i++)
+			for (i = 0; i < 2; i++) {
 				req->op[i] = op[i];
+			}
 			break;
 	case IPU4_CMD_DEVICE_CLOSE:
 			/* Close video device node
@@ -139,12 +140,18 @@ void intel_ipu4_virtio_create_req(struct ipu4_virtio_req *req,
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
+			for (i = 0; i < 2; i++) {
+					req->op[i] = op[i];
+			}
 			break;
 	case IPU4_CMD_STREAM_OFF:
 			/* Stop Stream
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
+			for (i = 0; i < 2; i++) {
+				req->op[i] = op[i];
+			}
 			break;
 	case IPU4_CMD_GET_BUF:
 			/* Set Format of a given video node

@@ -6,16 +6,31 @@
 #ifndef INTEL_IPU4_PARA_VIRT_H
 #define INTEL_IPU4_PARA_VIRT_H
 
+#include <linux/version.h>
+#include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/device.h>
+#include <linux/errno.h>
+#include <linux/delay.h>
+#include <linux/uaccess.h>
+
 #include "./ici/ici-isys-stream-device.h"
 #include "./ici/ici-isys-frame-buf.h"
 #include "intel-ipu4-virtio-common.h"
+
+#define MAX_ISYS_VIRT_STREAM 34
 
 struct virtual_stream {
 	struct mutex mutex;
 	struct ici_stream_device strm_dev;
 	int virt_dev_id;
-	struct ipu4_virtio_priv *priv;
+	int actual_fd;
+	struct ipu4_virtio_ctx *ctx;
 	struct ici_isys_frame_buf_list buf_list;
 };
 
-#endif INTEL_IPU4_PARA_VIRT_H
+
+#define dev_to_vstream(dev) \
+	container_of(dev, struct virtual_stream, strm_dev)
+
+#endif

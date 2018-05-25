@@ -27,12 +27,16 @@ struct ipu4_virtio_req {
 	unsigned int cmd;
 	unsigned int op[MAX_NUMBER_OF_OPERANDS];
 };
+
+/*Not used*/
 struct ipu4_virtio_resp {
 	unsigned int resp_id;
 	unsigned int stat;
 	unsigned int cmd;
 	unsigned int op[MAX_NUMBER_OF_OPERANDS];
 };
+
+/*Not used*/
 struct ipu4_virtio_fe_info {
 	struct ipu4_virtio_be_priv *priv;
 	int client_id;
@@ -41,6 +45,7 @@ struct ipu4_virtio_fe_info {
 	struct vhm_request *req_buf;
 };
 
+/*Not used*/
 struct ipu4_virtio_fe_info_entry {
 	struct ipu4_virtio_fe_info *info;
 	struct hlist_node node;
@@ -59,7 +64,7 @@ struct ipu4_bknd_ops {
 	int (*send_req)(int, struct ipu4_virtio_req *, int);
 };
 
-struct ipu4_virtio_priv {
+struct ipu4_virtio_ctx {
 	/* VM(domain) id of current VM instance */
 	int domid;
 
@@ -70,13 +75,7 @@ struct ipu4_virtio_priv {
 	bool initialized;
 
 	/* device global lock */
-	/* TODO: might need a lock per resource (e.g. EXPORT LIST) */
 	struct mutex lock;
-};
-
-struct ipu4_virtio_dev {
-	struct device *dev;
-	struct ipu4_virtio_priv *priv;
 };
 
 enum intel_ipu4_virtio_command {
