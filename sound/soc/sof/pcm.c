@@ -548,7 +548,15 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 
 		break;
 	case SOF_DAI_INTEL_DMIC:
-		/* fallthrough */
+		/* DMIC only supports 16 or 32 bit formats */
+		if (dai->comp_dai.config.frame_fmt == SOF_IPC_FRAME_S24_4LE) {
+			dev_err(sdev->dev,
+				"error: invalid fmt %d for DAI type %d\n",
+				dai->comp_dai.config.frame_fmt,
+				dai->dai_config.type);
+		}
+		/* TODO: add any other DMIC specific fixups */
+		break;
 	case SOF_DAI_INTEL_HDA:
 		/* fallthrough */
 	default:
