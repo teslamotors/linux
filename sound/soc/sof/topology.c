@@ -285,6 +285,15 @@ static int get_token_u32(void *elem, void *object, u32 offset, u32 size)
 	return 0;
 }
 
+static int get_token_u16(void *elem, void *object, u32 offset, u32 size)
+{
+	struct snd_soc_tplg_vendor_value_elem *velem = elem;
+	u16 *val = object + offset;
+
+	*val = velem->value;
+	return 0;
+}
+
 static int get_token_comp_format(void *elem, void *object, u32 offset, u32 size)
 {
 	struct snd_soc_tplg_vendor_string_elem *velem = elem;
@@ -414,6 +423,69 @@ static const struct sof_topology_token ssp_tokens[] = {
 
 /* DMIC */
 static const struct sof_topology_token dmic_tokens[] = {
+	{SOF_TKN_INTEL_DMIC_DRIVER_VERSION,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
+		offsetof(struct sof_ipc_dai_dmic_params, driver_ipc_version),
+		0},
+	{SOF_TKN_INTEL_DMIC_CLK_MIN,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
+		offsetof(struct sof_ipc_dai_dmic_params, pdmclk_min), 0},
+	{SOF_TKN_INTEL_DMIC_CLK_MAX,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
+		offsetof(struct sof_ipc_dai_dmic_params, pdmclk_max), 0},
+	{SOF_TKN_INTEL_DMIC_SAMPLE_RATE,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
+		offsetof(struct sof_ipc_dai_dmic_params, fifo_fs_a), 0},
+	{SOF_TKN_INTEL_DMIC_DUTY_MIN,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, duty_min), 0},
+	{SOF_TKN_INTEL_DMIC_DUTY_MAX,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, duty_max), 0},
+	{SOF_TKN_INTEL_DMIC_NUM_PDM_ACTIVE,
+		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
+		offsetof(struct sof_ipc_dai_dmic_params,
+			 num_pdm_active), 0},
+	{SOF_TKN_INTEL_DMIC_FIFO_WORD_LENGTH,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, fifo_bits_a), 0},
+};
+
+/*
+ * DMIC PDM Tokens
+ * SOF_TKN_INTEL_DMIC_PDM_CTRL_ID should be the first token
+ * as it increments the index while parsing the array of pdm tokens
+ * and determines the correct offset
+ */
+static const struct sof_topology_token dmic_pdm_tokens[] = {
+	{SOF_TKN_INTEL_DMIC_PDM_CTRL_ID,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, pdm[0]),
+		0},
+	{SOF_TKN_INTEL_DMIC_PDM_MIC_A_Enable,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, pdm[0]),
+		0},
+	{SOF_TKN_INTEL_DMIC_PDM_MIC_B_Enable,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, pdm[0]),
+		0},
+	{SOF_TKN_INTEL_DMIC_PDM_POLARITY_A,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, pdm[0]),
+		0},
+	{SOF_TKN_INTEL_DMIC_PDM_POLARITY_B,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, pdm[0]),
+		0},
+	{SOF_TKN_INTEL_DMIC_PDM_CLK_EDGE,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, pdm[0]),
+		0},
+	{SOF_TKN_INTEL_DMIC_PDM_SKEW,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_dmic_params, pdm[0]),
+		0},
 };
 
 /* HDA */
@@ -480,6 +552,65 @@ static void sof_parse_string_tokens(struct snd_soc_component *scomp,
 	}
 }
 
+/* helper function to parse DMIC pdm specific tokens */
+static void sof_parse_pdm_tokens(struct snd_soc_component *scomp,
+				 struct snd_soc_tplg_vendor_value_elem *elem,
+				 void *object,
+				 struct sof_topology_token token)
+{
+	size_t size = sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
+	u32 offset = token.offset;
+	/* pdm_index determines the index in pdm[] to populate the token */
+	static int pdm_index;
+	/* determines the offset of the item in sof_ipc_dai_dmic_pdm_ctrl */
+	u32 pdm_offset;
+
+	switch (token.token) {
+	case SOF_TKN_INTEL_DMIC_PDM_CTRL_ID:
+		token.get_token(elem, object, offset + pdm_index * size,
+				token.size);
+		/* increment the pdm_index */
+		pdm_index++;
+		return;
+	case SOF_TKN_INTEL_DMIC_PDM_MIC_A_Enable:
+		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
+				      enable_mic_a);
+		break;
+	case SOF_TKN_INTEL_DMIC_PDM_MIC_B_Enable:
+		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
+				      enable_mic_b);
+		break;
+	case SOF_TKN_INTEL_DMIC_PDM_POLARITY_A:
+		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
+				      polarity_mic_a);
+		break;
+	case SOF_TKN_INTEL_DMIC_PDM_POLARITY_B:
+		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
+				      polarity_mic_b);
+		break;
+	case SOF_TKN_INTEL_DMIC_PDM_CLK_EDGE:
+		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
+				      clk_edge);
+		break;
+	case SOF_TKN_INTEL_DMIC_PDM_SKEW:
+		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
+				      skew);
+		break;
+	default:
+		break;
+	}
+
+	/*
+	 * offset: address pointing to pdm[0] in dmic_params
+	 * pdm_index - 1: index of the array item to be populated
+	 * pdm_offset: item offset in sof_ipc_dai_dmic_pdm_ctrl
+	 *	       indexed by pdm_index
+	 */
+	token.get_token(elem, object,
+			offset + (pdm_index - 1) * size + pdm_offset,
+			token.size);
+}
+
 static void sof_parse_word_tokens(struct snd_soc_component *scomp,
 				  void *object,
 				  const struct sof_topology_token *tokens,
@@ -496,7 +627,8 @@ static void sof_parse_word_tokens(struct snd_soc_component *scomp,
 		/* search for token */
 		for (j = 0; j < count; j++) {
 			/* match token type */
-			if (tokens[j].type != SND_SOC_TPLG_TUPLE_TYPE_WORD)
+			if (!(tokens[j].type == SND_SOC_TPLG_TUPLE_TYPE_WORD ||
+			      tokens[j].type == SND_SOC_TPLG_TUPLE_TYPE_SHORT))
 				continue;
 
 			/* match token id */
@@ -504,8 +636,24 @@ static void sof_parse_word_tokens(struct snd_soc_component *scomp,
 				continue;
 
 			/* matched - now load token */
-			tokens[j].get_token(elem, object, tokens[j].offset,
-					    tokens[j].size);
+			switch (tokens[j].token) {
+			case SOF_TKN_INTEL_DMIC_PDM_CTRL_ID:
+			case SOF_TKN_INTEL_DMIC_PDM_MIC_A_Enable:
+			case SOF_TKN_INTEL_DMIC_PDM_MIC_B_Enable:
+			case SOF_TKN_INTEL_DMIC_PDM_POLARITY_A:
+			case SOF_TKN_INTEL_DMIC_PDM_POLARITY_B:
+			case SOF_TKN_INTEL_DMIC_PDM_CLK_EDGE:
+			case SOF_TKN_INTEL_DMIC_PDM_SKEW:
+				/* parse pdm specific tokens */
+				sof_parse_pdm_tokens(scomp, elem, object,
+						     tokens[j]);
+				break;
+			default:
+				tokens[j].get_token(elem, object,
+						    tokens[j].offset,
+						    tokens[j].size);
+				break;
+			}
 		}
 	}
 }
@@ -1400,16 +1548,15 @@ static int sof_link_dmic_load(struct snd_soc_component *scomp, int index,
 {
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
 	struct snd_soc_tplg_private *private = &cfg->priv;
+	struct sof_ipc_dai_config *ipc_config;
 	struct sof_ipc_reply reply;
-	u32 size = sizeof(*config);
-	int ret;
+	u32 size;
+	int ret, j;
 
-	/* init IPC */
 	memset(&config->dmic, 0, sizeof(struct sof_ipc_dai_dmic_params));
-	config->hdr.size = size;
 
-	/* get any bespoke DAI tokens */
-	ret = sof_parse_tokens(scomp, config, dmic_tokens,
+	/* get DMIC tokens */
+	ret = sof_parse_tokens(scomp, &config->dmic, dmic_tokens,
 			       ARRAY_SIZE(dmic_tokens), private->array,
 			       private->size);
 	if (ret != 0) {
@@ -1418,17 +1565,77 @@ static int sof_link_dmic_load(struct snd_soc_component *scomp, int index,
 		return ret;
 	}
 
-	dev_dbg(sdev->dev, "tplg: config DMIC%d fmt 0x%x\n",
-		config->id, config->format);
+	/*
+	 * allocate memory for common dai params, dmic params
+	 * and dmic pdm controller params
+	 */
+	ipc_config = kzalloc(sizeof(*config) +
+				sizeof(struct sof_ipc_dai_dmic_pdm_ctrl) *
+				config->dmic.num_pdm_active,
+			     GFP_KERNEL);
+	if (!ipc_config) {
+		dev_err(sdev->dev, "error: allocating memory for config\n");
+		return -ENOMEM;
+	}
+
+	/* copy the common dai config and dmic params */
+	memcpy(ipc_config, config, sizeof(*config));
+
+	/* get DMIC PDM tokens */
+	ret = sof_parse_tokens(scomp, &ipc_config->dmic, dmic_pdm_tokens,
+			       ARRAY_SIZE(dmic_pdm_tokens), private->array,
+			       private->size);
+	if (ret != 0) {
+		dev_err(sdev->dev, "error: parse dmic pdm tokens failed %d\n",
+			private->size);
+		kfree(ipc_config);
+		return ret;
+	}
+
+	/* set IPC header size */
+	size = sizeof(*ipc_config);
+	ipc_config->hdr.size = size;
+
+	/* debug messages */
+	dev_dbg(sdev->dev, "tplg: config DMIC%d driver version %d\n",
+		ipc_config->id, ipc_config->dmic.driver_ipc_version);
+	dev_dbg(sdev->dev, "pdmclk_min %d pdm_clkmax %d duty_min %hd\n",
+		ipc_config->dmic.pdmclk_min, ipc_config->dmic.pdmclk_max,
+		ipc_config->dmic.duty_min);
+	dev_dbg(sdev->dev, "duty_max %hd fifo_fs %d num_pdms active %d\n",
+		ipc_config->dmic.duty_max, ipc_config->dmic.fifo_fs_a,
+		ipc_config->dmic.num_pdm_active);
+	dev_dbg(sdev->dev, "fifo word length %hd\n",
+		ipc_config->dmic.fifo_bits_a);
+
+	for (j = 0; j < ipc_config->dmic.num_pdm_active; j++) {
+		dev_dbg(sdev->dev, "pdm %hd mic a %hd mic b %hd\n",
+			ipc_config->dmic.pdm[j].id,
+			ipc_config->dmic.pdm[j].enable_mic_a,
+			ipc_config->dmic.pdm[j].enable_mic_b);
+		dev_dbg(sdev->dev, "pdm %hd polarity a %hd polarity b %hd\n",
+			ipc_config->dmic.pdm[j].id,
+			ipc_config->dmic.pdm[j].polarity_mic_a,
+			ipc_config->dmic.pdm[j].polarity_mic_b);
+		dev_dbg(sdev->dev, "pdm %hd clk_edge %hd skew %hd\n",
+			ipc_config->dmic.pdm[j].id,
+			ipc_config->dmic.pdm[j].clk_edge,
+			ipc_config->dmic.pdm[j].skew);
+	}
+
+	/* TODO: check if fifo_b word length is needed */
+	ipc_config->dmic.fifo_bits_b = ipc_config->dmic.fifo_bits_a;
 
 	/* send message to DSP */
 	ret = sof_ipc_tx_message(sdev->ipc,
-				 config->hdr.cmd, config, size, &reply,
+				 ipc_config->hdr.cmd, ipc_config, size, &reply,
 				 sizeof(reply));
 
 	if (ret < 0)
 		dev_err(sdev->dev, "error: failed to set DAI config for DMIC%d\n",
 			config->id);
+
+	kfree(ipc_config);
 
 	return ret;
 }
