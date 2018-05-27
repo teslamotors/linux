@@ -243,10 +243,31 @@ struct sof_ipc_dai_hda_params {
 	/* TODO */
 } __attribute__((packed));
 
+/* PDM controller configuration parameters */
+struct sof_ipc_dai_dmic_pdm_ctrl {
+	uint16_t id; /* pdm controller id */
+	uint16_t enable_mic_a; /* Use A (left) channel mic (0 or 1)*/
+	uint16_t enable_mic_b; /* Use B (right) channel mic (0 or 1)*/
+	uint16_t polarity_mic_a; /* Optionally invert mic A signal (0 or 1) */
+	uint16_t polarity_mic_b; /* Optionally invert mic B signal (0 or 1) */
+	uint16_t clk_edge; /* Optionally swap data clock edge (0 or 1) */
+	uint16_t skew; /* Adjust PDM data sampling vs. clock (0..15) */
+} __attribute__((packed));
+
 /* DMIC Configuration Request - SOF_IPC_DAI_DMIC_CONFIG */
 struct sof_ipc_dai_dmic_params {
-	struct sof_ipc_hdr hdr;
-	/* TODO */
+	uint32_t driver_ipc_version;
+	uint32_t pdmclk_min; /* Minimum microphone clock in Hz (100000..N) */
+	uint32_t pdmclk_max; /* Maximum microphone clock in Hz (min...N) */
+	uint32_t fifo_fs_a;  /* FIFO A sample rate in Hz (8000..96000) */
+	uint32_t fifo_fs_b;  /* FIFO B sample rate in Hz (8000..96000) */
+	uint16_t fifo_bits_a; /* FIFO A word length (16 or 24) */
+	uint16_t fifo_bits_b; /* FIFO B word length (16 or 24) */
+	uint16_t duty_min;    /* Min. mic clock duty cycle in % (20..80) */
+	uint16_t duty_max;    /* Max. mic clock duty cycle in % (min..80) */
+	uint32_t num_pdm_active; /* Number of active pdm controllers */
+	/* variable number of pdm controller config */
+	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
 } __attribute__((packed));
 
 /* general purpose DAI configuration */
