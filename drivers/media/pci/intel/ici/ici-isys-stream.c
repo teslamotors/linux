@@ -1422,8 +1422,10 @@ int ici_isys_stream_init(
 	if (rval)
 		goto out_init_fail;
 
-	as->strm_format.ffmt =
-		*__ici_isys_subdev_get_ffmt(asd, pad);
+	if (__ici_isys_subdev_get_ffmt(asd, pad))
+		as->strm_format.ffmt =
+			*__ici_isys_subdev_get_ffmt(asd, pad);
+
 	as->node.sd = as;
 	as->node.pipe = &as->ip.pipe;
 	as->node.node_get_pad_ffmt =

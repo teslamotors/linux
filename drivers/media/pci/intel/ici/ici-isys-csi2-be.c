@@ -80,6 +80,9 @@ void ici_csi2_be_set_ffmt(struct ici_isys_subdev *asd,
 	struct ici_framefmt *cur_ffmt =
 		__ici_isys_subdev_get_ffmt(asd, pad);
 
+	if (!cur_ffmt)
+	    return;
+
 	ffmt->colorspace = 0;
 	memset(ffmt->reserved, 0, sizeof(ffmt->reserved));
 	switch (pad) {
@@ -101,7 +104,10 @@ void ici_csi2_be_set_ffmt(struct ici_isys_subdev *asd,
 		struct ici_rect *r =
 			&asd->crop[CSI2_BE_ICI_PAD_SOURCE];
 
-		u32 code = sink_ffmt->pixelformat;
+		u32 code = 0;
+		if (sink_ffmt)
+		    code = sink_ffmt->pixelformat;
+
 		int idx = get_supported_code_index(code);
 
 		DEBUGK("%s: source pad %u\n", __func__, pad);

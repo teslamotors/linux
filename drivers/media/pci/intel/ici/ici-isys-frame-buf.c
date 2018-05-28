@@ -236,8 +236,10 @@ static int ici_get_userpages(struct device *dev,
 	else
 		pages = vzalloc(array_size);
 
-	if (!pages)
+	if (!pages) {
+		kfree(sgt);
 		return -ENOMEM;
+	}
 
 	down_read(&current->mm->mmap_sem);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
