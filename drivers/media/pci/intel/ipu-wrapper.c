@@ -40,11 +40,6 @@ struct my_css_memory_buffer_item {
 #endif
 };
 
-unsigned long long get_hrt_base_address(void)
-{
-	return 0;
-}
-
 static struct wrapper_base *get_mem_sub_system(int mmid)
 {
 	if (mmid == ISYS_MMID)

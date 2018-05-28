@@ -215,8 +215,8 @@ void ipu_psys_kcmd_free(struct ipu_psys_kcmd *kcmd)
 	kfree(kcmd);
 }
 
-struct ipu_psys_kcmd *ipu_psys_copy_cmd(struct ipu_psys_command *cmd,
-					struct ipu_psys_fh *fh)
+static struct ipu_psys_kcmd *ipu_psys_copy_cmd(struct ipu_psys_command *cmd,
+					       struct ipu_psys_fh *fh)
 {
 	struct ipu_psys *psys = fh->psys;
 	struct ipu_psys_kcmd *kcmd;

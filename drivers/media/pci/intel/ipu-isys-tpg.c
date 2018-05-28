@@ -202,11 +202,9 @@ static int ipu_isys_tpg_set_ffmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
-const struct ipu_isys_pixelformat *ipu_isys_tpg_try_fmt(struct ipu_isys_video
-							*av,
-							struct
-							v4l2_pix_format_mplane
-							*mpix)
+static const struct ipu_isys_pixelformat *ipu_isys_tpg_try_fmt(
+					struct ipu_isys_video *av,
+					struct v4l2_pix_format_mplane *mpix)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	struct media_entity entity = av->vdev.entity;

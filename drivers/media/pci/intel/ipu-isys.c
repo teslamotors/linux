@@ -744,7 +744,7 @@ fail:
 	return rval;
 }
 
-struct media_device_ops isys_mdev_ops = {
+static struct media_device_ops isys_mdev_ops = {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	.link_notify = ipu_pipeline_link_notify,
 #else

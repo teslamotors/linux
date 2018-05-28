@@ -165,12 +165,13 @@ static unsigned int inc_index(void __iomem *q_dmem, struct sys_queue *q,
 	return index >= q->size ? 0 : index;
 }
 
-unsigned int ipu_sys_queue_buf_size(unsigned int size, unsigned int token_size)
+static unsigned int ipu_sys_queue_buf_size(unsigned int size,
+					   unsigned int token_size)
 {
 	return (size + 1) * token_size;
 }
 
-void ipu_sys_queue_init(struct sys_queue *q, unsigned int size,
+static void ipu_sys_queue_init(struct sys_queue *q, unsigned int size,
 		    unsigned int token_size, struct sys_queue_res *res)
 {
 	unsigned int buf_size;

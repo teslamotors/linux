@@ -157,7 +157,7 @@ int ipu_trace_get_timer(struct device *dev, u64 *timer)
 }
 EXPORT_SYMBOL_GPL(ipu_trace_get_timer);
 
-void __ipu_trace_restore(struct device *dev)
+static void __ipu_trace_restore(struct device *dev)
 {
 	struct ipu_bus_device *adev = to_ipu_bus_device(dev);
 	struct ipu_device *isp = adev->isp;
@@ -262,7 +262,7 @@ void ipu_trace_restore(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(ipu_trace_restore);
 
-void __ipu_trace_stop(struct device *dev)
+static void __ipu_trace_stop(struct device *dev)
 {
 	struct ipu_subsystem_trace_config *sys =
 	    to_ipu_bus_device(dev)->trace_cfg;

@@ -216,7 +216,7 @@ static const struct v4l2_subdev_core_ops csi2_sd_core_ops = {
 };
 
 #ifdef IPU_META_DATA_SUPPORT
-struct ipu_isys_pixelformat csi2_meta_pfmts[] = {
+static struct ipu_isys_pixelformat csi2_meta_pfmts[] = {
 	{V4L2_FMT_IPU_ISYS_META, 8, 8, 0, MEDIA_BUS_FMT_FIXED, 0},
 	{},
 };
@@ -438,8 +438,8 @@ static int csi2_link_validate(struct media_link *link)
 	return 0;
 }
 
-bool csi2_has_route(struct media_entity *entity, unsigned int pad0,
-		    unsigned int pad1, int *stream)
+static bool csi2_has_route(struct media_entity *entity, unsigned int pad0,
+			   unsigned int pad1, int *stream)
 {
 #ifdef IPU_META_DATA_SUPPORT
 	if (pad0 == CSI2_PAD_META || pad1 == CSI2_PAD_META)

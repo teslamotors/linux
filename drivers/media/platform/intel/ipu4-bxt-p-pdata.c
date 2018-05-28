@@ -692,7 +692,7 @@ static struct ipu_isys_csi2_config ti964_csi2_cfg_2 = {
 	.port = 4,
 };
 
-struct ti964_subdev_info ti964_subdevs[] = {
+static struct ti964_subdev_info ti964_subdevs[] = {
 #ifdef CONFIG_INTEL_IPU4_OV10635
 	{
 		.board_info = {
@@ -791,7 +791,7 @@ struct ti964_subdev_info ti964_subdevs[] = {
 #endif
 };
 
-struct ti964_subdev_info ti964_subdevs_2[] = {
+static struct ti964_subdev_info ti964_subdevs_2[] = {
 #ifdef CONFIG_INTEL_IPU4_OV10635
 	{
 		.board_info = {
@@ -919,7 +919,7 @@ static struct ipu_isys_subdev_info ti964_sd_2 = {
  * Map buttress output sensor clocks to sensors -
  * this should be coming from ACPI
  */
-struct ipu_isys_clk_mapping clk_mapping[] = {
+static struct ipu_isys_clk_mapping clk_mapping[] = {
 	{ CLKDEV_INIT("2-0036", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("2-001a", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("4-001a", NULL, NULL), "OSC_CLK_OUT1" },

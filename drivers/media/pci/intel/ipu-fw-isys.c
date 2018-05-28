@@ -80,7 +80,7 @@ extracted_bits_per_pixel_per_mipi_data_type[N_IPU_FW_ISYS_MIPI_DATA_TYPE] = {
 	IPU_FW_UNSUPPORTED_DATA_TYPE	/* [0x3F] */
 };
 
-const char send_msg_types[N_IPU_FW_ISYS_SEND_TYPE][32] = {
+static const char send_msg_types[N_IPU_FW_ISYS_SEND_TYPE][32] = {
 	"STREAM_OPEN",
 	"STREAM_START",
 	"STREAM_START_AND_CAPTURE",

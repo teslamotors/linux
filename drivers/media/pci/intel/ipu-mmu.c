@@ -834,7 +834,7 @@ static int ipu_mmu_suspend(struct device *dev)
 	return 0;
 }
 
-const struct dev_pm_ops ipu_mmu_pm_ops = {
+static const struct dev_pm_ops ipu_mmu_pm_ops = {
 	.resume = ipu_mmu_hw_init,
 	.suspend = ipu_mmu_suspend,
 	.runtime_resume = ipu_mmu_hw_init,

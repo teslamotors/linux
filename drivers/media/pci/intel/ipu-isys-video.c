@@ -905,7 +905,7 @@ static int short_packet_queue_setup(struct ipu_isys_pipeline *ip)
 	return 0;
 }
 
-void csi_short_packet_prepare_firmware_stream_cfg(
+static void csi_short_packet_prepare_firmware_stream_cfg(
 				struct ipu_isys_pipeline *ip,
 				struct ipu_fw_isys_stream_cfg_data_abi *cfg)
 {

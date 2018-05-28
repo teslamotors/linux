@@ -379,7 +379,7 @@ static void ipu_dma_buf_release(struct dma_buf *buf)
 	kfree(kbuf);
 }
 
-int ipu_dma_buf_begin_cpu_access(struct dma_buf *dma_buf,
+static int ipu_dma_buf_begin_cpu_access(struct dma_buf *dma_buf,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 				 size_t start, size_t len,
 #endif

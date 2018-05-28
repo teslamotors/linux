@@ -50,7 +50,7 @@
 
 #define BUTTRESS_IPC_CMD_SEND_RETRY	1
 
-const struct ipu_buttress_sensor_clk_freq sensor_clk_freqs[] = {
+static const struct ipu_buttress_sensor_clk_freq sensor_clk_freqs[] = {
 	{6750000, BUTTRESS_SENSOR_CLK_FREQ_6P75MHZ},
 	{8000000, BUTTRESS_SENSOR_CLK_FREQ_8MHZ},
 	{9600000, BUTTRESS_SENSOR_CLK_FREQ_9P6MHZ},

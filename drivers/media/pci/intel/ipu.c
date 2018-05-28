@@ -275,7 +275,7 @@ static void ipu_remove_debugfs(struct ipu_device *isp)
 	debugfs_remove_recursive(isp->ipu_dir);
 }
 
-int ipu_pci_config_setup(struct pci_dev *dev)
+static int ipu_pci_config_setup(struct pci_dev *dev)
 {
 	u16 pci_command;
 	int rval = pci_enable_msi(dev);
@@ -293,7 +293,7 @@ int ipu_pci_config_setup(struct pci_dev *dev)
 	return 0;
 }
 
-void ipu_configure_vc_mechanism(struct ipu_device *isp)
+static void ipu_configure_vc_mechanism(struct ipu_device *isp)
 {
 	u32 val = readl(isp->base + BUTTRESS_REG_BTRS_CTRL);
 

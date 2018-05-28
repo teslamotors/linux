@@ -155,7 +155,7 @@ out_err:
 	return -EBUSY;
 }
 
-const struct dev_pm_ops ipu_bus_pm_ops = {
+static const struct dev_pm_ops ipu_bus_pm_ops = {
 	.runtime_suspend = bus_pm_runtime_suspend,
 	.runtime_resume = bus_pm_runtime_resume,
 };
