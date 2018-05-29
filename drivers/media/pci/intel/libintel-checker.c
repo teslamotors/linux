@@ -18,14 +18,17 @@
 #define SIZE_OF_CHECK(a, b) \
 	{		    \
 	if (sizeof(*a) != sizeof(*b))\
-		pr_err("ipu isys ABI size of mismatch %s\n",	\
+		pr_err("warning: ipu isys ABI size of mismatch %s\n",	\
 		       __stringify(a));					\
 	}								\
 
 static void abi_sanity_checker(void)
 {
-	struct ipu_fw_isys_resp_info_abi *abi_resp;
-	struct ia_css_isys_resp_info_comm *comm_resp;
+	struct ipu_fw_isys_buffer_partition_abi *abi_buf_part;
+	struct ia_css_isys_buffer_partition_comm *comm_buf_part;
+
+	struct ipu_fw_isys_fw_config *abi_fw_config;
+	struct ia_css_isys_fw_config *comm_fw_config;
 
 	struct ipu_fw_isys_resolution_abi *abi_resol;
 	struct ia_css_isys_resolution_comm *comm_resol;
@@ -53,6 +56,44 @@ static void abi_sanity_checker(void)
 
 	struct ipu_fw_isys_frame_buff_set_abi *abi_frame_buff_set;
 	struct ia_css_isys_frame_buff_set_comm *comm_frame_buff_set;
+
+	struct ipu_fw_isys_error_info_abi *abi_err_info;
+	struct ia_css_isys_error_info_comm *comm_err_info;
+
+	struct ipu_fw_isys_resp_info_abi *abi_resp;
+	struct ia_css_isys_resp_info_comm *comm_resp;
+
+	struct ipu_fw_isys_proxy_error_info_abi *abi_proxy_err;
+	struct ia_css_isys_proxy_error_info_comm *comm_proxy_err;
+
+	struct ipu_fw_isys_proxy_resp_info_abi *abi_proxy_resp;
+	struct ia_css_isys_proxy_resp_info_comm *comm_proxy_resp;
+
+	struct ipu_fw_proxy_write_queue_token *abi_write_token;
+	struct ia_css_proxy_write_queue_token *comm_write_token;
+
+	struct ipu_fw_resp_queue_token *abi_resp_token;
+	struct resp_queue_token *comm_resp_token;
+
+	struct ipu_fw_send_queue_token *abi_send_token;
+	struct send_queue_token *comm_send_token;
+
+	struct ipu_fw_proxy_resp_queue_token *abi_resp_queue;
+	struct proxy_resp_queue_token *comm_resp_queue;
+
+	struct ipu_fw_proxy_send_queue_token *abi_proxy_send;
+	struct proxy_send_queue_token *comm_proxy_send;
+
+	SIZE_OF_CHECK(abi_buf_part, comm_buf_part);
+	SIZE_OF_CHECK(abi_fw_config, comm_fw_config);
+	SIZE_OF_CHECK(abi_err_info, comm_err_info);
+	SIZE_OF_CHECK(abi_proxy_err, comm_proxy_err);
+	SIZE_OF_CHECK(abi_proxy_resp, comm_proxy_resp);
+	SIZE_OF_CHECK(abi_write_token, comm_write_token);
+	SIZE_OF_CHECK(abi_resp_token, comm_resp_token);
+	SIZE_OF_CHECK(abi_send_token, comm_send_token);
+	SIZE_OF_CHECK(abi_resp_queue, comm_resp_queue);
+	SIZE_OF_CHECK(abi_proxy_send, comm_proxy_send);
 
 	SIZE_OF_CHECK(abi_resp, comm_resp);
 	ABI_CHECK(abi_resp, comm_resp, buf_id);
@@ -122,6 +163,3 @@ void ipu_isys_abi_checker(void)
 {
 	abi_sanity_checker();
 }
-
-MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Intel ipu library sanity checker");
