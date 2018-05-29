@@ -288,8 +288,8 @@ struct intel_gvt_pipe_info {
 	int owner;
 	struct intel_gvt *gvt;
 	struct work_struct vblank_work;
-	struct intel_dom0_plane_regs dom0_regs[I915_MAX_PLANES - 1];
-	int plane_owner[I915_MAX_PLANES - 1];
+	struct intel_dom0_plane_regs dom0_regs[I915_MAX_PLANES];
+	int plane_owner[I915_MAX_PLANES];
 	int scaler_owner[SKL_NUM_SCALERS];
 };
 
