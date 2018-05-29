@@ -3,6 +3,11 @@ config INTEL_IPU4_BXT_P_PDATA
 	---help---
 	Pre-ACPI system platform data is compiled inside kernel
 
+config INTEL_IPU4_ICI_BXT_P_PDATA
+   bool "Enable built in platform data for Broxton-P ICI driver"
+   ---help---
+   Pre-ACPI system platform data is compiled inside kernel
+
 config INTEL_IPU4P_CNL_RVP_PDATA
 	bool "Enable built in platform data for ipu4p"
 	---help---
