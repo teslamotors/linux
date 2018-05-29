@@ -11,5 +11,8 @@
 #  more details.
 #
 
+obj-$(CONFIG_VIDEO_INTEL_ICI)	+= ici/
+ifndef CONFIG_VIDEO_INTEL_ICI
 obj-$(CONFIG_VIDEO_INTEL_IPU4)	+= ipu4/
+endif
 obj-$(CONFIG_VIDEO_INTEL_IPU4P)	+= ipu4/
