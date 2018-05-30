@@ -90,6 +90,7 @@ struct chip_data {
 	int (*write)(struct driver_data *drv_data);
 	int (*read)(struct driver_data *drv_data);
 	void (*cs_control)(u32 command);
+	u32 pio_dma_threshold;
 };
 
 static inline u32 pxa2xx_spi_read(const struct driver_data *drv_data,

@@ -551,18 +551,6 @@ serial_pxa_set_termios(struct uart_port *port, struct ktermios *termios,
 	spin_unlock_irqrestore(&up->port.lock, flags);
 }
 
-static void
-serial_pxa_pm(struct uart_port *port, unsigned int state,
-	      unsigned int oldstate)
-{
-	struct uart_pxa_port *up = (struct uart_pxa_port *)port;
-
-	if (!state)
-		clk_prepare_enable(up->clk);
-	else
-		clk_disable_unprepare(up->clk);
-}
-
 static void serial_pxa_release_port(struct uart_port *port)
 {
 }
@@ -774,7 +762,6 @@ static const struct uart_ops serial_pxa_pops = {
 	.startup	= serial_pxa_startup,
 	.shutdown	= serial_pxa_shutdown,
 	.set_termios	= serial_pxa_set_termios,
-	.pm		= serial_pxa_pm,
 	.type		= serial_pxa_type,
 	.release_port	= serial_pxa_release_port,
 	.request_port	= serial_pxa_request_port,
