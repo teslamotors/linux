@@ -68,6 +68,7 @@
 /* general */
 #define HC_ID_GEN_BASE               0x0UL
 #define HC_GET_API_VERSION          _HC_ID(HC_ID, HC_ID_GEN_BASE + 0x00)
+#define HC_SOS_OFFLINE_CPU          _HC_ID(HC_ID, HC_ID_GEN_BASE + 0x01)
 
 /* VM management */
 #define HC_ID_VM_BASE               0x10UL
