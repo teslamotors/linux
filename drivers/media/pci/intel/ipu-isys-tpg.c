@@ -124,7 +124,7 @@ static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 		.max = 65535,
 		.min = 8,
 		.step = 1,
-		.qmenu = 0,
+		.qmenu = NULL,
 		.elem_size = 0,
 	};
 

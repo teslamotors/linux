@@ -1328,15 +1328,13 @@ static int ipu_psys_fw_init(struct ipu_psys *psys)
 {
 	struct ia_css_syscom_queue_config
 		ia_css_psys_cmd_queue_cfg[IPU_FW_PSYS_N_PSYS_CMD_QUEUE_ID];
-
 	struct ia_css_syscom_queue_config ia_css_psys_event_queue_cfg[] = {
 		{IPU_FW_PSYS_EVENT_QUEUE_SIZE,
 		 sizeof(struct ipu_fw_psys_event)}
 	};
-
 	struct ipu_fw_psys_srv_init server_init = {
 		.ddr_pkg_dir_address = 0,
-		.host_ddr_pkg_dir = 0,
+		.host_ddr_pkg_dir = NULL,
 		.pkg_dir_size = 0,
 		.icache_prefetch_sp = psys->icache_prefetch_sp,
 		.icache_prefetch_isp = psys->icache_prefetch_isp,
