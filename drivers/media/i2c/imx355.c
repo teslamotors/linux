@@ -875,7 +875,7 @@ static const int imx355_test_pattern_val[] = {
 /* Configurations for supported link frequencies */
 /* Menu items for LINK_FREQ V4L2 control */
 static const s64 link_freq_menu_items[] = {
-	300800000,
+	360000000,
 };
 
 /* Mode configs */
