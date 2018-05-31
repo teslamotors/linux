@@ -10,7 +10,7 @@
 
 #include "crlmodule-sensor-ds.h"
 
-#define IMX477_CAPTURE_MODE_MAX	8
+#define IMX477_CAPTURE_MODE_MAX	10
 
 static struct crl_dynamic_register_access imx477_fll_regs[] = {
 	{
