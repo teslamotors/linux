@@ -55,4 +55,3 @@ config INTEL_MEI_VIRTIO
 	  device over virtio.
 
 source "drivers/misc/mei/dal/Kconfig"
-source "drivers/misc/mei/spd/Kconfig"
