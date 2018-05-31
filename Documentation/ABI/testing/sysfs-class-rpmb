@@ -18,30 +18,3 @@ Contact:	Tomas Winkler <tomas.winkler@intel.com>
 Description:
 		The /sys/class/rpmb/rpmbN directory is created for
 		each RPMB registered device.
-
-What:		/sys/class/rpmb/rpmbN/type
-Date:		Jun 2017
-KernelVersion:	4.12
-Contact:	Tomas Winkler <tomas.winkler@intel.com>
-Description:
-		The /sys/class/rpmb/rpmbN/type file contains device
-		underlaying storage type technology: EMMC, UFS, SIM.
-
-What:		/sys/class/rpmb/rpmbN/id
-Date:		Jun 2017
-KernelVersion:	4.12
-Contact:	Tomas Winkler <tomas.winkler@intel.com>
-Description:
-		The /sys/class/rpmb/rpmbN/id file contains unique device id
-		in a binary form as defined by underlying storage device.
-		In case of multiple RPMB devices a user can determine correct
-		device.
-		The content can be parsed according the storage device type.
-
-What:		/sys/class/rpmb/rpmbN/reliable_wr_cnt
-Date:		Jun 2017
-KernelVersion:	4.12
-Contact:	Tomas Winkler <tomas.winkler@intel.com>
-Description:
-		The /sys/class/rpmb/rpmbN/reliable_wr_cnt file contains
-		number of blocks that can be reliable written in a single request.
