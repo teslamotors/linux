@@ -3,7 +3,7 @@
 #
 config INTEL_MEI_SPD
 	tristate "Intel MEI Host Storage Proxy Driver"
-	depends on INTEL_MEI && BLOCK && RPMB
+	depends on INTEL_MEI && BLOCK
 	help
 	  A driver for the host storage proxy ME client
 	  The driver enables ME FW to store data on a storage devices
