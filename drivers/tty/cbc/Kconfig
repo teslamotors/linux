@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# CBC (CarrierBoardCommunication) subsystem configuration
+#
+
+config CBC_LDISC
+		 tristate "CBC (Carrier Board Communication) line discipline"
+		 depends on TTY
+		 help
+		   The CBC driver implements a line discipline supporting
+		   the proprietary CBC (Carrier Board Communication) protocol.
+
+		   The CBC protocol is a serial line protocol with multiplexing
+		   intended to be used in automotive IVI platforms for multi-
+		   plexed communication between a vehicle IOC and CPU. It is
+		   designed to transport small data packets (up to 64 bytes)
+		   and features a transport protocol to transport larger data
+		   chunks over a point to point connection.
+
+		   When initialised the driver presents a number of channels as
+		   character devices.
+
