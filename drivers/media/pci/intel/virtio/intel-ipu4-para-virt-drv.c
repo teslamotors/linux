@@ -48,13 +48,6 @@ static int get_userpages(struct device *dev,
 	unsigned int i;
 	u64 page_table_ref;
 	u64 *page_table;
-#if 0
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
-    DEFINE_DMA_ATTRS(attrs);
-#else
-    unsigned long attrs;
-#endif
-#endif
 	addr = (unsigned long)frame_plane->mem.userptr;
 	start = addr & PAGE_MASK;
 	end = PAGE_ALIGN(addr + frame_plane->length);
@@ -97,61 +90,13 @@ static int get_userpages(struct device *dev,
 	for (i = 0; i < npages; i++)
 		page_table[i] = page_to_phys(pages[i]);
 
-	printk("UOS phy page add %lld\n", page_table[0]);
+	printk("UOS phy page add %lld offset:%ld\n", page_table[0], addr & ~PAGE_MASK);
 	page_table_ref = virt_to_phys(page_table);
 	kframe_plane->page_table_ref = page_table_ref;
 	kframe_plane->npages = npages;
 	up_read(&current->mm->mmap_sem);
 	return ret;
-#if 0
-printk("%s:%d\n", __func__, __LINE__);
-    ret = sg_alloc_table_from_pages(sgt, pages, npages,
-					addr & ~PAGE_MASK, frame_plane->length,
-					GFP_KERNEL);
-	if (ret) {
-		printk(KERN_ERR "Failed to init sgt\n");
-		goto error_free_pages;
-	}
-	printk("%s:%d\n", __func__, __LINE__);
-	kframe_plane->dev = dev;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
-	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
-	sgt->nents = dma_map_sg_attrs(dev, sgt->sgl,
-				sgt->orig_nents, DMA_FROM_DEVICE, &attrs);
-#else
-	attrs = DMA_ATTR_SKIP_CPU_SYNC;
-	sgt->nents = dma_map_sg_attrs(dev, sgt->sgl,
-				sgt->orig_nents, DMA_FROM_DEVICE, attrs);
-#endif
-	printk("%s:%d\n", __func__, __LINE__);
-	if (sgt->nents <= 0) {
-		printk(KERN_ERR "Failed to init dma_map\n");
-		ret = -EIO;
-		goto error_dma_map;
-	}
-	kframe_plane->dma_addr = sg_dma_address(sgt->sgl);
-	kframe_plane->sgt = sgt;
-	printk("%s:%d\n", __func__, __LINE__);
-error_free_page_list:
-	printk("%s:%d\n", __func__, __LINE__);
-	if (pages) {
-		if (array_size <= PAGE_SIZE)
-			kfree(pages);
-		else
-			vfree(pages);
-	}
-	up_read(&current->mm->mmap_sem);
-	return ret;
 
-error_dma_map:
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
-    dma_unmap_sg_attrs(dev, sgt->sgl, sgt->orig_nents,
-			DMA_FROM_DEVICE, &attrs);
-#else
-    dma_unmap_sg_attrs(dev, sgt->sgl, sgt->orig_nents,
-			DMA_FROM_DEVICE, attrs);
-#endif
-#endif
 error_free_pages:
 	if (pages) {
 		for (i = 0; i < nr; i++)
@@ -159,7 +104,6 @@ error_free_pages:
 	}
 	kfree(sgt);
 	return -1;
-	//goto error_free_page_list;
 }
 
 static struct ici_frame_buf_wrapper *frame_buf_lookup(struct ici_isys_frame_buf_list *buf_list, struct ici_frame_info *user_frame_info)
@@ -197,11 +141,6 @@ static void put_userpages(struct ici_kframe_plane *kframe_plane)
 	struct sg_table *sgt = kframe_plane->sgt;
 	struct scatterlist *sgl;
 	unsigned int i;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
-    DEFINE_DMA_ATTRS(attrs);
-#else
-    unsigned long attrs;
-#endif
 
 	struct mm_struct *mm = current->active_mm;
 	if (!mm) {
@@ -210,17 +149,6 @@ static void put_userpages(struct ici_kframe_plane *kframe_plane)
 	}
 
 	down_read(&mm->mmap_sem);
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
-	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
-	dma_unmap_sg_attrs(kframe_plane->dev, sgt->sgl, sgt->orig_nents,
-				DMA_FROM_DEVICE, &attrs);
-#else
-    attrs = DMA_ATTR_SKIP_CPU_SYNC;
-	dma_unmap_sg_attrs(kframe_plane->dev, sgt->sgl, sgt->orig_nents,
-				DMA_FROM_DEVICE, attrs);
-#endif
-
 	for_each_sg(sgt->sgl, sgl, sgt->orig_nents, i) {
 		struct page *page = sg_page(sgl);
 
@@ -342,12 +270,11 @@ static void unmap_buf(struct ici_frame_buf_wrapper *buf)
 		}
 	}
 }
-int get_buf(struct virtual_stream *vstream, struct ici_frame_info *frame_info,
-		struct ici_frame_buf_wrapper *buf)
+struct ici_frame_buf_wrapper *get_buf(struct virtual_stream *vstream, struct ici_frame_info *frame_info)
 {
 	int res;
 	unsigned i;
-	struct ici_frame_buf_wrapper *frame;
+	struct ici_frame_buf_wrapper *buf;
 
 	struct ici_kframe_plane *kframe_plane;
 	struct ici_isys_frame_buf_list *buf_list = &vstream->buf_list;
@@ -355,30 +282,33 @@ int get_buf(struct virtual_stream *vstream, struct ici_frame_info *frame_info,
 
 	if (mem_type != ICI_MEM_USERPTR && mem_type != ICI_MEM_DMABUF) {
 		printk(KERN_ERR "Memory type not supproted\n");
-		return -EINVAL;
+		return NULL;
 	}
 
 	if (!frame_info->frame_planes[0].length) {
 		printk(KERN_ERR "User length not set\n");
-		return -EINVAL;
+		return NULL;
 	}
 
-	frame = frame_buf_lookup(buf_list, frame_info);
-	if (frame) {
+	buf = frame_buf_lookup(buf_list, frame_info);
+	if (buf) {
 		printk(KERN_INFO "Frame buffer found in the list\n");
-		frame->state = ICI_BUF_PREPARED;
-		return 0;
+		buf->state = ICI_BUF_PREPARED;
+		return buf;
 	}
+	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
+	if (!buf)
+		return NULL;
 
 	buf->buf_id = frame_info->frame_buf_id;
-	buf->buf_list = buf_list;
+	buf->uos_buf_list = buf_list;
 	memcpy(&buf->frame_info, frame_info, sizeof(buf->frame_info));
 
 	switch (mem_type) {
 	case ICI_MEM_USERPTR:
 		if (!frame_info->frame_planes[0].mem.userptr) {
 			printk(KERN_ERR "User pointer not define\n");
-			return -EINVAL;
+			return NULL;
 		}
 		for (i = 0; i < frame_info->num_planes; i++) {
 			kframe_plane = &buf->kframe_info.planes[i];
@@ -387,7 +317,7 @@ int get_buf(struct virtual_stream *vstream, struct ici_frame_info *frame_info,
 								kframe_plane);
 			printk("%s:%d\n", __func__, __LINE__);
 			if (res)
-				return res;
+				return NULL;
 			printk("%s:%d\n", __func__, __LINE__);
 		}
 		break;
@@ -398,7 +328,7 @@ int get_buf(struct virtual_stream *vstream, struct ici_frame_info *frame_info,
 			res = map_dma(&vstream->strm_dev.dev, &frame_info->frame_planes[i],
 						  kframe_plane);
 			if (res)
-				return res;
+				return NULL;
 		}
 
 		break;
@@ -406,13 +336,12 @@ int get_buf(struct virtual_stream *vstream, struct ici_frame_info *frame_info,
 	printk("%s:%d\n", __func__, __LINE__);
 	mutex_lock(&buf_list->mutex);
 	buf->state = ICI_BUF_PREPARED;
-	list_add_tail(&buf->node, &buf_list->getbuf_list);
+	list_add_tail(&buf->uos_node, &buf_list->getbuf_list);
 	mutex_unlock(&buf_list->mutex);
 	printk("%s:%d\n", __func__, __LINE__);
-	//shared_buf = buf;
-	return 0;
+	return buf;
 }
-
+#if 0
 int put_buf(struct virtual_stream *vstream,
 				struct ici_frame_info *frame_info,
 				unsigned int f_flags)
@@ -453,7 +382,7 @@ int put_buf(struct virtual_stream *vstream,
 
 	return 0;
 }
-
+#endif
 //Call from Stream-OFF and if Stream-ON fails
 void buf_stream_cancel(struct virtual_stream *vstream)
 {
@@ -466,10 +395,6 @@ void buf_stream_cancel(struct virtual_stream *vstream)
 		unmap_buf(buf);
 	}
 	list_for_each_entry_safe(buf, next_buf, &buf_list->putbuf_list, node) {
-		list_del(&buf->node);
-		unmap_buf(buf);
-	}
-	list_for_each_entry_safe(buf, next_buf, &buf_list->interlacebuf_list, node) {
 		list_del(&buf->node);
 		unmap_buf(buf);
 	}
@@ -491,7 +416,7 @@ static int virt_isys_set_format(struct file *file, void *fh,
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
 		return -ENOMEM;
-	op[0] = 0;
+	op[0] = vstream->virt_dev_id;
 	op[1] = 0;
 
 	req->payload = virt_to_phys(sf);
@@ -566,9 +491,7 @@ static int virt_isys_stream_off(struct file *file, void *fh)
 	}
 	kfree(req);
 
-	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
-	if (!req && !fe_ctx)
-		return -ENOMEM;
+//	buf_stream_cancel(vstream);
 
 	return rval;
 }
@@ -584,16 +507,11 @@ static int virt_isys_getbuf(struct file *file, void *fh,
 	int rval = 0;
 	int op[3];
 
-	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	rval = get_buf(vstream, user_frame_info, buf);
-	if (rval) {
+	buf = get_buf(vstream, user_frame_info);
+	if (!buf) {
 		printk(KERN_ERR "Failed to map buffer: %d\n", rval);
 		return -ENOMEM;
 	}
-	printk(KERN_INFO "Buffer_id:%d mapped\n", buf->buf_id);
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
@@ -625,6 +543,31 @@ static int virt_isys_putbuf(struct file *file, void *fh,
 	struct ipu4_virtio_ctx *fe_ctx = vstream->ctx;
 	struct ipu4_virtio_req *req;
 	int rval = 0;
+	int op[2];
+
+	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
+	if (!req)
+		return -ENOMEM;
+
+	op[0] = vstream->virt_dev_id;
+	op[1] = 0;
+	req->payload = virt_to_phys(user_frame_info);
+
+	/*rval = put_buf(vstream,user_frame_info,file->f_flags);
+	if(rval){
+			printk(KERN_ERR "Failed to Get buffer: %d\n",rval);
+			return -ENOMEM;
+	}*/
+
+	intel_ipu4_virtio_create_req(req, IPU4_CMD_PUT_BUF, &op[0]);
+
+	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
+	if (rval) {
+		printk(KERN_ERR "Failed to Get Buffer\n");
+		kfree(req);
+		return rval;
+	}
+	kfree(req);
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req && !fe_ctx)
@@ -640,16 +583,16 @@ static unsigned int stream_fop_poll(struct file *file, struct ici_stream_device 
 	struct ipu4_virtio_ctx *fe_ctx = vstream->ctx;
 	int rval = 0;
 	int op[2];
-	printk(KERN_INFO "virt stream open\n");
+	printk(KERN_INFO "stream_fop_poll %d\n", vstream->virt_dev_id);
 	get_device(&dev->dev);
 
-	file->private_data = dev;
+//	file->private_data = dev;
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
 		return -ENOMEM;
 
-	op[0] = dev->virt_dev_id;
+	op[0] = vstream->virt_dev_id;
 	op[1] = 0;
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_POLL, &op[0]);
@@ -714,7 +657,7 @@ static int virt_stream_fop_release(struct inode *inode, struct file *file)
 	printk(KERN_INFO "virt stream close\n");
 	put_device(&strm_dev->dev);
 
-	file->private_data = strm_dev;
+	//file->private_data = strm_dev;
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)

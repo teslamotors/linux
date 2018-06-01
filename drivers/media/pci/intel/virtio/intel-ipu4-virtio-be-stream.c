@@ -10,6 +10,7 @@
 #include <linux/poll.h>
 
 #include <linux/hashtable.h>
+#include <linux/pagemap.h>
 #include <media/ici.h>
 #include <linux/vhm/acrn_vhm_mm.h>
 #include "./ici/ici-isys-stream-device.h"
@@ -130,7 +131,7 @@ int process_poll(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_stream *as;
 	struct ici_isys_frame_buf_list *buf_list;
 	int ret;
-	printk(KERN_INFO "process_poll: %d", hash_initialised);
+	printk(KERN_INFO "process_poll: %d %d", hash_initialised, req->op[0]);
 
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
 		if (sn != NULL) {
@@ -154,6 +155,127 @@ int process_poll(int domid, struct ipu4_virtio_req *req)
 		req->func_ret = 0;//POLLHUP;
 	else
 		req->func_ret = -1;//POLLERR;
+
+	return 0;
+}
+
+int process_put_buf(int domid, struct ipu4_virtio_req *req)
+{
+	struct stream_node *sn = NULL;
+	struct ici_stream_device *strm_dev;
+	struct ici_frame_info *host_virt;
+	int err;
+
+	printk(KERN_INFO "process_put_buf: %d %d", hash_initialised, req->op[0]);
+
+	if (!hash_initialised)
+		return -1;
+
+	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
+		printk(KERN_INFO "process_put_buf: sn %d %p", req->op[0], sn);
+		if (sn != NULL) {
+			printk(KERN_INFO "process_put_buf: node %d %p", req->op[0], sn);
+			break;
+		}
+	}
+	if (sn == NULL) {
+		printk(KERN_ERR "process_put_buf: NULL sn\n");
+		return 0;
+	}
+
+	if (sn->f == NULL) {
+		printk(KERN_ERR "process_put_buf: NULL sn->f\n");
+		return 0;
+	}
+	strm_dev = sn->f->private_data;
+	host_virt = (struct ici_frame_info *)map_guest_phys(domid, req->payload, PAGE_SIZE);
+	if (host_virt == NULL) {
+		printk(KERN_ERR "process_put_buf: NULL host_virt");
+		return 0;
+	}
+	err = strm_dev->ipu_ioctl_ops->ici_put_buf(sn->f, strm_dev, host_virt);
+
+	if (err)
+		printk(KERN_ERR "process_put_buf: ici_put_buf failed\n");
+
+	return 0;
+}
+
+int process_get_buf(int domid, struct ipu4_virtio_req *req)
+{
+	struct stream_node *sn = NULL;
+	struct ici_frame_buf_wrapper *shared_buf;
+	int k, i = 0;
+	void *pageaddr;
+	u64 *page_table = NULL;
+	struct page **data_pages = NULL;
+	struct ici_stream_device *strm_dev;
+	int err;
+
+	printk(KERN_INFO "process_get_buf: %d %d", hash_initialised, req->op[0]);
+
+	if (!hash_initialised)
+		return -1;
+
+	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
+		printk(KERN_INFO "process_get_buf: sn %d %p", req->op[0], sn);
+		if (sn != NULL) {
+			printk(KERN_INFO "process_get_buf: node %d %p", req->op[0], sn);
+			break;
+		}
+	}
+	if (sn == NULL) {
+		printk(KERN_ERR "process_get_buf: NULL sn\n");
+		return 0;
+	}
+
+	if (sn->f == NULL) {
+		printk(KERN_ERR "process_get_buf: NULL sn->f\n");
+		return 0;
+	}
+
+	printk("GET_BUF: Mapping buffer\n");
+	shared_buf = (struct ici_frame_buf_wrapper *)map_guest_phys(domid, req->payload, PAGE_SIZE);
+	if (!shared_buf) {
+		printk(KERN_ERR "SOS Failed to map Buffer from UserOS\n");
+		req->stat = IPU4_REQ_ERROR;
+	}
+	data_pages = kcalloc(shared_buf->kframe_info.planes[0].npages, sizeof(struct page *), GFP_KERNEL);
+	if (data_pages == NULL) {
+		printk(KERN_ERR "SOS Failed alloc data page set\n");
+		req->stat = IPU4_REQ_ERROR;
+	}
+	printk("Total number of pages:%d\n", shared_buf->kframe_info.planes[0].npages);
+
+	page_table = (u64 *)map_guest_phys(domid, shared_buf->kframe_info.planes[0].page_table_ref, PAGE_SIZE);
+
+	if (page_table == NULL) {
+		printk(KERN_ERR "SOS Failed to map page table\n");
+		req->stat = IPU4_REQ_ERROR;
+		return 0;
+	}
+
+	else {
+		 printk("SOS first page %lld\n", page_table[0]);
+		 k = 0;
+		 for (i = 0; i < shared_buf->kframe_info.planes[0].npages; i++) {
+			 pageaddr = map_guest_phys(domid, page_table[i], PAGE_SIZE);
+			 if (pageaddr == NULL) {
+				 printk(KERN_ERR "Cannot map pages from UOS\n");
+				 req->stat = IPU4_REQ_ERROR;
+				 break;
+			 }
+
+			 data_pages[k] = virt_to_page(pageaddr);
+			 k++;
+		 }
+	 }
+
+	strm_dev = sn->f->private_data;
+	err = strm_dev->ipu_ioctl_ops->ici_get_buf_virt(sn->f, strm_dev, shared_buf, data_pages);
+
+	if (err)
+		printk(KERN_ERR "process_get_buf: ici_get_buf_virt failed\n");
 
 	return 0;
 }

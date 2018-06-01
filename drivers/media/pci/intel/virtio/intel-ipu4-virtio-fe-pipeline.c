@@ -34,7 +34,7 @@ int process_pipeline(struct file *file,
 
 	rval = fe_priv->bknd_ops->send_req(fe_priv->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to send request to BE\n");
+		pr_err("Failed to send request to BE\n");
 		kfree(req);
 		return rval;
 	}

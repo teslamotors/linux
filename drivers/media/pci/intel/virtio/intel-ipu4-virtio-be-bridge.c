@@ -10,7 +10,6 @@
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/syscalls.h>
-#include <linux/pagemap.h>
 
 #include "intel-ipu4-virtio-be-bridge.h"
 #include "./ici/ici-isys-frame-buf.h"
@@ -20,12 +19,6 @@
 int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 {
 	int ret = 0;
-	struct ici_frame_buf_wrapper *shared_buf;
-	int k, i = 0;
-	void *pageaddr;
-	u64 *page_table = NULL;
-	struct page **data_pages = NULL;
-	int *pixel_data;
 	if (!req) {
 			printk(KERN_ERR "request is NULL\n");
 			return -EINVAL;
@@ -108,54 +101,12 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op4 - Buffer ID
 			 * op5 - Length of Buffer
 			 */
-			 printk("GET_BUF: Mapping buffer\n");
-			 shared_buf = (struct ici_frame_buf_wrapper *)map_guest_phys(domid, req->payload, PAGE_SIZE);
-			 if (!shared_buf) {
-				 printk(KERN_ERR "SOS Failed to map Buffer from UserOS\n");
-				 req->stat = IPU4_REQ_ERROR;
-			 }
-			 data_pages = kcalloc(shared_buf->kframe_info.planes[0].npages, sizeof(struct page *), GFP_KERNEL);
-			 if (data_pages == NULL) {
-				 printk(KERN_ERR "SOS Failed alloc data page set\n");
-				 req->stat = IPU4_REQ_ERROR;
-			 }
-			 printk("Total number of pages:%d\n", shared_buf->kframe_info.planes[0].npages);
 
-			 page_table = (u64 *)map_guest_phys(domid, shared_buf->kframe_info.planes[0].page_table_ref, PAGE_SIZE);
-
-			 if (page_table == NULL) {
-				 printk(KERN_ERR "SOS Failed to map page table\n");
-				 req->stat = IPU4_REQ_ERROR;
-				 break;
-			 }
-
-			 else {
-				 printk("SOS first page %lld\n", page_table[0]);
-				 k = 0;
-				 for (i = 0; i < shared_buf->kframe_info.planes[0].npages; i++) {
-					 pageaddr = map_guest_phys(domid, page_table[i], PAGE_SIZE);
-					 if (pageaddr == NULL) {
-						 printk(KERN_ERR "Cannot map pages from UOS\n");
-						 req->stat = IPU4_REQ_ERROR;
-						 break;
-					 }
-
-					 data_pages[k] = virt_to_page(pageaddr);
-
-					 pixel_data = (int *)kmap(data_pages[k]);
-					 if (k == 0) {
-						printk("Pixel data after 0x%x\n", pixel_data[0]);
-							pixel_data[0] = 0xffffffff;
-						printk("Pixel data after after memset0x%x\n", pixel_data[0]);
-					 }
-					 k++;
-
-
-				 }
-			 }
-
-			 req->stat = IPU4_REQ_PROCESSED;
-
+			ret = process_get_buf(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_PUT_BUF:
 			/* Set Format of a given video node
@@ -163,6 +114,11 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op1 - Actual device fd. By default set to 0
 			 * op2 - Memory Type 1: USER_PTR 2: DMA_PTR
 			 */
+			ret = process_put_buf(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_SET_FORMAT:
 			ret = process_set_format(domid, req);

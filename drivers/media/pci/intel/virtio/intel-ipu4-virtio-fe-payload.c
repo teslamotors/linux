@@ -28,7 +28,6 @@ void intel_ipu4_virtio_create_req(struct ipu4_virtio_req *req,
 	case IPU4_CMD_DEVICE_CLOSE:
 	case IPU4_CMD_STREAM_ON:
 	case IPU4_CMD_STREAM_OFF:
-	case IPU4_CMD_GET_BUF:
 	case IPU4_CMD_PUT_BUF:
 	case IPU4_CMD_SET_FORMAT:
 	case IPU4_CMD_ENUM_NODES:
@@ -44,6 +43,10 @@ void intel_ipu4_virtio_create_req(struct ipu4_virtio_req *req,
 		 * op1 - Actual device fd. By default set to 0
 		 */
 		for (i = 0; i < 2; i++)
+			req->op[i] = op[i];
+		break;
+	case IPU4_CMD_GET_BUF:
+		for (i = 0; i < 3; i++)
 			req->op[i] = op[i];
 		break;
 	default:

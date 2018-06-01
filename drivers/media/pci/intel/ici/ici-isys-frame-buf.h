@@ -57,6 +57,8 @@ struct ici_frame_buf_wrapper {
 	struct ici_frame_info frame_info;
 	struct list_head node;
 	struct ici_isys_frame_buf_list *buf_list;
+	struct list_head uos_node;
+	struct ici_isys_frame_buf_list *uos_buf_list;
 	uint32_t buf_id;
 	frame_buf_state state;
 };
@@ -95,6 +97,10 @@ struct ici_isys_frame_buf_list {
 int ici_isys_get_buf(struct ici_isys_stream *as,
 				 struct ici_frame_info
 				 *user_frame_info);
+
+int ici_isys_get_buf_virt(struct ici_isys_stream *as,
+				struct ici_frame_buf_wrapper *frame_buf,
+				struct page **pages);
 
 int ici_isys_put_buf(struct ici_isys_stream *as,
 				 struct ici_frame_info

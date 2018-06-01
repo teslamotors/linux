@@ -42,6 +42,8 @@ struct ici_ioctl_ops {
 	int (*ici_stream_off) (struct file *file, void *fh);
 	int (*ici_get_buf) (struct file *file, void *fh,
 		struct ici_frame_info *fram);
+	int (*ici_get_buf_virt) (struct file *file, void *fh,
+		struct ici_frame_buf_wrapper *fram, struct page **pages);
 	int (*ici_put_buf) (struct file *file, void *fh,
 		struct ici_frame_info *fram);
 };
