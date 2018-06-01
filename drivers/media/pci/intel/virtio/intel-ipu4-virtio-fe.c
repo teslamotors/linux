@@ -103,37 +103,21 @@ static void ipu_virtio_fe_remove_common(struct virtio_device *vdev)
 	ida_simple_remove(&index_ida, priv->index);
 	kfree(priv);
 }
+
 static int ipu_virtio_fe_send_req(int vmid, struct ipu4_virtio_req *req,
 			      int wait)
 {
 	struct ipu4_virtio_uos *priv = ipu4_virtio_fe;
-	struct ipu4_virtio_req *tx_req;
 	int ret = 0;
-	int timeout = 1000;
 	printk(KERN_NOTICE "IPU FE:%s\n", __func__);
 	if (priv == NULL) {
 		printk(KERN_ERR	"IPU Backend not connected\n");
 		return -ENOENT;
 	}
 
-	tx_req = kcalloc(1, sizeof(*tx_req), GFP_KERNEL);
-	if (!tx_req)
-		return -ENOMEM;
-
-	memcpy(tx_req, req, sizeof(*req));
-
-	ipu_virtio_fe_register_buffer(ipu4_virtio_fe, tx_req, sizeof(*tx_req));
-
-	if (wait) {
-		while (timeout--) {
-			if (tx_req->stat !=	IPU4_REQ_NOT_RESPONDED)
-				break;
-			usleep_range(100, 120);
-		}
-
-	if (timeout < 0)
-		return -EBUSY;
-	}
+	init_completion(&priv->have_data);
+	ipu_virtio_fe_register_buffer(ipu4_virtio_fe, req, sizeof(*req));
+	wait_for_completion(&priv->have_data);
 
 	return ret;
 }

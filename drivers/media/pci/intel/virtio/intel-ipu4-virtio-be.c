@@ -16,7 +16,7 @@
 #include <linux/hashtable.h>
 
 #include "intel-ipu4-virtio-common.h"
-#include "intel-ipu4-virtio-bridge.h"
+#include "intel-ipu4-virtio-be-bridge.h"
 
 enum {
 	IPU_VIRTIO_RX_QUEUE = 0,

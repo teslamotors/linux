@@ -12,14 +12,14 @@
 #include <linux/syscalls.h>
 #include <linux/pagemap.h>
 
-#include "intel-ipu4-virtio-bridge.h"
+#include "intel-ipu4-virtio-be-bridge.h"
 #include "./ici/ici-isys-frame-buf.h"
+#include "intel-ipu4-virtio-be-pipeline.h"
+#include "intel-ipu4-virtio-be-stream.h"
 
-#ifdef CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE
 int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 {
 	int ret = 0;
-	struct test_payload *payload;
 	struct ici_frame_buf_wrapper *shared_buf;
 	int k, i = 0;
 	void *pageaddr;
@@ -36,23 +36,31 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			return -EINVAL;
 	}
 	switch (req->cmd) {
-	case IPU4_CMD_DEVICE_OPEN:
-
+	case IPU4_CMD_POLL:
 			/*
 			 * Open video device node
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
-			printk(KERN_INFO "DEVICE_OPEN: payload guest_phy_addr: %lld\n", req->payload);
-			payload = (struct test_payload *)map_guest_phys(domid, req->payload, PAGE_SIZE);
-			if (!payload)
-				printk("BE DATA is NULL\n");
-			else{
-					printk(KERN_INFO "DEVICE_OPEN: virtual_dev_id:%d actual_fd:%d payload_data1:%d payload_data2:%ld name:%s\n",
-					req->op[0], req->op[1], payload->data1, payload->data2, payload->name);
-				/*printk(KERN_INFO "DEVICE_OPEN: virtual_dev_id:%d actual_fd:%d\n",req->op[0],req->op[1]);*/
-			}
-			req->stat = IPU4_REQ_PROCESSED;
+			printk(KERN_INFO "POLL: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			ret = process_poll(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
+			break;
+	case IPU4_CMD_DEVICE_OPEN:
+			/*
+			 * Open video device node
+			 * op0 - virtual device node number
+			 * op1 - Actual device fd. By default set to 0
+			 */
+			printk(KERN_INFO "DEVICE_OPEN: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			ret = process_device_open(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_DEVICE_CLOSE:
 			/*
@@ -60,18 +68,36 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
+			printk(KERN_INFO "DEVICE_CLOSE: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			ret = process_device_close(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_STREAM_ON:
 			/* Start Stream
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
+			printk(KERN_INFO "STREAM ON: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			ret = process_stream_on(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_STREAM_OFF:
 			/* Stop Stream
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
+			printk(KERN_INFO "STREAM OFF: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			ret = process_stream_off(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_GET_BUF:
 			/* Set Format of a given video node
@@ -130,8 +156,8 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 
 			 req->stat = IPU4_REQ_PROCESSED;
 
-				break;
-		case IPU4_CMD_PUT_BUF:
+			break;
+	case IPU4_CMD_PUT_BUF:
 			/* Set Format of a given video node
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
@@ -139,139 +165,85 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 */
 			break;
 	case IPU4_CMD_SET_FORMAT:
-			/* Set Format of a given video node
-			 * op0 - virtual device node number
-			 * op1 - Actual device fd. By default set to 0
-			 * op2 - Width
-			 * op3 - Height
-			 * op4 - Pixel Format
-			 * op5 - Field
-			 * op6 - Colorspace
-			 * op7 - Size of Image
-			 * op8 - Number of planes
-			 * op9 - flags
-			 */
-			printk(KERN_INFO "VBS SET_FMT: Width:%d Height:%d\n", req->op[2], req->op[3]);
-			req->stat = IPU4_REQ_PROCESSED;
+			ret = process_set_format(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
+			break;
+	case IPU4_CMD_PIPELINE_OPEN:
+			ret = process_pipeline_open(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
+			break;
+	case IPU4_CMD_PIPELINE_CLOSE:
+			ret = process_pipeline_close(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_ENUM_NODES:
+			ret = process_enum_nodes(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_ENUM_LINKS:
+			ret = process_enum_links(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_SETUP_PIPE:
+			ret = process_setup_pipe(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_SET_FRAMEFMT:
+			ret = process_set_framefmt(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_GET_FRAMEFMT:
+			ret = process_get_framefmt(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_GET_SUPPORTED_FRAMEFMT:
+			ret = process_get_supported_framefmt(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_SET_SELECTION:
+			ret = process_pad_set_sel(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_GET_SELECTION:
+			ret = process_pad_get_sel(domid, req);
+			if (ret)
+				req->stat = IPU4_REQ_ERROR;
+			else
+				req->stat = IPU4_REQ_PROCESSED;
 			break;
 	default:
 			return -EINVAL;
 		}
 
 	return ret;
-}
-#endif
-void intel_ipu4_virtio_create_req(struct ipu4_virtio_req *req,
-			     enum intel_ipu4_virtio_command cmd, int *op)
-{
-	int i;
-
-	req->stat = IPU4_REQ_NOT_RESPONDED;
-	req->cmd = cmd;
-
-	switch (cmd) {
-	case IPU4_CMD_DEVICE_OPEN:
-			/* Open video device node
-			 * op0 - virtual device node number
-			 * op1 - Actual device fd. By default set to 0
-			 */
-			for (i = 0; i < 2; i++) {
-				req->op[i] = op[i];
-			}
-			break;
-	case IPU4_CMD_DEVICE_CLOSE:
-			/* Close video device node
-			 * op0 - virtual device node number
-			 * op1 - Actual device fd. By default set to 0
-			 */
-			break;
-	case IPU4_CMD_STREAM_ON:
-			/* Start Stream
-			 * op0 - virtual device node number
-			 * op1 - Actual device fd. By default set to 0
-			 */
-			for (i = 0; i < 2; i++) {
-					req->op[i] = op[i];
-			}
-			break;
-	case IPU4_CMD_STREAM_OFF:
-			/* Stop Stream
-			 * op0 - virtual device node number
-			 * op1 - Actual device fd. By default set to 0
-			 */
-			for (i = 0; i < 2; i++) {
-				req->op[i] = op[i];
-			}
-			break;
-	case IPU4_CMD_GET_BUF:
-			/* Set Format of a given video node
-			 * op0 - virtual device node number
-			 * op1 - Actual device fd. By default set to 0
-			 * op2 - Memory Type 1: USER_PTR 2: DMA_PTR
-			 * op3 - Number of planes
-			 * op4 - Buffer ID
-			 * op5 - Length of Buffer
-			 */
-			for (i = 0; i < 3; i++) {
-				req->op[i] = op[i];
-			}
-			break;
-		case IPU4_CMD_PUT_BUF:
-			/* Set Format of a given video node
-			 * op0 - virtual device node number
-			 * op1 - Actual device fd. By default set to 0
-			 * op2 - Memory Type 1: USER_PTR 2: DMA_PTR
-			 */
-			break;
-	case IPU4_CMD_SET_FORMAT:
-			/* Set Format of a given video node
-			 * op0 - virtual device node number
-			 * op1 - Actual device fd. By default set to 0
-			 * op2 - Width
-			 * op3 - Height
-			 * op4 - Pixel Format
-			 * op5 - Field
-			 * op6 - Colorspace
-			 * op7 - Size of Image
-			 * op8 - Number of planes
-			 * op9 - flags
-			 */
-			for (i = 0; i < 10; i++)
-				req->op[i] = op[i];
-			break;
-	case IPU4_CMD_ENUM_NODES:
-			break;
-	case IPU4_CMD_ENUM_LINKS:
-			break;
-	case IPU4_CMD_SETUP_PIPE:
-			break;
-	case IPU4_CMD_SET_FRAMEFMT:
-			break;
-	case IPU4_CMD_GET_FRAMEFMT:
-			break;
-	case IPU4_CMD_GET_SUPPORTED_FRAMEFMT:
-			break;
-	case IPU4_CMD_SET_SELECTION:
-			break;
-	case IPU4_CMD_GET_SELECTION:
-			break;
-	default:
-			return;
-	}
 }

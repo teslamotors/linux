@@ -25,6 +25,7 @@ struct ipu4_virtio_req {
 	unsigned int req_id;
 	unsigned int stat;
 	unsigned int cmd;
+	unsigned int func_ret;
 	unsigned int op[MAX_NUMBER_OF_OPERANDS];
 	u64 payload;
 };
@@ -99,6 +100,9 @@ enum intel_ipu4_virtio_command {
 	IPU4_CMD_GET_SUPPORTED_FRAMEFMT,
 	IPU4_CMD_SET_SELECTION,
 	IPU4_CMD_GET_SELECTION,
+	IPU4_CMD_POLL,
+	IPU4_CMD_PIPELINE_OPEN,
+	IPU4_CMD_PIPELINE_CLOSE,
 	IPU4_CMD_GET_N
 };
 
