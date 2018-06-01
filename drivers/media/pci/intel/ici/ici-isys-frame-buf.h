@@ -33,6 +33,10 @@ struct ici_kframe_plane {
 	struct dma_buf_attachment *db_attach;
 	struct dma_buf *dbdbuf;
 	void *kaddr;
+
+	/* For mediator */
+	int npages;
+	u64 page_table_ref;
 };
 
 struct ici_kframe_info {

@@ -10,13 +10,22 @@
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/syscalls.h>
+#include <linux/pagemap.h>
 
 #include "intel-ipu4-virtio-bridge.h"
+#include "./ici/ici-isys-frame-buf.h"
 
+#ifdef CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE
 int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 {
 	int ret = 0;
-
+	struct test_payload *payload;
+	struct ici_frame_buf_wrapper *shared_buf;
+	int k, i = 0;
+	void *pageaddr;
+	u64 *page_table = NULL;
+	struct page **data_pages = NULL;
+	int *pixel_data;
 	if (!req) {
 			printk(KERN_ERR "request is NULL\n");
 			return -EINVAL;
@@ -28,12 +37,21 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 	}
 	switch (req->cmd) {
 	case IPU4_CMD_DEVICE_OPEN:
+
 			/*
 			 * Open video device node
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
-			printk(KERN_INFO "DEVICE_OPEN: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			printk(KERN_INFO "DEVICE_OPEN: payload guest_phy_addr: %lld\n", req->payload);
+			payload = (struct test_payload *)map_guest_phys(domid, req->payload, PAGE_SIZE);
+			if (!payload)
+				printk("BE DATA is NULL\n");
+			else{
+					printk(KERN_INFO "DEVICE_OPEN: virtual_dev_id:%d actual_fd:%d payload_data1:%d payload_data2:%ld name:%s\n",
+					req->op[0], req->op[1], payload->data1, payload->data2, payload->name);
+				/*printk(KERN_INFO "DEVICE_OPEN: virtual_dev_id:%d actual_fd:%d\n",req->op[0],req->op[1]);*/
+			}
 			req->stat = IPU4_REQ_PROCESSED;
 			break;
 	case IPU4_CMD_DEVICE_CLOSE:
@@ -64,8 +82,56 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op4 - Buffer ID
 			 * op5 - Length of Buffer
 			 */
-			break;
-	case IPU4_CMD_PUT_BUF:
+			 printk("GET_BUF: Mapping buffer\n");
+			 shared_buf = (struct ici_frame_buf_wrapper *)map_guest_phys(domid, req->payload, PAGE_SIZE);
+			 if (!shared_buf) {
+				 printk(KERN_ERR "SOS Failed to map Buffer from UserOS\n");
+				 req->stat = IPU4_REQ_ERROR;
+			 }
+			 data_pages = kcalloc(shared_buf->kframe_info.planes[0].npages, sizeof(struct page *), GFP_KERNEL);
+			 if (data_pages == NULL) {
+				 printk(KERN_ERR "SOS Failed alloc data page set\n");
+				 req->stat = IPU4_REQ_ERROR;
+			 }
+			 printk("Total number of pages:%d\n", shared_buf->kframe_info.planes[0].npages);
+
+			 page_table = (u64 *)map_guest_phys(domid, shared_buf->kframe_info.planes[0].page_table_ref, PAGE_SIZE);
+
+			 if (page_table == NULL) {
+				 printk(KERN_ERR "SOS Failed to map page table\n");
+				 req->stat = IPU4_REQ_ERROR;
+				 break;
+			 }
+
+			 else {
+				 printk("SOS first page %lld\n", page_table[0]);
+				 k = 0;
+				 for (i = 0; i < shared_buf->kframe_info.planes[0].npages; i++) {
+					 pageaddr = map_guest_phys(domid, page_table[i], PAGE_SIZE);
+					 if (pageaddr == NULL) {
+						 printk(KERN_ERR "Cannot map pages from UOS\n");
+						 req->stat = IPU4_REQ_ERROR;
+						 break;
+					 }
+
+					 data_pages[k] = virt_to_page(pageaddr);
+
+					 pixel_data = (int *)kmap(data_pages[k]);
+					 if (k == 0) {
+						printk("Pixel data after 0x%x\n", pixel_data[0]);
+							pixel_data[0] = 0xffffffff;
+						printk("Pixel data after after memset0x%x\n", pixel_data[0]);
+					 }
+					 k++;
+
+
+				 }
+			 }
+
+			 req->stat = IPU4_REQ_PROCESSED;
+
+				break;
+		case IPU4_CMD_PUT_BUF:
 			/* Set Format of a given video node
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
@@ -110,7 +176,7 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 
 	return ret;
 }
-
+#endif
 void intel_ipu4_virtio_create_req(struct ipu4_virtio_req *req,
 			     enum intel_ipu4_virtio_command cmd, int *op)
 {
@@ -162,8 +228,11 @@ void intel_ipu4_virtio_create_req(struct ipu4_virtio_req *req,
 			 * op4 - Buffer ID
 			 * op5 - Length of Buffer
 			 */
+			for (i = 0; i < 3; i++) {
+				req->op[i] = op[i];
+			}
 			break;
-	case IPU4_CMD_PUT_BUF:
+		case IPU4_CMD_PUT_BUF:
 			/* Set Format of a given video node
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0

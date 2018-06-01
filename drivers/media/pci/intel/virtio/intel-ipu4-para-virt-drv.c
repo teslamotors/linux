@@ -37,12 +37,15 @@ static int get_userpages(struct device *dev,
 	int ret = 0;
 	struct sg_table *sgt;
 	unsigned int i;
+	u64 page_table_ref;
+	u64 *page_table;
+#if 0
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
     DEFINE_DMA_ATTRS(attrs);
 #else
     unsigned long attrs;
 #endif
-
+#endif
 	addr = (unsigned long)frame_plane->mem.userptr;
 	start = addr & PAGE_MASK;
 	end = PAGE_ALIGN(addr + frame_plane->length);
@@ -52,10 +55,17 @@ static int get_userpages(struct device *dev,
 	if (!npages)
 		return -EINVAL;
 
+	page_table = kcalloc(npages, sizeof(*page_table), GFP_KERNEL);
+	if (!page_table) {
+		printk(KERN_ERR "Shared Page table for mediation failed\n");
+		return -ENOMEM;
+	}
+
+	printk("%s:%d Number of Pages:%d frame_length:%d\n", __func__, __LINE__, npages, frame_plane->length);
 	sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
 	if (!sgt)
 		return -ENOMEM;
-
+	printk("%s:%d\n", __func__, __LINE__);
 	if (array_size <= PAGE_SIZE)
 		pages = kzalloc(array_size, GFP_KERNEL);
 	else
@@ -65,15 +75,27 @@ static int get_userpages(struct device *dev,
 
 	down_read(&current->mm->mmap_sem);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
-	nr = get_user_pages(
-				current, current->mm,
+	nr = get_user_pages(current, current->mm,
 				start, npages, 1, 0, pages, NULL);
 #else
-    nr = get_user_pages(start, npages, FOLL_WRITE, pages, NULL);
+	nr = get_user_pages(start, npages, FOLL_WRITE, pages, NULL);
+	printk("%s:%d\n", __func__, __LINE__);
 #endif
 	if (nr < npages)
 		goto error_free_pages;
+	printk("%s:%d\n", __func__, __LINE__);
+	/* Share physical address of pages */
+	for (i = 0; i < npages; i++)
+		page_table[i] = page_to_phys(pages[i]);
 
+	printk("UOS phy page add %lld\n", page_table[0]);
+	page_table_ref = virt_to_phys(page_table);
+	kframe_plane->page_table_ref = page_table_ref;
+	kframe_plane->npages = npages;
+	up_read(&current->mm->mmap_sem);
+	return ret;
+#if 0
+printk("%s:%d\n", __func__, __LINE__);
     ret = sg_alloc_table_from_pages(sgt, pages, npages,
 					addr & ~PAGE_MASK, frame_plane->length,
 					GFP_KERNEL);
@@ -81,7 +103,7 @@ static int get_userpages(struct device *dev,
 		printk(KERN_ERR "Failed to init sgt\n");
 		goto error_free_pages;
 	}
-
+	printk("%s:%d\n", __func__, __LINE__);
 	kframe_plane->dev = dev;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
@@ -92,7 +114,7 @@ static int get_userpages(struct device *dev,
 	sgt->nents = dma_map_sg_attrs(dev, sgt->sgl,
 				sgt->orig_nents, DMA_FROM_DEVICE, attrs);
 #endif
-
+	printk("%s:%d\n", __func__, __LINE__);
 	if (sgt->nents <= 0) {
 		printk(KERN_ERR "Failed to init dma_map\n");
 		ret = -EIO;
@@ -100,8 +122,9 @@ static int get_userpages(struct device *dev,
 	}
 	kframe_plane->dma_addr = sg_dma_address(sgt->sgl);
 	kframe_plane->sgt = sgt;
-
+	printk("%s:%d\n", __func__, __LINE__);
 error_free_page_list:
+	printk("%s:%d\n", __func__, __LINE__);
 	if (pages) {
 		if (array_size <= PAGE_SIZE)
 			kfree(pages);
@@ -119,14 +142,15 @@ error_dma_map:
     dma_unmap_sg_attrs(dev, sgt->sgl, sgt->orig_nents,
 			DMA_FROM_DEVICE, attrs);
 #endif
-
+#endif
 error_free_pages:
 	if (pages) {
 		for (i = 0; i < nr; i++)
 			put_page(pages[i]);
 	}
 	kfree(sgt);
-	goto error_free_page_list;
+	return -1;
+	//goto error_free_page_list;
 }
 
 static struct ici_frame_buf_wrapper *frame_buf_lookup(struct ici_isys_frame_buf_list *buf_list, struct ici_frame_info *user_frame_info)
@@ -146,13 +170,11 @@ static struct ici_frame_buf_wrapper *frame_buf_lookup(struct ici_isys_frame_buf_
 
 			switch (mem_type) {
 			case ICI_MEM_USERPTR:
-				if (new_plane->mem.userptr ==
-					cur_plane->mem.userptr)
+				if (new_plane->mem.userptr == cur_plane->mem.userptr)
 					return buf;
 				break;
 			case ICI_MEM_DMABUF:
-				if (new_plane->mem.dmafd ==
-					cur_plane->mem.dmafd)
+				if (new_plane->mem.dmafd ==	cur_plane->mem.dmafd)
 					return buf;
 				break;
 			}
@@ -311,12 +333,12 @@ static void unmap_buf(struct ici_frame_buf_wrapper *buf)
 		}
 	}
 }
-int get_buf(struct virtual_stream *vstream,
-				struct ici_frame_info *frame_info)
+int get_buf(struct virtual_stream *vstream, struct ici_frame_info *frame_info,
+		struct ici_frame_buf_wrapper *buf)
 {
 	int res;
 	unsigned i;
-	struct ici_frame_buf_wrapper *buf;
+	struct ici_frame_buf_wrapper *frame;
 
 	struct ici_kframe_plane *kframe_plane;
 	struct ici_isys_frame_buf_list *buf_list = &vstream->buf_list;
@@ -331,16 +353,13 @@ int get_buf(struct virtual_stream *vstream,
 		printk(KERN_ERR "User length not set\n");
 		return -EINVAL;
 	}
-	buf = frame_buf_lookup(buf_list, frame_info);
 
-	if (buf) {
-		buf->state = ICI_BUF_PREPARED;
+	frame = frame_buf_lookup(buf_list, frame_info);
+	if (frame) {
+		printk(KERN_INFO "Frame buffer found in the list\n");
+		frame->state = ICI_BUF_PREPARED;
 		return 0;
 	}
-
-	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
 
 	buf->buf_id = frame_info->frame_buf_id;
 	buf->buf_list = buf_list;
@@ -355,30 +374,33 @@ int get_buf(struct virtual_stream *vstream,
 		for (i = 0; i < frame_info->num_planes; i++) {
 			kframe_plane = &buf->kframe_info.planes[i];
 			kframe_plane->mem_type = ICI_MEM_USERPTR;
-			res = get_userpages(&vstream->strm_dev.dev,
-								&frame_info->frame_planes[i],
+			res = get_userpages(&vstream->strm_dev.dev, &frame_info->frame_planes[i],
 								kframe_plane);
+			printk("%s:%d\n", __func__, __LINE__);
 			if (res)
 				return res;
+			printk("%s:%d\n", __func__, __LINE__);
 		}
 		break;
 	case ICI_MEM_DMABUF:
 		for (i = 0; i < frame_info->num_planes; i++) {
 			kframe_plane = &buf->kframe_info.planes[i];
 			kframe_plane->mem_type = ICI_MEM_DMABUF;
-			res = map_dma(&vstream->strm_dev.dev,
-						  &frame_info->frame_planes[i],
+			res = map_dma(&vstream->strm_dev.dev, &frame_info->frame_planes[i],
 						  kframe_plane);
 			if (res)
 				return res;
 		}
+
 		break;
 	}
-
+	printk("%s:%d\n", __func__, __LINE__);
 	mutex_lock(&buf_list->mutex);
 	buf->state = ICI_BUF_PREPARED;
 	list_add_tail(&buf->node, &buf_list->getbuf_list);
 	mutex_unlock(&buf_list->mutex);
+	printk("%s:%d\n", __func__, __LINE__);
+	//shared_buf = buf;
 	return 0;
 }
 
@@ -521,21 +543,29 @@ static int virt_isys_getbuf(struct file *file, void *fh,
 	struct virtual_stream *vstream = dev_to_vstream(strm_dev);
 	struct ipu4_virtio_ctx *fe_ctx = vstream->ctx;
 	struct ipu4_virtio_req *req;
+	struct ici_frame_buf_wrapper *buf;
 	int rval = 0;
 	int op[3];
 
-	rval = get_buf(vstream, user_frame_info);
-	if (rval)
+	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
+	if (!buf)
 		return -ENOMEM;
+
+	rval = get_buf(vstream, user_frame_info, buf);
+	if (rval) {
+		printk(KERN_ERR "Failed to map buffer: %d\n", rval);
+		return -ENOMEM;
+	}
+	printk(KERN_INFO "Buffer_id:%d mapped\n", buf->buf_id);
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
 		return -ENOMEM;
 
-
 	op[0] = vstream->virt_dev_id;
 	op[1] = 0;
 	op[2] = user_frame_info->mem_type;
+	req->payload = virt_to_phys(buf);
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_GET_BUF, &op[0]);
 
@@ -578,11 +608,13 @@ static int virt_stream_fop_open(struct inode *inode, struct file *file)
 {
 	struct ici_stream_device *strm_dev = inode_to_intel_ipu_stream_device(inode);
 	struct ipu4_virtio_req *req;
+	struct test_payload *payload;
 	struct virtual_stream *vstream = dev_to_vstream(strm_dev);
 	struct ipu4_virtio_ctx *fe_ctx = vstream->ctx;
 	int rval = 0;
-	int op[2];
-	printk(KERN_INFO "virt stream open\n");
+	char name[256] = "payload_name";
+	int op[3];
+	printk(KERN_INFO "virtual stream open\n");
 	get_device(&strm_dev->dev);
 
 	file->private_data = strm_dev;
@@ -591,11 +623,26 @@ static int virt_stream_fop_open(struct inode *inode, struct file *file)
 		return -EINVAL;
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
-	if (!req)
+	if (!req) {
+		printk(KERN_ERR "Virtio Req buffer failed\n");
 		return -ENOMEM;
+	}
+
+	payload = kcalloc(1, sizeof(*payload), GFP_KERNEL);
+	if (!payload) {
+		printk(KERN_ERR "Req Payload failed\n");
+		return -ENOMEM;
+	}
+	payload->data1 = 1000;
+	payload->data2 = 1234567890;
+
+	strlcpy(payload->name, name, sizeof(name));
+	req->payload = virt_to_phys(payload);
+	printk(KERN_INFO "virt_stream_fop_open: payload guest_phy_addr: %lld\n", req->payload);
 
 	op[0] = vstream->virt_dev_id;
-	op[1] = 0;
+	op[1] = 1;
+
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_DEVICE_OPEN, &op[0]);
 

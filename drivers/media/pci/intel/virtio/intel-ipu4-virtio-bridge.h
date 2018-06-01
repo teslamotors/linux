@@ -9,6 +9,7 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/module.h>
+#include <linux/vhm/acrn_vhm_mm.h>
 
 #include "intel-ipu4-virtio-common.h"
 

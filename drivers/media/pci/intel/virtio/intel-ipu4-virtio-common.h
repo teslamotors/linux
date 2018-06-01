@@ -26,8 +26,13 @@ struct ipu4_virtio_req {
 	unsigned int stat;
 	unsigned int cmd;
 	unsigned int op[MAX_NUMBER_OF_OPERANDS];
+	u64 payload;
 };
-
+struct test_payload {
+	unsigned int data1;
+	long int data2;
+	char name[256];
+};
 /*Not used*/
 struct ipu4_virtio_resp {
 	unsigned int resp_id;
