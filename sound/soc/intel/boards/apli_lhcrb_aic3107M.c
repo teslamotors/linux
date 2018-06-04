@@ -281,7 +281,7 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 	{
 		/* SSP0 - Codec */
 		.name = "SSP0-Codec",
-		.be_id = 0,
+		.id = 0,
 		.cpu_dai_name = "SSP0 Pin",
 		.codec_name = "tlv320aic3x-codec.3-0018",
 		.codec_dai_name = "tlv320aic3x-hifi",
@@ -301,7 +301,7 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 	{
 		/* SSP1 - Codec */
 		.name = "SSP1-Codec",
-		.be_id = 1,
+		.id = 1,
 		.cpu_dai_name = "SSP1 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -315,7 +315,7 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 	{
 		/* SSP3 - Codec */
 		.name = "SSP3-Codec",
-		.be_id = 2,
+		.id = 2,
 		.cpu_dai_name = "SSP3 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
