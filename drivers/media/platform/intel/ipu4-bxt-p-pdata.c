@@ -915,6 +915,43 @@ static struct ipu_isys_subdev_info ti964_sd_2 = {
 };
 #endif
 
+#ifdef CONFIG_INTEL_IPU4_OV2775
+#define OV2775_LANES	   2
+#define OV2775_I2C_ADAPTER     3
+#define OV2775_I2C_ADDRESS     0x6C
+
+static struct crlmodule_platform_data ov2775_pdata = {
+	.lanes = OV2775_LANES,
+	.ext_clk = 24000000,
+	.op_sys_clock = (uint64_t []){ 480000000 },
+	.module_name = "OV2775",
+	.id_string = "0x27 0x70",
+	/*
+	 * The pin number of xshutdown will be determined
+	 * and replaced inside TI960 driver.
+	 * The number here stands for which GPIO to connect with.
+	 * 1 means to connect sensor xshutdown to GPIO1
+	 */
+	.xshutdown = 1,
+};
+
+static struct ipu_isys_csi2_config ov2775_csi2_cfg = {
+	.nlanes = OV2775_LANES,
+	.port = 4,
+};
+
+static struct ipu_isys_subdev_info ov2775_crl_sd = {
+	.csi2 = &ov2775_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			I2C_BOARD_INFO(CRLMODULE_NAME, OV2775_I2C_ADDRESS),
+			.platform_data = &ov2775_pdata,
+		},
+		.i2c_adapter_id = OV2775_I2C_ADAPTER,
+	}
+};
+#endif
+
 /*
  * Map buttress output sensor clocks to sensors -
  * this should be coming from ACPI
@@ -988,6 +1025,9 @@ static struct ipu_isys_subdev_pdata pdata = {
 #if IS_ENABLED(CONFIG_VIDEO_TI964)
 		&ti964_sd,
 		&ti964_sd_2,
+#endif
+#ifdef CONFIG_INTEL_IPU4_OV2775
+		&ov2775_crl_sd,
 #endif
 		NULL,
 	},

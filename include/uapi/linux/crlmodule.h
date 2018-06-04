@@ -60,7 +60,7 @@ struct crl_registers_info {
 #define CRL_CID_MSB_ALIGN		(V4L2_CID_CRLMODULE_BASE + 18)
 
 /* enable/disable auto exposure */
-#define CRL_CID_AUTO_EXPOSURE_DEBUG		(V4L2_CID_CRLMODULE_BASE + 19)
+#define CRL_CID_AUTO_EXPOSURE_DEBUG	(V4L2_CID_CRLMODULE_BASE + 19)
 
 /* set analog gain for HDR frames */
 #define CRL_CID_ANALOG_GAIN_L		(V4L2_CID_CRLMODULE_BASE + 20)
