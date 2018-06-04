@@ -118,7 +118,7 @@ static int apli_ssp_northwest_gpio_init(struct snd_soc_pcm_runtime *rtd)
 	char *gpio_addr = NULL;
 	u32 gpio_value = NORTHWEST_GPIO_VALUE;
 
-	switch (rtd->dai_link->be_id) {
+	switch (rtd->dai_link->id) {
 	case 0:
 		gpio_addr = (void *)ioremap_nocache(NORTHWEST_BASE
 				+ I2S_1, 0x20);
@@ -157,7 +157,7 @@ static int apli_ssp_west_gpio_init(struct snd_soc_pcm_runtime *rtd)
 	char *gpio_addr = NULL;
 	u32 gpio_value = WEST_GPIO_VALUE;
 
-	switch (rtd->dai_link->be_id) {
+	switch (rtd->dai_link->id) {
 	case 4:
 		gpio_addr = (void *)ioremap_nocache(WEST_BASE + I2S_5, 0x20);
 		break;
@@ -433,7 +433,7 @@ static struct snd_soc_dai_link apli_lhcrb_dummy_dais[] = {
 	{
 		/* SSP1 - Codec */
 		.name = "SSP0-Codec",
-		.be_id = 0,
+		.id = 0,
 		.cpu_dai_name = "SSP0 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -450,7 +450,7 @@ static struct snd_soc_dai_link apli_lhcrb_dummy_dais[] = {
 	{
 		/* SSP2 - Codec */
 		.name = "SSP1-Codec",
-		.be_id = 1,
+		.id = 1,
 		.cpu_dai_name = "SSP1 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -467,7 +467,7 @@ static struct snd_soc_dai_link apli_lhcrb_dummy_dais[] = {
 	{
 		/* SSP3 - Codec */
 		.name = "SSP2-Codec",
-		.be_id = 2,
+		.id = 2,
 		.cpu_dai_name = "SSP2 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -484,7 +484,7 @@ static struct snd_soc_dai_link apli_lhcrb_dummy_dais[] = {
 	{
 		/* SSP4 - Codec */
 		.name = "SSP3-Codec",
-		.be_id = 3,
+		.id = 3,
 		.cpu_dai_name = "SSP3 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -501,7 +501,7 @@ static struct snd_soc_dai_link apli_lhcrb_dummy_dais[] = {
 	{
 		/* SSP5 - Codec */
 		.name = "SSP4-Codec",
-		.be_id = 4,
+		.id = 4,
 		.cpu_dai_name = "SSP4 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -518,7 +518,7 @@ static struct snd_soc_dai_link apli_lhcrb_dummy_dais[] = {
 	{
 		/* SSP6 - Codec */
 		.name = "SSP5-Codec",
-		.be_id = 5,
+		.id = 5,
 		.cpu_dai_name = "SSP5 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
