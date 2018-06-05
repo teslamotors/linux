@@ -1297,7 +1297,7 @@ intel_ring_create_vma(struct drm_i915_private *dev_priv, int size)
 	/* mark ring buffers as read-only from GPU side by default */
 	obj->gt_ro = 1;
 
-	vma = i915_vma_instance(obj, &dev_priv->ggtt.base, NULL);
+	vma = i915_vma_instance(obj, &dev_priv->ggtt.vm, NULL);
 	if (IS_ERR(vma))
 		goto err;
 
@@ -1405,7 +1405,7 @@ alloc_context_vma(struct intel_engine_cs *engine)
 		i915_gem_object_set_cache_level(obj, I915_CACHE_L3_LLC);
 	}
 
-	vma = i915_vma_instance(obj, &i915->ggtt.base, NULL);
+	vma = i915_vma_instance(obj, &i915->ggtt.vm, NULL);
 	if (IS_ERR(vma))
 		i915_gem_object_put(obj);
 
@@ -1904,7 +1904,7 @@ static void intel_ring_init_semaphores(struct drm_i915_private *dev_priv,
 		if (IS_ERR(obj))
 			goto err;
 
-		vma = i915_vma_instance(obj, &dev_priv->ggtt.base, NULL);
+		vma = i915_vma_instance(obj, &dev_priv->ggtt.vm, NULL);
 		if (IS_ERR(vma))
 			goto err_obj;
 

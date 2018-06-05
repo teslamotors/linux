@@ -113,7 +113,7 @@ static int gpu_fill(struct drm_i915_gem_object *obj,
 {
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct i915_address_space *vm =
-		ctx->ppgtt ? &ctx->ppgtt->base : &i915->ggtt.base;
+		ctx->ppgtt ? &ctx->ppgtt->vm : &i915->ggtt.vm;
 	struct i915_request *rq;
 	struct i915_vma *vma;
 	struct i915_vma *batch;
@@ -279,7 +279,7 @@ create_test_object(struct i915_gem_context *ctx,
 {
 	struct drm_i915_gem_object *obj;
 	struct i915_address_space *vm =
-		ctx->ppgtt ? &ctx->ppgtt->base : &ctx->i915->ggtt.base;
+		ctx->ppgtt ? &ctx->ppgtt->vm : &ctx->i915->ggtt.vm;
 	u64 size;
 	u32 handle;
 	int err;
@@ -420,7 +420,7 @@ static int fake_aliasing_ppgtt_enable(struct drm_i915_private *i915)
 	list_for_each_entry(obj, &i915->mm.bound_list, mm.link) {
 		struct i915_vma *vma;
 
-		vma = i915_vma_instance(obj, &i915->ggtt.base, NULL);
+		vma = i915_vma_instance(obj, &i915->ggtt.vm, NULL);
 		if (IS_ERR(vma))
 			continue;
 

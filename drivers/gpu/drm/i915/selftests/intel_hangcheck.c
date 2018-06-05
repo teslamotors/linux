@@ -92,7 +92,7 @@ static int emit_recurse_batch(struct hang *h,
 			      struct i915_request *rq)
 {
 	struct drm_i915_private *i915 = h->i915;
-	struct i915_address_space *vm = rq->ctx->ppgtt ? &rq->ctx->ppgtt->base : &i915->ggtt.base;
+	struct i915_address_space *vm = rq->ctx->ppgtt ? &rq->ctx->ppgtt->vm : &i915->ggtt.vm;
 	struct i915_vma *hws, *vma;
 	unsigned int flags;
 	u32 *batch;

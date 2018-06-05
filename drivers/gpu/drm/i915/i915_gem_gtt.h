@@ -60,7 +60,7 @@ typedef u64 gen8_pde_t;
 typedef u64 gen8_ppgtt_pdpe_t;
 typedef u64 gen8_ppgtt_pml4e_t;
 
-#define ggtt_total_entries(ggtt) ((ggtt)->base.total >> PAGE_SHIFT)
+#define ggtt_total_entries(ggtt) ((ggtt)->vm.total >> PAGE_SHIFT)
 
 /* gen6-hsw has bit 11-4 for physical addr bit 39-32 */
 #define GEN6_GTT_ADDR_ENCODE(addr)	((addr) | (((addr) >> 28) & 0xff0))
@@ -345,7 +345,7 @@ i915_vm_is_48bit(const struct i915_address_space *vm)
  * the spec.
  */
 struct i915_ggtt {
-	struct i915_address_space base;
+	struct i915_address_space vm;
 	struct io_mapping mappable;	/* Mapping to our CPU mappable region */
 
 	phys_addr_t mappable_base;	/* PA of our GMADR */
@@ -376,7 +376,7 @@ struct i915_ggtt {
 };
 
 struct i915_hw_ppgtt {
-	struct i915_address_space base;
+	struct i915_address_space vm;
 	struct kref ref;
 	struct drm_mm_node node;
 	unsigned long pd_dirty_rings;
@@ -534,7 +534,7 @@ static inline struct i915_ggtt *
 i915_vm_to_ggtt(struct i915_address_space *vm)
 {
 	GEM_BUG_ON(!i915_is_ggtt(vm));
-	return container_of(vm, struct i915_ggtt, base);
+	return container_of(vm, struct i915_ggtt, vm);
 }
 
 int i915_gem_init_aliasing_ppgtt(struct drm_i915_private *i915);

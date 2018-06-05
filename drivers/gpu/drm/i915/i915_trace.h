@@ -1027,7 +1027,7 @@ DECLARE_EVENT_CLASS(i915_context,
 			__entry->dev = ctx->i915->drm.primary->index;
 			__entry->ctx = ctx;
 			__entry->hw_id = ctx->hw_id;
-			__entry->vm = ctx->ppgtt ? &ctx->ppgtt->base : NULL;
+			__entry->vm = ctx->ppgtt ? &ctx->ppgtt->vm : NULL;
 	),
 
 	TP_printk("dev=%u, ctx=%p, ctx_vm=%p, hw_id=%u",
@@ -1066,7 +1066,7 @@ TRACE_EVENT(switch_mm,
 	TP_fast_assign(
 			__entry->ring = engine->id;
 			__entry->to = to;
-			__entry->vm = to->ppgtt? &to->ppgtt->base : NULL;
+			__entry->vm = to->ppgtt ? &to->ppgtt->vm : NULL;
 			__entry->dev = engine->i915->drm.primary->index;
 	),
 
