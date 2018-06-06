@@ -451,63 +451,46 @@ static const struct ipu_fw_resource_definitions default_defs = {
 
 	.cell_mem_row = VIED_NCI_N_MEM_TYPE_ID,
 	.cell_mem = (enum ipu_mem_id *)vied_nci_cell_mem,
-	.process.ext_mem_id = offsetof(struct ia_css_process_s,
-				       ext_mem_id[0]),
-	.process.ext_mem_offset = offsetof(struct ia_css_process_s,
-					   ext_mem_offset[0]),
-	.process.dev_chn_offset = offsetof(struct ia_css_process_s,
-					   dev_chn_offset[0]),
-	.process.cell_id = offsetof(struct ia_css_process_s, cell_id),
 };
 
 const struct ipu_fw_resource_definitions *res_defs = &default_defs;
 EXPORT_SYMBOL_GPL(res_defs);
 
-/*
- * Extension library gives byte offsets to its internal structures.
- * use those offsets to update fields. Without extension lib access
- * structures directly.
- */
-void ipu_fw_psys_set_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index,
-				u8 value)
+int ipu_fw_psys_set_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index,
+				    u8 value)
 {
-	/* Byte offset */
-	*((u8 *)ptr + res_defs->process.cell_id) = value;
+	return ia_css_process_set_cell((ia_css_process_t *)ptr,
+				       (vied_nci_cell_ID_t)value);
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_cell_id);
 
 u8 ipu_fw_psys_get_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index)
 {
-	/* Byte offset */
-	return *((u8 *)ptr + res_defs->process.cell_id);
+	return ia_css_process_get_cell((ia_css_process_t *)ptr);
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_get_process_cell_id);
 
-void ipu_fw_psys_set_process_dev_chn_offset(struct ipu_fw_psys_process *ptr,
-				       u16 offset, u16 value)
+int ipu_fw_psys_clear_process_cell(struct ipu_fw_psys_process *ptr)
 {
-	/* dev_chn_offset is a byte offset, offset is u16 index */
-	*((u16 *)((u8 *)ptr + res_defs->process.dev_chn_offset) +
-		 offset) = value;
+	return ia_css_process_clear_cell((ia_css_process_t *)ptr);
+}
+EXPORT_SYMBOL_GPL(ipu_fw_psys_clear_process_cell);
+
+int ipu_fw_psys_set_process_dev_chn_offset(struct ipu_fw_psys_process *ptr,
+					   u16 offset, u16 value)
+{
+	return ia_css_process_set_dev_chn((ia_css_process_t *)ptr,
+					  (vied_nci_dev_chn_ID_t)offset,
+					  (vied_nci_resource_size_t)value);
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_dev_chn_offset);
 
-void ipu_fw_psys_set_process_ext_mem_offset(struct ipu_fw_psys_process *ptr,
-				       u16 offset, u16 value)
+int ipu_fw_psys_set_process_ext_mem(struct ipu_fw_psys_process *ptr,
+				    u16 type_id, u16 mem_id, u16 offset)
 {
-	/* ext_mem_offset is a byte offset, offset is u16 index */
-	*((u16 *)((u8 *)ptr + res_defs->process.ext_mem_offset) +
-		  offset) = value;
+	return ia_css_process_set_ext_mem((ia_css_process_t *)ptr, mem_id, offset);
 }
-EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_ext_mem_offset);
-
-void ipu_fw_psys_set_process_ext_mem_id(struct ipu_fw_psys_process *ptr,
-				   u16 offset, u8 value)
-{
-	/* ext_mem_id is a byte offset, offset parameter is u8 index */
-	*((u8 *)ptr + res_defs->process.ext_mem_id + offset) = value;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_ext_mem_id);
+EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_ext_mem);
 
 int ipu_fw_psys_get_program_manifest_by_process(
 	struct ipu_fw_generic_program_manifest *gen_pm,

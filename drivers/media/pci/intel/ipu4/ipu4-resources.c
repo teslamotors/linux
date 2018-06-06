@@ -278,8 +278,9 @@ int ipu_psys_allocate_resources(const struct device *dev,
 				ret = -ENOSPC;
 				goto free_out;
 			}
-			pg->resource_bitmap |= 1 << cell;
-			ipu_fw_psys_set_process_cell_id(process, 0, cell);
+			ret = ipu_fw_psys_set_process_cell_id(process, 0, cell);
+			if (ret)
+				goto free_out;
 		}
 		if (cell < res_defs->num_cells)
 			cells |= 1 << cell;
@@ -295,8 +296,10 @@ int ipu_psys_allocate_resources(const struct device *dev,
 				     &pool->dev_channels[resid], &pm, resid, alloc);
 				if (ret)
 					goto free_out;
-				ipu_fw_psys_set_process_dev_chn_offset(process, resid,
+				ret = ipu_fw_psys_set_process_dev_chn_offset(process, resid,
 					alloc->resource_alloc[alloc->resources - 1].pos);
+				if (ret)
+					goto free_out;
 			}
 		}
 
@@ -318,8 +321,13 @@ int ipu_psys_allocate_resources(const struct device *dev,
 				     &pm, mem_type_id, mem_bank_id, alloc);
 				if (ret)
 					goto free_out;
-				ipu_fw_psys_set_process_ext_mem_id(process, mem_type_id, mem_bank_id);
-				ipu_fw_psys_set_process_ext_mem_offset(process, mem_type_id,
+				/* no return value check here because fw api will
+				 * do some checks, and would return non-zero
+				 * except mem_type_id == 0. This may be caused by that
+				 * above flow if allocating mem_bank_id is improper
+				 */
+				ipu_fw_psys_set_process_ext_mem
+					(process, mem_type_id, mem_bank_id,
 					alloc->resource_alloc[alloc->resources - 1].pos);
 			}
 		}
@@ -346,11 +354,13 @@ free_out:
 		if ((pm.cell_id != res_defs->num_cells &&
 		     pm.cell_type_id == res_defs->num_cells_type))
 			continue;
-		pg->resource_bitmap &=
-		    ~(1 << ipu_fw_psys_get_process_cell_id(process, 0));
-		ipu_fw_psys_set_process_cell_id(process, 0, 0);
+		/* no return value check here because if finding free cell
+		 * failed, process cell would not set then calling clear_cell
+		 * will return non-zero.
+		 */
+		ipu_fw_psys_clear_process_cell(process);
 	}
-
+	dev_dbg(dev, "failed to allocate resources, ret %d\n", ret);
 	ipu_psys_free_resources(alloc, pool);
 	return ret;
 }

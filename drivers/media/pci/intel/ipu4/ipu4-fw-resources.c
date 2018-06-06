@@ -223,10 +223,17 @@ const struct ipu_fw_resource_definitions *res_defs = &default_defs;
  * use those offsets to update fields. Without extension lib access
  * structures directly.
  */
-void ipu_fw_psys_set_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index,
-				     u8 value)
+int ipu_fw_psys_set_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index,
+				    u8 value)
 {
+	struct ipu_fw_psys_process_group *parent =
+		(struct ipu_fw_psys_process_group *) ((char *)ptr +
+		ptr->parent_offset);
+
 	ptr->cell_id = value;
+	parent->resource_bitmap |= 1 << value;
+
+	return 0;
 }
 
 u8 ipu_fw_psys_get_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index)
@@ -234,22 +241,38 @@ u8 ipu_fw_psys_get_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index)
 	return ptr->cell_id;
 }
 
-void ipu_fw_psys_set_process_dev_chn_offset(struct ipu_fw_psys_process *ptr,
-					    u16 offset, u16 value)
+int ipu_fw_psys_clear_process_cell(struct ipu_fw_psys_process *ptr)
+{
+	struct ipu_fw_psys_process_group *parent;
+	u8 cell_id = ipu_fw_psys_get_process_cell_id(ptr, 0);
+	int retval = -1;
+
+	parent = (struct ipu_fw_psys_process_group *) ((char *)ptr +
+		ptr->parent_offset);
+	if ((1 << cell_id) && ((1 << cell_id) & parent->resource_bitmap)) {
+		ipu_fw_psys_set_process_cell_id(ptr, 0, IPU_FW_PSYS_N_CELL_ID);
+		parent->resource_bitmap &= ~(1 << cell_id);
+		retval = 0;
+	}
+
+	return retval;
+}
+
+int ipu_fw_psys_set_process_dev_chn_offset(struct ipu_fw_psys_process *ptr,
+					   u16 offset, u16 value)
 {
 	ptr->dev_chn_offset[offset] = value;
+
+	return 0;
 }
 
-void ipu_fw_psys_set_process_ext_mem_offset(struct ipu_fw_psys_process *ptr,
-					    u16 offset, u16 value)
+int ipu_fw_psys_set_process_ext_mem(struct ipu_fw_psys_process *ptr,
+				    u16 type_id, u16 mem_id, u16 offset)
 {
-	ptr->ext_mem_offset[offset] = value;
-}
+	ptr->ext_mem_offset[type_id] = offset;
+	ptr->ext_mem_id[type_id] = mem_id;
 
-void ipu_fw_psys_set_process_ext_mem_id(struct ipu_fw_psys_process *ptr,
-					u16 offset, u8 value)
-{
-	ptr->ext_mem_id[offset] = value;
+	return 0;
 }
 
 static struct ipu_fw_psys_program_manifest *
@@ -305,3 +328,4 @@ int ipu_fw_psys_get_program_manifest_by_process(
 	}
 	return -ENOENT;
 }
+
