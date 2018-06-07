@@ -913,6 +913,9 @@ static int ppgtt_invalidate_shadow_page_by_shadow_entry(struct intel_vgpu *vgpu,
 	if (e->type != GTT_TYPE_PPGTT_ROOT_L3_ENTRY
 		&& e->type != GTT_TYPE_PPGTT_ROOT_L4_ENTRY) {
 		cur_pt_type = get_next_pt_type(e->type) + 1;
+		if (unlikely(cur_pt_type <= GTT_TYPE_INVALID ||
+				cur_pt_type >= GTT_TYPE_MAX))
+			return -EINVAL;
 		if (ops->get_pfn(e) ==
 			vgpu->gtt.scratch_pt[cur_pt_type].page_mfn)
 			return 0;
@@ -2044,7 +2047,7 @@ static int alloc_scratch_pages(struct intel_vgpu *vgpu,
 	 * GTT_TYPE_PPGTT_PDE_PT level pt, that means this scratch_pt it self
 	 * is GTT_TYPE_PPGTT_PTE_PT, and full filled by scratch page mfn.
 	 */
-	if (type > GTT_TYPE_PPGTT_PTE_PT && type < GTT_TYPE_MAX) {
+	if (type > GTT_TYPE_PPGTT_PTE_PT) {
 		struct intel_gvt_gtt_entry se;
 
 		memset(&se, 0, sizeof(struct intel_gvt_gtt_entry));
