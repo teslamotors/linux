@@ -3656,6 +3656,9 @@
 			      reboot_cpu is s[mp]#### with #### being the processor
 					to be used for rebooting.
 
+	reboot_panic=	[KNL]
+			Same as reboot parameter above but only in case of panic.
+
 	relax_domain_level=
 			[KNL, SMP] Set scheduler's default relax_domain_level.
 			See Documentation/cgroup-v1/cpusets.txt.
