@@ -198,7 +198,8 @@ static int subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
 {
 	struct ipu_isys_csi2 *csi2 = to_ipu_isys_csi2(sd);
 
-	dev_dbg(&csi2->isys->adev->dev, "sub->id %u\n", sub->id);
+	dev_dbg(&csi2->isys->adev->dev, "subscribe event(type %u id %u)\n",
+		sub->type, sub->id);
 
 	switch (sub->type) {
 	case V4L2_EVENT_FRAME_SYNC:
