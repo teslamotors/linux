@@ -26,6 +26,7 @@
 #include <linux/io.h>
 #include <linux/list.h>
 #include <linux/dma-mapping.h>
+#include <asm/processor.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -174,6 +175,29 @@ static void dwc3_ep_inc_deq(struct dwc3_ep *dep)
 	dwc3_ep_inc_trb(&dep->trb_dequeue);
 }
 
+void dwc3_gadget_del_and_unmap_request(struct dwc3_ep *dep,
+		struct dwc3_request *req, int status)
+{
+	struct dwc3			*dwc = dep->dwc;
+
+	req->started = false;
+	list_del(&req->list);
+	req->remaining = 0;
+
+	if (req->request.status == -EINPROGRESS)
+		req->request.status = status;
+
+	if (req->trb)
+		usb_gadget_unmap_request_by_dev(dwc->sysdev,
+				&req->request, req->direction);
+
+	req->trb = NULL;
+	trace_dwc3_gadget_giveback(req);
+
+	if (dep->number > 1)
+		pm_runtime_put(dwc->dev);
+}
+
 /**
  * dwc3_gadget_giveback - call struct usb_request's ->complete callback
  * @dep: The endpoint to whom the request belongs to
@@ -189,27 +213,11 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 {
 	struct dwc3			*dwc = dep->dwc;
 
-	req->started = false;
-	list_del(&req->list);
-	req->remaining = 0;
-
-	if (req->request.status == -EINPROGRESS)
-		req->request.status = status;
-
-	if (req->trb)
-		usb_gadget_unmap_request_by_dev(dwc->sysdev,
-						&req->request, req->direction);
-
-	req->trb = NULL;
-
-	trace_dwc3_gadget_giveback(req);
+	dwc3_gadget_del_and_unmap_request(dep, req, status);
 
 	spin_unlock(&dwc->lock);
 	usb_gadget_giveback_request(&dep->endpoint, &req->request);
 	spin_lock(&dwc->lock);
-
-	if (dep->number > 1)
-		pm_runtime_put(dwc->dev);
 }
 
 /**
@@ -267,7 +275,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
 {
 	const struct usb_endpoint_descriptor *desc = dep->endpoint.desc;
 	struct dwc3		*dwc = dep->dwc;
-	u32			timeout = 500;
+	u32			timeout = 1000;
 	u32			reg;
 
 	int			cmd_status = 0;
@@ -1233,7 +1241,7 @@ static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep, u16 cmd_param)
 		if (req->trb)
 			memset(req->trb, 0, sizeof(struct dwc3_trb));
 		dep->queued_requests--;
-		dwc3_gadget_giveback(dep, req, ret);
+		dwc3_gadget_del_and_unmap_request(dep, req, ret);
 		return ret;
 	}
 
@@ -1437,7 +1445,7 @@ static int dwc3_gadget_ep_dequeue(struct usb_ep *ep,
 					dwc->lock);
 
 			if (!r->trb)
-				goto out1;
+				goto out0;
 
 			if (r->num_pending_sgs) {
 				struct dwc3_trb *trb;
@@ -1853,6 +1861,17 @@ static void dwc3_gadget_setup_nump(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_DCFG, reg);
 }
 
+static inline bool platform_is_bxtp(void)
+{
+#ifdef CONFIG_X86_64
+	if ((boot_cpu_data.x86_model == 0x5c)
+		&& (boot_cpu_data.x86_stepping >= 0x8)
+		&& (boot_cpu_data.x86_stepping <= 0xf))
+		return true;
+#endif
+	return false;
+}
+
 static int __dwc3_gadget_start(struct dwc3 *dwc)
 {
 	struct dwc3_ep		*dep;
@@ -1923,6 +1942,15 @@ static int dwc3_gadget_start(struct usb_gadget *g,
 	int			ret = 0;
 	int			irq;
 
+	if (dwc->usb2_phy) {
+		ret = otg_set_peripheral(dwc->usb2_phy->otg, &dwc->gadget);
+		if (ret == -ENOTSUPP)
+			dev_info(dwc->dev, "no OTG driver registered\n");
+		else if (ret)
+			return ret;
+	}
+
+
 	irq = dwc->irq_gadget;
 	ret = request_threaded_irq(irq, dwc3_interrupt, dwc3_thread_interrupt,
 			IRQF_SHARED, "dwc3", dwc->ev_buf);
@@ -1970,6 +1998,10 @@ static int dwc3_gadget_stop(struct usb_gadget *g)
 	struct dwc3		*dwc = gadget_to_dwc(g);
 	unsigned long		flags;
 	int			epnum;
+
+
+        if (dwc->usb2_phy)
+                otg_set_peripheral(dwc->usb2_phy->otg, NULL);
 
 	spin_lock_irqsave(&dwc->lock, flags);
 
@@ -2039,10 +2071,24 @@ static void dwc3_gadget_set_speed(struct usb_gadget *g,
 			reg |= DWC3_DCFG_HIGHSPEED;
 			break;
 		case USB_SPEED_SUPER:
-			reg |= DWC3_DCFG_SUPERSPEED;
+			/*
+			 * WORKAROUND: BXTP platform USB3.0 port SS fail,
+			 * We switch SS to HS to enable USB3.0.
+			 */
+			if (platform_is_bxtp())
+				reg |= DWC3_DCFG_HIGHSPEED;
+			else
+				reg |= DWC3_DCFG_SUPERSPEED;
 			break;
 		case USB_SPEED_SUPER_PLUS:
-			reg |= DWC3_DCFG_SUPERSPEED_PLUS;
+			/*
+			 * WORKAROUND: BXTP platform USB3.0 port SS fail,
+			 * We switch SS to HS to enable USB3.0.
+			 */
+			if (platform_is_bxtp())
+				reg |= DWC3_DCFG_HIGHSPEED;
+			else
+				reg |= DWC3_DCFG_SUPERSPEED_PLUS;
 			break;
 		default:
 			dev_err(dwc->dev, "invalid speed (%d)\n", speed);
@@ -2773,6 +2819,8 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 		dwc->gadget.speed = USB_SPEED_LOW;
 		break;
 	}
+
+	dwc->eps[1]->endpoint.maxpacket = dwc->gadget.ep0->maxpacket;
 
 	/* Enable USB2 LPM Capability */
 

@@ -395,7 +395,16 @@ static int gmc_v9_0_early_init(void *handle)
 static int gmc_v9_0_late_init(void *handle)
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
-	unsigned vm_inv_eng[AMDGPU_MAX_VMHUBS] = { 3, 3 };
+	/*
+	 * The latest engine allocation on gfx9 is:
+	 * Engine 0, 1: idle
+	 * Engine 2, 3: firmware
+	 * Engine 4~13: amdgpu ring, subject to change when ring number changes
+	 * Engine 14~15: idle
+	 * Engine 16: kfd tlb invalidation
+	 * Engine 17: Gart flushes
+	 */
+	unsigned vm_inv_eng[AMDGPU_MAX_VMHUBS] = { 4, 4 };
 	unsigned i;
 
 	for(i = 0; i < adev->num_rings; ++i) {
@@ -408,9 +417,9 @@ static int gmc_v9_0_late_init(void *handle)
 			 ring->funcs->vmhub);
 	}
 
-	/* Engine 17 is used for GART flushes */
+	/* Engine 16 is used for KFD and 17 for GART flushes */
 	for(i = 0; i < AMDGPU_MAX_VMHUBS; ++i)
-		BUG_ON(vm_inv_eng[i] > 17);
+		BUG_ON(vm_inv_eng[i] > 16);
 
 	return amdgpu_irq_get(adev, &adev->mc.vm_fault, 0);
 }
@@ -447,7 +456,10 @@ static int gmc_v9_0_mc_init(struct amdgpu_device *adev)
 	adev->mc.vram_width = amdgpu_atomfirmware_get_vram_width(adev);
 	if (!adev->mc.vram_width) {
 		/* hbm memory channel size */
-		chansize = 128;
+		if (adev->flags & AMD_IS_APU)
+			chansize = 64;
+		else
+			chansize = 128;
 
 		tmp = RREG32_SOC15(DF, 0, mmDF_CS_AON0_DramBaseAddress0);
 		tmp &= DF_CS_AON0_DramBaseAddress0__IntLvNumChan_MASK;

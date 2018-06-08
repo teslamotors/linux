@@ -69,6 +69,7 @@ static const char * const irq_name[INTEL_GVT_EVENT_MAX] = {
 	[VCS_PAGE_DIRECTORY_FAULT] = "Video page directory faults",
 	[VCS_AS_CONTEXT_SWITCH] = "Video AS Context Switch Interrupt",
 	[VCS2_MI_USER_INTERRUPT] = "VCS2 Video CS MI USER INTERRUPT",
+	[VCS2_CMD_STREAMER_ERR] = "VCS2 Video CS error interrupt",
 	[VCS2_MI_FLUSH_DW] = "VCS2 Video MI FLUSH DW notify",
 	[VCS2_AS_CONTEXT_SWITCH] = "VCS2 Context Switch Interrupt",
 
@@ -523,21 +524,26 @@ static void gen8_init_irq(
 
 	/* GEN8 interrupt GT0 events */
 	SET_BIT_INFO(irq, 0, RCS_MI_USER_INTERRUPT, INTEL_GVT_IRQ_INFO_GT0);
+	SET_BIT_INFO(irq, 3, RCS_CMD_STREAMER_ERR, INTEL_GVT_IRQ_INFO_GT0);
 	SET_BIT_INFO(irq, 4, RCS_PIPE_CONTROL, INTEL_GVT_IRQ_INFO_GT0);
 	SET_BIT_INFO(irq, 8, RCS_AS_CONTEXT_SWITCH, INTEL_GVT_IRQ_INFO_GT0);
 
 	SET_BIT_INFO(irq, 16, BCS_MI_USER_INTERRUPT, INTEL_GVT_IRQ_INFO_GT0);
+	SET_BIT_INFO(irq, 19, BCS_CMD_STREAMER_ERR, INTEL_GVT_IRQ_INFO_GT0);
 	SET_BIT_INFO(irq, 20, BCS_MI_FLUSH_DW, INTEL_GVT_IRQ_INFO_GT0);
 	SET_BIT_INFO(irq, 24, BCS_AS_CONTEXT_SWITCH, INTEL_GVT_IRQ_INFO_GT0);
 
 	/* GEN8 interrupt GT1 events */
 	SET_BIT_INFO(irq, 0, VCS_MI_USER_INTERRUPT, INTEL_GVT_IRQ_INFO_GT1);
+	SET_BIT_INFO(irq, 3, VCS_CMD_STREAMER_ERR, INTEL_GVT_IRQ_INFO_GT1);
 	SET_BIT_INFO(irq, 4, VCS_MI_FLUSH_DW, INTEL_GVT_IRQ_INFO_GT1);
 	SET_BIT_INFO(irq, 8, VCS_AS_CONTEXT_SWITCH, INTEL_GVT_IRQ_INFO_GT1);
 
 	if (HAS_BSD2(gvt->dev_priv)) {
 		SET_BIT_INFO(irq, 16, VCS2_MI_USER_INTERRUPT,
 			INTEL_GVT_IRQ_INFO_GT1);
+		SET_BIT_INFO(irq, 19, VCS2_CMD_STREAMER_ERR,
+				INTEL_GVT_IRQ_INFO_GT1);
 		SET_BIT_INFO(irq, 20, VCS2_MI_FLUSH_DW,
 			INTEL_GVT_IRQ_INFO_GT1);
 		SET_BIT_INFO(irq, 24, VCS2_AS_CONTEXT_SWITCH,
@@ -546,6 +552,7 @@ static void gen8_init_irq(
 
 	/* GEN8 interrupt GT3 events */
 	SET_BIT_INFO(irq, 0, VECS_MI_USER_INTERRUPT, INTEL_GVT_IRQ_INFO_GT3);
+	SET_BIT_INFO(irq, 3, VECS_CMD_STREAMER_ERR, INTEL_GVT_IRQ_INFO_GT3);
 	SET_BIT_INFO(irq, 4, VECS_MI_FLUSH_DW, INTEL_GVT_IRQ_INFO_GT3);
 	SET_BIT_INFO(irq, 8, VECS_AS_CONTEXT_SWITCH, INTEL_GVT_IRQ_INFO_GT3);
 
@@ -580,7 +587,8 @@ static void gen8_init_irq(
 
 		SET_BIT_INFO(irq, 4, PRIMARY_C_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_C);
 		SET_BIT_INFO(irq, 5, SPRITE_C_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_C);
-	} else if (IS_SKYLAKE(gvt->dev_priv) || IS_KABYLAKE(gvt->dev_priv)) {
+	} else if (IS_SKYLAKE(gvt->dev_priv) || IS_BROXTON(gvt->dev_priv)
+			|| IS_KABYLAKE(gvt->dev_priv)) {
 		SET_BIT_INFO(irq, 25, AUX_CHANNEL_B, INTEL_GVT_IRQ_INFO_DE_PORT);
 		SET_BIT_INFO(irq, 26, AUX_CHANNEL_C, INTEL_GVT_IRQ_INFO_DE_PORT);
 		SET_BIT_INFO(irq, 27, AUX_CHANNEL_D, INTEL_GVT_IRQ_INFO_DE_PORT);
@@ -592,6 +600,10 @@ static void gen8_init_irq(
 		SET_BIT_INFO(irq, 4, SPRITE_A_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_A);
 		SET_BIT_INFO(irq, 4, SPRITE_B_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_B);
 		SET_BIT_INFO(irq, 4, SPRITE_C_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_C);
+
+		SET_BIT_INFO(irq, 5, PLANE_3_A_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_A);
+		SET_BIT_INFO(irq, 5, PLANE_3_B_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_B);
+		SET_BIT_INFO(irq, 5, PLANE_3_C_FLIP_DONE, INTEL_GVT_IRQ_INFO_DE_PIPE_C);
 	}
 
 	/* GEN8 interrupt PCU events */
@@ -651,7 +663,7 @@ static enum hrtimer_restart vblank_timer_fn(struct hrtimer *data)
 	irq = container_of(vblank_timer, struct intel_gvt_irq, vblank_timer);
 	gvt = container_of(irq, struct intel_gvt, irq);
 
-	intel_gvt_request_service(gvt, INTEL_GVT_REQUEST_EMULATE_VBLANK);
+//	intel_gvt_request_service(gvt, INTEL_GVT_REQUEST_EMULATE_VBLANK);
 	hrtimer_add_expires_ns(&vblank_timer->timer, vblank_timer->period);
 	return HRTIMER_RESTART;
 }
@@ -691,6 +703,7 @@ int intel_gvt_init_irq(struct intel_gvt *gvt)
 	gvt_dbg_core("init irq framework\n");
 
 	if (IS_BROADWELL(gvt->dev_priv) || IS_SKYLAKE(gvt->dev_priv)
+		|| IS_BROXTON(gvt->dev_priv)
 		|| IS_KABYLAKE(gvt->dev_priv)) {
 		irq->ops = &gen8_irq_ops;
 		irq->irq_map = gen8_irq_map;

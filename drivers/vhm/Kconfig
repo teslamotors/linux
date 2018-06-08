@@ -1,0 +1,18 @@
+config ACRN_VHM
+	bool "Intel ACRN Hypervisor Virtio and Hypervisor service Module (VHM)"
+	depends on ACRN
+	depends on DMA_CMA
+	depends on PCI_MSI
+	depends on HUGETLBFS
+	depends on !VMAP_STACK
+	default n
+	---help---
+		This is the Virtio and Hypervisor service Module (VHM) for
+		Intel ACRN hypervisor.
+
+		It is required for Service OS.
+		User OS doesn't need to have this config.
+
+		Say Y for SOS and say N for UOS.
+
+		If unsure, say N.

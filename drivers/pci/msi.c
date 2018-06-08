@@ -190,7 +190,7 @@ static void msi_mask_irq(struct msi_desc *desc, u32 mask, u32 flag)
 	desc->masked = __pci_msi_desc_mask_irq(desc, mask, flag);
 }
 
-static void __iomem *pci_msix_desc_addr(struct msi_desc *desc)
+void __iomem *pci_msix_desc_addr(struct msi_desc *desc)
 {
 	return desc->mask_base +
 		desc->msi_attrib.entry_nr * PCI_MSIX_ENTRY_SIZE;
@@ -294,7 +294,7 @@ void __pci_read_msi_msg(struct msi_desc *entry, struct msi_msg *msg)
 	}
 }
 
-void __pci_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg)
+void native_write_msi_msg(struct msi_desc *entry, struct msi_msg *msg)
 {
 	struct pci_dev *dev = msi_desc_to_pci_dev(entry);
 

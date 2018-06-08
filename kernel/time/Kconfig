@@ -143,5 +143,14 @@ config HIGH_RES_TIMERS
 	  hardware is not capable then this option only increases
 	  the size of the kernel image.
 
+# Wakelock and suspend for IVI system needs to disable alarmtimer_suspend
+config ANDROID_AUTO_SUSPEND_BEHAVIOR
+       bool "skip alarm timer suspend flow for Android auto usage"
+       default n
+       help
+         Say Y if it doesn't need alarm timer to wake up system, especially
+         in vehicle usage.
+         Say N if you are unsure.
+
 endmenu
 endif

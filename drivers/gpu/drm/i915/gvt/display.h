@@ -140,6 +140,7 @@ enum intel_vgpu_port_type {
 	GVT_DP_B,
 	GVT_DP_C,
 	GVT_DP_D,
+	GVT_HDMI_A,
 	GVT_HDMI_B,
 	GVT_HDMI_C,
 	GVT_HDMI_D,

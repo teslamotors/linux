@@ -141,6 +141,13 @@ int snd_soc_dai_digital_mute(struct snd_soc_dai *dai, int mute,
 
 int snd_soc_dai_is_dummy(struct snd_soc_dai *dai);
 
+
+/* Stream tag programming for codec and cpu dai */
+int snd_soc_dai_program_stream_tag(struct snd_pcm_substream *substream,
+			struct snd_soc_dai *cpu_dai, int stream_tag);
+void snd_soc_dai_remove_stream_tag(struct snd_pcm_substream *substream,
+			struct snd_soc_dai *cpu_dai);
+
 struct snd_soc_dai_ops {
 	/*
 	 * DAI clocking configuration, all optional.
@@ -174,6 +181,16 @@ struct snd_soc_dai_ops {
 	 */
 	int (*digital_mute)(struct snd_soc_dai *dai, int mute);
 	int (*mute_stream)(struct snd_soc_dai *dai, int mute, int stream);
+
+	/*
+	 * stream_tag - Optional
+	 * Used by SoundWire and HDA driver to set same stream
+	 * tag for both CPU and Codec DAI
+	 */
+	int (*program_stream_tag)(struct snd_pcm_substream *,
+		struct snd_soc_dai *, int);
+	int (*remove_stream_tag)(struct snd_pcm_substream *,
+		struct snd_soc_dai *);
 
 	/*
 	 * ALSA PCM audio operations - all optional.

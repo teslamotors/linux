@@ -52,10 +52,6 @@
 #define KBL_HUC_FW_MINOR 00
 #define KBL_BLD_NUM 1810
 
-#define GLK_HUC_FW_MAJOR 02
-#define GLK_HUC_FW_MINOR 00
-#define GLK_BLD_NUM 1748
-
 #define HUC_FW_PATH(platform, major, minor, bld_num) \
 	"i915/" __stringify(platform) "_huc_ver" __stringify(major) "_" \
 	__stringify(minor) "_" __stringify(bld_num) ".bin"
@@ -71,9 +67,6 @@ MODULE_FIRMWARE(I915_BXT_HUC_UCODE);
 #define I915_KBL_HUC_UCODE HUC_FW_PATH(kbl, KBL_HUC_FW_MAJOR, \
 	KBL_HUC_FW_MINOR, KBL_BLD_NUM)
 MODULE_FIRMWARE(I915_KBL_HUC_UCODE);
-
-#define I915_GLK_HUC_UCODE HUC_FW_PATH(glk, GLK_HUC_FW_MAJOR, \
-	GLK_HUC_FW_MINOR, GLK_BLD_NUM)
 
 /**
  * huc_ucode_xfer() - DMA's the firmware
@@ -155,8 +148,8 @@ void intel_huc_select_fw(struct intel_huc *huc)
 	huc->fw.load_status = INTEL_UC_FIRMWARE_NONE;
 	huc->fw.type = INTEL_UC_FW_TYPE_HUC;
 
-	if (i915.huc_firmware_path) {
-		huc->fw.path = i915.huc_firmware_path;
+	if (i915_modparams.huc_firmware_path) {
+		huc->fw.path = i915_modparams.huc_firmware_path;
 		huc->fw.major_ver_wanted = 0;
 		huc->fw.minor_ver_wanted = 0;
 	} else if (IS_SKYLAKE(dev_priv)) {
@@ -171,10 +164,6 @@ void intel_huc_select_fw(struct intel_huc *huc)
 		huc->fw.path = I915_KBL_HUC_UCODE;
 		huc->fw.major_ver_wanted = KBL_HUC_FW_MAJOR;
 		huc->fw.minor_ver_wanted = KBL_HUC_FW_MINOR;
-	} else if (IS_GEMINILAKE(dev_priv)) {
-		huc->fw.path = I915_GLK_HUC_UCODE;
-		huc->fw.major_ver_wanted = GLK_HUC_FW_MAJOR;
-		huc->fw.minor_ver_wanted = GLK_HUC_FW_MINOR;
 	} else {
 		DRM_ERROR("No HuC firmware known for platform with HuC!\n");
 		return;

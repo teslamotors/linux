@@ -75,6 +75,7 @@ needed).
    sound/index
    crypto/index
    filesystems/index
+   rpmb/index
 
 Architecture-specific documentation
 -----------------------------------

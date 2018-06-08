@@ -721,7 +721,7 @@ static void hns3_set_txbd_baseinfo(u16 *bdtp_fe_sc_vld_ra_ri, int frag_end)
 		       HNS3_TXD_BDTYPE_M, 0);
 	hnae_set_bit(*bdtp_fe_sc_vld_ra_ri, HNS3_TXD_FE_B, !!frag_end);
 	hnae_set_bit(*bdtp_fe_sc_vld_ra_ri, HNS3_TXD_VLD_B, 1);
-	hnae_set_field(*bdtp_fe_sc_vld_ra_ri, HNS3_TXD_SC_M, HNS3_TXD_SC_S, 1);
+	hnae_set_field(*bdtp_fe_sc_vld_ra_ri, HNS3_TXD_SC_M, HNS3_TXD_SC_S, 0);
 }
 
 static int hns3_fill_desc(struct hns3_enet_ring *ring, void *priv,
@@ -1060,6 +1060,8 @@ hns3_nic_get_stats64(struct net_device *netdev, struct rtnl_link_stats64 *stats)
 	u64 rx_bytes = 0;
 	u64 tx_pkts = 0;
 	u64 rx_pkts = 0;
+	u64 tx_drop = 0;
+	u64 rx_drop = 0;
 
 	for (idx = 0; idx < queue_num; idx++) {
 		/* fetch the tx stats */
@@ -1068,6 +1070,8 @@ hns3_nic_get_stats64(struct net_device *netdev, struct rtnl_link_stats64 *stats)
 			start = u64_stats_fetch_begin_irq(&ring->syncp);
 			tx_bytes += ring->stats.tx_bytes;
 			tx_pkts += ring->stats.tx_pkts;
+			tx_drop += ring->stats.tx_busy;
+			tx_drop += ring->stats.sw_err_cnt;
 		} while (u64_stats_fetch_retry_irq(&ring->syncp, start));
 
 		/* fetch the rx stats */
@@ -1076,6 +1080,9 @@ hns3_nic_get_stats64(struct net_device *netdev, struct rtnl_link_stats64 *stats)
 			start = u64_stats_fetch_begin_irq(&ring->syncp);
 			rx_bytes += ring->stats.rx_bytes;
 			rx_pkts += ring->stats.rx_pkts;
+			rx_drop += ring->stats.non_vld_descs;
+			rx_drop += ring->stats.err_pkt_len;
+			rx_drop += ring->stats.l2_err;
 		} while (u64_stats_fetch_retry_irq(&ring->syncp, start));
 	}
 
@@ -1091,8 +1098,8 @@ hns3_nic_get_stats64(struct net_device *netdev, struct rtnl_link_stats64 *stats)
 	stats->rx_missed_errors = netdev->stats.rx_missed_errors;
 
 	stats->tx_errors = netdev->stats.tx_errors;
-	stats->rx_dropped = netdev->stats.rx_dropped;
-	stats->tx_dropped = netdev->stats.tx_dropped;
+	stats->rx_dropped = rx_drop + netdev->stats.rx_dropped;
+	stats->tx_dropped = tx_drop + netdev->stats.tx_dropped;
 	stats->collisions = netdev->stats.collisions;
 	stats->rx_over_errors = netdev->stats.rx_over_errors;
 	stats->rx_frame_errors = netdev->stats.rx_frame_errors;
@@ -1305,6 +1312,8 @@ static int hns3_nic_change_mtu(struct net_device *netdev, int new_mtu)
 			   ret);
 		return ret;
 	}
+
+	netdev->mtu = new_mtu;
 
 	/* if the netdev was running earlier, bring it up again */
 	if (if_running && hns3_nic_net_open(netdev))
@@ -1546,7 +1555,7 @@ static int hns3_reserve_buffer_map(struct hns3_enet_ring *ring,
 	return 0;
 
 out_with_buf:
-	hns3_free_buffers(ring);
+	hns3_free_buffer(ring, cb);
 out:
 	return ret;
 }
@@ -1586,7 +1595,7 @@ out_buffer_fail:
 static void hns3_replace_buffer(struct hns3_enet_ring *ring, int i,
 				struct hns3_desc_cb *res_cb)
 {
-	hns3_map_buffer(ring, &ring->desc_cb[i]);
+	hns3_unmap_buffer(ring, &ring->desc_cb[i]);
 	ring->desc_cb[i] = *res_cb;
 	ring->desc[i].addr = cpu_to_le64(ring->desc_cb[i].dma);
 }
@@ -2460,9 +2469,8 @@ static int hns3_nic_uninit_vector_data(struct hns3_nic_priv *priv)
 			(void)irq_set_affinity_hint(
 				priv->tqp_vector[i].vector_irq,
 						    NULL);
-			devm_free_irq(&pdev->dev,
-				      priv->tqp_vector[i].vector_irq,
-				      &priv->tqp_vector[i]);
+			free_irq(priv->tqp_vector[i].vector_irq,
+				 &priv->tqp_vector[i]);
 		}
 
 		priv->ring_data[i].ring->irq_init_flag = HNS3_VECTOR_NOT_INITED;
@@ -2489,15 +2497,15 @@ static int hns3_ring_get_cfg(struct hnae3_queue *q, struct hns3_nic_priv *priv,
 
 	if (ring_type == HNAE3_RING_TYPE_TX) {
 		ring_data[q->tqp_index].ring = ring;
+		ring_data[q->tqp_index].queue_index = q->tqp_index;
 		ring->io_base = (u8 __iomem *)q->io_base + HNS3_TX_REG_OFFSET;
 	} else {
 		ring_data[q->tqp_index + queue_num].ring = ring;
+		ring_data[q->tqp_index + queue_num].queue_index = q->tqp_index;
 		ring->io_base = q->io_base;
 	}
 
 	hnae_set_bit(ring->flag, HNAE3_RING_TYPE_B, ring_type);
-
-	ring_data[q->tqp_index].queue_index = q->tqp_index;
 
 	ring->tqp = q;
 	ring->desc = NULL;
@@ -2688,8 +2696,12 @@ static int hns3_uninit_all_ring(struct hns3_nic_priv *priv)
 			h->ae_algo->ops->reset_queue(h, i);
 
 		hns3_fini_ring(priv->ring_data[i].ring);
+		devm_kfree(priv->dev, priv->ring_data[i].ring);
 		hns3_fini_ring(priv->ring_data[i + h->kinfo.num_tqps].ring);
+		devm_kfree(priv->dev,
+			   priv->ring_data[i + h->kinfo.num_tqps].ring);
 	}
+	devm_kfree(priv->dev, priv->ring_data);
 
 	return 0;
 }

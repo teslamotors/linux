@@ -89,6 +89,7 @@ struct hdac_ext_stream {
 
 	u32 dpib;
 	u32 lpib;
+	u32 spib;
 	bool decoupled:1;
 	bool link_locked:1;
 	bool link_prepared;
@@ -110,6 +111,10 @@ void snd_hdac_link_free_all(struct hdac_ext_bus *ebus);
 struct hdac_ext_stream *snd_hdac_ext_stream_assign(struct hdac_ext_bus *bus,
 					   struct snd_pcm_substream *substream,
 					   int type);
+struct hdac_ext_stream *
+hdac_ext_host_stream_compr_assign(struct hdac_ext_bus *ebus,
+				struct snd_compr_stream *substream,
+				int direction);
 void snd_hdac_ext_stream_release(struct hdac_ext_stream *azx_dev, int type);
 void snd_hdac_ext_stream_decouple(struct hdac_ext_bus *bus,
 				struct hdac_ext_stream *azx_dev, bool decouple);
@@ -193,7 +198,7 @@ struct hda_dai_map {
  * @pvt_data - private data, for asoc contains asoc codec object
  */
 struct hdac_ext_device {
-	struct hdac_device hdac;
+	struct hdac_device hdev;
 	struct hdac_ext_bus *ebus;
 
 	/* soc-dai to nid map */
@@ -213,7 +218,7 @@ struct hdac_ext_dma_params {
 	u8 stream_tag;
 };
 #define to_ehdac_device(dev) (container_of((dev), \
-				 struct hdac_ext_device, hdac))
+				 struct hdac_ext_device, hdev))
 /*
  * HD-audio codec base driver
  */

@@ -25,6 +25,7 @@
 #include <linux/bcd.h>
 #include <linux/highmem.h>
 #include <linux/kprobes.h>
+#include <linux/msi.h>
 
 #include <asm/bug.h>
 #include <asm/paravirt.h>
@@ -190,9 +191,9 @@ static void native_flush_tlb_global(void)
 	__native_flush_tlb_global();
 }
 
-static void native_flush_tlb_single(unsigned long addr)
+static void native_flush_tlb_one_user(unsigned long addr)
 {
-	__native_flush_tlb_single(addr);
+	__native_flush_tlb_one_user(addr);
 }
 
 struct static_key paravirt_steal_enabled;
@@ -319,6 +320,9 @@ __visible struct pv_irq_ops pv_irq_ops = {
 	.irq_enable = __PV_IS_CALLEE_SAVE(native_irq_enable),
 	.safe_halt = native_safe_halt,
 	.halt = native_halt,
+#ifdef CONFIG_PCI_MSI
+	.write_msi = native_write_msi_msg,
+#endif
 };
 
 __visible struct pv_cpu_ops pv_cpu_ops = {
@@ -367,6 +371,8 @@ __visible struct pv_cpu_ops pv_cpu_ops = {
 
 	.start_context_switch = paravirt_nop,
 	.end_context_switch = paravirt_nop,
+
+	.cpu_khz = paravirt_nop,
 };
 
 /* At this point, native_get/set_debugreg has real function entries */
@@ -391,7 +397,7 @@ struct pv_mmu_ops pv_mmu_ops __ro_after_init = {
 
 	.flush_tlb_user = native_flush_tlb,
 	.flush_tlb_kernel = native_flush_tlb_global,
-	.flush_tlb_single = native_flush_tlb_single,
+	.flush_tlb_one_user = native_flush_tlb_one_user,
 	.flush_tlb_others = native_flush_tlb_others,
 
 	.pgd_alloc = __paravirt_pgd_alloc,

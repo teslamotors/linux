@@ -268,6 +268,11 @@ static inline u64 gen8_noncanonical_addr(u64 address)
 	return address & GENMASK_ULL(GEN8_HIGH_ADDRESS_BIT, 0);
 }
 
+static inline bool eb_use_cmdparser(const struct i915_execbuffer *eb)
+{
+	return eb->engine->needs_cmd_parser && eb->batch_len;
+}
+
 static int eb_create(struct i915_execbuffer *eb)
 {
 	if (!(eb->args->flags & I915_EXEC_HANDLE_LUT)) {
@@ -499,6 +504,8 @@ eb_add_vma(struct i915_execbuffer *eb, unsigned int i, struct i915_vma *vma)
 		list_add_tail(&vma->exec_link, &eb->unbound);
 		if (drm_mm_node_allocated(&vma->node))
 			err = i915_vma_unbind(vma);
+		if (unlikely(err))
+			vma->exec_flags = NULL;
 	}
 	return err;
 }
@@ -720,7 +727,7 @@ static int eb_lookup_vmas(struct i915_execbuffer *eb)
 
 		err = radix_tree_insert(handles_vma, handle, vma);
 		if (unlikely(err)) {
-			kfree(lut);
+			kmem_cache_free(eb->i915->luts, lut);
 			goto err_obj;
 		}
 
@@ -1163,6 +1170,13 @@ static u32 *reloc_gpu(struct i915_execbuffer *eb,
 	if (unlikely(!cache->rq)) {
 		int err;
 
+		/* If we need to copy for the cmdparser, we will stall anyway */
+		if (eb_use_cmdparser(eb))
+			return ERR_PTR(-EWOULDBLOCK);
+
+		if (!intel_engine_can_store_dword(eb->engine))
+			return ERR_PTR(-ENODEV);
+
 		err = __reloc_gpu_alloc(eb, vma, len);
 		if (unlikely(err))
 			return ERR_PTR(err);
@@ -1187,9 +1201,7 @@ relocate_entry(struct i915_vma *vma,
 
 	if (!eb->reloc_cache.vaddr &&
 	    (DBG_FORCE_RELOC == FORCE_GPU_RELOC ||
-	     !reservation_object_test_signaled_rcu(vma->resv, true)) &&
-	    __intel_engine_can_store_dword(eb->reloc_cache.gen,
-					   eb->engine->class)) {
+	     !reservation_object_test_signaled_rcu(vma->resv, true))) {
 		const unsigned int gen = eb->reloc_cache.gen;
 		unsigned int len;
 		u32 *batch;
@@ -1581,7 +1593,7 @@ static int eb_prefault_relocations(const struct i915_execbuffer *eb)
 	const unsigned int count = eb->buffer_count;
 	unsigned int i;
 
-	if (unlikely(i915.prefault_disable))
+	if (unlikely(i915_modparams.prefault_disable))
 		return 0;
 
 	for (i = 0; i < count; i++) {
@@ -2303,7 +2315,7 @@ i915_gem_do_execbuffer(struct drm_device *dev,
 		goto err_vma;
 	}
 
-	if (eb.engine->needs_cmd_parser && eb.batch_len) {
+	if (eb_use_cmdparser(&eb)) {
 		struct i915_vma *vma;
 
 		vma = eb_parse(&eb, drm_is_current_master(file));
@@ -2408,7 +2420,7 @@ err_request:
 	if (out_fence) {
 		if (err == 0) {
 			fd_install(out_fence_fd, out_fence->file);
-			args->rsvd2 &= GENMASK_ULL(0, 31); /* keep in-fence */
+			args->rsvd2 &= GENMASK_ULL(31, 0); /* keep in-fence */
 			args->rsvd2 |= (u64)out_fence_fd << 32;
 			out_fence_fd = -1;
 		} else {

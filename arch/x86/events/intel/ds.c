@@ -3,16 +3,19 @@
 #include <linux/types.h>
 #include <linux/slab.h>
 
+#include <asm/cpu_entry_area.h>
 #include <asm/perf_event.h>
+#include <asm/tlbflush.h>
 #include <asm/insn.h>
 
 #include "../perf_event.h"
 
+/* Waste a full page so it can be mapped into the cpu_entry_area */
+DEFINE_PER_CPU_PAGE_ALIGNED(struct debug_store, cpu_debug_store);
+
 /* The size of a BTS record in bytes: */
 #define BTS_RECORD_SIZE		24
 
-#define BTS_BUFFER_SIZE		(PAGE_SIZE << 4)
-#define PEBS_BUFFER_SIZE	(PAGE_SIZE << 4)
 #define PEBS_FIXUP_SIZE		PAGE_SIZE
 
 /*
@@ -279,17 +282,67 @@ void fini_debug_store_on_cpu(int cpu)
 
 static DEFINE_PER_CPU(void *, insn_buffer);
 
+static void ds_update_cea(void *cea, void *addr, size_t size, pgprot_t prot)
+{
+	unsigned long start = (unsigned long)cea;
+	phys_addr_t pa;
+	size_t msz = 0;
+
+	pa = virt_to_phys(addr);
+
+	preempt_disable();
+	for (; msz < size; msz += PAGE_SIZE, pa += PAGE_SIZE, cea += PAGE_SIZE)
+		cea_set_pte(cea, pa, prot);
+
+	/*
+	 * This is a cross-CPU update of the cpu_entry_area, we must shoot down
+	 * all TLB entries for it.
+	 */
+	flush_tlb_kernel_range(start, start + size);
+	preempt_enable();
+}
+
+static void ds_clear_cea(void *cea, size_t size)
+{
+	unsigned long start = (unsigned long)cea;
+	size_t msz = 0;
+
+	preempt_disable();
+	for (; msz < size; msz += PAGE_SIZE, cea += PAGE_SIZE)
+		cea_set_pte(cea, 0, PAGE_NONE);
+
+	flush_tlb_kernel_range(start, start + size);
+	preempt_enable();
+}
+
+static void *dsalloc_pages(size_t size, gfp_t flags, int cpu)
+{
+	unsigned int order = get_order(size);
+	int node = cpu_to_node(cpu);
+	struct page *page;
+
+	page = __alloc_pages_node(node, flags | __GFP_ZERO, order);
+	return page ? page_address(page) : NULL;
+}
+
+static void dsfree_pages(const void *buffer, size_t size)
+{
+	if (buffer)
+		free_pages((unsigned long)buffer, get_order(size));
+}
+
 static int alloc_pebs_buffer(int cpu)
 {
-	struct debug_store *ds = per_cpu(cpu_hw_events, cpu).ds;
-	int node = cpu_to_node(cpu);
-	int max;
-	void *buffer, *ibuffer;
+	struct cpu_hw_events *hwev = per_cpu_ptr(&cpu_hw_events, cpu);
+	struct debug_store *ds = hwev->ds;
+	size_t bsiz = x86_pmu.pebs_buffer_size;
+	int max, node = cpu_to_node(cpu);
+	void *buffer, *ibuffer, *cea;
 
 	if (!x86_pmu.pebs)
 		return 0;
 
-	buffer = kzalloc_node(x86_pmu.pebs_buffer_size, GFP_KERNEL, node);
+	buffer = dsalloc_pages(bsiz, GFP_KERNEL, cpu);
 	if (unlikely(!buffer))
 		return -ENOMEM;
 
@@ -300,25 +353,27 @@ static int alloc_pebs_buffer(int cpu)
 	if (x86_pmu.intel_cap.pebs_format < 2) {
 		ibuffer = kzalloc_node(PEBS_FIXUP_SIZE, GFP_KERNEL, node);
 		if (!ibuffer) {
-			kfree(buffer);
+			dsfree_pages(buffer, bsiz);
 			return -ENOMEM;
 		}
 		per_cpu(insn_buffer, cpu) = ibuffer;
 	}
-
-	max = x86_pmu.pebs_buffer_size / x86_pmu.pebs_record_size;
-
-	ds->pebs_buffer_base = (u64)(unsigned long)buffer;
+	hwev->ds_pebs_vaddr = buffer;
+	/* Update the cpu entry area mapping */
+	cea = &get_cpu_entry_area(cpu)->cpu_debug_buffers.pebs_buffer;
+	ds->pebs_buffer_base = (unsigned long) cea;
+	ds_update_cea(cea, buffer, bsiz, PAGE_KERNEL);
 	ds->pebs_index = ds->pebs_buffer_base;
-	ds->pebs_absolute_maximum = ds->pebs_buffer_base +
-		max * x86_pmu.pebs_record_size;
-
+	max = x86_pmu.pebs_record_size * (bsiz / x86_pmu.pebs_record_size);
+	ds->pebs_absolute_maximum = ds->pebs_buffer_base + max;
 	return 0;
 }
 
 static void release_pebs_buffer(int cpu)
 {
-	struct debug_store *ds = per_cpu(cpu_hw_events, cpu).ds;
+	struct cpu_hw_events *hwev = per_cpu_ptr(&cpu_hw_events, cpu);
+	struct debug_store *ds = hwev->ds;
+	void *cea;
 
 	if (!ds || !x86_pmu.pebs)
 		return;
@@ -326,73 +381,70 @@ static void release_pebs_buffer(int cpu)
 	kfree(per_cpu(insn_buffer, cpu));
 	per_cpu(insn_buffer, cpu) = NULL;
 
-	kfree((void *)(unsigned long)ds->pebs_buffer_base);
+	/* Clear the fixmap */
+	cea = &get_cpu_entry_area(cpu)->cpu_debug_buffers.pebs_buffer;
+	ds_clear_cea(cea, x86_pmu.pebs_buffer_size);
 	ds->pebs_buffer_base = 0;
+	dsfree_pages(hwev->ds_pebs_vaddr, x86_pmu.pebs_buffer_size);
+	hwev->ds_pebs_vaddr = NULL;
 }
 
 static int alloc_bts_buffer(int cpu)
 {
-	struct debug_store *ds = per_cpu(cpu_hw_events, cpu).ds;
-	int node = cpu_to_node(cpu);
-	int max, thresh;
-	void *buffer;
+	struct cpu_hw_events *hwev = per_cpu_ptr(&cpu_hw_events, cpu);
+	struct debug_store *ds = hwev->ds;
+	void *buffer, *cea;
+	int max;
 
 	if (!x86_pmu.bts)
 		return 0;
 
-	buffer = kzalloc_node(BTS_BUFFER_SIZE, GFP_KERNEL | __GFP_NOWARN, node);
+	buffer = dsalloc_pages(BTS_BUFFER_SIZE, GFP_KERNEL | __GFP_NOWARN, cpu);
 	if (unlikely(!buffer)) {
 		WARN_ONCE(1, "%s: BTS buffer allocation failure\n", __func__);
 		return -ENOMEM;
 	}
-
-	max = BTS_BUFFER_SIZE / BTS_RECORD_SIZE;
-	thresh = max / 16;
-
-	ds->bts_buffer_base = (u64)(unsigned long)buffer;
+	hwev->ds_bts_vaddr = buffer;
+	/* Update the fixmap */
+	cea = &get_cpu_entry_area(cpu)->cpu_debug_buffers.bts_buffer;
+	ds->bts_buffer_base = (unsigned long) cea;
+	ds_update_cea(cea, buffer, BTS_BUFFER_SIZE, PAGE_KERNEL);
 	ds->bts_index = ds->bts_buffer_base;
-	ds->bts_absolute_maximum = ds->bts_buffer_base +
-		max * BTS_RECORD_SIZE;
-	ds->bts_interrupt_threshold = ds->bts_absolute_maximum -
-		thresh * BTS_RECORD_SIZE;
-
+	max = BTS_RECORD_SIZE * (BTS_BUFFER_SIZE / BTS_RECORD_SIZE);
+	ds->bts_absolute_maximum = ds->bts_buffer_base + max;
+	ds->bts_interrupt_threshold = ds->bts_absolute_maximum - (max / 16);
 	return 0;
 }
 
 static void release_bts_buffer(int cpu)
 {
-	struct debug_store *ds = per_cpu(cpu_hw_events, cpu).ds;
+	struct cpu_hw_events *hwev = per_cpu_ptr(&cpu_hw_events, cpu);
+	struct debug_store *ds = hwev->ds;
+	void *cea;
 
 	if (!ds || !x86_pmu.bts)
 		return;
 
-	kfree((void *)(unsigned long)ds->bts_buffer_base);
+	/* Clear the fixmap */
+	cea = &get_cpu_entry_area(cpu)->cpu_debug_buffers.bts_buffer;
+	ds_clear_cea(cea, BTS_BUFFER_SIZE);
 	ds->bts_buffer_base = 0;
+	dsfree_pages(hwev->ds_bts_vaddr, BTS_BUFFER_SIZE);
+	hwev->ds_bts_vaddr = NULL;
 }
 
 static int alloc_ds_buffer(int cpu)
 {
-	int node = cpu_to_node(cpu);
-	struct debug_store *ds;
+	struct debug_store *ds = &get_cpu_entry_area(cpu)->cpu_debug_store;
 
-	ds = kzalloc_node(sizeof(*ds), GFP_KERNEL, node);
-	if (unlikely(!ds))
-		return -ENOMEM;
-
+	memset(ds, 0, sizeof(*ds));
 	per_cpu(cpu_hw_events, cpu).ds = ds;
-
 	return 0;
 }
 
 static void release_ds_buffer(int cpu)
 {
-	struct debug_store *ds = per_cpu(cpu_hw_events, cpu).ds;
-
-	if (!ds)
-		return;
-
 	per_cpu(cpu_hw_events, cpu).ds = NULL;
-	kfree(ds);
 }
 
 void release_ds_buffers(void)
@@ -1098,6 +1150,7 @@ static void setup_pebs_sample_data(struct perf_event *event,
 	if (pebs == NULL)
 		return;
 
+	regs->flags &= ~PERF_EFLAGS_EXACT;
 	sample_type = event->attr.sample_type;
 	dsrc = sample_type & PERF_SAMPLE_DATA_SRC;
 
@@ -1142,7 +1195,6 @@ static void setup_pebs_sample_data(struct perf_event *event,
 	 */
 	*regs = *iregs;
 	regs->flags = pebs->flags;
-	set_linear_ip(regs, pebs->ip);
 
 	if (sample_type & PERF_SAMPLE_REGS_INTR) {
 		regs->ax = pebs->ax;
@@ -1178,13 +1230,22 @@ static void setup_pebs_sample_data(struct perf_event *event,
 #endif
 	}
 
-	if (event->attr.precise_ip > 1 && x86_pmu.intel_cap.pebs_format >= 2) {
-		regs->ip = pebs->real_ip;
-		regs->flags |= PERF_EFLAGS_EXACT;
-	} else if (event->attr.precise_ip > 1 && intel_pmu_pebs_fixup_ip(regs))
-		regs->flags |= PERF_EFLAGS_EXACT;
-	else
-		regs->flags &= ~PERF_EFLAGS_EXACT;
+	if (event->attr.precise_ip > 1) {
+		/* Haswell and later have the eventing IP, so use it: */
+		if (x86_pmu.intel_cap.pebs_format >= 2) {
+			set_linear_ip(regs, pebs->real_ip);
+			regs->flags |= PERF_EFLAGS_EXACT;
+		} else {
+			/* Otherwise use PEBS off-by-1 IP: */
+			set_linear_ip(regs, pebs->ip);
+
+			/* ... and try to fix it up using the LBR entries: */
+			if (intel_pmu_pebs_fixup_ip(regs))
+				regs->flags |= PERF_EFLAGS_EXACT;
+		}
+	} else
+		set_linear_ip(regs, pebs->ip);
+
 
 	if ((sample_type & (PERF_SAMPLE_ADDR | PERF_SAMPLE_PHYS_ADDR)) &&
 	    x86_pmu.intel_cap.pebs_format >= 1)
@@ -1251,17 +1312,84 @@ get_next_pebs_record_by_bit(void *base, void *top, int bit)
 	return NULL;
 }
 
+/*
+ * Special variant of intel_pmu_save_and_restart() for auto-reload.
+ */
+static int
+intel_pmu_save_and_restart_reload(struct perf_event *event, int count)
+{
+	struct hw_perf_event *hwc = &event->hw;
+	int shift = 64 - x86_pmu.cntval_bits;
+	u64 period = hwc->sample_period;
+	u64 prev_raw_count, new_raw_count;
+	s64 new, old;
+
+	WARN_ON(!period);
+
+	/*
+	 * drain_pebs() only happens when the PMU is disabled.
+	 */
+	WARN_ON(this_cpu_read(cpu_hw_events.enabled));
+
+	prev_raw_count = local64_read(&hwc->prev_count);
+	rdpmcl(hwc->event_base_rdpmc, new_raw_count);
+	local64_set(&hwc->prev_count, new_raw_count);
+
+	/*
+	 * Since the counter increments a negative counter value and
+	 * overflows on the sign switch, giving the interval:
+	 *
+	 *   [-period, 0]
+	 *
+	 * the difference between two consequtive reads is:
+	 *
+	 *   A) value2 - value1;
+	 *      when no overflows have happened in between,
+	 *
+	 *   B) (0 - value1) + (value2 - (-period));
+	 *      when one overflow happened in between,
+	 *
+	 *   C) (0 - value1) + (n - 1) * (period) + (value2 - (-period));
+	 *      when @n overflows happened in between.
+	 *
+	 * Here A) is the obvious difference, B) is the extension to the
+	 * discrete interval, where the first term is to the top of the
+	 * interval and the second term is from the bottom of the next
+	 * interval and C) the extension to multiple intervals, where the
+	 * middle term is the whole intervals covered.
+	 *
+	 * An equivalent of C, by reduction, is:
+	 *
+	 *   value2 - value1 + n * period
+	 */
+	new = ((s64)(new_raw_count << shift) >> shift);
+	old = ((s64)(prev_raw_count << shift) >> shift);
+	local64_add(new - old + count * period, &event->count);
+
+	perf_event_update_userpage(event);
+
+	return 0;
+}
+
 static void __intel_pmu_pebs_event(struct perf_event *event,
 				   struct pt_regs *iregs,
 				   void *base, void *top,
 				   int bit, int count)
 {
+	struct hw_perf_event *hwc = &event->hw;
 	struct perf_sample_data data;
 	struct pt_regs regs;
 	void *at = get_next_pebs_record_by_bit(base, top, bit);
 
-	if (!intel_pmu_save_and_restart(event) &&
-	    !(event->hw.flags & PERF_X86_EVENT_AUTO_RELOAD))
+	if (hwc->flags & PERF_X86_EVENT_AUTO_RELOAD) {
+		/*
+		 * Now, auto-reload is only enabled in fixed period mode.
+		 * The reload value is always hwc->sample_period.
+		 * May need to change it, if auto-reload is enabled in
+		 * freq mode later.
+		 */
+		intel_pmu_save_and_restart_reload(event, count);
+	} else if (!intel_pmu_save_and_restart(event))
 		return;
 
 	while (count > 1) {
@@ -1313,8 +1441,11 @@ static void intel_pmu_drain_pebs_core(struct pt_regs *iregs)
 		return;
 
 	n = top - at;
-	if (n <= 0)
+	if (n <= 0) {
+		if (event->hw.flags & PERF_X86_EVENT_AUTO_RELOAD)
+			intel_pmu_save_and_restart_reload(event, 0);
 		return;
+	}
 
 	__intel_pmu_pebs_event(event, iregs, at, top, 0, n);
 }
@@ -1337,8 +1468,22 @@ static void intel_pmu_drain_pebs_nhm(struct pt_regs *iregs)
 
 	ds->pebs_index = ds->pebs_buffer_base;
 
-	if (unlikely(base >= top))
+	if (unlikely(base >= top)) {
+		/*
+		 * The drain_pebs() could be called twice in a short period
+		 * for auto-reload event in pmu::read(). There are no
+		 * overflows have happened in between.
+		 * It needs to call intel_pmu_save_and_restart_reload() to
+		 * update the event->count for this case.
+		 */
+		for_each_set_bit(bit, (unsigned long *)&cpuc->pebs_enabled,
+				 x86_pmu.max_pebs_events) {
+			event = cpuc->events[bit];
+			if (event->hw.flags & PERF_X86_EVENT_AUTO_RELOAD)
+				intel_pmu_save_and_restart_reload(event, 0);
+		}
 		return;
+	}
 
 	for (at = base; at < top; at += x86_pmu.pebs_record_size) {
 		struct pebs_record_nhm *p = at;

@@ -112,8 +112,7 @@ void snd_hdac_device_unregister(struct hdac_device *codec);
 int snd_hdac_device_set_chip_name(struct hdac_device *codec, const char *name);
 int snd_hdac_codec_modalias(struct hdac_device *hdac, char *buf, size_t size);
 
-int snd_hdac_refresh_widgets(struct hdac_device *codec);
-int snd_hdac_refresh_widget_sysfs(struct hdac_device *codec);
+int snd_hdac_refresh_widgets(struct hdac_device *codec, bool sysfs);
 
 unsigned int snd_hdac_make_cmd(struct hdac_device *codec, hda_nid_t nid,
 			       unsigned int verb, unsigned int parm);
@@ -223,6 +222,8 @@ struct hdac_io_ops {
 			       struct snd_dma_buffer *buf);
 	void (*dma_free_pages)(struct hdac_bus *bus,
 			       struct snd_dma_buffer *buf);
+	/* mark memory region as non-cache */
+	void (*mark_pages_uc)(struct snd_dma_buffer *buf, bool enable);
 };
 
 #define HDA_UNSOL_QUEUE_SIZE	64
@@ -429,6 +430,7 @@ struct hdac_stream {
 	struct snd_pcm_substream *substream;	/* assigned substream,
 						 * set in PCM open
 						 */
+	struct snd_compr_stream *stream;
 	unsigned int format_val;	/* format value to be set in the
 					 * controller and the codec
 					 */
@@ -442,6 +444,7 @@ struct hdac_stream {
 	bool no_period_wakeup:1;
 	bool locked:1;
 
+	unsigned long curr_pos;
 	/* timestamp */
 	unsigned long start_wallclk;	/* start + minimum wallclk */
 	unsigned long period_wallclk;	/* wallclk for period */

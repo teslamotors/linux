@@ -24,9 +24,11 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
+#include <linux/pci.h>
 #include <linux/clk.h>
 #include <linux/reset.h>
 #include <linux/pm_runtime.h>
+#include <linux/console.h>
 
 #include <asm/byteorder.h>
 
@@ -513,7 +515,8 @@ static int dw8250_probe(struct platform_device *pdev)
 	/* If no clock rate is defined, fail. */
 	if (!p->uartclk) {
 		dev_err(dev, "clock rate not defined\n");
-		return -EINVAL;
+		err = -EINVAL;
+		goto err_clk;
 	}
 
 	data->pclk = devm_clk_get(dev, "apb_pclk");
@@ -605,6 +608,20 @@ static int dw8250_remove(struct platform_device *pdev)
 static int dw8250_suspend(struct device *dev)
 {
 	struct dw8250_data *data = dev_get_drvdata(dev);
+
+	/*
+	 * FIXME: For Platforms with LPSS PCI UARTs, the parent device should
+	 * be prevented from going into D3 for the no_console_suspend flag to
+	 * work as expected.
+	 */
+	if (platform_get_resource_byname(to_platform_device(dev),
+					 IORESOURCE_MEM, "lpss_dev")) {
+		struct uart_8250_port *up = serial8250_get_port(data->line);
+		struct pci_dev *pdev = to_pci_dev(dev->parent);
+
+		if (pdev && !console_suspend_enabled && uart_console(&up->port))
+			pdev->dev_flags |= PCI_DEV_FLAGS_NO_D3;
+	}
 
 	serial8250_suspend_port(data->line);
 

@@ -1,0 +1,126 @@
+Intel(R) Dynamic Application Loader (Intel(R) DAL)
+===================================================
+
+Introduction
+============
+
+Intel Dynamic Application Loader (Intel DAL) is a service that runs
+on the Intel Management Engine (Intel ME). It provides the ability to
+install, run,  and interact with Trusted Applets - TAs,
+written in subset of Java) in a secure environment.
+---
+installing applet int JHI and running them on Intel ME.
+
+There are two interfaces to Intel DAL from the operating system.
+One from the user space, called JHI and one from kernel space, called KDI.
+User space applications can install and uninstall TAs, and both kernel
+and user space applications can communicate with installed TAs.
+
+Intel DAL Linux Kernel Driver
+================
+The driver supports both user space clients and kernel space clients.
+
+For user space clients:
+-----------------------
+For each DAL FW client (IVM, SDM and RTM) the driver exposes a char device
+called /dev/dal{i}, while i is 0-2 respectively.
+
+The user space interface allows sending raw messages from user-space
+to DAL FW client, without any modifications.
+The driver will send back to the user the raw messages which was received back.
+Usually this interface is used by JHI - the DAL SW (for more information
+search dynamic-application-loader-host-interface in github)
+The messages are sent by using the char device 'write' function,
+and received by using the 'read' function in accordance.
+
+For kernel space clients:
+-------------------------
+The driver expose api in <linux/dal.h> file, to allow a kernel space client
+using DAL.
+
+dal_uuid_to_bin - convert uuid string to bin
+     Input uuid is in either hyphenless or standard format
+    Arguments:
+    	uuid_str:  uuid string
+    	uuid:      output param to hold uuid bin
+
+    Return:
+    	0 on success
+    	<0 on failure
+
+dal_create_session - create session to an installed trusted application.
+    Arguments:
+    	session_handle:   output param to hold the session handle
+    	ta_id:            trusted application (ta) id
+    	acp_pkg           acp file of the ta
+    	acp_pkg_len:      acp file length
+    	init_param:       init parameters to the session (optional)
+    	init_param_len:   length of the init parameters
+
+    Return:
+    	0 on success
+    	<0 on system failure
+    	>0 on DAL FW failure
+
+dal_send_and_receive - send and receive data to/from ta
+    Arguments:
+        session_handle: session handle
+    	command_id:     command id
+    	input:          message to be sent
+    	input_len:      sent message size
+    	output:         An output parameter to hold a pointer
+                        to the buffer which will contain the received
+                        message.
+                        This buffer is allocated by the driver and freed
+                        by the user
+    	output_len:     An input and output param -
+                           - input: the expected maximum length
+                             of the received message.
+                           - output: size of the received message
+    	response_code:  An output parameter to hold the return
+                        value from the applet
+
+    Return:
+    	0 on success
+    	<0 on system failure
+    	>0 on DAL FW failure
+
+dal_close_session - close ta session
+    Arguments:
+session_handle: session handle
+
+    Return:
+    	0 on success
+    	<0 on system failure
+    	>0 on DAL FW failure
+
+dal_set_ta_exclusive_access - set client to be owner of the ta,
+                              so no one else (especially user space client)
+                              will be able to open session to it
+    Arguments:
+    	ta_id: trusted application (ta) id
+
+    Return:
+    	0 on success
+    	-ENODEV when the device can't be found
+    	-ENOMEM on memory allocation failure
+    	-EPERM when ta is owned by another client
+    	-EEXIST when ta is already owned by current client
+
+dal_unset_ta_exclusive_access - unset client from owning ta
+    Arguments:
+    	ta_id: trusted application (ta) id
+
+    Return:
+    	0 on success
+    	-ENODEV when the device can't be found
+    	-ENOENT when ta isn't found in exclusiveness ta list
+    	-EPERM when ta is owned by another client
+
+dal_get_version_info - return DAL driver version
+    Arguments:
+    	version_info: output param to hold DAL driver version information
+
+    Return:
+    	0 on success
+    	-EINVAL on incorrect input

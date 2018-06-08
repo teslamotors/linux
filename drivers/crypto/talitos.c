@@ -1116,16 +1116,21 @@ next:
 	return count;
 }
 
-int talitos_sg_map(struct device *dev, struct scatterlist *src,
-		   unsigned int len, struct talitos_edesc *edesc,
-		   struct talitos_ptr *ptr,
-		   int sg_count, unsigned int offset, int tbl_off)
+static int talitos_sg_map_ext(struct device *dev, struct scatterlist *src,
+			      unsigned int len, struct talitos_edesc *edesc,
+			      struct talitos_ptr *ptr, int sg_count,
+			      unsigned int offset, int tbl_off, int elen)
 {
 	struct talitos_private *priv = dev_get_drvdata(dev);
 	bool is_sec1 = has_ftr_sec1(priv);
 
+	if (!src) {
+		*ptr = zero_entry;
+		return 1;
+	}
+
 	to_talitos_ptr_len(ptr, len, is_sec1);
-	to_talitos_ptr_ext_set(ptr, 0, is_sec1);
+	to_talitos_ptr_ext_set(ptr, elen, is_sec1);
 
 	if (sg_count == 1) {
 		to_talitos_ptr(ptr, sg_dma_address(src) + offset, is_sec1);
@@ -1135,7 +1140,7 @@ int talitos_sg_map(struct device *dev, struct scatterlist *src,
 		to_talitos_ptr(ptr, edesc->dma_link_tbl + offset, is_sec1);
 		return sg_count;
 	}
-	sg_count = sg_to_link_tbl_offset(src, sg_count, offset, len,
+	sg_count = sg_to_link_tbl_offset(src, sg_count, offset, len + elen,
 					 &edesc->link_tbl[tbl_off]);
 	if (sg_count == 1) {
 		/* Only one segment now, so no link tbl needed*/
@@ -1147,6 +1152,15 @@ int talitos_sg_map(struct device *dev, struct scatterlist *src,
 	to_talitos_ptr_ext_or(ptr, DESC_PTR_LNKTBL_JUMP, is_sec1);
 
 	return sg_count;
+}
+
+static int talitos_sg_map(struct device *dev, struct scatterlist *src,
+			  unsigned int len, struct talitos_edesc *edesc,
+			  struct talitos_ptr *ptr, int sg_count,
+			  unsigned int offset, int tbl_off)
+{
+	return talitos_sg_map_ext(dev, src, len, edesc, ptr, sg_count, offset,
+				  tbl_off, 0);
 }
 
 /*
@@ -1166,7 +1180,7 @@ static int ipsec_esp(struct talitos_edesc *edesc, struct aead_request *areq,
 	unsigned int ivsize = crypto_aead_ivsize(aead);
 	int tbl_off = 0;
 	int sg_count, ret;
-	int sg_link_tbl_len;
+	int elen = 0;
 	bool sync_needed = false;
 	struct talitos_private *priv = dev_get_drvdata(dev);
 	bool is_sec1 = has_ftr_sec1(priv);
@@ -1220,24 +1234,15 @@ static int ipsec_esp(struct talitos_edesc *edesc, struct aead_request *areq,
 	 * extent is bytes of HMAC postpended to ciphertext,
 	 * typically 12 for ipsec
 	 */
-	to_talitos_ptr_len(&desc->ptr[4], cryptlen, is_sec1);
-	to_talitos_ptr_ext_set(&desc->ptr[4], 0, is_sec1);
+	if ((desc->hdr & DESC_HDR_TYPE_IPSEC_ESP) &&
+	    (desc->hdr & DESC_HDR_MODE1_MDEU_CICV))
+		elen = authsize;
 
-	sg_link_tbl_len = cryptlen;
+	ret = talitos_sg_map_ext(dev, areq->src, cryptlen, edesc, &desc->ptr[4],
+				 sg_count, areq->assoclen, tbl_off, elen);
 
-	if (desc->hdr & DESC_HDR_TYPE_IPSEC_ESP) {
-		to_talitos_ptr_ext_set(&desc->ptr[4], authsize, is_sec1);
-
-		if (edesc->desc.hdr & DESC_HDR_MODE1_MDEU_CICV)
-			sg_link_tbl_len += authsize;
-	}
-
-	sg_count = talitos_sg_map(dev, areq->src, cryptlen, edesc,
-				  &desc->ptr[4], sg_count, areq->assoclen,
-				  tbl_off);
-
-	if (sg_count > 1) {
-		tbl_off += sg_count;
+	if (ret > 1) {
+		tbl_off += ret;
 		sync_needed = true;
 	}
 
@@ -1248,14 +1253,15 @@ static int ipsec_esp(struct talitos_edesc *edesc, struct aead_request *areq,
 			dma_map_sg(dev, areq->dst, sg_count, DMA_FROM_DEVICE);
 	}
 
-	sg_count = talitos_sg_map(dev, areq->dst, cryptlen, edesc,
-				  &desc->ptr[5], sg_count, areq->assoclen,
-				  tbl_off);
+	ret = talitos_sg_map(dev, areq->dst, cryptlen, edesc, &desc->ptr[5],
+			     sg_count, areq->assoclen, tbl_off);
 
 	if (desc->hdr & DESC_HDR_TYPE_IPSEC_ESP)
 		to_talitos_ptr_ext_or(&desc->ptr[5], authsize, is_sec1);
 
-	if (sg_count > 1) {
+	/* ICV data */
+	if (ret > 1) {
+		tbl_off += ret;
 		edesc->icv_ool = true;
 		sync_needed = true;
 
@@ -1265,9 +1271,7 @@ static int ipsec_esp(struct talitos_edesc *edesc, struct aead_request *areq,
 				     sizeof(struct talitos_ptr) + authsize;
 
 			/* Add an entry to the link table for ICV data */
-			tbl_ptr += sg_count - 1;
-			to_talitos_ptr_ext_set(tbl_ptr, 0, is_sec1);
-			tbl_ptr++;
+			to_talitos_ptr_ext_set(tbl_ptr - 1, 0, is_sec1);
 			to_talitos_ptr_ext_set(tbl_ptr, DESC_PTR_LNKTBL_RETURN,
 					       is_sec1);
 			to_talitos_ptr_len(tbl_ptr, authsize, is_sec1);
@@ -1275,16 +1279,31 @@ static int ipsec_esp(struct talitos_edesc *edesc, struct aead_request *areq,
 			/* icv data follows link tables */
 			to_talitos_ptr(tbl_ptr, edesc->dma_link_tbl + offset,
 				       is_sec1);
+		} else {
+			dma_addr_t addr = edesc->dma_link_tbl;
+
+			if (is_sec1)
+				addr += areq->assoclen + cryptlen;
+			else
+				addr += sizeof(struct talitos_ptr) * tbl_off;
+
+			to_talitos_ptr(&desc->ptr[6], addr, is_sec1);
+			to_talitos_ptr_len(&desc->ptr[6], authsize, is_sec1);
+		}
+	} else if (!(desc->hdr & DESC_HDR_TYPE_IPSEC_ESP)) {
+		ret = talitos_sg_map(dev, areq->dst, authsize, edesc,
+				     &desc->ptr[6], sg_count, areq->assoclen +
+							      cryptlen,
+				     tbl_off);
+		if (ret > 1) {
+			tbl_off += ret;
+			edesc->icv_ool = true;
+			sync_needed = true;
+		} else {
+			edesc->icv_ool = false;
 		}
 	} else {
 		edesc->icv_ool = false;
-	}
-
-	/* ICV data */
-	if (!(desc->hdr & DESC_HDR_TYPE_IPSEC_ESP)) {
-		to_talitos_ptr_len(&desc->ptr[6], authsize, is_sec1);
-		to_talitos_ptr(&desc->ptr[6], edesc->dma_link_tbl +
-			       areq->assoclen + cryptlen, is_sec1);
 	}
 
 	/* iv out */
@@ -1494,9 +1513,17 @@ static int ablkcipher_setkey(struct crypto_ablkcipher *cipher,
 			     const u8 *key, unsigned int keylen)
 {
 	struct talitos_ctx *ctx = crypto_ablkcipher_ctx(cipher);
+	u32 tmp[DES_EXPKEY_WORDS];
 
 	if (keylen > TALITOS_MAX_KEY_SIZE) {
 		crypto_ablkcipher_set_flags(cipher, CRYPTO_TFM_RES_BAD_KEY_LEN);
+		return -EINVAL;
+	}
+
+	if (unlikely(crypto_ablkcipher_get_flags(cipher) &
+		     CRYPTO_TFM_REQ_WEAK_KEY) &&
+	    !des_ekey(tmp, key)) {
+		crypto_ablkcipher_set_flags(cipher, CRYPTO_TFM_RES_WEAK_KEY);
 		return -EINVAL;
 	}
 
@@ -2614,7 +2641,7 @@ static struct talitos_alg_template driver_algs[] = {
 				.ivsize = AES_BLOCK_SIZE,
 			}
 		},
-		.desc_hdr_template = DESC_HDR_TYPE_COMMON_NONSNOOP_NO_AFEU |
+		.desc_hdr_template = DESC_HDR_TYPE_AESU_CTR_NONSNOOP |
 				     DESC_HDR_SEL0_AESU |
 				     DESC_HDR_MODE0_AESU_CTR,
 	},
@@ -3047,6 +3074,11 @@ static struct talitos_crypto_alg *talitos_alg_alloc(struct device *dev,
 		t_alg->algt.alg.aead.setkey = aead_setkey;
 		t_alg->algt.alg.aead.encrypt = aead_encrypt;
 		t_alg->algt.alg.aead.decrypt = aead_decrypt;
+		if (!(priv->features & TALITOS_FTR_SHA224_HWINIT) &&
+		    !strncmp(alg->cra_name, "authenc(hmac(sha224)", 20)) {
+			kfree(t_alg);
+			return ERR_PTR(-ENOTSUPP);
+		}
 		break;
 	case CRYPTO_ALG_TYPE_AHASH:
 		alg = &t_alg->algt.alg.hash.halg.base;

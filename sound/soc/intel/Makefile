@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 # Core support
-obj-$(CONFIG_SND_SOC_INTEL_SST) += common/
+obj-$(CONFIG_SND_SOC) += common/
 
 # Platform Support
 obj-$(CONFIG_SND_SOC_INTEL_HASWELL) += haswell/
@@ -10,3 +10,6 @@ obj-$(CONFIG_SND_SOC_INTEL_SKYLAKE) += skylake/
 
 # Machine support
 obj-$(CONFIG_SND_SOC) += boards/
+
+# FPGA support
+obj-$(CONFIG_SND_SOC_INTEL_CNL_FPGA) += fpga/

@@ -140,11 +140,13 @@ struct efi_boot_memmap {
 
 struct capsule_info {
 	efi_capsule_header_t	header;
+	efi_capsule_header_t	*capsule;
 	int			reset_type;
 	long			index;
 	size_t			count;
 	size_t			total_size;
-	phys_addr_t		*pages;
+	struct page		**pages;
+	phys_addr_t		*phys;
 	size_t			page_bytes_remain;
 };
 
@@ -393,8 +395,8 @@ typedef struct {
 	u32 attributes;
 	u32 get_bar_attributes;
 	u32 set_bar_attributes;
-	uint64_t romsize;
-	void *romimage;
+	u64 romsize;
+	u32 romimage;
 } efi_pci_io_protocol_32;
 
 typedef struct {
@@ -413,8 +415,8 @@ typedef struct {
 	u64 attributes;
 	u64 get_bar_attributes;
 	u64 set_bar_attributes;
-	uint64_t romsize;
-	void *romimage;
+	u64 romsize;
+	u64 romimage;
 } efi_pci_io_protocol_64;
 
 typedef struct {

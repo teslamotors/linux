@@ -588,16 +588,18 @@ static void sock_map_free(struct bpf_map *map)
 
 		write_lock_bh(&sock->sk_callback_lock);
 		psock = smap_psock_sk(sock);
-		smap_list_remove(psock, &stab->sock_map[i]);
-		smap_release_sock(psock, sock);
+		/* This check handles a racing sock event that can get the
+		 * sk_callback_lock before this case but after xchg happens
+		 * causing the refcnt to hit zero and sock user data (psock)
+		 * to be null and queued for garbage collection.
+		 */
+		if (likely(psock)) {
+			smap_list_remove(psock, &stab->sock_map[i]);
+			smap_release_sock(psock, sock);
+		}
 		write_unlock_bh(&sock->sk_callback_lock);
 	}
 	rcu_read_unlock();
-
-	if (stab->bpf_verdict)
-		bpf_prog_put(stab->bpf_verdict);
-	if (stab->bpf_parse)
-		bpf_prog_put(stab->bpf_parse);
 
 	sock_map_remove_complete(stab);
 }
@@ -870,6 +872,19 @@ static int sock_map_update_elem(struct bpf_map *map,
 	return err;
 }
 
+static void sock_map_release(struct bpf_map *map, struct file *map_file)
+{
+	struct bpf_stab *stab = container_of(map, struct bpf_stab, map);
+	struct bpf_prog *orig;
+
+	orig = xchg(&stab->bpf_parse, NULL);
+	if (orig)
+		bpf_prog_put(orig);
+	orig = xchg(&stab->bpf_verdict, NULL);
+	if (orig)
+		bpf_prog_put(orig);
+}
+
 const struct bpf_map_ops sock_map_ops = {
 	.map_alloc = sock_map_alloc,
 	.map_free = sock_map_free,
@@ -877,6 +892,7 @@ const struct bpf_map_ops sock_map_ops = {
 	.map_get_next_key = sock_map_get_next_key,
 	.map_update_elem = sock_map_update_elem,
 	.map_delete_elem = sock_map_delete_elem,
+	.map_release = sock_map_release,
 };
 
 BPF_CALL_4(bpf_sock_map_update, struct bpf_sock_ops_kern *, bpf_sock,

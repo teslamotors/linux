@@ -1291,9 +1291,9 @@ done:
 		wbinvd();
 
 	if (!atomisp_is_vf_pipe(pipe) &&
-	    (buf->reserved2 & ATOMISP_BUFFER_HAS_PER_FRAME_SETTING)) {
+	    (buf->request & ATOMISP_BUFFER_HAS_PER_FRAME_SETTING)) {
 		/* this buffer will have a per-frame parameter */
-		pipe->frame_request_config_id[buf->index] = buf->reserved2 &
+		pipe->frame_request_config_id[buf->index] = buf->request &
 					~ATOMISP_BUFFER_HAS_PER_FRAME_SETTING;
 		dev_dbg(isp->dev, "This buffer requires per_frame setting which has isp_config_id %d\n",
 			pipe->frame_request_config_id[buf->index]);
@@ -1477,12 +1477,12 @@ static int atomisp_dqbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	buf->reserved &= 0x0000ffff;
 	if (!(buf->flags & V4L2_BUF_FLAG_ERROR))
 		buf->reserved |= __get_frame_exp_id(pipe, buf) << 16;
-	buf->reserved2 = pipe->frame_config_id[buf->index];
+	buf->request = pipe->frame_config_id[buf->index];
 	rt_mutex_unlock(&isp->mutex);
 
 	dev_dbg(isp->dev, "dqbuf buffer %d (%s) for asd%d with exp_id %d, isp_config_id %d\n",
 		buf->index, vdev->name, asd->index, buf->reserved >> 16,
-		buf->reserved2);
+		buf->request);
 	return 0;
 }
 

@@ -281,8 +281,8 @@ static int autofs4_mount_wait(const struct path *path, bool rcu_walk)
 		pr_debug("waiting for mount name=%pd\n", path->dentry);
 		status = autofs4_wait(sbi, path, NFY_MOUNT);
 		pr_debug("mount wait done status=%d\n", status);
-		ino->last_used = jiffies;
 	}
+	ino->last_used = jiffies;
 	return status;
 }
 
@@ -321,21 +321,16 @@ static struct dentry *autofs4_mountpoint_changed(struct path *path)
 	 */
 	if (autofs_type_indirect(sbi->type) && d_unhashed(dentry)) {
 		struct dentry *parent = dentry->d_parent;
+		struct autofs_info *ino;
 		struct dentry *new;
 
 		new = d_lookup(parent, &dentry->d_name);
 		if (!new)
 			return NULL;
-		if (new == dentry)
-			dput(new);
-		else {
-			struct autofs_info *ino;
-
-			ino = autofs4_dentry_ino(new);
-			ino->last_used = jiffies;
-			dput(path->dentry);
-			path->dentry = new;
-		}
+		ino = autofs4_dentry_ino(new);
+		ino->last_used = jiffies;
+		dput(path->dentry);
+		path->dentry = new;
 	}
 	return path->dentry;
 }
@@ -754,7 +749,7 @@ static int autofs4_dir_mkdir(struct inode *dir,
 
 	autofs4_del_active(dentry);
 
-	inode = autofs4_get_inode(dir->i_sb, S_IFDIR | 0555);
+	inode = autofs4_get_inode(dir->i_sb, S_IFDIR | mode);
 	if (!inode)
 		return -ENOMEM;
 	d_add(dentry, inode);
