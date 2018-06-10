@@ -1380,19 +1380,42 @@ static int sof_widget_ready(struct snd_soc_component *scomp, int index,
 static int sof_widget_unload(struct snd_soc_component *scomp,
 			     struct snd_soc_dobj *dobj)
 {
+	const struct snd_kcontrol_new *kc = NULL;
+	struct snd_soc_dapm_widget *widget;
+	struct snd_sof_control *scontrol;
 	struct snd_sof_widget *swidget;
+	struct soc_mixer_control *sm;
 	struct snd_sof_dai *dai;
 
 	swidget = dobj->private;
 	if (!swidget)
 		return 0;
 
-	dai = swidget->private;
+	widget = swidget->widget;
 
-	/* remove and free dai object */
-	if (dai) {
-		list_del(&dai->list);
-		kfree(dai);
+	switch (swidget->id) {
+	case snd_soc_dapm_dai_in:
+	case snd_soc_dapm_dai_out:
+		dai = swidget->private;
+
+		/* remove and free dai object */
+		if (dai) {
+			list_del(&dai->list);
+			kfree(dai);
+		}
+		break;
+	case snd_soc_dapm_pga:
+
+		/* get volume kcontrol */
+		kc = &widget->kcontrol_news[0];
+		sm = (struct soc_mixer_control *)kc->private_value;
+		scontrol = sm->dobj.private;
+
+		/* free volume table */
+		kfree(scontrol->volume_table);
+		break;
+	default:
+		break;
 	}
 
 	/* remove and free swidget object */
