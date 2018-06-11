@@ -21,7 +21,7 @@ static int guestID = -1;
 int process_pipeline_open(int domid, struct ipu4_virtio_req *req)
 {
 	if (guestID != -1 && guestID != domid) {
-		printk(KERN_ERR "process_device_open: pipeline device already opened by other guest! %d %d", guestID, domid);
+		pr_err("%s: pipeline device already opened by other guest! %d %d", __func__, guestID, domid);
 		return -1;
 	}
 
@@ -34,7 +34,7 @@ int process_pipeline_open(int domid, struct ipu4_virtio_req *req)
 
 int process_pipeline_close(int domid, struct ipu4_virtio_req *req)
 {
-	printk(KERN_INFO "process_device_close: %d", req->op[0]);
+	pr_info("%s: %d", __func__, req->op[0]);
 
 	filp_close(pipeline, 0);
 	guestID = -1;
@@ -48,16 +48,15 @@ int process_enum_nodes(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_pipeline_device *dev = pipeline->private_data;
 	struct ici_node_desc *host_virt;
 
-	printk(KERN_INFO "process_enum_nodes");
+	pr_debug("%s\n", __func__);
 
 	host_virt = (struct ici_node_desc *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
 		printk(KERN_ERR "process_enum_nodes: NULL host_virt");
 		return 0;
 	}
-	printk(KERN_INFO "process_enum_nodes: pipeline_enum_nodes: before");
+
 	err = dev->pipeline_ioctl_ops->pipeline_enum_nodes(pipeline, dev, host_virt);
-	printk(KERN_INFO "process_enum_nodes: pipeline_enum_nodes: after");
 
 	return err;
 }
@@ -68,11 +67,11 @@ int process_enum_links(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_pipeline_device *dev = pipeline->private_data;
 	struct ici_links_query *host_virt;
 
-	printk(KERN_INFO "process_enum_links");
+	pr_debug("%s\n", __func__);
 
 	host_virt = (struct ici_links_query *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_enum_links: NULL host_virt");
+		pr_err("%s: NULL host_virt\n", __func__);
 		return 0;
 	}
 	err = dev->pipeline_ioctl_ops->pipeline_enum_links(pipeline, dev, host_virt);
@@ -85,11 +84,11 @@ int process_get_supported_framefmt(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_pipeline_device *dev = pipeline->private_data;
 	struct ici_pad_supported_format_desc *host_virt;
 
-	printk(KERN_INFO "process_get_supported_framefmt");
+	pr_debug("%s\n", __func__);
 
 	host_virt = (struct ici_pad_supported_format_desc *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_get_supported_framefmt: NULL host_virt");
+		pr_err("%s: NULL host_virt\n", __func__);
 		return 0;
 	}
 	err = dev->pipeline_ioctl_ops->pad_get_supported_format(pipeline, dev, host_virt);
@@ -103,11 +102,11 @@ int process_set_framefmt(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_pipeline_device *dev = pipeline->private_data;
 	struct ici_pad_framefmt *host_virt;
 
-	printk(KERN_INFO "process_set_framefmt");
+	pr_debug("%s\n", __func__);
 
 	host_virt = (struct ici_pad_framefmt *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_set_framefmt: NULL host_virt");
+		pr_err("%s: NULL host_virt\n", __func__);
 		return 0;
 	}
 	err = dev->pipeline_ioctl_ops->pad_set_ffmt(pipeline, dev, host_virt);
@@ -121,11 +120,11 @@ int process_get_framefmt(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_pipeline_device *dev = pipeline->private_data;
 	struct ici_pad_framefmt *host_virt;
 
-	printk(KERN_INFO "process_get_framefmt");
+	pr_debug("%s\n", __func__);
 
 	host_virt = (struct ici_pad_framefmt *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_get_framefmt: NULL host_virt");
+		pr_err("%s: NULL host_virt\n", __func__);
 		return 0;
 	}
 	err = dev->pipeline_ioctl_ops->pad_get_ffmt(pipeline, dev, host_virt);
@@ -139,11 +138,11 @@ int process_setup_pipe(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_pipeline_device *dev = pipeline->private_data;
 	struct ici_link_desc *host_virt;
 
-	printk(KERN_INFO "process_setup_pipe");
+	pr_debug("%s\n", __func__);
 
 	host_virt = (struct ici_link_desc *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_setup_pipe: NULL host_virt");
+		pr_err("%s: NULL host_virt\n", __func__);
 		return 0;
 	}
 	err = dev->pipeline_ioctl_ops->pipeline_setup_pipe(pipeline, dev, host_virt);
@@ -157,11 +156,11 @@ int process_pad_set_sel(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_pipeline_device *dev = pipeline->private_data;
 	struct ici_pad_selection *host_virt;
 
-	printk(KERN_INFO "process_pad_set_sel");
+	pr_debug("%s\n", __func__);
 
 	host_virt = (struct ici_pad_selection *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_pad_set_sel: NULL host_virt");
+		pr_err("%s: NULL host_virt\n", __func__);
 		return 0;
 	}
 	err = dev->pipeline_ioctl_ops->pad_set_sel(pipeline, dev, host_virt);
@@ -175,11 +174,11 @@ int process_pad_get_sel(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_pipeline_device *dev = pipeline->private_data;
 	struct ici_pad_selection *host_virt;
 
-	printk(KERN_INFO "process_pad_get_sel");
+	pr_debug("%s\n", __func__);
 
 	host_virt = (struct ici_pad_selection *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_pad_get_sel: NULL host_virt");
+		pr_err("%s: NULL host_virt\n", __func__);
 		return 0;
 	}
 	err = dev->pipeline_ioctl_ops->pad_get_sel(pipeline, dev, host_virt);

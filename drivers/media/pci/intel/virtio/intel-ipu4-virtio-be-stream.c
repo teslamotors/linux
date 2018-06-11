@@ -84,8 +84,8 @@ int process_device_close(int domid, struct ipu4_virtio_req *req)
 int process_set_format(int domid, struct ipu4_virtio_req *req)
 {
 	struct stream_node *sn = NULL;
-	struct ici_stream_format *host_virt;
 	struct ici_stream_device *strm_dev;
+	struct ici_stream_format *host_virt;
 	int err;
 
 	printk(KERN_INFO "process_set_format: %d %d", hash_initialised, req->op[0]);
@@ -109,7 +109,12 @@ int process_set_format(int domid, struct ipu4_virtio_req *req)
 		printk(KERN_ERR "process_set_format: NULL sn->f\n");
 		return 0;
 	}
+
 	strm_dev = sn->f->private_data;
+	if (strm_dev == NULL) {
+		printk(KERN_ERR "Native IPU stream device not found\n");
+		return -1;
+	}
 
 	host_virt = (struct ici_stream_format *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
@@ -141,8 +146,16 @@ int process_poll(int domid, struct ipu4_virtio_req *req)
 	}
 
 	as = dev_to_stream(sn->f->private_data);
+	if (as == NULL) {
+		printk(KERN_ERR "Native IPU stream not found\n");
+		return -1;
+	}
 
 	buf_list = &as->buf_list;
+	if (buf_list == NULL) {
+		printk(KERN_ERR "Native Frame buffer list not found\n");
+		return -1;
+	}
 
 	ret = wait_event_interruptible_timeout(buf_list->wait,
 						!list_empty(&buf_list->putbuf_list),
@@ -164,17 +177,18 @@ int process_put_buf(int domid, struct ipu4_virtio_req *req)
 	struct stream_node *sn = NULL;
 	struct ici_stream_device *strm_dev;
 	struct ici_frame_info *host_virt;
-	int err;
+	int err, found;
 
-	printk(KERN_INFO "process_put_buf: %d %d", hash_initialised, req->op[0]);
+	pr_debug("process_put_buf: %d %d", hash_initialised, req->op[0]);
 
 	if (!hash_initialised)
 		return -1;
 
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
-		printk(KERN_INFO "process_put_buf: sn %d %p", req->op[0], sn);
+		pr_debug("process_put_buf: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
-			printk(KERN_INFO "process_put_buf: node %d %p", req->op[0], sn);
+			pr_debug("process_put_buf: node %d %p", req->op[0], sn);
+			found = 1;
 			break;
 		}
 	}
@@ -188,15 +202,19 @@ int process_put_buf(int domid, struct ipu4_virtio_req *req)
 		return 0;
 	}
 	strm_dev = sn->f->private_data;
+	if (strm_dev == NULL) {
+		pr_err("Native IPU stream device not found\n");
+		return -1;
+	}
 	host_virt = (struct ici_frame_info *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_put_buf: NULL host_virt");
-		return 0;
+		pr_err("process_put_buf: NULL host_virt");
+		return -1;
 	}
 	err = strm_dev->ipu_ioctl_ops->ici_put_buf(sn->f, strm_dev, host_virt);
 
 	if (err)
-		printk(KERN_ERR "process_put_buf: ici_put_buf failed\n");
+		pr_err("process_put_buf: ici_put_buf failed\n");
 
 	return 0;
 }
@@ -205,22 +223,23 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 {
 	struct stream_node *sn = NULL;
 	struct ici_frame_buf_wrapper *shared_buf;
+	struct ici_stream_device *strm_dev;
 	int k, i = 0;
 	void *pageaddr;
 	u64 *page_table = NULL;
 	struct page **data_pages = NULL;
-	struct ici_stream_device *strm_dev;
-	int err;
+	int err, found;
 
-	printk(KERN_INFO "process_get_buf: %d %d", hash_initialised, req->op[0]);
+	pr_debug("process_get_buf: %d %d", hash_initialised, req->op[0]);
 
 	if (!hash_initialised)
 		return -1;
 
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
-		printk(KERN_INFO "process_get_buf: sn %d %p", req->op[0], sn);
+		pr_debug("process_get_buf: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
-			printk(KERN_INFO "process_get_buf: node %d %p", req->op[0], sn);
+			pr_debug("process_get_buf: node %d %p", req->op[0], sn);
+			found = 1;
 			break;
 		}
 	}
@@ -234,34 +253,34 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 		return 0;
 	}
 
-	printk("GET_BUF: Mapping buffer\n");
+	pr_debug("GET_BUF: Mapping buffer\n");
 	shared_buf = (struct ici_frame_buf_wrapper *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (!shared_buf) {
-		printk(KERN_ERR "SOS Failed to map Buffer from UserOS\n");
+		pr_err("SOS Failed to map Buffer from UserOS\n");
 		req->stat = IPU4_REQ_ERROR;
 	}
 	data_pages = kcalloc(shared_buf->kframe_info.planes[0].npages, sizeof(struct page *), GFP_KERNEL);
 	if (data_pages == NULL) {
-		printk(KERN_ERR "SOS Failed alloc data page set\n");
+		pr_err("SOS Failed alloc data page set\n");
 		req->stat = IPU4_REQ_ERROR;
 	}
-	printk("Total number of pages:%d\n", shared_buf->kframe_info.planes[0].npages);
+	pr_debug("Total number of pages:%d\n", shared_buf->kframe_info.planes[0].npages);
 
 	page_table = (u64 *)map_guest_phys(domid, shared_buf->kframe_info.planes[0].page_table_ref, PAGE_SIZE);
 
 	if (page_table == NULL) {
-		printk(KERN_ERR "SOS Failed to map page table\n");
+		pr_err("SOS Failed to map page table\n");
 		req->stat = IPU4_REQ_ERROR;
 		return 0;
 	}
 
 	else {
-		 printk("SOS first page %lld\n", page_table[0]);
+		 pr_debug("SOS first page %lld\n", page_table[0]);
 		 k = 0;
 		 for (i = 0; i < shared_buf->kframe_info.planes[0].npages; i++) {
 			 pageaddr = map_guest_phys(domid, page_table[i], PAGE_SIZE);
 			 if (pageaddr == NULL) {
-				 printk(KERN_ERR "Cannot map pages from UOS\n");
+				 pr_err("Cannot map pages from UOS\n");
 				 req->stat = IPU4_REQ_ERROR;
 				 break;
 			 }
@@ -272,10 +291,14 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 	 }
 
 	strm_dev = sn->f->private_data;
+	if (strm_dev == NULL) {
+		pr_err("Native IPU stream device not found\n");
+		return -1;
+	}
 	err = strm_dev->ipu_ioctl_ops->ici_get_buf_virt(sn->f, strm_dev, shared_buf, data_pages);
 
 	if (err)
-		printk(KERN_ERR "process_get_buf: ici_get_buf_virt failed\n");
+		pr_err("process_get_buf: ici_get_buf_virt failed\n");
 
 	return 0;
 }
@@ -308,6 +331,10 @@ int process_stream_on(int domid, struct ipu4_virtio_req *req)
 		return 0;
 	}
 	strm_dev = sn->f->private_data;
+	if (strm_dev == NULL) {
+		printk(KERN_ERR "Native IPU stream device not found\n");
+		return -1;
+	}
 
 	err = strm_dev->ipu_ioctl_ops->ici_stream_on(sn->f, strm_dev);
 
@@ -345,6 +372,11 @@ int process_stream_off(int domid, struct ipu4_virtio_req *req)
 		return 0;
 	}
 	strm_dev = sn->f->private_data;
+	if (strm_dev == NULL) {
+		printk(KERN_ERR "Native IPU stream device not found\n");
+		return -1;
+	}
+
 
 	err = strm_dev->ipu_ioctl_ops->ici_stream_off(sn->f, strm_dev);
 

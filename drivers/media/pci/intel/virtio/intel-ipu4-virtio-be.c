@@ -197,8 +197,9 @@ static void handle_vq_kick(struct ipu4_virtio_be_priv *priv, int vq_idx)
 
 		virtio_vq_relchain(vq, idx, len);
 	}
-	printk(KERN_NOTICE "IPU VBK data process on VQ Done\n");
-	virtio_vq_endchains(vq, 1);
+	pr_debug("IPU VBK data process on VQ Done\n");
+	if (req && req->stat != IPU4_REQ_NEEDS_FOLLOW_UP)
+		virtio_vq_endchains(vq, 1);
 }
 
 static int handle_kick(int client_id, int req_cnt)
@@ -209,7 +210,7 @@ static int handle_kick(int client_id, int req_cnt)
 	if (unlikely(req_cnt <= 0))
 		return -EINVAL;
 
-	printk(KERN_INFO "%s: IPU VBK handle kick!\n", __func__);
+	pr_debug("%s: IPU VBK handle kick!\n", __func__);
 
 	priv = ipu_vbk_hash_find(client_id);
 	if (priv == NULL) {
@@ -369,7 +370,21 @@ static long ipu_vbk_ioctl(struct file *f, unsigned int ioctl,
 		return r;
 	}
 }
+#if 0
+int notify_fe(void)
+{
+	if (vq_req.vq) {
+		pr_debug("%s: notifying fe", __func__);
+		vq_req.req->func_ret = 1;
+		virtio_vq_relchain(vq_req.vq, vq_req.idx, vq_req.len);
+		virtio_vq_endchains(vq_req.vq, 1);
+		vq_req.vq = NULL;
+	} else
+		pr_debug("%s: NULL vq!", __func__);
 
+	return 0;
+}
+#endif
 /* device specific function to cleanup itself */
 static void ipu_vbk_reset(struct ipu4_virtio_be_priv *rng)
 {

@@ -48,6 +48,7 @@ static int get_userpages(struct device *dev,
 	unsigned int i;
 	u64 page_table_ref;
 	u64 *page_table;
+
 	addr = (unsigned long)frame_plane->mem.userptr;
 	start = addr & PAGE_MASK;
 	end = PAGE_ALIGN(addr + frame_plane->length);
@@ -59,15 +60,14 @@ static int get_userpages(struct device *dev,
 
 	page_table = kcalloc(npages, sizeof(*page_table), GFP_KERNEL);
 	if (!page_table) {
-		printk(KERN_ERR "Shared Page table for mediation failed\n");
+		pr_err("Shared Page table for mediation failed\n");
 		return -ENOMEM;
 	}
 
-	printk("%s:%d Number of Pages:%d frame_length:%d\n", __func__, __LINE__, npages, frame_plane->length);
+	pr_debug("%s:%d Number of Pages:%d frame_length:%d\n", __func__, __LINE__, npages, frame_plane->length);
 	sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
 	if (!sgt)
 		return -ENOMEM;
-	printk("%s:%d\n", __func__, __LINE__);
 	if (array_size <= PAGE_SIZE)
 		pages = kzalloc(array_size, GFP_KERNEL);
 	else
@@ -80,17 +80,15 @@ static int get_userpages(struct device *dev,
 	nr = get_user_pages(current, current->mm,
 				start, npages, 1, 0, pages, NULL);
 #else
-	nr = get_user_pages(start, npages, FOLL_WRITE, pages, NULL);
-	printk("%s:%d\n", __func__, __LINE__);
+    nr = get_user_pages(start, npages, FOLL_WRITE, pages, NULL);
 #endif
 	if (nr < npages)
 		goto error_free_pages;
-	printk("%s:%d\n", __func__, __LINE__);
 	/* Share physical address of pages */
 	for (i = 0; i < npages; i++)
 		page_table[i] = page_to_phys(pages[i]);
 
-	printk("UOS phy page add %lld offset:%ld\n", page_table[0], addr & ~PAGE_MASK);
+	pr_debug("UOS phy page add %lld offset:%ld\n", page_table[0], addr & ~PAGE_MASK);
 	page_table_ref = virt_to_phys(page_table);
 	kframe_plane->page_table_ref = page_table_ref;
 	kframe_plane->npages = npages;
@@ -141,10 +139,10 @@ static void put_userpages(struct ici_kframe_plane *kframe_plane)
 	struct sg_table *sgt = kframe_plane->sgt;
 	struct scatterlist *sgl;
 	unsigned int i;
-
 	struct mm_struct *mm = current->active_mm;
+
 	if (!mm) {
-		printk(KERN_ERR "Failed to get active mm_struct ptr from current process.\n");
+		pr_err("Failed to get active mm_struct ptr from current process.\n");
 		return;
 	}
 
@@ -225,7 +223,7 @@ static int map_dma(struct device *dev, struct ici_frame_plane *frame_plane,
 	if (IS_ERR_OR_NULL(kframe_plane->sgt)) {
 		ret = -EINVAL;
 		kframe_plane->sgt = NULL;
-		printk(KERN_DEBUG "map attachment failed\n");
+		pr_err("map attachment failed\n");
 		goto error_detach;
 	}
 
@@ -237,7 +235,7 @@ static int map_dma(struct device *dev, struct ici_frame_plane *frame_plane,
 		goto error_detach;
 	}
 
-	printk(KERN_DEBUG "MAPBUF: mapped fd %d\n", fd);
+	pr_debug("MAPBUF: mapped fd %d\n", fd);
 
 	return 0;
 
@@ -264,8 +262,7 @@ static void unmap_buf(struct ici_frame_buf_wrapper *buf)
 			put_dma(kframe_plane);
 		break;
 		default:
-			printk(KERN_ERR "not supported memory type: %d\n",
-				kframe_plane->mem_type);
+			pr_debug("not supported memory type: %d\n", kframe_plane->mem_type);
 		break;
 		}
 	}
@@ -281,18 +278,18 @@ struct ici_frame_buf_wrapper *get_buf(struct virtual_stream *vstream, struct ici
 	int mem_type = frame_info->mem_type;
 
 	if (mem_type != ICI_MEM_USERPTR && mem_type != ICI_MEM_DMABUF) {
-		printk(KERN_ERR "Memory type not supproted\n");
+		pr_err("Memory type not supproted\n");
 		return NULL;
 	}
 
 	if (!frame_info->frame_planes[0].length) {
-		printk(KERN_ERR "User length not set\n");
+		pr_err("User length not set\n");
 		return NULL;
 	}
 
 	buf = frame_buf_lookup(buf_list, frame_info);
 	if (buf) {
-		printk(KERN_INFO "Frame buffer found in the list\n");
+		pr_debug("Frame buffer found in the list\n");
 		buf->state = ICI_BUF_PREPARED;
 		return buf;
 	}
@@ -307,7 +304,7 @@ struct ici_frame_buf_wrapper *get_buf(struct virtual_stream *vstream, struct ici
 	switch (mem_type) {
 	case ICI_MEM_USERPTR:
 		if (!frame_info->frame_planes[0].mem.userptr) {
-			printk(KERN_ERR "User pointer not define\n");
+			pr_err("User pointer not define\n");
 			return NULL;
 		}
 		for (i = 0; i < frame_info->num_planes; i++) {
@@ -315,10 +312,8 @@ struct ici_frame_buf_wrapper *get_buf(struct virtual_stream *vstream, struct ici
 			kframe_plane->mem_type = ICI_MEM_USERPTR;
 			res = get_userpages(&vstream->strm_dev.dev, &frame_info->frame_planes[i],
 								kframe_plane);
-			printk("%s:%d\n", __func__, __LINE__);
 			if (res)
 				return NULL;
-			printk("%s:%d\n", __func__, __LINE__);
 		}
 		break;
 	case ICI_MEM_DMABUF:
@@ -333,56 +328,13 @@ struct ici_frame_buf_wrapper *get_buf(struct virtual_stream *vstream, struct ici
 
 		break;
 	}
-	printk("%s:%d\n", __func__, __LINE__);
 	mutex_lock(&buf_list->mutex);
 	buf->state = ICI_BUF_PREPARED;
 	list_add_tail(&buf->uos_node, &buf_list->getbuf_list);
 	mutex_unlock(&buf_list->mutex);
-	printk("%s:%d\n", __func__, __LINE__);
 	return buf;
 }
-#if 0
-int put_buf(struct virtual_stream *vstream,
-				struct ici_frame_info *frame_info,
-				unsigned int f_flags)
-{
-	struct ici_frame_buf_wrapper *buf;
-	struct ici_isys_frame_buf_list *buf_list = &vstream->buf_list;
-	unsigned long flags = 0;
-	int rval;
 
-	spin_lock_irqsave(&buf_list->lock, flags);
-	if (list_empty(&buf_list->putbuf_list)) {
-		/* Wait */
-		spin_unlock_irqrestore(&buf_list->lock, flags);
-		if (!(f_flags & O_NONBLOCK)) {
-			rval = wait_event_interruptible(buf_list->wait,
-							!list_empty(&buf_list->putbuf_list));
-			spin_lock_irqsave(&buf_list->lock, flags);
-			if (rval == -ERESTARTSYS)
-				return rval;
-		}
-	}
-
-	if (list_empty(&buf_list->putbuf_list)) {
-		spin_unlock_irqrestore(&buf_list->lock, flags);
-		return -ENODATA;
-	}
-
-	buf = list_entry(buf_list->putbuf_list.next,
-			struct ici_frame_buf_wrapper, node);
-	list_del(&buf->node);
-	spin_unlock_irqrestore(&buf_list->lock, flags);
-
-	mutex_lock(&buf_list->mutex);
-	buf->state = ICI_BUF_DONE;
-	list_add_tail(&buf->node, &buf_list->getbuf_list);
-	mutex_unlock(&buf_list->mutex);
-	memcpy(frame_info, &buf->frame_info, sizeof(buf->frame_info));
-
-	return 0;
-}
-#endif
 //Call from Stream-OFF and if Stream-ON fails
 void buf_stream_cancel(struct virtual_stream *vstream)
 {
@@ -410,8 +362,7 @@ static int virt_isys_set_format(struct file *file, void *fh,
 	int rval = 0;
 	int op[10];
 
-	if (!fe_ctx)
-		return -EINVAL;
+	pr_debug("Calling Set Format\n");
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
@@ -425,7 +376,7 @@ static int virt_isys_set_format(struct file *file, void *fh,
 
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to open virtual device\n");
+		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
@@ -442,7 +393,7 @@ static int virt_isys_stream_on(struct file *file, void *fh)
 	struct ipu4_virtio_req *req;
 	int rval = 0;
 	int op[10];
-
+	pr_debug("Calling Stream ON\n");
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
 		return -ENOMEM;
@@ -453,7 +404,7 @@ static int virt_isys_stream_on(struct file *file, void *fh)
 
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to open virtual device\n");
+		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
@@ -475,6 +426,7 @@ static int virt_isys_stream_off(struct file *file, void *fh)
 	int rval = 0;
 	int op[10];
 
+	pr_debug("Calling Stream OFF\n");
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
 		return -ENOMEM;
@@ -485,7 +437,7 @@ static int virt_isys_stream_off(struct file *file, void *fh)
 
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to open virtual device\n");
+		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
@@ -507,9 +459,11 @@ static int virt_isys_getbuf(struct file *file, void *fh,
 	int rval = 0;
 	int op[3];
 
+	pr_debug("Calling Get Buffer\n");
+
 	buf = get_buf(vstream, user_frame_info);
 	if (!buf) {
-		printk(KERN_ERR "Failed to map buffer: %d\n", rval);
+		dev_err(&strm_dev->dev, "Failed to map buffer: %d\n", rval);
 		return -ENOMEM;
 	}
 
@@ -526,7 +480,7 @@ static int virt_isys_getbuf(struct file *file, void *fh,
 
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to Get Buffer\n");
+		dev_err(&strm_dev->dev, "Failed to Get Buffer\n");
 		kfree(req);
 		return rval;
 	}
@@ -545,6 +499,8 @@ static int virt_isys_putbuf(struct file *file, void *fh,
 	int rval = 0;
 	int op[2];
 
+	pr_debug("Calling Put Buffer\n");
+
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
 		return -ENOMEM;
@@ -553,17 +509,11 @@ static int virt_isys_putbuf(struct file *file, void *fh,
 	op[1] = 0;
 	req->payload = virt_to_phys(user_frame_info);
 
-	/*rval = put_buf(vstream,user_frame_info,file->f_flags);
-	if(rval){
-			printk(KERN_ERR "Failed to Get buffer: %d\n",rval);
-			return -ENOMEM;
-	}*/
-
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_PUT_BUF, &op[0]);
 
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to Get Buffer\n");
+		dev_err(&strm_dev->dev, "Failed to Get Buffer\n");
 		kfree(req);
 		return rval;
 	}
@@ -581,12 +531,12 @@ static unsigned int stream_fop_poll(struct file *file, struct ici_stream_device 
 	struct ipu4_virtio_req *req;
 	struct virtual_stream *vstream = dev_to_vstream(dev);
 	struct ipu4_virtio_ctx *fe_ctx = vstream->ctx;
+	struct ici_stream_device *strm_dev = file->private_data;
 	int rval = 0;
 	int op[2];
-	printk(KERN_INFO "stream_fop_poll %d\n", vstream->virt_dev_id);
-	get_device(&dev->dev);
 
-//	file->private_data = dev;
+	dev_dbg(&strm_dev->dev, "stream_fop_poll %d\n", vstream->virt_dev_id);
+	get_device(&dev->dev);
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
@@ -599,7 +549,7 @@ static unsigned int stream_fop_poll(struct file *file, struct ici_stream_device 
 
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to open virtual device\n");
+		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
@@ -616,7 +566,7 @@ static int virt_stream_fop_open(struct inode *inode, struct file *file)
 	struct ipu4_virtio_ctx *fe_ctx = vstream->ctx;
 	int rval = 0;
 	int op[3];
-	printk(KERN_INFO "virtual stream open\n");
+	dev_info(&strm_dev->dev, "virtual stream open\n");
 	get_device(&strm_dev->dev);
 
 	file->private_data = strm_dev;
@@ -626,7 +576,7 @@ static int virt_stream_fop_open(struct inode *inode, struct file *file)
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req) {
-		printk(KERN_ERR "Virtio Req buffer failed\n");
+		dev_err(&strm_dev->dev, "Virtio Req buffer failed\n");
 		return -ENOMEM;
 	}
 
@@ -637,7 +587,7 @@ static int virt_stream_fop_open(struct inode *inode, struct file *file)
 
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to open virtual device\n");
+		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
@@ -654,10 +604,8 @@ static int virt_stream_fop_release(struct inode *inode, struct file *file)
 	struct ipu4_virtio_ctx *fe_ctx = vstream->ctx;
 	int rval = 0;
 	int op[2];
-	printk(KERN_INFO "virt stream close\n");
+	dev_info(&strm_dev->dev, "IPU virtual stream close\n");
 	put_device(&strm_dev->dev);
-
-	//file->private_data = strm_dev;
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
@@ -670,7 +618,7 @@ static int virt_stream_fop_release(struct inode *inode, struct file *file)
 
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to close virtual device\n");
+		dev_err(&strm_dev->dev, "Failed to close virtual device\n");
 		kfree(req);
 		return rval;
 	}
@@ -685,13 +633,13 @@ static unsigned int virt_stream_fop_poll(struct file *file,
 	struct ici_stream_device *as = file->private_data;
 	unsigned int res = POLLERR | POLLHUP;
 
-	printk(KERN_NOTICE "virt_stream_fop_poll for:%s\n", as->name);
+	dev_dbg(&as->dev, "virt_stream_fop_poll for:%s\n", as->name);
 
 	res = stream_fop_poll(file, as);
 
 	res = POLLIN;
 
-	printk(KERN_NOTICE "virt_stream_fop_poll res %u\n", res);
+	dev_dbg(&as->dev, "virt_stream_fop_poll res %u\n", res);
 
 	return res;
 }
@@ -728,26 +676,20 @@ static long virt_stream_ioctl(struct file *file,
 	}
 
 	mutex_lock(dev->mutex);
-
 	switch (ioctl_cmd) {
 	case ICI_IOC_STREAM_ON:
-		printk(KERN_INFO "IPU FE IOCTL STREAM_ON\n");
 		err = virt_isys_stream_on(file, dev);
 		break;
 	case ICI_IOC_STREAM_OFF:
-		printk(KERN_INFO "IPU FE IOCTL STREAM_OFF\n");
 		err = virt_isys_stream_off(file, dev);
 		break;
 	case ICI_IOC_GET_BUF:
-		printk(KERN_INFO "IPU FE IOCTL GET_BUF\n");
 		err = virt_isys_getbuf(file, dev, &data->frame_info);
 		break;
 	case ICI_IOC_PUT_BUF:
-		printk(KERN_INFO "IPU FE IOCTL PUT_BUF\n");
 		err = virt_isys_putbuf(file, dev, &data->frame_info);
 		break;
 	case ICI_IOC_SET_FORMAT:
-		printk(KERN_INFO "IPU FE IOCTL SET_FORMAT\n");
 		err = virt_isys_set_format(file, dev, &data->sf);
 		break;
 	default:
@@ -767,9 +709,9 @@ static long virt_stream_ioctl(struct file *file,
 
 static const struct file_operations virt_stream_fops = {
 	.owner = THIS_MODULE,
-	.open = virt_stream_fop_open,			/* calls strm_dev->fops->open() */
+	.open = virt_stream_fop_open,		/* calls strm_dev->fops->open() */
 	.unlocked_ioctl = virt_stream_ioctl,	/* calls strm_dev->ipu_ioctl_ops->() */
-	.release = virt_stream_fop_release,		/* calls strm_dev->fops->release() */
+	.release = virt_stream_fop_release,	/* calls strm_dev->fops->release() */
 	.poll = virt_stream_fop_poll,		/* calls strm_dev->fops->poll() */
 };
 
@@ -804,24 +746,19 @@ static int virt_ici_stream_init(struct virtual_stream *vstream,
 		rval = register_chrdev_region(virt_stream_dev_t,
 		MAX_STREAM_DEVICES, ICI_STREAM_DEVICE_NAME);
 		if (rval) {
-			printk(
-					KERN_WARNING "can't register virt_ici stream chrdev region (%d)\n",
-					rval);
+			pr_err("can't register virt_ici stream chrdev region (%d)\n", rval);
 			return rval;
 		}
 
 		virt_stream_class = class_create(THIS_MODULE, ICI_STREAM_DEVICE_NAME);
 		if (IS_ERR(virt_stream_class)) {
 			unregister_chrdev_region(virt_stream_dev_t, MAX_STREAM_DEVICES);
-			printk(KERN_WARNING "Failed to register device class %s\n",
-					ICI_STREAM_DEVICE_NAME);
+			pr_err("Failed to register device class %s\n",	ICI_STREAM_DEVICE_NAME);
 			return PTR_ERR(virt_stream_class);
 		}
 		stream_dev_init++;
 	}
-	/*strm_dev = kzalloc(sizeof(*strm_dev), GFP_KERNEL);
-	if(!strm_dev)
-		return -ENOMEM;*/
+
 	num = virt_stream_devs_registered;
 	strm_dev->minor = -1;
 	cdev_init(&strm_dev->cdev, &virt_stream_fops);
@@ -829,7 +766,7 @@ static int virt_ici_stream_init(struct virtual_stream *vstream,
 
 	rval = cdev_add(&strm_dev->cdev, MKDEV(MAJOR(virt_stream_dev_t), num), 1);
 	if (rval) {
-			printk(KERN_WARNING "%s: failed to add cdevice\n", __func__);
+			pr_err("%s: failed to add cdevice\n", __func__);
 			return rval;
 	}
 
@@ -839,7 +776,7 @@ static int virt_ici_stream_init(struct virtual_stream *vstream,
 
 	rval = device_register(&strm_dev->dev);
 	if (rval < 0) {
-		printk(KERN_WARNING "%s: device_register failed\n", __func__);
+		pr_err("%s: device_register failed\n", __func__);
 		cdev_del(&strm_dev->cdev);
 		return rval;
 	}
@@ -861,15 +798,14 @@ static int virt_ici_stream_init(struct virtual_stream *vstream,
 	if (fe_ctx->bknd_ops->init) {
 		rval = fe_ctx->bknd_ops->init();
 		if (rval < 0) {
-			printk(KERN_NOTICE
-				"failed to initialize backend.\n");
+			pr_err("failed to initialize backend.\n");
 			return rval;
 		}
 	}
 
 	fe_ctx->domid = fe_ctx->bknd_ops->get_vm_id();
 	vstream->ctx = fe_ctx;
-	printk("FE registered with domid:%d\n", fe_ctx->domid);
+	dev_dbg(&strm_dev->dev, "IPU FE registered with domid:%d\n", fe_ctx->domid);
 
 	return 0;
 }
@@ -879,7 +815,7 @@ static void virt_ici_stream_exit(void)
 	class_unregister(virt_stream_class);
 	unregister_chrdev_region(virt_stream_dev_t, MAX_STREAM_DEVICES);
 
-	printk(KERN_INFO "virt_ici stream device unregistered\n");
+	pr_notice("Virtual stream device unregistered\n");
 }
 
 static int virt_pipeline_fop_open(struct inode *inode, struct file *file)
@@ -888,7 +824,7 @@ static int virt_pipeline_fop_open(struct inode *inode, struct file *file)
 	struct ipu4_virtio_req *req;
 	int rval = 0;
 	int op[2];
-	printk(KERN_INFO "virt pipeline open\n");
+	pr_debug("virt pipeline open\n");
 	get_device(&dev->dev);
 
 	file->private_data = dev;
@@ -904,7 +840,7 @@ static int virt_pipeline_fop_open(struct inode *inode, struct file *file)
 
 	rval = g_fe_priv->bknd_ops->send_req(g_fe_priv->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to open virtual device\n");
+		pr_err("Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
@@ -935,7 +871,7 @@ static int virt_pipeline_fop_release(struct inode *inode, struct file *file)
 
 	rval = g_fe_priv->bknd_ops->send_req(g_fe_priv->domid, req, true);
 	if (rval) {
-		printk(KERN_ERR "Failed to close virtual device\n");
+		pr_err("Failed to close virtual device\n");
 		kfree(req);
 		return rval;
 	}
@@ -976,42 +912,40 @@ static long virt_pipeline_ioctl(struct file *file, unsigned int ioctl_cmd,
 	mutex_lock(&dev->mutex);
 	switch (ioctl_cmd) {
 	case ICI_IOC_ENUM_NODES:
-		//printk(KERN_INFO "virt_pipeline_ioctl: ICI_IOC_ENUM_NODES\n");
 		err = process_pipeline(file, g_fe_priv,
 			(void *)&data->node_desc, IPU4_CMD_ENUM_NODES);
 		break;
 	case ICI_IOC_ENUM_LINKS:
-		printk(KERN_INFO "virt_pipeline_ioctl: ICI_IOC_ENUM_LINKS\n");
-		err = process_pipeline(file, g_fe_priv,
-			(void *)&data->links_query, IPU4_CMD_ENUM_LINKS);
+		pr_debug("virt_pipeline_ioctl: ICI_IOC_ENUM_LINKS\n");
+		err = process_pipeline(file, g_fe_priv, (void *)&data->links_query, IPU4_CMD_ENUM_LINKS);
 		break;
 	case ICI_IOC_SETUP_PIPE:
-		printk(KERN_INFO "virt_pipeline_ioctl: ICI_IOC_SETUP_PIPE\n");
+		pr_debug("virt_pipeline_ioctl: ICI_IOC_SETUP_PIPE\n");
 		err = process_pipeline(file, g_fe_priv,
 			(void *)&data->link, IPU4_CMD_SETUP_PIPE);
 		break;
 	case ICI_IOC_SET_FRAMEFMT:
-		printk(KERN_INFO "virt_pipeline_ioctl: ICI_IOC_SET_FRAMEFMT\n");
+		pr_debug("virt_pipeline_ioctl: ICI_IOC_SET_FRAMEFMT\n");
 		err = process_pipeline(file, g_fe_priv,
 			(void *)&data->pad_prop, IPU4_CMD_SET_FRAMEFMT);
 		break;
 	case ICI_IOC_GET_FRAMEFMT:
-		printk(KERN_INFO "virt_pipeline_ioctl: ICI_IOC_GET_FRAMEFMT\n");
+		pr_debug("virt_pipeline_ioctl: ICI_IOC_GET_FRAMEFMT\n");
 		err = process_pipeline(file, g_fe_priv,
 			(void *)&data->pad_prop, IPU4_CMD_GET_FRAMEFMT);
 		break;
 	case ICI_IOC_GET_SUPPORTED_FRAMEFMT:
-		printk(KERN_INFO "virt_pipeline_ioctl: ICI_IOC_GET_SUPPORTED_FRAMEFMT\n");
+		pr_debug("virt_pipeline_ioctl: ICI_IOC_GET_SUPPORTED_FRAMEFMT\n");
 		err = process_pipeline(file, g_fe_priv,
 			(void *)&data->format_desc, IPU4_CMD_GET_SUPPORTED_FRAMEFMT);
 		break;
 	case ICI_IOC_SET_SELECTION:
-		printk(KERN_INFO "virt_pipeline_ioctl: ICI_IOC_SET_SELECTION\n");
+		pr_debug("virt_pipeline_ioctl: ICI_IOC_SET_SELECTION\n");
 		err = process_pipeline(file, g_fe_priv,
 			(void *)&data->pad_sel, IPU4_CMD_SET_SELECTION);
 		break;
 	case ICI_IOC_GET_SELECTION:
-		printk(KERN_INFO "virt_pipeline_ioctl: ICI_IOC_GET_SELECTION\n");
+		pr_debug("virt_pipeline_ioctl: ICI_IOC_GET_SELECTION\n");
 		err = process_pipeline(file, g_fe_priv,
 			(void *)&data->pad_sel, IPU4_CMD_GET_SELECTION);
 		break;
@@ -1049,7 +983,7 @@ static const struct file_operations virt_pipeline_fops = {
 	.release = virt_pipeline_fop_release,
 };
 
-static int virt_FE_init(void)
+static int virt_fe_init(void)
 {
 	int rval;
 
@@ -1064,14 +998,14 @@ static int virt_FE_init(void)
 	if (g_fe_priv->bknd_ops->init) {
 		rval = g_fe_priv->bknd_ops->init();
 		if (rval < 0) {
-			printk(KERN_NOTICE
-				"failed to initialize backend.\n");
+			pr_err("failed to initialize backend.\n");
 			return rval;
 		}
 	}
 
 	g_fe_priv->domid = g_fe_priv->bknd_ops->get_vm_id();
-	printk("FE registered with domid:%d\n", g_fe_priv->domid);
+
+	pr_debug("FE registered with domid:%d\n", g_fe_priv->domid);
 
 	return 0;
 }
@@ -1079,14 +1013,13 @@ static int virt_FE_init(void)
 static int virt_ici_pipeline_init(void)
 {
 	int rval;
-	printk(KERN_NOTICE "Initializing pipeline\n");
+	pr_notice("Initializing pipeline\n");
 	virt_pipeline_dev_t = MKDEV(MAJOR_PIPELINE, 0);
 
 	rval = register_chrdev_region(virt_pipeline_dev_t,
 	MAX_PIPELINE_DEVICES, ICI_PIPELINE_DEVICE_NAME);
 	if (rval) {
-		printk(
-			KERN_WARNING "can't register virt_ici stream chrdev region (%d)\n",
+		pr_err("can't register virt_ici stream chrdev region (%d)\n",
 			rval);
 		return rval;
 	}
@@ -1094,8 +1027,7 @@ static int virt_ici_pipeline_init(void)
 	virt_pipeline_class = class_create(THIS_MODULE, ICI_PIPELINE_DEVICE_NAME);
 	if (IS_ERR(virt_pipeline_class)) {
 		unregister_chrdev_region(virt_pipeline_dev_t, MAX_PIPELINE_DEVICES);
-		printk(KERN_WARNING "Failed to register device class %s\n",
-				ICI_PIPELINE_DEVICE_NAME);
+			pr_err("Failed to register device class %s\n", ICI_PIPELINE_DEVICE_NAME);
 		return PTR_ERR(virt_pipeline_class);
 	}
 
@@ -1108,7 +1040,7 @@ static int virt_ici_pipeline_init(void)
 
 	rval = cdev_add(&pipeline_dev->cdev, MKDEV(MAJOR_PIPELINE, MINOR_PIPELINE), 1);
 	if (rval) {
-			printk(KERN_WARNING "%s: failed to add cdevice\n", __func__);
+			pr_err("%s: failed to add cdevice\n", __func__);
 			return rval;
 	}
 
@@ -1118,7 +1050,7 @@ static int virt_ici_pipeline_init(void)
 
 	rval = device_register(&pipeline_dev->dev);
 	if (rval < 0) {
-		printk(KERN_WARNING "%s: device_register failed\n", __func__);
+		pr_err("%s: device_register failed\n", __func__);
 		cdev_del(&pipeline_dev->cdev);
 		return rval;
 	}
@@ -1133,7 +1065,7 @@ static int __init virt_ici_init(void)
 {
 	struct virtual_stream *vstream;
 	int rval = 0, i;
-	printk(KERN_NOTICE "Initializing IPU Para virtual driver\n");
+	pr_notice("Initializing IPU Para virtual driver\n");
 	for (i = 0; i < MAX_ISYS_VIRT_STREAM; i++) {
 
 		vstream = kzalloc(sizeof(*vstream), GFP_KERNEL);
@@ -1159,7 +1091,7 @@ static int __init virt_ici_init(void)
 	rval = virt_ici_pipeline_init();
 	if (rval)
 		return rval;
-	rval = virt_FE_init();
+	rval = virt_fe_init();
 	return rval;
 
 init_fail:
@@ -1177,7 +1109,7 @@ static void virt_ici_pipeline_exit(void)
 	if (g_fe_priv)
 		kfree((void *)g_fe_priv);
 
-	printk(KERN_INFO "virt_ici pipeline device unregistered\n");
+	pr_notice("virt_ici pipeline device unregistered\n");
 }
 
 static void __exit virt_ici_exit(void)

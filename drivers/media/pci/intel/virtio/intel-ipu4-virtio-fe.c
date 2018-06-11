@@ -38,7 +38,7 @@ static void ipu_virtio_fe_tx_done(struct virtqueue *vq)
 		return;
 
 	complete(&priv->have_data);
-	printk(KERN_NOTICE "IPU FE:%s vmid:%d\n", __func__, priv->vmid);
+	pr_debug("IPU FE:%s vmid:%d\n", __func__, priv->vmid);
 }
 
 /* The host will fill any buffer we give it with sweet, sweet randomness. */
@@ -109,9 +109,9 @@ static int ipu_virtio_fe_send_req(int vmid, struct ipu4_virtio_req *req,
 {
 	struct ipu4_virtio_uos *priv = ipu4_virtio_fe;
 	int ret = 0;
-	printk(KERN_NOTICE "IPU FE:%s\n", __func__);
+	pr_debug("IPU FE:%s\n", __func__);
 	if (priv == NULL) {
-		printk(KERN_ERR	"IPU Backend not connected\n");
+		pr_err("IPU Backend not connected\n");
 		return -ENOENT;
 	}
 
@@ -126,7 +126,7 @@ static int ipu_virtio_fe_get_vmid(void)
 	struct ipu4_virtio_uos *priv = ipu4_virtio_fe;
 
 	if (ipu4_virtio_fe == NULL) {
-		printk(KERN_ERR	"IPU Backend not connected\n");
+		pr_err("IPU Backend not connected\n");
 		return -1;
 	}
 	return priv->vmid;
@@ -134,13 +134,13 @@ static int ipu_virtio_fe_get_vmid(void)
 
 int ipu_virtio_fe_register(void)
 {
-	printk(KERN_NOTICE "IPU FE:%s\n", __func__);
+	pr_debug("IPU FE:%s\n", __func__);
 	return 0;
 }
 
 void ipu_virtio_fe_unregister(void)
 {
-	printk(KERN_NOTICE "IPU FE:%s\n", __func__);
+	pr_debug("IPU FE:%s\n", __func__);
 	return;
 }
 static int virt_probe(struct virtio_device *vdev)
@@ -159,7 +159,7 @@ static void virt_scan(struct virtio_device *vdev)
 	int timeout = 1000;
 
 	if (vi == NULL) {
-		printk(KERN_NOTICE "IPU No frontend private data\n");
+		pr_err("IPU No frontend private data\n");
 		return;
 	}
 	ipu_virtio_fe_register_buffer(vi, &vi->vmid, sizeof(vi->vmid));
@@ -169,10 +169,10 @@ static void virt_scan(struct virtio_device *vdev)
 			break;
 		usleep_range(100, 120);
 	}
-	printk(KERN_NOTICE "IPU FE:%s vmid:%d\n", __func__, vi->vmid);
+	pr_debug("IPU FE:%s vmid:%d\n", __func__, vi->vmid);
 
 	if (timeout < 0)
-		printk(KERN_ERR	"IPU Cannot query vmid\n");
+		pr_err("IPU Cannot query vmid\n");
 
 }
 
