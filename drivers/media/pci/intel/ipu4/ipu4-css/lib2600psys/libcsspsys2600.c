@@ -23,7 +23,6 @@
 #include "ipu.h"
 #include "ipu-fw-psys.h"
 #include "ipu-psys.h"
-#include "ipu-fw-resources.h"
 #include "ipu-wrapper.h"
 #include "ipu-mmu.h"
 
@@ -478,7 +477,7 @@ ipu_fw_psys_ppg_enqueue_bufs(struct ipu_psys_kcmd *kcmd,
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_enqueue_bufs);
 
-static const struct ipu_resource_definitions default_defs = {
+static const struct ipu_fw_resource_definitions default_defs = {
 	.cells = vied_nci_cell_type,
 	.num_cells = VIED_NCI_N_CELL_ID,
 	.num_cells_type = VIED_NCI_N_CELL_TYPE_ID,
@@ -500,7 +499,7 @@ static const struct ipu_resource_definitions default_defs = {
 	.process.cell_id = offsetof(struct ia_css_process_s, cell_id),
 };
 
-const struct ipu_resource_definitions *res_defs = &default_defs;
+const struct ipu_fw_resource_definitions *res_defs = &default_defs;
 EXPORT_SYMBOL_GPL(res_defs);
 
 /*

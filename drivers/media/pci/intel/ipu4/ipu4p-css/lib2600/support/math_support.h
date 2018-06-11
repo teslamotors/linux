@@ -44,6 +44,7 @@
 #define IS_ODD(a) ((a) & 0x1)
 #define IS_EVEN(a) (!IS_ODD(a))
 #define IS_POWER2(a) (!((a)&((a)-1)))
+#define IS_MASK_BITS_SET(a, b)	((a & b) != 0)
 
 /*To Find next power of 2 number from x */
 #define bit2(x)            ((x)      | ((x) >> 1))

@@ -218,6 +218,9 @@ static int isys_context_create(
 	/* parameters size */
 	sys.specific_size = sizeof(isys_fw_cfg);
 	sys.secure = config->secure;
+	if (config->secure) {
+		sys.vtl0_addr_mask = config->vtl0_addr_mask;
+	}
 
 	IA_CSS_TRACE_0(ISYSAPI, VERBOSE,
 		"isys_context_create || call ia_css_syscom_open()\n");

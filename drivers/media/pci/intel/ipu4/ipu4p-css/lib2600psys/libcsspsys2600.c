@@ -23,7 +23,6 @@
 #include "ipu.h"
 #include "ipu-fw-psys.h"
 #include "ipu-psys.h"
-#include "ipu-fw-resources.h"
 #include "ipu-wrapper.h"
 #include "ipu-mmu.h"
 
@@ -263,7 +262,7 @@ void ipu_fw_psys_pg_dump(struct ipu_psys *psys,
 		ia_css_process_group_get_program_group_ID(pg);
 	uint8_t processes = ia_css_process_group_get_process_count(
 		(ia_css_process_group_t *)kcmd->kpg->pg);
-	unsigned int p, chn, dfm, mem;
+	unsigned int p, chn, mem;
 
 	dev_dbg(&psys->adev->dev, "%s %s pgid %i has %i processes\n",
 		__func__, note, pgid, processes);
@@ -281,12 +280,6 @@ void ipu_fw_psys_pg_dump(struct ipu_psys *psys,
 			"%s pgid %i process %i kernel bitmap 0x%llx \n",
 			__func__, pgid, p,
 			ia_css_process_get_kernel_bitmap(process));
-		for (dfm = 0; dfm < VIED_NCI_N_DEV_DFM_ID; dfm++ ) {
-			dev_dbg(&psys->adev->dev,
-				"%s pgid %i process %i dfm port bitmap 0x%x \n",
-				__func__, pgid, p,
-				ia_css_process_get_dfm_port_bitmap(process, dfm));
-		}
 		for (mem = 0; mem < VIED_NCI_N_DATA_MEM_TYPE_ID; mem++ ) {
 			unsigned int mem_id = process->ext_mem_id[mem];
 			dev_dbg(&psys->adev->dev,
@@ -492,15 +485,7 @@ ipu_fw_psys_ppg_enqueue_bufs(struct ipu_psys_kcmd *kcmd,
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_enqueue_bufs);
 
-void ipu_fw_psys_register_ctx_addr(void *ctx_cpu_addr, u32 ctx_vied_addr)
-{}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_register_ctx_addr);
-
-void ipu_fw_psys_unregister_ctx_addr(void *ctx_cpu_addr, u32 ctx_vied_addr)
-{}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_unregister_ctx_addr);
-
-static const struct ipu_resource_definitions default_defs = {
+static const struct ipu_fw_resource_definitions default_defs = {
 	.cells = vied_nci_cell_type,
 	.num_cells = VIED_NCI_N_CELL_ID,
 	.num_cells_type = VIED_NCI_N_CELL_TYPE_ID,
@@ -522,7 +507,7 @@ static const struct ipu_resource_definitions default_defs = {
 	.process.cell_id = offsetof(struct ia_css_process_s, cell_id),
 };
 
-const struct ipu_resource_definitions *res_defs = &default_defs;
+const struct ipu_fw_resource_definitions *res_defs = &default_defs;
 EXPORT_SYMBOL_GPL(res_defs);
 
 /*

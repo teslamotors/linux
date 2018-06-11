@@ -71,6 +71,7 @@ struct ia_css_isys_device_cfg_data {
 	struct ia_css_isys_buffer_partition buffer_partition;
 	struct ia_css_driver_proxy_config driver_proxy;
 	bool secure;
+	unsigned vtl0_addr_mask; /* only applicable in 'secure' case */
 };
 
 /**

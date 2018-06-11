@@ -1,7 +1,5 @@
-/* SPDX-License_Identifier: GPL-2.0
- * Copyright (C) 2018 Intel Corporation
- * FIXME: update checkpatch script
- */
+// SPDX-License_Identifier: GPL-2.0
+// Copyright (C) 2018 Intel Corporation
 
 #include <linux/device.h>
 #include <linux/delay.h>

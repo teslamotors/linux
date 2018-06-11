@@ -40,7 +40,7 @@ module_param(num_stream_support, uint, 0660);
 MODULE_PARM_DESC(num_stream_support, "IPU project support number of stream");
 
 static bool use_stream_stop;
-module_param(use_stream_stop, bool, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+module_param(use_stream_stop, bool, 0660);
 MODULE_PARM_DESC(use_stream_stop, "Use STOP command if running in CSI capture mode");
 
 const struct ipu_isys_pixelformat ipu_isys_pfmts_be_soc[] = {

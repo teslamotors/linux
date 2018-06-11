@@ -79,7 +79,7 @@ void ici_csi2_be_set_ffmt(struct ici_isys_subdev *asd,
 {
 	struct ici_framefmt *cur_ffmt =
 		__ici_isys_subdev_get_ffmt(asd, pad);
-
+	int idx=0;
 	if (!cur_ffmt)
 	    return;
 
@@ -108,7 +108,7 @@ void ici_csi2_be_set_ffmt(struct ici_isys_subdev *asd,
 		if (sink_ffmt)
 		    code = sink_ffmt->pixelformat;
 
-		int idx = get_supported_code_index(code);
+		idx = get_supported_code_index(code);
 
 		DEBUGK("%s: source pad %u\n", __func__, pad);
 

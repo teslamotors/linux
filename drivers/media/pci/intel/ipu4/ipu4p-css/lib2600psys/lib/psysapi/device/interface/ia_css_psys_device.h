@@ -105,9 +105,10 @@ extern struct ia_css_syscom_config *ia_css_psys_specify(void);
 #if HAS_DUAL_CMD_CTX_SUPPORT
 /*! Create the syscom creation descriptor for secure stream
 
+ @param	vtl0_addr_mask[in]	VTL0 address mask that will be stored in 'secure' ctx
  @return NULL on error
  */
-extern struct ia_css_syscom_config *ia_css_psys_specify_secure(void);
+extern struct ia_css_syscom_config *ia_css_psys_specify_secure(unsigned int vtl0_addr_mask);
 #endif
 
 /*! Compute the size of storage required for allocating the Psys syscom object

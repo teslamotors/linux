@@ -15,6 +15,7 @@
 #include "ia_css_psys_process.h"
 #include "ia_css_psys_dynamic_storage_class.h"
 #include "ia_css_psys_process_private_types.h"
+#include <misc_support.h>	/* for NOT_USED */
 
 /*
  * Functions to possibly inline
@@ -917,6 +918,7 @@ int ia_css_process_print(const ia_css_process_t *process, void *fid)
 			(int)vied_nci_cell_get_mem_type(cell_id, mem_index),
 			(int)mem_id,
 			process->ext_mem_offset[mem_index]);
+		NOT_USED(mem_id);
 	}
 	for (dev_chn_index = 0; dev_chn_index < (int)VIED_NCI_N_DEV_CHN_ID;
 		dev_chn_index++) {

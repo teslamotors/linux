@@ -27,8 +27,6 @@
 #include "cpu_mem_support.h"
 #include "ia_css_bxt_spctrl_trace.h"
 
-#if !defined(__KERNEL__) && !defined(_MSC_VER)
-/* This section is for FW testing app only */
 #if HAS_DUAL_CMD_CTX_SUPPORT
 #define MAX_CLIENT_PGS 8 /* same as test_params.h */
 struct ia_css_process_group_context {
@@ -36,7 +34,7 @@ struct ia_css_process_group_context {
 	bool secure;
 };
 struct ia_css_process_group_context pg_contexts[MAX_CLIENT_PGS];
-int num_of_pgs;
+static unsigned int num_of_pgs;
 
 STORAGE_CLASS_INLINE
 struct ia_css_syscom_context *ia_css_process_group_get_context(ia_css_process_group_t *process_group)
@@ -47,7 +45,7 @@ struct ia_css_syscom_context *ia_css_process_group_get_context(ia_css_process_gr
 	IA_CSS_TRACE_0(BXT_SPCTRL, INFO,
 		"ia_css_process_group_get_context(): enter:\n");
 
-	for (i = 0; i < MAX_CLIENT_PGS; i++) {
+	for (i = 0; i < num_of_pgs; i++) {
 		if (pg_contexts[i].pg == process_group) {
 			secure = pg_contexts[i].secure;
 			break;
@@ -86,17 +84,6 @@ int ia_css_process_group_store(ia_css_process_group_t *process_group, bool secur
 	return 0;
 }
 #endif /* HAS_DUAL_CMD_CTX_SUPPORT */
-
-#else /* !defined(__KERNEL__) && !defined(_MSC_VER) */
-/* This section is for driver environment. */
-STORAGE_CLASS_INLINE
-struct ia_css_syscom_context *ia_css_process_group_get_context(ia_css_process_group_t *process_group)
-{
-	NOT_USED(process_group);
-
-	return psys_syscom;
-}
-#endif /* !defined(__KERNEL__) && !defined(_MSC_VER) */
 
 int ia_css_process_group_on_create(
 	ia_css_process_group_t			*process_group,

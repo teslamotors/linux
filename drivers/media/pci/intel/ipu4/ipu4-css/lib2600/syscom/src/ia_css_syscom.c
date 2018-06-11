@@ -367,6 +367,13 @@ ia_css_syscom_open(
 #if HAS_DUAL_CMD_CTX_SUPPORT
 	/* clear IRQ status */
 	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_IRQ_REG, 0x0, cfg->ssid);
+
+	if (cfg->secure) {
+		/* store VTL0 address mask in 'secure' context */
+		IA_CSS_TRACE_3(SYSCOM, INFO, "ia_css_syscom_open store VTL0_ADDR_MASK (%#x) @ dmem_addr %#x ssid %d\n",
+			      cfg->vtl0_addr_mask, ctx->cell_dmem_addr, cfg->ssid);
+		regmem_store_32(ctx->cell_dmem_addr, SYSCOM_VTL0_ADDR_MASK, cfg->vtl0_addr_mask, cfg->ssid);
+	}
 #endif
 
 	/* Indicate if ctx is created for secure stream purpose */

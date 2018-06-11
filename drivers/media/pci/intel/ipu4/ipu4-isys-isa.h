@@ -11,10 +11,6 @@
 #include "ipu-isys-subdev.h"
 #include "ipu-isys-video.h"
 
-struct ipu_isys;
-struct ipu_fw_isys_frame_buff_set_abi;
-struct ipu_fw_isys_stream_cfg_data;
-
 #define ISA_PAD_SINK			0
 #define ISA_PAD_SOURCE			1
 #define ISA_PAD_CONFIG			2
@@ -26,8 +22,8 @@ struct ipu_fw_isys_stream_cfg_data;
 #define NR_OF_ISA_SOURCE_PADS		3
 #define NR_OF_ISA_STREAMS		1
 
+struct ipu_isys;
 struct ia_css_process_group_light;
-struct ia_css_terminal;
 
 /*
  * struct ipu_isa_buffer

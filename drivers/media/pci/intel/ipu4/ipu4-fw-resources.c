@@ -1,14 +1,14 @@
 // SPDX-License_Identifier: GPL-2.0
 // Copyright (C) 2015 - 2018 Intel Corporation
 
-#include "ipu-fw-resources.h"
+#include "ipu-fw-psys.h"
 
-static const struct ipu_resource_definitions default_defs = {
+static const struct ipu_fw_resource_definitions default_defs = {
 	.cells = ipu_fw_psys_cell_types,
 	.num_cells = IPU_FW_PSYS_N_CELL_ID,
 	.num_cells_type = IPU_FW_PSYS_N_CELL_TYPE_ID,
 
-	.dev_channels = ipu_num_dev_channels,
+	.dev_channels = ipu_fw_num_dev_channels,
 	.num_dev_channels = IPU_FW_PSYS_N_DEV_CHN_ID,
 
 	.num_ext_mem_types = IPU_FW_PSYS_N_DATA_MEM_TYPE_ID,
@@ -29,7 +29,7 @@ static const struct ipu_resource_definitions default_defs = {
 	.process.cell_id = offsetof(struct ipu_fw_psys_process, cell_id),
 };
 
-const struct ipu_resource_definitions *res_defs = &default_defs;
+const struct ipu_fw_resource_definitions *res_defs = &default_defs;
 
 /********** Generic resource handling **********/
 

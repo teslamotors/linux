@@ -23,9 +23,6 @@ static struct ipu_isys_csi2_config stub_csi2_cfg[] = {
 		.port = 0,
 	},
 	{
-		/*
-		 * For BXT B0 FPGA board, port 1 only support 1 lane
-		 */
 		.nlanes = 1,
 		.port = 1,
 	},
@@ -66,12 +63,4 @@ static void ipu_quirk(struct pci_dev *pci_dev)
 	pci_dev->dev.platform_data = &pdata;
 }
 
-/* BXT ISYS FPGA */
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x9488, ipu_quirk);
-/* BXT A0 */
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x4008, ipu_quirk);
-/* BXTP A0 Iunit=BXT B0 Iunit */
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x5a88, ipu_quirk);
-/* BXT FPGA. ISYS & PSYS */
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x0a88, ipu_quirk);
-
