@@ -390,14 +390,27 @@ static struct platform_driver intel_dr_phy_driver = {
 	},
 };
 
+struct platform_device *intel_dr_phy_device;
+
 static int __init intel_dr_phy_init(void)
 {
-	return platform_driver_register(&intel_dr_phy_driver);
+	int ret;
+	ret = platform_driver_register(&intel_dr_phy_driver);
+	if (ret)
+		return ret;
+
+	intel_dr_phy_device = platform_device_register_simple("intel_usb_dr_phy", 0, NULL, 0);
+	if (IS_ERR(intel_dr_phy_device) || !platform_get_drvdata(intel_dr_phy_device)) {
+		platform_driver_unregister(&intel_dr_phy_driver);
+		return -ENODEV;
+	}
+	return 0;
 }
-subsys_initcall(intel_dr_phy_init);
+rootfs_initcall(intel_dr_phy_init);
 
 static void __exit intel_dr_phy_exit(void)
 {
+	platform_device_unregister(intel_dr_phy_device);
 	platform_driver_unregister(&intel_dr_phy_driver);
 }
 module_exit(intel_dr_phy_exit);

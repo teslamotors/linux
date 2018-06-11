@@ -489,17 +489,21 @@ static void bdw_update_port_irq(struct drm_i915_private *dev_priv,
  * @enabled_irq_mask: mask of interrupt bits to enable
  */
 void bdw_update_pipe_irq(struct drm_i915_private *dev_priv,
-			 enum pipe pipe,
+			 unsigned int crtc_index,
 			 uint32_t interrupt_mask,
 			 uint32_t enabled_irq_mask)
 {
 	uint32_t new_val;
+	enum pipe pipe;
 
 	lockdep_assert_held(&dev_priv->irq_lock);
 
 	WARN_ON(enabled_irq_mask & ~interrupt_mask);
 
 	if (WARN_ON(!intel_irqs_enabled(dev_priv)))
+		return;
+
+	if(get_pipe_from_crtc_index(&dev_priv->drm, crtc_index, &pipe))
 		return;
 
 	new_val = dev_priv->de_irq_mask[pipe];
@@ -769,9 +773,14 @@ static u32 i915_get_vblank_counter(struct drm_device *dev, unsigned int pipe)
 	return (((high1 << 8) | low) + (pixel >= vbl_start)) & 0xffffff;
 }
 
-static u32 g4x_get_vblank_counter(struct drm_device *dev, unsigned int pipe)
+static u32 g4x_get_vblank_counter(struct drm_device *dev,
+		unsigned int crtc_index)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
+	enum pipe pipe;
+
+	if(get_pipe_from_crtc_index(dev, crtc_index, &pipe))
+		return 0;
 
 	return I915_READ(PIPE_FRMCOUNT_G4X(pipe));
 }
@@ -833,17 +842,20 @@ static int __intel_get_crtc_scanline(struct intel_crtc *crtc)
 	return (position + crtc->scanline_offset) % vtotal;
 }
 
-static bool i915_get_crtc_scanoutpos(struct drm_device *dev, unsigned int pipe,
-				     bool in_vblank_irq, int *vpos, int *hpos,
-				     ktime_t *stime, ktime_t *etime,
-				     const struct drm_display_mode *mode)
+static bool i915_get_crtc_scanoutpos(struct drm_device *dev, unsigned int crtc_index,
+				    bool in_vblank_irq, int *vpos, int *hpos,
+				    ktime_t *stime, ktime_t *etime,
+				    const struct drm_display_mode *mode)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct intel_crtc *intel_crtc = intel_get_crtc_for_pipe(dev_priv,
-								pipe);
+	struct intel_crtc *intel_crtc;
+	enum pipe pipe;
 	int position;
 	int vbl_start, vbl_end, hsync_start, htotal, vtotal;
 	unsigned long irqflags;
+
+	intel_crtc = get_intel_crtc_from_index(dev, crtc_index);
+	pipe = intel_crtc->pipe;
 
 	if (WARN_ON(!mode->crtc_clock)) {
 		DRM_DEBUG_DRIVER("trying to get scanoutpos for disabled "
@@ -1321,10 +1333,9 @@ gen8_cs_irq_handler(struct intel_engine_cs *engine, u32 iir, int test_shift)
 	bool tasklet = false;
 
 	if (iir & (GT_CONTEXT_SWITCH_INTERRUPT << test_shift)) {
-		if (READ_ONCE(engine->execlists.active)) {
-			__set_bit(ENGINE_IRQ_EXECLIST, &engine->irq_posted);
-			tasklet = true;
-		}
+		if (READ_ONCE(engine->execlists.active))
+			tasklet = !test_and_set_bit(ENGINE_IRQ_EXECLIST,
+						    &engine->irq_posted);
 	}
 
 	if (iir & (GT_RENDER_USER_INTERRUPT << test_shift)) {
@@ -1342,37 +1353,25 @@ gen8_cs_irq_handler(struct intel_engine_cs *engine, u32 iir, int test_shift)
 		tasklet_hi_schedule(&execlists->irq_tasklet);
 }
 
-static irqreturn_t gen8_gt_irq_ack(struct drm_i915_private *dev_priv,
-				   u32 master_ctl,
-				   u32 gt_iir[4])
+static void gen8_gt_irq_ack(struct drm_i915_private *dev_priv,
+			    u32 master_ctl, u32 gt_iir[4])
 {
-	irqreturn_t ret = IRQ_NONE;
-
 	if (master_ctl & (GEN8_GT_RCS_IRQ | GEN8_GT_BCS_IRQ)) {
 		gt_iir[0] = I915_READ_FW(GEN8_GT_IIR(0));
-		if (gt_iir[0]) {
+		if (gt_iir[0])
 			I915_WRITE_FW(GEN8_GT_IIR(0), gt_iir[0]);
-			ret = IRQ_HANDLED;
-		} else
-			DRM_ERROR("The master control interrupt lied (GT0)!\n");
 	}
 
 	if (master_ctl & (GEN8_GT_VCS1_IRQ | GEN8_GT_VCS2_IRQ)) {
 		gt_iir[1] = I915_READ_FW(GEN8_GT_IIR(1));
-		if (gt_iir[1]) {
+		if (gt_iir[1])
 			I915_WRITE_FW(GEN8_GT_IIR(1), gt_iir[1]);
-			ret = IRQ_HANDLED;
-		} else
-			DRM_ERROR("The master control interrupt lied (GT1)!\n");
 	}
 
 	if (master_ctl & GEN8_GT_VECS_IRQ) {
 		gt_iir[3] = I915_READ_FW(GEN8_GT_IIR(3));
-		if (gt_iir[3]) {
+		if (gt_iir[3])
 			I915_WRITE_FW(GEN8_GT_IIR(3), gt_iir[3]);
-			ret = IRQ_HANDLED;
-		} else
-			DRM_ERROR("The master control interrupt lied (GT3)!\n");
 	}
 
 	if (master_ctl & (GEN8_GT_PM_IRQ | GEN8_GT_GUC_IRQ)) {
@@ -1382,12 +1381,8 @@ static irqreturn_t gen8_gt_irq_ack(struct drm_i915_private *dev_priv,
 			I915_WRITE_FW(GEN8_GT_IIR(2),
 				      gt_iir[2] & (dev_priv->pm_rps_events |
 						   dev_priv->pm_guc_events));
-			ret = IRQ_HANDLED;
-		} else
-			DRM_ERROR("The master control interrupt lied (PM)!\n");
+		}
 	}
-
-	return ret;
 }
 
 static void gen8_gt_irq_handler(struct drm_i915_private *dev_priv,
@@ -1553,7 +1548,12 @@ static void display_pipe_crc_irq_handler(struct drm_i915_private *dev_priv,
 	struct drm_driver *driver = dev_priv->drm.driver;
 	uint32_t crcs[5];
 	int head, tail;
+	u32 frame;
 
+	if (!crtc) {
+		DRM_DEBUG_KMS("No CRTC available for pipe %d\n", pipe);
+		return;
+	}
 	spin_lock(&pipe_crc->lock);
 	if (pipe_crc->source) {
 		if (!pipe_crc->entries) {
@@ -1573,7 +1573,8 @@ static void display_pipe_crc_irq_handler(struct drm_i915_private *dev_priv,
 
 		entry = &pipe_crc->entries[head];
 
-		entry->frame = driver->get_vblank_counter(&dev_priv->drm, pipe);
+		entry->frame = driver->get_vblank_counter(&dev_priv->drm,
+				drm_crtc_index(&crtc->base));
 		entry->crc[0] = crc0;
 		entry->crc[1] = crc1;
 		entry->crc[2] = crc2;
@@ -1607,9 +1608,9 @@ static void display_pipe_crc_irq_handler(struct drm_i915_private *dev_priv,
 		crcs[2] = crc2;
 		crcs[3] = crc3;
 		crcs[4] = crc4;
-		drm_crtc_add_crc_entry(&crtc->base, true,
-				       drm_crtc_accurate_vblank_count(&crtc->base),
-				       crcs);
+		frame = driver->get_vblank_counter(&dev_priv->drm,
+				drm_crtc_index(&crtc->base));
+		drm_crtc_add_crc_entry(&crtc->base, true, frame, crcs);
 	}
 }
 #else
@@ -2417,6 +2418,7 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 	irqreturn_t ret = IRQ_NONE;
 	u32 iir;
 	enum pipe pipe;
+	struct intel_crtc *crtc;
 
 	if (master_ctl & GEN8_DE_MISC_IRQ) {
 		iir = I915_READ(GEN8_DE_MISC_IIR);
@@ -2495,8 +2497,9 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 		ret = IRQ_HANDLED;
 		I915_WRITE(GEN8_DE_PIPE_IIR(pipe), iir);
 
+		crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
 		if (iir & GEN8_PIPE_VBLANK) {
-			drm_handle_vblank(&dev_priv->drm, pipe);
+			drm_handle_vblank(&dev_priv->drm, drm_crtc_index(&crtc->base));
 #if IS_ENABLED(CONFIG_DRM_I915_GVT)
 			gvt_notify_vblank(dev_priv, pipe);
 #endif
@@ -2555,7 +2558,6 @@ static irqreturn_t gen8_irq_handler(int irq, void *arg)
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	u32 master_ctl;
 	u32 gt_iir[4] = {};
-	irqreturn_t ret;
 
 	if (!intel_irqs_enabled(dev_priv))
 		return IRQ_NONE;
@@ -2571,16 +2573,16 @@ static irqreturn_t gen8_irq_handler(int irq, void *arg)
 	disable_rpm_wakeref_asserts(dev_priv);
 
 	/* Find, clear, then process each source of interrupt */
-	ret = gen8_gt_irq_ack(dev_priv, master_ctl, gt_iir);
+	gen8_gt_irq_ack(dev_priv, master_ctl, gt_iir);
 	gen8_gt_irq_handler(dev_priv, gt_iir);
-	ret |= gen8_de_irq_handler(dev_priv, master_ctl);
+	gen8_de_irq_handler(dev_priv, master_ctl);
 
 	I915_WRITE_FW(GEN8_MASTER_IRQ, GEN8_MASTER_IRQ_CONTROL);
 	POSTING_READ_FW(GEN8_MASTER_IRQ);
 
 	enable_rpm_wakeref_asserts(dev_priv);
 
-	return ret;
+	return IRQ_HANDLED;
 }
 
 struct wedge_me {
@@ -2623,15 +2625,10 @@ static void __fini_wedge(struct wedge_me *w)
 	     (W)->i915;							\
 	     __fini_wedge((W)))
 
-/**
- * i915_reset_device - do process context error handling work
- * @dev_priv: i915 device private
- *
- * Fire an error uevent so userspace can see that a hang or error
- * was detected.
- */
-static void i915_reset_device(struct drm_i915_private *dev_priv)
+static void i915_reset_device(struct drm_i915_private *dev_priv,
+			      const char *msg)
 {
+	struct i915_gpu_error *error = &dev_priv->gpu_error;
 	struct kobject *kobj = &dev_priv->drm.primary->kdev->kobj;
 	char *error_event[] = { I915_ERROR_UEVENT "=1", NULL };
 	char *reset_event[] = { I915_RESET_UEVENT "=1", NULL };
@@ -2647,29 +2644,32 @@ static void i915_reset_device(struct drm_i915_private *dev_priv)
 	i915_wedge_on_timeout(&w, dev_priv, 5*HZ) {
 		intel_prepare_reset(dev_priv);
 
+		error->reason = msg;
+
 		/* Signal that locked waiters should reset the GPU */
-		set_bit(I915_RESET_HANDOFF, &dev_priv->gpu_error.flags);
-		wake_up_all(&dev_priv->gpu_error.wait_queue);
+		set_bit(I915_RESET_HANDOFF, &error->flags);
+		wake_up_all(&error->wait_queue);
 
 		/* Wait for anyone holding the lock to wakeup, without
 		 * blocking indefinitely on struct_mutex.
 		 */
 		do {
 			if (mutex_trylock(&dev_priv->drm.struct_mutex)) {
-				i915_reset(dev_priv, 0);
+				i915_reset(dev_priv);
 				mutex_unlock(&dev_priv->drm.struct_mutex);
 			}
-		} while (wait_on_bit_timeout(&dev_priv->gpu_error.flags,
+		} while (wait_on_bit_timeout(&error->flags,
 					     I915_RESET_HANDOFF,
 					     TASK_UNINTERRUPTIBLE,
 					     1));
 
+		error->reason = NULL;
+
 		intel_finish_reset(dev_priv);
 	}
 
-	if (!test_bit(I915_WEDGED, &dev_priv->gpu_error.flags))
-		kobject_uevent_env(kobj,
-				   KOBJ_CHANGE, reset_done_event);
+	if (!test_bit(I915_WEDGED, &error->flags))
+		kobject_uevent_env(kobj, KOBJ_CHANGE, reset_done_event);
 }
 
 static void i915_clear_error_registers(struct drm_i915_private *dev_priv)
@@ -2701,6 +2701,7 @@ static void i915_clear_error_registers(struct drm_i915_private *dev_priv)
  * i915_handle_error - handle a gpu error
  * @dev_priv: i915 device private
  * @engine_mask: mask representing engines that are hung
+ * @flags: control flags
  * @fmt: Error message format string
  *
  * Do some basic checking of register state at error time and
@@ -2711,16 +2712,23 @@ static void i915_clear_error_registers(struct drm_i915_private *dev_priv)
  */
 void i915_handle_error(struct drm_i915_private *dev_priv,
 		       u32 engine_mask,
+		       unsigned long flags,
 		       const char *fmt, ...)
 {
 	struct intel_engine_cs *engine;
 	unsigned int tmp;
-	va_list args;
 	char error_msg[80];
+	char *msg = NULL;
 
-	va_start(args, fmt);
-	vscnprintf(error_msg, sizeof(error_msg), fmt, args);
-	va_end(args);
+	if (fmt) {
+		va_list args;
+
+		va_start(args, fmt);
+		vscnprintf(error_msg, sizeof(error_msg), fmt, args);
+		va_end(args);
+
+		msg = error_msg;
+	}
 
 	/*
 	 * In most cases it's guaranteed that we get here with an RPM
@@ -2731,8 +2739,10 @@ void i915_handle_error(struct drm_i915_private *dev_priv,
 	 */
 	intel_runtime_pm_get(dev_priv);
 
-	i915_capture_error_state(dev_priv, engine_mask, error_msg);
-	i915_clear_error_registers(dev_priv);
+	if (flags & I915_ERROR_CAPTURE) {
+		i915_capture_error_state(dev_priv, engine_mask, error_msg);
+		i915_clear_error_registers(dev_priv);
+	}
 
 	/*
 	 * Try engine reset when available. We fall back to full reset if
@@ -2745,7 +2755,7 @@ void i915_handle_error(struct drm_i915_private *dev_priv,
 					     &dev_priv->gpu_error.flags))
 				continue;
 
-			if (i915_reset_engine(engine, 0) == 0)
+			if (i915_reset_engine(engine, msg) == 0)
 				engine_mask &= ~intel_engine_flag(engine);
 
 			clear_bit(I915_RESET_ENGINE + engine->id,
@@ -2775,7 +2785,7 @@ void i915_handle_error(struct drm_i915_private *dev_priv,
 				    TASK_UNINTERRUPTIBLE);
 	}
 
-	i915_reset_device(dev_priv);
+	i915_reset_device(dev_priv, msg);
 
 	for_each_engine(engine, dev_priv, tmp) {
 		clear_bit(I915_RESET_ENGINE + engine->id,

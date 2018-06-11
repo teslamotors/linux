@@ -261,6 +261,12 @@ void intel_gvt_clean_device(struct drm_i915_private *dev_priv)
 	dev_priv->gvt = NULL;
 }
 
+#define BITS_PER_DOMAIN 4
+#define MAX_PLANES_PER_DOMAIN 4
+#define DOMAIN_PLANE_OWNER(owner, pipe, plane) \
+		((((owner) >> (pipe) * BITS_PER_DOMAIN * MAX_PLANES_PER_DOMAIN) >>  \
+		  BITS_PER_DOMAIN * (plane)) & 0xf)
+
 /**
  * intel_gvt_init_device - initialize a GVT device
  * @dev_priv: drm i915 private data
@@ -360,8 +366,28 @@ int intel_gvt_init_device(struct drm_i915_private *dev_priv)
 	}
 	gvt->idle_vgpu = vgpu;
 
-	gvt_dbg_core("gvt device initialization is done\n");
 	dev_priv->gvt = gvt;
+
+	if (i915_modparams.avail_planes_per_pipe) {
+		unsigned long long domain_plane_owners;
+		int plane;
+		enum pipe pipe;
+
+		/*
+		 * Each nibble represents domain id
+		 * ids can be from 0-F. 0 for Dom0, 1,2,3...0xF for DomUs
+		 * plane_owner[i] holds the id of the domain that owns it,eg:0,1,2 etc
+		 */
+		domain_plane_owners = i915_modparams.domain_plane_owners;
+		for_each_pipe(dev_priv, pipe) {
+			for_each_universal_plane(dev_priv, pipe, plane) {
+				gvt->pipe_info[pipe].plane_owner[plane] =
+					DOMAIN_PLANE_OWNER(domain_plane_owners, pipe, plane);
+			}
+		}
+	}
+
+	gvt_dbg_core("gvt device initialization is done\n");
 	return 0;
 
 out_clean_types:

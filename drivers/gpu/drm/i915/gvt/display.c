@@ -220,7 +220,7 @@ static void emulate_monitor_status_change(struct intel_vgpu *vgpu)
 			vgpu_vreg(vgpu, PORT_CLK_SEL(PORT_B)) |=
 				PORT_CLK_SEL_LCPLL_810;
 		}
-		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_B)) |= DDI_BUF_CTL_ENABLE;
+		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_B)) &= ~DDI_BUF_CTL_ENABLE;
 		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_B)) &= ~DDI_BUF_IS_IDLE;
 		vgpu_vreg(vgpu, SDEISR) |= SDE_PORTB_HOTPLUG_CPT;
 	}
@@ -240,7 +240,7 @@ static void emulate_monitor_status_change(struct intel_vgpu *vgpu)
 			vgpu_vreg(vgpu, PORT_CLK_SEL(PORT_C)) |=
 				PORT_CLK_SEL_LCPLL_810;
 		}
-		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_C)) |= DDI_BUF_CTL_ENABLE;
+		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_C)) &= ~DDI_BUF_CTL_ENABLE;
 		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_C)) &= ~DDI_BUF_IS_IDLE;
 		vgpu_vreg(vgpu, SFUSE_STRAP) |= SFUSE_STRAP_DDIC_DETECTED;
 	}
@@ -260,7 +260,7 @@ static void emulate_monitor_status_change(struct intel_vgpu *vgpu)
 			vgpu_vreg(vgpu, PORT_CLK_SEL(PORT_D)) |=
 				PORT_CLK_SEL_LCPLL_810;
 		}
-		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_D)) |= DDI_BUF_CTL_ENABLE;
+		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_D)) &= ~DDI_BUF_CTL_ENABLE;
 		vgpu_vreg(vgpu, DDI_BUF_CTL(PORT_D)) &= ~DDI_BUF_IS_IDLE;
 		vgpu_vreg(vgpu, SFUSE_STRAP) |= SFUSE_STRAP_DDID_DETECTED;
 	}
@@ -449,44 +449,90 @@ static void intel_gvt_vblank_work(struct work_struct *w)
 	mutex_unlock(&gvt->lock);
 }
 
+int bxt_check_planes(struct intel_vgpu *vgpu, int pipe)
+{
+	int plane = 0;
+	bool ret = false;
+
+	for (plane = 0;
+	     plane < ((INTEL_INFO(vgpu->gvt->dev_priv)->num_sprites[pipe]) + 1);
+	     plane++) {
+		if (vgpu->gvt->pipe_info[pipe].plane_owner[plane] == vgpu->id) {
+			ret = true;
+			break;
+		}
+	}
+	return ret;
+}
+
+#define BITS_PER_DOMAIN 4
+#define MAX_SCALERS_PER_DOMAIN 2
+
+#define DOMAIN_SCALER_OWNER(owner, pipe, scaler) \
+	((((owner) >> (pipe) * BITS_PER_DOMAIN * MAX_SCALERS_PER_DOMAIN) >>  \
+	BITS_PER_DOMAIN * (scaler)) & 0xf)
+
 void intel_gvt_init_pipe_info(struct intel_gvt *gvt)
 {
-	int pipe;
+	enum pipe pipe;
+	unsigned int scaler;
+	unsigned int domain_scaler_owner = i915_modparams.domain_scaler_owner;
+	struct drm_i915_private *dev_priv = gvt->dev_priv;
 
 	for (pipe = PIPE_A; pipe <= PIPE_C; pipe++) {
 		gvt->pipe_info[pipe].pipe_num = pipe;
 		gvt->pipe_info[pipe].gvt = gvt;
 		INIT_WORK(&gvt->pipe_info[pipe].vblank_work,
 				intel_gvt_vblank_work);
+		/* Each nibble represents domain id
+		 * ids can be from 0-F. 0 for Dom0, 1,2,3...0xF for DomUs
+		 * scaler_owner[i] holds the id of the domain that owns it,
+		 * eg:0,1,2 etc
+		 */
+		for_each_universal_scaler(dev_priv, pipe, scaler)
+			gvt->pipe_info[pipe].scaler_owner[scaler] =
+			DOMAIN_SCALER_OWNER(domain_scaler_owner, pipe, scaler);
 	}
 }
 
-int bxt_setup_virtual_monitors(struct intel_vgpu *vgpu)
+int setup_virtual_monitors(struct intel_vgpu *vgpu)
 {
 	struct intel_connector *connector = NULL;
 	struct drm_connector_list_iter conn_iter;
+	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
 	int pipe = 0;
 	int ret = 0;
-	int port = 0;
+	int type = i915_modparams.gvt_emulate_hdmi ? GVT_HDMI_A : GVT_DP_A;
+	int port = PORT_B;
+
+	/* BXT have to use port A for HDMI to support 3 HDMI monitors */
+	if (IS_BROXTON(dev_priv))
+		port = PORT_A;
 
 	drm_connector_list_iter_begin(&vgpu->gvt->dev_priv->drm, &conn_iter);
 	for_each_intel_connector_iter(connector, &conn_iter) {
 		if (connector->encoder->get_hw_state(connector->encoder, &pipe)
 				&& connector->detect_edid) {
+			/* if no planes are allocated for this pipe, skip it */
+			if (i915_modparams.avail_planes_per_pipe &&
+			    !bxt_check_planes(vgpu, pipe))
+				continue;
 			/* Get (Dom0) port associated with current pipe. */
 			port = enc_to_dig_port(
 					&(connector->encoder->base))->port;
 			ret = setup_virtual_monitor(vgpu, port,
-				GVT_HDMI_A + port, 0,
-				connector->detect_edid, false);
+				type, 0, connector->detect_edid,
+				!i915_modparams.gvt_emulate_hdmi);
 			if (ret)
 				return ret;
+			type++;
+			port++;
 		}
 	}
 	return 0;
 }
 
-void bxt_clean_virtual_monitors(struct intel_vgpu *vgpu)
+void clean_virtual_monitors(struct intel_vgpu *vgpu)
 {
 	int port = 0;
 
@@ -509,9 +555,9 @@ void intel_vgpu_clean_display(struct intel_vgpu *vgpu)
 {
 	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
 
-	if (IS_BROXTON(dev_priv))
-		bxt_clean_virtual_monitors(vgpu);
-	else if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
+	if (IS_BROXTON(dev_priv) || IS_KABYLAKE(dev_priv))
+		clean_virtual_monitors(vgpu);
+	else if (IS_SKYLAKE(dev_priv))
 		clean_virtual_dp_monitor(vgpu, PORT_D);
 	else
 		clean_virtual_dp_monitor(vgpu, PORT_B);
@@ -533,9 +579,9 @@ int intel_vgpu_init_display(struct intel_vgpu *vgpu, u64 resolution)
 
 	intel_vgpu_init_i2c_edid(vgpu);
 
-	if (IS_BROXTON(dev_priv))
-		return bxt_setup_virtual_monitors(vgpu);
-	else if (IS_SKYLAKE(dev_priv) || IS_KABYLAKE(dev_priv))
+	if (IS_BROXTON(dev_priv) || IS_KABYLAKE(dev_priv))
+		return setup_virtual_monitors(vgpu);
+	else if (IS_SKYLAKE(dev_priv))
 		return setup_virtual_monitor(vgpu,
 				PORT_D, GVT_DP_D, resolution, NULL, true);
 	else

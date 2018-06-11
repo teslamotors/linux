@@ -364,6 +364,13 @@ struct intel_engine_cs {
 	void		(*reset_hw)(struct intel_engine_cs *engine,
 				    struct drm_i915_gem_request *req);
 
+	struct {
+		struct drm_i915_gem_request *(*prepare)(struct intel_engine_cs *engine);
+		void (*reset)(struct intel_engine_cs *engine,
+			      struct drm_i915_gem_request *rq);
+		void (*finish)(struct intel_engine_cs *engine);
+	} reset;
+
 	void		(*set_default_submission)(struct intel_engine_cs *engine);
 
 	struct intel_ring *(*context_pin)(struct intel_engine_cs *engine,
@@ -505,6 +512,10 @@ struct intel_engine_cs {
 	struct atomic_notifier_head context_status_notifier;
 
 	struct intel_engine_hangcheck hangcheck;
+
+	struct hrtimer fpreempt_timer;
+	struct work_struct fpreempt_work;
+	bool fpreempt_stalled;
 
 	bool needs_cmd_parser;
 

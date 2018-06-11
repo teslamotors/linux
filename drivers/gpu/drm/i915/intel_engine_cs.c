@@ -411,6 +411,45 @@ static void intel_engine_init_execlist(struct intel_engine_cs *engine)
 	execlists->first = NULL;
 }
 
+static enum hrtimer_restart
+intel_engine_fpreempt_timer(struct hrtimer *hrtimer)
+{
+	struct intel_engine_cs *engine =
+		container_of(hrtimer, struct intel_engine_cs,
+			     fpreempt_timer);
+
+	if (execlists_is_active(&engine->execlists, EXECLISTS_ACTIVE_PREEMPT))
+		queue_work(system_highpri_wq, &engine->fpreempt_work);
+
+	return HRTIMER_NORESTART;
+}
+
+static void intel_engine_fpreempt_work(struct work_struct *work)
+{
+	struct intel_engine_cs *engine =
+		container_of(work, struct intel_engine_cs,
+			     fpreempt_work);
+
+	tasklet_kill(&engine->execlists.irq_tasklet);
+	tasklet_disable(&engine->execlists.irq_tasklet);
+
+	if (execlists_is_active(&engine->execlists, EXECLISTS_ACTIVE_PREEMPT)) {
+		engine->fpreempt_stalled = true;
+		i915_handle_error(engine->i915, intel_engine_flag(engine),
+				  0, "force preemption");
+	}
+
+	tasklet_enable(&engine->execlists.irq_tasklet);
+}
+
+static void intel_engine_init_fpreempt(struct intel_engine_cs *engine)
+{
+	hrtimer_init(&engine->fpreempt_timer,
+		     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	engine->fpreempt_timer.function = intel_engine_fpreempt_timer;
+	INIT_WORK(&engine->fpreempt_work, intel_engine_fpreempt_work);
+}
+
 /**
  * intel_engines_setup_common - setup engine state not requiring hw access
  * @engine: Engine to setup.
@@ -426,6 +465,7 @@ void intel_engine_setup_common(struct intel_engine_cs *engine)
 
 	intel_engine_init_timeline(engine);
 	intel_engine_init_hangcheck(engine);
+	intel_engine_init_fpreempt(engine);
 	i915_gem_batch_pool_init(engine, &engine->batch_pool);
 
 	intel_engine_init_cmd_parser(engine);

@@ -90,6 +90,7 @@
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include "i915_trace.h"
+#include "i915_vgpu.h"
 
 #define ALL_L3_SLICES(dev) (1 << NUM_L3_SLICES(dev)) - 1
 
@@ -228,6 +229,12 @@ static int assign_hw_id(struct drm_i915_private *dev_priv, unsigned *out)
 				     0, MAX_CONTEXT_HW_ID, GFP_KERNEL);
 		if (ret < 0)
 			return ret;
+	}
+
+	if (intel_vgpu_active(dev_priv)) {
+		/* add vgpu_id to context hw_id */
+		ret = ret | (I915_READ(vgtif_reg(vgt_id))
+				<< SIZE_CONTEXT_HW_ID);
 	}
 
 	*out = ret;

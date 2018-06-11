@@ -45,6 +45,7 @@ i915-y += i915_cmd_parser.o \
 	  i915_gem_request.o \
 	  i915_gem_shrinker.o \
 	  i915_gem_stolen.o \
+	  i915_gem_splash.o \
 	  i915_gem_tiling.o \
 	  i915_gem_timeline.o \
 	  i915_gem_userptr.o \
@@ -151,6 +152,9 @@ endif
 
 # LPE Audio for VLV and CHT
 i915-y += intel_lpe_audio.o
+
+# initial modeset
+i915-y += intel_initial_modeset.o
 
 obj-$(CONFIG_DRM_I915) += i915.o
 
