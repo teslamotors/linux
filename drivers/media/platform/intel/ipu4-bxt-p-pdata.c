@@ -10,6 +10,7 @@
 #include <media/ipu-isys.h>
 #include <media/crlmodule.h>
 #include <media/ti964.h>
+#include <media/max9286.h>
 #include "ipu.h"
 #include <media/dw9714.h>
 #define GPIO_BASE		422
@@ -952,6 +953,87 @@ static struct ipu_isys_subdev_info ov2775_crl_sd = {
 };
 #endif
 
+#ifdef CONFIG_INTEL_IPU4_AR0231AT
+#define AR0231AT_LANES            4
+#define AR0231ATA_I2C_ADDRESS      0x11
+#define AR0231ATB_I2C_ADDRESS      0x12
+#define AR0231ATC_I2C_ADDRESS      0x13
+#define AR0231ATD_I2C_ADDRESS      0x14
+
+static struct crlmodule_platform_data ar0231at_pdata = {
+	.lanes = AR0231AT_LANES,
+	.ext_clk = 24000000,
+	.op_sys_clock = (uint64_t[]){ 264000000 },
+	.module_name = "AR0231AT",
+};
+#endif
+
+#if IS_ENABLED(CONFIG_VIDEO_MAX9286)
+#define DS_MAX9286_LANES                4
+#define DS_MAX9286_I2C_ADAPTER          4
+#define DS_MAX9286_I2C_ADDRESS          0x48
+
+static struct ipu_isys_csi2_config max9286_csi2_cfg = {
+	.nlanes = DS_MAX9286_LANES,
+	.port = 4,
+};
+
+static struct max9286_subdev_i2c_info max9286_subdevs[] = {
+#ifdef CONFIG_INTEL_IPU4_AR0231AT
+		{
+			.board_info = {
+				.type = CRLMODULE_NAME,
+				.addr = AR0231ATA_I2C_ADDRESS,
+				.platform_data = &ar0231at_pdata,
+			},
+			.i2c_adapter_id = DS_MAX9286_I2C_ADAPTER,
+		},
+		{
+			.board_info = {
+				.type = CRLMODULE_NAME,
+				.addr = AR0231ATB_I2C_ADDRESS,
+				.platform_data = &ar0231at_pdata,
+			},
+			.i2c_adapter_id = DS_MAX9286_I2C_ADAPTER,
+		},
+		{
+			.board_info = {
+				.type = CRLMODULE_NAME,
+				.addr = AR0231ATC_I2C_ADDRESS,
+				.platform_data = &ar0231at_pdata,
+			},
+			.i2c_adapter_id = DS_MAX9286_I2C_ADAPTER,
+		},
+		{
+			.board_info = {
+				.type = CRLMODULE_NAME,
+				.addr = AR0231ATD_I2C_ADDRESS,
+				.platform_data = &ar0231at_pdata,
+			},
+			.i2c_adapter_id = DS_MAX9286_I2C_ADAPTER,
+		},
+#endif
+};
+
+static struct max9286_pdata max9286_pdata = {
+	.subdev_info = max9286_subdevs,
+	.subdev_num = ARRAY_SIZE(max9286_subdevs),
+	.reset_gpio = GPIO_BASE + 63,
+};
+
+static struct ipu_isys_subdev_info max9286_sd = {
+	.csi2 = &max9286_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			.type = "max9286",
+			.addr = DS_MAX9286_I2C_ADDRESS,
+			.platform_data = &max9286_pdata,
+		},
+		.i2c_adapter_id = DS_MAX9286_I2C_ADAPTER,
+	}
+};
+#endif
+
 /*
  * Map buttress output sensor clocks to sensors -
  * this should be coming from ACPI
@@ -967,6 +1049,8 @@ static struct ipu_isys_clk_mapping clk_mapping[] = {
 	{ CLKDEV_INIT("0-0010", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("2-000e", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("4-000e", NULL, NULL), "OSC_CLK_OUT1" },
+	{ CLKDEV_INIT("0-0048", NULL, NULL), "OSC_CLK_OUT0" },
+	{ CLKDEV_INIT("4-0048", NULL, NULL), "OSC_CLK_OUT1" },
 	{ CLKDEV_INIT(NULL, NULL, NULL), NULL }
 };
 
@@ -1028,6 +1112,9 @@ static struct ipu_isys_subdev_pdata pdata = {
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV2775
 		&ov2775_crl_sd,
+#endif
+#if IS_ENABLED(CONFIG_VIDEO_MAX9286)
+		&max9286_sd,
 #endif
 		NULL,
 	},
