@@ -962,8 +962,8 @@ static struct ipu_isys_subdev_info ov2775_crl_sd = {
 
 static struct crlmodule_platform_data ar0231at_pdata = {
 	.lanes = AR0231AT_LANES,
-	.ext_clk = 24000000,
-	.op_sys_clock = (uint64_t[]){ 264000000 },
+	.ext_clk = 27000000,
+	.op_sys_clock = (uint64_t[]){ 87750000 },
 	.module_name = "AR0231AT",
 };
 #endif
