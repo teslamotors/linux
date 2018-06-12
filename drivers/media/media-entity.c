@@ -245,18 +245,38 @@ EXPORT_SYMBOL_GPL(media_entity_pads_init);
  * Graph traversal
  */
 
-static struct media_entity *
-media_entity_other(struct media_entity *entity, struct media_link *link)
+/**
+ * media_entity_has_route - Check if two entity pads are connected internally
+ * @entity: The entity
+ * @pad0: The first pad index
+ * @pad1: The second pad index
+ *
+ * This function can be used to check whether two pads of an entity are
+ * connected internally in the entity.
+ *
+ * The caller must hold entity->source->parent->mutex.
+ *
+ * Return: true if the pads are connected internally and false otherwise.
+ */
+bool media_entity_has_route(struct media_entity *entity, unsigned int pad0,
+			    unsigned int pad1)
 {
-	if (link->source->entity == entity)
-		return link->sink->entity;
-	else
-		return link->source->entity;
+	if (pad0 >= entity->num_pads || pad1 >= entity->num_pads)
+		return false;
+
+	if (pad0 == pad1)
+		return true;
+
+	if (!entity->ops || !entity->ops->has_route)
+		return true;
+
+	return entity->ops->has_route(entity, pad0, pad1, NULL);
 }
+EXPORT_SYMBOL_GPL(media_entity_has_route);
 
 /* push an entity to traversal stack */
 static void stack_push(struct media_graph *graph,
-		       struct media_entity *entity)
+		       struct media_entity *entity, int pad, int stream)
 {
 	if (graph->top == MEDIA_ENTITY_ENUM_MAX_DEPTH - 1) {
 		WARN_ON(1);
@@ -264,7 +284,9 @@ static void stack_push(struct media_graph *graph,
 	}
 	graph->top++;
 	graph->stack[graph->top].link = entity->links.next;
+	graph->stack[graph->top].pad = pad;
 	graph->stack[graph->top].entity = entity;
+	graph->stack[graph->top].stream = stream;
 }
 
 static struct media_entity *stack_pop(struct media_graph *graph)
@@ -278,6 +300,8 @@ static struct media_entity *stack_pop(struct media_graph *graph)
 }
 
 #define link_top(en)	((en)->stack[(en)->top].link)
+#define pad_top(en)	((en)->stack[(en)->top].pad)
+#define stream_top(en)	((en)->stack[(en)->top].stream)
 #define stack_top(en)	((en)->stack[(en)->top].entity)
 
 /*
@@ -314,16 +338,16 @@ void media_graph_walk_cleanup(struct media_graph *graph)
 EXPORT_SYMBOL_GPL(media_graph_walk_cleanup);
 
 void media_graph_walk_start(struct media_graph *graph,
-			    struct media_entity *entity)
+			    struct media_pad *pad)
 {
 	media_entity_enum_zero(&graph->ent_enum);
-	media_entity_enum_set(&graph->ent_enum, entity);
+	media_entity_enum_set(&graph->ent_enum, pad->entity);
 
 	graph->top = 0;
 	graph->stack[graph->top].entity = NULL;
-	stack_push(graph, entity);
-	dev_dbg(entity->graph_obj.mdev->dev,
-		"begin graph walk at '%s'\n", entity->name);
+	stack_push(graph, pad->entity, pad->index, -1);
+	dev_dbg(pad->entity->graph_obj.mdev->dev,
+		"begin graph walk at '%s'\n", pad->entity->name);
 }
 EXPORT_SYMBOL_GPL(media_graph_walk_start);
 
@@ -331,7 +355,11 @@ static void media_graph_walk_iter(struct media_graph *graph)
 {
 	struct media_entity *entity = stack_top(graph);
 	struct media_link *link;
+	unsigned int from_pad = pad_top(graph);
 	struct media_entity *next;
+	struct media_pad *remote;
+	struct media_pad *local;
+	int stream = stream_top(graph);
 
 	link = list_entry(link_top(graph), typeof(*link), list);
 
@@ -345,8 +373,31 @@ static void media_graph_walk_iter(struct media_graph *graph)
 		return;
 	}
 
-	/* Get the entity in the other end of the link . */
-	next = media_entity_other(entity, link);
+	/*
+	 * Get the local pad, the remote pad and the entity at the other
+	 * end of the link.
+	 */
+	if (link->source->entity == entity) {
+		remote = link->sink;
+		local = link->source;
+	} else {
+		remote = link->source;
+		local = link->sink;
+	}
+
+	next = remote->entity;
+
+	/*
+	 * Are the local pad and the pad we came from connected
+	 * internally in the entity ?
+	 */
+	if (entity->ops && entity->ops->has_route) {
+		if (!entity->ops->has_route(entity, from_pad,
+			local->index, &stream)) {
+			link_top(graph) = link_top(graph)->next;
+			return;
+		}
+	}
 
 	/* Has the entity already been visited? */
 	if (media_entity_enum_test_and_set(&graph->ent_enum, next)) {
@@ -359,7 +410,7 @@ static void media_graph_walk_iter(struct media_graph *graph)
 
 	/* Push the new entity to stack and start over. */
 	link_top(graph) = link_top(graph)->next;
-	stack_push(graph, next);
+	stack_push(graph, next, remote->index, stream);
 	dev_dbg(entity->graph_obj.mdev->dev, "walk: pushing '%s' on stack\n",
 		next->name);
 }
@@ -441,7 +492,7 @@ __must_check int __media_pipeline_start(struct media_entity *entity,
 			goto error_graph_walk_start;
 	}
 
-	media_graph_walk_start(&pipe->graph, entity);
+	media_graph_walk_start(graph, &entity->pads[0]);
 
 	while ((entity = media_graph_walk_next(graph))) {
 		DECLARE_BITMAP(active, MEDIA_ENTITY_MAX_PADS);
@@ -449,16 +500,7 @@ __must_check int __media_pipeline_start(struct media_entity *entity,
 
 		entity->stream_count++;
 
-		if (WARN_ON(entity->pipe && entity->pipe != pipe)) {
-			ret = -EBUSY;
-			goto error;
-		}
-
 		entity->pipe = pipe;
-
-		/* Already streaming --- no need to check. */
-		if (entity->stream_count > 1)
-			continue;
 
 		if (!entity->ops || !entity->ops->link_validate)
 			continue;
@@ -522,7 +564,7 @@ error:
 	 * Link validation on graph failed. We revert what we did and
 	 * return the error.
 	 */
-	media_graph_walk_start(graph, entity_err);
+	media_graph_walk_start(graph, &entity_err->pads[0]);
 
 	while ((entity_err = media_graph_walk_next(graph))) {
 		/* Sanity check for negative stream_count */
@@ -573,7 +615,7 @@ void __media_pipeline_stop(struct media_entity *entity)
 	if (WARN_ON(!pipe))
 		return;
 
-	media_graph_walk_start(graph, entity);
+	media_graph_walk_start(graph, &entity->pads[0]);
 
 	while ((entity = media_graph_walk_next(graph))) {
 		/* Sanity check for negative stream_count */

@@ -48,6 +48,7 @@ enum nhlt_link_type {
 	NHLT_LINK_DSP = 1,
 	NHLT_LINK_DMIC = 2,
 	NHLT_LINK_SSP = 3,
+	NHLT_LINK_SDW = 4,
 	NHLT_LINK_INVALID
 };
 
@@ -56,6 +57,12 @@ enum nhlt_device_type {
 	NHLT_DEVICE_DMIC = 1,
 	NHLT_DEVICE_I2S = 4,
 	NHLT_DEVICE_INVALID
+};
+
+enum nhlt_version_type {
+	VERSION_INVALID = -1,
+	VERSION_0,
+	VERSION_1,
 };
 
 struct nhlt_specific_cfg {

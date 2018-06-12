@@ -58,8 +58,10 @@ void core_pr_dump_initiator_port(
 	char *buf,
 	u32 size)
 {
-	if (!pr_reg->isid_present_at_reg)
+	if (!pr_reg->isid_present_at_reg) {
 		buf[0] = '\0';
+		return;
+	}
 
 	snprintf(buf, size, ",i,0x%s", pr_reg->pr_reg_isid);
 }
@@ -4011,6 +4013,7 @@ core_scsi3_pri_read_full_status(struct se_cmd *cmd)
 		 * Set the ADDITIONAL DESCRIPTOR LENGTH
 		 */
 		put_unaligned_be32(desc_len, &buf[off]);
+		off += 4;
 		/*
 		 * Size of full desctipor header minus TransportID
 		 * containing $FABRIC_MOD specific) initiator device/port

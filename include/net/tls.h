@@ -35,6 +35,10 @@
 #define _TLS_OFFLOAD_H
 
 #include <linux/types.h>
+#include <asm/byteorder.h>
+#include <linux/socket.h>
+#include <linux/tcp.h>
+#include <net/tcp.h>
 
 #include <uapi/linux/tls.h>
 
@@ -94,6 +98,7 @@ struct tls_context {
 	struct scatterlist *partially_sent_record;
 	u16 partially_sent_offset;
 	unsigned long flags;
+	bool in_tcp_sendpages;
 
 	u16 pending_open_record_frags;
 	int (*push_pending_record)(struct sock *sk, int flags);
@@ -164,7 +169,7 @@ static inline bool tls_is_pending_open_record(struct tls_context *tls_ctx)
 
 static inline void tls_err_abort(struct sock *sk)
 {
-	sk->sk_err = -EBADMSG;
+	sk->sk_err = EBADMSG;
 	sk->sk_error_report(sk);
 }
 

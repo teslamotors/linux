@@ -654,7 +654,7 @@ void wbt_set_write_cache(struct rq_wb *rwb, bool write_cache_on)
 }
 
 /*
- * Disable wbt, if enabled by default. Only called from CFQ.
+ * Disable wbt, if enabled by default.
  */
 void wbt_disable_default(struct request_queue *q)
 {
@@ -698,7 +698,15 @@ u64 wbt_default_latency_nsec(struct request_queue *q)
 
 static int wbt_data_dir(const struct request *rq)
 {
-	return rq_data_dir(rq);
+	const int op = req_op(rq);
+
+	if (op == REQ_OP_READ)
+		return READ;
+	else if (op == REQ_OP_WRITE || op == REQ_OP_FLUSH)
+		return WRITE;
+
+	/* don't account */
+	return -1;
 }
 
 int wbt_init(struct request_queue *q)

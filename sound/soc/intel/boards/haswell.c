@@ -76,7 +76,7 @@ static int haswell_rt5640_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* set correct codec filter for DAI format and clock config */
-	snd_soc_update_bits(rtd->codec, 0x83, 0xffff, 0x8000);
+	snd_soc_component_update_bits(codec_dai->component, 0x83, 0xffff, 0x8000);
 
 	return ret;
 }
@@ -85,6 +85,7 @@ static const struct snd_soc_ops haswell_rt5640_ops = {
 	.hw_params = haswell_rt5640_hw_params,
 };
 
+#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 static int haswell_rtd_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct sst_pdata *pdata = dev_get_platdata(rtd->platform->dev);
@@ -102,6 +103,7 @@ static int haswell_rtd_init(struct snd_soc_pcm_runtime *rtd)
 
 	return 0;
 }
+#endif
 
 static struct snd_soc_dai_link haswell_rt5640_dais[] = {
 	/* Front End DAI links */
@@ -113,7 +115,9 @@ static struct snd_soc_dai_link haswell_rt5640_dais[] = {
 		.dynamic = 1,
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
+#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 		.init = haswell_rtd_init,
+#endif
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST, SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,

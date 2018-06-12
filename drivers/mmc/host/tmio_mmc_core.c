@@ -911,7 +911,7 @@ static void tmio_mmc_finish_request(struct tmio_mmc_host *host)
 		host->check_scc_error(host);
 
 	/* If SET_BLOCK_COUNT, continue with main command */
-	if (host->mrq) {
+	if (host->mrq && !mrq->cmd->error) {
 		tmio_process_mrq(host, mrq);
 		return;
 	}
@@ -1113,8 +1113,11 @@ static int tmio_mmc_init_ocr(struct tmio_mmc_host *host)
 {
 	struct tmio_mmc_data *pdata = host->pdata;
 	struct mmc_host *mmc = host->mmc;
+	int err;
 
-	mmc_regulator_get_supply(mmc);
+	err = mmc_regulator_get_supply(mmc);
+	if (err)
+		return err;
 
 	/* use ocr_mask if no regulator */
 	if (!mmc->ocr_avail)

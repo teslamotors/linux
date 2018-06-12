@@ -53,7 +53,7 @@ static inline bool fbc_on_pipe_a_only(struct drm_i915_private *dev_priv)
 
 static inline bool fbc_on_plane_a_only(struct drm_i915_private *dev_priv)
 {
-	return INTEL_GEN(dev_priv) < 4;
+	return INTEL_GEN(dev_priv) < 4 || INTEL_GEN(dev_priv) >= 9;
 }
 
 static inline bool no_fbc_on_multiple_pipes(struct drm_i915_private *dev_priv)
@@ -846,7 +846,7 @@ static bool intel_fbc_can_enable(struct drm_i915_private *dev_priv)
 		return false;
 	}
 
-	if (!i915.enable_fbc) {
+	if (!i915_modparams.enable_fbc) {
 		fbc->no_fbc_reason = "disabled per module param or by default";
 		return false;
 	}
@@ -1061,6 +1061,8 @@ void intel_fbc_choose_crtc(struct drm_i915_private *dev_priv,
 			to_intel_plane_state(plane_state);
 		struct intel_crtc_state *intel_crtc_state;
 		struct intel_crtc *crtc = to_intel_crtc(plane_state->crtc);
+		struct drm_plane *primary = crtc ? crtc->base.primary : NULL;
+		struct intel_plane *intel_plane = primary ? to_intel_plane(primary) : NULL;
 
 		if (!intel_plane_state->base.visible)
 			continue;
@@ -1068,7 +1070,8 @@ void intel_fbc_choose_crtc(struct drm_i915_private *dev_priv,
 		if (fbc_on_pipe_a_only(dev_priv) && crtc->pipe != PIPE_A)
 			continue;
 
-		if (fbc_on_plane_a_only(dev_priv) && crtc->plane != PLANE_A)
+		if (fbc_on_plane_a_only(dev_priv) && (!primary ||
+				 intel_plane->id != PLANE_PRIMARY))
 			continue;
 
 		intel_crtc_state = to_intel_crtc_state(
@@ -1293,8 +1296,8 @@ void intel_fbc_init_pipe_state(struct drm_i915_private *dev_priv)
  */
 static int intel_sanitize_fbc_option(struct drm_i915_private *dev_priv)
 {
-	if (i915.enable_fbc >= 0)
-		return !!i915.enable_fbc;
+	if (i915_modparams.enable_fbc >= 0)
+		return !!i915_modparams.enable_fbc;
 
 	if (!HAS_FBC(dev_priv))
 		return 0;
@@ -1338,8 +1341,9 @@ void intel_fbc_init(struct drm_i915_private *dev_priv)
 	if (need_fbc_vtd_wa(dev_priv))
 		mkwrite_device_info(dev_priv)->has_fbc = false;
 
-	i915.enable_fbc = intel_sanitize_fbc_option(dev_priv);
-	DRM_DEBUG_KMS("Sanitized enable_fbc value: %d\n", i915.enable_fbc);
+	i915_modparams.enable_fbc = intel_sanitize_fbc_option(dev_priv);
+	DRM_DEBUG_KMS("Sanitized enable_fbc value: %d\n",
+		      i915_modparams.enable_fbc);
 
 	if (!HAS_FBC(dev_priv)) {
 		fbc->no_fbc_reason = "unsupported by this chipset";

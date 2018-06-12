@@ -1222,7 +1222,39 @@ static struct i2c_driver rt274_i2c_driver = {
 	.id_table = rt274_i2c_id,
 };
 
+#if !IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
 module_i2c_driver(rt274_i2c_driver);
+#else
+static struct i2c_board_info rt274_i2c_device = {
+	I2C_BOARD_INFO("rt274", 0x1c),
+};
+
+static int __init rt274_modinit(void)
+{
+	int ret = 0;
+	struct i2c_adapter *adapter;
+	struct i2c_client *client;
+
+	adapter = i2c_get_adapter(0);
+	if (adapter) {
+		client = i2c_new_device(adapter, &rt274_i2c_device);
+		if (!client) {
+			pr_err("can't create i2c device %s\n",
+				rt274_i2c_device.type);
+			i2c_put_adapter(adapter);
+			return -ENODEV;
+		}
+	} else {
+		pr_err("adapter is NULL\n");
+		return -ENODEV;
+	}
+
+	ret = i2c_add_driver(&rt274_i2c_driver);
+
+	return ret;
+}
+module_init(rt274_modinit);
+#endif
 
 MODULE_DESCRIPTION("ASoC RT274 driver");
 MODULE_AUTHOR("Bard Liao <bardliao@realtek.com>");

@@ -276,7 +276,7 @@
 	pinctrl-names = "default", "clk-gate";
 
 	bus-width = <8>;
-	max-frequency = <200000000>;
+	max-frequency = <100000000>;
 	non-removable;
 	disable-wp;
 	cap-mmc-highspeed;
@@ -301,6 +301,7 @@
 
 &usb1_phy {
 	status = "okay";
+	phy-supply = <&usb_otg_pwr>;
 };
 
 &usb0 {

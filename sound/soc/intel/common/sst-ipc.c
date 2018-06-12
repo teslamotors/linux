@@ -52,7 +52,7 @@ static struct ipc_message *msg_get_empty(struct sst_generic_ipc *ipc)
 }
 
 static int tx_wait_done(struct sst_generic_ipc *ipc,
-	struct ipc_message *msg, void *rx_data)
+	struct ipc_message *msg, void *rx_data, size_t *rx_bytes)
 {
 	unsigned long flags;
 	int ret;
@@ -71,11 +71,21 @@ static int tx_wait_done(struct sst_generic_ipc *ipc,
 	} else {
 
 		/* copy the data returned from DSP */
-		if (msg->rx_size)
+		if ((rx_bytes != NULL) &&
+				(msg->rx_size > *rx_bytes)) {
+			dev_err(ipc->dev, "rx size is more than expected\n");
+			ret = -EINVAL;
+			goto err;
+		}
+
+		if (msg->rx_size) {
+			if (rx_bytes != NULL)
+				*rx_bytes = msg->rx_size;
 			memcpy(rx_data, msg->rx_data, msg->rx_size);
+		}
 		ret = msg->errno;
 	}
-
+err:
 	list_add_tail(&msg->list, &ipc->empty_list);
 	spin_unlock_irqrestore(&ipc->dsp->spinlock, flags);
 	return ret;
@@ -83,7 +93,7 @@ static int tx_wait_done(struct sst_generic_ipc *ipc,
 
 static int ipc_tx_message(struct sst_generic_ipc *ipc, u64 header,
 	void *tx_data, size_t tx_bytes, void *rx_data,
-	size_t rx_bytes, int wait)
+	size_t *rx_bytes, int wait)
 {
 	struct ipc_message *msg;
 	unsigned long flags;
@@ -98,7 +108,12 @@ static int ipc_tx_message(struct sst_generic_ipc *ipc, u64 header,
 
 	msg->header = header;
 	msg->tx_size = tx_bytes;
-	msg->rx_size = rx_bytes;
+
+	if (!rx_bytes)
+		msg->rx_size = 0;
+	else
+		msg->rx_size = *rx_bytes;
+
 	msg->wait = wait;
 	msg->errno = 0;
 	msg->pending = false;
@@ -112,7 +127,8 @@ static int ipc_tx_message(struct sst_generic_ipc *ipc, u64 header,
 	spin_unlock_irqrestore(&ipc->dsp->spinlock, flags);
 
 	if (wait)
-		return tx_wait_done(ipc, msg, rx_data);
+		return tx_wait_done(ipc, msg, rx_data,
+				rx_bytes);
 	else
 		return 0;
 }
@@ -183,7 +199,8 @@ static void ipc_tx_msgs(struct work_struct *work)
 }
 
 int sst_ipc_tx_message_wait(struct sst_generic_ipc *ipc, u64 header,
-	void *tx_data, size_t tx_bytes, void *rx_data, size_t rx_bytes)
+		void *tx_data, size_t tx_bytes, void *rx_data,
+		size_t *rx_bytes)
 {
 	int ret;
 
@@ -211,7 +228,7 @@ int sst_ipc_tx_message_nowait(struct sst_generic_ipc *ipc, u64 header,
 	void *tx_data, size_t tx_bytes)
 {
 	return ipc_tx_message(ipc, header, tx_data, tx_bytes,
-		NULL, 0, 0);
+		NULL, NULL, 0);
 }
 EXPORT_SYMBOL_GPL(sst_ipc_tx_message_nowait);
 
@@ -219,7 +236,7 @@ int sst_ipc_tx_message_nopm(struct sst_generic_ipc *ipc, u64 header,
 	void *tx_data, size_t tx_bytes, void *rx_data, size_t rx_bytes)
 {
 	return ipc_tx_message(ipc, header, tx_data, tx_bytes,
-		rx_data, rx_bytes, 1);
+		rx_data, &rx_bytes, 1);
 }
 EXPORT_SYMBOL_GPL(sst_ipc_tx_message_nopm);
 

@@ -3148,6 +3148,16 @@ static int cgroup_enable_threaded(struct cgroup *cgrp)
 	if (cgroup_is_threaded(cgrp))
 		return 0;
 
+	/*
+	 * If @cgroup is populated or has domain controllers enabled, it
+	 * can't be switched.  While the below cgroup_can_be_thread_root()
+	 * test can catch the same conditions, that's only when @parent is
+	 * not mixable, so let's check it explicitly.
+	 */
+	if (cgroup_is_populated(cgrp) ||
+	    cgrp->subtree_control & ~cgrp_dfl_threaded_ss_mask)
+		return -EOPNOTSUPP;
+
 	/* we're joining the parent's domain, ensure its validity */
 	if (!cgroup_is_valid_domain(dom_cgrp) ||
 	    !cgroup_can_be_thread_root(dom_cgrp))
@@ -4059,26 +4069,24 @@ static void css_task_iter_advance_css_set(struct css_task_iter *it)
 
 static void css_task_iter_advance(struct css_task_iter *it)
 {
-	struct list_head *l = it->task_pos;
+	struct list_head *next;
 
 	lockdep_assert_held(&css_set_lock);
-	WARN_ON_ONCE(!l);
-
 repeat:
 	/*
 	 * Advance iterator to find next entry.  cset->tasks is consumed
 	 * first and then ->mg_tasks.  After ->mg_tasks, we move onto the
 	 * next cset.
 	 */
-	l = l->next;
+	next = it->task_pos->next;
 
-	if (l == it->tasks_head)
-		l = it->mg_tasks_head->next;
+	if (next == it->tasks_head)
+		next = it->mg_tasks_head->next;
 
-	if (l == it->mg_tasks_head)
+	if (next == it->mg_tasks_head)
 		css_task_iter_advance_css_set(it);
 	else
-		it->task_pos = l;
+		it->task_pos = next;
 
 	/* if PROCS, skip over tasks which aren't group leaders */
 	if ((it->flags & CSS_TASK_ITER_PROCS) && it->task_pos &&

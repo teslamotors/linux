@@ -1,0 +1,69 @@
+/**
+* Support for Intel Camera Imaging ISP subsystem.
+ * Copyright (c) 2010 - 2018, Intel Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+*/
+
+#ifndef __IPU_DEVICE_CELL_TYPE_PROPERTIES_H
+#define __IPU_DEVICE_CELL_TYPE_PROPERTIES_H
+
+#define IPU_DEVICE_INVALID_MEM_ADDRESS 0xFFFFFFFF
+
+enum ipu_device_cell_stat_ctrl_bit {
+	IPU_DEVICE_CELL_STAT_CTRL_RESET_BIT = 0,
+	IPU_DEVICE_CELL_STAT_CTRL_START_BIT = 1,
+	IPU_DEVICE_CELL_STAT_CTRL_RUN_BIT = 3,
+	IPU_DEVICE_CELL_STAT_CTRL_READY_BIT = 5,
+	IPU_DEVICE_CELL_STAT_CTRL_SLEEP_BIT = 6,
+	IPU_DEVICE_CELL_STAT_CTRL_STALL_BIT = 7,
+	IPU_DEVICE_CELL_STAT_CTRL_CLEAR_IRQ_MASK_FLAG_BIT = 8,
+	IPU_DEVICE_CELL_STAT_CTRL_BROKEN_IRQ_MASK_FLAG_BIT = 9,
+	IPU_DEVICE_CELL_STAT_CTRL_READY_IRQ_MASK_FLAG_BIT = 10,
+	IPU_DEVICE_CELL_STAT_CTRL_SLEEP_IRQ_MASK_FLAG_BIT = 11,
+	IPU_DEVICE_CELL_STAT_CTRL_INVALIDATE_ICACHE_BIT = 12,
+	IPU_DEVICE_CELL_STAT_CTRL_ICACHE_ENABLE_PREFETCH_BIT = 13
+};
+
+enum ipu_device_cell_reg_addr {
+	IPU_DEVICE_CELL_STAT_CTRL_REG_ADDRESS	= 0x0,
+	IPU_DEVICE_CELL_START_PC_REG_ADDRESS	= 0x4,
+	IPU_DEVICE_CELL_ICACHE_BASE_REG_ADDRESS	= 0x10,
+	IPU_DEVICE_CELL_ICACHE_INFO_BITS_REG_ADDRESS = 0x14
+};
+
+enum ipu_device_cell_reg {
+	IPU_DEVICE_CELL_STAT_CTRL_REG,
+	IPU_DEVICE_CELL_START_PC_REG,
+	IPU_DEVICE_CELL_ICACHE_BASE_REG,
+	IPU_DEVICE_CELL_DEBUG_PC_REG,
+	IPU_DEVICE_CELL_STALL_REG,
+	IPU_DEVICE_CELL_NUM_REGS
+};
+
+enum ipu_device_cell_mem {
+	IPU_DEVICE_CELL_REGS,	/* memory id of registers */
+	IPU_DEVICE_CELL_PMEM,	/* memory id of pmem */
+	IPU_DEVICE_CELL_DMEM,	/* memory id of dmem */
+	IPU_DEVICE_CELL_BAMEM,	/* memory id of bamem */
+	IPU_DEVICE_CELL_VMEM	/* memory id of vmem */
+};
+#define IPU_DEVICE_CELL_NUM_MEMORIES (IPU_DEVICE_CELL_VMEM + 1)
+
+enum ipu_device_cell_master {
+	IPU_DEVICE_CELL_MASTER_ICACHE,	/* master port id of icache */
+	IPU_DEVICE_CELL_MASTER_QMEM,
+	IPU_DEVICE_CELL_MASTER_CMEM,
+	IPU_DEVICE_CELL_MASTER_XMEM,
+	IPU_DEVICE_CELL_MASTER_XVMEM
+};
+#define IPU_DEVICE_CELL_MASTER_NUM_MASTERS (IPU_DEVICE_CELL_MASTER_XVMEM + 1)
+
+#endif /* __IPU_DEVICE_CELL_TYPE_PROPERTIES_H */

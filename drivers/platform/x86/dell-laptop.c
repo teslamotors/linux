@@ -49,6 +49,7 @@
 
 struct quirk_entry {
 	u8 touchpad_led;
+	u8 kbd_led_levels_off_1;
 
 	int needs_kbd_timeouts;
 	/*
@@ -77,6 +78,10 @@ static int __init dmi_matched(const struct dmi_system_id *dmi)
 static struct quirk_entry quirk_dell_xps13_9333 = {
 	.needs_kbd_timeouts = 1,
 	.kbd_timeouts = { 0, 5, 15, 60, 5 * 60, 15 * 60, -1 },
+};
+
+static struct quirk_entry quirk_dell_latitude_e6410 = {
+	.kbd_led_levels_off_1 = 1,
 };
 
 static struct platform_driver platform_driver = {
@@ -279,6 +284,15 @@ static const struct dmi_system_id dell_quirks[] __initconst = {
 			DMI_MATCH(DMI_PRODUCT_NAME, "XPS13 9333"),
 		},
 		.driver_data = &quirk_dell_xps13_9333,
+	},
+	{
+		.callback = dmi_matched,
+		.ident = "Dell Latitude E6410",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "Dell Inc."),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Latitude E6410"),
+		},
+		.driver_data = &quirk_dell_latitude_e6410,
 	},
 	{ }
 };
@@ -1163,6 +1177,7 @@ static u8 kbd_previous_mode_bit;
 
 static bool kbd_led_present;
 static DEFINE_MUTEX(kbd_led_mutex);
+static enum led_brightness kbd_led_level;
 
 /*
  * NOTE: there are three ways to set the keyboard backlight level.
@@ -1199,6 +1214,9 @@ static int kbd_get_info(struct kbd_info *info)
 	info->triggers = buffer->output[2] & 0xFF;
 	units = (buffer->output[2] >> 8) & 0xFF;
 	info->levels = (buffer->output[2] >> 16) & 0xFF;
+
+	if (quirks && quirks->kbd_led_levels_off_1 && info->levels)
+		info->levels--;
 
 	if (units & BIT(0))
 		info->seconds = (buffer->output[3] >> 0) & 0xFF;
@@ -2003,6 +2021,7 @@ static enum led_brightness kbd_led_level_get(struct led_classdev *led_cdev)
 static int kbd_led_level_set(struct led_classdev *led_cdev,
 			     enum led_brightness value)
 {
+	enum led_brightness new_value = value;
 	struct kbd_state state;
 	struct kbd_state new_state;
 	u16 num;
@@ -2032,6 +2051,9 @@ static int kbd_led_level_set(struct led_classdev *led_cdev,
 	}
 
 out:
+	if (ret == 0)
+		kbd_led_level = new_value;
+
 	mutex_unlock(&kbd_led_mutex);
 	return ret;
 }
@@ -2059,6 +2081,9 @@ static int __init kbd_led_init(struct device *dev)
 		if (kbd_led.max_brightness)
 			kbd_led.max_brightness--;
 	}
+
+	kbd_led_level = kbd_led_level_get(NULL);
+
 	ret = led_classdev_register(dev, &kbd_led);
 	if (ret)
 		kbd_led_present = false;
@@ -2083,13 +2108,25 @@ static void kbd_led_exit(void)
 static int dell_laptop_notifier_call(struct notifier_block *nb,
 				     unsigned long action, void *data)
 {
+	bool changed = false;
+	enum led_brightness new_kbd_led_level;
+
 	switch (action) {
 	case DELL_LAPTOP_KBD_BACKLIGHT_BRIGHTNESS_CHANGED:
 		if (!kbd_led_present)
 			break;
 
-		led_classdev_notify_brightness_hw_changed(&kbd_led,
-						kbd_led_level_get(&kbd_led));
+		mutex_lock(&kbd_led_mutex);
+		new_kbd_led_level = kbd_led_level_get(&kbd_led);
+		if (kbd_led_level != new_kbd_led_level) {
+			kbd_led_level = new_kbd_led_level;
+			changed = true;
+		}
+		mutex_unlock(&kbd_led_mutex);
+
+		if (changed)
+			led_classdev_notify_brightness_hw_changed(&kbd_led,
+								kbd_led_level);
 		break;
 	}
 

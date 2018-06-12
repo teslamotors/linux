@@ -25,6 +25,24 @@ static guid_t osc_guid =
 	GUID_INIT(0xA69F886E, 0x6CEB, 0x4594,
 		  0xA4, 0x1F, 0x7B, 0x5D, 0xCE, 0x24, 0xC5, 0x53);
 
+#define NHLT_ACPI_HEADER_SIG	"NHLT"
+
+int skl_get_nhlt_version(struct device *dev)
+{
+	const char *version;
+	int ret;
+
+	ret = device_property_read_string(dev, "nhlt-version", &version);
+	if (!ret) {
+		if (!strncmp(version, "1.8-0", strlen("1.8-0")))
+			return VERSION_1;
+		else
+			return VERSION_INVALID;
+	}
+	/* if reading fails, assume we are on older platforms */
+	return VERSION_0;
+}
+
 struct nhlt_acpi_table *skl_nhlt_init(struct device *dev)
 {
 	acpi_handle handle;
@@ -41,10 +59,18 @@ struct nhlt_acpi_table *skl_nhlt_init(struct device *dev)
 	obj = acpi_evaluate_dsm(handle, &osc_guid, 1, 1, NULL);
 	if (obj && obj->type == ACPI_TYPE_BUFFER) {
 		nhlt_ptr = (struct nhlt_resource_desc  *)obj->buffer.pointer;
-		nhlt_table = (struct nhlt_acpi_table *)
+		if (nhlt_ptr->length)
+			nhlt_table = (struct nhlt_acpi_table *)
 				memremap(nhlt_ptr->min_addr, nhlt_ptr->length,
 				MEMREMAP_WB);
 		ACPI_FREE(obj);
+		if (nhlt_table && (strncmp(nhlt_table->header.signature,
+					NHLT_ACPI_HEADER_SIG,
+					strlen(NHLT_ACPI_HEADER_SIG)) != 0)) {
+			memunmap(nhlt_table);
+			dev_err(dev, "NHLT ACPI header signature incorrect\n");
+			return NULL;
+		}
 		return nhlt_table;
 	}
 
@@ -115,6 +141,26 @@ static bool skl_check_ep_match(struct device *dev, struct nhlt_endpoint *epnt,
 		return true;
 	else
 		return false;
+}
+
+struct nhlt_specific_cfg *
+skl_get_nhlt_specific_cfg(struct skl *skl, u32 instance, u8 link_type,
+		u8 s_fmt, u8 num_ch, u32 s_rate, u8 dir, u8 dev_type)
+{
+	struct nhlt_specific_cfg *cfg = NULL;
+	struct hdac_ext_bus *ebus = &skl->ebus;
+
+	/* update the blob based on virtual bus_id*/
+	if (!skl->nhlt_override) {
+		dev_warn(ebus_to_hbus(ebus)->dev, "Querying NHLT blob from ACPI NHLT table !!\n");
+		cfg = skl_get_ep_blob(skl, instance, link_type, s_fmt,
+				num_ch, s_rate, dir, dev_type);
+	} else {
+		dev_warn(ebus_to_hbus(ebus)->dev, "Querying NHLT blob from Debugfs!!\n");
+		cfg = skl_nhlt_get_debugfs_blob(skl->debugfs, link_type, instance, dir);
+	}
+
+	return cfg;
 }
 
 struct nhlt_specific_cfg

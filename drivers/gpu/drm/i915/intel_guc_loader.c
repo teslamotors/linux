@@ -61,9 +61,6 @@
 #define KBL_FW_MAJOR 9
 #define KBL_FW_MINOR 14
 
-#define GLK_FW_MAJOR 10
-#define GLK_FW_MINOR 56
-
 #define GUC_FW_PATH(platform, major, minor) \
        "i915/" __stringify(platform) "_guc_ver" __stringify(major) "_" __stringify(minor) ".bin"
 
@@ -75,8 +72,6 @@ MODULE_FIRMWARE(I915_BXT_GUC_UCODE);
 
 #define I915_KBL_GUC_UCODE GUC_FW_PATH(kbl, KBL_FW_MAJOR, KBL_FW_MINOR)
 MODULE_FIRMWARE(I915_KBL_GUC_UCODE);
-
-#define I915_GLK_GUC_UCODE GUC_FW_PATH(glk, GLK_FW_MAJOR, GLK_FW_MINOR)
 
 
 static u32 get_gttype(struct drm_i915_private *dev_priv)
@@ -131,14 +126,14 @@ static void guc_params_init(struct drm_i915_private *dev_priv)
 
 	params[GUC_CTL_LOG_PARAMS] = guc->log.flags;
 
-	if (i915.guc_log_level >= 0) {
+	if (i915_modparams.guc_log_level >= 0) {
 		params[GUC_CTL_DEBUG] =
-			i915.guc_log_level << GUC_LOG_VERBOSITY_SHIFT;
+			i915_modparams.guc_log_level << GUC_LOG_VERBOSITY_SHIFT;
 	} else
 		params[GUC_CTL_DEBUG] = GUC_LOG_DISABLED;
 
 	/* If GuC submission is enabled, set up additional parameters here */
-	if (i915.enable_guc_submission) {
+	if (i915_modparams.enable_guc_submission) {
 		u32 ads = guc_ggtt_offset(guc->ads_vma) >> PAGE_SHIFT;
 		u32 pgs = guc_ggtt_offset(dev_priv->guc.stage_desc_pool);
 		u32 ctx_in_16 = GUC_MAX_STAGE_DESCRIPTORS / 16;
@@ -368,7 +363,8 @@ int intel_guc_init_hw(struct intel_guc *guc)
 	guc->fw.load_status = INTEL_UC_FIRMWARE_SUCCESS;
 
 	DRM_INFO("GuC %s (firmware %s [version %u.%u])\n",
-		 i915.enable_guc_submission ? "submission enabled" : "loaded",
+		 i915_modparams.enable_guc_submission ? "submission enabled" :
+							"loaded",
 		 guc->fw.path,
 		 guc->fw.major_ver_found, guc->fw.minor_ver_found);
 
@@ -390,8 +386,8 @@ int intel_guc_select_fw(struct intel_guc *guc)
 	guc->fw.load_status = INTEL_UC_FIRMWARE_NONE;
 	guc->fw.type = INTEL_UC_FW_TYPE_GUC;
 
-	if (i915.guc_firmware_path) {
-		guc->fw.path = i915.guc_firmware_path;
+	if (i915_modparams.guc_firmware_path) {
+		guc->fw.path = i915_modparams.guc_firmware_path;
 		guc->fw.major_ver_wanted = 0;
 		guc->fw.minor_ver_wanted = 0;
 	} else if (IS_SKYLAKE(dev_priv)) {
@@ -406,10 +402,6 @@ int intel_guc_select_fw(struct intel_guc *guc)
 		guc->fw.path = I915_KBL_GUC_UCODE;
 		guc->fw.major_ver_wanted = KBL_FW_MAJOR;
 		guc->fw.minor_ver_wanted = KBL_FW_MINOR;
-	} else if (IS_GEMINILAKE(dev_priv)) {
-		guc->fw.path = I915_GLK_GUC_UCODE;
-		guc->fw.major_ver_wanted = GLK_FW_MAJOR;
-		guc->fw.minor_ver_wanted = GLK_FW_MINOR;
 	} else {
 		DRM_ERROR("No GuC firmware known for platform with GuC!\n");
 		return -ENOENT;

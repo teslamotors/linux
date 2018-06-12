@@ -453,7 +453,7 @@ static void aspm_calc_l1ss_info(struct pcie_link_state *link,
 
 	/* Choose the greater of the two T_cmn_mode_rstr_time */
 	val1 = (upreg->l1ss_cap >> 8) & 0xFF;
-	val2 = (upreg->l1ss_cap >> 8) & 0xFF;
+	val2 = (dwreg->l1ss_cap >> 8) & 0xFF;
 	if (val1 > val2)
 		link->l1ss.ctl1 |= val1 << 8;
 	else
@@ -658,7 +658,7 @@ static void pcie_config_aspm_l1ss(struct pcie_link_state *link, u32 state)
 					0xFF00, link->l1ss.ctl1);
 
 		/* Program LTR L1.2 threshold in both ports */
-		pci_clear_and_set_dword(parent,	dw_cap_ptr + PCI_L1SS_CTL1,
+		pci_clear_and_set_dword(parent,	up_cap_ptr + PCI_L1SS_CTL1,
 					0xE3FF0000, link->l1ss.ctl1);
 		pci_clear_and_set_dword(child, dw_cap_ptr + PCI_L1SS_CTL1,
 					0xE3FF0000, link->l1ss.ctl1);
@@ -803,10 +803,14 @@ static struct pcie_link_state *alloc_pcie_link_state(struct pci_dev *pdev)
 
 	/*
 	 * Root Ports and PCI/PCI-X to PCIe Bridges are roots of PCIe
-	 * hierarchies.
+	 * hierarchies.  Note that some PCIe host implementations omit
+	 * the root ports entirely, in which case a downstream port on
+	 * a switch may become the root of the link state chain for all
+	 * its subordinate endpoints.
 	 */
 	if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT ||
-	    pci_pcie_type(pdev) == PCI_EXP_TYPE_PCIE_BRIDGE) {
+	    pci_pcie_type(pdev) == PCI_EXP_TYPE_PCIE_BRIDGE ||
+	    !pdev->bus->parent->self) {
 		link->root = link;
 	} else {
 		struct pcie_link_state *parent;

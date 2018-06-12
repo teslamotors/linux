@@ -1,0 +1,66 @@
+#
+# Trusty
+#
+
+menu "Trusty"
+
+config TRUSTY
+	tristate "Trusty"
+	depends on X86_64
+	default n
+
+config TRUSTY_FIQ
+	tristate
+	depends on TRUSTY
+
+config TRUSTY_FIQ_ARM
+	tristate
+	depends on TRUSTY
+	depends on ARM
+	select FIQ_GLUE
+	select TRUSTY_FIQ
+	default y
+
+config TRUSTY_FIQ_ARM64
+	tristate
+	depends on TRUSTY
+	depends on ARM64
+	select FIQ_GLUE
+	select TRUSTY_FIQ
+	default y
+
+config TRUSTY_LOG
+	tristate "Trusty Log support"
+	depends on TRUSTY
+	default y
+
+config TRUSTY_VIRTIO
+	tristate "Trusty virtio support"
+	depends on TRUSTY
+	select VIRTIO
+	default y
+
+config TRUSTY_VIRTIO_IPC
+	tristate "Trusty Virtio IPC driver"
+	depends on TRUSTY_VIRTIO
+	default y
+	help
+	  This module adds support for communications with Trusty Services
+
+	  If you choose to build a module, it'll be called trusty-ipc.
+	  Say N if unsure.
+
+config TRUSTY_BACKUP_TIMER
+	tristate "Trusty backup timer"
+	depends on TRUSTY
+	default y
+	help
+	  This module adds support for Trusty backup timer. Trusty backup
+	  timer might be required on platforms that might loose state of
+	  secure timer in deep idle state.
+
+	  If you choose to build a module, it'll be called trusty-timer.
+	  Say N if unsure.
+
+
+endmenu

@@ -37,3 +37,11 @@ config REGMAP_MMIO
 
 config REGMAP_IRQ
 	bool
+
+config REGMAP_SDW
+	default n
+	tristate "Regmap support for soundwire"
+	depends on SDW
+	help
+	  Enable this if regmap support is required for
+	  soundwire slave devices.

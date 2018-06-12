@@ -52,17 +52,6 @@ struct drm_i915_gem_request;
  * GuC). The subsequent  pages of the client object constitute the work
  * queue (a circular array of work items), again described in the process
  * descriptor. Work queue pages are mapped momentarily as required.
- *
- * We also keep a few statistics on failures. Ideally, these should all
- * be zero!
- *   no_wq_space: times that the submission pre-check found no space was
- *                available in the work queue (note, the queue is shared,
- *                not per-engine). It is OK for this to be nonzero, but
- *                it should not be huge!
- *   b_fail: failed to ring the doorbell. This should never happen, unless
- *           somehow the hardware misbehaves, or maybe if the GuC firmware
- *           crashes? We probably need to reset the GPU to recover.
- *   retcode: errno from last guc_submit()
  */
 struct i915_guc_client {
 	struct i915_vma *vma;
@@ -77,15 +66,8 @@ struct i915_guc_client {
 
 	u16 doorbell_id;
 	unsigned long doorbell_offset;
-	u32 doorbell_cookie;
 
 	spinlock_t wq_lock;
-	uint32_t wq_offset;
-	uint32_t wq_size;
-	uint32_t wq_tail;
-	uint32_t wq_rsvd;
-	uint32_t no_wq_space;
-
 	/* Per-engine counts of GuC submissions */
 	uint64_t submissions[I915_NUM_ENGINES];
 };
@@ -250,8 +232,6 @@ u32 intel_guc_wopcm_size(struct drm_i915_private *dev_priv);
 /* i915_guc_submission.c */
 int i915_guc_submission_init(struct drm_i915_private *dev_priv);
 int i915_guc_submission_enable(struct drm_i915_private *dev_priv);
-int i915_guc_wq_reserve(struct drm_i915_gem_request *rq);
-void i915_guc_wq_unreserve(struct drm_i915_gem_request *request);
 void i915_guc_submission_disable(struct drm_i915_private *dev_priv);
 void i915_guc_submission_fini(struct drm_i915_private *dev_priv);
 struct i915_vma *intel_guc_allocate_vma(struct intel_guc *guc, u32 size);

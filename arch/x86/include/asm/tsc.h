@@ -62,6 +62,15 @@ extern int notsc_setup(char *);
 extern void tsc_save_sched_clock_state(void);
 extern void tsc_restore_sched_clock_state(void);
 
+#ifdef CONFIG_PARAVIRT
+#include <asm/paravirt.h>
+#else
+static inline unsigned long cpu_khz_from_paravirt(void)
+{
+	return 0;
+}
+#endif
+
 unsigned long cpu_khz_from_msr(void);
 
 #endif /* _ASM_X86_TSC_H */
