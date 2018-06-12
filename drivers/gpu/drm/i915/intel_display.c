@@ -13642,6 +13642,7 @@ static void intel_crtc_init_scalers(struct intel_crtc *crtc,
 		scaler->owned = 1;
 #if IS_ENABLED(CONFIG_DRM_I915_GVT)
 		if (!intel_vgpu_active(dev_priv) &&
+		    intel_gvt_active(dev_priv) &&
 		    dev_priv->gvt->pipe_info[crtc->pipe].scaler_owner[i] != 0)
 			scaler->owned = 0;
 #endif
