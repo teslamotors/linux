@@ -655,7 +655,7 @@ static const struct v4l2_ctrl_ops max9286_ctrl_ops = {
 	.s_ctrl = max9286_s_ctrl,
 };
 
-static const s64 max9286_op_sys_clock[] = { 264000000, };
+static const s64 max9286_op_sys_clock[] = { 87750000, };
 static const struct v4l2_ctrl_config max9286_controls[] = {
 	{
 		.ops = &max9286_ctrl_ops,
