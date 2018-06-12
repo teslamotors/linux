@@ -290,7 +290,7 @@ static int get_token_u16(void *elem, void *object, u32 offset, u32 size)
 	struct snd_soc_tplg_vendor_value_elem *velem = elem;
 	u16 *val = object + offset;
 
-	*val = velem->value;
+	*val = (u16)le32_to_cpu(velem->value);
 	return 0;
 }
 
