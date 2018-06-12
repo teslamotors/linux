@@ -552,73 +552,18 @@ static void sof_parse_string_tokens(struct snd_soc_component *scomp,
 	}
 }
 
-/* helper function to parse DMIC pdm specific tokens */
-static void sof_parse_pdm_tokens(struct snd_soc_component *scomp,
-				 struct snd_soc_tplg_vendor_value_elem *elem,
-				 void *object,
-				 struct sof_topology_token token)
-{
-	size_t size = sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
-	u32 offset = token.offset;
-	/* pdm_index determines the index in pdm[] to populate the token */
-	static int pdm_index;
-	/* determines the offset of the item in sof_ipc_dai_dmic_pdm_ctrl */
-	u32 pdm_offset;
-
-	switch (token.token) {
-	case SOF_TKN_INTEL_DMIC_PDM_CTRL_ID:
-		token.get_token(elem, object, offset + pdm_index * size,
-				token.size);
-		/* increment the pdm_index */
-		pdm_index++;
-		return;
-	case SOF_TKN_INTEL_DMIC_PDM_MIC_A_Enable:
-		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
-				      enable_mic_a);
-		break;
-	case SOF_TKN_INTEL_DMIC_PDM_MIC_B_Enable:
-		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
-				      enable_mic_b);
-		break;
-	case SOF_TKN_INTEL_DMIC_PDM_POLARITY_A:
-		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
-				      polarity_mic_a);
-		break;
-	case SOF_TKN_INTEL_DMIC_PDM_POLARITY_B:
-		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
-				      polarity_mic_b);
-		break;
-	case SOF_TKN_INTEL_DMIC_PDM_CLK_EDGE:
-		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
-				      clk_edge);
-		break;
-	case SOF_TKN_INTEL_DMIC_PDM_SKEW:
-		pdm_offset = offsetof(struct sof_ipc_dai_dmic_pdm_ctrl,
-				      skew);
-		break;
-	default:
-		break;
-	}
-
-	/*
-	 * offset: address pointing to pdm[0] in dmic_params
-	 * pdm_index - 1: index of the array item to be populated
-	 * pdm_offset: item offset in sof_ipc_dai_dmic_pdm_ctrl
-	 *	       indexed by pdm_index
-	 */
-	token.get_token(elem, object,
-			offset + (pdm_index - 1) * size + pdm_offset,
-			token.size);
-}
-
 static void sof_parse_word_tokens(struct snd_soc_component *scomp,
 				  void *object,
 				  const struct sof_topology_token *tokens,
 				  int count,
 				  struct snd_soc_tplg_vendor_array *array)
 {
+	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
 	struct snd_soc_tplg_vendor_value_elem *elem;
+	size_t size = sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
 	int i, j;
+	u32 offset;
+	u32 *index = NULL;
 
 	/* parse element by element */
 	for (i = 0; i < array->num_elems; i++) {
@@ -635,25 +580,43 @@ static void sof_parse_word_tokens(struct snd_soc_component *scomp,
 			if (tokens[j].token != elem->token)
 				continue;
 
-			/* matched - now load token */
+			/* pdm config array index */
+			if (sdev->private)
+				index = (u32 *)sdev->private;
+
+			/* matched - determine offset */
 			switch (tokens[j].token) {
 			case SOF_TKN_INTEL_DMIC_PDM_CTRL_ID:
+
+				/* inc number of pdm array index */
+				if (index)
+					++(*index);
 			case SOF_TKN_INTEL_DMIC_PDM_MIC_A_Enable:
 			case SOF_TKN_INTEL_DMIC_PDM_MIC_B_Enable:
 			case SOF_TKN_INTEL_DMIC_PDM_POLARITY_A:
 			case SOF_TKN_INTEL_DMIC_PDM_POLARITY_B:
 			case SOF_TKN_INTEL_DMIC_PDM_CLK_EDGE:
 			case SOF_TKN_INTEL_DMIC_PDM_SKEW:
-				/* parse pdm specific tokens */
-				sof_parse_pdm_tokens(scomp, elem, object,
-						     tokens[j]);
+
+				/* check if array index is valid */
+				if (!index || *index == 0) {
+					dev_err(sdev->dev,
+						"error: invalid array offset\n");
+					continue;
+				} else {
+					/* offset within the pdm config array */
+					offset = size * (*index - 1);
+				}
 				break;
 			default:
-				tokens[j].get_token(elem, object,
-						    tokens[j].offset,
-						    tokens[j].size);
+				offset = 0;
 				break;
 			}
+
+			/* load token */
+			tokens[j].get_token(elem, object,
+					    offset + tokens[j].offset,
+					    tokens[j].size);
 		}
 	}
 }
@@ -1604,8 +1567,14 @@ static int sof_link_dmic_load(struct snd_soc_component *scomp, int index,
 	/* copy the common dai config and dmic params */
 	memcpy(ipc_config, config, sizeof(*config));
 
+	/*
+	 * alloc memory for private member
+	 * Used to track the pdm config array index currently being parsed
+	 */
+	sdev->private = kzalloc(sizeof(u32), GFP_KERNEL);
+
 	/* get DMIC PDM tokens */
-	ret = sof_parse_tokens(scomp, &ipc_config->dmic, dmic_pdm_tokens,
+	ret = sof_parse_tokens(scomp, &ipc_config->dmic.pdm[0], dmic_pdm_tokens,
 			       ARRAY_SIZE(dmic_pdm_tokens), private->array,
 			       private->size);
 	if (ret != 0) {
@@ -1658,6 +1627,7 @@ static int sof_link_dmic_load(struct snd_soc_component *scomp, int index,
 		dev_err(sdev->dev, "error: failed to set DAI config for DMIC%d\n",
 			config->id);
 
+	kfree(sdev->private);
 	kfree(ipc_config);
 
 	return ret;
