@@ -266,6 +266,7 @@ static int video_release(struct file *file)
 {
 	struct ipu_isys_video *av = video_drvdata(file);
 	int ret = 0;
+	int end = 0;
 
 	vb2_fop_release(file);
 
@@ -291,6 +292,17 @@ static int video_release(struct file *file)
 		pm_runtime_put_sync(&av->isys->adev->dev);
 	else
 		pm_runtime_put(&av->isys->adev->dev);
+
+	/* Make sure that power cycle will be done when needed */
+	if (!av->isys->video_opened && av->isys->reset_needed) {
+		do {
+			msleep(1);
+			mutex_lock(&av->isys->mutex);
+			if (av->isys->reset_needed == false)
+				end = 1;
+			mutex_unlock(&av->isys->mutex);
+		} while (!end);
+	}
 
 	return ret;
 }
