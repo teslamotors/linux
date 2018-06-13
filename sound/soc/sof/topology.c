@@ -322,10 +322,6 @@ static const struct sof_topology_token buffer_tokens[] = {
 
 /* DAI */
 static const struct sof_topology_token dai_tokens[] = {
-	{SOF_TKN_DAI_DMAC, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_ipc_comp_dai, dmac_id), 0},
-	{SOF_TKN_DAI_DMAC_CHAN, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_ipc_comp_dai, dmac_chan), 0},
 	{SOF_TKN_DAI_DMAC_CONFIG, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
 		offsetof(struct sof_ipc_comp_dai, dmac_config), 0},
 	{SOF_TKN_DAI_TYPE, SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_dai_type,
@@ -384,10 +380,6 @@ static const struct sof_topology_token tone_tokens[] = {
 
 /* PCM */
 static const struct sof_topology_token pcm_tokens[] = {
-	{SOF_TKN_PCM_DMAC, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_ipc_comp_host, dmac_id), 0},
-	{SOF_TKN_PCM_DMAC_CHAN, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_ipc_comp_host, dmac_chan), 0},
 	{SOF_TKN_PCM_DMAC_CONFIG, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
 		offsetof(struct sof_ipc_comp_host, dmac_config), 0},
 };
@@ -848,9 +840,8 @@ static int sof_widget_load_dai(struct snd_soc_component *scomp, int index,
 		return ret;
 	}
 
-	dev_dbg(sdev->dev, "dai %s: dmac %d chan %d type %d index %d\n",
-		swidget->widget->name, comp_dai.dmac_id, comp_dai.dmac_chan,
-		comp_dai.type, comp_dai.index);
+	dev_dbg(sdev->dev, "dai %s: type %d index %d\n",
+		swidget->widget->name, comp_dai.type, comp_dai.index);
 	sof_dbg_comp_config(scomp, &comp_dai.config);
 
 	ret = sof_ipc_tx_message(sdev->ipc, comp_dai.comp.hdr.cmd,
@@ -945,8 +936,7 @@ static int sof_widget_load_pcm(struct snd_soc_component *scomp, int index,
 		return ret;
 	}
 
-	dev_dbg(sdev->dev, "host %s: dmac %d chan %d\n",
-		swidget->widget->name, host.dmac_id, host.dmac_chan);
+	dev_dbg(sdev->dev, "loaded host %s\n", swidget->widget->name);
 	sof_dbg_comp_config(scomp, &host.config);
 
 	return sof_ipc_tx_message(sdev->ipc,
