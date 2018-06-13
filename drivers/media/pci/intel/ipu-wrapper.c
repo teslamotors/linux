@@ -14,6 +14,10 @@
 #include "ipu-dma.h"
 #include "ipu-mmu.h"
 #include "ipu-wrapper.h"
+#include "vied_subsystem_access.h"
+#include "vied_subsystem_access_initialization.h"
+#include "shared_memory_map.h"
+#include "shared_memory_access.h"
 
 struct wrapper_base {
 	void __iomem *sys_base;
@@ -25,8 +29,8 @@ struct wrapper_base {
 	struct device *dev;
 };
 
-struct wrapper_base isys;
-struct wrapper_base psys;
+static struct wrapper_base isys;
+static struct wrapper_base psys;
 
 struct my_css_memory_buffer_item {
 	struct list_head list;
@@ -80,22 +84,22 @@ static void *host_addr(int ssid, u32 addr)
 	return NULL;
 }
 
-void vied_subsystem_store_32(int ssid, u32 addr, u32 data)
+void vied_subsystem_store_32(unsigned int ssid, u32 addr, u32 data)
 {
 	writel(data, host_addr(ssid, addr));
 }
 
-void vied_subsystem_store_16(int ssid, u32 addr, u16 data)
+void vied_subsystem_store_16(unsigned int ssid, u32 addr, u16 data)
 {
 	writew(data, host_addr(ssid, addr));
 }
 
-void vied_subsystem_store_8(int ssid, u32 addr, u8 data)
+void vied_subsystem_store_8(unsigned int ssid, u32 addr, u8 data)
 {
 	writeb(data, host_addr(ssid, addr));
 }
 
-void vied_subsystem_store(int ssid,
+void vied_subsystem_store(unsigned int ssid,
 			  u32 addr, const void *data, unsigned int size)
 {
 	void *dst = host_addr(ssid, addr);
@@ -115,22 +119,23 @@ void vied_subsystem_store(int ssid,
 		writeb(*(u8 *) data, dst);
 }
 
-u32 vied_subsystem_load_32(int ssid, u32 addr)
+u32 vied_subsystem_load_32(unsigned int ssid, u32 addr)
 {
 	return readl(host_addr(ssid, addr));
 }
 
-u16 vied_subsystem_load_16(int ssid, u32 addr)
+u16 vied_subsystem_load_16(unsigned int ssid, u32 addr)
 {
 	return readw(host_addr(ssid, addr));
 }
 
-u8 vied_subsystem_load_8(int ssid, u32 addr)
+u8 vied_subsystem_load_8(unsigned int ssid, u32 addr)
 {
 	return readb(host_addr(ssid, addr));
 }
 
-void vied_subsystem_load(int ssid, u32 addr, void *data, unsigned int size)
+void vied_subsystem_load(unsigned int ssid, u32 addr,
+			 void *data, unsigned int size)
 {
 	void *src = host_addr(ssid, addr);
 
@@ -151,7 +156,7 @@ void vied_subsystem_load(int ssid, u32 addr, void *data, unsigned int size)
 /*
  * Initialize base address for subsystem
  */
-void vied_subsystem_access_initialize(int system)
+void vied_subsystem_access_initialize(unsigned int system)
 {
 }
 
@@ -167,7 +172,7 @@ void vied_subsystem_access_initialize(int system)
  * \param memory_size: size of ddr memory in bytes
  * \param ps: size of page in bytes (for instance 4096)
  */
-int shared_memory_allocation_initialize(int mmid, u64 host_ddr_addr,
+int shared_memory_allocation_initialize(unsigned int mmid, u64 host_ddr_addr,
 					size_t memory_size, size_t ps)
 {
 	return 0;
@@ -177,7 +182,7 @@ int shared_memory_allocation_initialize(int mmid, u64 host_ddr_addr,
  * \brief De-initialize the shared memory interface administration on the host.
  *
  */
-void shared_memory_allocation_uninitialize(int mmid)
+void shared_memory_allocation_uninitialize(unsigned int mmid)
 {
 }
 
@@ -191,9 +196,10 @@ void shared_memory_allocation_uninitialize(int mmid)
  * \param inv_tlb: invalidate tbl
  * \param sbt: set l1 base address
  */
-int shared_memory_map_initialize(int ssid, int mmid, size_t mmu_ps,
-				 size_t mmu_pnrs, u64 ddr_addr,
-				 int inv_tlb, int sbt)
+int shared_memory_map_initialize(unsigned int ssid, unsigned int mmid,
+				 size_t mmu_ps, size_t mmu_pnrs, u64 ddr_addr,
+				 shared_memory_invalidate_mmu_tlb inv_tlb,
+				 shared_memory_set_page_table_base_address sbt)
 {
 	return 0;
 }
@@ -201,7 +207,7 @@ int shared_memory_map_initialize(int ssid, int mmid, size_t mmu_ps,
 /**
  * \brief De-initialize the shared memory interface administration on the host.
  */
-void shared_memory_map_uninitialize(int ssid, int mmid)
+void shared_memory_map_uninitialize(unsigned int ssid, unsigned int mmid)
 {
 }
 
@@ -211,7 +217,7 @@ static u8 alloc_cookie;
  * \brief Allocate (DDR) shared memory space and return a host virtual address.
  * \Returns NULL when insufficient memory available
  */
-u64 shared_memory_alloc(int mmid, size_t bytes)
+u64 shared_memory_alloc(unsigned int mmid, size_t bytes)
 {
 	struct wrapper_base *mine = get_mem_sub_system(mmid);
 	struct my_css_memory_buffer_item *buf;
@@ -254,7 +260,7 @@ u64 shared_memory_alloc(int mmid, size_t bytes)
 /**
  * \brief Free (DDR) shared memory space.
  */
-void shared_memory_free(int mmid, u64 addr)
+void shared_memory_free(unsigned int mmid, u64 addr)
 {
 	struct wrapper_base *mine = get_mem_sub_system(mmid);
 	struct my_css_memory_buffer_item *buf = NULL;
@@ -294,7 +300,7 @@ void shared_memory_free(int mmid, u64 addr)
  * \brief Convert a host virtual address to a CSS virtual address and
  * \update the MMU.
  */
-u32 shared_memory_map(int ssid, int mmid, u64 addr)
+u32 shared_memory_map(unsigned int ssid, unsigned int mmid, u64 addr)
 {
 	struct wrapper_base *mine = get_mem_sub_system(mmid);
 	struct my_css_memory_buffer_item *buf = NULL;
@@ -321,7 +327,7 @@ u32 shared_memory_map(int ssid, int mmid, u64 addr)
 /**
  * \brief Free a CSS virtual address and update the MMU.
  */
-void shared_memory_unmap(int ssid, int mmid, u32 addr)
+void shared_memory_unmap(unsigned int ssid, unsigned int mmid, u32 addr)
 {
 }
 
@@ -329,7 +335,7 @@ void shared_memory_unmap(int ssid, int mmid, u32 addr)
  * \brief Store a byte into (DDR) shared memory space using a host
  * \virtual address
  */
-void shared_memory_store_8(int mmid, u64 addr, u8 data)
+void shared_memory_store_8(unsigned int mmid, u64 addr, u8 data)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
 		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
@@ -344,7 +350,7 @@ void shared_memory_store_8(int mmid, u64 addr, u8 data)
  * \brief Store a 16-bit word into (DDR) shared memory space using a host
  * \virtual address
  */
-void shared_memory_store_16(int mmid, u64 addr, u16 data)
+void shared_memory_store_16(unsigned int mmid, u64 addr, u16 data)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
 		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
@@ -359,7 +365,7 @@ void shared_memory_store_16(int mmid, u64 addr, u16 data)
  * \brief Store a 32-bit word into (DDR) shared memory space using a host
  * \virtual address
  */
-void shared_memory_store_32(int mmid, u64 addr, u32 data)
+void shared_memory_store_32(unsigned int mmid, u64 addr, u32 data)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
 		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
@@ -374,7 +380,8 @@ void shared_memory_store_32(int mmid, u64 addr, u32 data)
  * \brief Store a number of bytes into (DDR) shared memory space using a host
  * \virtual address
  */
-void shared_memory_store(int mmid, u64 addr, const void *data, size_t bytes)
+void shared_memory_store(unsigned int mmid, u64 addr, const void *data,
+			 size_t bytes)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
 		"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,
@@ -400,7 +407,7 @@ void shared_memory_store(int mmid, u64 addr, const void *data, size_t bytes)
  * \brief Set a number of bytes of (DDR) shared memory space to 0 using a host
  * \virtual address
  */
-void shared_memory_zero(int mmid, u64 addr, size_t bytes)
+void shared_memory_zero(unsigned int mmid, u64 addr, size_t bytes)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
 		"access: %s: Enter addr = 0x%llx data = 0x%zx\n",
@@ -414,7 +421,7 @@ void shared_memory_zero(int mmid, u64 addr, size_t bytes)
  * \brief Load a byte from (DDR) shared memory space using a host
  * \virtual address
  */
-u8 shared_memory_load_8(int mmid, u64 addr)
+u8 shared_memory_load_8(unsigned int mmid, u64 addr)
 {
 	u8 data = 0;
 
@@ -431,7 +438,7 @@ u8 shared_memory_load_8(int mmid, u64 addr)
  * \brief Load a 16-bit word from (DDR) shared memory space using a host
  * \virtual address
  */
-u16 shared_memory_load_16(int mmid, u64 addr)
+u16 shared_memory_load_16(unsigned int mmid, u64 addr)
 {
 	u16 data = 0;
 
@@ -448,7 +455,7 @@ u16 shared_memory_load_16(int mmid, u64 addr)
  * \brief Load a 32-bit word from (DDR) shared memory space using a host
  * \virtual address
  */
-u32 shared_memory_load_32(int mmid, u64 addr)
+u32 shared_memory_load_32(unsigned int mmid, u64 addr)
 {
 	u32 data = 0;
 
@@ -465,7 +472,7 @@ u32 shared_memory_load_32(int mmid, u64 addr)
  * \brief Load a number of bytes from (DDR) shared memory space using a host
  * \virtual address
  */
-void shared_memory_load(int mmid, u64 addr, void *data, size_t bytes)
+void shared_memory_load(unsigned int mmid, u64 addr, void *data, size_t bytes)
 {
 	dev_dbg(get_mem_sub_system(mmid)->dev,
 		"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,

@@ -7,6 +7,8 @@
 
 #include <uapi/linux/ipu-psys.h>
 
+#include "ipu-psys.h"
+
 static long native_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	long ret = -ENOTTY;

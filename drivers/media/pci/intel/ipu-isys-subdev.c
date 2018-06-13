@@ -127,19 +127,6 @@ enum ipu_isys_subdev_pixelorder ipu_isys_subdev_get_pixelorder(u32 code)
 	}
 }
 
-unsigned int ipu_isys_get_compression_scheme(u32 code)
-{
-	switch (code) {
-	case MEDIA_BUS_FMT_SBGGR10_DPCM8_1X8:
-	case MEDIA_BUS_FMT_SGBRG10_DPCM8_1X8:
-	case MEDIA_BUS_FMT_SGRBG10_DPCM8_1X8:
-	case MEDIA_BUS_FMT_SRGGB10_DPCM8_1X8:
-		return 3;
-	default:
-		return 0;
-	}
-}
-
 u32 ipu_isys_subdev_code_to_uncompressed(u32 sink_code)
 {
 	switch (sink_code) {

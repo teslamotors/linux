@@ -80,6 +80,7 @@ extracted_bits_per_pixel_per_mipi_data_type[N_IPU_FW_ISYS_MIPI_DATA_TYPE] = {
 	IPU_FW_UNSUPPORTED_DATA_TYPE	/* [0x3F] */
 };
 
+#ifndef CONFIG_VIDEO_INTEL_IPU_FW_LIB
 static const char send_msg_types[N_IPU_FW_ISYS_SEND_TYPE][32] = {
 	"STREAM_OPEN",
 	"STREAM_START",
@@ -90,7 +91,6 @@ static const char send_msg_types[N_IPU_FW_ISYS_SEND_TYPE][32] = {
 	"STREAM_CLOSE"
 };
 
-#ifndef CONFIG_VIDEO_INTEL_IPU_FW_LIB
 static int handle_proxy_response(struct ipu_isys *isys, unsigned int req_id)
 {
 	struct ipu_fw_isys_proxy_resp_info_abi *resp;

@@ -438,45 +438,6 @@ u64 ipu_fw_psys_pg_get_token(struct ipu_psys_kcmd *kcmd)
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_pg_get_token);
 
-int ipu_fw_psys_ppg_set_buffer_set(struct ipu_psys_kcmd *kcmd,
-				    struct ipu_fw_psys_terminal *terminal,
-				    int terminal_idx, u32 buffer)
-{
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_set_buffer_set);
-
-size_t
-ipu_fw_psys_ppg_get_buffer_set_size(struct ipu_psys_kcmd *kcmd)
-{
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_get_buffer_set_size);
-
-int
-ipu_fw_psys_ppg_buffer_set_vaddress(struct ipu_fw_psys_buffer_set *buf_set,
-				     u32 vaddress)
-{
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_buffer_set_vaddress);
-
-struct ipu_fw_psys_buffer_set *
-ipu_fw_psys_ppg_create_buffer_set(struct ipu_psys_kcmd *kcmd,
-				   void *kaddr, u32 frame_counter)
-{
-	return NULL;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_create_buffer_set);
-
-int
-ipu_fw_psys_ppg_enqueue_bufs(struct ipu_psys_kcmd *kcmd,
-			      unsigned int queue_offset)
-{
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_enqueue_bufs);
-
 static const struct ipu_fw_resource_definitions default_defs = {
 	.cells = vied_nci_cell_type,
 	.num_cells = VIED_NCI_N_CELL_ID,

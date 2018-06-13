@@ -99,7 +99,7 @@ static int isa_config_vidioc_g_fmt_vid_out_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-const struct ipu_isys_pixelformat *
+static const struct ipu_isys_pixelformat *
 isa_config_try_fmt_vid_out_mplane(struct ipu_isys_video *av,
 				  struct v4l2_pix_format_mplane *mpix)
 {
@@ -211,7 +211,6 @@ static struct v4l2_subdev_ops isa_sd_ops = {
 
 static int isa_link_validate(struct media_link *link)
 {
-	struct ipu_isys_video *av;
 	struct ipu_isys_pipeline *ip;
 	struct media_pipeline *pipe;
 
@@ -219,7 +218,6 @@ static int isa_link_validate(struct media_link *link)
 	if (is_media_entity_v4l2_subdev(link->source->entity))
 		return v4l2_subdev_link_validate(link);
 
-	av = container_of(link->source, struct ipu_isys_video, pad);
 	pipe = link->sink->entity->pipe;
 	ip = to_ipu_isys_pipeline(pipe);
 	ip->nr_queues++;
