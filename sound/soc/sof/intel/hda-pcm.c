@@ -123,22 +123,15 @@ int hda_dsp_pcm_hw_params(struct snd_sof_dev *sdev,
 	/* disable SPIB, to enable buffer wrap for stream */
 	hda_dsp_stream_spib_config(sdev, stream, HDA_DSP_SPIB_DISABLE, 0);
 
-	/*
-	 * start HDA DMA here, as DSP require the DMA copy is available
-	 * at its trigger start, which is actually before stream trigger
-	 * start
-	 */
-	snd_sof_dsp_update_bits(sdev, HDA_DSP_HDA_BAR, SOF_HDA_INTCTL,
-				1 << stream->index,
-				1 << stream->index);
-
-	snd_sof_dsp_update_bits(sdev, HDA_DSP_HDA_BAR, stream->sd_offset,
-				SOF_HDA_SD_CTL_DMA_START |
-				SOF_HDA_CL_DMA_SD_INT_MASK,
-				SOF_HDA_SD_CTL_DMA_START |
-				SOF_HDA_CL_DMA_SD_INT_MASK);
-
 	return stream->tag;
+}
+
+int hda_dsp_pcm_trigger(struct snd_sof_dev *sdev,
+			struct snd_pcm_substream *substream, int cmd)
+{
+	struct sof_intel_hda_stream *stream = substream->runtime->private_data;
+
+	return hda_dsp_stream_trigger(sdev, stream, cmd);
 }
 
 int hda_dsp_pcm_open(struct snd_sof_dev *sdev,
