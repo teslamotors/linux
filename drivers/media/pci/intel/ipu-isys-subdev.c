@@ -881,9 +881,6 @@ int ipu_isys_subdev_init(struct ipu_isys_subdev *asd,
 
 	v4l2_subdev_init(&asd->sd, ops);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
-	asd->sd.entity.function = MEDIA_ENT_F_IO_V4L;
-#endif
 	asd->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | sd_flags;
 	asd->sd.owner = THIS_MODULE;
 
