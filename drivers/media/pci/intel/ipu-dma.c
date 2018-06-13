@@ -150,19 +150,38 @@ static void ipu_dma_sync_single_for_cpu(struct device *dev,
 	struct device *aiommu = to_ipu_bus_device(dev)->iommu;
 	struct ipu_mmu *mmu = dev_get_drvdata(aiommu);
 	unsigned long pa = iommu_iova_to_phys(mmu->dmap->domain, dma_handle);
+	void *virt;
 
-	clflush_cache_range(phys_to_virt(pa), size);
+	if (page_is_ram((pa & PAGE_MASK) >> PAGE_SHIFT))
+		virt = phys_to_virt(pa);
+	else
+		virt = ioremap(pa, size);
+
+	clflush_cache_range(virt, size);
 }
 
 static void ipu_dma_sync_sg_for_cpu(struct device *dev,
 				    struct scatterlist *sglist,
 				    int nents, enum dma_data_direction dir)
 {
+	struct device *aiommu = to_ipu_bus_device(dev)->iommu;
+	struct ipu_mmu *mmu = dev_get_drvdata(aiommu);
 	struct scatterlist *sg;
 	int i;
+	void *virt;
+	unsigned long pa;
 
-	for_each_sg(sglist, sg, nents, i)
-		clflush_cache_range(page_to_virt(sg_page(sg)), sg->length);
+	for_each_sg(sglist, sg, nents, i) {
+		pa = iommu_iova_to_phys(mmu->dmap->domain,
+					sg_dma_address(sg));
+
+		if (page_is_ram((pa & PAGE_MASK) >> PAGE_SHIFT))
+			virt = page_to_virt(sg_page(sg));
+		else
+			virt = ioremap(pa, sg->length);
+
+		clflush_cache_range(virt, sg->length);
+	}
 }
 
 static void *ipu_dma_alloc(struct device *dev, size_t size,
