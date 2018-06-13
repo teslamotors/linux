@@ -67,4 +67,10 @@ struct crl_registers_info {
 #define CRL_CID_ANALOG_GAIN_S		(V4L2_CID_CRLMODULE_BASE + 21)
 #define CRL_CID_ANALOG_GAIN_VS		(V4L2_CID_CRLMODULE_BASE + 22)
 
+/* Set exposure mode: Linear mode or 2-/3-/4-HDR mode */
+#define CRL_CID_EXPOSURE_MODE		(V4L2_CID_CRLMODULE_BASE + 23)
+
+/* Set HDR mode exposure ratio */
+#define CRL_CID_EXPOSURE_HDR_RATIO	(V4L2_CID_CRLMODULE_BASE + 24)
+
 #endif /* UAPI_LINUX_CRLMODULE_H */

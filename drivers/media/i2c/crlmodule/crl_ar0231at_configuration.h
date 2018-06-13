@@ -430,7 +430,137 @@ struct crl_csi_data_fmt ar0231at_crl_csi_data_fmt[] = {
 		.regs_items = 0,
 		.regs = 0,
 	}
+};
 
+static struct crl_arithmetic_ops ar0231at_ls2_ops[] = {
+	{
+		.op = CRL_BITWISE_LSHIFT,
+		.operand.entity_val = 2,
+	}
+};
+
+/* Line length pixel */
+static struct crl_dynamic_register_access ar0231at_llp_regs[] = {
+	{
+		.address = 0x300C,
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
+	},
+};
+
+/* Frame length lines */
+static struct crl_dynamic_register_access ar0231at_fll_regs[] = {
+	{
+		.address = 0x300A,
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
+	},
+};
+
+/* Analog gain register, also used in linear(non-HDR) mode */
+static struct crl_dynamic_register_access ar0231at_ana_gain_regs[] = {
+	{
+		.address = 0x3366, /* analog gain */
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
+	},
+};
+
+/* Digital gain register */
+static struct crl_dynamic_register_access ar0231at_gl_regs[] = {
+	{
+		.address = 0x305E, /* global digital gain */
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0x07ff,
+	},
+};
+
+/*
+ * Exposure mode:
+ * 0: Linear mode
+ * 1: 2-HDR mode
+ * 2: 3-HDR mode
+ * 3: 4-HDR mode
+ */
+static struct crl_dynamic_register_access ar0231at_exposure_mode_regs[] = {
+	{
+		.address = 0x3082,
+		.len = CRL_REG_LEN_16BIT  | CRL_REG_READ_AND_UPDATE,
+		.ops_items = ARRAY_SIZE(ar0231at_ls2_ops),
+		.ops = ar0231at_ls2_ops,
+		.mask = 0x000C,
+	},
+};
+
+/*
+ * Exposure Ratio in HDR mode
+ * 0x8000:
+ *   Select exposure ratio mode or
+ *   configure exposure time for each x-HDR individually.
+ * 0x0222:
+ *   Selected exposure ratio mode and each ratio is 4x.
+ *   The ratio also can be 2x, 8x, 16x
+ */
+static struct crl_dynamic_register_access ar0231at_hdr_exposure_ratio_regs[] = {
+	{
+		.address = 0x3238,
+		.len = CRL_REG_LEN_16BIT  | CRL_REG_READ_AND_UPDATE,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0x8777,
+	},
+};
+
+/* t1 exposure register, also used in linear(non-HDR) mode */
+static struct crl_dynamic_register_access ar0231at_t1expotime_regs[] = {
+	{
+		.address = 0x3012, /* coarse integration time T1 */
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
+	},
+};
+
+/* t2 exposure register, only used in HDR mode */
+static struct crl_dynamic_register_access ar0231at_t2expotime_regs[] = {
+	{
+		.address = 0x3212, /* coarse integration time T2 */
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
+	},
+};
+
+/* t3 exposure register, only used in HDR mode */
+static struct crl_dynamic_register_access ar0231at_t3expotime_regs[] = {
+	{
+		.address = 0x3216, /* coarse integration time T3 */
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
+	},
+};
+
+/* t4 exposure register, only used in HDR mode */
+static struct crl_dynamic_register_access ar0231at_t4expotime_regs[] = {
+	{
+		.address = 0x321A, /* coarse integration time T4 */
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
+	},
 };
 
 struct crl_v4l2_ctrl ar0231at_v4l2_ctrls[] = {
@@ -487,7 +617,203 @@ struct crl_v4l2_ctrl ar0231at_v4l2_ctrls[] = {
 		.dep_items = 0,
 		.dep_ctrls = 0,
 	},
-
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_LINE_LENGTH_PIXELS,
+		.name = "Line Length Pixels",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 1920,
+		.data.std_data.max = 65535,
+		.data.std_data.step = 1,
+		.data.std_data.def = 2162,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_llp_regs),
+		.regs = ar0231at_llp_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_FRAME_LENGTH_LINES,
+		.name = "Frame Length Lines",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 1080,
+		.data.std_data.max = 65535,
+		.data.std_data.step = 1,
+		.data.std_data.def = 1354,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_fll_regs),
+		.regs = ar0231at_fll_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_ANALOGUE_GAIN,
+		.name = "V4L2_CID_ANALOGUE_GAIN",
+		.type = CRL_V4L2_CTRL_TYPE_INTEGER,
+		.data.std_data.min = 0,
+		.data.std_data.max = 16,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0,
+		.flags = 0,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_ana_gain_regs),
+		.regs = ar0231at_ana_gain_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_GAIN,
+		.name = "Digital Gain",
+		.type = CRL_V4L2_CTRL_TYPE_INTEGER,
+		.data.std_data.min = 0x0001,
+		.data.std_data.max = 0x07FF,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x0080,
+		.flags = 0,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_gl_regs),
+		.regs = ar0231at_gl_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_EXPOSURE_MODE,
+		.name = "CRL_CID_EXPOSURE_MODE",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = 3,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x0,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_exposure_mode_regs),
+		.regs = ar0231at_exposure_mode_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_EXPOSURE_HDR_RATIO,
+		.name = "CRL_CID_EXPOSURE_HDR_RATIO",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 0,
+		.data.std_data.max = 65535,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x0,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_hdr_exposure_ratio_regs),
+		.regs = ar0231at_hdr_exposure_ratio_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_EXPOSURE,
+		.name = "T1_COARSE_EXPOSURE_TIME",
+		.type = CRL_V4L2_CTRL_TYPE_INTEGER,
+		.data.std_data.min = 1,
+		.data.std_data.max = 65535,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x40,
+		.flags = 0,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_t1expotime_regs),
+		.regs = ar0231at_t1expotime_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_EXPOSURE_SHS1,
+		.name = "T2_COARSE_EXPOSURE_TIME",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 1,
+		.data.std_data.max = 65535,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x40,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_t2expotime_regs),
+		.regs = ar0231at_t2expotime_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_EXPOSURE_SHS2,
+		.name = "T3_COARSE_EXPOSURE_TIME",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 1,
+		.data.std_data.max = 65535,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x40,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_t3expotime_regs),
+		.regs = ar0231at_t3expotime_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = CRL_CID_EXPOSURE_SHS3,
+		.name = "T4_COARSE_EXPOSURE_TIME",
+		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
+		.data.std_data.min = 1,
+		.data.std_data.max = 65535,
+		.data.std_data.step = 1,
+		.data.std_data.def = 0x40,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_t4expotime_regs),
+		.regs = ar0231at_t4expotime_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
+		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
 };
 
 struct crl_sensor_detect_config ar0231at_sensor_detect_regset[] = {
