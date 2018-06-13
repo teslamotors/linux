@@ -19,8 +19,8 @@
 
 struct crl_pll_configuration ar0231at_pll_configurations[] = {
 	{
-		.input_clk = 24000000,
-		.op_sys_clk = 264000000,
+		.input_clk = 27000000,
+		.op_sys_clk = 87750000,
 		.bitsperpixel = 12,
 		.pixel_rate_csi = 176000000,
 		.pixel_rate_pa = 176000000, /* pixel_rate = op_sys_clk*2 *csi_lanes/bitsperpixel */
