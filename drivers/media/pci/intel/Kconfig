@@ -58,6 +58,7 @@ config VIDEO_INTEL_IPU_WERROR
 
 	  If in doubt, say "N".
 config VIDEO_INTEL_ICI
+	depends on VIDEO_INTEL_IPU
 	bool "Compile for ICI driver"
 	---help---
 	If selected ICI driver will be compiled
