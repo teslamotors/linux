@@ -591,8 +591,6 @@ struct sof_ipc_comp_host {
 	struct sof_ipc_comp_config config;
 	enum sof_ipc_stream_direction direction;
 	uint32_t no_irq;	/* don't send periodic IRQ to host/DSP */
-	uint32_t dmac_id;
-	uint32_t dmac_chan;
 	uint32_t dmac_config; /* DMA engine specific */
 }  __attribute__((packed));
 
@@ -603,8 +601,6 @@ struct sof_ipc_comp_dai {
 	enum sof_ipc_stream_direction direction;
 	uint32_t index;
 	enum sof_ipc_dai_type type;
-	uint32_t dmac_id;
-	uint32_t dmac_chan;
 	uint32_t dmac_config; /* DMA engine specific */
 }  __attribute__((packed));
 
