@@ -288,9 +288,9 @@ int ipu_fw_isys_init(struct ipu_isys *isys, unsigned int num_streams)
 	int base_msg_send = IPU_BASE_MSG_SEND_QUEUES;
 	int base_msg_recv = IPU_BASE_MSG_RECV_QUEUES;
 
-	struct ia_css_syscom_queue_config
+	struct ipu_fw_syscom_queue_config
 	    input_queue_cfg[IPU_N_MAX_SEND_QUEUES];
-	struct ia_css_syscom_queue_config
+	struct ipu_fw_syscom_queue_config
 	    output_queue_cfg[IPU_N_MAX_RECV_QUEUES];
 
 	struct ipu_fw_com_cfg fwcom = {

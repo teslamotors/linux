@@ -1326,11 +1326,13 @@ static int query_sp(struct ipu_bus_device *adev)
 
 static int ipu_psys_fw_init(struct ipu_psys *psys)
 {
-	struct ia_css_syscom_queue_config
-		ia_css_psys_cmd_queue_cfg[IPU_FW_PSYS_N_PSYS_CMD_QUEUE_ID];
-	struct ia_css_syscom_queue_config ia_css_psys_event_queue_cfg[] = {
-		{IPU_FW_PSYS_EVENT_QUEUE_SIZE,
-		 sizeof(struct ipu_fw_psys_event)}
+	struct ipu_fw_syscom_queue_config
+		fw_psys_cmd_queue_cfg[IPU_FW_PSYS_N_PSYS_CMD_QUEUE_ID];
+	struct ipu_fw_syscom_queue_config fw_psys_event_queue_cfg[] = {
+		{
+			IPU_FW_PSYS_EVENT_QUEUE_SIZE,
+			sizeof(struct ipu_fw_psys_event)
+		}
 	};
 	struct ipu_fw_psys_srv_init server_init = {
 		.ddr_pkg_dir_address = 0,
@@ -1342,7 +1344,7 @@ static int ipu_psys_fw_init(struct ipu_psys *psys)
 	struct ipu_fw_com_cfg fwcom = {
 		.num_input_queues = IPU_FW_PSYS_N_PSYS_CMD_QUEUE_ID,
 		.num_output_queues = IPU_FW_PSYS_N_PSYS_EVENT_QUEUE_ID,
-		.output = ia_css_psys_event_queue_cfg,
+		.output = fw_psys_event_queue_cfg,
 		.specific_addr = &server_init,
 		.specific_size = sizeof(server_init),
 		.cell_start = start_sp,
@@ -1351,13 +1353,13 @@ static int ipu_psys_fw_init(struct ipu_psys *psys)
 	int rval, i;
 
 	for (i = 0; i < IPU_FW_PSYS_N_PSYS_CMD_QUEUE_ID; i++) {
-		ia_css_psys_cmd_queue_cfg[i].queue_size =
+		fw_psys_cmd_queue_cfg[i].queue_size =
 			IPU_FW_PSYS_CMD_QUEUE_SIZE;
-		ia_css_psys_cmd_queue_cfg[i].token_size =
+		fw_psys_cmd_queue_cfg[i].token_size =
 			sizeof(struct ipu_fw_psys_cmd);
 	}
 
-	fwcom.input = ia_css_psys_cmd_queue_cfg;
+	fwcom.input = fw_psys_cmd_queue_cfg;
 
 	fwcom.dmem_addr = psys->pdata->ipdata->hw_variant.dmem_offset;
 

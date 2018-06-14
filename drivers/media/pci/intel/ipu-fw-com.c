@@ -28,7 +28,7 @@
  */
 
 /* Shared structure between driver and FW - do not modify */
-struct sys_queue {
+struct ipu_fw_sys_queue {
 	u64 host_address;
 	u32 vied_address;
 	u32 size;
@@ -38,7 +38,7 @@ struct sys_queue {
 	u32 _align;
 };
 
-struct sys_queue_res {
+struct ipu_fw_sys_queue_res {
 	u64 host_address;
 	u32 vied_address;
 	u32 reg;
@@ -63,13 +63,13 @@ enum syscom_cmd {
 /* firmware config: data that sent from the host to SP via DDR */
 /* Cell copies data into a context */
 
-struct ia_css_syscom_config_fw {
+struct ipu_fw_syscom_config {
 	u32 firmware_address;
 
 	u32 num_input_queues;
 	u32 num_output_queues;
 
-	/* ISP pointers to an array of sys_queue structures */
+	/* ISP pointers to an array of ipu_fw_sys_queue structures */
 	u32 input_queue;
 	u32 output_queue;
 
@@ -94,8 +94,8 @@ struct ipu_fw_com_context {
 	unsigned int num_input_queues;
 	unsigned int num_output_queues;
 
-	struct sys_queue *input_queue;	/* array of host to SP queues */
-	struct sys_queue *output_queue;	/* array of SP to host */
+	struct ipu_fw_sys_queue *input_queue;	/* array of host to SP queues */
+	struct ipu_fw_sys_queue *output_queue;	/* array of SP to host */
 
 	void *config_host_addr;
 	void *specific_host_addr;
@@ -156,7 +156,7 @@ static unsigned int curr_index(void __iomem *q_dmem,
 			 (dir == DIR_RECV ? FW_COM_RD_REG : FW_COM_WR_REG));
 }
 
-static unsigned int inc_index(void __iomem *q_dmem, struct sys_queue *q,
+static unsigned int inc_index(void __iomem *q_dmem, struct ipu_fw_sys_queue *q,
 			      enum message_direction dir)
 {
 	unsigned int index;
@@ -171,8 +171,8 @@ static unsigned int ipu_sys_queue_buf_size(unsigned int size,
 	return (size + 1) * token_size;
 }
 
-static void ipu_sys_queue_init(struct sys_queue *q, unsigned int size,
-		    unsigned int token_size, struct sys_queue_res *res)
+static void ipu_sys_queue_init(struct ipu_fw_sys_queue *q, unsigned int size,
+		    unsigned int token_size, struct ipu_fw_sys_queue_res *res)
 {
 	unsigned int buf_size;
 
@@ -197,12 +197,12 @@ void *ipu_fw_com_prepare(struct ipu_fw_com_cfg *cfg,
 			 struct ipu_bus_device *adev, void __iomem *base)
 {
 	struct ipu_fw_com_context *ctx;
-	struct ia_css_syscom_config_fw *fw_cfg;
+	struct ipu_fw_syscom_config *fw_cfg;
 	unsigned int i;
 	unsigned int sizeall, offset;
 	unsigned int sizeinput = 0, sizeoutput = 0;
 	unsigned long attrs = 0;
-	struct sys_queue_res res;
+	struct ipu_fw_sys_queue_res res;
 
 	/* error handling */
 	if (!cfg || !cfg->cell_start || !cfg->cell_ready)
@@ -224,10 +224,10 @@ void *ipu_fw_com_prepare(struct ipu_fw_com_cfg *cfg,
 	 */
 	sizeall =
 	    /* Base cfg for FW */
-	    roundup(sizeof(struct ia_css_syscom_config_fw), 8) +
+	    roundup(sizeof(struct ipu_fw_syscom_config), 8) +
 	    /* Descriptions of the queues */
-	    cfg->num_input_queues * sizeof(struct sys_queue) +
-	    cfg->num_output_queues * sizeof(struct sys_queue) +
+	    cfg->num_input_queues * sizeof(struct ipu_fw_sys_queue) +
+	    cfg->num_output_queues * sizeof(struct ipu_fw_sys_queue) +
 	    /* FW specific information structure */
 	    roundup(cfg->specific_size, 8);
 
@@ -259,16 +259,16 @@ void *ipu_fw_com_prepare(struct ipu_fw_com_cfg *cfg,
 	/* This is the address where FW starts to parse allocations */
 	ctx->config_host_addr = ctx->dma_buffer;
 	ctx->config_vied_addr = ctx->dma_addr;
-	fw_cfg = (struct ia_css_syscom_config_fw *)ctx->config_host_addr;
-	offset = roundup(sizeof(struct ia_css_syscom_config_fw), 8);
+	fw_cfg = (struct ipu_fw_syscom_config *)ctx->config_host_addr;
+	offset = roundup(sizeof(struct ipu_fw_syscom_config), 8);
 
 	ctx->input_queue = ctx->dma_buffer + offset;
 	ctx->input_queue_vied_addr = ctx->dma_addr + offset;
-	offset += cfg->num_input_queues * sizeof(struct sys_queue);
+	offset += cfg->num_input_queues * sizeof(struct ipu_fw_sys_queue);
 
 	ctx->output_queue = ctx->dma_buffer + offset;
 	ctx->output_queue_vied_addr = ctx->dma_addr + offset;
-	offset += cfg->num_output_queues * sizeof(struct sys_queue);
+	offset += cfg->num_output_queues * sizeof(struct ipu_fw_sys_queue);
 
 	ctx->specific_host_addr = ctx->dma_buffer + offset;
 	ctx->specific_vied_addr = ctx->dma_addr + offset;
@@ -388,7 +388,7 @@ int ipu_fw_com_ready(struct ipu_fw_com_context *ctx)
 }
 EXPORT_SYMBOL_GPL(ipu_fw_com_ready);
 
-static bool is_index_valid(struct sys_queue *q, unsigned int index)
+static bool is_index_valid(struct ipu_fw_sys_queue *q, unsigned int index)
 {
 	if (index >= q->size)
 		return false;
@@ -397,7 +397,7 @@ static bool is_index_valid(struct sys_queue *q, unsigned int index)
 
 void *ipu_send_get_token(struct ipu_fw_com_context *ctx, int q_nbr)
 {
-	struct sys_queue *q = &ctx->input_queue[q_nbr];
+	struct ipu_fw_sys_queue *q = &ctx->input_queue[q_nbr];
 	void __iomem *q_dmem = ctx->dmem_addr + q->wr_reg * 4;
 	unsigned int wr, rd;
 	unsigned int packets;
@@ -422,7 +422,7 @@ EXPORT_SYMBOL_GPL(ipu_send_get_token);
 
 void ipu_send_put_token(struct ipu_fw_com_context *ctx, int q_nbr)
 {
-	struct sys_queue *q = &ctx->input_queue[q_nbr];
+	struct ipu_fw_sys_queue *q = &ctx->input_queue[q_nbr];
 	void __iomem *q_dmem = ctx->dmem_addr + q->wr_reg * 4;
 	int index = curr_index(q_dmem, DIR_SEND);
 	void *addr = (void *)(unsigned long)q->host_address +
@@ -439,7 +439,7 @@ EXPORT_SYMBOL_GPL(ipu_send_put_token);
 
 void *ipu_recv_get_token(struct ipu_fw_com_context *ctx, int q_nbr)
 {
-	struct sys_queue *q = &ctx->output_queue[q_nbr];
+	struct ipu_fw_sys_queue *q = &ctx->output_queue[q_nbr];
 	void __iomem *q_dmem = ctx->dmem_addr + q->wr_reg * 4;
 	unsigned int wr, rd;
 	unsigned int packets;
@@ -465,7 +465,7 @@ EXPORT_SYMBOL_GPL(ipu_recv_get_token);
 
 void ipu_recv_put_token(struct ipu_fw_com_context *ctx, int q_nbr)
 {
-	struct sys_queue *q = &ctx->output_queue[q_nbr];
+	struct ipu_fw_sys_queue *q = &ctx->output_queue[q_nbr];
 	void __iomem *q_dmem = ctx->dmem_addr + q->wr_reg * 4;
 	unsigned int rd = inc_index(q_dmem, q, DIR_RECV);
 

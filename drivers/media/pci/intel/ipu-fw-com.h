@@ -7,7 +7,7 @@
 struct ipu_fw_com_context;
 struct ipu_bus_device;
 
-struct ia_css_syscom_queue_config {
+struct ipu_fw_syscom_queue_config {
 	unsigned int queue_size;	/* tokens per queue */
 	unsigned int token_size;	/* bytes per token */
 };
@@ -15,8 +15,8 @@ struct ia_css_syscom_queue_config {
 struct ipu_fw_com_cfg {
 	unsigned int num_input_queues;
 	unsigned int num_output_queues;
-	struct ia_css_syscom_queue_config *input;
-	struct ia_css_syscom_queue_config *output;
+	struct ipu_fw_syscom_queue_config *input;
+	struct ipu_fw_syscom_queue_config *output;
 
 	unsigned int dmem_addr;
 
