@@ -483,32 +483,6 @@ static void asc_shutdown(struct uart_port *port)
 	free_irq(port->irq, port);
 }
 
-static void asc_pm(struct uart_port *port, unsigned int state,
-		unsigned int oldstate)
-{
-	struct asc_port *ascport = to_asc_port(port);
-	unsigned long flags = 0;
-	u32 ctl;
-
-	switch (state) {
-	case UART_PM_STATE_ON:
-		clk_prepare_enable(ascport->clk);
-		break;
-	case UART_PM_STATE_OFF:
-		/*
-		 * Disable the ASC baud rate generator, which is as close as
-		 * we can come to turning it off. Note this is not called with
-		 * the port spinlock held.
-		 */
-		spin_lock_irqsave(&port->lock, flags);
-		ctl = asc_in(port, ASC_CTL) & ~ASC_CTL_RUN;
-		asc_out(port, ASC_CTL, ctl);
-		spin_unlock_irqrestore(&port->lock, flags);
-		clk_disable_unprepare(ascport->clk);
-		break;
-	}
-}
-
 static void asc_set_termios(struct uart_port *port, struct ktermios *termios,
 			    struct ktermios *old)
 {
@@ -715,7 +689,6 @@ static const struct uart_ops asc_uart_ops = {
 	.request_port	= asc_request_port,
 	.config_port	= asc_config_port,
 	.verify_port	= asc_verify_port,
-	.pm		= asc_pm,
 #ifdef CONFIG_CONSOLE_POLL
 	.poll_get_char = asc_get_poll_char,
 	.poll_put_char = asc_put_poll_char,
