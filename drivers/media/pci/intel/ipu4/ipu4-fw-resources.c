@@ -3,6 +3,8 @@
 
 #include "ipu-fw-psys.h"
 
+#include <uapi/asm-generic/errno-base.h>
+
 /* resources table */
 /*
  * Cell types by cell IDs

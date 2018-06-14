@@ -4,9 +4,6 @@
 #ifndef IPU_FW_PSYS_H
 #define IPU_FW_PSYS_H
 
-#include <linux/errno.h>
-#include <linux/device.h>
-
 #include "ipu-platform-resources.h"
 
 /* ia_css_psys_device.c */
