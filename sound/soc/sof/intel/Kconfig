@@ -3,6 +3,7 @@ config SND_SOC_SOF_INTEL
 	depends on SND_SOC_SOF
 	depends on SND_DMA_SGBUF
 	select SND_SOC_INTEL_MACH
+	select SND_SOC_SOF_XTENSA
 	help
           This adds support for Sound Open Firmware for Intel(R) platforms.
           Say Y if you have such a device.

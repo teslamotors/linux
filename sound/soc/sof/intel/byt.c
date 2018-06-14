@@ -531,6 +531,9 @@ static int byt_acpi_probe(struct snd_sof_dev *sdev)
 	u32 base, size;
 	int ret = 0;
 
+	/* set DSP arch ops */
+	sdev->arch_ops = &sof_xtensa_arch_ops;
+
 	/* DSP DMA can only access low 31 bits of host memory */
 	ret = dma_coerce_mask_and_coherent(sdev->dev, DMA_BIT_MASK(31));
 	if (ret < 0) {

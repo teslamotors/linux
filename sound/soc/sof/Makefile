@@ -22,3 +22,4 @@ obj-$(SND_SOC_SOF_PLATFORM) += sof-platform-dev.o
 obj-$(CONFIG_SND_SOC_SOF_SPIDSP) += snd-sof-spi.o
 
 obj-$(CONFIG_SND_SOC_SOF_INTEL)	+= intel/
+obj-$(CONFIG_SND_SOC_SOF_XTENSA) += xtensa/

@@ -42,3 +42,4 @@ config SND_SOC_SOF_FORCE_NOCODEC_MODE
           If unsure select "N".
 
 source "sound/soc/sof/intel/Kconfig"
+source "sound/soc/sof/xtensa/Kconfig"

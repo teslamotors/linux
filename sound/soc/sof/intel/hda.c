@@ -311,6 +311,9 @@ int hda_dsp_probe(struct snd_sof_dev *sdev)
 	int i;
 	int ret = 0;
 
+	/* set DSP arch ops */
+	sdev->arch_ops = &sof_xtensa_arch_ops;
+
 	chip = get_chip_info(pci->device);
 	if (!chip) {
 		dev_err(sdev->dev, "no such device supported, chip id:%x\n",
