@@ -784,7 +784,7 @@ struct cnl_sdw_port *cnl_sdw_alloc_port(struct sdw_master *mstr, int ch_count,
 	sdw = sdw_master_get_drvdata(mstr);
 
 	mutex_lock(&sdw->stream_lock);
-	for (i = 1; i <= CNL_SDW_MAX_PORTS; i++) {
+	for (i = 1; i < CNL_SDW_MAX_PORTS; i++) {
 		if (sdw->port[i].allocated == false) {
 			port = &sdw->port[i];
 			port->allocated = true;

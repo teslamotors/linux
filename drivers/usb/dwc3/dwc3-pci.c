@@ -25,7 +25,6 @@
 #include <linux/gpio/consumer.h>
 #include <linux/acpi.h>
 #include <linux/delay.h>
-#include <linux/usb/phy.h>
 
 #define PCI_DEVICE_ID_SYNOPSYS_HAPSUSB3		0xabcd
 #define PCI_DEVICE_ID_SYNOPSYS_HAPSUSB3_AXI	0xabce
@@ -124,14 +123,6 @@ static int dwc3_pci_quirks(struct dwc3_pci *dwc)
 			guid_parse(PCI_INTEL_BXT_DSM_GUID, &dwc->guid);
 			dwc->has_dsm_for_pm = true;
 		}
-
-		if (pdev->device == PCI_DEVICE_ID_INTEL_BXT ||
-		    pdev->device == PCI_DEVICE_ID_INTEL_BXT_M ||
-		    pdev->device == PCI_DEVICE_ID_INTEL_APL ) {
-			if (IS_ERR_OR_NULL(usb_get_phy(USB_PHY_TYPE_USB2)))
-				return -ENOMEM;
-		}
-
 
 		if (pdev->device == PCI_DEVICE_ID_INTEL_BYT) {
 			struct gpio_desc *gpio;
@@ -254,7 +245,6 @@ static void dwc3_pci_remove(struct pci_dev *pci)
 
 	device_init_wakeup(&pci->dev, false);
 	pm_runtime_get(&pci->dev);
-
 	platform_device_unregister(dwc->dwc3);
 }
 

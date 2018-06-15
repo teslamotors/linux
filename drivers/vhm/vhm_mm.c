@@ -167,7 +167,7 @@ int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
 	set_memmap.remote_gpa = guest_gpa;
 	set_memmap.vm0_gpa = host_gpa;
 	set_memmap.length = len;
-	set_memmap.prot = ((mem_type & MEM_TYPE_MASK) |
+	set_memmap.prot = set_memmap.prot_2 = ((mem_type & MEM_TYPE_MASK) |
 			(mem_access_right & MEM_ACCESS_RIGHT_MASK));
 
 	/* hypercall to notify hv the guest EPT setting*/
@@ -197,6 +197,20 @@ int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
 		0, 0,  MAP_UNMAP);
+}
+
+int set_memmaps(struct set_memmaps *memmaps)
+{
+	if (memmaps == NULL)
+		return -EINVAL;
+	if (memmaps->memmaps_num > 0) {
+		if (hcall_set_memmaps(virt_to_phys(memmaps)) < 0) {
+			pr_err("vhm: failed to set memmaps!\n");
+			return -EFAULT;
+		}
+	}
+
+	return 0;
 }
 
 int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,

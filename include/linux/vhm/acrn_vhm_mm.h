@@ -62,6 +62,7 @@
 
 #include <linux/vhm/vhm_ioctl_defs.h>
 #include <linux/vhm/vhm_vm_mngt.h>
+#include <linux/vhm/acrn_hv_defs.h>
 
 /**
  * acrn_hpa2gpa - physical address conversion
@@ -189,7 +190,7 @@ void free_guest_mem(struct vhm_vm *vm);
 int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg);
 
 /**
- * map_guest_memseg - map EPT mmapping of memory of guest according to
+ * map_guest_memseg - set guest mmapping of memory according to
  * pre-defined memory mapping info
  *
  * @vm: pointer to guest vm
@@ -207,4 +208,13 @@ int hugepage_map_guest(struct vhm_vm *vm, struct vm_memmap *memmap);
 void hugepage_free_guest(struct vhm_vm *vm);
 void *hugepage_map_guest_phys(struct vhm_vm *vm, u64 guest_phys, size_t size);
 int hugepage_unmap_guest_phys(struct vhm_vm *vm, u64 guest_phys);
+
+/**
+ * set_memmaps - set guest mapping for multi regions
+ *
+ * @memmaps: pointer to set_memmaps
+ *
+ * Return: 0 on success, <0 for error.
+ */
+int set_memmaps(struct set_memmaps *memmaps);
 #endif

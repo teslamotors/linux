@@ -24,9 +24,6 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/acpi.h>
-#include <linux/usb/phy.h>
-#include <linux/usb/otg.h>
-#include <linux/platform_device.h>
 
 #include "xhci.h"
 #include "xhci-trace.h"
@@ -57,6 +54,10 @@
 #define PCI_DEVICE_ID_INTEL_APL_XHCI			0x5aa8
 #define PCI_DEVICE_ID_INTEL_DNV_XHCI			0x19d0
 
+#define PCI_DEVICE_ID_AMD_PROMONTORYA_4			0x43b9
+#define PCI_DEVICE_ID_AMD_PROMONTORYA_3			0x43ba
+#define PCI_DEVICE_ID_AMD_PROMONTORYA_2			0x43bb
+#define PCI_DEVICE_ID_AMD_PROMONTORYA_1			0x43bc
 #define XHCI_INTEL_VENDOR_CAPS 192
 
 #define PCI_DEVICE_ID_ASMEDIA_1042A_XHCI		0x1142
@@ -74,33 +75,11 @@ static const struct xhci_driver_overrides xhci_pci_overrides __initconst = {
 /* called after powerup, by probe or system-pm "wakeup" */
 static int xhci_pci_reinit(struct xhci_hcd *xhci, struct pci_dev *pdev)
 {
-	struct usb_hcd *hcd;
-	int retval;
-
 	/*
 	 * TODO: Implement finding debug ports later.
 	 * TODO: see if there are any quirks that need to be added to handle
 	 * new extended capabilities.
 	 */
-	retval = XHCI_HCC_EXT_CAPS(readl(&xhci->cap_regs->hcc_params));
-	retval = xhci_find_next_ext_cap(&xhci->cap_regs->hc_capbase,
-					retval << 2,
-					XHCI_INTEL_VENDOR_CAPS);
-	/* If This capbility is found, register host on PHY for OTG purpose */
-	if (pdev->vendor == PCI_VENDOR_ID_INTEL && retval) {
-		hcd = xhci_to_hcd(xhci);
-
-		hcd->usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
-		if (!IS_ERR_OR_NULL(hcd->usb_phy)) {
-			retval = otg_set_host(hcd->usb_phy->otg, &hcd->self);
-			if (retval)
-				usb_put_phy(hcd->usb_phy);
-		} else {
-			xhci_dbg(xhci, "No USB2 PHY transceiver found\n");
-			hcd->usb_phy = NULL;
-		}
-	}
-
 
 	/* PCI Memory-Write-Invalidate cycle support is optional (uncommon) */
 	if (!pci_set_mwi(pdev))
@@ -108,6 +87,17 @@ static int xhci_pci_reinit(struct xhci_hcd *xhci, struct pci_dev *pdev)
 
 	xhci_dbg(xhci, "Finished xhci_pci_reinit\n");
 	return 0;
+}
+
+static int xhci_pci_board_has_udc(void)
+{
+	struct pci_dev *udc = pci_get_class(PCI_CLASS_SERIAL_USB_DEVICE, NULL);
+
+	if (udc) {
+		pci_dev_put(udc);
+		return true;
+	}
+	return false;
 }
 
 static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
@@ -170,6 +160,13 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 	if (pdev->vendor == PCI_VENDOR_ID_AMD)
 		xhci->quirks |= XHCI_TRUST_TX_LENGTH;
 
+	if ((pdev->vendor == PCI_VENDOR_ID_AMD) &&
+		((pdev->device == PCI_DEVICE_ID_AMD_PROMONTORYA_4) ||
+		(pdev->device == PCI_DEVICE_ID_AMD_PROMONTORYA_3) ||
+		(pdev->device == PCI_DEVICE_ID_AMD_PROMONTORYA_2) ||
+		(pdev->device == PCI_DEVICE_ID_AMD_PROMONTORYA_1)))
+		xhci->quirks |= XHCI_U2_DISABLE_WAKE;
+
 	if (pdev->vendor == PCI_VENDOR_ID_INTEL) {
 		xhci->quirks |= XHCI_LPM_SUPPORT;
 		xhci->quirks |= XHCI_INTEL_HOST;
@@ -207,14 +204,18 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 		xhci->quirks |= XHCI_PME_STUCK_QUIRK;
 	}
 	if (pdev->vendor == PCI_VENDOR_ID_INTEL &&
-		 pdev->device == PCI_DEVICE_ID_INTEL_CHERRYVIEW_XHCI) {
+		 pdev->device == PCI_DEVICE_ID_INTEL_CHERRYVIEW_XHCI)
 		xhci->quirks |= XHCI_SSIC_PORT_UNUSED;
-	}
 	if (pdev->vendor == PCI_VENDOR_ID_INTEL &&
 	    (pdev->device == PCI_DEVICE_ID_INTEL_CHERRYVIEW_XHCI ||
 	     pdev->device == PCI_DEVICE_ID_INTEL_APL_XHCI ||
 	     pdev->device == PCI_DEVICE_ID_INTEL_DNV_XHCI))
 		xhci->quirks |= XHCI_MISSING_CAS;
+	if (pdev->vendor == PCI_VENDOR_ID_INTEL &&
+	    (pdev->device == PCI_DEVICE_ID_INTEL_CHERRYVIEW_XHCI ||
+	     pdev->device == PCI_DEVICE_ID_INTEL_APL_XHCI) &&
+	     xhci_pci_board_has_udc())
+		xhci->quirks |= XHCI_INTEL_USB_ROLE_SW;
 
 	if (pdev->vendor == PCI_VENDOR_ID_ETRON &&
 			pdev->device == PCI_DEVICE_ID_EJ168) {
@@ -338,6 +339,10 @@ static int xhci_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		retval = -ENOMEM;
 		goto dealloc_usb2_hcd;
 	}
+
+	retval = xhci_ext_cap_init(xhci);
+	if (retval)
+		goto put_usb3_hcd;
 
 	retval = usb_add_hcd(xhci->shared_hcd, dev->irq,
 			IRQF_SHARED);

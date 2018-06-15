@@ -432,7 +432,7 @@ static int update_primary_plane_state(struct drm_atomic_state *state,
 
 	/* Color palette is appended after image data, it uses 24-bits for each index entry */
 	palette_size = (splash_info->fw->size - (splash_info->width * splash_info->height)) / 3;
-	printk("Splash size %ld, palette size %d\n", splash_info->fw->size, palette_size);
+	printk("Splash size %zu, palette size %u\n", splash_info->fw->size, palette_size);
 	if (0 == palette_size) {
 		DRM_ERROR("Splash image does not contain color palette data\n");
 		return -1;

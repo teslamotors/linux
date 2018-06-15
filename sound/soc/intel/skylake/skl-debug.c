@@ -186,6 +186,9 @@ static ssize_t mod_control_write(struct file *file,
 	d->ipc_data[0] = 0;
 
 	buf = kzalloc(MOD_BUF, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
 	written = simple_write_to_buffer(buf, MOD_BUF, ppos,
 						user_buf, count);
 	size = written;
