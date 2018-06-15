@@ -7,7 +7,6 @@
 #include "ipu-isys.h"
 #include "ipu-wrapper.h"
 #include <ia_css_isysapi.h>
-#include "libintel-checker.h"
 
 #define ipu_lib_call_notrace_unlocked(func, isys, ...)		\
 	({								\
@@ -386,19 +385,6 @@ int ipu_fw_isys_complex_cmd(struct ipu_isys *isys,
 	return rval;
 }
 EXPORT_SYMBOL_GPL(ipu_fw_isys_complex_cmd);
-
-static int __init library_init(void)
-{
-	ipu_isys_abi_checker();
-	return 0;
-}
-
-static void __exit library_exit(void)
-{
-}
-
-module_init(library_init);
-module_exit(library_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Intel ipu library");

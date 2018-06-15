@@ -17,7 +17,6 @@ $(shell cp -f $(srcpath)/$(src)/../ipu-wrapper.c $(srcpath)/$(src)/ipu4-css/ipu-
 
 intel-ipu4-isys-csslib-objs := \
 			ipu4-css/libintel-ipu4.o \
-			../libintel-checker.o \
 			$(IPU_ISYSLIB_SRC)
 
 ifeq ($(CONFIG_VIDEO_INTEL_IPU), m)
