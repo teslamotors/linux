@@ -182,6 +182,14 @@ struct ia_css_syscom_context *ia_css_psys_context_create(
 {
 	return psys_context_create(buffer, config);
 }
+
+/* push context information to DMEM for FW to access */
+int ia_css_psys_context_store_dmem(
+	struct ia_css_syscom_context *context,
+	struct ia_css_syscom_config *config)
+{
+	return ia_css_syscom_store_dmem(context, config->ssid, config->vtl0_addr_mask);
+}
 #endif
 
 /* Internal function to start psys server */

@@ -137,6 +137,19 @@ extern struct ia_css_syscom_context *ia_css_psys_context_create(
 	const struct ia_css_psys_buffer_s *buffer,
 	struct ia_css_syscom_config *config);
 
+/*! Store the parameters of the Psys syscom object in DMEM, so
+    they can be communicated with FW. This step needs to be invoked
+    after SPC starts in ia_css_psys_open(), so SPC DMEM access blocker
+    programming already takes effective.
+
+ @param	context[in]	Psys syscom object
+ @param	config[in]	Psys syscom descriptor
+ @return 0 if successful
+ */
+extern int ia_css_psys_context_store_dmem(
+	struct ia_css_syscom_context *context,
+	struct ia_css_syscom_config *config);
+
 /*! Start PSYS Server. Psys syscom object must have been created already.
     Target for VTIO usage where multiple syscom objects need to be
     created first before this API is invoked.
