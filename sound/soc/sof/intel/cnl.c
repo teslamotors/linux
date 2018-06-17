@@ -220,5 +220,8 @@ struct snd_sof_dsp_ops sof_cnl_ops = {
 	.trace_init = hda_dsp_trace_init,
 	.trace_release = hda_dsp_trace_release,
 	.trace_trigger = hda_dsp_trace_trigger,
+
+	/* DAI drivers */
+	.dai_drv		= &hda_dai_drv,
 };
 EXPORT_SYMBOL(sof_cnl_ops);

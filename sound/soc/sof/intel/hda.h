@@ -494,6 +494,9 @@ int hda_dsp_trace_init(struct snd_sof_dev *sdev, u32 *stream_tag);
 int hda_dsp_trace_release(struct snd_sof_dev *sdev);
 int hda_dsp_trace_trigger(struct snd_sof_dev *sdev, int cmd);
 
+/* common dai driver */
+extern struct snd_sof_dai_drv hda_dai_drv;
+
 /*
  * Platform Specific HW abstraction Ops.
  */
