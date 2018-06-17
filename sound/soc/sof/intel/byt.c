@@ -750,6 +750,66 @@ static int byt_remove(struct snd_sof_dev *sdev)
 		return byt_acpi_remove(sdev);
 }
 
+#define BYT_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
+	SNDRV_PCM_FMTBIT_S32_LE)
+
+/* Baytrail DAIs */
+static struct snd_soc_dai_driver byt_dai[] = {
+{
+	.name = "ssp0-port",
+	.playback = SOF_DAI_STREAM("ssp0 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp0 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp1-port",
+	.playback = SOF_DAI_STREAM("ssp1 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp1 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp2-port",
+	.playback = SOF_DAI_STREAM("ssp2 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp2 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp3-port",
+	.playback = SOF_DAI_STREAM("ssp3 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp3 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp4-port",
+	.playback = SOF_DAI_STREAM("ssp4 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp4 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp5-port",
+	.playback = SOF_DAI_STREAM("ssp5 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp5 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+};
+
+struct snd_sof_dai_drv byt_dai_drv = {
+	.drv = byt_dai,
+	.num_drv = 3, /* we have only 3 SSPs on byt*/
+};
+
+struct snd_sof_dai_drv cht_dai_drv = {
+	.drv = byt_dai,
+	/* all 6 SSPs may be available for cherrytrail */
+	.num_drv = ARRAY_SIZE(byt_dai),
+};
+
 /* baytrail ops */
 struct snd_sof_dsp_ops sof_byt_ops = {
 	/* device init */
@@ -795,6 +855,9 @@ struct snd_sof_dsp_ops sof_byt_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+
+	/* DAI drivers */
+	.dai_drv = &byt_dai_drv,
 };
 EXPORT_SYMBOL(sof_byt_ops);
 
@@ -843,6 +906,9 @@ struct snd_sof_dsp_ops sof_cht_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+
+	/* DAI drivers */
+	.dai_drv = &cht_dai_drv,
 };
 EXPORT_SYMBOL(sof_cht_ops);
 
