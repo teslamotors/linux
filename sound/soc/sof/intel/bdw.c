@@ -709,6 +709,32 @@ static int bdw_remove(struct snd_sof_dev *sdev)
 	return 0;
 }
 
+#define BDW_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
+	SNDRV_PCM_FMTBIT_S32_LE)
+
+/* Broadwell DAIs */
+static struct snd_soc_dai_driver bdw_dai[] = {
+{
+	.name = "ssp0-port",
+	.playback = SOF_DAI_STREAM("ssp0 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BDW_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp0 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BDW_FORMATS),
+},
+{
+	.name = "ssp1-port",
+	.playback = SOF_DAI_STREAM("ssp1 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BDW_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp1 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BDW_FORMATS),
+},
+};
+
+struct snd_sof_dai_drv bdw_dai_drv = {
+	.drv = bdw_dai,
+	.num_drv = ARRAY_SIZE(bdw_dai)
+};
+
 /* broadwell ops */
 struct snd_sof_dsp_ops sof_bdw_ops = {
 	/*Device init */
@@ -750,6 +776,9 @@ struct snd_sof_dsp_ops sof_bdw_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+
+	/* DAI drivers */
+	.dai_drv = &bdw_dai_drv,
 };
 EXPORT_SYMBOL(sof_bdw_ops);
 
