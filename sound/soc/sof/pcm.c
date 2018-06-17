@@ -625,30 +625,12 @@ void snd_sof_new_platform_drv(struct snd_sof_dev *sdev)
 	pd->topology_name_prefix = "sof";
 }
 
-static const struct snd_soc_dai_ops sof_dai_ops = {
-};
-
 static const struct snd_soc_component_driver sof_dai_component = {
-	.name		= "sof-dai",
+	.name           = "sof-dai",
 };
-
-#define SOF_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
-	SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT)
 
 void snd_sof_new_dai_drv(struct snd_sof_dev *sdev)
 {
-	struct snd_soc_dai_driver *dd = &sdev->dai_drv;
-	//struct snd_sof_pdata *plat_data = sdev->pdata;
-
 	sdev->cmpnt_drv = &sof_dai_component;
-	dd->playback.channels_min = 1;
-	dd->playback.channels_max = 16;
-	dd->playback.rates = SNDRV_PCM_RATE_8000_192000;
-	dd->playback.formats = SOF_FORMATS;
-	dd->capture.channels_min = 1;
-	dd->capture.channels_max = 16;
-	dd->capture.rates = SNDRV_PCM_RATE_8000_192000;
-	dd->capture.formats = SOF_FORMATS;
-	dd->ops = &sof_dai_ops;
-	sdev->num_dai = 1;
 }
+
