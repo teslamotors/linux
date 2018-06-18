@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # Platform specific code goes here
 obj-y	+= atom/
+obj-y	+= bxt/
 obj-y	+= ce4100/
 obj-y	+= efi/
 obj-y	+= geode/
