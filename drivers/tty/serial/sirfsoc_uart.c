@@ -882,16 +882,6 @@ static void sirfsoc_uart_set_termios(struct uart_port *port,
 	spin_unlock_irqrestore(&port->lock, flags);
 }
 
-static void sirfsoc_uart_pm(struct uart_port *port, unsigned int state,
-			      unsigned int oldstate)
-{
-	struct sirfsoc_uart_port *sirfport = to_sirfport(port);
-	if (!state)
-		clk_prepare_enable(sirfport->clk);
-	else
-		clk_disable_unprepare(sirfport->clk);
-}
-
 static int sirfsoc_uart_startup(struct uart_port *port)
 {
 	struct sirfsoc_uart_port *sirfport	= to_sirfport(port);
@@ -1073,7 +1063,6 @@ static const struct uart_ops sirfsoc_uart_ops = {
 	.startup	= sirfsoc_uart_startup,
 	.shutdown	= sirfsoc_uart_shutdown,
 	.set_termios	= sirfsoc_uart_set_termios,
-	.pm		= sirfsoc_uart_pm,
 	.type		= sirfsoc_uart_type,
 	.release_port	= sirfsoc_uart_release_port,
 	.request_port	= sirfsoc_uart_request_port,

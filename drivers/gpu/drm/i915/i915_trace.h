@@ -281,7 +281,7 @@ TRACE_EVENT(i915_pipe_update_start,
 	    TP_fast_assign(
 			   __entry->pipe = crtc->pipe;
 			   __entry->frame = crtc->base.dev->driver->get_vblank_counter(crtc->base.dev,
-										       crtc->pipe);
+									drm_crtc_index(&crtc->base));
 			   __entry->scanline = intel_get_crtc_scanline(crtc);
 			   __entry->min = crtc->debug.min_vbl;
 			   __entry->max = crtc->debug.max_vbl;

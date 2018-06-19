@@ -865,15 +865,12 @@ static int s3c24xx_serial_request_dma(struct s3c24xx_uart_port *p)
 	dma->rx_conf.direction		= DMA_DEV_TO_MEM;
 	dma->rx_conf.src_addr_width	= DMA_SLAVE_BUSWIDTH_1_BYTE;
 	dma->rx_conf.src_addr		= p->port.mapbase + S3C2410_URXH;
-	dma->rx_conf.src_maxburst	= 16;
+	dma->rx_conf.src_maxburst	= 1;
 
 	dma->tx_conf.direction		= DMA_MEM_TO_DEV;
 	dma->tx_conf.dst_addr_width	= DMA_SLAVE_BUSWIDTH_1_BYTE;
 	dma->tx_conf.dst_addr		= p->port.mapbase + S3C2410_UTXH;
-	if (dma_get_cache_alignment() >= 16)
-		dma->tx_conf.dst_maxburst = 16;
-	else
-		dma->tx_conf.dst_maxburst = 1;
+	dma->tx_conf.dst_maxburst	= 1;
 
 	dma->rx_chan = dma_request_chan(p->port.dev, "rx");
 
@@ -1080,39 +1077,6 @@ static int s3c64xx_serial_startup(struct uart_port *port)
 
 	dbg("s3c64xx_serial_startup ok\n");
 	return ret;
-}
-
-/* power power management control */
-
-static void s3c24xx_serial_pm(struct uart_port *port, unsigned int level,
-			      unsigned int old)
-{
-	struct s3c24xx_uart_port *ourport = to_ourport(port);
-	int timeout = 10000;
-
-	ourport->pm_level = level;
-
-	switch (level) {
-	case 3:
-		while (--timeout && !s3c24xx_serial_txempty_nofifo(port))
-			udelay(100);
-
-		if (!IS_ERR(ourport->baudclk))
-			clk_disable_unprepare(ourport->baudclk);
-
-		clk_disable_unprepare(ourport->clk);
-		break;
-
-	case 0:
-		clk_prepare_enable(ourport->clk);
-
-		if (!IS_ERR(ourport->baudclk))
-			clk_prepare_enable(ourport->baudclk);
-
-		break;
-	default:
-		dev_err(port->dev, "s3c24xx_serial: unknown pm %d\n", level);
-	}
 }
 
 /* baud rate calculation
@@ -1470,7 +1434,6 @@ static void s3c24xx_serial_put_poll_char(struct uart_port *port,
 #endif
 
 static struct uart_ops s3c24xx_serial_ops = {
-	.pm		= s3c24xx_serial_pm,
 	.tx_empty	= s3c24xx_serial_tx_empty,
 	.get_mctrl	= s3c24xx_serial_get_mctrl,
 	.set_mctrl	= s3c24xx_serial_set_mctrl,
@@ -1821,6 +1784,10 @@ static int s3c24xx_serial_probe(struct platform_device *pdev)
 
 	dbg("s3c24xx_serial_probe(%p) %d\n", pdev, index);
 
+	if (index >= ARRAY_SIZE(s3c24xx_serial_ports)) {
+		dev_err(&pdev->dev, "serial%d out of range\n", index);
+		return -EINVAL;
+	}
 	ourport = &s3c24xx_serial_ports[index];
 
 	ourport->drv_data = s3c24xx_get_driver_data(pdev);

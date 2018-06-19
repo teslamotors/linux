@@ -626,28 +626,6 @@ stm32_verify_port(struct uart_port *port, struct serial_struct *ser)
 	return -EINVAL;
 }
 
-static void stm32_pm(struct uart_port *port, unsigned int state,
-		unsigned int oldstate)
-{
-	struct stm32_port *stm32port = container_of(port,
-			struct stm32_port, port);
-	struct stm32_usart_offsets *ofs = &stm32port->info->ofs;
-	struct stm32_usart_config *cfg = &stm32port->info->cfg;
-	unsigned long flags = 0;
-
-	switch (state) {
-	case UART_PM_STATE_ON:
-		clk_prepare_enable(stm32port->clk);
-		break;
-	case UART_PM_STATE_OFF:
-		spin_lock_irqsave(&port->lock, flags);
-		stm32_clr_bits(port, ofs->cr1, BIT(cfg->uart_enable_bit));
-		spin_unlock_irqrestore(&port->lock, flags);
-		clk_disable_unprepare(stm32port->clk);
-		break;
-	}
-}
-
 static const struct uart_ops stm32_uart_ops = {
 	.tx_empty	= stm32_tx_empty,
 	.set_mctrl	= stm32_set_mctrl,
@@ -661,7 +639,6 @@ static const struct uart_ops stm32_uart_ops = {
 	.startup	= stm32_startup,
 	.shutdown	= stm32_shutdown,
 	.set_termios	= stm32_set_termios,
-	.pm		= stm32_pm,
 	.type		= stm32_type,
 	.release_port	= stm32_release_port,
 	.request_port	= stm32_request_port,

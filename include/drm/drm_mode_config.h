@@ -617,6 +617,11 @@ struct drm_mode_config {
 	struct drm_property *prop_mode_id;
 
 	/**
+	 * @prop_background_color: RGBA background color for CRTC.
+	 */
+	struct drm_property *prop_background_color;
+
+	/**
 	 * @dvi_i_subconnector_property: Optional DVI-I property to
 	 * differentiate between analog or digital mode.
 	 */

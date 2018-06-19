@@ -1065,20 +1065,6 @@ static void cdns_uart_poll_put_char(struct uart_port *port, unsigned char c)
 }
 #endif
 
-static void cdns_uart_pm(struct uart_port *port, unsigned int state,
-		   unsigned int oldstate)
-{
-	switch (state) {
-	case UART_PM_STATE_OFF:
-		pm_runtime_mark_last_busy(port->dev);
-		pm_runtime_put_autosuspend(port->dev);
-		break;
-	default:
-		pm_runtime_get_sync(port->dev);
-		break;
-	}
-}
-
 static const struct uart_ops cdns_uart_ops = {
 	.set_mctrl	= cdns_uart_set_mctrl,
 	.get_mctrl	= cdns_uart_get_mctrl,
@@ -1090,7 +1076,6 @@ static const struct uart_ops cdns_uart_ops = {
 	.set_termios	= cdns_uart_set_termios,
 	.startup	= cdns_uart_startup,
 	.shutdown	= cdns_uart_shutdown,
-	.pm		= cdns_uart_pm,
 	.type		= cdns_uart_type,
 	.verify_port	= cdns_uart_verify_port,
 	.request_port	= cdns_uart_request_port,
@@ -1115,7 +1100,7 @@ static struct uart_port *cdns_uart_get_port(int id)
 	struct uart_port *port;
 
 	/* Try the given port id if failed use default method */
-	if (cdns_uart_port[id].mapbase != 0) {
+	if (id < CDNS_UART_NR_PORTS && cdns_uart_port[id].mapbase != 0) {
 		/* Find the next unused port */
 		for (id = 0; id < CDNS_UART_NR_PORTS; id++)
 			if (cdns_uart_port[id].mapbase == 0)

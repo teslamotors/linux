@@ -74,6 +74,16 @@
 #define REQUEST_READ	0
 #define REQUEST_WRITE	1
 
+/* Generic VM flags from guest OS */
+#define SECURE_WORLD_ENABLED    (1UL<<0)  /* Whether secure world is enabled */
+
+/**
+ * @brief Hypercall
+ *
+ * @addtogroup acrn_hypercall ACRN Hypercall
+ * @{
+ */
+
 struct mmio_request {
 	uint32_t direction;
 	uint32_t reserved;
@@ -139,66 +149,149 @@ struct vhm_request_buffer {
 	};
 } __attribute__((aligned(4096)));
 
-/* Common API params */
-struct acrn_create_vm {
-	int32_t vmid;	/* OUT: return vmid to VHM. Keep it first field */
-	uint32_t vcpu_num;	/* IN: VM vcpu number */
-	uint8_t	 GUID[16];	/* IN: GUID of this vm */
-	uint8_t	 secure_world_enabled;/* IN: whether Secure World is enabled */
-	uint8_t  reserved[31];	/* Reserved for future use */
-} __attribute__((aligned(8)));
-
-struct acrn_create_vcpu {
-	uint32_t vcpu_id;	/* IN: vcpu id */
-	uint32_t pcpu_id;	/* IN: pcpu id */
-} __attribute__((aligned(8)));
-
-struct acrn_set_ioreq_buffer {
-	uint64_t req_buf;			/* IN: gpa of per VM request_buffer*/
-} __attribute__((aligned(8)));
-
-/*
- * intr type
- * IOAPIC: inject interrupt to IOAPIC
- * ISA: inject interrupt to both PIC and IOAPIC
+/**
+ * @brief Info to create a VM, the parameter for HC_CREATE_VM hypercall
  */
+struct acrn_create_vm {
+	/** created vmid return to VHM. Keep it first field */
+	int32_t vmid;
+
+	/** VCPU numbers this VM want to create */
+	uint32_t vcpu_num;
+
+	/** the GUID of this VM */
+	uint8_t	 GUID[16];
+
+	/* VM flag bits from Guest OS, now used
+	 *  SECURE_WORLD_ENABLED          (1UL<<0)
+	 */
+	uint64_t vm_flag;
+
+	/** Reserved for future use*/
+	uint8_t  reserved[24];
+} __attribute__((aligned(8)));
+
+/**
+ * @brief Info to create a VCPU
+ *
+ * the parameter for HC_CREATE_VCPU hypercall
+ */
+struct acrn_create_vcpu {
+	/** the virtual CPU ID for the VCPU created */
+	uint32_t vcpu_id;
+
+	/** the physical CPU ID for the VCPU created */
+	uint32_t pcpu_id;
+} __attribute__((aligned(8)));
+
+/**
+ * @brief Info to set ioreq buffer for a created VM
+ *
+ * the parameter for HC_SET_IOREQ_BUFFER hypercall
+ */
+struct acrn_set_ioreq_buffer {
+	/** guest physical address of VM request_buffer */
+	uint64_t req_buf;
+} __attribute__((aligned(8)));
+
+/** Interrupt type for acrn_irqline: inject interrupt to IOAPIC */
 #define	ACRN_INTR_TYPE_ISA	0
+
+/** Interrupt type for acrn_irqline: inject interrupt to both PIC and IOAPIC */
 #define	ACRN_INTR_TYPE_IOAPIC	1
 
-/* For ISA, PIC, IOAPIC etc */
+/**
+ * @brief Info to assert/deassert/pulse a virtual IRQ line for a VM
+ *
+ * the parameter for HC_ASSERT_IRQLINE/HC_DEASSERT_IRQLINE/HC_PULSE_IRQLINE
+ * hypercall
+ */
 struct acrn_irqline {
+	/** interrupt type which could be IOAPIC or ISA */
 	uint32_t intr_type;
+
+	/** reserved for alignment padding */
 	uint32_t reserved;
-	uint64_t pic_irq;        /* IN: for ISA type */
-	uint64_t ioapic_irq;    /* IN: for IOAPIC type, -1 don't inject */
+
+	/** pic IRQ for ISA type */
+	uint64_t pic_irq;
+
+	/** ioapic IRQ for IOAPIC & ISA TYPE,
+	 *  if -1 then this IRQ will not be injected
+	 */
+	uint64_t ioapic_irq;
 } __attribute__((aligned(8)));
 
-/* For MSI type inject */
+/**
+ * @brief Info to inject a MSI interrupt to VM
+ *
+ * the parameter for HC_INJECT_MSI hypercall
+ */
 struct acrn_msi_entry {
-	uint64_t msi_addr;	/* IN: addr[19:12] with dest vcpu id */
-	uint64_t msi_data;	/* IN: data[7:0] with vector */
+	/** MSI addr[19:12] with dest VCPU ID */
+	uint64_t msi_addr;
+
+	/** MSI data[7:0] with vector */
+	uint64_t msi_data;
 } __attribute__((aligned(8)));
 
-/* For NMI inject */
+/**
+ * @brief Info to inject a NMI interrupt for a VM
+ */
 struct acrn_nmi_entry {
-	int64_t vcpuid;		/* IN: -1 means vcpu0 */
+	/** virtual CPU ID to inject */
+	int64_t vcpu_id;
 } __attribute__((aligned(8)));
 
+/**
+ * @brief Info to remap pass-through PCI MSI for a VM
+ *
+ * the parameter for HC_VM_PCI_MSIX_REMAP hypercall
+ */
 struct acrn_vm_pci_msix_remap {
-	uint16_t virt_bdf;	/* IN: Device virtual BDF# */
-	uint16_t phys_bdf;	/* IN: Device physical BDF# */
-	uint16_t msi_ctl;		/* IN: PCI MSI/x cap control data */
+	/** pass-through PCI device virtual BDF# */
+	uint16_t virt_bdf;
+
+	/** pass-through PCI device physical BDF# */
+	uint16_t phys_bdf;
+
+	/** pass-through PCI device MSI/MSI-X cap control data */
+	uint16_t msi_ctl;
+
+	/** reserved for alignment padding */
 	uint16_t reserved;
+
+	/** pass-through PCI device MSI address to remap, which will
+	 * return the caller after remapping
+	 */
 	uint64_t msi_addr;		/* IN/OUT: msi address to fix */
-	uint32_t msi_data;		/* IN/OUT: msi data to fix */
-	int32_t msix;			/* IN: 0 - MSI, 1 - MSI-X */
-	int32_t msix_entry_index;	/* IN: MSI-X the entry table index */
-	/* IN: Vector Control for MSI-X Entry, field defined in MSIX spec */
+
+	/** pass-through PCI device MSI data to remap, which will
+	 * return the caller after remapping
+	 */
+	uint32_t msi_data;
+
+	/** pass-through PCI device is MSI or MSI-X
+	 *  0 - MSI, 1 - MSI-X
+	 */
+	int32_t msix;
+
+	/** if the pass-through PCI device is MSI-X, this field contains
+	 *  the MSI-X entry table index
+	 */
+	int32_t msix_entry_index;
+
+	/** if the pass-through PCI device is MSI-X, this field contains
+	 *  Vector Control for MSI-X Entry, field defined in MSI-X spec
+	 */
 	uint32_t vector_ctl;
 } __attribute__((aligned(8)));
 
-/* It's designed to support passing DM config data pointer, based on it,
- * hypervisor would parse then pass DM defined configration to GUEST vcpu
+/**
+ * @brief The guest config pointer offset.
+ *
+ * It's designed to support passing DM config data pointer, based on it,
+ * hypervisor would parse then pass DM defined configuration to GUEST VCPU
  * when booting guest VM.
  * the address 0xd0000 here is designed by DM, as it arranged all memory
  * layout below 1M, DM should make sure there is no overlap for the address
@@ -206,4 +299,68 @@ struct acrn_vm_pci_msix_remap {
  */
 #define GUEST_CFG_OFFSET 	0xd0000
 
+/**
+ * @brief Info The power state data of a VCPU.
+ *
+ */
+
+#define SPACE_SYSTEM_MEMORY     0
+#define SPACE_SYSTEM_IO         1
+#define SPACE_PCI_CONFIG        2
+#define SPACE_Embedded_Control  3
+#define SPACE_SMBUS             4
+#define SPACE_PLATFORM_COMM     10
+#define SPACE_FFixedHW          0x7F
+
+struct acpi_generic_address {
+	uint8_t 	space_id;
+	uint8_t 	bit_width;
+	uint8_t 	bit_offset;
+	uint8_t 	access_size;
+	uint64_t	address;
+} __attribute__((aligned(8)));
+
+struct cpu_cx_data {
+	struct acpi_generic_address cx_reg;
+	uint8_t 	type;
+	uint32_t	latency;
+	uint64_t	power;
+} __attribute__((aligned(8)));
+
+struct cpu_px_data {
+	uint64_t core_frequency;	/* megahertz */
+	uint64_t power;			/* milliWatts */
+	uint64_t transition_latency;	/* microseconds */
+	uint64_t bus_master_latency;	/* microseconds */
+	uint64_t control;		/* control value */
+	uint64_t status;		/* success indicator */
+} __attribute__((aligned(8)));
+
+/**
+ * @brief Info PM command from DM/VHM.
+ *
+ * The command would specify request type(e.g. get px count or data) for
+ * specific VM and specific VCPU with specific state number.
+ * For Px, PMCMD_STATE_NUM means Px number from 0 to (MAX_PSTATE - 1),
+ * For Cx, PMCMD_STATE_NUM means Cx entry index from 1 to MAX_CX_ENTRY.
+ */
+#define PMCMD_VMID_MASK		0xff000000
+#define PMCMD_VCPUID_MASK	0x00ff0000
+#define PMCMD_STATE_NUM_MASK	0x0000ff00
+#define PMCMD_TYPE_MASK		0x000000ff
+
+#define PMCMD_VMID_SHIFT	24
+#define PMCMD_VCPUID_SHIFT	16
+#define PMCMD_STATE_NUM_SHIFT	8
+
+enum pm_cmd_type {
+	PMCMD_GET_PX_CNT,
+	PMCMD_GET_PX_DATA,
+	PMCMD_GET_CX_CNT,
+	PMCMD_GET_CX_DATA,
+};
+
+/**
+ * @}
+ */
 #endif /* __ACRN_COMMON_H__ */

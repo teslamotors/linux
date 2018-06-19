@@ -151,6 +151,8 @@ void drm_atomic_state_default_clear(struct drm_atomic_state *state)
 						       state->connectors[i].state);
 		state->connectors[i].ptr = NULL;
 		state->connectors[i].state = NULL;
+		state->connectors[i].old_state = NULL;
+		state->connectors[i].new_state = NULL;
 		drm_connector_put(connector);
 	}
 
@@ -172,6 +174,8 @@ void drm_atomic_state_default_clear(struct drm_atomic_state *state)
 		state->crtcs[i].commit = NULL;
 		state->crtcs[i].ptr = NULL;
 		state->crtcs[i].state = NULL;
+		state->crtcs[i].old_state = NULL;
+		state->crtcs[i].new_state = NULL;
 	}
 
 	for (i = 0; i < config->num_total_plane; i++) {
@@ -184,6 +188,8 @@ void drm_atomic_state_default_clear(struct drm_atomic_state *state)
 						   state->planes[i].state);
 		state->planes[i].ptr = NULL;
 		state->planes[i].state = NULL;
+		state->planes[i].old_state = NULL;
+		state->planes[i].new_state = NULL;
 	}
 
 	for (i = 0; i < state->num_private_objs; i++) {
@@ -196,6 +202,8 @@ void drm_atomic_state_default_clear(struct drm_atomic_state *state)
 						 state->private_objs[i].state);
 		state->private_objs[i].ptr = NULL;
 		state->private_objs[i].state = NULL;
+		state->private_objs[i].old_state = NULL;
+		state->private_objs[i].new_state = NULL;
 	}
 	state->num_private_objs = 0;
 
@@ -463,6 +471,8 @@ int drm_atomic_crtc_set_property(struct drm_crtc *crtc,
 
 	if (property == config->prop_active)
 		state->active = val;
+	else if (property == config->prop_background_color)
+		state->background_color.v = val;
 	else if (property == config->prop_mode_id) {
 		struct drm_property_blob *mode =
 			drm_property_lookup_blob(dev, val);
@@ -557,6 +567,8 @@ drm_atomic_crtc_get_property(struct drm_crtc *crtc,
 		*val = (state->gamma_lut) ? state->gamma_lut->base.id : 0;
 	else if (property == config->prop_out_fence_ptr)
 		*val = 0;
+	else if (property == config->prop_background_color)
+		*val = state->background_color.v;
 	else if (crtc->funcs->atomic_get_property)
 		return crtc->funcs->atomic_get_property(crtc, state, property, val);
 	else

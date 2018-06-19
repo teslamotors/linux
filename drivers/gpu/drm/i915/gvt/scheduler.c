@@ -45,11 +45,10 @@ static void set_context_pdp_root_pointer(
 		struct execlist_ring_context *ring_context,
 		u32 pdp[8])
 {
-	struct execlist_mmio_pair *pdp_pair = &ring_context->pdp3_UDW;
 	int i;
 
 	for (i = 0; i < 8; i++)
-		pdp_pair[i].val = pdp[7 - i];
+		ring_context->pdps[i].val = pdp[7 - i];
 }
 
 /*

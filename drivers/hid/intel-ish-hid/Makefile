@@ -20,4 +20,6 @@ obj-$(CONFIG_INTEL_ISH_HID) += intel-ishtp-hid.o
 intel-ishtp-hid-objs := ishtp-hid.o
 intel-ishtp-hid-objs += ishtp-hid-client.o
 
+obj-$(CONFIG_INTEL_ISH_TTY_CLIENT) += ishtp-tty-client.o
+
 ccflags-y += -Idrivers/hid/intel-ish-hid/ishtp

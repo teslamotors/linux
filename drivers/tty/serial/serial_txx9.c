@@ -734,22 +734,6 @@ serial_txx9_set_termios(struct uart_port *port, struct ktermios *termios,
 	spin_unlock_irqrestore(&up->port.lock, flags);
 }
 
-static void
-serial_txx9_pm(struct uart_port *port, unsigned int state,
-	      unsigned int oldstate)
-{
-	/*
-	 * If oldstate was -1 this is called from
-	 * uart_configure_port().  In this case do not initialize the
-	 * port now, because the port was already initialized (for
-	 * non-console port) or should not be initialized here (for
-	 * console port).  If we initialized the port here we lose
-	 * serial console settings.
-	 */
-	if (state == 0 && oldstate != -1)
-		serial_txx9_initialize(port);
-}
-
 static int serial_txx9_request_resource(struct uart_txx9_port *up)
 {
 	unsigned int size = TXX9_REGION_SIZE;
@@ -856,7 +840,6 @@ static const struct uart_ops serial_txx9_pops = {
 	.startup	= serial_txx9_startup,
 	.shutdown	= serial_txx9_shutdown,
 	.set_termios	= serial_txx9_set_termios,
-	.pm		= serial_txx9_pm,
 	.type		= serial_txx9_type,
 	.release_port	= serial_txx9_release_port,
 	.request_port	= serial_txx9_request_port,

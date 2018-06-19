@@ -483,28 +483,6 @@ static void omap_8250_set_termios(struct uart_port *port,
 		tty_termios_encode_baud_rate(termios, baud, baud);
 }
 
-/* same as 8250 except that we may have extra flow bits set in EFR */
-static void omap_8250_pm(struct uart_port *port, unsigned int state,
-			 unsigned int oldstate)
-{
-	struct uart_8250_port *up = up_to_u8250p(port);
-	u8 efr;
-
-	pm_runtime_get_sync(port->dev);
-	serial_out(up, UART_LCR, UART_LCR_CONF_MODE_B);
-	efr = serial_in(up, UART_EFR);
-	serial_out(up, UART_EFR, efr | UART_EFR_ECB);
-	serial_out(up, UART_LCR, 0);
-
-	serial_out(up, UART_IER, (state != 0) ? UART_IERX_SLEEP : 0);
-	serial_out(up, UART_LCR, UART_LCR_CONF_MODE_B);
-	serial_out(up, UART_EFR, efr);
-	serial_out(up, UART_LCR, 0);
-
-	pm_runtime_mark_last_busy(port->dev);
-	pm_runtime_put_autosuspend(port->dev);
-}
-
 static void omap_serial_fill_features_erratas(struct uart_8250_port *up,
 					      struct omap8250_priv *priv)
 {
@@ -1100,13 +1078,14 @@ static int omap8250_no_handle_irq(struct uart_port *port)
 	return 0;
 }
 
+static const u8 omap4_habit = UART_ERRATA_CLOCK_DISABLE;
 static const u8 am3352_habit = OMAP_DMA_TX_KICK | UART_ERRATA_CLOCK_DISABLE;
 static const u8 dra742_habit = UART_ERRATA_CLOCK_DISABLE;
 
 static const struct of_device_id omap8250_dt_ids[] = {
 	{ .compatible = "ti,omap2-uart" },
 	{ .compatible = "ti,omap3-uart" },
-	{ .compatible = "ti,omap4-uart" },
+	{ .compatible = "ti,omap4-uart", .data = &omap4_habit, },
 	{ .compatible = "ti,am3352-uart", .data = &am3352_habit, },
 	{ .compatible = "ti,am4372-uart", .data = &am3352_habit, },
 	{ .compatible = "ti,dra742-uart", .data = &dra742_habit, },
@@ -1171,7 +1150,6 @@ static int omap8250_probe(struct platform_device *pdev)
 #endif
 	up.port.set_termios = omap_8250_set_termios;
 	up.port.set_mctrl = omap8250_set_mctrl;
-	up.port.pm = omap_8250_pm;
 	up.port.startup = omap_8250_startup;
 	up.port.shutdown = omap_8250_shutdown;
 	up.port.throttle = omap_8250_throttle;
@@ -1342,6 +1320,19 @@ static int omap8250_soft_reset(struct device *dev)
 	int timeout = 100;
 	int sysc;
 	int syss;
+
+	/*
+	 * At least on omap4, unused uarts may not idle after reset without
+	 * a basic scr dma configuration even with no dma in use. The
+	 * module clkctrl status bits will be 1 instead of 3 blocking idle
+	 * for the whole clockdomain. The softreset below will clear scr,
+	 * and we restore it on resume so this is safe to do on all SoCs
+	 * needing omap8250_soft_reset() quirk. Do it in two writes as
+	 * recommended in the comment for omap8250_update_scr().
+	 */
+	serial_out(up, UART_OMAP_SCR, OMAP_UART_SCR_DMAMODE_1);
+	serial_out(up, UART_OMAP_SCR,
+		   OMAP_UART_SCR_DMAMODE_1 | OMAP_UART_SCR_DMAMODE_CTL);
 
 	sysc = serial_in(up, UART_OMAP_SYSC);
 

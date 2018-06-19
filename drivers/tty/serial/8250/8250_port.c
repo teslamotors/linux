@@ -458,7 +458,6 @@ static void io_serial_out(struct uart_port *p, int offset, int value)
 }
 
 static int serial8250_default_handle_irq(struct uart_port *port);
-static int exar_handle_irq(struct uart_port *port);
 
 static void set_io_from_upio(struct uart_port *p)
 {
@@ -586,16 +585,12 @@ EXPORT_SYMBOL_GPL(serial8250_clear_and_reinit_fifos);
 
 void serial8250_rpm_get(struct uart_8250_port *p)
 {
-	if (!(p->capabilities & UART_CAP_RPM))
-		return;
 	pm_runtime_get_sync(p->port.dev);
 }
 EXPORT_SYMBOL_GPL(serial8250_rpm_get);
 
 void serial8250_rpm_put(struct uart_8250_port *p)
 {
-	if (!(p->capabilities & UART_CAP_RPM))
-		return;
 	pm_runtime_mark_last_busy(p->port.dev);
 	pm_runtime_put_autosuspend(p->port.dev);
 }
@@ -679,22 +674,21 @@ void serial8250_rpm_get_tx(struct uart_8250_port *p)
 {
 	unsigned char rpm_active;
 
-	if (!(p->capabilities & UART_CAP_RPM))
-		return;
-
 	rpm_active = xchg(&p->rpm_tx_active, 1);
 	if (rpm_active)
 		return;
-	pm_runtime_get_sync(p->port.dev);
+	/*
+	 * Device has to be powered on at this point. Here we just increase
+	 * reference count to prevent autosuspend until the TX FIFO becomes
+	 * empty. See also a comment in serial8250_tx_chars().
+	 */
+	pm_runtime_get_noresume(p->port.dev);
 }
 EXPORT_SYMBOL_GPL(serial8250_rpm_get_tx);
 
 void serial8250_rpm_put_tx(struct uart_8250_port *p)
 {
 	unsigned char rpm_active;
-
-	if (!(p->capabilities & UART_CAP_RPM))
-		return;
 
 	rpm_active = xchg(&p->rpm_tx_active, 0);
 	if (!rpm_active)
@@ -719,11 +713,10 @@ static void serial8250_set_sleep(struct uart_8250_port *p, int sleep)
 	 * offset but the UART channel may only write to the corresponding
 	 * bit.
 	 */
-	serial8250_rpm_get(p);
 	if ((p->port.type == PORT_XR17V35X) ||
 	   (p->port.type == PORT_XR17D15X)) {
 		serial_out(p, UART_EXAR_SLEEP, sleep ? 0xff : 0);
-		goto out;
+		return;
 	}
 
 	if (p->capabilities & UART_CAP_SLEEP) {
@@ -741,8 +734,6 @@ static void serial8250_set_sleep(struct uart_8250_port *p, int sleep)
 			serial_out(p, UART_LCR, lcr);
 		}
 	}
-out:
-	serial8250_rpm_put(p);
 }
 
 #ifdef CONFIG_SERIAL_8250_RSA
@@ -1433,13 +1424,9 @@ static void serial8250_stop_rx(struct uart_port *port)
 {
 	struct uart_8250_port *up = up_to_u8250p(port);
 
-	serial8250_rpm_get(up);
-
 	up->ier &= ~(UART_IER_RLSI | UART_IER_RDI);
 	up->port.read_status_mask &= ~UART_LSR_DR;
 	serial_port_out(port, UART_IER, up->ier);
-
-	serial8250_rpm_put(up);
 }
 
 static void __do_stop_tx_rs485(struct uart_8250_port *p)
@@ -1540,7 +1527,6 @@ static void serial8250_stop_tx(struct uart_port *port)
 {
 	struct uart_8250_port *up = up_to_u8250p(port);
 
-	serial8250_rpm_get(up);
 	__stop_tx(up);
 
 	/*
@@ -1550,7 +1536,6 @@ static void serial8250_stop_tx(struct uart_port *port)
 		up->acr |= UART_ACR_TXDIS;
 		serial_icr_write(up, UART_ACR, up->acr);
 	}
-	serial8250_rpm_put(up);
 }
 
 static inline void __start_tx(struct uart_port *port)
@@ -1683,9 +1668,7 @@ static void serial8250_enable_ms(struct uart_port *port)
 
 	up->ier |= UART_IER_MSI;
 
-	serial8250_rpm_get(up);
 	serial_port_out(port, UART_IER, up->ier);
-	serial8250_rpm_put(up);
 }
 
 static void serial8250_read_char(struct uart_8250_port *up, unsigned char lsr)
@@ -1816,8 +1799,6 @@ void serial8250_tx_chars(struct uart_8250_port *up)
 	 * HW can go idle. So we get here once again with empty FIFO and disable
 	 * the interrupt and RPM in __stop_tx()
 	 */
-	if (uart_circ_empty(xmit) && !(up->capabilities & UART_CAP_RPM))
-		__stop_tx(up);
 }
 EXPORT_SYMBOL_GPL(serial8250_tx_chars);
 
@@ -1875,7 +1856,8 @@ int serial8250_handle_irq(struct uart_port *port, unsigned int iir)
 
 	status = serial_port_in(port, UART_LSR);
 
-	if (status & (UART_LSR_DR | UART_LSR_BI)) {
+	if (status & (UART_LSR_DR | UART_LSR_BI) &&
+	    iir & UART_IIR_RDI) {
 		if (!up->dma || handle_rx_dma(up, iir))
 			status = serial8250_rx_chars(up, status);
 	}
@@ -1890,37 +1872,19 @@ EXPORT_SYMBOL_GPL(serial8250_handle_irq);
 
 static int serial8250_default_handle_irq(struct uart_port *port)
 {
-	struct uart_8250_port *up = up_to_u8250p(port);
 	unsigned int iir;
-	int ret;
 
-	serial8250_rpm_get(up);
+	/*
+	 * The IRQ might be shared with other peripherals so we must first
+	 * check that are we RPM suspended or not. If we are we assume that
+	 * the IRQ was not for us (we shouldn't be RPM suspended when the
+	 * interrupt is enabled).
+	 */
+	if (pm_runtime_suspended(port->dev))
+		return 0;
 
 	iir = serial_port_in(port, UART_IIR);
-	ret = serial8250_handle_irq(port, iir);
-
-	serial8250_rpm_put(up);
-	return ret;
-}
-
-/*
- * These Exar UARTs have an extra interrupt indicator that could
- * fire for a few unimplemented interrupts.  One of which is a
- * wakeup event when coming out of sleep.  Put this here just
- * to be on the safe side that these interrupts don't go unhandled.
- */
-static int exar_handle_irq(struct uart_port *port)
-{
-	unsigned int iir = serial_port_in(port, UART_IIR);
-	int ret = 0;
-
-	if (((port->type == PORT_XR17V35X) || (port->type == PORT_XR17D15X)) &&
-	    serial_port_in(port, UART_EXAR_INT0) != 0)
-		ret = 1;
-
-	ret |= serial8250_handle_irq(port, iir);
-
-	return ret;
+	return serial8250_handle_irq(port, iir);
 }
 
 /*
@@ -1953,14 +1917,10 @@ static unsigned int serial8250_tx_empty(struct uart_port *port)
 	unsigned long flags;
 	unsigned int lsr;
 
-	serial8250_rpm_get(up);
-
 	spin_lock_irqsave(&port->lock, flags);
 	lsr = serial_port_in(port, UART_LSR);
 	up->lsr_saved_flags |= lsr & LSR_SAVE_FLAGS;
 	spin_unlock_irqrestore(&port->lock, flags);
-
-	serial8250_rpm_put(up);
 
 	return (lsr & BOTH_EMPTY) == BOTH_EMPTY ? TIOCSER_TEMT : 0;
 }
@@ -1971,9 +1931,7 @@ unsigned int serial8250_do_get_mctrl(struct uart_port *port)
 	unsigned int status;
 	unsigned int ret;
 
-	serial8250_rpm_get(up);
 	status = serial8250_modem_status(up);
-	serial8250_rpm_put(up);
 
 	ret = 0;
 	if (status & UART_MSR_DCD)
@@ -2030,7 +1988,6 @@ static void serial8250_break_ctl(struct uart_port *port, int break_state)
 	struct uart_8250_port *up = up_to_u8250p(port);
 	unsigned long flags;
 
-	serial8250_rpm_get(up);
 	spin_lock_irqsave(&port->lock, flags);
 	if (break_state == -1)
 		up->lcr |= UART_LCR_SBC;
@@ -2038,7 +1995,6 @@ static void serial8250_break_ctl(struct uart_port *port, int break_state)
 		up->lcr &= ~UART_LCR_SBC;
 	serial_port_out(port, UART_LCR, up->lcr);
 	spin_unlock_irqrestore(&port->lock, flags);
-	serial8250_rpm_put(up);
 }
 
 /*
@@ -2085,21 +2041,12 @@ static int serial8250_get_poll_char(struct uart_port *port)
 {
 	struct uart_8250_port *up = up_to_u8250p(port);
 	unsigned char lsr;
-	int status;
-
-	serial8250_rpm_get(up);
 
 	lsr = serial_port_in(port, UART_LSR);
+	if (!(lsr & UART_LSR_DR))
+		return NO_POLL_CHAR;
 
-	if (!(lsr & UART_LSR_DR)) {
-		status = NO_POLL_CHAR;
-		goto out;
-	}
-
-	status = serial_port_in(port, UART_RX);
-out:
-	serial8250_rpm_put(up);
-	return status;
+	return serial_port_in(port, UART_RX);
 }
 
 
@@ -2109,7 +2056,6 @@ static void serial8250_put_poll_char(struct uart_port *port,
 	unsigned int ier;
 	struct uart_8250_port *up = up_to_u8250p(port);
 
-	serial8250_rpm_get(up);
 	/*
 	 *	First save the IER then disable the interrupts
 	 */
@@ -2131,7 +2077,6 @@ static void serial8250_put_poll_char(struct uart_port *port,
 	 */
 	wait_for_xmitr(up, BOTH_EMPTY);
 	serial_port_out(port, UART_IER, ier);
-	serial8250_rpm_put(up);
 }
 
 #endif /* CONFIG_CONSOLE_POLL */
@@ -2154,7 +2099,6 @@ int serial8250_do_startup(struct uart_port *port)
 	if (port->iotype != up->cur_iotype)
 		set_io_from_upio(port);
 
-	serial8250_rpm_get(up);
 	if (port->type == PORT_16C950) {
 		/* Wake up and initialize UART */
 		up->acr = 0;
@@ -2237,8 +2181,7 @@ int serial8250_do_startup(struct uart_port *port)
 	    (serial_port_in(port, UART_LSR) == 0xff)) {
 		printk_ratelimited(KERN_INFO "ttyS%d: LSR safety check engaged!\n",
 				   serial_index(port));
-		retval = -ENODEV;
-		goto out;
+		return -ENODEV;
 	}
 
 	/*
@@ -2320,7 +2263,7 @@ int serial8250_do_startup(struct uart_port *port)
 
 	retval = up->ops->setup_irq(up);
 	if (retval)
-		goto out;
+		return retval;
 
 	/*
 	 * Now, initialize the UART
@@ -2394,7 +2337,7 @@ dont_test_tx_en:
 	 * Request DMA channels for both RX and TX.
 	 */
 	if (up->dma) {
-		retval = serial8250_request_dma(up);
+		retval = uart_console(port) ? -ENXIO : serial8250_request_dma(up);
 		if (retval) {
 			pr_warn_ratelimited("ttyS%d - failed to request DMA\n",
 					    serial_index(port));
@@ -2418,10 +2361,7 @@ dont_test_tx_en:
 		outb_p(0x80, icp);
 		inb_p(icp);
 	}
-	retval = 0;
-out:
-	serial8250_rpm_put(up);
-	return retval;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(serial8250_do_startup);
 
@@ -2437,7 +2377,6 @@ void serial8250_do_shutdown(struct uart_port *port)
 	struct uart_8250_port *up = up_to_u8250p(port);
 	unsigned long flags;
 
-	serial8250_rpm_get(up);
 	/*
 	 * Disable interrupts from this port
 	 */
@@ -2481,7 +2420,6 @@ void serial8250_do_shutdown(struct uart_port *port)
 	 * the IRQ chain.
 	 */
 	serial_port_in(port, UART_RX);
-	serial8250_rpm_put(up);
 
 	up->ops->release_irq(up);
 }
@@ -2641,6 +2579,42 @@ static unsigned int serial8250_get_baud_rate(struct uart_port *port,
 				  port->uartclk);
 }
 
+void serial8250_do_restore_context(struct uart_port *port)
+{
+	struct uart_8250_port *up = up_to_u8250p(port);
+
+	/* Write extended features at first */
+	if (up->capabilities & UART_CAP_EFR) {
+		serial_port_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
+		if (port->flags & UPF_EXAR_EFR)
+			serial_port_out(port, UART_XR_EFR, up->efr);
+		else
+			serial_port_out(port, UART_EFR, up->efr);
+	}
+
+	serial8250_set_divisor(port, up->baud, up->quot, up->frac);
+
+	/*
+	 * LCR DLAB must be set to enable 64-byte FIFO mode. If the FCR
+	 * is written without DLAB set, this mode will be disabled.
+	 */
+	if (port->type == PORT_16750)
+		serial_port_out(port, UART_FCR, up->fcr);
+
+	serial_port_out(port, UART_LCR, up->lcr);	/* reset DLAB */
+	if (port->type != PORT_16750) {
+		/* emulated UARTs (Lucent Venus 167x) need two steps */
+		if (up->fcr & UART_FCR_ENABLE_FIFO)
+			serial_port_out(port, UART_FCR, UART_FCR_ENABLE_FIFO);
+		serial_port_out(port, UART_FCR, up->fcr);	/* set fcr */
+	}
+	serial8250_set_mctrl(port, port->mctrl);
+
+	/* Enable interrupts at last */
+	serial_port_out(port, UART_IER, up->ier);
+}
+EXPORT_SYMBOL_GPL(serial8250_do_restore_context);
+
 void
 serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 			  struct ktermios *old)
@@ -2665,10 +2639,12 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 	 * Ok, we're now changing the port state.  Do it with
 	 * interrupts disabled.
 	 */
-	serial8250_rpm_get(up);
 	spin_lock_irqsave(&port->lock, flags);
 
 	up->lcr = cval;					/* Save computed LCR */
+	up->baud = baud;				/* Save baud rate */
+	up->quot = quot;				/* Save quot */
+	up->frac = frac;				/* Save fraction */
 
 	if (up->capabilities & UART_CAP_FIFO && port->fifosize > 1) {
 		/* NOTE: If fifo_bug is not set, a user can set RX_trigger. */
@@ -2734,8 +2710,6 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 	if (up->capabilities & UART_CAP_RTOIE)
 		up->ier |= UART_IER_RTOIE;
 
-	serial_port_out(port, UART_IER, up->ier);
-
 	if (up->capabilities & UART_CAP_EFR) {
 		unsigned char efr = 0;
 		/*
@@ -2746,32 +2720,13 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 		if (termios->c_cflag & CRTSCTS)
 			efr |= UART_EFR_CTS;
 
-		serial_port_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
-		if (port->flags & UPF_EXAR_EFR)
-			serial_port_out(port, UART_XR_EFR, efr);
-		else
-			serial_port_out(port, UART_EFR, efr);
+		up->efr = efr;
 	}
 
-	serial8250_set_divisor(port, baud, quot, frac);
+	/* Write saved values to the registers */
+	serial8250_do_restore_context(port);
 
-	/*
-	 * LCR DLAB must be set to enable 64-byte FIFO mode. If the FCR
-	 * is written without DLAB set, this mode will be disabled.
-	 */
-	if (port->type == PORT_16750)
-		serial_port_out(port, UART_FCR, up->fcr);
-
-	serial_port_out(port, UART_LCR, up->lcr);	/* reset DLAB */
-	if (port->type != PORT_16750) {
-		/* emulated UARTs (Lucent Venus 167x) need two steps */
-		if (up->fcr & UART_FCR_ENABLE_FIFO)
-			serial_port_out(port, UART_FCR, UART_FCR_ENABLE_FIFO);
-		serial_port_out(port, UART_FCR, up->fcr);	/* set fcr */
-	}
-	serial8250_set_mctrl(port, port->mctrl);
 	spin_unlock_irqrestore(&port->lock, flags);
-	serial8250_rpm_put(up);
 
 	/* Don't rewrite B0 */
 	if (tty_termios_baud_rate(termios))
@@ -2824,16 +2779,6 @@ void serial8250_do_pm(struct uart_port *port, unsigned int state,
 	serial8250_set_sleep(p, state != 0);
 }
 EXPORT_SYMBOL(serial8250_do_pm);
-
-static void
-serial8250_pm(struct uart_port *port, unsigned int state,
-	      unsigned int oldstate)
-{
-	if (port->pm)
-		port->pm(port, state, oldstate);
-	else
-		serial8250_do_pm(port, state, oldstate);
-}
 
 static unsigned int serial8250_port_size(struct uart_8250_port *pt)
 {
@@ -3107,11 +3052,6 @@ static void serial8250_config_port(struct uart_port *port, int flags)
 	if (port->type == PORT_UNKNOWN)
 		serial8250_release_std_resource(up);
 
-	/* Fixme: probably not the best place for this */
-	if ((port->type == PORT_XR17V35X) ||
-	   (port->type == PORT_XR17D15X))
-		port->handle_irq = exar_handle_irq;
-
 	register_dev_spec_attr_grp(up);
 	up->fcr = uart_config[up->port.type].fcr;
 }
@@ -3151,7 +3091,6 @@ static const struct uart_ops serial8250_pops = {
 	.shutdown	= serial8250_shutdown,
 	.set_termios	= serial8250_set_termios,
 	.set_ldisc	= serial8250_set_ldisc,
-	.pm		= serial8250_pm,
 	.type		= serial8250_type,
 	.release_port	= serial8250_release_port,
 	.request_port	= serial8250_request_port,
@@ -3237,6 +3176,9 @@ static void serial8250_console_restore(struct uart_8250_port *up)
  *	any possible real use of the port...
  *
  *	The console_lock must be held when we get here.
+ *
+ *	Doing runtime PM is a really bad idea for the kernel console.
+ *	Thus we assume that the function called when device is powered on.
  */
 void serial8250_console_write(struct uart_8250_port *up, const char *s,
 			      unsigned int count)
@@ -3247,8 +3189,6 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
 	int locked = 1;
 
 	touch_nmi_watchdog();
-
-	serial8250_rpm_get(up);
 
 	if (port->sysrq)
 		locked = 0;
@@ -3294,7 +3234,6 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
 
 	if (locked)
 		spin_unlock_irqrestore(&port->lock, flags);
-	serial8250_rpm_put(up);
 }
 
 static unsigned int probe_baud(struct uart_port *port)
@@ -3318,6 +3257,7 @@ int serial8250_console_setup(struct uart_port *port, char *options, bool probe)
 	int bits = 8;
 	int parity = 'n';
 	int flow = 'n';
+	int ret;
 
 	if (!port->iobase && !port->membase)
 		return -ENODEV;
@@ -3327,7 +3267,18 @@ int serial8250_console_setup(struct uart_port *port, char *options, bool probe)
 	else if (probe)
 		baud = probe_baud(port);
 
-	return uart_set_options(port, port->cons, baud, parity, bits, flow);
+	ret = uart_set_options(port, port->cons, baud, parity, bits, flow);
+
+	if (port->dev)
+		pm_runtime_get_noresume(port->dev);
+
+	return ret;
+}
+
+void serial8250_console_exit(struct uart_port *port)
+{
+	if (port->dev)
+		pm_runtime_put_noidle(port->dev);
 }
 
 #endif /* CONFIG_SERIAL_8250_CONSOLE */

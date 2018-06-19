@@ -406,6 +406,9 @@ int drm_mode_getcrtc(struct drm_device *dev,
 	if (!crtc)
 		return -ENOENT;
 
+	if (!crtc->primary)
+		return -EINVAL;
+
 	crtc_resp->gamma_size = crtc->gamma_size;
 
 	drm_modeset_lock(&crtc->primary->mutex, NULL);
@@ -455,13 +458,19 @@ static int __drm_mode_set_config_internal(struct drm_mode_set *set,
 	struct drm_crtc *tmp;
 	int ret;
 
+	if (!crtc->primary)
+		return -EINVAL;
+
 	/*
 	 * NOTE: ->set_config can also disable other crtcs (if we steal all
 	 * connectors from it), hence we need to refcount the fbs across all
 	 * crtcs. Atomic modeset will have saner semantics ...
 	 */
-	drm_for_each_crtc(tmp, crtc->dev)
+	drm_for_each_crtc(tmp, crtc->dev) {
+		if (!tmp->primary)
+			continue;
 		tmp->primary->old_fb = tmp->primary->fb;
+	}
 
 	fb = set->fb;
 
@@ -472,6 +481,8 @@ static int __drm_mode_set_config_internal(struct drm_mode_set *set,
 	}
 
 	drm_for_each_crtc(tmp, crtc->dev) {
+		if (!tmp->primary)
+			continue;
 		if (tmp->primary->fb)
 			drm_framebuffer_get(tmp->primary->fb);
 		if (tmp->primary->old_fb)
@@ -582,6 +593,9 @@ retry:
 	ret = drm_modeset_lock_all_ctx(crtc->dev, &ctx);
 	if (ret)
 		goto out;
+	if (!crtc->primary)
+		return -EINVAL;
+
 	if (crtc_req->mode_valid) {
 		/* If we have a mode we need a framebuffer. */
 		/* If we pass -1, set the mode with the currently bound fb */

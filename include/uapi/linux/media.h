@@ -264,6 +264,7 @@ struct media_entity_desc {
 #define MEDIA_PAD_FL_SINK		(1 << 0)
 #define MEDIA_PAD_FL_SOURCE		(1 << 1)
 #define MEDIA_PAD_FL_MUST_CONNECT	(1 << 2)
+#define MEDIA_PAD_FL_MULTIPLEX		(1 << 3)
 
 struct media_pad_desc {
 	__u32 entity;		/* entity ID */
@@ -408,10 +409,48 @@ struct media_v2_topology {
 
 /* ioctls */
 
+#define MEDIA_REQ_CMD_ALLOC		0
+#define MEDIA_REQ_CMD_DELETE		1
+#define MEDIA_REQ_CMD_APPLY		2
+#define MEDIA_REQ_CMD_QUEUE		3
+
+#define MEDIA_REQ_FL_COMPLETE_EVENT	(1 << 0)
+
+#ifdef __KERNEL__
+struct __attribute__ ((packed)) media_request_cmd_0 {
+	__u32 cmd;
+	__u32 request;
+};
+#endif
+
+struct __attribute__ ((packed)) media_request_cmd {
+	__u32 cmd;
+	__u32 request;
+	__u32 flags;
+};
+
+struct __attribute__ ((packed)) media_event_request_complete {
+	__u32 id;
+};
+
+#define MEDIA_EVENT_TYPE_REQUEST_COMPLETE	1
+
+struct __attribute__ ((packed)) media_event {
+	__u32 type;
+	__u32 sequence;
+	__u32 reserved[4];
+
+	union {
+		struct media_event_request_complete req_complete;
+	};
+};
+
 #define MEDIA_IOC_DEVICE_INFO		_IOWR('|', 0x00, struct media_device_info)
 #define MEDIA_IOC_ENUM_ENTITIES		_IOWR('|', 0x01, struct media_entity_desc)
 #define MEDIA_IOC_ENUM_LINKS		_IOWR('|', 0x02, struct media_links_enum)
 #define MEDIA_IOC_SETUP_LINK		_IOWR('|', 0x03, struct media_link_desc)
 #define MEDIA_IOC_G_TOPOLOGY		_IOWR('|', 0x04, struct media_v2_topology)
+#define MEDIA_IOC_REQUEST_CMD		_IOWR('|', 0x05, struct media_request_cmd)
+#define MEDIA_IOC_DQEVENT		_IOWR('|', 0x06, struct media_event)
 
 #endif /* __LINUX_MEDIA_H */

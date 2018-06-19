@@ -1829,9 +1829,10 @@ struct xhci_hcd {
 /* For controller with a broken Port Disable implementation */
 #define XHCI_BROKEN_PORT_PED	(1 << 25)
 #define XHCI_LIMIT_ENDPOINT_INTERVAL_7	(1 << 26)
-/* Reserved. It was XHCI_U2_DISABLE_WAKE */
+#define XHCI_U2_DISABLE_WAKE	(1 << 27)
 #define XHCI_ASMEDIA_MODIFY_FLOWCONTROL	(1 << 28)
 #define XHCI_SUSPEND_DELAY	(1 << 30)
+#define XHCI_INTEL_USB_ROLE_SW	(1 << 31)
 
 	unsigned int		num_active_eps;
 	unsigned int		limit_active_eps;
@@ -1858,7 +1859,6 @@ struct xhci_hcd {
 	struct timer_list	comp_mode_recovery_timer;
 	u32			port_status_u0;
 	u16			test_mode;
-	struct platform_device	*usb2_phy;
 /* Compliance Mode Timer Triggered every 2 seconds */
 #define COMP_MODE_RCVRY_MSECS 2000
 
@@ -2016,6 +2016,7 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks);
 void xhci_init_driver(struct hc_driver *drv,
 		      const struct xhci_driver_overrides *over);
 int xhci_disable_slot(struct xhci_hcd *xhci, u32 slot_id);
+int xhci_ext_cap_init(struct xhci_hcd *xhci);
 
 int xhci_suspend(struct xhci_hcd *xhci, bool do_wakeup);
 int xhci_resume(struct xhci_hcd *xhci, bool hibernated);

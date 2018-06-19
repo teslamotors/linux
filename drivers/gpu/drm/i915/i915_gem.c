@@ -2770,9 +2770,25 @@ i915_gem_find_active_request(struct intel_engine_cs *engine)
 	return active;
 }
 
-static bool engine_stalled(struct intel_engine_cs *engine)
+static bool engine_stalled(struct intel_engine_cs *engine,
+			   struct drm_i915_gem_request *request)
 {
 	if (!intel_vgpu_active(engine->i915)) {
+		if (engine->fpreempt_stalled) {
+			/* Pardon the request if it managed to yield the
+			 * engine by completing just prior to the reset. We
+			 * could be even more sophisticated here and pardon
+			 * the request if it preempted out (mid-batch) prior
+			 * to the reset, but that's not so straight-forward
+			 * to detect. Perhaps not worth splitting hairs when
+			 * the request had clearly behaved badly to get here.
+			 */
+			if (i915_gem_request_completed(request))
+				return false;
+
+			return true;
+		}
+
 		if (!engine->hangcheck.stalled)
 			return false;
 
@@ -2793,7 +2809,7 @@ static bool engine_stalled(struct intel_engine_cs *engine)
 struct drm_i915_gem_request *
 i915_gem_reset_prepare_engine(struct intel_engine_cs *engine)
 {
-	struct drm_i915_gem_request *request = NULL;
+	struct drm_i915_gem_request *request;
 
 	/* Prevent the signaler thread from updating the request
 	 * state (by calling dma_fence_signal) as we are processing
@@ -2806,21 +2822,7 @@ i915_gem_reset_prepare_engine(struct intel_engine_cs *engine)
 	 */
 	kthread_park(engine->breadcrumbs.signaler);
 
-	/* Prevent request submission to the hardware until we have
-	 * completed the reset in i915_gem_reset_finish(). If a request
-	 * is completed by one engine, it may then queue a request
-	 * to a second via its engine->irq_tasklet *just* as we are
-	 * calling engine->init_hw() and also writing the ELSP.
-	 * Turning off the engine->irq_tasklet until the reset is over
-	 * prevents the race.
-	 */
-	tasklet_kill(&engine->execlists.irq_tasklet);
-	tasklet_disable(&engine->execlists.irq_tasklet);
-
-	if (engine->irq_seqno_barrier)
-		engine->irq_seqno_barrier(engine);
-
-	request = i915_gem_find_active_request(engine);
+	request = engine->reset.prepare(engine);
 	if (request && request->fence.error == -EIO)
 		request = ERR_PTR(-EIO); /* Previous reset failed! */
 
@@ -2917,7 +2919,7 @@ i915_gem_reset_request(struct intel_engine_cs *engine,
 	 * subsequent hangs.
 	 */
 
-	if (engine_stalled(engine)) {
+	if (engine_stalled(engine, request)) {
 		i915_gem_context_mark_guilty(request->ctx);
 		skip_request(request);
 
@@ -2925,6 +2927,13 @@ i915_gem_reset_request(struct intel_engine_cs *engine,
 		if (i915_gem_context_is_banned(request->ctx))
 			engine_skip_context(request);
 	} else {
+		/* If the request that we just pardoned was the target of a
+		 * force preemption there is no possibility of the next
+		 * request in line having started.
+		 */
+		if (engine->fpreempt_stalled)
+			return NULL;
+
 		/*
 		 * Since this is not the hung engine, it may have advanced
 		 * since the hang declaration. Double check by refinding
@@ -2961,7 +2970,7 @@ void i915_gem_reset_engine(struct intel_engine_cs *engine,
 	}
 
 	/* Setup the CS to resume from the breadcrumb of the hung request */
-	engine->reset_hw(engine, request);
+	engine->reset.reset(engine, request);
 }
 
 void i915_gem_reset(struct drm_i915_private *dev_priv)
@@ -2994,7 +3003,8 @@ void i915_gem_reset(struct drm_i915_private *dev_priv)
 
 void i915_gem_reset_finish_engine(struct intel_engine_cs *engine)
 {
-	tasklet_enable(&engine->execlists.irq_tasklet);
+	engine->reset.finish(engine);
+
 	kthread_unpark(engine->breadcrumbs.signaler);
 }
 
@@ -3344,24 +3354,12 @@ static int wait_for_timeline(struct i915_gem_timeline *tl, unsigned int flags)
 	return 0;
 }
 
-static int wait_for_engine(struct intel_engine_cs *engine, int timeout_ms)
-{
-	return wait_for(intel_engine_is_idle(engine), timeout_ms);
-}
-
 static int wait_for_engines(struct drm_i915_private *i915)
 {
-	struct intel_engine_cs *engine;
-	enum intel_engine_id id;
-
-	for_each_engine(engine, i915, id) {
-		if (GEM_WARN_ON(wait_for_engine(engine, 50))) {
-			i915_gem_set_wedged(i915);
-			return -EIO;
-		}
-
-		GEM_BUG_ON(intel_engine_get_seqno(engine) !=
-			   intel_engine_last_submit(engine));
+	if (wait_for(intel_engines_are_idle(i915), 50)) {
+		DRM_ERROR("Failed to idle engines, declaring wedged!\n");
+		i915_gem_set_wedged(i915);
+		return -EIO;
 	}
 
 	return 0;
@@ -4541,7 +4539,7 @@ int i915_gem_suspend(struct drm_i915_private *dev_priv)
 	ret = i915_gem_wait_for_idle(dev_priv,
 				     I915_WAIT_INTERRUPTIBLE |
 				     I915_WAIT_LOCKED);
-	if (ret)
+	if (ret && ret != -EIO)
 		goto err_unlock;
 
 	assert_kernel_context_is_current(dev_priv);
@@ -4585,11 +4583,12 @@ int i915_gem_suspend(struct drm_i915_private *dev_priv)
 	 * machine in an unusable condition.
 	 */
 	i915_gem_sanitize(dev_priv);
-	goto out_rpm_put;
+
+	intel_runtime_pm_put(dev_priv);
+	return 0;
 
 err_unlock:
 	mutex_unlock(&dev->struct_mutex);
-out_rpm_put:
 	intel_runtime_pm_put(dev_priv);
 	return ret;
 }

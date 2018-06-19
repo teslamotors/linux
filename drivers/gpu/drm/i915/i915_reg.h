@@ -5431,6 +5431,15 @@ enum {
 #define   PIPEMISC_DITHER_TYPE_SP	(0<<2)
 #define PIPEMISC(pipe)			_MMIO_PIPE2(pipe, _PIPE_MISC_A)
 
+/* Skylake pipe bottom color */
+#define _PIPE_BOTTOM_COLOR_A        0x70034
+#define _PIPE_BOTTOM_COLOR_B        0x71034
+#define _PIPE_BOTTOM_COLOR_C        0x72034
+#define PIPE_BOTTOM_GAMMA_ENABLE   (1 << 31)
+#define PIPE_BOTTOM_CSC_ENABLE     (1 << 30)
+#define PIPE_BOTTOM_COLOR_MASK     0x3FFFFFFF
+#define PIPE_BOTTOM_COLOR(pipe) _MMIO_PIPE(pipe, _PIPE_BOTTOM_COLOR_A, _PIPE_BOTTOM_COLOR_B)
+
 #define VLV_DPFLIPSTAT				_MMIO(VLV_DISPLAY_BASE + 0x70028)
 #define   PIPEB_LINE_COMPARE_INT_EN		(1<<29)
 #define   PIPEB_HLINE_INT_EN			(1<<28)
@@ -6168,6 +6177,12 @@ enum {
 #define _SPATILEOFF		(VLV_DISPLAY_BASE + 0x721a4)
 #define _SPACONSTALPHA		(VLV_DISPLAY_BASE + 0x721a8)
 #define   SP_CONST_ALPHA_ENABLE		(1<<31)
+#define _SPACLRC0		(VLV_DISPLAY_BASE + 0x721d0)
+#define   SP_CONTRAST(x)		((x) << 18) /* u3.6 */
+#define   SP_BRIGHTNESS(x)		((x) & 0xff) /* s8 */
+#define _SPACLRC1		(VLV_DISPLAY_BASE + 0x721d4)
+#define   SP_SH_SIN(x)			(((x) & 0x7ff) << 16) /* s4.7 */
+#define   SP_SH_COS(x)			(x) /* u3.7 */
 #define _SPAGAMC		(VLV_DISPLAY_BASE + 0x721f4)
 
 #define _SPBCNTR		(VLV_DISPLAY_BASE + 0x72280)
@@ -6181,6 +6196,8 @@ enum {
 #define _SPBKEYMAXVAL		(VLV_DISPLAY_BASE + 0x722a0)
 #define _SPBTILEOFF		(VLV_DISPLAY_BASE + 0x722a4)
 #define _SPBCONSTALPHA		(VLV_DISPLAY_BASE + 0x722a8)
+#define _SPBCLRC0		(VLV_DISPLAY_BASE + 0x722d0)
+#define _SPBCLRC1		(VLV_DISPLAY_BASE + 0x722d4)
 #define _SPBGAMC		(VLV_DISPLAY_BASE + 0x722f4)
 
 #define _MMIO_VLV_SPR(pipe, plane_id, reg_a, reg_b) \
@@ -6197,6 +6214,8 @@ enum {
 #define SPKEYMAXVAL(pipe, plane_id)	_MMIO_VLV_SPR((pipe), (plane_id), _SPAKEYMAXVAL, _SPBKEYMAXVAL)
 #define SPTILEOFF(pipe, plane_id)	_MMIO_VLV_SPR((pipe), (plane_id), _SPATILEOFF, _SPBTILEOFF)
 #define SPCONSTALPHA(pipe, plane_id)	_MMIO_VLV_SPR((pipe), (plane_id), _SPACONSTALPHA, _SPBCONSTALPHA)
+#define SPCLRC0(pipe, plane_id)		_MMIO_VLV_SPR((pipe), (plane_id), _SPACLRC0, _SPBCLRC0)
+#define SPCLRC1(pipe, plane_id)		_MMIO_VLV_SPR((pipe), (plane_id), _SPACLRC1, _SPBCLRC1)
 #define SPGAMC(pipe, plane_id)		_MMIO_VLV_SPR((pipe), (plane_id), _SPAGAMC, _SPBGAMC)
 
 /*
@@ -7051,6 +7070,9 @@ enum {
 /* GEN9 chicken */
 #define SLICE_ECO_CHICKEN0			_MMIO(0x7308)
 #define   PIXEL_MASK_CAMMING_DISABLE		(1 << 14)
+
+#define GEN9_WM_CHICKEN3			_MMIO(0x5588)
+#define   GEN9_FACTOR_IN_CLR_VAL_HIZ		(1 << 9)
 
 /* WaCatErrorRejectionIssue */
 #define GEN7_SQ_CHICKEN_MBCUNIT_CONFIG		_MMIO(0x9030)

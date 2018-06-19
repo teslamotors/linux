@@ -179,11 +179,18 @@ static void broadwell_set_fifo_underrun_reporting(struct drm_device *dev,
 						  enum pipe pipe, bool enable)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
+	struct intel_crtc *crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
 
+	if (!crtc) {
+		DRM_DEBUG("No crtc for pipe=%d\n", pipe);
+		return;
+	}
 	if (enable)
-		bdw_enable_pipe_irq(dev_priv, pipe, GEN8_PIPE_FIFO_UNDERRUN);
+		bdw_enable_pipe_irq(dev_priv, drm_crtc_index(&crtc->base),
+				    GEN8_PIPE_FIFO_UNDERRUN);
 	else
-		bdw_disable_pipe_irq(dev_priv, pipe, GEN8_PIPE_FIFO_UNDERRUN);
+		bdw_disable_pipe_irq(dev_priv, drm_crtc_index(&crtc->base),
+				     GEN8_PIPE_FIFO_UNDERRUN);
 }
 
 static void ibx_set_fifo_underrun_reporting(struct drm_device *dev,

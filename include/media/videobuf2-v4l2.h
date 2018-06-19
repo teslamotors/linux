@@ -42,6 +42,8 @@ struct vb2_v4l2_buffer {
 	__u32			field;
 	struct v4l2_timecode	timecode;
 	__u32			sequence;
+	__u32			request;
+ 	__u32			reserved;
 };
 
 /*

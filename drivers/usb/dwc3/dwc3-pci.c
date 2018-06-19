@@ -25,7 +25,6 @@
 #include <linux/gpio/consumer.h>
 #include <linux/acpi.h>
 #include <linux/delay.h>
-#include <linux/usb/phy.h>
 
 #define PCI_DEVICE_ID_SYNOPSYS_HAPSUSB3		0xabcd
 #define PCI_DEVICE_ID_SYNOPSYS_HAPSUSB3_AXI	0xabce
@@ -57,7 +56,6 @@
  */
 struct dwc3_pci {
 	struct platform_device *dwc3;
-	struct platform_device	*usb2_phy;
 	struct pci_dev *pci;
 
 	guid_t guid;
@@ -125,35 +123,6 @@ static int dwc3_pci_quirks(struct dwc3_pci *dwc)
 			guid_parse(PCI_INTEL_BXT_DSM_GUID, &dwc->guid);
 			dwc->has_dsm_for_pm = true;
 		}
-
-		if (pdev->device == PCI_DEVICE_ID_INTEL_BXT ||
-		    pdev->device == PCI_DEVICE_ID_INTEL_BXT_M ||
-		    pdev->device == PCI_DEVICE_ID_INTEL_APL ) {
-
-			if (IS_ERR_OR_NULL(usb_get_phy(USB_PHY_TYPE_USB2))) {
-				/* Unable to get phy, very likely intel_usb_dr_phy
-				 * platform device not yet allocated. Possible
-				 * race with another drivers.
-				 */
-				dwc->usb2_phy = platform_device_alloc(
-								"intel_usb_dr_phy", 0);
-				if (dwc->usb2_phy) {
-					dwc->usb2_phy->dev.parent = &pdev->dev;
-					ret = platform_device_add(dwc->usb2_phy);
-					if (ret) {
-						platform_device_put(dwc->usb2_phy);
-						return ret;
-					}
-				} else if (IS_ERR_OR_NULL(usb_get_phy(USB_PHY_TYPE_USB2))) {
-					/* In case of a race and another driver allocate
-					 * intel_usb_dr_phy platform device earlier, check
-					 * whether phy is already available. If not return error.
-					 */
-					return -ENOMEM;
-				}
-			}
-		}
-
 
 		if (pdev->device == PCI_DEVICE_ID_INTEL_BYT) {
 			struct gpio_desc *gpio;
@@ -243,7 +212,7 @@ static int dwc3_pci_probe(struct pci_dev *pci,
 	ret = platform_device_add_resources(dwc->dwc3, res, ARRAY_SIZE(res));
 	if (ret) {
 		dev_err(dev, "couldn't add resources to dwc3 device\n");
-		return ret;
+		goto err;
 	}
 
 	dwc->pci = pci;
@@ -276,8 +245,6 @@ static void dwc3_pci_remove(struct pci_dev *pci)
 
 	device_init_wakeup(&pci->dev, false);
 	pm_runtime_get(&pci->dev);
-	if(dwc->usb2_phy)
-		platform_device_unregister(dwc->usb2_phy);
 	platform_device_unregister(dwc->dwc3);
 }
 

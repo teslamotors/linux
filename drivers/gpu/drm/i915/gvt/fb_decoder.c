@@ -114,7 +114,8 @@ static u32 gvt_get_stride(struct intel_vgpu *vgpu, int pipe, u32 tiled,
 	u32 stride_reg = vgpu_vreg(vgpu, DSPSTRIDE(pipe)) & stride_mask;
 	u32 stride = stride_reg;
 
-	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv) ||
+	    IS_KABYLAKE(dev_priv)) {
 		switch (tiled) {
 		case PLANE_CTL_TILED_LINEAR:
 			stride = stride_reg * 64;
@@ -152,7 +153,8 @@ static int gvt_decode_primary_plane_format(struct intel_vgpu *vgpu,
 	if (!plane->enabled)
 		return 0;
 
-	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) {
+	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv) ||
+	    IS_KABYLAKE(dev_priv)) {
 		plane->tiled = (val & PLANE_CTL_TILED_MASK) >> _PLANE_CTL_TILED_SHIFT;
 		fmt = skl_format_to_drm(
 		val & PLANE_CTL_FORMAT_MASK,
@@ -168,8 +170,10 @@ static int gvt_decode_primary_plane_format(struct intel_vgpu *vgpu,
 		plane->drm_format = primary_pixel_formats[fmt].drm_format;
 	}
 
-	if (((IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) && !skl_pixel_formats[fmt].bpp)
-			|| (!(IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) && !primary_pixel_formats[fmt].bpp)) {
+	if (((IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv) ||
+	      IS_KABYLAKE(dev_priv)) && !skl_pixel_formats[fmt].bpp) ||
+	   (!(IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv) ||
+	      IS_KABYLAKE(dev_priv)) && !primary_pixel_formats[fmt].bpp)) {
 		gvt_err("Non-supported pixel format (0x%x)\n", fmt);
 		return -EINVAL;
 	}
@@ -179,7 +183,8 @@ static int gvt_decode_primary_plane_format(struct intel_vgpu *vgpu,
 	plane->base = vgpu_vreg(vgpu, DSPSURF(pipe)) & GTT_PAGE_MASK;
 
 	plane->stride = gvt_get_stride(vgpu, pipe, (plane->tiled << 10),
-			(IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv))?
+			(IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv) ||
+			 IS_KABYLAKE(dev_priv)) ?
 				(_PRI_PLANE_STRIDE_MASK >> 6)
 				: _PRI_PLANE_STRIDE_MASK, plane->bpp);
 

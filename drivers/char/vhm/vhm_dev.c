@@ -112,6 +112,7 @@ static DEFINE_MUTEX(table_iomems_lock);
 static int vhm_dev_open(struct inode *inodep, struct file *filep)
 {
 	struct vhm_vm *vm;
+	int i;
 
 	vm = kzalloc(sizeof(struct vhm_vm), GFP_KERNEL);
 	pr_info("vhm_dev_open: opening device node\n");
@@ -124,11 +125,16 @@ static int vhm_dev_open(struct inode *inodep, struct file *filep)
 	INIT_LIST_HEAD(&vm->memseg_list);
 	mutex_init(&vm->seg_lock);
 
+	for (i = 0; i < HUGEPAGE_HLIST_ARRAY_SIZE; i++)
+		INIT_HLIST_HEAD(&vm->hugepage_hlist[i]);
+	mutex_init(&vm->hugepage_lock);
+
 	INIT_LIST_HEAD(&vm->ioreq_client_list);
 	spin_lock_init(&vm->ioreq_client_lock);
 
 	vm_mutex_lock(&vhm_vm_list_lock);
 	vm->refcnt = 1;
+	vm->hugetlb_enabled = 0;
 	vm_list_add(&vm->list);
 	vm_mutex_unlock(&vhm_vm_list_lock);
 	filep->private_data = vm;
@@ -220,6 +226,15 @@ static long vhm_dev_ioctl(struct file *filep,
 		ret = hcall_pause_vm(vm->vmid);
 		if (ret < 0) {
 			pr_err("vhm: failed to pause VM %ld!\n", vm->vmid);
+			return -EFAULT;
+		}
+		break;
+	}
+
+	case IC_RESTART_VM: {
+		ret = hcall_restart_vm(vm->vmid);
+		if (ret < 0) {
+			pr_err("vhm: failed to restart VM %ld!\n", vm->vmid);
 			return -EFAULT;
 		}
 		break;
@@ -523,6 +538,60 @@ static long vhm_dev_ioctl(struct file *filep,
 				PCI_MSIX_ENTRY_CTRL_MASKBIT,
 				msix_entry + PCI_MSIX_ENTRY_VECTOR_CTRL);
 		}
+		break;
+	}
+
+	case IC_PM_GET_CPU_STATE: {
+		uint64_t cmd;
+
+		if (copy_from_user(&cmd,
+				(void *)ioctl_param, sizeof(cmd)))
+			return -EFAULT;
+
+		switch (cmd & PMCMD_TYPE_MASK) {
+		case PMCMD_GET_PX_CNT:
+		case PMCMD_GET_CX_CNT: {
+			uint64_t pm_info;
+
+			ret = hcall_get_cpu_state(cmd, virt_to_phys(&pm_info));
+			if (ret < 0)
+				return -EFAULT;
+
+			if (copy_to_user((void *)ioctl_param,
+					&pm_info, sizeof(pm_info)))
+					ret = -EFAULT;
+
+			break;
+		}
+		case PMCMD_GET_PX_DATA: {
+			struct cpu_px_data px_data;
+
+			ret = hcall_get_cpu_state(cmd, virt_to_phys(&px_data));
+			if (ret < 0)
+				return -EFAULT;
+
+			if (copy_to_user((void *)ioctl_param,
+					&px_data, sizeof(px_data)))
+					ret = -EFAULT;
+			break;
+		}
+		case PMCMD_GET_CX_DATA: {
+			struct cpu_cx_data cx_data;
+
+			ret = hcall_get_cpu_state(cmd, virt_to_phys(&cx_data));
+			if (ret < 0)
+				return -EFAULT;
+
+			if (copy_to_user((void *)ioctl_param,
+					&cx_data, sizeof(cx_data)))
+					ret = -EFAULT;
+			break;
+		}
+		default:
+			ret = -EFAULT;
+			break;
+		}
+
 		break;
 	}
 

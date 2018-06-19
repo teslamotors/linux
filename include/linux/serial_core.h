@@ -64,8 +64,6 @@ struct uart_ops {
 	void		(*set_termios)(struct uart_port *, struct ktermios *new,
 				       struct ktermios *old);
 	void		(*set_ldisc)(struct uart_port *, struct ktermios *);
-	void		(*pm)(struct uart_port *, unsigned int state,
-			      unsigned int oldstate);
 
 	/*
 	 * Return a string describing the type of the port
@@ -265,25 +263,12 @@ static inline void serial_port_out(struct uart_port *up, int offset, int value)
 	up->serial_out(up, offset, value);
 }
 
-/**
- * enum uart_pm_state - power states for UARTs
- * @UART_PM_STATE_ON: UART is powered, up and operational
- * @UART_PM_STATE_OFF: UART is powered off
- * @UART_PM_STATE_UNDEFINED: sentinel
- */
-enum uart_pm_state {
-	UART_PM_STATE_ON = 0,
-	UART_PM_STATE_OFF = 3, /* number taken from ACPI */
-	UART_PM_STATE_UNDEFINED,
-};
-
 /*
  * This is the state information which is persistent across opens.
  */
 struct uart_state {
 	struct tty_port		port;
 
-	enum uart_pm_state	pm_state;
 	struct circ_buf		xmit;
 
 	atomic_t		refcount;
@@ -351,10 +336,10 @@ struct earlycon_id {
 	char	name[16];
 	char	compatible[128];
 	int	(*setup)(struct earlycon_device *, const char *options);
-} __aligned(32);
+};
 
-extern const struct earlycon_id __earlycon_table[];
-extern const struct earlycon_id __earlycon_table_end[];
+extern const struct earlycon_id *__earlycon_table[];
+extern const struct earlycon_id *__earlycon_table_end[];
 
 #if defined(CONFIG_SERIAL_EARLYCON) && !defined(MODULE)
 #define EARLYCON_USED_OR_UNUSED	__used
@@ -362,12 +347,19 @@ extern const struct earlycon_id __earlycon_table_end[];
 #define EARLYCON_USED_OR_UNUSED	__maybe_unused
 #endif
 
-#define OF_EARLYCON_DECLARE(_name, compat, fn)				\
-	static const struct earlycon_id __UNIQUE_ID(__earlycon_##_name)	\
-	     EARLYCON_USED_OR_UNUSED __section(__earlycon_table)	\
+#define _OF_EARLYCON_DECLARE(_name, compat, fn, unique_id)		\
+	static const struct earlycon_id unique_id			\
+	     EARLYCON_USED_OR_UNUSED __initconst			\
 		= { .name = __stringify(_name),				\
 		    .compatible = compat,				\
-		    .setup = fn  }
+		    .setup = fn  };					\
+	static const struct earlycon_id EARLYCON_USED_OR_UNUSED		\
+		__section(__earlycon_table)				\
+		* const __PASTE(__p, unique_id) = &unique_id
+
+#define OF_EARLYCON_DECLARE(_name, compat, fn)				\
+	_OF_EARLYCON_DECLARE(_name, compat, fn,				\
+			     __UNIQUE_ID(__earlycon_##_name))
 
 #define EARLYCON_DECLARE(_name, fn)	OF_EARLYCON_DECLARE(_name, "", fn)
 

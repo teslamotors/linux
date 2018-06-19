@@ -15,6 +15,12 @@ ifneq ($(CONFIG_SND_SOC_AC97_BUS),)
 snd-soc-core-objs += soc-ac97.o
 endif
 
+ifneq ($(CONFIG_SND_SOC_ACPI),)
+snd-soc-acpi-objs := soc-acpi.o
+endif
+
+obj-$(CONFIG_SND_SOC_ACPI) += snd-soc-acpi.o
+
 obj-$(CONFIG_SND_SOC)	+= snd-soc-core.o
 obj-$(CONFIG_SND_SOC)	+= codecs/
 obj-$(CONFIG_SND_SOC)	+= generic/
@@ -43,6 +49,7 @@ obj-$(CONFIG_SND_SOC)	+= rockchip/
 obj-$(CONFIG_SND_SOC)	+= samsung/
 obj-$(CONFIG_SND_SOC)	+= sh/
 obj-$(CONFIG_SND_SOC)	+= sirf/
+obj-$(CONFIG_SND_SOC)	+= sof/
 obj-$(CONFIG_SND_SOC)	+= spear/
 obj-$(CONFIG_SND_SOC)	+= sti/
 obj-$(CONFIG_SND_SOC)	+= stm/

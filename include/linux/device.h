@@ -97,6 +97,8 @@ extern void bus_remove_file(struct bus_type *, struct bus_attribute *);
  * @p:		The private data of the driver core, only the driver core can
  *		touch this.
  * @lock_key:	Lock class key for use by the lock validator
+ * @need_parent_lock:	When probing or removing a device on this bus, the
+ *			device core should lock the device's parent.
  *
  * A bus is a channel between the processor and one or more devices. For the
  * purposes of the device model, all devices are connected via a bus, even if
@@ -135,6 +137,8 @@ struct bus_type {
 
 	struct subsys_private *p;
 	struct lock_class_key lock_key;
+
+	bool need_parent_lock;
 };
 
 extern int __must_check bus_register(struct bus_type *bus);
@@ -722,6 +726,28 @@ struct device_dma_parameters {
 	unsigned int max_segment_size;
 	unsigned long segment_boundary_mask;
 };
+
+/**
+ * struct device_connection - Device Connection Descriptor
+ * @endpoint: The names of the two devices connected together
+ * @id: Unique identifier for the connection
+ * @list: List head, private, for internal use only
+ */
+struct device_connection {
+	const char		*endpoint[2];
+	const char		*id;
+	struct list_head	list;
+};
+
+void *device_connection_find_match(struct device *dev, const char *con_id,
+				void *data,
+				void *(*match)(struct device_connection *con,
+					       int ep, void *data));
+
+struct device *device_connection_find(struct device *dev, const char *con_id);
+
+void device_connection_add(struct device_connection *con);
+void device_connection_remove(struct device_connection *con);
 
 /**
  * enum device_link_state - Device link states.

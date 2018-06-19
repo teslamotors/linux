@@ -91,8 +91,8 @@ struct ioreq_client {
 	 */
 	bool fallback;
 
-	bool destroying;
-	bool kthread_exit;
+	volatile bool destroying;
+	volatile bool kthread_exit;
 
 	/* client covered io ranges - N/A for fallback client */
 	struct list_head range_list;
@@ -260,14 +260,14 @@ static void acrn_ioreq_destroy_client_pervm(struct ioreq_client *client,
 	struct list_head *pos, *tmp;
 	unsigned long flags;
 
-	/* blocking operation: notify client for cleanup
-	 * if waitqueue not active, it means client is handling request,
-	 * at that time, we need wait client finish its handling.
-	 */
-	while (!waitqueue_active(&client->wq) && !client->kthread_exit)
-		msleep(10);
 	client->destroying = true;
 	acrn_ioreq_notify_client(client);
+
+	/* the client thread will mark kthread_exit flag as true before exit,
+	 * so wait for it exited.
+	 */
+	while (!client->kthread_exit)
+		msleep(10);
 
 	spin_lock_irqsave(&client->range_lock, flags);
 	list_for_each_safe(pos, tmp, &client->range_list) {
@@ -495,6 +495,10 @@ static int ioreq_client_thread(void *data)
 				is_destroying(client)));
 	}
 
+	/* the client thread such as for hyper-dma will exit from here,
+	 * so mark kthread_exit as true before exit */
+	client->kthread_exit = true;
+
 	return 0;
 }
 
@@ -543,8 +547,12 @@ int acrn_ioreq_attach_client(int client_id, bool check_kthread_stop)
 				is_destroying(client)));
 		}
 
-		if (is_destroying(client))
+		if (is_destroying(client)) {
+			/* the client thread for vcpu will exit from here,
+			 * so mark kthread_exit as true before exit */
+			client->kthread_exit = true;
 			return 1;
+		}
 	}
 
 	return 0;
