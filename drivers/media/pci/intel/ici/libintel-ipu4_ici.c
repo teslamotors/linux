@@ -8,6 +8,8 @@
 #include "ipu-wrapper.h"
 #include <ia_css_isysapi.h>
 
+#include "ipu-platform.h"
+
 #define ipu_lib_call_notrace_unlocked(func, isys, ...)		\
 	({								\
 		int rval;						\

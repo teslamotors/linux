@@ -26,8 +26,6 @@
 #define IS_FREQ_SOURCE			1600000000
 #define IS_FREQ_CTL_DIVISOR		0x4
 
-#define IPU_ISYS_NUM_STREAMS		8	/* Max 8 */
-
 /*
  * ISYS DMA can overshoot. For higher resolutions over allocation is one line
  * but it must be at minimum 1024 bytes. Value could be different in
