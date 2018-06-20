@@ -294,6 +294,24 @@ int ia_css_isys_context_create(
 	return isys_context_create(context, config);
 }
 
+/* push context information to DMEM for FW to access */
+int ia_css_isys_context_store_dmem(
+	const HANDLE *context,
+	const struct ia_css_isys_device_cfg_data *config)
+{
+	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *) *context;
+
+	return ia_css_syscom_store_dmem(ctx->sys, config->driver_sys.ssid, config->vtl0_addr_mask);
+}
+
+bool ia_css_isys_ab_spc_ready(
+	HANDLE *context)
+{
+	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *) *context;
+
+	return ia_css_syscom_is_ab_spc_ready(ctx->sys);
+}
+
 int ia_css_isys_device_open(
 	const struct ia_css_isys_device_cfg_data *config)
 {
