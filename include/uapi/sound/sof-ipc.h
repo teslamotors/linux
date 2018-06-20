@@ -209,7 +209,7 @@ enum sof_ipc_dai_type {
 /* SSP Configuration Request - SOF_IPC_DAI_SSP_CONFIG */
 struct sof_ipc_dai_ssp_params {
 	uint16_t mode;   // FIXME: do we need this?
-	uint16_t clk_id; // FIXME: do we need this?
+	uint16_t mclk_id;
 
 	uint32_t mclk_rate;	/* mclk frequency in Hz */
 	uint32_t fsync_rate;	/* fsync frequency in Hz */
