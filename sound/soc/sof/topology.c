@@ -411,6 +411,9 @@ static const struct sof_topology_token ssp_tokens[] = {
 	{SOF_TKN_INTEL_SSP_FS_KEEP_ACTIVE,
 		SND_SOC_TPLG_TUPLE_TYPE_BOOL, get_token_u32,
 		offsetof(struct sof_ipc_dai_ssp_params, fs_keep_active), 0},
+	{SOF_TKN_INTEL_SSP_MCLK_ID,
+		SND_SOC_TPLG_TUPLE_TYPE_SHORT, get_token_u16,
+		offsetof(struct sof_ipc_dai_ssp_params, mclk_id), 0},
 };
 
 /* DMIC */
@@ -1480,7 +1483,7 @@ static int sof_link_ssp_load(struct snd_soc_component *scomp, int index,
 		return ret;
 	}
 
-	ret = sof_parse_tokens(scomp, config, ssp_tokens,
+	ret = sof_parse_tokens(scomp, &config->ssp, ssp_tokens,
 			       ARRAY_SIZE(ssp_tokens), private->array,
 			       private->size);
 	if (ret != 0) {
@@ -1498,11 +1501,11 @@ static int sof_link_ssp_load(struct snd_soc_component *scomp, int index,
 	config->ssp.rx_slots = hw_config->rx_slots;
 	config->ssp.tx_slots = hw_config->tx_slots;
 
-	dev_dbg(sdev->dev, "tplg: config SSP%d fmt 0x%x mclk %d bclk %d fclk %d width (%d)%d slots %d\n",
+	dev_dbg(sdev->dev, "tplg: config SSP%d fmt 0x%x mclk %d bclk %d fclk %d width (%d)%d slots %d mclk id %d\n",
 		config->id, config->format,
 		config->ssp.mclk_rate, config->ssp.bclk_rate,
 		config->ssp.fsync_rate, config->ssp.sample_valid_bits,
-		config->ssp.tdm_slot_width, config->ssp.tdm_slots);
+		config->ssp.tdm_slot_width, config->ssp.tdm_slots, config->ssp.mclk_id);
 
 	/* send message to DSP */
 	ret = sof_ipc_tx_message(sdev->ipc,
