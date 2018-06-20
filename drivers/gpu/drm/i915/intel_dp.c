@@ -4823,6 +4823,8 @@ intel_dp_long_pulse(struct intel_connector *intel_connector)
 	intel_dp->aux.i2c_nack_count = 0;
 	intel_dp->aux.i2c_defer_count = 0;
 
+	intel_dp_detect_dpcd(intel_dp);
+
 	intel_dp_set_edid(intel_dp);
 	if (is_edp(intel_dp) || intel_connector->detect_edid)
 		status = connector_status_connected;
@@ -6079,6 +6081,34 @@ intel_dp_drrs_init(struct intel_connector *intel_connector,
 	return downclock_mode;
 }
 
+/*
+ * Called on DP connector initialization to check for aux backlight control
+ * capability on the sink device and if present, initialize it.
+ */
+static void intel_dp_init_aux_backlight(struct intel_dp *intel_dp,
+		struct drm_connector *connector)
+{
+	struct intel_connector *intel_connector = to_intel_connector(connector);
+
+	if (is_edp(intel_dp))
+		return;
+
+	memset(intel_dp->edp_dpcd, 0, sizeof(intel_dp->edp_dpcd));
+	if (drm_dp_dpcd_read(&intel_dp->aux, DP_EDP_DPCD_REV, intel_dp->edp_dpcd,
+			sizeof(intel_dp->edp_dpcd)) != sizeof(intel_dp->edp_dpcd)) {
+		DRM_DEBUG_KMS("Failed to read DPCD register 0x%x\n", DP_EDP_DPCD_REV);
+		return;
+	}
+	DRM_DEBUG_KMS("EDP DPCD : %*ph\n", (int) sizeof(intel_dp->edp_dpcd),
+			intel_dp->edp_dpcd);
+
+	if(intel_dp_aux_init_backlight_funcs(intel_connector) == 0) {
+		intel_panel_setup_backlight(connector, INVALID_PIPE);
+		intel_connector->panel.backlight.power = intel_dp_aux_backlight_power;
+		intel_connector->panel.backlight.enabled = true;
+	}
+}
+
 static bool intel_edp_init_connector(struct intel_dp *intel_dp,
 				     struct intel_connector *intel_connector)
 {
@@ -6368,6 +6398,7 @@ intel_dp_init_connector(struct intel_digital_port *intel_dig_port,
 		goto fail;
 	}
 
+	intel_dp_init_aux_backlight(intel_dp, connector);
 	intel_dp_add_properties(intel_dp, connector);
 
 	if (is_hdcp_supported(dev_priv, port) && !intel_dp_is_edp(dev_priv, port)) {

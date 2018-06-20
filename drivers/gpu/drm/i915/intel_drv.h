@@ -474,11 +474,17 @@ struct intel_atomic_state {
 	bool skip_intermediate_wm;
 
 	/* Gen9+ only */
-	struct skl_wm_values wm_results;
+	struct skl_ddb_values wm_results;
 
 	struct i915_sw_fence commit_ready;
 
 	struct llist_node freed;
+};
+
+enum i915_alpha {
+	I915_ALPHA_NONE,
+	I915_ALPHA_PREMUL,
+	I915_ALPHA_NON_PREMUL
 };
 
 struct intel_plane_state {
@@ -517,6 +523,11 @@ struct intel_plane_state {
 	 *     update_scaler_plane.
 	 */
 	int scaler_id;
+	/*
+	 * blending related hw states
+	 */
+	enum i915_alpha alpha;
+	bool use_plane_alpha;
 
 	struct drm_intel_sprite_colorkey ckey;
 };
@@ -536,6 +547,8 @@ struct intel_initial_plane_config {
 #define SKL_MAX_DST_W 4096
 #define SKL_MIN_DST_H 8
 #define SKL_MAX_DST_H 4096
+#define SKL_MIN_YUV_420_SRC_W 16
+#define SKL_MIN_YUV_420_SRC_H 16
 
 struct intel_scaler {
 	int in_use;
@@ -585,7 +598,9 @@ struct intel_pipe_wm {
 
 struct skl_plane_wm {
 	struct skl_wm_level wm[8];
+	struct skl_wm_level uv_wm[8];
 	struct skl_wm_level trans_wm;
+	bool is_planar;
 };
 
 struct skl_pipe_wm {
@@ -854,6 +869,7 @@ struct intel_crtc_state {
 
 	/* bitmask of visible planes (enum plane_id) */
 	u8 active_planes;
+	u8 nv12_planes;
 
 	/* HDMI scrambling status */
 	bool hdmi_scrambling;
@@ -1499,6 +1515,8 @@ int intel_plane_atomic_set_property(struct drm_plane *plane,
 int intel_plane_atomic_calc_changes(struct drm_crtc_state *crtc_state,
 				    struct drm_plane_state *plane_state);
 
+void intel_plane_add_blend_properties(struct intel_plane *plane);
+
 void assert_pch_transcoder_disabled(struct drm_i915_private *dev_priv,
 				    enum pipe pipe);
 
@@ -1553,7 +1571,8 @@ void intel_mode_from_pipe_config(struct drm_display_mode *mode,
 				 struct intel_crtc_state *pipe_config);
 
 int skl_update_scaler_crtc(struct intel_crtc_state *crtc_state);
-int skl_max_scale(struct intel_crtc *crtc, struct intel_crtc_state *crtc_state);
+int skl_max_scale(struct intel_crtc *crtc, struct intel_crtc_state *crtc_state,
+		  uint32_t pixel_format);
 
 static inline u32 intel_plane_ggtt_offset(const struct intel_plane_state *state)
 {
@@ -1566,6 +1585,7 @@ u32 skl_plane_stride(const struct drm_framebuffer *fb, int plane,
 		     unsigned int rotation);
 int skl_check_plane_surface(struct intel_plane_state *plane_state);
 int i9xx_check_plane_surface(struct intel_plane_state *plane_state);
+int skl_format_to_fourcc(int format, bool rgb_order, bool alpha);
 
 /* intel_csr.c */
 void intel_csr_ucode_init(struct drm_i915_private *);
@@ -1651,6 +1671,8 @@ bool intel_digital_port_connected(struct drm_i915_private *dev_priv,
 
 /* intel_dp_aux_backlight.c */
 int intel_dp_aux_init_backlight_funcs(struct intel_connector *intel_connector);
+void intel_dp_aux_backlight_power(struct intel_connector *connector,
+				      bool enable);
 
 /* intel_dp_mst.c */
 int intel_dp_mst_encoder_init(struct intel_digital_port *intel_dig_port, int conn_id);
@@ -2009,6 +2031,8 @@ void skl_update_plane(struct intel_plane *plane,
 		const struct intel_plane_state *plane_state);
 void skl_disable_plane(struct intel_plane *plane, struct intel_crtc *crtc);
 bool skl_plane_get_hw_state(struct intel_plane *plane);
+bool skl_plane_has_planar(struct drm_i915_private *dev_priv,
+			  enum pipe pipe, enum plane_id plane_id);
 
 /* intel_tv.c */
 void intel_tv_init(struct drm_i915_private *dev_priv);

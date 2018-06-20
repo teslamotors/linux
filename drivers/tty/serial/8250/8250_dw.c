@@ -619,8 +619,6 @@ static int dw8250_remove(struct platform_device *pdev)
 	struct dw8250_data *data = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
 
-	dw8250_clear_wakeup(dev);
-
 	pm_runtime_get_sync(dev);
 
 	serial8250_unregister_port(data->line);
