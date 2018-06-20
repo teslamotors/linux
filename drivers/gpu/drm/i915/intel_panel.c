@@ -1269,16 +1269,29 @@ int intel_backlight_device_register(struct intel_connector *connector)
 	else
 		props.power = FB_BLANK_POWERDOWN;
 
-	/*
-	 * Note: using the same name independent of the connector prevents
-	 * registration of multiple backlight devices in the driver.
-	 */
-	panel->backlight.device =
-		backlight_device_register("intel_backlight",
-					  connector->base.kdev,
-					  connector,
-					  &intel_backlight_device_ops, &props);
+	if (connector->base.connector_type == DRM_MODE_CONNECTOR_DisplayPort) {
+		char *name = kasprintf(GFP_KERNEL, "intel_aux_backlight-%s",
+				connector->base.name);
+		if (!name)
+			return -ENOMEM;
 
+		panel->backlight.device =
+			backlight_device_register(name,
+						  connector->base.kdev,
+						  connector,
+						  &intel_backlight_device_ops, &props);
+			kfree(name);
+	} else {
+		/*
+		 * Note: using the same name independent of the connector prevents
+		 * registration of multiple backlight devices in the driver.
+		 */
+		panel->backlight.device =
+			backlight_device_register("intel_backlight",
+						  connector->base.kdev,
+						  connector,
+						  &intel_backlight_device_ops, &props);
+	}
 	if (IS_ERR(panel->backlight.device)) {
 		DRM_ERROR("Failed to register backlight: %ld\n",
 			  PTR_ERR(panel->backlight.device));

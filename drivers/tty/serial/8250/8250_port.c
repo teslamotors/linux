@@ -2337,10 +2337,7 @@ dont_test_tx_en:
 	 * Request DMA channels for both RX and TX.
 	 */
 	if (up->dma) {
-		if (uart_console(port))
-			retval = -ENXIO;
-		else
-			retval = serial8250_request_dma(up);
+		retval = uart_console(port) ? -ENXIO : serial8250_request_dma(up);
 		if (retval) {
 			pr_warn_ratelimited("ttyS%d - failed to request DMA\n",
 					    serial_index(port));
