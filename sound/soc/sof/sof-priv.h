@@ -43,6 +43,14 @@
 /* max number of FE PCMs before BEs */
 #define SOF_BE_PCM_BASE		16
 
+/* convenience constructor for DAI driver streams */
+#define SOF_DAI_STREAM(sname, scmin, scmax, srates, sfmt) \
+	{.stream_name = sname, .channels_min = scmin, .channels_max = scmax, \
+	 .rates = srates, .formats = sfmt}
+
+#define SOF_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
+	SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT)
+
 struct snd_sof_dev;
 struct snd_sof_ipc_msg;
 struct snd_sof_ipc;
@@ -51,6 +59,11 @@ struct snd_soc_tplg_ops;
 struct snd_soc_component;
 struct sof_intel_hda_dev;
 struct snd_sof_pdata;
+
+struct snd_sof_dai_drv {
+	struct snd_soc_dai_driver *drv;
+	int num_drv;
+};
 
 /*
  * SOF DSP HW abstraction operations.
@@ -139,6 +152,9 @@ struct snd_sof_dsp_ops {
 	int (*trace_init)(struct snd_sof_dev *sdev, u32 *stream_tag);
 	int (*trace_release)(struct snd_sof_dev *sdev);
 	int (*trace_trigger)(struct snd_sof_dev *sdev, int cmd);
+
+	/* DAI ops */
+	struct snd_sof_dai_drv *dai_drv;
 };
 
 /* DSP architecture specific callbacks for oops and stack dumps */
@@ -263,8 +279,6 @@ struct snd_sof_dev {
 	/* ASoC components */
 	struct snd_soc_platform_driver plat_drv;
 	const struct snd_soc_component_driver *cmpnt_drv;
-	struct snd_soc_dai_driver dai_drv;
-	int num_dai;
 
 	/* DSP firmware boot */
 	wait_queue_head_t boot_wait;
