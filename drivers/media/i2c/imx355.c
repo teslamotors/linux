@@ -177,7 +177,7 @@ static const struct imx355_reg mode_3268x2448_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
 	{ 0x0340, 0x0a },
-	{ 0x0341, 0x36 },
+	{ 0x0341, 0x37 },
 	{ 0x0344, 0x00 },
 	{ 0x0345, 0x08 },
 	{ 0x0346, 0x00 },
@@ -226,7 +226,7 @@ static const struct imx355_reg mode_3264x2448_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
 	{ 0x0340, 0x0a },
-	{ 0x0341, 0x36 },
+	{ 0x0341, 0x37 },
 	{ 0x0344, 0x00 },
 	{ 0x0345, 0x08 },
 	{ 0x0346, 0x00 },
@@ -275,7 +275,7 @@ static const struct imx355_reg mode_3280x2464_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
 	{ 0x0340, 0x0a },
-	{ 0x0341, 0x36 },
+	{ 0x0341, 0x37 },
 	{ 0x0344, 0x00 },
 	{ 0x0345, 0x00 },
 	{ 0x0346, 0x00 },
@@ -883,8 +883,8 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 3280,
 		.height = 2464,
-		.fll_def = 0xa36,
-		.fll_min = 0xa36,
+		.fll_def = 0xa37,
+		.fll_min = 0xa37,
 		.llp = 0xe58,
 		.reg_list = {
 			.num_of_regs = ARRAY_SIZE(mode_3280x2464_regs),
@@ -894,8 +894,8 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 3268,
 		.height = 2448,
-		.fll_def = 0xa36,
-		.fll_min = 0xa36,
+		.fll_def = 0xa37,
+		.fll_min = 0xa37,
 		.llp = 0xe58,
 		.reg_list = {
 			.num_of_regs = ARRAY_SIZE(mode_3268x2448_regs),
@@ -905,8 +905,8 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 3264,
 		.height = 2448,
-		.fll_def = 0xa36,
-		.fll_min = 0xa36,
+		.fll_def = 0xa37,
+		.fll_min = 0xa37,
 		.llp = 0xe58,
 		.reg_list = {
 			.num_of_regs = ARRAY_SIZE(mode_3264x2448_regs),
