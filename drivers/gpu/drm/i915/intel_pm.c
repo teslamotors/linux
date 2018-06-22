@@ -4907,7 +4907,7 @@ static void skl_write_plane_wm(struct intel_crtc *intel_crtc,
 				&wm->trans_wm);
 	}
 #else
-	skl_write_wm_level(dev_priv, PLANE_WM(pipe, plane_id, level),
+	skl_write_wm_level(dev_priv, PLANE_WM_TRANS(pipe, plane_id),
 			&wm->trans_wm);
 #endif
 
