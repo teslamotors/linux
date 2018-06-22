@@ -246,7 +246,7 @@ static int sof_acpi_probe(struct platform_device *pdev)
 	/* force nocodec mode */
 	dev_warn(dev, "Force to use nocodec mode\n");
 	mach = devm_kzalloc(dev, sizeof(*mach), GFP_KERNEL);
-	ret = sof_nocodec_setup(dev, sof_pdata, mach, desc);
+	ret = sof_nocodec_setup(dev, sof_pdata, mach, desc, ops);
 	if (ret < 0)
 		return ret;
 #else
@@ -257,7 +257,7 @@ static int sof_acpi_probe(struct platform_device *pdev)
 		/* fallback to nocodec mode */
 		dev_warn(dev, "No matching ASoC machine driver found - using nocodec\n");
 		mach = devm_kzalloc(dev, sizeof(*mach), GFP_KERNEL);
-		ret = sof_nocodec_setup(dev, sof_pdata, mach, desc);
+		ret = sof_nocodec_setup(dev, sof_pdata, mach, desc, ops);
 		if (ret < 0)
 			return ret;
 #else
