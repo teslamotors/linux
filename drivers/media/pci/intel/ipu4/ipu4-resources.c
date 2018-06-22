@@ -137,13 +137,6 @@ void ipu_psys_resource_pool_cleanup(struct ipu_psys_resource_pool
 		ipu_resource_cleanup(&pool->dfms[i]);
 }
 
-void ipu_psys_resource_alloc_init(struct ipu_psys_resource_alloc
-				  *alloc)
-{
-	alloc->cells = 0;
-	alloc->resources = 0;
-}
-
 static int ipu_psys_allocate_one_resource(const struct device *dev,
 				struct ipu_fw_psys_process *process,
 				struct ipu_resource *resource,

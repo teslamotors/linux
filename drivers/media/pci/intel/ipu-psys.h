@@ -137,7 +137,7 @@ struct ipu_psys_pg {
 	size_t pg_size;
 	dma_addr_t pg_dma_addr;
 	struct list_head list;
-	struct ipu_psys_resource_alloc *resource_alloc;
+	struct ipu_psys_resource_alloc resource_alloc;
 };
 
 enum ipu_psys_cmd_state {
@@ -177,7 +177,6 @@ struct ipu_psys_kcmd {
 	struct ipu_buttress_constraint constraint;
 	struct ipu_psys_buffer_set *kbuf_set;
 
-	struct ipu_psys_resource_alloc resource_alloc;
 	struct ipu_psys_event ev;
 	struct timer_list watchdog;
 };

@@ -206,7 +206,6 @@ struct ipu_fw_psys_process {
 struct ipu_psys_resource_alloc;
 struct ipu_fw_psys_process_group;
 struct ipu_psys_resource_pool;
-void ipu_psys_resource_alloc_init(struct ipu_psys_resource_alloc *alloc);
 int ipu_psys_allocate_resources(const struct device *dev,
 				struct ipu_fw_psys_process_group *pg,
 				void *pg_manifest,

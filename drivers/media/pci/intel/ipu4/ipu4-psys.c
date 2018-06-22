@@ -337,7 +337,7 @@ static void ipu_psys_kcmd_run(struct ipu_psys *psys)
 	int ret;
 
 	ret = ipu_psys_move_resources(&psys->adev->dev,
-				      &kcmd->resource_alloc,
+				      &kcmd->kpg->resource_alloc,
 				      &psys->resource_pool_started,
 				      &psys->resource_pool_running);
 	if (!ret) {
@@ -385,7 +385,7 @@ void ipu_psys_kcmd_complete(struct ipu_psys *psys,
 		}
 		/* Fall through on purpose */
 	case KCMD_STATE_RUN_PREPARED:
-		ipu_psys_free_resources(&kcmd->resource_alloc,
+		ipu_psys_free_resources(&kcmd->kpg->resource_alloc,
 					&psys->resource_pool_running);
 		if (psys->started_kcmds)
 			ipu_psys_kcmd_run(psys);
@@ -397,7 +397,7 @@ void ipu_psys_kcmd_complete(struct ipu_psys *psys,
 		list_del(&kcmd->started_list);
 		/* Fall through on purpose */
 	case KCMD_STATE_START_PREPARED:
-		ipu_psys_free_resources(&kcmd->resource_alloc,
+		ipu_psys_free_resources(&kcmd->kpg->resource_alloc,
 					&psys->resource_pool_started);
 		break;
 	default:
@@ -845,7 +845,7 @@ int ipu_psys_kcmd_queue(struct ipu_psys *psys, struct ipu_psys_kcmd *kcmd)
 		ret = ipu_psys_allocate_resources(&psys->adev->dev,
 						  kcmd->kpg->pg,
 						  kcmd->pg_manifest,
-						  &kcmd->resource_alloc,
+						  &kcmd->kpg->resource_alloc,
 						  &psys->resource_pool_running);
 		if (!ret) {
 			if (kcmd->state == KCMD_STATE_NEW)
@@ -867,7 +867,7 @@ int ipu_psys_kcmd_queue(struct ipu_psys *psys, struct ipu_psys_kcmd *kcmd)
 	ret = ipu_psys_allocate_resources(&psys->adev->dev,
 					  kcmd->kpg->pg,
 					  kcmd->pg_manifest,
-					  &kcmd->resource_alloc,
+					  &kcmd->kpg->resource_alloc,
 					  &psys->resource_pool_started);
 	if (!ret) {
 		kcmd->state = KCMD_STATE_START_PREPARED;
@@ -898,8 +898,6 @@ int ipu_psys_kcmd_new(struct ipu_psys_command *cmd, struct ipu_psys_fh *fh)
 	kcmd = ipu_psys_copy_cmd(cmd, fh);
 	if (!kcmd)
 		return -EINVAL;
-
-	ipu_psys_resource_alloc_init(&kcmd->resource_alloc);
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 2)
 	init_timer(&kcmd->watchdog);
