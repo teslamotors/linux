@@ -516,6 +516,7 @@ static int gtt_entry_p2m(struct intel_vgpu *vgpu, struct intel_gvt_gtt_entry *p,
 {
 	struct intel_gvt_gtt_pte_ops *ops = vgpu->gvt->gtt.pte_ops;
 	unsigned long gfn, mfn;
+	static unsigned long saved_gfn, saved_mfn;
 
 	*m = *p;
 
@@ -524,13 +525,19 @@ static int gtt_entry_p2m(struct intel_vgpu *vgpu, struct intel_gvt_gtt_entry *p,
 
 	gfn = ops->get_pfn(p);
 
-	mfn = intel_gvt_hypervisor_gfn_to_mfn(vgpu, gfn);
+	if (gfn != saved_gfn)
+		mfn = intel_gvt_hypervisor_gfn_to_mfn(vgpu, gfn);
+	else
+		mfn = saved_mfn;
+
 	if (mfn == INTEL_GVT_INVALID_ADDR) {
 		gvt_vgpu_err("fail to translate gfn: 0x%lx\n", gfn);
 		return -ENXIO;
 	}
 
 	ops->set_pfn(m, mfn);
+	saved_gfn = gfn;
+	saved_mfn = mfn;
 	return 0;
 }
 
