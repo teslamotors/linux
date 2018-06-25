@@ -91,6 +91,7 @@ struct ia_css_syscom_config {
 	 * if false, non-secure syscom
 	 */
 	bool secure;
+	unsigned int vtl0_addr_mask; /* only applicable in 'secure' case */
 };
 
 #endif /* __IA_CSS_SYSCOM_CONFIG_H */
