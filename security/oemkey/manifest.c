@@ -16,6 +16,7 @@
 
 #include <crypto/hash.h>
 #include <crypto/public_key.h>
+#include <crypto/internal/rsa.h>
 #include <keys/system_keyring.h>
 #include <keys/asymmetric-type.h>
 #include <linux/errno.h>
@@ -27,9 +28,10 @@
 #include <linux/slab.h>
 #include <linux/cred.h>
 #include <security/abl_cmdline.h>
+#ifndef CONFIG_MANIFEST_HARDCODE
 #include <soc/apl/abl.h>
+#endif
 #include <security/manifest.h>
-#include "../../crypto/asymmetric_keys/x509_parser.h"
 
 #define SHA256_HASH_ALGO	2
 #define SHA256_HASH_SIZE	32
@@ -71,7 +73,6 @@ uint8_t hardcode_manifest[] = {
 
 struct cred *manifest_keyring_cred;
 struct key *manifest_keyring;
-struct manifest manifest_data;
 struct key_manifest_extension key_manifest_extension_data;
 
 static void debug_hexdump(const char *txt, const void *ptr, unsigned int size)
@@ -80,89 +81,6 @@ static void debug_hexdump(const char *txt, const void *ptr, unsigned int size)
 
 	if (ptr && size)
 		print_hex_dump_bytes("", DUMP_PREFIX_OFFSET, ptr, size);
-}
-
-static int manifest_header_check_reserved(struct manifest_header *hdr)
-{
-	uint32_t i = 0;
-	static uint32_t expected;
-
-	if (!hdr) {
-		pr_err(KBUILD_MODNAME "Null data pointer provided!\n");
-		return -EINVAL;
-	}
-
-	if (hdr->reserved_1 != expected)
-		return -EILSEQ;
-
-	for (i = 0; i < ARRAY_SIZE(hdr->reserved_2); ++i) {
-		if (hdr->reserved_2[i] != expected)
-			return -EILSEQ;
-	}
-
-	for (i = 0; i < ARRAY_SIZE(hdr->reserved_3); ++i) {
-		if (hdr->reserved_3[i] != expected)
-			return -EILSEQ;
-	}
-
-	return 0;
-}
-
-static int manifest_header_check(struct manifest_header *hdr)
-{
-	uint32_t res = 0;
-	uint32_t total_size = 0;
-
-	if (!hdr) {
-		pr_err(KBUILD_MODNAME "Null data pointer provided!\n");
-		return -EINVAL;
-	}
-
-	/* Perform header checks */
-	if (hdr->header_type != MANIFEST_HEADER_TYPE) {
-		pr_err(KBUILD_MODNAME ": Header type mismatch! (Expect %u, got %u)\n",
-			MANIFEST_HEADER_TYPE, hdr->header_type);
-		return -EILSEQ;
-	}
-
-	if (hdr->header_version != MANIFEST_HEADER_VERSION) {
-		pr_err(KBUILD_MODNAME ": Header version mismatch! (Expect %u, got %u)\n",
-			MANIFEST_HEADER_VERSION, hdr->header_version);
-		return -EILSEQ;
-	}
-
-	if (strcmp(hdr->magic, MANIFEST_HEADER_MAGIC)) {
-		pr_err(KBUILD_MODNAME ": Header magic number mismatch! (Expect %s, got %s)\n",
-			MANIFEST_HEADER_MAGIC, hdr->magic);
-		return -EILSEQ;
-	}
-
-	/* Check size in DWORDS */
-	total_size =  sizeof(struct manifest_header) / sizeof(uint32_t);
-	total_size += hdr->modulus_size * 2; /* public key + signature */
-	total_size += hdr->exponent_size;
-
-	/* Check for consistency against the size reported by the header */
-	if (total_size != hdr->header_length) {
-		pr_err(KBUILD_MODNAME ": Header size mismatch! (Expect %u, got %u)\n",
-			total_size, hdr->header_length);
-		return -EILSEQ;
-	}
-
-	/* Check for consistency against the size reported by the header */
-	if (hdr->size < hdr->header_length) {
-		pr_err(KBUILD_MODNAME ": Manifest size < header size! (%u < %u)\n",
-			hdr->size, hdr->header_length);
-		return -EILSEQ;
-	}
-
-	res = manifest_header_check_reserved(hdr);
-	if (res < 0) {
-		pr_err(KBUILD_MODNAME ": Non-zero reserved region!\n");
-		return res;
-	}
-
-	return res;
 }
 
 static int check_key_manifest_header(
@@ -205,55 +123,6 @@ static int parse_key_entry(uint8_t **data,
 
 	entry->hash = *data;
 	*data += entry->header->hash_size;
-
-	return res;
-}
-
-static int parse_manifest(uint8_t **data, uint32_t length,
-		struct manifest *m)
-{
-	int res = 0;
-
-	if (!data || !m || !(*data)) {
-		pr_err(KBUILD_MODNAME ": Null data pointer provided!\n");
-		return -EINVAL;
-	}
-
-	if (length < sizeof(struct manifest_header)) {
-		pr_err(KBUILD_MODNAME ": Header length too small. Size: %u, Require >= %lu\n",
-			length, sizeof(struct manifest_header));
-		return -EINVAL;
-	}
-
-	m->hdr = (struct manifest_header *) *data;
-	*data += sizeof(struct manifest_header);
-
-	res = manifest_header_check(m->hdr);
-
-	if (length < (m->hdr->header_length * sizeof(uint32_t))) {
-		pr_err(KBUILD_MODNAME ": Header length too small. Size: %u, Require >= %lu\n",
-			length, m->hdr->header_length * sizeof(uint32_t));
-		return -EINVAL;
-	}
-
-	m->public_key = (uint32_t *) *data;
-	*data += m->hdr->modulus_size * sizeof(uint32_t);
-
-	m->exponent = (uint32_t *) *data;
-	*data += m->hdr->exponent_size * sizeof(uint32_t);
-
-	m->signature = (uint32_t *) *data;
-	*data += m->hdr->modulus_size * sizeof(uint32_t);
-
-	if (length < (m->hdr->size * sizeof(uint32_t))) {
-		pr_err(KBUILD_MODNAME "Data does not contain entire manifest. Size: %u, Require >= %lu\n",
-			length, m->hdr->size * sizeof(uint32_t));
-		return -EINVAL;
-	}
-
-	m->extension = *data;
-	m->extension_size = (m->hdr->size - m->hdr->header_length) *
-			sizeof(uint32_t);
 
 	return res;
 }
@@ -319,37 +188,41 @@ static struct key *request_asymmetric_key(const char *id)
 static int sha256_digest(const void *data, uint32_t size,
 			  void *result, uint32_t result_size)
 {
-	struct crypto_hash *tfm;
-	struct hash_desc desc;
-	struct scatterlist sg;
+	struct crypto_shash *tfm;
+	struct shash_desc *sdesc;
+	int shash_desc_size;
 
 	if (!data || !result)
 		return -EFAULT;
 
-	tfm = crypto_alloc_hash("sha256",
+	tfm = crypto_alloc_shash("sha256",
 				CRYPTO_ALG_TYPE_HASH,
 				CRYPTO_ALG_ASYNC);
 	if (IS_ERR(tfm)) {
 		int res = PTR_ERR(tfm);
-
 		return (res < 0) ? res : -res;
 	}
 
-	if (result_size < crypto_hash_digestsize(tfm)) {
-		crypto_free_hash(tfm);
+	shash_desc_size = sizeof(struct shash_desc) + crypto_shash_descsize(tfm);
+	sdesc = kmalloc(shash_desc_size, GFP_KERNEL);
+	if (!sdesc) {
+		crypto_free_shash(tfm);
+		return -ENOMEM;
+	}
+
+	if (result_size < crypto_shash_digestsize(tfm)) {
+		crypto_free_shash(tfm);
 		return -EINVAL;
 	}
 
-	desc.tfm = tfm;
-	desc.flags = CRYPTO_TFM_REQ_MAY_SLEEP;
+	sdesc->tfm = tfm;
+	sdesc->flags = CRYPTO_TFM_REQ_MAY_SLEEP;
 
-	sg_init_one(&sg, data, size);
+	crypto_shash_init(sdesc);
+	crypto_shash_update(sdesc, data, size);
+	crypto_shash_final(sdesc, result);
 
-	crypto_hash_init(&desc);
-	crypto_hash_update(&desc, &sg, size);
-	crypto_hash_final(&desc, result);
-
-	crypto_free_hash(tfm);
+	crypto_free_shash(tfm);
 
 	return 0;
 }
@@ -364,78 +237,38 @@ static void reverse_memcpy(char *dst, const char *src, size_t n)
 
 static int calc_pubkey_digest(struct public_key *pk, uint8_t *digest)
 {
-	uint8_t *buf_n, *buf_e;
-	unsigned len_n = 0;
-	unsigned len_e = 0;
+	struct rsa_key rsa;
 	unsigned len_e_fixed = 0;
-	int sign = 0;
 	uint8_t *buf;
 	int res = 0;
 
 	if (!pk)
 		return -EFAULT;
 
-	buf_n = (uint8_t *) mpi_get_buffer(pk->rsa.n, &len_n, &sign);
-	buf_e = (uint8_t *) mpi_get_buffer(pk->rsa.e, &len_e, &sign);
-
-	if (!buf_n || !buf_e)
-		return -ENOMEM;
+	res = rsa_parse_pub_key(&rsa, pk->key, pk->keylen);
+	if (res)
+		return -EINVAL;
 
 	/* mpi_get_buffer returns len_e == 3 and the digest
 	   must be calculated with the exponent length == 4 */
-	len_e_fixed = len_e < 4 ? 4 : len_e;
+	len_e_fixed = rsa.e_sz < 4 ? 4 : rsa.e_sz;
 
-	buf = kmalloc(len_n + len_e_fixed, GFP_KERNEL);
-	memset(buf, 0, len_n + len_e_fixed);
+	buf = kmalloc(rsa.n_sz + len_e_fixed, GFP_KERNEL);
 	if (!buf)
-		goto error;
+		return -ENOMEM;
+	memset(buf, 0, rsa.n_sz + len_e_fixed);
 
-	reverse_memcpy(buf, buf_n, len_n);
-	memcpy(buf + len_n, buf_e, len_e);
+	reverse_memcpy(buf, rsa.n, rsa.n_sz);
+	memcpy(buf + rsa.n_sz, rsa.e, rsa.e_sz);
 
-	res = sha256_digest(buf, len_n + len_e_fixed, digest, SHA256_HASH_SIZE);
+	res = sha256_digest(buf, rsa.n_sz + len_e_fixed, digest, SHA256_HASH_SIZE);
 	if (res < 0)
 		pr_err(KBUILD_MODNAME ": sha256_digest() error %d in %s\n",
 		       res, __func__);
 
 	kfree(buf);
 
-error:
-	kfree(buf_n);
-	kfree(buf_e);
 	return res;
-}
-
-static struct x509_certificate *x509_parse_self_signed_cert(
-		const void *cert_data, size_t cert_datalen)
-{
-	struct x509_certificate *cert;
-	int ret;
-
-	cert = x509_cert_parse(cert_data, cert_datalen);
-	if (IS_ERR(cert))
-		return ERR_CAST(cert);
-
-	if (cert->pub->pkey_algo >= PKEY_ALGO__LAST ||
-	    cert->sig.pkey_algo >= PKEY_ALGO__LAST ||
-	    cert->sig.pkey_hash_algo >= PKEY_HASH__LAST ||
-	    !pkey_algo[cert->pub->pkey_algo] ||
-	    !pkey_algo[cert->sig.pkey_algo] ||
-	    !hash_algo_name[cert->sig.pkey_hash_algo]) {
-		x509_free_certificate(cert);
-		return ERR_PTR(-ENOPKG);
-	}
-
-	cert->pub->algo = pkey_algo[cert->pub->pkey_algo];
-	cert->pub->id_type = PKEY_ID_X509;
-
-	ret = x509_check_signature(cert->pub, cert);
-	if (ret < 0) {
-		x509_free_certificate(cert);
-		return ERR_PTR(ret);
-	}
-
-	return cert;
 }
 
 int check_usage_bits(uint32_t *required, uint32_t *available)
@@ -466,7 +299,7 @@ int check_usage_bits(uint32_t *required, uint32_t *available)
  * Returns: Pointer to the key if ok or an error pointer.
  */
 static struct key *get_verified_pubkey_from_keyring(char *id,
-					     uint32_t *required_usage_bits)
+						    uint32_t *required_usage_bits)
 {
 	struct key *pubkey;
 	int res = 0;
@@ -522,7 +355,7 @@ static struct key *get_verified_pubkey_from_keyring(char *id,
  * Returns: Pointer to the key if ok or an error pointer.
  */
 static struct key *get_verified_pubkey_from_keyring_by_keyid(
-					     const struct asymmetric_key_id *kid,
+					     const struct asymmetric_key_ids *kids,
 					     uint32_t *required_usage_bits)
 {
 	struct key *pubkey;
@@ -531,11 +364,11 @@ static struct key *get_verified_pubkey_from_keyring_by_keyid(
 	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
 	const char *ptr;
 
-	if (!kid || !required_usage_bits)
+	if (!kids || !required_usage_bits)
 		return ERR_PTR(-EFAULT);
 
-	pubkey = x509_request_asymmetric_key(get_manifest_keyring(),
-							  kid, false);
+	pubkey = find_asymmetric_key(get_manifest_keyring(),
+				     kids->id[0], kids->id[1], false);
 	if (IS_ERR(pubkey))
 		return ERR_CAST(pubkey);
 
@@ -574,9 +407,9 @@ int manifest_key_verify_digest(void *digest, unsigned int digest_size,
 	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
 	unsigned int usage_word;
 	unsigned int usage_sub_bit;
+	uint8_t *sig_copy = NULL;
 	struct key *manifest_key;
 	struct public_key_signature sig_data;
-	MPI sig; /* RSA signature made using RSA root private key */
 
 	if (!digest || !signature)
 		return -EFAULT;
@@ -597,37 +430,29 @@ int manifest_key_verify_digest(void *digest, unsigned int digest_size,
 	usage_bits[usage_word] = (0x1 << usage_sub_bit);
 
 	/* Get the manifest key */
-	manifest_key = get_verified_pubkey_from_keyring(
-		keyid, usage_bits);
+	manifest_key = get_verified_pubkey_from_keyring(keyid, usage_bits);
 
 	/* Check manifest error pointer */
 	if (IS_ERR(manifest_key))
 		return PTR_ERR(manifest_key);
 
-	/* prepare MPI with signature */
-	sig = mpi_read_raw_data(signature, sig_size);
-	if (!sig) {
-		pr_err(KBUILD_MODNAME ": mpi_read_raw_data() error while parsing signature.\n");
-		return -EINVAL;
-	}
-
 	/* construct the signature object */
+	sig_copy = kzalloc(sig_size, GFP_KERNEL);
+	if (!sig_copy)
+		return -ENOMEM;
+
+	memcpy(sig_copy, signature, sig_size);
 	memset(&sig_data, 0, sizeof(sig_data));
 	sig_data.digest = digest;
 	sig_data.digest_size = digest_size;
-	sig_data.nr_mpi = 1;
-	sig_data.pkey_hash_algo = HASH_ALGO_SHA256;
-	sig_data.rsa.s = sig;
+	sig_data.hash_algo = "sha256";
+	sig_data.s = sig_copy;
+	sig_data.s_size = sig_size;
 
 	res = verify_signature(manifest_key, &sig_data);
 
-	mpi_free(sig);
+	kzfree(sig_copy);
 	return res;
-}
-
-const struct manifest *get_manifest_data(void)
-{
-	return &manifest_data;
 }
 
 const struct key_manifest_extension *get_key_manifest_extension_data(void)
@@ -635,16 +460,16 @@ const struct key_manifest_extension *get_key_manifest_extension_data(void)
 	return &key_manifest_extension_data;
 }
 
-int verify_x509_cert_against_manifest(struct x509_certificate *cert,
-					     uint32_t *required_usage_bits)
+int verify_public_key_against_manifest(struct public_key *pub_key,
+				       uint32_t *required_usage_bits)
 {
 	int i, res = 0;
 	uint8_t digest[SHA256_HASH_SIZE];
 
-	if (!cert)
+	if (!pub_key)
 		return -EFAULT;
 
-	res = calc_pubkey_digest(cert->pub, digest);
+	res = calc_pubkey_digest(pub_key, digest);
 	if (res < 0)
 		return res;
 
@@ -677,18 +502,15 @@ int verify_x509_cert_against_manifest(struct x509_certificate *cert,
 }
 
 int verify_x509_cert_against_manifest_keyring(
-					     struct x509_certificate *cert,
-					     unsigned int usage_bit)
+	const struct asymmetric_key_ids *kids,
+	unsigned int usage_bit)
 {
 	struct key *pubkey;
 	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
 	unsigned int usage_word;
 	unsigned int usage_sub_bit;
 
-	if (!cert)
-		return -EFAULT;
-
-	if (!cert->akid_skid)
+	if (!kids)
 		return -EINVAL;
 
 	/* Set the usage bits */
@@ -704,11 +526,202 @@ int verify_x509_cert_against_manifest_keyring(
 
 	usage_bits[usage_word] = (0x1 << usage_sub_bit);
 
-	pubkey = get_verified_pubkey_from_keyring_by_keyid(cert->akid_skid, usage_bits);
+	pubkey = get_verified_pubkey_from_keyring_by_keyid(kids, usage_bits);
 	if (IS_ERR(pubkey))
 		return PTR_ERR(pubkey);
 
 	return 0;
+}
+
+static char keystrbuf[512];
+
+static const char *key_id_to_str(const struct asymmetric_key_id *kid)
+{
+	size_t len = kid->len;
+
+	/* not more than 511 characters plus null terminator */
+	if (len > sizeof(keystrbuf) - 1)
+		len = sizeof(keystrbuf) - 1;
+
+	memset(keystrbuf, 0, sizeof(keystrbuf));
+	memcpy(keystrbuf, kid->data, len);
+	return keystrbuf;
+}
+
+/**
+ * manifest_key_restrict_link_func - Control which keys are accepted into the
+ * manifest keyring.
+ * @dest_keyring: Keyring being linked to.
+ * @type: The type of key being added.
+ * @payload: The payload of the new key.
+ * @trust_keyring: A ring of keys that can be used to vouch for the new cert.
+ *
+ * Accept key if it has been signed by a key already in the keyring
+ * or if it matches a key hash in the OEM key manifest
+ *
+ *
+ *  See: https://lwn.net/Articles/671296/
+ *       https://lwn.net/Articles/678782/
+ */
+static int manifest_key_restrict_link_func(struct key *dest_keyring,
+					   const struct key_type *type,
+					   const union key_payload *payload,
+					   struct key *trust_keyring)
+{
+	const struct public_key_signature *sig;
+	const struct asymmetric_key_ids *kids;
+	const struct asymmetric_key_id *skid;
+	const struct asymmetric_key_id *akid_skid;
+	struct public_key *key; /* candidate key to be added */
+	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
+	int ret;
+
+	pr_devel("==>%s()\n", __func__);
+
+	if (!trust_keyring)
+		return -ENOKEY;
+
+	if (type != &key_type_asymmetric)
+		return -EOPNOTSUPP;
+
+	sig = payload->data[asym_auth];
+	if (!sig)
+		return -ENOPKG;
+
+	key = payload->data[asym_crypto];
+	if (!key)
+		return -ENOPKG;
+
+	/* IDs of the Certificate itself */
+	/* kids->id[0] = cert->id        */
+	/* kids->id[1] = cert->skid      */
+	kids = payload->data[asym_key_ids];
+	if (!kids)
+		return -ENOPKG;
+
+	/* IDs of the certificate used to sign this certificate */
+	akid_skid = sig->auth_ids[1];
+
+	/* First check the subject Key ID matched manifest key prefix */
+	skid = kids->id[1];
+	if (!skid->data ||
+	    skid->len <= (MANIFEST_SKID_PREFIX_LEN + MANIFEST_SKID_USAGE_LEN) ||
+	    memcmp(skid->data, MANIFEST_SKID_PREFIX, MANIFEST_SKID_PREFIX_LEN))
+		return -EPERM;
+
+	/* Subject Key ID contains manifest key usage bits */
+	memcpy(usage_bits, skid + MANIFEST_SKID_PREFIX_LEN,
+	       MANIFEST_SKID_USAGE_LEN);
+
+	pr_devel("Cert usage bits: %*phN\n",
+		 MANIFEST_SKID_USAGE_LEN, usage_bits);
+
+	/* Check for a self-signed certificate */
+	if (!akid_skid || asymmetric_key_id_same(skid, akid_skid)) {
+		pr_devel("Checking self signed cert %s...\n",
+			 key_id_to_str(skid));
+
+		ret = public_key_verify_signature(key, sig); /* self signed */
+		if (ret < 0) {
+			pr_err("Cert signature check failed: %d\n", ret);
+			return ret;
+		}
+
+		ret = verify_public_key_against_manifest(key, usage_bits);
+		if (ret < 0) {
+			pr_err("Self signed cert does not match manifest: %d\n",
+			       ret);
+			return ret;
+		}
+
+	} else {
+		/* Certificate must be signed by existing key */
+		struct key *signing_key;
+		uint32_t parent_usage_bits[MANIFEST_USAGE_SIZE];
+		char hexprefix[MANIFEST_SKID_PREFIX_LEN * 2 + 1];
+		char *ptr;
+
+		pr_devel("Verifying non-self signed certificate against %s:\n",
+			 key_id_to_str(akid_skid));
+
+		/* Get the manifest master key from the keyring */
+		signing_key = find_asymmetric_key(dest_keyring,
+						  sig->auth_ids[0],
+						  sig->auth_ids[1],
+						  false);
+		if (IS_ERR(signing_key)) {
+			pr_err("Master key not found in manifest keyring.\n");
+			return -ENOKEY;
+		}
+
+		/* Check the master key */
+		ret = key_validate(signing_key);
+		if (ret) {
+			pr_err("Invalid manifest master key!\n");
+			key_put(signing_key);
+			return ret;
+		}
+
+		/* Check the signature of the candidate certificate */
+		ret = verify_signature(signing_key, sig);
+		if (ret < 0) {
+			pr_err("Invalid key signature.\n");
+			key_put(signing_key);
+			return ret;
+		}
+
+		/* Get usage bits from the primary key description (hex) */
+		pr_devel("Key description: %s\n", signing_key->description);
+		bin2hex(hexprefix,
+			MANIFEST_SKID_PREFIX,
+			MANIFEST_SKID_PREFIX_LEN);
+
+		ptr = strstr(signing_key->description, hexprefix);
+		if (!ptr) {
+			key_put(signing_key);
+			return -ENOMEM;
+		}
+		ret = hex2bin((char *) parent_usage_bits,
+			      ptr + MANIFEST_SKID_PREFIX_LEN * 2,
+			      MANIFEST_SKID_USAGE_LEN);
+		if (ret) {
+			pr_err("Missing or invalid usage bits hex in key %s\n",
+			       signing_key->description);
+			key_put(signing_key);
+			return ret;
+		}
+
+		/* Check if usage bits match */
+		ret = check_usage_bits(usage_bits, parent_usage_bits);
+		if (ret) {
+			pr_err("Usage bits do not match master key %s\n",
+			       signing_key->description);
+			key_put(signing_key);
+			return ret;
+		}
+
+		key_put(signing_key);
+	}
+
+	return ret;
+}
+
+/**
+ * Allocate a struct key_restriction for the "manifest keyring"
+ * keyring. Only for use in manifest_init().
+ */
+static __init struct key_restriction *get_manifest_restriction(void)
+{
+	struct key_restriction *restriction;
+
+	restriction = kzalloc(sizeof(struct key_restriction), GFP_KERNEL);
+
+	if (!restriction)
+		panic("Can't allocate manifest trusted keyring restriction\n");
+
+	restriction->check = manifest_key_restrict_link_func;
+
+	return restriction;
 }
 
 static int __init manifest_init(void)
@@ -776,19 +789,21 @@ static int __init manifest_init(void)
 		goto err1;
 	}
 
-	keyring = keyring_alloc(".manifest_keyring",
-				GLOBAL_ROOT_UID, GLOBAL_ROOT_GID, cred,
+	keyring = keyring_alloc(".manifest_keyring",              /* desc  */
+				GLOBAL_ROOT_UID,                  /* uid   */
+				GLOBAL_ROOT_GID,                  /* guid  */
+				cred,                             /* cred  */
 				((KEY_POS_ALL & ~KEY_POS_SETATTR) |
 				 KEY_USR_VIEW | KEY_USR_READ |
-				 KEY_USR_WRITE | KEY_USR_SEARCH),
-				KEY_ALLOC_NOT_IN_QUOTA, NULL);
+				 KEY_USR_WRITE | KEY_USR_SEARCH), /* perm  */
+				KEY_ALLOC_NOT_IN_QUOTA,           /* flags */
+				get_manifest_restriction(),       /* rest  */
+				NULL);                            /* dest  */
 
 	if (IS_ERR(keyring)) {
 		res = PTR_ERR(keyring);
 		goto err2;
 	}
-
-	set_bit(KEY_FLAG_TRUSTED_ONLY, &keyring->flags);
 
 	manifest_keyring_cred = cred;
 	manifest_keyring = keyring;

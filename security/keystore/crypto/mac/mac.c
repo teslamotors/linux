@@ -111,37 +111,42 @@ err_tfm:
 int keystore_sha256_block(const void *data, unsigned int size,
 			  void *result, unsigned int result_size)
 {
-	struct crypto_hash *tfm;
-	struct hash_desc desc;
-	struct scatterlist sg;
+	struct crypto_shash *tfm;
+	struct shash_desc *sdesc;
+	int shash_desc_size;
 
 	if (!data || !result)
 		return -EFAULT;
 
-	tfm = crypto_alloc_hash("sha256",
+	tfm = crypto_alloc_shash("sha256",
 				CRYPTO_ALG_TYPE_HASH,
 				CRYPTO_ALG_ASYNC);
 	if (IS_ERR(tfm)) {
 		int res = PTR_ERR(tfm);
-
 		return (res < 0) ? res : -res;
 	}
 
-	if (result_size < crypto_hash_digestsize(tfm)) {
-		crypto_free_hash(tfm);
+	shash_desc_size = sizeof(struct shash_desc) + crypto_shash_descsize(tfm);
+	sdesc = kmalloc(shash_desc_size, GFP_KERNEL);
+	if (!sdesc) {
+		crypto_free_shash(tfm);
+		ks_err("ecc: memory allocation error\n");
+		return -ENOMEM;
+	}
+
+	if (result_size < crypto_shash_digestsize(tfm)) {
+		crypto_free_shash(tfm);
 		return -EINVAL;
 	}
 
-	desc.tfm = tfm;
-	desc.flags = CRYPTO_TFM_REQ_MAY_SLEEP;
+	sdesc->tfm = tfm;
+	sdesc->flags = CRYPTO_TFM_REQ_MAY_SLEEP;
 
-	sg_init_one(&sg, data, size);
+	crypto_shash_init(sdesc);
+	crypto_shash_update(sdesc, data, size);
+	crypto_shash_final(sdesc, result);
 
-	crypto_hash_init(&desc);
-	crypto_hash_update(&desc, &sg, size);
-	crypto_hash_final(&desc, result);
-
-	crypto_free_hash(tfm);
+	crypto_free_shash(tfm);
 
 	return 0;
 }

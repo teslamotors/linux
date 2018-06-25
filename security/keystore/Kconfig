@@ -1,5 +1,5 @@
 config KEYSTORE
-	bool "Generic Keystore"
+	tristate "Generic Keystore"
 	default n
 	select ABL_UTILS
 	help
@@ -244,4 +244,3 @@ config DAL_KEYSTORE_CONF_PATH
 	default "/opt/ias/etc/dal-keystore.conf"
 	help
 		The path for DAL Keystore configuration file.
-

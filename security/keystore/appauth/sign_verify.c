@@ -185,7 +185,7 @@ int verify_manifest(const char *sig, const char *cert, const char *data,
 	}
 
 	res = verify_x509_cert_against_manifest_keyring(
-		x509cert, ATTESTATION_KEY_USAGE_BIT);
+		x509cert->skid, ATTESTATION_KEY_USAGE_BIT);
 	if (res != 0) {
 		ks_err("Manifest cert verification failed (%d)\n", res);
 		res = -CERTIFICATE_FAILURE;
@@ -217,4 +217,3 @@ exit:
 	x509_free_certificate(x509cert);
 	return res;
 }
-

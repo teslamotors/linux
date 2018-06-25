@@ -4,11 +4,10 @@
 #include <linux/slab.h>
 
 #include <linux/fdtable.h>
-#include <linux/sched.h>
+#include <linux/sched/mm.h>
 #include <linux/fs.h>
 #include <linux/fs_struct.h>
 #include <linux/path.h>
-#include <asm-generic/current.h>
 #include <linux/dcache.h>
 
 #include <security/keystore_api_kernel.h>

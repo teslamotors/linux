@@ -24,7 +24,9 @@
 #include <linux/sort.h>
 
 #include <security/abl_cmdline.h>
+#if !defined(CONFIG_KEYSTORE_HARD_CODED_SEED)
 #include <soc/apl/abl.h>
+#endif
 #include <security/keystore_api_user.h>
 #include "keystore_debug.h"
 #include "keystore_seed.h"
@@ -49,8 +51,9 @@ struct abl_seed_list_t sec_seed_list[MAX_SEED_TYPES];
 
 /* Device and User seed - derived from platform seed and nonces from PDR */
 uint8_t sec_seed[MAX_SEED_TYPES][SEC_SEED_SIZE];
-
 bool seed_available[MAX_SEED_TYPES];
+
+#if !defined(CONFIG_KEYSTORE_HARD_CODED_SEED)
 
 static int keystore_copy_seeds(struct seed_offset *offset)
 {
@@ -148,6 +151,7 @@ static int keystore_copy_seed_list(struct seed_offset *offset)
 
 	return res;
 }
+#endif
 
 static int seed_list_compare(const void *left, const void *right)
 {
@@ -177,7 +181,6 @@ static int keystore_sort_seed_list(struct abl_seed_list_t *list)
 int keystore_fill_seeds(void)
 {
 	int res = 0;
-	struct seed_offset s_off;
 #ifdef CONFIG_KEYSTORE_HARD_CODED_SEED
 	unsigned int sl_index = 0;
 
@@ -210,6 +213,7 @@ int keystore_fill_seeds(void)
 #endif
 
 #else
+	struct seed_offset s_off;
 	/* Get keys and seeds offsets from cmdline */
 	res = get_apl_seed_offsets(&s_off);
 	if (res) {
@@ -237,7 +241,7 @@ int keystore_fill_seeds(void)
 	    sec_seed_list[SEED_TYPE_DEVICE].number_of_seeds == 0)
 		return -EPERM;
 #endif
-	return 0;
+	return res;
 }
 
 const uint8_t *keystore_get_seed_list_entry(enum keystore_seed_type type, unsigned int i)

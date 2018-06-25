@@ -409,15 +409,13 @@ int do_encrypt(enum keystore_algo_spec algo_spec,
 	case ALGOSPEC_AES_CCM:
 		res = keystore_aes_ccm_crypt(1, app_key, app_key_size,
 					     iv, iv_size,
-					     input, input_size,
-					     NULL, 0,
+					     input, input_size, 0,
 					     output, output_size);
 		break;
 	case ALGOSPEC_AES_GCM:
 		res = keystore_aes_gcm_crypt(1, app_key, app_key_size,
 					     iv, iv_size,
-					     input, input_size,
-					     NULL, 0,
+					     input, input_size, 0,
 					     output, output_size);
 		break;
 	case ALGOSPEC_ECIES:
@@ -477,15 +475,13 @@ int do_decrypt(enum keystore_algo_spec algo_spec,
 	case ALGOSPEC_AES_CCM:
 		res = keystore_aes_ccm_crypt(0, app_key, app_key_size,
 					     iv, iv_size,
-					     input, input_size,
-					     NULL, 0,
+					     input, input_size, 0,
 					     output, output_size);
 		break;
 	case ALGOSPEC_AES_GCM:
 		res = keystore_aes_gcm_crypt(0, app_key, app_key_size,
 					     iv, iv_size,
-					     input, input_size,
-					     NULL, 0,
+					     input, input_size, 0,
 					     output, output_size);
 		break;
 	case ALGOSPEC_ECIES:
@@ -653,11 +649,14 @@ int verify_oem_signature(const void *data, unsigned int data_size,
 	keystore_hexdump("Digest", digest, sizeof(digest));
 	keystore_hexdump("Signature", sig, sig_size);
 
+#if defined(CONFIG_MANIFEST)
 	res = manifest_key_verify_digest(digest, sizeof(digest),
 					 sig, sig_size,
 					 CONFIG_KEYSTORE_OEM_KEY_IDENTIFIER,
 					 CONFIG_KEYSTORE_OEM_KEY_USAGE_BIT);
-
+#else
+	res = -EPERM;
+#endif
 	FUNC_RES(res);
 	return res;
 }
@@ -831,7 +830,7 @@ int wrap_backup(const uint8_t *mkey,
 	res = keystore_aes_gcm_crypt(1, mkey, KEYSTORE_MKEY_SIZE,
 				     iv, sizeof(iv),
 				     input, input_size,
-				     NULL, 0,
+				     0,
 				     p_reencrypted,
 				     input_size +
 				     KEYSTORE_GCM_AUTH_SIZE);
@@ -878,7 +877,7 @@ int unwrap_backup(const uint8_t *mkey,
 	res = keystore_aes_gcm_crypt(0, mkey, KEYSTORE_MKEY_SIZE,
 				     p_iv_dec, KEYSTORE_MAX_IV_SIZE,
 				     p_backup, backup_data_size,
-				     NULL, 0,
+				     0,
 				     output,
 				     backup_data_size -
 				     KEYSTORE_GCM_AUTH_SIZE);

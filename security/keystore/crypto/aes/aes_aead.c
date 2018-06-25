@@ -14,8 +14,9 @@
  *
  */
 
-#include <crypto/aes.h>
+#include <crypto/aead.h>
 #include <crypto/algapi.h>
+
 #include <linux/crypto.h>
 #include <linux/errno.h>
 #include <linux/kernel.h>
@@ -38,66 +39,66 @@
  * @param ivlen Initialization Vector size in bytes.
  * @param data_in Pointer to the input data block.
  * @param ilen Input data block size in bytes.
- * @param assoc_in Pointer to the associated data block.
  * @param alen Associated data block size in bytes.
  * @param data_out Pointer to the output buffer.
  * @param outlen Output buffer size in bytes.
  *
+ * See aead_request_set_crypt() for input and output data formatting.
+ *
  * @return 0 if OK or negative error code (see errno).
  */
-int keystore_aes_ccm_crypt(int enc, const char *key, size_t klen,
-			   const char *iv, size_t ivlen, const char *data_in,
-			   size_t ilen, const char *assoc_in, size_t alen,
-			   char *data_out, size_t outlen)
+static int keystore_aes_aead_crypt(int enc, const char *algo,
+				   const char *key, size_t klen,
+				   const char *iv, size_t ivlen,
+				   const char *data_in, size_t ilen,
+				   size_t alen,
+				   char *data_out, size_t outlen)
 {
 	struct crypto_aead *tfm;
-	struct scatterlist src, dst, asg;
+	struct scatterlist src, dst;
 	struct aead_request *req;
-	void *data_in_buf = NULL, *data_out_buf = NULL, *assoc_in_buf = NULL;
+	void *data_in_buf = NULL, *data_out_buf = NULL;
 	unsigned int authsize = abs(outlen - ilen);
 	char ivbuf[MAX_IVLEN];
 	int rc;
 
-	ks_debug(KBUILD_MODNAME ": keystore_aes_ccm_crypt enc=%d klen=%zu ivlen=%zu ilen=%zu alen=%zu outlen=%zu authsize=%u\n",
+	ks_debug(KBUILD_MODNAME ": keystore_aes_aead_crypt enc=%d klen=%zu ivlen=%zu ilen=%zu alen=%zu outlen=%zu authsize=%u\n",
 		 enc, klen, ivlen, ilen, alen, outlen, authsize);
 
-	tfm = crypto_alloc_aead("ccm(aes)", 0, 0);
+	tfm = crypto_alloc_aead(algo, 0, 0);
 	if (IS_ERR(tfm)) {
-		ks_err(KBUILD_MODNAME ": failed to load transform for ccm(aes): %ld\n",
+		ks_err(KBUILD_MODNAME ": failed to load transform for %s: %ld\n",
+		       algo,
 		       PTR_ERR(tfm));
 		rc = PTR_ERR(tfm);
 		goto err_tfm;
 	}
 	req = aead_request_alloc(tfm, GFP_KERNEL);
 	if (!req) {
-		ks_err(KBUILD_MODNAME ": failed to allocate request for ccm(aes)\n");
+		ks_err(KBUILD_MODNAME ": failed to allocate request for %s)\n",
+			algo);
 		rc = -ENOMEM;
 		goto err_req;
 	}
 
-	data_in_buf = alloc_and_init_sg(&src, data_in, ilen +
-			(enc ? authsize :	0), ilen);
+	data_in_buf = alloc_and_init_sg(&src,
+					data_in,
+					ilen,
+					ilen);
 	if (!data_in_buf) {
 		ks_err(KBUILD_MODNAME ": failed to alloc data_in_buf");
 		rc = -ENOMEM;
 		goto err_in_buf;
 	}
 
-	data_out_buf = alloc_and_init_sg(&dst, NULL,
-			ilen + (enc ? authsize : 0), 0);
+	data_out_buf = alloc_and_init_sg(&dst,
+					 NULL,
+					 ilen + (enc ? authsize : 0),
+					 0);
 	if (!data_out_buf) {
 		ks_err(KBUILD_MODNAME ": failed to alloc data_out_buf");
 		rc = -ENOMEM;
 		goto err_out_buf;
-	}
-
-	if (alen) {
-		assoc_in_buf = alloc_and_init_sg(&asg, assoc_in, alen, alen);
-		if (!assoc_in_buf) {
-			ks_err(KBUILD_MODNAME ": failed to alloc assoc_in_buf");
-			rc = -ENOMEM;
-			goto err_asg_buf;
-		}
 	}
 
 	crypto_aead_clear_flags(tfm, ~0);
@@ -119,7 +120,7 @@ int keystore_aes_ccm_crypt(int enc, const char *key, size_t klen,
 
 	aead_request_set_crypt(req, &src, &dst, ilen, ivbuf);
 
-	aead_request_set_assoc(req, alen ? &asg : NULL, alen);
+	aead_request_set_ad(req, alen);
 
 	rc = enc ? crypto_aead_encrypt(req) : crypto_aead_decrypt(req);
 	if (rc)	{
@@ -132,22 +133,37 @@ int keystore_aes_ccm_crypt(int enc, const char *key, size_t klen,
 	}
 
 err_setkey:
-	kzfree(assoc_in_buf);
-
-err_asg_buf:
 	kzfree(data_out_buf);
-
 err_out_buf:
 	kzfree(data_in_buf);
-
 err_in_buf:
 	aead_request_free(req);
-
 err_req:
 	crypto_free_aead(tfm);
-
 err_tfm:
 	return rc;
+}
+
+int keystore_aes_ccm_crypt(int enc, const char *key, size_t klen,
+			   const char *iv, size_t ivlen,
+			   const char *data_in, size_t ilen,
+			   size_t alen,
+			   char *data_out, size_t outlen)
+{
+	return keystore_aes_aead_crypt(enc, "ccm(aes)", key, klen,
+				       iv, ivlen, data_in, ilen, alen,
+				       data_out, outlen);
+}
+
+int keystore_aes_gcm_crypt(int enc, const char *key, size_t klen,
+			   const char *iv, size_t ivlen,
+			   const char *data_in, size_t ilen,
+			   size_t alen,
+			   char *data_out, size_t outlen)
+{
+	return keystore_aes_aead_crypt(enc, "gcm(aes)", key, klen,
+				       iv, ivlen, data_in, ilen, alen,
+				       data_out, outlen);
 }
 
 /* end of file */

@@ -40,7 +40,7 @@
  * Returns: 0 if OK or negative error code (see errno).
  */
 int keystore_aes_crypt(int enc, const char *key, size_t klen,
-		const char *data_in, char *data_out, size_t len);
+		       const char *data_in, char *data_out, size_t len);
 
 /**
  * keystore_aes_ccm_crypt() - Encrypt or decrypt a block of data using AES CCM.
@@ -57,11 +57,13 @@ int keystore_aes_crypt(int enc, const char *key, size_t klen,
  * @data_out: Pointer to the output buffer.
  * @outlen: Output buffer size in bytes.
  *
+ * See aead_request_set_crypt() for input and output data formatting.
+ *
  * Returns: 0 if OK or negative error code (see errno).
  */
 int keystore_aes_ccm_crypt(int enc, const char *key, size_t klen,
 		const char *iv, size_t ivlen,
-		const char *data_in, size_t ilen, const char *assoc_in,
+		const char *data_in, size_t ilen,
 		size_t alen,
 		char *data_out, size_t outlen);
 
@@ -84,7 +86,7 @@ int keystore_aes_ccm_crypt(int enc, const char *key, size_t klen,
  */
 int keystore_aes_gcm_crypt(int enc, const char *key, size_t klen,
 		const char *iv, size_t ivlen,
-		const char *data_in, size_t ilen, const char *assoc_in,
+		const char *data_in, size_t ilen,
 		size_t alen,
 		char *data_out, size_t outlen);
 

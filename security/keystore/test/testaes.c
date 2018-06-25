@@ -153,20 +153,25 @@ static int keystore_test_aes_ccm(void)
 	const unsigned int alen = 8;
 	static const char *input = "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e";
 	const unsigned int ilen = 23;
-	static const char *result = "\x58\x8c\x97\x9a\x61\xc6\x63\xd2\xf0\x66\xd0\xc2\xc0\xf9\x89\x80\x6d\x5f\x6b\x61\xda\xc3\x84\x17\xe8\xd1\x2c\xfd\xf9\x26\xe0";
-	const unsigned int rlen = 31;
+	static const char *result = "\x00\x01\x02\x03\x04\x05\x06\x07\x58\x8c\x97\x9a\x61\xc6\x63\xd2\xf0\x66\xd0\xc2\xc0\xf9\x89\x80\x6d\x5f\x6b\x61\xda\xc3\x84\x17\xe8\xd1\x2c\xfd\xf9\x26\xe0";
+	const unsigned int rlen = 39;
 
+	unsigned char input2[alen + ilen];
 	unsigned char output[rlen];
-	unsigned char output2[ilen];
+	unsigned char output2[alen + ilen];
 	int res;
 
 	ks_info(KBUILD_MODNAME ": keystore_test_aes_ccm\n");
 
+	/* Input buffer for encryption: assoc data || plaintext */
+	memcpy(input2, assoc, alen);
+	memcpy(input2 + alen, input, ilen);
+
 	memset(output, 0, sizeof(output));
 	memset(output2, 0, sizeof(output2));
 
-	res = keystore_aes_ccm_crypt(1, key, klen, iv, ivlen, input, ilen, assoc
-			, alen, output, sizeof(output));
+	res = keystore_aes_ccm_crypt(1, key, klen, iv, ivlen, input2,
+				     alen + ilen, alen, output, sizeof(output));
 	if (res) {
 		ks_info(KBUILD_MODNAME ": keystore_aes_ccm_crypt returned %d\n",
 			res);
@@ -188,7 +193,7 @@ static int keystore_test_aes_ccm(void)
 		return -1;
 
 	res = keystore_aes_ccm_crypt(0, key, klen, iv, ivlen, output,
-			sizeof(output), assoc, alen, output2, sizeof(output2));
+			sizeof(output), alen, output2, sizeof(output2));
 	if (res) {
 		ks_info(KBUILD_MODNAME ": keystore_aes_ccm_crypt returned %d\n",
 			res);
@@ -233,7 +238,7 @@ static int keystore_test_aes_gcm(void)
 	memset(output2, 0, sizeof(output2));
 
 	res = keystore_aes_gcm_crypt(1, key, klen, iv, ivlen, input, ilen,
-				     assoc, alen, output, sizeof(output));
+				     alen, output, sizeof(output));
 	if (res) {
 		ks_info(KBUILD_MODNAME ": keystore_aes_gcm_crypt returned %d\n",
 			res);
@@ -255,7 +260,7 @@ static int keystore_test_aes_gcm(void)
 		return -1;
 
 	res = keystore_aes_gcm_crypt(0, key, klen, iv, ivlen, output,
-			sizeof(output), assoc, alen, output2, sizeof(output2));
+			sizeof(output), alen, output2, sizeof(output2));
 	if (res) {
 		ks_info(KBUILD_MODNAME ": keystore_aes_gcm_crypt returned %d\n",
 			res);

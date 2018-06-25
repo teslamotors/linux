@@ -52,8 +52,7 @@ keystore-$(CONFIG_KEYSTORE_FULL) +=\
 # AES library
 keystore-$(CONFIG_KEYSTORE_FULL) +=\
 	crypto/aes/aes_utils.o\
-	crypto/aes/aes_ccm.o\
-	crypto/aes/aes_gcm.o\
+	crypto/aes/aes_aead.o\
 	crypto/aes/aes_ctr.o\
 	crypto/aes/aes_ecb.o\
 	crypto/aes/aes_siv.o
@@ -91,4 +90,3 @@ keystore-$(CONFIG_APPLICATION_AUTH) +=\
 	appauth/manifest_verify.o\
 	appauth/sign_verify.o \
 	appauth/manifest_sanity_check.o
-

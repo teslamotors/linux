@@ -25,7 +25,8 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/module.h>
-#include <linux/crypto.h>
+
+#include <crypto/hash.h>
 #include <linux/err.h>
 #include <linux/scatterlist.h>
 #include "kdf_x963.h"
@@ -33,32 +34,15 @@
 #include "utils.h"
 #include "keystore_debug.h"
 
-/* Parameters of hash() */
-#if defined(X963_SHA1)
 uint64_t hashmaxlen = -1; /* max input size */
 uint32_t hashlen = 20; /* output size */
-#elif defined(X963_SHA256)
-uint64_t hashmaxlen = -1; /* max input size (actually 2^128-1) */
-uint32_t hashlen = 32;/* output size */
-#elif defined(USE_CRYPTOAPI)
-uint64_t hashmaxlen = -1; /* max input size */
-uint32_t hashlen = 20; /* output size */
-#else
-#pragma message("Warning: Unknown hash function!")
-#endif
 
 int kdf_x963(uint8_t *key, uint32_t keylen, uint8_t *rand, uint32_t randlen,
 	     uint8_t *shared, uint32_t sharedlen)
 {
-#if defined(X963_SHA1)
-	sha1_context ctx;
-#elif defined(X963_SHA256)
-	struct sha256_state_struct ctx;
-#elif defined(USE_CRYPTOAPI)
-	struct scatterlist sg[3];
-	struct crypto_hash *tfm;
-	struct hash_desc desc;
-#endif
+	struct crypto_shash *alg;
+	struct shash_desc *sdesc;
+	int size;
 	uint32_t cntr;
 	int extrabytes;
 
@@ -74,49 +58,33 @@ int kdf_x963(uint8_t *key, uint32_t keylen, uint8_t *rand, uint32_t randlen,
 	if (keylen >= MAXINT)
 		return -1;
 
-#if defined(USE_CRYPTOAPI)
-	tfm = crypto_alloc_hash("sha1",
-				0 /* CRYPTO_ALG_INTERNAL */,
-				/* CRYPTO_ALG_INTERNAL |*/  CRYPTO_ALG_ASYNC);
-	if (IS_ERR(tfm)) {
-		ks_err("ecc: tfm allocation failed\n");
+	alg = crypto_alloc_shash("sha1", CRYPTO_ALG_TYPE_SHASH, 0);
+	if (IS_ERR(alg)) {
+		ks_err("ecc: alg allocation failed\n");
 		return 0;
 	}
-	desc.tfm = tfm;
-	desc.flags = 0;
-#endif
+
+	size = sizeof(struct shash_desc) + crypto_shash_descsize(alg);
+	sdesc = kmalloc(size, GFP_KERNEL);
+	if (!sdesc) {
+		crypto_free_shash(alg);
+		ks_err("ecc: memory allocation error\n");
+		return 0;
+	}
+
+	sdesc->tfm = alg;
+	sdesc->flags = 0x0;
 
 	for (cntr = 1; cntr <= keylen / hashlen; cntr++) {
 		uint8_t cstring[sizeof(uint32_t)];
 
 		native2string(cstring, &cntr, 1);
-#if defined(X963_SHA1)
-		sha1_starts(&ctx);
-		sha1_update(&ctx, rand, randlen);
-		sha1_update(&ctx, cstring, sizeof(uint32_t));
-		sha1_update(&ctx, shared, sharedlen);
-		sha1_finish(&ctx, key + (cntr - 1) * hashlen);
-#elif defined(X963_SHA256)
-		sha256_init(&ctx);
-		sha256_update(&ctx, rand, randlen);
-		sha256_update(&ctx, cstring, sizeof(uint32_t));
-		sha256_update(&ctx, shared, sharedlen);
-		sha256_final(key+(cntr-1)*hashlen, &ctx);
-#elif defined(USE_CRYPTOAPI)
-		crypto_hash_init(&desc);
-		sg_init_table(sg, 3);
-		sg_set_buf(sg+0, rand, randlen);
-		sg_set_buf(sg+1, cstring, sizeof(uint32_t));
-		sg_set_buf(sg+2, shared, sharedlen);
 
-		crypto_hash_update(&desc, sg+0, randlen);
-		crypto_hash_update(&desc, sg+1, sizeof(uint32_t));
-		crypto_hash_update(&desc, sg+2, sharedlen);
-		crypto_hash_final(&desc, key+(cntr-1)*hashlen);
-
-#else
-#pragma message("Warning: Unknown hash function!")
-#endif
+		crypto_shash_init(sdesc);
+		crypto_shash_update(sdesc, rand, randlen);
+		crypto_shash_update(sdesc, cstring, sizeof(uint32_t));
+		crypto_shash_update(sdesc, shared, sharedlen);
+		crypto_shash_final(sdesc, key+(cntr-1)*hashlen);
 	}
 
 	extrabytes = keylen % hashlen;
@@ -126,41 +94,19 @@ int kdf_x963(uint8_t *key, uint32_t keylen, uint8_t *rand, uint32_t randlen,
 		uint8_t cstring[sizeof(uint32_t)];
 
 		native2string(cstring, &cntr, 1);
-#if defined(X963_SHA1)
-		sha1_starts(&ctx);
-		sha1_update(&ctx, rand, randlen);
-		sha1_update(&ctx, cstring, sizeof(uint32_t));
-		sha1_update(&ctx, shared, sharedlen);
-		sha1_finish(&ctx, tmp);
-#elif defined(X963_SHA256)
-		sha256_init(&ctx);
-		sha256_update(&ctx, rand, randlen);
-		sha256_update(&ctx, cstring, sizeof(uint32_t));
-		sha256_update(&ctx, shared, sharedlen);
-		sha256_final(tmp, &ctx);
-#elif defined(USE_CRYPTOAPI)
-		crypto_hash_init(&desc);
-		sg_init_table(sg, 3);
-		sg_set_buf(sg+0, rand, randlen);
-		sg_set_buf(sg+1, cstring, sizeof(uint32_t));
-		sg_set_buf(sg+2, shared, sharedlen);
 
-		crypto_hash_update(&desc, sg+0, randlen);
-		crypto_hash_update(&desc, sg+1, sizeof(uint32_t));
-		crypto_hash_update(&desc, sg+2, sharedlen);
-		crypto_hash_final(&desc, tmp);
-#else
-#pragma message("Warning: Unknown hash function!")
-#endif
+		crypto_shash_update(sdesc, rand, randlen);
+		crypto_shash_update(sdesc, cstring, sizeof(uint32_t));
+		crypto_shash_update(sdesc, shared, sharedlen);
+		crypto_shash_final(sdesc, tmp);
+
 		/* fill missing bytes of key[] */
 		for (i = 0; i < extrabytes; i++)
 			key[(cntr - 1) * hashlen + i] = tmp[i];
 	}
 
-#if defined(USE_CRYPTOAPI)
-	crypto_free_hash(tfm);
-#endif
-
+	crypto_free_shash(alg);
+	kfree(sdesc);
 
 	return 0;
 }

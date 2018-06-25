@@ -17,6 +17,8 @@
 #ifndef _MANIFEST_H_
 #define _MANIFEST_H_
 
+#include "keys/asymmetric-type.h"
+
 #define MAX_MANIFEST_SIZE           (65536 * 1024)
 
 #define MANIFEST_HEADER_TYPE         0x4
@@ -49,9 +51,12 @@
 #define MANIFEST_SKID_PREFIX_LEN    6
 #define MANIFEST_SKID_USAGE_LEN     16
 
-/* Forward declaration is sufficient here. It is used because the struct
-   is defined out of include/, in crypto/asymmetric_keys/x509_parser.h */
-struct x509_certificate;
+#if !defined(CONFIG_KEYSTORE_OEM_KEY_USAGE_BIT)
+#define CONFIG_KEYSTORE_OEM_KEY_USAGE_BIT 47
+#endif
+#if !defined(CONFIG_KEYSTORE_OEM_KEY_IDENTIFIER)
+#define CONFIG_KEYSTORE_OEM_KEY_IDENTIFIER "OEM: Keystore: 4f454d4b4559000000000080000000000000000000004b657973746f7265"
+#endif
 
 /**
  * struct manifest_version - Manifest version
@@ -251,19 +256,6 @@ int manifest_key_verify_digest(void *digest, unsigned int digest_size,
 int check_usage_bits(uint32_t *required, uint32_t *available);
 
 /**
- * verify_x509_cert_against_manifest() - Check if the public key
- * of a X509 certificate is among the manifest keys with a specific
- * usage bit set.
- *
- * @cert: X509 certificate to be verified
- * @required_usage_bits: The usage bits to check against
- *
- * Returns: 0 if verified OK or negative error code (see errno).
- */
-int verify_x509_cert_against_manifest(struct x509_certificate *cert,
-					     uint32_t *required_usage_bits);
-
-/**
  * verify_x509_cert_against_manifest_keyring() - Check if the
  * certificate is signed by a key present in the
  * manifest keyring and matches the requested usage bits
@@ -275,8 +267,8 @@ int verify_x509_cert_against_manifest(struct x509_certificate *cert,
  * Returns: 0 if verified OK or negative error code (see errno).
  */
 int verify_x509_cert_against_manifest_keyring(
-					     struct x509_certificate *cert,
-					     unsigned int usage_bit);
+	const struct asymmetric_key_ids *kids,
+	unsigned int usage_bit);
 
 
 #endif /* _MANIFEST_H_ */
