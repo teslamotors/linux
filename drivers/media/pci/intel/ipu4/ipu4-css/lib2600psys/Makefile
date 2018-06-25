@@ -20,7 +20,6 @@ include $(srcpath)/$(src)/../Makefile.ipu4psys_inc
 
 SSID        = 0
 MMID        = 0
-IPU_SYSVER  = bxtB0
 
 IPU_PSYSLIB_ROOT_REL = lib
 IPU_PSYSLIB_ROOT = $(srcpath)/$(src)/$(IPU_PSYSLIB_ROOT_REL)
@@ -43,9 +42,9 @@ HOST_DEFINES += -DFIRMWARE_RELEASE_VERSION
 HOST_DEFINES += -DPSYS_SERVER_ON_SPC
 HOST_DEFINES += -DAPI_SPLIT_START_STATE_UPDATE
 
-lib2600psys-mod-$(IPU_SYSVER)-objs := ../../../ipu-wrapper.o \
-	$(IPU_PSYSLIB_SRC)
+intel-ipu4-psys-csslib-objs := ../../../ipu-wrapper.o \
+			$(IPU_PSYSLIB_SRC)
 
-obj-$(CONFIG_VIDEO_INTEL_IPU)	+= lib2600psys-mod-$(IPU_SYSVER).o
+obj-$(CONFIG_VIDEO_INTEL_IPU)	+= intel-ipu4-psys-csslib.o
 ccflags-y += $(IPU_PSYSLIB_INC) $(HOST_DEFINES) -fno-common -v
 

@@ -2,6 +2,8 @@ IPU_ISYSLIB_SRC = \
 	$(IPU_ISYSLIB_ROOT_REL)/isysapi/src/ia_css_isys_private.o \
 	$(IPU_ISYSLIB_ROOT_REL)/isysapi/src/ia_css_isys_public.o \
 	$(IPU_ISYSLIB_ROOT_REL)/isysapi/src/ia_css_isys_public_trace.o
+
+ifeq ($(CONFIG_VIDEO_INTEL_IPU), m)
 IPU_ISYSLIB_SRC += \
 	$(IPU_ISYSLIB_ROOT_REL)/buffer/src/cpu/buffer_access.o \
 	$(IPU_ISYSLIB_ROOT_REL)/buffer/src/cpu/ia_css_buffer.o \
@@ -14,3 +16,4 @@ IPU_ISYSLIB_SRC += \
 	$(IPU_ISYSLIB_ROOT_REL)/port/src/send_port.o \
 	$(IPU_ISYSLIB_ROOT_REL)/reg_dump/src/reg_dump_generic_bridge.o \
 	$(IPU_ISYSLIB_ROOT_REL)/syscom/src/ia_css_syscom.o
+endif

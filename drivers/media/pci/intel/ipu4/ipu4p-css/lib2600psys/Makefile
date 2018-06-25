@@ -27,7 +27,7 @@ IPU_PSYSLIB_ROOT = $(srcpath)/$(src)/$(IPU_PSYSLIB_ROOT_REL)
 
 ccflags-y += -I$(srcpath)/$(src)/../../../
 ccflags-y += -I$(srcpath)/$(src)/../../
-ccflags-y += -DHAS_DUAL_CMD_CTX_SUPPORT=0 -DHAS_LATE_BINDING_SUPPORT=0
+ccflags-y += -DHAS_DUAL_CMD_CTX_SUPPORT=0 -DHAS_LATE_BINDING_SUPPORT=0 -DIPU_PSYS_LEGACY
 
 IPU_PSYSLIB_SRC += libcsspsys2600.o
 
@@ -45,9 +45,9 @@ HOST_DEFINES += -DAPI_SPLIT_START_STATE_UPDATE
 HOST_DEFINES += -DHAS_DUAL_CMD_CTX_SUPPORT=0
 HOST_DEFINES += -DHAS_LATE_BINDING_SUPPORT=0
 
-lib2600psys-mod-$(IPU_SYSVER)-objs := ../../../ipu-wrapper.o \
-	$(IPU_PSYSLIB_SRC)
-obj-$(CONFIG_VIDEO_INTEL_IPU)	+= lib2600psys-mod-$(IPU_SYSVER).o
+intel-ipu4p-psys-csslib-objs := ../../../ipu-wrapper.o \
+		$(IPU_PSYSLIB_SRC)
+obj-$(CONFIG_VIDEO_INTEL_IPU)	+= intel-ipu4p-psys-csslib.o
 
 ccflags-y += $(IPU_PSYSLIB_INC) $(HOST_DEFINES) -fno-common -v
 

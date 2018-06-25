@@ -336,7 +336,7 @@ int ia_css_frame_descriptor_print(
 	if (IA_CSS_N_DATA_DIMENSION > 2) {
 		for (i = 0; i < (int)IA_CSS_N_DATA_DIMENSION - 2; i++) {
 			IA_CSS_TRACE_1(PSYSAPI_DATA, INFO,
-			       "\t%4d,\n", frame_descriptor->stride[i]);
+				"\t%4d,\n", frame_descriptor->stride[i]);
 		}
 	}
 	IA_CSS_TRACE_1(PSYSAPI_DATA, INFO,

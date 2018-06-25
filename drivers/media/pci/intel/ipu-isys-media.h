@@ -1,10 +1,11 @@
 /* SPDX-License_Identifier: GPL-2.0 */
 /* Copyright (C) 2016 - 2018 Intel Corporation */
 
-#include <media/media-entity.h>
+#ifndef IPU_ISYS_MEDIA_H
+#define IPU_ISYS_MEDIA_H
 
-#ifndef IPU_ISYS_COMPAT_DEFS_H
-#define IPU_ISYS_COMPAT_DEFS_H
+#include <linux/slab.h>
+#include <media/media-entity.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 #define is_media_entity_v4l2_subdev(e) \
@@ -26,8 +27,21 @@ struct media_entity_enum {
 	int idx_max;
 };
 
-int media_entity_enum_init(struct media_entity_enum *ent_enum,
-			   struct media_device *mdev);
+static inline int media_entity_enum_init(struct media_entity_enum *ent_enum,
+			   struct media_device *mdev)
+{
+	int idx_max = IPU_COMPAT_MAX_ENTITIES;
+
+	ent_enum->bmap = kcalloc(DIV_ROUND_UP(idx_max, BITS_PER_LONG),
+				 sizeof(long), GFP_KERNEL);
+	if (!ent_enum->bmap)
+		return -ENOMEM;
+
+	bitmap_zero(ent_enum->bmap, idx_max);
+
+	ent_enum->idx_max = idx_max;
+	return 0;
+}
 
 static inline void media_entity_enum_cleanup(struct media_entity_enum *ent_enum)
 {
@@ -74,4 +88,4 @@ static inline bool media_entity_enum_test(struct media_entity_enum *ent_enum,
 #endif
 
 
-#endif /* IPU_ISYS_COMPAT_DEFS_H */
+#endif /* IPU_ISYS_MEDIA_H */
