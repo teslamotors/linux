@@ -6,7 +6,7 @@
  * 'tty.h' defines some structures used by tty_io.c and some defines.
  */
 
-#define NR_LDISCS		30
+#define NR_LDISCS		31
 
 /* line disciplines */
 #define N_TTY		0
@@ -37,6 +37,7 @@
 #define N_TRACEROUTER	24	/* Trace data routing for MIPI P1149.7 */
 #define N_NCI		25	/* NFC NCI UART */
 #define N_SPEAKUP	26	/* Speakup communication with synths */
-#define N_NULL		27	/* Null ldisc used for error handling */
+#define N_CBCCORE	27	/* cbc protocol */
+#define N_NULL		28	/* Null ldisc used for error handling */
 
 #endif /* _UAPI_LINUX_TTY_H */
