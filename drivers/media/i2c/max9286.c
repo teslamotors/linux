@@ -233,6 +233,31 @@ static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 		S_ADDR_MAX96705, S_CMLLVL_PREEMP, 0xAA);
 	usleep_range(5000, 6000);
 
+	/* Set VSYNC Delay */
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_SYNC_GEN_CONFIG, 0x21);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_DLY_2, 0x06);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_DLY_1, 0xD8);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_H_2, 0x26);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_H_1, 0x00);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_H_0, 0x00);
+	usleep_range(5000, 6000);
+
 	/* Enable link equalizers */
 	rval = regmap_write(max->regmap8, DS_ENEQ, 0x0F);
 	if (rval) {

@@ -44,6 +44,12 @@
 #define S_I2C_SOURCE_SER          0x0B
 #define S_I2C_DST_SER             0x0C
 #define S_INPUT_STATUS            0x15
+#define S_SYNC_GEN_CONFIG         0x43
+#define S_VS_DLY_2                0x44
+#define S_VS_DLY_1                0x45
+#define S_VS_H_2                  0x47
+#define S_VS_H_1                  0x48
+#define S_VS_H_0                  0x49
 #define S_RSVD_97                 0x97
 
 struct max9286_register_write {
