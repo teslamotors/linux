@@ -43,28 +43,28 @@ struct crl_sensor_subdev_config ar0231at_sensor_subdevs[] = {
 	},
 };
 
-struct crl_subdev_rect_rep ar0231at_1920_1080_rects[] = {
+struct crl_subdev_rect_rep ar0231at_1920_1088_rects[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.in_rect.left = 0,
 		.in_rect.top = 0,
 		.in_rect.width = 1920,
-		.in_rect.height = 1080,
+		.in_rect.height = 1088,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
 		.out_rect.width = 1920,
-		.out_rect.height = 1080,
+		.out_rect.height = 1088,
 	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
 		.in_rect.left = 0,
 		.in_rect.top = 0,
 		.in_rect.width = 1920,
-		.in_rect.height = 1080,
+		.in_rect.height = 1088,
 		.out_rect.left = 0,
 		.out_rect.top = 0,
 		.out_rect.width = 1920,
-		.out_rect.height = 1080,
+		.out_rect.height = 1088,
 	}
 };
 
@@ -94,7 +94,7 @@ struct crl_ctrl_data_pair ar0231at_ctrl_data_modes[] = {
 	},
 };
 
-static struct crl_register_write_rep ar0231at_1920_1080_linear_mode[] = {
+static struct crl_register_write_rep ar0231at_1920_1088_linear_mode[] = {
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x1058, 0x10 },
 	{ 0x0000, CRL_REG_LEN_DELAY, 200, 0x10 },
 	{ 0x3092, CRL_REG_LEN_16BIT, 0x0C24, 0x10 },
@@ -380,8 +380,8 @@ static struct crl_register_write_rep ar0231at_1920_1080_linear_mode[] = {
 	{ 0x33E0, CRL_REG_LEN_16BIT, 0x0C80, 0x10 },
 	{ 0x3004, CRL_REG_LEN_16BIT, 0x0004, 0x10 },
 	{ 0x3008, CRL_REG_LEN_16BIT, 0x0783, 0x10 },
-	{ 0x3002, CRL_REG_LEN_16BIT, 0x0040, 0x10 },
-	{ 0x3006, CRL_REG_LEN_16BIT, 0x0477, 0x10 },
+	{ 0x3002, CRL_REG_LEN_16BIT, 0x003C, 0x10 },
+	{ 0x3006, CRL_REG_LEN_16BIT, 0x047B, 0x10 },
 	{ 0x3032, CRL_REG_LEN_16BIT, 0x0000, 0x10 },
 	{ 0x3400, CRL_REG_LEN_16BIT, 0x0010, 0x10 },
 	{ 0x3402, CRL_REG_LEN_16BIT, 0x0F10, 0x10 },
@@ -409,7 +409,7 @@ static struct crl_register_write_rep ar0231at_1920_1080_linear_mode[] = {
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x19DC, 0x10 },
 };
 
-static struct crl_register_write_rep ar0231at_1920_1080_2hdr_mode[] = {
+static struct crl_register_write_rep ar0231at_1920_1088_2hdr_mode[] = {
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x10D8, 0x10 },
 	{ 0x0000, CRL_REG_LEN_DELAY, 100, 0x10 },
 	{ 0x3092, CRL_REG_LEN_16BIT, 0x0C24, 0x10 },
@@ -702,8 +702,8 @@ static struct crl_register_write_rep ar0231at_1920_1080_2hdr_mode[] = {
 	{ 0x33E0, CRL_REG_LEN_16BIT, 0x0C80, 0x10 },
 	{ 0x3004, CRL_REG_LEN_16BIT, 0x0004, 0x10 },
 	{ 0x3008, CRL_REG_LEN_16BIT, 0x0783, 0x10 },
-	{ 0x3002, CRL_REG_LEN_16BIT, 0x0040, 0x10 },
-	{ 0x3006, CRL_REG_LEN_16BIT, 0x0477, 0x10 },
+	{ 0x3002, CRL_REG_LEN_16BIT, 0x003C, 0x10 },
+	{ 0x3006, CRL_REG_LEN_16BIT, 0x047B, 0x10 },
 	{ 0x3032, CRL_REG_LEN_16BIT, 0x0000, 0x10 },
 	{ 0x3400, CRL_REG_LEN_16BIT, 0x0010, 0x10 },
 	{ 0x3402, CRL_REG_LEN_16BIT, 0x0788, 0x10 },
@@ -743,7 +743,7 @@ static struct crl_register_write_rep ar0231at_1920_1080_2hdr_mode[] = {
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x19DC, 0x10 },
 };
 
-static struct crl_register_write_rep ar0231at_1920_1080_3hdr_mode[] = {
+static struct crl_register_write_rep ar0231at_1920_1088_3hdr_mode[] = {
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x10D8, 0x10 },
 	{ 0x0000, CRL_REG_LEN_DELAY, 100, 0x10 },
 	{ 0x3092, CRL_REG_LEN_16BIT, 0x0C24, 0x10 },
@@ -1041,8 +1041,8 @@ static struct crl_register_write_rep ar0231at_1920_1080_3hdr_mode[] = {
 	{ 0x33E0, CRL_REG_LEN_16BIT, 0x0C80, 0x10 },
 	{ 0x3004, CRL_REG_LEN_16BIT, 0x0004, 0x10 },
 	{ 0x3008, CRL_REG_LEN_16BIT, 0x0783, 0x10 },
-	{ 0x3002, CRL_REG_LEN_16BIT, 0x0040, 0x10 },
-	{ 0x3006, CRL_REG_LEN_16BIT, 0x0477, 0x10 },
+	{ 0x3002, CRL_REG_LEN_16BIT, 0x003C, 0x10 },
+	{ 0x3006, CRL_REG_LEN_16BIT, 0x047B, 0x10 },
 	{ 0x3032, CRL_REG_LEN_16BIT, 0x0000, 0x10 },
 	{ 0x3400, CRL_REG_LEN_16BIT, 0x0010, 0x10 },
 	{ 0x3402, CRL_REG_LEN_16BIT, 0x0788, 0x10 },
@@ -1082,7 +1082,7 @@ static struct crl_register_write_rep ar0231at_1920_1080_3hdr_mode[] = {
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x19DC, 0x10 },
 };
 
-static struct crl_register_write_rep ar0231at_1920_1080_4hdr_mode[] = {
+static struct crl_register_write_rep ar0231at_1920_1088_4hdr_mode[] = {
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x10D8, 0x10 },
 	{ 0x0000, CRL_REG_LEN_DELAY, 100, 0x10 },
 	{ 0x3092, CRL_REG_LEN_16BIT, 0x0C24, 0x10 },
@@ -1380,8 +1380,8 @@ static struct crl_register_write_rep ar0231at_1920_1080_4hdr_mode[] = {
 	{ 0x33E0, CRL_REG_LEN_16BIT, 0x0C80, 0x10 },
 	{ 0x3004, CRL_REG_LEN_16BIT, 0x0004, 0x10 },
 	{ 0x3008, CRL_REG_LEN_16BIT, 0x0783, 0x10 },
-	{ 0x3002, CRL_REG_LEN_16BIT, 0x0040, 0x10 },
-	{ 0x3006, CRL_REG_LEN_16BIT, 0x0477, 0x10 },
+	{ 0x3002, CRL_REG_LEN_16BIT, 0x003C, 0x10 },
+	{ 0x3006, CRL_REG_LEN_16BIT, 0x047B, 0x10 },
 	{ 0x3032, CRL_REG_LEN_16BIT, 0x0000, 0x10 },
 	{ 0x3400, CRL_REG_LEN_16BIT, 0x0010, 0x10 },
 	{ 0x3402, CRL_REG_LEN_16BIT, 0x0788, 0x10 },
@@ -1424,64 +1424,64 @@ static struct crl_register_write_rep ar0231at_1920_1080_4hdr_mode[] = {
 
 struct crl_mode_rep ar0231at_modes[] = {
 	{
-		.sd_rects_items = ARRAY_SIZE(ar0231at_1920_1080_rects),
-		.sd_rects = ar0231at_1920_1080_rects,
+		.sd_rects_items = ARRAY_SIZE(ar0231at_1920_1088_rects),
+		.sd_rects = ar0231at_1920_1088_rects,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
 		.width = 1920,
-		.height = 1080,
+		.height = 1088,
 		.min_llp = 2162,
 		.min_fll = 1354,
 		.comp_items = 1,
 		.ctrl_data = &ar0231at_ctrl_data_modes[0],
-		.mode_regs_items = ARRAY_SIZE(ar0231at_1920_1080_linear_mode),
-		.mode_regs = ar0231at_1920_1080_linear_mode,
+		.mode_regs_items = ARRAY_SIZE(ar0231at_1920_1088_linear_mode),
+		.mode_regs = ar0231at_1920_1088_linear_mode,
 	},
 	{
-		.sd_rects_items = ARRAY_SIZE(ar0231at_1920_1080_rects),
-		.sd_rects = ar0231at_1920_1080_rects,
+		.sd_rects_items = ARRAY_SIZE(ar0231at_1920_1088_rects),
+		.sd_rects = ar0231at_1920_1088_rects,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
 		.width = 1920,
-		.height = 1080,
+		.height = 1088,
 		.min_llp = 1978,
 		.min_fll = 1480,
 		.comp_items = 1,
 		.ctrl_data = &ar0231at_ctrl_data_modes[1],
-		.mode_regs_items = ARRAY_SIZE(ar0231at_1920_1080_2hdr_mode),
-		.mode_regs = ar0231at_1920_1080_2hdr_mode,
+		.mode_regs_items = ARRAY_SIZE(ar0231at_1920_1088_2hdr_mode),
+		.mode_regs = ar0231at_1920_1088_2hdr_mode,
 	},
 	{
-		.sd_rects_items = ARRAY_SIZE(ar0231at_1920_1080_rects),
-		.sd_rects = ar0231at_1920_1080_rects,
+		.sd_rects_items = ARRAY_SIZE(ar0231at_1920_1088_rects),
+		.sd_rects = ar0231at_1920_1088_rects,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
 		.width = 1920,
-		.height = 1080,
+		.height = 1088,
 		.min_llp = 1978,
 		.min_fll = 1480,
 		.comp_items = 1,
 		.ctrl_data = &ar0231at_ctrl_data_modes[2],
-		.mode_regs_items = ARRAY_SIZE(ar0231at_1920_1080_3hdr_mode),
-		.mode_regs = ar0231at_1920_1080_3hdr_mode,
+		.mode_regs_items = ARRAY_SIZE(ar0231at_1920_1088_3hdr_mode),
+		.mode_regs = ar0231at_1920_1088_3hdr_mode,
 	},
 	{
-		.sd_rects_items = ARRAY_SIZE(ar0231at_1920_1080_rects),
-		.sd_rects = ar0231at_1920_1080_rects,
+		.sd_rects_items = ARRAY_SIZE(ar0231at_1920_1088_rects),
+		.sd_rects = ar0231at_1920_1088_rects,
 		.binn_hor = 1,
 		.binn_vert = 1,
 		.scale_m = 1,
 		.width = 1920,
-		.height = 1080,
+		.height = 1088,
 		.min_llp = 2246,
 		.min_fll = 1304,
 		.comp_items = 1,
 		.ctrl_data = &ar0231at_ctrl_data_modes[3],
-		.mode_regs_items = ARRAY_SIZE(ar0231at_1920_1080_4hdr_mode),
-		.mode_regs = ar0231at_1920_1080_4hdr_mode,
+		.mode_regs_items = ARRAY_SIZE(ar0231at_1920_1088_4hdr_mode),
+		.mode_regs = ar0231at_1920_1088_4hdr_mode,
 	},
 };
 
@@ -1728,7 +1728,7 @@ struct crl_v4l2_ctrl ar0231at_v4l2_ctrls[] = {
 		.ctrl_id = V4L2_CID_FRAME_LENGTH_LINES,
 		.name = "Frame Length Lines",
 		.type = CRL_V4L2_CTRL_TYPE_CUSTOM,
-		.data.std_data.min = 1080,
+		.data.std_data.min = 1088,
 		.data.std_data.max = 65535,
 		.data.std_data.step = 1,
 		.data.std_data.def = 1480,
@@ -1911,7 +1911,7 @@ static struct crl_sensor_limits ar0231at_maxim_sensor_limits = {
 	.x_addr_min = 0,
 	.y_addr_min = 0,
 	.x_addr_max = 1920,
-	.y_addr_max = 1080,
+	.y_addr_max = 1088,
 	.min_frame_length_lines = 240,
 	.max_frame_length_lines = 65535,
 	.min_line_length_pixels = 320,
