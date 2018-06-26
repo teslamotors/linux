@@ -128,10 +128,6 @@ struct snd_sof_dsp_ops {
 			   struct snd_sof_mod_hdr *hdr);
 	int (*fw_ready)(struct snd_sof_dev *sdev, u32 msg_id);
 
-	/* host DMA trace initialization */
-	int (*trace_init)(struct snd_sof_dev *sdev, u32 *stream_tag);
-	int (*trace_release)(struct snd_sof_dev *sdev);
-	int (*trace_trigger)(struct snd_sof_dev *sdev, int cmd);
 };
 
 struct snd_sof_pdata;
@@ -343,7 +339,6 @@ struct snd_sof_dev {
 	void __iomem *bar[SND_SOF_BARS];	/* DSP base address */
 	int mmio_bar;
 	int mailbox_bar;
-	size_t dsp_oops_offset;
 
 	/* debug */
 	struct dentry *debugfs_root;
@@ -376,7 +371,6 @@ struct snd_sof_dev {
 	/* DMA for Trace */
 	struct snd_dma_buffer dmatb;
 	struct snd_dma_buffer dmatp;
-	struct snd_sof_hda_stream *dtrace_stream;
 	int dma_trace_pages;
 	wait_queue_head_t trace_sleep;
 	u32 host_offset;

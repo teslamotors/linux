@@ -37,7 +37,7 @@ static const struct snd_soc_dapm_widget broxton_tdf8532_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route broxton_tdf8532_map[] = {
-#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
+
 	/* Speaker BE connections */
 	{ "Speaker", NULL, "ssp4 Tx"},
 	{ "ssp4 Tx", NULL, "codec0_out"},
@@ -74,7 +74,6 @@ static const struct snd_soc_dapm_route broxton_tdf8532_map[] = {
 
 	{ "ModemUl", NULL, "ssp3 Tx"},
 	{ "ssp3 Tx", NULL, "Modem_ssp3_out"},
-#endif
 };
 
 #if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
@@ -93,7 +92,6 @@ static int bxt_tdf8532_ssp2_fixup(struct snd_soc_pcm_runtime *rtd,
 
 /* broxton digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link broxton_tdf8532_dais[] = {
-#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 	/* Front End DAI links */
 	{
 		.name = "Speaker Port",
@@ -381,33 +379,12 @@ static struct snd_soc_dai_link broxton_tdf8532_dais[] = {
 		.dpcm_playback = 1,
 		.no_pcm = 1,
 	},
-#else
-	{
-		/* SSP4 - Amplifier */
-		.name = "SSP4-Codec",
-		.id = 0,
-		.cpu_dai_name = "sof-audio",
-		.platform_name = "sof-audio",
-		.codec_name = "i2c-INT34C3:00",
-		.codec_dai_name = "tdf8532-hifi",
-		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-			SND_SOC_DAIFMT_CBS_CFS,
-		.ignore_suspend = 1,
-		.dpcm_playback = 1,
-		.no_pcm = 1,
-	},
-#endif
 };
 
 static int bxt_add_dai_link(struct snd_soc_card *card,
 			struct snd_soc_dai_link *link)
 {
-#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 	link->platform_name = "0000:00:0e.0";
-#else
-	link->trigger[0] = SND_SOC_DPCM_TRIGGER_PRE;
-	link->trigger[1] = SND_SOC_DPCM_TRIGGER_PRE;
-#endif
 	link->nonatomic = 1;
 	return 0;
 }
@@ -455,4 +432,3 @@ module_platform_driver(broxton_tdf8532_audio)
 MODULE_DESCRIPTION("Intel SST Audio for Broxton GP MRB");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:gpmrb_machine");
-MODULE_ALIAS("platform:bxt_tdf8532");
