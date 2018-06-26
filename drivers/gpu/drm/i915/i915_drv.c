@@ -673,7 +673,12 @@ static int i915_load_modeset_init(struct drm_device *dev)
 	if (ret)
 		goto cleanup_irq;
 
-	intel_uc_init_fw(dev_priv);
+	/*
+	 * ANDROID: we cannot attempt to load the fw here, the filesystem
+	 * where our bin files are located won't be mounted until much
+	 * later.
+	 * intel_uc_init_fw(dev_priv);
+	 */
 
 	ret = i915_gem_init(dev_priv);
 	if (ret)
@@ -1254,7 +1259,9 @@ static void i915_driver_register(struct drm_i915_private *dev_priv)
 	/* Reveal our presence to userspace */
 	if (drm_dev_register(dev, 0) == 0) {
 		i915_debugfs_register(dev_priv);
-		i915_guc_log_register(dev_priv);
+		/* ANDROID: we defered the guc log registration */
+		if (dev_priv->contexts_ready)
+			i915_guc_log_register(dev_priv);
 		i915_setup_sysfs(dev_priv);
 
 		/* Depends on sysfs having been initialized */
