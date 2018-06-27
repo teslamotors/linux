@@ -1732,7 +1732,7 @@ static inline void gvt_notify_vblank(struct drm_i915_private *dev_priv,
 				     enum pipe pipe)
 {
 	if (dev_priv->gvt)
-		queue_work(system_unbound_wq,
+		queue_work(system_highpri_wq,
 				&dev_priv->gvt->pipe_info[pipe].vblank_work);
 }
 #endif
