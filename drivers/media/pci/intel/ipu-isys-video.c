@@ -614,6 +614,59 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
+static long ipu_isys_vidioc_private(struct file *file, void *fh,
+				    bool valid_prio, unsigned int cmd,
+				    void *arg)
+{
+	struct ipu_isys_video *av = video_drvdata(file);
+	int ret = 0;
+
+	switch (cmd) {
+#ifdef IPU_OTF_SUPPORT
+	case VIDIOC_IPU_SET_LINK_ID: {
+		struct ipu_isys_pipeline *ip = &av->ip;
+		u8 link_id = *(u8 *) arg;
+
+		if (ip->streaming) {
+			dev_err(&av->isys->adev->dev,
+				"Could not set link id while streaming\n");
+			return -EBUSY;
+		}
+
+		dev_dbg(&av->isys->adev->dev, "set link id %d\n", link_id);
+		if (link_id != 0 || link_id >= N_IPU_FW_ISYS_LINK_ID)
+			return -EINVAL;
+
+		av->link_id = link_id;
+		break;
+	}
+
+	case VIDIOC_IPU_SET_FRAME_COUNTER: {
+		struct ipu_frame_counter *fc = (struct ipu_frame_counter *)arg;
+
+		if (!av->link_id)
+			return 0;
+
+		dev_dbg(&av->isys->adev->dev, "set frame counter %d\n",
+			fc->frame_counter);
+		ret = ipu_isys_queue_prepare_frame_counter(av,
+							   fc->frame_counter,
+							   fc->index);
+		break;
+	}
+#endif
+	case VIDIOC_IPU_GET_DRIVER_VERSION:
+		*(u32 *)arg = IPU_DRIVER_VERSION;
+		break;
+
+	default:
+		dev_dbg(&av->isys->adev->dev, "unsupported private ioctl %x\n",
+			cmd);
+	}
+
+	return ret;
+}
+
 static int vidioc_enum_input(struct file *file, void *fh,
 			     struct v4l2_input *input)
 {
@@ -1681,6 +1734,7 @@ static const struct v4l2_ioctl_ops ioctl_ops_splane = {
 	.vidioc_streamon = vb2_ioctl_streamon,
 	.vidioc_streamoff = vb2_ioctl_streamoff,
 	.vidioc_expbuf = vb2_ioctl_expbuf,
+	.vidioc_default = ipu_isys_vidioc_private,
 	.vidioc_enum_input = vidioc_enum_input,
 	.vidioc_g_input = vidioc_g_input,
 	.vidioc_s_input = vidioc_s_input,
@@ -1701,6 +1755,7 @@ static const struct v4l2_ioctl_ops ioctl_ops_mplane = {
 	.vidioc_streamon = vb2_ioctl_streamon,
 	.vidioc_streamoff = vb2_ioctl_streamoff,
 	.vidioc_expbuf = vb2_ioctl_expbuf,
+	.vidioc_default = ipu_isys_vidioc_private,
 	.vidioc_enum_input = vidioc_enum_input,
 	.vidioc_g_input = vidioc_g_input,
 	.vidioc_s_input = vidioc_s_input,
