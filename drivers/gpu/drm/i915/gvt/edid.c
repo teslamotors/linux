@@ -441,7 +441,7 @@ void intel_gvt_i2c_handle_aux_ch_write(struct intel_vgpu *vgpu,
 	u32 value = *(u32 *)p_data;
 	int aux_data_for_write = 0;
 	int reg = get_aux_ch_reg(offset);
-	uint8_t rxbuf[20];
+	uint8_t rxbuf[20] = {0};
 	size_t rxsize;
 
 	if (reg != AUX_CH_CTL) {
@@ -450,6 +450,9 @@ void intel_gvt_i2c_handle_aux_ch_write(struct intel_vgpu *vgpu,
 	}
 
 	msg_length = AUX_CTL_MSG_LENGTH(value);
+	if (WARN_ON(msg_length <= 0 || msg_length > 20))
+		return;
+
 	for (rxsize = 0; rxsize < msg_length; rxsize += 4)
 		intel_dp_unpack_aux(vgpu_vreg(vgpu, offset + 4 + rxsize),
 				rxbuf + rxsize, msg_length - rxsize);
@@ -497,7 +500,8 @@ void intel_gvt_i2c_handle_aux_ch_write(struct intel_vgpu *vgpu,
 		 * operation to set block starting address
 		 */
 		if (addr == EDID_ADDR) {
-			i2c_edid->current_edid_read = rxbuf[4];
+			if (msg_length > 4)
+				i2c_edid->current_edid_read = rxbuf[4];
 		}
 	} else {
 		if (WARN_ON((op & 0x1) != GVT_AUX_I2C_READ))
