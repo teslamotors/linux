@@ -479,7 +479,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		/* SSP0 - BT */
 		.name = "SSP0-Codec",
-		.be_id = 1,
+		.id = 1,
 		.cpu_dai_name = "SSP0 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -492,7 +492,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		/* SSP1 - HDMI-In */
 		.name = "SSP1-Codec",
-		.be_id = 1,
+		.id = 1,
 		.cpu_dai_name = "SSP1 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -503,7 +503,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		/* SSP2 - Dirana */
 		.name = "SSP2-Codec",
-		.be_id = 1,
+		.id = 1,
 		.cpu_dai_name = "SSP2 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -514,7 +514,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		/* SSP2-B - Dirana */
 		.name = "SSP2-B-Codec",
-		.be_id = 1,
+		.id = 1,
 		.cpu_dai_name = "SSP2-B Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -525,7 +525,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		/* SSP2-C - Dirana */
 		.name = "SSP2-C-Codec",
-		.be_id = 1,
+		.id = 1,
 		.cpu_dai_name = "SSP2-C Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -536,7 +536,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		/* SSP2-D - Dirana */
 		.name = "SSP2-D-Codec",
-		.be_id = 1,
+		.id = 1,
 		.cpu_dai_name = "SSP2-D Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -547,7 +547,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		/* SSP4 - Amplifier */
 		.name = "SSP4-Codec",
-		.be_id = 0,
+		.id = 0,
 		.cpu_dai_name = "SSP4 Pin",
 		.codec_name = "i2c-INT34C3:00",
 		.codec_dai_name = "tdf8532-hifi",
@@ -558,7 +558,7 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 	{
 		/* SSP5 - TestPin */
 		.name = "SSP5-Codec",
-		.be_id = 1,
+		.id = 1,
 		.cpu_dai_name = "SSP5 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
