@@ -14959,7 +14959,7 @@ int intel_modeset_init(struct drm_device *dev)
 	}
 
 	for_each_pipe(dev_priv, pipe) {
-		int ret;
+		int ret = 0;
 
 		if (!i915_modparams.avail_planes_per_pipe) {
 			ret = intel_crtc_init(dev_priv, pipe);
