@@ -40,11 +40,6 @@ static const struct snd_sof_debugfs_map skl_dsp_debugfs[] = {
 	{"dsp", HDA_DSP_BAR,  0, 0x10000},
 };
 
-int skl_run_firmware(struct snd_sof_dev *sdev)
-{
-	return 0;
-}
-
 /* skylake ops */
 struct snd_sof_dsp_ops sof_skl_ops = {
 	/* probe and remove */
