@@ -6,6 +6,8 @@
  * Copyright(c) 2017 Intel Corporation. All rights reserved.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *
+ * Generic firmware loader.
  */
 
 #include <linux/delay.h>
@@ -42,6 +44,7 @@ static int get_ext_windows(struct snd_sof_dev *sdev,
 	return ret;
 }
 
+/* parse the extended FW boot data structures from FW boot message */
 int snd_sof_fw_parse_ext_data(struct snd_sof_dev *sdev, u32 offset)
 {
 	struct sof_ipc_ext_data_hdr *ext_hdr;
@@ -279,5 +282,6 @@ EXPORT_SYMBOL(snd_sof_run_firmware);
 
 void snd_sof_fw_unload(struct snd_sof_dev *sdev)
 {
+	/* TODO: support module unloading at runtime */
 }
 EXPORT_SYMBOL(snd_sof_fw_unload);
