@@ -730,7 +730,7 @@ static struct snd_soc_dai_driver bdw_dai[] = {
 },
 };
 
-struct snd_sof_dai_drv bdw_dai_drv = {
+static struct snd_sof_dai_drv bdw_dai_drv = {
 	.drv = bdw_dai,
 	.num_drv = ARRAY_SIZE(bdw_dai)
 };
