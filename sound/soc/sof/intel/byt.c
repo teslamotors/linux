@@ -799,12 +799,12 @@ static struct snd_soc_dai_driver byt_dai[] = {
 },
 };
 
-struct snd_sof_dai_drv byt_dai_drv = {
+static struct snd_sof_dai_drv byt_dai_drv = {
 	.drv = byt_dai,
 	.num_drv = 3, /* we have only 3 SSPs on byt*/
 };
 
-struct snd_sof_dai_drv cht_dai_drv = {
+static struct snd_sof_dai_drv cht_dai_drv = {
 	.drv = byt_dai,
 	/* all 6 SSPs may be available for cherrytrail */
 	.num_drv = ARRAY_SIZE(byt_dai),
