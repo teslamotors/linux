@@ -110,7 +110,7 @@ static struct ici_frame_buf_wrapper *frame_buf_lookup(struct ici_isys_frame_buf_
 	int i;
 	int mem_type = user_frame_info->mem_type;
 
-	list_for_each_entry(buf, &buf_list->getbuf_list, node) {
+	list_for_each_entry(buf, &buf_list->getbuf_list, uos_node) {
 		for (i = 0; i < user_frame_info->num_planes; i++) {
 			struct ici_frame_plane *new_plane =	&user_frame_info->frame_planes[i];
 			struct ici_frame_plane *cur_plane =	&buf->frame_info.frame_planes[i];
@@ -293,6 +293,7 @@ struct ici_frame_buf_wrapper *get_buf(struct virtual_stream *vstream, struct ici
 		buf->state = ICI_BUF_PREPARED;
 		return buf;
 	}
+	pr_debug("Creating new buffer in the list\n");
 	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 	if (!buf)
 		return NULL;
