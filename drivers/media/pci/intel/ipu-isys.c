@@ -923,7 +923,8 @@ static void isys_remove(struct ipu_bus_device *adev)
 	struct isys_fw_msgs *fwmsg, *safe;
 
 	dev_info(&adev->dev, "removed\n");
-	debugfs_remove_recursive(isys->debugfsdir);
+	if (isp->ipu_dir)
+		debugfs_remove_recursive(isys->debugfsdir);
 
 	list_for_each_entry_safe(fwmsg, safe, &isys->framebuflist, head) {
 		dma_free_attrs(&adev->dev, sizeof(struct isys_fw_msgs),

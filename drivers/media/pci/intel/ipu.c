@@ -272,7 +272,12 @@ err:
 
 static void ipu_remove_debugfs(struct ipu_device *isp)
 {
+	/*
+	 * Since isys and psys debugfs dir will be created under ipu root dir,
+	 * mark its dentry to NULL to avoid duplicate removal.
+	 */
 	debugfs_remove_recursive(isp->ipu_dir);
+	isp->ipu_dir = NULL;
 }
 
 static int ipu_pci_config_setup(struct pci_dev *dev)

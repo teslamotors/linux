@@ -1621,7 +1621,8 @@ static void ipu_psys_remove(struct ipu_bus_device *adev)
 	struct ipu_psys *psys = ipu_bus_get_drvdata(adev);
 	struct ipu_psys_pg *kpg, *kpg0;
 
-	debugfs_remove_recursive(psys->debugfsdir);
+	if (isp->ipu_dir)
+		debugfs_remove_recursive(psys->debugfsdir);
 
 	flush_workqueue(IPU_PSYS_WORK_QUEUE);
 
