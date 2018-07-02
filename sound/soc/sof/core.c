@@ -20,8 +20,13 @@
 #include "sof-priv.h"
 #include "ops.h"
 
-#define TIMEOUT_IPC	5
-#define TIMEOUT_BOOT	100
+/* SOF defaults if not provided by the platform in ms */
+#define TIMEOUT_DEFAULT_IPC	5
+#define TIMEOUT_DEFAULT_BOOT	100
+
+/*
+ * Generic object lookup APIs.
+ */
 
 struct snd_sof_pcm *snd_sof_find_spcm_dai(struct snd_sof_dev *sdev,
 					  struct snd_soc_pcm_runtime *rtd)
@@ -123,11 +128,16 @@ static inline unsigned int sof_get_pages(size_t size)
 	return (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
 }
 
+/*
+ * FW Panic/fault handling.
+ */
+
 struct sof_panic_msg {
 	u32 id;
 	const char *msg;
 };
 
+/* standard FW panic types */
 static const struct sof_panic_msg panic_msg[] = {
 	{SOF_IPC_PANIC_MEM, "out of memory"},
 	{SOF_IPC_PANIC_WORK, "work subsystem init failed"},
@@ -178,6 +188,43 @@ out:
 }
 EXPORT_SYMBOL(snd_sof_get_status);
 
+/*
+ * Generic buffer page table creation.
+ */
+
+int snd_sof_create_page_table(struct snd_sof_dev *sdev,
+			      struct snd_dma_buffer *dmab,
+			      unsigned char *page_table, size_t size)
+{
+	int i, pages;
+
+	pages = snd_sgbuf_aligned_pages(size);
+
+	dev_dbg(sdev->dev, "generating page table for %p size 0x%zx pages %d\n",
+		dmab->area, size, pages);
+
+	for (i = 0; i < pages; i++) {
+		u32 idx = (((i << 2) + i)) >> 1;
+		u32 pfn = snd_sgbuf_get_addr(dmab, i * PAGE_SIZE) >> PAGE_SHIFT;
+		u32 *pg_table;
+
+		dev_dbg(sdev->dev, "pfn i %i idx %d pfn %x\n", i, idx, pfn);
+
+		pg_table = (u32 *)(page_table + idx);
+
+		if (i & 1)
+			*pg_table |= (pfn << 4);
+		else
+			*pg_table |= pfn;
+	}
+
+	return pages;
+}
+
+/*
+ * SOF Driver enumeration.
+ */
+
 static int sof_probe(struct platform_device *pdev)
 {
 	struct snd_sof_pdata *plat_data = dev_get_platdata(&pdev->dev);
@@ -217,11 +264,11 @@ static int sof_probe(struct platform_device *pdev)
 
 	/* set default timeouts if none provided */
 	if (plat_data->desc->ipc_timeout == 0)
-		sdev->ipc_timeout = TIMEOUT_IPC;
+		sdev->ipc_timeout = TIMEOUT_DEFAULT_IPC;
 	else
 		sdev->ipc_timeout = plat_data->desc->ipc_timeout;
 	if (plat_data->desc->boot_timeout == 0)
-		sdev->boot_timeout = TIMEOUT_BOOT;
+		sdev->boot_timeout = TIMEOUT_DEFAULT_BOOT;
 	else
 		sdev->boot_timeout = plat_data->desc->boot_timeout;
 
@@ -284,6 +331,7 @@ static int sof_probe(struct platform_device *pdev)
 	/* init DMA trace */
 	ret = snd_sof_init_trace(sdev);
 	if (ret < 0) {
+		/* non fatal */
 		dev_warn(sdev->dev,
 			 "warning: failed to initialize trace %d\n", ret);
 	}
@@ -324,34 +372,6 @@ void snd_sof_shutdown(struct device *dev)
 }
 EXPORT_SYMBOL(snd_sof_shutdown);
 
-int snd_sof_create_page_table(struct snd_sof_dev *sdev,
-			      struct snd_dma_buffer *dmab,
-			      unsigned char *page_table, size_t size)
-{
-	int i, pages;
-
-	pages = sof_get_pages(size);
-
-	dev_dbg(sdev->dev, "generating page table for %p size 0x%zx pages %d\n",
-		dmab->area, size, pages);
-
-	for (i = 0; i < pages; i++) {
-		u32 idx = (((i << 2) + i)) >> 1;
-		u32 pfn = snd_sgbuf_get_addr(dmab, i * PAGE_SIZE) >> PAGE_SHIFT;
-		u32 *pg_table;
-
-		dev_dbg(sdev->dev, "pfn i %i idx %d pfn %x\n", i, idx, pfn);
-
-		pg_table = (u32 *)(page_table + idx);
-
-		if (i & 1)
-			*pg_table |= (pfn << 4);
-		else
-			*pg_table |= pfn;
-	}
-
-	return pages;
-}
 
 static struct platform_driver sof_driver = {
 	.driver = {
