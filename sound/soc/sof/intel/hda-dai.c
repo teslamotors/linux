@@ -10,6 +10,7 @@
 
 #include <sound/pcm_params.h>
 #include "../sof-priv.h"
+#include "hda.h"
 
 #define SKL_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
 	SNDRV_PCM_FMTBIT_S32_LE)
