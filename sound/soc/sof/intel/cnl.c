@@ -40,6 +40,8 @@ static const struct snd_sof_debugfs_map cnl_dsp_debugfs[] = {
 	{"dsp", HDA_DSP_BAR,  0, 0x10000},
 };
 
+static int cnl_ipc_cmd_done(struct snd_sof_dev *sdev, int dir);
+
 static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 {
 	struct snd_sof_dev *sdev = (struct snd_sof_dev *)context;
@@ -69,20 +71,15 @@ static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 					CNL_DSP_REG_HIPCCTL,
 					CNL_DSP_REG_HIPCCTL_DONE, 0);
 
-		/* handle immediate reply from DSP core */
-		snd_sof_ipc_reply(sdev, msg);
-
-		/* clear DONE bit - tell DSP we have completed the operation */
-		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
-					       CNL_DSP_REG_HIPCIDA,
-					       CNL_DSP_REG_HIPCIDA_DONE,
-					       CNL_DSP_REG_HIPCIDA_DONE);
-
-		/* unmask Done interrupt */
-		snd_sof_dsp_update_bits(sdev, HDA_DSP_BAR,
-					CNL_DSP_REG_HIPCCTL,
-					CNL_DSP_REG_HIPCCTL_DONE,
-					CNL_DSP_REG_HIPCCTL_DONE);
+		/*
+		 * handle immediate reply from DSP core. If the msg is
+		 * found, set done bit in cmd_done which is called at the
+		 * end of message processing function, else set it here
+		 * because the done bit can't be set in cmd_done function
+		 * which is triggered by msg
+		 */
+		if (snd_sof_ipc_reply(sdev, msg))
+			cnl_ipc_cmd_done(sdev, SOF_IPC_DSP_REPLY);
 
 		ret = IRQ_HANDLED;
 	}
@@ -108,8 +105,10 @@ static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 			snd_sof_ipc_msgs_rx(sdev);
 		}
 
-		/* clear busy interrupt to tell dsp controller this */
-		/* interrupt has been accepted, not trigger it again */
+		/*
+		 * clear busy interrupt to tell dsp controller this
+		 * interrupt has been accepted, not trigger it again
+		 */
 		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
 					       CNL_DSP_REG_HIPCTDR,
 					       CNL_DSP_REG_HIPCTDR_BUSY,
@@ -135,11 +134,29 @@ static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 static int cnl_ipc_cmd_done(struct snd_sof_dev *sdev, int dir)
 {
 	if (dir == SOF_IPC_HOST_REPLY) {
-		/* set done bit to ack dsp the msg has been processed */
+		/*
+		 * set done bit to ack dsp the msg has been
+		 * processed and send reply msg to dsp
+		 */
 		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
 					       CNL_DSP_REG_HIPCTDA,
 					       CNL_DSP_REG_HIPCTDA_DONE,
 					       CNL_DSP_REG_HIPCTDA_DONE);
+	} else {
+		/*
+		 * set DONE bit - tell DSP we have received the reply msg
+		 * from DSP, and processed it, don't send more reply to host
+		 */
+		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
+					       CNL_DSP_REG_HIPCIDA,
+					       CNL_DSP_REG_HIPCIDA_DONE,
+					       CNL_DSP_REG_HIPCIDA_DONE);
+
+		/* unmask Done interrupt */
+		snd_sof_dsp_update_bits(sdev, HDA_DSP_BAR,
+					CNL_DSP_REG_HIPCCTL,
+					CNL_DSP_REG_HIPCCTL_DONE,
+					CNL_DSP_REG_HIPCCTL_DONE);
 	}
 
 	return 0;
