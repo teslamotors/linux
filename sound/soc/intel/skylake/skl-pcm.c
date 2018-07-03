@@ -2390,8 +2390,8 @@ static struct snd_kcontrol_new skl_controls[] = {
 
 static const struct snd_soc_component_driver skl_component = {
 	.name           = "pcm",
-	// .controls	= skl_controls,
-	// .num_controls	= ARRAY_SIZE(skl_controls),
+	.controls	= skl_controls,
+	.num_controls	= ARRAY_SIZE(skl_controls),
 };
 
 /*
