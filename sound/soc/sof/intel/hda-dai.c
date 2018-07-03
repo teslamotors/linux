@@ -39,7 +39,7 @@ static struct snd_soc_dai_driver skl_dai[] = {
 	.name = "SSP2 Pin",
 	.playback = SOF_DAI_STREAM("ssp2 Tx", 1, 8,
 				   SNDRV_PCM_RATE_8000_192000, SKL_FORMATS),
-	.capture = SOF_DAI_STREAM("ssp2 Rx", 1, 16,
+	.capture = SOF_DAI_STREAM("ssp2 Rx", 1, 8,
 				  SNDRV_PCM_RATE_8000_192000, SKL_FORMATS),
 },
 {
