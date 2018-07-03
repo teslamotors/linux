@@ -12,6 +12,7 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/dma-buf.h>
+#include <linux/compat.h>
 
 #include "intel-ipu4-virtio-common.h"
 #include "intel-ipu4-para-virt-drv.h"
@@ -35,9 +36,96 @@ static int stream_dev_init;
 
 static struct ipu4_virtio_ctx *g_fe_priv;
 
-static int get_userpages(struct device *dev,
-			struct ici_frame_plane *frame_plane,
-			struct ici_kframe_plane *kframe_plane)
+#ifdef CONFIG_COMPAT
+struct timeval32 {
+	__u32 tv_sec;
+	__u32 tv_usec;
+} __attribute__((__packed__));
+
+struct ici_frame_plane32 {
+	__u32 bytes_used;
+	__u32 length;
+	union {
+		compat_uptr_t userptr;
+		__s32 dmafd;
+	} mem;
+	__u32 data_offset;
+	__u32 reserved[2];
+} __attribute__((__packed__));
+
+struct ici_frame_info32 {
+	__u32 frame_type;
+	__u32 field;
+	__u32 flag;
+	__u32 frame_buf_id;
+	struct timeval32 frame_timestamp;
+	__u32 frame_sequence_id;
+	__u32 mem_type; /* _DMA or _USER_PTR */
+	struct ici_frame_plane32 frame_planes[ICI_MAX_PLANES]; /* multi-planar */
+	__u32 num_planes; /* =1 single-planar &gt; 1 multi-planar array size */
+	__u32 reserved[2];
+} __attribute__((__packed__));
+
+#define ICI_IOC_GET_BUF32 _IOWR(MAJOR_STREAM, 3, struct ici_frame_info32)
+#define ICI_IOC_PUT_BUF32 _IOWR(MAJOR_STREAM, 4, struct ici_frame_info32)
+
+static void copy_from_user_frame_info32(struct ici_frame_info *kp, struct ici_frame_info32 __user *up)
+{
+	int i;
+	compat_uptr_t userptr;
+
+	get_user(kp->frame_type, &up->frame_type);
+	get_user(kp->field, &up->field);
+	get_user(kp->flag, &up->flag);
+	get_user(kp->frame_buf_id, &up->frame_buf_id);
+	get_user(kp->frame_timestamp.tv_sec, &up->frame_timestamp.tv_sec);
+	get_user(kp->frame_timestamp.tv_usec, &up->frame_timestamp.tv_usec);
+	get_user(kp->frame_sequence_id, &up->frame_sequence_id);
+	get_user(kp->mem_type, &up->mem_type);
+	get_user(kp->num_planes, &up->num_planes);
+	for (i = 0; i < kp->num_planes; i++) {
+		get_user(kp->frame_planes[i].bytes_used, &up->frame_planes[i].bytes_used);
+		get_user(kp->frame_planes[i].length, &up->frame_planes[i].length);
+		if (kp->mem_type == ICI_MEM_USERPTR) {
+			get_user(userptr, &up->frame_planes[i].mem.userptr);
+			kp->frame_planes[i].mem.userptr = (unsigned long) compat_ptr(userptr);
+		} else if (kp->mem_type == ICI_MEM_DMABUF) {
+			get_user(kp->frame_planes[i].mem.dmafd, &up->frame_planes[i].mem.dmafd);
+		};
+		get_user(kp->frame_planes[i].data_offset, &up->frame_planes[i].data_offset);
+	}
+}
+
+static void copy_to_user_frame_info32(struct ici_frame_info *kp, struct ici_frame_info32 __user *up)
+{
+	int i;
+	compat_uptr_t userptr;
+
+	put_user(kp->frame_type, &up->frame_type);
+	put_user(kp->field, &up->field);
+	put_user(kp->flag, &up->flag);
+	put_user(kp->frame_buf_id, &up->frame_buf_id);
+	put_user(kp->frame_timestamp.tv_sec, &up->frame_timestamp.tv_sec);
+	put_user(kp->frame_timestamp.tv_usec, &up->frame_timestamp.tv_usec);
+	put_user(kp->frame_sequence_id, &up->frame_sequence_id);
+	put_user(kp->mem_type, &up->mem_type);
+	put_user(kp->num_planes, &up->num_planes);
+	for (i = 0; i < kp->num_planes; i++) {
+		put_user(kp->frame_planes[i].bytes_used, &up->frame_planes[i].bytes_used);
+		put_user(kp->frame_planes[i].length, &up->frame_planes[i].length);
+		if (kp->mem_type == ICI_MEM_USERPTR) {
+			userptr = (unsigned long)compat_ptr(kp->frame_planes[i].mem.userptr);
+			put_user(userptr, &up->frame_planes[i].mem.userptr);
+		} else if (kp->mem_type == ICI_MEM_DMABUF) {
+			get_user(kp->frame_planes[i].mem.dmafd, &up->frame_planes[i].mem.dmafd);
+		}
+		put_user(kp->frame_planes[i].data_offset, &up->frame_planes[i].data_offset);
+	}
+}
+#endif
+
+static int get_userpages(struct device *dev, struct ici_frame_plane *frame_plane,
+					 struct ici_kframe_plane *kframe_plane)
 {
 	unsigned long start, end, addr;
 	int npages, array_size;
@@ -645,13 +733,86 @@ static unsigned int virt_stream_fop_poll(struct file *file,
 	return res;
 }
 
-static long virt_stream_ioctl(struct file *file,
-				unsigned int ioctl_cmd,
+static long virt_stream_ioctl32(struct file *file, unsigned int ioctl_cmd,
 				unsigned long ioctl_arg)
 {
 	union isys_ioctl_cmd_args {
-			struct ici_frame_info frame_info;
-			struct ici_stream_format sf;
+		struct ici_frame_info frame_info;
+		struct ici_stream_format sf;
+	};
+	void __user *up = compat_ptr(ioctl_arg);
+	union isys_ioctl_cmd_args *data = NULL;
+	int err = 0;
+	struct ici_stream_device *dev = file->private_data;
+
+	mutex_lock(dev->mutex);
+	switch (ioctl_cmd) {
+	case ICI_IOC_STREAM_ON:
+		pr_debug("IPU FE IOCTL STREAM_ON\n");
+		err = virt_isys_stream_on(file, dev);
+		break;
+	case ICI_IOC_STREAM_OFF:
+		pr_debug("IPU FE IOCTL STREAM_OFF\n");
+		err = virt_isys_stream_off(file, dev);
+		break;
+	case ICI_IOC_GET_BUF32:
+		pr_debug("IPU FE IOCTL GET_BUF\n");
+		data = (union isys_ioctl_cmd_args *) kzalloc(sizeof(union isys_ioctl_cmd_args), GFP_KERNEL);
+		copy_from_user_frame_info32(&data->frame_info, up);
+		err = virt_isys_getbuf(file, dev, &data->frame_info);
+		copy_to_user_frame_info32(&data->frame_info, up);
+		kfree(data);
+		if (err) {
+			return -EFAULT;
+		}
+		break;
+	case ICI_IOC_PUT_BUF32:
+		pr_debug("IPU FE IOCTL PUT_BUF\n");
+		data = (union isys_ioctl_cmd_args *) kzalloc(sizeof(union isys_ioctl_cmd_args), GFP_KERNEL);
+		copy_from_user_frame_info32(&data->frame_info, up);
+		err = virt_isys_putbuf(file, dev, &data->frame_info);
+		copy_to_user_frame_info32(&data->frame_info, up);
+		kfree(data);
+		if (err) {
+			return -EFAULT;
+		}
+		break;
+	case ICI_IOC_SET_FORMAT:
+		pr_debug("IPU FE IOCTL SET_FORMAT\n");
+		if (_IOC_SIZE(ioctl_cmd) > sizeof(union isys_ioctl_cmd_args))
+			return -ENOTTY;
+
+		data = (union isys_ioctl_cmd_args *) kzalloc(sizeof(union isys_ioctl_cmd_args), GFP_KERNEL);
+		err = copy_from_user(data, up, _IOC_SIZE(ioctl_cmd));
+		if (err) {
+			kfree(data);
+			return -EFAULT;
+		}
+		err = virt_isys_set_format(file, dev, &data->sf);
+		err = copy_to_user(up, data, _IOC_SIZE(ioctl_cmd));
+		if (err) {
+			kfree(data);
+			return -EFAULT;
+		}
+		kfree(data);
+		break;
+
+	default:
+		err = -ENOTTY;
+		break;
+	}
+
+	mutex_unlock(dev->mutex);
+
+	return 0;
+}
+
+static long virt_stream_ioctl(struct file *file, unsigned int ioctl_cmd,
+				unsigned long ioctl_arg)
+{
+	union isys_ioctl_cmd_args {
+		struct ici_frame_info frame_info;
+		struct ici_stream_format sf;
 	};
 	int err = 0;
 	union isys_ioctl_cmd_args *data = NULL;
@@ -712,6 +873,9 @@ static const struct file_operations virt_stream_fops = {
 	.owner = THIS_MODULE,
 	.open = virt_stream_fop_open,		/* calls strm_dev->fops->open() */
 	.unlocked_ioctl = virt_stream_ioctl,	/* calls strm_dev->ipu_ioctl_ops->() */
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = virt_stream_ioctl32,
+#endif
 	.release = virt_stream_fop_release,	/* calls strm_dev->fops->release() */
 	.poll = virt_stream_fop_poll,		/* calls strm_dev->fops->poll() */
 };
@@ -881,8 +1045,9 @@ static int virt_pipeline_fop_release(struct inode *inode, struct file *file)
 	return rval;
 }
 
-static long virt_pipeline_ioctl(struct file *file, unsigned int ioctl_cmd,
-			       unsigned long ioctl_arg)
+static long virt_pipeline_ioctl_common(void __user *up,
+				struct file *file, unsigned int ioctl_cmd,
+				unsigned long ioctl_arg)
 {
 	union isys_ioctl_cmd_args {
 		struct ici_node_desc node_desc;
@@ -895,7 +1060,6 @@ static long virt_pipeline_ioctl(struct file *file, unsigned int ioctl_cmd,
 	};
 	int err = 0;
 	union isys_ioctl_cmd_args *data = NULL;
-	void __user *up = (void __user *)ioctl_arg;
 	struct ici_isys_pipeline_device *dev = file->private_data;
 
 	if (_IOC_SIZE(ioctl_cmd) > sizeof(union isys_ioctl_cmd_args))
@@ -974,13 +1138,27 @@ static long virt_pipeline_ioctl(struct file *file, unsigned int ioctl_cmd,
 	return 0;
 }
 
+static long virt_pipeline_ioctl(struct file *file, unsigned int ioctl_cmd,
+			       unsigned long ioctl_arg)
+{
+	void __user *up = (void __user *)ioctl_arg;
+	return virt_pipeline_ioctl_common(up, file, ioctl_cmd, ioctl_arg);
+}
+
+static long virt_pipeline_ioctl32(struct file *file, unsigned int ioctl_cmd,
+			       unsigned long ioctl_arg)
+{
+	void __user *up = compat_ptr(ioctl_arg);
+	return virt_pipeline_ioctl_common(up, file, ioctl_cmd, ioctl_arg);
+}
+
 static const struct file_operations virt_pipeline_fops = {
 	.owner = THIS_MODULE,
 	.open = virt_pipeline_fop_open,
 	.unlocked_ioctl = virt_pipeline_ioctl,
-//#ifdef CONFIG_COMPAT
-//	.compat_ioctl = virt_pipeline_ioctl32,
-//#endif
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = virt_pipeline_ioctl32,
+#endif
 	.release = virt_pipeline_fop_release,
 };
 
