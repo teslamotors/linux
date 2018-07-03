@@ -377,7 +377,7 @@ struct ici_frame_buf_wrapper *get_buf(struct virtual_stream *vstream, struct ici
 
 	buf = frame_buf_lookup(buf_list, frame_info);
 	if (buf) {
-		pr_debug("Frame buffer found in the list\n");
+		pr_debug("Frame buffer found in the list: %ld\n", buf->frame_info.frame_planes[0].mem.userptr);
 		buf->state = ICI_BUF_PREPARED;
 		return buf;
 	}
@@ -636,13 +636,18 @@ static unsigned int stream_fop_poll(struct file *file, struct ici_stream_device 
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_POLL, &op[0]);
 
+	mutex_lock(strm_dev->mutex);
+
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
+		mutex_unlock(strm_dev->mutex);
 		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
 	kfree(req);
+
+	mutex_unlock(strm_dev->mutex);
 
 	return req->func_ret;
 }
@@ -674,13 +679,18 @@ static int virt_stream_fop_open(struct inode *inode, struct file *file)
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_DEVICE_OPEN, &op[0]);
 
+	mutex_lock(strm_dev->mutex);
+
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
+		mutex_unlock(strm_dev->mutex);
 		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
 	kfree(req);
+
+	mutex_unlock(strm_dev->mutex);
 
 	return rval;
 }
@@ -705,13 +715,18 @@ static int virt_stream_fop_release(struct inode *inode, struct file *file)
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_DEVICE_CLOSE, &op[0]);
 
+	mutex_lock(strm_dev->mutex);
+
 	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
 	if (rval) {
+		mutex_unlock(strm_dev->mutex);
 		dev_err(&strm_dev->dev, "Failed to close virtual device\n");
 		kfree(req);
 		return rval;
 	}
 	kfree(req);
+
+	mutex_unlock(strm_dev->mutex);
 
 	return rval;
 }
@@ -763,6 +778,7 @@ static long virt_stream_ioctl32(struct file *file, unsigned int ioctl_cmd,
 		copy_to_user_frame_info32(&data->frame_info, up);
 		kfree(data);
 		if (err) {
+			mutex_unlock(dev->mutex);
 			return -EFAULT;
 		}
 		break;
@@ -774,24 +790,29 @@ static long virt_stream_ioctl32(struct file *file, unsigned int ioctl_cmd,
 		copy_to_user_frame_info32(&data->frame_info, up);
 		kfree(data);
 		if (err) {
+			mutex_unlock(dev->mutex);
 			return -EFAULT;
 		}
 		break;
 	case ICI_IOC_SET_FORMAT:
 		pr_debug("IPU FE IOCTL SET_FORMAT\n");
-		if (_IOC_SIZE(ioctl_cmd) > sizeof(union isys_ioctl_cmd_args))
+		if (_IOC_SIZE(ioctl_cmd) > sizeof(union isys_ioctl_cmd_args)) {
+			mutex_unlock(dev->mutex);
 			return -ENOTTY;
+		}
 
 		data = (union isys_ioctl_cmd_args *) kzalloc(sizeof(union isys_ioctl_cmd_args), GFP_KERNEL);
 		err = copy_from_user(data, up, _IOC_SIZE(ioctl_cmd));
 		if (err) {
 			kfree(data);
+			mutex_unlock(dev->mutex);
 			return -EFAULT;
 		}
 		err = virt_isys_set_format(file, dev, &data->sf);
 		err = copy_to_user(up, data, _IOC_SIZE(ioctl_cmd));
 		if (err) {
 			kfree(data);
+			mutex_unlock(dev->mutex);
 			return -EFAULT;
 		}
 		kfree(data);

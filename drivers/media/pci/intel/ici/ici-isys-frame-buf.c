@@ -544,8 +544,8 @@ int ici_isys_put_buf(struct ici_isys_stream *as,
 	spin_lock_irqsave(&buf_list->lock, flags);
 	if (list_empty(&buf_list->putbuf_list)) {
 		/* Wait */
-		spin_unlock_irqrestore(&buf_list->lock, flags);
 		if (!(f_flags & O_NONBLOCK)) {
+			spin_unlock_irqrestore(&buf_list->lock, flags);
 			rval = wait_event_interruptible(buf_list->wait,
 							!list_empty(&buf_list->
 								putbuf_list));
