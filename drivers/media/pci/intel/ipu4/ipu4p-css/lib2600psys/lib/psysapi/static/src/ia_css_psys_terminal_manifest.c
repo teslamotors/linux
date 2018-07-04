@@ -1007,6 +1007,9 @@ int ia_css_terminal_manifest_print(
 		PRINT_DIMENSION("max_frame_grid_dimension",
 			framed->max_frame_grid_dimension);
 
+		NOT_USED(framed);
+		NOT_USED(fragd);
+
 		for (sec_index = 0; sec_index < sec_count; sec_index++) {
 			sec = ia_css_spatial_param_terminal_manifest_get_frm_grid_prm_sct_desc(
 				stm, sec_index);

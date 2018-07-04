@@ -1,18 +1,6 @@
-/*
- * Copyright (c) 2015--2018 Intel Corporation.
- *
- * Author: Jianxu Zheng <jian.xu.zheng@intel.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License version
- * 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+// SPDX-License_Identifier: GPL-2.0
+// Copyright (C) 2015 - 2018 Intel Corporation
+
 #include <linux/clk.h>
 #include <linux/clkdev.h>
 #include <linux/gpio.h>
@@ -613,7 +601,7 @@ static struct ipu_isys_subdev_info video_aggre_b_stub_sd = {
 };
 #endif
 
-#ifdef CONFIG_INTEL_IPU4_MAGNA
+#if IS_ENABLED(CONFIG_INTEL_IPU4_MAGNA)
 #define MAGNA_LANES		4
 #define MAGNA_PHY_ADDR	0x60 /* 0x30 for 7bit addr */
 #define MAGNA_ADDRESS_A	0x61
@@ -640,7 +628,7 @@ static struct crlmodule_platform_data magna_pdata = {
 };
 #endif
 
-#ifdef CONFIG_INTEL_IPU4_OV10635
+#if IS_ENABLED(CONFIG_INTEL_IPU4_OV10635)
 #define OV10635_LANES		4
 #define OV10635_I2C_PHY_ADDR	0x60 /* 0x30 for 7bit addr */
 #define OV10635A_I2C_ADDRESS	0x61
@@ -664,7 +652,7 @@ static struct crlmodule_platform_data ov10635_pdata = {
 };
 #endif
 
-#ifdef CONFIG_INTEL_IPU4_OV10640
+#if IS_ENABLED(CONFIG_INTEL_IPU4_OV10640)
 #define OV10640_LANES			4
 #define OV10640_I2C_PHY_ADDR	0x60 /* 0x30 for 7bit addr */
 #define OV10640A_I2C_ADDRESS	0x61

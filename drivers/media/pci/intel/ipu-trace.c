@@ -371,16 +371,28 @@ static int update_register_cache(struct ipu_device *isp, u32 reg, u32 value)
 	int i, range;
 	int rval = -EINVAL;
 
-	if (dctrl->isys.offset &&
-	    reg >= dctrl->isys.offset &&
-	    reg < dctrl->isys.offset + TRACE_REG_MAX_ISYS_OFFSET)
-		sys = &dctrl->isys;
-	else if (dctrl->psys.offset &&
-		 reg >= dctrl->psys.offset &&
-		 reg < dctrl->psys.offset + TRACE_REG_MAX_PSYS_OFFSET)
-		sys = &dctrl->psys;
-	else
-		goto error;
+	if (dctrl->isys.offset == dctrl->psys.offset) {
+		/* For the IPU with uniform address space */
+		if (reg >= IPU_ISYS_OFFSET &&
+			reg < IPU_ISYS_OFFSET + TRACE_REG_MAX_ISYS_OFFSET)
+			sys = &dctrl->isys;
+		else if (reg >= IPU_PSYS_OFFSET &&
+			reg < IPU_PSYS_OFFSET + TRACE_REG_MAX_PSYS_OFFSET)
+			sys = &dctrl->psys;
+		else
+			goto error;
+	} else {
+		if (dctrl->isys.offset &&
+		    reg >= dctrl->isys.offset &&
+		    reg < dctrl->isys.offset + TRACE_REG_MAX_ISYS_OFFSET)
+			sys = &dctrl->isys;
+		else if (dctrl->psys.offset &&
+			 reg >= dctrl->psys.offset &&
+			 reg < dctrl->psys.offset + TRACE_REG_MAX_PSYS_OFFSET)
+			sys = &dctrl->psys;
+		else
+			goto error;
+	}
 
 	blocks = sys->blocks;
 	dev = sys->dev;

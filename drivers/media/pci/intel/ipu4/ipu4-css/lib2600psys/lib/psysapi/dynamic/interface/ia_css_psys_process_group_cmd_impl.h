@@ -161,4 +161,16 @@ extern int ia_css_enqueue_param_buffer_set(
 	ia_css_process_group_t				*process_group,
 	ia_css_buffer_set_t				*buffer_set);
 
+/*! Need to store the 'secure' mode for each PG for FW test app only
+ *
+ * @param	process_group[in]		process group object
+ * @param	secure[in]			parameter buffer set
+ *
+ * @return < 0 on error
+ */
+extern int ia_css_process_group_store(
+	ia_css_process_group_t				*process_group,
+	bool						secure);
+
+
 #endif /* __IA_CSS_PSYS_PROCESS_GROUP_CMD_IMPL_H */
