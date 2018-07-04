@@ -4,6 +4,8 @@
 #ifndef IPU_PLATFORM_RESOURCES_H
 #define IPU_PLATFORM_RESOURCES_H
 
+#include <linux/kernel.h>
+
 /* ia_css_psys_program_group_private.h */
 /* ia_css_psys_process_group_cmd_impl.h */
 #ifdef CONFIG_VIDEO_INTEL_IPU4P
@@ -201,4 +203,28 @@ struct ipu_fw_psys_process {
 	u8 padding[IPU_FW_PSYS_N_PADDING_UINT8_IN_PROCESS_STRUCT];
 };
 
-#endif
+struct ipu_psys_resource_alloc;
+struct ipu_fw_psys_process_group;
+struct ipu_psys_resource_pool;
+void ipu_psys_resource_alloc_init(struct ipu_psys_resource_alloc *alloc);
+int ipu_psys_allocate_resources(const struct device *dev,
+				struct ipu_fw_psys_process_group *pg,
+				void *pg_manifest,
+				struct ipu_psys_resource_alloc *alloc,
+				struct ipu_psys_resource_pool *pool);
+int ipu_psys_move_resources(const struct device *dev,
+			    struct ipu_psys_resource_alloc *alloc,
+			    struct ipu_psys_resource_pool *source_pool,
+			    struct ipu_psys_resource_pool *target_pool);
+
+void ipu_psys_free_resources(struct ipu_psys_resource_alloc *alloc,
+			     struct ipu_psys_resource_pool *pool);
+
+extern const u32 ipu_fw_psys_cell_types[];
+extern const u16 ipu_fw_num_dev_channels[];
+extern const u16 ipu_fw_psys_mem_size[];
+extern const enum ipu_mem_id ipu_fw_psys_cell_mem
+	[IPU_FW_PSYS_N_CELL_ID][IPU_FW_PSYS_N_DATA_MEM_TYPE_ID];
+extern const struct ipu_fw_resource_definitions *res_defs;
+
+#endif /* IPU_PLATFORM_RESOURCES_H */

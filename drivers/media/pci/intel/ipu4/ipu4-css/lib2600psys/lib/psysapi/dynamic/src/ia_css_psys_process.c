@@ -15,7 +15,7 @@
 #include "ia_css_psys_process.h"
 #include "ia_css_psys_dynamic_storage_class.h"
 #include "ia_css_psys_process_private_types.h"
-#include <misc_support.h>
+#include <misc_support.h>	/* for NOT_USED */
 
 /*
  * Functions to possibly inline

@@ -25,7 +25,7 @@
 
 enum ici_format
 {
-	ICI_FORMAT_RGB888 		 = ici_fourcc_code('R', 'G', '2', '4'),
+	ICI_FORMAT_RGB888 		 = ici_fourcc_code('X', 'R', '2', '4'),
 	ICI_FORMAT_RGB565 		 = ici_fourcc_code('R', 'G', '1', '6'),
 	ICI_FORMAT_UYVY			 = ici_fourcc_code('U', 'Y', 'V', 'Y'),
 	ICI_FORMAT_YUYV			 = ici_fourcc_code('Y', 'U', 'Y', 'V'),
