@@ -94,6 +94,7 @@ struct vhm_vm {
 	struct device *dev;
 	struct list_head list;
 	unsigned long vmid;
+	unsigned long trusty_host_gpa;
 	int ioreq_fallback_client;
 	long refcnt;
 	struct mutex seg_lock;
