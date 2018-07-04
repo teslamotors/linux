@@ -1271,6 +1271,9 @@ static void i915_driver_register(struct drm_i915_private *dev_priv)
 	if (IS_GEN5(dev_priv))
 		intel_gpu_ips_init(dev_priv);
 
+	if (IS_BROXTON(dev_priv))
+		intel_gpu_tfm_init(dev_priv);
+
 	intel_audio_init(dev_priv);
 
 	/*
@@ -1296,6 +1299,8 @@ static void i915_driver_unregister(struct drm_i915_private *dev_priv)
 	intel_audio_deinit(dev_priv);
 
 	intel_gpu_ips_teardown();
+	if (IS_BROXTON(dev_priv))
+		intel_gpu_tfm_teardown();
 	acpi_video_unregister();
 	intel_opregion_unregister(dev_priv);
 
