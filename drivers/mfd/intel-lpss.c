@@ -382,8 +382,9 @@ static void intel_lpss_unregister_clock(struct intel_lpss *lpss)
 	intel_lpss_unregister_clock_tree(lpss->clk);
 }
 
-static int intel_lpss_add_devices(struct intel_lpss *lpss)
+static void intel_lpss_async_add_devices(void *_lpss, async_cookie_t cookie)
 {
+	struct intel_lpss *lpss = _lpss;
 	int ret;
 
 	if (intel_lpss_has_idma(lpss)) {
@@ -412,12 +413,6 @@ static int intel_lpss_add_devices(struct intel_lpss *lpss)
 		intel_lpss_ltr_hide(lpss);
 		intel_lpss_unregister_clock(lpss);
 	}
-	return ret;
-}
-
-static void intel_lpss_async_add_devices(void *lpss, async_cookie_t cookie)
-{
-	intel_lpss_add_devices(lpss);
 }
 
 int intel_lpss_probe(struct device *dev,
@@ -466,16 +461,7 @@ int intel_lpss_probe(struct device *dev,
 	if (ret)
 		dev_warn(dev, "Failed to create debugfs entries\n");
 
-	/*
-	 * Probe UART devices synchronously to avoid serial interface
-	 * enumeration unpredictability.
-	 */
-	if (lpss->type == LPSS_DEV_UART) {
-		ret = intel_lpss_add_devices(lpss);
-		if (ret)
-			goto err_clk_register;
-	} else
-		async_schedule(intel_lpss_async_add_devices, lpss);
+	async_schedule(intel_lpss_async_add_devices, lpss);
 
 	return 0;
 
