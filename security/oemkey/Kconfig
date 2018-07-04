@@ -1,0 +1,65 @@
+config OEM_KEY
+	bool "OEM Key Provisioning and Verification"
+	default n
+	select ABL_UTILS
+        select KEYS
+	select ASYMMETRIC_KEY_TYPE
+	select ASYMMETRIC_PUBLIC_KEY_SUBTYPE
+	select PUBLIC_KEY_ALGO_RSA
+	select MPILIB
+	help
+		A module which reads the OEM public key passed to the kernel
+		by the bootloader. Allows applications to verify digest
+		signatures against the OEM public key.
+
+                If in doubt, select "N".
+
+config OEM_KEY_HARDCODE
+	bool "Hardcode the OEM public RSA key (DANGEROUS!)"
+        default n
+	depends on OEM_KEY
+	help
+                Sets the RSA public keys to fixed values instead
+                of using values passed via the kernel command line.
+
+                WARNING: This is only for testing purposes and should not be used
+                for production as any data encrypted with keystore will be vulnerable
+                to attack.
+
+                If in doubt, select "N".
+
+	default n
+
+config MANIFEST
+	bool "Manifest Provisioning and Verification"
+	default n
+	select ABL_UTILS
+        select KEYS
+	select ASYMMETRIC_KEY_TYPE
+	select ASYMMETRIC_PUBLIC_KEY_SUBTYPE
+	select PUBLIC_KEY_ALGO_RSA
+	select MPILIB
+        select X509_CERTIFICATE_PARSER
+	help
+		A module which reads the manifest passed to the kernel
+		by the bootloader. Allows applications to verify digest
+		signatures against the key digest signatures provided
+		by the manifest.
+
+                If in doubt, select "N".
+
+config MANIFEST_HARDCODE
+	bool "Hardcode the manifest (DANGEROUS!)"
+        default n
+	depends on MANIFEST
+	help
+                Sets the manifest to fixed values instead
+                of using values passed via the kernel command line.
+
+                WARNING: This is only for testing purposes and should not be used
+                for production as any data encrypted with keystore will be vulnerable
+                to attack.
+
+                If in doubt, select "N".
+
+	default n

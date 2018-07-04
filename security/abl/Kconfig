@@ -1,0 +1,8 @@
+config ABL_UTILS
+	bool "Automotive Bootloader Utilities"
+	default n
+	help
+		Provides helper functions to copy data from physical
+		memory locations into kernel memory space.
+
+                If in doubt, select "N".
