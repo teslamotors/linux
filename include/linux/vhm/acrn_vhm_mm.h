@@ -80,12 +80,10 @@ static inline unsigned long  acrn_hpa2gpa(unsigned long hpa)
 }
 
 /**
- * map_guest_phys - map guest physical address
- *
- * to SOS kernel virtual address
+ * map_guest_phys - map guest physical address to SOS kernel virtual address
  *
  * @vmid: guest vmid
- * @uos_phy: phsical address in guest
+ * @uos_phys: physical address in guest
  * @size: the memory size mapped
  *
  * Return: SOS kernel virtual address, NULL on error
@@ -96,7 +94,7 @@ void *map_guest_phys(unsigned long vmid, u64 uos_phys, size_t size);
  * unmap_guest_phys - unmap guest physical address
  *
  * @vmid: guest vmid
- * @uos_phy: phsical address in guest
+ * @uos_phys: physical address in guest
  *
  * Return: 0 on success, <0 for error.
  */
@@ -109,7 +107,7 @@ int unmap_guest_phys(unsigned long vmid, u64 uos_phys);
  * @guest_gpa: gpa of UOS
  * @host_gpa: gpa of SOS
  * @len: memory mapped length
- * @mem_type: memory mapping type. Possilble value could be:
+ * @mem_type: memory mapping type. Possible value could be:
  *                    MEM_TYPE_WB
  *                    MEM_TYPE_WT
  *                    MEM_TYPE_UC
@@ -147,7 +145,7 @@ int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
  * @guest_gpa: gpa of UOS
  * @host_gpa: gpa of SOS
  * @len: memory mapped length
- * @mem_type: memory mapping type. Possilble value could be:
+ * @mem_type: memory mapping type. Possible value could be:
  *                    MEM_TYPE_WB
  *                    MEM_TYPE_WT
  *                    MEM_TYPE_UC

@@ -88,6 +88,7 @@ extern struct mutex vhm_vm_list_lock;
  * @ioreq_client_list: list of ioreq clients
  * @req_buf: request buffer shared between HV, SOS and UOS
  * @pg: pointer to linux page which holds req_buf
+ * @hugetlb_enabled: flag to enable/disable hugetlb page ept mapping
  */
 struct vhm_vm {
 	struct device *dev;
@@ -119,7 +120,7 @@ struct vm_info {
 };
 
 /**
- * struct find_get_vm - find and hold vhm_vm of guest according to guest vmid
+ * find_get_vm() - find and keep guest vhm_vm based on the vmid
  *
  * @vmid: guest vmid
  *
@@ -128,17 +129,16 @@ struct vm_info {
 struct vhm_vm *find_get_vm(unsigned long vmid);
 
 /**
- * struct put_vm - release vhm_vm of guest according to guest vmid
+ * put_vm() - release vhm_vm of guest according to guest vmid
  * If the latest reference count drops to zero, free vhm_vm as well
- *
- * @vm: pointer to vhm_vm which identrify specific guest
+ * @vm: pointer to vhm_vm which identify specific guest
  *
  * Return:
  */
 void put_vm(struct vhm_vm *vm);
 
 /**
- * struct vhm_get_vm_info - get vm_info of specific guest
+ * vhm_get_vm_info() - get vm_info of specific guest
  *
  * @vmid: guest vmid
  * @info: pointer to vm_info for returned vm_info
@@ -148,7 +148,7 @@ void put_vm(struct vhm_vm *vm);
 int vhm_get_vm_info(unsigned long vmid, struct vm_info *info);
 
 /**
- * struct vhm_inject_msi - inject MSI interrupt to guest
+ * vhm_inject_msi() - inject MSI interrupt to guest
  *
  * @vmid: guest vmid
  * @msi_addr: MSI addr matches MSI spec
@@ -160,11 +160,11 @@ int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
 	unsigned long msi_data);
 
 /**
- * struct vhm_vm_gpa2hpa - convert guest physical address to
+ * vhm_vm_gpa2hpa() - convert guest physical address to
  * host physical address
  *
  * @vmid: guest vmid
- * @gap: guest physical address
+ * @gpa: guest physical address
  *
  * Return: host physical address, <0 on error
  */
