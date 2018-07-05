@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 # Platform specific code goes here
+obj-y	+= apl/
 obj-y	+= atom/
 obj-y	+= bxt/
 obj-y	+= ce4100/
@@ -15,3 +16,4 @@ obj-y	+= scx200/
 obj-y	+= sfi/
 obj-y	+= ts5500/
 obj-y	+= uv/
+obj-y	+= apli_lhcrb/

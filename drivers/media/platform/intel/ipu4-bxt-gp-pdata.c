@@ -96,7 +96,7 @@ static struct ipu_isys_subdev_info adv7481_hdmi_crl_sd = {
  * ADV7481 have its own oscillator, no buttres clock
  * needed.
  */
-struct ipu_isys_clk_mapping clk_mapping[] = {
+struct ipu_isys_clk_mapping gp_mapping[] = {
 	{ CLKDEV_INIT(NULL, NULL, NULL), NULL }
 };
 
@@ -106,7 +106,7 @@ static struct ipu_isys_subdev_pdata pdata = {
 		&adv7481_cvbs_crl_sd,
 		NULL,
 	},
-	.clk_map = clk_mapping,
+	.clk_map = gp_mapping,
 };
 
 static void ipu4_quirk(struct pci_dev *pci_dev)
@@ -114,4 +114,5 @@ static void ipu4_quirk(struct pci_dev *pci_dev)
 	pci_dev->dev.platform_data = &pdata;
 }
 
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, IPU_PCI_ID, ipu4_quirk);
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, IPU_PCI_ID,
+			ipu4_quirk);

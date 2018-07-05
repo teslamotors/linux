@@ -38,6 +38,7 @@
 #define E1000_WUFC_EX   0x00000004 /* Directed Exact Wakeup Enable */
 #define E1000_WUFC_MC   0x00000008 /* Directed Multicast Wakeup Enable */
 #define E1000_WUFC_BC   0x00000010 /* Broadcast Wakeup Enable */
+#define E1000_WUFC_ARPD 0x00000020 /* ARP Directed Wakeup Enable */
 
 /* Wake Up Status */
 #define E1000_WUS_EX	0x00000004 /* Directed Exact */
