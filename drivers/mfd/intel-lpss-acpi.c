@@ -116,7 +116,6 @@ static struct platform_driver intel_lpss_acpi_driver = {
 		.name = "intel-lpss",
 		.acpi_match_table = intel_lpss_acpi_ids,
 		.pm = &intel_lpss_acpi_pm_ops,
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 };
 
