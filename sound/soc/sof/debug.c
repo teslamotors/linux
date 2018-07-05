@@ -32,7 +32,7 @@ static int sof_dfsentry_open(struct inode *inode, struct file *file)
 static ssize_t sof_dfsentry_read(struct file *file, char __user *buffer,
 				 size_t count, loff_t *ppos)
 {
-	struct snd_sof_dfsentry *dfse = file->private_data;
+	struct snd_sof_dfsentry_io *dfse = file->private_data;
 	struct snd_sof_dev *sdev = dfse->sdev;
 	int size;
 	u32 *buf;
@@ -78,7 +78,7 @@ int snd_sof_debugfs_create_item(struct snd_sof_dev *sdev,
 				void __iomem *base, size_t size,
 				const char *name)
 {
-	struct snd_sof_dfsentry *dfse;
+	struct snd_sof_dfsentry_io *dfse;
 
 	if (!sdev)
 		return -EINVAL;
@@ -118,7 +118,8 @@ int snd_sof_dbg_init(struct snd_sof_dev *sdev)
 	for (i = 0; i < ops->debug_map_count; i++) {
 		map = &ops->debug_map[i];
 
-		err = snd_sof_debugfs_create_item(sdev, sdev->bar[map->bar] +
+		err = snd_sof_debugfs_create_item(sdev,
+						  sdev->bar[map->bar] +
 						  map->offset, map->size,
 						  map->name);
 		if (err < 0)
