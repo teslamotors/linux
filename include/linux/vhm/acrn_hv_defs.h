@@ -111,6 +111,7 @@
 /* Power management */
 #define HC_ID_PM_BASE               0x80UL
 #define HC_PM_GET_CPU_STATE         _HC_ID(HC_ID, HC_ID_PM_BASE + 0x00)
+#define HC_PM_SET_SSTATE_DATA       _HC_ID(HC_ID, HC_ID_PM_BASE + 0x01)
 
 #define ACRN_DOM0_VMID (0UL)
 #define ACRN_INVALID_VMID (-1)

@@ -8377,6 +8377,13 @@ static void __intel_autoenable_gt_powersave(struct work_struct *work)
 	struct intel_engine_cs *rcs;
 	struct drm_i915_gem_request *req;
 
+	/*
+	 * ANDROID: In deferred fw mode, we can't submit anything until we know
+	 * we loaded and setup the guc and we're ready to handle submissions.
+	 */
+	if (!dev_priv->contexts_ready)
+		goto out;
+
 	if (READ_ONCE(dev_priv->rps.enabled))
 		goto out;
 
