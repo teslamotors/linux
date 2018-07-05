@@ -96,7 +96,6 @@ static int    major;
 static struct class *vhm_class;
 static struct device *vhm_device;
 static struct tasklet_struct vhm_io_req_tasklet;
-static atomic_t ioreq_retry = ATOMIC_INIT(0);
 
 struct table_iomems {
 	/* list node for this table_iomems */
@@ -623,19 +622,11 @@ static void io_req_tasklet(unsigned long data)
 
 		acrn_ioreq_distribute_request(vm);
 	}
-
-	if (atomic_read(&ioreq_retry) > 0) {
-		atomic_dec(&ioreq_retry);
-		tasklet_schedule(&vhm_io_req_tasklet);
-	}
 }
 
 static void vhm_intr_handler(void)
 {
-	if (test_bit(TASKLET_STATE_SCHED, &(vhm_io_req_tasklet.state)))
-		atomic_inc(&ioreq_retry);
-	else
-		tasklet_schedule(&vhm_io_req_tasklet);
+	tasklet_schedule(&vhm_io_req_tasklet);
 }
 
 static int vhm_dev_release(struct inode *inodep, struct file *filep)
