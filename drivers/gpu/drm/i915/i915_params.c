@@ -242,9 +242,9 @@ i915_param_named(enable_dpcd_backlight, bool, 0600,
 i915_param_named(enable_gvt, bool, 0400,
 	"Enable support for Intel GVT-g graphics virtualization host support(default:false)");
 
-module_param_named(enable_pvmmio, i915_modparams.enable_pvmmio, bool, 0400);
+module_param_named(enable_pvmmio, i915_modparams.enable_pvmmio, uint, 0400);
 MODULE_PARM_DESC(enable_pvmmio,
-	"Enable pv mmio feature, default TRUE. This parameter "
+	"Enable pv mmio feature and set pvmmio level, default 1. This parameter "
 	"could only set from host, guest value is set through vgt_if");
 
 module_param_named(enable_gvt_oos, i915_modparams.enable_gvt_oos, bool, 0400);

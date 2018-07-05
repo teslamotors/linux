@@ -74,7 +74,7 @@
 	func(bool, enable_dp_mst); \
 	func(bool, enable_dpcd_backlight); \
 	func(bool, enable_gvt); \
-	func(bool, enable_pvmmio); \
+	func(unsigned int, enable_pvmmio); \
 	func(bool, enable_gvt_oos); \
 	func(bool, enable_conformance_check); \
 	func(bool, disable_gvt_fw_loading); \
