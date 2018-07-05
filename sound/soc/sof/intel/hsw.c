@@ -88,12 +88,12 @@ static void hsw_block_write(struct snd_sof_dev *sdev, u32 offset, void *src,
 	n = size % 4;
 
 	/* __iowrite32_copy use 32bit size values so divide by 4 */
-	__iowrite32_copy((void *)dest, src, m);
+	__iowrite32_copy(dest, src, m);
 
 	if (n) {
 		for (i = 0; i < n; i++)
 			tmp |= (u32)*(src_byte + m * 4 + i) << (i * 8);
-		__iowrite32_copy((void *)(dest + m * 4), &tmp, 1);
+		__iowrite32_copy(dest + m * 4, &tmp, 1);
 	}
 }
 
