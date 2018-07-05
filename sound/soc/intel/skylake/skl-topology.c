@@ -1660,7 +1660,11 @@ static int skl_tplg_bind_sinks(struct snd_soc_dapm_widget *w,
 		}
 	}
 
-	if (!sink && next_sink)
+	/* NOTE: While selecting the multiple pipeline confguration next_sink
+	 * become NULL. So sink and next_sink checking is required for muliple
+	 * pipeline configuration.
+	 */
+	if ((!sink) && (next_sink))
 		return skl_tplg_bind_sinks(next_sink, skl, src_w, src_mconfig);
 
 	return 0;
@@ -2715,7 +2719,8 @@ static int skl_tplg_tlv_probe_set(struct snd_kcontrol *kcontrol,
  */
 int skl_tplg_update_pipe_params(struct device *dev,
 			struct skl_module_cfg *mconfig,
-			struct skl_pipe_params *params)
+			struct skl_pipe_params *params,
+			snd_pcm_format_t fmt)
 {
 	struct skl_module_res *res = &mconfig->module->resources[0];
 	struct skl *skl = get_skl_ctx(dev);
@@ -2737,26 +2742,47 @@ int skl_tplg_update_pipe_params(struct device *dev,
 	/* set the hw_params */
 	format->s_freq = params->s_freq;
 	format->channels = params->ch;
-	format->valid_bit_depth = skl_get_bit_depth(params->s_fmt);
 
 	/*
-	 * 16 bit is 16 bit container whereas 24 bit is in 32 bit
-	 * container so update bit depth accordingly
-	 */
-	switch (format->valid_bit_depth) {
-	case SKL_DEPTH_16BIT:
-		format->bit_depth = format->valid_bit_depth;
+		* set copier sample type as follows
+		* 0 : if data is MSB aligned in the container
+		* 1 : if data is LSB aligned in the container
+		* 4 : if float
+	*/
+	switch (fmt) {
+	case SKL_FMT_S16LE:
+		format->valid_bit_depth = SKL_DEPTH_16BIT;
+		format->bit_depth = SKL_DEPTH_16BIT;
+		format->sample_type = SKL_SAMPLE_TYPE_INT_MSB;
 		break;
 
-	case SKL_DEPTH_24BIT:
-	case SKL_DEPTH_32BIT:
+	case SKL_FMT_S24LE:
+		format->valid_bit_depth = SKL_DEPTH_24BIT;
 		format->bit_depth = SKL_DEPTH_32BIT;
+		format->sample_type = SKL_SAMPLE_TYPE_INT_LSB;
+		break;
+
+	case SKL_FMT_S32LE:
+		format->valid_bit_depth = SKL_DEPTH_32BIT;
+		format->bit_depth = SKL_DEPTH_32BIT;
+		format->sample_type = SKL_SAMPLE_TYPE_INT_MSB;
+		break;
+
+	case SKL_FMT_FLOATLE:
+		format->valid_bit_depth = SKL_DEPTH_32BIT;
+		format->bit_depth = SKL_DEPTH_32BIT;
+		format->sample_type = SKL_SAMPLE_TYPE_FLOAT;
+		break;
+
+	case SKL_FMT_S24_3LE:
+		format->valid_bit_depth = SKL_DEPTH_24BIT;
+		format->bit_depth = SKL_DEPTH_24BIT;
+		format->sample_type = SKL_SAMPLE_TYPE_INT_MSB;
 		break;
 
 	default:
-		dev_err(dev, "Invalid bit depth %x for pipe\n",
-				format->valid_bit_depth);
-		return -EINVAL;
+		format->bit_depth = SKL_DEPTH_32BIT;
+		format->sample_type = SKL_SAMPLE_TYPE_INT_MSB;
 	}
 
 	if (params->stream == SNDRV_PCM_STREAM_PLAYBACK) {
