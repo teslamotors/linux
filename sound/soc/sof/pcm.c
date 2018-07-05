@@ -291,10 +291,10 @@ static int sof_pcm_open(struct snd_pcm_substream *substream)
 	/* set any runtime constraints based on topology */
 	snd_pcm_hw_constraint_step(substream->runtime, 0,
 				   SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
-				   caps->period_size_min);
+				   le32_to_cpu(caps->period_size_min));
 	snd_pcm_hw_constraint_step(substream->runtime, 0,
 				   SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
-				   caps->period_size_min);
+				   le32_to_cpu(caps->period_size_min));
 
 	/* set runtime config */
 	runtime->hw.info = SNDRV_PCM_INFO_MMAP |
@@ -303,12 +303,12 @@ static int sof_pcm_open(struct snd_pcm_substream *substream)
 			  SNDRV_PCM_INFO_PAUSE |
 			  SNDRV_PCM_INFO_RESUME |
 			  SNDRV_PCM_INFO_NO_PERIOD_WAKEUP;
-	runtime->hw.formats = caps->formats;
-	runtime->hw.period_bytes_min = caps->period_size_min;
-	runtime->hw.period_bytes_max = caps->period_size_max;
-	runtime->hw.periods_min = caps->periods_min;
-	runtime->hw.periods_max = caps->periods_max;
-	runtime->hw.buffer_bytes_max = caps->buffer_size_max;
+	runtime->hw.formats = le64_to_cpu(caps->formats);
+	runtime->hw.period_bytes_min = le32_to_cpu(caps->period_size_min);
+	runtime->hw.period_bytes_max = le32_to_cpu(caps->period_size_max);
+	runtime->hw.periods_min = le32_to_cpu(caps->periods_min);
+	runtime->hw.periods_max = le32_to_cpu(caps->periods_max);
+	runtime->hw.buffer_bytes_max = le32_to_cpu(caps->buffer_size_max);
 
 	dev_dbg(sdev->dev, "period min %zd max %zd bytes\n",
 		runtime->hw.period_bytes_min,
@@ -398,8 +398,8 @@ static int sof_pcm_new(struct snd_soc_pcm_runtime *rtd)
 
 	ret = snd_pcm_lib_preallocate_pages(pcm->streams[stream].substream,
 					    SNDRV_DMA_TYPE_DEV_SG, sdev->parent,
-					    caps->buffer_size_min,
-					    caps->buffer_size_max);
+					    le32_to_cpu(caps->buffer_size_min),
+					    le32_to_cpu(caps->buffer_size_max));
 	if (ret) {
 		dev_err(sdev->dev, "error: can't alloc DMA buffer size 0x%x/0x%x for %s %d\n",
 			caps->buffer_size_min, caps->buffer_size_max,
@@ -431,8 +431,8 @@ capture:
 
 	ret = snd_pcm_lib_preallocate_pages(pcm->streams[stream].substream,
 					    SNDRV_DMA_TYPE_DEV_SG, sdev->parent,
-					    caps->buffer_size_min,
-					    caps->buffer_size_max);
+					    le32_to_cpu(caps->buffer_size_min),
+					    le32_to_cpu(caps->buffer_size_max));
 	if (ret) {
 		dev_err(sdev->dev, "error: can't alloc DMA buffer size 0x%x/0x%x for %s %d\n",
 			caps->buffer_size_min, caps->buffer_size_max,
@@ -506,7 +506,7 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 		channels->max = 2;
 
 		snd_mask_none(fmt);
-		snd_mask_set(fmt, SNDRV_PCM_FORMAT_S16_LE);
+		snd_mask_set(fmt, (__force int)SNDRV_PCM_FORMAT_S16_LE);
 
 		return 0;
 	}
@@ -516,13 +516,13 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	switch (dai->comp_dai.config.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
-		snd_mask_set(fmt, SNDRV_PCM_FORMAT_S16_LE);
+		snd_mask_set(fmt, (__force int)SNDRV_PCM_FORMAT_S16_LE);
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
-		snd_mask_set(fmt, SNDRV_PCM_FORMAT_S24_LE);
+		snd_mask_set(fmt, (__force int)SNDRV_PCM_FORMAT_S24_LE);
 		break;
 	case SOF_IPC_FRAME_S32_LE:
-		snd_mask_set(fmt, SNDRV_PCM_FORMAT_S32_LE);
+		snd_mask_set(fmt, (__force int)SNDRV_PCM_FORMAT_S32_LE);
 		break;
 	default:
 		dev_err(sdev->dev, "No available DAI format!\n");
