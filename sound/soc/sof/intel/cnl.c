@@ -132,13 +132,15 @@ static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 	return ret;
 }
 
-static int cnl_ipc_cmd_done(struct snd_sof_dev *sdev)
+static int cnl_ipc_cmd_done(struct snd_sof_dev *sdev, int dir)
 {
-	/* set done bit to ack dsp the msg has been processed */
-	snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
-				       CNL_DSP_REG_HIPCTDA,
-				       CNL_DSP_REG_HIPCTDA_DONE,
-				       CNL_DSP_REG_HIPCTDA_DONE);
+	if (dir == SOF_IPC_HOST_REPLY) {
+		/* set done bit to ack dsp the msg has been processed */
+		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
+					       CNL_DSP_REG_HIPCTDA,
+					       CNL_DSP_REG_HIPCTDA_DONE,
+					       CNL_DSP_REG_HIPCTDA_DONE);
+	}
 
 	return 0;
 }

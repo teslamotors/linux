@@ -43,6 +43,9 @@
 /* max number of FE PCMs before BEs */
 #define SOF_BE_PCM_BASE		16
 
+#define SOF_IPC_DSP_REPLY		0
+#define SOF_IPC_HOST_REPLY		1
+
 /* convenience constructor for DAI driver streams */
 #define SOF_DAI_STREAM(sname, scmin, scmax, srates, sfmt) \
 	{.stream_name = sname, .channels_min = scmin, .channels_max = scmax, \
@@ -117,7 +120,7 @@ struct snd_sof_dsp_ops {
 	int (*get_reply)(struct snd_sof_dev *sof_dev,
 			 struct snd_sof_ipc_msg *msg);
 	int (*is_ready)(struct snd_sof_dev *sof_dev);
-	int (*cmd_done)(struct snd_sof_dev *sof_dev);
+	int (*cmd_done)(struct snd_sof_dev *sof_dev, int dir);
 
 	/* debug */
 	const struct snd_sof_debugfs_map *debug_map;

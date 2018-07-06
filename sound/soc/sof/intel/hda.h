@@ -473,7 +473,7 @@ int hda_dsp_ipc_get_reply(struct snd_sof_dev *sdev,
 int hda_dsp_ipc_fw_ready(struct snd_sof_dev *sdev, u32 msg_id);
 irqreturn_t hda_dsp_ipc_irq_handler(int irq, void *context);
 irqreturn_t hda_dsp_ipc_irq_thread(int irq, void *context);
-int hda_dsp_ipc_cmd_done(struct snd_sof_dev *sdev);
+int hda_dsp_ipc_cmd_done(struct snd_sof_dev *sdev, int dir);
 
 /*
  * DSP Code loader.

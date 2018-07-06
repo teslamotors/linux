@@ -119,6 +119,8 @@ static int tx_wait_done(struct snd_sof_ipc *ipc, struct snd_sof_ipc_msg *msg,
 
 	spin_unlock_irqrestore(&sdev->ipc_lock, flags);
 
+	snd_sof_dsp_cmd_done(sdev, SOF_IPC_DSP_REPLY);
+
 	/* continue to schedule any remaining messages... */
 	snd_sof_ipc_msgs_tx(sdev);
 
@@ -321,7 +323,7 @@ static void ipc_msgs_rx(struct work_struct *work)
 	dev_dbg(sdev->dev, "ipc rx: 0x%x done\n", hdr.cmd);
 
 	/* tell DSP we are done */
-	snd_sof_dsp_cmd_done(sdev);
+	snd_sof_dsp_cmd_done(sdev, SOF_IPC_HOST_REPLY);
 }
 
 /* schedule work to transmit any IPC in queue */

@@ -34,13 +34,16 @@
 #include "../ops.h"
 #include "hda.h"
 
-int hda_dsp_ipc_cmd_done(struct snd_sof_dev *sdev)
+int hda_dsp_ipc_cmd_done(struct snd_sof_dev *sdev, int dir)
 {
-	/* tell DSP cmd is done - clear busy interrupt */
-	snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
-				       HDA_DSP_REG_HIPCT,
-				       HDA_DSP_REG_HIPCT_BUSY,
-				       HDA_DSP_REG_HIPCT_BUSY);
+	if (dir == SOF_IPC_HOST_REPLY) {
+		/* tell DSP cmd is done - clear busy interrupt */
+		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
+					       HDA_DSP_REG_HIPCT,
+					       HDA_DSP_REG_HIPCT_BUSY,
+					       HDA_DSP_REG_HIPCT_BUSY);
+	}
+
 	return 0;
 }
 

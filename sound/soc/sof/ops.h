@@ -185,10 +185,11 @@ static inline int snd_sof_dsp_is_ready(struct snd_sof_dev *sdev)
 		return 0;
 }
 
-static inline int snd_sof_dsp_cmd_done(struct snd_sof_dev *sdev)
+static inline int snd_sof_dsp_cmd_done(struct snd_sof_dev *sdev,
+				       int dir)
 {
 	if (sdev->ops->cmd_done)
-		return sdev->ops->cmd_done(sdev);
+		return sdev->ops->cmd_done(sdev, dir);
 	else
 		return 0;
 }

@@ -573,7 +573,7 @@ static int bdw_get_reply(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 	return ret;
 }
 
-static int bdw_cmd_done(struct snd_sof_dev *sdev)
+static int bdw_cmd_done(struct snd_sof_dev *sdev, int dir)
 {
 	/* clear BUSY bit and set DONE bit - accept new messages */
 	snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_IPCD,
