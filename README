@@ -1,4 +1,12 @@
-        Linux kernel release 4.x <http://kernel.org/>
+Tesla branch of the Linux kernel.
+Apply configuration:
+make tesla_mcu_defconfig ARCH=arm
+Look at the configuration:
+make menuconfig  ARCH=arm
+
+And then crosscompile away - normal procedure with ARCH=arm and the correct CROSS_COMPILE prefix.
+
+Linux kernel release 4.x <http://kernel.org/>
 
 These are the release notes for Linux version 4.  Read them carefully,
 as they tell you what this is all about, explain how to install the
