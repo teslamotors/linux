@@ -179,7 +179,7 @@ static void ipc_tx_next_msg(struct work_struct *work)
 	spin_lock_irq(&sdev->ipc_lock);
 
 	/* send message if HW read and message in TX list */
-	if (list_empty(&ipc->tx_list))
+	if (list_empty(&ipc->tx_list) || !snd_sof_dsp_is_ready(sdev))
 		goto out;
 
 	/* sned first message in TX list */
