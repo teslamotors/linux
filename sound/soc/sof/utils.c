@@ -26,9 +26,9 @@ int sof_bes_setup(struct device *dev, struct snd_sof_dsp_ops *ops,
 	/* set up BE dai_links */
 	for (i = 0; i < link_num; i++) {
 		snprintf(name, 32, "NoCodec-%d", i);
-		links[i].name = kmemdup(name, sizeof(name), GFP_KERNEL);
+		links[i].name = devm_kstrdup(dev, name, GFP_KERNEL);
 		if (!links[i].name)
-			goto no_mem;
+			return -ENOMEM;
 
 		links[i].id = i;
 		links[i].no_pcm = 1;
@@ -44,12 +44,6 @@ int sof_bes_setup(struct device *dev, struct snd_sof_dsp_ops *ops,
 	card->num_links = link_num;
 
 	return 0;
-no_mem:
-	/* free allocated memories and return error */
-	for (; i > 0; i--)
-		kfree(links[i - 1].name);
-
-	return -ENOMEM;
 }
 EXPORT_SYMBOL(sof_bes_setup);
 
