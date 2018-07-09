@@ -2072,7 +2072,9 @@ static int i915_gem_object_create_mmap_offset(struct drm_i915_gem_object *obj)
 
 	/* Attempt to reap some mmap space from dead objects */
 	do {
-		err = i915_gem_wait_for_idle(dev_priv, I915_WAIT_INTERRUPTIBLE);
+		err = i915_gem_wait_for_idle(dev_priv,
+					     I915_WAIT_INTERRUPTIBLE,
+					     MAX_SCHEDULE_TIMEOUT);
 		if (err)
 			break;
 
@@ -3380,7 +3382,8 @@ static int wait_for_engines(struct drm_i915_private *i915)
 	return 0;
 }
 
-int i915_gem_wait_for_idle(struct drm_i915_private *i915, unsigned int flags)
+int i915_gem_wait_for_idle(struct drm_i915_private *i915, unsigned int flags,
+	long timeout)
 {
 	int ret;
 
@@ -4564,7 +4567,8 @@ int i915_gem_suspend(struct drm_i915_private *dev_priv)
 
 	ret = i915_gem_wait_for_idle(dev_priv,
 				     I915_WAIT_INTERRUPTIBLE |
-				     I915_WAIT_LOCKED);
+				     I915_WAIT_LOCKED,
+				     MAX_SCHEDULE_TIMEOUT);
 	if (ret && ret != -EIO)
 		goto err_unlock;
 
