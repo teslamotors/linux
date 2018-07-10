@@ -665,6 +665,41 @@ static const struct file_operations fops = {
 	.poll = vhm_dev_poll,
 };
 
+static ssize_t
+store_offline_cpu(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+#ifdef CONFIG_X86
+	u64 cpu, lapicid;
+
+	if (kstrtoull(buf, 0, &cpu) < 0)
+		return -EINVAL;
+
+	if (cpu_possible(cpu)) {
+		lapicid = cpu_data(cpu).apicid;
+		pr_info("vhm: try to offline cpu %lld with lapicid %lld\n",
+				cpu, lapicid);
+		if (hcall_sos_offline_cpu(lapicid) < 0) {
+			pr_err("vhm: failed to offline cpu from Hypervisor!\n");
+			return -EINVAL;
+		}
+	}
+#endif
+	return count;
+}
+
+static DEVICE_ATTR(offline_cpu, S_IWUSR, NULL, store_offline_cpu);
+
+static struct attribute *vhm_attrs[] = {
+	&dev_attr_offline_cpu.attr,
+	NULL
+};
+
+static struct attribute_group vhm_attr_group = {
+	.attrs = vhm_attrs,
+};
+
 #define SUPPORT_HV_API_VERSION_MAJOR	1
 #define SUPPORT_HV_API_VERSION_MINOR	0
 static int __init vhm_init(void)
@@ -728,6 +763,11 @@ static int __init vhm_init(void)
 	x86_platform_ipi_callback = vhm_intr_handler;
 	local_irq_restore(flag);
 
+	if (sysfs_create_group(&vhm_device->kobj, &vhm_attr_group)) {
+		pr_warn("vhm: sysfs create failed\n");
+		return -EINVAL;
+	}
+
 	pr_info("vhm: Virtio & Hypervisor service module initialized\n");
 	return 0;
 }
@@ -738,6 +778,7 @@ static void __exit vhm_exit(void)
 	class_unregister(vhm_class);
 	class_destroy(vhm_class);
 	unregister_chrdev(major, DEVICE_NAME);
+	sysfs_remove_group(&vhm_device->kobj, &vhm_attr_group);
 	pr_info("vhm: exit\n");
 }
 
