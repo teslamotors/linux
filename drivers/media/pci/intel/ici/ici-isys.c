@@ -15,6 +15,7 @@
 #include <linux/version.h>
 
 #include <media/ipu-isys.h>
+#include <media/ipu4-acpi.h>
 
 #include "ipu.h"
 #include "ipu-bus.h"
@@ -346,7 +347,6 @@ static int isys_register_ext_subdev(struct ici_isys *isys,
 		}
 		rval = 0;
 		goto skip_put_adapter;
-#if 0
 		if (!sd_info->acpiname) {
 			dev_dbg(&isys->adev->dev,
 				 "No name in platform data\n");
@@ -359,20 +359,18 @@ static int isys_register_ext_subdev(struct ici_isys *isys,
 			rval = 0;
 			goto skip_put_adapter;
 		}
-#endif
 		/* Acpi match found. Continue to reprobe */
 	} else if (client) {
 		dev_dbg(&isys->adev->dev, "Device exists\n");
 		rval = 0;
+		goto skip_put_adapter;
 	} 
-#if 0 
 	else if (sd_info->acpiname) {
 		dev_dbg(&isys->adev->dev, "ACPI name don't match: %s\n",
 			sd_info->acpiname);
 		rval = 0;
 		goto skip_put_adapter;
 	}
-#endif
 	if (!client) {
 		dev_info(&isys->adev->dev,
 			 "i2c device not found in ACPI table\n");
@@ -398,11 +396,6 @@ skip_put_adapter:
 	return rval;
 }
 
-// latest approach from ICG and ACRN intends to
-// remove ACPI. re-implement this if need later.
-// else remove.
-
-#if 0
 static int isys_acpi_add_device(struct device *dev, void *priv,
 				struct ipu_isys_csi2_config *csi2,
 				bool reprobe)
@@ -434,7 +427,6 @@ static int isys_acpi_add_device(struct device *dev, void *priv,
 
 	return isys_complete_ext_device_registration(isys, sd, csi2);
 }
-#endif
 
 static void isys_register_ext_subdevs(struct ici_isys *isys)
 {
@@ -454,13 +446,10 @@ static void isys_register_ext_subdevs(struct ici_isys *isys)
 		dev_info(&isys->adev->dev, "no subdevice info provided\n");
 	}
 
-// TODO need to implement ACPI?
-#if 0
 	/* Handle real ACPI stuff */
-	request_module("intel-ipu4-ici-acpi");
-	intel_ipu4_ici_get_acpi_devices(isys, &isys->adev->dev,
+	request_module("ipu4-acpi");
+	ipu_get_acpi_devices(isys, &isys->adev->dev,
 				    isys_acpi_add_device);
-#endif
 }
 
 static void isys_unregister_subdevices(struct ici_isys *isys)

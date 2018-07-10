@@ -30,6 +30,7 @@
 #include <linux/list.h>
 
 #include <media/crlmodule.h>
+#include <media/crlmodule-lite.h>
 #include <media/ipu4-acpi.h>
 #include <media/as3638.h>
 #include <media/lm3643.h>
@@ -645,6 +646,60 @@ err_free_pdata:
 	return rval;
 }
 
+static int get_crlmodule_lite_pdata(struct i2c_client *client,
+			       struct ipu4_camera_module_data *data,
+			       struct ipu4_i2c_helper *helper,
+			       void *priv, size_t size)
+{
+	struct sensor_bios_data sensor;
+	struct crlmodule_lite_platform_data *pdata;
+	struct ipu4_i2c_info i2c[2];
+	void *vcm_pdata;
+	char vcm[VCM_BUFFER_SIZE];
+	int num = get_i2c_info(&client->dev, i2c, ARRAY_SIZE(i2c));
+	int rval;
+
+	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return -ENOMEM;
+
+	sensor.dev = &client->dev;
+
+	rval = get_acpi_ssdb_sensor_data(&client->dev, &sensor);
+
+	ipu_acpi_get_sensor_data(&client->dev, data,
+					rval == 0 ? &sensor : NULL);
+
+	data->pdata = pdata;
+	/* sensor.dev may here point to sensor or dependent device */
+	pdata->xshutdown = get_sensor_gpio(sensor.dev, 0);
+	if (pdata->xshutdown < 0) {
+		rval = pdata->xshutdown;
+		goto err_free_pdata;
+	}
+
+	pdata->lanes = data->csi2.nlanes;
+	pdata->ext_clk = data->ext_clk;
+	client->dev.platform_data = pdata;
+
+	helper->fn(&client->dev, helper->driver_data, &data->csi2, true);
+
+	if ((num <= 1) || !priv)
+		return 0;
+
+	vcm_pdata = get_dsdt_vcm(&client->dev, vcm, priv);
+
+	dev_info(&client->dev, "Creating vcm instance: bus: %d addr 0x%x %s\n",
+		 i2c[1].bus, i2c[1].addr, vcm);
+
+	return add_new_i2c(i2c[1].addr, i2c[1].bus, 0, vcm, vcm_pdata);
+
+err_free_pdata:
+	kfree(pdata);
+	data->pdata = NULL;
+	return rval;
+}
+
 static int get_smiapp_pdata(struct i2c_client *client,
 			    struct ipu4_camera_module_data *data,
 			    struct ipu4_i2c_helper *helper,
@@ -808,6 +863,8 @@ static const struct ipu4_acpi_devices supported_devices[] = {
 	  sizeof(imx132_op_clocks) },
 	{ "TXNW3643", LM3643_NAME,    get_lm3643_pdata, NULL, 0 },
 	{ "AMS3638", AS3638_NAME,    get_as3638_pdata, NULL, 0 },
+	{ "ADV7481A", CRLMODULE_LITE_NAME, get_crlmodule_lite_pdata, NULL, 0 },
+	{ "ADV7481B", CRLMODULE_LITE_NAME, get_crlmodule_lite_pdata, NULL, 0 },
 };
 
 static int get_table_index(struct device *device, const __u8 *acpi_name)
@@ -832,6 +889,8 @@ static const struct acpi_device_id ipu4_acpi_match[] = {
 	{ "SONY214A", 0 },
 	{ "SONY132A", 0 },
 	{ "OV5670AA", 0 },
+	{ "ADV7481A", 0 },
+	{ "ADV7481B", 0 },
 	{},
 };
 
