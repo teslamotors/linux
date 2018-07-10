@@ -52,6 +52,11 @@
 #include <linux/vhm/acrn_hv_defs.h>
 #include <linux/vhm/vhm_hypercall.h>
 
+inline long hcall_sos_offline_cpu(unsigned long cpu)
+{
+	return acrn_hypercall1(HC_SOS_OFFLINE_CPU, cpu);
+}
+
 inline long hcall_get_api_version(unsigned long api_version)
 {
 	return acrn_hypercall1(HC_GET_API_VERSION, api_version);
