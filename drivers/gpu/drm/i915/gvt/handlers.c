@@ -1326,6 +1326,15 @@ static int handle_g2v_notification(struct intel_vgpu *vgpu, int notification)
 	case VGT_G2V_PPGTT_L4_PAGE_TABLE_DESTROY:
 		ret = intel_vgpu_g2v_destroy_ppgtt_mm(vgpu, 4);
 		break;
+	case VGT_G2V_PPGTT_L4_ALLOC:
+		ret = intel_vgpu_g2v_pv_ppgtt_alloc_4lvl(vgpu, 4);
+			break;
+	case VGT_G2V_PPGTT_L4_INSERT:
+		ret = intel_vgpu_g2v_pv_ppgtt_insert_4lvl(vgpu, 4);
+		break;
+	case VGT_G2V_PPGTT_L4_CLEAR:
+		ret = intel_vgpu_g2v_pv_ppgtt_clear_4lvl(vgpu, 4);
+		break;
 	case VGT_G2V_EXECLIST_CONTEXT_CREATE:
 	case VGT_G2V_EXECLIST_CONTEXT_DESTROY:
 	case 1:	/* Remove this in guest driver. */
@@ -1396,6 +1405,8 @@ static int pvinfo_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 				break;
 			}
 			vgpu_vreg(vgpu, offset) = data & i915_modparams.enable_pvmmio;
+			DRM_INFO("vgpu id=%d pvmmio=0x%x\n",
+					vgpu->id, VGPU_PVMMIO(vgpu));
 		} else {
 			vgpu_vreg(vgpu, offset) = 0;
 		}
