@@ -26,7 +26,8 @@
 #include "hw.h"
 #include "hbm.h"
 
-#define MEI_RD_MSG_BUF_SIZE           (128 * sizeof(u32))
+#define MEI_SLOT_SIZE             sizeof(u32)
+#define MEI_RD_MSG_BUF_SIZE       (128 * MEI_SLOT_SIZE)
 
 /*
  * Number of Maximum MEI Clients
@@ -542,6 +543,18 @@ static inline u32 mei_data2slots(size_t length)
 static inline u32 mei_slots2data(int slots)
 {
 	return slots * 4;
+}
+
+/**
+ * mei_slots2mesg - return number of butes available for message data
+ *
+ * @slots: number of slots
+ *
+ * return: available bytes
+ */
+static inline size_t mei_slots2msglen(u32 slots)
+{
+	return slots * MEI_SLOT_SIZE - sizeof(struct mei_msg_hdr);
 }
 
 /*
