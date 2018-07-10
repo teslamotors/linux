@@ -22,6 +22,7 @@ struct ipu_isys_subdev_i2c_info {
 struct ipu_isys_subdev_info {
 	struct ipu_isys_csi2_config *csi2;
 	struct ipu_isys_subdev_i2c_info i2c;
+	char *acpiname;
 };
 
 struct ipu_isys_clk_mapping {
