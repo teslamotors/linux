@@ -178,10 +178,14 @@ int hid_sensor_power_state(struct hid_sensor_common *st, bool state)
 #ifdef CONFIG_PM
 	int ret;
 
-	atomic_set(&st->user_requested_state, state);
-	if (state)
+	if (atomic_add_unless(&st->runtime_pm_enable, 1, 1))
+		pm_runtime_enable(&st->pdev->dev);
+
+	if (state) {
+		atomic_inc(&st->user_requested_state);
 		ret = pm_runtime_get_sync(&st->pdev->dev);
-	else {
+	} else {
+		atomic_dec(&st->user_requested_state);
 		pm_runtime_mark_last_busy(&st->pdev->dev);
 		pm_runtime_use_autosuspend(&st->pdev->dev);
 		ret = pm_runtime_put_autosuspend(&st->pdev->dev);
@@ -221,7 +225,8 @@ static void hid_sensor_set_power_work(struct work_struct *work)
 	if (attrb->latency_ms > 0)
 		hid_sensor_set_report_latency(attrb, attrb->latency_ms);
 
-	_hid_sensor_power_state(attrb, true);
+	if (atomic_read(&attrb->user_requested_state))
+		_hid_sensor_power_state(attrb, true);
 }
 
 static int hid_sensor_data_rdy_trigger_set_state(struct iio_trigger *trig,
@@ -232,7 +237,9 @@ static int hid_sensor_data_rdy_trigger_set_state(struct iio_trigger *trig,
 
 void hid_sensor_remove_trigger(struct hid_sensor_common *attrb)
 {
-	pm_runtime_disable(&attrb->pdev->dev);
+	if (atomic_read(&attrb->runtime_pm_enable))
+		pm_runtime_disable(&attrb->pdev->dev);
+
 	pm_runtime_set_suspended(&attrb->pdev->dev);
 	pm_runtime_put_noidle(&attrb->pdev->dev);
 
@@ -283,7 +290,6 @@ int hid_sensor_setup_trigger(struct iio_dev *indio_dev, const char *name,
 	INIT_WORK(&attrb->work, hid_sensor_set_power_work);
 
 	pm_suspend_ignore_children(&attrb->pdev->dev, true);
-	pm_runtime_enable(&attrb->pdev->dev);
 	/* Default to 3 seconds, but can be changed from sysfs */
 	pm_runtime_set_autosuspend_delay(&attrb->pdev->dev,
 					 3000);
