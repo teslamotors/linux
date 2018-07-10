@@ -293,9 +293,22 @@ int intel_vgpu_emulate_cfg_write(struct intel_vgpu *vgpu, unsigned int offset,
 
 	/* First check if it's PCI_COMMAND */
 	if (IS_ALIGNED(offset, 2) && offset == PCI_COMMAND) {
-		if (WARN_ON(bytes > 2))
+		if (WARN_ON(bytes != 2 && bytes != 4))
 			return -EINVAL;
-		return emulate_pci_command_write(vgpu, offset, p_data, bytes);
+
+		ret = -EINVAL;
+		if (bytes == 2)
+			ret = emulate_pci_command_write(vgpu, offset,
+							p_data, bytes);
+		if (bytes ==  4) {
+			ret = emulate_pci_command_write(vgpu, offset,
+							p_data, 2);
+			if (ret)
+				return ret;
+			vgpu_pci_cfg_mem_write(vgpu, offset + 2,
+					       (u8 *)p_data + 2, 2);
+		}
+		return ret;
 	}
 
 	switch (rounddown(offset, 4)) {
