@@ -281,6 +281,7 @@ static long vhm_dev_ioctl(struct file *filep,
 			pr_err("vhm: failed to create vcpu %d!\n", cv.vcpu_id);
 			return -EFAULT;
 		}
+		atomic_inc(&vm->vcpu_num);
 
 		return ret;
 	}

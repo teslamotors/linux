@@ -783,10 +783,10 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 	struct vhm_request *req;
 	struct list_head *pos;
 	struct ioreq_client *client;
-	int i;
+	int i, vcpu_num;
 
-	/* TODO: replace VHM_REQUEST_MAX with vcpu num get at runtime */
-	for (i = 0; i < VHM_REQUEST_MAX; i++) {
+	vcpu_num = atomic_read(&vm->vcpu_num);
+	for (i = 0; i < vcpu_num; i++) {
 		req = vm->req_buf->req_queue + i;
 		if (req->valid && (req->processed == REQ_STATE_PENDING)) {
 			if (handle_cf8cfc(vm, req, i))
