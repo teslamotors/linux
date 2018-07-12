@@ -292,6 +292,21 @@ static const struct sof_intel_dsp_desc chip_info[] = {
 	.ipc_ctl = CNL_DSP_REG_HIPCCTL,
 	.ops = &sof_cnl_ops,
 },
+{
+	/* Icelake */
+	.id = 0x34c8,
+	.cores_num = 4,
+	.cores_mask = HDA_DSP_CORE_MASK(0) |
+				HDA_DSP_CORE_MASK(1) |
+				HDA_DSP_CORE_MASK(2) |
+				HDA_DSP_CORE_MASK(3),
+	.ipc_req = CNL_DSP_REG_HIPCIDR,
+	.ipc_req_mask = CNL_DSP_REG_HIPCIDR_BUSY,
+	.ipc_ack = CNL_DSP_REG_HIPCIDA,
+	.ipc_ack_mask = CNL_DSP_REG_HIPCIDA_DONE,
+	.ipc_ctl = CNL_DSP_REG_HIPCCTL,
+	.ops = &sof_cnl_ops,
+},
 };
 
 static const struct sof_intel_dsp_desc *get_chip_info(int pci_id)

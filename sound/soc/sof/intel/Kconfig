@@ -87,6 +87,15 @@ config SND_SOC_SOF_SKYLAKE
           Say Y if you have such a device.
           If unsure select "N".
 
+config SND_SOC_SOF_ICELAKE
+	tristate "SOF support for Icelake"
+	select SND_SOC_SOF_HDA_COMMON
+	help
+          This adds support for Sound Open Firmware for Intel(R) platforms
+          using the Icelake processors.
+          Say Y if you have such a device.
+          If unsure select "N".
+
 config SND_SOC_SOF_HDA_COMMON
 	tristate
 	select SND_SOC_SOF_PCI
