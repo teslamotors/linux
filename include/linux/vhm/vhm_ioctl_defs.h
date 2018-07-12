@@ -113,6 +113,7 @@
 /* VHM eventfd */
 #define IC_ID_EVENT_BASE		0x70UL
 #define IC_EVENT_IOEVENTFD		_IC_ID(IC_ID, IC_ID_EVENT_BASE + 0x00)
+#define IC_EVENT_IRQFD			_IC_ID(IC_ID, IC_ID_EVENT_BASE + 0x01)
 
 /**
  * struct vm_memseg - memory segment info for guest
@@ -230,5 +231,12 @@ struct acrn_ioeventfd {
 	uint32_t len;
 	uint32_t reserved;
 	uint64_t data;
+};
+
+#define ACRN_IRQFD_FLAG_DEASSIGN	0x01
+struct acrn_irqfd {
+	int32_t fd;
+	uint32_t flags;
+	struct acrn_msi_entry msi;
 };
 #endif /* __VHM_IOCTL_DEFS_H__ */

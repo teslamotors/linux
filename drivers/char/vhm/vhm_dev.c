@@ -234,6 +234,7 @@ static long vhm_dev_ioctl(struct file *filep,
 		}
 
 		acrn_ioeventfd_init(vm->vmid);
+		acrn_irqfd_init(vm->vmid);
 
 		pr_info("vhm: VM %d created\n", created_vm.vmid);
 		break;
@@ -276,6 +277,7 @@ create_vm_fail:
 
 	case IC_DESTROY_VM: {
 		acrn_ioeventfd_deinit(vm->vmid);
+		acrn_irqfd_deinit(vm->vmid);
 		ret = hcall_destroy_vm(vm->vmid);
 		if (ret < 0) {
 			pr_err("failed to destroy VM %ld\n", vm->vmid);
@@ -658,6 +660,15 @@ create_vm_fail:
 		if (copy_from_user(&args, (void *)ioctl_param, sizeof(args)))
 			return -EFAULT;
 		ret = acrn_ioeventfd(vm->vmid, &args);
+		break;
+	}
+
+	case IC_EVENT_IRQFD: {
+		struct acrn_irqfd args;
+
+		if (copy_from_user(&args, (void *)ioctl_param, sizeof(args)))
+			return -EFAULT;
+		ret = acrn_irqfd(vm->vmid, &args);
 		break;
 	}
 
