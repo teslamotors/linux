@@ -204,7 +204,7 @@ int acrn_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
 
 	client->vmid = vmid;
 	if (name)
-		strncpy(client->name, name, 16);
+		strncpy(client->name, name, sizeof(client->name) - 1);
 	spin_lock_init(&client->range_lock);
 	INIT_LIST_HEAD(&client->range_list);
 	init_waitqueue_head(&client->wq);
