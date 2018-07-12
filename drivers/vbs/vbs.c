@@ -145,22 +145,22 @@ long virtio_dev_deregister(struct virtio_dev_info *dev)
 	return 0;
 }
 
-int virtio_vq_index_get(struct virtio_dev_info *dev, int req_cnt)
+int virtio_vq_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map)
 {
 	int val = -1;
 	struct vhm_request *req;
-	int i;
-
-	if (unlikely(req_cnt <= 0))
-		return -EINVAL;
+	int vcpu;
 
 	if (dev == NULL) {
 		pr_err("%s: dev is NULL!\n", __func__);
 		return -EINVAL;
 	}
 
-	for (i = 0; i < dev->_ctx.max_vcpu; i++) {
-		req = &dev->_ctx.req_buf[i];
+	while (1) {
+		vcpu = find_first_bit(ioreqs_map, dev->_ctx.max_vcpu);
+		if (vcpu == dev->_ctx.max_vcpu)
+			break;
+		req = &dev->_ctx.req_buf[vcpu];
 		if (req->valid && req->processed == REQ_STATE_PROCESSING &&
 		    req->client == dev->_ctx.vhm_client_id) {
 			if (req->reqs.pio_request.direction == REQUEST_READ) {
@@ -181,7 +181,7 @@ int virtio_vq_index_get(struct virtio_dev_info *dev, int req_cnt)
 					val = req->reqs.mmio_request.value;
 			}
 			req->processed = REQ_STATE_SUCCESS;
-			acrn_ioreq_complete_request(dev->_ctx.vhm_client_id, i);
+			acrn_ioreq_complete_request(req->client, vcpu);
 		}
 	}
 

@@ -101,7 +101,7 @@ struct ioreq_client {
 	/*
 	 *   this req records the req number this client need handle
 	 */
-	atomic_t req;
+	DECLARE_BITMAP(ioreqs_map, VHM_REQUEST_MAX);
 
 	/*
 	 * client ioreq handler:
@@ -434,7 +434,7 @@ static inline bool is_destroying(struct ioreq_client *client)
 static inline bool has_pending_request(struct ioreq_client *client)
 {
 	if (client)
-		return (atomic_read(&client->req) > 0);
+		return !bitmap_empty(client->ioreqs_map, VHM_REQUEST_MAX);
 	else
 		return false;
 }
@@ -482,7 +482,7 @@ static int ioreq_client_thread(void *data)
 		if (has_pending_request(client)) {
 			if (client->handler) {
 				ret = client->handler(client->id,
-					client->req.counter);
+					client->ioreqs_map);
 				if (ret < 0)
 					BUG();
 			} else {
@@ -800,7 +800,7 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 			} else {
 				req->processed = REQ_STATE_PROCESSING;
 				req->client = client->id;
-				atomic_inc(&client->req);
+				set_bit(i, client->ioreqs_map);
 			}
 		}
 	}
@@ -831,7 +831,7 @@ int acrn_ioreq_complete_request(int client_id, uint64_t vcpu)
 		return -EINVAL;
 	}
 
-	atomic_dec(&client->req);
+	clear_bit(vcpu, client->ioreqs_map);
 	ret = hcall_notify_req_finish(client->vmid, vcpu);
 	if (ret < 0) {
 		pr_err("vhm-ioreq: failed to notify request finished !\n");
