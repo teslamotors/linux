@@ -19,14 +19,9 @@
 #include <linux/of_device.h>
 #include "sof-priv.h"
 
-struct sof_spi_priv {
-	struct snd_sof_pdata *sof_pdata;
-	struct platform_device *pdev_pcm;
-};
-
 static void sof_spi_fw_cb(const struct firmware *fw, void *context)
 {
-	struct sof_spi_priv *priv = context;
+	struct sof_platform_priv *priv = context;
 	struct snd_sof_pdata *sof_pdata = priv->sof_pdata;
 	const struct snd_sof_machine *mach = sof_pdata->machine;
 	struct device *dev = sof_pdata->dev;
@@ -61,7 +56,7 @@ static int sof_spi_probe(struct spi_device *spi)
 	const struct snd_sof_machine *mach;
 	struct snd_sof_machine *m;
 	struct snd_sof_pdata *sof_pdata;
-	struct sof_spi_priv *priv;
+	struct sof_platform_priv *priv;
 	int ret = 0;
 
 	dev_dbg(&spi->dev, "SPI DSP detected");
@@ -117,7 +112,7 @@ static int sof_spi_probe(struct spi_device *spi)
 
 static int sof_spi_remove(struct spi_device *spi)
 {
-	struct sof_spi_priv *priv = spi_get_drvdata(spi);
+	struct sof_platform_priv *priv = spi_get_drvdata(spi);
 	struct snd_sof_pdata *sof_pdata = priv->sof_pdata;
 
 	platform_device_unregister(sof_pdata->pdev_mach);

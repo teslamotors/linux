@@ -354,6 +354,15 @@ struct snd_sof_dev {
 };
 
 /*
+ * SOF platform private struct used as drvdata of
+ * platform dev (e.g. pci/acpi/spi...) drvdata.
+ */
+struct sof_platform_priv {
+	struct snd_sof_pdata *sof_pdata;
+	struct platform_device *pdev_pcm;
+};
+
+/*
  * Device Level.
  */
 void snd_sof_shutdown(struct device *dev);

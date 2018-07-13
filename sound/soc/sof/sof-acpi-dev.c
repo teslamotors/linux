@@ -134,14 +134,9 @@ static struct platform_device *
 	return pdev;
 }
 
-struct sof_acpi_priv {
-	struct snd_sof_pdata *sof_pdata;
-	struct platform_device *pdev_pcm;
-};
-
 static void sof_acpi_fw_cb(const struct firmware *fw, void *context)
 {
-	struct sof_acpi_priv *priv = context;
+	struct sof_platform_priv *priv = context;
 	struct snd_sof_pdata *sof_pdata = priv->sof_pdata;
 	const struct snd_soc_acpi_mach *mach = sof_pdata->machine;
 	struct device *dev = &sof_pdata->pdev->dev;
@@ -209,7 +204,7 @@ static int sof_acpi_probe(struct platform_device *pdev)
 	const struct sof_dev_desc *desc;
 	struct snd_soc_acpi_mach *mach;
 	struct snd_sof_pdata *sof_pdata;
-	struct sof_acpi_priv *priv;
+	struct sof_platform_priv *priv;
 	struct snd_sof_dsp_ops *ops;
 	struct platform_device *(*new_mach_data)(struct snd_sof_pdata *pdata);
 	int ret = 0;
@@ -315,7 +310,7 @@ static void sof_acpi_shutdown(struct platform_device *pdev)
 
 static int sof_acpi_remove(struct platform_device *pdev)
 {
-	struct sof_acpi_priv *priv = dev_get_drvdata(&pdev->dev);
+	struct sof_platform_priv *priv = dev_get_drvdata(&pdev->dev);
 	struct snd_sof_pdata *sof_pdata = priv->sof_pdata;
 
 	platform_device_unregister(sof_pdata->pdev_mach);

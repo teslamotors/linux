@@ -114,14 +114,9 @@ static struct sof_dev_desc kbl_desc = {
 };
 #endif
 
-struct sof_pci_priv {
-	struct snd_sof_pdata *sof_pdata;
-	struct platform_device *pdev_pcm;
-};
-
 static void sof_pci_fw_cb(const struct firmware *fw, void *context)
 {
-	struct sof_pci_priv *priv = context;
+	struct sof_platform_priv *priv = context;
 	struct snd_sof_pdata *sof_pdata = priv->sof_pdata;
 	const struct snd_soc_acpi_mach *mach = sof_pdata->machine;
 	struct device *dev = sof_pdata->dev;
@@ -192,7 +187,7 @@ static int sof_pci_probe(struct pci_dev *pci,
 		(const struct sof_dev_desc *)pci_id->driver_data;
 	struct snd_soc_acpi_mach *mach;
 	struct snd_sof_pdata *sof_pdata;
-	struct sof_pci_priv *priv;
+	struct sof_platform_priv *priv;
 	struct snd_sof_dsp_ops *ops;
 	int ret = 0;
 
@@ -299,7 +294,7 @@ static void sof_pci_shutdown(struct pci_dev *pci)
 
 static void sof_pci_remove(struct pci_dev *pci)
 {
-	struct sof_pci_priv *priv = pci_get_drvdata(pci);
+	struct sof_platform_priv *priv = pci_get_drvdata(pci);
 	struct snd_sof_pdata *sof_pdata = priv->sof_pdata;
 
 	/* unregister machine driver */
