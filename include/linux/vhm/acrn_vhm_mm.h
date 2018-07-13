@@ -52,9 +52,7 @@
  */
 
 /**
- * @file acrn_vhm_mm.h
- *
- * @brief Virtio and Hypervisor Module memory manager APIs
+ * DOC: Virtio and Hypervisor Module memory manager APIs
  */
 
 #ifndef __ACRN_VHM_MM_H__
