@@ -134,7 +134,6 @@
 
 struct vm_set_memmap {
 #define MAP_MEM		0
-#define MAP_MMIO	1
 #define MAP_UNMAP	2
 	uint32_t type;
 

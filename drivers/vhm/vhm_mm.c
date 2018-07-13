@@ -135,7 +135,7 @@ int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
 	unsigned int mem_type, unsigned mem_access_right)
 {
 	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
-		mem_type, mem_access_right, MAP_MMIO);
+		mem_type, mem_access_right, MAP_MEM);
 }
 
 int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
@@ -187,7 +187,7 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 	host_gpa = acrn_hpa2gpa(memmap->hpa);
 	mem_type = MEM_TYPE_UC;
 	mem_access_right = (memmap->prot & MEM_ACCESS_RIGHT_MASK);
-	type = MAP_MMIO;
+	type = MAP_MEM;
 
 	if (_mem_set_memmap(vm->vmid, guest_gpa, host_gpa, memmap->len,
 		mem_type, mem_access_right, type) < 0) {
