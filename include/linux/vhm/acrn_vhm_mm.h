@@ -163,8 +163,6 @@ int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
 
 int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma);
 
-int check_guest_mem(struct vhm_vm *vm);
-
 /**
  * free_guest_mem - free memory of guest
  *
@@ -173,17 +171,6 @@ int check_guest_mem(struct vhm_vm *vm);
  * Return:
  */
 void free_guest_mem(struct vhm_vm *vm);
-
-/**
- * alloc_guest_memseg - alloc memory of guest according to pre-defined
- * memory segment info
- *
- * @vm: pointer to guest vm
- * @memseg: pointer to guest memory segment info
- *
- * Return:
- */
-int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg);
 
 /**
  * map_guest_memseg - set guest mmapping of memory according to
