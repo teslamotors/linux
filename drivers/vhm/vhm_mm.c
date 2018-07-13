@@ -200,8 +200,7 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 
 void free_guest_mem(struct vhm_vm *vm)
 {
-	if (vm->hugetlb_enabled)
-		return hugepage_free_guest(vm);
+	return hugepage_free_guest(vm);
 }
 
 #define TRUSTY_MEM_GPA_BASE (511UL * 1024UL * 1024UL * 1024UL)
@@ -232,14 +231,13 @@ void deinit_trusty(struct vhm_vm *vm)
 void *map_guest_phys(unsigned long vmid, u64 guest_phys, size_t size)
 {
 	struct vhm_vm *vm;
-	void *ret = NULL;
+	void *ret;
 
 	vm = find_get_vm(vmid);
 	if (vm == NULL)
-		return ret;
+		return NULL;
 
-	if (vm->hugetlb_enabled)
-		ret = hugepage_map_guest_phys(vm, guest_phys, size);
+	ret = hugepage_map_guest_phys(vm, guest_phys, size);
 
 	put_vm(vm);
 
@@ -250,16 +248,15 @@ EXPORT_SYMBOL(map_guest_phys);
 int unmap_guest_phys(unsigned long vmid, u64 guest_phys)
 {
 	struct vhm_vm *vm;
-	int ret = -ESRCH;
+	int ret;
 
 	vm = find_get_vm(vmid);
 	if (vm == NULL) {
 		pr_warn("vm_list corrupted\n");
-		return ret;
+		return -ESRCH;
 	}
 
-	if (vm->hugetlb_enabled)
-		ret = hugepage_unmap_guest_phys(vm, guest_phys);
+	ret = hugepage_unmap_guest_phys(vm, guest_phys);
 
 	put_vm(vm);
 	return ret;

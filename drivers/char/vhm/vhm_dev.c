@@ -131,7 +131,6 @@ static int vhm_dev_open(struct inode *inodep, struct file *filep)
 
 	vm_mutex_lock(&vhm_vm_list_lock);
 	vm->refcnt = 1;
-	vm->hugetlb_enabled = 0;
 	vm_list_add(&vm->list);
 	vm_mutex_unlock(&vhm_vm_list_lock);
 	filep->private_data = vm;

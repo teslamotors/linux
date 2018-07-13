@@ -194,7 +194,6 @@ int hugepage_map_guest(struct vhm_vm *vm, struct vm_memmap *memmap)
 	}
 
 	__free_page(memmaps_buf_pg);
-	vm->hugetlb_enabled = 1;
 
 	return 0;
 err:
