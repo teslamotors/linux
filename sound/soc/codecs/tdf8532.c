@@ -192,7 +192,7 @@ static int tdf8532_wait_state(struct tdf8532_priv *dev_data, u8 req_state,
 
 	ret = -ETIME;
 
-	dev_err(dev, "tdf8532-codec: state: %u, req_state: %u, ret: %d\n",
+	dev_warn(dev, "tdf8532-codec: state: %u, req_state: %u, ret: %d\n",
 			status_repl->state, req_state, ret);
 
 out:
@@ -229,8 +229,13 @@ static int tdf8532_stop_play(struct tdf8532_priv *tdf8532)
 
 	ret = tdf8532_wait_state(tdf8532, STATE_STBY, ACK_TIMEOUT);
 
-	if (ret < 0)
-		goto out;
+	 /* Refer to TDF8532 manual:
+	  * If the wait_state result is ok, we should send CLK_DISCONNECT
+	  * command to force codec from STANDBY(2) to IDLE(1).
+	  * If the wait_state result is timeout, the codec state should be
+	  * at Clockfail(7), we still should send CLK_DISCONNECT command
+	  * force the codec from Clockfail(7) to Idle(1).
+	  */
 
 	ret = tdf8532_amp_write(tdf8532, SET_CLK_STATE, CLK_DISCONNECT);
 	if (ret < 0)
@@ -239,13 +244,6 @@ static int tdf8532_stop_play(struct tdf8532_priv *tdf8532)
 	ret = tdf8532_wait_state(tdf8532, STATE_IDLE, ACK_TIMEOUT);
 
 out:
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
-	/*
-	 * FIXME: this is only work around to fix the stop failed issue on SOF,
-	 * return success always to make the next start successfully.
-	 */
-	ret = 0;
-#endif
 	return ret;
 }
 
@@ -317,8 +315,6 @@ static int tdf8532_i2c_probe(struct i2c_client *i2c,
 	int ret;
 	struct tdf8532_priv *dev_data;
 	struct device *dev = &(i2c->dev);
-	u8 payload[16];
-	int ret1;
 
 	dev_dbg(&i2c->dev, "%s\n", __func__);
 
@@ -341,48 +337,6 @@ static int tdf8532_i2c_probe(struct i2c_client *i2c,
 		dev_err(&i2c->dev, "Failed to register codec: %d\n", ret);
 		goto out;
 	}
-
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
-	/* We support 2 channels, 16bit 48KHz for SOF only at the moment */
-	dev_data->channels = 2;
-	/* set format */
-	payload[0] = 0x02;
-	payload[1] = 0x00;
-	payload[2] = 0x08;
-	payload[3] = 0x80;/* ModuleId */
-	payload[4] = 0x1c;/* CmdId, SetAudioConfig_cmd */
-	payload[5] = 0;/* rfa */
-	payload[6] = 0x01;/* SamplingFrequency, 48KHz */
-	payload[7] = 0x00;/* FrameSize, 2 slots per I2S frame */
-	payload[8] = 0x00;/* SlotSize, 16bit */
-	/* TDMFrameSync, TDM frame starts at rising edge frame sync */
-	payload[9] = 0x1;
-	payload[10] = 0x1;/* BitClockDelay, no delay */
-	ret1 = i2c_master_send(dev_data->i2c, payload, 11);
-
-	/* set routing */
-	payload[0] = 0x02;
-	payload[1] = 0x00;
-	payload[2] = 0x06;
-	payload[3] = 0x80;/* ModuleId */
-	payload[4] = 0x28;/* CmdId, SetAudioRoutingConfig_cmd */
-	/* channel 0 */
-	payload[5] = 0;/* AudioSource, SDI1 */
-	payload[6] = 0x00;/* SlotNr, Slot 0 */
-	/* channel 1 */
-	payload[7] = 0;/* AudioSource, SDI1 */
-	payload[8] = 0x01;/* SlotNr, Slot 1 */
-	ret1 = i2c_master_send(dev_data->i2c, payload, 9);
-
-	/* initial to disable all channels */
-	ret = tdf8532_amp_write(dev_data, SET_CHNL_DISABLE,
-			CHNL_MASK(8));
-
-#endif
-
-	if (ret < 0)
-		dev_err(&i2c->dev,
-			"i2c send set format packet returned:%d\n", ret);
 
 out:
 	return ret;

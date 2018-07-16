@@ -11,7 +11,6 @@ config SND_SOC_SOF_PLATFORM
 config SND_SOC_SOF
 	tristate "Sound Open Firmware Support"
 	default m
-	depends on SND_DMA_SGBUF
 	select SND_SOC_TOPOLOGY
 	select SND_SOC_COMPRESS
 	help
@@ -42,69 +41,5 @@ config SND_SOC_SOF_FORCE_NOCODEC_MODE
           Say Y if you need this force nocodec mode option
           If unsure select "N".
 
-config SND_SOC_SOF_INTEL
-	tristate "SOF support for Intel audio DSPs"
-	depends on SND_SOC_SOF
-	select SND_SOC_INTEL_MACH
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-if SND_SOC_SOF_INTEL
-
-config SND_SOC_SOF_BAYTRAIL
-	tristate "SOF support for Baytrail, Braswell and Cherrytrail"
-	select SND_SOC_SOF_ACPI
-	select SND_SOC_ACPI_INTEL_MATCH
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Baytrail, Braswell or Cherrytrail processors.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-config SND_SOC_SOF_HASWELL
-	tristate "SOF support for Haswell"
-	select SND_SOC_SOF_ACPI
-	select SND_SOC_ACPI_INTEL_MATCH
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Haswell processors.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-config SND_SOC_SOF_BROADWELL
-	tristate "SOF support for Broadwell"
-	depends on SND_SOC_SOF_INTEL
-	select SND_SOC_SOF_ACPI
-	select SND_SOC_ACPI_INTEL_MATCH
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Broadwell processors.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-config SND_SOC_SOF_APOLLOLAKE
-	tristate "SOF support for Apollolake"
-	select SND_SOC_SOF_HDA_COMMON
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Apollolake processors.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-config SND_SOC_SOF_CANNONLAKE
-	tristate "SOF support for Cannonlake"
-	select SND_SOC_SOF_HDA_COMMON
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Cannonlake processors.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-config SND_SOC_SOF_HDA_COMMON
-	tristate
-	select SND_SOC_SOF_PCI
-	select SND_SOC_ACPI_INTEL_MATCH
-
-endif ## SND_SOC_SOF_INTEL
+source "sound/soc/sof/intel/Kconfig"
+source "sound/soc/sof/xtensa/Kconfig"
