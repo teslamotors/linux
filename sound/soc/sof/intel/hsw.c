@@ -24,9 +24,10 @@
 
 #include <trace/events/hswadsp.h>
 #include <sound/sof.h>
-#include "sof-priv.h"
-#include "ops.h"
-#include "intel.h"
+
+#include "../sof-priv.h"
+#include "../ops.h"
+#include "shim.h"
 
 /* BARs */
 #define HSW_DSP_BAR 0
@@ -57,6 +58,8 @@
 #define SSP_SIZE	0x100
 
 #define HSW_STACK_DUMP_SIZE	32
+
+#define HSW_PANIC_OFFSET(x)	((x) & 0xFFFF)
 
 static const struct snd_sof_debugfs_map hsw_debugfs[] = {
 	{"dmac0", HSW_DSP_BAR, DMAC0_OFFSET, DMAC_SIZE},
@@ -377,17 +380,12 @@ static irqreturn_t hsw_irq_thread(int irq, void *context)
 	if (ipcd & SHIM_IPCD_BUSY) {
 		/* Handle messages from DSP Core */
 		if ((ipcd & SOF_IPC_PANIC_MAGIC_MASK) == SOF_IPC_PANIC_MAGIC) {
-			dev_err(sdev->dev, "error : DSP panic!\n");
-			snd_sof_dsp_cmd_done(sdev);
-			snd_sof_dsp_dbg_dump(sdev, SOF_DBG_REGS | SOF_DBG_MBOX);
-			snd_sof_trace_notify_for_error(sdev);
+			snd_sof_dsp_panic(sdev, HSW_PANIC_OFFSET(ipcx) +
+					  MBOX_OFFSET);
 		} else {
 			snd_sof_ipc_msgs_rx(sdev);
 		}
 	}
-
-	/* continue to send any remaining messages... */
-	snd_sof_ipc_msgs_tx(sdev);
 
 	return IRQ_HANDLED;
 }
@@ -560,7 +558,7 @@ static int hsw_get_reply(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 	} else {
 		/* reply correct size ? */
 		if (reply.hdr.size != msg->reply_size) {
-			dev_err(sdev->dev, "error: reply expected 0x%lx got 0x%x bytes\n",
+			dev_err(sdev->dev, "error: reply expected 0x%zx got 0x%x bytes\n",
 				msg->reply_size, reply.hdr.size);
 			size = msg->reply_size;
 			ret = -EINVAL;
@@ -602,6 +600,9 @@ static int hsw_probe(struct snd_sof_dev *sdev)
 	struct resource *mmio;
 	u32 base, size;
 	int ret = 0;
+
+	/* set DSP arch ops */
+	sdev->arch_ops = &sof_xtensa_arch_ops;
 
 	/* LPE base */
 	mmio = platform_get_resource(pdev, IORESOURCE_MEM,
@@ -708,8 +709,34 @@ static int hsw_remove(struct snd_sof_dev *sdev)
 	return 0;
 }
 
+#define HSW_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
+	SNDRV_PCM_FMTBIT_S32_LE)
+
+/* Haswell DAIs */
+static struct snd_soc_dai_driver hsw_dai[] = {
+{
+	.name = "ssp0-port",
+	.playback = SOF_DAI_STREAM("ssp0 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, HSW_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp0 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, HSW_FORMATS),
+},
+{
+	.name = "ssp1-port",
+	.playback = SOF_DAI_STREAM("ssp1 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, HSW_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp1 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, HSW_FORMATS),
+},
+};
+
+struct snd_sof_dai_drv hsw_dai_drv = {
+	.drv = hsw_dai,
+	.num_drv = ARRAY_SIZE(hsw_dai)
+};
+
 /* haswell ops */
-struct snd_sof_dsp_ops snd_sof_hsw_ops = {
+struct snd_sof_dsp_ops sof_hsw_ops = {
 	/*Device init */
 	.probe          = hsw_probe,
 	.remove         = hsw_remove,
@@ -750,7 +777,10 @@ struct snd_sof_dsp_ops snd_sof_hsw_ops = {
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
 
+	/* DAI drivers */
+	.dai_drv = &hsw_dai_drv,
+
 };
-EXPORT_SYMBOL(snd_sof_hsw_ops);
+EXPORT_SYMBOL(sof_hsw_ops);
 
 MODULE_LICENSE("Dual BSD/GPL");
