@@ -178,10 +178,10 @@ struct acrn_create_vm {
  */
 struct acrn_create_vcpu {
 	/** the virtual CPU ID for the VCPU created */
-	uint32_t vcpu_id;
+	uint16_t vcpu_id;
 
 	/** the physical CPU ID for the VCPU created */
-	uint32_t pcpu_id;
+	uint16_t pcpu_id;
 } __attribute__((aligned(8)));
 
 /**
