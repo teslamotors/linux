@@ -6,7 +6,6 @@ config SND_SOC_SOF_ACPI
 
 config SND_SOC_SOF
 	tristate "Sound Open Firmware Support"
-	default m
 	select SND_SOC_TOPOLOGY
 	select SND_SOC_COMPRESS
 	help
