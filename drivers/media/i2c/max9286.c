@@ -562,6 +562,7 @@ static int max9286_open(struct v4l2_subdev *subdev,
 static int max9286_registered(struct v4l2_subdev *subdev)
 {
 	struct max9286 *max = to_max_9286(subdev);
+	struct i2c_client *client = v4l2_get_subdevdata(subdev);
 	int i, j, k, l, rval, num, nsinks;
 
 	num = max->pdata->subdev_num;
@@ -569,13 +570,11 @@ static int max9286_registered(struct v4l2_subdev *subdev)
 	for (i = 0, k = 0; (i < num) && (k < nsinks); i++, k++) {
 		struct max9286_subdev_i2c_info *info =
 			&max->pdata->subdev_info[i];
-		struct i2c_adapter *adapter;
 
-		adapter = i2c_get_adapter(info->i2c_adapter_id);
+		/* aggre and subdves share the same i2c bus */
 		max->sub_devs[k] = v4l2_i2c_new_subdev_board(
-			max->v4l2_sd.v4l2_dev, adapter,
+			max->v4l2_sd.v4l2_dev, client->adapter,
 			&info->board_info, 0);
-		i2c_put_adapter(adapter);
 		if (!max->sub_devs[k]) {
 			dev_err(max->v4l2_sd.dev,
 				"can't create new i2c subdev %d-%04x\n",

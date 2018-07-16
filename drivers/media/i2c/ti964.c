@@ -457,6 +457,7 @@ static int ti964_open(struct v4l2_subdev *subdev,
 static int ti964_registered(struct v4l2_subdev *subdev)
 {
 	struct ti964 *va = to_ti964(subdev);
+	struct i2c_client *client = v4l2_get_subdevdata(subdev);
 	int i, j, k, l, rval;
 
 	for (i = 0, k = 0; i < va->pdata->subdev_num; i++) {
@@ -465,7 +466,6 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		struct crlmodule_platform_data *pdata =
 			(struct crlmodule_platform_data *)
 			info->board_info.platform_data;
-		struct i2c_adapter *adapter;
 
 		if (k >= va->nsinks)
 			break;
@@ -511,11 +511,10 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		if (rval)
 			return rval;
 
-		adapter = i2c_get_adapter(info->i2c_adapter_id);
+		/* aggre and subdves share the same i2c bus */
 		va->sub_devs[k].sd = v4l2_i2c_new_subdev_board(
-			va->sd.v4l2_dev, adapter,
+			va->sd.v4l2_dev, client->adapter,
 			&info->board_info, 0);
-		i2c_put_adapter(adapter);
 		if (!va->sub_devs[k].sd) {
 			dev_err(va->sd.dev,
 				"can't create new i2c subdev %d-%04x\n",

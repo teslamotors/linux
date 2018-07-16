@@ -407,21 +407,32 @@ static int isys_register_ext_subdev(struct ipu_isys *isys,
 				    struct ipu_isys_subdev_info *sd_info,
 				    bool acpi_only)
 {
-	struct i2c_adapter *adapter =
-	    i2c_get_adapter(sd_info->i2c.i2c_adapter_id);
+	struct i2c_adapter *adapter;
 	struct v4l2_subdev *sd;
 	struct i2c_client *client;
 	int rval;
+       int bus;
 
-	dev_info(&isys->adev->dev,
-		 "creating new i2c subdev for %s (address %2.2x, bus %d)",
-		 sd_info->i2c.board_info.type, sd_info->i2c.board_info.addr,
-		 sd_info->i2c.i2c_adapter_id);
-
-	if (!adapter) {
+#ifdef I2C_WA
+       bus = ipu_get_i2c_bus_id(sd_info->i2c.i2c_adapter_id);
+       if (bus < 0) {
+               dev_err(&isys->adev->dev, "Failed to find adapter!");
+               return -ENOENT;
+       
+#else
+        bus = sd_info->i2c.i2c_adapter_id;
+#endif
+        adapter = i2c_get_adapter(bus);
+        if (!adapter) {
 		dev_warn(&isys->adev->dev, "can't find adapter\n");
 		return -ENOENT;
 	}
+
+        dev_info(&isys->adev->dev,
+                 "creating new i2c subdev for %s (address %2.2x, bus %d)",
+                 sd_info->i2c.board_info.type, sd_info->i2c.board_info.addr,
+                 bus);
+
 	if (sd_info->csi2) {
 		dev_info(&isys->adev->dev, "sensor device on CSI port: %d\n",
 			 sd_info->csi2->port);
@@ -483,6 +494,7 @@ static int isys_register_ext_subdev(struct ipu_isys *isys,
 		rval = -EINVAL;
 		goto skip_put_adapter;
 	}
+
 	if (!sd_info->csi2)
 		return 0;
 
