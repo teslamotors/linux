@@ -239,14 +239,9 @@ static int sof_probe(struct platform_device *pdev)
 
 	/* initialize sof device */
 	sdev->dev = &pdev->dev;
-	if (plat_data->pci) {
-		sdev->pci = plat_data->pci;
-		sdev->parent = &plat_data->pci->dev;
-	} else if (plat_data->pdev) {
-		sdev->parent = &plat_data->pdev->dev;
-	} else {
-		sdev->parent = plat_data->dev;
-	}
+	sdev->parent = plat_data->dev;
+	if (plat_data->type == SOF_DEVICE_PCI)
+		sdev->pci = container_of(plat_data->dev, struct pci_dev, dev);
 	sdev->ops = plat_data->machine->pdata;
 
 	sdev->pdata = plat_data;

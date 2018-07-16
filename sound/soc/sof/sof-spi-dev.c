@@ -89,8 +89,8 @@ static int sof_spi_probe(struct spi_device *spi)
 	sof_pdata->machine = mach;
 	sof_pdata->desc = (struct sof_dev_desc *)pci_id->driver_data;
 	priv->sof_pdata = sof_pdata;
-	sof_pdata->spi = spi;
 	sof_pdata->dev = dev;
+	sof_pdata->type = SOF_DEVICE_SPI;
 
 	/* register machine driver */
 	sof_pdata->pdev_mach =
