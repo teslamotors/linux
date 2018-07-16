@@ -8,7 +8,6 @@ snd-sof-spi-objs := hw-spi.o
 
 snd-sof-pci-objs := sof-pci-dev.o
 snd-sof-acpi-objs := sof-acpi-dev.o
-snd-sof-platform-objs := sof-platform-dev.o
 snd-sof-nocodec-objs := nocodec.o
 
 obj-$(CONFIG_SND_SOC_SOF) += snd-sof.o
@@ -17,7 +16,6 @@ obj-$(CONFIG_SND_SOC_SOF_NOCODEC) += snd-sof-nocodec.o
 obj-$(CONFIG_SND_SOC_SOF_ACPI) += sof-acpi-dev.o
 obj-$(CONFIG_SND_SOC_SOF_PCI) += sof-pci-dev.o
 obj-$(CONFIG_SND_SOC_SOF_SPI) += sof-spi-dev.o
-obj-$(SND_SOC_SOF_PLATFORM) += sof-platform-dev.o
 
 obj-$(CONFIG_SND_SOC_SOF_SPIDSP) += snd-sof-spi.o
 
