@@ -270,7 +270,6 @@ static long trusty_std_call32_work(void *args)
 
 s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
-	const int cpu = 0;
 	struct trusty_std_call32_args args = {
 		.dev = dev,
 		.smcnr = smcnr,
@@ -280,7 +279,11 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 	};
 
 	/* bind cpu 0 for now since trusty OS is running on physical cpu #0*/
-	return work_on_cpu(cpu, trusty_std_call32_work, (void *) &args);
+	if((smcnr == SMC_SC_VDEV_KICK_VQ) || (smcnr == SMC_SC_LK_TIMER)
+		|| (smcnr == SMC_SC_LOCKED_NOP) || (smcnr == SMC_SC_NOP))
+		return trusty_std_call32_work((void *) &args);
+	else
+		return work_on_cpu(0, trusty_std_call32_work, (void *) &args);
 }
 
 EXPORT_SYMBOL(trusty_std_call32);
@@ -490,7 +493,7 @@ void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop)
 			list_add_tail(&nop->node, &s->nop_queue);
 		spin_unlock_irqrestore(&s->nop_lock, flags);
 	}
-	queue_work(s->nop_wq, &tw->work);
+	queue_work_on(0, s->nop_wq, &tw->work);
 	preempt_enable();
 }
 EXPORT_SYMBOL(trusty_enqueue_nop);
