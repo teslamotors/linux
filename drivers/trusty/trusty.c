@@ -27,7 +27,8 @@
 #include <linux/trusty/trusty.h>
 
 #define EVMM_SMC_HC_ID 0x74727500
-#define ACRN_SMC_HC_ID 0x80000071
+#define ACRN_HC_SWITCH_WORLD 0x80000071
+#define ACRN_HC_SAVE_SWORLD_CONTEXT 0x80000072
 
 struct trusty_state;
 
@@ -70,7 +71,7 @@ static inline ulong smc_evmm(ulong r0, ulong r1, ulong r2, ulong r3)
 
 static inline ulong smc_acrn(ulong r0, ulong r1, ulong r2, ulong r3)
 {
-	register unsigned long smc_id asm("r8") = ACRN_SMC_HC_ID;
+	register unsigned long smc_id asm("r8") = ACRN_HC_SWITCH_WORLD;
 	__asm__ __volatile__(
 		"vmcall; \n"
 		: "=D"(r0)
@@ -79,6 +80,20 @@ static inline ulong smc_acrn(ulong r0, ulong r1, ulong r2, ulong r3)
 	);
 
 	return r0;
+}
+
+static void acrn_save_sworld_context(void *arg)
+{
+	long *save_ret = arg;
+	register signed long result asm("rax");
+	register unsigned long hc_id asm("r8") = ACRN_HC_SAVE_SWORLD_CONTEXT;
+	__asm__ __volatile__(
+		"vmcall; \n"
+		: "=r"(result)
+		: "r"(hc_id)
+	);
+
+	*save_ret = result;
 }
 
 static void trusty_fast_call32_remote(void *args)
@@ -631,6 +646,24 @@ static int trusty_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int trusty_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	dev_info(&pdev->dev, "%s() is called\n", __func__);
+	long ret = 0, save_ret = 0;
+	int cpu = 0;
+
+	ret = smp_call_function_single(cpu, acrn_save_sworld_context, (void *)&save_ret, 1);
+	if (ret) {
+		pr_err("%s: smp_call_function_single failed: %d\n", __func__, ret);
+	}
+	if(save_ret < 0) {
+		dev_err(&pdev->dev, "%s(): failed to save world context!\n", __func__);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
 static const struct of_device_id trusty_of_match[] = {
 	{ .compatible = "android,trusty-smc-v1", },
 	{},
@@ -764,6 +797,11 @@ static int __init trusty_driver_init(void)
 		printk(KERN_ERR "%s(): platform_add_devices() failed, ret %d\n", __func__, ret);
 		return ret;
 	}
+
+	if(trusty_detect_vmm() == VMM_ID_ACRN) {
+		trusty_driver.suspend = trusty_suspend;
+	}
+
 	return platform_driver_register(&trusty_driver);
 }
 
