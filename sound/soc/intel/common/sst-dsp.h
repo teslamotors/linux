@@ -174,6 +174,13 @@
 #define SST_PMCS		0x84
 #define SST_PMCS_PS_MASK	0x3
 
+/*
+ * Number of times to retry firmware load before driver commits failure.
+ * This is to account for initial timeouts, e.g., from ROM init during
+ * FW load procedure when the former fails to receive imr from CSE.
+ */
+#define SST_FW_INIT_RETRY 3
+
 struct sst_dsp;
 
 /*
