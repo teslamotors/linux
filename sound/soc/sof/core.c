@@ -249,6 +249,7 @@ static int sof_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&sdev->kcontrol_list);
 	INIT_LIST_HEAD(&sdev->widget_list);
 	INIT_LIST_HEAD(&sdev->dai_list);
+	INIT_LIST_HEAD(&sdev->route_list);
 	dev_set_drvdata(&pdev->dev, sdev);
 	spin_lock_init(&sdev->ipc_lock);
 	spin_lock_init(&sdev->hw_lock);

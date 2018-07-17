@@ -261,6 +261,16 @@ struct snd_sof_widget {
 	void *private;		/* core does not touch this */
 };
 
+/* ASoC SOF DAPM route */
+struct snd_sof_route {
+	struct snd_sof_dev *sdev;
+
+	struct snd_soc_dapm_route *route;
+	struct list_head list;	/* list in sdev route list */
+
+	void *private;
+};
+
 /* ASoC DAI device */
 struct snd_sof_dai {
 	struct snd_sof_dev *sdev;
@@ -324,6 +334,7 @@ struct snd_sof_dev {
 	struct list_head kcontrol_list;
 	struct list_head widget_list;
 	struct list_head dai_list;
+	struct list_head route_list;
 	struct snd_soc_component *component;
 
 	/* FW configuration */
