@@ -210,41 +210,48 @@ static int cnl_load_base_firmware(struct sst_dsp *ctx)
 	struct firmware stripped_fw;
 	struct skl_sst *cnl = ctx->thread_context;
 	struct skl_fw_property_info fw_property;
-	int ret;
+	int ret, i;
 
 	fw_property.memory_reclaimed = -1;
 	if (!ctx->fw) {
 		ret = request_firmware(&ctx->fw, ctx->fw_name, ctx->dev);
 		if (ret < 0) {
 			dev_err(ctx->dev, "request firmware failed: %d\n", ret);
-			goto cnl_load_base_firmware_failed;
+			return ret;
 		}
 	}
 
 	/* parse uuids if first boot */
 	if (cnl->is_first_boot) {
-		ret = snd_skl_parse_uuids(ctx, ctx->fw,
-					  CNL_ADSP_FW_HDR_OFFSET, 0);
+		ret = snd_skl_parse_uuids(ctx, ctx->fw, CNL_ADSP_FW_HDR_OFFSET, 0);
 		if (ret < 0)
-			goto cnl_load_base_firmware_failed;
+			goto load_base_firmware_failed;
 	}
 
 	stripped_fw.data = ctx->fw->data;
 	stripped_fw.size = ctx->fw->size;
 	skl_dsp_strip_extended_manifest(&stripped_fw);
 
-	ret = cnl_prepare_fw(ctx, stripped_fw.data, stripped_fw.size);
-	if (ret < 0) {
-		dev_err(ctx->dev, "prepare firmware failed: %d\n", ret);
-		goto cnl_load_base_firmware_failed;
+	ret = -ENOEXEC;
+	for (i = 0; i < SST_FW_INIT_RETRY && ret < 0; i++) {
+		ret = cnl_prepare_fw(ctx, stripped_fw.data, stripped_fw.size);
+		if (ret < 0) {
+			dev_dbg(ctx->dev, "prepare firmware failed: %d\n", ret);
+			continue;
+		}
+
+		dev_dbg(ctx->dev, "ROM loaded successfully on iteration %d.\n", i);
+
+		ret = sst_transfer_fw_host_dma(ctx);
+		if (ret < 0) {
+			dev_dbg(ctx->dev, "transfer firmware failed: %d\n", ret);
+			cnl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
+		}
 	}
 
-	ret = sst_transfer_fw_host_dma(ctx);
-	if (ret < 0) {
-		dev_err(ctx->dev, "transfer firmware failed: %d\n", ret);
-		cnl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
-		goto cnl_load_base_firmware_failed;
-	}
+	if (ret < 0)
+		goto load_base_firmware_failed;
+	dev_dbg(ctx->dev, "Firmware download successful.\n");
 
 	ret = wait_event_timeout(cnl->boot_wait, cnl->boot_complete,
 				 msecs_to_jiffies(SKL_IPC_BOOT_MSECS));
@@ -252,7 +259,7 @@ static int cnl_load_base_firmware(struct sst_dsp *ctx)
 		dev_err(ctx->dev, "FW ready timed-out\n");
 		cnl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
 		ret = -EIO;
-		goto cnl_load_base_firmware_failed;
+		goto load_base_firmware_failed;
 	}
 
 	cnl->fw_loaded = true;
@@ -261,7 +268,7 @@ static int cnl_load_base_firmware(struct sst_dsp *ctx)
 	if (ret < 0) {
 		dev_err(ctx->dev, "fwconfig ipc failed !\n");
 		ret = -EIO;
-		goto cnl_load_base_firmware_failed;
+		goto load_base_firmware_failed;
 	}
 
 	fw_property = cnl->fw_property;
@@ -269,14 +276,14 @@ static int cnl_load_base_firmware(struct sst_dsp *ctx)
 		dev_err(ctx->dev, "Memory reclaim not enabled:%d\n",
 			fw_property.memory_reclaimed);
 		ret = -EIO;
-		goto cnl_load_base_firmware_failed;
+		goto load_base_firmware_failed;
 	}
 
 	ret = skl_get_hardware_configuration(ctx);
 	if (ret < 0) {
 		dev_err(ctx->dev, "hwconfig ipc failed !\n");
 		ret = -EIO;
-		goto cnl_load_base_firmware_failed;
+		goto load_base_firmware_failed;
 	}
 
 	/* Update dsp core count retrieved from hw config IPC */
@@ -284,7 +291,8 @@ static int cnl_load_base_firmware(struct sst_dsp *ctx)
 
 	return 0;
 
-cnl_load_base_firmware_failed:
+load_base_firmware_failed:
+	dev_err(ctx->dev, "Firmware load failed: %d.\n", ret);
 	release_firmware(ctx->fw);
 	ctx->fw = NULL;
 
