@@ -456,6 +456,8 @@ int snd_sof_init_topology(struct snd_sof_dev *sdev,
 			  struct snd_soc_tplg_ops *ops);
 int snd_sof_load_topology(struct snd_sof_dev *sdev, const char *file);
 void snd_sof_free_topology(struct snd_sof_dev *sdev);
+int snd_sof_complete_pipeline(struct snd_sof_dev *sdev,
+			      struct snd_sof_widget *swidget);
 
 /*
  * Trace/debug
