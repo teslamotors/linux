@@ -473,6 +473,7 @@ void snd_sof_trace_notify_for_error(struct snd_sof_dev *sdev);
 int snd_sof_get_status(struct snd_sof_dev *sdev, u32 panic_code,
 		       u32 tracep_code, void *oops, void *stack,
 		       size_t stack_size);
+int snd_sof_init_trace_ipc(struct snd_sof_dev *sdev);
 
 /*
  * Platform specific ops.
