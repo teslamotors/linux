@@ -11,6 +11,7 @@
 #include <media/media-device.h>
 #include <media/media-entity.h>
 #include <media/max9286.h>
+#include <media/crlmodule.h>
 #include <media/v4l2-device.h>
 #include <media/videobuf2-core.h>
 
@@ -570,6 +571,12 @@ static int max9286_registered(struct v4l2_subdev *subdev)
 	for (i = 0, k = 0; (i < num) && (k < nsinks); i++, k++) {
 		struct max9286_subdev_i2c_info *info =
 			&max->pdata->subdev_info[i];
+		struct crlmodule_platform_data *pdata =
+		    (struct crlmodule_platform_data *)
+		    info->board_info.platform_data;
+
+		/* Spin the sensor subdev name suffix */
+		pdata->suffix = info->suffix;
 
 		/* aggre and subdves share the same i2c bus */
 		max->sub_devs[k] = v4l2_i2c_new_subdev_board(
@@ -712,8 +719,7 @@ static int max9286_register_subdev(struct max9286 *max)
 	/* subdevice driver initializes v4l2 subdev */
 	v4l2_subdev_init(&max->v4l2_sd, &max9286_sd_ops);
 	snprintf(max->v4l2_sd.name, sizeof(max->v4l2_sd.name),
-		"MAX9286 %d-%4.4x", i2c_adapter_id(client->adapter),
-		client->addr);
+		"MAX9286 %c", max->pdata->suffix);
 	max->v4l2_sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
 		V4L2_SUBDEV_FL_HAS_SUBSTREAMS;
 

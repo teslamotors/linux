@@ -485,6 +485,9 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		/* If 0 is xshutdown, then 1 would be FSIN, vice versa. */
 		va->sub_devs[k].fsin_gpio = 1 - va->subdev_pdata[k].xshutdown;
 
+		/* Spin sensor subdev suffix name */
+		va->subdev_pdata[k].suffix = info->suffix;
+
 		/*
 		 * Change the gpio value to have xshutdown
 		 * and rx port included, so in gpio_set those
@@ -1023,8 +1026,8 @@ static int ti964_register_subdev(struct ti964 *va)
 	struct i2c_client *client = v4l2_get_subdevdata(&va->sd);
 
 	v4l2_subdev_init(&va->sd, &ti964_sd_ops);
-	snprintf(va->sd.name, sizeof(va->sd.name), "TI964 %d-%4.4x",
-		i2c_adapter_id(client->adapter), client->addr);
+	snprintf(va->sd.name, sizeof(va->sd.name), "TI964 %c",
+		 va->pdata->suffix);
 
 	va->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
 			V4L2_SUBDEV_FL_HAS_SUBSTREAMS;
