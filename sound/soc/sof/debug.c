@@ -7,6 +7,9 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Yan Wang <yan.wan@linux.intel.com>
+ *
+ * Generic debug routines used to export DSP MMIO and memories to userspace
+ * for firmware debugging.
  */
 
 #include <linux/delay.h>
@@ -41,6 +44,7 @@ static ssize_t sof_dfsentry_read(struct file *file, char __user *buffer,
 
 	size = dfse->size;
 
+	/* validate position & count */
 	if (pos < 0)
 		return -EINVAL;
 	if (pos >= size || !count)
@@ -48,18 +52,22 @@ static ssize_t sof_dfsentry_read(struct file *file, char __user *buffer,
 	if (count > size - pos)
 		count = size - pos;
 
+	/* intermediate buffer size must be u32 multiple */
 	size = (count + 3) & ~3;
 	buf = kzalloc(size, GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
 
+	/* copy from DSP MMIO */
 	pm_runtime_get(sdev->dev);
 	memcpy_fromio(buf,  dfse->buf + pos, size);
 	pm_runtime_put(sdev->dev);
 
+	/* copy to userspace */
 	ret = copy_to_user(buffer, buf, count);
 	kfree(buf);
 
+	/* update count & position if copy succeeded */
 	if (ret == count)
 		return -EFAULT;
 	count -= ret;
@@ -109,17 +117,18 @@ int snd_sof_dbg_init(struct snd_sof_dev *sdev)
 	const struct snd_sof_debugfs_map *map;
 	int err = 0, i;
 
+	/* use "sof" as top level debugFS dir */
 	sdev->debugfs_root = debugfs_create_dir("sof", NULL);
 	if (IS_ERR_OR_NULL(sdev->debugfs_root)) {
 		dev_err(sdev->dev, "error: failed to create debugfs directory\n");
 		return -EINVAL;
 	}
 
+	/* create debugFS files for platform specific MMIO/DSP memories */
 	for (i = 0; i < ops->debug_map_count; i++) {
 		map = &ops->debug_map[i];
 
-		err = snd_sof_debugfs_create_item(sdev,
-						  sdev->bar[map->bar] +
+		err = snd_sof_debugfs_create_item(sdev, sdev->bar[map->bar] +
 						  map->offset, map->size,
 						  map->name);
 		if (err < 0)
