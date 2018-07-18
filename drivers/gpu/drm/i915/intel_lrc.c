@@ -462,7 +462,8 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 			GEM_BUG_ON(!n);
 			desc = 0;
 		}
-		if (intel_vgpu_active(engine->i915) && i915_modparams.enable_pvmmio) {
+		if (intel_vgpu_active(engine->i915) &&
+		    i915_modparams.enable_pvmmio & PVMMIO_ELSP_SUBMIT) {
 			BUG_ON(i >= 4);
 			descs[i] = upper_32_bits(desc);
 			descs[i + 1] = lower_32_bits(desc);
@@ -472,7 +473,8 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 		}
 	}
 
-	if (intel_vgpu_active(engine->i915) && i915_modparams.enable_pvmmio) {
+	if (intel_vgpu_active(engine->i915) &&
+	    i915_modparams.enable_pvmmio & PVMMIO_ELSP_SUBMIT) {
 		u32 __iomem *elsp_data = engine->i915->shared_page->elsp_data;
 		spin_lock(&engine->i915->shared_page_lock);
 		writel(descs[0], elsp_data);
@@ -528,7 +530,8 @@ static void inject_preempt_context(struct intel_engine_cs *engine)
 	ce->ring->tail &= (ce->ring->size - 1);
 	ce->lrc_reg_state[CTX_RING_TAIL+1] = ce->ring->tail;
 
-	if (intel_vgpu_active(engine->i915) && i915_modparams.enable_pvmmio) {
+	if (intel_vgpu_active(engine->i915) &&
+	    i915_modparams.enable_pvmmio & PVMMIO_ELSP_SUBMIT) {
 		u32 __iomem *elsp_data = engine->i915->shared_page->elsp_data;
 
 		spin_lock(&engine->i915->shared_page_lock);
