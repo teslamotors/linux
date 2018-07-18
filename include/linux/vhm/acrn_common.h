@@ -87,17 +87,17 @@
 struct mmio_request {
 	uint32_t direction;
 	uint32_t reserved;
-	int64_t address;
-	int64_t size;
-	int64_t value;
+	uint64_t address;
+	uint64_t size;
+	uint64_t value;
 } __attribute__((aligned(8)));
 
 struct pio_request {
 	uint32_t direction;
 	uint32_t reserved;
-	int64_t address;
-	int64_t size;
-	int32_t value;
+	uint64_t address;
+	uint64_t size;
+	uint32_t value;
 } __attribute__((aligned(8)));
 
 struct pci_request {
@@ -114,16 +114,15 @@ struct pci_request {
 /* vhm_request are 256Bytes aligned */
 struct vhm_request {
 	/* offset: 0bytes - 63bytes */
-	union {
-		uint32_t type;
-		int32_t reserved0[16];
-	};
+	uint32_t type;
+	uint32_t reserved0[15];
+
 	/* offset: 64bytes-127bytes */
 	union {
 		struct pio_request pio_request;
 		struct pci_request pci_request;
 		struct mmio_request mmio_request;
-		int64_t reserved1[8];
+		uint64_t reserved1[8];
 	} reqs;
 
 	/* True: valid req which need VHM to process.
@@ -145,7 +144,7 @@ struct vhm_request {
 struct vhm_request_buffer {
 	union {
 		struct vhm_request req_queue[VHM_REQUEST_MAX];
-		int8_t reserved[4096];
+		uint8_t reserved[4096];
 	};
 } __attribute__((aligned(4096)));
 
@@ -154,10 +153,16 @@ struct vhm_request_buffer {
  */
 struct acrn_create_vm {
 	/** created vmid return to VHM. Keep it first field */
-	int32_t vmid;
+	uint16_t vmid;
+
+	/** Reserved */
+	uint16_t reserved0;
 
 	/** VCPU numbers this VM want to create */
-	uint32_t vcpu_num;
+	uint16_t vcpu_num;
+
+	/** Reserved */
+	uint16_t reserved1;
 
 	/** the GUID of this VM */
 	uint8_t	 GUID[16];
@@ -168,7 +173,7 @@ struct acrn_create_vm {
 	uint64_t vm_flag;
 
 	/** Reserved for future use*/
-	uint8_t  reserved[24];
+	uint8_t  reserved2[24];
 } __attribute__((aligned(8)));
 
 /**
@@ -214,12 +219,18 @@ struct acrn_irqline {
 	uint32_t reserved;
 
 	/** pic IRQ for ISA type */
-	uint64_t pic_irq;
+	uint32_t pic_irq;
+
+	/** Reserved */
+	uint32_t reserved0;
 
 	/** ioapic IRQ for IOAPIC & ISA TYPE,
-	 *  if -1 then this IRQ will not be injected
+	 *  if ~0U then this IRQ will not be injected
 	 */
-	uint64_t ioapic_irq;
+	uint32_t ioapic_irq;
+
+	/** Reserved */
+	uint32_t reserved1;
 } __attribute__((aligned(8)));
 
 /**
@@ -240,7 +251,10 @@ struct acrn_msi_entry {
  */
 struct acrn_nmi_entry {
 	/** virtual CPU ID to inject */
-	int64_t vcpu_id;
+	uint16_t vcpu_id;
+
+	/** Reserved */
+	uint16_t reserved[3];
 } __attribute__((aligned(8)));
 
 /**
@@ -279,7 +293,7 @@ struct acrn_vm_pci_msix_remap {
 	/** if the pass-through PCI device is MSI-X, this field contains
 	 *  the MSI-X entry table index
 	 */
-	int32_t msix_entry_index;
+	uint32_t msix_entry_index;
 
 	/** if the pass-through PCI device is MSI-X, this field contains
 	 *  Vector Control for MSI-X Entry, field defined in MSI-X spec

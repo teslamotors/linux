@@ -170,7 +170,10 @@ struct memory_map {
 
 struct set_memmaps {
 	/*IN: vmid for this hypercall */
-	uint64_t vmid;
+	uint16_t vmid;
+
+	/** Reserved */
+	uint16_t reserved[3];
 
 	/* IN: multi memmaps numbers */
 	uint32_t memmaps_num;
@@ -184,7 +187,8 @@ struct set_memmaps {
 } __attribute__((aligned(8)));
 
 struct sbuf_setup_param {
-	uint32_t pcpu_id;
+	uint16_t pcpu_id;
+	uint16_t reserved;
 	uint32_t sbuf_id;
 	uint64_t gpa;
 } __attribute__((aligned(8)));
@@ -203,9 +207,12 @@ struct hc_ptdev_irq {
 	uint16_t phys_bdf;	/* IN: Device physical BDF# */
 	union {
 		struct {
-			uint32_t virt_pin;	/* IN: virtual IOAPIC pin */
-			uint32_t phys_pin;	/* IN: physical IOAPIC pin */
-			uint32_t pic_pin;	/* IN: pin from PIC? */
+			uint8_t virt_pin;	/* IN: virtual IOAPIC pin */
+			uint8_t reserved0[3];	/* Reserved */
+			uint8_t phys_pin;	/* IN: physical IOAPIC pin */
+			uint8_t reserved1[3];	/* Reserved */
+			bool pic_pin;		/* IN: pin from PIC? */
+			uint8_t reserved2[3];	/* Reserved */
 		} intx;
 		struct {
 			/* IN: vector count of MSI/MSIX */
