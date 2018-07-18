@@ -157,20 +157,31 @@ int snd_sof_bytes_get(struct snd_kcontrol *kcontrol,
 		(struct soc_bytes_ext *)kcontrol->private_value;
 	struct snd_sof_control *scontrol = be->dobj.private;
 	struct snd_sof_dev *sdev = scontrol->sdev;
-	//struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
-	//unsigned int i, channels = scontrol->num_channels;
+	struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
+	struct sof_abi_hdr *data = cdata->data;
+	size_t size;
+	int ret = 0;
 
 	pm_runtime_get_sync(sdev->dev);
 
 	/* get all the mixer data from DSP */
 	snd_sof_ipc_get_comp_data(sdev->ipc, scontrol, SOF_IPC_COMP_GET_DATA,
 				  SOF_CTRL_TYPE_DATA_GET, scontrol->cmd);
+	size = data->size + sizeof(*data);
+	if (size > be->max) {
+		dev_err(sdev->dev, "error: DSP sent %ld bytes max is %d\n",
+			size, be->max);
+		ret = -EINVAL;
+		goto out;
+	}
 
-	/* TODO: copy back to userspace */
+	/* copy back to kcontrol */
+	memcpy(ucontrol->value.bytes.data, data, size);
 
+out:
 	pm_runtime_mark_last_busy(sdev->dev);
 	pm_runtime_put_autosuspend(sdev->dev);
-	return 0;
+	return ret;
 }
 
 int snd_sof_bytes_put(struct snd_kcontrol *kcontrol,
@@ -180,18 +191,28 @@ int snd_sof_bytes_put(struct snd_kcontrol *kcontrol,
 		(struct soc_bytes_ext *)kcontrol->private_value;
 	struct snd_sof_control *scontrol = be->dobj.private;
 	struct snd_sof_dev *sdev = scontrol->sdev;
-	//struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
-	//unsigned int i, channels = scontrol->num_channels;
+	struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
+	struct sof_abi_hdr *data = cdata->data;
+	int ret = 0;
 
 	pm_runtime_get_sync(sdev->dev);
 
-	/* TODO: copy from userspace */
+	if (data->size > be->max) {
+		dev_err(sdev->dev, "error: size too big %d bytes max is %d\n",
+			data->size, be->max);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* copy from kcontrol */
+	memcpy(data, ucontrol->value.bytes.data, data->size);
 
 	/* notify DSP of mixer updates */
 	snd_sof_ipc_set_comp_data(sdev->ipc, scontrol, SOF_IPC_COMP_SET_DATA,
 				  SOF_CTRL_TYPE_DATA_SET, scontrol->cmd);
 
+out:
 	pm_runtime_mark_last_busy(sdev->dev);
 	pm_runtime_put_autosuspend(sdev->dev);
-	return 0;
+	return ret;
 }
