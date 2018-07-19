@@ -743,11 +743,6 @@ static struct snd_soc_dai_driver bdw_dai[] = {
 },
 };
 
-static struct snd_sof_dai_drv bdw_dai_drv = {
-	.drv = bdw_dai,
-	.num_drv = ARRAY_SIZE(bdw_dai)
-};
-
 /* broadwell ops */
 struct snd_sof_dsp_ops sof_bdw_ops = {
 	/*Device init */
@@ -791,7 +786,8 @@ struct snd_sof_dsp_ops sof_bdw_ops = {
 	.load_firmware	= snd_sof_load_firmware_memcpy,
 
 	/* DAI drivers */
-	.dai_drv = &bdw_dai_drv,
+	.drv = bdw_dai,
+	.num_drv = ARRAY_SIZE(bdw_dai)
 };
 EXPORT_SYMBOL(sof_bdw_ops);
 
