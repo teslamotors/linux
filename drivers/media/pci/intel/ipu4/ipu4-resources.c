@@ -11,7 +11,174 @@
 
 #include "ipu-fw-psys.h"
 #include "ipu-psys.h"
-#include "ipu-fw-resources.h"
+
+/* resources table */
+/*
+ * Cell types by cell IDs
+ */
+const u32 ipu_fw_psys_cell_types[IPU_FW_PSYS_N_CELL_ID] = {
+	IPU_FW_PSYS_SP_CTRL_TYPE_ID,
+	IPU_FW_PSYS_SP_SERVER_TYPE_ID,
+	IPU_FW_PSYS_SP_SERVER_TYPE_ID,
+	IPU_FW_PSYS_VP_TYPE_ID,
+	IPU_FW_PSYS_VP_TYPE_ID,
+	IPU_FW_PSYS_VP_TYPE_ID,
+	IPU_FW_PSYS_VP_TYPE_ID,
+	IPU_FW_PSYS_ACC_ISA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
+	IPU_FW_PSYS_ACC_OSA_TYPE_ID,
+	IPU_FW_PSYS_GDC_TYPE_ID,
+	IPU_FW_PSYS_GDC_TYPE_ID
+};
+
+const u16 ipu_fw_num_dev_channels[IPU_FW_PSYS_N_DEV_CHN_ID] = {
+	IPU_FW_PSYS_DEV_CHN_DMA_EXT0_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_GDC_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_EXT1_READ_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_EXT1_WRITE_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_INTERNAL_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_IPFD_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_ISA_MAX_SIZE,
+	IPU_FW_PSYS_DEV_CHN_DMA_FW_MAX_SIZE,
+#ifdef CONFIG_VIDEO_INTEL_IPU4P
+	IPU_FW_PSYS_DEV_CHN_DMA_CMPRS_MAX_SIZE
+#endif
+};
+
+const u16 ipu_fw_psys_mem_size[IPU_FW_PSYS_N_MEM_ID] = {
+	IPU_FW_PSYS_VMEM0_MAX_SIZE,
+	IPU_FW_PSYS_VMEM1_MAX_SIZE,
+	IPU_FW_PSYS_VMEM2_MAX_SIZE,
+	IPU_FW_PSYS_VMEM3_MAX_SIZE,
+	IPU_FW_PSYS_VMEM4_MAX_SIZE,
+	IPU_FW_PSYS_BAMEM0_MAX_SIZE,
+	IPU_FW_PSYS_BAMEM1_MAX_SIZE,
+	IPU_FW_PSYS_BAMEM2_MAX_SIZE,
+	IPU_FW_PSYS_BAMEM3_MAX_SIZE,
+	IPU_FW_PSYS_DMEM0_MAX_SIZE,
+	IPU_FW_PSYS_DMEM1_MAX_SIZE,
+	IPU_FW_PSYS_DMEM2_MAX_SIZE,
+	IPU_FW_PSYS_DMEM3_MAX_SIZE,
+	IPU_FW_PSYS_DMEM4_MAX_SIZE,
+	IPU_FW_PSYS_DMEM5_MAX_SIZE,
+	IPU_FW_PSYS_DMEM6_MAX_SIZE,
+	IPU_FW_PSYS_DMEM7_MAX_SIZE,
+	IPU_FW_PSYS_PMEM0_MAX_SIZE,
+	IPU_FW_PSYS_PMEM1_MAX_SIZE,
+	IPU_FW_PSYS_PMEM2_MAX_SIZE,
+	IPU_FW_PSYS_PMEM3_MAX_SIZE
+};
+
+const enum ipu_mem_id
+ipu_fw_psys_cell_mem[IPU_FW_PSYS_N_CELL_ID][IPU_FW_PSYS_N_DATA_MEM_TYPE_ID] = {
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_DMEM0_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_DMEM1_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_DMEM2_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_VMEM4_ID,
+	 IPU_FW_PSYS_DMEM4_ID,
+	 IPU_FW_PSYS_VMEM0_ID,
+	 IPU_FW_PSYS_BAMEM0_ID
+	},
+	{
+	 IPU_FW_PSYS_VMEM4_ID,
+	 IPU_FW_PSYS_DMEM5_ID,
+	 IPU_FW_PSYS_VMEM1_ID,
+	 IPU_FW_PSYS_BAMEM1_ID
+	},
+	{
+	 IPU_FW_PSYS_VMEM4_ID,
+	 IPU_FW_PSYS_DMEM6_ID,
+	 IPU_FW_PSYS_VMEM2_ID,
+	 IPU_FW_PSYS_BAMEM2_ID
+	},
+	{
+	 IPU_FW_PSYS_VMEM4_ID,
+	 IPU_FW_PSYS_DMEM7_ID,
+	 IPU_FW_PSYS_VMEM3_ID,
+	 IPU_FW_PSYS_BAMEM3_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	},
+	{
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID,
+	 IPU_FW_PSYS_N_MEM_ID
+	}
+};
 
 static int ipu_resource_init(struct ipu_resource *res, u32 id, int elements)
 {
@@ -28,7 +195,6 @@ static int ipu_resource_init(struct ipu_resource *res, u32 id, int elements)
 	res->id = id;
 	return 0;
 }
-
 
 static unsigned long
 ipu_resource_alloc(struct ipu_resource *res, int n,
@@ -123,6 +289,7 @@ error:
 	return ret;
 }
 
+
 void ipu_psys_resource_pool_cleanup(struct ipu_psys_resource_pool
 				    *pool)
 {
@@ -171,11 +338,9 @@ static int ipu_psys_allocate_one_resource(const struct device *dev,
 		return (int)retl;
 	}
 	alloc->resources++;
-	ipu_fw_psys_set_process_dev_chn_offset(process, resource_id, retl);
 
 	return 0;
 }
-
 
 /*
  * ext_mem_type_id is a generic type id for memory (like DMEM, VMEM)
@@ -210,10 +375,6 @@ static int ipu_psys_allocate_memory_resource(
 	}
 
 	alloc->resources++;
-
-	ipu_fw_psys_set_process_ext_mem_id(process, ext_mem_type_id,
-					   ext_mem_bank_id);
-	ipu_fw_psys_set_process_ext_mem_offset(process, ext_mem_type_id, retl);
 
 	return 0;
 }
@@ -250,14 +411,16 @@ int ipu_psys_allocate_resources(const struct device *dev,
 		    ((char *)pg + process_offset_table[i]);
 		struct ipu_fw_generic_program_manifest pm;
 
+		memset(&pm, 0, sizeof(pm));
 		if (!process) {
 			dev_err(dev, "can not get process\n");
 			ret = -ENOENT;
 			goto free_out;
 		}
 
-		ret = ipu_fw_psys_get_program_manifest_by_process
-		    (&pm, pg_manifest, process);
+		ret = ipu_fw_psys_get_program_manifest_by_process(&pm,
+								  pg_manifest,
+								  process);
 		if (ret < 0) {
 			dev_err(dev, "can not get manifest\n");
 			goto free_out;
@@ -293,32 +456,40 @@ int ipu_psys_allocate_resources(const struct device *dev,
 			ret = -ENOSPC;
 			goto free_out;
 		}
-		for (resid = 0; resid < res_defs->num_dev_channels; resid++) {
-			ret = ipu_psys_allocate_one_resource
-			    (dev, process,
-			     &pool->dev_channels[resid], &pm, resid, alloc);
-			if (ret)
-				goto free_out;
+		if (pm.dev_chn_size) {
+			for (resid = 0; resid < res_defs->num_dev_channels; resid++) {
+				ret = ipu_psys_allocate_one_resource
+				    (dev, process,
+				     &pool->dev_channels[resid], &pm, resid, alloc);
+				if (ret)
+					goto free_out;
+				ipu_fw_psys_set_process_dev_chn_offset(process, resid,
+					alloc->resource_alloc[alloc->resources - 1].pos);
+			}
 		}
 
+		if (pm.ext_mem_size) {
+			for (mem_type_id = 0;
+			     mem_type_id < res_defs->num_ext_mem_types; mem_type_id++) {
+				u32 mem_bank_id = res_defs->num_ext_mem_ids;
 
-		for (mem_type_id = 0;
-		     mem_type_id < res_defs->num_ext_mem_types; mem_type_id++) {
-			u32 mem_bank_id = res_defs->num_ext_mem_ids;
+				if (cell != res_defs->num_cells)
+					mem_bank_id =
+					    res_defs->cell_mem[res_defs->cell_mem_row *
+							       cell + mem_type_id];
+				if (mem_bank_id == res_defs->num_ext_mem_ids)
+					continue;
 
-			if (cell != res_defs->num_cells)
-				mem_bank_id =
-				    res_defs->cell_mem[res_defs->cell_mem_row *
-						       cell + mem_type_id];
-			if (mem_bank_id == res_defs->num_ext_mem_ids)
-				continue;
-
-			ret = ipu_psys_allocate_memory_resource
-			    (dev, process,
-			     &pool->ext_memory[mem_bank_id],
-			     &pm, mem_type_id, mem_bank_id, alloc);
-			if (ret)
-				goto free_out;
+				ret = ipu_psys_allocate_memory_resource
+				    (dev, process,
+				     &pool->ext_memory[mem_bank_id],
+				     &pm, mem_type_id, mem_bank_id, alloc);
+				if (ret)
+					goto free_out;
+				ipu_fw_psys_set_process_ext_mem_id(process, mem_type_id, mem_bank_id);
+				ipu_fw_psys_set_process_ext_mem_offset(process, mem_type_id,
+					alloc->resource_alloc[alloc->resources - 1].pos);
+			}
 		}
 	}
 	alloc->cells |= cells;

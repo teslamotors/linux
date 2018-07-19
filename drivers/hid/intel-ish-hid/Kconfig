@@ -15,8 +15,8 @@ config INTEL_ISH_HID
 
 	  Say Y here if you want to support Intel ISH. If unsure, say N.
 
-config INTEL_ISH_TTY_CLIENT
-	tristate "Intel Integrated Sensor Hub TTY Client"
+config INTEL_ISH_UART_INTERFACE
+	tristate "Intel Integrated Sensor Hub UART Interface"
 	help
 	  The Integrated Sensor Hub (ISH) firmware has an in built UART driver.
 	  This UART driver is enumerated as one of the ISH firmware client.
@@ -26,5 +26,4 @@ config INTEL_ISH_TTY_CLIENT
 	  One of the use case is to read/write/control a sensor connected via
 	  UART.
 
-	  Say Y here if you want to support Intel ISH TTY client. If unsure, say N.
 endmenu

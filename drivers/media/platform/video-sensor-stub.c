@@ -79,6 +79,10 @@ static const uint32_t sensor_supported_codes_pad[] = {
 };
 
 
+static const uint32_t * const sensor_supported_codes[] = {
+	sensor_supported_codes_pad,
+};
+
 static u32 sensor_pixel_order(struct stub_sensor *sensor)
 {
 	return sensor->default_pixel_order;

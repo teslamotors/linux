@@ -28,9 +28,19 @@ enum regmem_id {
 	SYSCOM_COMMAND_REG	= 3,
 	/* Store interrupt status - updated by SP */
 	SYSCOM_IRQ_REG		= 4,
+	/* Store VTL0_ADDR_MASK in trusted secure regision - provided by host.*/
+	SYSCOM_VTL0_ADDR_MASK	= 5,
 	/* first syscom queue pointer register */
-	SYSCOM_QPR_BASE_REG	= 5
+	SYSCOM_QPR_BASE_REG	= 6
 };
+
+#if HAS_DUAL_CMD_CTX_SUPPORT
+/* Bit 0: for untrusted non-secure DRV driver on VTL0
+ * Bit 1: for trusted secure TEE driver on VTL1
+ */
+#define SYSCOM_IRQ_VTL0_MASK 0x1
+#define SYSCOM_IRQ_VTL1_MASK 0x2
+#endif
 
 STORAGE_CLASS_INLINE unsigned int
 regmem_load_32(unsigned int mem_address, unsigned int reg, unsigned int ssid);

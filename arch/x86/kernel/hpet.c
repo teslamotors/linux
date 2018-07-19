@@ -36,7 +36,12 @@
 /*
  * HPET address is set in acpi/boot.c, when an ACPI entry exists
  */
+
+#ifdef CONFIG_ACPI
 unsigned long				hpet_address;
+#else
+unsigned long				hpet_address = 0xfed00000;
+#endif /* CONFIG_ACPI */
 u8					hpet_blockid; /* OS timer block num */
 bool					hpet_msi_disable;
 

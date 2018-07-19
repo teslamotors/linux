@@ -18,8 +18,6 @@
 #define IPU_ISYS_MAX_PARALLEL_SOF 2
 
 struct ipu_isys;
-struct ipu_fw_isys_stream_cfg_data;
-struct ipu_isys_csi2_be_raw;
 struct ipu_isys_csi2_be_soc;
 struct ipu_fw_isys_stream_cfg_data_abi;
 
@@ -56,6 +54,9 @@ struct ipu_isys_pipeline {
 	struct ipu_isys_csi2_be *csi2_be;
 	struct ipu_isys_csi2_be_soc *csi2_be_soc;
 	struct ipu_isys_csi2 *csi2;
+#ifdef IPU_TPG_SOF
+	struct ipu_isys_tpg *tpg;
+#endif
 	/*
 	 * Number of capture queues, write access serialised using struct
 	 * ipu_isys.stream_mutex

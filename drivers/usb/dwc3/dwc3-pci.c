@@ -119,7 +119,19 @@ static int dwc3_pci_quirks(struct dwc3_pci *dwc)
 			return ret;
 
 		if (pdev->device == PCI_DEVICE_ID_INTEL_BXT ||
-				pdev->device == PCI_DEVICE_ID_INTEL_BXT_M) {
+		    pdev->device == PCI_DEVICE_ID_INTEL_BXT_M ||
+		    pdev->device == PCI_DEVICE_ID_INTEL_APL) {
+			struct property_entry properties[] = {
+				PROPERTY_ENTRY_STRING("dr_mode", "peripheral"),
+				PROPERTY_ENTRY_BOOL("linux,sysdev_is_parent"),
+				PROPERTY_ENTRY_BOOL("has_dsm_for_softreset"),
+				{ }
+			};
+
+			ret = platform_device_add_properties(dwc3, properties);
+			if (ret < 0)
+				return ret;
+
 			guid_parse(PCI_INTEL_BXT_DSM_GUID, &dwc->guid);
 			dwc->has_dsm_for_pm = true;
 		}

@@ -181,6 +181,10 @@
 #define IPU_INFO_ZLW                               BIT(2)
 #define IPU_INFO_STREAM_ID_SET(a)	((a & 0xF) << 4)
 #define IPU_INFO_ADDRESS_SWIZZ                     BIT(8)
+
+/* Trace unit related register definitions */
+#define TRACE_REG_MAX_ISYS_OFFSET	0x0fffff
+#define TRACE_REG_MAX_PSYS_OFFSET	0xffffff
 /* ISYS trace registers - offsets to isys base address */
 /* Trace unit base offset */
 #define TRACE_REG_IS_TRACE_UNIT_BASE			0x07d000
@@ -255,4 +259,5 @@
 #define IPU_REG_PSYS_GPDEV_FWIRQ(n)		(4 * (n) + 0x60100)
 /* CDC Burst collector thresholds for psys - 4 FIFOs i= 0..3 */
 #define IPU_REG_PSYS_CDC_THRESHOLD(i)           (0x60600 + ((i) * 4))
+
 #endif /* IPU_REGS_H */

@@ -63,8 +63,8 @@ struct i915_params i915_modparams __read_mostly = {
 	.verbose_state_checks = 1,
 	.nuclear_pageflip = 0,
 	.edp_vswing = 0,
-	.enable_guc_loading = 0,
-	.enable_guc_submission = 0,
+	.enable_guc_loading = 1,
+	.enable_guc_submission = 1,
 	.guc_log_level = -1,
 	.guc_firmware_path = NULL,
 	.huc_firmware_path = NULL,
@@ -85,6 +85,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.gvt_emulate_hdmi = true,
 	.domain_scaler_owner = 0x21100,
 	.enable_guc_critical_logging = false,
+	.tsd_delay = 2000,
 };
 
 i915_param_named(modeset, int, 0400,
@@ -216,11 +217,11 @@ i915_param_named_unsafe(edp_vswing, int, 0400,
 
 i915_param_named_unsafe(enable_guc_loading, int, 0400,
 	"Enable GuC firmware loading "
-	"(-1=auto, 0=never [default], 1=if available, 2=required)");
+	"(-1=auto, 0=never, 1=if available [default], 2=required)");
 
 i915_param_named_unsafe(enable_guc_submission, int, 0400,
 	"Enable GuC submission "
-	"(-1=auto, 0=never [default], 1=if available, 2=required)");
+	"(-1=auto, 0=never, 1=if available [default], 2=required)");
 
 i915_param_named(guc_log_level, int, 0400,
 	"GuC firmware logging level (-1:disabled (default), 0-3:enabled)");
@@ -245,9 +246,9 @@ i915_param_named(enable_dpcd_backlight, bool, 0600,
 i915_param_named(enable_gvt, bool, 0400,
 	"Enable support for Intel GVT-g graphics virtualization host support(default:false)");
 
-module_param_named(enable_pvmmio, i915_modparams.enable_pvmmio, bool, 0400);
+module_param_named(enable_pvmmio, i915_modparams.enable_pvmmio, uint, 0400);
 MODULE_PARM_DESC(enable_pvmmio,
-	"Enable pv mmio feature, default TRUE. This parameter "
+	"Enable pv mmio feature and set pvmmio level, default 1. This parameter "
 	"could only set from host, guest value is set through vgt_if");
 
 module_param_named(enable_gvt_oos, i915_modparams.enable_gvt_oos, bool, 0400);
@@ -352,3 +353,13 @@ MODULE_PARM_DESC(domain_scaler_owner, "scaler owners for each domain and for\n"
 
 i915_param_named(fpreempt_timeout, uint, 0600,
 	"Wait time in msecs before forcing a preemption with reset (0:never force [default])");
+
+module_param_named_unsafe(tsd_init, i915_modparams.tsd_init, uint, 0400);
+MODULE_PARM_DESC(tsd_init,
+		 "Mark initialization sections for skip or delay"
+		 "(0x02 - acpi video delay, 0x04 - skip GBUS MISC pin registration,"
+		 " 0x08 - plane delay, 0x10 - DDI port A delay, 0x20 - DDI port B delay,"
+		 " 0x40 - DDI port C delay, 0x80 - MIPI DSI delay)");
+
+module_param_named_unsafe(tsd_delay, i915_modparams.tsd_delay, int, 0400);
+MODULE_PARM_DESC(tsd_delay, "Delay in ms to wait before finishing initialization.");

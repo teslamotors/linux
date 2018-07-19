@@ -81,7 +81,8 @@ void ici_csi2_set_ffmt(struct ici_isys_subdev *asd,
 
 	switch (pad) {
 	case CSI2_ICI_PAD_SINK:
-		*cur_ffmt = *ffmt;
+		if (cur_ffmt)
+			*cur_ffmt = *ffmt;
 		ici_isys_subdev_fmt_propagate(asd, pad, NULL,
 				ICI_ISYS_SUBDEV_PROP_TGT_SINK_FMT,
 				ffmt);
@@ -90,11 +91,13 @@ void ici_csi2_set_ffmt(struct ici_isys_subdev *asd,
 			struct ici_framefmt *sink_ffmt =
 				__ici_isys_subdev_get_ffmt(asd,
 						CSI2_ICI_PAD_SINK);
-			*cur_ffmt = *sink_ffmt;
-			cur_ffmt->pixelformat =
-				ici_isys_subdev_code_to_uncompressed
+			if (sink_ffmt) {
+			    *cur_ffmt = *sink_ffmt;
+			    cur_ffmt->pixelformat =
+			        ici_isys_subdev_code_to_uncompressed
 				(sink_ffmt->pixelformat);
-			*ffmt = *cur_ffmt;
+			    *ffmt = *cur_ffmt;
+			}
 			break;
 		}
 	default:

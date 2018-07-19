@@ -105,6 +105,7 @@
 /* Power management */
 #define IC_ID_PM_BASE                   0x60UL
 #define IC_PM_GET_CPU_STATE            _IC_ID(IC_ID, IC_ID_PM_BASE + 0x00)
+#define IC_PM_SET_SSTATE_DATA          _IC_ID(IC_ID, IC_ID_PM_BASE + 0x01)
 
 /**
  * struct vm_memseg - memory segment info for guest

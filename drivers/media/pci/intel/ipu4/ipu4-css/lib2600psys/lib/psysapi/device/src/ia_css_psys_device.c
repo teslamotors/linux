@@ -16,6 +16,7 @@
 #include "ia_css_psys_device.h"
 #include "ia_css_psys_device_trace.h"
 #include "ia_css_psys_init.h"
+#include "regmem_access.h"
 
 #include <error_support.h>
 #include <print_support.h>
@@ -97,6 +98,7 @@ static void set_syscom_config(struct ia_css_syscom_config *config)
 	}
 	config->input = ia_css_psys_cmd_queue_cfg;
 	config->output = ia_css_psys_event_queue_cfg;
+	config->vtl0_addr_mask = 0;
 }
 
 struct ia_css_syscom_config *ia_css_psys_specify(void)
@@ -111,13 +113,14 @@ struct ia_css_syscom_config *ia_css_psys_specify(void)
 }
 
 #if HAS_DUAL_CMD_CTX_SUPPORT
-struct ia_css_syscom_config *ia_css_psys_specify_secure(void)
+struct ia_css_syscom_config *ia_css_psys_specify_secure(unsigned int vtl0_addr_mask)
 {
 	struct ia_css_syscom_config *config = &psys_syscom_config_secure;
 
-	IA_CSS_TRACE_0(PSYSAPI_DEVICE, INFO, "ia_css_psys_specify_secure(): enter:\n");
+	IA_CSS_TRACE_1(PSYSAPI_DEVICE, INFO, "ia_css_psys_specify_secure(mask %#x): enter:\n", vtl0_addr_mask);
 	set_syscom_config(config);
 	config->secure = true;
+	config->vtl0_addr_mask = vtl0_addr_mask;
 	return config;
 }
 #endif

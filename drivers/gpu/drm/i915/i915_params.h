@@ -59,6 +59,8 @@
 	func(unsigned long long, domain_plane_owners); \
 	func(unsigned int, bg_color); \
 	func(unsigned int, fpreempt_timeout); \
+	func(unsigned int, tsd_init); \
+	func(unsigned int, tsd_delay); \
 	/* leave bools at the end to not create holes */ \
 	func(bool, alpha_support); \
 	func(bool, enable_cmd_parser); \
@@ -74,7 +76,7 @@
 	func(bool, enable_dp_mst); \
 	func(bool, enable_dpcd_backlight); \
 	func(bool, enable_gvt); \
-	func(bool, enable_pvmmio); \
+	func(unsigned int, enable_pvmmio); \
 	func(bool, enable_gvt_oos); \
 	func(bool, enable_conformance_check); \
 	func(bool, disable_gvt_fw_loading); \

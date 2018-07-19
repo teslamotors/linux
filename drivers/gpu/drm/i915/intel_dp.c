@@ -6391,6 +6391,12 @@ intel_dp_init_connector(struct intel_digital_port *intel_dig_port,
 	    (port == PORT_B || port == PORT_C || port == PORT_D))
 		intel_dp_mst_encoder_init(intel_dig_port,
 					  intel_connector->base.base.id);
+	if (is_edp(intel_dp) &&
+	    connector->cmdline_mode.force == DRM_FORCE_OFF) {
+		intel_dp_aux_fini(intel_dp);
+		intel_dp_mst_encoder_cleanup(intel_dig_port);
+		goto fail;
+	}
 
 	if (!intel_edp_init_connector(intel_dp, intel_connector)) {
 		intel_dp_aux_fini(intel_dp);

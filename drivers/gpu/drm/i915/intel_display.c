@@ -13974,6 +13974,7 @@ static void intel_crtc_init_scalers(struct intel_crtc *crtc,
 		scaler->owned = 1;
 #if IS_ENABLED(CONFIG_DRM_I915_GVT)
 		if (!intel_vgpu_active(dev_priv) &&
+		    intel_gvt_active(dev_priv) &&
 		    dev_priv->gvt->pipe_info[crtc->pipe].scaler_owner[i] != 0)
 			scaler->owned = 0;
 #endif
@@ -14327,11 +14328,15 @@ static void intel_setup_outputs(struct drm_i915_private *dev_priv)
 		 * DDI_BUF_CTL_A or SFUSE_STRAP registers, find another way to
 		 * detect the ports.
 		 */
-		intel_ddi_init(dev_priv, PORT_A);
-		intel_ddi_init(dev_priv, PORT_B);
-		intel_ddi_init(dev_priv, PORT_C);
+		if (!(i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_A))
+			intel_ddi_init(dev_priv, PORT_A);
+		if (!(i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_B))
+			intel_ddi_init(dev_priv, PORT_B);
+		if (!(i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_C))
+			intel_ddi_init(dev_priv, PORT_C);
 
-		intel_dsi_init(dev_priv);
+		if (!(i915_modparams.tsd_init & TSD_INIT_DELAY_DSI))
+			intel_dsi_init(dev_priv);
 	} else if (HAS_DDI(dev_priv)) {
 		int found;
 
@@ -15212,9 +15217,10 @@ fail:
 
 static int intel_sanitize_plane_restriction(struct drm_i915_private *dev_priv)
 {
-	/*plane restriction feature is only for APL for now*/
-	if (!IS_BROXTON(dev_priv) ||
-	    !i915_modparams.enable_initial_modeset) {
+	/*plane restriction feature is only for APL and KBL for now*/
+	if (!(IS_BROXTON(dev_priv) || IS_KABYLAKE(dev_priv)) ||
+	    (!intel_vgpu_active(dev_priv) &&
+	     !i915_modparams.enable_initial_modeset)) {
 		i915_modparams.avail_planes_per_pipe = 0;
 		DRM_INFO("Turning off Plane Restrictions feature\n");
 	}
@@ -15311,7 +15317,7 @@ int intel_modeset_init(struct drm_device *dev)
 	}
 
 	for_each_pipe(dev_priv, pipe) {
-		int ret;
+		int ret = 0;
 
 		if (!i915_modparams.avail_planes_per_pipe) {
 			ret = intel_crtc_init(dev_priv, pipe);
@@ -15351,6 +15357,8 @@ int intel_modeset_init(struct drm_device *dev)
 		if (!crtc->active)
 			continue;
 
+		if (i915_modparams.tsd_init & TSD_INIT_SKIP_PLANE)
+			continue;
 		/*
 		 * Note that reserving the BIOS fb up front prevents us
 		 * from stuffing other stolen allocations like the ring

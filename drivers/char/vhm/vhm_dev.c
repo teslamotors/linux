@@ -176,6 +176,19 @@ static long vhm_dev_ioctl(struct file *filep,
 			return -EFAULT;
 
 		return 0;
+	} else if (ioctl_num == IC_PM_SET_SSTATE_DATA) {
+		struct acpi_sstate_data host_sstate_data;
+
+		if (copy_from_user(&host_sstate_data,
+			(void *)ioctl_param, sizeof(host_sstate_data)))
+			return -EFAULT;
+
+		ret = hcall_set_sstate_data(virt_to_phys(&host_sstate_data));
+		if (ret < 0) {
+			pr_err("vhm: failed to set host Sstate data!");
+			return -EFAULT;
+		}
+		return 0;
 	}
 
 	vm = (struct vhm_vm *)filep->private_data;

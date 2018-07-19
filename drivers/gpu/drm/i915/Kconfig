@@ -133,6 +133,16 @@ config DRM_I915_GVT_ACRN_GVT
           Choose this option if you want to enable ACRN_GVT support for
           Intel GVT-g under ACRN hypervisor environment.
 
+config DRM_I915_PCI_ROM_VBT
+	bool "Enable VBT lookup in PCI ROM"
+	depends on DRM_I915
+	default n
+	help
+	  This options enables VBT lookup in PCI ROM, otherwise VBT will
+	  be lookup only in ACPI OpRegion.
+
+	  If in doubt, say "N"
+
 menu "drm/i915 Debugging"
 depends on DRM_I915
 depends on EXPERT

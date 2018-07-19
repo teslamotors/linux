@@ -41,11 +41,12 @@
 #define IMX355_ANA_GAIN_DEFAULT		0
 
 /* Digital gain control */
-#define IMX355_REG_DIGITAL_GAIN		0x020e
-#define IMX355_DGTL_GAIN_MIN		0
-#define IMX355_DGTL_GAIN_MAX		3840
-#define IMX355_DGTL_GAIN_DEFAULT	256
+#define IMX355_REG_DPGA_USE_GLOBAL_GAIN	0x3070
+#define IMX355_REG_DIG_GAIN_GLOBAL	0x020e
+#define IMX355_DGTL_GAIN_MIN		256
+#define IMX355_DGTL_GAIN_MAX		4095
 #define IMX355_DGTL_GAIN_STEP		1
+#define IMX355_DGTL_GAIN_DEFAULT	256
 
 /* Test Pattern Control */
 #define IMX355_REG_TEST_PATTERN		0x0600
@@ -818,9 +819,9 @@ static const struct imx355_reg mode_820x616_regs[] = {
 
 static const char * const imx355_test_pattern_menu[] = {
 	"Disabled",
-	"Solid Color",
-	"Color Bars",
-	"Grey Color Bars",
+	"Solid color",
+	"100% color bars",
+	"Fade to gray color bars",
 	"PN9"
 };
 
@@ -1147,14 +1148,22 @@ static int imx355_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 static int imx355_update_digital_gain(struct imx355 *imx355, u32 d_gain)
 {
-	return imx355_write_reg(imx355, IMX355_REG_DIGITAL_GAIN,
+	int ret;
+
+	ret = imx355_write_reg(imx355, IMX355_REG_DPGA_USE_GLOBAL_GAIN,
+			       IMX355_REG_VALUE_08BIT, 1);
+	if (ret)
+		return ret;
+
+	/* Digital gain = (d_gain & 0xFF00) + (d_gain & 0xFF)/256 times */
+	return imx355_write_reg(imx355, IMX355_REG_DIG_GAIN_GLOBAL,
 				IMX355_REG_VALUE_16BIT, d_gain);
 }
 
 static int imx355_enable_test_pattern(struct imx355 *imx355, u32 pattern)
 {
 	return imx355_write_reg(imx355, IMX355_REG_TEST_PATTERN,
-				 IMX355_REG_VALUE_08BIT, pattern);
+				 IMX355_REG_VALUE_16BIT, pattern);
 }
 
 static int imx355_set_ctrl(struct v4l2_ctrl *ctrl)
@@ -1186,6 +1195,7 @@ static int imx355_set_ctrl(struct v4l2_ctrl *ctrl)
 	ret = 0;
 	switch (ctrl->id) {
 	case V4L2_CID_ANALOGUE_GAIN:
+		/* Analog gain = 1024/(1024 - ctrl->val) times */
 		ret = imx355_write_reg(imx355, IMX355_REG_ANALOG_GAIN,
 					IMX355_REG_VALUE_16BIT, ctrl->val);
 		break;

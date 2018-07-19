@@ -527,10 +527,9 @@ bool ipu_isys_subdev_has_route(struct media_entity *entity,
 		    ((asd->route[i].sink == pad0 &&
 		      asd->route[i].source == pad1) ||
 		     (asd->route[i].sink == pad1 &&
-		      asd->route[i].source == pad0))) {
+			  asd->route[i].source == pad0))) {
 			if (stream)
 				*stream = i;
-
 			return true;
 		}
 	}

@@ -207,6 +207,9 @@ static const struct v4l2_subdev_pad_ops tpg_sd_pad_ops = {
 };
 
 static struct v4l2_subdev_ops tpg_sd_ops = {
+#ifdef IPU_TPG_SOF
+	.core = &tpg_sd_core_ops,
+#endif
 	.video = &tpg_sd_video_ops,
 	.pad = &tpg_sd_pad_ops,
 };
@@ -254,6 +257,14 @@ int ipu_isys_tpg_init(struct ipu_isys_tpg *tpg,
 	if (rval)
 		return rval;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+	tpg->asd.sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
+#else
+	tpg->asd.sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
+#endif
+#ifdef IPU_TPG_SOF
+	tpg->asd.sd.flags |= V4L2_SUBDEV_FL_HAS_EVENTS;
+#endif
 	tpg->asd.pad[TPG_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 
 	tpg->asd.source = IPU_FW_ISYS_STREAM_SRC_MIPIGEN_PORT0 + index;

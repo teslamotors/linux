@@ -27,6 +27,64 @@
 #include "cpu_mem_support.h"
 #include "ia_css_bxt_spctrl_trace.h"
 
+#if HAS_DUAL_CMD_CTX_SUPPORT
+#define MAX_CLIENT_PGS 8 /* same as test_params.h */
+struct ia_css_process_group_context {
+	ia_css_process_group_t *pg;
+	bool secure;
+};
+struct ia_css_process_group_context pg_contexts[MAX_CLIENT_PGS];
+static unsigned int num_of_pgs;
+
+STORAGE_CLASS_INLINE
+struct ia_css_syscom_context *ia_css_process_group_get_context(ia_css_process_group_t *process_group)
+{
+	unsigned int i;
+	bool secure = false;
+
+	IA_CSS_TRACE_0(BXT_SPCTRL, INFO,
+		"ia_css_process_group_get_context(): enter:\n");
+
+	for (i = 0; i < num_of_pgs; i++) {
+		if (pg_contexts[i].pg == process_group) {
+			secure = pg_contexts[i].secure;
+			break;
+		}
+	}
+
+	IA_CSS_TRACE_1(BXT_SPCTRL, INFO,
+		"ia_css_process_group_get_context(): secure %d\n", secure);
+	return secure ? psys_syscom_secure : psys_syscom;
+}
+
+int ia_css_process_group_store(ia_css_process_group_t *process_group, bool secure)
+{
+	IA_CSS_TRACE_2(BXT_SPCTRL, INFO,
+		"ia_css_process_group_store(): pg instance %d secure %d\n", num_of_pgs, secure);
+
+	pg_contexts[num_of_pgs].pg     = process_group;
+	pg_contexts[num_of_pgs].secure = secure;
+	num_of_pgs++;
+	return 0;
+}
+#else /* HAS_DUAL_CMD_CTX_SUPPORT */
+STORAGE_CLASS_INLINE
+struct ia_css_syscom_context *ia_css_process_group_get_context(ia_css_process_group_t *process_group)
+{
+	NOT_USED(process_group);
+
+	return psys_syscom;
+}
+
+int ia_css_process_group_store(ia_css_process_group_t *process_group, bool secure)
+{
+	NOT_USED(process_group);
+	NOT_USED(secure);
+
+	return 0;
+}
+#endif /* HAS_DUAL_CMD_CTX_SUPPORT */
+
 int ia_css_process_group_on_create(
 	ia_css_process_group_t			*process_group,
 	const ia_css_program_group_manifest_t	*program_group_manifest,
@@ -102,7 +160,7 @@ int ia_css_process_group_exec_cmd(
 			"ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_DISOWN:\n");
 		verifexit(state == IA_CSS_PROCESS_GROUP_STARTED);
 
-		cmd_queue_full = ia_css_is_psys_cmd_queue_full(psys_syscom,
+		cmd_queue_full = ia_css_is_psys_cmd_queue_full(ia_css_process_group_get_context(process_group),
 					IA_CSS_PSYS_CMD_QUEUE_COMMAND_ID);
 		retval = EBUSY;
 		verifexit(cmd_queue_full == false);
@@ -113,7 +171,7 @@ int ia_css_process_group_exec_cmd(
 
 		verifexit(ia_css_process_group_print(process_group, NULL) == 0);
 
-		retval = ia_css_psys_cmd_queue_send(psys_syscom,
+		retval = ia_css_psys_cmd_queue_send(ia_css_process_group_get_context(process_group),
 				IA_CSS_PSYS_CMD_QUEUE_COMMAND_ID, &psys_cmd);
 		verifexit(retval > 0);
 		break;
@@ -122,7 +180,7 @@ int ia_css_process_group_exec_cmd(
 		IA_CSS_TRACE_0(BXT_SPCTRL, INFO,
 			"ia_css_process_group_exec_cmd(): IA_CSS_PROCESS_GROUP_CMD_STOP:\n");
 
-		cmd_queue_full = ia_css_is_psys_cmd_queue_full(psys_syscom,
+		cmd_queue_full = ia_css_is_psys_cmd_queue_full(ia_css_process_group_get_context(process_group),
 					IA_CSS_PSYS_CMD_QUEUE_COMMAND_ID);
 		retval = EBUSY;
 		verifexit(cmd_queue_full == false);
@@ -134,7 +192,7 @@ int ia_css_process_group_exec_cmd(
 		queue_id = ia_css_process_group_get_base_queue_id(process_group);
 		verifexit(queue_id < IA_CSS_N_PSYS_CMD_QUEUE_ID);
 
-		retval = ia_css_psys_cmd_queue_send(psys_syscom,
+		retval = ia_css_psys_cmd_queue_send(ia_css_process_group_get_context(process_group),
 				queue_id, &psys_cmd);
 		verifexit(retval > 0);
 		break;
@@ -148,7 +206,7 @@ int ia_css_process_group_exec_cmd(
 		 */
 		verifexit(state == IA_CSS_PROCESS_GROUP_BLOCKED);
 
-		cmd_queue_full = ia_css_is_psys_cmd_queue_full(psys_syscom,
+		cmd_queue_full = ia_css_is_psys_cmd_queue_full(ia_css_process_group_get_context(process_group),
 					IA_CSS_PSYS_CMD_QUEUE_COMMAND_ID);
 		retval = EBUSY;
 		verifexit(cmd_queue_full == false);
@@ -157,7 +215,7 @@ int ia_css_process_group_exec_cmd(
 		psys_cmd.msg = 0;
 		psys_cmd.context_handle = process_group->ipu_virtual_address;
 
-		retval = ia_css_psys_cmd_queue_send(psys_syscom,
+		retval = ia_css_psys_cmd_queue_send(ia_css_process_group_get_context(process_group),
 			IA_CSS_PSYS_CMD_QUEUE_DEVICE_ID, &psys_cmd);
 		verifexit(retval > 0);
 		break;
@@ -198,7 +256,7 @@ STORAGE_CLASS_INLINE int enqueue_buffer_set_cmd(
 		queue_offset;
 	verifexit(queue_id < IA_CSS_N_PSYS_CMD_QUEUE_ID);
 
-	cmd_queue_full = ia_css_is_psys_cmd_queue_full(psys_syscom, queue_id);
+	cmd_queue_full = ia_css_is_psys_cmd_queue_full(ia_css_process_group_get_context(process_group), queue_id);
 	retval = EBUSY;
 	verifexit(cmd_queue_full == false);
 
@@ -207,7 +265,7 @@ STORAGE_CLASS_INLINE int enqueue_buffer_set_cmd(
 	psys_cmd.context_handle =
 		ia_css_buffer_set_get_ipu_address(buffer_set);
 
-	retval = ia_css_psys_cmd_queue_send(psys_syscom, queue_id, &psys_cmd);
+	retval = ia_css_psys_cmd_queue_send(ia_css_process_group_get_context(process_group), queue_id, &psys_cmd);
 	verifexit(retval > 0);
 
 	retval = 0;

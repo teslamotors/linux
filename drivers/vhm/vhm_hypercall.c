@@ -87,6 +87,11 @@ inline long hcall_setup_sbuf(unsigned long sbuf_head)
 	return acrn_hypercall1(HC_SETUP_SBUF, sbuf_head);
 }
 
+inline long hcall_set_sstate_data(unsigned long sx_data_addr)
+{
+	return acrn_hypercall1(HC_PM_SET_SSTATE_DATA, sx_data_addr);
+}
+
 inline long hcall_get_cpu_state(unsigned long cmd, unsigned long state_pa)
 {
 	return acrn_hypercall2(HC_PM_GET_CPU_STATE, cmd, state_pa);

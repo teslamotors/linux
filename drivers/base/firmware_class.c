@@ -57,6 +57,7 @@ static bool fw_get_builtin_firmware(struct firmware *fw, const char *name,
 		if (strcmp(name, b_fw->name) == 0) {
 			fw->size = b_fw->size;
 			fw->data = b_fw->data;
+			fw->method = FW_LOAD_METHOD_BUILTIN;
 
 			if (buf && fw->size <= size)
 				memcpy(buf, fw->data, fw->size);
@@ -88,6 +89,97 @@ static inline bool fw_get_builtin_firmware(struct firmware *fw,
 }
 
 static inline bool fw_is_builtin_firmware(const struct firmware *fw)
+{
+	return false;
+}
+#endif
+
+/* Fast-load firmware support */
+
+#ifdef CONFIG_FASTBOOT_FW_LOAD
+
+static bool fw_search_cmdline(const char *name, size_t *size, phys_addr_t *addr)
+{
+	char str[20];	/* "0x" + 16 numerals + '\0'. Rounded to 20 */
+	char *p = saved_command_line;
+	char *p2 = NULL, *end;
+	size_t len;
+
+	/* search for FW name */
+	do {
+		p = strnstr(p, name, strlen(p));
+		if (!p)
+			return false;
+		p = p + strlen(name);		/* goto '=' ? */
+		if (*p == '=') {
+			p++;			/* goto size */
+			p2 = p;			/* backup start of size */
+		}
+	} while (!p2);
+
+	pr_debug("%s: fw-%s: detected in cmdline.\n", __func__, name);
+
+	end = strnchr(p, strlen(p), ' ');
+	if (!end)
+		end = p + strlen(p);
+
+	/* calc size */
+	p = strnchr(p, (end - p), '@');		/* goto end of size */
+	if (!p)
+		p = strnchr(p, (end - p), ',');
+		if (!p)
+			return false;
+	len = p - p2 + 1;
+	strlcpy(str, p2, len);
+	str[len] = '\0';
+
+	pr_debug("%s: fw-%s: size_str=%s\n", __func__, name, str);
+	if (kstrtoul(str, 0, size))		/* convert to unsigned */
+		return false;
+
+	/* calc addr */
+	p++;
+	len = end - p + 1;
+	strlcpy(str, p, len);
+	str[len] = '\0';
+
+	pr_debug("%s: fw-%s: addr_str=%s\n", __func__, name, str);
+	if (kstrtoull(str, 0, addr))		/* convert to u64 */
+		return false;
+
+	pr_debug("%s: fw-%s: size[0x%zu], addr[0x%llx]\n", __func__, name,
+			*size, *addr);
+
+	return true;
+}
+
+static bool fw_get_fast_load_firmware(struct firmware *fw, const char *name)
+{
+	size_t size = 0;
+	phys_addr_t p_addr = 0;
+	void *v_addr = NULL;
+
+	if (fw_search_cmdline(name, &size, &p_addr)) {
+
+		v_addr = ioremap(p_addr, size);
+		if (!v_addr) {
+			pr_err("%s: fw-%s: ioremap() failed.\n", __func__, name);
+			return false;
+		}
+
+		fw->size = size;
+		fw->data = v_addr;
+		fw->method = FW_LOAD_METHOD_FASTLOAD;
+		pr_debug("%s: fw-%s: size[0x%x]; addr[%p]\n", __func__, name, (unsigned) fw->size, fw->data);
+
+		return true;
+	}
+
+	pr_debug("%s: fw-%s: not found.\n", __func__, name);
+	return false;
+}
+#else
+static bool fw_get_fast_load_firmware(struct firmware *fw, const char *name)
 {
 	return false;
 }
@@ -1145,6 +1237,11 @@ _request_firmware_prepare(struct firmware **firmware_p, const char *name,
 		return -ENOMEM;
 	}
 
+	if (fw_get_fast_load_firmware(firmware, name)) {
+		dev_info(device, "using fast-load firmware %s\n", name);
+		return 0; /* loaded */
+	}
+
 	if (fw_get_builtin_firmware(firmware, name, dbuf, size)) {
 		dev_dbg(device, "using built-in %s\n", name);
 		return 0; /* assigned */
@@ -1157,6 +1254,9 @@ _request_firmware_prepare(struct firmware **firmware_p, const char *name,
 	 * of requesting firmware.
 	 */
 	firmware->priv = buf;
+
+	/* Set FW loading method to default (from file-system) */
+	firmware->method = FW_LOAD_METHOD_DEFAULT;
 
 	if (ret > 0) {
 		ret = fw_state_wait(&buf->fw_st);
@@ -1335,8 +1435,10 @@ EXPORT_SYMBOL(request_firmware_into_buf);
 void release_firmware(const struct firmware *fw)
 {
 	if (fw) {
-		if (!fw_is_builtin_firmware(fw))
+		if (fw->method == FW_LOAD_METHOD_DEFAULT)
 			firmware_free_data(fw);
+		else if (fw->method == FW_LOAD_METHOD_FASTLOAD)
+			iounmap((void __iomem *)fw->data);
 		kfree(fw);
 	}
 }

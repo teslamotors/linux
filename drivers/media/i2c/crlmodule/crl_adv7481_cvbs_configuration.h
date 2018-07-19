@@ -10,42 +10,37 @@
 
 #include "crlmodule-sensor-ds.h"
 
+/* Dummy write to prevent driver registration if ADV device is not available */
+static struct crl_register_write_rep adv7481_cvbs_onetime_init_regset[] = {
+	{0x0E, CRL_REG_LEN_08BIT, 0xFF, 0xE0}, /* LLC/PIX/AUD/SPI PINS TRISTATED */
+	{0x10, CRL_REG_LEN_08BIT, 0xC0, 0xE0}, /* Enable 1-Lane MIPI Tx,
+					enable pixel output and route SD through Pixel port */
+	{0x0F, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* Exit Power Down Mode */
+};
+
 static struct crl_register_write_rep adv7481_cvbs_powerup_regset[] = {
+	{0x10, CRL_REG_LEN_08BIT, 0xC0, 0xE0}, /* Enable 1-Lane MIPI Tx,
+					enable pixel output and route
+					SD through Pixel port */
 	{0x0E, CRL_REG_LEN_08BIT, 0xFF, 0xE0}, /* LLC/PIX/AUD/
 					SPI PINS TRISTATED */
 	{0x0F, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* Exit Power Down Mode */
-	{0x52, CRL_REG_LEN_08BIT, 0xC0, 0xF2}, /* ADI Required Write */
-	{0x00, CRL_REG_LEN_08BIT, 0x0E, 0xF2}, /* INSEL = CVBS in on Ain 1 */
+	{0x52, CRL_REG_LEN_08BIT, 0xCD, 0xF2}, /* ADI Required Write */
+	{0x00, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* INSEL = CVBS in on Ain 1 */
 	{0x0E, CRL_REG_LEN_08BIT, 0x80, 0xF2}, /* ADI Required Write */
 	{0x9C, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
 	{0x9C, CRL_REG_LEN_08BIT, 0xFF, 0xF2}, /* ADI Required Write */
 	{0x0E, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
-	{0x5A, CRL_REG_LEN_08BIT, 0x90, 0xF2}, /* ADI Required Write */
-	{0x60, CRL_REG_LEN_08BIT, 0xA0, 0xF2}, /* ADI Required Write */
-	{0x00, CRL_REG_LEN_DELAY, 0x19, 0x00}, /* Delay 25*/
-	{0x60, CRL_REG_LEN_08BIT, 0xB0, 0xF2}, /* ADI Required Write */
-	{0x5F, CRL_REG_LEN_08BIT, 0xA8, 0xF2},
-	{0x0E, CRL_REG_LEN_08BIT, 0x80, 0xF2}, /* ADI Required Write */
-	{0xB6, CRL_REG_LEN_08BIT, 0x08, 0xF2}, /* ADI Required Write */
-	{0xC0, CRL_REG_LEN_08BIT, 0xA0, 0xF2}, /* ADI Required Write */
-	{0xD9, CRL_REG_LEN_08BIT, 0x44, 0xF2},
-	{0x0E, CRL_REG_LEN_08BIT, 0x40, 0xF2},
-	{0xE0, CRL_REG_LEN_08BIT, 0x01, 0xF2}, /* Fast Lock enable*/
-	{0x0E, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
 	{0x80, CRL_REG_LEN_08BIT, 0x51, 0xF2}, /* ADI Required Write */
 	{0x81, CRL_REG_LEN_08BIT, 0x51, 0xF2}, /* ADI Required Write */
 	{0x82, CRL_REG_LEN_08BIT, 0x68, 0xF2}, /* ADI Required Write */
-	{0x03, CRL_REG_LEN_08BIT, 0x42, 0xF2}, /* Tri-S Output Drivers,
+	{0x03, CRL_REG_LEN_08BIT, 0x43, 0xF2}, /* Tri-S Output Drivers,
 					PwrDwn 656 pads */
 	{0x04, CRL_REG_LEN_08BIT, 0x07, 0xF2}, /* Power-up INTRQ pad,
 					& Enable SFL */
 	{0x13, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
 	{0x17, CRL_REG_LEN_08BIT, 0x41, 0xF2}, /* Select SH1 */
 	{0x31, CRL_REG_LEN_08BIT, 0x12, 0xF2}, /* ADI Required Write */
-	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x70, 0xE0, 0x70 },
-	 /* Enable 1-Lane MIPI Tx,
-					enable pixel output and route
-					SD through Pixel port */
 	{0x00, CRL_REG_LEN_08BIT, 0x81, 0x90}, /* Enable 1-lane MIPI */
 	{0x00, CRL_REG_LEN_08BIT, 0xA1, 0x90}, /* Set Auto DPHY Timing */
 	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* ADI Required Write */
@@ -56,8 +51,25 @@ static struct crl_register_write_rep adv7481_cvbs_powerup_regset[] = {
 	{0xF0, CRL_REG_LEN_08BIT, 0x00, 0x90}, /* i2c_dphy_pwdn - 1'b0 */
 	{0x31, CRL_REG_LEN_08BIT, 0x82, 0x90}, /* ADI Required Write */
 	{0x1E, CRL_REG_LEN_08BIT, 0xC0, 0x90}, /* ADI Required Write */
+
+	{0x0E, CRL_REG_LEN_08BIT, 0x80, 0xF2}, /* ADI Required Write */
+	{0xD9, CRL_REG_LEN_08BIT, 0x44, 0xF2}, /* ADI Required Write */
+	{0x0E, CRL_REG_LEN_08BIT, 0x40, 0xF2}, /* Select User Sub Map 2 */
+	{0xE0, CRL_REG_LEN_08BIT, 0x01, 0xF2}, /* Select fast Switching Mode */
+	{0x0E, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* Required Write */
 };
 
+static struct crl_register_write_rep adv7481_cvbs_mode_uyvy_regs[] = {
+	{0x0E, CRL_REG_LEN_08BIT, 0x80, 0xF2}, /* ADI Required Write */
+	{0xF9, CRL_REG_LEN_08BIT, 0xC0, 0xF2}, /* Do not swap Y and Cb/Cr components */
+	{0x0E, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
+};
+
+static struct crl_register_write_rep adv7481_cvbs_mode_yuyv_regs[] = {
+	{0x0E, CRL_REG_LEN_08BIT, 0x80, 0xF2}, /* ADI Required Write */
+	{0xF9, CRL_REG_LEN_08BIT, 0xC1, 0xF2}, /* Swap Y and Cb/Cr components */
+	{0x0E, CRL_REG_LEN_08BIT, 0x00, 0xF2}, /* ADI Required Write */
+};
 
 static struct crl_register_write_rep adv7481_cvbs_streamon_regs[] = {
 	{0xC1, CRL_REG_LEN_08BIT, 0x2B, 0x90}, /* ADI Required Write */
@@ -81,21 +93,21 @@ static struct crl_register_write_rep adv7481_cvbs_streamoff_regs[] = {
 
 static struct crl_pll_configuration adv7481_cvbs_pll_configurations[] = {
 	{
+		.input_clk = 24000000,
+		.op_sys_clk = 135000000,
+		.bitsperpixel = 16,
+		.pixel_rate_csi = 270000000,
+		.pixel_rate_pa = 270000000,
+		.csi_lanes = 1,
+	},
+	{
 		.input_clk = 286363636,
 		.op_sys_clk = 216000000,
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 27000000,
 		.pixel_rate_pa = 27000000,
 		.csi_lanes = 1,
-	 },
-	 {
-		.input_clk = 24000000,
-		.op_sys_clk = 130000000,
-		.bitsperpixel = 16,
-		.pixel_rate_csi = 130000000,
-		.pixel_rate_pa = 130000000,
-		.csi_lanes = 1,
-	 },
+	},
 };
 
 static struct crl_subdev_rect_rep adv7481_cvbs_ntsc_rects[] = {
@@ -138,11 +150,11 @@ static struct crl_mode_rep adv7481_cvbs_modes[] = {
 static struct crl_sensor_subdev_config adv7481_cvbs_sensor_subdevs[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
-		.name = "adv7481-cvbs binner",
+		.name = "adv7481 cvbs binner",
 	},
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
-		.name = "adv7481-cvbs pixel array",
+		.name = "adv7481 cvbs pixel array",
 	},
 };
 
@@ -170,6 +182,15 @@ static struct crl_csi_data_fmt adv7481_cvbs_crl_csi_data_fmt[] = {
 		.code = MEDIA_BUS_FMT_UYVY8_1X16,
 		.pixel_order = CRL_PIXEL_ORDER_GRBG,
 		.bits_per_pixel = 16,
+		.regs_items = ARRAY_SIZE(adv7481_cvbs_mode_uyvy_regs),
+                .regs = adv7481_cvbs_mode_uyvy_regs
+	},
+	{
+		.code = MEDIA_BUS_FMT_YUYV8_1X16,
+		.pixel_order = CRL_PIXEL_ORDER_GRBG,
+		.bits_per_pixel = 16,
+		.regs_items = ARRAY_SIZE(adv7481_cvbs_mode_yuyv_regs),
+                .regs = adv7481_cvbs_mode_yuyv_regs
 	},
 };
 
@@ -213,7 +234,9 @@ static struct crl_v4l2_ctrl adv7481_cvbs_v4l2_ctrls[] = {
 
 static struct crl_sensor_configuration adv7481_cvbs_crl_configuration = {
 
-	/* one time initialization is done by HDMI part */
+	/* full one time initialization is done by HDMI part */
+	.onetime_init_regs_items = ARRAY_SIZE(adv7481_cvbs_onetime_init_regset),
+	.onetime_init_regs = adv7481_cvbs_onetime_init_regset,
 
 	.powerup_regs_items = ARRAY_SIZE(adv7481_cvbs_powerup_regset),
 	.powerup_regs = adv7481_cvbs_powerup_regset,

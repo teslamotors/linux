@@ -1312,7 +1312,7 @@ static int pvinfo_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 				vgpu_vreg(vgpu, offset) = 0;
 				break;
 			}
-			vgpu_vreg(vgpu, offset) = !!data;
+			vgpu_vreg(vgpu, offset) = data & i915_modparams.enable_pvmmio;
 		} else {
 			vgpu_vreg(vgpu, offset) = 0;
 		}
@@ -1692,7 +1692,7 @@ static int elsp_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 
 	execlist = &vgpu->execlist[ring_id];
 
-	if (VGPU_PVMMIO(vgpu)) {
+	if (VGPU_PVMMIO(vgpu) & PVMMIO_ELSP_SUBMIT) {
 		execlist->elsp_dwords.data[0] = elsp_data[0];
 		execlist->elsp_dwords.data[1] = elsp_data[1];
 		execlist->elsp_dwords.data[2] = elsp_data[2];

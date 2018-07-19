@@ -523,6 +523,8 @@ struct crl_frame_desc {
 
 typedef int (*sensor_specific_init)(struct i2c_client *);
 typedef int (*sensor_specific_cleanup)(struct i2c_client *);
+typedef int (*sensor_specific_pm_suspend)(struct i2c_client *);
+typedef int (*sensor_specific_pm_resume)(struct i2c_client *);
 
 struct crl_sensor_configuration {
 
@@ -587,6 +589,8 @@ struct crl_sensor_configuration {
 
 	sensor_specific_init sensor_init;
 	sensor_specific_cleanup sensor_cleanup;
+	sensor_specific_pm_suspend sensor_pm_suspend;
+	sensor_specific_pm_resume sensor_pm_resume;
 	/*
 	 * Irq handlers for threaded irq. These are needed if driver need to
 	 * handle gpio interrupt. crl_threaded_irq_fn is then mandatory. Irq

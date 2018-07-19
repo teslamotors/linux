@@ -153,7 +153,12 @@ static int intel_lpss_debugfs_add(struct intel_lpss *lpss)
 
 	dir = debugfs_create_dir(dev_name(lpss->dev), intel_lpss_debugfs);
 	if (IS_ERR(dir))
-		return PTR_ERR(dir);
+		/* Don't complain -- debugfs just isn't enabled */
+		return 0;
+	if (!dir)
+		/* Complain -- debugfs is enabled, but it failed to
+		 * create the directory. */
+		return -ENOMEM;
 
 	/* Cache the values into lpss structure */
 	intel_lpss_cache_ltr(lpss);

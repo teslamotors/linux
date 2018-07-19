@@ -1,4 +1,4 @@
-// SPDX-LIcense_Identifier: GPL-2.0
+// SPDX-License_Identifier: GPL-2.0
 // Copyright (C) 2014 - 2018 Intel Corporation
 
 #include <linux/module.h>
@@ -40,6 +40,7 @@
 									\
 		rval;							\
 	})
+
 static int wrapper_init_done;
 
 int ipu_fw_isys_close(struct ici_isys *isys)
@@ -401,7 +402,6 @@ module_exit(library_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Intel ipu library");
-
 EXPORT_SYMBOL_GPL(ia_css_isys_device_open);
 EXPORT_SYMBOL_GPL(ia_css_isys_device_open_ready);
 EXPORT_SYMBOL_GPL(ia_css_isys_device_close);

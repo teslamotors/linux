@@ -1,18 +1,14 @@
 /*
- * tdf8532.h - Codec driver for NXP Semiconductors
- * Copyright (c) 2017, Intel Corporation.
+ * tdf8532.c  --  driver for NXP Semiconductors TDF8532
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * Copyright (C) 2017 Intel Corp.
  *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
+ * This program is free software; you can redistribute  it and/or modify it
+ * under  the terms of  the GNU General  Public License as published by the
+ * Free Software Foundation;  either version 2 of the  License, or (at your
+ * option) any later version.
+ *
  */
-
-
 #ifndef __TDF8532_H_
 #define __TDF8532_H_
 
@@ -42,6 +38,8 @@
 
 #define SET_CHNL_MUTE 0x42
 #define SET_CHNL_UNMUTE 0x43
+
+/* Get commands */
 
 struct header_repl {
 	u8 msg_type;
@@ -88,14 +86,23 @@ struct get_dev_status_repl {
 
 /* Helpers */
 #define CHNL_MASK(channels) (u8)((0x00FF << channels) >> 8)
-
+#define DUMMY 0
 #define tdf8532_amp_write(dev_data, ...)\
-	__tdf8532_single_write(dev_data, 0, AMP_MOD, __VA_ARGS__, END)
+	__tdf8532_single_write(dev_data, 0, DUMMY, AMP_MOD, __VA_ARGS__, END)
+#define tdf8532_amp_write_check_err(dev_data, ...)\
+	__tdf8532_single_write(dev_data, 1, DUMMY, AMP_MOD, __VA_ARGS__, END)
+#define tdf8532_wait_state(dev_data, state, tm)\
+	__tdf8532_wait_state(dev_data, state, tm, 0)
+
+#define tdf8532_wait_state_or_higher(dev_data, state, tm)\
+	__tdf8532_wait_state(dev_data, state, tm, 1)
+
 
 struct tdf8532_priv {
 	struct i2c_client *i2c;
 	u8 channels;
 	u8 pkt_id;
+	u8 sw_major;
 };
 
 #endif

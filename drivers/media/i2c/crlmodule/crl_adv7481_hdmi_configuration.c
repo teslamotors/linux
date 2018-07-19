@@ -22,6 +22,9 @@
 #define ADV7481_CABLE_DET_A_ST		0x40
 #define ADV7481_V_LOCKED_A_ST		0x02
 #define ADV7481_DE_REGEN_A_ST		0x01
+#define ADV7481_TMDSPLL_LCK_A_ST 	0x80
+#define ADV7481_TMDS_CLK_A_ST 		0x08
+#define ADV7481_NEW_AVI_INFO_ST 	0x01
 
 struct crl_adv7481_hdmi {
 	unsigned int in_hot_plug_reset;
@@ -30,6 +33,7 @@ struct crl_adv7481_hdmi {
 	int hdmi_res_interlaced;
 	int hdmi_cable_connected;
 	struct delayed_work work;
+	struct delayed_work edid_work;
 	struct mutex hot_plug_reset_lock;
 	struct i2c_client *client;
 };
@@ -68,6 +72,78 @@ struct v4l2_adv7481_bcaps {
 			__u8 hdmi_reserved:1;
 		};
 	};
+};
+
+static struct crl_register_write_rep adv7481_hdmi_edid_regset[] = {
+	{0x70, CRL_REG_LEN_08BIT, 0xA0, 0x64}, /* Write primary edid size */
+	{0x74, CRL_REG_LEN_08BIT, 0x01, 0x64}, /* Enable manual edid */
+	{0x7A, CRL_REG_LEN_08BIT, 0x00, 0x64}, /* Write edid sram select */
+	{0xF6, CRL_REG_LEN_08BIT, 0x6C, 0xE0}, /* Write edid map bus address */
+
+	{0x00*4, CRL_REG_LEN_32BIT, 0x00FFFFFF, 0x6C}, /* EDID programming */
+	{0x01*4, CRL_REG_LEN_32BIT, 0xFFFFFF00, 0x6C}, /* EDID programming */
+	{0x02*4, CRL_REG_LEN_32BIT, 0x4DD90100, 0x6C}, /* EDID programming */
+	{0x03*4, CRL_REG_LEN_32BIT, 0x00000000, 0x6C}, /* EDID programming */
+	{0x04*4, CRL_REG_LEN_32BIT, 0x00110103, 0x6C}, /* EDID programming */
+	{0x05*4, CRL_REG_LEN_32BIT, 0x80000078, 0x6C}, /* EDID programming */
+	{0x06*4, CRL_REG_LEN_32BIT, 0x0A0DC9A0, 0x6C}, /* EDID programming */
+	{0x07*4, CRL_REG_LEN_32BIT, 0x57479827, 0x6C}, /* EDID programming */
+	{0x08*4, CRL_REG_LEN_32BIT, 0x12484C00, 0x6C}, /* EDID programming */
+	{0x09*4, CRL_REG_LEN_32BIT, 0x00000101, 0x6C}, /* EDID programming */
+	{0x0A*4, CRL_REG_LEN_32BIT, 0x01010101, 0x6C}, /* EDID programming */
+	{0x0B*4, CRL_REG_LEN_32BIT, 0x01010101, 0x6C}, /* EDID programming */
+	{0x0C*4, CRL_REG_LEN_32BIT, 0x01010101, 0x6C}, /* EDID programming */
+	{0x0D*4, CRL_REG_LEN_32BIT, 0x0101011D, 0x6C}, /* EDID programming */
+	{0x0E*4, CRL_REG_LEN_32BIT, 0x80D0721C, 0x6C}, /* EDID programming */
+	{0x0F*4, CRL_REG_LEN_32BIT, 0x1620102C, 0x6C}, /* EDID programming */
+	{0x10*4, CRL_REG_LEN_32BIT, 0x2580C48E, 0x6C}, /* EDID programming */
+	{0x11*4, CRL_REG_LEN_32BIT, 0x2100009E, 0x6C}, /* EDID programming */
+	{0x12*4, CRL_REG_LEN_32BIT, 0x011D8018, 0x6C}, /* EDID programming */
+	{0x13*4, CRL_REG_LEN_32BIT, 0x711C1620, 0x6C}, /* EDID programming */
+	{0x14*4, CRL_REG_LEN_32BIT, 0x582C2500, 0x6C}, /* EDID programming */
+	{0x15*4, CRL_REG_LEN_32BIT, 0xC48E2100, 0x6C}, /* EDID programming */
+	{0x16*4, CRL_REG_LEN_32BIT, 0x009E0000, 0x6C}, /* EDID programming */
+	{0x17*4, CRL_REG_LEN_32BIT, 0x00FC0048, 0x6C}, /* EDID programming */
+	{0x18*4, CRL_REG_LEN_32BIT, 0x444D4920, 0x6C}, /* EDID programming */
+	{0x19*4, CRL_REG_LEN_32BIT, 0x4C4C430A, 0x6C}, /* EDID programming */
+	{0x1A*4, CRL_REG_LEN_32BIT, 0x20202020, 0x6C}, /* EDID programming */
+	{0x1B*4, CRL_REG_LEN_32BIT, 0x000000FD, 0x6C}, /* EDID programming */
+	{0x1C*4, CRL_REG_LEN_32BIT, 0x003B3D0F, 0x6C}, /* EDID programming */
+	{0x1D*4, CRL_REG_LEN_32BIT, 0x2D08000A, 0x6C}, /* EDID programming */
+	{0x1E*4, CRL_REG_LEN_32BIT, 0x20202020, 0x6C}, /* EDID programming */
+	{0x1F*4, CRL_REG_LEN_32BIT, 0x202001C1, 0x6C}, /* EDID programming */
+	{0x20*4, CRL_REG_LEN_32BIT, 0x02031E77, 0x6C}, /* EDID programming */
+	{0x21*4, CRL_REG_LEN_32BIT, 0x4F941305, 0x6C}, /* EDID programming */
+	{0x22*4, CRL_REG_LEN_32BIT, 0x03040201, 0x6C}, /* EDID programming */
+	{0x23*4, CRL_REG_LEN_32BIT, 0x16150706, 0x6C}, /* EDID programming */
+	{0x24*4, CRL_REG_LEN_32BIT, 0x1110121F, 0x6C}, /* EDID programming */
+	{0x25*4, CRL_REG_LEN_32BIT, 0x23090701, 0x6C}, /* EDID programming */
+	{0x26*4, CRL_REG_LEN_32BIT, 0x65030C00, 0x6C}, /* EDID programming */
+	{0x27*4, CRL_REG_LEN_32BIT, 0x10008C0A, 0x6C}, /* EDID programming */
+	{0x28*4, CRL_REG_LEN_32BIT, 0xD0902040, 0x6C}, /* EDID programming */
+	{0x29*4, CRL_REG_LEN_32BIT, 0x31200C40, 0x6C}, /* EDID programming */
+	{0x2A*4, CRL_REG_LEN_32BIT, 0x5500138E, 0x6C}, /* EDID programming */
+	{0x2B*4, CRL_REG_LEN_32BIT, 0x21000018, 0x6C}, /* EDID programming */
+	{0x2C*4, CRL_REG_LEN_32BIT, 0x011D00BC, 0x6C}, /* EDID programming */
+	{0x2D*4, CRL_REG_LEN_32BIT, 0x52D01E20, 0x6C}, /* EDID programming */
+	{0x2E*4, CRL_REG_LEN_32BIT, 0xB8285540, 0x6C}, /* EDID programming */
+	{0x2F*4, CRL_REG_LEN_32BIT, 0xC48E2100, 0x6C}, /* EDID programming */
+	{0x30*4, CRL_REG_LEN_32BIT, 0x001E8C0A, 0x6C}, /* EDID programming */
+	{0x31*4, CRL_REG_LEN_32BIT, 0xD08A20E0, 0x6C}, /* EDID programming */
+	{0x32*4, CRL_REG_LEN_32BIT, 0x2D10103E, 0x6C}, /* EDID programming */
+	{0x33*4, CRL_REG_LEN_32BIT, 0x9600C48E, 0x6C}, /* EDID programming */
+	{0x34*4, CRL_REG_LEN_32BIT, 0x21000018, 0x6C}, /* EDID programming */
+	{0x35*4, CRL_REG_LEN_32BIT, 0x011D0072, 0x6C}, /* EDID programming */
+	{0x36*4, CRL_REG_LEN_32BIT, 0x51D01E20, 0x6C}, /* EDID programming */
+	{0x37*4, CRL_REG_LEN_32BIT, 0x6E285500, 0x6C}, /* EDID programming */
+	{0x38*4, CRL_REG_LEN_32BIT, 0xC48E2100, 0x6C}, /* EDID programming */
+	{0x39*4, CRL_REG_LEN_32BIT, 0x001E8C0A, 0x6C}, /* EDID programming */
+	{0x3A*4, CRL_REG_LEN_32BIT, 0xD08A20E0, 0x6C}, /* EDID programming */
+	{0x3B*4, CRL_REG_LEN_32BIT, 0x2D10103E, 0x6C}, /* EDID programming */
+	{0x3C*4, CRL_REG_LEN_32BIT, 0x9600138E, 0x6C}, /* EDID programming */
+	{0x3D*4, CRL_REG_LEN_32BIT, 0x21000018, 0x6C}, /* EDID programming */
+	{0x3E*4, CRL_REG_LEN_32BIT, 0x00000000, 0x6C}, /* EDID programming */
+	{0x3F*4, CRL_REG_LEN_32BIT, 0x000000CB, 0x6C}, /* EDID programming */
 };
 
 static int adv_i2c_write(struct i2c_client *client,
@@ -394,6 +470,50 @@ static ssize_t adv_bstatus_show(struct device *dev,
 }
 static DEVICE_ATTR(bstatus, S_IRUGO, adv_bstatus_show, NULL);
 
+static void adv_program_edid(struct work_struct *work)
+{
+	struct crl_adv7481_hdmi *adv7481_hdmi
+		= container_of(work, struct crl_adv7481_hdmi, edid_work.work);
+	struct i2c_client *client = adv7481_hdmi->client;
+	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
+	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
+	u32 rval;
+
+	rval = crlmodule_write_regs(sensor, adv7481_hdmi_edid_regset, ARRAY_SIZE(adv7481_hdmi_edid_regset));
+	if (rval)
+		dev_err(&client->dev, "%s failed to program edid\n", __func__);
+}
+
+/* Checks whether free run should be enabled */
+static bool crl_adv7481_check_free_run(struct i2c_client *client)
+{
+	u32 raw_value;
+	u32 mask;
+	u32 ret;
+
+	mask = ADV7481_CABLE_DET_A_ST |
+	       ADV7481_TMDSPLL_LCK_A_ST |
+	       ADV7481_TMDS_CLK_A_ST |
+	       ADV7481_V_LOCKED_A_ST |
+	       ADV7481_DE_REGEN_A_ST;
+
+	ret = adv_i2c_read(client, 0xE0, 0x71, &raw_value);
+
+	/* Check CABLE_DET, TMDSPLL_LCK, TMDS_CLK,
+	 * V_LOCKED and DE_REGEN status */
+	if (ret || mask != (raw_value & mask))
+		return true;
+
+	/* Check AVI INFO status */
+	ret = adv_i2c_read(client, 0xE0, 0x67, &raw_value);
+
+	if (ret || 0 == (raw_value & ADV7481_NEW_AVI_INFO_ST))
+		return true;
+
+	/* Signal is valid, free run can be disabled */
+	return false;
+}
+
 irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 {
 	struct crl_sensor *sensor = sensor_struct;
@@ -403,20 +523,16 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 	u32 raw_value;
 	u32 temp[3];
 	int ret = 0;
-	struct crl_register_read_rep reg;
 	struct crl_adv7481_hdmi *adv7481_hdmi;
 
 	adv7481_hdmi = sensor->sensor_specific_data;
-	reg.address = 0x90;
-	reg.len = CRL_REG_LEN_08BIT;
-	reg.mask = 0xFF;
-	reg.dev_i2c_addr = 0xE0;
 
 	dev_dbg(&client->dev, "%s\n", __func__);
 
 	if (!adv7481_hdmi)
 		return IRQ_HANDLED;
 
+repeat:
 	/* AKSV_UPDATE_A_ST: check interrupt status */
 	ret = adv_i2c_read(client, 0xE0, 0x90, &interrupt_st);
 
@@ -430,6 +546,24 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 
 		/* Clear interrupt bit */
 		ret = adv_i2c_write(client, 0xE0, 0x91, 0x08);
+        }
+
+	/* Check interrupt status for AVI_INFO_RAW_ST */
+	ret = adv_i2c_read(client, 0xE0, 0x68, &interrupt_st);
+	if (interrupt_st) {
+		ret = adv_i2c_read(client, 0xE0, 0x67, &raw_value);
+		if (interrupt_st & ADV7481_NEW_AVI_INFO_ST) {
+			ret = adv_i2c_write(client, 0xE0, 0x69, ADV7481_NEW_AVI_INFO_ST);
+			if (raw_value & ADV7481_NEW_AVI_INFO_ST) {
+				dev_dbg(&client->dev,
+					"%s: ADV7481 ISR: NEW AVI info\n",
+					__func__);
+			} else {
+				dev_dbg(&client->dev,
+					"%s: ADV7481 ISR: No AVI info\n",
+					__func__);
+			}
+		}
 	}
 
 	/*
@@ -449,14 +583,14 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 	/* Check CABLE_DET_A_ST interrupt */
 	if ((interrupt_st & ADV7481_CABLE_DET_A_ST)) {
 		/* Clear interrupt bit */
-		ret = adv_i2c_write(client, 0xE0, 0x73, 0x40);
+		ret = adv_i2c_write(client, 0xE0, 0x73, ADV7481_CABLE_DET_A_ST);
 
 		/* HDMI cable is connected */
 		if (raw_value & ADV7481_CABLE_DET_A_ST) {
 			dev_dbg(&client->dev,
 				"%s: ADV7481 ISR: HDMI cable connected\n",
 				__func__);
-			ret = adv_i2c_write(client, 0xE0, 0x10, 0xA1);
+			ret = adv_i2c_write(client, 0xE0, 0x10, 0xC0);
 		} else {
 			dev_dbg(&client->dev,
 				"%s: ADV7481 ISR: HDMI cable disconnected\n",
@@ -464,10 +598,36 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 		}
 	}
 
+	if ((interrupt_st & ADV7481_TMDSPLL_LCK_A_ST)) {
+		ret = adv_i2c_write(client, 0xE0, 0x73, ADV7481_TMDSPLL_LCK_A_ST);
+		if (raw_value & ADV7481_TMDSPLL_LCK_A_ST) {
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: TMDS PLL locked\n",
+				__func__);
+		} else {
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: TMDS PLL lock lost\n",
+				__func__);
+		}
+	}
+
+	if ((interrupt_st & ADV7481_TMDS_CLK_A_ST)) {
+		ret = adv_i2c_write(client, 0xE0, 0x73, ADV7481_TMDS_CLK_A_ST);
+		if (raw_value & ADV7481_TMDS_CLK_A_ST) {
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: TMDS CLK locked\n",
+				__func__);
+		} else {
+			dev_dbg(&client->dev,
+				"%s: ADV7481 ISR: TMDS CLK lock lost\n",
+				__func__);
+		}
+	}
+
 	/* Check V_LOCKED_A_ST interrupt */
 	if ((interrupt_st & ADV7481_V_LOCKED_A_ST)) {
 		/* Clear interrupt bit */
-		ret = adv_i2c_write(client, 0xE0, 0x73, 0x02);
+		ret = adv_i2c_write(client, 0xE0, 0x73, ADV7481_V_LOCKED_A_ST);
 		/* Vertical sync filter has been locked,
 		  * resolution height can be read
 		  */
@@ -475,8 +635,6 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 			dev_dbg(&client->dev,
 				"%s: ADV7481 ISR: Vertical Sync Filter Locked\n",
 				__func__);
-			reg.dev_i2c_addr = 0x68; /* HDMI_RX_MAP; */
-			reg.address = 0x09;
 			adv_i2c_read(client, 0x68, 0x09, &temp[0]);
 			adv_i2c_read(client, 0x68, 0x0A, &temp[1]);
 			adv_i2c_read(client, 0x68, 0x0B, &temp[2]);
@@ -502,7 +660,7 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 			}
 		} else {
 			dev_dbg(&client->dev,
-				"%s: ADV7481 ISR: Vertical Sync Filte Lost\n",
+				"%s: ADV7481 ISR: Vertical Sync Filter Lost\n",
 				__func__);
 			adv7481_hdmi->hdmi_res_height = 0;
 			/* Notify user space about losing resolution */
@@ -516,7 +674,7 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 	/* Check DE_REGEN_A_ST interrupt */
 	if ((interrupt_st & ADV7481_DE_REGEN_A_ST)) {
 		/* Clear interrupt bit */
-		ret = adv_i2c_write(client, 0xE0, 0x73, 0x01);
+		ret = adv_i2c_write(client, 0xE0, 0x73, ADV7481_DE_REGEN_A_ST);
 
 		/* DE regeneration has been locked,
 		  * resolution height can be read
@@ -525,8 +683,6 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 			dev_dbg(&client->dev,
 				"%s: ADV7481 ISR: DE Regeneration Locked\n",
 				__func__);
-			reg.dev_i2c_addr = 0x68; /* HDMI_RX_MAP; */
-			reg.address = 0x07;
 			adv_i2c_read(client, 0x68, 0x07, &temp[0]);
 			adv_i2c_read(client, 0x68, 0x08, &temp[1]);
 
@@ -551,6 +707,24 @@ irqreturn_t crl_adv7481_threaded_irq_fn(int irq, void *sensor_struct)
 			}
 		}
 	}
+
+	if (crl_adv7481_check_free_run(client)) {
+		/* Enable free run */
+		adv_i2c_write(client, 0x44, 0xBA, 0x23);
+	} else {
+		/* Disable free run */
+		adv_i2c_write(client, 0x44, 0xBA, 0x21);
+	}
+
+	/* Check if in meantime ADV hasn't triggered new interrupts */
+	adv_i2c_read(client, 0xE0, 0x90, &temp[0]);
+	adv_i2c_read(client, 0xE0, 0x68, &temp[1]);
+	adv_i2c_read(client, 0xE0, 0x72, &temp[2]);
+
+	if (temp[0] || temp[1] || temp[2]) {
+		goto repeat;
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -582,10 +756,23 @@ int adv7481_sensor_init(struct i2c_client *client)
 		return -ENOMEM;
 
 	sensor->sensor_specific_data = adv7481_hdmi;
+	/* This is not nice but unitl IPU will not parse
+ 	 * IRQ GPIO details out of sensor ACPI entry
+ 	 * that is only way to make IRQ working
+ 	 */
+	if (sensor->platform_data->crl_irq_pin == 0) {
+		sensor->platform_data->crl_irq_pin = 456;
+		sensor->platform_data->irq_pin_flags = (IRQF_TRIGGER_RISING | IRQF_ONESHOT);
+		strncpy(sensor->platform_data->irq_pin_name, "ADV7481_HDMI_IRQ", 16);
+	}
+
 	adv7481_hdmi->client = client;
 	mutex_init(&adv7481_hdmi->hot_plug_reset_lock);
 	INIT_DELAYED_WORK(&adv7481_hdmi->work, adv_hpa_assert);
 	dev_dbg(&client->dev, "%s ADV7481_sensor_init\n", __func__);
+
+	INIT_DELAYED_WORK(&adv7481_hdmi->edid_work, adv_program_edid);
+	schedule_delayed_work(&adv7481_hdmi->edid_work, 0);
 
 	return sysfs_create_group(&client->dev.kobj, &adv7481_attr_group);
 
@@ -611,5 +798,18 @@ int adv7481_sensor_cleanup(struct i2c_client *client)
 	cancel_delayed_work_sync(&adv7481_hdmi->work);
 
 	sysfs_remove_group(&client->dev.kobj, &adv7481_attr_group);
+	return 0;
+}
+
+int adv7481_sensor_pm_resume(struct i2c_client *client)
+{
+	struct crl_adv7481_hdmi *adv7481_hdmi;
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
+	struct crl_sensor *sensor = ssd->sensor;
+
+	adv7481_hdmi = sensor->sensor_specific_data;
+
+	schedule_delayed_work(&adv7481_hdmi->edid_work, 0);
 	return 0;
 }

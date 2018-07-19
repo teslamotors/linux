@@ -207,6 +207,36 @@ u32 dwc3_core_fifo_space(struct dwc3_ep *dep, u8 type)
 }
 
 /**
+ * WORKAROUND: We let BIOS issues the core soft reset to Device
+ * controller for Intel Apollo Lake, via _DSM method.
+ *
+ * The issue is, if core soft reset is issued while Intel Apollo Lake
+ * USB mux is in Host role mode, it takes close to 7 minutes before
+ * we are able to switch USB mux from Host mode to Device mode.
+ */
+static int dwc3_pci_dsm_soft_reset(struct device *dev)
+{
+	guid_t			guid;
+	int			ret = -ETIMEDOUT;
+	union acpi_object	*obj;
+
+	guid_parse("732b85d5-b7a7-4a1b-9ba0-4bbd00ffd511", &guid);
+
+	obj = acpi_evaluate_dsm(ACPI_HANDLE(dev), &guid, 1, 6, NULL);
+	if (!obj) {
+		dev_err(dev, "failed to evaluate _DSM\n");
+		return -EIO;
+	}
+
+	if (obj->type == ACPI_TYPE_INTEGER)
+		ret = (obj->integer.value == 0) ? 0 : -ETIMEDOUT;
+	dev_dbg(dev, "dwc3_pci_dsm_soft_reset() ret= %d\n", ret);
+
+	ACPI_FREE(obj);
+	return ret;
+}
+
+/**
  * dwc3_core_soft_reset - Issues core soft reset and PHY reset
  * @dwc: pointer to our context structure
  */
@@ -235,6 +265,11 @@ static int dwc3_core_soft_reset(struct dwc3 *dwc)
 	 */
 	if (dwc->dr_mode == USB_DR_MODE_HOST)
 		return 0;
+
+	if (dwc->has_dsm_for_softreset) {
+		dev_dbg(dwc->dev, "calling dwc3_pci_dsm_soft_reset()");
+		return dwc3_pci_dsm_soft_reset(dwc->dev);
+	}
 
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	reg |= DWC3_DCTL_CSFTRST;
@@ -1088,6 +1123,9 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 				    &dwc->hsphy_interface);
 	device_property_read_u32(dev, "snps,quirk-frame-length-adjustment",
 				 &dwc->fladj);
+
+	dwc->has_dsm_for_softreset = device_property_read_bool(dev,
+				"has_dsm_for_softreset");
 
 	dwc->lpm_nyet_threshold = lpm_nyet_threshold;
 	dwc->tx_de_emphasis = tx_de_emphasis;

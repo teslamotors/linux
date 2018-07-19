@@ -1036,7 +1036,7 @@ static int isys_probe(struct ipu_bus_device *adev)
 	trace_printk("B|%d|TMWK\n", current->pid);
 
 	/* Has the domain been attached? */
-	if (!mmu || !isp->pkg_dir_dma_addr) {
+	if (!mmu) {
 		trace_printk("E|TMWK\n");
 		return -EPROBE_DEFER;
 	}
@@ -1346,6 +1346,10 @@ int isys_isr_one(struct ipu_bus_device *adev)
 
 		break;
 	case IPU_FW_ISYS_RESP_TYPE_FRAME_SOF:
+#ifdef IPU_TPG_SOF
+		if (pipe->tpg)
+			ipu_isys_tpg_sof_event(pipe->tpg);
+#endif
 		pipe->seq[pipe->seq_index].sequence =
 		    atomic_read(&pipe->sequence) - 1;
 		pipe->seq[pipe->seq_index].timestamp = ts;

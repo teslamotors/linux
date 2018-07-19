@@ -1410,9 +1410,7 @@ int ici_isys_stream_init(
 
 	as->strm_dev.ipu_ioctl_ops = &ioctl_ops_mplane_ici;
 
-	rval = ici_isys_frame_buf_init(&as->buf_list);
-	if (rval)
-		goto out_init_fail;
+	ici_isys_frame_buf_init(&as->buf_list);
 
 	as->pad.flags = pad_flags | ICI_PAD_FLAGS_MUST_CONNECT;
 	snprintf(name, sizeof(name),
@@ -1422,8 +1420,10 @@ int ici_isys_stream_init(
 	if (rval)
 		goto out_init_fail;
 
-	as->strm_format.ffmt =
-		*__ici_isys_subdev_get_ffmt(asd, pad);
+	if (__ici_isys_subdev_get_ffmt(asd, pad))
+		as->strm_format.ffmt =
+			*__ici_isys_subdev_get_ffmt(asd, pad);
+
 	as->node.sd = as;
 	as->node.pipe = &as->ip.pipe;
 	as->node.node_get_pad_ffmt =

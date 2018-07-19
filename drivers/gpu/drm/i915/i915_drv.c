@@ -673,7 +673,12 @@ static int i915_load_modeset_init(struct drm_device *dev)
 	if (ret)
 		goto cleanup_irq;
 
-	intel_uc_init_fw(dev_priv);
+	/*
+	 * ANDROID: we cannot attempt to load the fw here, the filesystem
+	 * where our bin files are located won't be mounted until much
+	 * later.
+	 * intel_uc_init_fw(dev_priv);
+	 */
 
 	ret = i915_gem_init(dev_priv);
 	if (ret)
@@ -1254,7 +1259,9 @@ static void i915_driver_register(struct drm_i915_private *dev_priv)
 	/* Reveal our presence to userspace */
 	if (drm_dev_register(dev, 0) == 0) {
 		i915_debugfs_register(dev_priv);
-		i915_guc_log_register(dev_priv);
+		/* ANDROID: we defered the guc log registration */
+		if (dev_priv->contexts_ready)
+			i915_guc_log_register(dev_priv);
 		i915_setup_sysfs(dev_priv);
 
 		/* Depends on sysfs having been initialized */
@@ -1289,6 +1296,41 @@ static void i915_driver_register(struct drm_i915_private *dev_priv)
 		intel_fbdev_initial_config_async(dev);
 }
 
+/*
+ * Do delayed driver initialization.
+ *
+ * What's delayed is controlled by the tsd_init module parameter bitmask
+ * with the following bits defined:
+ *
+ * Delay global gtt non-preallocated init        - 0x01
+ * Delay driver registration (acpi_video_driver) - 0x02
+ * Skip registering the GMBUS MISC pin           - 0x04
+ * Delay ddi port A initialization               - 0x10
+ * Delay ddi port B initialization               - 0x20
+ * Delay ddi port C initialization               - 0x40
+ * Delay mipip dsi initialization                - 0x80
+ */
+static void tsd_delayed_init(struct work_struct *work)
+{
+	struct drm_i915_private *dev_priv =
+		container_of(work, typeof(*dev_priv), tsd_init.work);
+
+	if (i915_modparams.tsd_init & TSD_INIT_DELAY_REGISTER)
+		i915_driver_register(dev_priv);
+
+	if (i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_A)
+		intel_ddi_init(dev_priv, PORT_A);
+	if (i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_B)
+		intel_ddi_init(dev_priv, PORT_B);
+	if (i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_C)
+		intel_ddi_init(dev_priv, PORT_C);
+	if (i915_modparams.tsd_init & TSD_INIT_DELAY_DSI)
+		intel_dsi_init(dev_priv);
+
+	/* We'd like to never get called again can we just do */
+	i915_modparams.tsd_init = 0;
+}
+
 /**
  * i915_driver_unregister - cleanup the registration done in i915_driver_regiser()
  * @dev_priv: device private
@@ -1319,8 +1361,7 @@ static inline int get_max_avail_pipes(struct drm_i915_private *dev_priv)
 	int index = 0;
 
 	if (!intel_vgpu_active(dev_priv) ||
-	    !i915_modparams.avail_planes_per_pipe ||
-	    !i915_modparams.enable_initial_modeset)
+	    !i915_modparams.avail_planes_per_pipe)
 		return INTEL_INFO(dev_priv)->num_pipes;
 
 	for_each_pipe(dev_priv, pipe) {
@@ -1412,7 +1453,8 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (ret < 0)
 		goto out_cleanup_hw;
 
-	i915_driver_register(dev_priv);
+	if (!(i915_modparams.tsd_init & TSD_INIT_DELAY_REGISTER))
+		i915_driver_register(dev_priv);
 
 	intel_runtime_pm_enable(dev_priv);
 
@@ -1424,6 +1466,16 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 		DRM_INFO("DRM_I915_DEBUG_GEM enabled\n");
 
 	intel_runtime_pm_put(dev_priv);
+
+	/* Schedule TSD specific delayed intitializations */
+	INIT_DELAYED_WORK(&dev_priv->tsd_init, tsd_delayed_init);
+	if (i915_modparams.tsd_init) {
+		schedule_delayed_work(&dev_priv->tsd_init,
+				      msecs_to_jiffies(i915_modparams.tsd_delay));
+	}
+
+	printk(KERN_INFO "IOTG i915 driver 2018y-07m-03d-15h-02m-12s -0700\n");
+	printk(KERN_INFO "40 patches carried on top of PK commit bf856bde\n");
 
 	return 0;
 

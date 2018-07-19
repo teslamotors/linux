@@ -3049,6 +3049,15 @@ static int crl_request_gpio_irq(struct crl_sensor *sensor)
 	return rval;
 }
 
+static void crl_release_gpio_irq(struct crl_sensor *sensor)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
+	int irq_pin = sensor->platform_data->crl_irq_pin;
+
+	devm_free_irq(&client->dev, sensor->irq, sensor);
+	devm_gpio_free(&client->dev, irq_pin);
+}
+
 static int crlmodule_registered(struct v4l2_subdev *subdev)
 {
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
@@ -3066,15 +3075,6 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 	if (pm_runtime_get_sync(&client->dev) < 0) {
 		rval = -ENODEV;
 		goto out;
-	}
-
-	/* init GPIO IRQ */
-	if (sensor->sensor_ds->irq_in_use == true) {
-		rval = crl_request_gpio_irq(sensor);
-		if (rval) {
-			rval = -ENODEV;
-			goto out;
-		}
 	}
 
 	/* one time init */
@@ -3100,6 +3100,14 @@ static int crlmodule_registered(struct v4l2_subdev *subdev)
 			goto out;
 		}
 	}
+
+	/* init GPIO IRQ, after sensor specific inti */
+	if (sensor->sensor_ds->irq_in_use == true) {
+		rval = crl_request_gpio_irq(sensor);
+		if (rval)
+			goto out;
+	}
+
 	/* Identify the module */
 	rval = crlmodule_identify_module(subdev);
 	if (rval) {
@@ -3349,6 +3357,13 @@ static int crlmodule_suspend(struct device *dev)
 	if (sensor->power_count > 0)
 		crlmodule_undo_poweron_entities(sensor,
 					sensor->sensor_ds->power_items - 1);
+
+	if (sensor->sensor_ds->irq_in_use == true)
+		crl_release_gpio_irq(sensor);
+
+	if (sensor->sensor_ds->sensor_pm_suspend)
+		sensor->sensor_ds->sensor_pm_suspend(client);
+
 	return 0;
 }
 
@@ -3360,8 +3375,18 @@ static int crlmodule_resume(struct device *dev)
 	struct crl_sensor *sensor = ssd->sensor;
 	int rval = 0;
 
+	rval = crlmodule_write_regs(sensor, sensor->sensor_ds->onetime_init_regs,
+			    sensor->sensor_ds->onetime_init_regs_items);
+	
+	if (!rval && sensor->sensor_ds->irq_in_use == true)
+		rval = crl_request_gpio_irq(sensor);
+
+	if (!rval && sensor->sensor_ds->sensor_pm_resume)
+		rval = sensor->sensor_ds->sensor_pm_resume(client);
+
 	if (sensor->power_count > 0) {
-		rval = __crlmodule_powerup_sequence(sensor);
+		if (!rval)
+			rval = __crlmodule_powerup_sequence(sensor);
 		if (!rval)
 			rval = crlmodule_run_poweron_init(sensor);
 	}

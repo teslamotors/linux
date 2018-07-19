@@ -12,8 +12,6 @@
 #define ISYS_MMID 1
 #define PSYS_MMID 0
 
-struct pci_dev;
-
 /*
  * @pgtbl: virtual address of the l1 page table (one page)
  */

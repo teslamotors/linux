@@ -9,6 +9,12 @@
 #define FW_ACTION_NOHOTPLUG 0
 #define FW_ACTION_HOTPLUG 1
 
+enum fw_load_method {
+	FW_LOAD_METHOD_DEFAULT,
+	FW_LOAD_METHOD_BUILTIN,
+	FW_LOAD_METHOD_FASTLOAD
+};
+
 struct firmware {
 	size_t size;
 	const u8 *data;
@@ -16,6 +22,7 @@ struct firmware {
 
 	/* firmware loader private fields */
 	void *priv;
+	enum fw_load_method method;
 };
 
 struct module;
