@@ -32,7 +32,7 @@ int sof_bes_setup(struct device *dev, struct snd_sof_dsp_ops *ops,
 
 		links[i].id = i;
 		links[i].no_pcm = 1;
-		links[i].cpu_dai_name = ops->dai_drv->drv[i].name;
+		links[i].cpu_dai_name = ops->drv[i].name;
 		links[i].platform_name = "sof-audio";
 		links[i].codec_dai_name = "snd-soc-dummy-dai";
 		links[i].codec_name = "snd-soc-dummy";
