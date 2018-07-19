@@ -305,6 +305,9 @@
 #define HDA_DSP_MAX_BDL_ENTRIES			\
 	(HDA_DSP_BDL_SIZE / sizeof(struct sof_intel_dsp_bdl))
 
+/* Number of DAIs */
+#define SOF_SKL_NUM_DAIS		14
+
 struct sof_intel_dsp_bdl {
 	u32 addr_l;
 	u32 addr_h;
@@ -495,7 +498,7 @@ int hda_dsp_trace_release(struct snd_sof_dev *sdev);
 int hda_dsp_trace_trigger(struct snd_sof_dev *sdev, int cmd);
 
 /* common dai driver */
-extern struct snd_sof_dai_drv hda_dai_drv;
+extern struct snd_soc_dai_driver skl_dai[];
 
 /*
  * Platform Specific HW abstraction Ops.

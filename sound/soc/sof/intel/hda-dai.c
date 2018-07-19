@@ -20,7 +20,7 @@
  * some products who use this DAI array only physically have a subset of
  * the DAIs, but no harm is done here by adding the whole set.
  */
-static struct snd_soc_dai_driver skl_dai[] = {
+struct snd_soc_dai_driver skl_dai[] = {
 {
 	.name = "SSP0 Pin",
 	.playback = SOF_DAI_STREAM("ssp0 Tx", 1, 8,
@@ -111,9 +111,4 @@ static struct snd_soc_dai_driver skl_dai[] = {
 },
 };
 
-struct snd_sof_dai_drv hda_dai_drv = {
-	.drv = skl_dai,
-	.num_drv = ARRAY_SIZE(skl_dai)
-};
-EXPORT_SYMBOL(hda_dai_drv);
 
