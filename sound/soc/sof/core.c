@@ -8,6 +8,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#include <linux/pm_runtime.h>
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -330,6 +331,14 @@ static int sof_probe(struct platform_device *pdev)
 		dev_warn(sdev->dev,
 			 "warning: failed to initialize trace %d\n", ret);
 	}
+
+	/* autosuspend sof device */
+	pm_runtime_mark_last_busy(sdev->dev);
+	pm_runtime_put_autosuspend(sdev->dev);
+
+	/* autosuspend pci/acpi/spi device */
+	pm_runtime_mark_last_busy(plat_data->dev);
+	pm_runtime_put_autosuspend(plat_data->dev);
 
 	return 0;
 
