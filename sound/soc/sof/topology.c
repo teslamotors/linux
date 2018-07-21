@@ -1129,6 +1129,9 @@ static int sof_widget_load_pga(struct snd_soc_component *scomp, int index,
 	/* get volume control */
 	scontrol = sm->dobj.private;
 
+	/* set cmd for pga kcontrol */
+	scontrol->cmd = SOF_CTRL_CMD_VOLUME;
+
 	/* get topology tlv data */
 	p = kc->tlv.p;
 
