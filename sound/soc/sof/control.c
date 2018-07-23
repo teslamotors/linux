@@ -169,7 +169,7 @@ int snd_sof_bytes_get(struct snd_kcontrol *kcontrol,
 				  SOF_CTRL_TYPE_DATA_GET, scontrol->cmd);
 	size = data->size + sizeof(*data);
 	if (size > be->max) {
-		dev_err(sdev->dev, "error: DSP sent %ld bytes max is %d\n",
+		dev_err(sdev->dev, "error: DSP sent %zu bytes max is %d\n",
 			size, be->max);
 		ret = -EINVAL;
 		goto out;
