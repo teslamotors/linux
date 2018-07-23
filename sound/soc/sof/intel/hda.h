@@ -119,7 +119,7 @@
 #define HDA_DSP_DRSM_BAR			3
 #define HDA_DSP_BAR				4
 
-#define SRAM_WINDOW_OFFSET(x)			(0x80000 + x * 0x20000)
+#define SRAM_WINDOW_OFFSET(x)			(0x80000 + (x) * 0x20000)
 
 #define HDA_DSP_MBOX_OFFSET			SRAM_WINDOW_OFFSET(0)
 
@@ -266,7 +266,7 @@
  * Mask for a given number of cores
  * nc = number of supported cores
  */
-#define SOF_DSP_CORES_MASK(nc)	GENMASK((nc - 1), 0)
+#define SOF_DSP_CORES_MASK(nc)	GENMASK(((nc) - 1), 0)
 
 /* Intel HD Audio Inter-Processor Communication Registers for Cannonlake*/
 #define CNL_DSP_IPC_BASE		0xc0
