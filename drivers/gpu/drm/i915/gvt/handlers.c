@@ -743,6 +743,60 @@ static int spr_surf_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 	return 0;
 }
 
+static int skl_plane_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
+		void *p_data, unsigned int bytes);
+static int skl_ps_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
+		void *p_data, unsigned int bytes);
+
+static void pvmmio_update_plane_register(struct intel_vgpu *vgpu,
+	unsigned int pipe, unsigned int plane)
+{
+	struct pv_plane_update *pv_plane = &vgpu->mmio.shared_page->pv_plane;
+
+	/* null function for PLANE_COLOR_CTL, PLANE_AUX_DIST, PLANE_AUX_OFFSET,
+	 * and SKL_PS_PWR_GATE register trap
+	 */
+
+	if (pv_plane->flags & PLANE_KEY_BIT) {
+		skl_plane_mmio_write(vgpu,
+			i915_mmio_reg_offset(PLANE_KEYVAL(pipe, plane)),
+			&pv_plane->plane_key_val, 4);
+		skl_plane_mmio_write(vgpu,
+			i915_mmio_reg_offset(PLANE_KEYMAX(pipe, plane)),
+			&pv_plane->plane_key_max, 4);
+		skl_plane_mmio_write(vgpu,
+			i915_mmio_reg_offset(PLANE_KEYMSK(pipe, plane)),
+			&pv_plane->plane_key_msk, 4);
+	}
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_OFFSET(pipe, plane)),
+		&pv_plane->plane_offset, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_STRIDE(pipe, plane)),
+		&pv_plane->plane_stride, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_SIZE(pipe, plane)),
+		&pv_plane->plane_size, 4);
+
+	if (pv_plane->flags & PLANE_SCALER_BIT) {
+		skl_ps_mmio_write(vgpu,
+			i915_mmio_reg_offset(SKL_PS_CTRL(pipe, plane)),
+			&pv_plane->ps_ctrl, 4);
+		skl_ps_mmio_write(vgpu,
+			i915_mmio_reg_offset(SKL_PS_WIN_POS(pipe, plane)),
+			&pv_plane->ps_win_ps, 4);
+		skl_ps_mmio_write(vgpu,
+			i915_mmio_reg_offset(SKL_PS_WIN_SZ(pipe, plane)),
+			&pv_plane->ps_win_sz, 4);
+	}
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_POS(pipe, plane)),
+		&pv_plane->plane_pos, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_CTL(pipe, plane)),
+		&pv_plane->plane_ctl, 4);
+}
+
 static int skl_plane_surf_write(struct intel_vgpu *vgpu, unsigned int offset,
 		void *p_data, unsigned int bytes)
 {
@@ -751,6 +805,10 @@ static int skl_plane_surf_write(struct intel_vgpu *vgpu, unsigned int offset,
 	unsigned int plane = SKL_PLANE_REG_TO_PLANE(offset);
 	i915_reg_t reg_1ac = _MMIO(_REG_701AC(pipe, plane));
 	int flip_event = SKL_FLIP_EVENT(pipe, plane);
+
+	/* plane disable is not pv and it is indicated by value 0 */
+	if (*(u32 *)p_data != 0 && VGPU_PVMMIO(vgpu) & PVMMIO_PLANE_UPDATE)
+		pvmmio_update_plane_register(vgpu, pipe, plane);
 
 	write_vreg(vgpu, offset, p_data, bytes);
 	vgpu_vreg(vgpu, reg_1ac) = vgpu_vreg(vgpu, offset);
