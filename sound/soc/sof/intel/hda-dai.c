@@ -110,5 +110,3 @@ struct snd_soc_dai_driver skl_dai[] = {
 				   SNDRV_PCM_RATE_8000_192000, SKL_FORMATS),
 },
 };
-
-
