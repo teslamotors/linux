@@ -248,7 +248,7 @@ static int sof_control_load_volume(struct snd_soc_component *scomp,
 	struct sof_ipc_ctrl_data *cdata;
 
 	/* validate topology data */
-	if (le32_to_cpu(mc->num_channels) >= SND_SOC_TPLG_MAX_CHAN)
+	if (le32_to_cpu(mc->num_channels) > SND_SOC_TPLG_MAX_CHAN)
 		return -EINVAL;
 
 	/* init the volume get/put data */
