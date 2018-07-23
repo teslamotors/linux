@@ -73,6 +73,7 @@ static ssize_t sof_dfsentry_trace_read(struct file *file, char __user *buffer,
 	unsigned long rem;
 	loff_t lpos = *ppos;
 	size_t avail, buffer_size = dfse->size;
+	u64 lpos_64;
 
 	/* make sure we know about any failures on the DSP side */
 	sdev->dtrace_error = false;
@@ -84,7 +85,9 @@ static ssize_t sof_dfsentry_trace_read(struct file *file, char __user *buffer,
 		return 0;
 
 	/* check for buffer wrap and count overflow */
-	lpos = lpos % buffer_size;
+	lpos_64 = lpos;
+	lpos = do_div(lpos_64, buffer_size);
+
 	if (count > buffer_size - lpos)
 		count = buffer_size - lpos;
 
