@@ -275,7 +275,7 @@ struct sof_ipc_dai_dmic_params {
 struct sof_ipc_dai_config {
 	struct sof_ipc_hdr hdr;
 	enum sof_ipc_dai_type type;
-	uint32_t id;	/* physical number if more than 1 of this type */
+	uint32_t dai_index; /* index of this type dai */
 
 	/* physical protocol and clocking */
 	uint16_t format;	/* SOF_DAI_FMT_ */
@@ -600,7 +600,7 @@ struct sof_ipc_comp_dai {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	enum sof_ipc_stream_direction direction;
-	uint32_t index;
+	uint32_t dai_index; /* index of this type dai */
 	enum sof_ipc_dai_type type;
 	uint32_t dmac_config; /* DMA engine specific */
 }  __attribute__((packed));
