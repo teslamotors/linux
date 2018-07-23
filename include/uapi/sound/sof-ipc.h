@@ -252,6 +252,7 @@ struct sof_ipc_dai_dmic_pdm_ctrl {
 	uint16_t polarity_mic_b; /* Optionally invert mic B signal (0 or 1) */
 	uint16_t clk_edge; /* Optionally swap data clock edge (0 or 1) */
 	uint16_t skew; /* Adjust PDM data sampling vs. clock (0..15) */
+	uint16_t pad; /* Make sure the total size is 4 bytes aligned */
 } __attribute__((packed));
 
 /* DMIC Configuration Request - SOF_IPC_DAI_DMIC_CONFIG */
@@ -765,6 +766,7 @@ struct sof_ipc_fw_version {
 	uint8_t date[12];
 	uint8_t time[10];
 	uint8_t tag[6];
+	uint8_t pad[2]; /* Make sure the total size is 4 bytes aligned */
 } __attribute__((packed));
 
 /* FW ready Message - sent by firmware when boot has completed */
