@@ -774,12 +774,12 @@ static int acrngt_map_gfn_to_mfn(unsigned long handle, unsigned long gfn,
 		gfn, mfn, nr, map);
 
 	if (map)
-		ret = set_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
+		ret = add_memory_region(info->vm_id, gfn << PAGE_SHIFT,
 					mfn << PAGE_SHIFT, nr << PAGE_SHIFT,
 					MEM_TYPE_UC, MEM_ACCESS_RWX);
 	else
-		ret = unset_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
-					mfn << PAGE_SHIFT, nr << PAGE_SHIFT);
+		ret = del_memory_region(info->vm_id, gfn << PAGE_SHIFT,
+					nr << PAGE_SHIFT);
 	if (ret)
 		gvt_err("failed map/unmap gfn 0x%lx to mfn 0x%lx with %u pages,"
 			" map %d\n", gfn, mfn, nr, map);
@@ -866,7 +866,7 @@ static int acrngt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 		}
 
 		/* shared page is not trapped, directly pass through */
-		rc = set_mmio_map(info->vm_id,
+		rc = add_memory_region(info->vm_id,
 				(pfn + mmio_size_fn) << PAGE_SHIFT,
 				shared_mfn << PAGE_SHIFT, 0x1000,
 				MEM_TYPE_WB, MEM_ACCESS_RWX);

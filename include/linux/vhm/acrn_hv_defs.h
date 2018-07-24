@@ -93,9 +93,8 @@
 
 /* Guest memory management */
 #define HC_ID_MEM_BASE              0x40UL
-#define HC_VM_SET_MEMMAP            _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x00)
 #define HC_VM_GPA2HPA               _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x01)
-#define HC_VM_SET_MEMMAPS           _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x02)
+#define HC_VM_SET_MEMORY_REGIONS    _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x02)
 #define HC_VM_WRITE_PROTECT_PAGE    _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x03)
 
 /* PCI assignment*/
@@ -133,43 +132,25 @@
 #define	MEM_TYPE_WP                     0x00000400
 #define MEM_TYPE_MASK                   0x000007C0
 
-struct vm_set_memmap {
-#define MAP_MEM		0
-#define MAP_UNMAP	2
+struct vm_memory_region {
+#define MR_ADD		0
+#define MR_DEL		2
 	uint32_t type;
 
 	/* IN: mem attr */
 	uint32_t prot;
 
 	/* IN: beginning guest GPA to map */
-	uint64_t remote_gpa;
+	uint64_t gpa;
 
 	/* IN: VM0's GPA which foreign gpa will be mapped to */
 	uint64_t vm0_gpa;
 
-	/* IN: length of the range */
-	uint64_t length;
-
-	uint32_t prot_2;
+	/* IN: size of the region */
+	uint64_t size;
 } __attribute__((aligned(8)));
 
-struct memory_map {
-	uint32_t type;
-
-	/* IN: mem attr */
-	uint32_t prot;
-
-	/* IN: beginning guest GPA to map */
-	uint64_t remote_gpa;
-
-	/* IN: VM0's GPA which foreign gpa will be mapped to */
-	uint64_t vm0_gpa;
-
-	/* IN: length of the range */
-	uint64_t length;
-} __attribute__((aligned(8)));
-
-struct set_memmaps {
+struct set_regions {
 	/*IN: vmid for this hypercall */
 	uint16_t vmid;
 
@@ -177,14 +158,14 @@ struct set_memmaps {
 	uint16_t reserved[3];
 
 	/* IN: multi memmaps numbers */
-	uint32_t memmaps_num;
+	uint32_t mr_num;
 
 	/* IN:
 	 * the gpa of memmaps buffer, point to the memmaps array:
 	 *  	struct memory_map memmap_array[memmaps_num]
 	 * the max buffer size is one page.
 	 */
-	uint64_t memmaps_gpa;
+	uint64_t regions_gpa;
 } __attribute__((aligned(8)));
 
 struct wp_data {

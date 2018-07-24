@@ -102,14 +102,9 @@ inline long hcall_get_cpu_state(unsigned long cmd, unsigned long state_pa)
 	return acrn_hypercall2(HC_PM_GET_CPU_STATE, cmd, state_pa);
 }
 
-inline long hcall_set_memmap(unsigned long vmid, unsigned long memmap)
+inline long hcall_set_memory_regions(unsigned long pa_regions)
 {
-	return acrn_hypercall2(HC_VM_SET_MEMMAP, vmid, memmap);
-}
-
-inline long hcall_set_memmaps(unsigned long pa_memmaps)
-{
-	return acrn_hypercall1(HC_VM_SET_MEMMAPS, pa_memmaps);
+	return acrn_hypercall1(HC_VM_SET_MEMORY_REGIONS, pa_regions);
 }
 
 inline long hcall_write_protect_page(unsigned long vmid, unsigned long wp)

@@ -102,56 +102,59 @@ static bool _free_memblk(struct device *dev, u64 vm0_gpa, size_t len)
 	return dma_release_from_contiguous(dev, page, count);
 }
 
-int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len,
-	unsigned int mem_type, unsigned int mem_access_right,
-	unsigned int type)
+static int set_memory_region(unsigned long vmid,
+		struct vm_memory_region *region)
 {
-	struct vm_set_memmap set_memmap;
+	struct set_regions regions;
 
-	set_memmap.type = type;
-	set_memmap.remote_gpa = guest_gpa;
-	set_memmap.vm0_gpa = host_gpa;
-	set_memmap.length = len;
-	set_memmap.prot = set_memmap.prot_2 = ((mem_type & MEM_TYPE_MASK) |
-			(mem_access_right & MEM_ACCESS_RIGHT_MASK));
+	regions.vmid = vmid;
+	regions.mr_num = 1;
+	regions.regions_gpa = virt_to_phys(region);
 
-	/* hypercall to notify hv the guest EPT setting*/
-	if (hcall_set_memmap(vmid,
-			virt_to_phys(&set_memmap)) < 0) {
-		pr_err("vhm: failed to set memmap %ld!\n", vmid);
+	if (set_memory_regions(&regions) < 0) {
+		pr_err("vhm: failed to set memory region for vm[%ld]!\n", vmid);
 		return -EFAULT;
 	}
-
-	pr_debug("VHM: set ept for mem map[type=0x%x, host_gpa=0x%lx,"
-		"guest_gpa=0x%lx,len=0x%lx, prot=0x%x]\n",
-		type, host_gpa, guest_gpa, len, set_memmap.prot);
 
 	return 0;
 }
 
-int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len,
+int add_memory_region(unsigned long vmid, unsigned long gpa,
+	unsigned long host_gpa, unsigned long size,
 	unsigned int mem_type, unsigned mem_access_right)
 {
-	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
-		mem_type, mem_access_right, MAP_MEM);
+	struct vm_memory_region region;
+
+	region.type = MR_ADD;
+	region.gpa = gpa;
+	region.vm0_gpa = host_gpa;
+	region.size = size;
+	region.prot = ((mem_type & MEM_TYPE_MASK) |
+			(mem_access_right & MEM_ACCESS_RIGHT_MASK));
+	return set_memory_region(vmid, &region);
 }
 
-int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len)
+int del_memory_region(unsigned long vmid, unsigned long gpa,
+	unsigned long size)
 {
-	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
-		0, 0,  MAP_UNMAP);
+	struct vm_memory_region region;
+
+	region.type = MR_DEL;
+	region.gpa = gpa;
+	region.vm0_gpa = 0;
+	region.size = size;
+	region.prot = 0;
+
+	return set_memory_region(vmid, &region);
 }
 
-int set_memmaps(struct set_memmaps *memmaps)
+int set_memory_regions(struct set_regions *regions)
 {
-	if (memmaps == NULL)
+	if (regions == NULL)
 		return -EINVAL;
-	if (memmaps->memmaps_num > 0) {
-		if (hcall_set_memmaps(virt_to_phys(memmaps)) < 0) {
-			pr_err("vhm: failed to set memmaps!\n");
+	if (regions->mr_num > 0) {
+		if (hcall_set_memory_regions(virt_to_phys(regions)) < 0) {
+			pr_err("vhm: failed to set memory regions!\n");
 			return -EFAULT;
 		}
 	}
@@ -184,10 +187,6 @@ int write_protect_page(unsigned long vmid,
 
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 {
-	unsigned int type;
-	unsigned int mem_type, mem_access_right;
-	unsigned long guest_gpa, host_gpa;
-
 	/* hugetlb use vma to do the mapping */
 	if (memmap->type == VM_MEMMAP_SYSMEM && memmap->using_vma)
 		return hugepage_map_guest(vm, memmap);
@@ -198,15 +197,11 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 			__func__, memmap->type);
 		return -EINVAL;
 	}
-	guest_gpa = memmap->gpa;
-	host_gpa = acrn_hpa2gpa(memmap->hpa);
-	mem_type = MEM_TYPE_UC;
-	mem_access_right = (memmap->prot & MEM_ACCESS_RIGHT_MASK);
-	type = MAP_MEM;
 
-	if (_mem_set_memmap(vm->vmid, guest_gpa, host_gpa, memmap->len,
-		mem_type, mem_access_right, type) < 0) {
-		pr_err("vhm: failed to set memmap %ld!\n", vm->vmid);
+	if (add_memory_region(vm->vmid, memmap->gpa,
+			acrn_hpa2gpa(memmap->hpa), memmap->len,
+			MEM_TYPE_UC, memmap->prot) < 0){
+		pr_err("vhm: failed to set memory region %ld!\n", vm->vmid);
 		return -EFAULT;
 	}
 
@@ -233,8 +228,8 @@ int init_trusty(struct vhm_vm *vm)
 
 	pr_info("VHM: set ept for trusty memory [host_gpa=0x%lx, "
 		"guest_gpa=0x%lx, len=0x%lx]", host_gpa, guest_gpa, len);
-	return _mem_set_memmap(vm->vmid, guest_gpa, host_gpa, len,
-		MEM_TYPE_WB, MEM_ACCESS_RWX, MAP_MEM);
+	return add_memory_region(vm->vmid, guest_gpa, host_gpa, len,
+		MEM_TYPE_WB, MEM_ACCESS_RWX);
 }
 
 void deinit_trusty(struct vhm_vm *vm)
