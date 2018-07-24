@@ -77,9 +77,9 @@ inline long hcall_pause_vm(unsigned long vmid)
 	return acrn_hypercall1(HC_PAUSE_VM, vmid);
 }
 
-inline long hcall_restart_vm(unsigned long vmid)
+inline long hcall_reset_vm(unsigned long vmid)
 {
-	return acrn_hypercall1(HC_RESTART_VM, vmid);
+	return acrn_hypercall1(HC_RESET_VM, vmid);
 }
 
 inline long hcall_destroy_vm(unsigned long vmid)

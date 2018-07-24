@@ -222,6 +222,14 @@ static long vhm_dev_ioctl(struct file *filep,
 
 		vm->vmid = created_vm.vmid;
 
+		if (created_vm.vm_flag & SECURE_WORLD_ENABLED) {
+			ret = init_trusty(vm);
+			if (ret < 0) {
+				pr_err("vhm: failed to init trusty for VM!\n");
+				return ret;
+			}
+		}
+
 		pr_info("vhm: VM %d created\n", created_vm.vmid);
 		break;
 	}
@@ -244,8 +252,8 @@ static long vhm_dev_ioctl(struct file *filep,
 		break;
 	}
 
-	case IC_RESTART_VM: {
-		ret = hcall_restart_vm(vm->vmid);
+	case IC_RESET_VM: {
+		ret = hcall_reset_vm(vm->vmid);
 		if (ret < 0) {
 			pr_err("vhm: failed to restart VM %ld!\n", vm->vmid);
 			return -EFAULT;
@@ -254,6 +262,8 @@ static long vhm_dev_ioctl(struct file *filep,
 	}
 
 	case IC_DESTROY_VM: {
+		if (vm->trusty_host_gpa)
+			deinit_trusty(vm);
 		ret = hcall_destroy_vm(vm->vmid);
 		if (ret < 0) {
 			pr_err("failed to destroy VM %ld\n", vm->vmid);
