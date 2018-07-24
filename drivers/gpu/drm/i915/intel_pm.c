@@ -4751,6 +4751,42 @@ static void skl_write_wm_level(struct drm_i915_private *dev_priv,
 	I915_WRITE(reg, val);
 }
 
+static void skl_pv_write_plane_wm(struct intel_crtc *intel_crtc,
+				const struct skl_plane_wm *wm,
+				const struct skl_ddb_allocation *ddb,
+				enum plane_id plane_id)
+{
+	int i, level;
+	struct pv_plane_wm_update tmp_plane_wm;
+	struct drm_i915_private *dev_priv = to_i915(intel_crtc->base.dev);
+	int max_level = ilk_wm_max_level(dev_priv);
+	u32 __iomem *pv_plane_wm = (u32 *)&(dev_priv->shared_page->pv_plane_wm);
+	enum pipe pipe = intel_crtc->pipe;
+	const struct skl_ddb_entry *entry;
+
+	memset(&tmp_plane_wm, 0, sizeof(struct pv_plane_wm_update));
+	tmp_plane_wm.max_wm_level = max_level;
+	for (level = 0; level <= max_level; level++) {
+		tmp_plane_wm.plane_wm_level[level] =
+			skl_calc_wm_level(&wm->wm[level]);
+	}
+	tmp_plane_wm.plane_trans_wm_level = skl_calc_wm_level(&wm->trans_wm);
+
+	entry = &ddb->plane[pipe][plane_id];
+	if (entry->end)
+		tmp_plane_wm.plane_buf_cfg =
+			(entry->end - 1) << 16 | entry->start;
+	else
+		tmp_plane_wm.plane_buf_cfg = 0;
+
+	spin_lock(&dev_priv->shared_page_lock);
+	for (i = 0; i < sizeof(struct pv_plane_wm_update) / 4; i++)
+		writel(*((u32 *)(&tmp_plane_wm) + i), pv_plane_wm + i);
+	skl_ddb_entry_write(dev_priv, PLANE_NV12_BUF_CFG(pipe, plane_id),
+			    &ddb->y_plane[pipe][plane_id]);
+	spin_unlock(&dev_priv->shared_page_lock);
+}
+
 static void skl_write_plane_wm(struct intel_crtc *intel_crtc,
 			       const struct skl_plane_wm *wm,
 			       const struct skl_ddb_allocation *ddb,
@@ -4765,6 +4801,19 @@ static void skl_write_plane_wm(struct intel_crtc *intel_crtc,
 	struct intel_gvt *gvt = dev_priv->gvt;
 	struct intel_dom0_plane_regs *dom0_regs = NULL;
 #endif
+
+	if (intel_vgpu_active(dev_priv)) {
+		/*
+		 * when plane restriction feature is enabled,
+		 * sos trap handlers for plane wm related registers are null
+		 */
+		if (i915_modparams.avail_planes_per_pipe)
+			return;
+
+		if (i915_modparams.enable_pvmmio & PVMMIO_PLANE_WM_UPDATE)
+			return skl_pv_write_plane_wm(intel_crtc, wm,
+						     ddb, plane_id);
+	}
 
 	for (level = 0; level <= max_level; level++) {
 #if IS_ENABLED(CONFIG_DRM_I915_GVT)

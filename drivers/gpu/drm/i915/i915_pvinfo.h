@@ -78,6 +78,13 @@ struct pv_plane_update {
 	u32 plane_ctl;
 };
 
+struct pv_plane_wm_update {
+	u32 max_wm_level;
+	u32 plane_wm_level[8];
+	u32 plane_trans_wm_level;
+	u32 plane_buf_cfg;
+};
+
 /* shared page(4KB) between gvt and VM, located at the first page next
  * to MMIO region(2MB size normally).
  */
@@ -85,7 +92,8 @@ struct gvt_shared_page {
 	u32 elsp_data[4];
 	u32 reg_addr;
 	struct pv_plane_update pv_plane;
-	u32 rsvd2[0x400 - 21];
+	struct pv_plane_wm_update pv_plane_wm;
+	u32 rsvd2[0x400 - 32];
 };
 
 #define VGPU_PVMMIO(vgpu) vgpu_vreg(vgpu, vgtif_reg(enable_pvmmio))
@@ -101,6 +109,7 @@ struct gvt_shared_page {
 enum pvmmio_levels {
 	PVMMIO_ELSP_SUBMIT = 0x1,
 	PVMMIO_PLANE_UPDATE = 0x2,
+	PVMMIO_PLANE_WM_UPDATE = 0x4,
 };
 
 struct vgt_if {
