@@ -159,12 +159,27 @@ int set_memmaps(struct set_memmaps *memmaps)
 	return 0;
 }
 
-int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len,
-	unsigned int mem_type, unsigned int mem_access_right)
+/*
+ * when set is true, set page write protection,
+ * else clear page write protection.
+ */
+int write_protect_page(unsigned long vmid,
+	unsigned long gpa, unsigned char set)
 {
-	return _mem_set_memmap(vmid, guest_gpa, host_gpa, len,
-		mem_type, mem_access_right, MAP_MEM);
+	struct wp_data wp;
+
+	wp.set = set;
+	wp.gpa = gpa;
+
+	if (hcall_write_protect_page(vmid,
+			virt_to_phys(&wp)) < 0) {
+		pr_err("vhm: vm[%ld] %s failed !\n", vmid, __func__);
+		return -EFAULT;
+	}
+
+	pr_debug("VHM: %s, gpa: 0x%lx, set: %d\n", __func__, gpa, set);
+
+	return 0;
 }
 
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)

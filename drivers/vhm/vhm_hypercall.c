@@ -112,6 +112,11 @@ inline long hcall_set_memmaps(unsigned long pa_memmaps)
 	return acrn_hypercall1(HC_VM_SET_MEMMAPS, pa_memmaps);
 }
 
+inline long hcall_write_protect_page(unsigned long vmid, unsigned long wp)
+{
+	return acrn_hypercall2(HC_VM_WRITE_PROTECT_PAGE, vmid, wp);
+}
+
 inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer)
 {
 	return acrn_hypercall2(HC_SET_IOREQ_BUFFER, vmid, buffer);

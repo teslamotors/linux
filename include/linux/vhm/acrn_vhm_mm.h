@@ -137,29 +137,16 @@ int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len);
 
 /**
- * update_memmap_attr - update mmio EPT mapping between UOS gpa and SOS gpa
+ * write_protect_page - change one page write protection
  *
  * @vmid: guest vmid
- * @guest_gpa: gpa of UOS
- * @host_gpa: gpa of SOS
- * @len: memory mapped length
- * @mem_type: memory mapping type. Possible value could be:
- *                    MEM_TYPE_WB
- *                    MEM_TYPE_WT
- *                    MEM_TYPE_UC
- *                    MEM_TYPE_WC
- *                    MEM_TYPE_WP
- * @mem_access_right: memory mapping access. Possible value could be:
- *                    MEM_ACCESS_READ
- *                    MEM_ACCESS_WRITE
- *                    MEM_ACCESS_EXEC
- *                    MEM_ACCESS_RWX
+ * @gpa: gpa in guest vmid
+ * @set: set or clear page write protection
  *
  * Return: 0 on success, <0 for error.
  */
-int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len,
-	unsigned int mem_type, unsigned int mem_access_right);
+int write_protect_page(unsigned long vmid,
+	unsigned long gpa, unsigned char set);
 
 int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma);
 

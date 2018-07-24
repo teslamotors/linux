@@ -151,6 +151,8 @@ inline long hcall_get_cpu_state(unsigned long cmd, unsigned long state_pa);
 inline long hcall_set_memmap(unsigned long vmid,
 		unsigned long memmap);
 inline long hcall_set_memmaps(unsigned long pa_memmaps);
+inline long hcall_write_protect_page(unsigned long vmid,
+		unsigned long wp);
 inline long hcall_set_ioreq_buffer(unsigned long vmid,
 		unsigned long buffer);
 inline long hcall_notify_req_finish(unsigned long vmid, unsigned long vcpu);

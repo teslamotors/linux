@@ -96,6 +96,7 @@
 #define HC_VM_SET_MEMMAP            _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x00)
 #define HC_VM_GPA2HPA               _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x01)
 #define HC_VM_SET_MEMMAPS           _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x02)
+#define HC_VM_WRITE_PROTECT_PAGE    _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x03)
 
 /* PCI assignment*/
 #define HC_ID_PCI_BASE              0x50UL
@@ -185,6 +186,19 @@ struct set_memmaps {
 	 */
 	uint64_t memmaps_gpa;
 } __attribute__((aligned(8)));
+
+struct wp_data {
+	/** set page write protect permission.
+	 *  ture: set the wp; flase: clear the wp
+	 */
+	uint8_t set;
+
+	/** Reserved */
+	uint64_t pad:56;
+
+	/** the guest physical address of the page to change */
+	uint64_t gpa;
+} __aligned(8);
 
 struct sbuf_setup_param {
 	uint16_t pcpu_id;
