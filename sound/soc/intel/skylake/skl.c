@@ -908,10 +908,6 @@ nhlt_continue:
 #endif
 	pci_set_drvdata(skl->pci, ebus);
 
-#if !IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
-	skl_dmic_data.dmic_num = skl_get_dmic_geo(skl);
-#endif
-
 	/* check if dsp is there */
 	if (bus->ppcap) {
 		err = skl_find_machine(skl, (void *)pci_id->driver_data);
