@@ -3714,6 +3714,7 @@ bool intel_can_enable_sagv(struct drm_atomic_state *state)
 		latency = dev_priv->wm.skl_latency[level];
 
 		if (skl_needs_memory_bw_wa(intel_state) &&
+		    plane->base.state->fb &&
 		    plane->base.state->fb->modifier ==
 		    I915_FORMAT_MOD_X_TILED)
 			latency += 15;
