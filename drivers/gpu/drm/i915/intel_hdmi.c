@@ -924,6 +924,7 @@ static int intel_hdmi_hdcp_write(struct intel_digital_port *intel_dig_port,
 	msg.buf = write_buf;
 
 	ret = i2c_transfer(adapter, &msg, 1);
+	kfree(write_buf);
 	if (ret == 1)
 		return 0;
 	return ret >= 0 ? -EIO : ret;
