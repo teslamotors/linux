@@ -36,11 +36,6 @@ struct trusty_timer_dev_state {
 	struct workqueue_struct *workqueue;
 };
 
-/* Max entity defined as SMC_NUM_ENTITIES(64) */
-#define	SMC_ENTITY_SMC_X86	63	/* Used for customized SMC calls */
-
-#define	SMC_SC_LK_TIMER	SMC_STDCALL_NR(SMC_ENTITY_SMC_X86, 0)
-
 static void timer_work_func(struct work_struct *work)
 {
 	int ret;
@@ -59,7 +54,7 @@ static enum hrtimer_restart trusty_timer_cb(struct hrtimer *tm)
 
 	s = container_of(tm, struct trusty_timer_dev_state, timer.tm);
 
-	queue_work(s->workqueue, &s->timer.work);
+	queue_work_on(0, s->workqueue, &s->timer.work);
 
 	return HRTIMER_NORESTART;
 }
