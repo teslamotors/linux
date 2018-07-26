@@ -865,16 +865,6 @@ static int acrngt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 			return rc;
 		}
 
-		/* shared page is not trapped, directly pass through */
-		rc = add_memory_region(info->vm_id,
-				(pfn + mmio_size_fn) << PAGE_SHIFT,
-				shared_mfn << PAGE_SHIFT, 0x1000,
-				MEM_TYPE_WB, MEM_ACCESS_RWX);
-		if (rc) {
-			gvt_err("failed set map for gfn 0x%lx\n",
-				pfn + mmio_size_fn);
-			return rc;
-		}
 	} else {
 		mfn = acrngt_virt_to_mfn(info->vgpu->mmio.vreg);
 		rc = acrngt_map_gfn_to_mfn(handle, pfn, mfn, mmio_size_fn, map);
