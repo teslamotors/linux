@@ -1341,6 +1341,12 @@ static int handle_g2v_notification(struct intel_vgpu *vgpu, int notification)
 	case VGT_G2V_PPGTT_L4_CLEAR:
 		ret = intel_vgpu_g2v_pv_ppgtt_clear_4lvl(vgpu, 4);
 		break;
+	case VGT_G2V_GGTT_INSERT:
+		ret = intel_vgpu_g2v_pv_ggtt_insert(vgpu);
+		break;
+	case VGT_G2V_GGTT_CLEAR:
+		ret = intel_vgpu_g2v_pv_ggtt_clear(vgpu);
+		break;
 	case VGT_G2V_EXECLIST_CONTEXT_CREATE:
 	case VGT_G2V_EXECLIST_CONTEXT_DESTROY:
 	case 1:	/* Remove this in guest driver. */
@@ -1411,8 +1417,17 @@ static int pvinfo_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 				break;
 			}
 			vgpu_vreg(vgpu, offset) = data & i915_modparams.enable_pvmmio;
-			DRM_INFO("vgpu id=%d pvmmio=0x%x\n",
-					vgpu->id, VGPU_PVMMIO(vgpu));
+			if (vgpu_vreg(vgpu, offset) & PVMMIO_GGTT_UPDATE) {
+				ret = map_gttmmio(vgpu, true);
+				if (ret) {
+					DRM_INFO("ggtt pv mode is off\n");
+					vgpu_vreg(vgpu, offset) &=
+							~PVMMIO_GGTT_UPDATE;
+				}
+			}
+			DRM_INFO("vgpu id=%d pvmmio=0x%x\n", vgpu->id,
+							VGPU_PVMMIO(vgpu));
+
 		} else {
 			vgpu_vreg(vgpu, offset) = 0;
 		}

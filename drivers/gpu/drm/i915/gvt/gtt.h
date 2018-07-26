@@ -321,4 +321,9 @@ int intel_vgpu_g2v_pv_ppgtt_clear_4lvl(struct intel_vgpu *vgpu,
 
 int intel_vgpu_g2v_pv_ppgtt_insert_4lvl(struct intel_vgpu *vgpu,
 		int page_table_level);
+
+int intel_vgpu_g2v_pv_ggtt_insert(struct intel_vgpu *vgpu);
+
+int intel_vgpu_g2v_pv_ggtt_clear(struct intel_vgpu *vgpu);
+
 #endif /* _GVT_GTT_H_ */
