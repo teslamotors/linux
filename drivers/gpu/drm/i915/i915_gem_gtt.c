@@ -2112,6 +2112,17 @@ static void gen8_set_pte(void __iomem *addr, gen8_pte_t pte)
 	writeq(pte, addr);
 }
 
+static void vgpu_ggtt_insert(struct drm_i915_private *dev_priv,
+	u64 start, int num_entries, enum i915_cache_level level)
+{
+	struct gvt_shared_page *shared_page = dev_priv->shared_page;
+
+	writeq(start, &shared_page->pv_ggtt.start);
+	writeq(num_entries, &shared_page->pv_ggtt.length);
+	writel(level, &shared_page->pv_ggtt.cache_level);
+	I915_WRITE(vgtif_reg(g2v_notify), VGT_G2V_GGTT_INSERT);
+}
+
 static void gen8_ggtt_insert_page(struct i915_address_space *vm,
 				  dma_addr_t addr,
 				  u64 offset,
@@ -2123,6 +2134,11 @@ static void gen8_ggtt_insert_page(struct i915_address_space *vm,
 		(gen8_pte_t __iomem *)ggtt->gsm + (offset >> PAGE_SHIFT);
 
 	gen8_set_pte(pte, gen8_pte_encode(addr, level));
+
+	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_GGTT_UPDATE)) {
+		vgpu_ggtt_insert(vm->i915, offset, 1, level);
+		return;
+	}
 
 	ggtt->invalidate(vm->i915);
 }
@@ -2140,10 +2156,23 @@ static void gen8_ggtt_insert_entries(struct i915_address_space *vm,
 
 	gtt_entries = (gen8_pte_t __iomem *)ggtt->gsm;
 	gtt_entries += vma->node.start >> PAGE_SHIFT;
+
 	for_each_sgt_dma(addr, sgt_iter, vma->pages)
 		gen8_set_pte(gtt_entries++, pte_encode | addr);
-
 	wmb();
+
+	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_GGTT_UPDATE)) {
+		int num_entries = gtt_entries -
+				   ((gen8_pte_t __iomem *)ggtt->gsm +
+				    (vma->node.start >> PAGE_SHIFT));
+		/*
+		 * Sometimes number of entries does not match vma node size.
+		 * Pass number of pte entries instead.
+		 */
+		vgpu_ggtt_insert(vm->i915, vma->node.start,
+				 num_entries, level);
+		return;
+	}
 
 	/* This next bit makes the above posting read even more important. We
 	 * want to flush the TLBs only after we're certain all the PTE updates
@@ -2219,6 +2248,16 @@ static void gen8_ggtt_clear_range(struct i915_address_space *vm,
 
 	for (i = 0; i < num_entries; i++)
 		gen8_set_pte(&gtt_base[i], scratch_pte);
+
+	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_GGTT_UPDATE)) {
+		struct drm_i915_private *dev_priv = vm->i915;
+		struct gvt_shared_page *shared_page = dev_priv->shared_page;
+
+		writeq(start, &shared_page->pv_ggtt.start);
+		writeq(length, &shared_page->pv_ggtt.length);
+		I915_WRITE(vgtif_reg(g2v_notify), VGT_G2V_GGTT_CLEAR);
+	}
+
 }
 
 static void bxt_vtd_ggtt_wa(struct i915_address_space *vm)
