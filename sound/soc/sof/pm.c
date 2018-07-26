@@ -210,6 +210,10 @@ static int sof_resume(struct device *dev)
 	struct snd_sof_dev *sdev = dev_get_drvdata(&priv->pdev_pcm->dev);
 	int ret = 0;
 
+	/* do nothing if dsp resume callback is not set */
+	if (!sdev->ops->resume)
+		return 0;
+
 	/* power up DSP */
 	ret = snd_sof_dsp_resume(sdev);
 	if (ret < 0) {
@@ -269,6 +273,10 @@ static int sof_suspend(struct device *dev)
 	struct sof_platform_priv *priv = dev_get_drvdata(dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(&priv->pdev_pcm->dev);
 	int ret = 0;
+
+	/* do nothing if dsp suspend callback is not set */
+	if (!sdev->ops->suspend)
+		return 0;
 
 	/*
 	 * Suspend running pcm streams.
