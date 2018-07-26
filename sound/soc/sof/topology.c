@@ -1743,13 +1743,20 @@ static int sof_link_load(struct snd_soc_component *scomp, int index,
 		ret = -EINVAL;
 		break;
 	}
+	if (ret < 0)
+		return ret;
 
 	dai = snd_sof_find_dai(sdev, (char *)link->name);
-	if (dai)
+	if (dai) {
+		/* set config for dai */
 		memcpy(&dai->dai_config, &config,
 		       sizeof(struct sof_ipc_dai_config));
+		return 0;
+	}
 
-	return 0;
+	dev_err(sdev->dev, "failed to find BE DAI for link %s\n", link->name);
+
+	return -EINVAL;
 }
 
 static int sof_link_unload(struct snd_soc_component *scomp,
