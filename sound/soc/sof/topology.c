@@ -1710,6 +1710,9 @@ static int sof_link_dmic_load(struct snd_soc_component *scomp, int index,
 		dev_err(sdev->dev, "error: failed to set DAI config for DMIC%d\n",
 			config->dai_index);
 
+	/* update config with pdm config */
+	memcpy(config, ipc_config, sizeof(*ipc_config));
+
 	kfree(sdev->private);
 	kfree(ipc_config);
 
