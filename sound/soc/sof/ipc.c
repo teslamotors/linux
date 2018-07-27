@@ -182,7 +182,7 @@ static void ipc_tx_next_msg(struct work_struct *work)
 	if (list_empty(&ipc->tx_list) || !snd_sof_dsp_is_ready(sdev))
 		goto out;
 
-	/* sned first message in TX list */
+	/* send first message in TX list */
 	msg = list_first_entry(&ipc->tx_list, struct snd_sof_ipc_msg, list);
 	list_move(&msg->list, &ipc->reply_list);
 	snd_sof_dsp_send_msg(sdev, msg);
