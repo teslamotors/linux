@@ -40,7 +40,7 @@ static const struct nla_policy etf_policy[TCA_ETF_MAX + 1] = {
 };
 
 static inline int validate_input_params(struct tc_etf_qopt *qopt,
-					struct netlink_ext_ack *extack)
+					struct net_device *dev)
 {
 	/* Check if params comply to the following rules:
 	 *	* Clockid and delta must be valid.
@@ -53,17 +53,17 @@ static inline int validate_input_params(struct tc_etf_qopt *qopt,
 	 * expect that system clocks have been synchronized to PHC.
 	 */
 	if (qopt->clockid < 0) {
-		NL_SET_ERR_MSG(extack, "Dynamic clockids are not supported");
+		netdev_err(dev, "Dynamic clockids are not supported");
 		return -ENOTSUPP;
 	}
 
 	if (qopt->clockid != CLOCK_TAI) {
-		NL_SET_ERR_MSG(extack, "Invalid clockid. CLOCK_TAI must be used");
+		netdev_err(dev, "Invalid clockid. CLOCK_TAI must be used");
 		return -EINVAL;
 	}
 
 	if (qopt->delta < 0) {
-		NL_SET_ERR_MSG(extack, "Delta must be positive");
+		netdev_err(dev, "Delta must be positive");
 		return -EINVAL;
 	}
 
@@ -108,7 +108,7 @@ static struct sk_buff *etf_peek_timesortedlist(struct Qdisc *sch)
 	if (!p)
 		return NULL;
 
-	return rb_to_skb(p);
+	return rb_entry_safe(p, struct sk_buff, rbnode);
 }
 
 static void reset_watchdog(struct Qdisc *sch)
@@ -167,7 +167,7 @@ static int etf_enqueue_timesortedlist(struct sk_buff *nskb, struct Qdisc *sch,
 		struct sk_buff *skb;
 
 		parent = *p;
-		skb = rb_to_skb(parent);
+		skb = rb_entry_safe(parent, struct sk_buff, rbnode);
 		if (ktime_after(txtime, skb->tstamp))
 			p = &parent->rb_right;
 		else
@@ -284,8 +284,7 @@ static void etf_disable_offload(struct net_device *dev,
 			etf.queue);
 }
 
-static int etf_enable_offload(struct net_device *dev, struct etf_sched_data *q,
-			      struct netlink_ext_ack *extack)
+static int etf_enable_offload(struct net_device *dev, struct etf_sched_data *q)
 {
 	const struct net_device_ops *ops = dev->netdev_ops;
 	struct tc_etf_qopt_offload etf = { };
@@ -295,7 +294,7 @@ static int etf_enable_offload(struct net_device *dev, struct etf_sched_data *q,
 		return 0;
 
 	if (!ops->ndo_setup_tc) {
-		NL_SET_ERR_MSG(extack, "Specified device does not support ETF offload");
+		netdev_err(dev, "Specified device does not support ETF offload");
 		return -EOPNOTSUPP;
 	}
 
@@ -304,15 +303,14 @@ static int etf_enable_offload(struct net_device *dev, struct etf_sched_data *q,
 
 	err = ops->ndo_setup_tc(dev, TC_SETUP_QDISC_ETF, &etf);
 	if (err < 0) {
-		NL_SET_ERR_MSG(extack, "Specified device failed to setup ETF hardware offload");
+		netdev_err(dev, "Specified device failed to setup ETF hardware offload");
 		return err;
 	}
 
 	return 0;
 }
 
-static int etf_init(struct Qdisc *sch, struct nlattr *opt,
-		    struct netlink_ext_ack *extack)
+static int etf_init(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct etf_sched_data *q = qdisc_priv(sch);
 	struct net_device *dev = qdisc_dev(sch);
@@ -321,17 +319,16 @@ static int etf_init(struct Qdisc *sch, struct nlattr *opt,
 	int err;
 
 	if (!opt) {
-		NL_SET_ERR_MSG(extack,
-			       "Missing ETF qdisc options which are mandatory");
+		netdev_err(dev, "Missing ETF qdisc options which are mandatory");
 		return -EINVAL;
 	}
 
-	err = nla_parse_nested(tb, TCA_ETF_MAX, opt, etf_policy, extack);
+	err = nla_parse_nested(tb, TCA_ETF_MAX, opt, etf_policy, NULL);
 	if (err < 0)
 		return err;
 
 	if (!tb[TCA_ETF_PARMS]) {
-		NL_SET_ERR_MSG(extack, "Missing mandatory ETF parameters");
+		netdev_err(dev, "Missing mandatory ETF parameters");
 		return -EINVAL;
 	}
 
@@ -342,14 +339,14 @@ static int etf_init(struct Qdisc *sch, struct nlattr *opt,
 		 OFFLOAD_IS_ON(qopt) ? "on" : "off",
 		 DEADLINE_MODE_IS_ON(qopt) ? "on" : "off");
 
-	err = validate_input_params(qopt, extack);
+	err = validate_input_params(qopt, dev);
 	if (err < 0)
 		return err;
 
 	q->queue = sch->dev_queue - netdev_get_tx_queue(dev, 0);
 
 	if (OFFLOAD_IS_ON(qopt)) {
-		err = etf_enable_offload(dev, q, extack);
+		err = etf_enable_offload(dev, q);
 		if (err < 0)
 			return err;
 	}
@@ -374,7 +371,7 @@ static int etf_init(struct Qdisc *sch, struct nlattr *opt,
 		q->get_time = ktime_get_clocktai;
 		break;
 	default:
-		NL_SET_ERR_MSG(extack, "Clockid is not supported");
+		netdev_err(dev, "Clockid is not supported");
 		return -ENOTSUPP;
 	}
 
@@ -389,8 +386,7 @@ static void timesortedlist_clear(struct Qdisc *sch)
 	struct rb_node *p = rb_first(&q->head);
 
 	while (p) {
-		struct sk_buff *skb = rb_to_skb(p);
-
+		struct sk_buff *skb = rb_entry_safe(p, struct sk_buff, rbnode);
 		p = rb_next(p);
 
 		rb_erase(&skb->rbnode, &q->head);

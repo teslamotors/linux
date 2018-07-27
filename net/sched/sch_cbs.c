@@ -342,7 +342,7 @@ static int cbs_init(struct Qdisc *sch, struct nlattr *opt)
 		return -EINVAL;
 
 	q->qdisc = qdisc_create_dflt(sch->dev_queue, &pfifo_qdisc_ops,
-				     sch->handle, extack);
+				     sch->handle);
 	if (!q->qdisc)
 		return -ENOMEM;
 
@@ -412,13 +412,13 @@ static int cbs_dump_class(struct Qdisc *sch, unsigned long cl,
 }
 
 static int cbs_graft(struct Qdisc *sch, unsigned long arg, struct Qdisc *new,
-		     struct Qdisc **old, struct netlink_ext_ack *extack)
+		     struct Qdisc **old)
 {
 	struct cbs_sched_data *q = qdisc_priv(sch);
 
 	if (!new) {
 		new = qdisc_create_dflt(sch->dev_queue, &pfifo_qdisc_ops,
-					sch->handle, NULL);
+					sch->handle);
 		if (!new)
 			new = &noop_qdisc;
 	}
