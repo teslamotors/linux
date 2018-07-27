@@ -1,60 +1,7 @@
-/******************************************************************************
- * This file is provided under a dual BSD/GPLv2 license.  When using or
- * redistributing this file, you may do so under either license.
- *
- * GPL LICENSE SUMMARY
- *
- * Copyright(c) 2016 Intel Corporation. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of version 2 of the GNU General Public License as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * The full GNU General Public License is included in this distribution
- * in the file called LICENSE.GPL.
- *
- * Contact Information:
- *	Intel Corporation.
- *	linux-mei@linux.intel.com
- *	http://www.intel.com
- *
- * BSD LICENSE
- *
- * Copyright(c) 2016 Intel Corporation. All rights reserved.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *  * Neither the name Intel Corporation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *****************************************************************************/
+// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+/*
+ * Copyright(c) 2015 - 2018 Intel Corporation. All rights reserved.
+ */
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/module.h>
@@ -117,8 +64,8 @@ struct rpmb_sim_dev {
 	u32 write_counter;
 	struct shash_desc *hash_desc;
 
-	struct rpmb_frame res_frames[1];
-	struct rpmb_frame *out_frames;
+	struct rpmb_frame_jdec res_frames[1];
+	struct rpmb_frame_jdec *out_frames;
 	unsigned int out_frames_cnt;
 
 	size_t capacity;
@@ -143,7 +90,7 @@ static __be16 req_to_resp(u16 req)
 }
 
 static int rpmb_sim_calc_hmac(struct rpmb_sim_dev *rsdev,
-			      struct rpmb_frame *frames,
+			      struct rpmb_frame_jdec *frames,
 			      unsigned int blks, u8 *mac)
 {
 	struct shash_desc *desc = rsdev->hash_desc;
@@ -155,7 +102,8 @@ static int rpmb_sim_calc_hmac(struct rpmb_sim_dev *rsdev,
 		goto out;
 
 	for (i = 0; i < blks; i++) {
-		ret = crypto_shash_update(desc, frames[i].data, hmac_data_len);
+		ret = crypto_shash_update(desc, frames[i].data,
+					  rpmb_jdec_hmac_data_len);
 		if (ret)
 			goto out;
 	}
@@ -169,7 +117,7 @@ out:
 
 static int rpmb_op_not_programmed(struct rpmb_sim_dev *rsdev, u16 req)
 {
-	struct rpmb_frame *res_frame = rsdev->res_frames;
+	struct rpmb_frame_jdec *res_frame = rsdev->res_frames;
 
 	res_frame->req_resp = req_to_resp(req);
 	res_frame->result = op_result(rsdev, RPMB_ERR_NO_KEY);
@@ -183,9 +131,9 @@ static int rpmb_op_not_programmed(struct rpmb_sim_dev *rsdev, u16 req)
 }
 
 static int rpmb_op_program_key(struct rpmb_sim_dev *rsdev,
-			       struct rpmb_frame *in_frame, u32 cnt)
+			       struct rpmb_frame_jdec *in_frame, u32 cnt)
 {
-	struct rpmb_frame *res_frame = rsdev->res_frames;
+	struct rpmb_frame_jdec *res_frame = rsdev->res_frames;
 	struct crypto_shash *tfm = rsdev->hash_desc->tfm;
 	u16 req;
 	int ret;
@@ -220,7 +168,7 @@ static int rpmb_op_program_key(struct rpmb_sim_dev *rsdev,
 	rsdev->auth_key_set = true;
 out:
 
-	memset(res_frame, 0, sizeof(struct rpmb_frame));
+	memset(res_frame, 0, sizeof(*res_frame));
 	res_frame->req_resp = req_to_resp(req);
 	res_frame->result = op_result(rsdev, err);
 
@@ -228,9 +176,9 @@ out:
 }
 
 static int rpmb_op_get_wr_counter(struct rpmb_sim_dev *rsdev,
-				  struct rpmb_frame *in_frame, u32 cnt)
+				  struct rpmb_frame_jdec *in_frame, u32 cnt)
 {
-	struct rpmb_frame *frame;
+	struct rpmb_frame_jdec *frame;
 	int ret = 0;
 	u16 req;
 	u16 err;
@@ -244,7 +192,7 @@ static int rpmb_op_get_wr_counter(struct rpmb_sim_dev *rsdev,
 		return -EINVAL;
 	}
 
-	frame = kcalloc(1, sizeof(struct rpmb_frame), GFP_KERNEL);
+	frame = kcalloc(1, sizeof(*frame), GFP_KERNEL);
 	if (!frame) {
 		err = RPMB_ERR_READ;
 		ret = -ENOMEM;
@@ -272,9 +220,9 @@ out:
 }
 
 static int rpmb_op_write_data(struct rpmb_sim_dev *rsdev,
-			      struct rpmb_frame *in_frame, u32 cnt)
+			      struct rpmb_frame_jdec *in_frame, u32 cnt)
 {
-	struct rpmb_frame *res_frame = rsdev->res_frames;
+	struct rpmb_frame_jdec *res_frame = rsdev->res_frames;
 	u8 mac[32];
 	u16 req, err, addr, blks;
 	unsigned int i;
@@ -337,7 +285,7 @@ static int rpmb_op_write_data(struct rpmb_sim_dev *rsdev,
 
 	rsdev->write_counter++;
 
-	memset(res_frame, 0, sizeof(struct rpmb_frame));
+	memset(res_frame, 0, sizeof(*res_frame));
 	res_frame->req_resp = req_to_resp(req);
 	res_frame->write_counter = cpu_to_be32(rsdev->write_counter);
 	res_frame->addr = cpu_to_be16(addr);
@@ -346,7 +294,7 @@ static int rpmb_op_write_data(struct rpmb_sim_dev *rsdev,
 
 out:
 	if (err != RPMB_ERR_OK) {
-		memset(res_frame, 0, sizeof(struct rpmb_frame));
+		memset(res_frame, 0, sizeof(*res_frame));
 		res_frame->req_resp = req_to_resp(req);
 	}
 	res_frame->result = op_result(rsdev, err);
@@ -355,10 +303,10 @@ out:
 }
 
 static int rpmb_do_read_data(struct rpmb_sim_dev *rsdev,
-			     struct rpmb_frame *in_frame, u32 cnt)
+			     struct rpmb_frame_jdec *in_frame, u32 cnt)
 {
-	struct rpmb_frame *res_frame = rsdev->res_frames;
-	struct rpmb_frame *out_frames = NULL;
+	struct rpmb_frame_jdec *res_frame = rsdev->res_frames;
+	struct rpmb_frame_jdec *out_frames = NULL;
 	u8 mac[32];
 	u16 req, err, addr, blks;
 	unsigned int i;
@@ -378,7 +326,7 @@ static int rpmb_do_read_data(struct rpmb_sim_dev *rsdev,
 		goto out;
 	}
 
-	out_frames = kcalloc(blks, sizeof(struct rpmb_frame), GFP_KERNEL);
+	out_frames = kcalloc(blks, sizeof(*out_frames), GFP_KERNEL);
 	if (!out_frames) {
 		ret = -ENOMEM;
 		err = RPMB_ERR_READ;
@@ -423,7 +371,7 @@ static int rpmb_do_read_data(struct rpmb_sim_dev *rsdev,
 	return 0;
 
 out:
-	memset(res_frame, 0, sizeof(struct rpmb_frame));
+	memset(res_frame, 0, sizeof(*res_frame));
 	res_frame->req_resp = req_to_resp(req);
 	res_frame->result = op_result(rsdev, err);
 	kfree(out_frames);
@@ -434,9 +382,9 @@ out:
 }
 
 static int rpmb_op_read_data(struct rpmb_sim_dev *rsdev,
-			     struct rpmb_frame *in_frame, u32 cnt)
+			     struct rpmb_frame_jdec *in_frame, u32 cnt)
 {
-	struct rpmb_frame *res_frame = rsdev->res_frames;
+	struct rpmb_frame_jdec *res_frame = rsdev->res_frames;
 	u16 req;
 
 	req = be16_to_cpu(in_frame->req_resp);
@@ -452,7 +400,7 @@ static int rpmb_op_read_data(struct rpmb_sim_dev *rsdev,
 }
 
 static int rpmb_op_result_read(struct rpmb_sim_dev *rsdev,
-			       struct rpmb_frame *frames, u32 cnt)
+			       struct rpmb_frame_jdec *frames, u32 cnt)
 {
 	u16 req = be16_to_cpu(frames[0].req_resp);
 	u16 blks = be16_to_cpu(frames[0].block_count);
@@ -471,13 +419,16 @@ static int rpmb_op_result_read(struct rpmb_sim_dev *rsdev,
 }
 
 static int rpmb_sim_write(struct rpmb_sim_dev *rsdev,
-			  struct rpmb_frame *frames, u32 cnt)
+			  struct rpmb_frame_jdec *frames, u32 cnt)
 {
 	u16 req;
 	int ret;
 
-	if (!frames || !cnt)
+	if (!frames)
 		return -EINVAL;
+
+	if (cnt == 0)
+		cnt = 1;
 
 	req = be16_to_cpu(frames[0].req_resp);
 	if (!rsdev->auth_key_set && req != RPMB_PROGRAM_KEY)
@@ -516,12 +467,15 @@ static int rpmb_sim_write(struct rpmb_sim_dev *rsdev,
 }
 
 static int rpmb_sim_read(struct rpmb_sim_dev *rsdev,
-			 struct rpmb_frame *frames, u32 cnt)
+			 struct rpmb_frame_jdec *frames, u32 cnt)
 {
 	int i;
 
-	if (!frames || !cnt)
+	if (!frames)
 		return -EINVAL;
+
+	if (cnt == 0)
+		cnt = 1;
 
 	if (!rsdev->out_frames || rsdev->out_frames_cnt == 0) {
 		dev_err(rsdev->dev, "out_frames are not set\n");
@@ -544,7 +498,7 @@ static int rpmb_sim_read(struct rpmb_sim_dev *rsdev,
 	return 0;
 }
 
-static int rpmb_sim_cmd_seq(struct device *dev,
+static int rpmb_sim_cmd_seq(struct device *dev, u8 target,
 			    struct rpmb_cmd *cmds, u32 ncmds)
 {
 	struct rpmb_sim_dev *rsdev;
@@ -570,9 +524,15 @@ static int rpmb_sim_cmd_seq(struct device *dev,
 	return ret;
 }
 
+static int rpmb_sim_get_capacity(struct device *dev, u8 target)
+{
+	return daunits;
+}
+
 static struct rpmb_ops rpmb_sim_ops = {
 	.cmd_seq = rpmb_sim_cmd_seq,
-	.type = RPMB_TYPE_EMMC,
+	.get_capacity = rpmb_sim_get_capacity,
+	.type = RPMB_TYPE_EMMC | RPMB_TYPE_SIM,
 };
 
 static int rpmb_sim_hmac_256_alloc(struct rpmb_sim_dev *rsdev)
@@ -633,9 +593,11 @@ static int rpmb_sim_probe(struct device *dev)
 
 	rpmb_sim_ops.dev_id_len = strlen(id);
 	rpmb_sim_ops.dev_id = id;
-	rpmb_sim_ops.reliable_wr_cnt = max_wr_blks;
+	rpmb_sim_ops.wr_cnt_max = max_wr_blks;
+	rpmb_sim_ops.rd_cnt_max = max_wr_blks;
+	rpmb_sim_ops.block_size = 1;
 
-	rsdev->rdev = rpmb_dev_register(rsdev->dev, &rpmb_sim_ops);
+	rsdev->rdev = rpmb_dev_register(rsdev->dev, 0, &rpmb_sim_ops);
 	if (IS_ERR(rsdev->rdev)) {
 		ret = PTR_ERR(rsdev->rdev);
 		goto err;
@@ -661,7 +623,7 @@ static int rpmb_sim_remove(struct device *dev)
 
 	rsdev = dev_get_drvdata(dev);
 
-	rpmb_dev_unregister(rsdev->dev);
+	rpmb_dev_unregister(rsdev->rdev);
 
 	dev_set_drvdata(dev, NULL);
 
