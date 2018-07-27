@@ -707,7 +707,8 @@ static int handle_cf8cfc(struct vhm_vm *vm, struct vhm_request *req, int vcpu)
 	}
 
 	if (req_handled) {
-		req->processed = REQ_STATE_SUCCESS;
+		smp_mb();
+		atomic_set(&req->processed, REQ_STATE_COMPLETE);
 		if (hcall_notify_req_finish(vm->vmid, vcpu) < 0) {
 			pr_err("vhm-ioreq: failed to "
 				"notify request finished !\n");
@@ -788,7 +789,11 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 	vcpu_num = atomic_read(&vm->vcpu_num);
 	for (i = 0; i < vcpu_num; i++) {
 		req = vm->req_buf->req_queue + i;
-		if (req->valid && (req->processed == REQ_STATE_PENDING)) {
+
+		/* This function is called in tasklet only on SOS CPU0. Thus it
+		 * is safe to read the state first and update it later as long
+		 * as the update is atomic. */
+		if (atomic_read(&req->processed) == REQ_STATE_PENDING) {
 			if (handle_cf8cfc(vm, req, i))
 				continue;
 			client = acrn_ioreq_find_client_by_request(vm, req);
@@ -798,8 +803,8 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 						"BUG\n");
 				BUG();
 			} else {
-				req->processed = REQ_STATE_PROCESSING;
 				req->client = client->id;
+				atomic_set(&req->processed, REQ_STATE_PROCESSING);
 				set_bit(i, client->ioreqs_map);
 			}
 		}

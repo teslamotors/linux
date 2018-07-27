@@ -221,8 +221,8 @@ static int acrngt_emulation_thread(void *priv)
 
 		for (vcpu = 0; vcpu < nr_vcpus; vcpu++) {
 			req = &info->req_buf[vcpu];
-			if (req->valid &&
-				req->processed == REQ_STATE_PROCESSING &&
+			if (atomic_read(&req->processed) ==
+				REQ_STATE_PROCESSING &&
 				req->client == info->client) {
 				gvt_dbg_core("handle ioreq type %d\n",
 						req->type);
@@ -244,7 +244,8 @@ static int acrngt_emulation_thread(void *priv)
 				if (ret)
 					BUG();
 
-				req->processed = REQ_STATE_SUCCESS;
+				smp_mb();
+				atomic_set(&req->processed, REQ_STATE_COMPLETE);
 				/* complete request */
 				if (acrn_ioreq_complete_request(info->client,
 						vcpu))

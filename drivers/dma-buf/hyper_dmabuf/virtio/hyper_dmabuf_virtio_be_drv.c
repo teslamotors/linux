@@ -179,15 +179,15 @@ static int virtio_be_handle_kick(int client_id, unsigned long *ioreqs_map)
 		if (vcpu == fe_info->max_vcpu)
 			break;
 		req = &fe_info->req_buf[vcpu];
-		if (req->valid &&
-		    req->processed == REQ_STATE_PROCESSING &&
+		if (atomic_read(&req->processed) == REQ_STATE_PROCESSING &&
 		    req->client == fe_info->client_id) {
 			if (req->reqs.pio_request.direction == REQUEST_READ)
 				req->reqs.pio_request.value = 0;
 			else
 				val = req->reqs.pio_request.value;
 
-			req->processed = REQ_STATE_SUCCESS;
+			smp_mb();
+			atomic_set(&req->processed, REQ_STATE_COMPLETE);
 			acrn_ioreq_complete_request(fe_info->client_id, vcpu);
 		}
 	}
