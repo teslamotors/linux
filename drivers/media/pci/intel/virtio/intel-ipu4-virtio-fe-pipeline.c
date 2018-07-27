@@ -12,10 +12,8 @@
 #include "intel-ipu4-virtio-fe-payload.h"
 #include "intel-ipu4-virtio-fe-pipeline.h"
 
-int process_pipeline(struct file *file,
-						struct ipu4_virtio_ctx *fe_priv,
-						void *data,
-						int cmd)
+int process_pipeline(struct file *file, struct ipu4_virtio_ctx *fe_priv,
+			void *data, int cmd)
 {
 	struct ipu4_virtio_req *req;
 	int rval = 0;
@@ -32,7 +30,7 @@ int process_pipeline(struct file *file,
 
 	intel_ipu4_virtio_create_req(req, cmd, &op[0]);
 
-	rval = fe_priv->bknd_ops->send_req(fe_priv->domid, req, true);
+	rval = fe_priv->bknd_ops->send_req(fe_priv->domid, req, true, IPU_VIRTIO_QUEUE_0);
 	if (rval) {
 		pr_err("Failed to send request to BE\n");
 		kfree(req);

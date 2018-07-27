@@ -36,6 +36,8 @@ static int stream_dev_init;
 
 static struct ipu4_virtio_ctx *g_fe_priv;
 
+struct mutex fop_mutex;
+
 #ifdef CONFIG_COMPAT
 struct timeval32 {
 	__u32 tv_sec;
@@ -463,7 +465,7 @@ static int virt_isys_set_format(struct file *file, void *fh,
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_SET_FORMAT, &op[0]);
 
-	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
+	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true, IPU_VIRTIO_QUEUE_0);
 	if (rval) {
 		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
@@ -491,7 +493,7 @@ static int virt_isys_stream_on(struct file *file, void *fh)
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_STREAM_ON, &op[0]);
 
-	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
+	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true, IPU_VIRTIO_QUEUE_0);
 	if (rval) {
 		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
@@ -524,7 +526,7 @@ static int virt_isys_stream_off(struct file *file, void *fh)
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_STREAM_OFF, &op[0]);
 
-	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
+	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true, IPU_VIRTIO_QUEUE_0);
 	if (rval) {
 		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
@@ -567,7 +569,7 @@ static int virt_isys_getbuf(struct file *file, void *fh,
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_GET_BUF, &op[0]);
 
-	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
+	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true, IPU_VIRTIO_QUEUE_0);
 	if (rval) {
 		dev_err(&strm_dev->dev, "Failed to Get Buffer\n");
 		kfree(req);
@@ -600,7 +602,7 @@ static int virt_isys_putbuf(struct file *file, void *fh,
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_PUT_BUF, &op[0]);
 
-	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
+	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true, IPU_VIRTIO_QUEUE_0);
 	if (rval) {
 		dev_err(&strm_dev->dev, "Failed to Get Buffer\n");
 		kfree(req);
@@ -636,18 +638,18 @@ static unsigned int stream_fop_poll(struct file *file, struct ici_stream_device 
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_POLL, &op[0]);
 
-	mutex_lock(strm_dev->mutex);
+	mutex_lock(&fop_mutex);
 
-	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
+	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true, IPU_VIRTIO_QUEUE_1);
 	if (rval) {
-		mutex_unlock(strm_dev->mutex);
+		mutex_unlock(&fop_mutex);
 		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
 	kfree(req);
 
-	mutex_unlock(strm_dev->mutex);
+	mutex_unlock(&fop_mutex);
 
 	return req->func_ret;
 }
@@ -679,18 +681,18 @@ static int virt_stream_fop_open(struct inode *inode, struct file *file)
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_DEVICE_OPEN, &op[0]);
 
-	mutex_lock(strm_dev->mutex);
+	mutex_lock(&fop_mutex);
 
-	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
+	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true, IPU_VIRTIO_QUEUE_1);
 	if (rval) {
-		mutex_unlock(strm_dev->mutex);
+		mutex_unlock(&fop_mutex);
 		dev_err(&strm_dev->dev, "Failed to open virtual device\n");
 		kfree(req);
 		return rval;
 	}
 	kfree(req);
 
-	mutex_unlock(strm_dev->mutex);
+	mutex_unlock(&fop_mutex);
 
 	return rval;
 }
@@ -715,18 +717,18 @@ static int virt_stream_fop_release(struct inode *inode, struct file *file)
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_DEVICE_CLOSE, &op[0]);
 
-	mutex_lock(strm_dev->mutex);
+	mutex_lock(&fop_mutex);
 
-	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true);
+	rval = fe_ctx->bknd_ops->send_req(fe_ctx->domid, req, true, IPU_VIRTIO_QUEUE_1);
 	if (rval) {
-		mutex_unlock(strm_dev->mutex);
+		mutex_unlock(&fop_mutex);
 		dev_err(&strm_dev->dev, "Failed to close virtual device\n");
 		kfree(req);
 		return rval;
 	}
 	kfree(req);
 
-	mutex_unlock(strm_dev->mutex);
+	mutex_unlock(&fop_mutex);
 
 	return rval;
 }
@@ -741,7 +743,7 @@ static unsigned int virt_stream_fop_poll(struct file *file,
 
 	res = stream_fop_poll(file, as);
 
-	res = POLLIN;
+	//res = POLLIN;
 
 	dev_dbg(&as->dev, "virt_stream_fop_poll res %u\n", res);
 
@@ -1024,7 +1026,7 @@ static int virt_pipeline_fop_open(struct inode *inode, struct file *file)
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_PIPELINE_OPEN, &op[0]);
 
-	rval = g_fe_priv->bknd_ops->send_req(g_fe_priv->domid, req, true);
+	rval = g_fe_priv->bknd_ops->send_req(g_fe_priv->domid, req, true, IPU_VIRTIO_QUEUE_1);
 	if (rval) {
 		pr_err("Failed to open virtual device\n");
 		kfree(req);
@@ -1055,7 +1057,7 @@ static int virt_pipeline_fop_release(struct inode *inode, struct file *file)
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_PIPELINE_CLOSE, &op[0]);
 
-	rval = g_fe_priv->bknd_ops->send_req(g_fe_priv->domid, req, true);
+	rval = g_fe_priv->bknd_ops->send_req(g_fe_priv->domid, req, true, IPU_VIRTIO_QUEUE_1);
 	if (rval) {
 		pr_err("Failed to close virtual device\n");
 		kfree(req);
@@ -1272,6 +1274,7 @@ static int __init virt_ici_init(void)
 		if (!vstream)
 			return -ENOMEM;
 		mutex_init(&vstream->mutex);
+		mutex_init(&fop_mutex);
 		vstream->strm_dev.mutex = &vstream->mutex;
 
 		rval = virt_frame_buf_init(&vstream->buf_list);
@@ -1296,6 +1299,7 @@ static int __init virt_ici_init(void)
 
 init_fail:
 	mutex_destroy(&vstream->mutex);
+	mutex_destroy(&fop_mutex);
 	kfree(vstream);
 	return rval;
 }

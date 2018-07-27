@@ -18,11 +18,6 @@
 #include "intel-ipu4-virtio-common.h"
 #include "intel-ipu4-virtio-be-bridge.h"
 
-enum {
-	IPU_VIRTIO_RX_QUEUE = 0,
-	IPU_VIRTIO_QUEUE_MAX
-};
-
 /**
  * struct ipu4_virtio_be_priv - Backend of virtio-rng based on VBS-K
  *
@@ -242,17 +237,16 @@ static int ipu_vbk_open(struct inode *inode, struct file *f)
 		return -ENOMEM;
 	}
 
+	vqs = &priv->vqs[0];
+
 	dev = &priv->dev;
+
 	strncpy(dev->name, "vbs_ipu", VBS_NAME_LEN);
 	dev->dev_notify = handle_kick;
-	vqs = (struct virtio_vq_info *)&priv->vqs;
+
 
 	for (i = 0; i < IPU_VIRTIO_QUEUE_MAX; i++) {
 		vqs[i].dev = dev;
-		/*
-		 * Currently relies on VHM to kick us,
-		 * thus vq_notify not used
-		 */
 		vqs[i].vq_notify = NULL;
 	}
 

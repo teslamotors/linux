@@ -21,6 +21,12 @@
 
 #define MAX_ENTRY_FE 7
 
+enum virio_queue_type {
+      IPU_VIRTIO_QUEUE_0 = 0,
+      IPU_VIRTIO_QUEUE_1,
+      IPU_VIRTIO_QUEUE_MAX
+};
+
 struct ipu4_virtio_req {
 	unsigned int req_id;
 	unsigned int stat;
@@ -67,7 +73,7 @@ struct ipu4_bknd_ops {
 	/* retreiving id of current virtual machine */
 	int (*get_vm_id)(void);
 
-	int (*send_req)(int, struct ipu4_virtio_req *, int);
+	int (*send_req)(int, struct ipu4_virtio_req *, int, int);
 };
 
 struct ipu4_virtio_ctx {
