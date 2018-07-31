@@ -124,11 +124,9 @@ static void cmd_process_work(struct work_struct *work)
 						struct cmd_process, work);
 	struct hyper_dmabuf_req *req;
 	hyper_dmabuf_id_t hid;
-	int domid;
 	int i;
 
 	req = proc->rq;
-	domid = proc->domid;
 
 	switch (req->cmd) {
 	case HYPER_DMABUF_EXPORT:
