@@ -249,16 +249,13 @@ static int hyper_dmabuf_ops_end_cpu_access(struct dma_buf *dmabuf,
 					   enum dma_data_direction dir)
 {
 	struct imported_sgt_info *imported;
-	int ret;
 
 	if (!dmabuf->priv)
 		return -EINVAL;
 
 	imported = (struct imported_sgt_info *)dmabuf->priv;
 
-	ret = sync_request(imported->hid, HYPER_DMABUF_OPS_END_CPU_ACCESS);
-
-	return 0;
+	return sync_request(imported->hid, HYPER_DMABUF_OPS_END_CPU_ACCESS);
 }
 
 static void *hyper_dmabuf_ops_kmap_atomic(struct dma_buf *dmabuf,
