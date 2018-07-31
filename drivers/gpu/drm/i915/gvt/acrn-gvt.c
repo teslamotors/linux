@@ -756,13 +756,33 @@ static int acrngt_write_gpa(unsigned long handle, unsigned long gpa,
 	return 0;
 }
 
+static bool is_identical_mmap(void)
+{
+	/* todo: need add hypercall to get such info from hypervisor */
+	return true;
+}
+
 static unsigned long acrngt_gfn_to_pfn(unsigned long handle, unsigned long gfn)
 {
 	unsigned long hpa;
 	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
-	gvt_dbg_core("convert gfn 0x%lx to pfn\n", gfn);
 
-	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
+	gvt_dbg_core("convert gfn 0x%lx to pfn\n", gfn);
+	if (is_identical_mmap()) {
+		void *va = NULL;
+
+		va = map_guest_phys(info->vm_id, gfn << PAGE_SHIFT,
+				    1 << PAGE_SHIFT);
+		if (!va) {
+			gvt_err("GVT: can not map gfn = 0x%lx!!!\n", gfn);
+			hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
+		} else {
+			hpa = virt_to_phys(va);
+		}
+	} else {
+		hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
+	}
+
 	return hpa >> PAGE_SHIFT;
 }
 
