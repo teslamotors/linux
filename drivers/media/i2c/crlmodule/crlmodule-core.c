@@ -2443,6 +2443,10 @@ static int crlmodule_set_routing(struct v4l2_subdev *subdev,
 		    t->sink_pad != CRL_PAD_SINK)
 			continue;
 
+		if (sensor->src->route_flags[t->source_stream] &
+			V4L2_SUBDEV_ROUTE_FL_IMMUTABLE)
+			continue;
+
 		if (t->flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE)
 			sensor->src->route_flags[t->source_stream] |=
 				V4L2_SUBDEV_ROUTE_FL_ACTIVE;
@@ -2849,7 +2853,8 @@ static int crlmodule_init_subdevs(struct v4l2_subdev *subdev)
 				sd->route_flags[j] =
 					V4L2_SUBDEV_ROUTE_FL_SOURCE;
 			sd->route_flags[0] |=
-					V4L2_SUBDEV_ROUTE_FL_ACTIVE;
+					V4L2_SUBDEV_ROUTE_FL_ACTIVE |
+					V4L2_SUBDEV_ROUTE_FL_IMMUTABLE;
 		}
 
 		sd->sd.entity.ops = &crlmodule_entity_ops;
