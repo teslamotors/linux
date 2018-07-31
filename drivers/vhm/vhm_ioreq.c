@@ -881,7 +881,7 @@ int acrn_ioreq_init(struct vhm_vm *vm, unsigned long vma)
 	int ret;
 
 	if (vm->req_buf)
-		BUG();
+		return -EEXIST;
 
 	ret = get_user_pages_fast(vma, 1, 1, &page);
 	if (unlikely(ret != 1) || (page == NULL)) {
