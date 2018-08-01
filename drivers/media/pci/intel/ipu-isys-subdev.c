@@ -554,8 +554,7 @@ int ipu_isys_subdev_set_routing(struct v4l2_subdev *sd,
 		if (j == asd->nstreams)
 			continue;
 
-		if (t->flags & V4L2_SUBDEV_ROUTE_FL_IMMUTABLE &&
-		    t->flags != asd->route[j].flags)
+		if (asd->route[j].flags & V4L2_SUBDEV_ROUTE_FL_IMMUTABLE)
 			continue;
 
 		if ((t->flags & V4L2_SUBDEV_ROUTE_FL_SOURCE) && asd->nsinks)
