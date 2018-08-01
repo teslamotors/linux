@@ -304,6 +304,25 @@ long virtio_dev_init(struct virtio_dev_info *dev,
 }
 EXPORT_SYMBOL_GPL(virtio_dev_init);
 
+long virtio_dev_reset(struct virtio_dev_info *dev)
+{
+	int i;
+
+	for (i = 0; i < dev->nvq; i++)
+		virtio_vq_reset(&dev->vqs[i]);
+
+	memset(dev->name, 0, sizeof(dev->name));
+	dev->_ctx.vmid = 0;
+	dev->nvq = 0;
+	dev->negotiated_features = 0;
+	dev->io_range_start = 0;
+	dev->io_range_len = 0;
+	dev->io_range_type = PIO_RANGE;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(virtio_dev_reset);
+
 static int __init vbs_init(void)
 {
 	return 0;
