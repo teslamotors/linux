@@ -672,12 +672,13 @@ static int get_crlmodule_lite_pdata(struct i2c_client *client,
 
 	data->pdata = pdata;
 	/* sensor.dev may here point to sensor or dependent device */
+#if !defined(CONFIG_VIDEO_INTEL_UOS)
 	pdata->xshutdown = get_sensor_gpio(sensor.dev, 0);
 	if (pdata->xshutdown < 0) {
 		rval = pdata->xshutdown;
 		goto err_free_pdata;
 	}
-
+#endif
 	pdata->lanes = data->csi2.nlanes;
 	pdata->ext_clk = data->ext_clk;
 	client->dev.platform_data = pdata;
@@ -863,8 +864,13 @@ static const struct ipu4_acpi_devices supported_devices[] = {
 	  sizeof(imx132_op_clocks) },
 	{ "TXNW3643", LM3643_NAME,    get_lm3643_pdata, NULL, 0 },
 	{ "AMS3638", AS3638_NAME,    get_as3638_pdata, NULL, 0 },
+#if defined (CONFIG_VIDEO_INTEL_ICI)
 	{ "ADV7481A", CRLMODULE_LITE_NAME, get_crlmodule_lite_pdata, NULL, 0 },
 	{ "ADV7481B", CRLMODULE_LITE_NAME, get_crlmodule_lite_pdata, NULL, 0 },
+#else
+        { "ADV7481A", CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
+        { "ADV7481B", CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
+#endif
 };
 
 static int get_table_index(struct device *device, const __u8 *acpi_name)

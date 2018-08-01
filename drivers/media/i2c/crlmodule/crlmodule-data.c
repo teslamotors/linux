@@ -54,6 +54,8 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "ADV7481 HDMI", "adv7481_hdmi", &adv7481_hdmi_crl_configuration },
 	{ "ADV7481_EVAL", "adv7481_eval", &adv7481_eval_crl_configuration },
 	{ "ADV7481B_EVAL", "adv7481b_eval", &adv7481b_eval_crl_configuration },
+	{ "i2c-ADV7481A:00", "adv7481_hdmi", &adv7481_hdmi_crl_configuration },
+	{ "i2c-ADV7481B:00", "adv7481_cvbs", &adv7481_cvbs_crl_configuration },
 	{ "SONY318A", "imx318", &imx318_crl_configuration },
 	{ "OV10635", "ov10635", &ov10635_crl_configuration },
 	{ "AR0231AT", "ar0231at", &ar0231at_crl_configuration },
