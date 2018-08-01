@@ -108,6 +108,7 @@
 /* DEBUG */
 #define HC_ID_DBG_BASE              0x60UL
 #define HC_SETUP_SBUF               _HC_ID(HC_ID, HC_ID_DBG_BASE + 0x00)
+#define HC_SETUP_HV_NPK_LOG         _HC_ID(HC_ID, HC_ID_DBG_BASE + 0x01)
 
 /* Power management */
 #define HC_ID_PM_BASE               0x80UL
@@ -186,6 +187,23 @@ struct sbuf_setup_param {
 	uint16_t reserved;
 	uint32_t sbuf_id;
 	uint64_t gpa;
+} __attribute__((aligned(8)));
+
+struct hv_npk_log_param {
+	/* the setup command for the hypervisor NPK log */
+	uint16_t cmd;
+
+	/* the setup result for the hypervisor NPK log */
+	uint16_t res;
+
+	/* the loglevel for the hypervisor NPK log */
+	uint16_t loglevel;
+
+	/* Reserved */
+	uint16_t reserved;
+
+	/* the MMIO address for the hypervisor NPK log */
+	uint64_t mmio_addr;
 } __attribute__((aligned(8)));
 
 struct vm_gpa2hpa {
