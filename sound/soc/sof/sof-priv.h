@@ -43,6 +43,9 @@
 /* max number of FE PCMs before BEs */
 #define SOF_BE_PCM_BASE		16
 
+#define SOF_IPC_DSP_REPLY		0
+#define SOF_IPC_HOST_REPLY		1
+
 /* convenience constructor for DAI driver streams */
 #define SOF_DAI_STREAM(sname, scmin, scmax, srates, sfmt) \
 	{.stream_name = sname, .channels_min = scmin, .channels_max = scmax, \
@@ -59,11 +62,6 @@ struct snd_soc_tplg_ops;
 struct snd_soc_component;
 struct sof_intel_hda_dev;
 struct snd_sof_pdata;
-
-struct snd_sof_dai_drv {
-	struct snd_soc_dai_driver *drv;
-	int num_drv;
-};
 
 /*
  * SOF DSP HW abstraction operations.
@@ -107,9 +105,9 @@ struct snd_sof_dsp_ops {
 
 	/* mailbox */
 	void (*mailbox_read)(struct snd_sof_dev *sof_dev, u32 offset,
-			     void __iomem *addr, size_t bytes);
+			     void *addr, size_t bytes);
 	void (*mailbox_write)(struct snd_sof_dev *sof_dev, u32 offset,
-			      void __iomem *addr, size_t bytes);
+			      void *addr, size_t bytes);
 
 	/* ipc */
 	int (*send_msg)(struct snd_sof_dev *sof_dev,
@@ -117,7 +115,7 @@ struct snd_sof_dsp_ops {
 	int (*get_reply)(struct snd_sof_dev *sof_dev,
 			 struct snd_sof_ipc_msg *msg);
 	int (*is_ready)(struct snd_sof_dev *sof_dev);
-	int (*cmd_done)(struct snd_sof_dev *sof_dev);
+	int (*cmd_done)(struct snd_sof_dev *sof_dev, int dir);
 
 	/* debug */
 	const struct snd_sof_debugfs_map *debug_map;
@@ -125,21 +123,20 @@ struct snd_sof_dsp_ops {
 	void (*dbg_dump)(struct snd_sof_dev *sof_dev, u32 flags);
 
 	/* connect pcm substream to a host stream */
-	int (*host_stream_open)(struct snd_sof_dev *sdev,
-				struct snd_pcm_substream *substream);
+	int (*pcm_open)(struct snd_sof_dev *sdev,
+			struct snd_pcm_substream *substream);
 	/* disconnect pcm substream to a host stream */
-	int (*host_stream_close)(struct snd_sof_dev *sdev,
-				 struct snd_pcm_substream *substream);
+	int (*pcm_close)(struct snd_sof_dev *sdev,
+			 struct snd_pcm_substream *substream);
 
 	/* host stream hw params */
-	int (*host_stream_hw_params)(struct snd_sof_dev *sdev,
-				     struct snd_pcm_substream *substream,
-				     struct snd_pcm_hw_params *params);
+	int (*pcm_hw_params)(struct snd_sof_dev *sdev,
+			     struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params);
 
 	/* host stream trigger */
-	int (*host_stream_trigger)(struct snd_sof_dev *sdev,
-				   struct snd_pcm_substream *substream,
-				   int cmd);
+	int (*pcm_trigger)(struct snd_sof_dev *sdev,
+			   struct snd_pcm_substream *substream, int cmd);
 
 	/* FW loading */
 	int (*load_firmware)(struct snd_sof_dev *sof_dev,
@@ -154,7 +151,8 @@ struct snd_sof_dsp_ops {
 	int (*trace_trigger)(struct snd_sof_dev *sdev, int cmd);
 
 	/* DAI ops */
-	struct snd_sof_dai_drv *dai_drv;
+	struct snd_soc_dai_driver *drv;
+	int num_drv;
 };
 
 /* DSP architecture specific callbacks for oops and stack dumps */
@@ -172,7 +170,14 @@ struct sof_ops_table {
 };
 
 /* FS entry for debug files that can expose DSP memories, registers */
-struct snd_sof_dfsentry {
+struct snd_sof_dfsentry_io {
+	struct dentry *dfsentry;
+	size_t size;
+	void __iomem *buf;
+	struct snd_sof_dev *sdev;
+};
+
+struct snd_sof_dfsentry_buf {
 	struct dentry *dfsentry;
 	size_t size;
 	void *buf;
@@ -222,7 +227,7 @@ struct snd_sof_pcm {
 	struct snd_soc_tplg_pcm pcm;
 	struct snd_sof_pcm_stream stream[2];
 	u32 posn_offset[2];
-	struct mutex mutex;
+	struct mutex mutex;	/* access mutex */
 	struct list_head list;	/* list in sdev pcm list */
 };
 
@@ -237,7 +242,7 @@ struct snd_sof_control {
 	enum sof_ipc_ctrl_cmd cmd;
 	u32 *volume_table; /* volume table computed from tlv data*/
 
-	struct mutex mutex;
+	struct mutex mutex;	/* access mutex */
 	struct list_head list;	/* list in sdev control list */
 };
 
@@ -250,7 +255,7 @@ struct snd_sof_widget {
 	int id;
 
 	struct snd_soc_dapm_widget *widget;
-	struct mutex mutex;
+	struct mutex mutex;	/* access mutex */
 	struct list_head list;	/* list in sdev widget list */
 
 	void *private;		/* core does not touch this */
@@ -340,8 +345,18 @@ struct snd_sof_dev {
 	wait_queue_head_t trace_sleep;
 	u32 host_offset;
 	bool dtrace_is_enabled;
+	bool dtrace_error;
 
 	void *private;			/* core does not touch this */
+};
+
+/*
+ * SOF platform private struct used as drvdata of
+ * platform dev (e.g. pci/acpi/spi...) drvdata.
+ */
+struct sof_platform_priv {
+	struct snd_sof_pdata *sof_pdata;
+	struct platform_device *pdev_pcm;
 };
 
 /*
@@ -379,7 +394,7 @@ int snd_sof_fw_parse_ext_data(struct snd_sof_dev *sdev, u32 offset);
  */
 struct snd_sof_ipc *snd_sof_ipc_init(struct snd_sof_dev *sdev);
 void snd_sof_ipc_free(struct snd_sof_dev *sdev);
-void snd_sof_ipc_reply(struct snd_sof_dev *sdev, u32 msg_id);
+int snd_sof_ipc_reply(struct snd_sof_dev *sdev, u32 msg_id);
 void snd_sof_ipc_msgs_rx(struct snd_sof_dev *sdev);
 void snd_sof_ipc_msgs_tx(struct snd_sof_dev *sdev);
 int snd_sof_ipc_stream_pcm_params(struct snd_sof_dev *sdev,
@@ -402,6 +417,7 @@ struct snd_sof_pcm *snd_sof_find_spcm_comp(struct snd_sof_dev *sdev,
 					   int *direction);
 struct snd_sof_pcm *snd_sof_find_spcm_pcm_id(struct snd_sof_dev *sdev,
 					     unsigned int pcm_id);
+void sof_ipc_drop_all(struct snd_sof_ipc *ipc);
 
 /*
  * Stream IPC

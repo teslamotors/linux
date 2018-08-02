@@ -70,6 +70,8 @@ static const struct snd_sof_debugfs_map bdw_debugfs[] = {
 	{"shim", BDW_DSP_BAR, SHIM_OFFSET, SHIM_SIZE},
 };
 
+static int bdw_cmd_done(struct snd_sof_dev *sdev, int dir);
+
 /*
  * Memory copy.
  */
@@ -87,12 +89,12 @@ static void bdw_block_write(struct snd_sof_dev *sdev, u32 offset, void *src,
 	n = size % 4;
 
 	/* __iowrite32_copy use 32bit size values so divide by 4 */
-	__iowrite32_copy((void *)dest, src, m);
+	__iowrite32_copy(dest, src, m);
 
 	if (n) {
 		for (i = 0; i < n; i++)
 			tmp |= (u32)*(src_byte + m * 4 + i) << (i * 8);
-		__iowrite32_copy((void *)(dest + m * 4), &tmp, 1);
+		__iowrite32_copy(dest + m * 4, &tmp, 1);
 	}
 }
 
@@ -361,15 +363,16 @@ static irqreturn_t bdw_irq_thread(int irq, void *context)
 		/* Handle Immediate reply from DSP Core */
 		bdw_mailbox_read(sdev, sdev->host_box.offset, &hdr,
 				 sizeof(hdr));
-		snd_sof_ipc_reply(sdev, hdr);
 
-		/* clear DONE bit - tell DSP we have completed */
-		snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_IPCX,
-						 SHIM_IPCX_DONE, 0);
-
-		/* unmask Done interrupt */
-		snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_IMRX,
-						 SHIM_IMRX_DONE, 0);
+		/*
+		 * handle immediate reply from DSP core. If the msg is
+		 * found, set done bit in cmd_done which is called at the
+		 * end of message processing function, else set it here
+		 * because the done bit can't be set in cmd_done function
+		 * which is triggered by msg
+		 */
+		if (snd_sof_ipc_reply(sdev, hdr))
+			bdw_cmd_done(sdev, SOF_IPC_DSP_REPLY);
 	}
 
 	ipcd = snd_sof_dsp_read(sdev, BDW_DSP_BAR, SHIM_IPCD);
@@ -526,7 +529,7 @@ static int bdw_is_ready(struct snd_sof_dev *sdev)
 	u32 val;
 
 	val = snd_sof_dsp_read(sdev, BDW_DSP_BAR, SHIM_IPCX);
-	if (val & SHIM_IPCX_BUSY)
+	if ((val & SHIM_IPCX_BUSY) || (val & SHIM_IPCX_DONE))
 		return 0;
 
 	return 1;
@@ -573,16 +576,26 @@ static int bdw_get_reply(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 	return ret;
 }
 
-static int bdw_cmd_done(struct snd_sof_dev *sdev)
+static int bdw_cmd_done(struct snd_sof_dev *sdev, int dir)
 {
-	/* clear BUSY bit and set DONE bit - accept new messages */
-	snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_IPCD,
-					 SHIM_IPCD_BUSY | SHIM_IPCD_DONE,
-					 SHIM_IPCD_DONE);
+	if (dir == SOF_IPC_HOST_REPLY) {
+		/* clear BUSY bit and set DONE bit - accept new messages */
+		snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_IPCD,
+						 SHIM_IPCD_BUSY | SHIM_IPCD_DONE,
+						 SHIM_IPCD_DONE);
 
-	/* unmask busy interrupt */
-	snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_IMRX,
-					 SHIM_IMRX_BUSY, 0);
+		/* unmask busy interrupt */
+		snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_IMRX,
+						 SHIM_IMRX_BUSY, 0);
+	} else {
+		/* clear DONE bit - tell DSP we have completed */
+		snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_IPCX,
+						 SHIM_IPCX_DONE, 0);
+
+		/* unmask Done interrupt */
+		snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_IMRX,
+						 SHIM_IMRX_DONE, 0);
+	}
 
 	return 0;
 }
@@ -730,11 +743,6 @@ static struct snd_soc_dai_driver bdw_dai[] = {
 },
 };
 
-struct snd_sof_dai_drv bdw_dai_drv = {
-	.drv = bdw_dai,
-	.num_drv = ARRAY_SIZE(bdw_dai)
-};
-
 /* broadwell ops */
 struct snd_sof_dsp_ops sof_bdw_ops = {
 	/*Device init */
@@ -778,7 +786,8 @@ struct snd_sof_dsp_ops sof_bdw_ops = {
 	.load_firmware	= snd_sof_load_firmware_memcpy,
 
 	/* DAI drivers */
-	.dai_drv = &bdw_dai_drv,
+	.drv = bdw_dai,
+	.num_drv = ARRAY_SIZE(bdw_dai)
 };
 EXPORT_SYMBOL(sof_bdw_ops);
 

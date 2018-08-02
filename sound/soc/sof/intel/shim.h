@@ -46,7 +46,7 @@
 #define SHIM_CSR_RST		(0x1 << 1)
 #define SHIM_CSR_SBCS0		(0x1 << 2)
 #define SHIM_CSR_SBCS1		(0x1 << 3)
-#define SHIM_CSR_DCS(x)		(x << 4)
+#define SHIM_CSR_DCS(x)		((x) << 4)
 #define SHIM_CSR_DCS_MASK	(0x7 << 4)
 #define SHIM_CSR_STALL		(0x1 << 10)
 #define SHIM_CSR_S0IOCS		(0x1 << 21)
@@ -95,7 +95,7 @@
 #define SHIM_BYT_IPCD_BUSY	((u64)0x1 << 63)
 
 /* CLKCTL */
-#define SHIM_CLKCTL_SMOS(x)	(x << 24)
+#define SHIM_CLKCTL_SMOS(x)	((x) << 24)
 #define SHIM_CLKCTL_MASK	(3 << 24)
 #define SHIM_CLKCTL_DCPLCG	BIT(18)
 #define SHIM_CLKCTL_SCOE1	BIT(17)
@@ -106,11 +106,11 @@
 #define SHIM_CSR2_SDFD_SSP1	BIT(2)
 
 /* LTRC */
-#define SHIM_LTRC_VAL(x)	(x << 0)
+#define SHIM_LTRC_VAL(x)	((x) << 0)
 
 /* HMDC */
-#define SHIM_HMDC_HDDA0(x)	(x << 0)
-#define SHIM_HMDC_HDDA1(x)	(x << 7)
+#define SHIM_HMDC_HDDA0(x)	((x) << 0)
+#define SHIM_HMDC_HDDA1(x)	((x) << 7)
 #define SHIM_HMDC_HDDA_E0_CH0	1
 #define SHIM_HMDC_HDDA_E0_CH1	2
 #define SHIM_HMDC_HDDA_E0_CH2	4
