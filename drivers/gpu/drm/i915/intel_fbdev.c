@@ -780,7 +780,7 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
 		WARN_ON(state != FBINFO_STATE_RUNNING);
 		if (!console_trylock()) {
 			/* Don't block our own workqueue as this can
-			 * be run in parallel with other i915_modparams.ko tasks.
+			 * be run in parallel with other i915.ko tasks.
 			 */
 			schedule_work(&dev_priv->fbdev_suspend_work);
 			return;
