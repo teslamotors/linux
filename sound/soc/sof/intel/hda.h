@@ -119,7 +119,7 @@
 #define HDA_DSP_DRSM_BAR			3
 #define HDA_DSP_BAR				4
 
-#define SRAM_WINDOW_OFFSET(x)			(0x80000 + x * 0x20000)
+#define SRAM_WINDOW_OFFSET(x)			(0x80000 + (x) * 0x20000)
 
 #define HDA_DSP_MBOX_OFFSET			SRAM_WINDOW_OFFSET(0)
 
@@ -266,7 +266,7 @@
  * Mask for a given number of cores
  * nc = number of supported cores
  */
-#define SOF_DSP_CORES_MASK(nc)	GENMASK((nc - 1), 0)
+#define SOF_DSP_CORES_MASK(nc)	GENMASK(((nc) - 1), 0)
 
 /* Intel HD Audio Inter-Processor Communication Registers for Cannonlake*/
 #define CNL_DSP_IPC_BASE		0xc0
@@ -304,6 +304,9 @@
 #define HDA_DSP_BDL_SIZE			4096
 #define HDA_DSP_MAX_BDL_ENTRIES			\
 	(HDA_DSP_BDL_SIZE / sizeof(struct sof_intel_dsp_bdl))
+
+/* Number of DAIs */
+#define SOF_SKL_NUM_DAIS		14
 
 struct sof_intel_dsp_bdl {
 	u32 addr_l;
@@ -473,7 +476,7 @@ int hda_dsp_ipc_get_reply(struct snd_sof_dev *sdev,
 int hda_dsp_ipc_fw_ready(struct snd_sof_dev *sdev, u32 msg_id);
 irqreturn_t hda_dsp_ipc_irq_handler(int irq, void *context);
 irqreturn_t hda_dsp_ipc_irq_thread(int irq, void *context);
-int hda_dsp_ipc_cmd_done(struct snd_sof_dev *sdev);
+int hda_dsp_ipc_cmd_done(struct snd_sof_dev *sdev, int dir);
 
 /*
  * DSP Code loader.
@@ -495,7 +498,7 @@ int hda_dsp_trace_release(struct snd_sof_dev *sdev);
 int hda_dsp_trace_trigger(struct snd_sof_dev *sdev, int cmd);
 
 /* common dai driver */
-extern struct snd_sof_dai_drv hda_dai_drv;
+extern struct snd_soc_dai_driver skl_dai[];
 
 /*
  * Platform Specific HW abstraction Ops.

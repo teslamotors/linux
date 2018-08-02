@@ -72,17 +72,26 @@ void hda_dsp_block_write(struct snd_sof_dev *sdev, u32 offset, void *src,
 	u32 tmp = 0;
 	int i, m, n;
 	const u8 *src_byte = src;
+	u8 *dst_byte;
 
 	m = size / 4;
 	n = size % 4;
 
 	/* __iowrite32_copy use 32bit size values so divide by 4 */
-	__iowrite32_copy((void *)dest, src, m);
+	__iowrite32_copy(dest, src, m);
 
 	if (n) {
+		/* first read the 32bit data of dest, then change affected
+		 * bytes, and write back to dest. For unaffected bytes, it
+		 * should not be changed
+		 */
+		__ioread32_copy(&tmp, dest + m * 4, 1);
+
+		dst_byte = (u8 *)&tmp;
 		for (i = 0; i < n; i++)
-			tmp |= (u32)*(src_byte + m * 4 + i) << (i * 8);
-		__iowrite32_copy((void *)(dest + m * 4), &tmp, 1);
+			dst_byte[i] = src_byte[m * 4 + i];
+
+		__iowrite32_copy(dest + m * 4, &tmp, 1);
 	}
 }
 
@@ -271,6 +280,21 @@ static const struct sof_intel_dsp_desc chip_info[] = {
 {
 	/* Cannonlake */
 	.id = 0x9dc8,
+	.cores_num = 4,
+	.cores_mask = HDA_DSP_CORE_MASK(0) |
+				HDA_DSP_CORE_MASK(1) |
+				HDA_DSP_CORE_MASK(2) |
+				HDA_DSP_CORE_MASK(3),
+	.ipc_req = CNL_DSP_REG_HIPCIDR,
+	.ipc_req_mask = CNL_DSP_REG_HIPCIDR_BUSY,
+	.ipc_ack = CNL_DSP_REG_HIPCIDA,
+	.ipc_ack_mask = CNL_DSP_REG_HIPCIDA_DONE,
+	.ipc_ctl = CNL_DSP_REG_HIPCCTL,
+	.ops = &sof_cnl_ops,
+},
+{
+	/* Icelake */
+	.id = 0x34c8,
 	.cores_num = 4,
 	.cores_mask = HDA_DSP_CORE_MASK(0) |
 				HDA_DSP_CORE_MASK(1) |

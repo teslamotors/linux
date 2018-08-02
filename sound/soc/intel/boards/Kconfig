@@ -209,9 +209,9 @@ config SND_SOC_INTEL_SKL_NAU88L25_MAX98357A_MACH
 	  Say Y or m if you have such a device. This is a recommended option.
 	  If unsure select "N".
 
-endif ## SND_SOC_INTEL_SKL
+endif ## SND_SOC_INTEL_SKYLAKE
 
-if SND_SOC_INTEL_SKL || SND_SOC_SOF_APOLLOLAKE
+if SND_SOC_INTEL_SKYLAKE || SND_SOC_SOF_APOLLOLAKE
 
 config SND_SOC_INTEL_BXT_DA7219_MAX98357A_MACH
 	tristate "Broxton with DA7219 and MAX98357A in I2S Mode"
@@ -259,9 +259,9 @@ config SND_SOC_INTEL_BXT_TDF8532_MACH
 	  Say Y if you have such a device.
 	  If unsure select "N".
 
-endif ##  SND_SOC_INTEL_SKL || SND_SOC_SOF_APOLLOLAKE
+endif ##  SND_SOC_INTEL_SKYLAKE || SND_SOC_SOF_APOLLOLAKE
 
-if  SND_SOC_INTEL_SKL
+if  SND_SOC_INTEL_SKYLAKE
 
 config SND_SOC_INTEL_KBL_RT5663_MAX98927_MACH
 	tristate "KBL with RT5663 and MAX98927 in I2S Mode"
@@ -389,16 +389,20 @@ config SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH
 
 endif ## SND_SOC_INTEL_SKYLAKE
 
-if  SND_SOC_INTEL_SKL || SND_SOC_SOF_CANNONLAKE
+if SND_SOC_INTEL_SKYLAKE || SND_SOC_SOF_CANNONLAKE
 
 config SND_SOC_INTEL_CNL_RT274_MACH
-        tristate "ASoC Audio driver for CNL with RT274 in I2S Mode"
-          select SND_SOC_RT274
+	tristate "Cannonlake with RT274 I2S mode"
+	depends on MFD_INTEL_LPSS && I2C && ACPI
+	select SND_SOC_RT274
+	select SND_SOC_DMIC
+	select SND_SOC_HDAC_HDMI
         help
-          This adds support for ASoC machine driver for CNL and codec RT274. This
-          will create an alsa sound card.  Say Y if you have such a device If
-          unsure select "N".
+	   This adds support for ASoC machine driver for Cannonlake platform
+	   with RT274 I2S audio codec.
+	   Say Y or m if you have such a device. This is a recommended option.
+	   If unsure select "N".
 
-endif ##  SND_SOC_INTEL_SKL || SND_SOC_SOF_CANNONLAKE
+endif ## SND_SOC_INTEL_SKYLAKE
 
 endif ## SND_SOC_INTEL_MACH

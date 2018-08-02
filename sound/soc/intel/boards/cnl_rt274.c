@@ -33,40 +33,11 @@
 #include <sound/jack.h>
 #include <linux/input.h>
 
-#include "../../codecs/hdac_hdmi.h"
 #include "../../codecs/rt274.h"
 
 #define CNL_FREQ_OUT		24000000
 #define CNL_BE_FIXUP_RATE	48000
 #define RT274_CODEC_DAI		"rt274-aif1"
-#define CNL_NAME_SIZE		32
-#define CNL_MAX_HDMI		3
-
-static struct snd_soc_jack cnl_hdmi[CNL_MAX_HDMI];
-
-struct cnl_hdmi_pcm {
-	struct list_head head;
-	struct snd_soc_dai *codec_dai;
-	int device;
-};
-
-struct cnl_rt274_private {
-	struct list_head hdmi_pcm_list;
-	int pcm_count;
-};
-
-static struct snd_soc_dai *cnl_get_codec_dai(struct snd_soc_card *card,
-						     const char *dai_name)
-{
-	struct snd_soc_pcm_runtime *rtd;
-
-	list_for_each_entry(rtd, &card->rtd_list, list) {
-		if (!strcmp(rtd->codec_dai->name, dai_name))
-			return rtd->codec_dai;
-	}
-
-	return NULL;
-}
 
 static int cnl_rt274_clock_control(struct snd_soc_dapm_widget *w,
 				   struct snd_kcontrol *k, int  event)
@@ -133,13 +104,17 @@ static const struct snd_soc_dapm_widget cnl_rt274_widgets[] = {
 			    SND_SOC_DAPM_POST_PMD),
 };
 
-static const struct snd_soc_pcm_stream dai_params_codec = {
-	.formats = SNDRV_PCM_FMTBIT_S24_LE,
-	.rate_min = 48000,
-	.rate_max = 48000,
-	.channels_min = 2,
-	.channels_max = 2,
-};
+#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
+static int cnl_dmic_fixup(struct snd_soc_pcm_runtime *rtd,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *channels = hw_param_interval(params,
+						SNDRV_PCM_HW_PARAM_CHANNELS);
+	channels->min = channels->max = 2;
+
+	return 0;
+}
+#endif
 
 static const struct snd_soc_dapm_route cnl_map[] = {
 	{"Headphone Jack", NULL, "HPO Pin"},
@@ -168,13 +143,6 @@ static const struct snd_soc_dapm_route cnl_map[] = {
 
 	{"Headphone Jack", NULL, "Platform Clock"},
 	{"MIC", NULL, "Platform Clock"},
-
-	{"hifi1", NULL, "iDisp1 Tx"},
-	{"iDisp1 Tx", NULL, "iDisp1_out"},
-	{"hifi2", NULL, "iDisp2 Tx"},
-	{"iDisp2 Tx", NULL, "iDisp2_out"},
-	{"hifi3", NULL, "iDisp3 Tx"},
-	{"iDisp3 Tx", NULL, "iDisp3_out"},
 };
 
 static int cnl_rt274_init(struct snd_soc_pcm_runtime *runtime)
@@ -220,7 +188,7 @@ static int cnl_be_fixup(struct snd_soc_pcm_runtime *rtd,
 	channels->max = 2;
 	snd_mask_none(hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT));
 	snd_mask_set(hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT),
-		     SNDRV_PCM_FORMAT_S24_LE);
+			(unsigned int __force)SNDRV_PCM_FORMAT_S24_LE);
 
 	return 0;
 }
@@ -229,22 +197,16 @@ static int cnl_be_fixup(struct snd_soc_pcm_runtime *rtd,
 static const char pname[] = "0000:02:18.0";
 static const char cname[] = "rt274.0-001c";
 #else
+#if IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
+static const char pname[] = "sof-audio";
+#else
 static const char pname[] = "0000:00:1f.3";
 #endif
-static int cnl_dmic_fixup(struct snd_soc_pcm_runtime *rtd,
-			  struct snd_pcm_hw_params *params)
-{
-	struct snd_interval *channels = hw_param_interval(params,
-						SNDRV_PCM_HW_PARAM_CHANNELS);
-	channels->min = 2;
-	channels->max = 2;
-
-	return 0;
-}
-
 static const char cname[] = "i2c-INT34C2:00";
+#endif
 
-struct snd_soc_dai_link cnl_rt274_msic_dailink[] = {
+static struct snd_soc_dai_link cnl_rt274_msic_dailink[] = {
+#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 	/* Trace Buffer DAI links */
 	{
 		.name = "CNL Trace Buffer0",
@@ -309,6 +271,7 @@ struct snd_soc_dai_link cnl_rt274_msic_dailink[] = {
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 	},
+#endif
 	/* back ends */
 	{
 		.name = "SSP0-Codec",
@@ -325,6 +288,7 @@ struct snd_soc_dai_link cnl_rt274_msic_dailink[] = {
 		.dpcm_capture = 1,
 		.init = cnl_rt274_init,
 	},
+#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 	{
 		.name = "dmic01",
 		.id = 2,
@@ -336,119 +300,17 @@ struct snd_soc_dai_link cnl_rt274_msic_dailink[] = {
 		.dpcm_capture = 1,
 		.be_hw_params_fixup = cnl_dmic_fixup,
 	},
-	{
-		.name = "iDisp1",
-		.id = 3,
-		.cpu_dai_name = "iDisp1 Pin",
-		.codec_name = "ehdaudio0D2",
-		.codec_dai_name = "intel-hdmi-hifi1",
-		.platform_name = pname,
-		.dpcm_playback = 1,
-		.no_pcm = 1,
-	},
-	{
-		.name = "iDisp2",
-		.id = 4,
-		.cpu_dai_name = "iDisp2 Pin",
-		.codec_name = "ehdaudio0D2",
-		.codec_dai_name = "intel-hdmi-hifi2",
-		.platform_name = pname,
-		.dpcm_playback = 1,
-		.no_pcm = 1,
-	},
-	{
-		.name = "iDisp3",
-		.id = 5,
-		.cpu_dai_name = "iDisp3 Pin",
-		.codec_name = "ehdaudio0D2",
-		.codec_dai_name = "intel-hdmi-hifi3",
-		.platform_name = pname,
-		.dpcm_playback = 1,
-		.no_pcm = 1,
-	},
-	/* codec-codec link */
-	{
-		.name = "CNL SSP0-Loop Port",
-		.stream_name = "CNL SSP0-Loop",
-		.cpu_dai_name = "SSP0 Pin",
-		.platform_name = pname,
-		.codec_name = cname,
-		.codec_dai_name = "rt274-aif1",
-		.params = &dai_params_codec,
-		.dsp_loopback = true,
-		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
-			SND_SOC_DAIFMT_NB_NF |
-			SND_SOC_DAIFMT_CBS_CFS,
-	},
+#endif
 };
 
-#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 static int
 cnl_add_dai_link(struct snd_soc_card *card, struct snd_soc_dai_link *link)
 {
-	struct cnl_rt274_private *ctx = snd_soc_card_get_drvdata(card);
-	char hdmi_dai_name[CNL_NAME_SIZE];
-	struct cnl_hdmi_pcm *pcm;
+       link->platform_name = pname;
+       link->nonatomic = 1;
 
-	link->platform_name = pname;
-	link->nonatomic = 1;
-
-	/* Assuming HDMI dai link will consist the string "HDMI" */
-	if (strstr(link->name, "HDMI")) {
-		static int i = 1; /* hdmi codec dai name starts from index 1 */
-
-		pcm = devm_kzalloc(card->dev, sizeof(*pcm), GFP_KERNEL);
-		if (!pcm)
-			return -ENOMEM;
-
-		snprintf(hdmi_dai_name, sizeof(hdmi_dai_name), "intel-hdmi-hifi%d", i++);
-		pcm->codec_dai = cnl_get_codec_dai(card, hdmi_dai_name);
-		if (!pcm->codec_dai)
-			return -EINVAL;
-
-		pcm->device = ctx->pcm_count;
-		list_add_tail(&pcm->head, &ctx->hdmi_pcm_list);
-	}
-	ctx->pcm_count++;
-
-	return 0;
+       return 0;
 }
-
-static int cnl_card_late_probe(struct snd_soc_card *card)
-{
-	struct cnl_rt274_private *ctx = snd_soc_card_get_drvdata(card);
-	struct snd_soc_codec *codec = NULL;
-	char jack_name[CNL_NAME_SIZE];
-	struct cnl_hdmi_pcm *pcm;
-	int err, i = 0;
-
-	if (list_empty(&ctx->hdmi_pcm_list))
-		return 0;
-
-	list_for_each_entry(pcm, &ctx->hdmi_pcm_list, head) {
-		codec = pcm->codec_dai->codec;
-		snprintf(jack_name, sizeof(jack_name),
-			"HDMI/DP, pcm=%d Jack", pcm->device);
-		err = snd_soc_card_jack_new(card, jack_name,
-					SND_JACK_AVOUT, &cnl_hdmi[i],
-					NULL, 0);
-		if (err)
-			return err;
-
-		err = hdac_hdmi_jack_init(pcm->codec_dai,
-					  pcm->device, &cnl_hdmi[i]);
-		if (err < 0)
-			return err;
-
-		i++;
-	}
-
-	if (!codec)
-		return -EINVAL;
-
-	return hdac_hdmi_jack_port_init(codec, &card->dapm);
-}
-#endif
 
 /* SoC card */
 static struct snd_soc_card snd_soc_card_cnl = {
@@ -461,35 +323,15 @@ static struct snd_soc_card snd_soc_card_cnl = {
 	.num_dapm_routes = ARRAY_SIZE(cnl_map),
 	.controls = cnl_controls,
 	.num_controls = ARRAY_SIZE(cnl_controls),
-	.fully_routed = true,
-#if !IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL)
 	.add_dai_link = cnl_add_dai_link,
-	.late_probe = cnl_card_late_probe,
-#endif
+	.fully_routed = true,
 };
 
 static int snd_cnl_rt274_mc_probe(struct platform_device *pdev)
 {
-	struct cnl_rt274_private *ctx;
-
-	ctx = devm_kzalloc(&pdev->dev, sizeof(*ctx), GFP_KERNEL);
-	if (!ctx)
-		return -ENOMEM;
-
-	ctx->pcm_count = ARRAY_SIZE(cnl_rt274_msic_dailink);
-	INIT_LIST_HEAD(&ctx->hdmi_pcm_list);
-
 	snd_soc_card_cnl.dev = &pdev->dev;
-	snd_soc_card_set_drvdata(&snd_soc_card_cnl, ctx);
-
 	return devm_snd_soc_register_card(&pdev->dev, &snd_soc_card_cnl);
 }
-
-static const struct platform_device_id cnl_board_ids[] = {
-	{ .name = "cnl_rt274" },
-	{ .name = "icl_rt274" },
-	{ }
-};
 
 static struct platform_driver snd_cnl_rt274_driver = {
 	.driver = {
@@ -497,7 +339,6 @@ static struct platform_driver snd_cnl_rt274_driver = {
 		.pm = &snd_soc_pm_ops,
 	},
 	.probe = snd_cnl_rt274_mc_probe,
-	.id_table = cnl_board_ids,
 };
 
 module_platform_driver(snd_cnl_rt274_driver);
@@ -505,4 +346,3 @@ module_platform_driver(snd_cnl_rt274_driver);
 MODULE_AUTHOR("Guneshwor Singh <guneshwor.o.singh@intel.com>");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:cnl_rt274");
-MODULE_ALIAS("platform:icl_rt274");

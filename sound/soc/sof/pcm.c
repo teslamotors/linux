@@ -6,6 +6,8 @@
  * Copyright(c) 2017 Intel Corporation. All rights reserved.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *
+ * PCM Layer, interface between ALSA and IPC.
  */
 
 #include <linux/module.h>
@@ -25,6 +27,7 @@
 #include <sound/sof.h>
 #include <uapi/sound/sof-ipc.h>
 #include "sof-priv.h"
+#include "ops.h"
 
 /* Create DMA buffer page table for DSP */
 static int create_page_table(struct snd_pcm_substream *substream,
@@ -49,7 +52,6 @@ static int sof_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_sof_dev *sdev =
 		snd_soc_platform_get_drvdata(rtd->platform);
-	const struct snd_sof_dsp_ops *ops = sdev->ops;
 	struct snd_sof_pcm *spcm = rtd->sof;
 	struct sof_ipc_pcm_params pcm;
 	struct sof_ipc_pcm_params_reply ipc_params_reply;
@@ -134,11 +136,10 @@ static int sof_pcm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* firmware already configured host stream */
-	if (ops && ops->host_stream_hw_params) {
-		pcm.params.stream_tag =
-			ops->host_stream_hw_params(sdev, substream, params);
-		dev_dbg(sdev->dev, "stream_tag %d", pcm.params.stream_tag);
-	}
+	pcm.params.stream_tag = snd_sof_pcm_platform_hw_params(sdev,
+							       substream,
+							       params);
+	dev_dbg(sdev->dev, "stream_tag %d", pcm.params.stream_tag);
 
 	/* send IPC to the DSP */
 	ret = sof_ipc_tx_message(sdev->ipc, pcm.hdr.cmd, &pcm, sizeof(pcm),
@@ -197,7 +198,6 @@ static int sof_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct snd_sof_pcm *spcm = rtd->sof;
 	struct sof_ipc_stream stream;
 	struct sof_ipc_reply reply;
-	const struct snd_sof_dsp_ops *ops = sdev->ops;
 	int ret = 0;
 
 	/* nothing todo for BE */
@@ -232,9 +232,7 @@ static int sof_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		return -EINVAL;
 	}
 
-	/* set RUN firstly per the sequence suggested by firmware team */
-	if (ops && ops->host_stream_trigger)
-		ret = ops->host_stream_trigger(sdev, substream, cmd);
+	snd_sof_pcm_platform_trigger(sdev, substream, cmd);
 
 	/* send IPC to the DSP */
 	ret = sof_ipc_tx_message(sdev->ipc, stream.hdr.cmd, &stream,
@@ -255,7 +253,7 @@ static snd_pcm_uframes_t sof_pcm_pointer(struct snd_pcm_substream *substream)
 	if (rtd->dai_link->no_pcm)
 		return 0;
 
-	/* TODO: call HW position callback */
+	/* read position from DSP */
 	host = bytes_to_frames(substream->runtime,
 			       spcm->stream[substream->stream].posn.host_posn);
 	dai = bytes_to_frames(substream->runtime,
@@ -276,7 +274,6 @@ static int sof_pcm_open(struct snd_pcm_substream *substream)
 	struct snd_sof_pcm *spcm = rtd->sof;
 	struct snd_soc_tplg_stream_caps *caps =
 		&spcm->pcm.caps[substream->stream];
-	const struct snd_sof_dsp_ops *ops = sdev->ops;
 
 	/* nothing todo for BE */
 	if (rtd->dai_link->no_pcm)
@@ -292,10 +289,10 @@ static int sof_pcm_open(struct snd_pcm_substream *substream)
 	/* set any runtime constraints based on topology */
 	snd_pcm_hw_constraint_step(substream->runtime, 0,
 				   SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
-				   caps->period_size_min);
+				   le32_to_cpu(caps->period_size_min));
 	snd_pcm_hw_constraint_step(substream->runtime, 0,
 				   SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
-				   caps->period_size_min);
+				   le32_to_cpu(caps->period_size_min));
 
 	/* set runtime config */
 	runtime->hw.info = SNDRV_PCM_INFO_MMAP |
@@ -304,12 +301,12 @@ static int sof_pcm_open(struct snd_pcm_substream *substream)
 			  SNDRV_PCM_INFO_PAUSE |
 			  SNDRV_PCM_INFO_RESUME |
 			  SNDRV_PCM_INFO_NO_PERIOD_WAKEUP;
-	runtime->hw.formats = caps->formats;
-	runtime->hw.period_bytes_min = caps->period_size_min;
-	runtime->hw.period_bytes_max = caps->period_size_max;
-	runtime->hw.periods_min = caps->periods_min;
-	runtime->hw.periods_max = caps->periods_max;
-	runtime->hw.buffer_bytes_max = caps->buffer_size_max;
+	runtime->hw.formats = le64_to_cpu(caps->formats);
+	runtime->hw.period_bytes_min = le32_to_cpu(caps->period_size_min);
+	runtime->hw.period_bytes_max = le32_to_cpu(caps->period_size_max);
+	runtime->hw.periods_min = le32_to_cpu(caps->periods_min);
+	runtime->hw.periods_max = le32_to_cpu(caps->periods_max);
+	runtime->hw.buffer_bytes_max = le32_to_cpu(caps->buffer_size_max);
 
 	dev_dbg(sdev->dev, "period min %zd max %zd bytes\n",
 		runtime->hw.period_bytes_min,
@@ -320,18 +317,14 @@ static int sof_pcm_open(struct snd_pcm_substream *substream)
 	dev_dbg(sdev->dev, "buffer max %zd bytes\n",
 		runtime->hw.buffer_bytes_max);
 
-	// TODO: create IPC to get this from DSP pipeline
-	//runtime->hw.fifo_size = hw->fifo_size;
-
 	/* set wait time - TODO: come from topology */
-	snd_pcm_wait_time(substream, 500);
+	substream->wait_time = 500;
 
 	spcm->stream[substream->stream].posn.host_posn = 0;
 	spcm->stream[substream->stream].posn.dai_posn = 0;
 	spcm->stream[substream->stream].substream = substream;
 
-	if (ops && ops->host_stream_open)
-		ops->host_stream_open(sdev, substream);
+	snd_sof_pcm_platform_open(sdev, substream);
 
 	mutex_unlock(&spcm->mutex);
 	return 0;
@@ -343,7 +336,6 @@ static int sof_pcm_close(struct snd_pcm_substream *substream)
 	struct snd_sof_dev *sdev =
 		snd_soc_platform_get_drvdata(rtd->platform);
 	struct snd_sof_pcm *spcm = rtd->sof;
-	const struct snd_sof_dsp_ops *ops = sdev->ops;
 
 	/* nothing todo for BE */
 	if (rtd->dai_link->no_pcm)
@@ -352,8 +344,7 @@ static int sof_pcm_close(struct snd_pcm_substream *substream)
 	dev_dbg(sdev->dev, "pcm: close stream %d dir %d\n", spcm->pcm.pcm_id,
 		substream->stream);
 
-	if (ops && ops->host_stream_close)
-		ops->host_stream_close(sdev, substream);
+	snd_sof_pcm_platform_close(sdev, substream);
 
 	mutex_lock(&spcm->mutex);
 	pm_runtime_mark_last_busy(sdev->dev);
@@ -382,8 +373,8 @@ static int sof_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_tplg_stream_caps *caps;
 	int ret = 0, stream = SNDRV_PCM_STREAM_PLAYBACK;
 
+	/* find SOF PCM for this RTD */
 	spcm = snd_sof_find_spcm_dai(sdev, rtd);
-
 	if (!spcm) {
 		dev_warn(sdev->dev, "warn: can't find PCM with DAI ID %d\n",
 			 rtd->dai_link->id);
@@ -405,8 +396,8 @@ static int sof_pcm_new(struct snd_soc_pcm_runtime *rtd)
 
 	ret = snd_pcm_lib_preallocate_pages(pcm->streams[stream].substream,
 					    SNDRV_DMA_TYPE_DEV_SG, sdev->parent,
-					    caps->buffer_size_min,
-					    caps->buffer_size_max);
+					    le32_to_cpu(caps->buffer_size_min),
+					    le32_to_cpu(caps->buffer_size_max));
 	if (ret) {
 		dev_err(sdev->dev, "error: can't alloc DMA buffer size 0x%x/0x%x for %s %d\n",
 			caps->buffer_size_min, caps->buffer_size_max,
@@ -438,8 +429,8 @@ capture:
 
 	ret = snd_pcm_lib_preallocate_pages(pcm->streams[stream].substream,
 					    SNDRV_DMA_TYPE_DEV_SG, sdev->parent,
-					    caps->buffer_size_min,
-					    caps->buffer_size_max);
+					    le32_to_cpu(caps->buffer_size_min),
+					    le32_to_cpu(caps->buffer_size_max));
 	if (ret) {
 		dev_err(sdev->dev, "error: can't alloc DMA buffer size 0x%x/0x%x for %s %d\n",
 			caps->buffer_size_min, caps->buffer_size_max,
@@ -486,6 +477,7 @@ static void sof_pcm_free(struct snd_pcm *pcm)
 	snd_sof_free_topology(sdev);
 }
 
+/* fixup the BE DAI link to match any values from topology */
 static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 				  struct snd_pcm_hw_params *params)
 {
@@ -499,8 +491,10 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_sof_dai *dai =
 		snd_sof_find_dai(sdev, (char *)rtd->dai_link->name);
 
+	/* no topology exists for this BE, try a common configuration */
 	if (!dai) {
-		dev_err(sdev->dev, "No DAI is found!\n");
+		dev_err(sdev->dev, "error: no topology found for BE DAI %s config\n",
+			rtd->dai_link->name);
 
 		/*  set 48k, stereo, 16bits by default */
 		rate->min = 48000;
@@ -510,9 +504,9 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 		channels->max = 2;
 
 		snd_mask_none(fmt);
-		snd_mask_set(fmt, SNDRV_PCM_FORMAT_S16_LE);
+		snd_mask_set(fmt, (__force int)SNDRV_PCM_FORMAT_S16_LE);
 
-		return -EINVAL;
+		return 0;
 	}
 
 	/* read format from topology */
@@ -520,13 +514,13 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	switch (dai->comp_dai.config.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
-		snd_mask_set(fmt, SNDRV_PCM_FORMAT_S16_LE);
+		snd_mask_set(fmt, (__force int)SNDRV_PCM_FORMAT_S16_LE);
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
-		snd_mask_set(fmt, SNDRV_PCM_FORMAT_S24_LE);
+		snd_mask_set(fmt, (__force int)SNDRV_PCM_FORMAT_S24_LE);
 		break;
 	case SOF_IPC_FRAME_S32_LE:
-		snd_mask_set(fmt, SNDRV_PCM_FORMAT_S32_LE);
+		snd_mask_set(fmt, (__force int)SNDRV_PCM_FORMAT_S32_LE);
 		break;
 	default:
 		dev_err(sdev->dev, "No available DAI format!\n");

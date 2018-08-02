@@ -46,11 +46,11 @@ int sof_nocodec_setup(struct device *dev,
 
 	/* create dummy BE dai_links */
 	links = devm_kzalloc(dev, sizeof(struct snd_soc_dai_link) *
-			     ops->dai_drv->num_drv, GFP_KERNEL);
+			     ops->num_drv, GFP_KERNEL);
 	if (!links)
 		return -ENOMEM;
 
-	ret = sof_bes_setup(dev, ops, links, ops->dai_drv->num_drv,
+	ret = sof_bes_setup(dev, ops, links, ops->num_drv,
 			    &sof_nocodec_card);
 	if (ret) {
 		kfree(links);

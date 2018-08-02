@@ -34,11 +34,11 @@
 #include "../ops.h"
 #include "hda.h"
 
-#define SDnFMT_BASE(x)	(x << 14)
-#define SDnFMT_MULT(x)	((x - 1) << 11)
-#define SDnFMT_DIV(x)	((x - 1) << 8)
-#define SDnFMT_BITS(x)	(x << 4)
-#define SDnFMT_CHAN(x)	(x << 0)
+#define SDnFMT_BASE(x)	((x) << 14)
+#define SDnFMT_MULT(x)	(((x) - 1) << 11)
+#define SDnFMT_DIV(x)	(((x) - 1) << 8)
+#define SDnFMT_BITS(x)	((x) << 4)
+#define SDnFMT_CHAN(x)	((x) << 0)
 
 static inline u32 get_mult_div(struct snd_sof_dev *sdev, int rate)
 {

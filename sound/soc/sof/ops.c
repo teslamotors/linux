@@ -23,7 +23,7 @@ int snd_sof_pci_update_bits_unlocked(struct snd_sof_dev *sdev, u32 offset,
 {
 	bool change;
 	unsigned int old, new;
-	u32 ret;
+	u32 ret = ~0; /* explicit init to remove uninitialized use warnings */
 
 	pci_read_config_dword(sdev->pci, offset, &ret);
 	dev_dbg(sdev->dev, "Debug PCIR: %8.8x at  %8.8x\n",
@@ -205,6 +205,6 @@ void snd_sof_dsp_panic(struct snd_sof_dev *sdev, u32 offset)
 
 	snd_sof_dsp_dbg_dump(sdev, SOF_DBG_REGS | SOF_DBG_MBOX);
 	snd_sof_trace_notify_for_error(sdev);
-	snd_sof_dsp_cmd_done(sdev);
+	snd_sof_dsp_cmd_done(sdev, SOF_IPC_HOST_REPLY);
 }
 EXPORT_SYMBOL(snd_sof_dsp_panic);
