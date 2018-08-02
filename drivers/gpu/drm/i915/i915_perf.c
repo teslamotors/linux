@@ -42,7 +42,7 @@
  * Streams representing a single context are accessible to applications with a
  * corresponding drm file descriptor, such that OpenGL can use the interface
  * without special privileges. Access to system-wide metrics requires root
- * privileges by default, unless changed via the dev.i915_modparams.perf_event_paranoid
+ * privileges by default, unless changed via the dev.i915.perf_event_paranoid
  * sysctl option.
  *
  */
@@ -265,7 +265,7 @@
 #define POLL_FREQUENCY 200
 #define POLL_PERIOD (NSEC_PER_SEC / POLL_FREQUENCY)
 
-/* for sysctl proc_dointvec_minmax of dev.i915_modparams.perf_stream_paranoid */
+/* for sysctl proc_dointvec_minmax of dev.i915.perf_stream_paranoid */
 static int zero;
 static int one = 1;
 static u32 i915_perf_stream_paranoid = true;
@@ -2598,7 +2598,7 @@ i915_perf_open_ioctl_locked(struct drm_i915_private *dev_priv,
 		privileged_op = false;
 
 	/* Similar to perf's kernel.perf_paranoid_cpu sysctl option
-	 * we check a dev.i915_modparams.perf_stream_paranoid sysctl option
+	 * we check a dev.i915.perf_stream_paranoid sysctl option
 	 * to determine if it's ok to access system wide OA counters
 	 * without CAP_SYS_ADMIN privileges.
 	 */
@@ -2787,7 +2787,7 @@ static int read_properties_unlocked(struct drm_i915_private *dev_priv,
 
 			if (oa_freq_hz > i915_oa_max_sample_rate &&
 			    !capable(CAP_SYS_ADMIN)) {
-				DRM_DEBUG("OA exponent would exceed the max sampling frequency (sysctl dev.i915_modparams.oa_max_sample_rate) %uHz without root privileges\n",
+				DRM_DEBUG("OA exponent would exceed the max sampling frequency (sysctl dev.i915.oa_max_sample_rate) %uHz without root privileges\n",
 					  i915_oa_max_sample_rate);
 				return -EACCES;
 			}
