@@ -1172,7 +1172,7 @@ static ssize_t pseudo_lock_measure_trigger(struct file *file,
 	buf[buf_size] = '\0';
 	ret = kstrtoint(buf, 10, &sel);
 	if (ret == 0) {
-		if (sel != 1 && sel != 2)
+		if (sel != 1)
 			return -EINVAL;
 		ret = debugfs_use_file_start(file->f_path.dentry, &srcu_idx);
 		if (unlikely(ret))
