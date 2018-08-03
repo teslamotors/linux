@@ -868,6 +868,9 @@ static int skl_plane_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 	unsigned int pipe = SKL_PLANE_REG_TO_PIPE(offset);
 	unsigned int plane = SKL_PLANE_REG_TO_PLANE(offset);
 
+	if (WARN_ON_ONCE(pipe >= I915_MAX_PIPES))
+		return -EINVAL;
+
 	write_vreg(vgpu, offset, p_data, bytes);
 	if ((vgpu_vreg(vgpu, PIPECONF(pipe)) & I965_PIPECONF_ACTIVE) &&
 			(vgpu->gvt->pipe_info[pipe].plane_owner[plane] == vgpu->id)) {
