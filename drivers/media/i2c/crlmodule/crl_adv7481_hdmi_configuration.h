@@ -940,7 +940,7 @@ static struct crl_sensor_configuration adv7481_hdmi_crl_configuration = {
 	.csi_fmts_items = ARRAY_SIZE(adv7481_hdmi_crl_csi_data_fmt),
 	.csi_fmts = adv7481_hdmi_crl_csi_data_fmt,
 
-	.irq_in_use = true,
+	.irq_in_use = false,
 	.crl_irq_fn = NULL,
 	.crl_threaded_irq_fn = crl_adv7481_threaded_irq_fn,
 

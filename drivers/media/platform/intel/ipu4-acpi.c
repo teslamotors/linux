@@ -531,7 +531,7 @@ static int ipu_acpi_get_sensor_data(struct device *dev,
 			return rval;
 		}
 		/* we have 24 MHz clock for sensors now */
-		data->ext_clk = 24000000;
+		data->ext_clk = 286363636;
 	}
 
 	/* dsdt data currently contains wrong numbers for combo ports */
@@ -646,6 +646,7 @@ err_free_pdata:
 	return rval;
 }
 
+#if defined (CONFIG_VIDEO_INTEL_ICI)
 static int get_crlmodule_lite_pdata(struct i2c_client *client,
 			       struct ipu4_camera_module_data *data,
 			       struct ipu4_i2c_helper *helper,
@@ -676,7 +677,9 @@ static int get_crlmodule_lite_pdata(struct i2c_client *client,
 	pdata->xshutdown = get_sensor_gpio(sensor.dev, 0);
 	if (pdata->xshutdown < 0) {
 		rval = pdata->xshutdown;
-		goto err_free_pdata;
+		kfree(pdata);
+		data->pdata = NULL;
+		return rval;
 	}
 #endif
 	pdata->lanes = data->csi2.nlanes;
@@ -694,12 +697,8 @@ static int get_crlmodule_lite_pdata(struct i2c_client *client,
 		 i2c[1].bus, i2c[1].addr, vcm);
 
 	return add_new_i2c(i2c[1].addr, i2c[1].bus, 0, vcm, vcm_pdata);
-
-err_free_pdata:
-	kfree(pdata);
-	data->pdata = NULL;
-	return rval;
 }
+#endif
 
 static int get_smiapp_pdata(struct i2c_client *client,
 			    struct ipu4_camera_module_data *data,
