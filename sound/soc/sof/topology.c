@@ -420,6 +420,12 @@ static const struct sof_topology_token ssp_tokens[] = {
 	{SOF_TKN_INTEL_SSP_SAMPLE_BITS, SND_SOC_TPLG_TUPLE_TYPE_WORD,
 		get_token_u32,
 		offsetof(struct sof_ipc_dai_ssp_params, sample_valid_bits), 0},
+	{SOF_TKN_INTEL_SSP_FRAME_PULSE_WIDTH, SND_SOC_TPLG_TUPLE_TYPE_SHORT,
+		get_token_u16,
+		offsetof(struct sof_ipc_dai_ssp_params, frame_pulse_width), 0},
+	{SOF_TKN_INTEL_SSP_QUIRKS, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		get_token_u32,
+		offsetof(struct sof_ipc_dai_ssp_params, quirks), 0},
 };
 
 /* DMIC */
