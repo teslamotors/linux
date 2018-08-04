@@ -17,6 +17,7 @@
 
 #include "intel-ipu4-virtio-common.h"
 #include "intel-ipu4-virtio-be-bridge.h"
+#include "intel-ipu4-virtio-be.h"
 
 /**
  * struct ipu4_virtio_be_priv - Backend of virtio-rng based on VBS-K
@@ -41,6 +42,15 @@ struct ipu4_virtio_be_priv {
 	 */
 	struct hlist_node node;
 };
+
+struct vq_request_data {
+	struct virtio_vq_info *vq;
+	struct ipu4_virtio_req *req;
+	int len;
+	uint16_t idx;
+};
+
+struct vq_request_data vq_req;
 
 #define RNG_MAX_HASH_BITS 4		/* MAX is 2^4 */
 #define HASH_NAME vbs_hash
@@ -190,7 +200,13 @@ static void handle_vq_kick(struct ipu4_virtio_be_priv *priv, int vq_idx)
 		ret = intel_ipu4_virtio_msg_parse(1, req);
 		len = iov.iov_len;
 
-		virtio_vq_relchain(vq, idx, len);
+		if (req->stat == IPU4_REQ_NEEDS_FOLLOW_UP) {
+			vq_req.vq = vq;
+			vq_req.req = req;
+			vq_req.idx = idx;
+			vq_req.len = len;
+		} else
+			virtio_vq_relchain(vq, idx, len);
 	}
 	pr_debug("IPU VBK data process on VQ Done\n");
 	if (req && req->stat != IPU4_REQ_NEEDS_FOLLOW_UP)
@@ -364,7 +380,7 @@ static long ipu_vbk_ioctl(struct file *f, unsigned int ioctl,
 		return r;
 	}
 }
-#if 0
+
 int notify_fe(void)
 {
 	if (vq_req.vq) {
@@ -378,7 +394,7 @@ int notify_fe(void)
 
 	return 0;
 }
-#endif
+
 /* device specific function to cleanup itself */
 static void ipu_vbk_reset(struct ipu4_virtio_be_priv *rng)
 {

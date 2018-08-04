@@ -639,6 +639,8 @@ void ici_isys_frame_buf_ready(struct ici_isys_pipeline
 	} else {
 		buf->frame_info.field = ICI_FIELD_NONE;
 		frame_buf_done(buf_list, buf);
+		if (as->frame_done_notify_queue)
+			as->frame_done_notify_queue();
 	}
 
 	dev_dbg(&isys->adev->dev, "buffer: found buffer %p\n", buf);
@@ -795,6 +797,8 @@ void ici_isys_frame_buf_capture_done(
 			buf->frame_info.field = ip->cur_field;
 			list_del(&buf->node);
 			frame_buf_done(buf_list, buf);
+		if (as->frame_done_notify_queue)
+			as->frame_done_notify_queue();
 		}
 	}
 }

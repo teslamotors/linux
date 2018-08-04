@@ -35,12 +35,8 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
-			printk(KERN_INFO "POLL: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
-			ret = process_poll(domid, req);
-			if (ret)
-				req->stat = IPU4_REQ_ERROR;
-			else
-				req->stat = IPU4_REQ_PROCESSED;
+			pr_debug("POLL: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			req->stat = IPU4_REQ_NEEDS_FOLLOW_UP;
 			break;
 	case IPU4_CMD_DEVICE_OPEN:
 			/*
@@ -48,7 +44,7 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
-			printk(KERN_INFO "DEVICE_OPEN: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			pr_debug("DEVICE_OPEN: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
 			ret = process_device_open(domid, req);
 			if (ret)
 				req->stat = IPU4_REQ_ERROR;
@@ -61,7 +57,7 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
-			printk(KERN_INFO "DEVICE_CLOSE: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			pr_debug("DEVICE_CLOSE: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
 			ret = process_device_close(domid, req);
 			if (ret)
 				req->stat = IPU4_REQ_ERROR;
@@ -73,7 +69,7 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
-			printk(KERN_INFO "STREAM ON: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			pr_debug("STREAM ON: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
 			ret = process_stream_on(domid, req);
 			if (ret)
 				req->stat = IPU4_REQ_ERROR;
@@ -85,7 +81,7 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
-			printk(KERN_INFO "STREAM OFF: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
+			pr_debug("STREAM OFF: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
 			ret = process_stream_off(domid, req);
 			if (ret)
 				req->stat = IPU4_REQ_ERROR;

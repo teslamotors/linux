@@ -17,6 +17,7 @@
 #include "./ici/ici-isys-stream.h"
 #include "./ici/ici-isys-frame-buf.h"
 #include "intel-ipu4-virtio-be-stream.h"
+#include "intel-ipu4-virtio-be.h"
 
 #define MAX_SIZE 6 // max 2^6
 
@@ -31,6 +32,12 @@ struct stream_node {
 	struct file *f;
 	struct hlist_node node;
 };
+
+int frame_done_callback(void)
+{
+	notify_fe();
+	return 0;
+}
 
 int process_device_open(int domid, struct ipu4_virtio_req *req)
 {
@@ -86,28 +93,26 @@ int process_set_format(int domid, struct ipu4_virtio_req *req)
 	struct stream_node *sn = NULL;
 	struct ici_stream_device *strm_dev;
 	struct ici_stream_format *host_virt;
-	int err;
+	int err, found;
 
 	printk(KERN_INFO "process_set_format: %d %d", hash_initialised, req->op[0]);
 
 	if (!hash_initialised)
 		return -1;
 
+	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
 		printk(KERN_INFO "process_set_format: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
 			printk(KERN_INFO "process_set_format: node %d %p", req->op[0], sn);
+			found = 1;
 			break;
 		}
 	}
-	if (sn == NULL) {
-		printk(KERN_ERR "process_set_format: NULL sn\n");
-		return 0;
-	}
 
-	if (sn->f == NULL) {
-		printk(KERN_ERR "process_set_format: NULL sn->f\n");
-		return 0;
+	if (!found) {
+		pr_debug("%s: stream not found %d\n", __func__, req->op[0]);
+		return -1;
 	}
 
 	strm_dev = sn->f->private_data;
@@ -119,7 +124,7 @@ int process_set_format(int domid, struct ipu4_virtio_req *req)
 	host_virt = (struct ici_stream_format *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
 		printk(KERN_ERR "process_set_format: NULL host_virt");
-		return 0;
+		return -1;
 	}
 
 	err = strm_dev->ipu_ioctl_ops->ici_set_format(sn->f, strm_dev, host_virt);
@@ -132,43 +137,6 @@ int process_set_format(int domid, struct ipu4_virtio_req *req)
 
 int process_poll(int domid, struct ipu4_virtio_req *req)
 {
-	struct stream_node *sn = NULL;
-	struct ici_isys_stream *as;
-	struct ici_isys_frame_buf_list *buf_list;
-	int ret;
-	printk(KERN_INFO "process_poll: %d %d", hash_initialised, req->op[0]);
-
-	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
-		if (sn != NULL) {
-			printk(KERN_INFO "process_poll: node %d %p", req->op[0], sn);
-			break;
-		}
-	}
-
-	as = dev_to_stream(sn->f->private_data);
-	if (as == NULL) {
-		printk(KERN_ERR "Native IPU stream not found\n");
-		return -1;
-	}
-
-	buf_list = &as->buf_list;
-	if (buf_list == NULL) {
-		printk(KERN_ERR "Native Frame buffer list not found\n");
-		return -1;
-	}
-
-	ret = wait_event_interruptible_timeout(buf_list->wait,
-						!list_empty(&buf_list->putbuf_list),
-						100); //1 jiffy -> 10ms
-
-	printk(KERN_INFO "process_poll: ret: %d", ret);
-	if (ret == 1)
-		req->func_ret = POLLIN;
-	else if (ret == 0)
-		req->func_ret = 0;//POLLHUP;
-	else
-		req->func_ret = -1;//POLLERR;
-
 	return 0;
 }
 
@@ -184,6 +152,7 @@ int process_put_buf(int domid, struct ipu4_virtio_req *req)
 	if (!hash_initialised)
 		return -1;
 
+	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
 		pr_debug("process_put_buf: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
@@ -192,20 +161,18 @@ int process_put_buf(int domid, struct ipu4_virtio_req *req)
 			break;
 		}
 	}
-	if (sn == NULL) {
-		printk(KERN_ERR "process_put_buf: NULL sn\n");
-		return 0;
+
+	if (!found) {
+		pr_debug("%s: stream not found %d\n", __func__, req->op[0]);
+		return -1;
 	}
 
-	if (sn->f == NULL) {
-		printk(KERN_ERR "process_put_buf: NULL sn->f\n");
-		return 0;
-	}
 	strm_dev = sn->f->private_data;
 	if (strm_dev == NULL) {
 		pr_err("Native IPU stream device not found\n");
 		return -1;
 	}
+
 	host_virt = (struct ici_frame_info *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
 		pr_err("process_put_buf: NULL host_virt");
@@ -235,6 +202,7 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 	if (!hash_initialised)
 		return -1;
 
+	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
 		pr_debug("process_get_buf: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
@@ -243,14 +211,10 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 			break;
 		}
 	}
-	if (sn == NULL) {
-		printk(KERN_ERR "process_get_buf: NULL sn\n");
-		return 0;
-	}
 
-	if (sn->f == NULL) {
-		printk(KERN_ERR "process_get_buf: NULL sn->f\n");
-		return 0;
+	if (!found) {
+		pr_debug("%s: stream not found %d\n", __func__, req->op[0]);
+		return -1;
 	}
 
 	pr_debug("GET_BUF: Mapping buffer\n");
@@ -271,7 +235,7 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 	if (page_table == NULL) {
 		pr_err("SOS Failed to map page table\n");
 		req->stat = IPU4_REQ_ERROR;
-		return 0;
+		return -1;
 	}
 
 	else {
@@ -306,35 +270,38 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 int process_stream_on(int domid, struct ipu4_virtio_req *req)
 {
 	struct stream_node *sn = NULL;
+	struct ici_isys_stream *as;
 	struct ici_stream_device *strm_dev;
-	int err;
+	int err, found;
 
 	printk(KERN_INFO "process_stream_on: %d %d", hash_initialised, req->op[0]);
 
 	if (!hash_initialised)
 		return -1;
 
+	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
 		printk(KERN_INFO "process_stream_on: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
 			printk(KERN_INFO "process_stream_on: node %d %p", req->op[0], sn);
+			found = 1;
 			break;
 		}
 	}
-	if (sn == NULL) {
-		printk(KERN_ERR "process_stream_on: NULL sn\n");
-		return 0;
+
+	if (!found) {
+		pr_debug("%s: stream not found %d\n", __func__, req->op[0]);
+		return -1;
 	}
 
-	if (sn->f == NULL) {
-		printk(KERN_ERR "process_stream_on: NULL sn->f\n");
-		return 0;
-	}
 	strm_dev = sn->f->private_data;
 	if (strm_dev == NULL) {
 		printk(KERN_ERR "Native IPU stream device not found\n");
 		return -1;
 	}
+
+	as = dev_to_stream(strm_dev);
+	as->frame_done_notify_queue = frame_done_callback;
 
 	err = strm_dev->ipu_ioctl_ops->ici_stream_on(sn->f, strm_dev);
 
@@ -348,35 +315,37 @@ int process_stream_off(int domid, struct ipu4_virtio_req *req)
 {
 	struct stream_node *sn = NULL;
 	struct ici_stream_device *strm_dev;
-	int err;
+	struct ici_isys_stream *as;
+	int err, found;
 
 	printk(KERN_INFO "process_stream_off: %d %d", hash_initialised, req->op[0]);
 
 	if (!hash_initialised)
 		return -1;
 
+	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
 		printk(KERN_INFO "process_stream_off: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
 			printk(KERN_INFO "process_stream_off: node %d %p", req->op[0], sn);
+			found = 1;
 			break;
 		}
 	}
-	if (sn == NULL) {
-		printk(KERN_ERR "process_stream_off: NULL sn\n");
-		return 0;
+
+	if (!found) {
+		pr_debug("%s: stream not found %d\n", __func__, req->op[0]);
+		return -1;
 	}
 
-	if (sn->f == NULL) {
-		printk(KERN_ERR "process_stream_off: NULL sn->f\n");
-		return 0;
-	}
 	strm_dev = sn->f->private_data;
 	if (strm_dev == NULL) {
 		printk(KERN_ERR "Native IPU stream device not found\n");
 		return -1;
 	}
 
+	as = dev_to_stream(strm_dev);
+	as->frame_done_notify_queue = NULL;
 
 	err = strm_dev->ipu_ioctl_ops->ici_stream_off(sn->f, strm_dev);
 
