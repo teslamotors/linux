@@ -151,6 +151,10 @@ config SND_SOC_INTEL_BYT_CHT_ES8316_MACH
 	  Say Y or m if you have such a device. This is a recommended option.
 	  If unsure select "N".
 
+endif ## SND_SST_ATOM_HIFI2_PLATFORM || SND_SOC_SOF_BAYTRAIL
+
+if SND_SST_ATOM_HIFI2_PLATFORM
+
 config SND_SOC_INTEL_BYT_CHT_NOCODEC_MACH
 	tristate "Baytrail & Cherrytrail platform with no codec (MinnowBoard MAX, Up)"
 	depends on X86_INTEL_LPSS && I2C && ACPI
@@ -163,7 +167,7 @@ config SND_SOC_INTEL_BYT_CHT_NOCODEC_MACH
 
 	  If unsure select "N".
 
-endif ## SND_SST_ATOM_HIFI2_PLATFORM || SND_SOC_SOF_BAYTRAIL
+endif ## SND_SST_ATOM_HIFI2_PLATFORM
 
 if SND_SOC_INTEL_SKYLAKE
 
@@ -205,9 +209,9 @@ config SND_SOC_INTEL_SKL_NAU88L25_MAX98357A_MACH
 	  Say Y or m if you have such a device. This is a recommended option.
 	  If unsure select "N".
 
-endif ## SND_SOC_INTEL_SKYLAKE
+endif ## SND_SOC_INTEL_SKL
 
-if SND_SOC_INTEL_SKYLAKE || SND_SOC_SOF_APOLLOLAKE
+if SND_SOC_INTEL_SKL || SND_SOC_SOF_APOLLOLAKE
 
 config SND_SOC_INTEL_BXT_DA7219_MAX98357A_MACH
 	tristate "Broxton with DA7219 and MAX98357A in I2S Mode"
@@ -236,19 +240,28 @@ config SND_SOC_INTEL_BXT_RT298_MACH
 	   Say Y or m if you have such a device. This is a recommended option.
 	   If unsure select "N".
 
-config SND_SOC_INTEL_BXT_TDF8532_MACH
-        tristate "ASoC Audio driver for BXT with TDF8532 in I2S mode"
-        depends on X86 && ACPI && I2C
-        select SND_SOC_TDF8532
-        select SND_SOC_COMPRESS
-        help
-	   This adds support for ASoC machine driver for Broxton IVI GP MRB platform
-	   Say Y if you have such a device.
-	   If unsure select "N".
- 
-endif ##  SND_SOC_INTEL_SKYLAKE || SND_SOC_SOF_APOLLOLAKE
+config SND_SOC_INTEL_BXT_PCM512x_MACH
+	tristate "Broxton with TI PCM512x codec"
+	depends on MFD_INTEL_LPSS && I2C && ACPI
+	select SND_SOC_PCM512x_I2C
+	help
+	  This adds support for ASoC machine driver for Broxton platforms
+	  with TI PCM512x I2S audio codec.
+	  Say Y or m if you have such a device. This is a recommended option.
 
-if  SND_SOC_INTEL_SKYLAKE
+config SND_SOC_INTEL_BXT_TDF8532_MACH
+	tristate "ASoC Audio driver for BXT with TDF8532 in I2S mode"
+	depends on X86 && ACPI && I2C
+	select SND_SOC_TDF8532
+	select SND_SOC_COMPRESS
+	help
+	  This adds support for ASoC machine driver for Broxton IVI GP MRB platform
+	  Say Y if you have such a device.
+	  If unsure select "N".
+
+endif ##  SND_SOC_INTEL_SKL || SND_SOC_SOF_APOLLOLAKE
+
+if  SND_SOC_INTEL_SKL
 
 config SND_SOC_INTEL_KBL_RT5663_MAX98927_MACH
 	tristate "KBL with RT5663 and MAX98927 in I2S Mode"
@@ -329,6 +342,17 @@ config SND_SOC_SDW_AGGM1M2
 	help
 	  Say Y to enable SoundWire aggregation on Master1 and Master2.
 
+config SND_SOC_INTEL_BXT_ANC_MACH
+        tristate "Reference ASoC Machine driver for BXT with ANC loop"
+        depends on X86 && ACPI && I2C
+        select SND_SOC_RT298
+        select SND_SOC_DMIC
+        select SND_SOC_COMPRESS
+        help
+           This adds support for ASoC machine driver for Broxton ULL GP MRB platform
+           Say Y if you have such a device
+           If unsure select "N".
+
 config SND_SOC_INTEL_BXTP_IVI_RSE_MACH
 	tristate "ASoC Audio driver for BXTP IVI RSE with Dummy Codecs"
 	depends on MFD_INTEL_LPSS && I2C && ACPI
@@ -390,17 +414,6 @@ config SND_SOC_INTEL_BXT_ULL_MACH
 	   Say Y if you have such a device.
 	   If unsure select "N".
 
-config SND_SOC_INTEL_BXT_ANC_MACH
-	tristate "Reference ASoC Machine driver for BXT with ANC loop"
-	depends on X86 && ACPI && I2C
-	select SND_SOC_RT298
-	select SND_SOC_DMIC
-	select SND_SOC_COMPRESS
-	help
-	   This adds support for ASoC machine driver for Broxton ULL GP MRB platform
-	   Say Y if you have such a device
-	   If unsure select "N".
-
 config SND_SOC_INTEL_APLI_LHCRB_DUMMY_MACH
 	tristate "ASoC Audio driver for APLI LHCRB Dummy Codec"
 	depends on X86_INTEL_LPSS && I2C
@@ -446,5 +459,17 @@ config SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH
           If unsure select "N".
 
 endif ## SND_SOC_INTEL_SKYLAKE
+
+if  SND_SOC_INTEL_SKL || SND_SOC_SOF_CANNONLAKE
+
+config SND_SOC_INTEL_CNL_RT274_MACH
+        tristate "ASoC Audio driver for CNL with RT274 in I2S Mode"
+          select SND_SOC_RT274
+        help
+          This adds support for ASoC machine driver for CNL and codec RT274. This
+          will create an alsa sound card.  Say Y if you have such a device If
+          unsure select "N".
+
+endif ##  SND_SOC_INTEL_SKL || SND_SOC_SOF_CANNONLAKE
 
 endif ## SND_SOC_INTEL_MACH

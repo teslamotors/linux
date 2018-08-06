@@ -29,12 +29,12 @@
 /* Global Message - Generic */
 #define SOF_GLB_TYPE_SHIFT			28
 #define SOF_GLB_TYPE_MASK			(0xf << SOF_GLB_TYPE_SHIFT)
-#define SOF_GLB_TYPE(x)				(x << SOF_GLB_TYPE_SHIFT)
+#define SOF_GLB_TYPE(x)				((x) << SOF_GLB_TYPE_SHIFT)
 
 /* Command Message - Generic */
 #define SOF_CMD_TYPE_SHIFT			16
 #define SOF_CMD_TYPE_MASK			(0xfff << SOF_CMD_TYPE_SHIFT)
-#define SOF_CMD_TYPE(x)				(x << SOF_CMD_TYPE_SHIFT)
+#define SOF_CMD_TYPE(x)				((x) << SOF_CMD_TYPE_SHIFT)
 
 /* Global Message Types */
 #define SOF_IPC_GLB_REPLY			SOF_GLB_TYPE(0x1U)
@@ -99,9 +99,9 @@
 #define SOF_IPC_TRACE_DMA_POSITION		SOF_CMD_TYPE(0x002)
 
 /* Get message component id */
-#define SOF_IPC_MESSAGE_ID(x)			(x & 0xffff)
+#define SOF_IPC_MESSAGE_ID(x)			((x) & 0xffff)
 
-/* maximum message size for mailbox Tx/Tx */
+/* maximum message size for mailbox Tx/Rx */
 #define SOF_IPC_MSG_MAX_SIZE			128
 
 /*
@@ -208,9 +208,33 @@ enum sof_ipc_dai_type {
 
 /* SSP Configuration Request - SOF_IPC_DAI_SSP_CONFIG */
 struct sof_ipc_dai_ssp_params {
-	struct sof_ipc_hdr hdr;
-	uint16_t mode;
-	uint16_t clk_id;
+	uint16_t mode;   // FIXME: do we need this?
+	uint16_t mclk_id;
+
+	uint32_t mclk_rate;	/* mclk frequency in Hz */
+	uint32_t fsync_rate;	/* fsync frequency in Hz */
+	uint32_t bclk_rate;	/* bclk frequency in Hz */
+
+	/* TDM */
+	uint32_t tdm_slots;
+	uint32_t rx_slots;
+	uint32_t tx_slots;
+
+	/* data */
+	uint32_t sample_valid_bits;
+	uint16_t tdm_slot_width;
+	uint16_t reserved2;	/* alignment */
+
+	/* MCLK */
+	uint32_t mclk_direction;
+	uint32_t mclk_keep_active;
+	uint32_t bclk_keep_active;
+	uint32_t fs_keep_active;
+
+	//uint32_t quirks; // FIXME: is 32 bits enough ?
+
+	/* private data, e.g. for quirks */
+	//uint32_t pdata[10]; // FIXME: would really need ~16 u32
 } __attribute__((packed));
 
 /* HDA Configuration Request - SOF_IPC_DAI_HDA_CONFIG */
@@ -219,10 +243,31 @@ struct sof_ipc_dai_hda_params {
 	/* TODO */
 } __attribute__((packed));
 
+/* PDM controller configuration parameters */
+struct sof_ipc_dai_dmic_pdm_ctrl {
+	uint16_t id; /* pdm controller id */
+	uint16_t enable_mic_a; /* Use A (left) channel mic (0 or 1)*/
+	uint16_t enable_mic_b; /* Use B (right) channel mic (0 or 1)*/
+	uint16_t polarity_mic_a; /* Optionally invert mic A signal (0 or 1) */
+	uint16_t polarity_mic_b; /* Optionally invert mic B signal (0 or 1) */
+	uint16_t clk_edge; /* Optionally swap data clock edge (0 or 1) */
+	uint16_t skew; /* Adjust PDM data sampling vs. clock (0..15) */
+} __attribute__((packed));
+
 /* DMIC Configuration Request - SOF_IPC_DAI_DMIC_CONFIG */
 struct sof_ipc_dai_dmic_params {
-	struct sof_ipc_hdr hdr;
-	/* TODO */
+	uint32_t driver_ipc_version;
+	uint32_t pdmclk_min; /* Minimum microphone clock in Hz (100000..N) */
+	uint32_t pdmclk_max; /* Maximum microphone clock in Hz (min...N) */
+	uint32_t fifo_fs_a;  /* FIFO A sample rate in Hz (8000..96000) */
+	uint32_t fifo_fs_b;  /* FIFO B sample rate in Hz (8000..96000) */
+	uint16_t fifo_bits_a; /* FIFO A word length (16 or 24) */
+	uint16_t fifo_bits_b; /* FIFO B word length (16 or 24) */
+	uint16_t duty_min;    /* Min. mic clock duty cycle in % (20..80) */
+	uint16_t duty_max;    /* Max. mic clock duty cycle in % (min..80) */
+	uint32_t num_pdm_active; /* Number of active pdm controllers */
+	/* variable number of pdm controller config */
+	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
 } __attribute__((packed));
 
 /* general purpose DAI configuration */
@@ -234,28 +279,12 @@ struct sof_ipc_dai_config {
 	/* physical protocol and clocking */
 	uint16_t format;	/* SOF_DAI_FMT_ */
 	uint16_t reserved;	/* alignment */
-	uint32_t mclk;	/* mclk frequency in Hz */
-	uint32_t bclk;	/* bclk frequency in Hz */
-	uint32_t fclk;	/* cclk frequency in Hz */
-
-	/* TDM */
-	uint32_t num_slots;
-	uint32_t rx_slot_mask;
-	uint32_t tx_slot_mask;
-
-	/* data */
-	uint16_t sample_valid_bits;
-	uint16_t sample_container_bits;
-
-	/* MCLK */
-	uint16_t mclk_always_run;
-	uint16_t mclk_master;
 
 	/* HW specific data */
 	union {
-		struct sof_ipc_dai_ssp_params ssp[0];
-		struct sof_ipc_dai_hda_params hda[0];
-		struct sof_ipc_dai_dmic_params dmic[0];
+		struct sof_ipc_dai_ssp_params ssp;
+		struct sof_ipc_dai_hda_params hda;
+		struct sof_ipc_dai_dmic_params dmic;
 	};
 };
 
@@ -377,7 +406,6 @@ struct sof_ipc_pcm_params {
 	struct sof_ipc_hdr hdr;
 	uint32_t comp_id;
 	struct sof_ipc_stream_params params;
-	enum sof_ipc_chmap channel_map[];
 }  __attribute__((packed));
 
 /* PCM params info reply - SOF_IPC_STREAM_PCM_PARAMS_REPLY */
@@ -563,8 +591,6 @@ struct sof_ipc_comp_host {
 	struct sof_ipc_comp_config config;
 	enum sof_ipc_stream_direction direction;
 	uint32_t no_irq;	/* don't send periodic IRQ to host/DSP */
-	uint32_t dmac_id;
-	uint32_t dmac_chan;
 	uint32_t dmac_config; /* DMA engine specific */
 }  __attribute__((packed));
 
@@ -575,8 +601,6 @@ struct sof_ipc_comp_dai {
 	enum sof_ipc_stream_direction direction;
 	uint32_t index;
 	enum sof_ipc_dai_type type;
-	uint32_t dmac_id;
-	uint32_t dmac_chan;
 	uint32_t dmac_config; /* DMA engine specific */
 }  __attribute__((packed));
 

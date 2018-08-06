@@ -20,57 +20,19 @@
 #include <uapi/sound/sof-ipc.h>
 #include "sof-priv.h"
 
-/* simple volume table TODO: to be replaced by coefficients from topology */
-/* -52 dB to +12 dB in 2 dB steps, 33 values */
-static const u32 volume_map[] = {
-	165,
-	207,
-	261,
-	328,
-	414,
-	521,
-	655,
-	825,
-	1039,
-	1308,
-	1646,
-	2072,
-	2609,
-	3285,
-	4135,
-	5206,
-	6554,
-	8250,
-	10387,
-	13076,
-	16462,
-	20724,
-	26090,
-	32846,
-	41350,
-	52057,
-	65536, /* 0 dB for Qx.16 gain value */
-	82505,
-	103868,
-	130762,
-	164619,
-	207243,
-	260904
-};
-
-static inline u32 mixer_to_ipc(unsigned int value)
+static inline u32 mixer_to_ipc(unsigned int value, u32 *volume_map, int size)
 {
-	if (value >= ARRAY_SIZE(volume_map))
-		return volume_map[0];
+	if (value >= size)
+		return volume_map[size - 1];
 	else
 		return volume_map[value];
 }
 
-static inline u32 ipc_to_mixer(u32 value)
+static inline u32 ipc_to_mixer(u32 value, u32 *volume_map, int size)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(volume_map); i++) {
+	for (i = 0; i < size; i++) {
 		if (volume_map[i] >= value)
 			return i;
 	}
@@ -98,7 +60,8 @@ int snd_sof_volume_get(struct snd_kcontrol *kcontrol,
 	/* read back each channel */
 	for (i = 0; i < channels; i++)
 		ucontrol->value.integer.value[i] =
-			ipc_to_mixer(cdata->chanv[i].value);
+			ipc_to_mixer(cdata->chanv[i].value,
+				     scontrol->volume_table, sm->max + 1);
 
 	pm_runtime_mark_last_busy(sdev->dev);
 	pm_runtime_put_autosuspend(sdev->dev);
@@ -120,7 +83,8 @@ int snd_sof_volume_put(struct snd_kcontrol *kcontrol,
 	/* update each channel */
 	for (i = 0; i < channels; i++) {
 		cdata->chanv[i].value =
-			mixer_to_ipc(ucontrol->value.integer.value[i]);
+			mixer_to_ipc(ucontrol->value.integer.value[i],
+				     scontrol->volume_table, sm->max + 1);
 		cdata->chanv[i].channel = i;
 	}
 

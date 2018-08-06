@@ -164,7 +164,7 @@ static int check_header(struct snd_sof_dev *sdev, const struct firmware *fw)
 
 	/* check size is valid */
 	if (fw->size != header->file_size + sizeof(*header)) {
-		dev_err(sdev->dev, "error: invalid filesize mismatch got 0x%lx expected 0x%lx\n",
+		dev_err(sdev->dev, "error: invalid filesize mismatch got 0x%zx expected 0x%zx\n",
 			fw->size, header->file_size + sizeof(*header));
 		return -EINVAL;
 	}

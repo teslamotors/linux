@@ -52,9 +52,7 @@
  */
 
 /**
- * @file acrn_vhm_ioreq.h
- *
- * @brief Virtio and Hypervisor Module(VHM) ioreq APIs
+ * DOC: Virtio and Hypervisor Module(VHM) ioreq APIs
  */
 
 #ifndef __ACRN_VHM_IOREQ_H__
