@@ -28,18 +28,31 @@
 #include <linux/firmware.h>
 #include <linux/delay.h>
 #include <sound/pcm.h>
+#include <sound/compress_driver.h>
 #include <sound/soc-acpi.h>
 #include <sound/soc-acpi-intel-match.h>
 #include <sound/hda_register.h>
 #include <sound/hdaudio.h>
 #include <sound/hda_i915.h>
-#include <sound/compress_driver.h>
+
 #include "skl.h"
 #include "skl-sst-dsp.h"
 #include "skl-sst-ipc.h"
 #include "skl-topology.h"
 
+static struct skl_machine_pdata skl_dmic_data;
+
+static char *machine = NULL;
+static char *fw_filename = NULL;
+
+module_param(machine, charp, 0444);
+MODULE_PARM_DESC(machine, "machine driver string for Intel soundcard.");
+
+module_param(fw_filename, charp, 0444);
+MODULE_PARM_DESC(fw_filename, "firmware filename string for Intel DSP.");
+
 /*
+
  * initialize the PCI registers
  */
 static void skl_update_pci_byte(struct pci_dev *pci, unsigned int reg,
@@ -515,14 +528,24 @@ static int skl_find_machine(struct skl *skl, void *driver_data)
 	    IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA))
 		goto out;
 
-	mach = snd_soc_acpi_find_machine(mach);
-	if (mach == NULL) {
-		dev_err(bus->dev, "No matching machine driver found\n");
-		return -ENODEV;
+	if (machine) {
+		mach = kzalloc(sizeof(*mach), GFP_KERNEL);
+		if (!mach)
+			return -ENOMEM;
+		mach->drv_name = machine;
+		if (fw_filename)
+			mach->fw_filename = fw_filename;
+	} else {
+		mach = driver_data;
+		mach = snd_soc_acpi_find_machine(mach);
+		if (mach == NULL) {
+			dev_err(bus->dev, "No matching machine driver found\n");
+			return -ENODEV;
+		}
+
 	}
 
 out:
-
 	skl->fw_name = mach->fw_filename;
 	skl->mach = mach;
 	if (mach->pdata) {
@@ -539,7 +562,6 @@ static int skl_machine_device_register(struct skl *skl)
 	struct snd_soc_acpi_mach *mach = skl->mach;
 	struct platform_device *pdev;
 	int ret;
-
 	pdev = platform_device_alloc(mach->drv_name, -1);
 	if (pdev == NULL) {
 		dev_err(bus->dev, "platform device alloc failed\n");
@@ -557,6 +579,9 @@ static int skl_machine_device_register(struct skl *skl)
 		dev_set_drvdata(&pdev->dev, mach->pdata);
 
 	skl->i2s_dev = pdev;
+
+	if (machine)
+		kfree(mach);
 
 	return 0;
 }
@@ -657,6 +682,7 @@ static const struct hdac_bus_ops bus_core_ops = {
 	.get_response = snd_hdac_bus_get_response,
 };
 
+#if 1
 static int skl_i915_init(struct hdac_bus *bus)
 {
 	int err;
@@ -675,6 +701,7 @@ static int skl_i915_init(struct hdac_bus *bus)
 
 	return err;
 }
+#endif
 
 static void skl_probe_work(struct work_struct *work)
 {
@@ -849,6 +876,14 @@ static int skl_first_init(struct hdac_ext_bus *ebus)
 
 	skl_dum_set(ebus);
 
+	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI)) {
+		err = skl_i915_init(bus);
+		if (err < 0)
+			return err;
+	}
+
+	skl_init_chip(bus, true);
+
 	return skl_init_chip(bus, true);
 }
 
@@ -982,6 +1017,9 @@ static void skl_remove(struct pci_dev *pci)
 {
 	struct hdac_ext_bus *ebus = pci_get_drvdata(pci);
 	struct skl *skl = ebus_to_skl(ebus);
+
+	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI))
+		snd_hdac_i915_exit(&ebus->bus);
 
 	skl_delete_notify_kctl_list(skl->skl_sst);
 	release_firmware(skl->tplg);

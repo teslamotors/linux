@@ -918,6 +918,11 @@ S:	Supported
 F:	security/apparmor/
 F:	Documentation/admin-guide/LSM/apparmor.rst
 
+APOLLO_LAKE_I GENERIC DUMMY CODEC DRIVER
+M:	Vinod Kumar <vinod.kumarx.vinod.kumar@intel.com>
+S:	Maintained
+F:	sound/soc/intel/boards/apli_lhcrb_generic.c
+
 APPLE BCM5974 MULTITOUCH DRIVER
 M:	Henrik Rydberg <rydberg@bitmath.org>
 L:	linux-input@vger.kernel.org
@@ -12548,6 +12553,23 @@ F:	Documentation/devicetree/bindings/sound/
 F:	Documentation/sound/alsa/soc/
 F:	sound/soc/
 F:	include/sound/soc*
+
+APOLLO LAKE DUMMY CODEC
+M:	Seng Kai, Tan <seng.kai.tan@intel.com>
+S:	Supported
+F:	sound/soc/intel/boards/apli_lhcrb_dummy.c
+
+APOLLO_LAKE_I WM8731 MACHINE DRIVER
+M:	Tan, Seng Kai <seng.kai.tan@intel.com>
+S:	Maintained
+F:	sound/soc/intel/boards/apli_lhcrb_wm8731.c
+
+APPOLO_LAKE_I AIC3107 MACHINE DRIVER
+M:	SengKai,Tan <seng.kai.tan@intel.com>
+M:	Yu Xin <yu.xin.ho@intel.com>
+S:	Maintained
+F:	sound/soc/intel/boards/apli_lhcrb_aic3107M.c
+F:	sound/soc/intel/boards/apli_lhcrb_aic3107S.c
 
 SP2 MEDIA DRIVER
 M:	Olli Salonen <olli.salonen@iki.fi>

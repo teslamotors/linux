@@ -74,6 +74,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_DIO2125
 	select SND_SOC_DMIC if GPIOLIB
 	select SND_SOC_ES8316 if I2C
+	select SND_SOC_TDF8532 if I2C
 	select SND_SOC_ES8328_SPI if SPI_MASTER
 	select SND_SOC_ES8328_I2C if I2C
 	select SND_SOC_ES7134
@@ -146,7 +147,6 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_TAS5086 if I2C
 	select SND_SOC_TAS571X if I2C
 	select SND_SOC_TAS5720 if I2C
-	select SND_SOC_TDF8532 if I2C
 	select SND_SOC_TFA9879 if I2C
 	select SND_SOC_TLV320AIC23_I2C if I2C
 	select SND_SOC_TLV320AIC23_SPI if SPI_MASTER
@@ -558,6 +558,10 @@ config SND_SOC_DIO2125
 config SND_SOC_DMIC
 	tristate
 
+config SND_SOC_TDF8532
+    tristate "NXP Semiconductors TDF8532 Codec"
+	depends on I2C
+
 config SND_SOC_HDMI_CODEC
 	tristate
 	select SND_PCM_ELD
@@ -901,10 +905,6 @@ config SND_SOC_TAS5720
 	help
 	  Enable support for Texas Instruments TAS5720L/M high-efficiency mono
 	  Class-D audio power amplifiers.
-
-config SND_SOC_TDF8532
-        tristate
-        depends on I2C
 
 config SND_SOC_TFA9879
 	tristate "NXP Semiconductors TFA9879 amplifier"

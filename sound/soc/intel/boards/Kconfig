@@ -342,9 +342,11 @@ config SND_SOC_SDW_AGGM1M2
 	help
 	  Say Y to enable SoundWire aggregation on Master1 and Master2.
 
-config SND_SOC_INTEL_BXT_ULL_MACH
-        tristate "Reference ASoC Machine driver for BXT ULL machine"
+config SND_SOC_INTEL_BXT_ANC_MACH
+        tristate "Reference ASoC Machine driver for BXT with ANC loop"
         depends on X86 && ACPI && I2C
+        select SND_SOC_RT298
+        select SND_SOC_DMIC
         select SND_SOC_COMPRESS
         help
            This adds support for ASoC machine driver for Broxton ULL GP MRB platform
@@ -386,6 +388,75 @@ config SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH
 	   with Dummy I2S audio codec for IVI generic topology.
 	   Say Y or m if you have such a device. This is a recommended option.
 	   If unsure select "N".
+
+config SND_SOC_INTEL_BXT_GPMRB_MACH
+	tristate "ASoC Audio driver for BXT IVI GP MRB"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_TDF8532
+	select SND_SOC_COMPRESS
+	select DW_DMAC
+	default n
+	help
+	   This adds support for ASoC machine driver for Broxton IVI GP MRB platform
+	   Say Y if you have such a device
+	   If unsure select "N".
+
+config SND_SOC_INTEL_BXT_ULL_MACH
+	tristate "ASoC ULL reference driver with dummy codec"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_COMPRESS
+	select DW_DMAC
+	default n
+	help
+	   This adds support for ASoC ULL machine driver with a DSP loop and
+	   Dummy I2S audio codec. Serves as a basic example with no processing
+	   modules embedded in the loop.
+	   Say Y if you have such a device.
+	   If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_DUMMY_MACH
+	tristate "ASoC Audio driver for APLI LHCRB Dummy Codec"
+	depends on X86_INTEL_LPSS && I2C
+	select SND_SOC_INTEL_SST
+	default n
+	help
+	  This adds support for ASoC machine driver for  Intel(R)
+	  Apollo Lake-I Leaf Hill Customer reference board platform.
+	  Say Y if you have such a device
+	  If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_GENERIC_MACH
+        tristate "ASoC Machine Audio driver for APLI LHCRB Generic with Dummy Codecs"
+        depends on X86_INTEL_LPSS
+        select SND_SOC_INTEL_SST
+        default n
+        help
+          This adds support for ASoC machine driver for  Intel(R)
+          Apollo Lake-I Leaf Hill Customer reference board platform.
+          Say Y if you have such a device
+          If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_WM8731_MACH
+        tristate "ASoC Audio driver for APLI LHCRB WM8731 Codec"
+        depends on X86_INTEL_LPSS && I2C
+        select SND_SOC_WM8731
+        default n
+        help
+          This adds support for ASoC machine driver for  Intel(R)
+          Apollo Lake-I Leaf Hill Customer reference board platform.
+          Say Y if you have such a device
+          If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH
+        tristate "ASoC Audio driver for APLI LHCRB AIC3107"
+        depends on X86_INTEL_LPSS && I2C
+        select SND_SOC_TLV320AIC3x
+        default n
+        help
+          This adds support for ASoC machine driver for  Intel(R)
+          Apollo Lake-I Leaf Hill Customer reference board platform.
+          Say Y if you have such a device
+          If unsure select "N".
 
 endif ## SND_SOC_INTEL_SKYLAKE
 

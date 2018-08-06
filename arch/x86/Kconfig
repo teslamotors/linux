@@ -698,6 +698,22 @@ config X86_32_NON_STANDARD
 	  kernel. If you select them all, kernel will probe it one by
 	  one and will fallback to default.
 
+config X86_INTEL_APLI_LHCRB_WM8731
+	tristate "Intel Apollo Lake-I Leaf Hill I2C Interface for WM8731 Codec "
+	depends on X86_INTEL_LPSS
+	---help---
+	  This option enables Apollo Lake-I Leaf Hill CRB I2C interface
+	  bus 3 access for wm8731 codec.
+	  If you do not have one of these chips, you should say N here.
+
+config X86_INTEL_APLI_LHCRB_AIC3107
+	tristate "Intel Apollo Lake-I Leaf Hill I2C Interface for AIC3107 Codec "
+	depends on X86_INTEL_LPSS
+	---help---
+	  This option enables Apollo Lake-I Leaf Hill CRB I2C interface
+	  bus 3 access for aic3107 codec.
+	  If you do not have one of these chips, you should say N here.
+
 # Alphabetically sorted list of Non standard 32 bit platforms
 
 config X86_SUPPORTS_MEMORY_FAILURE
