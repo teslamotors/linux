@@ -327,8 +327,8 @@ static long ipu_vbk_ioctl(struct file *f, unsigned int ioctl,
 	int r;
 
 	if (priv == NULL) {
-			printk(KERN_ERR "No IPU backend private data\n");
-			return -EINVAL;
+		pr_err("No IPU backend private data\n");
+		return -EINVAL;
 	}
 	switch (ioctl) {
 /*
@@ -349,20 +349,19 @@ static long ipu_vbk_ioctl(struct file *f, unsigned int ioctl,
 		 * we handle this here because we want to register VHM client
 		 * after handling VBS_K_SET_VQ request
 		 */
-		printk("VBS_K_SET_VQ ioctl:\n");
 		r = virtio_vqs_ioctl(&priv->dev, ioctl, argp);
 		if (r == -ENOIOCTLCMD) {
-			printk(KERN_ERR "VBS_K_SET_VQ: virtio_vqs_ioctl failed!\n");
+			pr_err("VBS_K_SET_VQ: virtio_vqs_ioctl failed!\n");
 			return -EFAULT;
 		}
 		/* Register VHM client */
 		if (virtio_dev_register(&priv->dev) < 0) {
-			printk(KERN_ERR "failed to register VHM client!\n");
+			pr_err("failed to register VHM client!\n");
 			return -EFAULT;
 		}
 		/* Added to local hash table */
 		if (ipu_vbk_hash_add(priv) < 0) {
-			printk(KERN_ERR "failed to add to hashtable!\n");
+			pr_err("failed to add to hashtable!\n");
 			return -EFAULT;
 		}
 		/* Increment counter */
@@ -370,7 +369,6 @@ static long ipu_vbk_ioctl(struct file *f, unsigned int ioctl,
 		return r;
 	default:
 		/*mutex_lock(&n->dev.mutex);*/
-		printk("VBS_K generic ioctls!\n");
 		r = virtio_dev_ioctl(&priv->dev, ioctl, argp);
 		if (r == -ENOIOCTLCMD)
 			r = virtio_vqs_ioctl(&priv->dev, ioctl, argp);

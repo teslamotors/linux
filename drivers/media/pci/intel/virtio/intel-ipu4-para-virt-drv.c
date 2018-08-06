@@ -22,9 +22,6 @@
 #include "./ici/ici-isys-pipeline-device.h"
 
 
-#define MAX_STREAM_DEVICES 64
-#define MAX_PIPELINE_DEVICES 1
-
 static dev_t virt_pipeline_dev_t;
 static struct class *virt_pipeline_class;
 static struct ici_isys_pipeline_device *pipeline_dev;
@@ -138,7 +135,6 @@ static int get_userpages(struct device *dev, struct ici_frame_plane *frame_plane
 	unsigned int i;
 	u64 page_table_ref;
 	u64 *page_table;
-
 	addr = (unsigned long)frame_plane->mem.userptr;
 	start = addr & PAGE_MASK;
 	end = PAGE_ALIGN(addr + frame_plane->length);
@@ -184,14 +180,13 @@ static int get_userpages(struct device *dev, struct ici_frame_plane *frame_plane
 	kframe_plane->npages = npages;
 	up_read(&current->mm->mmap_sem);
 	return ret;
-
 error_free_pages:
 	if (pages) {
 		for (i = 0; i < nr; i++)
 			put_page(pages[i]);
 	}
 	kfree(sgt);
-	return -1;
+	return -ENOMEM;
 }
 
 static struct ici_frame_buf_wrapper *frame_buf_lookup(struct ici_isys_frame_buf_list *buf_list, struct ici_frame_info *user_frame_info)
@@ -647,11 +642,13 @@ static unsigned int stream_fop_poll(struct file *file, struct ici_stream_device 
 		kfree(req);
 		return rval;
 	}
-	kfree(req);
 
 	mutex_unlock(&fop_mutex);
 
-	return req->func_ret;
+	rval = req->func_ret;
+	kfree(req);
+
+	return rval;
 }
 
 static int virt_stream_fop_open(struct inode *inode, struct file *file)
@@ -1288,12 +1285,13 @@ static int __init virt_ici_init(void)
 		mutex_unlock(&vstream->mutex);
 
 		if (rval)
-			return rval;
+			goto init_fail;
 	}
 
 	rval = virt_ici_pipeline_init();
 	if (rval)
-		return rval;
+		goto init_fail;
+
 	rval = virt_fe_init();
 	return rval;
 

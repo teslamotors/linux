@@ -25,7 +25,7 @@ int process_pipeline_open(int domid, struct ipu4_virtio_req *req)
 		return -1;
 	}
 
-	printk(KERN_INFO "process_device_open: /dev/intel_pipeline");
+	pr_info("process_device_open: /dev/intel_pipeline");
 	pipeline = filp_open("/dev/intel_pipeline", O_RDWR | O_NONBLOCK, 0);
 	guestID = domid;
 
@@ -52,7 +52,7 @@ int process_enum_nodes(int domid, struct ipu4_virtio_req *req)
 
 	host_virt = (struct ici_node_desc *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_enum_nodes: NULL host_virt");
+		pr_err("process_enum_nodes: NULL host_virt");
 		return 0;
 	}
 

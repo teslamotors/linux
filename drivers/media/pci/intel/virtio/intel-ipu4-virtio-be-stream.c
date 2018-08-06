@@ -48,18 +48,19 @@ int process_device_open(int domid, struct ipu4_virtio_req *req)
 		hash_init(STREAM_NODE_HASH);
 		hash_initialised = true;
 	}
-	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0])
+	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
 		if (sn != NULL) {
 			if (sn->client_id != domid) {
-				printk(KERN_ERR "process_device_open: stream device %d already opened by other guest!", sn->client_id);
+				pr_err("process_device_open: stream device %d already opened by other guest!", sn->client_id);
 				return -EBUSY;
 			}
-			printk(KERN_INFO "process_device_open: stream device %d already opened by client %d", req->op[0], domid);
+			pr_info("process_device_open: stream device %d already opened by client %d", req->op[0], domid);
 			return 0;
 		}
+	}
 
 	sprintf(node_name, "/dev/intel_stream%d", req->op[0]);
-	printk(KERN_INFO "process_device_open: %s", node_name);
+	pr_info("process_device_open: %s", node_name);
 	sn = kzalloc(sizeof(struct stream_node), GFP_KERNEL);
 	sn->f = filp_open(node_name, O_RDWR | O_NONBLOCK, 0);
 	sn->client_id = domid;
@@ -75,14 +76,15 @@ int process_device_close(int domid, struct ipu4_virtio_req *req)
 	if (!hash_initialised)
 		return 0; //no node has been opened, do nothing
 
-	printk(KERN_INFO "process_device_close: %d", req->op[0]);
+	pr_info("process_device_close: %d", req->op[0]);
 
-	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0])
-	if (sn != NULL) {
-		printk(KERN_INFO "process_device_close: %d closed", req->op[0]);
-		hash_del(&sn->node);
-		filp_close(sn->f, 0);
-		kfree(sn);
+	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
+		if (sn != NULL) {
+			pr_err("process_device_close: %d closed", req->op[0]);
+			hash_del(&sn->node);
+			filp_close(sn->f, 0);
+			kfree(sn);
+		}
 	}
 
 	return 0;
@@ -95,16 +97,15 @@ int process_set_format(int domid, struct ipu4_virtio_req *req)
 	struct ici_stream_format *host_virt;
 	int err, found;
 
-	printk(KERN_INFO "process_set_format: %d %d", hash_initialised, req->op[0]);
+	pr_debug("process_set_format: %d %d", hash_initialised, req->op[0]);
 
 	if (!hash_initialised)
 		return -1;
 
 	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
-		printk(KERN_INFO "process_set_format: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
-			printk(KERN_INFO "process_set_format: node %d %p", req->op[0], sn);
+			pr_err("process_set_format: node %d %p", req->op[0], sn);
 			found = 1;
 			break;
 		}
@@ -117,20 +118,20 @@ int process_set_format(int domid, struct ipu4_virtio_req *req)
 
 	strm_dev = sn->f->private_data;
 	if (strm_dev == NULL) {
-		printk(KERN_ERR "Native IPU stream device not found\n");
+		pr_err("Native IPU stream device not found\n");
 		return -1;
 	}
 
 	host_virt = (struct ici_stream_format *)map_guest_phys(domid, req->payload, PAGE_SIZE);
 	if (host_virt == NULL) {
-		printk(KERN_ERR "process_set_format: NULL host_virt");
+		pr_err("process_set_format: NULL host_virt");
 		return -1;
 	}
 
 	err = strm_dev->ipu_ioctl_ops->ici_set_format(sn->f, strm_dev, host_virt);
 
 	if (err)
-		printk(KERN_ERR "intel_ipu4_pvirt: internal set fmt failed\n");
+		pr_err("intel_ipu4_pvirt: internal set fmt failed\n");
 
 	return 0;
 }
@@ -154,7 +155,6 @@ int process_put_buf(int domid, struct ipu4_virtio_req *req)
 
 	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
-		pr_debug("process_put_buf: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
 			pr_debug("process_put_buf: node %d %p", req->op[0], sn);
 			found = 1;
@@ -204,7 +204,6 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 
 	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
-		pr_debug("process_get_buf: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
 			pr_debug("process_get_buf: node %d %p", req->op[0], sn);
 			found = 1;
@@ -235,6 +234,7 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 	if (page_table == NULL) {
 		pr_err("SOS Failed to map page table\n");
 		req->stat = IPU4_REQ_ERROR;
+		kfree(data_pages);
 		return -1;
 	}
 
@@ -257,6 +257,7 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 	strm_dev = sn->f->private_data;
 	if (strm_dev == NULL) {
 		pr_err("Native IPU stream device not found\n");
+		kfree(data_pages);
 		return -1;
 	}
 	err = strm_dev->ipu_ioctl_ops->ici_get_buf_virt(sn->f, strm_dev, shared_buf, data_pages);
@@ -264,6 +265,7 @@ int process_get_buf(int domid, struct ipu4_virtio_req *req)
 	if (err)
 		pr_err("process_get_buf: ici_get_buf_virt failed\n");
 
+	kfree(data_pages);
 	return 0;
 }
 
@@ -274,16 +276,15 @@ int process_stream_on(int domid, struct ipu4_virtio_req *req)
 	struct ici_stream_device *strm_dev;
 	int err, found;
 
-	printk(KERN_INFO "process_stream_on: %d %d", hash_initialised, req->op[0]);
+	pr_debug("process_stream_on: %d %d", hash_initialised, req->op[0]);
 
 	if (!hash_initialised)
 		return -1;
 
 	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
-		printk(KERN_INFO "process_stream_on: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
-			printk(KERN_INFO "process_stream_on: node %d %p", req->op[0], sn);
+			pr_err("process_stream_on: node %d %p", req->op[0], sn);
 			found = 1;
 			break;
 		}
@@ -296,7 +297,7 @@ int process_stream_on(int domid, struct ipu4_virtio_req *req)
 
 	strm_dev = sn->f->private_data;
 	if (strm_dev == NULL) {
-		printk(KERN_ERR "Native IPU stream device not found\n");
+		pr_err("Native IPU stream device not found\n");
 		return -1;
 	}
 
@@ -306,7 +307,7 @@ int process_stream_on(int domid, struct ipu4_virtio_req *req)
 	err = strm_dev->ipu_ioctl_ops->ici_stream_on(sn->f, strm_dev);
 
 	if (err)
-		printk(KERN_ERR "process_stream_on: stream on failed\n");
+		pr_err("process_stream_on: stream on failed\n");
 
 	return 0;
 }
@@ -318,16 +319,15 @@ int process_stream_off(int domid, struct ipu4_virtio_req *req)
 	struct ici_isys_stream *as;
 	int err, found;
 
-	printk(KERN_INFO "process_stream_off: %d %d", hash_initialised, req->op[0]);
+	pr_debug("process_stream_off: %d %d", hash_initialised, req->op[0]);
 
 	if (!hash_initialised)
 		return -1;
 
 	found = 0;
 	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
-		printk(KERN_INFO "process_stream_off: sn %d %p", req->op[0], sn);
 		if (sn != NULL) {
-			printk(KERN_INFO "process_stream_off: node %d %p", req->op[0], sn);
+			pr_err("process_stream_off: node %d %p", req->op[0], sn);
 			found = 1;
 			break;
 		}
@@ -340,7 +340,7 @@ int process_stream_off(int domid, struct ipu4_virtio_req *req)
 
 	strm_dev = sn->f->private_data;
 	if (strm_dev == NULL) {
-		printk(KERN_ERR "Native IPU stream device not found\n");
+		pr_err("Native IPU stream device not found\n");
 		return -1;
 	}
 
@@ -350,7 +350,7 @@ int process_stream_off(int domid, struct ipu4_virtio_req *req)
 	err = strm_dev->ipu_ioctl_ops->ici_stream_off(sn->f, strm_dev);
 
 	if (err)
-		printk(KERN_ERR "process_stream_off: stream off failed\n");
+		pr_err("process_stream_off: stream off failed\n");
 
 	return 0;
 }

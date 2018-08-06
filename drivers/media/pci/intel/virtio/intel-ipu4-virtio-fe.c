@@ -79,7 +79,6 @@ static int ipu_virtio_fe_probe_common(struct virtio_device *vdev)
 	vq_callback_t *callbacks[] = {ipu_virtio_fe_tx_done_vq_0,
 							ipu_virtio_fe_tx_done_vq_1};
 	static const char *names[] = {"csi_queue_0", "csi_queue_1"};
-	printk("Entering %s\n", __func__);
 	priv = kzalloc(sizeof(struct ipu4_virtio_uos), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;

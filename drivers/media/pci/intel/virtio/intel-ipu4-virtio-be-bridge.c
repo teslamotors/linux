@@ -20,12 +20,12 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 {
 	int ret = 0;
 	if (!req) {
-			printk(KERN_ERR "request is NULL\n");
-			return -EINVAL;
-		}
+		pr_err("IPU mediator: request is NULL\n");
+		return -EINVAL;
+	}
 	if ((req->cmd < IPU4_CMD_DEVICE_OPEN) ||
 			(req->cmd >= IPU4_CMD_GET_N)) {
-			printk(KERN_ERR "invalid command\n");
+			pr_err("IPU mediator: invalid command\n");
 			return -EINVAL;
 	}
 	switch (req->cmd) {
