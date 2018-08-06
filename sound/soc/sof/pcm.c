@@ -134,19 +134,19 @@ static int sof_pcm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* firmware already configured host stream */
-	if (ops && ops->host_stream_prepare) {
+	if (ops && ops->host_stream_hw_params) {
 		pcm.params.stream_tag =
-			ops->host_stream_prepare(sdev, substream, params);
+			ops->host_stream_hw_params(sdev, substream, params);
 		dev_dbg(sdev->dev, "stream_tag %d", pcm.params.stream_tag);
 	}
 
 	/* send IPC to the DSP */
-	ret = sof_ipc_tx_message(sdev->ipc,
-				 pcm.hdr.cmd, &pcm, sizeof(pcm),
+	ret = sof_ipc_tx_message(sdev->ipc, pcm.hdr.cmd, &pcm, sizeof(pcm),
 				 &ipc_params_reply, sizeof(ipc_params_reply));
 
 	/* validate offset */
 	posn_offset = ipc_params_reply.posn_offset;
+
 	/* check if offset is overflow or it is not aligned */
 	if (posn_offset > sdev->stream_box.size ||
 	    posn_offset % sizeof(struct sof_ipc_stream_posn) != 0) {
@@ -232,12 +232,13 @@ static int sof_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		return -EINVAL;
 	}
 
+	/* set RUN firstly per the sequence suggested by firmware team */
+	if (ops && ops->host_stream_trigger)
+		ret = ops->host_stream_trigger(sdev, substream, cmd);
+
 	/* send IPC to the DSP */
 	ret = sof_ipc_tx_message(sdev->ipc, stream.hdr.cmd, &stream,
 				 sizeof(stream), &reply, sizeof(reply));
-
-	if (ops && ops->host_stream_trigger)
-		ret = ops->host_stream_trigger(sdev, substream, cmd);
 
 	return ret;
 }
@@ -310,13 +311,13 @@ static int sof_pcm_open(struct snd_pcm_substream *substream)
 	runtime->hw.periods_max = caps->periods_max;
 	runtime->hw.buffer_bytes_max = caps->buffer_size_max;
 
-	dev_dbg(sdev->dev, "period min %ld max %ld bytes\n",
+	dev_dbg(sdev->dev, "period min %zd max %zd bytes\n",
 		runtime->hw.period_bytes_min,
 		runtime->hw.period_bytes_max);
 	dev_dbg(sdev->dev, "period count %d max %d\n",
 		runtime->hw.periods_min,
 		runtime->hw.periods_max);
-	dev_dbg(sdev->dev, "buffer max %ld bytes\n",
+	dev_dbg(sdev->dev, "buffer max %zd bytes\n",
 		runtime->hw.buffer_bytes_max);
 
 	// TODO: create IPC to get this from DSP pipeline
@@ -533,16 +534,37 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 	}
 
 	/* read rate and channels from topology */
-	rate->min = dai->dai_config.fclk;
-	rate->max = dai->dai_config.fclk;
-	channels->min = dai->dai_config.num_slots;
-	channels->max = dai->dai_config.num_slots;
+	switch (dai->dai_config.type) {
+	case SOF_DAI_INTEL_SSP:
+		rate->min = dai->dai_config.ssp.fsync_rate;
+		rate->max = dai->dai_config.ssp.fsync_rate;
+		channels->min = dai->dai_config.ssp.tdm_slots;
+		channels->max = dai->dai_config.ssp.tdm_slots;
 
-	dev_dbg(sdev->dev,
-		"rate_min: %d rate_max: %d\n", rate->min, rate->max);
-	dev_dbg(sdev->dev,
-		"channels_min: %d channels_max: %d\n",
-		channels->min, channels->max);
+		dev_dbg(sdev->dev,
+			"rate_min: %d rate_max: %d\n", rate->min, rate->max);
+		dev_dbg(sdev->dev,
+			"channels_min: %d channels_max: %d\n",
+			channels->min, channels->max);
+
+		break;
+	case SOF_DAI_INTEL_DMIC:
+		/* DMIC only supports 16 or 32 bit formats */
+		if (dai->comp_dai.config.frame_fmt == SOF_IPC_FRAME_S24_4LE) {
+			dev_err(sdev->dev,
+				"error: invalid fmt %d for DAI type %d\n",
+				dai->comp_dai.config.frame_fmt,
+				dai->dai_config.type);
+		}
+		/* TODO: add any other DMIC specific fixups */
+		break;
+	case SOF_DAI_INTEL_HDA:
+		/* fallthrough */
+	default:
+		dev_err(sdev->dev, "error: invalid DAI type %d\n",
+			dai->dai_config.type);
+		break;
+	}
 
 	return 0;
 }
@@ -603,30 +625,12 @@ void snd_sof_new_platform_drv(struct snd_sof_dev *sdev)
 	pd->topology_name_prefix = "sof";
 }
 
-static const struct snd_soc_dai_ops sof_dai_ops = {
-};
-
 static const struct snd_soc_component_driver sof_dai_component = {
-	.name		= "sof-dai",
+	.name           = "sof-dai",
 };
-
-#define SOF_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
-	SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT)
 
 void snd_sof_new_dai_drv(struct snd_sof_dev *sdev)
 {
-	struct snd_soc_dai_driver *dd = &sdev->dai_drv;
-	//struct snd_sof_pdata *plat_data = sdev->pdata;
-
 	sdev->cmpnt_drv = &sof_dai_component;
-	dd->playback.channels_min = 1;
-	dd->playback.channels_max = 16;
-	dd->playback.rates = SNDRV_PCM_RATE_8000_192000;
-	dd->playback.formats = SOF_FORMATS;
-	dd->capture.channels_min = 1;
-	dd->capture.channels_max = 16;
-	dd->capture.rates = SNDRV_PCM_RATE_8000_192000;
-	dd->capture.formats = SOF_FORMATS;
-	dd->ops = &sof_dai_ops;
-	sdev->num_dai = 1;
 }
+

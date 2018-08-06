@@ -628,7 +628,7 @@ int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
 int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
 			 struct snd_ctl_elem_value *ucontrol);
 
-int skl_dai_load(struct snd_soc_component *, int index,
+int skl_dai_load(struct snd_soc_component *cmp, int index,
 		struct snd_soc_dai_driver *dai_drv,
 		struct snd_soc_tplg_pcm *pcm, struct snd_soc_dai *dai);
 int skl_tplg_change_notification_get(struct snd_kcontrol *kcontrol,
