@@ -2392,6 +2392,12 @@ struct drm_i915_private {
 	 * mchdev_lock in intel_pm.c */
 	struct intel_ilk_power_mgmt ips;
 
+	/*
+	 * GEN9 graphics turbo state. Protected by the global tfm_lock
+	 * in intel_pm.c
+	 */
+	int tfm_enabled;
+
 	struct i915_power_domains power_domains;
 
 	struct i915_psr psr;

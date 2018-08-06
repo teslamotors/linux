@@ -2730,6 +2730,64 @@ scsi_device_set_state(struct scsi_device *sdev, enum scsi_device_state state)
 }
 EXPORT_SYMBOL(scsi_device_set_state);
 
+#define MAX_RETRIES     3
+#define SR_TIMEOUT      (3 * HZ)
+
+/**
+ *	get_change_reason - Obtain media change reason by querying the device
+ *	@sdev:	scsi device to get media change reason from.
+ *
+ *	Returns reason as specified in @scsi_media_change_reason
+ */
+static enum scsi_media_change_reason get_change_reason(struct scsi_device *sdev)
+{
+	int ret, is_good;
+	enum scsi_media_change_reason reason = SDEV_MEDIA_BAD;
+	struct scsi_sense_hdr sshdr;
+
+	ret = scsi_test_unit_ready(sdev, SR_TIMEOUT, MAX_RETRIES, &sshdr);
+	is_good = scsi_status_is_good(ret);
+	pr_debug("%s: changed %d, is_good %d, asc 0x%x, ascq 0x%x\n",
+		__func__, sdev->changed, is_good, sshdr.asc, sshdr.ascq);
+
+	if (is_good)
+		reason = SDEV_MEDIA_ATTACH;
+	else {
+		switch (sshdr.asc) {
+		case 0x28:
+		case 0x29:
+			reason = SDEV_MEDIA_UNDEF;
+			break;
+
+		case 0x04:
+			if (sshdr.ascq == 0x01) {
+				reason = SDEV_MEDIA_UNDEF;
+				break;
+			}
+		/* otherwise fall through */
+		case 0x3A:
+			reason = SDEV_MEDIA_DETACH;
+			break;
+
+		default:
+			reason = SDEV_MEDIA_BAD;
+			break;
+		}
+	}
+	if (!sdev->changed && reason == sdev->last_change_reason)
+		reason = SDEV_MEDIA_UNDEF;
+	else
+		sdev->last_change_reason = reason;
+	return reason;
+}
+
+static char *media_change_reasons[SDEV_MEDIA_REASON_MAX + 1] = {
+	[SDEV_MEDIA_ATTACH] = "SDEV_MEDIA_CHANGE_REASON=MEDIA_ATTACH",
+	[SDEV_MEDIA_DETACH] = "SDEV_MEDIA_CHANGE_REASON=MEDIA_DETACH",
+	[SDEV_MEDIA_BAD] = "SDEV_MEDIA_CHANGE_REASON=MEDIA_BAD",
+};
+
+
 /**
  * 	sdev_evt_emit - emit a single SCSI device uevent
  *	@sdev: associated SCSI device
@@ -2741,10 +2799,18 @@ static void scsi_evt_emit(struct scsi_device *sdev, struct scsi_event *evt)
 {
 	int idx = 0;
 	char *envp[3];
+	enum scsi_media_change_reason r;
 
 	switch (evt->evt_type) {
 	case SDEV_EVT_MEDIA_CHANGE:
 		envp[idx++] = "SDEV_MEDIA_CHANGE=1";
+		if (sdev->add_change_reason) {
+			r = get_change_reason(sdev);
+			if (media_change_reasons[r])
+				envp[idx++] = media_change_reasons[r];
+			pr_debug("%s: reason %s\n", __func__,
+				media_change_reasons[r] ?: "n/a");
+		}
 		break;
 	case SDEV_EVT_INQUIRY_CHANGE_REPORTED:
 		scsi_rescan_device(&sdev->sdev_gendev);

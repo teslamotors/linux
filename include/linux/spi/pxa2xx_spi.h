@@ -47,6 +47,7 @@ struct pxa2xx_spi_chip {
 	u8 enable_loopback;
 	int gpio_cs;
 	void (*cs_control)(u32 command);
+	u32 pio_dma_threshold;
 };
 
 #if defined(CONFIG_ARCH_PXA) || defined(CONFIG_ARCH_MMP)

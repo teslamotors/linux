@@ -30,6 +30,14 @@ config X86_64
 	select MODULES_USE_ELF_RELA
 	select X86_DEV_DMA_OPS
 
+# Enable SPI node for APL-I
+config APL_SPI_BRD
+	bool "PCI mode SPI support on APL"
+	depends on X86_INTEL_LPSS
+	---help---
+	  This option is needed if were to use Intel Apollo Lake SPI
+	  in PCI mode.
+
 #
 # Arch settings
 #
@@ -650,6 +658,24 @@ config IOSF_MBI_DEBUG
 	  device they want to access.
 
 	  If you don't require the option or are in doubt, say N.
+
+config X86_INTEL_SBI_APL
+	tristate "Intel SoC Sideband Interface for Apollo Lake"
+	depends on PCI
+	---help---
+	  This option enables sideband interface access for Intel Apollo Lake.
+	  Like IOSF_MBI, the registers are used in lieu of MSR's.
+
+	  You should say Y if you are running a kernel on Apollo Lake.
+
+config X86_INTEL_SBI_APL_DEBUG
+	bool "Enable Intel SoC SBI for Apollo Lake access in debugfs"
+	depends on X86_INTEL_SBI_APL && DEBUG_FS
+	---help---
+	  Select this option to expose the Sideband Interface through
+	  debugfs.
+
+	  You should say N if you do not plan to debug the SoC.
 
 config X86_RDC321X
 	bool "RDC R-321x SoC"

@@ -5036,6 +5036,16 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 	usb_lock_port(port_dev);
 }
 
+#ifdef CONFIG_USB_OC_NOTIFICATION
+char oc_event[] = "OVERCURRENT=1";
+char oc_port[10];
+char *oc_envp[] = {oc_event, oc_port, NULL};
+char nc_event[] = "OVERCURRENT=0";
+char nc_port[10];
+char *nc_envp[] = {nc_event, nc_port, NULL};
+static int oc_flag;
+#endif
+
 static void port_event(struct usb_hub *hub, int port1)
 		__must_hold(&port_dev->status_lock)
 {
@@ -5079,13 +5089,42 @@ static void port_event(struct usb_hub *hub, int port1)
 		u16 status = 0, unused;
 
 		dev_dbg(&port_dev->dev, "over-current change\n");
+#ifdef CONFIG_USB_OC_NOTIFICATION
+		if (oc_flag & BIT(port1 - 1)) {
+			/*
+			 * Send event to userland for overcurrent condition
+			 * change at port with port number.
+			 */
+			snprintf(oc_port, sizeof(oc_port), "NPORT=%d", port1);
+			if (kobject_uevent_env(&hub->intfdev->kobj,
+						KOBJ_CHANGE, nc_envp))
+				dev_err(&port_dev->dev,
+					"failed to send change OC event.\n");
+			/* Clear port's oc_flag. */
+			oc_flag &= ~(BIT(port1 - 1));
+		}
+#endif
 		usb_clear_port_feature(hdev, port1,
 				USB_PORT_FEAT_C_OVER_CURRENT);
 		msleep(100);	/* Cool down */
 		hub_power_on(hub, true);
 		hub_port_status(hub, port1, &status, &unused);
-		if (status & USB_PORT_STAT_OVERCURRENT)
+		if (status & USB_PORT_STAT_OVERCURRENT) {
 			dev_err(&port_dev->dev, "over-current condition\n");
+#ifdef CONFIG_USB_OC_NOTIFICATION
+			/*
+			 * Send event to userland for overcurrent condition
+			 * with port number.
+			 */
+			snprintf(oc_port, sizeof(oc_port), "OCPORT=%d", port1);
+			if (kobject_uevent_env(&hub->intfdev->kobj,
+						KOBJ_CHANGE, oc_envp))
+				dev_err(&port_dev->dev,
+					"failed to send OC event.\n");
+			/* Set port's oc_flag. */
+			oc_flag |= BIT(port1 - 1);
+#endif
+		}
 	}
 
 	if (portchange & USB_PORT_STAT_C_RESET) {
