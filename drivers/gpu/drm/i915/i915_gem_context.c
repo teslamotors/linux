@@ -460,6 +460,110 @@ destroy_kernel_context(struct i915_gem_context **ctxp)
 	i915_gem_context_free(ctx);
 }
 
+/* Return the timer count threshold in microseconds. */
+int i915_gem_context_get_watchdog(struct i915_gem_context *ctx,
+				  struct drm_i915_gem_context_param *args)
+{
+	struct drm_i915_private *dev_priv = ctx->i915;
+	struct intel_engine_cs *engine;
+	enum intel_engine_id id;
+	u32 threshold_in_us[I915_NUM_ENGINES];
+
+	if (args->size == 0)
+		goto out;
+
+	if (args->size < sizeof(threshold_in_us))
+		return -EFAULT;
+
+	if (!dev_priv->engine[VCS]->emit_start_watchdog)
+		return -ENODEV;
+
+	/* Zero the array to avoid reporting garbage for non-existant engines */
+	memset(threshold_in_us, 0, sizeof(threshold_in_us));
+	for_each_engine(engine, dev_priv, id) {
+		struct intel_context *ce = &ctx->engine[id];
+
+		threshold_in_us[id] = watchdog_to_us(dev_priv,
+						     ce->watchdog_threshold);
+	}
+
+	mutex_unlock(&dev_priv->drm.struct_mutex);
+	if (__copy_to_user(u64_to_user_ptr(args->value),
+			   &threshold_in_us,
+			   sizeof(threshold_in_us))) {
+		mutex_lock(&dev_priv->drm.struct_mutex);
+		return -EFAULT;
+	}
+	mutex_lock(&dev_priv->drm.struct_mutex);
+
+out:
+	args->size = sizeof(threshold_in_us);
+
+	return 0;
+}
+
+/*
+ * Based on time out value in microseconds (us) calculate
+ * timer count thresholds needed based on core frequency.
+ * Watchdog can be disabled by setting it to 0.
+ */
+int i915_gem_context_set_watchdog(struct i915_gem_context *ctx,
+				  struct drm_i915_gem_context_param *args)
+{
+	struct drm_i915_private *dev_priv = ctx->i915;
+	struct intel_engine_cs *engine;
+	enum intel_engine_id id;
+	u32 threshold[I915_NUM_ENGINES];
+
+	memset(threshold, 0, sizeof(threshold));
+
+	/* shortcut to disable in all engines */
+	if (args->size == 0)
+		goto set_watchdog;
+
+	if (args->size < sizeof(threshold))
+		return -EFAULT;
+
+	if (!dev_priv->engine[VCS]->emit_start_watchdog)
+		return -ENODEV;
+
+	mutex_unlock(&dev_priv->drm.struct_mutex);
+	if (copy_from_user(threshold,
+			   u64_to_user_ptr(args->value),
+			   sizeof(threshold))) {
+		mutex_lock(&dev_priv->drm.struct_mutex);
+		return -EFAULT;
+	}
+	mutex_lock(&dev_priv->drm.struct_mutex);
+
+	/* not supported in blitter engine */
+	if (threshold[BCS] != 0)
+		return -EINVAL;
+
+	/* Watchdog reset on RCS is not fully validated so quietly disable */
+	if (threshold[RCS] != 0) {
+		threshold[RCS] = 0;
+		DRM_WARN("Ignoring RCS watchdog enabling request\n");
+	}
+
+	for_each_engine(engine, dev_priv, id) {
+		threshold[id] = watchdog_to_clock_counts(dev_priv,
+							 threshold[id]);
+
+		if (threshold[id] == -EINVAL)
+			return -EINVAL;
+	}
+
+set_watchdog:
+	for_each_engine(engine, dev_priv, id) {
+		struct intel_context *ce = &ctx->engine[id];
+
+		ce->watchdog_threshold = threshold[id];
+	}
+
+	return 0;
+}
+
 int i915_gem_contexts_init(struct drm_i915_private *dev_priv)
 {
 	struct i915_gem_context *ctx;
@@ -1093,7 +1197,10 @@ int i915_gem_context_getparam_ioctl(struct drm_device *dev, void *data,
 	if (!ctx)
 		return -ENOENT;
 
-	args->size = 0;
+	/* User is passing us a size for the watchdog */
+	if (args->param != I915_CONTEXT_PARAM_WATCHDOG)
+		args->size = 0;
+
 	switch (args->param) {
 	case I915_CONTEXT_PARAM_BAN_PERIOD:
 		ret = -EINVAL;
@@ -1117,6 +1224,9 @@ int i915_gem_context_getparam_ioctl(struct drm_device *dev, void *data,
 		break;
 	case I915_CONTEXT_PARAM_PRIORITY:
 		args->value = ctx->priority;
+		break;
+	case I915_CONTEXT_PARAM_WATCHDOG:
+		ret = i915_gem_context_get_watchdog(ctx, args);
 		break;
 	default:
 		ret = -EINVAL;
@@ -1192,7 +1302,9 @@ int i915_gem_context_setparam_ioctl(struct drm_device *dev, void *data,
 				ctx->priority = priority;
 		}
 		break;
-
+	case I915_CONTEXT_PARAM_WATCHDOG:
+		ret = i915_gem_context_set_watchdog(ctx, args);
+		break;
 	default:
 		ret = -EINVAL;
 		break;

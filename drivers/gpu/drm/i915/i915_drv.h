@@ -570,6 +570,14 @@ struct i915_hotplug {
 	     (__i)++) \
 		for_each_if (plane_state)
 
+#define for_each_new_intel_crtc_in_state(__state, crtc, new_crtc_state, __i) \
+	for ((__i) = 0; \
+	     (__i) < (__state)->base.dev->mode_config.num_crtc && \
+	     ((crtc) = to_intel_crtc((__state)->base.crtcs[__i].ptr), \
+	      (new_crtc_state) = to_intel_crtc_state((__state)->base.crtcs[__i].new_state), 1); \
+	      (__i)++) \
+	      for_each_if (crtc)
+
 struct drm_i915_private;
 struct i915_mm_struct;
 struct i915_mmu_object;
@@ -1815,11 +1823,12 @@ static inline bool skl_ddb_entry_equal(const struct skl_ddb_entry *e1,
 }
 
 struct skl_ddb_allocation {
-	struct skl_ddb_entry plane[I915_MAX_PIPES][I915_MAX_PLANES]; /* packed/uv */
-	struct skl_ddb_entry y_plane[I915_MAX_PIPES][I915_MAX_PLANES];
+	/* packed/y */
+	struct skl_ddb_entry plane[I915_MAX_PIPES][I915_MAX_PLANES];
+	struct skl_ddb_entry uv_plane[I915_MAX_PIPES][I915_MAX_PLANES];
 };
 
-struct skl_wm_values {
+struct skl_ddb_values {
 	unsigned dirty_pipes;
 	struct skl_ddb_allocation ddb;
 };
@@ -1828,6 +1837,21 @@ struct skl_wm_level {
 	bool plane_en;
 	uint16_t plane_res_b;
 	uint8_t plane_res_l;
+};
+
+/* Stores plane specific WM parameters */
+struct skl_wm_params {
+	bool x_tiled, y_tiled;
+	bool rc_surface;
+	bool is_planar;
+	uint32_t width;
+	uint8_t cpp;
+	uint32_t plane_pixel_rate;
+	uint32_t y_min_scanlines;
+	uint32_t plane_bytes_per_line;
+	uint_fixed_16_16_t plane_blocks_per_line;
+	uint_fixed_16_16_t y_tile_minimum;
+	uint32_t linetime_us;
 };
 
 /*
@@ -2489,7 +2513,7 @@ struct drm_i915_private {
 		/* current hardware state */
 		union {
 			struct ilk_wm_values hw;
-			struct skl_wm_values skl_hw;
+			struct skl_ddb_values skl_hw;
 			struct vlv_wm_values vlv;
 			struct g4x_wm_values g4x;
 		};
@@ -2989,6 +3013,7 @@ intel_info(const struct drm_i915_private *dev_priv)
 #define BXT_REVID_B0		0x3
 #define BXT_REVID_B_LAST	0x8
 #define BXT_REVID_C0		0x9
+#define BXT_REVID_D0		0xC
 
 #define IS_BXT_REVID(dev_priv, since, until) \
 	(IS_BROXTON(dev_priv) && IS_REVID(dev_priv, since, until))
@@ -3751,6 +3776,35 @@ i915_gem_context_lookup_timeline(struct i915_gem_context *ctx,
 
 	vm = ctx->ppgtt ? &ctx->ppgtt->base : &ctx->i915->ggtt.base;
 	return &vm->timeline.engine[engine->id];
+}
+
+/*
+ * BDW & SKL+ Timestamp timer resolution = 0.080 uSec,
+ * or 12500000 counts per second, or ~12 counts per microsecond.
+ *
+ * But Broxton Timestamp timer resolution is different, 0.052 uSec,
+ * or 19200000 counts per second, or ~19 counts per microsecond.
+ */
+#define SKL_TIMESTAMP_CNTS_PER_USEC 12
+#define BXT_TIMESTAMP_CNTS_PER_USEC 19
+#define TIMESTAMP_CNTS_PER_USEC(dev_priv) (IS_BROXTON(dev_priv) ? \
+					   BXT_TIMESTAMP_CNTS_PER_USEC : \
+					   SKL_TIMESTAMP_CNTS_PER_USEC)
+static inline u32
+watchdog_to_us(struct drm_i915_private *dev_priv, u32 value_in_clock_counts)
+{
+	return value_in_clock_counts / TIMESTAMP_CNTS_PER_USEC(dev_priv);
+}
+
+static inline u32
+watchdog_to_clock_counts(struct drm_i915_private *dev_priv, u64 value_in_us)
+{
+	u64 threshold = value_in_us * TIMESTAMP_CNTS_PER_USEC(dev_priv);
+
+	if (overflows_type(threshold, u32))
+		return -EINVAL;
+
+	return threshold;
 }
 
 int i915_perf_open_ioctl(struct drm_device *dev, void *data,

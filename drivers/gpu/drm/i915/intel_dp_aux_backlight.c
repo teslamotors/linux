@@ -278,3 +278,10 @@ int intel_dp_aux_init_backlight_funcs(struct intel_connector *intel_connector)
 
 	return 0;
 }
+
+void intel_dp_aux_backlight_power(struct intel_connector *connector,
+				      bool enable)
+{
+	set_aux_backlight_enable(enc_to_intel_dp(&connector->encoder->base),
+			enable);
+}

@@ -92,6 +92,22 @@ static const uint32_t skl_primary_formats[] = {
 	DRM_FORMAT_VYUY,
 };
 
+static const uint32_t skl_pri_planar_formats[] = {
+	DRM_FORMAT_C8,
+	DRM_FORMAT_RGB565,
+	DRM_FORMAT_XRGB8888,
+	DRM_FORMAT_XBGR8888,
+	DRM_FORMAT_ARGB8888,
+	DRM_FORMAT_ABGR8888,
+	DRM_FORMAT_XRGB2101010,
+	DRM_FORMAT_XBGR2101010,
+	DRM_FORMAT_YUYV,
+	DRM_FORMAT_YVYU,
+	DRM_FORMAT_UYVY,
+	DRM_FORMAT_VYUY,
+	DRM_FORMAT_NV12,
+};
+
 static const uint64_t skl_format_modifiers_noccs[] = {
 	I915_FORMAT_MOD_Yf_TILED,
 	I915_FORMAT_MOD_Y_TILED,
@@ -493,6 +509,33 @@ static const struct intel_limit intel_limits_bxt = {
 	.p1 = { .min = 2, .max = 4 },
 	.p2 = { .p2_slow = 1, .p2_fast = 20 },
 };
+
+static void
+skl_wa_528(struct drm_i915_private *dev_priv, int pipe, bool enable)
+{
+	if (IS_SKYLAKE(dev_priv) || IS_BXT_REVID(dev_priv, 0, BXT_REVID_D0))
+		return;
+
+	if (enable)
+		I915_WRITE(CHICKEN_PIPESL_1(pipe), HSW_FBCQ_DIS);
+	else
+		I915_WRITE(CHICKEN_PIPESL_1(pipe), 0);
+}
+
+static void
+skl_wa_clkgate(struct drm_i915_private *dev_priv, int pipe, bool enable)
+{
+	if (IS_SKYLAKE(dev_priv) || IS_BXT_REVID(dev_priv, 0, BXT_REVID_D0))
+		return;
+
+	if (enable)
+		I915_WRITE(CLKGATE_DIS_PSL(pipe),
+			   DUPS1_GATING_DIS | DUPS2_GATING_DIS);
+	else
+		I915_WRITE(CLKGATE_DIS_PSL(pipe),
+			   I915_READ(CLKGATE_DIS_PSL(pipe)) &
+			   ~(DUPS1_GATING_DIS | DUPS2_GATING_DIS));
+}
 
 static bool
 needs_modeset(struct drm_crtc_state *state)
@@ -2653,11 +2696,13 @@ static int i9xx_format_to_fourcc(int format)
 	}
 }
 
-static int skl_format_to_fourcc(int format, bool rgb_order, bool alpha)
+int skl_format_to_fourcc(int format, bool rgb_order, bool alpha)
 {
 	switch (format) {
 	case PLANE_CTL_FORMAT_RGB_565:
 		return DRM_FORMAT_RGB565;
+	case PLANE_CTL_FORMAT_NV12:
+		return DRM_FORMAT_NV12;
 	default:
 	case PLANE_CTL_FORMAT_XRGB_8888:
 		if (rgb_order) {
@@ -3042,6 +3087,28 @@ static int skl_check_main_surface(struct intel_plane_state *plane_state)
 	return 0;
 }
 
+static int
+skl_check_nv12_surface(struct intel_plane_state *plane_state)
+{
+	/* Display WA #1106 */
+	if (plane_state->base.rotation !=
+	    (DRM_MODE_REFLECT_X | DRM_MODE_ROTATE_90) &&
+	    plane_state->base.rotation != DRM_MODE_ROTATE_270)
+		return 0;
+
+	/*
+	 * src coordinates are rotated here.
+	 * We check height but report it as width
+	 */
+	if (((drm_rect_height(&plane_state->base.src) >> 16) % 4) != 0) {
+		DRM_DEBUG_KMS("src width must be multiple "
+			      "of 4 for rotated NV12\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int skl_check_nv12_aux_surface(struct intel_plane_state *plane_state)
 {
 	const struct drm_framebuffer *fb = plane_state->base.fb;
@@ -3134,6 +3201,9 @@ int skl_check_plane_surface(struct intel_plane_state *plane_state)
 	 * the main surface setup depends on it.
 	 */
 	if (fb->format->format == DRM_FORMAT_NV12) {
+		ret = skl_check_nv12_surface(plane_state);
+		if (ret)
+			return ret;
 		ret = skl_check_nv12_aux_surface(plane_state);
 		if (ret)
 			return ret;
@@ -3423,17 +3493,30 @@ u32 skl_plane_stride(const struct drm_framebuffer *fb, int plane,
 	return stride;
 }
 
-static u32 skl_plane_ctl_format(uint32_t pixel_format)
+static u32 skl_plane_ctl_format(uint32_t pixel_format, enum i915_alpha alpha)
 {
+	u32 plane_ctl_alpha;
+
+	switch (alpha) {
+	case I915_ALPHA_NONE:
+		plane_ctl_alpha = PLANE_CTL_ALPHA_DISABLE;
+		break;
+	case I915_ALPHA_PREMUL:
+		plane_ctl_alpha = PLANE_CTL_ALPHA_SW_PREMULTIPLY;
+		break;
+	case I915_ALPHA_NON_PREMUL:
+		plane_ctl_alpha = PLANE_CTL_ALPHA_HW_PREMULTIPLY;
+		break;
+	default:
+		MISSING_CASE(alpha);
+		plane_ctl_alpha = PLANE_CTL_ALPHA_DISABLE;
+	}
+
 	switch (pixel_format) {
 	case DRM_FORMAT_C8:
 		return PLANE_CTL_FORMAT_INDEXED;
 	case DRM_FORMAT_RGB565:
 		return PLANE_CTL_FORMAT_RGB_565;
-	case DRM_FORMAT_XBGR8888:
-		return PLANE_CTL_FORMAT_XRGB_8888 | PLANE_CTL_ORDER_RGBX;
-	case DRM_FORMAT_XRGB8888:
-		return PLANE_CTL_FORMAT_XRGB_8888;
 	/*
 	 * XXX: For ARBG/ABGR formats we default to expecting scanout buffers
 	 * to be already pre-multiplied. We need to add a knob (or a different
@@ -3442,9 +3525,15 @@ static u32 skl_plane_ctl_format(uint32_t pixel_format)
 	case DRM_FORMAT_ABGR8888:
 		return PLANE_CTL_FORMAT_XRGB_8888 | PLANE_CTL_ORDER_RGBX |
 			PLANE_CTL_ALPHA_SW_PREMULTIPLY;
-	case DRM_FORMAT_ARGB8888:
+	case DRM_FORMAT_XBGR8888:
 		return PLANE_CTL_FORMAT_XRGB_8888 |
-			PLANE_CTL_ALPHA_SW_PREMULTIPLY;
+			PLANE_CTL_ORDER_RGBX |
+			plane_ctl_alpha;
+	case DRM_FORMAT_ARGB8888:
+	case DRM_FORMAT_XRGB8888:
+		return PLANE_CTL_FORMAT_XRGB_8888 |
+			PLANE_CTL_ORDER_BGRX |
+			plane_ctl_alpha;
 	case DRM_FORMAT_XRGB2101010:
 		return PLANE_CTL_FORMAT_XRGB_2101010;
 	case DRM_FORMAT_XBGR2101010:
@@ -3457,6 +3546,8 @@ static u32 skl_plane_ctl_format(uint32_t pixel_format)
 		return PLANE_CTL_FORMAT_YUV422 | PLANE_CTL_YUV422_UYVY;
 	case DRM_FORMAT_VYUY:
 		return PLANE_CTL_FORMAT_YUV422 | PLANE_CTL_YUV422_VYUY;
+	case DRM_FORMAT_NV12:
+		return PLANE_CTL_FORMAT_NV12;
 	default:
 		MISSING_CASE(pixel_format);
 	}
@@ -3527,7 +3618,7 @@ u32 skl_plane_ctl(const struct intel_crtc_state *crtc_state,
 			PLANE_CTL_PLANE_GAMMA_DISABLE;
 	}
 
-	plane_ctl |= skl_plane_ctl_format(fb->format->format);
+	plane_ctl |= skl_plane_ctl_format(fb->format->format, plane_state->alpha);
 	plane_ctl |= skl_plane_ctl_tiling(fb->modifier);
 	plane_ctl |= skl_plane_ctl_rotation(rotation);
 
@@ -3546,6 +3637,8 @@ static void skylake_update_primary_plane(struct intel_plane *plane,
 	struct drm_i915_private *dev_priv = to_i915(plane->base.dev);
 	struct intel_crtc *crtc = to_intel_crtc(crtc_state->base.crtc);
 	const struct drm_framebuffer *fb = plane_state->base.fb;
+	const struct drm_intel_sprite_colorkey *key =
+		&plane_state->ckey;
 	enum plane_id plane_id = plane->id;
 	enum pipe pipe = plane->pipe;
 	u32 plane_ctl = plane_state->ctl;
@@ -3619,6 +3712,14 @@ static void skylake_update_primary_plane(struct intel_plane *plane,
 		      (plane_state->aux.offset - surf_addr) | aux_stride);
 	I915_WRITE_FW(PLANE_AUX_OFFSET(pipe, plane_id),
 		      (plane_state->aux.y << 16) | plane_state->aux.x);
+	I915_WRITE_FW(PLANE_KEYMAX(pipe, 0),
+		   (DRM_RGBA_ALPHABITS(plane_state->base.blend_mode.color, 8)
+			<< PLANE_KEY_MAX_ALPHA_SHIFT) |
+		   (key->max_value & PLANE_KEYMAX_ALPHA_MASK));
+	I915_WRITE_FW(PLANE_KEYMSK(pipe, 0),
+		   (plane_state->use_plane_alpha
+			<< PLANE_KEY_MASK_ALPHA_EN) |
+		   (key->channel_mask & GENMASK(0, 26)));
 
 	if (scaler_id >= 0) {
 		uint32_t ps_ctrl = 0;
@@ -4772,7 +4873,9 @@ static void cpt_verify_modeset(struct drm_device *dev, int pipe)
 static int
 skl_update_scaler(struct intel_crtc_state *crtc_state, bool force_detach,
 		  unsigned int scaler_user, int *scaler_id,
-		  int src_w, int src_h, int dst_w, int dst_h)
+		  int src_w, int src_h, int dst_w, int dst_h,
+		  bool plane_scaler_check,
+		  uint32_t pixel_format)
 {
 	struct intel_crtc_scaler_state *scaler_state =
 		&crtc_state->scaler_state;
@@ -4789,6 +4892,10 @@ skl_update_scaler(struct intel_crtc_state *crtc_state, bool force_detach,
 	 * GTT mapping), hence no need to account for rotation here.
 	 */
 	need_scaling = src_w != dst_w || src_h != dst_h;
+
+	if (plane_scaler_check)
+		if (pixel_format == DRM_FORMAT_NV12)
+			need_scaling = true;
 
 	if (crtc_state->ycbcr420 && scaler_user == SKL_CRTC_INDEX)
 		need_scaling = true;
@@ -4829,6 +4936,12 @@ skl_update_scaler(struct intel_crtc_state *crtc_state, bool force_detach,
 		return 0;
 	}
 
+	if (plane_scaler_check && pixel_format == DRM_FORMAT_NV12 &&
+	    (src_h < SKL_MIN_YUV_420_SRC_H || src_w < SKL_MIN_YUV_420_SRC_W)) {
+		DRM_DEBUG_KMS("NV12: src dimensions not met\n");
+		return -EINVAL;
+	}
+
 	/* range checks */
 	if (src_w < SKL_MIN_SRC_W || src_h < SKL_MIN_SRC_H ||
 		dst_w < SKL_MIN_DST_W || dst_h < SKL_MIN_DST_H ||
@@ -4865,9 +4978,10 @@ int skl_update_scaler_crtc(struct intel_crtc_state *state)
 	const struct drm_display_mode *adjusted_mode = &state->base.adjusted_mode;
 
 	return skl_update_scaler(state, !state->base.active, SKL_CRTC_INDEX,
-		&state->scaler_state.scaler_id,
-		state->pipe_src_w, state->pipe_src_h,
-		adjusted_mode->crtc_hdisplay, adjusted_mode->crtc_vdisplay);
+				 &state->scaler_state.scaler_id,
+				 state->pipe_src_w, state->pipe_src_h,
+				 adjusted_mode->crtc_hdisplay,
+				 adjusted_mode->crtc_vdisplay, false, 0);
 }
 
 /**
@@ -4897,7 +5011,8 @@ static int skl_update_scaler_plane(struct intel_crtc_state *crtc_state,
 				drm_rect_width(&plane_state->base.src) >> 16,
 				drm_rect_height(&plane_state->base.src) >> 16,
 				drm_rect_width(&plane_state->base.dst),
-				drm_rect_height(&plane_state->base.dst));
+				drm_rect_height(&plane_state->base.dst),
+				fb ? true : false, fb ? fb->format->format : 0);
 
 	if (ret || plane_state->scaler_id < 0)
 		return ret;
@@ -4923,6 +5038,7 @@ static int skl_update_scaler_plane(struct intel_crtc_state *crtc_state,
 	case DRM_FORMAT_YVYU:
 	case DRM_FORMAT_UYVY:
 	case DRM_FORMAT_VYUY:
+	case DRM_FORMAT_NV12:
 		break;
 	default:
 		DRM_DEBUG_KMS("[PLANE:%d:%s] FB:%d unsupported scaling format 0x%x\n",
@@ -5160,9 +5276,27 @@ intel_pre_disable_primary_noatomic(struct drm_crtc *crtc)
 		intel_wait_for_vblank(dev_priv, pipe);
 }
 
+static bool needs_nv12_wa(struct drm_i915_private *dev_priv,
+			  const struct intel_crtc_state *crtc_state)
+{
+	if (!crtc_state->nv12_planes)
+		return false;
+
+	if (IS_SKYLAKE(dev_priv) || IS_BXT_REVID(dev_priv, 0, BXT_REVID_D0))
+		return false;
+
+	if ((INTEL_GEN(dev_priv) == 9 && !IS_GEMINILAKE(dev_priv)) ||
+	    IS_CANNONLAKE(dev_priv))
+		return true;
+
+	return false;
+}
+
 static void intel_post_plane_update(struct intel_crtc_state *old_crtc_state)
 {
 	struct intel_crtc *crtc = to_intel_crtc(old_crtc_state->base.crtc);
+	struct drm_device *dev = crtc->base.dev;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_atomic_state *old_state = old_crtc_state->base.state;
 	struct intel_crtc_state *pipe_config =
 		to_intel_crtc_state(crtc->base.state);
@@ -5187,6 +5321,13 @@ static void intel_post_plane_update(struct intel_crtc_state *old_crtc_state)
 		    (needs_modeset(&pipe_config->base) ||
 		     !old_primary_state->base.visible))
 			intel_post_enable_primary(&crtc->base);
+	}
+
+	/* Display WA 827 */
+	if (needs_nv12_wa(dev_priv, old_crtc_state) &&
+	    !needs_nv12_wa(dev_priv, pipe_config)) {
+		skl_wa_clkgate(dev_priv, crtc->pipe, false);
+		skl_wa_528(dev_priv, crtc->pipe, false);
 	}
 }
 
@@ -5215,6 +5356,13 @@ static void intel_pre_plane_update(struct intel_crtc_state *old_crtc_state,
 		if (old_primary_state->base.visible &&
 		    (modeset || !primary_state->base.visible))
 			intel_pre_disable_primary(&crtc->base);
+	}
+
+	/* Display WA 827 */
+	if (!needs_nv12_wa(dev_priv, old_crtc_state) &&
+	    needs_nv12_wa(dev_priv, pipe_config)) {
+		skl_wa_clkgate(dev_priv, crtc->pipe, true);
+		skl_wa_528(dev_priv, crtc->pipe, true);
 	}
 
 	/*
@@ -5525,6 +5673,20 @@ static bool hsw_crtc_supports_ips(struct intel_crtc *crtc)
 	return HAS_IPS(to_i915(crtc->base.dev)) && crtc->pipe == PIPE_A;
 }
 
+static void glk_pipe_scaler_clock_gating_wa(struct drm_i915_private *dev_priv,
+					    enum pipe pipe, bool apply)
+{
+	u32 val = I915_READ(CLKGATE_DIS_PSL(pipe));
+	u32 mask = DPF_GATING_DIS | DPF_RAM_GATING_DIS | DPFR_GATING_DIS;
+
+	if (apply)
+		val |= mask;
+	else
+		val &= ~mask;
+
+	I915_WRITE(CLKGATE_DIS_PSL(pipe), val);
+}
+
 static void haswell_crtc_enable(struct intel_crtc_state *pipe_config,
 				struct drm_atomic_state *old_state)
 {
@@ -5535,6 +5697,7 @@ static void haswell_crtc_enable(struct intel_crtc_state *pipe_config,
 	enum transcoder cpu_transcoder = intel_crtc->config->cpu_transcoder;
 	struct intel_atomic_state *old_intel_state =
 		to_intel_atomic_state(old_state);
+	bool psl_clkgate_wa;
 
 	if (WARN_ON(intel_crtc->active))
 		return;
@@ -5588,6 +5751,12 @@ static void haswell_crtc_enable(struct intel_crtc_state *pipe_config,
 	if (!transcoder_is_dsi(cpu_transcoder))
 		intel_ddi_enable_pipe_clock(pipe_config);
 
+	/* Display WA #1180: WaDisableScalarClockGating: glk, cnl */
+	psl_clkgate_wa = (IS_GEMINILAKE(dev_priv) || IS_CANNONLAKE(dev_priv)) &&
+			 intel_crtc->config->pch_pfit.enabled;
+	if (psl_clkgate_wa)
+		glk_pipe_scaler_clock_gating_wa(dev_priv, pipe, true);
+
 	if (INTEL_GEN(dev_priv) >= 9)
 		skylake_pfit_enable(intel_crtc);
 	else
@@ -5620,6 +5789,11 @@ static void haswell_crtc_enable(struct intel_crtc_state *pipe_config,
 	drm_crtc_vblank_on(crtc);
 
 	intel_encoders_enable(crtc, pipe_config, old_state);
+
+	if (psl_clkgate_wa) {
+		intel_wait_for_vblank(dev_priv, pipe);
+		glk_pipe_scaler_clock_gating_wa(dev_priv, pipe, false);
+	}
 
 	if (intel_crtc->config->has_pch_encoder) {
 		intel_wait_for_vblank(dev_priv, pipe);
@@ -10462,6 +10636,104 @@ static bool needs_scaling(struct intel_plane_state *state)
 	return (src_w != dst_w || src_h != dst_h);
 }
 
+static int intel_plane_state_check_blend(struct drm_plane_state *plane_state)
+{
+	struct drm_i915_private *dev_priv = to_i915(plane_state->state->dev);
+	struct intel_plane_state *state = to_intel_plane_state(plane_state);
+	const struct drm_framebuffer *fb = plane_state->fb;
+	const struct drm_blend_mode *mode = &state->base.blend_mode;
+	struct drm_format_name_buf format_name;
+	bool has_per_pixel_blending;
+
+	/*
+	 * We don't install the properties pre-SKL, so this is SKL+ specific
+	 * code for now.
+	 */
+	if (INTEL_GEN(dev_priv) < 9)
+		return 0;
+
+	if (!fb)
+		return 0;
+
+	switch (fb->format->format) {
+	case DRM_FORMAT_ABGR8888:
+	case DRM_FORMAT_ARGB8888:
+		has_per_pixel_blending = true;
+		break;
+	default:
+		has_per_pixel_blending = false;
+	}
+
+
+	switch (mode->func) {
+	/*
+	 * The 'AUTO' behaviour is the default and keeps compatibility with
+	 * kernels before the introduction of the blend_func property:
+	 *   - pre-multiplied alpha if the fb has an alpha channel
+	 *   - disabled otherwise
+	 */
+	case DRM_BLEND_FUNC(AUTO, AUTO):
+	case DRM_BLEND_FUNC(ONE, ONE_MINUS_SRC_ALPHA):
+		state->alpha = has_per_pixel_blending ?
+			I915_ALPHA_PREMUL : I915_ALPHA_NONE;
+		state->use_plane_alpha = false;
+		break;
+	/* fbs without an alpha channel, or dropping the alpha channel */
+	case DRM_BLEND_FUNC(ONE, ZERO):
+		state->alpha = I915_ALPHA_NONE;
+		state->use_plane_alpha = false;
+		break;
+	/* non pre-multiplied alpha */
+	case DRM_BLEND_FUNC(SRC_ALPHA, ONE_MINUS_SRC_ALPHA):
+		state->alpha = has_per_pixel_blending ?
+			I915_ALPHA_NON_PREMUL : I915_ALPHA_NONE;
+		state->use_plane_alpha = false;
+		break;
+	/* plane alpha */
+	case DRM_BLEND_FUNC(CONSTANT_ALPHA, ONE_MINUS_CONSTANT_ALPHA):
+		state->alpha = I915_ALPHA_NONE;
+		state->use_plane_alpha = true;
+		break;
+	/* plane alpha, pre-multiplied fb */
+	case DRM_BLEND_FUNC(CONSTANT_ALPHA,
+			    ONE_MINUS_CONSTANT_ALPHA_TIMES_SRC_ALPHA):
+		state->alpha = I915_ALPHA_PREMUL;
+		state->use_plane_alpha = true;
+		break;
+	/* plane alpha, non pre-multiplied fb */
+	case DRM_BLEND_FUNC(CONSTANT_ALPHA_TIMES_SRC_ALPHA,
+			    ONE_MINUS_CONSTANT_ALPHA_TIMES_SRC_ALPHA):
+		state->alpha = I915_ALPHA_NON_PREMUL;
+		state->use_plane_alpha = true;
+		break;
+	default:
+		DRM_DEBUG_KMS("Invalid blend factor combination (0x%llx,0x%llx)\n",
+			      DRM_BLEND_FUNC_SRC_FACTOR(mode->func),
+			      DRM_BLEND_FUNC_DST_FACTOR(mode->func));
+		return -EINVAL;
+	}
+
+	/*
+	 * Make sure we don't try to do blending on pixel formats that can't
+	 * support it (i.e., non-RGB8888 formats).
+	 */
+	switch (fb->format->format) {
+	case DRM_FORMAT_ABGR8888:
+	case DRM_FORMAT_ARGB8888:
+	case DRM_FORMAT_XBGR8888:
+	case DRM_FORMAT_XRGB8888:
+		break;
+	default:
+		if (state->alpha != I915_ALPHA_NONE) {
+			DRM_DEBUG_KMS("Format %s does not support per-pixel alpha blending!",
+				      drm_get_format_name(fb->format->format, &format_name));
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
 int intel_plane_atomic_calc_changes(struct drm_crtc_state *crtc_state,
 				    struct drm_plane_state *plane_state)
 {
@@ -10563,6 +10835,12 @@ int intel_plane_atomic_calc_changes(struct drm_crtc_state *crtc_state,
 	    needs_scaling(to_intel_plane_state(plane_state)) &&
 	    !needs_scaling(old_plane_state))
 		pipe_config->disable_lp_wm = true;
+
+	if (plane->id != PLANE_CURSOR) {
+		ret = intel_plane_state_check_blend(plane_state);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }
@@ -12924,11 +13202,13 @@ intel_cleanup_plane_fb(struct drm_plane *plane,
 }
 
 int
-skl_max_scale(struct intel_crtc *intel_crtc, struct intel_crtc_state *crtc_state)
+skl_max_scale(struct intel_crtc *intel_crtc,
+	      struct intel_crtc_state *crtc_state,
+	      uint32_t pixel_format)
 {
 	struct drm_i915_private *dev_priv;
-	int max_scale;
-	int crtc_clock, max_dotclk;
+	int max_scale, mult;
+	int crtc_clock, max_dotclk, tmpclk1, tmpclk2;
 
 	if (!intel_crtc || !crtc_state->base.enable)
 		return DRM_PLANE_HELPER_NO_SCALING;
@@ -12950,8 +13230,10 @@ skl_max_scale(struct intel_crtc *intel_crtc, struct intel_crtc_state *crtc_state
 	 *            or
 	 *    cdclk/crtc_clock
 	 */
-	max_scale = min((1 << 16) * 3 - 1,
-			(1 << 8) * ((max_dotclk << 8) / crtc_clock));
+	mult = pixel_format == DRM_FORMAT_NV12 ? 2 : 3;
+	tmpclk1 = (1 << 16) * mult - 1;
+	tmpclk2 = (1 << 8) * ((max_dotclk << 8) / crtc_clock);
+	max_scale = min(tmpclk1, tmpclk2);
 
 	return max_scale;
 }
@@ -12967,12 +13249,16 @@ intel_check_primary_plane(struct intel_plane *plane,
 	int max_scale = DRM_PLANE_HELPER_NO_SCALING;
 	bool can_position = false;
 	int ret;
+	uint32_t pixel_format = 0;
 
 	if (INTEL_GEN(dev_priv) >= 9) {
 		/* use scaler when colorkey is not required */
 		if (state->ckey.flags == I915_SET_COLORKEY_NONE) {
 			min_scale = 1;
-			max_scale = skl_max_scale(to_intel_crtc(crtc), crtc_state);
+			if (state->base.fb)
+				pixel_format = state->base.fb->format->format;
+			max_scale = skl_max_scale(to_intel_crtc(crtc),
+						  crtc_state, pixel_format);
 		}
 		can_position = true;
 	}
@@ -13114,6 +13400,7 @@ static bool skl_mod_supported(uint32_t format, uint64_t modifier)
 	case DRM_FORMAT_YVYU:
 	case DRM_FORMAT_UYVY:
 	case DRM_FORMAT_VYUY:
+	case DRM_FORMAT_NV12:
 		if (modifier == I915_FORMAT_MOD_Yf_TILED)
 			return true;
 		/* fall through */
@@ -13306,6 +13593,32 @@ static const struct drm_plane_funcs intel_cursor_plane_funcs = {
 	.format_mod_supported = intel_cursor_plane_format_mod_supported,
 };
 
+bool skl_plane_has_planar(struct drm_i915_private *dev_priv,
+			  enum pipe pipe, enum plane_id plane_id)
+{
+	if (plane_id == PLANE_PRIMARY) {
+		if (IS_SKYLAKE(dev_priv) ||
+		    IS_BXT_REVID(dev_priv, 0, BXT_REVID_D0))
+			return false;
+		else if ((INTEL_GEN(dev_priv) == 9 && pipe == PIPE_C) &&
+			 !IS_GEMINILAKE(dev_priv))
+			return false;
+	} else if (plane_id >= PLANE_SPRITE0) {
+		if (plane_id == PLANE_CURSOR)
+			return false;
+		if (IS_GEMINILAKE(dev_priv) || INTEL_GEN(dev_priv) == 10) {
+			if (plane_id != PLANE_SPRITE0)
+				return false;
+		} else {
+			if (plane_id != PLANE_SPRITE0 || pipe == PIPE_C ||
+			    IS_SKYLAKE(dev_priv) ||
+			    IS_BXT_REVID(dev_priv, 0, BXT_REVID_D0))
+				return false;
+		}
+	}
+	return true;
+}
+
 static struct intel_plane *
 intel_primary_plane_create(struct drm_i915_private *dev_priv, enum pipe pipe)
 {
@@ -13350,17 +13663,14 @@ intel_primary_plane_create(struct drm_i915_private *dev_priv, enum pipe pipe)
 	primary->frontbuffer_bit = INTEL_FRONTBUFFER_PRIMARY(pipe);
 	primary->check_plane = intel_check_primary_plane;
 
-	if (INTEL_GEN(dev_priv) >= 10) {
-		intel_primary_formats = skl_primary_formats;
-		num_formats = ARRAY_SIZE(skl_primary_formats);
-		modifiers = skl_format_modifiers_ccs;
-
-		primary->update_plane = skylake_update_primary_plane;
-		primary->disable_plane = skylake_disable_primary_plane;
-		primary->get_hw_state = skl_plane_get_hw_state;
-	} else if (INTEL_GEN(dev_priv) >= 9) {
-		intel_primary_formats = skl_primary_formats;
-		num_formats = ARRAY_SIZE(skl_primary_formats);
+	if (INTEL_GEN(dev_priv) >= 9) {
+		if (skl_plane_has_planar(dev_priv, pipe, PLANE_PRIMARY)) {
+			intel_primary_formats = skl_pri_planar_formats;
+			num_formats = ARRAY_SIZE(skl_pri_planar_formats);
+		} else {
+			intel_primary_formats = skl_primary_formats;
+			num_formats = ARRAY_SIZE(skl_primary_formats);
+		}
 		if (pipe < PIPE_C)
 			modifiers = skl_format_modifiers_ccs;
 		else
@@ -13430,6 +13740,9 @@ intel_primary_plane_create(struct drm_i915_private *dev_priv, enum pipe pipe)
 		drm_plane_create_rotation_property(&primary->base,
 						   DRM_MODE_ROTATE_0,
 						   supported_rotations);
+
+	if (INTEL_GEN(dev_priv) == 9)
+		intel_plane_add_blend_properties(primary);
 
 	drm_plane_helper_add(&primary->base, &intel_plane_helper_funcs);
 
@@ -13543,6 +13856,25 @@ fail:
 	kfree(intel_plane);
 
 	return ERR_PTR(ret);
+}
+
+void intel_plane_add_blend_properties(struct intel_plane *plane)
+{
+	struct drm_device *dev = plane->base.dev;
+	struct drm_property *prop;
+
+	if (INTEL_INFO(to_i915(dev))->gen < 9)
+		return;
+
+	prop = dev->mode_config.prop_blend_func;
+	if (prop)
+		drm_object_attach_property(&plane->base.base, prop,
+					   DRM_BLEND_FUNC(AUTO, AUTO));
+
+	prop = dev->mode_config.prop_blend_color;
+	if (prop)
+		drm_object_attach_property(&plane->base.base, prop,
+					   plane->base.state->blend_mode.color.v);
 }
 
 static struct intel_plane *
@@ -14394,6 +14726,20 @@ static int intel_framebuffer_init(struct intel_framebuffer *intel_fb,
 			goto err;
 		}
 		break;
+	case DRM_FORMAT_NV12:
+		if (mode_cmd->modifier[0] == I915_FORMAT_MOD_Y_TILED_CCS ||
+		    mode_cmd->modifier[0] == I915_FORMAT_MOD_Yf_TILED_CCS) {
+			DRM_DEBUG_KMS("RC not to be enabled with NV12\n");
+			goto err;
+		}
+		if (INTEL_GEN(dev_priv) < 9 || IS_SKYLAKE(dev_priv) ||
+		    IS_BXT_REVID(dev_priv, 0, BXT_REVID_D0)) {
+			DRM_DEBUG_KMS("unsupported pixel format: %s\n",
+				      drm_get_format_name(mode_cmd->pixel_format,
+							  &format_name));
+			goto err;
+		}
+		break;
 	default:
 		DRM_DEBUG_KMS("unsupported pixel format: %s\n",
 			      drm_get_format_name(mode_cmd->pixel_format, &format_name));
@@ -14405,6 +14751,14 @@ static int intel_framebuffer_init(struct intel_framebuffer *intel_fb,
 		goto err;
 
 	drm_helper_mode_fill_fb_struct(&dev_priv->drm, fb, mode_cmd);
+
+	if (fb->format->format == DRM_FORMAT_NV12 &&
+	    (fb->width < SKL_MIN_YUV_420_SRC_W ||
+	     fb->height < SKL_MIN_YUV_420_SRC_H ||
+	     (fb->width % 4) != 0 || (fb->height % 4) != 0)) {
+		DRM_DEBUG_KMS("src dimensions not correct for NV12\n");
+		return -EINVAL;
+	}
 
 	for (i = 0; i < fb->format->num_planes; i++) {
 		u32 stride_alignment;

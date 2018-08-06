@@ -300,11 +300,14 @@ skl_update_plane(struct intel_plane *plane,
 			      PLANE_COLOR_PLANE_GAMMA_DISABLE);
 	}
 
-	if (key->flags) {
+	I915_WRITE_FW(PLANE_KEYMAX(pipe, plane_id),
+		   (DRM_RGBA_ALPHABITS(plane_state->base.blend_mode.color, 8)
+			<< 24) | (key->max_value & 0x00ffffff));
+	I915_WRITE_FW(PLANE_KEYMSK(pipe, plane_id),
+		   (plane_state->use_plane_alpha << 31) |
+		   (key->channel_mask & GENMASK(0, 26)));
+	if (key->flags)
 		I915_WRITE_FW(PLANE_KEYVAL(pipe, plane_id), key->min_value);
-		I915_WRITE_FW(PLANE_KEYMAX(pipe, plane_id), key->max_value);
-		I915_WRITE_FW(PLANE_KEYMSK(pipe, plane_id), key->channel_mask);
-	}
 
 	I915_WRITE_FW(PLANE_OFFSET(pipe, plane_id), (y << 16) | x);
 	I915_WRITE_FW(PLANE_STRIDE(pipe, plane_id), stride);
@@ -959,6 +962,7 @@ intel_check_sprite_plane(struct intel_plane *plane,
 	int max_scale, min_scale;
 	bool can_scale;
 	int ret;
+	uint32_t pixel_format = 0;
 
 	*src = drm_plane_state_src(&state->base);
 	*dst = drm_plane_state_dest(&state->base);
@@ -982,11 +986,14 @@ intel_check_sprite_plane(struct intel_plane *plane,
 
 	/* setup can_scale, min_scale, max_scale */
 	if (INTEL_GEN(dev_priv) >= 9) {
+		if (state->base.fb)
+			pixel_format = state->base.fb->format->format;
 		/* use scaler when colorkey is not required */
 		if (state->ckey.flags == I915_SET_COLORKEY_NONE) {
 			can_scale = 1;
 			min_scale = 1;
-			max_scale = skl_max_scale(crtc, crtc_state);
+			max_scale =
+				skl_max_scale(crtc, crtc_state, pixel_format);
 		} else {
 			can_scale = 0;
 			min_scale = DRM_PLANE_HELPER_NO_SCALING;
@@ -1064,7 +1071,8 @@ intel_check_sprite_plane(struct intel_plane *plane,
 		src_y = src->y1 >> 16;
 		src_h = drm_rect_height(src) >> 16;
 
-		if (format_is_yuv(fb->format->format)) {
+		if (format_is_yuv(fb->format->format) &&
+		    fb->format->format != DRM_FORMAT_NV12) {
 			src_x &= ~1;
 			src_w &= ~1;
 
@@ -1498,6 +1506,7 @@ intel_sprite_plane_create(struct drm_i915_private *dev_priv,
 	drm_plane_create_rotation_property(&intel_plane->base,
 					   DRM_MODE_ROTATE_0,
 					   supported_rotations);
+	intel_plane_add_blend_properties(intel_plane);
 
 	drm_plane_helper_add(&intel_plane->base, &intel_plane_helper_funcs);
 

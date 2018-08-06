@@ -658,6 +658,23 @@ static void vlv_dsi_clear_device_ready(struct intel_encoder *encoder)
 	}
 }
 
+static void bxt_dsi_clear_device_ready(struct intel_encoder *encoder)
+{
+	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
+	struct intel_dsi *intel_dsi = enc_to_intel_dsi(&encoder->base);
+	enum port port;
+
+	/*
+	 * Reset the DSI Device ready first for both ports
+	 * and then port control registers for both ports
+	 */
+	for_each_dsi_port(port, intel_dsi->ports)
+		I915_WRITE(MIPI_DEVICE_READY(port), 0);
+
+	for_each_dsi_port(port, intel_dsi->ports)
+		I915_WRITE(BXT_MIPI_PORT_CTRL(port), 0);
+}
+
 static void intel_dsi_port_enable(struct intel_encoder *encoder)
 {
 	struct drm_device *dev = encoder->base.dev;
@@ -819,6 +836,16 @@ static void intel_dsi_pre_enable(struct intel_encoder *encoder,
 		val = I915_READ(DSPCLK_GATE_D);
 		val |= DPOUNIT_CLOCK_GATE_DISABLE;
 		I915_WRITE(DSPCLK_GATE_D, val);
+	} else if (IS_BROXTON(dev_priv)) {
+		u32 val;
+
+		/* Power up the DSI regulator */
+		val = I915_READ(BXT_P_CR_GT_DISP_PWRON);
+		val |= MIPIO_RST_CTRL;
+		I915_WRITE(BXT_P_CR_GT_DISP_PWRON, val);
+
+		I915_WRITE(BXT_DSI_CFG, STRAP_SELECT);
+		I915_WRITE(BXT_DSI_TXCNTRL, HS_IO_CONTROL_SELECT);
 	}
 
 	if (!IS_GEMINILAKE(dev_priv))
@@ -892,6 +919,8 @@ static void intel_dsi_disable(struct intel_encoder *encoder,
 			      struct intel_crtc_state *old_crtc_state,
 			      struct drm_connector_state *old_conn_state)
 {
+	struct drm_device *dev = encoder->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_dsi *intel_dsi = enc_to_intel_dsi(&encoder->base);
 	enum port port;
 
@@ -899,6 +928,15 @@ static void intel_dsi_disable(struct intel_encoder *encoder,
 
 	intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_BACKLIGHT_OFF);
 	intel_panel_disable_backlight(old_conn_state);
+
+	/*
+	 * Disable Device ready before the port shutdown in order
+	 * to avoid split screen
+	 */
+	if (IS_BROXTON(dev_priv)) {
+		for_each_dsi_port(port, intel_dsi->ports)
+			I915_WRITE(MIPI_DEVICE_READY(port), 0);
+	}
 
 	/*
 	 * According to the spec we should send SHUTDOWN before
@@ -917,9 +955,10 @@ static void intel_dsi_clear_device_ready(struct intel_encoder *encoder)
 {
 	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
 
-	if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv) ||
-	    IS_BROXTON(dev_priv))
+	if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv))
 		vlv_dsi_clear_device_ready(encoder);
+	else if (IS_BROXTON(dev_priv))
+		bxt_dsi_clear_device_ready(encoder);
 	else if (IS_GEMINILAKE(dev_priv))
 		glk_dsi_clear_device_ready(encoder);
 }
@@ -939,8 +978,10 @@ static void intel_dsi_post_disable(struct intel_encoder *encoder,
 		for_each_dsi_port(port, intel_dsi->ports)
 			wait_for_dsi_fifo_empty(intel_dsi, port);
 
-		intel_dsi_port_disable(encoder);
-		usleep_range(2000, 5000);
+		if (!IS_BROXTON(dev_priv)) {
+			intel_dsi_port_disable(encoder);
+			usleep_range(2000, 5000);
+		}
 	}
 
 	intel_dsi_unprepare(encoder);
@@ -1223,23 +1264,31 @@ static void bxt_dsi_get_pipe_config(struct intel_encoder *encoder,
 					adjusted_mode_sw->crtc_hblank_end;
 }
 
-static void intel_dsi_get_config(struct intel_encoder *encoder,
+static void intel_dsi_get_config(struct intel_encoder *intel_encoder,
 				 struct intel_crtc_state *pipe_config)
 {
-	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
+	struct drm_i915_private *dev_priv = to_i915(intel_encoder->base.dev);
+	struct drm_encoder *encoder = &intel_encoder->base;
+	struct intel_dsi *intel_dsi = enc_to_intel_dsi(encoder);
 	u32 pclk;
 	DRM_DEBUG_KMS("\n");
 
 	if (IS_GEN9_LP(dev_priv))
-		bxt_dsi_get_pipe_config(encoder, pipe_config);
+		bxt_dsi_get_pipe_config(intel_encoder, pipe_config);
 
-	pclk = intel_dsi_get_pclk(encoder, pipe_config->pipe_bpp,
+	pclk = intel_dsi_get_pclk(intel_encoder, pipe_config->pipe_bpp,
 				  pipe_config);
 	if (!pclk)
 		return;
 
-	pipe_config->base.adjusted_mode.crtc_clock = pclk;
-	pipe_config->port_clock = pclk;
+	/* dual link pclk is about 1/2 of crtc clock */
+	if (IS_BROXTON(dev_priv) && (intel_dsi->dual_link)) {
+		pipe_config->base.adjusted_mode.crtc_clock = pclk * 2;
+		pipe_config->port_clock = pclk * 2;
+	} else {
+		pipe_config->base.adjusted_mode.crtc_clock = pclk;
+		pipe_config->port_clock = pclk;
+	}
 }
 
 static enum drm_mode_status
@@ -1576,7 +1625,8 @@ static void intel_dsi_unprepare(struct intel_encoder *encoder)
 			I915_WRITE(MIPI_DEVICE_READY(port), 0x0);
 
 			intel_dsi_reset_clocks(encoder, port);
-			I915_WRITE(MIPI_EOT_DISABLE(port), CLOCKSTOP);
+			if (intel_dsi->clock_stop)
+				I915_WRITE(MIPI_EOT_DISABLE(port), CLOCKSTOP);
 
 			val = I915_READ(MIPI_DSI_FUNC_PRG(port));
 			val &= ~VID_MODE_FORMAT_MASK;
