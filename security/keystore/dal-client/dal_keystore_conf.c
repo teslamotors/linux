@@ -81,9 +81,9 @@ int read_dal_keystore_conf(const char *filename)
 				__func__, filename);
 
 	inode = file_inode(file);
-	mutex_lock(&(inode->i_mutex));
+	inode_lock_shared(inode);
 	ret = read_conf_file(file);
-	mutex_unlock(&(inode->i_mutex));
+	inode_unlock_shared(inode);
 
 	filp_close(file, NULL);
 	return ret;

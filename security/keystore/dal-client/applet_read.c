@@ -120,9 +120,9 @@ static int lock_read_applet(struct file *file, u8 **out)
 	struct inode *inode = file_inode(file);
 	int ret = 0;
 
-	mutex_lock(&(inode->i_mutex));
+	inode_lock_shared(inode);
 	ret =  read_applet_file(file, out);
-	mutex_unlock(&(inode->i_mutex));
+	inode_unlock_shared(inode);
 	return ret;
 }
 
